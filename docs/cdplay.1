@@ -1,12 +1,12 @@
-.TH "trackplay" 1 "June 15, 2007" "" "Play Audio Tracks"
+.TH "cdplay" 1 "February 2, 2011" "" "Play Compact Discs"
 .SH NAME
-trackplay \- plays audio tracks to speakers
+cdplay \- plays compact discs to speakers
 .SH SYNOPSIS
-trackplay <track 1> [track 2] ...
+cdplay <track 1> [track 2] ...
 .SH DESCRIPTION
 .PP
-trackinfo takes a list of audio tracks and plays them to an
-available audio output device such as PulseAudio or the Open Sound System.
+\" trackinfo takes a list of audio tracks and plays them to an
+\" available audio output device such as PulseAudio or the Open Sound System.
 .SH OPTIONS
 .TP
 \fB-h, --help\fR
@@ -24,17 +24,38 @@ Run in interactive mode.
 This provides a test-based GUI and allows one to operate
 playback via keyboard and, on some terminals, mouse control.
 .TP
-\fB-T, --track-replaygain\fR
-Apply track ReplayGain during playback, if present
-.TP
-\fB-A, --album-replaygain\fR
-Apply album ReplayGain during playback, if present
-.TP
 \fB-o \fIOUTPUT\fB, --output=\fIOUTPUT\fR
 The output system to use.
 .TP
+\fB-x \fIfilename\fB, --xmcd=\fIfilename\fR
+FreeDB XMCD or MusicBrainz XML metadata file for displaying
+disc information in interactive mode.
+.TP
+\fB-c \fIcdrom\fB, --cdrom=\fIcdrom\fR
+The cdrom device to read CD metadata from
+.TP
 \fB--shuffle\fR
 Shuffle tracks randomly before playback.
+
+.SH SERVER OPTIONS
+.TP
+\fB--musicbrainz-server=\fIserver\fR
+The MusicBrainz server name to query for metadata
+.TP
+\fB--musicbrainz-port=\fIport\fR
+The MusicBrainz port number to query for metadata
+.TP
+\fB--freedb-server=\fIserver\fR
+The FreeDB server name to query for metadata
+.TP
+\fB--freedb-port=\fIport\fR
+The FreeDB port number to query for metadata
+.TP
+\fB--no-musicbrainz\fR
+Do not query MusicBrainz
+.TP
+\fB--no-freedb\fR
+Do not query FreeDB
 
 .SH PLAYBACK CONTROLS
 .TS
@@ -52,7 +73,7 @@ r c l.
 If
 .B AUDIODEV
 is set,
-.BR trackplay (1)
+.BR cdplay (1)
 uses it as the device to play the given audio tracks when
 using OSS for output.
 Otherwise, the default \fI/dev/dsp\fR is used.
@@ -63,7 +84,6 @@ Otherwise, the default \fI/dev/dsp\fR is used.
 .BR cd2track (1),
 .BR cd2xmcd (1),
 .BR cdinfo (1),
-.BR cdplay (1),
 .BR coverdump (1),
 .BR coverview (1),
 .BR dvda2track (1),
@@ -79,6 +99,7 @@ Otherwise, the default \fI/dev/dsp\fR is used.
 .BR trackinfo (1),
 .BR tracklength (1),
 .BR tracklint (1),
+.BR trackplay (1),
 .BR trackrename (1),
 .BR tracksplit (1),
 .BR tracktag (1),

@@ -3,6 +3,7 @@ MAN_PAGES = \
 cd2track.1 \
 cd2xmcd.1 \
 cdinfo.1 \
+cdplay.1 \
 dvdainfo.1 \
 dvda2track.1 \
 dvda2xmcd.1 \

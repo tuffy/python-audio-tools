@@ -3045,7 +3045,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Avoid spinning down CDs between tracks
    This makes playback less seamless than I'd like
 ** TODO Improve stability
-** TODO Add man page for cdplay
+** DONE Add man page for cdplay.1
 ** TODO Add basic unit tests
    - [ ] Check command-line arguments
 * TODO Add unit tests to cd* utilities
