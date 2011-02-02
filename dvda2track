@@ -289,9 +289,7 @@ if (__name__ == '__main__'):
     encoded = []
 
     for (track_number, pcmreader) in enumerate(
-        pcm_split(MLPDecoder(AOBExtractor(title),
-                             (title.length * sample_rate) /
-                             audiotools.DVDAudio.PTS_PER_SECOND),
+        pcm_split(title.to_pcm(),
                   [(track.pts_length * sample_rate) /
                    audiotools.DVDAudio.PTS_PER_SECOND for track in title])):
         if (track_number in to_rip.keys()):

@@ -432,6 +432,14 @@ class DVDATitle:
             return MLPDecoder(IterReader(self.stream().packet_payloads()),
                               (self.length * sample_rate) /
                               DVDAudio.PTS_PER_SECOND)
+        elif (stream_type == 0xA0):
+            from audiotools.decoders import AOBPCMDecoder
+
+            return AOBPCMDecoder(IterReader(self.stream().packet_payloads()),
+                                 sample_rate,
+                                 channels,
+                                 channel_mask,
+                                 bits_per_sample)
         else:
             raise ValueError(_(u"unsupported DVD-Audio stream type"))
 
@@ -602,7 +610,7 @@ class AOBStream:
         reader.seek(first_sector)
         last_sector -= first_sector
         for i in xrange(last_sector + 1):
-            yield reader.read()
+            yield self.unprotector(reader.read())
         reader.close()
 
     def packets(self):
