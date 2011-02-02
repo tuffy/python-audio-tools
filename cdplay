@@ -128,7 +128,7 @@ try:
             track_len = cdda.length() / 75
 
             self.status = urwid.Text(
-                "%(count)d tracks, %(min)d:%(sec)2.2d length" % {
+                "%(count)d tracks, %(min)d:%(sec)2.2d minutes" % {
                     "count":len(self.track_list),
                     "min":int(track_len) / 60,
                     "sec":int(track_len) % 60},

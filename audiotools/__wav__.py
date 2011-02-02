@@ -20,6 +20,7 @@
 
 from audiotools import (AudioFile, InvalidFile, ChannelMask, PCMReader,
                         Con, BUFFER_SIZE, transfer_data,
+                        transfer_framelist_data, ReplayGainReader,
                         __capped_stream_reader__, FILENAME_FORMAT,
                         BIN, open_files, os, subprocess, cStringIO,
                         EncodingError, DecodingError, UnsupportedChannelMask,
@@ -232,7 +233,6 @@ class WaveAudio(WaveContainer):
 
     SUFFIX = "wav"
     NAME = SUFFIX
-    REPLAYGAIN_BINARIES = ("wavegain", )
 
     WAVE_HEADER = Con.Struct("wave_header",
                              Con.Const(Con.Bytes("wave_id", 4), 'RIFF'),
@@ -595,7 +595,7 @@ class WaveAudio(WaveContainer):
     def can_add_replay_gain(cls):
         """Returns True if we have the necessary binaries to add ReplayGain."""
 
-        return BIN.can_execute(BIN['wavegain'])
+        return True
 
     @classmethod
     def lossless_replay_gain(cls):
@@ -611,29 +611,80 @@ class WaveAudio(WaveContainer):
         Raises ValueError if some problem occurs during ReplayGain application.
         """
 
-        if (not BIN.can_execute(BIN['wavegain'])):
-            return
+        from audiotools.replaygain import ReplayGain
+        import tempfile
 
-        devnull = file(os.devnull, 'ab')
-        for track_name in [track.filename for track in
-                           open_files(filenames) if
-                           isinstance(track, cls)]:
-            #wavegain's -y option fails spectacularly
-            #if the wave file is on a different filesystem than
-            #its current working directory
-            #due to temp file usage
-            working_dir = os.getcwd()
+        def replay_gain_data(chunks,
+                             sample_rate,
+                             channels,
+                             channel_mask,
+                             bits_per_sample,
+                             replaygain,
+                             peak):
+            for (chunk_id, chunk_data) in chunks:
+                if (chunk_id == 'data'):
+                    #convert data to ReplayGained data
+                    gained = cStringIO.StringIO()
+                    transfer_framelist_data(
+                        ReplayGainReader(PCMReader(
+                                file=cStringIO.StringIO(chunk_data),
+                                sample_rate=sample_rate,
+                                channels=channels,
+                                channel_mask=channel_mask,
+                                bits_per_sample=bits_per_sample),
+                                         replaygain=replaygain,
+                                         peak=peak),
+                        gained.write,
+                        signed=bits_per_sample != 8,
+                        big_endian=False)
+                    yield (chunk_id, gained.getvalue())
+                else:
+                    yield (chunk_id, chunk_data)
+
+        wave_files = [track for track in open_files(filenames) if
+                      isinstance(track, cls)]
+
+        track_gains = []
+
+        #first, calculate the Gain and Peak values from our files
+        for original_wave in wave_files:
             try:
-                if (os.path.dirname(track_name) != ""):
-                    os.chdir(os.path.dirname(track_name))
-                sub = subprocess.Popen([BIN['wavegain'], "-y", track_name],
-                                       stdout=devnull,
-                                       stderr=devnull)
-                sub.wait()
+                rg = ReplayGain(original_wave.sample_rate())
+            except ValueError:
+                track_gains.append((None, None))
+            pcm = original_wave.to_pcm()
+            try:
+                try:
+                    transfer_data(pcm.read, rg.update)
+                    track_gains.append(rg.title_gain())
+                except ValueError:
+                    track_gains.append((None, None))
             finally:
-                os.chdir(working_dir)
+                pcm.close()
 
-        devnull.close()
+        #then, apply those Gain and Peak values to our files
+        #rewriting the originals in the process
+        for (original_wave, (gain, peak)) in zip(wave_files, track_gains):
+            if (gain is None):
+                continue
+
+            temp_wav_file = tempfile.NamedTemporaryFile(suffix=".wav")
+            try:
+                cls.wave_from_chunks(temp_wav_file.name,
+                                     replay_gain_data(
+                        chunks=original_wave.chunks(),
+                        sample_rate=original_wave.sample_rate(),
+                        channels=original_wave.channels(),
+                        channel_mask=int(original_wave.channel_mask()),
+                        bits_per_sample=original_wave.bits_per_sample(),
+                        replaygain=gain,
+                        peak=peak))
+                temp_wav_file.seek(0, 0)
+                new_wave = open(original_wave.filename, 'wb')
+                transfer_data(temp_wav_file.read, new_wave.write)
+                new_wave.close()
+            finally:
+                temp_wav_file.close()
 
     @classmethod
     def track_name(cls, file_path, track_metadata=None, format=None):
