@@ -1,11 +1,14 @@
-.TH "tracksplit" 1 "April 17, 2009" "" "Audio File Splitter"
+.TH "dvda2track" 1 "June 15, 2007" "" "DVD-Audio Extractor"
 .SH NAME
-tracksplit \- split audio track
+dvda2track \- extract audio files
 .SH SYNOPSIS
-tracksplit [OPTIONS] <track>
+dvda2track [OPTIONS] [track 1] [track 2] ...
 .SH DESCRIPTION
 .PP
-tracksplit splits an audio track into several smaller tracks.
+dvda2track extracts audio files from a DVD-Audio disc and
+encodes them to tracks.
+If track numbers are given, extracts only those tracks.
+Otherwise, extracts the entire disc.
 .SH OPTIONS
 .TP
 \fB-h, --help\fR
@@ -18,17 +21,25 @@ Show the program's version and exit
 The level of output to display.
 Choose between `normal', `quiet' and `debug'.
 .TP
-\fB--cue=\fIfilename\fR
-A cuesheet or
-.BR cdrdao (1)
-TOC file to use for splitting.
-This file contains a series of track length indices which indicate
-the length of each sub-track.
-FLAC or WavPack files with embedded cuesheets may omit this argument.
+.TP
+\fB-c \fIcdrom\fB, --cdrom=\fIcdrom\fR
+The cdrom device of the mounted AUDIO_TS directory,
+if reading from a physical disc.
+If unsure, one can typically find this information via
+.BR mount (8)
+.TP
+\fB-A \fIDIRECTORY\fB, --audio-ts=\fIDIRECTORY\fR
+The DVD-Audio's AUDIO_TS directory
+.TP
+\fB--title=\fITITLE\fB
+The title number to retrieve metadata for, starting from 1.
+The number of titles can be determined from the
+.BR dvdainfo (1)
+utility.
 .SH CONVERSION OPTIONS
 .TP
 \fB-t \fItype\fB, --type=\fItype\fR
-The audio format to convert the split tracks to.
+The audio format to extract the given tracks to.
 For a list of available audio formats, try:
 .B \-t
 .B help
@@ -38,7 +49,7 @@ The default audio type to use may be set with the
 utility.
 .TP
 \fB-q \fIquality\fB, --quality=\fIquality\fR
-The desired quality of the split tracks.
+The desired quality of the extracted tracks.
 For a list of available quality modes for a given format, try:
 .B \-q
 .B help
@@ -48,7 +59,7 @@ The default audio quality to use for a given format may be set with the
 utility.
 .TP
 \fB-d \fIdirectory\fB, --dir=\fIdirectory\fR
-The target directory for the split tracks.
+The target directory for the converted tracks.
 If none is given, the current working directory is used
 (see
 .BR getcwd (3)
@@ -60,18 +71,11 @@ The format string to use for new filenames.
 Template fields are replaced with metadata values when new tracks are created.
 All other text is left as-is.
 If this option is omitted, a default format string is used.
-.TP
-\fB-j \fIprocesses\fB, --joint=\fIprocesses\fR
-The maximum number of tracks to extract at one time.
-If one has multiple CPUs or CPU cores, allowing
-.BR tracksplit (1)
-to use all of them simultaneously can greatly increase splitting speed.
 .SH METADATA OPTIONS
 .TP
 \fB-x \fIfilename\fB, --xmcd=\fIfilename\fR
-A MusicBrainz XML file or FreeDB XMCD file to use for metadata
-for the split tracks.
-XML and XMCD files can be obtained from the
+The XMCD file to use for metadata for the extracted tracks.
+XMCD files can be obtained from the
 .BR track2xmcd (1)
 ,
 .BR cd2xmcd (1)
@@ -79,33 +83,29 @@ and
 .BR editxmcd (1)
 programs.
 .TP
+\fB--album-number=\fInumber\fR
+The album number of this CD, if it is one of a series of albums.
+.TP
 \fB--replay-gain\fR
 Add ReplayGain metadata to newly created tracks
 .TP
 \fB--no-replay-gain\fR
-Do not add ReplayGain metadata to newly split tracks
-.SH EXAMPLES
+Do not add ReplayGain metadata to newly created tracks
+.PP
+Depending on the audio format used,
+ReplayGain is added automatically by default
+when it is implemented by inserting a metadata tag.
+When ReplayGain is implemented by modifying audio data,
+it is not added automatically and must be explicitly enabled.
+
+.SH EXAMPLE
 .LP
-Split \fICDImage.wav\fR into several WAVE files using the cuesheet
-\fICDImage.cue\fR:
+Extract all of the tracks from \fI/dev/cdrom\fR,
+which is mounted at \fI/media/cdrom/AUDIO_TS\fR,
+as FLAC files at the default quality using metadata from \fIalbum.xmcd\fR
 .IP
-.B tracksplit \-\-cue=\fICDImage.cue\fR
-.I CDImage.wav
-.LP
-Split \fIalbum.flac\fR into several FLAC files using
-\fIalbum.toc\fR and metadata from \fIalbum.xmcd\fR:
-.IP
-.B tracksplit \-\-cue=\fIalbum.toc\fR
-\-x
-.I album.xmcd album.flac
-.LP
-Obtain \fICDImage.cue\fR using the
-.BR cdrdao (1)
-utilities:
-.IP
-.B cdrdao read-toc \-\-device \fI/dev/cdrom\fR \fICDImage.toc\fR
-.br
-.B toc2cue \fICDImage.toc\fR \fICDImage.cue\fR
+.B dvda2track \-t
+.I flac \fB-x \fIalbum.xmcd\fB -c \fI/dev/cdrom \fB -A \fI/media/cdrom/AUDIO_TS\fR
 
 .SH FORMAT STRING FIELDS
 .TS
@@ -147,7 +147,6 @@ _
 .BR cdinfo (1),
 .BR coverdump (1),
 .BR coverview (1),
-.BR dvda2track (1),
 .BR dvda2xmcd (1),
 .BR dvdainfo (1),
 .BR editxmcd (1),
@@ -162,6 +161,7 @@ _
 .BR tracklint (1),
 .BR trackplay (1),
 .BR trackrename (1),
+.BR tracksplit (1),
 .BR tracktag (1),
 .BR trackverify (1)
 .SH AUTHOR

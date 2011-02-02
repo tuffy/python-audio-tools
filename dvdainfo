@@ -62,8 +62,8 @@ if (__name__ == '__main__'):
         msg.output_column(_(u"%(minutes)2.2d:%(seconds)2.2d " +
                             u"%(channels)dch %(rate)dHz %(bits)d-bit " +
                             u"%(type)s") %
-                          {"minutes":title.length / 90000 / 60,
-                           "seconds":title.length / 90000 % 60,
+                          {"minutes":title.pts_length / 90000 / 60,
+                           "seconds":title.pts_length / 90000 % 60,
                            "channels":channels,
                            "rate":sample_rate,
                            "bits":bits_per_sample,

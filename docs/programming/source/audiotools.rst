@@ -1182,6 +1182,180 @@ CDTrackLog Objects
    collection of error statistics comparable to what's
    returned by the cdda2wav program.
 
+DVDAudio Objects
+----------------
+
+.. class:: DVDAudio(audio_ts_path[, device])
+
+   This class is used to access a DVD-Audio.
+   Its contains a collection of titlesets.
+   Each titleset contains a list of :class:`DVDATitle` objects,
+   and each :class:`DVDATitle` contains a list of
+   :class:`DVDATrack` objects.
+   ``audio_ts_path`` is the path to the DVD-Audio's
+   ``AUDIO_TS`` directory, such as ``/media/cdrom/AUDIO_TS``.
+   ``device`` is the path to the DVD-Audio's mount device,
+   such as ``/dev/cdrom``.
+
+   For example, to access the 3rd :class:`DVDATrack` object
+   of the 2nd :class:`DVDATitle` of the first titleset,
+   one can simply perform the following:
+
+   >>> track = DVDAudio(path)[0][1][2]
+
+.. note::
+
+   If ``device`` is indicated *and* the ``AUDIO_TS`` directory
+   contains a ``DVDAUDIO.MKB`` file, unprotection will be
+   performed automatically if supported on the user's platform.
+   Otherwise, the files are assumed to be unprotected.
+
+DVDATitle Objects
+^^^^^^^^^^^^^^^^^
+
+.. class:: DVDATitle(dvdaudio, titleset, title, pts_length, tracks)
+
+   This class represents a single DVD-Audio title.
+   ``dvdaudio`` is a :class:`DVDAudio` object.
+   ``titleset`` and ``title`` are integers indicating
+   this title's position in the DVD-Audio - both offset from 0.
+   ``pts_length`` is the the total length of the title in
+   PTS ticks (there are 90000 PTS ticks per second).
+   ``tracks`` is a list of :class:`DVDATrack` objects.
+
+   It is rarely instantiated directly; one usually
+   retrieves titles from the parent :class:`DVDAudio` object.
+
+.. data:: DVDATitle.dvdaudio
+
+   The parent :class:`DVDAudio` object.
+
+.. data:: DVDATitle.titleset
+
+   An integer of this title's titleset, offset from 0.
+
+.. data:: DVDATitle.title
+
+   An integer of this title's position within the titleset, offset from 0.
+
+.. data:: DVDATitle.pts_length
+
+   The length of this title in PTS ticks.
+
+.. data:: DVDATitle.tracks
+
+   A list of :class:`DVDATrack` objects.
+
+.. method:: DVDATitle.info()
+
+   Returns a (``sample_rate``, ``channels``, ``channel_mask``,
+   ``bits_per_sample``, ``type``) tuple of integers.
+   ``type`` is ``0xA0`` if the title is a PCM stream,
+   or ``0xA1`` if the title is an MLP stream.
+
+.. method:: DVDATitle.stream()
+
+   Returns an :class:`AOBStream` object of this title's data.
+
+.. method:: DVDATitle.to_pcm()
+
+   Returns a :class:`PCMReader`-compatible object of this title's
+   entire data stream.
+
+DVDATrack Objects
+^^^^^^^^^^^^^^^^^
+
+.. class:: DVDATrack(dvdaudio, titleset, title, track, first_pts, pts_length, first_sector, last_sector)
+
+   This class represents a single DVD-Audio track.
+   ``dvdaudio`` is a :class:`DVDAudio` object.
+   ``titleset``, ``title`` and ``track`` are integers indicating
+   this track's position in the DVD-Audio - all offset from 0.
+   ``first_pts`` is the track's first PTS value.
+   ``pts_length`` is the the total length of the track in PTS ticks.
+   ``first_sector`` and ``last_sector`` indicate the range of
+   sectors this track occupies.
+
+   It is also rarely instantiated directly;
+   one usually retrieves tracks from the parent
+   :class:`DVDATitle` object.
+
+.. data:: DVDATrack.dvdaudio
+
+   The parent :class:`DVDAudio` object.
+
+.. data:: DVDATrack.titleset
+
+   An integer of this tracks's titleset, offset from 0.
+
+.. data:: DVDATrack.title
+
+   An integer of this track's position within the titleset, offset from 0.
+
+.. data:: DVDATrack.track
+
+   An integer of this track's position within the title, offset from 0.
+
+.. data:: DVDATrack.first_pts
+
+   The track's first PTS index.
+
+.. data:: DVDATrack.pts_length
+
+   The length of this track in PTS ticks.
+
+.. data:: DVDATrack.first_sector
+
+   The first sector this track occupies.
+
+.. warning::
+
+   The track is *not* guaranteed to start at the beginning of
+   its first sector.
+   Although it begins within that sector, the track's start may be
+   offset some arbitrary number of bytes from the sector's start.
+
+.. data:: DVDATrack.last_sector
+
+   The last sector this track occupies.
+
+AOBStream Objects
+^^^^^^^^^^^^^^^^^
+
+.. class:: AOBStream(aob_files, first_sector, last_sector[, unprotector])
+
+   This is a stream of DVD-Audio AOB data.
+   It contains several convenience methods to make
+   unpacking that data easier.
+   ``aob_files`` is a list of complete AOB file path strings.
+   ``first_sector`` and ``last_sector`` are integers
+   indicating the stream's range of sectors.
+   ``unprotector`` is a function which takes a string
+   of binary sector data and returns an unprotected binary string.
+
+.. method:: AOBStream.sectors()
+
+   Iterates over a series of 2048 byte, binary strings of sector data
+   for the entire AOB stream.
+   If ``unprotector`` is present, those sectors are returned unprotected.
+
+.. method:: AOBStream.packets()
+
+   Iterates over a series of packets by wrapping around the sectors
+   iterator.
+   Each sector contains one or more packets.
+   Packets containing audio data (that is, those with a stream ID
+   of ``0xBD``) are returned while non-audio packets are discarded.
+
+.. method:: AOBStream.packet_payloads()
+
+   Iterates over a series of packet data by wrapping around the
+   packets iterator.
+   The payload is the packet with its ID, CRC and padding removed.
+   Concatenating all of a stream's payloads results
+   in a complete MLP or PCM stream suitable for passing to
+   a decoder.
+
 ExecQueue Objects
 -----------------
 

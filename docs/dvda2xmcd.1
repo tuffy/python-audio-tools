@@ -1,12 +1,13 @@
-.TH "track2xmcd" 1 "June 15, 2007" "" "Audio File Metadata Retriever"
+.TH "dvda2xmcd" 1 "February 2, 2011" "" "DVD-Audio Metadata Retriever"
 .SH NAME
-track2xmcd \- retrieves metadata from audio tracks
+dvda2xmcd \- retrieves metadata from a DVD-Audio disc
 .SH SYNOPSIS
-track2xmcd [OPTIONS] <track 1> [track 2] ...
+dvda2xmcd [OPTIONS]
 .SH DESCRIPTION
 .PP
-track2xmcd takes a list of audio tracks and retrieves an XMCD file
-containing their metadata such as track name, album name and artist.
+dvda2xmcd takes a DVD-Audio's AUDIO_TS directory
+and retrieves an XML or XMCD file
+containing its metadata such as track name, album name and artist.
 By default, the MusicBrainz service is queried first.
 If no matches are found, the FreeDB service is queried next.
 If no data is found on either, an empty MusicBrainz XML file is
@@ -25,18 +26,19 @@ Choose between `normal', `quiet' and `debug'.
 .TP
 \fB-x \fIfilename\fB, --xmcd=\fIfilename\fR
 The file in which MusicBrainz XML or FreeDB XMCD data will be placed.
-.BR track2xmcd (1)
+.BR dvda2xmcd (1)
 will refuse to overwrite an existing file if present.
 If no filename is given, data will be written to
 standard output.
 .TP
-\fB-m, --metadata\fR
-Obtain XML or XMCD data from the given tracks rather than obtaining it
-from a MusicBrainz or FreeDB server
+\fB-A \fIDIRECTORY\fB, --audio-ts=\fIDIRECTORY\fR
+The DVD-Audio's AUDIO_TS directory
 .TP
-\fB--cue=\fIFILENAME\fR
-The cuesheet to use for track boundaries when attempting to
-retrieve metadata from a CD image
+\fB--title=\fITITLE\fB
+The title number to retrieve metadata for, starting from 1.
+The number of titles can be determined from the
+.BR dvdainfo (1)
+program.
 .SH SERVER OPTIONS
 .TP
 \fB--musicbrainz-server=\fIserver\fR
@@ -60,28 +62,13 @@ Do not query FreeDB
 \fB-D, --default\fR
 If multiple matching discs are found, select the first choice automatically
 
-.SH EXAMPLES
+.SH EXAMPLE
 .LP
-Obtain an XMCD file called \fIalbum.xmcd\fR from all the WAVE
-files in the current directory:
+Obtain an XMCD file called \fIalbum.xmcd\fR from the contents
+of \fI/media/cdrom/AUDIO_TS\fR.
 .IP
-.B track2xmcd \-x
-.I album.xmcd *.wav
-
-.LP
-Obtain an XMCD file called \fIalbum.xmcd\fR from \fICDImage.wav\fR
-and \fICDImage.cue\fR:
-.IP
-.B track2xmcd \-x
-.I album.xmcd
-.B --cue=\fICDImage.cue\fR
-.I CDImage.wav
-
-.LP
-Build an XMCD file from FLAC metadata and write it to standard output:
-.IP
-.B track2xmcd \-m
-.I *.flac
+.B dvda2xmcd \-x
+.I album.xmcd \fB-c\fI /media/cdrom/AUDIO_TS
 
 .SH SEE ALSO
 .BR audiotools-config (1),
@@ -92,12 +79,12 @@ Build an XMCD file from FLAC metadata and write it to standard output:
 .BR coverdump (1),
 .BR coverview (1),
 .BR dvda2track (1),
-.BR dvda2xmcd (1),
 .BR dvdainfo (1),
 .BR editxmcd (1),
 .BR record2track (1),
 .BR track2cd (1),
 .BR track2track (1),
+.BR track2xmcd (1),
 .BR trackcat (1),
 .BR trackcmp (1),
 .BR trackinfo (1),

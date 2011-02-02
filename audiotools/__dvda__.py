@@ -227,7 +227,7 @@ class DVDAudio:
                 self.unprotector = CPPMDecoder(
                     cdrom_device, self.files['DVDAUDIO.MKB']).decode
             else:
-                raise ImportError()
+                self.unprotector = lambda sector: sector
         except ImportError:
             self.unprotector = lambda sector: sector
 
@@ -302,7 +302,7 @@ class DVDAudio:
                         dvdaudio=self,
                         titleset=titleset,
                         title=title_number + 1,
-                        length=title.track_length,
+                        pts_length=title.track_length,
                         tracks=[DVDATrack(dvdaudio=self,
                                           titleset=titleset,
                                           title=title_number + 1,
@@ -337,16 +337,16 @@ class DVDATitle:
     """An object representing a DVD-Audio title.
 
     Contains one or more DVDATrack objects
-    which may are accessible via the .tracks attribute.
+    which may are accessible via __getitem__
     """
 
-    def __init__(self, dvdaudio, titleset, title, length, tracks):
+    def __init__(self, dvdaudio, titleset, title, pts_length, tracks):
         """length is in PTS ticks, tracks is a list of DVDATrack objects"""
 
         self.dvdaudio = dvdaudio
         self.titleset = titleset
         self.title = title
-        self.length = length
+        self.pts_length = pts_length
         self.tracks = tracks
 
     def __len__(self):
@@ -430,7 +430,7 @@ class DVDATitle:
             from audiotools.decoders import MLPDecoder
 
             return MLPDecoder(IterReader(self.stream().packet_payloads()),
-                              (self.length * sample_rate) /
+                              (self.pts_length * sample_rate) /
                               DVDAudio.PTS_PER_SECOND)
         elif (stream_type == 0xA0):
             from audiotools.decoders import AOBPCMDecoder

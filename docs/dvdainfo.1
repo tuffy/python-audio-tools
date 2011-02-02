@@ -1,12 +1,15 @@
-.TH "editxmcd" 1 "June 15, 2007" "" "Metadata Editor"
+.TH "dvdainfo" 1 "February 2, 2011" "" "DVD-Audio Information"
 .SH NAME
-editxmcd \- edits existing metadata files
+dvdainfo \- prints information about a DVD-Audio disc
 .SH SYNOPSIS
-editxmcd [OPTIONS] [track 1] [track 2] ...
+dvdainfo [OPTIONS]
 .SH DESCRIPTION
 .PP
-editxmcd can edit existing MusicBrain XML or FreeDB XMCD files.
-It does not perform MusicBrainz or FreeDB lookups.
+dvdainfo takes an AUDIO_TS directory and writes information about the
+DVD-Audio to standard output.
+This includes the specifications for each title,
+the length of the tracks within each title and where those tracks
+are located within the disc's AOB files.
 .SH OPTIONS
 .TP
 \fB-h, --help\fR
@@ -15,15 +18,8 @@ Show a list of options and exit
 \fB--version\fR
 Show the program's version and exit
 .TP
-\fB-x \fIfilename\fB, --xmcd=\fIfilename\fR
-The MusicBrainz XML or FreeDB XMCD file to edit.
-
-.SH EXAMPLE
-.LP
-Edit the data in an existing \fIalbum.xmcd\fR:
-.IP
-.B editxmcd -x \fIalbum.xmcd
-
+\fB-A \fIDIRECTORY\fB, --audio-ts=\fIDIRECTORY\fR
+The DVD-Audio's AUDIO_TS directory
 .SH SEE ALSO
 .BR audiotools-config (1),
 .BR audiotools.cfg (5),
@@ -34,7 +30,7 @@ Edit the data in an existing \fIalbum.xmcd\fR:
 .BR coverview (1),
 .BR dvda2track (1),
 .BR dvda2xmcd (1),
-.BR dvdainfo (1),
+.BR editxmcd (1),
 .BR record2track (1),
 .BR track2cd (1),
 .BR track2track (1),
