@@ -96,9 +96,10 @@ if (__name__ == '__main__'):
                                      track.filename,
                                      os.path.join(path, new_name)]) == 0):
                     if (options.verbosity != 'quiet'):
-                        msg.info(u"%s -> %s" % \
-                                     (msg.filename(track.filename),
-                                      os.path.join(path, new_name)))
+                        msg.info(
+                            u"%s -> %s" %
+                            (msg.filename(track.filename),
+                             msg.filename(os.path.join(path, new_name))))
                 else:
                     sys.exit(1)
     except audiotools.UnsupportedTracknameField, err:

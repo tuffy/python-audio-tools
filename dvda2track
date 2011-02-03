@@ -174,12 +174,29 @@ if (__name__ == '__main__'):
         help=_(u'FreeDB XMCD file or MusicBrainz XML file'))
 
     metadata.add_option(
+        '--track-start',
+        action='store',
+        type='int',
+        dest='track_start',
+        default=1,
+        help=_(u'the starting track number of the title being extracted'))
+
+    metadata.add_option(
+        '--track-total',
+        action='store',
+        type='int',
+        dest='track_total',
+        default=None,
+        help=_(u'the total number of tracks, ' +
+               u'if the extracted title is only a subset'))
+
+    metadata.add_option(
         '--album-number',
         dest='album_number',
         action='store',
         type='int',
         default=0,
-        help=_(u'the album number of this CD, ' +
+        help=_(u'the album number of this disc, ' +
                u'if it is one of a series of albums'))
 
     metadata.add_option(
@@ -259,12 +276,12 @@ if (__name__ == '__main__'):
     title = dvda[0][options.title - 1]
 
     if (len(args) == 0):
-        to_rip = dict([(track.track - 1, track) for track in title])
+        to_rip = dict([(track.track, track) for track in title])
     else:
         to_rip = {}
         for arg in args:
             try:
-                to_rip[int(arg) - 1] = title[int(arg) - 1]
+                to_rip[int(arg)] = title[int(arg)]
             except IndexError:
                 continue
             except ValueError:
@@ -288,20 +305,30 @@ if (__name__ == '__main__'):
 
     encoded = []
 
-    for (track_number, pcmreader) in enumerate(
+    for (i, pcmreader) in enumerate(
         pcm_split(title.to_pcm(),
                   [(track.pts_length * sample_rate) /
                    audiotools.DVDAudio.PTS_PER_SECOND for track in title])):
-        if (track_number in to_rip.keys()):
-            dvda_track = to_rip[track_number]
+        title_track_number = i + 1
+        logical_track_number = i + options.track_start
+        if (options.track_total is None):
+            track_total = len(title)
+        else:
+            track_total = options.track_total
+
+        if (title_track_number in to_rip.keys()):
+            dvda_track = to_rip[title_track_number]
 
             basename = "track%2d%2.2d" % (options.album_number,
-                                          dvda_track.track)
+                                          logical_track_number)
 
             try:
                 if (xmcd is not None):  # we have metadata
                     metadata = xmcd.get(dvda_track.track, None)
                     if (metadata is not None):
+                        metadata.track_number = logical_track_number
+                        if (options.track_total is not None):
+                            metadata.track_total = options.track_total
                         if (options.album_number != 0):
                             metadata.album_number = options.album_number
                         if (options.album_total != 0):
@@ -321,11 +348,18 @@ if (__name__ == '__main__'):
                     track.set_metadata(metadata)
                     encoded.append(track)
                 else:               # no metadata
+                    metadata = audiotools.MetaData(
+                        track_number=logical_track_number,
+                        track_total=track_total,
+                        album_number=options.album_number,
+                        album_total=options.album_total)
+
                     filename = os.path.join(
                         base_directory,
-                        AudioType.track_name(file_path=basename,
-                                             track_metadata=None,
-                                             format=options.format))
+                        AudioType.track_name(
+                            file_path=basename,
+                            track_metadata=metadata,
+                            format=options.format))
 
                     audiotools.make_dirs(filename)
 
@@ -333,11 +367,7 @@ if (__name__ == '__main__'):
 
                     #even if no MetaData is given,
                     #set track number and album number if possible
-                    track.set_metadata(audiotools.MetaData(
-                            track_number=dvda_track.track,
-                            track_total=len(title),
-                            album_number=options.album_number,
-                            album_total=options.album_total))
+                    track.set_metadata(metadata)
 
                     encoded.append(track)
 
@@ -345,7 +375,7 @@ if (__name__ == '__main__'):
                     _(u"title %(title_number)d - " +
                       u"track %(track_number)2.2d -> %(filename)s") % \
                         {"title_number":options.title,
-                         "track_number":dvda_track.track,
+                         "track_number":title_track_number,
                          "filename":msg.filename(track.filename)})
             except audiotools.UnsupportedTracknameField, err:
                 err.error_msg(msg)

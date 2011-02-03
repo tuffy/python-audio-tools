@@ -2897,6 +2897,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE Add dvdainfo.1 man page
 ** TODO Build dvda2track utility
 *** TODO Support progress indicator
+*** TODO Add --track-start / --track-total options
+    Since some especially long discs split tracks across titles,
+    it makes sense to have a way to specify the starting track number
+    and the total number of tracks.
+**** DONE Add options to man page
 *** DONE Add dvda2track.1 man page
 ** DONE Build dvda2xmcd utility
    Querying FreeDB and MusicBrainz are possible,

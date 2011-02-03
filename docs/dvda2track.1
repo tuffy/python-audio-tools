@@ -83,8 +83,15 @@ and
 .BR editxmcd (1)
 programs.
 .TP
+\fB--track-start=\fInumber\fR
+The starting track number of the extracted title's tracks.
+.TP
+\fB--track-total=\fInumber\fR
+The total number of tracks, if the extracted title is only
+a subset of the actual number of tracks.
+.TP
 \fB--album-number=\fInumber\fR
-The album number of this CD, if it is one of a series of albums.
+The album number of this disc, if it is one of a series of albums.
 .TP
 \fB--replay-gain\fR
 Add ReplayGain metadata to newly created tracks
@@ -98,14 +105,29 @@ when it is implemented by inserting a metadata tag.
 When ReplayGain is implemented by modifying audio data,
 it is not added automatically and must be explicitly enabled.
 
-.SH EXAMPLE
+.SH EXAMPLES
 .LP
-Extract all of the tracks from \fI/dev/cdrom\fR,
+Extract all of the tracks in title 1 from \fI/dev/cdrom\fR,
 which is mounted at \fI/media/cdrom/AUDIO_TS\fR,
 as FLAC files at the default quality using metadata from \fIalbum.xmcd\fR
 .IP
 .B dvda2track \-t
 .I flac \fB-x \fIalbum.xmcd\fB -c \fI/dev/cdrom \fB -A \fI/media/cdrom/AUDIO_TS\fR
+.LP
+Sometimes, a particularly long disc will split what should be a
+continuous collection of tracks across more than one DVD-Audio title.
+For example, we may have a disc whose label indicates 30 tracks,
+but has placed 20 tracks in title 1, and 10 tracks in title 2
+according to
+.BR dvdainfo (1)
+.LP
+To extract the first 20 tracks, we perform the following:
+.IP
+.B dvda2track \fB-c \fI/dev/cdrom \fB -A \fI/media/cdrom/AUDIO_TS\fR \fB--title=\fI1\fR \fB--track-total=\fI30\fR
+.LP
+Then, to extract the second 10 tracks:
+.IP
+.B dvda2track \fB-c \fI/dev/cdrom \fB -A \fI/media/cdrom/AUDIO_TS\fR \fB--title=\fI2\fR \fB--track-start=\fI21 \fB--track-total=\fI30\fR
 
 .SH FORMAT STRING FIELDS
 .TS
