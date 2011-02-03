@@ -161,6 +161,18 @@ class MP3Audio(AudioFile):
     #9 is worse quality/higher compression
     COMPRESSION_MODES = ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
                          "medium", "standard", "extreme", "insane")
+    COMPRESSION_DESCRIPTIONS = {"0":_(u"high quality, larger files, " +
+                                      u"corresponds to lame's -V0"),
+                                "9":_(u"lower quality, smaller files, " +
+                                      u"corresponds to lame's -V9"),
+                                "medium":_(u"corresponds to lame's " +
+                                           u"--preset medium"),
+                                "standard":_(u"corresponds to lame's " +
+                                           u"--preset standard"),
+                                "extreme":_(u"corresponds to lame's " +
+                                            u"--preset extreme"),
+                                "insane":_(u"corresponds to lame's " +
+                                           u"--preset insane")}
     BINARIES = ("lame",)
     REPLAYGAIN_BINARIES = ("mp3gain", )
 
@@ -831,6 +843,8 @@ class MP2Audio(MP3Audio):
     DEFAULT_COMPRESSION = str(192)
     COMPRESSION_MODES = map(str, (32,  48,  56,  64,  80,  96,  112,
                                   128, 160, 192, 224, 256, 320, 384))
+    COMPRESSION_DESCRIPTIONS = {"32":_(u"total bitrate of 32kbps"),
+                                "384":_(u"total bitrate of 384kbps")}
     BINARIES = ("lame", "twolame")
 
     @classmethod

@@ -2573,6 +2573,7 @@ class AudioFile:
     NAME = ""
     DEFAULT_COMPRESSION = ""
     COMPRESSION_MODES = ("",)
+    COMPRESSION_DESCRIPTIONS = {}
     BINARIES = tuple()
     REPLAYGAIN_BINARIES = tuple()
 

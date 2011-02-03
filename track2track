@@ -227,7 +227,20 @@ if (__name__ == '__main__'):
             msg.info(_(u"Available compression types for %s:") % \
                            (AudioType.NAME))
             for mode in AudioType.COMPRESSION_MODES:
-                msg.info(mode.decode('ascii'))
+                msg.new_row()
+                if (mode == audiotools.__default_quality__(AudioType.NAME)):
+                    msg.output_column(msg.ansi(mode.decode('ascii'),
+                                               [msg.BOLD,
+                                                msg.UNDERLINE]), True)
+                else:
+                    msg.output_column(mode.decode('ascii'), True)
+                if (mode in AudioType.COMPRESSION_DESCRIPTIONS):
+                    msg.output_column(u" : ")
+                else:
+                    msg.output_column(u"   ")
+                msg.output_column(
+                    AudioType.COMPRESSION_DESCRIPTIONS.get(mode, u""))
+            msg.output_rows()
         else:
             msg.error(_(u"Audio type %s has no compression modes") % \
                             (AudioType.NAME))

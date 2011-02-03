@@ -133,6 +133,10 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "standard"
     COMPRESSION_MODES = ("veryfast", "fast", "standard", "high", "veryhigh")
+    COMPRESSION_DESCRIPTIONS = {"veryfast":_(u"fastest encode/decode, " +
+                                             u"worst compression"),
+                                "veryhigh":_(u"slowest encode/decode, " +
+                                             u"best compression")}
 
     APE_TAG_CLASS = WavPackAPEv2
 

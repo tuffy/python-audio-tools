@@ -324,6 +324,10 @@ class VorbisAudio(AudioFile):
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "3"
     COMPRESSION_MODES = tuple([str(i) for i in range(0, 11)])
+    COMPRESSION_DESCRIPTIONS = {"0":_(u"very low quality, " +
+                                      u"corresponds to oggenc -q 0"),
+                                "10":_(u"very high quality, " +
+                                       u"corresponds to oggenc -q 10")}
     BINARIES = ("oggenc", "oggdec")
     REPLAYGAIN_BINARIES = ("vorbisgain", )
 

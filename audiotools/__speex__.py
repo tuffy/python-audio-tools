@@ -54,6 +54,10 @@ class SpeexAudio(VorbisAudio):
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "8"
     COMPRESSION_MODES = tuple([str(i) for i in range(0, 11)])
+    COMPRESSION_DESCRIPTIONS = {"0":
+                                    _(u"corresponds to speexenc --quality 0"),
+                                "10":
+                                    _(u"corresponds to speexenc --quality 10")}
     BINARIES = ("speexenc", "speexdec")
     REPLAYGAIN_BINARIES = tuple()
 

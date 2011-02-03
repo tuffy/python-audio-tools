@@ -2443,6 +2443,25 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [X] insane
 * DONE Remove wavegain for applying ReplayGain to .wav files
   This should be done internally instead.
+* DONE Add more verbosity to --quality settings
+  For formats with varying quality, the "-q help" option
+  should indicate what those settings represent.
+  - [X] FlacAudio
+  - [X] M4AAudio_Nero
+  - [X] MP2Audio
+  - [X] MP3Audio
+  - [X] OggFlacAudio
+  - [X] SpeexAudio
+  - [X] VorbisAudio
+  - [X] WavPackAudio
+** DONE Update tools to indicate quality settings
+   - [X] audiotools-config
+   - [X] cd2track
+   - [X] dvda2track
+   - [X] record2track
+   - [X] track2track
+   - [X] trackcat
+   - [X] tracksplit
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -2897,7 +2916,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE Add dvdainfo.1 man page
 ** TODO Build dvda2track utility
 *** TODO Support progress indicator
-*** TODO Add --track-start / --track-total options
+*** DONE Add --track-start / --track-total options
     Since some especially long discs split tracks across titles,
     it makes sense to have a way to specify the starting track number
     and the total number of tracks.
@@ -2928,19 +2947,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    ID3v1.0/ID3v1.1/none
 ** TODO Make ID3v2 track number formatting adjustable
    Allow leading 0s, since the spec doesn't forbid them.
-* TODO Add more verbosity to --quality settings
-  For formats with varying quality, the "-q help" option
-  should indicate what those settings represent.
-  - [ ] AACAudio
-  - [ ] FlacAudio
-  - [ ] M4AAudio_faac
-  - [ ] M4AAudio_Nero
-  - [ ] MP2Audio
-  - [ ] MP3Audio
-  - [ ] OggFlacAudio
-  - [ ] SpeexAudio
-  - [ ] VorbisAudio
-  - [ ] WavPackAudio
 * TODO Add software-based routines for bitstream reading/writing
   These should be optional, at least, for the bitstream writer especially.
   But if fast enough, they could replace the jump tables entirely.
