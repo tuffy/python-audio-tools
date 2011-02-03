@@ -91,6 +91,7 @@ if (__name__ == '__main__'):
                                      "filenum": i + 1,
                                      "suffix": image.suffix()})
                 try:
+                    audiotools.make_dirs(output_filename)
                     f = open(output_filename, "wb")
                     f.write(image.data)
                     f.close()
