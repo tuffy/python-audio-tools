@@ -56,7 +56,8 @@ typedef struct {
 
 typedef struct Bitstream_s {
     FILE *file;
-    int state;
+    unsigned int buffer_size;
+    unsigned int buffer;
     struct bs_callback *callback;
 
     int bits_written;    /*used by open_accumulator and open_recorder*/
@@ -74,11 +75,6 @@ typedef struct Bitstream_s {
     void (*set_endianness)(struct Bitstream_s* bs,
                            bs_endianness endianness);
 } Bitstream;
-
-extern const unsigned int write_bits_table[0x400][0x900];
-extern const unsigned int write_bits_table_le[0x400][0x900];
-extern const unsigned int write_unary_table[0x400][0x20];
-extern const unsigned int write_unary_table_le[0x400][0x20];
 
 Bitstream*
 bs_open(FILE *f, bs_endianness endianness);
@@ -118,7 +114,7 @@ void
 write_bits64_actual_be(Bitstream* bs, unsigned int count, uint64_t value);
 
 void
-write_unary_actual_be(Bitstream* bs, int stop_bit, int value);
+write_unary_actual(Bitstream* bs, int stop_bit, int value);
 
 void
 byte_align_w_actual_be(Bitstream* bs);
@@ -134,9 +130,6 @@ write_signed_bits_actual_le(Bitstream* bs, unsigned int count, int value);
 
 void
 write_bits64_actual_le(Bitstream* bs, unsigned int count, uint64_t value);
-
-void
-write_unary_actual_le(Bitstream* bs, int stop_bit, int value);
 
 void
 byte_align_w_actual_le(Bitstream* bs);

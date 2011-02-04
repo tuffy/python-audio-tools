@@ -26,7 +26,8 @@ bs_open(FILE *f, bs_endianness endianness)
 {
     Bitstream *bs = malloc(sizeof(Bitstream));
     bs->file = f;
-    bs->state = 0;
+    bs->buffer_size = 0;
+    bs->buffer = 0;
     bs->callback = NULL;
     bs->records = NULL;
 
@@ -35,7 +36,7 @@ bs_open(FILE *f, bs_endianness endianness)
         bs->write = write_bits_actual_be;
         bs->write_signed = write_signed_bits_actual_be;
         bs->write_64 = write_bits64_actual_be;
-        bs->write_unary = write_unary_actual_be;
+        bs->write_unary = write_unary_actual;
         bs->byte_align = byte_align_w_actual_be;
         bs->set_endianness = set_endianness_actual_be;
         break;
@@ -43,7 +44,7 @@ bs_open(FILE *f, bs_endianness endianness)
         bs->write = write_bits_actual_le;
         bs->write_signed = write_signed_bits_actual_le;
         bs->write_64 = write_bits64_actual_le;
-        bs->write_unary = write_unary_actual_le;
+        bs->write_unary = write_unary_actual;
         bs->byte_align = byte_align_w_actual_le;
         bs->set_endianness = set_endianness_actual_le;
         break;
@@ -156,8 +157,6 @@ write_bits_actual_be(Bitstream* bs, unsigned int count, int value)
 {
     int bits_to_write;
     int value_to_write;
-    int result;
-    int context = bs->state;
     unsigned int byte;
     struct bs_callback* callback;
 
@@ -169,28 +168,27 @@ write_bits_actual_be(Bitstream* bs, unsigned int count, int value)
         bits_to_write = count > 8 ? 8 : count;
         value_to_write = value >> (count - bits_to_write);
 
-        /*feed them through the jump table*/
-        result = write_bits_table[context][(value_to_write |
-                                            (bits_to_write << 8))];
+        /*prepend value to buffer*/
+        bs->buffer = (bs->buffer << bits_to_write) | value_to_write;
+        bs->buffer_size += bits_to_write;
 
-        /*write a byte if necessary*/
-        if (result >> 18) {
-            byte = (result >> 10) & 0xFF;
+        /*if buffer is over 8 bits,
+          write a byte and remove it from the buffer*/
+        if (bs->buffer_size >= 8) {
+            byte = (bs->buffer >> (bs->buffer_size - 8)) & 0xFF;
             fputc(byte, bs->file);
             for (callback = bs->callback;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
-        }
 
-        /*update the context*/
-        context = result & 0x3FF;
+            bs->buffer_size -= 8;
+        }
 
         /*decrement the count and value*/
         value -= (value_to_write << (count - bits_to_write));
         count -= bits_to_write;
     }
-    bs->state = context;
 }
 
 void
@@ -198,8 +196,6 @@ write_bits_actual_le(Bitstream* bs, unsigned int count, int value)
 {
     int bits_to_write;
     int value_to_write;
-    int result;
-    int context = bs->state;
     unsigned int byte;
     struct bs_callback* callback;
 
@@ -211,28 +207,27 @@ write_bits_actual_le(Bitstream* bs, unsigned int count, int value)
         bits_to_write = count > 8 ? 8 : count;
         value_to_write = value & ((1 << bits_to_write) - 1);
 
-        /*feed them through the jump table*/
-        result = write_bits_table_le[context][(value_to_write |
-                                               (bits_to_write << 8))];
+        /*append value to buffer*/
+        bs->buffer |= (value_to_write << bs->buffer_size);
+        bs->buffer_size += bits_to_write;
 
-        /*write a byte if necessary*/
-        if (result >> 18) {
-            byte = (result >> 10) & 0xFF;
+        /*if buffer is over 8 bits,
+          write a byte and remove it from the buffer*/
+        if (bs->buffer_size >= 8) {
+            byte = bs->buffer & 0xFF;
             fputc(byte, bs->file);
             for (callback = bs->callback;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
+            bs->buffer >>= 8;
+            bs->buffer_size -= 8;
         }
-
-        /*update the context*/
-        context = result & 0x3FF;
 
         /*decrement the count and value*/
         value >>= bits_to_write;
         count -= bits_to_write;
     }
-    bs->state = context;
 }
 
 void
@@ -263,8 +258,6 @@ write_bits64_actual_be(Bitstream* bs, unsigned int count, uint64_t value)
 {
     int bits_to_write;
     int value_to_write;
-    int result;
-    int context = bs->state;
     unsigned int byte;
     struct bs_callback* callback;
 
@@ -276,28 +269,27 @@ write_bits64_actual_be(Bitstream* bs, unsigned int count, uint64_t value)
         bits_to_write = count > 8 ? 8 : count;
         value_to_write = value >> (count - bits_to_write);
 
-        /*feed them through the jump table*/
-        result = write_bits_table[context][(value_to_write |
-                                            (bits_to_write << 8))];
+        /*prepend value to buffer*/
+        bs->buffer = (bs->buffer << bits_to_write) | value_to_write;
+        bs->buffer_size += bits_to_write;
 
-        /*write a byte if necessary*/
-        if (result >> 18) {
-            byte = (result >> 10) & 0xFF;
+        /*if buffer is over 8 bits,
+          write a byte and remove it from the buffer*/
+        if (bs->buffer_size >= 8) {
+            byte = (bs->buffer >> (bs->buffer_size - 8)) & 0xFF;
             fputc(byte, bs->file);
             for (callback = bs->callback;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
-        }
 
-        /*update the context*/
-        context = result & 0x3FF;
+            bs->buffer_size -= 8;
+        }
 
         /*decrement the count and value*/
         value -= (value_to_write << (count - bits_to_write));
         count -= bits_to_write;
     }
-    bs->state = context;
 }
 
 void
@@ -305,8 +297,6 @@ write_bits64_actual_le(Bitstream* bs, unsigned int count, uint64_t value)
 {
     int bits_to_write;
     int value_to_write;
-    int result;
-    int context = bs->state;
     unsigned int byte;
     struct bs_callback* callback;
 
@@ -318,139 +308,78 @@ write_bits64_actual_le(Bitstream* bs, unsigned int count, uint64_t value)
         bits_to_write = count > 8 ? 8 : count;
         value_to_write = value & ((1 << bits_to_write) - 1);
 
-        /*feed them through the jump table*/
-        result = write_bits_table_le[context][(value_to_write |
-                                               (bits_to_write << 8))];
+        /*append value to buffer*/
+        bs->buffer |= (value_to_write << bs->buffer_size);
+        bs->buffer_size += bits_to_write;
 
-        /*write a byte if necessary*/
-        if (result >> 18) {
-            byte = (result >> 10) & 0xFF;
+        /*if buffer is over 8 bits,
+          write a byte and remove it from the buffer*/
+        if (bs->buffer_size >= 8) {
+            byte = bs->buffer & 0xFF;
             fputc(byte, bs->file);
             for (callback = bs->callback;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
+            bs->buffer >>= 8;
+            bs->buffer_size -= 8;
         }
-
-        /*update the context*/
-        context = result & 0x3FF;
 
         /*decrement the count and value*/
         value >>= bits_to_write;
         count -= bits_to_write;
     }
-    bs->state = context;
 }
 
+#define UNARY_BUFFER_SIZE 30
 
 void
-write_unary_actual_be(Bitstream* bs, int stop_bit, int value)
-{
-    int result;
-    int context = bs->state;
-    unsigned int byte;
-    struct bs_callback* callback;
+write_unary_actual(Bitstream* bs, int stop_bit, int value) {
+    void (*write_bits)(struct Bitstream_s* bs, unsigned int count, int value) =
+        bs->write;
 
-    assert(value >= 0);
+    unsigned int bits_to_write;
 
-    /*send continuation blocks until we get to 7 bits or less*/
-    while (value >= 8) {
-        result = write_unary_table[context][(stop_bit << 4) | 0x08];
-        if (result >> 18) {
-            byte = (result >> 10) & 0xFF;
-            fputc(byte, bs->file);
-            for (callback = bs->callback;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback((uint8_t)byte, callback->data);
+    /*send our pre-stop bits to write() in 30-bit chunks*/
+    while (value > 0) {
+        bits_to_write = value <= UNARY_BUFFER_SIZE ? value : UNARY_BUFFER_SIZE;
+        if (stop_bit) { /*stop bit of 1, buffer value of all 0s*/
+            write_bits(bs, bits_to_write, 0);
+        } else {        /*stop bit of 0, buffer value of all 1s*/
+            write_bits(bs, bits_to_write, (1 << bits_to_write) - 1);
         }
-
-        context = result & 0x3FF;
-
-        value -= 8;
+        value -= bits_to_write;
     }
 
-    /*finally, send the remaning value*/
-    result = write_unary_table[context][(stop_bit << 4) | value];
-
-    if (result >> 18) {
-        byte = (result >> 10) & 0xFF;
-        fputc(byte, bs->file);
-        for (callback = bs->callback;
-             callback != NULL;
-             callback = callback->next)
-            callback->callback((uint8_t)byte, callback->data);
-    }
-
-    context = result & 0x3FF;
-    bs->state = context;
-}
-
-void
-write_unary_actual_le(Bitstream* bs, int stop_bit, int value)
-{
-    int result;
-    int context = bs->state;
-    unsigned int byte;
-    struct bs_callback* callback;
-
-    assert(value >= 0);
-
-    /*send continuation blocks until we get to 7 bits or less*/
-    while (value >= 8) {
-        result = write_unary_table_le[context][(stop_bit << 4) | 0x08];
-        if (result >> 18) {
-            byte = (result >> 10) & 0xFF;
-            fputc(byte, bs->file);
-            for (callback = bs->callback;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback((uint8_t)byte, callback->data);
-        }
-
-        context = result & 0x3FF;
-
-        value -= 8;
-    }
-
-    /*finally, send the remaning value*/
-    result = write_unary_table_le[context][(stop_bit << 4) | value];
-
-    if (result >> 18) {
-        byte = (result >> 10) & 0xFF;
-        fputc(byte, bs->file);
-        for (callback = bs->callback;
-             callback != NULL;
-             callback = callback->next)
-            callback->callback((uint8_t)byte, callback->data);
-    }
-
-    context = result & 0x3FF;
-    bs->state = context;
+    /*finally, send our stop bit*/
+    write_bits(bs, 1, stop_bit);
 }
 
 void
 byte_align_w_actual_be(Bitstream* bs)
 {
     write_bits_actual_be(bs, 7, 0);
-    bs->state = 0;
+    bs->buffer = 0;
+    bs->buffer_size = 0;
 }
 
 void
 byte_align_w_actual_le(Bitstream* bs)
 {
     write_bits_actual_le(bs, 7, 0);
-    bs->state = 0;
+    bs->buffer = 0;
+    bs->buffer_size = 0;
 }
 
 void
 set_endianness_actual_be(Bitstream* bs, bs_endianness endianness) {
-    bs->state = 0;
+    bs->buffer = 0;
+    bs->buffer_size = 0;
     if (endianness == BS_LITTLE_ENDIAN) {
         bs->write = write_bits_actual_le;
         bs->write_signed = write_signed_bits_actual_le;
         bs->write_64 = write_bits64_actual_le;
-        bs->write_unary = write_unary_actual_le;
+        bs->write_unary = write_unary_actual;
         bs->byte_align = byte_align_w_actual_le;
         bs->set_endianness = set_endianness_actual_le;
     }
@@ -458,32 +387,17 @@ set_endianness_actual_be(Bitstream* bs, bs_endianness endianness) {
 
 void
 set_endianness_actual_le(Bitstream* bs, bs_endianness endianness) {
-    bs->state = 0;
+    bs->buffer = 0;
+    bs->buffer_size = 0;
     if (endianness == BS_BIG_ENDIAN) {
         bs->write = write_bits_actual_be;
         bs->write_signed = write_signed_bits_actual_be;
         bs->write_64 = write_bits64_actual_be;
-        bs->write_unary = write_unary_actual_be;
+        bs->write_unary = write_unary_actual;
         bs->byte_align = byte_align_w_actual_be;
         bs->set_endianness = set_endianness_actual_be;
     }
 }
-
-const unsigned int write_bits_table[0x400][0x900] =
-#include "write_bits_table.h"
-    ;
-
-const unsigned int write_bits_table_le[0x400][0x900] =
-#include "write_bits_table_le.h"
-    ;
-
-const unsigned int write_unary_table[0x400][0x20] =
-#include "write_unary_table.h"
-    ;
-
-const unsigned int write_unary_table_le[0x400][0x20] =
-#include "write_unary_table_le.h"
-    ;
 
 
 void
