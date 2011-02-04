@@ -2477,6 +2477,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE Add close() method
 ** DONE Convert references to audiotools.ReplayGainReader
 ** DONE Update documentation
+* DONE Have the *2xmcd utilities delete .xmcd files if cancelled
+  - [X] cd2xmcd
+  - [X] dvda2xmcd
+  - [X] track2xmcd
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -2951,9 +2955,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [ ] track2cd
 ** TODO Update transfer_framelist_data with a progress callback option
 ** TODO Update AudioFile.convert() with a progress callback option
-* TODO Have the *2xmcd utilities delete .xmcd files if cancelled
-  - [ ] cd2xmcd
-  - [ ] track2xmcd
 * TODO Add options for ID3v2/ID3v1 tagging
   Perhaps add config file options and corresponding audiotools-config options.
 ** TODO Make ID3v2 version selectable

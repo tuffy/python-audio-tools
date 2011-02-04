@@ -22,6 +22,7 @@ import sys
 import audiotools
 import audiotools.cdio as cdio
 import os
+import cStringIO
 import gettext
 
 gettext.install("audiotools", unicode=True)
@@ -109,19 +110,6 @@ if (__name__ == '__main__'):
         sys.exit(1)
     title = dvda[0][options.title - 1]
 
-    try:
-        if (options.xmcd == '-'):
-            outfile = sys.stdout
-        else:
-            if (not os.path.isfile(options.xmcd)):
-                outfile = open(options.xmcd, "w")
-            else:
-                msg.error(_(u"Refusing to overwrite \"%s\"") % \
-                              (msg.filename(options.xmcd)))
-                sys.exit(1)
-    except IOError, err:
-        msg.error(_(u"Unable to write \"%s\"") % (msg.filename(options.xmcd)))
-        sys.exit(1)
 
     #grab XML/XMCD data from MusicBrainz/FreeDB
     musicbrainz_discid = audiotools.MBDiscID(
@@ -137,11 +125,13 @@ if (__name__ == '__main__'):
     returnval = 0
     musicbrainz_matches = 0
     freedb_matches = 0
+    metadata_file = cStringIO.StringIO()
+
     if (options.use_musicbrainz):
         try:
             musicbrainz_matches = audiotools.get_mbxml(
                 musicbrainz_discid,
-                outfile,
+                metadata_file,
                 options.musicbrainz_server,
                 options.musicbrainz_port,
                 msg,
@@ -155,7 +145,7 @@ if (__name__ == '__main__'):
         try:
             freedb_matches = audiotools.get_xmcd(
                 freedb_discid,
-                outfile,
+                metadata_file,
                 options.freedb_server,
                 options.freedb_port,
                 msg,
@@ -164,6 +154,20 @@ if (__name__ == '__main__'):
         except IOError, e:
             msg.error(unicode(e))
             returnval = 1
+
+    try:
+        if (options.xmcd == '-'):
+            outfile = sys.stdout
+        else:
+            if (not os.path.isfile(options.xmcd)):
+                outfile = open(options.xmcd, "w")
+            else:
+                msg.error(_(u"Refusing to overwrite \"%s\"") % \
+                              (msg.filename(options.xmcd)))
+                sys.exit(1)
+    except IOError, err:
+        msg.error(_(u"Unable to write \"%s\"") % (msg.filename(options.xmcd)))
+        sys.exit(1)
 
     #if musicbrainz_matches and freedb_matches are both 0
     #output a MusicBrainzReleaseXML file instead of a FreeDB one
@@ -174,8 +178,13 @@ if (__name__ == '__main__'):
             musicbrainz_discid.toxml(outfile)
         else:
             freedb_discid.toxmcd(outfile)
-        msg.info(_(u"%s written") % (msg.filename(options.xmcd)))
+
         outfile.close()
+        msg.info(_(u"%s written") % (msg.filename(options.xmcd)))
+    else:
+        outfile.write(metadata_file.getvalue())
+        outfile.close()
+        msg.info(_(u"%s written") % (msg.filename(options.xmcd)))
 
     if (returnval != 0):
         sys.exit(1)
