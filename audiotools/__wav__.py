@@ -20,7 +20,7 @@
 
 from audiotools import (AudioFile, InvalidFile, ChannelMask, PCMReader,
                         Con, BUFFER_SIZE, transfer_data,
-                        transfer_framelist_data, ReplayGainReader,
+                        transfer_framelist_data,
                         __capped_stream_reader__, FILENAME_FORMAT,
                         BIN, open_files, os, subprocess, cStringIO,
                         EncodingError, DecodingError, UnsupportedChannelMask,
@@ -611,7 +611,7 @@ class WaveAudio(WaveContainer):
         Raises ValueError if some problem occurs during ReplayGain application.
         """
 
-        from audiotools.replaygain import ReplayGain
+        from audiotools.replaygain import ReplayGain,ReplayGainReader
         import tempfile
 
         def replay_gain_data(chunks,

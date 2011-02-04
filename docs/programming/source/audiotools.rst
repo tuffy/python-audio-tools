@@ -983,17 +983,6 @@ PCMReaderWindow Objects
    If longer, the stream is extended by as many PCM frames as needed.
    Again, padding frames have a value of 0.
 
-ReplayGainReader Objects
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. class:: ReplayGainReader(pcmreader, gain, peak)
-
-   This class wraps around an existing :class:`PCMReader` object.
-   It takes floating point ``gain`` and ``peak`` values
-   and modifies the pcmreader's output as necessary
-   to match those values.
-   This has the effect of raising or lowering a stream's sound volume
-   to ReplayGain's reference value.
 
 ChannelMask Objects
 -------------------

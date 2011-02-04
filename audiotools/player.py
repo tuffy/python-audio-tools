@@ -144,18 +144,22 @@ class PlayerThread:
         if (self.track is not None):
             if (self.state == PLAYER_STOPPED):
                 if (self.replay_gain == RG_TRACK_GAIN):
+                    from audiotools.replaygain import ReplayGainReader
                     replay_gain = self.track.replay_gain()
+
                     if (replay_gain is not None):
-                        pcmreader = audiotools.ReplayGainReader(
+                        pcmreader = ReplayGainReader(
                             self.track.to_pcm(),
                             replay_gain.track_gain,
                             replay_gain.track_peak)
                     else:
                         pcmreader = self.track.to_pcm()
                 elif (self.replay_gain == RG_ALBUM_GAIN):
+                    from audiotools.replaygain import ReplayGainReader
                     replay_gain = self.track.replay_gain()
+
                     if (replay_gain is not None):
-                        pcmreader = audiotools.ReplayGainReader(
+                        pcmreader = ReplayGainReader(
                             self.track.to_pcm(),
                             replay_gain.album_gain,
                             replay_gain.album_peak)
