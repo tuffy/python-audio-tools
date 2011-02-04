@@ -67,12 +67,12 @@ PyTypeObject replaygain_ReplayGainType = {
     0,                         /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
     "ReplayGain objects",      /* tp_doc */
-    0,		               /* tp_traverse */
-    0,		               /* tp_clear */
+    0,                         /* tp_traverse */
+    0,                         /* tp_clear */
     0,                         /* tp_richcompare */
-    0,		               /* tp_weaklistoffset */
-    0,		               /* tp_iter */
-    0,		               /* tp_iternext */
+    0,                         /* tp_weaklistoffset */
+    0,                         /* tp_iter */
+    0,                         /* tp_iternext */
     ReplayGain_methods,        /* tp_methods */
     0,                         /* tp_members */
     0,                         /* tp_getset */
@@ -340,6 +340,71 @@ ReplayGain_album_gain(replaygain_ReplayGain *self)
 }
 
 
+PyGetSetDef ReplayGainReader_getseters[] = {
+    {"sample_rate",
+     (getter)ReplayGainReader_sample_rate, NULL, "sample rate", NULL},
+    {"bits_per_sample",
+     (getter)ReplayGainReader_bits_per_sample, NULL, "bits per sample", NULL},
+    {"channels",
+     (getter)ReplayGainReader_channels, NULL, "channels", NULL},
+    {"channel_mask",
+     (getter)ReplayGainReader_channel_mask, NULL, "channel_mask", NULL},
+    {NULL}
+};
+
+PyMethodDef ReplayGainReader_methods[] = {
+    {"read", (PyCFunction)ReplayGainReader_read,
+     METH_VARARGS,
+     "Reads a pcm.FrameList with ReplayGain applied"},
+    {"close", (PyCFunction)ReplayGainReader_close,
+     METH_NOARGS, "Closes the substream"},
+    {NULL}
+};
+
+PyTypeObject replaygain_ReplayGainReaderType = {
+    PyObject_HEAD_INIT(NULL)
+    0,                         /*ob_size*/
+    "replaygain.ReplayGainReader", /*tp_name*/
+    sizeof(replaygain_ReplayGainReader), /*tp_basicsize*/
+    0,                         /*tp_itemsize*/
+    (destructor)ReplayGainReader_dealloc, /*tp_dealloc*/
+    0,                         /*tp_print*/
+    0,                         /*tp_getattr*/
+    0,                         /*tp_setattr*/
+    0,                         /*tp_compare*/
+    0,                         /*tp_repr*/
+    0,                         /*tp_as_number*/
+    0,                         /*tp_as_sequence*/
+    0,                         /*tp_as_mapping*/
+    0,                         /*tp_hash */
+    0,                         /*tp_call*/
+    0,                         /*tp_str*/
+    0,                         /*tp_getattro*/
+    0,                         /*tp_setattro*/
+    0,                         /*tp_as_buffer*/
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
+    "ReplayGainReader objects",/* tp_doc */
+    0,                         /* tp_traverse */
+    0,                         /* tp_clear */
+    0,                         /* tp_richcompare */
+    0,                         /* tp_weaklistoffset */
+    0,                         /* tp_iter */
+    0,                         /* tp_iternext */
+    ReplayGainReader_methods,  /* tp_methods */
+    0,                         /* tp_members */
+    ReplayGainReader_getseters,/* tp_getset */
+    0,                         /* tp_base */
+    0,                         /* tp_dict */
+    0,                         /* tp_descr_get */
+    0,                         /* tp_descr_set */
+    0,                         /* tp_dictoffset */
+    (initproc)ReplayGainReader_init, /* tp_init */
+    0,                         /* tp_alloc */
+    ReplayGainReader_new,      /* tp_new */
+};
+
+
+
 PyMODINIT_FUNC
 initreplaygain(void)
 {
@@ -349,12 +414,20 @@ initreplaygain(void)
     if (PyType_Ready(&replaygain_ReplayGainType) < 0)
         return;
 
+    replaygain_ReplayGainReaderType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&replaygain_ReplayGainReaderType) < 0)
+        return;
+
     m = Py_InitModule3("replaygain", module_methods,
-                       "A ReplayGain calculation module.");
+                       "A ReplayGain calculation and synthesis module.");
 
     Py_INCREF(&replaygain_ReplayGainType);
     PyModule_AddObject(m, "ReplayGain",
                        (PyObject *)&replaygain_ReplayGainType);
+
+    Py_INCREF(&replaygain_ReplayGainReaderType);
+    PyModule_AddObject(m, "ReplayGainReader",
+                       (PyObject *)&replaygain_ReplayGainReaderType);
 }
 
 
@@ -738,3 +811,175 @@ ReplayGain_get_album_gain(replaygain_ReplayGain *self)
     return analyzeResult(self->B, sizeof(self->B)/sizeof(*(self->B)) );
 }
 
+
+PyObject*
+ReplayGainReader_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
+    replaygain_ReplayGainReader *self;
+
+    self = (replaygain_ReplayGainReader *)type->tp_alloc(type, 0);
+
+    return (PyObject *)self;
+}
+
+int
+ReplayGainReader_init(replaygain_ReplayGainReader *self,
+                      PyObject *args, PyObject *kwds) {
+    self->pcm_module = NULL;
+    self->os_module = NULL;
+    self->pcmreader = NULL;
+    double replaygain;
+    double peak;
+
+    if (!PyArg_ParseTuple(args, "Odd",
+                          &(self->pcmreader),
+                          &(replaygain),
+                          &(peak)))
+        return -1;
+
+    Py_INCREF(self->pcmreader);
+
+    if ((self->pcm_module = PyImport_ImportModule("audiotools.pcm")) == NULL) {
+        return -1;
+    }
+
+    if ((self->os_module = PyImport_ImportModule("os")) == NULL) {
+        return -1;
+    }
+
+    self->multiplier = powl(10.0l, replaygain / 20.0l);
+    if (self->multiplier > 1.0l)
+        self->multiplier = 1.0l / peak;
+
+    return 0;
+}
+
+void
+ReplayGainReader_dealloc(replaygain_ReplayGainReader* self) {
+    Py_XDECREF(self->pcmreader);
+    Py_XDECREF(self->pcm_module);
+    Py_XDECREF(self->os_module);
+    self->ob_type->tp_free((PyObject*)self);
+}
+
+static PyObject*
+ReplayGainReader_sample_rate(replaygain_ReplayGainReader *self,
+                             void *closure) {
+    return PyObject_GetAttrString(self->pcmreader, "sample_rate");
+}
+
+static PyObject*
+ReplayGainReader_bits_per_sample(replaygain_ReplayGainReader *self,
+                                 void *closure) {
+    return PyObject_GetAttrString(self->pcmreader, "bits_per_sample");
+}
+
+static PyObject*
+ReplayGainReader_channels(replaygain_ReplayGainReader *self,
+                          void *closure) {
+    return PyObject_GetAttrString(self->pcmreader, "channels");
+}
+
+static PyObject*
+ReplayGainReader_channel_mask(replaygain_ReplayGainReader *self,
+                              void *closure) {
+    return PyObject_GetAttrString(self->pcmreader, "channel_mask");
+}
+
+static PyObject*
+ReplayGainReader_read(replaygain_ReplayGainReader* self, PyObject *args) {
+    PyObject* bytes;
+
+    PyObject* framelist_obj;
+    PyObject* framelist_type_obj;
+    pcm_FrameList *framelist;
+
+    PyObject* dither_obj;
+    uint8_t* dither;
+    Py_ssize_t dither_length;
+
+    ia_data_t max_value;
+    ia_data_t min_value;
+    ia_size_t i;
+    double multiplier = self->multiplier;
+
+    if (!PyArg_ParseTuple(args, "O", &bytes))
+        return NULL;
+
+    if ((framelist_obj = PyObject_CallMethod(self->pcmreader,
+                                             "read",
+                                             "O", bytes)) == NULL)
+        return NULL;
+
+    /*ensure framelist_obj is a FrameList*/
+    if ((framelist_type_obj = PyObject_GetAttrString(self->pcm_module,
+                                                     "FrameList")) == NULL) {
+        Py_DECREF(framelist_obj);
+        return NULL;
+    }
+
+    if (framelist_obj->ob_type == (PyTypeObject*)framelist_type_obj) {
+        framelist = (pcm_FrameList*)framelist_obj;
+
+        /*grab some white noise from os.urandom for dithering*/
+        if ((dither_obj = PyObject_CallMethod(
+                              self->os_module,
+                              "urandom",
+                              "i",
+                              (framelist->samples_length / 8) + 1)) == NULL) {
+            Py_DECREF(framelist_obj);
+            return NULL;
+        }
+
+        /*convert white noise to a buffer of bytes*/
+        if (PyString_AsStringAndSize(dither_obj,
+                                     (char **)&dither,
+                                     &dither_length) == -1) {
+            Py_DECREF(dither_obj);
+            Py_DECREF(framelist_obj);
+            return NULL;
+        }
+
+        /*ensure buffer is big enough to apply to our samples*/
+        if ((dither_length * 8) < framelist->samples_length) {
+            PyErr_SetString(PyExc_ValueError,
+                            "string returned by os.urandom is too short");
+            Py_DECREF(dither_obj);
+            Py_DECREF(framelist_obj);
+            return NULL;
+        }
+
+
+        /*apply our multiplier to framelist's integer samples
+          and apply dithering*/
+        max_value = (1 << (framelist->bits_per_sample - 1)) - 1;
+        min_value = -(1 << (framelist->bits_per_sample - 1));
+
+        for (i = 0; i < framelist->samples_length; i++) {
+            /*We're going to be naughty and modify
+              framelist's samples directly.
+              Since it's a fresh value returned from read(),
+              no one else should have a reference to it.*/
+
+            /*FIXME - keep adjusted sample within min/max of bits-per-sample*/
+            framelist->samples[i] =
+                MIN(MAX(lround(framelist->samples[i] *
+                               multiplier) ^
+                        (dither[i / 8] & (1 << (i % 8))) >> (i % 8),
+                        min_value),
+                    max_value);
+        }
+
+        Py_DECREF(dither_obj);
+        return framelist_obj;
+    } else {
+        PyErr_SetString(PyExc_TypeError,
+                        "results from pcmreader.read() must be FrameLists");
+        Py_DECREF(framelist_obj);
+        return NULL;
+    }
+}
+
+static PyObject*
+ReplayGainReader_close(replaygain_ReplayGainReader* self, PyObject *args) {
+    return PyObject_CallMethod(self->pcmreader, "close", NULL);
+}

@@ -3067,3 +3067,15 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO cd2track
 ** TODO cd2xmcd
 ** TODO cdinfo
+* TODO Convert ReplayGainReader to C
+  The Python implementation simply uses too many CPU cycles,
+  which can cause trackplay to stutter on hi-def files.
+** DONE Add audiotools.replaygain.ReplayGainReader object
+*** DONE Add sample_rate attribute
+*** DONE Add channels attribute
+*** DONE Add channel_mask attribute
+*** DONE Add bits_per_sample attribute
+*** DONE Add read() method
+*** DONE Add close() method
+** TODO Convert references to audiotools.ReplayGainReader
+** TODO Update documentation

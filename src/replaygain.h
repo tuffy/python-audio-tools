@@ -108,4 +108,46 @@ ReplayGain_get_title_gain(replaygain_ReplayGain *self);
 double
 ReplayGain_get_album_gain(replaygain_ReplayGain *self);
 
+
+typedef struct {
+    PyObject_HEAD;
+
+    PyObject* pcm_module;
+    PyObject* os_module;
+    PyObject* pcmreader;
+    double multiplier;
+} replaygain_ReplayGainReader;
+
+void
+ReplayGainReader_dealloc(replaygain_ReplayGainReader* self);
+
+PyObject*
+ReplayGainReader_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
+
+int
+ReplayGainReader_init(replaygain_ReplayGainReader *self,
+                      PyObject *args, PyObject *kwds);
+
+static PyObject*
+ReplayGainReader_sample_rate(replaygain_ReplayGainReader *self,
+                             void *closure);
+
+static PyObject*
+ReplayGainReader_bits_per_sample(replaygain_ReplayGainReader *self,
+                                 void *closure);
+
+static PyObject*
+ReplayGainReader_channels(replaygain_ReplayGainReader *self,
+                          void *closure);
+
+static PyObject*
+ReplayGainReader_channel_mask(replaygain_ReplayGainReader *self,
+                              void *closure);
+
+static PyObject*
+ReplayGainReader_read(replaygain_ReplayGainReader* self, PyObject *args);
+
+static PyObject*
+ReplayGainReader_close(replaygain_ReplayGainReader* self, PyObject *args);
+
 #endif
