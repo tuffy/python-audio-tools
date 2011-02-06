@@ -95,6 +95,17 @@ if (__name__ == '__main__'):
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("cd2xmcd", options)
 
+    if (options.xmcd != '-'):
+        if (not os.path.isfile(options.xmcd)):
+            if (not os.access(os.path.dirname(options.xmcd), os.W_OK)):
+                msg.error(_(u"Unable to write \"%s\"") % \
+                              (msg.filename(options.xmcd)))
+                sys.exit(1)
+        else:
+            msg.error(_(u"Refusing to overwrite \"%s\"") % \
+                          (msg.filename(options.xmcd)))
+            sys.exit(1)
+
     cdda = audiotools.CDDA(options.cdrom)
 
     if (len(cdda) == 255):
@@ -116,7 +127,7 @@ if (__name__ == '__main__'):
     musicbrainz_matches = 0
     freedb_matches = 0
     metadata_file = cStringIO.StringIO()
-    
+
     if (options.use_musicbrainz):
         try:
             musicbrainz_matches = audiotools.get_mbxml(
@@ -158,7 +169,7 @@ if (__name__ == '__main__'):
     except IOError, err:
         msg.error(_(u"Unable to write \"%s\"") % (msg.filename(options.xmcd)))
         sys.exit(1)
-            
+
     #if musicbrainz_matches and freedb_matches are both 0
     #output a MusicBrainzReleaseXML file instead of a FreeDB one
     #since XML is better for editing by end users

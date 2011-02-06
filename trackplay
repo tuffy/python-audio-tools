@@ -124,12 +124,20 @@ try:
 
             track_len = sum([track.seconds_length() for track in track_list])
 
-            self.status = urwid.Text(
-                "%(count)d tracks, %(min)d:%(sec)2.2d minutes" % {
-                    "count":len(self.track_list),
-                    "min":int(track_len) / 60,
-                    "sec":int(track_len) % 60},
-                                     align='center')
+            if (len(self.track_list) == 1):
+                self.status = urwid.Text(
+                    "1 track, %(min)d:%(sec)2.2d minutes" % {
+                        "count":len(self.track_list),
+                        "min":int(track_len) / 60,
+                        "sec":int(track_len) % 60},
+                    align='center')
+            else:
+                self.status = urwid.Text(
+                    "%(count)d tracks, %(min)d:%(sec)2.2d minutes" % {
+                        "count":len(self.track_list),
+                        "min":int(track_len) / 60,
+                        "sec":int(track_len) % 60},
+                    align='center')
 
             header = urwid.Pile([
                     urwid.Columns([

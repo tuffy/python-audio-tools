@@ -199,7 +199,7 @@ if (__name__ == '__main__'):
                     msg.output_column(u"   ")
                 msg.output_column(
                     AudioType.COMPRESSION_DESCRIPTIONS.get(mode, u""))
-            msg.output_rows()
+            msg.info_rows()
         else:
             msg.error(_(u"Audio type %s has no compression modes") % \
                           (AudioType.NAME))

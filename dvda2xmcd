@@ -98,6 +98,17 @@ if (__name__ == '__main__'):
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("dvda2xmcd", options)
 
+    if (options.xmcd != '-'):
+        if (not os.path.isfile(options.xmcd)):
+            if (not os.access(os.path.dirname(options.xmcd), os.W_OK)):
+                msg.error(_(u"Unable to write \"%s\"") % \
+                              (msg.filename(options.xmcd)))
+                sys.exit(1)
+        else:
+            msg.error(_(u"Refusing to overwrite \"%s\"") % \
+                          (msg.filename(options.xmcd)))
+            sys.exit(1)
+
     if (options.audio_ts is None):
         msg.error(
             _(u"You must specify the DVD-Audio's AUDIO_TS directory with -A"))
@@ -126,6 +137,8 @@ if (__name__ == '__main__'):
     musicbrainz_matches = 0
     freedb_matches = 0
     metadata_file = cStringIO.StringIO()
+
+
 
     if (options.use_musicbrainz):
         try:

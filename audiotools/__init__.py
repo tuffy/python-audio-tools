@@ -386,6 +386,31 @@ class VerboseMessenger:
         sys.stderr.write(s.encode(IO_ENCODING, 'replace'))
         sys.stderr.write(os.linesep)
 
+    def info_rows(self):
+        """Outputs all of our accumulated output rows as aligned info.
+
+        This operates by calling our info() method.
+        Therefore, subclasses that have overridden info() to noops
+        (silent messengers) will also have silent info_rows() methods.
+        """
+
+        lengths = [row.lengths() for row in self.output_msg_rows]
+        if (len(lengths) == 0):
+            raise ValueError("you must generate at least one output row")
+        if (len(set(map(len, lengths))) != 1):
+            raise ValueError("all output rows must be the same length")
+
+        max_lengths = []
+        for i in xrange(len(lengths[0])):
+            max_lengths.append(max([length[i] for length in lengths]))
+
+        for row in self.output_msg_rows:
+            row.set_total_lengths(max_lengths)
+
+        for row in self.output_msg_rows:
+            self.info(unicode(row))
+        self.output_msg_rows = []
+
     def partial_info(self, s):
         """Displays a partial informative message unicode string to stdout.
 
@@ -411,6 +436,16 @@ class VerboseMessenger:
         sys.stderr.write("*** Error: ")
         sys.stderr.write(s.encode(IO_ENCODING, 'replace'))
         sys.stderr.write(os.linesep)
+
+    def os_error(self, oserror):
+        """Displays an properly formatted OSError exception to stderr.
+
+        This appends a newline to that message."""
+
+        self.error(u"[Errno %d] %s: '%s'" % \
+                       (oserror.errno,
+                        oserror.strerror.decode('utf-8', 'replace'),
+                        self.filename(oserror.filename)))
 
     def warning(self, s):
         """Displays a warning message unicode string to stderr.

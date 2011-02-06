@@ -358,7 +358,8 @@ class DVDATitle:
     def __repr__(self):
         return "DVDATitle(%s)" % \
             (",".join(["%s=%s" % (key, getattr(self, key))
-                       for key in ["titleset", "title", "length", "tracks"]]))
+                       for key in ["titleset", "title", "pts_length",
+                                   "tracks"]]))
 
     def info(self):
         """returns a (sample_rate, channels, channel_mask, bps, type) tuple"""

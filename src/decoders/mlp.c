@@ -1007,6 +1007,8 @@ mlp_read_frame(decoders_MLPDecoder* decoder,
     int total_frame_size;
     uint64_t target_read = decoder->bytes_read;
     struct mlp_RestartHeader* restart_header;
+    int8_t output_shift;
+    ia_size_t i;
 
     if (decoder->stream_closed)
         return 0;
@@ -1082,6 +1084,17 @@ mlp_read_frame(decoders_MLPDecoder* decoder,
         decoder->restart_headers[substream].noise_shift,
         &(decoder->decoding_parameters[substream].matrix_parameters),
         decoder->decoding_parameters[substream].quant_step_sizes);
+
+    /*apply output shifts based on our final substream's output shifts*/
+    for (channel = 0;
+         channel <= decoder->restart_headers[substream].max_matrix_channel;
+         channel++) {
+        output_shift =
+            decoder->decoding_parameters[substream].output_shifts[channel];
+        if (output_shift > 0)
+            for (i = 0 ; i < frame_samples->arrays[channel].size; i++)
+                frame_samples->arrays[channel].data[i] <<= output_shift;
+    }
 
     return total_frame_size;
 }

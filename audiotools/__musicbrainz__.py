@@ -627,14 +627,8 @@ def get_mbxml(disc_id, output, musicbrainz_server, musicbrainz_port,
                     dom, default_selection).toxml(encoding='utf-8'))
 
         output.flush()
-        if (hasattr(output, "name")):
-            messenger.info(_(u"%s written") %
-                           (messenger.filename(output.name)))
     elif (matches == 1):
         output.write(dom.toxml(encoding='utf-8'))
         output.flush()
-        if (hasattr(output, "name")):
-            messenger.info(_(u"%s written") %
-                           (messenger.filename(output.name)))
     else:
         return matches

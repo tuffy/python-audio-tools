@@ -70,7 +70,7 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     do {
         if ((error = WavPackDecoder_read_block_header(self->bitstream,
                                                       &block_header)) != OK) {
-            PyErr_SetString(PyExc_ValueError, wavpack_strerror(error));
+            PyErr_SetString(wavpack_exception(error), wavpack_strerror(error));
             return -1;
         } else {
             if (!setjmp(*bs_try(self->bitstream))) {
@@ -858,7 +858,7 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
                     if ((error = WavPackDecoder_decode_subblock(
                                                 self, &block_header)) != OK) {
                         bs_etry(bitstream);
-                        PyErr_SetString(PyExc_ValueError,
+                        PyErr_SetString(wavpack_exception(error),
                                         wavpack_strerror(error));
                         goto error;
                     }
@@ -1057,7 +1057,7 @@ WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
                     "sub_blocks", subblocks);
 
         } else {
-            PyErr_SetString(PyExc_ValueError, wavpack_strerror(error));
+            PyErr_SetString(wavpack_exception(error), wavpack_strerror(error));
             return NULL;
         }
     } else {
@@ -1086,7 +1086,7 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
                                              bitstream,
                                              &header,
                                              &(self->decorr_terms),
-                                             &(self->decorr_deltas))) != OK) {
+                                             &(self->decorr_deltas))) == OK) {
             subblock_data_obj = Py_BuildValue(
                                     "{sN sN}",
                                     "decorr_terms",
@@ -1095,7 +1095,7 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
                                     i_array_to_list(&(self->decorr_deltas)));
             self->got_decorr_terms = 1;
         } else {
-            PyErr_SetString(PyExc_ValueError, wavpack_strerror(error));
+            PyErr_SetString(wavpack_exception(error), wavpack_strerror(error));
             return NULL;
         }
         break;
@@ -1143,7 +1143,7 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
                                 ia_array_to_list(&(self->decorr_samples_B)));
             self->got_decorr_samples = 1;
         } else {
-            PyErr_SetString(PyExc_ValueError, wavpack_strerror(error));
+            PyErr_SetString(wavpack_exception(error), wavpack_strerror(error));
             return NULL;
         }
         break;
@@ -1208,7 +1208,7 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
             subblock_data_obj = i_array_to_list(&(self->values));
             self->got_bitstream = 1;
         } else {
-            PyErr_SetString(PyExc_IOError, wavpack_strerror(error));
+            PyErr_SetString(wavpack_exception(error), wavpack_strerror(error));
             return NULL;
         }
         break;
@@ -1281,7 +1281,7 @@ WavPackDecoder_decode_block(decoders_WavPackDecoder* self,
     if ((error = WavPackDecoder_read_block_header(bitstream,
                                                   &block_header)) != OK) {
         PyEval_RestoreThread(thread_state);
-        PyErr_SetString(PyExc_ValueError, wavpack_strerror(error));
+        PyErr_SetString(wavpack_exception(error), wavpack_strerror(error));
         return ERROR;
     }
 
@@ -1313,7 +1313,8 @@ WavPackDecoder_decode_block(decoders_WavPackDecoder* self,
                                                self, &block_header)) != OK) {
                 bs_etry(bitstream);
                 PyEval_RestoreThread(thread_state);
-                PyErr_SetString(PyExc_ValueError, wavpack_strerror(error));
+                PyErr_SetString(wavpack_exception(error),
+                                wavpack_strerror(error));
                 return ERROR;
             }
         }
@@ -1807,6 +1808,29 @@ const char* wavpack_strerror(status error) {
         return "I/O error reading block header";
     default:
         return "Unknown Error";
+    }
+}
+
+PyObject* wavpack_exception(status error) {
+    switch (error) {
+    case ERROR:
+    case ERR_EXCESSIVE_TERMS:
+    case ERR_INVALID_TERM:
+    case ERR_UNSUPPORTED_DECORR_TERM:
+    case ERR_PREMATURE_DECORR_WEIGHTS:
+    case ERR_PREMATURE_DECORR_SAMPLES:
+    case ERR_PREMATURE_BITSTREAM:
+    case ERR_MD5_MISMATCH:
+    case ERR_INVALID_BLOCK_ID:
+    case ERR_INVALID_RESERVED_BIT:
+        return PyExc_ValueError;
+    case ERR_DECORR_SAMPLES_IO:
+    case ERR_BITSTREAM_IO:
+    case ERR_MD5_IO:
+    case ERR_BLOCK_HEADER_IO:
+        return PyExc_IOError;
+    default:
+        return PyExc_ValueError;
     }
 }
 

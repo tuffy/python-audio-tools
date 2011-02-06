@@ -2106,8 +2106,7 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                      temp_track1.filename,
                      temp_track2.filename,
                      "-x", "/dev/null/foo.xmcd"]), 1)
-            self.__check_error__(_(u"Unable to write \"%s\"") % \
-                                     (self.filename("/dev/null/foo.xmcd")))
+            self.__check_error__(u"[Errno 20] Not a directory: '/dev/null/foo.xmcd'")
         finally:
             temp_track_file1.close()
             temp_track_file2.close()
@@ -5686,8 +5685,7 @@ class TestMP2Audio(TestMP3Audio):
                      temp_track1.filename,
                      temp_track2.filename,
                      "-x", "/dev/null/foo.xmcd"]), 1)
-            self.__check_error__(_(u"Unable to write \"%s\"") % \
-                                     (self.filename("/dev/null/foo.xmcd")))
+            self.__check_error__(u"[Errno 20] Not a directory: '/dev/null/foo.xmcd'")
         finally:
             temp_track_file1.close()
             temp_track_file2.close()
@@ -9836,7 +9834,7 @@ class TestProgramOutput(TestTextOutput):
         self.__check_info__(_(u"Available compression types for %s:") % \
                                 (audiotools.FlacAudio.NAME))
         for m in audiotools.FlacAudio.COMPRESSION_MODES:
-            self.__check_info__(m.decode('ascii'))
+            self.assert_(self.stderr.readline().decode(audiotools.IO_ENCODING).lstrip().startswith(m.decode('ascii')))
 
         self.assertEqual(self.__run_app__(
                 ["track2track", "-t", "wav", "-q", "help"]), 0)
@@ -9960,7 +9958,7 @@ class TestProgramOutput(TestTextOutput):
         self.__check_info__(_(u"Available compression types for %s:") % \
                          (audiotools.FlacAudio.NAME))
         for m in audiotools.FlacAudio.COMPRESSION_MODES:
-            self.__check_info__(m.decode('ascii'))
+            self.assert_(self.stderr.readline().decode(audiotools.IO_ENCODING).lstrip().startswith(m.decode('ascii')))
 
         self.assertEqual(self.__run_app__(
                 ["trackcat", "-o", "fail.flac", "-t", "wav", "-q", "help"]), 0)
@@ -10541,6 +10539,7 @@ class TestProgramOutput(TestTextOutput):
                 self.__check_info__(u"%%(%s)s" % (field))
 
 
+
 class TestTracklengthOutput(TestTextOutput):
     @TEST_EXECUTABLE
     def setUp(self):
@@ -10703,7 +10702,7 @@ class TestTracksplitOutput(TestTextOutput):
         self.__check_info__(_(u"Available compression types for %s:") % \
                                 (audiotools.FlacAudio.NAME))
         for m in audiotools.FlacAudio.COMPRESSION_MODES:
-            self.__check_info__(m.decode('ascii'))
+            self.assert_(self.stderr.readline().decode(audiotools.IO_ENCODING).lstrip().startswith(m.decode('ascii')))
 
         self.assertEqual(self.__run_app__(
                 ["tracksplit", "-t", "wav", "-q", "help"]), 0)
@@ -10885,7 +10884,8 @@ class TestTrack2XMCDFreeDB(TestTextOutput):
                 ["track2xmcd", "-x", self.existing_filename] + \
                 [flac.filename for flac in self.flac_files]),
                          1)
-        self.__check_error__(_(u"Refusing to overwrite \"%s\"") % \
+
+        self.__check_error__(u"[Errno 17] File exists: '%s'" % \
                                  (self.filename(self.existing_filename)))
 
         self.assertEqual(self.__run_app__(
@@ -10959,7 +10959,9 @@ class TestTrack2XMLMusicBrainz(TestTextOutput):
                 ["track2xmcd", "-x", self.existing_filename] + \
                 [flac.filename for flac in self.flac_files]),
                          1)
-        self.__check_error__(_(u"Refusing to overwrite \"%s\"") % \
+
+
+        self.__check_error__(u"[Errno 17] File exists: '%s'" % \
                                  (self.filename(self.existing_filename)))
 
         #MusicBrainz will ban IPs who submit more than 1 search per second

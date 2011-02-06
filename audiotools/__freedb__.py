@@ -544,7 +544,8 @@ class FreeDBWeb(FreeDB):
 
         import httplib
 
-        self.connection = httplib.HTTPConnection(self.server, self.port)
+        self.connection = httplib.HTTPConnection(self.server, self.port,
+                                                 timeout=10)
 
     def close(self):
         """Closes an open connection."""
@@ -718,6 +719,4 @@ def get_xmcd(disc_id, output, freedb_server, freedb_server_port,
         freedb.close()
         raise IOError(str(msg))
 
-    if ((len(matches) > 0) and (hasattr(output, "name"))):
-        messenger.info(_(u"%s written") % (messenger.filename(output.name)))
     return len(matches)

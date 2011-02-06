@@ -340,6 +340,8 @@ void wavpack_undo_joint_stereo(struct i_array* channel_A,
 
 const char* wavpack_strerror(status error);
 
+PyObject* wavpack_exception(status error);
+
 int
 wavpack_exp2(int log);
 
