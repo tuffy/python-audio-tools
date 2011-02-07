@@ -225,8 +225,8 @@ class PlayerThread:
                         if (frames > 0):
                             self.audio_output.play(data)
                             self.frames_played += frames
-                            if (self.frames_played >= self.total_frames):
-                                next_track_callback()
+                            # if (self.frames_played >= self.total_frames):
+                            #     next_track_callback()
                         else:
                             self.frames_played = self.total_frames
                             next_track_callback()
@@ -414,11 +414,15 @@ class ThreadedPCMConverter:
 
         def convert(pcmreader, buffer_size, converter, decoded_data,
                     stop_decoding):
-            frame = pcmreader.read(buffer_size)
-            while ((not stop_decoding.is_set()) and (len(frame) > 0)):
-                decoded_data.put((converter(frame), frame.frames))
+            try:
                 frame = pcmreader.read(buffer_size)
-            else:
+                while ((not stop_decoding.is_set()) and (len(frame) > 0)):
+                    decoded_data.put((converter(frame), frame.frames))
+                    frame = pcmreader.read(buffer_size)
+                else:
+                    decoded_data.put((None, 0))
+                    pcmreader.close()
+            except (ValueError, IOError):
                 decoded_data.put((None, 0))
                 pcmreader.close()
 

@@ -453,15 +453,28 @@ if (__name__ == '__main__'):
                           callback=timer,
                           user_data=trackplay)
 
-        loop.run()
+        try:
+            loop.run()
+        except termios.error:
+            msg.error(_(u"Unable to get tty settings"))
+            msg.info(_(u"If piping arguments via xargs(1), " +
+                       u"try using its -o option"))
+            sys.exit(1)
     else:
+        try:
+            original_terminal_settings = termios.tcgetattr(0)
+        except termios.error:
+            msg.error(_(u"Unable to get tty settings"))
+            msg.info(_(u"If piping arguments via xargs(1), " +
+                       u"try using its -o option"))
+            sys.exit(1)
+
         trackplay = TrackplayTTY(track_list=audiofiles,
                                  audio_output=players_map[options.output](),
                                  replay_gain=replay_gain)
         trackplay.play()
         output_line_len = 0
 
-        original_terminal_settings = termios.tcgetattr(0)
         try:
             tty.setcbreak(sys.stdin.fileno())
             while (trackplay.current_track is not None):

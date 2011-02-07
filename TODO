@@ -2907,6 +2907,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE Add bs_try for proper EOF aborts
 **** DONE Add end-of-stream marker checking to read()
 **** TODO Add end-of-stream marker checking to analyze_frame()
+**** TODO Optimize to work faster
+     Perhaps with multiple blocks per call to read()
 *** DONE Perform sanity checks
 ** TODO Document MLP decoder
 *** DONE major sync
@@ -2935,6 +2937,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE Add dvdainfo.1 man page
 ** TODO Build dvda2track utility
 *** TODO Support progress indicator
+*** TODO Fix to work without -d
 *** DONE Add --track-start / --track-total options
     Since some especially long discs split tracks across titles,
     it makes sense to have a way to specify the starting track number
@@ -3014,7 +3017,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] pause
    - [X] next track
    - [X] previous track
-** TODO Handle tracks that trigger a DecodeError in to_pcm()
+** DONE Handle tracks that trigger a DecodeError in to_pcm()
 ** DONE Update Player object to handle ReplayGain
    - [X] track gain
    - [X] album gain
@@ -3041,6 +3044,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE OSSAudioOutput
 *** DONE NULLAudioOutput
 ** DONE Add --shuffle option
+** DONE Work better with piped arguments
+   Don't generate an ugly exception when arguments are piped in via xargs.
 ** TODO Add basic unit tests
    - [ ] Ensure valid and invalid files generate the proper return values
          when run in "quiet" mode to the "NULL" decoder
