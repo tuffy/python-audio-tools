@@ -3090,5 +3090,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   if some feature has been fully unit tested.
   Or, if a new feature is added, the logical place to put new tests
   is not obvious.
+** TODO Group tests for the audio formats
 ** TODO Group tests for the core libraries
 ** TODO Group tests for the individual tools

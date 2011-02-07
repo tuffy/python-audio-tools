@@ -225,8 +225,8 @@ class PlayerThread:
                         if (frames > 0):
                             self.audio_output.play(data)
                             self.frames_played += frames
-                            # if (self.frames_played >= self.total_frames):
-                            #     next_track_callback()
+                            if (self.frames_played >= self.total_frames):
+                                next_track_callback()
                         else:
                             self.frames_played = self.total_frames
                             next_track_callback()
