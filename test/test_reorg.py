@@ -23,6 +23,9 @@ import ConfigParser
 import tempfile
 import os
 import os.path
+from hashlib import md5
+import random
+import decimal
 
 parser = ConfigParser.SafeConfigParser()
 parser.read("test.cfg")
@@ -73,6 +76,125 @@ class BLANK_PCM_Reader:
 
     def close(self):
         pass
+
+class RANDOM_PCM_Reader(BLANK_PCM_Reader):
+    def read(self, bytes):
+        if (self.total_frames > 0):
+            frames_to_read = min(
+                self.single_pcm_frame.frame_count(bytes) / self.channels,
+                self.total_frames)
+            frame = audiotools.pcm.FrameList(
+                os.urandom(frames_to_read *
+                           (self.bits_per_sample / 8) *
+                           self.channels),
+                self.channels,
+                self.bits_per_sample,
+                True,
+                True)
+            self.total_frames -= frame.frames
+            return frame
+        else:
+            return audiotools.pcm.FrameList(
+                "", self.channels, self.bits_per_sample, True, True)
+
+class MD5_Reader:
+    def __init__(self, pcmreader):
+        self.pcmreader = pcmreader
+        self.sample_rate = pcmreader.sample_rate
+        self.channels = pcmreader.channels
+        self.channel_mask = pcmreader.channel_mask
+        self.bits_per_sample = pcmreader.bits_per_sample
+        self.md5 = md5()
+
+    def read(self, bytes):
+        framelist = self.pcmreader.read(bytes)
+        self.md5.update(framelist.to_bytes(False, True))
+        return framelist
+
+    def digest(self):
+        return self.md5.digest()
+
+    def hexdigest(self):
+        return self.md5.hexdigest()
+
+    def close(self):
+        self.pcmreader.close()
+
+class Variable_Reader:
+    def __init__(self, pcmreader):
+        self.pcmreader = audiotools.BufferedPCMReader(pcmreader)
+        self.sample_rate = pcmreader.sample_rate
+        self.channels = pcmreader.channels
+        self.channel_mask = pcmreader.channel_mask
+        self.bits_per_sample = pcmreader.bits_per_sample
+        self.md5 = md5()
+        self.range = range(self.channels * (self.bits_per_sample / 8),
+                           4096)
+
+    def read(self, bytes):
+        return self.pcmreader.read(random.choice(self.range))
+
+    def close(self):
+        self.pcmreader.close()
+
+
+class ERROR_PCM_Reader(audiotools.PCMReader):
+    def __init__(self, error,
+                 sample_rate=44100, channels=2, bits_per_sample=16,
+                 channel_mask=None, failure_chance=.2, minimum_successes=0):
+        if (channel_mask is None):
+            channel_mask = audiotools.ChannelMask.from_channels(channels)
+        audiotools.PCMReader.__init__(
+            self,
+            file=None,
+            sample_rate=sample_rate,
+            channels=channels,
+            bits_per_sample=bits_per_sample,
+            channel_mask=channel_mask)
+        self.error = error
+
+        #this is so we can generate some "live" PCM data
+        #before erroring out due to our error
+        self.failure_chance = failure_chance
+
+        self.minimum_successes = minimum_successes
+
+        self.frame = audiotools.pcm.from_list([0] * self.channels,
+                                              self.channels,
+                                              self.bits_per_sample,
+                                              True)
+
+    def read(self, bytes):
+        if (self.minimum_successes > 0):
+            self.minimum_successes -= 1
+            return audiotools.pcm.from_frames(
+                [self.frame for i in xrange(self.frame.frame_count(bytes))])
+        else:
+            if (random.random() <= self.failure_chance):
+                raise self.error
+            else:
+                return audiotools.pcm.from_frames(
+                    [self.frame for i in xrange(self.frame.frame_count(bytes))])
+
+    def close(self):
+        pass
+
+
+class FrameCounter:
+    def __init__(self, channels, bits_per_sample, sample_rate, value=0):
+        self.channels = channels
+        self.bits_per_sample = bits_per_sample
+        self.sample_rate = sample_rate
+        self.value = value
+
+    def update(self, f):
+        self.value += len(f)
+
+    def __int__(self):
+        return int(round(decimal.Decimal(self.value) /
+                         (self.channels *
+                          (self.bits_per_sample / 8) *
+                          self.sample_rate)))
 
 
 #probstat does this better, but I don't want to require that
@@ -170,7 +292,7 @@ class AudioFileTest(unittest.TestCase):
         self.suffix = "." + self.audio_class.SUFFIX
 
     #FIXME
-    @FORMAT_AUDIOFILE_PLACEHOLER
+    @FORMAT_AUDIOFILE_PLACEHOLDER
     def test_init(self):
         self.assert_(False)
 
@@ -624,6 +746,120 @@ class LosslessFileTest(AudioFileTest):
         finally:
             temp.close()
 
+    @FORMAT_LOSSLESS
+    def test_pcm(self):
+        if (self.audio_class is audiotools.AudioFile):
+            return
+
+        temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
+        temp2 = tempfile.NamedTemporaryFile()
+        temp_dir = tempfile.mkdtemp()
+        try:
+            for compression in (None,) + self.audio_class.COMPRESSION_MODES:
+                #test silence
+                reader = MD5_Reader(BLANK_PCM_Reader(1))
+                if (compression is None):
+                    track = self.audio_class.from_pcm(temp.name, reader)
+                else:
+                    track = self.audio_class.from_pcm(temp.name, reader,
+                                                      compression)
+                checksum = md5()
+                audiotools.transfer_framelist_data(track.to_pcm(),
+                                                   checksum.update)
+                self.assertEqual(reader.hexdigest(), checksum.hexdigest())
+
+                #test random noise
+                reader = MD5_Reader(RANDOM_PCM_Reader(1))
+                if (compression is None):
+                    track = self.audio_class.from_pcm(temp.name, reader)
+                else:
+                    track = self.audio_class.from_pcm(temp.name, reader,
+                                                      compression)
+                checksum = md5()
+                audiotools.transfer_framelist_data(track.to_pcm(),
+                                                   checksum.update)
+                self.assertEqual(reader.hexdigest(), checksum.hexdigest())
+
+                #test randomly-sized chunks of silence
+                reader = MD5_Reader(Variable_Reader(BLANK_PCM_Reader(10)))
+                if (compression is None):
+                    track = self.audio_class.from_pcm(temp.name, reader)
+                else:
+                    track = self.audio_class.from_pcm(temp.name, reader,
+                                                      compression)
+                checksum = md5()
+                audiotools.transfer_framelist_data(track.to_pcm(),
+                                                   checksum.update)
+                self.assertEqual(reader.hexdigest(), checksum.hexdigest())
+
+                #test randomly-sized chunks of random noise
+                reader = MD5_Reader(Variable_Reader(RANDOM_PCM_Reader(10)))
+                if (compression is None):
+                    track = self.audio_class.from_pcm(temp.name, reader)
+                else:
+                    track = self.audio_class.from_pcm(temp.name, reader,
+                                                      compression)
+                checksum = md5()
+                audiotools.transfer_framelist_data(track.to_pcm(),
+                                                   checksum.update)
+                self.assertEqual(reader.hexdigest(), checksum.hexdigest())
+
+                #test PCMReaders that trigger a DecodingError
+                self.assertRaises(ValueError,
+                                  ERROR_PCM_Reader(ValueError("error"),
+                                                   failure_chance=1.0).read,
+                                  1)
+                self.assertRaises(IOError,
+                                  ERROR_PCM_Reader(IOError("error"),
+                                                   failure_chance=1.0).read,
+                                  1)
+                self.assertRaises(audiotools.EncodingError,
+                                  self.audio_class.from_pcm,
+                                  os.path.join(temp_dir,
+                                               "invalid" + self.suffix),
+                                  ERROR_PCM_Reader(IOError("I/O Error")))
+
+                self.assertEqual(os.path.isfile(
+                        os.path.join(temp_dir,
+                                     "invalid" + self.suffix)),
+                                 False)
+
+                self.assertRaises(audiotools.EncodingError,
+                                  self.audio_class.from_pcm,
+                                  os.path.join(temp_dir,
+                                               "invalid" + self.suffix),
+                                  ERROR_PCM_Reader(IOError("I/O Error")))
+
+                self.assertEqual(os.path.isfile(
+                        os.path.join(temp_dir,
+                                     "invalid" + self.suffix)),
+                                 False)
+
+                #test unwritable output file
+                self.assertRaises(audiotools.EncodingError,
+                                  self.audio_class.from_pcm,
+                                  "/dev/null/foo.%s" % (self.suffix),
+                                  BLANK_PCM_Reader(1))
+
+                #test without suffix
+                reader = MD5_Reader(BLANK_PCM_Reader(1))
+                if (compression is None):
+                    track = self.audio_class.from_pcm(temp2.name, reader)
+                else:
+                    track = self.audio_class.from_pcm(temp2.name, reader,
+                                                      compression)
+                checksum = md5()
+                audiotools.transfer_framelist_data(track.to_pcm(),
+                                                   checksum.update)
+                self.assertEqual(reader.hexdigest(), checksum.hexdigest())
+        finally:
+            temp.close()
+            temp2.close()
+            for f in os.listdir(temp_dir):
+                os.unlink(os.path.join(temp_dir, f))
+            os.rmdir(temp_dir)
+
+
 
 class LossyFileTest(AudioFileTest):
     @FORMAT_LOSSY
@@ -706,6 +942,114 @@ class LossyFileTest(AudioFileTest):
             self.assertEqual(track.sample_rate(), 44100)
         finally:
             temp.close()
+
+    # @FORMAT_LOSSY
+    @LIB_CUSTOM
+    def test_pcm(self):
+        if (self.audio_class is audiotools.AudioFile):
+            return
+
+        temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
+        temp2 = tempfile.NamedTemporaryFile()
+        temp_dir = tempfile.mkdtemp()
+        try:
+            for compression in (None,) + self.audio_class.COMPRESSION_MODES:
+                #test silence
+                reader = BLANK_PCM_Reader(5)
+                if (compression is None):
+                    track = self.audio_class.from_pcm(temp.name, reader)
+                else:
+                    track = self.audio_class.from_pcm(temp.name, reader,
+                                                      compression)
+                counter = FrameCounter(2, 16, 44100)
+                audiotools.transfer_framelist_data(track.to_pcm(),
+                                                   counter.update)
+                self.assertEqual(int(counter), 5)
+
+                #test random noise
+                reader = RANDOM_PCM_Reader(5)
+                if (compression is None):
+                    track = self.audio_class.from_pcm(temp.name, reader)
+                else:
+                    track = self.audio_class.from_pcm(temp.name, reader,
+                                                      compression)
+                counter = FrameCounter(2, 16, 44100)
+                audiotools.transfer_framelist_data(track.to_pcm(),
+                                                   counter.update)
+                self.assertEqual(int(counter), 5)
+
+                # #test randomly-sized chunks of silence
+                # reader = MD5_Reader(Variable_Reader(BLANK_PCM_Reader(10)))
+                # if (compression is None):
+                #     track = self.audio_class.from_pcm(temp.name, reader)
+                # else:
+                #     track = self.audio_class.from_pcm(temp.name, reader,
+                #                                       compression)
+                # audiotools.transfer_framelist_data(track.to_pcm(),
+                #                                    checksum.update)
+
+                # #test randomly-sized chunks of random noise
+                # reader = MD5_Reader(Variable_Reader(RANDOM_PCM_Reader(10)))
+                # if (compression is None):
+                #     track = self.audio_class.from_pcm(temp.name, reader)
+                # else:
+                #     track = self.audio_class.from_pcm(temp.name, reader,
+                #                                       compression)
+                # audiotools.transfer_framelist_data(track.to_pcm(),
+                #                                    checksum.update)
+
+                #test PCMReaders that trigger a DecodingError
+                self.assertRaises(ValueError,
+                                  ERROR_PCM_Reader(ValueError("error"),
+                                                   failure_chance=1.0).read,
+                                  1)
+                self.assertRaises(IOError,
+                                  ERROR_PCM_Reader(IOError("error"),
+                                                   failure_chance=1.0).read,
+                                  1)
+                self.assertRaises(audiotools.EncodingError,
+                                  self.audio_class.from_pcm,
+                                  os.path.join(temp_dir,
+                                               "invalid" + self.suffix),
+                                  ERROR_PCM_Reader(IOError("I/O Error")))
+
+                self.assertEqual(os.path.isfile(
+                        os.path.join(temp_dir,
+                                     "invalid" + self.suffix)),
+                                 False)
+
+                self.assertRaises(audiotools.EncodingError,
+                                  self.audio_class.from_pcm,
+                                  os.path.join(temp_dir,
+                                               "invalid" + self.suffix),
+                                  ERROR_PCM_Reader(IOError("I/O Error")))
+
+                self.assertEqual(os.path.isfile(
+                        os.path.join(temp_dir,
+                                     "invalid" + self.suffix)),
+                                 False)
+
+                #test unwritable output file
+                self.assertRaises(audiotools.EncodingError,
+                                  self.audio_class.from_pcm,
+                                  "/dev/null/foo.%s" % (self.suffix),
+                                  BLANK_PCM_Reader(1))
+
+                #test without suffix
+                # reader = MD5_Reader(BLANK_PCM_Reader(1))
+                # if (compression is None):
+                #     track = self.audio_class.from_pcm(temp2.name, reader)
+                # else:
+                #     track = self.audio_class.from_pcm(temp2.name, reader,
+                #                                       compression)
+                # audiotools.transfer_framelist_data(track.to_pcm(),
+                #                                    checksum.update)
+        finally:
+            temp.close()
+            temp2.close()
+            for f in os.listdir(temp_dir):
+                os.unlink(os.path.join(temp_dir, f))
+            os.rmdir(temp_dir)
 
 
 class AACFileTest(LossyFileTest):

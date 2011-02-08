@@ -203,7 +203,7 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
                    "fast": {"block_size": 44100,
                             "joint_stereo": True,
                             "false_stereo": True,
-                            "wasted_bit": True,
+                            "wasted_bits": True,
                             "decorrelation_passes": 2},
                    "standard": {"block_size": 44100,
                                 "joint_stereo": True,
