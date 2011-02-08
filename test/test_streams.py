@@ -101,283 +101,443 @@ class Generate04(ShortStream):
                              sample_rate, 2, 16)
 
 
-class Sine8_Mono(MD5Reader):
-    def __init__(self, pcm_frames, sample_rate,
+class Sine8_Mono:
+    def __init__(self,
+                 pcm_frames,
+                 sample_rate,
                  f1, a1, f2, a2):
-        self.options = [f1, a2, f2, a2]
-        full_scale = 0x7F
-        self.wave = []
-        delta1 = 2 * math.pi / (sample_rate / f1)
-        delta2 = 2 * math.pi / (sample_rate / f2)
-        theta1 = theta2 = 0.0
-        for i in xrange(pcm_frames):
-            self.wave.append(int(((a1 * math.sin(theta1) + a2 *
-                                   math.sin(theta2)) * full_scale) + 0.5))
-            theta1 += delta1
-            theta2 += delta2
+        self.f1 = f1
+        self.a1 = a1
+        self.f2 = f2
+        self.a2 = a2
+        self.full_scale = 0x7F
+        self.delta1 = 2 * math.pi / (sample_rate / f1)
+        self.delta2 = 2 * math.pi / (sample_rate / f2)
+        self.theta1 = self.theta2 = 0.0
 
-        MD5Reader.__init__(self,
-                           FrameListReader(self.wave,
-                                           sample_rate,
-                                           1,
-                                           8))
-
-    def reset(self):
-        self.pcmreader = FrameListReader(self.wave,
-                                         self.sample_rate,
-                                         1,
-                                         8)
+        self.original_frames = pcm_frames
+        self.pcm_frames = pcm_frames
+        self.sample_rate = sample_rate
+        self.channels = 1
+        self.channel_mask = 0x4
+        self.bits_per_sample = 8
+        self.signed = True
+        self.sample_frame = audiotools.pcm.FrameList("", 1, 8, False, False)
         self.md5 = md5()
 
+    def read(self, bytes):
+        wave = []
+        for i in xrange(min(self.sample_frame.frame_count(bytes),
+                            self.pcm_frames)):
+            wave.append(int(((self.a1 * math.sin(self.theta1) + self.a2 *
+                              math.sin(self.theta2)) * self.full_scale) + 0.5))
+            self.theta1 += self.delta1
+            self.theta2 += self.delta2
+        framelist = audiotools.pcm.from_list(wave,
+                                             self.channels,
+                                             self.bits_per_sample,
+                                             self.signed)
+        self.pcm_frames -= framelist.frames
+        self.md5.update(framelist.to_bytes(False, True))
+        return framelist
+
+    def digest(self):
+        return self.md5.digest()
+
+    def hexdigest(self):
+        return self.md5.hexdigest()
+
+    def reset(self):
+        self.theta1 = self.theta2 = 0.0
+        self.md5 = md5()
+        self.pcm_frames = self.original_frames
+
+    def close(self):
+        self.pcm_frames = 0
+
     def __repr__(self):
-        return "Sine(%s,%s,%s,%s)" % \
-            (self.sample_rate,
-             self.channels,
-             self.bits_per_sample,
-             ",".join(map(repr, self.options)))
+        return "Sine8_Mono(%s, %s, %s, %s, %s, %s)" % \
+            (repr(self.pcm_frames),
+             repr(self.sample_rate),
+             repr(self.f1),
+             repr(self.a1),
+             repr(self.f2),
+             repr(self.a2))
 
 
-class Sine8_Stereo(MD5Reader):
+class Sine8_Stereo(Sine8_Mono):
     def __init__(self, pcm_frames, sample_rate,
                  f1, a1, f2, a2, fmult):
-        self.options = [f1, a2, f2, a2, fmult]
-        full_scale = 0x7F
-        self.wave = []
-        delta1 = 2 * math.pi / (sample_rate / f1)
-        delta2 = 2 * math.pi / (sample_rate / f2)
-        theta1 = theta2 = 0.0
-        for i in xrange(pcm_frames):
-            self.wave.append(int(((a1 * math.sin(theta1) + a2 *
-                                   math.sin(theta2)) * full_scale) + 0.5))
-            self.wave.append(int((-(a1 * math.sin(theta1 * fmult) + a2 *
-                                    math.sin(theta2 * fmult)) * full_scale) +
-                                 0.5))
-            theta1 += delta1
-            theta2 += delta2
+        self.f1 = f1
+        self.a1 = a1
+        self.f2 = f2
+        self.a2 = a2
+        self.fmult = fmult
+        self.full_scale = 0x7F
+        self.delta1 = 2 * math.pi / (sample_rate / f1)
+        self.delta2 = 2 * math.pi / (sample_rate / f2)
+        self.theta1 = self.theta2 = 0.0
 
-        MD5Reader.__init__(self,
-                           FrameListReader(self.wave,
-                                           sample_rate,
-                                           2,
-                                           8))
-
-    def reset(self):
-        self.pcmreader = FrameListReader(self.wave,
-                                         self.sample_rate,
-                                         2,
-                                         8)
+        self.original_frames = pcm_frames
+        self.pcm_frames = pcm_frames
+        self.sample_rate = sample_rate
+        self.channels = 2
+        self.channel_mask = 0x3
+        self.bits_per_sample = 8
+        self.signed = True
+        self.sample_frame = audiotools.pcm.FrameList("", 2, 8, False, False)
         self.md5 = md5()
 
+    def read(self, bytes):
+        wave = []
+        for i in xrange(min(self.sample_frame.frame_count(bytes),
+                            self.pcm_frames)):
+            wave.append(int(((self.a1 * math.sin(self.theta1) + self.a2 *
+                              math.sin(self.theta2)) * self.full_scale) + 0.5))
+            wave.append(int((-(self.a1 * math.sin(self.theta1 * self.fmult) +
+                               self.a2 *
+                               math.sin(self.theta2 * self.fmult)) *
+                              self.full_scale) +
+                            0.5))
+            self.theta1 += self.delta1
+            self.theta2 += self.delta2
+
+        framelist = audiotools.pcm.from_list(wave,
+                                             self.channels,
+                                             self.bits_per_sample,
+                                             self.signed)
+        self.pcm_frames -= framelist.frames
+        self.md5.update(framelist.to_bytes(False, True))
+        return framelist
+
     def __repr__(self):
-        return "Sine(%s,%s,%s,%s)" % \
-            (self.sample_rate,
-             self.channels,
-             self.bits_per_sample,
-             ",".join(map(repr, self.options)))
+        return "Sine8_Stereo(%s, %s, %s, %s, %s, %s, %s)" % \
+            (repr(self.pcm_frames),
+             repr(self.sample_rate),
+             repr(self.f1),
+             repr(self.a1),
+             repr(self.f2),
+             repr(self.a2),
+             repr(self.fmult))
 
 
-class Sine16_Mono(MD5Reader):
+class Sine16_Mono(Sine8_Mono):
     def __init__(self, pcm_frames, sample_rate,
                  f1, a1, f2, a2):
-        self.options = [f1, a2, f2, a2]
-        full_scale = 0x7FFF
-        self.wave = []
-        delta1 = 2 * math.pi / (sample_rate / f1)
-        delta2 = 2 * math.pi / (sample_rate / f2)
-        theta1 = theta2 = 0.0
-        for i in xrange(pcm_frames):
-            self.wave.append(int(((a1 * math.sin(theta1) + a2 *
-                                   math.sin(theta2)) * full_scale) + 0.5))
-            theta1 += delta1
-            theta2 += delta2
+        self.f1 = f1
+        self.a1 = a1
+        self.f2 = f2
+        self.a2 = a2
+        self.full_scale = 0x7FFF
+        self.delta1 = 2 * math.pi / (sample_rate / f1)
+        self.delta2 = 2 * math.pi / (sample_rate / f2)
+        self.theta1 = self.theta2 = 0.0
 
-        MD5Reader.__init__(self,
-                           FrameListReader(self.wave,
-                                           sample_rate,
-                                           1,
-                                           16))
-
-    def reset(self):
-        self.pcmreader = FrameListReader(self.wave,
-                                         self.sample_rate,
-                                         1,
-                                         16)
+        self.original_frames = pcm_frames
+        self.pcm_frames = pcm_frames
+        self.sample_rate = sample_rate
+        self.channels = 1
+        self.channel_mask = 0x4
+        self.bits_per_sample = 16
+        self.signed = True
+        self.sample_frame = audiotools.pcm.FrameList("", 1, 16, False, False)
         self.md5 = md5()
 
+    def read(self, bytes):
+        wave = []
+        for i in xrange(min(self.sample_frame.frame_count(bytes),
+                            self.pcm_frames)):
+            wave.append(int(((self.a1 * math.sin(self.theta1) + self.a2 *
+                              math.sin(self.theta2)) * self.full_scale) + 0.5))
+            self.theta1 += self.delta1
+            self.theta2 += self.delta2
+        framelist = audiotools.pcm.from_list(wave,
+                                             self.channels,
+                                             self.bits_per_sample,
+                                             self.signed)
+        self.pcm_frames -= framelist.frames
+        self.md5.update(framelist.to_bytes(False, True))
+        return framelist
+
     def __repr__(self):
-        return "Sine(%s,%s,%s,%s)" % \
-            (self.sample_rate,
-             self.channels,
-             self.bits_per_sample,
-             ",".join(map(repr, self.options)))
+        return "Sine16_Mono(%s, %s, %s, %s, %s, %s)" % \
+            (repr(self.pcm_frames),
+             repr(self.sample_rate),
+             repr(self.f1),
+             repr(self.a1),
+             repr(self.f2),
+             repr(self.a2))
 
 
-class Sine16_Stereo(MD5Reader):
+class Sine16_Stereo(Sine8_Mono):
     def __init__(self, pcm_frames, sample_rate,
                  f1, a1, f2, a2, fmult):
-        self.options = [f1, a2, f2, a2, fmult]
-        full_scale = 0x7FFF
-        self.wave = []
-        delta1 = 2 * math.pi / (sample_rate / f1)
-        delta2 = 2 * math.pi / (sample_rate / f2)
-        theta1 = theta2 = 0.0
-        for i in xrange(pcm_frames):
-            self.wave.append(int(((a1 * math.sin(theta1) + a2 *
-                                   math.sin(theta2)) * full_scale) + 0.5))
-            self.wave.append(int((-(a1 * math.sin(theta1 * fmult) + a2 *
-                                    math.sin(theta2 * fmult)) * full_scale) +
-                                 0.5))
-            theta1 += delta1
-            theta2 += delta2
+        self.f1 = f1
+        self.a1 = a1
+        self.f2 = f2
+        self.a2 = a2
+        self.fmult = fmult
+        self.full_scale = 0x7FFF
+        self.delta1 = 2 * math.pi / (sample_rate / f1)
+        self.delta2 = 2 * math.pi / (sample_rate / f2)
+        self.theta1 = self.theta2 = 0.0
 
-        MD5Reader.__init__(self,
-                           FrameListReader(self.wave,
-                                           sample_rate,
-                                           2,
-                                           16))
-
-    def reset(self):
-        self.pcmreader = FrameListReader(self.wave,
-                                         self.sample_rate,
-                                         2,
-                                         16)
+        self.original_frames = pcm_frames
+        self.pcm_frames = pcm_frames
+        self.sample_rate = sample_rate
+        self.channels = 2
+        self.channel_mask = 0x3
+        self.bits_per_sample = 16
+        self.signed = True
+        self.sample_frame = audiotools.pcm.FrameList("", 2, 16, False, False)
         self.md5 = md5()
 
+    def read(self, bytes):
+        wave = []
+        for i in xrange(min(self.sample_frame.frame_count(bytes),
+                            self.pcm_frames)):
+            wave.append(int(((self.a1 * math.sin(self.theta1) + self.a2 *
+                              math.sin(self.theta2)) * self.full_scale) + 0.5))
+            wave.append(int((-(self.a1 * math.sin(self.theta1 * self.fmult) +
+                               self.a2 *
+                               math.sin(self.theta2 * self.fmult)) *
+                              self.full_scale) +
+                            0.5))
+            self.theta1 += self.delta1
+            self.theta2 += self.delta2
+
+        framelist = audiotools.pcm.from_list(wave,
+                                             self.channels,
+                                             self.bits_per_sample,
+                                             self.signed)
+        self.pcm_frames -= framelist.frames
+        self.md5.update(framelist.to_bytes(False, True))
+        return framelist
+
     def __repr__(self):
-        return "Sine(%s,%s,%s,%s)" % \
-            (self.sample_rate,
-             self.channels,
-             self.bits_per_sample,
-             ",".join(map(repr, self.options)))
+        return "Sine16_Stereo(%s, %s, %s, %s, %s, %s, %s)" % \
+            (repr(self.pcm_frames),
+             repr(self.sample_rate),
+             repr(self.f1),
+             repr(self.a1),
+             repr(self.f2),
+             repr(self.a2),
+             repr(self.fmult))
 
 
-class Sine24_Mono(MD5Reader):
+class Sine24_Mono(Sine8_Mono):
     def __init__(self, pcm_frames, sample_rate,
                  f1, a1, f2, a2):
-        self.options = [f1, a2, f2, a2]
-        full_scale = 0x7FFFFF
-        self.wave = []
-        delta1 = 2 * math.pi / (sample_rate / f1)
-        delta2 = 2 * math.pi / (sample_rate / f2)
-        theta1 = theta2 = 0.0
-        for i in xrange(pcm_frames):
-            self.wave.append(int(((a1 * math.sin(theta1) + a2 *
-                                   math.sin(theta2)) * full_scale) + 0.5))
-            theta1 += delta1
-            theta2 += delta2
+        self.f1 = f1
+        self.a1 = a1
+        self.f2 = f2
+        self.a2 = a2
+        self.full_scale = 0x7FFFFF
+        self.delta1 = 2 * math.pi / (sample_rate / f1)
+        self.delta2 = 2 * math.pi / (sample_rate / f2)
+        self.theta1 = self.theta2 = 0.0
 
-        MD5Reader.__init__(self,
-                           FrameListReader(self.wave,
-                                           sample_rate,
-                                           1,
-                                           24))
-
-    def reset(self):
-        self.pcmreader = FrameListReader(self.wave,
-                                         self.sample_rate,
-                                         1,
-                                         24)
+        self.original_frames = pcm_frames
+        self.pcm_frames = pcm_frames
+        self.sample_rate = sample_rate
+        self.channels = 1
+        self.channel_mask = 0x4
+        self.bits_per_sample = 24
+        self.signed = True
+        self.sample_frame = audiotools.pcm.FrameList("", 1, 24, False, False)
         self.md5 = md5()
 
+    def read(self, bytes):
+        wave = []
+        for i in xrange(min(self.sample_frame.frame_count(bytes),
+                            self.pcm_frames)):
+            wave.append(int(((self.a1 * math.sin(self.theta1) + self.a2 *
+                              math.sin(self.theta2)) * self.full_scale) + 0.5))
+            self.theta1 += self.delta1
+            self.theta2 += self.delta2
+
+        framelist = audiotools.pcm.from_list(wave,
+                                             self.channels,
+                                             self.bits_per_sample,
+                                             self.signed)
+        self.pcm_frames -= framelist.frames
+        self.md5.update(framelist.to_bytes(False, True))
+        return framelist
+
     def __repr__(self):
-        return "Sine(%s,%s,%s,%s)" % \
-            (self.sample_rate,
-             self.channels,
-             self.bits_per_sample,
-             ",".join(map(repr, self.options)))
+        return "Sine24_Mono(%s, %s, %s, %s, %s, %s)" % \
+            (repr(self.pcm_frames),
+             repr(self.sample_rate),
+             repr(self.f1),
+             repr(self.a1),
+             repr(self.f2),
+             repr(self.a2))
 
 
-class Sine24_Stereo(MD5Reader):
+class Sine24_Stereo(Sine8_Stereo):
     def __init__(self, pcm_frames, sample_rate,
                  f1, a1, f2, a2, fmult):
-        self.options = [f1, a2, f2, a2, fmult]
-        full_scale = 0x7FFFFF
-        self.wave = []
-        delta1 = 2 * math.pi / (sample_rate / f1)
-        delta2 = 2 * math.pi / (sample_rate / f2)
-        theta1 = theta2 = 0.0
-        for i in xrange(pcm_frames):
-            self.wave.append(int(((a1 * math.sin(theta1) + a2 *
-                                   math.sin(theta2)) * full_scale) + 0.5))
-            self.wave.append(int((-(a1 * math.sin(theta1 * fmult) + a2 *
-                                    math.sin(theta2 * fmult)) * full_scale) +
-                                 0.5))
-            theta1 += delta1
-            theta2 += delta2
+        self.f1 = f1
+        self.a1 = a1
+        self.f2 = f2
+        self.a2 = a2
+        self.fmult = fmult
+        self.full_scale = 0x7FFFFF
+        self.delta1 = 2 * math.pi / (sample_rate / f1)
+        self.delta2 = 2 * math.pi / (sample_rate / f2)
+        self.theta1 = self.theta2 = 0.0
 
-        MD5Reader.__init__(self,
-                           FrameListReader(self.wave,
-                                           sample_rate,
-                                           2,
-                                           24))
-
-    def reset(self):
-        self.pcmreader = FrameListReader(self.wave,
-                                         self.sample_rate,
-                                         2,
-                                         24)
+        self.original_frames = pcm_frames
+        self.pcm_frames = pcm_frames
+        self.sample_rate = sample_rate
+        self.channels = 2
+        self.channel_mask = 0x3
+        self.bits_per_sample = 24
+        self.signed = True
+        self.sample_frame = audiotools.pcm.FrameList("", 2, 24, False, False)
         self.md5 = md5()
 
+    def read(self, bytes):
+        wave = []
+        for i in xrange(min(self.sample_frame.frame_count(bytes),
+                            self.pcm_frames)):
+            wave.append(int(((self.a1 * math.sin(self.theta1) + self.a2 *
+                              math.sin(self.theta2)) * self.full_scale) + 0.5))
+            wave.append(int((-(self.a1 * math.sin(self.theta1 * self.fmult) +
+                               self.a2 *
+                               math.sin(self.theta2 * self.fmult)) *
+                              self.full_scale) +
+                            0.5))
+            self.theta1 += self.delta1
+            self.theta2 += self.delta2
+
+        framelist = audiotools.pcm.from_list(wave,
+                                             self.channels,
+                                             self.bits_per_sample,
+                                             self.signed)
+        self.pcm_frames -= framelist.frames
+        self.md5.update(framelist.to_bytes(False, True))
+        return framelist
+
     def __repr__(self):
-        return "Sine(%s,%s,%s,%s)" % \
-            (self.sample_rate,
-             self.channels,
-             self.bits_per_sample,
-             ",".join(map(repr, self.options)))
+        return "Sine24_Stereo(%s, %s, %s, %s, %s, %s, %s)" % \
+            (repr(self.pcm_frames),
+             repr(self.sample_rate),
+             repr(self.f1),
+             repr(self.a1),
+             repr(self.f2),
+             repr(self.a2),
+             repr(self.fmult))
 
 
-class Simple_Sine(MD5Reader):
+class Simple_Sine:
     def __init__(self, pcm_frames, sample_rate, channel_mask,
                  bits_per_sample, *values):
-        """Each values is as (max_value, count) tuple for each channel."""
+        self.pcm_frames = pcm_frames
+        self.total_frames = pcm_frames
+        self.i = 0
+        self.channel_max_values = [v[0] for v in values]
+        self.channel_counts = [v[1] for v in values]
 
-        self.wave = [0] * (pcm_frames * len(values))
-        for (i, (max_value, count)) in enumerate(values):
-            self.wave[i::len(values)] = [
-                int(round(max_value *
-                          math.sin((((math.pi * 2) * (j % count))) / count)))
-                for j in xrange(pcm_frames)]
+        self.sample_rate = sample_rate
+        self.channels = len(values)
+        self.channel_mask = channel_mask
+        self.bits_per_sample = bits_per_sample
+        self.signed = True
+        self.sample_frame = audiotools.pcm.FrameList("",
+                                                     self.channels,
+                                                     self.bits_per_sample,
+                                                     False,
+                                                     False)
+        self.md5 = md5()
 
-        MD5Reader.__init__(self,
-                           FrameListReader(self.wave,
-                                           sample_rate,
-                                           len(values),
-                                           bits_per_sample,
-                                           channel_mask))
+    def read(self, bytes):
+        frames = []
+        for i in xrange(min(self.sample_frame.frame_count(bytes),
+                            self.pcm_frames)):
+            frames.append(
+                audiotools.pcm.from_list(
+                    [int(round(max_value *
+                               math.sin((((math.pi * 2) *
+                                          (self.i % count))) / count)))
+                     for (max_value, count) in zip(self.channel_max_values,
+                                                   self.channel_counts)],
+                    self.channels,
+                    self.bits_per_sample,
+                    True))
+            self.i += 1
+        if (len(frames) > 0):
+            framelist = audiotools.pcm.from_frames(frames)
+        else:
+            framelist = self.sample_frame
+        self.pcm_frames -= framelist.frames
+        self.md5.update(framelist.to_bytes(False, True))
+        return framelist
 
     def reset(self):
-        self.pcmreader = FrameListReader(self.wave,
-                                         self.sample_rate,
-                                         self.channels,
-                                         self.bits_per_sample,
-                                         self.channel_mask)
-
+        self.i = 0
+        self.pcm_frames = self.total_frames
         self.md5 = md5()
+
+    def digest(self):
+        return self.md5.digest()
+
+    def hexdigest(self):
+        return self.md5.hexdigest()
+
+    def close(self):
+        self.pcm_frames = 0
 
     def __repr__(self):
         return "Simple_Sine()"
 
 
-class WastedBPS16(MD5Reader):
+class WastedBPS16:
     def __init__(self, pcm_frames):
-        l = [(i % 2000) << 2 for i in xrange(pcm_frames)]
-        r = [(i % 1000) << 3 for i in xrange(pcm_frames)]
-        self.wave = [0] * (len(l) + len(r))
-        self.wave[0::2] = l
-        self.wave[1::2] = r
+        self.total_frames = pcm_frames
+        self.pcm_frames = pcm_frames
 
-        MD5Reader.__init__(self,
-                           FrameListReader(self.wave,
-                                           44100,
-                                           2,
-                                           16))
+        self.i = 0
+        self.sample_rate = 44100
+        self.channels = 2
+        self.channel_mask = 0x3
+        self.bits_per_sample = 16
+        self.signed = True
+        self.sample_frame = audiotools.pcm.FrameList("", 2, 16, False, False)
+        self.md5 = md5()
+
+    def read(self, bytes):
+        wave = []
+        for i in xrange(min(self.sample_frame.frame_count(bytes),
+                            self.pcm_frames)):
+            wave.append((self.i % 2000) << 2)
+            wave.append((self.i % 1000) << 3)
+            self.i += 1
+
+        framelist = audiotools.pcm.from_list(wave,
+                                             self.channels,
+                                             self.bits_per_sample,
+                                             self.signed)
+        self.pcm_frames -= framelist.frames
+        self.md5.update(framelist.to_bytes(False, True))
+        return framelist
 
     def reset(self):
-        self.pcmreader = FrameListReader(self.wave,
-                                         self.sample_rate,
-                                         2,
-                                         16)
+        self.i = 0
+        self.pcm_frames = self.total_frames
         self.md5 = md5()
+
+    def digest(self):
+        return self.md5.digest()
+
+    def hexdigest(self):
+        return self.md5.hexdigest()
+
+    def close(self):
+        self.pcm_frames = 0
+
+    def __repr__(self):
+        return "WastedBPS(%s)" % (repr(self.pcm_frames))
 
 
 class Raw(audiotools.PCMReader):

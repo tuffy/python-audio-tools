@@ -12999,7 +12999,7 @@ class TestShortenCodec(unittest.TestCase):
     def test_sines(self):
         for g in self.__stream_variations__():
             self.__test_reader__(g,
-                                 len(g.wave) / 2,
+                                 g.pcm_frames,
                                  block_size=256)
 
     @TEST_SHORTEN
