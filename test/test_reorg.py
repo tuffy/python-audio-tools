@@ -943,8 +943,7 @@ class LossyFileTest(AudioFileTest):
         finally:
             temp.close()
 
-    # @FORMAT_LOSSY
-    @LIB_CUSTOM
+    @FORMAT_LOSSY
     def test_pcm(self):
         if (self.audio_class is audiotools.AudioFile):
             return
@@ -964,7 +963,10 @@ class LossyFileTest(AudioFileTest):
                 counter = FrameCounter(2, 16, 44100)
                 audiotools.transfer_framelist_data(track.to_pcm(),
                                                    counter.update)
-                self.assertEqual(int(counter), 5)
+                self.assertEqual(int(counter), 5,
+                                 "mismatch encoding %s at quality %s" % \
+                                     (self.audio_class.NAME,
+                                      compression))
 
                 #test random noise
                 reader = RANDOM_PCM_Reader(5)
@@ -976,27 +978,42 @@ class LossyFileTest(AudioFileTest):
                 counter = FrameCounter(2, 16, 44100)
                 audiotools.transfer_framelist_data(track.to_pcm(),
                                                    counter.update)
-                self.assertEqual(int(counter), 5)
+                self.assertEqual(int(counter), 5,
+                                 "mismatch encoding %s at quality %s" % \
+                                     (self.audio_class.NAME,
+                                      compression))
 
-                # #test randomly-sized chunks of silence
-                # reader = MD5_Reader(Variable_Reader(BLANK_PCM_Reader(10)))
-                # if (compression is None):
-                #     track = self.audio_class.from_pcm(temp.name, reader)
-                # else:
-                #     track = self.audio_class.from_pcm(temp.name, reader,
-                #                                       compression)
-                # audiotools.transfer_framelist_data(track.to_pcm(),
-                #                                    checksum.update)
+                #test randomly-sized chunks of silence
+                reader = Variable_Reader(BLANK_PCM_Reader(5))
+                if (compression is None):
+                    track = self.audio_class.from_pcm(temp.name, reader)
+                else:
+                    track = self.audio_class.from_pcm(temp.name, reader,
+                                                      compression)
 
-                # #test randomly-sized chunks of random noise
-                # reader = MD5_Reader(Variable_Reader(RANDOM_PCM_Reader(10)))
-                # if (compression is None):
-                #     track = self.audio_class.from_pcm(temp.name, reader)
-                # else:
-                #     track = self.audio_class.from_pcm(temp.name, reader,
-                #                                       compression)
-                # audiotools.transfer_framelist_data(track.to_pcm(),
-                #                                    checksum.update)
+                counter = FrameCounter(2, 16, 44100)
+                audiotools.transfer_framelist_data(track.to_pcm(),
+                                                   counter.update)
+                self.assertEqual(int(counter), 5,
+                                 "mismatch encoding %s at quality %s" % \
+                                     (self.audio_class.NAME,
+                                      compression))
+
+                #test randomly-sized chunks of random noise
+                reader = Variable_Reader(RANDOM_PCM_Reader(5))
+                if (compression is None):
+                    track = self.audio_class.from_pcm(temp.name, reader)
+                else:
+                    track = self.audio_class.from_pcm(temp.name, reader,
+                                                      compression)
+
+                counter = FrameCounter(2, 16, 44100)
+                audiotools.transfer_framelist_data(track.to_pcm(),
+                                                   counter.update)
+                self.assertEqual(int(counter), 5,
+                                 "mismatch encoding %s at quality %s" % \
+                                     (self.audio_class.NAME,
+                                      compression))
 
                 #test PCMReaders that trigger a DecodingError
                 self.assertRaises(ValueError,
@@ -1036,14 +1053,20 @@ class LossyFileTest(AudioFileTest):
                                   BLANK_PCM_Reader(1))
 
                 #test without suffix
-                # reader = MD5_Reader(BLANK_PCM_Reader(1))
-                # if (compression is None):
-                #     track = self.audio_class.from_pcm(temp2.name, reader)
-                # else:
-                #     track = self.audio_class.from_pcm(temp2.name, reader,
-                #                                       compression)
-                # audiotools.transfer_framelist_data(track.to_pcm(),
-                #                                    checksum.update)
+                reader = BLANK_PCM_Reader(5)
+                if (compression is None):
+                    track = self.audio_class.from_pcm(temp2.name, reader)
+                else:
+                    track = self.audio_class.from_pcm(temp2.name, reader,
+                                                      compression)
+                    
+                counter = FrameCounter(2, 16, 44100)
+                audiotools.transfer_framelist_data(track.to_pcm(),
+                                                   counter.update)
+                self.assertEqual(int(counter), 5,
+                                 "mismatch encoding %s at quality %s" % \
+                                     (self.audio_class.NAME,
+                                      compression))
         finally:
             temp.close()
             temp2.close()

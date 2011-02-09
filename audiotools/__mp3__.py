@@ -159,12 +159,12 @@ class MP3Audio(AudioFile):
     DEFAULT_COMPRESSION = "2"
     #0 is better quality/lower compression
     #9 is worse quality/higher compression
-    COMPRESSION_MODES = ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+    COMPRESSION_MODES = ("0", "1", "2", "3", "4", "5", "6",
                          "medium", "standard", "extreme", "insane")
     COMPRESSION_DESCRIPTIONS = {"0":_(u"high quality, larger files, " +
                                       u"corresponds to lame's -V0"),
-                                "9":_(u"lower quality, smaller files, " +
-                                      u"corresponds to lame's -V9"),
+                                "6":_(u"lower quality, smaller files, " +
+                                      u"corresponds to lame's -V6"),
                                 "medium":_(u"corresponds to lame's " +
                                            u"--preset medium"),
                                 "standard":_(u"corresponds to lame's " +
