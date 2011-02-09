@@ -27,6 +27,7 @@ from hashlib import md5
 import random
 import decimal
 import test_streams
+from audiotools import Con
 
 parser = ConfigParser.SafeConfigParser()
 parser.read("test.cfg")
@@ -196,6 +197,11 @@ class FrameCounter:
                          (self.channels *
                           (self.bits_per_sample / 8) *
                           self.sample_rate)))
+
+def run_analysis(pcmreader):
+    f = pcmreader.analyze_frame()
+    while (f is not None):
+        f = pcmreader.analyze_frame()
 
 
 #probstat does this better, but I don't want to require that
@@ -1520,16 +1526,10 @@ class ALACFileTest(LosslessFileTest):
             temp.close()
 
     @FORMAT_ALAC
-    def test_to_pcm_error(self):
-        def run_analysis(pcmreader):
-            f = pcmreader.analyze_frame()
-            while (f is not None):
-                f = pcmreader.analyze_frame()
+    def test_verify(self):
+        alac_data = open("alac-allframes.m4a", "rb").read()
 
-        f = open("alac-allframes.m4a", "rb")
-        alac_data = f.read()
-        f.close()
-
+        #test truncating the mdat atom triggers IOError
         temp = tempfile.NamedTemporaryFile(suffix='.m4a')
         try:
             for i in xrange(0x16CD, len(alac_data)):
@@ -1546,11 +1546,12 @@ class ALACFileTest(LosslessFileTest):
                 decoder = audiotools.open(temp.name).to_pcm()
                 self.assertNotEqual(decoder, None)
                 self.assertRaises(IOError, run_analysis, decoder)
+                self.assertRaises(audiotools.InvalidFile,
+                                  audiotools.open(temp.name).verify)
         finally:
             temp.close()
 
-    @FORMAT_ALAC
-    def test_convert_error(self):
+        #test a truncated file's convert() method raises EncodingError
         temp = tempfile.NamedTemporaryFile(suffix=".m4a")
         try:
             temp.write(open("alac-allframes.m4a", "rb").read()[0:-10])
@@ -1723,6 +1724,204 @@ class FlacFileTest(LosslessFileTest):
         finally:
             temp.close()
 
+    @FORMAT_FLAC
+    def test_verify(self):
+        self.assertEqual(audiotools.open("flac-allframes.flac").__md5__,
+                         'f53f86876dcd7783225c93ba8a938c7d'.decode('hex'))
+
+        flac_data = open("flac-allframes.flac", "rb").read()
+
+        self.assertEqual(audiotools.open("flac-allframes.flac").verify(),
+                         True)
+
+        #try changing the file underfoot
+        temp = tempfile.NamedTemporaryFile(suffix=".flac")
+        try:
+            temp.write(flac_data)
+            temp.flush()
+            flac_file = audiotools.open(temp.name)
+            self.assertEqual(flac_file.verify(), True)
+
+            for i in xrange(0, len(flac_data)):
+                f = open(temp.name, "wb")
+                f.write(flac_data[0:i])
+                f.close()
+                self.assertRaises(audiotools.InvalidFile,
+                                  flac_file.verify)
+
+            for i in xrange(0x2A, len(flac_data)):
+                for j in xrange(8):
+                    new_data = list(flac_data)
+                    new_data[i] = chr(ord(new_data[i]) ^ (1 << j))
+                    f = open(temp.name, "wb")
+                    f.write("".join(new_data))
+                    f.close()
+                    self.assertRaises(audiotools.InvalidFile,
+                                      flac_file.verify)
+        finally:
+            temp.close()
+
+        #check a FLAC file with a short header
+        temp = tempfile.NamedTemporaryFile(suffix=".flac")
+        try:
+            for i in xrange(0, 0x2A):
+                temp.seek(0, 0)
+                temp.write(flac_data[0:i])
+                temp.flush()
+                self.assertEqual(os.path.getsize(temp.name), i)
+                if (i < 8):
+                    f = open(temp.name, 'rb')
+                    self.assertEqual(audiotools.FlacAudio.is_type(f), False)
+                    f.close()
+                self.assertRaises(IOError,
+                                  audiotools.decoders.FlacDecoder,
+                                  temp.name, 1)
+        finally:
+            temp.close()
+
+        #check a FLAC file that's been truncated
+        temp = tempfile.NamedTemporaryFile(suffix=".flac")
+        try:
+            for i in xrange(0x2A, len(flac_data)):
+                temp.seek(0, 0)
+                temp.write(flac_data[0:i])
+                temp.flush()
+                self.assertEqual(os.path.getsize(temp.name), i)
+                decoder = audiotools.open(temp.name).to_pcm()
+                self.assertNotEqual(decoder, None)
+                self.assertRaises(IOError,
+                                  audiotools.transfer_framelist_data,
+                                  decoder, lambda x: x)
+
+                decoder = audiotools.open(temp.name).to_pcm()
+                self.assertNotEqual(decoder, None)
+                self.assertRaises(IOError, run_analysis, decoder)
+                self.assertRaises(audiotools.InvalidFile,
+                                  audiotools.open(temp.name).verify)
+        finally:
+            temp.close()
+
+        #test a FLAC file with a single swapped bit
+        temp = tempfile.NamedTemporaryFile(suffix=".flac")
+        try:
+            for i in xrange(0x2A, len(flac_data)):
+                for j in xrange(8):
+                    bytes = map(ord, flac_data[:])
+                    bytes[i] ^= (1 << j)
+                    temp.seek(0, 0)
+                    temp.write("".join(map(chr, bytes)))
+                    temp.flush()
+                    self.assertEqual(len(flac_data),
+                                     os.path.getsize(temp.name))
+
+                    decoders = audiotools.open(temp.name).to_pcm()
+                    try:
+                        self.assertRaises(ValueError,
+                                          audiotools.transfer_framelist_data,
+                                          decoders, lambda x: x)
+                    except IOError:
+                        #Randomly swapping bits may send the decoder
+                        #off the end of the stream before triggering
+                        #a CRC-16 error.
+                        #We simply need to catch that case and continue on.
+                        continue
+        finally:
+            temp.close()
+
+        #test a FLAC file with an invalid STREAMINFO block
+        mismatch_streaminfos = [
+            Con.Container(minimum_blocksize=4096,
+                          maximum_blocksize=4096,
+                          minimum_framesize=12,
+                          maximum_framesize=12,
+                          samplerate=44101,
+                          channels=0,
+                          bits_per_sample=15,
+                          total_samples=80,
+                          md5=[245, 63, 134, 135, 109, 205, 119,
+                               131, 34, 92, 147, 186, 138, 147,
+                               140, 125]),
+            Con.Container(minimum_blocksize=4096,
+                          maximum_blocksize=4096,
+                          minimum_framesize=12,
+                          maximum_framesize=12,
+                          samplerate=44100,
+                          channels=1,
+                          bits_per_sample=15,
+                          total_samples=80,
+                          md5=[245, 63, 134, 135, 109, 205, 119,
+                               131, 34, 92, 147, 186, 138, 147,
+                               140, 125]),
+            Con.Container(minimum_blocksize=4096,
+                          maximum_blocksize=4096,
+                          minimum_framesize=12,
+                          maximum_framesize=12,
+                          samplerate=44100,
+                          channels=0,
+                          bits_per_sample=7,
+                          total_samples=80,
+                          md5=[245, 63, 134, 135, 109, 205, 119,
+                               131, 34, 92, 147, 186, 138, 147,
+                               140, 125]),
+            Con.Container(minimum_blocksize=4096,
+                          maximum_blocksize=1,
+                          minimum_framesize=12,
+                          maximum_framesize=12,
+                          samplerate=44100,
+                          channels=0,
+                          bits_per_sample=15,
+                          total_samples=80,
+                          md5=[245, 63, 134, 135, 109, 205, 119,
+                               131, 34, 92, 147, 186, 138, 147,
+                               140, 125]),
+            Con.Container(minimum_blocksize=4096,
+                          maximum_blocksize=1,
+                          minimum_framesize=12,
+                          maximum_framesize=12,
+                          samplerate=44100,
+                          channels=0,
+                          bits_per_sample=15,
+                          total_samples=80,
+                          md5=[246, 63, 134, 135, 109, 205, 119,
+                               131, 34, 92, 147, 186, 138, 147,
+                               140, 125])]
+
+        header = flac_data[0:8]
+        data = flac_data[0x2A:]
+
+        for streaminfo in mismatch_streaminfos:
+            temp = tempfile.NamedTemporaryFile(suffix=".flac")
+            try:
+                temp.seek(0, 0)
+                temp.write(header)
+                temp.write(audiotools.FlacAudio.STREAMINFO.build(streaminfo)),
+                temp.write(data)
+                temp.flush()
+                decoders = audiotools.open(temp.name).to_pcm()
+                self.assertRaises(ValueError,
+                                  audiotools.transfer_framelist_data,
+                                  decoders, lambda x: x)
+            finally:
+                temp.close()
+
+        #test that convert() from an invalid file also raises an exception
+        temp = tempfile.NamedTemporaryFile(suffix=".flac")
+        try:
+            temp.write(flac_data[0:-10])
+            temp.flush()
+            flac = audiotools.open(temp.name)
+            if (os.path.isfile("dummy.wav")):
+                os.unlink("dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+            self.assertRaises(audiotools.EncodingError,
+                              flac.convert,
+                              "dummy.wav",
+                              audiotools.WaveAudio)
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+        finally:
+            temp.close()
+
+
 
 class M4AFileTest(LossyFileTest):
     def setUp(self):
@@ -1764,7 +1963,74 @@ class MP3FileTest(LossyFileTest):
             temp.close()
 
 
-class OggFlacFileTest(LosslessFileTest):
+class OggVerify:
+    @FORMAT_VORBIS
+    @FORMAT_OGGFLAC
+    def test_verify(self):
+        good_file = tempfile.NamedTemporaryFile(suffix=self.suffix)
+        bad_file = tempfile.NamedTemporaryFile(suffix=self.suffix)
+        try:
+            good_track = self.audio_class.from_pcm(
+                good_file.name,
+                BLANK_PCM_Reader(1))
+            good_file.seek(0, 0)
+            good_file_data = good_file.read()
+            self.assertEqual(len(good_file_data),
+                             os.path.getsize(good_file.name))
+            bad_file.write(good_file_data)
+            bad_file.flush()
+
+            track = audiotools.open(bad_file.name)
+            self.assertEqual(track.verify(), True)
+
+            #first, try truncating the file
+            for i in xrange(len(good_file_data)):
+                f = open(bad_file.name, "wb")
+                f.write(good_file_data[0:i])
+                f.flush()
+                self.assertEqual(os.path.getsize(bad_file.name), i)
+                self.assertRaises(audiotools.InvalidFile,
+                                  track.verify)
+
+            #then, try flipping a bit
+            for i in xrange(len(good_file_data)):
+                for j in xrange(8):
+                    bad_file_data = list(good_file_data)
+                    bad_file_data[i] = chr(ord(bad_file_data[i]) ^ (1 << j))
+                    f = open(bad_file.name, "wb")
+                    f.write("".join(bad_file_data))
+                    f.close()
+                    self.assertEqual(os.path.getsize(bad_file.name),
+                                     len(good_file_data))
+                    self.assertRaises(audiotools.InvalidFile,
+                                      track.verify)
+        finally:
+            good_file.close()
+            bad_file.close()
+
+        temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
+        try:
+            track = self.audio_class.from_pcm(
+                temp.name,
+                BLANK_PCM_Reader(1))
+            self.assertEqual(track.verify(), True)
+            good_data = open(temp.name, 'rb').read()
+            f = open(temp.name, 'wb')
+            f.write(good_data[0:100])
+            f.close()
+            if (os.path.isfile("dummy.wav")):
+                os.unlink("dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+            self.assertRaises(audiotools.EncodingError,
+                              track.convert,
+                              "dummy.wav",
+                              audiotools.WaveAudio)
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+        finally:
+            temp.close()
+
+
+class OggFlacFileTest(OggVerify, LosslessFileTest):
     def setUp(self):
         self.audio_class = audiotools.OggFlacAudio
         self.suffix = "." + self.audio_class.SUFFIX
@@ -1788,14 +2054,164 @@ class ShortenFileTest(LosslessFileTest):
         finally:
             temp.close()
 
+    @FORMAT_SHORTEN
+    def test_verify(self):
+        def first_non_header(filename):
+            d = audiotools.open(filename).to_pcm()
+            return d.analyze_frame()['offset']
+
+        def last_byte(filename):
+            d = audiotools.open(filename).to_pcm()
+            frame = d.analyze_frame()
+            while (frame['command'] != 4):
+                frame = d.analyze_frame()
+            else:
+                return frame['offset']
+
+        def run_analysis(pcmreader):
+            f = pcmreader.analyze_frame()
+            while (f is not None):
+                f = pcmreader.analyze_frame()
+
+        #test changing the file underfoot
+        temp = tempfile.NamedTemporaryFile(suffix=".shn")
+        try:
+            shn_data = open("shorten-frames.shn", "rb").read()
+            temp.write(shn_data)
+            temp.flush()
+            shn_file = audiotools.open(temp.name)
+            self.assertEqual(shn_file.verify(), True)
+
+
+            for i in xrange(0, len(shn_data.rstrip(chr(0)))):
+                f = open(temp.name, "wb")
+                f.write(shn_data[0:i])
+                f.close()
+                self.assertRaises(audiotools.InvalidFile,
+                                  shn_file.verify)
+
+            #unfortunately, Shorten doesn't have any checksumming
+            #or other ways to reliably detect swapped bits
+        finally:
+            temp.close()
+
+        #testing truncating various Shorten files
+        for filename in ["shorten-frames.shn", "shorten-lpc.shn"]:
+            first = first_non_header(filename)
+            last = last_byte(filename) + 1
+
+            f = open(filename, "rb")
+            shn_data = f.read()
+            f.close()
+
+            temp = tempfile.NamedTemporaryFile(suffix=".shn")
+            try:
+                for i in xrange(0, first):
+                    temp.seek(0, 0)
+                    temp.write(shn_data[0:i])
+                    temp.flush()
+                    self.assertEqual(os.path.getsize(temp.name), i)
+                    self.assertRaises(ValueError,
+                                      audiotools.decoders.SHNDecoder,
+                                      temp.name)
+
+                for i in xrange(first, len(shn_data[0:last].rstrip(chr(0)))):
+                    temp.seek(0, 0)
+                    temp.write(shn_data[0:i])
+                    temp.flush()
+                    self.assertEqual(os.path.getsize(temp.name), i)
+                    decoder = audiotools.decoders.SHNDecoder(temp.name)
+                    self.assertNotEqual(decoder, None)
+                    self.assertRaises(IOError,
+                                      decoder.metadata)
+
+                    decoder = audiotools.decoders.SHNDecoder(temp.name)
+                    self.assertNotEqual(decoder, None)
+                    decoder.sample_rate = 44100
+                    decoder.channel_mask = 1
+                    self.assertRaises(IOError,
+                                      audiotools.transfer_framelist_data,
+                                      decoder, lambda x: x)
+
+                    decoder = audiotools.decoders.SHNDecoder(temp.name)
+                    decoder.sample_rate = 44100
+                    decoder.channel_mask = 1
+                    self.assertNotEqual(decoder, None)
+                    self.assertRaises(IOError, run_analysis, decoder)
+            finally:
+                temp.close()
+
+        #test running convert() on a truncated file
+        #triggers EncodingError
+        temp = tempfile.NamedTemporaryFile(suffix=".shn")
+        try:
+            temp.write(open("shorten-frames.shn", "rb").read()[0:-10])
+            temp.flush()
+            flac = audiotools.open(temp.name)
+            if (os.path.isfile("dummy.wav")):
+                os.unlink("dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+            self.assertRaises(audiotools.EncodingError,
+                              flac.convert,
+                              "dummy.wav",
+                              audiotools.WaveAudio)
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+        finally:
+            temp.close()
+
 
 class SpeexFileTest(LossyFileTest):
     def setUp(self):
         self.audio_class = audiotools.SpeexAudio
         self.suffix = "." + self.audio_class.SUFFIX
 
+    @FORMAT_SPEEX
+    def test_verify(self):
+        good_file = tempfile.NamedTemporaryFile(suffix=self.suffix)
+        bad_file = tempfile.NamedTemporaryFile(suffix=self.suffix)
+        try:
+            good_track = self.audio_class.from_pcm(
+                good_file.name,
+                BLANK_PCM_Reader(1))
+            good_file.seek(0, 0)
+            good_file_data = good_file.read()
+            self.assertEqual(len(good_file_data),
+                             os.path.getsize(good_file.name))
+            bad_file.write(good_file_data)
+            bad_file.flush()
 
-class VorbisFileTest(LossyFileTest):
+            track = audiotools.open(bad_file.name)
+            self.assertEqual(track.verify(), True)
+
+            #first, try truncating the file
+            for i in xrange(len(good_file_data)):
+                f = open(bad_file.name, "wb")
+                f.write(good_file_data[0:i])
+                f.flush()
+                self.assertEqual(os.path.getsize(bad_file.name), i)
+                self.assertRaises(audiotools.InvalidFile,
+                                  track.verify)
+
+            #then, try flipping a bit
+            for i in xrange(len(good_file_data)):
+                for j in xrange(8):
+                    bad_file_data = list(good_file_data)
+                    bad_file_data[i] = chr(ord(bad_file_data[i]) ^ (1 << j))
+                    f = open(bad_file.name, "wb")
+                    f.write("".join(bad_file_data))
+                    f.close()
+                    self.assertEqual(os.path.getsize(bad_file.name),
+                                     len(good_file_data))
+                    self.assertRaises(audiotools.InvalidFile,
+                                      track.verify)
+
+            #convert() doesn't seem to error out properly
+        finally:
+            good_file.close()
+            bad_file.close()
+
+
+class VorbisFileTest(OggVerify, LossyFileTest):
     def setUp(self):
         self.audio_class = audiotools.VorbisAudio
         self.suffix = "." + self.audio_class.SUFFIX
@@ -1822,11 +2238,225 @@ class WaveFileTest(LosslessFileTest):
         self.audio_class = audiotools.WaveAudio
         self.suffix = "." + self.audio_class.SUFFIX
 
+    @FORMAT_WAVE
+    def test_verify(self):
+        #test various truncated files with verify()
+        for wav_file in ["wav-8bit.wav",
+                         "wav-1ch.wav",
+                         "wav-2ch.wav",
+                         "wav-6ch.wav"]:
+            temp = tempfile.NamedTemporaryFile(suffix=".wav")
+            try:
+                wav_data = open(wav_file, 'rb').read()
+                temp.write(wav_data)
+                temp.flush()
+                wave = audiotools.open(temp.name)
+
+                #try changing the file out from under it
+                for i in xrange(0, len(wav_data)):
+                    f = open(temp.name, 'wb')
+                    f.write(wav_data[0:i])
+                    f.close()
+                    self.assertEqual(os.path.getsize(temp.name), i)
+                    self.assertRaises(audiotools.InvalidFile,
+                                      wave.verify)
+            finally:
+                temp.close()
+
+        #test running convert() on a truncated file
+        #triggers EncodingError
+        temp = tempfile.NamedTemporaryFile(suffix=".flac")
+        try:
+            temp.write(open("wav-2ch.wav", "rb").read()[0:-10])
+            temp.flush()
+            flac = audiotools.open(temp.name)
+            if (os.path.isfile("dummy.wav")):
+                os.unlink("dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+            self.assertRaises(audiotools.EncodingError,
+                              flac.convert,
+                              "dummy.wav",
+                              audiotools.WaveAudio)
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+        finally:
+            temp.close()
+
+        #test other truncated file combinations
+        for (fmt_size, wav_file) in [(0x24, "wav-8bit.wav"),
+                                     (0x24, "wav-1ch.wav"),
+                                     (0x24, "wav-2ch.wav"),
+                                     (0x3C, "wav-6ch.wav")]:
+            f = open(wav_file, 'rb')
+            wav_data = f.read()
+            f.close()
+
+            temp = tempfile.NamedTemporaryFile(suffix=".wav")
+            try:
+                #first, check that a truncated fmt chunk raises an exception
+                #at init-time
+                for i in xrange(0, fmt_size + 8):
+                    temp.seek(0, 0)
+                    temp.write(wav_data[0:i])
+                    temp.flush()
+                    self.assertEqual(os.path.getsize(temp.name), i)
+
+                    self.assertRaises(audiotools.InvalidFile,
+                                      audiotools.WaveAudio,
+                                      temp.name)
+
+                #then, check that a truncated data chunk raises an exception
+                #at read-time
+                for i in xrange(fmt_size + 8, len(wav_data)):
+                    temp.seek(0, 0)
+                    temp.write(wav_data[0:i])
+                    temp.flush()
+                    wave = audiotools.WaveAudio(temp.name)
+                    reader = wave.to_pcm()
+                    self.assertNotEqual(reader, None)
+                    self.assertRaises(IOError,
+                                      audiotools.transfer_framelist_data,
+                                      reader, lambda x: x)
+                    self.assertRaises(audiotools.EncodingError,
+                                      wave.to_wave,
+                                      "dummy.wav")
+                    self.assertRaises(audiotools.EncodingError,
+                                      wave.from_wave,
+                                      "dummy.wav",
+                                      temp.name)
+            finally:
+                temp.close()
+
+        #test for non-ASCII chunk IDs
+        chunks = list(audiotools.open("wav-2ch.wav").chunks()) + \
+            [("fooz", chr(0) * 10)]
+        temp = tempfile.NamedTemporaryFile(suffix=".wav")
+        try:
+            audiotools.WaveAudio.wave_from_chunks(temp.name,
+                                                  iter(chunks))
+            f = open(temp.name, 'rb')
+            wav_data = list(f.read())
+            f.close()
+            wav_data[-15] = chr(0)
+            temp.seek(0, 0)
+            temp.write("".join(wav_data))
+            temp.flush()
+            self.assertRaises(audiotools.InvalidFile,
+                              audiotools.open,
+                              temp.name)
+        finally:
+            temp.close()
+
 
 class WavPackFileTest(LosslessFileTest):
     def setUp(self):
         self.audio_class = audiotools.WavPackAudio
         self.suffix = "." + self.audio_class.SUFFIX
+
+    @FORMAT_WAVPACK
+    def test_verify(self):
+        #test truncating a WavPack file causes verify()
+        #to raise InvalidFile as necessary
+        wavpackdata = open("wavpack-combo.wv", "rb").read()
+        temp = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            self.assertEqual(audiotools.open("wavpack-combo.wv").verify(),
+                             True)
+            temp.write(wavpackdata)
+            temp.flush()
+            test_wavpack = audiotools.open(temp.name)
+            for i in xrange(0, 0x20B):
+                f = open(temp.name, "wb")
+                f.write(wavpackdata[0:i])
+                f.close()
+                self.assertEqual(os.path.getsize(temp.name), i)
+                self.assertRaises(audiotools.InvalidFile,
+                                  test_wavpack.verify)
+
+                #Swapping random bits doesn't affect WavPack's decoding
+                #in many instances - which is surprising since I'd
+                #expect its adaptive routines to be more susceptible
+                #to values being out-of-whack during decorrelation.
+                #This resilience may be related to its hybrid mode,
+                #but it doesn't inspire confidence.
+
+        finally:
+            temp.close()
+
+        #test truncating a WavPack file causes the WavPackDecoder
+        #to raise IOError as necessary
+        from audiotools.decoders import WavPackDecoder
+
+        f = open("silence.wv")
+        wavpack_data = f.read()
+        f.close()
+
+        temp = tempfile.NamedTemporaryFile(suffix=".wv")
+
+        try:
+            for i in xrange(0, len(wavpack_data)):
+                temp.seek(0, 0)
+                temp.write(wavpack_data[0:i])
+                temp.flush()
+                self.assertEqual(os.path.getsize(temp.name), i)
+                try:
+                    decoder = WavPackDecoder(temp.name)
+                except IOError:
+                    #chopping off the first few bytes might trigger
+                    #an IOError at init-time, which is ok
+                    continue
+                self.assertNotEqual(decoder, None)
+                decoder = WavPackDecoder(temp.name)
+                self.assertNotEqual(decoder, None)
+                self.assertRaises(IOError,
+                                  audiotools.transfer_framelist_data,
+                                  decoder, lambda f: f)
+
+                decoder = WavPackDecoder(temp.name)
+                self.assertNotEqual(decoder, None)
+                self.assertRaises(IOError, run_analysis, decoder)
+        finally:
+            temp.close()
+
+        #test a truncated WavPack file's to_pcm() routine
+        #generates DecodingErrors on close
+        temp = tempfile.NamedTemporaryFile(
+            suffix=".wv")
+        try:
+            temp.write(open("wavpack-combo.wv", "rb").read())
+            temp.flush()
+            wavpack = audiotools.open(temp.name)
+            f = open(temp.name, "wb")
+            f.write(open("wavpack-combo.wv", "rb").read()[0:-0x20B])
+            f.close()
+            reader = wavpack.to_pcm()
+            audiotools.transfer_framelist_data(reader, lambda x: x)
+            self.assertRaises(audiotools.DecodingError,
+                              reader.close)
+        finally:
+            temp.close()
+
+        #test a truncated WavPack file's convert() method
+        #generates EncodingErrors
+        temp = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            temp.write(open("wavpack-combo.wv", "rb").read())
+            temp.flush()
+            wavpack = audiotools.open(temp.name)
+            f = open(temp.name, "wb")
+            f.write(open("wavpack-combo.wv", "rb").read()[0:-0x20B])
+            f.close()
+            if (os.path.isfile("dummy.wav")):
+                os.unlink("dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+            self.assertRaises(audiotools.EncodingError,
+                              wavpack.convert,
+                              "dummy.wav",
+                              audiotools.WaveAudio)
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+        finally:
+            temp.close()
 
 
 if (__name__ == '__main__'):
