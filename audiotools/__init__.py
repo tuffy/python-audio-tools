@@ -2790,7 +2790,7 @@ class AudioFile:
         If neither yields a good result, returns 0."""
 
         metadata = self.get_metadata()
-        if (metadata is not None):
+        if ((metadata is not None) and (metadata.album_number > 0)):
             return metadata.album_number
         else:
             try:

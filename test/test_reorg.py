@@ -26,6 +26,7 @@ import os.path
 from hashlib import md5
 import random
 import decimal
+import test_streams
 
 parser = ConfigParser.SafeConfigParser()
 parser.read("test.cfg")
@@ -617,7 +618,6 @@ class AudioFileTest(unittest.TestCase):
         finally:
             temp.close()
 
-    #FIXME
     @FORMAT_AUDIOFILE_PLACEHOLDER
     def test_pcm(self):
         self.assert_(False)
@@ -627,25 +627,342 @@ class AudioFileTest(unittest.TestCase):
     def test_convert(self):
         self.assert_(False)
 
-    #FIXME
-    @FORMAT_AUDIOFILE_PLACEHOLDER
+    @FORMAT_AUDIOFILE
     def test_track_number(self):
-        self.assert_(False)
+        if (self.audio_class is audiotools.AudioFile):
+            return
 
-    #FIXME
-    @FORMAT_AUDIOFILE_PLACEHOLDER
+        temp_dir = tempfile.mkdtemp()
+        try:
+            track = self.audio_class.from_pcm(
+                os.path.join(temp_dir, "abcde" + self.suffix),
+                BLANK_PCM_Reader(1))
+            self.assertEqual(track.track_number(), 0)
+
+            track = self.audio_class.from_pcm(
+                os.path.join(temp_dir, "01 - abcde" + self.suffix),
+                BLANK_PCM_Reader(1))
+            self.assertEqual(track.track_number(), 1)
+
+            track = self.audio_class.from_pcm(
+                os.path.join(temp_dir, "202 - abcde" + self.suffix),
+                BLANK_PCM_Reader(1))
+            self.assertEqual(track.track_number(), 2)
+
+            track = self.audio_class.from_pcm(
+                os.path.join(temp_dir, "303 45 - abcde" + self.suffix),
+                BLANK_PCM_Reader(1))
+            self.assertEqual(track.track_number(), 3)
+
+            track.set_metadata(audiotools.MetaData(track_number=2))
+            metadata = track.get_metadata()
+            if (metadata is not None):
+                self.assertEqual(track.track_number(), 2)
+
+                track = audiotools.open(
+                    os.path.join(temp_dir, "202 - abcde" + self.suffix))
+                track.set_metadata(audiotools.MetaData(track_number=1))
+                self.assertEqual(track.get_metadata().track_number, 1)
+
+                track = audiotools.open(
+                    os.path.join(temp_dir, "01 - abcde" + self.suffix))
+                track.set_metadata(audiotools.MetaData(track_number=3))
+                self.assertEqual(track.get_metadata().track_number, 3)
+
+                track = audiotools.open(
+                    os.path.join(temp_dir, "abcde" + self.suffix))
+                track.set_metadata(audiotools.MetaData(track_number=4))
+                self.assertEqual(track.get_metadata().track_number, 4)
+        finally:
+            for f in os.listdir(temp_dir):
+                os.unlink(os.path.join(temp_dir, f))
+            os.rmdir(temp_dir)
+
+    @FORMAT_AUDIOFILE
     def test_album_number(self):
-        self.assert_(False)
+        if (self.audio_class is audiotools.AudioFile):
+            return
 
-    #FIXME
-    @FORMAT_AUDIOFILE_PLACEHOLDER
+        temp_dir = tempfile.mkdtemp()
+        try:
+            track = self.audio_class.from_pcm(
+                os.path.join(temp_dir, "abcde" + self.suffix),
+                BLANK_PCM_Reader(1))
+            self.assertEqual(track.album_number(), 0)
+
+            track = self.audio_class.from_pcm(
+                os.path.join(temp_dir, "01 - abcde" + self.suffix),
+                BLANK_PCM_Reader(1))
+            self.assertEqual(track.album_number(), 0)
+
+            track = self.audio_class.from_pcm(
+                os.path.join(temp_dir, "202 - abcde" + self.suffix),
+                BLANK_PCM_Reader(1))
+            self.assertEqual(track.album_number(), 2)
+
+            track = self.audio_class.from_pcm(
+                os.path.join(temp_dir, "303 45 - abcde" + self.suffix),
+                BLANK_PCM_Reader(1))
+            self.assertEqual(track.album_number(), 3)
+
+            track.set_metadata(audiotools.MetaData(album_number=2))
+            metadata = track.get_metadata()
+            if (metadata is not None):
+                self.assertEqual(track.album_number(), 2)
+
+                track = audiotools.open(
+                    os.path.join(temp_dir, "202 - abcde" + self.suffix))
+                track.set_metadata(audiotools.MetaData(album_number=1))
+                self.assertEqual(track.album_number(), 1)
+
+                track = audiotools.open(
+                    os.path.join(temp_dir, "01 - abcde" + self.suffix))
+                track.set_metadata(audiotools.MetaData(album_number=3))
+                self.assertEqual(track.album_number(), 3)
+
+                track = audiotools.open(
+                    os.path.join(temp_dir, "abcde" + self.suffix))
+                track.set_metadata(audiotools.MetaData(album_number=4))
+                self.assertEqual(track.album_number(), 4)
+        finally:
+            for f in os.listdir(temp_dir):
+                os.unlink(os.path.join(temp_dir, f))
+            os.rmdir(temp_dir)
+
+    @FORMAT_AUDIOFILE
     def test_track_name(self):
-        self.assert_(False)
+        if (self.audio_class is audiotools.AudioFile):
+            return
 
-    #FIXME
-    @FORMAT_AUDIOFILE_PLACEHOLDER
+        format_template = u"Fo\u00f3 %%(%(field)s)s"
+        #first, test the many unicode string fields
+        for field in audiotools.MetaData.__FIELDS__:
+            if (field not in audiotools.MetaData.__INTEGER_FIELDS__):
+                metadata = audiotools.MetaData()
+                value = u"\u00dcnicode value \u2ec1"
+                setattr(metadata, field, value)
+                format_string = format_template % {u"field":
+                                                       field.decode('ascii')}
+                track_name = self.audio_class.track_name(
+                    file_path="track",
+                    track_metadata=metadata,
+                    format=format_string.encode('utf-8'))
+                self.assert_(len(track_name) > 0)
+                self.assertEqual(
+                    track_name,
+                    (format_template % {u"field": u"foo"} % {u"foo": value}).encode(audiotools.FS_ENCODING))
+
+        #then, check integer fields
+        format_template = u"Fo\u00f3 %(album_number)d %(track_number)2.2d %(album_track_number)s"
+
+        #first, check integers pulled from track metadata
+        for (track_number, album_number, album_track_number) in [
+            (0, 0, u"00"),
+            (1, 0, u"01"),
+            (25, 0, u"25"),
+            (0, 1, u"100"),
+            (1, 1, u"101"),
+            (25, 1, u"125"),
+            (0, 36, u"3600"),
+            (1, 36, u"3601"),
+            (25, 36, u"3625")]:
+            for basepath in ["track",
+                             "/foo/bar/track",
+                             (u"/f\u00f3o/bar/tr\u00e1ck").encode(audiotools.FS_ENCODING)]:
+                metadata = audiotools.MetaData(track_number=track_number,
+                                               album_number=album_number)
+                self.assertEqual(self.audio_class.track_name(
+                        file_path=basepath,
+                        track_metadata=metadata,
+                        format=format_template.encode('utf-8')),
+                                 (format_template % {u"album_number": album_number,
+                                                     u"track_number": track_number,
+                                                     u"album_track_number": album_track_number}).encode('utf-8'))
+
+        #then, check integers pulled from the track filename
+        for metadata in [None, audiotools.MetaData()]:
+            for basepath in ["track",
+                             "/foo/bar/track",
+                             (u"/f\u00f3o/bar/tr\u00e1ck").encode(audiotools.FS_ENCODING)]:
+                self.assertEqual(self.audio_class.track_name(
+                        file_path=basepath + "01",
+                        track_metadata=metadata,
+                        format=format_template.encode('utf-8')),
+                                 (format_template % {u"album_number": 0,
+                                                     u"track_number": 1,
+                                                     u"album_track_number": u"01"}).encode('utf-8'))
+
+                self.assertEqual(self.audio_class.track_name(
+                        file_path=basepath + "track23",
+                        track_metadata=metadata,
+                        format=format_template.encode('utf-8')),
+                                 (format_template % {u"album_number": 0,
+                                                     u"track_number": 23,
+                                                     u"album_track_number": u"23"}).encode('utf-8'))
+
+                self.assertEqual(self.audio_class.track_name(
+                        file_path=basepath + "track123",
+                        track_metadata=metadata,
+                        format=format_template.encode('utf-8')),
+                                 (format_template % {u"album_number": 1,
+                                                     u"track_number": 23,
+                                                     u"album_track_number": u"123"}).encode('utf-8'))
+
+                self.assertEqual(self.audio_class.track_name(
+                        file_path=basepath + "4567",
+                        track_metadata=metadata,
+                        format=format_template.encode('utf-8')),
+                                 (format_template % {u"album_number": 45,
+                                                     u"track_number": 67,
+                                                     u"album_track_number": u"4567"}).encode('utf-8'))
+
+        #then, ensure metadata takes precedence over filename for integers
+        for (track_number, album_number,
+             album_track_number, incorrect) in [(1, 0, u"01", "10"),
+                                               (25, 0, u"25", "52"),
+                                               (1, 1, u"101", "210"),
+                                               (25, 1, u"125", "214"),
+                                               (1, 36, u"3601", "4710"),
+                                               (25, 36, u"3625", "4714")]:
+            for basepath in ["track",
+                             "/foo/bar/track",
+                             (u"/f\u00f3o/bar/tr\u00e1ck").encode(audiotools.FS_ENCODING)]:
+                metadata = audiotools.MetaData(track_number=track_number,
+                                               album_number=album_number)
+                self.assertEqual(self.audio_class.track_name(
+                        file_path=basepath + incorrect,
+                        track_metadata=metadata,
+                        format=format_template.encode('utf-8')),
+                                 (format_template % {u"album_number": album_number,
+                                                     u"track_number": track_number,
+                                                     u"album_track_number": album_track_number}).encode('utf-8'))
+
+        #also, check track_total/album_total from metadata
+        format_template = u"Fo\u00f3 %(track_total)d %(album_total)d"
+        for track_total in [0, 1, 25, 99]:
+            for album_total in [0, 1, 25, 99]:
+                metadata = audiotools.MetaData(track_total=track_total,
+                                               album_total=album_total)
+                self.assertEqual(self.audio_class.track_name(
+                        file_path=basepath + incorrect,
+                        track_metadata=metadata,
+                        format=format_template.encode('utf-8')),
+                                 (format_template % {u"track_total": track_total,
+                                                     u"album_total": album_total}).encode('utf-8'))
+
+        #ensure %(basename)s is set properly
+        format_template = u"Fo\u00f3 %(basename)s"
+        for (path, base) in [("track", "track"),
+                            ("/foo/bar/track", "track"),
+                            ((u"/f\u00f3o/bar/tr\u00e1ck").encode(audiotools.FS_ENCODING), u"tr\u00e1ck")]:
+            for metadata in [None, audiotools.MetaData()]:
+                self.assertEqual(self.audio_class.track_name(
+                        file_path=path,
+                        track_metadata=metadata,
+                        format=format_template.encode('utf-8')),
+                                 (format_template % {u"basename": base}).encode('utf-8'))
+
+        #finally, ensure %(suffix)s is set properly
+        format_template = u"Fo\u00f3 %(suffix)s"
+        for path in ["track",
+                     "/foo/bar/track",
+                     (u"/f\u00f3o/bar/tr\u00e1ck").encode(audiotools.FS_ENCODING)]:
+            for metadata in [None, audiotools.MetaData()]:
+                self.assertEqual(self.audio_class.track_name(
+                        file_path=path,
+                        track_metadata=metadata,
+                        format=format_template.encode('utf-8')),
+                                 (format_template % {u"suffix": self.audio_class.SUFFIX.decode('ascii')}).encode('utf-8'))
+
+    @FORMAT_AUDIOFILE
     def test_replay_gain(self):
-        self.assert_(False)
+        if (self.audio_class.can_add_replay_gain() and
+            self.audio_class.lossless_replay_gain()):
+            track_data1 = test_streams.Sine16_Stereo(44100, 44100,
+                                                     441.0, 0.50,
+                                                     4410.0, 0.49, 1.0)
+
+            track_data2 = test_streams.Sine16_Stereo(66150, 44100,
+                                                     8820.0, 0.70,
+                                                     4410.0, 0.29, 1.0)
+
+            track_data3 = test_streams.Sine16_Stereo(52920, 44100,
+                                                     441.0, 0.50,
+                                                     441.0, 0.49, 0.5)
+
+            track_file1 = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+            track_file2 = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+            track_file3 = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+            try:
+                track1 = self.audio_class.from_pcm(track_file1.name,
+                                                   track_data1)
+                track2 = self.audio_class.from_pcm(track_file2.name,
+                                                   track_data2)
+                track3 = self.audio_class.from_pcm(track_file3.name,
+                                                   track_data3)
+
+                self.assert_(track1.replay_gain() is None)
+                self.assert_(track2.replay_gain() is None)
+                self.assert_(track3.replay_gain() is None)
+
+                self.audio_class.add_replay_gain([track_file1.name,
+                                                  track_file2.name,
+                                                  track_file3.name])
+
+                gains = audiotools.replaygain.ReplayGain(44100)
+
+                track_data1.reset()
+                audiotools.transfer_data(track_data1.read, gains.update)
+                track_gain1 = track1.replay_gain()
+                (track_gain, track_peak) = gains.title_gain()
+                self.assertEqual(round(track_gain1.track_gain, 4),
+                                 round(track_gain, 4))
+                self.assertEqual(round(track_gain1.track_peak, 4),
+                                 round(track_peak, 4))
+
+                track_data2.reset()
+                audiotools.transfer_data(track_data2.read, gains.update)
+                track_gain2 = track2.replay_gain()
+                (track_gain, track_peak) = gains.title_gain()
+                self.assertEqual(round(track_gain2.track_gain, 4),
+                                 round(track_gain, 4))
+                self.assertEqual(round(track_gain2.track_peak, 4),
+                                 round(track_peak, 4))
+
+                track_data3.reset()
+                audiotools.transfer_data(track_data3.read, gains.update)
+                track_gain3 = track3.replay_gain()
+                (track_gain, track_peak) = gains.title_gain()
+                self.assertEqual(round(track_gain3.track_gain, 4),
+                                 round(track_gain, 4))
+                self.assertEqual(round(track_gain3.track_peak, 4),
+                                 round(track_peak, 4))
+
+                album_gains = [round(t.replay_gain().album_gain, 4) for t in
+                               [track1, track2, track3]]
+                self.assertEqual(len(set(album_gains)), 1)
+                album_peaks = [round(t.replay_gain().album_peak, 4) for t in
+                               [track1, track2, track3]]
+                self.assertEqual(len(set(album_peaks)), 1)
+
+                (album_gain, album_peak) = gains.album_gain()
+                self.assertEqual(album_gains[0], round(album_gain, 4))
+                self.assertEqual(album_peaks[0], round(album_peak, 4))
+
+                #FIXME - check that add_replay_gain raises
+                #an exception when files are unreadable
+
+                #FIXME - check that add_replay_gain raises
+                #an exception when files are unwritable
+
+                #FIXME - check that add_replay_gain raises
+                #an exception when reading files produces an error
+
+            finally:
+                track_file1.close()
+                track_file2.close()
+                track_file3.close()
+
 
     #FIXME
     @FORMAT_AUDIOFILE_PLACEHOLDER
@@ -1059,7 +1376,7 @@ class LossyFileTest(AudioFileTest):
                 else:
                     track = self.audio_class.from_pcm(temp2.name, reader,
                                                       compression)
-                    
+
                 counter = FrameCounter(2, 16, 44100)
                 audiotools.transfer_framelist_data(track.to_pcm(),
                                                    counter.update)
@@ -1202,6 +1519,53 @@ class ALACFileTest(LosslessFileTest):
         finally:
             temp.close()
 
+    @FORMAT_ALAC
+    def test_to_pcm_error(self):
+        def run_analysis(pcmreader):
+            f = pcmreader.analyze_frame()
+            while (f is not None):
+                f = pcmreader.analyze_frame()
+
+        f = open("alac-allframes.m4a", "rb")
+        alac_data = f.read()
+        f.close()
+
+        temp = tempfile.NamedTemporaryFile(suffix='.m4a')
+        try:
+            for i in xrange(0x16CD, len(alac_data)):
+                temp.seek(0, 0)
+                temp.write(alac_data[0:i])
+                temp.flush()
+                self.assertEqual(os.path.getsize(temp.name), i)
+                decoder = audiotools.open(temp.name).to_pcm()
+                self.assertNotEqual(decoder, None)
+                self.assertRaises(IOError,
+                                  audiotools.transfer_framelist_data,
+                                  decoder, lambda x: x)
+
+                decoder = audiotools.open(temp.name).to_pcm()
+                self.assertNotEqual(decoder, None)
+                self.assertRaises(IOError, run_analysis, decoder)
+        finally:
+            temp.close()
+
+    @FORMAT_ALAC
+    def test_convert_error(self):
+        temp = tempfile.NamedTemporaryFile(suffix=".m4a")
+        try:
+            temp.write(open("alac-allframes.m4a", "rb").read()[0:-10])
+            temp.flush()
+            flac = audiotools.open(temp.name)
+            if (os.path.isfile("dummy.wav")):
+                os.unlink("dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+            self.assertRaises(audiotools.EncodingError,
+                              flac.convert,
+                              "dummy.wav",
+                              audiotools.WaveAudio)
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+        finally:
+            temp.close()
 
 class AUFileTest(LosslessFileTest):
     def setUp(self):
@@ -1263,6 +1627,101 @@ class FlacFileTest(LosslessFileTest):
     def setUp(self):
         self.audio_class = audiotools.FlacAudio
         self.suffix = "." + self.audio_class.SUFFIX
+
+    @FORMAT_FLAC
+    def test_metadata2(self):
+        temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
+        try:
+            track = self.audio_class.from_pcm(temp.name,
+                                              BLANK_PCM_Reader(1))
+
+            #check that a non-cover image with a description round-trips
+            m = audiotools.MetaData()
+            m.add_image(audiotools.Image.new(
+                    TEST_COVER1, u'Unicode \u3057\u3066\u307f\u308b', 1))
+            track.set_metadata(m)
+
+            new_track = audiotools.open(track.filename)
+            m2 = new_track.get_metadata()
+
+            self.assertEqual(m.images()[0], m2.images()[0])
+
+            orig_md5 = md5()
+            pcm = track.to_pcm()
+            audiotools.transfer_framelist_data(pcm, orig_md5.update)
+            pcm.close()
+
+            #add an image too large to fit into a FLAC metadata chunk
+            metadata = track.get_metadata()
+            metadata.add_image(
+                audiotools.Image.new(HUGE_BMP.decode('bz2'), u'', 0))
+
+            track.set_metadata(metadata)
+
+            #ensure that setting the metadata doesn't break the file
+            new_md5 = md5()
+            pcm = track.to_pcm()
+            audiotools.transfer_framelist_data(pcm, new_md5.update)
+            pcm.close()
+
+            self.assertEqual(orig_md5.hexdigest(),
+                             new_md5.hexdigest())
+
+            #ensure that setting fresh oversized metadata
+            #doesn't break the file
+            metadata = audiotools.MetaData()
+            metadata.add_image(
+                audiotools.Image.new(HUGE_BMP.decode('bz2'), u'', 0))
+
+            track.set_metadata(metadata)
+
+            new_md5 = md5()
+            pcm = track.to_pcm()
+            audiotools.transfer_framelist_data(pcm, new_md5.update)
+            pcm.close()
+
+            self.assertEqual(orig_md5.hexdigest(),
+                             new_md5.hexdigest())
+
+            #add a COMMENT block too large to fit into a FLAC metadata chunk
+            metadata = track.get_metadata()
+            metadata.comment = "QlpoOTFBWSZTWYmtEk8AgICBAKAAAAggADCAKRoBANIBAOLuSKcKEhE1okng".decode('base64').decode('bz2').decode('ascii')
+
+            track.set_metadata(metadata)
+
+            #ensure that setting the metadata doesn't break the file
+            new_md5 = md5()
+            pcm = track.to_pcm()
+            audiotools.transfer_framelist_data(pcm, new_md5.update)
+            pcm.close()
+
+            self.assertEqual(orig_md5.hexdigest(),
+                             new_md5.hexdigest())
+
+            #ensure that setting fresh oversized metadata
+            #doesn't break the file
+            metadata = audiotools.MetaData(
+                comment="QlpoOTFBWSZTWYmtEk8AgICBAKAAAAggADCAKRoBANIBAOLuSKcKEhE1okng".decode('base64').decode('bz2').decode('ascii'))
+
+            track.set_metadata(metadata)
+
+            new_md5 = md5()
+            pcm = track.to_pcm()
+            audiotools.transfer_framelist_data(pcm, new_md5.update)
+            pcm.close()
+
+            self.assertEqual(orig_md5.hexdigest(),
+                             new_md5.hexdigest())
+
+            #ensure that vendor_string isn't modified by setting metadata
+            metadata = track.get_metadata()
+            proper_vendor_string = metadata.vorbis_comment.vendor_string
+            metadata.vorbis_comment.vendor_string = u"Invalid String"
+            track.set_metadata(metadata)
+            self.assertEqual(track.get_metadata().vorbis_comment.vendor_string,
+                             proper_vendor_string)
+        finally:
+            temp.close()
 
 
 class M4AFileTest(LossyFileTest):
