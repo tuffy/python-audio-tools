@@ -1687,7 +1687,6 @@ class AACAudio(AudioFile):
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "100"
     COMPRESSION_MODES = tuple(["10"] + map(str, range(50, 500, 25)) + ["500"])
-    
     BINARIES = ("faac", "faad")
 
     AAC_FRAME_HEADER = Con.BitStruct("aac_header",

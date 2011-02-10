@@ -352,6 +352,31 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
             self.__samplerate__ = WavPackAudio.SAMPLING_RATE[
                 (header.sampling_rate_high << 1) |
                 header.sampling_rate_low]
+
+            if (self.__samplerate__ == 0):
+                #if unknown, pull from the RIFF WAVE header
+                for (function, nondecoder, data) in self.sub_frames():
+                    if ((function == 1) and nondecoder):
+                        #fmt chunk must be in the header
+                        #since it must come before the data chunk
+
+                        import cStringIO
+
+                        chunks = cStringIO.StringIO(data[12:-8])
+                        try:
+                            while (True):
+                                chunk_header = \
+                                    WaveAudio.CHUNK_HEADER.parse_stream(
+                                    chunks)
+                                chunk_data = chunks.read(
+                                    chunk_header.chunk_length)
+                                if (chunk_header.chunk_id == 'fmt '):
+                                    self.__samplerate__ = \
+                                        WaveAudio.FMT_CHUNK.parse(chunk_data).sample_rate
+                        except Con.FieldError:
+                            pass #finished with chunks
+
+
             self.__bitspersample__ = WavPackAudio.BITS_PER_SAMPLE[
                 header.bits_per_sample]
             self.__total_frames__ = header.total_samples
@@ -456,7 +481,8 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
         from . import decoders
 
         try:
-            return decoders.WavPackDecoder(self.filename)
+            return decoders.WavPackDecoder(self.filename,
+                                           self.__samplerate__)
         except (IOError, ValueError), msg:
             return PCMReaderError(error_message=str(msg),
                                   sample_rate=self.__samplerate__,
@@ -626,4 +652,3 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
                 cuesheet,
                 os.path.basename(self.filename)).decode('ascii', 'replace'))
         self.set_metadata(metadata)
-

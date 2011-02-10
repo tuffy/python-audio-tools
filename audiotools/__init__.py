@@ -2699,7 +2699,7 @@ class AudioFile:
             return (decimal.Decimal(self.total_frames()) /
                     decimal.Decimal(self.sample_rate()))
         except decimal.DivisionByZero:
-            return decmial.Decimal(0)
+            return decimal.Decimal(0)
 
     def sample_rate(self):
         """Returns the rate of the track's audio as an integer number of Hz."""

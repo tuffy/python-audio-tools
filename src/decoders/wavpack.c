@@ -45,7 +45,9 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     ia_init(&(self->entropy_variables_B), 3);
     ia_init(&(self->values), 128);
 
-    if (!PyArg_ParseTuple(args, "s", &filename))
+    self->sample_rate = 0;
+
+    if (!PyArg_ParseTuple(args, "s|i", &filename, &(self->sample_rate)))
         return -1;
 
     /*open the WavPack file*/
@@ -61,7 +63,6 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
 
     /*read as many block headers as necessary
       to determine channel count and channel mask*/
-    self->sample_rate = 0;
     self->bits_per_sample = 0;
     self->channels = 0;
     self->channel_mask = 0;
@@ -77,7 +78,8 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
                 if (self->remaining_samples == -1)
                     self->remaining_samples = block_header.total_samples;
 
-                self->sample_rate = block_header.sample_rate;
+                if (block_header.sample_rate != 0)
+                    self->sample_rate = block_header.sample_rate;
                 self->bits_per_sample = block_header.bits_per_sample;
                 self->channels += (block_header.mono_output ? 1 : 2);
 

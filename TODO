@@ -3091,5 +3091,84 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   Or, if a new feature is added, the logical place to put new tests
   is not obvious.
 ** TODO Group tests for the audio formats
+*** DONE AudioFile
+    - [X] test_init
+    - [X] test_is_type
+    - [X] test_bits_per_sample
+    - [X] test_metadata
+    - [X] test_length
+    - [X] test_track_number
+    - [X] test_album_number
+    - [X] test_track_name
+    - [X] test_replay_gain
+*** TODO LosslessAudioFile
+    - [X] test_lossless
+    - [X] test_channels
+    - [X] test_channel_mask
+    - [X] test_sample_rate
+    - [X] test_pcm
+    - [ ] test_convert
+*** TODO LossyAudioFile
+    - [X] test_bits_per_sample
+    - [X] test_lossless
+    - [X] test_channels
+    - [X] test_channel_mask
+    - [X] test_sample_rate
+    - [X] test_pcm
+    - [ ] test_convert
+*** TODO AACAudio
+    - [X] test_length
+    - [ ] test_verify
+*** TODO ALACAudio
+    - [ ] test_init
+    - [X] test_bits_per_sample
+    - [X] test_channel_mask
+    - [X] test_verify
+*** TODO AiffAudio
+    - [ ] test_init
+    - [X] test_channel_mask
+    - [ ] test_verify
+*** TODO AuAudio
+    - [ ] test_init
+    - [X] test_channel_mask
+*** TODO FlacAudio
+    - [ ] test_init
+    - [ ] test_metadata2
+    - [X] test_verify
+    - [ ] test_cuesheet
+*** TODO M4AAudio
+    - [ ] test_init
+    - [ ] test_verify
+*** TODO MP2Audio
+    - [ ] test_init
+    - [X] test_length
+    - [ ] test_verify
+*** TODO MP3Audio
+    - [ ] test_init
+    - [X] test_length
+    - [ ] test_verify
+*** TODO OggFlacAudio
+    - [ ] test_init
+    - [X] test_verify
+    - [ ] test_cuesheet
+*** TODO ShortenAudio
+    - [ ] test_init
+    - [X] test_bits_per_sample
+    - [X] test_verify
+*** TODO SpeexAudio
+    - [ ] test_init
+    - [X] test_verify
+*** TODO VorbisAudio
+    - [ ] test_init
+    - [X] test_channels
+    - [X] test_verify
+*** TODO WavPackAudio
+    - [ ] test_init
+    - [X] test_verify
+    - [ ] test_cuesheet
+*** TODO WaveAudio
+    - [ ] test_init
+    - [X] test_verify
 ** TODO Group tests for the core libraries
 ** TODO Group tests for the individual tools
+** TODO Split tests into multiple files

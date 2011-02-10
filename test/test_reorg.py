@@ -298,10 +298,46 @@ class AudioFileTest(unittest.TestCase):
         self.audio_class = audiotools.AudioFile
         self.suffix = "." + self.audio_class.SUFFIX
 
-    #FIXME
-    @FORMAT_AUDIOFILE_PLACEHOLDER
+    @FORMAT_AUDIOFILE
     def test_init(self):
-        self.assert_(False)
+        if (self.audio_class is audiotools.AudioFile):
+            return
+
+        #first check nonexistent files
+        self.assertRaises(audiotools.InvalidFile,
+                          self.audio_class,
+                          "/dev/null/foo.%s" % (self.audio_class.SUFFIX))
+
+        f = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        try:
+            #then check empty files
+            f.write("")
+            f.flush()
+            self.assertEqual(os.path.isfile(f.name), True)
+            self.assertRaises(audiotools.InvalidFile,
+                              self.audio_class,
+                              f.name)
+
+            #then check files with a bit of junk at the beginning
+            f.write("".join(map(chr,
+                                [26, 83, 201, 240, 73, 178, 34, 67, 87, 214])))
+            f.flush()
+            self.assert_(os.path.getsize(f.name) > 0)
+            self.assertRaises(audiotools.InvalidFile,
+                              self.audio_class,
+                              f.name)
+
+            #finally, check unreadable files
+            original_stat = os.stat(f.name)[0]
+            try:
+                os.chmod(f.name, 0)
+                self.assertRaises(audiotools.InvalidFile,
+                                  self.audio_class,
+                                  f.name)
+            finally:
+                os.chmod(f.name, original_stat)
+        finally:
+            f.close()
 
     @FORMAT_AUDIOFILE
     def test_is_type(self):
@@ -628,7 +664,6 @@ class AudioFileTest(unittest.TestCase):
     def test_pcm(self):
         self.assert_(False)
 
-    #FIXME
     @FORMAT_AUDIOFILE_PLACEHOLDER
     def test_convert(self):
         self.assert_(False)
@@ -1182,6 +1217,68 @@ class LosslessFileTest(AudioFileTest):
                 os.unlink(os.path.join(temp_dir, f))
             os.rmdir(temp_dir)
 
+    # @FORMAT_LOSSLESS
+    @LIB_CUSTOM
+    def test_convert(self):
+        if (self.audio_class is audiotools.AudioFile):
+            return
+
+        #check various round-trip options
+        temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
+        try:
+            track = self.audio_class.from_pcm(
+                temp.name,
+                test_streams.Sine16_Stereo(220500, 44100,
+                                           8820.0, 0.70, 4410.0, 0.29, 1.0))
+            for audio_class in audiotools.AVAILABLE_TYPES:
+                temp2 = tempfile.NamedTemporaryFile(
+                    suffix="." + audio_class.SUFFIX)
+                try:
+                    track2 = track.convert(temp2.name,
+                                           audio_class)
+                    if (track2.lossless()):
+                        self.assert_(
+                            audiotools.pcm_frame_cmp(track.to_pcm(),
+                                                     track2.to_pcm()) is None,
+                            "error round-tripping %s to %s" % \
+                                (self.audio_class.NAME,
+                                 audio_class.NAME))
+                    else:
+                        counter = FrameCounter(2, 16, 44100)
+                        audiotools.transfer_framelist_data(track.to_pcm(),
+                                                           counter.update)
+                        self.assertEqual(
+                            int(counter), 5,
+                            "mismatch encoding %s at quality %s" % \
+                                (self.audio_class.NAME,
+                                 compression))
+
+                    for compression in audio_class.COMPRESSION_MODES:
+                        track2 = track.convert(temp2.name,
+                                               audio_class,
+                                               compression)
+                        if (track2.lossless()):
+                            self.assert_(
+                                audiotools.pcm_frame_cmp(
+                                    track.to_pcm(), track2.to_pcm()) is None,
+                                "error round-tripping %s to %s at %s" % \
+                                    (self.audio_class.NAME,
+                                     audio_class.NAME,
+                                     compression))
+                        else:
+                            counter = FrameCounter(2, 16, 44100)
+                            audiotools.transfer_framelist_data(track.to_pcm(),
+                                                               counter.update)
+                            self.assertEqual(
+                                int(counter), 5,
+                                "mismatch encoding %s at quality %s" % \
+                                    (self.audio_class.NAME,
+                                     compression))
+
+                finally:
+                    temp2.close()
+        finally:
+            temp.close()
 
 
 class LossyFileTest(AudioFileTest):
@@ -1397,6 +1494,13 @@ class LossyFileTest(AudioFileTest):
                 os.unlink(os.path.join(temp_dir, f))
             os.rmdir(temp_dir)
 
+    # @FORMAT_LOSSY
+    @LIB_CUSTOM
+    def test_convert(self):
+        if (self.audio_class is audiotools.AudioFile):
+            return
+
+        self.assert_(False)
 
 class AACFileTest(LossyFileTest):
     def setUp(self):
@@ -1721,6 +1825,9 @@ class FlacFileTest(LosslessFileTest):
             track.set_metadata(metadata)
             self.assertEqual(track.get_metadata().vorbis_comment.vendor_string,
                              proper_vendor_string)
+
+            #FIXME - ensure that channel mask isn't modified
+            #by setting metadata
         finally:
             temp.close()
 
