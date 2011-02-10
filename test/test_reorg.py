@@ -2133,6 +2133,43 @@ class ALACFileTest(LosslessFileTest):
 
     def __stream_variations__(self):
         for stream in [
+            test_streams.Sine16_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
+            test_streams.Sine16_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
+            test_streams.Sine16_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
+            test_streams.Sine16_Mono(200000, 44100, 441.0, 0.50, 4410.0, 0.49),
+            test_streams.Sine16_Mono(200000, 44100, 8820.0, 0.70, 4410.0, 0.29),
+
+            test_streams.Sine16_Stereo(200000, 48000, 441.0, 0.50, 441.0, 0.49, 1.0),
+            test_streams.Sine16_Stereo(200000, 48000, 441.0, 0.61, 661.5, 0.37, 1.0),
+            test_streams.Sine16_Stereo(200000, 96000, 441.0, 0.50, 882.0, 0.49, 1.0),
+            test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.0),
+            test_streams.Sine16_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 1.0),
+            test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 441.0, 0.49, 0.5),
+            test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.61, 661.5, 0.37, 2.0),
+            test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 882.0, 0.49, 0.7),
+            test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.3),
+            test_streams.Sine16_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1),
+
+            test_streams.Sine24_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
+            test_streams.Sine24_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
+            test_streams.Sine24_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
+            test_streams.Sine24_Mono(200000, 44100, 441.0, 0.50, 4410.0, 0.49),
+            test_streams.Sine24_Mono(200000, 44100, 8820.0, 0.70, 4410.0, 0.29),
+
+            test_streams.Sine24_Stereo(200000, 48000, 441.0, 0.50, 441.0, 0.49, 1.0),
+            test_streams.Sine24_Stereo(200000, 48000, 441.0, 0.61, 661.5, 0.37, 1.0),
+            test_streams.Sine24_Stereo(200000, 96000, 441.0, 0.50, 882.0, 0.49, 1.0),
+            test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.0),
+            test_streams.Sine24_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 1.0),
+            test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 441.0, 0.49, 0.5),
+            test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.61, 661.5, 0.37, 2.0),
+            test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 882.0, 0.49, 0.7),
+            test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.3),
+            test_streams.Sine24_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1)]:
+            yield stream
+
+    def __multichannel_stream_variations__(self):
+        for stream in [
             test_streams.Simple_Sine(200000, 44100, 0x7, 16,
                                      (6400, 10000),
                                      (12800, 20000),
@@ -2178,43 +2215,6 @@ class ALACFileTest(LosslessFileTest):
                                      (5570560, 25000),
                                      (6881280, 30000),
                                      (7864320, 35000))]:
-            yield stream
-
-    def __multichannel_stream_variations__(self):
-        for stream in [
-            test_streams.Sine16_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
-            test_streams.Sine16_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
-            test_streams.Sine16_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
-            test_streams.Sine16_Mono(200000, 44100, 441.0, 0.50, 4410.0, 0.49),
-            test_streams.Sine16_Mono(200000, 44100, 8820.0, 0.70, 4410.0, 0.29),
-
-            test_streams.Sine16_Stereo(200000, 48000, 441.0, 0.50, 441.0, 0.49, 1.0),
-            test_streams.Sine16_Stereo(200000, 48000, 441.0, 0.61, 661.5, 0.37, 1.0),
-            test_streams.Sine16_Stereo(200000, 96000, 441.0, 0.50, 882.0, 0.49, 1.0),
-            test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.0),
-            test_streams.Sine16_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 1.0),
-            test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 441.0, 0.49, 0.5),
-            test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.61, 661.5, 0.37, 2.0),
-            test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 882.0, 0.49, 0.7),
-            test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.3),
-            test_streams.Sine16_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1),
-
-            test_streams.Sine24_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
-            test_streams.Sine24_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
-            test_streams.Sine24_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
-            test_streams.Sine24_Mono(200000, 44100, 441.0, 0.50, 4410.0, 0.49),
-            test_streams.Sine24_Mono(200000, 44100, 8820.0, 0.70, 4410.0, 0.29),
-
-            test_streams.Sine24_Stereo(200000, 48000, 441.0, 0.50, 441.0, 0.49, 1.0),
-            test_streams.Sine24_Stereo(200000, 48000, 441.0, 0.61, 661.5, 0.37, 1.0),
-            test_streams.Sine24_Stereo(200000, 96000, 441.0, 0.50, 882.0, 0.49, 1.0),
-            test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.0),
-            test_streams.Sine24_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 1.0),
-            test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 441.0, 0.49, 0.5),
-            test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.61, 661.5, 0.37, 2.0),
-            test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 882.0, 0.49, 0.7),
-            test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.3),
-            test_streams.Sine24_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1)]:
             yield stream
 
     @FORMAT_ALAC
