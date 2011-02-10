@@ -28,6 +28,7 @@ import random
 import decimal
 import test_streams
 import cStringIO
+import subprocess
 from audiotools import Con
 
 parser = ConfigParser.SafeConfigParser()
@@ -99,6 +100,23 @@ class RANDOM_PCM_Reader(BLANK_PCM_Reader):
         else:
             return audiotools.pcm.FrameList(
                 "", self.channels, self.bits_per_sample, True, True)
+
+class EXACT_RANDOM_PCM_Reader(RANDOM_PCM_Reader):
+    def __init__(self, pcm_frames,
+                 sample_rate=44100, channels=2, bits_per_sample=16,
+                 channel_mask=None):
+        self.sample_rate = sample_rate
+        self.channels = channels
+        if (channel_mask is None):
+            self.channel_mask = audiotools.ChannelMask.from_channels(channels)
+        else:
+            self.channel_mask = channel_mask
+        self.bits_per_sample = bits_per_sample
+
+        self.total_frames = pcm_frames
+
+        self.single_pcm_frame = audiotools.pcm.from_list(
+            [1] * channels, channels, bits_per_sample, True)
 
 class MD5_Reader:
     def __init__(self, pcmreader):
@@ -1939,6 +1957,11 @@ class ALACFileTest(LosslessFileTest):
         self.audio_class = audiotools.ALACAudio
         self.suffix = "." + self.audio_class.SUFFIX
 
+        from audiotools.decoders import ALACDecoder
+        from audiotools.encoders import encode_alac
+        self.decoder = ALACDecoder
+        self.encode = encode_alac
+
     @FORMAT_ALAC
     def test_bits_per_sample(self):
         temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
@@ -2044,6 +2067,292 @@ class ALACFileTest(LosslessFileTest):
             self.assertEqual(os.path.isfile("dummy.wav"), False)
         finally:
             temp.close()
+
+    def __test_reader__(self, pcmreader, block_size=4096):
+        if (not audiotools.BIN.can_execute(audiotools.BIN["alac"])):
+            self.assert_(False,
+                         "reference ALAC binary alac(1) required for this test")
+
+        temp_file = tempfile.NamedTemporaryFile(suffix=".alac")
+        self.audio_class.from_pcm(temp_file.name,
+                                  pcmreader,
+                                  block_size=block_size)
+
+        alac = audiotools.open(temp_file.name)
+        self.assert_(alac.total_frames() > 0)
+
+        #first, ensure the ALAC-encoded file
+        #has the same MD5 signature as pcmreader once decoded
+        md5sum_decoder = md5()
+        d = alac.to_pcm()
+        f = d.read(audiotools.BUFFER_SIZE)
+        while (len(f) > 0):
+            md5sum_decoder.update(f.to_bytes(False, True))
+            f = d.read(audiotools.BUFFER_SIZE)
+        d.close()
+        self.assertEqual(md5sum_decoder.digest(), pcmreader.digest())
+
+        #then compare our .to_pcm() output
+        #with that of the ALAC reference decoder
+        reference = subprocess.Popen([audiotools.BIN["alac"],
+                                      "-r", temp_file.name],
+                                     stdout=subprocess.PIPE)
+        md5sum_reference = md5()
+        audiotools.transfer_data(reference.stdout.read, md5sum_reference.update)
+        self.assertEqual(reference.wait(), 0)
+        self.assertEqual(md5sum_reference.digest(), pcmreader.digest(),
+                         "mismatch decoding %s from reference (%s != %s)" %
+                         (repr(pcmreader),
+                          md5sum_reference.hexdigest(),
+                          pcmreader.hexdigest()))
+
+    def __test_reader_nonalac__(self, pcmreader, block_size=4096):
+        #This is for multichannel testing
+        #since alac(1) doesn't handle them yet.
+        #Unfortunately, it relies only on our built-in decoder
+        #to test correctness.
+
+        temp_file = tempfile.NamedTemporaryFile(suffix=".alac")
+        self.audio_class.from_pcm(temp_file.name,
+                                  pcmreader,
+                                  block_size=block_size)
+
+        alac = audiotools.open(temp_file.name)
+        self.assert_(alac.total_frames() > 0)
+
+        #first, ensure the ALAC-encoded file
+        #has the same MD5 signature as pcmreader once decoded
+        md5sum_decoder = md5()
+        d = alac.to_pcm()
+        f = d.read(audiotools.BUFFER_SIZE)
+        while (len(f) > 0):
+            md5sum_decoder.update(f.to_bytes(False, True))
+            f = d.read(audiotools.BUFFER_SIZE)
+        d.close()
+        self.assertEqual(md5sum_decoder.digest(), pcmreader.digest())
+
+    def __stream_variations__(self):
+        for stream in [
+            test_streams.Simple_Sine(200000, 44100, 0x7, 16,
+                                     (6400, 10000),
+                                     (12800, 20000),
+                                     (30720, 30000)),
+            test_streams.Simple_Sine(200000, 44100, 0x33, 16,
+                                     (6400, 10000),
+                                     (12800, 20000),
+                                     (19200, 30000),
+                                     (16640, 40000)),
+            test_streams.Simple_Sine(200000, 44100, 0x37, 16,
+                                     (6400, 10000),
+                                     (8960, 15000),
+                                     (11520, 20000),
+                                     (12800, 25000),
+                                     (14080, 30000)),
+            test_streams.Simple_Sine(200000, 44100, 0x3F, 16,
+                                     (6400, 10000),
+                                     (11520, 15000),
+                                     (16640, 20000),
+                                     (21760, 25000),
+                                     (26880, 30000),
+                                     (30720, 35000)),
+
+            test_streams.Simple_Sine(200000, 44100, 0x7, 24,
+                                     (1638400, 10000),
+                                     (3276800, 20000),
+                                     (7864320, 30000)),
+            test_streams.Simple_Sine(200000, 44100, 0x33, 24,
+                                     (1638400, 10000),
+                                     (3276800, 20000),
+                                     (4915200, 30000),
+                                     (4259840, 40000)),
+            test_streams.Simple_Sine(200000, 44100, 0x37, 24,
+                                     (1638400, 10000),
+                                     (2293760, 15000),
+                                     (2949120, 20000),
+                                     (3276800, 25000),
+                                     (3604480, 30000)),
+            test_streams.Simple_Sine(200000, 44100, 0x3F, 24,
+                                     (1638400, 10000),
+                                     (2949120, 15000),
+                                     (4259840, 20000),
+                                     (5570560, 25000),
+                                     (6881280, 30000),
+                                     (7864320, 35000))]:
+            yield stream
+
+    def __multichannel_stream_variations__(self):
+        for stream in [
+            test_streams.Sine16_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
+            test_streams.Sine16_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
+            test_streams.Sine16_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
+            test_streams.Sine16_Mono(200000, 44100, 441.0, 0.50, 4410.0, 0.49),
+            test_streams.Sine16_Mono(200000, 44100, 8820.0, 0.70, 4410.0, 0.29),
+
+            test_streams.Sine16_Stereo(200000, 48000, 441.0, 0.50, 441.0, 0.49, 1.0),
+            test_streams.Sine16_Stereo(200000, 48000, 441.0, 0.61, 661.5, 0.37, 1.0),
+            test_streams.Sine16_Stereo(200000, 96000, 441.0, 0.50, 882.0, 0.49, 1.0),
+            test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.0),
+            test_streams.Sine16_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 1.0),
+            test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 441.0, 0.49, 0.5),
+            test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.61, 661.5, 0.37, 2.0),
+            test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 882.0, 0.49, 0.7),
+            test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.3),
+            test_streams.Sine16_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1),
+
+            test_streams.Sine24_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
+            test_streams.Sine24_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
+            test_streams.Sine24_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
+            test_streams.Sine24_Mono(200000, 44100, 441.0, 0.50, 4410.0, 0.49),
+            test_streams.Sine24_Mono(200000, 44100, 8820.0, 0.70, 4410.0, 0.29),
+
+            test_streams.Sine24_Stereo(200000, 48000, 441.0, 0.50, 441.0, 0.49, 1.0),
+            test_streams.Sine24_Stereo(200000, 48000, 441.0, 0.61, 661.5, 0.37, 1.0),
+            test_streams.Sine24_Stereo(200000, 96000, 441.0, 0.50, 882.0, 0.49, 1.0),
+            test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.0),
+            test_streams.Sine24_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 1.0),
+            test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 441.0, 0.49, 0.5),
+            test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.61, 661.5, 0.37, 2.0),
+            test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 882.0, 0.49, 0.7),
+            test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.3),
+            test_streams.Sine24_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1)]:
+            yield stream
+
+    @FORMAT_ALAC
+    def test_streams(self):
+        for g in self.__stream_variations__():
+            md5sum = md5()
+            f = g.read(audiotools.BUFFER_SIZE)
+            while (len(f) > 0):
+                md5sum.update(f.to_bytes(False, True))
+                f = g.read(audiotools.BUFFER_SIZE)
+            self.assertEqual(md5sum.digest(), g.digest())
+            g.close()
+
+        for g in self.__multichannel_stream_variations__():
+            md5sum = md5()
+            f = g.read(audiotools.BUFFER_SIZE)
+            while (len(f) > 0):
+                md5sum.update(f.to_bytes(False, True))
+                f = g.read(audiotools.BUFFER_SIZE)
+            self.assertEqual(md5sum.digest(), g.digest())
+            g.close()
+
+    @FORMAT_ALAC
+    def test_small_files(self):
+        for g in [test_streams.Generate01,
+                  test_streams.Generate02,
+                  test_streams.Generate03,
+                  test_streams.Generate04]:
+            self.__test_reader__(g(44100), block_size=1152)
+
+    @FORMAT_ALAC
+    def test_full_scale_deflection(self):
+        for (bps, fsd) in [(16, test_streams.fsd16),
+                           (24, test_streams.fsd24)]:
+            for pattern in [test_streams.PATTERN01,
+                            test_streams.PATTERN02,
+                            test_streams.PATTERN03,
+                            test_streams.PATTERN04,
+                            test_streams.PATTERN05,
+                            test_streams.PATTERN06,
+                            test_streams.PATTERN07]:
+                self.__test_reader__(
+                    test_streams.MD5Reader(fsd(pattern, 100)),
+                    block_size=1152)
+
+    @FORMAT_ALAC
+    def test_sines(self):
+        for g in self.__stream_variations__():
+            self.__test_reader__(g, block_size=1152)
+
+        for g in self.__multichannel_stream_variations__():
+            self.__test_reader_nonalac__(g, block_size=1152)
+
+    @FORMAT_ALAC
+    def test_wasted_bps(self):
+        self.__test_reader__(test_streams.WastedBPS16(1000),
+                             block_size=1152)
+
+    @FORMAT_ALAC
+    def test_blocksizes(self):
+        noise = audiotools.Con.GreedyRepeater(audiotools.Con.SBInt16(None)).parse(os.urandom(64))
+
+        for block_size in [16, 17, 18, 19, 20, 21, 22, 23, 24,
+                           25, 26, 27, 28, 29, 30, 31, 32, 33]:
+            self.__test_reader__(test_streams.MD5Reader(
+                    test_streams.FrameListReader(noise,
+                                                 44100, 1, 16)),
+                                 block_size=block_size)
+
+    @FORMAT_ALAC
+    def test_noise(self):
+        for (channels, mask) in [
+            (1, audiotools.ChannelMask.from_channels(1)),
+            (2, audiotools.ChannelMask.from_channels(2))]:
+            for bps in [16, 24]:
+                #the reference decoder can't handle very large block sizes
+                for blocksize in [32, 4096, 8192]:
+                    self.__test_reader__(
+                        MD5_Reader(EXACT_RANDOM_PCM_Reader(
+                                pcm_frames=65536,
+                                sample_rate=44100,
+                                channels=channels,
+                                channel_mask=mask,
+                                bits_per_sample=bps)),
+                        block_size=blocksize)
+
+    @FORMAT_ALAC
+    def test_fractional(self):
+        def __perform_test__(block_size, pcm_frames):
+            self.__test_reader__(
+                MD5_Reader(EXACT_RANDOM_PCM_Reader(
+                        pcm_frames=pcm_frames,
+                        sample_rate=44100,
+                        channels=2,
+                        bits_per_sample=16)),
+                block_size=block_size)
+
+        for pcm_frames in [31, 32, 33, 34, 35, 2046, 2047, 2048, 2049, 2050]:
+            __perform_test__(33, pcm_frames)
+
+        for pcm_frames in [254, 255, 256, 257, 258, 510, 511, 512,
+                           513, 514, 1022, 1023, 1024, 1025, 1026,
+                           2046, 2047, 2048, 2049, 2050, 4094, 4095,
+                           4096, 4097, 4098]:
+            __perform_test__(256, pcm_frames)
+
+        for pcm_frames in [1022, 1023, 1024, 1025, 1026, 2046, 2047,
+                           2048, 2049, 2050, 4094, 4095, 4096, 4097, 4098]:
+            __perform_test__(2048, pcm_frames)
+
+        for pcm_frames in [1022, 1023, 1024, 1025, 1026, 2046, 2047, 2048,
+                           2049, 2050, 4094, 4095, 4096, 4097, 4098, 4606,
+                           4607, 4608, 4609, 4610, 8190, 8191, 8192, 8193,
+                           8194, 16382, 16383, 16384, 16385, 16386]:
+            __perform_test__(4608, pcm_frames)
+
+    @FORMAT_ALAC
+    def test_frame_header_variations(self):
+        self.__test_reader__(test_streams.Sine16_Mono(200000, 96000,
+                                                      441.0, 0.61, 661.5, 0.37),
+                             block_size=16)
+
+        self.__test_reader__(test_streams.Sine16_Mono(200000, 96000,
+                                                      441.0, 0.61, 661.5, 0.37),
+                             block_size=65535)
+
+        self.__test_reader__(test_streams.Sine16_Mono(200000, 9,
+                                                      441.0, 0.61, 661.5, 0.37),
+                             block_size=1152)
+
+        self.__test_reader__(test_streams.Sine16_Mono(200000, 90,
+                                                      441.0, 0.61, 661.5, 0.37),
+                             block_size=1152)
+
+        self.__test_reader__(test_streams.Sine16_Mono(200000, 90000,
+                                                      441.0, 0.61, 661.5, 0.37),
+                             block_size=1152)
+
 
 class AUFileTest(LosslessFileTest):
     def setUp(self):
@@ -2660,6 +2969,14 @@ class ShortenFileTest(TestForeignWaveChunks,
         self.audio_class = audiotools.ShortenAudio
         self.suffix = "." + self.audio_class.SUFFIX
 
+        from audiotools.decoders import SHNDecoder
+        from audiotools.encoders import encode_shn
+        self.decoder = SHNDecoder
+        self.encode = encode_shn
+        self.encode_opts = [{"block_size": 4},
+                            {"block_size": 256},
+                            {"block_size": 1024}]
+
     @FORMAT_SHORTEN
     def test_bits_per_sample(self):
         temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
@@ -2778,6 +3095,226 @@ class ShortenFileTest(TestForeignWaveChunks,
         finally:
             temp.close()
 
+    def __stream_variations__(self):
+        for stream in [
+            test_streams.Sine8_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
+            test_streams.Sine8_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
+            test_streams.Sine8_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
+            test_streams.Sine8_Mono(200000, 44100, 441.0, 0.50, 4410.0, 0.49),
+            test_streams.Sine8_Mono(200000, 44100, 8820.0, 0.70, 4410.0, 0.29),
+
+            test_streams.Sine8_Stereo(200000, 48000, 441.0, 0.50, 441.0, 0.49, 1.0),
+            test_streams.Sine8_Stereo(200000, 48000, 441.0, 0.61, 661.5, 0.37, 1.0),
+            test_streams.Sine8_Stereo(200000, 96000, 441.0, 0.50, 882.0, 0.49, 1.0),
+            test_streams.Sine8_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.0),
+            test_streams.Sine8_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 1.0),
+            test_streams.Sine8_Stereo(200000, 44100, 441.0, 0.50, 441.0, 0.49, 0.5),
+            test_streams.Sine8_Stereo(200000, 44100, 441.0, 0.61, 661.5, 0.37, 2.0),
+            test_streams.Sine8_Stereo(200000, 44100, 441.0, 0.50, 882.0, 0.49, 0.7),
+            test_streams.Sine8_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.3),
+            test_streams.Sine8_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1),
+
+            test_streams.Sine16_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
+            test_streams.Sine16_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
+            test_streams.Sine16_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
+            test_streams.Sine16_Mono(200000, 44100, 441.0, 0.50, 4410.0, 0.49),
+            test_streams.Sine16_Mono(200000, 44100, 8820.0, 0.70, 4410.0, 0.29),
+            test_streams.Sine16_Stereo(200000, 48000, 441.0, 0.50, 441.0, 0.49, 1.0),
+            test_streams.Sine16_Stereo(200000, 48000, 441.0, 0.61, 661.5, 0.37, 1.0),
+            test_streams.Sine16_Stereo(200000, 96000, 441.0, 0.50, 882.0, 0.49, 1.0),
+            test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.0),
+            test_streams.Sine16_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 1.0),
+            test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 441.0, 0.49, 0.5),
+            test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.61, 661.5, 0.37, 2.0),
+            test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 882.0, 0.49, 0.7),
+            test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.3),
+            test_streams.Sine16_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1),
+
+            test_streams.Simple_Sine(200000, 44100, 0x7, 8,
+                                     (25, 10000),
+                                     (50, 20000),
+                                     (120, 30000)),
+            test_streams.Simple_Sine(200000, 44100, 0x33, 8,
+                                     (25, 10000),
+                                     (50, 20000),
+                                     (75, 30000),
+                                     (65, 40000)),
+            test_streams.Simple_Sine(200000, 44100, 0x37, 8,
+                                     (25, 10000),
+                                     (35, 15000),
+                                     (45, 20000),
+                                     (50, 25000),
+                                     (55, 30000)),
+            test_streams.Simple_Sine(200000, 44100, 0x3F, 8,
+                                     (25, 10000),
+                                     (45, 15000),
+                                     (65, 20000),
+                                     (85, 25000),
+                                     (105, 30000),
+                                     (120, 35000)),
+
+            test_streams.Simple_Sine(200000, 44100, 0x7, 16,
+                                     (6400, 10000),
+                                     (12800, 20000),
+                                     (30720, 30000)),
+            test_streams.Simple_Sine(200000, 44100, 0x33, 16,
+                                     (6400, 10000),
+                                     (12800, 20000),
+                                     (19200, 30000),
+                                     (16640, 40000)),
+            test_streams.Simple_Sine(200000, 44100, 0x37, 16,
+                                     (6400, 10000),
+                                     (8960, 15000),
+                                     (11520, 20000),
+                                     (12800, 25000),
+                                     (14080, 30000)),
+            test_streams.Simple_Sine(200000, 44100, 0x3F, 16,
+                                     (6400, 10000),
+                                     (11520, 15000),
+                                     (16640, 20000),
+                                     (21760, 25000),
+                                     (26880, 30000),
+                                     (30720, 35000))]:
+            yield stream
+
+    @FORMAT_SHORTEN
+    def test_streams(self):
+        for g in self.__stream_variations__():
+            md5sum = md5()
+            f = g.read(audiotools.BUFFER_SIZE)
+            while (len(f) > 0):
+                md5sum.update(f.to_bytes(False, True))
+                f = g.read(audiotools.BUFFER_SIZE)
+            self.assertEqual(md5sum.digest(), g.digest())
+            g.close()
+
+    def __test_reader__(self, pcmreader, **encode_options):
+        if (not audiotools.BIN.can_execute(audiotools.BIN["shorten"])):
+            self.assert_(False,
+                         "reference Shorten binary shorten(1) required for this test")
+
+        temp_file = tempfile.NamedTemporaryFile(suffix=".shn")
+
+        #construct a temporary wave file from pcmreader
+        temp_input_wave_file = tempfile.NamedTemporaryFile(suffix=".wav")
+        temp_input_wave = audiotools.WaveAudio.from_pcm(
+            temp_input_wave_file.name, pcmreader)
+        temp_input_wave.verify()
+
+        options = encode_options.copy()
+        (head, tail) = temp_input_wave.pcm_split()
+        if (len(tail) > 0):
+            options["verbatim_chunks"] = [head, None, tail]
+        else:
+            options["verbatim_chunks"] = [head, None]
+
+        if (pcmreader.bits_per_sample == 8):
+            options["file_type"] = 2
+        elif (pcmreader.bits_per_sample == 16):
+            options["file_type"] = 5
+
+        self.encode(temp_file.name,
+                    temp_input_wave.to_pcm(),
+                    **options)
+
+        shn = audiotools.open(temp_file.name)
+        self.assert_(shn.total_frames() > 0)
+
+        temp_wav_file1 = tempfile.NamedTemporaryFile(suffix=".wav")
+        temp_wav_file2 = tempfile.NamedTemporaryFile(suffix=".wav")
+
+        #first, ensure the Shorten-encoded file
+        #has the same MD5 signature as pcmreader once decoded
+        md5sum = md5()
+        d = self.decoder(temp_file.name)
+        f = d.read(audiotools.BUFFER_SIZE)
+        while (len(f) > 0):
+            md5sum.update(f.to_bytes(False, True))
+            f = d.read(audiotools.BUFFER_SIZE)
+        d.close()
+        self.assertEqual(md5sum.digest(), pcmreader.digest())
+
+        #then compare our .to_wave() output
+        #with that of the Shorten reference decoder
+        shn.convert(temp_wav_file1.name, audiotools.WaveAudio)
+        subprocess.call([audiotools.BIN["shorten"],
+                         "-x", shn.filename, temp_wav_file2.name])
+
+        wave = audiotools.WaveAudio(temp_wav_file1.name)
+        wave.verify()
+        wave = audiotools.WaveAudio(temp_wav_file2.name)
+        wave.verify()
+
+        self.assert_(audiotools.pcm_cmp(
+                audiotools.WaveAudio(temp_wav_file1.name).to_pcm(),
+                audiotools.WaveAudio(temp_wav_file2.name).to_pcm()))
+
+        temp_file.close()
+        temp_input_wave_file.close()
+        temp_wav_file1.close()
+        temp_wav_file2.close()
+
+    @FORMAT_SHORTEN
+    def test_small_files(self):
+        for g in [test_streams.Generate01,
+                  test_streams.Generate02,
+                  test_streams.Generate03,
+                  test_streams.Generate04]:
+            gen = g(44100)
+            self.__test_reader__(gen, block_size=256)
+
+    @FORMAT_SHORTEN
+    def test_full_scale_deflection(self):
+        for (bps, fsd) in [(8, test_streams.fsd8),
+                           (16, test_streams.fsd16)]:
+            for pattern in [test_streams.PATTERN01,
+                            test_streams.PATTERN02,
+                            test_streams.PATTERN03,
+                            test_streams.PATTERN04,
+                            test_streams.PATTERN05,
+                            test_streams.PATTERN06,
+                            test_streams.PATTERN07]:
+                stream = test_streams.MD5Reader(fsd(pattern, 100))
+                self.__test_reader__(
+                    stream, file_type={8:2, 16:5}[bps], block_size=256)
+
+    @FORMAT_SHORTEN
+    def test_sines(self):
+        for g in self.__stream_variations__():
+            self.__test_reader__(g, block_size=256)
+
+    @FORMAT_SHORTEN
+    def test_blocksizes(self):
+        noise = audiotools.Con.GreedyRepeater(audiotools.Con.SBInt16(None)).parse(os.urandom(64))
+
+        for block_size in [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+                           256, 1024]:
+            args = {"block_size": block_size}
+            self.__test_reader__(test_streams.MD5Reader(
+                    test_streams.FrameListReader(noise, 44100, 1, 16)), **args)
+
+    @FORMAT_SHORTEN
+    def test_noise(self):
+        for opts in self.encode_opts:
+            encode_opts = opts.copy()
+            for (channels, mask) in [
+                (1, audiotools.ChannelMask.from_channels(1)),
+                (2, audiotools.ChannelMask.from_channels(2)),
+                (4, audiotools.ChannelMask.from_fields(
+                        front_left=True,
+                        front_right=True,
+                        back_left=True,
+                        back_right=True)),
+                (8, audiotools.ChannelMask(0))]:
+                for bps in [8, 16]:
+                    self.__test_reader__(
+                        MD5_Reader(EXACT_RANDOM_PCM_Reader(
+                                pcm_frames=65536,
+                                sample_rate=44100,
+                                channels=channels,
+                                channel_mask=mask,
+                                bits_per_sample=bps)),
+                        **encode_opts)
 
 class SpeexFileTest(LossyFileTest):
     def setUp(self):

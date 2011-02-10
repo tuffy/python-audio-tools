@@ -489,7 +489,13 @@ class Simple_Sine:
         self.pcm_frames = 0
 
     def __repr__(self):
-        return "Simple_Sine()"
+        return "Simple_Sine(%s, %s, %s, %s, %s, %s)" % \
+            (self.pcm_frames,
+             self.sample_rate,
+             self.channel_mask,
+             self.bits_per_sample,
+             repr(self.channel_max_values),
+             repr(self.channel_counts))
 
 
 class WastedBPS16:
