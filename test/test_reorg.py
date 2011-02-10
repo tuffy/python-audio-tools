@@ -27,6 +27,7 @@ from hashlib import md5
 import random
 import decimal
 import test_streams
+import cStringIO
 from audiotools import Con
 
 parser = ConfigParser.SafeConfigParser()
@@ -1217,8 +1218,7 @@ class LosslessFileTest(AudioFileTest):
                 os.unlink(os.path.join(temp_dir, f))
             os.rmdir(temp_dir)
 
-    # @FORMAT_LOSSLESS
-    @LIB_CUSTOM
+    @FORMAT_LOSSLESS
     def test_convert(self):
         if (self.audio_class is audiotools.AudioFile):
             return
@@ -1245,13 +1245,18 @@ class LosslessFileTest(AudioFileTest):
                                  audio_class.NAME))
                     else:
                         counter = FrameCounter(2, 16, 44100)
-                        audiotools.transfer_framelist_data(track.to_pcm(),
+                        audiotools.transfer_framelist_data(track2.to_pcm(),
                                                            counter.update)
                         self.assertEqual(
                             int(counter), 5,
-                            "mismatch encoding %s at quality %s" % \
-                                (self.audio_class.NAME,
-                                 compression))
+                            "mismatch encoding %s" % \
+                                (self.audio_class.NAME))
+
+                    self.assertRaises(audiotools.EncodingError,
+                                      track.convert,
+                                      "/dev/null/foo.%s" % \
+                                          (audio_class.SUFFIX),
+                                      audio_class)
 
                     for compression in audio_class.COMPRESSION_MODES:
                         track2 = track.convert(temp2.name,
@@ -1267,13 +1272,21 @@ class LosslessFileTest(AudioFileTest):
                                      compression))
                         else:
                             counter = FrameCounter(2, 16, 44100)
-                            audiotools.transfer_framelist_data(track.to_pcm(),
+                            audiotools.transfer_framelist_data(track2.to_pcm(),
                                                                counter.update)
                             self.assertEqual(
                                 int(counter), 5,
                                 "mismatch encoding %s at quality %s" % \
                                     (self.audio_class.NAME,
                                      compression))
+
+                            #check some obvious failures
+                            self.assertRaises(audiotools.EncodingError,
+                                              track.convert,
+                                              "/dev/null/foo.%s" % \
+                                                  (audio_class.SUFFIX),
+                                              audio_class,
+                                              compression)
 
                 finally:
                     temp2.close()
@@ -1494,13 +1507,295 @@ class LossyFileTest(AudioFileTest):
                 os.unlink(os.path.join(temp_dir, f))
             os.rmdir(temp_dir)
 
-    # @FORMAT_LOSSY
-    @LIB_CUSTOM
+    @FORMAT_LOSSY
     def test_convert(self):
         if (self.audio_class is audiotools.AudioFile):
             return
 
-        self.assert_(False)
+        #check various round-trip options
+        temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
+        try:
+            track = self.audio_class.from_pcm(
+                temp.name,
+                test_streams.Sine16_Stereo(220500, 44100,
+                                           8820.0, 0.70, 4410.0, 0.29, 1.0))
+            for audio_class in audiotools.AVAILABLE_TYPES:
+                temp2 = tempfile.NamedTemporaryFile(
+                    suffix="." + audio_class.SUFFIX)
+                try:
+                    track2 = track.convert(temp2.name,
+                                           audio_class)
+
+                    counter = FrameCounter(2, 16, 44100)
+                    audiotools.transfer_framelist_data(track2.to_pcm(),
+                                                       counter.update)
+                    self.assertEqual(
+                        int(counter), 5,
+                        "mismatch encoding %s" % \
+                            (self.audio_class.NAME))
+
+                    self.assertRaises(audiotools.EncodingError,
+                                      track.convert,
+                                      "/dev/null/foo.%s" % \
+                                          (audio_class.SUFFIX),
+                                      audio_class)
+
+                    for compression in audio_class.COMPRESSION_MODES:
+                        track2 = track.convert(temp2.name,
+                                               audio_class,
+                                               compression)
+
+                        counter = FrameCounter(2, 16, 44100)
+                        audiotools.transfer_framelist_data(track2.to_pcm(),
+                                                           counter.update)
+                        self.assertEqual(
+                            int(counter), 5,
+                            "mismatch encoding %s at quality %s" % \
+                                (self.audio_class.NAME,
+                                 compression))
+
+                        #check some obvious failures
+                        self.assertRaises(audiotools.EncodingError,
+                                          track.convert,
+                                          "/dev/null/foo.%s" % \
+                                              (audio_class.SUFFIX),
+                                          audio_class,
+                                          compression)
+
+                finally:
+                    temp2.close()
+        finally:
+            temp.close()
+
+
+class TestForeignWaveChunks:
+    @FORMAT_LOSSLESS
+    def test_roundtrip_wave_chunks(self):
+        import filecmp
+
+        self.assert_(issubclass(self.audio_class,
+                                audiotools.WaveContainer))
+
+        tempwav1 = tempfile.NamedTemporaryFile(suffix=".wav")
+        tempwav2 = tempfile.NamedTemporaryFile(suffix=".wav")
+        audio = tempfile.NamedTemporaryFile(
+            suffix='.' + self.audio_class.SUFFIX)
+        try:
+            #build a WAVE with some oddball chunks
+            audiotools.WaveAudio.wave_from_chunks(
+                tempwav1.name,
+                [('fmt ', '\x01\x00\x02\x00D\xac\x00\x00\x10\xb1\x02\x00\x04\x00\x10\x00'),
+                 ('fooz', 'testtext'),
+                 ('barz', 'somemoretesttext'),
+                 ('bazz', chr(0) * 1024),
+                 ('data', 'BZh91AY&SY\xdc\xd5\xc2\x8d\x06\xba\xa7\xc0\x00`\x00 \x000\x80MF\xa9$\x84\x9a\xa4\x92\x12qw$S\x85\t\r\xcd\\(\xd0'.decode('bz2')),
+                 ('spam', 'anotherchunk')])
+
+            wave = audiotools.open(tempwav1.name)
+            wave.verify()
+
+            #convert it to our audio type using convert()
+            #(this used to be a to_wave()/from_wave() test,
+            # but I may deprecate that interface from direct use
+            # in favor of the more flexible convert() method)
+            track = wave.convert(audio.name, audiotools.WaveAudio)
+
+            self.assertEqual(track.has_foreign_riff_chunks(), True)
+
+            #convert it back to WAVE via convert()
+            track.convert(tempwav2.name, audiotools.WaveAudio)
+
+            #check that the to WAVEs are byte-for-byte identical
+            self.assertEqual(filecmp.cmp(tempwav1.name,
+                                         tempwav2.name,
+                                         False), True)
+
+            #finally, ensure that setting metadata doesn't erase the chunks
+            track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
+            track = audiotools.open(track.filename)
+            self.assertEqual(track.has_foreign_riff_chunks(), True)
+        finally:
+            tempwav1.close()
+            tempwav2.close()
+            audio.close()
+
+    @FORMAT_LOSSLESS
+    def test_convert_wave_chunks(self):
+        import filecmp
+
+        #no "t" in this set
+        #which prevents a random generator from creating
+        #"fmt " or "data" chunk names
+        chunk_name_chars = "abcdefghijklmnopqrsuvwxyz "
+
+        input_wave = tempfile.NamedTemporaryFile(suffix=".wav")
+        track1_file = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        output_wave = tempfile.NamedTemporaryFile(suffix=".wav")
+        try:
+            #build a WAVE with some random oddball chunks
+            base_chunks = [('fmt ', '\x01\x00\x02\x00D\xac\x00\x00\x10\xb1\x02\x00\x04\x00\x10\x00'),
+                           ('data', 'BZh91AY&SY\xdc\xd5\xc2\x8d\x06\xba\xa7\xc0\x00`\x00 \x000\x80MF\xa9$\x84\x9a\xa4\x92\x12qw$S\x85\t\r\xcd\\(\xd0'.decode('bz2'))]
+            for i in xrange(random.choice(range(1, 10))):
+                base_chunks.insert(
+                    random.choice(range(0, len(base_chunks) + 1)),
+                    ("".join([random.choice(chunk_name_chars)
+                              for i in xrange(4)]),
+                     os.urandom(random.choice(range(1, 1024)) * 2)))
+
+            audiotools.WaveAudio.wave_from_chunks(input_wave.name, base_chunks)
+            wave = audiotools.open(input_wave.name)
+            wave.verify()
+            self.assert_(wave.has_foreign_riff_chunks())
+
+            #convert it to our audio type using convert()
+            track1 = wave.convert(track1_file.name, self.audio_class)
+            self.assert_(track1.has_foreign_riff_chunks())
+
+            #convert it to every other WAVE-containing format
+            for new_class in [t for t in audiotools.AVAILABLE_TYPES
+                              if issubclass(t, audiotools.WaveContainer)]:
+                track2_file = tempfile.NamedTemporaryFile(
+                    suffix="." + new_class.SUFFIX)
+                try:
+                    track2 = track1.convert(track2_file.name, new_class)
+                    self.assert_(track2.has_foreign_riff_chunks(),
+                                 "format %s lost RIFF chunks" % (new_class))
+
+                    #then, convert it back to a WAVE
+                    track2.convert(output_wave.name, audiotools.WaveAudio)
+
+                    #and ensure the result is byte-for-byte identical
+                    self.assertEqual(filecmp.cmp(input_wave.name,
+                                                 output_wave.name,
+                                                 False), True)
+                finally:
+                    track2_file.close()
+
+
+        finally:
+            input_wave.close()
+            track1_file.close()
+            output_wave.close()
+
+class TestForeignAiffChunks:
+    @FORMAT_LOSSLESS
+    def test_roundtrip_aiff_chunks(self):
+        import filecmp
+
+        tempaiff1 = tempfile.NamedTemporaryFile(suffix=".aiff")
+        tempaiff2 = tempfile.NamedTemporaryFile(suffix=".aiff")
+        audio = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            #build an AIFF with some oddball chunks
+            audiotools.AiffAudio.aiff_from_chunks(
+                tempaiff1.name,
+                [('COMM', '\x00\x02\x00\x00\xacD\x00\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00'),
+                 ('fooz', 'testtext'),
+                 ('barz', 'somemoretesttext'),
+                 ('bazz', chr(0) * 1024),
+                 ('SSND', 'BZh91AY&SY&2\xd0\xeb\x00\x01Y\xc0\x04\xc0\x00\x00\x80\x00\x08 \x000\xcc\x05)\xa6\xa2\x93`\x94\x9e.\xe4\x8ap\xa1 Le\xa1\xd6'.decode('bz2')),
+                 ('spam', 'anotherchunk')])
+
+            aiff = audiotools.open(tempaiff1.name)
+            aiff.verify()
+
+            #convert it to our audio type via convert()
+            track = aiff.convert(audio.name, self.audio_class)
+            if (hasattr(track, "has_foreign_aiff_chunks")):
+                self.assert_(track.has_foreign_aiff_chunks())
+
+            #convert it back to AIFF via convert()
+            self.assert_(
+                track.convert(tempaiff2.name,
+                              audiotools.AiffAudio).has_foreign_aiff_chunks())
+
+            #check that the two AIFFs are byte-for-byte identical
+            self.assertEqual(filecmp.cmp(tempaiff1.name,
+                                         tempaiff2.name,
+                                         False), True)
+
+            #however, unlike WAVE, AIFF does support metadata
+            #so setting it will make the files no longer
+            #byte-for-byte identical, but the chunks in the new file
+            #should be a superset of the chunks in the old
+
+            track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
+            track = audiotools.open(track.filename)
+            chunk_ids = set([chunk[0] for chunk in
+                             track.convert(tempaiff2.name,
+                                           audiotools.AiffAudio).chunks()])
+            self.assert_(chunk_ids.issuperset(set(['COMM',
+                                                   'fooz',
+                                                   'barz',
+                                                   'bazz',
+                                                   'SSND',
+                                                   'spam'])))
+        finally:
+            tempaiff1.close()
+            tempaiff2.close()
+            audio.close()
+
+    @FORMAT_LOSSLESS
+    def test_convert_aiff_chunks(self):
+        import filecmp
+
+        #no "M" or "N" in this set
+        #which prevents a random generator from creating
+        #"COMM" or "SSND" chunk names
+        chunk_name_chars = "ABCDEFGHIJKLOPQRSTUVWXYZ"
+
+        input_aiff = tempfile.NamedTemporaryFile(suffix=".aiff")
+        track1_file = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        output_aiff = tempfile.NamedTemporaryFile(suffix=".aiff")
+        try:
+            #build an AIFF with some random oddball chunks
+            base_chunks = [('COMM', '\x00\x02\x00\x00\xacD\x00\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00'),
+                           ('SSND', 'BZh91AY&SY&2\xd0\xeb\x00\x01Y\xc0\x04\xc0\x00\x00\x80\x00\x08 \x000\xcc\x05)\xa6\xa2\x93`\x94\x9e.\xe4\x8ap\xa1 Le\xa1\xd6'.decode('bz2'))]
+            for i in xrange(random.choice(range(1, 10))):
+                base_chunks.insert(
+                    random.choice(range(0, len(base_chunks) + 1)),
+                    ("".join([random.choice(chunk_name_chars)
+                              for i in xrange(4)]),
+                     os.urandom(random.choice(range(1, 1024)) * 2)))
+
+            audiotools.AiffAudio.aiff_from_chunks(input_aiff.name, base_chunks)
+            aiff = audiotools.open(input_aiff.name)
+            aiff.verify()
+            self.assert_(aiff.has_foreign_aiff_chunks())
+
+            #convert it to our audio type using convert()
+            track1 = aiff.convert(track1_file.name, self.audio_class)
+            self.assert_(track1.has_foreign_aiff_chunks())
+
+            #convert it to every other AIFF-containing format
+            for new_class in [t for t in audiotools.AVAILABLE_TYPES
+                              if issubclass(t, audiotools.AiffContainer)]:
+                track2_file = tempfile.NamedTemporaryFile(
+                    suffix="." + new_class.SUFFIX)
+                try:
+                    track2 = track1.convert(track2_file.name, new_class)
+                    self.assert_(track2.has_foreign_aiff_chunks(),
+                                 "format %s lost AIFF chunks" % (new_class))
+
+                    #then, convert it back to an AIFF
+                    track2.convert(output_aiff.name, audiotools.AiffAudio)
+
+                    #and ensure the result is byte-for-byte identical
+                    self.assertEqual(filecmp.cmp(input_aiff.name,
+                                                 output_aiff.name,
+                                                 False), True)
+                finally:
+                    track2_file.close()
+
+
+        finally:
+            input_aiff.close()
+            track1_file.close()
+            output_aiff.close()
+
 
 class AACFileTest(LossyFileTest):
     def setUp(self):
@@ -1519,7 +1814,7 @@ class AACFileTest(LossyFileTest):
             temp.close()
 
 
-class AiffFileTest(LosslessFileTest):
+class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
     def setUp(self):
         self.audio_class = audiotools.AiffAudio
         self.suffix = "." + self.audio_class.SUFFIX
@@ -1558,6 +1853,84 @@ class AiffFileTest(LosslessFileTest):
                 track = audiotools.open(temp.name)
                 self.assertEqual(track.channels(), len(cm))
                 self.assertEqual(track.channel_mask(), cm)
+        finally:
+            temp.close()
+
+    @FORMAT_AIFF
+    def test_verify(self):
+        #test truncated file
+        for (comm_size, aiff_file) in [(0x25, "aiff-8bit.aiff"),
+                                       (0x25, "aiff-1ch.aiff"),
+                                       (0x25, "aiff-2ch.aiff"),
+                                       (0x25, "aiff-6ch.aiff")]:
+            f = open(aiff_file, 'rb')
+            aiff_data = f.read()
+            f.close()
+
+            temp = tempfile.NamedTemporaryFile(suffix=".aiff")
+
+            try:
+                #first, check that a truncated comm chunk raises an exception
+                #at init-time
+                for i in xrange(0, comm_size + 17):
+                    temp.seek(0, 0)
+                    temp.write(aiff_data[0:i])
+                    temp.flush()
+                    self.assertEqual(os.path.getsize(temp.name), i)
+
+                    self.assertRaises(audiotools.InvalidFile,
+                                      audiotools.AiffAudio,
+                                      temp.name)
+
+                #then, check that a truncated ssnd chunk raises an exception
+                #at read-time
+                for i in xrange(comm_size + 17, len(aiff_data)):
+                    temp.seek(0, 0)
+                    temp.write(aiff_data[0:i])
+                    temp.flush()
+                    reader = audiotools.AiffAudio(temp.name).to_pcm()
+                    self.assertNotEqual(reader, None)
+                    self.assertRaises(IOError,
+                                      audiotools.transfer_framelist_data,
+                                      reader, lambda x: x)
+            finally:
+                temp.close()
+
+        #test non-ASCII chunk ID
+        temp = tempfile.NamedTemporaryFile(suffix=".aiff")
+        try:
+            f = open("aiff-metadata.aiff")
+            aiff_data = list(f.read())
+            f.close()
+            aiff_data[0x89] = chr(0)
+            temp.seek(0, 0)
+            temp.write("".join(aiff_data))
+            temp.flush()
+            self.assertRaises(audiotools.InvalidFile,
+                              audiotools.open,
+                              temp.name)
+        finally:
+            temp.close()
+
+        #test no SSND chunk
+        self.assertRaises(audiotools.InvalidFile,
+                          audiotools.AiffAudio,
+                          "aiff-nossnd.aiff")
+
+        #test convert errors
+        temp = tempfile.NamedTemporaryFile(suffix=".aiff")
+        try:
+            temp.write(open("aiff-2ch.aiff", "rb").read()[0:-10])
+            temp.flush()
+            flac = audiotools.open(temp.name)
+            if (os.path.isfile("dummy.wav")):
+                os.unlink("dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+            self.assertRaises(audiotools.EncodingError,
+                              flac.convert,
+                              "dummy.wav",
+                              audiotools.WaveAudio)
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
         finally:
             temp.close()
 
@@ -1727,8 +2100,53 @@ class AUFileTest(LosslessFileTest):
         finally:
             temp.close()
 
+    @FORMAT_AU
+    def test_verify(self):
+        #test truncated file
+        temp = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            track = self.audio_class.from_pcm(
+                temp.name,
+                BLANK_PCM_Reader(1))
+            good_data = open(temp.name, 'rb').read()
+            f = open(temp.name, 'wb')
+            f.write(good_data[0:-10])
+            f.close()
+            reader = track.to_pcm()
+            self.assertNotEqual(reader, None)
+            self.assertRaises(IOError,
+                              audiotools.transfer_framelist_data,
+                              reader, lambda x: x)
+        finally:
+            temp.close()
 
-class FlacFileTest(LosslessFileTest):
+        #test convert() error
+        temp = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            track = self.audio_class.from_pcm(
+                temp.name,
+                BLANK_PCM_Reader(1))
+            good_data = open(temp.name, 'rb').read()
+            f = open(temp.name, 'wb')
+            f.write(good_data[0:-10])
+            f.close()
+            if (os.path.isfile("dummy.wav")):
+                os.unlink("dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+            self.assertRaises(audiotools.EncodingError,
+                              track.convert,
+                              "dummy.wav",
+                              audiotools.WaveAudio)
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+        finally:
+            temp.close()
+
+
+class FlacFileTest(TestForeignAiffChunks,
+                   TestForeignWaveChunks,
+                   LosslessFileTest):
     def setUp(self):
         self.audio_class = audiotools.FlacAudio
         self.suffix = "." + self.audio_class.SUFFIX
@@ -2036,23 +2454,6 @@ class M4AFileTest(LossyFileTest):
         self.suffix = "." + self.audio_class.SUFFIX
 
 
-class MP2FileTest(LossyFileTest):
-    def setUp(self):
-        self.audio_class = audiotools.MP2Audio
-        self.suffix = "." + self.audio_class.SUFFIX
-
-    @FORMAT_MP2
-    def test_length(self):
-        temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
-        try:
-            for seconds in [1, 2, 3, 4, 5, 10, 20, 60, 120]:
-                track = self.audio_class.from_pcm(temp.name,
-                                                  BLANK_PCM_Reader(seconds))
-                self.assertEqual(int(round(track.seconds_length())), seconds)
-        finally:
-            temp.close()
-
-
 class MP3FileTest(LossyFileTest):
     def setUp(self):
         self.audio_class = audiotools.MP3Audio
@@ -2068,6 +2469,115 @@ class MP3FileTest(LossyFileTest):
                 self.assertEqual(int(round(track.seconds_length())), seconds)
         finally:
             temp.close()
+
+    @FORMAT_MP3
+    def test_verify(self):
+        #test invalid file sent to to_pcm()
+
+        #FIXME - mpg123 doesn't generate errors on invalid files
+        #Ultimately, all of MP3/MP2 decoding needs to be internalized
+        #so that these sorts of errors can be caught consistently.
+
+        # temp = tempfile.NamedTemporaryFile(
+        #     suffix=self.suffix)
+        # try:
+        #     track = self.audio_class.from_pcm(
+        #         temp.name,
+        #         BLANK_PCM_Reader(1))
+        #     good_data = open(temp.name, 'rb').read()
+        #     f = open(temp.name, 'wb')
+        #     f.write(good_data[0:100])
+        #     f.close()
+        #     reader = track.to_pcm()
+        #     audiotools.transfer_framelist_data(reader, lambda x: x)
+        #     self.assertRaises(audiotools.DecodingError,
+        #                       reader.close)
+        # finally:
+        #     temp.close()
+
+        #test invalid file send to convert()
+        # temp = tempfile.NamedTemporaryFile(
+        #     suffix=self.suffix)
+        # try:
+        #     track = self.audio_class.from_pcm(
+        #         temp.name,
+        #         BLANK_PCM_Reader(1))
+        #     good_data = open(temp.name, 'rb').read()
+        #     f = open(temp.name, 'wb')
+        #     f.write(good_data[0:100])
+        #     f.close()
+        #     if (os.path.isfile("dummy.wav")):
+        #         os.unlink("dummy.wav")
+        #     self.assertEqual(os.path.isfile("dummy.wav"), False)
+        #     self.assertRaises(audiotools.EncodingError,
+        #                       track.convert,
+        #                       "dummy.wav",
+        #                       audiotools.WaveAudio)
+        #     self.assertEqual(os.path.isfile("dummy.wav"), False)
+        # finally:
+        #     temp.close()
+
+        #test verify() on invalid files
+        temp = tempfile.NamedTemporaryFile(
+            suffix=self.suffix)
+        mpeg_data = cStringIO.StringIO()
+        frame_header = audiotools.MPEG_Frame_Header("header")
+        try:
+            mpx_file = audiotools.open("sine" + self.suffix)
+            self.assertEqual(mpx_file.verify(), True)
+
+            for (header, data) in mpx_file.mpeg_frames():
+                mpeg_data.write(frame_header.build(header))
+                mpeg_data.write(data)
+            mpeg_data = mpeg_data.getvalue()
+
+            temp.seek(0, 0)
+            temp.write(mpeg_data)
+            temp.flush()
+
+            #first, try truncating the file underfoot
+            bad_mpx_file = audiotools.open(temp.name)
+            for i in xrange(len(mpeg_data)):
+                try:
+                    if ((mpeg_data[i] == chr(0xFF)) and
+                        (ord(mpeg_data[i + 1]) & 0xE0)):
+                        #skip sizes that may be the end of a frame
+                        continue
+                except IndexError:
+                    continue
+
+                f = open(temp.name, "wb")
+                f.write(mpeg_data[0:i])
+                f.close()
+                self.assertEqual(os.path.getsize(temp.name), i)
+                self.assertRaises(audiotools.InvalidFile,
+                                  bad_mpx_file.verify)
+
+
+            #then try swapping some of the header bits
+            for (field, value) in [("sample_rate", 48000),
+                                   ("channel", 3)]:
+                temp.seek(0, 0)
+                for (i, (header, data)) in enumerate(mpx_file.mpeg_frames()):
+                    if (i == 1):
+                        setattr(header, field, value)
+                        temp.write(frame_header.build(header))
+                        temp.write(data)
+                    else:
+                        temp.write(frame_header.build(header))
+                        temp.write(data)
+                temp.flush()
+                new_file = audiotools.open(temp.name)
+                self.assertRaises(audiotools.InvalidFile,
+                                  new_file.verify)
+        finally:
+            temp.close()
+
+
+class MP2FileTest(MP3FileTest):
+    def setUp(self):
+        self.audio_class = audiotools.MP2Audio
+        self.suffix = "." + self.audio_class.SUFFIX
 
 
 class OggVerify:
@@ -2137,13 +2647,15 @@ class OggVerify:
             temp.close()
 
 
-class OggFlacFileTest(OggVerify, LosslessFileTest):
+class OggFlacFileTest(OggVerify,
+                      LosslessFileTest):
     def setUp(self):
         self.audio_class = audiotools.OggFlacAudio
         self.suffix = "." + self.audio_class.SUFFIX
 
 
-class ShortenFileTest(LosslessFileTest):
+class ShortenFileTest(TestForeignWaveChunks,
+                      LosslessFileTest):
     def setUp(self):
         self.audio_class = audiotools.ShortenAudio
         self.suffix = "." + self.audio_class.SUFFIX
@@ -2340,7 +2852,8 @@ class VorbisFileTest(OggVerify, LossyFileTest):
             temp.close()
 
 
-class WaveFileTest(LosslessFileTest):
+class WaveFileTest(TestForeignWaveChunks,
+                   LosslessFileTest):
     def setUp(self):
         self.audio_class = audiotools.WaveAudio
         self.suffix = "." + self.audio_class.SUFFIX
@@ -2454,7 +2967,8 @@ class WaveFileTest(LosslessFileTest):
             temp.close()
 
 
-class WavPackFileTest(LosslessFileTest):
+class WavPackFileTest(TestForeignWaveChunks,
+                      LosslessFileTest):
     def setUp(self):
         self.audio_class = audiotools.WavPackAudio
         self.suffix = "." + self.audio_class.SUFFIX
