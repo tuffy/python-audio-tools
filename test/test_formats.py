@@ -33,6 +33,7 @@ from audiotools import Con
 from test_reorg import (parser,
                         BLANK_PCM_Reader, RANDOM_PCM_Reader,
                         EXACT_BLANK_PCM_Reader, EXACT_SILENCE_PCM_Reader,
+                        Variable_Reader,
                         EXACT_RANDOM_PCM_Reader, MD5_Reader,
                         Join_Reader, FrameCounter,
                         run_analysis, Combinations,
@@ -52,24 +53,6 @@ for section in parser.sections():
         else:
             vars()["%s_%s" % (section.upper(),
                               option.upper())] = lambda function: do_nothing
-
-
-class Variable_Reader:
-    def __init__(self, pcmreader):
-        self.pcmreader = audiotools.BufferedPCMReader(pcmreader)
-        self.sample_rate = pcmreader.sample_rate
-        self.channels = pcmreader.channels
-        self.channel_mask = pcmreader.channel_mask
-        self.bits_per_sample = pcmreader.bits_per_sample
-        self.md5 = md5()
-        self.range = range(self.channels * (self.bits_per_sample / 8),
-                           4096)
-
-    def read(self, bytes):
-        return self.pcmreader.read(random.choice(self.range))
-
-    def close(self):
-        self.pcmreader.close()
 
 
 class ERROR_PCM_Reader(audiotools.PCMReader):

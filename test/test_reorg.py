@@ -176,6 +176,22 @@ class MD5_Reader:
         self.pcmreader.close()
 
 
+class Variable_Reader:
+    def __init__(self, pcmreader):
+        self.pcmreader = audiotools.BufferedPCMReader(pcmreader)
+        self.sample_rate = pcmreader.sample_rate
+        self.channels = pcmreader.channels
+        self.channel_mask = pcmreader.channel_mask
+        self.bits_per_sample = pcmreader.bits_per_sample
+        self.md5 = md5()
+        self.range = range(self.channels * (self.bits_per_sample / 8),
+                           4096)
+
+    def read(self, bytes):
+        return self.pcmreader.read(random.choice(self.range))
+
+    def close(self):
+        self.pcmreader.close()
 
 
 class Join_Reader:
@@ -202,6 +218,30 @@ class Join_Reader:
     def close(self):
         for r in self.readers:
             r.close()
+
+
+class MiniFrameReader:
+    def __init__(self, channel_data, sample_rate, channel_mask,
+                 bits_per_sample):
+        self.sample_rate = sample_rate
+        self.channels = len(channel_data)
+        self.channel_mask = channel_mask
+        self.bits_per_sample = bits_per_sample
+        self.pcm_frames = zip(*channel_data)
+
+    def read(self, bytes):
+        try:
+            return audiotools.pcm.from_list(self.pcm_frames.pop(0),
+                                            self.channels,
+                                            self.bits_per_sample,
+                                            True)
+        except IndexError:
+            return audiotools.pcm.FrameList("",
+                                            self.channels,
+                                            self.bits_per_sample,
+                                            True, True)
+    def close(self):
+        self.pcm_frames = []
 
 
 class FrameCounter:
@@ -235,6 +275,28 @@ def Combinations(items, n):
         for i in xrange(len(items)):
             for combos in Combinations(items[i + 1:], n - 1):
                 yield [items[i]] + combos
+
+
+from_channels = audiotools.ChannelMask.from_channels
+
+#these are combinations that tend to occur in nature
+SHORT_PCM_COMBINATIONS = ((11025,  1, from_channels(1), 8),
+                          (22050,  1, from_channels(1), 8),
+                          (22050,  1, from_channels(1), 16),
+                          (32000,  2, from_channels(2), 16),
+                          (44100,  1, from_channels(1), 16),
+                          (44100,  2, from_channels(2), 16),
+                          (48000,  1, from_channels(1), 16),
+                          (48000,  2, from_channels(2), 16),
+                          (48000,  6, audiotools.ChannelMask.from_fields(
+            front_left=True, front_right=True,
+            front_center=True, low_frequency=True,
+            back_left=True, back_right=True), 16),
+                          (192000, 2, from_channels(2), 24),
+                          (96000,  6, audiotools.ChannelMask.from_fields(
+            front_left=True, front_right=True,
+            front_center=True, low_frequency=True,
+            back_left=True, back_right=True), 24))
 
 
 TEST_COVER1 = \
@@ -316,7 +378,7 @@ HUGE_BMP = \
 
 
 from test_formats import *
-
+from test_core import *
 
 if (__name__ == '__main__'):
     unittest.main()
