@@ -2792,6 +2792,8 @@ class AudioFile:
         metadata = self.get_metadata()
         if ((metadata is not None) and (metadata.album_number > 0)):
             return metadata.album_number
+        elif ((metadata is not None) and (metadata.track_number > 0)):
+            return 0
         else:
             try:
                 long_track_number = int(re.findall(
