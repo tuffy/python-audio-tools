@@ -22,6 +22,8 @@ import audiotools
 import random
 import tempfile
 import decimal
+import os
+import os.path
 from hashlib import md5
 
 from test_reorg import (parser, Variable_Reader, BLANK_PCM_Reader,
@@ -100,6 +102,31 @@ class BufferedPCMReader(unittest.TestCase):
             frame = reader.read(frames * 4)
             self.assertEqual(frame.frames, frames)
             total_frames -= frame.frames
+
+
+class ChannelMask(unittest.TestCase):
+    @LIB_CORE
+    def test_mask(self):
+        mask = audiotools.ChannelMask.from_fields()
+        self.assert_(not mask.defined())
+        self.assert_(mask.undefined())
+        self.assertEqual(len(mask), 0)
+        self.assertEqual(set([]), set(mask.channels()))
+        mask2 = audiotools.ChannelMask(int(mask))
+        self.assertEqual(mask, mask2)
+
+        mask_fields = audiotools.ChannelMask.SPEAKER_TO_MASK.keys()
+        for count in xrange(1, len(mask_fields) + 1):
+            for fields in Combinations(mask_fields, count):
+                #build a mask from fields
+                mask = audiotools.ChannelMask.from_fields(
+                    **dict([(field, True) for field in fields]))
+                self.assert_(mask.defined())
+                self.assert_(not mask.undefined())
+                self.assertEqual(len(mask), len(fields))
+                self.assertEqual(set(fields), set(mask.channels()))
+                mask2 = audiotools.ChannelMask(int(mask))
+                self.assertEqual(mask, mask2)
 
 
 class ImageJPEG(unittest.TestCase):
@@ -395,3 +422,57 @@ class PCMReaderWindow(unittest.TestCase):
                 MiniFrameReader(self.channels, 44100, 3, 16), -5, 30),
                              [[0] * 5 + range(0, 20) + [0] * 5,
                               [0] * 5 + range(20, 0, -1) + [0] * 5])
+
+
+class Test_open(unittest.TestCase):
+    @LIB_CORE
+    def setUp(self):
+        self.dummy1 = tempfile.NamedTemporaryFile()
+        self.dummy2 = tempfile.NamedTemporaryFile()
+        self.dummy3 = tempfile.NamedTemporaryFile()
+        self.dummy1.write("12345" * 1000)
+        self.dummy1.flush()
+        self.dummy2.write("54321" * 1000)
+        self.dummy2.flush()
+
+        data = open("flac-allframes.flac", "rb").read()
+        self.dummy3.write(data[0:0x6 + 1] + chr(0x21) +
+                          data[0x8:0x34 + 1] + data[0x36:])
+        self.dummy3.flush()
+
+    @LIB_CORE
+    def tearDown(self):
+        self.dummy1.close()
+        self.dummy2.close()
+
+    @LIB_CORE
+    def test_open(self):
+        #ensure open on dummy file raises UnsupportedFile
+        self.assertRaises(audiotools.UnsupportedFile,
+                          audiotools.open,
+                          self.dummy1.name)
+
+        #ensure open on nonexistent file raises IOError
+        self.assertRaises(IOError,
+                          audiotools.open,
+                          "/dev/null/foo")
+
+        #ensure open on directory raises IOError
+        self.assertRaises(IOError,
+                          audiotools.open,
+                          "/")
+
+        #ensure open on unreadable file raises IOError
+        os.chmod(self.dummy1.name, 0)
+        try:
+            self.assertRaises(IOError,
+                              audiotools.open,
+                              self.dummy1.name)
+        finally:
+            os.chmod(self.dummy1.name, 0600)
+
+        #ensure a file whose __init__ method triggers InvalidFile
+        #raises UnsupportedFile
+        self.assertRaises(audiotools.InvalidFile,
+                          audiotools.open,
+                          self.dummy3.name)

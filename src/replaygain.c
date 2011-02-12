@@ -893,6 +893,9 @@ ReplayGainReader_read(replaygain_ReplayGainReader* self, PyObject *args) {
     PyObject* framelist_type_obj;
     pcm_FrameList *framelist;
 
+    PyObject* output_obj;
+    pcm_FrameList *output_framelist;
+
     PyObject* dither_obj;
     uint8_t* dither;
     Py_ssize_t dither_length;
@@ -948,6 +951,24 @@ ReplayGainReader_read(replaygain_ReplayGainReader* self, PyObject *args) {
             return NULL;
         }
 
+        /*build an output FrameList*/
+        if ((output_obj = PyObject_CallMethod(self->pcm_module,
+                                              "__blank__",
+                                              NULL)) == NULL) {
+            Py_DECREF(dither_obj);
+            Py_DECREF(framelist_obj);
+            return NULL;
+        }
+
+        /*update output FrameList to match input FrameList*/
+        output_framelist = (pcm_FrameList*)output_obj;
+        output_framelist->frames = framelist->frames;
+        output_framelist->channels = framelist->channels;
+        output_framelist->bits_per_sample = framelist->bits_per_sample;
+        output_framelist->samples_length = framelist->samples_length;
+        output_framelist->samples = realloc(output_framelist->samples,
+                                            sizeof(ia_data_t) *
+                                            framelist->samples_length);
 
         /*apply our multiplier to framelist's integer samples
           and apply dithering*/
@@ -955,13 +976,7 @@ ReplayGainReader_read(replaygain_ReplayGainReader* self, PyObject *args) {
         min_value = -(1 << (framelist->bits_per_sample - 1));
 
         for (i = 0; i < framelist->samples_length; i++) {
-            /*We're going to be naughty and modify
-              framelist's samples directly.
-              Since it's a fresh value returned from read(),
-              no one else should have a reference to it.*/
-
-            /*FIXME - keep adjusted sample within min/max of bits-per-sample*/
-            framelist->samples[i] =
+            output_framelist->samples[i] =
                 MIN(MAX(lround(framelist->samples[i] *
                                multiplier) ^
                         (dither[i / 8] & (1 << (i % 8))) >> (i % 8),
@@ -969,8 +984,11 @@ ReplayGainReader_read(replaygain_ReplayGainReader* self, PyObject *args) {
                     max_value);
         }
 
+        /*decref input FrameList and dither string*/
         Py_DECREF(dither_obj);
-        return framelist_obj;
+        Py_DECREF(framelist_obj);
+
+        return output_obj;
     } else {
         PyErr_SetString(PyExc_TypeError,
                         "results from pcmreader.read() must be FrameLists");

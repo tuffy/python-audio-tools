@@ -98,15 +98,15 @@ if (__name__ == '__main__'):
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("dvda2xmcd", options)
 
-    if (options.xmcd != '-'):
-        if (not os.path.isfile(options.xmcd)):
-            if (not os.access(os.path.dirname(options.xmcd), os.W_OK)):
-                msg.error(_(u"Unable to write \"%s\"") % \
-                              (msg.filename(options.xmcd)))
-                sys.exit(1)
-        else:
-            msg.error(_(u"Refusing to overwrite \"%s\"") % \
-                          (msg.filename(options.xmcd)))
+    if (options.xmcd == '-'):
+        outfile = sys.stdout
+    else:
+        try:
+            outfile = os.fdopen(os.open(options.xmcd,
+                                        os.O_WRONLY | os.O_CREAT | os.O_EXCL),
+                                "w")
+        except OSError, err:
+            msg.os_error(err)
             sys.exit(1)
 
     if (options.audio_ts is None):
@@ -136,50 +136,31 @@ if (__name__ == '__main__'):
     returnval = 0
     musicbrainz_matches = 0
     freedb_matches = 0
-    metadata_file = cStringIO.StringIO()
 
-
-
-    if (options.use_musicbrainz):
-        try:
+    try:
+        if (options.use_musicbrainz):
             musicbrainz_matches = audiotools.get_mbxml(
                 musicbrainz_discid,
-                metadata_file,
+                outfile,
                 options.musicbrainz_server,
                 options.musicbrainz_port,
                 msg,
                 options.default)
             returnval = 0
-        except IOError, e:
-            msg.error(unicode(e))
-            returnval = 1
-
-    if ((musicbrainz_matches == 0) and options.use_freedb):
-        try:
+        if ((musicbrainz_matches == 0) and options.use_freedb):
             freedb_matches = audiotools.get_xmcd(
                 freedb_discid,
-                metadata_file,
+                outfile,
                 options.freedb_server,
                 options.freedb_port,
                 msg,
                 options.default)
             returnval = 0
-        except IOError, e:
-            msg.error(unicode(e))
-            returnval = 1
-
-    try:
-        if (options.xmcd == '-'):
-            outfile = sys.stdout
-        else:
-            if (not os.path.isfile(options.xmcd)):
-                outfile = open(options.xmcd, "w")
-            else:
-                msg.error(_(u"Refusing to overwrite \"%s\"") % \
-                              (msg.filename(options.xmcd)))
-                sys.exit(1)
-    except IOError, err:
-        msg.error(_(u"Unable to write \"%s\"") % (msg.filename(options.xmcd)))
+    except Exception, e:
+        msg.error(unicode(e))
+        outfile.close()
+        if (os.path.isfile(options.xmcd)):
+            os.unlink(options.xmcd)
         sys.exit(1)
 
     #if musicbrainz_matches and freedb_matches are both 0
@@ -195,7 +176,6 @@ if (__name__ == '__main__'):
         outfile.close()
         msg.info(_(u"%s written") % (msg.filename(options.xmcd)))
     else:
-        outfile.write(metadata_file.getvalue())
         outfile.close()
         msg.info(_(u"%s written") % (msg.filename(options.xmcd)))
 

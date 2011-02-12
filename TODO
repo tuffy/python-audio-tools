@@ -3223,7 +3223,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** TODO AlbumMetaDataFile
 **** DONE BufferedPCMReader
 **** TODO CDDA
-**** TODO ChannelMask
+**** DONE ChannelMask
 **** TODO ExecQueue
 **** TODO ExecQueue2
 **** DONE Image
@@ -3244,7 +3244,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE PCMReaderWindow
 **** TODO ReorderedPCMReader
 **** TODO ReplayGain
-**** TODO ReplayGainReader
 **** TODO analyze_frames
 **** TODO applicable_replay_gain
 **** TODO at_a_time
@@ -3253,7 +3252,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** TODO filename_to_type
 **** TODO group_tracks
 **** TODO make_dirs
-**** TODO open
+**** DONE open
 **** TODO open_directory
 **** TODO open_files
 **** TODO parse_timestamp
