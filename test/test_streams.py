@@ -5,6 +5,7 @@ import cStringIO
 import math
 import os
 from hashlib import md5
+from audiotools.decoders import Sine_Mono, Sine_Stereo, Sine_Simple
 
 #these are test stream generators using stream formulas
 #taken from the FLAC reference encoder
@@ -101,43 +102,21 @@ class Generate04(ShortStream):
                              sample_rate, 2, 16)
 
 
-class Sine8_Mono:
+class Sine8_Mono(Sine_Mono):
     def __init__(self,
                  pcm_frames,
                  sample_rate,
                  f1, a1, f2, a2):
+        Sine_Mono.__init__(self, 8, pcm_frames, sample_rate,
+                           f1, a1, f2, a2)
         self.f1 = f1
         self.a1 = a1
         self.f2 = f2
         self.a2 = a2
-        self.full_scale = 0x7F
-        self.delta1 = 2 * math.pi / (sample_rate / f1)
-        self.delta2 = 2 * math.pi / (sample_rate / f2)
-        self.theta1 = self.theta2 = 0.0
-
-        self.original_frames = pcm_frames
-        self.pcm_frames = pcm_frames
-        self.sample_rate = sample_rate
-        self.channels = 1
-        self.channel_mask = 0x4
-        self.bits_per_sample = 8
-        self.signed = True
-        self.sample_frame = audiotools.pcm.FrameList("", 1, 8, False, False)
         self.md5 = md5()
 
     def read(self, bytes):
-        wave = []
-        for i in xrange(min(self.sample_frame.frame_count(bytes),
-                            self.pcm_frames)):
-            wave.append(int(((self.a1 * math.sin(self.theta1) + self.a2 *
-                              math.sin(self.theta2)) * self.full_scale) + 0.5))
-            self.theta1 += self.delta1
-            self.theta2 += self.delta2
-        framelist = audiotools.pcm.from_list(wave,
-                                             self.channels,
-                                             self.bits_per_sample,
-                                             self.signed)
-        self.pcm_frames -= framelist.frames
+        framelist = Sine_Mono.read(self, bytes)
         self.md5.update(framelist.to_bytes(False, True))
         return framelist
 
@@ -148,72 +127,48 @@ class Sine8_Mono:
         return self.md5.hexdigest()
 
     def reset(self):
-        self.theta1 = self.theta2 = 0.0
+        Sine_Mono.reset(self)
         self.md5 = md5()
-        self.pcm_frames = self.original_frames
-
-    def close(self):
-        self.pcm_frames = 0
 
     def __repr__(self):
-        return "Sine8_Mono(%s, %s, %s, %s, %s, %s)" % \
-            (repr(self.pcm_frames),
-             repr(self.sample_rate),
+        return "Sine8_Mono(%s, %s, %s, %s, %s)" % \
+            (repr(self.sample_rate),
              repr(self.f1),
              repr(self.a1),
              repr(self.f2),
              repr(self.a2))
 
 
-class Sine8_Stereo(Sine8_Mono):
+class Sine8_Stereo(Sine_Stereo):
     def __init__(self, pcm_frames, sample_rate,
                  f1, a1, f2, a2, fmult):
+        Sine_Stereo.__init__(self, 8, pcm_frames,
+                             sample_rate, f1, a1, f2, a2, fmult)
         self.f1 = f1
         self.a1 = a1
         self.f2 = f2
         self.a2 = a2
         self.fmult = fmult
-        self.full_scale = 0x7F
-        self.delta1 = 2 * math.pi / (sample_rate / f1)
-        self.delta2 = 2 * math.pi / (sample_rate / f2)
-        self.theta1 = self.theta2 = 0.0
-
-        self.original_frames = pcm_frames
-        self.pcm_frames = pcm_frames
-        self.sample_rate = sample_rate
-        self.channels = 2
-        self.channel_mask = 0x3
-        self.bits_per_sample = 8
-        self.signed = True
-        self.sample_frame = audiotools.pcm.FrameList("", 2, 8, False, False)
         self.md5 = md5()
 
     def read(self, bytes):
-        wave = []
-        for i in xrange(min(self.sample_frame.frame_count(bytes),
-                            self.pcm_frames)):
-            wave.append(int(((self.a1 * math.sin(self.theta1) + self.a2 *
-                              math.sin(self.theta2)) * self.full_scale) + 0.5))
-            wave.append(int((-(self.a1 * math.sin(self.theta1 * self.fmult) +
-                               self.a2 *
-                               math.sin(self.theta2 * self.fmult)) *
-                              self.full_scale) +
-                            0.5))
-            self.theta1 += self.delta1
-            self.theta2 += self.delta2
-
-        framelist = audiotools.pcm.from_list(wave,
-                                             self.channels,
-                                             self.bits_per_sample,
-                                             self.signed)
-        self.pcm_frames -= framelist.frames
+        framelist = Sine_Stereo.read(self, bytes)
         self.md5.update(framelist.to_bytes(False, True))
         return framelist
 
+    def digest(self):
+        return self.md5.digest()
+
+    def hexdigest(self):
+        return self.md5.hexdigest()
+
+    def reset(self):
+        Sine_Stereo.reset(self)
+        self.md5 = md5()
+
     def __repr__(self):
-        return "Sine8_Stereo(%s, %s, %s, %s, %s, %s, %s)" % \
-            (repr(self.pcm_frames),
-             repr(self.sample_rate),
+        return "Sine8_Stereo(%s, %s, %s, %s, %s, %s)" % \
+            (repr(self.sample_rate),
              repr(self.f1),
              repr(self.a1),
              repr(self.f2),
@@ -224,100 +179,38 @@ class Sine8_Stereo(Sine8_Mono):
 class Sine16_Mono(Sine8_Mono):
     def __init__(self, pcm_frames, sample_rate,
                  f1, a1, f2, a2):
+        Sine_Mono.__init__(self, 16, pcm_frames, sample_rate,
+                           f1, a1, f2, a2)
         self.f1 = f1
         self.a1 = a1
         self.f2 = f2
         self.a2 = a2
-        self.full_scale = 0x7FFF
-        self.delta1 = 2 * math.pi / (sample_rate / f1)
-        self.delta2 = 2 * math.pi / (sample_rate / f2)
-        self.theta1 = self.theta2 = 0.0
-
-        self.original_frames = pcm_frames
-        self.pcm_frames = pcm_frames
-        self.sample_rate = sample_rate
-        self.channels = 1
-        self.channel_mask = 0x4
-        self.bits_per_sample = 16
-        self.signed = True
-        self.sample_frame = audiotools.pcm.FrameList("", 1, 16, False, False)
         self.md5 = md5()
 
-    def read(self, bytes):
-        wave = []
-        for i in xrange(min(self.sample_frame.frame_count(bytes),
-                            self.pcm_frames)):
-            wave.append(int(((self.a1 * math.sin(self.theta1) + self.a2 *
-                              math.sin(self.theta2)) * self.full_scale) + 0.5))
-            self.theta1 += self.delta1
-            self.theta2 += self.delta2
-        framelist = audiotools.pcm.from_list(wave,
-                                             self.channels,
-                                             self.bits_per_sample,
-                                             self.signed)
-        self.pcm_frames -= framelist.frames
-        self.md5.update(framelist.to_bytes(False, True))
-        return framelist
-
     def __repr__(self):
-        return "Sine16_Mono(%s, %s, %s, %s, %s, %s)" % \
-            (repr(self.pcm_frames),
-             repr(self.sample_rate),
+        return "Sine16_Mono(%s, %s, %s, %s, %s)" % \
+            (repr(self.sample_rate),
              repr(self.f1),
              repr(self.a1),
              repr(self.f2),
              repr(self.a2))
 
 
-class Sine16_Stereo(Sine8_Mono):
+class Sine16_Stereo(Sine8_Stereo):
     def __init__(self, pcm_frames, sample_rate,
                  f1, a1, f2, a2, fmult):
+        Sine_Stereo.__init__(self, 16, pcm_frames, sample_rate,
+                             f1, a1, f2, a2, fmult)
         self.f1 = f1
         self.a1 = a1
         self.f2 = f2
         self.a2 = a2
         self.fmult = fmult
-        self.full_scale = 0x7FFF
-        self.delta1 = 2 * math.pi / (sample_rate / f1)
-        self.delta2 = 2 * math.pi / (sample_rate / f2)
-        self.theta1 = self.theta2 = 0.0
-
-        self.original_frames = pcm_frames
-        self.pcm_frames = pcm_frames
-        self.sample_rate = sample_rate
-        self.channels = 2
-        self.channel_mask = 0x3
-        self.bits_per_sample = 16
-        self.signed = True
-        self.sample_frame = audiotools.pcm.FrameList("", 2, 16, False, False)
         self.md5 = md5()
 
-    def read(self, bytes):
-        wave = []
-        for i in xrange(min(self.sample_frame.frame_count(bytes),
-                            self.pcm_frames)):
-            wave.append(int(((self.a1 * math.sin(self.theta1) + self.a2 *
-                              math.sin(self.theta2)) * self.full_scale) + 0.5))
-            wave.append(int((-(self.a1 * math.sin(self.theta1 * self.fmult) +
-                               self.a2 *
-                               math.sin(self.theta2 * self.fmult)) *
-                              self.full_scale) +
-                            0.5))
-            self.theta1 += self.delta1
-            self.theta2 += self.delta2
-
-        framelist = audiotools.pcm.from_list(wave,
-                                             self.channels,
-                                             self.bits_per_sample,
-                                             self.signed)
-        self.pcm_frames -= framelist.frames
-        self.md5.update(framelist.to_bytes(False, True))
-        return framelist
-
     def __repr__(self):
-        return "Sine16_Stereo(%s, %s, %s, %s, %s, %s, %s)" % \
-            (repr(self.pcm_frames),
-             repr(self.sample_rate),
+        return "Sine16_Stereo(%s, %s, %s, %s, %s, %s)" % \
+            (repr(self.sample_rate),
              repr(self.f1),
              repr(self.a1),
              repr(self.f2),
@@ -328,46 +221,17 @@ class Sine16_Stereo(Sine8_Mono):
 class Sine24_Mono(Sine8_Mono):
     def __init__(self, pcm_frames, sample_rate,
                  f1, a1, f2, a2):
+        Sine_Mono.__init__(self, 24, pcm_frames, sample_rate,
+                            f1, a1, f2, a2)
         self.f1 = f1
         self.a1 = a1
         self.f2 = f2
         self.a2 = a2
-        self.full_scale = 0x7FFFFF
-        self.delta1 = 2 * math.pi / (sample_rate / f1)
-        self.delta2 = 2 * math.pi / (sample_rate / f2)
-        self.theta1 = self.theta2 = 0.0
-
-        self.original_frames = pcm_frames
-        self.pcm_frames = pcm_frames
-        self.sample_rate = sample_rate
-        self.channels = 1
-        self.channel_mask = 0x4
-        self.bits_per_sample = 24
-        self.signed = True
-        self.sample_frame = audiotools.pcm.FrameList("", 1, 24, False, False)
         self.md5 = md5()
 
-    def read(self, bytes):
-        wave = []
-        for i in xrange(min(self.sample_frame.frame_count(bytes),
-                            self.pcm_frames)):
-            wave.append(int(((self.a1 * math.sin(self.theta1) + self.a2 *
-                              math.sin(self.theta2)) * self.full_scale) + 0.5))
-            self.theta1 += self.delta1
-            self.theta2 += self.delta2
-
-        framelist = audiotools.pcm.from_list(wave,
-                                             self.channels,
-                                             self.bits_per_sample,
-                                             self.signed)
-        self.pcm_frames -= framelist.frames
-        self.md5.update(framelist.to_bytes(False, True))
-        return framelist
-
     def __repr__(self):
-        return "Sine24_Mono(%s, %s, %s, %s, %s, %s)" % \
-            (repr(self.pcm_frames),
-             repr(self.sample_rate),
+        return "Sine24_Mono(%s, %s, %s, %s, %s)" % \
+            (repr(self.sample_rate),
              repr(self.f1),
              repr(self.a1),
              repr(self.f2),
@@ -377,52 +241,18 @@ class Sine24_Mono(Sine8_Mono):
 class Sine24_Stereo(Sine8_Stereo):
     def __init__(self, pcm_frames, sample_rate,
                  f1, a1, f2, a2, fmult):
+        Sine_Stereo.__init__(self, 24, pcm_frames, sample_rate,
+                             f1, a1, f2, a2, fmult)
         self.f1 = f1
         self.a1 = a1
         self.f2 = f2
         self.a2 = a2
         self.fmult = fmult
-        self.full_scale = 0x7FFFFF
-        self.delta1 = 2 * math.pi / (sample_rate / f1)
-        self.delta2 = 2 * math.pi / (sample_rate / f2)
-        self.theta1 = self.theta2 = 0.0
-
-        self.original_frames = pcm_frames
-        self.pcm_frames = pcm_frames
-        self.sample_rate = sample_rate
-        self.channels = 2
-        self.channel_mask = 0x3
-        self.bits_per_sample = 24
-        self.signed = True
-        self.sample_frame = audiotools.pcm.FrameList("", 2, 24, False, False)
         self.md5 = md5()
 
-    def read(self, bytes):
-        wave = []
-        for i in xrange(min(self.sample_frame.frame_count(bytes),
-                            self.pcm_frames)):
-            wave.append(int(((self.a1 * math.sin(self.theta1) + self.a2 *
-                              math.sin(self.theta2)) * self.full_scale) + 0.5))
-            wave.append(int((-(self.a1 * math.sin(self.theta1 * self.fmult) +
-                               self.a2 *
-                               math.sin(self.theta2 * self.fmult)) *
-                              self.full_scale) +
-                            0.5))
-            self.theta1 += self.delta1
-            self.theta2 += self.delta2
-
-        framelist = audiotools.pcm.from_list(wave,
-                                             self.channels,
-                                             self.bits_per_sample,
-                                             self.signed)
-        self.pcm_frames -= framelist.frames
-        self.md5.update(framelist.to_bytes(False, True))
-        return framelist
-
     def __repr__(self):
-        return "Sine24_Stereo(%s, %s, %s, %s, %s, %s, %s)" % \
-            (repr(self.pcm_frames),
-             repr(self.sample_rate),
+        return "Sine24_Stereo(%s, %s, %s, %s, %s, %s)" % \
+            (repr(self.sample_rate),
              repr(self.f1),
              repr(self.a1),
              repr(self.f2),
@@ -443,40 +273,25 @@ class Simple_Sine:
         self.channels = len(values)
         self.channel_mask = channel_mask
         self.bits_per_sample = bits_per_sample
-        self.signed = True
-        self.sample_frame = audiotools.pcm.FrameList("",
-                                                     self.channels,
-                                                     self.bits_per_sample,
-                                                     False,
-                                                     False)
+
+        self.streams = [Sine_Simple(pcm_frames,
+                                    bits_per_sample,
+                                    sample_rate,
+                                    max_value,
+                                    count)
+                        for (max_value, count) in zip(self.channel_max_values,
+                                                      self.channel_counts)]
         self.md5 = md5()
 
     def read(self, bytes):
-        frames = []
-        for i in xrange(min(self.sample_frame.frame_count(bytes),
-                            self.pcm_frames)):
-            frames.append(
-                audiotools.pcm.from_list(
-                    [int(round(max_value *
-                               math.sin((((math.pi * 2) *
-                                          (self.i % count))) / count)))
-                     for (max_value, count) in zip(self.channel_max_values,
-                                                   self.channel_counts)],
-                    self.channels,
-                    self.bits_per_sample,
-                    True))
-            self.i += 1
-        if (len(frames) > 0):
-            framelist = audiotools.pcm.from_frames(frames)
-        else:
-            framelist = self.sample_frame
-        self.pcm_frames -= framelist.frames
+        framelist = audiotools.pcm.from_channels(
+            [stream.read(bytes / self.channels) for stream in self.streams])
         self.md5.update(framelist.to_bytes(False, True))
         return framelist
 
     def reset(self):
-        self.i = 0
-        self.pcm_frames = self.total_frames
+        for stream in self.streams:
+            stream.reset()
         self.md5 = md5()
 
     def digest(self):
@@ -486,7 +301,8 @@ class Simple_Sine:
         return self.md5.hexdigest()
 
     def close(self):
-        self.pcm_frames = 0
+        for stream in self.streams:
+            stream.close()
 
     def __repr__(self):
         return "Simple_Sine(%s, %s, %s, %s, %s, %s)" % \

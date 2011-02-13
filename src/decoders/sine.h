@@ -245,3 +245,113 @@ PyTypeObject decoders_Sine_Stereo_Type = {
     0,                         /* tp_alloc */
     Sine_Stereo_new,           /* tp_new */
 };
+
+
+typedef struct {
+    PyObject_HEAD
+
+    int total_pcm_frames;
+    int remaining_pcm_frames;
+    int bits_per_sample;
+    int sample_rate;
+    int i;
+
+    int max_value;
+    int count;
+
+    struct ia_array buffer;
+} decoders_Sine_Simple;
+
+int
+Sine_Simple_init(decoders_Sine_Simple* self, PyObject *args, PyObject *kwds);
+
+void Sine_Simple_dealloc(decoders_Sine_Simple* self);
+
+PyObject*
+Sine_Simple_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
+
+
+static PyObject*
+Sine_Simple_read(decoders_Sine_Simple* self, PyObject* args);
+
+static PyObject*
+Sine_Simple_close(decoders_Sine_Simple* self, PyObject* args);
+
+static PyObject*
+Sine_Simple_reset(decoders_Sine_Simple* self, PyObject* args);
+
+static PyObject*
+Sine_Simple_channels(decoders_Sine_Simple *self, void *closure);
+
+static PyObject*
+Sine_Simple_bits_per_sample(decoders_Sine_Simple *self, void *closure);
+
+static PyObject*
+Sine_Simple_sample_rate(decoders_Sine_Simple *self, void *closure);
+
+static PyObject*
+Sine_Simple_channel_mask(decoders_Sine_Simple *self, void *closure);
+
+PyMethodDef Sine_Simple_methods[] = {
+    {"read", (PyCFunction)Sine_Simple_read,
+     METH_VARARGS, "Reads a frame of sine data"},
+    {"close", (PyCFunction)Sine_Simple_close,
+     METH_NOARGS, "Closes the stream"},
+    {"reset", (PyCFunction)Sine_Simple_reset,
+     METH_NOARGS, "Resets the stream to be read again"},
+    {NULL}
+};
+
+PyGetSetDef Sine_Simple_getseters[] = {
+    {"channels",
+     (getter)Sine_Simple_channels, NULL, "channels", NULL},
+    {"bits_per_sample",
+     (getter)Sine_Simple_bits_per_sample, NULL, "bits_per_sample", NULL},
+    {"sample_rate",
+     (getter)Sine_Simple_sample_rate, NULL, "sample_rate", NULL},
+    {"channel_mask",
+     (getter)Sine_Simple_channel_mask, NULL, "channel_mask", NULL},
+    {NULL}
+};
+
+PyTypeObject decoders_Sine_Simple_Type = {
+    PyObject_HEAD_INIT(NULL)
+    0,                         /*ob_size*/
+    "decoders.Sine_Simple",    /*tp_name*/
+    sizeof(decoders_Sine_Simple),/*tp_basicsize*/
+    0,                         /*tp_itemsize*/
+    (destructor)Sine_Simple_dealloc, /*tp_dealloc*/
+    0,                         /*tp_print*/
+    0,                         /*tp_getattr*/
+    0,                         /*tp_setattr*/
+    0,                         /*tp_compare*/
+    0,                         /*tp_repr*/
+    0,                         /*tp_as_number*/
+    0,                         /*tp_as_sequence*/
+    0,                         /*tp_as_mapping*/
+    0,                         /*tp_hash */
+    0,                         /*tp_call*/
+    0,                         /*tp_str*/
+    0,                         /*tp_getattro*/
+    0,                         /*tp_setattro*/
+    0,                         /*tp_as_buffer*/
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
+    "Sine_Simple objects",     /* tp_doc */
+    0,                         /* tp_traverse */
+    0,                         /* tp_clear */
+    0,                         /* tp_richcompare */
+    0,                         /* tp_weaklistoffset */
+    0,                         /* tp_iter */
+    0,                         /* tp_iternext */
+    Sine_Simple_methods,       /* tp_methods */
+    0,                         /* tp_members */
+    Sine_Simple_getseters,     /* tp_getset */
+    0,                         /* tp_base */
+    0,                         /* tp_dict */
+    0,                         /* tp_descr_get */
+    0,                         /* tp_descr_set */
+    0,                         /* tp_dictoffset */
+    (initproc)Sine_Simple_init, /* tp_init */
+    0,                         /* tp_alloc */
+    Sine_Simple_new,           /* tp_new */
+};

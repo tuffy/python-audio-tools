@@ -107,7 +107,7 @@ class BufferedPCMReader(unittest.TestCase):
 
 
 class CDDA(unittest.TestCase):
-    @LIB_CUSTOM
+    @LIB_CORE
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
         self.bin = os.path.join(self.temp_dir, "Test.BIN")
@@ -135,7 +135,7 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
                                                            "cdrom_read_offset",
                                                            "0")
 
-    @LIB_CUSTOM
+    @LIB_CORE
     def tearDown(self):
         for f in os.listdir(self.temp_dir):
             os.unlink(os.path.join(self.temp_dir, f))
@@ -145,7 +145,7 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
                                       "cdrom_read_offset",
                                       self.sample_offset)
 
-    @LIB_CUSTOM
+    @LIB_CORE
     def test_cdda(self):
         cdda = audiotools.CDDA(self.cue)
         self.assertEqual(len(cdda), 4)
@@ -156,7 +156,7 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
         self.assertEqual(self.reader.hexdigest(),
                          checksum.hexdigest())
 
-    @LIB_CUSTOM
+    @LIB_CORE
     def test_cdda_positive_offset(self):
         audiotools.config.set_default("System",
                                       "cdrom_read_offset",
@@ -176,7 +176,7 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
         self.assertEqual(reader_checksum.hexdigest(),
                          cdrom_checksum.hexdigest())
 
-    @LIB_CUSTOM
+    @LIB_CORE
     def test_cdda_negative_offset(self):
         audiotools.config.set_default("System",
                                       "cdrom_read_offset",

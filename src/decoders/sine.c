@@ -282,4 +282,111 @@ Sine_Stereo_channel_mask(decoders_Sine_Stereo *self, void *closure) {
     return Py_BuildValue("i", 0x3);
 }
 
+
+int
+Sine_Simple_init(decoders_Sine_Simple* self, PyObject *args, PyObject *kwds) {
+    iaa_init(&(self->buffer), 1, 8);
+
+    if (!PyArg_ParseTuple(args, "iiiii",
+                          &(self->total_pcm_frames),
+                          &(self->bits_per_sample),
+                          &(self->sample_rate),
+                          &(self->max_value),
+                          &(self->count)))
+        return -1;
+
+    self->remaining_pcm_frames = self->total_pcm_frames;
+    self->i = 0;
+
+    return 0;
+}
+
+void Sine_Simple_dealloc(decoders_Sine_Simple* self) {
+    iaa_free(&(self->buffer));
+
+    self->ob_type->tp_free((PyObject*)self);
+}
+
+PyObject*
+Sine_Simple_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
+    decoders_Sine_Simple *self;
+
+    self = (decoders_Sine_Simple *)type->tp_alloc(type, 0);
+
+    return (PyObject *)self;
+}
+
+
+static PyObject*
+Sine_Simple_read(decoders_Sine_Simple* self, PyObject* args) {
+    int byte_count;
+    int frames_to_read;
+    int bytes_per_frame = self->bits_per_sample / 8;
+    int i;
+    struct i_array* buffer;
+    double d;
+    ia_data_t ia;
+
+    if (!PyArg_ParseTuple(args, "i", &byte_count))
+        return NULL;
+
+    iaa_reset(&(self->buffer));
+    buffer = &(self->buffer.arrays[0]);
+
+    byte_count -= (byte_count % bytes_per_frame);
+    frames_to_read = byte_count ? byte_count / bytes_per_frame : 1;
+    if (frames_to_read > self->remaining_pcm_frames)
+        frames_to_read = self->remaining_pcm_frames;
+
+    for (i = 0; i < frames_to_read; i++) {
+        d = (double)(self->max_value) *
+            sin(((M_PI * 2) *
+                 (double)(self->i % self->count)) /
+                (double)(self->count));
+        ia = (ia_data_t)(round(d));
+        ia_append(buffer, ia);
+        self->i += 1;
+    }
+
+    self->remaining_pcm_frames -= frames_to_read;
+    return ia_array_to_framelist(&(self->buffer), self->bits_per_sample);
+}
+
+static PyObject*
+Sine_Simple_close(decoders_Sine_Simple* self, PyObject* args) {
+    self->remaining_pcm_frames = 0;
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+Sine_Simple_reset(decoders_Sine_Simple* self, PyObject* args) {
+    self->i = 0;
+    self->remaining_pcm_frames = self->total_pcm_frames;
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+Sine_Simple_channels(decoders_Sine_Simple *self, void *closure) {
+    return Py_BuildValue("i", 1);
+}
+
+static PyObject*
+Sine_Simple_bits_per_sample(decoders_Sine_Simple *self, void *closure) {
+    return Py_BuildValue("i", self->bits_per_sample);
+}
+
+static PyObject*
+Sine_Simple_sample_rate(decoders_Sine_Simple *self, void *closure) {
+    return Py_BuildValue("i", self->sample_rate);
+}
+
+static PyObject*
+Sine_Simple_channel_mask(decoders_Sine_Simple *self, void *closure) {
+    return Py_BuildValue("i", 0x4);
+}
+
 #include "pcm.c"

@@ -29,6 +29,7 @@ extern PyTypeObject decoders_MLPDecoderType;
 extern PyTypeObject decoders_AOBPCMDecoderType;
 extern PyTypeObject decoders_Sine_Mono_Type;
 extern PyTypeObject decoders_Sine_Stereo_Type;
+extern PyTypeObject decoders_Sine_Simple_Type;
 
 extern const unsigned int read_bits_table[0x900][8];
 extern const unsigned int read_unary_table[0x900][2];
@@ -76,6 +77,10 @@ initdecoders(void)
     if (PyType_Ready(&decoders_Sine_Stereo_Type) < 0)
         return;
 
+    decoders_Sine_Simple_Type.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&decoders_Sine_Simple_Type) < 0)
+        return;
+
     m = Py_InitModule3("decoders", module_methods,
                        "Low-level audio format decoders");
 
@@ -114,6 +119,10 @@ initdecoders(void)
     Py_INCREF(&decoders_Sine_Stereo_Type);
     PyModule_AddObject(m, "Sine_Stereo",
                        (PyObject *)&decoders_Sine_Stereo_Type);
+
+    Py_INCREF(&decoders_Sine_Simple_Type);
+    PyModule_AddObject(m, "Sine_Simple",
+                       (PyObject *)&decoders_Sine_Simple_Type);
 }
 
 static PyObject*
