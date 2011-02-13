@@ -24,10 +24,12 @@ import tempfile
 import decimal
 import os
 import os.path
+import test_streams
 from hashlib import md5
 
 from test_reorg import (parser, Variable_Reader, BLANK_PCM_Reader,
                         EXACT_BLANK_PCM_Reader, SHORT_PCM_COMBINATIONS,
+                        MD5_Reader,
                         MiniFrameReader, Combinations,
                         TEST_COVER1, TEST_COVER2, TEST_COVER3, HUGE_BMP)
 
@@ -102,6 +104,97 @@ class BufferedPCMReader(unittest.TestCase):
             frame = reader.read(frames * 4)
             self.assertEqual(frame.frames, frames)
             total_frames -= frame.frames
+
+
+class CDDA(unittest.TestCase):
+    @LIB_CUSTOM
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+        self.bin = os.path.join(self.temp_dir, "Test.BIN")
+        self.cue = os.path.join(self.temp_dir, "Test.CUE")
+
+        bin_file = open(self.bin, "wb")
+        # self.reader = MD5_Reader(EXACT_BLANK_PCM_Reader(69470436))
+        self.reader = test_streams.Sine16_Stereo(69470436, 44100,
+                                                 441.0, 0.50,
+                                                 4410.0, 0.49, 1.0)
+        audiotools.transfer_framelist_data(
+
+            self.reader, bin_file.write)
+        bin_file.close()
+
+        f = open(self.cue, "w")
+        f.write("""eJydkF1LwzAUQN8L/Q+X/oBxk6YfyVtoM4mu68iy6WudQ8qkHbNu+u9NneCc1IdCnk649xyuUQXk
+epnpHGiOMU2Q+Z5xMCuLQs0tBOq92nTy7alus3b/AUeccL5/ZIHvZdLKWXkDjKcpIg2RszjxvYUy
+09IUykCwanZNe2pAHrr6tXMjVtuZ+uG27l62Dk91T03VPG8np+oYwL1cK98DsEZmd4AE5CrXZU8c
+O++wh2qzQxKc4X/S/l8vTQa3i7V2kWEap/iN57l66Pcjiq93IaWDUjpOyn9LETAVyASh1y0OR4Il
+Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64').decode('zlib'))
+        f.close()
+
+        self.sample_offset = audiotools.config.get_default("System",
+                                                           "cdrom_read_offset",
+                                                           "0")
+
+    @LIB_CUSTOM
+    def tearDown(self):
+        for f in os.listdir(self.temp_dir):
+            os.unlink(os.path.join(self.temp_dir, f))
+        os.rmdir(self.temp_dir)
+
+        audiotools.config.set_default("System",
+                                      "cdrom_read_offset",
+                                      self.sample_offset)
+
+    @LIB_CUSTOM
+    def test_cdda(self):
+        cdda = audiotools.CDDA(self.cue)
+        self.assertEqual(len(cdda), 4)
+        checksum = md5()
+        audiotools.transfer_framelist_data(
+            audiotools.PCMCat(iter(cdda)),
+            checksum.update)
+        self.assertEqual(self.reader.hexdigest(),
+                         checksum.hexdigest())
+
+    @LIB_CUSTOM
+    def test_cdda_positive_offset(self):
+        audiotools.config.set_default("System",
+                                      "cdrom_read_offset",
+                                      str(10))
+        cdda = audiotools.CDDA(self.cue)
+        reader_checksum = md5()
+        cdrom_checksum = md5()
+        audiotools.transfer_framelist_data(
+            audiotools.PCMCat(iter(cdda)),
+            cdrom_checksum.update)
+        self.reader.reset()
+        audiotools.transfer_framelist_data(
+            audiotools.PCMReaderWindow(self.reader,
+                                       10,
+                                       69470436),
+            reader_checksum.update)
+        self.assertEqual(reader_checksum.hexdigest(),
+                         cdrom_checksum.hexdigest())
+
+    @LIB_CUSTOM
+    def test_cdda_negative_offset(self):
+        audiotools.config.set_default("System",
+                                      "cdrom_read_offset",
+                                      str(-10))
+        cdda = audiotools.CDDA(self.cue)
+        reader_checksum = md5()
+        cdrom_checksum = md5()
+        audiotools.transfer_framelist_data(
+            audiotools.PCMCat(iter(cdda)),
+            cdrom_checksum.update)
+        self.reader.reset()
+        audiotools.transfer_framelist_data(
+            audiotools.PCMReaderWindow(self.reader,
+                                       -10,
+                                       69470436),
+            reader_checksum.update)
+        self.assertEqual(reader_checksum.hexdigest(),
+                         cdrom_checksum.hexdigest())
 
 
 class ChannelMask(unittest.TestCase):

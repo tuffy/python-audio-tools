@@ -55,6 +55,13 @@ class RawConfigParser(ConfigParser.RawConfigParser):
         except ConfigParser.NoOptionError:
             return default
 
+    def set_default(self, section, option, value):
+        try:
+            self.set(section, option, value)
+        except ConfigParser.NoSectionError:
+            self.add_section(section)
+            self.set(section, option, value)
+
     def getint_default(self, section, option, default):
         """Returns a default int if option is not found in section."""
 

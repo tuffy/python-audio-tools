@@ -65,6 +65,7 @@ decodersmodule = Extension('audiotools.decoders',
                                     'src/decoders/wavpack.c',
                                     'src/decoders/mlp.c',
                                     'src/decoders/aobpcm.c',
+                                    'src/decoders/sine.c',
                                     'src/decoders.c'],
                            define_macros=[("VERSION", VERSION)])
 

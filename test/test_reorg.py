@@ -62,6 +62,7 @@ class BLANK_PCM_Reader:
         self.bits_per_sample = bits_per_sample
 
         self.total_frames = length * sample_rate
+        self.original_frames = self.total_frames
 
         self.single_pcm_frame = audiotools.pcm.from_list(
             [1] * channels, channels, bits_per_sample, True)
@@ -80,6 +81,9 @@ class BLANK_PCM_Reader:
 
     def close(self):
         pass
+
+    def reset(self):
+        self.total_frames = self.original_frames
 
 class RANDOM_PCM_Reader(BLANK_PCM_Reader):
     def read(self, bytes):
@@ -114,6 +118,7 @@ class EXACT_BLANK_PCM_Reader(BLANK_PCM_Reader):
         self.bits_per_sample = bits_per_sample
 
         self.total_frames = pcm_frames
+        self.original_frames = self.total_frames
 
         self.single_pcm_frame = audiotools.pcm.from_list(
             [1] * channels, channels, bits_per_sample, True)
@@ -131,6 +136,7 @@ class EXACT_SILENCE_PCM_Reader(BLANK_PCM_Reader):
         self.bits_per_sample = bits_per_sample
 
         self.total_frames = pcm_frames
+        self.original_frames = self.total_frames
 
         self.single_pcm_frame = audiotools.pcm.from_list(
             [0] * channels, channels, bits_per_sample, True)
@@ -148,6 +154,7 @@ class EXACT_RANDOM_PCM_Reader(RANDOM_PCM_Reader):
         self.bits_per_sample = bits_per_sample
 
         self.total_frames = pcm_frames
+        self.original_frames = self.total_frames
 
         self.single_pcm_frame = audiotools.pcm.from_list(
             [1] * channels, channels, bits_per_sample, True)
