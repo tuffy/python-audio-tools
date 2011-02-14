@@ -523,7 +523,7 @@ def thumbnail_image(image_data, width, height, format):
 
     PIL_ImageFile.MAXBLOCK = 0x100000
 
-    img = PIL_Image.open(cStringIO.StringIO(image_data))
+    img = PIL_Image.open(cStringIO.StringIO(image_data)).convert('RGB')
     img.thumbnail((width, height), PIL_Image.ANTIALIAS)
     output = cStringIO.StringIO()
 
