@@ -19,12 +19,14 @@
 
 import unittest
 import audiotools
+from audiotools import Con
 import random
 import tempfile
 import decimal
 import os
 import os.path
 import test_streams
+import cStringIO
 from hashlib import md5
 
 from test_reorg import (parser, Variable_Reader, BLANK_PCM_Reader,
@@ -569,3 +571,1268 @@ class Test_open(unittest.TestCase):
         self.assertRaises(audiotools.InvalidFile,
                           audiotools.open,
                           self.dummy3.name)
+
+class Test_str_width(unittest.TestCase):
+    @LIB_CORE
+    def test_str_width(self):
+        #check a plain ASCII string
+        self.assertEqual(audiotools.str_width(u"Foo"), 3)
+
+        #check a Unicode string without combining characters
+        self.assertEqual(audiotools.str_width(u"F\u00f3o"), 3)
+
+        #check a Unicode string with combining characters
+        self.assertEqual(audiotools.str_width(u"Fo\u0301o"), 3)
+
+        #check an ANSI-escaped ASCII string
+        self.assertEqual(audiotools.str_width(u"\x1b[1mFoo\x1b[0m"), 3)
+
+        #check an ANSI-escaped Unicode string without combining characeters
+        self.assertEqual(audiotools.str_width(u"\x1b[1mF\u00f3o\x1b[0m"), 3)
+
+        #check an ANSI-escaped Unicode string with combining characters
+        self.assertEqual(audiotools.str_width(u"\x1b[1mFo\u0301o\x1b[0m"), 3)
+
+
+class TestFrameList(unittest.TestCase):
+    @classmethod
+    def Bits8(cls):
+        for i in xrange(0, 0xFF + 1):
+            yield chr(i)
+
+    @classmethod
+    def Bits16(cls):
+        for i in xrange(0, 0xFF + 1):
+            for j in xrange(0, 0xFF + 1):
+                yield chr(i) + chr(j)
+
+    @classmethod
+    def Bits24(cls):
+        for i in xrange(0, 0xFF + 1):
+            for j in xrange(0, 0xFF + 1):
+                for k in xrange(0, 0xFF + 1):
+                    yield chr(i) + chr(j) + chr(k)
+
+    @LIB_CORE
+    def test_basics(self):
+        import audiotools.pcm
+
+        self.assertRaises(TypeError,
+                          audiotools.pcm.FrameList,
+                          0, 2, 16, 0, 1)
+
+        self.assertRaises(TypeError,
+                          audiotools.pcm.FrameList,
+                          [1, 2, 3], 2, 16, 0, 1)
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.FrameList,
+                          "abc", 2, 16, 0, 1)
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.FrameList,
+                          "abc", 4, 8, 0, 1)
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.FrameList,
+                          "abcd", 1, 15, 0, 1)
+
+        f = audiotools.pcm.FrameList("".join(map(chr, range(16))),
+                                     2, 16, True, True)
+        self.assertEqual(len(f), 8)
+        self.assertEqual(f.channels, 2)
+        self.assertEqual(f.frames, 4)
+        self.assertEqual(f.bits_per_sample, 16)
+        self.assertRaises(IndexError, f.__getitem__, 9)
+
+        self.assertEqual(list(f.frame(0)),
+                         [0x0001, 0x0203])
+        self.assertEqual(list(f.frame(1)),
+                         [0x0405, 0x0607])
+        self.assertEqual(list(f.frame(2)),
+                         [0x0809, 0x0A0B])
+        self.assertEqual(list(f.frame(3)),
+                         [0x0C0D, 0x0E0F])
+        self.assertRaises(IndexError, f.frame, 4)
+        self.assertRaises(IndexError, f.frame, -1)
+
+        self.assertEqual(list(f.channel(0)),
+                         [0x0001, 0x0405, 0x0809, 0x0C0D])
+        self.assertEqual(list(f.channel(1)),
+                         [0x0203, 0x0607, 0x0A0B, 0x0E0F])
+        self.assertRaises(IndexError, f.channel, 2)
+        self.assertRaises(IndexError, f.channel, -1)
+
+        for bps in [8, 16, 24]:
+            self.assertEqual(list(audiotools.pcm.from_list(
+                        range(-40, 40), 1, bps, True)),
+                             range(-40, 40))
+
+        for bps in [8, 16, 24]:
+            self.assertEqual(list(audiotools.pcm.from_list(
+                        range((1 << (bps - 1)) - 40,
+                              (1 << (bps - 1)) + 40), 1, bps, False)),
+                             range(-40, 40))
+
+        for channels in range(1, 9):
+            for bps in [8, 16, 24]:
+                for signed in [True, False]:
+                    if (signed):
+                        l = [random.choice(range(-40, 40)) for i in
+                             xrange(16 * channels)]
+                    else:
+                        l = [random.choice(range(0, 80)) for i in
+                             xrange(16 * channels)]
+                    f2 = audiotools.pcm.from_list(l, channels, bps, signed)
+                    if (signed):
+                        self.assertEqual(list(f2), l)
+                        for channel in range(channels):
+                            self.assertEqual(list(f2.channel(channel)),
+                                             l[channel::channels])
+                    else:
+                        self.assertEqual(list(f2),
+                                         [i - (1 << (bps - 1))
+                                          for i in l])
+                        for channel in range(channels):
+                            self.assertEqual(list(f2.channel(channel)),
+                                             [i - (1 << (bps - 1))
+                                              for i in l[channel::channels]])
+
+        self.assertEqual(f.to_bytes(True, True),
+                         '\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f')
+        self.assertEqual(f.to_bytes(False, True),
+                         '\x01\x00\x03\x02\x05\x04\x07\x06\t\x08\x0b\n\r\x0c\x0f\x0e')
+        #FIXME - check signed
+
+        self.assertEqual(list(f),
+                         list(audiotools.pcm.from_frames([f.frame(0),
+                                                          f.frame(1),
+                                                          f.frame(2),
+                                                          f.frame(3)])))
+        self.assertEqual(list(f),
+                         list(audiotools.pcm.from_channels([f.channel(0),
+                                                            f.channel(1)])))
+
+        self.assertEqual(list(audiotools.pcm.from_list(
+                    [0x0001, 0x0203, 0x0405, 0x0607,
+                     0x0809, 0x0A0B, 0x0C0D, 0x0E0F], 2, 16, True)),
+                         list(f))
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.from_list,
+                          [0x0001, 0x0203, 0x0405, 0x0607,
+                           0x0809, 0x0A0B, 0x0C0D], 2, 16, True)
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.from_list,
+                          [0x0001, 0x0203, 0x0405, 0x0607,
+                           0x0809, 0x0A0B, 0x0C0D, 0x0E0F], 2, 15, True)
+
+        self.assertRaises(TypeError,
+                          audiotools.pcm.from_frames,
+                          [audiotools.pcm.from_list(range(2), 2, 16, False),
+                           range(2)])
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.from_frames,
+                          [audiotools.pcm.from_list(range(2), 2, 16, False),
+                           audiotools.pcm.from_list(range(4), 2, 16, False)])
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.from_frames,
+                          [audiotools.pcm.from_list(range(2), 2, 16, False),
+                           audiotools.pcm.from_list(range(2), 1, 16, False)])
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.from_frames,
+                          [audiotools.pcm.from_list(range(2), 2, 16, False),
+                           audiotools.pcm.from_list(range(2), 2, 8, False)])
+
+        self.assertEqual(list(audiotools.pcm.from_frames(
+                    [audiotools.pcm.from_list(range(2), 2, 16, True),
+                     audiotools.pcm.from_list(range(2, 4), 2, 16, True)])),
+                         range(4))
+
+        self.assertRaises(TypeError,
+                          audiotools.pcm.from_channels,
+                          [audiotools.pcm.from_list(range(2), 1, 16, False),
+                           range(2)])
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.from_channels,
+                          [audiotools.pcm.from_list(range(1), 1, 16, False),
+                           audiotools.pcm.from_list(range(2), 2, 16, False)])
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.from_channels,
+                          [audiotools.pcm.from_list(range(2), 1, 16, False),
+                           audiotools.pcm.from_list(range(3), 1, 16, False)])
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.from_channels,
+                          [audiotools.pcm.from_list(range(2), 1, 16, False),
+                           audiotools.pcm.from_list(range(2), 1, 8, False)])
+
+        self.assertEqual(list(audiotools.pcm.from_channels(
+                    [audiotools.pcm.from_list(range(2), 1, 16, True),
+                     audiotools.pcm.from_list(range(2, 4), 1, 16, True)])),
+                         [0, 2, 1, 3])
+
+        self.assertRaises(IndexError, f.split, -1)
+
+        (f1, f2) = f.split(2)
+        self.assertEqual(list(f1),
+                         [0x0001, 0x0203,
+                          0x0405, 0x0607])
+        self.assertEqual(list(f2),
+                         [0x0809, 0x0A0B,
+                          0x0C0D, 0x0E0F])
+
+        (f1, f2) = f.split(0)
+        self.assertEqual(list(f1),
+                         [])
+        self.assertEqual(list(f2),
+                         [0x0001, 0x0203,
+                          0x0405, 0x0607,
+                          0x0809, 0x0A0B,
+                          0x0C0D, 0x0E0F])
+
+        (f1, f2) = f.split(20)
+        self.assertEqual(list(f1),
+                         [0x0001, 0x0203,
+                          0x0405, 0x0607,
+                          0x0809, 0x0A0B,
+                          0x0C0D, 0x0E0F])
+        self.assertEqual(list(f2),
+                         [])
+
+        for i in xrange(f.frames):
+            (f1, f2) = f.split(i)
+            self.assertEqual(len(f1), i * f.channels)
+            self.assertEqual(len(f2), (len(f) - (i * f.channels)))
+            self.assertEqual(list(f1 + f2), list(f))
+
+        import operator
+
+        f1 = audiotools.pcm.from_list(range(10), 2, 16, False)
+        self.assertRaises(TypeError, operator.concat, f1, [1, 2, 3])
+        f2 = audiotools.pcm.from_list(range(10, 20), 1, 16, False)
+        self.assertRaises(ValueError, operator.concat, f1, f2)
+        f2 = audiotools.pcm.from_list(range(10, 20), 2, 8, False)
+        self.assertRaises(ValueError, operator.concat, f1, f2)
+
+        f1 = audiotools.pcm.from_list(range(10), 2, 16, False)
+        self.assertEqual(f1, audiotools.pcm.from_list(range(10), 2, 16, False))
+        self.assertNotEqual(f1, 10)
+        self.assertNotEqual(f1, range(10))
+        self.assertNotEqual(f1,
+                            audiotools.pcm.from_list(range(10), 1, 16, False))
+        self.assertNotEqual(f1,
+                            audiotools.pcm.from_list(range(10), 2, 8, False))
+        self.assertNotEqual(f1,
+                            audiotools.pcm.from_list(range(10), 1, 8, False))
+        self.assertNotEqual(f1,
+                            audiotools.pcm.from_list(range(8), 2, 16, False))
+        self.assertNotEqual(f1,
+                            audiotools.pcm.from_list(range(12), 2, 8, False))
+
+    @LIB_CORE
+    def test_8bit_roundtrip(self):
+        import audiotools.pcm
+
+        unsigned_ints = range(0, 0xFF + 1)
+        signed_ints = range(-0x80, 0x7F + 1)
+
+        UB8Int = audiotools.Con.GreedyRepeater(audiotools.Con.UBInt8(None))
+        UL8Int = audiotools.Con.GreedyRepeater(audiotools.Con.ULInt8(None))
+        SB8Int = audiotools.Con.GreedyRepeater(audiotools.Con.SBInt8(None))
+        SL8Int = audiotools.Con.GreedyRepeater(audiotools.Con.UBInt8(None))
+
+        #unsigned, big-endian
+        self.assertEqual([i - (1 << 7) for i in unsigned_ints],
+                         list(audiotools.pcm.FrameList(
+                    UB8Int.build(unsigned_ints),
+                    1, 8, True, False)))
+
+        #unsigned, little-endian
+        self.assertEqual([i - (1 << 7) for i in unsigned_ints],
+                         list(audiotools.pcm.FrameList(
+                    UL8Int.build(unsigned_ints),
+                    1, 8, False, False)))
+
+        #signed, big-endian
+        self.assertEqual(signed_ints,
+                         list(audiotools.pcm.FrameList(
+                    SB8Int.build(signed_ints),
+                    1, 8, True, True)))
+
+        #this test triggers a DeprecationWarning
+        #which is odd since signed little-endian 8 bit
+        #should be the same as signed big-endian 8 bit
+        # self.assertEqual(signed_ints,
+        #                  list(audiotools.pcm.FrameList(
+        #             SL8Int.build(signed_ints),
+        #             1,8,0,1)))
+
+    @LIB_CORE
+    def test_8bit_roundtrip_str(self):
+        import audiotools.pcm
+
+        s = "".join(TestFrameList.Bits8())
+
+        #big endian, unsigned
+        self.assertEqual(
+            audiotools.pcm.FrameList(s, 1, 8,
+                                     True, False).to_bytes(True, False), s)
+
+        #big-endian, signed
+        self.assertEqual(
+            audiotools.pcm.FrameList(s, 1, 8,
+                                     True, True).to_bytes(True, True), s)
+
+        #little-endian, unsigned
+        self.assertEqual(
+            audiotools.pcm.FrameList(s, 1, 8,
+                                     False, False).to_bytes(False, False), s)
+
+        #little-endian, signed
+        self.assertEqual(
+            audiotools.pcm.FrameList(s, 1, 8,
+                                     False, True).to_bytes(False, True), s)
+
+    @LIB_CORE
+    def test_16bit_roundtrip(self):
+        import audiotools.pcm
+
+        unsigned_ints = range(0, 0xFFFF + 1)
+        signed_ints = range(-0x8000, 0x7FFF + 1)
+
+        UB16Int = audiotools.Con.GreedyRepeater(audiotools.Con.UBInt16(None))
+        UL16Int = audiotools.Con.GreedyRepeater(audiotools.Con.ULInt16(None))
+        SB16Int = audiotools.Con.GreedyRepeater(audiotools.Con.SBInt16(None))
+        SL16Int = audiotools.Con.GreedyRepeater(audiotools.Con.SLInt16(None))
+
+        #unsigned, big-endian
+        self.assertEqual([i - (1 << 15) for i in unsigned_ints],
+                         list(audiotools.pcm.FrameList(
+                    UB16Int.build(unsigned_ints),
+                    1, 16, True, False)))
+
+        #unsigned, little-endian
+        self.assertEqual([i - (1 << 15) for i in unsigned_ints],
+                         list(audiotools.pcm.FrameList(
+                    UL16Int.build(unsigned_ints),
+                    1, 16, False, False)))
+
+        #signed, big-endian
+        self.assertEqual(signed_ints,
+                         list(audiotools.pcm.FrameList(
+                    SB16Int.build(signed_ints),
+                    1, 16, True, True)))
+
+        #signed, little-endian
+        self.assertEqual(signed_ints,
+                         list(audiotools.pcm.FrameList(
+                    SL16Int.build(signed_ints),
+                    1, 16, False, True)))
+
+    @LIB_CORE
+    def test_16bit_roundtrip_str(self):
+        import audiotools.pcm
+
+        s = "".join(TestFrameList.Bits16())
+
+        #big-endian, unsigned
+        self.assertEqual(
+            audiotools.pcm.FrameList(s, 1, 16,
+                                     True, False).to_bytes(True, False),
+            s,
+            "data mismatch converting UBInt16 through string")
+
+        #big-endian, signed
+        self.assertEqual(
+            audiotools.pcm.FrameList(s, 1, 16,
+                                     True, True).to_bytes(True, True),
+            s,
+            "data mismatch converting SBInt16 through string")
+
+        #little-endian, unsigned
+        self.assertEqual(
+            audiotools.pcm.FrameList(s, 1, 16,
+                                     False, False).to_bytes(False, False),
+            s,
+            "data mismatch converting ULInt16 through string")
+
+        #little-endian, signed
+        self.assertEqual(
+            audiotools.pcm.FrameList(s, 1, 16,
+                                     False, True).to_bytes(False, True),
+            s,
+            "data mismatch converting USInt16 through string")
+
+    @LIB_CORE
+    def test_24bit_roundtrip(self):
+        import audiotools.pcm
+
+        #setting this higher than 1 means we only test a sample
+        #of the fill 24-bit value range
+        #since testing the whole range takes a very, very long time
+        RANGE = 8
+
+        unsigned_ints_high = [r << 8 for r in xrange(0, 0xFFFF + 1)]
+        signed_ints_high = [r << 8 for r in xrange(-0x8000, 0x7FFF + 1)]
+
+        UB24Int = audiotools.Con.BitStruct(
+            None,
+            audiotools.Con.GreedyRepeater(audiotools.Con.Bits("i",
+                                                              length=24,
+                                                              swapped=False,
+                                                              signed=False)))
+
+        UL24Int = audiotools.Con.BitStruct(
+            None,
+            audiotools.Con.GreedyRepeater(audiotools.Con.Bits("i",
+                                                              length=24,
+                                                              swapped=True,
+                                                              signed=False)))
+
+        SB24Int = audiotools.Con.BitStruct(
+            None,
+            audiotools.Con.GreedyRepeater(audiotools.Con.Bits("i",
+                                                              length=24,
+                                                              swapped=False,
+                                                              signed=True)))
+
+        SL24Int = audiotools.Con.BitStruct(
+            None,
+            audiotools.Con.GreedyRepeater(audiotools.Con.Bits("i",
+                                                              length=24,
+                                                              swapped=True,
+                                                              signed=True)))
+
+        for low_bits in xrange(0, 0xFF + 1, RANGE):
+            unsigned_values = [high_bits | low_bits for high_bits in
+                               unsigned_ints_high]
+
+            self.assertEqual([i - (1 << 23) for i in unsigned_values],
+                             list(audiotools.pcm.FrameList(
+                        UB24Int.build(Con.Container(i=unsigned_values)),
+                        1, 24, True, False)))
+
+            self.assertEqual([i - (1 << 23) for i in unsigned_values],
+                             list(audiotools.pcm.FrameList(
+                        UL24Int.build(Con.Container(i=unsigned_values)),
+                        1, 24, False, False)))
+
+        for low_bits in xrange(0, 0xFF + 1, RANGE):
+            if (high_bits < 0):
+                signed_values = [high_bits - low_bits for high_bits in
+                                 signed_ints_high]
+            else:
+                signed_values = [high_bits + low_bits for high_bits in
+                                 signed_ints_high]
+
+            self.assertEqual(signed_values,
+                             list(audiotools.pcm.FrameList(
+                        SB24Int.build(Con.Container(i=signed_values)),
+                        1, 24, True, True)))
+
+            self.assertEqual(signed_values,
+                             list(audiotools.pcm.FrameList(
+                        SL24Int.build(Con.Container(i=signed_values)),
+                        1, 24, False, True)))
+
+    @LIB_CORE
+    def test_24bit_roundtrip_str(self):
+        import audiotools.pcm
+
+        s = "".join(TestFrameList.Bits24())
+        #big-endian, unsigned
+        self.assertEqual(
+            audiotools.pcm.FrameList(s, 1, 24,
+                                     True, False).to_bytes(True, False), s)
+
+        #big-endian, signed
+        self.assertEqual(
+            audiotools.pcm.FrameList(s, 1, 24,
+                                     True, True).to_bytes(True, True), s)
+
+        #little-endian, unsigned
+        self.assertEqual(
+            audiotools.pcm.FrameList(s, 1, 24,
+                                     False, False).to_bytes(False, False), s)
+
+        #little-endian, signed
+        self.assertEqual(
+            audiotools.pcm.FrameList(s, 1, 24,
+                                     False, True).to_bytes(False, True), s)
+
+    @LIB_CORE
+    def test_conversion(self):
+        for format in audiotools.AVAILABLE_TYPES:
+            temp_track = tempfile.NamedTemporaryFile(suffix="." + format.SUFFIX)
+            try:
+                for sine_class in [test_streams.Sine8_Stereo,
+                                   test_streams.Sine16_Stereo,
+                                   test_streams.Sine24_Stereo]:
+                    sine = sine_class(88200, 44100, 441.0, 0.50, 441.0, 0.49, 1.0)
+                    try:
+                        track = format.from_pcm(temp_track.name, sine)
+                    except audiotools.UnsupportedBitsPerSample:
+                        continue
+                    if (track.lossless()):
+                        md5sum = md5()
+                        audiotools.transfer_framelist_data(track.to_pcm(),
+                                                           md5sum.update)
+                        self.assertEqual(md5sum.hexdigest(), sine.hexdigest(),
+                                         "MD5 mismatch for %s using %s" % \
+                                             (track.NAME, repr(sine)))
+                        for new_format in audiotools.AVAILABLE_TYPES:
+                            temp_track2 = tempfile.NamedTemporaryFile(suffix="." + format.SUFFIX)
+                            try:
+                                try:
+                                    track2 = new_format.from_pcm(temp_track2.name,
+                                                                 track.to_pcm())
+                                    if (track2.lossless()):
+                                        md5sum2 = md5()
+                                        audiotools.transfer_framelist_data(track2.to_pcm(),
+                                                                           md5sum2.update)
+                                        self.assertEqual(md5sum.hexdigest(), sine.hexdigest(),
+                                                         "MD5 mismatch for converting %s from %s to %s" % \
+                                                             (repr(sine), track.NAME, track2.NAME))
+                                except audiotools.UnsupportedBitsPerSample:
+                                    continue
+                            finally:
+                                temp_track2.close()
+            finally:
+                temp_track.close()
+
+class TestFloatFrameList(unittest.TestCase):
+    @LIB_CORE
+    def test_basics(self):
+        import audiotools.pcm
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.FloatFrameList,
+                          [1.0, 2.0, 3.0], 2)
+
+        self.assertRaises(TypeError,
+                          audiotools.pcm.FloatFrameList,
+                          0, 1)
+
+        self.assertRaises(TypeError,
+                          audiotools.pcm.FloatFrameList,
+                          [1.0, 2.0, "a"], 1)
+
+        f = audiotools.pcm.FloatFrameList(map(float, range(8)), 2)
+        self.assertEqual(len(f), 8)
+        self.assertEqual(f.channels, 2)
+        self.assertEqual(f.frames, 4)
+        self.assertRaises(IndexError, f.__getitem__, 9)
+
+        self.assertEqual(list(f.frame(0)),
+                         [0.0, 1.0])
+        self.assertEqual(list(f.frame(1)),
+                         [2.0, 3.0])
+        self.assertEqual(list(f.frame(2)),
+                         [4.0, 5.0])
+        self.assertEqual(list(f.frame(3)),
+                         [6.0, 7.0])
+        self.assertRaises(IndexError, f.frame, 4)
+        self.assertRaises(IndexError, f.frame, -1)
+
+        self.assertEqual(list(f.channel(0)),
+                         [0.0, 2.0, 4.0, 6.0])
+        self.assertEqual(list(f.channel(1)),
+                         [1.0, 3.0, 5.0, 7.0])
+        self.assertRaises(IndexError, f.channel, 2)
+        self.assertRaises(IndexError, f.channel, -1)
+
+        self.assertEqual(list(f),
+                         list(audiotools.pcm.from_float_frames([f.frame(0),
+                                                                f.frame(1),
+                                                                f.frame(2),
+                                                                f.frame(3)])))
+        self.assertEqual(list(f),
+                         list(audiotools.pcm.from_float_channels([f.channel(0),
+                                                                  f.channel(1)])))
+
+        #FIXME - check from_frames
+        #FIXME - check from_channels
+
+        self.assertRaises(IndexError, f.split, -1)
+
+        (f1, f2) = f.split(2)
+        self.assertEqual(list(f1),
+                         [0.0, 1.0,
+                          2.0, 3.0])
+        self.assertEqual(list(f2),
+                         [4.0, 5.0,
+                          6.0, 7.0])
+
+        (f1, f2) = f.split(0)
+        self.assertEqual(list(f1),
+                         [])
+        self.assertEqual(list(f2),
+                         [0.0, 1.0,
+                          2.0, 3.0,
+                          4.0, 5.0,
+                          6.0, 7.0])
+
+        (f1, f2) = f.split(20)
+        self.assertEqual(list(f1),
+                         [0.0, 1.0,
+                          2.0, 3.0,
+                          4.0, 5.0,
+                          6.0, 7.0])
+        self.assertEqual(list(f2),
+                         [])
+
+        for i in xrange(f.frames):
+            (f1, f2) = f.split(i)
+            self.assertEqual(len(f1), i * f.channels)
+            self.assertEqual(len(f2), (len(f) - (i * f.channels)))
+            self.assertEqual(list(f1 + f2), list(f))
+
+        import operator
+
+        f1 = audiotools.pcm.FloatFrameList(map(float, range(10)), 2)
+        self.assertRaises(TypeError, operator.concat, f1, [1, 2, 3])
+
+        #check round-trip from float->int->float
+        l = [float(i - 128) / (1 << 7) for i in range(0, 1 << 8)]
+        for bps in [8, 16, 24]:
+            for signed in [True, False]:
+                self.assertEqual(
+                    l,
+                    list(audiotools.pcm.FloatFrameList(l, 1).to_int(bps).to_float()))
+
+        #check round-trip from int->float->int
+        for bps in [8, 16, 24]:
+            l = range(0, 1 << bps, 4)
+            self.assertEqual(
+                [i - (1 << (bps - 1)) for i in l],
+                list(audiotools.pcm.from_list(l, 1, bps, False).to_float().to_int(bps)))
+
+            l = range(-(1 << (bps - 1)), (1 << (bps - 1)) - 1, 4)
+            self.assertEqual(
+                l,
+                list(audiotools.pcm.from_list(l, 1, bps, True).to_float().to_int(bps)))
+
+
+class __SimpleChunkReader__:
+    def __init__(self, chunks):
+        self.chunks = chunks
+        self.position = 0
+
+    def read(self, bytes):
+        try:
+            self.position += len(self.chunks[0])
+            return self.chunks.pop(0)
+        except IndexError:
+            return ""
+
+    def tell(self):
+        return self.position
+
+    def close(self):
+        pass
+
+class Bitstream(unittest.TestCase):
+    @LIB_CORE
+    def test_simple_reader(self):
+        from audiotools.decoders import BitstreamReader
+
+        # self.assertRaises(TypeError, BitstreamReader, None, 0)
+        # self.assertRaises(TypeError, BitstreamReader, 1, 0)
+        # self.assertRaises(TypeError, BitstreamReader, "foo", 0)
+        # self.assertRaises(TypeError, BitstreamReader,
+        #                   cStringIO.StringIO("foo"), 0)
+
+        temp = tempfile.TemporaryFile()
+        try:
+            temp.write(chr(0xB1))
+            temp.write(chr(0xED))
+            temp.write(chr(0x3B))
+            temp.write(chr(0xC1))
+            temp.seek(0, 0)
+
+            #first, check the bitstream reader
+            #against some simple known big-endian values
+            bitstream = BitstreamReader(temp, 0)
+
+            self.assertEqual(bitstream.read(2), 2)
+            self.assertEqual(bitstream.read(3), 6)
+            self.assertEqual(bitstream.read(5), 7)
+            self.assertEqual(bitstream.read(3), 5)
+            self.assertEqual(bitstream.read(19), 342977)
+            self.assertEqual(bitstream.tell(), 4)
+
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.read64(2), 2)
+            self.assertEqual(bitstream.read64(3), 6)
+            self.assertEqual(bitstream.read64(5), 7)
+            self.assertEqual(bitstream.read64(3), 5)
+            self.assertEqual(bitstream.read64(19), 342977)
+            self.assertEqual(bitstream.tell(), 4)
+
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.read_signed(2), -2)
+            self.assertEqual(bitstream.read_signed(3), -2)
+            self.assertEqual(bitstream.read_signed(5), 7)
+            self.assertEqual(bitstream.read_signed(3), -3)
+            self.assertEqual(bitstream.read_signed(19), -181311)
+            self.assertEqual(bitstream.tell(), 4)
+
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.unary(0), 1)
+            self.assertEqual(bitstream.unary(0), 2)
+            self.assertEqual(bitstream.unary(0), 0)
+            self.assertEqual(bitstream.unary(0), 0)
+            self.assertEqual(bitstream.unary(0), 4)
+            bitstream.byte_align()
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.unary(1), 0)
+            self.assertEqual(bitstream.unary(1), 1)
+            self.assertEqual(bitstream.unary(1), 0)
+            self.assertEqual(bitstream.unary(1), 3)
+            self.assertEqual(bitstream.unary(1), 0)
+            bitstream.byte_align()
+
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.read(1), 1)
+            bit = bitstream.read(1)
+            self.assertEqual(bit, 0)
+            bitstream.unread(bit)
+            self.assertEqual(bitstream.read(2), 1)
+            bitstream.byte_align()
+
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.limited_unary(0, 2), 1)
+            self.assertEqual(bitstream.limited_unary(0, 2), None)
+            bitstream.byte_align()
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.limited_unary(1, 2), 0)
+            self.assertEqual(bitstream.limited_unary(1, 2), 1)
+            self.assertEqual(bitstream.limited_unary(1, 2), 0)
+            self.assertEqual(bitstream.limited_unary(1, 2), None)
+
+            temp.seek(0, 0)
+            bitstream.byte_align()
+            bitstream.mark()
+            self.assertEqual(bitstream.read(4), 0xB)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(8), 0xB1)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(12), 0xB1E)
+            bitstream.unmark()
+            bitstream.mark()
+            self.assertEqual(bitstream.read(4), 0xD)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(8), 0xD3)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(12), 0xD3B)
+            bitstream.unmark()
+
+
+            del(bitstream)
+            temp.seek(0, 0)
+
+            #then, check the bitstream reader
+            #against some simple known little-endian values
+            bitstream = BitstreamReader(temp, 1)
+
+            self.assertEqual(bitstream.read(2), 1)
+            self.assertEqual(bitstream.read(3), 4)
+            self.assertEqual(bitstream.read(5), 13)
+            self.assertEqual(bitstream.read(3), 3)
+            self.assertEqual(bitstream.read(19), 395743)
+            self.assertEqual(bitstream.tell(), 4)
+
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.read64(2), 1)
+            self.assertEqual(bitstream.read64(3), 4)
+            self.assertEqual(bitstream.read64(5), 13)
+            self.assertEqual(bitstream.read64(3), 3)
+            self.assertEqual(bitstream.read64(19), 395743)
+            self.assertEqual(bitstream.tell(), 4)
+
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.read_signed(2), 1)
+            self.assertEqual(bitstream.read_signed(3), -4)
+            self.assertEqual(bitstream.read_signed(5), 13)
+            self.assertEqual(bitstream.read_signed(3), 3)
+            self.assertEqual(bitstream.read_signed(19), -128545)
+            self.assertEqual(bitstream.tell(), 4)
+
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.unary(0), 1)
+            self.assertEqual(bitstream.unary(0), 0)
+            self.assertEqual(bitstream.unary(0), 0)
+            self.assertEqual(bitstream.unary(0), 2)
+            self.assertEqual(bitstream.unary(0), 2)
+            bitstream.byte_align()
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.unary(1), 0)
+            self.assertEqual(bitstream.unary(1), 3)
+            self.assertEqual(bitstream.unary(1), 0)
+            self.assertEqual(bitstream.unary(1), 1)
+            self.assertEqual(bitstream.unary(1), 0)
+            bitstream.byte_align()
+
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.read(1), 1)
+            bit = bitstream.read(1)
+            self.assertEqual(bit, 0)
+            bitstream.unread(bit)
+            self.assertEqual(bitstream.read(4), 8)
+            bitstream.byte_align()
+
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.limited_unary(0, 2), 1)
+            self.assertEqual(bitstream.limited_unary(0, 2), 0)
+            self.assertEqual(bitstream.limited_unary(0, 2), 0)
+            self.assertEqual(bitstream.limited_unary(0, 2), None)
+            bitstream.byte_align()
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.limited_unary(1, 2), 0)
+            self.assertEqual(bitstream.limited_unary(1, 2), None)
+
+            temp.seek(0, 0)
+            bitstream.byte_align()
+            bitstream.mark()
+            self.assertEqual(bitstream.read(4), 0x1)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(8), 0xB1)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(12), 0xDB1)
+            bitstream.unmark()
+            bitstream.mark()
+            self.assertEqual(bitstream.read(4), 0xE)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(8), 0xBE)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(12), 0x3BE)
+            bitstream.unmark()
+        finally:
+            temp.close()
+
+    @LIB_CORE
+    def test_python_reader(self):
+        from audiotools.decoders import BitstreamReader
+
+        #Vanilla, file-based BitstreamReader uses a 1 character buffer
+        #and relies on stdio to perform buffering which is fast enough.
+        #Therefore, a byte-aligned file can be seek()ed at will.
+        #However, making lots of read(1) calls on a Python object
+        #is unacceptably slow.
+        #Therefore, we read a 4KB string and pull individual bytes from
+        #it as needed, which should keep performance reasonable.
+        def new_temp1():
+            temp = cStringIO.StringIO()
+            temp.write(chr(0xB1))
+            temp.write(chr(0xED))
+            temp.write(chr(0x3B))
+            temp.write(chr(0xC1))
+            temp.seek(0, 0)
+            return temp
+
+        def new_temp2():
+            return __SimpleChunkReader__([chr(0xB1) +
+                                          chr(0xED) +
+                                          chr(0x3B) +
+                                          chr(0xC1)])
+
+        def new_temp3():
+            return __SimpleChunkReader__([chr(0xB1) +
+                                          chr(0xED),
+                                          chr(0x3B) +
+                                          chr(0xC1)])
+
+        def new_temp4():
+            return __SimpleChunkReader__([chr(0xB1),
+                                          chr(0xED),
+                                          chr(0x3B) +
+                                          chr(0xC1)])
+        def new_temp5():
+            return __SimpleChunkReader__([chr(0xB1),
+                                          chr(0xED),
+                                          chr(0x3B),
+                                          chr(0xC1)])
+
+        for new_temp in [new_temp1, new_temp2, new_temp3, new_temp4,
+                         new_temp5]:
+            #first, check the bitstream reader
+            #against some simple known big-endian values
+            bitstream = BitstreamReader(new_temp(), 0)
+
+            self.assertEqual(bitstream.read(2), 2)
+            self.assertEqual(bitstream.read(3), 6)
+            self.assertEqual(bitstream.read(5), 7)
+            self.assertEqual(bitstream.read(3), 5)
+            self.assertEqual(bitstream.read(19), 342977)
+            self.assertEqual(bitstream.tell(), 4)
+
+            bitstream = BitstreamReader(new_temp(), 0)
+            self.assertEqual(bitstream.read64(2), 2)
+            self.assertEqual(bitstream.read64(3), 6)
+            self.assertEqual(bitstream.read64(5), 7)
+            self.assertEqual(bitstream.read64(3), 5)
+            self.assertEqual(bitstream.read64(19), 342977)
+            self.assertEqual(bitstream.tell(), 4)
+
+            bitstream = BitstreamReader(new_temp(), 0)
+            self.assertEqual(bitstream.read_signed(2), -2)
+            self.assertEqual(bitstream.read_signed(3), -2)
+            self.assertEqual(bitstream.read_signed(5), 7)
+            self.assertEqual(bitstream.read_signed(3), -3)
+            self.assertEqual(bitstream.read_signed(19), -181311)
+            self.assertEqual(bitstream.tell(), 4)
+
+            bitstream = BitstreamReader(new_temp(), 0)
+            self.assertEqual(bitstream.unary(0), 1)
+            self.assertEqual(bitstream.unary(0), 2)
+            self.assertEqual(bitstream.unary(0), 0)
+            self.assertEqual(bitstream.unary(0), 0)
+            self.assertEqual(bitstream.unary(0), 4)
+            bitstream.byte_align()
+            bitstream = BitstreamReader(new_temp(), 0)
+            self.assertEqual(bitstream.unary(1), 0)
+            self.assertEqual(bitstream.unary(1), 1)
+            self.assertEqual(bitstream.unary(1), 0)
+            self.assertEqual(bitstream.unary(1), 3)
+            self.assertEqual(bitstream.unary(1), 0)
+            bitstream.byte_align()
+
+            bitstream = BitstreamReader(new_temp(), 0)
+            self.assertEqual(bitstream.read(1), 1)
+            bit = bitstream.read(1)
+            self.assertEqual(bit, 0)
+            bitstream.unread(bit)
+            self.assertEqual(bitstream.read(2), 1)
+            bitstream.byte_align()
+
+            bitstream = BitstreamReader(new_temp(), 0)
+            self.assertEqual(bitstream.limited_unary(0, 2), 1)
+            self.assertEqual(bitstream.limited_unary(0, 2), None)
+            bitstream.byte_align()
+            bitstream = BitstreamReader(new_temp(), 0)
+            self.assertEqual(bitstream.limited_unary(1, 2), 0)
+            self.assertEqual(bitstream.limited_unary(1, 2), 1)
+            self.assertEqual(bitstream.limited_unary(1, 2), 0)
+            self.assertEqual(bitstream.limited_unary(1, 2), None)
+
+            bitstream = BitstreamReader(new_temp(), 0)
+            bitstream.mark()
+            self.assertEqual(bitstream.read(4), 0xB)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(8), 0xB1)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(12), 0xB1E)
+            bitstream.unmark()
+            bitstream.mark()
+            self.assertEqual(bitstream.read(4), 0xD)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(8), 0xD3)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(12), 0xD3B)
+            bitstream.unmark()
+
+            del(bitstream)
+            bitstream = BitstreamReader(new_temp(), 0)
+
+            #then, check the bitstream reader
+            #against some simple known little-endian values
+            bitstream = BitstreamReader(new_temp(), 1)
+
+            self.assertEqual(bitstream.read(2), 1)
+            self.assertEqual(bitstream.read(3), 4)
+            self.assertEqual(bitstream.read(5), 13)
+            self.assertEqual(bitstream.read(3), 3)
+            self.assertEqual(bitstream.read(19), 395743)
+            self.assertEqual(bitstream.tell(), 4)
+
+            bitstream = BitstreamReader(new_temp(), 1)
+            self.assertEqual(bitstream.read64(2), 1)
+            self.assertEqual(bitstream.read64(3), 4)
+            self.assertEqual(bitstream.read64(5), 13)
+            self.assertEqual(bitstream.read64(3), 3)
+            self.assertEqual(bitstream.read64(19), 395743)
+            self.assertEqual(bitstream.tell(), 4)
+
+            bitstream = BitstreamReader(new_temp(), 1)
+            self.assertEqual(bitstream.read_signed(2), 1)
+            self.assertEqual(bitstream.read_signed(3), -4)
+            self.assertEqual(bitstream.read_signed(5), 13)
+            self.assertEqual(bitstream.read_signed(3), 3)
+            self.assertEqual(bitstream.read_signed(19), -128545)
+            self.assertEqual(bitstream.tell(), 4)
+
+            bitstream = BitstreamReader(new_temp(), 1)
+            self.assertEqual(bitstream.unary(0), 1)
+            self.assertEqual(bitstream.unary(0), 0)
+            self.assertEqual(bitstream.unary(0), 0)
+            self.assertEqual(bitstream.unary(0), 2)
+            self.assertEqual(bitstream.unary(0), 2)
+            bitstream.byte_align()
+            bitstream = BitstreamReader(new_temp(), 1)
+            self.assertEqual(bitstream.unary(1), 0)
+            self.assertEqual(bitstream.unary(1), 3)
+            self.assertEqual(bitstream.unary(1), 0)
+            self.assertEqual(bitstream.unary(1), 1)
+            self.assertEqual(bitstream.unary(1), 0)
+            bitstream.byte_align()
+
+            bitstream = BitstreamReader(new_temp(), 1)
+            self.assertEqual(bitstream.read(1), 1)
+            bit = bitstream.read(1)
+            self.assertEqual(bit, 0)
+            bitstream.unread(bit)
+            self.assertEqual(bitstream.read(4), 8)
+            bitstream.byte_align()
+
+            bitstream = BitstreamReader(new_temp(), 1)
+            self.assertEqual(bitstream.limited_unary(0, 2), 1)
+            self.assertEqual(bitstream.limited_unary(0, 2), 0)
+            self.assertEqual(bitstream.limited_unary(0, 2), 0)
+            self.assertEqual(bitstream.limited_unary(0, 2), None)
+            bitstream.byte_align()
+            bitstream = BitstreamReader(new_temp(), 1)
+            self.assertEqual(bitstream.limited_unary(1, 2), 0)
+            self.assertEqual(bitstream.limited_unary(1, 2), None)
+
+            bitstream = BitstreamReader(new_temp(), 1)
+            bitstream.mark()
+            self.assertEqual(bitstream.read(4), 0x1)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(8), 0xB1)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(12), 0xDB1)
+            bitstream.unmark()
+            bitstream.mark()
+            self.assertEqual(bitstream.read(4), 0xE)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(8), 0xBE)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(12), 0x3BE)
+            bitstream.unmark()
+
+
+    @LIB_CORE
+    def test_simple_writer(self):
+        from audiotools.encoders import BitstreamWriter
+
+        self.assertRaises(TypeError, BitstreamWriter, None, 0)
+        self.assertRaises(TypeError, BitstreamWriter, 1, 0)
+        self.assertRaises(TypeError, BitstreamWriter, "foo", 0)
+        self.assertRaises(TypeError, BitstreamWriter,
+                          cStringIO.StringIO("foo"), 0)
+
+        temp = tempfile.NamedTemporaryFile()
+        try:
+            #first, have the bitstream writer generate
+            #a set of known big-endian values
+
+            f = open(temp.name, "wb")
+            bitstream = BitstreamWriter(f, 0)
+            bitstream.write(2, 2)
+            bitstream.write(3, 6)
+            bitstream.write(5, 7)
+            bitstream.write(3, 5)
+            bitstream.write(19, 342977)
+            f.close()
+            del(bitstream)
+            self.assertEqual(map(ord, open(temp.name, "rb").read()),
+                             [0xB1, 0xED, 0x3B, 0xC1])
+
+            f = open(temp.name, "wb")
+            bitstream = BitstreamWriter(f, 0)
+            bitstream.write64(2, 2)
+            bitstream.write64(3, 6)
+            bitstream.write64(5, 7)
+            bitstream.write64(3, 5)
+            bitstream.write64(19, 342977)
+            f.close()
+            del(bitstream)
+            self.assertEqual(map(ord, open(temp.name, "rb").read()),
+                             [0xB1, 0xED, 0x3B, 0xC1])
+
+            f = open(temp.name, "wb")
+            bitstream = BitstreamWriter(f, 0)
+            bitstream.write_signed(2, -2)
+            bitstream.write_signed(3, -2)
+            bitstream.write_signed(5, 7)
+            bitstream.write_signed(3, -3)
+            bitstream.write_signed(19, -181311)
+            f.close()
+            del(bitstream)
+            self.assertEqual(map(ord, open(temp.name, "rb").read()),
+                             [0xB1, 0xED, 0x3B, 0xC1])
+
+            f = open(temp.name, "wb")
+            bitstream = BitstreamWriter(f, 0)
+            bitstream.unary(0, 1)
+            bitstream.unary(0, 2)
+            bitstream.unary(0, 0)
+            bitstream.unary(0, 0)
+            bitstream.unary(0, 4)
+            bitstream.unary(0, 2)
+            bitstream.unary(0, 1)
+            bitstream.unary(0, 0)
+            bitstream.unary(0, 3)
+            bitstream.unary(0, 4)
+            bitstream.unary(0, 0)
+            bitstream.unary(0, 0)
+            bitstream.unary(0, 0)
+            bitstream.unary(0, 0)
+            bitstream.write(1, 1)
+            f.close()
+            del(bitstream)
+            self.assertEqual(map(ord, open(temp.name, "rb").read()),
+                             [0xB1, 0xED, 0x3B, 0xC1])
+
+            f = open(temp.name, "wb")
+            bitstream = BitstreamWriter(f, 0)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 1)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 3)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 1)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 1)
+            bitstream.unary(1, 2)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 1)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 5)
+            f.close()
+            del(bitstream)
+            self.assertEqual(map(ord, open(temp.name, "rb").read()),
+                             [0xB1, 0xED, 0x3B, 0xC1])
+
+            #then, have the bitstream writer generate
+            #a set of known little-endian values
+            f = open(temp.name, "wb")
+            bitstream = BitstreamWriter(f, 1)
+            bitstream.write(2, 1)
+            bitstream.write(3, 4)
+            bitstream.write(5, 13)
+            bitstream.write(3, 3)
+            bitstream.write(19, 395743)
+            f.close()
+            del(bitstream)
+            self.assertEqual(map(ord, open(temp.name, "rb").read()),
+                             [0xB1, 0xED, 0x3B, 0xC1])
+
+            f = open(temp.name, "wb")
+            bitstream = BitstreamWriter(f, 1)
+            bitstream.write64(2, 1)
+            bitstream.write64(3, 4)
+            bitstream.write64(5, 13)
+            bitstream.write64(3, 3)
+            bitstream.write64(19, 395743)
+            f.close()
+            del(bitstream)
+            self.assertEqual(map(ord, open(temp.name, "rb").read()),
+                             [0xB1, 0xED, 0x3B, 0xC1])
+
+            f = open(temp.name, "wb")
+            bitstream = BitstreamWriter(f, 1)
+            bitstream.write_signed(2, 1)
+            bitstream.write_signed(3, -4)
+            bitstream.write_signed(5, 13)
+            bitstream.write_signed(3, 3)
+            bitstream.write_signed(19, -128545)
+            f.close()
+            del(bitstream)
+            self.assertEqual(map(ord, open(temp.name, "rb").read()),
+                             [0xB1, 0xED, 0x3B, 0xC1])
+
+            f = open(temp.name, "wb")
+            bitstream = BitstreamWriter(f, 1)
+            bitstream.unary(0, 1)
+            bitstream.unary(0, 0)
+            bitstream.unary(0, 0)
+            bitstream.unary(0, 2)
+            bitstream.unary(0, 2)
+            bitstream.unary(0, 2)
+            bitstream.unary(0, 5)
+            bitstream.unary(0, 3)
+            bitstream.unary(0, 0)
+            bitstream.unary(0, 1)
+            bitstream.unary(0, 0)
+            bitstream.unary(0, 0)
+            bitstream.unary(0, 0)
+            bitstream.unary(0, 0)
+            bitstream.write(2, 3)
+            f.close()
+            del(bitstream)
+            self.assertEqual(map(ord, open(temp.name, "rb").read()),
+                             [0xB1, 0xED, 0x3B, 0xC1])
+
+            f = open(temp.name, "wb")
+            bitstream = BitstreamWriter(f, 1)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 3)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 1)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 1)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 1)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 1)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 2)
+            bitstream.unary(1, 5)
+            bitstream.unary(1, 0)
+            f.close()
+            del(bitstream)
+            self.assertEqual(map(ord, open(temp.name, "rb").read()),
+                             [0xB1, 0xED, 0x3B, 0xC1])
+
+            f = open(temp.name, "wb")
+            bitstream = BitstreamWriter(f, 1)
+            bitstream.write(4, 0x1)
+            bitstream.byte_align()
+            bitstream.write(4, 0xD)
+            bitstream.byte_align()
+            f.close()
+            del(bitstream)
+            self.assertEqual(map(ord, open(temp.name, "rb").read()),
+                             [0x01, 0x0D])
+
+        finally:
+            temp.close()
+
+    #and have the bitstream reader check those values are accurate
+
+    @LIB_CORE
+    def close_test(self):
+        from audiotools.decoders import BitstreamReader
+
+        r1 = BitstreamReader(open("test.py", "rb"), False)
+        r1.read(8)
+        r1.close()
+        self.assertRaises(IOError,
+                          r1.read,
+                          8)
+        del(r1)
+
+        r1 = BitstreamReader(cStringIO.StringIO("abcd"), False)
+        r1.read(8)
+        r1.close()
+        self.assertRaises(IOError,
+                          r1.read,
+                          8)
+        del(r1)

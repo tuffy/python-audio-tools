@@ -386,6 +386,7 @@ HUGE_BMP = \
 
 from test_formats import *
 from test_core import *
+from test_utils import *
 
 if (__name__ == '__main__'):
     unittest.main()
