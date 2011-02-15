@@ -27,6 +27,10 @@ import os
 import os.path
 from test_reorg import (parser, BLANK_PCM_Reader, Combinations)
 
+class InvalidTemporaryFile:
+    def __init__(self, bad_path):
+        self.name = bad_path
+
 def do_nothing(self):
     pass
 
@@ -367,3 +371,190 @@ class track2track(UtilTest):
                         self.assert_(track2.replay_gain() is None)
                     elif ('--no-replay-gain' not in options):
                         self.assert_(track2.replay_gain() is not None)
+
+class track2track_errors(UtilTest):
+    @UTIL_TRACK2TRACK
+    def setUp(self):
+        #input format should be something other than the user's default
+        #and should support embedded metadata
+        for self.input_format in [audiotools.ALACAudio,
+                                  audiotools.AiffAudio]:
+            if (self.input_format != audiotools.DEFAULT_TYPE):
+                break
+
+        #output format shouldn't be the user's default, the input format
+        #and should support embedded images and ReplayGain tags
+        for self.output_format in [audiotools.FlacAudio,
+                                   audiotools.WavPackAudio]:
+            if (self.input_format != audiotools.DEFAULT_TYPE):
+                break
+
+        self.input_dir = tempfile.mkdtemp()
+        self.track1 = self.input_format.from_pcm(
+            os.path.join(self.input_dir, "01.%s" % (self.input_format.SUFFIX)),
+            BLANK_PCM_Reader(1))
+        self.track_metadata = audiotools.MetaData(track_name=u"Track 1",
+                                                  track_number=1,
+                                                  album_name=u"Album",
+                                                  artist_name=u"Artist")
+        self.track_metadata.add_image(
+            audiotools.Image.new(open("bigpng.png", "rb").read(), u"", 0))
+        self.track1.set_metadata(self.track_metadata)
+
+        self.output_dir = "/dev/null/directory/"
+        self.xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
+        self.xmcd_file.write('Invalid XMCD file')
+        self.xmcd_file.flush()
+
+        self.format = "%(foo)s.%(bar)s"
+        self.type = self.output_format.NAME
+        self.quality = self.output_format.COMPRESSION_MODES[0]
+
+        self.cwd_dir = tempfile.mkdtemp()
+        self.original_dir = os.getcwd()
+        os.chdir(self.cwd_dir)
+        os.chmod(self.cwd_dir, 0500)
+
+        self.output_file = InvalidTemporaryFile(
+            os.path.join(self.cwd_dir, "bad_filename"))
+
+    @UTIL_TRACK2TRACK
+    def tearDown(self):
+        os.chdir(self.original_dir)
+
+        for f in os.listdir(self.input_dir):
+            os.unlink(os.path.join(self.input_dir, f))
+        os.rmdir(self.input_dir)
+
+        os.chmod(self.cwd_dir, 0700)
+        for f in os.listdir(self.cwd_dir):
+            os.unlink(os.path.join(self.cwd_dir, f))
+        os.rmdir(self.cwd_dir)
+
+        self.xmcd_file.close()
+
+    @UTIL_TRACK2TRACK
+    def test_bad_options(self):
+        messenger = audiotools.Messenger("track2track", None)
+
+        self.assertEqual(self.__run_app__(
+                ["track2track", "-t", "wav", "-q", "help"]), 0)
+        self.__check_error__(_(u"Audio type %s has no compression modes") % \
+                                 (audiotools.WaveAudio.NAME))
+
+        self.assertEqual(self.__run_app__(
+                ["track2track", "-t", "flac", "-q", "foobar"]), 1)
+        self.__check_error__(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") % \
+                                 {"quality": "foobar",
+                                  "type": audiotools.FlacAudio.NAME})
+
+        self.assertEqual(self.__run_app__(
+                ["track2track", "-t", "flac"]), 1)
+        self.__check_error__(_(u"You must specify at least 1 supported audio file"))
+
+        self.assertEqual(self.__run_app__(
+                ["track2track", "-j", str(0), "-t", "flac",
+                 self.track1.filename]), 1)
+        self.__check_error__(_(u'You must run at least 1 process at a time'))
+
+        self.assertEqual(self.__run_app__(
+                ["track2track", "-o", "fail.flac",
+                 self.track1.filename, self.track1.filename]), 1)
+        self.__check_error__(_(u'You may specify only 1 input file for use with -o'))
+
+        all_options = ["-t", "-q", "-d", "--format", "-o", "-T",
+                       "--replay-gain", "--no-replay-gain"]
+
+        for count in xrange(1, len(all_options) + 1):
+            for options in Combinations(all_options, count):
+                options = self.populate_options(options) + \
+                    ["-V", "normal", self.track1.filename]
+
+                if (("-d" in options) and ("-o" in options)):
+                    #-d and -o trigger an error
+
+                    self.assertEqual(
+                        self.__run_app__(["track2track"] + options), 1)
+                    self.__check_error__(
+                        _(u"-o and -d options are not compatible"))
+                    self.__check_info__(
+                        _(u"Please specify either -o or -d but not both"))
+                elif ("-d" in options):
+                    #an unwritable output directory should trigger an error
+
+                    if ("-x" in options):
+                        self.assertEqual(
+                            self.__run_app__(["track2track"] + options), 1)
+                        self.__check_error__(
+                            _(u"Invalid XMCD or MusicBrainz XML file"))
+                    elif ("--format" in options):
+                        self.assertEqual(
+                            self.__run_app__(["track2track"] + options), 1)
+                        self.__check_error__(
+                            _(u"Unknown field \"%(field)s\" in file format") %
+                            {"field":u"foo"})
+                    else:
+                        output_path = os.path.join(
+                            self.output_dir,
+                            self.output_format.track_name(
+                                file_path="",
+                                track_metadata=self.track1.get_metadata(),
+                                format=audiotools.FILENAME_FORMAT))
+
+                        self.assertEqual(
+                            self.__run_app__(["track2track"] + options), 1)
+                        self.__check_error__(
+                            _(u"Unable to write \"%(filename)s\"") %
+                            {"filename":messenger.filename(output_path)})
+                elif ("-o" in options):
+                    #an unwritable output file should trigger an error
+
+                    if ("-x" in options):
+                        self.assertEqual(
+                            self.__run_app__(["track2track"] + options), 1)
+                        self.__check_error__(
+                            _(u"Invalid XMCD or MusicBrainz XML file"))
+                    else:
+                        self.assertEqual(
+                            self.__run_app__(["track2track"] + options), 1)
+
+                        if ("--format" in options):
+                            self.__check_warning__(
+                                _(u"--format has no effect when used with -o"))
+                        self.__check_error__(
+                            _(u"%(filename)s: [Errno 13] Permission denied: '%(filename)s'") % \
+                                {"filename":
+                                     messenger.filename(self.output_file.name)})
+                else:
+                    #an unwritable cwd should trigger an error
+
+                    if ("-x" in options):
+                        self.assertEqual(
+                            self.__run_app__(["track2track"] + options), 1)
+                        self.__check_error__(
+                            _(u"Invalid XMCD or MusicBrainz XML file"))
+                    elif ("--format" in options):
+                        self.assertEqual(
+                            self.__run_app__(["track2track"] + options), 1)
+                        self.__check_error__(
+                            _(u"Unknown field \"%(field)s\" in file format") %
+                            {"field":u"foo"})
+                    else:
+                        output_path = os.path.join(
+                            ".",
+                            self.output_format.track_name(
+                                file_path="",
+                                track_metadata=self.track1.get_metadata(),
+                                format=audiotools.FILENAME_FORMAT))
+
+                        self.assertEqual(
+                            self.__run_app__(["track2track"] + options), 1)
+                        self.__check_info__(
+                            _(u"%(source)s -> %(destination)s") %
+                            {"source":
+                                 messenger.filename(self.track1.filename),
+                             "destination":
+                                 messenger.filename(output_path)})
+                        self.__check_error__(
+                            _(u"%(filename)s: [Errno 13] Permission denied: '%(filename)s'") %
+                            {"filename":messenger.filename(output_path)})

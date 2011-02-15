@@ -3292,7 +3292,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO cdinfo
 *** TODO cdplay
 *** TODO coverdump
-*** TODO track2track
+*** DONE track2track
 *** TODO track2xmcd
 *** TODO trackcat
 *** TODO trackcmp
