@@ -226,6 +226,9 @@ class FlacMetaData(MetaData):
         """Updates any currently empty entries from metadata's values."""
 
         self.vorbis_comment.merge(metadata)
+        if (len(self.images()) == 0):
+            for image in metadata.images():
+                self.add_image(image)
 
     def add_image(self, image):
         """Embeds an Image object in this metadata."""

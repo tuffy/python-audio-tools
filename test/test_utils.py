@@ -25,7 +25,9 @@ import unicodedata
 import tempfile
 import os
 import os.path
-from test_reorg import (parser, BLANK_PCM_Reader, Combinations)
+import shutil
+from test_reorg import (parser, BLANK_PCM_Reader, Combinations,
+                        TEST_COVER1, TEST_COVER2, TEST_COVER3)
 
 class InvalidTemporaryFile:
     def __init__(self, bad_path):
@@ -558,3 +560,340 @@ class track2track_errors(UtilTest):
                         self.__check_error__(
                             _(u"%(filename)s: [Errno 13] Permission denied: '%(filename)s'") %
                             {"filename":messenger.filename(output_path)})
+
+
+class tracktag(UtilTest):
+    @UTIL_TRACKTAG
+    def setUp(self):
+        track_file_base = tempfile.NamedTemporaryFile()
+        self.initial_metadata = audiotools.MetaData(
+            track_name=u"Name 1",
+            track_number=1,
+            track_total=2,
+            album_name=u"Album 1",
+            artist_name=u"Artist 1",
+            album_number=3,
+            album_total=4,
+            ISRC=u'ABCD00000000',
+            comment=u"Comment 1")
+
+        self.image = audiotools.Image.new(TEST_COVER1, u"", 0)
+        self.initial_metadata.add_image(self.image)
+
+        track_base = audiotools.FlacAudio.from_pcm(
+            track_file_base.name,
+            BLANK_PCM_Reader(1))
+        track_base.set_metadata(self.initial_metadata)
+        self.track_data = open(track_base.filename, 'rb').read()
+        track_file_base.close()
+
+        self.track_file = tempfile.NamedTemporaryFile()
+
+        self.xmcd = tempfile.NamedTemporaryFile(suffix=".xmcd")
+        self.xmcd.write('<?xml version="1.0" encoding="utf-8"?><metadata xmlns="http://musicbrainz.org/ns/mmd-1.0#" xmlns:ext="http://musicbrainz.org/ns/ext-1.0#"><release-list><release><title>Album 2</title><artist><name></name></artist><release-event-list><event catalog-number="" date=""/></release-event-list><track-list><track><title>Name 2</title><duration>6912</duration><artist><name>Artist 2</name></artist></track></track-list></release></release-list></metadata>')
+        self.xmcd.flush()
+
+        self.cuesheet = tempfile.NamedTemporaryFile(suffix=".cue")
+        self.cuesheet.write('FILE "CDImage.wav" WAVE\r\n  TRACK 01 AUDIO\r\n    ISRC JPPI00652340\r\n    INDEX 01 00:00:00\r\n  TRACK 02 AUDIO\r\n    ISRC JPPI00652349\r\n    INDEX 00 03:40:72\r\n    INDEX 01 03:42:27\r\n  TRACK 03 AUDIO\r\n    ISRC JPPI00652341\r\n    INDEX 00 07:22:45\r\n    INDEX 01 07:24:37\r\n')
+        self.cuesheet.flush()
+
+        self.comment_file = tempfile.NamedTemporaryFile(suffix=".txt")
+        self.comment_file.write("Comment File")
+        self.comment_file.flush()
+
+        # self.front_cover = tempfile.NamedTemporaryFile(suffix=".jpg")
+        # self.front_cover.write(TEST_COVER1)
+        # self.front_cover.flush()
+        self.front_cover = "bigpng.png"
+
+        self.back_cover = tempfile.NamedTemporaryFile(suffix=".png")
+        self.back_cover.write(TEST_COVER2)
+        self.back_cover.flush()
+
+        self.front_cover_image = audiotools.Image.new(
+            open("bigpng.png").read(), u"", 0)
+        self.back_cover_image = audiotools.Image.new(
+            TEST_COVER2, u"", 1)
+
+        self.thumbnailed_front_cover_image = self.front_cover_image.thumbnail(
+            audiotools.THUMBNAIL_SIZE,
+            audiotools.THUMBNAIL_SIZE,
+            audiotools.THUMBNAIL_FORMAT)
+
+        self.thumbnailed_back_cover_image = self.back_cover_image.thumbnail(
+            audiotools.THUMBNAIL_SIZE,
+            audiotools.THUMBNAIL_SIZE,
+            audiotools.THUMBNAIL_FORMAT)
+
+
+    @UTIL_TRACKTAG
+    def tearDown(self):
+        self.track_file.close()
+        self.xmcd.close()
+        self.cuesheet.close()
+        self.comment_file.close()
+        self.back_cover.close()
+
+    def populate_options(self, options):
+        populated = []
+
+        for option in sorted(options):
+            if (option == '-x'):
+                populated.append(option)
+                populated.append(self.xmcd.name)
+            elif (option == '--cue'):
+                populated.append(option)
+                populated.append(self.cuesheet.name)
+            elif (option == '--name'):
+                populated.append(option)
+                populated.append("Name 3")
+            elif (option == '--artist'):
+                populated.append(option)
+                populated.append("Artist 3")
+            elif (option == '--album'):
+                populated.append(option)
+                populated.append("Album 3")
+            elif (option == '--number'):
+                populated.append(option)
+                populated.append("5")
+            elif (option == '--track-total'):
+                populated.append(option)
+                populated.append("6")
+            elif (option == '--album-number'):
+                populated.append(option)
+                populated.append("7")
+            elif (option == '--album-total'):
+                populated.append(option)
+                populated.append("8")
+            elif (option == '--comment'):
+                populated.append(option)
+                populated.append("Comment 3")
+            elif (option == '--comment-file'):
+                populated.append(option)
+                populated.append(self.comment_file.name)
+            elif (option == '--front-cover'):
+                populated.append(option)
+                populated.append(self.front_cover)
+            elif (option == '--back-cover'):
+                populated.append(option)
+                populated.append(self.back_cover.name)
+            else:
+                populated.append(option)
+
+        return populated
+
+    @UTIL_TRACKTAG
+    def test_options(self):
+        #start out with a bit of sanity checking
+        f = open(self.track_file.name, 'wb')
+        f.write(self.track_data)
+        f.close()
+
+        track = audiotools.open(self.track_file.name)
+        track.verify()
+        metadata = track.get_metadata()
+        self.assertEqual(metadata.images(),
+                         [self.image])
+
+        #Why not test all of tracktag's options?
+        #The trouble is that it has 30 metadata-specific options
+        #and the set of all possible combinations from 1 to 30 options
+        #literally numbers in the millions.
+        #Since most of those options are straight text,
+        #we'll restrict the tests to the more interesting ones.
+        most_options = ['-r', '-x', '--cue', '--replay-gain',
+                        '--name', '--artist', '--album',
+                        '--number', '--track-total',
+                        '--album-number', '--album-total',
+                        '--comment', '--comment-file',
+                        '--remove-images', '--front-cover', '--back-cover',
+                        '-T']
+
+        for count in xrange(1, len(most_options) + 1):
+            for options in Combinations(most_options, count):
+                f = open(self.track_file.name, 'wb')
+                f.write(self.track_data)
+                f.close()
+
+                options = self.populate_options(options)
+                print options
+                self.assertEqual(
+                    self.__run_app__(["tracktag"] +
+                                     options +
+                                     [self.track_file.name]), 0)
+
+                track = audiotools.open(self.track_file.name)
+                track.verify()
+                metadata = track.get_metadata()
+
+                if ("--name" in options):
+                    self.assertEqual(metadata.track_name, u"Name 3")
+                elif ("-x" in options):
+                    self.assertEqual(metadata.track_name, u"Name 2")
+                elif ("-r" in options):
+                    self.assertEqual(metadata.track_name, u"")
+                else:
+                    self.assertEqual(metadata.track_name, u"Name 1")
+
+                if ("--artist" in options):
+                    self.assertEqual(metadata.artist_name, u"Artist 3")
+                elif ("-x" in options):
+                    self.assertEqual(metadata.artist_name, u"Artist 2")
+                elif ("-r" in options):
+                    self.assertEqual(metadata.artist_name, u"")
+                else:
+                    self.assertEqual(metadata.artist_name, u"Artist 1")
+
+                if ("--album" in options):
+                    self.assertEqual(metadata.album_name, u"Album 3")
+                elif ("-x" in options):
+                    self.assertEqual(metadata.album_name, u"Album 2")
+                elif ("-r" in options):
+                    self.assertEqual(metadata.album_name, u"")
+                else:
+                    self.assertEqual(metadata.album_name, u"Album 1")
+
+                if ("--number" in options):
+                    self.assertEqual(metadata.track_number, 5)
+                elif ("-x" in options):
+                    self.assertEqual(metadata.track_number, 1)
+                elif ("-r" in options):
+                    self.assertEqual(metadata.track_number, 0)
+                else:
+                    self.assertEqual(metadata.track_number, 1)
+
+                if ("--track-total" in options):
+                    self.assertEqual(metadata.track_total, 6)
+                elif ("-x" in options):
+                    self.assertEqual(metadata.track_total, 1)
+                elif ("-r" in options):
+                    self.assertEqual(metadata.track_total, 0)
+                else:
+                    self.assertEqual(metadata.track_total, 2)
+
+                if ("--album-number" in options):
+                    self.assertEqual(metadata.album_number, 7)
+                elif ("-r" in options):
+                    self.assertEqual(metadata.album_number, 0)
+                else:
+                    self.assertEqual(metadata.album_number, 3)
+
+                if ("--album-total" in options):
+                    self.assertEqual(metadata.album_total, 8)
+                elif ("-r" in options):
+                    self.assertEqual(metadata.album_total, 0)
+                else:
+                    self.assertEqual(metadata.album_total, 4)
+
+                if ("--comment-file" in options):
+                    self.assertEqual(metadata.comment, u"Comment File")
+                elif ("--comment" in options):
+                    self.assertEqual(metadata.comment, u"Comment 3")
+                elif ("-r" in options):
+                    self.assertEqual(metadata.comment, u"")
+                else:
+                    self.assertEqual(metadata.comment, u"Comment 1")
+
+                if ("--cue" in options):
+                    self.assertEqual(metadata.ISRC, u"JPPI00652340")
+                elif ("-r" in options):
+                    self.assertEqual(metadata.ISRC, u"")
+                else:
+                    self.assertEqual(metadata.ISRC, u"ABCD00000000")
+
+                if (("--front-cover" in options) and
+                    ("--back-cover" in options)):
+                    #adding front and back cover
+
+                    if (("-r" in options) or
+                        ("--remove-images" in options)):
+                        if ("-T" in options):
+                            self.assertEqual(
+                                metadata.front_covers(),
+                                [self.thumbnailed_front_cover_image])
+                            self.assertEqual(
+                                metadata.back_covers(),
+                                [self.thumbnailed_back_cover_image])
+                        else:
+                            self.assertEqual(metadata.front_covers(),
+                                             [self.front_cover_image])
+                            self.assertEqual(metadata.back_covers(),
+                                             [self.back_cover_image])
+                        self.assertEqual(len(metadata.images()), 2)
+                    else:
+                        if ("-T" in options):
+                            self.assertEqual(
+                                metadata.front_covers(),
+                                [self.image,
+                                 self.thumbnailed_front_cover_image])
+                            self.assertEqual(
+                                metadata.back_covers(),
+                                [self.thumbnailed_back_cover_image])
+                        else:
+                            self.assertEqual(metadata.front_covers(),
+                                             [self.image,
+                                              self.front_cover_image])
+                            self.assertEqual(metadata.back_covers(),
+                                             [self.back_cover_image])
+                        self.assertEqual(len(metadata.images()), 3)
+                elif ("--front-cover" in options):
+                    #adding front-cover
+
+                    if (("-r" in options) or
+                        ("--remove-images" in options)):
+                        if ("-T" in options):
+                            self.assertEqual(
+                                metadata.images(),
+                                [self.thumbnailed_front_cover_image])
+                        else:
+                            self.assertEqual(metadata.images(),
+                                             [self.front_cover_image])
+                        self.assertEqual(len(metadata.images()), 1)
+                    else:
+                        if ("-T" in options):
+                            self.assertEqual(
+                                metadata.images(),
+                                [self.image,
+                                 self.thumbnailed_front_cover_image])
+                        else:
+                            self.assertEqual(metadata.images(),
+                                             [self.image,
+                                              self.front_cover_image])
+                        self.assertEqual(len(metadata.images()), 2)
+                elif ("--back-cover" in options):
+                    #adding back cover
+
+                    if (("-r" in options) or
+                        ("--remove-images" in options)):
+                        if ("-T" in options):
+                            self.assertEqual(
+                                metadata.images(),
+                                [self.thumbnailed_back_cover_image])
+                        else:
+                            self.assertEqual(metadata.images(),
+                                             [self.back_cover_image])
+                        self.assertEqual(len(metadata.images()), 1)
+                    else:
+                        self.assertEqual(metadata.front_covers(),
+                                             [self.image])
+                        if ("-T" in options):
+                            self.assertEqual(
+                                metadata.back_covers(),
+                                [self.thumbnailed_back_cover_image])
+                        else:
+                            self.assertEqual(metadata.back_covers(),
+                                             [self.back_cover_image])
+                        self.assertEqual(len(metadata.images()), 2)
+                else:
+                    #no new images added
+
+                    if (("-r" in options) or
+                        ("--remove-images" in options)):
+                        self.assertEqual(len(metadata.images()), 0)
+                    else:
+                        self.assertEqual(metadata.images(),
+                                         [self.image])
+                        self.assertEqual(len(metadata.images()), 1)
+
+                        
+                #FIXME - check --replay-gain option

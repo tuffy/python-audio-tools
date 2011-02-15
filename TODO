@@ -3239,6 +3239,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ***** TODO IDCommentPair
 ***** TODO M4A
 ***** TODO VorbisComment
+***** TODO Ensure that merge() works properly
+      It has to handle all supported text fields
+      *and* must handle images if supported.
 **** TODO PCMCat
 **** DONE PCMConverter
 **** DONE PCMReaderWindow
