@@ -632,8 +632,8 @@ class WaveAudio(WaveContainer):
                                 channels=channels,
                                 channel_mask=channel_mask,
                                 bits_per_sample=bits_per_sample),
-                                         replaygain=replaygain,
-                                         peak=peak),
+                                         replaygain,
+                                         peak),
                         gained.write,
                         signed=bits_per_sample != 8,
                         big_endian=False)

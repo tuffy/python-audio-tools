@@ -3294,6 +3294,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO cd2xmcd
 *** TODO cdinfo
 *** TODO cdplay
+    cover the errors, at least
 *** TODO coverdump
 *** DONE track2track
 *** TODO track2xmcd
@@ -3302,8 +3303,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO trackinfo
 *** TODO tracklength
 *** TODO tracklint
+*** TODO trackplay
+    cover the errors, at least
 *** TODO trackrename
 *** TODO tracksplit
-*** TODO tracktag
+*** DONE tracktag
 *** TODO trackverify
 ** DONE Split tests into multiple files

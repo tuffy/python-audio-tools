@@ -26,8 +26,12 @@ import tempfile
 import os
 import os.path
 import shutil
+from hashlib import md5
+
 from test_reorg import (parser, BLANK_PCM_Reader, Combinations,
-                        TEST_COVER1, TEST_COVER2, TEST_COVER3)
+                        EXACT_BLANK_PCM_Reader,
+                        TEST_COVER1, TEST_COVER2, TEST_COVER3, TEST_COVER4,
+                        HUGE_BMP)
 
 class InvalidTemporaryFile:
     def __init__(self, bad_path):
@@ -601,17 +605,16 @@ class tracktag(UtilTest):
         self.comment_file.write("Comment File")
         self.comment_file.flush()
 
-        # self.front_cover = tempfile.NamedTemporaryFile(suffix=".jpg")
-        # self.front_cover.write(TEST_COVER1)
-        # self.front_cover.flush()
-        self.front_cover = "bigpng.png"
+        self.front_cover = tempfile.NamedTemporaryFile(suffix=".png")
+        self.front_cover.write(TEST_COVER4)
+        self.front_cover.flush()
 
         self.back_cover = tempfile.NamedTemporaryFile(suffix=".png")
         self.back_cover.write(TEST_COVER2)
         self.back_cover.flush()
 
         self.front_cover_image = audiotools.Image.new(
-            open("bigpng.png").read(), u"", 0)
+            TEST_COVER4, u"", 0)
         self.back_cover_image = audiotools.Image.new(
             TEST_COVER2, u"", 1)
 
@@ -632,6 +635,7 @@ class tracktag(UtilTest):
         self.xmcd.close()
         self.cuesheet.close()
         self.comment_file.close()
+        self.front_cover.close()
         self.back_cover.close()
 
     def populate_options(self, options):
@@ -673,7 +677,7 @@ class tracktag(UtilTest):
                 populated.append(self.comment_file.name)
             elif (option == '--front-cover'):
                 populated.append(option)
-                populated.append(self.front_cover)
+                populated.append(self.front_cover.name)
             elif (option == '--back-cover'):
                 populated.append(option)
                 populated.append(self.back_cover.name)
@@ -700,12 +704,11 @@ class tracktag(UtilTest):
         #and the set of all possible combinations from 1 to 30 options
         #literally numbers in the millions.
         #Since most of those options are straight text,
-        #we'll restrict the tests to the more interesting ones.
-        most_options = ['-r', '-x', '--cue', '--replay-gain',
-                        '--name', '--artist', '--album',
-                        '--number', '--track-total',
-                        '--album-number', '--album-total',
-                        '--comment', '--comment-file',
+        #we'll restrict the tests to the more interesting ones
+        #which is still over 8000 different option combinations.
+        most_options = ['-r', '-x', '--cue',
+                        '--name', '--number', '--track-total',
+                        '--album-number', '--comment', '--comment-file',
                         '--remove-images', '--front-cover', '--back-cover',
                         '-T']
 
@@ -895,5 +898,425 @@ class tracktag(UtilTest):
                                          [self.image])
                         self.assertEqual(len(metadata.images()), 1)
 
-                        
-                #FIXME - check --replay-gain option
+
+                if ("--replay-gain" in options):
+                    self.assert_(track.replay_gain() is not None)
+
+    @UTIL_TRACKTAG
+    def test_replaygain(self):
+        for audio_class in audiotools.AVAILABLE_TYPES:
+            if (audio_class.can_add_replay_gain()):
+                track_file = tempfile.NamedTemporaryFile(
+                    suffix="." + audio_class.SUFFIX)
+                try:
+                    track = audio_class.from_pcm(
+                        track_file.name,
+                        BLANK_PCM_Reader(5))
+                    self.assertEqual(
+                        self.__run_app__(["tracktag", "--replay-gain",
+                                          track.filename]), 0)
+                    if (audio_class.lossless_replay_gain()):
+                        self.__check_info__(
+                            _(u"Adding ReplayGain metadata.  This may take some time."))
+                        track2 = audiotools.open(track_file.name)
+                        self.assert_(track2.replay_gain() is not None)
+                    else:
+                        self.__check_info__(
+                            _(u"Applying ReplayGain.  This may take some time."))
+
+
+                finally:
+                    track_file.close()
+
+class tracktag_errors(UtilTest):
+    @UTIL_TRACKTAG
+    def test_bad_options(self):
+        temp_comment = tempfile.NamedTemporaryFile(suffix=".txt")
+        temp_track_file = tempfile.NamedTemporaryFile(suffix=".flac")
+        temp_track_stat = os.stat(temp_track_file.name)[0]
+        try:
+            temp_track = audiotools.FlacAudio.from_pcm(
+                temp_track_file.name,
+                BLANK_PCM_Reader(5))
+
+            temp_track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
+
+            self.assertEqual(self.__run_app__(
+                ["tracktag", "-x", "/dev/null", temp_track.filename]), 1)
+            self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
+
+            self.assertEqual(self.__run_app__(
+                    ["tracktag", "--front-cover=/dev/null/foo.jpg",
+                     temp_track.filename]), 1)
+            self.__check_error__(
+                _(u"%(filename)s: %(message)s") % \
+                    {"filename": self.filename(temp_track.filename),
+                     "message": _(u"Unable to open file")})
+
+            self.assertEqual(self.__run_app__(
+                    ["tracktag", "--xmcd=/dev/null/foo.xmcd",
+                     self.filename(temp_track.filename)]), 1)
+            self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
+
+            self.assertEqual(self.__run_app__(
+                    ["tracktag", "--comment-file=/dev/null/foo.txt",
+                     self.filename(temp_track.filename)]), 1)
+            self.__check_error__(_(u"Unable to open comment file \"%s\"") % \
+                                     (self.filename("/dev/null/foo.txt")))
+
+            temp_comment.write(
+                os.urandom(1024) + ((u"\uFFFD".encode('utf-8')) * 103))
+            temp_comment.flush()
+
+            self.assertEqual(self.__run_app__(
+                    ["tracktag", "--comment-file=%s" % (temp_comment.name),
+                     temp_track.filename]), 1)
+            self.__check_error__(
+                _(u"Comment file \"%s\" does not appear to be UTF-8 text") % \
+                    (temp_comment.name))
+
+            os.chmod(temp_track_file.name, temp_track_stat & 07555)
+            self.assertEqual(self.__run_app__(
+                    ["tracktag", "--name=Foo",
+                     self.filename(temp_track.filename)]), 1)
+            self.__check_error__(_(u"Unable to modify \"%s\"") % \
+                                     (self.filename(temp_track.filename)))
+
+
+        finally:
+            os.chmod(temp_track_file.name, temp_track_stat)
+            temp_track_file.close()
+            temp_comment.close()
+
+    @UTIL_TRACKTAG
+    def test_oversized_metadata(self):
+        for audio_class in [audiotools.FlacAudio,
+                            audiotools.OggFlacAudio]:
+            tempflac = tempfile.NamedTemporaryFile(
+            suffix="." + audio_class.SUFFIX)
+            tempwv = tempfile.NamedTemporaryFile(
+                suffix="." + audiotools.WavPackAudio.SUFFIX)
+            big_bmp = tempfile.NamedTemporaryFile(suffix=".bmp")
+            big_text = tempfile.NamedTemporaryFile(suffix=".txt")
+            try:
+                flac = audio_class.from_pcm(
+                    tempflac.name,
+                    BLANK_PCM_Reader(5))
+
+                flac.set_metadata(audiotools.MetaData(track_name=u"Foo"))
+
+                big_bmp.write(HUGE_BMP.decode('bz2'))
+                big_bmp.flush()
+
+                big_text.write("QlpoOTFBWSZTWYmtEk8AgICBAKAAAAggADCAKRoBANIBAOLuSKcKEhE1okng".decode('base64').decode('bz2'))
+                big_text.flush()
+
+                orig_md5 = md5()
+                pcm = flac.to_pcm()
+                audiotools.transfer_framelist_data(pcm, orig_md5.update)
+                pcm.close()
+
+                #ensure that setting a big image via tracktag
+                #doesn't break the file
+                subprocess.call(["tracktag", "-V", "quiet",
+                                 "--front-cover=%s" % (big_bmp.name),
+                                 flac.filename])
+                new_md5 = md5()
+                pcm = flac.to_pcm()
+                audiotools.transfer_framelist_data(pcm, new_md5.update)
+                pcm.close()
+                self.assertEqual(orig_md5.hexdigest(),
+                                 new_md5.hexdigest())
+
+                #ensure that setting big text via tracktag
+                #doesn't break the file
+                subprocess.call(["tracktag", "-V", "quiet",
+                                 "--comment-file=%s" % (big_text.name),
+                                 flac.filename])
+                new_md5 = md5()
+                pcm = flac.to_pcm()
+                audiotools.transfer_framelist_data(pcm, new_md5.update)
+                pcm.close()
+                self.assertEqual(orig_md5.hexdigest(),
+                                 new_md5.hexdigest())
+
+                subprocess.call(["track2track", "-V", "quiet", "-t", "wv",
+                                 "-o", tempwv.name,
+                                 flac.filename])
+
+                wv = audiotools.open(tempwv.name)
+
+                self.assertEqual(flac, wv)
+
+                self.assertEqual(subprocess.call(
+                        ["tracktag", "-V", "quiet",
+                         "--front-cover=%s" % (big_bmp.name),
+                         "--comment-file=%s" % (big_text.name),
+                         wv.filename]), 0)
+
+                self.assertEqual(len(wv.get_metadata().images()), 1)
+                self.assert_(len(wv.get_metadata().comment) > 0)
+
+                subprocess.call(["track2track", "-t", audio_class.NAME, "-o",
+                                 flac.filename, wv.filename])
+
+                flac = audiotools.open(tempflac.name)
+                self.assertEqual(flac, wv)
+            finally:
+                tempflac.close()
+                tempwv.close()
+                big_bmp.close()
+                big_text.close()
+
+
+class tracktag_misc(UtilTest):
+    @UTIL_TRACKTAG
+    def test_xmcd(self):
+        LENGTH = 1134
+        OFFSETS = [150, 18740, 40778, 44676, 63267]
+        TRACK_LENGTHS = [y - x for x, y in zip(OFFSETS + [LENGTH * 75],
+                                              (OFFSETS + [LENGTH * 75])[1:])]
+        data = {"DTITLE": "Artist / Album",
+                "TTITLE0": u"track one",
+                "TTITLE1": u"track two",
+                "TTITLE2": u"track three",
+                "TTITLE3": u"track four",
+                "TTITLE4": u"track five",
+                "EXTT0": u"",
+                "EXTT1": u"",
+                "EXTT2": u"",
+                "EXTT3": u"",
+                "EXTT4": u""}
+
+        #construct our XMCD file
+        xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
+        xmcd_file.write(audiotools.XMCD(data, [u"# xmcd"]).to_string())
+        xmcd_file.flush()
+
+        #construct a batch of temporary tracks
+        temp_tracks = [tempfile.NamedTemporaryFile(suffix=".flac")
+                       for i in xrange(len(OFFSETS))]
+        try:
+            tracks = [audiotools.FlacAudio.from_pcm(
+                    track.name,
+                    EXACT_BLANK_PCM_Reader(length * 44100 / 75))
+                      for (track, length) in zip(temp_tracks, TRACK_LENGTHS)]
+            for (i, track) in enumerate(tracks):
+                track.set_metadata(audiotools.MetaData(track_number=i + 1))
+
+            #tag them with tracktag
+            subprocess.call(["tracktag", "-x", xmcd_file.name] + \
+                            [track.filename for track in tracks])
+
+            #ensure the metadata values are correct
+            for (track, name, i) in zip(tracks, [u"track one",
+                                                 u"track two",
+                                                 u"track three",
+                                                 u"track four",
+                                                 u"track five"],
+                                      range(len(tracks))):
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, name)
+                self.assertEqual(metadata.track_number, i + 1)
+                self.assertEqual(metadata.album_name, u"Album")
+                self.assertEqual(metadata.artist_name, u"Artist")
+        finally:
+            xmcd_file.close()
+            for track in temp_tracks:
+                track.close()
+
+        #construct a fresh XMCD file
+        xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
+        xmcd_file.write(audiotools.XMCD(data, [u"# xmcd"]).to_string())
+        xmcd_file.flush()
+
+        #construct a batch of temporary tracks with a file missing
+        temp_tracks = [tempfile.NamedTemporaryFile(suffix=".flac")
+                       for i in xrange(len(OFFSETS))]
+        try:
+            tracks = [audiotools.FlacAudio.from_pcm(
+                    track.name,
+                    EXACT_BLANK_PCM_Reader(length * 44100 / 75))
+                      for (track, length) in zip(temp_tracks, TRACK_LENGTHS)]
+            for (i, track) in enumerate(tracks):
+                track.set_metadata(audiotools.MetaData(track_number=i + 1))
+
+            del(tracks[2])
+
+            #tag them with tracktag
+            subprocess.call(["tracktag", "-x", xmcd_file.name] + \
+                            [track.filename for track in tracks])
+
+            #ensure the metadata values are correct
+            for (track, name, i) in zip(tracks, [u"track one",
+                                                 u"track two",
+                                                 u"track four",
+                                                 u"track five"],
+                                      [0, 1, 3, 4]):
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, name)
+                self.assertEqual(metadata.track_number, i + 1)
+                self.assertEqual(metadata.album_name, u"Album")
+                self.assertEqual(metadata.artist_name, u"Artist")
+        finally:
+            xmcd_file.close()
+            for track in temp_tracks:
+                track.close()
+
+        #construct a fresh XMCD file with a track missing
+        del(data["TTITLE2"])
+        xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
+        xmcd_file.write(audiotools.XMCD(data, [u"# xmcd"]).to_string())
+        xmcd_file.flush()
+
+        #construct a batch of temporary tracks
+        temp_tracks = [tempfile.NamedTemporaryFile(suffix=".flac")
+                       for i in xrange(len(OFFSETS))]
+        try:
+            tracks = [audiotools.FlacAudio.from_pcm(
+                    track.name,
+                    EXACT_BLANK_PCM_Reader(length * 44100 / 75))
+                      for (track, length) in zip(temp_tracks, TRACK_LENGTHS)]
+            for (i, track) in enumerate(tracks):
+                track.set_metadata(audiotools.MetaData(track_number=i + 1))
+
+            #tag them with tracktag
+            subprocess.call(["tracktag", "-x", xmcd_file.name] + \
+                            [track.filename for track in tracks])
+
+            #ensure the metadata values are correct
+            for (track, name, i) in zip(tracks, [u"track one",
+                                                 u"track two",
+                                                 u"",
+                                                 u"track four",
+                                                 u"track five"],
+                                      range(len(tracks))):
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, name)
+                self.assertEqual(metadata.track_number, i + 1)
+                self.assertEqual(metadata.album_name, u"Album")
+                self.assertEqual(metadata.artist_name, u"Artist")
+        finally:
+            xmcd_file.close()
+            for track in temp_tracks:
+                track.close()
+
+    @UTIL_TRACKTAG
+    def test_cuesheet1(self):
+        for audio_class in [audiotools.FlacAudio,
+                            audiotools.WavPackAudio]:
+            #create single track and cuesheet
+            temp_track = tempfile.NamedTemporaryFile(
+                suffix="." + audio_class.SUFFIX)
+            temp_sheet = tempfile.NamedTemporaryFile(
+                suffix=".cue")
+            try:
+                temp_sheet.write(
+"""eJydkF1LwzAUQN8L/Q+X/oBxk6YfyVtoM4mu68iy6WudQ8qkHbNu+u9NneCc1IdCnk649xyuUQXk
+epnpHGiOMU2Q+Z5xMCuLQs0tBOq92nTy7alus3b/AUeccL5/ZIHvZdLKWXkDjKcpIg2RszjxvYUy
+09IUykCwanZNe2pAHrr6tXMjVtuZ+uG27l62Dk91T03VPG8np+oYwL1cK98DsEZmd4AE5CrXZU8c
+O++wh2qzQxKc4X/S/l8vTQa3i7V2kWEap/iN57l66Pcjiq93IaWDUjpOyn9LETAVyASh1y0OR4Il
+Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64').decode('zlib'))
+                temp_sheet.flush()
+                album = audio_class.from_pcm(
+                    temp_track.name,
+                    EXACT_BLANK_PCM_Reader(69470436))
+                sheet = audiotools.read_sheet(temp_sheet.name)
+
+                #add metadata
+                self.assertEqual(subprocess.call(["tracktag",
+                                                  "--album", "Album Name",
+                                                  "--artist", "Artist Name",
+                                                  "--album-number", "2",
+                                                  "--album-total", "3",
+                                                  temp_track.name]), 0)
+
+                metadata = audiotools.MetaData(
+                    album_name=u"Album Name",
+                    artist_name=u"Artist Name",
+                    album_number=2,
+                    album_total=3)
+
+                #add cuesheet
+                self.assertEqual(
+                    subprocess.call(["tracktag", "--cue", temp_sheet.name,
+                                     temp_track.name]), 0)
+
+                #ensure metadata matches
+                self.assertEqual(album.get_metadata(), metadata)
+
+                #ensure cuesheet matches
+                sheet2 = album.get_cuesheet()
+
+                self.assertNotEqual(sheet2, None)
+                self.assertEqual(sheet.catalog(),
+                                 sheet2.catalog())
+                self.assertEqual(sorted(sheet.ISRCs().items()),
+                                 sorted(sheet2.ISRCs().items()))
+                self.assertEqual(list(sheet.indexes()),
+                                 list(sheet2.indexes()))
+                self.assertEqual(list(sheet.pcm_lengths(69470436)),
+                                 list(sheet2.pcm_lengths(69470436)))
+            finally:
+                temp_track.close()
+                temp_sheet.close()
+
+    @UTIL_TRACKTAG
+    def test_cuesheet2(self):
+        for audio_class in [audiotools.FlacAudio,
+                            audiotools.WavPackAudio]:
+            #create single track and cuesheet
+            temp_track = tempfile.NamedTemporaryFile(
+                suffix="." + audio_class.SUFFIX)
+            temp_sheet = tempfile.NamedTemporaryFile(
+                suffix=".cue")
+            try:
+                temp_sheet.write(
+"""eJydkF1LwzAUQN8L/Q+X/oBxk6YfyVtoM4mu68iy6WudQ8qkHbNu+u9NneCc1IdCnk649xyuUQXk
+epnpHGiOMU2Q+Z5xMCuLQs0tBOq92nTy7alus3b/AUeccL5/ZIHvZdLKWXkDjKcpIg2RszjxvYUy
+09IUykCwanZNe2pAHrr6tXMjVtuZ+uG27l62Dk91T03VPG8np+oYwL1cK98DsEZmd4AE5CrXZU8c
+O++wh2qzQxKc4X/S/l8vTQa3i7V2kWEap/iN57l66Pcjiq93IaWDUjpOyn9LETAVyASh1y0OR4Il
+Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64').decode('zlib'))
+                temp_sheet.flush()
+                album = audio_class.from_pcm(
+                            temp_track.name,
+                            EXACT_BLANK_PCM_Reader(69470436))
+                sheet = audiotools.read_sheet(temp_sheet.name)
+
+                #add cuesheet
+                self.assertEqual(
+                    subprocess.call(["tracktag", "--cue", temp_sheet.name,
+                                     temp_track.name]), 0)
+
+                #add metadata
+                self.assertEqual(subprocess.call(["tracktag",
+                                                  "--album", "Album Name",
+                                                  "--artist", "Artist Name",
+                                                  "--album-number", "2",
+                                                  "--album-total", "3",
+                                                  temp_track.name]), 0)
+
+                metadata = audiotools.MetaData(
+                    album_name=u"Album Name",
+                    artist_name=u"Artist Name",
+                    album_number=2,
+                    album_total=3)
+
+                #ensure metadata matches
+                self.assertEqual(album.get_metadata(), metadata)
+
+                #ensure cuesheet matches
+                sheet2 = album.get_cuesheet()
+
+                self.assertNotEqual(sheet2, None)
+                self.assertEqual(sheet.catalog(),
+                                 sheet2.catalog())
+                self.assertEqual(sorted(sheet.ISRCs().items()),
+                                 sorted(sheet2.ISRCs().items()))
+                self.assertEqual(list(sheet.indexes()),
+                                 list(sheet2.indexes()))
+                self.assertEqual(list(sheet.pcm_lengths(69470436)),
+                                 list(sheet2.pcm_lengths(69470436)))
+            finally:
+                temp_track.close()
+                temp_sheet.close()
