@@ -132,6 +132,276 @@ class UtilTest(unittest.TestCase):
 
         return populated
 
+
+class cd2track(UtilTest):
+    @UTIL_CD2TRACK
+    def setUp(self):
+        self.type = audiotools.FlacAudio
+        self.quality = "1"
+
+        self.input_dir = tempfile.mkdtemp()
+
+        self.stream = test_streams.Sine16_Stereo(793800, 44100,
+                                                 8820.0, 0.70,
+                                                 4410.0, 0.29, 1.0)
+
+        self.cue_file = os.path.join(self.input_dir, "CDImage.cue")
+        self.bin_file = os.path.join(self.input_dir, "CDImage.bin")
+
+        f = open(self.cue_file, "w")
+        f.write('FILE "CDImage.wav" WAVE\r\n  TRACK 01 AUDIO\r\n    ISRC JPPI00652340\r\n    INDEX 01 00:00:00\r\n  TRACK 02 AUDIO\r\n    ISRC JPPI00652349\r\n    INDEX 00 00:03:00\r\n    INDEX 01 00:05:00\r\n  TRACK 03 AUDIO\r\n    ISRC JPPI00652341\r\n    INDEX 00 00:9:00\r\n    INDEX 01 00:11:00\r\n')
+        f.close()
+
+        f = open(self.bin_file, "w")
+        audiotools.transfer_framelist_data(self.stream, f.write)
+        f.close()
+
+        self.xmcd_file = tempfile.NamedTemporaryFile(suffix=".flac")
+
+        self.xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
+        self.xmcd_file.write('<?xml version="1.0" encoding="utf-8"?><metadata xmlns="http://musicbrainz.org/ns/mmd-1.0#" xmlns:ext="http://musicbrainz.org/ns/ext-1.0#"><release-list><release><title>Album 3</title><artist><name>Artist 3</name></artist><release-event-list><event catalog-number="" date="2011"/></release-event-list><track-list><track><title>Track 3-1</title><duration>5000</duration></track><track><title>Track 3-2</title><duration>6000</duration></track><track><title>Track 3-3</title><duration>7000</duration></track></track-list></release></release-list></metadata>')
+        self.xmcd_file.flush()
+        self.xmcd_metadata = audiotools.read_metadata_file(self.xmcd_file.name)
+
+        self.output_dir = tempfile.mkdtemp()
+        self.format = "%(track_number)2.2d.%(suffix)s"
+
+        self.cwd_dir = tempfile.mkdtemp()
+        self.original_dir = os.getcwd()
+        os.chdir(self.cwd_dir)
+
+    @UTIL_CD2TRACK
+    def tearDown(self):
+        os.chdir(self.original_dir)
+
+        for f in os.listdir(self.input_dir):
+            os.unlink(os.path.join(self.input_dir, f))
+        os.rmdir(self.input_dir)
+
+        for f in os.listdir(self.output_dir):
+            os.unlink(os.path.join(self.output_dir, f))
+        os.rmdir(self.output_dir)
+
+        for f in os.listdir(self.cwd_dir):
+            os.unlink(os.path.join(self.cwd_dir, f))
+        os.rmdir(self.cwd_dir)
+
+    def populate_options(self, options):
+        populated = []
+        for option in options:
+            if (option == '-t'):
+                populated.append(option)
+                populated.append(self.type.NAME)
+            elif (option == '-q'):
+                populated.append(option)
+                populated.append(self.quality)
+            elif (option == '-d'):
+                populated.append(option)
+                populated.append(self.output_dir)
+            elif (option == '--format'):
+                populated.append(option)
+                populated.append(self.format)
+            elif (option == '-x'):
+                populated.append(option)
+                populated.append(self.xmcd_file.name)
+            elif (option == '--album-number'):
+                populated.append(option)
+                populated.append(str(8))
+            elif (option == '--album-total'):
+                populated.append(option)
+                populated.append(str(9))
+            else:
+                populated.append(option)
+        return populated
+
+    def clean_output_dirs(self):
+        for f in os.listdir(self.output_dir):
+            os.unlink(os.path.join(self.output_dir, f))
+
+        for f in os.listdir(self.cwd_dir):
+            os.unlink(os.path.join(self.cwd_dir, f))
+
+    @UTIL_CD2TRACK
+    def test_options(self):
+        messenger = audiotools.VerboseMessenger("cd2track")
+
+        all_options = ["-t", "-q", "-d", "--format", "-x",
+                       "--album-number", "--album-total"]
+        for count in xrange(1, len(all_options) + 1):
+            for options in Combinations(all_options, count):
+                self.clean_output_dirs()
+                options = self.populate_options(options)
+
+                if ("-t" in options):
+                    output_type = self.type
+                else:
+                    output_type = audiotools.TYPE_MAP[audiotools.DEFAULT_TYPE]
+
+                if (("-q" in options) and
+                    ("1" not in output_type.COMPRESSION_MODES)):
+                    self.assertEqual(
+                        self.__run_app__(["cd2track", "-V", "normal",
+                                          "-c", self.cue_file] +
+                                         options), 1)
+                    self.__check_error__(
+                        _(u"\"%(quality)s\" is not a supported " +
+                          u"compression mode for type \"%(type)s\"") %
+                        {"quality": "1",
+                         "type": output_type.NAME})
+                    continue
+
+                self.assertEqual(
+                    self.__run_app__(["cd2track", "-V", "normal",
+                                      "-c", self.cue_file] +
+                                     options), 0)
+
+                if ("--format" in options):
+                    output_format = self.format
+                else:
+                    output_format = None
+
+                if ("-d" in options):
+                    output_dir = self.output_dir
+                else:
+                    output_dir = "."
+
+                base_metadata = audiotools.MetaData(track_total=3)
+                if ("--album-number" in options):
+                    base_metadata.album_number = 8
+                if ("--album-total" in options):
+                    base_metadata.album_total = 9
+
+                output_filenames = []
+                if ("-x" in options):
+                    for i in xrange(3):
+                        base_metadata.track_name = \
+                            self.xmcd_metadata.track_metadata(i + 1).track_name
+                        base_metadata.track_number = i + 1
+                        base_metadata.album_name = u"Album 3"
+                        base_metadata.artist_name = u"Artist 3"
+                        output_filenames.append(
+                            output_type.track_name(
+                                "",
+                                base_metadata,
+                                output_format))
+                else:
+                    for i in xrange(3):
+                        base_metadata.track_number = i + 1
+                        output_filenames.append(
+                            output_type.track_name(
+                                "",
+                                base_metadata,
+                                output_format))
+
+                #check that the output is being generated correctly
+                for (i, path) in enumerate(output_filenames):
+                    self.__check_info__(
+                        _(u"track %(track_number)2.2d: %(log)s") % \
+                            {"track_number": i + 1,
+                             "log": str(audiotools.CDTrackLog())})
+                    self.__check_info__(
+                        _(u"track %(track_number)2.2d -> %(filename)s") % \
+                            {"track_number": i + 1,
+                             "filename": messenger.filename(
+                                os.path.join(output_dir, path))})
+
+                #make sure no track data has been lost
+                output_tracks = [
+                    audiotools.open(os.path.join(output_dir, filename))
+                    for filename in output_filenames]
+                self.assertEqual(len(output_tracks), 3)
+                self.stream.reset()
+                self.assert_(
+                    audiotools.pcm_frame_cmp(
+                        audiotools.PCMCat(iter([t.to_pcm()
+                                                for t in output_tracks])),
+                        self.stream) is None)
+
+                #make sure metadata fits our expectations
+                for i in xrange(len(output_tracks)):
+                    metadata = output_tracks[i].get_metadata()
+                    if (metadata is not None):
+                        if ("-x" in options):
+                            self.assertEqual(
+                                metadata.track_name,
+                                self.xmcd_metadata.track_metadata(i + 1).track_name)
+                            self.assertEqual(
+                                metadata.album_name,
+                                self.xmcd_metadata.track_metadata(i + 1).album_name)
+                            self.assertEqual(
+                                metadata.artist_name,
+                                self.xmcd_metadata.track_metadata(i + 1).artist_name)
+                        else:
+                            self.assertEqual(metadata.track_name, u"")
+                            self.assertEqual(metadata.album_name, u"")
+                            self.assertEqual(metadata.artist_name, u"")
+
+                        self.assertEqual(metadata.track_number, i + 1)
+                        self.assertEqual(metadata.track_total, 3)
+
+                        if ("--album-number" in options):
+                            self.assertEqual(metadata.album_number, 8)
+                        else:
+                            self.assertEqual(metadata.album_number, 0)
+
+                        if ("--album-total" in options):
+                            self.assertEqual(metadata.album_total, 9)
+                        else:
+                            self.assertEqual(metadata.album_total, 0)
+
+    @UTIL_CD2TRACK
+    def test_errors(self):
+        self.assertEqual(self.__run_app__(
+                ["cd2track", "-c", self.cue_file,
+                 "-t", "flac", "-q", "help"]), 0)
+        self.__check_info__(_(u"Available compression types for %s:") % \
+                                (audiotools.FlacAudio.NAME))
+        for m in audiotools.FlacAudio.COMPRESSION_MODES:
+            self.assert_(self.stderr.readline().decode(audiotools.IO_ENCODING).lstrip().startswith(m.decode('ascii')))
+
+        self.assertEqual(self.__run_app__(
+                ["cd2track", "-c", self.cue_file,
+                 "-t", "wav", "-q", "help"]), 0)
+
+        self.__check_error__(_(u"Audio type %s has no compression modes") % \
+                                 (audiotools.WaveAudio.NAME))
+
+        self.assertEqual(self.__run_app__(
+                ["cd2track", "-t", "flac", "-q", "foobar"]), 1)
+
+        self.__check_error__(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") % \
+                                 {"quality": "foobar",
+                                  "type": audiotools.FlacAudio.NAME})
+
+        self.assertEqual(self.__run_app__(
+                ["cd2track", "-c", self.cue_file,
+                 "-t", "flac", "-d", "/dev/null/foo"]), 1)
+        self.__check_error__(
+            _(u"[Errno 20] Not a directory: '%s'") % (
+                u"/dev/null/foo"))
+
+        self.assertEqual(self.__run_app__(
+                ["cd2track", "-t", "flac", "-d", self.output_dir,
+                 "-c", self.cue_file, "-x", "/dev/null"]), 1)
+
+        self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
+
+        self.assertEqual(self.__run_app__(
+                ["cd2track", "-t", "flac", "--format=%(foo)s", "-d",
+                 self.output_dir, "-c", self.cue_file,
+                 "-x", self.xmcd_file.name]), 1)
+
+        self.__check_error__(_(u"Unknown field \"%s\" in file format") % \
+                            ("foo"))
+        self.__check_info__(_(u"Supported fields are:"))
+        for field in sorted(audiotools.MetaData.__FIELDS__ + \
+                                ("album_track_number", "suffix")):
+            if (field == 'track_number'):
+                self.__check_info__(u"%(track_number)2.2d")
+            else:
+                self.__check_info__(u"%%(%s)s" % (field))
+
+
 class track2track(UtilTest):
     @UTIL_TRACK2TRACK
     def setUp(self):

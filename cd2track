@@ -242,7 +242,11 @@ if (__name__ == '__main__'):
                                          track_metadata=None,
                                          format=options.format))
 
-                audiotools.make_dirs(filename)
+                try:
+                    audiotools.make_dirs(filename)
+                except OSError, err:
+                    msg.os_error(err)
+                    sys.exit(1)
 
                 track = AudioType.from_pcm(
                     filename,
