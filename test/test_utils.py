@@ -26,6 +26,7 @@ import tempfile
 import os
 import os.path
 import shutil
+import test_streams
 from hashlib import md5
 
 from test_reorg import (parser, BLANK_PCM_Reader, Combinations,
@@ -109,22 +110,22 @@ class UtilTest(unittest.TestCase):
 
         for option in sorted(options):
             if (option == '-t'):
-                populated.append('-t')
+                populated.append(option)
                 populated.append(self.type)
             elif (option == '-q'):
-                populated.append('-q')
+                populated.append(option)
                 populated.append(self.quality)
             elif (option == '-d'):
-                populated.append('-d')
+                populated.append(option)
                 populated.append(self.output_dir)
             elif (option == '--format'):
-                populated.append('--format')
+                populated.append(option)
                 populated.append(self.format)
             elif (option == '-o'):
-                populated.append('-o')
+                populated.append(option)
                 populated.append(self.output_file.name)
             elif (option == '-x'):
-                populated.append('-x')
+                populated.append(option)
                 populated.append(self.xmcd_file.name)
             else:
                 populated.append(option)
@@ -223,7 +224,7 @@ class track2track(UtilTest):
                 self.clean_output_dirs()
 
                 options = self.populate_options(options) + \
-                    ["-V", "normal", self.track1.filename]
+                    ["-V", "normal", "-j", "1", self.track1.filename]
                 if (("-d" in options) and ("-o" in options)):
                     #-d and -o trigger an error
 
@@ -566,6 +567,245 @@ class track2track_errors(UtilTest):
                             {"filename":messenger.filename(output_path)})
 
 
+class trackcat(UtilTest):
+    @UTIL_TRACKCAT
+    def setUp(self):
+        self.stream1 = test_streams.Sine16_Stereo(220500, 44100,
+                                                  441.0, 0.50,
+                                                  4410.0, 0.49, 1.0)
+        self.stream2 = test_streams.Sine16_Stereo(264600, 44100,
+                                                  8820.0, 0.70,
+                                                  4410.0, 0.29, 1.0)
+        self.stream3 = test_streams.Sine16_Stereo(308700, 44100,
+                                                  441.0, 0.50,
+                                                  441.0, 0.49, 0.5)
+
+        self.misfit_stream1 = test_streams.Sine24_Stereo(200000, 44100,
+                                                         441.0, 0.50,
+                                                         441.0, 0.49, 1.0)
+
+        self.misfit_stream2 = test_streams.Sine16_Mono(200000, 44100,
+                                                       441.0, 0.50,
+                                                       441.0, 0.49)
+
+        self.misfit_stream3 = test_streams.Sine16_Stereo(200000, 48000,
+                                                         441.0, 0.50,
+                                                         441.0, 0.49, 1.0)
+
+
+        self.track1_file = tempfile.NamedTemporaryFile(suffix=".flac")
+        self.track2_file = tempfile.NamedTemporaryFile(suffix=".flac")
+        self.track3_file = tempfile.NamedTemporaryFile(suffix=".flac")
+        self.track4_file = tempfile.NamedTemporaryFile(suffix=".flac")
+        self.track5_file = tempfile.NamedTemporaryFile(suffix=".flac")
+        self.track6_file = tempfile.NamedTemporaryFile(suffix=".flac")
+
+        self.track1 = audiotools.FlacAudio.from_pcm(
+            self.track1_file.name, self.stream1)
+        self.track2 = audiotools.FlacAudio.from_pcm(
+            self.track2_file.name, self.stream2)
+        self.track3 = audiotools.FlacAudio.from_pcm(
+            self.track3_file.name, self.stream3)
+        self.track4 = audiotools.FlacAudio.from_pcm(
+            self.track4_file.name, self.misfit_stream1)
+        self.track5 = audiotools.FlacAudio.from_pcm(
+            self.track5_file.name, self.misfit_stream2)
+        self.track6 = audiotools.FlacAudio.from_pcm(
+            self.track6_file.name, self.misfit_stream3)
+
+        self.cuesheet = tempfile.NamedTemporaryFile(suffix=".cue")
+        self.cuesheet.write('FILE "CDImage.wav" WAVE\r\n  TRACK 01 AUDIO\r\n    ISRC JPPI00652340\r\n    INDEX 01 00:00:00\r\n  TRACK 02 AUDIO\r\n    ISRC JPPI00652349\r\n    INDEX 00 00:03:00\r\n    INDEX 01 00:05:00\r\n  TRACK 03 AUDIO\r\n    ISRC JPPI00652341\r\n    INDEX 00 00:9:00\r\n    INDEX 01 00:11:00\r\n')
+        self.cuesheet.flush()
+
+        self.invalid_cuesheet = tempfile.NamedTemporaryFile(suffix=".cue")
+        self.invalid_cuesheet.write("Hello, World!")
+        self.invalid_cuesheet.flush()
+
+        self.suffix_outfile = tempfile.NamedTemporaryFile(suffix=".flac")
+        self.nonsuffix_outfile = tempfile.NamedTemporaryFile()
+
+
+
+    @UTIL_TRACKCAT
+    def tearDown(self):
+        self.track1_file.close()
+        self.track2_file.close()
+        self.track3_file.close()
+        self.track4_file.close()
+        self.track5_file.close()
+        self.track6_file.close()
+        self.cuesheet.close()
+        self.invalid_cuesheet.close()
+        self.suffix_outfile.close()
+        self.nonsuffix_outfile.close()
+
+    def populate_options(self, options, type, quality, outfile):
+        populated = []
+
+        for option in options:
+            if (option == '-t'):
+                populated.append(option)
+                populated.append(type)
+            elif (option == '-q'):
+                populated.append(option)
+                populated.append(quality)
+            elif (option == '--cue'):
+                populated.append(option)
+                populated.append(self.cuesheet.name)
+            elif (option == '-o'):
+                populated.append(option)
+                populated.append(outfile)
+            else:
+                populated.append(option)
+
+        return populated
+
+    def output_combinations(self, all_options):
+        for (type, quality) in [("flac", "8"),
+                                ("wav", "foo")]:
+            for outfile in [self.suffix_outfile.name,
+                            self.nonsuffix_outfile.name,
+                            "/dev/null/foo.wav",
+                            "/dev/null/foo"]:
+                for count in xrange(1, len(all_options) + 1):
+                    for options in Combinations(all_options, count):
+                        yield (type, quality, outfile, count, options)
+
+    @UTIL_TRACKCAT
+    def test_options(self):
+        messenger = audiotools.Messenger("trackcat", None)
+
+        #first, check the error conditions
+        self.assertEqual(
+            self.__run_app__(["trackcat", "-o", "fail.flac"]), 1)
+        self.__check_error__(
+            _(u"You must specify at least 1 supported audio file"))
+
+        self.assertEqual(
+            self.__run_app__(["trackcat", "-o", "fail.flac",
+                              self.track1.filename,
+                              self.track2.filename,
+                              self.track3.filename,
+                              self.track4.filename]), 1)
+        self.__check_error__(
+            _(u"All audio files must have the same bits per sample"))
+
+        self.assertEqual(
+            self.__run_app__(["trackcat", "-o", "fail.flac",
+                              self.track1.filename,
+                              self.track2.filename,
+                              self.track3.filename,
+                              self.track5.filename]), 1)
+        self.__check_error__(
+            _(u"All audio files must have the same channel count"))
+
+        self.assertEqual(
+            self.__run_app__(["trackcat", "-o", "fail.flac",
+                              self.track1.filename,
+                              self.track2.filename,
+                              self.track3.filename,
+                              self.track6.filename]), 1)
+        self.__check_error__(
+            _(u"All audio files must have the same sample rate"))
+
+        self.assertEqual(
+            self.__run_app__(["trackcat", "--cue", "/dev/null/foo.cue",
+                              "-o", "fail.flac",
+                              self.track1.filename,
+                              self.track2.filename,
+                              self.track3.filename]), 1)
+        self.__check_error__(_(u"Unable to read cuesheet"))
+
+        self.assertEqual(
+            self.__run_app__(["trackcat", "--cue", self.invalid_cuesheet.name,
+                              "-o", "fail.flac",
+                              self.track1.filename,
+                              self.track2.filename,
+                              self.track3.filename]), 1)
+        self.__check_error__(_(u"Missing tag at line 1"))
+
+        #then, check the option combinations
+        #along with a few different output files and types
+        all_options = ["-t", "-q", "--cue", "-o"]
+        for (type,
+             quality,
+             outfile,
+             count,
+             options) in self.output_combinations(all_options):
+                if (os.path.isfile(outfile)):
+                    f = open(outfile, "wb")
+                    f.close()
+
+                options = self.populate_options(options,
+                                                type,
+                                                quality,
+                                                outfile) + \
+                                                [self.track1.filename,
+                                                 self.track2.filename,
+                                                 self.track3.filename]
+
+                if ("-o" not in options):
+                    self.assertEqual(self.__run_app__(["trackcat"] + options),
+                                     1)
+
+                    self.__check_error__(_(u"You must specify an output file"))
+                    continue
+
+                if ("-t" in options):
+                    output_format = audiotools.TYPE_MAP[type]
+                else:
+                    try:
+                        output_format = audiotools.filename_to_type(outfile)
+                    except audiotools.UnknownAudioType:
+                        output_format = audiotools.DEFAULT_TYPE
+
+                if (("-q" in options) and
+                    (quality not in output_format.COMPRESSION_MODES)):
+                    self.assertEqual(self.__run_app__(["trackcat"] + options),
+                                     1)
+                    self.__check_error__(
+                        _(u"\"%(quality)s\" is not a supported " +
+                          u"compression mode for type \"%(type)s\"") %
+                        {"quality": quality,
+                         "type": output_format.NAME.decode('ascii')})
+                    continue
+
+                if (outfile.startswith("/dev/")):
+                    self.assertEqual(self.__run_app__(["trackcat"] + options),
+                                     1)
+                    self.__check_error__(
+                        _(u"%(filename)s: [Errno 20] Not a directory: '%(filename)s'") %
+                        {"filename":messenger.filename(outfile)})
+                    continue
+
+                self.assertEqual(
+                    self.__run_app__(["trackcat"] + options), 0)
+                new_track = audiotools.open(outfile)
+                self.assertEqual(new_track.NAME, output_format.NAME)
+                self.assertEqual(new_track.total_frames(), 793800)
+                self.stream1.reset()
+                self.stream2.reset()
+                self.stream3.reset()
+                self.assert_(audiotools.pcm_frame_cmp(
+                        new_track.to_pcm(),
+                        audiotools.PCMCat(iter([self.stream1,
+                                                self.stream2,
+                                                self.stream3]))) is None)
+
+                if (("--cue" in options) and
+                    (output_format is audiotools.FlacAudio)):
+                    cuesheet = new_track.get_cuesheet()
+                    self.assert_(cuesheet is not None)
+                    self.assertEqual(cuesheet.ISRCs(),
+                                     {1: 'JPPI00652340',
+                                      2: 'JPPI00652349',
+                                      3: 'JPPI00652341'})
+                    self.assertEqual(list(cuesheet.indexes()),
+                                     [(0,), (225, 375), (675, 825)])
+                    self.assertEqual(cuesheet.pcm_lengths(793800),
+                                     [220500, 264600, 308700])
+
+
 class tracktag(UtilTest):
     @UTIL_TRACKTAG
     def setUp(self):
@@ -719,7 +959,6 @@ class tracktag(UtilTest):
                 f.close()
 
                 options = self.populate_options(options)
-                print options
                 self.assertEqual(
                     self.__run_app__(["tracktag"] +
                                      options +
@@ -1320,3 +1559,470 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
             finally:
                 temp_track.close()
                 temp_sheet.close()
+
+
+class tracksplit(UtilTest):
+    @UTIL_TRACKSPLIT
+    def setUp(self):
+        self.type = audiotools.FlacAudio
+        self.quality = "1"
+
+        self.output_dir = tempfile.mkdtemp()
+        self.format = "%(track_number)2.2d.%(suffix)s"
+
+        self.unsplit_file = tempfile.NamedTemporaryFile(suffix=".flac")
+        self.unsplit_metadata = audiotools.MetaData(
+            track_name=u"Track 1",
+            track_number=1,
+            track_total=2,
+            album_number=4,
+            album_total=5,
+            album_name=u"Album 1",
+            artist_name=u"Artist 1",
+            performer_name=u"Performer 1")
+        self.cuesheet = tempfile.NamedTemporaryFile(suffix=".cue")
+        self.cuesheet.write('FILE "CDImage.wav" WAVE\r\n  TRACK 01 AUDIO\r\n    ISRC JPPI00652340\r\n    INDEX 01 00:00:00\r\n  TRACK 02 AUDIO\r\n    ISRC JPPI00652349\r\n    INDEX 00 00:03:00\r\n    INDEX 01 00:05:00\r\n  TRACK 03 AUDIO\r\n    ISRC JPPI00652341\r\n    INDEX 00 00:9:00\r\n    INDEX 01 00:11:00\r\n')
+        self.cuesheet.flush()
+
+        self.cuesheet2 = tempfile.NamedTemporaryFile(suffix=".cue")
+        self.cuesheet2.write('FILE "CDImage.wav" WAVE\r\n  TRACK 01 AUDIO\r\n    ISRC ABCD00000001\r\n    INDEX 01 00:00:00\r\n  TRACK 02 AUDIO\r\n    ISRC ABCD00000002\r\n    INDEX 00 00:03:00\r\n    INDEX 01 00:05:00\r\n  TRACK 03 AUDIO\r\n    ISRC ABCD00000003\r\n    INDEX 00 00:9:00\r\n    INDEX 01 00:11:00\r\n')
+        self.cuesheet2.flush()
+
+        self.unsplit_file2 = tempfile.NamedTemporaryFile(suffix=".flac")
+
+        self.xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
+        self.xmcd_file.write('<?xml version="1.0" encoding="utf-8"?><metadata xmlns="http://musicbrainz.org/ns/mmd-1.0#" xmlns:ext="http://musicbrainz.org/ns/ext-1.0#"><release-list><release><title>Album 3</title><artist><name>Artist 3</name></artist><release-event-list><event catalog-number="" date="2011"/></release-event-list><track-list><track><title>Track 3-1</title><duration>5000</duration></track><track><title>Track 3-2</title><duration>6000</duration></track><track><title>Track 3-3</title><duration>7000</duration></track></track-list></release></release-list></metadata>')
+        self.xmcd_file.flush()
+        self.xmcd_metadata = audiotools.read_metadata_file(self.xmcd_file.name)
+
+        self.stream = test_streams.Sine16_Stereo(793800, 44100,
+                                                 8820.0, 0.70,
+                                                 4410.0, 0.29, 1.0)
+
+        self.cwd_dir = tempfile.mkdtemp()
+        self.original_dir = os.getcwd()
+        os.chdir(self.cwd_dir)
+
+    @UTIL_TRACKSPLIT
+    def tearDown(self):
+        os.chdir(self.original_dir)
+
+        self.unsplit_file.close()
+        self.unsplit_file2.close()
+        self.cuesheet.close()
+        self.cuesheet2.close()
+        self.xmcd_file.close()
+
+        for f in os.listdir(self.output_dir):
+            os.unlink(os.path.join(self.output_dir, f))
+        os.rmdir(self.output_dir)
+
+        for f in os.listdir(self.cwd_dir):
+            os.unlink(os.path.join(self.cwd_dir, f))
+        os.rmdir(self.cwd_dir)
+
+    def clean_output_dirs(self):
+        for f in os.listdir(self.output_dir):
+            os.unlink(os.path.join(self.output_dir, f))
+
+        for f in os.listdir(self.cwd_dir):
+            os.unlink(os.path.join(self.cwd_dir, f))
+
+    def populate_options(self, options):
+        populated = []
+        for option in sorted(options):
+            if (option == '-t'):
+                populated.append(option)
+                populated.append(self.type.NAME)
+            elif (option == '-q'):
+                populated.append(option)
+                populated.append(self.quality)
+            elif (option == '-d'):
+                populated.append(option)
+                populated.append(self.output_dir)
+            elif (option == '--format'):
+                populated.append(option)
+                populated.append(self.format)
+            elif (option == '-x'):
+                populated.append(option)
+                populated.append(self.xmcd_file.name)
+            elif (option == '--cue'):
+                populated.append(option)
+                populated.append(self.cuesheet.name)
+            else:
+                populated.append(option)
+
+        return populated
+
+    @UTIL_TRACKSPLIT
+    def test_options_no_embedded_cue(self):
+        messenger = audiotools.Messenger("trackcat", None)
+
+        all_options = ["--cue", "-t", "-q", "-d", "--format", "-x"]
+
+        self.stream.reset()
+        track = self.type.from_pcm(self.unsplit_file.name, self.stream)
+        track.set_metadata(self.unsplit_metadata)
+
+        for count in xrange(1, len(all_options) + 1):
+            for options in Combinations(all_options, count):
+                self.clean_output_dirs()
+                options = self.populate_options(options)
+
+                if ("-t" in options):
+                    output_type = audiotools.FlacAudio
+                else:
+                    output_type = audiotools.TYPE_MAP[audiotools.DEFAULT_TYPE]
+
+                if (("-q" in options) and
+                    ("1" not in output_type.COMPRESSION_MODES)):
+                    self.assertEqual(
+                        self.__run_app__(["tracksplit", "-V", "normal",
+                                          "-j", str(1)] +
+                                         options + [track.filename]), 1)
+                    self.__check_error__(
+                        _(u"\"%(quality)s\" is not a supported " +
+                          u"compression mode for type \"%(type)s\"") %
+                        {"quality": "1",
+                         "type": output_type.NAME})
+                    continue
+
+                if ("--cue" not in options):
+                    self.assertEqual(
+                        self.__run_app__(["tracksplit", "-V", "normal",
+                                          "-j", str(1)] +
+                                         options + [track.filename]), 1)
+                    self.__check_error__(
+                        _(u"You must specify a cuesheet to split audio file"))
+                    continue
+
+                self.assertEqual(
+                    self.__run_app__(["tracksplit", "-V", "normal",
+                                      "-j", str(1)] +
+                                     options + [track.filename]), 0)
+                if ("--format" in options):
+                    output_format = self.format
+                else:
+                    output_format = None
+
+                if ("-d" in options):
+                    output_dir = self.output_dir
+                else:
+                    output_dir = "."
+
+                base_metadata = audiotools.MetaData(
+                    track_total=3,
+                    album_number=4,
+                    album_total=5,
+                    album_name=u"Album 1",
+                    artist_name=u"Artist 1",
+                    performer_name=u"Performer 1")
+
+                output_filenames = []
+
+                if ("-x" in options):
+                    for i in xrange(3):
+                        base_metadata.track_name = \
+                            self.xmcd_metadata.track_metadata(i + 1).track_name
+                        base_metadata.track_number = i + 1
+                        base_metadata.album_name = u"Album 3"
+                        base_metadata.artist_name = u"Artist 3"
+                        output_filenames.append(
+                            output_type.track_name(
+                                "",
+                                base_metadata,
+                                output_format))
+                else:
+                    for i in xrange(3):
+                        base_metadata.track_number = i + 1
+                        output_filenames.append(
+                            output_type.track_name(
+                                "",
+                                base_metadata,
+                                output_format))
+
+                #check that the output is being generated correctly
+                for path in output_filenames:
+                    self.__check_info__(
+                        _(u"%(source)s -> %(destination)s") % \
+                       {"source":
+                            messenger.filename(track.filename),
+                        "destination":
+                            messenger.filename(
+                                os.path.join(output_dir, path))})
+
+                #make sure no track data has been lost
+                output_tracks = [
+                    audiotools.open(os.path.join(output_dir, filename))
+                    for filename in output_filenames]
+                self.stream.reset()
+                self.assert_(
+                    audiotools.pcm_frame_cmp(
+                        audiotools.PCMCat(iter([t.to_pcm()
+                                                for t in output_tracks])),
+                        self.stream) is None)
+
+                #make sure metadata fits our expectations
+                for i in xrange(len(output_tracks)):
+                    metadata = output_tracks[i].get_metadata()
+                    if (metadata is not None):
+                        if ("-x" in options):
+                            self.assertEqual(
+                                metadata.track_name,
+                                self.xmcd_metadata.track_metadata(i + 1).track_name)
+                            self.assertEqual(
+                                metadata.album_name,
+                                self.xmcd_metadata.track_metadata(i + 1).album_name)
+                            self.assertEqual(
+                                metadata.artist_name,
+                                self.xmcd_metadata.track_metadata(i + 1).artist_name)
+                        else:
+                            self.assertEqual(metadata.track_name, u"")
+                            self.assertEqual(metadata.album_name, u"Album 1")
+                            self.assertEqual(metadata.artist_name, u"Artist 1")
+
+                        self.assertEqual(metadata.track_number, i + 1)
+                        self.assertEqual(metadata.track_total, 3)
+                        self.assertEqual(metadata.album_number, 4)
+                        self.assertEqual(metadata.album_total, 5)
+                        self.assertEqual(metadata.performer_name,
+                                         u"Performer 1")
+
+                if ("--cue" in options):
+                    for (i, ISRC) in enumerate([u"JPPI00652340",
+                                                u"JPPI00652349",
+                                                u"JPPI00652341"]):
+                        metadata = output_tracks[i].get_metadata()
+                        if (metadata is not None):
+                            self.assertEqual(metadata.ISRC, ISRC)
+
+
+
+    @UTIL_TRACKSPLIT
+    def test_options_embedded_cue(self):
+        messenger = audiotools.Messenger("trackcat", None)
+
+        all_options = ["--cue", "-t", "-q", "-d", "--format", "-x"]
+
+        self.stream.reset()
+        track = self.type.from_pcm(self.unsplit_file.name, self.stream)
+        track.set_metadata(self.unsplit_metadata)
+        track.set_cuesheet(audiotools.read_sheet(self.cuesheet2.name))
+        self.assert_(track.get_cuesheet() is not None)
+
+        for count in xrange(1, len(all_options) + 1):
+            for options in Combinations(all_options, count):
+                self.clean_output_dirs()
+                options = self.populate_options(options)
+                if ("-t" in options):
+                    output_type = audiotools.FlacAudio
+                else:
+                    output_type = audiotools.TYPE_MAP[audiotools.DEFAULT_TYPE]
+
+                if (("-q" in options) and
+                    ("1" not in output_type.COMPRESSION_MODES)):
+                    self.assertEqual(
+                        self.__run_app__(["tracksplit", "-V", "normal",
+                                          "-j", str(1)] +
+                                         options + [track.filename]), 1)
+                    self.__check_error__(
+                        _(u"\"%(quality)s\" is not a supported " +
+                          u"compression mode for type \"%(type)s\"") %
+                        {"quality": "1",
+                         "type": output_type.NAME})
+                    continue
+
+                self.assertEqual(
+                    self.__run_app__(["tracksplit", "-V", "normal",
+                                      "-j", str(1)] +
+                                     options + [track.filename]), 0)
+                if ("--format" in options):
+                    output_format = self.format
+                else:
+                    output_format = None
+
+                if ("-d" in options):
+                    output_dir = self.output_dir
+                else:
+                    output_dir = "."
+
+                base_metadata = audiotools.MetaData(
+                    track_total=3,
+                    album_number=4,
+                    album_total=5,
+                    album_name=u"Album 1",
+                    artist_name=u"Artist 1",
+                    performer_name=u"Performer 1")
+
+                output_filenames = []
+                if ("-x" in options):
+                    for i in xrange(3):
+                        base_metadata.track_name = \
+                            self.xmcd_metadata.track_metadata(i + 1).track_name
+                        base_metadata.track_number = i + 1
+                        base_metadata.album_name = u"Album 3"
+                        base_metadata.artist_name = u"Artist 3"
+                        output_filenames.append(
+                            output_type.track_name(
+                                "",
+                                base_metadata,
+                                output_format))
+                else:
+                    for i in xrange(3):
+                        base_metadata.track_number = i + 1
+                        output_filenames.append(
+                            output_type.track_name(
+                                "",
+                                base_metadata,
+                                output_format))
+
+                #check that the output is being generated correctly
+                for path in output_filenames:
+                    self.__check_info__(
+                        _(u"%(source)s -> %(destination)s") % \
+                       {"source":
+                            messenger.filename(track.filename),
+                        "destination":
+                            messenger.filename(
+                                os.path.join(output_dir, path))})
+
+                #make sure no track data has been lost
+                output_tracks = [
+                    audiotools.open(os.path.join(output_dir, filename))
+                    for filename in output_filenames]
+                self.stream.reset()
+                self.assert_(
+                    audiotools.pcm_frame_cmp(
+                        audiotools.PCMCat(iter([t.to_pcm()
+                                                for t in output_tracks])),
+                        self.stream) is None)
+
+                #make sure metadata fits our expectations
+                for i in xrange(len(output_tracks)):
+                    metadata = output_tracks[i].get_metadata()
+                    if (metadata is not None):
+                        if ("-x" in options):
+                            self.assertEqual(
+                                metadata.track_name,
+                                self.xmcd_metadata.track_metadata(i + 1).track_name)
+                            self.assertEqual(
+                                metadata.album_name,
+                                self.xmcd_metadata.track_metadata(i + 1).album_name)
+                            self.assertEqual(
+                                metadata.artist_name,
+                                self.xmcd_metadata.track_metadata(i + 1).artist_name)
+                        else:
+                            self.assertEqual(metadata.track_name, u"")
+                            self.assertEqual(metadata.album_name, u"Album 1")
+                            self.assertEqual(metadata.artist_name, u"Artist 1")
+
+                        self.assertEqual(metadata.track_number, i + 1)
+                        self.assertEqual(metadata.track_total, 3)
+                        self.assertEqual(metadata.album_number, 4)
+                        self.assertEqual(metadata.album_total, 5)
+                        self.assertEqual(metadata.performer_name,
+                                         u"Performer 1")
+
+                #check ISRC data
+                if ("--cue" in options):
+                    for (i, ISRC) in enumerate([u"JPPI00652340",
+                                                u"JPPI00652349",
+                                                u"JPPI00652341"]):
+                        metadata = output_tracks[i].get_metadata()
+                        if (metadata is not None):
+                            self.assertEqual(metadata.ISRC, ISRC)
+                else:
+                    for (i, ISRC) in enumerate([u"ABCD00000001",
+                                                u"ABCD00000002",
+                                                u"ABCD00000003"]):
+                        metadata = output_tracks[i].get_metadata()
+                        if (metadata is not None):
+                            self.assertEqual(metadata.ISRC, ISRC)
+
+    @UTIL_TRACKSPLIT
+    def test_errors(self):
+        track1 = self.type.from_pcm(self.unsplit_file.name,
+                                    BLANK_PCM_Reader(18))
+
+        track2 = self.type.from_pcm(self.unsplit_file2.name,
+                                    BLANK_PCM_Reader(5))
+
+        self.assertEqual(self.__run_app__(
+                ["tracksplit", "-t", "flac", "-q", "help"]), 0)
+        self.__check_info__(_(u"Available compression types for %s:") % \
+                                (audiotools.FlacAudio.NAME))
+        for m in audiotools.FlacAudio.COMPRESSION_MODES:
+            self.assert_(self.stderr.readline().decode(audiotools.IO_ENCODING).lstrip().startswith(m.decode('ascii')))
+
+        self.assertEqual(self.__run_app__(
+                ["tracksplit", "-t", "wav", "-q", "help"]), 0)
+
+        self.__check_error__(_(u"Audio type %s has no compression modes") % \
+                                 (audiotools.WaveAudio.NAME))
+
+        self.assertEqual(self.__run_app__(
+                ["tracksplit", "-t", "flac", "-q", "foobar"]), 1)
+
+        self.__check_error__(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") % \
+                                 {"quality": "foobar",
+                                  "type": audiotools.FlacAudio.NAME})
+
+        self.assertEqual(self.__run_app__(
+                ["tracksplit", "-t", "flac", "-d", self.output_dir, "/dev/null/foo"]), 1)
+
+        self.__check_error__(_(u"Unable to open \"%s\"") % (u"/dev/null/foo"))
+
+        self.assertEqual(self.__run_app__(
+                ["tracksplit", "-t", "flac", "-d", self.output_dir]), 1)
+
+        self.__check_error__(_(u"You must specify exactly 1 supported audio file"))
+
+        self.assertEqual(self.__run_app__(
+                ["tracksplit", "-t", "flac", "-d", self.output_dir,
+                 self.unsplit_file.name, self.unsplit_file2.name]), 1)
+
+        self.__check_error__(_(u"You must specify exactly 1 supported audio file"))
+
+        self.assertEqual(self.__run_app__(
+                ["tracksplit", "-j", str(0), "-t", "flac", "-d",
+                 self.output_dir,
+                 "--cue", self.cuesheet.name, self.unsplit_file.name]), 1)
+
+        self.__check_error__(_(u'You must run at least 1 process at a time'))
+
+        self.assertEqual(self.__run_app__(
+                ["tracksplit", "-t", "flac", "-d", self.output_dir,
+                 "--cue", self.cuesheet.name, "-x", "/dev/null",
+                 self.unsplit_file.name]), 1)
+
+        self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
+
+        self.assertEqual(self.__run_app__(
+                ["tracksplit", "-t", "flac", "-d", self.output_dir,
+                 self.unsplit_file.name]), 1)
+
+        self.__check_error__(_(u"You must specify a cuesheet to split audio file"))
+
+        self.assertEqual(self.__run_app__(
+                ["tracksplit", "-t", "flac", "-d", self.output_dir,
+                 "--cue", self.cuesheet.name, track2.filename]), 1)
+
+        self.__check_error__(_(u"Cuesheet too long for track being split"))
+
+        self.assertEqual(self.__run_app__(
+                ["tracksplit", "-j", str(1), "-t", "flac", "--format=%(foo)s", "-d",
+                 self.output_dir, "--cue", self.cuesheet.name,
+                 "-x", self.xmcd_file.name,
+                 self.unsplit_file.name]), 1)
+
+        self.__check_error__(_(u"Unknown field \"%s\" in file format") % \
+                            ("foo"))
+        self.__check_info__(_(u"Supported fields are:"))
+        for field in sorted(audiotools.MetaData.__FIELDS__ + \
+                                ("album_track_number", "suffix")):
+            if (field == 'track_number'):
+                self.__check_info__(u"%(track_number)2.2d")
+            else:
+                self.__check_info__(u"%%(%s)s" % (field))
+
+        #FIXME? - check for broken cue sheet output?
