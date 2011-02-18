@@ -2375,7 +2375,10 @@ class AlbumMetaDataFile:
     def track_metadata(self, track_number):
         """Given a track_number (from 1), returns a MetaData object.
 
-        Raises IndexError if out-of-bounds."""
+        Raises IndexError if out-of-bounds or None if track_number is 0."""
+
+        if (track_number == 0):
+            return None
 
         (track_name,
          track_artist,
