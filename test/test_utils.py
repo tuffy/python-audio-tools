@@ -31,7 +31,7 @@ import test_streams
 from hashlib import md5
 
 from test_reorg import (parser, BLANK_PCM_Reader, Combinations,
-                        EXACT_BLANK_PCM_Reader,
+                        EXACT_BLANK_PCM_Reader, RANDOM_PCM_Reader,
                         TEST_COVER1, TEST_COVER2, TEST_COVER3, TEST_COVER4,
                         HUGE_BMP)
 
@@ -838,6 +838,347 @@ class track2track_errors(UtilTest):
                             {"filename":messenger.filename(output_path)})
 
 
+class track2xmcd(UtilTest):
+    @UTIL_TRACK2XMCD
+    def setUp(self):
+        self.type = audiotools.FlacAudio
+        self.track_lengths = [7939176,
+                              4799256,
+                              6297480,
+                              5383140,
+                              5246136,
+                              5052684,
+                              5013876]
+        self.input_dir = tempfile.mkdtemp()
+        self.output_dir = tempfile.mkdtemp()
+        self.xmcd_output = os.path.join(self.output_dir, "output.xmcd")
+        self.cuesheet = tempfile.NamedTemporaryFile(suffix=".cue")
+        self.cuesheet.write('FILE "data.wav" BINARY\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 AUDIO\n    INDEX 00 02:57:52\n    INDEX 01 03:00:02\n  TRACK 03 AUDIO\n    INDEX 00 04:46:17\n    INDEX 01 04:48:64\n  TRACK 04 AUDIO\n    INDEX 00 07:09:01\n    INDEX 01 07:11:49\n  TRACK 05 AUDIO\n    INDEX 00 09:11:46\n    INDEX 01 09:13:54\n  TRACK 06 AUDIO\n    INDEX 00 11:10:13\n    INDEX 01 11:12:51\n  TRACK 07 AUDIO\n    INDEX 00 13:03:74\n    INDEX 01 13:07:19\n')
+        self.cuesheet.flush()
+
+    @UTIL_TRACK2XMCD
+    def tearDown(self):
+        for f in os.listdir(self.input_dir):
+            os.unlink(os.path.join(self.input_dir, f))
+        os.rmdir(self.input_dir)
+
+        for f in os.listdir(self.output_dir):
+            os.unlink(os.path.join(self.output_dir, f))
+        os.rmdir(self.output_dir)
+
+        self.cuesheet.close()
+
+    def clean_output_directory(self):
+        for f in os.listdir(self.output_dir):
+            os.unlink(os.path.join(self.output_dir, f))
+
+    def populate_options(self, options):
+        populated = []
+        for option in options:
+            if (option == "-x"):
+                populated.append(option)
+                populated.append(self.xmcd_output)
+            elif (option == "--cue"):
+                populated.append(option)
+                populated.append(self.cuesheet.name)
+            else:
+                populated.append(option)
+        return populated
+
+    @UTIL_TRACK2XMCD
+    def test_options_separate_tracks(self):
+        #generate a bunch of dummy tracks that have MusicBrainz/FreeDB matches
+        tracks = [self.type.from_pcm(
+                os.path.join(self.input_dir,
+                             "%2.2d.%s" % (i + 1, self.type.SUFFIX)),
+                EXACT_BLANK_PCM_Reader(pcm_frames))
+                  for (i, pcm_frames) in enumerate(self.track_lengths)]
+        for (i, track) in enumerate(tracks):
+            track.set_metadata(audiotools.MetaData(
+                    track_name=u"Track %d" % (i + 1),
+                    album_name=u"Album",
+                    track_number=i + 1,
+                    track_total=len(self.track_lengths)))
+
+        all_options = ["-x", "-m", "--cue", "--no-musicbrainz", "--no-freedb"]
+        for count in xrange(len(all_options) + 1):
+            for options in Combinations(all_options, count):
+                options = self.populate_options(options)
+                self.clean_output_directory()
+
+                self.assert_(not os.path.isfile(self.xmcd_output))
+
+                #individual tracks ignores the --cue option
+                if ("-m" in options):
+                    self.assertEqual(
+                        self.__run_app__(["track2xmcd", "-D", "-V", "normal"] +
+                                         options +
+                                         [t.filename for t in tracks]), 0)
+                    if ("-x" in options):
+                        sheet = audiotools.read_metadata_file(self.xmcd_output)
+                    else:
+                        if (("--no-musicbrainz" in options) and
+                            ("--no-freedb" in options)):
+                            sheet = audiotools.XMCD.from_string(self.stdout.getvalue())
+                        elif ("--no-musicbrainz" in options):
+                            sheet = audiotools.XMCD.from_string(self.stdout.getvalue())
+                        elif ("--no-freedb" in options):
+                            sheet = audiotools.MusicBrainzReleaseXML.from_string(self.stdout.getvalue())
+                        else:
+                            sheet = audiotools.MusicBrainzReleaseXML.from_string(self.stdout.getvalue())
+
+                    #ensure data is pulled from the tracks themselves
+                    self.assertEqual(len(sheet), len(self.track_lengths))
+                    for i in xrange(1, len(self.track_lengths) + 1):
+                        metadata = sheet.track_metadata(i)
+                        self.assertEqual(metadata.track_name,
+                                         u"Track %d" % (i))
+                        self.assertEqual(metadata.album_name,
+                                         u"Album")
+                        self.assertEqual(metadata.track_number,
+                                         i)
+                        self.assertEqual(metadata.track_total,
+                                         len(self.track_lengths))
+                    continue
+
+                time.sleep(2)
+                self.assertEqual(
+                    self.__run_app__(["track2xmcd", "-D", "-V", "normal"] +
+                                     options +
+                                     [t.filename for t in tracks]), 0)
+                if ("-x" in options):
+                    sheet = audiotools.read_metadata_file(self.xmcd_output)
+                else:
+                    temp = tempfile.NamedTemporaryFile()
+                    try:
+                        temp.write(self.stdout.getvalue())
+                        temp.flush()
+                        sheet = audiotools.read_metadata_file(temp.name)
+                    finally:
+                        temp.close()
+
+                #ensure data is not pulled from the tracks
+                self.assertEqual(len(sheet), len(self.track_lengths))
+                for i in xrange(1, len(self.track_lengths) + 1):
+                    metadata = sheet.track_metadata(i)
+                    self.assertNotEqual(metadata.track_name,
+                                     u"Track %d" % (i))
+                    self.assertNotEqual(metadata.album_name,
+                                     u"Album")
+                    self.assertEqual(metadata.track_number,
+                                     i)
+                    self.assertEqual(metadata.track_total,
+                                     len(self.track_lengths))
+
+
+    @UTIL_TRACK2XMCD
+    def test_options_single_file(self):
+        #generate a single dummy track that has MusicBrainz/FreeDB matches
+
+        track = self.type.from_pcm(
+            os.path.join(self.input_dir, "track." + self.type.SUFFIX),
+            EXACT_BLANK_PCM_Reader(sum(self.track_lengths)))
+        track.set_metadata(audiotools.MetaData(track_name=u"Track",
+                                               album_name=u"Album",
+                                               track_number=1,
+                                               track_total=1))
+
+        all_options = ["-x", "-m", "--cue", "--no-musicbrainz", "--no-freedb"]
+        for count in xrange(len(all_options) + 1):
+            for options in Combinations(all_options, count):
+                options = self.populate_options(options)
+                self.clean_output_directory()
+
+                self.assert_(not os.path.isfile(self.xmcd_output))
+                if ("-m" in options):
+                    self.assertEqual(
+                        self.__run_app__(["track2xmcd", "-D", "-V", "normal"] +
+                                         options +
+                                         [track.filename]), 0)
+                    if ("-x" in options):
+                        sheet = audiotools.read_metadata_file(self.xmcd_output)
+                    else:
+                        if (("--no-musicbrainz" in options) and
+                            ("--no-freedb" in options)):
+                            sheet = audiotools.XMCD.from_string(self.stdout.getvalue())
+                        elif ("--no-musicbrainz" in options):
+                            sheet = audiotools.XMCD.from_string(self.stdout.getvalue())
+                        elif ("--no-freedb" in options):
+                            sheet = audiotools.MusicBrainzReleaseXML.from_string(self.stdout.getvalue())
+                        else:
+                            sheet = audiotools.MusicBrainzReleaseXML.from_string(self.stdout.getvalue())
+
+                    if ("--cue" in options):
+                        self.assertEqual(len(sheet), len(self.track_lengths))
+                        for i in xrange(1, len(self.track_lengths) + 1):
+                            metadata = sheet.track_metadata(i)
+                            self.assertEqual(metadata.track_name,
+                                             u"Track")
+                            self.assertEqual(metadata.album_name,
+                                             u"Album")
+                            self.assertEqual(metadata.track_number,
+                                             i)
+                            self.assertEqual(metadata.track_total,
+                                             len(self.track_lengths))
+                    else:
+                        self.assertEqual(len(sheet), 1)
+                        metadata = sheet.track_metadata(1)
+                        self.assertEqual(metadata.track_name,
+                                         u"Track")
+                        self.assertEqual(metadata.album_name,
+                                         u"Album")
+                        self.assertEqual(metadata.track_number,
+                                         1)
+                        self.assertEqual(metadata.track_total,
+                                         1)
+                    continue
+
+                time.sleep(2)
+                self.assertEqual(
+                    self.__run_app__(["track2xmcd", "-D", "-V", "normal"] +
+                                     options +
+                                     [track.filename]), 0)
+                if ("-x" in options):
+                    sheet = audiotools.read_metadata_file(self.xmcd_output)
+                else:
+                    temp = tempfile.NamedTemporaryFile()
+                    try:
+                        temp.write(self.stdout.getvalue())
+                        temp.flush()
+                        sheet = audiotools.read_metadata_file(temp.name)
+                    finally:
+                        temp.close()
+
+                #ensure data is not pulled from tracks if --cue indicated
+                if ("--cue" in options):
+                    self.assertEqual(len(sheet), len(self.track_lengths))
+                    for i in xrange(1, len(self.track_lengths) + 1):
+                        metadata = sheet.track_metadata(i)
+                        self.assertNotEqual(metadata.track_name,
+                                            u"Track")
+                        self.assertNotEqual(metadata.album_name,
+                                            u"Album")
+                        self.assertEqual(metadata.track_number,
+                                         i)
+                        self.assertEqual(metadata.track_total,
+                                         len(self.track_lengths))
+                else:
+                    #otherwise, ensure data is built from single dummy track
+                    self.assertEqual(len(sheet), 1)
+                    metadata = sheet.track_metadata(1)
+                    self.assertNotEqual(metadata.track_name,
+                                        u"Track")
+                    self.assertNotEqual(metadata.album_name,
+                                        u"Album")
+                    self.assertEqual(metadata.track_number,
+                                     1)
+                    self.assertEqual(metadata.track_total,
+                                     1)
+
+    @UTIL_TRACK2XMCD
+    def test_options_single_file_embedded_cuesheet(self):
+        #generate a single dummy track that has MusicBrainz/FreeDB matches
+
+        track = self.type.from_pcm(
+            os.path.join(self.input_dir, "track." + self.type.SUFFIX),
+            EXACT_BLANK_PCM_Reader(sum(self.track_lengths)))
+        track.set_metadata(audiotools.MetaData(track_name=u"Track",
+                                               album_name=u"Album",
+                                               track_number=1,
+                                               track_total=1))
+
+        #add cuesheet to dummy track
+        track.set_cuesheet(audiotools.read_sheet(self.cuesheet.name))
+
+        all_options = ["-x", "-m", "--cue", "--no-musicbrainz", "--no-freedb"]
+        for count in xrange(len(all_options) + 1):
+            for options in Combinations(all_options, count):
+                options = self.populate_options(options)
+                self.clean_output_directory()
+
+                self.assert_(not os.path.isfile(self.xmcd_output))
+                if ("-m" in options):
+                    self.assertEqual(
+                        self.__run_app__(["track2xmcd", "-D", "-V", "normal"] +
+                                         options +
+                                         [track.filename]), 0)
+                    if ("-x" in options):
+                        sheet = audiotools.read_metadata_file(self.xmcd_output)
+                    else:
+                        if (("--no-musicbrainz" in options) and
+                            ("--no-freedb" in options)):
+                            sheet = audiotools.XMCD.from_string(self.stdout.getvalue())
+                        elif ("--no-musicbrainz" in options):
+                            sheet = audiotools.XMCD.from_string(self.stdout.getvalue())
+                        elif ("--no-freedb" in options):
+                            sheet = audiotools.MusicBrainzReleaseXML.from_string(self.stdout.getvalue())
+                        else:
+                            sheet = audiotools.MusicBrainzReleaseXML.from_string(self.stdout.getvalue())
+
+                    self.assertEqual(len(sheet), len(self.track_lengths))
+                    for i in xrange(1, len(self.track_lengths) + 1):
+                        metadata = sheet.track_metadata(i)
+                        self.assertEqual(metadata.track_name,
+                                         u"Track")
+                        self.assertEqual(metadata.album_name,
+                                         u"Album")
+                        self.assertEqual(metadata.track_number,
+                                         i)
+                        self.assertEqual(metadata.track_total,
+                                         len(self.track_lengths))
+                    continue
+
+                time.sleep(2)
+                self.assertEqual(
+                    self.__run_app__(["track2xmcd", "-D", "-V", "normal"] +
+                                     options +
+                                     [track.filename]), 0)
+                if ("-x" in options):
+                    sheet = audiotools.read_metadata_file(self.xmcd_output)
+                else:
+                    temp = tempfile.NamedTemporaryFile()
+                    try:
+                        temp.write(self.stdout.getvalue())
+                        temp.flush()
+                        sheet = audiotools.read_metadata_file(temp.name)
+                    finally:
+                        temp.close()
+
+                #ensure data is not pulled from track
+                #whether --cue is indicated or not
+                self.assertEqual(len(sheet), len(self.track_lengths))
+                for i in xrange(1, len(self.track_lengths) + 1):
+                    metadata = sheet.track_metadata(i)
+                    self.assertNotEqual(metadata.track_name,
+                                        u"Track")
+                    self.assertNotEqual(metadata.album_name,
+                                        u"Album")
+                    self.assertEqual(metadata.track_number,
+                                     i)
+                    self.assertEqual(metadata.track_total,
+                                     len(self.track_lengths))
+
+
+    @UTIL_TRACK2XMCD
+    def test_errors(self):
+        self.assertEqual(self.__run_app__(["track2xmcd"]), 1)
+        self.__check_error__(
+            _(u"You must specify at least 1 supported audio file"))
+
+        track1 = self.type.from_pcm(os.path.join(self.input_dir,
+                                                 "01." + self.type.SUFFIX),
+                                    BLANK_PCM_Reader(1))
+
+        existing_filename = "/dev/null"
+
+        self.assertEqual(self.__run_app__(["track2xmcd", "-x",
+                                           existing_filename,
+                                           track1.filename]),
+                         1)
+
+        self.__check_error__(u"[Errno 17] File exists: '%s'" % \
+                                 (self.filename(existing_filename)))
+
 class trackcat(UtilTest):
     @UTIL_TRACKCAT
     def setUp(self):
@@ -1075,6 +1416,224 @@ class trackcat(UtilTest):
                                      [(0,), (225, 375), (675, 825)])
                     self.assertEqual(cuesheet.pcm_lengths(793800),
                                      [220500, 264600, 308700])
+
+
+class trackcmp(UtilTest):
+    @UTIL_TRACKCMP
+    def setUp(self):
+        self.type = audiotools.FlacAudio
+
+        self.match_dir1 = tempfile.mkdtemp()
+        self.match_dir2 = tempfile.mkdtemp()
+        self.mismatch_dir1 = tempfile.mkdtemp()
+        self.mismatch_dir2 = tempfile.mkdtemp()
+        self.mismatch_dir3 = tempfile.mkdtemp()
+
+        self.match_file1 = tempfile.NamedTemporaryFile(
+            suffix="." + self.type.SUFFIX)
+        self.match_file2 = tempfile.NamedTemporaryFile(
+            suffix="." + self.type.SUFFIX)
+        self.mismatch_file = tempfile.NamedTemporaryFile(
+            suffix="." + self.type.SUFFIX)
+        self.broken_file = tempfile.NamedTemporaryFile(
+            suffix="." + self.type.SUFFIX)
+
+        self.type.from_pcm(self.match_file1.name,
+                           BLANK_PCM_Reader(1))
+        self.type.from_pcm(self.match_file2.name,
+                           BLANK_PCM_Reader(1))
+        self.type.from_pcm(self.mismatch_file.name,
+                           RANDOM_PCM_Reader(1))
+        self.broken_file.write(open(self.match_file1.name, "rb").read()[0:-1])
+        self.broken_file.flush()
+
+        for i in xrange(1, 4):
+            track = self.type.from_pcm(
+                os.path.join(self.match_dir1,
+                             "%2.2d.%s" % (i, self.type.SUFFIX)),
+                BLANK_PCM_Reader(i * 2))
+            track.set_metadata(audiotools.MetaData(track_number=i))
+
+            track = self.type.from_pcm(
+                os.path.join(self.match_dir2,
+                             "%2.2d.%s" % (i, self.type.SUFFIX)),
+                BLANK_PCM_Reader(i * 2))
+            track.set_metadata(audiotools.MetaData(track_number=i))
+
+            track = self.type.from_pcm(
+                os.path.join(self.mismatch_dir1,
+                             "%2.2d.%s" % (i, self.type.SUFFIX)),
+                RANDOM_PCM_Reader(i * 2))
+            track.set_metadata(audiotools.MetaData(track_number=i))
+
+        for i in xrange(1, 3):
+            track = self.type.from_pcm(
+                os.path.join(self.mismatch_dir2,
+                             "%2.2d.%s" % (i, self.type.SUFFIX)),
+                BLANK_PCM_Reader(i * 2))
+            track.set_metadata(audiotools.MetaData(track_number=i))
+
+        for i in xrange(1, 5):
+            track = self.type.from_pcm(
+                os.path.join(self.mismatch_dir3,
+                             "%2.2d.%s" % (i, self.type.SUFFIX)),
+                BLANK_PCM_Reader(i * 2))
+            track.set_metadata(audiotools.MetaData(track_number=i))
+
+
+    @UTIL_TRACKCMP
+    def tearDown(self):
+        for directory in [self.match_dir1,
+                          self.match_dir2,
+                          self.mismatch_dir1,
+                          self.mismatch_dir2,
+                          self.mismatch_dir3]:
+            for f in os.listdir(directory):
+                os.unlink(os.path.join(directory, f))
+            os.rmdir(directory)
+
+        self.match_file1.close()
+        self.match_file2.close()
+        self.mismatch_file.close()
+
+    @UTIL_TRACKCMP
+    def test_combinations(self):
+        msg = audiotools.VerboseMessenger("trackcmp")
+
+        #check matching file against maching file
+        self.assertEqual(
+            self.__run_app__(["trackcmp", "-V", "normal",
+                              self.match_file1.name, self.match_file2.name]),
+            0)
+
+        #check matching file against mismatching file
+        self.assertEqual(
+            self.__run_app__(["trackcmp", "-V", "normal",
+                              self.match_file1.name, self.mismatch_file.name]),
+            1)
+        self.__check_output__(
+            _(u"%(path1)s <> %(path2)s : %(result)s") % {
+                "path1":msg.filename(self.match_file1.name),
+                "path2":msg.filename(self.mismatch_file.name),
+                "result":_(u"differ at PCM frame %(frame_number)d") %
+                {"frame_number": 1}})
+        #(ANSI output won't be generated because stdout isn't a TTY)
+
+        #check matching file against missing file
+        self.assertEqual(
+            self.__run_app__(["trackcmp", "-V", "normal",
+                              self.match_file1.name, "/dev/null/foo"]),
+            1)
+        self.__check_output__(
+            _(u"%(path1)s <> %(path2)s : %(result)s") % {
+                "path1":msg.filename(self.match_file1.name),
+                "path2":msg.filename("/dev/null/foo"),
+                "result":_(u"must be either files or directories")})
+
+        #check matching file against broken file
+        self.assertEqual(
+            self.__run_app__(["trackcmp", "-V", "normal",
+                              self.match_file1.name, self.broken_file.name]),
+            1)
+        self.__check_error__(_(u"EOF reading frame"))
+
+        #check file against directory
+        self.assertEqual(
+            self.__run_app__(["trackcmp", "-V", "normal",
+                              self.match_file1.name, self.match_dir1]),
+            1)
+        self.__check_output__(
+            _(u"%(path1)s <> %(path2)s : %(result)s") % {
+                "path1":msg.filename(self.match_file1.name),
+                "path2":msg.filename(self.match_dir1),
+                "result":_(u"must be either files or directories")})
+
+        #check directory against file
+        self.assertEqual(
+            self.__run_app__(["trackcmp", "-V", "normal",
+                              self.match_dir1, self.match_file1.name]),
+            1)
+        self.__check_output__(
+            _(u"%(path1)s <> %(path2)s : %(result)s") % {
+                "path1":msg.filename(self.match_dir1),
+                "path2":msg.filename(self.match_file1.name),
+                "result":_(u"must be either files or directories")})
+
+        #check matching directory against matching directory
+        self.assertEqual(
+            self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
+                              self.match_dir1, self.match_dir2]),
+            0)
+        for i in xrange(1, 4):
+            self.__check_output__(
+                _(u"%(path1)s <> %(path2)s : %(result)s") % {
+                    "path1":msg.filename(
+                        os.path.join(self.match_dir1,
+                                     "%2.2d.%s" % (i, self.type.SUFFIX))),
+                    "path2":msg.filename(
+                        os.path.join(self.match_dir2,
+                                     "%2.2d.%s" % (i, self.type.SUFFIX))),
+                    "result":_(u"OK")})
+
+        #check matching directory against mismatching directory
+        self.assertEqual(
+            self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
+                              self.match_dir1, self.mismatch_dir1]),
+            1)
+        for i in xrange(1, 4):
+            self.__check_output__(
+                _(u"%(path1)s <> %(path2)s : %(result)s") % {
+                    "path1":msg.filename(
+                        os.path.join(self.match_dir1,
+                                     "%2.2d.%s" % (i, self.type.SUFFIX))),
+                    "path2":msg.filename(
+                        os.path.join(self.mismatch_dir1,
+                                     "%2.2d.%s" % (i, self.type.SUFFIX))),
+                    "result":_(u"differ at PCM frame %(frame_number)d" %
+                               {"frame_number":1})})
+
+        #check matching directory against directory missing file
+        self.assertEqual(
+            self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
+                              self.match_dir1, self.mismatch_dir2]),
+            1)
+        self.__check_output__(
+            _(u"%(path)s : %(result)s") % {
+                "path":os.path.join(self.mismatch_dir2,
+                                    "track %2.2d" % (3)),
+                "result":_(u"missing")})
+        for i in xrange(1, 2):
+            self.__check_output__(
+                _(u"%(path1)s <> %(path2)s : %(result)s") % {
+                    "path1":msg.filename(
+                        os.path.join(self.match_dir1,
+                                     "%2.2d.%s" % (i, self.type.SUFFIX))),
+                    "path2":msg.filename(
+                        os.path.join(self.mismatch_dir2,
+                                     "%2.2d.%s" % (i, self.type.SUFFIX))),
+                    "result":_(u"OK")})
+
+
+        #check matching directory against directory with extra file
+        self.assertEqual(
+            self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
+                              self.match_dir1, self.mismatch_dir3]),
+            1)
+        self.__check_output__(
+            _(u"%(path)s : %(result)s") % {
+                "path":os.path.join(self.match_dir1,
+                                    "track %2.2d" % (4)),
+                "result":_(u"missing")})
+        for i in xrange(1, 3):
+            self.__check_output__(
+                _(u"%(path1)s <> %(path2)s : %(result)s") % {
+                    "path1":msg.filename(
+                        os.path.join(self.match_dir1,
+                                     "%2.2d.%s" % (i, self.type.SUFFIX))),
+                    "path2":msg.filename(
+                        os.path.join(self.mismatch_dir3,
+                                     "%2.2d.%s" % (i, self.type.SUFFIX))),
+                    "result":_(u"OK")})
 
 
 class tracklint(UtilTest):

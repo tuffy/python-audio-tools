@@ -147,7 +147,7 @@ if (__name__ == '__main__'):
     check_function = audiotools.pcm_frame_cmp
 
     if (os.path.isfile(args[0]) and os.path.isfile(args[1])):
-        audiofiles = audiotools.open_files(args, messenger=msg)
+        audiofiles = audiotools.open_files(args, messenger=msg, sorted=False)
         if (len(audiofiles) != 2):
             msg.error(_(u"Both files to be compared must be audio files"))
             sys.exit(1)
@@ -233,5 +233,6 @@ if (__name__ == '__main__'):
         msg.partial_output(_(u"%(file1)s <> %(file2)s : ") %
                            {"file1": msg.filename(args[0]),
                             "file2": msg.filename(args[1])})
-        msg.output(msg.ansi(_(u"differ in type"), [msg.FG_RED]))
+        msg.output(msg.ansi(_(u"must be either files or directories"),
+                            [msg.FG_RED]))
         sys.exit(1)

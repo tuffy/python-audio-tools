@@ -3297,9 +3297,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     cover the errors, at least
 *** TODO coverdump
 *** DONE track2track
-*** TODO track2xmcd
+*** DONE track2xmcd
 *** DONE trackcat
-*** TODO trackcmp
+*** DONE trackcmp
 *** TODO trackinfo
 *** TODO tracklength
 *** DONE tracklint
