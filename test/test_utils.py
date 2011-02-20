@@ -54,6 +54,10 @@ for section in parser.sections():
                               option.upper())] = lambda function: do_nothing
 
 class UtilTest(unittest.TestCase):
+    def __init__(self, *args, **kwargs):
+        unittest.TestCase.__init__(self, *args, **kwargs)
+        self.line_checks = []
+
     #takes a list of argument strings
     #returns a returnval integer
     #self.stdout and self.stderr are set to file-like cStringIO objects
@@ -69,43 +73,58 @@ class UtilTest(unittest.TestCase):
         returnval = sub.wait()
         return returnval
 
+    def __add_check__(self, stream, unicode_string):
+        self.line_checks.append((stream, unicode_string))
+
+    def __run_checks__(self):
+        for (stream, expected_output) in self.line_checks:
+            self.assertEqual(
+                unicodedata.normalize(
+                    'NFC',
+                    getattr(self,
+                            stream).readline().decode(audiotools.IO_ENCODING)),
+                unicodedata.normalize(
+                    'NFC',
+                    expected_output) + unicode(os.linesep))
+        self.line_checks = []
+
+    def __clear_checks__(self):
+        self.line_checks = []
+
     def filename(self, s):
         return s.decode(audiotools.FS_ENCODING, 'replace')
 
+    def __queue_output__(self, s):
+        self.__add_check__("stdout", s)
+
     def __check_output__(self, s):
-        self.assertEqual(
-            unicodedata.normalize(
-                'NFC',
-                self.stdout.readline().decode(audiotools.IO_ENCODING)),
-            unicodedata.normalize('NFC', s) + unicode(os.linesep))
+        self.__queue_output__(s)
+        self.__run_checks__()
+
+    def __queue_info__(self, s):
+        self.__add_check__("stderr", s)
 
     def __check_info__(self, s):
-        self.assertEqual(
-            unicodedata.normalize(
-                'NFC',
-                self.stderr.readline().decode(audiotools.IO_ENCODING)),
-            unicodedata.normalize('NFC', s) + unicode(os.linesep))
+        self.__queue_info__(s)
+        self.__run_checks__()
+
+    def __queue_error__(self, s):
+        self.__add_check__("stderr", u"*** Error: " + s)
 
     def __check_error__(self, s):
-        self.assertEqual(
-            self.stderr.readline().decode(audiotools.IO_ENCODING),
-            u"*** Error: " + unicodedata.normalize('NFC', s) + unicode(os.linesep))
+        self.__queue_error__(s)
+        self.__run_checks__()
+
+    def __queue_warning__(self, s):
+        self.__add_check__("stderr", u"*** Warning: " + s)
 
     def __check_warning__(self, s):
-        self.assertEqual(
-            unicodedata.normalize(
-                'NFC',
-                self.stderr.readline().decode(audiotools.IO_ENCODING)),
-            u"*** Warning: " + unicodedata.normalize('NFC', s) + unicode(os.linesep))
+        self.__queue_warning__(s)
+        self.__run_checks__()
 
     def __check_usage__(self, executable, s):
-        self.assertEqual(
-            unicodedata.normalize(
-                'NFC',
-                self.stderr.readline().decode(audiotools.IO_ENCODING)),
-            u"*** Usage: " + executable.decode('ascii') + u" " + \
-                unicodedata.normalize('NFC', s) + unicode(os.linesep))
-
+        self.__add_check__("stderr", u"*** Usage: " + s)
+        self.__run_checks__()
 
 class cd2track(UtilTest):
     @UTIL_CD2TRACK
@@ -376,6 +395,114 @@ class cd2track(UtilTest):
                 self.__check_info__(u"%%(%s)s" % (field))
 
 
+class cd2xmcd(UtilTest):
+    @UTIL_CD2XMCD
+    def setUp(self):
+        self.type = audiotools.FlacAudio
+        self.quality = "1"
+
+        self.input_dir = tempfile.mkdtemp()
+        self.output_dir = tempfile.mkdtemp()
+        self.xmcd_output = os.path.join(self.output_dir, "output.xmcd")
+
+        self.track_lengths = [7939176,
+                              4799256,
+                              6297480,
+                              5383140,
+                              5246136,
+                              5052684,
+                              5013876]
+
+        self.stream = test_streams.Sine16_Stereo(sum(self.track_lengths),
+                                                 44100, 8820.0, 0.70,
+                                                 4410.0, 0.29, 1.0)
+
+        self.cue_file = os.path.join(self.input_dir, "CDImage.cue")
+        self.bin_file = os.path.join(self.input_dir, "CDImage.bin")
+
+        f = open(self.cue_file, "w")
+        f.write('FILE "data.wav" BINARY\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 AUDIO\n    INDEX 00 02:57:52\n    INDEX 01 03:00:02\n  TRACK 03 AUDIO\n    INDEX 00 04:46:17\n    INDEX 01 04:48:64\n  TRACK 04 AUDIO\n    INDEX 00 07:09:01\n    INDEX 01 07:11:49\n  TRACK 05 AUDIO\n    INDEX 00 09:11:46\n    INDEX 01 09:13:54\n  TRACK 06 AUDIO\n    INDEX 00 11:10:13\n    INDEX 01 11:12:51\n  TRACK 07 AUDIO\n    INDEX 00 13:03:74\n    INDEX 01 13:07:19\n')
+        f.close()
+
+        f = open(self.bin_file, "w")
+        audiotools.transfer_framelist_data(self.stream, f.write)
+        f.close()
+
+    @UTIL_CD2XMCD
+    def tearDown(self):
+        for f in os.listdir(self.input_dir):
+            os.unlink(os.path.join(self.input_dir, f))
+        os.rmdir(self.input_dir)
+
+        for f in os.listdir(self.output_dir):
+            os.unlink(os.path.join(self.output_dir, f))
+        os.rmdir(self.output_dir)
+
+    def clean_output_directory(self):
+        for f in os.listdir(self.output_dir):
+            os.unlink(os.path.join(self.output_dir, f))
+
+    def populate_options(self, options):
+        populated = []
+
+        for option in options:
+            if ("-x" in options):
+                populated.append(option)
+                populated.append(self.xmcd_output)
+            else:
+                populated.append(option)
+
+        return populated
+
+    @UTIL_CD2XMCD
+    def test_options(self):
+        all_options = ["-x", "--no-musicbrainz", "--no-freedb"]
+        for count in xrange(len(all_options) + 1):
+            for options in Combinations(all_options, count):
+                options = self.populate_options(options)
+                self.clean_output_directory()
+
+                time.sleep(2)
+                self.assertEqual(
+                    self.__run_app__(["cd2xmcd", "-D",
+                                      "-c", self.cue_file] + options), 0)
+                if ("-x" in options):
+                    sheet = audiotools.read_metadata_file(self.xmcd_output)
+                else:
+                    temp = tempfile.NamedTemporaryFile()
+                    try:
+                        temp.write(self.stdout.getvalue())
+                        temp.flush()
+                        sheet = audiotools.read_metadata_file(temp.name)
+                    finally:
+                        temp.close()
+
+                #ensure data is what we'd expect
+                self.assertEqual(len(sheet), len(self.track_lengths))
+                for i in xrange(1, len(self.track_lengths) + 1):
+                    metadata = sheet.track_metadata(i)
+                    if (("--no-musicbrainz" in options) and
+                        ("--no-freedb" in options)):
+                        self.assertEqual(metadata.track_name, u"")
+                        self.assertEqual(metadata.album_name, u"")
+                    else:
+                        self.assertNotEqual(metadata.track_name, u"")
+                        self.assertNotEqual(metadata.album_name, u"")
+                    self.assertEqual(metadata.track_number, i)
+                    self.assertEqual(metadata.track_total,
+                                     len(self.track_lengths))
+
+    @UTIL_CD2XMCD
+    def test_errors(self):
+        existing_filename = "/dev/null"
+
+        self.assertEqual(self.__run_app__(["cd2xmcd", "-D",
+                                           "-c", self.cue_file,
+                                           "-x", existing_filename]), 1)
+
+        self.__check_error__(u"[Errno 17] File exists: '%s'" % \
+                                 (self.filename(existing_filename)))
+
 class track2track(UtilTest):
     @UTIL_TRACK2TRACK
     def setUp(self):
@@ -401,8 +528,10 @@ class track2track(UtilTest):
                                                   track_number=1,
                                                   album_name=u"Album",
                                                   artist_name=u"Artist")
-        self.track_metadata.add_image(
-            audiotools.Image.new(open("bigpng.png", "rb").read(), u"", 0))
+        self.cover = audiotools.Image.new(TEST_COVER1, u"", 0)
+        self.track_metadata.add_image(self.cover)
+            # audiotools.Image.new(open("bigpng.png", "rb").read(), u"", 0))
+
         self.track1.set_metadata(self.track_metadata)
 
         self.output_dir = tempfile.mkdtemp()
@@ -493,9 +622,11 @@ class track2track(UtilTest):
         for count in xrange(1, len(all_options) + 1):
             for options in Combinations(all_options, count):
                 self.clean_output_dirs()
+                self.__clear_checks__()
 
                 options = self.populate_options(options) + \
                     ["-V", "normal", "-j", "1", self.track1.filename]
+
                 if (("-d" in options) and ("-o" in options)):
                     #-d and -o trigger an error
 
@@ -505,43 +636,71 @@ class track2track(UtilTest):
                         _(u"-o and -d options are not compatible"))
                     self.__check_info__(
                         _(u"Please specify either -o or -d but not both"))
-                elif ('-d' in options):
-                    #output file in self.output_dir
+                    continue
 
-                    if ('-t' in options):
-                        output_class = audiotools.TYPE_MAP[
-                            options[options.index('-t') + 1]]
-                    else:
-                        output_class = audiotools.TYPE_MAP[
-                            audiotools.DEFAULT_TYPE]
+                if (("--format" in options) and ("-o" in options)):
+                    self.__queue_warning__(
+                        _(u"--format has no effect when used with -o"))
 
-                    if ('--format' in options):
-                        output_format = options[options.index('--format') + 1]
-                    else:
-                        output_format = audiotools.FILENAME_FORMAT
+                if ('-t' in options):
+                    output_class = audiotools.TYPE_MAP[
+                        options[options.index('-t') + 1]]
+                else:
+                    output_class = audiotools.TYPE_MAP[
+                        audiotools.DEFAULT_TYPE]
 
-                    if ('-x' in options):
-                        metadata = self.xmcd_metadata[1]
-                    else:
-                        metadata = self.track1.get_metadata()
-
+                if (("-q" in options) and
+                    (options[options.index("-q") + 1] not in
+                     output_class.COMPRESSION_MODES)):
                     self.assertEqual(
-                        self.__run_app__(["track2track"] + options), 0)
+                        self.__run_app__(["track2track"] + options), 1)
+                    self.__check_error__(
+                    _(u"\"%(quality)s\" is not a supported " +
+                      u"compression mode for type \"%(type)s\"") %
+                    {"quality":options[options.index("-q") + 1],
+                     "type":output_class.NAME})
+                    continue
 
-                    output_path = os.path.join(self.output_dir,
-                                               output_class.track_name(
-                            file_path="",
-                            track_metadata=metadata,
-                            format=output_format))
+                if ('--format' in options):
+                    output_format = options[options.index('--format') + 1]
+                else:
+                    output_format = audiotools.FILENAME_FORMAT
+
+                if ('-x' in options):
+                    metadata = self.xmcd_metadata[1]
+                else:
+                    metadata = self.track1.get_metadata()
+
+                if ("-o" in options):
+                    output_path = self.output_file.name
+                elif ("-d" in options):
+                    output_path = os.path.join(
+                        self.output_dir,
+                        output_class.track_name("", metadata, output_format))
+                else:
+                    output_path = os.path.join(
+                        ".",
+                        output_class.track_name("", metadata, output_format))
+
+                self.assertEqual(
+                    self.__run_app__(["track2track"] + options), 0)
+                self.assert_(os.path.isfile(output_path))
+
+                if ("-o" not in options):
                     self.__check_info__(
                         _(u"%(source)s -> %(destination)s") %
                         {"source":
                              messenger.filename(self.track1.filename),
                          "destination":
                              messenger.filename(output_path)})
-                    self.assert_(os.path.isfile(output_path))
-                    track2 = audiotools.open(output_path)
-                    self.assertEqual(track2.NAME, output_class.NAME)
+
+                track2 = audiotools.open(output_path)
+                self.assertEqual(track2.NAME, output_class.NAME)
+                if (self.track1.lossless() and track2.lossless()):
+                    self.assert_(
+                        audiotools.pcm_frame_cmp(self.track1.to_pcm(),
+                                                 track2.to_pcm()) is None)
+                if (track2.get_metadata() is not None):
                     self.assertEqual(track2.get_metadata(), metadata)
 
                     image = track2.get_metadata().images()[0]
@@ -550,292 +709,90 @@ class track2track(UtilTest):
                                              image.height),
                                          audiotools.THUMBNAIL_SIZE)
                     else:
-                        self.assertEqual(image.width, 10000)
-                        self.assertEqual(image.height, 10000)
+                        self.assertEqual(image.width, self.cover.width)
+                        self.assertEqual(image.height, self.cover.height)
 
-                    if (('--no-replay-gain' in options) and
-                        ('--replay-gain' not in options)):
-                        self.assert_(track2.replay_gain() is None)
-                    elif ('--no-replay-gain' not in options):
-                        self.assert_(track2.replay_gain() is not None)
-                elif ('-o' in options):
-                    #output file in self.output_file
-
-                    if ('-t' in options):
-                        output_class = audiotools.TYPE_MAP[
-                            options[options.index('-t') + 1]]
-                    else:
-                        output_class = audiotools.TYPE_MAP[
-                            audiotools.DEFAULT_TYPE]
-
-                    if ('-x' in options):
-                        metadata = self.xmcd_metadata[1]
-                    else:
-                        metadata = self.track1.get_metadata()
-
-                    self.assertEqual(
-                        self.__run_app__(["track2track"] + options), 0)
-
-                    if ('--format' in options):
-                        self.__check_warning__(
-                            _(u"--format has no effect when used with -o"))
-
-                    output_path = self.output_file.name
-                    self.assert_(os.path.isfile(output_path))
-                    track2 = audiotools.open(output_path)
-                    self.assertEqual(track2.NAME, output_class.NAME)
-                    self.assertEqual(track2.get_metadata(), metadata)
-
-                    image = track2.get_metadata().images()[0]
-                    if ('-T' in options):
-                        self.assertEqual(max(image.width,
-                                             image.height),
-                                         audiotools.THUMBNAIL_SIZE)
-                    else:
-                        self.assertEqual(image.width, 10000)
-                        self.assertEqual(image.height, 10000)
-
+                if (('--no-replay-gain' in options) and
+                    ('--replay-gain' not in options)):
                     self.assert_(track2.replay_gain() is None)
-                else:
-                    #output file in cwd
-
-                    if ('-t' in options):
-                        output_class = audiotools.TYPE_MAP[
-                            options[options.index('-t') + 1]]
+                elif (("-o" not in options) and
+                      ('--no-replay-gain' not in options) and
+                      (output_class.can_add_replay_gain())):
+                    if (output_class.lossless_replay_gain()):
+                        self.__check_info__(
+                            _(u"Adding ReplayGain metadata.  This may take some time."))
                     else:
-                        output_class = audiotools.TYPE_MAP[
-                            audiotools.DEFAULT_TYPE]
-
-                    if ('--format' in options):
-                        output_format = options[options.index('--format') + 1]
-                    else:
-                        output_format = audiotools.FILENAME_FORMAT
-
-                    if ('-x' in options):
-                        metadata = self.xmcd_metadata[1]
-                    else:
-                        metadata = self.track1.get_metadata()
-
-                    self.assertEqual(
-                        self.__run_app__(["track2track"] + options), 0)
-
-                    output_filename = output_class.track_name(
-                        file_path="",
-                        track_metadata=metadata,
-                        format=output_format)
-                    output_path = os.path.join(self.cwd_dir, output_filename)
-                    self.__check_info__(
-                        _(u"%(source)s -> %(destination)s") %
-                        {"source":
-                             messenger.filename(self.track1.filename),
-                         "destination":
-                             messenger.filename("./" + output_filename)})
-                    self.assert_(os.path.isfile(output_path))
-                    track2 = audiotools.open(output_path)
-                    self.assertEqual(track2.NAME, output_class.NAME)
-                    self.assertEqual(track2.get_metadata(), metadata)
-
-                    image = track2.get_metadata().images()[0]
-                    if ('-T' in options):
-                        self.assertEqual(max(image.width,
-                                             image.height),
-                                         audiotools.THUMBNAIL_SIZE)
-                    else:
-                        self.assertEqual(image.width, 10000)
-                        self.assertEqual(image.height, 10000)
-
-                    if (('--no-replay-gain' in options) and
-                        ('--replay-gain' not in options)):
-                        self.assert_(track2.replay_gain() is None)
-                    elif ('--no-replay-gain' not in options):
-                        self.assert_(track2.replay_gain() is not None)
-
-class track2track_errors(UtilTest):
-    @UTIL_TRACK2TRACK
-    def setUp(self):
-        #input format should be something other than the user's default
-        #and should support embedded metadata
-        for self.input_format in [audiotools.ALACAudio,
-                                  audiotools.AiffAudio]:
-            if (self.input_format != audiotools.DEFAULT_TYPE):
-                break
-
-        #output format shouldn't be the user's default, the input format
-        #and should support embedded images and ReplayGain tags
-        for self.output_format in [audiotools.FlacAudio,
-                                   audiotools.WavPackAudio]:
-            if (self.input_format != audiotools.DEFAULT_TYPE):
-                break
-
-        self.input_dir = tempfile.mkdtemp()
-        self.track1 = self.input_format.from_pcm(
-            os.path.join(self.input_dir, "01.%s" % (self.input_format.SUFFIX)),
-            BLANK_PCM_Reader(1))
-        self.track_metadata = audiotools.MetaData(track_name=u"Track 1",
-                                                  track_number=1,
-                                                  album_name=u"Album",
-                                                  artist_name=u"Artist")
-        self.track_metadata.add_image(
-            audiotools.Image.new(open("bigpng.png", "rb").read(), u"", 0))
-        self.track1.set_metadata(self.track_metadata)
-
-        self.output_dir = "/dev/null/directory/"
-        self.xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
-        self.xmcd_file.write('Invalid XMCD file')
-        self.xmcd_file.flush()
-
-        self.format = "%(foo)s.%(bar)s"
-        self.type = self.output_format.NAME
-        self.quality = self.output_format.COMPRESSION_MODES[0]
-
-        self.cwd_dir = tempfile.mkdtemp()
-        self.original_dir = os.getcwd()
-        os.chdir(self.cwd_dir)
-        os.chmod(self.cwd_dir, 0500)
-
-        self.output_file = InvalidTemporaryFile(
-            os.path.join(self.cwd_dir, "bad_filename"))
+                        self.__check_info__(
+                            _(u"Applying ReplayGain.  This may take some time."))
+                    self.assert_(track2.replay_gain() is not None)
 
     @UTIL_TRACK2TRACK
-    def tearDown(self):
-        os.chdir(self.original_dir)
-
-        for f in os.listdir(self.input_dir):
-            os.unlink(os.path.join(self.input_dir, f))
-        os.rmdir(self.input_dir)
-
-        os.chmod(self.cwd_dir, 0700)
-        for f in os.listdir(self.cwd_dir):
-            os.unlink(os.path.join(self.cwd_dir, f))
-        os.rmdir(self.cwd_dir)
-
-        self.xmcd_file.close()
-
-    @UTIL_TRACK2TRACK
-    def test_bad_options(self):
-        messenger = audiotools.Messenger("track2track", None)
+    def test_errors(self):
+        self.assertEqual(self.__run_app__(
+                ["track2track", "-t", "flac", "-q", "help"]), 0)
+        self.__check_info__(_(u"Available compression types for %s:") %
+                            (audiotools.FlacAudio.NAME))
+        for m in audiotools.FlacAudio.COMPRESSION_MODES:
+            self.assert_(
+                self.stderr.readline().decode(
+                    audiotools.IO_ENCODING).lstrip().startswith(
+                    m.decode('ascii')))
 
         self.assertEqual(self.__run_app__(
                 ["track2track", "-t", "wav", "-q", "help"]), 0)
-        self.__check_error__(_(u"Audio type %s has no compression modes") % \
-                                 (audiotools.WaveAudio.NAME))
+
+        self.__check_error__(_(u"Audio type %s has no compression modes") %
+                             (audiotools.WaveAudio.NAME))
 
         self.assertEqual(self.__run_app__(
                 ["track2track", "-t", "flac", "-q", "foobar"]), 1)
-        self.__check_error__(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") % \
-                                 {"quality": "foobar",
-                                  "type": audiotools.FlacAudio.NAME})
+
+        self.__check_error__(
+            _(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") %
+            {"quality": "foobar",
+             "type": audiotools.FlacAudio.NAME})
 
         self.assertEqual(self.__run_app__(
-                ["track2track", "-t", "flac"]), 1)
-        self.__check_error__(_(u"You must specify at least 1 supported audio file"))
+                ["track2track", "-t", "flac", "-d", self.output_dir,
+                 "/dev/null/foo"]), 1)
+
+        self.__check_warning__(_(u"Unable to open \"%s\"") % \
+                                   (u"/dev/null/foo"))
 
         self.assertEqual(self.__run_app__(
-                ["track2track", "-j", str(0), "-t", "flac",
+                ["track2track", "-t", "flac", "-o", "/dev/null/foo",
                  self.track1.filename]), 1)
+
+        self.__check_error__(
+            _(u"%(filename)s: [Errno 20] Not a directory: '%(filename)s'") %
+            {"filename":u"/dev/null/foo"})
+
+        self.assertEqual(self.__run_app__(
+                ["track2track", "-j", str(0), "-t", "flac", "-d",
+                 self.output_dir, self.track1.filename]), 1)
+
         self.__check_error__(_(u'You must run at least 1 process at a time'))
 
         self.assertEqual(self.__run_app__(
-                ["track2track", "-o", "fail.flac",
-                 self.track1.filename, self.track1.filename]), 1)
-        self.__check_error__(_(u'You may specify only 1 input file for use with -o'))
+                ["track2track", "-t", "flac", "-d", self.output_dir,
+                 "-x", "/dev/null", self.track1.filename]), 1)
 
-        all_options = ["-t", "-q", "-d", "--format", "-o", "-T",
-                       "--replay-gain", "--no-replay-gain"]
+        self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
 
-        for count in xrange(1, len(all_options) + 1):
-            for options in Combinations(all_options, count):
-                options = self.populate_options(options) + \
-                    ["-V", "normal", self.track1.filename]
+        self.assertEqual(self.__run_app__(
+                ["track2track", "-j", str(1), "-t", "flac",
+                 "--format=%(foo)s", "-d",
+                 self.output_dir, self.track1.filename]), 1)
 
-                if (("-d" in options) and ("-o" in options)):
-                    #-d and -o trigger an error
-
-                    self.assertEqual(
-                        self.__run_app__(["track2track"] + options), 1)
-                    self.__check_error__(
-                        _(u"-o and -d options are not compatible"))
-                    self.__check_info__(
-                        _(u"Please specify either -o or -d but not both"))
-                elif ("-d" in options):
-                    #an unwritable output directory should trigger an error
-
-                    if ("-x" in options):
-                        self.assertEqual(
-                            self.__run_app__(["track2track"] + options), 1)
-                        self.__check_error__(
-                            _(u"Invalid XMCD or MusicBrainz XML file"))
-                    elif ("--format" in options):
-                        self.assertEqual(
-                            self.__run_app__(["track2track"] + options), 1)
-                        self.__check_error__(
-                            _(u"Unknown field \"%(field)s\" in file format") %
-                            {"field":u"foo"})
-                    else:
-                        output_path = os.path.join(
-                            self.output_dir,
-                            self.output_format.track_name(
-                                file_path="",
-                                track_metadata=self.track1.get_metadata(),
-                                format=audiotools.FILENAME_FORMAT))
-
-                        self.assertEqual(
-                            self.__run_app__(["track2track"] + options), 1)
-                        self.__check_error__(
-                            _(u"Unable to write \"%(filename)s\"") %
-                            {"filename":messenger.filename(output_path)})
-                elif ("-o" in options):
-                    #an unwritable output file should trigger an error
-
-                    if ("-x" in options):
-                        self.assertEqual(
-                            self.__run_app__(["track2track"] + options), 1)
-                        self.__check_error__(
-                            _(u"Invalid XMCD or MusicBrainz XML file"))
-                    else:
-                        self.assertEqual(
-                            self.__run_app__(["track2track"] + options), 1)
-
-                        if ("--format" in options):
-                            self.__check_warning__(
-                                _(u"--format has no effect when used with -o"))
-                        self.__check_error__(
-                            _(u"%(filename)s: [Errno 13] Permission denied: '%(filename)s'") % \
-                                {"filename":
-                                     messenger.filename(self.output_file.name)})
-                else:
-                    #an unwritable cwd should trigger an error
-
-                    if ("-x" in options):
-                        self.assertEqual(
-                            self.__run_app__(["track2track"] + options), 1)
-                        self.__check_error__(
-                            _(u"Invalid XMCD or MusicBrainz XML file"))
-                    elif ("--format" in options):
-                        self.assertEqual(
-                            self.__run_app__(["track2track"] + options), 1)
-                        self.__check_error__(
-                            _(u"Unknown field \"%(field)s\" in file format") %
-                            {"field":u"foo"})
-                    else:
-                        output_path = os.path.join(
-                            ".",
-                            self.output_format.track_name(
-                                file_path="",
-                                track_metadata=self.track1.get_metadata(),
-                                format=audiotools.FILENAME_FORMAT))
-
-                        self.assertEqual(
-                            self.__run_app__(["track2track"] + options), 1)
-                        self.__check_info__(
-                            _(u"%(source)s -> %(destination)s") %
-                            {"source":
-                                 messenger.filename(self.track1.filename),
-                             "destination":
-                                 messenger.filename(output_path)})
-                        self.__check_error__(
-                            _(u"%(filename)s: [Errno 13] Permission denied: '%(filename)s'") %
-                            {"filename":messenger.filename(output_path)})
+        self.__check_error__(_(u"Unknown field \"%s\" in file format") %
+                             ("foo"))
+        self.__check_info__(_(u"Supported fields are:"))
+        for field in sorted(audiotools.MetaData.__FIELDS__ + \
+                                ("album_track_number", "suffix")):
+            if (field == 'track_number'):
+                self.__check_info__(u"%(track_number)2.2d")
+            else:
+                self.__check_info__(u"%%(%s)s" % (field))
 
 
 class track2xmcd(UtilTest):
@@ -1214,10 +1171,25 @@ class trackcat(UtilTest):
 
         self.track1 = audiotools.FlacAudio.from_pcm(
             self.track1_file.name, self.stream1)
+        self.track1.set_metadata(audiotools.MetaData(track_name=u"Track 1",
+                                                     album_name=u"Album",
+                                                     artist_name=u"Artist",
+                                                     track_number=1,
+                                                     track_total=3))
         self.track2 = audiotools.FlacAudio.from_pcm(
             self.track2_file.name, self.stream2)
+        self.track2.set_metadata(audiotools.MetaData(track_name=u"Track 2",
+                                                     album_name=u"Album",
+                                                     artist_name=u"Artist",
+                                                     track_number=2,
+                                                     track_total=3))
         self.track3 = audiotools.FlacAudio.from_pcm(
             self.track3_file.name, self.stream3)
+        self.track3.set_metadata(audiotools.MetaData(track_name=u"Track 3",
+                                                     album_name=u"Album",
+                                                     artist_name=u"Artist",
+                                                     track_number=3,
+                                                     track_total=3))
         self.track4 = audiotools.FlacAudio.from_pcm(
             self.track4_file.name, self.misfit_stream1)
         self.track5 = audiotools.FlacAudio.from_pcm(
@@ -1235,8 +1207,6 @@ class trackcat(UtilTest):
 
         self.suffix_outfile = tempfile.NamedTemporaryFile(suffix=".flac")
         self.nonsuffix_outfile = tempfile.NamedTemporaryFile()
-
-
 
     @UTIL_TRACKCAT
     def tearDown(self):
@@ -1356,6 +1326,7 @@ class trackcat(UtilTest):
                                                  self.track2.filename,
                                                  self.track3.filename]
 
+                #check a few common errors
                 if ("-o" not in options):
                     self.assertEqual(self.__run_app__(["trackcat"] + options),
                                      1)
@@ -1390,20 +1361,29 @@ class trackcat(UtilTest):
                         {"filename":messenger.filename(outfile)})
                     continue
 
+                #check that no PCM data is lost
                 self.assertEqual(
                     self.__run_app__(["trackcat"] + options), 0)
                 new_track = audiotools.open(outfile)
                 self.assertEqual(new_track.NAME, output_format.NAME)
                 self.assertEqual(new_track.total_frames(), 793800)
-                self.stream1.reset()
-                self.stream2.reset()
-                self.stream3.reset()
                 self.assert_(audiotools.pcm_frame_cmp(
                         new_track.to_pcm(),
-                        audiotools.PCMCat(iter([self.stream1,
-                                                self.stream2,
-                                                self.stream3]))) is None)
+                        audiotools.PCMCat(iter([track.to_pcm() for track in
+                                                [self.track1,
+                                                 self.track2,
+                                                 self.track3]]))) is None)
 
+                #check that metadata is merged properly
+                metadata = new_track.get_metadata()
+                if (metadata is not None):
+                    self.assertEqual(metadata.track_name, u"")
+                    self.assertEqual(metadata.album_name, u"Album")
+                    self.assertEqual(metadata.artist_name, u"Artist")
+                    self.assertEqual(metadata.track_number, 0)
+                    self.assertEqual(metadata.track_total, 3)
+
+                #check that the cuesheet is embedded properly
                 if (("--cue" in options) and
                     (output_format is audiotools.FlacAudio)):
                     cuesheet = new_track.get_cuesheet()

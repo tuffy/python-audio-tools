@@ -255,6 +255,10 @@ try:
             elif (self.play_pause_button.get_label() == "Pause"):
                 self.play_pause_button.set_label("Play")
 
+        def stop(self):
+            self.player.stop()
+            self.play_pause_button.set_label("Play")
+
         def handle_text(self, i):
             if ((i == 'esc') or (i == 'q') or (i == 'Q')):
                 self.perform_exit()
@@ -262,6 +266,8 @@ try:
                 self.next_track()
             elif ((i == 'p') or (i == 'P')):
                 self.previous_track()
+            elif ((i == 's') or (i == 'S')):
+                self.stop()
 
         def perform_exit(self, *args):
             self.player.close()
@@ -311,6 +317,9 @@ class TrackplayTTY:
 
     def play(self):
         self.next_track()
+
+    def stop(self):
+        self.player.stop()
 
     def previous_track(self):
         if (self.track_index > 0):
@@ -505,6 +514,9 @@ if (__name__ == '__main__'):
                     elif ((char == 'p') or
                           (char == 'P')):
                         trackplay.previous_track()
+                    elif ((char == 's') or
+                          (char == 'S')):
+                        trackplay.stop()
                     else:
                         pass
 

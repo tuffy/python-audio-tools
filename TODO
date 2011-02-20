@@ -2481,6 +2481,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [X] cd2xmcd
   - [X] dvda2xmcd
   - [X] track2xmcd
+** DONE Fix the *2xmcd utilities to use the proper mode on output files
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -3080,11 +3081,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Add man page for cdplay.1
 ** TODO Add basic unit tests
    - [ ] Check command-line arguments
-* TODO Add unit tests to cd* utilities
-  Utilize bin/cue support for canned testing
-** TODO cd2track
-** TODO cd2xmcd
-** TODO cdinfo
 * TODO Reorganize test suite
   The current haphazard layout makes it too difficult to deterimine
   if some feature has been fully unit tested.
@@ -3291,7 +3287,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Group tests for the individual tools
 *** TODO audiotools-config
 *** DONE cd2track
-*** TODO cd2xmcd
+*** DONE cd2xmcd
 *** TODO cdinfo
 *** TODO cdplay
     cover the errors, at least

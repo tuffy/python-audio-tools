@@ -157,6 +157,11 @@ else:
 
 BIG_ENDIAN = sys.byteorder == 'big'
 
+def get_umask():
+    mask = os.umask(0)
+    os.umask(mask)
+    return mask
+
 
 #######################
 #Output Messaging
