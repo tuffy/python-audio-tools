@@ -503,6 +503,230 @@ class cd2xmcd(UtilTest):
         self.__check_error__(u"[Errno 17] File exists: '%s'" % \
                                  (self.filename(existing_filename)))
 
+
+class coverdump(UtilTest):
+    @UTIL_COVERDUMP
+    def setUp(self):
+        self.type = audiotools.FlacAudio
+
+        self.input_file1 = tempfile.NamedTemporaryFile(
+            suffix="." + self.type.SUFFIX)
+        self.track1 = self.type.from_pcm(self.input_file1.name,
+                                        BLANK_PCM_Reader(1))
+        self.input_file2 = tempfile.NamedTemporaryFile(
+            suffix="." + self.type.SUFFIX)
+        self.track2 = self.type.from_pcm(self.input_file2.name,
+                                        BLANK_PCM_Reader(1))
+
+        self.prefix = "PREFIX_"
+
+        self.output_dir = tempfile.mkdtemp()
+        self.cwd_dir = tempfile.mkdtemp()
+        self.original_dir = os.getcwd()
+        os.chdir(self.cwd_dir)
+
+        metadata = audiotools.MetaData(track_name=u"Track")
+        self.images1 = []
+        for i in xrange(10):
+            import Image
+            img = Image.new("RGB", (100,100), "#%2.2X%2.2X%2.2X" % (i, i, i))
+            data = cStringIO.StringIO()
+            img.save(data, "PNG")
+            img = audiotools.Image.new(data.getvalue(), u"", i / 2)
+            self.images1.append(img)
+            metadata.add_image(img)
+
+        self.track1.set_metadata(metadata)
+
+        metadata = audiotools.MetaData(track_name=u"Track")
+        self.images2 = []
+        for i in xrange(5):
+            import Image
+            img = Image.new("RGB", (100,100), "#%2.2X%2.2X%2.2X" %
+                            (100 + i, 100 + i, 100 + i))
+            data = cStringIO.StringIO()
+            img.save(data, "PNG")
+            img = audiotools.Image.new(data.getvalue(), u"", i)
+            self.images2.append(img)
+            metadata.add_image(img)
+
+        self.track2.set_metadata(metadata)
+
+        self.filename_types = ("front_cover", "back_cover",
+                               "leaflet", "media", "other")
+
+    @UTIL_COVERDUMP
+    def tearDown(self):
+        os.chdir(self.original_dir)
+
+        for f in os.listdir(self.output_dir):
+            os.unlink(os.path.join(self.output_dir, f))
+        os.rmdir(self.output_dir)
+
+        for f in os.listdir(self.cwd_dir):
+            os.unlink(os.path.join(self.cwd_dir, f))
+        os.rmdir(self.cwd_dir)
+
+        self.input_file1.close()
+        self.input_file2.close()
+
+    def clean_output_dir(self):
+        for f in os.listdir(self.output_dir):
+            os.unlink(os.path.join(self.output_dir, f))
+
+    def populate_options(self, options):
+        populated = []
+        for option in options:
+            if (option == "-d"):
+                populated.append(option)
+                populated.append(self.output_dir)
+            elif (option == "-p"):
+                populated.append(option)
+                populated.append(self.prefix)
+            else:
+                populated.append(option)
+
+        return populated
+
+    @UTIL_COVERDUMP
+    def test_options(self):
+        msg = audiotools.VerboseMessenger("coverdump")
+
+        all_options = ["-d", "-p"]
+        for count in xrange(len(all_options) + 1):
+            for options in Combinations(all_options, count):
+                options = self.populate_options(options)
+                self.clean_output_dir()
+                self.assertEqual(
+                    self.__run_app__(["coverdump", "-V", "normal",
+                                      self.track1.filename] + options),
+                    0)
+
+                if ("-d" in options):
+                    output_directory = self.output_dir
+                else:
+                    output_directory = "."
+
+                template = "%(prefix)s%(filename)s%(filenum)2.2d.%(suffix)s"
+
+                for (i, image) in enumerate(self.images1):
+                    if ("-p" in options):
+                        output_filename = template % {
+                            "prefix":"PREFIX_",
+                            "filename":self.filename_types[image.type],
+                            "filenum":(i % 2) + 1,
+                            "suffix":"png"}
+                    else:
+                        output_filename = template % {
+                            "prefix":"",
+                            "filename":self.filename_types[image.type],
+                            "filenum":(i % 2) + 1,
+                            "suffix":"png"}
+
+                    if ("-d" in options):
+                        output_path = os.path.join(self.output_dir,
+                                                   output_filename)
+                    else:
+                        output_path = os.path.join(".", output_filename)
+
+                    self.__check_info__(
+                        _(u"%(source)s -> %(destination)s") %
+                        {"source":msg.filename(self.track1.filename),
+                         "destination":msg.filename(output_path)})
+                    output_image = audiotools.Image.new(
+                        open(output_path, "rb").read(),
+                        u"",
+                        i / 2)
+                    self.assertEqual(output_image, image)
+
+                self.clean_output_dir()
+                self.assertEqual(
+                    self.__run_app__(["coverdump", "-V", "normal",
+                                      self.track2.filename] + options),
+                    0)
+
+                if ("-d" in options):
+                    output_directory = self.output_dir
+                else:
+                    output_directory = "."
+
+                template = "%(prefix)s%(filename)s.%(suffix)s"
+
+                for (i, image) in enumerate(self.images2):
+                    if ("-p" in options):
+                        output_filename = template % {
+                            "prefix":"PREFIX_",
+                            "filename":self.filename_types[image.type],
+                            "suffix":"png"}
+                    else:
+                        output_filename = template % {
+                            "prefix":"",
+                            "filename":self.filename_types[image.type],
+                            "suffix":"png"}
+
+                    if ("-d" in options):
+                        output_path = os.path.join(self.output_dir,
+                                                   output_filename)
+                    else:
+                        output_path = os.path.join(".", output_filename)
+
+                    self.__check_info__(
+                        _(u"%(source)s -> %(destination)s") %
+                        {"source":msg.filename(self.track2.filename),
+                         "destination":msg.filename(output_path)})
+                    output_image = audiotools.Image.new(
+                        open(output_path, "rb").read(),
+                        u"",
+                        i)
+                    self.assertEqual(output_image, image)
+
+    @UTIL_COVERDUMP
+    def test_errors(self):
+        msg = audiotools.VerboseMessenger("coverdump")
+
+        #check no input files
+        self.assertEqual(self.__run_app__(
+                ["coverdump", "-V", "normal"]), 1)
+
+        self.__check_error__(
+            _(u"You must specify exactly 1 supported audio file"))
+
+        #check multiple input files
+        self.assertEqual(self.__run_app__(
+                ["coverdump", "-V", "normal",
+                 self.track1.filename, self.track2.filename]), 1)
+
+        self.__check_error__(
+            _(u"You must specify exactly 1 supported audio file"))
+
+        #check unwritable output dir
+        old_mode = os.stat(self.output_dir).st_mode
+        try:
+            os.chmod(self.output_dir, 0)
+            self.assertEqual(self.__run_app__(
+                    ["coverdump", "-V", "normal", "-d", self.output_dir,
+                     self.track1.filename]), 1)
+            self.__check_error__(
+                _(u"Unable to write \"%s\"") % (msg.filename(
+                        os.path.join(self.output_dir,
+                                     "front_cover01.png"))))
+        finally:
+            os.chmod(self.output_dir, old_mode)
+
+        #check unwritable cwd
+        old_mode = os.stat(self.cwd_dir).st_mode
+        try:
+            os.chmod(self.cwd_dir, 0)
+            self.assertEqual(self.__run_app__(
+                    ["coverdump", "-V", "normal",
+                     self.track1.filename]), 1)
+            self.__check_error__(
+                _(u"[Errno 13] Permission denied: '.'"))
+
+        finally:
+            os.chmod(self.cwd_dir, old_mode)
+
+
 class track2track(UtilTest):
     @UTIL_TRACK2TRACK
     def setUp(self):

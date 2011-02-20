@@ -95,8 +95,14 @@ if (__name__ == '__main__'):
                     f = open(output_filename, "wb")
                     f.write(image.data)
                     f.close()
-                    msg.info(msg.filename(output_filename))
+                    msg.info(
+                        _(u"%(source)s -> %(destination)s") %
+                        {"source":msg.filename(audiofile.filename),
+                         "destination":msg.filename(output_filename)})
                 except IOError, e:
                     msg.error(_(u"Unable to write \"%s\"") % \
                                   msg.filename(output_filename))
+                    sys.exit(1)
+                except OSError, e:
+                    msg.os_error(e)
                     sys.exit(1)
