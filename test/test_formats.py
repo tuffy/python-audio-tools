@@ -205,18 +205,6 @@ class AudioFileTest(unittest.TestCase):
     @FORMAT_AUDIOFILE
     def test_metadata(self):
         import string
-        import random
-
-        #a nice sampling of Unicode characters
-        chars = u"".join(map(unichr,
-                             range(0x30, 0x39 + 1) +
-                             range(0x41, 0x5A + 1) +
-                             range(0x61, 0x7A + 1) +
-                             range(0xC0, 0x17E + 1) +
-                             range(0x18A, 0x1EB + 1) +
-                             range(0x3041, 0x3096 + 1) +
-                             range(0x30A1, 0x30FA + 1)))
-
 
         if (self.audio_class is audiotools.AudioFile):
             return
@@ -237,73 +225,6 @@ class AudioFileTest(unittest.TestCase):
             metadata = track.get_metadata()
             if (metadata is None):
                 return
-
-            #not all formats necessarily support all metadata fields
-            #we'll only test the fields that are supported
-            live_fields = ([field for field in audiotools.MetaData.__FIELDS__
-                            if ((field not in
-                                 audiotools.MetaData.__INTEGER_FIELDS__) and
-                                (len(getattr(metadata, field)) > 0))] +
-                           [field for field in
-                            audiotools.MetaData.__INTEGER_FIELDS__
-                            if (getattr(metadata, field) > 0)])
-
-            #check that setting the fields to random values works
-            for field in live_fields:
-                if (field not in audiotools.MetaData.__INTEGER_FIELDS__):
-                    unicode_string = u"".join(
-                        [random.choice(chars)
-                         for i in xrange(random.choice(range(1, 21)))])
-                    setattr(metadata, field, unicode_string)
-                    track.set_metadata(metadata)
-                    metadata = track.get_metadata()
-                    self.assertEqual(getattr(metadata, field), unicode_string)
-                else:
-                    number = random.choice(range(1, 100))
-                    setattr(metadata, field, number)
-                    track.set_metadata(metadata)
-                    metadata = track.get_metadata()
-                    self.assertEqual(getattr(metadata, field), number)
-
-            #check that blanking out the fields works
-            for field in live_fields:
-                if (field not in audiotools.MetaData.__INTEGER_FIELDS__):
-                    setattr(metadata, field, u"")
-                    track.set_metadata(metadata)
-                    metadata = track.get_metadata()
-                    self.assertEqual(getattr(metadata, field), u"")
-                else:
-                    setattr(metadata, field, 0)
-                    track.set_metadata(metadata)
-                    metadata = track.get_metadata()
-                    self.assertEqual(getattr(metadata, field), 0)
-
-            #re-set the fields with random values
-            for field in live_fields:
-                if (field not in audiotools.MetaData.__INTEGER_FIELDS__):
-                    unicode_string = u"".join(
-                        [random.choice(chars)
-                         for i in xrange(random.choice(range(1, 21)))])
-                    setattr(metadata, field, unicode_string)
-                    track.set_metadata(metadata)
-                    metadata = track.get_metadata()
-                    self.assertEqual(getattr(metadata, field), unicode_string)
-                else:
-                    number = random.choice(range(1, 100))
-                    setattr(metadata, field, number)
-                    track.set_metadata(metadata)
-                    metadata = track.get_metadata()
-                    self.assertEqual(getattr(metadata, field), number)
-
-            #check that deleting the fields works
-            for field in live_fields:
-                delattr(metadata, field)
-                track.set_metadata(metadata)
-                metadata = track.get_metadata()
-                if (field not in audiotools.MetaData.__INTEGER_FIELDS__):
-                    self.assertEqual(getattr(metadata, field), u"")
-                else:
-                    self.assertEqual(getattr(metadata, field), 0)
 
             #check that delete_metadata works
             nonblank_metadata = audiotools.MetaData(**dict(
@@ -351,100 +272,6 @@ class AudioFileTest(unittest.TestCase):
                                   track.get_metadata)
             finally:
                 os.chmod(track.filename, old_mode)
-
-            #check merge
-            def field_val(field, value, int_value):
-                if (field in audiotools.MetaData.__INTEGER_FIELDS__):
-                    return int_value
-                else:
-                    return value
-
-            for i in xrange(10):
-                shuffled_fields = live_fields[:]
-                random.shuffle(shuffled_fields)
-
-                for (range_a, range_b) in [
-                    ((0, len(shuffled_fields) / 3), #no overlap
-                     (-(len(shuffled_fields) / 3),
-                       len(shuffled_fields) + 1)),
-
-                    ((0, len(shuffled_fields) / 2), #partial overlap
-                     (len(shuffled_fields) / 4,
-                      len(shuffled_fields) / 4 + len(shuffled_fields) / 2)),
-
-                    ((0, len(shuffled_fields) / 3), #complete overlap
-                     (0, len(shuffled_fields) / 3))]:
-                    fields_a = shuffled_fields[range_a[0]:range_a[1]]
-                    fields_b = shuffled_fields[range_b[0]:range_b[1]]
-
-                    metadata_a = audiotools.MetaData(**dict([
-                                (field, field_val(field, u"a", 1)) for field
-                                in fields_a]))
-                    metadata_b = audiotools.MetaData(**dict([
-                                (field, field_val(field, u"b", 2)) for field
-                                in fields_b]))
-
-                    track.delete_metadata()
-                    track.set_metadata(metadata_a)
-                    metadata_c = track.get_metadata()
-                    self.assertEqual(metadata_c, metadata_a)
-                    metadata_c.merge(metadata_b)
-                    track.set_metadata(metadata_c)
-                    metadata_c = track.get_metadata()
-
-                    for field in live_fields:
-                        if (field in fields_a):
-                            if (field in
-                                audiotools.MetaData.__INTEGER_FIELDS__):
-                                self.assertEqual(getattr(metadata_c, field),
-                                                 1)
-                            else:
-                                self.assertEqual(getattr(metadata_c, field),
-                                                 u"a")
-                        elif (field in fields_b):
-                            if (field in
-                                audiotools.MetaData.__INTEGER_FIELDS__):
-                                self.assertEqual(getattr(metadata_c, field),
-                                                 2)
-                            else:
-                                self.assertEqual(getattr(metadata_c, field),
-                                                 u"b")
-                        else:
-                            if (field in
-                                audiotools.MetaData.__INTEGER_FIELDS__):
-                                self.assertEqual(getattr(metadata_c, field),
-                                                 0)
-                            else:
-                                self.assertEqual(getattr(metadata_c, field),
-                                                 u"")
-
-            #check images
-            metadata = audiotools.MetaData(**dict(
-                    [(field, getattr(dummy_metadata, field))
-                     for field in live_fields]))
-            image_1 = audiotools.Image.new(TEST_COVER1, u"", 0)
-            metadata.add_image(image_1)
-            track.set_metadata(metadata)
-            metadata = track.get_metadata()
-            if (len(metadata.images()) > 0):
-                #only check if images are actually supported
-
-                self.assertEqual(metadata.images()[0], image_1)
-                self.assertEqual(metadata.front_covers()[0], image_1)
-
-                metadata.delete_image(metadata.images()[0])
-                track.set_metadata(metadata)
-                metadata = track.get_metadata()
-                self.assertEqual(len(metadata.images()), 0)
-
-                image_2 = audiotools.Image.new(TEST_COVER2, u"", 0)
-                metadata.add_image(image_2)
-                track.set_metadata(metadata)
-                metadata = track.get_metadata()
-                self.assertEqual(metadata.images()[0], image_2)
-                self.assertEqual(metadata.front_covers()[0], image_2)
-
-
         finally:
             temp.close()
 

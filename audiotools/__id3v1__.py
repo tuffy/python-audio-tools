@@ -118,7 +118,8 @@ class ID3v1Comment(MetaData, list):
 
         list.__init__(self, metadata)
 
-    def supports_images(self):
+    @classmethod
+    def supports_images(cls):
         """Returns False."""
 
         return False
