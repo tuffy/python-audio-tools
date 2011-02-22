@@ -635,6 +635,44 @@ class AudioFileTest(unittest.TestCase):
                 track_file2.close()
                 track_file3.close()
 
+    @FORMAT_AUDIOFILE
+    def test_invalid_from_pcm(self):
+        if (self.audio_class is audiotools.AudioFile):
+            return
+
+        #test our ERROR_PCM_Reader works
+        self.assertRaises(ValueError,
+                          ERROR_PCM_Reader(ValueError("error"),
+                                           failure_chance=1.0).read,
+                          1)
+        self.assertRaises(IOError,
+                          ERROR_PCM_Reader(IOError("error"),
+                                           failure_chance=1.0).read,
+                          1)
+
+        #ensure that our dummy file doesn't exist
+        dummy_filename = "invalid." + self.audio_class.SUFFIX
+        self.assert_(not os.path.isfile(dummy_filename))
+
+        #a decoder that raises IOError on to_pcm()
+        #should trigger an EncodingError
+        self.assertRaises(audiotools.EncodingError,
+                          self.audio_class.from_pcm,
+                          dummy_filename,
+                          ERROR_PCM_Reader(IOError("I/O Error")))
+
+        #and ensure invalid files aren't left lying around
+        self.assert_(not os.path.isfile(dummy_filename))
+
+        #a decoder that raises ValueError on to_pcm()
+        #should trigger an EncodingError
+        self.assertRaises(audiotools.EncodingError,
+                          self.audio_class.from_pcm,
+                          dummy_filename,
+                          ERROR_PCM_Reader(ValueError("Value Error")))
+
+        #and ensure invalid files aren't left lying around
+        self.assert_(not os.path.isfile(dummy_filename))
 
     #FIXME
     @FORMAT_AUDIOFILE_PLACEHOLDER
@@ -1575,6 +1613,26 @@ class ALACFileTest(LosslessFileTest):
         self.encode = encode_alac
 
     @FORMAT_ALAC
+    def test_init(self):
+        #check missing file
+        self.assertRaises(audiotools.InvalidALAC,
+                          audiotools.ALACAudio,
+                          "/dev/null/foo")
+
+        #check invalid file
+        invalid_file = tempfile.NamedTemporaryFile(suffix=".m4a")
+        try:
+            for c in "invalidstringxxx":
+                invalid_file.write(c)
+                invalid_file.flush()
+                self.assertRaises(audiotools.InvalidALAC,
+                                  audiotools.ALACAudio,
+                                  invalid_file.name)
+        finally:
+            invalid_file.close()
+
+
+    @FORMAT_ALAC
     def test_bits_per_sample(self):
         temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
         try:
@@ -1677,6 +1735,26 @@ class ALACFileTest(LosslessFileTest):
                               "dummy.wav",
                               audiotools.WaveAudio)
             self.assertEqual(os.path.isfile("dummy.wav"), False)
+        finally:
+            temp.close()
+
+    @FORMAT_ALAC
+    def test_too(self):
+        #ensure that the 'too' meta atom isn't modified by setting metadata
+        temp = tempfile.NamedTemporaryFile(
+            suffix=self.suffix)
+        try:
+            track = self.audio_class.from_pcm(
+                temp.name,
+                BLANK_PCM_Reader(1))
+            metadata = track.get_metadata()
+            encoder = unicode(metadata[chr(0xA9) + 'too'][0])
+            track.set_metadata(audiotools.MetaData(
+                    track_name=u"Foo"))
+            metadata = track.get_metadata()
+            self.assertEqual(metadata.track_name, u"Foo")
+            self.assertEqual(unicode(metadata[chr(0xA9) + 'too'][0]),
+                             encoder)
         finally:
             temp.close()
 
@@ -2855,6 +2933,26 @@ class M4AFileTest(LossyFileTest):
         self.audio_class = audiotools.M4AAudio
         self.suffix = "." + self.audio_class.SUFFIX
 
+    @FORMAT_M4A
+    def test_too(self):
+        #ensure that the 'too' meta atom isn't modified by setting metadata
+        temp = tempfile.NamedTemporaryFile(
+            suffix=self.suffix)
+        try:
+            track = self.audio_class.from_pcm(
+                temp.name,
+                BLANK_PCM_Reader(1))
+            metadata = track.get_metadata()
+            encoder = unicode(metadata[chr(0xA9) + 'too'][0])
+            track.set_metadata(audiotools.MetaData(
+                    track_name=u"Foo"))
+            metadata = track.get_metadata()
+            self.assertEqual(metadata.track_name, u"Foo")
+            self.assertEqual(unicode(metadata[chr(0xA9) + 'too'][0]),
+                             encoder)
+        finally:
+            temp.close()
+
 
 class MP3FileTest(LossyFileTest):
     def setUp(self):
@@ -2974,6 +3072,117 @@ class MP3FileTest(LossyFileTest):
                                   new_file.verify)
         finally:
             temp.close()
+
+    @FORMAT_MP3
+    def test_id3_ladder(self):
+        temp_file = tempfile.NamedTemporaryFile(suffix=self.suffix)
+        try:
+            track = self.audio_class.from_pcm(temp_file.name,
+                                              BLANK_PCM_Reader(5))
+
+            dummy_metadata = audiotools.MetaData(track_name=u"Foo")
+
+            #ensure that setting particular ID3 variant
+            #sticks, even through get/set_metadata
+            track.set_metadata(dummy_metadata)
+            for new_class in (audiotools.ID3v22Comment,
+                              audiotools.ID3v23Comment,
+                              audiotools.ID3v24Comment,
+                              audiotools.ID3v23Comment,
+                              audiotools.ID3v22Comment):
+                metadata = new_class.converted(track.get_metadata())
+                track.set_metadata(metadata)
+                metadata = track.get_metadata()
+                self.assertEqual(isinstance(metadata, new_class), True)
+                self.assertEqual(metadata.__comment_name__(),
+                                 new_class([]).__comment_name__())
+                self.assertEqual(metadata, dummy_metadata)
+        finally:
+            temp_file.close()
+
+    @FORMAT_MP3
+    def test_ucs2(self):
+        temp_file = tempfile.NamedTemporaryFile(suffix=self.suffix)
+        try:
+            track = self.audio_class.from_pcm(temp_file.name,
+                                              BLANK_PCM_Reader(5))
+
+            #this should be 4 characters long in UCS-4 environments
+            #if not, we're in a UCS-2 environment
+            #which is limited to 16 bits anyway
+            test_string = u'f\U0001d55foo'
+
+            #u'\ufffd' is the "not found" character
+            #this string should result from escaping through UCS-2
+            test_string_out = u'f\ufffdoo'
+
+            if (len(test_string) == 4):
+                self.assertEqual(test_string,
+                                 test_string.encode('utf-16').decode('utf-16'))
+                self.assertEqual(test_string.encode('ucs2').decode('ucs2'),
+                                 test_string_out)
+
+                #ID3v2.4 supports UTF-8/UTF-16
+                metadata = audiotools.ID3v24Comment.converted(
+                    audiotools.MetaData(track_name=u"Foo"))
+                track.set_metadata(metadata)
+                id3 = track.get_metadata()
+                self.assertEqual(id3, metadata)
+
+                metadata.track_name = test_string
+
+                track.set_metadata(metadata)
+                id3 = track.get_metadata()
+                self.assertEqual(id3, metadata)
+
+                metadata.comment = test_string
+                track.set_metadata(metadata)
+                id3 = track.get_metadata()
+                self.assertEqual(id3, metadata)
+
+                metadata.add_image(
+                    audiotools.ID3v24Comment.PictureFrame.converted(
+                        audiotools.Image.new(TEST_COVER1,
+                                             test_string,
+                                             0)))
+                track.set_metadata(metadata)
+                id3 = track.get_metadata()
+                self.assertEqual(id3.images()[0].description, test_string)
+
+                #ID3v2.3 and ID3v2.2 only support UCS-2
+                for id3_class in (audiotools.ID3v23Comment,
+                                  audiotools.ID3v22Comment):
+                    metadata = audiotools.ID3v23Comment.converted(
+                        audiotools.MetaData(track_name=u"Foo"))
+                    track.set_metadata(metadata)
+                    id3 = track.get_metadata()
+                    self.assertEqual(id3, metadata)
+
+                    #ensure that text fields round-trip correctly
+                    #(i.e. the extra-wide char gets replaced)
+                    metadata.track_name = test_string
+
+                    track.set_metadata(metadata)
+                    id3 = track.get_metadata()
+                    self.assertEqual(id3.track_name, test_string_out)
+
+                    #ensure that comment blocks round-trip correctly
+                    metadata.comment = test_string
+                    track.set_metadata(metadata)
+                    id3 = track.get_metadata()
+                    self.assertEqual(id3.track_name, test_string_out)
+
+                    #ensure that image comment fields round-trip correctly
+                    metadata.add_image(id3_class.PictureFrame.converted(
+                            audiotools.Image.new(TEST_COVER1,
+                                                 test_string,
+                                                 0)))
+                    track.set_metadata(metadata)
+                    id3 = track.get_metadata()
+                    self.assertEqual(id3.images()[0].description,
+                                     test_string_out)
+        finally:
+            temp_file.close()
 
 
 class MP2FileTest(MP3FileTest):
@@ -3480,6 +3689,37 @@ class VorbisFileTest(OggVerify, LossyFileTest):
             self.assertEqual(track.channels(), channels)
         finally:
             temp.close()
+
+    @FORMAT_VORBIS
+    def test_big_comment(self):
+        track_file = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            track = self.audio_class.from_pcm(track_file.name,
+                                              BLANK_PCM_Reader(1))
+            pcm = track.to_pcm()
+            original_pcm_sum = md5()
+            audiotools.transfer_framelist_data(pcm, original_pcm_sum.update)
+            pcm.close()
+
+            comment = audiotools.MetaData(
+                track_name=u"Name",
+                track_number=1,
+                comment=u"abcdefghij" * 13005)
+            track.set_metadata(comment)
+            track = audiotools.open(track_file.name)
+            self.assertEqual(comment, track.get_metadata())
+
+            pcm = track.to_pcm()
+            new_pcm_sum = md5()
+            audiotools.transfer_framelist_data(pcm, new_pcm_sum.update)
+            pcm.close()
+
+            self.assertEqual(original_pcm_sum.hexdigest(),
+                             new_pcm_sum.hexdigest())
+        finally:
+            track_file.close()
+
 
 
 class WaveFileTest(TestForeignWaveChunks,

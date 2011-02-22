@@ -1018,6 +1018,134 @@ class track2track(UtilTest):
             else:
                 self.__check_info__(u"%%(%s)s" % (field))
 
+    @UTIL_TRACK2TRACK
+    def test_replay_gain(self):
+        temp_files = [os.path.join(
+                self.input_dir,
+                "%2.2d.%s" % (i + 1, self.input_format.SUFFIX))
+                      for i in xrange(7)]
+        temp_tracks = []
+
+        temp_tracks.append(self.input_format.from_pcm(
+                temp_files[0],
+                test_streams.Sine16_Stereo(44100, 44100,
+                                           441.0, 0.50, 4410.0, 0.49, 1.0)))
+
+        temp_tracks.append(self.input_format.from_pcm(
+                temp_files[1],
+                test_streams.Sine16_Stereo(66150, 44100,
+                                           8820.0, 0.70, 4410.0, 0.29, 1.0)))
+        temp_tracks.append(self.input_format.from_pcm(
+                temp_files[2],
+                test_streams.Sine16_Stereo(52920, 44100,
+                                           441.0, 0.50, 441.0, 0.49, 0.5)))
+        temp_tracks.append(self.input_format.from_pcm(
+                temp_files[3],
+                test_streams.Sine16_Stereo(61740, 44100,
+                                           441.0, 0.61, 661.5, 0.37, 2.0)))
+        temp_tracks.append(self.input_format.from_pcm(
+                temp_files[4],
+                test_streams.Sine16_Stereo(26460, 44100,
+                                           441.0, 0.50, 882.0, 0.49, 0.7)))
+        temp_tracks.append(self.input_format.from_pcm(
+                temp_files[5],
+                test_streams.Sine16_Stereo(61740, 44100,
+                                           441.0, 0.50, 4410.0, 0.49, 1.3)))
+        temp_tracks.append(self.input_format.from_pcm(
+                temp_files[6],
+                test_streams.Sine16_Stereo(79380, 44100,
+                                           8820.0, 0.70, 4410.0, 0.29, 0.1)))
+
+        temp_tracks[0].set_metadata(audiotools.MetaData(
+                track_name=u"Track 3",
+                album_name=u"Test Album",
+                track_number=1,
+                album_number=1))
+        temp_tracks[1].set_metadata(audiotools.MetaData(
+                track_name=u"Track 4",
+                album_name=u"Test Album",
+                track_number=2,
+                album_number=1))
+        temp_tracks[2].set_metadata(audiotools.MetaData(
+                track_name=u"Track 5",
+                album_name=u"Test Album",
+                track_number=1,
+                album_number=2))
+        temp_tracks[3].set_metadata(audiotools.MetaData(
+                track_name=u"Track 6",
+                album_name=u"Test Album",
+                track_number=2,
+                album_number=2))
+        temp_tracks[4].set_metadata(audiotools.MetaData(
+                track_name=u"Track 7",
+                album_name=u"Test Album",
+                track_number=3,
+                album_number=2))
+        temp_tracks[5].set_metadata(audiotools.MetaData(
+                track_name=u"Track 1",
+                album_name=u"Test Album 2",
+                track_number=1))
+        temp_tracks[6].set_metadata(audiotools.MetaData(
+                track_name=u"Track 2",
+                album_name=u"Test Album 2",
+                track_number=2))
+
+        self.assertEqual(
+            self.__run_app__(["track2track",
+                              "-d", self.output_dir,
+                              "--format=%(track_name)s.%(suffix)s",
+                              "-t", self.output_format.NAME,
+                              "--replay-gain",
+                              "-V", "quiet"] + \
+                                 [f.filename for f in temp_tracks]), 0)
+
+        converted_tracks = audiotools.open_files(
+            [os.path.join(self.output_dir, f) for f in
+             os.listdir(self.output_dir)], sorted=True)
+
+        self.assertEqual(len(converted_tracks), 7)
+
+        for (i, track) in enumerate(converted_tracks):
+            self.assertEqual(track.get_metadata().track_name,
+                             u"Track %d" % (i + 1))
+            self.assert_(track.replay_gain() is not None)
+
+        replay_gains = [track.replay_gain() for track in
+                        converted_tracks]
+
+        #tracks 0 and 1 should be on the same album
+        self.assertEqual(replay_gains[0],
+                         replay_gains[0])
+        self.assertEqual(replay_gains[0].album_gain,
+                         replay_gains[1].album_gain)
+
+        self.assertNotEqual(replay_gains[0].album_gain,
+                            replay_gains[2].album_gain)
+        self.assertNotEqual(replay_gains[0].album_gain,
+                            replay_gains[4].album_gain)
+
+        #tracks 2 and 3 should be on the same album
+        self.assertEqual(replay_gains[2].album_gain,
+                         replay_gains[3].album_gain)
+
+        self.assertNotEqual(replay_gains[3].album_gain,
+                            replay_gains[0].album_gain)
+        self.assertNotEqual(replay_gains[3].album_gain,
+                            replay_gains[5].album_gain)
+
+        #tracks 4, 5 and 6 should be on the same album
+        self.assertEqual(replay_gains[4].album_gain,
+                         replay_gains[5].album_gain)
+        self.assertEqual(replay_gains[5].album_gain,
+                         replay_gains[6].album_gain)
+        self.assertEqual(replay_gains[4].album_gain,
+                         replay_gains[6].album_gain)
+
+        self.assertNotEqual(replay_gains[6].album_gain,
+                            replay_gains[0].album_gain)
+        self.assertNotEqual(replay_gains[6].album_gain,
+                            replay_gains[2].album_gain)
+
 
 class track2xmcd(UtilTest):
     @UTIL_TRACK2XMCD
@@ -1920,7 +2048,7 @@ class tracklint(UtilTest):
 
     @UTIL_TRACKLINT
     def test_flac1(self):
-                #copy the test track to a temporary location
+        #copy the test track to a temporary location
         tempflac = tempfile.NamedTemporaryFile(suffix=".flac")
         try:
             f = open("flac-id3.flac", "rb")
@@ -2702,7 +2830,6 @@ class tracktag(UtilTest):
             audiotools.THUMBNAIL_SIZE,
             audiotools.THUMBNAIL_SIZE,
             audiotools.THUMBNAIL_FORMAT)
-
 
     @UTIL_TRACKTAG
     def tearDown(self):

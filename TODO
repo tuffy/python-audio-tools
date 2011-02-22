@@ -2482,6 +2482,14 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [X] dvda2xmcd
   - [X] track2xmcd
 ** DONE Fix the *2xmcd utilities to use the proper mode on output files
+* DONE Add software-based routines for bitstream reading/writing
+  These should be optional, at least, for the bitstream writer especially.
+  But if fast enough, they could replace the jump tables entirely.
+** DONE bitstream_w.h
+   - [X] write_bits_actual_be
+   - [X] write_bits_actual_le
+   - [X] write_unary_actual_be
+   - [X] write_unary_actual_le
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -2937,7 +2945,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Build dvdainfo utility
 *** DONE Add dvdainfo.1 man page
 ** TODO Build dvda2track utility
-*** TODO Support progress indicator
 *** TODO Fix to work without -d
 *** DONE Add --track-start / --track-total options
     Since some especially long discs split tracks across titles,
@@ -2955,6 +2962,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   so that the total progress can be generated.
   - [ ] track2track
   - [ ] cd2track
+  - [ ] dvda2track
   - [ ] tracksplit
   - [ ] track2cd
 ** TODO Update transfer_framelist_data with a progress callback option
@@ -2967,23 +2975,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    ID3v1.0/ID3v1.1/none
 ** TODO Make ID3v2 track number formatting adjustable
    Allow leading 0s, since the spec doesn't forbid them.
-* TODO Add software-based routines for bitstream reading/writing
-  These should be optional, at least, for the bitstream writer especially.
-  But if fast enough, they could replace the jump tables entirely.
-** TODO bitstream_r.h
-   - [ ] bs_read_bits_be
-   - [ ] bs_read_bits_le
-   - [ ] bs_unread_bit_be
-   - [ ] bs_unread_bit_le
-   - [ ] bs_read_unary_be
-   - [ ] bs_read_unary_le
-   - [ ] bs_read_limited_unary_be
-   - [ ] bs_read_limited_unary_le
-** DONE bitstream_w.h
-   - [X] write_bits_actual_be
-   - [X] write_bits_actual_le
-   - [X] write_unary_actual_be
-   - [X] write_unary_actual_le
 * TODO Add tool list and documentation to website
   I should probably find a way to either format the man pages
   to HTML directly (though groff's html output has been unfortunate
@@ -3115,8 +3106,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO AACAudio
     - [X] test_length
     - [ ] test_verify
-*** TODO ALACAudio
-    - [ ] test_init
+*** DONE ALACAudio
+    - [X] test_init
     - [X] test_bits_per_sample
     - [X] test_channel_mask
     - [X] test_verify
@@ -3257,12 +3248,14 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** TODO parse_timestamp
 **** TODO pcm_cmp
 **** TODO pcm_frame_cmp
-**** TODO pcm_split
+**** DONE pcm_split
 **** TODO read_metadata_file
 **** TODO read_sheet
 **** DONE str_width
 **** TODO transfer_data
 **** TODO transfer_framelist_data
+**** TODO XMCD
+**** TODO MusicBrainzReleaseXML
 *** DONE audiotools.pcm
 **** DONE FloatFrameList
 **** DONE FrameList

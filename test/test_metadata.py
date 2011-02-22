@@ -678,8 +678,144 @@ class ID3v22MetaData(MetaDataTest):
     def empty_metadata(self):
         return self.metadata_class([])
 
+    @METADATA_ID3V2
+    def test_dict(self):
+        id3_class = self.metadata_class
 
-class ID3v23MetaData(MetaDataTest):
+        INTEGER_ATTRIBS = ('track_number',
+                           'track_total',
+                           'album_number',
+                           'album_total')
+
+        attribs1 = {}  # a dict of attribute -> value pairs ("track_name":u"foo")
+        attribs2 = {}  # a dict of ID3v2 -> value pairs     ("TT2":u"foo")
+        for (i, (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
+            if (attribute not in INTEGER_ATTRIBS):
+                attribs1[attribute] = attribs2[key] = u"value %d" % (i)
+        attribs1["track_number"] = 2
+        attribs1["track_total"] = 10
+        attribs1["album_number"] = 1
+        attribs1["album_total"] = 3
+
+        id3 = id3_class.converted(audiotools.MetaData(**attribs1))
+
+        #ensure that all the attributes match up
+        for (attribute, value) in attribs1.items():
+            self.assertEqual(getattr(id3, attribute), value)
+
+        #ensure that all the keys for non-integer items match up
+        for (key, value) in attribs2.items():
+            self.assertEqual(unicode(id3[key][0]), value)
+
+        #ensure the keys for integer items match up
+        self.assertEqual(int(id3[id3_class.INTEGER_ITEMS[0]][0]),
+                         attribs1["track_number"])
+        self.assertEqual(id3[id3_class.INTEGER_ITEMS[0]][0].total(),
+                         attribs1["track_total"])
+        self.assertEqual(int(id3[id3_class.INTEGER_ITEMS[1]][0]),
+                         attribs1["album_number"])
+        self.assertEqual(id3[id3_class.INTEGER_ITEMS[1]][0].total(),
+                         attribs1["album_total"])
+
+        #ensure that changing attributes changes the underlying frame
+        #>>> id3.track_name = u"bar"
+        #>>> id3['TT2'][0] == u"bar"
+        for (i, (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
+            if (key not in id3_class.INTEGER_ITEMS):
+                setattr(id3, attribute, u"new value %d" % (i))
+                self.assertEqual(unicode(id3[key][0]), u"new value %d" % (i))
+
+        #ensure that changing integer attributes changes the underlying frame
+        #>>> id3.track_number = 2
+        #>>> id3['TRK'][0] == u"2"
+        id3.track_number = 3
+        id3.track_total = 0
+        self.assertEqual(unicode(id3[id3_class.INTEGER_ITEMS[0]][0]), u"3")
+
+        id3.track_total = 8
+        self.assertEqual(unicode(id3[id3_class.INTEGER_ITEMS[0]][0]), u"3/8")
+
+        id3.album_number = 2
+        id3.album_total = 0
+        self.assertEqual(unicode(id3[id3_class.INTEGER_ITEMS[1]][0]), u"2")
+
+        id3.album_total = 4
+        self.assertEqual(unicode(id3[id3_class.INTEGER_ITEMS[1]][0]), u"2/4")
+
+        #reset and re-check everything for the next round
+        id3 = id3_class.converted(audiotools.MetaData(**attribs1))
+
+        #ensure that all the attributes match up
+        for (attribute, value) in attribs1.items():
+            self.assertEqual(getattr(id3, attribute), value)
+
+        for (key, value) in attribs2.items():
+            if (key not in id3_class.INTEGER_ITEMS):
+                self.assertEqual(unicode(id3[key][0]), value)
+            else:
+                self.assertEqual(int(id3[key][0]), value)
+
+        #ensure that changing the underlying frames changes attributes
+        #>>> id3['TT2'] = [u"bar"]
+        #>>> id3.track_name == u"bar"
+        for (i, (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
+            if (attribute not in INTEGER_ATTRIBS):
+                id3[key] = [u"new value %d" % (i)]
+                self.assertEqual(getattr(id3, attribute),
+                                 u"new value %d" % (i))
+
+        #ensure that changing the underlying integer frames changes attributes
+        id3[id3_class.INTEGER_ITEMS[0]] = [7]
+        self.assertEqual(id3.track_number, 7)
+
+        id3[id3_class.INTEGER_ITEMS[0]] = [u"8/9"]
+        self.assertEqual(id3.track_number, 8)
+        self.assertEqual(id3.track_total, 9)
+
+        id3[id3_class.INTEGER_ITEMS[1]] = [4]
+        self.assertEqual(id3.album_number, 4)
+
+        id3[id3_class.INTEGER_ITEMS[1]] = [u"5/6"]
+        self.assertEqual(id3.album_number, 5)
+        self.assertEqual(id3.album_total, 6)
+
+        #finally, just for kicks, ensure that explicitly setting
+        #frames also changes attributes
+        #>>> id3['TT2'] = [id3_class.TextFrame.from_unicode('TT2',u"foo")]
+        #>>> id3.track_name = u"foo"
+        for (i, (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
+            if (attribute not in INTEGER_ATTRIBS):
+                id3[key] = [id3_class.TextFrame.from_unicode(key, unicode(i))]
+                self.assertEqual(getattr(id3, attribute), unicode(i))
+
+        #and ensure explicitly setting integer frames also changes attribs
+        id3[id3_class.INTEGER_ITEMS[0]] = [
+            id3_class.TextFrame.from_unicode(id3_class.INTEGER_ITEMS[0],
+                                             u"4")]
+        self.assertEqual(id3.track_number, 4)
+        self.assertEqual(id3.track_total, 0)
+
+        id3[id3_class.INTEGER_ITEMS[0]] = [
+            id3_class.TextFrame.from_unicode(id3_class.INTEGER_ITEMS[0],
+                                             u"2/10")]
+        self.assertEqual(id3.track_number, 2)
+        self.assertEqual(id3.track_total, 10)
+
+        id3[id3_class.INTEGER_ITEMS[1]] = [
+            id3_class.TextFrame.from_unicode(id3_class.INTEGER_ITEMS[1],
+                                             u"3")]
+        self.assertEqual(id3.album_number, 3)
+        self.assertEqual(id3.album_total, 0)
+
+        id3[id3_class.INTEGER_ITEMS[1]] = [
+            id3_class.TextFrame.from_unicode(id3_class.INTEGER_ITEMS[1],
+                                             u"5/7")]
+        self.assertEqual(id3.album_number, 5)
+        self.assertEqual(id3.album_total, 7)
+
+
+
+class ID3v23MetaData(ID3v22MetaData):
     def setUp(self):
         self.metadata_class = audiotools.ID3v23Comment
         self.supported_fields = ["track_name",
@@ -705,7 +841,7 @@ class ID3v23MetaData(MetaDataTest):
     def empty_metadata(self):
         return self.metadata_class([])
 
-class ID3v24MetaData(MetaDataTest):
+class ID3v24MetaData(ID3v22MetaData):
     def setUp(self):
         self.metadata_class = audiotools.ID3v23Comment
         self.supported_fields = ["track_name",
@@ -972,3 +1108,86 @@ class VorbisCommentTest(MetaDataTest):
     @METADATA_VORBIS
     def test_supports_images(self):
         self.assertEqual(self.metadata_class.supports_images(), False)
+
+    @METADATA_VORBIS
+    def test_lowercase(self):
+        for audio_format in self.supported_formats:
+            temp_file = tempfile.NamedTemporaryFile(
+                suffix="." + audio_format.SUFFIX)
+            try:
+                track = audio_format.from_pcm(temp_file.name,
+                                              BLANK_PCM_Reader(1))
+
+                lc_metadata = audiotools.VorbisComment(
+                        {"title": [u"track name"],
+                         "tracknumber": [u"1"],
+                         "tracktotal": [u"3"],
+                         "album": [u"album name"],
+                         "artist": [u"artist name"],
+                         "performer": [u"performer name"],
+                         "composer": [u"composer name"],
+                         "conductor": [u"conductor name"],
+                         "source medium": [u"media"],
+                         "isrc": [u"isrc"],
+                         "catalog": [u"catalog"],
+                         "copyright": [u"copyright"],
+                         "publisher": [u"publisher"],
+                         "date": [u"2009"],
+                         "discnumber": [u"2"],
+                         "disctotal": [u"4"],
+                         "comment": [u"some comment"]},
+                        u"vendor string")
+
+                metadata = audiotools.MetaData(
+                    track_name=u"track name",
+                    track_number=1,
+                    track_total=3,
+                    album_name=u"album name",
+                    artist_name=u"artist name",
+                    performer_name=u"performer name",
+                    composer_name=u"composer name",
+                    conductor_name=u"conductor name",
+                    media=u"media",
+                    ISRC=u"isrc",
+                    catalog=u"catalog",
+                    copyright=u"copyright",
+                    publisher=u"publisher",
+                    year=u"2009",
+                    album_number=2,
+                    album_total=4,
+                    comment=u"some comment")
+
+                track.set_metadata(lc_metadata)
+                track = audiotools.open(track.filename)
+                self.assertEqual(metadata, lc_metadata)
+
+                track = audio_format.from_pcm(temp_file.name,
+                                              BLANK_PCM_Reader(1))
+                track.set_metadata(audiotools.MetaData(
+                        track_name=u"Track Name",
+                        track_number=1))
+                metadata = track.get_metadata()
+                self.assertEqual(metadata["TITLE"], [u"Track Name"])
+                self.assertEqual(metadata["TRACKNUMBER"], [u"1"])
+                self.assertEqual(metadata.track_name, u"Track Name")
+                self.assertEqual(metadata.track_number, 1)
+
+                metadata["title"] = [u"New Track Name"]
+                metadata["tracknumber"] = [u"2"]
+                track.set_metadata(metadata)
+                metadata = track.get_metadata()
+                self.assertEqual(metadata["TITLE"], [u"New Track Name"])
+                self.assertEqual(metadata["TRACKNUMBER"], [u"2"])
+                self.assertEqual(metadata.track_name, u"New Track Name")
+                self.assertEqual(metadata.track_number, 2)
+
+                metadata.track_name = "New Track Name 2"
+                metadata.track_number = 3
+                track.set_metadata(metadata)
+                metadata = track.get_metadata()
+                self.assertEqual(metadata["TITLE"], [u"New Track Name 2"])
+                self.assertEqual(metadata["TRACKNUMBER"], [u"3"])
+                self.assertEqual(metadata.track_name, u"New Track Name 2")
+                self.assertEqual(metadata.track_number, 3)
+            finally:
+                temp_file.close()
