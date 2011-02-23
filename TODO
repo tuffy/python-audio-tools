@@ -3268,7 +3268,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** TODO Player
 **** TODO CDPlayer
 *** TODO audiotools.replaygain
-**** TODO ReplayGain
+**** DONE ReplayGain
 **** TODO ReplayGainReader
 *** DONE audiotools.decoders
 **** DONE BitstreamReader
@@ -3290,7 +3290,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE trackcat
 *** DONE trackcmp
 *** TODO trackinfo
-*** TODO tracklength
+*** DONE tracklength
 *** DONE tracklint
 *** TODO trackplay
     cover the errors, at least
@@ -3299,3 +3299,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE tracktag
 *** TODO trackverify
 ** DONE Split tests into multiple files
+* TODO Shift lint to the AudioFile and MetaData subclasses
+  Instead of having tracklint have to perform lots of built-in tests,
+  it would be better to have clean() functions added to the classes
+  themselves.
+  For MetaData, it could return a new object with fixed fields.
+  For AudioFile, it could function like convert() and build a new file
+  with fixes applied.

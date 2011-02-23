@@ -1967,6 +1967,56 @@ class trackcmp(UtilTest):
                                      "%2.2d.%s" % (i, self.type.SUFFIX))),
                     "result":_(u"OK")})
 
+class tracklength(UtilTest):
+    @UTIL_TRACKLENGTH
+    def setUp(self):
+        pass
+
+    @UTIL_TRACKLENGTH
+    def tearDown(self):
+        pass
+
+    @UTIL_TRACKLENGTH
+    def test_tracklength(self):
+        import shutil
+
+        track1 = audiotools.open("1s.flac")
+        track2 = audiotools.open("1m.flac")
+        track3 = audiotools.open("1h.flac")
+        self.assertEqual(track1.seconds_length(), 1)
+        self.assertEqual(track2.seconds_length(), 60)
+        self.assertEqual(track3.seconds_length(), 60 * 60)
+        self.assertEqual(self.__run_app__(["tracklength", "1s.flac"]), 0)
+        self.__check_output__(u"0:00:01")
+        self.assertEqual(self.__run_app__(["tracklength", "1s.flac",
+                                           "1s.flac"]), 0)
+        self.__check_output__(u"0:00:02")
+        self.assertEqual(self.__run_app__(["tracklength", "1s.flac",
+                                           "1m.flac"]), 0)
+        self.__check_output__(u"0:01:01")
+        self.assertEqual(self.__run_app__(["tracklength", "1s.flac",
+                                           "1m.flac", "1m.flac"]), 0)
+        self.__check_output__(u"0:02:01")
+        self.assertEqual(self.__run_app__(["tracklength", "1s.flac",
+                                           "1m.flac", "1h.flac"]), 0)
+        self.__check_output__(u"1:01:01")
+        self.assertEqual(self.__run_app__(["tracklength", "1s.flac",
+                                           "1m.flac", "1h.flac",
+                                           "1h.flac"]), 0)
+        self.__check_output__(u"2:01:01")
+
+        tempdir = tempfile.mkdtemp()
+        try:
+            shutil.copy(track1.filename, tempdir)
+            shutil.copy(track2.filename, tempdir)
+            shutil.copy(track3.filename, tempdir)
+            self.assertEqual(self.__run_app__(["tracklength", tempdir]), 0)
+            self.__check_output__(u"1:01:01")
+        finally:
+            for f in os.listdir(tempdir):
+                os.unlink(os.path.join(tempdir, f))
+            os.rmdir(tempdir)
+
 
 class tracklint(UtilTest):
     @UTIL_TRACKLINT

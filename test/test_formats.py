@@ -1488,6 +1488,12 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
         self.suffix = "." + self.audio_class.SUFFIX
 
     @FORMAT_AIFF
+    def test_ieee_extended(self):
+        ieee = audiotools.IEEE_Extended("i")
+        for i in xrange(0, 192000 + 1):
+            assert(i == int(ieee.parse(ieee.build(float(i)))))
+
+    @FORMAT_AIFF
     def test_channel_mask(self):
         if (self.audio_class is audiotools.AudioFile):
             return

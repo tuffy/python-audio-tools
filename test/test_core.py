@@ -1852,6 +1852,110 @@ class Bitstream(unittest.TestCase):
         del(r1)
 
 
+class TestReplayGain(unittest.TestCase):
+    @LIB_CORE
+    def test_basics(self):
+        import audiotools.replaygain
+        import audiotools.pcm
+
+        #check for invalid sample rate
+        self.assertRaises(ValueError,
+                          audiotools.replaygain.ReplayGain,
+                          200000)
+
+        #check for invalid channel count
+        rg = audiotools.replaygain.ReplayGain(44100)
+        self.assertRaises(ValueError,
+                          rg.update,
+                          audiotools.pcm.from_list(range(20), 4, 16, True))
+
+        #check for not enough samples
+        rg.update(audiotools.pcm.from_list([1, 2], 2, 16, True))
+        self.assertRaises(ValueError, rg.title_gain)
+        self.assertRaises(ValueError, rg.album_gain)
+
+        #check for no tracks
+        gain = audiotools.calculate_replay_gain([])
+        self.assertRaises(ValueError, list, gain)
+
+        #check for lots of invalid combinations for calculate_replay_gain
+        track_file1 = tempfile.NamedTemporaryFile(suffix=".wav")
+        track_file2 = tempfile.NamedTemporaryFile(suffix=".wav")
+        track_file3 = tempfile.NamedTemporaryFile(suffix=".wav")
+        try:
+            track1 = audiotools.WaveAudio.from_pcm(track_file1.name,
+                                                   BLANK_PCM_Reader(2))
+            track2 = audiotools.WaveAudio.from_pcm(track_file2.name,
+                                                   BLANK_PCM_Reader(3))
+            track3 = audiotools.WaveAudio.from_pcm(
+                track_file3.name,
+                BLANK_PCM_Reader(2, sample_rate=48000))
+
+            gain = audiotools.calculate_replay_gain([track1, track2, track3])
+            self.assertRaises(ValueError, list, gain)
+
+            track3 = audiotools.WaveAudio.from_pcm(
+                track_file3.name,
+                BLANK_PCM_Reader(
+                    2,
+                    channels=4,
+                    channel_mask=audiotools.ChannelMask.from_fields(
+                        front_left=True,
+                        front_right=True,
+                        back_left=True,
+                        back_right=True)))
+
+            gain = audiotools.calculate_replay_gain([track1, track2, track3])
+            self.assertRaises(ValueError, list, gain)
+
+            track3 = audiotools.WaveAudio.from_pcm(
+                track_file3.name,
+                BLANK_PCM_Reader(
+                    2,
+                    sample_rate=48000,
+                    channels=3,
+                    channel_mask=audiotools.ChannelMask.from_fields(
+                        front_left=True,
+                        front_right=True,
+                        front_center=True)))
+
+            gain = audiotools.calculate_replay_gain([track1, track2, track3])
+            self.assertRaises(ValueError, list, gain)
+
+            track3 = audiotools.WaveAudio.from_pcm(
+                track_file3.name,
+                BLANK_PCM_Reader(2))
+
+            gain = list(audiotools.calculate_replay_gain([track1, track2, track3]))
+            self.assertEqual(len(gain), 3)
+            self.assert_(gain[0][0] is track1)
+            self.assert_(gain[1][0] is track2)
+            self.assert_(gain[2][0] is track3)
+        finally:
+            track_file1.close()
+            track_file2.close()
+            track_file3.close()
+
+    @LIB_CORE
+    def test_valid_rates(self):
+        import audiotools.replaygain
+
+        for sample_rate in [8000, 11025, 12000, 16000, 18900, 22050, 24000,
+                            32000, 37800, 44100, 48000, 56000, 64000, 88200,
+                            96000, 112000, 128000, 144000, 176400, 192000]:
+            gain = audiotools.replaygain.ReplayGain(sample_rate)
+            reader = test_streams.Simple_Sine(sample_rate * 2,
+                                              sample_rate,
+                                              0x4,
+                                              16,
+                                              (30000, sample_rate / 100))
+            audiotools.transfer_data(reader.read, gain.update)
+            (gain, peak) = gain.title_gain()
+            self.assert_(gain < -4.0)
+            self.assert_(peak > .90)
+
+
+
 class TestXMCD(unittest.TestCase):
     XMCD_FILES = [(
 """eJyFk0tv20YQgO8B8h+m8MHJReXyTQFEm0pyYcAvSELTHCmKigRLYiHSanUTSdt1agd9BGnsOo3R
@@ -3620,3 +3724,871 @@ FILE "cue.wav" WAVE
                                              album_name=u"Album Name",
                                              track_total=3,
                                              year=u"2010"))
+
+class testcuesheet(unittest.TestCase):
+    @LIB_CORE
+    def setUp(self):
+        import audiotools.cue
+
+        self.sheet_class = audiotools.cue.Cuesheet
+        self.test_sheets = [
+"""eJydlt1q20AQRu8NfofFDxB2Zv/nTshyUBvHQVHa3rppKCbFDqmbtG/f3VqQzZjtxYKvPiOdz6Od
+Iw/dWiz727ZfCm1ArpZg57Mhhu1mve6uR7Hofm/vj82vb7tDe3j6I17kRQhPX/ViPmubsbnaXMYL
+vUS0xqpgzHx20w2rzbDuBrG42z/uD6970Twfdz+P8ZKxH6+6t3zcHX88xHjVp3TY7r8/XLxuXxbi
+c/Opm8+EGIem/SgkiOZu2W9SErPTPcbn7f2jhMUp/B80fd/fDq34cHPpjPRSgldTfL3svqT7S0n/
+PhkUi1CsgiIgh2pSnpTJoKoIVZVQ/Q4qhQyESCrwLjE2pGzWRRe76KouTvIuIMlY0nwuKQ6kfdbF
+FLuYyi6GQ4G0IgwZ1BahthJqOdQQ+jiDDOqKUFcJdQyKQICRm0F9EeoroZ49arQElhzwLjEOJPMV
+CMUuoXIF+FlXkhI3GwDIEhRk3QAQ2QAiVBsy/ryLdtMKTF2KtoM62zl5NgCduiiXQYu2g0rbBcmh
+jhRM4pmgRdtBre34eHXcaiSbLRgUtQaVWgPJHnUkJpXwAaRYk1NZl6LWoE5rCHzZIzFOHfPzVdQa
+1GnNKL7V6XApguxtCkWtQZ3WELnAjUy/FCCDFrUGlVoDYI/a6CgvOlNsih2hzroUtQZ1WgPPj51J
+IqWzFUixmyqeumDRdlhpO+C2s3Eocdn5wUixIZt3KdoOK20HindxcShxI3mX+IDg3b8MLEoQ6yTo
+2L8vEA7SCz8do7+XaqGL""".decode('base64').decode('zlib')]
+
+        self.suffix = '.cue'
+
+    def sheets(self):
+        for test_sheet in self.test_sheets:
+            tempsheetfile = tempfile.NamedTemporaryFile(suffix=self.suffix)
+            try:
+                tempsheetfile.write(test_sheet)
+                tempsheetfile.flush()
+                sheet = audiotools.read_sheet(tempsheetfile.name)
+            finally:
+                tempsheetfile.close()
+            yield sheet
+
+    @LIB_CORE
+    def testreadsheet(self):
+        for sheet in self.sheets():
+            self.assertEqual(isinstance(sheet, self.sheet_class), True)
+            self.assertEqual(sheet.catalog(), '4580226563955')
+            self.assertEqual(sorted(sheet.ISRCs().items()),
+                             [(1, 'JPG750800183'),
+                              (2, 'JPG750800212'),
+                              (3, 'JPG750800214'),
+                              (4, 'JPG750800704'),
+                              (5, 'JPG750800705'),
+                              (6, 'JPG750800706'),
+                              (7, 'JPG750800707'),
+                              (8, 'JPG750800708'),
+                              (9, 'JPG750800219'),
+                              (10, 'JPG750800722'),
+                              (11, 'JPG750800709'),
+                              (12, 'JPG750800290'),
+                              (13, 'JPG750800218'),
+                              (14, 'JPG750800710'),
+                              (15, 'JPG750800217'),
+                              (16, 'JPG750800531'),
+                              (17, 'JPG750800225'),
+                              (18, 'JPG750800711'),
+                              (19, 'JPG750800180'),
+                              (20, 'JPG750800712'),
+                              (21, 'JPG750800713'),
+                              (22, 'JPG750800714')])
+            self.assertEqual(list(sheet.indexes()),
+                             [(0, ), (20885, ), (42189,  42411), (49242,  49473),
+                              (52754, ), (69656, ), (95428, ), (118271,  118430),
+                              (136968, ), (138433,  138567), (156412, ),
+                              (168864, ), (187716, ), (192245, 192373),
+                              (200347, ), (204985, ), (227336, ),
+                              (243382, 243549), (265893,  266032),
+                              (292606, 292942), (302893, 303123), (321611, )])
+            self.assertEqual(list(sheet.pcm_lengths(191795016)),
+                             [12280380, 12657288, 4152456, 1929228,
+                              9938376, 15153936, 13525176, 10900344,
+                              940212, 10492860, 7321776, 11084976,
+                              2738316, 4688712, 2727144, 13142388,
+                              9533244, 13220004, 15823080, 5986428,
+                              10870944, 2687748])
+
+    @LIB_CORE
+    def testconvertsheet(self):
+        import audiotools.cue
+        import audiotools.toc
+
+        for sheet in self.sheets():
+            #convert to CUE and test for equality
+            temp_cue_file = tempfile.NamedTemporaryFile(suffix='.cue')
+            try:
+                temp_cue_file.write(audiotools.cue.Cuesheet.file(
+                        sheet, os.path.basename(temp_cue_file.name)))
+                temp_cue_file.flush()
+
+                cue_sheet = audiotools.read_sheet(temp_cue_file.name)
+
+                self.assertEqual(sheet.catalog(), cue_sheet.catalog())
+                self.assertEqual(list(sheet.indexes()),
+                                 list(cue_sheet.indexes()))
+                self.assertEqual(list(sheet.pcm_lengths(191795016)),
+                                 list(cue_sheet.pcm_lengths(191795016)))
+                self.assertEqual(sorted(sheet.ISRCs().items()),
+                                 sorted(cue_sheet.ISRCs().items()))
+            finally:
+                temp_cue_file.close()
+
+            #convert to TOC and test for equality
+            temp_toc_file = tempfile.NamedTemporaryFile(suffix='.toc')
+            try:
+                temp_toc_file.write(audiotools.toc.TOCFile.file(
+                        sheet, os.path.basename(temp_toc_file.name)))
+                temp_toc_file.flush()
+
+                toc_sheet = audiotools.read_sheet(temp_toc_file.name)
+
+                self.assertEqual(sheet.catalog(), toc_sheet.catalog())
+                self.assertEqual(list(sheet.indexes()),
+                                 list(toc_sheet.indexes()))
+                self.assertEqual(list(sheet.pcm_lengths(191795016)),
+                                 list(toc_sheet.pcm_lengths(191795016)))
+                self.assertEqual(sorted(sheet.ISRCs().items()),
+                                 sorted(toc_sheet.ISRCs().items()))
+            finally:
+                temp_toc_file.close()
+
+            #convert to embedded cuesheets and test for equality
+            for audio_class in [audiotools.FlacAudio,
+                                audiotools.OggFlacAudio,
+                                audiotools.WavPackAudio]:
+                temp_file = tempfile.NamedTemporaryFile(
+                    suffix="." + audio_class.SUFFIX)
+                try:
+                    f = audio_class.from_pcm(
+                        temp_file.name,
+                        EXACT_BLANK_PCM_Reader(191795016))
+                    f.set_cuesheet(sheet)
+                    f_sheet = audiotools.open(temp_file.name).get_cuesheet()
+                    self.assertNotEqual(f_sheet, None)
+
+                    self.assertEqual(sheet.catalog(), f_sheet.catalog())
+                    self.assertEqual(list(sheet.indexes()),
+                                     list(f_sheet.indexes()))
+                    self.assertEqual(list(sheet.pcm_lengths(191795016)),
+                                     list(f_sheet.pcm_lengths(191795016)))
+                    self.assertEqual(sorted(sheet.ISRCs().items()),
+                                     sorted(f_sheet.ISRCs().items()))
+                finally:
+                    temp_file.close()
+
+
+class testtocsheet(testcuesheet):
+    @LIB_CORE
+    def setUp(self):
+        import audiotools.toc
+
+        self.sheet_class = audiotools.toc.TOCFile
+        self.test_sheets = [
+"""eJytlr1uG0EMhPt7isU9QExyf4/d4aTYShRJkM4IUglC0qULguT1Q15c7MJbspIhGPhmR8Mhl919
+Nw/DMq/z8fzsxhALEKWY/BTjOAxPT2799fj+0+GwXufls5tfd4fzcDq75Xz5pp+X6/6+/3J5mW+H
+27B+Pd+Xl/l02h/v///zcLsubvx0ec4RCgAWPw4fD8e9G388fj8+/H38GR04COwL+zhURLIhElKH
++MbTP0JgCDXYW4FDBzwxEfvJAbIXsB9u63xdHQADcaZaR7DRkaGjA4Fj4kAKDokTVTo8Q6p1RCsd
+saMDOXgm8cNziEy5BicrcOqABVbEAwdRFYQGnK3A+T2YkJGErWBNn6/BxQpcOuDEmDijZn6LYRM9
+mGodk9UITO91eGCVUhSMEweowQhGDlBn6oUsGYtFwxYnjqFyAOWbRohR4WXoWRBUiM9OjJfpg2bs
+0ar4JuiQM3vc+iewzF47b2jWfJ34BZl04pS0+cRwat226jrsvFmw2jGg5FDU7eZnbwYQjcqOsDP6
+smnEfKLNAuTUko3aLnrskCVtnnFbtFEswIZsVHdEnYKPoG9G1JkTCbklW/Uddt4cpeakYvNWtFI1
+2PQdtsk3KjwsnfxJ1YgE3Bpfli76Jn+puT3Iqv96V0+KCvTotvfLGqqESDSbpU9W/Yedgy8JvMhQ
+vq2i4Nvroz0Djeow986xjHoFaDq3UtJ0/gOiA7rW""".decode('base64').decode('zlib'),
+"""eJytl+tq20AQhX9bT7HoAeKd2Zs0lFLhOMZtbigK9F9wHJGGNHZxlKal+N07uzGkcaDSwhpjzK7Q
+fjrMnDMaj8WsXbWbRdfeiOvfYvnUYrdeCnmA2Xgs6vbHetOJ66fbR9GtxYebdvOw6B6X3z7dPvw6
+uGk/ZpOqqY7PZiLXppCI1lhVGpNnk8Orw8r/NtOvjfiTCf4cV6ezy2o2vTqpznlpJAWJ6WnY2r65
+QEi/3cyb46nIL1f3q/XzSjR33fc2z0bn0/rorD6Z1q9b1aa7e+zy3Z22WdbU1eSLqC4P52dhcX5R
+T0T++XzmjCykhEK9XPzKN3p7tt/cnd9sFst7CfnL4n9OH23/eZRw9tHc36BerG7bg+fFz1xISeEr
+pCZVkDK9qAgYi4ppUHeE/o/WJPUAVB2LqtKgloRIqhQSSDGqCtdeNFXdBMWRHPbSOxlNr5PQgyRj
+SaNH1ZYs7tErknYAvYmlN2nogbQiZO0VaUPoBqDaWFSbBpXxCtZaSOOZ9RBUF4vqkqAiECDTelTf
+f2oAahGLWqRBtQSWHHifCI34rvlkOcA6ylj6Mgm9kuQfoPCoUJKW/UJjrCGDTIXKDWYK32mmJKP3
+hAZeHVAmsUJDmuRjX2Z65QQXBLuc7DdkLGUsaprkU44UhDjRxPY2wNIQYpsP0iSfZvdFstYnH9cA
+DigAiFY1Tcwxpw8K6VF14QvgXfn2uxxCrCFDmpjjCYhrAjEIDWT7UY2CWNQ0MefbTBGEGdOw0NCv
+KsYOD5Am5oz0qgJ4S2Nm14/qIFrVNDFnON04i11IZM4KeBdz0O8TUEQ3X5qY47xgbgjzBA+bsD8h
+c0X3z/cu+lUE0ySfNZ5QgQgq82S0R8+9OWBChth3PkyTfJaJC/a+3YCk97Xn+b7/NdBFv1thmjB0
+4IdmLve//kjXkg==""".decode('base64').decode('zlib')]
+
+        self.suffix = '.toc'
+
+
+class testflaccuesheet(testcuesheet):
+    @LIB_CORE
+    def setUp(self):
+        self.sheet_class = audiotools.FlacCueSheet
+        self.suffix = '.flac'
+        self.test_sheets = [
+            Con.Container(catalog_number='4580226563955\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
+                      cuesheet_tracks=[
+                    Con.Container(ISRC='JPG750800183',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=1,
+                              track_offset=0),
+                    Con.Container(ISRC='JPG750800212',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=2,
+                              track_offset=12280380),
+                    Con.Container(ISRC='JPG750800214',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=0), Con.Container(offset=130536, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=3,
+                              track_offset=24807132),
+                    Con.Container(ISRC='JPG750800704',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=0), Con.Container(offset=135828, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=4,
+                              track_offset=28954296),
+                    Con.Container(ISRC='JPG750800705',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=5,
+                              track_offset=31019352),
+                    Con.Container(ISRC='JPG750800706',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=6,
+                              track_offset=40957728),
+                    Con.Container(ISRC='JPG750800707',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=7,
+                              track_offset=56111664),
+                    Con.Container(ISRC='JPG750800708',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=0),
+                                                      Con.Container(offset=93492, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=8,
+                              track_offset=69543348),
+                    Con.Container(ISRC='JPG750800219',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=9,
+                              track_offset=80537184),
+                    Con.Container(ISRC='JPG750800722',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=0),
+                                                      Con.Container(offset=78792, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=10,
+                              track_offset=81398604),
+                    Con.Container(ISRC='JPG750800709',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=11,
+                              track_offset=91970256),
+                    Con.Container(ISRC='JPG750800290',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=12,
+                              track_offset=99292032),
+                    Con.Container(ISRC='JPG750800218',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=13,
+                              track_offset=110377008),
+                    Con.Container(ISRC='JPG750800710',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=0),
+                                                      Con.Container(offset=75264, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=14,
+                              track_offset=113040060),
+                    Con.Container(ISRC='JPG750800217',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=15,
+                              track_offset=117804036),
+                    Con.Container(ISRC='JPG750800531',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=16,
+                              track_offset=120531180),
+                    Con.Container(ISRC='JPG750800225',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=17,
+                              track_offset=133673568),
+                    Con.Container(ISRC='JPG750800711',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=0),
+                                                      Con.Container(offset=98196, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=18,
+                              track_offset=143108616),
+                    Con.Container(ISRC='JPG750800180',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=0),
+                                                      Con.Container(offset=81732, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=19,
+                              track_offset=156345084),
+                    Con.Container(ISRC='JPG750800712',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=0),
+                                                      Con.Container(offset=197568, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=20,
+                              track_offset=172052328),
+                    Con.Container(ISRC='JPG750800713',
+                              cuesheet_track_index=[
+                            Con.Container(offset=0, point_number=0),
+                            Con.Container(offset=135240, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=21,
+                              track_offset=178101084),
+                    Con.Container(ISRC='JPG750800714',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=22,
+                              track_offset=189107268),
+                    Con.Container(ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
+                              cuesheet_track_index=[],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=170,
+                              track_offset=191795016)],
+                      is_cd=True, lead_in_samples=88200)]
+
+    def sheets(self):
+        for test_sheet in self.test_sheets:
+            tempflacfile = tempfile.NamedTemporaryFile(suffix=self.suffix)
+            try:
+                tempflac = audiotools.FlacAudio.from_pcm(
+                    tempflacfile.name,
+                    EXACT_BLANK_PCM_Reader(191795016),
+                    "1")
+                metadata = tempflac.get_metadata()
+                metadata.cuesheet = audiotools.FlacCueSheet(test_sheet)
+                tempflac.set_metadata(metadata)
+
+                sheet = audiotools.open(tempflacfile.name).get_metadata().cuesheet
+            finally:
+                tempflacfile.close()
+            yield sheet
+
+
+#takes several 1-channel PCMReaders and combines them into a single PCMReader
+class PCM_Reader_Multiplexer:
+    def __init__(self, pcm_readers, channel_mask):
+        self.buffers = map(audiotools.BufferedPCMReader, pcm_readers)
+        self.sample_rate = pcm_readers[0].sample_rate
+        self.channels = len(pcm_readers)
+        self.channel_mask = channel_mask
+        self.bits_per_sample = pcm_readers[0].bits_per_sample
+
+    def read(self, bytes):
+        return audiotools.pcm.from_channels(
+            [reader.read(bytes) for reader in self.buffers])
+
+    def close(self):
+        for reader in self.buffers:
+            reader.close()
+
+
+
+class TestMultiChannel(unittest.TestCase):
+    def setUp(self):
+        #these support the full range of ChannelMasks
+        self.wav_channel_masks = [audiotools.WaveAudio,
+                                  audiotools.WavPackAudio]
+
+        #these support a subset of ChannelMasks up to 6 channels
+        self.flac_channel_masks = [audiotools.FlacAudio,
+                                   audiotools.OggFlacAudio]
+
+        if (audiotools.M4AAudio_nero.has_binaries(audiotools.BIN)):
+            self.flac_channel_masks.append(audiotools.M4AAudio_nero)
+
+        #these support a reordered subset of ChannelMasks up to 8 channels
+        self.vorbis_channel_masks = [audiotools.VorbisAudio]
+
+    def __test_mask_blank__(self, audio_class, channel_mask):
+        temp_file = tempfile.NamedTemporaryFile(suffix="." + audio_class.SUFFIX)
+        try:
+            temp_track = audio_class.from_pcm(
+                temp_file.name,
+                PCM_Reader_Multiplexer(
+                    [BLANK_PCM_Reader(2, channels=1)
+                     for i in xrange(len(channel_mask))],
+                    channel_mask))
+            self.assertEqual(temp_track.channel_mask(), channel_mask)
+
+            pcm = temp_track.to_pcm()
+            self.assertEqual(int(pcm.channel_mask), int(channel_mask))
+            audiotools.transfer_framelist_data(pcm, lambda x: x)
+            pcm.close()
+        finally:
+            temp_file.close()
+
+    def __test_undefined_mask_blank__(self, audio_class, channels,
+                                      should_be_blank):
+        temp_file = tempfile.NamedTemporaryFile(suffix="." + audio_class.SUFFIX)
+        try:
+            temp_track = audio_class.from_pcm(
+                temp_file.name,
+                PCM_Reader_Multiplexer(
+                    [BLANK_PCM_Reader(2, channels=1)
+                     for i in xrange(channels)],
+                    audiotools.ChannelMask(0)))
+            self.assertEqual(temp_track.channels(), channels)
+            if (should_be_blank):
+                self.assertEqual(int(temp_track.channel_mask()), 0)
+                pcm = temp_track.to_pcm()
+                self.assertEqual(int(pcm.channel_mask), 0)
+                audiotools.transfer_framelist_data(pcm, lambda x: x)
+                pcm.close()
+            else:
+                self.assertNotEqual(int(temp_track.channel_mask()), 0)
+                pcm = temp_track.to_pcm()
+                self.assertEqual(int(pcm.channel_mask),
+                                 int(temp_track.channel_mask()))
+                audiotools.transfer_framelist_data(pcm, lambda x: x)
+                pcm.close()
+        finally:
+            temp_file.close()
+
+    def __test_error_mask_blank__(self, audio_class, channels,
+                                  channel_mask):
+        temp_file = tempfile.NamedTemporaryFile(suffix="." + audio_class.SUFFIX)
+        try:
+            self.assertRaises(audiotools.UnsupportedChannelMask,
+                              audio_class.from_pcm,
+                              temp_file.name,
+                              PCM_Reader_Multiplexer(
+                    [BLANK_PCM_Reader(2, channels=1)
+                     for i in xrange(channels)],
+                    channel_mask))
+        finally:
+            temp_file.close()
+
+    def __test_pcm_conversion__(self,
+                                source_audio_class,
+                                target_audio_class,
+                                channel_mask):
+        source_file = tempfile.NamedTemporaryFile(suffix="." + source_audio_class.SUFFIX)
+        target_file = tempfile.NamedTemporaryFile(suffix="." + target_audio_class.SUFFIX)
+        wav_file = tempfile.NamedTemporaryFile(suffix=".wav")
+        try:
+            source_track = source_audio_class.from_pcm(
+                source_file.name,
+                PCM_Reader_Multiplexer(
+                    [BLANK_PCM_Reader(2, channels=1)
+                     for i in xrange(len(channel_mask))],
+                    channel_mask))
+            self.assertEqual(source_track.channel_mask(), channel_mask)
+
+            source_pcm = source_track.to_pcm()
+
+            self.assertEqual(isinstance(source_pcm.channel_mask, int),
+                             True,
+                             "%s's to_pcm() PCMReader is not an int" % \
+                                 (source_audio_class.NAME))
+
+            target_track = target_audio_class.from_pcm(
+                target_file.name,
+                source_pcm)
+
+            self.assertEqual(target_track.channel_mask(), channel_mask)
+            self.assertEqual(source_track.channel_mask(),
+                             target_track.channel_mask())
+
+            source_track.convert(wav_file.name, audiotools.WaveAudio)
+            wav = audiotools.open(wav_file.name)
+            wav.verify()
+            self.assertEqual(source_track.channel_mask(),
+                             wav.channel_mask())
+            target_track = wav.convert(target_file.name,
+                                       audiotools.WaveAudio)
+            self.assertEqual(target_track.channel_mask(), channel_mask)
+            self.assertEqual(source_track.channel_mask(),
+                             target_track.channel_mask())
+        finally:
+            source_file.close()
+            target_file.close()
+            wav_file.close()
+
+    def __test_assignment__(self, audio_class, tone_tracks, channel_mask):
+        from audiotools import replaygain as replaygain
+
+        self.assertEqual(len(tone_tracks), len(channel_mask))
+        temp_file = tempfile.NamedTemporaryFile(suffix="." + audio_class.SUFFIX)
+        gain_calcs = [replaygain.ReplayGain(44100) for t in tone_tracks]
+        try:
+            temp_track = audio_class.from_pcm(
+                temp_file.name,
+                PCM_Reader_Multiplexer([t.to_pcm() for t in tone_tracks],
+                                       channel_mask))
+
+            pcm = temp_track.to_pcm()
+            frame = pcm.read(audiotools.BUFFER_SIZE)
+            while (len(frame) > 0):
+                for c in xrange(frame.channels):
+                    gain_calcs[c].update(frame.channel(c))
+                frame = pcm.read(audiotools.BUFFER_SIZE)
+            pcm.close()
+
+            self.assertEqual(set([True]),
+                             set([prev.replay_gain().track_gain >
+                                  curr.replay_gain().track_gain
+                                  for (prev, curr) in
+                                  zip(tone_tracks, tone_tracks[1:])]))
+
+            gain_values = [gain_calc.title_gain()[0]
+                           for gain_calc in gain_calcs]
+
+            self.assertEqual(set([True]),
+                             set([prev > curr for (prev, curr) in
+                                  zip(gain_values, gain_values[1:])]),
+                             "channel mismatch for mask %s with format %s (gain values %s)" % (channel_mask, audio_class.NAME, gain_values))
+
+        finally:
+            temp_file.close()
+
+    @LIB_CORE
+    def test_channel_mask(self):
+        from_fields = audiotools.ChannelMask.from_fields
+
+        for audio_class in (self.wav_channel_masks +
+                            self.flac_channel_masks +
+                            self.vorbis_channel_masks):
+            for mask in [from_fields(front_center=True),
+                         from_fields(front_left=True,
+                                     front_right=True),
+                         from_fields(front_left=True,
+                                     front_right=True,
+                                     front_center=True),
+                         from_fields(front_right=True,
+                                     front_left=True,
+                                     back_right=True,
+                                     back_left=True),
+                         from_fields(front_right=True,
+                                     front_center=True,
+                                     front_left=True,
+                                     back_right=True,
+                                     back_left=True),
+                         from_fields(front_right=True,
+                                     front_center=True,
+                                     low_frequency=True,
+                                     front_left=True,
+                                     back_right=True,
+                                     back_left=True)]:
+                self.__test_mask_blank__(audio_class, mask)
+
+        for audio_class in (self.wav_channel_masks +
+                            self.vorbis_channel_masks):
+            for mask in [from_fields(front_left=True, front_right=True,
+                                     front_center=True,
+                                     side_left=True, side_right=True,
+                                     back_center=True, low_frequency=True),
+                         from_fields(front_left=True, front_right=True,
+                                     side_left=True, side_right=True,
+                                     back_left=True, back_right=True,
+                                     front_center=True, low_frequency=True)]:
+                self.__test_mask_blank__(audio_class, mask)
+
+        for audio_class in self.wav_channel_masks:
+            for mask in [from_fields(front_left=True, front_right=True,
+                                     side_left=True, side_right=True,
+                                     back_left=True, back_right=True,
+                                     front_center=True, back_center=True,
+                                     low_frequency=True),
+                         from_fields(front_left=True, front_right=True,
+                                     side_left=True, side_right=True,
+                                     back_left=True, back_right=True,
+                                     front_center=True, back_center=True)]:
+                self.__test_mask_blank__(audio_class, mask)
+
+        for mask in [from_fields(front_center=True),
+                     from_fields(front_left=True, front_right=True),
+                     from_fields(front_left=True, front_right=True,
+                                 back_left=True, back_right=True),
+                     from_fields(front_left=True, side_left=True,
+                                 front_center=True, front_right=True,
+                                 side_right=True, back_center=True)]:
+            self.__test_mask_blank__(audiotools.AiffAudio, mask)
+
+    @LIB_CORE
+    def test_channel_mask_conversion(self):
+        from_fields = audiotools.ChannelMask.from_fields
+
+        for source_audio_class in audiotools.AVAILABLE_TYPES:
+            for target_audio_class in audiotools.AVAILABLE_TYPES:
+                self.__test_pcm_conversion__(source_audio_class,
+                                             target_audio_class,
+                                             from_fields(front_left=True,
+                                                         front_right=True))
+
+        for source_audio_class in (self.wav_channel_masks +
+                                   self.flac_channel_masks +
+                                   self.vorbis_channel_masks):
+            for target_audio_class in (self.wav_channel_masks +
+                                       self.flac_channel_masks +
+                                       self.vorbis_channel_masks):
+                for mask in [from_fields(front_center=True),
+                             from_fields(front_left=True,
+                                         front_right=True),
+                             from_fields(front_left=True,
+                                         front_right=True,
+                                         front_center=True),
+                             from_fields(front_right=True,
+                                         front_left=True,
+                                         back_right=True,
+                                         back_left=True),
+                             from_fields(front_right=True,
+                                         front_center=True,
+                                         front_left=True,
+                                         back_right=True,
+                                         back_left=True),
+                             from_fields(front_right=True,
+                                         front_center=True,
+                                         low_frequency=True,
+                                         front_left=True,
+                                         back_right=True,
+                                         back_left=True)]:
+                    self.__test_pcm_conversion__(source_audio_class,
+                                                 target_audio_class,
+                                                 mask)
+
+        for source_audio_class in (self.wav_channel_masks +
+                                   self.vorbis_channel_masks):
+            for target_audio_class in (self.wav_channel_masks +
+                                       self.vorbis_channel_masks):
+                for mask in [from_fields(front_left=True, front_right=True,
+                                         front_center=True,
+                                         side_left=True, side_right=True,
+                                         back_center=True, low_frequency=True),
+                             from_fields(front_left=True, front_right=True,
+                                         side_left=True, side_right=True,
+                                         back_left=True, back_right=True,
+                                         front_center=True, low_frequency=True)]:
+                    self.__test_pcm_conversion__(source_audio_class,
+                                                 target_audio_class,
+                                                 mask)
+
+        for source_audio_class in self.wav_channel_masks:
+            for target_audio_class in self.wav_channel_masks:
+                for mask in [from_fields(front_left=True, front_right=True,
+                                         side_left=True, side_right=True,
+                                         back_left=True, back_right=True,
+                                         front_center=True, back_center=True,
+                                         low_frequency=True),
+                             from_fields(front_left=True, front_right=True,
+                                         side_left=True, side_right=True,
+                                         back_left=True, back_right=True,
+                                         front_center=True, back_center=True)]:
+                    self.__test_pcm_conversion__(source_audio_class,
+                                                 target_audio_class,
+                                                 mask)
+
+        for target_audio_class in self.wav_channel_masks:
+            for mask in [from_fields(front_center=True),
+                         from_fields(front_left=True, front_right=True),
+                         from_fields(front_left=True, front_right=True,
+                                     back_left=True, back_right=True),
+                         from_fields(front_left=True, side_left=True,
+                                     front_center=True, front_right=True,
+                                     side_right=True, back_center=True)]:
+                self.__test_pcm_conversion__(audiotools.AiffAudio,
+                                             target_audio_class,
+                                             mask)
+
+    @LIB_CORE
+    def test_channel_assignment(self):
+        from_fields = audiotools.ChannelMask.from_fields
+
+        TONE_TRACKS = map(audiotools.open,
+                          ["tone%d.flac" % (i + 1) for i in xrange(8)])
+
+        for audio_class in audiotools.AVAILABLE_TYPES:
+            self.__test_assignment__(audio_class,
+                                     TONE_TRACKS[0:2],
+                                     from_fields(front_left=True,
+                                                 front_right=True))
+
+        for audio_class in (self.wav_channel_masks +
+                            self.flac_channel_masks +
+                            self.vorbis_channel_masks):
+            for mask in [from_fields(front_left=True,
+                                     front_right=True,
+                                     front_center=True),
+                         from_fields(front_right=True,
+                                     front_left=True,
+                                     back_right=True,
+                                     back_left=True),
+                         from_fields(front_right=True,
+                                     front_center=True,
+                                     front_left=True,
+                                     back_right=True,
+                                     back_left=True),
+                         from_fields(front_right=True,
+                                     front_center=True,
+                                     low_frequency=True,
+                                     front_left=True,
+                                     back_right=True,
+                                     back_left=True)]:
+
+                #Encoding 6 channel audio with neroAacEnc
+                #with this batch of tones causes Nero to essentially
+                #zero out the LFE channel,
+                #as does newer versions of oggenc.
+                #This is likely due to the characteristics of
+                #my input samples.
+                if ((len(mask) == 6) and
+                    ((audio_class is audiotools.M4AAudio_nero) or
+                     (audio_class is audiotools.VorbisAudio))):
+                    continue
+
+                self.__test_assignment__(audio_class,
+                                         TONE_TRACKS[0:len(mask)],
+                                         mask)
+
+        for audio_class in (self.wav_channel_masks +
+                            self.vorbis_channel_masks):
+            for mask in [from_fields(front_left=True, front_right=True,
+                                     front_center=True,
+                                     side_left=True, side_right=True,
+                                     back_center=True, low_frequency=True),
+                         from_fields(front_left=True, front_right=True,
+                                     side_left=True, side_right=True,
+                                     back_left=True, back_right=True,
+                                     front_center=True, low_frequency=True)]:
+                self.__test_assignment__(audio_class,
+                                         TONE_TRACKS[0:len(mask)],
+                                         mask)
+
+        for audio_class in self.wav_channel_masks:
+            for mask in [from_fields(front_left=True, front_right=True,
+                                     side_left=True, side_right=True,
+                                     back_left=True, back_right=True,
+                                     front_center=True, back_center=True)]:
+                self.__test_assignment__(audio_class,
+                                         TONE_TRACKS[0:len(mask)],
+                                         mask)
+
+        for mask in [from_fields(front_left=True, front_right=True),
+                     from_fields(front_left=True, front_right=True,
+                                 back_left=True, back_right=True),
+                     from_fields(front_left=True, side_left=True,
+                                 front_center=True, front_right=True,
+                                 side_right=True, back_center=True)]:
+            self.__test_assignment__(audiotools.AiffAudio,
+                                     TONE_TRACKS[0:len(mask)],
+                                     mask)
+
+    @LIB_CORE
+    def test_unsupported_channel_mask_from_pcm(self):
+        for channels in xrange(1, 19):
+            self.__test_undefined_mask_blank__(audiotools.WaveAudio,
+                                               channels,
+                                               False)
+            self.__test_error_mask_blank__(audiotools.WaveAudio,
+                                           19, audiotools.ChannelMask(0))
+            self.__test_error_mask_blank__(audiotools.WaveAudio,
+                                           20, audiotools.ChannelMask(0))
+
+        for channels in xrange(1, 3):
+            self.__test_undefined_mask_blank__(audiotools.WavPackAudio,
+                                               channels,
+                                               False)
+        for channels in xrange(3, 21):
+            self.__test_undefined_mask_blank__(audiotools.WavPackAudio,
+                                               channels,
+                                               True)
+
+        for channels in xrange(1, 3):
+            self.__test_undefined_mask_blank__(audiotools.ALACAudio,
+                                               channels,
+                                               False)
+        for channels in xrange(3, 21):
+            self.__test_undefined_mask_blank__(audiotools.ALACAudio,
+                                               channels,
+                                               True)
+
+        for audio_class in [audiotools.FlacAudio, audiotools.OggFlacAudio]:
+            for channels in xrange(1, 7):
+                self.__test_undefined_mask_blank__(audio_class,
+                                                   channels,
+                                                   False)
+            for channels in xrange(7, 9):
+                self.__test_undefined_mask_blank__(audio_class,
+                                                   channels,
+                                                   True)
+            self.__test_error_mask_blank__(audio_class,
+                                           9, audiotools.ChannelMask(0))
+            self.__test_error_mask_blank__(audio_class,
+                                           10, audiotools.ChannelMask(0))
+
+        for stereo_audio_class in [audiotools.MP3Audio,
+                                   audiotools.MP2Audio,
+                                   audiotools.SpeexAudio,
+                                   audiotools.AACAudio,
+                                   audiotools.M4AAudio_faac]:
+
+            self.__test_undefined_mask_blank__(stereo_audio_class,
+                                               2, False)
+            for channels in xrange(3, 20):
+                temp_file = tempfile.NamedTemporaryFile(suffix="." + stereo_audio_class.SUFFIX)
+                try:
+                    temp_track = stereo_audio_class.from_pcm(
+                        temp_file.name,
+                        PCM_Reader_Multiplexer(
+                            [BLANK_PCM_Reader(2, channels=1)
+                             for i in xrange(channels)],
+                            audiotools.ChannelMask(0)))
+                    self.assertEqual(temp_track.channels(), 2)
+                    self.assertEqual(int(temp_track.channel_mask()),
+                                     int(audiotools.ChannelMask.from_fields(
+                                front_left=True, front_right=True)))
+                    pcm = temp_track.to_pcm()
+                    self.assertEqual(int(pcm.channel_mask),
+                                     int(temp_track.channel_mask()))
+                    audiotools.transfer_framelist_data(pcm, lambda x: x)
+                    pcm.close()
+                finally:
+                    temp_file.close()
+
+        for channels in xrange(1, 9):
+            self.__test_undefined_mask_blank__(audiotools.VorbisAudio,
+                                               channels,
+                                               False)
+
+        for channels in xrange(9, 20):
+            self.__test_undefined_mask_blank__(audiotools.VorbisAudio,
+                                               channels,
+                                               True)
+
+        for channels in [1, 2, 3, 4, 6]:
+            self.__test_undefined_mask_blank__(audiotools.AiffAudio,
+                                               channels,
+                                               False)
+
+        for channels in [5, 7, 8, 9, 10]:
+            self.__test_undefined_mask_blank__(audiotools.AiffAudio,
+                                               channels,
+                                               True)
+
+        for channels in [1, 2]:
+            self.__test_undefined_mask_blank__(audiotools.AuAudio,
+                                               channels,
+                                               False)
+        for channels in xrange(3, 11):
+            self.__test_undefined_mask_blank__(audiotools.AuAudio,
+                                               channels,
+                                               True)
+
+        if (audiotools.M4AAudio_nero.has_binaries(audiotools.BIN)):
+            for channels in xrange(1, 7):
+                self.__test_undefined_mask_blank__(audiotools.M4AAudio_nero,
+                                                   channels,
+                                                   False)
