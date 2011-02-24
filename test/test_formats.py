@@ -227,26 +227,20 @@ class AudioFileTest(unittest.TestCase):
                 return
 
             #check that delete_metadata works
-            nonblank_metadata = audiotools.MetaData(**dict(
-                    [(field, c) for (field, c) in zip(
-                            live_fields,
-                            string.ascii_letters)
-                     if field not in
-                     audiotools.MetaData.__INTEGER_FIELDS__] +
-                    [(field, i + 1) for (i, field) in enumerate(
-                            live_fields)
-                     if field in
-                     audiotools.MetaData.__INTEGER_FIELDS__]))
+            nonblank_metadata = audiotools.MetaData(
+                track_name=u"Track Name",
+                track_number=1,
+                album_name=u"Album Name")
             track.set_metadata(nonblank_metadata)
             self.assertEqual(track.get_metadata(), nonblank_metadata)
             track.delete_metadata()
             metadata = track.get_metadata()
             if (metadata is not None):
-                for field in live_fields:
-                    if (field not in audiotools.MetaData.__INTEGER_FIELDS__):
-                        self.assertEqual(getattr(metadata, field), u"")
-                    else:
-                        self.assertEqual(getattr(metadata, field), 0)
+                self.assertEqual(
+                    metadata,
+                    audiotools.MetaData(track_name=u"",
+                                        track_number=0,
+                                        album_name=u""))
 
             track.set_metadata(nonblank_metadata)
             self.assertEqual(track.get_metadata(), nonblank_metadata)
@@ -917,8 +911,8 @@ class LosslessFileTest(AudioFileTest):
                                                            counter.update)
                         self.assertEqual(
                             int(counter), 5,
-                            "mismatch encoding %s" % \
-                                (self.audio_class.NAME))
+                            "mismatch encoding %s (%s != %s)" % \
+                                (audio_class.NAME, counter, 5))
 
                     self.assertRaises(audiotools.EncodingError,
                                       track.convert,
@@ -944,17 +938,17 @@ class LosslessFileTest(AudioFileTest):
                                                                counter.update)
                             self.assertEqual(
                                 int(counter), 5,
-                                "mismatch encoding %s at quality %s" % \
-                                    (self.audio_class.NAME,
-                                     compression))
+                                "mismatch encoding %s at quality %s (%s != %s)" % \
+                                    (audio_class.NAME, compression,
+                                     counter, 5))
 
-                            #check some obvious failures
-                            self.assertRaises(audiotools.EncodingError,
-                                              track.convert,
-                                              "/dev/null/foo.%s" % \
-                                                  (audio_class.SUFFIX),
-                                              audio_class,
-                                              compression)
+                        #check some obvious failures
+                        self.assertRaises(audiotools.EncodingError,
+                                          track.convert,
+                                          "/dev/null/foo.%s" % \
+                                              (audio_class.SUFFIX),
+                                          audio_class,
+                                          compression)
 
                 finally:
                     temp2.close()

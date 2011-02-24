@@ -258,6 +258,13 @@ class FrameCounter:
         self.sample_rate = sample_rate
         self.value = value
 
+    def __repr__(self):
+        return "FrameCounter(%d %d %d %d)" % \
+            (self.channels,
+             self.bits_per_sample,
+             self.sample_rate,
+             self.value)
+
     def update(self, f):
         self.value += len(f)
 
