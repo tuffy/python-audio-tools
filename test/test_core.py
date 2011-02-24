@@ -452,6 +452,36 @@ class PCMConverter(unittest.TestCase):
                 5)
 
 
+class LimitedPCMReader(unittest.TestCase):
+    @LIB_CORE
+    def test_read(self):
+        reader = audiotools.BufferedPCMReader(BLANK_PCM_Reader(1))
+        counter1 = FrameCounter(2, 16, 44100)
+        counter2 = FrameCounter(2, 16, 44100)
+        audiotools.transfer_framelist_data(
+            audiotools.LimitedPCMReader(reader, 4100), counter1.update)
+        audiotools.transfer_framelist_data(
+            audiotools.LimitedPCMReader(reader, 40000), counter2.update)
+        self.assertEqual(counter1.value, 4100 * 4)
+        self.assertEqual(counter2.value, 40000 * 4)
+
+
+class PCMCat(unittest.TestCase):
+    @LIB_CUSTOM
+    def test_read(self):
+        reader1 = BLANK_PCM_Reader(1)
+        reader2 = BLANK_PCM_Reader(2)
+        reader3 = BLANK_PCM_Reader(3)
+        counter = FrameCounter(2, 16, 44100)
+        cat = audiotools.PCMCat(iter([reader1, reader2, reader3]))
+        self.assertEqual(cat.sample_rate, 44100)
+        self.assertEqual(cat.bits_per_sample, 16)
+        self.assertEqual(cat.channels, 2)
+        self.assertEqual(cat.channel_mask, 0x3)
+        audiotools.transfer_framelist_data(cat, counter.update)
+        self.assertEqual(int(counter), 6)
+
+
 class PCMReaderWindow(unittest.TestCase):
     @LIB_CORE
     def setUp(self):
@@ -517,6 +547,58 @@ class PCMReaderWindow(unittest.TestCase):
                 MiniFrameReader(self.channels, 44100, 3, 16), -5, 30),
                              [[0] * 5 + range(0, 20) + [0] * 5,
                               [0] * 5 + range(20, 0, -1) + [0] * 5])
+
+
+class Test_group_tracks(unittest.TestCase):
+    @LIB_CORE
+    def setUp(self):
+        self.output_format = audiotools.FlacAudio
+        self.track_files = [
+            tempfile.NamedTemporaryFile(
+                suffix="." + self.output_format.SUFFIX)
+            for i in xrange(5)]
+        self.tracks = [
+            self.output_format.from_pcm(
+                track.name,
+                BLANK_PCM_Reader(1)) for track in self.track_files]
+        self.tracks[0].set_metadata(audiotools.MetaData(
+                album_name=u"Album 1",
+                album_number=1,
+                track_number=1))
+        self.tracks[1].set_metadata(audiotools.MetaData(
+                album_name=u"Album 2",
+                album_number=1,
+                track_number=1))
+        self.tracks[2].set_metadata(audiotools.MetaData(
+                album_name=u"Album 1",
+                album_number=1,
+                track_number=2))
+        self.tracks[3].set_metadata(audiotools.MetaData(
+                album_name=u"Album 2",
+                album_number=2,
+                track_number=1))
+        self.tracks[4].set_metadata(audiotools.MetaData(
+                album_name=u"Album 3",
+                album_number=1,
+                track_number=1))
+
+
+    @LIB_CORE
+    def tearDown(self):
+        for track in self.track_files:
+            track.close()
+
+    @LIB_CORE
+    def test_grouping(self):
+        groupings = list(audiotools.group_tracks(self.tracks))
+        groupings.sort(lambda x,y: cmp(x[0].get_metadata().album_name,
+                                       y[0].get_metadata().album_name))
+        self.assertEqual(groupings[0], [self.tracks[0], self.tracks[2]])
+        self.assertEqual(groupings[1], [self.tracks[1]])
+        self.assertEqual(groupings[2], [self.tracks[3]])
+        self.assertEqual(groupings[3], [self.tracks[4]])
+
+
 
 
 class Test_open(unittest.TestCase):

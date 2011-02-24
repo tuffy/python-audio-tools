@@ -3227,9 +3227,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** TODO ExecQueue
 **** TODO ExecQueue2
 **** DONE Image
-**** TODO LimitedPCMReader
+**** DONE LimitedPCMReader
 **** TODO Messenger
-**** TODO PCMCat
+**** DONE PCMCat
 **** DONE PCMConverter
 **** DONE PCMReaderWindow
 **** TODO ReorderedPCMReader
@@ -3240,7 +3240,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** TODO build_timestamp
 **** TODO calculate_replay_gain
 **** TODO filename_to_type
-**** TODO group_tracks
+**** DONE group_tracks
 **** TODO make_dirs
 **** DONE open
 **** TODO open_directory
@@ -3250,12 +3250,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** TODO pcm_frame_cmp
 **** DONE pcm_split
 **** TODO read_metadata_file
-**** TODO read_sheet
+**** DONE read_sheet
 **** DONE str_width
 **** TODO transfer_data
-**** TODO transfer_framelist_data
-**** TODO XMCD
-**** TODO MusicBrainzReleaseXML
+**** DONE transfer_framelist_data
+**** DONE XMCD
+**** DONE MusicBrainzReleaseXML
 *** DONE audiotools.pcm
 **** DONE FloatFrameList
 **** DONE FrameList
