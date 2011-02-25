@@ -794,7 +794,7 @@ def filename_to_type(path):
         else:
             raise UnknownAudioType(ext)
     else:
-        return TYPE_MAP[DEFAULT_TYPE]
+        raise UnknownAudioType(ext)
 
 
 class ChannelMask:
@@ -1235,6 +1235,11 @@ def pcm_frame_cmp(pcmreader1, pcmreader2):
     if ((pcmreader1.sample_rate != pcmreader2.sample_rate) or
         (pcmreader1.channels != pcmreader2.channels) or
         (pcmreader1.bits_per_sample != pcmreader2.bits_per_sample)):
+        return 0
+
+    if ((pcmreader1.channel_mask != 0) and
+        (pcmreader2.channel_mask != 0) and
+        (pcmreader1.channel_mask != pcmreader2.channel_mask)):
         return 0
 
     frame_number = 0

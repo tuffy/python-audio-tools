@@ -30,6 +30,7 @@ import cStringIO
 from hashlib import md5
 
 from test_reorg import (parser, Variable_Reader, BLANK_PCM_Reader,
+                        RANDOM_PCM_Reader,
                         EXACT_BLANK_PCM_Reader, SHORT_PCM_COMBINATIONS,
                         MD5_Reader, FrameCounter,
                         MiniFrameReader, Combinations,
@@ -548,6 +549,69 @@ class PCMReaderWindow(unittest.TestCase):
                              [[0] * 5 + range(0, 20) + [0] * 5,
                               [0] * 5 + range(20, 0, -1) + [0] * 5])
 
+class Test_ReplayGain(unittest.TestCase):
+    @LIB_CORE
+    def test_replaygain(self):
+        #a trivial test of the ReplayGain container
+
+        self.assertEqual(audiotools.ReplayGain(0.5, 1.0, 0.5, 1.0),
+                         audiotools.ReplayGain(0.5, 1.0, 0.5, 1.0))
+        self.assertNotEqual(audiotools.ReplayGain(0.5, 1.0, 0.5, 1.0),
+                            audiotools.ReplayGain(0.25, 1.0, 0.5, 1.0))
+        self.assertNotEqual(audiotools.ReplayGain(0.5, 1.0, 0.5, 1.0),
+                            audiotools.ReplayGain(0.5, 0.5, 0.5, 1.0))
+        self.assertNotEqual(audiotools.ReplayGain(0.5, 1.0, 0.5, 1.0),
+                            audiotools.ReplayGain(0.5, 1.0, 0.25, 1.0))
+        self.assertNotEqual(audiotools.ReplayGain(0.5, 1.0, 0.5, 1.0),
+                            audiotools.ReplayGain(0.5, 1.0, 0.5, 0.5))
+
+
+class Test_filename_to_type(unittest.TestCase):
+    @LIB_CORE
+    def test_filename_to_type(self):
+        type_group = {}
+        for audio_type in audiotools.AVAILABLE_TYPES:
+            type_group.setdefault(audio_type.SUFFIX, []).append(audio_type)
+
+        for suffix in type_group.keys():
+            temp = tempfile.NamedTemporaryFile(suffix="." + suffix)
+            try:
+                if (len(type_group[suffix]) == 1):
+                    self.assertEqual(audiotools.filename_to_type(temp.name),
+                                     type_group[suffix][0])
+                else:
+                    self.assertRaises(audiotools.AmbiguousAudioType,
+                                      audiotools.filename_to_type,
+                                      temp.name)
+            finally:
+                temp.close()
+
+        temp = tempfile.NamedTemporaryFile(suffix=".foo")
+        try:
+            self.assertRaises(audiotools.UnknownAudioType,
+                              audiotools.filename_to_type,
+                              temp.name)
+        finally:
+            temp.close()
+
+        temp = tempfile.NamedTemporaryFile()
+        try:
+            self.assertRaises(audiotools.UnknownAudioType,
+                              audiotools.filename_to_type,
+                              temp.name)
+        finally:
+            temp.close()
+
+
+class Test_timestamp(unittest.TestCase):
+    @LIB_CORE
+    def test_timestamp(self):
+        for timestamp in xrange(100000):
+            self.assertEqual(
+                audiotools.parse_timestamp(
+                    audiotools.build_timestamp(timestamp)),
+                timestamp)
+
 
 class Test_group_tracks(unittest.TestCase):
     @LIB_CORE
@@ -597,8 +661,6 @@ class Test_group_tracks(unittest.TestCase):
         self.assertEqual(groupings[1], [self.tracks[1]])
         self.assertEqual(groupings[2], [self.tracks[3]])
         self.assertEqual(groupings[3], [self.tracks[4]])
-
-
 
 
 class Test_open(unittest.TestCase):
@@ -653,6 +715,123 @@ class Test_open(unittest.TestCase):
         self.assertRaises(audiotools.InvalidFile,
                           audiotools.open,
                           self.dummy3.name)
+
+
+class Test_open_directory(unittest.TestCase):
+    @LIB_CORE
+    def setUp(self):
+        self.output_type = audiotools.FlacAudio
+        self.suffix = "." + self.output_type.SUFFIX
+        self.dir = tempfile.mkdtemp()
+
+    def make_track(self, directory, track_number):
+        track = self.output_type.from_pcm(
+            os.path.join(directory, str(track_number) + self.suffix),
+            BLANK_PCM_Reader(1))
+        track.set_metadata(audiotools.MetaData(track_name=u"Track Name",
+                                               track_number=track_number))
+        return track
+
+    @LIB_CORE
+    def tearDown(self):
+        import shutil
+
+        shutil.rmtree(self.dir)
+
+    @LIB_CORE
+    def test_open_directory(self):
+        subdir1 = os.path.join(self.dir, "dir1")
+        subdir2 = os.path.join(self.dir, "dir2")
+        subdir3 = os.path.join(subdir1, "dir3")
+
+        os.mkdir(subdir1)
+        os.mkdir(subdir2)
+        os.mkdir(subdir3)
+
+        track0_1 = self.make_track(self.dir, 1)
+        track0_2 = self.make_track(self.dir, 2)
+        track0_3 = self.make_track(self.dir, 3)
+        track1_1 = self.make_track(subdir1, 1)
+        track1_2 = self.make_track(subdir1, 2)
+        track1_3 = self.make_track(subdir1, 3)
+        track2_1 = self.make_track(subdir2, 1)
+        track2_2 = self.make_track(subdir2, 2)
+        track2_3 = self.make_track(subdir2, 3)
+        track3_1 = self.make_track(subdir3, 1)
+        track3_2 = self.make_track(subdir3, 2)
+        track3_3 = self.make_track(subdir3, 3)
+
+        tracks = list(audiotools.open_directory(self.dir))
+        self.assertEqual([t.filename for t in tracks],
+                         [t.filename for t in
+                          [track0_1, track0_2, track0_3,
+                           track1_1, track1_2, track1_3,
+                           track3_1, track3_2, track3_3,
+                           track2_1, track2_2, track2_3]])
+
+
+class Test_open_files(unittest.TestCase):
+    @LIB_CORE
+    def setUp(self):
+        self.output_type = audiotools.FlacAudio
+        self.suffix = "." + self.output_type.SUFFIX
+        self.dir = tempfile.mkdtemp()
+
+    def make_track(self, directory, track_number):
+        track = self.output_type.from_pcm(
+            os.path.join(directory, str(track_number) + self.suffix),
+            BLANK_PCM_Reader(1))
+        track.set_metadata(audiotools.MetaData(track_name=u"Track Name",
+                                               track_number=track_number))
+        return track
+
+    @LIB_CORE
+    def tearDown(self):
+        import shutil
+
+        shutil.rmtree(self.dir)
+
+    @LIB_CORE
+    def test_open_files(self):
+        track1 = self.make_track(self.dir, 1)
+        track2 = self.make_track(self.dir, 2)
+        track3 = self.make_track(self.dir, 3)
+        dummy1_name = os.path.join(self.dir, "4" + self.suffix)
+        dummy1 = open(dummy1_name, "wb")
+        dummy1.write("Hello World")
+        dummy1.close()
+
+        tracks = list(audiotools.open_files([track1.filename, track2.filename,
+                                             dummy1_name, track3.filename]))
+        self.assertEqual([t.filename for t in tracks],
+                         [t.filename for t in [track1, track2, track3]])
+
+
+class Test_pcm_frame_cmp(unittest.TestCase):
+    @LIB_CUSTOM
+    def test_pcm_frame_cmp(self):
+        self.assert_(audiotools.pcm_frame_cmp(
+                test_streams.Sine16_Stereo(44100, 44100,
+                                           441.0, 0.50,
+                                           4410.0, 0.49, 1.0),
+                test_streams.Sine16_Stereo(44100, 44100,
+                                           441.0, 0.50,
+                                           4410.0, 0.49, 1.0)) is None)
+        self.assertEqual(audiotools.pcm_frame_cmp(BLANK_PCM_Reader(1),
+                                                  RANDOM_PCM_Reader(1)), 0)
+
+        self.assertEqual(audiotools.pcm_frame_cmp(
+                BLANK_PCM_Reader(1),
+                BLANK_PCM_Reader(1, sample_rate=48000)), 0)
+        self.assertEqual(audiotools.pcm_frame_cmp(
+                BLANK_PCM_Reader(1),
+                BLANK_PCM_Reader(1, channels=1)), 0)
+        self.assertEqual(audiotools.pcm_frame_cmp(
+                BLANK_PCM_Reader(1),
+                BLANK_PCM_Reader(1, bits_per_sample=24)), 0)
+        self.assertEqual(audiotools.pcm_frame_cmp(
+                BLANK_PCM_Reader(1),
+                BLANK_PCM_Reader(1, channel_mask=0x30)), 0)
 
 class Test_pcm_split(unittest.TestCase):
     @LIB_CORE
