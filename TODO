@@ -2908,7 +2908,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE Combine multiple substreams into single output frame
 **** DONE Handle output shifts
 **** TODO Handle checksums
-***** TODO restart header checksum
+***** TODO restart header lossless check
 ***** DONE end-of-frame parity
 ***** DONE end-of-frame checksum
 **** DONE Build pcm.FrameList from PCM data arrays
@@ -2924,11 +2924,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE substream size
 *** DONE substream data
 *** DONE restart header
-*** TODO decoding parameters
+*** DONE decoding parameters
 **** DONE parameter presence flags
 **** DONE block size
 **** DONE matrix parameters
-**** TODO output shifts
+**** DONE output shifts
 **** DONE quant step sizes
 *** DONE checksums
 *** DONE block data
@@ -2936,7 +2936,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE channel rematrixing
 **** DONE noise channels
 **** DONE rematrixing
-*** TODO end of stream marker
+*** DONE end of stream marker
 ** DONE Document PCM decoder
 ** DONE Link MLP decoder to AOB extractor
 ** DONE Link PCM decoder to AOB extractor
@@ -2944,8 +2944,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Document Python interface
 ** DONE Build dvdainfo utility
 *** DONE Add dvdainfo.1 man page
-** TODO Build dvda2track utility
-*** TODO Fix to work without -d
+** DONE Build dvda2track utility
+*** DONE Fix to work without -d
 *** DONE Add --track-start / --track-total options
     Since some especially long discs split tracks across titles,
     it makes sense to have a way to specify the starting track number
@@ -3247,7 +3247,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE open_files
 **** DONE parse_timestamp
 **** TODO pcm_cmp
-**** TODO pcm_frame_cmp
+**** DONE pcm_frame_cmp
 **** DONE pcm_split
 **** TODO read_metadata_file
 **** DONE read_sheet

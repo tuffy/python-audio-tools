@@ -610,17 +610,17 @@ That is, for a 2 channel stream:
 \par
 \noindent
 \begin{tabular}{r c r}
-$\text{Frame}_{i~1}$ & = & $\text{Filtered}_{i~1}$ \\
-$\text{Frame}_{i~2}$ & = & $\text{Filtered}_{i~2}$ \\
-$\text{Frame}_{i~3}$ & = & $\text{Noise}_{i~1}$ \\
-$\text{Frame}_{i~4}$ & = & $\text{Noise}_{i~2}$
+$\text{Matrix}_{i~1}$ & = & $\text{Filtered}_{i~1}$ \\
+$\text{Matrix}_{i~2}$ & = & $\text{Filtered}_{i~2}$ \\
+$\text{Matrix}_{i~3}$ & = & $\text{Noise}_{i~1}$ \\
+$\text{Matrix}_{i~4}$ & = & $\text{Noise}_{i~2}$
 \end{tabular}
 \par
 \noindent
 The calculation for the matrix's output sample is then as follows:
 \begin{align*}
-\text{Shifted Sum}_{i~\text{Channel}} &= \left\lfloor\frac{\overset{\text{Channel Count + 2}}{\underset{j = 1}{\sum}}{\text{Frame}_{i~j} \times \text{Matrix Coefficient}_j}}{2 ^ {14}}\right\rfloor \\
-\text{Frame}_{i~\text{Channel}} &= \text{mask}(\text{Shifted Sum}_{i~\text{Channel}}) + \text{Bypassed LSB}_i
+\text{Shifted Sum}_{i~\text{Channel}} &= \left\lfloor\frac{\overset{\text{Channel Count + 2}}{\underset{j = 1}{\sum}}{\text{Matrix}_{i~j} \times \text{Matrix Coefficient}_j}}{2 ^ {14}}\right\rfloor \\
+\text{Rematrixed}_{i~\text{Channel}} &= \text{mask}(\text{Shifted Sum}_{i~\text{Channel}}) + \text{Bypassed LSB}_i
 \end{align*}
 Note that the two noise channels are the reason we read
 \VAR{Max Matrix Channel} + 3 number of matrix coefficients
@@ -654,9 +654,9 @@ Out Channel & = & 0
 \noindent
 Our new values for channel 1 (\VAR{Out Channel} + 1) are calculated as follows:
 \begin{align*}
-\text{Frame}_{0~1} &= \left\lfloor\frac{(-54372 \times -16384) + (169057 \times 6144) + (-17 \times 0) + (-68 \times 0)}{2 ^ {14}}\right\rfloor + 0 \\
+\text{Rematrixed}_{0~1} &= \left\lfloor\frac{(-54372 \times -16384) + (169057 \times 6144) + (-17 \times 0) + (-68 \times 0)}{2 ^ {14}}\right\rfloor + 0 \\
 &= \left\lfloor\frac{1929517056}{16384}\right\rfloor = \textbf{117768} \\
-\text{Frame}_{1~1} &= \left\lfloor\frac{(-92558 \times -16384) + (118830 \times 6144) + (-30 \times 0) + (-48 \times 0)}{2 ^ {14}}\right\rfloor + 0 \\
+\text{Rematrixed}_{1~1} &= \left\lfloor\frac{(-92558 \times -16384) + (118830 \times 6144) + (-30 \times 0) + (-48 \times 0)}{2 ^ {14}}\right\rfloor + 0 \\
 &= \left\lfloor\frac{2246561792}{16384}\right\rfloor = \textbf{137119} \\
 \end{align*}
 The values for channel 2 remain unchanged as 169057 and 118830, respectively.
@@ -665,6 +665,43 @@ The values for channel 2 remain unchanged as 169057 and 118830, respectively.
 %% the values from the 2 noise channels don't actually affect the
 %% calculation whatsoever.
 %% This is not an unusual case.
+
+\subsection{Output Shifts}
+
+If \VAR{Output Shifts} are indicated in the decoding parameters,
+one applies them to the rematrixed samples on a per-channel
+basis as follows:
+\begin{equation*}
+\text{Final Sample}_{i~\text{Channel}} = \text{Rematrixed}_{i~\text{Channel}} \times 2 ^ {\text{Output Shift}_\text{Channel}}
+\end{equation*}
+Naturally, when \VAR{Output Shift} is 0 for a given channel,
+the rematrixed samples are our final samples.
+
+Once the final block has been read (as indicated by its \VAR{Last} bit),
+we align the stream to a multiple of 16 bits before checking
+for an end of stream marker or optional parity/CRC-8 bytes.
+
+\subsection{The End-of-Stream Marker}
+
+The MLP optional end-of-stream marker is indicated by 4 bytes:
+
+\begin{Verbatim}
+D2 34 D2 34
+\end{Verbatim}
+\par
+\noindent
+which are found \textit{after} byte alignment
+but \textit{prior} to the optional parity and CRC-8 bytes.
+Not all MLP streams have an end-of-stream marker at the actual
+end of the stream, nor is there any guarantee that
+a false end-of-stream marker won't appear at the end of
+block data.
+Therefore, one should only check for an optional marker
+once the stream's samples have been exhausted - as indicated
+by the \VAR{Track PTS Length} field in the title table,
+described on page \pageref{dvda_title_table}.
+
+\clearpage
 
 \subsection{Parity}
 
@@ -691,6 +728,8 @@ our parity byte is \texttt{0x1C} and the parity calculation is as follows:
 \begin{align*}
 \text{Parity} &= \texttt{0x1C} \xor \texttt{0x00} \xor \texttt{0x20} \xor \texttt{0x00} \xor \texttt{0x95} = \texttt{0xA9}
 \end{align*}
+
+\clearpage
 
 \subsection{CRC-8}
 
@@ -734,7 +773,7 @@ and CRC8 is taken from the following table:
 \end{tabular}
 }
 \end{table}
-\clearpage
+
 For instance, given the same substream bytes as before,
 \texttt{0x95 0x00 0x20 0x00 0x1C 0xB6},
 our CRC-8 calculation is as follows:
@@ -745,3 +784,5 @@ our CRC-8 calculation is as follows:
 \texttt{0xB6} \xor \texttt{0x00} &= \texttt{0xB6}
 \end{align*}
 which matches our CRC-8 byte at the end of the substream.
+
+\clearpage

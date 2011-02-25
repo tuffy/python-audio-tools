@@ -808,7 +808,7 @@ class Test_open_files(unittest.TestCase):
 
 
 class Test_pcm_frame_cmp(unittest.TestCase):
-    @LIB_CUSTOM
+    @LIB_CORE
     def test_pcm_frame_cmp(self):
         self.assert_(audiotools.pcm_frame_cmp(
                 test_streams.Sine16_Stereo(44100, 44100,
@@ -832,6 +832,11 @@ class Test_pcm_frame_cmp(unittest.TestCase):
         self.assertEqual(audiotools.pcm_frame_cmp(
                 BLANK_PCM_Reader(1),
                 BLANK_PCM_Reader(1, channel_mask=0x30)), 0)
+
+        self.assertEqual(audiotools.pcm_frame_cmp(
+                BLANK_PCM_Reader(2),
+                audiotools.PCMCat(iter([BLANK_PCM_Reader(1),
+                                        RANDOM_PCM_Reader(1)]))), 44100)
 
 class Test_pcm_split(unittest.TestCase):
     @LIB_CORE

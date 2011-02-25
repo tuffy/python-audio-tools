@@ -149,8 +149,11 @@ if (__name__ == '__main__'):
         help=_(u'the quality to store audio tracks at'))
 
     conversion.add_option(
-        "-d", "--dir", action='store', default='.',
+        '-d', '--dir',
+        action='store',
+        type='string',
         dest='dir',
+        default='.',
         help=_(u"the directory to store extracted audio tracks"))
 
     conversion.add_option(
