@@ -55,6 +55,16 @@ class RawConfigParser(ConfigParser.RawConfigParser):
         except ConfigParser.NoOptionError:
             return default
 
+    def getboolean_default(self, section, option, default):
+        """Returns a default if option is not found in section."""
+
+        try:
+            return self.getboolean(section, option)
+        except ConfigParser.NoSectionError:
+            return default
+        except ConfigParser.NoOptionError:
+            return default
+
     def set_default(self, section, option, value):
         try:
             self.set(section, option, value)

@@ -20,7 +20,7 @@ Show the program's version and exit
 
 .SH SYSTEM OPTIONS
 .TP
-\fB-V \fIVERBOSITY\fB, --verbose=\fIVERBOSITY\fR
+\fB-V \fIVERBOSITY\fB, --verbose=\fIverbosity\fR
 The default verbosity level for all tools.
 Choose between `normal', `quiet' and `debug'.
 
@@ -47,7 +47,7 @@ The system's I/O text encoding, such as "UTF-8"
 .SH TRANSCODING OPTIONS
 
 .TP
-\fB-t \fITYPE\fB, --type=\fITYPE\fR
+\fB-t \fITYPE\fB, --type=\fItype\fR
 When used \fIwithout\fR the \fB-q\fR option, this sets the default audio
 type to use when creating new audio files.
 Otherwise, this is used in conjunction with \fB-q\fR to set
@@ -56,7 +56,7 @@ For a list of available audio formats, try: \fB-t help\fR
 
 .TP
 
-\fB-q \fIQUALITY\fB, --quality=\fIQUALITY\fR
+\fB-q \fIQUALITY\fB, --quality=\fIquality\fR
 The default quality level for a given audio type.
 For a list of available quality levels, try: \fB-q help\fR
 
@@ -95,6 +95,29 @@ The default MusicBrainz server to use
 .TP
 \fB--musicbrainz-port=\fIport\fR
 The default MusicBrainz port number to use
+
+.SH ID3 OPTIONS
+
+.TP
+\fB--id3v2-version=\fIversion\fR
+Which version to use for newly created ID3v2 tags.
+Choose from "id3v2.2", "id3v2.3", "id3v2.4", or "none".
+All three ID3v2 tag versions are roughly equivalent in terms
+of supported features, but "id3v2.2" and "id3v2.3" have
+the widest level of support.
+If "none" is given, new MP3 files will not be given ID3v2 tags.
+
+.TP
+\fB--id3v1-version=\fIversion\fR
+Which version to use for newly created ID3v1 tags.
+Choose from "id3v1.1" or "none".
+If "none" is given, new MP3 files will not be given ID3v1 tags.
+
+.TP
+\fB--id3v2-pad=\fItrue / false\fR
+Whether to pad ID3v2 numerical fields to 2 digits.
+For example, if "true", track number 1 will be stored as \[lq]01\[rq]
+in ID3v2 tags.  If false, it will be stored as \[lq]1\[rq].
 
 .SH BINARIES OPTIONS
 

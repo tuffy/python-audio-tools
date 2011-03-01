@@ -17,7 +17,8 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import MetaData, Con, re, os, cStringIO, Image, InvalidImage
+from audiotools import (MetaData, Con, re, os, cStringIO,
+                        Image, InvalidImage, config)
 import codecs
 import gettext
 
@@ -181,11 +182,23 @@ def __attrib_equals__(attributes, o1, o2):
 #returns a unicode string of their combined pair
 #for example, __number_pair__(2,3) returns u"2/3"
 #whereas      __number_pair__(4,0) returns u"4"
-def __number_pair__(current, total):
+
+def __padded_number_pair__(current, total):
+    if (total == 0):
+        return u"%2.2d" % (current)
+    else:
+        return u"%2.2d/%2.2d" % (current, total)
+
+def __unpadded_number_pair__(current, total):
     if (total == 0):
         return u"%d" % (current)
     else:
         return u"%d/%d" % (current, total)
+
+if (config.getboolean_default("ID3", "pad", False)):
+    __number_pair__ = __padded_number_pair__
+else:
+    __number_pair__ = __unpadded_number_pair__
 
 
 #######################
@@ -1670,7 +1683,9 @@ class ID3CommentPair(MetaData):
             delattr(self.id3v1, key)
 
     @classmethod
-    def converted(cls, metadata):
+    def converted(cls, metadata,
+                  id3v2_class=ID3v23Comment,
+                  id3v1_class=ID3v1Comment):
         """Takes a MetaData object and returns an ID3CommentPair object."""
 
         if ((metadata is None) or (isinstance(metadata, ID3CommentPair))):
@@ -1678,11 +1693,11 @@ class ID3CommentPair(MetaData):
 
         if (isinstance(metadata, ID3v2Comment)):
             return ID3CommentPair(metadata,
-                                  ID3v1Comment.converted(metadata))
+                                  id3v1_class.converted(metadata))
         else:
             return ID3CommentPair(
-                ID3v23Comment.converted(metadata),
-                ID3v1Comment.converted(metadata))
+                id3v2_class.converted(metadata),
+                id3v1_class.converted(metadata))
 
     def merge(self, metadata):
         """Updates any currently empty entries from metadata's values."""

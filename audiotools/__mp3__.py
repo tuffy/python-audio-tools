@@ -23,7 +23,7 @@ from audiotools import (AudioFile, InvalidFile, PCMReader, PCMConverter,
                         subprocess, BIN, BIG_ENDIAN, ApeTag, ReplayGain,
                         ignore_sigint, open_files, EncodingError,
                         DecodingError, PCMReaderError, ChannelMask,
-                        __default_quality__)
+                        __default_quality__, config)
 from __id3__ import *
 import gettext
 
@@ -503,9 +503,30 @@ class MP3Audio(AudioFile):
 
         if ((not isinstance(metadata, ID3v2Comment)) and
             (not isinstance(metadata, ID3v1Comment))):
-            metadata = ID3CommentPair.converted(metadata)
+            DEFAULT_ID3V2 = "id3v2.3"
+            DEFAULT_ID3V1 = "id3v1.1"
 
-        #metadata = ID3v24Comment.converted(metadata)
+            id3v2_class = {"id3v2.2":ID3v22Comment,
+                           "id3v2.3":ID3v23Comment,
+                           "id3v2.4":ID3v24Comment,
+                           "none":None}.get(config.get_default("ID3",
+                                                               "id3v2",
+                                                               DEFAULT_ID3V2),
+                                            DEFAULT_ID3V2)
+            id3v1_class = {"id3v1.1":ID3v1Comment,
+                           "none":None}.get(config.get_default("ID3",
+                                                               "id3v1",
+                                                               DEFAULT_ID3V1))
+            if ((id3v2_class is not None) and (id3v1_class is not None)):
+                metadata = ID3CommentPair.converted(metadata,
+                                                    id3v2_class=id3v2_class,
+                                                    id3v1_class=id3v1_class)
+            elif (id3v2_class is not None):
+                metadata = id3v2_class.converted(metadata)
+            elif (id3v1_class is not None):
+                metadata = id3v1_class.converted(metadata)
+            else:
+                return
 
         #get the original MP3 data
         f = file(self.filename, "rb")
