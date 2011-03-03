@@ -536,6 +536,20 @@ class VerboseMessenger:
                               ).encode(IO_ENCODING))
             sys.stdout.flush()
 
+    def ansi_uplines(self, lines):
+        """Moves the cursor up by the given number of lines."""
+
+        if (sys.stdout.isatty()):
+            sys.stdout.write(u"\u001B[%dA" % (lines))
+            sys.stdout.flush()
+
+    def ansi_cleardown(self):
+        """Clears the remainder of the screen from the cursor downward."""
+
+        if (sys.stdout.isatty()):
+            sys.stdout.write(u"\u001B[0J")
+            sys.stdout.flush()
+
     def ansi_err(self, s, codes):
         """Generates an ANSI code as a unicode string.
 
@@ -551,6 +565,14 @@ class VerboseMessenger:
                 (";".join(map(unicode, codes)), s)
         else:
             return s
+
+    def terminal_size(self, fd):
+        """returns the current terminal size as (height, width)"""
+
+        import fcntl, termios, struct
+
+        #this isn't all that portable, but will have to do
+        return struct.unpack('hh', fcntl.ioctl(fd, termios.TIOCGWINSZ, '1234'))
 
 
 class SilentMessenger(VerboseMessenger):
