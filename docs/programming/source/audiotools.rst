@@ -281,7 +281,7 @@ AudioFile Objects
    May return a :class:`PCMReaderError` if an error occurs
    initializing the decoder.
 
-.. classmethod:: AudioFile.from_pcm(filename, pcmreader[, compression=None])
+.. classmethod:: AudioFile.from_pcm(filename, pcmreader[, compression])
 
    Takes a filename string, :class:`PCMReader`-compatible object
    and optional compression level string.
@@ -295,7 +295,7 @@ AudioFile Objects
    >>> audiotools.MP3Audio.from_pcm("track.mp3",
    ...                              audiotools.open("track.flac").to_pcm())
 
-.. method:: AudioFile.convert(filename, target_class[, compression=None])
+.. method:: AudioFile.convert(filename, target_class[, compression[, progress]])
 
    Takes a filename string, :class:`AudioFile` subclass
    and optional compression level string.
@@ -323,6 +323,25 @@ AudioFile Objects
    ...                                       audiotools.WavPackAudio)
 
    whereas the ``to_pcm``/``from_pcm`` method alone will not.
+
+   The optional ``progress`` argument is a function which takes
+   two integer arguments: ``amount_processed`` and ``total_amount``.
+   If supplied, this function is called at regular intervals
+   during the conversion process and may be used to indicate
+   the current status to the user.
+   Note that these numbers are only meaningful when compared
+   to one another; ``amount`` may represent PCM frames, bytes
+   or anything else.
+   The only restriction is that ``total_amount`` will remain
+   static during processing and ``amount_processed`` will
+   progress from 0 to ``total_amount``.
+
+   >>> def print_progress(x, y):
+   ...   print "%d%%" % (x * 100 / y)
+   ...
+   >>> audiotools.open("track.flac").convert("track.wv",
+   ...                                       audiotools.WavPackAudio,
+   ...                                       progress=print_progress)
 
 .. method:: AudioFile.track_number()
 

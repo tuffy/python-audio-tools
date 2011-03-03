@@ -24,7 +24,7 @@ from audiotools import (AudioFile, InvalidFile, ChannelMask, PCMReader,
                         __capped_stream_reader__, FILENAME_FORMAT,
                         BIN, open_files, os, subprocess, cStringIO,
                         EncodingError, DecodingError, UnsupportedChannelMask,
-                        WaveContainer)
+                        WaveContainer, to_pcm_progress)
 import os.path
 import gettext
 from . import pcm
@@ -499,7 +499,7 @@ class WaveAudio(WaveContainer):
 
         return WaveAudio(filename)
 
-    def to_wave(self, wave_filename):
+    def to_wave(self, wave_filename, progress=None):
         """Writes the contents of this file to the given .wav filename string.
 
         Raises EncodingError if some error occurs during decoding."""
@@ -521,7 +521,8 @@ class WaveAudio(WaveContainer):
             output.close()
 
     @classmethod
-    def from_wave(cls, filename, wave_filename, compression=None):
+    def from_wave(cls, filename, wave_filename, compression=None,
+                  progress=None):
         """Encodes a new AudioFile from an existing .wav file.
 
         Takes a filename string, wave_filename string
@@ -542,7 +543,15 @@ class WaveAudio(WaveContainer):
         except IOError, err:
             raise EncodingError(str(err))
         try:
-            transfer_data(input.read, output.write)
+            total_bytes = os.path.getsize(wave_filename)
+            current_bytes = 0
+            s = input.read(4096)
+            while (len(s) > 0):
+                current_bytes += len(s)
+                output.write(s)
+                if (progress is not None):
+                    progress(current_bytes, total_bytes)
+                s = input.read(4096)
             output.flush()
             try:
                 return WaveAudio(filename)
@@ -553,7 +562,8 @@ class WaveAudio(WaveContainer):
             input.close()
             output.close()
 
-    def convert(self, target_path, target_class, compression=None):
+    def convert(self, target_path, target_class, compression=None,
+                progress=None):
         """Encodes a new AudioFile from existing AudioFile.
 
         Take a filename string, target class and optional compression string.
@@ -564,10 +574,11 @@ class WaveAudio(WaveContainer):
         if (hasattr(target_class, "from_wave")):
             return target_class.from_wave(target_path,
                                           self.filename,
-                                          compression)
+                                          compression=compression,
+                                          progress=progress)
         else:
             return target_class.from_pcm(target_path,
-                                         self.to_pcm(),
+                                         to_pcm_progress(self, progress),
                                          compression)
 
     def total_frames(self):

@@ -1059,6 +1059,36 @@ class PCMReaderError(PCMReader):
 
         raise DecodingError(self.error_message)
 
+def to_pcm_progress(audiofile, progress):
+    if (progress is None):
+        return audiofile.to_pcm()
+    else:
+        return PCMReaderProgress(audiofile.to_pcm(),
+                                 audiofile.total_frames(),
+                                 progress)
+
+class PCMReaderProgress:
+    def __init__(self, pcmreader, total_frames, progress):
+        self.__read__ = pcmreader.read
+        self.__close__ = pcmreader.close
+        self.sample_rate = pcmreader.sample_rate
+        self.channels = pcmreader.channels
+        self.channel_mask = pcmreader.channel_mask
+        self.bits_per_sample = pcmreader.bits_per_sample
+        self.current_frames = 0
+        self.total_frames = total_frames
+        self.progress = progress
+
+    def read(self, bytes):
+        frame = self.__read__(bytes)
+        self.current_frames += frame.frames
+        self.progress(self.current_frames, self.total_frames)
+        return frame
+
+    def close(self):
+        self.__close__()
+
+
 
 class ReorderedPCMReader:
     """A PCMReader wrapper which reorders its output channels."""
@@ -2777,7 +2807,8 @@ class AudioFile:
 
         raise NotImplementedError()
 
-    def convert(self, target_path, target_class, compression=None):
+    def convert(self, target_path, target_class, compression=None,
+                progress=None):
         """Encodes a new AudioFile from existing AudioFile.
 
         Take a filename string, target class and optional compression string.
@@ -2786,8 +2817,9 @@ class AudioFile:
         May raise EncodingError if some problem occurs during encoding."""
 
         return target_class.from_pcm(target_path,
-                                     self.to_pcm(),
+                                     to_pcm_progress(self, progress),
                                      compression)
+
 
     @classmethod
     def __unlink__(cls, filename):
@@ -3031,17 +3063,18 @@ class WaveContainer(AudioFile):
     >>> WaveContainer("file", "input.wav").to_wave("output.wav")
     """
 
-    def to_wave(self, wave_filename):
+    def to_wave(self, wave_filename, progress=None):
         """Writes the contents of this file to the given .wav filename string.
 
         Raises EncodingError if some error occurs during decoding."""
 
-        pcmreader = self.to_pcm()
+        pcmreader = to_pcm_progress(self, progress)
         WaveAudio.from_pcm(wave_filename, pcmreader)
         pcmreader.close()
 
     @classmethod
-    def from_wave(cls, filename, wave_filename, compression=None):
+    def from_wave(cls, filename, wave_filename, compression=None,
+                  progress=None):
         """Encodes a new AudioFile from an existing .wav file.
 
         Takes a filename string, wave_filename string
@@ -3058,7 +3091,8 @@ class WaveContainer(AudioFile):
         """
 
         return cls.from_pcm(filename,
-                            WaveAudio(wave_filename).to_pcm(),
+                            to_pcm_progress(WaveAudio(wave_filename),
+                                            progress),
                             compression)
 
     def has_foreign_riff_chunks(self):
@@ -3071,7 +3105,8 @@ class WaveContainer(AudioFile):
 
         return False
 
-    def convert(self, target_path, target_class, compression=None):
+    def convert(self, target_path, target_class, compression=None,
+                progress=None):
         """Encodes a new AudioFile from existing AudioFile.
 
         Take a filename string, target class and optional compression string.
@@ -3082,21 +3117,24 @@ class WaveContainer(AudioFile):
         import tempfile
 
         if (target_class == WaveAudio):
-            self.to_wave(target_path)
+            self.to_wave(target_path, progress=progress)
             return WaveAudio(target_path)
         elif (self.has_foreign_riff_chunks() and
               hasattr(target_class, "from_wave")):
             temp_wave = tempfile.NamedTemporaryFile(suffix=".wav")
             try:
+                #we'll only log the second leg of conversion,
+                #since that's likely to be the slower portion
                 self.to_wave(temp_wave.name)
                 return target_class.from_wave(target_path,
                                               temp_wave.name,
-                                              compression)
+                                              compression,
+                                              progress=progress)
             finally:
                 temp_wave.close()
         else:
             return target_class.from_pcm(target_path,
-                                         self.to_pcm(),
+                                         to_pcm_progress(self, progress),
                                          compression)
 
 class AiffContainer(AudioFile):
@@ -3117,7 +3155,8 @@ class AiffContainer(AudioFile):
         pcmreader.close()
 
     @classmethod
-    def from_aiff(cls, filename, aiff_filename, compression=None):
+    def from_aiff(cls, filename, aiff_filename, compression=None,
+                  progress=None):
         """Encodes a new AudioFile from an existing .aiff file.
 
         Takes a filename string, aiff_filename string
@@ -3134,7 +3173,7 @@ class AiffContainer(AudioFile):
         """
 
         return cls.from_pcm(filename,
-                            AiffAudio(wave_filename).to_pcm(),
+                            to_pcm_progress(AiffAudio(wave_filename)),
                             compression)
 
     def has_foreign_aiff_chunks(self):
@@ -3147,7 +3186,8 @@ class AiffContainer(AudioFile):
 
         return False
 
-    def convert(self, target_path, target_class, compression=None):
+    def convert(self, target_path, target_class, compression=None,
+                progress=None):
         """Encodes a new AudioFile from existing AudioFile.
 
         Take a filename string, target class and optional compression string.
@@ -3170,7 +3210,7 @@ class AiffContainer(AudioFile):
                 temp_aiff.close()
         else:
             return target_class.from_pcm(target_path,
-                                         self.to_pcm(),
+                                         to_pcm_progress(self, progress),
                                          compression)
 
 class DummyAudioFile(AudioFile):

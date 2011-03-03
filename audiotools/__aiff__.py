@@ -22,7 +22,7 @@ from audiotools import (AudioFile, InvalidFile, Con, PCMReader,
                         transfer_data, DecodingError, EncodingError,
                         ID3v22Comment, BUFFER_SIZE, ChannelMask,
                         UnsupportedChannelMask, ReorderedPCMReader, pcm,
-                        cStringIO, os, AiffContainer)
+                        cStringIO, os, AiffContainer, to_pcm_progress)
 
 import gettext
 
@@ -568,7 +568,8 @@ class AiffAudio(AiffContainer):
             output.close()
 
     @classmethod
-    def from_aiff(cls, filename, aiff_filename, compression=None):
+    def from_aiff(cls, filename, aiff_filename, compression=None,
+                  progress=None):
         try:
             cls(aiff_filename).verify()
         except InvalidAiff, err:
@@ -580,7 +581,15 @@ class AiffAudio(AiffContainer):
         except IOError, err:
             raise EncodingError(str(err))
         try:
-            transfer_data(input.read, output.write)
+            total_bytes = os.path.getsize(aiff_filename)
+            current_bytes = 0
+            s = input.read(4096)
+            while (len(s) > 0):
+                current_bytes += len(s)
+                output.write(s)
+                if (progress is not None):
+                    progress(current_bytes, total_bytes)
+                s = input.read(4096)
             output.flush()
             try:
                 return AiffAudio(filename)
@@ -591,7 +600,8 @@ class AiffAudio(AiffContainer):
             input.close()
             output.close()
 
-    def convert(self, target_path, target_class, compression=None):
+    def convert(self, target_path, target_class, compression=None,
+                progress=None):
         """Encodes a new AudioFile from existing AudioFile.
 
         Take a filename string, target class and optional compression string.
@@ -602,10 +612,11 @@ class AiffAudio(AiffContainer):
         if (hasattr(target_class, "from_aiff")):
             return target_class.from_aiff(target_path,
                                           self.filename,
-                                          compression)
+                                          compression=compression,
+                                          progress=progress)
         else:
             return target_class.from_pcm(target_path,
-                                         self.to_pcm(),
+                                         to_pcm_progress(self, progress),
                                          compression)
 
     def pcm_split(self):

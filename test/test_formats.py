@@ -97,6 +97,14 @@ class ERROR_PCM_Reader(audiotools.PCMReader):
         pass
 
 
+class Log:
+    def __init__(self):
+        self.results = []
+
+    def update(self, *args):
+        self.results.append(args)
+
+
 class AudioFileTest(unittest.TestCase):
     def setUp(self):
         self.audio_class = audiotools.AudioFile
@@ -292,6 +300,39 @@ class AudioFileTest(unittest.TestCase):
     @FORMAT_AUDIOFILE_PLACEHOLDER
     def test_convert(self):
         self.assert_(False)
+
+    @FORMAT_AUDIOFILE
+    def test_convert_progress(self):
+        if (self.audio_class is audiotools.AudioFile):
+            return
+
+        temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
+        try:
+            track = self.audio_class.from_pcm(temp.name,
+                                              BLANK_PCM_Reader(10))
+            for audio_class in audiotools.AVAILABLE_TYPES:
+                outfile = tempfile.NamedTemporaryFile(
+                    suffix="." + audio_class.SUFFIX)
+                log = Log()
+                try:
+                    track2 = track.convert(outfile.name,
+                                           audio_class,
+                                           progress=log.update)
+                    self.assert_(len(log.results) > 0,
+                                 "no logging converting %s to %s" %
+                                 (self.audio_class.NAME,
+                                  audio_class.NAME))
+                    self.assert_(len(set([r[1] for r in log.results])) == 1)
+                    for x,y in zip(log.results[1:], log.results):
+                        self.assert_((x[0] - y[0]) >= 0)
+
+                    if (track.lossless() and track2.lossless()):
+                        self.assert_(audiotools.pcm_frame_cmp(
+                                track.to_pcm(), track2.to_pcm()) is None)
+                finally:
+                    outfile.close()
+        finally:
+            temp.close()
 
     @FORMAT_AUDIOFILE
     def test_track_number(self):
@@ -1333,12 +1374,79 @@ class TestForeignWaveChunks:
                                                  False), True)
                 finally:
                     track2_file.close()
-
-
         finally:
             input_wave.close()
             track1_file.close()
             output_wave.close()
+
+    @FORMAT_LOSSLESS
+    def test_convert_progress_wave_chunks(self):
+        import filecmp
+
+        #no "t" in this set
+        #which prevents a random generator from creating
+        #"fmt " or "data" chunk names
+        chunk_name_chars = "abcdefghijklmnopqrsuvwxyz "
+
+        input_wave = tempfile.NamedTemporaryFile(suffix=".wav")
+        track1_file = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        output_wave = tempfile.NamedTemporaryFile(suffix=".wav")
+
+        try:
+            #build a WAVE with some random oddball chunks
+            base_chunks = [('fmt ', '\x01\x00\x02\x00D\xac\x00\x00\x10\xb1\x02\x00\x04\x00\x10\x00'),
+                           ('data', 'BZh91AY&SY\xdc\xd5\xc2\x8d\x06\xba\xa7\xc0\x00`\x00 \x000\x80MF\xa9$\x84\x9a\xa4\x92\x12qw$S\x85\t\r\xcd\\(\xd0'.decode('bz2'))]
+            for i in xrange(random.choice(range(1, 10))):
+                base_chunks.insert(
+                    random.choice(range(0, len(base_chunks) + 1)),
+                    ("".join([random.choice(chunk_name_chars)
+                              for i in xrange(4)]),
+                     os.urandom(random.choice(range(1, 1024)) * 2)))
+
+            audiotools.WaveAudio.wave_from_chunks(input_wave.name, base_chunks)
+            wave = audiotools.open(input_wave.name)
+            wave.verify()
+            self.assert_(wave.has_foreign_riff_chunks())
+
+            #convert it to our audio type using convert
+            track1 = wave.convert(track1_file.name, self.audio_class)
+            self.assert_(track1.has_foreign_riff_chunks())
+
+            #convert our track to every other format
+            for new_class in audiotools.AVAILABLE_TYPES:
+                track2_file = tempfile.NamedTemporaryFile(
+                    suffix="." + new_class.SUFFIX)
+                log = Log()
+                try:
+                    track2 = track1.convert(track2_file.name,
+                                            new_class,
+                                            progress=log.update)
+
+                    self.assert_(
+                        len(log.results) > 0,
+                        "no logging converting %s to %s with RIFF chunks" %
+                        (self.audio_class.NAME,
+                         new_class.NAME))
+                    self.assert_(len(set([r[1] for r in log.results])) == 1)
+                    for x,y in zip(log.results[1:], log.results):
+                        self.assert_((x[0] - y[0]) >= 0)
+
+                    #if the format is a WAVE container, convert it back
+                    if (issubclass(new_class, audiotools.WaveContainer)):
+                        track2.convert(output_wave.name, audiotools.WaveAudio)
+
+                        #and ensure the result is byte-for-byte identical
+                        self.assertEqual(filecmp.cmp(input_wave.name,
+                                                     output_wave.name,
+                                                     False), True)
+                finally:
+                    track2_file.close()
+        finally:
+            input_wave.close()
+            track1_file.close()
+            output_wave.close()
+
 
 class TestForeignAiffChunks:
     @FORMAT_LOSSLESS
@@ -1451,8 +1559,73 @@ class TestForeignAiffChunks:
                                                  False), True)
                 finally:
                     track2_file.close()
+        finally:
+            input_aiff.close()
+            track1_file.close()
+            output_aiff.close()
 
+    @FORMAT_LOSSLESS
+    def test_convert_progress_aiff_chunks(self):
+        import filecmp
 
+        #no "M" or "N" in this set
+        #which prevents a random generator from creating
+        #"COMM" or "SSND" chunk names
+        chunk_name_chars = "ABCDEFGHIJKLOPQRSTUVWXYZ"
+
+        input_aiff = tempfile.NamedTemporaryFile(suffix=".aiff")
+        track1_file = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        output_aiff = tempfile.NamedTemporaryFile(suffix=".aiff")
+        try:
+            #build an AIFF with some random oddball chunks
+            base_chunks = [('COMM', '\x00\x02\x00\x00\xacD\x00\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00'),
+                           ('SSND', 'BZh91AY&SY&2\xd0\xeb\x00\x01Y\xc0\x04\xc0\x00\x00\x80\x00\x08 \x000\xcc\x05)\xa6\xa2\x93`\x94\x9e.\xe4\x8ap\xa1 Le\xa1\xd6'.decode('bz2'))]
+            for i in xrange(random.choice(range(1, 10))):
+                base_chunks.insert(
+                    random.choice(range(0, len(base_chunks) + 1)),
+                    ("".join([random.choice(chunk_name_chars)
+                              for i in xrange(4)]),
+                     os.urandom(random.choice(range(1, 1024)) * 2)))
+
+            audiotools.AiffAudio.aiff_from_chunks(input_aiff.name, base_chunks)
+            aiff = audiotools.open(input_aiff.name)
+            aiff.verify()
+            self.assert_(aiff.has_foreign_aiff_chunks())
+
+            #convert it to our audio type using convert()
+            track1 = aiff.convert(track1_file.name, self.audio_class)
+            self.assert_(track1.has_foreign_aiff_chunks())
+
+            #convert it to every other format
+            for new_class in audiotools.AVAILABLE_TYPES:
+                track2_file = tempfile.NamedTemporaryFile(
+                    suffix="." + new_class.SUFFIX)
+                log = Log()
+                try:
+                    track2 = track1.convert(track2_file.name,
+                                            new_class,
+                                            progress=log.update)
+
+                    self.assert_(
+                        len(log.results) > 0,
+                        "no logging converting %s to %s with AIFF chunks" %
+                        (self.audio_class.NAME,
+                         new_class.NAME))
+                    self.assert_(len(set([r[1] for r in log.results])) == 1)
+                    for x,y in zip(log.results[1:], log.results):
+                        self.assert_((x[0] - y[0]) >= 0)
+
+                    #if the format is an AIFF container, convert it back
+                    if (issubclass(new_class, audiotools.AiffContainer)):
+                        track2.convert(output_aiff.name, audiotools.AiffAudio)
+
+                        #and ensure the result is byte-for-byte identical
+                        self.assertEqual(filecmp.cmp(input_aiff.name,
+                                                     output_aiff.name,
+                                                     False), True)
+                finally:
+                    track2_file.close()
         finally:
             input_aiff.close()
             track1_file.close()
@@ -3266,6 +3439,7 @@ class OggFlacFileTest(OggVerify,
 
 
 class ShortenFileTest(TestForeignWaveChunks,
+                      TestForeignAiffChunks,
                       LosslessFileTest):
     def setUp(self):
         self.audio_class = audiotools.ShortenAudio

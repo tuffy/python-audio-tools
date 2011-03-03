@@ -26,7 +26,7 @@ from audiotools import (AudioFile, InvalidFile, Con, subprocess, BIN,
                         EncodingError, DecodingError, PCMReaderError,
                         PCMReader, ChannelMask, UnsupportedChannelMask,
                         InvalidWave, __default_quality__,
-                        WaveContainer)
+                        WaveContainer, to_pcm_progress)
 from __wav__ import WaveAudio, WaveReader
 from __ape__ import ApeTaggedAudio, ApeTag, __number_pair__
 import gettext
@@ -450,7 +450,7 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
             cls.__unlink__(filename)
             raise err
 
-    def to_wave(self, wave_filename):
+    def to_wave(self, wave_filename, progress=None):
         """Writes the contents of this file to the given .wav filename string.
 
         Raises EncodingError if some error occurs during decoding."""
@@ -466,9 +466,16 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
 
         try:
             f.write(head)
-            transfer_framelist_data(
-                decoders.WavPackDecoder(self.filename),
-                f.write)
+            total_frames = self.total_frames()
+            current_frames = 0
+            decoder = decoders.WavPackDecoder(self.filename)
+            frame = decoder.read(4096)
+            while (len(frame) > 0):
+                f.write(frame.to_bytes(False, self.bits_per_sample() > 8))
+                current_frames += frame.frames
+                if (progress is not None):
+                    progress(current_frames, total_frames)
+                frame = decoder.read(4096)
             f.write(tail)
             f.close()
         except IOError, msg:
@@ -491,7 +498,8 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
                                   bits_per_sample=self.__bitspersample__)
 
     @classmethod
-    def from_wave(cls, filename, wave_filename, compression=None):
+    def from_wave(cls, filename, wave_filename, compression=None,
+                  progress=None):
         """Encodes a new AudioFile from an existing .wav file.
 
         Takes a filename string, wave_filename string
@@ -513,7 +521,7 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
 
         try:
             encoders.encode_wavpack(filename,
-                                    wave.to_pcm(),
+                                    to_pcm_progress(wave, progress),
                                     wave_header=head,
                                     wave_footer=tail,
                                     **cls.__options__[compression])

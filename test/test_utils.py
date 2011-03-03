@@ -759,7 +759,8 @@ class track2track(UtilTest):
         self.track1.set_metadata(self.track_metadata)
 
         self.output_dir = tempfile.mkdtemp()
-        self.output_file = tempfile.NamedTemporaryFile()
+        self.output_file = tempfile.NamedTemporaryFile(
+            suffix="." + self.output_format.SUFFIX)
         self.xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
         self.xmcd_file.write('<?xml version="1.0" encoding="utf-8"?><metadata xmlns="http://musicbrainz.org/ns/mmd-1.0#" xmlns:ext="http://musicbrainz.org/ns/ext-1.0#"><release-list><release><title>Test Album</title><artist><name></name></artist><release-event-list><event catalog-number="" date=""/></release-event-list><track-list><track><title>Test Track</title><duration>6912</duration><artist><name>Test Artist</name></artist></track></track-list></release></release-list></metadata>')
         self.xmcd_file.flush()
@@ -1686,13 +1687,18 @@ class trackcat(UtilTest):
                     self.__check_error__(_(u"You must specify an output file"))
                     continue
 
+
                 if ("-t" in options):
                     output_format = audiotools.TYPE_MAP[type]
                 else:
                     try:
                         output_format = audiotools.filename_to_type(outfile)
                     except audiotools.UnknownAudioType:
-                        output_format = audiotools.DEFAULT_TYPE
+                        self.assertEqual(self.__run_app__(["trackcat"] +
+                                                          options), 1)
+
+                        self.__check_error__(_(u"Unsupported audio type \"\""))
+                        continue
 
                 if (("-q" in options) and
                     (quality not in output_format.COMPRESSION_MODES)):

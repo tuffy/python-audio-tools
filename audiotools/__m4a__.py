@@ -674,7 +674,7 @@ class M4AAudio_nero(M4AAudio_faac):
                                   channel_mask=int(self.channel_mask()),
                                   bits_per_sample=self.bits_per_sample())
 
-    def to_wave(self, wave_file):
+    def to_wave(self, wave_file, progress=None):
         """Writes the contents of this file to the given .wav filename string.
 
         Raises EncodingError if some error occurs during decoding."""
@@ -692,7 +692,8 @@ class M4AAudio_nero(M4AAudio_faac):
             devnull.close()
 
     @classmethod
-    def from_wave(cls, filename, wave_filename, compression=None):
+    def from_wave(cls, filename, wave_filename, compression=None,
+                  progress=None):
         """Encodes a new AudioFile from an existing .wav file.
 
         Takes a filename string, wave_filename string

@@ -26,7 +26,7 @@ from audiotools import (AudioFile, MetaData, InvalidFile, PCMReader,
                         EncodingError, UnsupportedChannelMask, DecodingError,
                         Messenger, BufferedPCMReader, calculate_replay_gain,
                         ChannelMask, PCMReaderError, __default_quality__,
-                        WaveContainer, AiffContainer)
+                        WaveContainer, AiffContainer, to_pcm_progress)
 from __vorbiscomment__ import *
 from __id3__ import ID3v2Comment
 from __vorbis__ import OggStreamReader, OggStreamWriter
@@ -1131,7 +1131,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                           self.get_metadata().extra_blocks
                           if block.type == 2]
 
-    def riff_wave_chunks(self):
+    def riff_wave_chunks(self, progress=None):
         """Generate a set of (chunk_id,chunk_data tuples)
 
         These are for use by WaveAudio.from_chunks
@@ -1148,7 +1148,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             elif (chunk_id == 'data'):
                 #FIXME - this is a lot more inefficient than it should be
                 data = cStringIO.StringIO()
-                pcm = self.to_pcm()
+                pcm = to_pcm_progress(self, progress)
                 if (self.bits_per_sample > 8):
                     transfer_framelist_data(pcm, data.write, True, False)
                 else:
@@ -1159,19 +1159,20 @@ class FlacAudio(WaveContainer, AiffContainer):
             else:
                 yield (chunk_id, chunk_data)
 
-    def to_wave(self, wave_filename):
+    def to_wave(self, wave_filename, progress=None):
         """Writes the contents of this file to the given .wav filename string.
 
         Raises EncodingError if some error occurs during decoding."""
 
         if (self.has_foreign_riff_chunks()):
             WaveAudio.wave_from_chunks(wave_filename,
-                                       self.riff_wave_chunks())
+                                       self.riff_wave_chunks(progress))
         else:
-            WaveAudio.from_pcm(wave_filename, self.to_pcm())
+            WaveAudio.from_pcm(wave_filename, to_pcm_progress(self, progress))
 
     @classmethod
-    def from_wave(cls, filename, wave_filename, compression=None):
+    def from_wave(cls, filename, wave_filename, compression=None,
+                  progress=None):
         """Encodes a new AudioFile from an existing .wav file.
 
         Takes a filename string, wave_filename string
@@ -1187,7 +1188,8 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         if (WaveAudio(wave_filename).has_foreign_riff_chunks()):
             flac = cls.from_pcm(filename,
-                                WaveAudio(wave_filename).to_pcm(),
+                                to_pcm_progress(WaveAudio(wave_filename),
+                                                progress),
                                 compression=compression)
 
             metadata = flac.get_metadata()
@@ -1225,7 +1227,8 @@ class FlacAudio(WaveContainer, AiffContainer):
                 wav.close()
         else:
             return cls.from_pcm(filename,
-                                WaveAudio(wave_filename).to_pcm(),
+                                to_pcm_progress(WaveAudio(wave_filename),
+                                                progress),
                                 compression=compression)
 
     def has_foreign_aiff_chunks(self):
@@ -1236,7 +1239,8 @@ class FlacAudio(WaveContainer, AiffContainer):
                           if block.type == 2]
 
     @classmethod
-    def from_aiff(cls, filename, aiff_filename, compression=None):
+    def from_aiff(cls, filename, aiff_filename, compression=None,
+                  progress=None):
         """Encodes a new AudioFile from an existing .aiff file.
 
         Takes a filename string, aiff_filename string
@@ -1252,7 +1256,8 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         if (AiffAudio(aiff_filename).has_foreign_aiff_chunks()):
             flac = cls.from_pcm(filename,
-                                AiffAudio(aiff_filename).to_pcm(),
+                                to_pcm_progress(AiffAudio(aiff_filename),
+                                                progress),
                                 compression=compression)
 
             metadata = flac.get_metadata()
@@ -1291,17 +1296,18 @@ class FlacAudio(WaveContainer, AiffContainer):
                 aiff.close()
         else:
             return cls.from_pcm(filename,
-                                AiffAudio(aiff_filename).to_pcm(),
+                                to_pcm_progress(AiffAudio(aiff_filename),
+                                                progress),
                                 compression=compression)
 
-    def to_aiff(self, aiff_filename):
+    def to_aiff(self, aiff_filename, progress=None):
         if (self.has_foreign_aiff_chunks()):
             AiffAudio.aiff_from_chunks(aiff_filename,
-                                       self.aiff_chunks())
+                                       self.aiff_chunks(progress))
         else:
-            AiffAudio.from_pcm(aiff_filename, self.to_pcm())
+            AiffAudio.from_pcm(aiff_filename, to_pcm_progress(self, progress))
 
-    def aiff_chunks(self):
+    def aiff_chunks(self, progress=None):
         """Generate a set of (chunk_id,chunk_data tuples)
 
         These are for use by AiffAudio.from_chunks
@@ -1319,7 +1325,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                 #FIXME - this is a lot more inefficient than it should be
                 data = cStringIO.StringIO()
                 data.write(chunk_data)
-                pcm = self.to_pcm()
+                pcm = to_pcm_progress(self, progress)
                 transfer_framelist_data(pcm, data.write, True, True)
                 pcm.close()
                 yield (chunk_id, data.getvalue())
@@ -1327,7 +1333,8 @@ class FlacAudio(WaveContainer, AiffContainer):
             else:
                 yield (chunk_id, chunk_data)
 
-    def convert(self, target_path, target_class, compression=None):
+    def convert(self, target_path, target_class, compression=None,
+                progress=None):
         """Encodes a new AudioFile from existing AudioFile.
 
         Take a filename string, target class and optional compression string.
@@ -1342,19 +1349,22 @@ class FlacAudio(WaveContainer, AiffContainer):
         import tempfile
 
         if (target_class == WaveAudio):
-            self.to_wave(target_path)
+            self.to_wave(target_path, progress=progress)
             return WaveAudio(target_path)
         elif (target_class == AiffAudio):
-            self.to_aiff(target_path)
+            self.to_aiff(target_path, progress=progress)
             return AiffAudio(target_path)
         elif (self.has_foreign_riff_chunks() and
               hasattr(target_class, "from_wave")):
             temp_wave = tempfile.NamedTemporaryFile(suffix=".wav")
             try:
+                #we'll only log the second leg of conversion,
+                #since that's likely to be the slower portion
                 self.to_wave(temp_wave.name)
                 return target_class.from_wave(target_path,
                                               temp_wave.name,
-                                              compression)
+                                              compression,
+                                              progress=progress)
             finally:
                 temp_wave.close()
         elif (self.has_foreign_aiff_chunks() and
@@ -1364,12 +1374,13 @@ class FlacAudio(WaveContainer, AiffContainer):
                 self.to_aiff(temp_aiff.name)
                 return target_class.from_aiff(target_path,
                                               temp_aiff.name,
-                                              compression)
+                                              compression,
+                                              progress=progress)
             finally:
                 temp_aiff.close()
         else:
             return target_class.from_pcm(target_path,
-                                         self.to_pcm(),
+                                         to_pcm_progress(self, progress),
                                          compression)
 
     def bits_per_sample(self):
