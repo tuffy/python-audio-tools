@@ -22,9 +22,9 @@ import audiotools
 import sys
 import os
 import os.path
-import threading
-import Queue
+import select
 import gettext
+import cPickle
 
 gettext.install("audiotools", unicode=True)
 
@@ -39,7 +39,6 @@ class track_converter:
         self.queued_jobs = []
         self.max_job_id = 0
         self.running_job_pool = {}
-        self.output_queue = Queue.Queue()
         self.messenger = messenger
         self.progress_display = progress_display
         self.converted_files = []
@@ -59,15 +58,12 @@ class track_converter:
     def run_next_job(self):
         args = self.queued_jobs.pop(0)
         job_id = args[0]
-        thread = threading.Thread(target=convert,
-                                  args=(self.output_queue,) + args)
-        thread.daemon = True
-        self.running_job_pool[job_id] = thread
+        job = conversion_job.spawn(convert, args)
         self.progress_display.add_row(
             job_id,
             self.messenger.filename(args[1].filename),
             self.messenger.filename(args[2]))
-        thread.start()
+        self.running_job_pool[job_id] = job
 
     def job_completed(self, job_id):
         self.running_job_pool[job_id].join()
@@ -94,19 +90,51 @@ class track_converter:
         self.progress_display.update_row(job_id, current, total)
 
     def run(self, max_processes):
-        #start up to "max_processes" number of subthreads
+        #start up to "max_processes" number of subprocesses
         for i in xrange(min(max_processes, len(self.queued_jobs))):
             self.run_next_job()
 
-        #await commands from the output_queue
         try:
             while (True):
-                (command, args) = self.output_queue.get()
-
-                #execute commands as they arrive
-                getattr(self, command)(*args)
+                (rlist,
+                 wlist,
+                 xlist) = select.select([job.output for job in
+                                         self.running_job_pool.values()],
+                                        [], [])
+                for reader in rlist:
+                    (command, args) = cPickle.load(reader)
+                    getattr(self, command)(*args)
         except ConversionComplete:
             return
+
+class conversion_job:
+    def __init__(self, pid, output):
+        self.pid = pid
+        self.output = output
+
+    def join(self):
+        self.output.close()
+        return os.waitpid(self.pid, 0)
+
+    @classmethod
+    def spawn(cls, function, args):
+        (read_end, write_end) = os.pipe()
+        pid = os.fork()
+        if (pid > 0):
+            os.close(write_end)
+            return cls(pid, os.fdopen(read_end, 'rb'))
+        else:
+            os.close(read_end)
+            function(*((__pipe_writer__(write_end), ) + args))
+            sys.exit(0)
+
+class __pipe_writer__:
+    def __init__(self, fd):
+        self.output = os.fdopen(fd, "wb")
+
+    def put(self, args):
+        cPickle.dump(args, self.output, cPickle.HIGHEST_PROTOCOL)
+        self.output.flush()
 
 class __progress__:
     def __init__(self, output, job_id):
@@ -181,70 +209,6 @@ def convert(output, job_id,
             output.put(("error", [unicode(msg)]))
     finally:
         output.put(("job_completed", [job_id]))
-
-
-def convert_file(destination_class, destination_filename,
-                 source_audiofile, metadata, compression,
-                 messenger, thumbnail_images=False):
-    messenger.info(_(u"%(source)s -> %(destination)s") %
-                   {"source": messenger.filename(source_audiofile.filename),
-                    "destination": messenger.filename(destination_filename)})
-
-    try:
-        destination_audiofile = source_audiofile.convert(
-            destination_filename,
-            destination_class,
-            compression)
-
-        if (metadata is not None):
-            if (thumbnail_images):
-                for img in metadata.images():
-                    metadata.delete_image(img)
-                    metadata.add_image(img.thumbnail(
-                            audiotools.THUMBNAIL_SIZE,
-                            audiotools.THUMBNAIL_SIZE,
-                            audiotools.THUMBNAIL_FORMAT))
-
-            destination_audiofile.set_metadata(metadata)
-        else:
-            destination_audiofile.set_metadata(audiotools.MetaData(
-                    track_number=source_audiofile.track_number(),
-                    album_number=source_audiofile.album_number()))
-
-        existing_cuesheet = source_audiofile.get_cuesheet()
-        if (existing_cuesheet is None):
-            destination_audiofile.set_cuesheet(source_audiofile.get_cuesheet())
-
-    except audiotools.UnsupportedChannelMask:
-        messenger.error(
-            _(u"Unable to write \"%(target_filename)s\"" +
-              u" with channel assignment from \"%(source_filename)s\"") %
-            {"target_filename": messenger.filename(destination_filename),
-             "source_filename": messenger.filename(source_audiofile.filename)})
-        sys.exit(1)
-    except audiotools.UnsupportedChannelCount:
-        messenger.error(
-            _(u"Unable to write \"%(target_filename)s\"" +
-              u" with %(channels)d channel input") %
-              {"target_filename": messenger.filename(destination_filename),
-               "channels": source_audiofile.channels()})
-        sys.exit(1)
-    except audiotools.UnsupportedBitsPerSample:
-        messenger.error(
-            _(u"Unable to write \"%(target_filename)s\"" +
-              u" with %(bps)d bits per sample") %
-            {"target_filename": messenger.filename(destination_filename),
-             "bps": source_audiofile.bits_per_sample()})
-        sys.exit(1)
-    except audiotools.EncodingError, msg:
-        messenger.error(
-            _(u"%(filename)s: %(error)s") %
-            {"filename":messenger.filename(destination_filename),
-             "error":msg})
-        sys.exit(1)
-    except audiotools.InvalidFormat, msg:
-        messenger.error(unicode(msg))
-        sys.exit(1)
 
 
 if (__name__ == '__main__'):
