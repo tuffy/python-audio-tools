@@ -607,6 +607,54 @@ class SilentMessenger(VerboseMessenger):
         pass
 
 
+class ProgressRow:
+    def __init__(self, input_unicode, output_unicode, separator):
+        import unicodedata
+
+        self.input_unicode = unicodedata.normalize('NFC', input_unicode)
+        self.output_unicode = unicodedata.normalize('NFC', output_unicode)
+        self.separator = separator
+        self.current = 0
+        self.total = 0
+
+    def update(self, current, total):
+        self.current = current
+        self.total = total
+
+    def unicode(self, width):
+        try:
+            percentage = u"%3.d%% : " % ((self.current * 100) / self.total)
+        except ZeroDivisionError:
+            percentage = u"  0% : "
+        width -= str_width(percentage)
+        width -= str_width(self.separator)
+
+        input_width = str_width(self.input_unicode)
+        output_width = str_width(self.output_unicode)
+        if ((input_width + output_width) <= width):
+            #no need to shrink any strings
+
+            return (percentage + self.input_unicode +
+                    self.separator + self.output_unicode)
+        else:
+            #otherwise, give each string a proportion
+            #of the total output available
+
+            input_unicode = self.input_unicode[
+                -(len(self.input_unicode) *
+                  width /
+                  (input_width + output_width)):]
+            output_unicode = self.output_unicode[
+                -(len(self.output_unicode) *
+                  width /
+                  (input_width + output_width)):]
+
+            return (percentage +
+                    u"\u2026" + input_unicode[1:] +
+                    self.separator +
+                    u"\u2026" + output_unicode[1:])
+
+
 class UnsupportedFile(Exception):
     """Raised by open() if the file can be opened but not identified."""
 
