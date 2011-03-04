@@ -22,11 +22,165 @@ import audiotools
 import sys
 import os
 import os.path
+import threading
+import Queue
 import gettext
 
 gettext.install("audiotools", unicode=True)
 
 MAX_CPUS = audiotools.MAX_JOBS
+
+
+class ConversionComplete(Exception):
+    pass
+
+class track_converter:
+    def __init__(self, messenger, progress_display):
+        self.queued_jobs = []
+        self.max_job_id = 0
+        self.running_job_pool = {}
+        self.output_queue = Queue.Queue()
+        self.messenger = messenger
+        self.progress_display = progress_display
+        self.converted_files = []
+        self.errors = 0
+
+    def queue(self, source_audiofile, destination_filename,
+              destination_class, compression, metadata, thumbnail_images):
+        self.queued_jobs.append((self.max_job_id,
+                                 source_audiofile,
+                                 destination_filename,
+                                 destination_class,
+                                 compression,
+                                 metadata,
+                                 thumbnail_images))
+        self.max_job_id += 1
+
+    def run_next_job(self):
+        args = self.queued_jobs.pop(0)
+        job_id = args[0]
+        thread = threading.Thread(target=convert,
+                                  args=(self.output_queue,) + args)
+        thread.daemon = True
+        self.running_job_pool[job_id] = thread
+        self.progress_display.add_row(
+            job_id,
+            self.messenger.filename(args[1].filename),
+            self.messenger.filename(args[2]))
+        thread.start()
+
+    def job_completed(self, job_id):
+        self.running_job_pool[job_id].join()
+        del(self.running_job_pool[job_id])
+        self.progress_display.delete_row(job_id)
+        if (len(self.queued_jobs) > 0):
+            self.run_next_job()
+        elif (len(self.running_job_pool) == 0):
+            raise ConversionComplete()
+
+    def success(self, source_audiofile, target_audiofile):
+        self.converted_files.append(target_audiofile)
+        self.progress_display.clear()
+        self.messenger.info(
+            _(u"%(source)s -> %(destination)s") %
+            {"source":self.messenger.filename(source_audiofile.filename),
+             "destination":self.messenger.filename(target_audiofile.filename)})
+
+    def error(self, message):
+        self.errors += 1
+        self.messenger.error(message)
+
+    def progress(self, job_id, current, total):
+        self.progress_display.update_row(job_id, current, total)
+
+    def run(self, max_processes):
+        #start up to "max_processes" number of subthreads
+        for i in xrange(min(max_processes, len(self.queued_jobs))):
+            self.run_next_job()
+
+        #await commands from the output_queue
+        try:
+            while (True):
+                (command, args) = self.output_queue.get()
+
+                #execute commands as they arrive
+                getattr(self, command)(*args)
+        except ConversionComplete:
+            return
+
+class __progress__:
+    def __init__(self, output, job_id):
+        self.output = output
+        self.job_id = job_id
+
+    def update(self, current, total):
+        self.output.put(("progress", [self.job_id, current, total]))
+
+def convert(output, job_id,
+            source_audiofile,
+            destination_filename, destination_class, compression,
+            metadata, thumbnail_images):
+    filename = audiotools.VerboseMessenger("").filename
+
+    try:
+        try:
+            destination_audiofile = source_audiofile.convert(
+                destination_filename,
+                destination_class,
+                compression,
+                __progress__(output, job_id).update)
+
+            if (metadata is not None):
+                if (thumbnail_images):
+                    for img in metadata.images():
+                        metadata.delete_image(img)
+                        metadata.add_image(img.thumbnail(
+                                audiotools.THUMBNAIL_SIZE,
+                                audiotools.THUMBNAIL_SIZE,
+                                audiotools.THUMBNAIL_FORMAT))
+
+                destination_audiofile.set_metadata(metadata)
+            else:
+                destination_audiofile.set_metadata(audiotools.MetaData(
+                        track_number=source_audiofile.track_number(),
+                        album_number=source_audiofile.album_number()))
+
+            existing_cuesheet = source_audiofile.get_cuesheet()
+            if (existing_cuesheet is None):
+                destination_audiofile.set_cuesheet(
+                    source_audiofile.get_cuesheet())
+            output.put(("success", [source_audiofile, destination_audiofile]))
+        except audiotools.UnsupportedChannelMask:
+            output.put(
+                ("error",
+                 [_(u"Unable to write \"%(target_filename)s\"" +
+                    u" with channel assignment from \"%(source_filename)s\"") %
+                  {"target_filename":filename(destination_filename),
+                   "source_filename":filename(source_audiofile.filename)}]))
+        except audiotools.UnsupportedChannelCount:
+            output.put(
+                ("error",
+                 [_(u"Unable to write \"%(target_filename)s\"" +
+                    u" with %(channels)d channel input") %
+                  {"target_filename":filename(destination_filename),
+                   "channels":source_audiofile.channels()}]))
+        except audiotools.UnsupportedBitsPerSample:
+            output.put(
+                ("error",
+                 [_(u"Unable to write \"%(target_filename)s\"" +
+                    u" with %(bps)d bits per sample") %
+                  {"target_filename":filename(destination_filename),
+                   "bps":source_audiofile.bits_per_sample()}]))
+        except audiotools.EncodingError, msg:
+            output.put(
+                ("error",
+                 [_(u"%(filename)s: %(error)s") %
+                  {"filename":filename(destination_filename),
+                   "error":msg}]))
+        except audiotools.InvalidFormat, msg:
+            output.put(("error", [unicode(msg)]))
+    finally:
+        output.put(("job_completed", [job_id]))
 
 
 def convert_file(destination_class, destination_filename,
@@ -57,7 +211,7 @@ def convert_file(destination_class, destination_filename,
                     track_number=source_audiofile.track_number(),
                     album_number=source_audiofile.album_number()))
 
-        existing_cuesheet = destination_audiofile.get_cuesheet()
+        existing_cuesheet = source_audiofile.get_cuesheet()
         if (existing_cuesheet is None):
             destination_audiofile.set_cuesheet(source_audiofile.get_cuesheet())
 
@@ -313,8 +467,8 @@ if (__name__ == '__main__'):
 
         base_directory = options.dir
 
-        queue = audiotools.ExecQueue()
-        encoded_filenames = []
+        converter = track_converter(
+            msg, audiotools.ProgressDisplay(msg, u" -> "))
 
         for audiofile in audiofiles:
             try:
@@ -344,14 +498,12 @@ if (__name__ == '__main__'):
                                       (filename))
                         sys.exit(1)
 
-                    queue.execute(convert_file,
-                                  (AudioType,
-                                   filename,
-                                   audiofile,
-                                   metadata,
-                                   quality,
-                                   msg))
-                    encoded_filenames.append(filename)
+                    converter.queue(source_audiofile=audiofile,
+                                    destination_filename=filename,
+                                    destination_class=AudioType,
+                                    compression=quality,
+                                    metadata=metadata,
+                                    thumbnail_images=options.thumbnail)
                 else:
                     metadata = audiofile.get_metadata()
 
@@ -369,24 +521,21 @@ if (__name__ == '__main__'):
                                       (filename))
                         sys.exit(1)
 
-                    queue.execute(convert_file,
-                                  (AudioType,
-                                   filename,
-                                   audiofile,
-                                   metadata,
-                                   quality,
-                                   msg,
-                                   options.thumbnail))
-                encoded_filenames.append(filename)
+                    converter.queue(source_audiofile=audiofile,
+                                    destination_filename=filename,
+                                    destination_class=AudioType,
+                                    compression=quality,
+                                    metadata=metadata,
+                                    thumbnail_images=options.thumbnail)
             except audiotools.UnsupportedTracknameField, err:
                 err.error_msg(msg)
                 sys.exit(1)
             except KeyError:
                 continue
 
-        queue.run(max_processes)
+        converter.run(max_processes)
 
-        if (queue.return_values != set([0])):
+        if (converter.errors > 0):
             sys.exit(1)
 
         if (options.add_replay_gain and AudioType.can_add_replay_gain()):
@@ -399,10 +548,11 @@ if (__name__ == '__main__'):
             try:
                 #separate encoded files by album_name and album_number
                 for album in audiotools.group_tracks(
-                    audiotools.open_files(encoded_filenames,
-                                          messenger=msg)):
+                    converter.converted_files):
                     #add ReplayGain to groups of files
                     #belonging to the same album
+
+                    #FIXME - perform progress indicator on ReplayGain
                     AudioType.add_replay_gain([a.filename for a in album])
             except ValueError, err:
                 msg.error(unicode(err))
@@ -423,10 +573,16 @@ if (__name__ == '__main__'):
         else:
             metadata = audiofile.get_metadata()
 
-        convert_file(AudioType,
-                     options.output,
-                     audiofile,
-                     metadata,
-                     quality,
-                     audiotools.SilentMessenger("track2track"),
-                     options.thumbnail)
+        msg = audiotools.SilentMessenger("track2track")
+
+        converter = track_converter(
+            msg, audiotools.SilentProgressDisplay(msg, u" -> "))
+        converter.queue(source_audiofile=audiofile,
+                        destination_filename=options.output,
+                        destination_class=AudioType,
+                        compression=quality,
+                        metadata=metadata,
+                        thumbnail_images=options.thumbnail)
+        converter.run(1)
+        if (converter.errors > 0):
+            sys.exit(1)

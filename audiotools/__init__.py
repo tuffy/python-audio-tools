@@ -606,16 +606,98 @@ class SilentMessenger(VerboseMessenger):
 
         pass
 
+def ProgressDisplay(messenger, separator):
+    if (isinstance(messenger, SilentMessenger) or
+        (not sys.stdout.isatty())):
+        return SilentProgressDisplay(messenger, separator)
+    else:
+        return VerboseProgressDisplay(messenger, separator)
+
+
+class VerboseProgressDisplay:
+    def __init__(self, messenger, separator):
+        self.messenger = messenger
+        self.separator = separator
+        self.previous_output = []
+        self.progress_rows = []
+
+    def add_row(self, row_id, input_unicode, output_unicode):
+        new_row = ProgressRow(row_id,
+                              input_unicode,
+                              output_unicode,
+                              self.separator)
+        if (None in self.progress_rows):
+            self.progress_rows[self.progress_rows.index(None)] = new_row
+        else:
+            self.progress_rows.append(new_row)
+
+    def delete_row(self, row_id):
+        row_index = None
+        for (i, row) in enumerate(self.progress_rows):
+            if ((row is not None) and (row.id == row_id)):
+                row_index = i
+                break
+
+        if (row_index is not None):
+            self.progress_rows[row_index] = None
+
+    def update_row(self, row_id, current, total):
+        for row in self.progress_rows:
+            if ((row is not None) and (row.id == row_id)):
+                row.update(current, total)
+        self.refresh()
+
+    def refresh(self):
+        screen_width = self.messenger.terminal_size(sys.stdout)[1]
+        new_output = [progress_row.unicode(screen_width)
+                      for progress_row in self.progress_rows
+                      if progress_row is not None]
+        if (new_output != self.previous_output):
+            self.clear()
+            for output in new_output:
+                self.messenger.output(output)
+            self.previous_output = new_output
+
+    def clear(self):
+        if (len(self.previous_output) > 0):
+            self.messenger.ansi_uplines(len(self.previous_output))
+            self.messenger.ansi_cleardown()
+            self.previous_output = []
+
+class SilentProgressDisplay(VerboseProgressDisplay):
+    def __init__(self, messenger, separator):
+        pass
+
+    def add_row(self, row_id, input_unicode, output_unicode):
+        pass
+
+    def delete_row(self, row_id):
+        pass
+
+    def update_row(self, row_id, current, total):
+        pass
+
+    def refresh(self):
+        pass
+
+    def clear(self):
+        pass
+
 
 class ProgressRow:
-    def __init__(self, input_unicode, output_unicode, separator):
+    def __init__(self, row_id, input_unicode, output_unicode, separator):
         import unicodedata
 
+        self.id = row_id
         self.input_unicode = unicodedata.normalize('NFC', input_unicode)
         self.output_unicode = unicodedata.normalize('NFC', output_unicode)
         self.separator = separator
         self.current = 0
         self.total = 0
+
+        self.cached_percentage = -1
+        self.cached_width = -1
+        self.cached_unicode = u""
 
     def update(self, current, total):
         self.current = current
@@ -623,10 +705,19 @@ class ProgressRow:
 
     def unicode(self, width):
         try:
-            percentage = u"%3.d%% : " % ((self.current * 100) / self.total)
+            percentage = (self.current * 100) / self.total
         except ZeroDivisionError:
-            percentage = u"  0% : "
-        width -= str_width(percentage)
+            percentage = 0
+
+        if ((width == self.cached_width) and
+            (percentage == self.cached_percentage)):
+            return self.cached_unicode
+        else:
+            self.cached_width = width
+            self.cached_percentage = percentage
+
+        percentage_unicode = u"%3.1d%% : " % (percentage)
+        width -= str_width(percentage_unicode)
         width -= str_width(self.separator)
 
         input_width = str_width(self.input_unicode)
@@ -634,8 +725,9 @@ class ProgressRow:
         if ((input_width + output_width) <= width):
             #no need to shrink any strings
 
-            return (percentage + self.input_unicode +
-                    self.separator + self.output_unicode)
+            self.cached_unicode = (percentage_unicode + self.input_unicode +
+                                   self.separator + self.output_unicode)
+            return self.cached_unicode
         else:
             #otherwise, give each string a proportion
             #of the total output available
@@ -649,10 +741,11 @@ class ProgressRow:
                   width /
                   (input_width + output_width)):]
 
-            return (percentage +
-                    u"\u2026" + input_unicode[1:] +
-                    self.separator +
-                    u"\u2026" + output_unicode[1:])
+            self.cached_unicode = (percentage_unicode +
+                                   u"\u2026" + input_unicode[1:] +
+                                   self.separator +
+                                   u"\u2026" + output_unicode[1:])
+            return self.cached_unicode
 
 
 class UnsupportedFile(Exception):
