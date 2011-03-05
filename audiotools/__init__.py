@@ -38,6 +38,7 @@ import optparse
 import struct
 from itertools import izip
 import gettext
+import unicodedata
 
 gettext.install("audiotools", unicode=True)
 
@@ -202,8 +203,8 @@ def Messenger(executable, options):
     else:
         return SilentMessenger(executable)
 
-__ANSI_SEQUENCE__ = re.compile(u"\u001B\[[0-9;]+m")
-
+__ANSI_SEQUENCE__ = re.compile(u"\u001B\[[0-9;]+.")
+__CHAR_WIDTHS__ = {"Na":1, "W":2}
 
 def str_width(s):
     """Returns the width of unicode string s, in characters.
@@ -212,9 +213,67 @@ def str_width(s):
     as well as embedded ANSI sequences.
     """
 
-    import unicodedata
+    return sum(
+        [__CHAR_WIDTHS__.get(unicodedata.east_asian_width(char), 1) for char in
+         unicodedata.normalize('NFC', __ANSI_SEQUENCE__.sub(u"", s))])
 
-    return len(unicodedata.normalize('NFC', __ANSI_SEQUENCE__.sub(u"", s)))
+class display_unicode:
+    def __init__(self, unicode_string):
+        self.__string__ = unicodedata.normalize(
+            'NFC',
+            __ANSI_SEQUENCE__.sub(u"", unicode(unicode_string)))
+        self.__char_widths__ = tuple(
+            [__CHAR_WIDTHS__.get(unicodedata.east_asian_width(char), 1)
+             for char in self.__string__])
+
+    def __unicode__(self):
+        return self.__string__
+
+    def __len__(self):
+        return sum(self.__char_widths__)
+
+    def __repr__(self):
+        return "display_unicode(%s)" % (repr(self.__string__))
+
+    def __add__(self, unicode_string):
+        return display_unicode(self.__string__ + unicode(unicode_string))
+
+    def head(self, display_characters):
+        output_chars = []
+        for (char, width) in zip(self.__string__, self.__char_widths__):
+            if (width <= display_characters):
+                output_chars.append(char)
+                display_characters -= width
+            else:
+                break
+        return display_unicode(u"".join(output_chars))
+
+    def tail(self, display_characters):
+        output_chars = []
+        for (char, width) in zip(reversed(self.__string__),
+                                 reversed(self.__char_widths__)):
+            if (width <= display_characters):
+                output_chars.append(char)
+                display_characters -= width
+            else:
+                break
+
+        output_chars.reverse()
+        return display_unicode(u"".join(output_chars))
+
+    def split(self, display_characters):
+        head_chars = []
+        tail_chars = []
+        for (char, width) in zip(self.__string__, self.__char_widths__):
+            if (width <= display_characters):
+                head_chars.append(char)
+                display_characters -= width
+            else:
+                tail_chars.append(char)
+                display_characters = -1
+
+        return (display_unicode(u"".join(head_chars)),
+                display_unicode(u"".join(tail_chars)))
 
 
 class __MessengerRow__:
@@ -606,26 +665,22 @@ class SilentMessenger(VerboseMessenger):
 
         pass
 
-def ProgressDisplay(messenger, separator):
+def ProgressDisplay(messenger):
     if (isinstance(messenger, SilentMessenger) or
         (not sys.stdout.isatty())):
-        return SilentProgressDisplay(messenger, separator)
+        return SilentProgressDisplay(messenger)
     else:
-        return VerboseProgressDisplay(messenger, separator)
+        return VerboseProgressDisplay(messenger)
 
 
 class VerboseProgressDisplay:
-    def __init__(self, messenger, separator):
+    def __init__(self, messenger):
         self.messenger = messenger
-        self.separator = separator
         self.previous_output = []
         self.progress_rows = []
 
-    def add_row(self, row_id, input_unicode, output_unicode):
-        new_row = ProgressRow(row_id,
-                              input_unicode,
-                              output_unicode,
-                              self.separator)
+    def add_row(self, row_id, output_line):
+        new_row = ProgressRow(row_id, output_line)
         if (None in self.progress_rows):
             self.progress_rows[self.progress_rows.index(None)] = new_row
         else:
@@ -665,10 +720,10 @@ class VerboseProgressDisplay:
             self.previous_output = []
 
 class SilentProgressDisplay(VerboseProgressDisplay):
-    def __init__(self, messenger, separator):
+    def __init__(self, messenger):
         self.messenger = messenger
 
-    def add_row(self, row_id, input_unicode, output_unicode):
+    def add_row(self, row_id, output_line):
         pass
 
     def delete_row(self, row_id):
@@ -694,12 +749,12 @@ def ReplayGainProgressDisplay(messenger, lossless_replay_gain):
 
 class ReplayGainProgressDisplayTTY(VerboseProgressDisplay):
     def __init__(self, messenger, lossless_replay_gain):
-        VerboseProgressDisplay.__init__(self, messenger, u"")
+        VerboseProgressDisplay.__init__(self, messenger)
         self.lossless_replay_gain = lossless_replay_gain
         if (lossless_replay_gain):
-            self.add_row(0, _(u"Adding ReplayGain"), u"")
+            self.add_row(0, _(u"Adding ReplayGain"))
         else:
-            self.add_row(0, _(u"Applying ReplayGain"), u"")
+            self.add_row(0, _(u"Applying ReplayGain"))
         self.replaygain_row = self.progress_rows[0]
 
     def initial_message(self):
@@ -736,13 +791,9 @@ class ReplayGainProgressDisplayNonTTY(SilentProgressDisplay):
         pass
 
 class ProgressRow:
-    def __init__(self, row_id, input_unicode, output_unicode, separator):
-        import unicodedata
-
+    def __init__(self, row_id, output_line):
         self.id = row_id
-        self.input_unicode = unicodedata.normalize('NFC', input_unicode)
-        self.output_unicode = unicodedata.normalize('NFC', output_unicode)
-        self.separator = separator
+        self.output_line = display_unicode(output_line)
         self.current = 0
         self.total = 0
 
@@ -768,44 +819,20 @@ class ProgressRow:
             self.cached_width = width
             self.cached_split_point = split_point
 
-        remaining_space = width - str_width(self.separator)
-
-        input_width = str_width(self.input_unicode)
-        output_width = str_width(self.output_unicode)
-        if ((input_width + output_width) <= remaining_space):
-            #no need to shrink any strings
-
-            output_line = (self.input_unicode +
-                           self.separator +
-                           self.output_unicode)
+        if (len(self.output_line) < width):
+            output_line = self.output_line
         else:
-            #otherwise, give each string a proportion
-            #of the total output available
-
-            input_unicode = self.input_unicode[
-                -(len(self.input_unicode) *
-                  remaining_space /
-                  (input_width + output_width)):]
-            output_unicode = self.output_unicode[
-                -(len(self.output_unicode) *
-                  remaining_space /
-                  (input_width + output_width)):]
-
-            output_line = (u"\u2026" + input_unicode[1:] +
-                           self.separator +
-                           u"\u2026" + output_unicode[1:])
+            output_line = self.output_line.tail(width)
 
         output_line += u" " * (width - len(output_line))
 
-        output_line = (self.ansi(
-                output_line[0:split_point],
-                [VerboseMessenger.FG_WHITE,
-                 VerboseMessenger.BG_BLUE,
-                 VerboseMessenger.BOLD]) +
-                       self.ansi(
-                output_line[split_point:],
-                [VerboseMessenger.FG_WHITE,
-                 VerboseMessenger.BG_BLACK]))
+        (head, tail) = output_line.split(split_point)
+        output_line = (self.ansi(unicode(head),
+                                 [VerboseMessenger.FG_WHITE,
+                                  VerboseMessenger.BG_BLUE]) +
+                       self.ansi(unicode(tail),
+                                 [VerboseMessenger.FG_WHITE,
+                                  VerboseMessenger.BG_BLACK]))
 
         self.cached_unicode = output_line
         return output_line

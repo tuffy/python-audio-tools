@@ -59,10 +59,7 @@ class track_converter:
         args = self.queued_jobs.pop(0)
         job_id = args[0]
         job = conversion_job.spawn(convert, args)
-        self.progress_display.add_row(
-            job_id,
-            self.messenger.filename(args[1].filename),
-            self.messenger.filename(args[2]))
+        self.progress_display.add_row(job_id, self.messenger.filename(args[2]))
         self.running_job_pool[job_id] = job
 
     def job_completed(self, job_id):
@@ -433,8 +430,7 @@ if (__name__ == '__main__'):
 
         base_directory = options.dir
 
-        converter = track_converter(
-            msg, audiotools.ProgressDisplay(msg, u" -> "))
+        converter = track_converter(msg, audiotools.ProgressDisplay(msg))
 
         for audiofile in audiofiles:
             try:
