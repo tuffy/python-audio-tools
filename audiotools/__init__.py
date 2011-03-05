@@ -666,7 +666,7 @@ class VerboseProgressDisplay:
 
 class SilentProgressDisplay(VerboseProgressDisplay):
     def __init__(self, messenger, separator):
-        pass
+        self.messenger = messenger
 
     def add_row(self, row_id, input_unicode, output_unicode):
         pass
@@ -683,6 +683,57 @@ class SilentProgressDisplay(VerboseProgressDisplay):
     def clear(self):
         pass
 
+def ReplayGainProgressDisplay(messenger, lossless_replay_gain):
+    if (isinstance(messenger, SilentMessenger) or
+        (not sys.stdout.isatty())):
+        return ReplayGainProgressDisplayNonTTY(messenger,
+                                               lossless_replay_gain)
+    else:
+        return ReplayGainProgressDisplayTTY(messenger,
+                                            lossless_replay_gain)
+
+class ReplayGainProgressDisplayTTY(VerboseProgressDisplay):
+    def __init__(self, messenger, lossless_replay_gain):
+        VerboseProgressDisplay.__init__(self, messenger, u"")
+        self.lossless_replay_gain = lossless_replay_gain
+        if (lossless_replay_gain):
+            self.add_row(0, _(u"Adding ReplayGain"), u"")
+        else:
+            self.add_row(0, _(u"Applying ReplayGain"), u"")
+        self.replaygain_row = self.progress_rows[0]
+
+    def initial_message(self):
+        pass
+
+    def update(self, current, total):
+        self.replaygain_row.update(current, total)
+        self.refresh()
+
+    def final_message(self):
+        self.clear()
+        if (self.lossless_replay_gain):
+            self.messenger.info(_(u"ReplayGain added"))
+        else:
+            self.messenger.info(_(u"ReplayGain applied"))
+
+class ReplayGainProgressDisplayNonTTY(SilentProgressDisplay):
+    def __init__(self, messenger, lossless_replay_gain):
+        SilentProgressDisplay.__init__(self, messenger, u"")
+        self.lossless_replay_gain = lossless_replay_gain
+
+    def initial_message(self):
+        if (self.lossless_replay_gain):
+            self.messenger.info(
+                _(u"Adding ReplayGain metadata.  This may take some time."))
+        else:
+            self.messenger.info(
+                _(u"Applying ReplayGain.  This may take some time."))
+
+    def update(self, current, total):
+        pass
+
+    def final_message(self):
+        pass
 
 class ProgressRow:
     def __init__(self, row_id, input_unicode, output_unicode, separator):
@@ -695,9 +746,10 @@ class ProgressRow:
         self.current = 0
         self.total = 0
 
-        self.cached_percentage = -1
+        self.cached_split_point = -1
         self.cached_width = -1
         self.cached_unicode = u""
+        self.ansi = VerboseMessenger("").ansi
 
     def update(self, current, total):
         self.current = current
@@ -705,47 +757,58 @@ class ProgressRow:
 
     def unicode(self, width):
         try:
-            percentage = (self.current * 100) / self.total
+            split_point = (width * self.current) / self.total
         except ZeroDivisionError:
-            percentage = 0
+            split_point = 0
 
         if ((width == self.cached_width) and
-            (percentage == self.cached_percentage)):
+            (split_point == self.cached_split_point)):
             return self.cached_unicode
         else:
             self.cached_width = width
-            self.cached_percentage = percentage
+            self.cached_split_point = split_point
 
-        percentage_unicode = u"%3.1d%% : " % (percentage)
-        width -= str_width(percentage_unicode)
-        width -= str_width(self.separator)
+        remaining_space = width - str_width(self.separator)
 
         input_width = str_width(self.input_unicode)
         output_width = str_width(self.output_unicode)
-        if ((input_width + output_width) <= width):
+        if ((input_width + output_width) <= remaining_space):
             #no need to shrink any strings
 
-            self.cached_unicode = (percentage_unicode + self.input_unicode +
-                                   self.separator + self.output_unicode)
-            return self.cached_unicode
+            output_line = (self.input_unicode +
+                           self.separator +
+                           self.output_unicode)
         else:
             #otherwise, give each string a proportion
             #of the total output available
 
             input_unicode = self.input_unicode[
                 -(len(self.input_unicode) *
-                  width /
+                  remaining_space /
                   (input_width + output_width)):]
             output_unicode = self.output_unicode[
                 -(len(self.output_unicode) *
-                  width /
+                  remaining_space /
                   (input_width + output_width)):]
 
-            self.cached_unicode = (percentage_unicode +
-                                   u"\u2026" + input_unicode[1:] +
-                                   self.separator +
-                                   u"\u2026" + output_unicode[1:])
-            return self.cached_unicode
+            output_line = (u"\u2026" + input_unicode[1:] +
+                           self.separator +
+                           u"\u2026" + output_unicode[1:])
+
+        output_line += u" " * (width - len(output_line))
+
+        output_line = (self.ansi(
+                output_line[0:split_point],
+                [VerboseMessenger.FG_WHITE,
+                 VerboseMessenger.BG_BLUE,
+                 VerboseMessenger.BOLD]) +
+                       self.ansi(
+                output_line[split_point:],
+                [VerboseMessenger.FG_WHITE,
+                 VerboseMessenger.BG_BLACK]))
+
+        self.cached_unicode = output_line
+        return output_line
 
 
 class UnsupportedFile(Exception):
@@ -2052,7 +2115,7 @@ def applicable_replay_gain(tracks):
     return True
 
 
-def calculate_replay_gain(tracks):
+def calculate_replay_gain(tracks, progress=None):
     """Yields (track,track_gain,track_peak,album_gain,album_peak)
     for each AudioFile in the list of tracks.
 
@@ -2064,6 +2127,9 @@ def calculate_replay_gain(tracks):
     if (len(sample_rate) != 1):
         raise ValueError(("at least one track is required " +
                           "and all must have the same sample rate"))
+    total_frames = sum([track.total_frames() for track in tracks])
+    processed_frames = 0
+
     rg = replaygain.ReplayGain(list(sample_rate)[0])
     gains = []
     for track in tracks:
@@ -2071,6 +2137,9 @@ def calculate_replay_gain(tracks):
         frame = pcm.read(BUFFER_SIZE)
         while (len(frame) > 0):
             rg.update(frame)
+            processed_frames += frame.frames
+            if (progress is not None):
+                progress(processed_frames, total_frames)
             frame = pcm.read(BUFFER_SIZE)
         pcm.close()
         (track_gain, track_peak) = rg.title_gain()
@@ -3116,7 +3185,7 @@ class AudioFile:
             raise UnsupportedTracknameField(unicode(error.args[0]))
 
     @classmethod
-    def add_replay_gain(cls, filenames):
+    def add_replay_gain(cls, filenames, progress=None):
         """Adds ReplayGain values to a list of filename strings.
 
         All the filenames must be of this AudioFile type.

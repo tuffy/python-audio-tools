@@ -705,7 +705,7 @@ class VorbisAudio(AudioFile):
         self.set_metadata(MetaData())
 
     @classmethod
-    def add_replay_gain(cls, filenames):
+    def add_replay_gain(cls, filenames, progress=None):
         """Adds ReplayGain values to a list of filename strings.
 
         All the filenames must be of this AudioFile type.
@@ -715,6 +715,9 @@ class VorbisAudio(AudioFile):
         track_names = [track.filename for track in
                        open_files(filenames) if
                        isinstance(track, cls)]
+
+        if (progress is not None):
+            progress(0, 1)
 
         if ((len(track_names) > 0) and
             BIN.can_execute(BIN['vorbisgain'])):
@@ -726,6 +729,9 @@ class VorbisAudio(AudioFile):
                                    stderr=devnull)
             sub.wait()
             devnull.close()
+
+        if (progress is not None):
+            progress(1, 1)
 
     @classmethod
     def can_add_replay_gain(cls):

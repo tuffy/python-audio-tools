@@ -1424,7 +1424,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         f.close()
 
     @classmethod
-    def add_replay_gain(cls, filenames):
+    def add_replay_gain(cls, filenames, progress=None):
         """Adds ReplayGain values to a list of filename strings.
 
         All the filenames must be of this AudioFile type.
@@ -1439,7 +1439,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                  track_gain,
                  track_peak,
                  album_gain,
-                 album_peak) in calculate_replay_gain(tracks):
+                 album_peak) in calculate_replay_gain(tracks, progress):
                 metadata = track.get_metadata()
                 if (hasattr(metadata, "vorbis_comment")):
                     comment = metadata.vorbis_comment

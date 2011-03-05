@@ -587,7 +587,7 @@ class M4AAudio_faac(AudioFile):
         return False
 
     @classmethod
-    def add_replay_gain(cls, filenames):
+    def add_replay_gain(cls, filenames, progress=None):
         """Adds ReplayGain values to a list of filename strings.
 
         All the filenames must be of this AudioFile type.
@@ -597,6 +597,9 @@ class M4AAudio_faac(AudioFile):
         track_names = [track.filename for track in
                        open_files(filenames) if
                        isinstance(track, cls)]
+
+        if (progress is not None):
+            progress(0, 1)
 
         #helpfully, aacgain is flag-for-flag compatible with mp3gain
         if ((len(track_names) > 0) and (BIN.can_execute(BIN['aacgain']))):
@@ -608,6 +611,9 @@ class M4AAudio_faac(AudioFile):
             sub.wait()
 
             devnull.close()
+
+        if (progress is not None):
+            progress(1, 1)
 
 
 class M4AAudio_nero(M4AAudio_faac):

@@ -785,7 +785,7 @@ class MP3Audio(AudioFile):
         return False
 
     @classmethod
-    def add_replay_gain(cls, filenames):
+    def add_replay_gain(cls, filenames, progress=None):
         """Adds ReplayGain values to a list of filename strings.
 
         All the filenames must be of this AudioFile type.
@@ -796,6 +796,9 @@ class MP3Audio(AudioFile):
                        open_files(filenames) if
                        isinstance(track, cls)]
 
+        if (progress is not None):
+            progress(0, 1)
+
         if ((len(track_names) > 0) and (BIN.can_execute(BIN['mp3gain']))):
             devnull = file(os.devnull, 'ab')
             sub = subprocess.Popen([BIN['mp3gain'], '-f', '-k', '-q', '-r'] + \
@@ -805,6 +808,9 @@ class MP3Audio(AudioFile):
             sub.wait()
 
             devnull.close()
+
+        if (progress is not None):
+            progress(1, 1)
 
     def mpeg_frames(self):
         """Yields (header, data) tuples of the file's contents.

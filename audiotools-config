@@ -497,8 +497,8 @@ if (__name__ == '__main__'):
         msg.new_row()
         msg.output_column(_(u"ID3v2 digit padding"), True)
         msg.output_column(u" : ")
-        msg.output_column({True:_(u"padded to 2 digits"),
-                           False:_(u"no padding")}[
+        msg.output_column({True:_(u'padded to 2 digits ("01", "02", etc.)'),
+                           False:_(u'no padding ("1", "2", etc.)')}[
                 audiotools.config.getboolean_default("ID3", "pad", False)])
         msg.new_row()
         msg.output_column(_(u"ID3v1 tag version"), True)
