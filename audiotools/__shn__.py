@@ -247,7 +247,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
         and returns a new ShortenAudio object."""
 
         if (pcmreader.bits_per_sample not in (8, 16)):
-            raise UnsupportedBitsPerSample()
+            raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
 
         import tempfile
 
@@ -349,7 +349,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
         wave = WaveAudio(wave_filename)
 
         if (wave.bits_per_sample() not in (8, 16)):
-            raise UnsupportedBitsPerSample()
+            raise UnsupportedBitsPerSample(filename, wave.bits_per_sample())
 
         (head, tail) = wave.pcm_split()
         if (len(tail) > 0):
@@ -391,7 +391,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
         aiff = AiffAudio(aiff_filename)
 
         if (aiff.bits_per_sample() not in (8, 16)):
-            raise UnsupportedBitsPerSample()
+            raise UnsupportedBitsPerSample(filename, aiff.bits_per_sample())
 
         (head, tail) = aiff.pcm_split()
         if (len(tail) > 0):

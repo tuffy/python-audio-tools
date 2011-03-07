@@ -24,7 +24,7 @@ from audiotools import (AudioFile, InvalidFile, Con, subprocess, BIN,
                         BufferedPCMReader, Image, MetaData, sheet_to_unicode,
                         calculate_replay_gain, ApeTagItem,
                         EncodingError, DecodingError, PCMReaderError,
-                        PCMReader, ChannelMask, UnsupportedChannelMask,
+                        PCMReader, ChannelMask,
                         InvalidWave, __default_quality__,
                         WaveContainer, to_pcm_progress)
 from __wav__ import WaveAudio, WaveReader

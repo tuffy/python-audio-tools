@@ -2956,7 +2956,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    Querying FreeDB and MusicBrainz are possible,
    but I expect most of the time they'll generate empty templates.
 *** DONE Add dvda2xmcd.1 man page
-* TODO Add progess indicator to transcoders
+* TODO Add progess indicator to various utilities
   This will likely require an ExecQueue update which can
   receive progress output from multiple subprocesses
   so that the total progress can be generated.
@@ -2978,6 +2978,21 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] WavPackAudio
    - [X] WaveAudio
 ** DONE Update programming documentation with progress callback option
+** TODO Update AudioFile.verify() with a progress callback option
+   - [ ] AACAudio
+   - [ ] ALACAudio
+   - [ ] AiffAudio
+   - [ ] AuAudio
+   - [ ] FlacAudio
+   - [ ] M4AAudio
+   - [ ] MP2Audio
+   - [ ] MP3Audio
+   - [ ] OggFlacAudio
+   - [ ] ShortenAudio
+   - [ ] SpeexAudio
+   - [ ] VorbisAudio
+   - [ ] WavPackAudio
+   - [ ] WaveAudio
 * TODO Add options for ID3v2/ID3v1 tagging
   Perhaps add config file options and corresponding audiotools-config options.
 ** DONE Make ID3v2 version selectable
@@ -3323,3 +3338,4 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   For MetaData, it could return a new object with fixed fields.
   For AudioFile, it could function like convert() and build a new file
   with fixes applied.
+* TODO Add individual tag item removal option to tracktag

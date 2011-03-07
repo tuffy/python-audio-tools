@@ -834,9 +834,7 @@ class ProgressRow:
         output_line = (self.ansi(unicode(head),
                                  [VerboseMessenger.FG_WHITE,
                                   VerboseMessenger.BG_BLUE]) +
-                       self.ansi(unicode(tail),
-                                 [VerboseMessenger.FG_WHITE,
-                                  VerboseMessenger.BG_BLACK]))
+                       unicode(tail))
 
         self.cached_unicode = output_line
         return output_line
@@ -885,25 +883,37 @@ class EncodingError(IOError):
 class UnsupportedChannelMask(EncodingError):
     """Raised if the encoder does not support the file's channel mask."""
 
-    def __init__(self):
-        EncodingError.__init__(self,
-            u"unsupported channel mask during file encoding")
+    def __init__(self, filename, mask):
+        EncodingError.__init__(
+            self,
+            _(u"Unable to write \"%(target_filename)s\"" +
+              u" with channel assignment \"%(assignment)s\"") %
+            {"target_filename":VerboseMessenger(None).filename(filename),
+             "assignment":audiotools.ChannelMask(mask)})
 
 
 class UnsupportedChannelCount(EncodingError):
     """Raised if the encoder does not support the file's channel count."""
 
-    def __init__(self):
-        EncodingError.__init__(self,
-            u"unsupported channel count during file encoding")
+    def __init__(self, filename, count):
+        EncodingError.__init__(
+            self,
+            _(u"Unable to write \"%(target_filename)s\"" +
+              u" with %(channels)d channel input") %
+            {"target_filename":VerboseMessenger(None).filename(filename),
+             "channels":count})
 
 
 class UnsupportedBitsPerSample(EncodingError):
     """Raised if the encoder does not support the file's bits-per-sample."""
 
-    def __init__(self):
-        EncodingError.__init__(self,
-            u"unsupported bits per sample during file encoding")
+    def __init__(self, filename, bits_per_sample):
+        EncodingError.__init__(
+            self,
+            _(u"Unable to write \"%(target_filename)s\"" +
+              u" with %(bps)d bits per sample") %
+            {"target_filename":VerboseMessenger(None).filename(filename),
+             "bps":bits_per_sample})
 
 
 class DecodingError(IOError):
@@ -1124,6 +1134,25 @@ class ChannelMask:
 
     MASK_TO_SPEAKER = dict(map(reversed, map(list, SPEAKER_TO_MASK.items())))
 
+    MASK_TO_NAME = {0x1:_(u"front left"),
+                    0x2:_(u"front right"),
+                    0x4:_(u"front center"),
+                    0x8:_(u"low frequency"),
+                    0x10:_(u"back left"),
+                    0x20:_(u"back right"),
+                    0x40:_(u"front right of center"),
+                    0x80:_(u"front left of center"),
+                    0x100:_(u"back center"),
+                    0x200:_(u"side left"),
+                    0x400:_(u"side right"),
+                    0x800:_(u"top center"),
+                    0x1000:_(u"top front left"),
+                    0x2000:_(u"top front center"),
+                    0x4000:_(u"top front right"),
+                    0x8000:_(u"top back left"),
+                    0x10000:_(u"top back center"),
+                    0x20000:_(u"top back right")}
+
     def __init__(self, mask):
         """mask should be an integer channel mask value."""
 
@@ -1131,6 +1160,11 @@ class ChannelMask:
 
         for (speaker, speaker_mask) in self.SPEAKER_TO_MASK.items():
             setattr(self, speaker, (mask & speaker_mask) != 0)
+
+    def __unicode__(self):
+        return u", ".join([self.MASK_TO_NAME[key] for key in
+                          sorted(self.MASK_TO_SPEAKER.keys())
+                          if getattr(self, self.MASK_TO_SPEAKER[key])])
 
     def __repr__(self):
         return "ChannelMask(%s)" % \

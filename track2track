@@ -63,38 +63,6 @@ def convert(progress, source_audiofile, destination_filename,
 
     return destination_filename
 
-       # except audiotools.UnsupportedChannelMask:
-       #      output.put(
-       #          ("error",
-       #           [_(u"Unable to write \"%(target_filename)s\"" +
-       #              u" with channel assignment from \"%(source_filename)s\"") %
-       #            {"target_filename":filename(destination_filename),
-       #             "source_filename":filename(source_audiofile.filename)}]))
-       #  except audiotools.UnsupportedChannelCount:
-       #      output.put(
-       #          ("error",
-       #           [_(u"Unable to write \"%(target_filename)s\"" +
-       #              u" with %(channels)d channel input") %
-       #            {"target_filename":filename(destination_filename),
-       #             "channels":source_audiofile.channels()}]))
-       #  except audiotools.UnsupportedBitsPerSample:
-       #      output.put(
-       #          ("error",
-       #           [_(u"Unable to write \"%(target_filename)s\"" +
-       #              u" with %(bps)d bits per sample") %
-       #            {"target_filename":filename(destination_filename),
-       #             "bps":source_audiofile.bits_per_sample()}]))
-       #  except audiotools.EncodingError, msg:
-       #      output.put(
-       #          ("error",
-       #           [_(u"%(filename)s: %(error)s") %
-       #            {"filename":filename(destination_filename),
-       #             "error":msg}]))
-       #  except audiotools.InvalidFormat, msg:
-       #      output.put(("error", [unicode(msg)]))
-       #  except Exception, msg:
-       #      output.put(("error", [unicode(msg)]))
-
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(

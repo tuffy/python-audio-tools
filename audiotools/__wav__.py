@@ -165,7 +165,7 @@ def __blank_channel_mask__():
     return c
 
 
-def __channel_mask__(mask, channel_count):
+def __channel_mask__(filename, mask, channel_count):
     mask = ChannelMask(mask)
     c = __blank_channel_mask__()
 
@@ -214,7 +214,7 @@ def __channel_mask__(mask, channel_count):
             for channel in attr_map[0:channel_count]:
                 setattr(c, channel, True)
         else:
-            raise UnsupportedChannelMask()
+            raise UnsupportedChannelMask(filename, mask)
 
     return c
 
@@ -438,7 +438,8 @@ class WaveAudio(WaveContainer):
             fmt.valid_bits_per_sample = pcmreader.bits_per_sample
             fmt.sub_format = "0100000000001000800000aa00389b71".decode('hex')
             if (fmt.compression == 0xFFFE):
-                fmt.channel_mask = __channel_mask__(pcmreader.channel_mask,
+                fmt.channel_mask = __channel_mask__(filename,
+                                                    pcmreader.channel_mask,
                                                     pcmreader.channels)
             else:
                 fmt.channel_mask = __blank_channel_mask__()

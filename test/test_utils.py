@@ -754,7 +754,7 @@ class track2track(UtilTest):
                                                   artist_name=u"Artist")
         self.cover = audiotools.Image.new(TEST_COVER1, u"", 0)
         self.track_metadata.add_image(self.cover)
-            # audiotools.Image.new(open("bigpng.png", "rb").read(), u"", 0))
+        # audiotools.Image.new(open("bigpng.png", "rb").read(), u"", 0))
 
         self.track1.set_metadata(self.track_metadata)
 
@@ -774,6 +774,18 @@ class track2track(UtilTest):
         self.cwd_dir = tempfile.mkdtemp()
         self.original_dir = os.getcwd()
         os.chdir(self.cwd_dir)
+
+        self.unwritable_dir = tempfile.mkdtemp()
+        os.chmod(self.unwritable_dir, 0)
+        self.unwritable_file = "/dev/null/foo.%s" % (self.output_format.SUFFIX)
+        f = open(os.path.join(self.input_dir,
+                              "broken.%s" % (self.input_format.SUFFIX)), "wb")
+        f.write(open(self.track1.filename, "rb").read()[0:-10])
+        f.close()
+        self.broken_track1 = audiotools.open(
+            os.path.join(self.input_dir,
+                         "broken.%s" % (self.input_format.SUFFIX)))
+
 
         #Why a static set of input/output arguments for each set of options?
         #Since track2track uses the standard interface for everything,
@@ -799,6 +811,9 @@ class track2track(UtilTest):
 
         self.output_file.close()
         self.xmcd_file.close()
+
+        os.chmod(self.unwritable_dir, 0700)
+        os.rmdir(self.unwritable_dir)
 
     def clean_output_dirs(self):
         for f in os.listdir(self.output_dir):
@@ -832,6 +847,36 @@ class track2track(UtilTest):
             elif (option == '-x'):
                 populated.append(option)
                 populated.append(self.xmcd_file.name)
+            else:
+                populated.append(option)
+
+        return populated
+
+    def populate_bad_options(self, options):
+        populated = []
+
+        for option in sorted(options):
+            if (option == '-t'):
+                populated.append(option)
+                populated.append("foo")
+            elif (option == '-q'):
+                populated.append(option)
+                populated.append("bar")
+            elif (option == '-d'):
+                populated.append(option)
+                populated.append(self.unwritable_dir)
+            elif (option == '--format'):
+                populated.append(option)
+                populated.append("%(foo)s.%(suffix)s")
+            elif (option == '-o'):
+                populated.append(option)
+                populated.append(self.unwritable_file)
+            elif (option == '-x'):
+                populated.append(option)
+                populated.append(os.devnull)
+            elif (option == '-j'):
+                populated.append(option)
+                populated.append(str(0))
             else:
                 populated.append(option)
 
@@ -953,71 +998,206 @@ class track2track(UtilTest):
 
     @UTIL_TRACK2TRACK
     def test_errors(self):
-        self.assertEqual(self.__run_app__(
-                ["track2track", "-t", "flac", "-q", "help"]), 0)
-        self.__check_info__(_(u"Available compression types for %s:") %
-                            (audiotools.FlacAudio.NAME))
-        for m in audiotools.FlacAudio.COMPRESSION_MODES:
-            self.assert_(
-                self.stderr.readline().decode(
-                    audiotools.IO_ENCODING).lstrip().startswith(
-                    m.decode('ascii')))
+        messenger = audiotools.Messenger("track2track", None)
+        filename = messenger.filename
 
-        self.assertEqual(self.__run_app__(
-                ["track2track", "-t", "wav", "-q", "help"]), 0)
+        all_options = ["-t", "-q", "-d", "--format", "-o", "-j",
+                       "-T", "--replay-gain", "--no-replay-gain"]
+        for count in xrange(0, len(all_options) + 1):
+            for options in Combinations(all_options, count):
+                self.clean_output_dirs()
+                self.__clear_checks__()
 
-        self.__check_error__(_(u"Audio type %s has no compression modes") %
-                             (audiotools.WaveAudio.NAME))
+                options = self.populate_bad_options(options) + \
+                    [self.broken_track1.filename]
 
-        self.assertEqual(self.__run_app__(
-                ["track2track", "-t", "flac", "-q", "foobar"]), 1)
+                if ("-t" in options):
+                    self.assertEqual(
+                        self.__run_app__(["track2track"] + options),
+                        2)
+                    continue
 
+                self.assertEqual(
+                    self.__run_app__(["track2track"] + options),
+                    1)
+
+                if (("-o" in options) and
+                    ("-d" in options)):
+                    self.__check_error__(
+                        _(u"-o and -d options are not compatible"))
+                    self.__check_info__(
+                        _(u"Please specify either -o or -d but not both"))
+                    continue
+
+                if (("--format" in options) and ("-o" in options)):
+                    self.__queue_warning__(
+                        _(u"--format has no effect when used with -o"))
+
+                if ("-q" in options):
+                    self.__check_error__(
+                        _(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") %
+                        {"quality": "bar",
+                         "type":self.output_format.NAME})
+                    continue
+
+                if ("-j" in options):
+                    self.__check_error__(
+                        _(u"You must run at least 1 process at a time"))
+                    continue
+
+                if ("-x" in options):
+                    self.__check_error__(
+                        _(u"Invalid XMCD or MusicBrainz XML file"))
+                    continue
+
+                if ("-o" in options):
+                    self.__check_error__(
+                        _(u"[Errno 20] Not a directory: '%s'") %
+                        (self.unwritable_file))
+                    continue
+
+                if ("--format" in options):
+                    self.__check_error__(
+                        _(u"Unknown field \"%s\" in file format") % ("foo"))
+                    self.__check_info__(_(u"Supported fields are:"))
+                    for field in sorted(audiotools.MetaData.__FIELDS__ + \
+                                            ("album_track_number", "suffix")):
+                        if (field == 'track_number'):
+                            self.__check_info__(u"%(track_number)2.2d")
+                        else:
+                            self.__check_info__(u"%%(%s)s" % (field))
+                    continue
+
+                if ("-d" in options):
+                    output_path = os.path.join(
+                        self.unwritable_dir,
+                        self.output_format.track_name(
+                            "",
+                            self.track1.get_metadata(),
+                            audiotools.FILENAME_FORMAT))
+                    self.__check_error__(
+                        _(u"[Errno 13] Permission denied: '%s'") % \
+                            (output_path))
+                    continue
+
+                #the error triggered by a broken file is variable
+                #so no need to check its exact value
+                self.assert_(len(self.stderr.getvalue()) > 0)
+
+        #check no input files
+        self.assertEqual(self.__run_app__(["track2track"]), 1)
         self.__check_error__(
-            _(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") %
-            {"quality": "foobar",
-             "type": audiotools.FlacAudio.NAME})
+            _(u"You must specify at least 1 supported audio file"))
 
-        self.assertEqual(self.__run_app__(
-                ["track2track", "-t", "flac", "-d", self.output_dir,
-                 "/dev/null/foo"]), 1)
 
-        self.__check_warning__(_(u"Unable to open \"%s\"") % \
-                                   (u"/dev/null/foo"))
+        self.track2 = self.input_format.from_pcm(
+            os.path.join(self.input_dir, "02.%s" % (self.input_format.SUFFIX)),
+            BLANK_PCM_Reader(2))
 
-        self.assertEqual(self.__run_app__(
-                ["track2track", "-t", "flac", "-o", "/dev/null/foo",
-                 self.track1.filename]), 1)
-
+        #check multiple input files and -o
+        self.assertEqual(self.__run_app__(["track2track",
+                                           "-o", self.output_file.name,
+                                           self.track1.filename,
+                                           self.track2.filename]), 1)
         self.__check_error__(
-            _(u"[Errno 20] Not a directory: '%(filename)s'") %
-            {"filename":u"/dev/null/foo"})
+            _(u"You may specify only 1 input file for use with -o"))
 
-        self.assertEqual(self.__run_app__(
-                ["track2track", "-j", str(0), "-t", "flac", "-d",
-                 self.output_dir, self.track1.filename]), 1)
+        #check conversion from supported to unsupported channel count
+        unsupported_count_file = tempfile.NamedTemporaryFile(
+            suffix=".flac")
+        try:
+            supported_track = audiotools.WaveAudio.from_pcm(
+                os.path.join(self.input_dir, "00 - channels.wav"),
+                BLANK_PCM_Reader(1, channels=10, channel_mask=0))
 
-        self.__check_error__(_(u'You must run at least 1 process at a time'))
+            self.assertEqual(self.__run_app__(["track2track",
+                                               "-t", "flac",
+                                               "-d",
+                                               self.output_dir,
+                                               supported_track.filename]), 1)
+            self.__check_error__(
+                _(u"Unable to write \"%(target_filename)s\"" +
+                  u" with %(channels)d channel input") %
+                {"target_filename":filename(os.path.join(self.output_dir,
+                                                         "00 - .flac")),
+                 "channels":10})
 
-        self.assertEqual(self.__run_app__(
-                ["track2track", "-t", "flac", "-d", self.output_dir,
-                 "-x", "/dev/null", self.track1.filename]), 1)
+            self.assertEqual(self.__run_app__(["track2track",
+                                               "-o",
+                                               unsupported_count_file.name,
+                                               supported_track.filename]), 1)
+            self.__check_error__(
+                _(u"Unable to write \"%(target_filename)s\"" +
+                  u" with %(channels)d channel input") %
+                {"target_filename":filename(unsupported_count_file.name),
+                 "channels":10})
+        finally:
+            unsupported_count_file.close()
 
-        self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
+        #check conversion from supported to unsupported channel mask
+        unsupported_mask_file = tempfile.NamedTemporaryFile(
+            suffix=".flac")
+        try:
+            supported_track = audiotools.WaveAudio.from_pcm(
+                os.path.join(self.input_dir, "00 - mask.wav"),
+                BLANK_PCM_Reader(1, channels=6, channel_mask=0x3F000))
 
-        self.assertEqual(self.__run_app__(
-                ["track2track", "-j", str(1), "-t", "flac",
-                 "--format=%(foo)s", "-d",
-                 self.output_dir, self.track1.filename]), 1)
+            self.assertEqual(self.__run_app__(["track2track",
+                                               "-t", "flac",
+                                               "-d",
+                                               self.output_dir,
+                                               supported_track.filename]), 1)
+            self.__check_error__(
+                _(u"Unable to write \"%(target_filename)s\"" +
+                  u" with channel assignment \"%(assignment)s\"") %
+                {"target_filename":filename(os.path.join(self.output_dir,
+                                                         "00 - .flac")),
+                 "assignment":audiotools.ChannelMask(0x3F000)})
 
-        self.__check_error__(_(u"Unknown field \"%s\" in file format") %
-                             ("foo"))
-        self.__check_info__(_(u"Supported fields are:"))
-        for field in sorted(audiotools.MetaData.__FIELDS__ + \
-                                ("album_track_number", "suffix")):
-            if (field == 'track_number'):
-                self.__check_info__(u"%(track_number)2.2d")
-            else:
-                self.__check_info__(u"%%(%s)s" % (field))
+            self.assertEqual(self.__run_app__(["track2track",
+                                               "-o",
+                                               unsupported_mask_file.name,
+                                               supported_track.filename]), 1)
+            self.__check_error__(
+                _(u"Unable to write \"%(target_filename)s\"" +
+                  u" with channel assignment \"%(assignment)s\"") %
+                {"target_filename":filename(unsupported_mask_file.name),
+                 "assignment":audiotools.ChannelMask(0x3F000)})
+        finally:
+            unsupported_mask_file.close()
+
+        #check conversion from supported to unsupported bits-per-sample
+        unsupported_bps_file = tempfile.NamedTemporaryFile(
+            suffix=".shn")
+        try:
+            supported_track = audiotools.WaveAudio.from_pcm(
+                os.path.join(self.input_dir, "00 - bps.wav"),
+                BLANK_PCM_Reader(1, bits_per_sample=24))
+
+            self.assertEqual(self.__run_app__(["track2track",
+                                               "-t", "shn",
+                                               "-d",
+                                               self.output_dir,
+                                               supported_track.filename]), 1)
+            self.__check_error__(
+                _(u"Unable to write \"%(target_filename)s\"" +
+                  u" with %(bps)d bits per sample") %
+                {"target_filename":filename(os.path.join(self.output_dir,
+                                                         "00 - .shn")),
+                 "bps":24})
+
+            self.assertEqual(self.__run_app__(["track2track",
+                                               "-o",
+                                               unsupported_bps_file.name,
+                                               supported_track.filename]), 1)
+            self.__check_error__(
+                _(u"Unable to write \"%(target_filename)s\"" +
+                  u" with %(bps)d bits per sample") %
+                {"target_filename":filename(unsupported_bps_file.name),
+                 "bps":24})
+        finally:
+            unsupported_bps_file.close()
+
 
     @UTIL_TRACK2TRACK
     def test_replay_gain(self):

@@ -21,7 +21,7 @@ from audiotools import (AudioFile, InvalidFile, Con, PCMReader,
                         __capped_stream_reader__, PCMReaderError,
                         transfer_data, DecodingError, EncodingError,
                         ID3v22Comment, BUFFER_SIZE, ChannelMask,
-                        UnsupportedChannelMask, ReorderedPCMReader, pcm,
+                        ReorderedPCMReader, pcm,
                         cStringIO, os, AiffContainer, to_pcm_progress)
 
 import gettext

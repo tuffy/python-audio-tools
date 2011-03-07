@@ -24,6 +24,7 @@ from audiotools import (AudioFile, MetaData, InvalidFile, PCMReader,
                         os, open_files, Image, sys, WaveAudio, AiffAudio,
                         ReplayGain, ignore_sigint, sheet_to_unicode,
                         EncodingError, UnsupportedChannelMask, DecodingError,
+                        UnsupportedChannelCount,
                         Messenger, BufferedPCMReader, calculate_replay_gain,
                         ChannelMask, PCMReaderError, __default_quality__,
                         WaveContainer, AiffContainer, to_pcm_progress)
@@ -1069,6 +1070,9 @@ class FlacAudio(WaveContainer, AiffContainer):
                                   "max_residual_partition_order": 6}}[
             compression]
 
+        if (pcmreader.channels > 8):
+            raise UnsupportedChannelCount(filename, pcmreader.channels)
+
         if (int(pcmreader.channel_mask) == 0):
             if (pcmreader.channels <= 6):
                 channel_mask = {1: 0x0004,
@@ -1077,10 +1081,8 @@ class FlacAudio(WaveContainer, AiffContainer):
                                 4: 0x0033,
                                 5: 0x0037,
                                 6: 0x003F}[pcmreader.channels]
-            elif (pcmreader.channels <= 8):
-                channel_mask = 0
             else:
-                raise UnsupportedChannelMask()
+                channel_mask = 0
         elif (int(pcmreader.channel_mask) not in
             (0x0001,    # 1ch - mono
              0x0004,    # 1ch - mono
@@ -1092,7 +1094,8 @@ class FlacAudio(WaveContainer, AiffContainer):
              0x0607,    # 5ch - L, R, C, side left, side right
              0x003F,    # 6ch - L, R, C, LFE, back left, back right
              0x060F)):  # 6 ch - L, R, C, LFE, side left, side right
-            raise UnsupportedChannelMask()
+            raise UnsupportedChannelMask(filename,
+                                         int(pcmreader.channel_mask))
         else:
             channel_mask = int(pcmreader.channel_mask)
 
@@ -1914,7 +1917,8 @@ class OggFlacAudio(AudioFile):
             elif (pcmreader.channels <= 8):
                 channel_mask = 0
             else:
-                raise UnsupportedChannelMask()
+                raise UnsupportedChannelMask(filename,
+                                             int(pcmreader.channel_mask))
         elif (int(pcmreader.channel_mask) not in
             (0x0001,    # 1ch - mono
              0x0004,    # 1ch - mono
@@ -1926,7 +1930,8 @@ class OggFlacAudio(AudioFile):
              0x0607,    # 5ch - L, R, C, side left, side right
              0x003F,    # 6ch - L, R, C, LFE, back left, back right
              0x060F)):  # 6ch - L, R, C, LFE, side left, side right
-            raise UnsupportedChannelMask()
+            raise UnsupportedChannelMask(filename,
+                                         int(pcmreader.channel_mask))
         else:
             channel_mask = int(pcmreader.channel_mask)
 

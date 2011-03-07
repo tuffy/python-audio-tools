@@ -25,7 +25,7 @@ from audiotools import (AudioFile, InvalidFile, PCMReader, PCMConverter,
                         open, open_files, EncodingError, DecodingError,
                         WaveAudio, TempWaveReader,
                         ChannelMask, UnsupportedBitsPerSample,
-                        UnsupportedChannelCount, BufferedPCMReader,
+                        BufferedPCMReader,
                         at_a_time, VERSION, PCMReaderError,
                         __default_quality__)
 from __m4a_atoms__ import *
@@ -1376,7 +1376,7 @@ class ALACAudio(M4AAudio_faac):
         and returns a new ALACAudio object."""
 
         if (pcmreader.bits_per_sample not in (16, 24)):
-            raise UnsupportedBitsPerSample()
+            raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
 
         from . import encoders
         import time

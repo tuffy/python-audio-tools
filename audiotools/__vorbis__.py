@@ -573,7 +573,8 @@ class VorbisAudio(AudioFile):
                 standard_channel_mask = ChannelMask(pcmreader.channel_mask)
                 vorbis_channel_mask = VorbisChannelMask(standard_channel_mask)
             else:
-                raise UnsupportedChannelMask()
+                raise UnsupportedChannelMask(filename,
+                                             int(pcmreader.channel_mask))
 
             try:
                 transfer_framelist_data(ReorderedPCMReader(
@@ -593,7 +594,8 @@ class VorbisAudio(AudioFile):
                 raise err
 
         else:
-            raise UnsupportedChannelMask()
+            raise UnsupportedChannelMask(filename,
+                                         int(pcmreader.channel_mask))
 
         try:
             pcmreader.close()
