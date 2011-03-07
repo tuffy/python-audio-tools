@@ -666,28 +666,43 @@ class SilentMessenger(VerboseMessenger):
 
         pass
 
-def ProgressDisplay(messenger):
-    if (isinstance(messenger, SilentMessenger) or
-        (not sys.stdout.isatty())):
-        return SilentProgressDisplay(messenger)
-    else:
-        return VerboseProgressDisplay(messenger)
+    def ansi_uplines(self, lines):
+        pass
+
+    def ansi_cleardown(self):
+        pass
 
 
-class VerboseProgressDisplay:
+class ProgressDisplay:
     def __init__(self, messenger):
         self.messenger = messenger
         self.previous_output = []
         self.progress_rows = []
 
-    def add_row(self, row_id, output_line):
+        if (sys.stdout.isatty()):
+            self.add_row = self.add_row_tty
+            self.delete_row = self.delete_row_tty
+            self.update_row = self.update_row_tty
+            self.refresh = self.refresh_tty
+            self.clear = self.clear_tty
+        else:
+            self.add_row = self.add_row_nontty
+            self.delete_row = self.delete_row_nontty
+            self.update_row = self.update_row_nontty
+            self.refresh = self.refresh_nontty
+            self.clear = self.clear_nontty
+
+    def add_row_tty(self, row_id, output_line):
         new_row = ProgressRow(row_id, output_line)
         if (None in self.progress_rows):
             self.progress_rows[self.progress_rows.index(None)] = new_row
         else:
             self.progress_rows.append(new_row)
 
-    def delete_row(self, row_id):
+    def add_row_nontty(self, row_id, output_line):
+        pass
+
+    def delete_row_tty(self, row_id):
         row_index = None
         for (i, row) in enumerate(self.progress_rows):
             if ((row is not None) and (row.id == row_id)):
@@ -697,13 +712,19 @@ class VerboseProgressDisplay:
         if (row_index is not None):
             self.progress_rows[row_index] = None
 
-    def update_row(self, row_id, current, total):
+    def delete_row_nontty(self, row_id):
+        pass
+
+    def update_row_tty(self, row_id, current, total):
         for row in self.progress_rows:
             if ((row is not None) and (row.id == row_id)):
                 row.update(current, total)
         self.refresh()
 
-    def refresh(self):
+    def update_row_nontty(self, row_id, current, total):
+        pass
+
+    def refresh_tty(self):
         screen_width = self.messenger.terminal_size(sys.stdout)[1]
         new_output = [progress_row.unicode(screen_width)
                       for progress_row in self.progress_rows
@@ -714,72 +735,51 @@ class VerboseProgressDisplay:
                 self.messenger.output(output)
             self.previous_output = new_output
 
-    def clear(self):
+    def refresh_nontty(self):
+        pass
+
+    def clear_tty(self):
         if (len(self.previous_output) > 0):
             self.messenger.ansi_uplines(len(self.previous_output))
             self.messenger.ansi_cleardown()
             self.previous_output = []
 
-class SilentProgressDisplay(VerboseProgressDisplay):
-    def __init__(self, messenger):
-        self.messenger = messenger
-
-    def add_row(self, row_id, output_line):
+    def clear_nontty(self):
         pass
 
-    def delete_row(self, row_id):
-        pass
 
-    def update_row(self, row_id, current, total):
-        pass
+class SingleProgressDisplay(ProgressDisplay):
+    def __init__(self, messenger, progress_text):
+        ProgressDisplay.__init__(self, messenger)
+        self.add_row(0, progress_text)
 
-    def refresh(self):
-        pass
-
-    def clear(self):
-        pass
-
-def ReplayGainProgressDisplay(messenger, lossless_replay_gain):
-    if (isinstance(messenger, SilentMessenger) or
-        (not sys.stdout.isatty())):
-        return ReplayGainProgressDisplayNonTTY(messenger,
-                                               lossless_replay_gain)
-    else:
-        return ReplayGainProgressDisplayTTY(messenger,
-                                            lossless_replay_gain)
+    def update(self, current, total):
+        self.update_row(0, current, total)
 
 
-class ReplayGainProgressDisplayTTY(VerboseProgressDisplay):
+class ReplayGainProgressDisplay(ProgressDisplay):
     def __init__(self, messenger, lossless_replay_gain):
-        VerboseProgressDisplay.__init__(self, messenger)
+        ProgressDisplay.__init__(self, messenger)
         self.lossless_replay_gain = lossless_replay_gain
         if (lossless_replay_gain):
             self.add_row(0, _(u"Adding ReplayGain"))
         else:
             self.add_row(0, _(u"Applying ReplayGain"))
-        self.replaygain_row = self.progress_rows[0]
 
-    def initial_message(self):
+        if (sys.stdout.isatty()):
+            self.initial_message = self.initial_message_tty
+            self.update = self.update_tty
+            self.final_message = self.final_message_tty
+            self.replaygain_row = self.progress_rows[0]
+        else:
+            self.initial_message = self.initial_message_nontty
+            self.update = self.update_nontty
+            self.final_message = self.final_message_nontty
+
+    def initial_message_tty(self):
         pass
 
-    def update(self, current, total):
-        self.replaygain_row.update(current, total)
-        self.refresh()
-
-    def final_message(self):
-        self.clear()
-        if (self.lossless_replay_gain):
-            self.messenger.info(_(u"ReplayGain added"))
-        else:
-            self.messenger.info(_(u"ReplayGain applied"))
-
-
-class ReplayGainProgressDisplayNonTTY(SilentProgressDisplay):
-    def __init__(self, messenger, lossless_replay_gain):
-        SilentProgressDisplay.__init__(self, messenger)
-        self.lossless_replay_gain = lossless_replay_gain
-
-    def initial_message(self):
+    def initial_message_nontty(self):
         if (self.lossless_replay_gain):
             self.messenger.info(
                 _(u"Adding ReplayGain metadata.  This may take some time."))
@@ -787,10 +787,21 @@ class ReplayGainProgressDisplayNonTTY(SilentProgressDisplay):
             self.messenger.info(
                 _(u"Applying ReplayGain.  This may take some time."))
 
-    def update(self, current, total):
+    def update_tty(self, current, total):
+        self.replaygain_row.update(current, total)
+        self.refresh()
+
+    def update_nontty(self, current, total):
         pass
 
-    def final_message(self):
+    def final_message_tty(self):
+        self.clear()
+        if (self.lossless_replay_gain):
+            self.messenger.info(_(u"ReplayGain added"))
+        else:
+            self.messenger.info(_(u"ReplayGain applied"))
+
+    def final_message_nontty(self):
         pass
 
 

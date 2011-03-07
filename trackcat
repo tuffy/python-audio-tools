@@ -55,6 +55,13 @@ if (__name__ == '__main__'):
                       metavar='FILENAME',
                       help=_(u'a cuesheet to embed in the output file'))
 
+    parser.add_option('-V', '--verbose',
+                      action='store',
+                      dest='verbosity',
+                      choices=audiotools.VERBOSITY_LEVELS,
+                      default=audiotools.DEFAULT_VERBOSITY,
+                      help=_(u'the verbosity level to execute at'))
+
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("trackcat", options)
 
@@ -163,16 +170,21 @@ if (__name__ == '__main__'):
     else:
         metadata = None
 
-    quality = options.quality
+    progress = audiotools.SingleProgressDisplay(
+        msg, msg.filename(options.filename))
 
     try:
-        pcmdata = audiotools.PCMCat(iter([af.to_pcm() for af in audiofiles]))
-
-        encoded = AudioType.from_pcm(options.filename,
-                                     pcmdata,
-                                     quality)
+        encoded = AudioType.from_pcm(
+            options.filename,
+            audiotools.PCMReaderProgress(
+                audiotools.PCMCat(iter([af.to_pcm() for af in audiofiles])),
+                sum([af.total_frames() for af in audiofiles]),
+                progress.update),
+            options.quality)
 
         encoded.set_metadata(metadata)
+
+        progress.clear()
 
         if (cuesheet is not None):
             #set_metadata() will sometimes transfer a cuesheet automatically

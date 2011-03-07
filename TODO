@@ -2964,10 +2964,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [ ] cd2track
   - [ ] dvda2track
   - [ ] tracksplit
-  - [ ] trackcat
+  - [X] trackcat
   - [X] trackcmp
   - [ ] trackverify
-  - [ ] tracktag (for ReplayGain)
+  - [X] tracktag (for ReplayGain)
 ** DONE Update AudioFile.convert() with a progress callback option
 ** DONE Update AudioFile.add_replay_gain() with a progress callback option
    - [X] AudioFile
