@@ -2029,7 +2029,7 @@ class trackcmp(UtilTest):
             self.__run_app__(["trackcmp", "-V", "normal",
                               self.match_file1.name, self.mismatch_file.name]),
             1)
-        self.__check_output__(
+        self.__check_info__(
             _(u"%(path1)s <> %(path2)s : %(result)s") % {
                 "path1":msg.filename(self.match_file1.name),
                 "path2":msg.filename(self.mismatch_file.name),
@@ -2042,7 +2042,7 @@ class trackcmp(UtilTest):
             self.__run_app__(["trackcmp", "-V", "normal",
                               self.match_file1.name, "/dev/null/foo"]),
             1)
-        self.__check_output__(
+        self.__check_error__(
             _(u"%(path1)s <> %(path2)s : %(result)s") % {
                 "path1":msg.filename(self.match_file1.name),
                 "path2":msg.filename("/dev/null/foo"),
@@ -2060,7 +2060,7 @@ class trackcmp(UtilTest):
             self.__run_app__(["trackcmp", "-V", "normal",
                               self.match_file1.name, self.match_dir1]),
             1)
-        self.__check_output__(
+        self.__check_error__(
             _(u"%(path1)s <> %(path2)s : %(result)s") % {
                 "path1":msg.filename(self.match_file1.name),
                 "path2":msg.filename(self.match_dir1),
@@ -2071,7 +2071,7 @@ class trackcmp(UtilTest):
             self.__run_app__(["trackcmp", "-V", "normal",
                               self.match_dir1, self.match_file1.name]),
             1)
-        self.__check_output__(
+        self.__check_error__(
             _(u"%(path1)s <> %(path2)s : %(result)s") % {
                 "path1":msg.filename(self.match_dir1),
                 "path2":msg.filename(self.match_file1.name),
@@ -2083,7 +2083,7 @@ class trackcmp(UtilTest):
                               self.match_dir1, self.match_dir2]),
             0)
         for i in xrange(1, 4):
-            self.__check_output__(
+            self.__check_info__(
                 _(u"%(path1)s <> %(path2)s : %(result)s") % {
                     "path1":msg.filename(
                         os.path.join(self.match_dir1,
@@ -2099,7 +2099,7 @@ class trackcmp(UtilTest):
                               self.match_dir1, self.mismatch_dir1]),
             1)
         for i in xrange(1, 4):
-            self.__check_output__(
+            self.__check_info__(
                 _(u"%(path1)s <> %(path2)s : %(result)s") % {
                     "path1":msg.filename(
                         os.path.join(self.match_dir1,
@@ -2115,13 +2115,13 @@ class trackcmp(UtilTest):
             self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
                               self.match_dir1, self.mismatch_dir2]),
             1)
-        self.__check_output__(
+        self.__check_info__(
             _(u"%(path)s : %(result)s") % {
                 "path":os.path.join(self.mismatch_dir2,
                                     "track %2.2d" % (3)),
                 "result":_(u"missing")})
         for i in xrange(1, 2):
-            self.__check_output__(
+            self.__check_info__(
                 _(u"%(path1)s <> %(path2)s : %(result)s") % {
                     "path1":msg.filename(
                         os.path.join(self.match_dir1,
@@ -2137,13 +2137,13 @@ class trackcmp(UtilTest):
             self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
                               self.match_dir1, self.mismatch_dir3]),
             1)
-        self.__check_output__(
+        self.__check_info__(
             _(u"%(path)s : %(result)s") % {
                 "path":os.path.join(self.match_dir1,
                                     "track %2.2d" % (4)),
                 "result":_(u"missing")})
         for i in xrange(1, 3):
-            self.__check_output__(
+            self.__check_info__(
                 _(u"%(path1)s <> %(path2)s : %(result)s") % {
                     "path1":msg.filename(
                         os.path.join(self.match_dir1,

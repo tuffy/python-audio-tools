@@ -319,7 +319,7 @@ if (__name__ == '__main__'):
                 queue.execute(
                     function=convert,
                     progress_text=msg.filename(filename),
-                    completion_text=u"%s -> %s" % \
+                    completion_output=u"%s -> %s" % \
                         (msg.filename(audiofile.filename),
                          msg.filename(filename)),
                     source_audiofile=audiofile,

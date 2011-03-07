@@ -4235,11 +4235,11 @@ class ExecProgressQueue:
         self.cached_exception = None
 
     def execute(self, function,
-                progress_text=None, completion_text=None,
+                progress_text=None, completion_output=None,
                 *args, **kwargs):
         self.queued_jobs.append((self.max_job_id,
                                  progress_text,
-                                 completion_text,
+                                 completion_output,
                                  function,
                                  args,
                                  kwargs))
@@ -4249,7 +4249,7 @@ class ExecProgressQueue:
         #pull job off queue
         (job_id,
          progress_text,
-         completion_text,
+         completion_output,
          function,
          args,
          kwargs) = self.queued_jobs.pop(0)
@@ -4261,7 +4261,7 @@ class ExecProgressQueue:
         #spawn subprocess and add it to pool
         self.running_job_pool[job_id] = ExecProgressQueueJob.spawn(
             job_id,
-            completion_text,
+            completion_output,
             function,
             args,
             kwargs)
@@ -4278,9 +4278,14 @@ class ExecProgressQueue:
         self.running_job_pool[job_id].join()
 
         #display output text, if any
-        if (self.running_job_pool[job_id].completion_text is not None):
-            self.progress_display.messenger.info(
-                self.running_job_pool[job_id].completion_text)
+        completion_output = self.running_job_pool[job_id].completion_output
+        if (completion_output is not None):
+            if (callable(completion_output)):
+                self.progress_display.messenger.info(
+                    unicode(completion_output(result)))
+            else:
+                self.progress_display.messenger.info(
+                    unicode(completion_output))
 
         #remove job from pool
         del(self.running_job_pool[job_id])
@@ -4330,22 +4335,22 @@ class ExecProgressQueue:
                 return
 
 class ExecProgressQueueJob:
-    def __init__(self, pid, output, completion_text):
+    def __init__(self, pid, output, completion_output):
         self.pid = pid
         self.output = output
-        self.completion_text = completion_text
+        self.completion_output = completion_output
 
     def join(self):
         self.output.close()
         return os.waitpid(self.pid, 0)
 
     @classmethod
-    def spawn(cls, job_id, completion_text, function, args, kwargs):
+    def spawn(cls, job_id, completion_output, function, args, kwargs):
         (read_end, write_end) = os.pipe()
         pid = os.fork()
         if (pid > 0):
             os.close(write_end)
-            return cls(pid, os.fdopen(read_end, 'rb'), completion_text)
+            return cls(pid, os.fdopen(read_end, 'rb'), completion_output)
         else:
             os.close(read_end)
             output = os.fdopen(write_end, 'wb')

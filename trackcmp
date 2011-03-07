@@ -37,7 +37,7 @@ def near_equal(audiofile1, audiofile2):
         p1.close()
         p2.close()
 
-def cmp_files(audiofile1, audiofile2):
+def cmp_files(progress, audiofile1, audiofile2):
     """Returns (path1, path2, mismatch) tuple
 
     where mismatch is the int of the first PCM mismatch,
@@ -47,7 +47,8 @@ def cmp_files(audiofile1, audiofile2):
     try:
         return (audiofile1.filename,
                 audiofile2.filename,
-                audiotools.pcm_frame_cmp(audiofile1.to_pcm(),
+                audiotools.pcm_frame_cmp(audiotools.to_pcm_progress(audiofile1,
+                                                                    progress),
                                          audiofile2.to_pcm()))
     except (IOError, ValueError, audiotools.DecodingError):
         return (audiofile1.filename,
@@ -63,12 +64,12 @@ class Results:
     def missing(self, directory, track_number, album_number):
         self.failures += 1
         if (album_number == 0):
-            self.msg.output(_(u"%(path)s : %(result)s") % {
+            self.msg.info(_(u"%(path)s : %(result)s") % {
                     "path":os.path.join(directory,
                                         "track %2.2d" % (track_number)),
                     "result":self.msg.ansi(_(u"missing"), [self.msg.FG_RED])})
         else:
-            self.msg.output(_(u"%(path)s : %(result)s") % {
+            self.msg.info(_(u"%(path)s : %(result)s") % {
                     "path":os.path.join(
                         directory,
                         u"album %d track %2.2d" % (album_number,
@@ -82,31 +83,30 @@ class Results:
         if (mismatch is None):
             self.successes += 1
 
-            self.msg.output(_(u"%(path1)s <> %(path2)s : %(result)s") % {
-                    "path1":self.msg.filename(path1),
-                    "path2":self.msg.filename(path2),
-                    "result":self.msg.ansi(
-                        _(u"OK"),
-                        [self.msg.FG_GREEN])})
+            return _(u"%(path1)s <> %(path2)s : %(result)s") % {
+                "path1":self.msg.filename(path1),
+                "path2":self.msg.filename(path2),
+                "result":self.msg.ansi(
+                    _(u"OK"),
+                    [self.msg.FG_GREEN])}
         elif (mismatch >= 0):
             self.failures += 1
 
-            self.msg.output(_(u"%(path1)s <> %(path2)s : %(result)s") % {
-                    "path1":self.msg.filename(path1),
-                    "path2":self.msg.filename(path2),
-                    "result":self.msg.ansi(
-                        _(u"differ at PCM frame %d") % (mismatch + 1),
-                        [self.msg.FG_RED])})
+            return _(u"%(path1)s <> %(path2)s : %(result)s") % {
+                "path1":self.msg.filename(path1),
+                "path2":self.msg.filename(path2),
+                "result":self.msg.ansi(
+                    _(u"differ at PCM frame %d") % (mismatch + 1),
+                    [self.msg.FG_RED])}
         else:
             self.failures += 1
 
-            self.msg.output(_(u"%(path1)s <> %(path2)s : %(result)s") % {
-                    "path1":self.msg.filename(path1),
-                    "path2":self.msg.filename(path2),
-                    "result":self.msg.ansi(
-                        _(u"error"),
-                        [self.msg.FG_RED])})
-        sys.stdout.flush()
+            return _(u"%(path1)s <> %(path2)s : %(result)s") % {
+                "path1":self.msg.filename(path1),
+                "path2":self.msg.filename(path2),
+                "result":self.msg.ansi(
+                    _(u"error"),
+                    [self.msg.FG_RED])}
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
@@ -157,11 +157,11 @@ if (__name__ == '__main__'):
             if (frame_mismatch is None):
                 pass
             else:
-                msg.partial_output(
+                msg.partial_info(
                     _(u"%(file1)s <> %(file2)s : ") % \
                         {"file1": msg.filename(audiofiles[0].filename),
                          "file2": msg.filename(audiofiles[1].filename)})
-                msg.output(msg.ansi(
+                msg.info(msg.ansi(
                         _(u"differ at PCM frame %(frame_number)d") %
                         {"frame_number": frame_mismatch + 1}, [msg.FG_RED]))
                 sys.exit(1)
@@ -189,7 +189,7 @@ if (__name__ == '__main__'):
         files1_tracknumbers = set(files1_map.keys())
         files2_tracknumbers = set(files2_map.keys())
 
-        queue = audiotools.ExecQueue2()
+        queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
 
         for (album_number, track_number) in sorted(
             list(files1_tracknumbers - files2_tracknumbers)):
@@ -201,12 +201,18 @@ if (__name__ == '__main__'):
 
         for (album_number, track_number) in sorted(
             list(files1_tracknumbers & files2_tracknumbers)):
-            queue.execute(cmp_files,
-                          [files1_map[(album_number, track_number)],
-                           files2_map[(album_number, track_number)]])
+            queue.execute(
+                function=cmp_files,
+                progress_text=u"%s <> %s" % \
+                    (msg.filename(files1_map[(album_number,
+                                              track_number)].filename),
+                     msg.filename(files2_map[(album_number,
+                                              track_number)].filename)),
+                completion_output=results.cmp_result,
+                audiofile1=files1_map[(album_number, track_number)],
+                audiofile2=files2_map[(album_number, track_number)])
 
-        for result in queue.run(options.max_processes):
-            results.cmp_result(result)
+        queue.run(options.max_processes)
 
         if (not options.no_summary):
             msg.output(_(u"Results:"))
@@ -230,9 +236,9 @@ if (__name__ == '__main__'):
         if (results.failures > 0):
             sys.exit(1)
     else:
-        msg.partial_output(_(u"%(file1)s <> %(file2)s : ") %
-                           {"file1": msg.filename(args[0]),
-                            "file2": msg.filename(args[1])})
-        msg.output(msg.ansi(_(u"must be either files or directories"),
-                            [msg.FG_RED]))
+        msg.error(_(u"%(file1)s <> %(file2)s : %(result)s") %
+                  {"file1":msg.filename(args[0]),
+                   "file2":msg.filename(args[1]),
+                   "result":msg.ansi(_(u"must be either files or directories"),
+                                     [msg.FG_RED])})
         sys.exit(1)
