@@ -39,6 +39,7 @@ import struct
 from itertools import izip
 import gettext
 import unicodedata
+import cPickle
 
 gettext.install("audiotools", unicode=True)
 
@@ -747,6 +748,7 @@ def ReplayGainProgressDisplay(messenger, lossless_replay_gain):
         return ReplayGainProgressDisplayTTY(messenger,
                                             lossless_replay_gain)
 
+
 class ReplayGainProgressDisplayTTY(VerboseProgressDisplay):
     def __init__(self, messenger, lossless_replay_gain):
         VerboseProgressDisplay.__init__(self, messenger)
@@ -771,9 +773,10 @@ class ReplayGainProgressDisplayTTY(VerboseProgressDisplay):
         else:
             self.messenger.info(_(u"ReplayGain applied"))
 
+
 class ReplayGainProgressDisplayNonTTY(SilentProgressDisplay):
     def __init__(self, messenger, lossless_replay_gain):
-        SilentProgressDisplay.__init__(self, messenger, u"")
+        SilentProgressDisplay.__init__(self, messenger)
         self.lossless_replay_gain = lossless_replay_gain
 
     def initial_message(self):
@@ -789,6 +792,7 @@ class ReplayGainProgressDisplayNonTTY(SilentProgressDisplay):
 
     def final_message(self):
         pass
+
 
 class ProgressRow:
     def __init__(self, row_id, output_line):
@@ -864,6 +868,9 @@ class EncodingError(IOError):
     def __init__(self, error_message):
         IOError.__init__(self)
         self.error_message = error_message
+
+    def __reduce__(self):
+        return (EncodingError, (self.error_message, ))
 
     def __str__(self):
         if (isinstance(self.error_message, unicode)):
@@ -4107,8 +4114,6 @@ class ExecQueue2:
         returns a (pid, reader) tuple where pid is an int of the child job
         and reader is a file object containing its piped data"""
 
-        import cPickle
-
         (pipe_read, pipe_write) = os.pipe()
         pid = os.fork()
         if (pid > 0):  #parent
@@ -4142,7 +4147,6 @@ class ExecQueue2:
         are added to our "return_values" attribute."""
 
         import select
-        import cPickle
 
         (readable,
          writeable,
@@ -4182,6 +4186,160 @@ class ExecQueue2:
             for (reader, result) in self.__await_jobs__():
                 del(self.process_pool[reader])
             yield result
+
+
+class ProgressJobQueueComplete(Exception):
+    pass
+
+class ExecProgressQueue:
+    def __init__(self, progress_display):
+        self.progress_display = progress_display
+        self.queued_jobs = []
+        self.max_job_id = 0
+        self.running_job_pool = {}
+        self.results = {}
+        self.cached_exception = None
+
+    def execute(self, function,
+                progress_text=None, completion_text=None,
+                *args, **kwargs):
+        self.queued_jobs.append((self.max_job_id,
+                                 progress_text,
+                                 completion_text,
+                                 function,
+                                 args,
+                                 kwargs))
+        self.max_job_id += 1
+
+    def execute_next_job(self):
+        #pull job off queue
+        (job_id,
+         progress_text,
+         completion_text,
+         function,
+         args,
+         kwargs) = self.queued_jobs.pop(0)
+
+        #add job to progress display
+        if (progress_text is not None):
+            self.progress_display.add_row(job_id, progress_text)
+
+        #spawn subprocess and add it to pool
+        self.running_job_pool[job_id] = ExecProgressQueueJob.spawn(
+            job_id,
+            completion_text,
+            function,
+            args,
+            kwargs)
+
+    def completed(self, job_id, result):
+        #remove job from progress display, if present
+        self.progress_display.delete_row(job_id)
+        self.progress_display.clear()
+
+        #add result to results
+        self.results[job_id] = result
+
+        #clean up job from pool
+        self.running_job_pool[job_id].join()
+
+        #display output text, if any
+        if (self.running_job_pool[job_id].completion_text is not None):
+            self.progress_display.messenger.info(
+                self.running_job_pool[job_id].completion_text)
+
+        #remove job from pool
+        del(self.running_job_pool[job_id])
+
+        if (len(self.queued_jobs) > 0):
+            #if there are jobs in the queue, run another one
+            self.execute_next_job()
+        elif (len(self.running_job_pool) == 0):
+            #otherwise, raise ProgressJobQueueComplete to signal completion
+            raise ProgressJobQueueComplete()
+
+    def exception(self, job_id, exception):
+        #clean up job that raised exception
+        self.running_job_pool[job_id].join()
+        del(self.running_job_pool[job_id])
+
+        #clean out job queue
+        while (len(self.queued_jobs) > 0):
+            self.queued_jobs.pop(0)
+
+        #and set exception to be raised by run()
+        raise exception
+
+    def progress(self, job_id, current, total):
+        self.progress_display.update_row(job_id, current, total)
+
+    def run(self, max_processes=1):
+        import select
+
+        for i in xrange(min(max_processes, len(self.queued_jobs))):
+            self.execute_next_job()
+
+        try:
+            while (True):
+                (rlist,
+                 wlist,
+                 xlist) = select.select([job.output for job
+                                         in self.running_job_pool.values()],
+                                        [], [])
+                for reader in rlist:
+                    (job_id, command, args) = cPickle.load(reader)
+                    getattr(self, command)(*([job_id] + args))
+        except ProgressJobQueueComplete:
+            if (self.cached_exception is not None):
+                raise self.cached_exception
+            else:
+                return
+
+class ExecProgressQueueJob:
+    def __init__(self, pid, output, completion_text):
+        self.pid = pid
+        self.output = output
+        self.completion_text = completion_text
+
+    def join(self):
+        self.output.close()
+        return os.waitpid(self.pid, 0)
+
+    @classmethod
+    def spawn(cls, job_id, completion_text, function, args, kwargs):
+        (read_end, write_end) = os.pipe()
+        pid = os.fork()
+        if (pid > 0):
+            os.close(write_end)
+            return cls(pid, os.fdopen(read_end, 'rb'), completion_text)
+        else:
+            os.close(read_end)
+            output = os.fdopen(write_end, 'wb')
+            try:
+                try:
+                    result = function(
+                        *args,
+                        progress=JobProgress(job_id, output).progress,
+                        **kwargs)
+                    cPickle.dump((job_id, "completed", [result]),
+                                 output,
+                                 cPickle.HIGHEST_PROTOCOL)
+                except Exception, e:
+                    cPickle.dump((job_id, "exception", [e]),
+                                 output,
+                                 cPickle.HIGHEST_PROTOCOL)
+            finally:
+                sys.exit(0)
+
+class JobProgress:
+    def __init__(self, job_id, output):
+        self.job_id = job_id
+        self.output = output
+
+    def progress(self, current, total):
+        cPickle.dump((self.job_id, "progress", [current, total]),
+                     self.output)
+        self.output.flush()
 
 
 #***ApeAudio temporarily removed***

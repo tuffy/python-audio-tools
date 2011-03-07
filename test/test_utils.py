@@ -989,7 +989,7 @@ class track2track(UtilTest):
                  self.track1.filename]), 1)
 
         self.__check_error__(
-            _(u"%(filename)s: [Errno 20] Not a directory: '%(filename)s'") %
+            _(u"[Errno 20] Not a directory: '%(filename)s'") %
             {"filename":u"/dev/null/foo"})
 
         self.assertEqual(self.__run_app__(
