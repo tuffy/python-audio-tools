@@ -27,32 +27,6 @@ import gettext
 
 gettext.install("audiotools", unicode=True)
 
-MAX_CPUS = audiotools.MAX_JOBS
-
-
-def extract_part(input_filename, input_pcm, output_filename, quality, metadata,
-                 messenger):
-    messenger.info(_(u"%(source)s -> %(destination)s") % \
-                       {"source": messenger.filename(input_filename),
-                        "destination": messenger.filename(output_filename)})
-
-    try:
-        destination_audiofile = AudioType.from_pcm(
-            output_filename,
-            input_pcm,
-            quality)
-
-        encoded_filenames.append(filename)
-
-        if (metadata is not None):
-            destination_audiofile.set_metadata(metadata)
-
-    except (audiotools.EncodingError, audiotools.InvalidFormat), err:
-        messenger.error(u"%(filename)s: %(error)s" % \
-                            {"filename":messenger.filename(output_filename),
-                             "error":err})
-        sys.exit(1)
-
 
 def has_embedded_cuesheet(audiofile):
     return audiofile.get_cuesheet() is not None
@@ -109,14 +83,6 @@ if (__name__ == '__main__'):
         default=None,
         dest='format',
         help=_(u'the format string for new filenames'))
-
-    conversion.add_option(
-        '-j', '--joint',
-        action='store',
-        type='int',
-        default=MAX_CPUS,
-        dest='max_processes',
-        help=_(u'the maximum number of processes to run at a time'))
 
     parser.add_option_group(conversion)
 
@@ -213,13 +179,8 @@ if (__name__ == '__main__'):
         msg.error(_(u"You must specify a cuesheet to split audio file"))
         sys.exit(1)
 
-    if (options.max_processes < 1):
-        msg.error(_(u'You must run at least 1 process at a time'))
-        sys.exit(1)
-
     base_directory = options.dir
     encoded_filenames = []
-    queue = audiotools.ExecQueue()
 
     if (options.cuesheet is not None):
         #grab the cuesheet we're using to split tracks
@@ -266,16 +227,12 @@ if (__name__ == '__main__'):
             [audiotools.MetaData(track_number=i + 1)
                   for (i, indexes) in enumerate(cuesheet.indexes())])
 
-    try:
-        split_pcm = audiotools.pcm_split(
-            audiofile.to_pcm(),
-            cuesheet.pcm_lengths(audiofile.total_frames()))
-    except audiotools.DecodingError, err:
-        msg.error(unicode(err))
-        sys.exit(1)
+    encoded_files = []
+    total_pcm = audiotools.BufferedPCMReader(audiofile.to_pcm())
 
     try:
-        for (i, pcmreader) in enumerate(split_pcm):
+        for (i, pcm_frames) in enumerate(
+            cuesheet.pcm_lengths(audiofile.total_frames())):
             track_number = i + 1
 
             metadata = xmcd.get(track_number, None)
@@ -291,32 +248,47 @@ if (__name__ == '__main__'):
                                      format=options.format))
 
             audiotools.make_dirs(filename)
-            encoded_filenames.append(filename)
 
-            queue.execute(extract_part,
-                          (audiofile.filename,
-                           pcmreader,
-                           filename,
-                           options.quality,
-                           metadata,
-                           msg))
+            progress = audiotools.SingleProgressDisplay(
+                msg, filename)
+
+            #FIXME - catch from_pcm errors here
+            encoded_files.append(
+                AudioType.from_pcm(
+                    filename,
+                    audiotools.PCMReaderProgress(
+                        audiotools.LimitedPCMReader(total_pcm, pcm_frames),
+                        pcm_frames,
+                        progress.update),
+                    options.quality))
+            encoded_files[-1].set_metadata(metadata)
+            progress.clear()
+            msg.info(u"%s -> %s" %
+                     (msg.filename(audiofile.filename),
+                      msg.filename(filename)))
+
     except audiotools.UnsupportedTracknameField, err:
         err.error_msg(msg)
         sys.exit(1)
-
-    queue.run(options.max_processes)
-    if (queue.return_values != set([0])):
+    except audiotools.EncodingError, err:
+        msg.error(unicode(err))
         sys.exit(1)
 
+
     if (options.add_replay_gain and AudioType.can_add_replay_gain()):
-        if (AudioType.lossless_replay_gain()):
-            msg.info(
-                _(u"Adding ReplayGain metadata.  This may take some time."))
-        else:
-            msg.info(
-                _(u"Applying ReplayGain.  This may take some time."))
+        rg_progress = audiotools.ReplayGainProgressDisplay(
+                msg, AudioType.lossless_replay_gain())
+        rg_progress.initial_message()
         try:
-            AudioType.add_replay_gain(encoded_filenames)
+            #separate encoded files by album_name and album_number
+            for album in audiotools.group_tracks(encoded_files):
+                #add ReplayGain to groups of files
+                #belonging to the same album
+
+                AudioType.add_replay_gain([a.filename for a in album],
+                                          rg_progress.update)
         except ValueError, err:
+            rg_progress.clear()
             msg.error(unicode(err))
             sys.exit(1)
+        rg_progress.final_message()

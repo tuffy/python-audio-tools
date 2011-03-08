@@ -4055,8 +4055,7 @@ class tracksplit(UtilTest):
                 if (("-q" in options) and
                     ("1" not in output_type.COMPRESSION_MODES)):
                     self.assertEqual(
-                        self.__run_app__(["tracksplit", "-V", "normal",
-                                          "-j", str(1)] +
+                        self.__run_app__(["tracksplit", "-V", "normal"] +
                                          options + [track.filename]), 1)
                     self.__check_error__(
                         _(u"\"%(quality)s\" is not a supported " +
@@ -4067,16 +4066,14 @@ class tracksplit(UtilTest):
 
                 if ("--cue" not in options):
                     self.assertEqual(
-                        self.__run_app__(["tracksplit", "-V", "normal",
-                                          "-j", str(1)] +
+                        self.__run_app__(["tracksplit", "-V", "normal"] +
                                          options + [track.filename]), 1)
                     self.__check_error__(
                         _(u"You must specify a cuesheet to split audio file"))
                     continue
 
                 self.assertEqual(
-                    self.__run_app__(["tracksplit", "-V", "normal",
-                                      "-j", str(1)] +
+                    self.__run_app__(["tracksplit", "-V", "normal"] +
                                      options + [track.filename]), 0)
                 if ("--format" in options):
                     output_format = self.format
@@ -4192,6 +4189,7 @@ class tracksplit(UtilTest):
             for options in Combinations(all_options, count):
                 self.clean_output_dirs()
                 options = self.populate_options(options)
+
                 if ("-t" in options):
                     output_type = audiotools.FlacAudio
                 else:
@@ -4200,8 +4198,7 @@ class tracksplit(UtilTest):
                 if (("-q" in options) and
                     ("1" not in output_type.COMPRESSION_MODES)):
                     self.assertEqual(
-                        self.__run_app__(["tracksplit", "-V", "normal",
-                                          "-j", str(1)] +
+                        self.__run_app__(["tracksplit", "-V", "normal"] +
                                          options + [track.filename]), 1)
                     self.__check_error__(
                         _(u"\"%(quality)s\" is not a supported " +
@@ -4211,8 +4208,7 @@ class tracksplit(UtilTest):
                     continue
 
                 self.assertEqual(
-                    self.__run_app__(["tracksplit", "-V", "normal",
-                                      "-j", str(1)] +
+                    self.__run_app__(["tracksplit", "-V", "normal"] +
                                      options + [track.filename]), 0)
                 if ("--format" in options):
                     output_format = self.format
@@ -4362,13 +4358,6 @@ class tracksplit(UtilTest):
         self.__check_error__(_(u"You must specify exactly 1 supported audio file"))
 
         self.assertEqual(self.__run_app__(
-                ["tracksplit", "-j", str(0), "-t", "flac", "-d",
-                 self.output_dir,
-                 "--cue", self.cuesheet.name, self.unsplit_file.name]), 1)
-
-        self.__check_error__(_(u'You must run at least 1 process at a time'))
-
-        self.assertEqual(self.__run_app__(
                 ["tracksplit", "-t", "flac", "-d", self.output_dir,
                  "--cue", self.cuesheet.name, "-x", "/dev/null",
                  self.unsplit_file.name]), 1)
@@ -4388,7 +4377,7 @@ class tracksplit(UtilTest):
         self.__check_error__(_(u"Cuesheet too long for track being split"))
 
         self.assertEqual(self.__run_app__(
-                ["tracksplit", "-j", str(1), "-t", "flac", "--format=%(foo)s", "-d",
+                ["tracksplit", "-t", "flac", "--format=%(foo)s", "-d",
                  self.output_dir, "--cue", self.cuesheet.name,
                  "-x", self.xmcd_file.name,
                  self.unsplit_file.name]), 1)

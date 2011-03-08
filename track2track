@@ -34,8 +34,6 @@ MAX_CPUS = audiotools.MAX_JOBS
 def convert(progress, source_audiofile, destination_filename,
             destination_class, compression,
             metadata, thumbnail_images):
-    filename = audiotools.VerboseMessenger("").filename
-
     destination_audiofile = source_audiofile.convert(
         destination_filename,
         destination_class,
@@ -329,7 +327,6 @@ if (__name__ == '__main__'):
                     metadata=metadata,
                     thumbnail_images=options.thumbnail)
 
-
             except audiotools.UnsupportedTracknameField, err:
                 err.error_msg(msg)
                 sys.exit(1)
@@ -376,10 +373,9 @@ if (__name__ == '__main__'):
         else:
             metadata = audiofile.get_metadata()
 
-        msg = audiotools.SilentMessenger("track2track")
-
         queue = audiotools.ExecProgressQueue(
-            audiotools.SilentProgressDisplay(msg))
+            audiotools.ProgressDisplay(
+                audiotools.SilentMessenger("track2track")))
         queue.execute(
             function=convert,
             source_audiofile=audiofile,

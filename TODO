@@ -2963,7 +2963,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [X] track2track
   - [ ] cd2track
   - [ ] dvda2track
-  - [ ] tracksplit
+  - [X] tracksplit
   - [X] trackcat
   - [X] trackcmp
   - [ ] trackverify
