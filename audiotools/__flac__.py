@@ -2023,7 +2023,7 @@ class OggFlacAudio(AudioFile):
 
         return iter([])
 
-    def verify(self):
+    def verify(self, progress=None):
         """Verifies the current file for correctness.
 
         Returns True if the file is okay.
@@ -2032,13 +2032,22 @@ class OggFlacAudio(AudioFile):
 
         from audiotools import verify_ogg_stream
 
+        #Ogg stream verification is likely to be so fast
+        #that individual calls to progress() are
+        #a waste of time.
+        if (progress is not None):
+            progress(0, 1)
+
         try:
             f = open(self.filename, 'rb')
         except IOError, err:
             raise InvalidFLAC(str(err))
         try:
             try:
-                return verify_ogg_stream(f)
+                result = verify_ogg_stream(f)
+                if (progress is not None):
+                    progress(1, 1)
+                return result
             except (IOError, ValueError), err:
                 raise InvalidFLAC(str(err))
         finally:

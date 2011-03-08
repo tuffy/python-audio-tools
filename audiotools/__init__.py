@@ -3329,19 +3329,22 @@ class AudioFile:
     def __ne__(self, audiofile):
         return not self.__eq__(audiofile)
 
-    def verify(self):
+    def verify(self, progress=None):
         """Verifies the current file for correctness.
 
         Returns True if the file is okay.
         Raises an InvalidFile with an error message if there is
         some problem with the file."""
 
+        total_frames = self.total_frames()
         decoder = self.to_pcm()
         pcm_frame_count = 0
         try:
             framelist = decoder.read(BUFFER_SIZE)
             while (len(framelist) > 0):
                 pcm_frame_count += framelist.frames
+                if (progress is not None):
+                    progress(pcm_frame_count, total_frames)
                 framelist = decoder.read(BUFFER_SIZE)
         except (IOError, ValueError), err:
             raise InvalidFile(str(err))
@@ -3351,7 +3354,7 @@ class AudioFile:
         except DecodingError, err:
             raise InvalidFile(err.error_message)
 
-        if (pcm_frame_count == self.total_frames()):
+        if (pcm_frame_count == total_frames):
             return True
         else:
             raise InvalidFile("incorrect PCM frame count")

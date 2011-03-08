@@ -89,9 +89,9 @@ def get_tracks(args, accept_list):
                     except (audiotools.UnsupportedFile, IOError):
                         continue
 
-def verify(track):
+def verify(progress, track):
     try:
-        track.verify()
+        track.verify(progress)
         return (track.filename, track.NAME, None)
     except audiotools.InvalidFile, err:
         return (track.filename, track.NAME, unicode(err))
@@ -105,17 +105,16 @@ class Results:
     def display(self, result):
         (path, track_type, error) = result
         if (error is None):
-            self.msg.output(
-                _(u"%(path)s : %(result)s") % {
-                    "path": self.msg.filename(path),
-                    "result": self.msg.ansi(_(u"OK"), [self.msg.FG_GREEN])})
             self.summary_success.setdefault(track_type, Counter()).increment()
+            return _(u"%(path)s : %(result)s") % {
+                "path": self.msg.filename(path),
+                "result": self.msg.ansi(_(u"OK"), [self.msg.FG_GREEN])}
         else:
-            self.msg.output(
-                _(u"%(path)s : %(result)s") % {
-                    "path": self.msg.filename(path),
-                    "result": self.msg.ansi(error, [self.msg.FG_RED])})
             self.summary_failure.setdefault(track_type, Counter()).increment()
+            return _(u"%(path)s : %(result)s") % {
+                "path": self.msg.filename(path),
+                "result": self.msg.ansi(error, [self.msg.FG_RED])}
+
 
 gettext.install("audiotools", unicode=True)
 
@@ -154,18 +153,20 @@ if (__name__ == '__main__'):
     msg = audiotools.Messenger("trackverify", options)
 
     results = Results(msg)
-    queue = audiotools.ExecQueue2()
-    for (i, track) in enumerate(get_tracks(args, options.accept_list)):
-        if (i == 0):
-            pass
-        elif ((i % 100) == 0):
-            msg.ansi_clearline()
-            msg.partial_output(_(u"Finding tracks (%d)") % (i))
-        queue.execute(verify, [track])
+    queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
+    for track in get_tracks(args, options.accept_list):
+        # if (i == 0):
+        #     pass
+        # elif ((i % 100) == 0):
+        #     msg.ansi_clearline()
+        #     msg.partial_output(_(u"Finding tracks (%d)") % (i))
+        queue.execute(function=verify,
+                      progress_text=msg.filename(track.filename),
+                      completion_output=results.display,
+                      track=track)
     msg.ansi_clearline()
 
-    for verify in queue.run(options.max_processes):
-        results.display(verify)
+    queue.run(options.max_processes)
 
     summary_success = results.summary_success
     summary_failure = results.summary_failure

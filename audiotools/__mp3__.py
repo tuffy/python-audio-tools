@@ -834,12 +834,18 @@ class MP3Audio(AudioFile):
         finally:
             f.close()
 
-    def verify(self):
+    def verify(self, progress=None):
         from . import verify
         try:
             f = open(self.filename, 'rb')
         except IOError, err:
             raise InvalidMP3(str(err))
+
+        #MP3 verification is likely to be so fast
+        #that individual calls to progress() are
+        #a waste of time.
+        if (progress is not None):
+            progress(0, 1)
 
         try:
             try:
@@ -851,6 +857,9 @@ class MP3Audio(AudioFile):
                 f.seek(start, 0)
 
                 verify.mpeg(f, start, end)
+                if (progress is not None):
+                    progress(1, 1)
+
                 return True
             except (IOError, ValueError), err:
                 raise InvalidMP3(str(err))

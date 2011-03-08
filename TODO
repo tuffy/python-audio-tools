@@ -2966,7 +2966,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [X] tracksplit
   - [X] trackcat
   - [X] trackcmp
-  - [ ] trackverify
+  - [X] trackverify
   - [X] tracktag (for ReplayGain)
 ** DONE Update AudioFile.convert() with a progress callback option
 ** DONE Update AudioFile.add_replay_gain() with a progress callback option
@@ -2979,20 +2979,20 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] WaveAudio
 ** DONE Update programming documentation with progress callback option
 ** TODO Update AudioFile.verify() with a progress callback option
-   - [ ] AACAudio
-   - [ ] ALACAudio
+   - [X] AACAudio
+   - [X] ALACAudio
    - [ ] AiffAudio
-   - [ ] AuAudio
-   - [ ] FlacAudio
-   - [ ] M4AAudio
-   - [ ] MP2Audio
-   - [ ] MP3Audio
-   - [ ] OggFlacAudio
-   - [ ] ShortenAudio
-   - [ ] SpeexAudio
-   - [ ] VorbisAudio
-   - [ ] WavPackAudio
-   - [ ] WaveAudio
+   - [X] AuAudio
+   - [X] FlacAudio
+   - [X] M4AAudio
+   - [X] MP2Audio
+   - [X] MP3Audio
+   - [X] OggFlacAudio
+   - [X] ShortenAudio
+   - [X] SpeexAudio
+   - [X] VorbisAudio
+   - [X] WavPackAudio
+   - [X] WaveAudio
 * TODO Add options for ID3v2/ID3v1 tagging
   Perhaps add config file options and corresponding audiotools-config options.
 ** DONE Make ID3v2 version selectable
@@ -3330,6 +3330,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE tracksplit
 *** DONE tracktag
 *** TODO trackverify
+*** TODO Add comprehensive errors testing
+    Like test_options, but over all the error-causing options
 ** DONE Split tests into multiple files
 * TODO Shift lint to the AudioFile and MetaData subclasses
   Instead of having tracklint have to perform lots of built-in tests,

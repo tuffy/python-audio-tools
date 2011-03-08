@@ -768,12 +768,18 @@ class VorbisAudio(AudioFile):
         else:
             return None
 
-    def verify(self):
+    def verify(self, progress=None):
         """Verifies the current file for correctness.
 
         Returns True if the file is okay.
         Raises an InvalidFile with an error message if there is
         some problem with the file."""
+
+        #Ogg stream verification is likely to be so fast
+        #that individual calls to progress() are
+        #a waste of time.
+        if (progress is not None):
+            progress(0, 1)
 
         try:
             f = open(self.filename, 'rb')
@@ -781,7 +787,10 @@ class VorbisAudio(AudioFile):
             raise InvalidVorbis(str(err))
         try:
             try:
-                return verify_ogg_stream(f)
+                result = verify_ogg_stream(f)
+                if (progress is not None):
+                    progress(1, 1)
+                return result
             except (IOError, ValueError), err:
                 raise InvalidVorbis(str(err))
         finally:
