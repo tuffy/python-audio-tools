@@ -2916,7 +2916,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE Add bs_try for proper EOF aborts
 **** DONE Add end-of-stream marker checking to read()
 **** TODO Add end-of-stream marker checking to analyze_frame()
-**** TODO Optimize to work faster
+**** DONE Optimize to work faster
      Perhaps with multiple blocks per call to read()
 *** DONE Perform sanity checks
 ** TODO Document MLP decoder
@@ -2961,8 +2961,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   receive progress output from multiple subprocesses
   so that the total progress can be generated.
   - [X] track2track
-  - [ ] cd2track
-  - [ ] dvda2track
+  - [X] cd2track
+  - [X] dvda2track
   - [X] tracksplit
   - [X] trackcat
   - [X] trackcmp

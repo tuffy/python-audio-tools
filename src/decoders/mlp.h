@@ -29,6 +29,8 @@
 #define MAX_MLP_MATRICES 6
 #define MAX_MLP_SUBSTREAMS 2
 
+#define MLP_FRAMES_AT_A_TIME 1000
+
 struct mlp_MajorSync {
     /* sync words (0xF8726F)     24 bits*/
     /* stream type (0xBB)         8 bits*/
@@ -160,6 +162,9 @@ typedef struct {
 
     /*combined array of all substreams*/
     struct ia_array frame_samples;
+
+    /*combined array of several frame_samples*/
+    struct ia_array multi_frame_samples;
 } decoders_MLPDecoder;
 
 typedef enum {MLP_MAJOR_SYNC_OK,

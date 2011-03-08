@@ -218,50 +218,41 @@ if (__name__ == '__main__'):
                         metadata.album_number = options.album_number
                     if (options.album_total != 0):
                         metadata.album_total = options.album_total
+            else:                   # no metadata
+                metadata = audiotools.MetaData(
+                    track_number=cd_track.track_number,
+                    track_total=len(cdda),
+                    album_number=options.album_number,
+                    album_total=options.album_total)
 
 
-                filename = os.path.join(
-                    base_directory,
-                    AudioType.track_name(file_path=basename,
-                                         track_metadata=metadata,
-                                         format=options.format))
+            filename = os.path.join(
+                base_directory,
+                AudioType.track_name(file_path=basename,
+                                     track_metadata=metadata,
+                                     format=options.format))
 
+            try:
                 audiotools.make_dirs(filename)
+            except OSError, err:
+                msg.os_error(err)
+                sys.exit(1)
 
-                track = AudioType.from_pcm(
-                    filename,
+            progress = audiotools.SingleProgressDisplay(
+                msg, msg.filename(filename))
+
+            track = AudioType.from_pcm(
+                filename,
+                audiotools.PCMReaderProgress(
                     cd_track,
-                    quality)
+                    cd_track.length() * (44100 / 75),
+                    progress.update),
+                quality)
 
-                track.set_metadata(metadata)
-                encoded.append(track)
-            else:               # no metadata
-                filename = os.path.join(
-                    base_directory,
-                    AudioType.track_name(file_path=basename,
-                                         track_metadata=None,
-                                         format=options.format))
+            track.set_metadata(metadata)
+            progress.clear()
 
-                try:
-                    audiotools.make_dirs(filename)
-                except OSError, err:
-                    msg.os_error(err)
-                    sys.exit(1)
-
-                track = AudioType.from_pcm(
-                    filename,
-                    cd_track,
-                    quality)
-
-                #even if no MetaData is given,
-                #set track number and album number if possible
-                track.set_metadata(audiotools.MetaData(
-                        track_number=cd_track.track_number,
-                        track_total=len(cdda),
-                        album_number=options.album_number,
-                        album_total=options.album_total))
-
-                encoded.append(track)
+            encoded.append(track)
 
             msg.info(_(u"track %(track_number)2.2d: %(log)s") % \
                          {"track_number": cd_track.track_number,
@@ -284,13 +275,15 @@ if (__name__ == '__main__'):
     cdda.close()
 
     if (options.add_replay_gain and AudioType.can_add_replay_gain()):
-        if (AudioType.lossless_replay_gain()):
-            msg.info(_(u"Adding ReplayGain metadata.  " +
-                       u"This may take some time."))
-        else:
-            msg.info(_(u"Applying ReplayGain.  This may take some time."))
+        rg_progress = audiotools.ReplayGainProgressDisplay(
+            msg, AudioType.lossless_replay_gain())
+        rg_progress.initial_message()
         try:
-            AudioType.add_replay_gain([track.filename for track in encoded])
+            #all audio files must belong to the same album, by definition
+            AudioType.add_replay_gain([f.filename for f in encoded],
+                                      rg_progress.update)
         except ValueError, err:
+            rg_progress.clear()
             msg.error(unicode(err))
             sys.exit(1)
+        rg_progress.final_message()

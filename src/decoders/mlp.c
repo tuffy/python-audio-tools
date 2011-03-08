@@ -154,6 +154,8 @@ MLPDecoder_init(decoders_MLPDecoder* self,
 
     iaa_init(&(self->frame_samples), MAX_MLP_CHANNELS, 8);
 
+    iaa_init(&(self->multi_frame_samples), MAX_MLP_CHANNELS, 8);
+
     for (substream = 0; substream < MAX_MLP_SUBSTREAMS; substream++) {
         for (channel = 0; channel < MAX_MLP_CHANNELS; channel++) {
             ia_init(&(self->decoding_parameters[substream].channel_parameters[channel].fir_filter_parameters.coefficients), 2);
@@ -202,6 +204,7 @@ MLPDecoder_dealloc(decoders_MLPDecoder *self)
         iaa_free(&(self->unfiltered_residuals));
         iaa_free(&(self->filtered_residuals));
         iaa_free(&(self->frame_samples));
+        iaa_free(&(self->multi_frame_samples));
 
         free(self->substream_sizes);
         free(self->restart_headers);
@@ -280,6 +283,7 @@ MLPDecoder_read(decoders_MLPDecoder* self) {
     int channel;
 
     struct ia_array wave_order;
+    int i;
     int frame_size;
 
     if (self->remaining_samples <= 0) {
@@ -293,7 +297,21 @@ MLPDecoder_read(decoders_MLPDecoder* self) {
     }
 
     if (!setjmp(*bs_try(self->bitstream))) {
-        frame_size = mlp_read_frame(self, &(self->frame_samples));
+        iaa_reset(&(self->multi_frame_samples));
+
+        for (i = 0; i < MLP_FRAMES_AT_A_TIME; i++) {
+            if ((self->remaining_samples > 0) &&
+                ((frame_size = mlp_read_frame(self,
+                                              &(self->frame_samples))) > 0)) {
+                self->remaining_samples -= self->frame_samples.arrays[0].size;
+                for (channel = 0; channel < channel_count; channel++) {
+                    ia_extend(&(self->multi_frame_samples.arrays[channel]),
+                              &(self->frame_samples.arrays[channel]));
+                }
+            } else {
+                break;
+            }
+        }
         bs_etry(self->bitstream);
     } else {
         bs_etry(self->bitstream);
@@ -301,9 +319,7 @@ MLPDecoder_read(decoders_MLPDecoder* self) {
         return NULL;
     }
 
-    if (frame_size > 0) {
-        self->remaining_samples -= self->frame_samples.arrays[0].size;
-
+    if (self->multi_frame_samples.arrays[0].size > 0) {
         wave_order.size = channel_count;
         wave_order.arrays = malloc(sizeof(struct ia_array) * wave_order.size);
 
@@ -312,7 +328,7 @@ MLPDecoder_read(decoders_MLPDecoder* self) {
             ia_link(&(wave_order.arrays[
                           mlp_channel_map[
                               self->major_sync.channel_assignment][channel]]),
-                    &(self->frame_samples.arrays[channel]));
+                    &(self->multi_frame_samples.arrays[channel]));
         }
 
         frame = ia_array_to_framelist(
@@ -322,7 +338,7 @@ MLPDecoder_read(decoders_MLPDecoder* self) {
         free(wave_order.arrays);
 
         return frame;
-    } else if (frame_size == 0) {
+    } else if (self->multi_frame_samples.arrays[0].size == 0) {
         /*return empty FrameList object*/
 
         iaa_init(&wave_order, channel_count, 1);

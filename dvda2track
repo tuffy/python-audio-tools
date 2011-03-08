@@ -23,6 +23,7 @@ import os
 import audiotools
 import gettext
 import tempfile
+from itertools import izip
 from audiotools.decoders import MLPDecoder
 
 gettext.install("audiotools", unicode=True)
@@ -61,35 +62,6 @@ class AOBExtractor:
         del(self.payloads)
 
 
-class LimitedPCMReader:
-    def __init__(self, buffered_pcmreader, total_pcm_frames):
-        """buffered_pcmreader should be a BufferedPCMReader
-
-        which ensures we won't pull more frames off the reader
-        than necessary upon calls to read()"""
-
-        self.pcmreader = buffered_pcmreader
-        self.total_pcm_frames = total_pcm_frames
-        self.sample_rate = self.pcmreader.sample_rate
-        self.channels = self.pcmreader.channels
-        self.channel_mask = self.pcmreader.channel_mask
-        self.bits_per_sample = self.pcmreader.bits_per_sample
-        self.bytes_per_frame = self.channels * (self.bits_per_sample / 8)
-
-    def read(self, bytes):
-        if (self.total_pcm_frames > 0):
-            frame = self.pcmreader.read(
-                min(bytes,
-                    self.total_pcm_frames * self.bytes_per_frame))
-            self.total_pcm_frames -= frame.frames
-            return frame
-        else:
-            return audiotools.pcm.FrameList(
-                "", self.channels, self.bits_per_sample, False, True)
-
-    def close(self):
-        self.total_pcm_frames = 0
-
 def pcm_split(reader, pcm_lengths):
     """Yields a PCMReader object from reader for each pcm_length (in frames).
 
@@ -100,7 +72,7 @@ def pcm_split(reader, pcm_lengths):
 
     full_data = audiotools.BufferedPCMReader(reader)
     for pcm_length in pcm_lengths:
-        yield LimitedPCMReader(full_data, pcm_length)
+        yield audiotools.LimitedPCMReader(full_data, pcm_length)
 
     full_data.close()
 
@@ -321,10 +293,13 @@ if (__name__ == '__main__'):
 
     encoded = []
 
-    for (i, pcmreader) in enumerate(
-        pcm_split(title.to_pcm(),
-                  [(track.pts_length * sample_rate) /
-                   audiotools.DVDAudio.PTS_PER_SECOND for track in title])):
+    pcm_lengths = [(track.pts_length * sample_rate) /
+                   audiotools.DVDAudio.PTS_PER_SECOND for track in title]
+
+    for (i, (pcmreader,
+             pcm_frames)) in enumerate(izip(pcm_split(title.to_pcm(),
+                                                      pcm_lengths),
+                                            pcm_lengths)):
         title_track_number = i + 1
         logical_track_number = i + options.track_start
         if (options.track_total is None):
@@ -349,43 +324,35 @@ if (__name__ == '__main__'):
                             metadata.album_number = options.album_number
                         if (options.album_total != 0):
                             metadata.album_total = options.album_total
-
-
-                    filename = os.path.join(
-                        base_directory,
-                        AudioType.track_name(file_path=basename,
-                                             track_metadata=metadata,
-                                             format=options.format))
-
-                    audiotools.make_dirs(filename)
-
-                    track = AudioType.from_pcm(filename, pcmreader, quality)
-
-                    track.set_metadata(metadata)
-                    encoded.append(track)
-                else:               # no metadata
+                else:                   # no metadata
                     metadata = audiotools.MetaData(
                         track_number=logical_track_number,
                         track_total=track_total,
                         album_number=options.album_number,
                         album_total=options.album_total)
 
-                    filename = os.path.join(
-                        base_directory,
-                        AudioType.track_name(
-                            file_path=basename,
-                            track_metadata=metadata,
-                            format=options.format))
+                filename = os.path.join(
+                    base_directory,
+                    AudioType.track_name(file_path=basename,
+                                         track_metadata=metadata,
+                                         format=options.format))
 
-                    audiotools.make_dirs(filename)
+                audiotools.make_dirs(filename)
 
-                    track = AudioType.from_pcm(filename, pcmreader, quality)
+                progress = audiotools.SingleProgressDisplay(
+                    msg, msg.filename(filename))
 
-                    #even if no MetaData is given,
-                    #set track number and album number if possible
-                    track.set_metadata(metadata)
+                track = AudioType.from_pcm(
+                    filename,
+                    audiotools.PCMReaderProgress(pcmreader,
+                                                 pcm_frames,
+                                                 progress.update),
+                    quality)
 
-                    encoded.append(track)
+                track.set_metadata(metadata)
+                encoded.append(track)
+
+                progress.clear()
 
                 msg.info(
                     _(u"title %(title_number)d - " +
@@ -398,6 +365,9 @@ if (__name__ == '__main__'):
                 sys.exit(1)
             except KeyError:
                 continue
+            except OSError, err:
+                msg.os_error(err)
+                sys.exit(1)
             except audiotools.InvalidFormat, err:
                 msg.error(unicode(err))
                 sys.exit(1)
@@ -409,13 +379,15 @@ if (__name__ == '__main__'):
             audiotools.transfer_framelist_data(pcmreader, lambda f: f)
 
     if (options.add_replay_gain and AudioType.can_add_replay_gain()):
-        if (AudioType.lossless_replay_gain()):
-            msg.info(_(u"Adding ReplayGain metadata.  " +
-                       u"This may take some time."))
-        else:
-            msg.info(_(u"Applying ReplayGain.  This may take some time."))
+        rg_progress = audiotools.ReplayGainProgressDisplay(
+            msg, AudioType.lossless_replay_gain())
+        rg_progress.initial_message()
         try:
-            AudioType.add_replay_gain([track.filename for track in encoded])
+            #all audio files must belong to the same album, by definition
+            AudioType.add_replay_gain([f.filename for f in encoded],
+                                      rg_progress.update)
         except ValueError, err:
+            rg_progress.clear()
             msg.error(unicode(err))
             sys.exit(1)
+        rg_progress.final_message()
