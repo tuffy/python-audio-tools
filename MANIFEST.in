@@ -10,6 +10,8 @@ include cdinfo
 include COPYING
 include coverdump
 include coverview
+include dvda2track
+include dvda2xmcd
 include editxmcd
 include INSTALL
 include Makefile

@@ -1663,10 +1663,25 @@ class ID3CommentPair(MetaData):
         else:
             raise ValueError(_(u"ID3v2 and ID3v1 cannot both be blank"))
 
-        fields = dict([(field, getattr(base_comment, field))
-                       for field in self.__FIELDS__])
-
-        MetaData.__init__(self, **fields)
+    def __getattr__(self, key):
+        if (key in self.__INTEGER_FIELDS__):
+            if ((self.id3v2 is not None) and
+                (getattr(self.id3v2, key) != 0)):
+                    return getattr(self.id3v2, key)
+            if (self.id3v1 is not None):
+                return getattr(self.id3v1, key)
+            else:
+                raise ValueError(_(u"ID3v2 and ID3v1 cannot both be blank"))
+        elif (key in self.__FIELDS__):
+            if ((self.id3v2 is not None) and
+                (getattr(self.id3v2, key) != u'')):
+                    return getattr(self.id3v2, key)
+            if (self.id3v1 is not None):
+                return getattr(self.id3v1, key)
+            else:
+                raise ValueError(_(u"ID3v2 and ID3v1 cannot both be blank"))
+        else:
+            raise AttributeError(key)
 
     def __setattr__(self, key, value):
         self.__dict__[key] = value

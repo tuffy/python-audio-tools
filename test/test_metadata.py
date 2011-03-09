@@ -158,9 +158,7 @@ class MetaDataTest(unittest.TestCase):
                         metadata = track.get_metadata()
                         self.assertEqual(getattr(metadata, field), number)
 
-                #check that deleting the fields works
-                for field in self.supported_fields:
-                    metadata = self.empty_metadata()
+                    #check that deleting the fields works
                     delattr(metadata, field)
                     track.set_metadata(metadata)
                     metadata = track.get_metadata()

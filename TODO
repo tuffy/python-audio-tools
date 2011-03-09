@@ -2490,6 +2490,26 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] write_bits_actual_le
    - [X] write_unary_actual_be
    - [X] write_unary_actual_le
+* DONE Add individual tag item removal option to tracktag
+  - [X] --remove-name
+  - [X] --remove-artist
+  - [X] --remove-performer
+  - [X] --remove-composer
+  - [X] --remove-conductor
+  - [X] --remove-album
+  - [X] --remove-catalog
+  - [X] --remove-number
+  - [X] --remove-track-total
+  - [X] --remove-album-number
+  - [X] --remove-album-total
+  - [X] --remove-ISRC
+  - [X] --remove-media-type
+  - [X] --remove-year
+  - [X] --remove-date
+  - [X] --remove-copyright
+  - [X] --remove-comment
+** DONE Unit test tag item addition/removal
+** DONE Update man page with new options
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -2818,9 +2838,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Remove WavePackAudio.BINARIES
 ** DONE Add more WavPack INVALIDFILE .verify() tests
 ** DONE Remove wvgain for ReplayGain application
-* TODO Add percentage indicator to trackcmp/trackverify
-  As an optional alternative to the running list
-** TODO Update man page
 * TODO Add a -r/--no-results flag to trackcmp/trackverify
   Listing only the final results and not the running list
 ** TODO Update man page
@@ -3340,4 +3357,3 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   For MetaData, it could return a new object with fixed fields.
   For AudioFile, it could function like convert() and build a new file
   with fixes applied.
-* TODO Add individual tag item removal option to tracktag

@@ -3506,7 +3506,204 @@ class tracktag_errors(UtilTest):
                 big_text.close()
 
 
+class NoMetaData(Exception):
+    pass
+
 class tracktag_misc(UtilTest):
+    @UTIL_TRACKTAG
+    def test_text_options(self):
+        for audio_type in audiotools.AVAILABLE_TYPES:
+            temp_file = tempfile.NamedTemporaryFile(
+                suffix="." + audio_type.SUFFIX)
+            try:
+                track = audio_type.from_pcm(temp_file.name,
+                                            BLANK_PCM_Reader(1))
+                for (field_name,
+                     add_field,
+                     remove_field) in zip(
+                    ['track_name',
+                     'artist_name',
+                     'performer_name',
+                     'composer_name',
+                     'conductor_name',
+                     'album_name',
+                     'catalog',
+                     'ISRC',
+                     'publisher',
+                     'media',
+                     'year',
+                     'date',
+                     'copyright',
+                     'comment'],
+                    ['--name',
+                     '--artist',
+                     '--performer',
+                     '--composer',
+                     '--conductor',
+                     '--album',
+                     '--catalog',
+                     '--ISRC',
+                     '--publisher',
+                     '--media-type',
+                     '--year',
+                     '--date',
+                     '--copyright',
+                     '--comment'],
+                    ['--remove-name',
+                     '--remove-artist',
+                     '--remove-performer',
+                     '--remove-composer',
+                     '--remove-conductor',
+                     '--remove-album',
+                     '--remove-catalog',
+                     '--remove-ISRC',
+                     '--remove-publisher',
+                     '--remove-media-type',
+                     '--remove-year',
+                     '--remove-date',
+                     '--remove-copyright',
+                     '--remove-comment']):
+                     self.assertEqual(
+                         self.__run_app__(['tracktag', add_field, 'foo',
+                                           track.filename]), 0)
+                     new_track = audiotools.open(track.filename)
+                     metadata = new_track.get_metadata()
+                     if (metadata is None):
+                         break
+                     elif (len(getattr(metadata, field_name)) > 0):
+                         self.assertEqual(getattr(metadata, field_name),
+                                          u'foo')
+
+                         self.assertEqual(
+                             self.__run_app__(['tracktag', remove_field,
+                                               track.filename]), 0)
+
+                         metadata = audiotools.open(
+                             track.filename).get_metadata()
+
+                         self.assertEqual(
+                             getattr(metadata, field_name),
+                             u'',
+                             "remove option failed for %s field %s" %
+                             (audio_type.NAME, remove_field))
+
+                def number_fields_values(fields):
+                    values = set([])
+                    for field in audiotools.MetaData.__INTEGER_FIELDS__:
+                        if (field in fields):
+                            values.add(
+                                (field,
+                                 audiotools.MetaData.__INTEGER_FIELDS__.index(
+                                        field) + 1))
+                        else:
+                            values.add((field, 0))
+                    return values
+
+                def deleted_number_fields_values(fields):
+                    values = set([])
+                    for field in audiotools.MetaData.__INTEGER_FIELDS__:
+                        if (field not in fields):
+                            values.add(
+                                (field,
+                                 audiotools.MetaData.__INTEGER_FIELDS__.index(
+                                        field) + 1))
+                        else:
+                            values.add((field, 0))
+                    return values
+
+                def metadata_fields_values(metadata):
+                    values = set([])
+                    for field in audiotools.MetaData.__INTEGER_FIELDS__:
+                        values.add((field, getattr(metadata, field)))
+                    return values
+
+
+                number_fields = ['track_number',
+                                 'track_total',
+                                 'album_number',
+                                 'album_total']
+                try:
+                    #make sure the number fields get set properly, if possible
+                    for count in xrange(1, len(number_fields) + 1):
+                        for fields in Combinations(number_fields, count):
+                            self.assertEqual(
+                                self.__run_app__(
+                                    ["tracktag", '-r', track.filename] +
+                                    self.populate_set_number_fields(fields)),
+                                0)
+                            metadata = audiotools.open(
+                                track.filename).get_metadata()
+                            if (metadata is None):
+                                raise NoMetaData()
+
+                            self.assert_(
+                                metadata_fields_values(metadata).issubset(
+                                    number_fields_values(fields)))
+
+                    #make sure the number fields get removed properly, also
+                    number_metadata = audiotools.MetaData(track_number=1,
+                                                          track_total=2,
+                                                          album_number=3,
+                                                          album_total=4)
+                    for count in xrange(1, len(number_fields) + 1):
+                        for fields in Combinations(number_fields, count):
+                            audiotools.open(track.filename).set_metadata(
+                                number_metadata)
+                            self.assertEqual(
+                                self.__run_app__(
+                                   ["tracktag", track.filename] +
+                                   self.populate_delete_number_fields(fields)),
+                                0)
+                            metadata = audiotools.open(
+                                track.filename).get_metadata()
+                            self.assert_(
+                                metadata_fields_values(metadata).issubset(
+                                    deleted_number_fields_values(fields)),
+                                "%s not subset of %s for options %s type %s" %
+                                (metadata_fields_values(metadata),
+                                 deleted_number_fields_values(fields),
+                                 self.populate_delete_number_fields(fields),
+                                 audio_type.NAME))
+
+                except NoMetaData:
+                    pass
+
+            finally:
+                temp_file.close()
+
+
+
+    def populate_set_number_fields(self, fields):
+        options = []
+        for field in fields:
+            if (field == 'track_number'):
+                options.append('--number')
+                options.append(str(1))
+            elif (field == 'track_total'):
+                options.append('--track-total')
+                options.append(str(2))
+            elif (field == 'album_number'):
+                options.append('--album-number')
+                options.append(str(3))
+            elif (field == 'album_total'):
+                options.append('--album-total')
+                options.append(str(4))
+        return options
+
+    def populate_delete_number_fields(self, fields):
+        options = []
+        for field in fields:
+            if (field == 'track_number'):
+                options.append('--remove-number')
+            elif (field == 'track_total'):
+                options.append('--remove-track-total')
+            elif (field == 'album_number'):
+                options.append('--remove-album-number')
+            elif (field == 'album_total'):
+                options.append('--remove-album-total')
+        return options
+
+
     @UTIL_TRACKTAG
     def test_xmcd(self):
         LENGTH = 1134
