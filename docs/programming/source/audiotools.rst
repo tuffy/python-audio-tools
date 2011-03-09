@@ -204,7 +204,48 @@ AudioFile Objects
    such as a FLAC file, MP3 file, WAVE file and so forth.
    It is not meant to be instantiated directly.  Instead, functions
    such as :func:`open` will return :class:`AudioFile`-compatible
-   objects implementing the following methods.
+   objects with the following attributes and methods.
+
+.. attribute:: AudioFile.NAME
+
+   The name of the format as a string.
+   This is how the format is referenced by utilities via the `-t` option,
+   and must be unique among all formats.
+
+.. attribute:: AudioFile.SUFFIX
+
+   The default file suffix as a string.
+   This is used by the ``%(suffix)s`` format field in the
+   :meth:`track_name` classmethod, and by the :func:`filename_to_type`
+   function for inferring the file format from its name.
+   However, it need not be unique among all formats.
+
+.. attribute:: AudioFile.COMPRESSION_MODES
+
+   A tuple of valid compression level strings, for use with the
+   :meth:`from_pcm` and :meth:`convert` methods.
+   If the format has no compression levels, this tuple will be empty.
+
+.. attribute:: AudioFile.DEFAULT_COMPRESSION
+
+   A string of the default compression level to use
+   with :meth:`from_pcm` and :meth:`convert`, if none is given.
+   This is *not* the default compression indicated in the user's
+   configuration file; it is a hard-coded value of last resort.
+
+.. attribute:: AudioFile.BINARIES
+
+   A tuple of binary strings required by the format.
+   For example, the Vorbis format may require ``"oggenc"`` and ``"oggdec"``
+   in order to be available for the user.
+
+.. attribute:: AudioFile.REPLAYGAIN_BINARIES
+
+   A tuple of binary strings required for ReplayGain application.
+   For example, the Vorbis format may require ``"vorbisgain"`` in
+   order to use the :meth:`add_replay_gain` classmethod.
+   This tuple may be empty if the format requires no binaries
+   or has no ReplayGain support.
 
 .. classmethod:: AudioFile.is_type(file)
 
@@ -343,6 +384,20 @@ AudioFile Objects
    ...                                       audiotools.WavPackAudio,
    ...                                       progress=print_progress)
 
+.. method:: AudioFile.verify([progress])
+
+   Verifies the track for correctness.
+   Returns ``True`` if verification is successful.
+   Raises an :class:`InvalidFile` subclass if some problem is detected.
+   If the file has built-in checksums or other error detection
+   capabilities, this method checks those values to ensure it has not
+   been damaged in some way.
+
+   The optional ``progress`` argument functions identically
+   to the one provided to :meth:`convert`.
+   That is, it takes a two integer argument function which is called
+   at regular intervals to indicate the status of verification.
+
 .. method:: AudioFile.track_number()
 
    Returns this audio file's track number as a non-negative integer.
@@ -359,10 +414,10 @@ AudioFile Objects
    from the track's filename.
    If that method is also unsuccessful, it returns 0.
 
-.. classmethod:: AudioFile.track_name(file_path[, track_metadata[, format]])
+.. classmethod:: AudioFile.track_name(file_path[, track_metadata[, format[, suffix]]])
 
    Given a file path string and optional :class:`MetaData`-compatible object
-   and Python format string,
+   a UTF-8 encoded Python format string, and an ASCII-encoded suffix string,
    returns a filename string with the format string fields filled-in.
    If not provided by metadata, ``track_number`` and ``album_number``
    will be determined from ``file_path``, if possible.
@@ -397,13 +452,16 @@ AudioFile Objects
    ``%(basename)s``           ``file_path`` basename without suffix
    ========================== ===============================================
 
-.. classmethod:: AudioFile.add_replay_gain(filenames)
+.. classmethod:: AudioFile.add_replay_gain(filenames[, progress])
 
    Given a list of filename strings of the same class as this
    :class:`AudioFile` class, calculates and adds ReplayGain metadata
    to those files.
    Raises :exc:`ValueError` if some problem occurs during ReplayGain
    calculation or application.
+   ``progress``, if indicated, is a function which takes two arguments
+   that is called as needed during ReplayGain application to indicate
+   progress - identical to the argument used by :meth:`convert`.
 
 .. classmethod:: AudioFile.can_add_replay_gain()
 
@@ -438,8 +496,9 @@ AudioFile Objects
    or ``None`` if no cuesheet is embedded.
    Raises :exc:`IOError` if some error occurs when reading the file.
 
-.. classmethod:: AudioFile.has_binaries()
+.. classmethod:: AudioFile.has_binaries(system_binaries)
 
+   Takes the :attr:`audiotools.BIN` object of system binaries.
    Returns ``True`` if all the binaries necessary to implement
    this :class:`AudioFile`-compatible class are present and executable.
    Returns ``False`` if not.
@@ -1415,6 +1474,86 @@ ExecQueue Objects
    Likewise, any side effects of the called function have no
    effect on ExecQueue's caller.
 
+ExecProgressQueue Objects
+-------------------------
+
+.. class:: ExecProgressQueue(progress_display)
+
+   This class runs multiple jobs in parallel and displays their
+   progress output to the given :class:`ProgressDisplay` object.
+
+.. attribute:: ExecProgressQueue.results
+
+   A dict of results returned by the queued functions once executed.
+   The key is an integer starting from 0.
+
+.. note::
+
+   Why not a list?
+   Since jobs may finish in an arbitrary order,
+   a dict is used so that results can be accumulated out-of-order.
+   Even using placeholder values such as ``None`` may not
+   be appropriate if queued functions return ``None`` as
+   a significant value.
+
+.. method:: ExecProgressQueue.execute(function[, progress_text[, completion_output[, *args[, **kwargs]]]])
+
+   Queues a Python function for execution.
+   This function is passed the optional ``args`` and ``kwargs``
+   arguments upon execution.
+   However, this function is also passed an *additional* ``progress``
+   keyword argument which is a function that takes ``current`` and
+   ``total`` integer arguments.
+   The executed function can then call that ``progress`` function
+   at regular intervals to indicate its progress.
+
+   If given, ``progress_text`` is a unicode string to be displayed
+   while the function is being executed.
+
+   ``completion_output`` is displayed once the executed function is
+   completed.
+   It can be either a unicode string or a function whose argument
+   is the returned result of the executed function and which must
+   output a unicode string.
+
+.. method:: ExecProgressQueue.run([max_processes])
+
+   Executes all the queued functions, running ``max_processes`` number
+   of functions at a time until the entire queue is empty.
+   This operates by forking a new subprocess per function
+   in which the running progress and function output are
+   piped to the parent for display to the screen or accumulation
+   in the :attr:`ExecProgressQueue.results` dict.
+
+   If an exception occurs in one of the subprocesses,
+   that exception will be raised by :meth:`ExecProgressQueue.run`
+   and all the running jobs will be terminated.
+
+   >>> def progress_function(progress, filename):
+   ...   # perform work here
+   ...   progress(current, total)
+   ...   # more work
+   ...   result.a = a
+   ...   result.b = b
+   ...   result.c = c
+   ...   return result
+   ...
+   ... def format_result(result):
+   ...    print "%s %s %s" % (result.a, result.b result.c)
+   ...
+   ... queue = ExecProgressQueue(ProgressDisplay(Messenger("executable")))
+   ... queue.execute(function=progress_function,
+   ...               progress_text="%s progress" % (filename1),
+   ...               completion_output=format_result,
+   ...               filename=filename1)
+   ... queue.execute(function=progress_function,
+   ...               progress_text="%s progress" % (filename2),
+   ...               completion_output=format_result,
+   ...               filename=filename2)
+   ... queue.run()
+   ... queue.results
+
+
 Messenger Objects
 -----------------
 
@@ -1596,3 +1735,115 @@ Messenger Objects
     ``Messenger.BG_CYAN``    background cyan
     ``Messenger.BG_WHITE``   background white
     ======================== ====================
+
+ProgressDisplay Objects
+-----------------------
+
+.. class:: ProgressDisplay(messenger)
+
+   This is a class for displaying incremental progress updates to the screen.
+   It takes a :class:`Messenger` object which is used for generating
+   output.
+   Whether or not :attr:`sys.stdout` is a TTY determines how
+   this class operates.
+   If a TTY is detected, screen updates are performed incrementally
+   with individual rows generated and refreshed as needed using
+   ANSI escape sequences such that the user's screen need not scroll.
+   If a TTY is not detected, most progress output is omitted.
+
+.. method:: ProgressDisplay.add_row(row_id, output_line)
+
+   Adds a row of output to be displayed with progress indicated.
+   ``row_id`` should be a unique identifier, typically an int.
+   ``output_line`` should be a unicode string indicating what
+   we're displaying the progress of.
+
+.. method:: ProgressDisplay.update_row(row_id, current, total)
+
+   Updates the progress of the given row.
+   ``current`` and ``total`` are integers such that
+   ``current`` / ``total`` indicates the percentage of progress performed.
+
+.. method:: ProgressDisplay.refresh()
+
+   Refreshes the screen output, clearing and displaying a fresh
+   progress rows as needed.
+   This is called automatically by :meth:`update_row`.
+
+.. method:: ProgressDisplay.clear()
+
+   Clears the screen output.
+   Although :meth:`refresh` will call this method as needed,
+   one may need to call it manually when generating
+   output independently for the progress monitor
+   so that partial updates aren't left on the user's screen.
+
+.. method:: ProgressDisplay.delete_row(row_id)
+
+   Removes the row with the given ID from the current list
+   of progress monitors.
+
+.. class:: SingleProgressDisplay(messenger, progress_text)
+
+   This is a subclass of :class:`ProgressDisplay` used
+   for generating only a single line of progress output.
+   As such, one only specifies a single row of unicode ``progress_text``
+   at initialization time and can avoid the row management functions
+   entirely.
+
+.. method:: SingleProgressDisplay.update(current, total)
+
+   Updates the status of our output row with ``current`` and ``total``
+   integers, which function identically to those of
+   :meth:`ProgressDisplay.update_row`.
+
+.. class:: ReplayGainProgressDisplay(messenger, lossless_replay_gain)
+
+   This is another :class:`ProgressDisplay` subclass optimized
+   for the display of ReplayGain application progress.
+   ``messenger`` is a :class:`Messenger` object and
+   ``lossless_replay_gain`` is a boolean indicating whether
+   ReplayGain is being applied losslessly or not
+   (which can be determined from the :meth:`AudioFile.lossless_replay_gain`
+   classmethod).
+   Whether or not :attr:`sys.stdout` is a TTY determines how
+   this class behaves.
+
+.. method:: ReplayGainProgressDisplay.initial_message()
+
+   If operating on a TTY, this does nothing since progress output
+   will be displayed.
+   Otherwise, this indicates that ReplayGain application has begun.
+
+.. method:: ReplayGainProgressDisplay.update(current, total)
+
+   Updates the status of ReplayGain application.
+
+.. method:: ReplayGainProgressDisplay.final_message()
+
+   If operating on a TTY, this indicates that ReplayGain application
+   is complete.
+   Otherwise, this does nothing.
+
+   >>> rg_progress = ReplayGainProgressDisplay(messenger, AudioType.lossless_replay_gain())
+   >>> rg_progress.initial_message()
+   >>> AudioType.add_replay_gain(filename_list, rg_progress.update)
+   >>> rg_Progress.final_message()
+
+.. class:: ProgressRow(row_id, output_line)
+
+   This is used by :class:`ProgressDisplay` and its subclasses
+   for actual output generation.
+   ``row_id`` is a unique identifier and ``output_line`` is a unicode string.
+   It is not typically instantiated directly.
+
+.. method:: ProgressRow.update(current, total)
+
+   Updates the current progress with ``current`` and ``total`` integer values.
+
+.. method:: ProgressRow.unicode(width)
+
+   Returns the output line and its current progress as a unicode string,
+   formatted to the given width in onscreen characters.
+   Screen width can be determined from the :meth:`Messenger.terminal_size`
+   method.

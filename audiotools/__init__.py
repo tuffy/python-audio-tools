@@ -569,7 +569,7 @@ class VerboseMessenger:
         For example:
         >>> VerboseMessenger("audiotools").ansi(u"foo",
         ...                                     [VerboseMessenger.BOLD])
-        u'\x1b[1mfoo\x1b[0m'
+        u'\\x1b[1mfoo\\x1b[0m'
         """
 
         if (sys.stdout.isatty()):
@@ -4273,7 +4273,7 @@ class ExecProgressQueue:
             self.progress_display.add_row(job_id, progress_text)
 
         #spawn subprocess and add it to pool
-        self.running_job_pool[job_id] = ExecProgressQueueJob.spawn(
+        self.running_job_pool[job_id] = __ExecProgressQueueJob__.spawn(
             job_id,
             completion_output,
             function,
@@ -4348,7 +4348,7 @@ class ExecProgressQueue:
             else:
                 return
 
-class ExecProgressQueueJob:
+class __ExecProgressQueueJob__:
     def __init__(self, pid, output, completion_output):
         self.pid = pid
         self.output = output
@@ -4372,7 +4372,7 @@ class ExecProgressQueueJob:
                 try:
                     result = function(
                         *args,
-                        progress=JobProgress(job_id, output).progress,
+                        progress=__JobProgress__(job_id, output).progress,
                         **kwargs)
                     cPickle.dump((job_id, "completed", [result]),
                                  output,
@@ -4384,7 +4384,7 @@ class ExecProgressQueueJob:
             finally:
                 sys.exit(0)
 
-class JobProgress:
+class __JobProgress__:
     def __init__(self, job_id, output):
         self.job_id = job_id
         self.output = output
