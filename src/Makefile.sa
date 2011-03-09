@@ -1,6 +1,6 @@
 #This makefile is for generating debug standalone executables
 
-VERSION = "2.17alpha3"
+VERSION = "2.17beta1"
 OBJS = array.o pcm.o bitstream_w.o pcmreader.o
 FLAGS = -Wall -g
 

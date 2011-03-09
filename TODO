@@ -3010,6 +3010,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] VorbisAudio
    - [X] WavPackAudio
    - [X] WaveAudio
+** TODO Add documentation for progress indicators and infrastructure
 * TODO Add options for ID3v2/ID3v1 tagging
   Perhaps add config file options and corresponding audiotools-config options.
 ** DONE Make ID3v2 version selectable
