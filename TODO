@@ -2803,11 +2803,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] wv_bitstream
 **** DONE decorrelation passes
 **** DONE joint stereo
-**** DONE int32_info
+**** DONE int32 info
      - [X] zeroes
      - [X] ones
      - [X] dupes
      - [X] shift
+**** DONE channel info
 **** DONE checksum
 **** DONE RIFF sub-blocks
 **** DONE MD5 sub-block
@@ -2826,6 +2827,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] decorr_samples
      - [X] entropy_vars
      - [X] extended integers
+     - [X] channel info
      - [X] wv_bitstream
      - [X] RIFF sub-blocks
      - [X] MD5 sub-block

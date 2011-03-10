@@ -878,6 +878,19 @@ This can be summarized as follows:
 \end{cases}
 \end{equation*}
 
+\subsection{Channel Info}
+\label{wavpack_channel_info}
+
+A WavPack file with more than 2 channels should have a \VAR{Channel Info}
+sub-block to indicate its channel layout.
+\begin{figure}[h]
+\includegraphics{figures/wavpack_channel_info.pdf}
+\end{figure}
+\par
+\noindent
+\VAR{Channel Mask} is the same as used by Wave, as shown on
+page \pageref{wave_channel_assignment}.
+
 \subsection{False Stereo}
 
 If the \VAR{False Stereo} bit is set in the block header,
@@ -979,7 +992,10 @@ $\text{Block}_4$ & 0 & 1 & 0 & Back Left & Back Right
 \end{tabular}
 \end{table}
 
-\clearpage
+\subsection{Channel Info}
+If the stream has more than 2 channels, a \VAR{Channel Info}
+sub-block should be added to the first block,
+as illustrated on page \pageref{wavpack_channel_info}.
 
 \subsection{False Stereo}
 

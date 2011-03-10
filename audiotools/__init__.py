@@ -172,6 +172,14 @@ BIG_ENDIAN = sys.byteorder == 'big'
 
 
 def get_umask():
+    """Returns the current file creation umask as an integer.
+
+    This is XORed with creation bits integers when used with
+    os.open to create new files.  For example:
+
+    >>> fd = os.open(filename, os.WRONLY | os.O_CREAT, 0666 ^ get_umask())
+    """
+
     mask = os.umask(0)
     os.umask(mask)
     return mask
@@ -223,6 +231,12 @@ def str_width(s):
 
 
 class display_unicode:
+    """A class for abstracting unicode string truncation.
+
+    This is necessary because not all Unicode characters are
+    the same length when displayed onscreen.
+    """
+
     def __init__(self, unicode_string):
         self.__string__ = unicodedata.normalize(
             'NFC',
@@ -244,6 +258,10 @@ class display_unicode:
         return display_unicode(self.__string__ + unicode(unicode_string))
 
     def head(self, display_characters):
+        """returns a display_unicode object truncated to the given length
+
+        Characters at the end of the string are removed as needed."""
+
         output_chars = []
         for (char, width) in zip(self.__string__, self.__char_widths__):
             if (width <= display_characters):
@@ -254,6 +272,10 @@ class display_unicode:
         return display_unicode(u"".join(output_chars))
 
     def tail(self, display_characters):
+        """returns a display_unicode object truncated to the given length
+
+        Characters at the beginning of the string are removed as needed."""
+
         output_chars = []
         for (char, width) in zip(reversed(self.__string__),
                                  reversed(self.__char_widths__)):
@@ -267,6 +289,12 @@ class display_unicode:
         return display_unicode(u"".join(output_chars))
 
     def split(self, display_characters):
+        """returns a tuple of display_unicode objects
+
+        The first is up to 'display_characters' in length.
+        The second contains the remainder of the string.
+        """
+
         head_chars = []
         tail_chars = []
         for (char, width) in zip(self.__string__, self.__char_widths__):
@@ -675,14 +703,22 @@ class SilentMessenger(VerboseMessenger):
         pass
 
     def ansi_uplines(self, lines):
+        """Performs no output, resulting in silence."""
+
         pass
 
     def ansi_cleardown(self):
+        """Performs no output, resulting in silence."""
+
         pass
 
 
 class ProgressDisplay:
+    """A class for displaying incremental progress updates to the screen."""
+
     def __init__(self, messenger):
+        """Takes a Messenger object for displaying output."""
+
         self.messenger = messenger
         self.previous_output = []
         self.progress_rows = []
@@ -701,6 +737,11 @@ class ProgressDisplay:
             self.clear = self.clear_nontty
 
     def add_row_tty(self, row_id, output_line):
+        """Adds a row of output to be displayed with progress indicated.
+
+        row_id should be a unique identifier
+        output_line should be a unicode string"""
+
         new_row = ProgressRow(row_id, output_line)
         if (None in self.progress_rows):
             self.progress_rows[self.progress_rows.index(None)] = new_row
@@ -708,9 +749,16 @@ class ProgressDisplay:
             self.progress_rows.append(new_row)
 
     def add_row_nontty(self, row_id, output_line):
+        """Adds a row of output to be displayed with progress indicated.
+
+        row_id should be a unique identifier
+        output_line should be a unicode string"""
+
         pass
 
     def delete_row_tty(self, row_id):
+        """Removes the row with the given ID."""
+
         row_index = None
         for (i, row) in enumerate(self.progress_rows):
             if ((row is not None) and (row.id == row_id)):
@@ -721,18 +769,30 @@ class ProgressDisplay:
             self.progress_rows[row_index] = None
 
     def delete_row_nontty(self, row_id):
+        """Removes the row with the given ID."""
+
         pass
 
     def update_row_tty(self, row_id, current, total):
+        """Updates the given row with a new current and total status."""
+
         for row in self.progress_rows:
             if ((row is not None) and (row.id == row_id)):
                 row.update(current, total)
         self.refresh()
 
     def update_row_nontty(self, row_id, current, total):
+        """Updates the given row with a new current and total status."""
+
         pass
 
     def refresh_tty(self):
+        """Refreshes the display of all status rows.
+
+        This deletes and redraws output as necessary,
+        depending on whether output has changed since
+        previously displayed."""
+
         screen_width = self.messenger.terminal_size(sys.stdout)[1]
         new_output = [progress_row.unicode(screen_width)
                       for progress_row in self.progress_rows
@@ -744,29 +804,49 @@ class ProgressDisplay:
             self.previous_output = new_output
 
     def refresh_nontty(self):
+        """Refreshes the display of all status rows.
+
+        This deletes and redraws output as necessary,
+        depending on whether output has changed since
+        previously displayed."""
+
         pass
 
     def clear_tty(self):
+        """Clears all previously displayed output."""
+
         if (len(self.previous_output) > 0):
             self.messenger.ansi_uplines(len(self.previous_output))
             self.messenger.ansi_cleardown()
             self.previous_output = []
 
     def clear_nontty(self):
+        """Clears all previously displayed output."""
+
         pass
 
 
 class SingleProgressDisplay(ProgressDisplay):
+    """A specialized ProgressDisplay for handling a single line of output."""
+
     def __init__(self, messenger, progress_text):
+        """Takes a Messenger class and unicode string for output."""
+
         ProgressDisplay.__init__(self, messenger)
         self.add_row(0, progress_text)
 
     def update(self, current, total):
+        """Updates the output line with new current and total values."""
+
         self.update_row(0, current, total)
 
 
 class ReplayGainProgressDisplay(ProgressDisplay):
+    """A specialized ProgressDisplay for handling ReplayGain application."""
+
     def __init__(self, messenger, lossless_replay_gain):
+        """Takes a Messenger and whether ReplayGain is lossless or not."""
+
         ProgressDisplay.__init__(self, messenger)
         self.lossless_replay_gain = lossless_replay_gain
         if (lossless_replay_gain):
@@ -785,9 +865,13 @@ class ReplayGainProgressDisplay(ProgressDisplay):
             self.final_message = self.final_message_nontty
 
     def initial_message_tty(self):
+        """Displays a message that ReplayGain application has started."""
+
         pass
 
     def initial_message_nontty(self):
+        """Displays a message that ReplayGain application has started."""
+
         if (self.lossless_replay_gain):
             self.messenger.info(
                 _(u"Adding ReplayGain metadata.  This may take some time."))
@@ -796,13 +880,19 @@ class ReplayGainProgressDisplay(ProgressDisplay):
                 _(u"Applying ReplayGain.  This may take some time."))
 
     def update_tty(self, current, total):
+        """Updates the current status of ReplayGain application."""
+
         self.replaygain_row.update(current, total)
         self.refresh()
 
     def update_nontty(self, current, total):
+        """Updates the current status of ReplayGain application."""
+
         pass
 
     def final_message_tty(self):
+        """Displays a message that ReplayGain application is complete."""
+
         self.clear()
         if (self.lossless_replay_gain):
             self.messenger.info(_(u"ReplayGain added"))
@@ -810,11 +900,17 @@ class ReplayGainProgressDisplay(ProgressDisplay):
             self.messenger.info(_(u"ReplayGain applied"))
 
     def final_message_nontty(self):
+        """Displays a message that ReplayGain application is complete."""
+
         pass
 
 
 class ProgressRow:
+    """A class for displaying a single row of progress output."""
+
     def __init__(self, row_id, output_line):
+        """row_id is a unique identifier.  output_line is a unicode string"""
+
         self.id = row_id
         self.output_line = display_unicode(output_line)
         self.current = 0
@@ -826,10 +922,14 @@ class ProgressRow:
         self.ansi = VerboseMessenger("").ansi
 
     def update(self, current, total):
+        """updates our row with the current progress values"""
+
         self.current = current
         self.total = total
 
     def unicode(self, width):
+        """returns a unicode string formatted to the given width"""
+
         try:
             split_point = (width * self.current) / self.total
         except ZeroDivisionError:
@@ -1027,10 +1127,12 @@ def open_directory(directory, sorted=True, messenger=None):
             yield audiofile
 
 
-#takes an iterable collection of tracks
-#yields list of tracks grouped by album
-#where their album_name and album_number match, if possible
 def group_tracks(tracks):
+    """takes an iterable collection of tracks
+
+    yields list of tracks grouped by album
+    where their album_name and album_number match, if possible"""
+
     collection = {}
     for track in tracks:
         metadata = track.get_metadata()
@@ -4255,7 +4357,11 @@ class ProgressJobQueueComplete(Exception):
 
 
 class ExecProgressQueue:
+    """A class for running multiple jobs in parallel with progress updates."""
+
     def __init__(self, progress_display):
+        """Takes a ProgressDisplay object."""
+
         self.progress_display = progress_display
         self.queued_jobs = []
         self.max_job_id = 0
@@ -4266,6 +4372,16 @@ class ExecProgressQueue:
     def execute(self, function,
                 progress_text=None, completion_output=None,
                 *args, **kwargs):
+        """Queues the given function and arguments to be run in parallel.
+
+        progress_text should be a unicode string to be displayed while running
+
+        completion_output is either a unicode string,
+        or a function which takes the result of the queued function
+        and returns a unicode string for display
+        once the queued function is complete
+        """
+
         self.queued_jobs.append((self.max_job_id,
                                  progress_text,
                                  completion_output,
@@ -4275,6 +4391,8 @@ class ExecProgressQueue:
         self.max_job_id += 1
 
     def execute_next_job(self):
+        """Executes the next queued job."""
+
         #pull job off queue
         (job_id,
          progress_text,
@@ -4296,6 +4414,8 @@ class ExecProgressQueue:
             kwargs)
 
     def completed(self, job_id, result):
+        """Handles the completion of the given job and its result."""
+
         #remove job from progress display, if present
         self.progress_display.delete_row(job_id)
         self.progress_display.clear()
@@ -4327,6 +4447,8 @@ class ExecProgressQueue:
             raise ProgressJobQueueComplete()
 
     def exception(self, job_id, exception):
+        """Handles an exception caused by the given job."""
+
         #clean up job that raised exception
         self.running_job_pool[job_id].join()
         del(self.running_job_pool[job_id])
@@ -4339,9 +4461,13 @@ class ExecProgressQueue:
         raise exception
 
     def progress(self, job_id, current, total):
+        """Updates the progress display of the given job."""
+
         self.progress_display.update_row(job_id, current, total)
 
     def run(self, max_processes=1):
+        """Runs all the queued jobs in parallel."""
+
         import select
 
         for i in xrange(min(max_processes, len(self.queued_jobs))):
