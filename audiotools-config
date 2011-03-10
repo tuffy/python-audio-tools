@@ -233,7 +233,8 @@ if (__name__ == '__main__'):
         action='store',
         dest='type',
         choices=audiotools.TYPE_MAP.keys(),
-        help=_(u'the default audio type to use, or the type for a given default quality level'))
+        help=_(u'the default audio type to use, ' +
+               'or the type for a given default quality level'))
 
     transcoding.add_option(
         '-q', '--quality',
@@ -379,7 +380,7 @@ if (__name__ == '__main__'):
     if (len(sys.argv) < 2):
         FormatSummary.headers(msg)
         for audiotype in sorted(audiotools.AVAILABLE_TYPES,
-                                lambda x,y: cmp(x.NAME, y.NAME)):
+                                lambda x, y: cmp(x.NAME, y.NAME)):
             FormatSummary.from_audiofile(
                 msg, audiotype, audiotools.BIN).output_rows(msg)
         msg.output_rows()
@@ -488,23 +489,23 @@ if (__name__ == '__main__'):
         msg.new_row()
         msg.output_column(_(u"ID3v2 tag version"), True)
         msg.output_column(u" : ")
-        msg.output_column({"id3v2.2":u"ID3v2.2",
-                           "id3v2.3":u"ID3v2.3",
-                           "id3v2.4":u"ID3v2.4",
-                           "none":_(u"no ID3v2 tags")}.get(
+        msg.output_column({"id3v2.2": u"ID3v2.2",
+                           "id3v2.3": u"ID3v2.3",
+                           "id3v2.4": u"ID3v2.4",
+                           "none": _(u"no ID3v2 tags")}.get(
                 audiotools.config.get_default("ID3", "id3v2", "id3v2.3"),
                 u"ID3v2.3"))
         msg.new_row()
         msg.output_column(_(u"ID3v2 digit padding"), True)
         msg.output_column(u" : ")
-        msg.output_column({True:_(u'padded to 2 digits ("01", "02", etc.)'),
-                           False:_(u'no padding ("1", "2", etc.)')}[
+        msg.output_column({True: _(u'padded to 2 digits ("01", "02", etc.)'),
+                           False: _(u'no padding ("1", "2", etc.)')}[
                 audiotools.config.getboolean_default("ID3", "pad", False)])
         msg.new_row()
         msg.output_column(_(u"ID3v1 tag version"), True)
         msg.output_column(u" : ")
-        msg.output_column({"id3v1.1":u"ID3v1.1",
-                           "none":_(u"no ID3v1 tags")}.get(
+        msg.output_column({"id3v1.1": u"ID3v1.1",
+                           "none": _(u"no ID3v1 tags")}.get(
                 audiotools.config.get_default("ID3", "id3v1", "id3v1.1"),
                 u"ID3v1.1"))
         msg.blank_row()

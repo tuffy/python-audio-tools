@@ -225,7 +225,6 @@ if (__name__ == '__main__'):
                     album_number=options.album_number,
                     album_total=options.album_total)
 
-
             filename = os.path.join(
                 base_directory,
                 AudioType.track_name(file_path=basename,

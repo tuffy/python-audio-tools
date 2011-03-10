@@ -54,38 +54,38 @@ try:
             (maxcol,) = size
 
             try:
-                txt=urwid.Text("%d:%2.2d" % \
-                                   ((self.current / self.sample_rate) / 60,
-                                    (self.current / self.sample_rate) % 60),
-                               'center', 'clip')
+                txt = urwid.Text("%d:%2.2d" % \
+                                     ((self.current / self.sample_rate) / 60,
+                                      (self.current / self.sample_rate) % 60),
+                                 'center', 'clip')
             except ZeroDivisionError:
-                txt=urwid.Text("0:00", 'center', 'clip')
+                txt = urwid.Text("0:00", 'center', 'clip')
             c = txt.render((maxcol,))
 
-            cf = float( self.current ) * maxcol / self.done
-            ccol = int( cf )
+            cf = float(self.current) * maxcol / self.done
+            ccol = int(cf)
             cs = 0
             if self.satt is not None:
                 cs = int((cf - ccol) * 8)
             if ccol < 0 or (ccol == 0 and cs == 0):
-                c._attr = [[(self.normal,maxcol)]]
+                c._attr = [[(self.normal, maxcol)]]
             elif ccol >= maxcol:
-                c._attr = [[(self.complete,maxcol)]]
+                c._attr = [[(self.complete, maxcol)]]
             elif cs and c._text[0][ccol] == " ":
                 t = c._text[0]
                 cenc = self.eighths[cs].encode("utf-8")
-                c._text[0] = t[:ccol]+cenc+t[ccol+1:]
+                c._text[0] = t[:ccol] + cenc + t[ccol + 1:]
                 a = []
                 if ccol > 0:
-                    a.append( (self.complete, ccol) )
-                a.append((self.satt,len(cenc)))
-                if maxcol-ccol-1 > 0:
-                    a.append( (self.normal, maxcol-ccol-1) )
+                    a.append((self.complete, ccol))
+                a.append((self.satt, len(cenc)))
+                if maxcol - ccol - 1 > 0:
+                    a.append((self.normal, maxcol - ccol - 1))
                 c._attr = [a]
                 c._cs = [[(None, len(c._text[0]))]]
             else:
-                c._attr = [[(self.complete,ccol),
-                    (self.normal,maxcol-ccol)]]
+                c._attr = [[(self.complete, ccol),
+                    (self.normal, maxcol - ccol)]]
             return c
 
     class TrackplayGUI(urwid.Frame):
@@ -113,7 +113,8 @@ try:
             self.channels = urwid.Text("", align='right')
             self.sample_rate = urwid.Text("", align='right')
             self.bits_per_sample = urwid.Text("", align='right')
-            self.play_pause_button = urwid.Button("Play", on_press=self.play_pause)
+            self.play_pause_button = urwid.Button("Play",
+                                                  on_press=self.play_pause)
             self.progress = AudioProgressBar(normal='pg normal',
                                              complete='pg complete',
                                              sample_rate=0,
@@ -127,16 +128,16 @@ try:
             if (len(self.track_list) == 1):
                 self.status = urwid.Text(
                     "1 track, %(min)d:%(sec)2.2d minutes" % {
-                        "count":len(self.track_list),
-                        "min":int(track_len) / 60,
-                        "sec":int(track_len) % 60},
+                        "count": len(self.track_list),
+                        "min": int(track_len) / 60,
+                        "sec": int(track_len) % 60},
                     align='center')
             else:
                 self.status = urwid.Text(
                     "%(count)d tracks, %(min)d:%(sec)2.2d minutes" % {
-                        "count":len(self.track_list),
-                        "min":int(track_len) / 60,
-                        "sec":int(track_len) % 60},
+                        "count": len(self.track_list),
+                        "min": int(track_len) / 60,
+                        "sec": int(track_len) % 60},
                     align='center')
 
             header = urwid.Pile([
@@ -234,7 +235,8 @@ try:
                                                   int(track_length) % 60))
                 self.channels.set_text("%dch" % (track.channels()))
                 self.sample_rate.set_text("%dHz" % (track.sample_rate()))
-                self.bits_per_sample.set_text("%dbps" % (track.bits_per_sample()))
+                self.bits_per_sample.set_text(
+                    "%dbps" % (track.bits_per_sample()))
 
                 self.progress.current = 0
                 self.progress.done = track.total_frames()
@@ -282,6 +284,7 @@ try:
     interactive_available = True
 except ImportError:
     interactive_available = False
+
 
 class TrackplayTTY:
     OUTPUT_FORMAT = (u"%(track_number)d/%(track_total)d " +
@@ -351,8 +354,8 @@ class TrackplayTTY:
 
     def progress_line(self):
         return (self.OUTPUT_FORMAT %
-                {"track_number":self.track_number,
-                 "track_total":self.track_total,
+                {"track_number": self.track_number,
+                 "track_total": self.track_total,
                  "sent_minutes":
                      (frames_sent / self.sample_rate) / 60,
                  "sent_seconds":
@@ -361,9 +364,9 @@ class TrackplayTTY:
                      (frames_total / self.sample_rate) / 60,
                  "total_seconds":
                      (frames_total / self.sample_rate) % 60,
-                 "channels":self.channels,
-                 "sample_rate":self.sample_rate,
-                 "bits_per_sample":self.bits_per_sample})
+                 "channels": self.channels,
+                 "sample_rate": self.sample_rate,
+                 "bits_per_sample": self.bits_per_sample})
 
 
 if (__name__ == '__main__'):
@@ -424,7 +427,8 @@ if (__name__ == '__main__'):
 
     if (options.interactive and (not interactive_available)):
         msg.error(_(u"urwid is required for interactive mode"))
-        msg.output(_(u"Please download and install urwid from http://excess.org/urwid/"))
+        msg.output(_(u"Please download and install " +
+                     u"urwid from http://excess.org/urwid/"))
         msg.output(_(u"or your system's package manager."))
         sys.exit(1)
 

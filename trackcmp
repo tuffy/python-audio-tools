@@ -37,6 +37,7 @@ def near_equal(audiofile1, audiofile2):
         p1.close()
         p2.close()
 
+
 def cmp_files(progress, audiofile1, audiofile2):
     """Returns (path1, path2, mismatch) tuple
 
@@ -55,6 +56,7 @@ def cmp_files(progress, audiofile1, audiofile2):
                 audiofile2.filename,
                 -1)
 
+
 class Results:
     def __init__(self, messenger):
         self.successes = 0
@@ -65,16 +67,16 @@ class Results:
         self.failures += 1
         if (album_number == 0):
             self.msg.info(_(u"%(path)s : %(result)s") % {
-                    "path":os.path.join(directory,
-                                        "track %2.2d" % (track_number)),
-                    "result":self.msg.ansi(_(u"missing"), [self.msg.FG_RED])})
+                    "path": os.path.join(directory,
+                                         "track %2.2d" % (track_number)),
+                    "result": self.msg.ansi(_(u"missing"), [self.msg.FG_RED])})
         else:
             self.msg.info(_(u"%(path)s : %(result)s") % {
-                    "path":os.path.join(
+                    "path": os.path.join(
                         directory,
                         u"album %d track %2.2d" % (album_number,
                                                    track_number)),
-                    "result":self.msg.ansi(_(u"missing"), [self.msg.FG_RED])})
+                    "result": self.msg.ansi(_(u"missing"), [self.msg.FG_RED])})
         sys.stdout.flush()
 
     def cmp_result(self, result):
@@ -84,27 +86,27 @@ class Results:
             self.successes += 1
 
             return _(u"%(path1)s <> %(path2)s : %(result)s") % {
-                "path1":self.msg.filename(path1),
-                "path2":self.msg.filename(path2),
-                "result":self.msg.ansi(
+                "path1": self.msg.filename(path1),
+                "path2": self.msg.filename(path2),
+                "result": self.msg.ansi(
                     _(u"OK"),
                     [self.msg.FG_GREEN])}
         elif (mismatch >= 0):
             self.failures += 1
 
             return _(u"%(path1)s <> %(path2)s : %(result)s") % {
-                "path1":self.msg.filename(path1),
-                "path2":self.msg.filename(path2),
-                "result":self.msg.ansi(
+                "path1": self.msg.filename(path1),
+                "path2": self.msg.filename(path2),
+                "result": self.msg.ansi(
                     _(u"differ at PCM frame %d") % (mismatch + 1),
                     [self.msg.FG_RED])}
         else:
             self.failures += 1
 
             return _(u"%(path1)s <> %(path2)s : %(result)s") % {
-                "path1":self.msg.filename(path1),
-                "path2":self.msg.filename(path2),
-                "result":self.msg.ansi(
+                "path1": self.msg.filename(path1),
+                "path2": self.msg.filename(path2),
+                "result": self.msg.ansi(
                     _(u"error"),
                     [self.msg.FG_RED])}
 
@@ -237,8 +239,9 @@ if (__name__ == '__main__'):
             sys.exit(1)
     else:
         msg.error(_(u"%(file1)s <> %(file2)s : %(result)s") %
-                  {"file1":msg.filename(args[0]),
-                   "file2":msg.filename(args[1]),
-                   "result":msg.ansi(_(u"must be either files or directories"),
-                                     [msg.FG_RED])})
+                  {"file1": msg.filename(args[0]),
+                   "file2": msg.filename(args[1]),
+                   "result": msg.ansi(
+                    _(u"must be either files or directories"),
+                    [msg.FG_RED])})
         sys.exit(1)

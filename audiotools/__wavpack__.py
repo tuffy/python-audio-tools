@@ -133,10 +133,10 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "standard"
     COMPRESSION_MODES = ("veryfast", "fast", "standard", "high", "veryhigh")
-    COMPRESSION_DESCRIPTIONS = {"veryfast":_(u"fastest encode/decode, " +
-                                             u"worst compression"),
-                                "veryhigh":_(u"slowest encode/decode, " +
-                                             u"best compression")}
+    COMPRESSION_DESCRIPTIONS = {"veryfast": _(u"fastest encode/decode, " +
+                                              u"worst compression"),
+                                "veryhigh": _(u"slowest encode/decode, " +
+                                              u"best compression")}
 
     APE_TAG_CLASS = WavPackAPEv2
 
@@ -372,10 +372,10 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
                                     chunk_header.chunk_length)
                                 if (chunk_header.chunk_id == 'fmt '):
                                     self.__samplerate__ = \
-                                        WaveAudio.FMT_CHUNK.parse(chunk_data).sample_rate
+                                        WaveAudio.FMT_CHUNK.parse(
+                                        chunk_data).sample_rate
                         except Con.FieldError:
-                            pass #finished with chunks
-
+                            pass  # finished with chunks
 
             self.__bitspersample__ = WavPackAudio.BITS_PER_SAMPLE[
                 header.bits_per_sample]
@@ -533,7 +533,6 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
         except Exception, err:
             cls.__unlink__(filename)
             raise err
-
 
     def pcm_split(self):
         """Returns a pair of data strings before and after PCM data."""

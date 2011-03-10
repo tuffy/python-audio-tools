@@ -37,6 +37,7 @@ class XMCDException(MetaDataFileException):
     def __unicode__(self):
         return _(u"Invalid XMCD file")
 
+
 class XMCD(AlbumMetaDataFile):
     LINE_LENGTH = 78
 
@@ -111,7 +112,8 @@ class XMCD(AlbumMetaDataFile):
 
             while ((len(chars) > 0) and
                    (len(encoded_value +
-                        chars[0].encode('utf-8','replace')) < XMCD.LINE_LENGTH)):
+                        chars[0].encode('utf-8', 'replace')) <
+                    XMCD.LINE_LENGTH)):
                 encoded_value += chars.pop(0).encode('utf-8', 'replace')
 
             f.write("%s\r\n" % (encoded_value))

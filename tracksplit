@@ -274,7 +274,6 @@ if (__name__ == '__main__'):
         msg.error(unicode(err))
         sys.exit(1)
 
-
     if (options.add_replay_gain and AudioType.can_add_replay_gain()):
         rg_progress = audiotools.ReplayGainProgressDisplay(
                 msg, AudioType.lossless_replay_gain())

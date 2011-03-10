@@ -189,11 +189,13 @@ def __padded_number_pair__(current, total):
     else:
         return u"%2.2d/%2.2d" % (current, total)
 
+
 def __unpadded_number_pair__(current, total):
     if (total == 0):
         return u"%d" % (current)
     else:
         return u"%d/%d" % (current, total)
+
 
 if (config.getboolean_default("ID3", "pad", False)):
     __number_pair__ = __padded_number_pair__

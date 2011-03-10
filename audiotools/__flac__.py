@@ -667,10 +667,10 @@ class FlacAudio(WaveContainer, AiffContainer):
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "8"
     COMPRESSION_MODES = tuple(map(str, range(0, 9)))
-    COMPRESSION_DESCRIPTIONS = {"0":_(u"least amount of compresson, " +
-                                      u"fastest compression speed"),
-                                "8":_(u"most amount of compression, " +
-                                      u"slowest compression speed")}
+    COMPRESSION_DESCRIPTIONS = {"0": _(u"least amount of compresson, " +
+                                       u"fastest compression speed"),
+                                "8": _(u"most amount of compression, " +
+                                       u"slowest compression speed")}
 
     METADATA_BLOCK_HEADER = Con.BitStruct("metadata_block_header",
                                           Con.Bit("last_block"),
@@ -1563,10 +1563,10 @@ class OggFlacAudio(AudioFile):
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "8"
     COMPRESSION_MODES = tuple(map(str, range(0, 9)))
-    COMPRESSION_DESCRIPTIONS = {"0":_(u"least amount of compresson, " +
-                                      u"fastest compression speed"),
-                                "8":_(u"most amount of compression, " +
-                                      u"slowest compression speed")}
+    COMPRESSION_DESCRIPTIONS = {"0": _(u"least amount of compresson, " +
+                                       u"fastest compression speed"),
+                                "8": _(u"most amount of compression, " +
+                                       u"slowest compression speed")}
     BINARIES = ("flac",)
 
     OGGFLAC_STREAMINFO = Con.Struct('oggflac_streaminfo',

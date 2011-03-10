@@ -18,7 +18,8 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import Con,re,os,pcm,cStringIO,struct
+from audiotools import Con, re, os, pcm, cStringIO, struct
+
 
 class DVDAudio:
     """An object representing an entire DVD-Audio disc.
@@ -151,7 +152,7 @@ class DVDAudio:
         Con.Byte("padding"),
         Con.Switch("info",
                    lambda ctx: ctx["stream_id"],
-                   {0xA0:Con.Struct(   #PCM info
+                   {0xA0: Con.Struct(   # PCM info
                     "pcm",
                     Con.Byte("pad2_size"),
                     Con.UBInt16("first_audio_frame"),
@@ -165,7 +166,7 @@ class DVDAudio:
                     Con.UBInt8("padding3"),
                     Con.UBInt8("channel_assignment")),
 
-                    0xA1:Con.Struct(   #MLP info
+                    0xA1: Con.Struct(   # MLP info
                     "mlp",
                     Con.Byte("pad2_size"),
                     Con.StrictRepeater(lambda ctx: ctx["pad2_size"],
@@ -242,7 +243,7 @@ class DVDAudio:
 
         try:
             f = open(self.files['AUDIO_TS.IFO'], 'rb')
-        except KeyError,IOError:
+        except (KeyError, IOError):
             raise InvalidDVDA(u"unable to open AUDIO_TS.IFO")
         try:
             try:
@@ -267,7 +268,7 @@ class DVDAudio:
 
         try:
             f = open(self.files['ATS_%2.2d_0.IFO' % (titleset)], 'rb')
-        except KeyError,IOError:
+        except (KeyError, IOError):
             raise InvalidDVDA(
                 u"unable to open ATS_%2.2d_0.IFO" % (titleset))
         try:
@@ -317,8 +318,6 @@ class DVDAudio:
                                     for i in xrange(title.tracks)])]))
 
             return titles
-
-
         finally:
             f.close()
 
@@ -332,6 +331,7 @@ class DVDAudio:
 
 class InvalidDVDA(Exception):
     pass
+
 
 class DVDATitle:
     """An object representing a DVD-Audio title.
@@ -451,9 +451,9 @@ class DVDATrack:
     SAMPLE_RATE = [48000, 96000, 192000, 0, 0, 0, 0, 0,
                    44100, 88200, 176400, 0, 0, 0, 0, 0]
     CHANNELS = [1, 2, 3, 4, 3, 4, 5, 3, 4, 5, 4, 5, 6, 4, 5, 4, 5, 6, 5, 5, 6]
-    CHANNEL_MASK = [  0x4,  0x3, 0x103,  0x33,  0xB, 0x10B, 0x3B, 0x7,
-                    0x107, 0x37,   0xF, 0x10F, 0x3F, 0x107, 0x37, 0xF,
-                    0x10F, 0x3F,  0x3B,  0x37, 0x3F]
+    CHANNEL_MASK = [0x4, 0x3, 0x103, 0x33, 0xB, 0x10B, 0x3B, 0x7,
+                    0x107, 0x37, 0xF, 0x10F, 0x3F, 0x107, 0x37, 0xF,
+                    0x10F, 0x3F, 0x3B, 0x37, 0x3F]
     BITS_PER_SAMPLE = [16, 20, 24] + [0] * 13
 
     def __init__(self, dvdaudio,
@@ -644,6 +644,7 @@ class AOBStream:
 
         for packet in self.packets():
             yield payload(packet)
+
 
 class IterReader:
     def __init__(self, iterator):

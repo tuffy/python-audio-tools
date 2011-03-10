@@ -146,6 +146,7 @@ if (DEFAULT_VERBOSITY not in VERBOSITY_LEVELS):
 
 DEFAULT_TYPE = config.get_default("System", "default_type", "wav")
 
+
 def __default_quality__(audio_type):
     quality = DEFAULT_QUALITY.get(audio_type, "")
     try:
@@ -168,6 +169,7 @@ else:
     MAX_JOBS = MAX_CPUS
 
 BIG_ENDIAN = sys.byteorder == 'big'
+
 
 def get_umask():
     mask = os.umask(0)
@@ -205,7 +207,8 @@ def Messenger(executable, options):
         return SilentMessenger(executable)
 
 __ANSI_SEQUENCE__ = re.compile(u"\u001B\[[0-9;]+.")
-__CHAR_WIDTHS__ = {"Na":1, "W":2}
+__CHAR_WIDTHS__ = {"Na": 1, "W": 2}
+
 
 def str_width(s):
     """Returns the width of unicode string s, in characters.
@@ -217,6 +220,7 @@ def str_width(s):
     return sum(
         [__CHAR_WIDTHS__.get(unicodedata.east_asian_width(char), 1) for char in
          unicodedata.normalize('NFC', __ANSI_SEQUENCE__.sub(u"", s))])
+
 
 class display_unicode:
     def __init__(self, unicode_string):
@@ -591,9 +595,11 @@ class VerboseMessenger:
         """
 
         if (sys.stdout.isatty()):
-            sys.stdout.write((u"\u001B[0G" + #move cursor to column 0
-                              u"\u001B[0K"   #clear everything after cursor
-                              ).encode(IO_ENCODING))
+            sys.stdout.write((
+                    # move cursor to column 0
+                    u"\u001B[0G" +
+                    # clear everything after cursor
+                    u"\u001B[0K").encode(IO_ENCODING))
             sys.stdout.flush()
 
     def ansi_uplines(self, lines):
@@ -629,7 +635,9 @@ class VerboseMessenger:
     def terminal_size(self, fd):
         """returns the current terminal size as (height, width)"""
 
-        import fcntl, termios, struct
+        import fcntl
+        import termios
+        import struct
 
         #this isn't all that portable, but will have to do
         return struct.unpack('hh', fcntl.ioctl(fd, termios.TIOCGWINSZ, '1234'))
@@ -899,8 +907,8 @@ class UnsupportedChannelMask(EncodingError):
             self,
             _(u"Unable to write \"%(target_filename)s\"" +
               u" with channel assignment \"%(assignment)s\"") %
-            {"target_filename":VerboseMessenger(None).filename(filename),
-             "assignment":audiotools.ChannelMask(mask)})
+            {"target_filename": VerboseMessenger(None).filename(filename),
+             "assignment": audiotools.ChannelMask(mask)})
 
 
 class UnsupportedChannelCount(EncodingError):
@@ -911,8 +919,8 @@ class UnsupportedChannelCount(EncodingError):
             self,
             _(u"Unable to write \"%(target_filename)s\"" +
               u" with %(channels)d channel input") %
-            {"target_filename":VerboseMessenger(None).filename(filename),
-             "channels":count})
+            {"target_filename": VerboseMessenger(None).filename(filename),
+             "channels": count})
 
 
 class UnsupportedBitsPerSample(EncodingError):
@@ -923,8 +931,8 @@ class UnsupportedBitsPerSample(EncodingError):
             self,
             _(u"Unable to write \"%(target_filename)s\"" +
               u" with %(bps)d bits per sample") %
-            {"target_filename":VerboseMessenger(None).filename(filename),
-             "bps":bits_per_sample})
+            {"target_filename": VerboseMessenger(None).filename(filename),
+             "bps": bits_per_sample})
 
 
 class DecodingError(IOError):
@@ -1145,24 +1153,24 @@ class ChannelMask:
 
     MASK_TO_SPEAKER = dict(map(reversed, map(list, SPEAKER_TO_MASK.items())))
 
-    MASK_TO_NAME = {0x1:_(u"front left"),
-                    0x2:_(u"front right"),
-                    0x4:_(u"front center"),
-                    0x8:_(u"low frequency"),
-                    0x10:_(u"back left"),
-                    0x20:_(u"back right"),
-                    0x40:_(u"front right of center"),
-                    0x80:_(u"front left of center"),
-                    0x100:_(u"back center"),
-                    0x200:_(u"side left"),
-                    0x400:_(u"side right"),
-                    0x800:_(u"top center"),
-                    0x1000:_(u"top front left"),
-                    0x2000:_(u"top front center"),
-                    0x4000:_(u"top front right"),
-                    0x8000:_(u"top back left"),
-                    0x10000:_(u"top back center"),
-                    0x20000:_(u"top back right")}
+    MASK_TO_NAME = {0x1: _(u"front left"),
+                    0x2: _(u"front right"),
+                    0x4: _(u"front center"),
+                    0x8: _(u"low frequency"),
+                    0x10: _(u"back left"),
+                    0x20: _(u"back right"),
+                    0x40: _(u"front right of center"),
+                    0x80: _(u"front left of center"),
+                    0x100: _(u"back center"),
+                    0x200: _(u"side left"),
+                    0x400: _(u"side right"),
+                    0x800: _(u"top center"),
+                    0x1000: _(u"top front left"),
+                    0x2000: _(u"top front center"),
+                    0x4000: _(u"top front right"),
+                    0x8000: _(u"top back left"),
+                    0x10000: _(u"top back center"),
+                    0x20000: _(u"top back right")}
 
     def __init__(self, mask):
         """mask should be an integer channel mask value."""
@@ -1364,6 +1372,7 @@ class PCMReaderError(PCMReader):
 
         raise DecodingError(self.error_message)
 
+
 def to_pcm_progress(audiofile, progress):
     if (progress is None):
         return audiofile.to_pcm()
@@ -1371,6 +1380,7 @@ def to_pcm_progress(audiofile, progress):
         return PCMReaderProgress(audiofile.to_pcm(),
                                  audiofile.total_frames(),
                                  progress)
+
 
 class PCMReaderProgress:
     def __init__(self, pcmreader, total_frames, progress):
@@ -1392,7 +1402,6 @@ class PCMReaderProgress:
 
     def close(self):
         self.__close__()
-
 
 
 class ReorderedPCMReader:
@@ -1732,6 +1741,7 @@ class BufferedPCMReader:
             else:
                 self.reader_finished = True
 
+
 class LimitedPCMReader:
     def __init__(self, buffered_pcmreader, total_pcm_frames):
         """buffered_pcmreader should be a BufferedPCMReader
@@ -1760,6 +1770,7 @@ class LimitedPCMReader:
 
     def close(self):
         self.total_pcm_frames = 0
+
 
 def pcm_split(reader, pcm_lengths):
     """Yields a PCMReader object from reader for each pcm_length (in frames).
@@ -3131,7 +3142,6 @@ class AudioFile:
                                      to_pcm_progress(self, progress),
                                      compression)
 
-
     @classmethod
     def __unlink__(cls, filename):
         try:
@@ -3369,6 +3379,7 @@ class AudioFile:
                    [system_binaries.can_execute(system_binaries[command])
                     for command in cls.BINARIES]) == set([True])
 
+
 class WaveContainer(AudioFile):
     """An audio type which supports storing foreign RIFF chunks.
 
@@ -3451,6 +3462,7 @@ class WaveContainer(AudioFile):
                                          to_pcm_progress(self, progress),
                                          compression)
 
+
 class AiffContainer(AudioFile):
     """An audio type which supports storing foreign AIFF chunks.
 
@@ -3459,13 +3471,13 @@ class AiffContainer(AudioFile):
     >>> AiffContainer("file", "input.aiff").to_aiff("output.aiff")
     """
 
-    def to_aiff(self, aiff_filename):
+    def to_aiff(self, aiff_filename, progress=None):
         """Writes the contents of this file to the given .aiff filename string.
 
         Raises EncodingError if some error occurs during decoding."""
 
-        pcmreader = self.to_pcm()
-        AiffAudio.from_pcm(wave_filename, pcmreader)
+        pcmreader = to_pcm_progress(self, progress)
+        AiffAudio.from_pcm(aiff_filename, pcmreader)
         pcmreader.close()
 
     @classmethod
@@ -3526,6 +3538,7 @@ class AiffContainer(AudioFile):
             return target_class.from_pcm(target_path,
                                          to_pcm_progress(self, progress),
                                          compression)
+
 
 class DummyAudioFile(AudioFile):
     """A placeholder AudioFile object with external data."""
@@ -4142,6 +4155,7 @@ class ExecQueue:
             except KeyError:
                 continue
 
+
 class ExecQueue2:
     """A class for running multiple jobs and accumulating results."""
 
@@ -4164,11 +4178,11 @@ class ExecQueue2:
 
         (pipe_read, pipe_write) = os.pipe()
         pid = os.fork()
-        if (pid > 0):  #parent
+        if (pid > 0):  # parent
             os.close(pipe_write)
             reader = os.fdopen(pipe_read, 'r')
             return (pid, reader)
-        else:          #child
+        else:          # child
             os.close(pipe_read)
             writer = os.fdopen(pipe_write, 'w')
             if (kwargs is not None):
@@ -4238,6 +4252,7 @@ class ExecQueue2:
 
 class ProgressJobQueueComplete(Exception):
     pass
+
 
 class ExecProgressQueue:
     def __init__(self, progress_display):
@@ -4320,7 +4335,7 @@ class ExecProgressQueue:
         while (len(self.queued_jobs) > 0):
             self.queued_jobs.pop(0)
 
-        #and set exception to be raised by run()
+        #and raise exception which will bubble-up through run()
         raise exception
 
     def progress(self, job_id, current, total):
@@ -4347,6 +4362,7 @@ class ExecProgressQueue:
                 raise self.cached_exception
             else:
                 return
+
 
 class __ExecProgressQueueJob__:
     def __init__(self, pid, output, completion_output):
@@ -4383,6 +4399,7 @@ class __ExecProgressQueueJob__:
                                  cPickle.HIGHEST_PROTOCOL)
             finally:
                 sys.exit(0)
+
 
 class __JobProgress__:
     def __init__(self, job_id, output):

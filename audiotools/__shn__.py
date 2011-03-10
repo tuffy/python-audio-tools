@@ -162,8 +162,6 @@ class ShortenAudio(WaveContainer, AiffContainer):
                 yield (header.chunk_id, aiff_data.read(8))
                 total_size -= 8
 
-
-
     @classmethod
     def is_type(cls, file):
         """Returns True if the given file object describes this format.
@@ -364,8 +362,8 @@ class ShortenAudio(WaveContainer, AiffContainer):
                 filename=filename,
                 pcmreader=to_pcm_progress(wave, progress),
                 block_size=block_size,
-                file_type={8:2,
-                           16:5}[wave.bits_per_sample()],
+                file_type={8: 2,
+                           16: 5}[wave.bits_per_sample()],
                 verbatim_chunks=blocks)
 
             return cls(filename)
@@ -406,8 +404,8 @@ class ShortenAudio(WaveContainer, AiffContainer):
                 filename=filename,
                 pcmreader=to_pcm_progress(aiff, progress),
                 block_size=block_size,
-                file_type={8:1, #8-bit AIFF seems to be signed
-                           16:3}[aiff.bits_per_sample()],
+                file_type={8: 1,  # 8-bit AIFF seems to be signed
+                           16: 3}[aiff.bits_per_sample()],
                 verbatim_chunks=blocks)
 
             return cls(filename)

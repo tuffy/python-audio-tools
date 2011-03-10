@@ -54,7 +54,6 @@ if (__name__ == '__main__'):
          bits_per_sample,
          stream_type) = title.info()
 
-
         msg.new_row()
         msg.output_column(_(u"Title %d") % (title_num + 1), True)
         msg.output_column(_(u" (%d tracks)" % (len(title.tracks))), True)
@@ -62,13 +61,14 @@ if (__name__ == '__main__'):
         msg.output_column(_(u"%(minutes)2.2d:%(seconds)2.2d " +
                             u"%(channels)dch %(rate)dHz %(bits)d-bit " +
                             u"%(type)s") %
-                          {"minutes":title.pts_length / 90000 / 60,
-                           "seconds":title.pts_length / 90000 % 60,
-                           "channels":channels,
-                           "rate":sample_rate,
-                           "bits":bits_per_sample,
-                           "type":{0xA0:u"PCM",
-                                   0xA1:u"MLP"}.get(stream_type, u"UNKNOWN")})
+                          {"minutes": title.pts_length / 90000 / 60,
+                           "seconds": title.pts_length / 90000 % 60,
+                           "channels": channels,
+                           "rate": sample_rate,
+                           "bits": bits_per_sample,
+                           "type": {0xA0: u"PCM",
+                                    0xA1: u"MLP"}.get(stream_type,
+                                                      u"UNKNOWN")})
     msg.blank_row()
     msg.output_rows()
 
@@ -87,8 +87,8 @@ if (__name__ == '__main__'):
     msg.output_column(u" ")
     msg.output_column(_(u"PTS Ticks"))
 
-    msg.divider_row([u"-",u" ",u"-",u" ",u"-",u" ",u"-",u" ",u"-",u" ",u"-",
-                     u" ",u"-"])
+    msg.divider_row([u"-", u" ", u"-", u" ", u"-", u" ", u"-",
+                     u" ", u"-", u" ", u"-", u" ", u"-"])
 
     for (title_num, title) in enumerate(titleset):
         for (track_num, track) in enumerate(title.tracks):
@@ -123,7 +123,5 @@ if (__name__ == '__main__'):
                     msg.output_column(unicode(track.pts_length), True)
                 else:
                     msg.output_column(u" ")
-
-
 
     msg.output_rows()

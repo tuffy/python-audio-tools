@@ -26,6 +26,7 @@ import gettext
 
 gettext.install("audiotools", unicode=True)
 
+
 #returns the dimensions of image_surface scaled to match the
 #display surface size, but without changing its aspect ratio
 def image_size(display_surface, image_surface):
@@ -98,17 +99,15 @@ try:
                     image_height,
                     gtk.gdk.INTERP_HYPER)
 
-            self.window.draw_pixbuf(gc=self.get_style().fg_gc[gtk.STATE_NORMAL],
-                                    pixbuf=self.scaled_thumbnail,
-                                    src_x=0,
-                                    src_y=0,
-                                    dest_x=(self.widget_width -
-                                            image_width) / 2,
-                                    dest_y=(self.widget_height -
-                                            image_height) / 2,
-                                    width=image_width,
-                                    height=image_height)
-
+            self.window.draw_pixbuf(
+                gc=self.get_style().fg_gc[gtk.STATE_NORMAL],
+                pixbuf=self.scaled_thumbnail,
+                src_x=0,
+                src_y=0,
+                dest_x=(self.widget_width - image_width) / 2,
+                dest_y=(self.widget_height - image_height) / 2,
+                width=image_width,
+                height=image_height)
 
     class Coverview_Gtk:
         def __init__(self):
@@ -194,8 +193,8 @@ try:
             self.file_dialog = gtk.FileChooserDialog(
                 title="Choose an audio file",
                 action=gtk.FILE_CHOOSER_ACTION_OPEN,
-                buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,
-                         gtk.STOCK_OPEN,gtk.RESPONSE_OK))
+                buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                         gtk.STOCK_OPEN, gtk.RESPONSE_OK))
 
             self.about_dialog = gtk.AboutDialog()
 
@@ -205,7 +204,6 @@ try:
             self.about_dialog.set_comments(
                 "A viewer for displaying images embedded in audio files.")
             self.about_dialog.set_website("http://audiotools.sourceforge.net")
-
 
             self.window.add(table)
             self.window.set_default_size(800, 600)
@@ -274,7 +272,6 @@ try:
             self.bits.set_text(u"")
             self.type.set_text(u"")
 
-
         def set_filename(self, path):
             self.statusbar.pop(0)
             self.statusbar.push(0, path)
@@ -331,7 +328,7 @@ try:
         import _imaging as test
     except ImportError, err:
         if (os.uname()[0].lower() == 'darwin'):
-            print >>sys.stderr, """*** Unable to load Python Imaging Library.
+            print >> sys.stderr, """*** Unable to load Python Imaging Library.
 You may need to run Python in 32-bit mode in order for it to load correctly.
 If running a Bourne-like shell, try:
 
@@ -369,10 +366,10 @@ Consult "man python" for further details.
                                      anchor=E)
             self.bits = Label(self.image_info, bd=1, relief=SUNKEN, anchor=E)
             self.type = Label(self.image_info, bd=1, relief=SUNKEN, anchor=E)
-            self.size_bits.grid(row=0, column=0, sticky=E+W)
-            self.size_pixels.grid(row=0, column=1, sticky=E+W)
-            self.bits.grid(row=0, column=2, sticky=E+W)
-            self.type.grid(row=0, column=3, sticky=E+W)
+            self.size_bits.grid(row=0, column=0, sticky=E + W)
+            self.size_pixels.grid(row=0, column=1, sticky=E + W)
+            self.bits.grid(row=0, column=2, sticky=E + W)
+            self.type.grid(row=0, column=3, sticky=E + W)
             self.image_info.columnconfigure(0, weight=1)
             self.image_info.columnconfigure(1, weight=1)
             self.image_info.columnconfigure(2, weight=1)
@@ -478,7 +475,7 @@ Consult "man python" for further details.
             self.about_window = Toplevel()
             self.about_window.withdraw()
             self.about_window_frame = About_Tkinter(self.about_window)
-            self.about_window_frame.pack(fill=BOTH,expand=1)
+            self.about_window_frame.pack(fill=BOTH, expand=1)
 
         def open(self, *args):
             new_file = tkFileDialog.askopenfilename(

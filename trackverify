@@ -89,12 +89,14 @@ def get_tracks(args, accept_list):
                     except (audiotools.UnsupportedFile, IOError):
                         continue
 
+
 def verify(progress, track):
     try:
         track.verify(progress)
         return (track.filename, track.NAME, None)
     except audiotools.InvalidFile, err:
         return (track.filename, track.NAME, unicode(err))
+
 
 class Results:
     def __init__(self, messenger):

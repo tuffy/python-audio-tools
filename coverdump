@@ -97,10 +97,10 @@ if (__name__ == '__main__'):
                     f.close()
                     msg.info(
                         _(u"%(source)s -> %(destination)s") %
-                        {"source":msg.filename(audiofile.filename),
-                         "destination":msg.filename(output_filename)})
+                        {"source": msg.filename(audiofile.filename),
+                         "destination": msg.filename(output_filename)})
                 except IOError, e:
-                    msg.error(_(u"Unable to write \"%s\"") % \
+                    msg.error(_(u"Unable to write \"%s\"") %
                                   msg.filename(output_filename))
                     sys.exit(1)
                 except OSError, e:

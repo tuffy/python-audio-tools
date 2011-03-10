@@ -28,6 +28,7 @@ from audiotools.decoders import MLPDecoder
 
 gettext.install("audiotools", unicode=True)
 
+
 class DummyTrack:
     def __init__(self, sample_rate, channels, channel_mask, bits_per_sample):
         self.__sample_rate__ = sample_rate
@@ -357,9 +358,9 @@ if (__name__ == '__main__'):
                 msg.info(
                     _(u"title %(title_number)d - " +
                       u"track %(track_number)2.2d -> %(filename)s") % \
-                        {"title_number":options.title,
-                         "track_number":title_track_number,
-                         "filename":msg.filename(track.filename)})
+                        {"title_number": options.title,
+                         "track_number": title_track_number,
+                         "filename": msg.filename(track.filename)})
             except audiotools.UnsupportedTracknameField, err:
                 err.error_msg(msg)
                 sys.exit(1)

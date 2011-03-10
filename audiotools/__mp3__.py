@@ -43,40 +43,40 @@ class MPEG_Frame_Header(Con.Adapter):
                    [44100, 48000, 32000, None]]
 
     #(mpeg_version, layer)->bitrate bits->bits per second
-    BIT_RATE = {(3, 3):[0,      32000,  64000,  96000,
-                        128000, 160000, 192000, 224000,
-                        256000, 288000, 320000, 352000,
-                        384000, 416000, 448000, None],
-                (3, 2):[0,      32000,  48000,  56000,
-                        64000,  80000,  96000,  112000,
-                        128000, 160000, 192000, 224000,
-                        256000, 320000, 384000, None],
-                (3, 1):[0,      32000,  40000,  48000,
-                        56000,  64000,  80000,  96000,
-                        112000, 128000, 160000, 192000,
-                        224000, 256000, 320000, None],
-                (2, 3):[0,      32000,  48000,  56000,
-                        64000,  80000,  96000,  112000,
-                        128000, 144000, 160000, 176000,
-                        192000, 224000, 256000, None],
-                (2, 2):[0,      8000,   16000,  24000,
-                        32000,  40000,  48000,  56000,
-                        64000,  80000,  96000,  112000,
-                        128000, 144000, 160000, None]}
+    BIT_RATE = {(3, 3): [0,      32000,  64000,  96000,
+                         128000, 160000, 192000, 224000,
+                         256000, 288000, 320000, 352000,
+                         384000, 416000, 448000, None],
+                (3, 2): [0,      32000,  48000,  56000,
+                         64000,  80000,  96000,  112000,
+                         128000, 160000, 192000, 224000,
+                         256000, 320000, 384000, None],
+                (3, 1): [0,      32000,  40000,  48000,
+                         56000,  64000,  80000,  96000,
+                         112000, 128000, 160000, 192000,
+                         224000, 256000, 320000, None],
+                (2, 3): [0,      32000,  48000,  56000,
+                         64000,  80000,  96000,  112000,
+                         128000, 144000, 160000, 176000,
+                         192000, 224000, 256000, None],
+                (2, 2): [0,      8000,   16000,  24000,
+                         32000,  40000,  48000,  56000,
+                         64000,  80000,  96000,  112000,
+                         128000, 144000, 160000, None]}
 
     #mpeg_version->Hz->sample_rate bits
-    SAMPLE_RATE_REVERSE = {0:{11025:0,
-                              12000:1,
-                              8000:2},
-                           1:{None:0},
-                           2:{22050:0,
-                              24000:1,
-                              16000:2,
-                              None:3},
-                           3:{44100:0,
-                              48000:1,
-                              32000:2,
-                              None:3}}
+    SAMPLE_RATE_REVERSE = {0: {11025: 0,
+                               12000: 1,
+                               8000: 2},
+                           1: {None: 0},
+                           2: {22050: 0,
+                               24000: 1,
+                               16000: 2,
+                               None: 3},
+                           3: {44100: 0,
+                               48000: 1,
+                               32000: 2,
+                               None: 3}}
 
     BIT_RATE_REVERSE = dict([(key, dict([(rate, i) for (i, rate) in
                                          enumerate(values)]))
@@ -109,7 +109,7 @@ class MPEG_Frame_Header(Con.Adapter):
 
     def _decode(self, obj, content):
         obj.sample_rate = self.SAMPLE_RATE[obj.mpeg_version][obj.sample_rate]
-        obj.channel_count = [2,2,2,1][obj.channel]
+        obj.channel_count = [2, 2, 2, 1][obj.channel]
         obj.bitrate = self.BIT_RATE[(obj.mpeg_version, obj.layer)][obj.bitrate]
 
         if (obj.layer == 3):
@@ -161,18 +161,18 @@ class MP3Audio(AudioFile):
     #9 is worse quality/higher compression
     COMPRESSION_MODES = ("0", "1", "2", "3", "4", "5", "6",
                          "medium", "standard", "extreme", "insane")
-    COMPRESSION_DESCRIPTIONS = {"0":_(u"high quality, larger files, " +
-                                      u"corresponds to lame's -V0"),
-                                "6":_(u"lower quality, smaller files, " +
-                                      u"corresponds to lame's -V6"),
-                                "medium":_(u"corresponds to lame's " +
-                                           u"--preset medium"),
-                                "standard":_(u"corresponds to lame's " +
-                                           u"--preset standard"),
-                                "extreme":_(u"corresponds to lame's " +
-                                            u"--preset extreme"),
-                                "insane":_(u"corresponds to lame's " +
-                                           u"--preset insane")}
+    COMPRESSION_DESCRIPTIONS = {"0": _(u"high quality, larger files, " +
+                                       u"corresponds to lame's -V0"),
+                                "6": _(u"lower quality, smaller files, " +
+                                       u"corresponds to lame's -V6"),
+                                "medium": _(u"corresponds to lame's " +
+                                            u"--preset medium"),
+                                "standard": _(u"corresponds to lame's " +
+                                              u"--preset standard"),
+                                "extreme": _(u"corresponds to lame's " +
+                                             u"--preset extreme"),
+                                "insane": _(u"corresponds to lame's " +
+                                            u"--preset insane")}
     BINARIES = ("lame",)
     REPLAYGAIN_BINARIES = ("mp3gain", )
 
@@ -417,7 +417,7 @@ class MP3Audio(AudioFile):
                 "-s", str(decimal.Decimal(pcmreader.sample_rate) / 1000),
                 "--bitwidth", str(pcmreader.bits_per_sample),
                 "--signed", "--little-endian",
-                "-m", mode] +  compression + ["-", filename],
+                "-m", mode] + compression + ["-", filename],
                                stdin=subprocess.PIPE,
                                stdout=devnull,
                                stderr=devnull,
@@ -506,17 +506,17 @@ class MP3Audio(AudioFile):
             DEFAULT_ID3V2 = "id3v2.3"
             DEFAULT_ID3V1 = "id3v1.1"
 
-            id3v2_class = {"id3v2.2":ID3v22Comment,
-                           "id3v2.3":ID3v23Comment,
-                           "id3v2.4":ID3v24Comment,
-                           "none":None}.get(config.get_default("ID3",
-                                                               "id3v2",
-                                                               DEFAULT_ID3V2),
-                                            DEFAULT_ID3V2)
-            id3v1_class = {"id3v1.1":ID3v1Comment,
-                           "none":None}.get(config.get_default("ID3",
-                                                               "id3v1",
-                                                               DEFAULT_ID3V1))
+            id3v2_class = {"id3v2.2": ID3v22Comment,
+                           "id3v2.3": ID3v23Comment,
+                           "id3v2.4": ID3v24Comment,
+                           "none": None}.get(config.get_default("ID3",
+                                                                "id3v2",
+                                                                DEFAULT_ID3V2),
+                                             DEFAULT_ID3V2)
+            id3v1_class = {"id3v1.1": ID3v1Comment,
+                           "none": None}.get(config.get_default("ID3",
+                                                                "id3v1",
+                                                                DEFAULT_ID3V1))
             if ((id3v2_class is not None) and (id3v1_class is not None)):
                 metadata = ID3CommentPair.converted(metadata,
                                                     id3v2_class=id3v2_class,
@@ -879,8 +879,8 @@ class MP2Audio(MP3Audio):
     DEFAULT_COMPRESSION = str(192)
     COMPRESSION_MODES = tuple(map(str, (32,  48,  56,  64,  80,  96,  112,
                                         128, 160, 192, 224, 256, 320, 384)))
-    COMPRESSION_DESCRIPTIONS = {"32":_(u"total bitrate of 32kbps"),
-                                "384":_(u"total bitrate of 384kbps")}
+    COMPRESSION_DESCRIPTIONS = {"32": _(u"total bitrate of 32kbps"),
+                                "384": _(u"total bitrate of 384kbps")}
     BINARIES = ("lame", "twolame")
 
     @classmethod

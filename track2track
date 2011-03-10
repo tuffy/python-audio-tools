@@ -335,7 +335,7 @@ if (__name__ == '__main__'):
 
         try:
             queue.run(max_processes)
-        except audiotools.EncodingError,err:
+        except audiotools.EncodingError, err:
             msg.error(unicode(err))
             sys.exit(1)
 
@@ -387,6 +387,6 @@ if (__name__ == '__main__'):
 
         try:
             queue.run(1)
-        except audiotools.EncodingError,err:
+        except audiotools.EncodingError, err:
             msg.error(unicode(err))
             sys.exit(1)

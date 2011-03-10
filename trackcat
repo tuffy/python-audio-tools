@@ -195,8 +195,8 @@ if (__name__ == '__main__'):
 
     except audiotools.EncodingError, err:
         msg.error(_(u"%(filename)s: %(error)s") %
-                      {"filename":msg.filename(options.filename),
-                       "error":err})
+                      {"filename": msg.filename(options.filename),
+                       "error": err})
         sys.exit(1)
     except audiotools.InvalidFormat, err:
         msg.error(unicode(err))

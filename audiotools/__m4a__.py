@@ -622,10 +622,10 @@ class M4AAudio_nero(M4AAudio_faac):
     DEFAULT_COMPRESSION = "0.5"
     COMPRESSION_MODES = ("0.0", "0.1", "0.2", "0.3", "0.4", "0.5",
                          "0.6", "0.7", "0.8", "0.9", "1.0")
-    COMPRESSION_DESCRIPTIONS = {"0.0":_(u"lowest quality, " +
-                                        u"corresponds to neroAacEnc -q 0"),
-                                "1.0":_(u"highest quality, " +
-                                        u"corresponds to neroAacEnc -q 1")}
+    COMPRESSION_DESCRIPTIONS = {"0.0": _(u"lowest quality, " +
+                                         u"corresponds to neroAacEnc -q 0"),
+                                "1.0": _(u"highest quality, " +
+                                         u"corresponds to neroAacEnc -q 1")}
     BINARIES = ("neroAacDec", "neroAacEnc")
 
     @classmethod

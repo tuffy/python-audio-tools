@@ -189,11 +189,14 @@ classes and functions upon which all of the other modules depend.
    :class:`cue.Cuesheet` or raises :exc:`SheetException` if
    the file cannot be opened, identified or parsed correctly.
 
-.. function:: find_glade_file(glade_filename)
+.. function:: to_pcm_progress(audiofile, progress)
 
-   Given a Glade filename, search various system directories for
-   the full path to an existing file.
-   Raises :exc:`IOError` if the file cannot be found.
+   Given an :class:`AudioFile`-compatible object and ``progress``
+   function, returns a :class:`PCMReaderProgress` object
+   of that object's PCM stream.
+
+   If ``progress`` is ``None``, the audiofile's PCM stream
+   is returned as-is.
 
 AudioFile Objects
 -----------------
@@ -232,6 +235,13 @@ AudioFile Objects
    with :meth:`from_pcm` and :meth:`convert`, if none is given.
    This is *not* the default compression indicated in the user's
    configuration file; it is a hard-coded value of last resort.
+
+.. attribute:: AudioFile.COMPRESSION_DESCRIPTIONS
+
+   A dict of compression descriptions, as unicode strings.
+   The key is a valid compression mode string.
+   Not all compression modes need have a description;
+   some may be left blank.
 
 .. attribute:: AudioFile.BINARIES
 
@@ -502,6 +512,75 @@ AudioFile Objects
    Returns ``True`` if all the binaries necessary to implement
    this :class:`AudioFile`-compatible class are present and executable.
    Returns ``False`` if not.
+
+WaveContainer Objects
+^^^^^^^^^^^^^^^^^^^^^
+
+This is an abstract :class:`AudioFile` subclass suitable
+for extending by formats that store RIFF WAVE chunks internally,
+such as Wave, FLAC, WavPack and Shorten.
+It overrides the :meth:`AudioFile.convert` method such that
+any stored chunks are transferred properly from one file to the next.
+This is accomplished by implementing three additional methods.
+
+.. class:: WaveContainer
+
+.. method:: WaveContainer.to_wave(wave_filename[, progress])
+
+   Creates a Wave file with the given filename string
+   from our data, with any stored chunks intact.
+   ``progress``, if given, functions identically to the
+   :meth:`AudioFile.convert` method.
+   May raise :exc:`EndodingError` if some problem occurs during encoding.
+
+.. classmethod:: WaveContainer.from_wave(filename, wave_filename[, compression[, progress]])
+
+   Like :meth:`AudioFile.from_pcm`, creates a file with our class
+   at the given ``filename`` string, from the given ``wave_filename``
+   string and returns a new object of our class.
+   ``compression`` is an optional compression level string
+   and ``progress`` functions identically to that of
+   :meth:`AudioFile.convert`.
+   May raise :exc:`EndodingError` if some problem occurs during encoding.
+
+.. method:: WaveContainer.has_foreign_riff_chunks()
+
+   Returns ``True`` if our object has non-audio RIFF WAVE chunks.
+
+AiffContainer Objects
+^^^^^^^^^^^^^^^^^^^^^
+
+Much like :class:`WaveContainer`, this is an abstract
+:class:`AudioFile` subclass suitable
+for extending by formats that store AIFF chunks internally,
+such as AIFF, FLAC and Shorten.
+It overrides the :meth:`AudioFile.convert` method such that
+any stored chunks are transferred properly from one file to the next.
+This is accomplished by implementing three additional methods.
+
+.. class:: AiffContainer
+
+.. method:: AiffContainer.to_aiff(aiff_filename[, progress])
+
+   Creates an AIFF file with the given filename string
+   from our data, with any stored chunks intact.
+   ``progress``, if given, functions identically to the
+   :meth:`AudioFile.convert` method.
+   May raise :exc:`EndodingError` if some problem occurs during encoding.
+
+.. classmethod:: AiffContainer.from_aiff(filename, aiff_filename[, compression[, progress]])
+
+   Like :meth:`AudioFile.from_pcm`, creates a file with our class
+   at the given ``filename`` string, from the given ``aiff_filename``
+   string and returns a new object of our class.
+   ``compression`` is an optional compression level string
+   and ``progress`` functions identically to that of
+   :meth:`AudioFile.convert`.
+   May raise :exc:`EndodingError` if some problem occurs during encoding.
+
+.. method:: AiffContainer.has_foreign_aiff_chunks()
+
+   Returns ``True`` if our object has non-audio AIFF chunks.
 
 MetaData Objects
 ----------------
@@ -1046,7 +1125,7 @@ PCMCat Objects
 PCMReaderWindow Objects
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-.. class:: PCMReaderWindow(pcmreader, initial_offset, pcm_frames)
+.. class:: PCMReaderWindow(pcmreader, initial_offset, total_pcm_frames)
 
    This class wraps around an existing :class:`PCMReader` object
    and truncates or extends its samples as needed.
@@ -1054,12 +1133,51 @@ PCMReaderWindow Objects
    PCM frames to truncate from the beginning of the stream.
    If negative, the beginning of the stream is padded by
    that many PCM frames - all of which have a value of 0.
-   ``pcm_frames`` indicates the total length of the stream
+   ``total_pcm_frames`` indicates the total length of the stream
    as a non-negative number of PCM frames.
    If shorter than the actual length of the PCM reader's stream,
    the reader is truncated.
    If longer, the stream is extended by as many PCM frames as needed.
    Again, padding frames have a value of 0.
+
+LimitedPCMReader Objects
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. class:: LimitedPCMReader(buffered_pcmreader, total_pcm_frames)
+
+   This class wraps around an existing :class:`BufferedPCMReader`
+   and ensures that no more than ``total_pcm_frames`` will be read
+   from that stream by limiting reads to it.
+
+.. note::
+
+   :class:`PCMReaderWindow` is designed primarly for handling
+   sample offset values in a :class:`CDTrackReader`,
+   or for skipping a potentially large number of samples
+   in a stream.
+   :class:`LimitedPCMReader` is designed for splitting a
+   stream into several smaller streams without losing any PCM frames.
+
+   Which to use for a given situation depends on whether one cares
+   about consuming the samples outside of the sub-reader or not.
+
+PCMReaderProgress Objects
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. class:: PCMReaderProgress(pcmreader, total_frames, progress)
+
+   This class wraps around an existing :class:`PCMReader` object
+   and generates periodic updates to a given ``progress`` function.
+   ``total_frames`` indicates the total number of PCM frames
+   in the PCM stream.
+
+   >>> progress_display = SingleProgressDisplay(Messenger("audiotools"), u"encoding file")
+   >>> pcmreader = source_audiofile.to_pcm()
+   >>> source_frames = source_audiofile.total_frames()
+   >>> target_audiofile = AudioType.from_pcm("target_filename",
+   ...                                       PCMReaderProgress(pcmreader,
+   ...                                                         source_frames,
+   ...                                                         progress_display.update))
 
 
 ChannelMask Objects
@@ -1539,15 +1657,15 @@ ExecProgressQueue Objects
    ...   return result
    ...
    ... def format_result(result):
-   ...    print "%s %s %s" % (result.a, result.b result.c)
+   ...    return u"%s %s %s" % (result.a, result.b, result.c)
    ...
    ... queue = ExecProgressQueue(ProgressDisplay(Messenger("executable")))
    ... queue.execute(function=progress_function,
-   ...               progress_text="%s progress" % (filename1),
+   ...               progress_text=u"%s progress" % (filename1),
    ...               completion_output=format_result,
    ...               filename=filename1)
    ... queue.execute(function=progress_function,
-   ...               progress_text="%s progress" % (filename2),
+   ...               progress_text=u"%s progress" % (filename2),
    ...               completion_output=format_result,
    ...               filename=filename2)
    ... queue.run()
@@ -1616,6 +1734,20 @@ Messenger Objects
    >>> m.error(u"Fatal Error!")
    *** Error: Fatal Error!
 
+.. method:: Messenger.os_error(oserror)
+
+   Given an :class:`OSError` object, displays it as a properly formatted
+   error message with an appended newline.
+
+.. note::
+
+   This is necessary because of the way :class:`OSError` handles
+   its embedded filename string.
+   Using this method ensures that filename is properly encoded when
+   displayed.
+   Otherwise, there's a good chance that non-ASCII filenames will
+   be garbled.
+
 .. method:: Messenger.usage(string)
 
    Outputs usage text, Unicode ``string`` and a newline to stderr.
@@ -1646,27 +1778,6 @@ Messenger Objects
    This method adds a completely blank row to its table data.
    Note that the first row within an output table cannot be blank.
 
-.. method:: Messenger.divider_row(dividers)
-
-   This method takes a list of vertical divider Unicode characters,
-   one per output column, and multiplies those characters by their
-   column width when displayed.
-
-   >>> m.new_row()
-   >>> m.output_column(u"foo")
-   >>> m.output_column(u" ")
-   >>> m.output_column(u"bar")
-   >>> m.divider_row([u"-",u" ",u"-"])
-   >>> m.new_row()
-   >>> m.output_column(u"test")
-   >>> m.output_column(u" ")
-   >>> m.output_column(u"column")
-   >>> m.output_rows()
-   foo  bar
-   ---- ------
-   test column
-
-
 .. method:: Messenger.output_rows()
 
    Formats and displays the entire table data through the
@@ -1689,6 +1800,32 @@ Messenger Objects
      a : This is some test data
     ab : Another row of test data
    abc : The final row of test data
+
+.. method:: Messenger.info_rows()
+
+   Functions like :meth:`Messenger.output_rows`,
+   but displays output via :meth:`Messenger.info` rather than
+   :meth:`Messenger.output`.
+
+.. method:: Messenger.divider_row(dividers)
+
+   This method takes a list of vertical divider Unicode characters,
+   one per output column, and multiplies those characters by their
+   column width when displayed.
+
+   >>> m.new_row()
+   >>> m.output_column(u"foo")
+   >>> m.output_column(u" ")
+   >>> m.output_column(u"bar")
+   >>> m.divider_row([u"-",u" ",u"-"])
+   >>> m.new_row()
+   >>> m.output_column(u"test")
+   >>> m.output_column(u" ")
+   >>> m.output_column(u"column")
+   >>> m.output_rows()
+   foo  bar
+   ---- ------
+   test column
 
 .. method:: Messenger.ansi(string, codes)
 
@@ -1735,6 +1872,43 @@ Messenger Objects
     ``Messenger.BG_CYAN``    background cyan
     ``Messenger.BG_WHITE``   background white
     ======================== ====================
+
+.. method:: Messenger.ansi_clearline()
+
+   Generates a ANSI escape codes to clear the current line.
+
+   This works only if ``stdout`` is a TTY, otherwise is does nothing.
+
+   >>> msg = Messenger("audiotools", None)
+   >>> msg.partial_output(u"working")
+   >>> time.sleep(1)
+   >>> msg.ansi_clearline()
+   >>> msg.output(u"done")
+
+.. method:: Messenger.ansi_uplines(self, lines)
+
+   Moves the cursor upwards by the given number of lines.
+
+.. method:: Messenger.ansi_cleardown(self)
+
+   Clears all the output below the current line.
+   This is typically used in conjuction with :meth:`Messenger.ansi_uplines`.
+
+   >>> msg = Messenger("audiotools", None)
+   >>> msg.output(u"line 1")
+   >>> msg.output(u"line 2")
+   >>> msg.output(u"line 3")
+   >>> msg.output(u"line 4")
+   >>> time.sleep(2)
+   >>> msg.ansi_uplines(4)
+   >>> msg.ansi_cleardown()
+   >>> msg.output(u"done")
+
+.. method:: Messenger.terminal_size(fd)
+
+   Given a file descriptor integer, or file object with a fileno() method,
+   returns the size of the current terminal as a (``height``, ``width``)
+   tuple of integers.
 
 ProgressDisplay Objects
 -----------------------
@@ -1847,3 +2021,61 @@ ProgressDisplay Objects
    formatted to the given width in onscreen characters.
    Screen width can be determined from the :meth:`Messenger.terminal_size`
    method.
+
+display_unicode Objects
+^^^^^^^^^^^^^^^^^^^^^^^
+
+This class is for displaying portions of a unicode string to
+the screen.
+The reason this is needed is because not all Unicode characters
+are the same width.
+So, for example, if one wishes to display a portion of a unicode string to
+a screen that's 80 ASCII characters wide, one can't simply perform:
+
+>>> messenger.output(unicode_string[0:80])
+
+since some of those Unicode characters might be double width,
+which would cause the string to wrap.
+
+.. class:: display_unicode(unicode_string)
+
+.. method:: display_unicode.head(display_characters)
+
+   Returns a new :class:`display_unicode` object that's been
+   truncated to the given number of display characters.
+
+   >>> s = u"".join(map(unichr, range(0x30a1, 0x30a1+25)))
+   >>> len(s)
+   25
+   >>> u = unicode(display_unicode(s).head(40))
+   >>> len(u)
+   20
+   >>> print repr(u)
+   u'\u30a1\u30a2\u30a3\u30a4\u30a5\u30a6\u30a7\u30a8\u30a9\u30aa\u30ab\u30ac\u30ad\u30ae\u30af\u30b0\u30b1\u30b2\u30b3\u30b4'
+
+.. method:: display_unicode.tail(display_characters)
+
+   Returns a new :class:`display_unicode` object that's been
+   truncated to the given number of display characters.
+
+   >>> s = u"".join(map(unichr, range(0x30a1, 0x30a1+25)))
+   >>> len(s)
+   25
+   >>> u = unicode(display_unicode(s).tail(40))
+   >>> len(u)
+   20
+   >>> print repr(u)
+   u'\u30a6\u30a7\u30a8\u30a9\u30aa\u30ab\u30ac\u30ad\u30ae\u30af\u30b0\u30b1\u30b2\u30b3\u30b4\u30b5\u30b6\u30b7\u30b8\u30b9'
+
+.. method:: display_unicode.split(display_characters)
+
+   Returns a tuple of :class:`display_unicode` objects.
+   The first is up to ``display_characters`` wide,
+   while the second contains the remainder.
+
+   >>> s = u"".join(map(unichr, range(0x30a1, 0x30a1+25)))
+   >>> (head, tail) = display_unicode(s).split(40)
+   >>> print repr(unicode(head))
+   u'\u30a1\u30a2\u30a3\u30a4\u30a5\u30a6\u30a7\u30a8\u30a9\u30aa\u30ab\u30ac\u30ad\u30ae\u30af\u30b0\u30b1\u30b2\u30b3\u30b4'
+   >>> print repr(unicode(tail))
+   u'\u30b5\u30b6\u30b7\u30b8\u30b9'

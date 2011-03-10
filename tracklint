@@ -207,6 +207,7 @@ def fix_blank_fields(metadata, log):
                 del(metadata[key])
                 log.append(_(u"Stripped blank %s field") % (key))
 
+
 #update embedded images with proper metadatadata
 #based on their raw data
 def fix_image_metrics(metadata, log):

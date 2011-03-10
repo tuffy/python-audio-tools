@@ -30,6 +30,7 @@ import threading
 
 (RG_NO_REPLAYGAIN, RG_TRACK_GAIN, RG_ALBUM_GAIN) = range(3)
 
+
 class Player:
     """A class for operating an audio player.
 
@@ -111,6 +112,7 @@ class Player:
 
 
 (PLAYER_STOPPED, PLAYER_PAUSED, PLAYER_PLAYING) = range(3)
+
 
 class PlayerThread:
     """The Player class' subthread.
@@ -395,6 +397,7 @@ class CDPlayerThread:
                     else:
                         self.stop()
 
+
 class ThreadedPCMConverter:
     """A class for decoding a PCMReader in a seperate thread.
 
@@ -518,6 +521,7 @@ class AudioOutput:
 
         return False
 
+
 class NULLAudioOutput(AudioOutput):
     """An AudioOutput subclass which does not actually play anything.
 
@@ -558,6 +562,7 @@ class NULLAudioOutput(AudioOutput):
         """returns True"""
 
         return True
+
 
 class OSSAudioOutput(AudioOutput):
     """An AudioOutput subclass for OSS output."""
@@ -638,6 +643,7 @@ class OSSAudioOutput(AudioOutput):
         except ImportError:
             return False
 
+
 class PulseAudioOutput(AudioOutput):
     """An AudioOutput subclass for PulseAudio output."""
 
@@ -671,7 +677,7 @@ class PulseAudioOutput(AudioOutput):
                  "--rate", str(sample_rate),
                  "--format", format,
                  "--channels", str(channels),
-                 "--latency-msec",str(100)],
+                 "--latency-msec", str(100)],
                 stdin=subprocess.PIPE)
 
             self.initialized = True
@@ -728,7 +734,6 @@ class PulseAudioOutput(AudioOutput):
         return (audiotools.BIN.can_execute(audiotools.BIN["pacat"]) and
                 audiotools.BIN.can_execute(audiotools.BIN["pactl"]) and
                 cls.server_alive())
-
 
 
 class PortAudioOutput(AudioOutput):

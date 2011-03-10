@@ -33,6 +33,7 @@ def get_xml_nodes(parent, child_tag):
             if (hasattr(node, "tagName") and
                 (node.tagName == child_tag))]
 
+
 def walk_xml_tree(parent, *child_tags):
     """A helper routine for walking through several children."""
 
@@ -47,6 +48,7 @@ def walk_xml_tree(parent, *child_tags):
                 return walk_xml_tree(node, *remaining_tags)
         else:
             return None
+
 
 def walk_xml_tree_build(dom, parent, *child_tags):
 
@@ -63,6 +65,7 @@ def walk_xml_tree_build(dom, parent, *child_tags):
             new_child = dom.createElement(base_tag)
             parent.appendChild(new_child)
             return walk_xml_tree_build(dom, new_child, *remaining_tags)
+
 
 def get_xml_text_node(parent, child_tag):
     """A helper routine for returning the first text child XML node."""
@@ -275,6 +278,7 @@ class MBXMLException(MetaDataFileException):
 
     def __unicode__(self):
         return _(u"Invalid MusicBrainz XML file")
+
 
 class MusicBrainzReleaseXML(AlbumMetaDataFile):
     """An XML file as returned by MusicBrainz."""

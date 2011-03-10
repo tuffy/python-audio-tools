@@ -623,7 +623,7 @@ class WaveAudio(WaveContainer):
         Raises ValueError if some problem occurs during ReplayGain application.
         """
 
-        from audiotools.replaygain import ReplayGain,ReplayGainReader
+        from audiotools.replaygain import ReplayGain, ReplayGainReader
         import tempfile
 
         wave_files = [track for track in open_files(filenames) if

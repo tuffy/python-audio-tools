@@ -51,8 +51,8 @@ def convert_to_wave(audiofile, wave_filename, messenger):
         messenger.info(u"* %s" % (messenger.filename(audiofile.filename)))
     except audiotools.EncodingError, err:
         messenger.error(_(u"%(filename): %(message)s") %
-                        {"filename":audiofile.filename,
-                         "message":err})
+                        {"filename": audiofile.filename,
+                         "message": err})
 
 
 if (__name__ == '__main__'):
@@ -224,11 +224,11 @@ if (__name__ == '__main__'):
             write_offset = 0
 
         if (write_offset == 0):
-            temptrack =  audiotools.WaveAudio.from_pcm(
+            temptrack = audiotools.WaveAudio.from_pcm(
                 tempwav.name,
                 pcmreader)
         else:
-            temptrack =  audiotools.WaveAudio.from_pcm(
+            temptrack = audiotools.WaveAudio.from_pcm(
                 tempwav.name,
                 audiotools.PCMReaderWindow(pcmreader,
                                            write_offset,

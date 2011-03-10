@@ -122,7 +122,6 @@ if (__name__ == '__main__'):
         sys.exit(1)
     title = dvda[0][options.title - 1]
 
-
     #grab XML/XMCD data from MusicBrainz/FreeDB
     musicbrainz_discid = audiotools.MBDiscID(
         [(track.pts_length * 75) / audiotools.DVDAudio.PTS_PER_SECOND
