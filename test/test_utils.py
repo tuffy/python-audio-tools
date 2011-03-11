@@ -163,6 +163,9 @@ class cd2track(UtilTest):
         self.original_dir = os.getcwd()
         os.chdir(self.cwd_dir)
 
+        self.unwritable_dir = tempfile.mkdtemp()
+        os.chmod(self.unwritable_dir, 0)
+
     @UTIL_CD2TRACK
     def tearDown(self):
         os.chdir(self.original_dir)
@@ -178,6 +181,9 @@ class cd2track(UtilTest):
         for f in os.listdir(self.cwd_dir):
             os.unlink(os.path.join(self.cwd_dir, f))
         os.rmdir(self.cwd_dir)
+
+        os.chmod(self.unwritable_dir, 0700)
+        os.rmdir(self.unwritable_dir)
 
     def populate_options(self, options):
         populated = []
@@ -342,57 +348,117 @@ class cd2track(UtilTest):
                         else:
                             self.assertEqual(metadata.album_total, 0)
 
+    def populate_bad_options(self, options):
+        populated = []
+
+        for option in sorted(options):
+            if (option == '-t'):
+                populated.append(option)
+                populated.append("foo")
+            elif (option == '-q'):
+                populated.append(option)
+                populated.append("bar")
+            elif (option == '-d'):
+                populated.append(option)
+                populated.append(self.unwritable_dir)
+            elif (option == '--format'):
+                populated.append(option)
+                populated.append("%(foo)s.%(suffix)s")
+            elif (option == '-x'):
+                populated.append(option)
+                populated.append(os.devnull)
+            elif (option == '--album-number'):
+                populated.append(option)
+                populated.append("foo")
+            elif (option == '--album-total'):
+                populated.append(option)
+                populated.append("bar")
+            else:
+                populated.append(option)
+
+        return populated
+
     @UTIL_CD2TRACK
     def test_errors(self):
-        self.assertEqual(self.__run_app__(
-                ["cd2track", "-c", self.cue_file,
-                 "-t", "flac", "-q", "help"]), 0)
-        self.__check_info__(_(u"Available compression types for %s:") % \
-                                (audiotools.FlacAudio.NAME))
-        for m in audiotools.FlacAudio.COMPRESSION_MODES:
-            self.assert_(self.stderr.readline().decode(audiotools.IO_ENCODING).lstrip().startswith(m.decode('ascii')))
+        filename = audiotools.Messenger("cd2track", None).filename
 
-        self.assertEqual(self.__run_app__(
-                ["cd2track", "-c", self.cue_file,
-                 "-t", "wav", "-q", "help"]), 0)
+        all_options = ["-t", "-q", "-d", "--format", "-x",
+                       "--album-number", "--album-total"]
+        for count in xrange(1, len(all_options) + 1):
+            for options in Combinations(all_options, count):
 
-        self.__check_error__(_(u"Audio type %s has no compression modes") % \
-                                 (audiotools.WaveAudio.NAME))
+                options = self.populate_bad_options(options)
 
-        self.assertEqual(self.__run_app__(
-                ["cd2track", "-t", "flac", "-q", "foobar"]), 1)
+                if ("-t" in options):
+                    self.assertEqual(
+                        self.__run_app__(["cd2track", "-c", self.cue_file] +
+                                         options),
+                        2)
+                    continue
+                else:
+                    output_type = audiotools.TYPE_MAP[audiotools.DEFAULT_TYPE]
 
-        self.__check_error__(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") % \
-                                 {"quality": "foobar",
-                                  "type": audiotools.FlacAudio.NAME})
+                if (("--album-number" in options) or
+                    ("--album-total" in options)):
+                    self.assertEqual(
+                        self.__run_app__(["cd2track", "-c", self.cue_file] +
+                                         options),
+                        2)
+                    continue
 
-        self.assertEqual(self.__run_app__(
-                ["cd2track", "-c", self.cue_file,
-                 "-t", "flac", "-d", "/dev/null/foo"]), 1)
-        self.__check_error__(
-            _(u"[Errno 20] Not a directory: '%s'") % (
-                u"/dev/null/foo"))
+                self.assertEqual(
+                    self.__run_app__(["cd2track", "-c", self.cue_file] +
+                                     options),
+                    1)
 
-        self.assertEqual(self.__run_app__(
-                ["cd2track", "-t", "flac", "-d", self.output_dir,
-                 "-c", self.cue_file, "-x", "/dev/null"]), 1)
+                if (("-o" in options) and
+                    ("-d" in options)):
+                    self.__check_error__(
+                        _(u"-o and -d options are not compatible"))
+                    self.__check_info__(
+                        _(u"Please specify either -o or -d but not both"))
+                    continue
 
-        self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
+                if (("--format" in options) and ("-o" in options)):
+                    self.__queue_warning__(
+                        _(u"--format has no effect when used with -o"))
 
-        self.assertEqual(self.__run_app__(
-                ["cd2track", "-t", "flac", "--format=%(foo)s", "-d",
-                 self.output_dir, "-c", self.cue_file,
-                 "-x", self.xmcd_file.name]), 1)
+                if ("-q" in options):
+                    self.__check_error__(
+                        _(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") %
+                        {"quality": "bar",
+                         "type":audiotools.DEFAULT_TYPE})
+                    continue
 
-        self.__check_error__(_(u"Unknown field \"%s\" in file format") % \
-                            ("foo"))
-        self.__check_info__(_(u"Supported fields are:"))
-        for field in sorted(audiotools.MetaData.__FIELDS__ + \
-                                ("album_track_number", "suffix")):
-            if (field == 'track_number'):
-                self.__check_info__(u"%(track_number)2.2d")
-            else:
-                self.__check_info__(u"%%(%s)s" % (field))
+                if ("-x" in options):
+                    self.__check_error__(
+                        _(u"Invalid XMCD or MusicBrainz XML file"))
+                    continue
+
+                if ("--format" in options):
+                    self.__check_error__(
+                        _(u"Unknown field \"%s\" in file format") % ("foo"))
+                    self.__check_info__(_(u"Supported fields are:"))
+                    for field in sorted(audiotools.MetaData.__FIELDS__ + \
+                                            ("album_track_number", "suffix")):
+                        if (field == 'track_number'):
+                            self.__check_info__(u"%(track_number)2.2d")
+                        else:
+                            self.__check_info__(u"%%(%s)s" % (field))
+                    continue
+
+                if ("-d" in options):
+                    output_path = os.path.join(
+                        self.unwritable_dir,
+                        output_type.track_name(
+                            "",
+                            audiotools.MetaData(track_number=1,
+                                                track_total=3),
+                            audiotools.FILENAME_FORMAT))
+                    self.__check_error__(
+                        _(u"Unable to write \"%s\"") % \
+                            (output_path))
+                    continue
 
 
 class cd2xmcd(UtilTest):
@@ -4178,6 +4244,9 @@ class tracksplit(UtilTest):
         self.original_dir = os.getcwd()
         os.chdir(self.cwd_dir)
 
+        self.unwritable_dir = tempfile.mkdtemp()
+        os.chmod(self.unwritable_dir, 0)
+
     @UTIL_TRACKSPLIT
     def tearDown(self):
         os.chdir(self.original_dir)
@@ -4195,6 +4264,9 @@ class tracksplit(UtilTest):
         for f in os.listdir(self.cwd_dir):
             os.unlink(os.path.join(self.cwd_dir, f))
         os.rmdir(self.cwd_dir)
+
+        os.chmod(self.unwritable_dir, 0700)
+        os.rmdir(self.unwritable_dir)
 
     def clean_output_dirs(self):
         for f in os.listdir(self.output_dir):
@@ -4510,38 +4582,98 @@ class tracksplit(UtilTest):
                         if (metadata is not None):
                             self.assertEqual(metadata.ISRC, ISRC)
 
+    def populate_bad_options(self, options):
+        populated = []
+
+        for option in sorted(options):
+            if (option == '-t'):
+                populated.append(option)
+                populated.append("foo")
+            elif (option == '-q'):
+                populated.append(option)
+                populated.append("bar")
+            elif (option == '-d'):
+                populated.append(option)
+                populated.append(self.unwritable_dir)
+            elif (option == '--format'):
+                populated.append(option)
+                populated.append("%(foo)s.%(suffix)s")
+            elif (option == '-x'):
+                populated.append(option)
+                populated.append(os.devnull)
+            else:
+                populated.append(option)
+
+        return populated
+
     @UTIL_TRACKSPLIT
     def test_errors(self):
+        filename = audiotools.Messenger("tracksplit", None).filename
+
         track1 = self.type.from_pcm(self.unsplit_file.name,
                                     BLANK_PCM_Reader(18))
 
         track2 = self.type.from_pcm(self.unsplit_file2.name,
                                     BLANK_PCM_Reader(5))
 
-        self.assertEqual(self.__run_app__(
-                ["tracksplit", "-t", "flac", "-q", "help"]), 0)
-        self.__check_info__(_(u"Available compression types for %s:") % \
-                                (audiotools.FlacAudio.NAME))
-        for m in audiotools.FlacAudio.COMPRESSION_MODES:
-            self.assert_(self.stderr.readline().decode(audiotools.IO_ENCODING).lstrip().startswith(m.decode('ascii')))
+        all_options = ["-t", "-q", "-d", "--format", "-x"]
 
-        self.assertEqual(self.__run_app__(
-                ["tracksplit", "-t", "wav", "-q", "help"]), 0)
+        for count in xrange(1, len(all_options) + 1):
+            for options in Combinations(all_options, count):
+                options = self.populate_bad_options(options)
 
-        self.__check_error__(_(u"Audio type %s has no compression modes") % \
-                                 (audiotools.WaveAudio.NAME))
+                if ("-t" in options):
+                    self.assertEqual(
+                        self.__run_app__(["tracksplit", track1.filename] +
+                                         options),
+                        2)
+                    continue
+                else:
+                    output_type = audiotools.TYPE_MAP[audiotools.DEFAULT_TYPE]
 
-        self.assertEqual(self.__run_app__(
-                ["tracksplit", "-t", "flac", "-q", "foobar"]), 1)
+                self.assertEqual(
+                    self.__run_app__(["tracksplit", "--cue",
+                                      self.cuesheet.name,
+                                      track1.filename] +
+                                     options),
+                    1)
 
-        self.__check_error__(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") % \
-                                 {"quality": "foobar",
-                                  "type": audiotools.FlacAudio.NAME})
+                if ("-q" in options):
+                    self.__check_error__(
+                        _(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") %
+                        {"quality": "bar",
+                         "type":audiotools.DEFAULT_TYPE})
+                    continue
 
-        self.assertEqual(self.__run_app__(
-                ["tracksplit", "-t", "flac", "-d", self.output_dir, "/dev/null/foo"]), 1)
+                if ("-x" in options):
+                    self.__check_error__(
+                        _(u"Invalid XMCD or MusicBrainz XML file"))
+                    continue
 
-        self.__check_error__(_(u"Unable to open \"%s\"") % (u"/dev/null/foo"))
+                if ("--format" in options):
+                    self.__check_error__(
+                        _(u"Unknown field \"%s\" in file format") % ("foo"))
+                    self.__check_info__(_(u"Supported fields are:"))
+                    for field in sorted(audiotools.MetaData.__FIELDS__ + \
+                                            ("album_track_number", "suffix")):
+                        if (field == 'track_number'):
+                            self.__check_info__(u"%(track_number)2.2d")
+                        else:
+                            self.__check_info__(u"%%(%s)s" % (field))
+                    continue
+
+                if ("-d" in options):
+                    output_path = os.path.join(
+                        self.unwritable_dir,
+                        output_type.track_name(
+                            "",
+                            audiotools.MetaData(track_number=1,
+                                                track_total=3),
+                            audiotools.FILENAME_FORMAT))
+                    self.__check_error__(
+                        _(u"[Errno 13] Permission denied: \'%s\'") % \
+                            (output_path))
+                    continue
 
         self.assertEqual(self.__run_app__(
                 ["tracksplit", "-t", "flac", "-d", self.output_dir]), 1)
@@ -4556,13 +4688,6 @@ class tracksplit(UtilTest):
 
         self.assertEqual(self.__run_app__(
                 ["tracksplit", "-t", "flac", "-d", self.output_dir,
-                 "--cue", self.cuesheet.name, "-x", "/dev/null",
-                 self.unsplit_file.name]), 1)
-
-        self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
-
-        self.assertEqual(self.__run_app__(
-                ["tracksplit", "-t", "flac", "-d", self.output_dir,
                  self.unsplit_file.name]), 1)
 
         self.__check_error__(_(u"You must specify a cuesheet to split audio file"))
@@ -4572,21 +4697,5 @@ class tracksplit(UtilTest):
                  "--cue", self.cuesheet.name, track2.filename]), 1)
 
         self.__check_error__(_(u"Cuesheet too long for track being split"))
-
-        self.assertEqual(self.__run_app__(
-                ["tracksplit", "-t", "flac", "--format=%(foo)s", "-d",
-                 self.output_dir, "--cue", self.cuesheet.name,
-                 "-x", self.xmcd_file.name,
-                 self.unsplit_file.name]), 1)
-
-        self.__check_error__(_(u"Unknown field \"%s\" in file format") % \
-                            ("foo"))
-        self.__check_info__(_(u"Supported fields are:"))
-        for field in sorted(audiotools.MetaData.__FIELDS__ + \
-                                ("album_track_number", "suffix")):
-            if (field == 'track_number'):
-                self.__check_info__(u"%(track_number)2.2d")
-            else:
-                self.__check_info__(u"%%(%s)s" % (field))
 
         #FIXME? - check for broken cue sheet output?

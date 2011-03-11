@@ -4858,3 +4858,128 @@ class TestMultiChannel(unittest.TestCase):
                 self.__test_undefined_mask_blank__(audiotools.M4AAudio_nero,
                                                    channels,
                                                    False)
+
+class __callback__:
+    def __init__(self):
+        self.called = False
+
+    def call(self):
+        self.called = True
+
+class Test_Player(unittest.TestCase):
+    @LIB_PLAYER
+    def setUp(self):
+        self.temp_track_file = tempfile.NamedTemporaryFile(suffix=".flac")
+        self.temp_track = audiotools.FlacAudio.from_pcm(
+            self.temp_track_file.name,
+            BLANK_PCM_Reader(6))
+
+    @LIB_PLAYER
+    def tearDown(self):
+        self.temp_track_file.close()
+
+    @LIB_PLAYER
+    def test_player(self):
+        import audiotools.player
+        import time
+
+        callback = __callback__()
+        player = audiotools.player.Player(audiotools.player.NULLAudioOutput(),
+                                          next_track_callback=callback.call)
+        self.assertEqual(callback.called, False)
+        self.assertEqual(player.progress(), (0, 0))
+        player.open(self.temp_track)
+        player.play()
+        time.sleep(1)
+        (current1, total1) = player.progress()
+        self.assertEqual(callback.called, False)
+        self.assert_(current1 > 0)
+        self.assert_(total1 > 0)
+        time.sleep(1)
+        (current2, total2) = player.progress()
+        self.assertEqual(callback.called, False)
+        self.assert_(current2 > current1)
+        self.assertEqual(total2, total1)
+        time.sleep(1)
+        player.pause()
+        time.sleep(.5)
+        (current3, total3) = player.progress()
+        self.assertEqual(callback.called, False)
+        self.assert_(current3 > current2)
+        self.assertEqual(total3, total1)
+        time.sleep(1)
+        (current4, total4) = player.progress()
+        self.assertEqual(callback.called, False)
+        self.assertEqual(current4, current3)
+        self.assertEqual(total4, total1)
+        player.play()
+        time.sleep(6)
+        self.assertEqual(callback.called, True)
+
+class Test_CDPlayer(unittest.TestCase):
+    @LIB_PLAYER
+    def setUp(self):
+        self.input_dir = tempfile.mkdtemp()
+
+        self.stream = test_streams.Sine16_Stereo(793800, 44100,
+                                                 8820.0, 0.70,
+                                                 4410.0, 0.29, 1.0)
+
+        self.cue_file = os.path.join(self.input_dir, "CDImage.cue")
+        self.bin_file = os.path.join(self.input_dir, "CDImage.bin")
+
+        f = open(self.cue_file, "w")
+        f.write('FILE "CDImage.wav" WAVE\r\n  TRACK 01 AUDIO\r\n    ISRC JPPI00652340\r\n    INDEX 01 00:00:00\r\n  TRACK 02 AUDIO\r\n    ISRC JPPI00652349\r\n    INDEX 00 00:06:00\r\n    INDEX 01 00:08:00\r\n  TRACK 03 AUDIO\r\n    ISRC JPPI00652341\r\n    INDEX 00 00:9:00\r\n    INDEX 01 00:11:00\r\n')
+        f.close()
+
+        f = open(self.bin_file, "w")
+        audiotools.transfer_framelist_data(self.stream, f.write)
+        f.close()
+
+        self.cdda = audiotools.CDDA(self.cue_file)
+
+    @LIB_PLAYER
+    def tearDown(self):
+        for f in os.listdir(self.input_dir):
+            os.unlink(os.path.join(self.input_dir, f))
+        os.rmdir(self.input_dir)
+
+    @LIB_PLAYER
+    def test_player(self):
+        import audiotools.player
+        import time
+
+        callback = __callback__()
+        player = audiotools.player.CDPlayer(
+            self.cdda,
+            audiotools.player.NULLAudioOutput(),
+            next_track_callback=callback.call)
+        self.assertEqual(callback.called, False)
+        self.assertEqual(player.progress(), (0, 0))
+        player.open(1)
+        player.play()
+        time.sleep(1)
+        (current1, total1) = player.progress()
+        self.assertEqual(callback.called, False)
+        self.assert_(current1 > 0)
+        self.assert_(total1 > 0)
+        time.sleep(1)
+        (current2, total2) = player.progress()
+        self.assertEqual(callback.called, False)
+        self.assert_(current2 > current1)
+        self.assertEqual(total2, total1)
+        time.sleep(1)
+        player.pause()
+        time.sleep(.5)
+        (current3, total3) = player.progress()
+        self.assertEqual(callback.called, False)
+        self.assert_(current3 > current2)
+        self.assertEqual(total3, total1)
+        time.sleep(1)
+        (current4, total4) = player.progress()
+        self.assertEqual(callback.called, False)
+        self.assertEqual(current4, current3)
+        self.assertEqual(total4, total1)
+        player.play()
+        time.sleep(6)
+        self.assertEqual(callback.called, True)

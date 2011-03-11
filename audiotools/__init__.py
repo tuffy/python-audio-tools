@@ -816,6 +816,7 @@ class ProgressDisplay:
         """Clears all previously displayed output."""
 
         if (len(self.previous_output) > 0):
+            self.messenger.ansi_clearline()
             self.messenger.ansi_uplines(len(self.previous_output))
             self.messenger.ansi_cleardown()
             self.previous_output = []
@@ -4469,6 +4470,9 @@ class ExecProgressQueue:
         """Runs all the queued jobs in parallel."""
 
         import select
+
+        if (len(self.queued_jobs) == 0):
+            return
 
         for i in xrange(min(max_processes, len(self.queued_jobs))):
             self.execute_next_job()
