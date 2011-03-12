@@ -181,4 +181,3 @@ BitstreamWriter_close(encoders_BitstreamWriter *self, PyObject *args) {
     Py_INCREF(Py_None);
     return Py_None;
 }
-

@@ -440,5 +440,3 @@ wavpack_init_decorrelation_passes(int channel_count);
 void
 wavpack_free_decorrelation_passes(struct wavpack_decorrelation_pass* passes,
                                   int channel_count);
-
-

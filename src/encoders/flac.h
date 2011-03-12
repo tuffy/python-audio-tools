@@ -292,5 +292,3 @@ abs_sum(struct i_array *a)
 #include "../common/flac_crc.h"
 
 #endif
-
-

@@ -1386,11 +1386,14 @@ mlp_read_restart_header(Bitstream* bs,
 
     parameters->matrix_parameters.count = 0;
 
+    for (channel = 0; channel < MAX_MLP_CHANNELS; channel++) {
+        parameters->output_shifts[channel] = 0;
+        parameters->quant_step_sizes[channel] = 0;
+    }
+
     for (channel = header->min_channel;
          channel <= header->max_channel;
          channel++) {
-        parameters->output_shifts[channel] = 0;
-        parameters->quant_step_sizes[channel] = 0;
         channel_params = &(parameters->channel_parameters[channel]);
 
         ia_reset(&(channel_params->fir_filter_parameters.coefficients));
