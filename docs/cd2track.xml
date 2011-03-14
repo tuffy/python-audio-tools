@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manpage>
+  <utility>cd2track</utility>
+  <author>Brian Langenberger</author>
+  <section>1</section>
+  <name>extract audio files</name>
+  <title>Compact Disc Extractor</title>
+  <synopsis>[OPTIONS] [track 1] [track 2] ...</synopsis>
+  <description>
+    cd2track extracts audio files from a compact disc and
+    encodes them to tracks.
+    If track numbers are given, extracts only those tracks.
+    Otherwise, extracts the entire disc.
+  </description>
+  <options>
+    <option short="h" long="help">show a list of options and exit</option>
+    <option short="V" long="verbose" arg="verbosity">
+      The level of output to display.
+      Choose between 'normal', 'quiet' and 'debug.
+    </option>
+    <option short="c" long="cdrom" arg="cdrom">
+      the CD-ROM device to extract audio from
+    </option>
+    <option short="s" long="speed" arg="speed">
+      the speed to extract audio data at
+    </option>
+  </options>
+  <options category="extraction">
+    <option short="t" long="type" arg="type">
+      The audio format of the extracted audio tracks.
+      For a list of available audio formats, try: -t help.
+    </option>
+    <option short="q" long="quality" arg="quality">
+      The desired quality of the extracted tracks.
+      For a list of available quality modes for a given format, try: -q help
+    </option>
+    <option short="d" long="dir" arg="directory">
+      The target directory for the extracted tracks.
+      If none is given, the current working directory is used.
+      If the target directory does not exist,
+      it will be created automatically.
+    </option>
+    <option long="format" arg="string">
+      The format string to use for new filenames.
+      Template fields are replaced with metadata values when
+      new tracks are created.  All other text is left as-is.
+      If this option is omitted, a default format string is used.
+    </option>
+  </options>
+  <options category="metadata">
+    <option short="x" long="xmcd" arg="filename">
+      A MusicBrainz XML file or FreeDB XMCD file to use for metadata for
+      the extracted tracks.
+      XML and XMCD files can be obtained from the
+      track2xmcd(1), cd2xmcd(1) and editxmcd(1) programs.
+    </option>
+    <option long="album-number" arg="number">
+      the album number of this CD, if it is one in a series of albums
+    </option>
+    <option long="album-total" arg="number">
+      the total number of albums in this CD's set,
+      if it is one in a series of albums
+    </option>
+    <option long="replay-gain">
+      add ReplayGain metadata to newly created tracks
+    </option>
+    <option long="no-replay-gain">
+      do not add ReplayGain metadata to newly created tracks
+    </option>
+  </options>
+</manpage>

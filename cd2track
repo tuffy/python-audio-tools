@@ -47,7 +47,7 @@ if (__name__ == '__main__'):
         '-s', '--speed', action='store',
         type='int', dest='speed')
 
-    conversion = audiotools.OptionGroup(parser, _(u"Conversion Options"))
+    conversion = audiotools.OptionGroup(parser, _(u"Extraction Options"))
 
     conversion.add_option(
         '-t', '--type',

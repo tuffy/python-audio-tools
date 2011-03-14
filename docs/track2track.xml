@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manpage>
+  <utility>track2track</utility>
+  <author>Brian Langenberger</author>
+  <section>1</section>
+  <name>convert audio tracks</name>
+  <title>Audio File Converter</title>
+  <synopsis>[OPTIONS] &lt;track 1&gt; [track 2] ...</synopsis>
+  <description>
+    track2track converts audio tracks from one format to another.
+  </description>
+  <options>
+    <option short="h" long="help">show a list of options and exit</option>
+    <option short="V" long="verbose" arg="verbosity">
+      The level of output to display.
+      Choose between 'normal', 'quiet' and 'debug.
+    </option>
+  </options>
+  <options category="conversion">
+    <option short="t" long="type" arg="type">
+      The audio format to convert the given tracks to.
+      For a list of available audio formats, try: -t help.
+    </option>
+    <option short="q" long="quality" arg="quality">
+      The desired quality of the converted tracks.
+      For a list of available quality modes for a given format, try: -q help
+    </option>
+    <option short="d" long="dir" arg="directory">
+      The target directory for the converted tracks.
+      If none is given, the current working directory is used.
+      If the target directory does not exist,
+      it will be created automatically.
+      This option is not compatible with -o
+    </option>
+    <option long="format" arg="string">
+      The format string to use for new filenames.
+      Template fields are replaced with metadata values when
+      new tracks are created.  All other text is left as-is.
+      If this option is omitted, a default format string is used.
+    </option>
+    <option short="o" long="output" arg="filename">
+      An explicit output filename for the converted track.
+      With this option, only a single input track is allowed.
+      It overrides the -d option and the default output filename.
+    </option>
+    <option short="j" long="joint" arg="processes">
+      The maximum number of tracks to convert at one time.
+      If one has multiple CPUs or CPU cores, allowing
+      track2track(1)
+      to use all of them simultaneously can greatly increase encoding speed.
+    </option>
+  </options>
+  <options category="metadata">
+    <option short="x" long="xmcd" arg="filename">
+      A MusicBrainz XML file or FreeDB XMCD file to use for metadata for
+      the converted tracks.
+      If no file is given, metadata will be taken from the source
+      tracks, if present.
+      XML and XMCD files can be obtained from the
+      track2xmcd(1), cd2xmcd(1) and editxmcd(1) programs.
+    </option>
+    <option short="T" long="thumbnail">
+      convert embedded images to smaller thumbnails during conversion
+    </option>
+    <option long="replay-gain">
+      add ReplayGain metadata to newly created tracks
+    </option>
+    <option long="no-replay-gain">
+      do not add ReplayGain metadata to newly created tracks
+    </option>
+  </options>
+  <examples>
+    <example>
+      <description>
+        Convert all the WAVE files in the current working directory to MP3s
+        at the default quality using metadata from album.xmcd:
+      </description>
+      <command>track2track -t mp3 -x album.xmcd *.wav</command>
+    </example>
+    <example>
+      <description>
+        Convert all of the FLAC files in sourcedir to
+        Ogg Vorbis files and place them in targetdir:
+      </description>
+      <command>track2track -t ogg -d targetdir sourcedir/*.flac</command>
+    </example>
+    <example>
+      <description>
+        Convert all of the WAVE files in sourcedir to
+        FLAC files, 2 at a time and at the highest possible compression
+        (quality 8):
+      </description>
+      <command>track2track -t flac -j 2 -q 8 sourcedir/*.wav</command>
+    </example>
+  </examples>
+</manpage>
