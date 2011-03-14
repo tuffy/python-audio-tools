@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manpage>
-  <utility>cd2track</utility>
+  <utility>dvda2track</utility>
   <author>Brian Langenberger</author>
   <section>1</section>
   <name>extract audio files</name>
-  <title>Compact Disc Extractor</title>
+  <title>DVD-Audio Extractor</title>
   <synopsis>[OPTIONS] [track 1] [track 2] ...</synopsis>
   <description>
-    cd2track extracts audio files from a compact disc and
+    dvda2track extracts audio files from a DVD-Audio disc and
     encodes them to tracks.
     If track numbers are given, extracts only those tracks.
     Otherwise, extracts the entire disc.
@@ -19,10 +19,14 @@
       Choose between 'normal', 'quiet' and 'debug.
     </option>
     <option short="c" long="cdrom" arg="cdrom">
-      the CD-ROM device to extract audio from
+      the DVD-ROM device to extract audio from
     </option>
-    <option short="s" long="speed" arg="speed">
-      the speed to extract audio data at
+    <option short="A" long="audio_ts" arg="directory">
+      the DVD-Audio's AUDIO_TS directory
+    </option>
+    <option long="title" arg="number">
+      the title number to retrieve tracks from, starting from 1;
+      the number of titles can be determined from the dvdainfo(1) utility
     </option>
   </options>
   <options category="extraction">
@@ -54,11 +58,18 @@
       XML and XMCD files can be obtained from the
       track2xmcd(1), cd2xmcd(1), dvda2xmcd(1), and editxmcd(1) programs.
     </option>
+    <option long="track-start" arg="number">
+      the starting track number of the title being extracted
+    </option>
+    <option long="track-total" arg="number">
+      the total number of tracks, if the extracted title
+      is only a subset of the actual number of tracks
+    </option>
     <option long="album-number" arg="number">
-      the album number of this CD, if it is one in a series of albums
+      the album number of this disc, if it is one in a series of albums
     </option>
     <option long="album-total" arg="number">
-      the total number of albums in this CD's set,
+      the total number of albums in this disc's set,
       if it is one in a series of albums
     </option>
     <option long="replay-gain">
@@ -68,15 +79,4 @@
       do not add ReplayGain metadata to newly created tracks
     </option>
   </options>
-  <examples>
-    <example>
-      <description>
-        Extract all of the tracks from \fI/dev/cdrom\fR as FLAC files
-        at the default quality using metadata from album.xmcd:
-      </description>
-      <command>
-        cd2track -t flac -x album.xmcd -c /dev/cdrom
-      </command>
-    </example>
-  </examples>
 </manpage>

@@ -1,16 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manpage>
-  <utility>cd2track</utility>
+  <utility>tracksplit</utility>
   <author>Brian Langenberger</author>
   <section>1</section>
-  <name>extract audio files</name>
-  <title>Compact Disc Extractor</title>
-  <synopsis>[OPTIONS] [track 1] [track 2] ...</synopsis>
+  <name>split audio track</name>
+  <title>Audio File Splitter</title>
+  <synopsis>[OPTIONS] &lt;track 1&gt;</synopsis>
   <description>
-    cd2track extracts audio files from a compact disc and
-    encodes them to tracks.
-    If track numbers are given, extracts only those tracks.
-    Otherwise, extracts the entire disc.
+    tracksplit splits an audio track into several smaller tracks.
   </description>
   <options>
     <option short="h" long="help">show a list of options and exit</option>
@@ -18,24 +15,21 @@
       The level of output to display.
       Choose between 'normal', 'quiet' and 'debug.
     </option>
-    <option short="c" long="cdrom" arg="cdrom">
-      the CD-ROM device to extract audio from
-    </option>
-    <option short="s" long="speed" arg="speed">
-      the speed to extract audio data at
+    <option long="cue" arg="filename">
+      the cuesheet to use for splitting track
     </option>
   </options>
-  <options category="extraction">
+  <options category="encoding">
     <option short="t" long="type" arg="type">
-      The audio format of the extracted audio tracks.
+      The audio format to convert the split tracks to.
       For a list of available audio formats, try: -t help.
     </option>
     <option short="q" long="quality" arg="quality">
-      The desired quality of the extracted tracks.
+      The desired quality of the split tracks.
       For a list of available quality modes for a given format, try: -q help
     </option>
     <option short="d" long="dir" arg="directory">
-      The target directory for the extracted tracks.
+      The target directory for the split tracks.
       If none is given, the current working directory is used.
       If the target directory does not exist,
       it will be created automatically.
@@ -50,16 +44,11 @@
   <options category="metadata">
     <option short="x" long="xmcd" arg="filename">
       A MusicBrainz XML file or FreeDB XMCD file to use for metadata for
-      the extracted tracks.
+      the split tracks.
+      If no file is given, metadata will be taken from the source
+      track, if present.
       XML and XMCD files can be obtained from the
       track2xmcd(1), cd2xmcd(1), dvda2xmcd(1), and editxmcd(1) programs.
-    </option>
-    <option long="album-number" arg="number">
-      the album number of this CD, if it is one in a series of albums
-    </option>
-    <option long="album-total" arg="number">
-      the total number of albums in this CD's set,
-      if it is one in a series of albums
     </option>
     <option long="replay-gain">
       add ReplayGain metadata to newly created tracks
@@ -71,11 +60,29 @@
   <examples>
     <example>
       <description>
-        Extract all of the tracks from \fI/dev/cdrom\fR as FLAC files
-        at the default quality using metadata from album.xmcd:
+        Split CDImage.wav into several WAVE files using the cuesheet
+        CDImage.cue:
       </description>
       <command>
-        cd2track -t flac -x album.xmcd -c /dev/cdrom
+        tracksplit --cue=CDImage.cue CDImage.wav
+      </command>
+    </example>
+    <example>
+      <description>
+        Split album.flac into several FLAC files using
+        album.toc and metadata from album.xmcd:
+      </description>
+      <command>
+        tracksplit --cue=album.toc -x album.xmcd album.flac
+      </command>
+    </example>
+    <example>
+      <description>
+        Obtain CDImage.cue using the cdrdao(1) utilities:
+      </description>
+      <command>
+        cdrdao read-toc --device /dev/cdrom CDImage.toc;
+        toc2cue CDImage.toc CDImage.cue
       </command>
     </example>
   </examples>

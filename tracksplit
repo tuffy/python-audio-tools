@@ -52,7 +52,7 @@ if (__name__ == '__main__'):
         metavar='FILENAME',
         help=_(u'the cuesheet to use for splitting track'))
 
-    conversion = audiotools.OptionGroup(parser, _(u"Conversion Options"))
+    conversion = audiotools.OptionGroup(parser, _(u"Encoding Options"))
 
     conversion.add_option(
         '-t', '--type',

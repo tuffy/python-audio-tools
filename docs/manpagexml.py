@@ -144,7 +144,10 @@ class Manpage:
         for option in self.options:
             option.to_man(stream)
         if (len(self.examples) > 0):
-            stream.write(".SH EXAMPLES\n")
+            if (len(self.examples) > 1):
+                stream.write(".SH EXAMPLES\n")
+            else:
+                stream.write(".SH EXAMPLE\n")
             for example in self.examples:
                 example.to_man(stream)
 

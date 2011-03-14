@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manpage>
+  <utility>cd2xmcd</utility>
+  <author>Brian Langenberger</author>
+  <section>1</section>
+  <name>retrieves metadata from a compact disc</name>
+  <title>Compact Disc Metadata Retriever</title>
+  <synopsis>[OPTIONS]</synopsis>
+  <description>
+    cd2xmcd takes a compact disc device and retrieves an XML or XMCD file
+    containing its metadata such as track name, album name and artist.
+    By default, the MusicBrainz service is queried first.
+    If no matches are found, the FreeDB service is queried next.
+    If no data is found on either, an empty MusicBrainz XML file is
+    written which can be edited by the user.
+  </description>
+  <options>
+    <option short="h" long="help">show a list of options and exit</option>
+    <option short="V" long="verbose" arg="verbosity">
+      The level of output to display.
+      Choose between 'normal', 'quiet' and 'debug.
+    </option>
+    <option short="x" long="xmcd" arg="filename">
+      The file in which MusicBrainz XML or FreeDB XMCD data will be placed.
+      track2xmcd(1) will refuse to overwrite an existing file if present.
+      If no filename is given, data will be written to standard output.
+    </option>
+    <option short="c" long="cdrom" arg="cdrom">
+      the CD-ROM device to extract metadata from
+    </option>
+  </options>
+  <options category="server">
+    <option long="musicbrainz-server" arg="hostname">
+      the MusicBrainz server name to query for XML data
+    </option>
+    <option long="musicbrainz-port" arg="port">
+      the MusicBrainz port number to query for XML data
+    </option>
+    <option long="freedb-server" arg="hostname">
+      the FreeDB server name to query for XMCD data
+    </option>
+    <option long="freedb-port" arg="port">
+      the FreeDB port number to query for XMCD data
+    </option>
+    <option long="no-musicbrainz">
+      do not query MusicBrainz
+    </option>
+    <option long="no-freedb">
+      do not query FreeDB
+    </option>
+    <option short="D" long="default">
+      if multiple matching discs are found,
+      select the first choice automatically
+    </option>
+  </options>
+</manpage>

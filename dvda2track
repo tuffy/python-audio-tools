@@ -102,9 +102,9 @@ if (__name__ == '__main__'):
 
     parser.add_option('--title', action='store', default=1,
                       type='int', dest='title',
-                      help='DVD-Audio title number to retrieve metadata for')
+                      help='DVD-Audio title number to extract tracks from')
 
-    conversion = audiotools.OptionGroup(parser, _(u"Conversion Options"))
+    conversion = audiotools.OptionGroup(parser, _(u"Extraction Options"))
 
     conversion.add_option(
         '-t', '--type',
@@ -181,7 +181,7 @@ if (__name__ == '__main__'):
         action='store',
         type='int',
         default=0,
-        help=_(u'the total albums of this CD\'s set, ' +
+        help=_(u'the total albums of this disc\'s set, ' +
                u'if it is one of a series of albums'))
 
     #if adding ReplayGain is a lossless process

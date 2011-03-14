@@ -57,7 +57,7 @@
       If no file is given, metadata will be taken from the source
       tracks, if present.
       XML and XMCD files can be obtained from the
-      track2xmcd(1), cd2xmcd(1) and editxmcd(1) programs.
+      track2xmcd(1), cd2xmcd(1), dvda2xmcd(1), and editxmcd(1) programs.
     </option>
     <option short="T" long="thumbnail">
       convert embedded images to smaller thumbnails during conversion
