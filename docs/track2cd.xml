@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manpage>
+  <utility>trackverify</utility>
+  <author>Brian Langenberger</author>
+  <section>1</section>
+  <name>records audio compact disc from tracks</name>
+  <title>CD Writer</title>
+  <synopsis>[OPTIONS] &lt;track 1&gt; [track 2] ...</synopsis>
+  <description>
+    track2cd takes a list of audio tracks and writes
+    their contents to an audio compact disc.
+  </description>
+  <options>
+    <option short="h" long="help">show a list of options and exit</option>
+    <option short="V" long="verbose" arg="verbosity">
+      The level of output to display.
+      Choose between 'normal', 'quiet' and 'debug.
+    </option>
+    <option short="c" long="cdrom" arg="cdrom">
+      the cdrom device to write the CD to
+    </option>
+    <option short="s" long="speed" arg="speed">
+      the speed in which to write the CD at
+    </option>
+    <option long="cue" arg="filename">
+      A cuesheet or cdrdao(1) TOC file to use when writing.
+      If given, the created CD will have the same track layout and metadata
+      as the cuesheet.
+      This makes the burned CD identical to the original.
+    </option>
+    <option short="j" long="joint" arg="processes">
+      The maximum number of tracks to convert to temporary files at one time.
+      If one has multiple CPUs or CPU cores, allowing
+      track2cd(1)
+      to use all of them simultaneously can reduce the time needed
+      to decode tracks prior to CD burning.
+    </option>
+  </options>
+  <examples>
+    <example>
+      <description>
+        Write all of the WAVEs in the current directory to /dev/cdrom:
+      </description>
+      <command>
+        track2cd -c /dev/cdrom *.wav
+      </command>
+    </example>
+  </examples>
+</manpage>

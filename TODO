@@ -3045,7 +3045,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [X] dvdainfo
   - [X] editxmcd
   - [ ] record2track
-  - [ ] track2cd
+  - [X] track2cd
   - [X] track2track
   - [X] track2xmcd
   - [X] trackcat

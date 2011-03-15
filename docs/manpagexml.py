@@ -53,7 +53,7 @@ class Manpage:
                  section=1,
                  name=u"",
                  title=u"",
-                 synopsis=u"",
+                 synopsis=None,
                  description=u"",
                  author=u"",
                  options=None,
@@ -115,6 +115,11 @@ class Manpage:
     def parse(cls, xml_dom):
         manpage = xml_dom.getElementsByTagName(u"manpage")[0]
 
+        try:
+            synopsis = text(subtag(manpage, u"synopsis"))
+        except IndexError:
+            synopsis = None
+
         options = [Options.parse(options)
                    for options in subtags(manpage, u"options")]
 
@@ -133,7 +138,7 @@ class Manpage:
                    section=text(subtag(manpage, u"section")),
                    name=text(subtag(manpage, u"name")),
                    title=text(subtag(manpage, u"title")),
-                   synopsis=text(subtag(manpage, u"synopsis")),
+                   synopsis=synopsis,
                    description=text(subtag(manpage, u"description")),
                    author=text(subtag(manpage, u"author")),
                    options=options,
@@ -150,10 +155,11 @@ class Manpage:
         stream.write("%(utility)s \\- %(name)s\n" %
                      {"utility": self.utility.encode('ascii'),
                       "name": self.name.encode('ascii')})
-        stream.write(".SH SYNOPSIS\n")
-        stream.write("%(utility)s %(synopsis)s\n" %
-                     {"utility": self.utility.encode('ascii'),
-                      "synopsis": self.synopsis.encode('ascii')})
+        if (self.synopsis is not None):
+            stream.write(".SH SYNOPSIS\n")
+            stream.write("%(utility)s %(synopsis)s\n" %
+                         {"utility": self.utility.encode('ascii'),
+                          "synopsis": self.synopsis.encode('ascii')})
         stream.write(".SH DESCRIPTION\n")
         stream.write(".PP\n")
         stream.write(self.description.encode('ascii'))
