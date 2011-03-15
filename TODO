@@ -3032,32 +3032,32 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   to HTML directly (though groff's html output has been unfortunate
   in the past) or find an intermediate format that generates
   both man pages and web pages.
-  - [ ] audiotools-config
+  - [X] audiotools-config
   - [ ] audiotools.cfg
   - [X] cd2xmcd
-  - [ ] cdinfo
-  - [ ] cdplay
+  - [X] cdinfo
+  - [X] cdplay
   - [X] cd2track
-  - [ ] coverdump
+  - [X] coverdump
   - [ ] coverview
   - [X] dvda2track
   - [X] dvda2xmcd
-  - [ ] dvdainfo
-  - [ ] editxmcd
+  - [X] dvdainfo
+  - [X] editxmcd
   - [ ] record2track
   - [ ] track2cd
   - [X] track2track
   - [X] track2xmcd
-  - [ ] trackcat
-  - [ ] trackcmp
-  - [ ] trackinfo
-  - [ ] tracklength
-  - [ ] tracklint
-  - [ ] trackplay
-  - [ ] trackrename
+  - [X] trackcat
+  - [X] trackcmp
+  - [X] trackinfo
+  - [X] tracklength
+  - [X] tracklint
+  - [X] trackplay
+  - [X] trackrename
   - [X] tracksplit
-  - [ ] tracktag
-  - [ ] trackverify
+  - [X] tracktag
+  - [X] trackverify
 * TODO Update trackplay for interactivity
   Urwid-based display should have various standard features,
   analagous to those in cdplay

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manpage>
+  <utility>tracklint</utility>
+  <author>Brian Langenberger</author>
+  <section>1</section>
+  <name>checks and fixes minor track metadata errors automatically</name>
+  <title>Track Checker</title>
+  <synopsis>[OPTIONS] &lt;track 1&gt; [track 2] ....</synopsis>
+  <description>
+    tracklint takes a list of audio tracks,
+    examines their metadata for common problems and suggests fixes for them.
+    If directories are given, tracklint searches them recursively
+    and suggests fixes for any audio tracks found.
+    tracklint can also perform any suggested metadata fixes if
+    requested, and undo any performed fixes if an undo database was
+    used.
+  </description>
+  <options>
+    <option short="h" long="help">show a list of options and exit</option>
+    <option short="V" long="verbose" arg="verbosity">
+      The level of output to display.
+      Choose between 'normal', 'quiet' and 'debug.
+    </option>
+    <option long="fix">
+      perform tracklint's suggested fixes on the given audio tracks
+    </option>
+    <option long="db" arg="filename">
+      The undo database file.
+      When used with the --fix option, undo information will be stored
+      in the given file.
+      When used with the --undo option, files will be restored to
+      their original state using information from the given file.
+    </option>
+    <option long="undo">
+      Undo tracklint's fixes on the given audio tracks using information
+      from the undo database.
+      Tracks restored in this way will be byte-for-byte identical to
+      their original condition prior to running tracklint.
+      However, it is important that the tracks not be modified further
+      prior to using this option or else tracklint's undo information will
+      no longer be applicable.
+    </option>
+  </options>
+  <element name="fixes">
+    <p>The following fixes are performed on each track:</p>
+    <ul>
+      <li>
+        Leading zeroes are stripped from track number and album number fields.
+        For example, a track number value of "01"
+        is changed to "1".
+      </li>
+      <li>
+        If the track number field is between 100 and 999, the leading digit
+        becomes the album number and trailing two digits becomes
+        the track number.
+        For example, a track number value of "213"
+        results in an album number of "2" and a track number of
+        "13".
+      </li>
+      <li>
+        If the performer name is the same as the artist name,
+        the redundant performer name field is removed.
+      </li>
+      <li>
+        Leading or trailing whitespace is removed from fields.
+        For example, a track name value of "Some Title " becomes
+        "Some Title".
+      </li>
+      <li>
+        Empty fields are removed.
+      </li>
+      <li>
+        Embedded images with invalid metadata fields such as width or height
+        are fixed.
+      </li>
+      <li>
+        ID3v2 and ID3v1 tags are stripped from FLAC files.
+      </li>
+      <li>
+        FLAC files with misordered STREAMINFO blocks are reordered.
+      </li>
+    </ul>
+  </element>
+</manpage>

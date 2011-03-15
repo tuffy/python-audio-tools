@@ -33,19 +33,19 @@ if (__name__ == '__main__'):
         usage=_(u'%prog [-d directory] <track>'),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    parser.add_option('-d', '--dir',
-                      action='store',
-                      type='string',
-                      dest='dir',
-                      default='.',
-                      help=_(u'the directory to store extracted images'))
-
     parser.add_option('-V', '--verbose',
                       action='store',
                       dest='verbosity',
                       choices=audiotools.VERBOSITY_LEVELS,
                       default=audiotools.DEFAULT_VERBOSITY,
                       help=_(u'the verbosity level to execute at'))
+
+    parser.add_option('-d', '--dir',
+                      action='store',
+                      type='string',
+                      dest='dir',
+                      default='.',
+                      help=_(u'the directory to store extracted images'))
 
     parser.add_option('-p', '--prefix',
                       action='store',

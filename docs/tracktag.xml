@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manpage>
+  <utility>tracktag</utility>
+  <author>Brian Langenberger</author>
+  <section>1</section>
+  <name>update audio file metadata</name>
+  <title>Audio File Tagger</title>
+  <synopsis>[OPTIONS] &lt;track 1&gt; [track 2] ...</synopsis>
+  <description>
+    tracktag takes new metadata values and a list of audio files
+    and updates those files with the new values.
+  </description>
+  <options>
+    <option short="h" long="help">show a list of options and exit</option>
+    <option short="V" long="verbose" arg="verbosity">
+      The level of output to display.
+      Choose between 'normal', 'quiet' and 'debug.
+    </option>
+    <option short="r" long="replace">
+      this options erases all existing metadata and replaces it
+      with any specified values
+    </option>
+    <option short="x" long="xmcd" arg="filename">
+      A MusicBrainz XML file or FreeDB XMCD file to use for track metadata.
+      XML and XMCD files can be obtained from the
+      track2xmcd(1), cd2xmcd(1), dvda2xmcd(1), and editxmcd(1) programs.
+    </option>
+    <option long="cue" arg="filename">
+      If given along with multiple audio tracks,
+      this file's ISRC metadata will be added to those tracks;
+      if given with a single CD image track, this file will
+      be embedded in that image.
+      Note that only FLAC and WavPack currently support embedded cuesheets
+      and not all CDs contain ISRC metadata.
+    </option>
+    <option long="replay-gain">
+      add ReplayGain metadata to tracks
+    </option>
+  </options>
+  <options category="text">
+    <option long="name" arg="name">
+      the name of the track
+    </option>
+    <option long="artist" arg="name">
+      the track's artist
+    </option>
+    <option long="performer" arg="name">
+      the track's performer
+    </option>
+    <option long="composer" arg="name">
+      the track's composer
+    </option>
+    <option long="conductor" arg="name">
+      the track's conductor
+    </option>
+    <option long="album" arg="name">
+      the track's album name
+    </option>
+    <option long="catalog" arg="number">
+      the album's catalog number, typically indicated on its case
+    </option>
+    <option long="number" arg="number">
+      the track's number on the disc
+    </option>
+    <option long="track-total" arg="number">
+      the total number of tracks on the disc
+    </option>
+    <option long="album-number" arg="number">
+      the album's number, if it is one in a series of albums;
+      for example, a 3 CD set might have an album number of 1, 2 or 3
+    </option>
+    <option long="album-total" arg="number">
+      the total number of albums in the set
+    </option>
+    <option long="ISRC" arg="ISRC">
+      the track's ISRC
+    </option>
+    <option long="publisher" arg="name">
+      the album's publisher
+    </option>
+    <option long="media-type" arg="media">
+      the album's media type, such as "CD", "vinyl", etc.
+    </option>
+    <option long="year" arg="year">
+      the album's release year
+    </option>
+    <option long="date" arg="date">
+      the track's original recording date
+    </option>
+    <option long="copyright" arg="copyright">
+      the album's copyright information
+    </option>
+    <option long="comment" arg="text">
+      comment text
+    </option>
+    <option long="comment-file" arg="filename">
+      a file containing comment text, for particularly long comments
+    </option>
+  </options>
+  <options category="image">
+    <option long="remove-images">
+      remove existing images;
+      if new images are added, existing images will be removed beforehand
+    </option>
+    <option long="front-cover" arg="filename">
+      an image file of the album's front cover
+    </option>
+    <option long="back-cover" arg="filename">
+      an image file of the album's back cover
+    </option>
+    <option long="leaflet" arg="filename">
+      an image file of one of the album's leaflet pages
+    </option>
+    <option long="media" arg="filename">
+      an image file of the album's media
+    </option>
+    <option long="other-image" arg="filename">
+      an image file related to the album
+    </option>
+    <option long="thumbnail">
+      convert images to smaller thumbnails before adding
+    </option>
+  </options>
+  <options category="removal">
+    <option long="remove-name"/>
+    <option long="remove-artist"/>
+    <option long="remove-performer"/>
+    <option long="remove-composer"/>
+    <option long="remove-conductor"/>
+    <option long="remove-album"/>
+    <option long="remove-catalog"/>
+    <option long="remove-number"/>
+    <option long="remove-track-total"/>
+    <option long="remove-album-number"/>
+    <option long="remove-album-total"/>
+    <option long="remove-ISRC"/>
+    <option long="remove-publisher"/>
+    <option long="remove-media-type"/>
+    <option long="remove-year"/>
+    <option long="remove-date"/>
+    <option long="remove-copyright"/>
+    <option long="remove-comment"/>
+  </options>
+  <examples>
+    <example>
+      <description>
+        Update track.flac to be track number 5 and have a
+        track name of "Test Track".
+      </description>
+      <command>
+        tracktag "--name=Test Track" --number=5 track.flac
+      </command>
+    </example>
+    <example>
+      <description>
+        Add several JPEG images to track.flac
+      </description>
+      <command>
+        tracktag --front-cover=front.jpg --back-cover=back.jpg
+        --leaflet=page1.jpg --leaflet=page2.jpg --leaflet=page3.jpg
+        track.flac
+      </command>
+    </example>
+    <example>
+      <description>
+        Add ISRC metadata from the disc in /dev/cdrom to all MP3 files in
+        the current directory
+      </description>
+      <command>
+        cdrdao read-toc --device /dev/cdrom album.toc;
+        tracktag --cue=album.toc
+      </command>
+    </example>
+  </examples>
+</manpage>

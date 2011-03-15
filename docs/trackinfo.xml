@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manpage>
+  <utility>trackinfo</utility>
+  <author>Brian Langenberger</author>
+  <section>1</section>
+  <name>prints information and metadata from tracks</name>
+  <title>Track Information</title>
+  <synopsis>[OPTIONS] &lt;track 1&gt; [track 2] ...</synopsis>
+  <description>
+    trackinfo takes a list of audio tracks and writes information about
+    them to standard output.
+    This includes track length, number of channels, sample rate,
+    bits-per-sample, filename and additional metadata, if any.
+  </description>
+  <options>
+    <option short="h" long="help">show a list of options and exit</option>
+    <option short="n" long="no-metadata">
+      do not print track metadata such as track name, album name and so forth
+    </option>
+    <option short="b" long="bitrate">
+      prints the average bitrate of the track in kilobytes-per-second
+      instead of the usual track information
+    </option>
+    <option short="%" long="percentage">
+      prints the percentage compression of the track instead of the usual
+      track information
+    </option>
+    <option short="C" long="channel-assignment">
+      prints the track's channel assignment, if defined
+    </option>
+  </options>
+</manpage>

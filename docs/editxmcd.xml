@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manpage>
+  <utility>editxmcd</utility>
+  <author>Brian Langenberger</author>
+  <section>1</section>
+  <name>edits existing metadata files</name>
+  <title>Metadata Editor</title>
+  <synopsis>[OPTIONS]</synopsis>
+  <description>
+    editxmcd can edit existing MusicBrain XML or FreeDB XMCD files.
+    It does not perform MusicBrainz or FreeDB lookups.
+  </description>
+  <options>
+    <option short="h" long="help">show a list of options and exit</option>
+    <option short="x" long="xmcd" name="filename">
+      the MusicBrainz XML or FreeDB XMCD file to edit
+    </option>
+  </options>
+</manpage>

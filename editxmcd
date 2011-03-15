@@ -224,7 +224,7 @@ class Editxmcd(urwid.Pile):
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        usage=_(u'%prog -x XMCD file'),
+        usage=_(u'%prog -x <XMCD file>'),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option('-x', '--xmcd', action='store',

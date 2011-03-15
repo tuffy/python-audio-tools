@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manpage>
+  <utility>trackcmp</utility>
+  <author>Brian Langenberger</author>
+  <section>1</section>
+  <name>compares one or more audio tracks for equivalence</name>
+  <title>Compare Audio Tracks</title>
+  <synopsis>[OPTIONS] &lt;track 1&gt; &lt;track 2&gt;</synopsis>
+  <description>
+    trackcmp takes two audio tracks and compares their PCM data.
+    If they are exactly the same, it prints no output and returns 0.
+    If not, a message is displayed and 1 is returned.
+
+    trackcmp may also take two directories as arguments.
+    In that case, any audio files in both directories are compared
+    as per a single file.
+    Track and album numbers are used to determine which file
+    should be compared to which.
+  </description>
+  <options>
+    <option short="h" long="help">show a list of options and exit</option>
+    <option short="V" long="verbose" arg="verbosity">
+      The level of output to display.
+      Choose between 'normal', 'quiet' and 'debug.
+    </option>
+    <option short="j" long="joint" arg="processes">
+      The maximum number of tracks to compare at one time.
+      If one has multiple CPUs or CPU cores, allowing
+      trackcmp(1)
+      to use all of them simultaneously can greatly increase comparison speed.
+    </option>
+    <option short="R" long="no-summary">
+      suppress summary output
+    </option>
+  </options>
+</manpage>

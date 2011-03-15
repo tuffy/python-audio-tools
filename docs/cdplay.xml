@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manpage>
+  <utility>cdplay</utility>
+  <author>Brian Langenberger</author>
+  <section>1</section>
+  <name>plays compact discs to speakers</name>
+  <title>Play Compact Discs</title>
+  <synopsis>[OPTIONS]</synopsis>
+  <description>
+    cdplay takes a CD-ROM device and plays its tracks to an
+    available audio output device such as PulseAudio or the Open Sound System.
+  </description>
+  <options>
+    <option short="h" long="help">show a list of options and exit</option>
+    <option short="V" long="verbose" arg="verbosity">
+      The level of output to display.
+      Choose between 'normal', 'quiet' and 'debug.
+    </option>
+    <option short="I" long="interactive">
+      run in interactive mode;
+      this provides a text-based GUI and allows one to operate
+      playback via keyboard and, on some terminals, mouse control
+    </option>
+    <option short="o" long="output" arg="system">
+      the output system to use, such as "PulseAudio" or "OSS"
+    </option>
+    <option short="x" long="XMCD" arg="filename">
+      FreeDB XMCD or MusicBrainz XML metadata file for displaying
+      disc information in interactive mode
+    </option>
+    <option short="c" long="cdrom" arg="cdrom">
+      the CD-ROM device to play audio from
+    </option>
+    <option long="shuffle">
+      shuffle tracks randomly before playback
+    </option>
+  </options>
+  <options category="server">
+    <option long="musicbrainz-server" arg="hostname">
+      the MusicBrainz server name to query for track metadata
+    </option>
+    <option long="musicbrainz-port" arg="port">
+      the MusicBrainz port number to query for track metadata
+    </option>
+    <option long="freedb-server" arg="hostname">
+      the FreeDB server name to query for track metadata
+    </option>
+    <option long="freedb-port" arg="port">
+      the FreeDB port number to query for track metadata
+    </option>
+    <option long="no-musicbrainz">
+      do not query MusicBrainz
+    </option>
+    <option long="no-freedb">
+      do not query FreeDB
+    </option>
+  </options>
+  <element name="playback controls">
+    <table>
+      <tr><td>N / n</td><td>-</td><td>next track</td></tr>
+      <tr><td>P / p</td><td>-</td><td>previous track</td></tr>
+      <tr>
+        <td>Space</td>
+        <td>-</td>
+        <td>pause (non-interactive mode only)</td>
+      </tr>
+      <tr><td>Esc / Q / q</td><td>-</td><td>quit</td></tr>
+    </table>
+  </element>
+</manpage>

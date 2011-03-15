@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manpage>
+  <utility>audiotools-config</utility>
+  <author>Brian Langenberger</author>
+  <section>1</section>
+  <name>manage Python Audio Tools configuration</name>
+  <title>Audio Tools Configuration Manager</title>
+  <synopsis>[OPTIONS]</synopsis>
+  <description>
+    audiotools-config is the Python Audio Tools configuration manager.
+    When called without arguments, it displays the system's current
+    configuration.
+    By specifying various configuration arguments, it modifies the user's
+    $(HOME)/.audiotools.cfg file with new values.
+  </description>
+  <options>
+    <option short="h" long="help">show a list of options and exit</option>
+    <option short="V" long="verbose" arg="verbosity">
+      The level of output to display.
+      Choose between 'normal', 'quiet' and 'debug.
+    </option>
+    <option long="format" arg="string">
+      The format string to use for new filenames.
+      Template fields are replaced with metadata values when
+      new tracks are created.  All other text is left as-is.
+    </option>
+  </options>
+  <options category="system">
+    <option short="c" long="cdrom" name="cdrom">
+      the default CD-ROM drive to use
+    </option>
+    <option long="cdrom-read-offset" name="samples">
+      the CD-ROM read offset, in PCM samples
+    </option>
+    <option long="cdrom-write-offset" name="samples">
+      the CD-ROM write offset, in PCM samples
+    </option>
+    <option long="fs-encoding" name="encoding">
+      the encoding of filenames on the system, such as "UTF-8"
+    </option>
+    <option long="io-encoding" name="encoding">
+      the encoding of text sent to the screen, such as "UTF-8"
+    </option>
+  </options>
+  <options category="transcoding">
+    <option short="t" long="type" name="type">
+      When used without the -q option, this sets the default audio
+      type to use when creating new audio files.
+      Otherwise, this is used in conjunction with -q to set
+      the default audio quality for the given type.
+      For a list of available audio formats, try: -t help
+    </option>
+    <option short="q" long="quality" name="quality">
+      The default quality level for a given audio type.
+      For a list of available quality levels, try: -q help
+    </option>
+    <option short="j" long="joint" name="processes">
+      the default maximum number of processes to execute at one time
+    </option>
+  </options>
+  <options category="thumbnail">
+    <option long="thumbnail-format" arg="type">
+      the format to use for thumbnails, such as "jpeg" or "png"
+    </option>
+    <option long="thumbnail-size" arg="int">
+      The maximum size of each thumbnail, in pixels squared.
+      For example, specifying 100 results in thumbnails a maximum of
+      100x100 pixels large.
+    </option>
+  </options>
+  <options category="freedb">
+    <option long="freedb-server" arg="hostname">
+      the default FreeDB server to use
+    </option>
+    <option long="freedb-port" arg="port">
+      the default FreeDB port number to use
+    </option>
+  </options>
+  <options category="musicbrainz">
+    <option long="musicbrainz-server" arg="hostname">
+      the default MusicBrainz server to use
+    </option>
+    <option long="musicbrainz-port" arg="port">
+      the default MusicBrainz port number to use
+    </option>
+  </options>
+  <options category="id3">
+    <option long="id3v2-version" arg="version">
+      Which version to use for newly created ID3v2 tags.
+      Choose from "id3v2.2", "id3v2.3", "id3v2.4", or "none".
+      All three ID3v2 tag versions are roughly equivalent in terms
+      of supported features, but "id3v2.2" and "id3v2.3" have
+      the widest level of support.
+      If "none" is given, new MP3 files will not be given ID3v2 tags.
+    </option>
+    <option long="id3v1-version" arg="version">
+      Which version to use for newly created ID3v1 tags.
+      Choose from "id3v1.1" or "none".
+      If "none" is given, new MP3 files will not be given ID3v1 tags.
+    </option>
+    <option long="id3v2-pad" arg="true / false">
+      Whether to pad ID3v2 numerical fields to 2 digits.
+      For example, if "true", track number 1 will be stored as "01"
+      in ID3v2 tags.  If false, it will be stored as "1".
+    </option>
+  </options>
+  <options category="binaries">
+    <option long="faac" arg="path"/>
+    <option long="faad" arg="path"/>
+    <option long="flac" arg="path"/>
+    <option long="lame" arg="path"/>
+    <option long="oggdec" arg="path"/>
+    <option long="oggenc" arg="path"/>
+    <option long="speexdec" arg="path"/>
+    <option long="speexenc" arg="path"/>
+    <option long="twolame" arg="path"/>
+  </options>
+</manpage>

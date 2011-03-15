@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manpage>
+  <utility>trackplay</utility>
+  <author>Brian Langenberger</author>
+  <section>1</section>
+  <name>plays audio tracks to speakers</name>
+  <title>Play Audio Tracks</title>
+  <synopsis>[OPTIONS] &lt;track 1&gt; [track 2] ...</synopsis>
+  <description>
+    trackinfo takes a list of audio tracks and plays them to an
+    available audio output device such as PulseAudio or the Open Sound System.
+  </description>
+  <options>
+    <option short="h" long="help">show a list of options and exit</option>
+    <option short="V" long="verbose" arg="verbosity">
+      The level of output to display.
+      Choose between 'normal', 'quiet' and 'debug.
+    </option>
+    <option short="I" long="interactive">
+      run in interactive mode;
+      this provides a text-based GUI and allows one to operate
+      playback via keyboard and, on some terminals, mouse control
+    </option>
+    <option short="o" long="output" arg="system">
+      the output system to use, such as "PulseAudio" or "OSS"
+    </option>
+    <option short="T" long="track-replaygain">
+      apply track ReplayGain during playback, if present
+    </option>
+    <option short="A" long="album-replaygain">
+      apply album ReplayGain during playback, if present
+    </option>
+    <option long="shuffle">
+      shuffle tracks randomly before playback
+    </option>
+  </options>
+</manpage>

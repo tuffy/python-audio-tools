@@ -590,7 +590,7 @@ except ImportError:
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        usage=_(u'%prog [options] [track]'),
+        usage=_(u'%prog [OPTIONS] [track]'),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     if (GTK_AVAILABLE):

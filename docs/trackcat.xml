@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manpage>
+  <utility>trackcat</utility>
+  <author>Brian Langenberger</author>
+  <section>1</section>
+  <name>concatenate two or more audio tracks</name>
+  <title>Audio Concatenater</title>
+  <synopsis>[OPTIONS] &lt;track 1&gt; [track 2] [track 3] ...</synopsis>
+  <description>
+    trackcat combines the audio data from two or more audio tracks
+    into a single output track.
+  </description>
+  <options>
+    <option short="h" long="help">show a list of options and exit</option>
+    <option short="V" long="verbose" arg="verbosity">
+      The level of output to display.
+      Choose between 'normal', 'quiet' and 'debug.
+    </option>
+    <option long="cue" arg="filename">
+      a cuesheet to embed in the output file
+    </option>
+  </options>
+  <options category="encoding">
+    <option short="t" long="type" arg="type">
+      the audio format of the concatenated track;
+      for a list of available audio formats, try: -t help
+    </option>
+    <option short="q" long="quality" arg="quality">
+      the desired quality of the concatenated track;
+      for a list of available quality modes for a given format, try: -q help
+    </option>
+    <option short="o" long="output" arg="filename">
+      the output filename of the concatenated track
+    </option>
+  </options>
+  <examples>
+    <example>
+      <description>
+        Convert all of the WAVE files in sourcedir to a single
+        FLAC file, album.flac at the highest possible compression
+        (quality 8):
+      </description>
+      <command>trackcat -t flac -q 8 -o album.flac sourcedir/*.wav</command>
+    </example>
+  </examples>
+</manpage>

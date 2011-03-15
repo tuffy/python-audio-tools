@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manpage>
+  <utility>dvdainfo</utility>
+  <author>Brian Langenberger</author>
+  <section>1</section>
+  <name>prints information about a DVD-Audio disc</name>
+  <title>DVD-Audio Information</title>
+  <synopsis>[OPTIONS]</synopsis>
+  <description>
+    dvdainfo takes an AUDIO_TS directory and writes information about the
+    DVD-Audio to standard output.
+    This includes the specifications for each title,
+    the length of the tracks within each title and where those tracks
+    are located within the disc's AOB files.
+  </description>
+  <options>
+    <option short="h" long="help">show a list of options and exit</option>
+    <option short="A" long="audio_ts">
+      the DVD-Audio's AUDIO_TS directory
+    </option>
+  </options>
+</manpage>

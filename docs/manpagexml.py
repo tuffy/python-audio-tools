@@ -16,7 +16,10 @@ def subtags(node, name):
                 (child.nodeName == name))]
 
 def text(node):
-    return WHITESPACE.sub(u" ", node.childNodes[0].wholeText.strip())
+    try:
+        return WHITESPACE.sub(u" ", node.childNodes[0].wholeText.strip())
+    except IndexError:
+        return u""
 
 def man_escape(s):
     return s.replace('-','\\-').encode('ascii')
@@ -54,6 +57,7 @@ class Manpage:
                  description=u"",
                  author=u"",
                  options=None,
+                 elements=None,
                  examples=None,
                  see_also=None):
         self.utility = utility
@@ -63,21 +67,29 @@ class Manpage:
         self.synopsis = synopsis
         self.description = description
         self.author = author
+
         if (options is not None):
             self.options = options
         else:
             self.options = []
+
         if (examples is not None):
             self.examples = examples
         else:
             self.examples = []
+
+        if (elements is not None):
+            self.elements = elements
+        else:
+            self.elements = []
+
         if (see_also is not None):
             self.see_also = see_also
         else:
             self.see_also = []
 
     def __repr__(self):
-        return "Manpage(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)" % \
+        return "Manpage(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)" % \
             (repr(self.utility),
              repr(self.section),
              repr(self.name),
@@ -86,6 +98,7 @@ class Manpage:
              repr(self.description),
              repr(self.author),
              repr(self.options),
+             repr(self.elements),
              repr(self.examples),
              repr(self.see_also))
 
@@ -105,6 +118,9 @@ class Manpage:
         options = [Options.parse(options)
                    for options in subtags(manpage, u"options")]
 
+        elements = [Element.parse(element)
+                    for element in subtags(manpage, u"element")]
+
         try:
             examples = [Example.parse(example)
                         for example in subtags(subtag(manpage,
@@ -121,6 +137,7 @@ class Manpage:
                    description=text(subtag(manpage, u"description")),
                    author=text(subtag(manpage, u"author")),
                    options=options,
+                   elements=elements,
                    examples=examples)
 
     def to_man(self, stream):
@@ -143,6 +160,8 @@ class Manpage:
         stream.write("\n")
         for option in self.options:
             option.to_man(stream)
+        for element in self.elements:
+            element.to_man(stream)
         if (len(self.examples) > 0):
             if (len(self.examples) > 1):
                 stream.write(".SH EXAMPLES\n")
@@ -338,6 +357,125 @@ class Example:
         stream.write(".IP\n")
         stream.write(self.command.encode('ascii')) #FIXME
         stream.write("\n")
+
+
+class Element_P:
+    def __init__(self, contents):
+        self.contents = contents
+
+    def __repr__(self):
+        return "Element_P(%s)" % (repr(self.contents))
+
+    @classmethod
+    def parse(cls, xml_dom):
+        return cls(contents=text(xml_dom))
+
+    def to_man(self, stream):
+        stream.write(self.contents.encode('ascii'))
+        stream.write("\n.PP\n")
+
+
+class Element_UL:
+    def __init__(self, list_items):
+        self.list_items = list_items
+
+    def __repr__(self):
+        return "Element_UL(%s)" % (repr(self.list_items))
+
+    @classmethod
+    def parse(cls, xml_dom):
+        return cls(list_items=map(text, subtags(xml_dom, u"li")))
+
+    def to_man(self, stream):
+        for item in self.list_items:
+            stream.write("\\[bu] ")
+            stream.write(item.encode('ascii'))
+            stream.write("\n")
+            stream.write(".PP\n")
+
+
+class Element_TABLE:
+    def __init__(self, rows):
+        self.rows = rows
+
+    def __repr__(self):
+        return "Element_TABLE(%s)" % (repr(self.rows))
+
+    @classmethod
+    def parse(cls, xml_dom):
+        return cls(rows=[Element_TR.parse(tr) for tr in subtags(xml_dom,
+                                                                u"tr")])
+
+    def to_man(self, stream):
+        if (len(self.rows) == 0):
+            return
+
+        if (len(set([len(row.columns) for row in self.rows])) != 1):
+            raise ValueError("all rows must have the same number of columns")
+        else:
+            columns = len(self.rows[0].columns)
+
+        stream.write(".TS\n")
+        stream.write("tab(:);\n")
+        stream.write(" ".join(["l" for l in self.rows[0].columns]) + ".\n")
+        for row in self.rows:
+            row.to_man(stream)
+        stream.write(".TE\n")
+
+
+class Element_TR:
+    def __init__(self, columns):
+        self.columns = columns
+
+    def __repr__(self):
+        return "Element_TR(%s)" % (repr(self.columns))
+
+    @classmethod
+    def parse(cls, xml_dom):
+        return cls(columns=map(text, subtags(xml_dom, u"td")))
+
+    def to_man(self, stream):
+        stream.write(":".join([column.encode('ascii')
+                               for column in self.columns]) + "\n")
+
+
+class Element:
+    SUB_ELEMENTS = {u"p": Element_P,
+                    u"ul": Element_UL,
+                    u"table": Element_TABLE}
+
+    def __init__(self, name, elements):
+        self.name = name
+        self.elements = elements
+
+    def __repr__(self):
+        return "Element(%s, %s)" % (repr(self.name), repr(self.elements))
+
+    @classmethod
+    def parse(cls, xml_dom):
+        if (xml_dom.hasAttribute(u"name")):
+            name = xml_dom.getAttribute(u"name")
+        else:
+            raise ValueError("elements must have names")
+
+        elements = []
+        for child in xml_dom.childNodes:
+            if (hasattr(child, "tagName")):
+                if (child.tagName in cls.SUB_ELEMENTS.keys()):
+                    elements.append(
+                        cls.SUB_ELEMENTS[child.tagName].parse(child))
+                else:
+                    raise ValueError("unsupported tag %s" %
+                                     (child.tagName.encode('ascii')))
+
+        return cls(name=name,
+                   elements=elements)
+
+    def to_man(self, stream):
+        stream.write(".SH %s\n" % (self.name.upper().encode('ascii')))
+        for element in self.elements:
+            element.to_man(stream)
+
 
 if (__name__ == '__main__'):
     import sys
