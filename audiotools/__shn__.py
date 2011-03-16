@@ -285,8 +285,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
                         decoder = audiotools.decoders.SHNDecoder(self.filename)
                         frame = decoder.read(4096)
                         while (len(frame) > 0):
-                            f.write(frame.to_bytes(False,
-                                                   self.bits_per_sample() > 8))
+                            f.write(frame.to_bytes(False, True))
                             current_frames += frame.frames
                             if (progress is not None):
                                 progress(current_frames, total_frames)
