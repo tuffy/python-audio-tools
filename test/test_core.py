@@ -4426,9 +4426,25 @@ class TestMultiChannel(unittest.TestCase):
 
     def __test_error_mask_blank__(self, audio_class, channels,
                                   channel_mask):
-        temp_file = tempfile.NamedTemporaryFile(suffix="." + audio_class.SUFFIX)
+        temp_file = tempfile.NamedTemporaryFile(
+            suffix="." + audio_class.SUFFIX)
         try:
             self.assertRaises(audiotools.UnsupportedChannelMask,
+                              audio_class.from_pcm,
+                              temp_file.name,
+                              PCM_Reader_Multiplexer(
+                    [BLANK_PCM_Reader(2, channels=1)
+                     for i in xrange(channels)],
+                    channel_mask))
+        finally:
+            temp_file.close()
+
+    def __test_error_channel_count__(self, audio_class, channels,
+                                     channel_mask):
+        temp_file = tempfile.NamedTemporaryFile(
+            suffix="." + audio_class.SUFFIX)
+        try:
+            self.assertRaises(audiotools.UnsupportedChannelCount,
                               audio_class.from_pcm,
                               temp_file.name,
                               PCM_Reader_Multiplexer(
@@ -4790,10 +4806,10 @@ class TestMultiChannel(unittest.TestCase):
                 self.__test_undefined_mask_blank__(audio_class,
                                                    channels,
                                                    True)
-            self.__test_error_mask_blank__(audio_class,
-                                           9, audiotools.ChannelMask(0))
-            self.__test_error_mask_blank__(audio_class,
-                                           10, audiotools.ChannelMask(0))
+            self.__test_error_channel_count__(audio_class,
+                                              9, audiotools.ChannelMask(0))
+            self.__test_error_channel_count__(audio_class,
+                                              10, audiotools.ChannelMask(0))
 
         for stereo_audio_class in [audiotools.MP3Audio,
                                    audiotools.MP2Audio,

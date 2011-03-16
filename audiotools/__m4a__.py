@@ -25,7 +25,7 @@ from audiotools import (AudioFile, InvalidFile, PCMReader, PCMConverter,
                         open, open_files, EncodingError, DecodingError,
                         WaveAudio, TempWaveReader,
                         ChannelMask, UnsupportedBitsPerSample,
-                        BufferedPCMReader,
+                        BufferedPCMReader, to_pcm_progress,
                         at_a_time, VERSION, PCMReaderError,
                         __default_quality__)
 from __m4a_atoms__ import *
@@ -726,7 +726,7 @@ class M4AAudio_nero(M4AAudio_faac):
             try:
                 tempwave = WaveAudio.from_pcm(
                     tempwavefile.name,
-                    PCMConverter(wave.to_pcm(),
+                    PCMConverter(to_pcm_progress(wave, progress),
                                  sample_rate=96000,
                                  channels=wave.channels(),
                                  channel_mask=wave.channel_mask(),

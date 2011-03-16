@@ -3721,9 +3721,10 @@ class ShortenFileTest(TestForeignWaveChunks,
         wave = audiotools.WaveAudio(temp_wav_file2.name)
         wave.verify()
 
-        self.assert_(audiotools.pcm_cmp(
+        self.assertEqual(audiotools.pcm_frame_cmp(
                 audiotools.WaveAudio(temp_wav_file1.name).to_pcm(),
-                audiotools.WaveAudio(temp_wav_file2.name).to_pcm()))
+                audiotools.WaveAudio(temp_wav_file2.name).to_pcm()),
+                         None)
 
         temp_file.close()
         temp_input_wave_file.close()

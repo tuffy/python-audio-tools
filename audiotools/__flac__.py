@@ -1083,6 +1083,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                                 6: 0x003F}[pcmreader.channels]
             else:
                 channel_mask = 0
+
         elif (int(pcmreader.channel_mask) not in
             (0x0001,    # 1ch - mono
              0x0004,    # 1ch - mono
@@ -1906,6 +1907,9 @@ class OggFlacAudio(AudioFile):
         else:
             lax = ["--lax"]
 
+        if (pcmreader.channels > 8):
+            raise UnsupportedChannelCount(filename, pcmreader.channels)
+
         if (int(pcmreader.channel_mask) == 0):
             if (pcmreader.channels <= 6):
                 channel_mask = {1: 0x0004,
@@ -1914,11 +1918,9 @@ class OggFlacAudio(AudioFile):
                                 4: 0x0033,
                                 5: 0x0037,
                                 6: 0x003F}[pcmreader.channels]
-            elif (pcmreader.channels <= 8):
-                channel_mask = 0
             else:
-                raise UnsupportedChannelMask(filename,
-                                             int(pcmreader.channel_mask))
+                channel_mask = 0
+
         elif (int(pcmreader.channel_mask) not in
             (0x0001,    # 1ch - mono
              0x0004,    # 1ch - mono
