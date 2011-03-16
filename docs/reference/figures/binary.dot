@@ -1,0 +1,15 @@
+digraph write_alac_residual {
+  size="1.5,1.5";
+  node [fontname="Courier"];
+  edge [fontname="Courier"];
+  ratio=fill;
+  margin=0;
+  init [shape=record,label="<b0>6|<b1>A"];
+  side1 [shape=record,label="0 1 1 0"];
+  side2 [shape=record,label="1 0 1 0"]
+  binary [shape=record,label="0 1 1 0 1 0 1 0"];
+  "init":b0 -> side1;
+  "init":b1 -> side2;
+  side1 -> binary;
+  side2 -> binary;
+};

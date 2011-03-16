@@ -440,55 +440,75 @@ When the \VAR{Coding Method} is 1, that parameter is 5 bits.
 \noindent
 
 There are $2 ^ \text{Partition Order}$ number of Partitions.
-The number of decoded samples in a Partition depends on the
+The number of decoded residuals in a Partition depends on the
 its position in the subframe.
 The first partition in the subframe contains:
-\begin{align}
-\text{Total Samples} &= \frac{\text{Frame's Block Size}}{2 ^ {\text{Partition Order}}} - \text{Predictor Order} \\
+\begin{align*}
+\text{Total Residuals} &= \frac{\text{Frame's Block Size}}{2 ^ {\text{Partition Order}}} - \text{Predictor Order} \\
 \intertext{Subsequent partitions contain:}
-\text{Total Samples} &= \frac{\text{Frame's Block Size}}{2 ^ {\text{Partition Order}}} \\
+\text{Total Residuals} &= \frac{\text{Frame's Block Size}}{2 ^ {\text{Partition Order}}} \\
 \intertext{Unless the Partition Order is 0.  In that case:}
-\text{Total Samples} &= \text{Frame's Block Size} - \text{Predictor Order}
-\end{align}
+\text{Total Residuals} &= \text{Frame's Block Size} - \text{Predictor Order}
+\end{align*}
 \noindent
 since there is only one partition which takes up the entire block.
+
+Why does the subframe's block of residuals always have \VAR{Predictor Order}
+less residuals than the frame's block size?
+The reason is that FIXED or LPC subframes have \VAR{Predictor Order}
+number of unencoded warm-up samples.
+So, the total number of warm-up samples and the total number residuals
+adds up to the frame's block size.
 
 If all of the bits in \VAR{Rice Parameter} are set,
 the partition is unencoded binary using \VAR{Escape Code} number of bits per
 sample.
 
-\pagebreak
+%%It'd be nice to pad this to one more page
+%%so that the Rice encoding flowchart and example are on opposite pages
+%%and the channel assignment and example are on opposite pages
+
+\clearpage
 
 \subsubsection{Rice Encoding}
 The residual uses Rice coding to compress lots of mostly small values
 in a very small amount of space.
-To decode it, one first needs the Rice parameter.
-Take a unary-encoded value\footnote{In this instance, unary-encoding is a simple matter of
-counting the number of 0 bits before the next 1 bit.
-The resulting sum is the value.}
-from the bit stream, which are our most
-significant bits (MSB).
-Then take \VAR{parameter} number of additional bits, which are our least
-significant bits (LSB).
-Combine the two sets into our new value,
-making the MSB set as the high bits and the LSB set as the low bits.
-Bit 0 of this new value is the sign bit.
-If it is 0, the actual value is equal to the rest of the bits.
-If it is 1, the actual value is equal to the rest of the bits,
-multiplied by -1 and minus 1.
+Decoding the residuals requires the Rice parameter
+and may be easier to explain with a flowchart of the process,
+which is repeated for each residual in the partition:
+\begin{figure}[h]
+\includegraphics{figures/flac_read_residual.pdf}
+\end{figure}
 
-This is less complicated than it sounds, so let's run through an example
-in which the Rice parameter is 1:
+\clearpage
+
+Lets run through an example in which the Rice parameter is 1,
+indicating 1 least-significant bit per residual value:
 \begin{figure}[h]
 \includegraphics{figures/flac_rice1.pdf}
 \end{figure}
+\par
+\noindent
+Thus, our final decoded residual values are 1, 2, -2 and -1 and have
+consumed a total of 12 bits from the stream.
 
-Now, let's run through another example in which the Rice parameter is 4:
+Next, lets run through an example in which the Rice parameter is 4:
 \begin{figure}[h]
 \includegraphics{figures/flac_rice2.pdf}
 \end{figure}
+\par
+\noindent
+In this case, our final residual values are -35, -11, 4 and -12.
 
-\pagebreak
+Finally, we'll try a case in which the Rice parameter is 0,
+indicating no least-significant bits at all:
+\begin{figure}[h]
+\includegraphics{figures/flac_rice4.pdf}
+\end{figure}
+\par
+Our final residual values are 1, 2, -1 and 0.
+
+\clearpage
 
 \subsection{Channel Assignment}
 \label{flac_channels}

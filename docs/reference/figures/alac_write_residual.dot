@@ -1,5 +1,7 @@
 digraph write_alac_residual {
   size="2.5,5";
+  node [fontname="DejaVuSans"];
+  edge [fontname="DejaVuSans"];
   ratio=fill;
   margin=0;
   init [shape=record,label="{input k|input bps|input r}"];

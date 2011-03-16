@@ -215,7 +215,7 @@ def Messenger(executable, options):
         return SilentMessenger(executable)
 
 __ANSI_SEQUENCE__ = re.compile(u"\u001B\[[0-9;]+.")
-__CHAR_WIDTHS__ = {"Na": 1, "W": 2}
+__CHAR_WIDTHS__ = {"Na": 1, "W": 2, "F": 2}
 
 
 def str_width(s):

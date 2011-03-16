@@ -1,5 +1,5 @@
 #FIXME - reorganize this big mess
-FIGURES = binary.pdf figures/pcm.pdf figures/wav_stream.pdf \
+FIGURES = figures/binary.pdf figures/pcm.pdf figures/wav_stream.pdf \
 figures/wav_fmt.pdf figures/wav_fmtext.pdf figures/wav_data.pdf \
 figures/aiff_stream.pdf figures/aiff_comm.pdf figures/aiff_ssnd.pdf \
 figures/au_stream.pdf \
@@ -11,11 +11,12 @@ figures/flac_frame.pdf \
 figures/flac_verbatim.pdf figures/flac_fixed.pdf figures/flac_lpc.pdf \
 figures/flac_residual.pdf \
 figures/flac_rice1.pdf figures/flac_rice2.pdf figures/flac_rice3.pdf \
-figures/flac_channels.pdf \
+figures/flac_rice4.pdf figures/flac_channels.pdf \
 figures/flac_stream2.pdf \
 figures/flac_nonexhaustive.pdf figures/flac_exhaustive.pdf \
 figures/flac_hann.pdf figures/flac_rectangular.pdf figures/flac_tukey.pdf \
 figures/flac_lag.pdf figures/oggflac_stream.pdf \
+figures/flac_read_residual.pdf \
 figures/m4a_quicktime.pdf figures/m4a_atom.pdf figures/m4a_atom2.pdf \
 figures/m4a_atoms.pdf figures/m4a_ftyp.pdf figures/m4a_mvhd.pdf \
 figures/m4a_tkhd.pdf figures/m4a_mdhd.pdf figures/m4a_hdlr.pdf \
@@ -112,8 +113,8 @@ audioformats-letter.tex: audioformats.m4
 audioformats-a4.tex: audioformats.m4
 	m4 -D PAPERSIZE=a4paper $< > $@
 
-binary.pdf: binary.fig
-	fig2dev -L pdf binary.fig binary.pdf
+# binary.pdf: binary.fig
+# 	fig2dev -L pdf binary.fig binary.pdf
 
 figures/pcm.pdf: figures/pcm.fig
 	fig2dev -Z 3 -L pdf $< $@
@@ -147,6 +148,9 @@ figures/flac_rice2.pdf: figures/flac_rice2.fig
 
 figures/flac_rice3.pdf: figures/flac_rice3.fig
 	fig2dev -Z 6 -L pdf $< $@
+
+figures/flac_rice4.pdf: figures/flac_rice4.fig
+	fig2dev -Z 3 -L pdf $< $@
 
 figures/flac_lag.pdf: figures/flac_lag.fig
 	fig2dev -Z 6 -L pdf $< $@

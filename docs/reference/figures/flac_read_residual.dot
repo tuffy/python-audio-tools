@@ -1,0 +1,44 @@
+digraph read_alac_residual {
+  size="5,6";
+  ratio=fill;
+  node [fontname="DejaVuSans"];
+  edge [fontname="DejaVuSans"];
+  margin=0;
+
+  init [shape=record,label="{input Rice|MSB = 0|LSB = 0}"];
+  read_next_bit [shape=parallelogram,label="bit = read 1"];
+  unary_finish_test [shape=diamond,label="is\nbit = 1?"];
+  increment_MSB [shape=rect,label="MSB = MSB + 1"];
+
+  init -> read_next_bit;
+  read_next_bit -> unary_finish_test;
+  unary_finish_test -> increment_MSB [label="NO"];
+  unary_finish_test -> read_rice [label="YES"];
+  increment_MSB -> read_next_bit;
+  read_rice [shape=parallelogram,label="LSB = read Rice"];
+  read_rice -> make_value;
+  make_value [shape=rect,label="value = (MSB << Rice) + LSB"];
+  make_value -> get_sign;
+  get_unsigned [shape=rect,label="unsigned = value / 2"];
+  get_unsigned -> test_sign;
+  get_sign [shape=rect,label="sign = value mod 2"];
+  get_sign -> get_unsigned;
+  test_sign [shape=diamond,label="is\nsign = 1?"];
+  test_sign -> positive_residual [label="NO"];
+  test_sign -> negative_residual [label="YES"];
+  positive_residual [shape=rect,label="residual = unsigned"];
+  negative_residual [shape=rect,label="residual = -unsigned - 1"];
+  positive_residual -> return_residual;
+  negative_residual -> return_residual;
+  return_residual [shape=rect,label="return residual"];
+  label1 [shape=plaintext,label="combine MSB and LSB into single value"];
+  {rank=same; label1; make_value;};
+  label2 [shape=plaintext,label="the lowest bit is the sign"];
+  {rank=same; label2; get_sign;};
+  label3 [shape=plaintext,label="the remaining bits are the unsigned residual"];
+  {rank=same; label3; get_unsigned;};
+  label4 [shape=plaintext,label="apply sign to residual"];
+  {rank=same; label4; positive_residual; negative_residual;};
+  label5 [shape=plaintext,label="read unary MSB"];
+  {rank=same; label5; unary_finish_test;};
+}
