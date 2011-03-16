@@ -2963,7 +2963,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Document Python interface
 ** DONE Build dvdainfo utility
 *** DONE Add dvdainfo.1 man page
-** DONE Build dvda2track utility
+** TODO Build dvda2track utility
 *** DONE Fix to work without -d
 *** DONE Add --track-start / --track-total options
     Since some especially long discs split tracks across titles,
@@ -2971,6 +2971,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     and the total number of tracks.
 **** DONE Add options to man page
 *** DONE Add dvda2track.1 man page
+*** TODO Ensure -A with invalid dir generates better error message
 ** DONE Build dvda2xmcd utility
    Querying FreeDB and MusicBrainz are possible,
    but I expect most of the time they'll generate empty templates.

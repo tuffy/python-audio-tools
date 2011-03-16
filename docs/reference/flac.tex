@@ -544,14 +544,14 @@ two samples.
 Performing the actual channel decorrelation is as follows:
 \begin{align*}
 \intertext{Left-Difference (assignment \texttt{0x8}):}
-\text{Left}_i &= \text{Subframe}_{0i} \\
-\text{Right}_i &= \text{Subframe}_{0i} - \text{Subframe}_{1i} \\
+\text{Left}_i &= \text{Subframe}_{0~i} \\
+\text{Right}_i &= \text{Subframe}_{0~i} - \text{Subframe}_{1~i} \\
 \intertext{Difference-Right (assignment \texttt{0x9}):}
-\text{Left}_i &= \text{Subframe}_{0i} + \text{Subframe}_{1i} \\
-\text{Right}_i &= \text{Subframe}_{1i} \\
+\text{Left}_i &= \text{Subframe}_{0~i} + \text{Subframe}_{1~i} \\
+\text{Right}_i &= \text{Subframe}_{1~i} \\
 \intertext{Mid-Side (assignment \texttt{0xA}):}
-\text{Left}_i &= \lfloor (((\text{Subframe}_{0i} \times 2) + (\text{Subframe}_{1i} \bmod{2})) + \text{Subframe}_{1i}) \div 2 \rfloor \\
-\text{Right}_i &= \lfloor (((\text{Subframe}_{0i} \times 2) + (\text{Subframe}_{1i} \bmod{2})) - \text{Subframe}_{1i}) \div 2 \rfloor
+\text{Left}_i &= \lfloor (((\text{Subframe}_{0~i} \times 2) + (\text{Subframe}_{1~i} \bmod{2})) + \text{Subframe}_{1~i}) \div 2 \rfloor \\
+\text{Right}_i &= \lfloor (((\text{Subframe}_{0~i} \times 2) + (\text{Subframe}_{1~i} \bmod{2})) - \text{Subframe}_{1~i}) \div 2 \rfloor
 \end{align*}
 
 \clearpage
@@ -684,14 +684,14 @@ assignments and use the one which takes the least amount of space.
 
 \begin{align*}
 \intertext{Left-Difference (assignment \texttt{0x8}):}
-\text{Subframe}_{0i} &= \text{Left}_i \\
-\text{Subframe}_{1i} &= \text{Left}_i - \text{Right}_i \\
+\text{Subframe}_{0~i} &= \text{Left}_i \\
+\text{Subframe}_{1~i} &= \text{Left}_i - \text{Right}_i \\
 \intertext{Difference-Right (assignment \texttt{0x9}):}
-\text{Subframe}_{0i} &= \text{Left}_i - \text{Right}_i \\
-\text{Subframe}_{1i} &= \text{Right}_i \\
+\text{Subframe}_{0~i} &= \text{Left}_i - \text{Right}_i \\
+\text{Subframe}_{1~i} &= \text{Right}_i \\
 \intertext{Mid-Side (assignment \texttt{0xA}):}
-\text{Subframe}_{0i} &= \lfloor (\text{Left}_i + \text{Right}_i) \div 2 \rfloor \\
-\text{Subframe}_{1i} &= \text{Left}_i - \text{Right}_i \\
+\text{Subframe}_{0~i} &= \lfloor (\text{Left}_i + \text{Right}_i) \div 2 \rfloor \\
+\text{Subframe}_{1~i} &= \text{Left}_i - \text{Right}_i \\
 \end{align*}
 \par
 \noindent
