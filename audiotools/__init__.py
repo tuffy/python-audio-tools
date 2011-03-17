@@ -215,7 +215,12 @@ def Messenger(executable, options):
         return SilentMessenger(executable)
 
 __ANSI_SEQUENCE__ = re.compile(u"\u001B\[[0-9;]+.")
-__CHAR_WIDTHS__ = {"Na": 1, "W": 2, "F": 2}
+__CHAR_WIDTHS__ = {"Na": 1,
+                   "A": 1,
+                   "W": 2,
+                   "F": 2,
+                   "N": 0,
+                   "H": 1}
 
 
 def str_width(s):
@@ -2309,7 +2314,7 @@ def applicable_replay_gain(tracks):
 
 
 def calculate_replay_gain(tracks, progress=None):
-    """Yields (track,track_gain,track_peak,album_gain,album_peak)
+    """Yields (track, track_gain, track_peak, album_gain, album_peak)
     for each AudioFile in the list of tracks.
 
     Raises ValueError if a problem occurs during calculation."""

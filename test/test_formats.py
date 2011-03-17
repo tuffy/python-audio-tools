@@ -947,13 +947,21 @@ class LosslessFileTest(AudioFileTest):
                                 (self.audio_class.NAME,
                                  audio_class.NAME))
                     else:
-                        counter = FrameCounter(2, 16, 44100)
-                        audiotools.transfer_framelist_data(track2.to_pcm(),
+
+                        pcm = track2.to_pcm()
+                        counter = FrameCounter(pcm.channels,
+                                               pcm.bits_per_sample,
+                                               pcm.sample_rate)
+
+                        audiotools.transfer_framelist_data(pcm,
                                                            counter.update)
                         self.assertEqual(
                             int(counter), 5,
-                            "mismatch encoding %s (%s != %s)" % \
-                                (audio_class.NAME, counter, 5))
+                            "mismatch encoding %s (%s/%d != %s)" % \
+                                (audio_class.NAME,
+                                 counter,
+                                 int(counter),
+                                 5))
 
                     self.assertRaises(audiotools.EncodingError,
                                       track.convert,
@@ -974,7 +982,10 @@ class LosslessFileTest(AudioFileTest):
                                      audio_class.NAME,
                                      compression))
                         else:
-                            counter = FrameCounter(2, 16, 44100)
+                            pcm = track2.to_pcm()
+                            counter = FrameCounter(pcm.channels,
+                                                   pcm.bits_per_sample,
+                                                   pcm.sample_rate)
                             audiotools.transfer_framelist_data(track2.to_pcm(),
                                                                counter.update)
                             self.assertEqual(
@@ -3107,6 +3118,35 @@ class M4AFileTest(LossyFileTest):
         self.suffix = "." + self.audio_class.SUFFIX
 
     @FORMAT_M4A
+    def test_length(self):
+        temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
+        try:
+            for seconds in [1, 2, 3, 4, 5, 10, 20, 60, 120]:
+                track = self.audio_class.from_pcm(temp.name,
+                                                  BLANK_PCM_Reader(seconds))
+                self.assertEqual(int(round(track.seconds_length())), seconds)
+        finally:
+            temp.close()
+
+    @FORMAT_LOSSY
+    def test_channels(self):
+        temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
+        try:
+            for channels in [1, 2, 3, 4, 5, 6]:
+                track = self.audio_class.from_pcm(temp.name, BLANK_PCM_Reader(
+                        1, channels=channels, channel_mask=0))
+            if (self.audio_class is audiotools.M4AAudio_faac):
+                self.assertEqual(track.channels(), 2)
+                track = audiotools.open(temp.name)
+                self.assertEqual(track.channels(), 2)
+            else:
+                self.assertEqual(track.channels(), max(2, channels))
+                track = audiotools.open(temp.name)
+                self.assertEqual(track.channels(), max(2, channels))
+        finally:
+            temp.close()
+
+    @FORMAT_M4A
     def test_too(self):
         #ensure that the 'too' meta atom isn't modified by setting metadata
         temp = tempfile.NamedTemporaryFile(
@@ -3895,6 +3935,18 @@ class VorbisFileTest(OggVerify, LossyFileTest):
         finally:
             track_file.close()
 
+    @FORMAT_AUDIOFILE
+    def test_replay_gain(self):
+        self.assert_(True)
+        #FIXME
+
+        #ReplayGain gets punted to vorbisgain,
+        #so we won't test it directly.
+        #In the future, I should fold libvorbis
+        #into the tools directly
+        #and handle gain calculation/application
+        #as floats from end-to-end
+        #which should eliminate the vorbisgain requirement.
 
 
 class WaveFileTest(TestForeignWaveChunks,
