@@ -1,33 +1,70 @@
 MAN_PATH = /usr/share/man
 MAN_PAGES = \
+audiotools-config.1 \
+audiotools.cfg.5 \
 cd2track.1 \
 cd2xmcd.1 \
 cdinfo.1 \
 cdplay.1 \
-dvdainfo.1 \
+coverdump.1 \
+coverview.1 \
 dvda2track.1 \
 dvda2xmcd.1 \
+dvdainfo.1 \
+editxmcd.1 \
 track2cd.1 \
 track2track.1 \
 track2xmcd.1 \
 trackcat.1 \
 trackcmp.1 \
 trackinfo.1 \
+tracklength.1 \
+tracklint.1 \
 trackplay.1 \
 trackrename.1 \
-tracktag.1 \
-tracklength.1 \
-editxmcd.1 \
-coverview.1 \
-coverdump.1 \
-record2track.1 \
 tracksplit.1 \
-tracklint.1 \
-trackverify.1 \
-audiotools-config.1
+tracktag.1 \
+trackverify.1
+
+MAN_SOURCES = \
+audiotools-config.xml \
+audiotools.cfg.xml \
+cd2track.xml \
+cd2xmcd.xml \
+cdinfo.xml \
+cdplay.xml \
+coverdump.xml \
+coverview.xml \
+dvda2track.xml \
+dvda2xmcd.xml \
+dvdainfo.xml \
+editxmcd.xml \
+track2cd.xml \
+track2track.xml \
+track2xmcd.xml \
+trackcat.xml \
+trackcmp.xml \
+trackinfo.xml \
+tracklength.xml \
+tracklint.xml \
+trackplay.xml \
+trackrename.xml \
+tracksplit.xml \
+tracktag.xml \
+trackverify.xml
+
+.SUFFIXES: .xml .1 .5
+
+.xml.1:
+	python manpagexml.py -i $< $(MAN_SOURCES) > $@
+
+.xml.5:
+	python manpagexml.py -i $< $(MAN_SOURCES) > $@
+
 
 TARGETS = audioformats-letter.pdf audioformats-a4.pdf \
-audiotools-letter.pdf audiotools-a4.pdf
+audiotools-letter.pdf audiotools-a4.pdf \
+$(MAN_PAGES)
 
 all: $(TARGETS)
 
