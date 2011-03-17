@@ -1656,20 +1656,22 @@ ExecProgressQueue Objects
    ...   result.c = c
    ...   return result
    ...
-   ... def format_result(result):
+   >>> def format_result(result):
    ...    return u"%s %s %s" % (result.a, result.b, result.c)
    ...
-   ... queue = ExecProgressQueue(ProgressDisplay(Messenger("executable")))
-   ... queue.execute(function=progress_function,
+   >>> queue = ExecProgressQueue(ProgressDisplay(Messenger("executable")))
+   >>> queue.execute(function=progress_function,
    ...               progress_text=u"%s progress" % (filename1),
    ...               completion_output=format_result,
    ...               filename=filename1)
-   ... queue.execute(function=progress_function,
+   ...
+   >>> queue.execute(function=progress_function,
    ...               progress_text=u"%s progress" % (filename2),
    ...               completion_output=format_result,
    ...               filename=filename2)
-   ... queue.run()
-   ... queue.results
+   ...
+   >>> queue.run()
+   >>> queue.results
 
 
 Messenger Objects

@@ -2510,6 +2510,44 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [X] --remove-comment
 ** DONE Unit test tag item addition/removal
 ** DONE Update man page with new options
+* DONE Add progess indicator to various utilities
+  This will likely require an ExecQueue update which can
+  receive progress output from multiple subprocesses
+  so that the total progress can be generated.
+  - [X] track2track
+  - [X] cd2track
+  - [X] dvda2track
+  - [X] tracksplit
+  - [X] trackcat
+  - [X] trackcmp
+  - [X] trackverify
+  - [X] tracktag (for ReplayGain)
+** DONE Update AudioFile.convert() with a progress callback option
+** DONE Update AudioFile.add_replay_gain() with a progress callback option
+   - [X] AudioFile
+   - [X] FlacAudio
+   - [X] M4AAudio
+   - [X] MP3Audio
+   - [X] VorbisAudio
+   - [X] WavPackAudio
+   - [X] WaveAudio
+** DONE Update programming documentation with progress callback option
+** DONE Update AudioFile.verify() with a progress callback option
+   - [X] AACAudio
+   - [X] ALACAudio
+   - [X] AiffAudio
+   - [X] AuAudio
+   - [X] FlacAudio
+   - [X] M4AAudio
+   - [X] MP2Audio
+   - [X] MP3Audio
+   - [X] OggFlacAudio
+   - [X] ShortenAudio
+   - [X] SpeexAudio
+   - [X] VorbisAudio
+   - [X] WavPackAudio
+   - [X] WaveAudio
+** DONE Add documentation for progress indicators and infrastructure
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -2976,44 +3014,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    Querying FreeDB and MusicBrainz are possible,
    but I expect most of the time they'll generate empty templates.
 *** DONE Add dvda2xmcd.1 man page
-* TODO Add progess indicator to various utilities
-  This will likely require an ExecQueue update which can
-  receive progress output from multiple subprocesses
-  so that the total progress can be generated.
-  - [X] track2track
-  - [X] cd2track
-  - [X] dvda2track
-  - [X] tracksplit
-  - [X] trackcat
-  - [X] trackcmp
-  - [X] trackverify
-  - [X] tracktag (for ReplayGain)
-** DONE Update AudioFile.convert() with a progress callback option
-** DONE Update AudioFile.add_replay_gain() with a progress callback option
-   - [X] AudioFile
-   - [X] FlacAudio
-   - [X] M4AAudio
-   - [X] MP3Audio
-   - [X] VorbisAudio
-   - [X] WavPackAudio
-   - [X] WaveAudio
-** DONE Update programming documentation with progress callback option
-** TODO Update AudioFile.verify() with a progress callback option
-   - [X] AACAudio
-   - [X] ALACAudio
-   - [ ] AiffAudio
-   - [X] AuAudio
-   - [X] FlacAudio
-   - [X] M4AAudio
-   - [X] MP2Audio
-   - [X] MP3Audio
-   - [X] OggFlacAudio
-   - [X] ShortenAudio
-   - [X] SpeexAudio
-   - [X] VorbisAudio
-   - [X] WavPackAudio
-   - [X] WaveAudio
-** TODO Add documentation for progress indicators and infrastructure
 * TODO Add options for ID3v2/ID3v1 tagging
   Perhaps add config file options and corresponding audiotools-config options.
 ** DONE Make ID3v2 version selectable
@@ -3034,13 +3034,13 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   in the past) or find an intermediate format that generates
   both man pages and web pages.
   - [X] audiotools-config
-  - [ ] audiotools.cfg
+  - [X] audiotools.cfg
   - [X] cd2xmcd
   - [X] cdinfo
   - [X] cdplay
   - [X] cd2track
   - [X] coverdump
-  - [ ] coverview
+  - [X] coverview
   - [X] dvda2track
   - [X] dvda2xmcd
   - [X] dvdainfo
@@ -3059,6 +3059,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [X] tracksplit
   - [X] tracktag
   - [X] trackverify
+** TODO Build reStructuredText output
 * TODO Update trackplay for interactivity
   Urwid-based display should have various standard features,
   analagous to those in cdplay
@@ -3393,3 +3394,34 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   For MetaData, it could return a new object with fixed fields.
   For AudioFile, it could function like convert() and build a new file
   with fixes applied.
+* TODO Deprecate little-used / poorly-tested bits
+  Although there's a risk of annoying people by taking out
+  stuff they might be using, some utilities and formats
+  were added simply because it was easy and aren't tested
+  enough for my liking.
+** TODO record2track
+   This needs to be rewritten to support multiple audio sources
+   and constructed with a threaded GUI, or dropped.
+   The current implementation is entirely too half-assed.
+** TODO AACAudio / M4AAudio_faac
+   The authors of faad/faac have moved on to neroAacEnc/neroAacDec.
+   Even though M4AAudio_nero is also a hack involving intermediate
+   wav files, at least it gets updated.
+   Having two different, slightly incompatible M4A implementations
+   needlessly complicates things.
+** TODO SpeexAudio
+   I don't believe this format was ever meant for standalone use,
+   and I doubt anybody is using it that way either.
+   I just threw it in because it was easy and because
+   I already had a lot of Ogg stream parsing infrastructure in place.
+* TODO Restore Monkey's Audio support
+  This needs to be assimilated with a native decoder/encoder.
+  I've seen these out in the wild, but only rarely.
+* TODO Assimilate Vorbis support
+  This would remove three external binaries
+  and be a good excuse to build float-based PCM routines.
+* TODO Restore Musepack support
+  This was removed because compiling it was a pain
+  and I'd never seen Musepack files in the wild.
+  But it could provide a good secondary assimilated lossy format
+  in addition to Vorbis.

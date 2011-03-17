@@ -546,7 +546,7 @@ class AiffAudio(AiffContainer):
 
         return cls(filename)
 
-    def to_aiff(self, aiff_filename):
+    def to_aiff(self, aiff_filename, progress=None):
         """Writes the contents of this file to the given .aiff filename string.
 
         Raises EncodingError if some error occurs during decoding."""

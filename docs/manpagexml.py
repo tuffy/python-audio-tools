@@ -416,7 +416,8 @@ class Element_TABLE:
         if (len(self.rows) == 0):
             return
 
-        if (len(set([len(row.columns) for row in self.rows])) != 1):
+        if (len(set([len(row.columns) for row in self.rows
+                     if row.tr_class in (TR_NORMAL, TR_HEADER)])) != 1):
             raise ValueError("all rows must have the same number of columns")
         else:
             columns = len(self.rows[0].columns)
@@ -429,20 +430,69 @@ class Element_TABLE:
         stream.write(".TE\n")
 
 
+(TR_NORMAL, TR_HEADER, TR_DIVIDER) = range(3)
+
 class Element_TR:
-    def __init__(self, columns):
+    def __init__(self, columns, tr_class):
         self.columns = columns
+        self.tr_class = tr_class
 
     def __repr__(self):
         return "Element_TR(%s)" % (repr(self.columns))
 
     @classmethod
     def parse(cls, xml_dom):
-        return cls(columns=map(text, subtags(xml_dom, u"td")))
+        if (xml_dom.hasAttribute("class")):
+            if (xml_dom.getAttribute("class") == "header"):
+                return cls(columns=[Element_TD.parse(tag)
+                                    for tag in subtags(xml_dom, u"td")],
+                           tr_class=TR_HEADER)
+            elif (xml_dom.getAttribute("class") == "divider"):
+                return cls(columns=None, tr_class=TR_DIVIDER)
+            else:
+                raise ValueError("unsupported class \"%s\"" %
+                                 (xmldom_getAttribute("class")))
+        else:
+            return cls(columns=[Element_TD.parse(tag)
+                                for tag in subtags(xml_dom, u"td")],
+                       tr_class=TR_NORMAL)
 
     def to_man(self, stream):
-        stream.write(":".join([column.encode('ascii')
-                               for column in self.columns]) + "\n")
+        if (self.tr_class == TR_NORMAL):
+            stream.write(":".join([column.string()
+                                   for column in self.columns]) + "\n")
+        elif (self.tr_class == TR_HEADER):
+            stream.write(":".join(["\\fB%s\\fR" % (column.string())
+                                   for column in self.columns]) + "\n")
+            stream.write("_\n")
+        elif (self.tr_class == TR_DIVIDER):
+            stream.write("_\n")
+
+
+class Element_TD:
+    def __init__(self, value):
+        self.value = value
+
+    def __repr__(self):
+        return "Element_TD(%s)" % (repr(self.value))
+
+    @classmethod
+    def parse(cls, xml_dom):
+        try:
+            return cls(value=WHITESPACE.sub(
+                    u" ", xml_dom.childNodes[0].wholeText.strip()))
+        except IndexError:
+            return cls(value=None)
+
+
+    def string(self):
+        if (self.value is not None):
+            return self.value.encode('ascii')
+        else:
+            return "\\^"
+
+    def to_man(self, stream):
+        stream.write(self.value.encode('ascii'))
 
 
 class Element:

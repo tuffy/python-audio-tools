@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manpage>
+  <utility>audiotools.cfg</utility>
+  <author>Brian Langenberger</author>
+  <section>5</section>
+  <name>configuration data for Python Audio Tools</name>
+  <title>Audio Tools Config File</title>
+  <description>
+    The format of this file consists of one or more sections.
+    Each section contains one or more key / value pairs.
+  </description>
+  <element name="configuration items">
+    <table>
+      <tr class="header">
+        <td>Section</td>
+        <td>Key</td>
+        <td>Value</td>
+      </tr>
+      <tr>
+        <td>[System]</td>
+        <td>default_type</td>
+        <td>the default audio type to use</td>
+      </tr>
+      <tr>
+        <td/>
+        <td>cdrom</td>
+        <td>the default CD-ROM device to use</td>
+      </tr>
+      <tr>
+        <td/>
+        <td>cdrom_read_offset</td>
+        <td>read sample offset to apply</td>
+      </tr>
+      <tr>
+        <td/>
+        <td>cdrom_write_offset</td>
+        <td>write sample offset to apply</td>
+      </tr>
+      <tr>
+        <td/>
+        <td>fs_encoding</td>
+        <td>text encoding for filenames</td>
+      </tr>
+      <tr>
+        <td/>
+        <td>io_encoding</td>
+        <td>text encoding for terminal output</td>
+      </tr>
+      <tr>
+        <td/>
+        <td>maximum_jobs</td>
+        <td>default for the -j option</td>
+      </tr>
+      <tr class="divider"/>
+      <tr>
+        <td>[Defaults]</td>
+        <td>verbosity</td>
+        <td>"normal", "debug" or "quiet"</td>
+      </tr>
+      <tr class="divider"/>
+      <tr>
+        <td>[Filenames]</td>
+        <td>format</td>
+        <td>default for the --format option</td>
+      </tr>
+      <tr class="divider"/>
+      <tr>
+        <td>[Quality]</td>
+        <td>flac</td>
+        <td>default quality for FLAC encoding</td>
+      </tr>
+      <tr>
+        <td/>
+        <td>mp3</td>
+        <td>default quality for MP3 encoding</td>
+      </tr>
+      <tr>
+        <td/>
+        <td>...</td>
+        <td>default quality for a given type</td>
+      </tr>
+      <tr class="divider"/>
+      <tr>
+        <td>[Binaries]</td>
+        <td>oggenc</td>
+        <td>binary to use for Vorbis encoding</td>
+      </tr>
+      <tr>
+        <td/>
+        <td>lame</td>
+        <td>binary to use for MP3 encoding</td>
+      </tr>
+      <tr>
+        <td/>
+        <td>...</td>
+        <td>binary to use other than default</td>
+      </tr>
+      <tr class="divider"/>
+      <tr>
+        <td>[Thumbnail]</td>
+        <td>format</td>
+        <td>"jpeg", "png", "gif", etc.</td>
+      </tr>
+      <tr>
+        <td/>
+        <td>size</td>
+        <td>maximum size of each thumbnail</td>
+      </tr>
+      <tr class="divider"/>
+      <tr>
+        <td>[ID3]</td>
+        <td>id3v2</td>
+        <td>id3v2.2, id3v2.3, id3v2.4 or none</td>
+      </tr>
+      <tr>
+        <td/>
+        <td>id3v1</td>
+        <td>"id3v1.1" or "none"</td>
+      </tr>
+      <tr>
+        <td/>
+        <td>pad</td>
+        <td>if "true", track numbers like "01"</td>
+      </tr>
+      <tr>
+        <td/>
+        <td/>
+        <td>if "false", track numbers like "1"</td>
+      </tr>
+      <tr class="divider"/>
+      <tr>
+        <td>[MusicBrainz]</td>
+        <td>server</td>
+        <td>default MusicBrainz hostname</td>
+      </tr>
+      <tr>
+        <td/>
+        <td>port</td>
+        <td>default MusicBrainz port</td>
+      </tr>
+      <tr class="divider"/>
+      <tr>
+        <td>[FreeDB]</td>
+        <td>server</td>
+        <td>default FreeDB hostname</td>
+      </tr>
+      <tr>
+        <td/>
+        <td>port</td>
+        <td>default FreeDB port</td>
+      </tr>
+    </table>
+  </element>
+</manpage>
