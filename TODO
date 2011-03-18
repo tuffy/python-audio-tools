@@ -2579,6 +2579,20 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [X] tracktag
   - [X] trackverify
 ** DONE Build reStructuredText output
+* DONE Add options for ID3v2/ID3v1 tagging
+  Perhaps add config file options and corresponding audiotools-config options.
+** DONE Make ID3v2 version selectable
+   Either ID3v2.2/ID3v2.3/ID3v2.4/none
+** DONE Make ID3v1 version selectable
+   ID3v1.0/ID3v1.1/none
+** DONE Make ID3v2 track number formatting adjustable
+   Allow leading 0s, since the spec doesn't forbid them.
+** DONE Display current ID3 info in audiotools-config
+** DONE Add ID3v2.2 option to audiotools-config
+** DONE Add ID3v1 option to audiotools-config
+** DONE Add ID3 number padding to audiotools-config
+** DONE Document new audiotools-config options in man page
+** DONE Document new audiotools config options on website
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -3032,7 +3046,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Document Python interface
 ** DONE Build dvdainfo utility
 *** DONE Add dvdainfo.1 man page
-** TODO Build dvda2track utility
+*** DONE Ensure -A with invalid dir generates error message
+** DONE Build dvda2track utility
 *** DONE Fix to work without -d
 *** DONE Add --track-start / --track-total options
     Since some especially long discs split tracks across titles,
@@ -3040,25 +3055,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     and the total number of tracks.
 **** DONE Add options to man page
 *** DONE Add dvda2track.1 man page
-*** TODO Ensure -A with invalid dir generates better error message
+*** DONE Ensure -A with invalid dir generates error message
 ** DONE Build dvda2xmcd utility
    Querying FreeDB and MusicBrainz are possible,
    but I expect most of the time they'll generate empty templates.
 *** DONE Add dvda2xmcd.1 man page
-* TODO Add options for ID3v2/ID3v1 tagging
-  Perhaps add config file options and corresponding audiotools-config options.
-** DONE Make ID3v2 version selectable
-   Either ID3v2.2/ID3v2.3/ID3v2.4/none
-** DONE Make ID3v1 version selectable
-   ID3v1.0/ID3v1.1/none
-** DONE Make ID3v2 track number formatting adjustable
-   Allow leading 0s, since the spec doesn't forbid them.
-** DONE Display current ID3 info in audiotools-config
-** DONE Add ID3v2.2 option to audiotools-config
-** DONE Add ID3v1 option to audiotools-config
-** DONE Add ID3 number padding to audiotools-config
-** DONE Document new audiotools-config options in man page
-** TODO Document new audiotools config options on website
+*** DONE Ensure -A with invalid dir generates error message
 * TODO Update trackplay for interactivity
   Urwid-based display should have various standard features,
   analagous to those in cdplay
@@ -3354,6 +3356,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** TODO test_errors
 *** DONE coverdump
 **** DONE test_options
+**** DONE test_errors
+*** DONE dvdainfo
+**** DONE test_errors
+*** DONE dvda2track
+**** DONE test_errors
+*** DONE dvda2xmcd
 **** DONE test_errors
 *** DONE track2track
 **** DONE test_options

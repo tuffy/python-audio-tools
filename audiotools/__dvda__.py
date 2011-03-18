@@ -244,7 +244,7 @@ class DVDAudio:
         try:
             f = open(self.files['AUDIO_TS.IFO'], 'rb')
         except (KeyError, IOError):
-            raise InvalidDVDA(u"unable to open AUDIO_TS.IFO")
+            raise InvalidDVDA(_(u"unable to open AUDIO_TS.IFO"))
         try:
             try:
                 for titleset in xrange(
@@ -259,7 +259,7 @@ class DVDAudio:
                         yield titleset
 
             except Con.ConstError:
-                raise InvalidDVDA(u"invalid AUDIO_TS.IFO")
+                raise InvalidDVDA(_(u"invalid AUDIO_TS.IFO"))
         finally:
             f.close()
 
@@ -270,14 +270,14 @@ class DVDAudio:
             f = open(self.files['ATS_%2.2d_0.IFO' % (titleset)], 'rb')
         except (KeyError, IOError):
             raise InvalidDVDA(
-                u"unable to open ATS_%2.2d_0.IFO" % (titleset))
+                _(u"unable to open ATS_%2.2d_0.IFO") % (titleset))
         try:
             try:
                 #the first sector contains little of interest
                 #but we'll read it to check the identifier string
                 DVDAudio.ATS_XX_S1.parse_stream(f)
             except Con.ConstError:
-                raise InvalidDVDA(u"invalid ATS_%2.2d_0.IFO" % (titleset))
+                raise InvalidDVDA(_(u"invalid ATS_%2.2d_0.IFO") % (titleset))
 
             #then move to the second sector and continue parsing
             f.seek(DVDAudio.SECTOR_SIZE, os.SEEK_SET)

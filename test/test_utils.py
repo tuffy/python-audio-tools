@@ -793,6 +793,117 @@ class coverdump(UtilTest):
             os.chmod(self.cwd_dir, old_mode)
 
 
+class dvdainfo(UtilTest):
+    @UTIL_DVDAINFO
+    def setUp(self):
+        self.invalid_dir1 = tempfile.mkdtemp()
+        self.invalid_dir2 = tempfile.mkdtemp()
+        f = open(os.path.join(self.invalid_dir2, "AUDIO_TS.IFO"), "wb")
+        f.write(os.urandom(1000))
+        f.close()
+
+    @UTIL_DVDAINFO
+    def tearDown(self):
+        os.rmdir(self.invalid_dir1)
+        os.unlink(os.path.join(self.invalid_dir2, "AUDIO_TS.IFO"))
+        os.rmdir(self.invalid_dir2)
+
+    @UTIL_DVDAINFO
+    def test_errors(self):
+        #test with no -A option
+        self.assertEqual(self.__run_app__(["dvdainfo"]), 1)
+        self.__check_error__(
+            _(u"You must specify the DVD-Audio's AUDIO_TS directory with -A"))
+
+        #test with an invalid AUDIO_TS dir
+        self.assertEqual(self.__run_app__(["dvdainfo",
+                                           "-A", self.invalid_dir1]), 1)
+        self.__check_error__(_(u"unable to open AUDIO_TS.IFO"))
+
+        #test with an invalid AUDIO_TS/AUDIO_TS.IFO file
+        self.assertEqual(self.__run_app__(["dvdainfo",
+                                           "-A", self.invalid_dir2]), 1)
+        self.__check_error__(_(u"invalid AUDIO_TS.IFO"))
+
+
+class dvda2track(UtilTest):
+    @UTIL_DVDA2TRACK
+    def setUp(self):
+        self.invalid_dir1 = tempfile.mkdtemp()
+        self.invalid_dir2 = tempfile.mkdtemp()
+        f = open(os.path.join(self.invalid_dir2, "AUDIO_TS.IFO"), "wb")
+        f.write(os.urandom(1000))
+        f.close()
+
+    @UTIL_DVDA2TRACK
+    def tearDown(self):
+        os.rmdir(self.invalid_dir1)
+        os.unlink(os.path.join(self.invalid_dir2, "AUDIO_TS.IFO"))
+        os.rmdir(self.invalid_dir2)
+
+    @UTIL_DVDA2TRACK
+    def test_errors(self):
+        #test with no -A option
+        self.assertEqual(self.__run_app__(["dvda2track"]), 1)
+        self.__check_error__(
+            _(u"You must specify the DVD-Audio's AUDIO_TS directory with -A"))
+
+        #test with an invalid AUDIO_TS dir
+        self.assertEqual(self.__run_app__(["dvda2track",
+                                           "-A", self.invalid_dir1]), 1)
+        self.__check_error__(_(u"unable to open AUDIO_TS.IFO"))
+
+        #test with an invalid AUDIO_TS/AUDIO_TS.IFO file
+        self.assertEqual(self.__run_app__(["dvda2track",
+                                           "-A", self.invalid_dir2]), 1)
+        self.__check_error__(_(u"invalid AUDIO_TS.IFO"))
+
+        #FIXME
+        #It's difficult to test an invalid --title or invalid --xmcd
+        #without a valid AUDIO_TS.IFO file,
+        #and a set of present IFO files and AOB files.
+        #I'll need a way to generate synthetic ones.
+
+
+class dvda2xmcd(UtilTest):
+    @UTIL_DVDA2XMCD
+    def setUp(self):
+        self.invalid_dir1 = tempfile.mkdtemp()
+        self.invalid_dir2 = tempfile.mkdtemp()
+        f = open(os.path.join(self.invalid_dir2, "AUDIO_TS.IFO"), "wb")
+        f.write(os.urandom(1000))
+        f.close()
+
+    @UTIL_DVDA2XMCD
+    def tearDown(self):
+        os.rmdir(self.invalid_dir1)
+        os.unlink(os.path.join(self.invalid_dir2, "AUDIO_TS.IFO"))
+        os.rmdir(self.invalid_dir2)
+
+    @UTIL_DVDA2XMCD
+    def test_errors(self):
+        #test with no -A option
+        self.assertEqual(self.__run_app__(["dvda2xmcd"]), 1)
+        self.__check_error__(
+            _(u"You must specify the DVD-Audio's AUDIO_TS directory with -A"))
+
+        #test with an invalid AUDIO_TS dir
+        self.assertEqual(self.__run_app__(["dvda2xmcd",
+                                           "-A", self.invalid_dir1]), 1)
+        self.__check_error__(_(u"unable to open AUDIO_TS.IFO"))
+
+        #test with an invalid AUDIO_TS/AUDIO_TS.IFO file
+        self.assertEqual(self.__run_app__(["dvda2xmcd",
+                                           "-A", self.invalid_dir2]), 1)
+        self.__check_error__(_(u"invalid AUDIO_TS.IFO"))
+
+        #FIXME
+        #It's difficult to test an invalid --title or invalid --xmcd
+        #without a valid AUDIO_TS.IFO file,
+        #and a set of present IFO files and AOB files.
+        #I'll need a way to generate synthetic ones.
+
+
 class track2track(UtilTest):
     @UTIL_TRACK2TRACK
     def setUp(self):

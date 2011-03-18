@@ -43,8 +43,11 @@ if (__name__ == '__main__'):
             _(u"You must specify the DVD-Audio's AUDIO_TS directory with -A"))
         sys.exit(1)
 
-    #FIXME - catch errors here
-    dvda = audiotools.DVDAudio(options.audio_ts)
+    try:
+        dvda = audiotools.DVDAudio(options.audio_ts)
+    except audiotools.InvalidDVDA, err:
+        msg.error(unicode(err))
+        sys.exit(1)
 
     titleset = dvda[0]
     for (title_num, title) in enumerate(titleset):

@@ -256,9 +256,17 @@ if (__name__ == '__main__'):
     quality = options.quality
     base_directory = options.dir
 
-    #FIXME - catch errors here
-    dvda = audiotools.DVDAudio(options.audio_ts,
-                               options.cdrom)
+    if (options.audio_ts is None):
+        msg.error(
+            _(u"You must specify the DVD-Audio's AUDIO_TS directory with -A"))
+        sys.exit(1)
+
+    try:
+        dvda = audiotools.DVDAudio(options.audio_ts, options.cdrom)
+    except audiotools.InvalidDVDA, err:
+        msg.error(unicode(err))
+        sys.exit(1)
+
     if (options.title < 1):
         msg.error(_(u"title number must be greater than 0"))
         sys.exit(1)
