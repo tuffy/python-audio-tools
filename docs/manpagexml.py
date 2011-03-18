@@ -217,6 +217,39 @@ class Manpage:
         stream.write("_\n")
         stream.write(".TE\n")
 
+    def to_rst(self, stream):
+        #write header
+        stream.write(self.utility.encode('utf-8') + "\n")
+        stream.write((u"=" * len(self.utility)) + "\n\n")
+        stream.write(self.title.encode('utf-8') + '\n\n')
+
+        #write synopsis, if present
+        #FIXME
+
+        #write description
+        stream.write("Description\n")
+        stream.write("^^^^^^^^^^^\n")
+        stream.write(self.description.encode('utf-8') + "\n\n")
+
+        #write options
+        for option in self.options:
+            option.to_rst(stream)
+
+        #write other elements
+        for element in self.elements:
+            element.to_rst(stream)
+
+        #write examples
+        if (len(self.examples) > 0):
+            if (len(self.examples) > 1):
+                stream.write("Examples\n")
+                stream.write("^^^^^^^^\n")
+            else:
+                stream.write("Example\n")
+                stream.write("^^^^^^^\n")
+            for example in self.examples:
+                example.to_rst(stream)
+
 class Options:
     def __init__(self, options, category=None):
         self.options = options
@@ -247,6 +280,18 @@ class Options:
                                   self.category.upper().encode('ascii')})
         for option in self.options:
             option.to_man(stream)
+
+    def to_rst(self, stream):
+        if (self.category is None):
+            stream.write("Options\n")
+            stream.write("^^^^^^^\n")
+        else:
+            stream.write("%(category)s Options\n" %
+                         {"category":
+                              self.category.capitalize().encode('utf-8')})
+            stream.write("^" * (len(self.category) + len(" Options")) + "\n")
+        for option in self.options:
+            option.to_rst(stream)
 
 
 class Option:
@@ -338,6 +383,46 @@ class Option:
             stream.write(self.description.encode('ascii'))
             stream.write("\n")
 
+    def to_rst(self, stream):
+        if ((self.short_arg is not None) and
+            (self.long_arg is not None)):
+            if (self.arg_name is not None):
+                stream.write(("-%(short_arg)s %(arg_name)s, " +
+                              "--%(long_arg)s=%(arg_name)s\n") %
+                             {"short_arg": self.short_arg.encode('utf-8'),
+                              "long_arg": self.long_arg.encode('utf-8'),
+                              "arg_name": self.arg_name.upper().encode('utf-8')})
+            else:
+                stream.write(("-%(short_arg)s, " +
+                              "--%(long_arg)s\n") %
+                             {"short_arg": self.short_arg.encode('utf-8'),
+                              "long_arg": self.long_arg.encode('utf-8')})
+        elif (self.short_arg is not None):
+            if (self.arg_name is not None):
+                stream.write(("-%(short_arg)s " +
+                              "%(arg_name)s\n") %
+                             {"short_arg": self.short_arg.encode('utf-8'),
+                              "arg_name": self.arg_name.upper().encode('utf-8')})
+            else:
+                stream.write("-%(short_arg)s\n" %
+                             {"short_arg": self.short_arg.encode('utf-8')})
+        elif (self.long_arg is not None):
+            if (self.arg_name is not None):
+                stream.write(("--%(long_arg)s=%(arg_name)s\n") %
+                             {"long_arg": self.long_arg.encode('utf-8'),
+                              "arg_name": self.arg_name.upper().encode('utf-8')})
+            else:
+                stream.write("--%(long_arg)s\n" %
+                             {"long_arg": self.long_arg.encode('utf-8')})
+        else:
+            raise ValueError("short arg or long arg must be present in option")
+
+        if (self.description is not None):
+            stream.write("  ")
+            stream.write(self.description.encode('utf-8'))
+            stream.write("\n")
+        stream.write("\n")
+
 
 class Example:
     def __init__(self,
@@ -364,6 +449,11 @@ class Example:
         stream.write(self.command.encode('ascii')) #FIXME
         stream.write("\n")
 
+    def to_rst(self, stream):
+        stream.write(self.description.encode('utf-8') + "\n")
+        stream.write("::\n\n")
+        stream.write("  " + self.command.encode('utf-8') + "\n\n")
+
 
 class Element_P:
     def __init__(self, contents):
@@ -379,6 +469,9 @@ class Element_P:
     def to_man(self, stream):
         stream.write(self.contents.encode('ascii'))
         stream.write("\n.PP\n")
+
+    def to_rst(self, stream):
+        stream.write(self.contents.encode('utf-8') + "\n\n")
 
 
 class Element_UL:
@@ -398,6 +491,10 @@ class Element_UL:
             stream.write(item.encode('ascii'))
             stream.write("\n")
             stream.write(".PP\n")
+
+    def to_rst(self, stream):
+        for item in self.list_items:
+            stream.write("* " + item.encode('utf-8') + "\n")
 
 
 class Element_TABLE:
@@ -429,6 +526,49 @@ class Element_TABLE:
             row.to_man(stream)
         stream.write(".TE\n")
 
+    def to_rst(self, stream):
+        #figure out the maximum widths of our columns
+        column_widths = [0] * len(self.rows[0].column_widths())
+
+        for row in self.rows:
+            if (row.tr_class in (TR_NORMAL, TR_HEADER)):
+                column_widths = [max(old_width, new_width)
+                                 for (old_width, new_width) in
+                                 zip(column_widths, row.column_widths())]
+
+        #then display columns at the proper width
+        stream.write("+%s+\n" %
+                     "+".join(["-" * width for width in
+                               column_widths]))
+
+        for (row, next_row) in zip(self.rows, self.rows[1:]):
+            row.to_rst(stream, column_widths)
+            if (row.tr_class == TR_HEADER):
+                stream.write("+%s+\n" %
+                             "+".join(["=" * width for width in
+                                       column_widths]))
+            elif (row.tr_class == TR_NORMAL):
+                if (next_row.tr_class in (TR_NORMAL, TR_HEADER)):
+                    stream.write("+")
+                    for (col, next_col, width) in zip(row.columns,
+                                                      next_row.columns,
+                                                      column_widths):
+                        if (next_col.value is not None):
+                            stream.write("-" * width)
+                        else:
+                            stream.write(" " * width)
+                        stream.write("+")
+                    stream.write("\n")
+                elif (next_row.tr_class == TR_DIVIDER):
+                    stream.write("+%s+\n" %
+                                 "+".join(["-" * width for width in
+                                           column_widths]))
+
+        self.rows[-1].to_rst(stream, column_widths)
+        stream.write("+%s+\n" %
+                     "+".join(["-" * width for width in
+                               column_widths]))
+
 
 (TR_NORMAL, TR_HEADER, TR_DIVIDER) = range(3)
 
@@ -438,7 +578,7 @@ class Element_TR:
         self.tr_class = tr_class
 
     def __repr__(self):
-        return "Element_TR(%s)" % (repr(self.columns))
+        return "Element_TR(%s, %s)" % (repr(self.columns), self.tr_class)
 
     @classmethod
     def parse(cls, xml_dom):
@@ -468,6 +608,22 @@ class Element_TR:
         elif (self.tr_class == TR_DIVIDER):
             stream.write("_\n")
 
+    def column_widths(self):
+        if (self.tr_class in (TR_NORMAL, TR_HEADER)):
+            return [column.width() for column in self.columns]
+        else:
+            return None
+
+    def to_rst(self, stream, column_widths):
+        if (self.tr_class in (TR_NORMAL, TR_HEADER)):
+            stream.write("|")
+            for (column, width) in zip(self.columns, column_widths):
+                column.to_rst(stream, width)
+                stream.write("|")
+            stream.write("\n")
+        elif (self.tr_class == TR_DIVIDER):
+            pass
+
 
 class Element_TD:
     def __init__(self, value):
@@ -493,6 +649,19 @@ class Element_TD:
 
     def to_man(self, stream):
         stream.write(self.value.encode('ascii'))
+
+    def to_rst(self, stream, width):
+        if (self.value is not None):
+            stream.write(self.value.encode('utf-8'))
+            stream.write(" " * (width - len(self.value)))
+        else:
+            stream.write(" " * width)
+
+    def width(self):
+        if (self.value is not None):
+            return len(self.value)
+        else:
+            return 0
 
 
 class Element:
@@ -532,6 +701,12 @@ class Element:
         for element in self.elements:
             element.to_man(stream)
 
+    def to_rst(self, stream):
+        stream.write(self.name.capitalize().encode('utf-8') + "\n")
+        stream.write("^" * (len(self.name)) + "\n")
+        for element in self.elements:
+            element.to_rst(stream)
+
 
 if (__name__ == '__main__'):
     import sys
@@ -546,7 +721,7 @@ if (__name__ == '__main__'):
 
     parser.add_option("-t", "--type",
                       dest="type",
-                      choices=("man", ),
+                      choices=("man", "rst"),
                       default="man",
                       help="the output type")
 
@@ -559,3 +734,5 @@ if (__name__ == '__main__'):
 
     if (options.type == "man"):
         main_page.to_man(sys.stdout)
+    elif (options.type == "rst"):
+        main_page.to_rst(sys.stdout)

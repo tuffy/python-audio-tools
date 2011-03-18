@@ -34,4 +34,16 @@
       shuffle tracks randomly before playback
     </option>
   </options>
+  <element name="playback controls">
+    <table>
+      <tr><td>N / n</td><td>-</td><td>next track</td></tr>
+      <tr><td>P / p</td><td>-</td><td>previous track</td></tr>
+      <tr>
+        <td>Space</td>
+        <td>-</td>
+        <td>pause (non-interactive mode only)</td>
+      </tr>
+      <tr><td>Esc / Q / q</td><td>-</td><td>quit</td></tr>
+    </table>
+  </element>
 </manpage>
