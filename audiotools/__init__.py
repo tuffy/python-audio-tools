@@ -4490,8 +4490,8 @@ class ExecProgressQueue:
                                          in self.running_job_pool.values()],
                                         [], [])
                 for reader in rlist:
-                    (job_id, command, args) = cPickle.load(reader)
-                    getattr(self, command)(*([job_id] + args))
+                    (command, args) = cPickle.load(reader)
+                    getattr(self, command)(*args)
         except ProgressJobQueueComplete:
             if (self.cached_exception is not None):
                 raise self.cached_exception
@@ -4525,11 +4525,11 @@ class __ExecProgressQueueJob__:
                         *args,
                         progress=__JobProgress__(job_id, output).progress,
                         **kwargs)
-                    cPickle.dump((job_id, "completed", [result]),
+                    cPickle.dump(("completed", [job_id, result]),
                                  output,
                                  cPickle.HIGHEST_PROTOCOL)
                 except Exception, e:
-                    cPickle.dump((job_id, "exception", [e]),
+                    cPickle.dump(("exception", [job_id, e]),
                                  output,
                                  cPickle.HIGHEST_PROTOCOL)
             finally:
@@ -4542,7 +4542,7 @@ class __JobProgress__:
         self.output = output
 
     def progress(self, current, total):
-        cPickle.dump((self.job_id, "progress", [current, total]),
+        cPickle.dump(("progress", [self.job_id, current, total]),
                      self.output)
         self.output.flush()
 

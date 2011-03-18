@@ -3039,6 +3039,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE noise channels
 **** DONE rematrixing
 *** DONE end of stream marker
+*** TODO decoding XOR byte
 ** DONE Document PCM decoder
 ** DONE Link MLP decoder to AOB extractor
 ** DONE Link PCM decoder to AOB extractor
