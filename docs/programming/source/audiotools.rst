@@ -1373,7 +1373,7 @@ DVDAudio Objects
 .. class:: DVDAudio(audio_ts_path[, device])
 
    This class is used to access a DVD-Audio.
-   Its contains a collection of titlesets.
+   It contains a collection of titlesets.
    Each titleset contains a list of :class:`DVDATitle` objects,
    and each :class:`DVDATitle` contains a list of
    :class:`DVDATrack` objects.

@@ -2220,6 +2220,102 @@ class TestReplayGain(unittest.TestCase):
             self.assert_(gain < -4.0)
             self.assert_(peak > .90)
 
+    @LIB_CORE
+    def test_reader(self):
+        import audiotools.replaygain
+
+        test_format = audiotools.WaveAudio
+
+        dummy1 = tempfile.NamedTemporaryFile(suffix="." + test_format.SUFFIX)
+        dummy2 = tempfile.NamedTemporaryFile(suffix="." + test_format.SUFFIX)
+        try:
+            #build dummy file
+            track1 = test_format.from_pcm(
+                dummy1.name,
+                test_streams.Sine16_Stereo(44100, 44100,
+                                           441.0, 0.50,
+                                           4410.0, 0.49, 1.0))
+
+            #calculate its ReplayGain
+            gain = audiotools.replaygain.ReplayGain(track1.sample_rate())
+            pcm = track1.to_pcm()
+            audiotools.transfer_data(pcm.read, gain.update)
+            (gain, peak) = gain.title_gain()
+
+            #apply gain to dummy file
+            track2 = test_format.from_pcm(
+                dummy2.name,
+                audiotools.ReplayGainReader(track1.to_pcm(),
+                                            gain,
+                                            peak))
+
+            #ensure gain applied is quieter than without gain applied
+            gain2 = audiotools.replaygain.ReplayGain(track1.sample_rate())
+            pcm = track2.to_pcm()
+            audiotools.transfer_data(pcm.read, gain2.update)
+            (gain2, peak2) = gain2.title_gain()
+
+            self.assert_(gain2 > gain)
+        finally:
+            dummy1.close()
+            dummy2.close()
+
+    @LIB_CORE
+    def test_applicable(self):
+        #build a bunch of test tracks
+        test_format = audiotools.WaveAudio
+
+        temp_files = [tempfile.NamedTemporaryFile(
+                suffix="." + test_format.SUFFIX)
+                      for i in xrange(6)]
+
+        try:
+            track1 = test_format.from_pcm(temp_files[0].name,
+                                          BLANK_PCM_Reader(1, 44100, 2, 16))
+
+            track2 = test_format.from_pcm(temp_files[1].name,
+                                          BLANK_PCM_Reader(2, 44100, 2, 16))
+
+            track3 = test_format.from_pcm(temp_files[2].name,
+                                          BLANK_PCM_Reader(3, 48000, 2, 16))
+
+            track4 = test_format.from_pcm(temp_files[3].name,
+                                          BLANK_PCM_Reader(4, 44100, 1, 16))
+
+            track5 = test_format.from_pcm(temp_files[4].name,
+                                          BLANK_PCM_Reader(5, 44100, 2, 24))
+
+            track6 = test_format.from_pcm(temp_files[5].name,
+                                          BLANK_PCM_Reader(6, 44100, 2, 16))
+
+
+            #inconsistent sample rates aren't applicable
+            self.assertEqual(audiotools.applicable_replay_gain([track1,
+                                                                track2,
+                                                                track3]),
+                             False)
+
+            #inconsistent channel counts aren't applicable
+            self.assertEqual(audiotools.applicable_replay_gain([track1,
+                                                                track2,
+                                                                track4]),
+                             False)
+
+            #inconsistent bit-per-sample *are* applicable
+            self.assertEqual(audiotools.applicable_replay_gain([track1,
+                                                                track2,
+                                                                track5]),
+                             True)
+
+            #consistent everything is applicable
+            self.assertEqual(audiotools.applicable_replay_gain([track1,
+                                                                track2,
+                                                                track6]),
+                             True)
+
+        finally:
+            for f in temp_files:
+                f.close()
 
 
 class TestXMCD(unittest.TestCase):

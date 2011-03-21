@@ -3282,12 +3282,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Group tests for the core libraries
 *** TODO audiotools.__init__
 **** TODO AlbumMetaData
-**** TODO AlbumMetaDataFile
 **** DONE BufferedPCMReader
 **** DONE CDDA
 **** DONE ChannelMask
-**** TODO ExecQueue
-**** TODO ExecQueue2
 **** DONE Image
 **** DONE LimitedPCMReader
 **** TODO Messenger
@@ -3296,11 +3293,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE PCMReaderWindow
 **** TODO ReorderedPCMReader
 **** DONE ReplayGain
-**** TODO analyze_frames
-**** TODO applicable_replay_gain
+**** DONE applicable_replay_gain
 **** DONE at_a_time
 **** DONE build_timestamp
-**** TODO calculate_replay_gain
+**** DONE calculate_replay_gain
 **** DONE filename_to_type
 **** DONE group_tracks
 **** TODO make_dirs
@@ -3308,13 +3304,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE open_directory
 **** DONE open_files
 **** DONE parse_timestamp
-**** TODO pcm_cmp
 **** DONE pcm_frame_cmp
 **** DONE pcm_split
-**** TODO read_metadata_file
 **** DONE read_sheet
 **** DONE str_width
-**** TODO transfer_data
 **** DONE transfer_framelist_data
 **** DONE XMCD
 **** DONE MusicBrainzReleaseXML
@@ -3329,9 +3322,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE audiotools.player
 **** DONE Player
 **** DONE CDPlayer
-*** TODO audiotools.replaygain
+*** DONE audiotools.replaygain
 **** DONE ReplayGain
-**** TODO ReplayGainReader
+**** DONE ReplayGainReader
 *** DONE audiotools.decoders
 **** DONE BitstreamReader
 *** DONE audiotools.encoders
