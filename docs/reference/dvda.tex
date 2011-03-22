@@ -101,20 +101,29 @@ to reach the sector pointers table
 There is one timestamp value per track.
 \VAR{Initial PTS Index} and \VAR{Track PTS Length} values
 are the offset and length of the track in PTS ticks, respectively.
+\VAR{Index Number} indicates the track's initial
+sector pointers values from the following table.
 
 \subsection{Sector Pointers Table}
 
-For each title in the titleset, there is a sector pointers table.
+For each title in the titleset, there is a sector pointers table
+containing \VAR{Index Count} number of 96 bit values.
 
 \begin{figure}[h]
 \includegraphics{figures/dvda_ats_sectors.pdf}
 \end{figure}
 \par
 \noindent
-There is one sector pointers value per track,
-as indicated in the title table.
+There is at least one sector pointers value per track.
 Each pointer is relative to the start of the titleset's first
 AOB file.
+
+For example, if $\text{Track}_1$ has an \VAR{Index Number} of 1 and
+$\text{Track}_2$ has an \VAR{Index Number} of 5,
+that means $\text{Track}_1$ contains the sector pointers
+$\text{Index}_1$, $\text{Index}_2$, $\text{Index}_3$ and $\text{Index}_4$.
+However, much of the time \VAR{Track Count} will equal \VAR{Index Count}.
+In this case there will be only a single \VAR{Index} value per track.
 
 \clearpage
 

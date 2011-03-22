@@ -101,7 +101,7 @@ class DVDAudio:
             Con.Struct("timestamps",
                        Con.Bytes("unknown1", 2),
                        Con.Bytes("unknown2", 2),
-                       Con.UBInt8("track_number"),
+                       Con.UBInt8("index_number"),
                        Con.Bytes("unknown3", 1),
                        Con.UBInt32("first_pts"),
                        Con.UBInt32("pts_length"),
@@ -298,24 +298,51 @@ class DVDAudio:
                        title_offset.byte_offset +
                        title.sector_pointers_table,
                        os.SEEK_SET)
+                sector_pointers = ([None] +
+                                   [DVDAudio.ATS_SECTOR_POINTER.parse_stream(f)
+                                    for i in xrange(title.indexes)])
 
-                titles.append(DVDATitle(
+                dvda_title = DVDATitle(dvdaudio=self,
+                                       titleset=titleset,
+                                       title=title_number + 1,
+                                       pts_length=title.track_length,
+                                       tracks=[])
+
+                #for each track, determine its first and last sector
+                #based on the sector pointers between the track's
+                #initial index and the next track's initial index
+                for (track_number,
+                     (timestamp, next_timestamp)) in enumerate(zip(
+                        title.timestamps, title.timestamps[1:])):
+                     dvda_title.tracks.append(
+                         DVDATrack(
+                             dvdaudio=self,
+                             titleset=titleset,
+                             title=dvda_title,
+                             track=track_number + 1,
+                             first_pts=timestamp.first_pts,
+                             pts_length=timestamp.pts_length,
+                             first_sector=sector_pointers[
+                                 timestamp.index_number].first_sector,
+                             last_sector=sector_pointers[
+                                 next_timestamp.index_number - 1].last_sector))
+
+                #for the last track, its sector pointers
+                #simply consume what remains on the list
+                timestamp = title.timestamps[-1]
+                dvda_title.tracks.append(
+                    DVDATrack(
                         dvdaudio=self,
                         titleset=titleset,
-                        title=title_number + 1,
-                        pts_length=title.track_length,
-                        tracks=[DVDATrack(dvdaudio=self,
-                                          titleset=titleset,
-                                          title=title_number + 1,
-                                          track=timestamp.track_number,
-                                          first_pts=timestamp.first_pts,
-                                          pts_length=timestamp.pts_length,
-                                          first_sector=pointers.first_sector,
-                                          last_sector=pointers.last_sector)
-                                for (timestamp, pointers) in
-                                zip(title.timestamps, [
-                                    DVDAudio.ATS_SECTOR_POINTER.parse_stream(f)
-                                    for i in xrange(title.tracks)])]))
+                        title=dvda_title,
+                        track=track_number + 2,
+                        first_pts=timestamp.first_pts,
+                        pts_length=timestamp.pts_length,
+                        first_sector=sector_pointers[
+                            timestamp.index_number].first_sector,
+                        last_sector=sector_pointers[-1].last_sector))
+
+                titles.append(dvda_title)
 
             return titles
         finally:

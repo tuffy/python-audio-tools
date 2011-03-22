@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col width=".25" id="track" start="0" end="95">Track₁</col>
-    <col width=".25" start="96" end="191">Track₂</col>
-    <col width=".25" start="192" end="287">Track₃</col>
+    <col width=".25" id="track" start="0" end="95">Index₁</col>
+    <col width=".25" start="96" end="191">Index₂</col>
+    <col width=".25" start="192" end="287">Index₃</col>
     <col width=".25" style="dashed">...</col>
   </row>
   <spacer/>

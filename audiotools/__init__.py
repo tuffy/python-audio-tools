@@ -724,9 +724,13 @@ class ProgressDisplay:
     def __init__(self, messenger):
         """Takes a Messenger object for displaying output."""
 
+        import time
+
         self.messenger = messenger
         self.previous_output = []
         self.progress_rows = []
+        self.last_output_time = 0.0
+        self.time = time.time
 
         if (sys.stdout.isatty()):
             self.add_row = self.add_row_tty
@@ -798,6 +802,10 @@ class ProgressDisplay:
         depending on whether output has changed since
         previously displayed."""
 
+        now = self.time()
+        if ((now - self.last_output_time) < .25):
+            return
+
         screen_width = self.messenger.terminal_size(sys.stdout)[1]
         new_output = [progress_row.unicode(screen_width)
                       for progress_row in self.progress_rows
@@ -807,6 +815,7 @@ class ProgressDisplay:
             for output in new_output:
                 self.messenger.output(output)
             self.previous_output = new_output
+            self.last_output_time = now
 
     def refresh_nontty(self):
         """Refreshes the display of all status rows.
@@ -825,6 +834,8 @@ class ProgressDisplay:
             self.messenger.ansi_uplines(len(self.previous_output))
             self.messenger.ansi_cleardown()
             self.previous_output = []
+            self.last_output_time = 0.0
+
 
     def clear_nontty(self):
         """Clears all previously displayed output."""

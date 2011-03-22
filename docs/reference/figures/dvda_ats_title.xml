@@ -3,7 +3,7 @@
   <row>
     <col start="0" end="15" width=".5">Padding</col>
     <col start="16" end="23" width=".25">Track Count</col>
-    <col start="24" end="31" width=".25">Indexes</col>
+    <col start="24" end="31" width=".25">Index Count</col>
   </row>
   <row>
     <col start="32" end="63" width=".25">Title PTS Length</col>
@@ -20,7 +20,7 @@
   <spacer/>
   <row>
     <col width=".50" start="0" end="31" id="timestamp_s">Padding</col>
-    <col width=".25" start="32" end="39">Track Number</col>
+    <col width=".25" start="32" end="39">Index Number</col>
     <col width=".25" start="40" end="47" id="timestamp_e">Padding</col>
   </row>
   <row>
