@@ -250,7 +250,7 @@ if (__name__ == '__main__'):
             audiotools.make_dirs(filename)
 
             progress = audiotools.SingleProgressDisplay(
-                msg, filename)
+                msg, msg.filename(filename))
 
             #FIXME - catch from_pcm errors here
             encoded_files.append(

@@ -3020,6 +3020,15 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** TODO Add end-of-stream marker checking to analyze_frame()
 **** DONE Optimize to work faster
      Perhaps with multiple blocks per call to read()
+**** TODO Support 1 substream output
+     MLP decoding supports 1 or 2 substreams.
+     In some cases, substream 1 will contain the first 2 channels
+     while substream 2 will contain the rest,
+     which provides two different "mixes" depending on whether
+     one is decoding to 2 channels or not.
+***** TODO Update dvda2track with 1 substream output option
+      This would allow the user to decide which "mix" is desired
+      during extraction.
 *** DONE Perform sanity checks
 ** TODO Document MLP decoder
 *** DONE major sync

@@ -836,7 +836,6 @@ class ProgressDisplay:
             self.previous_output = []
             self.last_output_time = 0.0
 
-
     def clear_nontty(self):
         """Clears all previously displayed output."""
 

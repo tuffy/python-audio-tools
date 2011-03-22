@@ -37,7 +37,11 @@ if (__name__ == '__main__'):
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("cd2xmcd", options)
 
-    cdda = audiotools.CDDA(options.cdrom, perform_logging=False)
+    try:
+        cdda = audiotools.CDDA(options.cdrom, perform_logging=False)
+    except ValueError, err:
+        msg.error(unicode(err))
+        sys.exit(1)
 
     if (len(cdda) == 255):
         msg.error(_(u"No CD in drive"))
