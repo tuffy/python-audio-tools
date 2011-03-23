@@ -335,7 +335,7 @@ class DVDAudio:
                         dvdaudio=self,
                         titleset=titleset,
                         title=dvda_title,
-                        track=track_number + 2,
+                        track=len(title.timestamps),
                         first_pts=timestamp.first_pts,
                         pts_length=timestamp.pts_length,
                         first_sector=sector_pointers[

@@ -2593,6 +2593,38 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Add ID3 number padding to audiotools-config
 ** DONE Document new audiotools-config options in man page
 ** DONE Document new audiotools config options on website
+* DONE Add C-based FLAC encoder
+** DONE Use VERBATIM subframes when necessary
+** DONE Add significant initial padding blocks
+   This will save a lot of time during retagging after FLAC creation
+** DONE Add a variety of unit tests
+   - [X] test_stream.sh
+   - [X] test_flac.sh
+** DONE Convert i_array size and data types to typedefs
+** DONE Convert f_array size and data types to typedefs
+** DONE Add more comprehensive encoding documentation
+** DONE Add a variety of assert() statements
+   As with unit tests, these ensure everything is working during testing
+   without a performance penalty at runtime.
+** DONE Handle foreign RIFF chunks
+** DONE Ensure FLACs work on a variety of other decoders
+   Although decoding properly on the reference decoder *should* guarantee
+   the file works everywhere, the only way to be certain is to test it.
+** DONE Ensure encoder raises the proper exceptions
+** DONE Support Rice2 partitions?
+   The reference encoder uses these for more efficient handling of 24-bit audio
+   but I'm not sure they're strictly necessary for my more basic encoder.
+** DONE Support wasted-bits-per-sample?
+   I don't think I've ever seen these used on actual audio data
+   that isn't artificial and hasn't been processed specifically for its use.
+   As with Rice2, it's something that may get added later.
+** DONE Handle multi-channel PCM data correctly
+   Anything higher than 2 channels needs to set a channel mask
+   and the vorbis comment to the proper value.
+   I expect this will be a long-term project
+   coinciding with re-engineering the to_pcm()/from_pcm() methods.
+** DONE Remove external MD5 dependency
+** DONE Generate SEEKTABLE blocks
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -2656,38 +2688,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   which can be proven to handle all legal files.
   I expect this will require PLY or some similar lexx/yacc mechanism
   which I'll bundle to avoid adding any extra depencies.
-* TODO Add C-based FLAC encoder
-** DONE Use VERBATIM subframes when necessary
-** DONE Add significant initial padding blocks
-   This will save a lot of time during retagging after FLAC creation
-** DONE Add a variety of unit tests
-   - [X] test_stream.sh
-   - [X] test_flac.sh
-** DONE Convert i_array size and data types to typedefs
-** DONE Convert f_array size and data types to typedefs
-** DONE Add more comprehensive encoding documentation
-** DONE Add a variety of assert() statements
-   As with unit tests, these ensure everything is working during testing
-   without a performance penalty at runtime.
-** DONE Handle foreign RIFF chunks
-** DONE Ensure FLACs work on a variety of other decoders
-   Although decoding properly on the reference decoder *should* guarantee
-   the file works everywhere, the only way to be certain is to test it.
-** DONE Ensure encoder raises the proper exceptions
-** DONE Support Rice2 partitions?
-   The reference encoder uses these for more efficient handling of 24-bit audio
-   but I'm not sure they're strictly necessary for my more basic encoder.
-** DONE Support wasted-bits-per-sample?
-   I don't think I've ever seen these used on actual audio data
-   that isn't artificial and hasn't been processed specifically for its use.
-   As with Rice2, it's something that may get added later.
-** DONE Handle multi-channel PCM data correctly
-   Anything higher than 2 channels needs to set a channel mask
-   and the vorbis comment to the proper value.
-   I expect this will be a long-term project
-   coinciding with re-engineering the to_pcm()/from_pcm() methods.
-** DONE Remove external MD5 dependency
-** TODO Generate SEEKTABLE blocks
 * TODO Replace magic numbers with named constants
   There's still a few instances of magic numbers in use,
   in the __flac__.py module, for instance.

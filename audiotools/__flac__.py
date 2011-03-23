@@ -24,7 +24,7 @@ from audiotools import (AudioFile, MetaData, InvalidFile, PCMReader,
                         os, open_files, Image, sys, WaveAudio, AiffAudio,
                         ReplayGain, ignore_sigint, sheet_to_unicode,
                         EncodingError, UnsupportedChannelMask, DecodingError,
-                        UnsupportedChannelCount,
+                        UnsupportedChannelCount, analyze_frames,
                         Messenger, BufferedPCMReader, calculate_replay_gain,
                         ChannelMask, PCMReaderError, __default_quality__,
                         WaveContainer, AiffContainer, to_pcm_progress)
@@ -137,7 +137,11 @@ class FlacMetaData(MetaData):
                         self.streaminfo.data).samplerate)
             elif ((block.type == 3) and (self.seektable is None)):
                 #only one SEEKTABLE allowed
-                self.__dict__['seektable'] = block
+                self.__dict__['seektable'] = FlacSeektable(
+                    [FlacSeekpoint(sample_number=point.sample_number,
+                                   byte_offset=point.byte_offset,
+                                   frame_samples=point.frame_samples)
+                     for point in FlacSeektable.SEEKTABLE.parse(block.data)])
             elif (block.type == 6):
                 #multiple PICTURE blocks are ok
                 image = FlacAudio.PICTURE_COMMENT.parse(block.data)
@@ -650,14 +654,42 @@ class FlacCueSheet:
 
 
 class FlacSeektable:
-
-    #FIXME - should start using this
-
     SEEKTABLE = Con.GreedyRepeater(
             Con.Struct("seekpoint",
-                       Con.UBInt64("first_sample_number"),
-                       Con.UBInt64("first_byte_offset"),
-                       Con.UBInt16("sample_count")))
+                       Con.UBInt64("sample_number"),
+                       Con.UBInt64("byte_offset"),
+                       Con.UBInt16("frame_samples")))
+
+    def __init__(self, seekpoints):
+        self.seekpoints = seekpoints
+
+    def __repr__(self):
+        return "FlacSeektable(%s)" % (self.seekpoints)
+
+    def build_block(self, last=0):
+        seektable_data = FlacSeektable.SEEKTABLE.build(
+            [Con.Container(sample_number=point.sample_number,
+                           byte_offset=point.byte_offset,
+                           frame_samples=point.frame_samples)
+             for point in self.seekpoints])
+
+        return FlacAudio.METADATA_BLOCK_HEADER.build(
+            Con.Container(last_block=last,
+                          block_type=3,
+                          block_length=len(seektable_data))) + seektable_data
+
+
+class FlacSeekpoint:
+    def __init__(self, sample_number, byte_offset, frame_samples):
+        self.sample_number = sample_number
+        self.byte_offset = byte_offset
+        self.frame_samples = frame_samples
+
+    def __repr__(self):
+        return "FLacSeekpoint(%s, %s, %s)" % \
+            (self.sample_number,
+             self.byte_offset,
+             self.frame_samples)
 
 
 class FlacAudio(WaveContainer, AiffContainer):
@@ -1101,19 +1133,51 @@ class FlacAudio(WaveContainer, AiffContainer):
             channel_mask = int(pcmreader.channel_mask)
 
         try:
-            encoders.encode_flac(filename,
-                                 pcmreader=BufferedPCMReader(pcmreader),
-                                 **encoding_options)
+            offsets = encoders.encode_flac(
+                filename,
+                pcmreader=BufferedPCMReader(pcmreader),
+                **encoding_options)
             flac = FlacAudio(filename)
+            metadata = flac.get_metadata()
 
+            #generate SEEKTABLE from encoder offsets and add it to metadata
+            from bisect import bisect_right
+
+            metadata_length = flac.metadata_length()
+            seekpoint_interval = pcmreader.sample_rate * 10
+            total_samples = 0
+            all_frames = {}
+            sample_offsets = []
+            for (byte_offset, pcm_frames) in offsets:
+                all_frames[total_samples] = (byte_offset - metadata_length,
+                                             pcm_frames)
+                sample_offsets.append(total_samples)
+                total_samples += pcm_frames
+
+            seekpoints = []
+            for pcm_frame in xrange(0,
+                                    flac.total_frames(),
+                                    seekpoint_interval):
+                flac_frame = bisect_right(sample_offsets, pcm_frame) - 1
+                seekpoints.append(
+                    FlacSeekpoint(
+                        sample_number=sample_offsets[flac_frame],
+                        byte_offset=all_frames[sample_offsets[flac_frame]][0],
+                        frame_samples=all_frames[sample_offsets[flac_frame]][1]
+                        ))
+
+            metadata.seektable = FlacSeektable(seekpoints)
+
+            #if channels or bps is too high,
+            #automatically generate and add channel mask
             if (((pcmreader.channels > 2) or
                  (pcmreader.bits_per_sample > 16)) and
                 (channel_mask != 0)):
-                metadata = flac.get_metadata()
                 metadata.vorbis_comment[
                     "WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
                     u"0x%.4x" % (channel_mask)]
-                flac.set_metadata(metadata)
+
+            flac.set_metadata(metadata)
 
             return flac
         except (IOError, ValueError), err:
@@ -1426,6 +1490,36 @@ class FlacAudio(WaveContainer, AiffContainer):
         self.__total_frames__ = p.total_samples
         self.__md5__ = "".join([chr(c) for c in p.md5])
         f.close()
+
+    def seektable(self, pcm_frames):
+        """Returns a new FlacSeektable block from this file's data."""
+
+        from bisect import bisect_right
+
+        def seekpoints(reader, metadata_length):
+            total_samples = 0
+
+            for frame in analyze_frames(reader):
+                yield (total_samples, frame['offset'] - metadata_length,
+                       frame['block_size'])
+                total_samples += frame['block_size']
+
+        all_frames = dict([(point[0], (point[1], point[2]))
+                           for point in seekpoints(self.to_pcm(),
+                                                   self.metadata_length())])
+        sample_offsets = all_frames.keys()
+        sample_offsets.sort()
+
+        seekpoints = []
+        for pcm_frame in xrange(0, self.total_frames(), pcm_frames):
+            flac_frame = bisect_right(sample_offsets, pcm_frame) - 1
+            seekpoints.append(
+                FlacSeekpoint(
+                    sample_number=sample_offsets[flac_frame],
+                    byte_offset=all_frames[sample_offsets[flac_frame]][0],
+                    frame_samples=all_frames[sample_offsets[flac_frame]][1]))
+
+        return FlacSeektable(seekpoints)
 
     @classmethod
     def add_replay_gain(cls, filenames, progress=None):

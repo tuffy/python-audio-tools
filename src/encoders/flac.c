@@ -28,7 +28,7 @@
 #define VERSION_STRING(x) VERSION_STRING_(x)
 const static char* AUDIOTOOLS_VERSION = VERSION_STRING(VERSION);
 
-#define DEFAULT_PADDING_SIZE 1024
+#define DEFAULT_PADDING_SIZE 4096
 
 #ifndef MIN
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
@@ -66,6 +66,9 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
     audiotools__MD5Context md5sum;
 
     struct ia_array samples;
+
+    PyObject *frame_offsets = NULL;
+    PyObject *offset = NULL;
 
     streaminfo.options.mid_side = 0;
     streaminfo.options.adaptive_mid_side = 0;
@@ -116,6 +119,9 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
         fclose(file);
         return NULL;
     }
+
+    /*build a list for frame offset info*/
+    frame_offsets = PyList_New(0);
 
 #else
 
@@ -230,6 +236,12 @@ encoders_encode_flac(char *filename,
 
     while (iaa_getitem(&samples, 0)->size > 0) {
 #ifndef STANDALONE
+        offset = Py_BuildValue("(i, i)",
+                               ftell(stream->file),
+                               samples.arrays[0].size);
+        PyList_Append(frame_offsets, offset);
+        Py_DECREF(offset);
+
         Py_BEGIN_ALLOW_THREADS
 #endif
         FlacEncoder_write_frame(stream, &streaminfo, &samples);
@@ -251,11 +263,11 @@ encoders_encode_flac(char *filename,
                               which calls pcmreader.close() in the process*/
     bs_close(stream);     /*close the output file*/
 #ifndef STANDALONE
-    Py_INCREF(Py_None);
-    return Py_None;
+    return frame_offsets;
  error:
     /*an error result does everything a regular result does
       but returns NULL instead of Py_None*/
+    Py_XDECREF(frame_offsets);
     iaa_free(&samples);
     pcmr_close(reader);
     bs_close(stream);

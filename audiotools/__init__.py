@@ -1491,6 +1491,16 @@ class PCMReaderError(PCMReader):
         raise DecodingError(self.error_message)
 
 
+def analyze_frames(pcmreader):
+    """Iterates over a PCMReader's analyze_frame() results."""
+
+    frame = pcmreader.analyze_frame()
+    while (frame is not None):
+        yield frame
+        frame = pcmreader.analyze_frame()
+    pcmreader.close()
+
+
 def to_pcm_progress(audiofile, progress):
     if (progress is None):
         return audiofile.to_pcm()
@@ -4190,16 +4200,6 @@ def read_metadata_file(filename):
 
     #otherwise, throw exception
     raise MetaDataFileException(filename)
-
-
-def analyze_frames(pcmreader):
-    """Iterates over a PCMReader's analyze_frame() results."""
-
-    frame = pcmreader.analyze_frame()
-    while (frame is not None):
-        yield frame
-        frame = pcmreader.analyze_frame()
-    pcmreader.close()
 
 
 #######################
