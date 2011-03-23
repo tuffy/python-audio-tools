@@ -16,7 +16,7 @@ figures/flac_stream2.pdf \
 figures/flac_nonexhaustive.pdf figures/flac_exhaustive.pdf \
 figures/flac_hann.pdf figures/flac_rectangular.pdf figures/flac_tukey.pdf \
 figures/flac_lag.pdf figures/oggflac_stream.pdf \
-figures/flac_read_residual.pdf \
+figures/flac_read_residual.pdf figures/flac_write_residual.pdf \
 figures/m4a_quicktime.pdf figures/m4a_atom.pdf figures/m4a_atom2.pdf \
 figures/m4a_atoms.pdf figures/m4a_ftyp.pdf figures/m4a_mvhd.pdf \
 figures/m4a_tkhd.pdf figures/m4a_mdhd.pdf figures/m4a_hdlr.pdf \

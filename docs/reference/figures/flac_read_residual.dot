@@ -1,4 +1,4 @@
-digraph read_alac_residual {
+digraph read_flac_residual {
   size="5,6";
   ratio=fill;
   node [fontname="DejaVuSans"];

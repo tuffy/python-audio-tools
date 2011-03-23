@@ -1308,20 +1308,16 @@ $2 ^ 4$ using coding method 0, or $2 ^ 5$ using coding method 1.
 
 \subsubsection{Residual Values}
 
-
+\begin{wrapfigure}[5]{r}{4in}
+\includegraphics{figures/flac_write_residual.pdf}
+\end{wrapfigure}
 Encoding individual residual values to Rice coding requires only
-the Rice parameter and the values themselves.
-First, one must convert any negative values to positive by
-multiplying it by -1, subtracting 1 and prepending a 1 bit.
-If the value is already positive, prepend a 0 bit instead.
-Next, we split out new value into most significant bits (MSB) and
-least significant bits (LSB) where the length of the LSB is
-equal to the Rice parameter and MSB contains the remaining bits.
-The MSB value is written unary encoded, whereas the LSB is written as-is.
-
-As with residual decoding, this process is not as difficult as it
-sounds and is best explained by an example, in this case using
-a parameter of 3 and encoding the residual values 18, -25 and 12:
+the Rice parameter and the residuals themselves.
+\vskip 26em
+\par
+\noindent
+As an example, we'll encode the residual values 18, -25 and 12
+with a Rice parameter of 3:
 \begin{figure}[h]
 \includegraphics{figures/flac_rice3.pdf}
 \end{figure}

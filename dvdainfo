@@ -48,6 +48,9 @@ if (__name__ == '__main__'):
     except audiotools.InvalidDVDA, err:
         msg.error(unicode(err))
         sys.exit(1)
+    except OSError, err:
+        msg.os_error(err)
+        sys.exit(1)
 
     titleset = dvda[0]
     for (title_num, title) in enumerate(titleset):
