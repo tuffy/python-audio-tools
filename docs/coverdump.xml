@@ -24,4 +24,14 @@
       a string to prefix to each extracted image file
     </option>
   </options>
+  <examples>
+    <example>
+      <description>
+        Extract the covert art embedded in track.flac to the images/ directory:
+      </description>
+      <command>
+        coverdump track.flac -d images/
+      </command>
+    </example>
+  </examples>
 </manpage>

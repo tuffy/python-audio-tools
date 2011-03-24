@@ -167,8 +167,10 @@
         the current directory
       </description>
       <command>
-        cdrdao read-toc --device /dev/cdrom album.toc;
-        tracktag --cue=album.toc
+        cdrdao read-toc --device /dev/cdrom album.toc
+      </command>
+      <command>
+        tracktag --cue=album.toc *.mp3
       </command>
     </example>
   </examples>

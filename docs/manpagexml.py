@@ -427,32 +427,64 @@ class Option:
 class Example:
     def __init__(self,
                  description=u"",
-                 command=u""):
+                 commands=[]):
         self.description = description
-        self.command = command
+        self.commands = commands
 
     def __repr__(self):
         return "Example(%s, %s)" % \
             (repr(self.description),
-             repr(self.command))
+             repr(self.commands))
 
     @classmethod
     def parse(cls, xml_dom):
         return cls(description=text(subtag(xml_dom, u"description")),
-                   command=text(subtag(xml_dom, u"command")))
+                   commands=map(Command.parse, subtags(xml_dom, u"command")))
 
     def to_man(self, stream):
         stream.write(".LP\n")
         stream.write(self.description.encode('ascii')) #FIXME
         stream.write("\n")
-        stream.write(".IP\n")
-        stream.write(self.command.encode('ascii')) #FIXME
-        stream.write("\n")
+        for command in self.commands:
+            command.to_man(stream)
 
     def to_rst(self, stream):
         stream.write(self.description.encode('utf-8') + "\n")
         stream.write("::\n\n")
-        stream.write("  " + self.command.encode('utf-8') + "\n\n")
+        for command in self.commands:
+            stream.write("  " + command.encode('utf-8') + "\n\n")
+
+
+class Command:
+    def __init__(self, commandline, note=None):
+        self.commandline = commandline
+        self.note = note
+
+    def __repr__(self):
+        return "Command(%s, %s)" % (repr(self.commandline),
+                                    repr(self.note))
+
+    @classmethod
+    def parse(cls, xml_dom):
+        if (xml_dom.hasAttribute(u"note")):
+            note = xml_dom.getAttribute(u"note")
+        else:
+            note = None
+
+        return cls(commandline=text(xml_dom),
+                   note=note)
+
+    def to_man(self, stream):
+        if (self.note is not None):
+            stream.write(".LP\n")
+            stream.write(self.note.encode('ascii') + " :\n\n")
+
+        stream.write(".IP\n")
+        stream.write(self.commandline.encode('ascii'))
+        stream.write("\n\n")
+
+    def to_rst(self, stream):
+        raise NotImplementedError()
 
 
 class Element_P:

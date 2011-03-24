@@ -81,7 +81,9 @@
         Obtain CDImage.cue using the cdrdao(1) utilities:
       </description>
       <command>
-        cdrdao read-toc --device /dev/cdrom CDImage.toc;
+        cdrdao read-toc --device /dev/cdrom CDImage.toc
+      </command>
+      <command>
         toc2cue CDImage.toc CDImage.cue
       </command>
     </example>

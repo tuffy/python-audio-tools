@@ -42,7 +42,7 @@
     <option long="freedb-port" arg="port">
       the FreeDB port number to query for XMCD data
     </option>
-    <option long="no-musicbrainz">
+    <option long="no-musicbrainz"> 
       do not query MusicBrainz
     </option>
     <option long="no-freedb">
@@ -53,4 +53,14 @@
       select the first choice automatically
     </option>
   </options>
+  <examples>
+    <example>
+      <description>
+        Option an XMCD file called album.xmcd from the contents of /dev/cdrom
+      </description>
+      <command>
+        cd2xmcd -c /dev/cdrom -x album.xmcd
+      </command>
+    </example>
+  </examples>
 </manpage>

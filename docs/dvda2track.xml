@@ -79,4 +79,48 @@
       do not add ReplayGain metadata to newly created tracks
     </option>
   </options>
+  <element name="about DVD access">
+    <p>
+      Some systems will spin-down a DVD if it has not been accessed
+      for awhile, but will fail to bring it back up again if reads
+      are requested.
+      For example, one might use dvda2xmcd(1) to get a disc's
+      metadata, then edit it with editxmcd(1).
+      But while editing, the system spins down the DVD drive
+      and subsequent calls to dvda2track(1) fail.
+    </p>
+    <p>
+      In this instance, one might have to reinsert the disc
+      for it to be read properly.
+    </p>
+  </element>
+  <examples>
+    <example>
+      <description>
+        Extract all the tracks in title 1 from /dev/cdrom
+        which is mounted at /media/cdrom/AUDIO_TS as FLAC files
+        using metadata from album.xmcd
+      </description>
+      <command>
+        dvda2track -t flac -x album.xmcd -c /dev/cdrom -A /media/cdrom/AUDIO_TS
+      </command>
+    </example>
+    <example>
+      <description>
+        Sometimes a particularly long disc will split what should be
+        a contiguous collection of tracks across more than one DVD-Audio title.
+        For example, we may have a disc whose label indicates 30 tracks,
+        but has placed 20 tracks in title 1 and 10 tracks in title 2
+        (according to dvdainfo(1)).
+        In this instance, we can use the --title and --track-start
+        options to extract them into a single collection.
+      </description>
+      <command note="Extract the first 20 tracks">
+        dvda2track -c /dev/cdrom -A /media/cdrom/AUDIO_TS --title=1 --track-total=30
+      </command>
+      <command note="Extract the final 10 tracks">
+        dvda2track -c /dev/cdrom -A /media/cdrom/AUDIO_TS --title=2 --track-start=21 --track-total=30
+      </command>
+    </example>
+  </examples>
 </manpage>
