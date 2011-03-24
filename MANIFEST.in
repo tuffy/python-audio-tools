@@ -7,11 +7,13 @@ include audiotools-config
 include cd2track
 include cd2xmcd
 include cdinfo
+include cdplay
 include COPYING
 include coverdump
 include coverview
 include dvda2track
 include dvda2xmcd
+include dvdainfo
 include editxmcd
 include INSTALL
 include Makefile
