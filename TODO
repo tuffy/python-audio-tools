@@ -2947,7 +2947,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO trackcmp
 ** DONE trackplay
 ** TODO tracktag
-** TODO audiotools-config
 ** TODO trackcat
 ** TODO tracksplit
 ** TODO tracklint
@@ -3435,3 +3434,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   and I'd never seen Musepack files in the wild.
   But it could provide a good secondary assimilated lossy format
   in addition to Vorbis.
+* TODO Add interative mode to audiotools-config
+  This is one instance where seeing all the options "up-front"
+  is likely to make the process easier.

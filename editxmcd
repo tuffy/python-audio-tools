@@ -28,9 +28,11 @@ try:
 except ImportError:
     msg = audiotools.Messenger("editxmcd", None)
     msg.error(_(u"urwid is required"))
-    msg.output(_(u"Please download and install urwid from http://excess.org/urwid/"))
+    msg.output(_(u"Please download and install urwid " +
+                 u"from http://excess.org/urwid/"))
     msg.output(_(u"or your system's package manager."))
     sys.exit(1)
+
 
 class MappedEdit(urwid.Edit):
     def __init__(self, caption='', edit_text='', multiline=False,
@@ -49,6 +51,7 @@ class MappedEdit(urwid.Edit):
     def keypress(self, size, key):
         return urwid.Edit.keypress(self, size, self.__key_map__.get(key, key))
 
+
 class Editxmcd(urwid.Pile):
     def __init__(self, xmcd_path, xmcd_file):
         self.xmcd_path = xmcd_path
@@ -60,19 +63,24 @@ class Editxmcd(urwid.Pile):
 
         self.album_name = MappedEdit(edit_text=xmcd_file.album_name,
                                      wrap='clip',
-                                     key_map={'enter': 'down'})
+                                     key_map={'enter': 'down',
+                                              'tab': 'down'})
         self.album_artist = MappedEdit(edit_text=xmcd_file.artist_name,
                                        wrap='clip',
-                                       key_map={'enter': 'down'})
+                                       key_map={'enter': 'down',
+                                                'tab': 'down'})
         self.album_year = MappedEdit(edit_text=xmcd_file.year,
                                      wrap='clip',
-                                     key_map={'enter': 'down'})
+                                     key_map={'enter': 'down',
+                                              'tab': 'down'})
         self.album_catalog = MappedEdit(edit_text=xmcd_file.catalog,
                                         wrap='clip',
-                                        key_map={'enter': 'down'})
+                                        key_map={'enter': 'down',
+                                                 'tab': 'down'})
         self.album_extra = MappedEdit(edit_text=xmcd_file.extra,
                                       wrap='clip',
-                                      key_map={'enter': 'down'})
+                                      key_map={'enter': 'down',
+                                               'tab': 'down'})
 
         self.save = urwid.Button(('unedited', "Save"),
                                  on_press=self.perform_save)
@@ -82,16 +90,17 @@ class Editxmcd(urwid.Pile):
 
         self.track_names = [MappedEdit("",
                                        edit_text=xmcd_file.get_track(i)[0],
-                                       key_map={'enter': 'down'})
+                                       key_map={'enter': 'down',
+                                                'tab': 'down'})
                             for i in xrange(track_total)]
 
         self.track_artists = [MappedEdit("",
                                          edit_text=xmcd_file.get_track(i)[1],
-                                         key_map={'enter': 'down'})
+                                         key_map={'enter': 'down',
+                                                  'tab': 'down'})
                               for i in xrange(track_total)]
 
         self.status_bar = urwid.Text(u'', align='center')
-
 
         #connect the appliction widget signals
         urwid.connect_signal(self.album_name, 'change', self.edited)
@@ -105,7 +114,6 @@ class Editxmcd(urwid.Pile):
 
         for widget in self.track_artists:
             urwid.connect_signal(widget, 'change', self.edited)
-
 
         #setup miscellaneous spacer/info widgets
         track_labels = [urwid.Text(('header', "%2.2d" % (i)), align='right')

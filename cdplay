@@ -33,6 +33,35 @@ gettext.install("audiotools", unicode=True)
 try:
     import urwid
 
+    class MappedButton(urwid.Button):
+        def __init__(self, label, on_press=None, user_data=None,
+                     key_map={}):
+            urwid.Button.__init__(self, label=label,
+                                  on_press=on_press,
+                                  user_data=user_data)
+            self.__key_map__ = key_map
+
+        def keypress(self, size, key):
+            return urwid.Button.keypress(self,
+                                         size,
+                                         self.__key_map__.get(key, key))
+
+    class MappedRadioButton(urwid.RadioButton):
+        def __init__(self, group, label, state='first True',
+                     on_state_change=None, user_data=None,
+                     key_map={}):
+            urwid.RadioButton.__init__(self, group=group,
+                                       label=label,
+                                       state=state,
+                                       on_state_change=on_state_change,
+                                       user_data=user_data)
+            self.__key_map__ = key_map
+
+        def keypress(self, size, key):
+            return urwid.RadioButton.keypress(self,
+                                              size,
+                                              self.__key_map__.get(key, key))
+
     class AudioProgressBar(urwid.ProgressBar):
         def __init__(self, normal, complete, sample_rate, current=0, done=100,
                      satt=None):
@@ -115,8 +144,9 @@ try:
             self.channels = urwid.Text("2ch", align='right')
             self.sample_rate = urwid.Text("44100Hz", align='right')
             self.bits_per_sample = urwid.Text("16bps", align='right')
-            self.play_pause_button = urwid.Button("Play",
-                                                  on_press=self.play_pause)
+            self.play_pause_button = MappedButton("Play",
+                                                  on_press=self.play_pause,
+                                                  key_map={'tab': 'right'})
             self.progress = AudioProgressBar(normal='pg normal',
                                              complete='pg complete',
                                              sample_rate=0,
@@ -159,20 +189,23 @@ try:
                     self.progress])
 
             controls = urwid.GridFlow([
-                    urwid.Button("Prev", on_press=self.previous_track),
+                    MappedButton("Prev", on_press=self.previous_track,
+                                 key_map={'tab': 'right'}),
                     self.play_pause_button,
-                    urwid.Button("Next", on_press=self.next_track)],
+                    MappedButton("Next", on_press=self.next_track,
+                                 key_map={'tab': 'down'})],
                                       9, 4, 1, 'center')
             controls.set_focus(1)
 
             track_list = urwid.ListBox([
-                    urwid.RadioButton(
+                    MappedRadioButton(
                         group=self.track_group,
                         label=track_label(metadata, track.track_number),
                         user_data=(track,
                                    metadata.get_track(track.track_number - 1),
                                    metadata.album_name),
-                        on_state_change=self.select_track)
+                        on_state_change=self.select_track,
+                        key_map={'tab': 'down'})
                     for track in self.track_list])
             body = urwid.Pile([('fixed', 2, urwid.Filler(urwid.Pile([
                                 controls, urwid.Divider(div_char='-')]))),
