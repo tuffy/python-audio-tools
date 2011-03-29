@@ -27,6 +27,8 @@ class HexString(str):
     def __new__(cls, data, *args, **kwargs):
         return str.__new__(cls, data)
     def __pretty_str__(self, nesting = 1, indentation = "    "):
+        if not self:
+            return "''"
         sep = "\n" + indentation * nesting
         return sep + sep.join(hexdump(self))
 

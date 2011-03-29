@@ -29,12 +29,12 @@ import test_streams
 import cStringIO
 from hashlib import md5
 
-from test_reorg import (parser, Variable_Reader, BLANK_PCM_Reader,
-                        RANDOM_PCM_Reader,
-                        EXACT_BLANK_PCM_Reader, SHORT_PCM_COMBINATIONS,
-                        MD5_Reader, FrameCounter,
-                        MiniFrameReader, Combinations,
-                        TEST_COVER1, TEST_COVER2, TEST_COVER3, HUGE_BMP)
+from test import (parser, Variable_Reader, BLANK_PCM_Reader,
+                  RANDOM_PCM_Reader,
+                  EXACT_BLANK_PCM_Reader, SHORT_PCM_COMBINATIONS,
+                  MD5_Reader, FrameCounter,
+                  MiniFrameReader, Combinations,
+                  TEST_COVER1, TEST_COVER2, TEST_COVER3, HUGE_BMP)
 
 def do_nothing(self):
     pass

@@ -181,11 +181,27 @@ def NFloat64(name):
 # arrays
 #===============================================================================
 def Array(count, subcon):
-    """array of subcon repeated count times.
-    * subcon - the subcon.
-    * count - an integer, or a function taking the context as an argument, 
-      returning the count
     """
+    Repeats the given unit a fixed number of times.
+
+    :param int count: number of times to repeat
+    :param ``Construct`` subcon: construct to repeat
+
+    >>> c = StrictRepeater(4, UBInt8("foo"))
+    >>> c
+    <Repeater('foo')>
+    >>> c.parse("\\x01\\x02\\x03\\x04")
+    [1, 2, 3, 4]
+    >>> c.parse("\\x01\\x02\\x03\\x04\\x05\\x06")
+    [1, 2, 3, 4]
+    >>> c.build([5,6,7,8])
+    '\\x05\\x06\\x07\\x08'
+    >>> c.build([5,6,7,8,9])
+    Traceback (most recent call last):
+      ...
+    construct.core.RepeaterError: expected 4..4, found 5
+    """
+
     if callable(count):
         con = MetaArray(count, subcon)
     else:
@@ -196,7 +212,7 @@ def Array(count, subcon):
 def PrefixedArray(subcon, length_field = UBInt8("length")):
     """an array prefixed by a length field.
     * subcon - the subcon to be repeated
-    * length_field - an integer construct
+    * length_field - a construct returning an integer
     """
     return LengthValueAdapter(
         Sequence(subcon.name, 
@@ -211,13 +227,52 @@ def OpenRange(mincount, subcon):
     return Range(mincount, maxint, subcon)
 
 def GreedyRange(subcon):
-    """an open range (1 or more times) of repeated subcon.
-    * subcon - the subcon to repeat"""
+    """
+    Repeats the given unit one or more times.
+
+    :param ``Construct`` subcon: construct to repeat
+
+    >>> from construct import GreedyRepeater, UBInt8
+    >>> c = GreedyRepeater(UBInt8("foo"))
+    >>> c.parse("\\x01")
+    [1]
+    >>> c.parse("\\x01\\x02\\x03")
+    [1, 2, 3]
+    >>> c.parse("\\x01\\x02\\x03\\x04\\x05\\x06")
+    [1, 2, 3, 4, 5, 6]
+    >>> c.parse("")
+    Traceback (most recent call last):
+      ...
+    construct.core.RepeaterError: expected 1..2147483647, found 0
+    >>> c.build([1,2])
+    '\\x01\\x02'
+    >>> c.build([])
+    Traceback (most recent call last):
+      ...
+    construct.core.RepeaterError: expected 1..2147483647, found 0
+    """
+
     return OpenRange(1, subcon)
 
 def OptionalGreedyRange(subcon):
-    """an open range (0 or more times) of repeated subcon.
-    * subcon - the subcon to repeat"""
+    """
+    Repeats the given unit zero or more times. This repeater can't
+    fail, as it accepts lists of any length.
+
+    :param ``Construct`` subcon: construct to repeat
+
+    >>> from construct import OptionalGreedyRepeater, UBInt8
+    >>> c = OptionalGreedyRepeater(UBInt8("foo"))
+    >>> c.parse("")
+    []
+    >>> c.parse("\\x01\\x02")
+    [1, 2]
+    >>> c.build([])
+    ''
+    >>> c.build([1,2])
+    '\\x01\\x02'
+    """
+
     return OpenRange(0, subcon)
 
 
@@ -235,7 +290,7 @@ def Bitwise(subcon):
     * subcon - a bitwise construct (usually BitField)
     """
     # subcons larger than MAX_BUFFER will be wrapped by Restream instead 
-    # of Buffered. implementation details, don't stick your nose :)
+    # of Buffered. implementation details, don't stick your nose in :)
     MAX_BUFFER = 1024 * 8
     def resizer(length):
         if length & 7:
@@ -269,14 +324,24 @@ def Aligned(subcon, modulus = 4, pattern = "\x00"):
     else:
         def padlength(ctx):
             return (modulus - (subcon._sizeof(ctx) % modulus)) % modulus
-    return IndexingAdapter(
-        Sequence(subcon.name, 
-            subcon, 
-            Padding(padlength, pattern = pattern),
-            nested = False,
-        ),
-        0
+    return SeqOfOne(subcon.name, 
+        subcon, 
+        # ??????
+        # ??????
+        # ??????
+        # ??????
+        Padding(padlength, pattern = pattern),
+        nested = False,
     )
+
+def SeqOfOne(name, *args, **kw):
+    """a sequence of one element. only the first element is meaningful, the
+    rest are discarded
+    * name - the name of the sequence
+    * args - subconstructs
+    * kw - any keyword arguments to Sequence
+    """
+    return IndexingAdapter(Sequence(name, *args, **kw), index = 0)
 
 def Embedded(subcon):
     """embeds a struct into the enclosing struct.
@@ -365,43 +430,69 @@ def EmbeddedBitStruct(*subcons):
 #===============================================================================
 # strings
 #===============================================================================
-def String(name, length, encoding = None, padchar = None, 
-           paddir = "right", trimdir = "right"):
-    """a fixed-length, optionally padded string of characters
-    * name - the name of the field
-    * length - the length (integer)
-    * encoding - the encoding to use (e.g., "utf8"), or None, for raw bytes.
-      default is None
-    * padchar - the padding character (commonly "\x00"), or None to 
-      disable padding. default is None
-    * paddir - the direction where padding is placed ("right", "left", or 
-      "center"). the default is "right". this argument is meaningless if 
-      padchar is None.
-    * trimdir - the direction where trimming will take place ("right" or 
-      "left"). the default is "right". trimming is only meaningful for
-      building, when the given string is too long. this argument is 
-      meaningless if padchar is None.
+def String(name, length, encoding=None, padchar=None, paddir="right",
+    trimdir="right"):
     """
-    con = StringAdapter(Field(name, length), encoding = encoding)
+    A configurable, fixed-length string field.
+
+    The padding character must be specified for padding and trimming to work.
+
+    :param str name: name
+    :param int length: length, in bytes
+    :param str encoding: encoding (e.g. "utf8") or None for no encoding
+    :param str padchar: optional character to pad out strings
+    :param str paddir: direction to pad out strings; one of "right", "left",
+                       or "both"
+    :param str trim: direction to trim strings; one of "right", "left"
+
+    >>> from construct import String
+    >>> String("foo", 5).parse("hello")
+    'hello'
+    >>>
+    >>> String("foo", 12, encoding = "utf8").parse("hello joh\\xd4\\x83n")
+    u'hello joh\\u0503n'
+    >>>
+    >>> foo = String("foo", 10, padchar = "X", paddir = "right")
+    >>> foo.parse("helloXXXXX")
+    'hello'
+    >>> foo.build("hello")
+    'helloXXXXX'
+    """
+
+    con = StringAdapter(Field(name, length), encoding=encoding)
     if padchar is not None:
-        con = PaddedStringAdapter(con, 
-            padchar = padchar, 
-            paddir = paddir, 
-            trimdir = trimdir
-        )
+        con = PaddedStringAdapter(con, padchar=padchar, paddir=paddir,
+            trimdir=trimdir)
     return con
 
-def PascalString(name, length_field = UBInt8("length"), encoding = None):
-    """a string prefixed with a length field. the data must directly follow 
-    the length field.
-    * name - the name of the 
-    * length_field - a numeric construct (i.e., UBInt8) that holds the 
-      length. default is an unsigned, 8-bit integer field. note that this
-      argument must pass an instance of a construct, not a class 
-      (`UBInt8("length")` rather than `UBInt8`)
-    * encoding - the encoding to use (e.g., "utf8"), or None, for raw bytes.
-      default is None
+def PascalString(name, length_field=UBInt8("length"), encoding=None):
     """
+    A length-prefixed string.
+
+    ``PascalString`` is named after the string types of Pascal, which are
+    length-prefixed. Lisp strings also follow this convention.
+
+    The length field will appear in the same ``Container`` as the
+    ``PascalString``, with the given name.
+
+    :param str name: name
+    :param ``Construct`` length_field: a field which will store the length of
+                                       the string
+    :param str encoding: encoding (e.g. "utf8") or None for no encoding
+
+    >>> foo = PascalString("foo")
+    >>> foo.parse("\\x05hello")
+    'hello'
+    >>> foo.build("hello world")
+    '\\x0bhello world'
+    >>>
+    >>> foo = PascalString("foo", length_field = UBInt16("length"))
+    >>> foo.parse("\\x00\\x05hello")
+    'hello'
+    >>> foo.build("hello")
+    '\\x00\\x05hello'
+    """
+
     return StringAdapter(
         LengthValueAdapter(
             Sequence(name,
@@ -409,28 +500,50 @@ def PascalString(name, length_field = UBInt8("length"), encoding = None):
                 Field("data", lambda ctx: ctx[length_field.name]),
             )
         ),
-        encoding = encoding,
+        encoding=encoding,
     )
 
-def CString(name, terminators = "\x00", encoding = None, 
-            char_field = Field(None, 1)):
-    r"""a c-style string (string terminated by a terminator char)
-    * name - the name fo the string
-    * terminators - a sequence of terminator chars. default is "\x00".
-    * encoding - the encoding to use (e.g., "utf8"), or None, for raw bytes.
-      default is None
-    * char_field - the construct that represents a single character. default
-      is a one-byte character. note that this argument must be an instance
-      of a construct, not a construct class (`Field("char", 1)` rather than
-      `Field`)
+def CString(name, terminators="\x00", encoding=None,
+    char_field=Field(None, 1)):
+    """
+    A string ending in a terminator.
+
+    ``CString`` is similar to the strings of C, C++, and other related
+    programming languages.
+
+    By default, the terminator is the NULL byte (0x00).
+
+    :param str name: name
+    :param iterable terminators: sequence of valid terminators, in order of
+                                 preference
+    :param str encoding: encoding (e.g. "utf8") or None for no encoding
+    :param ``Construct`` char_field: construct representing a single character
+
+    >>> foo = CString("foo")
+    >>>
+    >>> foo.parse("hello\\x00")
+    'hello'
+    >>> foo.build("hello")
+    'hello\\x00'
+    >>>
+    >>> foo = CString("foo", terminators = "XYZ")
+    >>>
+    >>> foo.parse("helloX")
+    'hello'
+    >>> foo.parse("helloY")
+    'hello'
+    >>> foo.parse("helloZ")
+    'hello'
+    >>> foo.build("hello")
+    'helloX'
     """
     return Rename(name,
         CStringAdapter(
-            RepeatUntil(lambda obj, ctx: obj in terminators, 
+            RepeatUntil(lambda obj, ctx: obj in terminators,
                 char_field,
             ),
-            terminators = terminators,
-            encoding = encoding,
+            terminators=terminators,
+            encoding=encoding,
         )
     )
 
@@ -486,7 +599,8 @@ def OnDemandPointer(offsetfunc, subcon, force_build = True):
         force_build = force_build
     )
 
-
+def Magic(data):
+    return ConstAdapter(Field(None, len(data)), data)
 
 
 

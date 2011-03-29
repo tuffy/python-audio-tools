@@ -378,7 +378,7 @@ class PaddingAdapter(Adapter):
     
     Parameters:
     * subcon - the subcon to pad
-    * pattern - the padding pattern (character). default is "\x00")
+    * pattern - the padding pattern (character). default is "\x00"
     * strict - whether or not to verify, during parsing, that the given 
       padding matches the padding pattern. default is False (unstrict)
     """

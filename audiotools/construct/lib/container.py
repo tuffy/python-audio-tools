@@ -19,7 +19,9 @@ class Container(object):
     __slots__ = ["__dict__", "__attrs__"]
     def __init__(self, **kw):
         self.__dict__.update(kw)
-        object.__setattr__(self, "__attrs__", kw.keys())
+        attrs = []
+        attrs.extend(kw.keys())
+        object.__setattr__(self, "__attrs__", attrs)
     
     def __eq__(self, other):
         try:
@@ -34,7 +36,7 @@ class Container(object):
         self.__attrs__.remove(name)
     def __setattr__(self, name, value):
         d = self.__dict__
-        if name not in d:
+        if name not in d and not name.startswith("__"):
             self.__attrs__.append(name)
         d[name] = value
     def __getitem__(self, name):
@@ -51,10 +53,13 @@ class Container(object):
         new.__attrs__ = self.__attrs__[:]
         new.__dict__ = self.__dict__.copy()
         return new
+    def __iter__(self):
+        for name in self.__attrs__:
+            yield name, self.__dict__[name]
     
     @recursion_lock("<...>")
     def __repr__(self):
-        attrs = sorted("%s = %r" % (k, v) 
+        attrs = sorted("%s = %s" % (k, repr(v))
             for k, v in self.__dict__.iteritems() 
             if not k.startswith("_"))
         return "%s(%s)" % (self.__class__.__name__, ", ".join(attrs))
@@ -64,8 +69,7 @@ class Container(object):
     def __pretty_str__(self, nesting = 1, indentation = "    "):
         attrs = []
         ind = indentation * nesting
-        for k in self.__attrs__:
-            v = self.__dict__[k]
+        for k, v in self:
             if not k.startswith("_"):
                 text = [ind, k, " = "]
                 if hasattr(v, "__pretty_str__"):
@@ -77,12 +81,25 @@ class Container(object):
             return "%s()" % (self.__class__.__name__,)
         attrs.insert(0, self.__class__.__name__ + ":")
         return "\n".join(attrs)
+    
+    def __introspect__(self):
+        for k in self.__attrs__:
+            v = self.__dict__[k]
+            if not k.startswith("_"):
+                yield "kv", (k, v)
+
 
 class FlagsContainer(Container):
     """
     A container providing pretty-printing for flags. Only set flags are 
     displayed. 
     """
+    def __inspect__(self):
+        for k in self.__attrs__:
+            v = self.__dict__[k]
+            if not k.startswith("_") and v:
+                yield "kv", (k, v)
+    
     def __pretty_str__(self, nesting = 1, indentation = "    "):
         attrs = []
         ind = indentation * nesting

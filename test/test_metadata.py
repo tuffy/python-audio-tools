@@ -21,9 +21,9 @@ import unittest
 import audiotools
 import tempfile
 
-from test_reorg import (parser, BLANK_PCM_Reader, Combinations,
-                        TEST_COVER1, TEST_COVER2, TEST_COVER3, TEST_COVER4,
-                        HUGE_BMP)
+from test import (parser, BLANK_PCM_Reader, Combinations,
+                  TEST_COVER1, TEST_COVER2, TEST_COVER3, TEST_COVER4,
+                  HUGE_BMP)
 
 def do_nothing(self):
     pass

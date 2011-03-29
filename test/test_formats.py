@@ -30,15 +30,15 @@ import cStringIO
 import subprocess
 from audiotools import Con
 
-from test_reorg import (parser,
-                        BLANK_PCM_Reader, RANDOM_PCM_Reader,
-                        EXACT_BLANK_PCM_Reader, EXACT_SILENCE_PCM_Reader,
-                        Variable_Reader,
-                        EXACT_RANDOM_PCM_Reader, MD5_Reader,
-                        Join_Reader, FrameCounter,
-                        run_analysis, Combinations,
-                        TEST_COVER1, TEST_COVER2, TEST_COVER3,
-                        HUGE_BMP)
+from test import (parser,
+                  BLANK_PCM_Reader, RANDOM_PCM_Reader,
+                  EXACT_BLANK_PCM_Reader, EXACT_SILENCE_PCM_Reader,
+                  Variable_Reader,
+                  EXACT_RANDOM_PCM_Reader, MD5_Reader,
+                  Join_Reader, FrameCounter,
+                  run_analysis, Combinations,
+                  TEST_COVER1, TEST_COVER2, TEST_COVER3,
+                  HUGE_BMP)
 
 def do_nothing(self):
     pass

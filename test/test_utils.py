@@ -30,10 +30,10 @@ import time
 import test_streams
 from hashlib import md5
 
-from test_reorg import (parser, BLANK_PCM_Reader, Combinations,
-                        EXACT_BLANK_PCM_Reader, RANDOM_PCM_Reader,
-                        TEST_COVER1, TEST_COVER2, TEST_COVER3, TEST_COVER4,
-                        HUGE_BMP)
+from test import (parser, BLANK_PCM_Reader, Combinations,
+                  EXACT_BLANK_PCM_Reader, RANDOM_PCM_Reader,
+                  TEST_COVER1, TEST_COVER2, TEST_COVER3, TEST_COVER4,
+                  HUGE_BMP)
 
 class InvalidTemporaryFile:
     def __init__(self, bad_path):

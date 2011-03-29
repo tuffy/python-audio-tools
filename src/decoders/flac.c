@@ -354,7 +354,7 @@ FlacDecoder_analyze_frame(decoders_FlacDecoder* self, PyObject *args)
     bs_etry(self->bitstream);
 
     /*return frame analysis*/
-    return Py_BuildValue("{si si si si si si sN si}",
+    return Py_BuildValue("{si si si si si sK sN si}",
                          "block_size", frame_header.block_size,
                          "sample_rate", frame_header.sample_rate,
                          "channel_assignment", frame_header.channel_assignment,
@@ -1154,7 +1154,7 @@ read_utf8(Bitstream *stream)
 {
     uint32_t total_bytes = stream->read_unary(stream, 0);
     uint32_t value = stream->read(stream, 7 - total_bytes);
-    for (;total_bytes > 1;total_bytes--) {
+    for (;total_bytes > 1; total_bytes--) {
         value = (value << 6) | (stream->read(stream, 8) & 0x3F);
     }
 

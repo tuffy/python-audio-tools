@@ -352,18 +352,49 @@ class Range(Subconstruct):
     A range-array. The subcon will iterate between `mincount` to `maxcount`
     times. If less than `mincount` elements are found, raises RangeError.
     See also GreedyRange and OptionalGreedyRange.
-    
-    Notes:
-    * requires a seekable stream.
-    
+
+    The general-case repeater. Repeats the given unit for at least mincount
+    times, and up to maxcount times. If an exception occurs (EOF, validation
+    error), the repeater exits. If less than mincount units have been
+    successfully parsed, a RepeaterError is raised.
+
+    .. note::
+       This object requires a seekable stream for parsing.
+
     Parameters:
-    * mincount - the minimal count (an integer)
-    * maxcount - the maximal count (an integer)
-    * subcon - the subcon to repeat
-    
+
+     * mincount - the minimal count (an integer)
+     * maxcount - the maximal count (an integer)
+     * subcon - the subcon to repeat
+
     Example:
     Range(5, 8, UBInt8("foo"))
+
+    >>> c = Repeater(3, 7, UBInt8("foo"))
+    >>> c.parse("\\x01\\x02")
+    Traceback (most recent call last):
+      ...
+    construct.core.RepeaterError: expected 3..7, found 2
+    >>> c.parse("\\x01\\x02\\x03")
+    [1, 2, 3]
+    >>> c.parse("\\x01\\x02\\x03\\x04\\x05\\x06")
+    [1, 2, 3, 4, 5, 6]
+    >>> c.parse("\\x01\\x02\\x03\\x04\\x05\\x06\\x07")
+    [1, 2, 3, 4, 5, 6, 7]
+    >>> c.parse("\\x01\\x02\\x03\\x04\\x05\\x06\\x07\\x08\\x09")
+    [1, 2, 3, 4, 5, 6, 7]
+    >>> c.build([1,2])
+    Traceback (most recent call last):
+      ...
+    construct.core.RepeaterError: expected 3..7, found 2
+    >>> c.build([1,2,3,4])
+    '\\x01\\x02\\x03\\x04'
+    >>> c.build([1,2,3,4,5,6,7,8])
+    Traceback (most recent call last):
+      ...
+    construct.core.RepeaterError: expected 3..7, found 8
     """
+
     __slots__ = ["mincount", "maxcout"]
     def __init__(self, mincount, maxcout, subcon):
         Subconstruct.__init__(self, subcon)
@@ -385,10 +416,10 @@ class Range(Subconstruct):
                     pos = stream.tell()
                     obj.append(self.subcon._parse(stream, context))
                     c += 1
-        except ConstructError:
+        except ConstructError, ex:
             if c < self.mincount:
                 raise RangeError("expected %d to %d, found %d" % 
-                    (self.mincount, self.maxcout, c))
+                    (self.mincount, self.maxcout, c), ex)
             stream.seek(pos)
         return obj
     def _build(self, obj, stream, context):
@@ -405,10 +436,10 @@ class Range(Subconstruct):
                 for subobj in obj:
                     self.subcon._build(subobj, stream, context)
                     cnt += 1
-        except ConstructError:
+        except ConstructError, ex:
             if cnt < self.mincount:
                 raise RangeError("expected %d to %d, found %d" % 
-                    (self.mincount, self.maxcout, len(obj)))
+                    (self.mincount, self.maxcout, len(obj)), ex)
     def _sizeof(self, context):
         raise SizeofError("can't calculate size")
 
@@ -681,7 +712,7 @@ class Switch(Construct):
             raise SwitchError("no default case defined")
         def _sizeof(self, context):
             raise SwitchError("no default case defined")
-    NoDefault = NoDefault("NoDefault")
+    NoDefault = NoDefault("No default value specified")
     
     __slots__ = ["subcons", "keyfunc", "cases", "default", "include_key"]
     
@@ -855,10 +886,9 @@ class Peek(Subconstruct):
     def _parse(self, stream, context):
         pos = stream.tell()
         try:
-            try:
-                return self.subcon._parse(stream, context)
-            except FieldError:
-                pass
+            return self.subcon._parse(stream, context)
+        except FieldError:
+            pass
         finally:
             stream.seek(pos)
     def _build(self, obj, stream, context):
@@ -1161,7 +1191,7 @@ class Pass(Construct):
     
     Notes:
     * this construct is a singleton. do not try to instatiate it, as it 
-      will not work :)
+      will not work...
     
     Example:
     Pass
@@ -1178,11 +1208,13 @@ Pass = Pass(None)
 class Terminator(Construct):
     """
     Asserts the end of the stream has been reached at the point it's placed.
-    You can use this to ensure no more unparsed data follows.
+    You can use this to ensure no more unparsed data follows. 
     
     Notes:
+    * this construct is only meaningful for parsing. for building, it's 
+      a no-op.
     * this construct is a singleton. do not try to instatiate it, as it 
-      will not work :)
+      will not work...
     
     Example:
     Terminator

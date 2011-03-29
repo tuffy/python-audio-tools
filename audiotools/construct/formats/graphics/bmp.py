@@ -52,12 +52,6 @@ rle8pixel = RunLengthAdapter(
 #===============================================================================
 # file structure
 #===============================================================================
-def iff(cond, thenval, elseval):
-    if cond:
-        return thenval
-    else:
-        return elseval
-
 bitmap_file = Struct("bitmap_file",
     # header
     Const(String("signature", 2), "BM"),
@@ -91,7 +85,7 @@ bitmap_file = Struct("bitmap_file",
     
     # palette (24 bit has no palette)
     OnDemand(
-        Array(lambda ctx: iff(ctx.bpp <= 8, 2 ** ctx.bpp, 0), 
+        Array(lambda ctx: 2 ** ctx.bpp if ctx.bpp <= 8 else 0, 
             Struct("palette",
                 Byte("blue"),
                 Byte("green"),
@@ -116,26 +110,3 @@ if __name__ == "__main__":
     obj = bitmap_file.parse_stream(open("../../test/bitmap8.bmp", "rb"))
     print obj 
     print repr(obj.pixels.value)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
