@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manpage>
-  <utility>trackverify</utility>
+  <utility>track2cd</utility>
   <author>Brian Langenberger</author>
   <section>1</section>
   <name>records audio compact disc from tracks</name>

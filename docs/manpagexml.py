@@ -217,38 +217,38 @@ class Manpage:
         stream.write("_\n")
         stream.write(".TE\n")
 
-    def to_rst(self, stream):
-        #write header
-        stream.write(self.utility.encode('utf-8') + "\n")
-        stream.write((u"=" * len(self.utility)) + "\n\n")
-        stream.write(self.title.encode('utf-8') + '\n\n')
+    def to_html(self, stream):
+        stream.write('<div class="utility" id="%s">\n' %
+                     (self.utility.encode('utf-8')))
 
-        #write synopsis, if present
-        #FIXME
+        #display utility name
+        stream.write("<h2>%s</h2>\n" % (self.utility.encode('utf-8')))
 
-        #write description
-        stream.write("Description\n")
-        stream.write("^^^^^^^^^^^\n")
-        stream.write(self.description.encode('utf-8') + "\n\n")
+        #display utility description
+        stream.write("<p>%s</p>\n" % (self.description.encode('utf-8')))
 
-        #write options
-        for option in self.options:
-            option.to_rst(stream)
+        #display options
+        for option_section in self.options:
+            option_section.to_html(stream)
 
-        #write other elements
+        #display additional sections
         for element in self.elements:
-            element.to_rst(stream)
+            element.to_html(stream)
 
-        #write examples
+        #display examples
         if (len(self.examples) > 0):
+            stream.write('<dl class="examples">\n')
             if (len(self.examples) > 1):
-                stream.write("Examples\n")
-                stream.write("^^^^^^^^\n")
+                stream.write("<dt>Examples</dt>\n")
             else:
-                stream.write("Example\n")
-                stream.write("^^^^^^^\n")
+                stream.write("<dt>Example</dt>\n")
+            stream.write("<dd>\n")
             for example in self.examples:
-                example.to_rst(stream)
+                example.to_html(stream)
+            stream.write("</dd>\n")
+            stream.write("</dl>\n")
+
+        stream.write('</div>\n')
 
 class Options:
     def __init__(self, options, category=None):
@@ -281,17 +281,20 @@ class Options:
         for option in self.options:
             option.to_man(stream)
 
-    def to_rst(self, stream):
+    def to_html(self, stream):
+        stream.write("<dl>\n")
         if (self.category is None):
-            stream.write("Options\n")
-            stream.write("^^^^^^^\n")
+            stream.write("<dt>Options</dt>\n")
         else:
-            stream.write("%(category)s Options\n" %
-                         {"category":
-                              self.category.capitalize().encode('utf-8')})
-            stream.write("^" * (len(self.category) + len(" Options")) + "\n")
+            stream.write("<dt>%s Options</dt>\n" %
+                         self.category.capitalize().encode('utf-8'))
+        stream.write("<dd>\n")
+        stream.write("<dl>\n")
         for option in self.options:
-            option.to_rst(stream)
+            option.to_html(stream)
+        stream.write("</dl>\n")
+        stream.write("</dd>\n")
+        stream.write("</dl>\n")
 
 
 class Option:
@@ -355,7 +358,7 @@ class Option:
                               "arg_name": man_escape(self.arg_name.upper())})
             else:
                 stream.write(("\\fB\\-%(short_arg)s\\fR, " +
-                              "\\fB\\-\\-%(long_arg)s\n") %
+                              "\\fB\\-\\-%(long_arg)s\\fR\n") %
                              {"short_arg": man_escape(self.short_arg),
                               "long_arg": man_escape(self.long_arg)})
         elif (self.short_arg is not None):
@@ -365,7 +368,7 @@ class Option:
                              {"short_arg": man_escape(self.short_arg),
                               "arg_name": man_escape(self.arg_name.upper())})
             else:
-                stream.write("\\fB\\-%(short_arg)s\n" %
+                stream.write("\\fB\\-%(short_arg)s\\fR\n" %
                              {"short_arg": man_escape(self.short_arg)})
         elif (self.long_arg is not None):
             if (self.arg_name is not None):
@@ -374,7 +377,7 @@ class Option:
                              {"long_arg": man_escape(self.long_arg),
                               "arg_name": man_escape(self.arg_name.upper())})
             else:
-                stream.write("\\fB\\-\\-%(long_arg)s\n" %
+                stream.write("\\fB\\-\\-%(long_arg)s\\fR\n" %
                              {"long_arg": man_escape(self.long_arg)})
         else:
             raise ValueError("short arg or long arg must be present in option")
@@ -383,45 +386,49 @@ class Option:
             stream.write(self.description.encode('ascii'))
             stream.write("\n")
 
-    def to_rst(self, stream):
+    def to_html(self, stream):
+        stream.write("<dt>\n")
         if ((self.short_arg is not None) and
             (self.long_arg is not None)):
             if (self.arg_name is not None):
-                stream.write(("-%(short_arg)s %(arg_name)s, " +
-                              "--%(long_arg)s=%(arg_name)s\n") %
+                stream.write(("<b>-%(short_arg)s</b>, " +
+                              "<b>--%(long_arg)s</b>=" +
+                              "<i>%(arg_name)s</i>\n") %
                              {"short_arg": self.short_arg.encode('utf-8'),
                               "long_arg": self.long_arg.encode('utf-8'),
-                              "arg_name": self.arg_name.upper().encode('utf-8')})
+                              "arg_name": man_escape(self.arg_name.upper())})
             else:
-                stream.write(("-%(short_arg)s, " +
-                              "--%(long_arg)s\n") %
+                stream.write(("<b>-%(short_arg)s</b>, " +
+                              "<b>--%(long_arg)s</b>\n") %
                              {"short_arg": self.short_arg.encode('utf-8'),
                               "long_arg": self.long_arg.encode('utf-8')})
         elif (self.short_arg is not None):
             if (self.arg_name is not None):
-                stream.write(("-%(short_arg)s " +
-                              "%(arg_name)s\n") %
+                stream.write(("<b>-%(short_arg)s</b> " +
+                              "<i>%(arg_name)s</i>\n") %
                              {"short_arg": self.short_arg.encode('utf-8'),
                               "arg_name": self.arg_name.upper().encode('utf-8')})
             else:
-                stream.write("-%(short_arg)s\n" %
+                stream.write("<b>-%(short_arg)s\n" %
                              {"short_arg": self.short_arg.encode('utf-8')})
         elif (self.long_arg is not None):
             if (self.arg_name is not None):
-                stream.write(("--%(long_arg)s=%(arg_name)s\n") %
+                stream.write(("<b>--%(long_arg)s</b>" +
+                              "=<i>%(arg_name)s</i>\n") %
                              {"long_arg": self.long_arg.encode('utf-8'),
                               "arg_name": self.arg_name.upper().encode('utf-8')})
             else:
-                stream.write("--%(long_arg)s\n" %
+                stream.write("<b>--%(long_arg)s</b>\n" %
                              {"long_arg": self.long_arg.encode('utf-8')})
         else:
             raise ValueError("short arg or long arg must be present in option")
 
+        stream.write("</dt>\n")
+
         if (self.description is not None):
-            stream.write("  ")
-            stream.write(self.description.encode('utf-8'))
-            stream.write("\n")
-        stream.write("\n")
+            stream.write("<dd>%s</dd>\n" % (self.description.encode('ascii')))
+        else:
+            stream.write("<dd></dd>\n")
 
 
 class Example:
@@ -448,11 +455,14 @@ class Example:
         for command in self.commands:
             command.to_man(stream)
 
-    def to_rst(self, stream):
-        stream.write(self.description.encode('utf-8') + "\n")
-        stream.write("::\n\n")
+    def to_html(self, stream):
+        stream.write('<dl>\n')
+        stream.write("<dt>%s</dt>\n" % (self.description.encode('utf-8')))
+        stream.write("<dd>\n")
         for command in self.commands:
-            stream.write("  " + command.encode('utf-8') + "\n\n")
+            command.to_html(stream)
+        stream.write("</dd>\n")
+        stream.write("</dl>\n")
 
 
 class Command:
@@ -483,8 +493,13 @@ class Command:
         stream.write(self.commandline.encode('ascii'))
         stream.write("\n\n")
 
-    def to_rst(self, stream):
-        raise NotImplementedError()
+    def to_html(self, stream):
+        if (self.note is not None):
+            stream.write('<span class="note">%s :</span><br>\n' %
+                         self.note.encode('utf-8'))
+
+        stream.write(self.commandline.encode('utf-8'))
+        stream.write("<br>\n")
 
 
 class Element_P:
@@ -502,8 +517,8 @@ class Element_P:
         stream.write(self.contents.encode('ascii'))
         stream.write("\n.PP\n")
 
-    def to_rst(self, stream):
-        stream.write(self.contents.encode('utf-8') + "\n\n")
+    def to_html(self, stream):
+        stream.write("<p>%s</p>" % (self.contents.encode('utf-8')))
 
 
 class Element_UL:
@@ -524,9 +539,11 @@ class Element_UL:
             stream.write("\n")
             stream.write(".PP\n")
 
-    def to_rst(self, stream):
+    def to_html(self, stream):
+        stream.write("<ul>\n")
         for item in self.list_items:
-            stream.write("* " + item.encode('utf-8') + "\n")
+            stream.write("<li>%s</li>\n" % (item.encode('utf-8')))
+        stream.write("</ul>\n")
 
 
 class Element_TABLE:
@@ -558,48 +575,53 @@ class Element_TABLE:
             row.to_man(stream)
         stream.write(".TE\n")
 
-    def to_rst(self, stream):
-        #figure out the maximum widths of our columns
-        column_widths = [0] * len(self.rows[0].column_widths())
+    def to_html(self, stream):
+        if (len(self.rows) == 0):
+            return
 
+        if (len(set([len(row.columns) for row in self.rows
+                     if row.tr_class in (TR_NORMAL, TR_HEADER)])) != 1):
+            raise ValueError("all rows must have the same number of columns")
+
+        stream.write("<table>\n")
+        for (row, spans) in zip(self.rows, self.calculate_row_spans()):
+            row.to_html(stream, spans)
+        stream.write("</table>\n")
+
+    def calculate_row_spans(self):
+        #turn rows into arrays of "span" boolean values
+        row_spans = []
         for row in self.rows:
             if (row.tr_class in (TR_NORMAL, TR_HEADER)):
-                column_widths = [max(old_width, new_width)
-                                 for (old_width, new_width) in
-                                 zip(column_widths, row.column_widths())]
+                row_spans.append([col.empty() for col in row.columns])
+            elif (row.tr_class == TR_DIVIDER):
+                row_spans.append([False] * len(row_spans[-1]))
 
-        #then display columns at the proper width
-        stream.write("+%s+\n" %
-                     "+".join(["-" * width for width in
-                               column_widths]))
+        #turn columns into arrays of integers containing the row span
+        columns = [list(self.calculate_span_column([row[i] for
+                                                    row in row_spans]))
+                   for i in xrange(len(row_spans[0]))]
 
-        for (row, next_row) in zip(self.rows, self.rows[1:]):
-            row.to_rst(stream, column_widths)
-            if (row.tr_class == TR_HEADER):
-                stream.write("+%s+\n" %
-                             "+".join(["=" * width for width in
-                                       column_widths]))
-            elif (row.tr_class == TR_NORMAL):
-                if (next_row.tr_class in (TR_NORMAL, TR_HEADER)):
-                    stream.write("+")
-                    for (col, next_col, width) in zip(row.columns,
-                                                      next_row.columns,
-                                                      column_widths):
-                        if (next_col.value is not None):
-                            stream.write("-" * width)
-                        else:
-                            stream.write(" " * width)
-                        stream.write("+")
-                    stream.write("\n")
-                elif (next_row.tr_class == TR_DIVIDER):
-                    stream.write("+%s+\n" %
-                                 "+".join(["-" * width for width in
-                                           column_widths]))
+        #turn columns back into rows and return them
+        return zip(*columns)
 
-        self.rows[-1].to_rst(stream, column_widths)
-        stream.write("+%s+\n" %
-                     "+".join(["-" * width for width in
-                               column_widths]))
+    def calculate_span_column(self, row_spans):
+        rows = None
+        for span in row_spans:
+            if (span):
+                rows += 1
+            else:
+                if (rows is not None):
+                    yield rows
+                    for i in xrange(rows - 1):
+                        yield 0
+                rows = 1
+
+        if (rows is not None):
+            yield rows
+            for i in xrange(rows - 1):
+                yield 0
+
 
 
 (TR_NORMAL, TR_HEADER, TR_DIVIDER) = range(3)
@@ -610,7 +632,10 @@ class Element_TR:
         self.tr_class = tr_class
 
     def __repr__(self):
-        return "Element_TR(%s, %s)" % (repr(self.columns), self.tr_class)
+        if (self.tr_class in (TR_NORMAL, TR_HEADER)):
+            return "Element_TR(%s, %s)" % (repr(self.columns), self.tr_class)
+        else:
+            return "Element_TR_DIVIDER()"
 
     @classmethod
     def parse(cls, xml_dom):
@@ -646,16 +671,12 @@ class Element_TR:
         else:
             return None
 
-    def to_rst(self, stream, column_widths):
+    def to_html(self, stream, rowspans):
         if (self.tr_class in (TR_NORMAL, TR_HEADER)):
-            stream.write("|")
-            for (column, width) in zip(self.columns, column_widths):
-                column.to_rst(stream, width)
-                stream.write("|")
-            stream.write("\n")
-        elif (self.tr_class == TR_DIVIDER):
-            pass
-
+            stream.write("<tr>\n")
+            for (column, span) in zip(self.columns, rowspans):
+                column.to_html(stream, self.tr_class == TR_HEADER, span)
+            stream.write("</tr>\n")
 
 class Element_TD:
     def __init__(self, value):
@@ -672,6 +693,8 @@ class Element_TD:
         except IndexError:
             return cls(value=None)
 
+    def empty(self):
+        return self.value is None
 
     def string(self):
         if (self.value is not None):
@@ -682,18 +705,25 @@ class Element_TD:
     def to_man(self, stream):
         stream.write(self.value.encode('ascii'))
 
-    def to_rst(self, stream, width):
-        if (self.value is not None):
-            stream.write(self.value.encode('utf-8'))
-            stream.write(" " * (width - len(self.value)))
-        else:
-            stream.write(" " * width)
-
     def width(self):
         if (self.value is not None):
             return len(self.value)
         else:
             return 0
+
+    def to_html(self, stream, header, rowspan):
+        if (self.value is not None):
+            if (rowspan > 1):
+                rowspan = " rowspan=\"%d\"" % (rowspan)
+            else:
+                rowspan = ""
+
+            if (header):
+                stream.write("<th%s>%s</th>" %
+                             (rowspan, self.value.encode('utf-8')))
+            else:
+                stream.write("<td%s>%s</td>" %
+                             (rowspan, self.value.encode('utf-8')))
 
 
 class Element:
@@ -733,11 +763,17 @@ class Element:
         for element in self.elements:
             element.to_man(stream)
 
-    def to_rst(self, stream):
-        stream.write(self.name.capitalize().encode('utf-8') + "\n")
-        stream.write("^" * (len(self.name)) + "\n")
+    def to_html(self, stream):
+        stream.write("<dl>\n")
+        stream.write("<dt>%s</dt>\n" %
+                     ((u" ".join([part.capitalize()
+                                  for part in
+                                  self.name.split()])).encode('utf-8')))
+        stream.write("<dd>\n")
         for element in self.elements:
-            element.to_rst(stream)
+            element.to_html(stream)
+        stream.write("</dd>\n")
+        stream.write("</dl>\n")
 
 
 if (__name__ == '__main__'):
@@ -753,7 +789,7 @@ if (__name__ == '__main__'):
 
     parser.add_option("-t", "--type",
                       dest="type",
-                      choices=("man", "rst"),
+                      choices=("man", "html"),
                       default="man",
                       help="the output type")
 
@@ -766,5 +802,5 @@ if (__name__ == '__main__'):
 
     if (options.type == "man"):
         main_page.to_man(sys.stdout)
-    elif (options.type == "rst"):
-        main_page.to_rst(sys.stdout)
+    elif (options.type == "html"):
+        main_page.to_html(sys.stdout)
