@@ -877,9 +877,9 @@ class MP2Audio(MP3Audio):
     SUFFIX = "mp2"
     NAME = SUFFIX
     DEFAULT_COMPRESSION = str(192)
-    COMPRESSION_MODES = tuple(map(str, (32,  48,  56,  64,  80,  96,  112,
-                                        128, 160, 192, 224, 256, 320, 384)))
-    COMPRESSION_DESCRIPTIONS = {"32": _(u"total bitrate of 32kbps"),
+    COMPRESSION_MODES = tuple(map(str, (64,  96,  112, 128, 160, 192,
+                                        224, 256, 320, 384)))
+    COMPRESSION_DESCRIPTIONS = {"64": _(u"total bitrate of 64kbps"),
                                 "384": _(u"total bitrate of 384kbps")}
     BINARIES = ("lame", "twolame")
 
