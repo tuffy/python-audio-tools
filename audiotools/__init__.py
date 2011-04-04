@@ -126,7 +126,7 @@ MUSICBRAINZ_PORT = config.getint_default("MusicBrainz", "port", 80)
 THUMBNAIL_FORMAT = config.get_default("Thumbnail", "format", "jpeg")
 THUMBNAIL_SIZE = config.getint_default("Thumbnail", "size", 150)
 
-VERSION = "2.17"
+VERSION = "2.18alpha1"
 
 FILENAME_FORMAT = config.get_default(
     "Filenames", "format",
@@ -2756,6 +2756,20 @@ class MetaData:
         if ((len(self.images()) == 0) and self.supports_images()):
             for img in metadata.images():
                 self.add_image(img)
+
+    def clean(self, fixes_performed):
+        """Returns a new MetaData object that's been cleaned of problems.
+
+        Any fixes performed are appended to fixes_performed as Unicode.
+        Fixes to apply to metadata include:
+        * Remove leading or trailing whitespace from text fields
+        * Remove empty fields
+        * Remove leading zeroes from numerical fields
+          (except when requested, in the case of ID3v2)
+        * Fix incorrectly labeled image metadata fields
+        """
+
+        return self
 
 
 class AlbumMetaData(dict):

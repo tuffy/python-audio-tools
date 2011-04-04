@@ -1350,6 +1350,191 @@ class FlacMetaData(MetaDataTest):
         self.assertEqual(metadata.album_number, 1)
         self.assertEqual(metadata.album_total, 3)
 
+    @METADATA_FLAC
+    def test_clean(self):
+        #check trailing whitespace
+        metadata = audiotools.FlacMetaData([
+                audiotools.FlacMetaDataBlock(
+                    type=4,
+                    data=audiotools.FlacVorbisComment(
+                        {"TITLE": [u'Foo ']}).build())])
+        self.assertEqual(metadata.track_name, u'Foo ')
+        results = []
+        cleaned = metadata.clean(results)
+        self.assertEqual(cleaned.track_name, u'Foo')
+        self.assertEqual(results,
+                         [_(u"removed trailing whitespace from %(field)s") %
+                          {"field":u"TITLE"}])
+
+        #check leading whitespace
+        metadata = audiotools.FlacMetaData([
+                audiotools.FlacMetaDataBlock(
+                    type=4,
+                    data=audiotools.FlacVorbisComment(
+                        {"TITLE": [u' Foo']}).build())])
+        self.assertEqual(metadata.track_name, u' Foo')
+        results = []
+        cleaned = metadata.clean(results)
+        self.assertEqual(cleaned.track_name, u'Foo')
+        self.assertEqual(results,
+                         [_(u"removed leading whitespace from %(field)s") %
+                          {"field":u"TITLE"}])
+
+        #check leading zeroes
+        metadata = audiotools.FlacMetaData([
+                audiotools.FlacMetaDataBlock(
+                    type=4,
+                    data=audiotools.FlacVorbisComment(
+                        {"TRACKNUMBER": [u'01']}).build())])
+        self.assertEqual(metadata.vorbis_comment["TRACKNUMBER"],[u"01"])
+        results = []
+        cleaned = metadata.clean(results)
+        self.assertEqual(cleaned.vorbis_comment["TRACKNUMBER"],[u"1"])
+        self.assertEqual(results,
+                         [_(u"removed leading zeroes from %(field)s") %
+                          {"field":u"TRACKNUMBER"}])
+
+        #check empty fields
+        metadata = audiotools.FlacMetaData([
+                audiotools.FlacMetaDataBlock(
+                    type=4,
+                    data=audiotools.FlacVorbisComment(
+                        {"TITLE": [u'  ']}).build())])
+        self.assertEqual(metadata.vorbis_comment["TITLE"], [u'  '])
+        results = []
+        cleaned = metadata.clean(results)
+        self.assertEqual(cleaned,
+                         audiotools.FlacMetaData([
+                    audiotools.FlacMetaDataBlock(
+                        type=4,
+                        data=audiotools.FlacVorbisComment(
+                            {}).build())]))
+        self.assertEqual(results,
+                         [_(u"removed trailing whitespace from %(field)s") %
+                          {"field":u"TITLE"},
+                          _(u"removed empty field %(field)s") %
+                          {"field":u"TITLE"}])
+
+        #check mis-tagged images
+        metadata = audiotools.FlacMetaData([
+                audiotools.FlacMetaDataBlock(
+                    type=6,
+                    data=audiotools.FlacPictureComment(
+                        0, "image/jpeg", u"", 20, 20, 24, 10,
+"""iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKAQMAAAC3/F3+AAAAAXNSR0IArs4c6QAAAANQTFRF////
+p8QbyAAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB9sEBBMWM3PnvjMAAAALSURBVAjXY2DA
+BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64')).build())])
+        self.assertEqual(len(metadata.image_blocks), 1)
+        image = metadata.images()[0]
+        self.assertEqual(image.mime_type, "image/jpeg")
+        self.assertEqual(image.width, 20)
+        self.assertEqual(image.height, 20)
+        self.assertEqual(image.color_depth, 24)
+        self.assertEqual(image.color_count, 10)
+
+        results = []
+        cleaned = metadata.clean(results)
+        self.assertEqual(results,
+                         [_(u"fixed embedded image metadata fields")])
+        self.assertEqual(len(cleaned.image_blocks), 1)
+        image = cleaned.images()[0]
+        self.assertEqual(image.mime_type, "image/png")
+        self.assertEqual(image.width, 10)
+        self.assertEqual(image.height, 10)
+        self.assertEqual(image.color_depth, 8)
+        self.assertEqual(image.color_count, 1)
+
+
+        #check that cleanup doesn't disturb other metadata blocks
+        metadata = audiotools.FlacMetaData([
+                audiotools.FlacMetaDataBlock(
+                    type=0,
+                    data='\x10\x00\x10\x00\x00\x00\x0e\x009?\n\xc4B\xf0\x07\xf4u4\xc0Z\xaf\xf6\xaa\xfd\x00M\xa2h2\xd8\x83w\xab\xec'),
+                audiotools.FlacMetaDataBlock(
+                    type=4,
+                    data=audiotools.FlacVorbisComment(
+                        {"TITLE": [u'Foo ']}).build()),
+                audiotools.FlacMetaDataBlock(
+                    type=3,
+                    data=\
+"""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
+eQSm""".decode('base64').decode('zlib')),
+                audiotools.FlacMetaDataBlock(
+                    type=5,
+                    data=\
+"""eJxjZWCxYBgMgDGio2Gg3TDwgAfGYMSthhGD8UCkhAm3ekwpxrkFML2MaztmMJOpl6lqFQ8LmXqZ
+o2tVWMnUy2JXeYKNFL1MC/7A9T4+uYWdFL0MLi9geln76304SNGL5GY22dsXOMnV+/y7BReZetkd
+QyS4SdHL9PUHXO+XUpNVuPUyAABOeh/F""".decode('base64').decode('zlib')),
+                audiotools.FlacMetaDataBlock(
+                    type=6,
+                    data=\
+"""AAAAAwAAAAlpbWFnZS9wbmcAAAAAAAAACgAAAAoAAAAIAAAAAQAAAIiJUE5HDQoaCgAAAA1JSERS
+AAAACgAAAAoBAwAAALf8Xf4AAAABc1JHQgCuzhzpAAAAA1BMVEX///+nxBvIAAAACXBIWXMAAAsT
+AAALEwEAmpwYAAAAB3RJTUUH2wQEExYzc+e+MwAAAAtJREFUCNdjYMAHAAAeAAFuhUcyAAAAAElF
+TkSuQmCC""".decode('base64')),
+                audiotools.FlacMetaDataBlock(
+                    type=2,
+                    data="FOOZKELP")])
+
+        self.assert_(metadata.streaminfo is not None)
+        self.assert_(metadata.vorbis_comment is not None)
+        self.assert_(metadata.seektable is not None)
+        self.assert_(metadata.cuesheet is not None)
+        self.assertEqual(len(metadata.image_blocks), 1)
+        self.assertEqual(len(metadata.extra_blocks), 1)
+
+        results = []
+        cleaned = metadata.clean(results)
+        self.assertEqual(results,
+                         [_(u"removed trailing whitespace from %(field)s") %
+                          {"field":u"TITLE"}])
+
+        self.assertEqual(cleaned.streaminfo, metadata.streaminfo)
+        self.assertEqual(cleaned.seektable, metadata.seektable)
+        self.assertEqual(cleaned.cuesheet, metadata.cuesheet)
+        self.assertEqual(cleaned.image_blocks, metadata.image_blocks)
+        self.assertEqual(cleaned.extra_blocks, metadata.extra_blocks)
 
 
 class M4AMetaDataTest(MetaDataTest):
@@ -1790,3 +1975,64 @@ class VorbisCommentTest(MetaDataTest):
         metadata["DISCNUMBER"] = [u"1/3"]
         self.assertEqual(metadata.album_number, 1)
         self.assertEqual(metadata.album_total, 3)
+
+    @METADATA_VORBIS
+    def test_clean(self):
+        #check trailing whitespace
+        metadata = audiotools.VorbisComment({"TAG":[u"Foo "]},
+                                            u"vendor")
+        results = []
+        cleaned = metadata.clean(results)
+        self.assertEqual(cleaned,
+                         audiotools.VorbisComment({"TAG":[u"Foo"]},
+                                                  u"vendor"))
+        self.assertEqual(results,
+                         [_(u"removed trailing whitespace from %(field)s") %
+                          {"field":u"TAG"}])
+
+        #check leading whitespace
+        metadata = audiotools.VorbisComment({"TAG":[u" Foo"]},
+                                            u"vendor")
+        results = []
+        cleaned = metadata.clean(results)
+        self.assertEqual(cleaned,
+                         audiotools.VorbisComment({"TAG":[u"Foo"]},
+                                                  u"vendor"))
+        self.assertEqual(results,
+                         [_(u"removed leading whitespace from %(field)s") %
+                          {"field":u"TAG"}])
+
+        #check leading zeroes
+        metadata = audiotools.VorbisComment({"TRACKNUMBER":[u"001"]},
+                                            u"vendor")
+        results = []
+        cleaned = metadata.clean(results)
+        self.assertEqual(cleaned,
+                         audiotools.VorbisComment({"TRACKNUMBER":[u"1"]},
+                                                  u"vendor"))
+        self.assertEqual(results,
+                         [_(u"removed leading zeroes from %(field)s") %
+                          {"field":u"TRACKNUMBER"}])
+
+        #check empty fields
+        metadata = audiotools.VorbisComment({"TAG":[u""]},
+                                            u"vendor")
+        results = []
+        cleaned = metadata.clean(results)
+        self.assertEqual(cleaned,
+                         audiotools.VorbisComment({}, u"vendor"))
+        self.assertEqual(results,
+                         [_(u"removed empty field %(field)s") %
+                          {"field":u"TAG"}])
+
+        metadata = audiotools.VorbisComment({"TAG":[u"    "]},
+                                            u"vendor")
+        results = []
+        cleaned = metadata.clean(results)
+        self.assertEqual(cleaned,
+                         audiotools.VorbisComment({}, u"vendor"))
+        self.assertEqual(results,
+                         [_(u"removed trailing whitespace from %(field)s") %
+                          {"field":u"TAG"},
+                          _(u"removed empty field %(field)s") %
+                          {"field":u"TAG"}])

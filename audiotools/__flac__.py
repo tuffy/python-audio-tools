@@ -27,7 +27,8 @@ from audiotools import (AudioFile, MetaData, InvalidFile, PCMReader,
                         UnsupportedChannelCount, analyze_frames,
                         Messenger, BufferedPCMReader, calculate_replay_gain,
                         ChannelMask, PCMReaderError, __default_quality__,
-                        WaveContainer, AiffContainer, to_pcm_progress)
+                        WaveContainer, AiffContainer, to_pcm_progress,
+                        image_metrics)
 from __vorbiscomment__ import *
 from __id3__ import ID3v2Comment
 from __vorbis__ import OggStreamReader, OggStreamWriter
@@ -177,8 +178,6 @@ class FlacMetaData(MetaData):
                                            unicode(self.cuesheet))
 
     def __setattr__(self, key, value):
-        # self.__dict__[key] = value
-        # setattr(self.vorbis_comment, key, value)
         if (key in self.__FIELDS__):
             setattr(self.vorbis_comment, key, value)
         else:
@@ -314,6 +313,37 @@ class FlacMetaData(MetaData):
         """Returns True."""
 
         return True
+
+    def clean(self, fixes_performed):
+        """Returns a new FlacMetaData object that's been cleaned of problems.
+
+        Any fixes performed are appended to fixes_performed as Unicode."""
+
+        cleaned = FlacMetaData([])
+
+        if (self.streaminfo is not None):
+            cleaned.streaminfo = self.streaminfo
+
+        #recursively clean up the text fields in FlacVorbisComment
+        if (self.vorbis_comment is not None):
+            cleaned.vorbis_comment = self.vorbis_comment.clean(fixes_performed)
+
+        #add seektable if present
+        if (self.seektable is not None):
+            cleaned.seektable = self.seektable
+
+        #add cuesheet if present
+        if (self.cuesheet is not None):
+            cleaned.cuesheet = self.cuesheet
+
+        #recursively clean up any image blocks
+        cleaned.image_blocks = [image.clean(fixes_performed)
+                                for image in self.image_blocks]
+
+        #add any extra blocks
+        cleaned.extra_blocks = self.extra_blocks
+
+        return cleaned
 
 
 class FlacVorbisComment(VorbisComment):
@@ -490,6 +520,26 @@ class FlacPictureComment(Image):
             Con.Container(last_block=last,
                           block_type=6,
                           block_length=len(block))) + block
+
+    def clean(self, fixes_performed):
+        img = image_metrics(self.data)
+
+        if ((self.mime_type != img.mime_type) or
+            (self.width != img.width) or
+            (self.height != img.height) or
+            (self.color_depth != img.bits_per_pixel) or
+            (self.color_count != img.color_count)):
+            fixes_performed.append(_(u"fixed embedded image metadata fields"))
+            return FlacPictureComment(type=self.type,
+                                      mime_type=img.mime_type,
+                                      description=self.description,
+                                      width=img.width,
+                                      height=img.height,
+                                      color_depth=img.bits_per_pixel,
+                                      color_count=img.color_count,
+                                      data=self.data)
+        else:
+            return self
 
 
 class FlacCueSheet:

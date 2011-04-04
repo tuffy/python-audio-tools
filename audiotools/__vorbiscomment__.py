@@ -292,3 +292,48 @@ class VorbisComment(MetaData, dict):
                     comment.value.append("%s=%s" % (key,
                                                     value.encode('utf-8')))
         return self.VORBIS_COMMENT.build(comment)
+
+    def clean(self, fixes_applied):
+        """Returns a new VorbisComment object that's been cleaned of problems.
+
+        Any fixes performed are appended to fixes_performed as Unicode."""
+
+        fixed = {}
+
+        for (key, values) in self.items():
+            for value in values:
+                #remove leading or trailing whitespace
+                fix1 = value.rstrip()
+                if (fix1 != value):
+                    fixes_applied.append(
+                        _(u"removed trailing whitespace from %(field)s") %
+                        {"field":key.decode('ascii')})
+
+                fix2 = fix1.lstrip()
+                if (fix2 != fix1):
+                    fixes_applied.append(
+                        _(u"removed leading whitespace from %(field)s") %
+                        {"field":key.decode('ascii')})
+
+                #remove leading zeroes from numerical fields
+                if (key in ("TRACKNUMBER", "TRACKTOTAL",
+                            "DISCNUMBER", "DISCTOTAL")):
+                    fix3 = fix2.lstrip(u"0")
+                    if (fix3 != fix2):
+                        fixes_applied.append(
+                            _(u"removed leading zeroes from %(field)s") %
+                            {"field":key.decode('ascii')})
+                else:
+                    fix3 = fix2
+
+                #remove empty fields
+                if (len(fix3) == 0):
+                    fixes_applied.append(
+                        _("removed empty field %(field)s") %
+                        {"field":key.decode('ascii')})
+                else:
+                    fixed.setdefault(key, []).append(fix3)
+
+        #FIXME - check vendor string for fixes?
+
+        return self.__class__(fixed, self.vendor_string)
