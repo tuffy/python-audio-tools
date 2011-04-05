@@ -1834,3 +1834,16 @@ class ID3CommentPair(MetaData):
         """Returns True."""
 
         return True
+
+    def clean(self, fixes_performed):
+        if (self.id3v2 is not None):
+            new_id3v2 = self.id3v2.clean(fixes_performed)
+        else:
+            new_id3v2 = None
+
+        if (self.id3v1 is not None):
+            new_id3v1 = self.id3v1.clean(fixes_performed)
+        else:
+            new_id3v1 = None
+
+        return ID3CommentPair(new_id3v2, new_id3v1)

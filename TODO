@@ -3403,17 +3403,17 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   For MetaData, it could return a new object with fixed fields.
   For AudioFile, it could function like convert() and build a new file
   with fixes applied.
-** TODO Add clean() method to MetaData and subclasses
+** DONE Add clean() method to MetaData and subclasses
 *** DONE MetaData
-*** TODO ApeTag
-*** TODO WavPackAPEv2
+*** DONE ApeTag
+*** DONE WavPackAPEv2
 *** DONE FlacMetaData
 *** DONE ID3v22Comment
 *** DONE ID3v23Comment
 *** DONE ID3v24Comment
 *** DONE ID3v1Comment
-*** TODO ID3CommentPair
-*** TODO M4AMetaData
+*** DONE ID3CommentPair
+*** DONE M4AMetaData
 *** DONE VorbisComment
 **** DONE FlacVorbisComment
 **** DONE UnframedVorbisComment
@@ -3432,8 +3432,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO SpeexAudio
 *** TODO WaveAudio
 *** TODO WavPackAudio
-** TODO Document clean() methods
+** TODO Document MetaData clean() method
+** TODO Document AudioFile clean() method
 ** TODO Add more comprehensive unit tests for clean() methods
+** TODO Convert tracklint to use clean() methods
 * TODO Deprecate little-used / poorly-tested bits
   Although there's a risk of annoying people by taking out
   stuff they might be using, some utilities and formats

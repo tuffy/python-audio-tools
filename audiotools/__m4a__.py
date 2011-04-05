@@ -803,6 +803,13 @@ class ILST_Atom:
         return "ILST_Atom(%s,%s)" % (repr(self.type),
                                      repr(self.data))
 
+    def is_text(self):
+        for atom in self.data:
+            if (atom.data.startswith('0000000100000000'.decode('hex'))):
+                return True
+        else:
+            return False
+
     def __unicode__(self):
         for atom in self.data:
             if (atom.type == 'data'):
@@ -1141,6 +1148,36 @@ class M4AMetaData(MetaData, dict):
                 pairs.append((key.replace(chr(0xA9), ' '), unicode(value)))
         pairs.sort(M4AMetaData.__by_pair__)
         return pairs
+
+    def clean(self, fixes_applied):
+        ilst_atoms = []
+        for (key, children) in self.items():
+            for child in children:
+                if (child.is_text()):
+                    fix1 = unicode(child).rstrip()
+                    if (fix1 != unicode(child)):
+                        fixes_applied.append(
+                            _(u"removed trailing whitespace from %(field)s") %
+                            {"field":key.lstrip('\xa9').decode('ascii')})
+                    fix2 = fix1.lstrip()
+                    if (fix2 != fix1):
+                        fixes_applied.append(
+                            _(u"removed leading whitespace from %(field)s") %
+                            {"field":key.lstrip('\xa9').decode('ascii')})
+
+                    if (len(unicode(fix2)) > 0):
+                        if (fix2 != unicode(child)):
+                            ilst_atoms.extend(M4AMetaData.text_atom(key, fix2))
+                        else:
+                            ilst_atoms.append(child)
+                    else:
+                        fixes_applied.append(
+                            _(u"removed empty field %(field)s") %
+                            {"field":key.lstrip('\xa9').decode('ascii')})
+                else:
+                    ilst_atoms.append(child)
+
+        return M4AMetaData(ilst_atoms)
 
 
 class M4ACovr(Image):

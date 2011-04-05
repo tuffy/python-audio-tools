@@ -730,6 +730,109 @@ class WavPackApeTagMetaData(MetaDataTest):
             finally:
                 temp_file.close()
 
+    @METADATA_WAVPACK
+    def test_clean(self):
+        #check trailing whitespace
+        metadata = audiotools.WavPackAPEv2(
+            [audiotools.ApeTagItem.string('Title', u'Foo ')])
+        self.assertEqual(metadata.track_name, u'Foo ')
+        self.assertEqual(metadata['Title'].data, u'Foo '.encode('ascii'))
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"removed trailing whitespace from %(field)s") %
+                          {"field":'Title'.decode('ascii')}])
+        self.assertEqual(cleaned.track_name, u'Foo')
+        self.assertEqual(cleaned['Title'].data, u'Foo'.encode('ascii'))
+
+        #check leading whitespace
+        metadata = audiotools.WavPackAPEv2(
+            [audiotools.ApeTagItem.string('Title', u' Foo')])
+        self.assertEqual(metadata.track_name, u' Foo')
+        self.assertEqual(metadata['Title'].data, u' Foo'.encode('ascii'))
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"removed leading whitespace from %(field)s") %
+                          {"field":'Title'.decode('ascii')}])
+        self.assertEqual(cleaned.track_name, u'Foo')
+        self.assertEqual(cleaned['Title'].data, u'Foo'.encode('ascii'))
+
+        #check empty fields
+        metadata = audiotools.WavPackAPEv2(
+            [audiotools.ApeTagItem.string('Title', u'')])
+        self.assertEqual(metadata.track_name, u'')
+        self.assertEqual(metadata['Title'].data, u''.encode('ascii'))
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"removed empty field %(field)s") %
+                          {"field":'Title'.decode('ascii')}])
+        self.assertEqual(cleaned.track_name, u'')
+        self.assertRaises(KeyError,
+                          cleaned.__getitem__,
+                          'Title')
+
+        #check leading zeroes
+        metadata = audiotools.WavPackAPEv2(
+            [audiotools.ApeTagItem.string('Track', u'01')])
+        self.assertEqual(metadata.track_number, 1)
+        self.assertEqual(metadata.track_total, 0)
+        self.assertEqual(metadata['Track'].data, u'01'.encode('ascii'))
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"removed leading zeroes from %(field)s") %
+                          {"field":'Track'.decode('ascii')}])
+        self.assertEqual(cleaned.track_number, 1)
+        self.assertEqual(cleaned.track_total, 0)
+        self.assertEqual(cleaned['Track'].data, u'1'.encode('ascii'))
+
+        metadata = audiotools.WavPackAPEv2(
+            [audiotools.ApeTagItem.string('Track', u'01/2')])
+        self.assertEqual(metadata.track_number, 1)
+        self.assertEqual(metadata.track_total, 2)
+        self.assertEqual(metadata['Track'].data, u'01/2'.encode('ascii'))
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"removed leading zeroes from %(field)s") %
+                          {"field":'Track'.decode('ascii')}])
+        self.assertEqual(cleaned.track_number, 1)
+        self.assertEqual(cleaned.track_total, 2)
+        self.assertEqual(cleaned['Track'].data, u'1/2'.encode('ascii'))
+
+        metadata = audiotools.WavPackAPEv2(
+            [audiotools.ApeTagItem.string('Track', u'1/02')])
+        self.assertEqual(metadata.track_number, 1)
+        self.assertEqual(metadata.track_total, 2)
+        self.assertEqual(metadata['Track'].data, u'1/02'.encode('ascii'))
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"removed leading zeroes from %(field)s") %
+                          {"field":'Track'.decode('ascii')}])
+        self.assertEqual(cleaned.track_number, 1)
+        self.assertEqual(cleaned.track_total, 2)
+        self.assertEqual(cleaned['Track'].data, u'1/2'.encode('ascii'))
+
+        metadata = audiotools.WavPackAPEv2(
+            [audiotools.ApeTagItem.string('Track', u'01/02')])
+        self.assertEqual(metadata.track_number, 1)
+        self.assertEqual(metadata.track_total, 2)
+        self.assertEqual(metadata['Track'].data, u'01/02'.encode('ascii'))
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"removed leading zeroes from %(field)s") %
+                          {"field":'Track'.decode('ascii')}])
+        self.assertEqual(cleaned.track_number, 1)
+        self.assertEqual(cleaned.track_total, 2)
+        self.assertEqual(cleaned['Track'].data, u'1/2'.encode('ascii'))
+
+        #images don't store metadata,
+        #so no need to check their fields
+
 
 class ID3v1MetaData(MetaDataTest):
     def setUp(self):
@@ -2205,6 +2308,56 @@ class M4AMetaDataTest(MetaDataTest):
         self.assertEqual(metadata_orig['test'][0].data[0].data, "foobar")
         metadata_new = self.metadata_class.converted(metadata_orig)
         self.assertEqual(metadata_new['test'][0].data[0].data, "foobar")
+
+    @METADATA_M4A
+    def test_clean(self):
+        #check trailing whitespace
+        metadata = audiotools.M4AMetaData([])
+        metadata["\xa9nam"] = audiotools.M4AMetaData.text_atom(
+            "\xa9nam", u'Foo ')
+        self.assertEqual(unicode(metadata["\xa9nam"][0]), u'Foo ')
+        self.assertEqual(metadata.track_name, u'Foo ')
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_("removed trailing whitespace from %(field)s") %
+                          {"field":"nam"}])
+        self.assertEqual(unicode(cleaned["\xa9nam"][0]), u'Foo')
+        self.assertEqual(cleaned.track_name, u'Foo')
+
+        #check leading whitespace
+        metadata = audiotools.M4AMetaData([])
+        metadata["\xa9nam"] = audiotools.M4AMetaData.text_atom(
+            "\xa9nam", u' Foo')
+        self.assertEqual(unicode(metadata["\xa9nam"][0]), u' Foo')
+        self.assertEqual(metadata.track_name, u' Foo')
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_("removed leading whitespace from %(field)s") %
+                          {"field":"nam"}])
+        self.assertEqual(unicode(cleaned["\xa9nam"][0]), u'Foo')
+        self.assertEqual(cleaned.track_name, u'Foo')
+
+        #check empty fields
+        metadata = audiotools.M4AMetaData([])
+        metadata["\xa9nam"] = audiotools.M4AMetaData.text_atom(
+            "\xa9nam", u'')
+        self.assertEqual(unicode(metadata["\xa9nam"][0]), u'')
+        self.assertEqual(metadata.track_name, u'')
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_("removed empty field %(field)s") %
+                          {"field":"nam"}])
+        self.assertRaises(KeyError,
+                          cleaned.__getitem__,
+                          '\xa9nam')
+        self.assertEqual(cleaned.track_name, u'')
+
+        #numerical fields can't have whitespace
+        #and images aren't stored with metadata
+        #so there's no need to check those
 
 
 class VorbisCommentTest(MetaDataTest):

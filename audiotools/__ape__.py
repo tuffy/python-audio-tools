@@ -538,6 +538,57 @@ class ApeTag(MetaData):
                tags + \
                ApeTag.APEv2_FOOTER.build(footer)
 
+    def clean(self, fixes_applied):
+        tag_items = []
+        for tag in self.tags:
+            if (tag.type == 0):
+                text = unicode(tag)
+
+                #check trailing whitespace
+                fix1 = text.rstrip()
+                if (fix1 != text):
+                    fixes_applied.append(
+                        _(u"removed trailing whitespace from %(field)s") %
+                        {"field":tag.key.decode('ascii')})
+
+                #check leading whitespace
+                fix2 = fix1.lstrip()
+                if (fix2 != fix1):
+                    fixes_applied.append(
+                        _(u"removed leading whitespace from %(field)s") %
+                        {"field":tag.key.decode('ascii')})
+
+                if (tag.key in self.INTEGER_ITEMS):
+                    try:
+                        current = int(re.findall('\d+', fix2)[0])
+                    except IndexError:
+                        current = 0
+                    try:
+                        total = int(re.findall('\d+/(\d+)', fix2)[0])
+                    except IndexError:
+                        total = 0
+                    if (total != 0):
+                        fix3 = u"%d/%d" % (current, total)
+                    else:
+                        fix3 = unicode(current)
+                    if (fix3 != fix2):
+                        fixes_applied.append(
+                            _(u"removed leading zeroes from %(field)s") %
+                            {"field":tag.key.decode('ascii')})
+                else:
+                    fix3 = fix2
+
+                if (len(fix3) > 0):
+                    tag_items.append(ApeTagItem.string(tag.key, fix3))
+                else:
+                    fixes_applied.append(
+                        _("removed empty field %(field)s") %
+                        {"field":tag.key.decode('ascii')})
+            else:
+                tag_items.append(tag)
+
+        return self.__class__(tag_items)
+
 
 class ApeTaggedAudio:
     """A class for handling audio formats with APEv2 tags.
