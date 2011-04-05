@@ -116,6 +116,7 @@ class ID3v1Comment(MetaData, list):
 
         Fields are (title,artist,album,year,comment,tracknum)"""
 
+        assert(len(metadata) == 6)
         list.__init__(self, metadata)
 
     @classmethod
@@ -188,3 +189,21 @@ class ID3v1Comment(MetaData, list):
         """Returns an empty list of Image objects."""
 
         return []
+
+    def clean(self, fixes_performed):
+        fields = []
+        for (i, name) in enumerate([u"title", u"artist", u"album",
+                                    u"year", u"comment"]):
+            fix1 = self[i].rstrip()
+            if (fix1 != self[i]):
+                fixes_performed.append(
+                    _(u"removed trailing whitespace from %(field)s") %
+                    {"field":name})
+            fix2 = fix1.lstrip()
+            if (fix2 != fix1):
+                fixes_performed.append(
+                    _(u"removed leading whitespace from %(field)s") %
+                    {"field":name})
+            fields.append(fix2)
+
+        return ID3v1Comment(tuple(fields + [self[-1]]))

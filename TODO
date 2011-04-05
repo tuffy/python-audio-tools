@@ -3404,14 +3404,14 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   For AudioFile, it could function like convert() and build a new file
   with fixes applied.
 ** TODO Add clean() method to MetaData and subclasses
-*** TODO MetaData
+*** DONE MetaData
 *** TODO ApeTag
 *** TODO WavPackAPEv2
 *** DONE FlacMetaData
-*** TODO ID3v22Comment
-*** TODO ID3v23Comment
-*** TODO ID3v24Comment
-*** TODO ID3v1Comment
+*** DONE ID3v22Comment
+*** DONE ID3v23Comment
+*** DONE ID3v24Comment
+*** DONE ID3v1Comment
 *** TODO ID3CommentPair
 *** TODO M4AMetaData
 *** DONE VorbisComment

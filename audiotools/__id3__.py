@@ -572,7 +572,7 @@ class ID3v22Comment(MetaData):
                  'TPB', 'TRC', 'TYE', 'TRD', None, 'COM', 'PIC')
 
     def __init__(self, frames):
-        """frame should be a list of ID3v2?Frame-compatible objects."""
+        """frames should be a list of ID3v2?Frame-compatible objects."""
 
         self.__dict__["frames"] = {}  # a frame_id->[frame list] mapping
 
@@ -900,6 +900,77 @@ class ID3v22Comment(MetaData):
             return comment_class.parse(f)
         finally:
             f.close()
+
+    def clean(self, fixes_performed):
+        cleaned_frames = []
+
+        for (key, frames) in self.frames.items():
+            for frame in frames:
+                if (hasattr(frame, "id") and
+                    hasattr(frame, "encoding") and
+                    hasattr(frame, "string")):
+                    #check trailing whitespace
+                    fix1 = frame.__class__(frame.id,
+                                           frame.encoding,
+                                           frame.string.rstrip())
+                    if (fix1.string != frame.string):
+                        fixes_performed.append(
+                            _(u"removed trailing whitespace from %(field)s") %
+                            {"field":frame.id.decode('ascii')})
+
+                    #check leading whitespace
+                    fix2 = frame.__class__(fix1.id,
+                                           fix1.encoding,
+                                           fix1.string.lstrip())
+                    if (fix2.string != fix1.string):
+                        fixes_performed.append(
+                            _(u"removed leading whitespace from %(field)s") %
+                            {"field":frame.id.decode('ascii')})
+
+                    #check numerical field padding
+                    if (fix2.id in self.INTEGER_ITEMS):
+                        fix3 = frame.__class__(
+                            fix2.id,
+                            fix2.encoding,
+                            __number_pair__(int(fix2), fix2.total()))
+                        if (fix3.string != fix2.string):
+                            if (__number_pair__ is __unpadded_number_pair__):
+                                fixes_performed.append(
+                                    _(u"removed leading zeroes from %(field)s" %
+                                      {"field":frame.id.decode('ascii')}))
+                            else:
+                                fixes_performed.append(
+                                    _(u"added leading zeroes to %(field)s" %
+                                      {"field":frame.id.decode('ascii')}))
+                    else:
+                        fix3 = fix2
+
+                    #check empty fields here
+                    if (len(fix3.string) == 0):
+                        fixes_performed.append(
+                            _(u"removed empty field %(field)s") %
+                            {"field":frame.id.decode('ascii')})
+                    else:
+                        cleaned_frames.append(fix3)
+                elif (isinstance(frame, Image)):
+                    fixed_image = Image.new(frame.data,
+                                            frame.description,
+                                            frame.type)
+                    if ((fixed_image.mime_type != frame.mime_type) or
+                        (fixed_image.width != frame.width) or
+                        (fixed_image.height != frame.height) or
+                        (fixed_image.color_depth != frame.color_depth) or
+                        (fixed_image.color_count != frame.color_count)):
+                        fixes_performed.append(
+                            _(u"fixed embedded image metadata fields"))
+                        cleaned_frames.append(
+                            frame.__class__.converted(fixed_image))
+                    else:
+                        cleaned_frames.append(frame)
+                else:
+                    cleaned_frames.append(frame)
+
+        return self.__class__(cleaned_frames)
 
 
 #######################

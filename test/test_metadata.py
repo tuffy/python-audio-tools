@@ -877,6 +877,32 @@ class ID3v1MetaData(MetaDataTest):
             finally:
                 temp_file.close()
 
+    @METADATA_ID3V1
+    def test_clean(self):
+        #check trailing whitespace
+        metadata = audiotools.ID3v1Comment((u"Title ", u"", u"", u"", u"", 1))
+        results = []
+        cleaned = metadata.clean(results)
+        self.assertEqual(results,
+                         [_(u"removed trailing whitespace from title")])
+        self.assertEqual(
+            cleaned,
+            audiotools.ID3v1Comment((u"Title", u"", u"", u"", u"", 1)))
+
+        #check leading whitespace
+        metadata = audiotools.ID3v1Comment((u" Title", u"", u"", u"", u"", 1))
+        results = []
+        cleaned = metadata.clean(results)
+        self.assertEqual(results,
+                         [_(u"removed leading whitespace from title")])
+        self.assertEqual(
+            cleaned,
+            audiotools.ID3v1Comment((u"Title", u"", u"", u"", u"", 1)))
+
+        #ID3v1 has no empty fields, image data or leading zeroes
+        #so those can be safely ignored
+
+
 class ID3v22MetaData(MetaDataTest):
     def setUp(self):
         self.metadata_class = audiotools.ID3v22Comment
@@ -1061,6 +1087,131 @@ class ID3v22MetaData(MetaDataTest):
         self.assertEqual(id3.album_number, 5)
         self.assertEqual(id3.album_total, 7)
 
+    @METADATA_ID3V2
+    def test_clean(self):
+        #check trailing whitespace
+        metadata = audiotools.ID3v22Comment(
+            [audiotools.ID3v22TextFrame.from_unicode("TT2", u"Title ")])
+        self.assertEqual(metadata.track_name, u"Title ")
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"removed trailing whitespace from %(field)s") %
+                          {"field":u"TT2"}])
+        self.assertEqual(cleaned.track_name, u"Title")
+
+        #check leading whitespace
+        metadata = audiotools.ID3v22Comment(
+            [audiotools.ID3v22TextFrame.from_unicode("TT2", u" Title")])
+        self.assertEqual(metadata.track_name, u" Title")
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"removed leading whitespace from %(field)s") %
+                          {"field":u"TT2"}])
+        self.assertEqual(cleaned.track_name, u"Title")
+
+        #check empty fields
+        metadata = audiotools.ID3v22Comment(
+            [audiotools.ID3v22TextFrame.from_unicode("TT2", u"")])
+        self.assertEqual(metadata["TT2"][0].string, u"")
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"removed empty field %(field)s") %
+                          {"field":u"TT2"}])
+        self.assertRaises(KeyError,
+                          cleaned.__getitem__,
+                          "TT2")
+
+        #check leading zeroes,
+        #depending on whether we're preserving them or not
+        if (audiotools.config.getboolean_default("ID3", "pad", False)):
+            #pad ID3v2 tags with 0
+            metadata = audiotools.ID3v22Comment(
+                [audiotools.ID3v22TextFrame.from_unicode("TRK", u"1")])
+            self.assertEqual(metadata.track_number, 1)
+            self.assertEqual(metadata.track_total, 0)
+            self.assertEqual(metadata["TRK"][0].string, u"1")
+            fixes = []
+            cleaned = metadata.clean(fixes)
+            self.assertEqual(fixes,
+                             [_(u"added leading zeroes to %(field)s") %
+                              {"field":u"TRK"}])
+            self.assertEqual(cleaned.track_number, 1)
+            self.assertEqual(cleaned.track_total, 0)
+            self.assertEqual(cleaned["TRK"][0].string, u"01")
+
+            metadata = audiotools.ID3v22Comment(
+                [audiotools.ID3v22TextFrame.from_unicode("TRK", u"1/2")])
+            self.assertEqual(metadata.track_number, 1)
+            self.assertEqual(metadata.track_total, 2)
+            self.assertEqual(metadata["TRK"][0].string, u"1/2")
+            fixes = []
+            cleaned = metadata.clean(fixes)
+            self.assertEqual(fixes,
+                             [_(u"added leading zeroes to %(field)s") %
+                              {"field":u"TRK"}])
+            self.assertEqual(cleaned.track_number, 1)
+            self.assertEqual(cleaned.track_total, 2)
+            self.assertEqual(cleaned["TRK"][0].string, u"01/02")
+        else:
+            #don't pad ID3v2 tags with 0
+            metadata = audiotools.ID3v22Comment(
+                [audiotools.ID3v22TextFrame.from_unicode("TRK", u"01")])
+            self.assertEqual(metadata.track_number, 1)
+            self.assertEqual(metadata.track_total, 0)
+            self.assertEqual(metadata["TRK"][0].string, u"01")
+            fixes = []
+            cleaned = metadata.clean(fixes)
+            self.assertEqual(fixes,
+                             [_(u"removed leading zeroes from %(field)s") %
+                              {"field":u"TRK"}])
+            self.assertEqual(cleaned.track_number, 1)
+            self.assertEqual(cleaned.track_total, 0)
+            self.assertEqual(cleaned["TRK"][0].string, u"1")
+
+            metadata = audiotools.ID3v22Comment(
+                [audiotools.ID3v22TextFrame.from_unicode("TRK", u"01/2")])
+            self.assertEqual(metadata.track_number, 1)
+            self.assertEqual(metadata.track_total, 2)
+            self.assertEqual(metadata["TRK"][0].string, u"01/2")
+            fixes = []
+            cleaned = metadata.clean(fixes)
+            self.assertEqual(fixes,
+                             [_(u"removed leading zeroes from %(field)s") %
+                              {"field":u"TRK"}])
+            self.assertEqual(cleaned.track_number, 1)
+            self.assertEqual(cleaned.track_total, 2)
+            self.assertEqual(cleaned["TRK"][0].string, u"1/2")
+
+            metadata = audiotools.ID3v22Comment(
+                [audiotools.ID3v22TextFrame.from_unicode("TRK", u"1/02")])
+            self.assertEqual(metadata.track_number, 1)
+            self.assertEqual(metadata.track_total, 2)
+            self.assertEqual(metadata["TRK"][0].string, u"1/02")
+            fixes = []
+            cleaned = metadata.clean(fixes)
+            self.assertEqual(fixes,
+                             [_(u"removed leading zeroes from %(field)s") %
+                              {"field":u"TRK"}])
+            self.assertEqual(cleaned.track_number, 1)
+            self.assertEqual(cleaned.track_total, 2)
+            self.assertEqual(cleaned["TRK"][0].string, u"1/2")
+
+            metadata = audiotools.ID3v22Comment(
+                [audiotools.ID3v22TextFrame.from_unicode("TRK", u"01/02")])
+            self.assertEqual(metadata.track_number, 1)
+            self.assertEqual(metadata.track_total, 2)
+            self.assertEqual(metadata["TRK"][0].string, u"01/02")
+            fixes = []
+            cleaned = metadata.clean(fixes)
+            self.assertEqual(fixes,
+                             [_(u"removed leading zeroes from %(field)s") %
+                              {"field":u"TRK"}])
+            self.assertEqual(cleaned.track_number, 1)
+            self.assertEqual(cleaned.track_total, 2)
+            self.assertEqual(cleaned["TRK"][0].string, u"1/2")
 
 
 class ID3v23MetaData(ID3v22MetaData):
@@ -1111,6 +1262,152 @@ class ID3v23MetaData(ID3v22MetaData):
     def empty_metadata(self):
         return self.metadata_class([])
 
+    @METADATA_ID3V2
+    def test_clean(self):
+        #check trailing whitespace
+        metadata = audiotools.ID3v23Comment(
+            [audiotools.ID3v23TextFrame.from_unicode("TIT2", u"Title ")])
+        self.assertEqual(metadata.track_name, u"Title ")
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"removed trailing whitespace from %(field)s") %
+                          {"field":u"TIT2"}])
+        self.assertEqual(cleaned.track_name, u"Title")
+
+        #check leading whitespace
+        metadata = audiotools.ID3v23Comment(
+            [audiotools.ID3v23TextFrame.from_unicode("TIT2", u" Title")])
+        self.assertEqual(metadata.track_name, u" Title")
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"removed leading whitespace from %(field)s") %
+                          {"field":u"TIT2"}])
+        self.assertEqual(cleaned.track_name, u"Title")
+
+        #check empty fields
+        metadata = audiotools.ID3v23Comment(
+            [audiotools.ID3v23TextFrame.from_unicode("TIT2", u"")])
+        self.assertEqual(metadata["TIT2"][0].string, u"")
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"removed empty field %(field)s") %
+                          {"field":u"TIT2"}])
+        self.assertRaises(KeyError,
+                          cleaned.__getitem__,
+                          "TIT2")
+
+        #check leading zeroes,
+        #depending on whether we're preserving them or not
+        if (audiotools.config.getboolean_default("ID3", "pad", False)):
+            #pad ID3v2 tags with 0
+            metadata = audiotools.ID3v23Comment(
+                [audiotools.ID3v23TextFrame.from_unicode("TRCK", u"1")])
+            self.assertEqual(metadata.track_number, 1)
+            self.assertEqual(metadata.track_total, 0)
+            self.assertEqual(metadata["TRCK"][0].string, u"1")
+            fixes = []
+            cleaned = metadata.clean(fixes)
+            self.assertEqual(fixes,
+                             [_(u"added leading zeroes to %(field)s") %
+                              {"field":u"TRCK"}])
+            self.assertEqual(cleaned.track_number, 1)
+            self.assertEqual(cleaned.track_total, 0)
+            self.assertEqual(cleaned["TRCK"][0].string, u"01")
+
+            metadata = audiotools.ID3v23Comment(
+                [audiotools.ID3v23TextFrame.from_unicode("TRCK", u"1/2")])
+            self.assertEqual(metadata.track_number, 1)
+            self.assertEqual(metadata.track_total, 2)
+            self.assertEqual(metadata["TRCK"][0].string, u"1/2")
+            fixes = []
+            cleaned = metadata.clean(fixes)
+            self.assertEqual(fixes,
+                             [_(u"added leading zeroes to %(field)s") %
+                              {"field":u"TRCK"}])
+            self.assertEqual(cleaned.track_number, 1)
+            self.assertEqual(cleaned.track_total, 2)
+            self.assertEqual(cleaned["TRCK"][0].string, u"01/02")
+        else:
+            #don't pad ID3v2 tags with 0
+            metadata = audiotools.ID3v23Comment(
+                [audiotools.ID3v23TextFrame.from_unicode("TRCK", u"01")])
+            self.assertEqual(metadata.track_number, 1)
+            self.assertEqual(metadata.track_total, 0)
+            self.assertEqual(metadata["TRCK"][0].string, u"01")
+            fixes = []
+            cleaned = metadata.clean(fixes)
+            self.assertEqual(fixes,
+                             [_(u"removed leading zeroes from %(field)s") %
+                              {"field":u"TRCK"}])
+            self.assertEqual(cleaned.track_number, 1)
+            self.assertEqual(cleaned.track_total, 0)
+            self.assertEqual(cleaned["TRCK"][0].string, u"1")
+
+            metadata = audiotools.ID3v23Comment(
+                [audiotools.ID3v23TextFrame.from_unicode("TRCK", u"01/2")])
+            self.assertEqual(metadata.track_number, 1)
+            self.assertEqual(metadata.track_total, 2)
+            self.assertEqual(metadata["TRCK"][0].string, u"01/2")
+            fixes = []
+            cleaned = metadata.clean(fixes)
+            self.assertEqual(fixes,
+                             [_(u"removed leading zeroes from %(field)s") %
+                              {"field":u"TRCK"}])
+            self.assertEqual(cleaned.track_number, 1)
+            self.assertEqual(cleaned.track_total, 2)
+            self.assertEqual(cleaned["TRCK"][0].string, u"1/2")
+
+            metadata = audiotools.ID3v23Comment(
+                [audiotools.ID3v23TextFrame.from_unicode("TRCK", u"1/02")])
+            self.assertEqual(metadata.track_number, 1)
+            self.assertEqual(metadata.track_total, 2)
+            self.assertEqual(metadata["TRCK"][0].string, u"1/02")
+            fixes = []
+            cleaned = metadata.clean(fixes)
+            self.assertEqual(fixes,
+                             [_(u"removed leading zeroes from %(field)s") %
+                              {"field":u"TRCK"}])
+            self.assertEqual(cleaned.track_number, 1)
+            self.assertEqual(cleaned.track_total, 2)
+            self.assertEqual(cleaned["TRCK"][0].string, u"1/2")
+
+            metadata = audiotools.ID3v23Comment(
+                [audiotools.ID3v23TextFrame.from_unicode("TRCK", u"01/02")])
+            self.assertEqual(metadata.track_number, 1)
+            self.assertEqual(metadata.track_total, 2)
+            self.assertEqual(metadata["TRCK"][0].string, u"01/02")
+            fixes = []
+            cleaned = metadata.clean(fixes)
+            self.assertEqual(fixes,
+                             [_(u"removed leading zeroes from %(field)s") %
+                              {"field":u"TRCK"}])
+            self.assertEqual(cleaned.track_number, 1)
+            self.assertEqual(cleaned.track_total, 2)
+            self.assertEqual(cleaned["TRCK"][0].string, u"1/2")
+
+        #check mislabeled images
+        metadata = audiotools.ID3v23Comment(
+            [audiotools.ID3v23PicFrame("""iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKAQMAAAC3/F3+AAAAAXNSR0IArs4c6QAAAANQTFRF////
+p8QbyAAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB9sEBBMWM3PnvjMAAAALSURBVAjXY2DA
+BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'),
+                                       u"image/jpeg",
+                                       u"",
+                                       3)])
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"fixed embedded image metadata fields")])
+        self.assertEqual(cleaned.images()[0],
+                         audiotools.Image.new("""iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKAQMAAAC3/F3+AAAAAXNSR0IArs4c6QAAAANQTFRF////
+p8QbyAAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB9sEBBMWM3PnvjMAAAALSURBVAjXY2DA
+BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'),
+                                              u"",
+                                              0))
+
+
 class ID3v24MetaData(ID3v22MetaData):
     def setUp(self):
         self.metadata_class = audiotools.ID3v23Comment
@@ -1134,10 +1431,153 @@ class ID3v24MetaData(ID3v22MetaData):
         self.supported_formats = [audiotools.MP3Audio,
                                   audiotools.MP2Audio]
 
-
-
     def empty_metadata(self):
         return self.metadata_class([])
+
+    @METADATA_ID3V2
+    def test_clean(self):
+       #check trailing whitespace
+        metadata = audiotools.ID3v24Comment(
+            [audiotools.ID3v24TextFrame.from_unicode("TIT2", u"Title ")])
+        self.assertEqual(metadata.track_name, u"Title ")
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"removed trailing whitespace from %(field)s") %
+                          {"field":u"TIT2"}])
+        self.assertEqual(cleaned.track_name, u"Title")
+
+        #check leading whitespace
+        metadata = audiotools.ID3v24Comment(
+            [audiotools.ID3v24TextFrame.from_unicode("TIT2", u" Title")])
+        self.assertEqual(metadata.track_name, u" Title")
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"removed leading whitespace from %(field)s") %
+                          {"field":u"TIT2"}])
+        self.assertEqual(cleaned.track_name, u"Title")
+
+        #check empty fields
+        metadata = audiotools.ID3v24Comment(
+            [audiotools.ID3v24TextFrame.from_unicode("TIT2", u"")])
+        self.assertEqual(metadata["TIT2"][0].string, u"")
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"removed empty field %(field)s") %
+                          {"field":u"TIT2"}])
+        self.assertRaises(KeyError,
+                          cleaned.__getitem__,
+                          "TIT2")
+
+        #check leading zeroes,
+        #depending on whether we're preserving them or not
+        if (audiotools.config.getboolean_default("ID3", "pad", False)):
+            #pad ID3v2 tags with 0
+            metadata = audiotools.ID3v24Comment(
+                [audiotools.ID3v24TextFrame.from_unicode("TRCK", u"1")])
+            self.assertEqual(metadata.track_number, 1)
+            self.assertEqual(metadata.track_total, 0)
+            self.assertEqual(metadata["TRCK"][0].string, u"1")
+            fixes = []
+            cleaned = metadata.clean(fixes)
+            self.assertEqual(fixes,
+                             [_(u"added leading zeroes to %(field)s") %
+                              {"field":u"TRCK"}])
+            self.assertEqual(cleaned.track_number, 1)
+            self.assertEqual(cleaned.track_total, 0)
+            self.assertEqual(cleaned["TRCK"][0].string, u"01")
+
+            metadata = audiotools.ID3v24Comment(
+                [audiotools.ID3v24TextFrame.from_unicode("TRCK", u"1/2")])
+            self.assertEqual(metadata.track_number, 1)
+            self.assertEqual(metadata.track_total, 2)
+            self.assertEqual(metadata["TRCK"][0].string, u"1/2")
+            fixes = []
+            cleaned = metadata.clean(fixes)
+            self.assertEqual(fixes,
+                             [_(u"added leading zeroes to %(field)s") %
+                              {"field":u"TRCK"}])
+            self.assertEqual(cleaned.track_number, 1)
+            self.assertEqual(cleaned.track_total, 2)
+            self.assertEqual(cleaned["TRCK"][0].string, u"01/02")
+        else:
+            #don't pad ID3v2 tags with 0
+            metadata = audiotools.ID3v24Comment(
+                [audiotools.ID3v24TextFrame.from_unicode("TRCK", u"01")])
+            self.assertEqual(metadata.track_number, 1)
+            self.assertEqual(metadata.track_total, 0)
+            self.assertEqual(metadata["TRCK"][0].string, u"01")
+            fixes = []
+            cleaned = metadata.clean(fixes)
+            self.assertEqual(fixes,
+                             [_(u"removed leading zeroes from %(field)s") %
+                              {"field":u"TRCK"}])
+            self.assertEqual(cleaned.track_number, 1)
+            self.assertEqual(cleaned.track_total, 0)
+            self.assertEqual(cleaned["TRCK"][0].string, u"1")
+
+            metadata = audiotools.ID3v24Comment(
+                [audiotools.ID3v24TextFrame.from_unicode("TRCK", u"01/2")])
+            self.assertEqual(metadata.track_number, 1)
+            self.assertEqual(metadata.track_total, 2)
+            self.assertEqual(metadata["TRCK"][0].string, u"01/2")
+            fixes = []
+            cleaned = metadata.clean(fixes)
+            self.assertEqual(fixes,
+                             [_(u"removed leading zeroes from %(field)s") %
+                              {"field":u"TRCK"}])
+            self.assertEqual(cleaned.track_number, 1)
+            self.assertEqual(cleaned.track_total, 2)
+            self.assertEqual(cleaned["TRCK"][0].string, u"1/2")
+
+            metadata = audiotools.ID3v24Comment(
+                [audiotools.ID3v24TextFrame.from_unicode("TRCK", u"1/02")])
+            self.assertEqual(metadata.track_number, 1)
+            self.assertEqual(metadata.track_total, 2)
+            self.assertEqual(metadata["TRCK"][0].string, u"1/02")
+            fixes = []
+            cleaned = metadata.clean(fixes)
+            self.assertEqual(fixes,
+                             [_(u"removed leading zeroes from %(field)s") %
+                              {"field":u"TRCK"}])
+            self.assertEqual(cleaned.track_number, 1)
+            self.assertEqual(cleaned.track_total, 2)
+            self.assertEqual(cleaned["TRCK"][0].string, u"1/2")
+
+            metadata = audiotools.ID3v24Comment(
+                [audiotools.ID3v24TextFrame.from_unicode("TRCK", u"01/02")])
+            self.assertEqual(metadata.track_number, 1)
+            self.assertEqual(metadata.track_total, 2)
+            self.assertEqual(metadata["TRCK"][0].string, u"01/02")
+            fixes = []
+            cleaned = metadata.clean(fixes)
+            self.assertEqual(fixes,
+                             [_(u"removed leading zeroes from %(field)s") %
+                              {"field":u"TRCK"}])
+            self.assertEqual(cleaned.track_number, 1)
+            self.assertEqual(cleaned.track_total, 2)
+            self.assertEqual(cleaned["TRCK"][0].string, u"1/2")
+
+        #check mislabeled images
+        metadata = audiotools.ID3v24Comment(
+            [audiotools.ID3v24PicFrame("""iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKAQMAAAC3/F3+AAAAAXNSR0IArs4c6QAAAANQTFRF////
+p8QbyAAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB9sEBBMWM3PnvjMAAAALSURBVAjXY2DA
+BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'),
+                                       u"image/jpeg",
+                                       u"",
+                                       3)])
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"fixed embedded image metadata fields")])
+        self.assertEqual(cleaned.images()[0],
+                         audiotools.Image.new("""iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKAQMAAAC3/F3+AAAAAXNSR0IArs4c6QAAAANQTFRF////
+p8QbyAAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB9sEBBMWM3PnvjMAAAALSURBVAjXY2DA
+BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'),
+                                              u"",
+                                              0))
 
 
 class ID3CommentPairMetaData(MetaDataTest):
@@ -1979,28 +2419,28 @@ class VorbisCommentTest(MetaDataTest):
     @METADATA_VORBIS
     def test_clean(self):
         #check trailing whitespace
-        metadata = audiotools.VorbisComment({"TAG":[u"Foo "]},
+        metadata = audiotools.VorbisComment({"TITLE":[u"Foo "]},
                                             u"vendor")
         results = []
         cleaned = metadata.clean(results)
         self.assertEqual(cleaned,
-                         audiotools.VorbisComment({"TAG":[u"Foo"]},
+                         audiotools.VorbisComment({"TITLE":[u"Foo"]},
                                                   u"vendor"))
         self.assertEqual(results,
                          [_(u"removed trailing whitespace from %(field)s") %
-                          {"field":u"TAG"}])
+                          {"field":u"TITLE"}])
 
         #check leading whitespace
-        metadata = audiotools.VorbisComment({"TAG":[u" Foo"]},
+        metadata = audiotools.VorbisComment({"TITLE":[u" Foo"]},
                                             u"vendor")
         results = []
         cleaned = metadata.clean(results)
         self.assertEqual(cleaned,
-                         audiotools.VorbisComment({"TAG":[u"Foo"]},
+                         audiotools.VorbisComment({"TITLE":[u"Foo"]},
                                                   u"vendor"))
         self.assertEqual(results,
                          [_(u"removed leading whitespace from %(field)s") %
-                          {"field":u"TAG"}])
+                          {"field":u"TITLE"}])
 
         #check leading zeroes
         metadata = audiotools.VorbisComment({"TRACKNUMBER":[u"001"]},
@@ -2015,7 +2455,7 @@ class VorbisCommentTest(MetaDataTest):
                           {"field":u"TRACKNUMBER"}])
 
         #check empty fields
-        metadata = audiotools.VorbisComment({"TAG":[u""]},
+        metadata = audiotools.VorbisComment({"TITLE":[u""]},
                                             u"vendor")
         results = []
         cleaned = metadata.clean(results)
@@ -2023,9 +2463,9 @@ class VorbisCommentTest(MetaDataTest):
                          audiotools.VorbisComment({}, u"vendor"))
         self.assertEqual(results,
                          [_(u"removed empty field %(field)s") %
-                          {"field":u"TAG"}])
+                          {"field":u"TITLE"}])
 
-        metadata = audiotools.VorbisComment({"TAG":[u"    "]},
+        metadata = audiotools.VorbisComment({"TITLE":[u"    "]},
                                             u"vendor")
         results = []
         cleaned = metadata.clean(results)
@@ -2033,6 +2473,6 @@ class VorbisCommentTest(MetaDataTest):
                          audiotools.VorbisComment({}, u"vendor"))
         self.assertEqual(results,
                          [_(u"removed trailing whitespace from %(field)s") %
-                          {"field":u"TAG"},
+                          {"field":u"TITLE"},
                           _(u"removed empty field %(field)s") %
-                          {"field":u"TAG"}])
+                          {"field":u"TITLE"}])
