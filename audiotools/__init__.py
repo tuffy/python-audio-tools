@@ -3521,6 +3521,39 @@ class AudioFile:
                    [system_binaries.can_execute(system_binaries[command])
                     for command in cls.BINARIES]) == set([True])
 
+    def clean(self, fixes_performed, output_filename=None):
+        """Cleans the file of known data and metadata problems.
+
+        fixes_performed is a list-like object which is appended
+        with Unicode strings of fixed problems
+
+        output_filename is an optional filename of the fixed file
+        if present, a new AudioFile is returned
+        otherwise, only a dry-run is performed and no new file is written
+
+        Raises IOError if unable to write the file or its metadata
+        """
+
+        if (output_filename is None):
+            #dry run only
+            metadata = self.get_metadata()
+            if (metadata is not None):
+                metadata.clean(fixes_performed)
+        else:
+            #perform full fix
+            input_f = file(self.filename, "rb")
+            output_f = file(output_filename, "wb")
+            try:
+                transfer_data(input_f.read, output_f.write)
+            finally:
+                input_f.close()
+                output_f.close()
+
+            new_track = open(output_filename)
+            metadata = self.get_metadata()
+            if (metadata is not None):
+                new_track.set_metadata(metadata.clean(fixes_performed))
+            return new_track
 
 class WaveContainer(AudioFile):
     """An audio type which supports storing foreign RIFF chunks.

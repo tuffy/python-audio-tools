@@ -26,6 +26,7 @@ FlacDecoder_init(decoders_FlacDecoder *self,
                  PyObject *args, PyObject *kwds)
 {
     char* filename;
+    int stream_offset = 0;
 
     self->filename = NULL;
     self->file = NULL;
@@ -34,7 +35,10 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     self->qlp_coeffs = ia_blank();
     self->remaining_samples = 0;
 
-    if (!PyArg_ParseTuple(args, "si", &filename, &(self->channel_mask)))
+    if (!PyArg_ParseTuple(args, "si|i",
+                          &filename,
+                          &(self->channel_mask),
+                          &stream_offset))
         return -1;
 
     /*open the flac file*/
@@ -45,6 +49,10 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     } else {
         self->bitstream = bs_open(self->file, BS_BIG_ENDIAN);
     }
+
+    /*skip the given number of bytes, if any*/
+    if (stream_offset != 0)
+        fseek(self->file, stream_offset, SEEK_SET);
 
     self->filename = strdup(filename);
 
@@ -122,47 +130,41 @@ FlacDecoder_read_metadata(decoders_FlacDecoder *self)
             goto error;
         }
 
-        last_block = self->bitstream->read(self->bitstream, 1);
-        block_type = self->bitstream->read(self->bitstream, 7);
-        block_length = self->bitstream->read(self->bitstream, 24);
-
-        if (block_type == 0) {
-            self->streaminfo.minimum_block_size = self->bitstream->read(
-                                        self->bitstream, 16);
-            self->streaminfo.maximum_block_size = self->bitstream->read(
-                                        self->bitstream, 16);
-            self->streaminfo.minimum_frame_size = self->bitstream->read(
-                                        self->bitstream, 24);
-            self->streaminfo.maximum_frame_size = self->bitstream->read(
-                                        self->bitstream, 24);
-            self->streaminfo.sample_rate = self->bitstream->read(
-                                        self->bitstream, 20);
-            self->streaminfo.channels = self->bitstream->read(
-                                        self->bitstream, 3) + 1;
-            self->streaminfo.bits_per_sample = self->bitstream->read(
-                                        self->bitstream, 5) + 1;
-            self->streaminfo.total_samples = self->bitstream->read_64(
-                                        self->bitstream, 36);
-            if (fread(self->streaminfo.md5sum, sizeof(unsigned char),
-                      16, self->file) != 16) {
-                PyErr_SetString(PyExc_IOError, "unable to read md5sum");
-                goto error;
-            }
-        } else {
-            PyErr_SetString(PyExc_ValueError,
-                            "STREAMINFO not first metadata block");
-            goto error;
-        }
-
-        while (!last_block) {
+        do {
             last_block = self->bitstream->read(self->bitstream, 1);
             block_type = self->bitstream->read(self->bitstream, 7);
             block_length = self->bitstream->read(self->bitstream, 24);
-            if (fseek(self->file, block_length, SEEK_CUR) == -1) {
-                PyErr_SetFromErrno(PyExc_ValueError);
-                goto error;
+
+            if (block_type == 0) {
+                self->streaminfo.minimum_block_size =
+                    self->bitstream->read(self->bitstream, 16);
+                self->streaminfo.maximum_block_size =
+                    self->bitstream->read(self->bitstream, 16);
+                self->streaminfo.minimum_frame_size =
+                    self->bitstream->read(self->bitstream, 24);
+                self->streaminfo.maximum_frame_size =
+                    self->bitstream->read(self->bitstream, 24);
+                self->streaminfo.sample_rate =
+                    self->bitstream->read(self->bitstream, 20);
+                self->streaminfo.channels =
+                    self->bitstream->read(self->bitstream, 3) + 1;
+                self->streaminfo.bits_per_sample =
+                    self->bitstream->read(self->bitstream, 5) + 1;
+                self->streaminfo.total_samples =
+                    self->bitstream->read_64(self->bitstream, 36);
+
+                if (fread(self->streaminfo.md5sum, sizeof(unsigned char),
+                          16, self->file) != 16) {
+                    PyErr_SetString(PyExc_IOError, "unable to read md5sum");
+                    goto error;
+                }
+            } else {
+                if (fseek(self->file, block_length, SEEK_CUR) == -1) {
+                    PyErr_SetFromErrno(PyExc_ValueError);
+                    goto error;
+                }
             }
-        }
+        } while (!last_block);
 
         bs_etry(self->bitstream);
         return OK;

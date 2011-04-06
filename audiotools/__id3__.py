@@ -854,20 +854,32 @@ class ID3v22Comment(MetaData):
 
         if (file.read(3) == 'ID3'):
             file.seek(0, 0)
+            bytes_skipped = 0
+
             #parse the header
             h = cls.TAG_HEADER.parse_stream(file)
+            bytes_skipped += cls.TAG_HEADER.sizeof()
+
             #seek to the end of its length
             file.seek(h.length, 1)
+            bytes_skipped += h.length
+
             #skip any null bytes after the ID3v2 tag
             c = file.read(1)
+            bytes_skipped += 1
             while (c == '\x00'):
                 c = file.read(1)
+                bytes_skipped += 1
+
             file.seek(-1, 1)
+            bytes_skipped -= 1
+            return bytes_skipped
         else:
             try:
                 file.seek(-3, 1)
             except IOError:
                 pass
+            return 0
 
     @classmethod
     def read_id3v2_comment(cls, filename):

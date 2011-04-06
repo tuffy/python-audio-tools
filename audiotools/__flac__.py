@@ -795,6 +795,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         self.__channels__ = 0
         self.__bitspersample__ = 0
         self.__total_frames__ = 0
+        self.__stream_offset__ = 0
 
         try:
             self.__read_streaminfo__()
@@ -809,37 +810,37 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         Takes a seekable file pointer rewound to the start of the file."""
 
+
         if (file.read(4) == 'fLaC'):
+            #proper FLAC file with no junk at the beginning
             try:
                 block_ids = list(cls.__block_ids__(file))
             except Con.FieldError:
                 return False
             if ((len(block_ids) == 0) or (0 not in block_ids)):
-                messenger = Messenger("audiotools", None)
-                messenger.error(_(u"STREAMINFO block not found"))
-            elif (block_ids[0] != 0):
-                messenger = Messenger("audiotools", None)
-                messenger.error(_(u"STREAMINFO not first metadata block.  " +
-                                  u"Please fix with tracklint(1)"))
+                return False
             else:
                 return True
         else:
-            #I've seen FLAC files tagged with ID3v2 comments.
-            #Though the official flac binaries grudgingly accept these,
-            #such tags are unnecessary and outside the specification
-            #so I will encourage people to remove them.
-
-            try:
-                file.seek(-4, 1)
-            except IOError:
+            #messed-up FLAC file with ID3v2 tags at the beginning
+            #which can be fixed using clean()
+            file.seek(0, 0)
+            if (file.read(3) == 'ID3'):
+                file.seek(-3, 1)
+                ID3v2Comment.skip(file)
+                if (file.read(4) == 'fLaC'):
+                    try:
+                        block_ids = list(cls.__block_ids__(file))
+                    except Con.FieldError:
+                        return False
+                    if ((len(block_ids) == 0) or (0 not in block_ids)):
+                        return False
+                    else:
+                        return True
+                else:
+                    return False
+            else:
                 return False
-
-            ID3v2Comment.skip(file)
-            if (file.read(4) == 'fLaC'):
-                messenger = Messenger("audiotools", None)
-                messenger.error(_(u"ID3v2 tag found at start of FLAC file.  " +
-                                  u"Please remove with tracklint(1)"))
-            return False
 
     def channel_mask(self):
         """Returns a ChannelMask object of this track's channel layout."""
@@ -889,6 +890,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         f = file(self.filename, 'rb')
         try:
+            f.seek(self.__stream_offset__, 0)
             if (f.read(4) != 'fLaC'):
                 raise InvalidFLAC(_(u'Invalid FLAC file'))
 
@@ -959,8 +961,9 @@ class FlacAudio(WaveContainer, AiffContainer):
         current_metadata_length = self.metadata_length()
 
         if ((minimum_metadata_length <= current_metadata_length) and
-            ((current_metadata_length - minimum_metadata_length) <
-             (4096 * 2))):
+            ((current_metadata_length -
+              minimum_metadata_length) < (4096 * 2)) and
+            (self.__stream_offset__ == 0)):
             #if the FLAC file's metadata + padding is large enough
             #to accomodate the new chunk of metadata,
             #simply overwrite the beginning of the file
@@ -979,20 +982,24 @@ class FlacAudio(WaveContainer, AiffContainer):
             import tempfile
 
             stream = file(self.filename, 'rb')
+            stream.seek(self.__stream_offset__, 0)
 
             if (stream.read(4) != 'fLaC'):
                 raise InvalidFLAC(_(u'Invalid FLAC file'))
 
+            #skip the existing metadata blocks
             block = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(stream)
             while (block.last_block == 0):
                 stream.seek(block.block_length, 1)
                 block = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(stream)
             stream.seek(block.block_length, 1)
 
+            #write the remaining data stream to a temp file
             file_data = tempfile.TemporaryFile()
             transfer_data(stream.read, file_data.write)
             file_data.seek(0, 0)
 
+            #finally, rebuild our file using new metadata and old stream
             stream = file(self.filename, 'wb')
             stream.write('fLaC')
             stream.write(metadata.build())
@@ -1007,6 +1014,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         f = file(self.filename, 'rb')
         try:
+            f.seek(self.__stream_offset__, 0)
             if (f.read(4) != 'fLaC'):
                 raise InvalidFLAC(_(u'Invalid FLAC file'))
 
@@ -1078,7 +1086,8 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         try:
             return decoders.FlacDecoder(self.filename,
-                                        self.channel_mask())
+                                        self.channel_mask(),
+                                        self.__stream_offset__)
         except (IOError, ValueError), msg:
             #The only time this is likely to occur is
             #if the FLAC is modified between when FlacAudio
@@ -1523,22 +1532,26 @@ class FlacAudio(WaveContainer, AiffContainer):
 
     def __read_streaminfo__(self):
         f = file(self.filename, "rb")
-        if (f.read(4) != "fLaC"):
-            raise InvalidFLAC(_(u"Not a FLAC file"))
+        self.__stream_offset__ = ID3v2Comment.skip(f)
+        f.read(4)
 
-        (stop, header_type, length) = FlacAudio.__read_flac_header__(f)
-        if (header_type != 0):
-            raise InvalidFLAC(_(u"STREAMINFO not first metadata block"))
+        (stop, header_type, length) = (False, None, 0)
+        while (not stop):
+            (stop, header_type, length) = \
+                FlacAudio.__read_flac_header__(f)
+            if (header_type == 0):
+                p = self.STREAMINFO.parse(f.read(length))
 
-        p = FlacAudio.STREAMINFO.parse(f.read(length))
+                md5sum = "".join(["%.2X" % (x) for x in p.md5]).lower()
 
-        md5sum = "".join(["%.2X" % (x) for x in p.md5]).lower()
-
-        self.__samplerate__ = p.samplerate
-        self.__channels__ = p.channels + 1
-        self.__bitspersample__ = p.bits_per_sample + 1
-        self.__total_frames__ = p.total_samples
-        self.__md5__ = "".join([chr(c) for c in p.md5])
+                self.__samplerate__ = p.samplerate
+                self.__channels__ = p.channels + 1
+                self.__bitspersample__ = p.bits_per_sample + 1
+                self.__total_frames__ = p.total_samples
+                self.__md5__ = "".join([chr(c) for c in p.md5])
+                break
+            else:
+                f.seek(length, 1)
         f.close()
 
     def seektable(self, pcm_frames):
@@ -1694,6 +1707,93 @@ class FlacAudio(WaveContainer, AiffContainer):
                                     channels=self.__channels__,
                                     bits_per_sample=self.__bitspersample__,
                                     process=sub)
+
+    def clean(self, fixes_performed, output_filename=None):
+        """Cleans the file of known data and metadata problems.
+
+        fixes_performed is a list-like object which is appended
+        with Unicode strings of fixed problems
+
+        output_filename is an optional filename of the fixed file
+        if present, a new AudioFile is returned
+        otherwise, only a dry-run is performed and no new file is written
+
+        Raises IOError if unable to write the file or its metadata
+        """
+
+        if (output_filename is None):
+            #dry run only
+
+            input_f = open(self.filename, "rb")
+            try:
+                #remove ID3 tags from before and after FLAC stream
+                stream_offset = ID3v2Comment.skip(input_f)
+                if (stream_offset > 0):
+                    fixes_performed.append(_(u"removed ID3v2 tag"))
+                input_f.seek(-128, 2)
+                if (input_f.read(3) == 'TAG'):
+                    fixes_performed.append(_(u"removed ID3v1 tag"))
+
+                #reorder metadata blocks such that STREAMINFO is first
+                input_f.seek(stream_offset, 0)
+                input_f.read(4)
+                if (list(FlacAudio.__block_ids__(input_f))[0] != 0):
+                    fixes_performed.append(
+                        _(u"moved STREAMINFO to first block"))
+
+                #finally, fix any remaining metadata problems
+                metadata = self.get_metadata()
+                if (metadata is not None):
+                    metadata.clean(fixes_performed)
+            finally:
+                input_f.close()
+        else:
+            #perform complete fix
+
+            input_f = open(self.filename, "rb")
+            try:
+                #remove ID3 tags from before and after FLAC stream
+                stream_size = os.path.getsize(self.filename)
+
+                stream_offset = ID3v2Comment.skip(input_f)
+                if (stream_offset > 0):
+                    fixes_performed.append(_(u"removed ID3v2 tag"))
+                    stream_size -= stream_offset
+
+                input_f.seek(-128, 2)
+                if (input_f.read(3) == 'TAG'):
+                    fixes_performed.append(_(u"removed ID3v1 tag"))
+                    stream_size -= 128
+
+                output_f = open(output_filename, "wb")
+                try:
+                    input_f.seek(stream_offset, 0)
+                    while (stream_size > 0):
+                        s = input_f.read(4096)
+                        if (len(s) > stream_size):
+                            s = s[0:stream_size]
+                        output_f.write(s)
+                        stream_size -= len(s)
+                finally:
+                    output_f.close()
+
+                output_track = FlacAudio(output_filename)
+
+                #reorder metadata blocks such that STREAMINFO is first
+                input_f.seek(stream_offset, 0)
+                input_f.read(4)
+                if (list(FlacAudio.__block_ids__(input_f))[0] != 0):
+                    fixes_performed.append(
+                        _(u"moved STREAMINFO to first block"))
+
+                #finally, fix any remaining metadata problems
+                metadata = self.get_metadata()
+                if (metadata is not None):
+                    output_track.set_metadata(metadata.clean(fixes_performed))
+
+                return output_track
+            finally:
+                input_f.close()
 
 
 #######################
