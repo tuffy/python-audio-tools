@@ -46,221 +46,11 @@ def checksum(path):
     finally:
         f.close()
 
-YEAR = re.compile(r'^\d{4}$')
-
-TEXT_FIELDS = tuple([field for field in audiotools.MetaData.__FIELDS__
-                     if (field not in audiotools.MetaData.__INTEGER_FIELDS__)])
-
-
 def display_messages(messenger, track, messages):
     for message in messages:
         messenger.info(_(u"* %(filename)s: %(message)s") % \
                            {"filename": messenger.filename(track.filename),
                             "message": message})
-
-
-#track should be an existing Track object
-#if dry_run is True, a new Track object is written with the given fixes applied
-#if False, the fixes are not applied
-#returns a (Track,fix_list) tuple,
-#where Track is a fixed version (if necessary)
-#and fix_list is list of Unicode strings detailing all the fixes performed
-def fix_track(track, dry_run=False):
-    log = []
-
-    if (isinstance(track, BrokenFlacAudio)):
-        if (not dry_run):
-            track = track.fix_id3()
-        log.append(_(u"Removed unnecessary ID3 tags"))
-    elif (isinstance(track, DisorderedFlacAudio)):
-        if (not dry_run):
-            track = track.fix_blocks()
-        log.append(_(u"Reordered metadata blocks"))
-
-    return (track, log)
-
-
-def __strip_list_dict__(d, log):
-    for key in list(d.keys())[:]:
-        old_values = d[key]
-        new_values = [v for v in old_values
-                      if (len(unicode(v).strip().strip(unichr(0))) > 0)]
-        if (old_values != new_values):
-            if (len(new_values) > 0):
-                d[key] = new_values
-            else:
-                del(d[key])
-            log.append(_(u"Stripped blank %s field") % (key))
-
-
-def __strip_zeroes_list_dict__(d, numeric_keys, log):
-    def __strip_zeroes__(s):
-        if ((len(s.lstrip(u"0")) > 0) and
-            (s.lstrip(u"0") != s)):
-            return s.lstrip(u"0")
-        else:
-            return s
-
-    for key in list(d.keys())[:]:
-        if (key in numeric_keys):
-            old_values = [unicode(v) for v in d[key]]
-            new_values = [__strip_zeroes__(unicode(v)) for v in old_values]
-            if (old_values != new_values):
-                d[key] = new_values
-                log.append(_(u"Stripped leading zeroes from %s field") % (key))
-
-
-#if the track number is between 100 and 999,
-#use the high digit for the album number and low digits for track number
-#(a lot of multi-volume video game soundtracks are numbered this way)
-def fix_track_number(metadata, log):
-    if ((metadata.track_number >= 100) and
-        (metadata.track_number <= 999) and
-        (metadata.album_number == 0)):
-        log.append(
-            _(u"Converted track number %(old_tracknum)d to " +
-              u"album number %(albumnum)d and " +
-              u"track_number %(new_tracknum)d") %
-            {"old_tracknum": metadata.track_number,
-             "albumnum": metadata.track_number / 100,
-             "new_tracknum": metadata.track_number % 100})
-        metadata.album_number = metadata.track_number / 100
-        metadata.track_number = metadata.track_number % 100
-    elif ((metadata.track_number >= 100) and
-          (metadata.track_number <= 999) and
-          (metadata.album_number == (metadata.track_number / 100))):
-        log.append(
-            _(u"Converted track number %(old_tracknum)d to " +
-              u"track number %(new_tracknum)d") %
-            {"old_tracknum": metadata.track_number,
-             "new_tracknum": metadata.track_number % 100})
-        metadata.track_number = metadata.track_number % 100
-
-
-#remove any leading zeroes from the track number and album number fields
-def fix_leading_zeroes(metadata, log):
-    if (isinstance(metadata, audiotools.VorbisComment)):
-        __strip_zeroes_list_dict__(metadata,
-                                   ("TRACKNUMBER", "DISCNUMBER"),
-                                   log)
-    elif (isinstance(metadata, audiotools.FlacMetaData)):
-        __strip_zeroes_list_dict__(metadata.vorbis_comment,
-                                   ("TRACKNUMBER", "DISCNUMBER"),
-                                   log)
-    elif (isinstance(metadata, audiotools.ID3v2Comment)):
-        __strip_zeroes_list_dict__(metadata,
-                                   ("TRCK", "TPOS"),
-                                   log)
-    elif (isinstance(metadata, audiotools.ApeTag)):
-        for key in list(metadata.keys())[:]:
-            if ((key in ("Track", "Media")) and
-                (len(unicode(metadata[key]).lstrip(u"0")) > 0) and
-                (unicode(metadata[key]).lstrip(u"0") !=
-                 unicode(metadata[key]))):
-                metadata[key] = audiotools.ApeTagItem.string(
-                    key, unicode(metadata[key]).lstrip(u"0"))
-                log.append(_(u"Stripped leading zeroes from %s field") % (key))
-
-
-#if performer name is the same as artist name,
-#clear the performer name value
-def fix_performer_name(metadata, log):
-    if ((len(metadata.artist_name) > 0) and
-        (metadata.artist_name == metadata.performer_name)):
-        metadata.performer_name = u""
-        log.append(_(u"Removed redundant performer name field"))
-
-
-#if the "date" field is substituted for "year",
-#assign the current value to "year" and clear "date"
-def fix_date(metadata, log):
-    if (YEAR.match(metadata.date) and (metadata.year == u"")):
-        metadata.year = metadata.date
-        metadata.date = u""
-        log.append(_(u"Moved track date to track year"))
-
-
-#remove any leading or trailing whitespace from text fields
-#this is common in ID3v1 comments where NULL bytes should be
-#used instead of spaces, but it often happens by accident also
-def fix_whitespace(metadata, log):
-    for field in TEXT_FIELDS:
-        if (getattr(metadata, field).strip().strip(unichr(0)) !=
-            getattr(metadata, field)):
-            setattr(metadata, field,
-                    getattr(metadata, field).strip().strip(unichr(0)))
-            log.append(_(u"Stripped whitespace from %s field") % (field))
-
-
-#remove any blank tag fields from
-#VorbisComments, ID3v2Comments and ApeTags
-def fix_blank_fields(metadata, log):
-    if (isinstance(metadata, audiotools.VorbisComment)):
-        __strip_list_dict__(metadata, log)
-    elif (isinstance(metadata, audiotools.FlacMetaData)):
-        __strip_list_dict__(metadata.vorbis_comment, log)
-    elif (isinstance(metadata, audiotools.ID3v2Comment)):
-        __strip_list_dict__(metadata, log)
-    elif (isinstance(metadata, audiotools.ApeTag)):
-        for key in list(metadata.keys())[:]:
-            if (len(unicode(metadata[key]).strip().strip(unichr(0))) == 0):
-                del(metadata[key])
-                log.append(_(u"Stripped blank %s field") % (key))
-
-
-#update embedded images with proper metadatadata
-#based on their raw data
-def fix_image_metrics(metadata, log):
-    converted_images = []
-    updated = False
-    for embedded_image in metadata.images():
-        converted_image = audiotools.Image.new(embedded_image.data,
-                                               embedded_image.description,
-                                               embedded_image.type)
-        if ((embedded_image.mime_type != converted_image.mime_type) or
-            (embedded_image.width != converted_image.width) or
-            (embedded_image.height != converted_image.height) or
-            (embedded_image.color_depth != converted_image.color_depth) or
-            (embedded_image.color_count != converted_image.color_count)):
-            converted_images.append(converted_image)
-            log.append(_(u"Fixed embedded image metadata fields"))
-            updated = True
-        else:
-            converted_images.append(embedded_image)
-
-    if (updated):
-        for old_image in metadata.images():
-            metadata.delete_image(old_image)
-        for new_image in converted_images:
-            metadata.add_image(new_image)
-
-
-METADATA_FIXES = (fix_leading_zeroes, fix_track_number,
-                  fix_whitespace, fix_performer_name,
-                  fix_blank_fields, fix_image_metrics)
-
-
-#metadata should be an existing MetaData object
-#returns a (MetaData,fix_list) tuple,
-#where MetaData is a fixed version (if necessary)
-#and fix_list is list of Unicode strings detailing all the fixes performed
-#if MetaData is None, returns (None,[]) since no fixes are performed
-def fix_metadata(metadata):
-    if (metadata is None):
-        return (None, [])
-
-    if (isinstance(metadata, audiotools.ID3CommentPair)):
-        (id3v2, log1) = fix_metadata(metadata.id3v2)
-        (id3v1, log2) = fix_metadata(metadata.id3v1)
-
-        return (audiotools.ID3CommentPair(id3v2, id3v1), log1 + log2)
-    else:
-        log = []
-
-        for fix in METADATA_FIXES:
-            fix(metadata, log)
-
-        return (metadata, log)
 
 
 def audiofiles(paths, messenger):
@@ -273,215 +63,58 @@ def audiofiles(paths, messenger):
         for f in audiotools.open_directory(d, messenger=messenger):
             yield f
 
+def update_without_backup(track, messenger):
+    fixes = []
+
+    temp_track_f = tempfile.NamedTemporaryFile(suffix="." + track.SUFFIX)
+    try:
+        #perform cleanup on a temporary track
+        track.clean(fixes, temp_track_f.name)
+
+        #if changes are made, copy temporary track over original
+        if (len(fixes) > 0):
+            input_f = open(temp_track_f.name, 'rb')
+            output_f = open(track.filename, 'wb')
+            audiotools.transfer_data(input_f.read, output_f.write)
+            output_f.close()
+            input_f.close()
+
+            #then display output messages
+            display_messages(messenger, track, fixes)
+    finally:
+        temp_track_f.close()
+
 
 def update_and_backup(track, undo_db, messenger):
-    changes_made = False
+    fixes = []
 
-    #copy the track to a temporary location
     temp_track_f = tempfile.NamedTemporaryFile(suffix="." + track.SUFFIX)
-    f = open(track.filename, 'rb')
-    audiotools.transfer_data(f.read, temp_track_f.write)
-    f.close()
-    temp_track_f.flush()
-    temp_track = audiotools.open(temp_track_f.name)
+    try:
+        #perform cleanup on a temporary track
+        track.clean(fixes, temp_track_f.name)
 
-    #perform any Track fixes on the temporary Track
-    (temp_track, messages) = fix_track(temp_track, dry_run=False)
-    changes_made = changes_made or (len(messages) > 0)
-    display_messages(messenger, track, messages)
+        #if changes are made
+        if (len(fixes) > 0):
+            #store undo information between old and new track
+            undo_db.add(track.filename, temp_track_f.name)
 
-    #perform any MetaData fixes on the temporary Track
-    (metadata, messages) = fix_metadata(temp_track.get_metadata())
-    changes_made = changes_made or (len(messages) > 0)
-    display_messages(messenger, track, messages)
-    if (len(messages) > 0):
-        temp_track.set_metadata(metadata)
+            #then copy temporary track over original
+            input_f = open(temp_track_f.name, 'rb')
+            output_f = open(track.filename, 'wb')
+            audiotools.transfer_data(input_f.read, output_f.write)
+            output_f.close()
+            input_f.close()
 
-    if (changes_made):
-        #store undo information between old and new track
-        undo_db.add(track.filename, temp_track_f.name)
-
-        #copy the temporary track over the original
-        f1 = open(temp_track_f.name, 'rb')
-        f2 = open(track.filename, 'wb')
-        audiotools.transfer_data(f1.read, f2.write)
-        f1.close()
-        f2.close()
-
-    temp_track_f.close()
+            #then display output messages
+            display_messages(messenger, track, fixes)
+    finally:
+        temp_track_f.close()
 
 
 def undo_from_backup(track, undo_db, messenger):
     if (undo_db.undo(track.filename)):
         messenger.info(_(u"Restored: %s") % \
                            (messenger.filename(track.filename)))
-
-
-#a FlacAudio Track prepended with ID3v2 tags
-#or appended with ID3v1 tags
-class BrokenFlacAudio(audiotools.FlacAudio):
-    NAME = "brokenflac"
-
-    def __read_streaminfo__(self):
-        f = file(self.filename, "rb")
-        audiotools.ID3v2Comment.skip(f)
-        if (f.read(4) != "fLaC"):
-            raise audiotools.FlacException("Not a FLAC file")
-
-        (stop, header_type, length) = \
-            audiotools.FlacAudio.__read_flac_header__(f)
-        if (header_type != 0):
-            raise audiotools.FlacException(
-                "STREAMINFO not first metadata block")
-
-        p = audiotools.FlacAudio.STREAMINFO.parse(f.read(length))
-
-        md5sum = "".join(["%.2X" % (x) for x in p.md5]).lower()
-
-        self.__samplerate__ = p.samplerate
-        self.__channels__ = p.channels + 1
-        self.__bitspersample__ = p.bits_per_sample + 1
-        self.__total_frames__ = p.total_samples
-        self.__md5__ = "".join([chr(c) for c in p.md5])
-        f.close()
-
-    def get_metadata(self):
-        f = file(self.filename, 'rb')
-        audiotools.ID3v2Comment.skip(f)
-        try:
-            if (f.read(4) != 'fLaC'):
-                raise audiotools.FlacException('invalid FLAC file')
-
-            blocks = []
-
-            while (True):
-                header = \
-                    audiotools.FlacAudio.METADATA_BLOCK_HEADER.parse_stream(f)
-                blocks.append(audiotools.FlacMetaDataBlock(
-                    type=header.block_type,
-                    data=f.read(header.block_length)))
-                if (header.last_block == 1):
-                    break
-
-            return audiotools.FlacMetaData(blocks)
-        finally:
-            f.close()
-
-    def set_metadata(self, metadata):
-        pass
-
-    @classmethod
-    def is_type(cls,  file):
-        if (file.read(3) == 'ID3'):
-            file.seek(-3, 1)
-            audiotools.ID3v2Comment.skip(file)
-            if (file.read(4) == 'fLaC'):
-                return True
-            else:
-                return False
-        else:
-            file.seek(0, 0)
-            if (file.read(4) == 'fLaC'):
-                file.seek(-128, 2)
-                if (file.read(3) == 'TAG'):
-                    return True
-                else:
-                    return False
-
-    #rewrites the FLAC track without any ID3v2/1 metadata attached
-    def fix_id3(self):
-        f = file(self.filename, 'rb')
-
-        #figure out where the start and end points of the FLAC file are
-        audiotools.ID3v2Comment.skip(f)
-        flac_start = f.tell()
-        f.seek(-128, 2)
-        if (f.read(3) == 'TAG'):
-            f.seek(-3, 1)
-            flac_end = f.tell()
-        else:
-            f.seek(0, 2)
-            flac_end = f.tell()
-
-        #copy the FLAC data to a temporary location
-        temp = tempfile.TemporaryFile()
-        f.seek(flac_start, 0)
-        reader = audiotools.__capped_stream_reader__(f, flac_end - flac_start)
-        audiotools.transfer_data(reader.read, temp.write)
-
-        #rewrite the original FLAC with our temporary data
-        temp.seek(0, 0)
-        f.close()
-        f = file(self.filename, 'wb')
-        audiotools.transfer_data(temp.read, f.write)
-        temp.close()
-        f.close()
-
-        return audiotools.open(self.filename)
-
-
-class DisorderedFlacAudio(audiotools.FlacAudio):
-    NAME = "disorderedflac"
-
-    def __read_streaminfo__(self):
-        f = file(self.filename, "rb")
-        f.read(4)
-
-        (stop, header_type, length) = (False, None, 0)
-        while (not stop):
-            (stop, header_type, length) = \
-                audiotools.FlacAudio.__read_flac_header__(f)
-            if (header_type == 0):
-                p = audiotools.FlacAudio.STREAMINFO.parse(f.read(length))
-
-                md5sum = "".join(["%.2X" % (x) for x in p.md5]).lower()
-
-                self.__samplerate__ = p.samplerate
-                self.__channels__ = p.channels + 1
-                self.__bitspersample__ = p.bits_per_sample + 1
-                self.__total_frames__ = p.total_samples
-                self.__md5__ = "".join([chr(c) for c in p.md5])
-                break
-            else:
-                f.seek(length, 1)
-        f.close()
-
-    #rewrites the FLAC track with its metadata blocks in the proper order
-    def fix_blocks(self):
-        metadata = self.get_metadata()
-
-        self.set_metadata(metadata)
-
-        return audiotools.open(self.filename)
-
-    @classmethod
-    def is_type(cls, file):
-        header = file.read(4)
-        first_block_type = ord(file.read(1))
-        return (header == 'fLaC') and ((first_block_type & 0x7) != 0)
-
-
-class PureFlacAudio(audiotools.FlacAudio):
-    NAME = "flac"
-
-    @classmethod
-    def is_type(cls, file):
-        header = file.read(4)
-        first_block_type = ord(file.read(1))
-        return (header == 'fLaC') and ((first_block_type & 0x7) == 0)
-
-
-if (audiotools.FlacAudio in audiotools.AVAILABLE_TYPES):
-    audiotools.AVAILABLE_TYPES = tuple([t for t in audiotools.AVAILABLE_TYPES
-                                        if t != audiotools.FlacAudio] + \
-                                       [BrokenFlacAudio,
-                                        DisorderedFlacAudio,
-                                        PureFlacAudio])
-
-
-audiotools.TYPE_MAP = dict([(track_type.NAME, track_type)
-                            for track_type in audiotools.AVAILABLE_TYPES
-                            if track_type.has_binaries(audiotools.BIN)])
 
 
 if (__name__ == '__main__'):
@@ -547,13 +180,8 @@ if (__name__ == '__main__'):
             #simply overwrite the track and track metadata directly
             #if changes have been made
             for track in audiofiles(args, messenger=msg):
-                (track, messages) = fix_track(track, dry_run=False)
-                display_messages(msg, track, messages)
-                (metadata, messages) = fix_metadata(track.get_metadata())
-                display_messages(msg, track, messages)
                 try:
-                    if (len(messages) > 0):
-                        track.set_metadata(metadata)
+                    update_without_backup(track, msg)
                 except IOError:
                     msg.error(_(u"Unable to write \"%s\"") % \
                                   (msg.filename(track.filename)))
@@ -576,7 +204,6 @@ if (__name__ == '__main__'):
             undo_db.close()
     else:  # a dry-run of the fixing procedure, with no changes made
         for track in audiofiles(args, messenger=msg):
-            (track, messages) = fix_track(track, dry_run=True)
-            display_messages(msg, track, messages)
-            (metadata, messages) = fix_metadata(track.get_metadata())
-            display_messages(msg, track, messages)
+            fixes = []
+            track.clean(fixes)
+            display_messages(msg, track, fixes)

@@ -65,13 +65,24 @@ typedef struct Bitstream_s {
     int records_total;   /*used by open_recorder*/
     BitstreamRecord *records;
 
-    void (*write)(struct Bitstream_s* bs, unsigned int count, int value);
-    void (*write_signed)(struct Bitstream_s* bs, unsigned int count,
-                              int value);
-    void (*write_64)(struct Bitstream_s* bs, unsigned int count,
-                         uint64_t value);
-    void (*write_unary)(struct Bitstream_s* bs, int stop_bit, int value);
+    void (*write)(struct Bitstream_s* bs,
+                  unsigned int count,
+                  int value);
+
+    void (*write_signed)(struct Bitstream_s* bs,
+                         unsigned int count,
+                         int value);
+
+    void (*write_64)(struct Bitstream_s* bs,
+                     unsigned int count,
+                     uint64_t value);
+
+    void (*write_unary)(struct Bitstream_s* bs,
+                        int stop_bit,
+                        int value);
+
     void (*byte_align)(struct Bitstream_s* bs);
+
     void (*set_endianness)(struct Bitstream_s* bs,
                            bs_endianness endianness);
 } Bitstream;
@@ -97,13 +108,19 @@ bs_close(Bitstream *bs);
 void
 bs_free(Bitstream *bs);
 
+/*adds a callback function, which is called on every byte written
+  the function's arguments are the written byte and a generic
+  pointer to some other data structure
+ */
 void
-bs_add_callback(Bitstream *bs, void (*callback)(uint8_t, void*),
+bs_add_callback(Bitstream *bs,
+                void (*callback)(uint8_t, void*),
                 void *data);
 
 int bs_eof(Bitstream *bs);
 
 
+/*big-endian writers for concrete bitstreams*/
 void
 write_bits_actual_be(Bitstream* bs, unsigned int count, int value);
 
@@ -114,14 +131,13 @@ void
 write_bits64_actual_be(Bitstream* bs, unsigned int count, uint64_t value);
 
 void
-write_unary_actual(Bitstream* bs, int stop_bit, int value);
-
-void
 byte_align_w_actual_be(Bitstream* bs);
 
 void
 set_endianness_actual_be(Bitstream* bs, bs_endianness endianness);
 
+
+/*little-endian writers for concrete bitstreams*/
 void
 write_bits_actual_le(Bitstream* bs, unsigned int count, int value);
 
@@ -138,6 +154,31 @@ void
 set_endianness_actual_le(Bitstream* bs, bs_endianness endianness);
 
 
+/*write unary uses the stream's current writers,
+  so it has no endian variations*/
+void
+write_unary_actual(Bitstream* bs, int stop_bit, int value);
+
+
+/*write methods for a bs_open_accumulator
+
+  The general idea is that one can use an accumulator to determine
+  how big a portion of the stream might be, then substitute it
+  for an actual stream to perform actual output.
+  This "throw away" approach is sometimes faster in practice
+  when recording the stream's output adds too much overhead
+  vs. simply redoing the calculations.
+
+  For example:
+  accumulator = bs_open_accumulator();
+  accumulator->write(accumulator, 8, 0x7F);
+  accumulator->write_signed(accumulator, 4, 3);
+  accumulator->write_signed(accumulator, 4, -1);
+
+  assert(accumulator->bits_written == 16);
+
+  bs_close(accumulator);
+*/
 void
 write_bits_accumulator(Bitstream* bs, unsigned int count, int value);
 
@@ -168,6 +209,25 @@ bs_record_resize(Bitstream* bs)
     }
 }
 
+/*write methods for a bs_open_recorder
+
+  The general idea is that one uses a recorder to calculate
+  how big a stream might be, then dump it to an actual stream
+  if it's found to be the proper size.
+  For example:
+  stream = bs_open("filename", BS_BIG_ENDIAN);
+
+  recorder = bs_open_recorder();
+  recorder->write(recorder, 8, 0x7F);
+  recorder->write_signed(recorder, 4, 3);
+  recorder->write_signed(recorder, 4, -1);
+
+  if (recorder->bits_written < minimum_bits)
+    bs_dump_records(stream, recorder);
+
+  bs_close(recorder);
+  bs_close(stream);
+*/
 void
 write_bits_record(Bitstream* bs, unsigned int count, int value);
 

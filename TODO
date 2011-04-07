@@ -3419,23 +3419,17 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE UnframedVorbisComment
 ** TODO Add clean() method to AudioFile and subclasses
    I expect a lot of these will do nothing in the short term.
-*** TODO AudioFile
+*** DONE AudioFile
 *** TODO AiffAudio
-*** TODO ALACAudio
-*** TODO AuAudio
-*** TODO FlacAudio
-*** TODO M4AAudio
-*** TODO MP2Audio
-*** TODO MP3Audio
-*** TODO OggFlacAudio
-*** TODO ShortenAudio
-*** TODO SpeexAudio
+    - [ ] Reorder streams in which the COMM chunk doesn't come before data
+*** DONE FlacAudio
 *** TODO WaveAudio
-*** TODO WavPackAudio
-** TODO Document MetaData clean() method
-** TODO Document AudioFile clean() method
-** TODO Add more comprehensive unit tests for clean() methods
-** TODO Convert tracklint to use clean() methods
+    - [ ] Reorder streams in which the fmt chunk doesn't come before data
+    - [ ] Fix 24bps or multichannel streams to be WAVEFORMATEXTENSIBLE
+** DONE Document MetaData clean() method
+** DONE Document AudioFile clean() method
+** DONE Add more comprehensive unit tests for clean() methods
+** DONE Convert tracklint to use clean() methods
 * TODO Deprecate little-used / poorly-tested bits
   Although there's a risk of annoying people by taking out
   stuff they might be using, some utilities and formats

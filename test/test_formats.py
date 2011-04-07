@@ -3111,6 +3111,64 @@ class FlacFileTest(TestForeignAiffChunks,
 
     #as is metadata handling
 
+    @FORMAT_FLAC
+    def test_clean(self):
+        #metadata is tested separately
+
+        #check FLAC files with ID3 tags
+        f = open("flac-id3.flac", "rb")
+        self.assertEqual(f.read(3), "ID3")
+        f.close()
+        track = audiotools.open("flac-id3.flac")
+        metadata1 = track.get_metadata()
+        fixes = []
+        self.assertEqual(track.clean(fixes), None)
+        self.assertEqual(fixes,
+                         [_(u"removed ID3v2 tag"),
+                          _(u"removed ID3v1 tag")])
+        temp = tempfile.NamedTemporaryFile(suffix=".flac")
+        try:
+            fixes = []
+            self.assertNotEqual(track.clean(fixes, temp.name), None)
+            self.assertEqual(fixes,
+                             [_(u"removed ID3v2 tag"),
+                              _(u"removed ID3v1 tag")])
+            f = open(temp.name, "rb")
+            self.assertEqual(f.read(4), "fLaC")
+            f.close()
+            track2 = audiotools.open(temp.name)
+            self.assertEqual(metadata1, track2.get_metadata())
+            self.assertEqual(audiotools.pcm_frame_cmp(
+                    track.to_pcm(), track2.to_pcm()), None)
+        finally:
+            temp.close()
+
+        #check FLAC files with STREAMINFO in the wrong location
+        f = open("flac-disordered.flac", "rb")
+        self.assertEqual(f.read(5), "fLaC\x04")
+        f.close()
+        track = audiotools.open("flac-disordered.flac")
+        metadata1 = track.get_metadata()
+        fixes = []
+        self.assertEqual(track.clean(fixes), None)
+        self.assertEqual(fixes,
+                         [_(u"moved STREAMINFO to first block")])
+        temp = tempfile.NamedTemporaryFile(suffix=".flac")
+        try:
+            fixes = []
+            self.assertNotEqual(track.clean(fixes, temp.name), None)
+            self.assertEqual(fixes,
+                             [_(u"moved STREAMINFO to first block")])
+            f = open(temp.name, "rb")
+            self.assertEqual(f.read(5), "fLaC\x00")
+            f.close()
+            track2 = audiotools.open(temp.name)
+            self.assertEqual(metadata1, track2.get_metadata())
+            self.assertEqual(audiotools.pcm_frame_cmp(
+                    track.to_pcm(), track2.to_pcm()), None)
+        finally:
+            temp.close()
+
 
 class M4AFileTest(LossyFileTest):
     def setUp(self):

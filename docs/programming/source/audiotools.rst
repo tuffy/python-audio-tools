@@ -506,6 +506,19 @@ AudioFile Objects
    or ``None`` if no cuesheet is embedded.
    Raises :exc:`IOError` if some error occurs when reading the file.
 
+.. method:: AudioFile.clean(fixes_performed[, output_filename])
+
+   Cleans the audio file of known data and metadata problems.
+   ``fixes_performed`` is a list-like object which is appended
+   with unicode strings of the fixes performed.
+
+   ``output_filename`` is an optional string in which the fixed
+   audio file is placed.
+   If omitted, no actual fixes are performed.
+   Note that this method never modifies the original file.
+
+   Raises :exc:`IOError` if some error occurs when writing the new file.
+
 .. classmethod:: AudioFile.has_binaries(system_binaries)
 
    Takes the :attr:`audiotools.BIN` object of system binaries.
@@ -739,6 +752,21 @@ MetaData Objects
 
    Updates this metadata by replacing empty fields with those
    from ``new_metadata``.  Non-empty fields are left as-is.
+
+.. method:: MetaData.clean(fixes_performed)
+
+   Returns a new :class:`MetaData` object of the same class
+   that's been cleaned of known problems including, but not limited to
+
+   * Leading whitespace in text fields
+   * Trailing whitespace in text fields
+   * Empty fields
+   * Leading zeroes in numerical fields
+   * Incorrectly labeled image metadata fields
+
+   ``fixes_performed`` is a list object with an append method.
+   Text descriptions of the fixes performed are appended
+   to that list as unicode strings.
 
 AlbumMetaData Objects
 ---------------------
