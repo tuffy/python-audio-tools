@@ -4219,7 +4219,7 @@ def __most_numerous__(item_list):
 
 from __freedb__ import *
 from __musicbrainz__ import *
-
+from __accuraterip__ import *
 
 def read_metadata_file(filename):
     """Returns an AlbumMetaDataFile-compatible file from a filename string.

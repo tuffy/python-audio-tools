@@ -3464,3 +3464,21 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 * TODO Add interative mode to audiotools-config
   This is one instance where seeing all the options "up-front"
   is likely to make the process easier.
+* TODO Add AccurateRip support
+  This might make give cd2track a little added respectability
+  and post-rip tools could be built also to verify tracks/disc images.
+** TODO Add accuraterip Python support
+*** DONE AccurateRipDiscID
+*** DONE AccurateRipEntry
+*** DONE AccurateRipTrackEntry
+*** DONE AccurateRipTrackCRC
+    Python-based CRC calculation is way too slow
+** TODO Add support to cd2track
+** TODO Add AccurateRip disc ID to cdinfo
+** TODO Add protocol documentation
+   - [ ] calculating the AccurateRip disc ID
+   - [ ] fetching database entries from the server
+   - [ ] calculating a track's CRC
+   - [ ] checking the confidence level
+** TODO Add programming docstrings
+** TODO Add programming documentation

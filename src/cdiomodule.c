@@ -573,3 +573,68 @@ cdio_identify_cdrom(PyObject *dummy, PyObject *args) {
         return NULL;
     }
 }
+
+static PyObject*
+cdio_accuraterip_crc(PyObject *dummy, PyObject *args) {
+    uint32_t crc;
+    uint32_t track_index;
+    PyObject *pcm = NULL;
+    PyObject *framelist_class;
+    PyObject *framelist_obj;
+    pcm_FrameList *framelist;
+    ia_size_t i;
+    ia_data_t left_v;
+    ia_data_t right_v;
+    uint32_t left;
+    uint32_t right;
+
+    if (!PyArg_ParseTuple(args, "IIO", &crc, &track_index, &framelist_obj))
+        return NULL;
+
+    /*ensure framelist_obj is a FrameList*/
+    if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
+        return NULL;
+
+    if ((framelist_class = PyObject_GetAttrString(pcm, "FrameList")) == NULL) {
+        Py_DECREF(pcm);
+        PyErr_SetString(PyExc_AttributeError, "FrameList class not found");
+        return NULL;
+    }
+
+    if (!PyObject_IsInstance(framelist_obj, framelist_class)) {
+        PyErr_SetString(PyExc_TypeError, "objects must be of type FrameList");
+        Py_DECREF(framelist_class);
+        Py_DECREF(pcm);
+        return NULL;
+    } else {
+        /*convert framelist_obj to FrameList struct*/
+        Py_DECREF(framelist_class);
+        Py_DECREF(pcm);
+        framelist = (pcm_FrameList*)framelist_obj;
+    }
+
+    /*check that FrameList is the appropriate type*/
+    if (framelist->channels != 2) {
+        PyErr_SetString(PyExc_ValueError,
+                        "FrameList must be 2 channels");
+        return NULL;
+    }
+    if (framelist->bits_per_sample != 16) {
+        PyErr_SetString(PyExc_ValueError,
+                        "FrameList must be 16 bits per sample");
+        return NULL;
+    }
+
+    /*update CRC with values from FrameList struct*/
+    for (i = 0; i < framelist->frames; i++) {
+        left_v = framelist->samples[i * 2];
+        right_v = framelist->samples[i * 2 + 1];
+        left = left_v >= 0 ? left_v : (1 << 16) - (-left_v);
+        right = right_v >= 0 ? right_v : (1 << 16) - (-right_v);
+        crc += ((left | (right << 16)) * track_index);
+        track_index++;
+    }
+
+    /*return new CRC*/
+    return Py_BuildValue("(II)", crc, track_index);
+}

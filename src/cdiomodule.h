@@ -65,6 +65,9 @@ read_sector_callback(long int i, paranoia_cb_mode_t mode);
 static PyObject*
 cdio_identify_cdrom(PyObject *dummy, PyObject *args);
 
+static PyObject*
+cdio_accuraterip_crc(PyObject *dummy, PyObject *args);
+
 static PyMethodDef CDDA_methods[] = {
     {"total_tracks", (PyCFunction)CDDA_total_tracks,
      METH_NOARGS, "Returns the total number of tracks on the disc"},
@@ -167,6 +170,8 @@ static PyMethodDef cdioMethods[] = {
      METH_VARARGS, "Sets the global callback for CDDA.read_sector"},
     {"identify_cdrom", (PyCFunction)cdio_identify_cdrom,
      METH_VARARGS, "Identifies a CD-ROM device"},
+    {"accuraterip_crc", (PyCFunction)cdio_accuraterip_crc,
+     METH_VARARGS, "Calculates the running CRC for AccurateRip"},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
