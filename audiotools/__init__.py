@@ -3902,16 +3902,15 @@ class CDDA:
 
         import cdio
 
-        cdrom_type = cdio.identify_cdrom(device_name)
-        if (cdrom_type & cdio.CD_IMAGE):
-            self.cdda = cdio.CDImage(device_name, cdrom_type)
-            self.perform_logging = False
+        self.cdrom_type = cdio.identify_cdrom(device_name)
+        if (self.cdrom_type & cdio.CD_IMAGE):
+            self.cdda = cdio.CDImage(device_name, self.cdrom_type)
         else:
             self.cdda = cdio.CDDA(device_name)
             if (speed is not None):
                 self.cdda.set_speed(speed)
-            self.perform_logging = perform_logging
 
+        self.perform_logging = perform_logging
         self.total_tracks = len([track_type for track_type in
                                  map(self.cdda.track_type,
                                      xrange(1, self.cdda.total_tracks() + 1))
@@ -3924,18 +3923,27 @@ class CDDA:
         if ((key < 1) or (key > self.total_tracks)):
             raise IndexError(key)
         else:
-            try:
-                sample_offset = int(config.get_default("System",
-                                                       "cdrom_read_offset",
-                                                       "0"))
-            except ValueError:
+            #apply sample offset only to physical CD drives
+            import cdio
+
+            if (self.cdrom_type & cdio.CD_IMAGE):
                 sample_offset = 0
+            else:
+                try:
+                    sample_offset = int(config.get_default("System",
+                                                           "cdrom_read_offset",
+                                                           "0"))
+                except ValueError:
+                    sample_offset = 0
 
-            reader = CDTrackReader(self.cdda, int(key), self.perform_logging)
+            reader = CDTrackReader(self.cdda,
+                                   int(key),
+                                   self.perform_logging)
+            start_sector = reader.start
+            end_sector = reader.end
 
-            if (sample_offset == 0):
-                return reader
-            elif (sample_offset > 0):
+            #apply sample offset, if any
+            if (sample_offset > 0):
                 import math
 
                 pcm_frames = reader.length() * 588
@@ -3951,7 +3959,6 @@ class CDDA:
                 reader.rip_log = reader.pcmreader.rip_log
                 reader.length = reader.pcmreader.length
                 reader.offset = reader.pcmreader.offset
-                return reader
             elif (sample_offset < 0):
                 import math
 
@@ -3974,7 +3981,16 @@ class CDDA:
                 reader.rip_log = reader.pcmreader.rip_log
                 reader.length = reader.pcmreader.length
                 reader.offset = reader.pcmreader.offset
-                return reader
+
+            #if logging, wrap reader in AccurateRip checksummer
+            if (self.perform_logging):
+                reader = CDTrackReaderAccurateRipCRC(
+                    reader,
+                    int(key),
+                    self.total_tracks,
+                    end_sector - start_sector + 1)
+
+            return reader
 
     def __iter__(self):
         for i in range(1, self.total_tracks + 1):
@@ -4179,8 +4195,8 @@ class CDTrackReader(PCMReader):
             self.cursor_placed = True
 
         if (self.position <= self.end):
-            s = self.cdda.read_sectors(min(
-                    sectors, self.end - self.position + 1))
+            s = self.cdda.read_sectors(min(sectors,
+                                           self.end - self.position + 1))
             self.position += sectors
             return s
         else:
@@ -4201,6 +4217,73 @@ class CDTrackReader(PCMReader):
 
         self.position = self.start
         self.cursor_placed = False
+
+
+class CDTrackReaderAccurateRipCRC:
+    def __init__(self, cdtrackreader,
+                 track_number, track_total,
+                 total_sectors):
+        self.cdtrackreader = cdtrackreader
+        self.accuraterip_crc = AccurateRipTrackCRC()
+        if (track_number == 1):
+            self.prefix_0s = 5 * (44100 / 75) - 1
+        else:
+            self.prefix_0s = 0
+        if (track_number == track_total):
+            postfix_0s = 5 * (44100 / 75)
+        else:
+            postfix_0s = 0
+
+        self.checksum_window = ((total_sectors * (44100 / 75)) -
+                                (self.prefix_0s + postfix_0s))
+
+        self.sample_rate = 44100
+        self.channels = 2
+        self.channel_mask = 0x3
+        self.bits_per_sample = 16
+
+        self.cdda = cdtrackreader.cdda
+        self.track_number = track_number
+        self.rip_log = cdtrackreader.rip_log
+
+    def offset(self):
+        return self.cdtrackreader.offset()
+
+    def length(self):
+        return self.cdtrackreader.length()
+
+    def log(self):
+        return self.cdtrackreader.log()
+
+    def read(self, bytes):
+        frame = self.cdtrackreader.read(bytes)
+        crc_frame = frame
+
+        if (self.prefix_0s > 0):
+            #substitute frame samples for prefix 0s
+            (substitute, remainder) = crc_frame.split(self.prefix_0s)
+            self.accuraterip_crc.update(pcm.from_list(
+                    [0] * len(substitute), 2, 16, True))
+            self.prefix_0s -= substitute.frames
+            crc_frame = remainder
+
+        if (crc_frame.frames > self.checksum_window):
+            #ensure PCM frames outside the window are substituted also
+            (remainder, substitute) = crc_frame.split(self.checksum_window)
+            self.checksum_window -= remainder.frames
+            self.accuraterip_crc.update(remainder)
+            self.accuraterip_crc.update(pcm.from_list(
+                    [0] * len(substitute), 2, 16, True))
+        else:
+            self.checksum_window -= crc_frame.frames
+            self.accuraterip_crc.update(crc_frame)
+
+        #no matter how the CRC is updated,
+        #return the original FrameList object as-is
+        return frame
+
+    def close(self):
+        self.cdtrackreader.close()
 
 
 #returns the value in item_list which occurs most often
