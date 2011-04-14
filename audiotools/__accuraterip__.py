@@ -29,7 +29,7 @@ class AccurateRipDiscID:
         self.__offsets__ = offsets
 
     def track_count(self):
-        return len(self.__offsets__)
+        return len(self.__offsets__) - 1
 
     def id1(self):
         return sum(self.__offsets__)
@@ -50,8 +50,16 @@ class AccurateRipDiscID:
         return cls([cdda.cdda.track_offsets(i)[0] for i in
                     xrange(1, len(cdda) + 2)])
 
+    @classmethod
+    def from_tracks(cls, tracks):
+        offsets = [0]
+        for track in tracks:
+            offsets.append(offsets[-1] + track.cd_frames())
+
+        return cls(offsets)
+
     def db_filename(self):
-        return ("dBAR-%(tracks)3.3d-%(id1)8.8X-%(id2)8.8X-%(id3)s.bin" %
+        return ("dBAR-%(tracks)3.3d-%(id1)8.8x-%(id2)8.8x-%(id3)s.bin" %
                 {"tracks":self.track_count(),
                  "id1":self.id1(),
                  "id2":self.id2(),
@@ -108,10 +116,10 @@ class AccurateRipEntry:
         return len(self.track_entries)
 
     @classmethod
-    def parse(cls, file):
-        """Given a file-like object, returns an AccurateRipEntry object."""
+    def parse_string(cls, string):
+        """Given a string, returns an AccurateRipEntry object."""
 
-        entries = cls.ACCURATERIP_DB_ENTRY.parse_stream(file)
+        entries = cls.ACCURATERIP_DB_ENTRY.parse(string)
 
         if (len(entries) == 0):
             raise ValueError("no AccurateRip entries found")
@@ -127,6 +135,19 @@ class AccurateRipEntry:
                                        crc=track.crc,
                                        crc2=track.crc2) for track in tracks]
                 for tracks in zip(*[entry.tracks for entry in entries])])
+
+    @classmethod
+    def from_disc_id(cls, disc_id):
+        """Given an AccurateRipDiscID, returns an AccurateRipEntry
+        or None if the given disc ID has no matches in the database."""
+
+        import urllib
+
+        response = urllib.urlopen(disc_id.url())
+        if (response.getcode() == 200):
+            return cls.parse_string(response.read())
+        else:
+            return None
 
 
 class AccurateRipTrackEntry:
