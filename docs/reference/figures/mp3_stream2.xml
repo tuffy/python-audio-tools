@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col width=".20" style="dashed">ID3v2 Metadata</col>
+    <col width=".20" id="physical_frame">Physical Frame₁</col>
+    <col width=".20">Physical Frame₂</col>
+    <col width=".20" style="dashed">...</col>
+    <col style="dashed" width=".20">ID3v1 Metadata</col>
+  </row>
+  <spacer/>
+  <row>
+    <col width=".25" start="0" end="31" id="header">Header₁</col>
+    <col width=".10" style="dashed" start="0" end="15">CRC₁</col>
+    <col width=".25" start="0">Side Data₁</col>
+    <col width=".40" id="main">Main Data</col>
+  </row>
+  <line s_id="physical_frame" e_id="header" s_corner="sw" e_corner="nw" style="dotted"/>
+  <line s_id="physical_frame" e_id="main" s_corner="se" e_corner="ne" style="dotted"/>
+</diagram>

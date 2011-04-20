@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="8" width=".40">Main Data Offset</col>
+    <col start="9" end="13" width=".20">Private</col>
+    <col start="14" end="17" width=".40">ScaleFactor Selection Information</col>
+  </row>
+  <row>
+    <col width=".50" start="18" end="76">Granule₀</col>
+    <col width=".50" start="77" end="135">Granule₁</col>
+  </row>
+</diagram>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="11" width=".30">Part 2 / Part 3</col>
+    <col start="12" end="20" width=".20">Big Values</col>
+    <col start="21" end="28" width=".20">Global Gain</col>
+    <col start="29" end="32" width=".20">Scale Lengths</col>
+    <col start="33" end="33" width=".10">Flag</col>
+  </row>
+  <spacer height=".5"/>
+  <row>
+    <col style="blank" width=".10">Flag 0</col>
+    <col start="34" end="38" width=".30">Table₀</col>
+    <col start="39" end="43" width=".30">Table₁</col>
+    <col start="44" end="48" width=".30">Table₂</col>
+  </row>
+  <row>
+    <col style="blank" width=".10"/>
+    <col start="49" end="52" width=".45">Region A</col>
+    <col start="53" end="55" width=".45">Region B</col>
+  </row>
+  <spacer height=".5"/>
+  <row>
+    <col style="blank" width=".10">Flag 1</col>
+    <col start="34" end="35" width=".20">Block Type</col>
+    <col start="36" end="36" width=".10">Mixed</col>
+    <col start="37" end="41" width=".30">Table₀</col>
+    <col start="42" end="46" width=".30">Table₁</col>
+  </row>
+  <row>
+    <col style="blank" width=".10"/>
+    <col start="47" end="49" width=".30">Subgain₀</col>
+    <col start="50" end="52" width=".30">Subgain₁</col>
+    <col start="53" end="55" width=".30">Subgain₂</col>
+  </row>
+  <spacer height=".5"/>
+  <row>
+    <col start="56" end="56" width=".333333">Pre Flag</col>
+    <col start="57" end="57" width=".333333">Scale Factor</col>
+    <col start="58" end="58" width=".333333">Count 1 Table</col>
+  </row>
+</diagram>

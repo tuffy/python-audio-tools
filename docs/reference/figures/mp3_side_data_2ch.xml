@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="8" width=".40">Main Data Offset</col>
+    <col start="9" end="11" width=".20">Private</col>
+    <col start="12" end="19" width=".40">ScaleFactor Selection Information</col>
+  </row>
+  <row>
+    <col width=".25" start="20" end="78">Granule₀ Channel₀</col>
+    <col width=".25" start="79" end="137">Granule₀ Channel₁</col>
+    <col width=".25" start="138" end="196">Granule₁ Channel₀</col>
+    <col width=".25" start="197" end="255">Granule₁ Channel₁</col>
+  </row>
+</diagram>
