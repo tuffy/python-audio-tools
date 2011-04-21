@@ -107,6 +107,13 @@ audioformats-a4.pdf: audioformats-a4.tex $(CHAPTERS) $(FIGURES)
 	python pdflatexbuild.py -halt-on-error audioformats-a4.tex
 	python ../pdftag.py "--title=Audio Formats Reference" "--author=Brian Langenberger" $@
 
+MP3_FIGURES = figures/mp3_stream2.pdf figures/mp3_frame_header.pdf \
+figures/mp3_side_data_1ch.pdf figures/mp3_side_data_2ch.pdf \
+figures/mp3_granule.pdf
+
+mp3_decode.pdf: mp3_decode.tex $(MP3_FIGURES)
+	python pdflatexbuild.py -halt-on-error $<
+
 audioformats-letter.tex: audioformats.m4
 	m4 -D PAPERSIZE=letterpaper $< > $@
 

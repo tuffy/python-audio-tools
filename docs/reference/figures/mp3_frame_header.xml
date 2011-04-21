@@ -5,18 +5,18 @@
   </row>
   <row>
     <col start="8" end="10" width=".375">Frame Sync</col>
-    <col start="11" end="12" width=".25">MPEG ID</col>
-    <col start="13" end="14" width=".25">Layer Description</col>
+    <col start="11" end="12" width=".25">MPEG ID (3)</col>
+    <col start="13" end="14" width=".25">Layer Description (1)</col>
     <col start="15" end="15" width=".125">Prot.</col>
   </row>
   <row>
     <col start="16" end="19" width=".5">Bitrate</col>
-    <col start="20" end="21" width=".25">Sampling</col>
+    <col start="20" end="21" width=".25">Sample Rate</col>
     <col start="22" end="22" width=".125">Pad</col>
     <col start="23" end="23" width=".125">Private</col>
   </row>
   <row>
-    <col start="24" end="25" width=".25">Channel</col>
+    <col start="24" end="25" width=".25">Channels</col>
     <col start="26" end="27" width=".25">Mode Extension</col>
     <col start="28" end="28" width=".125">Copyright</col>
     <col start="29" end="29" width=".125">Original</col>

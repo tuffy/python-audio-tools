@@ -1,0 +1,181 @@
+%This work is licensed under the
+%Creative Commons Attribution-Share Alike 3.0 United States License.
+%To view a copy of this license, visit
+%http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+%Creative Commons,
+%171 Second Street, Suite 300,
+%San Francisco, California, 94105, USA.
+
+
+\documentclass[letter]{scrbook}
+\setlength{\pdfpagewidth}{\paperwidth}
+\setlength{\pdfpageheight}{\paperheight}
+\setlength{\textwidth}{6in}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{picins}
+\usepackage{fancyvrb}
+\usepackage{relsize}
+\usepackage{array}
+\usepackage{wrapfig}
+\usepackage{subfig}
+\usepackage{multicol}
+\usepackage{paralist}
+\usepackage{textcomp}
+\usepackage{fancyvrb}
+\usepackage{multirow}
+\usepackage{rotating}
+\usepackage[toc,page]{appendix}
+\usepackage{hyperref}
+\newcommand{\xor}{\textbf{ xor }}
+%#1 = i
+%#2 = byte
+%#3 = previous checksum
+%#4 = shift results
+%#5 = new xor
+%#6 = new CRC-16
+\newcommand{\CRCSIXTEEN}[6]{\text{checksum}_{#1} &= \text{CRC16}(\texttt{#2}\xor(\texttt{#3} \gg \texttt{8}))\xor(\texttt{#3} \ll \texttt{8}) = \text{CRC16}(\texttt{#4})\xor \texttt{#5} = \texttt{#6}}
+\newcommand{\LINK}[1]{\href{#1}{\texttt{#1}}}
+\newcommand{\REFERENCE}[2]{\item #1 \\ \LINK{#2}}
+\newcommand{\VAR}[1]{``{#1}''}
+\newcommand{\ATOM}[1]{\texttt{#1}}
+\newcommand{\SAMPLE}[0]{\text{Sample}}
+\newcommand{\RESIDUAL}[0]{\text{Residual}}
+\newcommand{\WARMUP}[0]{\text{Warm Up}}
+\newcommand{\COEFF}[0]{\text{LPC Coefficient}}
+\newcommand{\SCOEFF}[0]{C}
+\newcommand{\SSAMPLE}[0]{S}
+\title{MP3 Decoding}
+\author{Brian Langenberger}
+\begin{document}
+\maketitle
+\tableofcontents
+\chapter{MP3 Decoding}
+\section{MP3 Stream}
+MP3 files are comprised of a set of physical MP3 frames.
+Each physical frame contains a 32 bit frame header,
+an optional 16 bit CRC, 136 or 256 bits of side data
+(depending on if the stream is 1 or 2 channels)
+and the remainder is main data.
+
+\begin{figure}[h]
+\includegraphics{figures/mp3_stream2.pdf}
+\end{figure}
+
+However, the main data block in a particular physical frame
+does \textit{not} necessarily accompany the frame's header,
+CRC and side data.
+Instead, $\text{Main Data}_1$ may accompany
+$\text{Header}_2$, $\text{CRC}_2$ and $\text{Side Data}_2$
+to form a complete logical frame which can be decoded.
+The reason for this piece of added complexity is to allow
+frames with bits to spare to give those bits to subsequent frames
+without affecting the MP3's overall bitrate.
+
+\clearpage
+
+\section{Header}
+\begin{figure}[h]
+\includegraphics{figures/mp3_frame_header.pdf}
+\end{figure}
+
+\begin{wrapfigure}[20]{r}{2in}
+\begin{tabular}{|c|r|}
+\hline
+bits & Bitrate \\
+\hline
+\texttt{0000} & free \\
+\texttt{0001} & 32000 \\
+\texttt{0010} & 40000 \\
+\texttt{0011} & 48000 \\
+\texttt{0100} & 56000 \\
+\texttt{0101} & 64000 \\
+\texttt{0110} & 80000 \\
+\texttt{0111} & 96000 \\
+\texttt{1000} & 112000 \\
+\texttt{1001} & 128000 \\
+\texttt{1010} & 160000 \\
+\texttt{1011} & 192000 \\
+\texttt{1100} & 224000 \\
+\texttt{1101} & 256000 \\
+\texttt{1110} & 320000 \\
+\texttt{1111} & invalid \\
+\hline
+\hline
+bits & Sample Rate \\
+\hline
+\texttt{00} & 44100 \\
+\texttt{01} & 48000 \\
+\texttt{10} & 32000 \\
+\texttt{11} & reserved \\
+\hline
+\hline
+bits & Channels \\
+\hline
+\texttt{00} & Stereo \\
+\texttt{01} & Joint stereo \\
+\texttt{10} & Dual channel stereo\\
+\texttt{11} & Mono \\
+\hline
+\end{tabular}
+\end{wrapfigure}
+
+An MP3's frame header contains little info needed for actual decoding;
+instead, its main use is to determine the physical frame's full size
+via its bitrate and sample rate fields.
+
+\begin{align*}
+\text{Frame Length (in bytes)} &= \frac{144 \times \text{Bitrate}}{\text{Sample Rate}} + \text{Pad}
+\end{align*}
+\par
+\noindent
+For example, an MP3 frame with a sample rate of 44100,
+a bitrate of 128000 and a set pad bit is 418 bytes long, including the header.
+\begin{equation*}
+\frac{144 \times 128000}{44100} + 1 = 418
+\end{equation*}
+
+\section{CRC}
+
+If the \VAR{Protection} bit is set in the frame header,
+a 16-bit CRC value immediately follows the header.
+Since this CRC only covers the header and side data
+and takes away precious bits from the stream,
+it is typically omitted by encoders.
+
+\clearpage
+
+\section{Side Data}
+
+The size and layout of the side data depends on whether the stream
+is 1 or 2 channels, which can be determined from the frame header.
+
+\begin{figure}[h]
+\includegraphics{figures/mp3_side_data_1ch.pdf}
+\caption{Side Data for 1 Channel}
+\vskip .25in
+\includegraphics{figures/mp3_side_data_2ch.pdf}
+\caption{Side Data for 2 Channels}
+\end{figure}
+
+%% FIXME - Explain Main Data Offset
+%% FIXME - Explain ScaleFactor Selection Information
+%% FIXME - Explain Granules
+
+\begin{figure}[h]
+\includegraphics{figures/mp3_granule.pdf}
+\end{figure}
+
+%% FIXME - Explain Part 2 / Part 3
+%% FIXME - Explain Big Values
+%% FIXME - Explain Global Gain
+%% FIXME - Explain Scale Lengths
+%% FIXME - Explain Table 1 / Table 2 / Table 3
+%% FIXME - Explain Region A / Region B
+%% FIXME - Explain Block Type
+%% FIXME - Explain Subgain 1 / Subgain 2 / Subgain 3
+%% FIXME - Explain Pre Flag
+%% FIXME - Explain Scale Factor
+%% FIXME - Explain Count 1 Table
+
+\end{document}
