@@ -4505,18 +4505,21 @@ class ProgressJobQueueComplete(Exception):
 class ExecProgressQueue:
     """A class for running multiple jobs in parallel with progress updates."""
 
-    def __init__(self, progress_display):
+    def __init__(self, progress_display, total_progress_message=None):
         """Takes a ProgressDisplay object."""
 
         self.progress_display = progress_display
         self.queued_jobs = []
+        self.total_queued_jobs = 0
         self.max_job_id = 0
         self.running_job_pool = {}
         self.results = {}
         self.cached_exception = None
+        self.total_progress_message = total_progress_message
 
     def execute(self, function,
-                progress_text=None, completion_output=None,
+                progress_text=None,
+                completion_output=None,
                 *args, **kwargs):
         """Queues the given function and arguments to be run in parallel.
 
@@ -4535,6 +4538,7 @@ class ExecProgressQueue:
                                  args,
                                  kwargs))
         self.max_job_id += 1
+        self.total_queued_jobs += 1
 
     def execute_next_job(self):
         """Executes the next queued job."""
@@ -4562,22 +4566,26 @@ class ExecProgressQueue:
     def completed(self, job_id, result):
         """Handles the completion of the given job and its result."""
 
-        #remove job from progress display, if present
-        self.progress_display.delete_row(job_id)
-        self.progress_display.clear()
-
         #add result to results
         self.results[job_id] = result
 
         #clean up job from pool
         self.running_job_pool[job_id].join()
 
+        #remove job from progress display, if present
+        self.progress_display.delete_row(job_id)
+        self.progress_display.update_row(-1,
+                                         len(self.results),
+                                         self.total_queued_jobs)
+        self.progress_display.clear()
+
         #display output text, if any
         completion_output = self.running_job_pool[job_id].completion_output
         if (completion_output is not None):
             if (callable(completion_output)):
-                self.progress_display.messenger.info(
-                    unicode(completion_output(result)))
+                output = completion_output(result)
+                if (output is not None):
+                    self.progress_display.messenger.info(unicode(output))
             else:
                 self.progress_display.messenger.info(
                     unicode(completion_output))
@@ -4621,6 +4629,9 @@ class ExecProgressQueue:
 
         for i in xrange(min(max_processes, len(self.queued_jobs))):
             self.execute_next_job()
+
+        if (self.total_progress_message is not None):
+            self.progress_display.add_row(-1, self.total_progress_message)
 
         try:
             while (True):

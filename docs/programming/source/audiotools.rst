@@ -1623,10 +1623,12 @@ ExecQueue Objects
 ExecProgressQueue Objects
 -------------------------
 
-.. class:: ExecProgressQueue(progress_display)
+.. class:: ExecProgressQueue(progress_display[, total_progress_message])
 
    This class runs multiple jobs in parallel and displays their
    progress output to the given :class:`ProgressDisplay` object.
+   The optional ``total_progress_message`` argument is a unicode string
+   which displays an additional progress bar of the queue's total progress.
 
 .. attribute:: ExecProgressQueue.results
 
@@ -1660,7 +1662,8 @@ ExecProgressQueue Objects
    completed.
    It can be either a unicode string or a function whose argument
    is the returned result of the executed function and which must
-   output a unicode string.
+   output either a unicode string or ``None``.
+   If ``None``, no output text is generated for the completed job.
 
 .. method:: ExecProgressQueue.run([max_processes])
 
