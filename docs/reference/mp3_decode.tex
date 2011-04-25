@@ -27,6 +27,7 @@
 \usepackage{rotating}
 \usepackage[toc,page]{appendix}
 \usepackage{hyperref}
+\usepackage{xtab}
 \newcommand{\xor}{\textbf{ xor }}
 %#1 = i
 %#2 = byte
@@ -204,7 +205,55 @@ bits & length 1 & length 2 \\
 \caption{the length of each scale factor, in bits}
 \end{table}
 
+\section{Main Data}
+
 \begin{figure}[h]
 \includegraphics{figures/mp3_main.pdf}
 \end{figure}
+
+\clearpage
+
+\subsection{Huffman Tables}
+
+\begin{table}[h]
+\begin{tabular}{|c|r|r|}
+\hline
+bits & Huffman table & additional bits \\
+\hline
+\texttt{00000} & \multicolumn{2}{c|}{invalid} \\
+\texttt{00001} & \texttt{00} & 0 \\
+\texttt{00010} & \texttt{01} & 0 \\
+\texttt{00011} & \texttt{02} & 0 \\
+\texttt{00100} & \multicolumn{2}{c|}{invalid} \\
+\texttt{00101} & \texttt{03} & 0 \\
+\texttt{00110} & \texttt{04} & 0 \\
+\texttt{00111} & \texttt{05} & 0 \\
+\texttt{01000} & \texttt{06} & 0 \\
+\texttt{01001} & \texttt{07} & 0 \\
+\texttt{01010} & \texttt{08} & 0 \\
+\texttt{01011} & \texttt{09} & 0 \\
+\texttt{01100} & \texttt{10} & 0 \\
+\texttt{01101} & \texttt{11} & 0 \\
+\texttt{01110} & \multicolumn{2}{c|}{invalid} \\
+\texttt{01111} & \texttt{12} & 0 \\
+\texttt{10000} & \texttt{13} & 1 \\
+\texttt{10001} & \texttt{13} & 2 \\
+\texttt{10010} & \texttt{13} & 3 \\
+\texttt{10011} & \texttt{13} & 4 \\
+\texttt{10100} & \texttt{13} & 6 \\
+\texttt{10101} & \texttt{13} & 8 \\
+\texttt{10110} & \texttt{13} & 10 \\
+\texttt{10111} & \texttt{13} & 13 \\
+\texttt{11000} & \texttt{14} & 4 \\
+\texttt{11001} & \texttt{14} & 5 \\
+\texttt{11010} & \texttt{14} & 6 \\
+\texttt{11011} & \texttt{14} & 7 \\
+\texttt{11100} & \texttt{14} & 8 \\
+\texttt{11101} & \texttt{14} & 9 \\
+\texttt{11110} & \texttt{14} & 11 \\
+\texttt{11111} & \texttt{14} & 13 \\
+\hline
+\end{tabular}
+\end{table}
+
 \end{document}

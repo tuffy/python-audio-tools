@@ -2,16 +2,16 @@
 <diagram>
   <row>
     <col width=".15" style="blank">1 channel</col>
-    <col width=".20">Granule₀</col>
-    <col width=".20">Granule₁</col>
+    <col width=".212">Granule₀</col>
+    <col width=".212">Granule₁</col>
   </row>
   <spacer height=".5"/>
   <row>
-    <col width=".15" style="blank">2 channel</col>
-    <col width=".20">Granule₀ ₀</col>
-    <col width=".20" id="granule">Granule₀ ₁</col>
-    <col width=".20">Granule₁ ₀</col>
-    <col width=".20">Granule₁ ₁</col>
+    <col width=".15" style="blank">2 channels</col>
+    <col width=".212">Granule₀ ₀</col>
+    <col width=".212" id="granule">Granule₀ ₁</col>
+    <col width=".212">Granule₁ ₀</col>
+    <col width=".212">Granule₁ ₁</col>
   </row>
   <spacer/>
   <row>

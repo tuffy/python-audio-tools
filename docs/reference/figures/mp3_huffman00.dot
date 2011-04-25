@@ -1,0 +1,20 @@
+digraph huffman {
+  node [fontname="DejaVuSans"];
+  edge [fontname="DejaVuSans"];
+  margin = "0";
+  rankdir = "LR";
+
+  start [shape=circle,label="start"];
+  start -> n0 [label="0"];
+  start -> n1 [label="1"];
+  n0 [shape=circle,label=""];
+  n0 -> n00 [label="0"];
+  n0 -> n01 [label="1"];
+  n00 [shape=circle,label=""];
+  n00 -> n000 [label="0"];
+  n00 -> n001 [label="1"];
+  n000 [shape=record,label="{1|1}"];
+  n001 [shape=record,label="{0|1}"];
+  n01 [shape=record,label="{1|0}"];
+  n1 [shape=record,label="{0|0}"];
+}
