@@ -1,49 +1,48 @@
-<?xml version="1.0" encoding="utf-8"?>
-<diagram>
+<?xml version="1.0" ?><diagram>
   <row>
-    <col start="0" end="223" width=".2" id="header">Header</col>
+    <col end="223" id="header" start="0" width=".2">Header</col>
     <col start="224" width=".2">Frame₁</col>
     <col width=".2">Frame₂</col>
-    <col width=".2" style="dashed">...</col>
+    <col style="dashed" width=".2">...</col>
     <col width=".2">APEv2 tag</col>
   </row>
   <row><blank/></row>
   <row>
-    <col start="0" end="23" width=".40" id="signature">Signature (`MP+' 0x4D502B)</col>
-    <col start="24" end="31" width=".20">Version (0x07)</col>
-    <col start="32" end="63" width=".2">Frame Count</col>
-    <col start="64" end="79" width=".2" id="maxlevel">Max Level</col>
+    <col end="23" id="signature" start="0" width=".40">Signature (`MP+' 0x4D502B)</col>
+    <col end="31" start="24" width=".20">Version (0x07)</col>
+    <col end="63" start="32" width=".2">Frame Count</col>
+    <col end="79" id="maxlevel" start="64" width=".2">Max Level</col>
   </row>
   <row>
-    <col start="80" end="83" width=".15">Profile</col>
-    <col start="84" end="85" width=".15">Link</col>
-    <col start="86" end="87" width=".16">Sample Rate</col>
-    <col start="88" end="88" width=".19">Intensity Stereo</col>
-    <col start="89" end="89" width=".20">Midside Stereo</col>
-    <col start="90" end="95" width=".15">Max Band</col>
+    <col end="83" start="80" width=".15">Profile</col>
+    <col end="85" start="84" width=".15">Link</col>
+    <col end="87" start="86" width=".16">Sample Rate</col>
+    <col end="88" start="88" width=".19">Intensity Stereo</col>
+    <col end="89" start="89" width=".20">Midside Stereo</col>
+    <col end="95" start="90" width=".15">Max Band</col>
   </row>
   <row>
-    <col start="96" end="111" width=".25">Title Gain</col>
-    <col start="112" end="127" width=".25">Title Peak</col>
-    <col start="128" end="143" width=".25">Album Gain</col>
-    <col start="144" end="159" width=".25">Album Peak</col>
+    <col end="111" start="96" width=".25">Title Gain</col>
+    <col end="127" start="112" width=".25">Title Peak</col>
+    <col end="143" start="128" width=".25">Album Gain</col>
+    <col end="159" start="144" width=".25">Album Peak</col>
   </row>
   <row>
-    <col start="160" end="175">Unusued (0x00)</col>
+    <col end="175" start="160">Unusued (0x00)</col>
   </row>
   <row>
-    <col start="176" end="179" width=".50">Last Frame Samples (low)</col>
-    <col start="180" end="180" width=".25">True Gapless</col>
-    <col start="181" end="183" width=".25">Unusued (0x00)</col>
+    <col end="179" start="176" width=".50">Last Frame Samples (low)</col>
+    <col end="180" start="180" width=".25">True Gapless</col>
+    <col end="183" start="181" width=".25">Unusued (0x00)</col>
   </row>
   <row>
-    <col start="184" end="184" width=".18">Fast Seeking</col>
-    <col start="  185" end="191" width=".82">Last Frame Samples (high)</col>
+    <col end="184" start="184" width=".18">Fast Seeking</col>
+    <col end="191" start="  185" width=".82">Last Frame Samples (high)</col>
   </row>
   <row>
-    <col start="192" end="215" width=".6">Unknown</col>
-    <col start="  216" end="223" width=".4">Encoder Version</col>
+    <col end="215" start="192" width=".6">Unknown</col>
+    <col end="223" start="  216" width=".4">Encoder Version</col>
   </row>
-  <line s_id="header" s_corner="sw" e_id="signature" e_corner="nw" style="dotted"/>
-  <line s_id="header" s_corner="se" e_id="maxlevel" e_corner="ne" style="dotted"/>
+  <line style="dotted"><start corner="sw" id="header"/><end corner="nw" id="signature"/></line>
+  <line style="dotted"><start corner="se" id="header"/><end corner="ne" id="maxlevel"/></line>
 </diagram>

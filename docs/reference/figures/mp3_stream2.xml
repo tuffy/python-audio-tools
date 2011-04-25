@@ -1,19 +1,18 @@
-<?xml version="1.0" encoding="utf-8"?>
-<diagram>
+<?xml version="1.0" ?><diagram>
   <row>
-    <col width=".20" style="dashed">ID3v2 Metadata</col>
-    <col width=".20" id="physical_frame">Physical Frame₁</col>
+    <col style="dashed" width=".20">ID3v2 Metadata</col>
+    <col id="physical_frame" width=".20">Physical Frame₁</col>
     <col width=".20">Physical Frame₂</col>
-    <col width=".20" style="dashed">...</col>
+    <col style="dashed" width=".20">...</col>
     <col style="dashed" width=".20">ID3v1 Metadata</col>
   </row>
   <spacer/>
   <row>
-    <col width=".25" start="0" end="31" id="header">Header₁</col>
-    <col width=".10" style="dashed" start="0" end="15">CRC₁</col>
-    <col width=".25" start="0" end="135 / 255">Side Data₁</col>
-    <col width=".40" id="main">Main Dataₓ</col>
+    <col end="31" id="header" start="0" width=".25">Header₁</col>
+    <col end="15" start="0" style="dashed" width=".10">CRC₁</col>
+    <col end="135 / 255" start="0" width=".25">Side Data₁</col>
+    <col id="main" width=".40">Main Dataₓ</col>
   </row>
-  <line s_id="physical_frame" e_id="header" s_corner="sw" e_corner="nw" style="dotted"/>
-  <line s_id="physical_frame" e_id="main" s_corner="se" e_corner="ne" style="dotted"/>
+  <line style="dotted"><start corner="sw" id="physical_frame"/><end corner="nw" id="header"/></line>
+  <line style="dotted"><start corner="se" id="physical_frame"/><end corner="ne" id="main"/></line>
 </diagram>

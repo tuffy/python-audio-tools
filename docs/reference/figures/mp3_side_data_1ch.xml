@@ -1,12 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="8" width=".40">Main Data Offset</col>
-    <col start="9" end="13" width=".20">Private</col>
-    <col start="14" end="17" width=".40">ScaleFactor Selection Information</col>
+    <col start="0" end="8" width=".60">Main Data Offset</col>
+    <col start="9" end="13" width=".40">Private</col>
   </row>
   <row>
-    <col width=".50" start="18" end="76">Granule₀</col>
-    <col width=".50" start="77" end="135">Granule₁</col>
+    <col start="14" end="14" width=".25">Copy ScaleFactor₀</col>
+    <col start="15" end="15" width=".25">Copy ScaleFactor₁</col>
+    <col start="16" end="16" width=".25">Copy ScaleFactor₂</col>
+    <col start="17" end="17" width=".25">Copy ScaleFactor₃</col>
+  </row>
+  <row>
+    <col width=".50" start="18" end="76">Granule Info₀</col>
+    <col width=".50" start="77" end="135">Granule Info₁</col>
   </row>
 </diagram>

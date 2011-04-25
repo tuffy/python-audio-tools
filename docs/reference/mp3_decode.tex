@@ -166,16 +166,45 @@ is 1 or 2 channels, which can be determined from the frame header.
 \includegraphics{figures/mp3_granule.pdf}
 \end{figure}
 
-%% FIXME - Explain Part 2 / Part 3
-%% FIXME - Explain Big Values
-%% FIXME - Explain Global Gain
-%% FIXME - Explain Scale Lengths
-%% FIXME - Explain Table 1 / Table 2 / Table 3
-%% FIXME - Explain Region A / Region B
-%% FIXME - Explain Block Type
-%% FIXME - Explain Subgain 1 / Subgain 2 / Subgain 3
-%% FIXME - Explain Pre Flag
-%% FIXME - Explain Scale Factor
-%% FIXME - Explain Count 1 Table
+%% Part 2 / Part 3 - for parsing main data
+%% Big Values - for parsing Huffman codes in main data
+%% Global Gain - for decoding audio
+%% Scale Lengths - for parsing scales in main data
+%% Table 1 / Table 2 / Table 3 - for parsing Huffman codes in main data
+%% Region A / Region B - for parsing Huffman codes in main data
+%% Block Type - for determining r0len / r1len / r2len - for Huffman codes
+%% Subgain 1 / Subgain 2 / Subgain 3 - for decoding audio
+%% Pre Flag - for parsing scales in main data
+%% Scale Factor - for parsing scales in main data
+%% Count 1 Table - for parsing Huffman codes in main data
 
+\begin{table}[h]
+\begin{tabular}{|c|r|r|}
+\hline
+bits & length 1 & length 2 \\
+\hline
+\texttt{0000} & 0 & 0 \\
+\texttt{0001} & 0 & 1 \\
+\texttt{0010} & 0 & 2 \\
+\texttt{0011} & 0 & 3 \\
+\texttt{0100} & 3 & 0 \\
+\texttt{0101} & 1 & 1 \\
+\texttt{0110} & 1 & 2 \\
+\texttt{0111} & 1 & 3 \\
+\texttt{1000} & 2 & 1 \\
+\texttt{1001} & 2 & 2 \\
+\texttt{1010} & 2 & 3 \\
+\texttt{1011} & 3 & 1 \\
+\texttt{1100} & 3 & 2 \\
+\texttt{1101} & 3 & 3 \\
+\texttt{1110} & 4 & 2 \\
+\texttt{1111} & 4 & 3 \\
+\hline
+\end{tabular}
+\caption{the length of each scale factor, in bits}
+\end{table}
+
+\begin{figure}[h]
+\includegraphics{figures/mp3_main.pdf}
+\end{figure}
 \end{document}

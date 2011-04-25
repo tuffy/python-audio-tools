@@ -1,91 +1,90 @@
-<?xml version="1.0" encoding="utf-8"?>
-<diagram>
+<?xml version="1.0" ?><diagram>
   <row>
-    <col width=".2" id="page1">Ogg Page</col>
-    <col width=".2" id="page2">Ogg Page</col>
-    <col width=".0666666" style="dashed">...</col>
-    <col width=".2" id="page3">Ogg Page</col>
-    <col width=".0666666" style="dashed">...</col>
-    <col width=".2" id="page4">Ogg Page</col>
-    <col width=".0666666" style="dashed">...</col>
+    <col id="page1" width=".2">Ogg Page</col>
+    <col id="page2" width=".2">Ogg Page</col>
+    <col style="dashed" width=".0666666">...</col>
+    <col id="page3" width=".2">Ogg Page</col>
+    <col style="dashed" width=".0666666">...</col>
+    <col id="page4" width=".2">Ogg Page</col>
+    <col style="dashed" width=".0666666">...</col>
   </row>
   <row><blank/></row>
   <row>
-    <col width=".125" id="segment1">Segment</col>
+    <col id="segment1" width=".125">Segment</col>
     <blank width=".041666666"/>
-    <col width=".125" id="segment2">Segment</col>
-    <col width=".125" id="segment3">Segment</col>
+    <col id="segment2" width=".125">Segment</col>
+    <col id="segment3" width=".125">Segment</col>
     <blank width=".041666666"/>
-    <col width=".125" id="segment4">Segment</col>
-    <col width=".125" id="segment5">Segment</col>
+    <col id="segment4" width=".125">Segment</col>
+    <col id="segment5" width=".125">Segment</col>
     <blank width=".041666666"/>
-    <col width=".125" id="segment6">Segment</col>
-    <col width=".125" id="segment7">Segment</col>
+    <col id="segment6" width=".125">Segment</col>
+    <col id="segment7" width=".125">Segment</col>
   </row>
   <row><blank/></row>2
-  <line s_id="page1" s_corner="sw" e_id="segment1" e_corner="nw" style="dotted"/>
-  <line s_id="page1" s_corner="se" e_id="segment1" e_corner="ne" style="dotted"/>
-  <line s_id="page2" s_corner="sw" e_id="segment2" e_corner="nw" style="dotted"/>
-  <line s_id="page2" s_corner="se" e_id="segment3" e_corner="ne" style="dotted"/>
-  <line s_id="page3" s_corner="sw" e_id="segment4" e_corner="nw" style="dotted"/>
-  <line s_id="page3" s_corner="se" e_id="segment5" e_corner="ne" style="dotted"/>
-  <line s_id="page4" s_corner="sw" e_id="segment6" e_corner="nw" style="dotted"/>
-  <line s_id="page4" s_corner="se" e_id="segment7" e_corner="ne" style="dotted"/>
+  <line style="dotted"><start corner="sw" id="page1"/><end corner="nw" id="segment1"/></line>
+  <line style="dotted"><start corner="se" id="page1"/><end corner="ne" id="segment1"/></line>
+  <line style="dotted"><start corner="sw" id="page2"/><end corner="nw" id="segment2"/></line>
+  <line style="dotted"><start corner="se" id="page2"/><end corner="ne" id="segment3"/></line>
+  <line style="dotted"><start corner="sw" id="page3"/><end corner="nw" id="segment4"/></line>
+  <line style="dotted"><start corner="se" id="page3"/><end corner="ne" id="segment5"/></line>
+  <line style="dotted"><start corner="sw" id="page4"/><end corner="nw" id="segment6"/></line>
+  <line style="dotted"><start corner="se" id="page4"/><end corner="ne" id="segment7"/></line>
   <row>
-    <col start="0" end="407" width=".16" id="streaminfo">STREAMINFO</col>
-    <col width=".26" id="vorbiscomment">Vorbis Comment</col>
-    <col width=".13" id="metadata3">Metadata₃</col>
-    <col width=".13" id="metadata4">Metadata₄</col>
-    <col width=".05" style="dashed">...</col>
-    <col width=".11" id="frame1">Frame₁</col>
-    <col width=".11" id="frame2">Frame₂</col>
-    <col width=".05" style="dashed">...</col>
+    <col end="407" id="streaminfo" start="0" width=".16">STREAMINFO</col>
+    <col id="vorbiscomment" width=".26">Vorbis Comment</col>
+    <col id="metadata3" width=".13">Metadata₃</col>
+    <col id="metadata4" width=".13">Metadata₄</col>
+    <col style="dashed" width=".05">...</col>
+    <col id="frame1" width=".11">Frame₁</col>
+    <col id="frame2" width=".11">Frame₂</col>
+    <col style="dashed" width=".05">...</col>
   </row>
   <row><blank/></row>
-  <line s_id="segment1" s_corner="sw" e_id="streaminfo" e_corner="nw" style="dotted"/>
-  <line s_id="segment1" s_corner="se" e_id="streaminfo" e_corner="ne" style="dotted"/>
-  <line s_id="segment2" s_corner="sw" e_id="vorbiscomment" e_corner="nw" style="dotted"/>
-  <line s_id="segment3" s_corner="se" e_id="vorbiscomment" e_corner="ne" style="dotted"/>
-  <line s_id="segment4" s_corner="sw" e_id="metadata4" e_corner="nw" style="dotted"/>
-  <line s_id="segment5" s_corner="se" e_id="metadata4" e_corner="ne" style="dotted"/>
-  <line s_id="segment6" s_corner="sw" e_id="frame2" e_corner="nw" style="dotted"/>
-  <line s_id="segment7" s_corner="se" e_id="frame2" e_corner="ne" style="dotted"/>
+  <line style="dotted"><start corner="sw" id="segment1"/><end corner="nw" id="streaminfo"/></line>
+  <line style="dotted"><start corner="se" id="segment1"/><end corner="ne" id="streaminfo"/></line>
+  <line style="dotted"><start corner="sw" id="segment2"/><end corner="nw" id="vorbiscomment"/></line>
+  <line style="dotted"><start corner="se" id="segment3"/><end corner="ne" id="vorbiscomment"/></line>
+  <line style="dotted"><start corner="sw" id="segment4"/><end corner="nw" id="metadata4"/></line>
+  <line style="dotted"><start corner="se" id="segment5"/><end corner="ne" id="metadata4"/></line>
+  <line style="dotted"><start corner="sw" id="segment6"/><end corner="nw" id="frame2"/></line>
+  <line style="dotted"><start corner="se" id="segment7"/><end corner="ne" id="frame2"/></line>
   <row>
-    <col start="0" end="7" width=".5" id="packet_byte">Packet Byte (0x7F)</col>
-    <col start="8" end="39" width=".5" id="signature">Signature `FLAC' (0x464C4143)</col>
+    <col end="7" id="packet_byte" start="0" width=".5">Packet Byte (0x7F)</col>
+    <col end="39" id="signature" start="8" width=".5">Signature `FLAC' (0x464C4143)</col>
   </row>
   <row>
-    <col start="40" end="47" width=".5">Major Version (0x1)</col>
-    <col start="48" end="55" width=".5">Minor Version (0x0)</col>
+    <col end="47" start="40" width=".5">Major Version (0x1)</col>
+    <col end="55" start="48" width=".5">Minor Version (0x0)</col>
   </row>
   <row>
-    <col start="56" end="71" width=".5">Header Packets</col>
-    <col start="72" end="103" width=".5">FLAC Signature `fLaC' (0x664C6143)</col>
+    <col end="71" start="56" width=".5">Header Packets</col>
+    <col end="103" start="72" width=".5">FLAC Signature `fLaC' (0x664C6143)</col>
   </row>
   <row>
-    <col start="104" end="104" width=".333333">Last Block (0)</col>
-    <col start="105" end="111" width=".333333">Block Type (0x0)</col>
-    <col start="112" end="135" width=".333333">Block Length</col>
+    <col end="104" start="104" width=".333333">Last Block (0)</col>
+    <col end="111" start="105" width=".333333">Block Type (0x0)</col>
+    <col end="135" start="112" width=".333333">Block Length</col>
   </row>
   <row>
-    <col start="136" end="151" width=".5">Minimum Block Size (in samples)</col>
-    <col start="152" end="167" width=".5">Maximum Block Size (in samples)</col>
+    <col end="151" start="136" width=".5">Minimum Block Size (in samples)</col>
+    <col end="167" start="152" width=".5">Maximum Block Size (in samples)</col>
   </row>
   <row>
-    <col start="168" end="191" width=".5">Minimum Frame Size (in bytes)</col>
-    <col start="192" end="215" width=".5">Maximum Frame Size (in bytes)</col>
+    <col end="191" start="168" width=".5">Minimum Frame Size (in bytes)</col>
+    <col end="215" start="192" width=".5">Maximum Frame Size (in bytes)</col>
   </row>
   <row>
-    <col start="216" end="235" width=".333333">Sample Rate</col>
-    <col start="236" end="238" width=".333333">Channels</col>
-    <col start="239" end="243" width=".333333">Bits Per Sample</col>
+    <col end="235" start="216" width=".333333">Sample Rate</col>
+    <col end="238" start="236" width=".333333">Channels</col>
+    <col end="243" start="239" width=".333333">Bits Per Sample</col>
   </row>
   <row>
-    <col start="244" end="279">Total Samples</col>
+    <col end="279" start="244">Total Samples</col>
   </row>
   <row>
-    <col start="280" end="407">MD5 Sum of PCM Data</col>
+    <col end="407" start="280">MD5 Sum of PCM Data</col>
   </row>
-  <line s_id="streaminfo" s_corner="sw" e_id="packet_byte" e_corner="nw" style="dotted"/>
-  <line s_id="streaminfo" s_corner="se" e_id="signature" e_corner="ne" style="dotted"/>
+  <line style="dotted"><start corner="sw" id="streaminfo"/><end corner="nw" id="packet_byte"/></line>
+  <line style="dotted"><start corner="se" id="streaminfo"/><end corner="ne" id="signature"/></line>
 </diagram>

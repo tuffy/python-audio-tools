@@ -1,42 +1,41 @@
-<?xml version="1.0" encoding="utf-8"?>
-<diagram>
+<?xml version="1.0" ?><diagram>
   <row>
-    <col start="0" end="31" width=".5">mp4a Length</col>
-    <col start="32" end="63" width=".5">`mp4a' (0x6D703461)</col>
+    <col end="31" start="0" width=".5">mp4a Length</col>
+    <col end="63" start="32" width=".5">`mp4a' (0x6D703461)</col>
   </row>
   <row>
-    <col start="64" end="111" width=".5">Reserved (0x000000000000)</col>
-    <col start="112" end="127" width=".5">Reference Index</col>
+    <col end="111" start="64" width=".5">Reserved (0x000000000000)</col>
+    <col end="127" start="112" width=".5">Reference Index</col>
   </row>
   <row>
-    <col start="128" end="143" width=".5">QuickTime Version</col>
-    <col start="144" end="159" width=".5">QuickTime Revision Level</col>
+    <col end="143" start="128" width=".5">QuickTime Version</col>
+    <col end="159" start="144" width=".5">QuickTime Revision Level</col>
   </row>
   <row>
-    <col start="160" end="191">QuickTime Audio Encoding Vendor</col>
+    <col end="191" start="160">QuickTime Audio Encoding Vendor</col>
   </row>
   <row>
-    <col start="192" end="207" width=".5">Channels</col>
-    <col start="208" end="223" width=".5">Bits per Sample</col>
+    <col end="207" start="192" width=".5">Channels</col>
+    <col end="223" start="208" width=".5">Bits per Sample</col>
   </row>
   <row>
-    <col start="224" end="239" width=".5">QuickTime Compression ID</col>
-    <col start="240" end="255" width=".5">Audio Packet Size</col>
+    <col end="239" start="224" width=".5">QuickTime Compression ID</col>
+    <col end="255" start="240" width=".5">Audio Packet Size</col>
   </row>
   <row>
-     <col start="256" end="287" width=".5">Audio Sample Rate</col>
-     <col start="288" width=".5" id="esds">`esds' atom</col>
+     <col end="287" start="256" width=".5">Audio Sample Rate</col>
+     <col id="esds" start="288" width=".5">`esds' atom</col>
   </row>
   <row><blank/></row>
   <row>
-    <col start="0" end="31" width=".5" id="esds_len">esds Length</col>
-    <col start="32" end="63" width=".5" id="esds_id">`esds' (0x65736473)</col>
+    <col end="31" id="esds_len" start="0" width=".5">esds Length</col>
+    <col end="63" id="esds_id" start="32" width=".5">`esds' (0x65736473)</col>
   </row>
   <row>
-    <col start="64" end="71" width=".25">Version</col>
-    <col start="72" end="95" width=".25">Flags (0x000000)</col>
+    <col end="71" start="64" width=".25">Version</col>
+    <col end="95" start="72" width=".25">Flags (0x000000)</col>
     <col start="96" width=".5">ESDS Atom Data</col>
   </row>
-  <line s_id="esds" s_corner="sw" e_id="esds_len" e_corner="nw" style="dotted"/>
-  <line s_id="esds" s_corner="se" e_id="esds_id" e_corner="ne" style="dotted"/>
+  <line style="dotted"><start corner="sw" id="esds"/><end corner="nw" id="esds_len"/></line>
+  <line style="dotted"><start corner="se" id="esds"/><end corner="ne" id="esds_id"/></line>
 </diagram>

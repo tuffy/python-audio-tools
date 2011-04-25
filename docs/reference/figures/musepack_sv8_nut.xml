@@ -1,65 +1,64 @@
-<?xml version="1.0" encoding="utf-8"?>
-<diagram>
+<?xml version="1.0" ?><diagram>
   <row>
-    <col width=".05" style="blank">1.</col>
-    <col width=".03" start="0" end="0">0</col>
-    <col width=".15" start="1" end="7">Value</col>
-    <col width=".15" style="blank">0 to 2⁷ - 2</col>
+    <col style="blank" width=".05">1.</col>
+    <col end="0" start="0" width=".03">0</col>
+    <col end="7" start="1" width=".15">Value</col>
+    <col style="blank" width=".15">0 to 2⁷ - 2</col>
   </row>
   <spacer height=".5"/>
   <row>
-    <col width=".05" style="blank">2.</col>
-    <col width=".03" start="0" end="0">1</col>
-    <col width=".15" start="1" end="7">Value₁</col>
+    <col style="blank" width=".05">2.</col>
+    <col end="0" start="0" width=".03">1</col>
+    <col end="7" start="1" width=".15">Value₁</col>
     <blank width=".02"/>
-    <col width=".03" start="8" end="8">0</col>
-    <col width=".15" start="9" end="15">Value₂</col>
-    <col width=".15" style="blank">0 to 2¹⁴ - 2</col>
+    <col end="8" start="8" width=".03">0</col>
+    <col end="15" start="9" width=".15">Value₂</col>
+    <col style="blank" width=".15">0 to 2¹⁴ - 2</col>
   </row>
   <spacer height=".5"/>
   <row>
-    <col width=".05" style="blank">3.</col>
-    <col width=".03" start="0" end="0">1</col>
-    <col width=".15" start="1" end="7">Value₁</col>
+    <col style="blank" width=".05">3.</col>
+    <col end="0" start="0" width=".03">1</col>
+    <col end="7" start="1" width=".15">Value₁</col>
     <blank width=".02"/>
-    <col width=".03" start="8" end="8">1</col>
-    <col width=".15" start="9" end="15">Value₂</col>
+    <col end="8" start="8" width=".03">1</col>
+    <col end="15" start="9" width=".15">Value₂</col>
     <blank width=".02"/>
-    <col width=".03" start="16" end="16">0</col>
-    <col width=".15" start="17" end="23">Value₃</col>
-    <col width=".15" style="blank">0 to 2²¹ - 2</col>
+    <col end="16" start="16" width=".03">0</col>
+    <col end="23" start="17" width=".15">Value₃</col>
+    <col style="blank" width=".15">0 to 2²¹ - 2</col>
   </row>
   <spacer height=".5"/>
   <row>
-    <col width=".05" style="blank">4.</col>
-    <col width=".03" start="0" end="0">1</col>
-    <col width=".15" start="1" end="7" id="value1_t">Value₁</col>
+    <col style="blank" width=".05">4.</col>
+    <col end="0" start="0" width=".03">1</col>
+    <col end="7" id="value1_t" start="1" width=".15">Value₁</col>
     <blank width=".02"/>
-    <col width=".03" start="8" end="8">1</col>
-    <col width=".15" start="9" end="15" id="value2_t">Value₂</col>
+    <col end="8" start="8" width=".03">1</col>
+    <col end="15" id="value2_t" start="9" width=".15">Value₂</col>
     <blank width=".02"/>
-    <col width=".03" start="16" end="16">1</col>
-    <col width=".15" start="17" end="23" id="value3_t">Value₃</col>
+    <col end="16" start="16" width=".03">1</col>
+    <col end="23" id="value3_t" start="17" width=".15">Value₃</col>
     <blank width=".02"/>
-    <col width=".03" start="24" end="24">0</col>
-    <col width=".15" start="25" end="31" id="value4_t">Value₄</col>
-    <col width=".15" style="blank">0 to 2²⁸ - 2</col>
+    <col end="24" start="24" width=".03">0</col>
+    <col end="31" id="value4_t" start="25" width=".15">Value₄</col>
+    <col style="blank" width=".15">0 to 2²⁸ - 2</col>
   </row>
   <spacer height=".5"/>
   <row>
     <blank width=".15"/>
-    <col width=".15" start="0" end="6" id="value1_b">Value₁</col>
-    <col width=".15" start="7" end="13" id="value2_b">Value₂</col>
-    <col width=".15" start="14" end="20" id="value3_b">Value₃</col>
-    <col width=".15" start="21" end="27" id="value4_b">Value₄</col>
-    <col width=".20" style="blank">← Actual Value</col>
+    <col end="6" id="value1_b" start="0" width=".15">Value₁</col>
+    <col end="13" id="value2_b" start="7" width=".15">Value₂</col>
+    <col end="20" id="value3_b" start="14" width=".15">Value₃</col>
+    <col end="27" id="value4_b" start="21" width=".15">Value₄</col>
+    <col style="blank" width=".20">← Actual Value</col>
   </row>
-  <line s_id="value1_t" s_corner="sw" e_id="value1_b" e_corner="nw" style="dotted"/>
-  <line s_id="value1_t" s_corner="se" e_id="value1_b" e_corner="ne" style="dotted"/>
-  <line s_id="value2_t" s_corner="sw" e_id="value2_b" e_corner="nw" style="dotted"/>
-  <line s_id="value2_t" s_corner="se" e_id="value2_b" e_corner="ne" style="dotted"/>
-  <line s_id="value3_t" s_corner="sw" e_id="value3_b" e_corner="nw" style="dotted"/>
-  <line s_id="value3_t" s_corner="se" e_id="value3_b" e_corner="ne" style="dotted"/>
-  <line s_id="value4_t" s_corner="sw" e_id="value4_b" e_corner="nw" style="dotted"/>
-  <line s_id="value4_t" s_corner="se" e_id="value4_b" e_corner="ne" style="dotted"/>
+  <line style="dotted"><start corner="sw" id="value1_t"/><end corner="nw" id="value1_b"/></line>
+  <line style="dotted"><start corner="se" id="value1_t"/><end corner="ne" id="value1_b"/></line>
+  <line style="dotted"><start corner="sw" id="value2_t"/><end corner="nw" id="value2_b"/></line>
+  <line style="dotted"><start corner="se" id="value2_t"/><end corner="ne" id="value2_b"/></line>
+  <line style="dotted"><start corner="sw" id="value3_t"/><end corner="nw" id="value3_b"/></line>
+  <line style="dotted"><start corner="se" id="value3_t"/><end corner="ne" id="value3_b"/></line>
+  <line style="dotted"><start corner="sw" id="value4_t"/><end corner="nw" id="value4_b"/></line>
+  <line style="dotted"><start corner="se" id="value4_t"/><end corner="ne" id="value4_b"/></line>
 </diagram>

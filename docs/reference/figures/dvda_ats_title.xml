@@ -1,35 +1,34 @@
-<?xml version="1.0" encoding="utf-8"?>
-<diagram>
+<?xml version="1.0" ?><diagram>
   <row>
-    <col start="0" end="15" width=".5">Padding</col>
-    <col start="16" end="23" width=".25">Track Count</col>
-    <col start="24" end="31" width=".25">Index Count</col>
+    <col end="15" start="0" width=".5">Padding</col>
+    <col end="23" start="16" width=".25">Track Count</col>
+    <col end="31" start="24" width=".25">Index Count</col>
   </row>
   <row>
-    <col start="32" end="63" width=".25">Title PTS Length</col>
-    <col start="64" end="95" width=".24">Padding</col>
-    <col start="96" end="111" width=".27">Sector Pointers Offset</col>
-    <col start="112" end="127" width=".24">Padding</col>
+    <col end="63" start="32" width=".25">Title PTS Length</col>
+    <col end="95" start="64" width=".24">Padding</col>
+    <col end="111" start="96" width=".27">Sector Pointers Offset</col>
+    <col end="127" start="112" width=".24">Padding</col>
   </row>
   <row>
-    <col width=".25" id="timestamp" start="0" end="159">Timestamp₁</col>
-    <col width=".25" start="160" end="319">Timestamp₂</col>
-    <col width=".25" start="320" end="431">Timestamp₃</col>
-    <col width=".25" style="dashed">...</col>
+    <col end="159" id="timestamp" start="0" width=".25">Timestamp₁</col>
+    <col end="319" start="160" width=".25">Timestamp₂</col>
+    <col end="431" start="320" width=".25">Timestamp₃</col>
+    <col style="dashed" width=".25">...</col>
   </row>
   <spacer/>
   <row>
-    <col width=".50" start="0" end="31" id="timestamp_s">Padding</col>
-    <col width=".25" start="32" end="39">Index Number</col>
-    <col width=".25" start="40" end="47" id="timestamp_e">Padding</col>
+    <col end="31" id="timestamp_s" start="0" width=".50">Padding</col>
+    <col end="39" start="32" width=".25">Index Number</col>
+    <col end="47" id="timestamp_e" start="40" width=".25">Padding</col>
   </row>
   <row>
-    <col width=".50" start="48" end="79">Initial PTS Index</col>
-    <col width=".50" start="80" end="111">Track PTS Length</col>
+    <col end="79" start="48" width=".50">Initial PTS Index</col>
+    <col end="111" start="80" width=".50">Track PTS Length</col>
   </row>
   <row>
-    <col start="112" end="159">Padding</col>
+    <col end="159" start="112">Padding</col>
   </row>
-  <line s_id="timestamp" e_id="timestamp_s" s_corner="sw" e_corner="nw" style="dotted"/>
-  <line s_id="timestamp" e_id="timestamp_e" s_corner="se" e_corner="ne" style="dotted"/>
+  <line style="dotted"><start corner="sw" id="timestamp"/><end corner="nw" id="timestamp_s"/></line>
+  <line style="dotted"><start corner="se" id="timestamp"/><end corner="ne" id="timestamp_e"/></line>
 </diagram>

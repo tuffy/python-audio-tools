@@ -1,28 +1,27 @@
-<?xml version="1.0" encoding="utf-8"?>
-<diagram>
+<?xml version="1.0" ?><diagram>
   <row>
-    <col start="0" end="31" width=".18">Magic (‘ajkg’)</col>
-    <col start="32" end="39" width=".18">Version (2)</col>
-    <col start="40" width=".20" id="header">Header</col>
+    <col end="31" start="0" width=".18">Magic (‘ajkg’)</col>
+    <col end="39" start="32" width=".18">Version (2)</col>
+    <col id="header" start="40" width=".20">Header</col>
     <col width=".1466666">Command₁</col>
     <col width=".1466666">Command₂</col>
     <col style="dashed" width=".1466666">...</col>
   </row>
   <row><blank/></row>
   <row>
-    <col width=".333333" id="type" end="long">File Type</col>
-    <col width=".333333" id="channels" end="long">Channels</col>
-    <col width=".333333" id="length" end="long">Block Length</col>
+    <col end="long" id="type" width=".333333">File Type</col>
+    <col end="long" id="channels" width=".333333">Channels</col>
+    <col end="long" id="length" width=".333333">Block Length</col>
   </row>
   <row>
-    <col width=".333333" end="long">Max LPC</col>
-    <col width=".333333" end="long">Number of Means</col>
-    <col width=".333333" end="long">Bytes to Skip</col>
+    <col end="long" width=".333333">Max LPC</col>
+    <col end="long" width=".333333">Number of Means</col>
+    <col end="long" width=".333333">Bytes to Skip</col>
   </row>
   <row>
-    <col width=".666666" style="dashed">Skipped Bytes</col>
-    <col width=".333333" end="long">Samples to Wrap</col>
+    <col style="dashed" width=".666666">Skipped Bytes</col>
+    <col end="long" width=".333333">Samples to Wrap</col>
   </row>
-  <line s_id="header" s_corner="sw" e_id="type" e_corner="nw" style="dotted"/>
-  <line s_id="header" s_corner="se" e_id="length" e_corner="ne" style="dotted"/>
+  <line style="dotted"><start corner="sw" id="header"/><end corner="nw" id="type"/></line>
+  <line style="dotted"><start corner="se" id="header"/><end corner="ne" id="length"/></line>
 </diagram>

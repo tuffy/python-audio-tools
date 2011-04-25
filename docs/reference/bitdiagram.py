@@ -333,10 +333,13 @@ def parse_xml(xml_filename):
             else:
                 table.add_spacer(ROW_HEIGHT)
         elif (part.nodeName == u"line"):
-            table.add_line(part.getAttribute("s_id"),
-                           CORNER_MAP[part.getAttribute("s_corner")],
-                           part.getAttribute("e_id"),
-                           CORNER_MAP[part.getAttribute("e_corner")],
+            start = part.getElementsByTagName(u"start")[0]
+            end = part.getElementsByTagName(u"end")[0]
+
+            table.add_line(start.getAttribute("id"),
+                           CORNER_MAP[start.getAttribute("corner")],
+                           end.getAttribute("id"),
+                           CORNER_MAP[end.getAttribute("corner")],
                            STYLE_MAP[part.getAttribute("style")])
 
     return table

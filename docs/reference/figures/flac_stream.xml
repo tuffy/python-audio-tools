@@ -1,8 +1,7 @@
-<?xml version="1.0" encoding="utf-8"?>
-<diagram>
+<?xml version="1.0" ?><diagram>
   <row>
-    <col start="0" end="31" width=".20">Header (‘fLaC’)</col>
-    <col start="32" width=".133333" id="metadata">Metadata₁</col>
+    <col end="31" start="0" width=".20">Header (‘fLaC’)</col>
+    <col id="metadata" start="32" width=".133333">Metadata₁</col>
     <col width=".133333">Metadata₂</col>
     <col style="dashed" width=".133333">...</col>
     <col width=".133333">Frame₁</col>
@@ -12,11 +11,11 @@
   <row><blank/></row>
   <row>
     <blank width=".05"/>
-    <col start="0" end="0" width=".10" id="last">Last</col>
-    <col start="1" end="7" width=".18">Block Type</col>
-    <col start="8" end="31" width=".18">Block Length</col>
-    <col start="32" style="dashed" width=".40" id="data">Block Data</col>
+    <col end="0" id="last" start="0" width=".10">Last</col>
+    <col end="7" start="1" width=".18">Block Type</col>
+    <col end="31" start="8" width=".18">Block Length</col>
+    <col id="data" start="32" style="dashed" width=".40">Block Data</col>
   </row>
-  <line s_id="metadata" s_corner="sw" e_id="last" e_corner="nw" style="dotted"/>
-  <line s_id="metadata" s_corner="se" e_id="data" e_corner="ne" style="dotted"/>
+  <line style="dotted"><start corner="sw" id="metadata"/><end corner="nw" id="last"/></line>
+  <line style="dotted"><start corner="se" id="metadata"/><end corner="ne" id="data"/></line>
 </diagram>

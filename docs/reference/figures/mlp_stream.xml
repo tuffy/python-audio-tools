@@ -1,43 +1,42 @@
-<?xml version="1.0" encoding="utf-8"?>
-<diagram>
+<?xml version="1.0" ?><diagram>
   <row>
-    <col width=".25" id="frame">Frame₁</col>
+    <col id="frame" width=".25">Frame₁</col>
     <col width=".25">Frame₂</col>
     <col width=".25">Frame₃</col>
-    <col width=".25" style="dashed">...</col>
+    <col style="dashed" width=".25">...</col>
   </row>
   <spacer height=".75"/>
   <row>
-    <col start="0" end="3" width=".15" id="frame_s">Unknown</col>
-    <col start="4" end="15" width=".35">Total Frame Size (× 2)</col>
-    <col start="16" end="31" width=".15">Unknown</col>
-    <col start="0" end="223" style="dashed" width=".35" id="frame_e">Major Sync</col>
+    <col end="3" id="frame_s" start="0" width=".15">Unknown</col>
+    <col end="15" start="4" width=".35">Total Frame Size (× 2)</col>
+    <col end="31" start="16" width=".15">Unknown</col>
+    <col end="223" id="frame_e" start="0" style="dashed" width=".35">Major Sync</col>
   </row>
   <row>
-    <col width=".25" start="0" end="15">Substream Info₁</col>
-    <col width=".25" style="dashed" start="16" end="31">Substream Info₂</col>
-    <col width=".25" id="substream">Substream Data₁</col>
-    <col width=".25" style="dashed">Substream Data₂</col>
-  </row>
-  <spacer height=".75"/>
-  <row>
-    <col width=".20" id="blocks_s">Block₁</col>
-    <col width=".20" style="dashed">Block₂</col>
-    <col width=".20" style="dashed">...</col>
-    <col width=".10" style="dashed">Align</col>
-    <col width=".15" style="dashed" start="0" end="7">Parity</col>
-    <col width=".15" style="dashed" id="blocks_e" start="8" end="15">CRC-8</col>
+    <col end="15" start="0" width=".25">Substream Info₁</col>
+    <col end="31" start="16" style="dashed" width=".25">Substream Info₂</col>
+    <col id="substream" width=".25">Substream Data₁</col>
+    <col style="dashed" width=".25">Substream Data₂</col>
   </row>
   <spacer height=".75"/>
   <row>
-    <col width=".20" start="0" end="0" id="block_s">Params Present</col>
-    <col width=".48" id="params" style="dashed">Restart Header / Decoding Parameters</col>
+    <col id="blocks_s" width=".20">Block₁</col>
+    <col style="dashed" width=".20">Block₂</col>
+    <col style="dashed" width=".20">...</col>
+    <col style="dashed" width=".10">Align</col>
+    <col end="7" start="0" style="dashed" width=".15">Parity</col>
+    <col end="15" id="blocks_e" start="8" style="dashed" width=".15">CRC-8</col>
+  </row>
+  <spacer height=".75"/>
+  <row>
+    <col end="0" id="block_s" start="0" width=".20">Params Present</col>
+    <col id="params" style="dashed" width=".48">Restart Header / Decoding Parameters</col>
     <col width=".24">Block Data</col>
-    <col width=".08" start="0" end="0" id="block_e">Last</col>
+    <col end="0" id="block_e" start="0" width=".08">Last</col>
   </row>
-  <line s_id="frame" e_id="frame_s" s_corner="sw" e_corner="nw" style="dotted"/>  <line s_id="frame" e_id="frame_e" s_corner="se" e_corner="ne" style="dotted"/>
-  <line s_id="substream" e_id="blocks_s" s_corner="sw" e_corner="nw" style="dotted"/>
-  <line s_id="substream" e_id="blocks_e" s_corner="se" e_corner="ne" style="dotted"/>
-  <line s_id="blocks_s" e_id="block_s" s_corner="sw" e_corner="nw" style="dotted"/>
-  <line s_id="blocks_s" e_id="block_e" s_corner="se" e_corner="ne" style="dotted"/>
+  <line style="dotted"><start corner="sw" id="frame"/><end corner="nw" id="frame_s"/></line>  <line style="dotted"><start corner="se" id="frame"/><end corner="ne" id="frame_e"/></line>
+  <line style="dotted"><start corner="sw" id="substream"/><end corner="nw" id="blocks_s"/></line>
+  <line style="dotted"><start corner="se" id="substream"/><end corner="ne" id="blocks_e"/></line>
+  <line style="dotted"><start corner="sw" id="blocks_s"/><end corner="nw" id="block_s"/></line>
+  <line style="dotted"><start corner="se" id="blocks_s"/><end corner="ne" id="block_e"/></line>
 </diagram>

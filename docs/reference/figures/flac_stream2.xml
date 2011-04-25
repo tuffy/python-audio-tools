@@ -1,35 +1,34 @@
-<?xml version="1.0" encoding="utf-8"?>
-<diagram>
+<?xml version="1.0" ?><diagram>
   <row>
-    <col start="0" end="31" width=".20">Header (‘fLaC’)</col>
-    <col start="32" width=".133333" id="metadata">Metadata₁</col>
+    <col end="31" start="0" width=".20">Header (‘fLaC’)</col>
+    <col id="metadata" start="32" width=".133333">Metadata₁</col>
     <col width=".133333">Metadata₂</col>
     <col style="dashed" width=".133333">...</col>
-    <col width=".133333" id="frame">Frame₁</col>
+    <col id="frame" width=".133333">Frame₁</col>
     <col width=".133333">Frame₂</col>
     <col style="dashed" width=".133333">...</col>
   </row>
   <row><blank/></row>
   <row>
-    <col start="0" end="31" width=".21" id="md_header">Metadata Header</col>
-    <col start="32" width=".13" id="md_data">Block Data</col>
+    <col end="31" id="md_header" start="0" width=".21">Metadata Header</col>
+    <col id="md_data" start="32" width=".13">Block Data</col>
     <blank width=".05"/>
-    <col start="0" end="48-128" width=".21" id="fr_header">Frame Header</col>
-    <col width=".125" id="subframe">Subframe₁</col>
+    <col end="48-128" id="fr_header" start="0" width=".21">Frame Header</col>
+    <col id="subframe" width=".125">Subframe₁</col>
     <col width=".125">Subframe₂</col>
-    <col width=".05" style="dashed">...</col>
-    <col width=".10" id="fr_crc-16">CRC-16</col>
+    <col style="dashed" width=".05">...</col>
+    <col id="fr_crc-16" width=".10">CRC-16</col>
   </row>
   <row><blank/></row>
   <row>
     <blank width=".44"/>
-    <col start="0" end="7" width=".25" id="sf_header">Subframe Header</col>
-    <col start="8" width=".30" id="sf_data">Subframe Data</col>
+    <col end="7" id="sf_header" start="0" width=".25">Subframe Header</col>
+    <col id="sf_data" start="8" width=".30">Subframe Data</col>
   </row>
-  <line style="dotted" s_id="metadata" s_corner="sw" e_id="md_header" e_corner="nw"/>
-  <line style="dotted" s_id="metadata" s_corner="se" e_id="md_data" e_corner="ne"/>
-  <line style="dotted" s_id="frame" s_corner="sw" e_id="fr_header" e_corner="nw"/>
-  <line style="dotted" s_id="frame" s_corner="se" e_id="fr_crc-16" e_corner="ne"/>
-  <line style="dotted" s_id="subframe" s_corner="sw" e_id="sf_header" e_corner="nw"/>
-  <line style="dotted" s_id="subframe" s_corner="se" e_id="sf_data" e_corner="ne"/>
+  <line style="dotted"><start corner="sw" id="metadata"/><end corner="nw" id="md_header"/></line>
+  <line style="dotted"><start corner="se" id="metadata"/><end corner="ne" id="md_data"/></line>
+  <line style="dotted"><start corner="sw" id="frame"/><end corner="nw" id="fr_header"/></line>
+  <line style="dotted"><start corner="se" id="frame"/><end corner="ne" id="fr_crc-16"/></line>
+  <line style="dotted"><start corner="sw" id="subframe"/><end corner="nw" id="sf_header"/></line>
+  <line style="dotted"><start corner="se" id="subframe"/><end corner="ne" id="sf_data"/></line>
 </diagram>

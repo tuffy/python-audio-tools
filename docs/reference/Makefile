@@ -109,7 +109,7 @@ audioformats-a4.pdf: audioformats-a4.tex $(CHAPTERS) $(FIGURES)
 
 MP3_FIGURES = figures/mp3_stream2.pdf figures/mp3_frame_header.pdf \
 figures/mp3_side_data_1ch.pdf figures/mp3_side_data_2ch.pdf \
-figures/mp3_granule.pdf
+figures/mp3_granule.pdf figures/mp3_main.pdf
 
 mp3_decode.pdf: mp3_decode.tex $(MP3_FIGURES)
 	python pdflatexbuild.py -halt-on-error $<

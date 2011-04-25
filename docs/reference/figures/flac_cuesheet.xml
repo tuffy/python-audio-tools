@@ -1,35 +1,34 @@
-<?xml version="1.0" encoding="utf-8"?>
-<diagram>
+<?xml version="1.0" ?><diagram>
   <row>
-    <col start="0" end="1023" width=".21">Catalog Number</col>
-    <col start="1024" end="1087" width=".22">Lead-in Samples</col>
-    <col start="1088" end="1088" width=".12">is CDDA</col>
-    <col start="1089" end="3159" width=".10">NULL</col>
-    <col start="3160" end="3167" width=".15">Track Count</col>
-    <col start="3168" width=".10" id="track">Track₁</col>
+    <col end="1023" start="0" width=".21">Catalog Number</col>
+    <col end="1087" start="1024" width=".22">Lead-in Samples</col>
+    <col end="1088" start="1088" width=".12">is CDDA</col>
+    <col end="3159" start="1089" width=".10">NULL</col>
+    <col end="3167" start="3160" width=".15">Track Count</col>
+    <col id="track" start="3168" width=".10">Track₁</col>
     <col style="dashed" width=".10">...</col>
   </row>
   <row><blank/></row>
   <row>
-    <col start="0" end="63" width=".14" id="track_offset">Offset</col>
-    <col start="64" end="71" width=".14">Number</col>
-    <col start="72" end="167" width=".07">ISRC</col>
-    <col start="168" end="168" width=".07">Type</col>
-    <col start="169" end="169" width=".14">Pre-Emph.</col>
-    <col start="170" end="279" width=".08">NULL</col>
-    <col start="280" end="287" width=".16">Index Points</col>
-    <col start="288" width=".10" id="index">Index₁</col>
-    <col style="dashed" width=".10" id="track_end">...</col>
+    <col end="63" id="track_offset" start="0" width=".14">Offset</col>
+    <col end="71" start="64" width=".14">Number</col>
+    <col end="167" start="72" width=".07">ISRC</col>
+    <col end="168" start="168" width=".07">Type</col>
+    <col end="169" start="169" width=".14">Pre-Emph.</col>
+    <col end="279" start="170" width=".08">NULL</col>
+    <col end="287" start="280" width=".16">Index Points</col>
+    <col id="index" start="288" width=".10">Index₁</col>
+    <col id="track_end" style="dashed" width=".10">...</col>
   </row>
   <row><blank/></row>
   <row>
     <blank width=".54"/>
-    <col start="0" end="63" width=".18" id="index_offset">Index Offset</col>
-    <col start="64" end="71" width=".18">Index Number</col>
-    <col start="72" end="95" width=".10" id="index_end">NULL</col>
+    <col end="63" id="index_offset" start="0" width=".18">Index Offset</col>
+    <col end="71" start="64" width=".18">Index Number</col>
+    <col end="95" id="index_end" start="72" width=".10">NULL</col>
   </row>
-  <line s_id="track" s_corner="sw" e_id="track_offset" e_corner="nw" style="dotted"/>
-  <line s_id="track" s_corner="se" e_id="track_end" e_corner="ne" style="dotted"/>
-  <line s_id="index" s_corner="sw" e_id="index_offset" e_corner="nw" style="dotted"/>
-  <line s_id="index" s_corner="se" e_id="index_end" e_corner="ne" style="dotted"/>
+  <line style="dotted"><start corner="sw" id="track"/><end corner="nw" id="track_offset"/></line>
+  <line style="dotted"><start corner="se" id="track"/><end corner="ne" id="track_end"/></line>
+  <line style="dotted"><start corner="sw" id="index"/><end corner="nw" id="index_offset"/></line>
+  <line style="dotted"><start corner="se" id="index"/><end corner="ne" id="index_end"/></line>
 </diagram>

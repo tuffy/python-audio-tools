@@ -1,35 +1,34 @@
-<?xml version="1.0" encoding="utf-8"?>
-<diagram>
+<?xml version="1.0" ?><diagram>
   <row>
     <col width=".1666666">Atom₁</col>
-    <col width=".1666666" id="atom2">Atom₂</col>
+    <col id="atom2" width=".1666666">Atom₂</col>
     <col width=".1666666">Atom₃</col>
     <col width=".1666666">Atom₄</col>
-    <col width=".1666666" id="atom5">Atom₅</col>
-    <col width=".1666666" style="dashed">...</col>
+    <col id="atom5" width=".1666666">Atom₅</col>
+    <col style="dashed" width=".1666666">...</col>
   </row>
   <row><blank/></row>
   <row>
     <blank width=".08"/>
-    <col width=".1666666" id="atom2-1">Atom₂₋₁</col>
-    <col width=".1666666" id="atom2-2">Atom₂₋₂</col>
+    <col id="atom2-1" width=".1666666">Atom₂₋₁</col>
+    <col id="atom2-2" width=".1666666">Atom₂₋₂</col>
     <blank width=".04"/>
-    <col width=".1666666" id="atom5-1">Atom₅₋₁</col>
-    <col width=".1666666" id="atom5-2">Atom₅₋₂</col>
-    <col width=".1666666" style="dashed" id="atom5-3">...</col>
+    <col id="atom5-1" width=".1666666">Atom₅₋₁</col>
+    <col id="atom5-2" width=".1666666">Atom₅₋₂</col>
+    <col id="atom5-3" style="dashed" width=".1666666">...</col>
   </row>
   <row><blank/></row>
   <row>
     <blank width=".3333333"/>
-    <col width=".1666666" id="atom5-1-1">Atom₅₋₁₋₁</col>
+    <col id="atom5-1-1" width=".1666666">Atom₅₋₁₋₁</col>
     <col width=".1666666">Atom₅₋₁₋₂</col>
     <col width=".1666666">Atom₅₋₁₋₃</col>
-    <col width=".1666666" id="atom5-1-4">Atom₅₋₁₋₄</col>
+    <col id="atom5-1-4" width=".1666666">Atom₅₋₁₋₄</col>
   </row>
-  <line s_id="atom2" s_corner="sw" e_id="atom2-1" e_corner="nw" style="dotted"/>
-  <line s_id="atom2" s_corner="se" e_id="atom2-2" e_corner="ne" style="dotted"/>
-  <line s_id="atom5" s_corner="sw" e_id="atom5-1" e_corner="nw" style="dotted"/>
-  <line s_id="atom5" s_corner="se" e_id="atom5-3" e_corner="ne" style="dotted"/>
-  <line s_id="atom5-1" s_corner="sw" e_id="atom5-1-1" e_corner="nw" style="dotted"/>
-  <line s_id="atom5-1" s_corner="se" e_id="atom5-1-4" e_corner="ne" style="dotted"/>
+  <line style="dotted"><start corner="sw" id="atom2"/><end corner="nw" id="atom2-1"/></line>
+  <line style="dotted"><start corner="se" id="atom2"/><end corner="ne" id="atom2-2"/></line>
+  <line style="dotted"><start corner="sw" id="atom5"/><end corner="nw" id="atom5-1"/></line>
+  <line style="dotted"><start corner="se" id="atom5"/><end corner="ne" id="atom5-3"/></line>
+  <line style="dotted"><start corner="sw" id="atom5-1"/><end corner="nw" id="atom5-1-1"/></line>
+  <line style="dotted"><start corner="se" id="atom5-1"/><end corner="ne" id="atom5-1-4"/></line>
 </diagram>

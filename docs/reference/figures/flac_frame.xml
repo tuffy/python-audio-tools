@@ -1,39 +1,38 @@
-<?xml version="1.0" encoding="utf-8"?>
-<diagram>
+<?xml version="1.0" ?><diagram>
   <row>
-    <col start="0" end="13" width=".55">Sync Code (0x3FFE)</col>
-    <col start="14" end="14" width=".20">Reserved (0)</col>
-    <col start="15" end="15" width=".25">Blocking Strategy</col>
+    <col end="13" start="0" width=".55">Sync Code (0x3FFE)</col>
+    <col end="14" start="14" width=".20">Reserved (0)</col>
+    <col end="15" start="15" width=".25">Blocking Strategy</col>
   </row>
   <row>
-    <col start="16" end="19" width=".20">Block Size</col>
-    <col start="20" end="23" width=".20">Sample Rate</col>
-    <col start="24" end="27" width=".25">Channel Assignment</col>
-    <col start="28" end="30" width=".20">Bits per Sample</col>
-    <col start="31" end="31" width=".15">Padding</col>
+    <col end="19" start="16" width=".20">Block Size</col>
+    <col end="23" start="20" width=".20">Sample Rate</col>
+    <col end="27" start="24" width=".25">Channel Assignment</col>
+    <col end="30" start="28" width=".20">Bits per Sample</col>
+    <col end="31" start="31" width=".15">Padding</col>
   </row>
   <row>
-    <col start="32" end="39-87" width=".30">Sample/Frame Number</col>
-    <col start="0" end="0/7/15" width=".25" style="dashed">Block Size</col>
-    <col start="0" end="0/7/15" width=".25" style="dashed">Sample Rate</col>
-    <col start="0" end="7" width=".20">CRC-8</col>
+    <col end="39-87" start="32" width=".30">Sample/Frame Number</col>
+    <col end="0/7/15" start="0" style="dashed" width=".25">Block Size</col>
+    <col end="0/7/15" start="0" style="dashed" width=".25">Sample Rate</col>
+    <col end="7" start="0" width=".20">CRC-8</col>
   </row>
   <row>
-    <col width=".20" id="subframe">Subframe₁</col>
+    <col id="subframe" width=".20">Subframe₁</col>
     <col width=".20">Subframe₂</col>
-    <col width=".20" style="dashed">...</col>
-    <col width=".11" style="dashed">Padding</col>
-    <col width=".29" start="0" end="15">CRC-16</col>
+    <col style="dashed" width=".20">...</col>
+    <col style="dashed" width=".11">Padding</col>
+    <col end="15" start="0" width=".29">CRC-16</col>
   </row>
   <row><blank/></row>
   <row>
-    <col start="0" end="0" width=".11" id="subframe_s">Padding</col>
-    <col start="1" end="6" width=".50">Subframe Type</col>
-    <col start="7" width=".39" id="subframe_e">Wasted Bits per Sample</col>
+    <col end="0" id="subframe_s" start="0" width=".11">Padding</col>
+    <col end="6" start="1" width=".50">Subframe Type</col>
+    <col id="subframe_e" start="7" width=".39">Wasted Bits per Sample</col>
   </row>
   <row>
     <col style="dashed">Subframe Data</col>
   </row>
-  <line s_id="subframe" s_corner="sw" e_id="subframe_s" e_corner="nw" style="dotted"/>
-  <line s_id="subframe" s_corner="se" e_id="subframe_e" e_corner="ne" style="dotted"/>
+  <line style="dotted"><start corner="sw" id="subframe"/><end corner="nw" id="subframe_s"/></line>
+  <line style="dotted"><start corner="se" id="subframe"/><end corner="ne" id="subframe_e"/></line>
 </diagram>

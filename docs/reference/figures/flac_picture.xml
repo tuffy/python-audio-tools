@@ -1,31 +1,30 @@
-<?xml version="1.0" encoding="utf-8"?>
-<diagram>
+<?xml version="1.0" ?><diagram>
   <row>
-    <col start="0" end="31" width=".15">Picture Type</col>
-    <col start="32" width=".10" id="mime">MIME</col>
-    <col width=".15" id="desc">Description</col>
-    <col start="0" end="31" width=".12">Width</col>
-    <col start="32" end="63" width=".12">Height</col>
-    <col start="64" end="95" width=".12">Depth</col>
-    <col start="96" end="127" width=".12">Count</col>
-    <col start="128" width=".12" id="data">Data</col>
+    <col end="31" start="0" width=".15">Picture Type</col>
+    <col id="mime" start="32" width=".10">MIME</col>
+    <col id="desc" width=".15">Description</col>
+    <col end="31" start="0" width=".12">Width</col>
+    <col end="63" start="32" width=".12">Height</col>
+    <col end="95" start="64" width=".12">Depth</col>
+    <col end="127" start="96" width=".12">Count</col>
+    <col id="data" start="128" width=".12">Data</col>
   </row>
   <row><blank/></row>
   <row>
     <blank width=".025"/>
-    <col start="0" end="31" width=".10" id="mime_l">Length</col>
-    <col start="32" width=".10" id="mime_s">String</col>
+    <col end="31" id="mime_l" start="0" width=".10">Length</col>
+    <col id="mime_s" start="32" width=".10">String</col>
     <blank width=".05"/>
-    <col start="0" end="31" width=".10" id="desc_l">Length</col>
-    <col start="32" width=".10" id="desc_s">String</col>
+    <col end="31" id="desc_l" start="0" width=".10">Length</col>
+    <col id="desc_s" start="32" width=".10">String</col>
     <blank width=".325"/>
-    <col start="0" end="31" width=".10" id="data_l">Length</col>
-    <col start="32" width=".10" id="data_s">Data</col>
+    <col end="31" id="data_l" start="0" width=".10">Length</col>
+    <col id="data_s" start="32" width=".10">Data</col>
   </row>
-  <line s_id="mime" s_corner="sw" e_id="mime_l" e_corner="nw" style="dotted"/>
-  <line s_id="mime" s_corner="se" e_id="mime_s" e_corner="ne" style="dotted"/>
-  <line s_id="desc" s_corner="sw" e_id="desc_l" e_corner="nw" style="dotted"/>
-  <line s_id="desc" s_corner="se" e_id="desc_s" e_corner="ne" style="dotted"/>
-  <line s_id="data" s_corner="sw" e_id="data_l" e_corner="nw" style="dotted"/>
-  <line s_id="data" s_corner="se" e_id="data_s" e_corner="ne" style="dotted"/>
+  <line style="dotted"><start corner="sw" id="mime"/><end corner="nw" id="mime_l"/></line>
+  <line style="dotted"><start corner="se" id="mime"/><end corner="ne" id="mime_s"/></line>
+  <line style="dotted"><start corner="sw" id="desc"/><end corner="nw" id="desc_l"/></line>
+  <line style="dotted"><start corner="se" id="desc"/><end corner="ne" id="desc_s"/></line>
+  <line style="dotted"><start corner="sw" id="data"/><end corner="nw" id="data_l"/></line>
+  <line style="dotted"><start corner="se" id="data"/><end corner="ne" id="data_s"/></line>
 </diagram>
