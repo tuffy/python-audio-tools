@@ -158,31 +158,37 @@ is 1 or 2 channels, which can be determined from the frame header.
 \includegraphics{figures/mp3_side_data_2ch.pdf}
 \caption{Side Data for 2 Channels}
 \end{figure}
+\par
+\noindent
+\VAR{Copy ScaleFactor} bits indicate that we should copy
+the scale factor values from the previous frame
+rather than read a new value from the main data.
 
 %% FIXME - Explain Main Data Offset
-%% FIXME - Explain ScaleFactor Selection Information
 %% FIXME - Explain Granules
 
 \begin{figure}[h]
 \includegraphics{figures/mp3_granule.pdf}
+\caption{Granule Info}
 \end{figure}
-
-%% Part 2 / Part 3 - for parsing main data
-%% Big Values - for parsing Huffman codes in main data
-%% Global Gain - for decoding audio
-%% Scale Lengths - for parsing scales in main data
-%% Table 1 / Table 2 / Table 3 - for parsing Huffman codes in main data
-%% Region A / Region B - for parsing Huffman codes in main data
-%% Block Type - for determining r0len / r1len / r2len - for Huffman codes
-%% Subgain 1 / Subgain 2 / Subgain 3 - for decoding audio
-%% Pre Flag - for parsing scales in main data
-%% Scale Factor - for parsing scales in main data
-%% Count 1 Table - for parsing Huffman codes in main data
+\begin{description}
+\item[Part 2 / Part 3] for parsing main data
+\item[Big Values] for parsing Huffman codes in main data
+\item[Global Gain] for decoding audio
+\item[Scale Lengths] for parsing scales in main data
+\item[Table 1 / Table 2 / Table 3] for parsing Huffman codes in main data
+\item[Region A / Region B] for parsing Huffman codes in main data
+\item[Block Type] for determining r0len / r1len / r2len - for Huffman codes
+\item[Subgain 1 / Subgain 2 / Subgain 3] for decoding audio
+\item[Pre Flag] for parsing scales in main data
+\item[Scale Factor] for parsing scales in main data
+\item[Count 1 Table] for parsing Huffman codes in main data
+\end{description}
 
 \begin{table}[h]
 \begin{tabular}{|c|r|r|}
 \hline
-bits & length 1 & length 2 \\
+bits & $\text{length}_1$ & $\text{length}_2$ \\
 \hline
 \texttt{0000} & 0 & 0 \\
 \texttt{0001} & 0 & 1 \\
@@ -209,6 +215,10 @@ bits & length 1 & length 2 \\
 
 \begin{figure}[h]
 \includegraphics{figures/mp3_main.pdf}
+\end{figure}
+
+\begin{figure}[h]
+\includegraphics{figures/mp3_scalefactors.pdf}
 \end{figure}
 
 \clearpage

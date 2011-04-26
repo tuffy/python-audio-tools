@@ -31,7 +31,6 @@ struct huffman_node* build_huffman_tree_(unsigned int bits,
                                          struct huffman_frequency* frequencies)
 {
     int i;
-    int frequency_index = -1; /*for culling frequences we don't need to check*/
     struct huffman_node* node = malloc(sizeof(struct huffman_node));
 
     /*go through the list of frequency values*/
@@ -43,9 +42,6 @@ struct huffman_node* build_huffman_tree_(unsigned int bits,
             node->type = NODE_LEAF;
             node->v.leaf = frequencies[i].value;
             return node;
-        } else if ((frequency_index == -1) &&
-                   (frequencies[i].length == (length + 1))) {
-            frequency_index = i;
         }
     }
 
@@ -54,10 +50,10 @@ struct huffman_node* build_huffman_tree_(unsigned int bits,
     node->type = NODE_TREE;
     node->v.tree.bit_0 = build_huffman_tree_(bits << 1,
                                              length + 1,
-                                             frequencies + frequency_index);
+                                             frequencies);
     node->v.tree.bit_1 = build_huffman_tree_((bits << 1) | 1,
                                              length + 1,
-                                             frequencies + frequency_index);
+                                             frequencies);
     return node;
 }
 
