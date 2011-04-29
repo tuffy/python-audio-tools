@@ -4,7 +4,7 @@
     <col start="0" end="15" width=".22">Unknown</col>
     <col start="16" end="16" width=".25">Has Sample Size</col>
     <col start="17" end="18" width=".25">Wasted Bits (0)</col>
-    <col start="19" end="19" width=".28">Is Not Compressed (1)</col>
+    <col start="19" end="19" width=".28">Is Not Compressed (0)</col>
   </row>
   <row>
     <col start="20" end="51" style="dashed" width=".2">Sample Size</col>

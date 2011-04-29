@@ -21,6 +21,83 @@ import sys
 import optparse
 
 
+class Byte_Bank:
+    """The byte bank (and hence the bitstream reader's context)
+    is a 9 bit value split into a length / content pair.
+    length is a unary (stop bit 1) value of content's length,
+    encoded as (8 - length)
+    content is the remaining bits in the bank yet to be read
+
+    For example, given a context of  2
+    which is a 9 bit value of        0 0 0 0 0 0 0 1 0
+    we split it by unary and value   0 0 0 0 0 0 0 1 | 0
+    the unary length of content is   8 - 7 = 1 bit
+    while the content's value is     0
+    indicating we have a 1 bit bank with a value of 0
+
+    Similary, given a context of     2E
+    which is a 9 bit value of        0 0 0 1 0 1 1 1 0
+    we split it by unary and value   0 0 0 1 | 0 1 1 1 0
+    the unary length of content is   8 - 3 = 5 bits
+    while the content's value is     0 1 1 1 0
+    indicating we have a 5 bit bank with a value of 0xE
+
+    Why use this more complicated encoding strategy?
+    The reason is to remove long gaps of invalid context values
+    (such as a content length of 3 bits, but content value of 0xF)
+    which shrinks the jump table from 2304 entries to 512 entries.
+    Since the C-based bitstream reader itself doesn't perform any
+    actual byte bank state handling of its own, this optmization
+    imposes no speed penalty.
+    """
+
+    def __init__(self, size, value):
+        """size is the size of the bank, in bits
+        value is the contents of the bank"""
+
+        self.size = size
+        self.value = value
+
+    def __repr__(self):
+        return "Byte_Bank(%s, %s)" % (repr(self.size), repr(self.value))
+
+    def __int__(self):
+        if (self.size > 0):
+            return (1 << self.size) | self.value
+        else:
+            return self.value
+
+    @classmethod
+    def from_int(cls, i):
+        if (i == 0):
+            return cls(size=0, value=0)
+        elif (i == 1):
+            return cls(size=0, value=0)
+
+        for size in range(1, 8 + 1):
+            if (i < (1 << (size + 1))):
+                return cls(size=size,
+                           value=i % (1 << size))
+        else:
+            raise ValueError("unable to make Byte_Bank from 0x%X" % (i))
+
+    def bitbuffer(self):
+        buffer = Bitbuffer(self.value)
+        buffer.pad(self.size)
+        return buffer
+
+    @classmethod
+    def size(cls):
+        return 9
+
+    @classmethod
+    def contexts(cls):
+        yield cls(size=0, value=0)
+        yield cls(size=0, value=1)
+        for bank_size in range(1, 8 + 1):
+            for value in range(0, 1 << bank_size):
+                yield cls(size=bank_size, value=value)
+
 #this is a list-like class that stores the least significant bits
 #at position 0 in the array and most significant bits further up
 class Bitbuffer(list):
@@ -69,253 +146,283 @@ class Bitbuffer(list):
         while (len(self) < total_bits):
             self.append(0)
 
+    def byte_bank(self):
+        return Byte_Bank(size=len(self), value=int(self))
+
+def encode_read_bits(returned_value,
+                     returned_value_size,
+                     next_context):
+    return ((returned_value_size << (Byte_Bank.size() + 8)) |
+            (returned_value << Byte_Bank.size()) |
+            int(next_context))
+
+def decode_read_bits(value):
+    return (value >> (Byte_Bank.size() + 8),
+            (value >> (Byte_Bank.size())) & 0xFF,
+            value & ((1 << Byte_Bank.size()) - 1))
 
 #incoming context is:
-#4 bits - byte bank size (from 0 to 8)
-#8 bits - byte bank value (from 0x00 to 0xFF)
+#9 bits - byte bank context value
 #
 #returns an array of 8 integers
 #that array's index is the amount of bits we're reading
 #where 0-7 corresponds to reading 1 to 8 bits
 #
-#the value in the array is a 24-bit, multiplexed pair of items:
+#the value in the array is a 21-bit, multiplexed pair of items:
 #4 bits  - returned value size (from 0 to 8)
 #8 bits  - returned value (from 0x00 to 0xFF)
-#12 bits - next context
+#9 bits  - next context
 #the returned value size may be smaller than the requested number of bits
 #which means another call will be required to get the full result
-def next_read_bits_states(context):
-    for bits_requested in xrange(1,9):
-        byte_bank = Bitbuffer(context & 0xFF);
-        byte_bank.pad(context >> 8)
+def next_read_bits_states(byte_bank):
+    if (byte_bank.size < 1):
+        for bits_requested in xrange(1, 9):
+            yield 0
+    else:
+        for bits_requested in xrange(1,9):
+            bit_stream = byte_bank.bitbuffer()
 
-        #chop off the top "bits_requested" bits from the bank
-        returned_bits = byte_bank[-bits_requested:]
+            #chop off the top "bits_requested" bits from the bank
+            returned_bits = bit_stream[-bits_requested:]
 
-        #use the remaining bits in the bank as our next state
-        byte_bank = byte_bank[0:-bits_requested]
+            #use the remaining bits in the bank as our next state
+            next_bank = bit_stream[0:-bits_requested].byte_bank()
 
-        #yield the combination of return value and next state
-        yield (len(returned_bits) << 20) | \
-            (int(returned_bits) << 12) | \
-            (len(byte_bank) << 8) | \
-            int(byte_bank)
+            #yield the combination of return value and next state
+            yield encode_read_bits(int(returned_bits),
+                                   len(returned_bits),
+                                   next_bank)
 
 #identical to the previous, but delivers least-significant bits first
-def next_read_bits_states_le(context):
-    for bits_requested in xrange(1,9):
-        byte_bank = Bitbuffer(context & 0xFF);
-        byte_bank.pad(context >> 8)
+def next_read_bits_states_le(byte_bank):
+    if (byte_bank.size < 1):
+        for bits_requested in xrange(1, 9):
+            yield 0
+    else:
+        for bits_requested in xrange(1,9):
+            bit_stream = byte_bank.bitbuffer()
 
-        #chop off the bottom "bits_requested" bits from the bank
-        returned_bits = byte_bank[:bits_requested]
+            #chop off the bottom "bits_requested" bits from the bank
+            returned_bits = bit_stream[:bits_requested]
 
-        #use the remaining bits in the bank as our next state
-        byte_bank = byte_bank[bits_requested:]
+            #use the remaining bits in the bank as our next state
+            next_bank = bit_stream[bits_requested:].byte_bank()
 
-        #yield the combination of return value and next state
-        yield (len(returned_bits) << 20) | \
-            (int(returned_bits) << 12) | \
-            (len(byte_bank) << 8) | \
-            int(byte_bank)
+            #yield the combination of return value and next state
+            yield encode_read_bits(int(returned_bits),
+                                   len(returned_bits),
+                                   next_bank)
 
-#incoming context is
-#4 bits - byte bank size (from 0 to 8)
-#8 bits - byte bank value (from 0x00 to 0xFF)
+def encode_unread_bits(unable_to_unread,
+                       next_context):
+    return (unable_to_unread << Byte_Bank.size()) | int(next_context)
+
+def decode_unread_bits(value):
+    return (value >> Byte_Bank.size(),
+            value & ((1 << Byte_Bank.size()) - 1))
+
+#incoming context is:
+#9 bits - byte bank context value
 #
 #returns an array of 2 integers
 #that array's index is bit we're un-reading, either 0 or 1
 #
 #the value in the array is a 13-bit, multiplexed set of items:
 #1 bit   - unable to unread any more bits
-#12 bits - next context
+#9 bits - next context
 #although we should always be able to unread at least 1 bit
 #(getting 1 bit from a 0x000 context results in reading a whole byte
 # before shifting the context to 0x7xx, for example, which means we
 # can unread 1 bit back to 0x8xx)
 #but more than 1 may not be possible
-def next_unread_bit_states(context):
+def next_unread_bit_states(byte_bank):
     for unread_bit in xrange(2):
-        byte_bank = Bitbuffer(context & 0xFF);
-        byte_bank.pad(context >> 8)
+        bit_stream = byte_bank.bitbuffer()
 
-        if (len(byte_bank) < 8):
-            byte_bank.append(unread_bit)
-            yield (len(byte_bank) << 8) | \
-                int(byte_bank)
+        if (len(bit_stream) < 8):
+            bit_stream.append(unread_bit)
+            next_bank = bit_stream.byte_bank()
+
+            yield encode_unread_bits(0, next_bank)
         else:
-            yield (1 << 12) | \
-                (len(byte_bank) << 8) | \
-                int(byte_bank)
+            yield encode_unread_bits(1, byte_bank)
 
 #like the previous, but prepends the bit instead of appending it
-def next_unread_bit_states_le(context):
+def next_unread_bit_states_le(byte_bank):
     for unread_bit in xrange(2):
-        byte_bank = Bitbuffer(context & 0xFF);
-        byte_bank.pad(context >> 8)
+        bit_stream = byte_bank.bitbuffer()
 
-        if (len(byte_bank) < 8):
-            byte_bank.insert(0, unread_bit)
-            yield (len(byte_bank) << 8) | \
-                int(byte_bank)
+        if (len(bit_stream) < 8):
+            bit_stream.insert(0, unread_bit)
+            next_bank = bit_stream.byte_bank()
+
+            yield encode_unread_bits(0, next_bank)
         else:
-            yield (1 << 12) | \
-                (len(byte_bank) << 8) | \
-                int(byte_bank)
+            yield encode_unread_bits(1, byte_bank)
 
+
+def encode_unary_bits(returned_value,
+                      continue_reading,
+                      maximum_value_reached,
+                      next_context):
+    return ((maximum_value_reached << (Byte_Bank.size() + 4 + 1)) |
+            (continue_reading << (Byte_Bank.size() + 4)) |
+            (returned_value << (Byte_Bank.size())) |
+            int(next_context))
+
+def decode_unary_bits(value):
+    return ((value >> Byte_Bank.size()) & 0xF,
+            (value >> (Byte_Bank.size() + 4)) & 1,
+            value >> (Byte_Bank.size() + 4 + 1),
+            value & ((1 << Byte_Bank.size()) - 1))
 
 #incoming context is the same as in next_read_bits_states:
-#4 bits - byte bank size (from 0 to 8)
-#8 bits - byte bank value (from 0x00 to 0xFF)
+#9 bits - byte bank context value
 #
 #returns an array of 2 integers
 #that array's index is whether we stop at a 0 bit, or a 1 bit (in that order)
 #
-#the value in the array is a 17-bit, multiplexed triple of items:
+#the value in the array is a 14-bit, multiplexed triple of items:
 #1 bit   - continue reading
 #4 bits  - returned value (from 0 to 8)
-#12 bits - next context
+#9 bits - next context
 #if the topmost bit is set, it means we've exhausted the bank
 #without hitting a stop bit, and must continue to another byte
 #for example, if our bank is 0x800 (8, zero bits) and we stop at 1,
 #the value 0x18000 is returned
-def next_read_unary_states(context):
-    for stop_bit in xrange(0,2):
-        byte_bank = Bitbuffer(context & 0xFF);
-        byte_bank.pad(context >> 8)
+def next_read_unary_states(byte_bank):
+    if (byte_bank.size < 1):
+        for stop_bit in xrange(0, 2):
+            yield 0
+    else:
+        for stop_bit in xrange(0,2):
+            bit_stream = byte_bank.bitbuffer()
 
-        #why reversed?
-        #remember, we're reading the bitstream from left to right
-        #or most-significant bit to least-significant bit
-        for (count,bit) in enumerate(reversed(byte_bank)):
-            if (bit == stop_bit):
-                #the total number bits we've skipped is the returned value
+            #why reversed?
+            #remember, we're reading the bitstream from left to right
+            #or most-significant bit to least-significant bit
+            for (count, bit) in enumerate(reversed(bit_stream)):
+                if (bit == stop_bit):
+                    #the total number bits we've skipped is the returned value
 
-                #what's left over is our next state
-                byte_bank = byte_bank[:len(byte_bank) - count - 1]
+                    #what's left over is our next state
+                    next_bank = bit_stream[:
+                        len(bit_stream) - count - 1].byte_bank()
 
-                yield ((count << 12) |
-                       (len(byte_bank) << 8) |
-                       int(byte_bank))
-                break
-        else:
-            #unless we don't find the stop bit,
-            #in which case we need to send a continue
-            yield ((1 << 16) |
-                   ((count + 1) << 12))
+                    yield encode_unary_bits(count, 0, 0, next_bank)
+                    break
+            else:
+                #unless we don't find the stop bit,
+                #in which case we need to send a continue
+                yield encode_unary_bits(count + 1, 1, 0, 0)
+
 
 #same as above, but pulls from least-significant bits first
-def next_read_unary_states_le(context):
-    for stop_bit in xrange(0,2):
-        byte_bank = Bitbuffer(context & 0xFF);
-        byte_bank.pad(context >> 8)
+def next_read_unary_states_le(byte_bank):
+    if (byte_bank.size < 1):
+        for stop_bit in xrange(0, 2):
+            yield 0
+    else:
+        for stop_bit in xrange(0,2):
+            bit_stream = byte_bank.bitbuffer()
 
-        for (count,bit) in enumerate(byte_bank):
-            if (bit == stop_bit):
-                #the total number bits we've skipped is the returned value
+            for (count,bit) in enumerate(bit_stream):
+                if (bit == stop_bit):
+                    #the total number bits we've skipped is the returned value
 
-                #what's left over is our next state
-                byte_bank = byte_bank[count + 1:]
+                    #what's left over is our next state
+                    next_bank = bit_stream[count + 1:].byte_bank()
 
-                yield ((count << 12) |
-                       (len(byte_bank) << 8) |
-                       int(byte_bank))
-                break
-        else:
-            #unless we don't find the stop bit,
-            #in which case we need to send a continue
-            yield ((1 << 16) |
-                   ((count + 1) << 12))
+                    yield encode_unary_bits(count, 0, 0, next_bank)
+                    break
+            else:
+                #unless we don't find the stop bit,
+                #in which case we need to send a continue
+                yield encode_unary_bits(count + 1, 1, 0, 0)
 
 #incoming context is the same as in next_read_bits_states:
-#4 bits - byte bank size (from 0 to 8)
-#8 bits - byte bank value (from 0x00 to 0xFF)
+#9 bits - byte bank context value
 #
 #returns an array of 18 integers
 #the first 9 are when we stop at a 0 bit, and a maximum of 0-8 bits
 #the next 9 are when we stop at a 1 bit, and a maximum of 0-8 bits
 #
-#the value in the array is an 18-bit, multiplexed quad of items:
+#the value in the array is an 15-bit, multiplexed quad of items:
 #1 bit   - maximum value reached
 #1 bit   - continue reading
 #4 bits  - returned value (from 0 to 8)
-#12 bits - next context
+#9 bits - next context
 #if the "continue reading" bit is set, it means we've exhausted the bank
 #without hitting a stop bit, and must continue to another byte
 #if the "maximum value reached" bit is set, it means we've hit the
 #maximum number of bits to read
-def next_read_limited_unary_states(context):
-    for state in xrange(0, 18):
-        stop_bit = state / 9
-        maximum_value = state % 9
-        byte_bank = Bitbuffer(context & 0xFF)
-        byte_bank.pad(context >> 8)
+def next_read_limited_unary_states(byte_bank):
+    if (byte_bank.size < 1):
+        for i in xrange(0, 18):
+            yield 0
+    else:
+        for state in xrange(0, 18):
+            stop_bit = state / 9
+            maximum_value = state % 9
+            bit_stream = byte_bank.bitbuffer()
 
-        #read the bitstream from left to right
-        #or most-significant to least-significant
-        for (count, bit) in enumerate(reversed(byte_bank)):
-            if (count >= maximum_value):
-                #what's left is our next state
-                byte_bank = byte_bank[:len(byte_bank) - count]
+            #read the bitstream from left to right
+            #or most-significant to least-significant
+            for (count, bit) in enumerate(reversed(bit_stream)):
+                if (count >= maximum_value):
+                    #what's left is our next state
+                    next_bank = bit_stream[:
+                        len(bit_stream) - count].byte_bank()
 
-                yield ((1 << 17) |
-                       (len(byte_bank) << 8) |
-                       int(byte_bank))
-                break
-            elif (bit == stop_bit):
-                #the total number of bits skipped is the return value
-                value = count
+                    #send a "maximum value reached" value
+                    yield encode_unary_bits(0, 0, 1, next_bank)
+                    break
+                elif (bit == stop_bit):
+                    #the total number of bits skipped is the return value
+                    #what's left is our next state
+                    next_bank = bit_stream[:
+                        len(bit_stream) - count - 1].byte_bank()
 
-                #what's left is our next state
-                byte_bank = byte_bank[:len(byte_bank) - count - 1]
-
-                yield ((count << 12) |
-                       (len(byte_bank) << 8) |
-                       int(byte_bank))
-                break
-        else:
-            #unless we don't find the stop bit,
-            #in which case we need to send a continue
-            returned_bits = count + 1
-            yield ((1 << 16) |
-                   ((count + 1) << 12))
+                    #send a normal unary value
+                    yield encode_unary_bits(count, 0, 0, next_bank)
+                    break
+            else:
+                #unless we don't find the stop bit,
+                #in which case we need to send a "continue reading" value
+                yield encode_unary_bits(count + 1, 1, 0, 0)
 
 #same as previous, but in little-endian order
-def next_read_limited_unary_states_le(context):
-    for state in xrange(0, 18):
-        stop_bit = state / 9
-        maximum_value = state % 9
-        byte_bank = Bitbuffer(context & 0xFF)
-        byte_bank.pad(context >> 8)
+def next_read_limited_unary_states_le(byte_bank):
+    if (byte_bank.size < 1):
+        for i in xrange(0, 18):
+            yield 0
+    else:
+        for state in xrange(0, 18):
+            stop_bit = state / 9
+            maximum_value = state % 9
+            bit_stream = byte_bank.bitbuffer()
 
-        #read the bitstream from right to left
-        #or least-significant to most-significant
-        for (count, bit) in enumerate(byte_bank):
-            if (count >= maximum_value):
-                #what's left is our next state
-                byte_bank = byte_bank[count:]
+            #read the bitstream from right to left
+            #or least-significant to most-significant
+            for (count, bit) in enumerate(bit_stream):
+                if (count >= maximum_value):
+                    #what's left is our next state
+                    next_bank = bit_stream[count:].byte_bank()
 
-                yield ((1 << 17) |
-                       (len(byte_bank) << 8) |
-                       int(byte_bank))
-                break
-            elif (bit == stop_bit):
-                #the total number of bits skipped is the return value
-                value = count
+                    #send a "maximum value reached" value
+                    yield encode_unary_bits(0, 0, 1, next_bank)
+                    break
+                elif (bit == stop_bit):
+                    #the total number of bits skipped is the return value
+                    #what's left is our next state
+                    next_bank = bit_stream[count + 1:].byte_bank()
 
-                #what's left is our next state
-                byte_bank = byte_bank[count + 1:]
-
-                yield ((count << 12) |
-                       (len(byte_bank) << 8) |
-                       int(byte_bank))
-                break
-        else:
-            #unless we don't find the stop bit,
-            #in which case we need to send a continue
-            returned_bits = count + 1
-            yield ((1 << 16) |
-                   ((count + 1) << 12))
+                    yield encode_unary_bits(count, 0, 0, next_bank)
+                    break
+            else:
+                #unless we don't find the stop bit,
+                #in which case we need to send a "continue reading" value
+                yield encode_unary_bits(count + 1, 1, 0, 0)
 
 #incoming context is:
 #3 bits - byte bank size (from 0 to 7)
@@ -490,7 +597,7 @@ def states(minimum_bits=1,maximum_bits=8):
         for byte in range(0,1 << bank_size):
             yield (bank_size << maximum_bits) | byte
 
-def int_row(ints,last):
+def int_row(ints, last):
     if (not last):
         return "{" + (",".join(["0x%X" % (i) for i in ints])) + "},\n"
     else:
@@ -523,12 +630,6 @@ if (__name__ == '__main__'):
                       default=False,
                       help='create unread bit jump table')
 
-    parser.add_option('--wb',
-                      dest='write_bits',
-                      action='store_true',
-                      default=False,
-                      help='create write bits jump table')
-
     parser.add_option('--ru',
                       dest='read_unary',
                       action='store_true',
@@ -541,12 +642,6 @@ if (__name__ == '__main__'):
                       default=False,
                       help='created read limited unary jump table')
 
-    parser.add_option('--wu',
-                      dest='write_unary',
-                      action='store_true',
-                      default=False,
-                      help='create write unary jump table')
-
     parser.add_option('--le',
                       dest='little_endian',
                       action='store_true',
@@ -557,61 +652,30 @@ if (__name__ == '__main__'):
 
     if (options.read_bits):
         if (not options.little_endian):
-            (minimum_bits,maximum_bits,start_context,stat_function) = \
-                (1,8,0,next_read_bits_states)
+            stat_function = next_read_bits_states
         else:
-            (minimum_bits,maximum_bits,start_context,stat_function) = \
-                (1,8,0,next_read_bits_states_le)
+            stat_function = next_read_bits_states_le
     elif (options.unread_bit):
         if (not options.little_endian):
-            (minimum_bits,maximum_bits,start_context,stat_function) = \
-                (0,8,0,next_unread_bit_states)
+            stat_function = next_unread_bit_states
         else:
-            (minimum_bits,maximum_bits,start_context,stat_function) = \
-                (0,8,0,next_unread_bit_states_le)
+            stat_function = next_unread_bit_states_le
     elif (options.read_unary):
         if (not options.little_endian):
-            (minimum_bits,maximum_bits,start_context,stat_function) = \
-                (1,8,0,next_read_unary_states)
+            stat_function = next_read_unary_states
         else:
-            (minimum_bits,maximum_bits,start_context,stat_function) = \
-                (1,8,0,next_read_unary_states_le)
+            stat_function = next_read_unary_states_le
     elif (options.read_limited_unary):
         if (not options.little_endian):
-            (minimum_bits,maximum_bits,start_context,stat_function) = \
-                (1,8,0,next_read_limited_unary_states)
+            stat_function = next_read_limited_unary_states
         else:
-            (minimum_bits,maximum_bits,start_context,stat_function) = \
-                (1,8,0,next_read_limited_unary_states_le)
-    elif (options.write_bits):
-        if (not options.little_endian):
-            (minimum_bits,maximum_bits,start_context,stat_function) = \
-                (0,7,0,next_write_bits_states)
-        else:
-            (minimum_bits,maximum_bits,start_context,stat_function) = \
-                (0,7,0,next_write_bits_states_le)
-    elif (options.write_unary):
-        if (not options.little_endian):
-            (minimum_bits,maximum_bits,start_context,stat_function) = \
-                (0,7,0,next_write_unary_states)
-        else:
-            (minimum_bits,maximum_bits,start_context,stat_function) = \
-                (0,7,0,next_write_unary_states_le)
+            stat_function = next_read_limited_unary_states_le
     else:
         sys.exit(0)
 
-    state_map = dict([(context,list(stat_function(context)))
-                      for context in states(minimum_bits=minimum_bits,
-                                            maximum_bits=maximum_bits)])
-
-    map_width = max(map(len,state_map.values()))
-
     sys.stdout.write("{\n")
-    for (last,i) in last_element(range(start_context,
-                                       max(state_map.keys()) + 1)):
-        sys.stdout.write("/* 0x%X */\n" % (i))
-        if (i in state_map):
-            sys.stdout.write(int_row(state_map[i],last))
-        else:
-            sys.stdout.write(int_row([0] * map_width,last))
+    for (last, context) in last_element(Byte_Bank.contexts()):
+        sys.stdout.write("/* state = 0x%X (%d bits, 0x%X buffer) */\n" %
+                         (int(context), context.size, context.value))
+        sys.stdout.write(int_row(stat_function(context),last))
     sys.stdout.write("}\n")

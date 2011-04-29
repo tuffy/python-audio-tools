@@ -1588,6 +1588,13 @@ class Bitstream(unittest.TestCase):
             bitstream.byte_align()
 
             temp.seek(0, 0)
+            self.assertEqual(bitstream.read(8), 0xB1)
+            bitstream.unread(0)
+            self.assertEqual(bitstream.read(1), 0)
+            bitstream.unread(1)
+            self.assertEqual(bitstream.read(1), 1)
+
+            temp.seek(0, 0)
             self.assertEqual(bitstream.limited_unary(0, 2), 1)
             self.assertEqual(bitstream.limited_unary(0, 2), None)
             bitstream.byte_align()
@@ -1667,6 +1674,13 @@ class Bitstream(unittest.TestCase):
             bitstream.unread(bit)
             self.assertEqual(bitstream.read(4), 8)
             bitstream.byte_align()
+
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.read(8), 0xB1)
+            bitstream.unread(0)
+            self.assertEqual(bitstream.read(1), 0)
+            bitstream.unread(1)
+            self.assertEqual(bitstream.read(1), 1)
 
             temp.seek(0, 0)
             self.assertEqual(bitstream.limited_unary(0, 2), 1)
@@ -1793,6 +1807,13 @@ class Bitstream(unittest.TestCase):
             bitstream.byte_align()
 
             bitstream = BitstreamReader(new_temp(), 0)
+            self.assertEqual(bitstream.read(8), 0xB1)
+            bitstream.unread(0)
+            self.assertEqual(bitstream.read(1), 0)
+            bitstream.unread(1)
+            self.assertEqual(bitstream.read(1), 1)
+
+            bitstream = BitstreamReader(new_temp(), 0)
             self.assertEqual(bitstream.limited_unary(0, 2), 1)
             self.assertEqual(bitstream.limited_unary(0, 2), None)
             bitstream.byte_align()
@@ -1870,6 +1891,13 @@ class Bitstream(unittest.TestCase):
             bitstream.unread(bit)
             self.assertEqual(bitstream.read(4), 8)
             bitstream.byte_align()
+
+            bitstream = BitstreamReader(new_temp(), 1)
+            self.assertEqual(bitstream.read(8), 0xB1)
+            bitstream.unread(0)
+            self.assertEqual(bitstream.read(1), 0)
+            bitstream.unread(1)
+            self.assertEqual(bitstream.read(1), 1)
 
             bitstream = BitstreamReader(new_temp(), 1)
             self.assertEqual(bitstream.limited_unary(0, 2), 1)
