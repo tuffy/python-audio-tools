@@ -85,6 +85,7 @@ bs_open(FILE *f, bs_endianness endianness)
         bs->set_endianness = bs_set_endianness_le;
         break;
     }
+    bs->read_huffman_code = bs_read_huffman_code;
     bs->close = bs_close;
     bs->close_stream = bs_close_stream_f;
     bs->mark = bs_mark;
@@ -632,6 +633,36 @@ bs_read_limited_unary_le(Bitstream* bs, int stop_bit, int maximum_bits)
     }
 }
 
+void*
+bs_read_huffman_code(Bitstream *bs, const struct bs_huffman_table* table) {
+    const unsigned int total_tree_nodes = table->total_tree_nodes;
+    struct bs_huffman_table_entry* entries = table->entries;
+    struct bs_huffman_table_entry* entry;
+    int node = 0;
+    int context = bs->state;
+    struct bs_callback* callback;
+    int byte;
+
+    do {
+        if (context == 0) {
+            if ((byte = fgetc(bs->input.file)) == EOF)
+                bs_abort(bs);
+            context = NEW_CONTEXT(byte);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+        }
+
+        entry = &(entries[(context * total_tree_nodes) + node]);
+        context = entry->context;
+        node = entry->node;
+    } while (entry->value == NULL);
+
+    bs->state = context;
+    return entry->value;
+}
+
 void
 bs_set_endianness_be(Bitstream *bs, bs_endianness endianness) {
     bs->state = 0;
@@ -855,6 +886,7 @@ bs_open_python(PyObject *reader, bs_endianness endianness) {
         bs->set_endianness = bs_set_endianness_p_le;
         break;
     }
+    bs->read_huffman_code = bs_read_huffman_code_p;
     bs->close = bs_close;
     bs->close_stream = bs_close_stream_p;
     bs->mark = bs_mark_p;
@@ -1285,6 +1317,40 @@ bs_set_endianness_p_le(Bitstream *bs, bs_endianness endianness) {
         bs->byte_align = bs_byte_align_r;
         bs->set_endianness = bs_set_endianness_p_be;
     }
+}
+
+/*
+Note that read_huffman_code has no endianness variants.
+Which direction it reads from is decided when the table data is compiled.
+*/
+void*
+bs_read_huffman_code_p(Bitstream *bs, const struct bs_huffman_table* table) {
+    const unsigned int total_tree_nodes = table->total_tree_nodes;
+    struct bs_huffman_table_entry* entries = table->entries;
+    struct bs_huffman_table_entry* entry;
+    int node = 0;
+    int context = bs->state;
+    struct bs_callback* callback;
+    int byte;
+
+    do {
+        if (context == 0) {
+            if ((byte = py_getc(bs->input.python)) == EOF)
+                bs_abort(bs);
+            context = NEW_CONTEXT(byte);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+        }
+
+        entry = &(entries[(context * total_tree_nodes) + node]);
+        context = entry->context;
+        node = entry->node;
+    } while (entry->value == NULL);
+
+    bs->state = context;
+    return entry->value;
 }
 
 void

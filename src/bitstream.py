@@ -59,7 +59,7 @@ class Byte_Bank:
         self.value = value
 
     def __repr__(self):
-        return "Byte_Bank(%s, %s)" % (repr(self.size), repr(self.value))
+        return "Byte_Bank(%d, 0x%X)" % (self.size, self.value)
 
     def __int__(self):
         if (self.size > 0):
