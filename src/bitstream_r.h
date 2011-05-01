@@ -59,17 +59,11 @@ struct bs_mark {
 typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 
 
-struct bs_huffman_table_entry {
+struct bs_huffman_table {
     unsigned int context;
     unsigned int node;
-    void* value;
+    int value;
 };
-
-struct bs_huffman_table {
-    unsigned int total_tree_nodes;
-    struct bs_huffman_table_entry* entries;
-};
-
 
 
 #ifndef STANDALONE
@@ -130,8 +124,8 @@ typedef struct Bitstream_s {
     int (*read_limited_unary)(struct Bitstream_s* bs, int stop_bit,
                               int maximum_bits);
 
-    void* (*read_huffman_code)(struct Bitstream_s* bs,
-                               const struct bs_huffman_table* table);
+    int (*read_huffman_code)(struct Bitstream_s* bs,
+                             const struct bs_huffman_table table[][0x200]);
 
     /*aligns the stream to a byte boundary*/
     void (*byte_align)(struct Bitstream_s* bs);
@@ -285,8 +279,9 @@ bs_read_unary_le(Bitstream* bs, int stop_bit);
 int
 bs_read_limited_unary_le(Bitstream* bs, int stop_bit, int maximum_bits);
 
-void*
-bs_read_huffman_code(Bitstream *bs, const struct bs_huffman_table* table);
+int
+bs_read_huffman_code(Bitstream *bs,
+                     const struct bs_huffman_table table[][0x200]);
 
 void
 bs_set_endianness_le(Bitstream *bs, bs_endianness endianness);
@@ -380,8 +375,9 @@ bs_read_limited_unary_p_le(Bitstream* bs, int stop_bit, int maximum_bits);
 void
 bs_set_endianness_p_le(Bitstream *bs, bs_endianness endianness);
 
-void*
-bs_read_huffman_code_p(Bitstream *bs, const struct bs_huffman_table* table);
+int
+bs_read_huffman_code_p(Bitstream *bs,
+                       const struct bs_huffman_table table[][0x200]);
 
 void
 bs_mark_p(Bitstream* bs);

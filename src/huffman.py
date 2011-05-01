@@ -25,19 +25,15 @@ from bitstream import Byte_Bank,Bitbuffer,last_element
 
 #This takes Huffman code tables in JSON format, like the following:
 #
-# {"val[0]":[1],
-#  "val[1]":[0, 1],
-#  "val[2]":[0, 0, 1],
-#  "val[3]":[0, 0, 0]}
+# [[1],       0,
+#  [0, 1],    1,
+#  [0, 0, 1], 2,
+#  [0, 0, 0], 3]
 #
-#in which the key is a unique C pointer value
-#and the value is a list of leading bits.
-#It compiles that Huffman table into a C jump table
-#suitable for #including in a C program
-#which will then pass to the Bitstream->read_huffman_code function.
-#
-#I may need to swap this around such that the bits comprise the key
-#rather than the end value, which may not be unique.
+#Where the first value in each pair is the leading bits
+#and each trailing value is the Huffman value.
+
+
 
 class Counter:
     def __init__(self):
@@ -144,28 +140,34 @@ if (__name__ == '__main__'):
         print "a JSON file is required"
         sys.exit(1)
 
-    frequencies = dict([(tuple(value), key)
-                        for (key, value) in
-                        json.loads(open(options.input, "r").read()).items()])
+    json_data = json.loads(open(options.input, "r").read())
+    frequencies = dict([(tuple(bits), value)
+                        for (bits, value) in
+                        zip(json_data[::2],
+                            json_data[1::2])])
     tree = build_huffman_tree(frequencies)
     tree.enumerate_nodes()
     tree.populate_jump_table()
     jump_tables = dict(tree.jump_tables())
     print "{"
-    for (last_row, row) in last_element(
-        zip(*[jump_tables[key] for key in sorted(jump_tables.keys())])):
+    for (last_row, row) in last_element([jump_tables[key] for key
+                                         in sorted(jump_tables.keys())]):
+        print "  {"
         for (last_col, col) in last_element(row):
             (next_context, next_node, value) = col
             if (value is not None):
-                sys.stdout.write("  {0x%X, %d, &%s}" %
-                                 (next_context, next_node,
-                                  value.encode('ascii')))
+                sys.stdout.write("    {0x%X, %d, %d}" %
+                                 (next_context, next_node, value))
             else:
-                sys.stdout.write("  {0x%X, %d, NULL}" %
+                sys.stdout.write("    {0x%X, %d, 0}" %
                                  (next_context, next_node))
-            if (last_row and last_col):
+            if (last_col):
                 print ""
             else:
                 print ","
+        if (last_row):
+            print "  }"
+        else:
+            print "  },"
     print "}"
     print >>sys.stderr,"%d columns total" % (len(jump_tables.keys()))

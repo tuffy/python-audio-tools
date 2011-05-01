@@ -633,11 +633,10 @@ bs_read_limited_unary_le(Bitstream* bs, int stop_bit, int maximum_bits)
     }
 }
 
-void*
-bs_read_huffman_code(Bitstream *bs, const struct bs_huffman_table* table) {
-    const unsigned int total_tree_nodes = table->total_tree_nodes;
-    struct bs_huffman_table_entry* entries = table->entries;
-    struct bs_huffman_table_entry* entry;
+int
+bs_read_huffman_code(Bitstream *bs,
+                     const struct bs_huffman_table table[][0x200]) {
+    struct bs_huffman_table entry;
     int node = 0;
     int context = bs->state;
     struct bs_callback* callback;
@@ -654,13 +653,13 @@ bs_read_huffman_code(Bitstream *bs, const struct bs_huffman_table* table) {
                 callback->callback((uint8_t)byte, callback->data);
         }
 
-        entry = &(entries[(context * total_tree_nodes) + node]);
-        context = entry->context;
-        node = entry->node;
-    } while (entry->value == NULL);
+        entry = table[node][context];
+        context = entry.context;
+        node = entry.node;
+    } while (entry.node != 0);
 
     bs->state = context;
-    return entry->value;
+    return entry.value;
 }
 
 void
@@ -1323,11 +1322,9 @@ bs_set_endianness_p_le(Bitstream *bs, bs_endianness endianness) {
 Note that read_huffman_code has no endianness variants.
 Which direction it reads from is decided when the table data is compiled.
 */
-void*
+int
 bs_read_huffman_code_p(Bitstream *bs, const struct bs_huffman_table* table) {
-    const unsigned int total_tree_nodes = table->total_tree_nodes;
-    struct bs_huffman_table_entry* entries = table->entries;
-    struct bs_huffman_table_entry* entry;
+    struct bs_huffman_table entry;
     int node = 0;
     int context = bs->state;
     struct bs_callback* callback;
@@ -1344,13 +1341,13 @@ bs_read_huffman_code_p(Bitstream *bs, const struct bs_huffman_table* table) {
                 callback->callback((uint8_t)byte, callback->data);
         }
 
-        entry = &(entries[(context * total_tree_nodes) + node]);
-        context = entry->context;
-        node = entry->node;
-    } while (entry->value == NULL);
+        entry = table[node][context];
+        context = entry.context;
+        node = entry.node;
+    } while (entry.value == NULL);
 
     bs->state = context;
-    return entry->value;
+    return entry.value;
 }
 
 void
