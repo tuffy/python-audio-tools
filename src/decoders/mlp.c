@@ -47,6 +47,19 @@ const static int mlp_channel_map[][6] = {
     /* 0x14 */ {  0,  1,  4,  5,  2,  3}
 };
 
+const static struct bs_huffman_table mlp_codebook1[][0x200] =
+#include "mlp_codebook1.h"
+    ;
+
+const static struct bs_huffman_table mlp_codebook2[][0x200] =
+#include "mlp_codebook2.h"
+    ;
+
+const static struct bs_huffman_table mlp_codebook3[][0x200] =
+#include "mlp_codebook3.h"
+    ;
+
+
 #ifdef STANDALONE
 typedef enum {PyExc_ValueError, PyExc_IOError}  python_error;
 
@@ -1688,6 +1701,25 @@ mlp_calculate_signed_offset(uint8_t codebook,
     }
 }
 
+/*returns the next residual code from the given codebook
+  or -1 if the code is invalid*/
+static inline int
+mlp_read_code(Bitstream* bs, int codebook) {
+    switch (codebook) {
+    case 0:
+        return 0;
+    case 1:
+        return bs->read_huffman_code(bs, mlp_codebook1);
+    case 2:
+        return bs->read_huffman_code(bs, mlp_codebook2);
+    case 3:
+        return bs->read_huffman_code(bs, mlp_codebook3);
+    default:
+        return -1;
+    }
+
+}
+
 mlp_status
 mlp_read_residuals(Bitstream* bs,
                    struct mlp_DecodingParameters* parameters,
@@ -1746,63 +1778,6 @@ mlp_read_residuals(Bitstream* bs,
     }
 
     return OK;
-}
-
-int
-mlp_read_code(Bitstream* bs, int codebook) {
-    int val;
-
-    switch (codebook) {
-    case 0:
-        return 0;
-    case 1:
-        switch (val = bs->read_limited_unary(bs, 1, 9)) {
-        case 0:
-            return 7 + bs->read(bs, 2);
-        case 1:
-            val = bs->read_limited_unary(bs, 1, 7);
-            if (val >= 0)
-                return 11 + val;
-            else
-                return -1;
-        case -1:
-            return -1;
-        default:
-            return 8 - val;
-        }
-    case 2:
-        switch (val = bs->read_limited_unary(bs, 1, 9)) {
-        case 0:
-            return 7 + bs->read(bs, 1);
-        case 1:
-            val = bs->read_limited_unary(bs, 1, 7);
-            if (val >= 0)
-                return 9 + val;
-            else
-                return -1;
-        case -1:
-            return -1;
-        default:
-            return 8 - val;
-        }
-    case 3:
-        switch (val = bs->read_limited_unary(bs, 1, 9)) {
-        case 0:
-            return 7;
-        case 1:
-            val = bs->read_limited_unary(bs, 1, 7);
-            if (val >= 0)
-                return 8 + val;
-            else
-                return -1;
-        case -1:
-            return -1;
-        default:
-            return 8 - val;
-        }
-    default:
-        return -1; /*unsupported codebook*/
-    }
 }
 
 mlp_status

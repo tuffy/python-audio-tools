@@ -769,7 +769,7 @@ py_getc(struct bs_python_input *stream) {
                 if (buffer_len > 0) {
                     /*if the size of the new string is greater than 0*/
                     if (!stream->mark_in_progress) {
-                        /*if the stream has no mark,
+                        /*and the stream has no mark,
                           overwrite the existing buffer*/
                         if (buffer_len > stream->buffer_total_size) {
 
@@ -784,7 +784,7 @@ py_getc(struct bs_python_input *stream) {
                         stream->buffer_size = buffer_len;
                         stream->buffer_position = 0;
                     } else {
-                        /*if the stream has a mark,
+                        /*and the stream has a mark,
                           extend the existing buffer*/
                         if (buffer_len > (stream->buffer_total_size -
                                           stream->buffer_position)) {
@@ -1323,7 +1323,8 @@ Note that read_huffman_code has no endianness variants.
 Which direction it reads from is decided when the table data is compiled.
 */
 int
-bs_read_huffman_code_p(Bitstream *bs, const struct bs_huffman_table* table) {
+bs_read_huffman_code_p(Bitstream *bs,
+                       const struct bs_huffman_table table[][0x200]) {
     struct bs_huffman_table entry;
     int node = 0;
     int context = bs->state;
@@ -1344,7 +1345,7 @@ bs_read_huffman_code_p(Bitstream *bs, const struct bs_huffman_table* table) {
         entry = table[node][context];
         context = entry.context;
         node = entry.node;
-    } while (entry.value == NULL);
+    } while (entry.node != 0);
 
     bs->state = context;
     return entry.value;

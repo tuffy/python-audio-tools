@@ -400,10 +400,6 @@ mlp_read_residuals(Bitstream* bs,
                    int max_channel,
                    struct ia_array* residuals);
 
-/*returns the next residual MSB value, or -1 if an error occurs*/
-int
-mlp_read_code(Bitstream* bs, int codebook);
-
 mlp_status
 mlp_filter_channels(struct ia_array* unfiltered,
                     int min_channel,
