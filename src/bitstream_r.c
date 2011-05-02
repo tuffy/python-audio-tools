@@ -222,6 +222,7 @@ bs_etry(Bitstream *bs) {
 #define READ_UNARY_LIMIT_REACHED(x) ((x) >> (BYTE_BANK_SIZE + 4 + 1))
 #define NEXT_CONTEXT(x) ((x) & ((1 << BYTE_BANK_SIZE) - 1))
 #define UNREAD_BIT_LIMIT_REACHED(x) ((x) >> BYTE_BANK_SIZE)
+#define READ_HUFFMAN_NEXT_NODE(x) ((x) >> BYTE_BANK_SIZE)
 #define NEW_CONTEXT(x) (0x100 | (x))
 
 unsigned int
@@ -654,9 +655,9 @@ bs_read_huffman_code(Bitstream *bs,
         }
 
         entry = table[node][context];
-        context = entry.context;
-        node = entry.node;
-    } while (entry.node != 0);
+        context = NEXT_CONTEXT(entry.context_node);
+        node = READ_HUFFMAN_NEXT_NODE(entry.context_node);
+    } while (node != 0);
 
     bs->state = context;
     return entry.value;
@@ -1343,9 +1344,9 @@ bs_read_huffman_code_p(Bitstream *bs,
         }
 
         entry = table[node][context];
-        context = entry.context;
-        node = entry.node;
-    } while (entry.node != 0);
+        context = NEXT_CONTEXT(entry.context_node);
+        node = READ_HUFFMAN_NEXT_NODE(entry.context_node);
+    } while (node != 0);
 
     bs->state = context;
     return entry.value;

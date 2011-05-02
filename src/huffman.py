@@ -126,6 +126,17 @@ def next_read_huffman_state(bit_stream, tree, little_endian):
                                            tree.bit_0,
                                            little_endian)
 
+def encode_huffman_value(value,
+                         next_node,
+                         next_context):
+    if (value is not None):
+        return ("{0x%X, %d}" %
+                ((next_node << Byte_Bank.size()) | next_context,
+                 value))
+    else:
+        return ("{0x%X, 0}" %
+                ((next_node << Byte_Bank.size()) | next_context))
+
 
 if (__name__ == '__main__'):
     parser = optparse.OptionParser()
@@ -155,12 +166,10 @@ if (__name__ == '__main__'):
         print "  {"
         for (last_col, col) in last_element(row):
             (next_context, next_node, value) = col
-            if (value is not None):
-                sys.stdout.write("    {0x%X, %d, %d}" %
-                                 (next_context, next_node, value))
-            else:
-                sys.stdout.write("    {0x%X, %d, 0}" %
-                                 (next_context, next_node))
+            sys.stdout.write("    %s" %
+                             (encode_huffman_value(value,
+                                                   next_node,
+                                                   next_context)))
             if (last_col):
                 print ""
             else:

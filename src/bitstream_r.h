@@ -60,8 +60,7 @@ typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 
 
 struct bs_huffman_table {
-    unsigned int context;
-    unsigned int node;
+    unsigned int context_node;
     int value;
 };
 
