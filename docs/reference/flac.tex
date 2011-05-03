@@ -238,6 +238,50 @@ in order to byte-align frames.
 
 \pagebreak
 
+\subsection{UTF-8 Frame Number}
+
+UTF-8 was originally designed as a method of encoding
+Unicode text in a way that's backwards-compatible with ASCII.
+FLAC uses this encoding as a method to store the frame number
+such that the smaller numbers use fewer bytes than the larger
+numbers.
+
+One can decode this field in the following way:
+
+\begin{figure}[h]
+\includegraphics{figures/flac_read_utf8.pdf}
+\end{figure}
+
+\pagebreak
+
+For example, given the UTF-8 byte \texttt{0x55}:
+
+\begin{figure}[h]
+\includegraphics{figures/utf-8-1.pdf}
+\end{figure}
+\par
+\noindent
+In this instance, the decoded UTF-8 value is the same as the byte's value.
+This is how UTF-8 maintains backwards compatibility with ASCII.
+
+However, given the UTF-8 bytes \texttt{0xCA 0x95}:
+\begin{figure}[h]
+\includegraphics{figures/utf-8-2.pdf}
+\end{figure}
+\par
+\noindent
+Notice that the unary value from the first byte dictates the
+total number of bytes, and that the subsequent bytes
+are prefixed by a fixed, 2-bit header.
+
+Finally, given the UTF-8 bytes \texttt{0xE5 0x95 0xAA}:
+\begin{figure}[h]
+\includegraphics{figures/utf-8-3.pdf}
+\end{figure}
+
+
+\pagebreak
+
 \subsection{CONSTANT Subframe}
 
 This is the simplest possible subframe.

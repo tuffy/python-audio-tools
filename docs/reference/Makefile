@@ -6,7 +6,8 @@ figures/au_stream.pdf \
 figures/flac_stream.pdf figures/flac_streaminfo.pdf \
 figures/flac_application.pdf figures/flac_seektable.pdf \
 figures/flac_vorbiscomment.pdf figures/flac_cuesheet.pdf \
-figures/flac_picture.pdf \
+figures/flac_picture.pdf figures/flac_read_utf8.pdf \
+figures/utf-8-1.pdf figures/utf-8-2.pdf figures/utf-8-3.pdf \
 figures/flac_frame.pdf \
 figures/flac_verbatim.pdf figures/flac_fixed.pdf figures/flac_lpc.pdf \
 figures/flac_residual.pdf \
@@ -158,6 +159,15 @@ figures/flac_rice3.pdf: figures/flac_rice3.fig
 
 figures/flac_rice4.pdf: figures/flac_rice4.fig
 	fig2dev -Z 3 -L pdf $< $@
+
+figures/utf-8-1.pdf: figures/utf-8-1.fig
+	fig2dev -Z 3 -L pdf $< $@
+
+figures/utf-8-2.pdf: figures/utf-8-2.fig
+	fig2dev -Z 4 -L pdf $< $@
+
+figures/utf-8-3.pdf: figures/utf-8-3.fig
+	fig2dev -Z 5 -L pdf $< $@
 
 figures/flac_lag.pdf: figures/flac_lag.fig
 	fig2dev -Z 6 -L pdf $< $@

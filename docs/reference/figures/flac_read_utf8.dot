@@ -1,0 +1,55 @@
+digraph read_utf8 {
+  ratio=fill;
+  node [fontname="DejaVuSans"];
+  edge [fontname="DejaVuSans"];
+  size="4,6"
+  margin=0;
+
+  init [shape=record,label="total_bytes = 0"];
+  init -> read_next_bit;
+  read_next_bit [shape=parallelogram,label="bit = read 1"];
+  read_next_bit -> test_bit;
+  test_bit [shape=diamond,label="is\nbit = 1?"];
+  increment_total_bytes [shape=rect,label="total_bytes = total_bytes + 1"];
+  increment_total_bytes -> read_next_bit;
+  test_bit -> increment_total_bytes [label="YES"];
+  test_bit -> test_total_bytes_error [label="NO"];
+
+  test_total_bytes_error [shape=diamond,label="is\ntotal_bytes = 1?"];
+  test_total_bytes_error -> error [label="YES"];
+  test_total_bytes_error -> initial_value [label="NO"];
+
+  initial_value [shape=parallelogram,label="value = read (7 - total_bytes)"];
+  initial_value -> test_total_bytes;
+  test_total_bytes [shape=diamond,label="is\ntotal_bytes > 1?"];
+  test_total_bytes -> done [label="NO"];
+  test_total_bytes -> read_byte_header [label="YES"];
+
+  read_byte_header [shape=parallelogram,label="header = read 2"];
+  read_byte_header -> test_byte_header;
+
+  test_byte_header [shape=diamond,label="is\nheader = 2?"];
+  test_byte_header -> error [label="NO"];
+  test_byte_header -> read_byte_value [label="YES"];
+
+  read_byte_value [shape=parallelogram,label="remainder = read 6"];
+  read_byte_value -> update_value;
+
+  update_value [shape=rect,label="value = (value << 6) | remainder"];
+  update_value -> decrement_total_bytes;
+
+  decrement_total_bytes [shape=rect,label="total_bytes = total_bytes - 1"];
+  decrement_total_bytes -> test_total_bytes;
+
+  label1 [shape=plaintext,label="read the total bytes as unary"];
+  {rank=same; label1; test_bit;};
+
+  label2 [shape=plaintext,label="the remaining bits in the first byte\nare our initial value"];
+  {rank=same; label2; initial_value;};
+
+  label3 [shape=plaintext,label="the lower 6 bits of each subsequent byte\nare prepended to our value (if present)"];
+  {rank=same; label3; read_byte_value;};
+
+  done [shape=record,label="return value"];
+  error [shape=record,label="invalid UTF-8"];
+}
