@@ -2625,6 +2625,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    coinciding with re-engineering the to_pcm()/from_pcm() methods.
 ** DONE Remove external MD5 dependency
 ** DONE Generate SEEKTABLE blocks
+* DONE Add UTF-8 to FLAC documentation
+** DONE Explain how to decode a UTF-8 value
+** DONE Explain how to encode a UTF-8 value
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -3482,6 +3485,3 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] checking the confidence level
 ** TODO Add programming docstrings
 ** TODO Add programming documentation
-* TODO Add UTF-8 to FLAC documentation
-** DONE Explain how to decode a UTF-8 value
-** TODO Explain how to encode a UTF-8 value

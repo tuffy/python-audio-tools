@@ -1331,35 +1331,39 @@ FlacEncoder_compute_best_fixed_predictor_order(struct i_array *samples)
 }
 
 void
-write_utf8(Bitstream *stream, unsigned int value)
-{
-    if ((value >= 0) && (value <= 0x7F)) {
-        /*1 byte UTF-8 sequence*/
-        stream->write(stream, 8, value);
-    } else if ((value >= 0x80) && (value <= 0x7FF)) {
-        /*2 byte UTF-8 sequence*/
-        stream->write_unary(stream, 0, 2);
-        stream->write(stream, 5, value >> 6);
-        stream->write_unary(stream, 0, 1);
-        stream->write(stream, 6, value & 0x3F);
-    } else if ((value >= 0x800) && (value <= 0xFFFF)) {
-        /*3 byte UTF-8 sequence*/
-        stream->write_unary(stream, 0, 3);
-        stream->write(stream, 4, value >> 12);
-        stream->write_unary(stream, 0, 1);
-        stream->write(stream, 6, (value >> 6) & 0x3F);
-        stream->write_unary(stream, 0, 1);
-        stream->write(stream, 6, value & 0x3F);
-    } else if ((value >= 0x10000) && (value <= 0xFFFFF)) {
-        /*4 byte UTF-8 sequence*/
-        stream->write_unary(stream, 0, 4);
-        stream->write(stream, 3, value >> 18);
-        stream->write_unary(stream, 0, 1);
-        stream->write(stream, 6, (value >> 12) & 0x3F);
-        stream->write_unary(stream, 0, 1);
-        stream->write(stream, 6, (value >> 6) & 0x3F);
-        stream->write_unary(stream, 0, 1);
-        stream->write(stream, 6, value & 0x3F);
+write_utf8(Bitstream* bs, unsigned int value) {
+    unsigned int total_bytes = 0;
+    int shift;
+
+    if (value <= 0x7F) {
+        /*1 byte only*/
+        bs->write(bs, 8, value);
+    } else {
+        /*more than 1 byte*/
+
+        if (value <= 0x7FF) {
+            total_bytes = 2;
+        } else if (value <= 0xFFFF) {
+            total_bytes = 3;
+        } else if (value <= 0x1FFFFF) {
+            total_bytes = 4;
+        } else if (value <= 0x3FFFFFF) {
+            total_bytes = 5;
+        } else if (value <= 0x7FFFFFFF) {
+            total_bytes = 6;
+        }
+
+        shift = (total_bytes - 1) * 6;
+        /*send out the initial unary + leftover most-significant bits*/
+        bs->write_unary(bs, 0, total_bytes);
+        bs->write(bs, 7 - total_bytes, value >> shift);
+
+        /*then send the least-significant bits,
+          6 at a time with a unary 1 value appended*/
+        for (shift -= 6; shift >= 0; shift -= 6) {
+            bs->write_unary(bs, 0, 1);
+            bs->write(bs, 6, (value >> shift) & 0x3F);
+        }
     }
 }
 

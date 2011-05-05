@@ -719,6 +719,40 @@ and choose a predefined block size for as many FLAC frames as possible.
 
 \clearpage
 
+\subsection{UTF-8 Frame Number}
+\begin{wrapfigure}[10]{r}{3in}
+\includegraphics{figures/flac_write_utf8.pdf}
+\end{wrapfigure}
+
+A FLAC file's frame number starts at 0 and increments by one
+for each encoded frame.
+It is stored in the frame header as a UTF-8 encoded value,
+which uses a variable number of bytes as the number increases.
+\vskip .25in
+\par
+\noindent
+{\relsize{-1}
+\begin{tabular}{|c|r|}
+\hline
+Frame Number & Total Bytes \\
+\hline
+$0 \leq f \leq 127$ & 1 \\
+$127 < f \leq 2047$ & 2 \\
+$2047 < f \leq 65535$ & 3 \\
+$65535 < f \leq 2097151$ & 4 \\
+$2097151 < f \leq 67108863$ & 5 \\
+$67108863 < f \leq 2147483647$ & 6 \\
+\hline
+\end{tabular}
+}
+\vskip .25in
+\par
+As the inverse of decoding, this splits the value into
+multiple 6 bit fields (each prefixed by a unary 1 value)
+and indicates the total number of bytes as a unary value.
+
+\clearpage
+
 \subsection{Channel Assignment}
 
 If the input stream has a number of channels other than 2,

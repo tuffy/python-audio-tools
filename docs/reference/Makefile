@@ -7,6 +7,7 @@ figures/flac_stream.pdf figures/flac_streaminfo.pdf \
 figures/flac_application.pdf figures/flac_seektable.pdf \
 figures/flac_vorbiscomment.pdf figures/flac_cuesheet.pdf \
 figures/flac_picture.pdf figures/flac_read_utf8.pdf \
+figures/flac_write_utf8.pdf \
 figures/utf-8-1.pdf figures/utf-8-2.pdf figures/utf-8-3.pdf \
 figures/flac_frame.pdf \
 figures/flac_verbatim.pdf figures/flac_fixed.pdf figures/flac_lpc.pdf \

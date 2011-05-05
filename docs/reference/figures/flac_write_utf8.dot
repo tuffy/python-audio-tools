@@ -1,0 +1,48 @@
+digraph read_flac_residual {
+  size="3,7.5";
+  node [fontname="DejaVuSans"];
+  edge [fontname="DejaVuSans"];
+  ratio=fill;
+  margin=0;
+
+  init [shape=record,label="{input number|input total_bytes}"];
+  init -> test_1_byte;
+  test_1_byte [shape=diamond,label="is\ntotal_bytes = 1?"];
+  test_1_byte -> output_1_byte [label="YES"];
+  test_1_byte -> set_shift [label="NO"];
+  output_1_byte [shape=parallelogram,label="write 8, number"];
+  output_1_byte -> done;
+
+  set_shift [shape=record,label="{shift = (total_bytes - 1) × 6|i = 0}"];
+  set_shift -> test_unary;
+  test_unary [shape=diamond,label="is\ni < total_bytes?"];
+  test_unary -> write_unary_bit1 [label="YES"];
+  test_unary -> write_unary_bit0 [label="NO"];
+  write_unary_bit1 [shape=parallelogram,label="write 1, 1"];
+  write_unary_bit1 -> decrement_unary;
+  decrement_unary [shape=rect,label="i = i + 1"];
+  decrement_unary -> test_unary;
+  write_unary_bit0 [shape=parallelogram,label="write 1, 0"];
+  write_unary_bit0 -> set_remainder_bits;
+
+  set_remainder_bits [shape=rect,label="bits = (number / 2 ^ shift) mod 64"];
+  set_remainder_bits -> write_remainder_bits;
+  write_remainder_bits [shape=parallelogram,label="write (7 - total_bytes), bits"];
+  write_remainder_bits -> decrement_remainder_shift;
+  decrement_remainder_shift [shape=rect,label="shift = shift - 6"];
+  decrement_remainder_shift -> test_shift;
+
+  test_shift [shape=diamond,label="is\nshift ≥ 0?"];
+  test_shift -> done [label="NO"];
+  test_shift -> set_bits [label="YES"];
+  set_bits [shape=rect,label="bits = (number / 2 ^ shift) mod 64"];
+  set_bits -> send_header;
+  send_header [shape=parallelogram,label="write 2, 2"];
+  send_header -> send_bits;
+  send_bits [shape=parallelogram,label="write 6, bits"];
+  send_bits -> decrement_shift;
+  decrement_shift [shape=rect,label="shift = shift - 6"];
+  decrement_shift -> test_shift;
+
+  done [shape=record,label="done"];
+}
