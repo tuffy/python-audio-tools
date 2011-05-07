@@ -56,17 +56,14 @@ struct bs_mark {
     struct bs_mark *next;
 };
 
-typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
-
-
 struct bs_huffman_table {
     unsigned int context_node;
     int value;
 };
 
+typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 
 #ifndef STANDALONE
-
 struct bs_python_input {
     PyObject* reader_obj;
     uint8_t* buffer;
@@ -91,11 +88,11 @@ typedef struct Bitstream_s {
     struct bs_mark* marks;
 
     /*returns "count" number of unsigned bits from the current stream
-      in the current endian format up to "int" bits wide*/
+      in the current endian format up to "count" bits wide*/
     unsigned int (*read)(struct Bitstream_s* bs, unsigned int count);
 
     /*returns "count" number of signed bits from the current stream
-      in the current endian format up to "int" bits wide*/
+      in the current endian format up to "count" bits wide*/
     int (*read_signed)(struct Bitstream_s* bs, unsigned int count);
 
     /*returns "count" number of unsigned bits from the current stream
@@ -123,6 +120,8 @@ typedef struct Bitstream_s {
     int (*read_limited_unary)(struct Bitstream_s* bs, int stop_bit,
                               int maximum_bits);
 
+    /*reads the next Huffman code from the stream
+      where the code tree is defined from the given compiled table*/
     int (*read_huffman_code)(struct Bitstream_s* bs,
                              const struct bs_huffman_table table[][0x200]);
 
@@ -226,80 +225,160 @@ bs_try(Bitstream *bs);
 void
 bs_etry(Bitstream *bs);
 
-/*_be signifies the big-endian readers*/
+
+/*************************************************************
+   Read Function Matrix
+   The read functions come in two input variants
+   and two endianness variants named in the format:
+
+   bs_function_x_yy
+
+   where "x" is "f" for raw file or "p" for Python input
+   and "yy" is "be" for big endian or "le" for little endian.
+   For example:
+
+   | Function          | Input    | Endianness    |
+   |-------------------+----------+---------------|
+   | bs_read_bits_f_be | raw file | big endian    |
+   | bs_read_bits_f_le | raw file | little endian |
+   | bs_read_bits_p_be | Python   | big endian    |
+   | bs_read_bits_p_le | Python   | little endian |
+
+ *************************************************************/
+
 unsigned int
-bs_read_bits_be(Bitstream* bs, unsigned int count);
+bs_read_bits_f_be(Bitstream* bs, unsigned int count);
+unsigned int
+bs_read_bits_f_le(Bitstream* bs, unsigned int count);
+#ifndef STANDALONE
+unsigned int
+bs_read_bits_p_be(Bitstream* bs, unsigned int count);
+unsigned int
+bs_read_bits_p_le(Bitstream* bs, unsigned int count);
+#endif
+
 
 int
-bs_read_signed_bits_be(Bitstream* bs, unsigned int count);
+bs_read_signed_bits_f_be(Bitstream* bs, unsigned int count);
+int
+bs_read_signed_bits_f_le(Bitstream* bs, unsigned int count);
+#ifndef STANDALONE
+int
+bs_read_signed_bits_p_be(Bitstream* bs, unsigned int count);
+int
+bs_read_signed_bits_p_le(Bitstream* bs, unsigned int count);
+#endif
+
 
 uint64_t
-bs_read_bits64_be(Bitstream* bs, unsigned int count);
+bs_read_bits64_f_be(Bitstream* bs, unsigned int count);
+uint64_t
+bs_read_bits64_f_le(Bitstream* bs, unsigned int count);
+#ifndef STANDALONE
+uint64_t
+bs_read_bits64_p_be(Bitstream* bs, unsigned int count);
+uint64_t
+bs_read_bits64_p_le(Bitstream* bs, unsigned int count);
+#endif
+
 
 void
-bs_skip_bits_be(Bitstream* bs, unsigned int count);
+bs_skip_bits_f_be(Bitstream* bs, unsigned int count);
+void
+bs_skip_bits_f_le(Bitstream* bs, unsigned int count);
+#ifndef STANDALONE
+void
+bs_skip_bits_p_be(Bitstream* bs, unsigned int count);
+void
+bs_skip_bits_p_le(Bitstream* bs, unsigned int count);
+#endif
 
+
+/*unread_bit has no file/Python variants
+  because it never makes calls to the input stream*/
 void
 bs_unread_bit_be(Bitstream* bs, int unread_bit);
+void
+bs_unread_bit_le(Bitstream* bs, int unread_bit);
+
 
 unsigned int
-bs_read_unary_be(Bitstream* bs, int stop_bit);
+bs_read_unary_f_be(Bitstream* bs, int stop_bit);
+unsigned int
+bs_read_unary_f_le(Bitstream* bs, int stop_bit);
+#ifndef STANDALONE
+unsigned int
+bs_read_unary_p_be(Bitstream* bs, int stop_bit);
+unsigned int
+bs_read_unary_p_le(Bitstream* bs, int stop_bit);
+#endif
+
 
 int
-bs_read_limited_unary_be(Bitstream* bs, int stop_bit, int maximum_bits);
+bs_read_limited_unary_f_be(Bitstream* bs, int stop_bit, int maximum_bits);
+int
+bs_read_limited_unary_f_le(Bitstream* bs, int stop_bit, int maximum_bits);
+#ifndef STANDALONE
+int
+bs_read_limited_unary_p_be(Bitstream* bs, int stop_bit, int maximum_bits);
+int
+bs_read_limited_unary_p_le(Bitstream* bs, int stop_bit, int maximum_bits);
+#endif
 
-void
-bs_byte_align_r(Bitstream* bs);
 
 /*This automatically flushes any current state,
   so make sure to call it while byte-aligned!*/
 void
-bs_set_endianness_be(Bitstream *bs, bs_endianness endianness);
+bs_set_endianness_f_be(Bitstream *bs, bs_endianness endianness);
+void
+bs_set_endianness_f_le(Bitstream *bs, bs_endianness endianness);
+#ifndef STANDALONE
+void
+bs_set_endianness_p_be(Bitstream *bs, bs_endianness endianness);
+void
+bs_set_endianness_p_le(Bitstream *bs, bs_endianness endianness);
+#endif
 
-/*_le signifies the little-endian readers*/
-unsigned int
-bs_read_bits_le(Bitstream* bs, unsigned int count);
 
-uint64_t
-bs_read_bits64_le(Bitstream* bs, unsigned int count);
-
+/*read_huffman_code has no endianness variants
+  since that is determined when its jump table is compiled*/
 int
-bs_read_signed_bits_le(Bitstream* bs, unsigned int count);
-
-void
-bs_skip_bits_le(Bitstream* bs, unsigned int count);
-
-void
-bs_unread_bit_le(Bitstream* bs, int unread_bit);
-
-unsigned int
-bs_read_unary_le(Bitstream* bs, int stop_bit);
-
+bs_read_huffman_code_f(Bitstream *bs,
+                       const struct bs_huffman_table table[][0x200]);
+#ifndef STANDALONE
 int
-bs_read_limited_unary_le(Bitstream* bs, int stop_bit, int maximum_bits);
+bs_read_huffman_code_p(Bitstream *bs,
+                       const struct bs_huffman_table table[][0x200]);
+#endif
 
-int
-bs_read_huffman_code(Bitstream *bs,
-                     const struct bs_huffman_table table[][0x200]);
+
+/*none of the mark handling functions have endianness variants*/
+void
+bs_mark_f(Bitstream* bs);
+#ifndef STANDALONE
+void
+bs_mark_p(Bitstream* bs);
+#endif
 
 void
-bs_set_endianness_le(Bitstream *bs, bs_endianness endianness);
-
-/*mark a position in the bitstream which can be rewound to*/
+bs_rewind_f(Bitstream* bs);
+#ifndef STANDALONE
 void
-bs_mark(Bitstream* bs);
+bs_rewind_p(Bitstream* bs);
+#endif
 
-/*return bitstream to previously marked position*/
 void
-bs_rewind(Bitstream* bs);
-
-/*clear marked position in bitstream
-
-  note that marking a position may require buffering lots of
-  previously read data, so it's best not to hold a mark for too long
-  unless you have a lot of memeory to spare*/
+bs_unmark_f(Bitstream* bs);
+#ifndef STANDALONE
 void
-bs_unmark(Bitstream* bs);
+bs_unmark_p(Bitstream* bs);
+#endif
+
+
+/*byte_align doesn't have file *or* endianness variants*/
+void
+bs_byte_align_r(Bitstream* bs);
+
 
 #ifndef STANDALONE
 
@@ -328,64 +407,6 @@ bs_open_python(PyObject *reader, bs_endianness endianness);
 
 void
 bs_close_stream_p(Bitstream *bs);
-
-/*_be signifies the big-endian readers*/
-unsigned int
-bs_read_bits_p_be(Bitstream* bs, unsigned int count);
-
-int
-bs_read_signed_bits_p_be(Bitstream* bs, unsigned int count);
-
-uint64_t
-bs_read_bits64_p_be(Bitstream* bs, unsigned int count);
-
-void
-bs_skip_bits_p_be(Bitstream* bs, unsigned int count);
-
-unsigned int
-bs_read_unary_p_be(Bitstream* bs, int stop_bit);
-
-int
-bs_read_limited_unary_p_be(Bitstream* bs, int stop_bit, int maximum_bits);
-
-
-void
-bs_set_endianness_p_be(Bitstream *bs, bs_endianness endianness);
-
-/*_le signifies the little-endian readers*/
-unsigned int
-bs_read_bits_p_le(Bitstream* bs, unsigned int count);
-
-uint64_t
-bs_read_bits64_p_le(Bitstream* bs, unsigned int count);
-
-int
-bs_read_signed_bits_p_le(Bitstream* bs, unsigned int count);
-
-void
-bs_skip_bits_p_le(Bitstream* bs, unsigned int count);
-
-unsigned int
-bs_read_unary_p_le(Bitstream* bs, int stop_bit);
-
-int
-bs_read_limited_unary_p_le(Bitstream* bs, int stop_bit, int maximum_bits);
-
-void
-bs_set_endianness_p_le(Bitstream *bs, bs_endianness endianness);
-
-int
-bs_read_huffman_code_p(Bitstream *bs,
-                       const struct bs_huffman_table table[][0x200]);
-
-void
-bs_mark_p(Bitstream* bs);
-
-void
-bs_rewind_p(Bitstream* bs);
-
-void
-bs_unmark_p(Bitstream* bs);
 
 #endif
 

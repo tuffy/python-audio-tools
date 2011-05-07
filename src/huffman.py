@@ -32,7 +32,19 @@ from bitstream import Byte_Bank,Bitbuffer,last_element
 #
 #Where the first value in each pair is the leading bits
 #and each trailing value is the Huffman value.
-
+#The order of each pair in the list is irrelevent.
+#
+#It outputs a 2-dimensional array with a variable number of rows,
+#each containing 512 columns of bs_huffman_table structs.
+#Each row is a non-leaf node in the Huffman tree
+#and each column is a bitstream reader context state.
+#The value of the bs_table_struct is the next context/next node
+#(encoded as a single int, to save space) and/or the final leaf value.
+#
+#Walking the tree is a simple matter of starting from table[0][context]
+#(reading in a new context from the byte stream, if necessary)
+#and continuing along table[node][context] until the next node is 0
+#before returning the final value.
 
 
 class Counter:
@@ -152,11 +164,10 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     json_data = json.loads(open(options.input, "r").read())
-    frequencies = dict([(tuple(bits), value)
-                        for (bits, value) in
-                        zip(json_data[::2],
-                            json_data[1::2])])
-    tree = build_huffman_tree(frequencies)
+    tree = build_huffman_tree(dict([(tuple(bits), value)
+                                    for (bits, value) in
+                                    zip(json_data[::2],
+                                        json_data[1::2])]))
     tree.enumerate_nodes()
     tree.populate_jump_table()
     jump_tables = dict(tree.jump_tables())
@@ -179,4 +190,4 @@ if (__name__ == '__main__'):
         else:
             print "  },"
     print "}"
-    print >>sys.stderr,"%d columns total" % (len(jump_tables.keys()))
+    print >>sys.stderr,"%d rows total" % (len(jump_tables.keys()))

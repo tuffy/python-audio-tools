@@ -63,34 +63,34 @@ bs_open(FILE *f, bs_endianness endianness)
 
     switch (endianness) {
     case BS_BIG_ENDIAN:
-        bs->read = bs_read_bits_be;
-        bs->read_signed = bs_read_signed_bits_be;
-        bs->read_64 = bs_read_bits64_be;
-        bs->skip = bs_skip_bits_be;
+        bs->read = bs_read_bits_f_be;
+        bs->read_signed = bs_read_signed_bits_f_be;
+        bs->read_64 = bs_read_bits64_f_be;
+        bs->skip = bs_skip_bits_f_be;
         bs->unread = bs_unread_bit_be;
-        bs->read_unary = bs_read_unary_be;
-        bs->read_limited_unary = bs_read_limited_unary_be;
+        bs->read_unary = bs_read_unary_f_be;
+        bs->read_limited_unary = bs_read_limited_unary_f_be;
         bs->byte_align = bs_byte_align_r;
-        bs->set_endianness = bs_set_endianness_be;
+        bs->set_endianness = bs_set_endianness_f_be;
         break;
     case BS_LITTLE_ENDIAN:
-        bs->read = bs_read_bits_le;
-        bs->read_signed = bs_read_signed_bits_le;
-        bs->read_64 = bs_read_bits64_le;
-        bs->skip = bs_skip_bits_le;
+        bs->read = bs_read_bits_f_le;
+        bs->read_signed = bs_read_signed_bits_f_le;
+        bs->read_64 = bs_read_bits64_f_le;
+        bs->skip = bs_skip_bits_f_le;
         bs->unread = bs_unread_bit_le;
-        bs->read_unary = bs_read_unary_le;
-        bs->read_limited_unary = bs_read_limited_unary_le;
+        bs->read_unary = bs_read_unary_f_le;
+        bs->read_limited_unary = bs_read_limited_unary_f_le;
         bs->byte_align = bs_byte_align_r;
-        bs->set_endianness = bs_set_endianness_le;
+        bs->set_endianness = bs_set_endianness_f_le;
         break;
     }
-    bs->read_huffman_code = bs_read_huffman_code;
+    bs->read_huffman_code = bs_read_huffman_code_f;
     bs->close = bs_close;
     bs->close_stream = bs_close_stream_f;
-    bs->mark = bs_mark;
-    bs->rewind = bs_rewind;
-    bs->unmark = bs_unmark;
+    bs->mark = bs_mark_f;
+    bs->rewind = bs_rewind_f;
+    bs->unmark = bs_unmark_f;
 
     return bs;
 }
@@ -225,8 +225,12 @@ bs_etry(Bitstream *bs) {
 #define READ_HUFFMAN_NEXT_NODE(x) ((x) >> BYTE_BANK_SIZE)
 #define NEW_CONTEXT(x) (0x100 | (x))
 
+
+/*the bs_read_bits_?_?? functions differ
+  by the byte reader (fgetc or py_getc)
+  or which table they access (read_bits_table or read_bits_table_le)*/
 unsigned int
-bs_read_bits_be(Bitstream* bs, unsigned int count)
+bs_read_bits_f_be(Bitstream* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
@@ -263,7 +267,7 @@ bs_read_bits_be(Bitstream* bs, unsigned int count)
 }
 
 unsigned int
-bs_read_bits_le(Bitstream* bs, unsigned int count)
+bs_read_bits_f_le(Bitstream* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
@@ -301,30 +305,132 @@ bs_read_bits_le(Bitstream* bs, unsigned int count)
     return accumulator;
 }
 
+#ifndef STANDALONE
+unsigned int
+bs_read_bits_p_be(Bitstream* bs, unsigned int count) {
+    int context = bs->state;
+    unsigned int result;
+    int byte;
+    struct bs_callback* callback;
+    unsigned int accumulator = 0;
+    int output_size;
+
+    while (count > 0) {
+        if (context == 0) {
+            if ((byte = py_getc(bs->input.python)) == EOF)
+                bs_abort(bs);
+            context = NEW_CONTEXT(byte);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+        }
+
+        result = read_bits_table[context][MIN(count, 8) - 1];
+
+        output_size = READ_BITS_OUTPUT_SIZE(result);
+
+        accumulator = ((accumulator << output_size) |
+                       READ_BITS_OUTPUT_BITS(result));
+
+        context = NEXT_CONTEXT(result);
+
+        count -= output_size;
+    }
+
+    bs->state = context;
+    return accumulator;
+}
+
+unsigned int
+bs_read_bits_p_le(Bitstream* bs, unsigned int count) {
+    int context = bs->state;
+    unsigned int result;
+    int byte;
+    struct bs_callback* callback;
+    unsigned int accumulator = 0;
+    int output_size;
+    int bit_offset = 0;
+
+    while (count > 0) {
+        if (context == 0) {
+            if ((byte = py_getc(bs->input.python)) == EOF)
+                bs_abort(bs);
+            context = NEW_CONTEXT(byte);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+        }
+
+        result = read_bits_table_le[context][MIN(count, 8) - 1];
+
+        output_size = READ_BITS_OUTPUT_SIZE(result);
+
+        accumulator |= (READ_BITS_OUTPUT_BITS(result) << bit_offset);
+
+        context = NEXT_CONTEXT(result);
+
+        count -= output_size;
+
+        bit_offset += output_size;
+    }
+
+    bs->state = context;
+    return accumulator;
+}
+#endif
+
+
 int
-bs_read_signed_bits_be(Bitstream* bs, unsigned int count)
+bs_read_signed_bits_f_be(Bitstream* bs, unsigned int count)
 {
-    if (!bs_read_bits_be(bs, 1)) {
-        return bs_read_bits_be(bs, count - 1);
+    if (!bs_read_bits_f_be(bs, 1)) {
+        return bs_read_bits_f_be(bs, count - 1);
     } else {
-        return bs_read_bits_be(bs, count - 1) - (1 << (count - 1));
+        return bs_read_bits_f_be(bs, count - 1) - (1 << (count - 1));
     }
 }
 
 int
-bs_read_signed_bits_le(Bitstream* bs, unsigned int count)
+bs_read_signed_bits_f_le(Bitstream* bs, unsigned int count)
 {
-    int unsigned_value = bs_read_bits_le(bs, count - 1);
+    int unsigned_value = bs_read_bits_f_le(bs, count - 1);
 
-    if (!bs_read_bits_le(bs, 1)) {
+    if (!bs_read_bits_f_le(bs, 1)) {
         return unsigned_value;
     } else {
         return unsigned_value - (1 << (count - 1));
     }
 }
 
+#ifndef STANDALONE
+int
+bs_read_signed_bits_p_be(Bitstream* bs, unsigned int count) {
+    if (!bs_read_bits_p_be(bs, 1)) {
+        return bs_read_bits_p_be(bs, count - 1);
+    } else {
+        return bs_read_bits_p_be(bs, count - 1) - (1 << (count - 1));
+    }
+}
+
+int
+bs_read_signed_bits_p_le(Bitstream* bs, unsigned int count) {
+    int unsigned_value = bs_read_bits_p_le(bs, count - 1);
+
+    if (!bs_read_bits_p_le(bs, 1)) {
+        return unsigned_value;
+    } else {
+        return unsigned_value - (1 << (count - 1));
+    }
+}
+#endif
+
+
+/*the read_bits64 functions differ from the read_bits functions
+  only by the size of the accumulator*/
 uint64_t
-bs_read_bits64_be(Bitstream* bs, unsigned int count)
+bs_read_bits64_f_be(Bitstream* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
@@ -361,7 +467,7 @@ bs_read_bits64_be(Bitstream* bs, unsigned int count)
 }
 
 uint64_t
-bs_read_bits64_le(Bitstream* bs, unsigned int count)
+bs_read_bits64_f_le(Bitstream* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
@@ -399,8 +505,88 @@ bs_read_bits64_le(Bitstream* bs, unsigned int count)
     return accumulator;
 }
 
+#ifndef STANDALONE
+uint64_t
+bs_read_bits64_p_be(Bitstream* bs, unsigned int count) {
+    int context = bs->state;
+    unsigned int result;
+    int byte;
+    struct bs_callback* callback;
+    uint64_t accumulator = 0;
+    int output_size;
+
+    while (count > 0) {
+        if (context == 0) {
+            if ((byte = py_getc(bs->input.python)) == EOF)
+                bs_abort(bs);
+            context = NEW_CONTEXT(byte);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+        }
+
+        result = read_bits_table[context][MIN(count, 8) - 1];
+
+        output_size = READ_BITS_OUTPUT_SIZE(result);
+
+        accumulator = ((accumulator << output_size) |
+                       READ_BITS_OUTPUT_BITS(result));
+
+        context = NEXT_CONTEXT(result);
+
+        count -= output_size;
+    }
+
+    bs->state = context;
+    return accumulator;
+}
+
+uint64_t
+bs_read_bits64_p_le(Bitstream* bs, unsigned int count) {
+    int context = bs->state;
+    unsigned int result;
+    int byte;
+    struct bs_callback* callback;
+    uint64_t accumulator = 0;
+    int output_size;
+    int bit_offset = 0;
+
+    while (count > 0) {
+        if (context == 0) {
+            if ((byte = py_getc(bs->input.python)) == EOF)
+                bs_abort(bs);
+            context = NEW_CONTEXT(byte);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+        }
+
+        result = read_bits_table_le[context][MIN(count, 8) - 1];
+
+        output_size = READ_BITS_OUTPUT_SIZE(result);
+
+        accumulator |= (READ_BITS_OUTPUT_BITS(result) << bit_offset);
+
+        context = NEXT_CONTEXT(result);
+
+        count -= output_size;
+
+        bit_offset += output_size;
+    }
+
+    bs->state = context;
+    return accumulator;
+}
+#endif
+
+
+/*the skip_bits functions differ from the read_bits functions
+  in that they have no accumulator
+  which allows them to skip over a potentially unlimited amount of bits*/
 void
-bs_skip_bits_be(Bitstream* bs, unsigned int count)
+bs_skip_bits_f_be(Bitstream* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
@@ -432,7 +618,7 @@ bs_skip_bits_be(Bitstream* bs, unsigned int count)
 }
 
 void
-bs_skip_bits_le(Bitstream* bs, unsigned int count)
+bs_skip_bits_f_le(Bitstream* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
@@ -465,6 +651,74 @@ bs_skip_bits_le(Bitstream* bs, unsigned int count)
 
     bs->state = context;
 }
+
+#ifndef STANDALONE
+void
+bs_skip_bits_p_be(Bitstream* bs, unsigned int count) {
+    int context = bs->state;
+    unsigned int result;
+    int byte;
+    struct bs_callback* callback;
+    int output_size;
+
+    while (count > 0) {
+        if (context == 0) {
+            if ((byte = py_getc(bs->input.python)) == EOF)
+                bs_abort(bs);
+            context = NEW_CONTEXT(byte);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+        }
+
+        result = read_bits_table[context][MIN(count, 8) - 1];
+
+        output_size = READ_BITS_OUTPUT_SIZE(result);
+
+        context = NEXT_CONTEXT(result);
+
+        count -= output_size;
+    }
+
+    bs->state = context;
+}
+
+void
+bs_skip_bits_p_le(Bitstream* bs, unsigned int count) {
+    int context = bs->state;
+    unsigned int result;
+    int byte;
+    struct bs_callback* callback;
+    int output_size;
+    int bit_offset = 0;
+
+    while (count > 0) {
+        if (context == 0) {
+            if ((byte = py_getc(bs->input.python)) == EOF)
+                bs_abort(bs);
+            context = NEW_CONTEXT(byte);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+        }
+
+        result = read_bits_table_le[context][MIN(count, 8) - 1];
+
+        output_size = READ_BITS_OUTPUT_SIZE(result);
+
+        context = NEXT_CONTEXT(result);
+
+        count -= output_size;
+
+        bit_offset += output_size;
+    }
+
+    bs->state = context;
+}
+#endif
+
 
 void
 bs_unread_bit_be(Bitstream* bs, int unread_bit)
@@ -482,8 +736,9 @@ bs_unread_bit_le(Bitstream* bs, int unread_bit)
     bs->state = NEXT_CONTEXT(result);
 }
 
+
 unsigned int
-bs_read_unary_be(Bitstream* bs, int stop_bit)
+bs_read_unary_f_be(Bitstream* bs, int stop_bit)
 {
     int context = bs->state;
     unsigned int result;
@@ -514,7 +769,7 @@ bs_read_unary_be(Bitstream* bs, int stop_bit)
 }
 
 unsigned int
-bs_read_unary_le(Bitstream* bs, int stop_bit)
+bs_read_unary_f_le(Bitstream* bs, int stop_bit)
 {
     int context = bs->state;
     unsigned int result;
@@ -544,9 +799,72 @@ bs_read_unary_le(Bitstream* bs, int stop_bit)
     return accumulator;
 }
 
+#ifndef STANDALONE
+unsigned int
+bs_read_unary_p_be(Bitstream* bs, int stop_bit) {
+    int context = bs->state;
+    unsigned int result;
+    struct bs_callback* callback;
+    int byte;
+    unsigned int accumulator = 0;
+
+    do {
+        if (context == 0) {
+            if ((byte = py_getc(bs->input.python)) == EOF)
+                bs_abort(bs);
+            context = NEW_CONTEXT(byte);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+        }
+
+        result = read_unary_table[context][stop_bit];
+
+        accumulator += READ_UNARY_OUTPUT_BITS(result);
+
+        context = NEXT_CONTEXT(result);
+    } while (READ_UNARY_CONTINUE(result));
+
+    bs->state = context;
+    return accumulator;
+}
+
+unsigned int
+bs_read_unary_p_le(Bitstream* bs, int stop_bit) {
+    int context = bs->state;
+    unsigned int result;
+    struct bs_callback* callback;
+    int byte;
+    unsigned int accumulator = 0;
+
+    do {
+        if (context == 0) {
+            if ((byte = py_getc(bs->input.python)) == EOF)
+                bs_abort(bs);
+            context = NEW_CONTEXT(byte);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+        }
+
+        result = read_unary_table_le[context][stop_bit];
+
+        accumulator += READ_UNARY_OUTPUT_BITS(result);
+
+        context = NEXT_CONTEXT(result);
+    } while (READ_UNARY_CONTINUE(result));
+
+    bs->state = context;
+    return accumulator;
+}
+#endif
+
+
 /*returns -1 on error, so cannot be unsigned*/
 int
-bs_read_limited_unary_be(Bitstream* bs, int stop_bit, int maximum_bits)
+bs_read_limited_unary_f_be(Bitstream* bs, int stop_bit, int maximum_bits)
 {
     int context = bs->state;
     unsigned int result;
@@ -589,9 +907,8 @@ bs_read_limited_unary_be(Bitstream* bs, int stop_bit, int maximum_bits)
     }
 }
 
-/*returns -1 on error, so cannot be unsigned*/
 int
-bs_read_limited_unary_le(Bitstream* bs, int stop_bit, int maximum_bits)
+bs_read_limited_unary_f_le(Bitstream* bs, int stop_bit, int maximum_bits)
 {
     int context = bs->state;
     unsigned int result;
@@ -634,9 +951,168 @@ bs_read_limited_unary_le(Bitstream* bs, int stop_bit, int maximum_bits)
     }
 }
 
+#ifndef STANDALONE
 int
-bs_read_huffman_code(Bitstream *bs,
-                     const struct bs_huffman_table table[][0x200]) {
+bs_read_limited_unary_p_be(Bitstream* bs, int stop_bit, int maximum_bits) {
+    int context = bs->state;
+    unsigned int result;
+    unsigned int value;
+    struct bs_callback* callback;
+    int byte;
+    int accumulator = 0;
+    stop_bit *= 9;
+
+    do {
+        if (context == 0) {
+            if ((byte = py_getc(bs->input.python)) == EOF)
+                bs_abort(bs);
+            context = NEW_CONTEXT(byte);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+        }
+
+        result = read_limited_unary_table[context][stop_bit +
+                                                   MIN(maximum_bits, 8)];
+
+        value = READ_UNARY_OUTPUT_BITS(result);
+
+        accumulator += value;
+        maximum_bits -= value;
+
+        context = NEXT_CONTEXT(result);
+    } while (READ_UNARY_CONTINUE(result));
+
+    bs->state = context;
+
+    if (READ_UNARY_LIMIT_REACHED(result)) {
+        /*maximum_bits reached*/
+        return -1;
+    } else {
+        /*stop bit reached*/
+        return accumulator;
+    }
+}
+
+int
+bs_read_limited_unary_p_le(Bitstream* bs, int stop_bit, int maximum_bits) {
+    int context = bs->state;
+    unsigned int result;
+    unsigned int value;
+    struct bs_callback* callback;
+    int byte;
+    int accumulator = 0;
+    stop_bit *= 9;
+
+    do {
+        if (context == 0) {
+            if ((byte = py_getc(bs->input.python)) == EOF)
+                bs_abort(bs);
+            context = NEW_CONTEXT(byte);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+        }
+
+        result = read_limited_unary_table_le[context][stop_bit +
+                                                      MIN(maximum_bits, 8)];
+
+        value = READ_UNARY_OUTPUT_BITS(result);
+
+        accumulator += value;
+        maximum_bits -= value;
+
+        context = NEXT_CONTEXT(result);
+    } while (READ_UNARY_CONTINUE(result));
+
+    bs->state = context;
+
+    if (READ_UNARY_LIMIT_REACHED(result)) {
+        /*maximum_bits reached*/
+        return -1;
+    } else {
+        /*stop bit reached*/
+        return accumulator;
+    }
+}
+#endif
+
+
+void
+bs_set_endianness_f_be(Bitstream *bs, bs_endianness endianness) {
+    bs->state = 0;
+    if (endianness == BS_LITTLE_ENDIAN) {
+        bs->read = bs_read_bits_f_le;
+        bs->read_signed = bs_read_signed_bits_f_le;
+        bs->read_64 = bs_read_bits64_f_le;
+        bs->skip = bs_skip_bits_f_le;
+        bs->unread = bs_unread_bit_le;
+        bs->read_unary = bs_read_unary_f_le;
+        bs->read_limited_unary = bs_read_limited_unary_f_le;
+        bs->byte_align = bs_byte_align_r;
+        bs->set_endianness = bs_set_endianness_f_le;
+    }
+}
+
+void
+bs_set_endianness_f_le(Bitstream *bs, bs_endianness endianness) {
+    bs->state = 0;
+    if (endianness == BS_BIG_ENDIAN) {
+        bs->read = bs_read_bits_f_be;
+        bs->read_signed = bs_read_signed_bits_f_be;
+        bs->read_64 = bs_read_bits64_f_be;
+        bs->skip = bs_skip_bits_f_be;
+        bs->unread = bs_unread_bit_be;
+        bs->read_unary = bs_read_unary_f_be;
+        bs->read_limited_unary = bs_read_limited_unary_f_be;
+        bs->byte_align = bs_byte_align_r;
+        bs->set_endianness = bs_set_endianness_f_be;
+    }
+}
+#ifndef STANDALONE
+void
+bs_set_endianness_p_be(Bitstream *bs, bs_endianness endianness) {
+    bs->state = 0;
+    if (endianness == BS_LITTLE_ENDIAN) {
+        bs->read = bs_read_bits_p_le;
+        bs->read_signed = bs_read_signed_bits_p_le;
+        bs->read_64 = bs_read_bits64_p_le;
+        bs->skip = bs_skip_bits_p_le;
+        bs->unread = bs_unread_bit_le;
+        bs->read_unary = bs_read_unary_p_le;
+        bs->read_limited_unary = bs_read_limited_unary_p_le;
+        bs->byte_align = bs_byte_align_r;
+        bs->set_endianness = bs_set_endianness_p_le;
+    }
+}
+
+void
+bs_set_endianness_p_le(Bitstream *bs, bs_endianness endianness) {
+    bs->state = 0;
+    if (endianness == BS_BIG_ENDIAN) {
+        bs->read = bs_read_bits_p_be;
+        bs->read_signed = bs_read_signed_bits_p_be;
+        bs->read_64 = bs_read_bits64_p_be;
+        bs->skip = bs_skip_bits_p_be;
+        bs->unread = bs_unread_bit_be;
+        bs->read_unary = bs_read_unary_p_be;
+        bs->read_limited_unary = bs_read_limited_unary_p_be;
+        bs->byte_align = bs_byte_align_r;
+        bs->set_endianness = bs_set_endianness_p_be;
+    }
+}
+#endif
+
+
+/*
+Note that read_huffman_code has no endianness variants.
+Which direction it reads from is decided when the table data is compiled.
+*/
+int
+bs_read_huffman_code_f(Bitstream *bs,
+                       const struct bs_huffman_table table[][0x200]) {
     struct bs_huffman_table entry;
     int node = 0;
     int context = bs->state;
@@ -663,46 +1139,40 @@ bs_read_huffman_code(Bitstream *bs,
     return entry.value;
 }
 
-void
-bs_set_endianness_be(Bitstream *bs, bs_endianness endianness) {
-    bs->state = 0;
-    if (endianness == BS_LITTLE_ENDIAN) {
-        bs->read = bs_read_bits_le;
-        bs->read_signed = bs_read_signed_bits_le;
-        bs->read_64 = bs_read_bits64_le;
-        bs->skip = bs_skip_bits_le;
-        bs->unread = bs_unread_bit_le;
-        bs->read_unary = bs_read_unary_le;
-        bs->read_limited_unary = bs_read_limited_unary_le;
-        bs->byte_align = bs_byte_align_r;
-        bs->set_endianness = bs_set_endianness_le;
-    }
+#ifndef STANDALONE
+int
+bs_read_huffman_code_p(Bitstream *bs,
+                       const struct bs_huffman_table table[][0x200]) {
+    struct bs_huffman_table entry;
+    int node = 0;
+    int context = bs->state;
+    struct bs_callback* callback;
+    int byte;
+
+    do {
+        if (context == 0) {
+            if ((byte = py_getc(bs->input.python)) == EOF)
+                bs_abort(bs);
+            context = NEW_CONTEXT(byte);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+        }
+
+        entry = table[node][context];
+        context = NEXT_CONTEXT(entry.context_node);
+        node = READ_HUFFMAN_NEXT_NODE(entry.context_node);
+    } while (node != 0);
+
+    bs->state = context;
+    return entry.value;
 }
+#endif
+
 
 void
-bs_set_endianness_le(Bitstream *bs, bs_endianness endianness) {
-    bs->state = 0;
-    if (endianness == BS_BIG_ENDIAN) {
-        bs->read = bs_read_bits_be;
-        bs->read_signed = bs_read_signed_bits_be;
-        bs->read_64 = bs_read_bits64_be;
-        bs->skip = bs_skip_bits_be;
-        bs->unread = bs_unread_bit_be;
-        bs->read_unary = bs_read_unary_be;
-        bs->read_limited_unary = bs_read_limited_unary_be;
-        bs->byte_align = bs_byte_align_r;
-        bs->set_endianness = bs_set_endianness_be;
-    }
-}
-
-void
-bs_byte_align_r(Bitstream* bs)
-{
-    bs->state = 0;
-}
-
-void
-bs_mark(Bitstream* bs) {
+bs_mark_f(Bitstream* bs) {
     struct bs_mark* mark = malloc(sizeof(struct bs_mark));
 
     fgetpos(bs->input.file, &(mark->position.file));
@@ -710,9 +1180,22 @@ bs_mark(Bitstream* bs) {
     mark->next = bs->marks;
     bs->marks = mark;
 }
+#ifndef STANDALONE
+void
+bs_mark_p(Bitstream* bs) {
+    struct bs_mark* mark = malloc(sizeof(struct bs_mark));
+
+    mark->position.python = bs->input.python->buffer_position;
+    mark->state = bs->state;
+    mark->next = bs->marks;
+    bs->marks = mark;
+    bs->input.python->mark_in_progress = 1;
+}
+#endif
+
 
 void
-bs_rewind(Bitstream* bs) {
+bs_rewind_f(Bitstream* bs) {
     if (bs->marks != NULL) {
         fsetpos(bs->input.file, &(bs->marks->position.file));
         bs->state = bs->marks->state;
@@ -720,15 +1203,51 @@ bs_rewind(Bitstream* bs) {
         fprintf(stderr, "No marks on stack to rewind!\n");
     }
 }
+#ifndef STANDALONE
+void
+bs_rewind_p(Bitstream* bs) {
+    if (bs->marks != NULL) {
+        bs->input.python->buffer_position = bs->marks->position.python;
+        bs->state = bs->marks->state;
+    } else {
+        fprintf(stderr, "No marks on stack to rewind!\n");
+    }
+}
+#endif
+
 
 void
-bs_unmark(Bitstream* bs) {
+bs_unmark_f(Bitstream* bs) {
     struct bs_mark* mark = bs->marks;
     bs->marks = mark->next;
     free(mark);
 }
+#ifndef STANDALONE
+void
+bs_unmark_p(Bitstream* bs) {
+    struct bs_mark* mark = bs->marks;
+    bs->marks = mark->next;
+    free(mark);
+    bs->input.python->mark_in_progress = (bs->marks != NULL);
+}
+#endif
+
+
+void
+bs_byte_align_r(Bitstream* bs)
+{
+    bs->state = 0;
+}
+
 
 #ifndef STANDALONE
+
+/*******************************************
+ Python stream handlers
+
+ for making a Python file-like object behave
+ like C file pointers
+ *******************************************/
 
 struct bs_python_input*
 py_open(PyObject* reader) {
@@ -904,481 +1423,6 @@ bs_close_stream_p(Bitstream *bs) {
         py_close(bs->input.python);
         bs->close_stream = bs_noop;
     }
-}
-
-/*_be signifies the big-endian readers*/
-unsigned int
-bs_read_bits_p_be(Bitstream* bs, unsigned int count) {
-    int context = bs->state;
-    unsigned int result;
-    int byte;
-    struct bs_callback* callback;
-    unsigned int accumulator = 0;
-    int output_size;
-
-    while (count > 0) {
-        if (context == 0) {
-            if ((byte = py_getc(bs->input.python)) == EOF)
-                bs_abort(bs);
-            context = NEW_CONTEXT(byte);
-            for (callback = bs->callbacks;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback((uint8_t)byte, callback->data);
-        }
-
-        result = read_bits_table[context][MIN(count, 8) - 1];
-
-        output_size = READ_BITS_OUTPUT_SIZE(result);
-
-        accumulator = ((accumulator << output_size) |
-                       READ_BITS_OUTPUT_BITS(result));
-
-        context = NEXT_CONTEXT(result);
-
-        count -= output_size;
-    }
-
-    bs->state = context;
-    return accumulator;
-}
-
-int
-bs_read_signed_bits_p_be(Bitstream* bs, unsigned int count) {
-    if (!bs_read_bits_p_be(bs, 1)) {
-        return bs_read_bits_p_be(bs, count - 1);
-    } else {
-        return bs_read_bits_p_be(bs, count - 1) - (1 << (count - 1));
-    }
-}
-
-uint64_t
-bs_read_bits64_p_be(Bitstream* bs, unsigned int count) {
-    int context = bs->state;
-    unsigned int result;
-    int byte;
-    struct bs_callback* callback;
-    uint64_t accumulator = 0;
-    int output_size;
-
-    while (count > 0) {
-        if (context == 0) {
-            if ((byte = py_getc(bs->input.python)) == EOF)
-                bs_abort(bs);
-            context = NEW_CONTEXT(byte);
-            for (callback = bs->callbacks;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback((uint8_t)byte, callback->data);
-        }
-
-        result = read_bits_table[context][MIN(count, 8) - 1];
-
-        output_size = READ_BITS_OUTPUT_SIZE(result);
-
-        accumulator = ((accumulator << output_size) |
-                       READ_BITS_OUTPUT_BITS(result));
-
-        context = NEXT_CONTEXT(result);
-
-        count -= output_size;
-    }
-
-    bs->state = context;
-    return accumulator;
-}
-
-void
-bs_skip_bits_p_be(Bitstream* bs, unsigned int count) {
-    int context = bs->state;
-    unsigned int result;
-    int byte;
-    struct bs_callback* callback;
-    int output_size;
-
-    while (count > 0) {
-        if (context == 0) {
-            if ((byte = py_getc(bs->input.python)) == EOF)
-                bs_abort(bs);
-            context = NEW_CONTEXT(byte);
-            for (callback = bs->callbacks;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback((uint8_t)byte, callback->data);
-        }
-
-        result = read_bits_table[context][MIN(count, 8) - 1];
-
-        output_size = READ_BITS_OUTPUT_SIZE(result);
-
-        context = NEXT_CONTEXT(result);
-
-        count -= output_size;
-    }
-
-    bs->state = context;
-}
-
-unsigned int
-bs_read_unary_p_be(Bitstream* bs, int stop_bit) {
-    int context = bs->state;
-    unsigned int result;
-    struct bs_callback* callback;
-    int byte;
-    unsigned int accumulator = 0;
-
-    do {
-        if (context == 0) {
-            if ((byte = py_getc(bs->input.python)) == EOF)
-                bs_abort(bs);
-            context = NEW_CONTEXT(byte);
-            for (callback = bs->callbacks;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback((uint8_t)byte, callback->data);
-        }
-
-        result = read_unary_table[context][stop_bit];
-
-        accumulator += READ_UNARY_OUTPUT_BITS(result);
-
-        context = NEXT_CONTEXT(result);
-    } while (READ_UNARY_CONTINUE(result));
-
-    bs->state = context;
-    return accumulator;
-}
-
-int
-bs_read_limited_unary_p_be(Bitstream* bs, int stop_bit, int maximum_bits) {
-    int context = bs->state;
-    unsigned int result;
-    unsigned int value;
-    struct bs_callback* callback;
-    int byte;
-    int accumulator = 0;
-    stop_bit *= 9;
-
-    do {
-        if (context == 0) {
-            if ((byte = py_getc(bs->input.python)) == EOF)
-                bs_abort(bs);
-            context = NEW_CONTEXT(byte);
-            for (callback = bs->callbacks;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback((uint8_t)byte, callback->data);
-        }
-
-        result = read_limited_unary_table[context][stop_bit +
-                                                   MIN(maximum_bits, 8)];
-
-        value = READ_UNARY_OUTPUT_BITS(result);
-
-        accumulator += value;
-        maximum_bits -= value;
-
-        context = NEXT_CONTEXT(result);
-    } while (READ_UNARY_CONTINUE(result));
-
-    bs->state = context;
-
-    if (READ_UNARY_LIMIT_REACHED(result)) {
-        /*maximum_bits reached*/
-        return -1;
-    } else {
-        /*stop bit reached*/
-        return accumulator;
-    }
-}
-
-void
-bs_set_endianness_p_be(Bitstream *bs, bs_endianness endianness) {
-    bs->state = 0;
-    if (endianness == BS_LITTLE_ENDIAN) {
-        bs->read = bs_read_bits_p_le;
-        bs->read_signed = bs_read_signed_bits_p_le;
-        bs->read_64 = bs_read_bits64_p_le;
-        bs->skip = bs_skip_bits_p_le;
-        bs->unread = bs_unread_bit_le;
-        bs->read_unary = bs_read_unary_p_le;
-        bs->read_limited_unary = bs_read_limited_unary_p_le;
-        bs->byte_align = bs_byte_align_r;
-        bs->set_endianness = bs_set_endianness_p_le;
-    }
-}
-
-/*_le signifies the big-endian readers*/
-unsigned int
-bs_read_bits_p_le(Bitstream* bs, unsigned int count) {
-    int context = bs->state;
-    unsigned int result;
-    int byte;
-    struct bs_callback* callback;
-    unsigned int accumulator = 0;
-    int output_size;
-    int bit_offset = 0;
-
-    while (count > 0) {
-        if (context == 0) {
-            if ((byte = py_getc(bs->input.python)) == EOF)
-                bs_abort(bs);
-            context = NEW_CONTEXT(byte);
-            for (callback = bs->callbacks;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback((uint8_t)byte, callback->data);
-        }
-
-        result = read_bits_table_le[context][MIN(count, 8) - 1];
-
-        output_size = READ_BITS_OUTPUT_SIZE(result);
-
-        accumulator |= (READ_BITS_OUTPUT_BITS(result) << bit_offset);
-
-        context = NEXT_CONTEXT(result);
-
-        count -= output_size;
-
-        bit_offset += output_size;
-    }
-
-    bs->state = context;
-    return accumulator;
-}
-
-uint64_t
-bs_read_bits64_p_le(Bitstream* bs, unsigned int count) {
-    int context = bs->state;
-    unsigned int result;
-    int byte;
-    struct bs_callback* callback;
-    uint64_t accumulator = 0;
-    int output_size;
-    int bit_offset = 0;
-
-    while (count > 0) {
-        if (context == 0) {
-            if ((byte = py_getc(bs->input.python)) == EOF)
-                bs_abort(bs);
-            context = NEW_CONTEXT(byte);
-            for (callback = bs->callbacks;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback((uint8_t)byte, callback->data);
-        }
-
-        result = read_bits_table_le[context][MIN(count, 8) - 1];
-
-        output_size = READ_BITS_OUTPUT_SIZE(result);
-
-        accumulator |= (READ_BITS_OUTPUT_BITS(result) << bit_offset);
-
-        context = NEXT_CONTEXT(result);
-
-        count -= output_size;
-
-        bit_offset += output_size;
-    }
-
-    bs->state = context;
-    return accumulator;
-}
-
-int
-bs_read_signed_bits_p_le(Bitstream* bs, unsigned int count) {
-    int unsigned_value = bs_read_bits_p_le(bs, count - 1);
-
-    if (!bs_read_bits_p_le(bs, 1)) {
-        return unsigned_value;
-    } else {
-        return unsigned_value - (1 << (count - 1));
-    }
-}
-
-void
-bs_skip_bits_p_le(Bitstream* bs, unsigned int count) {
-    int context = bs->state;
-    unsigned int result;
-    int byte;
-    struct bs_callback* callback;
-    int output_size;
-    int bit_offset = 0;
-
-    while (count > 0) {
-        if (context == 0) {
-            if ((byte = py_getc(bs->input.python)) == EOF)
-                bs_abort(bs);
-            context = NEW_CONTEXT(byte);
-            for (callback = bs->callbacks;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback((uint8_t)byte, callback->data);
-        }
-
-        result = read_bits_table_le[context][MIN(count, 8) - 1];
-
-        output_size = READ_BITS_OUTPUT_SIZE(result);
-
-        context = NEXT_CONTEXT(result);
-
-        count -= output_size;
-
-        bit_offset += output_size;
-    }
-
-    bs->state = context;
-}
-
-unsigned int
-bs_read_unary_p_le(Bitstream* bs, int stop_bit) {
-    int context = bs->state;
-    unsigned int result;
-    struct bs_callback* callback;
-    int byte;
-    unsigned int accumulator = 0;
-
-    do {
-        if (context == 0) {
-            if ((byte = py_getc(bs->input.python)) == EOF)
-                bs_abort(bs);
-            context = NEW_CONTEXT(byte);
-            for (callback = bs->callbacks;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback((uint8_t)byte, callback->data);
-        }
-
-        result = read_unary_table_le[context][stop_bit];
-
-        accumulator += READ_UNARY_OUTPUT_BITS(result);
-
-        context = NEXT_CONTEXT(result);
-    } while (READ_UNARY_CONTINUE(result));
-
-    bs->state = context;
-    return accumulator;
-}
-
-int
-bs_read_limited_unary_p_le(Bitstream* bs, int stop_bit, int maximum_bits) {
-    int context = bs->state;
-    unsigned int result;
-    unsigned int value;
-    struct bs_callback* callback;
-    int byte;
-    int accumulator = 0;
-    stop_bit *= 9;
-
-    do {
-        if (context == 0) {
-            if ((byte = py_getc(bs->input.python)) == EOF)
-                bs_abort(bs);
-            context = NEW_CONTEXT(byte);
-            for (callback = bs->callbacks;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback((uint8_t)byte, callback->data);
-        }
-
-        result = read_limited_unary_table_le[context][stop_bit +
-                                                      MIN(maximum_bits, 8)];
-
-        value = READ_UNARY_OUTPUT_BITS(result);
-
-        accumulator += value;
-        maximum_bits -= value;
-
-        context = NEXT_CONTEXT(result);
-    } while (READ_UNARY_CONTINUE(result));
-
-    bs->state = context;
-
-    if (READ_UNARY_LIMIT_REACHED(result)) {
-        /*maximum_bits reached*/
-        return -1;
-    } else {
-        /*stop bit reached*/
-        return accumulator;
-    }
-}
-
-void
-bs_set_endianness_p_le(Bitstream *bs, bs_endianness endianness) {
-    bs->state = 0;
-    if (endianness == BS_BIG_ENDIAN) {
-        bs->read = bs_read_bits_p_be;
-        bs->read_signed = bs_read_signed_bits_p_be;
-        bs->read_64 = bs_read_bits64_p_be;
-        bs->skip = bs_skip_bits_p_be;
-        bs->unread = bs_unread_bit_be;
-        bs->read_unary = bs_read_unary_p_be;
-        bs->read_limited_unary = bs_read_limited_unary_p_be;
-        bs->byte_align = bs_byte_align_r;
-        bs->set_endianness = bs_set_endianness_p_be;
-    }
-}
-
-/*
-Note that read_huffman_code has no endianness variants.
-Which direction it reads from is decided when the table data is compiled.
-*/
-int
-bs_read_huffman_code_p(Bitstream *bs,
-                       const struct bs_huffman_table table[][0x200]) {
-    struct bs_huffman_table entry;
-    int node = 0;
-    int context = bs->state;
-    struct bs_callback* callback;
-    int byte;
-
-    do {
-        if (context == 0) {
-            if ((byte = py_getc(bs->input.python)) == EOF)
-                bs_abort(bs);
-            context = NEW_CONTEXT(byte);
-            for (callback = bs->callbacks;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback((uint8_t)byte, callback->data);
-        }
-
-        entry = table[node][context];
-        context = NEXT_CONTEXT(entry.context_node);
-        node = READ_HUFFMAN_NEXT_NODE(entry.context_node);
-    } while (node != 0);
-
-    bs->state = context;
-    return entry.value;
-}
-
-void
-bs_mark_p(Bitstream* bs) {
-    struct bs_mark* mark = malloc(sizeof(struct bs_mark));
-
-    mark->position.python = bs->input.python->buffer_position;
-    mark->state = bs->state;
-    mark->next = bs->marks;
-    bs->marks = mark;
-    bs->input.python->mark_in_progress = 1;
-}
-
-void
-bs_rewind_p(Bitstream* bs) {
-    if (bs->marks != NULL) {
-        bs->input.python->buffer_position = bs->marks->position.python;
-        bs->state = bs->marks->state;
-    } else {
-        fprintf(stderr, "No marks on stack to rewind!\n");
-    }
-}
-
-void
-bs_unmark_p(Bitstream* bs) {
-    struct bs_mark* mark = bs->marks;
-    bs->marks = mark->next;
-    free(mark);
-    bs->input.python->mark_in_progress = (bs->marks != NULL);
 }
 
 #endif
