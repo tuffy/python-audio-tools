@@ -85,10 +85,13 @@ class Huffman_Node:
 
     def populate_jump_table(self, little_endian=False):
         if (self.value is None):
-            self.jump_table = [next_read_huffman_state(context.bitbuffer(),
-                                                       self,
-                                                       little_endian)
-                               for context in Byte_Bank.contexts()]
+            self.jump_table = ([(0, 0, None),   #input context 0
+                                (0, 0, None)] + #input context 1
+                               [next_read_huffman_state(context.bitbuffer(),
+                                                        self,
+                                                        little_endian)
+                                for context in Byte_Bank.contexts()
+                                if (context.size > 0)])
             self.bit_0.populate_jump_table()
             self.bit_1.populate_jump_table()
 
@@ -157,6 +160,12 @@ if (__name__ == '__main__'):
                       dest='input',
                       help='input JSON file')
 
+    parser.add_option('--le',
+                      dest='little_endian',
+                      action='store_true',
+                      default=False,
+                      help='generate a little-endian jump table')
+
     (options, args) = parser.parse_args()
 
     if (options.input is None):
@@ -169,7 +178,7 @@ if (__name__ == '__main__'):
                                     zip(json_data[::2],
                                         json_data[1::2])]))
     tree.enumerate_nodes()
-    tree.populate_jump_table()
+    tree.populate_jump_table(options.little_endian)
     jump_tables = dict(tree.jump_tables())
     print "{"
     for (last_row, row) in last_element([jump_tables[key] for key
