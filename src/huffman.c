@@ -22,24 +22,107 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-int bank_to_int(struct byte_bank bank) {
+typedef enum {NODE_TREE, NODE_LEAF} huffman_node_type;
+
+struct huffman_node {
+    huffman_node_type type;
+    union {
+        int leaf;
+        struct {
+            unsigned int id;
+            struct bs_huffman_table jump_table[0x200];
+            struct huffman_node* bit_0;
+            struct huffman_node* bit_1;
+        } tree;
+    } v;
+};
+
+struct byte_bank {
+    unsigned int size;
+    unsigned int value;
+};
+
+/*takes a list Huffman frequencies and returns a completed Huffman tree
+
+  the final huffman_frequency in the list should have a length of 0
+  and serve as our list terminator
+
+  the tree must be freed when no longer needed*/
+static struct huffman_node*
+build_huffman_tree(struct huffman_frequency* frequencies);
+
+/*the proper recursive version, not to be called directly most of the time*/
+static struct huffman_node*
+build_huffman_tree_(unsigned int bits,
+                    unsigned int length,
+                    struct huffman_frequency* frequencies,
+                    unsigned int* counter);
+
+/*deallocates the space for the Huffman tree*/
+static void
+free_huffman_tree(struct huffman_node* node);
+
+/*takes a built Huffman tree and compiles it to a jump table
+  with the given endianness*/
+static int
+compile_huffman_tree(struct bs_huffman_table (**table)[][0x200],
+                     struct huffman_node* tree,
+                     bs_endianness endianness);
+
+/*returns the total number of rows generated*/
+static void
+populate_huffman_tree(struct huffman_node* tree,
+                      bs_endianness endianness);
+
+/*returns the total number of non-leaf nodes in the tree*/
+static int
+total_non_leaf_nodes(struct huffman_node* tree);
+
+/*transfers the jump tables embedded in the Huffman tree nodes
+  to a flattened, 2 dimensional array*/
+static void
+transfer_huffman_tree(struct bs_huffman_table (*table)[][0x200],
+                      struct huffman_node* tree);
+
+/*performs the actual walking of the tree
+
+  given a byte bank, endianness and tree,
+  updates the jump table with which node the bank will wind up at*/
+static void
+next_read_huffman_state(struct bs_huffman_table* state,
+                        struct byte_bank bank,
+                        struct huffman_node* tree,
+                        bs_endianness endianness);
+
+static void
+print_huffman_tree(struct huffman_node* node, int indent);
+
+/*converts the byte bank to a regular integer*/
+static int
+bank_to_int(struct byte_bank bank);
+
+
+static int
+bank_to_int(struct byte_bank bank) {
     if (bank.size > 0) {
         return (1 << bank.size) | bank.value;
     } else
         return 0;
 }
 
-struct huffman_node* build_huffman_tree(struct huffman_frequency* frequencies)
+static struct huffman_node*
+build_huffman_tree(struct huffman_frequency* frequencies)
 {
     unsigned int counter = 0;
 
     return build_huffman_tree_(0, 0, frequencies, &counter);
 }
 
-struct huffman_node* build_huffman_tree_(unsigned int bits,
-                                         unsigned int length,
-                                         struct huffman_frequency* frequencies,
-                                         unsigned int* counter)
+static struct huffman_node*
+build_huffman_tree_(unsigned int bits,
+                    unsigned int length,
+                    struct huffman_frequency* frequencies,
+                    unsigned int* counter)
 {
     int i;
     struct huffman_node* node = malloc(sizeof(struct huffman_node));
@@ -72,7 +155,8 @@ struct huffman_node* build_huffman_tree_(unsigned int bits,
     return node;
 }
 
-void free_huffman_tree(struct huffman_node* node) {
+static void
+free_huffman_tree(struct huffman_node* node) {
     if (node->type == NODE_LEAF) {
         free(node);
     } else {
@@ -98,9 +182,10 @@ void print_huffman_tree(struct huffman_node* node, int indent) {
     }
 }
 
-int compile_huffman_tree(struct bs_huffman_table (**table)[][0x200],
-                          struct huffman_node* tree,
-                          bs_endianness endianness) {
+static int
+compile_huffman_tree(struct bs_huffman_table (**table)[][0x200],
+                     struct huffman_node* tree,
+                     bs_endianness endianness) {
     int total_rows = total_non_leaf_nodes(tree);
 
     /*populate the jump tables of each non-leaf node*/
@@ -115,8 +200,9 @@ int compile_huffman_tree(struct bs_huffman_table (**table)[][0x200],
     return total_rows;
 }
 
-void populate_huffman_tree(struct huffman_node* tree,
-                           bs_endianness endianness) {
+static void
+populate_huffman_tree(struct huffman_node* tree,
+                      bs_endianness endianness) {
     unsigned int size;
     unsigned int value;
     struct byte_bank bank;
@@ -194,7 +280,8 @@ void next_read_huffman_state(struct bs_huffman_table* state,
     }
 }
 
-int total_non_leaf_nodes(struct huffman_node* tree) {
+static int
+total_non_leaf_nodes(struct huffman_node* tree) {
     if (tree->type == NODE_TREE) {
         return (1 +
                 total_non_leaf_nodes(tree->v.tree.bit_0) +
@@ -203,8 +290,9 @@ int total_non_leaf_nodes(struct huffman_node* tree) {
         return 0;
 }
 
-void transfer_huffman_tree(struct bs_huffman_table (*table)[][0x200],
-                           struct huffman_node* tree) {
+static void
+transfer_huffman_tree(struct bs_huffman_table (*table)[][0x200],
+                      struct huffman_node* tree) {
     int i;
 
     if (tree->type == NODE_TREE) {
@@ -226,22 +314,71 @@ int compile_huffman_table(struct bs_huffman_table (**table)[][0x200],
     return total_rows;
 }
 
-#ifdef STANDALONE
+#ifdef EXECUTABLE
 
 #include <jansson.h>
+#include <getopt.h>
 
 struct huffman_frequency* json_to_frequencies(const char* path);
 
 struct huffman_frequency parse_json_pair(json_t* bit_list, json_t* value);
 
 int main(int argc, char* argv[]) {
-    struct huffman_frequency* frequencies = json_to_frequencies(argv[1]);
+    /*option handling variables*/
+    static int little_endian_arg = 0;
+    bs_endianness little_endian;
+    char* input_file = NULL;
+
+    static struct option long_options[] = {
+        {"input", required_argument, 0, 'i'},
+        {"help", no_argument, 0, 'h'},
+        {"le", no_argument, &little_endian_arg, 1},
+        {0, 0, 0, 0}
+    };
+
+    int option_index = 0;
+    int c;
+
+    /*the variables for real work*/
+    struct huffman_frequency* frequencies;
     struct bs_huffman_table (*table)[][0x200];
     int row;
     int context;
     int total_rows;
 
-    total_rows = compile_huffman_table(&table, frequencies, BS_BIG_ENDIAN);
+    do {
+        c = getopt_long(argc, argv, "i:h", long_options, &option_index);
+        switch (c) {
+        case 'h':
+            printf("Options:\n");
+            printf("  -h, --help             "
+                   "show this help message and exit\n");
+            printf("  -i PATH, --input=PATH  "
+                   "input JSON file\n");
+            printf("  --le                   "
+                   "generate little-endian jump table\n");
+            return 0;
+        case 'i':
+            input_file = optarg;
+            break;
+        case '?':
+            return 1;
+        case 0:
+        case -1:
+        default:
+            break;
+        }
+    } while (c != -1);
+
+    if (input_file == NULL) {
+        fprintf(stderr, "an input file is required\n");
+        return 1;
+    }
+
+    little_endian = little_endian_arg ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN;
+
+    frequencies = json_to_frequencies(input_file);
+    total_rows = compile_huffman_table(&table, frequencies, little_endian);
 
     printf("{\n");
     for (row = 0; row < total_rows; row++) {

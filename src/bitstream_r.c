@@ -1112,7 +1112,7 @@ Which direction it reads from is decided when the table data is compiled.
 */
 int
 bs_read_huffman_code_f(Bitstream *bs,
-                       const struct bs_huffman_table table[][0x200]) {
+                       struct bs_huffman_table table[][0x200]) {
     struct bs_huffman_table entry;
     int node = 0;
     int context = bs->state;
@@ -1142,7 +1142,7 @@ bs_read_huffman_code_f(Bitstream *bs,
 #ifndef STANDALONE
 int
 bs_read_huffman_code_p(Bitstream *bs,
-                       const struct bs_huffman_table table[][0x200]) {
+                       struct bs_huffman_table table[][0x200]) {
     struct bs_huffman_table entry;
     int node = 0;
     int context = bs->state;

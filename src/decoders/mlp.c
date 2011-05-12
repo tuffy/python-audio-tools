@@ -47,15 +47,15 @@ const static int mlp_channel_map[][6] = {
     /* 0x14 */ {  0,  1,  4,  5,  2,  3}
 };
 
-const static struct bs_huffman_table mlp_codebook1[][0x200] =
+static struct bs_huffman_table mlp_codebook1[][0x200] =
 #include "mlp_codebook1.h"
     ;
 
-const static struct bs_huffman_table mlp_codebook2[][0x200] =
+static struct bs_huffman_table mlp_codebook2[][0x200] =
 #include "mlp_codebook2.h"
     ;
 
-const static struct bs_huffman_table mlp_codebook3[][0x200] =
+static struct bs_huffman_table mlp_codebook3[][0x200] =
 #include "mlp_codebook3.h"
     ;
 

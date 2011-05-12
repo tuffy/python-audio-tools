@@ -123,7 +123,7 @@ typedef struct Bitstream_s {
     /*reads the next Huffman code from the stream
       where the code tree is defined from the given compiled table*/
     int (*read_huffman_code)(struct Bitstream_s* bs,
-                             const struct bs_huffman_table table[][0x200]);
+                             struct bs_huffman_table table[][0x200]);
 
     /*aligns the stream to a byte boundary*/
     void (*byte_align)(struct Bitstream_s* bs);
@@ -344,11 +344,11 @@ bs_set_endianness_p_le(Bitstream *bs, bs_endianness endianness);
   since that is determined when its jump table is compiled*/
 int
 bs_read_huffman_code_f(Bitstream *bs,
-                       const struct bs_huffman_table table[][0x200]);
+                       struct bs_huffman_table table[][0x200]);
 #ifndef STANDALONE
 int
 bs_read_huffman_code_p(Bitstream *bs,
-                       const struct bs_huffman_table table[][0x200]);
+                       struct bs_huffman_table table[][0x200]);
 #endif
 
 
