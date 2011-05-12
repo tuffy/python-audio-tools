@@ -149,13 +149,16 @@ build_huffman_tree_(unsigned int bits,
         /*we've walked outside of the set of possible frequencies
           which indicates the tree is missing a leaf node*/
         *error = HUFFMAN_MISSING_LEAF;
-        goto error;
+        free(node);
+        return NULL;
     }
 
     /*otherwise, generate a new tree node
       whose leaf nodes are generated recursively*/
     node->type = NODE_TREE;
     node->v.tree.id = *counter;
+    node->v.tree.bit_0 = NULL;
+    node->v.tree.bit_1 = NULL;
     (*counter) += 1;
     if ((node->v.tree.bit_0 = build_huffman_tree_(bits << 1,
                                                   length + 1,
@@ -173,13 +176,17 @@ build_huffman_tree_(unsigned int bits,
 
     return node;
  error:
+    free_huffman_tree(node->v.tree.bit_0);
+    free_huffman_tree(node->v.tree.bit_1);
     free(node);
     return NULL;
 }
 
 static void
 free_huffman_tree(struct huffman_node* node) {
-    if (node->type == NODE_LEAF) {
+    if (node == NULL)
+        return;
+    else if (node->type == NODE_LEAF) {
         free(node);
     } else {
         free_huffman_tree(node->v.tree.bit_0);
@@ -412,12 +419,10 @@ int main(int argc, char* argv[]) {
         switch (total_rows) {
         case HUFFMAN_MISSING_LEAF:
             fprintf(stderr, "Huffman table missing leaf node\n");
-            free(table);
             free(frequencies);
             return 1;
         default:
             fprintf(stderr, "Unknown error\n");
-            free(table);
             free(frequencies);
             return 1;
         }
