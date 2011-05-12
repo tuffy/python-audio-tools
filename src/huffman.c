@@ -49,14 +49,15 @@ struct byte_bank {
 
   the tree must be freed when no longer needed*/
 static struct huffman_node*
-build_huffman_tree(struct huffman_frequency* frequencies);
+build_huffman_tree(struct huffman_frequency* frequencies, int* error);
 
 /*the proper recursive version, not to be called directly most of the time*/
 static struct huffman_node*
 build_huffman_tree_(unsigned int bits,
                     unsigned int length,
                     struct huffman_frequency* frequencies,
-                    unsigned int* counter);
+                    unsigned int* counter,
+                    int* error);
 
 /*deallocates the space for the Huffman tree*/
 static void
@@ -111,21 +112,23 @@ bank_to_int(struct byte_bank bank) {
 }
 
 static struct huffman_node*
-build_huffman_tree(struct huffman_frequency* frequencies)
+build_huffman_tree(struct huffman_frequency* frequencies, int* error)
 {
     unsigned int counter = 0;
 
-    return build_huffman_tree_(0, 0, frequencies, &counter);
+    return build_huffman_tree_(0, 0, frequencies, &counter, error);
 }
 
 static struct huffman_node*
 build_huffman_tree_(unsigned int bits,
                     unsigned int length,
                     struct huffman_frequency* frequencies,
-                    unsigned int* counter)
+                    unsigned int* counter,
+                    int* error)
 {
     int i;
     struct huffman_node* node = malloc(sizeof(struct huffman_node));
+    unsigned int max_frequency_length = 0;
 
     /*go through the list of frequency values*/
     for (i = 0; frequencies[i].length != 0; i++) {
@@ -136,7 +139,17 @@ build_huffman_tree_(unsigned int bits,
             node->type = NODE_LEAF;
             node->v.leaf = frequencies[i].value;
             return node;
+        } else {
+            max_frequency_length = MAX(max_frequency_length,
+                                       frequencies[i].length);
         }
+    }
+
+    if (length > max_frequency_length) {
+        /*we've walked outside of the set of possible frequencies
+          which indicates the tree is missing a leaf node*/
+        *error = HUFFMAN_MISSING_LEAF;
+        goto error;
     }
 
     /*otherwise, generate a new tree node
@@ -144,15 +157,24 @@ build_huffman_tree_(unsigned int bits,
     node->type = NODE_TREE;
     node->v.tree.id = *counter;
     (*counter) += 1;
-    node->v.tree.bit_0 = build_huffman_tree_(bits << 1,
-                                             length + 1,
-                                             frequencies,
-                                             counter);
-    node->v.tree.bit_1 = build_huffman_tree_((bits << 1) | 1,
-                                             length + 1,
-                                             frequencies,
-                                             counter);
+    if ((node->v.tree.bit_0 = build_huffman_tree_(bits << 1,
+                                                  length + 1,
+                                                  frequencies,
+                                                  counter,
+                                                  error)) == NULL)
+        goto error;
+
+    if ((node->v.tree.bit_1 = build_huffman_tree_((bits << 1) | 1,
+                                                  length + 1,
+                                                  frequencies,
+                                                  counter,
+                                                  error)) == NULL)
+        goto error;
+
     return node;
+ error:
+    free(node);
+    return NULL;
 }
 
 static void
@@ -308,8 +330,14 @@ transfer_huffman_tree(struct bs_huffman_table (*table)[][0x200],
 int compile_huffman_table(struct bs_huffman_table (**table)[][0x200],
                           struct huffman_frequency* frequencies,
                           bs_endianness endianness) {
-    struct huffman_node* tree = build_huffman_tree(frequencies);
-    int total_rows = compile_huffman_tree(table, tree, endianness);
+    int error = 0;
+    struct huffman_node* tree;
+    int total_rows;
+
+    tree = build_huffman_tree(frequencies, &error);
+    if (tree == NULL)
+        return error;
+    total_rows = compile_huffman_tree(table, tree, endianness);
     free_huffman_tree(tree);
     return total_rows;
 }
@@ -378,7 +406,21 @@ int main(int argc, char* argv[]) {
     little_endian = little_endian_arg ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN;
 
     frequencies = json_to_frequencies(input_file);
+
     total_rows = compile_huffman_table(&table, frequencies, little_endian);
+    if (total_rows < 0)
+        switch (total_rows) {
+        case HUFFMAN_MISSING_LEAF:
+            fprintf(stderr, "Huffman table missing leaf node\n");
+            free(table);
+            free(frequencies);
+            return 1;
+        default:
+            fprintf(stderr, "Unknown error\n");
+            free(table);
+            free(frequencies);
+            return 1;
+        }
 
     printf("{\n");
     for (row = 0; row < total_rows; row++) {
