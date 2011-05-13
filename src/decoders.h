@@ -39,6 +39,7 @@ typedef struct {
 
     PyObject* file_obj;
     Bitstream* bitstream;
+    int is_substream;
 } decoders_BitstreamReader;
 
 static PyObject*
@@ -83,6 +84,13 @@ BitstreamReader_rewind(decoders_BitstreamReader *self, PyObject *args);
 static PyObject*
 BitstreamReader_unmark(decoders_BitstreamReader *self, PyObject *args);
 
+static PyObject*
+BitstreamReader_substream(decoders_BitstreamReader *self, PyObject *args);
+
+static PyObject*
+BitstreamReader_substream_append(decoders_BitstreamReader *self,
+                                 PyObject *args);
+
 int
 BitstreamReader_init(decoders_BitstreamReader *self, PyObject *args);
 
@@ -115,6 +123,10 @@ PyMethodDef BitstreamReader_methods[] = {
      METH_NOARGS, ""},
     {"unmark", (PyCFunction)BitstreamReader_unmark,
      METH_NOARGS, ""},
+    {"substream", (PyCFunction)BitstreamReader_substream,
+     METH_VARARGS, ""},
+    {"substream_append", (PyCFunction)BitstreamReader_substream_append,
+     METH_VARARGS, ""},
     {NULL}
 };
 

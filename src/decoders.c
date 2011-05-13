@@ -350,6 +350,53 @@ BitstreamReader_unmark(decoders_BitstreamReader *self, PyObject *args) {
     return Py_None;
 }
 
+static PyObject*
+BitstreamReader_substream(decoders_BitstreamReader *self, PyObject *args) {
+    PyTypeObject *type = self->ob_type;
+    unsigned int bytes;
+    decoders_BitstreamReader *obj;
+
+    if (!PyArg_ParseTuple(args, "I", &bytes))
+        return NULL;
+
+    obj = (decoders_BitstreamReader *)type->tp_alloc(type, 0);
+    obj->file_obj = NULL;
+    obj->is_substream = 1;
+    obj->bitstream = self->bitstream->substream(self->bitstream, bytes);
+
+    return (PyObject *)obj;
+}
+
+static PyObject*
+BitstreamReader_substream_append(decoders_BitstreamReader *self,
+                                 PyObject *args) {
+    PyObject *substream_obj;
+    decoders_BitstreamReader *substream;
+    unsigned int bytes;
+
+    if (!PyArg_ParseTuple(args, "OI", &substream_obj, &bytes))
+        return NULL;
+
+    if (self->ob_type != substream_obj->ob_type) {
+        PyErr_SetString(PyExc_TypeError,
+                        "first argument must be a BitstreamReader");
+        return NULL;
+    } else
+        substream = (decoders_BitstreamReader*)substream_obj;
+
+    if (!substream->is_substream) {
+        PyErr_SetString(PyExc_TypeError,
+                        "first argument must be a substream");
+        return NULL;
+    }
+
+    self->bitstream->substream_append(self->bitstream,
+                                      substream->bitstream,
+                                      bytes);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
 
 PyObject*
 BitstreamReader_new(PyTypeObject *type,
@@ -370,6 +417,7 @@ BitstreamReader_init(decoders_BitstreamReader *self,
     int little_endian;
 
     self->file_obj = NULL;
+    self->is_substream = 0;
 
     if (!PyArg_ParseTuple(args, "Oi", &file_obj, &little_endian))
         return -1;

@@ -1749,13 +1749,23 @@ buf_new(void) {
     return stream;
 }
 
-void
-buf_append(struct bs_buffer *stream, uint8_t *data, uint32_t data_size) {
+uint32_t
+buf_size(struct bs_buffer *stream) {
+    return stream->buffer_size - stream->buffer_position;
+}
+
+uint8_t*
+buf_extend(struct bs_buffer *stream, uint32_t data_size) {
+    /*FIXME - add garbage collection to this routine
+      which frees up unreachable space at the start of the buffer
+      before extending the buffer and adding more data*/
+
+    uint8_t* extended_buffer;
 
     stream->buffer = realloc(stream->buffer,
                              stream->buffer_size + data_size);
-    memcpy(stream->buffer + stream->buffer_size, data, data_size);
-    stream->buffer_size += data_size;
+    extended_buffer = stream->buffer + stream->buffer_size;
+    return extended_buffer;
 }
 
 int
@@ -1867,8 +1877,6 @@ void bs_substream_append_f(struct Bitstream_s *stream,
                            struct Bitstream_s *substream,
                            uint32_t bytes) {
     uint8_t* extended_buffer;
-    uint32_t initial_size;
-    size_t read_bytes;
     struct bs_callback *callback;
     uint32_t i;
 
@@ -1876,21 +1884,12 @@ void bs_substream_append_f(struct Bitstream_s *stream,
     stream->state = 0;
 
     /*extend the output stream's current buffer to fit additional bytes*/
-    initial_size = substream->input.substream->buffer_size;
-    substream->input.substream->buffer = realloc(
-                                             substream->input.substream->buffer,
-                                             initial_size + bytes);
-    extended_buffer = substream->input.substream->buffer + initial_size;
+    extended_buffer = buf_extend(substream->input.substream, bytes);
 
     /*read input stream to extended buffer*/
-    read_bytes = fread(extended_buffer, sizeof(uint8_t), bytes,
-                       stream->input.file);
-
-    /*abort if the amount of read bytes is insufficient*/
-    if (read_bytes != bytes)
-        /*this leaves the buffer at its extended size,
-          but that's okay since its "buffer_size" field
-          hasn't been altered yet*/
+    if (fread(extended_buffer, sizeof(uint8_t), bytes,
+              stream->input.file) != bytes)
+        /*abort if the amount of read bytes is insufficient*/
         bs_abort(stream);
 
     /*perform callbacks on bytes in extended buffer*/
@@ -1909,14 +1908,82 @@ void bs_substream_append_f(struct Bitstream_s *stream,
 void bs_substream_append_p(struct Bitstream_s *stream,
                            struct Bitstream_s *substream,
                            uint32_t bytes) {
-    /*FIXME*/
+    uint8_t* extended_buffer;
+    struct bs_callback *callback;
+    int byte;
+    uint32_t i;
+
+    /*byte align the input stream*/
+    stream->state = 0;
+
+    /*extend the output stream's current buffer to fit additional bytes*/
+    extended_buffer = buf_extend(substream->input.substream, bytes);
+
+    /*read input stream to extended buffer
+
+      (it would be faster to incorperate py_getc's
+       Python buffer handling in this routine
+       instead of reading one byte at a time,
+       but I'd like to separate those parts out beforehand*/
+    for (i = 0; i < bytes; i++) {
+        byte = py_getc(stream->input.python);
+        if (byte != EOF)
+            extended_buffer[i] = byte;
+        else
+            /*abort if EOF encountered during read*/
+            bs_abort(stream);
+    }
+
+    /*perform callbacks on bytes in extended buffer*/
+    for (callback = stream->callbacks;
+         callback != NULL;
+         callback = callback->next) {
+        for (i = 0; i < bytes; i++)
+            callback->callback(extended_buffer[i], callback->data);
+    }
+
+    /*complete buffer extension*/
+    substream->input.substream->buffer_size += bytes;
 }
 #endif
 
 void bs_substream_append_s(struct Bitstream_s *stream,
                            struct Bitstream_s *substream,
                            uint32_t bytes) {
-    /*FIXME*/
+    uint8_t* extended_buffer;
+    struct bs_callback *callback;
+    uint32_t i;
+
+    /*byte align the input stream*/
+    stream->state = 0;
+
+    /*abort if there's sufficient bytes remaining
+      in the input stream to pass to the output stream*/
+    if (buf_size(stream->input.substream) < bytes)
+        bs_abort(stream);
+
+    /*extend the output stream's current buffer to fit additional bytes*/
+    extended_buffer = buf_extend(substream->input.substream, bytes);
+
+    /*copy the requested bytes from the input buffer to the output buffer*/
+    memcpy(extended_buffer,
+           stream->input.substream->buffer +
+           stream->input.substream->buffer_position,
+           bytes);
+
+    /*advance the input buffer past the requested bytes*/
+    stream->input.substream->buffer_position += bytes;
+
+    /*perform callbacks on bytes in the extended buffer*/
+    for (callback = stream->callbacks;
+         callback != NULL;
+         callback = callback->next) {
+        for (i = 0; i < bytes; i++)
+            callback->callback(extended_buffer[i], callback->data);
+    }
+
+    /*complete buffer extension*/
+    substream->input.substream->buffer_size += bytes;
 }
 
 void bs_close_stream_s(struct Bitstream_s *stream) {

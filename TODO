@@ -3494,7 +3494,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   It's also potentially helpful for MP3, Ogg FLAC, DVD-A and any other format
   with nontrivial wrappers that need to be parsed seperately
   from the main bitstream.
-** TODO Implement substream reader methods
+** DONE Implement substream reader methods
 *** DONE bs_read_bits_s_be
 *** DONE bs_read_bits_s_le
 *** DONE bs_read_signed_bits_s_be
@@ -3522,8 +3522,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE bs_substream_s_be
 *** DONE bs_substream_s_le
 *** DONE bs_substream_append_f
-*** TODO bs_substream_append_p
-*** TODO bs_substream_append_s
+*** DONE bs_substream_append_p
+*** DONE bs_substream_append_s
 ** DONE Add substream and substream_append to stream initializers
 *** DONE bs_open
     - [X] substream
@@ -3536,7 +3536,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE bs_set_endianness_f_le
 *** DONE bs_set_endianness_p_be
 *** DONE bs_set_endianness_p_le
-** TODO Add nested exception stacks
+** TODO Add nested exception stacks?
    Trying to read off the end of a substream should call
    the substream's exception stack, if present.
    Otherwise, one should abort to the parent's exception stack - if any.
@@ -3545,5 +3545,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    then append more data to it without causing any overflow problems.
    That is, data at the beginning of the buffer will be recycled
    at append time if it hasn't been marked for rewinding back to.
-
+** DONE Add Python interface to substream
+*** DONE audiotools.decoders.BitstreamReader.substream
+*** DONE audiotools.decoders.BitstreamReader.substream_append
 ** TODO Add unit tests to substream

@@ -449,9 +449,25 @@ bs_byte_align_r(Bitstream* bs);
 struct bs_buffer*
 buf_new(void);
 
-/*appends the given data to our buffer without affecting the buffer position*/
-void
-buf_append(struct bs_buffer *stream, uint8_t *data, uint32_t data_size);
+uint32_t
+buf_size(struct bs_buffer *stream);
+
+/*returns a pointer to the new position in the buffer
+  where one can begin appending new data
+
+  update stream->buffer_size upon successfully populating the buffer
+
+  For example:
+
+  new_data = buf_extend(buffer, 10);
+  if (fread(new_data, sizeof(uint8_t), 10, input_file) == 10)
+      buffer->buffer_size += 10;
+  else
+      //trigger error here
+
+*/
+uint8_t*
+buf_extend(struct bs_buffer *stream, uint32_t data_size);
 
 /*analagous to fgetc, returns EOF at the end of buffer*/
 int
