@@ -3485,3 +3485,65 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] checking the confidence level
 ** TODO Add programming docstrings
 ** TODO Add programming documentation
+* TODO Add substream support to bitstream reader
+  Its function is to allow one to pull pieces out of a larger bitstream
+  and process them separately.
+  For example, while parsing an Ogg stream's pages with one bitstream,
+  the extracted Vorbis packets could be processed with smaller substreams -
+  including substreams that span one or more pages.
+  It's also potentially helpful for MP3, Ogg FLAC, DVD-A and any other format
+  with nontrivial wrappers that need to be parsed seperately
+  from the main bitstream.
+** TODO Implement substream reader methods
+*** DONE bs_read_bits_s_be
+*** DONE bs_read_bits_s_le
+*** DONE bs_read_signed_bits_s_be
+*** DONE bs_read_signed_bits_s_le
+*** DONE bs_read_bits64_s_be
+*** DONE bs_read_bits64_s_le
+*** DONE bs_skip_bits_s_be
+*** DONE bs_skip_bits_s_le
+*** DONE bs_read_unary_s_be
+*** DONE bs_read_unary_s_le
+*** DONE bs_read_limited_unary_s_be
+*** DONE bs_read_limited_unary_s_le
+*** DONE bs_set_endianness_s_be
+*** DONE bs_set_endianness_s_le
+*** DONE bs_read_huffman_code_s
+*** DONE bs_mark_s
+*** DONE bs_rewind_s
+*** DONE bs_unmark_s
+*** DONE bs_close_stream_s
+*** DONE bs_substream_new
+*** DONE bs_substream_f_be
+*** DONE bs_substream_f_le
+*** DONE bs_substream_p_be
+*** DONE bs_substream_p_le
+*** DONE bs_substream_s_be
+*** DONE bs_substream_s_le
+*** DONE bs_substream_append_f
+*** TODO bs_substream_append_p
+*** TODO bs_substream_append_s
+** DONE Add substream and substream_append to stream initializers
+*** DONE bs_open
+    - [X] substream
+    - [X] substream_append
+*** DONE bs_open_python
+    - [X] substream
+    - [X] substream_append
+** DONE Update current endianness setters with substream method
+*** DONE bs_set_endianness_f_be
+*** DONE bs_set_endianness_f_le
+*** DONE bs_set_endianness_p_be
+*** DONE bs_set_endianness_p_le
+** TODO Add nested exception stacks
+   Trying to read off the end of a substream should call
+   the substream's exception stack, if present.
+   Otherwise, one should abort to the parent's exception stack - if any.
+** TODO Add garbage collection to substream
+   It should be possible to create a substream, process it partway,
+   then append more data to it without causing any overflow problems.
+   That is, data at the beginning of the buffer will be recycled
+   at append time if it hasn't been marked for rewinding back to.
+
+** TODO Add unit tests to substream

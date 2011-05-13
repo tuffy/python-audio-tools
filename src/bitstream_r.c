@@ -1,4 +1,5 @@
 #include "bitstream_r.h"
+#include <string.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -72,6 +73,7 @@ bs_open(FILE *f, bs_endianness endianness)
         bs->read_limited_unary = bs_read_limited_unary_f_be;
         bs->byte_align = bs_byte_align_r;
         bs->set_endianness = bs_set_endianness_f_be;
+        bs->substream = bs_substream_f_be;
         break;
     case BS_LITTLE_ENDIAN:
         bs->read = bs_read_bits_f_le;
@@ -83,9 +85,11 @@ bs_open(FILE *f, bs_endianness endianness)
         bs->read_limited_unary = bs_read_limited_unary_f_le;
         bs->byte_align = bs_byte_align_r;
         bs->set_endianness = bs_set_endianness_f_le;
+        bs->substream = bs_substream_f_le;
         break;
     }
     bs->read_huffman_code = bs_read_huffman_code_f;
+    bs->substream_append = bs_substream_append_f;
     bs->close = bs_close;
     bs->close_stream = bs_close_stream_f;
     bs->mark = bs_mark_f;
@@ -305,6 +309,82 @@ bs_read_bits_f_le(Bitstream* bs, unsigned int count)
     return accumulator;
 }
 
+unsigned int
+bs_read_bits_s_be(Bitstream* bs, unsigned int count)
+{
+    int context = bs->state;
+    unsigned int result;
+    int byte;
+    struct bs_callback* callback;
+    unsigned int accumulator = 0;
+    int output_size;
+
+    while (count > 0) {
+        if (context == 0) {
+            if ((byte = buf_getc(bs->input.substream)) == EOF)
+                bs_abort(bs);
+            context = NEW_CONTEXT(byte);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+        }
+
+        result = read_bits_table[context][MIN(count, 8) - 1];
+
+        output_size = READ_BITS_OUTPUT_SIZE(result);
+
+        accumulator = ((accumulator << output_size) |
+                       READ_BITS_OUTPUT_BITS(result));
+
+        context = NEXT_CONTEXT(result);
+
+        count -= output_size;
+    }
+
+    bs->state = context;
+    return accumulator;
+}
+
+unsigned int
+bs_read_bits_s_le(Bitstream* bs, unsigned int count)
+{
+    int context = bs->state;
+    unsigned int result;
+    int byte;
+    struct bs_callback* callback;
+    unsigned int accumulator = 0;
+    int output_size;
+    int bit_offset = 0;
+
+    while (count > 0) {
+        if (context == 0) {
+            if ((byte = buf_getc(bs->input.substream)) == EOF)
+                bs_abort(bs);
+            context = NEW_CONTEXT(byte);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+        }
+
+        result = read_bits_table_le[context][MIN(count, 8) - 1];
+
+        output_size = READ_BITS_OUTPUT_SIZE(result);
+
+        accumulator |= (READ_BITS_OUTPUT_BITS(result) << bit_offset);
+
+        context = NEXT_CONTEXT(result);
+
+        count -= output_size;
+
+        bit_offset += output_size;
+    }
+
+    bs->state = context;
+    return accumulator;
+}
+
 #ifndef STANDALONE
 unsigned int
 bs_read_bits_p_be(Bitstream* bs, unsigned int count) {
@@ -404,6 +484,28 @@ bs_read_signed_bits_f_le(Bitstream* bs, unsigned int count)
     }
 }
 
+int
+bs_read_signed_bits_s_be(Bitstream* bs, unsigned int count)
+{
+    if (!bs_read_bits_s_be(bs, 1)) {
+        return bs_read_bits_s_be(bs, count - 1);
+    } else {
+        return bs_read_bits_s_be(bs, count - 1) - (1 << (count - 1));
+    }
+}
+
+int
+bs_read_signed_bits_s_le(Bitstream* bs, unsigned int count)
+{
+    int unsigned_value = bs_read_bits_s_le(bs, count - 1);
+
+    if (!bs_read_bits_s_le(bs, 1)) {
+        return unsigned_value;
+    } else {
+        return unsigned_value - (1 << (count - 1));
+    }
+}
+
 #ifndef STANDALONE
 int
 bs_read_signed_bits_p_be(Bitstream* bs, unsigned int count) {
@@ -480,6 +582,82 @@ bs_read_bits64_f_le(Bitstream* bs, unsigned int count)
     while (count > 0) {
         if (context == 0) {
             if ((byte = fgetc(bs->input.file)) == EOF)
+                bs_abort(bs);
+            context = NEW_CONTEXT(byte);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+        }
+
+        result = read_bits_table_le[context][MIN(count, 8) - 1];
+
+        output_size = READ_BITS_OUTPUT_SIZE(result);
+
+        accumulator |= (READ_BITS_OUTPUT_BITS(result) << bit_offset);
+
+        context = NEXT_CONTEXT(result);
+
+        count -= output_size;
+
+        bit_offset += output_size;
+    }
+
+    bs->state = context;
+    return accumulator;
+}
+
+uint64_t
+bs_read_bits64_s_be(Bitstream* bs, unsigned int count)
+{
+    int context = bs->state;
+    unsigned int result;
+    int byte;
+    struct bs_callback* callback;
+    uint64_t accumulator = 0;
+    int output_size;
+
+    while (count > 0) {
+        if (context == 0) {
+            if ((byte = buf_getc(bs->input.substream)) == EOF)
+                bs_abort(bs);
+            context = NEW_CONTEXT(byte);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+        }
+
+        result = read_bits_table[context][MIN(count, 8) - 1];
+
+        output_size = READ_BITS_OUTPUT_SIZE(result);
+
+        accumulator = ((accumulator << output_size) |
+                       READ_BITS_OUTPUT_BITS(result));
+
+        context = NEXT_CONTEXT(result);
+
+        count -= output_size;
+    }
+
+    bs->state = context;
+    return accumulator;
+}
+
+uint64_t
+bs_read_bits64_s_le(Bitstream* bs, unsigned int count)
+{
+    int context = bs->state;
+    unsigned int result;
+    int byte;
+    struct bs_callback* callback;
+    uint64_t accumulator = 0;
+    int output_size;
+    int bit_offset = 0;
+
+    while (count > 0) {
+        if (context == 0) {
+            if ((byte = buf_getc(bs->input.substream)) == EOF)
                 bs_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
@@ -652,6 +830,73 @@ bs_skip_bits_f_le(Bitstream* bs, unsigned int count)
     bs->state = context;
 }
 
+void
+bs_skip_bits_s_be(Bitstream* bs, unsigned int count)
+{
+    int context = bs->state;
+    unsigned int result;
+    int byte;
+    struct bs_callback* callback;
+    int output_size;
+
+    while (count > 0) {
+        if (context == 0) {
+            if ((byte = buf_getc(bs->input.substream)) == EOF)
+                bs_abort(bs);
+            context = NEW_CONTEXT(byte);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+        }
+
+        result = read_bits_table[context][MIN(count, 8) - 1];
+
+        output_size = READ_BITS_OUTPUT_SIZE(result);
+
+        context = NEXT_CONTEXT(result);
+
+        count -= output_size;
+    }
+
+    bs->state = context;
+}
+
+void
+bs_skip_bits_s_le(Bitstream* bs, unsigned int count)
+{
+    int context = bs->state;
+    unsigned int result;
+    int byte;
+    struct bs_callback* callback;
+    int output_size;
+    int bit_offset = 0;
+
+    while (count > 0) {
+        if (context == 0) {
+            if ((byte = buf_getc(bs->input.substream)) == EOF)
+                bs_abort(bs);
+            context = NEW_CONTEXT(byte);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+        }
+
+        result = read_bits_table_le[context][MIN(count, 8) - 1];
+
+        output_size = READ_BITS_OUTPUT_SIZE(result);
+
+        context = NEXT_CONTEXT(result);
+
+        count -= output_size;
+
+        bit_offset += output_size;
+    }
+
+    bs->state = context;
+}
+
 #ifndef STANDALONE
 void
 bs_skip_bits_p_be(Bitstream* bs, unsigned int count) {
@@ -780,6 +1025,68 @@ bs_read_unary_f_le(Bitstream* bs, int stop_bit)
     do {
         if (context == 0) {
             if ((byte = fgetc(bs->input.file)) == EOF)
+                bs_abort(bs);
+            context = NEW_CONTEXT(byte);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+        }
+
+        result = read_unary_table_le[context][stop_bit];
+
+        accumulator += READ_UNARY_OUTPUT_BITS(result);
+
+        context = NEXT_CONTEXT(result);
+    } while (READ_UNARY_CONTINUE(result));
+
+    bs->state = context;
+    return accumulator;
+}
+
+unsigned int
+bs_read_unary_s_be(Bitstream* bs, int stop_bit)
+{
+    int context = bs->state;
+    unsigned int result;
+    struct bs_callback* callback;
+    int byte;
+    unsigned int accumulator = 0;
+
+    do {
+        if (context == 0) {
+            if ((byte = buf_getc(bs->input.substream)) == EOF)
+                bs_abort(bs);
+            context = NEW_CONTEXT(byte);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+        }
+
+        result = read_unary_table[context][stop_bit];
+
+        accumulator += READ_UNARY_OUTPUT_BITS(result);
+
+        context = NEXT_CONTEXT(result);
+    } while (READ_UNARY_CONTINUE(result));
+
+    bs->state = context;
+    return accumulator;
+}
+
+unsigned int
+bs_read_unary_s_le(Bitstream* bs, int stop_bit)
+{
+    int context = bs->state;
+    unsigned int result;
+    struct bs_callback* callback;
+    int byte;
+    unsigned int accumulator = 0;
+
+    do {
+        if (context == 0) {
+            if ((byte = buf_getc(bs->input.substream)) == EOF)
                 bs_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
@@ -951,6 +1258,94 @@ bs_read_limited_unary_f_le(Bitstream* bs, int stop_bit, int maximum_bits)
     }
 }
 
+int
+bs_read_limited_unary_s_be(Bitstream* bs, int stop_bit, int maximum_bits)
+{
+    int context = bs->state;
+    unsigned int result;
+    unsigned int value;
+    struct bs_callback* callback;
+    int byte;
+    int accumulator = 0;
+    stop_bit *= 9;
+
+    do {
+        if (context == 0) {
+            if ((byte = buf_getc(bs->input.substream)) == EOF)
+                bs_abort(bs);
+            context = NEW_CONTEXT(byte);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+        }
+
+        result = read_limited_unary_table[context][stop_bit +
+                                                   MIN(maximum_bits, 8)];
+
+        value = READ_UNARY_OUTPUT_BITS(result);
+
+        accumulator += value;
+        maximum_bits -= value;
+
+        context = NEXT_CONTEXT(result);
+    } while (READ_UNARY_CONTINUE(result));
+
+    bs->state = context;
+
+    if (READ_UNARY_LIMIT_REACHED(result)) {
+        /*maximum_bits reached*/
+        return -1;
+    } else {
+        /*stop bit reached*/
+        return accumulator;
+    }
+}
+
+int
+bs_read_limited_unary_s_le(Bitstream* bs, int stop_bit, int maximum_bits)
+{
+    int context = bs->state;
+    unsigned int result;
+    unsigned int value;
+    struct bs_callback* callback;
+    int byte;
+    int accumulator = 0;
+    stop_bit *= 9;
+
+    do {
+        if (context == 0) {
+            if ((byte = buf_getc(bs->input.substream)) == EOF)
+                bs_abort(bs);
+            context = NEW_CONTEXT(byte);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+        }
+
+        result = read_limited_unary_table_le[context][stop_bit +
+                                                      MIN(maximum_bits, 8)];
+
+        value = READ_UNARY_OUTPUT_BITS(result);
+
+        accumulator += value;
+        maximum_bits -= value;
+
+        context = NEXT_CONTEXT(result);
+    } while (READ_UNARY_CONTINUE(result));
+
+    bs->state = context;
+
+    if (READ_UNARY_LIMIT_REACHED(result)) {
+        /*maximum_bits reached*/
+        return -1;
+    } else {
+        /*stop bit reached*/
+        return accumulator;
+    }
+}
+
 #ifndef STANDALONE
 int
 bs_read_limited_unary_p_be(Bitstream* bs, int stop_bit, int maximum_bits) {
@@ -1053,6 +1448,7 @@ bs_set_endianness_f_be(Bitstream *bs, bs_endianness endianness) {
         bs->read_limited_unary = bs_read_limited_unary_f_le;
         bs->byte_align = bs_byte_align_r;
         bs->set_endianness = bs_set_endianness_f_le;
+        bs->substream = bs_substream_f_le;
     }
 }
 
@@ -1069,8 +1465,44 @@ bs_set_endianness_f_le(Bitstream *bs, bs_endianness endianness) {
         bs->read_limited_unary = bs_read_limited_unary_f_be;
         bs->byte_align = bs_byte_align_r;
         bs->set_endianness = bs_set_endianness_f_be;
+        bs->substream = bs_substream_f_be;
     }
 }
+
+void
+bs_set_endianness_s_be(Bitstream *bs, bs_endianness endianness) {
+    bs->state = 0;
+    if (endianness == BS_LITTLE_ENDIAN) {
+        bs->read = bs_read_bits_s_le;
+        bs->read_signed = bs_read_signed_bits_s_le;
+        bs->read_64 = bs_read_bits64_s_le;
+        bs->skip = bs_skip_bits_s_le;
+        bs->unread = bs_unread_bit_le;
+        bs->read_unary = bs_read_unary_s_le;
+        bs->read_limited_unary = bs_read_limited_unary_s_le;
+        bs->byte_align = bs_byte_align_r;
+        bs->set_endianness = bs_set_endianness_s_le;
+        bs->substream = bs_substream_s_le;
+    }
+}
+
+void
+bs_set_endianness_s_le(Bitstream *bs, bs_endianness endianness) {
+    bs->state = 0;
+    if (endianness == BS_BIG_ENDIAN) {
+        bs->read = bs_read_bits_s_be;
+        bs->read_signed = bs_read_signed_bits_s_be;
+        bs->read_64 = bs_read_bits64_s_be;
+        bs->skip = bs_skip_bits_s_be;
+        bs->unread = bs_unread_bit_be;
+        bs->read_unary = bs_read_unary_s_be;
+        bs->read_limited_unary = bs_read_limited_unary_s_be;
+        bs->byte_align = bs_byte_align_r;
+        bs->set_endianness = bs_set_endianness_s_be;
+        bs->substream = bs_substream_s_be;
+    }
+}
+
 #ifndef STANDALONE
 void
 bs_set_endianness_p_be(Bitstream *bs, bs_endianness endianness) {
@@ -1085,6 +1517,7 @@ bs_set_endianness_p_be(Bitstream *bs, bs_endianness endianness) {
         bs->read_limited_unary = bs_read_limited_unary_p_le;
         bs->byte_align = bs_byte_align_r;
         bs->set_endianness = bs_set_endianness_p_le;
+        bs->substream = bs_substream_p_le;
     }
 }
 
@@ -1101,6 +1534,7 @@ bs_set_endianness_p_le(Bitstream *bs, bs_endianness endianness) {
         bs->read_limited_unary = bs_read_limited_unary_p_be;
         bs->byte_align = bs_byte_align_r;
         bs->set_endianness = bs_set_endianness_p_be;
+        bs->substream = bs_substream_p_be;
     }
 }
 #endif
@@ -1122,6 +1556,35 @@ bs_read_huffman_code_f(Bitstream *bs,
     do {
         if (context == 0) {
             if ((byte = fgetc(bs->input.file)) == EOF)
+                bs_abort(bs);
+            context = NEW_CONTEXT(byte);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+        }
+
+        entry = table[node][context];
+        context = NEXT_CONTEXT(entry.context_node);
+        node = READ_HUFFMAN_NEXT_NODE(entry.context_node);
+    } while (node != 0);
+
+    bs->state = context;
+    return entry.value;
+}
+
+int
+bs_read_huffman_code_s(Bitstream *bs,
+                       struct bs_huffman_table table[][0x200]) {
+    struct bs_huffman_table entry;
+    int node = 0;
+    int context = bs->state;
+    struct bs_callback* callback;
+    int byte;
+
+    do {
+        if (context == 0) {
+            if ((byte = buf_getc(bs->input.substream)) == EOF)
                 bs_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
@@ -1180,6 +1643,17 @@ bs_mark_f(Bitstream* bs) {
     mark->next = bs->marks;
     bs->marks = mark;
 }
+
+void
+bs_mark_s(Bitstream* bs) {
+    struct bs_mark* mark = malloc(sizeof(struct bs_mark));
+
+    mark->position.substream = bs->input.substream->buffer_position;
+    mark->state = bs->state;
+    mark->next = bs->marks;
+    bs->marks = mark;
+}
+
 #ifndef STANDALONE
 void
 bs_mark_p(Bitstream* bs) {
@@ -1203,6 +1677,17 @@ bs_rewind_f(Bitstream* bs) {
         fprintf(stderr, "No marks on stack to rewind!\n");
     }
 }
+
+void
+bs_rewind_s(Bitstream* bs) {
+    if (bs->marks != NULL) {
+        bs->input.substream->buffer_position = bs->marks->position.substream;
+        bs->state = bs->marks->state;
+    } else {
+        fprintf(stderr, "No marks on stack to rewind!\n");
+    }
+}
+
 #ifndef STANDALONE
 void
 bs_rewind_p(Bitstream* bs) {
@@ -1222,6 +1707,14 @@ bs_unmark_f(Bitstream* bs) {
     bs->marks = mark->next;
     free(mark);
 }
+
+void
+bs_unmark_s(Bitstream* bs) {
+    struct bs_mark* mark = bs->marks;
+    bs->marks = mark->next;
+    free(mark);
+}
+
 #ifndef STANDALONE
 void
 bs_unmark_p(Bitstream* bs) {
@@ -1239,6 +1732,196 @@ bs_byte_align_r(Bitstream* bs)
     bs->state = 0;
 }
 
+
+/*******************************************
+ substream handlers
+
+ for pulling smaller pieces out of a larger stream
+ and processing them separately
+ *******************************************/
+
+struct bs_buffer*
+buf_new(void) {
+    struct bs_buffer* stream = malloc(sizeof(struct bs_buffer));
+    stream->buffer = NULL;
+    stream->buffer_size = 0;
+    stream->buffer_position = 0;
+    return stream;
+}
+
+void
+buf_append(struct bs_buffer *stream, uint8_t *data, uint32_t data_size) {
+
+    stream->buffer = realloc(stream->buffer,
+                             stream->buffer_size + data_size);
+    memcpy(stream->buffer + stream->buffer_size, data, data_size);
+    stream->buffer_size += data_size;
+}
+
+int
+buf_getc(struct bs_buffer *stream) {
+    if (stream->buffer_position < stream->buffer_size) {
+        return stream->buffer[stream->buffer_position++];
+    } else
+        return EOF;
+}
+
+void
+buf_close(struct bs_buffer *stream) {
+    if (stream->buffer != NULL)
+        free(stream->buffer);
+    free(stream);
+}
+
+
+struct Bitstream_s* bs_substream_new(bs_endianness endianness) {
+    Bitstream *bs = malloc(sizeof(Bitstream));
+    bs->input.substream = buf_new();
+    bs->state = 0;
+    bs->callbacks = NULL;
+    bs->exceptions = NULL;
+    bs->marks = NULL;
+
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        bs->read = bs_read_bits_s_be;
+        bs->read_signed = bs_read_signed_bits_s_be;
+        bs->read_64 = bs_read_bits64_s_be;
+        bs->skip = bs_skip_bits_s_be;
+        bs->unread = bs_unread_bit_be;
+        bs->read_unary = bs_read_unary_s_be;
+        bs->read_limited_unary = bs_read_limited_unary_s_be;
+        bs->byte_align = bs_byte_align_r;
+        bs->set_endianness = bs_set_endianness_s_be;
+        bs->substream = bs_substream_s_be;
+        break;
+    case BS_LITTLE_ENDIAN:
+        bs->read = bs_read_bits_s_le;
+        bs->read_signed = bs_read_signed_bits_s_le;
+        bs->read_64 = bs_read_bits64_s_le;
+        bs->skip = bs_skip_bits_s_le;
+        bs->unread = bs_unread_bit_le;
+        bs->read_unary = bs_read_unary_s_le;
+        bs->read_limited_unary = bs_read_limited_unary_s_le;
+        bs->byte_align = bs_byte_align_r;
+        bs->set_endianness = bs_set_endianness_s_le;
+        bs->substream = bs_substream_s_le;
+        break;
+    }
+    bs->read_huffman_code = bs_read_huffman_code_s;
+    bs->substream_append = bs_substream_append_s;
+    bs->close = bs_close;
+    bs->close_stream = bs_close_stream_s;
+    bs->mark = bs_mark_s;
+    bs->rewind = bs_rewind_s;
+    bs->unmark = bs_unmark_s;
+
+    return bs;
+}
+
+struct Bitstream_s* bs_substream_f_be(struct Bitstream_s *stream,
+                                      uint32_t bytes) {
+    struct Bitstream_s* substream = bs_substream_new(BS_BIG_ENDIAN);
+    bs_substream_append_f(stream, substream, bytes);
+    return substream;
+}
+
+struct Bitstream_s* bs_substream_f_le(struct Bitstream_s *stream,
+                                      uint32_t bytes) {
+    struct Bitstream_s* substream = bs_substream_new(BS_LITTLE_ENDIAN);
+    bs_substream_append_f(stream, substream, bytes);
+    return substream;
+}
+
+#ifndef STANDALONE
+struct Bitstream_s* bs_substream_p_be(struct Bitstream_s *stream,
+                                      uint32_t bytes) {
+    struct Bitstream_s* substream = bs_substream_new(BS_BIG_ENDIAN);
+    bs_substream_append_p(stream, substream, bytes);
+    return substream;
+}
+
+struct Bitstream_s* bs_substream_p_le(struct Bitstream_s *stream,
+                                      uint32_t bytes) {
+    struct Bitstream_s* substream = bs_substream_new(BS_LITTLE_ENDIAN);
+    bs_substream_append_p(stream, substream, bytes);
+    return substream;
+}
+#endif
+
+struct Bitstream_s* bs_substream_s_be(struct Bitstream_s *stream,
+                                      uint32_t bytes) {
+    struct Bitstream_s* substream = bs_substream_new(BS_BIG_ENDIAN);
+    bs_substream_append_s(stream, substream, bytes);
+    return substream;
+}
+
+struct Bitstream_s* bs_substream_s_le(struct Bitstream_s *stream,
+                                      uint32_t bytes) {
+    struct Bitstream_s* substream = bs_substream_new(BS_LITTLE_ENDIAN);
+    bs_substream_append_s(stream, substream, bytes);
+    return substream;
+}
+
+void bs_substream_append_f(struct Bitstream_s *stream,
+                           struct Bitstream_s *substream,
+                           uint32_t bytes) {
+    uint8_t* extended_buffer;
+    uint32_t initial_size;
+    size_t read_bytes;
+    struct bs_callback *callback;
+    uint32_t i;
+
+    /*byte align the input stream*/
+    stream->state = 0;
+
+    /*extend the output stream's current buffer to fit additional bytes*/
+    initial_size = substream->input.substream->buffer_size;
+    substream->input.substream->buffer = realloc(
+                                             substream->input.substream->buffer,
+                                             initial_size + bytes);
+    extended_buffer = substream->input.substream->buffer + initial_size;
+
+    /*read input stream to extended buffer*/
+    read_bytes = fread(extended_buffer, sizeof(uint8_t), bytes,
+                       stream->input.file);
+
+    /*abort if the amount of read bytes is insufficient*/
+    if (read_bytes != bytes)
+        /*this leaves the buffer at its extended size,
+          but that's okay since its "buffer_size" field
+          hasn't been altered yet*/
+        bs_abort(stream);
+
+    /*perform callbacks on bytes in extended buffer*/
+    for (callback = stream->callbacks;
+         callback != NULL;
+         callback = callback->next) {
+        for (i = 0; i < bytes; i++)
+            callback->callback(extended_buffer[i], callback->data);
+    }
+
+    /*complete buffer extension*/
+    substream->input.substream->buffer_size += bytes;
+}
+
+#ifndef STANDALONE
+void bs_substream_append_p(struct Bitstream_s *stream,
+                           struct Bitstream_s *substream,
+                           uint32_t bytes) {
+    /*FIXME*/
+}
+#endif
+
+void bs_substream_append_s(struct Bitstream_s *stream,
+                           struct Bitstream_s *substream,
+                           uint32_t bytes) {
+    /*FIXME*/
+}
+
+void bs_close_stream_s(struct Bitstream_s *stream) {
+    buf_close(stream->input.substream);
+}
 
 #ifndef STANDALONE
 
@@ -1392,6 +2075,7 @@ bs_open_python(PyObject *reader, bs_endianness endianness) {
         bs->read_limited_unary = bs_read_limited_unary_p_be;
         bs->byte_align = bs_byte_align_r;
         bs->set_endianness = bs_set_endianness_p_be;
+        bs->substream = bs_substream_p_be;
         break;
     case BS_LITTLE_ENDIAN:
         bs->read = bs_read_bits_p_le;
@@ -1403,9 +2087,11 @@ bs_open_python(PyObject *reader, bs_endianness endianness) {
         bs->read_limited_unary = bs_read_limited_unary_p_le;
         bs->byte_align = bs_byte_align_r;
         bs->set_endianness = bs_set_endianness_p_le;
+        bs->substream = bs_substream_p_le;
         break;
     }
     bs->read_huffman_code = bs_read_huffman_code_p;
+    bs->substream_append = bs_substream_append_p;
     bs->close = bs_close;
     bs->close_stream = bs_close_stream_p;
     bs->mark = bs_mark_p;

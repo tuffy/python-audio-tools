@@ -50,6 +50,7 @@ struct bs_exception {
 struct bs_mark {
     union {
         fpos_t file;
+        uint32_t substream;
         uint32_t python;
     } position;
     int state;
@@ -62,6 +63,12 @@ struct bs_huffman_table {
 };
 
 typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
+
+struct bs_buffer {
+    uint8_t* buffer;
+    uint32_t buffer_size;
+    uint32_t buffer_position;
+};
 
 #ifndef STANDALONE
 struct bs_python_input {
@@ -77,6 +84,7 @@ struct bs_python_input {
 typedef struct Bitstream_s {
     union {
         FILE* file;
+        struct bs_buffer* substream;
 #ifndef STANDALONE
         struct bs_python_input* python;
 #endif
@@ -153,6 +161,23 @@ typedef struct Bitstream_s {
 
     /*pops the previous mark from the mark stack*/
     void (*unmark)(struct Bitstream_s* bs);
+
+    /*extracts a substream of the current stream with the given length
+
+      this byte-aligns the current stream before extracting the substream
+      and immediately calls any callbacks on the extracted bytes
+
+      the substream must be closed when finished via
+      substream->close(substream) to free any temporary space*/
+    struct Bitstream_s* (*substream)(struct Bitstream_s* bs, uint32_t bytes);
+
+    /*this appends the given length of bytes from the current stream
+      to the given substream
+
+      in all other respects, it works identically to the previous method*/
+    void (*substream_append)(struct Bitstream_s* bs,
+                             struct Bitstream_s* substream,
+                             uint32_t bytes);
 } Bitstream;
 
 Bitstream*
@@ -228,7 +253,7 @@ bs_etry(Bitstream *bs);
 
 /*************************************************************
    Read Function Matrix
-   The read functions come in two input variants
+   The read functions come in three input variants
    and two endianness variants named in the format:
 
    bs_function_x_yy
@@ -237,12 +262,14 @@ bs_etry(Bitstream *bs);
    and "yy" is "be" for big endian or "le" for little endian.
    For example:
 
-   | Function          | Input    | Endianness    |
-   |-------------------+----------+---------------|
-   | bs_read_bits_f_be | raw file | big endian    |
-   | bs_read_bits_f_le | raw file | little endian |
-   | bs_read_bits_p_be | Python   | big endian    |
-   | bs_read_bits_p_le | Python   | little endian |
+   | Function          | Input     | Endianness    |
+   |-------------------+-----------+---------------|
+   | bs_read_bits_f_be | raw file  | big endian    |
+   | bs_read_bits_f_le | raw file  | little endian |
+   | bs_read_bits_s_be | substream | big endian    |
+   | bs_read_bits_s_le | substream | little endian |
+   | bs_read_bits_p_be | Python    | big endian    |
+   | bs_read_bits_p_le | Python    | little endian |
 
  *************************************************************/
 
@@ -250,6 +277,10 @@ unsigned int
 bs_read_bits_f_be(Bitstream* bs, unsigned int count);
 unsigned int
 bs_read_bits_f_le(Bitstream* bs, unsigned int count);
+unsigned int
+bs_read_bits_s_be(Bitstream* bs, unsigned int count);
+unsigned int
+bs_read_bits_s_le(Bitstream* bs, unsigned int count);
 #ifndef STANDALONE
 unsigned int
 bs_read_bits_p_be(Bitstream* bs, unsigned int count);
@@ -262,6 +293,10 @@ int
 bs_read_signed_bits_f_be(Bitstream* bs, unsigned int count);
 int
 bs_read_signed_bits_f_le(Bitstream* bs, unsigned int count);
+int
+bs_read_signed_bits_s_be(Bitstream* bs, unsigned int count);
+int
+bs_read_signed_bits_s_le(Bitstream* bs, unsigned int count);
 #ifndef STANDALONE
 int
 bs_read_signed_bits_p_be(Bitstream* bs, unsigned int count);
@@ -274,6 +309,10 @@ uint64_t
 bs_read_bits64_f_be(Bitstream* bs, unsigned int count);
 uint64_t
 bs_read_bits64_f_le(Bitstream* bs, unsigned int count);
+uint64_t
+bs_read_bits64_s_be(Bitstream* bs, unsigned int count);
+uint64_t
+bs_read_bits64_s_le(Bitstream* bs, unsigned int count);
 #ifndef STANDALONE
 uint64_t
 bs_read_bits64_p_be(Bitstream* bs, unsigned int count);
@@ -286,6 +325,10 @@ void
 bs_skip_bits_f_be(Bitstream* bs, unsigned int count);
 void
 bs_skip_bits_f_le(Bitstream* bs, unsigned int count);
+void
+bs_skip_bits_s_be(Bitstream* bs, unsigned int count);
+void
+bs_skip_bits_s_le(Bitstream* bs, unsigned int count);
 #ifndef STANDALONE
 void
 bs_skip_bits_p_be(Bitstream* bs, unsigned int count);
@@ -294,7 +337,7 @@ bs_skip_bits_p_le(Bitstream* bs, unsigned int count);
 #endif
 
 
-/*unread_bit has no file/Python variants
+/*unread_bit has no file/substream/Python variants
   because it never makes calls to the input stream*/
 void
 bs_unread_bit_be(Bitstream* bs, int unread_bit);
@@ -306,6 +349,10 @@ unsigned int
 bs_read_unary_f_be(Bitstream* bs, int stop_bit);
 unsigned int
 bs_read_unary_f_le(Bitstream* bs, int stop_bit);
+unsigned int
+bs_read_unary_s_be(Bitstream* bs, int stop_bit);
+unsigned int
+bs_read_unary_s_le(Bitstream* bs, int stop_bit);
 #ifndef STANDALONE
 unsigned int
 bs_read_unary_p_be(Bitstream* bs, int stop_bit);
@@ -318,6 +365,10 @@ int
 bs_read_limited_unary_f_be(Bitstream* bs, int stop_bit, int maximum_bits);
 int
 bs_read_limited_unary_f_le(Bitstream* bs, int stop_bit, int maximum_bits);
+int
+bs_read_limited_unary_s_be(Bitstream* bs, int stop_bit, int maximum_bits);
+int
+bs_read_limited_unary_s_le(Bitstream* bs, int stop_bit, int maximum_bits);
 #ifndef STANDALONE
 int
 bs_read_limited_unary_p_be(Bitstream* bs, int stop_bit, int maximum_bits);
@@ -332,6 +383,10 @@ void
 bs_set_endianness_f_be(Bitstream *bs, bs_endianness endianness);
 void
 bs_set_endianness_f_le(Bitstream *bs, bs_endianness endianness);
+void
+bs_set_endianness_s_be(Bitstream *bs, bs_endianness endianness);
+void
+bs_set_endianness_s_le(Bitstream *bs, bs_endianness endianness);
 #ifndef STANDALONE
 void
 bs_set_endianness_p_be(Bitstream *bs, bs_endianness endianness);
@@ -345,6 +400,9 @@ bs_set_endianness_p_le(Bitstream *bs, bs_endianness endianness);
 int
 bs_read_huffman_code_f(Bitstream *bs,
                        struct bs_huffman_table table[][0x200]);
+int
+bs_read_huffman_code_s(Bitstream *bs,
+                       struct bs_huffman_table table[][0x200]);
 #ifndef STANDALONE
 int
 bs_read_huffman_code_p(Bitstream *bs,
@@ -355,6 +413,8 @@ bs_read_huffman_code_p(Bitstream *bs,
 /*none of the mark handling functions have endianness variants*/
 void
 bs_mark_f(Bitstream* bs);
+void
+bs_mark_s(Bitstream* bs);
 #ifndef STANDALONE
 void
 bs_mark_p(Bitstream* bs);
@@ -362,6 +422,8 @@ bs_mark_p(Bitstream* bs);
 
 void
 bs_rewind_f(Bitstream* bs);
+void
+bs_rewind_s(Bitstream* bs);
 #ifndef STANDALONE
 void
 bs_rewind_p(Bitstream* bs);
@@ -369,6 +431,8 @@ bs_rewind_p(Bitstream* bs);
 
 void
 bs_unmark_f(Bitstream* bs);
+void
+bs_unmark_s(Bitstream* bs);
 #ifndef STANDALONE
 void
 bs_unmark_p(Bitstream* bs);
@@ -378,6 +442,72 @@ bs_unmark_p(Bitstream* bs);
 /*byte_align doesn't have file *or* endianness variants*/
 void
 bs_byte_align_r(Bitstream* bs);
+
+
+/*returns a new bs_buffer struct which can be appended to and read from
+  it must be closed later*/
+struct bs_buffer*
+buf_new(void);
+
+/*appends the given data to our buffer without affecting the buffer position*/
+void
+buf_append(struct bs_buffer *stream, uint8_t *data, uint32_t data_size);
+
+/*analagous to fgetc, returns EOF at the end of buffer*/
+int
+buf_getc(struct bs_buffer *stream);
+
+/*deallocates buffer struct*/
+void
+buf_close(struct bs_buffer *stream);
+
+
+struct Bitstream_s* bs_substream_new(bs_endianness endianness);
+
+void bs_close_stream_s(struct Bitstream_s *stream);
+
+/*variants for the stream->substream(stream, bytes) method
+
+  these work by calling bs_substream_new to generate a plain substream
+  with the appropriate endianness,
+  then calling substream_append to fill it with data
+  before returning the result*/
+struct Bitstream_s* bs_substream_f_be(struct Bitstream_s *stream,
+                                      uint32_t bytes);
+struct Bitstream_s* bs_substream_f_le(struct Bitstream_s *stream,
+                                      uint32_t bytes);
+#ifndef STANDALONE
+struct Bitstream_s* bs_substream_p_be(struct Bitstream_s *stream,
+                                      uint32_t bytes);
+struct Bitstream_s* bs_substream_p_le(struct Bitstream_s *stream,
+                                      uint32_t bytes);
+#endif
+struct Bitstream_s* bs_substream_s_be(struct Bitstream_s *stream,
+                                      uint32_t bytes);
+struct Bitstream_s* bs_substream_s_le(struct Bitstream_s *stream,
+                                      uint32_t bytes);
+
+/*variants for the stream->substream_append(stream, substream, bytes) method
+
+  note that they have no endianness variants*/
+
+/*appends from a FILE-based stream to the buffer*/
+void bs_substream_append_f(struct Bitstream_s *stream,
+                           struct Bitstream_s *substream,
+                           uint32_t bytes);
+
+#ifndef STANDALONE
+/*appends from a Python-based stream to the buffer*/
+void bs_substream_append_p(struct Bitstream_s *stream,
+                           struct Bitstream_s *substream,
+                           uint32_t bytes);
+#endif
+
+/*appends from one buffer to another buffer*/
+void bs_substream_append_s(struct Bitstream_s *stream,
+                           struct Bitstream_s *substream,
+                           uint32_t bytes);
+
 
 
 #ifndef STANDALONE
