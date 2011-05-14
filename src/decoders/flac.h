@@ -82,7 +82,6 @@ typedef struct {
     struct flac_STREAMINFO streaminfo;
     uint64_t remaining_samples;
 
-    uint32_t crc8;
     uint32_t crc16;
     audiotools__MD5Context md5;
     int stream_finalized;
@@ -156,11 +155,6 @@ static PyObject*
 FlacDecoder_new(PyTypeObject *type,
                 PyObject *args, PyObject *kwds);
 
-/*all of the "status" returning functions
-  return OK upon success and ERROR upon failure
-  if ERROR is returned, a Python exception has been set
-  which should bubble up to the original caller (probably FlacDecoder_read)*/
-
 /*reads the STREAMINFO block and skips any other metadata blocks,
   placing our internal stream at the first FLAC frame*/
 status
@@ -169,24 +163,30 @@ FlacDecoder_read_metadata(decoders_FlacDecoder *self);
 /*reads a FLAC frame header from the sync code to the CRC-8
   and places the result in "header"*/
 status
-FlacDecoder_read_frame_header(decoders_FlacDecoder *self,
+FlacDecoder_read_frame_header(Bitstream *bitstream,
+                              struct flac_STREAMINFO *streaminfo,
                               struct flac_frame_header *header);
 
 /*reads a FLAC subframe header from the padding bit to the wasted bps (if any)
   and places the result in "subframe_header"*/
 status
-FlacDecoder_read_subframe_header(decoders_FlacDecoder *self,
+FlacDecoder_read_subframe_header(Bitstream *bitstream,
                                  struct flac_subframe_header *subframe_header);
 
 int
 FlacDecoder_subframe_bits_per_sample(struct flac_frame_header *frame_header,
                                      int channel_number);
 
-/*reads a FLAC subframe
+/*reads a FLAC subframe from "bitstream"
   with "block_size" and "bits_per_sample" (determined from the frame header)
-  and places the result in "samples"*/
+  and places the result in "samples"
+
+  "qlp_coeffs" and "residuals" are temporary buffers
+  to be recycled as needed*/
 status
-FlacDecoder_read_subframe(decoders_FlacDecoder *self,
+FlacDecoder_read_subframe(Bitstream *bitstream,
+                          struct i_array *qlp_coeffs,
+                          struct i_array *residuals,
                           uint32_t block_size,
                           uint8_t bits_per_sample,
                           struct i_array *samples);
@@ -196,26 +196,29 @@ FlacDecoder_read_subframe(decoders_FlacDecoder *self,
   all take the same arguments as FlacDecoder_read_subframe
   and, for fixed and lpc, an "order" argument - also from the subframe header*/
 status
-FlacDecoder_read_constant_subframe(decoders_FlacDecoder *self,
+FlacDecoder_read_constant_subframe(Bitstream *bitstream,
                                    uint32_t block_size,
                                    uint8_t bits_per_sample,
                                    struct i_array *samples);
 
 status
-FlacDecoder_read_verbatim_subframe(decoders_FlacDecoder *self,
+FlacDecoder_read_verbatim_subframe(Bitstream *bitstream,
                                    uint32_t block_size,
                                    uint8_t bits_per_sample,
                                    struct i_array *samples);
 
 status
-FlacDecoder_read_fixed_subframe(decoders_FlacDecoder *self,
+FlacDecoder_read_fixed_subframe(Bitstream *bitstream,
+                                struct i_array *residuals,
                                 uint8_t order,
                                 uint32_t block_size,
                                 uint8_t bits_per_sample,
                                 struct i_array *samples);
 
 status
-FlacDecoder_read_lpc_subframe(decoders_FlacDecoder *self,
+FlacDecoder_read_lpc_subframe(Bitstream *bitstream,
+                              struct i_array *qlp_coeffs,
+                              struct i_array *residuals,
                               uint8_t order,
                               uint32_t block_size,
                               uint8_t bits_per_sample,
@@ -225,7 +228,7 @@ FlacDecoder_read_lpc_subframe(decoders_FlacDecoder *self,
   (determined from read_fixed_subframe or read_lpc_subframe)
   and places the result in "residuals"*/
 status
-FlacDecoder_read_residual(decoders_FlacDecoder *self,
+FlacDecoder_read_residual(Bitstream *bitstream,
                           uint8_t order,
                           uint32_t block_size,
                           struct i_array *residuals);
