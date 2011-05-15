@@ -1115,10 +1115,13 @@ FlacDecoder_update_md5sum(decoders_FlacDecoder *self,
 int
 FlacDecoder_verify_okay(decoders_FlacDecoder *self) {
     unsigned char stream_md5sum[16];
+    const static unsigned char blank_md5sum[16] = {0, 0, 0, 0, 0, 0, 0, 0,
+                                                   0, 0, 0, 0, 0, 0, 0, 0};
 
     audiotools__MD5Final(stream_md5sum, &(self->md5));
 
-    return (memcmp(stream_md5sum, self->streaminfo.md5sum, 16) == 0);
+    return ((memcmp(self->streaminfo.md5sum, blank_md5sum, 16) == 0) ||
+            (memcmp(stream_md5sum, self->streaminfo.md5sum, 16) == 0));
 }
 
 const char*

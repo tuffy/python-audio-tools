@@ -3169,6 +3169,23 @@ class FlacFileTest(TestForeignAiffChunks,
         finally:
             temp.close()
 
+    @FORMAT_FLAC
+    def test_nonmd5(self):
+        flac = audiotools.open("flac-nonmd5.flac")
+        self.assertEqual(flac.__md5__, chr(0) * 16)
+        md5sum = md5()
+
+        #ensure that a FLAC file with an empty MD5 sum
+        #decodes without errors
+        audiotools.transfer_framelist_data(flac.to_pcm(),
+                                           md5sum.update)
+        self.assertEqual(md5sum.hexdigest(),
+                         'd2b120199019b639d5a7e2b3463e9c97')
+
+        #ensure that a FLAC file with an empty MD5 sum
+        #verifies without errors
+        self.assertEqual(flac.verify(), True)
+
 
 class M4AFileTest(LossyFileTest):
     def setUp(self):

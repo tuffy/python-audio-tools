@@ -1741,10 +1741,14 @@ class FlacAudio(WaveContainer, AiffContainer):
                     fixes_performed.append(
                         _(u"moved STREAMINFO to first block"))
 
-                #finally, fix any remaining metadata problems
+                #fix any remaining metadata problems
                 metadata = self.get_metadata()
                 if (metadata is not None):
                     metadata.clean(fixes_performed)
+
+                #fix empty MD5SUM
+                if (self.__md5__ == chr(0) * 16):
+                    fixes_performed.append(_(u"populated empty MD5SUM"))
             finally:
                 input_f.close()
         else:
@@ -1786,10 +1790,32 @@ class FlacAudio(WaveContainer, AiffContainer):
                     fixes_performed.append(
                         _(u"moved STREAMINFO to first block"))
 
-                #finally, fix any remaining metadata problems
+                #fix remaining metadata problems
+                #which automatically shifts STREAMINFO to the right place
+                #(the message indicating the fix has already been output)
                 metadata = self.get_metadata()
                 if (metadata is not None):
                     output_track.set_metadata(metadata.clean(fixes_performed))
+
+                #fix empty MD5SUM
+                #once the ID3 tags have been removed
+                #and the STREAMINFO block moved to the first
+                #which ensures the MD5SUM field is at a consistent place
+                if (self.__md5__ == chr(0) * 16):
+                    from hashlib import md5
+                    md5sum = md5()
+                    transfer_framelist_data(
+                        self.to_pcm(),
+                        md5sum.update,
+                        signed=True,
+                        big_endian=False)
+                    output_f = open(output_filename, "r+b")
+                    try:
+                        output_f.seek(4 + 4 + 18)
+                        output_f.write(md5sum.digest())
+                    finally:
+                        output_f.close()
+                    fixes_performed.append(_(u"populated empty MD5SUM"))
 
                 return output_track
             finally:

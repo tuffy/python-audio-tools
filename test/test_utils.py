@@ -2579,6 +2579,39 @@ class tracklint(UtilTest):
             tempflacfile.close()
 
     @UTIL_TRACKLINT
+    def test_flac4(self):
+        #create a small temporary FLAC
+        tempflacfile = tempfile.NamedTemporaryFile(suffix=".flac")
+        try:
+            #update it with the data from "flac-nonmd5.flac"
+            f = open("flac-nonmd5.flac","rb")
+            audiotools.transfer_data(f.read, tempflacfile.write)
+            f.close()
+            tempflacfile.flush()
+
+            #ensure MD5SUM is empty
+            tempflac = audiotools.open(tempflacfile.name)
+            self.assertEqual(tempflac.__md5__, chr(0) * 16)
+
+            #ensure file verifies okay
+            self.assertEqual(tempflac.verify(), True)
+
+            #fix FLAC with tracklint
+            self.assertEqual(
+                self.__run_app__(
+                    ["tracklint", "-V", "quiet", tempflac.filename, "--fix"]),
+                0)
+
+            #ensure file's new MD5SUM matches its actual MD5SUM
+            tempflac2 = audiotools.open(tempflacfile.name)
+            self.assertEqual(tempflac2.__md5__,
+                             "\xd2\xb1\x20\x19\x90\x19\xb6\x39" +
+                             "\xd5\xa7\xe2\xb3\x46\x3e\x9c\x97")
+            self.assertEqual(tempflac2.verify(), True)
+        finally:
+            tempflacfile.close()
+
+    @UTIL_TRACKLINT
     def test_apev2(self):
         for audio_class in [audiotools.WavPackAudio]:
             bad_apev2 = audiotools.ApeTag(

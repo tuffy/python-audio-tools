@@ -1954,11 +1954,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    Reference the side channel extra bit and add examples.
 ** DONE Add FLAC channel assignment encoding documentation
    Show its channel calculations and include an example.
-* DONE Add C-based FLAC decoder
-** DONE Add a variety of unit tests
-** DONE Handle Rice escape codes
-   Not sure how to test these, but they should be handled properly.
-** DONE Ensure decoder raises the proper exceptions
 * DONE indicate ReplayGain capabilities/binaries
   audiotools-config(1) should show what ReplayGain binaries are present
   and all audio classes that support it
@@ -2628,6 +2623,19 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 * DONE Add UTF-8 to FLAC documentation
 ** DONE Explain how to decode a UTF-8 value
 ** DONE Explain how to encode a UTF-8 value
+* DONE Add C-based FLAC decoder
+** DONE Add a variety of unit tests
+** DONE Handle Rice escape codes
+   Not sure how to test these, but they should be handled properly.
+** DONE Ensure decoder raises the proper exceptions
+** DONE Handle empty MD5 sums correctly
+   If the MD5SUM is 00000000000000000000000000000000
+   it's never a mismatch and should not trigger an error.
+*** DONE Update tracklint to populate an empty MD5 sum
+*** DONE Add unit tests
+**** DONE Ensure an empty MD5 doesn't trigger an error at read time
+**** DONE Ensure an empty MD5 doesn't trigger an error at verify time
+**** DONE Ensure tracklint populates an empty MD5 correctly
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
