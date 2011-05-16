@@ -3544,10 +3544,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE bs_set_endianness_f_le
 *** DONE bs_set_endianness_p_be
 *** DONE bs_set_endianness_p_le
-** TODO Add nested exception stacks?
-   Trying to read off the end of a substream should call
-   the substream's exception stack, if present.
-   Otherwise, one should abort to the parent's exception stack - if any.
 ** TODO Add garbage collection to substream
    It should be possible to create a substream, process it partway,
    then append more data to it without causing any overflow problems.
