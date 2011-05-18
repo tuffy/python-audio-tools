@@ -57,7 +57,7 @@ Encoding should continue until this array is empty.
   around as much of the encoding process as possible.
   That is, we'll want to stop interfacing with the interpreter
   and drop to C - so avoid raising exceptions directly in sub-functions.
-  It's better to implement encoding status results instead
+  It's better to have encoding functions return status results instead
   which can be transformed into an exception once
   the thread state has been restored.
 
@@ -66,7 +66,7 @@ Step 6. Convert encoder for standalone use
 
 It should be compilable via the ``-DSTANDALONE`` flag
 and added to ``Makefile.sa``.
-Standalone encoders *do not* have to generate working files;
+Standalone encoders *do not* have to generate finished files;
 the Python interpreter may be necessary to complete a file encode.
 However, such encoders should run through all the steps
 that the Python encoding function would.

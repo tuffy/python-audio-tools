@@ -58,8 +58,13 @@ oggreader_next_segment(OggReader *reader,
                        Bitstream *packet,
                        uint8_t *segment_size);
 
-char *
-ogg_error(ogg_status err);
-
 ogg_status
 oggreader_next_packet(OggReader *reader, Bitstream *packet);
+
+char *
+ogg_strerror(ogg_status err);
+
+#ifndef STANDALONE
+PyObject*
+ogg_exception(ogg_status err);
+#endif

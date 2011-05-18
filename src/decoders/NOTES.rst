@@ -42,6 +42,66 @@ one will need prototypes for:
 
 These get attached to the ``decoders_FooDecoderType`` struct directly.
 
+This typically looks like:
+::
+
+  PyGetSetDef FooDecoder_getseters[] = {
+    {"sample_rate", (getter)FooDecoder_sample_rate, NULL, "sample rate", NULL},
+    {"bits_per_sample", (getter)FooDecoder_bits_per_sample, NULL, "bits per sample", NULL},
+    {"channels", (getter)FooDecoder_channels, NULL, "channels", NULL},
+    {"channel_mask", (getter)FooDecoder_channel_mask, NULL, "channel_mask", NULL},
+    {NULL}
+  };
+
+  PyMethodDef FooDecoder_methods[] = {
+    {"read", (PyCFunction)FooDecoder_read, METH_VARARGS, ""},
+    {"analyze_frame", (PyCFunction)FooDecoder_analyze_frame, METH_NOARGS, ""},
+    {"close", (PyCFunction)FooDecoder_close, METH_NOARGS, ""},
+    {NULL}
+  };
+
+  PyTypeObject decoders_FooDecoderType = {
+    PyObject_HEAD_INIT(NULL)
+    0,                         /*ob_size*/
+    "decoders.FooDecoder",     /*tp_name*/
+    sizeof(decoders_FooDecoder), /*tp_basicsize*/
+    0,                         /*tp_itemsize*/
+    (destructor)FooDecoder_dealloc, /*tp_dealloc*/
+    0,                         /*tp_print*/
+    0,                         /*tp_getattr*/
+    0,                         /*tp_setattr*/
+    0,                         /*tp_compare*/
+    0,                         /*tp_repr*/
+    0,                         /*tp_as_number*/
+    0,                         /*tp_as_sequence*/
+    0,                         /*tp_as_mapping*/
+    0,                         /*tp_hash */
+    0,                         /*tp_call*/
+    0,                         /*tp_str*/
+    0,                         /*tp_getattro*/
+    0,                         /*tp_setattro*/
+    0,                         /*tp_as_buffer*/
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
+    "FooDecoder objects",      /* tp_doc */
+    0,                         /* tp_traverse */
+    0,                         /* tp_clear */
+    0,                         /* tp_richcompare */
+    0,                         /* tp_weaklistoffset */
+    0,                         /* tp_iter */
+    0,                         /* tp_iternext */
+    FooDecoder_methods,        /* tp_methods */
+    0,                         /* tp_members */
+    FooDecoder_getseters,      /* tp_getset */
+    0,                         /* tp_base */
+    0,                         /* tp_dict */
+    0,                         /* tp_descr_get */
+    0,                         /* tp_descr_set */
+    0,                         /* tp_dictoffset */
+    (initproc)FooDecoder_init, /* tp_init */
+    0,                         /* tp_alloc */
+    FooDecoder_new,            /* tp_new */
+  };
+
 Step 2. Add decoders/foo.c
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -51,6 +111,36 @@ perform allocation and return an object,
 and ``FooDecoder_init`` needs to return 0.
 All our other functions can simply return ``Py_None``.
 We'll work on filling these in to work later on.
+
+This typically looks like:
+::
+
+  PyObject*
+  FooDecoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
+    decoders_FooDecoder *self;
+
+    self = (decoders_FooDecoder *)type->tp_alloc(type, 0);
+
+    return (PyObject *)self;
+  }
+
+  void
+  FooDecoder_dealloc(decoders_FooDecoder *self) {
+    /*additional memory deallocation here*/
+
+    self->ob_type->tp_free((PyObject*)self);
+  }
+
+  int
+  FooDecoder_init(decoders_FooDecoder *self, PyObject *args, PyObject *kwds) {
+    return 0;
+  }
+
+  PyObject*
+  FooDecoder_function(decoders_FooDecoder* self, PyObject *args) {
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
 
 Step 3. Add decoders_FooDecoderType to decoders.c
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -79,7 +169,18 @@ Step 5. Implement our init and attributes
   ``FooDecoder_channels`` and ``FooDecoder_channel_mask`` should
   all return integers.
 
-Step 6. Implement FooDecoder_read
+Step 6. Update FooDecoder_dealloc to correspond with FooDecoder_init
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+That is, anything opened or allocated by ``FooDecoder_init`` should be
+closed or deallocated by ``FooDecoder_dealloc``
+prior to deallocating the object itself.
+However, be sure that dealloc works with partial inits!
+That is, if init fails partway through, dealloc will still be
+called on the half-allocated object.
+Those pieces must be freed or closed properly in that event.
+
+Step 7. Implement FooDecoder_read
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ``FooDecoder_read`` is given an integer argument (which it can safely ignore)
@@ -88,7 +189,7 @@ The easiest way to construct these objects is by passing
 ``ia_array`` structs to the ``decoders/pcm.h`` and ``decoders/pcm.c``
 static helper functions.
 Actually turning input files into arrays of PCM output is left as
-an exercise to the implementer.
+an exercise for the implementer.
 
 However, there's a few vital things to note during implementation.
 
@@ -114,7 +215,9 @@ However, there's a few vital things to note during implementation.
   prohibited until ``PyEval_RestoreThread`` is called,
   so exceptions called by the reader will have to be handled carefully.
 
-Step 7. Make sure the file's end case works
+
+
+Step 8. Make sure the file's end case works
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Some formats have an end-of-stream marker.
@@ -123,7 +226,7 @@ Whatever the format has, make sure the reader doesn't
 trigger ``IOError`` exceptions instead of returning
 empty ``pcm.FrameList`` objects once the end is reached.
 
-Step 8. Have FooAudio.to_pcm() return our class
+Step 9. Have FooAudio.to_pcm() return our class
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Once the decoder is decoding things properly,

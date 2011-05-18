@@ -71,6 +71,7 @@ typedef enum {OK,
               ERR_INVALID_FIXED_ORDER,
               ERR_INVALID_SUBFRAME_TYPE} status;
 
+#ifndef OGG_FLAC
 typedef struct {
     PyObject_HEAD
 
@@ -159,6 +160,7 @@ FlacDecoder_new(PyTypeObject *type,
   placing our internal stream at the first FLAC frame*/
 status
 FlacDecoder_read_metadata(decoders_FlacDecoder *self);
+#endif
 
 /*reads a FLAC frame header from the sync code to the CRC-8
   and places the result in "header"*/
@@ -238,6 +240,7 @@ void
 FlacDecoder_decorrelate_channels(struct flac_frame_header *frame_header,
                                  struct ia_array *subframe_data);
 
+#ifndef OGG_FLAC
 PyObject*
 FlacDecoder_analyze_subframe(decoders_FlacDecoder *self,
                              uint32_t block_size,
@@ -372,4 +375,5 @@ PyTypeObject decoders_FlacDecoderType = {
     FlacDecoder_new,           /* tp_new */
 };
 
+#endif
 #endif

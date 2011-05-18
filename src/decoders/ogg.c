@@ -122,7 +122,7 @@ oggreader_next_packet(OggReader *reader, Bitstream *packet) {
 }
 
 char *
-ogg_error(ogg_status err) {
+ogg_strerror(ogg_status err) {
     switch (err) {
     case OGG_OK:
         return "no error";
@@ -136,6 +136,23 @@ ogg_error(ogg_status err) {
     return ""; /*shouldn't get here*/
 }
 
+#ifndef STANDALONE
+PyObject*
+ogg_exception(ogg_status err) {
+    switch (err) {
+    case OGG_OK:
+    case OGG_STREAM_FINISHED:
+        return PyExc_IOError;
+    case OGG_INVALID_MAGIC_NUMBER:
+    case OGG_INVALID_STREAM_VERSION:
+        return PyExc_ValueError;
+    default:
+        return PyExc_ValueError;
+    }
+}
+#endif
+
+#ifdef EXECUTABLE
 int main(int argc, char *argv[]) {
     FILE *f = fopen(argv[1], "rb");
     OggReader *reader = oggreader_open(f);
@@ -156,3 +173,4 @@ int main(int argc, char *argv[]) {
     fclose(f);
     return 0;
 }
+#endif

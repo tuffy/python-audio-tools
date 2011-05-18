@@ -22,6 +22,7 @@
 *******************************************************/
 
 extern PyTypeObject decoders_FlacDecoderType;
+extern PyTypeObject decoders_OggFlacDecoderType;
 extern PyTypeObject decoders_SHNDecoderType;
 extern PyTypeObject decoders_ALACDecoderType;
 extern PyTypeObject decoders_WavPackDecoderType;
@@ -47,6 +48,10 @@ initdecoders(void)
 
     decoders_FlacDecoderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_FlacDecoderType) < 0)
+        return;
+
+    decoders_OggFlacDecoderType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&decoders_OggFlacDecoderType) < 0)
         return;
 
     decoders_SHNDecoderType.tp_new = PyType_GenericNew;
@@ -91,6 +96,10 @@ initdecoders(void)
     Py_INCREF(&decoders_FlacDecoderType);
     PyModule_AddObject(m, "FlacDecoder",
                        (PyObject *)&decoders_FlacDecoderType);
+
+    Py_INCREF(&decoders_OggFlacDecoderType);
+    PyModule_AddObject(m, "OggFlacDecoder",
+                       (PyObject *)&decoders_OggFlacDecoderType);
 
     Py_INCREF(&decoders_SHNDecoderType);
     PyModule_AddObject(m, "SHNDecoder",
