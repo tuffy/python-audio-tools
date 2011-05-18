@@ -1652,6 +1652,7 @@ bs_mark_s(Bitstream* bs) {
     mark->state = bs->state;
     mark->next = bs->marks;
     bs->marks = mark;
+    bs->input.substream->mark_in_progress = 1;
 }
 
 #ifndef STANDALONE
@@ -1713,6 +1714,7 @@ bs_unmark_s(Bitstream* bs) {
     struct bs_mark* mark = bs->marks;
     bs->marks = mark->next;
     free(mark);
+    bs->input.substream->mark_in_progress = (bs->marks != NULL);
 }
 
 #ifndef STANDALONE
@@ -1743,9 +1745,11 @@ bs_byte_align_r(Bitstream* bs)
 struct bs_buffer*
 buf_new(void) {
     struct bs_buffer* stream = malloc(sizeof(struct bs_buffer));
-    stream->buffer = NULL;
     stream->buffer_size = 0;
+    stream->buffer_total_size = 1;
+    stream->buffer = malloc(stream->buffer_total_size);
     stream->buffer_position = 0;
+    stream->mark_in_progress = 0;
     return stream;
 }
 
@@ -1756,16 +1760,61 @@ buf_size(struct bs_buffer *stream) {
 
 uint8_t*
 buf_extend(struct bs_buffer *stream, uint32_t data_size) {
-    /*FIXME - add garbage collection to this routine
-      which frees up unreachable space at the start of the buffer
-      before extending the buffer and adding more data*/
-
+    uint32_t remaining_bytes;
     uint8_t* extended_buffer;
 
-    stream->buffer = realloc(stream->buffer,
-                             stream->buffer_size + data_size);
+    remaining_bytes = stream->buffer_total_size - stream->buffer_size;
+
+    assert(stream->buffer_total_size >= stream->buffer_size);
+
+    if (stream->mark_in_progress) {
+        /*we need to be able to rewind to any point in the buffer
+          so it can only be extended if space is needed*/
+        if (data_size > remaining_bytes) {
+            while (data_size > remaining_bytes) {
+                stream->buffer_total_size *= 2;
+                remaining_bytes = (stream->buffer_total_size -
+                                   stream->buffer_size);
+            }
+            stream->buffer = realloc(stream->buffer, stream->buffer_total_size);
+        }
+    } else {
+        /*we don't need to rewind the buffer,
+          so bytes at the beginning can be discarded
+          if space is needed to extend it*/
+        if (data_size > remaining_bytes) {
+            if (data_size > (remaining_bytes + stream->buffer_position)) {
+                /*if there's not enough bytes to recycle,
+                  just extended the buffer outright*/
+                while (data_size > (remaining_bytes +
+                                    stream->buffer_position)) {
+                    stream->buffer_total_size *= 2;
+                    remaining_bytes = (stream->buffer_total_size -
+                                       stream->buffer_size);
+                }
+                stream->buffer = realloc(stream->buffer,
+                                         stream->buffer_total_size);
+            } else {
+                /*if there are enough bytes to recycle,
+                  shift the buffer down and reuse them*/
+                memmove(stream->buffer,
+                        stream->buffer + stream->buffer_position,
+                        stream->buffer_size - stream->buffer_position);
+                stream->buffer_size -= stream->buffer_position;
+                stream->buffer_position = 0;
+            }
+        }
+    }
+
     extended_buffer = stream->buffer + stream->buffer_size;
+
     return extended_buffer;
+}
+
+void
+buf_reset(struct bs_buffer *stream) {
+    stream->buffer_size = 0;
+    stream->buffer_position = 0;
 }
 
 int
@@ -1827,6 +1876,10 @@ struct Bitstream_s* bs_substream_new(bs_endianness endianness) {
     bs->unmark = bs_unmark_s;
 
     return bs;
+}
+
+void bs_substream_reset(struct Bitstream_s *substream) {
+    buf_reset(substream->input.substream);
 }
 
 struct Bitstream_s* bs_substream_f_be(struct Bitstream_s *stream,

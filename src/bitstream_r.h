@@ -67,7 +67,9 @@ typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 struct bs_buffer {
     uint8_t* buffer;
     uint32_t buffer_size;
+    uint32_t buffer_total_size;
     uint32_t buffer_position;
+    int mark_in_progress;
 };
 
 #ifndef STANDALONE
@@ -258,7 +260,7 @@ bs_etry(Bitstream *bs);
 
    bs_function_x_yy
 
-   where "x" is "f" for raw file or "p" for Python input
+   where "x" is "f" for raw file, "s" for substream or "p" for Python input
    and "yy" is "be" for big endian or "le" for little endian.
    For example:
 
@@ -479,6 +481,8 @@ buf_close(struct bs_buffer *stream);
 
 
 struct Bitstream_s* bs_substream_new(bs_endianness endianness);
+
+void bs_substream_reset(struct Bitstream_s *substream);
 
 void bs_close_stream_s(struct Bitstream_s *stream);
 

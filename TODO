@@ -3544,7 +3544,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE bs_set_endianness_f_le
 *** DONE bs_set_endianness_p_be
 *** DONE bs_set_endianness_p_le
-** TODO Add garbage collection to substream
+** DONE Add garbage collection to substream
    It should be possible to create a substream, process it partway,
    then append more data to it without causing any overflow problems.
    That is, data at the beginning of the buffer will be recycled

@@ -19,9 +19,10 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-typedef enum {OK,
-              OGG_INVALID_MAGIC_NUMBER,
-              OGG_INVALID_STREAM_VERSION} ogg_status;
+typedef enum {OGG_OK = 0,
+              OGG_STREAM_FINISHED = 1,
+              OGG_INVALID_MAGIC_NUMBER = -1,
+              OGG_INVALID_STREAM_VERSION = -2} ogg_status;
 
 struct ogg_page_header {
     uint32_t magic_number;
@@ -61,4 +62,4 @@ char *
 ogg_error(ogg_status err);
 
 ogg_status
-oggreader_next_packet(OggReader *reader, Bitstream **packet);
+oggreader_next_packet(OggReader *reader, Bitstream *packet);

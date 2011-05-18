@@ -25,6 +25,7 @@ oggreader_open(FILE *stream) {
     reader->ogg_stream = bs_open(stream, BS_LITTLE_ENDIAN);
     reader->current_segment = 1;
     reader->current_header.page_segment_count = 0;
+    reader->current_header.type = 0;
     return reader;
 }
 
@@ -69,7 +70,7 @@ oggreader_read_page_header(Bitstream *ogg_stream,
         header->segment_length_total += header->page_segment_lengths[i];
     }
 
-    return OK;
+    return OGG_OK;
 }
 
 ogg_status
@@ -85,36 +86,37 @@ oggreader_next_segment(OggReader *reader,
         reader->ogg_stream->substream_append(reader->ogg_stream,
                                              packet,
                                              *segment_size);
-        return OK;
+        return OGG_OK;
     } else {
-        /*the current page is finished
-          so validate the page's checksum
-          then move on to the next page*/
+        /*the current page is finished*/
+
         /*FIXME - validate checksum here*/
 
-        status = oggreader_read_page_header(reader->ogg_stream,
-                                            &(reader->current_header));
-        reader->current_segment = 0;
-        if (status == OK) {
-            return oggreader_next_segment(reader, packet, segment_size);
-        } else
-            return status;
+        /*if the current page isn't the final page,
+          read the next page from the stream*/
+        if (reader->current_header.type & 0x4) {
+            return OGG_STREAM_FINISHED;
+        } else {
+            status = oggreader_read_page_header(reader->ogg_stream,
+                                                &(reader->current_header));
+            reader->current_segment = 0;
+            if (status == OGG_OK) {
+                return oggreader_next_segment(reader, packet, segment_size);
+            } else
+                return status;
+        }
     }
 }
 
 ogg_status
-oggreader_next_packet(OggReader *reader, Bitstream **packet) {
-    *packet = bs_substream_new(BS_LITTLE_ENDIAN);
+oggreader_next_packet(OggReader *reader, Bitstream *packet) {
     ogg_status result;
     uint8_t segment_length;
 
+    bs_substream_reset(packet);
     do {
-        result = oggreader_next_segment(reader, *packet, &segment_length);
-    } while ((result == OK) && (segment_length == 255));
-
-    if (result != OK) {
-        (*packet)->close(*packet);
-    }
+        result = oggreader_next_segment(reader, packet, &segment_length);
+    } while ((result == OGG_OK) && (segment_length == 255));
 
     return result;
 }
@@ -122,8 +124,10 @@ oggreader_next_packet(OggReader *reader, Bitstream **packet) {
 char *
 ogg_error(ogg_status err) {
     switch (err) {
-    case OK:
+    case OGG_OK:
         return "no error";
+    case OGG_STREAM_FINISHED:
+        return "stream finished";
     case OGG_INVALID_MAGIC_NUMBER:
         return "invalid magic number";
     case OGG_INVALID_STREAM_VERSION:
@@ -135,20 +139,19 @@ ogg_error(ogg_status err) {
 int main(int argc, char *argv[]) {
     FILE *f = fopen(argv[1], "rb");
     OggReader *reader = oggreader_open(f);
-    Bitstream *packet;
-    ogg_status error;
-    int i;
+    Bitstream *packet = bs_substream_new(BS_LITTLE_ENDIAN);
+    ogg_status result;
 
-    for (i = 0; i < 10000; i++) {
-        if ((error = oggreader_next_packet(reader, &packet)) != OK) {
-            fprintf(stderr, "Error : %s\n", ogg_error(error));
-            break;
-        } else {
+    do {
+        result = oggreader_next_packet(reader, packet);
+        if (result < 0) {
+            fprintf(stderr, "Error : %s\n", ogg_error(result));
+        } else if (result == OGG_OK) {
             printf("packet size %u\n", packet->input.substream->buffer_size);
-            packet->close(packet);
         }
-    }
+    } while (result == OGG_OK);
 
+    packet->close(packet);
     oggreader_close(reader);
     fclose(f);
     return 0;
