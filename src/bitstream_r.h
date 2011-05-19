@@ -97,6 +97,10 @@ typedef struct Bitstream_s {
     struct bs_exception* exceptions;
     struct bs_mark* marks;
 
+    struct bs_callback* callbacks_used;
+    struct bs_exception* exceptions_used;
+    struct bs_mark* marks_used;
+
     /*returns "count" number of unsigned bits from the current stream
       in the current endian format up to "count" bits wide*/
     unsigned int (*read)(struct Bitstream_s* bs, unsigned int count);

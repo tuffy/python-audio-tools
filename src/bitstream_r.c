@@ -61,6 +61,9 @@ bs_open(FILE *f, bs_endianness endianness)
     bs->callbacks = NULL;
     bs->exceptions = NULL;
     bs->marks = NULL;
+    bs->callbacks_used = NULL;
+    bs->exceptions_used = NULL;
+    bs->marks_used = NULL;
 
     switch (endianness) {
     case BS_BIG_ENDIAN:
@@ -115,6 +118,11 @@ bs_free(Bitstream *bs) {
         c_next = c_node->next;
         free(c_node);
     }
+    for (c_node = bs->callbacks_used; c_node != NULL; c_node = c_next) {
+        c_next = c_node->next;
+        free(c_node);
+    }
+
     if (bs->exceptions != NULL) {
         fprintf(stderr, "Warning: leftover etry entries on stack\n");
     }
@@ -122,10 +130,19 @@ bs_free(Bitstream *bs) {
         e_next = e_node->next;
         free(e_node);
     }
+    for (e_node = bs->exceptions_used; e_node != NULL; e_node = e_next) {
+        e_next = e_node->next;
+        free(e_node);
+    }
+
     if (bs->marks != NULL) {
         fprintf(stderr, "Warning: leftover marks on stack\n");
     }
     for (m_node = bs->marks; m_node != NULL; m_node = m_next) {
+        m_next = m_node->next;
+        free(m_node);
+    }
+    for (m_node = bs->marks_used; m_node != NULL; m_node = m_next) {
         m_next = m_node->next;
         free(m_node);
     }
@@ -159,7 +176,14 @@ void
 bs_add_callback(Bitstream *bs, void (*callback)(uint8_t, void*),
                 void *data)
 {
-    struct bs_callback *callback_node = malloc(sizeof(struct bs_callback));
+    struct bs_callback *callback_node;
+
+    if (bs->callbacks_used == NULL)
+        callback_node = malloc(sizeof(struct bs_callback));
+    else {
+        callback_node = bs->callbacks_used;
+        bs->callbacks_used = bs->callbacks_used->next;
+    }
     callback_node->callback = callback;
     callback_node->data = data;
     callback_node->next = bs->callbacks;
@@ -180,7 +204,8 @@ bs_pop_callback(Bitstream *bs) {
     struct bs_callback *c_node = bs->callbacks;
     if (c_node != NULL) {
         bs->callbacks = c_node->next;
-        free(c_node);
+        c_node->next = bs->callbacks_used;
+        bs->callbacks_used = c_node;
     }
 }
 
@@ -198,7 +223,14 @@ bs_abort(Bitstream *bs) {
 
 jmp_buf*
 bs_try(Bitstream *bs) {
-    struct bs_exception *node = malloc(sizeof(struct bs_exception));
+    struct bs_exception *node;
+
+    if (bs->exceptions_used == NULL)
+        node = malloc(sizeof(struct bs_exception));
+    else {
+        node = bs->exceptions_used;
+        bs->exceptions_used = bs->exceptions_used->next;
+    }
     node->next = bs->exceptions;
     bs->exceptions = node;
     return &(node->env);
@@ -209,7 +241,8 @@ bs_etry(Bitstream *bs) {
     struct bs_exception *node = bs->exceptions;
     if (node != NULL) {
         bs->exceptions = node->next;
-        free(node);
+        node->next = bs->exceptions_used;
+        bs->exceptions_used = node;
     } else {
         fprintf(stderr,"Warning: trying to pop from empty etry stack\n");
     }
@@ -1636,7 +1669,14 @@ bs_read_huffman_code_p(Bitstream *bs,
 
 void
 bs_mark_f(Bitstream* bs) {
-    struct bs_mark* mark = malloc(sizeof(struct bs_mark));
+    struct bs_mark* mark;
+
+    if (bs->marks_used == NULL)
+        mark = malloc(sizeof(struct bs_mark));
+    else {
+        mark = bs->marks_used;
+        bs->marks_used = bs->marks_used->next;
+    }
 
     fgetpos(bs->input.file, &(mark->position.file));
     mark->state = bs->state;
@@ -1646,7 +1686,14 @@ bs_mark_f(Bitstream* bs) {
 
 void
 bs_mark_s(Bitstream* bs) {
-    struct bs_mark* mark = malloc(sizeof(struct bs_mark));
+    struct bs_mark* mark;
+
+    if (bs->marks_used == NULL)
+        mark = malloc(sizeof(struct bs_mark));
+    else {
+        mark = bs->marks_used;
+        bs->marks_used = bs->marks_used->next;
+    }
 
     mark->position.substream = bs->input.substream->buffer_position;
     mark->state = bs->state;
@@ -1658,7 +1705,14 @@ bs_mark_s(Bitstream* bs) {
 #ifndef STANDALONE
 void
 bs_mark_p(Bitstream* bs) {
-    struct bs_mark* mark = malloc(sizeof(struct bs_mark));
+    struct bs_mark* mark;
+
+    if (bs->marks_used == NULL)
+        mark = malloc(sizeof(struct bs_mark));
+    else {
+        mark = bs->marks_used;
+        bs->marks_used = bs->marks_used->next;
+    }
 
     mark->position.python = bs->input.python->buffer_position;
     mark->state = bs->state;
@@ -1706,14 +1760,16 @@ void
 bs_unmark_f(Bitstream* bs) {
     struct bs_mark* mark = bs->marks;
     bs->marks = mark->next;
-    free(mark);
+    mark->next = bs->marks_used;
+    bs->marks_used = mark;
 }
 
 void
 bs_unmark_s(Bitstream* bs) {
     struct bs_mark* mark = bs->marks;
     bs->marks = mark->next;
-    free(mark);
+    mark->next = bs->marks_used;
+    bs->marks_used = mark;
     bs->input.substream->mark_in_progress = (bs->marks != NULL);
 }
 
@@ -1722,7 +1778,8 @@ void
 bs_unmark_p(Bitstream* bs) {
     struct bs_mark* mark = bs->marks;
     bs->marks = mark->next;
-    free(mark);
+    mark->next = bs->marks_used;
+    bs->marks_used = mark;
     bs->input.python->mark_in_progress = (bs->marks != NULL);
 }
 #endif
@@ -1841,6 +1898,9 @@ struct Bitstream_s* bs_substream_new(bs_endianness endianness) {
     bs->callbacks = NULL;
     bs->exceptions = NULL;
     bs->marks = NULL;
+    bs->callbacks_used = NULL;
+    bs->exceptions_used = NULL;
+    bs->marks_used = NULL;
 
     switch (endianness) {
     case BS_BIG_ENDIAN:
@@ -1885,10 +1945,13 @@ bs_substream_reset(struct Bitstream_s *substream) {
     struct bs_mark *m_next;
 
     substream->state = 0;
+    /*transfer all marks to recycle stack*/
     for (m_node = substream->marks; m_node != NULL; m_node = m_next) {
         m_next = m_node->next;
-        free(m_node);
+        m_node->next = substream->marks_used;
+        substream->marks_used = m_node;
     }
+    substream->marks = NULL;
 
     buf_reset(substream->input.substream);
 }
@@ -2194,6 +2257,9 @@ bs_open_python(PyObject *reader, bs_endianness endianness) {
     bs->callbacks = NULL;
     bs->exceptions = NULL;
     bs->marks = NULL;
+    bs->callbacks_used = NULL;
+    bs->exceptions_used = NULL;
+    bs->marks_used = NULL;
 
     switch (endianness) {
     case BS_BIG_ENDIAN:
