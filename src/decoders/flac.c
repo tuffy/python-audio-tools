@@ -1100,11 +1100,10 @@ FlacDecoder_analyze_residual(decoders_FlacDecoder *self,
 flac_status
 FlacDecoder_update_md5sum(decoders_FlacDecoder *self,
                           PyObject *framelist) {
-    PyObject *string = PyObject_CallMethod(
-                                framelist,
-                                "to_bytes","ii",
-                                0,
-                                1);
+    PyObject *string = PyObject_CallMethod(framelist,
+                                           "to_bytes","ii",
+                                           0,
+                                           1);
     char *string_buffer;
     Py_ssize_t length;
 

@@ -3,6 +3,7 @@
 #include "../bitstream_r.h"
 #include "../array.h"
 #include "../common/md5.h"
+#include "../common/flac_crc.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -281,8 +282,6 @@ FlacDecoder_update_md5sum(decoders_FlacDecoder *self,
 
 int
 FlacDecoder_verify_okay(decoders_FlacDecoder *self);
-
-#include "../common/flac_crc.h"
 
 uint32_t read_utf8(Bitstream *stream);
 

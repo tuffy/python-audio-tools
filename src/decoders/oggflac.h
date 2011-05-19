@@ -34,6 +34,9 @@ typedef struct {
 
     struct flac_STREAMINFO streaminfo;
 
+    uint32_t crc16;
+    audiotools__MD5Context md5;
+
     struct ia_array subframe_data;
     struct i_array residuals;
     struct i_array qlp_coeffs;
@@ -131,3 +134,9 @@ int
 oggflac_read_streaminfo(Bitstream *bitstream,
                         struct flac_STREAMINFO *streaminfo,
                         uint16_t *header_packets);
+int
+OggFlacDecoder_update_md5sum(decoders_OggFlacDecoder *self,
+                             PyObject *framelist);
+
+int
+OggFlacDecoder_verify_okay(decoders_OggFlacDecoder *self);
