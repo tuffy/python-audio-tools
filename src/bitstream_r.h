@@ -471,6 +471,12 @@ buf_size(struct bs_buffer *stream);
 uint8_t*
 buf_extend(struct bs_buffer *stream, uint32_t data_size);
 
+/*clears out the buffer for possible reuse
+
+  resets the position, size and resets any marks in progress*/
+void
+buf_reset(struct bs_buffer *stream);
+
 /*analagous to fgetc, returns EOF at the end of buffer*/
 int
 buf_getc(struct bs_buffer *stream);
@@ -480,11 +486,18 @@ void
 buf_close(struct bs_buffer *stream);
 
 
-struct Bitstream_s* bs_substream_new(bs_endianness endianness);
+struct Bitstream_s*
+bs_substream_new(bs_endianness endianness);
 
-void bs_substream_reset(struct Bitstream_s *substream);
+/*clears out the substream for possible reuse
 
-void bs_close_stream_s(struct Bitstream_s *stream);
+  any marks are deleted and the stream is reset
+  so that it can be appended to with fresh data*/
+void
+bs_substream_reset(struct Bitstream_s *substream);
+
+void
+bs_close_stream_s(struct Bitstream_s *stream);
 
 /*variants for the stream->substream(stream, bytes) method
 
@@ -492,41 +505,49 @@ void bs_close_stream_s(struct Bitstream_s *stream);
   with the appropriate endianness,
   then calling substream_append to fill it with data
   before returning the result*/
-struct Bitstream_s* bs_substream_f_be(struct Bitstream_s *stream,
-                                      uint32_t bytes);
-struct Bitstream_s* bs_substream_f_le(struct Bitstream_s *stream,
-                                      uint32_t bytes);
+struct Bitstream_s*
+bs_substream_f_be(struct Bitstream_s *stream, uint32_t bytes);
+
+struct Bitstream_s*
+bs_substream_f_le(struct Bitstream_s *stream, uint32_t bytes);
+
 #ifndef STANDALONE
-struct Bitstream_s* bs_substream_p_be(struct Bitstream_s *stream,
-                                      uint32_t bytes);
-struct Bitstream_s* bs_substream_p_le(struct Bitstream_s *stream,
-                                      uint32_t bytes);
+struct Bitstream_s*
+bs_substream_p_be(struct Bitstream_s *stream, uint32_t bytes);
+
+struct Bitstream_s*
+bs_substream_p_le(struct Bitstream_s *stream, uint32_t bytes);
 #endif
-struct Bitstream_s* bs_substream_s_be(struct Bitstream_s *stream,
-                                      uint32_t bytes);
-struct Bitstream_s* bs_substream_s_le(struct Bitstream_s *stream,
-                                      uint32_t bytes);
+
+struct Bitstream_s*
+bs_substream_s_be(struct Bitstream_s *stream, uint32_t bytes);
+
+struct Bitstream_s*
+bs_substream_s_le(struct Bitstream_s *stream, uint32_t bytes);
 
 /*variants for the stream->substream_append(stream, substream, bytes) method
 
   note that they have no endianness variants*/
 
 /*appends from a FILE-based stream to the buffer*/
-void bs_substream_append_f(struct Bitstream_s *stream,
-                           struct Bitstream_s *substream,
-                           uint32_t bytes);
+void
+bs_substream_append_f(struct Bitstream_s *stream,
+                      struct Bitstream_s *substream,
+                      uint32_t bytes);
 
 #ifndef STANDALONE
 /*appends from a Python-based stream to the buffer*/
-void bs_substream_append_p(struct Bitstream_s *stream,
-                           struct Bitstream_s *substream,
-                           uint32_t bytes);
+void
+bs_substream_append_p(struct Bitstream_s *stream,
+                      struct Bitstream_s *substream,
+                      uint32_t bytes);
 #endif
 
 /*appends from one buffer to another buffer*/
-void bs_substream_append_s(struct Bitstream_s *stream,
-                           struct Bitstream_s *substream,
-                           uint32_t bytes);
+void
+bs_substream_append_s(struct Bitstream_s *stream,
+                      struct Bitstream_s *substream,
+                      uint32_t bytes);
 
 
 

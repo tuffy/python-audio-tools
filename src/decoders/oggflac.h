@@ -33,6 +33,10 @@ typedef struct {
     Bitstream* packet;
 
     struct flac_STREAMINFO streaminfo;
+
+    struct ia_array subframe_data;
+    struct i_array residuals;
+    struct i_array qlp_coeffs;
 } decoders_OggFlacDecoder;
 
 static PyObject*
@@ -123,7 +127,7 @@ PyTypeObject decoders_OggFlacDecoderType = {
     OggFlacDecoder_new,            /* tp_new */
 };
 
-status
+int
 oggflac_read_streaminfo(Bitstream *bitstream,
                         struct flac_STREAMINFO *streaminfo,
                         uint16_t *header_packets);

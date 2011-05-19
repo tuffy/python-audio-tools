@@ -41,36 +41,48 @@ oggreader_read_page_header(Bitstream *ogg_stream,
     int i;
     uint8_t checksum[4];
 
-    if ((header->magic_number = ogg_stream->read(ogg_stream, 32)) != 0x5367674F)
-        return OGG_INVALID_MAGIC_NUMBER;
+    if (!setjmp(*bs_try(ogg_stream))) {
+        if ((header->magic_number =
+             ogg_stream->read(ogg_stream, 32)) != 0x5367674F) {
+            bs_etry(ogg_stream);
+            return OGG_INVALID_MAGIC_NUMBER;
+        }
 
-    if ((header->version = ogg_stream->read(ogg_stream, 8)) != 0)
-        return OGG_INVALID_STREAM_VERSION;
+        if ((header->version = ogg_stream->read(ogg_stream, 8)) != 0) {
+            bs_etry(ogg_stream);
+            return OGG_INVALID_STREAM_VERSION;
+        }
 
-    header->type = ogg_stream->read(ogg_stream, 8);
-    header->granule_position = ogg_stream->read_64(ogg_stream, 64);
-    header->bitstream_serial_number = ogg_stream->read(ogg_stream, 32);
-    header->page_sequence_number = ogg_stream->read(ogg_stream, 32);
+        header->type = ogg_stream->read(ogg_stream, 8);
+        header->granule_position = ogg_stream->read_64(ogg_stream, 64);
+        header->bitstream_serial_number = ogg_stream->read(ogg_stream, 32);
+        header->page_sequence_number = ogg_stream->read(ogg_stream, 32);
 
-    if (fread(checksum, sizeof(uint8_t), 4, ogg_stream->input.file) == 4) {
-        header->checksum = checksum[0] |
-            (checksum[1] << 8) |
-            (checksum[2] << 16) |
-            (checksum[3] << 24);
-        for (i = 0; i < 4; i++)
-            bs_call_callbacks(ogg_stream, 0);
+        if (fread(checksum, sizeof(uint8_t), 4, ogg_stream->input.file) == 4) {
+            header->checksum = checksum[0] |
+                (checksum[1] << 8) |
+                (checksum[2] << 16) |
+                (checksum[3] << 24);
+            for (i = 0; i < 4; i++)
+                bs_call_callbacks(ogg_stream, 0);
+        } else {
+            bs_etry(ogg_stream);
+            return OGG_PREMATURE_EOF;
+        }
+
+        header->page_segment_count = ogg_stream->read(ogg_stream, 8);
+        header->segment_length_total = 0;
+        for (i = 0; i < header->page_segment_count; i++) {
+            header->page_segment_lengths[i] = ogg_stream->read(ogg_stream, 8);
+            header->segment_length_total += header->page_segment_lengths[i];
+        }
+
+        bs_etry(ogg_stream);
+        return OGG_OK;
     } else {
-        bs_abort(ogg_stream);
+        bs_etry(ogg_stream);
+        return OGG_PREMATURE_EOF;
     }
-
-    header->page_segment_count = ogg_stream->read(ogg_stream, 8);
-    header->segment_length_total = 0;
-    for (i = 0; i < header->page_segment_count; i++) {
-        header->page_segment_lengths[i] = ogg_stream->read(ogg_stream, 8);
-        header->segment_length_total += header->page_segment_lengths[i];
-    }
-
-    return OGG_OK;
 }
 
 ogg_status
@@ -83,10 +95,16 @@ oggreader_next_segment(OggReader *reader,
         /*return an Ogg segment from the current page*/
         *segment_size = reader->current_header.page_segment_lengths[
                                                 reader->current_segment++];
-        reader->ogg_stream->substream_append(reader->ogg_stream,
-                                             packet,
-                                             *segment_size);
-        return OGG_OK;
+        if (!setjmp(*bs_try(reader->ogg_stream))) {
+            reader->ogg_stream->substream_append(reader->ogg_stream,
+                                                 packet,
+                                                 *segment_size);
+            bs_etry(reader->ogg_stream);
+            return OGG_OK;
+        } else {
+            bs_etry(reader->ogg_stream);
+            return OGG_PREMATURE_EOF;
+        }
     } else {
         /*the current page is finished*/
 
@@ -124,14 +142,16 @@ oggreader_next_packet(OggReader *reader, Bitstream *packet) {
 char *
 ogg_strerror(ogg_status err) {
     switch (err) {
-    case OGG_OK:
+    case OGG_OK:                    /*not an actual error*/
         return "no error";
-    case OGG_STREAM_FINISHED:
+    case OGG_STREAM_FINISHED:       /*not an actual error*/
         return "stream finished";
     case OGG_INVALID_MAGIC_NUMBER:
         return "invalid magic number";
     case OGG_INVALID_STREAM_VERSION:
         return "invalid stream version";
+    case OGG_PREMATURE_EOF:
+        return "premature EOF reading Ogg stream";
     }
     return ""; /*shouldn't get here*/
 }
@@ -140,12 +160,13 @@ ogg_strerror(ogg_status err) {
 PyObject*
 ogg_exception(ogg_status err) {
     switch (err) {
-    case OGG_OK:
-    case OGG_STREAM_FINISHED:
+    case OGG_PREMATURE_EOF:
+    case OGG_STREAM_FINISHED:       /*not an actual error*/
         return PyExc_IOError;
     case OGG_INVALID_MAGIC_NUMBER:
     case OGG_INVALID_STREAM_VERSION:
         return PyExc_ValueError;
+    case OGG_OK:                    /*not an actual error*/
     default:
         return PyExc_ValueError;
     }

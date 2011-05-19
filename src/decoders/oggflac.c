@@ -1,4 +1,6 @@
 #include "oggflac.h"
+#include "../pcm.h"
+#include "pcm.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -51,11 +53,11 @@ OggFlacDecoder_init(decoders_OggFlacDecoder *self,
     self->packet = bs_substream_new(BS_BIG_ENDIAN);
 
     if (!PyArg_ParseTuple(args, "s", &filename))
-        return -1;
+        goto error;
     self->ogg_file = fopen(filename, "rb");
     if (self->ogg_file == NULL) {
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
-        return -1;
+        goto error;
     } else {
         self->ogg_stream = oggreader_open(self->ogg_file);
     }
@@ -63,13 +65,13 @@ OggFlacDecoder_init(decoders_OggFlacDecoder *self,
     /*the first packet should be the FLAC's STREAMINFO*/
     if ((result = oggreader_next_packet(self->ogg_stream,
                                         self->packet)) == OGG_OK) {
-        if (oggflac_read_streaminfo(self->packet,
-                                    &(self->streaminfo),
-                                    &header_packets) != OK)
-            return -1;
+        if (!oggflac_read_streaminfo(self->packet,
+                                     &(self->streaminfo),
+                                     &header_packets))
+            goto error;
     } else {
         PyErr_SetString(ogg_exception(result), ogg_strerror(result));
-        return -1;
+        goto error;
     }
 
     /*skip subsequent header packets*/
@@ -77,11 +79,26 @@ OggFlacDecoder_init(decoders_OggFlacDecoder *self,
         if ((result = oggreader_next_packet(self->ogg_stream,
                                             self->packet)) != OGG_OK) {
             PyErr_SetString(ogg_exception(result), ogg_strerror(result));
-            return -1;
+            goto error;
         }
     }
 
+    /*setup a bunch of temporary buffers*/
+    iaa_init(&(self->subframe_data),
+             self->streaminfo.channels,
+             self->streaminfo.maximum_block_size);
+    ia_init(&(self->residuals), self->streaminfo.maximum_block_size);
+    ia_init(&(self->qlp_coeffs), 1);
+
     return 0;
+
+ error:
+    /*setup some dummy buffers for dealloc to free*/
+    iaa_init(&(self->subframe_data), 1, 1);
+    ia_init(&(self->residuals), 1);
+    ia_init(&(self->qlp_coeffs), 1);
+
+    return -1;
 }
 
 static PyObject*
@@ -101,29 +118,111 @@ OggFlacDecoder_channels(decoders_OggFlacDecoder *self, void *closure) {
 
 static PyObject*
 OggFlacDecoder_channel_mask(decoders_OggFlacDecoder *self, void *closure) {
+    /*FIXME*/
+
     Py_INCREF(Py_None);
     return Py_None;
 }
 
 static PyObject*
 OggFlacDecoder_read(decoders_OggFlacDecoder *self, PyObject *args) {
-    Py_INCREF(Py_None);
-    return Py_None;
+    ogg_status ogg_status;
+    flac_status flac_status;
+    struct flac_frame_header frame_header;
+    int channel;
+    PyObject *framelist;
+
+    iaa_reset(&(self->subframe_data));
+
+    ogg_status = oggreader_next_packet(self->ogg_stream, self->packet);
+
+    if (ogg_status == OGG_OK) {
+        /*decode the next FrameList from the stream*/
+        /*FIXME - support threading here*/
+
+        if (!setjmp(*bs_try(self->packet))) {
+            /*read frame header*/
+            if ((flac_status = FlacDecoder_read_frame_header(
+                                                    self->packet,
+                                                    &(self->streaminfo),
+                                                    &frame_header)) != OK) {
+                PyErr_SetString(PyExc_ValueError,
+                                FlacDecoder_strerror(flac_status));
+                bs_etry(self->packet);
+                return NULL;
+            }
+
+            /*read 1 subframe per channel*/
+            for (channel = 0; channel < frame_header.channel_count; channel++)
+                if ((flac_status = FlacDecoder_read_subframe(
+                        self->packet,
+                        &(self->qlp_coeffs),
+                        &(self->residuals),
+                        frame_header.block_size,
+                        FlacDecoder_subframe_bits_per_sample(&frame_header,
+                                                             channel),
+                        &(self->subframe_data.arrays[channel]))) != OK) {
+                    PyErr_SetString(PyExc_ValueError,
+                                    FlacDecoder_strerror(flac_status));
+                    bs_etry(self->packet);
+                    return NULL;
+                }
+
+            bs_etry(self->packet);
+
+            /*handle difference channels, if any*/
+            FlacDecoder_decorrelate_channels(&frame_header,
+                                             &(self->subframe_data));
+
+            /*check CRC-16*/
+            /*FIXME*/
+
+            framelist = ia_array_to_framelist(&(self->subframe_data),
+                                              frame_header.bits_per_sample);
+
+            /*update MD5 sum*/
+            /*FIXME*/
+
+            /*return pcm.FrameList Python object*/
+            return framelist;
+        } else {
+            /*read error decoding FLAC frame*/
+            PyErr_SetString(PyExc_IOError, "I/O error decoding FLAC frame");
+            bs_etry(self->packet);
+            return NULL;
+        }
+    } else if (ogg_status == OGG_STREAM_FINISHED) {
+        /*Ogg stream is finished so verify stream's MD5 sum
+          then return an empty FrameList if it matches correctly*/
+        /*FIXME - verify stream MD5SUM here*/
+
+        return ia_array_to_framelist(&(self->subframe_data),
+                                     self->streaminfo.bits_per_sample);
+    } else {
+        /*error reading the next Ogg packet,
+          so raise the appropriate exception*/
+        PyErr_SetString(ogg_exception(ogg_status), ogg_strerror(ogg_status));
+        return NULL;
+    }
 }
 
 static PyObject*
 OggFlacDecoder_analyze_frame(decoders_OggFlacDecoder *self, PyObject *args) {
+    /*FIXME*/
+
     Py_INCREF(Py_None);
     return Py_None;
 }
 
 static PyObject*
 OggFlacDecoder_close(decoders_OggFlacDecoder *self, PyObject *args) {
+    /*FIXME*/
+
     Py_INCREF(Py_None);
     return Py_None;
 }
 
-status
+int
 oggflac_read_streaminfo(Bitstream *packet,
                         struct flac_STREAMINFO *streaminfo,
                         uint16_t *header_packets) {
@@ -176,8 +275,10 @@ oggflac_read_streaminfo(Bitstream *packet,
     }
 
     bs_etry(packet);
-    return OK;
+    return 1;
  error:
     bs_etry(packet);
-    return ERROR;
+    return 0;
 }
+
+#include "pcm.c"

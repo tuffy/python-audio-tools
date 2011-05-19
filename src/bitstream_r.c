@@ -1815,6 +1815,7 @@ void
 buf_reset(struct bs_buffer *stream) {
     stream->buffer_size = 0;
     stream->buffer_position = 0;
+    stream->mark_in_progress = 0;
 }
 
 int
@@ -1878,7 +1879,17 @@ struct Bitstream_s* bs_substream_new(bs_endianness endianness) {
     return bs;
 }
 
-void bs_substream_reset(struct Bitstream_s *substream) {
+void
+bs_substream_reset(struct Bitstream_s *substream) {
+    struct bs_mark *m_node;
+    struct bs_mark *m_next;
+
+    substream->state = 0;
+    for (m_node = substream->marks; m_node != NULL; m_node = m_next) {
+        m_next = m_node->next;
+        free(m_node);
+    }
+
     buf_reset(substream->input.substream);
 }
 

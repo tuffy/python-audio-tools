@@ -22,7 +22,8 @@
 typedef enum {OGG_OK = 0,
               OGG_STREAM_FINISHED = 1,
               OGG_INVALID_MAGIC_NUMBER = -1,
-              OGG_INVALID_STREAM_VERSION = -2} ogg_status;
+              OGG_INVALID_STREAM_VERSION = -2,
+              OGG_PREMATURE_EOF = -3} ogg_status;
 
 struct ogg_page_header {
     uint32_t magic_number;
