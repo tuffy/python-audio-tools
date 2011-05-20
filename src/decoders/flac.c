@@ -485,7 +485,7 @@ FlacDecoder_read_frame_header(Bitstream *bitstream,
 
     /*check for valid CRC-8 value*/
     bitstream->read(bitstream, 8);
-    bs_pop_callback(bitstream);
+    bs_pop_callback(bitstream, NULL);
     if (crc8 != 0)
         return ERR_INVALID_FRAME_CRC;
 

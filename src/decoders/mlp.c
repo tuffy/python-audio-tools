@@ -1152,6 +1152,7 @@ mlp_read_substream(decoders_MLPDecoder* decoder,
     uint8_t final_crc;
     int last_block = 0;
     int matrix;
+    struct bs_callback callback;
 
     /*initialize the parity byte and CRC-8*/
     decoder->parity = 0;
@@ -1178,13 +1179,13 @@ mlp_read_substream(decoders_MLPDecoder* decoder,
 
     /* check for end of stream marker */
     if (decoder->remaining_samples <= samples->arrays[0].size) {
-        bs_pop_callback(bs);
+        bs_pop_callback(bs, &callback);
         bs->mark(bs);
         if (bs->read(bs, 16) == 0xD234) {
             if (bs->read(bs, 16) == 0xD234) {
                 decoder->stream_closed = 1;
                 bs->unmark(bs);
-                bs_add_callback(bs, mlp_byte_callback, decoder);
+                bs_push_callback(bs, &callback);
                 bs_call_callbacks(bs, 0xD2);
                 bs_call_callbacks(bs, 0x34);
                 bs_call_callbacks(bs, 0xD2);
@@ -1192,12 +1193,12 @@ mlp_read_substream(decoders_MLPDecoder* decoder,
             } else {
                 bs->rewind(bs);
                 bs->unmark(bs);
-                bs_add_callback(bs, mlp_byte_callback, decoder);
+                bs_push_callback(bs, &callback);
             }
         } else {
             bs->rewind(bs);
             bs->unmark(bs);
-            bs_add_callback(bs, mlp_byte_callback, decoder);
+            bs_push_callback(bs, &callback);
         }
     }
 

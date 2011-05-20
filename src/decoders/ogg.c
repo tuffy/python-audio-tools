@@ -1,4 +1,5 @@
 #include "ogg.h"
+#include "../common/ogg_crc.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -26,6 +27,9 @@ oggreader_open(FILE *stream) {
     reader->current_segment = 1;
     reader->current_header.page_segment_count = 0;
     reader->current_header.type = 0;
+    reader->current_header.checksum = 0;
+    reader->checksum = 0;
+    bs_add_callback(reader->ogg_stream, ogg_crc, &(reader->checksum));
     return reader;
 }
 
@@ -39,7 +43,7 @@ ogg_status
 oggreader_read_page_header(Bitstream *ogg_stream,
                            struct ogg_page_header *header) {
     int i;
-    uint8_t checksum[4];
+    struct bs_callback callback;
 
     if (!setjmp(*bs_try(ogg_stream))) {
         if ((header->magic_number =
@@ -58,17 +62,15 @@ oggreader_read_page_header(Bitstream *ogg_stream,
         header->bitstream_serial_number = ogg_stream->read(ogg_stream, 32);
         header->page_sequence_number = ogg_stream->read(ogg_stream, 32);
 
-        if (fread(checksum, sizeof(uint8_t), 4, ogg_stream->input.file) == 4) {
-            header->checksum = checksum[0] |
-                (checksum[1] << 8) |
-                (checksum[2] << 16) |
-                (checksum[3] << 24);
-            for (i = 0; i < 4; i++)
-                bs_call_callbacks(ogg_stream, 0);
-        } else {
-            bs_etry(ogg_stream);
-            return OGG_PREMATURE_EOF;
-        }
+        /*the checksum field is *not* checksummed itself, naturally
+          those 4 bytes are treated as 0*/
+        bs_pop_callback(ogg_stream, &callback);
+        header->checksum = ogg_stream->read(ogg_stream, 32);
+        bs_push_callback(ogg_stream, &callback);
+        bs_call_callbacks(ogg_stream, 0);
+        bs_call_callbacks(ogg_stream, 0);
+        bs_call_callbacks(ogg_stream, 0);
+        bs_call_callbacks(ogg_stream, 0);
 
         header->page_segment_count = ogg_stream->read(ogg_stream, 8);
         header->segment_length_total = 0;
@@ -108,13 +110,20 @@ oggreader_next_segment(OggReader *reader,
     } else {
         /*the current page is finished*/
 
-        /*FIXME - validate checksum here*/
+        /*validate page checksum*/
+        if (reader->current_header.checksum != reader->checksum) {
+            fprintf(stderr, "0x%4.4X 0x%4.4X\n",
+                    reader->current_header.checksum,
+                    reader->checksum);
+            return OGG_CHECKSUM_MISMATCH;
+        }
 
         /*if the current page isn't the final page,
           read the next page from the stream*/
         if (reader->current_header.type & 0x4) {
             return OGG_STREAM_FINISHED;
         } else {
+            reader->checksum = 0;
             status = oggreader_read_page_header(reader->ogg_stream,
                                                 &(reader->current_header));
             reader->current_segment = 0;
@@ -150,6 +159,8 @@ ogg_strerror(ogg_status err) {
         return "invalid magic number";
     case OGG_INVALID_STREAM_VERSION:
         return "invalid stream version";
+    case OGG_CHECKSUM_MISMATCH:
+        return "checksum mismatch";
     case OGG_PREMATURE_EOF:
         return "premature EOF reading Ogg stream";
     }
@@ -165,6 +176,7 @@ ogg_exception(ogg_status err) {
         return PyExc_IOError;
     case OGG_INVALID_MAGIC_NUMBER:
     case OGG_INVALID_STREAM_VERSION:
+    case OGG_CHECKSUM_MISMATCH:
         return PyExc_ValueError;
     case OGG_OK:                    /*not an actual error*/
     default:

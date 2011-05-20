@@ -36,8 +36,10 @@
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 #endif
 
+typedef void (*bs_callback_func)(uint8_t, void*);
+
 struct bs_callback {
-    void (*callback)(uint8_t, void*);
+    bs_callback_func callback;
     void *data;
     struct bs_callback *next;
 };
@@ -206,16 +208,34 @@ void
 bs_noop(Bitstream *bs);
 
 void
-bs_add_callback(Bitstream *bs, void (*callback)(uint8_t, void*), void *data);
+bs_add_callback(Bitstream *bs, bs_callback_func callback, void *data);
 
 /*explicitly passes "byte" to the set callbacks,
   as if the byte were read from the input stream*/
 void
 bs_call_callbacks(Bitstream *bs, uint8_t byte);
 
-/*removes the most recently added callback, if any*/
+/*removes the most recently added callback, if any
+  if "callback" is not NULL, the popped callback's data is copied to it
+  for possible restoration via "bs_push_callback"
+
+  this is often paired with bs_push_callback in order
+  to temporarily disable a callback, for example:
+
+  bs_pop_callback(reader, &saved_callback);  //save callback for later
+  unchecksummed_value = bs->read(bs, 16);    //read a value
+  bs_push_callback(reader, &saved_callback); //restored saved callback
+*/
 void
-bs_pop_callback(Bitstream *bs);
+bs_pop_callback(Bitstream *bs, struct bs_callback *callback);
+
+/*pushes the given callback back onto the callback stack
+  note that the data from "callback" is copied onto a new internal struct;
+  it does not need to be allocated from the heap
+
+  if "callback" is NULL, this does nothing*/
+void
+bs_push_callback(Bitstream *bs, struct bs_callback *callback);
 
 static inline long
 bs_ftell(Bitstream *bs) {

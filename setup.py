@@ -61,6 +61,7 @@ decodersmodule = Extension('audiotools.decoders',
                                     'src/decoders/flac.c',
                                     'src/decoders/oggflac.c',
                                     'src/common/flac_crc.c',
+                                    'src/common/ogg_crc.c',
                                     'src/decoders/shn.c',
                                     'src/decoders/alac.c',
                                     'src/decoders/wavpack.c',
@@ -89,6 +90,7 @@ encodersmodule = Extension('audiotools.encoders',
 
 verifymodule = Extension('audiotools.verify',
                          sources=['src/verify.c',
+                                  'src/common/ogg_crc.c',
                                   'src/bitstream_r.c'])
 
 extensions = [cdiomodule,

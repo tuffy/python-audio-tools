@@ -173,8 +173,7 @@ bs_close_stream_f(Bitstream *bs)
 }
 
 void
-bs_add_callback(Bitstream *bs, void (*callback)(uint8_t, void*),
-                void *data)
+bs_add_callback(Bitstream *bs, bs_callback_func callback, void *data)
 {
     struct bs_callback *callback_node;
 
@@ -200,9 +199,32 @@ bs_call_callbacks(Bitstream *bs, uint8_t byte) {
 }
 
 void
-bs_pop_callback(Bitstream *bs) {
+bs_push_callback(Bitstream *bs, struct bs_callback *callback) {
+    struct bs_callback *callback_node;
+
+    if (callback != NULL) {
+        if (bs->callbacks_used == NULL)
+            callback_node = malloc(sizeof(struct bs_callback));
+        else {
+            callback_node = bs->callbacks_used;
+            bs->callbacks_used = bs->callbacks_used->next;
+        }
+        callback_node->callback = callback->callback;
+        callback_node->data = callback->data;
+        callback_node->next = bs->callbacks;
+        bs->callbacks = callback_node;
+    }
+}
+
+void
+bs_pop_callback(Bitstream *bs, struct bs_callback *callback) {
     struct bs_callback *c_node = bs->callbacks;
     if (c_node != NULL) {
+        if (callback != NULL) {
+            callback->callback = c_node->callback;
+            callback->data = c_node->data;
+            callback->next = NULL;
+        }
         bs->callbacks = c_node->next;
         c_node->next = bs->callbacks_used;
         bs->callbacks_used = c_node;

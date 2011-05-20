@@ -661,12 +661,12 @@ WavPackDecoder_read_wv_bitstream(Bitstream* bitstream,
         bitstream->byte_align(bitstream);
         while (byte_block_size > 0)
             bitstream->read(bitstream, 8);
-        bs_pop_callback(bitstream);
+        bs_pop_callback(bitstream, NULL);
         bs_etry(bitstream);
 
         return OK;
     } else {
-        bs_pop_callback(bitstream);
+        bs_pop_callback(bitstream, NULL);
         bs_etry(bitstream);
 
         return ERR_BITSTREAM_IO;
