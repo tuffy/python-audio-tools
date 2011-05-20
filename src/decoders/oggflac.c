@@ -53,7 +53,7 @@ OggFlacDecoder_init(decoders_OggFlacDecoder *self,
     self->ogg_file = NULL;
     self->packet = bs_substream_new(BS_BIG_ENDIAN);
 
-    if (!PyArg_ParseTuple(args, "s", &filename))
+    if (!PyArg_ParseTuple(args, "si", &filename, &(self->channel_mask)))
         goto error;
     self->ogg_file = fopen(filename, "rb");
     if (self->ogg_file == NULL) {
@@ -125,10 +125,7 @@ OggFlacDecoder_channels(decoders_OggFlacDecoder *self, void *closure) {
 
 static PyObject*
 OggFlacDecoder_channel_mask(decoders_OggFlacDecoder *self, void *closure) {
-    /*FIXME*/
-
-    Py_INCREF(Py_None);
-    return Py_None;
+    return Py_BuildValue("i", self->channel_mask);
 }
 
 static PyObject*

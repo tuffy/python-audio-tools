@@ -2136,21 +2136,35 @@ class OggFlacAudio(AudioFile):
     def to_pcm(self):
         """Returns a PCMReader object containing the track's PCM data."""
 
-        sub = subprocess.Popen([BIN['flac'], "-s", "--ogg", "-d", "-c",
-                                "--force-raw-format",
-                                "--endian=little",
-                                "--sign=signed",
-                                self.filename],
-                               stdout=subprocess.PIPE,
-                               stderr=file(os.devnull, 'ab'))
-        return PCMReader(sub.stdout,
-                         sample_rate=self.__samplerate__,
-                         channels=self.__channels__,
-                         bits_per_sample=self.__bitspersample__,
-                         channel_mask=int(self.channel_mask()),
-                         process=sub,
-                         signed=True,
-                         big_endian=False)
+        from . import decoders
+
+        try:
+            return decoders.OggFlacDecoder(self.filename,
+                                           self.channel_mask())
+        except (IOError, ValueError), msg:
+            #The only time this is likely to occur is
+            #if the Ogg FLAC is modified between when OggFlacAudio
+            #is initialized and when to_pcm() is called.
+            return PCMReaderError(error_message=str(msg),
+                                  sample_rate=self.sample_rate(),
+                                  channels=self.channels(),
+                                  channel_mask=int(self.channel_mask()),
+                                  bits_per_sample=self.bits_per_sample())
+        # sub = subprocess.Popen([BIN['flac'], "-s", "--ogg", "-d", "-c",
+        #                         "--force-raw-format",
+        #                         "--endian=little",
+        #                         "--sign=signed",
+        #                         self.filename],
+        #                        stdout=subprocess.PIPE,
+        #                        stderr=file(os.devnull, 'ab'))
+        # return PCMReader(sub.stdout,
+        #                  sample_rate=self.__samplerate__,
+        #                  channels=self.__channels__,
+        #                  bits_per_sample=self.__bitspersample__,
+        #                  channel_mask=int(self.channel_mask()),
+        #                  process=sub,
+        #                  signed=True,
+        #                  big_endian=False)
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
@@ -2324,3 +2338,24 @@ class OggFlacAudio(AudioFile):
                 raise InvalidFLAC(str(err))
         finally:
             f.close()
+
+    def replay_gain(self):
+        """Returns a ReplayGain object of our ReplayGain values.
+
+        Returns None if we have no values."""
+
+        vorbis_metadata = self.get_metadata().vorbis_comment
+
+        if (set(['REPLAYGAIN_TRACK_PEAK', 'REPLAYGAIN_TRACK_GAIN',
+                 'REPLAYGAIN_ALBUM_PEAK', 'REPLAYGAIN_ALBUM_GAIN']).issubset(
+                vorbis_metadata.keys())):  # we have ReplayGain data
+            try:
+                return ReplayGain(
+                    vorbis_metadata['REPLAYGAIN_TRACK_GAIN'][0][0:-len(" dB")],
+                    vorbis_metadata['REPLAYGAIN_TRACK_PEAK'][0],
+                    vorbis_metadata['REPLAYGAIN_ALBUM_GAIN'][0][0:-len(" dB")],
+                    vorbis_metadata['REPLAYGAIN_ALBUM_PEAK'][0])
+            except ValueError:
+                return None
+        else:
+            return None

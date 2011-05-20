@@ -31,6 +31,7 @@ typedef struct {
     FILE* ogg_file;
     OggReader* ogg_stream;
     Bitstream* packet;
+    int channel_mask;
 
     struct flac_STREAMINFO streaminfo;
 
