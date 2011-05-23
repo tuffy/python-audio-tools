@@ -2339,6 +2339,48 @@ class OggFlacAudio(AudioFile):
         finally:
             f.close()
 
+    @classmethod
+    def add_replay_gain(cls, filenames, progress=None):
+        """Adds ReplayGain values to a list of filename strings.
+
+        All the filenames must be of this AudioFile type.
+        Raises ValueError if some problem occurs during ReplayGain application.
+        """
+
+        tracks = [track for track in open_files(filenames) if
+                  isinstance(track, cls)]
+
+        if (len(tracks) > 0):
+            for (track,
+                 track_gain,
+                 track_peak,
+                 album_gain,
+                 album_peak) in calculate_replay_gain(tracks, progress):
+                metadata = track.get_metadata()
+                if (hasattr(metadata, "vorbis_comment")):
+                    comment = metadata.vorbis_comment
+                    comment["REPLAYGAIN_TRACK_GAIN"] = [
+                        "%1.2f dB" % (track_gain)]
+                    comment["REPLAYGAIN_TRACK_PEAK"] = [
+                        "%1.8f" % (track_peak)]
+                    comment["REPLAYGAIN_ALBUM_GAIN"] = [
+                        "%1.2f dB" % (album_gain)]
+                    comment["REPLAYGAIN_ALBUM_PEAK"] = ["%1.8f" % (album_peak)]
+                    comment["REPLAYGAIN_REFERENCE_LOUDNESS"] = [u"89.0 dB"]
+                    track.set_metadata(metadata)
+
+    @classmethod
+    def can_add_replay_gain(cls):
+        """Returns True."""
+
+        return True
+
+    @classmethod
+    def lossless_replay_gain(cls):
+        """Returns True."""
+
+        return True
+
     def replay_gain(self):
         """Returns a ReplayGain object of our ReplayGain values.
 

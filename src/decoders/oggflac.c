@@ -36,8 +36,6 @@ OggFlacDecoder_dealloc(decoders_OggFlacDecoder *self) {
     self->packet->close(self->packet);
     if (self->ogg_stream != NULL)
         oggreader_close(self->ogg_stream);
-    if (self->ogg_file != NULL)
-        fclose(self->ogg_file);
 
     self->ob_type->tp_free((PyObject*)self);
 }
