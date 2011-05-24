@@ -27,7 +27,29 @@ struct huffman_frequency {
     int value;
 };
 
-enum {HUFFMAN_MISSING_LEAF = -1};
+enum {
+    /*triggered by an incomplete Huffman table, such as:
+      [[1], 0,
+       [0, 1], 1]]
+      where the value for [0, 0] isn't specified*/
+    HUFFMAN_MISSING_LEAF = -1,
+
+    /*triggered by an overfilled Huffman table, such as:
+      [[1], 0,
+       [0, 1], 1,
+       [0, 0], 2,
+       [0, 0], 3]
+      where the value for [0, 0] is specified multiple times*/
+    HUFFMAN_DUPLICATE_LEAF = -2,
+
+    /*triggered by a Huffman table where leaves are unreachable, such as:
+      [[1], 0,
+       [0], 1,
+       [0, 0], 2,
+       [0, 1], 3]
+      where the values [0, 0] and [0, 1] are unreachable since [0] is a leaf*/
+    HUFFMAN_ORPHANED_LEAF = -3
+};
 
 /*given a set of huffman_frequency values
   (followed by a 0 length terminator frequency)
@@ -39,7 +61,7 @@ enum {HUFFMAN_MISSING_LEAF = -1};
 
   returns the number of rows in the table,
   or a negative value if there's an error
-  whose value is taken from the preceding enum
+  (whose value is taken from the preceding enum)
 */
 int compile_huffman_table(struct bs_huffman_table (**table)[][0x200],
                           struct huffman_frequency* frequencies,
@@ -51,7 +73,14 @@ int compile_huffman_table(struct bs_huffman_table (**table)[][0x200],
 
   Using this module as a standalone binary,
   one can compile JSON source into jump tables suitable
-  for importing into C code.  Such as with:
+  for importing into C code.  For example, given the JSON file:
+
+  [[1], 0,
+   [0, 1], 1,
+   [0, 0, 1], 2,
+   [0, 0, 0], 3]
+
+  We compile it to a jump table with:
 
   % huffman -i table.json > table.h
 

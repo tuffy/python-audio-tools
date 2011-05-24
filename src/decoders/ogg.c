@@ -164,7 +164,7 @@ ogg_strerror(ogg_status err) {
     case OGG_PREMATURE_EOF:
         return "premature EOF reading Ogg stream";
     }
-    return ""; /*shouldn't get here*/
+    return "unknown error"; /*shouldn't get here*/
 }
 
 #ifndef STANDALONE

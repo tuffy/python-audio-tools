@@ -70,7 +70,7 @@ compile_huffman_tree(struct bs_huffman_table (**table)[][0x200],
                      struct huffman_node* tree,
                      bs_endianness endianness);
 
-/*returns the total number of rows generated*/
+/*populates the jump tables of the Huffman tree's nodes*/
 static void
 populate_huffman_tree(struct huffman_node* tree,
                       bs_endianness endianness);
@@ -78,6 +78,10 @@ populate_huffman_tree(struct huffman_node* tree,
 /*returns the total number of non-leaf nodes in the tree*/
 static int
 total_non_leaf_nodes(struct huffman_node* tree);
+
+/*returns the total number of leaf nodes in the tree*/
+static int
+total_leaf_nodes(struct huffman_node* tree);
 
 /*transfers the jump tables embedded in the Huffman tree nodes
   to a flattened, 2 dimensional array*/
@@ -115,8 +119,24 @@ static struct huffman_node*
 build_huffman_tree(struct huffman_frequency* frequencies, int* error)
 {
     unsigned int counter = 0;
+    int i;
+    int frequency_count = 0;
+    struct huffman_node* built_tree;
 
-    return build_huffman_tree_(0, 0, frequencies, &counter, error);
+    built_tree = build_huffman_tree_(0, 0, frequencies, &counter, error);
+    if (built_tree != NULL) {
+        for (i = 0; frequencies[i].length != 0; i++)
+            frequency_count++;
+        if (frequency_count > total_leaf_nodes(built_tree)) {
+            *error = HUFFMAN_ORPHANED_LEAF;
+            free_huffman_tree(built_tree);
+            return NULL;
+        } else {
+            return built_tree;
+        }
+    } else {
+        return NULL;
+    }
 }
 
 static struct huffman_node*
@@ -127,15 +147,27 @@ build_huffman_tree_(unsigned int bits,
                     int* error)
 {
     int i;
+    int j;
     struct huffman_node* node = malloc(sizeof(struct huffman_node));
     unsigned int max_frequency_length = 0;
 
     /*go through the list of frequency values*/
     for (i = 0; frequencies[i].length != 0; i++) {
         /*if our bits and length value is found,
-          generate a new leaf node from that frequency*/
+          generate a new leaf node from that frequency
+          so long as it is unique in the list*/
         if ((frequencies[i].bits == bits) &&
             (frequencies[i].length == length)) {
+            /*check for duplicates*/
+            for (j = i + 1; frequencies[j].length != 0; j++) {
+                if ((frequencies[j].bits == bits) &&
+                    (frequencies[j].length == length)) {
+                    *error = HUFFMAN_DUPLICATE_LEAF;
+                    free(node);
+                    return NULL;
+                }
+            }
+
             node->type = NODE_LEAF;
             node->v.leaf = frequencies[i].value;
             return node;
@@ -319,6 +351,15 @@ total_non_leaf_nodes(struct huffman_node* tree) {
         return 0;
 }
 
+static int
+total_leaf_nodes(struct huffman_node* tree) {
+    if (tree->type == NODE_TREE) {
+        return (total_leaf_nodes(tree->v.tree.bit_0) +
+                total_leaf_nodes(tree->v.tree.bit_1));
+    } else
+        return 1;
+}
+
 static void
 transfer_huffman_tree(struct bs_huffman_table (*table)[][0x200],
                       struct huffman_node* tree) {
@@ -419,6 +460,14 @@ int main(int argc, char* argv[]) {
         switch (total_rows) {
         case HUFFMAN_MISSING_LEAF:
             fprintf(stderr, "Huffman table missing leaf node\n");
+            free(frequencies);
+            return 1;
+        case HUFFMAN_DUPLICATE_LEAF:
+            fprintf(stderr, "Huffman table has duplicate leaf node\n");
+            free(frequencies);
+            return 1;
+        case HUFFMAN_ORPHANED_LEAF:
+            fprintf(stderr, "Huffman table has orphaned leaf nodes\n");
             free(frequencies);
             return 1;
         default:

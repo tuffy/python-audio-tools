@@ -56,11 +56,20 @@ ogg_status
 oggreader_read_page_header(Bitstream *ogg_stream,
                            struct ogg_page_header *header);
 
+/*appends the next segment in the stream to "packet"
+  and places the segment's size in "segment_size"*/
 ogg_status
 oggreader_next_segment(OggReader *reader,
                        Bitstream *packet,
                        uint8_t *segment_size);
 
+/*places the next packet in Ogg stream in "packet",
+  where "packet" is cleared out beforehand
+
+  handles read errors automatically,
+  so the bitstream need not be wrapped in a check for them
+
+  an error in the stream may result in a partially filled packet*/
 ogg_status
 oggreader_next_packet(OggReader *reader, Bitstream *packet);
 
