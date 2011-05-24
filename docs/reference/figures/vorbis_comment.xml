@@ -3,7 +3,7 @@
     <col end="7" start="0" width=".15">Type (0x03)</col>
     <col end="55" start="8" width=".47">Header `vorbis' (0x766F72626973)</col>
     <col id="data" start="56" width=".20">Comment Data</col>
-    <col end="7" start="0" width=".18">Framing (0x1)</col>
+    <col end="0" start="0" width=".18">Framing (1)</col>
   </row>
   <row><blank/></row>
   <row>

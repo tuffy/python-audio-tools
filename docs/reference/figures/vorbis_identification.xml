@@ -17,8 +17,8 @@
     <col start="192" end="223" width=".5">Minimum Bitrate</col>
   </row>
   <row>
-    <col start="224" end="227" width=".25">Blocksize₁</col>
-    <col start="228" end="231" width=".25">Blocksize₂</col>
-    <col start="232" end="239" width=".5">Framing flag (0x01)</col>
+    <col start="224" end="227" width=".25">Blocksize₀</col>
+    <col start="228" end="231" width=".25">Blocksize₁</col>
+    <col start="232" end="232" width=".5">Framing flag (1)</col>
   </row>
 </diagram>

@@ -70,7 +70,15 @@ that are less than 255 bytes long.
 Which segment belongs to which Ogg page is not important
 for building packets.
 
-\section{the Identification Packet}
+\section{Vorbis Headers}
+
+The first three packets in a valid Ogg Vorbis file must be
+\VAR{Identification}, \VAR{Comment} and \VAR{Setup}, in that order.
+Each header packet is prefixed by a 7 byte common header.
+
+\clearpage
+
+\subsection{the Identification Packet}
 The first packet within a Vorbis stream is the Identification packet.
 This contains the sample rate and number of channels.
 Vorbis does not have a bits-per-sample field, as samples
@@ -81,10 +89,23 @@ in the stream's final Ogg page.
 \begin{figure}[h]
 \includegraphics{figures/vorbis_identification.pdf}
 \end{figure}
+\par
+\noindent
+\VAR{Channels} and \VAR{Sample Rate} must be greater than 0.
+The two, 4-bit \VAR{Blocksize} fields are stored as a power of 2.
+For example:
+\begin{align*}
+\text{Blocksize}_0 &= 2 ^ {\text{Field}_0} \\
+\text{Blocksize}_1 &= 2 ^ {\text{Field}_1}
+\end{align*}
+where $\text{Blocksize}_i$ must be 64, 128, 256, 512, 1024, 2048, 4096 or 8192
+and
+\linebreak
+$\text{Blocksize}_0 \leq \text{Blocksize}_1$
 
 \clearpage
 
-\section{the Comment Packet}
+\subsection{the Comment Packet}
 \label{vorbiscomment}
 The second packet within a Vorbis stream is the Comment packet.
 
