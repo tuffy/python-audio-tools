@@ -22,9 +22,14 @@
 *******************************************************/
 
 struct huffman_frequency {
-    unsigned int bits;
-    unsigned int length;
-    int value;
+    unsigned int bits;   /*the bits to be consumed
+                           from most-significant to least-significant
+                           in the tree*/
+
+    unsigned int length; /*the total length of bits leading to the leaf node
+                           0 length indicates a terminator frequency*/
+
+    int value;           /*the final value in the leaf node*/
 };
 
 enum {

@@ -1,6 +1,7 @@
 #include <Python.h>
 #include <stdint.h>
 #include "ogg.h"
+#include "../huffman.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -32,6 +33,15 @@ struct vorbis_identification_header {
     uint16_t blocksize_1;
 };
 
+struct vorbis_codeword {
+    int is_leaf;
+    int value;
+    unsigned int bits;
+    unsigned int length;
+    struct vorbis_codeword* bit_0;
+    struct vorbis_codeword* bit_1;
+};
+
 typedef struct {
     PyObject_HEAD
 
@@ -41,6 +51,21 @@ typedef struct {
 
     struct vorbis_identification_header identification;
 } decoders_VorbisDecoder;
+
+typedef enum {VORBIS_OK,
+              VORBIS_PREMATURE_EOF,
+              VORBIS_ID_HEADER_NOT_1ST,
+              VORBIS_SETUP_NOT_3RD,
+              VORBIS_UNSUPPORTED_VERSION,
+              VORBIS_INVALID_CHANNEL_COUNT,
+              VORBIS_INVALID_SAMPLE_RATE,
+              VORBIS_INVALID_BLOCK_SIZE_0,
+              VORBIS_INVALID_BLOCK_SIZE_1,
+              VORBIS_INVALID_FRAMING_BIT,
+              VORBIS_INVALID_CODEBOOK_SYNC,
+              VORBIS_UNSUPPORTED_CODEBOOK_LOOKUP_TYPE,
+              VORBIS_NOT_IMPLEMENTED /*FIXME - take this out at some point*/
+} vorbis_status;
 
 static PyObject*
 VorbisDecoder_sample_rate(decoders_VorbisDecoder *self, void *closure);
@@ -129,6 +154,18 @@ PyTypeObject decoders_VorbisDecoderType = {
     VorbisDecoder_new,         /* tp_new */
 };
 
+char*
+vorbis_strerror(vorbis_status error);
+
+PyObject*
+vorbis_exception(vorbis_status error);
+
+static float
+float32_unpack(Bitstream *bs);
+
+static int
+lookup1_values(int codebook_entries, int codebook_dimensions);
+
 /*returns a non-negative packet type upon success
   or a negative value if the header fields aren't "vorbis"
   doesn't perform any EOF checking of its own*/
@@ -136,10 +173,47 @@ int
 vorbis_read_common_header(Bitstream *packet);
 
 /*reads packet data (including the common header) into "identification"
-  performs EOF checking in case the packet is too small
-  returns 1 upon success
-  returns 0 upon failure and sets the appropriate Python exception*/
-int
+  performs EOF checking in case the packet is too small*/
+vorbis_status
 vorbis_read_identification_packet(
                         Bitstream *packet,
                         struct vorbis_identification_header *identification);
+
+/*reads setup information (including the common header)
+  performs EOF checking in case the packet is too small*/
+/*FIXME - place the setup info somewhere*/
+vorbis_status
+vorbis_read_setup_packet(Bitstream *packet);
+
+/*reads codebook information*/
+/*FIXME - place the codebook info somewhere*/
+vorbis_status
+vorbis_read_codebooks(Bitstream *packet);
+
+
+static struct vorbis_codeword*
+codeword_new_leaf(int value, unsigned int length, unsigned int bits);
+
+static struct vorbis_codeword*
+codeword_new_tree(void);
+
+static struct vorbis_codeword*
+codeword_add_length(struct vorbis_codeword* tree,
+                    unsigned int current_depth,
+                    unsigned int length,
+                    unsigned int bits,
+                    int value);
+
+static void
+codeword_free_tree(struct vorbis_codeword* tree);
+
+static unsigned int
+codeword_total_leaf_nodes(struct vorbis_codeword* tree);
+
+static struct huffman_frequency*
+codeword_tree_to_frequencies(struct vorbis_codeword* tree);
+
+static void
+codeword_tree_to_frequencies_(struct vorbis_codeword* tree,
+                              struct huffman_frequency* frequencies,
+                              int* index);
