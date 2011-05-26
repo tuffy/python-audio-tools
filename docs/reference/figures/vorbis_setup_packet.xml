@@ -1,0 +1,26 @@
+<?xml version="1.0" ?>
+<diagram>
+  <row>
+    <col start="0" end="7" width=".15">Type (0x05)</col>
+    <col start="8" end="55" width=".85">Header `vorbis' (0x766F72626973)</col>
+  </row>
+  <row>
+    <col>Codebooks</col>
+  </row>
+  <row>
+    <col>Time Domain Transforms</col>
+  </row>
+  <row>
+    <col>Floors</col>
+  </row>
+  <row>
+    <col>Residues</col>
+  </row>
+  <row>
+    <col>Mappings</col>
+  </row>
+  <row>
+    <col width=".75">Modes</col>
+    <col width=".25" start="0" end="0">Framing (1)</col>
+  </row>
+</diagram>

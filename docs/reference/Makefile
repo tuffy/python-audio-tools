@@ -38,6 +38,9 @@ figures/mp3_id3v24_header.pdf figures/mp3_id3v24_frame.pdf \
 figures/mp3_id3v24_textframe.pdf figures/mp3_id3v24_apic.pdf \
 figures/ogg_stream.pdf figures/ogg_packets.pdf \
 figures/vorbis_identification.pdf figures/vorbis_comment.pdf \
+figures/vorbis_setup_packet.pdf figures/vorbis_ordered_entries.pdf \
+figures/vorbis_huffman_example1.pdf figures/vorbis_huffman_example2.pdf \
+figures/vorbis_huffman_example3.pdf figures/vorbis_huffman_example4.pdf \
 figures/wavpack_stream.pdf figures/wavpack_block_header.pdf \
 figures/wavpack_subblock_header.pdf \
 figures/wavpack_decorr_terms.pdf figures/wavpack_decorr_weights.pdf \
@@ -223,6 +226,9 @@ figures/bitstream_littleendian.pdf: figures/bitstream_littleendian.fig
 
 figures/bitstream_littleendian_alt.pdf: figures/bitstream_littleendian_alt.fig
 	fig2dev -Z 6 -L pdf $< $@
+
+figures/vorbis_ordered_entries.pdf: figures/vorbis_ordered_entries.dot
+	dot -Tpdf $< -o $@
 
 .SUFFIXES: .pdf .xml .dot
 

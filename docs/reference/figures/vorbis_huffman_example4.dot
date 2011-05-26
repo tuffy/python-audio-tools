@@ -1,0 +1,38 @@
+digraph codebook1 {
+  node [fontname="DejaVuSans"];
+  edge [fontname="DejaVuSans"];
+  margin = "0";
+  size = "3,4";
+  rankdir = "LR";
+
+  start [shape=circle,label="start"];
+  n0 [shape=circle,label=""];
+  n00 [shape=box,label="Entry₀"];
+  n01 [shape=circle,label=""];
+  n010 [shape=circle,label=""];
+  n011 [shape=circle,label=""];
+  n0100 [shape=box,label="Entry₁"];
+  n0101 [shape=box,label="Entry₂"];
+  n0110 [shape=box,label="Entry₃"];
+  n0111 [shape=box,label="Entry₄"];
+  n10 [shape=box,label="Entry₅"];
+  n110 [shape=box,label="Entry₆"];
+  n111 [shape=box,label="Entry₇"];
+  n1 [shape=circle,label=""];
+  n11 [shape=circle,label=""];
+
+  start -> n0 [label="0"];
+  start -> n1 [label="1"];
+  n0 -> n00 [label="0"];
+  n0 -> n01 [label="1"];
+  n01 -> n010 [label="0"];
+  n01 -> n011 [label="1"];
+  n010 -> n0100 [label="0"];
+  n010 -> n0101 [label="1"];
+  n011 -> n0110 [label="0"];
+  n011 -> n0111 [label="1"];
+  n1 -> n10 [label="0"];
+  n1 -> n11 [label="1"];
+  n11 -> n110 [label="0"];
+  n11 -> n111 [label="1"];
+}

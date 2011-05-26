@@ -1,0 +1,87 @@
+<?xml version="1.0" ?>
+<diagram>
+  <row>
+    <col start="0" end="7" width=".30">Total Codebooks (+1)</col>
+    <col width=".25" id="codebook">Codebook₀</col>
+    <col width=".25">Codebook₁</col>
+    <col width=".20" style="dashed">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col start="0" end="23" width=".25" id="sync">Sync (0x564342)</col>
+    <col start="24" end="39" width=".25">Dimensions</col>
+    <col start="40" end="63" width=".30">Total Entries</col>
+    <col start="64" end="64" width=".20" id="ordered">Ordered</col>
+  </row>
+  <spacer height=".25"/>
+  <row>
+    <col style="blank" width=".20">Ordered = 0</col>
+    <col width=".20" start="65" end="65">Sparse</col>
+  </row>
+  <spacer height=".25"/>
+  <row>
+    <col style="blank" width=".025"/>
+    <col style="blank" width=".20">Sparse = 0</col>
+    <col width="0.337" start="0" end="4">Entry₀ (+1)</col>
+    <col width="0.337" start="0" end="4">Entry₁ (+1)</col>
+    <col width="0.1" style="dashed">...</col>
+  </row>
+  <spacer height=".25"/>
+  <row>
+    <col style="blank" width=".025"/>
+    <col style="blank" width=".20">Sparse = 1</col>
+    <col width=".125" start="0" end="0">Present₀</col>
+    <col width=".212" start="1" end="5" style="dashed">Entry₀ (+1)</col>
+    <col width=".125" start="0" end="0">Present₁</col>
+    <col width=".212" start="1" end="5" style="dashed">Entry₁ (+1)</col>
+    <col width="0.1" style="dashed">...</col>
+  </row>
+  <spacer height=".25"/>
+  <row>
+    <col style="blank" width=".20">Ordered = 1</col>
+    <col width=".80">Ordered Entries</col>
+  </row>
+  <spacer height=".25"/>
+  <row>
+    <col width=".25" start="0" end="3" id="lookup_type">Lookup Type</col>
+    <col width=".75" style="dashed" id="lookup_table">Lookup Table</col>
+  </row>
+  <spacer height=".5"/>
+  <row>
+    <col width=".275" style="blank">Lookup Type = 1 or 2</col>
+    <col width=".185" start="0" end="31" id="minimum_value">Minimum Value</col>
+    <col width=".175" start="32" end="63">Delta Value</col>
+    <col width=".20" start="64" end="67">Value Size (+1)</col>
+    <col width=".165" start="68" end="68" id="sequence_p">Sequence P</col>
+  </row>
+  <row>
+    <col width=".275" style="blank"/>
+    <col width=".242" start="0" end="Value Size - 1">Lookup Value₀</col>
+    <col width=".242" start="0" end="Value Size - 1">Lookup Value₁</col>
+    <col width=".242" start="0" end="Value Size - 1" style="dashed">...</col>
+  </row>
+  <line style="dotted">
+    <start corner="sw" id="codebook"/>
+    <end corner="nw" id="sync"/>
+  </line>
+  <line style="dotted">
+    <start corner="se" id="codebook"/>
+    <end corner="ne" id="ordered"/>
+  </line>
+  <line style="dotted">
+    <start corner="sw" id="sync"/>
+    <end corner="nw" id="lookup_type"/>
+  </line>
+  <line style="dotted">
+    <start corner="se" id="ordered"/>
+    <end corner="ne" id="lookup_table"/>
+  </line>
+  <line style="dotted">
+    <start corner="sw" id="lookup_table"/>
+    <end corner="nw" id="minimum_value"/>
+  </line>
+  <line style="dotted">
+    <start corner="se" id="lookup_table"/>
+    <end corner="ne" id="sequence_p"/>
+  </line>
+</diagram>

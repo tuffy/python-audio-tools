@@ -113,7 +113,6 @@ The second packet within a Vorbis stream is the Comment packet.
 \includegraphics{figures/vorbis_comment.pdf}
 \end{figure}
 
-The length fields are all little-endian.
 The \VAR{Vendor String} and \VAR{Comment Strings} are all UTF-8 encoded.
 Keys are not case-sensitive and may occur multiple times,
 indicating multiple values for the same field.
@@ -162,6 +161,82 @@ more than one \texttt{ARTIST}.
 \par
 \noindent
 Fields marked with * are proposed extension fields and not part of the official Vorbis comment specification.
+
+\subsection{the Setup Packet}
+
+The third packet in the Vorbis stream is the Setup packet.
+
+\begin{figure}[h]
+\includegraphics{figures/vorbis_setup_packet.pdf}
+\end{figure}
+
+It contains six sections of data required for decoding.
+
+\subsubsection{Codebooks}
+
+\begin{figure}[h]
+\includegraphics{figures/vorbis_codebooks.pdf}
+\end{figure}
+\par
+\noindent
+Where \VAR{Ordered Entries} can be parsed in the following way:
+
+\clearpage
+
+
+\begin{figure}[h]
+\includegraphics{figures/vorbis_ordered_entries.pdf}
+\caption{parsing ordered codebook entries}
+\end{figure}
+
+Once a set of entry length values is parsed from the stream,
+transforming them into a Huffman decision tree
+is performed by taking our entries from
+$\text{Entry}_0$ to $\text{Entry}_{total - 1}$
+and placing them in the Huffman tree recursively such that the 0 bit
+branches are populated first.
+For example, given the parsed entry length values:
+\begin{align*}
+\text{Entry}_0 &= 2 & \text{Entry}_1 &= 4 & \text{Entry}_2 &= 4 & \text{Entry}_3 &= 4 \\
+\text{Entry}_4 &= 4 & \text{Entry}_5 &= 2 & \text{Entry}_6 &= 3 & \text{Entry}_7 &= 3
+\end{align*}
+\par
+\noindent
+We first place $\text{Entry}_0$ into the Huffman tree as a 2 bit value.
+Since the zero bits are filled first when adding a node 2 bits deep,
+it initially looks like:
+
+\begin{figure}[h]
+\includegraphics{figures/vorbis_huffman_example1.pdf}
+\caption{$\text{Entry}_0$ placed with 2 bits}
+\end{figure}
+
+\clearpage
+
+We then place $\text{Entry}_1$ into the Huffman tree as a 4 bit value.
+Since the \texttt{0 0} branch is already populated by $\text{Entry}_0$,
+we switch to the \texttt{0 1} branch as follows:
+\begin{figure}[h]
+\includegraphics{figures/vorbis_huffman_example2.pdf}
+\caption{$\text{Entry}_1$ placed with 4 bits}
+\end{figure}
+\par
+\noindent
+The 4 bit $\text{Entry}_2$, $\text{Entry}_3$ and $\text{Entry}_4$
+values are placed similarly along the \texttt{0 1} branch:
+\begin{figure}[h]
+\includegraphics{figures/vorbis_huffman_example3.pdf}
+\caption{$\text{Entry}_2$, $\text{Entry}_3$ and $\text{Entry}_4$ placed with 4 bits}
+\end{figure}
+\par
+\noindent
+Finally, the remaining three entries are populated along the \texttt{1} branch:
+\begin{figure}[h]
+\includegraphics{figures/vorbis_huffman_example4.pdf}
+\caption{$\text{Entry}_5$, $\text{Entry}_6$ and $\text{Entry}_7$ are placed}
+\end{figure}
+
+\clearpage
 
 \section{Channel Assignment}
 \begin{table}[h]
