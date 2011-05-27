@@ -172,28 +172,85 @@ The third packet in the Vorbis stream is the Setup packet.
 
 It contains six sections of data required for decoding.
 
+\clearpage
+
 \subsubsection{Codebooks}
+
+The \VAR{Codebooks} section of the setup packet stores
+the Huffman lookup trees.
 
 \begin{figure}[h]
 \includegraphics{figures/vorbis_codebooks.pdf}
 \end{figure}
 \par
 \noindent
-Where \VAR{Ordered Entries} can be parsed in the following way:
+This section contains two optional sets of data,
+a list of Huffman table entry lengths
+and the lookup table values each entry length may resolve to.
+\VAR{Total Entries} indicates the total number of entry lengths present.
+These lengths may be stored in one of three ways:
+unordered without sparse entries, unordered with sparse entries
+and ordered.
+
+Unordered without sparse entries is the simplest method;
+each entry length is stored as a 5 bit value, plus one.
+Unordered with sparse entries is almost as simple;
+each 5 bit length is prefixed by a single bit indicating
+whether it is present or not.
+
+Ordered entries are more complicated.
+The initial length is stored as a 5 bit value, plus one.
+The number of entries with that length are stored as a series of
+\VAR{Length Count} values.
+\begin{align*}
+\text{Length Count}_i &= \lfloor\log_2 (\text{Remaining Entries}_i)\rfloor + 1
+\intertext{For example, given a \VAR{Total Entries} value of 8 and an
+\VAR{Initial Length} value of 2:}
+\text{Length Count}_0 &= \lfloor\log_2 8\rfloor + 1 = 4 \text{ bits}
+\end{align*}
+which means we read a 4 bit value to determine how many
+\VAR{Entry Length} values are 2 bits long.
+Therefore, if $\text{Length Count}_0$ is read from the bitstream as 2,
+our \VAR{Entry Length} values are:
+\begin{align*}
+\text{Entry Length}_0 &= 2 \\
+\text{Entry Length}_1 &= 2
+\end{align*}
+and the next set of lengths are 3 bits long.
+Since we still have remaining entries, we read another \VAR{Length Count}
+value of the length:
+\begin{equation*}
+\text{Length Count}_1 = \lfloor\log_2 6\rfloor + 1 = 3 \text{ bits}
+\end{equation*}
+Thus, if $\text{Length Count}_1$ is also a value of 2 from the bitstream,
+our \VAR{Entry Length} values are:
+\begin{align*}
+\text{Entry Length}_2 &= 3 \\
+\text{Entry Length}_3 &= 3
+\end{align*}
+and the next set of lengths are 4 bits long.
+We then read one more \VAR{Length Count} value:
+\begin{equation*}
+\text{Length Count}_2 = \lfloor\log_2 4\rfloor + 1 = 3 \text{ bits}
+\end{equation*}
+Finally, if $\text{Length Count}_2$ is 4 from the bitstream,
+our \VAR{Entry Length} values are:
+\begin{align*}
+\text{Entry Length}_4 &= 4 \\
+\text{Entry Length}_5 &= 4 \\
+\text{Entry Length}_6 &= 4 \\
+\text{Entry Length}_7 &= 4
+\end{align*}
+At this point, we've assigned lengths to all the values
+indicated by \VAR{Total Entries}, so the process is complete.
 
 \clearpage
-
-
-\begin{figure}[h]
-\includegraphics{figures/vorbis_ordered_entries.pdf}
-\caption{parsing ordered codebook entries}
-\end{figure}
 
 Once a set of entry length values is parsed from the stream,
 transforming them into a Huffman decision tree
 is performed by taking our entries from
 $\text{Entry}_0$ to $\text{Entry}_{total - 1}$
-and placing them in the Huffman tree recursively such that the 0 bit
+and placing them in the tree recursively such that the 0 bit
 branches are populated first.
 For example, given the parsed entry length values:
 \begin{align*}
@@ -210,8 +267,6 @@ it initially looks like:
 \includegraphics{figures/vorbis_huffman_example1.pdf}
 \caption{$\text{Entry}_0$ placed with 2 bits}
 \end{figure}
-
-\clearpage
 
 We then place $\text{Entry}_1$ into the Huffman tree as a 4 bit value.
 Since the \texttt{0 0} branch is already populated by $\text{Entry}_0$,

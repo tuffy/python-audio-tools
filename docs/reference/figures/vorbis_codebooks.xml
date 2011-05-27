@@ -9,56 +9,78 @@
   <spacer/>
   <row>
     <col start="0" end="23" width=".25" id="sync">Sync (0x564342)</col>
-    <col start="24" end="39" width=".25">Dimensions</col>
-    <col start="40" end="63" width=".30">Total Entries</col>
-    <col start="64" end="64" width=".20" id="ordered">Ordered</col>
+    <col start="24" end="39" width=".375">Dimensions</col>
+    <col start="40" end="63" width=".375" id="total_entries">Total Entries</col>
+  </row>
+  <row>
+    <col start="64" end="64" width=".15">Is Ordered</col>
+    <col width=".30" id="entry_lengths"
+         background-color="#0000FF33">Entry Lengths</col>
+    <col start="0" end="3" width=".2">Lookup Type</col>
+    <col width=".35" style="dashed"
+         background-color="#FF00FF33">Lookup Table</col>
+  </row>
+  <spacer/>
+  <row>
+    <col width=".20" style="blank">Is Ordered = 0</col>
+    <col width=".15" start="0" end="0" id="is_sparse"
+         border-color="blue">Is Sparse</col>
+    <col width=".65" id="entry_list" border-color="blue"
+         background-color="#7F7F0033">Entry Length List</col>
   </row>
   <spacer height=".25"/>
   <row>
-    <col style="blank" width=".20">Ordered = 0</col>
-    <col width=".20" start="65" end="65">Sparse</col>
+    <col width=".20" style="blank">Is Ordered = 1</col>
+    <col width=".25" start="0" end="4"
+         border-color="blue" id="initial_length">Initial Length (+1)</col>
+    <col width=".225" border-color="blue">Length Count₀</col>
+    <col width=".225" border-color="blue">Length Count₁</col>
+    <col width=".1" style="dashed" border-color="blue">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col width=".20" style="blank">Is Sparse = 0</col>
+    <col width="0.35" start="0" end="4" id="entry_0"
+         border-color="olive">Entry Length₀ (+1)</col>
+    <col width="0.35" start="0" end="4"
+         border-color="olive">Entry Length₁ (+1)</col>
+    <col width="0.1" style="dashed" id="entry_list_end"
+         border-color="olive">...</col>
   </row>
   <spacer height=".25"/>
   <row>
-    <col style="blank" width=".025"/>
-    <col style="blank" width=".20">Sparse = 0</col>
-    <col width="0.337" start="0" end="4">Entry₀ (+1)</col>
-    <col width="0.337" start="0" end="4">Entry₁ (+1)</col>
-    <col width="0.1" style="dashed">...</col>
+    <col width=".20" style="blank">Is Sparse = 1</col>
+    <col width=".125" start="0" end="0"
+         border-color="olive">Present₀</col>
+    <col width=".225" start="1" end="5" style="dashed"
+         border-color="olive">Entry Length₀ (+1)</col>
+    <col width=".125" start="0" end="0"
+         border-color="olive">Present₁</col>
+    <col width=".225" start="1" end="5" style="dashed"
+         border-color="olive">Entry Length₁ (+1)</col>
+    <col width="0.1" style="dashed"
+         border-color="olive">...</col>
   </row>
-  <spacer height=".25"/>
-  <row>
-    <col style="blank" width=".025"/>
-    <col style="blank" width=".20">Sparse = 1</col>
-    <col width=".125" start="0" end="0">Present₀</col>
-    <col width=".212" start="1" end="5" style="dashed">Entry₀ (+1)</col>
-    <col width=".125" start="0" end="0">Present₁</col>
-    <col width=".212" start="1" end="5" style="dashed">Entry₁ (+1)</col>
-    <col width="0.1" style="dashed">...</col>
-  </row>
-  <spacer height=".25"/>
-  <row>
-    <col style="blank" width=".20">Ordered = 1</col>
-    <col width=".80">Ordered Entries</col>
-  </row>
-  <spacer height=".25"/>
-  <row>
-    <col width=".25" start="0" end="3" id="lookup_type">Lookup Type</col>
-    <col width=".75" style="dashed" id="lookup_table">Lookup Table</col>
-  </row>
-  <spacer height=".5"/>
+  <spacer/>
   <row>
     <col width=".275" style="blank">Lookup Type = 1 or 2</col>
-    <col width=".185" start="0" end="31" id="minimum_value">Minimum Value</col>
-    <col width=".175" start="32" end="63">Delta Value</col>
-    <col width=".20" start="64" end="67">Value Size (+1)</col>
-    <col width=".165" start="68" end="68" id="sequence_p">Sequence P</col>
+    <col width=".185" start="0" end="31" id="minimum_value"
+         border-color="fuchsia">Minimum Value</col>
+    <col width=".175" start="32" end="63"
+         border-color="fuchsia">Delta Value</col>
+    <col width=".20" start="64" end="67"
+         border-color="fuchsia">Value Size (+1)</col>
+    <col width=".165" start="68" end="68" id="sequence_p"
+         border-color="fuchsia">Sequence P</col>
   </row>
   <row>
     <col width=".275" style="blank"/>
-    <col width=".242" start="0" end="Value Size - 1">Lookup Value₀</col>
-    <col width=".242" start="0" end="Value Size - 1">Lookup Value₁</col>
-    <col width=".242" start="0" end="Value Size - 1" style="dashed">...</col>
+    <col width=".242" start="0" end="Value Size - 1"
+         border-color="fuchsia">Lookup Value₀</col>
+    <col width=".242" start="0" end="Value Size - 1"
+         border-color="fuchsia">Lookup Value₁</col>
+    <col width=".242" start="0" end="Value Size - 1" style="dashed"
+         border-color="fuchsia">...</col>
   </row>
   <line style="dotted">
     <start corner="sw" id="codebook"/>
@@ -66,22 +88,14 @@
   </line>
   <line style="dotted">
     <start corner="se" id="codebook"/>
-    <end corner="ne" id="ordered"/>
+    <end corner="ne" id="total_entries"/>
   </line>
-  <line style="dotted">
-    <start corner="sw" id="sync"/>
-    <end corner="nw" id="lookup_type"/>
+  <line style="dotted" color="blue">
+    <start corner="sw" id="entry_lengths"/>
+    <end corner="nw" id="is_sparse"/>
   </line>
-  <line style="dotted">
-    <start corner="se" id="ordered"/>
-    <end corner="ne" id="lookup_table"/>
-  </line>
-  <line style="dotted">
-    <start corner="sw" id="lookup_table"/>
-    <end corner="nw" id="minimum_value"/>
-  </line>
-  <line style="dotted">
-    <start corner="se" id="lookup_table"/>
-    <end corner="ne" id="sequence_p"/>
+  <line style="dotted" color="blue">
+    <start corner="se" id="entry_lengths"/>
+    <end corner="ne" id="entry_list"/>
   </line>
 </diagram>
