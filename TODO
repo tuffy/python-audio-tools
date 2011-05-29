@@ -3465,8 +3465,34 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   This needs to be assimilated with a native decoder/encoder.
   I've seen these out in the wild, but only rarely.
 * TODO Assimilate Vorbis support
-  This would remove three external binaries
-  and be a good excuse to build float-based PCM routines.
+** TODO Add Vorbis decoder
+*** TODO Add VorbisDecoder Python object to decoders
+*** TODO Document Vorbis decoding
+**** DONE identification header packet
+**** DONE comment header packet
+**** TODO setup header packet
+***** TODO codebooks
+***** TODO time domain transforms
+***** TODO floors
+***** TODO residues
+***** TODO mappings
+***** TODO modes
+**** TODO data decoding
+*** TODO Add VorbisDecoder to VorbisAudio's to_pcm() method
+**** DONE handle identification header packet
+**** DONE skip comment header packet
+**** TODO handle setup header packet
+***** TODO codebooks
+***** TODO time domain transforms
+***** TODO floors
+***** TODO residues
+***** TODO mappings
+***** TODO modes
+**** TODO perform data decoding
+**** TODO return FloatFrameList via read_float() method
+**** TODO return FrameList via read() method
+*** TODO Add unit tests for VorbisDecoder
+** TODO Add Vorbis encoder
 * TODO Restore Musepack support
   This was removed because compiling it was a pain
   and I'd never seen Musepack files in the wild.

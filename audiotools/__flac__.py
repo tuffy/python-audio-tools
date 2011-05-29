@@ -530,14 +530,15 @@ class FlacPictureComment(Image):
             (self.color_depth != img.bits_per_pixel) or
             (self.color_count != img.color_count)):
             fixes_performed.append(_(u"fixed embedded image metadata fields"))
-            return FlacPictureComment(type=self.type,
-                                      mime_type=img.mime_type,
-                                      description=self.description,
-                                      width=img.width,
-                                      height=img.height,
-                                      color_depth=img.bits_per_pixel,
-                                      color_count=img.color_count,
-                                      data=self.data)
+            return FlacPictureComment.converted(Image(
+                    type=self.type,
+                    mime_type=img.mime_type,
+                    description=self.description,
+                    width=img.width,
+                    height=img.height,
+                    color_depth=img.bits_per_pixel,
+                    color_count=img.color_count,
+                    data=self.data))
         else:
             return self
 
