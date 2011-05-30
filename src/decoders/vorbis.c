@@ -153,6 +153,8 @@ vorbis_strerror(vorbis_status error) {
         return "invalid codebook sync";
     case VORBIS_UNSUPPORTED_CODEBOOK_LOOKUP_TYPE:
         return "unsupported codebook lookup type";
+    case VORBIS_INVALID_TIME_COUNT_VALUE:
+        return "invalid time count value";
     case VORBIS_NOT_IMPLEMENTED:
         return "not yet implemented";
     }
@@ -175,6 +177,7 @@ vorbis_exception(vorbis_status error) {
     case VORBIS_INVALID_FRAMING_BIT:
     case VORBIS_INVALID_CODEBOOK_SYNC:
     case VORBIS_UNSUPPORTED_CODEBOOK_LOOKUP_TYPE:
+    case VORBIS_INVALID_TIME_COUNT_VALUE:
         return PyExc_ValueError;
     case VORBIS_NOT_IMPLEMENTED:
         return PyExc_NotImplementedError;
@@ -316,8 +319,11 @@ vorbis_read_setup_packet(Bitstream *packet) {
         }
 
         /*read time domain transforms*/
-        /*FIXME*/
-
+        if ((result =
+             vorbis_read_time_domain_transforms(packet)) != VORBIS_OK) {
+            bs_etry(packet);
+            return result;
+        }
         /*read floors*/
         /*FIXME*/
 
@@ -419,143 +425,16 @@ vorbis_read_codebooks(Bitstream *packet) {
     return VORBIS_OK;
 }
 
-/*codeword helper functions for transforming
-  the list of frequencies into a proper Huffman lookup table*/
-static struct vorbis_codeword*
-codeword_new_leaf(int value, unsigned int length, unsigned int bits) {
-    struct vorbis_codeword* leaf = malloc(sizeof(struct vorbis_codeword));
-    leaf->is_leaf = 1;
-    leaf->value = value;
-    leaf->bits = bits;
-    leaf->length = length;
-    return leaf;
-}
+#include "vorbis_codewords.c"
 
-static struct vorbis_codeword*
-codeword_new_tree(void) {
-    struct vorbis_codeword* tree = malloc(sizeof(struct vorbis_codeword));
-    tree->is_leaf = 0;
-    tree->bit_0 = NULL;
-    tree->bit_1 = NULL;
-    return tree;
-}
+vorbis_status
+vorbis_read_time_domain_transforms(Bitstream *packet) {
+    int time_count = packet->read(packet, 6) + 1;
+    int i;
 
-static void
-codeword_free_tree(struct vorbis_codeword* tree) {
-    if (tree == NULL) {
-        return;
-    } else if (tree->is_leaf) {
-        free(tree);
-    } else {
-        codeword_free_tree(tree->bit_0);
-        codeword_free_tree(tree->bit_1);
-        free(tree);
-    }
-}
+    for (i = 0; i < time_count; i++)
+        if (packet->read(packet, 16) != 0)
+            return VORBIS_INVALID_TIME_COUNT_VALUE;
 
-static unsigned int
-codeword_total_leaf_nodes(struct vorbis_codeword* tree) {
-    if (tree == NULL) {
-        return 0;
-    } else if (tree->is_leaf) {
-        return 1;
-    } else {
-        return (codeword_total_leaf_nodes(tree->bit_0) +
-                codeword_total_leaf_nodes(tree->bit_1));
-    }
-}
-
-static struct vorbis_codeword*
-codeword_add_length(struct vorbis_codeword* tree,
-                    unsigned int current_depth,
-                    unsigned int length,
-                    unsigned int bits,
-                    int value) {
-    struct vorbis_codeword* new_leaf;
-
-    if (current_depth == length) {
-        if (tree != NULL)
-            /*node already present, so return failure*/
-            return NULL;
-        else
-            /*node not yet present, so add new node*/
-            return codeword_new_leaf(value, length, bits);
-    } else if (current_depth < length) {
-        if (tree != NULL) {
-            if (tree->is_leaf) {
-                /*can't add leaf nodes to other leaves*/
-                return NULL;
-            } else {
-                /*try bit 0 first*/
-                new_leaf = codeword_add_length(tree->bit_0,
-                                               current_depth + 1,
-                                               length,
-                                               bits << 1,
-                                               value);
-                if (new_leaf != NULL) {
-                    tree->bit_0 = new_leaf;
-                    return tree;
-                }
-
-                /*then try the 1 bit*/
-                new_leaf = codeword_add_length(tree->bit_1,
-                                               current_depth + 1,
-                                               length,
-                                               (bits << 1) | 1,
-                                               value);
-                if (new_leaf != NULL) {
-                    tree->bit_1 = new_leaf;
-                    return tree;
-                }
-
-                /*if neither works, return failure*/
-                return NULL;
-            }
-        } else {
-            /*tree not yet large enough, so add new non-leaf node*/
-            tree = codeword_new_tree();
-            tree->bit_0 = codeword_add_length(tree->bit_0,
-                                              current_depth + 1,
-                                              length,
-                                              bits << 1,
-                                              value);
-            return tree;
-        }
-    } else {
-        /*walked too far within tree, so return failure*/
-        return NULL;
-    }
-}
-
-static struct huffman_frequency*
-codeword_tree_to_frequencies(struct vorbis_codeword* tree) {
-    struct huffman_frequency* frequencies =
-        malloc(sizeof(struct huffman_frequency) *
-               (codeword_total_leaf_nodes(tree) + 1));
-    int index = 0;
-
-    codeword_tree_to_frequencies_(tree, frequencies, &index);
-    frequencies[index].length = 0;
-    return frequencies;
-}
-
-static void
-codeword_tree_to_frequencies_(struct vorbis_codeword* tree,
-                              struct huffman_frequency* frequencies,
-                              int* index) {
-    if (tree == NULL) {
-        return;
-    } else if (tree->is_leaf) {
-        frequencies[*index].value = tree->value;
-        frequencies[*index].bits = tree->bits;
-        frequencies[*index].length = tree->length;
-        *index += 1;
-    } else {
-        codeword_tree_to_frequencies_(tree->bit_0,
-                                      frequencies,
-                                      index);
-        codeword_tree_to_frequencies_(tree->bit_1,
-                                      frequencies,
-                                      index);
-    }
+    return VORBIS_OK;
 }

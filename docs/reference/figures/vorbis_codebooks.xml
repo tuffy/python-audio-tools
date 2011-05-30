@@ -17,7 +17,7 @@
     <col width=".30" id="entry_lengths"
          background-color="#0000FF33">Entry Lengths</col>
     <col start="0" end="3" width=".2">Lookup Type</col>
-    <col width=".35" style="dashed"
+    <col width=".35" style="dashed" id="lookup_table"
          background-color="#FF00FF33">Lookup Table</col>
   </row>
   <spacer/>
@@ -97,5 +97,21 @@
   <line style="dotted" color="blue">
     <start corner="se" id="entry_lengths"/>
     <end corner="ne" id="entry_list"/>
+  </line>
+  <line style="dotted" color="#7F7F0033">
+    <start corner="sw" id="entry_list"/>
+    <end corner="nw" id="entry_0"/>
+  </line>
+  <line style="dotted" color="#7F7F0033">
+    <start corner="se" id="entry_list"/>
+    <end corner="ne" id="entry_list_end"/>
+  </line>
+  <line style="dotted" color="#FF00FF33">
+    <start corner="sw" id="lookup_table"/>
+    <end corner="nw" id="minimum_value"/>
+  </line>
+  <line style="dotted" color="#FF00FF33">
+    <start corner="se" id="lookup_table"/>
+    <end corner="ne" id="sequence_p"/>
   </line>
 </diagram>

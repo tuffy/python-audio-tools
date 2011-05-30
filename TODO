@@ -3477,18 +3477,48 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ***** TODO residues
 ***** TODO mappings
 ***** TODO modes
-**** TODO data decoding
+**** TODO audio packet decoding
+***** TODO decode packet type flag
+***** TODO decode mode number
+***** TODO decode window shape
+***** TODO decode floor
+***** TODO decode residue into residue vectors
+***** TODO inverse channel coupling of reside vectors
+***** TODO generate floor curve from decoded floor data
+***** TODO compute dot product of floor and residue
+      producing audio spectrum vector
+***** TODO inverse monolithic transform of audio spectrum vector
+***** TODO overlap / add left-hand output with right-hand output
+***** TODO store right-hand data from transform of current frame
+      for future lapping
+***** TODO if not first frame, return results of overlap/add as audio
 *** TODO Add VorbisDecoder to VorbisAudio's to_pcm() method
 **** DONE handle identification header packet
 **** DONE skip comment header packet
 **** TODO handle setup header packet
 ***** TODO codebooks
+      store result of codebooks decoding somewhere
 ***** TODO time domain transforms
+      store result of time domain transforms somewhere?
 ***** TODO floors
 ***** TODO residues
 ***** TODO mappings
 ***** TODO modes
 **** TODO perform data decoding
+***** TODO decode packet type flag
+***** TODO decode mode number
+***** TODO decode window shape
+***** TODO decode floor
+***** TODO decode residue into residue vectors
+***** TODO inverse channel coupling of reside vectors
+***** TODO generate floor curve from decoded floor data
+***** TODO compute dot product of floor and residue
+      producing audio spectrum vector
+***** TODO inverse monolithic transform of audio spectrum vector
+***** TODO overlap / add left-hand output with right-hand output
+***** TODO store right-hand data from transform of current frame
+      for future lapping
+***** TODO if not first frame, return results of overlap/add as audio
 **** TODO return FloatFrameList via read_float() method
 **** TODO return FrameList via read() method
 *** TODO Add unit tests for VorbisDecoder

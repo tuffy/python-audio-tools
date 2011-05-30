@@ -64,6 +64,7 @@ typedef enum {VORBIS_OK,
               VORBIS_INVALID_FRAMING_BIT,
               VORBIS_INVALID_CODEBOOK_SYNC,
               VORBIS_UNSUPPORTED_CODEBOOK_LOOKUP_TYPE,
+              VORBIS_INVALID_TIME_COUNT_VALUE,
               VORBIS_NOT_IMPLEMENTED /*FIXME - take this out at some point*/
 } vorbis_status;
 
@@ -190,30 +191,9 @@ vorbis_read_setup_packet(Bitstream *packet);
 vorbis_status
 vorbis_read_codebooks(Bitstream *packet);
 
+#include "vorbis_codewords.h"
 
-static struct vorbis_codeword*
-codeword_new_leaf(int value, unsigned int length, unsigned int bits);
-
-static struct vorbis_codeword*
-codeword_new_tree(void);
-
-static struct vorbis_codeword*
-codeword_add_length(struct vorbis_codeword* tree,
-                    unsigned int current_depth,
-                    unsigned int length,
-                    unsigned int bits,
-                    int value);
-
-static void
-codeword_free_tree(struct vorbis_codeword* tree);
-
-static unsigned int
-codeword_total_leaf_nodes(struct vorbis_codeword* tree);
-
-static struct huffman_frequency*
-codeword_tree_to_frequencies(struct vorbis_codeword* tree);
-
-static void
-codeword_tree_to_frequencies_(struct vorbis_codeword* tree,
-                              struct huffman_frequency* frequencies,
-                              int* index);
+/*read time domain transforms information*/
+/*FIXME - place the results from this somewhere (if necessary)*/
+vorbis_status
+vorbis_read_time_domain_transforms(Bitstream *packet);
