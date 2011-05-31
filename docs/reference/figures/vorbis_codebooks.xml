@@ -76,9 +76,9 @@
   <row>
     <col width=".275" style="blank"/>
     <col width=".242" start="0" end="Value Size - 1"
-         border-color="fuchsia">Lookup Value₀</col>
+         border-color="fuchsia">Multiplicand₀</col>
     <col width=".242" start="0" end="Value Size - 1"
-         border-color="fuchsia">Lookup Value₁</col>
+         border-color="fuchsia">Multiplicand₁</col>
     <col width=".242" start="0" end="Value Size - 1" style="dashed"
          border-color="fuchsia">...</col>
   </row>

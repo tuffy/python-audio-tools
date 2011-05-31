@@ -213,6 +213,18 @@ lookup1_values(int codebook_entries, int codebook_dimensions) {
     return value - 1;
 }
 
+static int
+ilog(int x) {
+    int to_return = 0;
+
+    while (x > 0) {
+        x >>= 1;
+        to_return++;
+    }
+
+    return to_return;
+}
+
 int
 vorbis_read_common_header(Bitstream *packet) {
     uint8_t vorbis[] = {0x76, 0x6F, 0x72, 0x62, 0x69, 0x73};
@@ -355,6 +367,7 @@ vorbis_read_codebooks(Bitstream *packet) {
     uint32_t codebook_dimensions;
     uint32_t codebook_entries;
     uint32_t codebook_entry;
+    uint32_t entry_count;
     int entry_length;
     int codebook_lookup_type;
     int codebook_value_bits;
@@ -370,9 +383,17 @@ vorbis_read_codebooks(Bitstream *packet) {
         /*first, read all the codebook entry lengths*/
         if (packet->read(packet, 1)) {
             /*ordered flag set*/
-            printf("ordered flag set\n");
-            /*FIXME*/
-            return VORBIS_NOT_IMPLEMENTED;
+            codebook_entry = 0;
+            entry_length = packet->read(packet, 5) + 1;
+            do {
+                for (entry_count = packet->read(packet,
+                                                ilog(codebook_entries -
+                                                     codebook_entry));
+                     entry_count > 0;
+                     entry_count--,codebook_entry++) {
+                    /*FIXME - assign entry_length to codebook_entry*/
+                }
+            } while (codebook_entry < codebook_entries);
         } else {
             /*ordered flag not set*/
             if (packet->read(packet, 1)) {
@@ -383,8 +404,10 @@ vorbis_read_codebooks(Bitstream *packet) {
                     if (packet->read(packet, 1)) {
                         /*read entry from stream*/
                         entry_length = packet->read(packet, 5) + 1;
+                        /*FIXME - assign entry_length to codebook_entry*/
                     }
                     /*otherwise, skip entry*/
+                    /*FIXME - mark entry as skipped*/
                 }
             } else {
                 /*parse flag not set*/
@@ -392,7 +415,7 @@ vorbis_read_codebooks(Bitstream *packet) {
                      codebook_entry < codebook_entries;
                      codebook_entry++) {
                     entry_length = packet->read(packet, 5) + 1;
-                    /*FIXME - store this somewhere*/
+                    /*FIXME - assign entry_length to codebook_entry*/
                 }
             }
         }

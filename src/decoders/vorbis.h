@@ -167,6 +167,10 @@ float32_unpack(Bitstream *bs);
 static int
 lookup1_values(int codebook_entries, int codebook_dimensions);
 
+/*this is (log(x) / log(2)) + 1 if x > 0, else 0 */
+static int
+ilog(int x);
+
 /*returns a non-negative packet type upon success
   or a negative value if the header fields aren't "vorbis"
   doesn't perform any EOF checking of its own*/
