@@ -53,11 +53,13 @@ enum {
        [0, 0], 2,
        [0, 1], 3]
       where the values [0, 0] and [0, 1] are unreachable since [0] is a leaf*/
-    HUFFMAN_ORPHANED_LEAF = -3
+    HUFFMAN_ORPHANED_LEAF = -3,
+
+    HUFFMAN_EMPTY_TREE = -4
 };
 
 /*given a set of huffman_frequency values
-  (followed by a 0 length terminator frequency)
+  (followed by a negative length terminator frequency)
   and BS_BIG_ENDIAN or BS_LITTLE_ENDIAN,
   compiles the Huffman tree into a jump table
   suitable for use by bitstream->read_huffman_code
@@ -70,6 +72,7 @@ enum {
 */
 int compile_huffman_table(struct bs_huffman_table (**table)[][0x200],
                           struct huffman_frequency* frequencies,
+                          unsigned int total_frequencies,
                           bs_endianness endianness);
 
 
@@ -108,17 +111,16 @@ int compile_huffman_table(struct bs_huffman_table (**table)[][0x200],
   For example, given a set of frequency values:
 
   struct huffman_frequency frequencies[] = {
-      {1, 1, 0}, // bits = 1      value = 0
-      {1, 2, 1}, // bits = 0 1    value = 1
-      {1, 3, 2}, // bits = 0 0 1  value = 2
-      {0, 3, 3}, // bits = 0 0 0  value = 3
-      {0, 0, 0}  // terminator
+      {1, 1, 0},  // bits = 1      value = 0
+      {1, 2, 1},  // bits = 0 1    value = 1
+      {1, 3, 2},  // bits = 0 0 1  value = 2
+      {0, 3, 3}}  // bits = 0 0 0  value = 3
      };
 
   we compile them to a table with:
 
   struct bs_huffman_table (*table)[][0x200];
-  compile_huffman_table(&table, frequencies, BS_BIG_ENDIAN);
+  compile_huffman_table(&table, frequencies, 4, BS_BIG_ENDIAN);
 
   and call that table from the bitstream reader with:
 

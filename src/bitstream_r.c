@@ -281,7 +281,8 @@ bs_etry(Bitstream *bs) {
 #define READ_UNARY_LIMIT_REACHED(x) ((x) >> (BYTE_BANK_SIZE + 4 + 1))
 #define NEXT_CONTEXT(x) ((x) & ((1 << BYTE_BANK_SIZE) - 1))
 #define UNREAD_BIT_LIMIT_REACHED(x) ((x) >> BYTE_BANK_SIZE)
-#define READ_HUFFMAN_NEXT_NODE(x) ((x) >> BYTE_BANK_SIZE)
+#define READ_HUFFMAN_CONTINUE(x) ((x) >> BYTE_BANK_SIZE)
+#define READ_HUFFMAN_NEXT_NODE(x) ((x) >> (BYTE_BANK_SIZE + 1))
 #define NEW_CONTEXT(x) (0x100 | (x))
 
 
@@ -1236,6 +1237,8 @@ bs_read_limited_unary_f_be(Bitstream* bs, int stop_bit, int maximum_bits)
     int accumulator = 0;
     stop_bit *= 9;
 
+    assert(maximum_bits > 0);
+
     do {
         if (context == 0) {
             if ((byte = fgetc(bs->input.file)) == EOF)
@@ -1280,6 +1283,8 @@ bs_read_limited_unary_f_le(Bitstream* bs, int stop_bit, int maximum_bits)
     int accumulator = 0;
     stop_bit *= 9;
 
+    assert(maximum_bits > 0);
+
     do {
         if (context == 0) {
             if ((byte = fgetc(bs->input.file)) == EOF)
@@ -1323,6 +1328,8 @@ bs_read_limited_unary_s_be(Bitstream* bs, int stop_bit, int maximum_bits)
     int byte;
     int accumulator = 0;
     stop_bit *= 9;
+
+    assert(maximum_bits > 0);
 
     do {
         if (context == 0) {
@@ -1608,23 +1615,21 @@ bs_read_huffman_code_f(Bitstream *bs,
     struct bs_callback* callback;
     int byte;
 
-    do {
-        if (context == 0) {
-            if ((byte = fgetc(bs->input.file)) == EOF)
-                bs_abort(bs);
-            context = NEW_CONTEXT(byte);
-            for (callback = bs->callbacks;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback((uint8_t)byte, callback->data);
-        }
+    entry = table[node][context];
+    while (READ_HUFFMAN_CONTINUE(entry.context_node)) {
+        if ((byte = fgetc(bs->input.file)) == EOF)
+            bs_abort(bs);
+        context = NEW_CONTEXT(byte);
 
-        entry = table[node][context];
-        context = NEXT_CONTEXT(entry.context_node);
-        node = READ_HUFFMAN_NEXT_NODE(entry.context_node);
-    } while (node != 0);
+        for (callback = bs->callbacks;
+             callback != NULL;
+             callback = callback->next)
+            callback->callback((uint8_t)byte, callback->data);
 
-    bs->state = context;
+        entry = table[READ_HUFFMAN_NEXT_NODE(entry.context_node)][context];
+    }
+
+    bs->state = NEXT_CONTEXT(entry.context_node);
     return entry.value;
 }
 
@@ -1637,23 +1642,21 @@ bs_read_huffman_code_s(Bitstream *bs,
     struct bs_callback* callback;
     int byte;
 
-    do {
-        if (context == 0) {
-            if ((byte = buf_getc(bs->input.substream)) == EOF)
-                bs_abort(bs);
-            context = NEW_CONTEXT(byte);
-            for (callback = bs->callbacks;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback((uint8_t)byte, callback->data);
-        }
+    entry = table[node][context];
+    while (READ_HUFFMAN_CONTINUE(entry.context_node)) {
+        if ((byte = buf_getc(bs->input.substream)) == EOF)
+            bs_abort(bs);
+        context = NEW_CONTEXT(byte);
 
-        entry = table[node][context];
-        context = NEXT_CONTEXT(entry.context_node);
-        node = READ_HUFFMAN_NEXT_NODE(entry.context_node);
-    } while (node != 0);
+        for (callback = bs->callbacks;
+             callback != NULL;
+             callback = callback->next)
+            callback->callback((uint8_t)byte, callback->data);
 
-    bs->state = context;
+        entry = table[READ_HUFFMAN_NEXT_NODE(entry.context_node)][context];
+    }
+
+    bs->state = NEXT_CONTEXT(entry.context_node);
     return entry.value;
 }
 
@@ -1667,23 +1670,21 @@ bs_read_huffman_code_p(Bitstream *bs,
     struct bs_callback* callback;
     int byte;
 
-    do {
-        if (context == 0) {
-            if ((byte = py_getc(bs->input.python)) == EOF)
-                bs_abort(bs);
-            context = NEW_CONTEXT(byte);
-            for (callback = bs->callbacks;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback((uint8_t)byte, callback->data);
-        }
+    entry = table[node][context];
+    while (READ_HUFFMAN_CONTINUE(entry.context_node)) {
+        if ((byte = py_getc(bs->input.python)) == EOF)
+            bs_abort(bs);
+        context = NEW_CONTEXT(byte);
 
-        entry = table[node][context];
-        context = NEXT_CONTEXT(entry.context_node);
-        node = READ_HUFFMAN_NEXT_NODE(entry.context_node);
-    } while (node != 0);
+        for (callback = bs->callbacks;
+             callback != NULL;
+             callback = callback->next)
+            callback->callback((uint8_t)byte, callback->data);
 
-    bs->state = context;
+        entry = table[READ_HUFFMAN_NEXT_NODE(entry.context_node)][context];
+    }
+
+    bs->state = NEXT_CONTEXT(entry.context_node);
     return entry.value;
 }
 #endif

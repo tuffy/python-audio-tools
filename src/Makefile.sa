@@ -21,8 +21,8 @@ wvenc: $(OBJS) encoders/wavpack.c encoders/wavpack.h md5.o misc.o
 mlpdec: decoders/mlp.c decoders/mlp.h array.o bitstream_r.o
 	$(CC) $(FLAGS) -o mlpdec decoders/mlp.c array.o bitstream_r.o -DSTANDALONE
 
-huffman: huffman.c huffman.h bitstream_r.o
-	$(CC) $(FLAGS) -o huffman huffman.c bitstream_r.o -DSTANDALONE -DEXECUTABLE -ljansson
+huffman: huffman.c huffman.h
+	$(CC) $(FLAGS) -o huffman huffman.c -DSTANDALONE -DEXECUTABLE -ljansson
 
 clean:
 	rm -f flacenc alacenc shnenc huffman *.o
