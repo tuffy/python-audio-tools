@@ -1,5 +1,6 @@
 #include <Python.h>
 #include "bitstream_r.h"
+#include "huffman.h"
 #include "decoders.h"
 
 /********************************************************
@@ -45,6 +46,10 @@ initdecoders(void)
 
     decoders_BitstreamReaderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_BitstreamReaderType) < 0)
+        return;
+
+    decoders_HuffmanTreeType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&decoders_HuffmanTreeType) < 0)
         return;
 
     decoders_FlacDecoderType.tp_new = PyType_GenericNew;
@@ -97,6 +102,10 @@ initdecoders(void)
     Py_INCREF(&decoders_BitstreamReaderType);
     PyModule_AddObject(m, "BitstreamReader",
                        (PyObject *)&decoders_BitstreamReaderType);
+
+    Py_INCREF(&decoders_HuffmanTreeType);
+    PyModule_AddObject(m, "HuffmanTree",
+                       (PyObject *)&decoders_HuffmanTreeType);
 
     Py_INCREF(&decoders_FlacDecoderType);
     PyModule_AddObject(m, "FlacDecoder",
@@ -304,8 +313,36 @@ BitstreamReader_limited_unary(decoders_BitstreamReader *self, PyObject *args) {
         PyErr_SetString(PyExc_IOError, "I/O error reading stream");
         return NULL;
     }
+}
 
+static PyObject*
+BitstreamReader_read_huffman_code(decoders_BitstreamReader *self,
+                                  PyObject* args) {
+    PyObject* huffman_tree_obj;
+    decoders_HuffmanTree* huffman_tree;
+    int result;
 
+    if (!PyArg_ParseTuple(args, "O", &huffman_tree_obj))
+        return NULL;
+
+    if (huffman_tree_obj->ob_type != &decoders_HuffmanTreeType) {
+        PyErr_SetString(PyExc_TypeError, "argument must a HuffmanTree object");
+        return NULL;
+    }
+
+    huffman_tree = (decoders_HuffmanTree*)huffman_tree_obj;
+
+    if (!setjmp(*bs_try(self->bitstream))) {
+        result = self->bitstream->read_huffman_code(self->bitstream,
+                                                    *(huffman_tree->table));
+
+        bs_etry(self->bitstream);
+        return Py_BuildValue("i", result);
+    } else {
+        bs_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+        return NULL;
+    }
 }
 
 static PyObject*
@@ -465,4 +502,140 @@ BitstreamReader_dealloc(decoders_BitstreamReader *self)
     self->file_obj = NULL;
 
     self->ob_type->tp_free((PyObject*)self);
+}
+
+/*this functions similarly to json_to_frequencies -> compile_huffman_table*/
+int
+HuffmanTree_init(decoders_HuffmanTree *self, PyObject *args) {
+    PyObject* frequencies_list;
+    PyObject* bits_list;
+    PyObject* value_obj;
+    long value_int_value;
+    PyObject* bits_int;
+    long bits_int_value;
+    int little_endian;
+    Py_ssize_t list_length;
+    Py_ssize_t bits_length;
+    Py_ssize_t i,o,j;
+    struct huffman_frequency* frequencies = NULL;
+    struct huffman_frequency frequency;
+
+    /*most of this stuff is for converting Python objects
+      to plain integers for use by compile_huffman_table*/
+
+    self->table = NULL;
+
+    if (!PyArg_ParseTuple(args, "Oi", &frequencies_list, &little_endian))
+        return -1;
+
+    if ((list_length = PySequence_Length(frequencies_list)) == -1) {
+        return -1;
+    }
+    if (list_length < 1) {
+        PyErr_SetString(PyExc_ValueError, "frequencies cannot be empty");
+        return -1;
+    }
+    if (list_length % 2) {
+        PyErr_SetString(PyExc_ValueError,
+                        "frequencies must have an even number of elements");
+        return -1;
+    }
+
+    frequencies = malloc(sizeof(struct huffman_frequency) * (list_length / 2));
+
+    for (i = o = 0; i < list_length; i += 2,o++) {
+        frequency.bits = frequency.length = 0;
+        bits_list = value_obj = bits_int = NULL;
+
+        if ((bits_list = PySequence_GetItem(frequencies_list, i)) == NULL)
+            goto error;
+
+        if ((value_obj = PySequence_GetItem(frequencies_list, i + 1)) == NULL)
+            goto error;
+
+        /*bits are always consumed in big-endian order*/
+        if ((bits_length = PySequence_Length(bits_list)) == -1)
+            goto error;
+
+        for (j = 0; j < bits_length; j++) {
+            bits_int = NULL;
+            if ((bits_int = PySequence_GetItem(bits_list, j)) == NULL)
+                goto error;
+            if (((bits_int_value = PyInt_AsLong(bits_int)) == -1) &&
+                PyErr_Occurred())
+                goto error;
+
+            if ((bits_int_value != 0) && (bits_int_value != 1)) {
+                PyErr_SetString(PyExc_ValueError, "bits must be 0 or 1");
+                goto error;
+            }
+
+            frequency.bits = ((frequency.bits << 1) | bits_int_value);
+            frequency.length++;
+
+            Py_DECREF(bits_int);
+            bits_int = NULL;
+        }
+
+        /*value must always be an integer*/
+        if (((value_int_value = PyInt_AsLong(value_obj)) == -1) &&
+            PyErr_Occurred())
+            goto error;
+
+        frequency.value = value_int_value;
+
+        frequencies[o] = frequency;
+
+        Py_DECREF(bits_list);
+        Py_DECREF(value_obj);
+        bits_list = value_obj = NULL;
+    }
+
+    switch (compile_huffman_table(&(self->table),
+                                  frequencies,
+                                  list_length / 2,
+                                  little_endian ?
+                                  BS_LITTLE_ENDIAN : BS_BIG_ENDIAN)) {
+    case HUFFMAN_MISSING_LEAF:
+        PyErr_SetString(PyExc_ValueError, "Huffman tree missing leaf");
+        goto error;
+    case HUFFMAN_DUPLICATE_LEAF:
+        PyErr_SetString(PyExc_ValueError, "Huffman tree has duplicate leaf");
+        goto error;
+    case HUFFMAN_ORPHANED_LEAF:
+        PyErr_SetString(PyExc_ValueError, "Huffman tree has orphaned leaf");
+        goto error;
+    case HUFFMAN_EMPTY_TREE:
+        PyErr_SetString(PyExc_ValueError, "Huffman tree is empty");
+        goto error;
+    default:
+        break;
+    }
+
+    free(frequencies);
+    return 0;
+ error:
+    Py_XDECREF(bits_int);
+    Py_XDECREF(bits_list);
+    Py_XDECREF(value_obj);
+    if (frequencies != NULL)
+        free(frequencies);
+    return -1;
+}
+
+void
+HuffmanTree_dealloc(decoders_HuffmanTree *self) {
+    if (self->table != NULL)
+        free(self->table);
+
+    self->ob_type->tp_free((PyObject*)self);
+}
+
+static PyObject*
+HuffmanTree_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
+    decoders_HuffmanTree *self;
+
+    self = (decoders_HuffmanTree *)type->tp_alloc(type, 0);
+
+    return (PyObject *)self;
 }
