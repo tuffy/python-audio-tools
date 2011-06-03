@@ -1876,12 +1876,15 @@ buf_extend(struct bs_buffer *stream, uint32_t data_size) {
                                          stream->buffer_total_size);
             } else {
                 /*if there are enough bytes to recycle,
-                  shift the buffer down and reuse them*/
-                memmove(stream->buffer,
-                        stream->buffer + stream->buffer_position,
-                        stream->buffer_size - stream->buffer_position);
-                stream->buffer_size -= stream->buffer_position;
-                stream->buffer_position = 0;
+                  shift the buffer down and reuse them
+                  if the buffer position is incremented*/
+                if (stream->buffer_position > 0) {
+                    memmove(stream->buffer,
+                            stream->buffer + stream->buffer_position,
+                            stream->buffer_size - stream->buffer_position);
+                    stream->buffer_size -= stream->buffer_position;
+                    stream->buffer_position = 0;
+                }
             }
         }
     }

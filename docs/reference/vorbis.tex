@@ -314,19 +314,19 @@ which can be parsed in the following way:
 \end{cases}
 \end{equation*}
 \par
-\VAR{Value Size} indicates the size of each value in bits, plus one.
+\VAR{Value Bits} indicates the size of each value in bits, plus one.
 \VAR{Sequence P} is a 1 bit flag.
-The total number of lookup values depends on whether \VAR{Lookup Type}
+The total number of multiplicand values depends on whether \VAR{Lookup Type}
 is 1 or 2.
 \begin{align*}
 \intertext{if \VAR{Lookup Type} = 1:}
-\text{Lookup Value Count} &= \text{max}(\text{Int}) ^ \text{Dimensions} \text{ where } \text{Int} ^ \text{Dimensions} \leq \text{Total Entries}
+\text{Multiplicand Count} &= \text{max}(\text{Int}) ^ \text{Dimensions} \text{ where } \text{Int} ^ \text{Dimensions} \leq \text{Total Entries}
 \intertext{if \VAR{Lookup Type} = 2:}
-\text{Lookup Value Count} &= \text{Dimensions} \times \text{Total Entries}
+\text{Multiplicand Count} &= \text{Dimensions} \times \text{Total Entries}
 \end{align*}
 \par
 The \VAR{Multiplicand} values themselves are a list of unsigned integers,
-each \VAR{Value Size} (+ 1) bits large.
+each \VAR{Value Bits} (+ 1) bits large.
 
 
 \clearpage

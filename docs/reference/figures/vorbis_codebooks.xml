@@ -9,11 +9,11 @@
   <spacer/>
   <row>
     <col start="0" end="23" width=".25" id="sync">Sync (0x564342)</col>
-    <col start="24" end="39" width=".375">Dimensions</col>
-    <col start="40" end="63" width=".375" id="total_entries">Total Entries</col>
+    <col start="24" end="39" width=".375">Codebook Dimensions</col>
+    <col start="40" end="63" width=".375" id="total_entries">Codebook Entries</col>
   </row>
   <row>
-    <col start="64" end="64" width=".15">Is Ordered</col>
+    <col start="64" end="64" width=".15">Ordered</col>
     <col width=".30" id="entry_lengths"
          background-color="#0000FF33">Entry Lengths</col>
     <col start="0" end="3" width=".2">Lookup Type</col>
@@ -22,15 +22,15 @@
   </row>
   <spacer/>
   <row>
-    <col width=".20" style="blank">Is Ordered = 0</col>
+    <col width=".20" style="blank">Ordered = 0</col>
     <col width=".15" start="0" end="0" id="is_sparse"
-         border-color="blue">Is Sparse</col>
+         border-color="blue">Sparse</col>
     <col width=".65" id="entry_list" border-color="blue"
          background-color="#7F7F0033">Entry Length List</col>
   </row>
   <spacer height=".25"/>
   <row>
-    <col width=".20" style="blank">Is Ordered = 1</col>
+    <col width=".20" style="blank">Ordered = 1</col>
     <col width=".25" start="0" end="4"
          border-color="blue" id="initial_length">Initial Length (+1)</col>
     <col width=".225" border-color="blue">Length Count₀</col>
@@ -39,7 +39,7 @@
   </row>
   <spacer/>
   <row>
-    <col width=".20" style="blank">Is Sparse = 0</col>
+    <col width=".20" style="blank">Sparse = 0</col>
     <col width="0.35" start="0" end="4" id="entry_0"
          border-color="olive">Entry Length₀ (+1)</col>
     <col width="0.35" start="0" end="4"
@@ -49,7 +49,7 @@
   </row>
   <spacer height=".25"/>
   <row>
-    <col width=".20" style="blank">Is Sparse = 1</col>
+    <col width=".20" style="blank">Sparse = 1</col>
     <col width=".125" start="0" end="0"
          border-color="olive">Present₀</col>
     <col width=".225" start="1" end="5" style="dashed"
@@ -69,7 +69,7 @@
     <col width=".175" start="32" end="63"
          border-color="fuchsia">Delta Value</col>
     <col width=".20" start="64" end="67"
-         border-color="fuchsia">Value Size (+1)</col>
+         border-color="fuchsia">Value Bits (+1)</col>
     <col width=".165" start="68" end="68" id="sequence_p"
          border-color="fuchsia">Sequence P</col>
   </row>

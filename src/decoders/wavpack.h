@@ -54,6 +54,8 @@ typedef struct {
     FILE* file;
     char* filename;
     Bitstream* bitstream;
+    Bitstream* block_data;
+    Bitstream* subblock_data;
 
     int sample_rate;
     int bits_per_sample;
@@ -93,14 +95,14 @@ typedef struct {
 } decoders_WavPackDecoder;
 
 struct wavpack_block_header {
-    /*block ID                                   32 bits*/
-    uint32_t block_size;                       /*32 bits*/
-    uint16_t version;                          /*16 bits*/
+    /*block ID                                  32 bits*/
+    uint32_t block_size;                      /*32 bits*/
+    uint16_t version;                         /*16 bits*/
     uint8_t track_number;                      /*8 bits*/
     uint8_t index_number;                      /*8 bits*/
-    uint32_t total_samples;                    /*32 bits*/
-    uint32_t block_index;                      /*32 bits*/
-    uint32_t block_samples;                    /*32 bits*/
+    uint32_t total_samples;                   /*32 bits*/
+    uint32_t block_index;                     /*32 bits*/
+    uint32_t block_samples;                   /*32 bits*/
 
     uint8_t bits_per_sample;                   /*2 bits*/
     uint8_t mono_output;                       /*1 bit*/
@@ -122,7 +124,7 @@ struct wavpack_block_header {
     uint8_t false_stereo;                      /*1 bit*/
     /*reserved                                   1 bit*/
 
-    uint32_t crc;                              /*32 bits*/
+    uint32_t crc;                             /*32 bits*/
 };
 
 struct wavpack_subblock_header {
@@ -130,7 +132,7 @@ struct wavpack_subblock_header {
     uint8_t nondecoder_data;                   /*1 bit*/
     uint8_t actual_size_1_less;                /*1 bit*/
     uint8_t large_block;                       /*1 bit*/
-    uint32_t block_size;                       /*8 bits/24 bits*/
+    uint32_t block_size;                 /*8 or 24 bits*/
 };
 
 #define MAXIMUM_TERM_COUNT 16
@@ -187,8 +189,8 @@ PyObject*
 WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args);
 
 status
-WavPackDecoder_update_md5sum(decoders_WavPackDecoder *self,
-                             PyObject *framelist);
+wavpack_update_md5sum(decoders_WavPackDecoder *self,
+                      PyObject *framelist);
 
 uint32_t
 wavpack_calculate_crc(struct i_array* channel_A,
@@ -217,79 +219,94 @@ WavPackDecoder_new(PyTypeObject *type,
                    PyObject *args, PyObject *kwds);
 
 status
-WavPackDecoder_read_block_header(Bitstream* bitstream,
-                                 struct wavpack_block_header* header);
+wavpack_read_block_header(Bitstream* bitstream,
+                          struct wavpack_block_header* header);
 
 void
-WavPackDecoder_read_subblock_header(Bitstream* bitstream,
-                                    struct wavpack_subblock_header* header);
+wavpack_read_subblock_header(Bitstream* bitstream,
+                             struct wavpack_subblock_header* header);
+
+status
+wavpack_read_block(Bitstream* input,
+                   struct wavpack_block_header* header,
+                   Bitstream* block_data);
+
+void
+wavpack_read_subblock(Bitstream* block_data,
+                      struct wavpack_subblock_header* header,
+                      Bitstream* subblock_data);
+
+static inline int
+wavpack_subblocks_remain(Bitstream* block_data);
+
+static inline unsigned int
+wavpack_subblock_size(Bitstream* subblock_data);
 
 /*Reads the interleaved decorrelation terms and decorrelation deltas
-  from the bitstream to the given arrays.
+  from the sub-block to the given arrays.
   May return an error if any of the terms are invalid.*/
 status
-WavPackDecoder_read_decorr_terms(Bitstream* bitstream,
-                                 struct wavpack_subblock_header* header,
-                                 struct i_array* decorr_terms,
-                                 struct i_array* decorr_deltas);
+wavpack_read_decorr_terms(Bitstream* subblock,
+                          struct i_array* decorr_terms,
+                          struct i_array* decorr_deltas);
 
 int
-WavPackDecoder_restore_weight(int weight);
+wavpack_restore_weight(int weight);
 
 /*Reads the interleaved decorrelation weights
   from the bitstream to the given arrays.*/
 void
-WavPackDecoder_read_decorr_weights(Bitstream* bitstream,
-                                   struct wavpack_subblock_header* header,
-                                   int block_channel_count,
-                                   int term_count,
-                                   struct i_array *weights_A,
-                                   struct i_array *weights_B);
+wavpack_read_decorr_weights(Bitstream* subblock,
+                            int block_channel_count,
+                            int term_count,
+                            struct i_array *weights_A,
+                            struct i_array *weights_B);
 
 status
-WavPackDecoder_read_decorr_samples(Bitstream* bitstream,
-                                   struct wavpack_subblock_header* header,
-                                   int block_channel_count,
-                                   struct i_array* decorr_terms,
-                                   struct ia_array* samples_A,
-                                   struct ia_array* samples_B);
+wavpack_read_decorr_samples(Bitstream* subblock,
+                            int block_channel_count,
+                            struct i_array* decorr_terms,
+                            struct ia_array* samples_A,
+                            struct ia_array* samples_B);
 
 void
-WavPackDecoder_read_entropy_variables(Bitstream* bitstream,
-                                      int block_channel_count,
-                                      struct i_array* entropy_variables_A,
-                                      struct i_array* entropy_variables_B);
+wavpack_read_entropy_variables(Bitstream* subblock,
+                               int block_channel_count,
+                               struct i_array* entropy_variables_A,
+                               struct i_array* entropy_variables_B);
 
 void
-WavPackDecoder_read_int32_info(Bitstream* bitstream,
-                               uint8_t* sent_bits, uint8_t* zeroes,
-                               uint8_t* ones, uint8_t* dupes);
+wavpack_read_int32_info(Bitstream* subblock,
+                        uint8_t* sent_bits, uint8_t* zeroes,
+                        uint8_t* ones, uint8_t* dupes);
 
 void
-WavPackDecoder_read_channel_info(Bitstream* bitstream,
-                                 struct wavpack_subblock_header* header,
-                                 int* channel_count,
-                                 int* channel_mask);
+wavpack_read_channel_info(Bitstream* subblock,
+                          struct wavpack_subblock_header* header,
+                          int* channel_count,
+                          int* channel_mask);
 
 /*Reads the WV_BITSTREAM sub-block and returns
   channel_count * samples number of values to the given array.*/
 status
-WavPackDecoder_read_wv_bitstream(Bitstream* bitstream,
-                                 struct wavpack_subblock_header* header,
-                                 struct i_array* entropy_variables_A,
-                                 struct i_array* entropy_variables_B,
-                                 int block_channel_count,
-                                 int block_samples,
-                                 struct i_array* values);
+wavpack_read_wv_bitstream(Bitstream* subblock,
+                          struct i_array* entropy_variables_A,
+                          struct i_array* entropy_variables_B,
+                          int block_channel_count,
+                          int block_samples,
+                          struct i_array* values);
 
-int wavpack_get_value(Bitstream* bitstream,
-                      struct i_array* entropy_variables,
-                      int* holding_one,
-                      int* holding_zero);
+int
+wavpack_get_value(Bitstream* bitstream,
+                  struct i_array* entropy_variables,
+                  int* holding_one,
+                  int* holding_zero);
 
-int wavpack_get_zero_count(Bitstream* bitstream);
+int
+wavpack_get_zero_count(Bitstream* bitstream);
 
-void wavpack_decrement_counter(uint8_t byte, void* counter);
+void
+wavpack_decrement_counter(uint8_t byte, void* counter);
 
 /*Reads a single block from the bitstream
   and returns its final sample values to channel_A and (optionally) channel_B.
@@ -297,50 +314,54 @@ void wavpack_decrement_counter(uint8_t byte, void* counter);
   "final_block" indicates whether this is the final block to read
   before decoding channels into a final pcm.FrameList object.*/
 status
-WavPackDecoder_decode_block(decoders_WavPackDecoder* self,
-                            struct i_array* channel_A,
-                            struct i_array* channel_B,
-                            int* channel_count,
-                            int* final_block);
+wavpack_decode_block(decoders_WavPackDecoder* self,
+                     struct i_array* channel_A,
+                     struct i_array* channel_B,
+                     int* channel_count,
+                     int* final_block);
 
 status
-WavPackDecoder_decode_subblock(decoders_WavPackDecoder* self,
-                               struct wavpack_block_header* block_header);
+wavpack_decode_subblock(decoders_WavPackDecoder* self,
+                        struct wavpack_block_header* block_header);
 
 /*Performs a decorrelation pass over channel_A and (optionally) channel_B,
   altering their values in the process.
   If "channel_count" is 1, only channel_A and weight_A are used.
   Otherwise, channel_B is also used.*/
-void wavpack_perform_decorrelation_pass(
-                                    struct i_array* channel_A,
-                                    struct i_array* channel_B,
-                                    int decorrelation_term,
-                                    int decorrelation_delta,
-                                    int decorrelation_weight_A,
-                                    int decorrelation_weight_B,
-                                    struct i_array* decorrelation_samples_A,
-                                    struct i_array* decorrelation_samples_B,
-                                    int channel_count);
+void
+wavpack_perform_decorrelation_pass(struct i_array* channel_A,
+                                   struct i_array* channel_B,
+                                   int decorrelation_term,
+                                   int decorrelation_delta,
+                                   int decorrelation_weight_A,
+                                   int decorrelation_weight_B,
+                                   struct i_array* decorrelation_samples_A,
+                                   struct i_array* decorrelation_samples_B,
+                                   int channel_count);
 
-void wavpack_perform_decorrelation_pass_1ch(
-                                    struct i_array* channel,
-                                    int decorrelation_term,
-                                    int decorrelation_delta,
-                                    int decorrelation_weight,
-                                    struct i_array* decorrelation_samples);
+void
+wavpack_perform_decorrelation_pass_1ch(struct i_array* channel,
+                                       int decorrelation_term,
+                                       int decorrelation_delta,
+                                       int decorrelation_weight,
+                                       struct i_array* decorrelation_samples);
 
-void wavpack_undo_extended_integers(struct i_array* channel_A,
-                                    struct i_array* channel_B,
-                                    int channel_count,
-                                    uint8_t sent_bits, uint8_t zeroes,
-                                    uint8_t ones, uint8_t dupes);
+void
+wavpack_undo_extended_integers(struct i_array* channel_A,
+                               struct i_array* channel_B,
+                               int channel_count,
+                               uint8_t sent_bits, uint8_t zeroes,
+                               uint8_t ones, uint8_t dupes);
 
-void wavpack_undo_joint_stereo(struct i_array* channel_A,
-                               struct i_array* channel_B);
+void
+wavpack_undo_joint_stereo(struct i_array* channel_A,
+                          struct i_array* channel_B);
 
-const char* wavpack_strerror(status error);
+const char*
+wavpack_strerror(status error);
 
-PyObject* wavpack_exception(status error);
+PyObject*
+wavpack_exception(status error);
 
 int
 wavpack_exp2(int log);
