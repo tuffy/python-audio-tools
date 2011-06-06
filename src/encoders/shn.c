@@ -93,7 +93,7 @@ encoders_encode_shn(PyObject *dummy,
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
         return NULL;
     } else {
-        stream = bs_open_w(file, BS_BIG_ENDIAN);
+        stream = bw_open(file, BS_BIG_ENDIAN);
     }
 
     /*initialize wrapped samples with 0s*/
@@ -109,7 +109,7 @@ encoders_encode_shn(PyObject *dummy,
     stream->write(stream, 8, 2);           /*the version number 2*/
 
     /*start counting written bytes *after* writing the 5 byte header*/
-    bs_add_callback_w(stream, ShortenEncoder_byte_counter, &bytes_written);
+    bw_add_callback(stream, ShortenEncoder_byte_counter, &bytes_written);
 
     ShortenEncoder_put_long(stream, file_type);
 
@@ -163,13 +163,13 @@ encoders_encode_shn(PyObject *dummy,
 
     iaa_free(&wrapped_samples);
     pcmr_close(reader);
-    bs_close_w(stream);
+    bw_close(stream);
     Py_INCREF(Py_None);
     return Py_None;
 
  error:
     pcmr_close(reader);
-    bs_close_w(stream);
+    bw_close(stream);
     return NULL;
 }
 #else
@@ -194,7 +194,7 @@ encoders_encode_shn(char *filename,
     if ((output_file = fopen(filename, "wb")) == NULL) {
         return ERROR;
     } else {
-        stream = bs_open_w(output_file, BS_BIG_ENDIAN);
+        stream = bw_open(output_file, BS_BIG_ENDIAN);
     }
 
     /*initialize wrapped samples with 0s*/
@@ -212,7 +212,7 @@ encoders_encode_shn(char *filename,
 
     iaa_free(&wrapped_samples);
     pcmr_close(reader);
-    bs_close_w(stream);
+    bw_close(stream);
 
     if (encode_ok)
         return OK;

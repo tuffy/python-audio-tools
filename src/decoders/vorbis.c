@@ -26,7 +26,7 @@ VorbisDecoder_init(decoders_VorbisDecoder *self, PyObject *args, PyObject *kwds)
 
     self->ogg_stream = NULL;
     self->ogg_file = NULL;
-    self->packet = bs_substream_new(BS_LITTLE_ENDIAN);
+    self->packet = br_substream_new(BS_LITTLE_ENDIAN);
 
     if (!PyArg_ParseTuple(args, "s", &filename))
         goto error;
@@ -243,27 +243,27 @@ vorbis_status
 vorbis_read_identification_packet(
                         BitstreamReader *packet,
                         struct vorbis_identification_header *identification) {
-    if (!setjmp(*bs_try(packet))) {
+    if (!setjmp(*br_try(packet))) {
         if (vorbis_read_common_header(packet) != 1) {
-            bs_etry(packet);
+            br_etry(packet);
             return VORBIS_ID_HEADER_NOT_1ST;
         }
 
         identification->vorbis_version = packet->read(packet, 32);
         if (identification->vorbis_version != 0) {
-            bs_etry(packet);
+            br_etry(packet);
             return VORBIS_UNSUPPORTED_VERSION;
         }
 
         identification->channel_count = packet->read(packet, 8);
         if (identification->channel_count < 1) {
-            bs_etry(packet);
+            br_etry(packet);
             return VORBIS_INVALID_CHANNEL_COUNT;
         }
 
         identification->sample_rate = packet->read(packet, 32);
         if (identification->sample_rate < 1) {
-            bs_etry(packet);
+            br_etry(packet);
             return VORBIS_INVALID_SAMPLE_RATE;
         }
 
@@ -279,7 +279,7 @@ vorbis_read_identification_packet(
             (identification->blocksize_0 != 2048) &&
             (identification->blocksize_0 != 4096) &&
             (identification->blocksize_0 != 8192)) {
-            bs_etry(packet);
+            br_etry(packet);
             return VORBIS_INVALID_BLOCK_SIZE_0;
         }
 
@@ -292,25 +292,25 @@ vorbis_read_identification_packet(
             (identification->blocksize_1 != 2048) &&
             (identification->blocksize_1 != 4096) &&
             (identification->blocksize_1 != 8192)) {
-            bs_etry(packet);
+            br_etry(packet);
             return VORBIS_INVALID_BLOCK_SIZE_1;
         }
 
         if (identification->blocksize_0 > identification->blocksize_1) {
-            bs_etry(packet);
+            br_etry(packet);
             return VORBIS_INVALID_BLOCK_SIZE_1;
         }
 
         if (packet->read(packet, 1) != 1) {
-            bs_etry(packet);
+            br_etry(packet);
             return VORBIS_INVALID_FRAMING_BIT;
         }
     } else {
-        bs_etry(packet);
+        br_etry(packet);
         return VORBIS_PREMATURE_EOF;
     }
 
-    bs_etry(packet);
+    br_etry(packet);
     return VORBIS_OK;
 }
 
@@ -318,22 +318,22 @@ vorbis_status
 vorbis_read_setup_packet(BitstreamReader *packet) {
     vorbis_status result;
 
-    if (!setjmp(*bs_try(packet))) {
+    if (!setjmp(*br_try(packet))) {
         if (vorbis_read_common_header(packet) != 5) {
-            bs_etry(packet);
+            br_etry(packet);
             return VORBIS_SETUP_NOT_3RD;
         }
 
         /*read codebooks*/
         if ((result = vorbis_read_codebooks(packet)) != VORBIS_OK) {
-            bs_etry(packet);
+            br_etry(packet);
             return result;
         }
 
         /*read time domain transforms*/
         if ((result =
              vorbis_read_time_domain_transforms(packet)) != VORBIS_OK) {
-            bs_etry(packet);
+            br_etry(packet);
             return result;
         }
         /*read floors*/
@@ -352,11 +352,11 @@ vorbis_read_setup_packet(BitstreamReader *packet) {
         /*FIXME*/
 
     } else {
-        bs_etry(packet);
+        br_etry(packet);
         return VORBIS_PREMATURE_EOF;
     }
 
-    bs_etry(packet);
+    br_etry(packet);
     return VORBIS_OK;
 }
 

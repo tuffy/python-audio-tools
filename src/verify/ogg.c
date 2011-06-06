@@ -43,11 +43,11 @@ verifymodule_ogg(PyObject *dummy, PyObject *args) {
                         "first argument must be an actual file object");
         return NULL;
     } else {
-        bitstream = bs_open_r(PyFile_AsFile(file_obj), BS_LITTLE_ENDIAN);
-        bs_add_callback_r(bitstream, ogg_crc, &checksum);
+        bitstream = br_open(PyFile_AsFile(file_obj), BS_LITTLE_ENDIAN);
+        br_add_callback(bitstream, ogg_crc, &checksum);
     }
 
-    if (!setjmp(*bs_try(bitstream))) {
+    if (!setjmp(*br_try(bitstream))) {
         do {
             checksum = 0;
             if (verifymodule_read_ogg_header(bitstream, &header) == OK) {
@@ -104,14 +104,14 @@ verifymodule_ogg(PyObject *dummy, PyObject *args) {
         goto error;
     }
 
-    bs_etry(bitstream);
+    br_etry(bitstream);
     free(data_buffer);
     bitstream->input.file = NULL;
     bitstream->close(bitstream);
     Py_INCREF(Py_None);
     return Py_None;
  error:
-    bs_etry(bitstream);
+    br_etry(bitstream);
     if (data_buffer != NULL)
         free(data_buffer);
     bitstream->input.file = NULL;
@@ -145,7 +145,7 @@ verifymodule_read_ogg_header(BitstreamReader *bs, struct ogg_header *header) {
             (checksum[2] << 16) |
             (checksum[3] << 24);
         for (i = 0; i < 4; i++)
-            bs_call_callbacks(bs, 0);
+            br_call_callbacks(bs, 0);
     } else {
         PyErr_SetString(PyExc_IOError, "I/O reading stream");
         return ERROR;

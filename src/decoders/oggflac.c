@@ -49,7 +49,7 @@ OggFlacDecoder_init(decoders_OggFlacDecoder *self,
 
     self->ogg_stream = NULL;
     self->ogg_file = NULL;
-    self->packet = bs_substream_new(BS_BIG_ENDIAN);
+    self->packet = br_substream_new(BS_BIG_ENDIAN);
 
     if (!PyArg_ParseTuple(args, "si", &filename, &(self->channel_mask)))
         goto error;
@@ -86,7 +86,7 @@ OggFlacDecoder_init(decoders_OggFlacDecoder *self,
     audiotools__MD5Init(&(self->md5));
 
     /*add callback for CRC16 calculation*/
-    bs_add_callback_r(self->packet, flac_crc16, &(self->crc16));
+    br_add_callback(self->packet, flac_crc16, &(self->crc16));
 
     /*setup a bunch of temporary buffers*/
     iaa_init(&(self->subframe_data),
@@ -147,7 +147,7 @@ OggFlacDecoder_read(decoders_OggFlacDecoder *self, PyObject *args) {
         thread_state = PyEval_SaveThread();
         self->crc16 = 0;
 
-        if (!setjmp(*bs_try(self->packet))) {
+        if (!setjmp(*br_try(self->packet))) {
             /*read frame header*/
             if ((flac_status = FlacDecoder_read_frame_header(
                                                     self->packet,
@@ -156,7 +156,7 @@ OggFlacDecoder_read(decoders_OggFlacDecoder *self, PyObject *args) {
                 PyEval_RestoreThread(thread_state);
                 PyErr_SetString(PyExc_ValueError,
                                 FlacDecoder_strerror(flac_status));
-                bs_etry(self->packet);
+                br_etry(self->packet);
                 return NULL;
             }
 
@@ -173,11 +173,11 @@ OggFlacDecoder_read(decoders_OggFlacDecoder *self, PyObject *args) {
                     PyEval_RestoreThread(thread_state);
                     PyErr_SetString(PyExc_ValueError,
                                     FlacDecoder_strerror(flac_status));
-                    bs_etry(self->packet);
+                    br_etry(self->packet);
                     return NULL;
                 }
 
-            bs_etry(self->packet);
+            br_etry(self->packet);
 
             /*handle difference channels, if any*/
             FlacDecoder_decorrelate_channels(&frame_header,
@@ -206,7 +206,7 @@ OggFlacDecoder_read(decoders_OggFlacDecoder *self, PyObject *args) {
             /*read error decoding FLAC frame*/
             PyEval_RestoreThread(thread_state);
             PyErr_SetString(PyExc_IOError, "I/O error decoding FLAC frame");
-            bs_etry(self->packet);
+            br_etry(self->packet);
             return NULL;
         }
     } else if (ogg_status == OGG_STREAM_FINISHED) {
@@ -251,7 +251,7 @@ oggflac_read_streaminfo(BitstreamReader *packet,
                         uint16_t *header_packets) {
     int i;
 
-    if (!setjmp(*bs_try(packet))) {
+    if (!setjmp(*br_try(packet))) {
         if (packet->read(packet, 8) != 0x7F) {
             PyErr_SetString(PyExc_ValueError, "invalid packet byte");
             goto error;
@@ -297,10 +297,10 @@ oggflac_read_streaminfo(BitstreamReader *packet,
         goto error;
     }
 
-    bs_etry(packet);
+    br_etry(packet);
     return 1;
  error:
-    bs_etry(packet);
+    br_etry(packet);
     return 0;
 }
 

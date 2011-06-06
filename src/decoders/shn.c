@@ -45,7 +45,7 @@ SHNDecoder_init(decoders_SHNDecoder *self,
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
         return -1;
     } else {
-        self->bitstream = bs_open_r(fp, BS_BIG_ENDIAN);
+        self->bitstream = br_open(fp, BS_BIG_ENDIAN);
     }
 
     if (SHNDecoder_read_header(self) == ERROR) {
@@ -254,7 +254,7 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
     }
 
     thread_state = PyEval_SaveThread();
-    if (!setjmp(*bs_try(self->bitstream))) {
+    if (!setjmp(*br_try(self->bitstream))) {
         /*read the next instructions to fill all buffers,
           until FN_QUIT reached*/
         while (channel < self->channels) {
@@ -371,7 +371,7 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
             case FN_QUIT:
                 PyEval_RestoreThread(thread_state);
                 self->read_finished = 1;
-                bs_etry(self->bitstream);
+                br_etry(self->bitstream);
                 iaa_reset(&(self->buffer));
                 goto finished;
             default:
@@ -388,7 +388,7 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
         goto error;
     }
 
-    bs_etry(self->bitstream);
+    br_etry(self->bitstream);
     PyEval_RestoreThread(thread_state);
 
     /*once self->buffer is full of PCM data on each channel,
@@ -410,7 +410,7 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
     return ia_array_to_framelist(&(self->buffer),
                                  self->bits_per_sample);
  error:
-    bs_etry(self->bitstream);
+    br_etry(self->bitstream);
     return NULL;
 }
 
@@ -452,7 +452,7 @@ SHNDecoder_metadata(decoders_SHNDecoder* self, PyObject *args)
       storing blocks of non-FM_VERBATIM instructions as None,
       and counting the length of all audio data commands*/
 
-    if (!setjmp(*bs_try(self->bitstream))) {
+    if (!setjmp(*br_try(self->bitstream))) {
         for (cmd = shn_read_uvar(self->bitstream, 2);
              cmd != FN_QUIT;
              cmd = shn_read_uvar(self->bitstream, 2)) {
@@ -539,11 +539,11 @@ SHNDecoder_metadata(decoders_SHNDecoder* self, PyObject *args)
 
     self->read_started = 0;
 
-    bs_etry(self->bitstream);
+    br_etry(self->bitstream);
     return Py_BuildValue("(i,O)", total_samples / self->channels, list);
 
  error:
-    bs_etry(self->bitstream);
+    br_etry(self->bitstream);
     Py_XDECREF(list);
     return NULL;
 }
@@ -594,9 +594,9 @@ SHNDecoder_analyze_frame(decoders_SHNDecoder* self, PyObject *args)
         goto stream_finished;
     }
 
-    byte_offset = bs_ftell(self->bitstream);
+    byte_offset = br_ftell(self->bitstream);
 
-    if (!setjmp(*bs_try(self->bitstream))) {
+    if (!setjmp(*br_try(self->bitstream))) {
         switch (cmd = shn_read_uvar(self->bitstream, 2)) {
         case FN_DIFF0:
         case FN_DIFF1:
@@ -682,11 +682,11 @@ SHNDecoder_analyze_frame(decoders_SHNDecoder* self, PyObject *args)
         goto error;
     }
 
-    bs_etry(self->bitstream);
+    br_etry(self->bitstream);
     return toreturn;
 
  error:
-    bs_etry(self->bitstream);
+    br_etry(self->bitstream);
     return NULL;
 
  stream_finished:
@@ -699,9 +699,9 @@ SHNDecoder_read_header(decoders_SHNDecoder* self)
 {
     BitstreamReader* bs = self->bitstream;
 
-    if (!setjmp(*bs_try(bs))) {
+    if (!setjmp(*br_try(bs))) {
         if (bs->read(bs, 32) != 0x616A6B67) {
-            bs_etry(bs);
+            br_etry(bs);
             return ERROR;
         }
 
@@ -718,10 +718,10 @@ SHNDecoder_read_header(decoders_SHNDecoder* self)
         self->read_started = 1;
         self->read_finished = 0;
 
-        bs_etry(bs);
+        br_etry(bs);
         return OK;
     } else {
-        bs_etry(bs);
+        br_etry(bs);
         return ERROR;
     }
 }

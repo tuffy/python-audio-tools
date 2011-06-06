@@ -38,6 +38,21 @@
 #endif
 
 
+typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
+
+#ifndef NDEBUG
+typedef enum {BS_FILE, BS_SUBSTREAM, BS_PYTHON} bs_type;
+#endif
+
+typedef enum {
+    BS_WRITE_BITS,
+    BS_WRITE_SIGNED_BITS,
+    BS_WRITE_BITS64,
+    BS_WRITE_UNARY,
+    BS_BYTE_ALIGN,
+    BS_SET_ENDIANNESS
+} BitstreamRecordType;
+
 typedef void (*bs_callback_func)(uint8_t, void*);
 
 
@@ -47,12 +62,10 @@ struct bs_callback {
     struct bs_callback *next;
 };
 
-
 struct bs_exception {
     jmp_buf env;
     struct bs_exception *next;
 };
-
 
 struct bs_mark {
     union {
@@ -64,15 +77,10 @@ struct bs_mark {
     struct bs_mark *next;
 };
 
-
 struct bs_huffman_table {
     unsigned int context_node;
     int value;
 };
-
-
-typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
-
 
 struct bs_buffer {
     uint8_t* buffer;
@@ -81,17 +89,6 @@ struct bs_buffer {
     uint32_t buffer_position;
     int mark_in_progress;
 };
-
-
-typedef enum {
-    BS_WRITE_BITS,
-    BS_WRITE_SIGNED_BITS,
-    BS_WRITE_BITS64,
-    BS_WRITE_UNARY,
-    BS_BYTE_ALIGN,
-    BS_SET_ENDIANNESS
-} BitstreamRecordType;
-
 
 #ifndef STANDALONE
 struct bs_python_input {
@@ -104,10 +101,19 @@ struct bs_python_input {
 };
 #endif
 
-
-#ifndef NDEBUG
-typedef enum {BS_FILE, BS_SUBSTREAM, BS_PYTHON} bs_type;
-#endif
+typedef struct {
+    BitstreamRecordType type;
+    union {
+        unsigned int count;
+        int stop_bit;
+    } key;
+    union {
+        int signed_value;
+        unsigned int unsigned_value;
+        uint64_t value64;
+        bs_endianness endianness;
+    } value;
+} BitstreamRecord;
 
 
 typedef struct BitstreamReader_s {
@@ -219,32 +225,68 @@ typedef struct BitstreamReader_s {
 } BitstreamReader;
 
 
+typedef struct BitstreamWriter_s {
+    FILE *file;
+    unsigned int buffer_size;
+    unsigned int buffer;
+    struct bs_callback *callback;
+
+    int bits_written;    /*used by open_accumulator and open_recorder*/
+    int records_written; /*used by open_recorder*/
+    int records_total;   /*used by open_recorder*/
+    BitstreamRecord *records;
+
+    /*reads the given value as "count" number of unsigned bits
+      to the current stream*/
+    void (*write)(struct BitstreamWriter_s* bs,
+                  unsigned int count,
+                  unsigned int value);
+
+    void (*write_signed)(struct BitstreamWriter_s* bs,
+                         unsigned int count,
+                         int value);
+
+    void (*write_64)(struct BitstreamWriter_s* bs,
+                     unsigned int count,
+                     uint64_t value);
+
+    void (*write_unary)(struct BitstreamWriter_s* bs,
+                        int stop_bit,
+                        unsigned int value);
+
+    void (*byte_align)(struct BitstreamWriter_s* bs);
+
+    void (*set_endianness)(struct BitstreamWriter_s* bs,
+                           bs_endianness endianness);
+} BitstreamWriter;
+
+
 BitstreamReader*
-bs_open_r(FILE *f, bs_endianness endianness);
+br_open(FILE *f, bs_endianness endianness);
 
 /*performs bs->close_stream followed by bs_free*/
 void
-bs_close_r(BitstreamReader *bs);
+br_close(BitstreamReader *bs);
 
 void
-bs_close_stream_f(BitstreamReader *bs);
+br_close_stream_f(BitstreamReader *bs);
 
 /*this deallocates space created by bs_open,
   but does *not* close any file handles*/
 void
-bs_free_r(BitstreamReader *bs);
+br_free(BitstreamReader *bs);
 
 /*does nothing, used to override existing functions at runtime*/
 void
-bs_noop(BitstreamReader *bs);
+br_noop(BitstreamReader *bs);
 
 void
-bs_add_callback_r(BitstreamReader *bs, bs_callback_func callback, void *data);
+br_add_callback(BitstreamReader *bs, bs_callback_func callback, void *data);
 
 /*explicitly passes "byte" to the set callbacks,
   as if the byte were read from the input stream*/
 void
-bs_call_callbacks(BitstreamReader *bs, uint8_t byte);
+br_call_callbacks(BitstreamReader *bs, uint8_t byte);
 
 /*removes the most recently added callback, if any
   if "callback" is not NULL, the popped callback's data is copied to it
@@ -258,7 +300,7 @@ bs_call_callbacks(BitstreamReader *bs, uint8_t byte);
   bs_push_callback(reader, &saved_callback); //restored saved callback
 */
 void
-bs_pop_callback(BitstreamReader *bs, struct bs_callback *callback);
+br_pop_callback(BitstreamReader *bs, struct bs_callback *callback);
 
 /*pushes the given callback back onto the callback stack
   note that the data from "callback" is copied onto a new internal struct;
@@ -266,10 +308,10 @@ bs_pop_callback(BitstreamReader *bs, struct bs_callback *callback);
 
   if "callback" is NULL, this does nothing*/
 void
-bs_push_callback(BitstreamReader *bs, struct bs_callback *callback);
+br_push_callback(BitstreamReader *bs, struct bs_callback *callback);
 
 static inline long
-bs_ftell(BitstreamReader *bs) {
+br_ftell(BitstreamReader *bs) {
     assert(bs->type == BS_FILE);
     return ftell(bs->input.file);
 }
@@ -282,7 +324,7 @@ bs_ftell(BitstreamReader *bs) {
   If not, this prints an error message and performs an unconditional exit.
 */
 void
-bs_abort(BitstreamReader *bs);
+br_abort(BitstreamReader *bs);
 
 
 /*Sets up an exception stack for use by setjmp(3).
@@ -300,21 +342,21 @@ bs_abort(BitstreamReader *bs);
   for errors to go if/when they do occur.
  */
 jmp_buf*
-bs_try(BitstreamReader *bs);
+br_try(BitstreamReader *bs);
 
 
 /*Pops an entry off the current exception stack.
  (ends a try, essentially)*/
 void
-bs_etry(BitstreamReader *bs);
+br_etry(BitstreamReader *bs);
 
 
 /*************************************************************
-   Read Function Matrix
+   Bitstream Reader Function Matrix
    The read functions come in three input variants
    and two endianness variants named in the format:
 
-   bs_function_x_yy
+   br_function_x_yy
 
    where "x" is "f" for raw file, "s" for substream or "p" for Python input
    and "yy" is "be" for big endian or "le" for little endian.
@@ -322,187 +364,187 @@ bs_etry(BitstreamReader *bs);
 
    | Function          | Input     | Endianness    |
    |-------------------+-----------+---------------|
-   | bs_read_bits_f_be | raw file  | big endian    |
-   | bs_read_bits_f_le | raw file  | little endian |
-   | bs_read_bits_s_be | substream | big endian    |
-   | bs_read_bits_s_le | substream | little endian |
-   | bs_read_bits_p_be | Python    | big endian    |
-   | bs_read_bits_p_le | Python    | little endian |
+   | br_read_bits_f_be | raw file  | big endian    |
+   | br_read_bits_f_le | raw file  | little endian |
+   | br_read_bits_s_be | substream | big endian    |
+   | br_read_bits_s_le | substream | little endian |
+   | br_read_bits_p_be | Python    | big endian    |
+   | br_read_bits_p_le | Python    | little endian |
 
  *************************************************************/
 
 unsigned int
-bs_read_bits_f_be(BitstreamReader* bs, unsigned int count);
+br_read_bits_f_be(BitstreamReader* bs, unsigned int count);
 unsigned int
-bs_read_bits_f_le(BitstreamReader* bs, unsigned int count);
+br_read_bits_f_le(BitstreamReader* bs, unsigned int count);
 unsigned int
-bs_read_bits_s_be(BitstreamReader* bs, unsigned int count);
+br_read_bits_s_be(BitstreamReader* bs, unsigned int count);
 unsigned int
-bs_read_bits_s_le(BitstreamReader* bs, unsigned int count);
+br_read_bits_s_le(BitstreamReader* bs, unsigned int count);
 #ifndef STANDALONE
 unsigned int
-bs_read_bits_p_be(BitstreamReader* bs, unsigned int count);
+br_read_bits_p_be(BitstreamReader* bs, unsigned int count);
 unsigned int
-bs_read_bits_p_le(BitstreamReader* bs, unsigned int count);
+br_read_bits_p_le(BitstreamReader* bs, unsigned int count);
 #endif
 
 
 int
-bs_read_signed_bits_f_be(BitstreamReader* bs, unsigned int count);
+br_read_signed_bits_f_be(BitstreamReader* bs, unsigned int count);
 int
-bs_read_signed_bits_f_le(BitstreamReader* bs, unsigned int count);
+br_read_signed_bits_f_le(BitstreamReader* bs, unsigned int count);
 int
-bs_read_signed_bits_s_be(BitstreamReader* bs, unsigned int count);
+br_read_signed_bits_s_be(BitstreamReader* bs, unsigned int count);
 int
-bs_read_signed_bits_s_le(BitstreamReader* bs, unsigned int count);
+br_read_signed_bits_s_le(BitstreamReader* bs, unsigned int count);
 #ifndef STANDALONE
 int
-bs_read_signed_bits_p_be(BitstreamReader* bs, unsigned int count);
+br_read_signed_bits_p_be(BitstreamReader* bs, unsigned int count);
 int
-bs_read_signed_bits_p_le(BitstreamReader* bs, unsigned int count);
+br_read_signed_bits_p_le(BitstreamReader* bs, unsigned int count);
 #endif
 
 
 uint64_t
-bs_read_bits64_f_be(BitstreamReader* bs, unsigned int count);
+br_read_bits64_f_be(BitstreamReader* bs, unsigned int count);
 uint64_t
-bs_read_bits64_f_le(BitstreamReader* bs, unsigned int count);
+br_read_bits64_f_le(BitstreamReader* bs, unsigned int count);
 uint64_t
-bs_read_bits64_s_be(BitstreamReader* bs, unsigned int count);
+br_read_bits64_s_be(BitstreamReader* bs, unsigned int count);
 uint64_t
-bs_read_bits64_s_le(BitstreamReader* bs, unsigned int count);
+br_read_bits64_s_le(BitstreamReader* bs, unsigned int count);
 #ifndef STANDALONE
 uint64_t
-bs_read_bits64_p_be(BitstreamReader* bs, unsigned int count);
+br_read_bits64_p_be(BitstreamReader* bs, unsigned int count);
 uint64_t
-bs_read_bits64_p_le(BitstreamReader* bs, unsigned int count);
+br_read_bits64_p_le(BitstreamReader* bs, unsigned int count);
 #endif
 
 
 void
-bs_skip_bits_f_be(BitstreamReader* bs, unsigned int count);
+br_skip_bits_f_be(BitstreamReader* bs, unsigned int count);
 void
-bs_skip_bits_f_le(BitstreamReader* bs, unsigned int count);
+br_skip_bits_f_le(BitstreamReader* bs, unsigned int count);
 void
-bs_skip_bits_s_be(BitstreamReader* bs, unsigned int count);
+br_skip_bits_s_be(BitstreamReader* bs, unsigned int count);
 void
-bs_skip_bits_s_le(BitstreamReader* bs, unsigned int count);
+br_skip_bits_s_le(BitstreamReader* bs, unsigned int count);
 #ifndef STANDALONE
 void
-bs_skip_bits_p_be(BitstreamReader* bs, unsigned int count);
+br_skip_bits_p_be(BitstreamReader* bs, unsigned int count);
 void
-bs_skip_bits_p_le(BitstreamReader* bs, unsigned int count);
+br_skip_bits_p_le(BitstreamReader* bs, unsigned int count);
 #endif
 
 
 /*unread_bit has no file/substream/Python variants
   because it never makes calls to the input stream*/
 void
-bs_unread_bit_be(BitstreamReader* bs, int unread_bit);
+br_unread_bit_be(BitstreamReader* bs, int unread_bit);
 void
-bs_unread_bit_le(BitstreamReader* bs, int unread_bit);
+br_unread_bit_le(BitstreamReader* bs, int unread_bit);
 
 
 unsigned int
-bs_read_unary_f_be(BitstreamReader* bs, int stop_bit);
+br_read_unary_f_be(BitstreamReader* bs, int stop_bit);
 unsigned int
-bs_read_unary_f_le(BitstreamReader* bs, int stop_bit);
+br_read_unary_f_le(BitstreamReader* bs, int stop_bit);
 unsigned int
-bs_read_unary_s_be(BitstreamReader* bs, int stop_bit);
+br_read_unary_s_be(BitstreamReader* bs, int stop_bit);
 unsigned int
-bs_read_unary_s_le(BitstreamReader* bs, int stop_bit);
+br_read_unary_s_le(BitstreamReader* bs, int stop_bit);
 #ifndef STANDALONE
 unsigned int
-bs_read_unary_p_be(BitstreamReader* bs, int stop_bit);
+br_read_unary_p_be(BitstreamReader* bs, int stop_bit);
 unsigned int
-bs_read_unary_p_le(BitstreamReader* bs, int stop_bit);
+br_read_unary_p_le(BitstreamReader* bs, int stop_bit);
 #endif
 
 
 int
-bs_read_limited_unary_f_be(BitstreamReader* bs, int stop_bit, int maximum_bits);
+br_read_limited_unary_f_be(BitstreamReader* bs, int stop_bit, int maximum_bits);
 int
-bs_read_limited_unary_f_le(BitstreamReader* bs, int stop_bit, int maximum_bits);
+br_read_limited_unary_f_le(BitstreamReader* bs, int stop_bit, int maximum_bits);
 int
-bs_read_limited_unary_s_be(BitstreamReader* bs, int stop_bit, int maximum_bits);
+br_read_limited_unary_s_be(BitstreamReader* bs, int stop_bit, int maximum_bits);
 int
-bs_read_limited_unary_s_le(BitstreamReader* bs, int stop_bit, int maximum_bits);
+br_read_limited_unary_s_le(BitstreamReader* bs, int stop_bit, int maximum_bits);
 #ifndef STANDALONE
 int
-bs_read_limited_unary_p_be(BitstreamReader* bs, int stop_bit, int maximum_bits);
+br_read_limited_unary_p_be(BitstreamReader* bs, int stop_bit, int maximum_bits);
 int
-bs_read_limited_unary_p_le(BitstreamReader* bs, int stop_bit, int maximum_bits);
+br_read_limited_unary_p_le(BitstreamReader* bs, int stop_bit, int maximum_bits);
 #endif
 
 
 /*This automatically flushes any current state,
   so make sure to call it while byte-aligned!*/
 void
-bs_set_endianness_f_be(BitstreamReader *bs, bs_endianness endianness);
+br_set_endianness_f_be(BitstreamReader *bs, bs_endianness endianness);
 void
-bs_set_endianness_f_le(BitstreamReader *bs, bs_endianness endianness);
+br_set_endianness_f_le(BitstreamReader *bs, bs_endianness endianness);
 void
-bs_set_endianness_s_be(BitstreamReader *bs, bs_endianness endianness);
+br_set_endianness_s_be(BitstreamReader *bs, bs_endianness endianness);
 void
-bs_set_endianness_s_le(BitstreamReader *bs, bs_endianness endianness);
+br_set_endianness_s_le(BitstreamReader *bs, bs_endianness endianness);
 #ifndef STANDALONE
 void
-bs_set_endianness_p_be(BitstreamReader *bs, bs_endianness endianness);
+br_set_endianness_p_be(BitstreamReader *bs, bs_endianness endianness);
 void
-bs_set_endianness_p_le(BitstreamReader *bs, bs_endianness endianness);
+br_set_endianness_p_le(BitstreamReader *bs, bs_endianness endianness);
 #endif
 
 
 /*read_huffman_code has no endianness variants
   since that is determined when its jump table is compiled*/
 int
-bs_read_huffman_code_f(BitstreamReader *bs,
+br_read_huffman_code_f(BitstreamReader *bs,
                        struct bs_huffman_table table[][0x200]);
 int
-bs_read_huffman_code_s(BitstreamReader *bs,
+br_read_huffman_code_s(BitstreamReader *bs,
                        struct bs_huffman_table table[][0x200]);
 #ifndef STANDALONE
 int
-bs_read_huffman_code_p(BitstreamReader *bs,
+br_read_huffman_code_p(BitstreamReader *bs,
                        struct bs_huffman_table table[][0x200]);
 #endif
 
 
 /*none of the mark handling functions have endianness variants*/
 void
-bs_mark_f(BitstreamReader* bs);
+br_mark_f(BitstreamReader* bs);
 void
-bs_mark_s(BitstreamReader* bs);
+br_mark_s(BitstreamReader* bs);
 #ifndef STANDALONE
 void
-bs_mark_p(BitstreamReader* bs);
+br_mark_p(BitstreamReader* bs);
 #endif
 
 void
-bs_rewind_f(BitstreamReader* bs);
+br_rewind_f(BitstreamReader* bs);
 void
-bs_rewind_s(BitstreamReader* bs);
+br_rewind_s(BitstreamReader* bs);
 #ifndef STANDALONE
 void
-bs_rewind_p(BitstreamReader* bs);
+br_rewind_p(BitstreamReader* bs);
 #endif
 
 void
-bs_unmark_f(BitstreamReader* bs);
+br_unmark_f(BitstreamReader* bs);
 void
-bs_unmark_s(BitstreamReader* bs);
+br_unmark_s(BitstreamReader* bs);
 #ifndef STANDALONE
 void
-bs_unmark_p(BitstreamReader* bs);
+br_unmark_p(BitstreamReader* bs);
 #endif
 
 
 /*byte_align doesn't have file *or* endianness variants*/
 void
-bs_byte_align_r(BitstreamReader* bs);
+br_byte_align(BitstreamReader* bs);
 
 
-/*returns a new bs_buffer struct which can be appended to and read from
+/*returns a new br_buffer struct which can be appended to and read from
   it must be closed later*/
 struct bs_buffer*
 buf_new(void);
@@ -543,7 +585,7 @@ buf_close(struct bs_buffer *stream);
 
 
 struct BitstreamReader_s*
-bs_substream_new(bs_endianness endianness);
+br_substream_new(bs_endianness endianness);
 
 /*clears out the substream for possible reuse
 
@@ -553,33 +595,33 @@ void
 bs_substream_reset(struct BitstreamReader_s *substream);
 
 void
-bs_close_stream_s(struct BitstreamReader_s *stream);
+br_close_stream_s(struct BitstreamReader_s *stream);
 
 /*variants for the stream->substream(stream, bytes) method
 
-  these work by calling bs_substream_new to generate a plain substream
+  these work by calling br_substream_new to generate a plain substream
   with the appropriate endianness,
   then calling substream_append to fill it with data
   before returning the result*/
 struct BitstreamReader_s*
-bs_substream_f_be(struct BitstreamReader_s *stream, uint32_t bytes);
+br_substream_f_be(struct BitstreamReader_s *stream, uint32_t bytes);
 
 struct BitstreamReader_s*
-bs_substream_f_le(struct BitstreamReader_s *stream, uint32_t bytes);
+br_substream_f_le(struct BitstreamReader_s *stream, uint32_t bytes);
 
 #ifndef STANDALONE
 struct BitstreamReader_s*
-bs_substream_p_be(struct BitstreamReader_s *stream, uint32_t bytes);
+br_substream_p_be(struct BitstreamReader_s *stream, uint32_t bytes);
 
 struct BitstreamReader_s*
-bs_substream_p_le(struct BitstreamReader_s *stream, uint32_t bytes);
+br_substream_p_le(struct BitstreamReader_s *stream, uint32_t bytes);
 #endif
 
 struct BitstreamReader_s*
-bs_substream_s_be(struct BitstreamReader_s *stream, uint32_t bytes);
+br_substream_s_be(struct BitstreamReader_s *stream, uint32_t bytes);
 
 struct BitstreamReader_s*
-bs_substream_s_le(struct BitstreamReader_s *stream, uint32_t bytes);
+br_substream_s_le(struct BitstreamReader_s *stream, uint32_t bytes);
 
 /*variants for the stream->substream_append(stream, substream, bytes) method
 
@@ -587,21 +629,21 @@ bs_substream_s_le(struct BitstreamReader_s *stream, uint32_t bytes);
 
 /*appends from a FILE-based stream to the buffer*/
 void
-bs_substream_append_f(struct BitstreamReader_s *stream,
+br_substream_append_f(struct BitstreamReader_s *stream,
                       struct BitstreamReader_s *substream,
                       uint32_t bytes);
 
 #ifndef STANDALONE
 /*appends from a Python-based stream to the buffer*/
 void
-bs_substream_append_p(struct BitstreamReader_s *stream,
+br_substream_append_p(struct BitstreamReader_s *stream,
                       struct BitstreamReader_s *substream,
                       uint32_t bytes);
 #endif
 
 /*appends from one buffer to another buffer*/
 void
-bs_substream_append_s(struct BitstreamReader_s *stream,
+br_substream_append_s(struct BitstreamReader_s *stream,
                       struct BitstreamReader_s *substream,
                       uint32_t bytes);
 
@@ -633,129 +675,120 @@ BitstreamReader*
 bs_open_python(PyObject *reader, bs_endianness endianness);
 
 void
-bs_close_stream_p(BitstreamReader *bs);
+br_close_stream_p(BitstreamReader *bs);
 
 #endif
 
 
-typedef struct {
-    BitstreamRecordType type;
-    union {
-        unsigned int count;
-        int stop_bit;
-    } key;
-    union {
-        int value;
-        uint64_t value64;
-        bs_endianness endianness;
-    } value;
-} BitstreamRecord;
 
-
-typedef struct BitstreamWriter_s {
-    FILE *file;
-    unsigned int buffer_size;
-    unsigned int buffer;
-    struct bs_callback *callback;
-
-    int bits_written;    /*used by open_accumulator and open_recorder*/
-    int records_written; /*used by open_recorder*/
-    int records_total;   /*used by open_recorder*/
-    BitstreamRecord *records;
-
-    void (*write)(struct BitstreamWriter_s* bs,
-                  unsigned int count,
-                  int value);
-
-    void (*write_signed)(struct BitstreamWriter_s* bs,
-                         unsigned int count,
-                         int value);
-
-    void (*write_64)(struct BitstreamWriter_s* bs,
-                     unsigned int count,
-                     uint64_t value);
-
-    void (*write_unary)(struct BitstreamWriter_s* bs,
-                        int stop_bit,
-                        int value);
-
-    void (*byte_align)(struct BitstreamWriter_s* bs);
-
-    void (*set_endianness)(struct BitstreamWriter_s* bs,
-                           bs_endianness endianness);
-} BitstreamWriter;
 
 
 BitstreamWriter*
-bs_open_w(FILE *f, bs_endianness endianness);
+bw_open(FILE *f, bs_endianness endianness);
 
 BitstreamWriter*
-bs_open_accumulator(void);
+bw_open_accumulator(void);
 
 BitstreamWriter*
-bs_open_recorder(void);
+bw_open_recorder(void);
+
+
+/*************************************************************
+ Bitstream Writer Function Matrix
+ The write functions come in three output variants
+ and two endianness variants for file output:
+
+ bw_function_x or bw_function_x_yy
+
+ where "x" is "f" for raw file, "r" for recorder or "a" for accumulator
+ and "yy" is "be" for big endian or "le" for little endian.
+
+ For example:
+
+ | Function           | Output      | Endianness    |
+ |--------------------+-------------+---------------|
+ | bw_write_bits_f_be | raw file    | big endian    |
+ | bw_write_bits_f_le | raw file    | little endian |
+ | bw_write_bits_r    | recorder    | N/A           |
+ | bw_write_bits_a    | accumulator | N/A           |
+
+ *************************************************************/
 
 /*this closes bs's open file, if any,
   deallocates any recorded output (for bs_open_accumulator BitstreamWriters)
   and frees any callbacks before deallocating the bs struct*/
 void
-bs_close_w(BitstreamWriter *bs);
+bw_close(BitstreamWriter *bs);
 
 /*this deallocates any recorded output
   (for bs_open_accumulator BitstreamWriters)
   and frees any callbacks before deallocating the bs struct
   it does not close any open FILE object but does fflush output*/
 void
-bs_free_w(BitstreamWriter *bs);
+bw_free(BitstreamWriter *bs);
 
 /*adds a callback function, which is called on every byte written
   the function's arguments are the written byte and a generic
   pointer to some other data structure
  */
 void
-bs_add_callback_w(BitstreamWriter *bs, bs_callback_func callback, void *data);
+bw_add_callback(BitstreamWriter *bs, bs_callback_func callback, void *data);
 
-int bs_eof(BitstreamWriter *bs);
+int bw_eof(BitstreamWriter *bs);
 
 
 /*big-endian writers for concrete bitstreams*/
 void
-write_bits_actual_be(BitstreamWriter* bs, unsigned int count, int value);
+bw_write_bits_f_be(BitstreamWriter* bs,
+                   unsigned int count,
+                   unsigned int value);
 
 void
-write_signed_bits_actual_be(BitstreamWriter* bs, unsigned int count, int value);
+bw_write_signed_bits_f_be(BitstreamWriter* bs,
+                          unsigned int count,
+                          int value);
 
 void
-write_bits64_actual_be(BitstreamWriter* bs, unsigned int count, uint64_t value);
+bw_write_bits64_f_be(BitstreamWriter* bs,
+                     unsigned int count,
+                     uint64_t value);
 
 void
-byte_align_w_actual_be(BitstreamWriter* bs);
+bw_byte_align_f_be(BitstreamWriter* bs);
 
 void
-set_endianness_actual_be(BitstreamWriter* bs, bs_endianness endianness);
+bw_set_endianness_f_be(BitstreamWriter* bs, bs_endianness endianness);
 
 
 /*little-endian writers for concrete bitstreams*/
 void
-write_bits_actual_le(BitstreamWriter* bs, unsigned int count, int value);
+bw_write_bits_f_le(BitstreamWriter* bs,
+                   unsigned int count,
+                   unsigned int value);
 
 void
-write_signed_bits_actual_le(BitstreamWriter* bs, unsigned int count, int value);
+bw_write_signed_bits_f_le(BitstreamWriter* bs,
+                          unsigned int count,
+                          int value);
 
 void
-write_bits64_actual_le(BitstreamWriter* bs, unsigned int count, uint64_t value);
+bw_write_bits64_f_le(BitstreamWriter* bs,
+                     unsigned int count,
+                     uint64_t value);
 
 void
-byte_align_w_actual_le(BitstreamWriter* bs);
+bw_byte_align_f_le(BitstreamWriter* bs);
 
 void
-set_endianness_actual_le(BitstreamWriter* bs, bs_endianness endianness);
+bw_set_endianness_f_le(BitstreamWriter* bs, bs_endianness endianness);
 
 
 /*write unary uses the stream's current writers,
   so it has no endian variations*/
 void
-write_unary_actual(BitstreamWriter* bs, int stop_bit, int value);
+bw_write_unary_f(BitstreamWriter* bs,
+                 int stop_bit,
+                 unsigned int value);
 
 
 /*write methods for a bs_open_accumulator
@@ -778,24 +811,28 @@ write_unary_actual(BitstreamWriter* bs, int stop_bit, int value);
   bs_close_w(accumulator);
 */
 void
-write_bits_accumulator(BitstreamWriter* bs, unsigned int count, int value);
+bw_write_bits_a(BitstreamWriter* bs,
+                unsigned int count,
+                unsigned int value);
 
 void
-write_signed_bits_accumulator(BitstreamWriter* bs, unsigned int count,
-                              int value);
+bw_write_signed_bits_a(BitstreamWriter* bs,
+                       unsigned int count,
+                       int value);
 
 void
-write_bits64_accumulator(BitstreamWriter* bs, unsigned int count,
-                         uint64_t value);
+bw_write_bits64_a(BitstreamWriter* bs,
+                  unsigned int count,
+                  uint64_t value);
 
 void
-write_unary_accumulator(BitstreamWriter* bs, int stop_bit, int value);
+bw_write_unary_a(BitstreamWriter* bs, int stop_bit, unsigned int value);
 
 void
-byte_align_w_accumulator(BitstreamWriter* bs);
+bw_byte_align_a(BitstreamWriter* bs);
 
 void
-set_endianness_accumulator(BitstreamWriter* bs, bs_endianness endianness);
+bw_set_endianness_a(BitstreamWriter* bs, bs_endianness endianness);
 
 
 /*make room for at least one additional record*/
@@ -830,35 +867,35 @@ bs_record_resize(BitstreamWriter* bs)
   bs_close_w(stream);
 */
 void
-write_bits_record(BitstreamWriter* bs, unsigned int count, int value);
+bw_write_bits_r(BitstreamWriter* bs, unsigned int count, unsigned int value);
 
 void
-write_signed_bits_record(BitstreamWriter* bs, unsigned int count, int value);
+bw_write_signed_bits_r(BitstreamWriter* bs, unsigned int count, int value);
 
 void
-write_bits64_record(BitstreamWriter* bs, unsigned int count, uint64_t value);
+bw_write_bits64_r(BitstreamWriter* bs, unsigned int count, uint64_t value);
 
 void
-write_unary_record(BitstreamWriter* bs, int stop_bit, int value);
+bw_write_unary_r(BitstreamWriter* bs, int stop_bit, unsigned int value);
 
 void
-byte_align_w_record(BitstreamWriter* bs);
+bw_byte_align_r(BitstreamWriter* bs);
 
 void
-set_endianness_record(BitstreamWriter* bs, bs_endianness endianness);
+bw_set_endianness_r(BitstreamWriter* bs, bs_endianness endianness);
 
 
 void
-bs_dump_records(BitstreamWriter* target, BitstreamWriter* source);
+bw_dump_records(BitstreamWriter* target, BitstreamWriter* source);
 
 /*clear the recorded output and reset for new output*/
 static inline void
-bs_reset_recorder(BitstreamWriter* bs)
+bw_reset_recorder(BitstreamWriter* bs)
 {
     bs->bits_written = bs->records_written = 0;
 }
 
 void
-bs_swap_records(BitstreamWriter* a, BitstreamWriter* b);
+bw_swap_records(BitstreamWriter* a, BitstreamWriter* b);
 
 #endif

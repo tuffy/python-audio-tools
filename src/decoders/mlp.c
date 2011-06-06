@@ -184,7 +184,7 @@ MLPDecoder_init(decoders_MLPDecoder* self,
 
     /*initalize stream position callback*/
     self->bytes_read = 0;
-    bs_add_callback_r(self->bitstream, mlp_byte_callback, self);
+    br_add_callback(self->bitstream, mlp_byte_callback, self);
 
     return 0;
 }
@@ -309,7 +309,7 @@ MLPDecoder_read(decoders_MLPDecoder* self) {
         return frame;
     }
 
-    if (!setjmp(*bs_try(self->bitstream))) {
+    if (!setjmp(*br_try(self->bitstream))) {
         iaa_reset(&(self->multi_frame_samples));
 
         for (i = 0; i < MLP_FRAMES_AT_A_TIME; i++) {
@@ -325,9 +325,9 @@ MLPDecoder_read(decoders_MLPDecoder* self) {
                 break;
             }
         }
-        bs_etry(self->bitstream);
+        br_etry(self->bitstream);
     } else {
-        bs_etry(self->bitstream);
+        br_etry(self->bitstream);
         PyErr_SetString(PyExc_IOError, "I/O error reading MLP stream");
         return NULL;
     }
@@ -407,7 +407,7 @@ MLPDecoder_analyze_frame(decoders_MLPDecoder* self, PyObject *args) {
         /*do nothing*/;
     }
 
-    if (!setjmp(*bs_try(self->bitstream))) {
+    if (!setjmp(*br_try(self->bitstream))) {
         /*read one SubstreamSize per substream*/
         for (substream = 0;
              substream < self->major_sync.substream_count;
@@ -438,13 +438,13 @@ MLPDecoder_analyze_frame(decoders_MLPDecoder* self, PyObject *args) {
                 PyList_Append(substreams, obj);
                 Py_DECREF(obj);
             } else {
-                bs_etry(self->bitstream);
+                br_etry(self->bitstream);
                 goto error;
             }
         }
-        bs_etry(self->bitstream);
+        br_etry(self->bitstream);
     } else {
-        bs_etry(self->bitstream);
+        br_etry(self->bitstream);
         PyErr_SetString(PyExc_IOError, "I/O error reading MLP stream");
         goto error;
     }
@@ -935,15 +935,15 @@ int
 mlp_total_frame_size(BitstreamReader* bitstream) {
     int total_size;
 
-    if (!setjmp(*bs_try(bitstream))) {
+    if (!setjmp(*br_try(bitstream))) {
         bitstream->skip(bitstream, 4);
         total_size = bitstream->read(bitstream, 12) * 2;
         bitstream->skip(bitstream, 16);
-        bs_etry(bitstream);
+        br_etry(bitstream);
 
         return total_size;
     } else {
-        bs_etry(bitstream);
+        br_etry(bitstream);
         return -1;
     }
 }
@@ -955,12 +955,12 @@ mlp_read_major_sync(decoders_MLPDecoder* decoder,
     const static uint8_t bits_per_sample[] =
         {16, 20, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-    if (!setjmp(*bs_try(bitstream))) {
+    if (!setjmp(*br_try(bitstream))) {
         bitstream->mark(bitstream);
 
         if (bitstream->read(bitstream, 24) != 0xF8726F) {
             /*sync words not found*/
-            bs_etry(bitstream);
+            br_etry(bitstream);
             bitstream->rewind(bitstream);
             bitstream->unmark(bitstream);
             decoder->bytes_read -= 3;
@@ -968,7 +968,7 @@ mlp_read_major_sync(decoders_MLPDecoder* decoder,
         }
         if (bitstream->read(bitstream, 8) != 0xBB) {
             /*stream type not 0xBB*/
-            bs_etry(bitstream);
+            br_etry(bitstream);
             bitstream->rewind(bitstream);
             bitstream->unmark(bitstream);
             decoder->bytes_read -= 4;
@@ -989,7 +989,7 @@ mlp_read_major_sync(decoders_MLPDecoder* decoder,
         major_sync->substream_count = bitstream->read(bitstream, 4);
         bitstream->skip(bitstream, 92); /*unknown 3*/
 
-        bs_etry(bitstream);
+        br_etry(bitstream);
 
         /*various sanity checks*/
         if (major_sync->group1_bits == 0) {
@@ -1021,7 +1021,7 @@ mlp_read_major_sync(decoders_MLPDecoder* decoder,
 
         return MLP_MAJOR_SYNC_OK;
     } else {
-        bs_etry(bitstream);
+        br_etry(bitstream);
         PyErr_SetString(PyExc_IOError, "I/O error reading major sync");
         return MLP_MAJOR_SYNC_ERROR;
     }
@@ -1179,26 +1179,26 @@ mlp_read_substream(decoders_MLPDecoder* decoder,
 
     /* check for end of stream marker */
     if (decoder->remaining_samples <= samples->arrays[0].size) {
-        bs_pop_callback(bs, &callback);
+        br_pop_callback(bs, &callback);
         bs->mark(bs);
         if (bs->read(bs, 16) == 0xD234) {
             if (bs->read(bs, 16) == 0xD234) {
                 decoder->stream_closed = 1;
                 bs->unmark(bs);
-                bs_push_callback(bs, &callback);
-                bs_call_callbacks(bs, 0xD2);
-                bs_call_callbacks(bs, 0x34);
-                bs_call_callbacks(bs, 0xD2);
-                bs_call_callbacks(bs, 0x34);
+                br_push_callback(bs, &callback);
+                br_call_callbacks(bs, 0xD2);
+                br_call_callbacks(bs, 0x34);
+                br_call_callbacks(bs, 0xD2);
+                br_call_callbacks(bs, 0x34);
             } else {
                 bs->rewind(bs);
                 bs->unmark(bs);
-                bs_push_callback(bs, &callback);
+                br_push_callback(bs, &callback);
             }
         } else {
             bs->rewind(bs);
             bs->unmark(bs);
-            bs_push_callback(bs, &callback);
+            br_push_callback(bs, &callback);
         }
     }
 

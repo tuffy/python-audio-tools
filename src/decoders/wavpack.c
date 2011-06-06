@@ -32,8 +32,8 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     self->filename = NULL;
     self->bitstream = NULL;
     self->file = NULL;
-    self->block_data = bs_substream_new(BS_LITTLE_ENDIAN);
-    self->subblock_data = bs_substream_new(BS_LITTLE_ENDIAN);
+    self->block_data = br_substream_new(BS_LITTLE_ENDIAN);
+    self->subblock_data = br_substream_new(BS_LITTLE_ENDIAN);
 
     /*setup a bunch of temporary buffers*/
     ia_init(&(self->decorr_terms), 8);
@@ -57,7 +57,7 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
         return -1;
     } else {
-        self->bitstream = bs_open_r(self->file, BS_LITTLE_ENDIAN);
+        self->bitstream = br_open(self->file, BS_LITTLE_ENDIAN);
     }
 
     self->filename = strdup(filename);
@@ -79,7 +79,7 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
             self->bitstream->unmark(self->bitstream);
             return -1;
         } else {
-            if (!setjmp(*bs_try(self->block_data))) {
+            if (!setjmp(*br_try(self->block_data))) {
                 if (self->remaining_samples == -1)
                     self->remaining_samples = block_header.total_samples;
 
@@ -103,14 +103,14 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
                         /*once we have a channel_info sub-block,
                           there's no need to walk through additional
                           block headers for the channel count*/
-                        bs_etry(self->block_data);
+                        br_etry(self->block_data);
                         goto finished;
                     }
                 }
-                bs_etry(self->block_data);
+                br_etry(self->block_data);
             } else {
                 /*EOF error*/
-                bs_etry(self->block_data);
+                br_etry(self->block_data);
                 self->bitstream->unmark(self->bitstream);
                 PyErr_SetString(PyExc_IOError, "I/O error reading block");
                 return -1;
@@ -210,7 +210,7 @@ WavPackDecoder_close(decoders_WavPackDecoder* self, PyObject *args) {
 
 static PyObject*
 WavPackDecoder_offset(decoders_WavPackDecoder *self, void *closure) {
-    return Py_BuildValue("i", bs_ftell(self->bitstream));
+    return Py_BuildValue("i", br_ftell(self->bitstream));
 }
 
 status
@@ -275,7 +275,7 @@ wavpack_read_block_header(BitstreamReader* bitstream,
     header->false_stereo = bitstream->read(bitstream, 1);
 
     if (bitstream->read(bitstream, 1) != 0) {
-        bs_etry(bitstream);
+        br_etry(bitstream);
         return ERR_INVALID_RESERVED_BIT;
     }
 
@@ -301,19 +301,19 @@ wavpack_read_block(BitstreamReader* input,
                    BitstreamReader* block_data) {
     status result;
 
-    if (!setjmp(*bs_try(input))) {
+    if (!setjmp(*br_try(input))) {
         result = wavpack_read_block_header(input, header);
         if (result == OK) {
             bs_substream_reset(block_data);
             input->substream_append(input, block_data, header->block_size - 24);
-            bs_etry(input);
+            br_etry(input);
             return OK;
         } else {
-            bs_etry(input);
+            br_etry(input);
             return result;
         }
     } else {
-        bs_etry(input);
+        br_etry(input);
         return ERR_BITSTREAM_IO;
     }
 }
@@ -514,14 +514,14 @@ wavpack_read_decorr_samples(BitstreamReader* subblock,
       from the sub-block*/
     ia_init(&samples, decorr_terms->size);
 
-    if (!setjmp(*bs_try(subblock))) {
+    if (!setjmp(*br_try(subblock))) {
         for (i = 0; i < total_samples; i++) {
             ia_append(&samples,
                       wavpack_exp2(subblock->read_signed(subblock, 16)));
         }
-        bs_etry(subblock);
+        br_etry(subblock);
     } else {
-        bs_etry(subblock);
+        br_etry(subblock);
         result = ERR_DECORR_SAMPLES_IO;
         goto done;
     }
@@ -661,7 +661,7 @@ wavpack_read_wv_bitstream(BitstreamReader* subblock,
 
     ia_reset(values);
 
-    if (!setjmp(*bs_try(subblock))) {
+    if (!setjmp(*br_try(subblock))) {
         while (value_count > 0) {
             if ((!holding_zero) &&
                 (!holding_one) &&
@@ -696,11 +696,11 @@ wavpack_read_wv_bitstream(BitstreamReader* subblock,
             }
         }
 
-        bs_etry(subblock);
+        br_etry(subblock);
 
         return OK;
     } else {
-        bs_etry(subblock);
+        br_etry(subblock);
 
         return ERR_BITSTREAM_IO;
     }
@@ -889,23 +889,23 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
 
         if (!(self->md5_checked) &&
             (wavpack_read_block(bitstream, &block_header, block_data) == OK)) {
-            if (!setjmp(*bs_try(block_data))) {
+            if (!setjmp(*br_try(block_data))) {
                 while (wavpack_subblocks_remain(block_data)) {
                     if ((error =
                          wavpack_decode_subblock(self, &block_header)) != OK) {
-                        bs_etry(block_data);
+                        br_etry(block_data);
                         PyErr_SetString(wavpack_exception(error),
                                         wavpack_strerror(error));
                         goto error;
                     }
                 }
-                bs_etry(block_data);
+                br_etry(block_data);
                 return ia_array_to_framelist(&(self->decoded_samples),
                                              self->bits_per_sample);
             } else {
                 /*but once we find a block header during closing,
                   trigger an error if that block is truncated*/
-                bs_etry(block_data);
+                br_etry(block_data);
                 PyErr_SetString(PyExc_IOError, "I/O error reading sub-block");
                 goto error;
             }
@@ -1005,7 +1005,7 @@ WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
     status error;
 
     if (self->remaining_samples > 0) {
-        position = bs_ftell(self->bitstream);
+        position = br_ftell(self->bitstream);
 
         self->got_decorr_terms = 0;
         self->got_decorr_weights = 0;
@@ -1026,7 +1026,7 @@ WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
 
             subblocks = PyList_New(0);
 
-            if (!setjmp(*bs_try(self->block_data))) {
+            if (!setjmp(*br_try(self->block_data))) {
                 while (wavpack_subblocks_remain(self->block_data)) {
                     subblock = WavPackDecoder_analyze_subblock(self,
                                                                &block_header);
@@ -1035,14 +1035,14 @@ WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
                         Py_DECREF(subblock);
                     } else {
                         Py_DECREF(subblocks);
-                        bs_etry(self->block_data);
+                        br_etry(self->block_data);
                         return NULL;
                     }
                 }
-                bs_etry(self->block_data);
+                br_etry(self->block_data);
             } else {
                 Py_DECREF(subblocks);
-                bs_etry(self->block_data);
+                br_etry(self->block_data);
                 PyErr_SetString(PyExc_IOError,
                                 "I/O error reading sub-blocks");
                 return NULL;
@@ -1321,20 +1321,20 @@ wavpack_decode_block(decoders_WavPackDecoder* self,
 
     /*First, read in all the sub-block data.
       These are like arguments to the decoding routine.*/
-    if (!setjmp(*bs_try(block_data))) {
+    if (!setjmp(*br_try(block_data))) {
         while (wavpack_subblocks_remain(block_data)) {
             if ((error =
                  wavpack_decode_subblock(self, &block_header)) != OK) {
-                bs_etry(block_data);
+                br_etry(block_data);
                 PyEval_RestoreThread(thread_state);
                 PyErr_SetString(wavpack_exception(error),
                                 wavpack_strerror(error));
                 return ERROR;
             }
         }
-        bs_etry(block_data);
+        br_etry(block_data);
     } else {
-        bs_etry(block_data);
+        br_etry(block_data);
         PyEval_RestoreThread(thread_state);
         PyErr_SetString(PyExc_IOError, "I/O error reading sub-block");
         return ERROR;

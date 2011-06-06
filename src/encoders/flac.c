@@ -176,9 +176,9 @@ encoders_encode_flac(char *filename,
     audiotools__MD5Init(&md5sum);
     pcmr_add_callback(reader, md5_update, &md5sum, 1, 1);
 
-    stream = bs_open_w(file, BS_BIG_ENDIAN);
-    bs_add_callback_w(stream, flac_crc8, &(streaminfo.crc8));
-    bs_add_callback_w(stream, flac_crc16, &(streaminfo.crc16));
+    stream = bw_open(file, BS_BIG_ENDIAN);
+    bw_add_callback(stream, flac_crc8, &(streaminfo.crc8));
+    bw_add_callback(stream, flac_crc16, &(streaminfo.crc16));
 
     /*fill streaminfo with some placeholder values*/
     /* streaminfo.minimum_block_size = 0xFFFF; */
@@ -261,7 +261,7 @@ encoders_encode_flac(char *filename,
     iaa_free(&samples); /*deallocate the temporary samples block*/
     pcmr_close(reader); /*close the pcm_reader object
                               which calls pcmreader.close() in the process*/
-    bs_close_w(stream);     /*close the output file*/
+    bw_close(stream);     /*close the output file*/
 #ifndef STANDALONE
     return frame_offsets;
  error:
@@ -270,7 +270,7 @@ encoders_encode_flac(char *filename,
     Py_XDECREF(frame_offsets);
     iaa_free(&samples);
     pcmr_close(reader);
-    bs_close_w(stream);
+    bw_close(stream);
     return NULL;
 }
 #else
@@ -278,7 +278,7 @@ encoders_encode_flac(char *filename,
  error:
     iaa_free(&samples);
     pcmr_close(reader);
-    bs_close_w(stream);
+    bw_close(stream);
     return 0;
 }
 #endif
@@ -359,20 +359,20 @@ FlacEncoder_write_frame(BitstreamWriter *bs,
         }
     } else {
         /*otherwise, first try independent subframes*/
-        left_subframe = bs_open_recorder();
+        left_subframe = bw_open_recorder();
         FlacEncoder_write_subframe(left_subframe,
                                    &(streaminfo->options),
                                    streaminfo->bits_per_sample,
                                    iaa_getitem(samples, 0));
-        right_subframe = bs_open_recorder();
+        right_subframe = bw_open_recorder();
         FlacEncoder_write_subframe(right_subframe,
                                    &(streaminfo->options),
                                    streaminfo->bits_per_sample,
                                    iaa_getitem(samples, 1));
 
         /*then, try mid-side subframe*/
-        avg_subframe = bs_open_recorder();
-        difference_subframe = bs_open_recorder();
+        avg_subframe = bw_open_recorder();
+        difference_subframe = bw_open_recorder();
 
         ia_init(&avg_subframe_samples, iaa_getitem(samples, 0)->size);
         ia_init(&difference_subframe_samples, iaa_getitem(samples, 0)->size);
@@ -394,7 +394,7 @@ FlacEncoder_write_frame(BitstreamWriter *bs,
         if (streaminfo->options.mid_side) {
             /*if mid-side is selected, try left-side and side-right also*/
 
-            side_subframe = bs_open_recorder();
+            side_subframe = bw_open_recorder();
             ia_init(&side_samples, iaa_getitem(samples, 0)->size);
 
             FlacEncoder_build_left_side_subframes(samples, &side_samples);
@@ -412,8 +412,8 @@ FlacEncoder_write_frame(BitstreamWriter *bs,
                         difference_subframe->bits_written))) {
                 /*do independent subframes*/
                 FlacEncoder_write_frame_header(bs, streaminfo, samples, 1);
-                bs_dump_records(bs, left_subframe);
-                bs_dump_records(bs, right_subframe);
+                bw_dump_records(bs, left_subframe);
+                bw_dump_records(bs, right_subframe);
             } else if ((left_subframe->bits_written +
                         side_subframe->bits_written) <
                        MIN(side_subframe->bits_written +
@@ -422,24 +422,24 @@ FlacEncoder_write_frame(BitstreamWriter *bs,
                            difference_subframe->bits_written)) {
                 /*do left-side subframes*/
                 FlacEncoder_write_frame_header(bs, streaminfo, samples, 0x8);
-                bs_dump_records(bs, left_subframe);
-                bs_dump_records(bs, side_subframe);
+                bw_dump_records(bs, left_subframe);
+                bw_dump_records(bs, side_subframe);
             } else if (side_subframe->bits_written +
                        right_subframe->bits_written <
                        avg_subframe->bits_written +
                        difference_subframe->bits_written) {
                 /*do side-right subframes*/
                 FlacEncoder_write_frame_header(bs, streaminfo, samples, 0x9);
-                bs_dump_records(bs, side_subframe);
-                bs_dump_records(bs, right_subframe);
+                bw_dump_records(bs, side_subframe);
+                bw_dump_records(bs, right_subframe);
             } else {
                 /*do mid-side subframes*/
                 FlacEncoder_write_frame_header(bs, streaminfo, samples, 0xA);
-                bs_dump_records(bs, avg_subframe);
-                bs_dump_records(bs, difference_subframe);
+                bw_dump_records(bs, avg_subframe);
+                bw_dump_records(bs, difference_subframe);
             }
 
-            bs_close_w(side_subframe);
+            bw_close(side_subframe);
             ia_free(&side_samples);
         } else {
             /*otherwise, write the smaller of independent and mid-side to disk,
@@ -449,19 +449,19 @@ FlacEncoder_write_frame(BitstreamWriter *bs,
                 (avg_subframe->bits_written +
                  difference_subframe->bits_written)) {
                 FlacEncoder_write_frame_header(bs, streaminfo, samples, 1);
-                bs_dump_records(bs, left_subframe);
-                bs_dump_records(bs, right_subframe);
+                bw_dump_records(bs, left_subframe);
+                bw_dump_records(bs, right_subframe);
             } else {
                 FlacEncoder_write_frame_header(bs, streaminfo, samples, 0xA);
-                bs_dump_records(bs, avg_subframe);
-                bs_dump_records(bs, difference_subframe);
+                bw_dump_records(bs, avg_subframe);
+                bw_dump_records(bs, difference_subframe);
             }
         }
 
-        bs_close_w(left_subframe);
-        bs_close_w(right_subframe);
-        bs_close_w(avg_subframe);
-        bs_close_w(difference_subframe);
+        bw_close(left_subframe);
+        bw_close(right_subframe);
+        bw_close(avg_subframe);
+        bw_close(difference_subframe);
         ia_free(&avg_subframe_samples);
         ia_free(&difference_subframe_samples);
     }
@@ -654,7 +654,7 @@ FlacEncoder_write_subframe(BitstreamWriter *bs,
     ia_init(&fixed_warm_up_samples, 8);
     ia_init(&fixed_residual, samples->size);
     ia_init(&fixed_rice_parameters, 1);
-    fixed_subframe = bs_open_accumulator();
+    fixed_subframe = bw_open_accumulator();
 
     if (!options->no_fixed_subframes) {
         fixed_predictor_order =
@@ -699,7 +699,7 @@ FlacEncoder_write_subframe(BitstreamWriter *bs,
                                             wasted_bits_per_sample,
                                             samples);
 
-        lpc_subframe = bs_open_accumulator();
+        lpc_subframe = bw_open_accumulator();
 
         FlacEncoder_write_lpc_subframe(lpc_subframe,
                                        &lpc_warm_up_samples,
@@ -740,7 +740,7 @@ FlacEncoder_write_subframe(BitstreamWriter *bs,
                                            lpc_shift_needed);
         }
 
-        bs_close_w(lpc_subframe);
+        bw_close(lpc_subframe);
 
         ia_free(&lpc_rice_parameters);
         ia_free(&lpc_residual);
@@ -789,7 +789,7 @@ FlacEncoder_write_subframe(BitstreamWriter *bs,
             samples->data[i] <<= wasted_bits_per_sample;
     }
 
-    bs_close_w(fixed_subframe);
+    bw_close(fixed_subframe);
     ia_free(&fixed_warm_up_samples);
     ia_free(&fixed_residual);
     ia_free(&fixed_rice_parameters);
@@ -1225,8 +1225,12 @@ FlacEncoder_write_residual_partition(BitstreamWriter *bs,
 
     ia_size_t residuals_size;
     ia_data_t *residuals_data;
-    void (*write_bits)(struct BitstreamWriter_s* bs, unsigned int count, int value);
-    void (*write_unary)(struct BitstreamWriter_s* bs, int stop_bit, int value);
+    void (*write_bits)(struct BitstreamWriter_s* bs,
+                       unsigned int count,
+                       unsigned int value);
+    void (*write_unary)(struct BitstreamWriter_s* bs,
+                        int stop_bit,
+                        unsigned int value);
 
     write_bits = bs->write;
     write_unary = bs->write_unary;

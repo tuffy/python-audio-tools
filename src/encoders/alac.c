@@ -87,8 +87,8 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
     }
 
     options.channel_mask = reader->channel_mask;
-    options.best_frame = bs_open_recorder();
-    options.current_frame = bs_open_recorder();
+    options.best_frame = bw_open_recorder();
+    options.current_frame = bw_open_recorder();
 
     /*initialize a buffer for input samples*/
     iaa_init(&samples, reader->channels, options.block_size);
@@ -109,11 +109,11 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
                         "file must by a concrete file object");
         goto error;
     } else {
-        stream = bs_open_w(output_file, BS_BIG_ENDIAN);
-        bs_add_callback_w(stream,
+        stream = bw_open(output_file, BS_BIG_ENDIAN);
+        bw_add_callback(stream,
                           alac_byte_counter,
                           &(encode_log.frame_byte_size));
-        bs_add_callback_w(stream,
+        bw_add_callback(stream,
                           alac_byte_counter,
                           &(encode_log.mdat_byte_size));
     }
@@ -155,10 +155,10 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
 
     /*close and free allocated files/buffers*/
     pcmr_close(reader);
-    bs_free_w(stream);
+    bw_free(stream);
     iaa_free(&samples);
-    bs_close_w(options.best_frame);
-    bs_close_w(options.current_frame);
+    bw_close(options.best_frame);
+    bw_close(options.current_frame);
 
     /*return the accumulated log of output*/
     encode_log_obj = alac_log_output(&encode_log);
@@ -166,10 +166,10 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
     return encode_log_obj;
 
  error:
-    bs_close_w(options.best_frame);
-    bs_close_w(options.current_frame);
+    bw_close(options.best_frame);
+    bw_close(options.current_frame);
     pcmr_close(reader);
-    bs_free_w(stream);
+    bw_free(stream);
     iaa_free(&samples);
     alac_log_free(&encode_log);
     return NULL;
@@ -202,8 +202,8 @@ ALACEncoder_encode_alac(char *filename,
     options.maximum_interlacing_shift = 2;
     options.minimum_interlacing_leftweight = 0;
     options.maximum_interlacing_leftweight = 4;
-    options.best_frame = bs_open_recorder();
-    options.current_frame = bs_open_recorder();
+    options.best_frame = bw_open_recorder();
+    options.current_frame = bw_open_recorder();
 
     output_file = fopen(filename, "wb");
     /*assume CD quality for now*/
@@ -218,10 +218,10 @@ ALACEncoder_encode_alac(char *filename,
     alac_log_init(&encode_log);
 
     /*convert file object to bitstream writer*/
-    stream = bs_open_w(output_file, BS_BIG_ENDIAN);
-    bs_add_callback_w(stream,
-                      alac_byte_counter,
-                      &(encode_log.frame_byte_size));
+    stream = bw_open(output_file, BS_BIG_ENDIAN);
+    bw_add_callback(stream,
+                    alac_byte_counter,
+                    &(encode_log.frame_byte_size));
 
     /*write frames from pcm_reader until empty*/
     if (!pcmr_read(reader, options.block_size, &samples))
@@ -241,20 +241,20 @@ ALACEncoder_encode_alac(char *filename,
 
     /*close and free allocated files/buffers*/
     pcmr_close(reader);
-    bs_close_w(stream);
+    bw_close(stream);
     iaa_free(&samples);
     alac_log_free(&encode_log);
-    bs_close_w(options.best_frame);
-    bs_close_w(options.current_frame);
+    bw_close(options.best_frame);
+    bw_close(options.current_frame);
 
     return OK;
  error:
     pcmr_close(reader);
-    bs_close_w(stream);
+    bw_close(stream);
     iaa_free(&samples);
     alac_log_free(&encode_log);
-    bs_close_w(options.best_frame);
-    bs_close_w(options.current_frame);
+    bw_close(options.best_frame);
+    bw_close(options.current_frame);
 
     return ERROR;
 }
@@ -356,7 +356,7 @@ alac_write_frame(BitstreamWriter *bs,
             return OK;
     } else {
         /*otherwise, attempt compressed frame*/
-        compressed_frame = bs_open_recorder();
+        compressed_frame = bw_open_recorder();
 
         switch (alac_write_compressed_frame(compressed_frame,
                                             options,
@@ -377,7 +377,7 @@ alac_write_frame(BitstreamWriter *bs,
                 ((samples->size * samples->arrays[0].size * bits_per_sample) +
                  56))
                 /*if our compressed frame is small enough, write it out*/
-                bs_dump_records(bs, compressed_frame);
+                bw_dump_records(bs, compressed_frame);
             else {
                 /*otherwise, build an uncompressed frame instead*/
                 if (alac_write_uncompressed_frame(bs,
@@ -389,11 +389,11 @@ alac_write_frame(BitstreamWriter *bs,
             break;
         }
 
-        bs_close_w(compressed_frame);
+        bw_close(compressed_frame);
         return OK;
 
     error:
-        bs_close_w(compressed_frame);
+        bw_close(compressed_frame);
         return ERROR;
     }
 }
@@ -450,7 +450,7 @@ alac_write_compressed_frame(BitstreamWriter *bs,
                                            bits_per_sample,
                                            samples);
     } else {
-        bs_reset_recorder(best_frame);
+        bw_reset_recorder(best_frame);
         best_frame->bits_written = INT_MAX;
 
         /*attempt all the interlacing shift options*/
@@ -463,7 +463,7 @@ alac_write_compressed_frame(BitstreamWriter *bs,
                  interlacing_leftweight <=
                      options->maximum_interlacing_leftweight;
                  interlacing_leftweight++) {
-                bs_reset_recorder(current_frame);
+                bw_reset_recorder(current_frame);
                 switch (alac_write_interlaced_frame(current_frame,
                                                     options,
                                                     interlacing_shift,
@@ -476,14 +476,14 @@ alac_write_compressed_frame(BitstreamWriter *bs,
                     goto overflow;
                 case OK:
                     if (current_frame->bits_written < best_frame->bits_written)
-                        bs_swap_records(current_frame, best_frame);
+                        bw_swap_records(current_frame, best_frame);
                     break;
                 }
             }
         }
 
         /*use the shift and leftweight that uses the least bits*/
-        bs_dump_records(bs, best_frame);
+        bw_dump_records(bs, best_frame);
         return OK;
     error:
         return ERROR;

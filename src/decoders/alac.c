@@ -91,7 +91,7 @@ ALACDecoder_init(decoders_ALACDecoder *self,
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
         return -1;
     } else {
-        self->bitstream = bs_open_r(self->file, BS_BIG_ENDIAN);
+        self->bitstream = br_open(self->file, BS_BIG_ENDIAN);
     }
     self->filename = strdup(filename);
 
@@ -187,7 +187,7 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
 
     thread_state = PyEval_SaveThread();
 
-    if (!setjmp(*bs_try(self->bitstream))) {
+    if (!setjmp(*br_try(self->bitstream))) {
         for (frame_channels = self->bitstream->read(self->bitstream, 3) + 1;
              frame_channels != 8;
              current_channel += frame_channels,
@@ -316,7 +316,7 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
         goto error;
     }
 
-    bs_etry(self->bitstream);
+    br_etry(self->bitstream);
     PyEval_RestoreThread(thread_state);
 
  write_frame:
@@ -324,7 +324,7 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
     return ia_array_to_framelist(&(self->samples),
                                  self->bits_per_sample);
  error:
-    bs_etry(self->bitstream);
+    br_etry(self->bitstream);
 
     return NULL;
 }
@@ -422,9 +422,9 @@ ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args)
     if (self->total_samples < 1)
         goto finished;
 
-    offset = bs_ftell(self->bitstream);
+    offset = br_ftell(self->bitstream);
 
-    if (!setjmp(*bs_try(self->bitstream))) {
+    if (!setjmp(*br_try(self->bitstream))) {
         frame_list = PyList_New(0);
         for (frame_channels = self->bitstream->read(self->bitstream, 3) + 1;
              frame_channels != 8;
@@ -542,14 +542,14 @@ ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args)
         goto error;
     }
 
-    bs_etry(self->bitstream);
+    br_etry(self->bitstream);
 
     return frame_list;
  finished:
     Py_INCREF(Py_None);
     return Py_None;
  error:
-    bs_etry(self->bitstream);
+    br_etry(self->bitstream);
     return NULL;
 }
 

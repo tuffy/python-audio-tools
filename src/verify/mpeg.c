@@ -43,12 +43,12 @@ verifymodule_mpeg(PyObject *dummy, PyObject *args) {
                         "first argument must be an actual file object");
         return NULL;
     } else {
-        bitstream = bs_open_r(PyFile_AsFile(file_obj), BS_BIG_ENDIAN);
+        bitstream = br_open(PyFile_AsFile(file_obj), BS_BIG_ENDIAN);
     }
 
     remaining_bytes = end_byte - start_byte;
 
-    if (!setjmp(*bs_try(bitstream))) {
+    if (!setjmp(*br_try(bitstream))) {
         while (remaining_bytes > 0) {
             if (verifymodule_read_mpeg_header(bitstream, &header) == OK) {
                 remaining_bytes -= 4;  /*decrement the header size*/
@@ -115,7 +115,7 @@ verifymodule_mpeg(PyObject *dummy, PyObject *args) {
         goto error;
     }
 
-    bs_etry(bitstream);
+    br_etry(bitstream);
     bitstream->input.file = NULL;
     bitstream->close(bitstream);
     if (data_buffer != NULL)
@@ -123,7 +123,7 @@ verifymodule_mpeg(PyObject *dummy, PyObject *args) {
     Py_INCREF(Py_None);
     return Py_None;
  error:
-    bs_etry(bitstream);
+    br_etry(bitstream);
     bitstream->input.file = NULL;
     if (data_buffer != NULL)
         free(data_buffer);

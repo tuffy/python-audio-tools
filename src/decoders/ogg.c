@@ -23,13 +23,13 @@
 OggReader*
 oggreader_open(FILE *stream) {
     OggReader *reader = malloc(sizeof(OggReader));
-    reader->ogg_stream = bs_open_r(stream, BS_LITTLE_ENDIAN);
+    reader->ogg_stream = br_open(stream, BS_LITTLE_ENDIAN);
     reader->current_segment = 1;
     reader->current_header.page_segment_count = 0;
     reader->current_header.type = 0;
     reader->current_header.checksum = 0;
     reader->checksum = 0;
-    bs_add_callback_r(reader->ogg_stream, ogg_crc, &(reader->checksum));
+    br_add_callback(reader->ogg_stream, ogg_crc, &(reader->checksum));
     return reader;
 }
 
@@ -45,15 +45,15 @@ oggreader_read_page_header(BitstreamReader *ogg_stream,
     int i;
     struct bs_callback callback;
 
-    if (!setjmp(*bs_try(ogg_stream))) {
+    if (!setjmp(*br_try(ogg_stream))) {
         if ((header->magic_number =
              ogg_stream->read(ogg_stream, 32)) != 0x5367674F) {
-            bs_etry(ogg_stream);
+            br_etry(ogg_stream);
             return OGG_INVALID_MAGIC_NUMBER;
         }
 
         if ((header->version = ogg_stream->read(ogg_stream, 8)) != 0) {
-            bs_etry(ogg_stream);
+            br_etry(ogg_stream);
             return OGG_INVALID_STREAM_VERSION;
         }
 
@@ -64,13 +64,13 @@ oggreader_read_page_header(BitstreamReader *ogg_stream,
 
         /*the checksum field is *not* checksummed itself, naturally
           those 4 bytes are treated as 0*/
-        bs_pop_callback(ogg_stream, &callback);
+        br_pop_callback(ogg_stream, &callback);
         header->checksum = ogg_stream->read(ogg_stream, 32);
-        bs_push_callback(ogg_stream, &callback);
-        bs_call_callbacks(ogg_stream, 0);
-        bs_call_callbacks(ogg_stream, 0);
-        bs_call_callbacks(ogg_stream, 0);
-        bs_call_callbacks(ogg_stream, 0);
+        br_push_callback(ogg_stream, &callback);
+        br_call_callbacks(ogg_stream, 0);
+        br_call_callbacks(ogg_stream, 0);
+        br_call_callbacks(ogg_stream, 0);
+        br_call_callbacks(ogg_stream, 0);
 
         header->page_segment_count = ogg_stream->read(ogg_stream, 8);
         header->segment_length_total = 0;
@@ -79,10 +79,10 @@ oggreader_read_page_header(BitstreamReader *ogg_stream,
             header->segment_length_total += header->page_segment_lengths[i];
         }
 
-        bs_etry(ogg_stream);
+        br_etry(ogg_stream);
         return OGG_OK;
     } else {
-        bs_etry(ogg_stream);
+        br_etry(ogg_stream);
         return OGG_PREMATURE_EOF;
     }
 }
@@ -97,14 +97,14 @@ oggreader_next_segment(OggReader *reader,
         /*return an Ogg segment from the current page*/
         *segment_size = reader->current_header.page_segment_lengths[
                                                 reader->current_segment++];
-        if (!setjmp(*bs_try(reader->ogg_stream))) {
+        if (!setjmp(*br_try(reader->ogg_stream))) {
             reader->ogg_stream->substream_append(reader->ogg_stream,
                                                  packet,
                                                  *segment_size);
-            bs_etry(reader->ogg_stream);
+            br_etry(reader->ogg_stream);
             return OGG_OK;
         } else {
-            bs_etry(reader->ogg_stream);
+            br_etry(reader->ogg_stream);
             return OGG_PREMATURE_EOF;
         }
     } else {

@@ -53,7 +53,7 @@ const unsigned int read_limited_unary_table_le[0x200][18] =
     ;
 
 BitstreamReader*
-bs_open_r(FILE *f, bs_endianness endianness)
+br_open(FILE *f, bs_endianness endianness)
 {
     BitstreamReader *bs = malloc(sizeof(BitstreamReader));
 #ifndef NDEBUG
@@ -70,43 +70,43 @@ bs_open_r(FILE *f, bs_endianness endianness)
 
     switch (endianness) {
     case BS_BIG_ENDIAN:
-        bs->read = bs_read_bits_f_be;
-        bs->read_signed = bs_read_signed_bits_f_be;
-        bs->read_64 = bs_read_bits64_f_be;
-        bs->skip = bs_skip_bits_f_be;
-        bs->unread = bs_unread_bit_be;
-        bs->read_unary = bs_read_unary_f_be;
-        bs->read_limited_unary = bs_read_limited_unary_f_be;
-        bs->set_endianness = bs_set_endianness_f_be;
-        bs->substream = bs_substream_f_be;
+        bs->read = br_read_bits_f_be;
+        bs->read_signed = br_read_signed_bits_f_be;
+        bs->read_64 = br_read_bits64_f_be;
+        bs->skip = br_skip_bits_f_be;
+        bs->unread = br_unread_bit_be;
+        bs->read_unary = br_read_unary_f_be;
+        bs->read_limited_unary = br_read_limited_unary_f_be;
+        bs->set_endianness = br_set_endianness_f_be;
+        bs->substream = br_substream_f_be;
         break;
     case BS_LITTLE_ENDIAN:
-        bs->read = bs_read_bits_f_le;
-        bs->read_signed = bs_read_signed_bits_f_le;
-        bs->read_64 = bs_read_bits64_f_le;
-        bs->skip = bs_skip_bits_f_le;
-        bs->unread = bs_unread_bit_le;
-        bs->read_unary = bs_read_unary_f_le;
-        bs->read_limited_unary = bs_read_limited_unary_f_le;
-        bs->set_endianness = bs_set_endianness_f_le;
-        bs->substream = bs_substream_f_le;
+        bs->read = br_read_bits_f_le;
+        bs->read_signed = br_read_signed_bits_f_le;
+        bs->read_64 = br_read_bits64_f_le;
+        bs->skip = br_skip_bits_f_le;
+        bs->unread = br_unread_bit_le;
+        bs->read_unary = br_read_unary_f_le;
+        bs->read_limited_unary = br_read_limited_unary_f_le;
+        bs->set_endianness = br_set_endianness_f_le;
+        bs->substream = br_substream_f_le;
         break;
     }
 
-    bs->byte_align = bs_byte_align_r;
-    bs->read_huffman_code = bs_read_huffman_code_f;
-    bs->substream_append = bs_substream_append_f;
-    bs->close = bs_close_r;
-    bs->close_stream = bs_close_stream_f;
-    bs->mark = bs_mark_f;
-    bs->rewind = bs_rewind_f;
-    bs->unmark = bs_unmark_f;
+    bs->byte_align = br_byte_align;
+    bs->read_huffman_code = br_read_huffman_code_f;
+    bs->substream_append = br_substream_append_f;
+    bs->close = br_close;
+    bs->close_stream = br_close_stream_f;
+    bs->mark = br_mark_f;
+    bs->rewind = br_rewind_f;
+    bs->unmark = br_unmark_f;
 
     return bs;
 }
 
 void
-bs_free_r(BitstreamReader *bs)
+br_free(BitstreamReader *bs)
 {
     struct bs_callback *c_node;
     struct bs_callback *c_next;
@@ -155,31 +155,31 @@ bs_free_r(BitstreamReader *bs)
 }
 
 void
-bs_close_r(BitstreamReader *bs)
+br_close(BitstreamReader *bs)
 {
     bs->close_stream(bs);
-    bs_free_r(bs);
+    br_free(bs);
 }
 
 void
-bs_noop(BitstreamReader *bs)
+br_noop(BitstreamReader *bs)
 {
     return;
 }
 
 void
-bs_close_stream_f(BitstreamReader *bs)
+br_close_stream_f(BitstreamReader *bs)
 {
     if (bs == NULL)
         return;
     else if (bs->input.file != NULL) {
         fclose(bs->input.file);
-        bs->close_stream = bs_noop;
+        bs->close_stream = br_noop;
     }
 }
 
 void
-bs_add_callback_r(BitstreamReader *bs, bs_callback_func callback, void *data)
+br_add_callback(BitstreamReader *bs, bs_callback_func callback, void *data)
 {
     struct bs_callback *callback_node;
 
@@ -196,7 +196,7 @@ bs_add_callback_r(BitstreamReader *bs, bs_callback_func callback, void *data)
 }
 
 void
-bs_call_callbacks(BitstreamReader *bs, uint8_t byte)
+br_call_callbacks(BitstreamReader *bs, uint8_t byte)
 {
     struct bs_callback *callback;
     for (callback = bs->callbacks;
@@ -206,7 +206,7 @@ bs_call_callbacks(BitstreamReader *bs, uint8_t byte)
 }
 
 void
-bs_push_callback(BitstreamReader *bs, struct bs_callback *callback)
+br_push_callback(BitstreamReader *bs, struct bs_callback *callback)
 {
     struct bs_callback *callback_node;
 
@@ -225,7 +225,7 @@ bs_push_callback(BitstreamReader *bs, struct bs_callback *callback)
 }
 
 void
-bs_pop_callback(BitstreamReader *bs, struct bs_callback *callback)
+br_pop_callback(BitstreamReader *bs, struct bs_callback *callback)
 {
     struct bs_callback *c_node = bs->callbacks;
     if (c_node != NULL) {
@@ -242,7 +242,7 @@ bs_pop_callback(BitstreamReader *bs, struct bs_callback *callback)
 
 
 void
-bs_abort(BitstreamReader *bs)
+br_abort(BitstreamReader *bs)
 {
     if (bs->exceptions != NULL) {
         longjmp(bs->exceptions->env, 1);
@@ -254,7 +254,7 @@ bs_abort(BitstreamReader *bs)
 
 
 jmp_buf*
-bs_try(BitstreamReader *bs)
+br_try(BitstreamReader *bs)
 {
     struct bs_exception *node;
 
@@ -270,7 +270,7 @@ bs_try(BitstreamReader *bs)
 }
 
 void
-bs_etry(BitstreamReader *bs)
+br_etry(BitstreamReader *bs)
 {
     struct bs_exception *node = bs->exceptions;
     if (node != NULL) {
@@ -302,7 +302,7 @@ bs_etry(BitstreamReader *bs)
   by the byte reader (fgetc or py_getc)
   or which table they access (read_bits_table or read_bits_table_le)*/
 unsigned int
-bs_read_bits_f_be(BitstreamReader* bs, unsigned int count)
+br_read_bits_f_be(BitstreamReader* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
@@ -314,7 +314,7 @@ bs_read_bits_f_be(BitstreamReader* bs, unsigned int count)
     while (count > 0) {
         if (context == 0) {
             if ((byte = fgetc(bs->input.file)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -339,7 +339,7 @@ bs_read_bits_f_be(BitstreamReader* bs, unsigned int count)
 }
 
 unsigned int
-bs_read_bits_f_le(BitstreamReader* bs, unsigned int count)
+br_read_bits_f_le(BitstreamReader* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
@@ -352,7 +352,7 @@ bs_read_bits_f_le(BitstreamReader* bs, unsigned int count)
     while (count > 0) {
         if (context == 0) {
             if ((byte = fgetc(bs->input.file)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -378,7 +378,7 @@ bs_read_bits_f_le(BitstreamReader* bs, unsigned int count)
 }
 
 unsigned int
-bs_read_bits_s_be(BitstreamReader* bs, unsigned int count)
+br_read_bits_s_be(BitstreamReader* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
@@ -390,7 +390,7 @@ bs_read_bits_s_be(BitstreamReader* bs, unsigned int count)
     while (count > 0) {
         if (context == 0) {
             if ((byte = buf_getc(bs->input.substream)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -415,7 +415,7 @@ bs_read_bits_s_be(BitstreamReader* bs, unsigned int count)
 }
 
 unsigned int
-bs_read_bits_s_le(BitstreamReader* bs, unsigned int count)
+br_read_bits_s_le(BitstreamReader* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
@@ -428,7 +428,7 @@ bs_read_bits_s_le(BitstreamReader* bs, unsigned int count)
     while (count > 0) {
         if (context == 0) {
             if ((byte = buf_getc(bs->input.substream)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -455,7 +455,7 @@ bs_read_bits_s_le(BitstreamReader* bs, unsigned int count)
 
 #ifndef STANDALONE
 unsigned int
-bs_read_bits_p_be(BitstreamReader* bs, unsigned int count)
+br_read_bits_p_be(BitstreamReader* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
@@ -467,7 +467,7 @@ bs_read_bits_p_be(BitstreamReader* bs, unsigned int count)
     while (count > 0) {
         if (context == 0) {
             if ((byte = py_getc(bs->input.python)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -492,7 +492,7 @@ bs_read_bits_p_be(BitstreamReader* bs, unsigned int count)
 }
 
 unsigned int
-bs_read_bits_p_le(BitstreamReader* bs, unsigned int count)
+br_read_bits_p_le(BitstreamReader* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
@@ -505,7 +505,7 @@ bs_read_bits_p_le(BitstreamReader* bs, unsigned int count)
     while (count > 0) {
         if (context == 0) {
             if ((byte = py_getc(bs->input.python)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -533,21 +533,21 @@ bs_read_bits_p_le(BitstreamReader* bs, unsigned int count)
 
 
 int
-bs_read_signed_bits_f_be(BitstreamReader* bs, unsigned int count)
+br_read_signed_bits_f_be(BitstreamReader* bs, unsigned int count)
 {
-    if (!bs_read_bits_f_be(bs, 1)) {
-        return bs_read_bits_f_be(bs, count - 1);
+    if (!br_read_bits_f_be(bs, 1)) {
+        return br_read_bits_f_be(bs, count - 1);
     } else {
-        return bs_read_bits_f_be(bs, count - 1) - (1 << (count - 1));
+        return br_read_bits_f_be(bs, count - 1) - (1 << (count - 1));
     }
 }
 
 int
-bs_read_signed_bits_f_le(BitstreamReader* bs, unsigned int count)
+br_read_signed_bits_f_le(BitstreamReader* bs, unsigned int count)
 {
-    int unsigned_value = bs_read_bits_f_le(bs, count - 1);
+    int unsigned_value = br_read_bits_f_le(bs, count - 1);
 
-    if (!bs_read_bits_f_le(bs, 1)) {
+    if (!br_read_bits_f_le(bs, 1)) {
         return unsigned_value;
     } else {
         return unsigned_value - (1 << (count - 1));
@@ -555,21 +555,21 @@ bs_read_signed_bits_f_le(BitstreamReader* bs, unsigned int count)
 }
 
 int
-bs_read_signed_bits_s_be(BitstreamReader* bs, unsigned int count)
+br_read_signed_bits_s_be(BitstreamReader* bs, unsigned int count)
 {
-    if (!bs_read_bits_s_be(bs, 1)) {
-        return bs_read_bits_s_be(bs, count - 1);
+    if (!br_read_bits_s_be(bs, 1)) {
+        return br_read_bits_s_be(bs, count - 1);
     } else {
-        return bs_read_bits_s_be(bs, count - 1) - (1 << (count - 1));
+        return br_read_bits_s_be(bs, count - 1) - (1 << (count - 1));
     }
 }
 
 int
-bs_read_signed_bits_s_le(BitstreamReader* bs, unsigned int count)
+br_read_signed_bits_s_le(BitstreamReader* bs, unsigned int count)
 {
-    int unsigned_value = bs_read_bits_s_le(bs, count - 1);
+    int unsigned_value = br_read_bits_s_le(bs, count - 1);
 
-    if (!bs_read_bits_s_le(bs, 1)) {
+    if (!br_read_bits_s_le(bs, 1)) {
         return unsigned_value;
     } else {
         return unsigned_value - (1 << (count - 1));
@@ -578,21 +578,21 @@ bs_read_signed_bits_s_le(BitstreamReader* bs, unsigned int count)
 
 #ifndef STANDALONE
 int
-bs_read_signed_bits_p_be(BitstreamReader* bs, unsigned int count)
+br_read_signed_bits_p_be(BitstreamReader* bs, unsigned int count)
 {
-    if (!bs_read_bits_p_be(bs, 1)) {
-        return bs_read_bits_p_be(bs, count - 1);
+    if (!br_read_bits_p_be(bs, 1)) {
+        return br_read_bits_p_be(bs, count - 1);
     } else {
-        return bs_read_bits_p_be(bs, count - 1) - (1 << (count - 1));
+        return br_read_bits_p_be(bs, count - 1) - (1 << (count - 1));
     }
 }
 
 int
-bs_read_signed_bits_p_le(BitstreamReader* bs, unsigned int count)
+br_read_signed_bits_p_le(BitstreamReader* bs, unsigned int count)
 {
-    int unsigned_value = bs_read_bits_p_le(bs, count - 1);
+    int unsigned_value = br_read_bits_p_le(bs, count - 1);
 
-    if (!bs_read_bits_p_le(bs, 1)) {
+    if (!br_read_bits_p_le(bs, 1)) {
         return unsigned_value;
     } else {
         return unsigned_value - (1 << (count - 1));
@@ -604,7 +604,7 @@ bs_read_signed_bits_p_le(BitstreamReader* bs, unsigned int count)
 /*the read_bits64 functions differ from the read_bits functions
   only by the size of the accumulator*/
 uint64_t
-bs_read_bits64_f_be(BitstreamReader* bs, unsigned int count)
+br_read_bits64_f_be(BitstreamReader* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
@@ -616,7 +616,7 @@ bs_read_bits64_f_be(BitstreamReader* bs, unsigned int count)
     while (count > 0) {
         if (context == 0) {
             if ((byte = fgetc(bs->input.file)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -641,7 +641,7 @@ bs_read_bits64_f_be(BitstreamReader* bs, unsigned int count)
 }
 
 uint64_t
-bs_read_bits64_f_le(BitstreamReader* bs, unsigned int count)
+br_read_bits64_f_le(BitstreamReader* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
@@ -654,7 +654,7 @@ bs_read_bits64_f_le(BitstreamReader* bs, unsigned int count)
     while (count > 0) {
         if (context == 0) {
             if ((byte = fgetc(bs->input.file)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -680,7 +680,7 @@ bs_read_bits64_f_le(BitstreamReader* bs, unsigned int count)
 }
 
 uint64_t
-bs_read_bits64_s_be(BitstreamReader* bs, unsigned int count)
+br_read_bits64_s_be(BitstreamReader* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
@@ -692,7 +692,7 @@ bs_read_bits64_s_be(BitstreamReader* bs, unsigned int count)
     while (count > 0) {
         if (context == 0) {
             if ((byte = buf_getc(bs->input.substream)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -717,7 +717,7 @@ bs_read_bits64_s_be(BitstreamReader* bs, unsigned int count)
 }
 
 uint64_t
-bs_read_bits64_s_le(BitstreamReader* bs, unsigned int count)
+br_read_bits64_s_le(BitstreamReader* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
@@ -730,7 +730,7 @@ bs_read_bits64_s_le(BitstreamReader* bs, unsigned int count)
     while (count > 0) {
         if (context == 0) {
             if ((byte = buf_getc(bs->input.substream)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -757,7 +757,7 @@ bs_read_bits64_s_le(BitstreamReader* bs, unsigned int count)
 
 #ifndef STANDALONE
 uint64_t
-bs_read_bits64_p_be(BitstreamReader* bs, unsigned int count)
+br_read_bits64_p_be(BitstreamReader* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
@@ -769,7 +769,7 @@ bs_read_bits64_p_be(BitstreamReader* bs, unsigned int count)
     while (count > 0) {
         if (context == 0) {
             if ((byte = py_getc(bs->input.python)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -794,7 +794,7 @@ bs_read_bits64_p_be(BitstreamReader* bs, unsigned int count)
 }
 
 uint64_t
-bs_read_bits64_p_le(BitstreamReader* bs, unsigned int count)
+br_read_bits64_p_le(BitstreamReader* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
@@ -807,7 +807,7 @@ bs_read_bits64_p_le(BitstreamReader* bs, unsigned int count)
     while (count > 0) {
         if (context == 0) {
             if ((byte = py_getc(bs->input.python)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -838,7 +838,7 @@ bs_read_bits64_p_le(BitstreamReader* bs, unsigned int count)
   in that they have no accumulator
   which allows them to skip over a potentially unlimited amount of bits*/
 void
-bs_skip_bits_f_be(BitstreamReader* bs, unsigned int count)
+br_skip_bits_f_be(BitstreamReader* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
@@ -849,7 +849,7 @@ bs_skip_bits_f_be(BitstreamReader* bs, unsigned int count)
     while (count > 0) {
         if (context == 0) {
             if ((byte = fgetc(bs->input.file)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -870,7 +870,7 @@ bs_skip_bits_f_be(BitstreamReader* bs, unsigned int count)
 }
 
 void
-bs_skip_bits_f_le(BitstreamReader* bs, unsigned int count)
+br_skip_bits_f_le(BitstreamReader* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
@@ -882,7 +882,7 @@ bs_skip_bits_f_le(BitstreamReader* bs, unsigned int count)
     while (count > 0) {
         if (context == 0) {
             if ((byte = fgetc(bs->input.file)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -905,7 +905,7 @@ bs_skip_bits_f_le(BitstreamReader* bs, unsigned int count)
 }
 
 void
-bs_skip_bits_s_be(BitstreamReader* bs, unsigned int count)
+br_skip_bits_s_be(BitstreamReader* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
@@ -916,7 +916,7 @@ bs_skip_bits_s_be(BitstreamReader* bs, unsigned int count)
     while (count > 0) {
         if (context == 0) {
             if ((byte = buf_getc(bs->input.substream)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -937,7 +937,7 @@ bs_skip_bits_s_be(BitstreamReader* bs, unsigned int count)
 }
 
 void
-bs_skip_bits_s_le(BitstreamReader* bs, unsigned int count)
+br_skip_bits_s_le(BitstreamReader* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
@@ -949,7 +949,7 @@ bs_skip_bits_s_le(BitstreamReader* bs, unsigned int count)
     while (count > 0) {
         if (context == 0) {
             if ((byte = buf_getc(bs->input.substream)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -973,7 +973,7 @@ bs_skip_bits_s_le(BitstreamReader* bs, unsigned int count)
 
 #ifndef STANDALONE
 void
-bs_skip_bits_p_be(BitstreamReader* bs, unsigned int count)
+br_skip_bits_p_be(BitstreamReader* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
@@ -984,7 +984,7 @@ bs_skip_bits_p_be(BitstreamReader* bs, unsigned int count)
     while (count > 0) {
         if (context == 0) {
             if ((byte = py_getc(bs->input.python)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -1005,7 +1005,7 @@ bs_skip_bits_p_be(BitstreamReader* bs, unsigned int count)
 }
 
 void
-bs_skip_bits_p_le(BitstreamReader* bs, unsigned int count)
+br_skip_bits_p_le(BitstreamReader* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
@@ -1017,7 +1017,7 @@ bs_skip_bits_p_le(BitstreamReader* bs, unsigned int count)
     while (count > 0) {
         if (context == 0) {
             if ((byte = py_getc(bs->input.python)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -1042,7 +1042,7 @@ bs_skip_bits_p_le(BitstreamReader* bs, unsigned int count)
 
 
 void
-bs_unread_bit_be(BitstreamReader* bs, int unread_bit)
+br_unread_bit_be(BitstreamReader* bs, int unread_bit)
 {
     unsigned int result = unread_bit_table[bs->state][unread_bit];
     assert(UNREAD_BIT_LIMIT_REACHED(result) == 0);
@@ -1050,7 +1050,7 @@ bs_unread_bit_be(BitstreamReader* bs, int unread_bit)
 }
 
 void
-bs_unread_bit_le(BitstreamReader* bs, int unread_bit)
+br_unread_bit_le(BitstreamReader* bs, int unread_bit)
 {
     unsigned int result = unread_bit_table_le[bs->state][unread_bit];
     assert(UNREAD_BIT_LIMIT_REACHED(result) == 0);
@@ -1059,7 +1059,7 @@ bs_unread_bit_le(BitstreamReader* bs, int unread_bit)
 
 
 unsigned int
-bs_read_unary_f_be(BitstreamReader* bs, int stop_bit)
+br_read_unary_f_be(BitstreamReader* bs, int stop_bit)
 {
     int context = bs->state;
     unsigned int result;
@@ -1070,7 +1070,7 @@ bs_read_unary_f_be(BitstreamReader* bs, int stop_bit)
     do {
         if (context == 0) {
             if ((byte = fgetc(bs->input.file)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -1090,7 +1090,7 @@ bs_read_unary_f_be(BitstreamReader* bs, int stop_bit)
 }
 
 unsigned int
-bs_read_unary_f_le(BitstreamReader* bs, int stop_bit)
+br_read_unary_f_le(BitstreamReader* bs, int stop_bit)
 {
     int context = bs->state;
     unsigned int result;
@@ -1101,7 +1101,7 @@ bs_read_unary_f_le(BitstreamReader* bs, int stop_bit)
     do {
         if (context == 0) {
             if ((byte = fgetc(bs->input.file)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -1121,7 +1121,7 @@ bs_read_unary_f_le(BitstreamReader* bs, int stop_bit)
 }
 
 unsigned int
-bs_read_unary_s_be(BitstreamReader* bs, int stop_bit)
+br_read_unary_s_be(BitstreamReader* bs, int stop_bit)
 {
     int context = bs->state;
     unsigned int result;
@@ -1132,7 +1132,7 @@ bs_read_unary_s_be(BitstreamReader* bs, int stop_bit)
     do {
         if (context == 0) {
             if ((byte = buf_getc(bs->input.substream)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -1152,7 +1152,7 @@ bs_read_unary_s_be(BitstreamReader* bs, int stop_bit)
 }
 
 unsigned int
-bs_read_unary_s_le(BitstreamReader* bs, int stop_bit)
+br_read_unary_s_le(BitstreamReader* bs, int stop_bit)
 {
     int context = bs->state;
     unsigned int result;
@@ -1163,7 +1163,7 @@ bs_read_unary_s_le(BitstreamReader* bs, int stop_bit)
     do {
         if (context == 0) {
             if ((byte = buf_getc(bs->input.substream)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -1184,7 +1184,7 @@ bs_read_unary_s_le(BitstreamReader* bs, int stop_bit)
 
 #ifndef STANDALONE
 unsigned int
-bs_read_unary_p_be(BitstreamReader* bs, int stop_bit)
+br_read_unary_p_be(BitstreamReader* bs, int stop_bit)
 {
     int context = bs->state;
     unsigned int result;
@@ -1195,7 +1195,7 @@ bs_read_unary_p_be(BitstreamReader* bs, int stop_bit)
     do {
         if (context == 0) {
             if ((byte = py_getc(bs->input.python)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -1215,7 +1215,7 @@ bs_read_unary_p_be(BitstreamReader* bs, int stop_bit)
 }
 
 unsigned int
-bs_read_unary_p_le(BitstreamReader* bs, int stop_bit)
+br_read_unary_p_le(BitstreamReader* bs, int stop_bit)
 {
     int context = bs->state;
     unsigned int result;
@@ -1226,7 +1226,7 @@ bs_read_unary_p_le(BitstreamReader* bs, int stop_bit)
     do {
         if (context == 0) {
             if ((byte = py_getc(bs->input.python)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -1249,7 +1249,7 @@ bs_read_unary_p_le(BitstreamReader* bs, int stop_bit)
 
 /*returns -1 on error, so cannot be unsigned*/
 int
-bs_read_limited_unary_f_be(BitstreamReader* bs, int stop_bit, int maximum_bits)
+br_read_limited_unary_f_be(BitstreamReader* bs, int stop_bit, int maximum_bits)
 {
     int context = bs->state;
     unsigned int result;
@@ -1264,7 +1264,7 @@ bs_read_limited_unary_f_be(BitstreamReader* bs, int stop_bit, int maximum_bits)
     do {
         if (context == 0) {
             if ((byte = fgetc(bs->input.file)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -1295,7 +1295,7 @@ bs_read_limited_unary_f_be(BitstreamReader* bs, int stop_bit, int maximum_bits)
 }
 
 int
-bs_read_limited_unary_f_le(BitstreamReader* bs, int stop_bit, int maximum_bits)
+br_read_limited_unary_f_le(BitstreamReader* bs, int stop_bit, int maximum_bits)
 {
     int context = bs->state;
     unsigned int result;
@@ -1310,7 +1310,7 @@ bs_read_limited_unary_f_le(BitstreamReader* bs, int stop_bit, int maximum_bits)
     do {
         if (context == 0) {
             if ((byte = fgetc(bs->input.file)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -1341,7 +1341,7 @@ bs_read_limited_unary_f_le(BitstreamReader* bs, int stop_bit, int maximum_bits)
 }
 
 int
-bs_read_limited_unary_s_be(BitstreamReader* bs, int stop_bit, int maximum_bits)
+br_read_limited_unary_s_be(BitstreamReader* bs, int stop_bit, int maximum_bits)
 {
     int context = bs->state;
     unsigned int result;
@@ -1356,7 +1356,7 @@ bs_read_limited_unary_s_be(BitstreamReader* bs, int stop_bit, int maximum_bits)
     do {
         if (context == 0) {
             if ((byte = buf_getc(bs->input.substream)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -1387,7 +1387,7 @@ bs_read_limited_unary_s_be(BitstreamReader* bs, int stop_bit, int maximum_bits)
 }
 
 int
-bs_read_limited_unary_s_le(BitstreamReader* bs, int stop_bit, int maximum_bits)
+br_read_limited_unary_s_le(BitstreamReader* bs, int stop_bit, int maximum_bits)
 {
     int context = bs->state;
     unsigned int result;
@@ -1400,7 +1400,7 @@ bs_read_limited_unary_s_le(BitstreamReader* bs, int stop_bit, int maximum_bits)
     do {
         if (context == 0) {
             if ((byte = buf_getc(bs->input.substream)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -1432,7 +1432,7 @@ bs_read_limited_unary_s_le(BitstreamReader* bs, int stop_bit, int maximum_bits)
 
 #ifndef STANDALONE
 int
-bs_read_limited_unary_p_be(BitstreamReader* bs,
+br_read_limited_unary_p_be(BitstreamReader* bs,
                            int stop_bit,
                            int maximum_bits)
 {
@@ -1447,7 +1447,7 @@ bs_read_limited_unary_p_be(BitstreamReader* bs,
     do {
         if (context == 0) {
             if ((byte = py_getc(bs->input.python)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -1478,7 +1478,7 @@ bs_read_limited_unary_p_be(BitstreamReader* bs,
 }
 
 int
-bs_read_limited_unary_p_le(BitstreamReader* bs, int stop_bit, int maximum_bits)
+br_read_limited_unary_p_le(BitstreamReader* bs, int stop_bit, int maximum_bits)
 {
     int context = bs->state;
     unsigned int result;
@@ -1491,7 +1491,7 @@ bs_read_limited_unary_p_le(BitstreamReader* bs, int stop_bit, int maximum_bits)
     do {
         if (context == 0) {
             if ((byte = py_getc(bs->input.python)) == EOF)
-                bs_abort(bs);
+                br_abort(bs);
             context = NEW_CONTEXT(byte);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -1524,105 +1524,105 @@ bs_read_limited_unary_p_le(BitstreamReader* bs, int stop_bit, int maximum_bits)
 
 
 void
-bs_set_endianness_f_be(BitstreamReader *bs, bs_endianness endianness)
+br_set_endianness_f_be(BitstreamReader *bs, bs_endianness endianness)
 {
     bs->state = 0;
     if (endianness == BS_LITTLE_ENDIAN) {
-        bs->read = bs_read_bits_f_le;
-        bs->read_signed = bs_read_signed_bits_f_le;
-        bs->read_64 = bs_read_bits64_f_le;
-        bs->skip = bs_skip_bits_f_le;
-        bs->unread = bs_unread_bit_le;
-        bs->read_unary = bs_read_unary_f_le;
-        bs->read_limited_unary = bs_read_limited_unary_f_le;
-        bs->set_endianness = bs_set_endianness_f_le;
-        bs->substream = bs_substream_f_le;
+        bs->read = br_read_bits_f_le;
+        bs->read_signed = br_read_signed_bits_f_le;
+        bs->read_64 = br_read_bits64_f_le;
+        bs->skip = br_skip_bits_f_le;
+        bs->unread = br_unread_bit_le;
+        bs->read_unary = br_read_unary_f_le;
+        bs->read_limited_unary = br_read_limited_unary_f_le;
+        bs->set_endianness = br_set_endianness_f_le;
+        bs->substream = br_substream_f_le;
     }
 }
 
 void
-bs_set_endianness_f_le(BitstreamReader *bs, bs_endianness endianness)
+br_set_endianness_f_le(BitstreamReader *bs, bs_endianness endianness)
 {
     bs->state = 0;
     if (endianness == BS_BIG_ENDIAN) {
-        bs->read = bs_read_bits_f_be;
-        bs->read_signed = bs_read_signed_bits_f_be;
-        bs->read_64 = bs_read_bits64_f_be;
-        bs->skip = bs_skip_bits_f_be;
-        bs->unread = bs_unread_bit_be;
-        bs->read_unary = bs_read_unary_f_be;
-        bs->read_limited_unary = bs_read_limited_unary_f_be;
-        bs->set_endianness = bs_set_endianness_f_be;
-        bs->substream = bs_substream_f_be;
+        bs->read = br_read_bits_f_be;
+        bs->read_signed = br_read_signed_bits_f_be;
+        bs->read_64 = br_read_bits64_f_be;
+        bs->skip = br_skip_bits_f_be;
+        bs->unread = br_unread_bit_be;
+        bs->read_unary = br_read_unary_f_be;
+        bs->read_limited_unary = br_read_limited_unary_f_be;
+        bs->set_endianness = br_set_endianness_f_be;
+        bs->substream = br_substream_f_be;
     }
 }
 
 void
-bs_set_endianness_s_be(BitstreamReader *bs, bs_endianness endianness)
+br_set_endianness_s_be(BitstreamReader *bs, bs_endianness endianness)
 {
     bs->state = 0;
     if (endianness == BS_LITTLE_ENDIAN) {
-        bs->read = bs_read_bits_s_le;
-        bs->read_signed = bs_read_signed_bits_s_le;
-        bs->read_64 = bs_read_bits64_s_le;
-        bs->skip = bs_skip_bits_s_le;
-        bs->unread = bs_unread_bit_le;
-        bs->read_unary = bs_read_unary_s_le;
-        bs->read_limited_unary = bs_read_limited_unary_s_le;
-        bs->set_endianness = bs_set_endianness_s_le;
-        bs->substream = bs_substream_s_le;
+        bs->read = br_read_bits_s_le;
+        bs->read_signed = br_read_signed_bits_s_le;
+        bs->read_64 = br_read_bits64_s_le;
+        bs->skip = br_skip_bits_s_le;
+        bs->unread = br_unread_bit_le;
+        bs->read_unary = br_read_unary_s_le;
+        bs->read_limited_unary = br_read_limited_unary_s_le;
+        bs->set_endianness = br_set_endianness_s_le;
+        bs->substream = br_substream_s_le;
     }
 }
 
 void
-bs_set_endianness_s_le(BitstreamReader *bs, bs_endianness endianness)
+br_set_endianness_s_le(BitstreamReader *bs, bs_endianness endianness)
 {
     bs->state = 0;
     if (endianness == BS_BIG_ENDIAN) {
-        bs->read = bs_read_bits_s_be;
-        bs->read_signed = bs_read_signed_bits_s_be;
-        bs->read_64 = bs_read_bits64_s_be;
-        bs->skip = bs_skip_bits_s_be;
-        bs->unread = bs_unread_bit_be;
-        bs->read_unary = bs_read_unary_s_be;
-        bs->read_limited_unary = bs_read_limited_unary_s_be;
-        bs->set_endianness = bs_set_endianness_s_be;
-        bs->substream = bs_substream_s_be;
+        bs->read = br_read_bits_s_be;
+        bs->read_signed = br_read_signed_bits_s_be;
+        bs->read_64 = br_read_bits64_s_be;
+        bs->skip = br_skip_bits_s_be;
+        bs->unread = br_unread_bit_be;
+        bs->read_unary = br_read_unary_s_be;
+        bs->read_limited_unary = br_read_limited_unary_s_be;
+        bs->set_endianness = br_set_endianness_s_be;
+        bs->substream = br_substream_s_be;
     }
 }
 
 #ifndef STANDALONE
 void
-bs_set_endianness_p_be(BitstreamReader *bs, bs_endianness endianness)
+br_set_endianness_p_be(BitstreamReader *bs, bs_endianness endianness)
 {
     bs->state = 0;
     if (endianness == BS_LITTLE_ENDIAN) {
-        bs->read = bs_read_bits_p_le;
-        bs->read_signed = bs_read_signed_bits_p_le;
-        bs->read_64 = bs_read_bits64_p_le;
-        bs->skip = bs_skip_bits_p_le;
-        bs->unread = bs_unread_bit_le;
-        bs->read_unary = bs_read_unary_p_le;
-        bs->read_limited_unary = bs_read_limited_unary_p_le;
-        bs->set_endianness = bs_set_endianness_p_le;
-        bs->substream = bs_substream_p_le;
+        bs->read = br_read_bits_p_le;
+        bs->read_signed = br_read_signed_bits_p_le;
+        bs->read_64 = br_read_bits64_p_le;
+        bs->skip = br_skip_bits_p_le;
+        bs->unread = br_unread_bit_le;
+        bs->read_unary = br_read_unary_p_le;
+        bs->read_limited_unary = br_read_limited_unary_p_le;
+        bs->set_endianness = br_set_endianness_p_le;
+        bs->substream = br_substream_p_le;
     }
 }
 
 void
-bs_set_endianness_p_le(BitstreamReader *bs, bs_endianness endianness)
+br_set_endianness_p_le(BitstreamReader *bs, bs_endianness endianness)
 {
     bs->state = 0;
     if (endianness == BS_BIG_ENDIAN) {
-        bs->read = bs_read_bits_p_be;
-        bs->read_signed = bs_read_signed_bits_p_be;
-        bs->read_64 = bs_read_bits64_p_be;
-        bs->skip = bs_skip_bits_p_be;
-        bs->unread = bs_unread_bit_be;
-        bs->read_unary = bs_read_unary_p_be;
-        bs->read_limited_unary = bs_read_limited_unary_p_be;
-        bs->set_endianness = bs_set_endianness_p_be;
-        bs->substream = bs_substream_p_be;
+        bs->read = br_read_bits_p_be;
+        bs->read_signed = br_read_signed_bits_p_be;
+        bs->read_64 = br_read_bits64_p_be;
+        bs->skip = br_skip_bits_p_be;
+        bs->unread = br_unread_bit_be;
+        bs->read_unary = br_read_unary_p_be;
+        bs->read_limited_unary = br_read_limited_unary_p_be;
+        bs->set_endianness = br_set_endianness_p_be;
+        bs->substream = br_substream_p_be;
     }
 }
 #endif
@@ -1633,7 +1633,7 @@ Note that read_huffman_code has no endianness variants.
 Which direction it reads from is decided when the table data is compiled.
 */
 int
-bs_read_huffman_code_f(BitstreamReader *bs,
+br_read_huffman_code_f(BitstreamReader *bs,
                        struct bs_huffman_table table[][0x200])
 {
     struct bs_huffman_table entry;
@@ -1645,7 +1645,7 @@ bs_read_huffman_code_f(BitstreamReader *bs,
     entry = table[node][context];
     while (READ_HUFFMAN_CONTINUE(entry.context_node)) {
         if ((byte = fgetc(bs->input.file)) == EOF)
-            bs_abort(bs);
+            br_abort(bs);
         context = NEW_CONTEXT(byte);
 
         for (callback = bs->callbacks;
@@ -1661,7 +1661,7 @@ bs_read_huffman_code_f(BitstreamReader *bs,
 }
 
 int
-bs_read_huffman_code_s(BitstreamReader *bs,
+br_read_huffman_code_s(BitstreamReader *bs,
                        struct bs_huffman_table table[][0x200])
 {
     struct bs_huffman_table entry;
@@ -1673,7 +1673,7 @@ bs_read_huffman_code_s(BitstreamReader *bs,
     entry = table[node][context];
     while (READ_HUFFMAN_CONTINUE(entry.context_node)) {
         if ((byte = buf_getc(bs->input.substream)) == EOF)
-            bs_abort(bs);
+            br_abort(bs);
         context = NEW_CONTEXT(byte);
 
         for (callback = bs->callbacks;
@@ -1690,7 +1690,7 @@ bs_read_huffman_code_s(BitstreamReader *bs,
 
 #ifndef STANDALONE
 int
-bs_read_huffman_code_p(BitstreamReader *bs,
+br_read_huffman_code_p(BitstreamReader *bs,
                        struct bs_huffman_table table[][0x200])
 {
     struct bs_huffman_table entry;
@@ -1702,7 +1702,7 @@ bs_read_huffman_code_p(BitstreamReader *bs,
     entry = table[node][context];
     while (READ_HUFFMAN_CONTINUE(entry.context_node)) {
         if ((byte = py_getc(bs->input.python)) == EOF)
-            bs_abort(bs);
+            br_abort(bs);
         context = NEW_CONTEXT(byte);
 
         for (callback = bs->callbacks;
@@ -1720,7 +1720,7 @@ bs_read_huffman_code_p(BitstreamReader *bs,
 
 
 void
-bs_mark_f(BitstreamReader* bs)
+br_mark_f(BitstreamReader* bs)
 {
     struct bs_mark* mark;
 
@@ -1738,7 +1738,7 @@ bs_mark_f(BitstreamReader* bs)
 }
 
 void
-bs_mark_s(BitstreamReader* bs)
+br_mark_s(BitstreamReader* bs)
 {
     struct bs_mark* mark;
 
@@ -1758,7 +1758,7 @@ bs_mark_s(BitstreamReader* bs)
 
 #ifndef STANDALONE
 void
-bs_mark_p(BitstreamReader* bs)
+br_mark_p(BitstreamReader* bs)
 {
     struct bs_mark* mark;
 
@@ -1779,7 +1779,7 @@ bs_mark_p(BitstreamReader* bs)
 
 
 void
-bs_rewind_f(BitstreamReader* bs)
+br_rewind_f(BitstreamReader* bs)
 {
     if (bs->marks != NULL) {
         fsetpos(bs->input.file, &(bs->marks->position.file));
@@ -1790,7 +1790,7 @@ bs_rewind_f(BitstreamReader* bs)
 }
 
 void
-bs_rewind_s(BitstreamReader* bs)
+br_rewind_s(BitstreamReader* bs)
 {
     if (bs->marks != NULL) {
         bs->input.substream->buffer_position = bs->marks->position.substream;
@@ -1802,7 +1802,7 @@ bs_rewind_s(BitstreamReader* bs)
 
 #ifndef STANDALONE
 void
-bs_rewind_p(BitstreamReader* bs)
+br_rewind_p(BitstreamReader* bs)
 {
     if (bs->marks != NULL) {
         bs->input.python->buffer_position = bs->marks->position.python;
@@ -1815,7 +1815,7 @@ bs_rewind_p(BitstreamReader* bs)
 
 
 void
-bs_unmark_f(BitstreamReader* bs)
+br_unmark_f(BitstreamReader* bs)
 {
     struct bs_mark* mark = bs->marks;
     bs->marks = mark->next;
@@ -1824,7 +1824,7 @@ bs_unmark_f(BitstreamReader* bs)
 }
 
 void
-bs_unmark_s(BitstreamReader* bs)
+br_unmark_s(BitstreamReader* bs)
 {
     struct bs_mark* mark = bs->marks;
     bs->marks = mark->next;
@@ -1835,7 +1835,7 @@ bs_unmark_s(BitstreamReader* bs)
 
 #ifndef STANDALONE
 void
-bs_unmark_p(BitstreamReader* bs)
+br_unmark_p(BitstreamReader* bs)
 {
     struct bs_mark* mark = bs->marks;
     bs->marks = mark->next;
@@ -1847,7 +1847,7 @@ bs_unmark_p(BitstreamReader* bs)
 
 
 void
-bs_byte_align_r(BitstreamReader* bs)
+br_byte_align(BitstreamReader* bs)
 {
     bs->state = 0;
 }
@@ -1961,7 +1961,7 @@ buf_close(struct bs_buffer *stream)
 }
 
 
-struct BitstreamReader_s* bs_substream_new(bs_endianness endianness)
+struct BitstreamReader_s* br_substream_new(bs_endianness endianness)
 {
     BitstreamReader *bs = malloc(sizeof(BitstreamReader));
 #ifndef NDEBUG
@@ -1978,43 +1978,43 @@ struct BitstreamReader_s* bs_substream_new(bs_endianness endianness)
 
     switch (endianness) {
     case BS_BIG_ENDIAN:
-        bs->read = bs_read_bits_s_be;
-        bs->read_signed = bs_read_signed_bits_s_be;
-        bs->read_64 = bs_read_bits64_s_be;
-        bs->skip = bs_skip_bits_s_be;
-        bs->unread = bs_unread_bit_be;
-        bs->read_unary = bs_read_unary_s_be;
-        bs->read_limited_unary = bs_read_limited_unary_s_be;
-        bs->set_endianness = bs_set_endianness_s_be;
-        bs->substream = bs_substream_s_be;
+        bs->read = br_read_bits_s_be;
+        bs->read_signed = br_read_signed_bits_s_be;
+        bs->read_64 = br_read_bits64_s_be;
+        bs->skip = br_skip_bits_s_be;
+        bs->unread = br_unread_bit_be;
+        bs->read_unary = br_read_unary_s_be;
+        bs->read_limited_unary = br_read_limited_unary_s_be;
+        bs->set_endianness = br_set_endianness_s_be;
+        bs->substream = br_substream_s_be;
         break;
     case BS_LITTLE_ENDIAN:
-        bs->read = bs_read_bits_s_le;
-        bs->read_signed = bs_read_signed_bits_s_le;
-        bs->read_64 = bs_read_bits64_s_le;
-        bs->skip = bs_skip_bits_s_le;
-        bs->unread = bs_unread_bit_le;
-        bs->read_unary = bs_read_unary_s_le;
-        bs->read_limited_unary = bs_read_limited_unary_s_le;
-        bs->set_endianness = bs_set_endianness_s_le;
-        bs->substream = bs_substream_s_le;
+        bs->read = br_read_bits_s_le;
+        bs->read_signed = br_read_signed_bits_s_le;
+        bs->read_64 = br_read_bits64_s_le;
+        bs->skip = br_skip_bits_s_le;
+        bs->unread = br_unread_bit_le;
+        bs->read_unary = br_read_unary_s_le;
+        bs->read_limited_unary = br_read_limited_unary_s_le;
+        bs->set_endianness = br_set_endianness_s_le;
+        bs->substream = br_substream_s_le;
         break;
     }
 
-    bs->byte_align = bs_byte_align_r;
-    bs->read_huffman_code = bs_read_huffman_code_s;
-    bs->substream_append = bs_substream_append_s;
-    bs->close = bs_close_r;
-    bs->close_stream = bs_close_stream_s;
-    bs->mark = bs_mark_s;
-    bs->rewind = bs_rewind_s;
-    bs->unmark = bs_unmark_s;
+    bs->byte_align = br_byte_align;
+    bs->read_huffman_code = br_read_huffman_code_s;
+    bs->substream_append = br_substream_append_s;
+    bs->close = br_close;
+    bs->close_stream = br_close_stream_s;
+    bs->mark = br_mark_s;
+    bs->rewind = br_rewind_s;
+    bs->unmark = br_unmark_s;
 
     return bs;
 }
 
 void
-bs_substream_reset(struct BitstreamReader_s *substream)
+br_substream_reset(struct BitstreamReader_s *substream)
 {
     struct bs_mark *m_node;
     struct bs_mark *m_next;
@@ -2033,58 +2033,64 @@ bs_substream_reset(struct BitstreamReader_s *substream)
     buf_reset(substream->input.substream);
 }
 
-struct BitstreamReader_s* bs_substream_f_be(struct BitstreamReader_s *stream,
-                                      uint32_t bytes)
+struct BitstreamReader_s*
+br_substream_f_be(struct BitstreamReader_s *stream,
+                  uint32_t bytes)
 {
-    struct BitstreamReader_s* substream = bs_substream_new(BS_BIG_ENDIAN);
-    bs_substream_append_f(stream, substream, bytes);
+    struct BitstreamReader_s* substream = br_substream_new(BS_BIG_ENDIAN);
+    br_substream_append_f(stream, substream, bytes);
     return substream;
 }
 
-struct BitstreamReader_s* bs_substream_f_le(struct BitstreamReader_s *stream,
-                                      uint32_t bytes)
+struct BitstreamReader_s*
+br_substream_f_le(struct BitstreamReader_s *stream,
+                  uint32_t bytes)
 {
-    struct BitstreamReader_s* substream = bs_substream_new(BS_LITTLE_ENDIAN);
-    bs_substream_append_f(stream, substream, bytes);
+    struct BitstreamReader_s* substream = br_substream_new(BS_LITTLE_ENDIAN);
+    br_substream_append_f(stream, substream, bytes);
     return substream;
 }
 
 #ifndef STANDALONE
-struct BitstreamReader_s* bs_substream_p_be(struct BitstreamReader_s *stream,
-                                      uint32_t bytes)
+struct BitstreamReader_s*
+br_substream_p_be(struct BitstreamReader_s *stream,
+                  uint32_t bytes)
 {
-    struct BitstreamReader_s* substream = bs_substream_new(BS_BIG_ENDIAN);
-    bs_substream_append_p(stream, substream, bytes);
+    struct BitstreamReader_s* substream = br_substream_new(BS_BIG_ENDIAN);
+    br_substream_append_p(stream, substream, bytes);
     return substream;
 }
 
-struct BitstreamReader_s* bs_substream_p_le(struct BitstreamReader_s *stream,
-                                      uint32_t bytes)
+struct BitstreamReader_s*
+br_substream_p_le(struct BitstreamReader_s *stream,
+                  uint32_t bytes)
 {
-    struct BitstreamReader_s* substream = bs_substream_new(BS_LITTLE_ENDIAN);
-    bs_substream_append_p(stream, substream, bytes);
+    struct BitstreamReader_s* substream = br_substream_new(BS_LITTLE_ENDIAN);
+    br_substream_append_p(stream, substream, bytes);
     return substream;
 }
 #endif
 
-struct BitstreamReader_s* bs_substream_s_be(struct BitstreamReader_s *stream,
-                                      uint32_t bytes)
+struct BitstreamReader_s*
+br_substream_s_be(struct BitstreamReader_s *stream,
+                  uint32_t bytes)
 {
-    struct BitstreamReader_s* substream = bs_substream_new(BS_BIG_ENDIAN);
-    bs_substream_append_s(stream, substream, bytes);
+    struct BitstreamReader_s* substream = br_substream_new(BS_BIG_ENDIAN);
+    br_substream_append_s(stream, substream, bytes);
     return substream;
 }
 
-struct BitstreamReader_s* bs_substream_s_le(struct BitstreamReader_s *stream,
-                                      uint32_t bytes)
+struct BitstreamReader_s*
+br_substream_s_le(struct BitstreamReader_s *stream,
+                  uint32_t bytes)
 {
-    struct BitstreamReader_s* substream = bs_substream_new(BS_LITTLE_ENDIAN);
-    bs_substream_append_s(stream, substream, bytes);
+    struct BitstreamReader_s* substream = br_substream_new(BS_LITTLE_ENDIAN);
+    br_substream_append_s(stream, substream, bytes);
     return substream;
 }
 
 void
-bs_substream_append_f(struct BitstreamReader_s *stream,
+br_substream_append_f(struct BitstreamReader_s *stream,
                       struct BitstreamReader_s *substream,
                       uint32_t bytes)
 {
@@ -2102,7 +2108,7 @@ bs_substream_append_f(struct BitstreamReader_s *stream,
     if (fread(extended_buffer, sizeof(uint8_t), bytes,
               stream->input.file) != bytes)
         /*abort if the amount of read bytes is insufficient*/
-        bs_abort(stream);
+        br_abort(stream);
 
     /*perform callbacks on bytes in extended buffer*/
     for (callback = stream->callbacks;
@@ -2118,7 +2124,7 @@ bs_substream_append_f(struct BitstreamReader_s *stream,
 
 #ifndef STANDALONE
 void
-bs_substream_append_p(struct BitstreamReader_s *stream,
+br_substream_append_p(struct BitstreamReader_s *stream,
                       struct BitstreamReader_s *substream,
                       uint32_t bytes)
 {
@@ -2145,7 +2151,7 @@ bs_substream_append_p(struct BitstreamReader_s *stream,
             extended_buffer[i] = byte;
         else
             /*abort if EOF encountered during read*/
-            bs_abort(stream);
+            br_abort(stream);
     }
 
     /*perform callbacks on bytes in extended buffer*/
@@ -2162,7 +2168,7 @@ bs_substream_append_p(struct BitstreamReader_s *stream,
 #endif
 
 void
-bs_substream_append_s(struct BitstreamReader_s *stream,
+br_substream_append_s(struct BitstreamReader_s *stream,
                       struct BitstreamReader_s *substream,
                       uint32_t bytes)
 {
@@ -2176,7 +2182,7 @@ bs_substream_append_s(struct BitstreamReader_s *stream,
     /*abort if there's sufficient bytes remaining
       in the input stream to pass to the output stream*/
     if (buf_size(stream->input.substream) < bytes)
-        bs_abort(stream);
+        br_abort(stream);
 
     /*extend the output stream's current buffer to fit additional bytes*/
     extended_buffer = buf_extend(substream->input.substream, bytes);
@@ -2202,7 +2208,8 @@ bs_substream_append_s(struct BitstreamReader_s *stream,
     substream->input.substream->buffer_size += bytes;
 }
 
-void bs_close_stream_s(struct BitstreamReader_s *stream)
+void
+br_close_stream_s(struct BitstreamReader_s *stream)
 {
     buf_close(stream->input.substream);
 }
@@ -2344,7 +2351,7 @@ py_free(struct bs_python_input *stream)
 
 
 BitstreamReader*
-bs_open_python(PyObject *reader, bs_endianness endianness)
+br_open_python(PyObject *reader, bs_endianness endianness)
 {
     BitstreamReader *bs = malloc(sizeof(BitstreamReader));
 #ifndef NDEBUG
@@ -2361,56 +2368,58 @@ bs_open_python(PyObject *reader, bs_endianness endianness)
 
     switch (endianness) {
     case BS_BIG_ENDIAN:
-        bs->read = bs_read_bits_p_be;
-        bs->read_signed = bs_read_signed_bits_p_be;
-        bs->read_64 = bs_read_bits64_p_be;
-        bs->skip = bs_skip_bits_p_be;
-        bs->unread = bs_unread_bit_be;
-        bs->read_unary = bs_read_unary_p_be;
-        bs->read_limited_unary = bs_read_limited_unary_p_be;
-        bs->set_endianness = bs_set_endianness_p_be;
-        bs->substream = bs_substream_p_be;
+        bs->read = br_read_bits_p_be;
+        bs->read_signed = br_read_signed_bits_p_be;
+        bs->read_64 = br_read_bits64_p_be;
+        bs->skip = br_skip_bits_p_be;
+        bs->unread = br_unread_bit_be;
+        bs->read_unary = br_read_unary_p_be;
+        bs->read_limited_unary = br_read_limited_unary_p_be;
+        bs->set_endianness = br_set_endianness_p_be;
+        bs->substream = br_substream_p_be;
         break;
     case BS_LITTLE_ENDIAN:
-        bs->read = bs_read_bits_p_le;
-        bs->read_signed = bs_read_signed_bits_p_le;
-        bs->read_64 = bs_read_bits64_p_le;
-        bs->skip = bs_skip_bits_p_le;
-        bs->unread = bs_unread_bit_le;
-        bs->read_unary = bs_read_unary_p_le;
-        bs->read_limited_unary = bs_read_limited_unary_p_le;
-        bs->set_endianness = bs_set_endianness_p_le;
-        bs->substream = bs_substream_p_le;
+        bs->read = br_read_bits_p_le;
+        bs->read_signed = br_read_signed_bits_p_le;
+        bs->read_64 = br_read_bits64_p_le;
+        bs->skip = br_skip_bits_p_le;
+        bs->unread = br_unread_bit_le;
+        bs->read_unary = br_read_unary_p_le;
+        bs->read_limited_unary = br_read_limited_unary_p_le;
+        bs->set_endianness = br_set_endianness_p_le;
+        bs->substream = br_substream_p_le;
         break;
     }
 
-    bs->byte_align = bs_byte_align_r;
-    bs->read_huffman_code = bs_read_huffman_code_p;
-    bs->substream_append = bs_substream_append_p;
-    bs->close = bs_close_r;
-    bs->close_stream = bs_close_stream_p;
-    bs->mark = bs_mark_p;
-    bs->rewind = bs_rewind_p;
-    bs->unmark = bs_unmark_p;
+    bs->byte_align = br_byte_align;
+    bs->read_huffman_code = br_read_huffman_code_p;
+    bs->substream_append = br_substream_append_p;
+    bs->close = br_close;
+    bs->close_stream = br_close_stream_p;
+    bs->mark = br_mark_p;
+    bs->rewind = br_rewind_p;
+    bs->unmark = br_unmark_p;
 
     return bs;
 }
 
 void
-bs_close_stream_p(BitstreamReader *bs)
+br_close_stream_p(BitstreamReader *bs)
 {
     if (bs == NULL)
         return;
     else if (bs->input.python != NULL) {
         py_close(bs->input.python);
-        bs->close_stream = bs_noop;
+        bs->close_stream = br_noop;
     }
 }
 
 #endif
 
+
+
 BitstreamWriter*
-bs_open_w(FILE *f, bs_endianness endianness)
+bw_open(FILE *f, bs_endianness endianness)
 {
     BitstreamWriter *bs = malloc(sizeof(BitstreamWriter));
     bs->file = f;
@@ -2421,20 +2430,20 @@ bs_open_w(FILE *f, bs_endianness endianness)
 
     switch (endianness) {
     case BS_BIG_ENDIAN:
-        bs->write = write_bits_actual_be;
-        bs->write_signed = write_signed_bits_actual_be;
-        bs->write_64 = write_bits64_actual_be;
-        bs->write_unary = write_unary_actual;
-        bs->byte_align = byte_align_w_actual_be;
-        bs->set_endianness = set_endianness_actual_be;
+        bs->write = bw_write_bits_f_be;
+        bs->write_signed = bw_write_signed_bits_f_be;
+        bs->write_64 = bw_write_bits64_f_be;
+        bs->write_unary = bw_write_unary_f;
+        bs->byte_align = bw_byte_align_f_be;
+        bs->set_endianness = bw_set_endianness_f_be;
         break;
     case BS_LITTLE_ENDIAN:
-        bs->write = write_bits_actual_le;
-        bs->write_signed = write_signed_bits_actual_le;
-        bs->write_64 = write_bits64_actual_le;
-        bs->write_unary = write_unary_actual;
-        bs->byte_align = byte_align_w_actual_le;
-        bs->set_endianness = set_endianness_actual_le;
+        bs->write = bw_write_bits_f_le;
+        bs->write_signed = bw_write_signed_bits_f_le;
+        bs->write_64 = bw_write_bits64_f_le;
+        bs->write_unary = bw_write_unary_f;
+        bs->byte_align = bw_byte_align_f_le;
+        bs->set_endianness = bw_set_endianness_f_le;
         break;
     }
 
@@ -2450,12 +2459,12 @@ bs_open_accumulator(void)
     bs->callback = NULL;
     bs->records = NULL;
 
-    bs->write = write_bits_accumulator;
-    bs->write_signed = write_signed_bits_accumulator;
-    bs->write_64 = write_bits64_accumulator;
-    bs->write_unary = write_unary_accumulator;
-    bs->byte_align = byte_align_w_accumulator;
-    bs->set_endianness = set_endianness_accumulator;
+    bs->write = bw_write_bits_a;
+    bs->write_signed = bw_write_signed_bits_a;
+    bs->write_64 = bw_write_bits64_a;
+    bs->write_unary = bw_write_unary_a;
+    bs->byte_align = bw_byte_align_a;
+    bs->set_endianness = bw_set_endianness_a;
 
     return bs;
 }
@@ -2472,12 +2481,12 @@ bs_open_recorder(void)
     bs->records_total = 0x100;
     bs->records = malloc(sizeof(BitstreamRecord) * bs->records_total);
 
-    bs->write = write_bits_record;
-    bs->write_signed = write_signed_bits_record;
-    bs->write_64 = write_bits64_record;
-    bs->write_unary = write_unary_record;
-    bs->byte_align = byte_align_w_record;
-    bs->set_endianness = set_endianness_record;
+    bs->write = bw_write_bits_r;
+    bs->write_signed = bw_write_signed_bits_r;
+    bs->write_64 = bw_write_bits64_r;
+    bs->write_unary = bw_write_unary_r;
+    bs->byte_align = bw_byte_align_r;
+    bs->set_endianness = bw_set_endianness_r;
 
     return bs;
 }
@@ -2541,14 +2550,13 @@ bs_eof(BitstreamWriter *bs)
 ********************************/
 
 void
-write_bits_actual_be(BitstreamWriter* bs, unsigned int count, int value)
+bw_write_bits_f_be(BitstreamWriter* bs, unsigned int count, unsigned int value)
 {
     int bits_to_write;
     int value_to_write;
     unsigned int byte;
     struct bs_callback* callback;
 
-    assert(value >= 0);
     assert(value < (1l << count));
 
     while (count > 0) {
@@ -2580,15 +2588,14 @@ write_bits_actual_be(BitstreamWriter* bs, unsigned int count, int value)
 }
 
 void
-write_bits_actual_le(BitstreamWriter* bs, unsigned int count, int value)
+bw_write_bits_f_le(BitstreamWriter* bs, unsigned int count, unsigned int value)
 {
     int bits_to_write;
     int value_to_write;
     unsigned int byte;
     struct bs_callback* callback;
 
-    assert(value >= 0);
-    assert(value < (int64_t)(1LL << count));
+   assert(value < (int64_t)(1LL << count));
 
     while (count > 0) {
         /*chop off up to 8 bits to write at a time*/
@@ -2619,44 +2626,37 @@ write_bits_actual_le(BitstreamWriter* bs, unsigned int count, int value)
 }
 
 void
-write_signed_bits_actual_be(BitstreamWriter* bs,
-                            unsigned int count,
-                            int value)
+bw_write_signed_bits_f_be(BitstreamWriter* bs, unsigned int count, int value)
 {
     assert(value < (1 << (count - 1)));
     assert(value >= -(1 << (count - 1)));
     if (value >= 0) {
-        write_bits_actual_be(bs, count, value);
+        bw_write_bits_f_be(bs, count, value);
     } else {
-        write_bits_actual_be(bs, count, (1 << count) - (-value));
+        bw_write_bits_f_be(bs, count, (1 << count) - (-value));
     }
 }
 
 void
-write_signed_bits_actual_le(BitstreamWriter* bs,
-                            unsigned int count,
-                            int value)
+bw_write_signed_bits_f_le(BitstreamWriter* bs, unsigned int count, int value)
 {
     assert(value < (1 << (count - 1)));
     assert(value >= -(1 << (count - 1)));
     if (value >= 0) {
-        write_bits_actual_le(bs, count, value);
+        bw_write_bits_f_le(bs, count, value);
     } else {
-        write_bits_actual_le(bs, count, (1 << count) - (-value));
+        bw_write_bits_f_le(bs, count, (1 << count) - (-value));
     }
 }
 
 void
-write_bits64_actual_be(BitstreamWriter* bs,
-                       unsigned int count,
-                       uint64_t value)
+bw_write_bits64_f_be(BitstreamWriter* bs, unsigned int count, uint64_t value)
 {
     int bits_to_write;
     int value_to_write;
     unsigned int byte;
     struct bs_callback* callback;
 
-    assert(value >= 0l);
     assert(value < (int64_t)(1ll << count));
 
     while (count > 0) {
@@ -2688,7 +2688,7 @@ write_bits64_actual_be(BitstreamWriter* bs,
 }
 
 void
-write_bits64_actual_le(BitstreamWriter* bs,
+bw_write_bits64_f_le(BitstreamWriter* bs,
                        unsigned int count,
                        uint64_t value)
 {
@@ -2731,11 +2731,11 @@ write_bits64_actual_le(BitstreamWriter* bs,
 #define UNARY_BUFFER_SIZE 30
 
 void
-write_unary_actual(BitstreamWriter* bs, int stop_bit, int value)
+bw_write_unary_f(BitstreamWriter* bs, int stop_bit, unsigned int value)
 {
     void (*write_bits)(struct BitstreamWriter_s* bs,
                        unsigned int count,
-                       int value) = bs->write;
+                       unsigned int value) = bs->write;
 
     unsigned int bits_to_write;
 
@@ -2755,54 +2755,54 @@ write_unary_actual(BitstreamWriter* bs, int stop_bit, int value)
 }
 
 void
-byte_align_w_actual_be(BitstreamWriter* bs)
+bw_byte_align_f_be(BitstreamWriter* bs)
 {
-    write_bits_actual_be(bs, 7, 0);
+    bw_write_bits_f_be(bs, 7, 0);
     bs->buffer = 0;
     bs->buffer_size = 0;
 }
 
 void
-byte_align_w_actual_le(BitstreamWriter* bs)
+bw_byte_align_f_le(BitstreamWriter* bs)
 {
-    write_bits_actual_le(bs, 7, 0);
+    bw_write_bits_f_le(bs, 7, 0);
     bs->buffer = 0;
     bs->buffer_size = 0;
 }
 
 void
-set_endianness_actual_be(BitstreamWriter* bs, bs_endianness endianness)
+bw_set_endianness_f_be(BitstreamWriter* bs, bs_endianness endianness)
 {
     bs->buffer = 0;
     bs->buffer_size = 0;
     if (endianness == BS_LITTLE_ENDIAN) {
-        bs->write = write_bits_actual_le;
-        bs->write_signed = write_signed_bits_actual_le;
-        bs->write_64 = write_bits64_actual_le;
-        bs->write_unary = write_unary_actual;
-        bs->byte_align = byte_align_w_actual_le;
-        bs->set_endianness = set_endianness_actual_le;
+        bs->write = bw_write_bits_f_le;
+        bs->write_signed = bw_write_signed_bits_f_le;
+        bs->write_64 = bw_write_bits64_f_le;
+        bs->write_unary = bw_write_unary_f;
+        bs->byte_align = bw_byte_align_f_le;
+        bs->set_endianness = bw_set_endianness_f_le;
     }
 }
 
 void
-set_endianness_actual_le(BitstreamWriter* bs, bs_endianness endianness)
+bw_set_endianness_f_le(BitstreamWriter* bs, bs_endianness endianness)
 {
     bs->buffer = 0;
     bs->buffer_size = 0;
     if (endianness == BS_BIG_ENDIAN) {
-        bs->write = write_bits_actual_be;
-        bs->write_signed = write_signed_bits_actual_be;
-        bs->write_64 = write_bits64_actual_be;
-        bs->write_unary = write_unary_actual;
-        bs->byte_align = byte_align_w_actual_be;
-        bs->set_endianness = set_endianness_actual_be;
+        bs->write = bw_write_bits_f_be;
+        bs->write_signed = bw_write_signed_bits_f_be;
+        bs->write_64 = bw_write_bits64_f_be;
+        bs->write_unary = bw_write_unary_f;
+        bs->byte_align = bw_byte_align_f_be;
+        bs->set_endianness = bw_set_endianness_f_be;
     }
 }
 
 
 void
-write_bits_accumulator(BitstreamWriter* bs, unsigned int count, int value)
+bw_write_bits_a(BitstreamWriter* bs, unsigned int count, unsigned int value)
 {
     assert(value >= 0);
     assert(value < (1l << count));
@@ -2810,9 +2810,7 @@ write_bits_accumulator(BitstreamWriter* bs, unsigned int count, int value)
 }
 
 void
-write_signed_bits_accumulator(BitstreamWriter* bs,
-                              unsigned int count,
-                              int value)
+bw_write_signed_bits_a(BitstreamWriter* bs, unsigned int count, int value)
 {
     assert(value < (1 << (count - 1)));
     assert(value >= -(1 << (count - 1)));
@@ -2820,9 +2818,7 @@ write_signed_bits_accumulator(BitstreamWriter* bs,
 }
 
 void
-write_bits64_accumulator(BitstreamWriter* bs,
-                         unsigned int count,
-                         uint64_t value)
+bw_write_bits64_a(BitstreamWriter* bs, unsigned int count, uint64_t value)
 {
     assert(value >= 0l);
     assert(value < (int64_t)(1ll << count));
@@ -2830,28 +2826,28 @@ write_bits64_accumulator(BitstreamWriter* bs,
 }
 
 void
-write_unary_accumulator(BitstreamWriter* bs, int stop_bit, int value)
+bw_write_unary_a(BitstreamWriter* bs, int stop_bit, unsigned int value)
 {
     assert(value >= 0);
     bs->bits_written += (value + 1);
 }
 
 void
-byte_align_w_accumulator(BitstreamWriter* bs)
+bw_byte_align_a(BitstreamWriter* bs)
 {
     if (bs->bits_written % 8)
         bs->bits_written += (bs->bits_written % 8);
 }
 
 void
-set_endianness_accumulator(BitstreamWriter* bs, bs_endianness endianness)
+bw_set_endianness_a(BitstreamWriter* bs, bs_endianness endianness)
 {
     /*swapping endianness results in a byte alignment*/
-    byte_align_w_accumulator(bs);
+    bw_byte_align_a(bs);
 }
 
 void
-write_bits_record(BitstreamWriter* bs, unsigned int count, int value)
+bw_write_bits_r(BitstreamWriter* bs, unsigned int count, unsigned int value)
 {
     BitstreamRecord record;
 
@@ -2859,14 +2855,14 @@ write_bits_record(BitstreamWriter* bs, unsigned int count, int value)
     assert(value < (1l << count));
     record.type = BS_WRITE_BITS;
     record.key.count = count;
-    record.value.value = value;
+    record.value.unsigned_value = value;
     bs_record_resize(bs);
     bs->records[bs->records_written++] = record;
     bs->bits_written += count;
 }
 
 void
-write_signed_bits_record(BitstreamWriter* bs, unsigned int count, int value)
+bw_write_signed_bits_r(BitstreamWriter* bs, unsigned int count, int value)
 {
     BitstreamRecord record;
 
@@ -2874,14 +2870,14 @@ write_signed_bits_record(BitstreamWriter* bs, unsigned int count, int value)
     assert(value >= -(1 << (count - 1)));
     record.type = BS_WRITE_SIGNED_BITS;
     record.key.count = count;
-    record.value.value = value;
+    record.value.signed_value = value;
     bs_record_resize(bs);
     bs->records[bs->records_written++] = record;
     bs->bits_written += count;
 }
 
 void
-write_bits64_record(BitstreamWriter* bs, unsigned int count, uint64_t value)
+bw_write_bits64_r(BitstreamWriter* bs, unsigned int count, uint64_t value)
 {
     BitstreamRecord record;
 
@@ -2896,21 +2892,21 @@ write_bits64_record(BitstreamWriter* bs, unsigned int count, uint64_t value)
 }
 
 void
-write_unary_record(BitstreamWriter* bs, int stop_bit, int value)
+bw_write_unary_r(BitstreamWriter* bs, int stop_bit, unsigned int value)
 {
     BitstreamRecord record;
 
     assert(value >= 0);
     record.type = BS_WRITE_UNARY;
     record.key.stop_bit = stop_bit;
-    record.value.value = value;
+    record.value.unsigned_value = value;
     bs_record_resize(bs);
     bs->records[bs->records_written++] = record;
     bs->bits_written += (value + 1);
 }
 
 void
-byte_align_w_record(BitstreamWriter* bs)
+bw_byte_align_r(BitstreamWriter* bs)
 {
     BitstreamRecord record;
 
@@ -2922,7 +2918,7 @@ byte_align_w_record(BitstreamWriter* bs)
 }
 
 void
-set_endianness_record(BitstreamWriter* bs, bs_endianness endianness)
+bw_set_endianness_r(BitstreamWriter* bs, bs_endianness endianness)
 {
     BitstreamRecord record;
 
@@ -2935,14 +2931,14 @@ set_endianness_record(BitstreamWriter* bs, bs_endianness endianness)
 }
 
 void
-bs_dump_records(BitstreamWriter* target, BitstreamWriter* source)
+bw_dump_records(BitstreamWriter* target, BitstreamWriter* source)
 {
     int records_written = source->records_written;
     int new_records_total;
     int i;
     BitstreamRecord record;
 
-    if (target->write == write_bits_record) {
+    if (target->write == bw_write_bits_r) {
         /*when dumping from one recorder to another,
           use memcpy instead of looping through the records*/
 
@@ -2962,7 +2958,7 @@ bs_dump_records(BitstreamWriter* target, BitstreamWriter* source)
 
         target->records_written += source->records_written;
         target->bits_written += source->bits_written;
-    } else if (target->write == write_bits_accumulator) {
+    } else if (target->write == bw_write_bits_a) {
         /*when dumping from a recorder to an accumulator,
           simply copy over the total number of written bits*/
         target->bits_written = source->bits_written;
@@ -2972,11 +2968,11 @@ bs_dump_records(BitstreamWriter* target, BitstreamWriter* source)
             switch (record.type) {
             case BS_WRITE_BITS:
                 target->write(target, record.key.count,
-                              record.value.value);
+                              record.value.unsigned_value);
                 break;
             case BS_WRITE_SIGNED_BITS:
                 target->write_signed(target, record.key.count,
-                                     record.value.value);
+                                     record.value.signed_value);
                 break;
             case BS_WRITE_BITS64:
                 target->write_64(target, record.key.count,
@@ -2984,7 +2980,7 @@ bs_dump_records(BitstreamWriter* target, BitstreamWriter* source)
                 break;
             case BS_WRITE_UNARY:
                 target->write_unary(target, record.key.stop_bit,
-                                    record.value.value);
+                                    record.value.unsigned_value);
                 break;
             case BS_BYTE_ALIGN:
                 target->byte_align(target);
@@ -2999,7 +2995,7 @@ bs_dump_records(BitstreamWriter* target, BitstreamWriter* source)
 }
 
 void
-bs_swap_records(BitstreamWriter* a, BitstreamWriter* b)
+bw_swap_records(BitstreamWriter* a, BitstreamWriter* b)
 {
     int bits_written = a->bits_written;
     int records_written = a->records_written;

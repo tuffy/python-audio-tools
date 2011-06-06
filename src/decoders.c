@@ -160,12 +160,12 @@ BitstreamReader_read(decoders_BitstreamReader *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "I", &count))
         return NULL;
 
-    if (!setjmp(*bs_try(self->bitstream))) {
+    if (!setjmp(*br_try(self->bitstream))) {
         result = self->bitstream->read(self->bitstream, count);
-        bs_etry(self->bitstream);
+        br_etry(self->bitstream);
         return Py_BuildValue("I", result);
     } else {
-        bs_etry(self->bitstream);
+        br_etry(self->bitstream);
         PyErr_SetString(PyExc_IOError, "I/O error reading stream");
         return NULL;
     }
@@ -179,12 +179,12 @@ BitstreamReader_read64(decoders_BitstreamReader *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "I", &count))
         return NULL;
 
-    if (!setjmp(*bs_try(self->bitstream))) {
+    if (!setjmp(*br_try(self->bitstream))) {
         result = self->bitstream->read_64(self->bitstream, count);
-        bs_etry(self->bitstream);
+        br_etry(self->bitstream);
         return Py_BuildValue("L", result);
     } else {
-        bs_etry(self->bitstream);
+        br_etry(self->bitstream);
         PyErr_SetString(PyExc_IOError, "I/O error reading stream");
         return NULL;
     }
@@ -197,13 +197,13 @@ BitstreamReader_skip(decoders_BitstreamReader *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "I", &count))
         return NULL;
 
-    if (!setjmp(*bs_try(self->bitstream))) {
+    if (!setjmp(*br_try(self->bitstream))) {
         self->bitstream->skip(self->bitstream, count);
-        bs_etry(self->bitstream);
+        br_etry(self->bitstream);
         Py_INCREF(Py_None);
         return Py_None;
     } else {
-        bs_etry(self->bitstream);
+        br_etry(self->bitstream);
         PyErr_SetString(PyExc_IOError, "I/O error reading stream");
         return NULL;
     }
@@ -243,12 +243,12 @@ BitstreamReader_read_signed(decoders_BitstreamReader *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "I", &count))
         return NULL;
 
-    if (!setjmp(*bs_try(self->bitstream))) {
+    if (!setjmp(*br_try(self->bitstream))) {
         result = self->bitstream->read_signed(self->bitstream, count);
-        bs_etry(self->bitstream);
+        br_etry(self->bitstream);
         return Py_BuildValue("i", result);
     } else {
-        bs_etry(self->bitstream);
+        br_etry(self->bitstream);
         PyErr_SetString(PyExc_IOError, "I/O error reading stream");
         return NULL;
     }
@@ -267,12 +267,12 @@ BitstreamReader_unary(decoders_BitstreamReader *self, PyObject *args) {
         return NULL;
     }
 
-    if (!setjmp(*bs_try(self->bitstream))) {
+    if (!setjmp(*br_try(self->bitstream))) {
         result = self->bitstream->read_unary(self->bitstream, stop_bit);
-        bs_etry(self->bitstream);
+        br_etry(self->bitstream);
         return Py_BuildValue("I", result);
     } else {
-        bs_etry(self->bitstream);
+        br_etry(self->bitstream);
         PyErr_SetString(PyExc_IOError, "I/O error reading stream");
         return NULL;
     }
@@ -297,11 +297,11 @@ BitstreamReader_limited_unary(decoders_BitstreamReader *self, PyObject *args) {
         return NULL;
     }
 
-    if (!setjmp(*bs_try(self->bitstream))) {
+    if (!setjmp(*br_try(self->bitstream))) {
         result = self->bitstream->read_limited_unary(self->bitstream,
                                                      stop_bit,
                                                      maximum_bits);
-        bs_etry(self->bitstream);
+        br_etry(self->bitstream);
         if (result >= 0)
             return Py_BuildValue("i", result);
         else {
@@ -309,7 +309,7 @@ BitstreamReader_limited_unary(decoders_BitstreamReader *self, PyObject *args) {
             return Py_None;
         }
     } else {
-        bs_etry(self->bitstream);
+        br_etry(self->bitstream);
         PyErr_SetString(PyExc_IOError, "I/O error reading stream");
         return NULL;
     }
@@ -332,14 +332,14 @@ BitstreamReader_read_huffman_code(decoders_BitstreamReader *self,
 
     huffman_tree = (decoders_HuffmanTree*)huffman_tree_obj;
 
-    if (!setjmp(*bs_try(self->bitstream))) {
+    if (!setjmp(*br_try(self->bitstream))) {
         result = self->bitstream->read_huffman_code(self->bitstream,
                                                     *(huffman_tree->table));
 
-        bs_etry(self->bitstream);
+        br_etry(self->bitstream);
         return Py_BuildValue("i", result);
     } else {
-        bs_etry(self->bitstream);
+        br_etry(self->bitstream);
         PyErr_SetString(PyExc_IOError, "I/O error reading stream");
         return NULL;
     }
@@ -481,7 +481,7 @@ BitstreamReader_init(decoders_BitstreamReader *self,
     self->file_obj = file_obj;
 
     if (PyFile_CheckExact(file_obj)) {
-        self->bitstream = bs_open_r(PyFile_AsFile(self->file_obj),
+        self->bitstream = br_open(PyFile_AsFile(self->file_obj),
                                     little_endian ? BS_LITTLE_ENDIAN :
                                     BS_BIG_ENDIAN);
     } else {
@@ -497,7 +497,7 @@ void
 BitstreamReader_dealloc(decoders_BitstreamReader *self)
 {
     if (self->bitstream != NULL)
-        bs_free_r(self->bitstream);
+        br_free(self->bitstream);
     Py_XDECREF(self->file_obj);
     self->file_obj = NULL;
 

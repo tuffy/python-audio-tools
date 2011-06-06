@@ -47,7 +47,7 @@ FlacDecoder_init(decoders_FlacDecoder *self,
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
         goto error;
     } else {
-        self->bitstream = bs_open_r(self->file, BS_BIG_ENDIAN);
+        self->bitstream = br_open(self->file, BS_BIG_ENDIAN);
     }
 
     /*skip the given number of bytes, if any*/
@@ -69,7 +69,7 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     self->stream_finalized = 0;
 
     /*add callback for CRC16 calculation*/
-    bs_add_callback_r(self->bitstream, flac_crc16, &(self->crc16));
+    br_add_callback(self->bitstream, flac_crc16, &(self->crc16));
 
     /*setup a bunch of temporary buffers*/
     iaa_init(&(self->subframe_data),
@@ -133,7 +133,7 @@ FlacDecoder_read_metadata(decoders_FlacDecoder *self)
     unsigned int block_type;
     unsigned int block_length;
 
-    if (!setjmp(*bs_try(bitstream))) {
+    if (!setjmp(*br_try(bitstream))) {
         if (bitstream->read(bitstream, 32) != 0x664C6143u) {
             PyErr_SetString(PyExc_ValueError, "not a FLAC file");
             goto error;
@@ -175,7 +175,7 @@ FlacDecoder_read_metadata(decoders_FlacDecoder *self)
             }
         } while (!last_block);
 
-        bs_etry(bitstream);
+        br_etry(bitstream);
         return OK;
     } else {
         PyErr_SetString(PyExc_IOError,
@@ -184,7 +184,7 @@ FlacDecoder_read_metadata(decoders_FlacDecoder *self)
     }
 
  error:
-    bs_etry(bitstream);
+    br_etry(bitstream);
     return ERROR;
 }
 
@@ -245,7 +245,7 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
     thread_state = PyEval_SaveThread();
     self->crc16 = 0;
 
-    if (!setjmp(*bs_try(self->bitstream))) {
+    if (!setjmp(*br_try(self->bitstream))) {
         /*read frame header*/
         if ((error = FlacDecoder_read_frame_header(self->bitstream,
                                                    &(self->streaminfo),
@@ -293,7 +293,7 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
         goto error;
     }
 
-    bs_etry(self->bitstream);
+    br_etry(self->bitstream);
     PyEval_RestoreThread(thread_state);
 
     framelist = ia_array_to_framelist(&(self->subframe_data),
@@ -308,7 +308,7 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
         return NULL;
     }
  error:
-    bs_etry(self->bitstream);
+    br_etry(self->bitstream);
     return NULL;
 }
 
@@ -328,11 +328,11 @@ FlacDecoder_analyze_frame(decoders_FlacDecoder* self, PyObject *args)
         return Py_None;
     }
 
-    offset = bs_ftell(self->bitstream);
+    offset = br_ftell(self->bitstream);
 
     self->crc16 = 0;
 
-    if (!setjmp(*bs_try(self->bitstream))) {
+    if (!setjmp(*br_try(self->bitstream))) {
         if ((error = FlacDecoder_read_frame_header(self->bitstream,
                                                    &(self->streaminfo),
                                                    &frame_header)) != OK) {
@@ -369,7 +369,7 @@ FlacDecoder_analyze_frame(decoders_FlacDecoder* self, PyObject *args)
         goto error;
     }
 
-    bs_etry(self->bitstream);
+    br_etry(self->bitstream);
 
     /*return frame analysis*/
     return Py_BuildValue("{si si si si si sK sN si}",
@@ -382,7 +382,7 @@ FlacDecoder_analyze_frame(decoders_FlacDecoder* self, PyObject *args)
                          "subframes", subframes,
                          "offset", offset);
  error:
-    bs_etry(self->bitstream);
+    br_etry(self->bitstream);
     return NULL;
 }
 
@@ -396,7 +396,7 @@ FlacDecoder_read_frame_header(BitstreamReader *bitstream,
     uint32_t sample_rate_bits;
     uint32_t crc8 = 0;
 
-    bs_add_callback_r(bitstream, flac_crc8, &crc8);
+    br_add_callback(bitstream, flac_crc8, &crc8);
 
     /*read and verify sync code*/
     if (bitstream->read(bitstream, 14) != 0x3FFE) {
@@ -485,7 +485,7 @@ FlacDecoder_read_frame_header(BitstreamReader *bitstream,
 
     /*check for valid CRC-8 value*/
     bitstream->read(bitstream, 8);
-    bs_pop_callback(bitstream, NULL);
+    br_pop_callback(bitstream, NULL);
     if (crc8 != 0)
         return ERR_INVALID_FRAME_CRC;
 

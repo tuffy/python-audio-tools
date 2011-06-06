@@ -135,7 +135,7 @@ FlacEncoder_compute_best_lpc_coeffs(struct i_array *lpc_warm_up_samples,
                                           *shift_needed);
     } else {
         /*if exhaustive search, calculate best order*/
-        temp_subframe = bs_open_accumulator();
+        temp_subframe = bw_open_accumulator();
         ia_init(&temp_coefficients, options->max_lpc_order);
         ia_init(&temp_warm_up_samples, options->max_lpc_order);
         ia_init(&temp_residual, samples->size);
@@ -186,7 +186,7 @@ FlacEncoder_compute_best_lpc_coeffs(struct i_array *lpc_warm_up_samples,
         ia_free(&temp_warm_up_samples);
         ia_free(&temp_residual);
         ia_free(&temp_rice_parameters);
-        bs_close_w(temp_subframe);
+        bw_close(temp_subframe);
     }
 
     /*return best QLP coefficients and shift-needed values*/
