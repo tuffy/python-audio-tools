@@ -43,7 +43,7 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
 {
     char *filename;
     FILE *file;
-    Bitstream *stream;
+    BitstreamWriter *stream;
     PyObject *pcmreader_obj;
     struct pcm_reader *reader;
     struct flac_STREAMINFO streaminfo;
@@ -136,7 +136,7 @@ encoders_encode_flac(char *filename,
                      int adaptive_mid_side,
                      int exhaustive_model_search) {
     FILE *file;
-    Bitstream *stream;
+    BitstreamWriter *stream;
     struct pcm_reader *reader;
     struct flac_STREAMINFO streaminfo;
     char version_string[0xFF];
@@ -176,9 +176,9 @@ encoders_encode_flac(char *filename,
     audiotools__MD5Init(&md5sum);
     pcmr_add_callback(reader, md5_update, &md5sum, 1, 1);
 
-    stream = bs_open(file, BS_BIG_ENDIAN);
-    bs_add_callback(stream, flac_crc8, &(streaminfo.crc8));
-    bs_add_callback(stream, flac_crc16, &(streaminfo.crc16));
+    stream = bs_open_w(file, BS_BIG_ENDIAN);
+    bs_add_callback_w(stream, flac_crc8, &(streaminfo.crc8));
+    bs_add_callback_w(stream, flac_crc16, &(streaminfo.crc16));
 
     /*fill streaminfo with some placeholder values*/
     /* streaminfo.minimum_block_size = 0xFFFF; */
@@ -261,7 +261,7 @@ encoders_encode_flac(char *filename,
     iaa_free(&samples); /*deallocate the temporary samples block*/
     pcmr_close(reader); /*close the pcm_reader object
                               which calls pcmreader.close() in the process*/
-    bs_close(stream);     /*close the output file*/
+    bs_close_w(stream);     /*close the output file*/
 #ifndef STANDALONE
     return frame_offsets;
  error:
@@ -270,7 +270,7 @@ encoders_encode_flac(char *filename,
     Py_XDECREF(frame_offsets);
     iaa_free(&samples);
     pcmr_close(reader);
-    bs_close(stream);
+    bs_close_w(stream);
     return NULL;
 }
 #else
@@ -278,14 +278,14 @@ encoders_encode_flac(char *filename,
  error:
     iaa_free(&samples);
     pcmr_close(reader);
-    bs_close(stream);
+    bs_close_w(stream);
     return 0;
 }
 #endif
 
 
 void
-FlacEncoder_write_streaminfo(Bitstream *bs,
+FlacEncoder_write_streaminfo(BitstreamWriter *bs,
                              struct flac_STREAMINFO streaminfo)
 {
     int i;
@@ -320,7 +320,7 @@ FlacEncoder_write_streaminfo(Bitstream *bs,
 }
 
 void
-FlacEncoder_write_frame(Bitstream *bs,
+FlacEncoder_write_frame(BitstreamWriter *bs,
                         struct flac_STREAMINFO *streaminfo,
                         struct ia_array *samples)
 {
@@ -328,12 +328,12 @@ FlacEncoder_write_frame(Bitstream *bs,
     long startpos;
     long framesize;
 
-    Bitstream *left_subframe;
-    Bitstream *right_subframe;
-    Bitstream *side_subframe;
+    BitstreamWriter *left_subframe;
+    BitstreamWriter *right_subframe;
+    BitstreamWriter *side_subframe;
 
-    Bitstream *avg_subframe;
-    Bitstream *difference_subframe;
+    BitstreamWriter *avg_subframe;
+    BitstreamWriter *difference_subframe;
 
     struct i_array side_samples;
     struct i_array avg_subframe_samples;
@@ -439,7 +439,7 @@ FlacEncoder_write_frame(Bitstream *bs,
                 bs_dump_records(bs, difference_subframe);
             }
 
-            bs_close(side_subframe);
+            bs_close_w(side_subframe);
             ia_free(&side_samples);
         } else {
             /*otherwise, write the smaller of independent and mid-side to disk,
@@ -458,10 +458,10 @@ FlacEncoder_write_frame(Bitstream *bs,
             }
         }
 
-        bs_close(left_subframe);
-        bs_close(right_subframe);
-        bs_close(avg_subframe);
-        bs_close(difference_subframe);
+        bs_close_w(left_subframe);
+        bs_close_w(right_subframe);
+        bs_close_w(avg_subframe);
+        bs_close_w(difference_subframe);
         ia_free(&avg_subframe_samples);
         ia_free(&difference_subframe_samples);
     }
@@ -487,7 +487,7 @@ FlacEncoder_write_frame(Bitstream *bs,
 }
 
 void
-FlacEncoder_write_frame_header(Bitstream *bs,
+FlacEncoder_write_frame_header(BitstreamWriter *bs,
                                struct flac_STREAMINFO *streaminfo,
                                struct ia_array *samples,
                                int channel_assignment)
@@ -591,7 +591,7 @@ FlacEncoder_write_frame_header(Bitstream *bs,
 }
 
 void
-FlacEncoder_write_subframe(Bitstream *bs,
+FlacEncoder_write_subframe(BitstreamWriter *bs,
                            struct flac_encoding_options *options,
                            int bits_per_sample,
                            struct i_array *samples)
@@ -605,7 +605,7 @@ FlacEncoder_write_subframe(Bitstream *bs,
     struct i_array fixed_warm_up_samples;
     struct i_array fixed_residual;
     struct i_array fixed_rice_parameters;
-    Bitstream *fixed_subframe;
+    BitstreamWriter *fixed_subframe;
 
     /*LPC subframe params*/
     struct i_array lpc_warm_up_samples;
@@ -613,7 +613,7 @@ FlacEncoder_write_subframe(Bitstream *bs,
     struct i_array lpc_rice_parameters;
     struct i_array lpc_coeffs;
     int lpc_shift_needed;
-    Bitstream *lpc_subframe;
+    BitstreamWriter *lpc_subframe;
 
 
     /*first, check for a CONSTANT subframe*/
@@ -740,7 +740,7 @@ FlacEncoder_write_subframe(Bitstream *bs,
                                            lpc_shift_needed);
         }
 
-        bs_close(lpc_subframe);
+        bs_close_w(lpc_subframe);
 
         ia_free(&lpc_rice_parameters);
         ia_free(&lpc_residual);
@@ -789,14 +789,14 @@ FlacEncoder_write_subframe(Bitstream *bs,
             samples->data[i] <<= wasted_bits_per_sample;
     }
 
-    bs_close(fixed_subframe);
+    bs_close_w(fixed_subframe);
     ia_free(&fixed_warm_up_samples);
     ia_free(&fixed_residual);
     ia_free(&fixed_rice_parameters);
 }
 
 void
-FlacEncoder_write_constant_subframe(Bitstream *bs,
+FlacEncoder_write_constant_subframe(BitstreamWriter *bs,
                                     int bits_per_sample,
                                     int wasted_bits_per_sample,
                                     ia_data_t sample)
@@ -815,7 +815,7 @@ FlacEncoder_write_constant_subframe(Bitstream *bs,
 }
 
 void
-FlacEncoder_write_verbatim_subframe(Bitstream *bs,
+FlacEncoder_write_verbatim_subframe(BitstreamWriter *bs,
                                     int bits_per_sample,
                                     int wasted_bits_per_sample,
                                     struct i_array *samples)
@@ -895,7 +895,7 @@ FlacEncoder_evaluate_fixed_subframe(struct i_array *warm_up_samples,
 }
 
 void
-FlacEncoder_write_fixed_subframe(Bitstream *bs,
+FlacEncoder_write_fixed_subframe(BitstreamWriter *bs,
                                  struct i_array *warm_up_samples,
                                  struct i_array *rice_parameters,
                                  struct i_array *residuals,
@@ -967,7 +967,7 @@ FlacEncoder_evaluate_lpc_subframe(struct i_array *warm_up_samples,
 }
 
 void
-FlacEncoder_write_lpc_subframe(Bitstream *bs,
+FlacEncoder_write_lpc_subframe(BitstreamWriter *bs,
                                struct i_array *warm_up_samples,
                                struct i_array *rice_parameters,
                                struct i_array *residuals,
@@ -1156,7 +1156,7 @@ FlacEncoder_compute_best_rice_parameter(struct i_array *residuals,
 
 
 void
-FlacEncoder_write_residual(Bitstream *bs,
+FlacEncoder_write_residual(BitstreamWriter *bs,
                            int predictor_order,
                            struct i_array *rice_parameters,
                            struct i_array *residuals)
@@ -1213,7 +1213,7 @@ FlacEncoder_write_residual(Bitstream *bs,
 }
 
 void
-FlacEncoder_write_residual_partition(Bitstream *bs,
+FlacEncoder_write_residual_partition(BitstreamWriter *bs,
                                      int coding_method,
                                      int rice_parameter,
                                      struct i_array *residuals)
@@ -1225,8 +1225,8 @@ FlacEncoder_write_residual_partition(Bitstream *bs,
 
     ia_size_t residuals_size;
     ia_data_t *residuals_data;
-    void (*write_bits)(struct Bitstream_s* bs, unsigned int count, int value);
-    void (*write_unary)(struct Bitstream_s* bs, int stop_bit, int value);
+    void (*write_bits)(struct BitstreamWriter_s* bs, unsigned int count, int value);
+    void (*write_unary)(struct BitstreamWriter_s* bs, int stop_bit, int value);
 
     write_bits = bs->write;
     write_unary = bs->write_unary;
@@ -1331,7 +1331,7 @@ FlacEncoder_compute_best_fixed_predictor_order(struct i_array *samples)
 }
 
 void
-write_utf8(Bitstream* bs, unsigned int value) {
+write_utf8(BitstreamWriter* bs, unsigned int value) {
     unsigned int total_bytes = 0;
     int shift;
 

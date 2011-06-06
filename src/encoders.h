@@ -59,7 +59,7 @@ typedef struct {
     PyObject_HEAD
 
     PyObject* file_obj;
-    Bitstream* bitstream;
+    BitstreamWriter* bitstream;
 } encoders_BitstreamWriter;
 
 static PyObject*
@@ -135,12 +135,12 @@ PyTypeObject encoders_BitstreamWriterType = {
     0,                         /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
     "BitstreamWriter objects", /* tp_doc */
-    0,		               /* tp_traverse */
-    0,		               /* tp_clear */
-    0,		               /* tp_richcompare */
-    0,		               /* tp_weaklistoffset */
-    0,		               /* tp_iter */
-    0,		               /* tp_iternext */
+    0,                         /* tp_traverse */
+    0,                         /* tp_clear */
+    0,                         /* tp_richcompare */
+    0,                         /*  tp_weaklistoffset */
+    0,                         /* tp_iter */
+    0,                         /* tp_iternext */
     BitstreamWriter_methods,   /* tp_methods */
     0,                         /* tp_members */
     0,                         /* tp_getset */

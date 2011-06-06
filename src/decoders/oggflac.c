@@ -86,7 +86,7 @@ OggFlacDecoder_init(decoders_OggFlacDecoder *self,
     audiotools__MD5Init(&(self->md5));
 
     /*add callback for CRC16 calculation*/
-    bs_add_callback(self->packet, flac_crc16, &(self->crc16));
+    bs_add_callback_r(self->packet, flac_crc16, &(self->crc16));
 
     /*setup a bunch of temporary buffers*/
     iaa_init(&(self->subframe_data),
@@ -246,7 +246,7 @@ OggFlacDecoder_close(decoders_OggFlacDecoder *self, PyObject *args) {
 }
 
 int
-oggflac_read_streaminfo(Bitstream *packet,
+oggflac_read_streaminfo(BitstreamReader *packet,
                         struct flac_STREAMINFO *streaminfo,
                         uint16_t *header_packets) {
     int i;

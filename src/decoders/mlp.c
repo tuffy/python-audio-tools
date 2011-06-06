@@ -112,7 +112,7 @@ MLPDecoder_init(decoders_MLPDecoder* self,
     self->crc = 0x3C;
 
     /*open the MLP file*/
-    self->bitstream = bs_open(fopen(path, "rb"), BS_BIG_ENDIAN);
+    self->bitstream = bs_open_r(fopen(path, "rb"), BS_BIG_ENDIAN);
 
     self->remaining_samples = remaining_samples;
 #endif
@@ -184,7 +184,7 @@ MLPDecoder_init(decoders_MLPDecoder* self,
 
     /*initalize stream position callback*/
     self->bytes_read = 0;
-    bs_add_callback(self->bitstream, mlp_byte_callback, self);
+    bs_add_callback_r(self->bitstream, mlp_byte_callback, self);
 
     return 0;
 }
@@ -500,7 +500,7 @@ mlp_analyze_substream(decoders_MLPDecoder* decoder,
     struct mlp_FilterParameters* iir_s;
     struct i_array* channel;
 
-    Bitstream* bs = decoder->bitstream;
+    BitstreamReader* bs = decoder->bitstream;
     int last_block = 0;
     int substream_channel_count;
     uint8_t final_crc;
@@ -932,7 +932,7 @@ mlp_channel_mask(struct mlp_MajorSync* major_sync) {
 }
 
 int
-mlp_total_frame_size(Bitstream* bitstream) {
+mlp_total_frame_size(BitstreamReader* bitstream) {
     int total_size;
 
     if (!setjmp(*bs_try(bitstream))) {
@@ -951,7 +951,7 @@ mlp_total_frame_size(Bitstream* bitstream) {
 mlp_major_sync_status
 mlp_read_major_sync(decoders_MLPDecoder* decoder,
                     struct mlp_MajorSync* major_sync) {
-    Bitstream* bitstream = decoder->bitstream;
+    BitstreamReader* bitstream = decoder->bitstream;
     const static uint8_t bits_per_sample[] =
         {16, 20, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
@@ -1129,7 +1129,7 @@ mlp_read_frame(decoders_MLPDecoder* decoder,
 }
 
 mlp_status
-mlp_read_substream_size(Bitstream* bitstream,
+mlp_read_substream_size(BitstreamReader* bitstream,
                         struct mlp_SubstreamSize* size) {
     if (bitstream->read(bitstream, 1) == 1) {
         PyErr_SetString(PyExc_ValueError,
@@ -1148,7 +1148,7 @@ mlp_status
 mlp_read_substream(decoders_MLPDecoder* decoder,
                    int substream,
                    struct ia_array* samples) {
-    Bitstream* bs = decoder->bitstream;
+    BitstreamReader* bs = decoder->bitstream;
     uint8_t final_crc;
     int last_block = 0;
     int matrix;
@@ -1234,7 +1234,7 @@ mlp_read_block(decoders_MLPDecoder* decoder,
                int substream,
                struct ia_array* block_data,
                int* last_block) {
-    Bitstream* bitstream = decoder->bitstream;
+    BitstreamReader* bitstream = decoder->bitstream;
 
     if (bitstream->read(bitstream, 1)) { /*check "params present" bit*/
 
@@ -1287,7 +1287,7 @@ mlp_analyze_block(decoders_MLPDecoder* decoder,
                   int substream,
                   struct ia_array* block_data,
                   int* last_block) {
-    Bitstream* bitstream = decoder->bitstream;
+    BitstreamReader* bitstream = decoder->bitstream;
 
     if (bitstream->read(bitstream, 1)) { /*check "params present" bit*/
 
@@ -1327,7 +1327,7 @@ mlp_analyze_block(decoders_MLPDecoder* decoder,
 }
 
 mlp_status
-mlp_read_restart_header(Bitstream* bs,
+mlp_read_restart_header(BitstreamReader* bs,
                         struct mlp_DecodingParameters* parameters,
                         struct mlp_RestartHeader* header) {
     struct mlp_ChannelParameters* channel_params;
@@ -1429,7 +1429,7 @@ mlp_read_restart_header(Bitstream* bs,
 }
 
 mlp_status
-mlp_read_decoding_parameters(Bitstream* bs,
+mlp_read_decoding_parameters(BitstreamReader* bs,
                              int min_channel,
                              int max_channel,
                              int max_matrix_channel,
@@ -1493,7 +1493,7 @@ mlp_read_decoding_parameters(Bitstream* bs,
 }
 
 mlp_status
-mlp_read_channel_parameters(Bitstream* bs,
+mlp_read_channel_parameters(BitstreamReader* bs,
                             struct mlp_ParameterPresentFlags* flags,
                             uint8_t quant_step_size,
                             struct mlp_ChannelParameters* parameters) {
@@ -1526,7 +1526,7 @@ mlp_read_channel_parameters(Bitstream* bs,
 }
 
 mlp_status
-mlp_read_fir_filter_parameters(Bitstream* bs,
+mlp_read_fir_filter_parameters(BitstreamReader* bs,
                                struct mlp_FilterParameters* fir) {
     uint8_t order;
     uint8_t coefficient_bits;
@@ -1573,7 +1573,7 @@ mlp_read_fir_filter_parameters(Bitstream* bs,
 }
 
 mlp_status
-mlp_read_iir_filter_parameters(Bitstream* bs,
+mlp_read_iir_filter_parameters(BitstreamReader* bs,
                                struct mlp_FilterParameters* iir) {
     uint8_t order;
     uint8_t coefficient_bits;
@@ -1627,7 +1627,7 @@ mlp_read_iir_filter_parameters(Bitstream* bs,
 }
 
 mlp_status
-mlp_read_matrix_parameters(Bitstream* bs,
+mlp_read_matrix_parameters(BitstreamReader* bs,
                            int max_matrix_channel,
                            struct mlp_MatrixParameters* parameters) {
     struct mlp_Matrix* matrix;
@@ -1705,7 +1705,7 @@ mlp_calculate_signed_offset(uint8_t codebook,
 /*returns the next residual code from the given codebook
   or -1 if the code is invalid*/
 static inline int
-mlp_read_code(Bitstream* bs, int codebook) {
+mlp_read_code(BitstreamReader* bs, int codebook) {
     switch (codebook) {
     case 0:
         return 0;
@@ -1722,7 +1722,7 @@ mlp_read_code(Bitstream* bs, int codebook) {
 }
 
 mlp_status
-mlp_read_residuals(Bitstream* bs,
+mlp_read_residuals(BitstreamReader* bs,
                    struct mlp_DecodingParameters* parameters,
                    int min_channel,
                    int max_channel,

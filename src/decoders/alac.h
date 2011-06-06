@@ -1,6 +1,6 @@
 #include <Python.h>
 #include <stdint.h>
-#include "../bitstream_r.h"
+#include "../bitstream.h"
 #include "../array.h"
 
 /********************************************************
@@ -27,7 +27,7 @@ typedef struct {
 
     char* filename;
     FILE* file;
-    Bitstream* bitstream;
+    BitstreamReader* bitstream;
 
     int sample_rate;
     int channels;
@@ -105,18 +105,18 @@ ALACDecoder_seek_mdat(decoders_ALACDecoder *self);
 
 /*reads "frame_header" from the current bitstream*/
 void
-ALACDecoder_read_frame_header(Bitstream *bs,
+ALACDecoder_read_frame_header(BitstreamReader *bs,
                               struct alac_frame_header *frame_header,
                               int max_samples_per_frame);
 
 /*reads "subframe header" from the current bitstream*/
 void
-ALACDecoder_read_subframe_header(Bitstream *bs,
+ALACDecoder_read_subframe_header(BitstreamReader *bs,
                                  struct alac_subframe_header *subframe_header);
 
 /*reads a block of "wasted_bits" samples from the current bitstream*/
 void
-ALACDecoder_read_wasted_bits(Bitstream *bs,
+ALACDecoder_read_wasted_bits(BitstreamReader *bs,
                              struct ia_array *wasted_bits_samples,
                              int sample_count,
                              int channels,
@@ -124,7 +124,7 @@ ALACDecoder_read_wasted_bits(Bitstream *bs,
 
 /*reads a block of residuals from the current bitstream*/
 void
-ALACDecoder_read_residuals(Bitstream *bs,
+ALACDecoder_read_residuals(BitstreamReader *bs,
                            struct i_array *residuals,
                            int residual_count,
                            int sample_size,
@@ -134,7 +134,7 @@ ALACDecoder_read_residuals(Bitstream *bs,
 
 /*reads an unsigned residual from the current bitstream*/
 int
-ALACDecoder_read_residual(Bitstream *bs,
+ALACDecoder_read_residual(BitstreamReader *bs,
                           int k,
                           int sample_size);
 

@@ -1,5 +1,5 @@
 #include <Python.h>
-#include "bitstream_r.h"
+#include "bitstream.h"
 #include "verify.h"
 
 /********************************************************

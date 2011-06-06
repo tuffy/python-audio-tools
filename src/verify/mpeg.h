@@ -34,7 +34,7 @@ struct mpeg_header {
 };
 
 status
-verifymodule_read_mpeg_header(Bitstream *bs, struct mpeg_header *header);
+verifymodule_read_mpeg_header(BitstreamReader *bs, struct mpeg_header *header);
 
 void
 verifymodule_print_mpeg_header(struct mpeg_header *header);

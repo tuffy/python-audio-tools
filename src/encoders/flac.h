@@ -5,7 +5,7 @@
 #endif
 
 #include <stdint.h>
-#include "../bitstream_w.h"
+#include "../bitstream.h"
 #include "../array.h"
 
 /********************************************************
@@ -86,14 +86,14 @@ typedef enum {OK, ERROR} status;
 
 /*writes a STREAMINFO metadata block to the bitstream*/
 void
-FlacEncoder_write_streaminfo(Bitstream *bs,
+FlacEncoder_write_streaminfo(BitstreamWriter *bs,
                              struct flac_STREAMINFO streaminfo);
 
 /*takes a list of sample lists (one per channel)
   and the FLAC's streaminfo
   writes a full FLAC frame to the bitstream*/
 void
-FlacEncoder_write_frame(Bitstream *bs,
+FlacEncoder_write_frame(BitstreamWriter *bs,
                         struct flac_STREAMINFO *streaminfo,
                         struct ia_array *samples);
 
@@ -101,7 +101,7 @@ FlacEncoder_write_frame(Bitstream *bs,
   and the FLAC's streaminfo
   writes a FLAC frame header to the bitstream*/
 void
-FlacEncoder_write_frame_header(Bitstream *bs,
+FlacEncoder_write_frame_header(BitstreamWriter *bs,
                                struct flac_STREAMINFO *streaminfo,
                                struct ia_array *samples,
                                int channel_assignment);
@@ -110,7 +110,7 @@ FlacEncoder_write_frame_header(Bitstream *bs,
   and the user-defined encoding options
   writes the best subframe to the bitbuffer*/
 void
-FlacEncoder_write_subframe(Bitstream *bs,
+FlacEncoder_write_subframe(BitstreamWriter *bs,
                            struct flac_encoding_options *options,
                            int bits_per_sample,
                            struct i_array *samples);
@@ -118,7 +118,7 @@ FlacEncoder_write_subframe(Bitstream *bs,
 /*writes a CONSTANT subframe with the value "sample"
   to the bitbuffer*/
 void
-FlacEncoder_write_constant_subframe(Bitstream *bs,
+FlacEncoder_write_constant_subframe(BitstreamWriter *bs,
                                     int bits_per_sample,
                                     int wasted_bits_per_sample,
                                     int32_t sample);
@@ -126,7 +126,7 @@ FlacEncoder_write_constant_subframe(Bitstream *bs,
 /*writes a VERBATIM subframe with the values "samples"
   to the bitbuffer*/
 void
-FlacEncoder_write_verbatim_subframe(Bitstream *bs,
+FlacEncoder_write_verbatim_subframe(BitstreamWriter *bs,
                                     int bits_per_sample,
                                     int wasted_bits_per_sample,
                                     struct i_array *samples);
@@ -145,9 +145,9 @@ FlacEncoder_evaluate_fixed_subframe(struct i_array *warm_up_samples,
 
 /*given warm_up_samples, rice_parameters, residuals
   along with bits_per_sample and the FIXED predictor order,
-  writes a FIXED subframe to the given Bitstream*/
+  writes a FIXED subframe to the given BitstreamWriter*/
 void
-FlacEncoder_write_fixed_subframe(Bitstream *bs,
+FlacEncoder_write_fixed_subframe(BitstreamWriter *bs,
                                  struct i_array *warm_up_samples,
                                  struct i_array *rice_parameters,
                                  struct i_array *residuals,
@@ -171,9 +171,9 @@ FlacEncoder_evaluate_lpc_subframe(struct i_array *warm_up_samples,
 
 /*given warm_up_samples, rice_parameters, residuals,
   along with bits_per_sample, LPC coefficients (whose length is LPC order)
-  and a shift_needed value, writes an LPC subframe to the given Bitstream*/
+  and a shift_needed value, writes an LPC subframe to the given BitstreamWriter*/
 void
-FlacEncoder_write_lpc_subframe(Bitstream *bs,
+FlacEncoder_write_lpc_subframe(BitstreamWriter *bs,
                                struct i_array *warm_up_samples,
                                struct i_array *rice_parameters,
                                struct i_array *residuals,
@@ -205,12 +205,12 @@ FlacEncoder_evaluate_best_residual(struct i_array *rice_parameters,
   given a coding method (0 or 1)
   a list of rice_parameters ints
   and a list of residuals ints
-  encodes the residuals into partitions and writes them to the Bitstream
+  encodes the residuals into partitions and writes them to the BitstreamWriter
   (a Rice partition also requires a "partition_order" which can
   be derived from the length of "rice_parameters")
 */
 void
-FlacEncoder_write_residual(Bitstream *bs,
+FlacEncoder_write_residual(BitstreamWriter *bs,
                            int predictor_order,
                            struct i_array *rice_parameters,
                            struct i_array *residuals);
@@ -218,9 +218,9 @@ FlacEncoder_write_residual(Bitstream *bs,
 /*given a coding method (0 or 1)
   a rice_parameter int
   and a list of residuals ints
-  encodes the residual partition and writes them to the Bitstream*/
+  encodes the residual partition and writes them to the BitstreamWriter*/
 void
-FlacEncoder_write_residual_partition(Bitstream *bs,
+FlacEncoder_write_residual_partition(BitstreamWriter *bs,
                                      int coding_method,
                                      int rice_parameter,
                                      struct i_array *residuals);
@@ -262,7 +262,7 @@ FlacEncoder_build_mid_side_subframes(struct ia_array *samples,
 
 /*writes a UTF-8 value to the bitstream*/
 void
-write_utf8(Bitstream *stream, unsigned int value);
+write_utf8(BitstreamWriter *stream, unsigned int value);
 
 /*an MD5 summing callback, updated when reading input strings*/
 void

@@ -20,7 +20,7 @@
 PyObject*
 verifymodule_mpeg(PyObject *dummy, PyObject *args) {
     PyObject *file_obj;
-    Bitstream *bitstream;
+    BitstreamReader *bitstream;
     int start_byte;
     int end_byte;
     int remaining_bytes;
@@ -43,7 +43,7 @@ verifymodule_mpeg(PyObject *dummy, PyObject *args) {
                         "first argument must be an actual file object");
         return NULL;
     } else {
-        bitstream = bs_open(PyFile_AsFile(file_obj), BS_BIG_ENDIAN);
+        bitstream = bs_open_r(PyFile_AsFile(file_obj), BS_BIG_ENDIAN);
     }
 
     remaining_bytes = end_byte - start_byte;
@@ -132,7 +132,7 @@ verifymodule_mpeg(PyObject *dummy, PyObject *args) {
 }
 
 status
-verifymodule_read_mpeg_header(Bitstream *bs, struct mpeg_header *header) {
+verifymodule_read_mpeg_header(BitstreamReader *bs, struct mpeg_header *header) {
     if ((header->frame_sync = bs->read(bs, 11)) != 0x7FF) {
         PyErr_SetString(PyExc_ValueError, "invalid frame sync");
         return ERROR;

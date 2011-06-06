@@ -1,4 +1,4 @@
-#include "../bitstream_r.h"
+#include "../bitstream.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -40,7 +40,7 @@ struct ogg_page_header {
 };
 
 typedef struct OggReader_s {
-    Bitstream *ogg_stream;
+    BitstreamReader *ogg_stream;
     uint32_t checksum;
     struct ogg_page_header current_header;
     uint8_t current_segment;
@@ -53,14 +53,14 @@ void
 oggreader_close(OggReader *reader);
 
 ogg_status
-oggreader_read_page_header(Bitstream *ogg_stream,
+oggreader_read_page_header(BitstreamReader *ogg_stream,
                            struct ogg_page_header *header);
 
 /*appends the next segment in the stream to "packet"
   and places the segment's size in "segment_size"*/
 ogg_status
 oggreader_next_segment(OggReader *reader,
-                       Bitstream *packet,
+                       BitstreamReader *packet,
                        uint8_t *segment_size);
 
 /*places the next packet in Ogg stream in "packet",
@@ -71,7 +71,7 @@ oggreader_next_segment(OggReader *reader,
 
   an error in the stream may result in a partially filled packet*/
 ogg_status
-oggreader_next_packet(OggReader *reader, Bitstream *packet);
+oggreader_next_packet(OggReader *reader, BitstreamReader *packet);
 
 char *
 ogg_strerror(ogg_status err);

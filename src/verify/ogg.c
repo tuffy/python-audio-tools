@@ -22,7 +22,7 @@
 PyObject*
 verifymodule_ogg(PyObject *dummy, PyObject *args) {
     PyObject *file_obj;
-    Bitstream *bitstream;
+    BitstreamReader *bitstream;
     int has_previous_header = 0;
     struct ogg_header previous_header;
     struct ogg_header header;
@@ -43,8 +43,8 @@ verifymodule_ogg(PyObject *dummy, PyObject *args) {
                         "first argument must be an actual file object");
         return NULL;
     } else {
-        bitstream = bs_open(PyFile_AsFile(file_obj), BS_LITTLE_ENDIAN);
-        bs_add_callback(bitstream, ogg_crc, &checksum);
+        bitstream = bs_open_r(PyFile_AsFile(file_obj), BS_LITTLE_ENDIAN);
+        bs_add_callback_r(bitstream, ogg_crc, &checksum);
     }
 
     if (!setjmp(*bs_try(bitstream))) {
@@ -120,7 +120,7 @@ verifymodule_ogg(PyObject *dummy, PyObject *args) {
 }
 
 status
-verifymodule_read_ogg_header(Bitstream *bs, struct ogg_header *header) {
+verifymodule_read_ogg_header(BitstreamReader *bs, struct ogg_header *header) {
     int i;
     uint8_t checksum[4];
 

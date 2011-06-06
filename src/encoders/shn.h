@@ -6,7 +6,7 @@
 #endif
 
 #include <stdint.h>
-#include "../bitstream_w.h"
+#include "../bitstream.h"
 #include "../array.h"
 #include "../pcmreader.h"
 
@@ -46,22 +46,22 @@ enum {FN_DIFF0     = 0,
 typedef enum {OK, ERROR} status;
 
 void
-ShortenEncoder_put_uvar(Bitstream* bs, int size, int value);
+ShortenEncoder_put_uvar(BitstreamWriter* bs, int size, int value);
 
 void
-ShortenEncoder_put_var(Bitstream* bs, int size, int value);
+ShortenEncoder_put_var(BitstreamWriter* bs, int size, int value);
 
 void
-ShortenEncoder_put_long(Bitstream* bs, int value);
+ShortenEncoder_put_long(BitstreamWriter* bs, int value);
 
 int
-ShortenEncoder_encode_stream(Bitstream* bs,
+ShortenEncoder_encode_stream(BitstreamWriter* bs,
                              struct pcm_reader* reader,
                              int block_size,
                              struct ia_array* wrapped_samples);
 
 int
-ShortenEncoder_encode_channel(Bitstream* bs,
+ShortenEncoder_encode_channel(BitstreamWriter* bs,
                               struct i_array* samples,
                               struct i_array* wrapped_samples);
 
@@ -73,11 +73,11 @@ ShortenEncoder_encode_zero(struct i_array* buffer,
                            struct i_array* wrapped_samples);
 
 int
-ShortenEncoder_encode_diff(Bitstream* bs,
+ShortenEncoder_encode_diff(BitstreamWriter* bs,
                            struct i_array* buffer,
                            struct i_array* wrapped_samples,
                            ia_data_t (*calculator)(struct i_array* samples,
-						       ia_size_t i));
+                                                   ia_size_t i));
 
 ia_data_t
 ShortenEncoder_encode_diff1(struct i_array* samples, ia_size_t i);
@@ -89,7 +89,7 @@ ia_data_t
 ShortenEncoder_encode_diff3(struct i_array* samples, ia_size_t i);
 
 int
-ShortenEncoder_encode_residuals(Bitstream* bs, struct i_array* residuals);
+ShortenEncoder_encode_residuals(BitstreamWriter* bs, struct i_array* residuals);
 
 int
 ShortenEncoder_compute_best_energysize(struct i_array *resuduals);

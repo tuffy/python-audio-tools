@@ -23,13 +23,13 @@
 OggReader*
 oggreader_open(FILE *stream) {
     OggReader *reader = malloc(sizeof(OggReader));
-    reader->ogg_stream = bs_open(stream, BS_LITTLE_ENDIAN);
+    reader->ogg_stream = bs_open_r(stream, BS_LITTLE_ENDIAN);
     reader->current_segment = 1;
     reader->current_header.page_segment_count = 0;
     reader->current_header.type = 0;
     reader->current_header.checksum = 0;
     reader->checksum = 0;
-    bs_add_callback(reader->ogg_stream, ogg_crc, &(reader->checksum));
+    bs_add_callback_r(reader->ogg_stream, ogg_crc, &(reader->checksum));
     return reader;
 }
 
@@ -40,7 +40,7 @@ oggreader_close(OggReader *reader) {
 }
 
 ogg_status
-oggreader_read_page_header(Bitstream *ogg_stream,
+oggreader_read_page_header(BitstreamReader *ogg_stream,
                            struct ogg_page_header *header) {
     int i;
     struct bs_callback callback;
@@ -89,7 +89,7 @@ oggreader_read_page_header(Bitstream *ogg_stream,
 
 ogg_status
 oggreader_next_segment(OggReader *reader,
-                       Bitstream *packet,
+                       BitstreamReader *packet,
                        uint8_t *segment_size) {
     ogg_status status;
 
@@ -136,7 +136,7 @@ oggreader_next_segment(OggReader *reader,
 }
 
 ogg_status
-oggreader_next_packet(OggReader *reader, Bitstream *packet) {
+oggreader_next_packet(OggReader *reader, BitstreamReader *packet) {
     ogg_status result;
     uint8_t segment_length;
 
@@ -189,7 +189,7 @@ ogg_exception(ogg_status err) {
 int main(int argc, char *argv[]) {
     FILE *f = fopen(argv[1], "rb");
     OggReader *reader = oggreader_open(f);
-    Bitstream *packet = bs_substream_new(BS_LITTLE_ENDIAN);
+    BitstreamReader *packet = bs_substream_new(BS_LITTLE_ENDIAN);
     ogg_status result;
 
     do {

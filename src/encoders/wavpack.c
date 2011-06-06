@@ -28,7 +28,7 @@ encoders_encode_wavpack(PyObject *dummy,
                         PyObject *args, PyObject *keywds) {
     char *filename;
     FILE *file;
-    Bitstream *stream;
+    BitstreamWriter *stream;
     PyObject *pcmreader_obj;
     struct pcm_reader *reader;
 
@@ -90,7 +90,7 @@ encoders_encode_wavpack(PyObject *dummy,
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
         return NULL;
     } else {
-        stream = bs_open(file, BS_LITTLE_ENDIAN);
+        stream = bs_open_w(file, BS_LITTLE_ENDIAN);
     }
 
     /*transform the Python PCMReader-compatible object to a pcm_reader struct*/
@@ -108,14 +108,14 @@ encoders_encode_wavpack(char *filename,
                         int joint_stereo,
                         int decorrelation_passes) {
     FILE *file;
-    Bitstream *stream;
+    BitstreamWriter *stream;
     struct pcm_reader *reader;
     struct wavpack_encoder_context context;
     struct ia_array samples;
     ia_size_t i;
 
     file = fopen(filename, "wb");
-    stream = bs_open(file, BS_LITTLE_ENDIAN);
+    stream = bs_open_w(file, BS_LITTLE_ENDIAN);
     reader = pcmr_open(pcmdata, 44100, 2, 0x3, 24, 0, 1);
 
     context.options.false_stereo = false_stereo;
@@ -158,7 +158,7 @@ encoders_encode_wavpack(char *filename,
                       context.bits_per_sample != 8, 1);
     pcmr_add_callback(reader, wavpack_md5_callback, &(context.md5),
                       context.bits_per_sample != 8, 1);
-    bs_add_callback(stream, wavpack_count_bytes, &(context.byte_count));
+    bs_add_callback_w(stream, wavpack_count_bytes, &(context.byte_count));
 
     iaa_init(&samples, reader->channels, block_size);
 
@@ -200,8 +200,8 @@ encoders_encode_wavpack(char *filename,
     }
 
     /*close open file handles and deallocate temporary space*/
-    bs_close(context.cache.sub_blocks);
-    bs_close(context.cache.residual_data);
+    bs_close_w(context.cache.sub_blocks);
+    bs_close_w(context.cache.residual_data);
     ia_free(&(context.cache.input_A));
     ia_free(&(context.cache.input_B));
 
@@ -209,7 +209,7 @@ encoders_encode_wavpack(char *filename,
     wavpack_free_decorrelation_passes(context.wrap.passes,
                                       context.total_channels);
     pcmr_close(reader);
-    bs_close(stream);
+    bs_close_w(stream);
     iaa_free(&samples);
 
 #ifndef STANDALONE
@@ -220,8 +220,8 @@ encoders_encode_wavpack(char *filename,
 #endif
 
  error:
-    bs_close(context.cache.sub_blocks);
-    bs_close(context.cache.residual_data);
+    bs_close_w(context.cache.sub_blocks);
+    bs_close_w(context.cache.residual_data);
     ia_free(&(context.cache.input_A));
     ia_free(&(context.cache.input_B));
 
@@ -229,7 +229,7 @@ encoders_encode_wavpack(char *filename,
     wavpack_free_decorrelation_passes(context.wrap.passes,
                                       context.total_channels);
     pcmr_close(reader);
-    bs_close(stream);
+    bs_close_w(stream);
     iaa_free(&samples);
 
 #ifndef STANDALONE
@@ -249,7 +249,7 @@ count_bits(int i) {
 
 
 void
-wavpack_write_frame(Bitstream *bs,
+wavpack_write_frame(BitstreamWriter *bs,
                     struct wavpack_encoder_context *context,
                     struct ia_array *samples,
                     long channel_mask) {
@@ -326,7 +326,7 @@ wavpack_initialize_block_header(struct wavpack_block_header* header,
 }
 
 void
-wavpack_write_block(Bitstream* bs,
+wavpack_write_block(BitstreamWriter* bs,
                     struct wavpack_encoder_context* context,
                     struct i_array* channel_A,
                     struct i_array* channel_B,
@@ -346,7 +346,7 @@ wavpack_write_block(Bitstream* bs,
     struct i_array entropy_variables_B;
     int wasted_bits = 0;
 
-    Bitstream* sub_blocks = context->cache.sub_blocks;
+    BitstreamWriter* sub_blocks = context->cache.sub_blocks;
     int i;
 
     bs_reset_recorder(sub_blocks);
@@ -587,7 +587,7 @@ wavpack_write_block(Bitstream* bs,
 }
 
 void
-wavpack_write_block_header(Bitstream *bs,
+wavpack_write_block_header(BitstreamWriter *bs,
                            struct wavpack_block_header *header) {
     bs->write_64(bs, 32, 0x6B707677); /*block header*/
     bs->write_64(bs, 32, header->block_size);
@@ -642,7 +642,7 @@ wavpack_write_block_header(Bitstream *bs,
 }
 
 void
-wavpack_write_subblock_header(Bitstream *bs,
+wavpack_write_subblock_header(BitstreamWriter *bs,
                               wv_metadata_function metadata_function,
                               uint8_t nondecoder_data,
                               uint32_t block_size) {
@@ -663,7 +663,7 @@ wavpack_write_subblock_header(Bitstream *bs,
 }
 
 void
-wavpack_write_decorr_terms(Bitstream *bs,
+wavpack_write_decorr_terms(BitstreamWriter *bs,
                            struct i_array* decorr_terms,
                            struct i_array* decorr_deltas) {
     int i;
@@ -701,7 +701,7 @@ wavpack_restore_weight(int weight) {
 }
 
 void
-wavpack_write_decorr_weights(Bitstream *bs,
+wavpack_write_decorr_weights(BitstreamWriter *bs,
                              int channel_count,
                              int term_count,
                              struct i_array* weights_A,
@@ -730,7 +730,7 @@ wavpack_write_decorr_weights(Bitstream *bs,
 }
 
 void
-wavpack_write_int32_info(Bitstream *bs,
+wavpack_write_int32_info(BitstreamWriter *bs,
                          uint8_t sent_bits,
                          uint8_t zeroes,
                          uint8_t ones,
@@ -743,10 +743,10 @@ wavpack_write_int32_info(Bitstream *bs,
 }
 
 void
-wavpack_write_channel_info(Bitstream *bs,
+wavpack_write_channel_info(BitstreamWriter *bs,
                            int channel_count,
                            int channel_mask) {
-    Bitstream* sub_block = bs_open_recorder();
+    BitstreamWriter* sub_block = bs_open_recorder();
 
     sub_block->write(sub_block, 8, channel_count);
     sub_block->write(sub_block, count_bits(channel_mask), channel_mask);
@@ -757,11 +757,11 @@ wavpack_write_channel_info(Bitstream *bs,
     wavpack_write_subblock_header(bs, WV_CHANNEL_INFO, 0,
                                   sub_block->bits_written / 8);
     bs_dump_records(bs, sub_block);
-    bs_close(sub_block);
+    bs_close_w(sub_block);
 }
 
 void
-wavpack_write_decorr_samples(Bitstream *bs,
+wavpack_write_decorr_samples(BitstreamWriter *bs,
                              int channel_count,
                              struct i_array* decorr_terms,
                              struct ia_array* samples_A,
@@ -960,7 +960,7 @@ wavpack_exp2(int log) {
 }
 
 void
-wavpack_write_entropy_variables(Bitstream *bs,
+wavpack_write_entropy_variables(BitstreamWriter *bs,
                                 struct i_array *variables_A,
                                 struct i_array *variables_B,
                                 int channel_count) {
@@ -978,14 +978,14 @@ wavpack_write_entropy_variables(Bitstream *bs,
 }
 
 void
-wavpack_write_residuals(Bitstream *bs,
+wavpack_write_residuals(BitstreamWriter *bs,
                         struct i_array* channel_A,
                         struct i_array* channel_B,
                         struct i_array* medians_A,
                         struct i_array* medians_B,
                         int channel_count,
                         struct wavpack_encoder_context* context) {
-    Bitstream* residual_data = context->cache.residual_data;
+    BitstreamWriter* residual_data = context->cache.residual_data;
     ia_size_t total_samples = channel_A->size * channel_count;
     ia_size_t sample;
     int current_channel;
@@ -1062,7 +1062,7 @@ dec_median(struct i_array *medians, int i) {
 }
 
 void
-wavpack_write_residual(Bitstream* bs,
+wavpack_write_residual(BitstreamWriter* bs,
                        struct wavpack_residual* residual_accumulator,
                        struct i_array** medians_pair,
                        int current_channel,
@@ -1337,7 +1337,7 @@ wavpack_clear_medians(struct i_array *medians_A,
 
 
 void
-wavpack_write_egc(Bitstream* bs, int value) {
+wavpack_write_egc(BitstreamWriter* bs, int value) {
     int fixed_size;
 
     assert(value > 0);
@@ -1347,7 +1347,7 @@ wavpack_write_egc(Bitstream* bs, int value) {
 }
 
 void
-wavpack_flush_residual(Bitstream *bs,
+wavpack_flush_residual(BitstreamWriter *bs,
                        struct wavpack_residual *residual) {
     int unary;
 
@@ -2062,9 +2062,9 @@ wavpack_count_bytes(uint8_t byte, void* value) {
 }
 
 void
-wavpack_write_footer_block(Bitstream *bs,
+wavpack_write_footer_block(BitstreamWriter *bs,
                            struct wavpack_encoder_context *context) {
-    Bitstream* block_data = bs_open_recorder();
+    BitstreamWriter* block_data = bs_open_recorder();
     struct wavpack_block_header block_header;
     uint8_t md5sum[16];
     int i;
@@ -2089,7 +2089,7 @@ wavpack_write_footer_block(Bitstream *bs,
     block_header.block_size = 24 + (block_data->bits_written / 8);
     wavpack_write_block_header(bs, &block_header);
     bs_dump_records(bs, block_data);
-    bs_close(block_data);
+    bs_close_w(block_data);
 }
 
 void
@@ -2120,10 +2120,10 @@ wavpack_count_pcm_bytes(void* data, unsigned char* buffer, unsigned long len) {
 }
 
 void
-wavpack_write_wave_header_sub_block(Bitstream* stream,
+wavpack_write_wave_header_sub_block(BitstreamWriter* stream,
                                     struct wavpack_encoder_context* context,
                                     uint32_t pcm_bytes) {
-    Bitstream* wave_header = bs_open_recorder();
+    BitstreamWriter* wave_header = bs_open_recorder();
     uint8_t extensible_sub_format[] = {0x01, 0x00, 0x00, 0x00, 0x00,
                                        0x00, 0x10, 0x00, 0x80, 0x00,
                                        0x00, 0xaa, 0x00, 0x38, 0x9b,
@@ -2184,7 +2184,7 @@ wavpack_write_wave_header_sub_block(Bitstream* stream,
     wavpack_write_subblock_header(stream, WV_WAVE_HEADER, 1,
                                   wave_header->bits_written / 8);
     bs_dump_records(stream, wave_header);
-    bs_close(wave_header);
+    bs_close_w(wave_header);
 }
 
 int

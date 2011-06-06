@@ -5,7 +5,7 @@
 #endif
 
 #include <stdint.h>
-#include "../bitstream_w.h"
+#include "../bitstream.h"
 #include "../array.h"
 #include "../pcmreader.h"
 
@@ -51,8 +51,8 @@ struct alac_encoding_options {
 
     /*a couple of temporary buffers
       so we don't have to allocate them all the time*/
-    Bitstream *best_frame;
-    Bitstream *current_frame;
+    BitstreamWriter *best_frame;
+    BitstreamWriter *current_frame;
 };
 
 enum {LOG_SAMPLE_SIZE, LOG_BYTE_SIZE, LOG_FILE_OFFSET};
@@ -74,7 +74,7 @@ alac_byte_counter(uint8_t byte, void* counter);
 /*writes a full set of ALAC frames,
   complete with trailing stop '111' bits and byte-aligned*/
 status
-alac_write_frameset(Bitstream *bs,
+alac_write_frameset(BitstreamWriter *bs,
                     struct alac_encode_log *log,
                     long starting_offset,
                     struct alac_encoding_options *options,
@@ -83,25 +83,25 @@ alac_write_frameset(Bitstream *bs,
 
 /*write a single ALAC frame, compressed or uncompressed as necessary*/
 status
-alac_write_frame(Bitstream *bs,
+alac_write_frame(BitstreamWriter *bs,
                  struct alac_encoding_options *options,
                  int bits_per_sample,
                  struct ia_array *samples);
 
 status
-alac_write_uncompressed_frame(Bitstream *bs,
+alac_write_uncompressed_frame(BitstreamWriter *bs,
                               int block_size,
                               int bits_per_sample,
                               struct ia_array *samples);
 
 status
-alac_write_compressed_frame(Bitstream *bs,
+alac_write_compressed_frame(BitstreamWriter *bs,
                             struct alac_encoding_options *options,
                             int bits_per_sample,
                             struct ia_array *samples);
 
 status
-alac_write_interlaced_frame(Bitstream *bs,
+alac_write_interlaced_frame(BitstreamWriter *bs,
                             struct alac_encoding_options *options,
                             int interlacing_shift,
                             int interlacing_leftweight,
@@ -122,13 +122,13 @@ alac_encode_subframe(struct i_array *residuals,
 
 /*writes a single unsigned residal to the current bitstream*/
 void
-alac_write_residual(Bitstream *bs,
+alac_write_residual(BitstreamWriter *bs,
                     int residual,
                     int k,
                     int bits_per_sample);
 
 status
-alac_write_residuals(Bitstream *bs,
+alac_write_residuals(BitstreamWriter *bs,
                      struct i_array *residuals,
                      int bits_per_sample,
                      struct alac_encoding_options *options);

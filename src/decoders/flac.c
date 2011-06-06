@@ -47,7 +47,7 @@ FlacDecoder_init(decoders_FlacDecoder *self,
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
         goto error;
     } else {
-        self->bitstream = bs_open(self->file, BS_BIG_ENDIAN);
+        self->bitstream = bs_open_r(self->file, BS_BIG_ENDIAN);
     }
 
     /*skip the given number of bytes, if any*/
@@ -69,7 +69,7 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     self->stream_finalized = 0;
 
     /*add callback for CRC16 calculation*/
-    bs_add_callback(self->bitstream, flac_crc16, &(self->crc16));
+    bs_add_callback_r(self->bitstream, flac_crc16, &(self->crc16));
 
     /*setup a bunch of temporary buffers*/
     iaa_init(&(self->subframe_data),
@@ -128,7 +128,7 @@ FlacDecoder_new(PyTypeObject *type,
 flac_status
 FlacDecoder_read_metadata(decoders_FlacDecoder *self)
 {
-    Bitstream *bitstream = self->bitstream;
+    BitstreamReader *bitstream = self->bitstream;
     unsigned int last_block;
     unsigned int block_type;
     unsigned int block_length;
@@ -388,7 +388,7 @@ FlacDecoder_analyze_frame(decoders_FlacDecoder* self, PyObject *args)
 
 
 flac_status
-FlacDecoder_read_frame_header(Bitstream *bitstream,
+FlacDecoder_read_frame_header(BitstreamReader *bitstream,
                               struct flac_STREAMINFO *streaminfo,
                               struct flac_frame_header *header)
 {
@@ -396,7 +396,7 @@ FlacDecoder_read_frame_header(Bitstream *bitstream,
     uint32_t sample_rate_bits;
     uint32_t crc8 = 0;
 
-    bs_add_callback(bitstream, flac_crc8, &crc8);
+    bs_add_callback_r(bitstream, flac_crc8, &crc8);
 
     /*read and verify sync code*/
     if (bitstream->read(bitstream, 14) != 0x3FFE) {
@@ -509,7 +509,7 @@ FlacDecoder_read_frame_header(Bitstream *bitstream,
 }
 
 flac_status
-FlacDecoder_read_subframe(Bitstream *bitstream,
+FlacDecoder_read_subframe(BitstreamReader *bitstream,
                           struct i_array *qlp_coeffs,
                           struct i_array *residuals,
                           uint32_t block_size,
@@ -573,7 +573,7 @@ FlacDecoder_read_subframe(Bitstream *bitstream,
 }
 
 flac_status
-FlacDecoder_read_subframe_header(Bitstream *bitstream,
+FlacDecoder_read_subframe_header(BitstreamReader *bitstream,
                                  struct flac_subframe_header *subframe_header)
 {
     uint8_t subframe_type;
@@ -622,7 +622,7 @@ FlacDecoder_subframe_bits_per_sample(struct flac_frame_header *frame_header,
 }
 
 flac_status
-FlacDecoder_read_constant_subframe(Bitstream *bitstream,
+FlacDecoder_read_constant_subframe(BitstreamReader *bitstream,
                                    uint32_t block_size,
                                    uint8_t bits_per_sample,
                                    struct i_array *samples)
@@ -639,7 +639,7 @@ FlacDecoder_read_constant_subframe(Bitstream *bitstream,
 }
 
 flac_status
-FlacDecoder_read_verbatim_subframe(Bitstream *bitstream,
+FlacDecoder_read_verbatim_subframe(BitstreamReader *bitstream,
                                    uint32_t block_size,
                                    uint8_t bits_per_sample,
                                    struct i_array *samples)
@@ -654,7 +654,7 @@ FlacDecoder_read_verbatim_subframe(Bitstream *bitstream,
 }
 
 flac_status
-FlacDecoder_read_fixed_subframe(Bitstream *bitstream,
+FlacDecoder_read_fixed_subframe(BitstreamReader *bitstream,
                                 struct i_array *residuals,
                                 uint8_t order,
                                 uint32_t block_size,
@@ -727,7 +727,7 @@ FlacDecoder_read_fixed_subframe(Bitstream *bitstream,
 }
 
 flac_status
-FlacDecoder_read_lpc_subframe(Bitstream *bitstream,
+FlacDecoder_read_lpc_subframe(BitstreamReader *bitstream,
                               struct i_array *qlp_coeffs,
                               struct i_array *residuals,
                               uint8_t order,
@@ -786,7 +786,7 @@ FlacDecoder_read_lpc_subframe(Bitstream *bitstream,
 }
 
 flac_status
-FlacDecoder_read_residual(Bitstream *bitstream,
+FlacDecoder_read_residual(BitstreamReader *bitstream,
                           uint8_t order,
                           uint32_t block_size,
                           struct i_array *residuals)
@@ -804,8 +804,8 @@ FlacDecoder_read_residual(Bitstream *bitstream,
     int32_t value;
     ia_data_t *residuals_data;
 
-    unsigned int (*read)(struct Bitstream_s* bs, unsigned int count);
-    unsigned int (*read_unary)(struct Bitstream_s* bs, int stop_bit);
+    unsigned int (*read)(struct BitstreamReader_s* bs, unsigned int count);
+    unsigned int (*read_unary)(struct BitstreamReader_s* bs, int stop_bit);
 
     read = bitstream->read;
     read_unary = bitstream->read_unary;
@@ -1173,7 +1173,7 @@ FlacDecoder_strerror(flac_status error) {
 }
 
 uint32_t
-read_utf8(Bitstream *stream)
+read_utf8(BitstreamReader *stream)
 {
     uint32_t total_bytes = stream->read_unary(stream, 0);
     uint32_t value = stream->read(stream, 7 - total_bytes);

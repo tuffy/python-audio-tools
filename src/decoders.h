@@ -38,7 +38,7 @@ typedef struct {
     PyObject_HEAD
 
     PyObject* file_obj;
-    Bitstream* bitstream;
+    BitstreamReader* bitstream;
     int is_substream;
 } decoders_BitstreamReader;
 

@@ -1,5 +1,5 @@
 #include <Python.h>
-#include "bitstream_w.h"
+#include "bitstream.h"
 #include "encoders.h"
 
 /********************************************************
@@ -58,8 +58,9 @@ BitstreamWriter_init(encoders_BitstreamWriter *self, PyObject *args) {
     Py_INCREF(file_obj);
     self->file_obj = file_obj;
 
-    self->bitstream = bs_open(PyFile_AsFile(self->file_obj),
-                        little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
+    self->bitstream = bs_open_w(PyFile_AsFile(self->file_obj),
+                                little_endian ?
+                                BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
 
     return 0;
 }
@@ -68,7 +69,7 @@ void
 BitstreamWriter_dealloc(encoders_BitstreamWriter *self) {
     if (self->file_obj != NULL) {
         self->bitstream->file = NULL;
-        bs_close(self->bitstream);
+        bs_close_w(self->bitstream);
         Py_DECREF(self->file_obj);
     }
 

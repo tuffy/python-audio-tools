@@ -1,4 +1,4 @@
-#include "bitstream_r.h"
+#include "bitstream.h"
 #ifndef HUFFMAN_H
 #define HUFFMAN_H
 

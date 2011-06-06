@@ -3,7 +3,7 @@
 #endif
 
 #include <stdint.h>
-#include "../bitstream_r.h"
+#include "../bitstream.h"
 #include "../array.h"
 
 /********************************************************
@@ -128,7 +128,7 @@ typedef struct {
     PyObject_HEAD
 #endif
 
-    Bitstream* bitstream;
+    BitstreamReader* bitstream;
 
     int init_ok;
     int stream_closed;
@@ -302,7 +302,7 @@ PyTypeObject decoders_MLPDecoderType = {
 /*Returns the total size of the next MLP frame
   or -1 if the end of the stream has been reached.*/
 int
-mlp_total_frame_size(Bitstream* bitstream);
+mlp_total_frame_size(BitstreamReader* bitstream);
 
 /*Tries to read the next major sync from the bitstream.
   Returns MLP_MAJOR_SYNC_OK if successful,
@@ -323,7 +323,7 @@ mlp_read_frame(decoders_MLPDecoder* decoder,
 
 /*Reads a 16-bit substream size value.*/
 mlp_status
-mlp_read_substream_size(Bitstream* bitstream,
+mlp_read_substream_size(BitstreamReader* bitstream,
                         struct mlp_SubstreamSize* size);
 
 /*Reads a substream and its optional parity/checksum*/
@@ -357,34 +357,34 @@ mlp_analyze_block(decoders_MLPDecoder* decoder,
 
 
 mlp_status
-mlp_read_restart_header(Bitstream* bs,
+mlp_read_restart_header(BitstreamReader* bs,
                         struct mlp_DecodingParameters* parameters,
                         struct mlp_RestartHeader* header);
 
 mlp_status
-mlp_read_decoding_parameters(Bitstream* bs,
+mlp_read_decoding_parameters(BitstreamReader* bs,
                              int min_channel,
                              int max_channel,
                              int max_matrix_channel,
                              struct mlp_DecodingParameters* parameters);
 
 mlp_status
-mlp_read_channel_parameters(Bitstream* bs,
+mlp_read_channel_parameters(BitstreamReader* bs,
                             struct mlp_ParameterPresentFlags* flags,
                             uint8_t quant_step_size,
                             struct mlp_ChannelParameters* parameters);
 
 mlp_status
-mlp_read_matrix_parameters(Bitstream* bs,
+mlp_read_matrix_parameters(BitstreamReader* bs,
                            int substream_channel_count,
                            struct mlp_MatrixParameters* parameters);
 
 mlp_status
-mlp_read_fir_filter_parameters(Bitstream* bs,
+mlp_read_fir_filter_parameters(BitstreamReader* bs,
                                struct mlp_FilterParameters* fir);
 
 mlp_status
-mlp_read_iir_filter_parameters(Bitstream* bs,
+mlp_read_iir_filter_parameters(BitstreamReader* bs,
                                struct mlp_FilterParameters* iir);
 
 int32_t
@@ -394,7 +394,7 @@ mlp_calculate_signed_offset(uint8_t codebook,
                             uint8_t quant_step_size);
 
 mlp_status
-mlp_read_residuals(Bitstream* bs,
+mlp_read_residuals(BitstreamReader* bs,
                    struct mlp_DecodingParameters* parameters,
                    int min_channel,
                    int max_channel,

@@ -57,7 +57,7 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
         return -1;
     } else {
-        self->bitstream = bs_open(self->file, BS_LITTLE_ENDIAN);
+        self->bitstream = bs_open_r(self->file, BS_LITTLE_ENDIAN);
     }
 
     self->filename = strdup(filename);
@@ -214,7 +214,7 @@ WavPackDecoder_offset(decoders_WavPackDecoder *self, void *closure) {
 }
 
 status
-wavpack_read_block_header(Bitstream* bitstream,
+wavpack_read_block_header(BitstreamReader* bitstream,
                           struct wavpack_block_header* header) {
     /*read to verify block ID*/
     if (bitstream->read(bitstream, 32) != 0x6B707677) {
@@ -285,7 +285,7 @@ wavpack_read_block_header(Bitstream* bitstream,
 }
 
 void
-wavpack_read_subblock_header(Bitstream* bitstream,
+wavpack_read_subblock_header(BitstreamReader* bitstream,
                              struct wavpack_subblock_header* header) {
     header->metadata_function = bitstream->read(bitstream, 5);
     header->nondecoder_data = bitstream->read(bitstream, 1);
@@ -296,9 +296,9 @@ wavpack_read_subblock_header(Bitstream* bitstream,
 }
 
 status
-wavpack_read_block(Bitstream* input,
+wavpack_read_block(BitstreamReader* input,
                    struct wavpack_block_header* header,
-                   Bitstream* block_data) {
+                   BitstreamReader* block_data) {
     status result;
 
     if (!setjmp(*bs_try(input))) {
@@ -319,9 +319,9 @@ wavpack_read_block(Bitstream* input,
 }
 
 void
-wavpack_read_subblock(Bitstream* block_data,
+wavpack_read_subblock(BitstreamReader* block_data,
                       struct wavpack_subblock_header* header,
-                      Bitstream* subblock_data) {
+                      BitstreamReader* subblock_data) {
     wavpack_read_subblock_header(block_data, header);
     bs_substream_reset(subblock_data);
     if (header->actual_size_1_less) {
@@ -337,19 +337,19 @@ wavpack_read_subblock(Bitstream* block_data,
 }
 
 static inline int
-wavpack_subblocks_remain(Bitstream* block_data) {
+wavpack_subblocks_remain(BitstreamReader* block_data) {
     return (block_data->input.substream->buffer_position <
             block_data->input.substream->buffer_size);
 }
 
 static inline unsigned int
-wavpack_subblock_size(Bitstream* subblock_data) {
+wavpack_subblock_size(BitstreamReader* subblock_data) {
     return (subblock_data->input.substream->buffer_size -
             subblock_data->input.substream->buffer_position);
 }
 
 status
-wavpack_read_decorr_terms(Bitstream* subblock,
+wavpack_read_decorr_terms(BitstreamReader* subblock,
                           struct i_array* decorr_terms,
                           struct i_array* decorr_deltas) {
     int term_count = wavpack_subblock_size(subblock);
@@ -404,7 +404,7 @@ wavpack_restore_weight(int weight) {
 }
 
 void
-wavpack_read_decorr_weights(Bitstream* subblock,
+wavpack_read_decorr_weights(BitstreamReader* subblock,
                             int block_channel_count,
                             int term_count,
                             struct i_array* weights_A,
@@ -495,7 +495,7 @@ ia_getdefault(struct i_array *data, ia_size_t index, ia_data_t default_) {
 }
 
 status
-wavpack_read_decorr_samples(Bitstream* subblock,
+wavpack_read_decorr_samples(BitstreamReader* subblock,
                             int block_channel_count,
                             struct i_array* decorr_terms,
                             struct ia_array* samples_A,
@@ -596,7 +596,7 @@ wavpack_read_decorr_samples(Bitstream* subblock,
 
 
 void
-wavpack_read_entropy_variables(Bitstream* subblock,
+wavpack_read_entropy_variables(BitstreamReader* subblock,
                                int block_channel_count,
                                struct i_array* variables_A,
                                struct i_array* variables_B) {
@@ -624,7 +624,7 @@ wavpack_read_entropy_variables(Bitstream* subblock,
 }
 
 void
-wavpack_read_int32_info(Bitstream* subblock,
+wavpack_read_int32_info(BitstreamReader* subblock,
                         uint8_t* sent_bits, uint8_t* zeroes,
                         uint8_t* ones, uint8_t* dupes) {
     *sent_bits = subblock->read(subblock, 8);
@@ -634,7 +634,7 @@ wavpack_read_int32_info(Bitstream* subblock,
 }
 
 void
-wavpack_read_channel_info(Bitstream* subblock,
+wavpack_read_channel_info(BitstreamReader* subblock,
                           struct wavpack_subblock_header* header,
                           int* channel_count,
                           int* channel_mask) {
@@ -645,7 +645,7 @@ wavpack_read_channel_info(Bitstream* subblock,
 }
 
 status
-wavpack_read_wv_bitstream(Bitstream* subblock,
+wavpack_read_wv_bitstream(BitstreamReader* subblock,
                           struct i_array* entropy_variables_A,
                           struct i_array* entropy_variables_B,
                           int block_channel_count,
@@ -718,7 +718,7 @@ LOG2(int value)
 }
 
 int
-wavpack_get_value(Bitstream* bitstream,
+wavpack_get_value(BitstreamReader* bitstream,
                   struct i_array* entropy_variables,
                   int* holding_one,
                   int* holding_zero) {
@@ -815,7 +815,7 @@ wavpack_get_value(Bitstream* bitstream,
 }
 
 int
-wavpack_get_zero_count(Bitstream* bitstream) {
+wavpack_get_zero_count(BitstreamReader* bitstream) {
     int t;
     t = bitstream->read_limited_unary(bitstream, 0, 34);
     if (t >= 2)
@@ -874,8 +874,8 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
     int current_channel = 0;
 
     struct wavpack_block_header block_header;
-    Bitstream* bitstream = self->bitstream;
-    Bitstream* block_data = self->block_data;
+    BitstreamReader* bitstream = self->bitstream;
+    BitstreamReader* block_data = self->block_data;
 
     PyObject* framelist;
     status error;
@@ -1103,8 +1103,8 @@ WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
 PyObject*
 WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
                                 struct wavpack_block_header* block_header) {
-    Bitstream* block_data = self->block_data;
-    Bitstream* subblock_data = self->subblock_data;
+    BitstreamReader* block_data = self->block_data;
+    BitstreamReader* subblock_data = self->subblock_data;
     struct wavpack_subblock_header header;
     PyObject* subblock_data_obj = NULL;
     int channel_count;
@@ -1264,8 +1264,8 @@ wavpack_decode_block(decoders_WavPackDecoder* self,
                      struct i_array* channel_B,
                      int* channel_count,
                      int* final_block) {
-    Bitstream* bitstream = self->bitstream;
-    Bitstream* block_data = self->block_data;
+    BitstreamReader* bitstream = self->bitstream;
+    BitstreamReader* block_data = self->block_data;
     struct wavpack_block_header block_header;
     int block_channels = 0;  /*how many channels are actually in the block
                                which depends on the block header's
@@ -1405,7 +1405,7 @@ wavpack_decode_block(decoders_WavPackDecoder* self,
 status
 wavpack_decode_subblock(decoders_WavPackDecoder* self,
                         struct wavpack_block_header* block_header) {
-    Bitstream* subblock_data = self->subblock_data;
+    BitstreamReader* subblock_data = self->subblock_data;
     struct wavpack_subblock_header header;
     uint8_t running_md5sum[16];
     status error;

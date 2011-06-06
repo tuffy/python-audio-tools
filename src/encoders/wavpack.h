@@ -2,7 +2,7 @@
 #include <Python.h>
 #endif
 #include <stdint.h>
-#include "../bitstream_w.h"
+#include "../bitstream.h"
 #include "../array.h"
 #include "../pcmreader.h"
 #include "../common/md5.h"
@@ -87,8 +87,8 @@ struct wavpack_encoder_context {
     } wrap;
 
     struct {
-        Bitstream* sub_blocks;
-        Bitstream* residual_data;
+        BitstreamWriter* sub_blocks;
+        BitstreamWriter* residual_data;
         struct i_array input_A;
         struct i_array input_B;
     } cache;
@@ -172,13 +172,13 @@ struct wavpack_residual {
 };
 
 void
-wavpack_write_frame(Bitstream *bs,
+wavpack_write_frame(BitstreamWriter *bs,
                     struct wavpack_encoder_context *context,
                     struct ia_array *samples,
                     long channel_mask);
 
 void
-wavpack_write_footer_block(Bitstream *bs,
+wavpack_write_footer_block(BitstreamWriter *bs,
                            struct wavpack_encoder_context* context);
 
 /*given a channel count and channel mask (which may be 0),
@@ -198,7 +198,7 @@ wavpack_initialize_block_header(struct wavpack_block_header* header,
                                 int last_block);
 
 void
-wavpack_write_block(Bitstream* bs,
+wavpack_write_block(BitstreamWriter* bs,
                     struct wavpack_encoder_context* context,
                     struct i_array* channel_A,
                     struct i_array* channel_B,
@@ -211,7 +211,7 @@ ia_data_t
 wavpack_abs_maximum(ia_data_t sample, ia_data_t current_max);
 
 void
-wavpack_write_block_header(Bitstream *bs,
+wavpack_write_block_header(BitstreamWriter *bs,
                            struct wavpack_block_header *header);
 
 /*nondecoder data should be 0 or 1.
@@ -219,7 +219,7 @@ wavpack_write_block_header(Bitstream *bs,
   This will convert to WavPack's size value and set
   "actual size 1 less" as needed.*/
 void
-wavpack_write_subblock_header(Bitstream *bs,
+wavpack_write_subblock_header(BitstreamWriter *bs,
                               wv_metadata_function metadata_function,
                               uint8_t nondecoder_data,
                               uint32_t block_size);
@@ -227,33 +227,33 @@ wavpack_write_subblock_header(Bitstream *bs,
 /*Writes the given set of decorrelation terms and deltas
   to the given bitstream in the proper order.*/
 void
-wavpack_write_decorr_terms(Bitstream *bs,
+wavpack_write_decorr_terms(BitstreamWriter *bs,
                            struct i_array* decorr_terms,
                            struct i_array* decorr_deltas);
 
 void
-wavpack_write_decorr_weights(Bitstream *bs,
+wavpack_write_decorr_weights(BitstreamWriter *bs,
                              int channel_count,
                              int term_count,
                              struct i_array* weights_A,
                              struct i_array* weights_B);
 
 void
-wavpack_write_decorr_samples(Bitstream *bs,
+wavpack_write_decorr_samples(BitstreamWriter *bs,
                              int channel_count,
                              struct i_array* decorr_terms,
                              struct ia_array* samples_A,
                              struct ia_array* samples_B);
 
 void
-wavpack_write_int32_info(Bitstream *bs,
+wavpack_write_int32_info(BitstreamWriter *bs,
                          uint8_t sent_bits,
                          uint8_t zeroes,
                          uint8_t ones,
                          uint8_t dupes);
 
 void
-wavpack_write_channel_info(Bitstream *bs,
+wavpack_write_channel_info(BitstreamWriter *bs,
                            int channel_count,
                            int channel_mask);
 
@@ -262,14 +262,14 @@ wavpack_write_channel_info(Bitstream *bs,
   If channel_count is 2, both sets of entropy variables are written.
   If it is 1, only channel A's entropy variables are written.*/
 void
-wavpack_write_entropy_variables(Bitstream *bs,
+wavpack_write_entropy_variables(BitstreamWriter *bs,
                                 struct i_array *variables_A,
                                 struct i_array *variables_B,
                                 int channel_count);
 
 /*Writes a bitstream sub-block to the bitstream.*/
 void
-wavpack_write_residuals(Bitstream *bs,
+wavpack_write_residuals(BitstreamWriter *bs,
                         struct i_array* channel_A,
                         struct i_array* channel_B,
                         struct i_array* medians_A,
@@ -278,7 +278,7 @@ wavpack_write_residuals(Bitstream *bs,
                         struct wavpack_encoder_context* context);
 
 void
-wavpack_write_residual(Bitstream* bs,
+wavpack_write_residual(BitstreamWriter* bs,
                        struct wavpack_residual* residual_accumulator,
                        struct i_array** medians_pair,
                        int current_channel,
@@ -314,11 +314,11 @@ wavpack_clear_medians(struct i_array *medians_A,
   This is used by both the zeroes block and the unary escape code.
 */
 void
-wavpack_write_egc(Bitstream* bs, int value);
+wavpack_write_egc(BitstreamWriter* bs, int value);
 
 /*Outputs an accumulated residual value to the bitstream.*/
 void
-wavpack_flush_residual(Bitstream *bs,
+wavpack_flush_residual(BitstreamWriter *bs,
                        struct wavpack_residual *residual);
 
 void
@@ -426,7 +426,7 @@ void
 wavpack_count_pcm_bytes(void* data, unsigned char* buffer, unsigned long len);
 
 void
-wavpack_write_wave_header_sub_block(Bitstream* stream,
+wavpack_write_wave_header_sub_block(BitstreamWriter* stream,
                                     struct wavpack_encoder_context* context,
                                     uint32_t pcm_bytes);
 

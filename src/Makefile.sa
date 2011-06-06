@@ -1,7 +1,7 @@
 #This makefile is for generating debug standalone executables
 
 VERSION = "2.18alpha1"
-OBJS = array.o pcm.o bitstream_w.o pcmreader.o
+OBJS = array.o pcm.o bitstream.o pcmreader.o
 FLAGS = -Wall -g
 
 all: flacenc alacenc shnenc wvenc mlpdec huffman
@@ -18,8 +18,8 @@ shnenc: $(OBJS) encoders/shn.c encoders/shn.h
 wvenc: $(OBJS) encoders/wavpack.c encoders/wavpack.h md5.o misc.o
 	$(CC) $(FLAGS) -o wvenc encoders/wavpack.c md5.o misc.o $(OBJS) -DSTANDALONE
 
-mlpdec: decoders/mlp.c decoders/mlp.h array.o bitstream_r.o
-	$(CC) $(FLAGS) -o mlpdec decoders/mlp.c array.o bitstream_r.o -DSTANDALONE
+mlpdec: decoders/mlp.c decoders/mlp.h array.o bitstream.o
+	$(CC) $(FLAGS) -o mlpdec decoders/mlp.c array.o bitstream.o -DSTANDALONE
 
 huffman: huffman.c huffman.h
 	$(CC) $(FLAGS) -o huffman huffman.c -DSTANDALONE -DEXECUTABLE -ljansson
@@ -33,11 +33,8 @@ array.o: array.c array.h
 pcm.o: pcm.c pcm.h
 	$(CC) $(FLAGS) -c pcm.c -DSTANDALONE
 
-bitstream_w.o: bitstream_w.c bitstream_w.h
-	$(CC) $(FLAGS) -c bitstream_w.c -DSTANDALONE
-
-bitstream_r.o: bitstream_r.c bitstream_r.h
-	$(CC) $(FLAGS) -c bitstream_r.c -DSTANDALONE
+bitstream.o: bitstream.c bitstream.h
+	$(CC) $(FLAGS) -c bitstream.c -DSTANDALONE
 
 pcmreader.o: pcmreader.c pcmreader.h
 	$(CC) $(FLAGS) -c pcmreader.c -DSTANDALONE

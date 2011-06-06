@@ -45,7 +45,7 @@ SHNDecoder_init(decoders_SHNDecoder *self,
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
         return -1;
     } else {
-        self->bitstream = bs_open(fp, BS_BIG_ENDIAN);
+        self->bitstream = bs_open_r(fp, BS_BIG_ENDIAN);
     }
 
     if (SHNDecoder_read_header(self) == ERROR) {
@@ -697,7 +697,7 @@ SHNDecoder_analyze_frame(decoders_SHNDecoder* self, PyObject *args)
 status
 SHNDecoder_read_header(decoders_SHNDecoder* self)
 {
-    Bitstream* bs = self->bitstream;
+    BitstreamReader* bs = self->bitstream;
 
     if (!setjmp(*bs_try(bs))) {
         if (bs->read(bs, 32) != 0x616A6B67) {
@@ -728,7 +728,7 @@ SHNDecoder_read_header(decoders_SHNDecoder* self)
 
 void
 SHNDecoder_read_diff(struct i_array *buffer,
-                     Bitstream* bs,
+                     BitstreamReader* bs,
                      unsigned int block_size,
                      int (*calculation)(int residual,
                                         struct i_array *buffer))
@@ -783,7 +783,7 @@ SHNDecoder_read_lpc(decoders_SHNDecoder *decoder,
                     struct i_array *buffer,
                     int coffset)
 {
-    Bitstream *bs = decoder->bitstream;
+    BitstreamReader *bs = decoder->bitstream;
     unsigned int residual_size = shn_read_uvar(bs, ENERGY_SIZE);
     unsigned int i, j;
     unsigned int lpc_count;
@@ -820,7 +820,7 @@ SHNDecoder_read_lpc(decoders_SHNDecoder *decoder,
 }
 
 unsigned int
-shn_read_uvar(Bitstream* bs, unsigned int count)
+shn_read_uvar(BitstreamReader* bs, unsigned int count)
 {
     unsigned int high_bits = bs->read_unary(bs, 1);
     unsigned int low_bits = bs->read(bs, count);
@@ -829,7 +829,7 @@ shn_read_uvar(Bitstream* bs, unsigned int count)
 }
 
 int
-shn_read_var(Bitstream* bs, unsigned int count)
+shn_read_var(BitstreamReader* bs, unsigned int count)
 {
     unsigned int uvar = shn_read_uvar(bs, count + 1); /*1 additional sign bit*/
     if (uvar & 1)
@@ -839,20 +839,20 @@ shn_read_var(Bitstream* bs, unsigned int count)
 }
 
 unsigned int
-shn_read_long(Bitstream* bs)
+shn_read_long(BitstreamReader* bs)
 {
     return shn_read_uvar(bs, shn_read_uvar(bs, 2));
 }
 
 void
-shn_skip_uvar(Bitstream* bs, unsigned int count)
+shn_skip_uvar(BitstreamReader* bs, unsigned int count)
 {
     bs->read_unary(bs, 1);
     bs->read(bs, count);
 }
 
 void
-shn_skip_var(Bitstream* bs, unsigned int count)
+shn_skip_var(BitstreamReader* bs, unsigned int count)
 {
     bs->read_unary(bs, 1);
     bs->read(bs, count + 1);

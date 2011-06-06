@@ -1,5 +1,5 @@
 #include "aobpcm.h"
-#include "../bitstream_r.h"
+#include "../bitstream.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data

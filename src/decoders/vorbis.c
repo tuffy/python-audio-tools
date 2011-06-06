@@ -189,7 +189,7 @@ vorbis_exception(vorbis_status error) {
 }
 
 static float
-float32_unpack(Bitstream *bs) {
+float32_unpack(BitstreamReader *bs) {
     int mantissa = bs->read(bs, 21);
     int exponent = bs->read(bs, 10);
     int sign = bs->read(bs, 1);
@@ -226,7 +226,7 @@ ilog(int x) {
 }
 
 int
-vorbis_read_common_header(Bitstream *packet) {
+vorbis_read_common_header(BitstreamReader *packet) {
     uint8_t vorbis[] = {0x76, 0x6F, 0x72, 0x62, 0x69, 0x73};
     int packet_type = packet->read(packet, 8);
     int i;
@@ -241,7 +241,7 @@ vorbis_read_common_header(Bitstream *packet) {
 
 vorbis_status
 vorbis_read_identification_packet(
-                        Bitstream *packet,
+                        BitstreamReader *packet,
                         struct vorbis_identification_header *identification) {
     if (!setjmp(*bs_try(packet))) {
         if (vorbis_read_common_header(packet) != 1) {
@@ -315,7 +315,7 @@ vorbis_read_identification_packet(
 }
 
 vorbis_status
-vorbis_read_setup_packet(Bitstream *packet) {
+vorbis_read_setup_packet(BitstreamReader *packet) {
     vorbis_status result;
 
     if (!setjmp(*bs_try(packet))) {
@@ -361,7 +361,7 @@ vorbis_read_setup_packet(Bitstream *packet) {
 }
 
 vorbis_status
-vorbis_read_codebooks(Bitstream *packet) {
+vorbis_read_codebooks(BitstreamReader *packet) {
     int codebook_count = packet->read(packet, 8) + 1;
     int codebook;
     uint32_t codebook_dimensions;
@@ -451,7 +451,7 @@ vorbis_read_codebooks(Bitstream *packet) {
 #include "vorbis_codewords.c"
 
 vorbis_status
-vorbis_read_time_domain_transforms(Bitstream *packet) {
+vorbis_read_time_domain_transforms(BitstreamReader *packet) {
     int time_count = packet->read(packet, 6) + 1;
     int i;
 

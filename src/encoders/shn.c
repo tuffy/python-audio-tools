@@ -32,7 +32,7 @@ encoders_encode_shn(PyObject *dummy,
                              NULL};
     char *filename;
     FILE *file;
-    Bitstream *stream;
+    BitstreamWriter *stream;
     PyObject *pcmreader_obj;
     struct pcm_reader *reader;
 
@@ -93,7 +93,7 @@ encoders_encode_shn(PyObject *dummy,
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
         return NULL;
     } else {
-        stream = bs_open(file, BS_BIG_ENDIAN);
+        stream = bs_open_w(file, BS_BIG_ENDIAN);
     }
 
     /*initialize wrapped samples with 0s*/
@@ -109,7 +109,7 @@ encoders_encode_shn(PyObject *dummy,
     stream->write(stream, 8, 2);           /*the version number 2*/
 
     /*start counting written bytes *after* writing the 5 byte header*/
-    bs_add_callback(stream, ShortenEncoder_byte_counter, &bytes_written);
+    bs_add_callback_w(stream, ShortenEncoder_byte_counter, &bytes_written);
 
     ShortenEncoder_put_long(stream, file_type);
 
@@ -163,13 +163,13 @@ encoders_encode_shn(PyObject *dummy,
 
     iaa_free(&wrapped_samples);
     pcmr_close(reader);
-    bs_close(stream);
+    bs_close_w(stream);
     Py_INCREF(Py_None);
     return Py_None;
 
  error:
     pcmr_close(reader);
-    bs_close(stream);
+    bs_close_w(stream);
     return NULL;
 }
 #else
@@ -180,7 +180,7 @@ encoders_encode_shn(char *filename,
                     int block_size)
 {
     FILE *output_file;        /*the FILE representation of our putput file*/
-    Bitstream *stream = NULL; /*the Bitstream representation of our output file*/
+    BitstreamWriter *stream = NULL; /*the BitstreamWriter representation of our output file*/
     struct pcm_reader *reader; /*the pcm_reader struct of our input pcmreader*/
     struct ia_array wrapped_samples;
     int encode_ok;
@@ -194,7 +194,7 @@ encoders_encode_shn(char *filename,
     if ((output_file = fopen(filename, "wb")) == NULL) {
         return ERROR;
     } else {
-        stream = bs_open(output_file, BS_BIG_ENDIAN);
+        stream = bs_open_w(output_file, BS_BIG_ENDIAN);
     }
 
     /*initialize wrapped samples with 0s*/
@@ -212,7 +212,7 @@ encoders_encode_shn(char *filename,
 
     iaa_free(&wrapped_samples);
     pcmr_close(reader);
-    bs_close(stream);
+    bs_close_w(stream);
 
     if (encode_ok)
         return OK;
@@ -230,7 +230,7 @@ int main(int argc, char *argv[]) {
 
 
 int
-ShortenEncoder_encode_stream(Bitstream* bs,
+ShortenEncoder_encode_stream(BitstreamWriter* bs,
                              struct pcm_reader *reader,
                              int block_size,
                              struct ia_array* wrapped_samples)
@@ -289,7 +289,7 @@ ShortenEncoder_encode_stream(Bitstream* bs,
 }
 
 int
-ShortenEncoder_encode_channel(Bitstream* bs,
+ShortenEncoder_encode_channel(BitstreamWriter* bs,
                               struct i_array* samples,
                               struct i_array* wrapped_samples)
 {
@@ -408,7 +408,7 @@ ShortenEncoder_encode_zero(struct i_array* buffer,
 }
 
 int
-ShortenEncoder_encode_diff(Bitstream* bs,
+ShortenEncoder_encode_diff(BitstreamWriter* bs,
                            struct i_array* buffer,
                            struct i_array* wrapped_samples,
                            ia_data_t (*calculator)(struct i_array* samples,
@@ -461,7 +461,7 @@ ShortenEncoder_encode_diff3(struct i_array* samples, ia_size_t i)
 }
 
 int
-ShortenEncoder_encode_residuals(Bitstream* bs, struct i_array* residuals)
+ShortenEncoder_encode_residuals(BitstreamWriter* bs, struct i_array* residuals)
 {
     int energy_size = ShortenEncoder_compute_best_energysize(residuals);
     ia_size_t i;
@@ -475,7 +475,7 @@ ShortenEncoder_encode_residuals(Bitstream* bs, struct i_array* residuals)
 }
 
 void
-ShortenEncoder_put_uvar(Bitstream* bs, int size, int value)
+ShortenEncoder_put_uvar(BitstreamWriter* bs, int size, int value)
 {
     register int32_t msb; /*most significant bits*/
     register int32_t lsb; /*least significant bits*/
@@ -487,7 +487,7 @@ ShortenEncoder_put_uvar(Bitstream* bs, int size, int value)
 }
 
 void
-ShortenEncoder_put_var(Bitstream* bs, int size, int value)
+ShortenEncoder_put_var(BitstreamWriter* bs, int size, int value)
 {
     if (value >= 0) {
         ShortenEncoder_put_uvar(bs, size + 1, value << 1);
@@ -497,7 +497,7 @@ ShortenEncoder_put_var(Bitstream* bs, int size, int value)
 }
 
 void
-ShortenEncoder_put_long(Bitstream* bs, int value)
+ShortenEncoder_put_long(BitstreamWriter* bs, int value)
 {
     int long_size = 3; /*this is supposed to be computed dynamically
                          but I'm not convinced it really matters

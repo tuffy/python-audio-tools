@@ -1,6 +1,6 @@
 #include <Python.h>
 #include <stdint.h>
-#include "../bitstream_r.h"
+#include "../bitstream.h"
 #include "../array.h"
 #include "../common/md5.h"
 
@@ -53,9 +53,9 @@ typedef struct {
 
     FILE* file;
     char* filename;
-    Bitstream* bitstream;
-    Bitstream* block_data;
-    Bitstream* subblock_data;
+    BitstreamReader* bitstream;
+    BitstreamReader* block_data;
+    BitstreamReader* subblock_data;
 
     int sample_rate;
     int bits_per_sample;
@@ -219,34 +219,34 @@ WavPackDecoder_new(PyTypeObject *type,
                    PyObject *args, PyObject *kwds);
 
 status
-wavpack_read_block_header(Bitstream* bitstream,
+wavpack_read_block_header(BitstreamReader* bitstream,
                           struct wavpack_block_header* header);
 
 void
-wavpack_read_subblock_header(Bitstream* bitstream,
+wavpack_read_subblock_header(BitstreamReader* bitstream,
                              struct wavpack_subblock_header* header);
 
 status
-wavpack_read_block(Bitstream* input,
+wavpack_read_block(BitstreamReader* input,
                    struct wavpack_block_header* header,
-                   Bitstream* block_data);
+                   BitstreamReader* block_data);
 
 void
-wavpack_read_subblock(Bitstream* block_data,
+wavpack_read_subblock(BitstreamReader* block_data,
                       struct wavpack_subblock_header* header,
-                      Bitstream* subblock_data);
+                      BitstreamReader* subblock_data);
 
 static inline int
-wavpack_subblocks_remain(Bitstream* block_data);
+wavpack_subblocks_remain(BitstreamReader* block_data);
 
 static inline unsigned int
-wavpack_subblock_size(Bitstream* subblock_data);
+wavpack_subblock_size(BitstreamReader* subblock_data);
 
 /*Reads the interleaved decorrelation terms and decorrelation deltas
   from the sub-block to the given arrays.
   May return an error if any of the terms are invalid.*/
 status
-wavpack_read_decorr_terms(Bitstream* subblock,
+wavpack_read_decorr_terms(BitstreamReader* subblock,
                           struct i_array* decorr_terms,
                           struct i_array* decorr_deltas);
 
@@ -256,32 +256,32 @@ wavpack_restore_weight(int weight);
 /*Reads the interleaved decorrelation weights
   from the bitstream to the given arrays.*/
 void
-wavpack_read_decorr_weights(Bitstream* subblock,
+wavpack_read_decorr_weights(BitstreamReader* subblock,
                             int block_channel_count,
                             int term_count,
                             struct i_array *weights_A,
                             struct i_array *weights_B);
 
 status
-wavpack_read_decorr_samples(Bitstream* subblock,
+wavpack_read_decorr_samples(BitstreamReader* subblock,
                             int block_channel_count,
                             struct i_array* decorr_terms,
                             struct ia_array* samples_A,
                             struct ia_array* samples_B);
 
 void
-wavpack_read_entropy_variables(Bitstream* subblock,
+wavpack_read_entropy_variables(BitstreamReader* subblock,
                                int block_channel_count,
                                struct i_array* entropy_variables_A,
                                struct i_array* entropy_variables_B);
 
 void
-wavpack_read_int32_info(Bitstream* subblock,
+wavpack_read_int32_info(BitstreamReader* subblock,
                         uint8_t* sent_bits, uint8_t* zeroes,
                         uint8_t* ones, uint8_t* dupes);
 
 void
-wavpack_read_channel_info(Bitstream* subblock,
+wavpack_read_channel_info(BitstreamReader* subblock,
                           struct wavpack_subblock_header* header,
                           int* channel_count,
                           int* channel_mask);
@@ -289,7 +289,7 @@ wavpack_read_channel_info(Bitstream* subblock,
 /*Reads the WV_BITSTREAM sub-block and returns
   channel_count * samples number of values to the given array.*/
 status
-wavpack_read_wv_bitstream(Bitstream* subblock,
+wavpack_read_wv_bitstream(BitstreamReader* subblock,
                           struct i_array* entropy_variables_A,
                           struct i_array* entropy_variables_B,
                           int block_channel_count,
@@ -297,13 +297,13 @@ wavpack_read_wv_bitstream(Bitstream* subblock,
                           struct i_array* values);
 
 int
-wavpack_get_value(Bitstream* bitstream,
+wavpack_get_value(BitstreamReader* bitstream,
                   struct i_array* entropy_variables,
                   int* holding_one,
                   int* holding_zero);
 
 int
-wavpack_get_zero_count(Bitstream* bitstream);
+wavpack_get_zero_count(BitstreamReader* bitstream);
 
 void
 wavpack_decrement_counter(uint8_t byte, void* counter);

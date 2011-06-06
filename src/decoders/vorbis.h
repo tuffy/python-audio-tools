@@ -47,7 +47,7 @@ typedef struct {
 
     FILE* ogg_file;
     OggReader* ogg_stream;
-    Bitstream* packet;
+    BitstreamReader* packet;
 
     struct vorbis_identification_header identification;
 } decoders_VorbisDecoder;
@@ -162,7 +162,7 @@ PyObject*
 vorbis_exception(vorbis_status error);
 
 static float
-float32_unpack(Bitstream *bs);
+float32_unpack(BitstreamReader *bs);
 
 static int
 lookup1_values(int codebook_entries, int codebook_dimensions);
@@ -175,29 +175,29 @@ ilog(int x);
   or a negative value if the header fields aren't "vorbis"
   doesn't perform any EOF checking of its own*/
 int
-vorbis_read_common_header(Bitstream *packet);
+vorbis_read_common_header(BitstreamReader *packet);
 
 /*reads packet data (including the common header) into "identification"
   performs EOF checking in case the packet is too small*/
 vorbis_status
 vorbis_read_identification_packet(
-                        Bitstream *packet,
+                        BitstreamReader *packet,
                         struct vorbis_identification_header *identification);
 
 /*reads setup information (including the common header)
   performs EOF checking in case the packet is too small*/
 /*FIXME - place the setup info somewhere*/
 vorbis_status
-vorbis_read_setup_packet(Bitstream *packet);
+vorbis_read_setup_packet(BitstreamReader *packet);
 
 /*reads codebook information*/
 /*FIXME - place the codebook info somewhere*/
 vorbis_status
-vorbis_read_codebooks(Bitstream *packet);
+vorbis_read_codebooks(BitstreamReader *packet);
 
 #include "vorbis_codewords.h"
 
 /*read time domain transforms information*/
 /*FIXME - place the results from this somewhere (if necessary)*/
 vorbis_status
-vorbis_read_time_domain_transforms(Bitstream *packet);
+vorbis_read_time_domain_transforms(BitstreamReader *packet);

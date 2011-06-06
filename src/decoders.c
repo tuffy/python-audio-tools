@@ -1,5 +1,5 @@
 #include <Python.h>
-#include "bitstream_r.h"
+#include "bitstream.h"
 #include "huffman.h"
 #include "decoders.h"
 
@@ -481,9 +481,9 @@ BitstreamReader_init(decoders_BitstreamReader *self,
     self->file_obj = file_obj;
 
     if (PyFile_CheckExact(file_obj)) {
-        self->bitstream = bs_open(PyFile_AsFile(self->file_obj),
-                                  little_endian ? BS_LITTLE_ENDIAN :
-                                  BS_BIG_ENDIAN);
+        self->bitstream = bs_open_r(PyFile_AsFile(self->file_obj),
+                                    little_endian ? BS_LITTLE_ENDIAN :
+                                    BS_BIG_ENDIAN);
     } else {
         self->bitstream = bs_open_python(self->file_obj,
                                          little_endian ? BS_LITTLE_ENDIAN :
@@ -497,7 +497,7 @@ void
 BitstreamReader_dealloc(decoders_BitstreamReader *self)
 {
     if (self->bitstream != NULL)
-        bs_free(self->bitstream);
+        bs_free_r(self->bitstream);
     Py_XDECREF(self->file_obj);
     self->file_obj = NULL;
 

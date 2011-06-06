@@ -56,7 +56,7 @@ FlacEncoder_compute_best_lpc_coeffs(struct i_array *lpc_warm_up_samples,
     struct i_array temp_rice_parameters;
     int temp_shift_needed;
     int i;
-    Bitstream *temp_subframe;
+    BitstreamWriter *temp_subframe;
     int current_best_subframe = INT_MAX;
 
     /*window signal*/
@@ -186,7 +186,7 @@ FlacEncoder_compute_best_lpc_coeffs(struct i_array *lpc_warm_up_samples,
         ia_free(&temp_warm_up_samples);
         ia_free(&temp_residual);
         ia_free(&temp_rice_parameters);
-        bs_close(temp_subframe);
+        bs_close_w(temp_subframe);
     }
 
     /*return best QLP coefficients and shift-needed values*/

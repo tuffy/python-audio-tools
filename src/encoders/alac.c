@@ -41,7 +41,7 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
 
     PyObject *file_obj;       /*the Python object of our output file*/
     FILE *output_file;        /*the FILE representation of our putput file*/
-    Bitstream *stream = NULL; /*the Bitstream representation of our output file*/
+    BitstreamWriter *stream = NULL; /*the Bitstream representation of our output file*/
     PyObject *pcmreader_obj;  /*the Python object of our input pcmreader*/
     struct pcm_reader *reader; /*the pcm_reader struct of our input pcmreader*/
     struct ia_array samples;  /*a buffer of input samples*/
@@ -109,13 +109,13 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
                         "file must by a concrete file object");
         goto error;
     } else {
-        stream = bs_open(output_file, BS_BIG_ENDIAN);
-        bs_add_callback(stream,
-                        alac_byte_counter,
-                        &(encode_log.frame_byte_size));
-        bs_add_callback(stream,
-                        alac_byte_counter,
-                        &(encode_log.mdat_byte_size));
+        stream = bs_open_w(output_file, BS_BIG_ENDIAN);
+        bs_add_callback_w(stream,
+                          alac_byte_counter,
+                          &(encode_log.frame_byte_size));
+        bs_add_callback_w(stream,
+                          alac_byte_counter,
+                          &(encode_log.mdat_byte_size));
     }
 
     /*write "mdat" atom header*/
@@ -155,10 +155,10 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
 
     /*close and free allocated files/buffers*/
     pcmr_close(reader);
-    bs_free(stream);
+    bs_free_w(stream);
     iaa_free(&samples);
-    bs_close(options.best_frame);
-    bs_close(options.current_frame);
+    bs_close_w(options.best_frame);
+    bs_close_w(options.current_frame);
 
     /*return the accumulated log of output*/
     encode_log_obj = alac_log_output(&encode_log);
@@ -166,10 +166,10 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
     return encode_log_obj;
 
  error:
-    bs_close(options.best_frame);
-    bs_close(options.current_frame);
+    bs_close_w(options.best_frame);
+    bs_close_w(options.current_frame);
     pcmr_close(reader);
-    bs_free(stream);
+    bs_free_w(stream);
     iaa_free(&samples);
     alac_log_free(&encode_log);
     return NULL;
@@ -186,7 +186,7 @@ ALACEncoder_encode_alac(char *filename,
                         int maximum_k)
 {
     FILE *output_file;        /*the FILE representation of our putput file*/
-    Bitstream *stream = NULL; /*the Bitstream representation of our output file*/
+    BitstreamWriter *stream = NULL; /*the BitstreamWriter representation of our output file*/
     struct pcm_reader *reader; /*the pcm_reader struct of our input pcmreader*/
     struct ia_array samples;  /*a buffer of input samples*/
 
@@ -218,10 +218,10 @@ ALACEncoder_encode_alac(char *filename,
     alac_log_init(&encode_log);
 
     /*convert file object to bitstream writer*/
-    stream = bs_open(output_file, BS_BIG_ENDIAN);
-    bs_add_callback(stream,
-                    alac_byte_counter,
-                    &(encode_log.frame_byte_size));
+    stream = bs_open_w(output_file, BS_BIG_ENDIAN);
+    bs_add_callback_w(stream,
+                      alac_byte_counter,
+                      &(encode_log.frame_byte_size));
 
     /*write frames from pcm_reader until empty*/
     if (!pcmr_read(reader, options.block_size, &samples))
@@ -241,20 +241,20 @@ ALACEncoder_encode_alac(char *filename,
 
     /*close and free allocated files/buffers*/
     pcmr_close(reader);
-    bs_close(stream);
+    bs_close_w(stream);
     iaa_free(&samples);
     alac_log_free(&encode_log);
-    bs_close(options.best_frame);
-    bs_close(options.current_frame);
+    bs_close_w(options.best_frame);
+    bs_close_w(options.current_frame);
 
     return OK;
  error:
     pcmr_close(reader);
-    bs_close(stream);
+    bs_close_w(stream);
     iaa_free(&samples);
     alac_log_free(&encode_log);
-    bs_close(options.best_frame);
-    bs_close(options.current_frame);
+    bs_close_w(options.best_frame);
+    bs_close_w(options.current_frame);
 
     return ERROR;
 }
@@ -277,7 +277,7 @@ int main(int argc, char *argv[]) {
 
 
 status
-alac_write_frameset(Bitstream *bs,
+alac_write_frameset(BitstreamWriter *bs,
                     struct alac_encode_log *log,
                     long starting_offset,
                     struct alac_encoding_options *options,
@@ -341,11 +341,11 @@ alac_write_frameset(Bitstream *bs,
 }
 
 status
-alac_write_frame(Bitstream *bs,
+alac_write_frame(BitstreamWriter *bs,
                  struct alac_encoding_options *options,
                  int bits_per_sample,
                  struct ia_array *samples) {
-    Bitstream *compressed_frame;
+    BitstreamWriter *compressed_frame;
 
     if (samples->arrays[0].size < 10) {
         /*write uncompressed frame if not enough samples remain*/
@@ -389,18 +389,18 @@ alac_write_frame(Bitstream *bs,
             break;
         }
 
-        bs_close(compressed_frame);
+        bs_close_w(compressed_frame);
         return OK;
 
     error:
-        bs_close(compressed_frame);
+        bs_close_w(compressed_frame);
         return ERROR;
     }
 }
 
 
 status
-alac_write_uncompressed_frame(Bitstream *bs,
+alac_write_uncompressed_frame(BitstreamWriter *bs,
                               int block_size,
                               int bits_per_sample,
                               struct ia_array *samples)
@@ -432,7 +432,7 @@ alac_write_uncompressed_frame(Bitstream *bs,
 }
 
 status
-alac_write_compressed_frame(Bitstream *bs,
+alac_write_compressed_frame(BitstreamWriter *bs,
                             struct alac_encoding_options *options,
 
                             int bits_per_sample,
@@ -440,8 +440,8 @@ alac_write_compressed_frame(Bitstream *bs,
 {
     int interlacing_shift;
     int interlacing_leftweight;
-    Bitstream *best_frame = options->best_frame;
-    Bitstream *current_frame = options->current_frame;
+    BitstreamWriter *best_frame = options->best_frame;
+    BitstreamWriter *current_frame = options->current_frame;
 
     if (samples->size != 2) {
         return alac_write_interlaced_frame(bs,
@@ -493,7 +493,7 @@ alac_write_compressed_frame(Bitstream *bs,
 }
 
 status
-alac_write_interlaced_frame(Bitstream *bs,
+alac_write_interlaced_frame(BitstreamWriter *bs,
                             struct alac_encoding_options *options,
                             int interlacing_shift,
                             int interlacing_leftweight,
@@ -775,7 +775,7 @@ alac_encode_subframe(struct i_array *residuals,
 }
 
 void
-alac_write_residual(Bitstream *bs,
+alac_write_residual(BitstreamWriter *bs,
                     int residual,
                     int k,
                     int bits_per_sample)
@@ -816,7 +816,7 @@ LOG2(int value)
 }
 
 status
-alac_write_residuals(Bitstream *bs,
+alac_write_residuals(BitstreamWriter *bs,
                      struct i_array *residuals,
                      int bits_per_sample,
                      struct alac_encoding_options *options)

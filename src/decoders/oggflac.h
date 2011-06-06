@@ -1,6 +1,6 @@
 #include <Python.h>
 #include <stdint.h>
-#include "../bitstream_r.h"
+#include "../bitstream.h"
 #include "../array.h"
 #include "ogg.h"
 #define OGG_FLAC
@@ -30,7 +30,7 @@ typedef struct {
 
     FILE* ogg_file;
     OggReader* ogg_stream;
-    Bitstream* packet;
+    BitstreamReader* packet;
     int channel_mask;
 
     struct flac_STREAMINFO streaminfo;
@@ -132,7 +132,7 @@ PyTypeObject decoders_OggFlacDecoderType = {
 };
 
 int
-oggflac_read_streaminfo(Bitstream *bitstream,
+oggflac_read_streaminfo(BitstreamReader *bitstream,
                         struct flac_STREAMINFO *streaminfo,
                         uint16_t *header_packets);
 int

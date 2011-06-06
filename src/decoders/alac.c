@@ -91,7 +91,7 @@ ALACDecoder_init(decoders_ALACDecoder *self,
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
         return -1;
     } else {
-        self->bitstream = bs_open(self->file, BS_BIG_ENDIAN);
+        self->bitstream = bs_open_r(self->file, BS_BIG_ENDIAN);
     }
     self->filename = strdup(filename);
 
@@ -586,7 +586,7 @@ ALACDecoder_seek_mdat(decoders_ALACDecoder *self)
 }
 
 void
-ALACDecoder_read_frame_header(Bitstream *bs,
+ALACDecoder_read_frame_header(BitstreamReader *bs,
                               struct alac_frame_header *frame_header,
                               int max_samples_per_frame)
 {
@@ -605,7 +605,7 @@ ALACDecoder_read_frame_header(Bitstream *bs,
 }
 
 void
-ALACDecoder_read_subframe_header(Bitstream *bs,
+ALACDecoder_read_subframe_header(BitstreamReader *bs,
                                  struct alac_subframe_header *subframe_header)
 {
     int predictor_coef_num;
@@ -623,7 +623,7 @@ ALACDecoder_read_subframe_header(Bitstream *bs,
 }
 
 void
-ALACDecoder_read_wasted_bits(Bitstream *bs,
+ALACDecoder_read_wasted_bits(BitstreamReader *bs,
                              struct ia_array *wasted_bits_samples,
                              int sample_count,
                              int channels,
@@ -667,7 +667,7 @@ LOG2(int value)
 }
 
 void
-ALACDecoder_read_residuals(Bitstream *bs,
+ALACDecoder_read_residuals(BitstreamReader *bs,
                            struct i_array *residuals,
                            int residual_count,
                            int sample_size,
@@ -736,7 +736,7 @@ ALACDecoder_read_residuals(Bitstream *bs,
 #define RICE_THRESHOLD 8
 
 int
-ALACDecoder_read_residual(Bitstream *bs,
+ALACDecoder_read_residual(BitstreamReader *bs,
                           int k,
                           int sample_size)
 {

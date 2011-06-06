@@ -1,6 +1,6 @@
 #include <Python.h>
 #include <stdint.h>
-#include "../bitstream_r.h"
+#include "../bitstream.h"
 #include "../array.h"
 
 /********************************************************
@@ -47,7 +47,7 @@ typedef struct {
     PyObject_HEAD
 
     char* filename;
-    Bitstream* bitstream;
+    BitstreamReader* bitstream;
 
     unsigned int version;
     unsigned int file_type;
@@ -220,7 +220,7 @@ SHNDecoder_read_header(decoders_SHNDecoder* self);
 
 void
 SHNDecoder_read_diff(struct i_array *buffer,
-                     Bitstream* bs,
+                     BitstreamReader* bs,
                      unsigned int block_size,
                      int (*calculation)(int residual,
                                         struct i_array *buffer));
@@ -246,19 +246,19 @@ SHNDecoder_read_lpc(decoders_SHNDecoder *decoder,
                     int coffset);
 
 unsigned int
-shn_read_uvar(Bitstream* bs, unsigned int count);
+shn_read_uvar(BitstreamReader* bs, unsigned int count);
 
 int
-shn_read_var(Bitstream* bs, unsigned int count);
+shn_read_var(BitstreamReader* bs, unsigned int count);
 
 unsigned int
-shn_read_long(Bitstream* bs);
+shn_read_long(BitstreamReader* bs);
 
 void
-shn_skip_uvar(Bitstream* bs, unsigned int count);
+shn_skip_uvar(BitstreamReader* bs, unsigned int count);
 
 void
-shn_skip_var(Bitstream* bs, unsigned int count);
+shn_skip_var(BitstreamReader* bs, unsigned int count);
 
 /*a debugging function which takes a Shorten command value
   and returns a human-readable string
