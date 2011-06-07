@@ -96,7 +96,7 @@ MLPDecoder_init(decoders_MLPDecoder *self,
         return -1;
 
     /*open the MLP file*/
-    self->bitstream = bs_open_python(reader, BS_BIG_ENDIAN);
+    self->bitstream = br_open_python(reader, BS_BIG_ENDIAN);
 #else
 int
 MLPDecoder_init(decoders_MLPDecoder* self,
@@ -112,7 +112,7 @@ MLPDecoder_init(decoders_MLPDecoder* self,
     self->crc = 0x3C;
 
     /*open the MLP file*/
-    self->bitstream = bs_open_r(fopen(path, "rb"), BS_BIG_ENDIAN);
+    self->bitstream = br_open(fopen(path, "rb"), BS_BIG_ENDIAN);
 
     self->remaining_samples = remaining_samples;
 #endif

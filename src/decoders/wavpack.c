@@ -304,7 +304,7 @@ wavpack_read_block(BitstreamReader* input,
     if (!setjmp(*br_try(input))) {
         result = wavpack_read_block_header(input, header);
         if (result == OK) {
-            bs_substream_reset(block_data);
+            br_substream_reset(block_data);
             input->substream_append(input, block_data, header->block_size - 24);
             br_etry(input);
             return OK;
@@ -323,7 +323,7 @@ wavpack_read_subblock(BitstreamReader* block_data,
                       struct wavpack_subblock_header* header,
                       BitstreamReader* subblock_data) {
     wavpack_read_subblock_header(block_data, header);
-    bs_substream_reset(subblock_data);
+    br_substream_reset(subblock_data);
     if (header->actual_size_1_less) {
         block_data->substream_append(block_data,
                                      subblock_data,

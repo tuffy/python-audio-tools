@@ -485,7 +485,7 @@ BitstreamReader_init(decoders_BitstreamReader *self,
                                     little_endian ? BS_LITTLE_ENDIAN :
                                     BS_BIG_ENDIAN);
     } else {
-        self->bitstream = bs_open_python(self->file_obj,
+        self->bitstream = br_open_python(self->file_obj,
                                          little_endian ? BS_LITTLE_ENDIAN :
                                          BS_BIG_ENDIAN);
     }

@@ -200,8 +200,8 @@ encoders_encode_wavpack(char *filename,
     }
 
     /*close open file handles and deallocate temporary space*/
-    bw_close(context.cache.sub_blocks);
-    bw_close(context.cache.residual_data);
+    context.cache.sub_blocks->close(context.cache.sub_blocks);
+    context.cache.residual_data->close(context.cache.residual_data);
     ia_free(&(context.cache.input_A));
     ia_free(&(context.cache.input_B));
 
@@ -209,7 +209,7 @@ encoders_encode_wavpack(char *filename,
     wavpack_free_decorrelation_passes(context.wrap.passes,
                                       context.total_channels);
     pcmr_close(reader);
-    bw_close(stream);
+    stream->close(stream);
     iaa_free(&samples);
 
 #ifndef STANDALONE
@@ -220,8 +220,8 @@ encoders_encode_wavpack(char *filename,
 #endif
 
  error:
-    bw_close(context.cache.sub_blocks);
-    bw_close(context.cache.residual_data);
+    context.cache.sub_blocks->close(context.cache.sub_blocks);
+    context.cache.residual_data->close(context.cache.residual_data);
     ia_free(&(context.cache.input_A));
     ia_free(&(context.cache.input_B));
 
@@ -229,7 +229,7 @@ encoders_encode_wavpack(char *filename,
     wavpack_free_decorrelation_passes(context.wrap.passes,
                                       context.total_channels);
     pcmr_close(reader);
-    bw_close(stream);
+    stream->close(stream);
     iaa_free(&samples);
 
 #ifndef STANDALONE
@@ -567,7 +567,7 @@ wavpack_write_block(BitstreamWriter* bs,
                            &entropy_variables_B);
 
     /*update block header fields*/
-    block_header.block_size = 24 + (sub_blocks->bits_written / 8);
+    block_header.block_size = 24 + (sub_blocks->bits_written(sub_blocks) / 8);
 
     /*write block header*/
     wavpack_write_block_header(bs, &block_header);
@@ -751,13 +751,13 @@ wavpack_write_channel_info(BitstreamWriter *bs,
     sub_block->write(sub_block, 8, channel_count);
     sub_block->write(sub_block, count_bits(channel_mask), channel_mask);
     sub_block->byte_align(sub_block);
-    while (sub_block->bits_written % 16)
+    while (sub_block->bits_written(sub_block) % 16)
         sub_block->write(sub_block, 8, 0);
 
     wavpack_write_subblock_header(bs, WV_CHANNEL_INFO, 0,
-                                  sub_block->bits_written / 8);
+                                  sub_block->bits_written(sub_block) / 8);
     bw_dump_records(bs, sub_block);
-    bw_close(sub_block);
+    sub_block->close(sub_block);
 }
 
 void
@@ -1030,12 +1030,12 @@ wavpack_write_residuals(BitstreamWriter *bs,
 
     /*once all the residual data has been written,
       pad the output buffer to a multiple of 16 bits*/
-    while ((residual_data->bits_written % 16) != 0)
+    while ((residual_data->bits_written(residual_data) % 16) != 0)
         residual_data->write(residual_data, 1, 1);
 
     /*write the sub-block header*/
     wavpack_write_subblock_header(bs, WV_BITSTREAM, 0,
-                                  residual_data->bits_written / 8);
+                                  residual_data->bits_written(residual_data) / 8);
 
     /*write out the residual data*/
     bw_dump_records(bs, residual_data);
@@ -2086,10 +2086,10 @@ wavpack_write_footer_block(BitstreamWriter *bs,
             block_data->write(block_data, 8, context->wave.footer[i]);
     }
 
-    block_header.block_size = 24 + (block_data->bits_written / 8);
+    block_header.block_size = 24 + (block_data->bits_written(block_data) / 8);
     wavpack_write_block_header(bs, &block_header);
     bw_dump_records(bs, block_data);
-    bw_close(block_data);
+    block_data->close(block_data);
 }
 
 void
@@ -2182,9 +2182,9 @@ wavpack_write_wave_header_sub_block(BitstreamWriter* stream,
     wave_header->write_64(wave_header, 32, pcm_bytes);  /*data size*/
 
     wavpack_write_subblock_header(stream, WV_WAVE_HEADER, 1,
-                                  wave_header->bits_written / 8);
+                                  wave_header->bits_written(wave_header) / 8);
     bw_dump_records(stream, wave_header);
-    bw_close(wave_header);
+    wave_header->close(wave_header);
 }
 
 int

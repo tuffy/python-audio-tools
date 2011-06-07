@@ -146,7 +146,7 @@ FlacEncoder_compute_best_lpc_coeffs(struct i_array *lpc_warm_up_samples,
             ia_reset(&temp_warm_up_samples);
             ia_reset(&temp_residual);
             ia_reset(&temp_rice_parameters);
-            temp_subframe->bits_written = 0;
+            temp_subframe->output.accumulator = 0;
 
 
             FlacEncoder_quantize_coefficients(faa_getitem(&lp_coefficients, i),
@@ -172,8 +172,10 @@ FlacEncoder_compute_best_lpc_coeffs(struct i_array *lpc_warm_up_samples,
                                            &temp_coefficients,
                                            temp_shift_needed);
 
-            if (temp_subframe->bits_written < current_best_subframe) {
-                current_best_subframe = temp_subframe->bits_written;
+            if (temp_subframe->bits_written(temp_subframe) <
+                current_best_subframe) {
+                current_best_subframe =
+                    temp_subframe->bits_written(temp_subframe);
                 ia_copy(coeffs, &temp_coefficients);
                 *shift_needed = temp_shift_needed;
                 ia_copy(lpc_warm_up_samples, &temp_warm_up_samples);
@@ -186,7 +188,7 @@ FlacEncoder_compute_best_lpc_coeffs(struct i_array *lpc_warm_up_samples,
         ia_free(&temp_warm_up_samples);
         ia_free(&temp_residual);
         ia_free(&temp_rice_parameters);
-        bw_close(temp_subframe);
+        temp_subframe->close(temp_subframe);
     }
 
     /*return best QLP coefficients and shift-needed values*/

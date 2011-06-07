@@ -163,13 +163,13 @@ encoders_encode_shn(PyObject *dummy,
 
     iaa_free(&wrapped_samples);
     pcmr_close(reader);
-    bw_close(stream);
+    stream->close(stream);
     Py_INCREF(Py_None);
     return Py_None;
 
  error:
     pcmr_close(reader);
-    bw_close(stream);
+    stream->close(stream);
     return NULL;
 }
 #else
@@ -212,7 +212,7 @@ encoders_encode_shn(char *filename,
 
     iaa_free(&wrapped_samples);
     pcmr_close(reader);
-    bw_close(stream);
+    stream->close(stream);
 
     if (encode_ok)
         return OK;

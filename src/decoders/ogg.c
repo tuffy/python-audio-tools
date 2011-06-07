@@ -140,7 +140,7 @@ oggreader_next_packet(OggReader *reader, BitstreamReader *packet) {
     ogg_status result;
     uint8_t segment_length;
 
-    bs_substream_reset(packet);
+    br_substream_reset(packet);
     do {
         result = oggreader_next_segment(reader, packet, &segment_length);
     } while ((result == OGG_OK) && (segment_length == 255));

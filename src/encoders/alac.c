@@ -40,7 +40,7 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
                              NULL};
 
     PyObject *file_obj;       /*the Python object of our output file*/
-    FILE *output_file;        /*the FILE representation of our putput file*/
+    FILE *output_file;        /*the FILE representation of our output file*/
     BitstreamWriter *stream = NULL; /*the Bitstream representation of our output file*/
     PyObject *pcmreader_obj;  /*the Python object of our input pcmreader*/
     struct pcm_reader *reader; /*the pcm_reader struct of our input pcmreader*/
@@ -157,8 +157,8 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
     pcmr_close(reader);
     bw_free(stream);
     iaa_free(&samples);
-    bw_close(options.best_frame);
-    bw_close(options.current_frame);
+    options.best_frame->close(options.best_frame);
+    options.current_frame->close(options.current_frame);
 
     /*return the accumulated log of output*/
     encode_log_obj = alac_log_output(&encode_log);
@@ -166,8 +166,8 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
     return encode_log_obj;
 
  error:
-    bw_close(options.best_frame);
-    bw_close(options.current_frame);
+    options.best_frame->close(options.best_frame);
+    options.current_frame->close(options.current_frame);
     pcmr_close(reader);
     bw_free(stream);
     iaa_free(&samples);
@@ -241,20 +241,20 @@ ALACEncoder_encode_alac(char *filename,
 
     /*close and free allocated files/buffers*/
     pcmr_close(reader);
-    bw_close(stream);
+    stream->close(stream);
     iaa_free(&samples);
     alac_log_free(&encode_log);
-    bw_close(options.best_frame);
-    bw_close(options.current_frame);
+    options.best_frame->close(options.best_frame);
+    options.current_frame->close(options.current_frame);
 
     return OK;
  error:
     pcmr_close(reader);
-    bw_close(stream);
+    stream->close(stream);
     iaa_free(&samples);
     alac_log_free(&encode_log);
-    bw_close(options.best_frame);
-    bw_close(options.current_frame);
+    options.best_frame->close(options.best_frame);
+    options.current_frame->close(options.current_frame);
 
     return ERROR;
 }
@@ -373,7 +373,7 @@ alac_write_frame(BitstreamWriter *bs,
             else
                 break;
         case OK:
-            if (compressed_frame->bits_written <
+            if (compressed_frame->bits_written(compressed_frame) <
                 ((samples->size * samples->arrays[0].size * bits_per_sample) +
                  56))
                 /*if our compressed frame is small enough, write it out*/
@@ -389,11 +389,11 @@ alac_write_frame(BitstreamWriter *bs,
             break;
         }
 
-        bw_close(compressed_frame);
+        compressed_frame->close(compressed_frame);
         return OK;
 
     error:
-        bw_close(compressed_frame);
+        compressed_frame->close(compressed_frame);
         return ERROR;
     }
 }
@@ -451,7 +451,7 @@ alac_write_compressed_frame(BitstreamWriter *bs,
                                            samples);
     } else {
         bw_reset_recorder(best_frame);
-        best_frame->bits_written = INT_MAX;
+        best_frame->output.recorder.bits_written = INT_MAX;
 
         /*attempt all the interlacing shift options*/
         for (interlacing_shift = options->minimum_interlacing_shift;
@@ -475,7 +475,8 @@ alac_write_compressed_frame(BitstreamWriter *bs,
                 case RESIDUAL_OVERFLOW:
                     goto overflow;
                 case OK:
-                    if (current_frame->bits_written < best_frame->bits_written)
+                    if (current_frame->bits_written(current_frame) <
+                        best_frame->bits_written(best_frame))
                         bw_swap_records(current_frame, best_frame);
                     break;
                 }

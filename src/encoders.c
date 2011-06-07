@@ -68,8 +68,8 @@ BitstreamWriter_init(encoders_BitstreamWriter *self, PyObject *args) {
 void
 BitstreamWriter_dealloc(encoders_BitstreamWriter *self) {
     if (self->file_obj != NULL) {
-        self->bitstream->file = NULL;
-        bw_close(self->bitstream);
+        self->bitstream->output.file.file = NULL;
+        bw_free(self->bitstream);
         Py_DECREF(self->file_obj);
     }
 

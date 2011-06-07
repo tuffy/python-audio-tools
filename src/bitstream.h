@@ -39,10 +39,9 @@
 
 
 typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
+typedef enum {BR_FILE, BR_SUBSTREAM, BR_PYTHON} br_type;
+typedef enum {BW_FILE, BW_RECORDER, BW_ACCUMULATOR} bw_type;
 
-#ifndef NDEBUG
-typedef enum {BS_FILE, BS_SUBSTREAM, BS_PYTHON} bs_type;
-#endif
 
 typedef enum {
     BS_WRITE_BITS,
@@ -118,7 +117,7 @@ typedef struct {
 
 typedef struct BitstreamReader_s {
 #ifndef NDEBUG
-    bs_type type;
+    br_type type;
 #endif
 
     union {
@@ -226,38 +225,65 @@ typedef struct BitstreamReader_s {
 
 
 typedef struct BitstreamWriter_s {
-    FILE *file;
-    unsigned int buffer_size;
-    unsigned int buffer;
-    struct bs_callback *callback;
+    bw_type type;
 
-    int bits_written;    /*used by open_accumulator and open_recorder*/
-    int records_written; /*used by open_recorder*/
-    int records_total;   /*used by open_recorder*/
-    BitstreamRecord *records;
+    union {
+        struct {
+            FILE *file;
+            unsigned int buffer_size;
+            unsigned int buffer;
+        } file;
+        struct {
+            unsigned int bits_written;
+            unsigned int records_written;
+            unsigned int records_total;
+            BitstreamRecord* records;
+        } recorder;
+        unsigned int accumulator;
+    } output;
 
-    /*reads the given value as "count" number of unsigned bits
+
+    struct bs_callback *callbacks;
+    struct bs_callback *callbacks_used;
+
+
+    /*writes the given value as "count" number of unsigned bits
       to the current stream*/
     void (*write)(struct BitstreamWriter_s* bs,
                   unsigned int count,
                   unsigned int value);
 
+    /*writes the given value as "count" number of signed bits
+      to the current stream*/
     void (*write_signed)(struct BitstreamWriter_s* bs,
                          unsigned int count,
                          int value);
 
+    /*writes the given value as "count" number of unsigned bits
+      to the current stream, up to 64 bits wide*/
     void (*write_64)(struct BitstreamWriter_s* bs,
                      unsigned int count,
                      uint64_t value);
 
+    /*writes "value" number of non stop bits to the current stream
+      followed by a single stop bit*/
     void (*write_unary)(struct BitstreamWriter_s* bs,
                         int stop_bit,
                         unsigned int value);
 
+    /*if the stream is not already byte-aligned,
+      pad it with 0 bits until it is*/
     void (*byte_align)(struct BitstreamWriter_s* bs);
 
+    /*byte aligns the stream and sets its format
+      to big endian or little endian*/
     void (*set_endianness)(struct BitstreamWriter_s* bs,
                            bs_endianness endianness);
+
+    unsigned int (*bits_written)(struct BitstreamWriter_s* bs);
+
+    void (*close)(struct BitstreamWriter_s* bs);
+    void (*close_stream)(struct BitstreamWriter_s* bs);
 } BitstreamWriter;
 
 
@@ -295,9 +321,9 @@ br_call_callbacks(BitstreamReader *bs, uint8_t byte);
   this is often paired with bs_push_callback in order
   to temporarily disable a callback, for example:
 
-  bs_pop_callback(reader, &saved_callback);  //save callback for later
+  br_pop_callback(reader, &saved_callback);  //save callback for later
   unchecksummed_value = bs->read(bs, 16);    //read a value
-  bs_push_callback(reader, &saved_callback); //restored saved callback
+  br_push_callback(reader, &saved_callback); //restored saved callback
 */
 void
 br_pop_callback(BitstreamReader *bs, struct bs_callback *callback);
@@ -312,7 +338,7 @@ br_push_callback(BitstreamReader *bs, struct bs_callback *callback);
 
 static inline long
 br_ftell(BitstreamReader *bs) {
-    assert(bs->type == BS_FILE);
+    assert(bs->type == BR_FILE);
     return ftell(bs->input.file);
 }
 
@@ -592,7 +618,7 @@ br_substream_new(bs_endianness endianness);
   any marks are deleted and the stream is reset
   so that it can be appended to with fresh data*/
 void
-bs_substream_reset(struct BitstreamReader_s *substream);
+br_substream_reset(struct BitstreamReader_s *substream);
 
 void
 br_close_stream_s(struct BitstreamReader_s *stream);
@@ -672,15 +698,12 @@ void
 py_free(struct bs_python_input *stream);
 
 BitstreamReader*
-bs_open_python(PyObject *reader, bs_endianness endianness);
+br_open_python(PyObject *reader, bs_endianness endianness);
 
 void
 br_close_stream_p(BitstreamReader *bs);
 
 #endif
-
-
-
 
 
 BitstreamWriter*
@@ -691,6 +714,57 @@ bw_open_accumulator(void);
 
 BitstreamWriter*
 bw_open_recorder(void);
+
+void
+bw_free(BitstreamWriter* bs);
+
+/*adds a callback function, which is called on every byte written
+  the function's arguments are the written byte and a generic
+  pointer to some other data structure
+ */
+void
+bw_add_callback(BitstreamWriter *bs, bs_callback_func callback, void *data);
+
+static inline int
+bw_eof(BitstreamWriter* bs) {
+    assert(bs->type == BW_FILE);
+    return feof(bs->output.file.file);
+}
+
+static inline long
+bw_ftell(BitstreamWriter* bs) {
+    assert(bs->type == BW_FILE);
+    return ftell(bs->output.file.file);
+}
+
+/*make room for at least one additional record*/
+static inline void
+bs_record_resize(BitstreamWriter* bs)
+{
+    assert(bs->type == BW_RECORDER);
+    if (bs->output.recorder.records_written >=
+        bs->output.recorder.records_total) {
+        bs->output.recorder.records_total *= 2;
+        bs->output.recorder.records = realloc(
+             bs->output.recorder.records,
+             sizeof(BitstreamRecord) *
+             bs->output.recorder.records_total);
+    }
+}
+
+void
+bw_dump_records(BitstreamWriter* target, BitstreamWriter* source);
+
+/*clear the recorded output and reset for new output*/
+static inline void
+bw_reset_recorder(BitstreamWriter* bs)
+{
+    assert(bs->type == BW_RECORDER);
+    bs->output.recorder.bits_written = bs->output.recorder.records_written = 0;
+}
+
+void
+bw_swap_records(BitstreamWriter* a, BitstreamWriter* b);
 
 
 /*************************************************************
@@ -714,188 +788,75 @@ bw_open_recorder(void);
 
  *************************************************************/
 
-/*this closes bs's open file, if any,
-  deallocates any recorded output (for bs_open_accumulator BitstreamWriters)
-  and frees any callbacks before deallocating the bs struct*/
 void
-bw_close(BitstreamWriter *bs);
-
-/*this deallocates any recorded output
-  (for bs_open_accumulator BitstreamWriters)
-  and frees any callbacks before deallocating the bs struct
-  it does not close any open FILE object but does fflush output*/
+bw_write_bits_f_be(BitstreamWriter* bs, unsigned int count, unsigned int value);
 void
-bw_free(BitstreamWriter *bs);
-
-/*adds a callback function, which is called on every byte written
-  the function's arguments are the written byte and a generic
-  pointer to some other data structure
- */
+bw_write_bits_f_le(BitstreamWriter* bs, unsigned int count, unsigned int value);
 void
-bw_add_callback(BitstreamWriter *bs, bs_callback_func callback, void *data);
-
-int bw_eof(BitstreamWriter *bs);
-
-
-/*big-endian writers for concrete bitstreams*/
+bw_write_bits_r(BitstreamWriter* bs, unsigned int count, unsigned int value);
 void
-bw_write_bits_f_be(BitstreamWriter* bs,
-                   unsigned int count,
-                   unsigned int value);
+bw_write_bits_a(BitstreamWriter* bs, unsigned int count, unsigned int value);
 
 void
-bw_write_signed_bits_f_be(BitstreamWriter* bs,
-                          unsigned int count,
-                          int value);
+bw_write_signed_bits_f_be(BitstreamWriter* bs, unsigned int count, int value);
+void
+bw_write_signed_bits_f_le(BitstreamWriter* bs, unsigned int count, int value);
+void
+bw_write_signed_bits_r(BitstreamWriter* bs, unsigned int count, int value);
+void
+bw_write_signed_bits_a(BitstreamWriter* bs, unsigned int count, int value);
 
 void
-bw_write_bits64_f_be(BitstreamWriter* bs,
-                     unsigned int count,
-                     uint64_t value);
+bw_write_bits64_f_be(BitstreamWriter* bs, unsigned int count, uint64_t value);
+void
+bw_write_bits64_f_le(BitstreamWriter* bs, unsigned int count, uint64_t value);
+void
+bw_write_bits64_r(BitstreamWriter* bs, unsigned int count, uint64_t value);
+void
+bw_write_bits64_a(BitstreamWriter* bs, unsigned int count, uint64_t value);
 
 void
-bw_byte_align_f_be(BitstreamWriter* bs);
-
+bw_write_unary_f(BitstreamWriter* bs, int stop_bit, unsigned int value);
 void
-bw_set_endianness_f_be(BitstreamWriter* bs, bs_endianness endianness);
-
-
-/*little-endian writers for concrete bitstreams*/
-void
-bw_write_bits_f_le(BitstreamWriter* bs,
-                   unsigned int count,
-                   unsigned int value);
-
-void
-bw_write_signed_bits_f_le(BitstreamWriter* bs,
-                          unsigned int count,
-                          int value);
-
-void
-bw_write_bits64_f_le(BitstreamWriter* bs,
-                     unsigned int count,
-                     uint64_t value);
-
-void
-bw_byte_align_f_le(BitstreamWriter* bs);
-
-void
-bw_set_endianness_f_le(BitstreamWriter* bs, bs_endianness endianness);
-
-
-/*write unary uses the stream's current writers,
-  so it has no endian variations*/
-void
-bw_write_unary_f(BitstreamWriter* bs,
-                 int stop_bit,
-                 unsigned int value);
-
-
-/*write methods for a bs_open_accumulator
-
-  The general idea is that one can use an accumulator to determine
-  how big a portion of the stream might be, then substitute it
-  for an actual stream to perform actual output.
-  This "throw away" approach is sometimes faster in practice
-  when recording the stream's output adds too much overhead
-  vs. simply redoing the calculations.
-
-  For example:
-  accumulator = bs_open_accumulator();
-  accumulator->write(accumulator, 8, 0x7F);
-  accumulator->write_signed(accumulator, 4, 3);
-  accumulator->write_signed(accumulator, 4, -1);
-
-  assert(accumulator->bits_written == 16);
-
-  bs_close_w(accumulator);
-*/
-void
-bw_write_bits_a(BitstreamWriter* bs,
-                unsigned int count,
-                unsigned int value);
-
-void
-bw_write_signed_bits_a(BitstreamWriter* bs,
-                       unsigned int count,
-                       int value);
-
-void
-bw_write_bits64_a(BitstreamWriter* bs,
-                  unsigned int count,
-                  uint64_t value);
-
+bw_write_unary_r(BitstreamWriter* bs, int stop_bit, unsigned int value);
 void
 bw_write_unary_a(BitstreamWriter* bs, int stop_bit, unsigned int value);
 
 void
-bw_byte_align_a(BitstreamWriter* bs);
-
+bw_byte_align_f_be(BitstreamWriter* bs);
 void
-bw_set_endianness_a(BitstreamWriter* bs, bs_endianness endianness);
-
-
-/*make room for at least one additional record*/
-static inline void
-bs_record_resize(BitstreamWriter* bs)
-{
-    if (bs->records_written >= bs->records_total) {
-        bs->records_total *= 2;
-        bs->records = realloc(bs->records,
-                              sizeof(BitstreamRecord) *
-                              bs->records_total);
-    }
-}
-
-/*write methods for a bs_open_recorder
-
-  The general idea is that one uses a recorder to calculate
-  how big a stream might be, then dump it to an actual stream
-  if it's found to be the proper size.
-  For example:
-  stream = bs_open("filename", BS_BIG_ENDIAN);
-
-  recorder = bs_open_recorder();
-  recorder->write(recorder, 8, 0x7F);
-  recorder->write_signed(recorder, 4, 3);
-  recorder->write_signed(recorder, 4, -1);
-
-  if (recorder->bits_written < minimum_bits)
-    bs_dump_records(stream, recorder);
-
-  bs_close_w(recorder);
-  bs_close_w(stream);
-*/
-void
-bw_write_bits_r(BitstreamWriter* bs, unsigned int count, unsigned int value);
-
-void
-bw_write_signed_bits_r(BitstreamWriter* bs, unsigned int count, int value);
-
-void
-bw_write_bits64_r(BitstreamWriter* bs, unsigned int count, uint64_t value);
-
-void
-bw_write_unary_r(BitstreamWriter* bs, int stop_bit, unsigned int value);
-
+bw_byte_align_f_le(BitstreamWriter* bs);
 void
 bw_byte_align_r(BitstreamWriter* bs);
+void
+bw_byte_align_a(BitstreamWriter* bs);
 
+unsigned int
+bw_bits_written_f(BitstreamWriter* bs);
+unsigned int
+bw_bits_written_r(BitstreamWriter* bs);
+unsigned int
+bw_bits_written_a(BitstreamWriter* bs);
+
+void
+bw_set_endianness_f_be(BitstreamWriter* bs, bs_endianness endianness);
+void
+bw_set_endianness_f_le(BitstreamWriter* bs, bs_endianness endianness);
+void
+bw_set_endianness_a(BitstreamWriter* bs, bs_endianness endianness);
 void
 bw_set_endianness_r(BitstreamWriter* bs, bs_endianness endianness);
 
+void
+bw_close_new(BitstreamWriter* bs);
 
 void
-bw_dump_records(BitstreamWriter* target, BitstreamWriter* source);
-
-/*clear the recorded output and reset for new output*/
-static inline void
-bw_reset_recorder(BitstreamWriter* bs)
-{
-    bs->bits_written = bs->records_written = 0;
-}
-
+bw_close_stream_f(BitstreamWriter* bs);
 void
-bw_swap_records(BitstreamWriter* a, BitstreamWriter* b);
+bw_close_stream_r(BitstreamWriter* bs);
+void
+bw_close_stream_a(BitstreamWriter* bs);
+
+
 
 #endif
