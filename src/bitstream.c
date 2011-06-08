@@ -95,6 +95,7 @@ br_open(FILE *f, bs_endianness endianness)
 
     bs->byte_align = br_byte_align;
     bs->read_huffman_code = br_read_huffman_code_f;
+    bs->read_bytes = br_read_bytes_f;
     bs->substream_append = br_substream_append_f;
     bs->close = br_close;
     bs->close_stream = br_close_stream_f;
@@ -1524,6 +1525,95 @@ br_read_limited_unary_p_le(BitstreamReader* bs, int stop_bit, int maximum_bits)
 
 
 void
+br_read_bytes_f(struct BitstreamReader_s* bs,
+                unsigned int byte_count,
+                uint8_t* bytes) {
+    unsigned int i;
+    struct bs_callback* callback;
+
+    if (bs->state == 0) {
+        /*stream is byte-aligned, so perform optimized read*/
+
+        /*fread bytes from file handle to output*/
+        if (fread(bytes, sizeof(uint8_t), byte_count, bs->input.file) ==
+            byte_count) {
+            /*if sufficient bytes were read*/
+
+            /*perform callbacks on the read bytes*/
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                for (i = 0; i < byte_count; i++)
+                    callback->callback(bytes[i], callback->data);
+        } else {
+            br_abort(bs);
+        }
+    } else {
+        /*stream is not byte-aligned, so perform multiple reads*/
+        for (i = 0; i < byte_count; i++)
+            bytes[i] = bs->read(bs, 8);
+    }
+}
+
+void
+br_read_bytes_s(struct BitstreamReader_s* bs,
+                unsigned int byte_count,
+                uint8_t* bytes) {
+    unsigned int i;
+    struct bs_buffer* buffer;
+    struct bs_callback* callback;
+
+    if (bs->state == 0) {
+        /*stream is byte-aligned, so perform optimized read*/
+
+        buffer = bs->input.substream;
+
+        if ((buffer->buffer_size - buffer->buffer_position) >= byte_count) {
+            /*the buffer has enough bytes to read*/
+
+            /*so copy bytes from buffer to output*/
+            memcpy(bytes, buffer->buffer + buffer->buffer_position, byte_count);
+
+            /*perform callbacks on the read bytes*/
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                for (i = 0; i < byte_count; i++)
+                    callback->callback(bytes[i], callback->data);
+
+            /*and increment buffer position*/
+            buffer->buffer_position += byte_count;
+        } else {
+            /*the buffer has insufficient bytes,
+              so shift position to the end (as if we've read them all)
+              and raise an abort*/
+            buffer->buffer_position = buffer->buffer_size;
+            br_abort(bs);
+        }
+    } else {
+        /*stream is not byte-aligned, so perform multiple reads*/
+        for (i = 0; i < byte_count; i++)
+            bytes[i] = bs->read(bs, 8);
+    }
+}
+
+#ifndef STANDALONE
+void
+br_read_bytes_p(struct BitstreamReader_s* bs,
+                unsigned int byte_count,
+                uint8_t* bytes) {
+    unsigned int i;
+
+    /*this is the unoptimized version
+      because it's easier than pulling bytes
+      out of py_getc's buffer directly*/
+    for (i = 0; i < byte_count; i++)
+        bytes[i] = bs->read(bs, 8);
+}
+#endif
+
+
+void
 br_set_endianness_f_be(BitstreamReader *bs, bs_endianness endianness)
 {
     bs->state = 0;
@@ -1961,7 +2051,8 @@ buf_close(struct bs_buffer *stream)
 }
 
 
-struct BitstreamReader_s* br_substream_new(bs_endianness endianness)
+struct BitstreamReader_s*
+br_substream_new(bs_endianness endianness)
 {
     BitstreamReader *bs = malloc(sizeof(BitstreamReader));
 #ifndef NDEBUG
@@ -2003,6 +2094,7 @@ struct BitstreamReader_s* br_substream_new(bs_endianness endianness)
 
     bs->byte_align = br_byte_align;
     bs->read_huffman_code = br_read_huffman_code_s;
+    bs->read_bytes = br_read_bytes_s;
     bs->substream_append = br_substream_append_s;
     bs->close = br_close;
     bs->close_stream = br_close_stream_s;
@@ -2393,6 +2485,7 @@ br_open_python(PyObject *reader, bs_endianness endianness)
 
     bs->byte_align = br_byte_align;
     bs->read_huffman_code = br_read_huffman_code_p;
+    bs->read_bytes = br_read_bytes_p;
     bs->substream_append = br_substream_append_p;
     bs->close = br_close;
     bs->close_stream = br_close_stream_p;

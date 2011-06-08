@@ -346,6 +346,33 @@ BitstreamReader_read_huffman_code(decoders_BitstreamReader *self,
 }
 
 static PyObject*
+BitstreamReader_read_bytes(decoders_BitstreamReader *self,
+                           PyObject *args) {
+    PyObject* byte_string;
+    unsigned int byte_count;
+
+    if (!PyArg_ParseTuple(args, "I", &byte_count))
+        return NULL;
+
+    if ((byte_string = PyString_FromStringAndSize(NULL, byte_count)) == NULL)
+        return NULL;
+
+    if (!setjmp(*br_try(self->bitstream))) {
+        self->bitstream->read_bytes(self->bitstream,
+                                    byte_count,
+                                    (uint8_t*)PyString_AsString(byte_string));
+        br_etry(self->bitstream);
+
+        return byte_string;
+    } else {
+        br_etry(self->bitstream);
+        Py_DECREF(byte_string);
+        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+        return NULL;
+    }
+}
+
+static PyObject*
 BitstreamReader_tell(decoders_BitstreamReader *self, PyObject *args) {
     return PyObject_CallMethod(self->file_obj, "tell", NULL);
 }

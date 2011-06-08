@@ -3549,7 +3549,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] checking the confidence level
 ** TODO Add programming docstrings
 ** TODO Add programming documentation
-* TODO Add substream support to bitstream reader
+* DONE Add substream support to bitstream reader
   Its function is to allow one to pull pieces out of a larger bitstream
   and process them separately.
   For example, while parsing an Ogg stream's pages with one bitstream,
@@ -3609,3 +3609,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE audiotools.decoders.BitstreamReader.substream
 *** DONE audiotools.decoders.BitstreamReader.substream_append
 ** TODO Add unit tests to substream
+* TODO Cleanup bitstream reader module
+  This is at the heart of a lot of things so it should be properly cleaned up.
+** DONE Merge bitstream_r and bitstream_w source files
+** TODO Make BitstreamReader and BitstreamWriter more symmetric
+** TODO Add C-based unit tests
+   This should be something I can compile into a standalone file
+   and run with no external dependencies.
+   The idea is to build something valgrind-able to ensure
+   there's no memory errors.

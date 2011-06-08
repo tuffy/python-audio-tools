@@ -158,9 +158,12 @@ FlacDecoder_new(PyTypeObject *type,
                 PyObject *args, PyObject *kwds);
 
 /*reads the STREAMINFO block and skips any other metadata blocks,
-  placing our internal stream at the first FLAC frame*/
-flac_status
-FlacDecoder_read_metadata(decoders_FlacDecoder *self);
+  placing our internal stream at the first FLAC frame
+
+  returns 0 on success, 1 on failure with PyErr set*/
+int
+FlacDecoder_read_metadata(BitstreamReader *bitstream,
+                          struct flac_STREAMINFO *streaminfo);
 #endif
 
 /*reads a FLAC frame header from the sync code to the CRC-8

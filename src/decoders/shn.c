@@ -48,6 +48,8 @@ SHNDecoder_init(decoders_SHNDecoder *self,
         self->bitstream = br_open(fp, BS_BIG_ENDIAN);
     }
 
+    self->bitstream->mark(self->bitstream);
+
     if (SHNDecoder_read_header(self) == ERROR) {
         PyErr_SetString(PyExc_ValueError, "not a SHN file");
         return -1;
@@ -119,7 +121,10 @@ SHNDecoder_dealloc(decoders_SHNDecoder *self)
     if (self->verbatim != NULL)
         free(self->verbatim);
 
-    self->bitstream->close(self->bitstream);
+    if (self->bitstream != NULL) {
+        self->bitstream->unmark(self->bitstream);
+        self->bitstream->close(self->bitstream);
+    }
 
     self->ob_type->tp_free((PyObject*)self);
 }
@@ -244,10 +249,7 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
     }
 
     if (!self->read_started) {
-        if (fseek(self->bitstream->input.file, 0, SEEK_SET) == -1)
-            return NULL;
-
-        self->bitstream->state = 0;
+        self->bitstream->rewind(self->bitstream);
 
         if (SHNDecoder_read_header(self) == ERROR)
             return NULL;
@@ -434,11 +436,7 @@ SHNDecoder_metadata(decoders_SHNDecoder* self, PyObject *args)
         return NULL;
 
     /*rewind the stream and re-read the header*/
-    if (fseek(self->bitstream->input.file, 0, SEEK_SET) == -1) {
-        PyErr_SetFromErrnoWithFilename(PyExc_IOError, self->filename);
-        return NULL;
-    }
-    self->bitstream->state = 0;
+    self->bitstream->rewind(self->bitstream);
 
     if (SHNDecoder_read_header(self) == ERROR) {
         PyErr_SetString(PyExc_ValueError,
@@ -581,8 +579,7 @@ SHNDecoder_analyze_frame(decoders_SHNDecoder* self, PyObject *args)
     int i;
 
     if (!self->read_started) {
-        fseek(self->bitstream->input.file, 0, SEEK_SET);
-        self->bitstream->state = 0;
+        self->bitstream->rewind(self->bitstream);
 
         if (SHNDecoder_read_header(self) == ERROR) {
             PyErr_SetString(PyExc_ValueError, "error reading SHN header");

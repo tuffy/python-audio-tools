@@ -149,7 +149,9 @@ typedef struct BitstreamReader_s {
       in the current endian format up to 64 bits wide*/
     uint64_t (*read_64)(struct BitstreamReader_s* bs, unsigned int count);
 
-    /*skips "count" number of bits from the current stream*/
+    /*skips "count" number of bits from the current stream as if read
+
+      callbacks are called on each skipped byte*/
     void (*skip)(struct BitstreamReader_s* bs, unsigned int count);
 
     /*pushes a single 0 or 1 bit back onto the stream
@@ -177,6 +179,18 @@ typedef struct BitstreamReader_s {
 
     /*aligns the stream to a byte boundary*/
     void (*byte_align)(struct BitstreamReader_s* bs);
+
+    /*reads "byte_count" number of 8-bit bytes
+      and places them in "bytes"
+
+      the stream is not required to be byte-aligned,
+      but reading will often be optimized if it is
+
+      if insufficient bytes can be read, br_abort is called
+      and the contents of "bytes" are undefined*/
+    void (*read_bytes)(struct BitstreamReader_s* bs,
+                       unsigned int byte_count,
+                       uint8_t* bytes);
 
     /*sets the stream's format to big endian or little endian
       which automatically byte aligns it*/
@@ -282,7 +296,12 @@ typedef struct BitstreamWriter_s {
 
     unsigned int (*bits_written)(struct BitstreamWriter_s* bs);
 
+    /*closes the current output stream
+      and deallocates the struct*/
     void (*close)(struct BitstreamWriter_s* bs);
+
+    /*closes the current output stream
+      but does *not* perform any other deallocation*/
     void (*close_stream)(struct BitstreamWriter_s* bs);
 } BitstreamWriter;
 
@@ -500,6 +519,22 @@ int
 br_read_limited_unary_p_be(BitstreamReader* bs, int stop_bit, int maximum_bits);
 int
 br_read_limited_unary_p_le(BitstreamReader* bs, int stop_bit, int maximum_bits);
+#endif
+
+
+void
+br_read_bytes_f(struct BitstreamReader_s* bs,
+                unsigned int byte_count,
+                uint8_t* bytes);
+void
+br_read_bytes_s(struct BitstreamReader_s* bs,
+                unsigned int byte_count,
+                uint8_t* bytes);
+#ifndef STANDALONE
+void
+br_read_bytes_p(struct BitstreamReader_s* bs,
+                unsigned int byte_count,
+                uint8_t* bytes);
 #endif
 
 

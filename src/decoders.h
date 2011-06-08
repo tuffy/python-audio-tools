@@ -71,6 +71,10 @@ BitstreamReader_read_huffman_code(decoders_BitstreamReader *self,
                                   PyObject *args);
 
 static PyObject*
+BitstreamReader_read_bytes(decoders_BitstreamReader *self,
+                           PyObject *args);
+
+static PyObject*
 BitstreamReader_tell(decoders_BitstreamReader *self, PyObject *args);
 
 static PyObject*
@@ -116,6 +120,8 @@ PyMethodDef BitstreamReader_methods[] = {
     {"limited_unary", (PyCFunction)BitstreamReader_limited_unary,
      METH_VARARGS, ""},
     {"read_huffman_code", (PyCFunction)BitstreamReader_read_huffman_code,
+     METH_VARARGS, ""},
+    {"read_bytes", (PyCFunction)BitstreamReader_read_bytes,
      METH_VARARGS, ""},
     {"tell", (PyCFunction)BitstreamReader_tell,
      METH_NOARGS, ""},
