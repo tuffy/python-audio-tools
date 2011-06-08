@@ -4,7 +4,7 @@ VERSION = "2.18alpha1"
 OBJS = array.o pcm.o bitstream.o pcmreader.o
 FLAGS = -Wall -g
 
-all: flacenc alacenc shnenc wvenc mlpdec huffman
+all: flacenc alacenc shnenc wvenc mlpdec huffman bitstream
 
 flacenc: $(OBJS) encoders/flac.c encoders/flac.h flac_lpc.o flac_crc.o md5.o
 	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o flacenc encoders/flac.c $(OBJS) flac_lpc.o md5.o flac_crc.o -DSTANDALONE -lm
@@ -53,3 +53,6 @@ misc.o: common/misc.c common/misc.h
 
 alac_lpc.o: encoders/alac_lpc.c encoders/alac_lpc.h
 	$(CC) $(FLAGS) -c encoders/alac_lpc.c -DSTANDALONE
+
+bitstream: bitstream.c bitstream.h
+	$(CC) $(FLAGS) bitstream.c -DSTANDALONE -o $@

@@ -3167,3 +3167,196 @@ bw_close_stream_a(BitstreamWriter* bs)
 {
     return;
 }
+
+#ifdef STANDALONE
+
+#include <unistd.h>
+#include <signal.h>
+
+char temp_filename[] = "bitstream.XXXXXX";
+
+void atexit_cleanup(void);
+void sigabort_cleanup(int signum);
+
+int main(int argc, char* argv[]) {
+    int fd;
+    FILE* temp_file;
+    BitstreamReader* reader;
+    BitstreamWriter* writer;
+    struct sigaction new_action, old_action;
+
+    new_action.sa_handler = sigabort_cleanup;
+    sigemptyset(&new_action.sa_mask);
+    new_action.sa_flags = 0;
+
+    if ((fd = mkstemp(temp_filename)) == -1) {
+        fprintf(stderr, "Error creating temporary file\n");
+        return 1;
+    } else if ((temp_file = fdopen(fd, "w+")) == NULL) {
+        fprintf(stderr, "Error opening temporary file\n");
+        unlink(temp_filename);
+        close(fd);
+
+        return 2;
+    } else {
+        atexit(atexit_cleanup);
+        sigaction(SIGABRT, NULL, &old_action);
+        if (old_action.sa_handler != SIG_IGN)
+            sigaction(SIGABRT, &new_action, NULL);
+    }
+
+    /*write some test data to the temporary file*/
+    fputc(0xB1, temp_file);
+    fputc(0xED, temp_file);
+    fputc(0x3B, temp_file);
+    fputc(0xC1, temp_file);
+    fseek(temp_file, 0, SEEK_SET);
+
+    /*check the bitstream reader
+      against some known big-endian values*/
+    reader = br_open(temp_file, BS_BIG_ENDIAN);
+    reader->mark(reader);
+    assert(reader->read(reader, 2) == 0x2);
+    assert(reader->read(reader, 3) == 0x6);
+    assert(reader->read(reader, 5) == 0x07);
+    assert(reader->read(reader, 3) == 0x5);
+    assert(reader->read(reader, 19) == 0x53BC1);
+
+    reader->rewind(reader);
+    assert(reader->read_64(reader, 2) == 0x2);
+    assert(reader->read_64(reader, 3) == 0x6);
+    assert(reader->read_64(reader, 5) == 0x07);
+    assert(reader->read_64(reader, 3) == 0x5);
+    assert(reader->read_64(reader, 19) == 0x53BC1);
+
+    reader->rewind(reader);
+    assert(reader->read_signed(reader, 2) == -2);
+    assert(reader->read_signed(reader, 3) == -2);
+    assert(reader->read_signed(reader, 5) == 7);
+    assert(reader->read_signed(reader, 3) == -3);
+    assert(reader->read_signed(reader, 19) == -181311);
+
+    reader->rewind(reader);
+    assert(reader->read_unary(reader, 0) == 1);
+    assert(reader->read_unary(reader, 0) == 2);
+    assert(reader->read_unary(reader, 0) == 0);
+    assert(reader->read_unary(reader, 0) == 0);
+    assert(reader->read_unary(reader, 0) == 4);
+
+    reader->rewind(reader);
+    assert(reader->read_unary(reader, 1) == 0);
+    assert(reader->read_unary(reader, 1) == 1);
+    assert(reader->read_unary(reader, 1) == 0);
+    assert(reader->read_unary(reader, 1) == 3);
+    assert(reader->read_unary(reader, 1) == 0);
+
+    reader->rewind(reader);
+    assert(reader->read_limited_unary(reader, 0, 2) == 1);
+    assert(reader->read_limited_unary(reader, 0, 2) == -1);
+    reader->rewind(reader);
+    assert(reader->read_limited_unary(reader, 1, 2) == 0);
+    assert(reader->read_limited_unary(reader, 1, 2) == 1);
+    assert(reader->read_limited_unary(reader, 1, 2) == 0);
+    assert(reader->read_limited_unary(reader, 1, 2) == -1);
+
+    reader->rewind(reader);
+    reader->mark(reader);
+    assert(reader->read(reader, 4) == 0xB);
+    reader->rewind(reader);
+    assert(reader->read(reader, 8) == 0xB1);
+    reader->rewind(reader);
+    assert(reader->read(reader, 12) == 0xB1E);
+    reader->unmark(reader);
+    reader->mark(reader);
+    assert(reader->read(reader, 4) == 0xD);
+    reader->rewind(reader);
+    assert(reader->read(reader, 8) == 0xD3);
+    reader->rewind(reader);
+    assert(reader->read(reader, 12) == 0xD3B);
+    reader->unmark(reader);
+
+    reader->unmark(reader);
+    br_free(reader);
+    fseek(temp_file, 0, SEEK_SET);
+
+    /*check the bitstream reader
+      against some known big-endian values*/
+    reader = br_open(temp_file, BS_LITTLE_ENDIAN);
+    reader->mark(reader);
+    assert(reader->read(reader, 2) == 0x1);
+    assert(reader->read(reader, 3) == 0x4);
+    assert(reader->read(reader, 5) == 0x0D);
+    assert(reader->read(reader, 3) == 0x3);
+    assert(reader->read(reader, 19) == 0x609DF);
+
+    reader->rewind(reader);
+    assert(reader->read_64(reader, 2) == 1);
+    assert(reader->read_64(reader, 3) == 4);
+    assert(reader->read_64(reader, 5) == 13);
+    assert(reader->read_64(reader, 3) == 3);
+    assert(reader->read_64(reader, 19) == 395743);
+
+    reader->rewind(reader);
+    assert(reader->read_signed(reader, 2) == 1);
+    assert(reader->read_signed(reader, 3) == -4);
+    assert(reader->read_signed(reader, 5) == 13);
+    assert(reader->read_signed(reader, 3) == 3);
+    assert(reader->read_signed(reader, 19) == -128545);
+
+    reader->rewind(reader);
+    assert(reader->read_unary(reader, 0) == 1);
+    assert(reader->read_unary(reader, 0) == 0);
+    assert(reader->read_unary(reader, 0) == 0);
+    assert(reader->read_unary(reader, 0) == 2);
+    assert(reader->read_unary(reader, 0) == 2);
+
+    reader->rewind(reader);
+    assert(reader->read_unary(reader, 1) == 0);
+    assert(reader->read_unary(reader, 1) == 3);
+    assert(reader->read_unary(reader, 1) == 0);
+    assert(reader->read_unary(reader, 1) == 1);
+    assert(reader->read_unary(reader, 1) == 0);
+
+    reader->rewind(reader);
+    assert(reader->read_limited_unary(reader, 0, 2) == 1);
+    assert(reader->read_limited_unary(reader, 0, 2) == 0);
+    assert(reader->read_limited_unary(reader, 0, 2) == 0);
+    assert(reader->read_limited_unary(reader, 0, 2) == -1);
+
+    reader->rewind(reader);
+    assert(reader->read_limited_unary(reader, 1, 2) == 0);
+    assert(reader->read_limited_unary(reader, 1, 2) == -1);
+
+    reader->rewind(reader);
+    reader->mark(reader);
+    assert(reader->read(reader, 4) == 0x1);
+    reader->rewind(reader);
+    assert(reader->read(reader, 8) == 0xB1);
+    reader->rewind(reader);
+    assert(reader->read(reader, 12) == 0xDB1);
+    reader->unmark(reader);
+    reader->mark(reader);
+    assert(reader->read(reader, 4) == 0xE);
+    reader->rewind(reader);
+    assert(reader->read(reader, 8) == 0xBE);
+    reader->rewind(reader);
+    assert(reader->read(reader, 12) == 0x3BE);
+    reader->unmark(reader);
+
+    reader->unmark(reader);
+    br_free(reader);
+
+    fclose(temp_file);
+
+    return 0;
+}
+
+void atexit_cleanup(void) {
+    unlink(temp_filename);
+}
+
+void sigabort_cleanup(int signum) {
+    unlink(temp_filename);
+}
+
+#endif
