@@ -3119,10 +3119,21 @@ void test_little_endian(BitstreamReader* reader,
 void test_try(BitstreamReader* reader,
               struct bs_huffman_table (*table)[][0x200]);
 
+void test_callbacks(BitstreamReader* reader,
+                    int unary_0_reads,
+                    int unary_1_reads,
+                    struct bs_huffman_table (*table)[][0x200],
+                    int huffman_code_count);
+
+void
+byte_counter(uint8_t byte, unsigned int* count);
+
 int main(int argc, char* argv[]) {
     int fd;
     FILE* temp_file;
     BitstreamReader* reader;
+    BitstreamReader* subreader;
+    BitstreamReader* subsubreader;
     struct sigaction new_action, old_action;
 
     struct huffman_frequency frequencies[] = {{3, 2, 0},
@@ -3164,17 +3175,90 @@ int main(int argc, char* argv[]) {
     fputc(0xC1, temp_file);
     fseek(temp_file, 0, SEEK_SET);
 
+    /*test a big-endian stream*/
     reader = br_open(temp_file, BS_BIG_ENDIAN);
     test_big_endian(reader, be_table);
     test_try(reader, be_table);
+    test_callbacks(reader, 14, 18, be_table, 14);
     br_free(reader);
 
     fseek(temp_file, 0, SEEK_SET);
 
+    /*test a little-endian stream*/
     reader = br_open(temp_file, BS_LITTLE_ENDIAN);
     test_little_endian(reader, le_table);
     test_try(reader, le_table);
+    test_callbacks(reader, 14, 18, le_table, 13);
     br_free(reader);
+
+    /*pad the stream with some additional data on both ends*/
+    fseek(temp_file, 0, SEEK_SET);
+    fputc(0xFF, temp_file);
+    fputc(0xFF, temp_file);
+    fputc(0xB1, temp_file);
+    fputc(0xED, temp_file);
+    fputc(0x3B, temp_file);
+    fputc(0xC1, temp_file);
+    fputc(0xFF, temp_file);
+    fputc(0xFF, temp_file);
+    fseek(temp_file, 0, SEEK_SET);
+
+    reader = br_open(temp_file, BS_BIG_ENDIAN);
+    reader->mark(reader);
+
+    /*check a big-endian substream built from a file*/
+    subreader = br_substream_new(BS_BIG_ENDIAN);
+    reader->skip(reader, 16);
+    reader->substream_append(reader, subreader, 4);
+    test_big_endian(subreader, be_table);
+    test_try(subreader, be_table);
+    test_callbacks(subreader, 14, 18, be_table, 14);
+    br_substream_reset(subreader);
+
+    /*check a big-endian substream built from another substream*/
+    reader->rewind(reader);
+    reader->skip(reader, 8);
+    reader->substream_append(reader, subreader, 6);
+    subreader->skip(subreader, 8);
+    subsubreader = br_substream_new(BS_BIG_ENDIAN);
+    subreader->substream_append(subreader, subsubreader, 4);
+    test_big_endian(subsubreader, be_table);
+    test_try(subsubreader, be_table);
+    test_callbacks(subsubreader, 14, 18, be_table, 14);
+    subsubreader->close(subsubreader);
+    subreader->close(subreader);
+    reader->rewind(reader);
+    reader->unmark(reader);
+    br_free(reader);
+
+    reader = br_open(temp_file, BS_LITTLE_ENDIAN);
+    reader->mark(reader);
+
+    /*check a little-endian substream built from a file*/
+    subreader = br_substream_new(BS_LITTLE_ENDIAN);
+    reader->skip(reader, 16);
+    reader->substream_append(reader, subreader, 4);
+    test_little_endian(subreader, le_table);
+    test_try(subreader, le_table);
+    test_callbacks(subreader, 14, 18, le_table, 13);
+    br_substream_reset(subreader);
+
+    /*check a little-endian substream built from another substream*/
+    reader->rewind(reader);
+    reader->skip(reader, 8);
+    reader->substream_append(reader, subreader, 6);
+    subreader->skip(subreader, 8);
+    subsubreader = br_substream_new(BS_LITTLE_ENDIAN);
+    subreader->substream_append(subreader, subsubreader, 4);
+    test_little_endian(subsubreader, le_table);
+    test_try(subsubreader, le_table);
+    test_callbacks(subsubreader, 14, 18, le_table, 13);
+    subsubreader->close(subsubreader);
+    subreader->close(subreader);
+    reader->rewind(reader);
+    reader->unmark(reader);
+    br_free(reader);
+
 
     fclose(temp_file);
     free(be_table);
@@ -3571,6 +3655,133 @@ void test_try(BitstreamReader* reader,
 
     reader->rewind(reader);
     reader->unmark(reader);
+}
+
+void test_callbacks(BitstreamReader* reader,
+                    int unary_0_reads,
+                    int unary_1_reads,
+                    struct bs_huffman_table (*table)[][0x200],
+                    int huffman_code_count) {
+    int i;
+    unsigned int byte_count;
+    uint8_t bytes[2];
+    struct bs_callback saved_callback;
+
+    reader->mark(reader);
+    br_add_callback(reader, (bs_callback_func)byte_counter, &byte_count);
+
+    /*a single callback*/
+    byte_count = 0;
+    for (i = 0; i < 8; i++)
+        reader->read(reader, 4);
+    assert(byte_count == 4);
+    reader->rewind(reader);
+
+    /*calling callbacks directly*/
+    byte_count = 0;
+    for (i = 0; i < 20; i++)
+        br_call_callbacks(reader, 0);
+    assert(byte_count == 20);
+
+    /*two callbacks*/
+    byte_count = 0;
+    br_add_callback(reader, (bs_callback_func)byte_counter, &byte_count);
+    for (i = 0; i < 8; i++)
+        reader->read(reader, 4);
+    assert(byte_count == 8);
+    br_pop_callback(reader, NULL);
+    reader->rewind(reader);
+
+    /*temporarily suspending the callback*/
+    byte_count = 0;
+    reader->read(reader, 8);
+    assert(byte_count == 1);
+    br_pop_callback(reader, &saved_callback);
+    reader->read(reader, 8);
+    reader->read(reader, 8);
+    br_push_callback(reader, &saved_callback);
+    reader->read(reader, 8);
+    assert(byte_count == 2);
+    reader->rewind(reader);
+
+    /*temporarily adding two callbacks*/
+    byte_count = 0;
+    reader->read(reader, 8);
+    assert(byte_count == 1);
+    br_add_callback(reader, (bs_callback_func)byte_counter, &byte_count);
+    reader->read(reader, 8);
+    reader->read(reader, 8);
+    br_pop_callback(reader, NULL);
+    reader->read(reader, 8);
+    assert(byte_count == 6);
+    reader->rewind(reader);
+
+    /*read_signed*/
+    byte_count = 0;
+    for (i = 0; i < 8; i++)
+        reader->read_signed(reader, 4);
+    assert(byte_count == 4);
+    reader->rewind(reader);
+
+    /*read_64*/
+    byte_count = 0;
+    for (i = 0; i < 8; i++)
+        reader->read_64(reader, 4);
+    assert(byte_count == 4);
+    reader->rewind(reader);
+
+    /*skip*/
+    byte_count = 0;
+    for (i = 0; i < 8; i++)
+        reader->skip(reader, 4);
+    assert(byte_count == 4);
+    reader->rewind(reader);
+
+    /*read_unary*/
+    byte_count = 0;
+    for (i = 0; i < unary_0_reads; i++)
+        reader->read_unary(reader, 0);
+    assert(byte_count == 4);
+    byte_count = 0;
+    reader->rewind(reader);
+    for (i = 0; i < unary_1_reads; i++)
+        reader->read_unary(reader, 1);
+    assert(byte_count == 4);
+    reader->rewind(reader);
+
+    /*read_limited_unary*/
+    byte_count = 0;
+    for (i = 0; i < unary_0_reads; i++)
+        reader->read_limited_unary(reader, 0, 6);
+    assert(byte_count == 4);
+    byte_count = 0;
+    reader->rewind(reader);
+    for (i = 0; i < unary_1_reads; i++)
+        reader->read_limited_unary(reader, 1, 6);
+    assert(byte_count == 4);
+    reader->rewind(reader);
+
+    /*read_huffman_code*/
+    byte_count = 0;
+    for (i = 0; i < huffman_code_count; i++)
+        reader->read_huffman_code(reader, *table);
+    assert(byte_count == 4);
+    reader->rewind(reader);
+
+    /*read_bytes*/
+    byte_count = 0;
+    reader->read_bytes(reader, bytes, 2);
+    reader->read_bytes(reader, bytes, 2);
+    assert(byte_count == 4);
+    reader->rewind(reader);
+
+    br_pop_callback(reader, NULL);
+    reader->unmark(reader);
+}
+
+void
+byte_counter(uint8_t byte, unsigned int* count) {
+    (*count)++;
 }
 
 #endif

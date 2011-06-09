@@ -3618,7 +3618,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    and run with no external dependencies.
    The idea is to build something valgrind-able to ensure
    there's no memory errors.
-*** DONE FILE BitstreamReader
+*** DONE BitstreamReader
 **** DONE big-endian
      - [X] read
      - [X] read_signed
@@ -3649,18 +3649,28 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] mark
      - [X] unmark
      - [X] rewind
-*** DONE bt_try/etry
-    - [X] read
-    - [X] read_signed
-    - [X] read_64
-    - [X] skip
-    - [X] read_unary
-    - [X] read_limited_unary
-    - [X] read_huffman_code
-    - [X] read_bytes
-    - [X] substream_append
-*** TODO Substream BitstreamReader
-*** TODO Callbacks
-*** TODO Substream Callbacks
+**** DONE br_try/etry
+     - [X] read
+     - [X] read_signed
+     - [X] read_64
+     - [X] skip
+     - [X] read_unary
+     - [X] read_limited_unary
+     - [X] read_huffman_code
+     - [X] read_bytes
+     - [X] substream_append
+**** DONE Callbacks
+     - [X] read
+     - [X] read_signed
+     - [X] read_64
+     - [X] skip
+     - [X] read_unary
+     - [X] read_limited_unary
+     - [X] read_huffman_code
+     - [X] read_bytes
+*** DONE Substream BitstreamReader
 *** TODO BitstreamWriter
+**** TODO big-endian
+**** TODO little-endian
+**** TODO callbacks
 ** TODO Add documentation
