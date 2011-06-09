@@ -189,8 +189,8 @@ typedef struct BitstreamReader_s {
       if insufficient bytes can be read, br_abort is called
       and the contents of "bytes" are undefined*/
     void (*read_bytes)(struct BitstreamReader_s* bs,
-                       unsigned int byte_count,
-                       uint8_t* bytes);
+                       uint8_t* bytes,
+                       unsigned int byte_count);
 
     /*sets the stream's format to big endian or little endian
       which automatically byte aligns it*/
@@ -217,16 +217,6 @@ typedef struct BitstreamReader_s {
 
     /*pops the previous mark from the mark stack*/
     void (*unmark)(struct BitstreamReader_s* bs);
-
-    /*extracts a substream of the current stream with the given length
-
-      this byte-aligns the current stream before extracting the substream
-      and immediately calls any callbacks on the extracted bytes
-
-      the substream must be closed when finished via
-      substream->close(substream) to free any temporary space*/
-    struct BitstreamReader_s* (*substream)(struct BitstreamReader_s* bs,
-                                           uint32_t bytes);
 
     /*this appends the given length of bytes from the current stream
       to the given substream
@@ -524,17 +514,17 @@ br_read_limited_unary_p_le(BitstreamReader* bs, int stop_bit, int maximum_bits);
 
 void
 br_read_bytes_f(struct BitstreamReader_s* bs,
-                unsigned int byte_count,
-                uint8_t* bytes);
+                uint8_t* bytes,
+                unsigned int byte_count);
 void
 br_read_bytes_s(struct BitstreamReader_s* bs,
-                unsigned int byte_count,
-                uint8_t* bytes);
+                uint8_t* bytes,
+                unsigned int byte_count);
 #ifndef STANDALONE
 void
 br_read_bytes_p(struct BitstreamReader_s* bs,
-                unsigned int byte_count,
-                uint8_t* bytes);
+                uint8_t* bytes,
+                unsigned int byte_count);
 #endif
 
 
@@ -657,32 +647,6 @@ br_substream_reset(struct BitstreamReader_s *substream);
 
 void
 br_close_stream_s(struct BitstreamReader_s *stream);
-
-/*variants for the stream->substream(stream, bytes) method
-
-  these work by calling br_substream_new to generate a plain substream
-  with the appropriate endianness,
-  then calling substream_append to fill it with data
-  before returning the result*/
-struct BitstreamReader_s*
-br_substream_f_be(struct BitstreamReader_s *stream, uint32_t bytes);
-
-struct BitstreamReader_s*
-br_substream_f_le(struct BitstreamReader_s *stream, uint32_t bytes);
-
-#ifndef STANDALONE
-struct BitstreamReader_s*
-br_substream_p_be(struct BitstreamReader_s *stream, uint32_t bytes);
-
-struct BitstreamReader_s*
-br_substream_p_le(struct BitstreamReader_s *stream, uint32_t bytes);
-#endif
-
-struct BitstreamReader_s*
-br_substream_s_be(struct BitstreamReader_s *stream, uint32_t bytes);
-
-struct BitstreamReader_s*
-br_substream_s_le(struct BitstreamReader_s *stream, uint32_t bytes);
 
 /*variants for the stream->substream_append(stream, substream, bytes) method
 

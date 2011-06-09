@@ -359,8 +359,8 @@ BitstreamReader_read_bytes(decoders_BitstreamReader *self,
 
     if (!setjmp(*br_try(self->bitstream))) {
         self->bitstream->read_bytes(self->bitstream,
-                                    byte_count,
-                                    (uint8_t*)PyString_AsString(byte_string));
+                                    (uint8_t*)PyString_AsString(byte_string),
+                                    byte_count);
         br_etry(self->bitstream);
 
         return byte_string;
@@ -380,20 +380,19 @@ BitstreamReader_tell(decoders_BitstreamReader *self, PyObject *args) {
 static PyObject*
 BitstreamReader_set_endianness(decoders_BitstreamReader *self,
                                PyObject *args) {
-    int little_endian;
 
-    if (!PyArg_ParseTuple(args, "i", &little_endian))
+    if (!PyArg_ParseTuple(args, "i", &(self->little_endian)))
         return NULL;
 
-    if ((little_endian != 0) && (little_endian != 1)) {
+    if ((self->little_endian != 0) && (self->little_endian != 1)) {
         PyErr_SetString(PyExc_ValueError,
                     "endianness must be 0 (big-endian) or 1 (little-endian)");
         return NULL;
     }
 
     self->bitstream->set_endianness(self->bitstream,
-                                    little_endian ? BS_LITTLE_ENDIAN :
-                                    BS_BIG_ENDIAN);
+                                    self->little_endian ?
+                                    BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -443,10 +442,25 @@ BitstreamReader_substream(decoders_BitstreamReader *self, PyObject *args) {
 
     obj = (decoders_BitstreamReader *)type->tp_alloc(type, 0);
     obj->file_obj = NULL;
+    obj->little_endian = self->little_endian;
     obj->is_substream = 1;
-    obj->bitstream = self->bitstream->substream(self->bitstream, bytes);
+    obj->bitstream = br_substream_new(obj->little_endian ?
+                                      BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
 
-    return (PyObject *)obj;
+    if (!setjmp(*br_try(self->bitstream))) {
+        self->bitstream->substream_append(self->bitstream,
+                                          obj->bitstream,
+                                          bytes);
+
+        return (PyObject *)obj;
+    } else {
+        /*read error occurred during substream_append*/
+        Py_DECREF((PyObject *)obj);
+        PyErr_SetString(PyExc_IOError, "I/O error creating substream");
+        return NULL;
+    }
+
+
 }
 
 static PyObject*

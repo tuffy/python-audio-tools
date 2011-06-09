@@ -163,7 +163,7 @@ FlacDecoder_read_metadata(BitstreamReader *bitstream,
                 streaminfo->total_samples =
                     bitstream->read_64(bitstream, 36);
 
-                bitstream->read_bytes(bitstream, 16, streaminfo->md5sum);
+                bitstream->read_bytes(bitstream, streaminfo->md5sum, 16);
             } else {
                 bitstream->skip(bitstream, block_length * 8);
             }

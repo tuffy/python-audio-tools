@@ -39,6 +39,7 @@ typedef struct {
 
     PyObject* file_obj;
     BitstreamReader* bitstream;
+    int little_endian;
     int is_substream;
 } decoders_BitstreamReader;
 

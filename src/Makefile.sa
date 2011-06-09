@@ -2,7 +2,7 @@
 
 VERSION = "2.18alpha1"
 OBJS = array.o pcm.o bitstream.o pcmreader.o
-FLAGS = -Wall -g
+FLAGS = -Wall -g -m32
 
 all: flacenc alacenc shnenc wvenc mlpdec huffman bitstream
 
@@ -54,5 +54,8 @@ misc.o: common/misc.c common/misc.h
 alac_lpc.o: encoders/alac_lpc.c encoders/alac_lpc.h
 	$(CC) $(FLAGS) -c encoders/alac_lpc.c -DSTANDALONE
 
-bitstream: bitstream.c bitstream.h
-	$(CC) $(FLAGS) bitstream.c -DSTANDALONE -o $@
+huffman.o: huffman.c huffman.h
+	$(CC) $(FLAGS) -c huffman.c -DSTANDALONE
+
+bitstream: bitstream.c bitstream.h huffman.o
+	$(CC) $(FLAGS) bitstream.c huffman.o -DEXECUTABLE -DSTANDALONE -o $@

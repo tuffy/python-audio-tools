@@ -3618,74 +3618,49 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    and run with no external dependencies.
    The idea is to build something valgrind-able to ensure
    there's no memory errors.
-*** TODO FILE BitstreamReader
-**** TODO big-endian
+*** DONE FILE BitstreamReader
+**** DONE big-endian
      - [X] read
      - [X] read_signed
      - [X] read_64
-     - [ ] skip
-     - [ ] unread
+     - [X] skip
+     - [X] unread
      - [X] read_unary
      - [X] read_limited_unary
-     - [ ] read_huffman_code
-     - [ ] byte_align
-     - [ ] read_bytes
-     - [ ] set_endianness
+     - [X] read_huffman_code
+     - [X] byte_align
+     - [X] read_bytes
+     - [X] set_endianness
      - [X] mark
      - [X] unmark
      - [X] rewind
-     - [ ] substream
-     - [ ] substream_append
-**** TODO little-endian
+**** DONE little-endian
      - [X] read
      - [X] read_signed
      - [X] read_64
-     - [ ] skip
-     - [ ] unread
+     - [X] skip
+     - [X] unread
      - [X] read_unary
      - [X] read_limited_unary
-     - [ ] read_huffman_code
-     - [ ] byte_align
-     - [ ] read_bytes
-     - [ ] set_endianness
+     - [X] read_huffman_code
+     - [X] byte_align
+     - [X] read_bytes
+     - [X] set_endianness
      - [X] mark
      - [X] unmark
      - [X] rewind
-     - [ ] substream
-     - [ ] substream_append
+*** DONE bt_try/etry
+    - [X] read
+    - [X] read_signed
+    - [X] read_64
+    - [X] skip
+    - [X] read_unary
+    - [X] read_limited_unary
+    - [X] read_huffman_code
+    - [X] read_bytes
+    - [X] substream_append
 *** TODO Substream BitstreamReader
-**** TODO big-endian
-     - [ ] read
-     - [ ] read_signed
-     - [ ] read_64
-     - [ ] skip
-     - [ ] unread
-     - [ ] read_unary
-     - [ ] read_limited_unary
-     - [ ] read_huffman_code
-     - [ ] byte_align
-     - [ ] read_bytes
-     - [ ] set_endianness
-     - [ ] mark
-     - [ ] unmark
-     - [ ] rewind
-     - [ ] substream
-     - [ ] substream_append
-**** TODO little-endian
-     - [ ] read
-     - [ ] read_signed
-     - [ ] read_64
-     - [ ] skip
-     - [ ] unread
-     - [ ] read_unary
-     - [ ] read_limited_unary
-     - [ ] read_huffman_code
-     - [ ] byte_align
-     - [ ] read_bytes
-     - [ ] set_endianness
-     - [ ] mark
-     - [ ] unmark
-     - [ ] rewind
-     - [ ] substream
-     - [ ] substream_append
+*** TODO Callbacks
+*** TODO Substream Callbacks
 *** TODO BitstreamWriter
+** TODO Add documentation

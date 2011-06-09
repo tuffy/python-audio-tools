@@ -78,7 +78,6 @@ br_open(FILE *f, bs_endianness endianness)
         bs->read_unary = br_read_unary_f_be;
         bs->read_limited_unary = br_read_limited_unary_f_be;
         bs->set_endianness = br_set_endianness_f_be;
-        bs->substream = br_substream_f_be;
         break;
     case BS_LITTLE_ENDIAN:
         bs->read = br_read_bits_f_le;
@@ -89,7 +88,6 @@ br_open(FILE *f, bs_endianness endianness)
         bs->read_unary = br_read_unary_f_le;
         bs->read_limited_unary = br_read_limited_unary_f_le;
         bs->set_endianness = br_set_endianness_f_le;
-        bs->substream = br_substream_f_le;
         break;
     }
 
@@ -279,7 +277,7 @@ br_etry(BitstreamReader *bs)
         node->next = bs->exceptions_used;
         bs->exceptions_used = node;
     } else {
-        fprintf(stderr,"Warning: trying to pop from empty etry stack\n");
+        fprintf(stderr, "Warning: trying to pop from empty etry stack\n");
     }
 }
 
@@ -1526,8 +1524,8 @@ br_read_limited_unary_p_le(BitstreamReader* bs, int stop_bit, int maximum_bits)
 
 void
 br_read_bytes_f(struct BitstreamReader_s* bs,
-                unsigned int byte_count,
-                uint8_t* bytes) {
+                uint8_t* bytes,
+                unsigned int byte_count) {
     unsigned int i;
     struct bs_callback* callback;
 
@@ -1557,8 +1555,8 @@ br_read_bytes_f(struct BitstreamReader_s* bs,
 
 void
 br_read_bytes_s(struct BitstreamReader_s* bs,
-                unsigned int byte_count,
-                uint8_t* bytes) {
+                uint8_t* bytes,
+                unsigned int byte_count) {
     unsigned int i;
     struct bs_buffer* buffer;
     struct bs_callback* callback;
@@ -1600,8 +1598,8 @@ br_read_bytes_s(struct BitstreamReader_s* bs,
 #ifndef STANDALONE
 void
 br_read_bytes_p(struct BitstreamReader_s* bs,
-                unsigned int byte_count,
-                uint8_t* bytes) {
+                uint8_t* bytes,
+                unsigned int byte_count) {
     unsigned int i;
 
     /*this is the unoptimized version
@@ -1626,7 +1624,6 @@ br_set_endianness_f_be(BitstreamReader *bs, bs_endianness endianness)
         bs->read_unary = br_read_unary_f_le;
         bs->read_limited_unary = br_read_limited_unary_f_le;
         bs->set_endianness = br_set_endianness_f_le;
-        bs->substream = br_substream_f_le;
     }
 }
 
@@ -1643,7 +1640,6 @@ br_set_endianness_f_le(BitstreamReader *bs, bs_endianness endianness)
         bs->read_unary = br_read_unary_f_be;
         bs->read_limited_unary = br_read_limited_unary_f_be;
         bs->set_endianness = br_set_endianness_f_be;
-        bs->substream = br_substream_f_be;
     }
 }
 
@@ -1660,7 +1656,6 @@ br_set_endianness_s_be(BitstreamReader *bs, bs_endianness endianness)
         bs->read_unary = br_read_unary_s_le;
         bs->read_limited_unary = br_read_limited_unary_s_le;
         bs->set_endianness = br_set_endianness_s_le;
-        bs->substream = br_substream_s_le;
     }
 }
 
@@ -1677,7 +1672,6 @@ br_set_endianness_s_le(BitstreamReader *bs, bs_endianness endianness)
         bs->read_unary = br_read_unary_s_be;
         bs->read_limited_unary = br_read_limited_unary_s_be;
         bs->set_endianness = br_set_endianness_s_be;
-        bs->substream = br_substream_s_be;
     }
 }
 
@@ -1695,7 +1689,6 @@ br_set_endianness_p_be(BitstreamReader *bs, bs_endianness endianness)
         bs->read_unary = br_read_unary_p_le;
         bs->read_limited_unary = br_read_limited_unary_p_le;
         bs->set_endianness = br_set_endianness_p_le;
-        bs->substream = br_substream_p_le;
     }
 }
 
@@ -1712,7 +1705,6 @@ br_set_endianness_p_le(BitstreamReader *bs, bs_endianness endianness)
         bs->read_unary = br_read_unary_p_be;
         bs->read_limited_unary = br_read_limited_unary_p_be;
         bs->set_endianness = br_set_endianness_p_be;
-        bs->substream = br_substream_p_be;
     }
 }
 #endif
@@ -2077,7 +2069,6 @@ br_substream_new(bs_endianness endianness)
         bs->read_unary = br_read_unary_s_be;
         bs->read_limited_unary = br_read_limited_unary_s_be;
         bs->set_endianness = br_set_endianness_s_be;
-        bs->substream = br_substream_s_be;
         break;
     case BS_LITTLE_ENDIAN:
         bs->read = br_read_bits_s_le;
@@ -2088,7 +2079,6 @@ br_substream_new(bs_endianness endianness)
         bs->read_unary = br_read_unary_s_le;
         bs->read_limited_unary = br_read_limited_unary_s_le;
         bs->set_endianness = br_set_endianness_s_le;
-        bs->substream = br_substream_s_le;
         break;
     }
 
@@ -2123,62 +2113,6 @@ br_substream_reset(struct BitstreamReader_s *substream)
     substream->marks = NULL;
 
     buf_reset(substream->input.substream);
-}
-
-struct BitstreamReader_s*
-br_substream_f_be(struct BitstreamReader_s *stream,
-                  uint32_t bytes)
-{
-    struct BitstreamReader_s* substream = br_substream_new(BS_BIG_ENDIAN);
-    br_substream_append_f(stream, substream, bytes);
-    return substream;
-}
-
-struct BitstreamReader_s*
-br_substream_f_le(struct BitstreamReader_s *stream,
-                  uint32_t bytes)
-{
-    struct BitstreamReader_s* substream = br_substream_new(BS_LITTLE_ENDIAN);
-    br_substream_append_f(stream, substream, bytes);
-    return substream;
-}
-
-#ifndef STANDALONE
-struct BitstreamReader_s*
-br_substream_p_be(struct BitstreamReader_s *stream,
-                  uint32_t bytes)
-{
-    struct BitstreamReader_s* substream = br_substream_new(BS_BIG_ENDIAN);
-    br_substream_append_p(stream, substream, bytes);
-    return substream;
-}
-
-struct BitstreamReader_s*
-br_substream_p_le(struct BitstreamReader_s *stream,
-                  uint32_t bytes)
-{
-    struct BitstreamReader_s* substream = br_substream_new(BS_LITTLE_ENDIAN);
-    br_substream_append_p(stream, substream, bytes);
-    return substream;
-}
-#endif
-
-struct BitstreamReader_s*
-br_substream_s_be(struct BitstreamReader_s *stream,
-                  uint32_t bytes)
-{
-    struct BitstreamReader_s* substream = br_substream_new(BS_BIG_ENDIAN);
-    br_substream_append_s(stream, substream, bytes);
-    return substream;
-}
-
-struct BitstreamReader_s*
-br_substream_s_le(struct BitstreamReader_s *stream,
-                  uint32_t bytes)
-{
-    struct BitstreamReader_s* substream = br_substream_new(BS_LITTLE_ENDIAN);
-    br_substream_append_s(stream, substream, bytes);
-    return substream;
 }
 
 void
@@ -2468,7 +2402,6 @@ br_open_python(PyObject *reader, bs_endianness endianness)
         bs->read_unary = br_read_unary_p_be;
         bs->read_limited_unary = br_read_limited_unary_p_be;
         bs->set_endianness = br_set_endianness_p_be;
-        bs->substream = br_substream_p_be;
         break;
     case BS_LITTLE_ENDIAN:
         bs->read = br_read_bits_p_le;
@@ -2479,7 +2412,6 @@ br_open_python(PyObject *reader, bs_endianness endianness)
         bs->read_unary = br_read_unary_p_le;
         bs->read_limited_unary = br_read_limited_unary_p_le;
         bs->set_endianness = br_set_endianness_p_le;
-        bs->substream = br_substream_p_le;
         break;
     }
 
@@ -3168,22 +3100,38 @@ bw_close_stream_a(BitstreamWriter* bs)
     return;
 }
 
-#ifdef STANDALONE
+#ifdef EXECUTABLE
 
 #include <unistd.h>
 #include <signal.h>
+#include "huffman.h"
 
 char temp_filename[] = "bitstream.XXXXXX";
 
 void atexit_cleanup(void);
 void sigabort_cleanup(int signum);
 
+void test_big_endian(BitstreamReader* reader,
+                     struct bs_huffman_table (*table)[][0x200]);
+void test_little_endian(BitstreamReader* reader,
+                        struct bs_huffman_table (*table)[][0x200]);
+
+void test_try(BitstreamReader* reader,
+              struct bs_huffman_table (*table)[][0x200]);
+
 int main(int argc, char* argv[]) {
     int fd;
     FILE* temp_file;
     BitstreamReader* reader;
-    BitstreamWriter* writer;
     struct sigaction new_action, old_action;
+
+    struct huffman_frequency frequencies[] = {{3, 2, 0},
+                                              {2, 2, 1},
+                                              {1, 2, 2},
+                                              {1, 3, 3},
+                                              {0, 3, 4}};
+    struct bs_huffman_table (*be_table)[][0x200];
+    struct bs_huffman_table (*le_table)[][0x200];
 
     new_action.sa_handler = sigabort_cleanup;
     sigemptyset(&new_action.sa_mask);
@@ -3205,6 +3153,10 @@ int main(int argc, char* argv[]) {
             sigaction(SIGABRT, &new_action, NULL);
     }
 
+    /*compile the Huffman tables*/
+    compile_huffman_table(&be_table, frequencies, 5, BS_BIG_ENDIAN);
+    compile_huffman_table(&le_table, frequencies, 5, BS_LITTLE_ENDIAN);
+
     /*write some test data to the temporary file*/
     fputc(0xB1, temp_file);
     fputc(0xED, temp_file);
@@ -3212,9 +3164,41 @@ int main(int argc, char* argv[]) {
     fputc(0xC1, temp_file);
     fseek(temp_file, 0, SEEK_SET);
 
+    reader = br_open(temp_file, BS_BIG_ENDIAN);
+    test_big_endian(reader, be_table);
+    test_try(reader, be_table);
+    br_free(reader);
+
+    fseek(temp_file, 0, SEEK_SET);
+
+    reader = br_open(temp_file, BS_LITTLE_ENDIAN);
+    test_little_endian(reader, le_table);
+    test_try(reader, le_table);
+    br_free(reader);
+
+    fclose(temp_file);
+    free(be_table);
+    free(le_table);
+
+    return 0;
+}
+
+void atexit_cleanup(void) {
+    unlink(temp_filename);
+}
+
+void sigabort_cleanup(int signum) {
+    unlink(temp_filename);
+}
+
+void test_big_endian(BitstreamReader* reader,
+                     struct bs_huffman_table (*table)[][0x200]) {
+    int bit;
+    uint8_t sub_data[2];
+
     /*check the bitstream reader
       against some known big-endian values*/
-    reader = br_open(temp_file, BS_BIG_ENDIAN);
+
     reader->mark(reader);
     assert(reader->read(reader, 2) == 0x2);
     assert(reader->read(reader, 3) == 0x6);
@@ -3228,6 +3212,28 @@ int main(int argc, char* argv[]) {
     assert(reader->read_64(reader, 5) == 0x07);
     assert(reader->read_64(reader, 3) == 0x5);
     assert(reader->read_64(reader, 19) == 0x53BC1);
+
+    reader->rewind(reader);
+    assert(reader->read(reader, 2) == 0x2);
+    reader->skip(reader, 3);
+    assert(reader->read(reader, 5) == 0x07);
+    reader->skip(reader, 3);
+    assert(reader->read(reader, 19) == 0x53BC1);
+
+    reader->rewind(reader);
+    assert(reader->read(reader, 1) == 1);
+    bit = reader->read(reader, 1);
+    assert(bit == 0);
+    reader->unread(reader, bit);
+    assert(reader->read(reader, 2) == 1);
+    reader->byte_align(reader);
+
+    reader->rewind(reader);
+    assert(reader->read(reader, 8) == 0xB1);
+    reader->unread(reader, 0);
+    assert(reader->read(reader, 1) == 0);
+    reader->unread(reader, 1);
+    assert(reader->read(reader, 1) == 1);
 
     reader->rewind(reader);
     assert(reader->read_signed(reader, 2) == -2);
@@ -3260,6 +3266,50 @@ int main(int argc, char* argv[]) {
     assert(reader->read_limited_unary(reader, 1, 2) == -1);
 
     reader->rewind(reader);
+    assert(reader->read_huffman_code(reader, *table) == 1);
+    assert(reader->read_huffman_code(reader, *table) == 0);
+    assert(reader->read_huffman_code(reader, *table) == 4);
+    assert(reader->read_huffman_code(reader, *table) == 0);
+    assert(reader->read_huffman_code(reader, *table) == 0);
+    assert(reader->read_huffman_code(reader, *table) == 2);
+    assert(reader->read_huffman_code(reader, *table) == 1);
+    assert(reader->read_huffman_code(reader, *table) == 1);
+    assert(reader->read_huffman_code(reader, *table) == 2);
+    assert(reader->read_huffman_code(reader, *table) == 0);
+    assert(reader->read_huffman_code(reader, *table) == 2);
+    assert(reader->read_huffman_code(reader, *table) == 0);
+    assert(reader->read_huffman_code(reader, *table) == 1);
+    assert(reader->read_huffman_code(reader, *table) == 4);
+    assert(reader->read_huffman_code(reader, *table) == 2);
+
+    reader->rewind(reader);
+    assert(reader->read(reader, 3) == 5);
+    reader->byte_align(reader);
+    assert(reader->read(reader, 3) == 7);
+    reader->byte_align(reader);
+    reader->byte_align(reader);
+    assert(reader->read(reader, 8) == 59);
+    reader->byte_align(reader);
+    assert(reader->read(reader, 4) == 12);
+
+    reader->rewind(reader);
+    reader->read_bytes(reader, sub_data, 2);
+    assert(memcmp(sub_data, "\xB1\xED", 2) == 0);
+    reader->rewind(reader);
+    assert(reader->read(reader, 4) == 11);
+    reader->read_bytes(reader, sub_data, 2);
+    assert(memcmp(sub_data, "\x1E\xD3", 2) == 0);
+
+    reader->rewind(reader);
+    assert(reader->read(reader, 3) == 5);
+    reader->set_endianness(reader, BS_LITTLE_ENDIAN);
+    assert(reader->read(reader, 3) == 5);
+    reader->set_endianness(reader, BS_BIG_ENDIAN);
+    assert(reader->read(reader, 4) == 3);
+    reader->set_endianness(reader, BS_BIG_ENDIAN);
+    assert(reader->read(reader, 4) == 12);
+
+    reader->rewind(reader);
     reader->mark(reader);
     assert(reader->read(reader, 4) == 0xB);
     reader->rewind(reader);
@@ -3275,13 +3325,18 @@ int main(int argc, char* argv[]) {
     assert(reader->read(reader, 12) == 0xD3B);
     reader->unmark(reader);
 
+    reader->rewind(reader);
     reader->unmark(reader);
-    br_free(reader);
-    fseek(temp_file, 0, SEEK_SET);
+}
+
+void test_little_endian(BitstreamReader* reader,
+                        struct bs_huffman_table (*table)[][0x200]) {
+    int bit;
+    uint8_t sub_data[2];
 
     /*check the bitstream reader
-      against some known big-endian values*/
-    reader = br_open(temp_file, BS_LITTLE_ENDIAN);
+      against some known little-endian values*/
+
     reader->mark(reader);
     assert(reader->read(reader, 2) == 0x1);
     assert(reader->read(reader, 3) == 0x4);
@@ -3295,6 +3350,28 @@ int main(int argc, char* argv[]) {
     assert(reader->read_64(reader, 5) == 13);
     assert(reader->read_64(reader, 3) == 3);
     assert(reader->read_64(reader, 19) == 395743);
+
+    reader->rewind(reader);
+    assert(reader->read(reader, 2) == 0x1);
+    reader->skip(reader, 3);
+    assert(reader->read(reader, 5) == 0x0D);
+    reader->skip(reader, 3);
+    assert(reader->read(reader, 19) == 0x609DF);
+
+    reader->rewind(reader);
+    assert(reader->read(reader, 1) == 1);
+    bit = reader->read(reader, 1);
+    assert(bit == 0);
+    reader->unread(reader, bit);
+    assert(reader->read(reader, 4) == 8);
+    reader->byte_align(reader);
+
+    reader->rewind(reader);
+    assert(reader->read(reader, 8) == 0xB1);
+    reader->unread(reader, 0);
+    assert(reader->read(reader, 1) == 0);
+    reader->unread(reader, 1);
+    assert(reader->read(reader, 1) == 1);
 
     reader->rewind(reader);
     assert(reader->read_signed(reader, 2) == 1);
@@ -3324,6 +3401,49 @@ int main(int argc, char* argv[]) {
     assert(reader->read_limited_unary(reader, 0, 2) == -1);
 
     reader->rewind(reader);
+    assert(reader->read_huffman_code(reader, *table) == 1);
+    assert(reader->read_huffman_code(reader, *table) == 3);
+    assert(reader->read_huffman_code(reader, *table) == 1);
+    assert(reader->read_huffman_code(reader, *table) == 0);
+    assert(reader->read_huffman_code(reader, *table) == 2);
+    assert(reader->read_huffman_code(reader, *table) == 1);
+    assert(reader->read_huffman_code(reader, *table) == 0);
+    assert(reader->read_huffman_code(reader, *table) == 0);
+    assert(reader->read_huffman_code(reader, *table) == 1);
+    assert(reader->read_huffman_code(reader, *table) == 0);
+    assert(reader->read_huffman_code(reader, *table) == 1);
+    assert(reader->read_huffman_code(reader, *table) == 2);
+    assert(reader->read_huffman_code(reader, *table) == 4);
+    assert(reader->read_huffman_code(reader, *table) == 3);
+
+    reader->rewind(reader);
+    reader->read_bytes(reader, sub_data, 2);
+    assert(memcmp(sub_data, "\xB1\xED", 2) == 0);
+    reader->rewind(reader);
+    assert(reader->read(reader, 4) == 1);
+    reader->read_bytes(reader, sub_data, 2);
+    assert(memcmp(sub_data, "\xDB\xBE", 2) == 0);
+
+    reader->rewind(reader);
+    assert(reader->read(reader, 3) == 1);
+    reader->byte_align(reader);
+    assert(reader->read(reader, 3) == 5);
+    reader->byte_align(reader);
+    reader->byte_align(reader);
+    assert(reader->read(reader, 8) == 59);
+    reader->byte_align(reader);
+    assert(reader->read(reader, 4) == 1);
+
+    reader->rewind(reader);
+    assert(reader->read(reader, 3) == 1);
+    reader->set_endianness(reader, BS_BIG_ENDIAN);
+    assert(reader->read(reader, 3) == 7);
+    reader->set_endianness(reader, BS_LITTLE_ENDIAN);
+    assert(reader->read(reader, 4) == 11);
+    reader->set_endianness(reader, BS_LITTLE_ENDIAN);
+    assert(reader->read(reader, 4) == 1);
+
+    reader->rewind(reader);
     assert(reader->read_limited_unary(reader, 1, 2) == 0);
     assert(reader->read_limited_unary(reader, 1, 2) == -1);
 
@@ -3343,20 +3463,114 @@ int main(int argc, char* argv[]) {
     assert(reader->read(reader, 12) == 0x3BE);
     reader->unmark(reader);
 
+    reader->rewind(reader);
     reader->unmark(reader);
-    br_free(reader);
-
-    fclose(temp_file);
-
-    return 0;
 }
 
-void atexit_cleanup(void) {
-    unlink(temp_filename);
-}
+void test_try(BitstreamReader* reader,
+              struct bs_huffman_table (*table)[][0x200]) {
+    uint8_t bytes[2];
+    BitstreamReader* substream;
 
-void sigabort_cleanup(int signum) {
-    unlink(temp_filename);
+    reader->mark(reader);
+
+    /*bounce to the very end of the stream*/
+    reader->skip(reader, 31);
+    reader->mark(reader);
+    assert(reader->read(reader, 1) == 1);
+    reader->rewind(reader);
+
+    /*then test all the read methods to ensure they trigger br_abort
+
+      in the case of unary/Huffman, the stream ends on a "1" bit
+      whether reading it big-endian or little-endian*/
+
+    if (!setjmp(*br_try(reader))) {
+        reader->read(reader, 2);
+        assert(0);
+    } else {
+        br_etry(reader);
+        reader->rewind(reader);
+    }
+    if (!setjmp(*br_try(reader))) {
+        reader->read_64(reader, 2);
+        assert(0);
+    } else {
+        br_etry(reader);
+        reader->rewind(reader);
+    }
+    if (!setjmp(*br_try(reader))) {
+        reader->read_signed(reader, 2);
+        assert(0);
+    } else {
+        br_etry(reader);
+        reader->rewind(reader);
+    }
+    if (!setjmp(*br_try(reader))) {
+        reader->skip(reader, 2);
+        assert(0);
+    } else {
+        br_etry(reader);
+        reader->rewind(reader);
+    }
+    if (!setjmp(*br_try(reader))) {
+        reader->read_unary(reader, 0);
+        assert(0);
+    } else {
+        br_etry(reader);
+        reader->rewind(reader);
+    }
+    if (!setjmp(*br_try(reader))) {
+        assert(reader->read_unary(reader, 1) == 0);
+        reader->read_unary(reader, 1);
+        assert(0);
+    } else {
+        br_etry(reader);
+        reader->rewind(reader);
+    }
+    if (!setjmp(*br_try(reader))) {
+        reader->read_limited_unary(reader, 0, 3);
+        assert(0);
+    } else {
+        br_etry(reader);
+        reader->rewind(reader);
+    }
+    if (!setjmp(*br_try(reader))) {
+        assert(reader->read_limited_unary(reader, 1, 3) == 0);
+        reader->read_limited_unary(reader, 1, 3);
+        assert(0);
+    } else {
+        br_etry(reader);
+        reader->rewind(reader);
+    }
+    if (!setjmp(*br_try(reader))) {
+        reader->read_huffman_code(reader, *table);
+        assert(0);
+    } else {
+        br_etry(reader);
+        reader->rewind(reader);
+    }
+    if (!setjmp(*br_try(reader))) {
+        reader->read_bytes(reader, bytes, 2);
+        assert(0);
+    } else {
+        br_etry(reader);
+        reader->rewind(reader);
+    }
+    substream = br_substream_new(BS_BIG_ENDIAN); /*doesn't really matter*/
+    if (!setjmp(*br_try(reader))) {
+        reader->substream_append(reader, substream, 2);
+        assert(0);
+    } else {
+        br_etry(reader);
+        reader->rewind(reader);
+    }
+    substream->close(substream);
+
+    reader->unmark(reader);
+
+    reader->rewind(reader);
+    reader->unmark(reader);
 }
 
 #endif
