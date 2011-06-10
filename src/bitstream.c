@@ -3100,6 +3100,12 @@ bw_close_stream_a(BitstreamWriter* bs)
     return;
 }
 
+
+/*****************************************************************
+ BEGIN UNIT TESTS
+ *****************************************************************/
+
+
 #ifdef EXECUTABLE
 
 #include <unistd.h>
@@ -3111,22 +3117,45 @@ char temp_filename[] = "bitstream.XXXXXX";
 void atexit_cleanup(void);
 void sigabort_cleanup(int signum);
 
-void test_big_endian(BitstreamReader* reader,
-                     struct bs_huffman_table (*table)[][0x200]);
-void test_little_endian(BitstreamReader* reader,
-                        struct bs_huffman_table (*table)[][0x200]);
+void test_big_endian_reader(BitstreamReader* reader,
+                            struct bs_huffman_table (*table)[][0x200]);
+void test_little_endian_reader(BitstreamReader* reader,
+                               struct bs_huffman_table (*table)[][0x200]);
 
 void test_try(BitstreamReader* reader,
               struct bs_huffman_table (*table)[][0x200]);
 
-void test_callbacks(BitstreamReader* reader,
-                    int unary_0_reads,
-                    int unary_1_reads,
-                    struct bs_huffman_table (*table)[][0x200],
-                    int huffman_code_count);
+void test_callbacks_reader(BitstreamReader* reader,
+                           int unary_0_reads,
+                           int unary_1_reads,
+                           struct bs_huffman_table (*table)[][0x200],
+                           int huffman_code_count);
 
 void
 byte_counter(uint8_t byte, unsigned int* count);
+
+/*this uses "temp_filename" as an output file and opens it separately*/
+void
+test_writer(bs_endianness endianness);
+
+void
+writer_perform_write(BitstreamWriter* writer, bs_endianness endianness);
+void
+writer_perform_write_signed(BitstreamWriter* writer, bs_endianness endianness);
+void
+writer_perform_write_64(BitstreamWriter* writer, bs_endianness endianness);
+void
+writer_perform_write_unary_0(BitstreamWriter* writer,
+                             bs_endianness endianness);
+void
+writer_perform_write_unary_1(BitstreamWriter* writer,
+                             bs_endianness endianness);
+
+typedef void (*write_check)(BitstreamWriter*, bs_endianness);
+
+
+void
+check_output_file(void);
 
 int main(int argc, char* argv[]) {
     int fd;
@@ -3177,18 +3206,18 @@ int main(int argc, char* argv[]) {
 
     /*test a big-endian stream*/
     reader = br_open(temp_file, BS_BIG_ENDIAN);
-    test_big_endian(reader, be_table);
+    test_big_endian_reader(reader, be_table);
     test_try(reader, be_table);
-    test_callbacks(reader, 14, 18, be_table, 14);
+    test_callbacks_reader(reader, 14, 18, be_table, 14);
     br_free(reader);
 
     fseek(temp_file, 0, SEEK_SET);
 
     /*test a little-endian stream*/
     reader = br_open(temp_file, BS_LITTLE_ENDIAN);
-    test_little_endian(reader, le_table);
+    test_little_endian_reader(reader, le_table);
     test_try(reader, le_table);
-    test_callbacks(reader, 14, 18, le_table, 13);
+    test_callbacks_reader(reader, 14, 18, le_table, 13);
     br_free(reader);
 
     /*pad the stream with some additional data on both ends*/
@@ -3210,9 +3239,9 @@ int main(int argc, char* argv[]) {
     subreader = br_substream_new(BS_BIG_ENDIAN);
     reader->skip(reader, 16);
     reader->substream_append(reader, subreader, 4);
-    test_big_endian(subreader, be_table);
+    test_big_endian_reader(subreader, be_table);
     test_try(subreader, be_table);
-    test_callbacks(subreader, 14, 18, be_table, 14);
+    test_callbacks_reader(subreader, 14, 18, be_table, 14);
     br_substream_reset(subreader);
 
     /*check a big-endian substream built from another substream*/
@@ -3222,9 +3251,9 @@ int main(int argc, char* argv[]) {
     subreader->skip(subreader, 8);
     subsubreader = br_substream_new(BS_BIG_ENDIAN);
     subreader->substream_append(subreader, subsubreader, 4);
-    test_big_endian(subsubreader, be_table);
+    test_big_endian_reader(subsubreader, be_table);
     test_try(subsubreader, be_table);
-    test_callbacks(subsubreader, 14, 18, be_table, 14);
+    test_callbacks_reader(subsubreader, 14, 18, be_table, 14);
     subsubreader->close(subsubreader);
     subreader->close(subreader);
     reader->rewind(reader);
@@ -3238,9 +3267,9 @@ int main(int argc, char* argv[]) {
     subreader = br_substream_new(BS_LITTLE_ENDIAN);
     reader->skip(reader, 16);
     reader->substream_append(reader, subreader, 4);
-    test_little_endian(subreader, le_table);
+    test_little_endian_reader(subreader, le_table);
     test_try(subreader, le_table);
-    test_callbacks(subreader, 14, 18, le_table, 13);
+    test_callbacks_reader(subreader, 14, 18, le_table, 13);
     br_substream_reset(subreader);
 
     /*check a little-endian substream built from another substream*/
@@ -3250,19 +3279,22 @@ int main(int argc, char* argv[]) {
     subreader->skip(subreader, 8);
     subsubreader = br_substream_new(BS_LITTLE_ENDIAN);
     subreader->substream_append(subreader, subsubreader, 4);
-    test_little_endian(subsubreader, le_table);
+    test_little_endian_reader(subsubreader, le_table);
     test_try(subsubreader, le_table);
-    test_callbacks(subsubreader, 14, 18, le_table, 13);
+    test_callbacks_reader(subsubreader, 14, 18, le_table, 13);
     subsubreader->close(subsubreader);
     subreader->close(subreader);
     reader->rewind(reader);
     reader->unmark(reader);
     br_free(reader);
 
-
-    fclose(temp_file);
     free(be_table);
     free(le_table);
+
+    test_writer(BS_BIG_ENDIAN);
+    test_writer(BS_LITTLE_ENDIAN);
+
+    fclose(temp_file);
 
     return 0;
 }
@@ -3275,8 +3307,8 @@ void sigabort_cleanup(int signum) {
     unlink(temp_filename);
 }
 
-void test_big_endian(BitstreamReader* reader,
-                     struct bs_huffman_table (*table)[][0x200]) {
+void test_big_endian_reader(BitstreamReader* reader,
+                            struct bs_huffman_table (*table)[][0x200]) {
     int bit;
     uint8_t sub_data[2];
 
@@ -3413,8 +3445,8 @@ void test_big_endian(BitstreamReader* reader,
     reader->unmark(reader);
 }
 
-void test_little_endian(BitstreamReader* reader,
-                        struct bs_huffman_table (*table)[][0x200]) {
+void test_little_endian_reader(BitstreamReader* reader,
+                               struct bs_huffman_table (*table)[][0x200]) {
     int bit;
     uint8_t sub_data[2];
 
@@ -3657,11 +3689,11 @@ void test_try(BitstreamReader* reader,
     reader->unmark(reader);
 }
 
-void test_callbacks(BitstreamReader* reader,
-                    int unary_0_reads,
-                    int unary_1_reads,
-                    struct bs_huffman_table (*table)[][0x200],
-                    int huffman_code_count) {
+void test_callbacks_reader(BitstreamReader* reader,
+                           int unary_0_reads,
+                           int unary_1_reads,
+                           struct bs_huffman_table (*table)[][0x200],
+                           int huffman_code_count) {
     int i;
     unsigned int byte_count;
     uint8_t bytes[2];
@@ -3783,5 +3815,270 @@ void
 byte_counter(uint8_t byte, unsigned int* count) {
     (*count)++;
 }
+
+void
+test_writer(bs_endianness endianness) {
+    FILE* output_file;
+    BitstreamWriter* writer;
+    BitstreamWriter* sub_writer;
+    BitstreamWriter* sub_sub_writer;
+
+    int i;
+    write_check checks[] = {writer_perform_write,
+                            writer_perform_write_signed,
+                            writer_perform_write_64,
+                            writer_perform_write_unary_0,
+                            writer_perform_write_unary_1};
+    int total_checks = 5;
+
+    /*perform file-based checks*/
+    for (i = 0; i < total_checks; i++) {
+        output_file = fopen(temp_filename, "wb");
+        assert(output_file != NULL);
+        writer = bw_open(output_file, endianness);
+        checks[i](writer, endianness);
+        fflush(output_file);
+        check_output_file();
+        bw_free(writer);
+        fclose(output_file);
+    }
+
+    /*perform recorder-based checks*/
+    for (i = 0; i < total_checks; i++) {
+        output_file = fopen(temp_filename, "wb");
+        assert(output_file != NULL);
+        writer = bw_open(output_file, endianness);
+        sub_writer = bw_open_recorder();
+        assert(sub_writer->bits_written(sub_writer) == 0);
+        checks[i](sub_writer, endianness);
+        bw_dump_records(writer, sub_writer);
+        fflush(output_file);
+        check_output_file();
+        bw_free(writer);
+        assert(sub_writer->bits_written(sub_writer) == 32);
+        sub_writer->close(sub_writer);
+        fclose(output_file);
+    }
+
+    /*perform accumulator-based checks*/
+    for (i = 0; i < total_checks; i++) {
+        writer = bw_open_accumulator();
+        assert(writer->bits_written(writer) == 0);
+        checks[i](writer, endianness);
+        assert(writer->bits_written(writer) == 32);
+        writer->close(writer);
+    }
+
+    /*check a file-based byte-align*/
+    /*FIXME*/
+
+    /*check a recoder-based byte-align*/
+    /*FIXME*/
+
+    /*check an accumulator-based byte-align*/
+    /*FIXME*/
+
+    /*check that recorder->recorder->file works*/
+    for (i = 0; i < total_checks; i++) {
+        output_file = fopen(temp_filename, "wb");
+        assert(output_file != NULL);
+        writer = bw_open(output_file, endianness);
+        sub_writer = bw_open_recorder();
+        sub_sub_writer = bw_open_recorder();
+        assert(sub_writer->bits_written(sub_writer) == 0);
+        assert(sub_writer->bits_written(sub_sub_writer) == 0);
+        checks[i](sub_sub_writer, endianness);
+        assert(sub_writer->bits_written(sub_writer) == 0);
+        assert(sub_writer->bits_written(sub_sub_writer) == 32);
+        bw_dump_records(sub_writer, sub_sub_writer);
+        assert(sub_writer->bits_written(sub_writer) == 32);
+        assert(sub_writer->bits_written(sub_sub_writer) == 32);
+        bw_dump_records(writer, sub_writer);
+        fflush(output_file);
+        check_output_file();
+        bw_free(writer);
+        sub_writer->close(sub_writer);
+        sub_sub_writer->close(sub_sub_writer);
+        fclose(output_file);
+    }
+
+    /*check that recorder->accumulator works*/
+    for (i = 0; i < total_checks; i++) {
+        writer = bw_open_accumulator();
+        sub_writer = bw_open_recorder();
+        assert(writer->bits_written(writer) == 0);
+        assert(sub_writer->bits_written(sub_writer) == 0);
+        checks[i](sub_writer, endianness);
+        assert(writer->bits_written(writer) == 0);
+        assert(sub_writer->bits_written(sub_writer) == 32);
+        bw_dump_records(writer, sub_writer);
+        assert(writer->bits_written(writer) == 32);
+        assert(sub_writer->bits_written(sub_writer) == 32);
+        writer->close(writer);
+        sub_writer->close(sub_writer);
+    }
+}
+
+void
+writer_perform_write(BitstreamWriter* writer, bs_endianness endianness) {
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        writer->write(writer, 2, 2);
+        writer->write(writer, 3, 6);
+        writer->write(writer, 5, 7);
+        writer->write(writer, 3, 5);
+        writer->write(writer, 19, 342977);
+        break;
+    case BS_LITTLE_ENDIAN:
+        writer->write(writer, 2, 1);
+        writer->write(writer, 3, 4);
+        writer->write(writer, 5, 13);
+        writer->write(writer, 3, 3);
+        writer->write(writer, 19, 395743);
+        break;
+    }
+}
+
+void
+writer_perform_write_signed(BitstreamWriter* writer, bs_endianness endianness) {
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        writer->write_signed(writer, 2, -2);
+        writer->write_signed(writer, 3, -2);
+        writer->write_signed(writer, 5, 7);
+        writer->write_signed(writer, 3, -3);
+        writer->write_signed(writer, 19, -181311);
+        break;
+    case BS_LITTLE_ENDIAN:
+        writer->write_signed(writer, 2, 1);
+        writer->write_signed(writer, 3, -4);
+        writer->write_signed(writer, 5, 13);
+        writer->write_signed(writer, 3, 3);
+        writer->write_signed(writer, 19, -128545);
+        break;
+    }
+}
+
+void
+writer_perform_write_64(BitstreamWriter* writer, bs_endianness endianness) {
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        writer->write_64(writer, 2, 2);
+        writer->write_64(writer, 3, 6);
+        writer->write_64(writer, 5, 7);
+        writer->write_64(writer, 3, 5);
+        writer->write_64(writer, 19, 342977);
+        break;
+    case BS_LITTLE_ENDIAN:
+        writer->write_64(writer, 2, 1);
+        writer->write_64(writer, 3, 4);
+        writer->write_64(writer, 5, 13);
+        writer->write_64(writer, 3, 3);
+        writer->write_64(writer, 19, 395743);
+        break;
+    }
+}
+
+void
+writer_perform_write_unary_0(BitstreamWriter* writer,
+                             bs_endianness endianness) {
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        writer->write_unary(writer, 0, 1);
+        writer->write_unary(writer, 0, 2);
+        writer->write_unary(writer, 0, 0);
+        writer->write_unary(writer, 0, 0);
+        writer->write_unary(writer, 0, 4);
+        writer->write_unary(writer, 0, 2);
+        writer->write_unary(writer, 0, 1);
+        writer->write_unary(writer, 0, 0);
+        writer->write_unary(writer, 0, 3);
+        writer->write_unary(writer, 0, 4);
+        writer->write_unary(writer, 0, 0);
+        writer->write_unary(writer, 0, 0);
+        writer->write_unary(writer, 0, 0);
+        writer->write_unary(writer, 0, 0);
+        writer->write(writer, 1, 1);
+        break;
+    case BS_LITTLE_ENDIAN:
+        writer->write_unary(writer, 0, 1);
+        writer->write_unary(writer, 0, 0);
+        writer->write_unary(writer, 0, 0);
+        writer->write_unary(writer, 0, 2);
+        writer->write_unary(writer, 0, 2);
+        writer->write_unary(writer, 0, 2);
+        writer->write_unary(writer, 0, 5);
+        writer->write_unary(writer, 0, 3);
+        writer->write_unary(writer, 0, 0);
+        writer->write_unary(writer, 0, 1);
+        writer->write_unary(writer, 0, 0);
+        writer->write_unary(writer, 0, 0);
+        writer->write_unary(writer, 0, 0);
+        writer->write_unary(writer, 0, 0);
+        writer->write(writer, 2, 3);
+        break;
+    }
+}
+
+void
+writer_perform_write_unary_1(BitstreamWriter* writer,
+                             bs_endianness endianness) {
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        writer->write_unary(writer, 1, 0);
+        writer->write_unary(writer, 1, 1);
+        writer->write_unary(writer, 1, 0);
+        writer->write_unary(writer, 1, 3);
+        writer->write_unary(writer, 1, 0);
+        writer->write_unary(writer, 1, 0);
+        writer->write_unary(writer, 1, 0);
+        writer->write_unary(writer, 1, 1);
+        writer->write_unary(writer, 1, 0);
+        writer->write_unary(writer, 1, 1);
+        writer->write_unary(writer, 1, 2);
+        writer->write_unary(writer, 1, 0);
+        writer->write_unary(writer, 1, 0);
+        writer->write_unary(writer, 1, 1);
+        writer->write_unary(writer, 1, 0);
+        writer->write_unary(writer, 1, 0);
+        writer->write_unary(writer, 1, 0);
+        writer->write_unary(writer, 1, 5);
+        break;
+    case BS_LITTLE_ENDIAN:
+        writer->write_unary(writer, 1, 0);
+        writer->write_unary(writer, 1, 3);
+        writer->write_unary(writer, 1, 0);
+        writer->write_unary(writer, 1, 1);
+        writer->write_unary(writer, 1, 0);
+        writer->write_unary(writer, 1, 1);
+        writer->write_unary(writer, 1, 0);
+        writer->write_unary(writer, 1, 1);
+        writer->write_unary(writer, 1, 0);
+        writer->write_unary(writer, 1, 0);
+        writer->write_unary(writer, 1, 0);
+        writer->write_unary(writer, 1, 0);
+        writer->write_unary(writer, 1, 1);
+        writer->write_unary(writer, 1, 0);
+        writer->write_unary(writer, 1, 0);
+        writer->write_unary(writer, 1, 2);
+        writer->write_unary(writer, 1, 5);
+        writer->write_unary(writer, 1, 0);
+        break;
+    }
+}
+
+void
+check_output_file(void) {
+    FILE* output_file;
+    uint8_t data[255];
+    uint8_t expected_data[] = {0xB1, 0xED, 0x3B, 0xC1};
+
+    output_file = fopen(temp_filename, "rb");
+    assert(fread(data, sizeof(uint8_t), 255, output_file) == 4);
+    assert(memcmp(data, expected_data, 4) == 0);
+
+    fclose(output_file);
+}
+
 
 #endif

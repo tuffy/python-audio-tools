@@ -3609,7 +3609,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE audiotools.decoders.BitstreamReader.substream
 *** DONE audiotools.decoders.BitstreamReader.substream_append
 ** TODO Add unit tests to substream
-* TODO Cleanup bitstream reader module
+* TODO Cleanup bitstream module
   This is at the heart of a lot of things so it should be properly cleaned up.
 ** DONE Merge bitstream_r and bitstream_w source files
 ** TODO Make BitstreamReader and BitstreamWriter more symmetric
@@ -3673,4 +3673,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** TODO big-endian
 **** TODO little-endian
 **** TODO callbacks
+*** TODO BitstreamWriter recorder
+*** TODO BitstreamWriter accumulator
 ** TODO Add documentation
