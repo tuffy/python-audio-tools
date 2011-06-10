@@ -45,10 +45,7 @@ typedef enum {BW_FILE, BW_RECORDER, BW_ACCUMULATOR} bw_type;
 
 typedef enum {
     BS_WRITE_BITS,
-    BS_WRITE_SIGNED_BITS,
     BS_WRITE_BITS64,
-    BS_WRITE_UNARY,
-    BS_BYTE_ALIGN,
     BS_SET_ENDIANNESS
 } BitstreamRecordType;
 
@@ -797,11 +794,7 @@ void
 bw_write_bits_a(BitstreamWriter* bs, unsigned int count, unsigned int value);
 
 void
-bw_write_signed_bits_f_be(BitstreamWriter* bs, unsigned int count, int value);
-void
-bw_write_signed_bits_f_le(BitstreamWriter* bs, unsigned int count, int value);
-void
-bw_write_signed_bits_r(BitstreamWriter* bs, unsigned int count, int value);
+bw_write_signed_bits_f_r(BitstreamWriter* bs, unsigned int count, int value);
 void
 bw_write_signed_bits_a(BitstreamWriter* bs, unsigned int count, int value);
 
@@ -815,16 +808,12 @@ void
 bw_write_bits64_a(BitstreamWriter* bs, unsigned int count, uint64_t value);
 
 void
-bw_write_unary_f(BitstreamWriter* bs, int stop_bit, unsigned int value);
-void
-bw_write_unary_r(BitstreamWriter* bs, int stop_bit, unsigned int value);
+bw_write_unary_f_r(BitstreamWriter* bs, int stop_bit, unsigned int value);
 void
 bw_write_unary_a(BitstreamWriter* bs, int stop_bit, unsigned int value);
 
 void
-bw_byte_align_f_be(BitstreamWriter* bs);
-void
-bw_byte_align_f_le(BitstreamWriter* bs);
+bw_byte_align_f(BitstreamWriter* bs);
 void
 bw_byte_align_r(BitstreamWriter* bs);
 void

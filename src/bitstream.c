@@ -2459,22 +2459,19 @@ bw_open(FILE *f, bs_endianness endianness)
     switch (endianness) {
     case BS_BIG_ENDIAN:
         bs->write = bw_write_bits_f_be;
-        bs->write_signed = bw_write_signed_bits_f_be;
         bs->write_64 = bw_write_bits64_f_be;
-        bs->write_unary = bw_write_unary_f;
-        bs->byte_align = bw_byte_align_f_be;
         bs->set_endianness = bw_set_endianness_f_be;
         break;
     case BS_LITTLE_ENDIAN:
         bs->write = bw_write_bits_f_le;
-        bs->write_signed = bw_write_signed_bits_f_le;
         bs->write_64 = bw_write_bits64_f_le;
-        bs->write_unary = bw_write_unary_f;
-        bs->byte_align = bw_byte_align_f_le;
         bs->set_endianness = bw_set_endianness_f_le;
         break;
     }
 
+    bs->write_signed = bw_write_signed_bits_f_r;
+    bs->write_unary = bw_write_unary_f_r;
+    bs->byte_align = bw_byte_align_f;
     bs->bits_written = bw_bits_written_f;
     bs->close = bw_close_new;
     bs->close_stream = bw_close_stream_f;
@@ -2523,9 +2520,9 @@ bw_open_recorder(void)
     bs->callbacks_used = NULL;
 
     bs->write = bw_write_bits_r;
-    bs->write_signed = bw_write_signed_bits_r;
+    bs->write_signed = bw_write_signed_bits_f_r;
     bs->write_64 = bw_write_bits64_r;
-    bs->write_unary = bw_write_unary_r;
+    bs->write_unary = bw_write_unary_f_r;
     bs->byte_align = bw_byte_align_r;
     bs->set_endianness = bw_set_endianness_r;
     bs->bits_written = bw_bits_written_r;
@@ -2612,23 +2609,10 @@ bw_dump_records(BitstreamWriter* target, BitstreamWriter* source)
                               record.key.count,
                               record.value.unsigned_value);
                 break;
-            case BS_WRITE_SIGNED_BITS:
-                target->write_signed(target,
-                                     record.key.count,
-                                     record.value.signed_value);
-                break;
             case BS_WRITE_BITS64:
                 target->write_64(target,
                                  record.key.count,
                                  record.value.value64);
-                break;
-            case BS_WRITE_UNARY:
-                target->write_unary(target,
-                                    record.key.stop_bit,
-                                    record.value.unsigned_value);
-                break;
-            case BS_BYTE_ALIGN:
-                target->byte_align(target);
                 break;
             case BS_SET_ENDIANNESS:
                 target->set_endianness(target,
@@ -2639,6 +2623,7 @@ bw_dump_records(BitstreamWriter* target, BitstreamWriter* source)
         break;
     default:
         /*shouldn't get here*/
+        assert(0);
         break;
     }
 }
@@ -2749,7 +2734,6 @@ bw_write_bits_r(BitstreamWriter* bs, unsigned int count, unsigned int value)
 {
     BitstreamRecord record;
 
-    assert(value >= 0);
     assert(value < (1l << count));
     record.type = BS_WRITE_BITS;
     record.key.count = count;
@@ -2762,49 +2746,21 @@ bw_write_bits_r(BitstreamWriter* bs, unsigned int count, unsigned int value)
 void
 bw_write_bits_a(BitstreamWriter* bs, unsigned int count, unsigned int value)
 {
-    assert(value >= 0);
     assert(value < (1l << count));
     bs->output.accumulator += count;
 }
 
 
 void
-bw_write_signed_bits_f_be(BitstreamWriter* bs, unsigned int count, int value)
+bw_write_signed_bits_f_r(BitstreamWriter* bs, unsigned int count, int value)
 {
     assert(value < (1 << (count - 1)));
     assert(value >= -(1 << (count - 1)));
     if (value >= 0) {
-        bw_write_bits_f_be(bs, count, value);
+        bs->write(bs, count, value);
     } else {
-        bw_write_bits_f_be(bs, count, (1 << count) - (-value));
+        bs->write(bs, count, (1 << count) - (-value));
     }
-}
-
-void
-bw_write_signed_bits_f_le(BitstreamWriter* bs, unsigned int count, int value)
-{
-    assert(value < (1 << (count - 1)));
-    assert(value >= -(1 << (count - 1)));
-    if (value >= 0) {
-        bw_write_bits_f_le(bs, count, value);
-    } else {
-        bw_write_bits_f_le(bs, count, (1 << count) - (-value));
-    }
-}
-
-void
-bw_write_signed_bits_r(BitstreamWriter* bs, unsigned int count, int value)
-{
-    BitstreamRecord record;
-
-    assert(value < (1 << (count - 1)));
-    assert(value >= -(1 << (count - 1)));
-    record.type = BS_WRITE_SIGNED_BITS;
-    record.key.count = count;
-    record.value.signed_value = value;
-    bs_record_resize(bs);
-    bs->output.recorder.records[bs->output.recorder.records_written++] = record;
-    bs->output.recorder.bits_written += count;
 }
 
 void
@@ -2924,41 +2880,23 @@ bw_write_bits64_a(BitstreamWriter* bs, unsigned int count, uint64_t value)
 #define UNARY_BUFFER_SIZE 30
 
 void
-bw_write_unary_f(BitstreamWriter* bs, int stop_bit, unsigned int value)
+bw_write_unary_f_r(BitstreamWriter* bs, int stop_bit, unsigned int value)
 {
-    void (*write_bits)(struct BitstreamWriter_s* bs,
-                       unsigned int count,
-                       unsigned int value) = bs->write;
-
     unsigned int bits_to_write;
 
     /*send our pre-stop bits to write() in 30-bit chunks*/
     while (value > 0) {
         bits_to_write = value <= UNARY_BUFFER_SIZE ? value : UNARY_BUFFER_SIZE;
         if (stop_bit) { /*stop bit of 1, buffer value of all 0s*/
-            write_bits(bs, bits_to_write, 0);
+            bs->write(bs, bits_to_write, 0);
         } else {        /*stop bit of 0, buffer value of all 1s*/
-            write_bits(bs, bits_to_write, (1 << bits_to_write) - 1);
+            bs->write(bs, bits_to_write, (1 << bits_to_write) - 1);
         }
         value -= bits_to_write;
     }
 
     /*finally, send our stop bit*/
-    write_bits(bs, 1, stop_bit);
-}
-
-void
-bw_write_unary_r(BitstreamWriter* bs, int stop_bit, unsigned int value)
-{
-    BitstreamRecord record;
-
-    assert(value >= 0);
-    record.type = BS_WRITE_UNARY;
-    record.key.stop_bit = stop_bit;
-    record.value.unsigned_value = value;
-    bs_record_resize(bs);
-    bs->output.recorder.records[bs->output.recorder.records_written++] = record;
-    bs->output.recorder.bits_written += (value + 1);
+    bs->write(bs, 1, stop_bit);
 }
 
 void
@@ -2969,47 +2907,36 @@ bw_write_unary_a(BitstreamWriter* bs, int stop_bit, unsigned int value)
 }
 
 
-void
-bw_byte_align_f_be(BitstreamWriter* bs)
-{
-    bw_write_bits_f_be(bs, 7, 0);
-    bs->output.file.buffer = 0;
-    bs->output.file.buffer_size = 0;
-}
 
 void
-bw_byte_align_f_le(BitstreamWriter* bs)
-{
-    bw_write_bits_f_le(bs, 7, 0);
-    bs->output.file.buffer = 0;
-    bs->output.file.buffer_size = 0;
+bw_byte_align_f(BitstreamWriter* bs) {
+    /*write enough 0 bits to completely fill the buffer
+      which results in a byte being written*/
+    if (bs->output.file.buffer_size > 0)
+        bs->write(bs, 8 - bs->output.file.buffer_size, 0);
 }
 
 void
 bw_byte_align_r(BitstreamWriter* bs)
 {
-    BitstreamRecord record;
-
-    record.type = BS_BYTE_ALIGN;
-    bs_record_resize(bs);
-    bs->output.recorder.records[bs->output.recorder.records_written++] = record;
     if (bs->output.recorder.bits_written % 8)
-        bs->output.recorder.bits_written +=
-            (8 -(bs->output.recorder.bits_written % 8));
+        bw_write_bits_r(bs, 8 - (bs->output.recorder.bits_written % 8), 0);
 }
 
 void
 bw_byte_align_a(BitstreamWriter* bs)
 {
     if (bs->output.accumulator % 8)
-        bs->output.accumulator += (bs->output.accumulator % 8);
+        bs->output.accumulator += (8 - (bs->output.accumulator % 8));
 }
 
 
 
 unsigned int
 bw_bits_written_f(BitstreamWriter* bs) {
-    return 0; /*FIXME - should these be calculated?*/
+    /*actual file writing doesn't keep track of bits written
+      since the total could be extremely large*/
+    return 0;
 }
 
 unsigned int
@@ -3030,10 +2957,7 @@ bw_set_endianness_f_be(BitstreamWriter* bs, bs_endianness endianness)
     bs->output.file.buffer_size = 0;
     if (endianness == BS_LITTLE_ENDIAN) {
         bs->write = bw_write_bits_f_le;
-        bs->write_signed = bw_write_signed_bits_f_le;
         bs->write_64 = bw_write_bits64_f_le;
-        bs->write_unary = bw_write_unary_f;
-        bs->byte_align = bw_byte_align_f_le;
         bs->set_endianness = bw_set_endianness_f_le;
     }
 }
@@ -3045,10 +2969,7 @@ bw_set_endianness_f_le(BitstreamWriter* bs, bs_endianness endianness)
     bs->output.file.buffer_size = 0;
     if (endianness == BS_BIG_ENDIAN) {
         bs->write = bw_write_bits_f_be;
-        bs->write_signed = bw_write_signed_bits_f_be;
         bs->write_64 = bw_write_bits64_f_be;
-        bs->write_unary = bw_write_unary_f;
-        bs->byte_align = bw_byte_align_f_be;
         bs->set_endianness = bw_set_endianness_f_be;
     }
 }
@@ -3062,9 +2983,7 @@ bw_set_endianness_r(BitstreamWriter* bs, bs_endianness endianness)
     record.value.endianness = endianness;
     bs_record_resize(bs);
     bs->output.recorder.records[bs->output.recorder.records_written++] = record;
-    if (bs->output.recorder.bits_written % 8)
-        bs->output.recorder.bits_written +=
-            (8 - (bs->output.recorder.bits_written % 8));
+    bw_byte_align_r(bs);
 }
 
 void
@@ -3868,6 +3787,9 @@ test_writer(bs_endianness endianness) {
         assert(writer->bits_written(writer) == 32);
         writer->close(writer);
     }
+
+    /*check endianness setting*/
+    /*FIXME*/
 
     /*check a file-based byte-align*/
     /*FIXME*/
