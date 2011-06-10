@@ -365,20 +365,20 @@ FlacEncoder_write_frame(BitstreamWriter *bs,
         }
     } else {
         /*otherwise, first try independent subframes*/
-        left_subframe = bw_open_recorder();
+        left_subframe = bw_open_recorder(BS_BIG_ENDIAN);
         FlacEncoder_write_subframe(left_subframe,
                                    &(streaminfo->options),
                                    streaminfo->bits_per_sample,
                                    iaa_getitem(samples, 0));
-        right_subframe = bw_open_recorder();
+        right_subframe = bw_open_recorder(BS_BIG_ENDIAN);
         FlacEncoder_write_subframe(right_subframe,
                                    &(streaminfo->options),
                                    streaminfo->bits_per_sample,
                                    iaa_getitem(samples, 1));
 
         /*then, try mid-side subframe*/
-        avg_subframe = bw_open_recorder();
-        difference_subframe = bw_open_recorder();
+        avg_subframe = bw_open_recorder(BS_BIG_ENDIAN);
+        difference_subframe = bw_open_recorder(BS_BIG_ENDIAN);
 
         ia_init(&avg_subframe_samples, iaa_getitem(samples, 0)->size);
         ia_init(&difference_subframe_samples, iaa_getitem(samples, 0)->size);
@@ -400,7 +400,7 @@ FlacEncoder_write_frame(BitstreamWriter *bs,
         if (streaminfo->options.mid_side) {
             /*if mid-side is selected, try left-side and side-right also*/
 
-            side_subframe = bw_open_recorder();
+            side_subframe = bw_open_recorder(BS_BIG_ENDIAN);
             ia_init(&side_samples, iaa_getitem(samples, 0)->size);
 
             FlacEncoder_build_left_side_subframes(samples, &side_samples);
@@ -672,7 +672,7 @@ FlacEncoder_write_subframe(BitstreamWriter *bs,
     ia_init(&fixed_warm_up_samples, 8);
     ia_init(&fixed_residual, samples->size);
     ia_init(&fixed_rice_parameters, 1);
-    fixed_subframe = bw_open_accumulator();
+    fixed_subframe = bw_open_accumulator(BS_BIG_ENDIAN);
 
     if (!options->no_fixed_subframes) {
         fixed_predictor_order =
@@ -717,7 +717,7 @@ FlacEncoder_write_subframe(BitstreamWriter *bs,
                                             wasted_bits_per_sample,
                                             samples);
 
-        lpc_subframe = bw_open_accumulator();
+        lpc_subframe = bw_open_accumulator(BS_BIG_ENDIAN);
 
         FlacEncoder_write_lpc_subframe(lpc_subframe,
                                        &lpc_warm_up_samples,

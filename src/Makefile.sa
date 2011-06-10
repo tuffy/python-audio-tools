@@ -2,7 +2,7 @@
 
 VERSION = "2.18alpha1"
 OBJS = array.o pcm.o bitstream.o pcmreader.o
-FLAGS = -Wall -g -m32
+FLAGS = -Wall -g
 
 all: flacenc alacenc shnenc wvenc mlpdec huffman bitstream
 

@@ -144,8 +144,8 @@ encoders_encode_wavpack(char *filename,
                                                       reader->channels);
 
 
-    context.cache.sub_blocks = bw_open_recorder();
-    context.cache.residual_data = bw_open_recorder();
+    context.cache.sub_blocks = bw_open_recorder(BS_LITTLE_ENDIAN);
+    context.cache.residual_data = bw_open_recorder(BS_LITTLE_ENDIAN);
     ia_init(&(context.cache.input_A), 1);
     ia_init(&(context.cache.input_B), 1);
 
@@ -746,7 +746,7 @@ void
 wavpack_write_channel_info(BitstreamWriter *bs,
                            int channel_count,
                            int channel_mask) {
-    BitstreamWriter* sub_block = bw_open_recorder();
+    BitstreamWriter* sub_block = bw_open_recorder(BS_LITTLE_ENDIAN);
 
     sub_block->write(sub_block, 8, channel_count);
     sub_block->write(sub_block, count_bits(channel_mask), channel_mask);
@@ -2064,7 +2064,7 @@ wavpack_count_bytes(uint8_t byte, void* value) {
 void
 wavpack_write_footer_block(BitstreamWriter *bs,
                            struct wavpack_encoder_context *context) {
-    BitstreamWriter* block_data = bw_open_recorder();
+    BitstreamWriter* block_data = bw_open_recorder(BS_LITTLE_ENDIAN);
     struct wavpack_block_header block_header;
     uint8_t md5sum[16];
     int i;
@@ -2123,7 +2123,7 @@ void
 wavpack_write_wave_header_sub_block(BitstreamWriter* stream,
                                     struct wavpack_encoder_context* context,
                                     uint32_t pcm_bytes) {
-    BitstreamWriter* wave_header = bw_open_recorder();
+    BitstreamWriter* wave_header = bw_open_recorder(BS_LITTLE_ENDIAN);
     uint8_t extensible_sub_format[] = {0x01, 0x00, 0x00, 0x00, 0x00,
                                        0x00, 0x10, 0x00, 0x80, 0x00,
                                        0x00, 0xaa, 0x00, 0x38, 0x9b,

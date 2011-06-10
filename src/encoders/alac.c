@@ -87,8 +87,8 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
     }
 
     options.channel_mask = reader->channel_mask;
-    options.best_frame = bw_open_recorder();
-    options.current_frame = bw_open_recorder();
+    options.best_frame = bw_open_recorder(BS_BIG_ENDIAN);
+    options.current_frame = bw_open_recorder(BS_BIG_ENDIAN);
 
     /*initialize a buffer for input samples*/
     iaa_init(&samples, reader->channels, options.block_size);
@@ -202,8 +202,8 @@ ALACEncoder_encode_alac(char *filename,
     options.maximum_interlacing_shift = 2;
     options.minimum_interlacing_leftweight = 0;
     options.maximum_interlacing_leftweight = 4;
-    options.best_frame = bw_open_recorder();
-    options.current_frame = bw_open_recorder();
+    options.best_frame = bw_open_recorder(BS_BIG_ENDIAN);
+    options.current_frame = bw_open_recorder(BS_BIG_ENDIAN);
 
     output_file = fopen(filename, "wb");
     /*assume CD quality for now*/
@@ -356,7 +356,7 @@ alac_write_frame(BitstreamWriter *bs,
             return OK;
     } else {
         /*otherwise, attempt compressed frame*/
-        compressed_frame = bw_open_recorder();
+        compressed_frame = bw_open_recorder(BS_BIG_ENDIAN);
 
         switch (alac_write_compressed_frame(compressed_frame,
                                             options,

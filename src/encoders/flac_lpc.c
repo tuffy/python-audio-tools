@@ -135,7 +135,7 @@ FlacEncoder_compute_best_lpc_coeffs(struct i_array *lpc_warm_up_samples,
                                           *shift_needed);
     } else {
         /*if exhaustive search, calculate best order*/
-        temp_subframe = bw_open_accumulator();
+        temp_subframe = bw_open_accumulator(BS_BIG_ENDIAN);
         ia_init(&temp_coefficients, options->max_lpc_order);
         ia_init(&temp_warm_up_samples, options->max_lpc_order);
         ia_init(&temp_residual, samples->size);

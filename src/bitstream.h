@@ -99,12 +99,8 @@ struct bs_python_input {
 
 typedef struct {
     BitstreamRecordType type;
+    unsigned int count;
     union {
-        unsigned int count;
-        int stop_bit;
-    } key;
-    union {
-        int signed_value;
         unsigned int unsigned_value;
         uint64_t value64;
         bs_endianness endianness;
@@ -281,7 +277,17 @@ typedef struct BitstreamWriter_s {
     void (*set_endianness)(struct BitstreamWriter_s* bs,
                            bs_endianness endianness);
 
+    /*returns the total bits written to the stream thus far
+
+      this applies only to recorder and accumulator streams -
+      file-based streams must use a callback to keep track of
+      that information*/
     unsigned int (*bits_written)(struct BitstreamWriter_s* bs);
+
+    void (*split_record)(BitstreamRecord* record,
+                         BitstreamRecord* head,
+                         BitstreamRecord* tail,
+                         unsigned int bits);
 
     /*closes the current output stream
       and deallocates the struct*/
@@ -706,10 +712,10 @@ BitstreamWriter*
 bw_open(FILE *f, bs_endianness endianness);
 
 BitstreamWriter*
-bw_open_accumulator(void);
+bw_open_accumulator(bs_endianness endianness);
 
 BitstreamWriter*
-bw_open_recorder(void);
+bw_open_recorder(bs_endianness endianness);
 
 void
 bw_free(BitstreamWriter* bs);
@@ -748,8 +754,23 @@ bs_record_resize(BitstreamWriter* bs)
     }
 }
 
+/*given a BitstreamWriter recorder "source",
+  writes all of its recorded output to "target"*/
 void
 bw_dump_records(BitstreamWriter* target, BitstreamWriter* source);
+
+/*given a BitstreamWriter recorder "source",
+  writes up to "total_bytes" of recorded output to "target"
+  while any remaining records are sent to "remaining"
+  (if "remaining" is the same writer as "source",
+   sent records will be removed leaving only the remainder)
+
+  returns the total bytes dumped to "target"*/
+unsigned int
+bw_dump_records_limited(BitstreamWriter* target,
+                        BitstreamWriter* remaining,
+                        BitstreamWriter* source,
+                        unsigned int total_bytes);
 
 /*clear the recorded output and reset for new output*/
 static inline void
@@ -834,6 +855,23 @@ void
 bw_set_endianness_a(BitstreamWriter* bs, bs_endianness endianness);
 void
 bw_set_endianness_r(BitstreamWriter* bs, bs_endianness endianness);
+
+
+/*given a BitstreamRecord larger than "bits",
+  splits "record" into two pieces
+  in which "head" contains "bits" number of bits
+  while "tail" contains the remainder*/
+void
+bw_split_record_be(BitstreamRecord* record,
+                   BitstreamRecord* head,
+                   BitstreamRecord* tail,
+                   unsigned int bits);
+void
+bw_split_record_le(BitstreamRecord* record,
+                   BitstreamRecord* head,
+                   BitstreamRecord* tail,
+                   unsigned int bits);
+
 
 void
 bw_close_new(BitstreamWriter* bs);
