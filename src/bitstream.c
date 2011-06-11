@@ -111,8 +111,8 @@ br_free(BitstreamReader *bs)
     struct bs_callback *c_next;
     struct bs_exception *e_node;
     struct bs_exception *e_next;
-    struct bs_mark *m_node;
-    struct bs_mark *m_next;
+    struct br_mark *m_node;
+    struct br_mark *m_next;
 
     if (bs == NULL)
         return;
@@ -1558,7 +1558,7 @@ br_read_bytes_s(struct BitstreamReader_s* bs,
                 uint8_t* bytes,
                 unsigned int byte_count) {
     unsigned int i;
-    struct bs_buffer* buffer;
+    struct br_buffer* buffer;
     struct bs_callback* callback;
 
     if (bs->state == 0) {
@@ -1716,9 +1716,9 @@ Which direction it reads from is decided when the table data is compiled.
 */
 int
 br_read_huffman_code_f(BitstreamReader *bs,
-                       struct bs_huffman_table table[][0x200])
+                       struct br_huffman_table table[][0x200])
 {
-    struct bs_huffman_table entry;
+    struct br_huffman_table entry;
     int node = 0;
     int context = bs->state;
     struct bs_callback* callback;
@@ -1744,9 +1744,9 @@ br_read_huffman_code_f(BitstreamReader *bs,
 
 int
 br_read_huffman_code_s(BitstreamReader *bs,
-                       struct bs_huffman_table table[][0x200])
+                       struct br_huffman_table table[][0x200])
 {
-    struct bs_huffman_table entry;
+    struct br_huffman_table entry;
     int node = 0;
     int context = bs->state;
     struct bs_callback* callback;
@@ -1773,9 +1773,9 @@ br_read_huffman_code_s(BitstreamReader *bs,
 #ifndef STANDALONE
 int
 br_read_huffman_code_p(BitstreamReader *bs,
-                       struct bs_huffman_table table[][0x200])
+                       struct br_huffman_table table[][0x200])
 {
-    struct bs_huffman_table entry;
+    struct br_huffman_table entry;
     int node = 0;
     int context = bs->state;
     struct bs_callback* callback;
@@ -1804,10 +1804,10 @@ br_read_huffman_code_p(BitstreamReader *bs,
 void
 br_mark_f(BitstreamReader* bs)
 {
-    struct bs_mark* mark;
+    struct br_mark* mark;
 
     if (bs->marks_used == NULL)
-        mark = malloc(sizeof(struct bs_mark));
+        mark = malloc(sizeof(struct br_mark));
     else {
         mark = bs->marks_used;
         bs->marks_used = bs->marks_used->next;
@@ -1822,10 +1822,10 @@ br_mark_f(BitstreamReader* bs)
 void
 br_mark_s(BitstreamReader* bs)
 {
-    struct bs_mark* mark;
+    struct br_mark* mark;
 
     if (bs->marks_used == NULL)
-        mark = malloc(sizeof(struct bs_mark));
+        mark = malloc(sizeof(struct br_mark));
     else {
         mark = bs->marks_used;
         bs->marks_used = bs->marks_used->next;
@@ -1842,10 +1842,10 @@ br_mark_s(BitstreamReader* bs)
 void
 br_mark_p(BitstreamReader* bs)
 {
-    struct bs_mark* mark;
+    struct br_mark* mark;
 
     if (bs->marks_used == NULL)
-        mark = malloc(sizeof(struct bs_mark));
+        mark = malloc(sizeof(struct br_mark));
     else {
         mark = bs->marks_used;
         bs->marks_used = bs->marks_used->next;
@@ -1899,7 +1899,7 @@ br_rewind_p(BitstreamReader* bs)
 void
 br_unmark_f(BitstreamReader* bs)
 {
-    struct bs_mark* mark = bs->marks;
+    struct br_mark* mark = bs->marks;
     bs->marks = mark->next;
     mark->next = bs->marks_used;
     bs->marks_used = mark;
@@ -1908,7 +1908,7 @@ br_unmark_f(BitstreamReader* bs)
 void
 br_unmark_s(BitstreamReader* bs)
 {
-    struct bs_mark* mark = bs->marks;
+    struct br_mark* mark = bs->marks;
     bs->marks = mark->next;
     mark->next = bs->marks_used;
     bs->marks_used = mark;
@@ -1919,7 +1919,7 @@ br_unmark_s(BitstreamReader* bs)
 void
 br_unmark_p(BitstreamReader* bs)
 {
-    struct bs_mark* mark = bs->marks;
+    struct br_mark* mark = bs->marks;
     bs->marks = mark->next;
     mark->next = bs->marks_used;
     bs->marks_used = mark;
@@ -1942,10 +1942,10 @@ br_byte_align(BitstreamReader* bs)
  and processing them separately
  *******************************************/
 
-struct bs_buffer*
+struct br_buffer*
 buf_new(void)
 {
-    struct bs_buffer* stream = malloc(sizeof(struct bs_buffer));
+    struct br_buffer* stream = malloc(sizeof(struct br_buffer));
     stream->buffer_size = 0;
     stream->buffer_total_size = 1;
     stream->buffer = malloc(stream->buffer_total_size);
@@ -1955,13 +1955,13 @@ buf_new(void)
 }
 
 uint32_t
-buf_size(struct bs_buffer *stream)
+buf_size(struct br_buffer *stream)
 {
     return stream->buffer_size - stream->buffer_position;
 }
 
 uint8_t*
-buf_extend(struct bs_buffer *stream, uint32_t data_size)
+buf_extend(struct br_buffer *stream, uint32_t data_size)
 {
     uint32_t remaining_bytes;
     uint8_t* extended_buffer;
@@ -2018,7 +2018,7 @@ buf_extend(struct bs_buffer *stream, uint32_t data_size)
 }
 
 void
-buf_reset(struct bs_buffer *stream)
+buf_reset(struct br_buffer *stream)
 {
     stream->buffer_size = 0;
     stream->buffer_position = 0;
@@ -2026,7 +2026,7 @@ buf_reset(struct bs_buffer *stream)
 }
 
 int
-buf_getc(struct bs_buffer *stream)
+buf_getc(struct br_buffer *stream)
 {
     if (stream->buffer_position < stream->buffer_size) {
         return stream->buffer[stream->buffer_position++];
@@ -2035,7 +2035,7 @@ buf_getc(struct bs_buffer *stream)
 }
 
 void
-buf_close(struct bs_buffer *stream)
+buf_close(struct br_buffer *stream)
 {
     if (stream->buffer != NULL)
         free(stream->buffer);
@@ -2098,8 +2098,8 @@ br_substream_new(bs_endianness endianness)
 void
 br_substream_reset(struct BitstreamReader_s *substream)
 {
-    struct bs_mark *m_node;
-    struct bs_mark *m_next;
+    struct br_mark *m_node;
+    struct br_mark *m_next;
 
     assert(substream->type == BR_SUBSTREAM);
 
@@ -2249,10 +2249,10 @@ br_close_stream_s(struct BitstreamReader_s *stream)
  like C file pointers
  *******************************************/
 
-struct bs_python_input*
+struct br_python_input*
 py_open(PyObject* reader)
 {
-    struct bs_python_input* input = malloc(sizeof(struct bs_python_input));
+    struct br_python_input* input = malloc(sizeof(struct br_python_input));
     Py_INCREF(reader);
     input->reader_obj = reader;
     input->buffer = malloc(4096 * sizeof(uint8_t));
@@ -2265,7 +2265,7 @@ py_open(PyObject* reader)
 }
 
 int
-py_getc(struct bs_python_input *stream)
+py_getc(struct br_python_input *stream)
 {
     PyObject *buffer_obj;
     char *buffer_str;
@@ -2346,7 +2346,7 @@ py_getc(struct bs_python_input *stream)
 }
 
 int
-py_close(struct bs_python_input *stream)
+py_close(struct br_python_input *stream)
 {
     PyObject* close_result;
 
@@ -2368,7 +2368,7 @@ py_close(struct bs_python_input *stream)
 }
 
 void
-py_free(struct bs_python_input *stream)
+py_free(struct br_python_input *stream)
 {
     Py_XDECREF(stream->reader_obj);
     free(stream->buffer);
@@ -2453,6 +2453,10 @@ bw_open(FILE *f, bs_endianness endianness)
     bs->output.file.buffer_size = 0;
     bs->output.file.buffer = 0;
 
+    bs->first_placeholder = NULL;
+    bs->final_placeholder = NULL;
+    bs->placeholders_used = NULL;
+
     bs->callbacks = NULL;
     bs->callbacks_used = NULL;
 
@@ -2471,6 +2475,10 @@ bw_open(FILE *f, bs_endianness endianness)
         break;
     }
 
+    bs->write_placeholder = bw_write_placeholder_f;
+    bs->write_64_placeholder = bw_write_64_placeholder_f;
+    bs->fill_placeholder = bw_fill_placeholder_f;
+    bs->fill_64_placeholder = bw_fill_64_placeholder_f;
     bs->write_signed = bw_write_signed_bits_f_r;
     bs->write_unary = bw_write_unary_f_r;
     bs->byte_align = bw_byte_align_f;
@@ -2489,6 +2497,10 @@ bw_open_accumulator(bs_endianness endianness)
 
     bs->output.accumulator = 0;
 
+    bs->first_placeholder = NULL;
+    bs->final_placeholder = NULL;
+    bs->placeholders_used = NULL;
+
     bs->callbacks = NULL;
     bs->callbacks_used = NULL;
 
@@ -2502,13 +2514,16 @@ bw_open_accumulator(bs_endianness endianness)
     }
 
     bs->write = bw_write_bits_a;
+    bs->write_placeholder = bw_write_placeholder_a;
+    bs->fill_placeholder = bw_fill_placeholder_a;
     bs->write_signed = bw_write_signed_bits_a;
     bs->write_64 = bw_write_bits64_a;
+    bs->write_64_placeholder = bw_write_64_placeholder_a;
+    bs->fill_64_placeholder = bw_fill_64_placeholder_a;
     bs->write_unary = bw_write_unary_a;
     bs->byte_align = bw_byte_align_a;
     bs->set_endianness = bw_set_endianness_a;
     bs->bits_written = bw_bits_written_a;
-
     bs->close = bw_close_new;
     bs->close_stream = bw_close_stream_a;
 
@@ -2527,6 +2542,10 @@ bw_open_recorder(bs_endianness endianness)
     bs->output.recorder.records = malloc(sizeof(BitstreamRecord) *
                                          bs->output.recorder.records_total);
 
+    bs->first_placeholder = NULL;
+    bs->final_placeholder = NULL;
+    bs->placeholders_used = NULL;
+
     bs->callbacks = NULL;
     bs->callbacks_used = NULL;
 
@@ -2540,13 +2559,16 @@ bw_open_recorder(bs_endianness endianness)
     }
 
     bs->write = bw_write_bits_r;
+    bs->write_placeholder = bw_write_placeholder_r;
+    bs->fill_placeholder = bw_fill_placeholder_r;
     bs->write_signed = bw_write_signed_bits_f_r;
     bs->write_64 = bw_write_bits64_r;
+    bs->write_64_placeholder = bw_write_64_placeholder_r;
+    bs->fill_64_placeholder = bw_fill_64_placeholder_r;
     bs->write_unary = bw_write_unary_f_r;
     bs->byte_align = bw_byte_align_r;
     bs->set_endianness = bw_set_endianness_r;
     bs->bits_written = bw_bits_written_r;
-
     bs->close = bw_close_new;
     bs->close_stream = bw_close_stream_r;
 
@@ -2556,13 +2578,33 @@ bw_open_recorder(bs_endianness endianness)
 void
 bw_free(BitstreamWriter* bs)
 {
-    struct bs_callback *node;
-    struct bs_callback *next;
+    struct bs_callback* callback;
+    struct bs_callback* next_callback;
+    struct bw_placeholder* placeholder;
+    struct bw_placeholder* next_placeholder;
 
-    for (node = bs->callbacks; node != NULL; node = next) {
-        next = node->next;
-        free(node);
+    for (callback = bs->callbacks; callback != NULL; callback = next_callback) {
+        next_callback = callback->next;
+        free(callback);
     }
+
+    if (bs->first_placeholder != NULL) {
+        fprintf(stderr, "unused placeholders remain in stream\n");
+        for (placeholder = bs->first_placeholder;
+             placeholder != NULL;
+             placeholder = next_placeholder) {
+            next_placeholder = placeholder->next;
+            free(placeholder);
+        }
+    }
+
+    for (placeholder = bs->placeholders_used;
+         placeholder != NULL;
+         placeholder = next_placeholder) {
+        next_placeholder = placeholder->next;
+        free(placeholder);
+    }
+
     free(bs);
 }
 
@@ -2663,7 +2705,8 @@ bw_dump_records_limited(BitstreamWriter* target,
     unsigned int total_bits = total_bytes * 8;
     unsigned int bits_dumped = 0;
 
-    /*FIXME - handle case in which "source" == "remaining"*/
+    /*FIXME - handle case in which "source" == "remaining"
+      in that event, wipe placeholders from source*/
 
     assert(source->type == BW_RECORDER);
 
@@ -2839,6 +2882,109 @@ bw_write_bits_a(BitstreamWriter* bs, unsigned int count, unsigned int value)
 
 
 void
+bw_write_placeholder_f(BitstreamWriter* bs, unsigned int count,
+                       unsigned int temp_value) {
+    struct bw_placeholder* placeholder = bw_new_placeholder(bs);
+
+    /*populate placeholder*/
+    placeholder->type = BS_WRITE_BITS;
+    placeholder->count = count;
+    placeholder->function.write = bs->write;
+    bw_mark_f(bs, &(placeholder->position));
+
+    /*then write dummy value to stream*/
+    bs->write(bs, count, temp_value);
+}
+
+void
+bw_write_placeholder_r(BitstreamWriter* bs, unsigned int count,
+                       unsigned int temp_value)  {
+    struct bw_placeholder* placeholder = bw_new_placeholder(bs);
+
+    /*populate placeholder*/
+    placeholder->type = BS_WRITE_BITS;
+    placeholder->count = count;
+    placeholder->function.write = bs->write;
+    bw_mark_r(bs, &(placeholder->position));
+
+    /*then write dummy value to stream*/
+    bs->write(bs, count, temp_value);
+}
+void
+bw_write_placeholder_a(BitstreamWriter* bs, unsigned int count,
+                       unsigned int temp_value)  {
+    struct bw_placeholder* placeholder = bw_new_placeholder(bs);
+
+    /*populate placeholder*/
+    placeholder->type = BS_WRITE_BITS;
+
+    /*then write dummy value to stream*/
+    bs->write(bs, count, temp_value);
+}
+
+
+void
+bw_fill_placeholder_f(BitstreamWriter* bs, unsigned int final_value) {
+    struct bw_placeholder* placeholder = bw_use_placeholder(bs);
+    union bw_mark original_position;
+
+    if (placeholder != NULL) {
+        if (placeholder->type == BS_WRITE_BITS) {
+            /*save current position in stream*/
+            bw_mark_f(bs, &original_position);
+
+            /*move stream to placeholder's position*/
+            bw_rewind_f(bs, &(placeholder->position));
+
+            /*update placeholder's value according to its bit count
+              and saved write function (in case endianness has changed)*/
+            placeholder->function.write(bs, placeholder->count, final_value);
+
+            /*move stream back to saved position*/
+            bw_rewind_f(bs, &original_position);
+        } else {
+            fprintf(stderr, "placeholder type mismatch\n");
+        }
+    } else {
+        fprintf(stderr, "no placeholder entries remain in FIFO\n");
+    }
+}
+
+void
+bw_fill_placeholder_r(BitstreamWriter* bs, unsigned int final_value) {
+    struct bw_placeholder* placeholder = bw_use_placeholder(bs);
+
+    if (placeholder != NULL) {
+        if (placeholder->type == BS_WRITE_BITS) {
+            /*overwrite record at placeholder position with new value*/
+
+            bs->output.recorder.records[placeholder->position.recorder
+                                        ].value.unsigned_value = final_value;
+        } else {
+            fprintf(stderr, "placeholder type mismatch\n");
+        }
+    } else {
+        fprintf(stderr, "no placeholder entries remain in FIFO\n");
+    }
+}
+
+
+void
+bw_fill_placeholder_a(BitstreamWriter* bs, unsigned int final_value) {
+    struct bw_placeholder* placeholder = bw_use_placeholder(bs);
+
+    if (placeholder != NULL) {
+        if (placeholder->type != BS_WRITE_BITS) {
+            fprintf(stderr, "placeholder type mismatch\n");
+        }
+    } else {
+        fprintf(stderr, "no placeholder entries remain in FIFO\n");
+    }
+}
+
+
+
+void
 bw_write_signed_bits_f_r(BitstreamWriter* bs, unsigned int count, int value)
 {
     assert(value < (1 << (count - 1)));
@@ -2964,6 +3110,109 @@ bw_write_bits64_a(BitstreamWriter* bs, unsigned int count, uint64_t value)
     assert(value < (int64_t)(1ll << count));
     bs->output.accumulator += count;
 }
+
+
+void
+bw_write_64_placeholder_f(BitstreamWriter* bs, unsigned int count,
+                          uint64_t temp_value) {
+    struct bw_placeholder* placeholder = bw_new_placeholder(bs);
+
+    /*populate placeholder*/
+    placeholder->type = BS_WRITE_BITS64;
+    placeholder->count = count;
+    placeholder->function.write_64 = bs->write_64;
+    bw_mark_f(bs, &(placeholder->position));
+
+    /*then write dummy value to stream*/
+    bs->write_64(bs, count, temp_value);
+}
+
+void
+bw_write_64_placeholder_r(BitstreamWriter* bs, unsigned int count,
+                          uint64_t temp_value) {
+    struct bw_placeholder* placeholder = bw_new_placeholder(bs);
+
+    /*populate placeholder*/
+    placeholder->type = BS_WRITE_BITS64;
+    placeholder->count = count;
+    placeholder->function.write_64 = bs->write_64;
+    bw_mark_r(bs, &(placeholder->position));
+
+    /*then write dummy value to stream*/
+    bs->write_64(bs, count, temp_value);
+}
+
+void
+bw_write_64_placeholder_a(BitstreamWriter* bs, unsigned int count,
+                          uint64_t temp_value) {
+    struct bw_placeholder* placeholder = bw_new_placeholder(bs);
+
+    /*populate placeholder*/
+    placeholder->type = BS_WRITE_BITS64;
+
+    /*then write dummy value to stream*/
+    bs->write(bs, count, temp_value);
+}
+
+
+void
+bw_fill_64_placeholder_f(BitstreamWriter* bs, uint64_t final_value) {
+    struct bw_placeholder* placeholder = bw_use_placeholder(bs);
+    union bw_mark original_position;
+
+    if (placeholder != NULL) {
+        if (placeholder->type == BS_WRITE_BITS64) {
+            /*save current position in stream*/
+            bw_mark_f(bs, &original_position);
+
+            /*move stream to placeholder's position*/
+            bw_rewind_f(bs, &(placeholder->position));
+
+            /*update placeholder's value according to its bit count
+              and saved write function (in case endianness has changed)*/
+            placeholder->function.write_64(bs, placeholder->count, final_value);
+
+            /*move stream back to saved position*/
+            bw_rewind_f(bs, &original_position);
+        } else {
+            fprintf(stderr, "placeholder type mismatch\n");
+        }
+    } else {
+        fprintf(stderr, "no placeholder entries remain in FIFO\n");
+    }
+}
+
+void
+bw_fill_64_placeholder_r(BitstreamWriter* bs, uint64_t final_value) {
+    struct bw_placeholder* placeholder = bw_use_placeholder(bs);
+
+    if (placeholder != NULL) {
+        if (placeholder->type == BS_WRITE_BITS64) {
+            /*overwrite record at placeholder position with new value*/
+
+            bs->output.recorder.records[placeholder->position.recorder
+                                        ].value.value64 = final_value;
+        } else {
+            fprintf(stderr, "placeholder type mismatch\n");
+        }
+    } else {
+        fprintf(stderr, "no placeholder entries remain in FIFO\n");
+    }
+}
+
+void
+bw_fill_64_placeholder_a(BitstreamWriter* bs, uint64_t final_value) {
+    struct bw_placeholder* placeholder = bw_use_placeholder(bs);
+
+    if (placeholder != NULL) {
+        if (placeholder->type != BS_WRITE_BITS64) {
+            fprintf(stderr, "placeholder type mismatch\n");
+        }
+    } else {
+        fprintf(stderr, "no placeholder entries remain in FIFO\n");
+    }
+}
+
 
 #define UNARY_BUFFER_SIZE 30
 
@@ -3102,6 +3351,25 @@ bw_set_endianness_a(BitstreamWriter* bs, bs_endianness endianness)
     bw_byte_align_a(bs);
 }
 
+
+void
+bw_mark_f(BitstreamWriter* bs, union bw_mark* position) {
+    fgetpos(bs->output.file.file, &(position->file.pos));
+    position->file.buffer_size = bs->output.file.buffer_size;
+    position->file.buffer = bs->output.file.buffer;
+}
+
+void
+bw_mark_r(BitstreamWriter* bs, union bw_mark* position) {
+    position->recorder = bs->output.recorder.records_written;
+}
+
+void
+bw_rewind_f(BitstreamWriter* bs, union bw_mark* position) {
+    fsetpos(bs->output.file.file, &(position->file.pos));
+    bs->output.file.buffer_size = position->file.buffer_size;
+    bs->output.file.buffer = position->file.buffer;
+}
 
 void
 bw_close_new(BitstreamWriter* bs) {
@@ -3276,6 +3544,49 @@ bw_split_record_le(BitstreamRecord* record,
     }
 }
 
+struct bw_placeholder*
+bw_new_placeholder(BitstreamWriter* bs) {
+    struct bw_placeholder* placeholder;
+
+    /*first, either allocate or recycle a placeholder entry*/
+    if (bs->placeholders_used != NULL) {
+        placeholder = bs->placeholders_used;
+        bs->placeholders_used = bs->placeholders_used->next;
+    } else {
+        placeholder = malloc(sizeof(struct bw_placeholder));
+    }
+
+    /*then place it in the bitstream's FIFO*/
+    if (bs->final_placeholder != NULL) {
+        bs->final_placeholder->next = placeholder;
+        bs->final_placeholder = placeholder;
+    } else {
+        bs->first_placeholder = bs->final_placeholder = placeholder;
+    }
+
+    placeholder->next = NULL;
+
+    return placeholder;
+}
+
+struct bw_placeholder*
+bw_use_placeholder(BitstreamWriter* bs) {
+    struct bw_placeholder* placeholder = bs->first_placeholder;
+
+    if (placeholder != NULL) {
+        bs->first_placeholder = bs->first_placeholder->next;
+        if (bs->first_placeholder == NULL)
+            /*if we've used the last placeholder,
+              the final placeholder must also be marked used*/
+            bs->final_placeholder = NULL;
+        placeholder->next = bs->placeholders_used;
+        bs->placeholders_used = placeholder;
+        return placeholder;
+    } else
+        return NULL;
+}
+
+
 
 /*****************************************************************
  BEGIN UNIT TESTS
@@ -3294,17 +3605,17 @@ void atexit_cleanup(void);
 void sigabort_cleanup(int signum);
 
 void test_big_endian_reader(BitstreamReader* reader,
-                            struct bs_huffman_table (*table)[][0x200]);
+                            struct br_huffman_table (*table)[][0x200]);
 void test_little_endian_reader(BitstreamReader* reader,
-                               struct bs_huffman_table (*table)[][0x200]);
+                               struct br_huffman_table (*table)[][0x200]);
 
 void test_try(BitstreamReader* reader,
-              struct bs_huffman_table (*table)[][0x200]);
+              struct br_huffman_table (*table)[][0x200]);
 
 void test_callbacks_reader(BitstreamReader* reader,
                            int unary_0_reads,
                            int unary_1_reads,
-                           struct bs_huffman_table (*table)[][0x200],
+                           struct br_huffman_table (*table)[][0x200],
                            int huffman_code_count);
 
 void
@@ -3346,8 +3657,8 @@ int main(int argc, char* argv[]) {
                                               {1, 2, 2},
                                               {1, 3, 3},
                                               {0, 3, 4}};
-    struct bs_huffman_table (*be_table)[][0x200];
-    struct bs_huffman_table (*le_table)[][0x200];
+    struct br_huffman_table (*be_table)[][0x200];
+    struct br_huffman_table (*le_table)[][0x200];
 
     new_action.sa_handler = sigabort_cleanup;
     sigemptyset(&new_action.sa_mask);
@@ -3484,7 +3795,7 @@ void sigabort_cleanup(int signum) {
 }
 
 void test_big_endian_reader(BitstreamReader* reader,
-                            struct bs_huffman_table (*table)[][0x200]) {
+                            struct br_huffman_table (*table)[][0x200]) {
     int bit;
     uint8_t sub_data[2];
 
@@ -3622,7 +3933,7 @@ void test_big_endian_reader(BitstreamReader* reader,
 }
 
 void test_little_endian_reader(BitstreamReader* reader,
-                               struct bs_huffman_table (*table)[][0x200]) {
+                               struct br_huffman_table (*table)[][0x200]) {
     int bit;
     uint8_t sub_data[2];
 
@@ -3760,7 +4071,7 @@ void test_little_endian_reader(BitstreamReader* reader,
 }
 
 void test_try(BitstreamReader* reader,
-              struct bs_huffman_table (*table)[][0x200]) {
+              struct br_huffman_table (*table)[][0x200]) {
     uint8_t bytes[2];
     BitstreamReader* substream;
 
@@ -3868,7 +4179,7 @@ void test_try(BitstreamReader* reader,
 void test_callbacks_reader(BitstreamReader* reader,
                            int unary_0_reads,
                            int unary_1_reads,
-                           struct bs_huffman_table (*table)[][0x200],
+                           struct br_huffman_table (*table)[][0x200],
                            int huffman_code_count) {
     int i;
     unsigned int byte_count;

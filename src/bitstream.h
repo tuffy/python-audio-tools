@@ -63,22 +63,22 @@ struct bs_exception {
     struct bs_exception *next;
 };
 
-struct bs_mark {
+struct br_mark {
     union {
         fpos_t file;
         uint32_t substream;
         uint32_t python;
     } position;
     int state;
-    struct bs_mark *next;
+    struct br_mark *next;
 };
 
-struct bs_huffman_table {
+struct br_huffman_table {
     unsigned int context_node;
     int value;
 };
 
-struct bs_buffer {
+struct br_buffer {
     uint8_t* buffer;
     uint32_t buffer_size;
     uint32_t buffer_total_size;
@@ -87,7 +87,7 @@ struct bs_buffer {
 };
 
 #ifndef STANDALONE
-struct bs_python_input {
+struct br_python_input {
     PyObject* reader_obj;
     uint8_t* buffer;
     uint32_t buffer_total_size;
@@ -108,6 +108,33 @@ typedef struct {
 } BitstreamRecord;
 
 
+union bw_mark {
+    struct {
+        fpos_t pos;
+        unsigned int buffer_size;
+        unsigned int buffer;
+    } file;
+    unsigned int recorder;
+};
+
+struct BitstreamWriter_s;
+
+struct bw_placeholder {
+    BitstreamRecordType type;
+    unsigned int count;
+    union {
+        void (*write)(struct BitstreamWriter_s* bs,
+                      unsigned int count,
+                      unsigned int value);
+        void (*write_64)(struct BitstreamWriter_s* bs,
+                         unsigned int count,
+                         uint64_t value);
+    } function;
+    union bw_mark position;
+    struct bw_placeholder* next;
+};
+
+
 typedef struct BitstreamReader_s {
 #ifndef NDEBUG
     br_type type;
@@ -115,20 +142,20 @@ typedef struct BitstreamReader_s {
 
     union {
         FILE* file;
-        struct bs_buffer* substream;
+        struct br_buffer* substream;
 #ifndef STANDALONE
-        struct bs_python_input* python;
+        struct br_python_input* python;
 #endif
     } input;
 
     int state;
     struct bs_callback* callbacks;
     struct bs_exception* exceptions;
-    struct bs_mark* marks;
+    struct br_mark* marks;
 
     struct bs_callback* callbacks_used;
     struct bs_exception* exceptions_used;
-    struct bs_mark* marks_used;
+    struct br_mark* marks_used;
 
     /*returns "count" number of unsigned bits from the current stream
       in the current endian format up to "count" bits wide*/
@@ -168,7 +195,7 @@ typedef struct BitstreamReader_s {
     /*reads the next Huffman code from the stream
       where the code tree is defined from the given compiled table*/
     int (*read_huffman_code)(struct BitstreamReader_s* bs,
-                             struct bs_huffman_table table[][0x200]);
+                             struct br_huffman_table table[][0x200]);
 
     /*aligns the stream to a byte boundary*/
     void (*byte_align)(struct BitstreamReader_s* bs);
@@ -239,9 +266,12 @@ typedef struct BitstreamWriter_s {
         unsigned int accumulator;
     } output;
 
+    struct bw_placeholder* first_placeholder;
+    struct bw_placeholder* final_placeholder;
+    struct bw_placeholder* placeholders_used;
 
-    struct bs_callback *callbacks;
-    struct bs_callback *callbacks_used;
+    struct bs_callback* callbacks;
+    struct bs_callback* callbacks_used;
 
 
     /*writes the given value as "count" number of unsigned bits
@@ -249,6 +279,19 @@ typedef struct BitstreamWriter_s {
     void (*write)(struct BitstreamWriter_s* bs,
                   unsigned int count,
                   unsigned int value);
+
+    /*writes the given temp_value as "count" number of unsigned bits
+      to the current stream, to be populated later*/
+    void (*write_placeholder)(struct BitstreamWriter_s* bs,
+                              unsigned int count,
+                              unsigned int temp_value);
+
+    /*populates the earliest placeholder on a first-in, first-out basis
+      with the given final value
+
+      the number of bits populated is the same as the placeholder's*/
+    void (*fill_placeholder)(struct BitstreamWriter_s* bs,
+                             unsigned int final_value);
 
     /*writes the given value as "count" number of signed bits
       to the current stream*/
@@ -261,6 +304,19 @@ typedef struct BitstreamWriter_s {
     void (*write_64)(struct BitstreamWriter_s* bs,
                      unsigned int count,
                      uint64_t value);
+
+    /*writes the given temp_value as "count" number of unsigned bits
+      to the current stream, up to 64 bits wide, to be populated later*/
+    void (*write_64_placeholder)(struct BitstreamWriter_s* bs,
+                                 unsigned int count,
+                                 uint64_t temp_value);
+
+    /*populates the earliest placeholder on a first-in, first-out basis
+      with the given final value, up to 64 bits wide
+
+      the number of bits populated is the same as the placeholder's*/
+    void (*fill_64_placeholder)(struct BitstreamWriter_s* bs,
+                                uint64_t final_value);
 
     /*writes "value" number of non stop bits to the current stream
       followed by a single stop bit*/
@@ -284,6 +340,9 @@ typedef struct BitstreamWriter_s {
       that information*/
     unsigned int (*bits_written)(struct BitstreamWriter_s* bs);
 
+    /*splits the given record in two
+      where "head" contains up to "bits" number of output bits
+      and "tail" contains the remainder of the output bits*/
     void (*split_record)(BitstreamRecord* record,
                          BitstreamRecord* head,
                          BitstreamRecord* tail,
@@ -335,7 +394,7 @@ br_call_callbacks(BitstreamReader *bs, uint8_t byte);
 
   br_pop_callback(reader, &saved_callback);  //save callback for later
   unchecksummed_value = bs->read(bs, 16);    //read a value
-  br_push_callback(reader, &saved_callback); //restored saved callback
+  br_push_callback(reader, &saved_callback); //restore saved callback
 */
 void
 br_pop_callback(BitstreamReader *bs, struct bs_callback *callback);
@@ -553,14 +612,14 @@ br_set_endianness_p_le(BitstreamReader *bs, bs_endianness endianness);
   since that is determined when its jump table is compiled*/
 int
 br_read_huffman_code_f(BitstreamReader *bs,
-                       struct bs_huffman_table table[][0x200]);
+                       struct br_huffman_table table[][0x200]);
 int
 br_read_huffman_code_s(BitstreamReader *bs,
-                       struct bs_huffman_table table[][0x200]);
+                       struct br_huffman_table table[][0x200]);
 #ifndef STANDALONE
 int
 br_read_huffman_code_p(BitstreamReader *bs,
-                       struct bs_huffman_table table[][0x200]);
+                       struct br_huffman_table table[][0x200]);
 #endif
 
 
@@ -600,11 +659,11 @@ br_byte_align(BitstreamReader* bs);
 
 /*returns a new br_buffer struct which can be appended to and read from
   it must be closed later*/
-struct bs_buffer*
+struct br_buffer*
 buf_new(void);
 
 uint32_t
-buf_size(struct bs_buffer *stream);
+buf_size(struct br_buffer *stream);
 
 /*returns a pointer to the new position in the buffer
   where one can begin appending new data
@@ -621,21 +680,21 @@ buf_size(struct bs_buffer *stream);
 
 */
 uint8_t*
-buf_extend(struct bs_buffer *stream, uint32_t data_size);
+buf_extend(struct br_buffer *stream, uint32_t data_size);
 
 /*clears out the buffer for possible reuse
 
   resets the position, size and resets any marks in progress*/
 void
-buf_reset(struct bs_buffer *stream);
+buf_reset(struct br_buffer *stream);
 
 /*analagous to fgetc, returns EOF at the end of buffer*/
 int
-buf_getc(struct bs_buffer *stream);
+buf_getc(struct br_buffer *stream);
 
 /*deallocates buffer struct*/
 void
-buf_close(struct bs_buffer *stream);
+buf_close(struct br_buffer *stream);
 
 
 struct BitstreamReader_s*
@@ -680,24 +739,24 @@ br_substream_append_s(struct BitstreamReader_s *stream,
 #ifndef STANDALONE
 
 /*given a file-like Python object with read() and close() methods,
-  returns a newly allocated bs_python_input struct
+  returns a newly allocated br_python_input struct
 
   object is increfed*/
-struct bs_python_input*
+struct br_python_input*
 py_open(PyObject* reader);
 
 /*analagous to fgetc, returns EOF at the end of stream
   or if some exception occurs when fetching from the reader object*/
 int
-py_getc(struct bs_python_input *stream);
+py_getc(struct br_python_input *stream);
 
 /*closes the input stream and decrefs any objects*/
 int
-py_close(struct bs_python_input *stream);
+py_close(struct br_python_input *stream);
 
 /*decrefs any objects and space, but does not close input stream*/
 void
-py_free(struct bs_python_input *stream);
+py_free(struct br_python_input *stream);
 
 BitstreamReader*
 br_open_python(PyObject *reader, bs_endianness endianness);
@@ -784,6 +843,19 @@ void
 bw_swap_records(BitstreamWriter* a, BitstreamWriter* b);
 
 
+/*returns a bw_placeholder and places it in the FIFO's final position,
+  either newly allocated or pulled from the recycle stack*/
+struct bw_placeholder*
+bw_new_placeholder(BitstreamWriter* bs);
+
+/*returns the bw_placeholder from the FIFO's first position,
+  moves it to the recycle bin, adjusting the FIFO accordingly
+
+  if the stack is empty, returns NULL*/
+struct bw_placeholder*
+bw_use_placeholder(BitstreamWriter* bs);
+
+
 /*************************************************************
  Bitstream Writer Function Matrix
  The write functions come in three output variants
@@ -814,6 +886,24 @@ bw_write_bits_r(BitstreamWriter* bs, unsigned int count, unsigned int value);
 void
 bw_write_bits_a(BitstreamWriter* bs, unsigned int count, unsigned int value);
 
+
+void
+bw_write_placeholder_f(BitstreamWriter* bs, unsigned int count,
+                       unsigned int temp_value);
+void
+bw_write_placeholder_r(BitstreamWriter* bs, unsigned int count,
+                       unsigned int temp_value);
+void
+bw_write_placeholder_a(BitstreamWriter* bs, unsigned int count,
+                       unsigned int temp_value);
+
+void
+bw_fill_placeholder_f(BitstreamWriter* bs, unsigned int final_value);
+void
+bw_fill_placeholder_r(BitstreamWriter* bs, unsigned int final_value);
+void
+bw_fill_placeholder_a(BitstreamWriter* bs, unsigned int final_value);
+
 void
 bw_write_signed_bits_f_r(BitstreamWriter* bs, unsigned int count, int value);
 void
@@ -827,6 +917,23 @@ void
 bw_write_bits64_r(BitstreamWriter* bs, unsigned int count, uint64_t value);
 void
 bw_write_bits64_a(BitstreamWriter* bs, unsigned int count, uint64_t value);
+
+void
+bw_write_64_placeholder_f(BitstreamWriter* bs, unsigned int count,
+                          uint64_t temp_value);
+void
+bw_write_64_placeholder_r(BitstreamWriter* bs, unsigned int count,
+                          uint64_t temp_value);
+void
+bw_write_64_placeholder_a(BitstreamWriter* bs, unsigned int count,
+                          uint64_t temp_value);
+
+void
+bw_fill_64_placeholder_f(BitstreamWriter* bs, uint64_t final_value);
+void
+bw_fill_64_placeholder_r(BitstreamWriter* bs, uint64_t final_value);
+void
+bw_fill_64_placeholder_a(BitstreamWriter* bs, uint64_t final_value);
 
 void
 bw_write_unary_f_r(BitstreamWriter* bs, int stop_bit, unsigned int value);
@@ -855,6 +962,14 @@ void
 bw_set_endianness_a(BitstreamWriter* bs, bs_endianness endianness);
 void
 bw_set_endianness_r(BitstreamWriter* bs, bs_endianness endianness);
+
+
+void
+bw_mark_f(BitstreamWriter* bs, union bw_mark* position);
+void
+bw_mark_r(BitstreamWriter* bs, union bw_mark* position);
+void
+bw_rewind_f(BitstreamWriter* bs, union bw_mark* position);
 
 
 /*given a BitstreamRecord larger than "bits",

@@ -196,7 +196,7 @@ PyTypeObject decoders_BitstreamReaderType = {
 typedef struct {
     PyObject_HEAD
 
-    struct bs_huffman_table (*table)[][0x200];
+    struct br_huffman_table (*table)[][0x200];
 } decoders_HuffmanTree;
 
 int

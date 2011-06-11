@@ -126,7 +126,7 @@ int
 aobpcm_read_chunk(uint8_t* buffer,
                   int chunk_size,
                   uint8_t* swap,
-                  struct bs_python_input* reader) {
+                  struct br_python_input* reader) {
     int i;
     int byte;
     uint8_t unswapped[36];

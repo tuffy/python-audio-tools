@@ -55,7 +55,7 @@ const uint8_t AOB_BYTE_SWAP[2][6][36] = {
 typedef struct {
     PyObject_HEAD
 
-    struct bs_python_input* reader;
+    struct br_python_input* reader;
     int sample_rate;
     int channels;
     int channel_mask;
@@ -104,7 +104,7 @@ int
 aobpcm_read_chunk(uint8_t* buffer,
                   int chunk_size,
                   uint8_t* swap,
-                  struct bs_python_input* reader);
+                  struct br_python_input* reader);
 
 /*the MLPDecoder.close() method*/
 static PyObject*

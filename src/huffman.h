@@ -26,8 +26,7 @@ struct huffman_frequency {
                            from most-significant to least-significant
                            in the tree*/
 
-    unsigned int length; /*the total length of bits leading to the leaf node
-                           0 length indicates a terminator frequency*/
+    unsigned int length; /*the total length of bits leading to the leaf node*/
 
     int value;           /*the final value in the leaf node*/
 };
@@ -70,7 +69,7 @@ enum {
   or a negative value if there's an error
   (whose value is taken from the preceding enum)
 */
-int compile_huffman_table(struct bs_huffman_table (**table)[][0x200],
+int compile_huffman_table(struct br_huffman_table (**table)[][0x200],
                           struct huffman_frequency* frequencies,
                           unsigned int total_frequencies,
                           bs_endianness endianness);
@@ -94,7 +93,7 @@ int compile_huffman_table(struct bs_huffman_table (**table)[][0x200],
 
   where "table.h" is imported in source code with:
 
-  struct bs_huffman_table table[][0x200] =
+  struct br_huffman_table table[][0x200] =
   #include "table.h"
   ;
 
@@ -119,7 +118,7 @@ int compile_huffman_table(struct bs_huffman_table (**table)[][0x200],
 
   we compile them to a table with:
 
-  struct bs_huffman_table (*table)[][0x200];
+  struct br_huffman_table (*table)[][0x200];
   compile_huffman_table(&table, frequencies, 4, BS_BIG_ENDIAN);
 
   and call that table from the bitstream reader with:

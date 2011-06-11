@@ -30,7 +30,7 @@ struct huffman_node {
         int leaf;
         struct {
             unsigned int id;
-            struct bs_huffman_table jump_table[0x200];
+            struct br_huffman_table jump_table[0x200];
             struct huffman_node* bit_0;
             struct huffman_node* bit_1;
         } tree;
@@ -73,7 +73,7 @@ free_huffman_tree(struct huffman_node* node);
 /*takes a built Huffman tree and compiles it to a jump table
   with the given endianness*/
 static int
-compile_huffman_tree(struct bs_huffman_table (**table)[][0x200],
+compile_huffman_tree(struct br_huffman_table (**table)[][0x200],
                      struct huffman_node* tree,
                      bs_endianness endianness);
 
@@ -93,7 +93,7 @@ total_leaf_nodes(struct huffman_node* tree);
 /*transfers the jump tables embedded in the Huffman tree nodes
   to a flattened, 2 dimensional array*/
 static void
-transfer_huffman_tree(struct bs_huffman_table (*table)[][0x200],
+transfer_huffman_tree(struct br_huffman_table (*table)[][0x200],
                       struct huffman_node* tree);
 
 /*performs the actual walking of the tree
@@ -101,7 +101,7 @@ transfer_huffman_tree(struct bs_huffman_table (*table)[][0x200],
   given a byte bank, endianness and tree,
   updates the jump table with which node the bank will wind up at*/
 static void
-next_read_huffman_state(struct bs_huffman_table* state,
+next_read_huffman_state(struct br_huffman_table* state,
                         struct byte_bank bank,
                         struct huffman_node* tree,
                         bs_endianness endianness);
@@ -255,7 +255,7 @@ void print_huffman_tree(struct huffman_node* node, int indent) {
 }
 
 static int
-compile_huffman_tree(struct bs_huffman_table (**table)[][0x200],
+compile_huffman_tree(struct br_huffman_table (**table)[][0x200],
                      struct huffman_node* tree,
                      bs_endianness endianness) {
     int total_rows = total_non_leaf_nodes(tree);
@@ -269,7 +269,7 @@ compile_huffman_tree(struct bs_huffman_table (**table)[][0x200],
         populate_huffman_tree(tree, endianness);
 
         /*allocate space for the entire set of jump tables*/
-        *table = malloc(sizeof(struct bs_huffman_table) * total_rows * 0x200);
+        *table = malloc(sizeof(struct br_huffman_table) * total_rows * 0x200);
 
         /*transfer jump tables of each node from tree*/
         transfer_huffman_tree(*table, tree);
@@ -277,7 +277,7 @@ compile_huffman_tree(struct bs_huffman_table (**table)[][0x200],
         /*no non-leaf nodes, so the table is trivial
           all inputs consume no bits and return the final value*/
 
-        *table = malloc(sizeof(struct bs_huffman_table) * 1 * 0x200);
+        *table = malloc(sizeof(struct br_huffman_table) * 1 * 0x200);
 
         (**table)[0][0].context_node = 0;
         (**table)[0][0].value = tree->v.leaf;
@@ -330,7 +330,7 @@ populate_huffman_tree(struct huffman_node* tree,
     }
 }
 
-void next_read_huffman_state(struct bs_huffman_table* state,
+void next_read_huffman_state(struct br_huffman_table* state,
                              struct byte_bank bank,
                              struct huffman_node* tree,
                              bs_endianness endianness) {
@@ -406,7 +406,7 @@ total_leaf_nodes(struct huffman_node* tree) {
 }
 
 static void
-transfer_huffman_tree(struct bs_huffman_table (*table)[][0x200],
+transfer_huffman_tree(struct br_huffman_table (*table)[][0x200],
                       struct huffman_node* tree) {
     int i;
 
@@ -420,7 +420,7 @@ transfer_huffman_tree(struct bs_huffman_table (*table)[][0x200],
     }
 }
 
-int compile_huffman_table(struct bs_huffman_table (**table)[][0x200],
+int compile_huffman_table(struct br_huffman_table (**table)[][0x200],
                           struct huffman_frequency* frequencies,
                           unsigned int total_frequencies,
                           bs_endianness endianness) {
@@ -465,7 +465,7 @@ int main(int argc, char* argv[]) {
     /*the variables for real work*/
     struct huffman_frequency* frequencies;
     unsigned int total_frequencies;
-    struct bs_huffman_table (*table)[][0x200];
+    struct br_huffman_table (*table)[][0x200];
     int row;
     int context;
     int total_rows;

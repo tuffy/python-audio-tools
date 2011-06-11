@@ -3613,6 +3613,32 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   This is at the heart of a lot of things so it should be properly cleaned up.
 ** DONE Merge bitstream_r and bitstream_w source files
 ** TODO Make BitstreamReader and BitstreamWriter more symmetric
+** DONE Add placeholders to BitstreamWriter
+   These allow one to put temporary values in the stream
+   which can be automatically filled-in later on.
+*** DONE Add write_placeholder method to BitstreamWriter
+*** DONE Add fill_placeholder method to BitstreamWriter
+*** DONE Add write_64_placeholder method to BitstreamWriter
+*** DONE Add fill_64_placeholder method to BitstreamWriter
+*** DONE Implement bw_write_placeholder_f
+*** DONE Implement bw_write_64_placeholder_f
+*** DONE Implement bw_fill_placeholder_f
+*** DONE Implement bw_fill_64_placeholder_f
+*** DONE Implement bw_write_placeholder_r
+*** DONE Implement bw_write_64_placeholder_r
+*** DONE Implement bw_fill_placeholder_r
+*** DONE Implement bw_fill_64_placeholder_r
+*** DONE Implement bw_write_placeholder_a
+    Should manage the placeholder stack, but only keep track of bits sent
+*** DONE Implement bw_write_64_placeholder_a
+    Should manage the placeholder stack, but only keep track of bits sent
+*** DONE Implement bw_fill_placeholder_a
+    Should manage the placeholder stack, but not do anything else
+*** DONE Implement bw_fill_64_placeholder_a
+    Should manage the placeholder stack, but not do anything else
+*** DONE Store filled placeholders in a stack for reuse
+*** DONE Clean out allocated placeholders as close() time
+**** DONE Trigger warnings if not all placeholders are used at close()
 ** TODO Add C-based unit tests
    This should be something I can compile into a standalone file
    and run with no external dependencies.
@@ -3673,6 +3699,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** TODO big-endian
 **** TODO little-endian
 **** TODO callbacks
+**** TODO placeholders
 *** TODO BitstreamWriter recorder
 *** TODO BitstreamWriter accumulator
 ** TODO Add documentation
