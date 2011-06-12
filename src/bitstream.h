@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <setjmp.h>
-
+#include <stdarg.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -120,17 +120,33 @@ union bw_mark {
 struct BitstreamWriter_s;
 
 struct bw_placeholder {
+    /*the stream the placeholder is attached to*/
+    struct BitstreamWriter_s* stream;
+
+    /*the type of record being written,
+      either BS_WRITE_BITS or BS_WRITE_BITS64*/
     BitstreamRecordType type;
+
+    /*the number of bits being written*/
     unsigned int count;
+
+    /*the write function used at the time the placeholder is called*/
     union {
-        void (*write)(struct BitstreamWriter_s* bs,
-                      unsigned int count,
-                      unsigned int value);
-        void (*write_64)(struct BitstreamWriter_s* bs,
-                         unsigned int count,
-                         uint64_t value);
+        void (*write)(struct BitstreamWriter_s*,
+                      unsigned int,
+                      unsigned int);
+        void (*write_64)(struct BitstreamWriter_s*,
+                         unsigned int,
+                         uint64_t);
     } function;
+
+    /*the position in the stream to be rewritten*/
     union bw_mark position;
+
+    /*the fill function used to populate the placeholder*/
+    void (*fill)(struct bw_placeholder*, ...);
+
+    struct bw_placeholder* previous;
     struct bw_placeholder* next;
 };
 
@@ -266,9 +282,8 @@ typedef struct BitstreamWriter_s {
         unsigned int accumulator;
     } output;
 
-    struct bw_placeholder* first_placeholder;
-    struct bw_placeholder* final_placeholder;
-    struct bw_placeholder* placeholders_used;
+    struct bw_placeholder* active_placeholders;
+    struct bw_placeholder* used_placeholders;
 
     struct bs_callback* callbacks;
     struct bs_callback* callbacks_used;
@@ -282,16 +297,9 @@ typedef struct BitstreamWriter_s {
 
     /*writes the given temp_value as "count" number of unsigned bits
       to the current stream, to be populated later*/
-    void (*write_placeholder)(struct BitstreamWriter_s* bs,
-                              unsigned int count,
-                              unsigned int temp_value);
-
-    /*populates the earliest placeholder on a first-in, first-out basis
-      with the given final value
-
-      the number of bits populated is the same as the placeholder's*/
-    void (*fill_placeholder)(struct BitstreamWriter_s* bs,
-                             unsigned int final_value);
+    struct bw_placeholder* (*write_placeholder)(struct BitstreamWriter_s* bs,
+                                                unsigned int count,
+                                                unsigned int temp_value);
 
     /*writes the given value as "count" number of signed bits
       to the current stream*/
@@ -307,16 +315,9 @@ typedef struct BitstreamWriter_s {
 
     /*writes the given temp_value as "count" number of unsigned bits
       to the current stream, up to 64 bits wide, to be populated later*/
-    void (*write_64_placeholder)(struct BitstreamWriter_s* bs,
-                                 unsigned int count,
-                                 uint64_t temp_value);
-
-    /*populates the earliest placeholder on a first-in, first-out basis
-      with the given final value, up to 64 bits wide
-
-      the number of bits populated is the same as the placeholder's*/
-    void (*fill_64_placeholder)(struct BitstreamWriter_s* bs,
-                                uint64_t final_value);
+    struct bw_placeholder* (*write_64_placeholder)(struct BitstreamWriter_s* bs,
+                                                   unsigned int count,
+                                                   uint64_t temp_value);
 
     /*writes "value" number of non stop bits to the current stream
       followed by a single stop bit*/
@@ -848,12 +849,28 @@ bw_swap_records(BitstreamWriter* a, BitstreamWriter* b);
 struct bw_placeholder*
 bw_new_placeholder(BitstreamWriter* bs);
 
-/*returns the bw_placeholder from the FIFO's first position,
-  moves it to the recycle bin, adjusting the FIFO accordingly
+/*disposes of the given placeholder*/
+void
+bw_use_placeholder(struct bw_placeholder* placeholder);
 
-  if the stack is empty, returns NULL*/
+void
+bw_placeholder_push(struct bw_placeholder** stack,
+                    struct bw_placeholder* node);
+
 struct bw_placeholder*
-bw_use_placeholder(BitstreamWriter* bs);
+bw_placeholder_pop(struct bw_placeholder** stack);
+
+
+void
+bw_fill_placeholder_f(struct bw_placeholder* placeholder, ...);
+void
+bw_fill_placeholder_64_f(struct bw_placeholder* placeholder, ...);
+void
+bw_fill_placeholder_r(struct bw_placeholder* placeholder, ...);
+void
+bw_fill_placeholder_64_r(struct bw_placeholder* placeholder, ...);
+void
+bw_fill_placeholder_a(struct bw_placeholder* placeholder, ...);
 
 
 /*************************************************************
@@ -887,22 +904,15 @@ void
 bw_write_bits_a(BitstreamWriter* bs, unsigned int count, unsigned int value);
 
 
-void
+struct bw_placeholder*
 bw_write_placeholder_f(BitstreamWriter* bs, unsigned int count,
                        unsigned int temp_value);
-void
+struct bw_placeholder*
 bw_write_placeholder_r(BitstreamWriter* bs, unsigned int count,
                        unsigned int temp_value);
-void
+struct bw_placeholder*
 bw_write_placeholder_a(BitstreamWriter* bs, unsigned int count,
                        unsigned int temp_value);
-
-void
-bw_fill_placeholder_f(BitstreamWriter* bs, unsigned int final_value);
-void
-bw_fill_placeholder_r(BitstreamWriter* bs, unsigned int final_value);
-void
-bw_fill_placeholder_a(BitstreamWriter* bs, unsigned int final_value);
 
 void
 bw_write_signed_bits_f_r(BitstreamWriter* bs, unsigned int count, int value);
@@ -918,22 +928,15 @@ bw_write_bits64_r(BitstreamWriter* bs, unsigned int count, uint64_t value);
 void
 bw_write_bits64_a(BitstreamWriter* bs, unsigned int count, uint64_t value);
 
-void
+struct bw_placeholder*
 bw_write_64_placeholder_f(BitstreamWriter* bs, unsigned int count,
                           uint64_t temp_value);
-void
+struct bw_placeholder*
 bw_write_64_placeholder_r(BitstreamWriter* bs, unsigned int count,
                           uint64_t temp_value);
-void
+struct bw_placeholder*
 bw_write_64_placeholder_a(BitstreamWriter* bs, unsigned int count,
                           uint64_t temp_value);
-
-void
-bw_fill_64_placeholder_f(BitstreamWriter* bs, uint64_t final_value);
-void
-bw_fill_64_placeholder_r(BitstreamWriter* bs, uint64_t final_value);
-void
-bw_fill_64_placeholder_a(BitstreamWriter* bs, uint64_t final_value);
 
 void
 bw_write_unary_f_r(BitstreamWriter* bs, int stop_bit, unsigned int value);

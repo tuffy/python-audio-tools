@@ -2453,9 +2453,8 @@ bw_open(FILE *f, bs_endianness endianness)
     bs->output.file.buffer_size = 0;
     bs->output.file.buffer = 0;
 
-    bs->first_placeholder = NULL;
-    bs->final_placeholder = NULL;
-    bs->placeholders_used = NULL;
+    bs->active_placeholders = NULL;
+    bs->used_placeholders = NULL;
 
     bs->callbacks = NULL;
     bs->callbacks_used = NULL;
@@ -2477,8 +2476,6 @@ bw_open(FILE *f, bs_endianness endianness)
 
     bs->write_placeholder = bw_write_placeholder_f;
     bs->write_64_placeholder = bw_write_64_placeholder_f;
-    bs->fill_placeholder = bw_fill_placeholder_f;
-    bs->fill_64_placeholder = bw_fill_64_placeholder_f;
     bs->write_signed = bw_write_signed_bits_f_r;
     bs->write_unary = bw_write_unary_f_r;
     bs->byte_align = bw_byte_align_f;
@@ -2497,9 +2494,8 @@ bw_open_accumulator(bs_endianness endianness)
 
     bs->output.accumulator = 0;
 
-    bs->first_placeholder = NULL;
-    bs->final_placeholder = NULL;
-    bs->placeholders_used = NULL;
+    bs->active_placeholders = NULL;
+    bs->used_placeholders = NULL;
 
     bs->callbacks = NULL;
     bs->callbacks_used = NULL;
@@ -2515,11 +2511,9 @@ bw_open_accumulator(bs_endianness endianness)
 
     bs->write = bw_write_bits_a;
     bs->write_placeholder = bw_write_placeholder_a;
-    bs->fill_placeholder = bw_fill_placeholder_a;
     bs->write_signed = bw_write_signed_bits_a;
     bs->write_64 = bw_write_bits64_a;
     bs->write_64_placeholder = bw_write_64_placeholder_a;
-    bs->fill_64_placeholder = bw_fill_64_placeholder_a;
     bs->write_unary = bw_write_unary_a;
     bs->byte_align = bw_byte_align_a;
     bs->set_endianness = bw_set_endianness_a;
@@ -2542,9 +2536,8 @@ bw_open_recorder(bs_endianness endianness)
     bs->output.recorder.records = malloc(sizeof(BitstreamRecord) *
                                          bs->output.recorder.records_total);
 
-    bs->first_placeholder = NULL;
-    bs->final_placeholder = NULL;
-    bs->placeholders_used = NULL;
+    bs->active_placeholders = NULL;
+    bs->used_placeholders = NULL;
 
     bs->callbacks = NULL;
     bs->callbacks_used = NULL;
@@ -2560,11 +2553,9 @@ bw_open_recorder(bs_endianness endianness)
 
     bs->write = bw_write_bits_r;
     bs->write_placeholder = bw_write_placeholder_r;
-    bs->fill_placeholder = bw_fill_placeholder_r;
     bs->write_signed = bw_write_signed_bits_f_r;
     bs->write_64 = bw_write_bits64_r;
     bs->write_64_placeholder = bw_write_64_placeholder_r;
-    bs->fill_64_placeholder = bw_fill_64_placeholder_r;
     bs->write_unary = bw_write_unary_f_r;
     bs->byte_align = bw_byte_align_r;
     bs->set_endianness = bw_set_endianness_r;
@@ -2588,9 +2579,9 @@ bw_free(BitstreamWriter* bs)
         free(callback);
     }
 
-    if (bs->first_placeholder != NULL) {
+    if (bs->active_placeholders != NULL) {
         fprintf(stderr, "unused placeholders remain in stream\n");
-        for (placeholder = bs->first_placeholder;
+        for (placeholder = bs->active_placeholders;
              placeholder != NULL;
              placeholder = next_placeholder) {
             next_placeholder = placeholder->next;
@@ -2598,7 +2589,7 @@ bw_free(BitstreamWriter* bs)
         }
     }
 
-    for (placeholder = bs->placeholders_used;
+    for (placeholder = bs->used_placeholders;
          placeholder != NULL;
          placeholder = next_placeholder) {
         next_placeholder = placeholder->next;
@@ -2881,7 +2872,7 @@ bw_write_bits_a(BitstreamWriter* bs, unsigned int count, unsigned int value)
 }
 
 
-void
+struct bw_placeholder*
 bw_write_placeholder_f(BitstreamWriter* bs, unsigned int count,
                        unsigned int temp_value) {
     struct bw_placeholder* placeholder = bw_new_placeholder(bs);
@@ -2890,13 +2881,16 @@ bw_write_placeholder_f(BitstreamWriter* bs, unsigned int count,
     placeholder->type = BS_WRITE_BITS;
     placeholder->count = count;
     placeholder->function.write = bs->write;
+    placeholder->fill = bw_fill_placeholder_f;
     bw_mark_f(bs, &(placeholder->position));
 
     /*then write dummy value to stream*/
     bs->write(bs, count, temp_value);
+
+    return placeholder;
 }
 
-void
+struct bw_placeholder*
 bw_write_placeholder_r(BitstreamWriter* bs, unsigned int count,
                        unsigned int temp_value)  {
     struct bw_placeholder* placeholder = bw_new_placeholder(bs);
@@ -2905,83 +2899,29 @@ bw_write_placeholder_r(BitstreamWriter* bs, unsigned int count,
     placeholder->type = BS_WRITE_BITS;
     placeholder->count = count;
     placeholder->function.write = bs->write;
+    placeholder->fill = bw_fill_placeholder_r;
     bw_mark_r(bs, &(placeholder->position));
 
     /*then write dummy value to stream*/
     bs->write(bs, count, temp_value);
+
+    return placeholder;
 }
-void
+
+struct bw_placeholder*
 bw_write_placeholder_a(BitstreamWriter* bs, unsigned int count,
                        unsigned int temp_value)  {
     struct bw_placeholder* placeholder = bw_new_placeholder(bs);
 
     /*populate placeholder*/
     placeholder->type = BS_WRITE_BITS;
+    placeholder->fill = bw_fill_placeholder_a;
 
     /*then write dummy value to stream*/
     bs->write(bs, count, temp_value);
+
+    return placeholder;
 }
-
-
-void
-bw_fill_placeholder_f(BitstreamWriter* bs, unsigned int final_value) {
-    struct bw_placeholder* placeholder = bw_use_placeholder(bs);
-    union bw_mark original_position;
-
-    if (placeholder != NULL) {
-        if (placeholder->type == BS_WRITE_BITS) {
-            /*save current position in stream*/
-            bw_mark_f(bs, &original_position);
-
-            /*move stream to placeholder's position*/
-            bw_rewind_f(bs, &(placeholder->position));
-
-            /*update placeholder's value according to its bit count
-              and saved write function (in case endianness has changed)*/
-            placeholder->function.write(bs, placeholder->count, final_value);
-
-            /*move stream back to saved position*/
-            bw_rewind_f(bs, &original_position);
-        } else {
-            fprintf(stderr, "placeholder type mismatch\n");
-        }
-    } else {
-        fprintf(stderr, "no placeholder entries remain in FIFO\n");
-    }
-}
-
-void
-bw_fill_placeholder_r(BitstreamWriter* bs, unsigned int final_value) {
-    struct bw_placeholder* placeholder = bw_use_placeholder(bs);
-
-    if (placeholder != NULL) {
-        if (placeholder->type == BS_WRITE_BITS) {
-            /*overwrite record at placeholder position with new value*/
-
-            bs->output.recorder.records[placeholder->position.recorder
-                                        ].value.unsigned_value = final_value;
-        } else {
-            fprintf(stderr, "placeholder type mismatch\n");
-        }
-    } else {
-        fprintf(stderr, "no placeholder entries remain in FIFO\n");
-    }
-}
-
-
-void
-bw_fill_placeholder_a(BitstreamWriter* bs, unsigned int final_value) {
-    struct bw_placeholder* placeholder = bw_use_placeholder(bs);
-
-    if (placeholder != NULL) {
-        if (placeholder->type != BS_WRITE_BITS) {
-            fprintf(stderr, "placeholder type mismatch\n");
-        }
-    } else {
-        fprintf(stderr, "no placeholder entries remain in FIFO\n");
-    }
-}
-
 
 
 void
@@ -3112,7 +3052,7 @@ bw_write_bits64_a(BitstreamWriter* bs, unsigned int count, uint64_t value)
 }
 
 
-void
+struct bw_placeholder*
 bw_write_64_placeholder_f(BitstreamWriter* bs, unsigned int count,
                           uint64_t temp_value) {
     struct bw_placeholder* placeholder = bw_new_placeholder(bs);
@@ -3121,13 +3061,16 @@ bw_write_64_placeholder_f(BitstreamWriter* bs, unsigned int count,
     placeholder->type = BS_WRITE_BITS64;
     placeholder->count = count;
     placeholder->function.write_64 = bs->write_64;
+    placeholder->fill = bw_fill_placeholder_64_f;
     bw_mark_f(bs, &(placeholder->position));
 
     /*then write dummy value to stream*/
     bs->write_64(bs, count, temp_value);
+
+    return placeholder;
 }
 
-void
+struct bw_placeholder*
 bw_write_64_placeholder_r(BitstreamWriter* bs, unsigned int count,
                           uint64_t temp_value) {
     struct bw_placeholder* placeholder = bw_new_placeholder(bs);
@@ -3136,81 +3079,28 @@ bw_write_64_placeholder_r(BitstreamWriter* bs, unsigned int count,
     placeholder->type = BS_WRITE_BITS64;
     placeholder->count = count;
     placeholder->function.write_64 = bs->write_64;
+    placeholder->fill = bw_fill_placeholder_64_r;
     bw_mark_r(bs, &(placeholder->position));
 
     /*then write dummy value to stream*/
     bs->write_64(bs, count, temp_value);
+
+    return placeholder;
 }
 
-void
+struct bw_placeholder*
 bw_write_64_placeholder_a(BitstreamWriter* bs, unsigned int count,
                           uint64_t temp_value) {
     struct bw_placeholder* placeholder = bw_new_placeholder(bs);
 
     /*populate placeholder*/
     placeholder->type = BS_WRITE_BITS64;
+    placeholder->fill = bw_fill_placeholder_a;
 
     /*then write dummy value to stream*/
     bs->write(bs, count, temp_value);
-}
 
-
-void
-bw_fill_64_placeholder_f(BitstreamWriter* bs, uint64_t final_value) {
-    struct bw_placeholder* placeholder = bw_use_placeholder(bs);
-    union bw_mark original_position;
-
-    if (placeholder != NULL) {
-        if (placeholder->type == BS_WRITE_BITS64) {
-            /*save current position in stream*/
-            bw_mark_f(bs, &original_position);
-
-            /*move stream to placeholder's position*/
-            bw_rewind_f(bs, &(placeholder->position));
-
-            /*update placeholder's value according to its bit count
-              and saved write function (in case endianness has changed)*/
-            placeholder->function.write_64(bs, placeholder->count, final_value);
-
-            /*move stream back to saved position*/
-            bw_rewind_f(bs, &original_position);
-        } else {
-            fprintf(stderr, "placeholder type mismatch\n");
-        }
-    } else {
-        fprintf(stderr, "no placeholder entries remain in FIFO\n");
-    }
-}
-
-void
-bw_fill_64_placeholder_r(BitstreamWriter* bs, uint64_t final_value) {
-    struct bw_placeholder* placeholder = bw_use_placeholder(bs);
-
-    if (placeholder != NULL) {
-        if (placeholder->type == BS_WRITE_BITS64) {
-            /*overwrite record at placeholder position with new value*/
-
-            bs->output.recorder.records[placeholder->position.recorder
-                                        ].value.value64 = final_value;
-        } else {
-            fprintf(stderr, "placeholder type mismatch\n");
-        }
-    } else {
-        fprintf(stderr, "no placeholder entries remain in FIFO\n");
-    }
-}
-
-void
-bw_fill_64_placeholder_a(BitstreamWriter* bs, uint64_t final_value) {
-    struct bw_placeholder* placeholder = bw_use_placeholder(bs);
-
-    if (placeholder != NULL) {
-        if (placeholder->type != BS_WRITE_BITS64) {
-            fprintf(stderr, "placeholder type mismatch\n");
-        }
-    } else {
-        fprintf(stderr, "no placeholder entries remain in FIFO\n");
-    }
+    return placeholder;
 }
 
 
@@ -3544,48 +3434,171 @@ bw_split_record_le(BitstreamRecord* record,
     }
 }
 
+void
+bw_placeholder_push(struct bw_placeholder** stack,
+                    struct bw_placeholder* node) {
+    node->previous = NULL;
+    node->next = *stack;
+    if (*stack != NULL)
+        (*stack)->previous = node;
+
+    *stack = node;
+}
+
+struct bw_placeholder*
+bw_placeholder_pop(struct bw_placeholder** stack) {
+    struct bw_placeholder* node = *stack;
+
+    if (node == NULL) {
+        fprintf(stderr, "error popping from empty stack\n");
+        abort();
+    }
+
+    *stack = node->next;
+    if (*stack != NULL)
+        (*stack)->previous = NULL;
+    node->next = NULL;
+    node->previous = NULL;
+
+    return node;
+}
+
 struct bw_placeholder*
 bw_new_placeholder(BitstreamWriter* bs) {
     struct bw_placeholder* placeholder;
 
     /*first, either allocate or recycle a placeholder entry*/
-    if (bs->placeholders_used != NULL) {
-        placeholder = bs->placeholders_used;
-        bs->placeholders_used = bs->placeholders_used->next;
+    if (bs->used_placeholders != NULL) {
+        /*pull placeholder off used stack*/
+        placeholder = bw_placeholder_pop(&(bs->used_placeholders));
     } else {
+        /*allocate fresh placeholder*/
         placeholder = malloc(sizeof(struct bw_placeholder));
+        placeholder->stream = bs;
     }
 
-    /*then place it in the bitstream's FIFO*/
-    if (bs->final_placeholder != NULL) {
-        bs->final_placeholder->next = placeholder;
-        bs->final_placeholder = placeholder;
-    } else {
-        bs->first_placeholder = bs->final_placeholder = placeholder;
-    }
-
-    placeholder->next = NULL;
+    /*then push placeholder on active stack*/
+    bw_placeholder_push(&(bs->active_placeholders), placeholder);
 
     return placeholder;
 }
 
-struct bw_placeholder*
-bw_use_placeholder(BitstreamWriter* bs) {
-    struct bw_placeholder* placeholder = bs->first_placeholder;
+void
+bw_use_placeholder(struct bw_placeholder* placeholder) {
+    if (placeholder->next != NULL) {
+        placeholder->next->previous = placeholder->previous;
+    }
+    if (placeholder->previous != NULL) {
+        placeholder->previous->next = placeholder->next;
+    }
 
-    if (placeholder != NULL) {
-        bs->first_placeholder = bs->first_placeholder->next;
-        if (bs->first_placeholder == NULL)
-            /*if we've used the last placeholder,
-              the final placeholder must also be marked used*/
-            bs->final_placeholder = NULL;
-        placeholder->next = bs->placeholders_used;
-        bs->placeholders_used = placeholder;
-        return placeholder;
-    } else
-        return NULL;
+    if (placeholder->stream->active_placeholders == placeholder) {
+        placeholder->stream->active_placeholders = NULL;
+    }
+
+    /*finally, push placeholder on used stack*/
+    bw_placeholder_push(&(placeholder->stream->used_placeholders), placeholder);
 }
 
+void
+bw_fill_placeholder_f(struct bw_placeholder* placeholder, ...) {
+    union bw_mark original_position;
+    unsigned int final_value;
+    va_list ap;
+
+    /*grab argument*/
+    va_start(ap, placeholder);
+    final_value = va_arg(ap, unsigned int);
+    va_end(ap);
+
+    /*save current position in stream*/
+    bw_mark_f(placeholder->stream, &original_position);
+
+    /*move stream to placeholder's position*/
+    bw_rewind_f(placeholder->stream, &(placeholder->position));
+
+    /*update placeholder's value according to its bit count
+      and saved write function (in case endianness has changed)*/
+    placeholder->function.write(placeholder->stream,
+                                placeholder->count, final_value);
+
+    /*move stream back to saved position*/
+    bw_rewind_f(placeholder->stream, &original_position);
+
+    /*mark placeholder as used*/
+    bw_use_placeholder(placeholder);
+}
+
+void
+bw_fill_placeholder_64_f(struct bw_placeholder* placeholder, ...) {
+    union bw_mark original_position;
+    uint64_t final_value;
+    va_list ap;
+
+    /*grab argument*/
+    va_start(ap, placeholder);
+    final_value = va_arg(ap, uint64_t);
+    va_end(ap);
+
+    /*save current position in stream*/
+    bw_mark_f(placeholder->stream, &original_position);
+
+    /*move stream to placeholder's position*/
+    bw_rewind_f(placeholder->stream, &(placeholder->position));
+
+    /*update placeholder's value according to its bit count
+      and saved write function (in case endianness has changed)*/
+    placeholder->function.write_64(placeholder->stream,
+                                   placeholder->count, final_value);
+
+    /*move stream back to saved position*/
+    bw_rewind_f(placeholder->stream, &original_position);
+
+    /*mark placeholder as used*/
+    bw_use_placeholder(placeholder);
+}
+
+void
+bw_fill_placeholder_r(struct bw_placeholder* placeholder, ...) {
+    unsigned int final_value;
+    va_list ap;
+
+    /*grab argument*/
+    va_start(ap, placeholder);
+    final_value = va_arg(ap, unsigned int);
+    va_end(ap);
+
+    /*overwrite record at placeholder position with new value*/
+    placeholder->stream->output.recorder.records[
+        placeholder->position.recorder].value.unsigned_value = final_value;
+
+    /*mark placeholder as used*/
+    bw_use_placeholder(placeholder);
+}
+
+void
+bw_fill_placeholder_64_r(struct bw_placeholder* placeholder, ...) {
+    uint64_t final_value;
+    va_list ap;
+
+    /*grab argument*/
+    va_start(ap, placeholder);
+    final_value = va_arg(ap, uint64_t);
+    va_end(ap);
+
+    /*overwrite record at placeholder position with new value*/
+    placeholder->stream->output.recorder.records[
+        placeholder->position.recorder].value.value64 = final_value;
+
+    /*mark placeholder as used*/
+    bw_use_placeholder(placeholder);
+}
+
+void
+bw_fill_placeholder_a(struct bw_placeholder* placeholder, ...) {
+    /*mark placeholder as used*/
+    bw_use_placeholder(placeholder);
+}
 
 
 /*****************************************************************
