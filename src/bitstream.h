@@ -42,12 +42,17 @@ typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 typedef enum {BR_FILE, BR_SUBSTREAM, BR_PYTHON} br_type;
 typedef enum {BW_FILE, BW_RECORDER, BW_ACCUMULATOR} bw_type;
 
-
 typedef enum {
     BS_WRITE_BITS,
     BS_WRITE_BITS64,
     BS_SET_ENDIANNESS
 } BitstreamRecordType;
+
+typedef enum {
+    BS_PLACEHOLDER_WRITE_BITS,
+    BS_PLACEHOLDER_WRITE_BITS64,
+    BS_PLACEHOLDER_CONTAINER
+} bw_placeholder_type;
 
 typedef void (*bs_callback_func)(uint8_t, void*);
 
@@ -120,14 +125,14 @@ union bw_mark {
 struct BitstreamWriter_s;
 
 struct bw_placeholder {
+    /*the type of placeholder we are*/
+    bw_placeholder_type type;
+
     /*the stream the placeholder is attached to*/
     struct BitstreamWriter_s* stream;
 
-    /*the type of record being written,
-      either BS_WRITE_BITS or BS_WRITE_BITS64*/
-    BitstreamRecordType type;
-
-    /*the number of bits being written*/
+    /*the number of bits being written,
+      or the number of sub_placeholders*/
     unsigned int count;
 
     /*the write function used at the time the placeholder is called*/
@@ -143,10 +148,12 @@ struct bw_placeholder {
     /*the position in the stream to be rewritten*/
     union bw_mark position;
 
+    /*an array of placeholders, to be used by a placeholder container*/
+    struct bw_placeholder* sub_placeholders;
+
     /*the fill function used to populate the placeholder*/
     void (*fill)(struct bw_placeholder*, ...);
 
-    struct bw_placeholder* previous;
     struct bw_placeholder* next;
 };
 
@@ -282,7 +289,6 @@ typedef struct BitstreamWriter_s {
         unsigned int accumulator;
     } output;
 
-    struct bw_placeholder* active_placeholders;
     struct bw_placeholder* used_placeholders;
 
     struct bs_callback* callbacks;
@@ -300,6 +306,10 @@ typedef struct BitstreamWriter_s {
     struct bw_placeholder* (*write_placeholder)(struct BitstreamWriter_s* bs,
                                                 unsigned int count,
                                                 unsigned int temp_value);
+
+    struct bw_placeholder* (*write_placeholders)(struct BitstreamWriter_s* bs,
+                                                 const char* format,
+                                                 ...);
 
     /*writes the given value as "count" number of signed bits
       to the current stream*/
@@ -853,13 +863,6 @@ bw_new_placeholder(BitstreamWriter* bs);
 void
 bw_use_placeholder(struct bw_placeholder* placeholder);
 
-void
-bw_placeholder_push(struct bw_placeholder** stack,
-                    struct bw_placeholder* node);
-
-struct bw_placeholder*
-bw_placeholder_pop(struct bw_placeholder** stack);
-
 
 void
 bw_fill_placeholder_f(struct bw_placeholder* placeholder, ...);
@@ -913,6 +916,24 @@ bw_write_placeholder_r(BitstreamWriter* bs, unsigned int count,
 struct bw_placeholder*
 bw_write_placeholder_a(BitstreamWriter* bs, unsigned int count,
                        unsigned int temp_value);
+
+
+struct bw_placeholder*
+bw_allocate_sub_placeholders(const char* format, unsigned int* count);
+
+struct bw_placeholder*
+bw_write_placeholders_f(BitstreamWriter* bs, const char* format, ...);
+struct bw_placeholder*
+bw_write_placeholders_r(BitstreamWriter* bs, const char* format, ...);
+struct bw_placeholder*
+bw_write_placeholders_a(BitstreamWriter* bs, const char* format, ...);
+
+
+void
+bw_fill_placeholders_f(struct bw_placeholder* placeholder, ...);
+void
+bw_fill_placeholders_r(struct bw_placeholder* placeholder, ...);
+
 
 void
 bw_write_signed_bits_f_r(BitstreamWriter* bs, unsigned int count, int value);
