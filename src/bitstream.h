@@ -51,6 +51,7 @@ typedef enum {
 typedef enum {
     BS_PLACEHOLDER_WRITE_BITS,
     BS_PLACEHOLDER_WRITE_BITS64,
+    BS_PLACEHOLDER_WRITE_BYTES,
     BS_PLACEHOLDER_CONTAINER
 } bw_placeholder_type;
 
@@ -182,46 +183,55 @@ typedef struct BitstreamReader_s {
 
     /*returns "count" number of unsigned bits from the current stream
       in the current endian format up to "count" bits wide*/
-    unsigned int (*read)(struct BitstreamReader_s* bs, unsigned int count);
+    unsigned int
+    (*read)(struct BitstreamReader_s* bs, unsigned int count);
 
     /*returns "count" number of signed bits from the current stream
       in the current endian format up to "count" bits wide*/
-    int (*read_signed)(struct BitstreamReader_s* bs, unsigned int count);
+    int
+    (*read_signed)(struct BitstreamReader_s* bs, unsigned int count);
 
     /*returns "count" number of unsigned bits from the current stream
       in the current endian format up to 64 bits wide*/
-    uint64_t (*read_64)(struct BitstreamReader_s* bs, unsigned int count);
+    uint64_t
+    (*read_64)(struct BitstreamReader_s* bs, unsigned int count);
 
     /*skips "count" number of bits from the current stream as if read
 
       callbacks are called on each skipped byte*/
-    void (*skip)(struct BitstreamReader_s* bs, unsigned int count);
+    void
+    (*skip)(struct BitstreamReader_s* bs, unsigned int count);
 
     /*pushes a single 0 or 1 bit back onto the stream
       in the current endian format
 
       only a single bit is guaranteed to be unreadable*/
-    void (*unread)(struct BitstreamReader_s* bs, int unread_bit);
+    void
+    (*unread)(struct BitstreamReader_s* bs, int unread_bit);
 
     /*returns the number of non-stop bits before the 0 or 1 stop bit
       from the current stream in the current endian format*/
-    unsigned int (*read_unary)(struct BitstreamReader_s* bs, int stop_bit);
+    unsigned int
+    (*read_unary)(struct BitstreamReader_s* bs, int stop_bit);
 
     /*returns the number of non-stop bits before the 0 or 1 stop bit
       from the current stream in the current endian format
       and limited to "maximum_bits"
 
       may return -1 if the maximum bits are exceeded*/
-    int (*read_limited_unary)(struct BitstreamReader_s* bs, int stop_bit,
-                              int maximum_bits);
+    int
+    (*read_limited_unary)(struct BitstreamReader_s* bs, int stop_bit,
+                          int maximum_bits);
 
     /*reads the next Huffman code from the stream
       where the code tree is defined from the given compiled table*/
-    int (*read_huffman_code)(struct BitstreamReader_s* bs,
-                             struct br_huffman_table table[][0x200]);
+    int
+    (*read_huffman_code)(struct BitstreamReader_s* bs,
+                         struct br_huffman_table table[][0x200]);
 
     /*aligns the stream to a byte boundary*/
-    void (*byte_align)(struct BitstreamReader_s* bs);
+    void
+    (*byte_align)(struct BitstreamReader_s* bs);
 
     /*reads "byte_count" number of 8-bit bytes
       and places them in "bytes"
@@ -231,43 +241,51 @@ typedef struct BitstreamReader_s {
 
       if insufficient bytes can be read, br_abort is called
       and the contents of "bytes" are undefined*/
-    void (*read_bytes)(struct BitstreamReader_s* bs,
-                       uint8_t* bytes,
-                       unsigned int byte_count);
+    void
+    (*read_bytes)(struct BitstreamReader_s* bs,
+                  uint8_t* bytes,
+                  unsigned int byte_count);
 
     /*sets the stream's format to big endian or little endian
       which automatically byte aligns it*/
-    void (*set_endianness)(struct BitstreamReader_s* bs,
-                           bs_endianness endianness);
+    void
+    (*set_endianness)(struct BitstreamReader_s* bs,
+                      bs_endianness endianness);
 
     /*closes the current input stream
       and deallocates the struct*/
-    void (*close)(struct BitstreamReader_s* bs);
+    void
+    (*close)(struct BitstreamReader_s* bs);
 
     /*closes the current input stream
       but does *not* perform any other deallocation*/
-    void (*close_stream)(struct BitstreamReader_s* bs);
+    void
+    (*close_stream)(struct BitstreamReader_s* bs);
 
     /*pushes a new mark onto to the stream, which can be rewound to later
 
       all pushed marks should be unmarked once no longer needed*/
-    void (*mark)(struct BitstreamReader_s* bs);
+    void
+    (*mark)(struct BitstreamReader_s* bs);
 
     /*rewinds the stream to the next previous mark on the mark stack
 
       rewinding does not affect the mark itself*/
-    void (*rewind)(struct BitstreamReader_s* bs);
+    void
+    (*rewind)(struct BitstreamReader_s* bs);
 
     /*pops the previous mark from the mark stack*/
-    void (*unmark)(struct BitstreamReader_s* bs);
+    void
+    (*unmark)(struct BitstreamReader_s* bs);
 
     /*this appends the given length of bytes from the current stream
       to the given substream
 
       in all other respects, it works identically to the previous method*/
-    void (*substream_append)(struct BitstreamReader_s* bs,
-                             struct BitstreamReader_s* substream,
-                             uint32_t bytes);
+    void
+    (*substream_append)(struct BitstreamReader_s* bs,
+                        struct BitstreamReader_s* substream,
+                        uint32_t bytes);
 } BitstreamReader;
 
 
@@ -297,75 +315,140 @@ typedef struct BitstreamWriter_s {
 
     /*writes the given value as "count" number of unsigned bits
       to the current stream*/
-    void (*write)(struct BitstreamWriter_s* bs,
-                  unsigned int count,
-                  unsigned int value);
+    void
+    (*write)(struct BitstreamWriter_s* bs,
+             unsigned int count,
+             unsigned int value);
 
     /*writes the given temp_value as "count" number of unsigned bits
-      to the current stream, to be populated later*/
-    struct bw_placeholder* (*write_placeholder)(struct BitstreamWriter_s* bs,
-                                                unsigned int count,
-                                                unsigned int temp_value);
+      to the current stream, to be populated later via
+      the placeholder's fill() method, for example:
 
-    struct bw_placeholder* (*write_placeholders)(struct BitstreamWriter_s* bs,
-                                                 const char* format,
-                                                 ...);
+      placeholder = bw->write_placeholder(bw, 16, 0);
+      // ... write additional values here ...
+      placeholder->fill(placeholder, final_value);
+
+      filling the placeholder marks it for garbage-collection
+      a single placeholder should not be filled twice
+      and failing to dispose of it will leak memory
+
+      note that both write_placeholder() *and* placeholder->fill()
+      will trigger any callbacks currently in place
+      since both route their data through BitstreamWriter's write() method
+
+      use bw_pop_callback/bw_push_callback to suspend callbacks if necessary*/
+    struct bw_placeholder*
+    (*write_placeholder)(struct BitstreamWriter_s* bs,
+                         unsigned int count,
+                         unsigned int temp_value);
+
+    /*writes a set of placeholders as determined by the format string
+      which takes only three characters:
+      'i' for unsigned ints, 'l' for uint64_ts and 'b' for a list of uint8_ts
+      subsequent arguments are placeholder length and placeholder value pairs
+
+      For example, to deliver a set of three placeholders that are
+      12 bits, 16 bits and 36 bits, all with an initial value of 0,
+      one could try:
+
+      placeholder1 = bw->write_placeholder(bw, 12, 0);
+      placeholder2 = bw->write_placeholder(bw, 16, 0);
+      placeholder3 = bw->write_placeholder(bw, 36, 0);
+
+      but this will react poorly on file-based writers
+      since they are not byte-aligned.
+      A better approach is to combine them as follows:
+
+      placeholder = bw->write_placeholders(bw, "iil", 12, 0, 16, 0, 36, 0);
+
+      and then populate them later with values:
+
+      placeholder->fill(placeholder, 1, 2, 3);
+    */
+    struct bw_placeholder*
+    (*write_placeholders)(struct BitstreamWriter_s* bs,
+                          const char* format,
+                          ...);
 
     /*writes the given value as "count" number of signed bits
       to the current stream*/
-    void (*write_signed)(struct BitstreamWriter_s* bs,
-                         unsigned int count,
-                         int value);
+    void
+    (*write_signed)(struct BitstreamWriter_s* bs,
+                    unsigned int count,
+                    int value);
 
     /*writes the given value as "count" number of unsigned bits
       to the current stream, up to 64 bits wide*/
-    void (*write_64)(struct BitstreamWriter_s* bs,
-                     unsigned int count,
-                     uint64_t value);
+    void
+    (*write_64)(struct BitstreamWriter_s* bs,
+                unsigned int count,
+                uint64_t value);
 
     /*writes the given temp_value as "count" number of unsigned bits
       to the current stream, up to 64 bits wide, to be populated later*/
-    struct bw_placeholder* (*write_64_placeholder)(struct BitstreamWriter_s* bs,
-                                                   unsigned int count,
-                                                   uint64_t temp_value);
+    struct bw_placeholder*
+    (*write_64_placeholder)(struct BitstreamWriter_s* bs,
+                            unsigned int count,
+                            uint64_t temp_value);
+
+    /*writes "byte_count" number of bytes to the output stream
+
+      the stream is not required to be byte-aligned,
+      but writing will often be optimized if it is*/
+    void
+    (*write_bytes)(struct BitstreamWriter_s* bs,
+                   const uint8_t* bytes,
+                   unsigned int byte_count);
+
+    struct bw_placeholder*
+    (*write_bytes_placeholder)(struct BitstreamWriter_s* bs,
+                               const uint8_t* temp_bytes,
+                               unsigned int byte_count);
 
     /*writes "value" number of non stop bits to the current stream
       followed by a single stop bit*/
-    void (*write_unary)(struct BitstreamWriter_s* bs,
-                        int stop_bit,
-                        unsigned int value);
+    void
+    (*write_unary)(struct BitstreamWriter_s* bs,
+                   int stop_bit,
+                   unsigned int value);
 
     /*if the stream is not already byte-aligned,
       pad it with 0 bits until it is*/
-    void (*byte_align)(struct BitstreamWriter_s* bs);
+    void
+    (*byte_align)(struct BitstreamWriter_s* bs);
 
     /*byte aligns the stream and sets its format
       to big endian or little endian*/
-    void (*set_endianness)(struct BitstreamWriter_s* bs,
-                           bs_endianness endianness);
+    void
+    (*set_endianness)(struct BitstreamWriter_s* bs,
+                      bs_endianness endianness);
 
     /*returns the total bits written to the stream thus far
 
       this applies only to recorder and accumulator streams -
       file-based streams must use a callback to keep track of
       that information*/
-    unsigned int (*bits_written)(struct BitstreamWriter_s* bs);
+    unsigned int
+    (*bits_written)(struct BitstreamWriter_s* bs);
 
     /*splits the given record in two
       where "head" contains up to "bits" number of output bits
       and "tail" contains the remainder of the output bits*/
-    void (*split_record)(BitstreamRecord* record,
-                         BitstreamRecord* head,
-                         BitstreamRecord* tail,
-                         unsigned int bits);
+    void
+    (*split_record)(BitstreamRecord* record,
+                    BitstreamRecord* head,
+                    BitstreamRecord* tail,
+                    unsigned int bits);
 
     /*closes the current output stream
       and deallocates the struct*/
-    void (*close)(struct BitstreamWriter_s* bs);
+    void
+    (*close)(struct BitstreamWriter_s* bs);
 
     /*closes the current output stream
       but does *not* perform any other deallocation*/
-    void (*close_stream)(struct BitstreamWriter_s* bs);
+    void
+    (*close_stream)(struct BitstreamWriter_s* bs);
 } BitstreamWriter;
 
 
@@ -398,7 +481,7 @@ br_call_callbacks(BitstreamReader *bs, uint8_t byte);
 
 /*removes the most recently added callback, if any
   if "callback" is not NULL, the popped callback's data is copied to it
-  for possible restoration via "bs_push_callback"
+  for possible restoration via "br_push_callback"
 
   this is often paired with bs_push_callback in order
   to temporarily disable a callback, for example:
@@ -412,9 +495,7 @@ br_pop_callback(BitstreamReader *bs, struct bs_callback *callback);
 
 /*pushes the given callback back onto the callback stack
   note that the data from "callback" is copied onto a new internal struct;
-  it does not need to be allocated from the heap
-
-  if "callback" is NULL, this does nothing*/
+  it does not need to be allocated from the heap*/
 void
 br_push_callback(BitstreamReader *bs, struct bs_callback *callback);
 
@@ -795,7 +876,27 @@ bw_free(BitstreamWriter* bs);
   pointer to some other data structure
  */
 void
-bw_add_callback(BitstreamWriter *bs, bs_callback_func callback, void *data);
+bw_add_callback(BitstreamWriter* bs, bs_callback_func callback, void *data);
+
+/*removes the most recently added callback, if any
+  if "callback" is not NULL, the popped callback's data is copied to it
+  for possible restoration via "bw_push_callback"
+
+  this is often paired with bs_push_callback in order
+  to temporarily disable a callback, for example:
+
+  bw_pop_callback(writer, &saved_callback);  //save callback for later
+  bs->write(bs, 16, 0xAB);                   //write a value
+  bw_push_callback(writer, &saved_callback); //restore saved callback
+*/
+void
+bw_pop_callback(BitstreamWriter* bs, struct bs_callback* callback);
+
+/*pushes the given callback back onto the callback stack
+  note that the data from "callback" is copied onto a new internal struct;
+  it does not need to be allocated from the heap*/
+void
+bw_push_callback(BitstreamWriter* bs, struct bs_callback* callback);
 
 static inline int
 bw_eof(BitstreamWriter* bs) {
@@ -933,6 +1034,30 @@ void
 bw_fill_placeholders_f(struct bw_placeholder* placeholder, ...);
 void
 bw_fill_placeholders_r(struct bw_placeholder* placeholder, ...);
+
+
+void
+bw_write_bytes_f(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
+void
+bw_write_bytes_r(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
+void
+bw_write_bytes_a(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
+
+
+struct bw_placeholder*
+bw_write_bytes_placeholder_f(BitstreamWriter* bs, const uint8_t* temp_bytes,
+                             unsigned int count);
+struct bw_placeholder*
+bw_write_bytes_placeholder_r(BitstreamWriter* bs, const uint8_t* temp_bytes,
+                             unsigned int count);
+struct bw_placeholder*
+bw_write_bytes_placeholder_a(BitstreamWriter* bs, const uint8_t* temp_bytes,
+                             unsigned int count);
+
+void
+bw_fill_bytes_placeholder_f(struct bw_placeholder* placeholder, ...);
+void
+bw_fill_bytes_placeholder_r(struct bw_placeholder* placeholder, ...);
 
 
 void

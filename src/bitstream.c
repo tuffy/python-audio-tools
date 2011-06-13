@@ -236,6 +236,8 @@ br_pop_callback(BitstreamReader *bs, struct bs_callback *callback)
         bs->callbacks = c_node->next;
         c_node->next = bs->callbacks_used;
         bs->callbacks_used = c_node;
+    } else {
+        fprintf(stderr, "warning: no callbacks available to pop\n");
     }
 }
 
@@ -2473,9 +2475,12 @@ bw_open(FILE *f, bs_endianness endianness)
         break;
     }
 
+
     bs->write_placeholder = bw_write_placeholder_f;
     bs->write_placeholders = bw_write_placeholders_f;
     bs->write_64_placeholder = bw_write_64_placeholder_f;
+    bs->write_bytes = bw_write_bytes_f;
+    bs->write_bytes_placeholder = bw_write_bytes_placeholder_f;
     bs->write_signed = bw_write_signed_bits_f_r;
     bs->write_unary = bw_write_unary_f_r;
     bs->byte_align = bw_byte_align_f;
@@ -2511,6 +2516,8 @@ bw_open_accumulator(bs_endianness endianness)
     bs->write = bw_write_bits_a;
     bs->write_placeholder = bw_write_placeholder_a;
     bs->write_placeholders = bw_write_placeholders_a;
+    bs->write_bytes = bw_write_bytes_a;
+    bs->write_bytes_placeholder = bw_write_bytes_placeholder_a;
     bs->write_signed = bw_write_signed_bits_a;
     bs->write_64 = bw_write_bits64_a;
     bs->write_64_placeholder = bw_write_64_placeholder_a;
@@ -2553,6 +2560,8 @@ bw_open_recorder(bs_endianness endianness)
     bs->write = bw_write_bits_r;
     bs->write_placeholder = bw_write_placeholder_r;
     bs->write_placeholders = bw_write_placeholders_r;
+    bs->write_bytes = bw_write_bytes_r;
+    bs->write_bytes_placeholder = bw_write_bytes_placeholder_r;
     bs->write_signed = bw_write_signed_bits_f_r;
     bs->write_64 = bw_write_bits64_r;
     bs->write_64_placeholder = bw_write_64_placeholder_r;
@@ -2574,7 +2583,15 @@ bw_free(BitstreamWriter* bs)
     struct bw_placeholder* placeholder;
     struct bw_placeholder* next_placeholder;
 
-    for (callback = bs->callbacks; callback != NULL; callback = next_callback) {
+    for (callback = bs->callbacks;
+         callback != NULL;
+         callback = next_callback) {
+        next_callback = callback->next;
+        free(callback);
+    }
+    for (callback = bs->callbacks_used;
+         callback != NULL;
+         callback = next_callback) {
         next_callback = callback->next;
         free(callback);
     }
@@ -2597,6 +2614,41 @@ bw_add_callback(BitstreamWriter *bs, bs_callback_func callback, void *data)
     callback_node->data = data;
     callback_node->next = bs->callbacks;
     bs->callbacks = callback_node;
+}
+
+void
+bw_pop_callback(BitstreamWriter* bs, struct bs_callback* callback) {
+    struct bs_callback *c_node = bs->callbacks;
+    if (c_node != NULL) {
+        if (callback != NULL) {
+            callback->callback = c_node->callback;
+            callback->data = c_node->data;
+            callback->next = NULL;
+        }
+        bs->callbacks = c_node->next;
+        c_node->next = bs->callbacks_used;
+        bs->callbacks_used = c_node;
+    } else {
+        fprintf(stderr, "warning: no callbacks available to pop\n");
+    }
+}
+
+void
+bw_push_callback(BitstreamWriter* bs, struct bs_callback* callback) {
+    struct bs_callback *callback_node;
+
+    if (callback != NULL) {
+        if (bs->callbacks_used == NULL)
+            callback_node = malloc(sizeof(struct bs_callback));
+        else {
+            callback_node = bs->callbacks_used;
+            bs->callbacks_used = bs->callbacks_used->next;
+        }
+        callback_node->callback = callback->callback;
+        callback_node->data = callback->data;
+        callback_node->next = bs->callbacks;
+        bs->callbacks = callback_node;
+    }
 }
 
 static inline void
@@ -2765,11 +2817,7 @@ bw_write_bits_f_be(BitstreamWriter* bs, unsigned int count, unsigned int value)
     unsigned int byte;
     struct bs_callback* callback;
 
-    if (value >= (1l << count)) {
-        fprintf(stderr, "writing %u %u\n", count, value);
-        assert(value < (1l << count));
-    }
-
+    assert(value < (1l << count));
 
     while (count > 0) {
         /*chop off up to 8 bits to write at a time*/
@@ -2867,8 +2915,6 @@ bw_write_placeholder_f(BitstreamWriter* bs, unsigned int count,
                        unsigned int temp_value) {
     struct bw_placeholder* placeholder = bw_new_placeholder(bs);
 
-
-
     /*populate placeholder*/
     placeholder->type = BS_PLACEHOLDER_WRITE_BITS;
     placeholder->count = count;
@@ -2879,7 +2925,7 @@ bw_write_placeholder_f(BitstreamWriter* bs, unsigned int count,
     /*then write dummy value to stream*/
     bs->write(bs, count, temp_value);
 
-    /*ensures file-based placeholder ends on a byte-boundary*/
+    /*ensures file-based placeholder ends on a byte boundary*/
     if (bs->output.file.buffer_size != 0) {
         fprintf(stderr,
                 "Warning: placeholder does not end on byte boundary\n");
@@ -2918,7 +2964,7 @@ bw_write_placeholder_a(BitstreamWriter* bs, unsigned int count,
     placeholder->fill = bw_fill_placeholder_a;
 
     /*then write dummy value to stream*/
-    bs->write(bs, count, temp_value);
+    bs->output.accumulator += count;
 
     return placeholder;
 }
@@ -2932,6 +2978,7 @@ bw_allocate_sub_placeholders(const char* format, unsigned int* count) {
         switch(format[*count]) {
         case 'i':
         case 'l':
+        case 'b':
             /*do nothing*/
             break;
         default:
@@ -2955,6 +3002,7 @@ bw_write_placeholders_f(BitstreamWriter* bs, const char* format, ...) {
     unsigned int count;
     unsigned int temp_value;
     uint64_t temp64;
+    uint8_t* temp_bytes;
 
     /*populate placeholder*/
     placeholder->type = BS_PLACEHOLDER_CONTAINER;
@@ -2988,10 +3036,22 @@ bw_write_placeholders_f(BitstreamWriter* bs, const char* format, ...) {
             sub_placeholders[i].type = BS_PLACEHOLDER_WRITE_BITS64;
             sub_placeholders[i].stream = bs;
             sub_placeholders[i].count = count;
-            sub_placeholders[i].function.write_64 = bs->write_64;;
+            sub_placeholders[i].function.write_64 = bs->write_64;
 
             /*write dummy value to stream*/
             bs->write_64(bs, count, temp64);
+            break;
+        case 'b':
+            count = va_arg(ap, unsigned int);
+            temp_bytes = va_arg(ap, uint8_t*);
+
+            sub_placeholders[i].type = BS_PLACEHOLDER_WRITE_BYTES;
+            sub_placeholders[i].stream = bs;
+            sub_placeholders[i].count = count;
+            sub_placeholders[i].function.write = bs->write;
+
+            /*write dummy value to stream*/
+            bs->write_bytes(bs, temp_bytes, count);
             break;
         default:
             fprintf(stderr, "unsupported character \'%c\' in string\n",
@@ -3005,8 +3065,7 @@ bw_write_placeholders_f(BitstreamWriter* bs, const char* format, ...) {
     if (bs->output.file.buffer_size != 0) {
         fprintf(stderr,
                 "Warning: placeholder does not end on byte boundary\n");
-        fprintf(stderr, "this is not what you want - "
-                "consider using write_placeholders()\n");
+        fprintf(stderr, "this is not what you want\n");
     }
 
     return placeholder;
@@ -3015,13 +3074,14 @@ bw_write_placeholders_f(BitstreamWriter* bs, const char* format, ...) {
 struct bw_placeholder*
 bw_write_placeholders_r(BitstreamWriter* bs, const char* format, ...) {
     va_list ap;
-    unsigned int i;
+    unsigned int i,j;
     struct bw_placeholder* placeholder = bw_new_placeholder(bs);
     struct bw_placeholder* sub_placeholders;
 
     unsigned int count;
     unsigned int temp_value;
     uint64_t temp64;
+    uint8_t* temp_bytes;
 
     /*populate placeholder*/
     placeholder->type = BS_PLACEHOLDER_CONTAINER;
@@ -3061,6 +3121,20 @@ bw_write_placeholders_r(BitstreamWriter* bs, const char* format, ...) {
             /*write dummy value to stream*/
             bs->write_64(bs, count, temp64);
             break;
+        case 'b':
+            count = va_arg(ap, unsigned int);
+            temp_bytes = va_arg(ap, uint8_t*);
+
+            sub_placeholders[i].type = BS_PLACEHOLDER_WRITE_BYTES;
+            sub_placeholders[i].stream = bs;
+            sub_placeholders[i].count = count;
+            sub_placeholders[i].function.write = bs->write;
+            bw_mark_r(bs, &(sub_placeholders[i].position));
+
+            /*write dummy values to stream*/
+            for (j = 0; j < count; j++)
+                bs->write(bs, 8, temp_bytes[j]);
+            break;
         default:
             fprintf(stderr, "unsupported character \'%c\' in string\n",
                     format[i]);
@@ -3081,6 +3155,7 @@ bw_write_placeholders_a(BitstreamWriter* bs, const char* format, ...) {
     unsigned int count;
     unsigned int temp_value;
     uint64_t temp64;
+    uint8_t* temp_bytes;
 
     /*populate placeholder*/
     placeholder->type = BS_PLACEHOLDER_CONTAINER;
@@ -3106,6 +3181,12 @@ bw_write_placeholders_a(BitstreamWriter* bs, const char* format, ...) {
             /*write dummy value to stream*/
             bs->output.accumulator += count;
             break;
+        case 'b':
+            count = va_arg(ap, unsigned int);
+            temp_bytes = va_arg(ap, uint8_t*);
+
+            bs->output.accumulator += (count * 8);
+            break;
         default:
             fprintf(stderr, "unsupported character \'%c\' in string\n",
                     format[i]);
@@ -3122,17 +3203,20 @@ bw_write_placeholders_a(BitstreamWriter* bs, const char* format, ...) {
 void
 bw_fill_placeholders_f(struct bw_placeholder* placeholder, ...) {
     va_list ap;
-    unsigned int i;
+    unsigned int i,j;
     union bw_mark original_position;
     struct bw_placeholder sub_placeholder;
     unsigned int final_value;
     uint64_t final_64;
+    uint8_t* final_bytes;
+    BitstreamWriter* bs = placeholder->stream;
+    struct bs_callback* callback;
 
     /*keep track of our original stream position*/
-    bw_mark_f(placeholder->stream, &original_position);
+    bw_mark_f(bs, &original_position);
 
     /*move to the placeholder's stream position*/
-    bw_rewind_f(placeholder->stream, &(placeholder->position));
+    bw_rewind_f(bs, &(placeholder->position));
 
     /*fill in the final values*/
     va_start(ap, placeholder);
@@ -3141,13 +3225,32 @@ bw_fill_placeholders_f(struct bw_placeholder* placeholder, ...) {
         switch (sub_placeholder.type) {
         case BS_PLACEHOLDER_WRITE_BITS:
             final_value = va_arg(ap, unsigned int);
-            sub_placeholder.function.write(sub_placeholder.stream,
-                                           sub_placeholder.count, final_value);
+            sub_placeholder.function.write(bs, sub_placeholder.count,
+                                           final_value);
             break;
         case BS_PLACEHOLDER_WRITE_BITS64:
             final_64 = va_arg(ap, uint64_t);
-            sub_placeholder.function.write_64(sub_placeholder.stream,
-                                              sub_placeholder.count, final_64);
+            sub_placeholder.function.write_64(bs, sub_placeholder.count,
+                                              final_64);
+            break;
+        case BS_PLACEHOLDER_WRITE_BYTES:
+            final_bytes = va_arg(ap, uint8_t*);
+            if (bs->output.file.buffer_size == 0) {
+                /*stream is byte-aligned, so optimize writing*/
+                fwrite(final_bytes, sizeof(uint8_t), sub_placeholder.count,
+                       bs->output.file.file);
+
+                /*run callbacks on output bytes*/
+                for (callback = bs->callbacks;
+                     callback != NULL;
+                     callback = callback->next)
+                    for (j = 0; j < sub_placeholder.count; j++)
+                        callback->callback(final_bytes[j], callback->data);
+            } else {
+                /*stream not byte-aligned, so write byte-by-byte*/
+                for (j = 0; j < sub_placeholder.count; j++)
+                    sub_placeholder.function.write(bs, 8, final_bytes[j]);
+            }
             break;
         default:
             fprintf(stderr, "unsupported placeholder type found in stream\n");
@@ -3157,7 +3260,7 @@ bw_fill_placeholders_f(struct bw_placeholder* placeholder, ...) {
     va_end(ap);
 
     /*rewind back to the stream's original position*/
-    bw_rewind_f(placeholder->stream, &original_position);
+    bw_rewind_f(bs, &original_position);
 
     /*deallocate sub-placeholders*/
     free(placeholder->sub_placeholders);
@@ -3169,10 +3272,12 @@ bw_fill_placeholders_f(struct bw_placeholder* placeholder, ...) {
 void
 bw_fill_placeholders_r(struct bw_placeholder* placeholder, ...) {
     va_list ap;
-    unsigned int i;
+    unsigned int i,j;
     struct bw_placeholder sub_placeholder;
     unsigned int final_value;
     uint64_t final_64;
+    uint8_t* final_bytes;
+    BitstreamWriter* bs = placeholder->stream;
 
     /*fill in the final values*/
     va_start(ap, placeholder);
@@ -3181,15 +3286,23 @@ bw_fill_placeholders_r(struct bw_placeholder* placeholder, ...) {
         switch (sub_placeholder.type) {
         case BS_PLACEHOLDER_WRITE_BITS:
             final_value = va_arg(ap, unsigned int);
-            sub_placeholder.stream->output.recorder.records[
+            bs->output.recorder.records[
                 sub_placeholder.position.recorder].value.unsigned_value =
                 final_value;
             break;
         case BS_PLACEHOLDER_WRITE_BITS64:
             final_64 = va_arg(ap, uint64_t);
-            sub_placeholder.stream->output.recorder.records[
+            bs->output.recorder.records[
                 sub_placeholder.position.recorder].value.value64 =
-                final_value;
+                final_64;
+            break;
+        case BS_PLACEHOLDER_WRITE_BYTES:
+            final_bytes = va_arg(ap, uint8_t*);
+            for (j = 0; j < sub_placeholder.count; j++) {
+                bs->output.recorder.records[
+                  sub_placeholder.position.recorder + j].value.unsigned_value =
+                    final_bytes[j];
+            }
             break;
         default:
             fprintf(stderr, "unsupported placeholder type found in stream\n");
@@ -3200,6 +3313,188 @@ bw_fill_placeholders_r(struct bw_placeholder* placeholder, ...) {
 
     /*deallocate sub-placeholders*/
     free(placeholder->sub_placeholders);
+
+    /*mark placeholder as used*/
+    bw_use_placeholder(placeholder);
+}
+
+
+void
+bw_write_bytes_f(BitstreamWriter* bs, const uint8_t* bytes,
+                 unsigned int count) {
+    unsigned int i;
+    struct bs_callback* callback;
+
+    if (bs->output.file.buffer_size == 0) {
+        /*stream is byte aligned, so perform optimized write*/
+        fwrite(bytes, sizeof(uint8_t), count, bs->output.file.file);
+
+        /*perform callbacks on the written bytes*/
+        for (callback = bs->callbacks;
+             callback != NULL;
+             callback = callback->next)
+            for (i = 0; i < count; i++)
+                callback->callback(bytes[i], callback->data);
+    } else {
+        /*stream is not byte-aligned, so perform multiple writes*/
+        for (i = 0; i < count; i++)
+            bs->write(bs, 8, bytes[i]);
+    }
+}
+
+void
+bw_write_bytes_r(BitstreamWriter* bs, const uint8_t* bytes,
+                 unsigned int count) {
+    unsigned int i;
+
+    /*byte writing to a recorder
+      is implemented as a series of individual writes
+      rather than a single record containing one big write
+
+      since this is a relatively rare operation,
+      it's best to keep it simple
+      rather than make a mess of split_record()*/
+    for (i = 0; i < count; i++)
+        bs->write(bs, 8, bytes[i]);
+}
+
+void
+bw_write_bytes_a(BitstreamWriter* bs, const uint8_t* bytes,
+                 unsigned int count) {
+    bs->output.accumulator += (count * 8);
+}
+
+
+struct bw_placeholder*
+bw_write_bytes_placeholder_f(BitstreamWriter* bs, const uint8_t* temp_bytes,
+                             unsigned int count) {
+    struct bw_placeholder* placeholder = bw_new_placeholder(bs);
+
+    /*populate placeholder*/
+    placeholder->type = BS_PLACEHOLDER_WRITE_BYTES;
+    placeholder->count = count;
+    placeholder->function.write = bs->write;
+    placeholder->fill = bw_fill_bytes_placeholder_f;
+    bw_mark_f(bs, &(placeholder->position));
+
+    /*then write dummy value to stream*/
+    bs->write_bytes(bs, temp_bytes, count);
+
+    /*ensure file-based placeholder ends on a byte boundary*/
+    if (bs->output.file.buffer_size != 0) {
+        fprintf(stderr,
+                "Warning: placeholder does not end on byte boundary\n");
+        fprintf(stderr, "this is not what you want - "
+                "consider using write_placeholders()\n");
+    }
+
+    return placeholder;
+}
+
+struct bw_placeholder*
+bw_write_bytes_placeholder_r(BitstreamWriter* bs, const uint8_t* temp_bytes,
+                             unsigned int count) {
+    struct bw_placeholder* placeholder = bw_new_placeholder(bs);
+    unsigned int i;
+
+    /*populate placeholder*/
+    placeholder->type = BS_PLACEHOLDER_WRITE_BYTES;
+    placeholder->count = count;
+    placeholder->function.write = bs->write;
+    placeholder->fill = bw_fill_bytes_placeholder_r;
+    bw_mark_r(bs, &(placeholder->position));
+
+    /*then write dummy values to stream*/
+    for (i = 0; i < count; i++)
+        bs->write(bs, 8, temp_bytes[i]);
+
+    return placeholder;
+}
+
+struct bw_placeholder*
+bw_write_bytes_placeholder_a(BitstreamWriter* bs, const uint8_t* temp_bytes,
+                             unsigned int count) {
+    struct bw_placeholder* placeholder = bw_new_placeholder(bs);
+
+    /*populate placeholder*/
+    placeholder->type = BS_PLACEHOLDER_WRITE_BYTES;
+    placeholder->fill = bw_fill_placeholder_a;
+
+    /*then write dummy value to stream*/
+    bs->output.accumulator += (count * 8);
+
+    return placeholder;
+}
+
+
+void
+bw_fill_bytes_placeholder_f(struct bw_placeholder* placeholder, ...) {
+    union bw_mark original_position;
+    uint8_t* bytes;
+    va_list ap;
+    unsigned int i;
+    struct bs_callback* callback;
+    BitstreamWriter* bs = placeholder->stream;
+
+    /*grab argument*/
+    va_start(ap, placeholder);
+    bytes = va_arg(ap, uint8_t*);
+    va_end(ap);
+
+    /*keep track of our original stream's position*/
+    bw_mark_f(placeholder->stream, &original_position);
+
+    /*move to the placeholder's stream position*/
+    bw_rewind_f(placeholder->stream, &(placeholder->position));
+
+    /*update the stream's value according
+      to whether the placeholder is byte-aligned
+      or using the saved write function
+      (which is why we can't punt this to stream->write_bytes
+       since endianness may have changed)*/
+    if (bs->output.file.buffer_size == 0) {
+        /*stream is byte aligned, so perform optimized write*/
+        fwrite(bytes, sizeof(uint8_t), placeholder->count,
+               bs->output.file.file);
+
+        /*perform callbacks on the written bytes*/
+        for (callback = bs->callbacks;
+             callback != NULL;
+             callback = callback->next)
+            for (i = 0; i < placeholder->count; i++)
+                callback->callback(bytes[i], callback->data);
+
+    } else {
+        /*stream is not byte-aligned, so perform multiple writes
+          even though it's a bad idea that's likely to break things*/
+        for (i = 0; i < placeholder->count; i++)
+            placeholder->function.write(bs, 8, bytes[i]);
+    }
+
+    /*move stream back to saved position*/
+    bw_rewind_f(placeholder->stream, &original_position);
+
+    /*mark placeholder as used*/
+    bw_use_placeholder(placeholder);
+}
+
+void
+bw_fill_bytes_placeholder_r(struct bw_placeholder* placeholder, ...) {
+    uint8_t* bytes;
+    va_list ap;
+    unsigned int i;
+
+    /*grab argument*/
+    va_start(ap, placeholder);
+    bytes = va_arg(ap, uint8_t*);
+    va_end(ap);
+
+    /*update the saved records' values on a byte-by-byte basis*/
+    for (i = 0; i < placeholder->count; i++) {
+    placeholder->stream->output.recorder.records[
+        placeholder->position.recorder + i].value.unsigned_value =
+        bytes[i];
+    }
 
     /*mark placeholder as used*/
     bw_use_placeholder(placeholder);
