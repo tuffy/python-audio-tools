@@ -450,8 +450,7 @@ alac_write_compressed_frame(BitstreamWriter *bs,
                                            bits_per_sample,
                                            samples);
     } else {
-        bw_reset_recorder(best_frame);
-        best_frame->output.recorder.bits_written = INT_MAX;
+        bw_maximize_recorder(best_frame);
 
         /*attempt all the interlacing shift options*/
         for (interlacing_shift = options->minimum_interlacing_shift;

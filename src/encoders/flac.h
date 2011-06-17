@@ -53,7 +53,7 @@ struct flac_STREAMINFO {
     uint8_t channels;             /*3   bits*/
     uint8_t bits_per_sample;      /*5   bits*/
     uint64_t total_samples;       /*36  bits*/
-    uint8_t md5sum[16];           /*128 bits*/
+    unsigned char md5sum[16];     /*128 bits*/
 
     unsigned int crc8;
     unsigned int crc16;
@@ -84,15 +84,10 @@ struct flac_subframe_header {
 
 typedef enum {OK, ERROR} status;
 
-/*writes the STREAMINFO metadata placeholder to the bitstream*/
-struct bw_placeholder*
-FlacEncoder_write_streaminfo_placeholder(BitstreamWriter* bs,
-                                         struct flac_STREAMINFO* streaminfo);
-
-/*completes the STREAMINFO metadata information*/
+/*writes a STREAMINFO metadata block to the bitstream*/
 void
-FlacEncoder_complete_streaminfo(struct bw_placeholder* placeholder,
-                                struct flac_STREAMINFO* streaminfo);
+FlacEncoder_write_streaminfo(BitstreamWriter *bs,
+                             struct flac_STREAMINFO streaminfo);
 
 /*takes a list of sample lists (one per channel)
   and the FLAC's streaminfo

@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <setjmp.h>
 #include <stdarg.h>
+#include <limits.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -42,19 +43,6 @@ typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 typedef enum {BR_FILE, BR_SUBSTREAM, BR_PYTHON} br_type;
 typedef enum {BW_FILE, BW_RECORDER, BW_ACCUMULATOR} bw_type;
 
-typedef enum {
-    BS_WRITE_BITS,
-    BS_WRITE_BITS64,
-    BS_SET_ENDIANNESS
-} BitstreamRecordType;
-
-typedef enum {
-    BS_PLACEHOLDER_WRITE_BITS,
-    BS_PLACEHOLDER_WRITE_BITS64,
-    BS_PLACEHOLDER_WRITE_BYTES,
-    BS_PLACEHOLDER_CONTAINER
-} bw_placeholder_type;
-
 typedef void (*bs_callback_func)(uint8_t, void*);
 
 
@@ -84,7 +72,7 @@ struct br_huffman_table {
     int value;
 };
 
-struct br_buffer {
+struct bs_buffer {
     uint8_t* buffer;
     uint32_t buffer_size;
     uint32_t buffer_total_size;
@@ -103,61 +91,6 @@ struct br_python_input {
 };
 #endif
 
-typedef struct {
-    BitstreamRecordType type;
-    unsigned int count;
-    union {
-        unsigned int unsigned_value;
-        uint64_t value64;
-        bs_endianness endianness;
-    } value;
-} BitstreamRecord;
-
-
-union bw_mark {
-    struct {
-        fpos_t pos;
-        unsigned int buffer_size;
-        unsigned int buffer;
-    } file;
-    unsigned int recorder;
-};
-
-struct BitstreamWriter_s;
-
-struct bw_placeholder {
-    /*the type of placeholder we are*/
-    bw_placeholder_type type;
-
-    /*the stream the placeholder is attached to*/
-    struct BitstreamWriter_s* stream;
-
-    /*the number of bits being written,
-      or the number of sub_placeholders*/
-    unsigned int count;
-
-    /*the write function used at the time the placeholder is called*/
-    union {
-        void (*write)(struct BitstreamWriter_s*,
-                      unsigned int,
-                      unsigned int);
-        void (*write_64)(struct BitstreamWriter_s*,
-                         unsigned int,
-                         uint64_t);
-    } function;
-
-    /*the position in the stream to be rewritten*/
-    union bw_mark position;
-
-    /*an array of placeholders, to be used by a placeholder container*/
-    struct bw_placeholder* sub_placeholders;
-
-    /*the fill function used to populate the placeholder*/
-    void (*fill)(struct bw_placeholder*, ...);
-
-    struct bw_placeholder* next;
-};
-
 
 typedef struct BitstreamReader_s {
 #ifndef NDEBUG
@@ -166,7 +99,7 @@ typedef struct BitstreamReader_s {
 
     union {
         FILE* file;
-        struct br_buffer* substream;
+        struct bs_buffer* substream;
 #ifndef STANDALONE
         struct br_python_input* python;
 #endif
@@ -293,21 +226,13 @@ typedef struct BitstreamWriter_s {
     bw_type type;
 
     union {
-        struct {
-            FILE *file;
-            unsigned int buffer_size;
-            unsigned int buffer;
-        } file;
-        struct {
-            unsigned int bits_written;
-            unsigned int records_written;
-            unsigned int records_total;
-            BitstreamRecord* records;
-        } recorder;
+        FILE* file;
+        struct bs_buffer* buffer;
         unsigned int accumulator;
     } output;
 
-    struct bw_placeholder* used_placeholders;
+    unsigned int buffer_size;
+    unsigned int buffer;
 
     struct bs_callback* callbacks;
     struct bs_callback* callbacks_used;
@@ -320,55 +245,6 @@ typedef struct BitstreamWriter_s {
              unsigned int count,
              unsigned int value);
 
-    /*writes the given temp_value as "count" number of unsigned bits
-      to the current stream, to be populated later via
-      the placeholder's fill() method, for example:
-
-      placeholder = bw->write_placeholder(bw, 16, 0);
-      // ... write additional values here ...
-      placeholder->fill(placeholder, final_value);
-
-      filling the placeholder marks it for garbage-collection
-      a single placeholder should not be filled twice
-      and failing to dispose of it will leak memory
-
-      note that both write_placeholder() *and* placeholder->fill()
-      will trigger any callbacks currently in place
-      since both route their data through BitstreamWriter's write() method
-
-      use bw_pop_callback/bw_push_callback to suspend callbacks if necessary*/
-    struct bw_placeholder*
-    (*write_placeholder)(struct BitstreamWriter_s* bs,
-                         unsigned int count,
-                         unsigned int temp_value);
-
-    /*writes a set of placeholders as determined by the format string
-      which takes only three characters:
-      'i' for unsigned ints, 'l' for uint64_ts and 'b' for a list of uint8_ts
-      subsequent arguments are placeholder length and placeholder value pairs
-
-      For example, to deliver a set of three placeholders that are
-      12 bits, 16 bits and 36 bits, all with an initial value of 0,
-      one could try:
-
-      placeholder1 = bw->write_placeholder(bw, 12, 0);
-      placeholder2 = bw->write_placeholder(bw, 16, 0);
-      placeholder3 = bw->write_placeholder(bw, 36, 0);
-
-      but this will react poorly on file-based writers
-      since they are not byte-aligned.
-      A better approach is to combine them as follows:
-
-      placeholder = bw->write_placeholders(bw, "iil", 12, 0, 16, 0, 36, 0);
-
-      and then populate them later with values:
-
-      placeholder->fill(placeholder, 1, 2, 3);
-    */
-    struct bw_placeholder*
-    (*write_placeholders)(struct BitstreamWriter_s* bs,
-                          const char* format,
-                          ...);
 
     /*writes the given value as "count" number of signed bits
       to the current stream*/
@@ -384,13 +260,6 @@ typedef struct BitstreamWriter_s {
                 unsigned int count,
                 uint64_t value);
 
-    /*writes the given temp_value as "count" number of unsigned bits
-      to the current stream, up to 64 bits wide, to be populated later*/
-    struct bw_placeholder*
-    (*write_64_placeholder)(struct BitstreamWriter_s* bs,
-                            unsigned int count,
-                            uint64_t temp_value);
-
     /*writes "byte_count" number of bytes to the output stream
 
       the stream is not required to be byte-aligned,
@@ -399,11 +268,6 @@ typedef struct BitstreamWriter_s {
     (*write_bytes)(struct BitstreamWriter_s* bs,
                    const uint8_t* bytes,
                    unsigned int byte_count);
-
-    struct bw_placeholder*
-    (*write_bytes_placeholder)(struct BitstreamWriter_s* bs,
-                               const uint8_t* temp_bytes,
-                               unsigned int byte_count);
 
     /*writes "value" number of non stop bits to the current stream
       followed by a single stop bit*/
@@ -430,15 +294,6 @@ typedef struct BitstreamWriter_s {
       that information*/
     unsigned int
     (*bits_written)(struct BitstreamWriter_s* bs);
-
-    /*splits the given record in two
-      where "head" contains up to "bits" number of output bits
-      and "tail" contains the remainder of the output bits*/
-    void
-    (*split_record)(BitstreamRecord* record,
-                    BitstreamRecord* head,
-                    BitstreamRecord* tail,
-                    unsigned int bits);
 
     /*closes the current output stream
       and deallocates the struct*/
@@ -749,13 +604,13 @@ void
 br_byte_align(BitstreamReader* bs);
 
 
-/*returns a new br_buffer struct which can be appended to and read from
+/*returns a new bs_buffer struct which can be appended to and read from
   it must be closed later*/
-struct br_buffer*
+struct bs_buffer*
 buf_new(void);
 
 uint32_t
-buf_size(struct br_buffer *stream);
+buf_size(struct bs_buffer *stream);
 
 /*returns a pointer to the new position in the buffer
   where one can begin appending new data
@@ -772,21 +627,24 @@ buf_size(struct br_buffer *stream);
 
 */
 uint8_t*
-buf_extend(struct br_buffer *stream, uint32_t data_size);
+buf_extend(struct bs_buffer *stream, uint32_t data_size);
 
 /*clears out the buffer for possible reuse
 
   resets the position, size and resets any marks in progress*/
 void
-buf_reset(struct br_buffer *stream);
+buf_reset(struct bs_buffer *stream);
 
 /*analagous to fgetc, returns EOF at the end of buffer*/
 int
-buf_getc(struct br_buffer *stream);
+buf_getc(struct bs_buffer *stream);
+
+int
+buf_putc(int i, struct bs_buffer *stream);
 
 /*deallocates buffer struct*/
 void
-buf_close(struct br_buffer *stream);
+buf_close(struct bs_buffer *stream);
 
 
 struct BitstreamReader_s*
@@ -898,32 +756,19 @@ bw_pop_callback(BitstreamWriter* bs, struct bs_callback* callback);
 void
 bw_push_callback(BitstreamWriter* bs, struct bs_callback* callback);
 
+
 static inline int
 bw_eof(BitstreamWriter* bs) {
     assert(bs->type == BW_FILE);
-    return feof(bs->output.file.file);
+    return feof(bs->output.file);
 }
 
 static inline long
 bw_ftell(BitstreamWriter* bs) {
     assert(bs->type == BW_FILE);
-    return ftell(bs->output.file.file);
+    return ftell(bs->output.file);
 }
 
-/*make room for at least one additional record*/
-static inline void
-bs_record_resize(BitstreamWriter* bs)
-{
-    assert(bs->type == BW_RECORDER);
-    if (bs->output.recorder.records_written >=
-        bs->output.recorder.records_total) {
-        bs->output.recorder.records_total *= 2;
-        bs->output.recorder.records = realloc(
-             bs->output.recorder.records,
-             sizeof(BitstreamRecord) *
-             bs->output.recorder.records_total);
-    }
-}
 
 /*given a BitstreamWriter recorder "source",
   writes all of its recorded output to "target"*/
@@ -948,39 +793,34 @@ static inline void
 bw_reset_recorder(BitstreamWriter* bs)
 {
     assert(bs->type == BW_RECORDER);
-    bs->output.recorder.bits_written = bs->output.recorder.records_written = 0;
+
+    bs->buffer = 0;
+    bs->buffer_size = 0;
+    bs->output.buffer->buffer_size = 0;
+}
+
+/*set the recorded output to the maximum possible size
+  as recorded by bs->bits_written(bs)
+  as a placeholder value to be filled later*/
+static inline void
+bw_maximize_recorder(BitstreamWriter* bs)
+{
+    assert(bs->type == BW_RECORDER);
+
+    bs->buffer = 0;
+    bs->buffer_size = 0;
+    bs->output.buffer->buffer_size = INT_MAX;
 }
 
 void
 bw_swap_records(BitstreamWriter* a, BitstreamWriter* b);
 
 
-/*returns a bw_placeholder and places it in the FIFO's final position,
-  either newly allocated or pulled from the recycle stack*/
-struct bw_placeholder*
-bw_new_placeholder(BitstreamWriter* bs);
-
-/*disposes of the given placeholder*/
-void
-bw_use_placeholder(struct bw_placeholder* placeholder);
-
-
-void
-bw_fill_placeholder_f(struct bw_placeholder* placeholder, ...);
-void
-bw_fill_placeholder_64_f(struct bw_placeholder* placeholder, ...);
-void
-bw_fill_placeholder_r(struct bw_placeholder* placeholder, ...);
-void
-bw_fill_placeholder_64_r(struct bw_placeholder* placeholder, ...);
-void
-bw_fill_placeholder_a(struct bw_placeholder* placeholder, ...);
-
 
 /*************************************************************
  Bitstream Writer Function Matrix
  The write functions come in three output variants
- and two endianness variants for file output:
+ and two endianness variants for file and recorder output:
 
  bw_function_x or bw_function_x_yy
 
@@ -993,7 +833,8 @@ bw_fill_placeholder_a(struct bw_placeholder* placeholder, ...);
  |--------------------+-------------+---------------|
  | bw_write_bits_f_be | raw file    | big endian    |
  | bw_write_bits_f_le | raw file    | little endian |
- | bw_write_bits_r    | recorder    | N/A           |
+ | bw_write_bits_r_be | recorder    | big endian    |
+ | bw_write_bits_r_le | recorder    | little endian |
  | bw_write_bits_a    | accumulator | N/A           |
 
  *************************************************************/
@@ -1003,37 +844,11 @@ bw_write_bits_f_be(BitstreamWriter* bs, unsigned int count, unsigned int value);
 void
 bw_write_bits_f_le(BitstreamWriter* bs, unsigned int count, unsigned int value);
 void
-bw_write_bits_r(BitstreamWriter* bs, unsigned int count, unsigned int value);
+bw_write_bits_r_be(BitstreamWriter* bs, unsigned int count, unsigned int value);
+void
+bw_write_bits_r_le(BitstreamWriter* bs, unsigned int count, unsigned int value);
 void
 bw_write_bits_a(BitstreamWriter* bs, unsigned int count, unsigned int value);
-
-
-struct bw_placeholder*
-bw_write_placeholder_f(BitstreamWriter* bs, unsigned int count,
-                       unsigned int temp_value);
-struct bw_placeholder*
-bw_write_placeholder_r(BitstreamWriter* bs, unsigned int count,
-                       unsigned int temp_value);
-struct bw_placeholder*
-bw_write_placeholder_a(BitstreamWriter* bs, unsigned int count,
-                       unsigned int temp_value);
-
-
-struct bw_placeholder*
-bw_allocate_sub_placeholders(const char* format, unsigned int* count);
-
-struct bw_placeholder*
-bw_write_placeholders_f(BitstreamWriter* bs, const char* format, ...);
-struct bw_placeholder*
-bw_write_placeholders_r(BitstreamWriter* bs, const char* format, ...);
-struct bw_placeholder*
-bw_write_placeholders_a(BitstreamWriter* bs, const char* format, ...);
-
-
-void
-bw_fill_placeholders_f(struct bw_placeholder* placeholder, ...);
-void
-bw_fill_placeholders_r(struct bw_placeholder* placeholder, ...);
 
 
 void
@@ -1042,22 +857,6 @@ void
 bw_write_bytes_r(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
 void
 bw_write_bytes_a(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
-
-
-struct bw_placeholder*
-bw_write_bytes_placeholder_f(BitstreamWriter* bs, const uint8_t* temp_bytes,
-                             unsigned int count);
-struct bw_placeholder*
-bw_write_bytes_placeholder_r(BitstreamWriter* bs, const uint8_t* temp_bytes,
-                             unsigned int count);
-struct bw_placeholder*
-bw_write_bytes_placeholder_a(BitstreamWriter* bs, const uint8_t* temp_bytes,
-                             unsigned int count);
-
-void
-bw_fill_bytes_placeholder_f(struct bw_placeholder* placeholder, ...);
-void
-bw_fill_bytes_placeholder_r(struct bw_placeholder* placeholder, ...);
 
 
 void
@@ -1070,19 +869,12 @@ bw_write_bits64_f_be(BitstreamWriter* bs, unsigned int count, uint64_t value);
 void
 bw_write_bits64_f_le(BitstreamWriter* bs, unsigned int count, uint64_t value);
 void
-bw_write_bits64_r(BitstreamWriter* bs, unsigned int count, uint64_t value);
+bw_write_bits64_r_be(BitstreamWriter* bs, unsigned int count, uint64_t value);
+void
+bw_write_bits64_r_le(BitstreamWriter* bs, unsigned int count, uint64_t value);
 void
 bw_write_bits64_a(BitstreamWriter* bs, unsigned int count, uint64_t value);
 
-struct bw_placeholder*
-bw_write_64_placeholder_f(BitstreamWriter* bs, unsigned int count,
-                          uint64_t temp_value);
-struct bw_placeholder*
-bw_write_64_placeholder_r(BitstreamWriter* bs, unsigned int count,
-                          uint64_t temp_value);
-struct bw_placeholder*
-bw_write_64_placeholder_a(BitstreamWriter* bs, unsigned int count,
-                          uint64_t temp_value);
 
 void
 bw_write_unary_f_r(BitstreamWriter* bs, int stop_bit, unsigned int value);
@@ -1090,9 +882,7 @@ void
 bw_write_unary_a(BitstreamWriter* bs, int stop_bit, unsigned int value);
 
 void
-bw_byte_align_f(BitstreamWriter* bs);
-void
-bw_byte_align_r(BitstreamWriter* bs);
+bw_byte_align_f_r(BitstreamWriter* bs);
 void
 bw_byte_align_a(BitstreamWriter* bs);
 
@@ -1108,33 +898,11 @@ bw_set_endianness_f_be(BitstreamWriter* bs, bs_endianness endianness);
 void
 bw_set_endianness_f_le(BitstreamWriter* bs, bs_endianness endianness);
 void
+bw_set_endianness_r_be(BitstreamWriter* bs, bs_endianness endianness);
+void
+bw_set_endianness_r_le(BitstreamWriter* bs, bs_endianness endianness);
+void
 bw_set_endianness_a(BitstreamWriter* bs, bs_endianness endianness);
-void
-bw_set_endianness_r(BitstreamWriter* bs, bs_endianness endianness);
-
-
-void
-bw_mark_f(BitstreamWriter* bs, union bw_mark* position);
-void
-bw_mark_r(BitstreamWriter* bs, union bw_mark* position);
-void
-bw_rewind_f(BitstreamWriter* bs, union bw_mark* position);
-
-
-/*given a BitstreamRecord larger than "bits",
-  splits "record" into two pieces
-  in which "head" contains "bits" number of bits
-  while "tail" contains the remainder*/
-void
-bw_split_record_be(BitstreamRecord* record,
-                   BitstreamRecord* head,
-                   BitstreamRecord* tail,
-                   unsigned int bits);
-void
-bw_split_record_le(BitstreamRecord* record,
-                   BitstreamRecord* head,
-                   BitstreamRecord* tail,
-                   unsigned int bits);
 
 
 void

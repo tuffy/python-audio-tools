@@ -47,7 +47,6 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
     PyObject *pcmreader_obj;
     struct pcm_reader *reader;
     struct flac_STREAMINFO streaminfo;
-    struct bw_placeholder* placeholder;
     char version_string[0xFF];
     static char *kwlist[] = {"filename",
                              "pcmreader",
@@ -140,7 +139,6 @@ encoders_encode_flac(char *filename,
     BitstreamWriter *stream;
     struct pcm_reader *reader;
     struct flac_STREAMINFO streaminfo;
-    struct bw_placeholder* placeholder;
     char version_string[0xFF];
     audiotools__MD5Context md5sum;
 
@@ -209,7 +207,7 @@ encoders_encode_flac(char *filename,
     stream->write(stream, 24, 34);
 
     /*write placeholder STREAMINFO*/
-    placeholder = FlacEncoder_write_streaminfo_placeholder(stream, &streaminfo);
+    FlacEncoder_write_streaminfo(stream, streaminfo);
 
     /*write VORBIS_COMMENT*/
     stream->write(stream, 1, 0);
@@ -257,7 +255,9 @@ encoders_encode_flac(char *filename,
 
     /*go back and re-write STREAMINFO with complete values*/
     audiotools__MD5Final(streaminfo.md5sum, &md5sum);
-    FlacEncoder_complete_streaminfo(placeholder, &streaminfo);
+    /*FIXME - implement this with a mark/unmark/rewind of some sort*/
+    fseek(stream->output.file, 4 + 4, SEEK_SET);
+    FlacEncoder_write_streaminfo(stream, streaminfo);
 
     iaa_free(&samples); /*deallocate the temporary samples block*/
     pcmr_close(reader); /*close the pcm_reader object
@@ -285,40 +285,39 @@ encoders_encode_flac(char *filename,
 #endif
 
 
-struct bw_placeholder*
-FlacEncoder_write_streaminfo_placeholder(BitstreamWriter* bs,
-                                         struct flac_STREAMINFO* streaminfo) {
-    return bs->write_placeholders(bs,
-                                  "iiiiiiilb",
-                                  16, streaminfo->minimum_block_size,
-                                  16, streaminfo->maximum_block_size,
-                                  24, streaminfo->minimum_frame_size,
-                                  24, streaminfo->maximum_frame_size,
-                                  20, streaminfo->sample_rate,
-                                  3, streaminfo->channels - 1,
-                                  5, streaminfo->bits_per_sample - 1,
-                                  36, streaminfo->total_samples,
-                                  16, streaminfo->md5sum);
-}
-
-
 void
-FlacEncoder_complete_streaminfo(struct bw_placeholder* placeholder,
-                                struct flac_STREAMINFO* streaminfo)
+FlacEncoder_write_streaminfo(BitstreamWriter *bs,
+                             struct flac_STREAMINFO streaminfo)
 {
-    assert(streaminfo->total_samples >= 0);
-    assert(streaminfo->total_samples < (int64_t)(1ll << 36));
+    int i;
 
-    placeholder->fill(placeholder,
-                      streaminfo->minimum_block_size,
-                      streaminfo->maximum_block_size,
-                      streaminfo->minimum_frame_size,
-                      streaminfo->maximum_frame_size,
-                      streaminfo->sample_rate,
-                      streaminfo->channels - 1,
-                      streaminfo->bits_per_sample - 1,
-                      streaminfo->total_samples,
-                      streaminfo->md5sum);
+    bs->write(bs, 16, MAX(MIN(streaminfo.minimum_block_size,
+                              (1 << 16) - 1), 0));
+
+    bs->write(bs, 16, MAX(MIN(streaminfo.maximum_block_size,
+                              (1 << 16) - 1),0));
+
+    bs->write(bs, 24, MAX(MIN(streaminfo.minimum_frame_size,
+                              (1 << 24) - 1), 0));
+
+    bs->write(bs, 24, MAX(MIN(streaminfo.maximum_frame_size,
+                              (1 << 24) - 1), 0));
+
+    bs->write(bs, 20, MAX(MIN(streaminfo.sample_rate,
+                              (1 << 20) - 1), 0));
+
+    bs->write(bs, 3, MAX(MIN(streaminfo.channels - 1,
+                             (1 << 3) - 1), 0));
+
+    bs->write(bs, 5, MAX(MIN(streaminfo.bits_per_sample - 1,
+                             (1 << 5) - 1), 0));
+
+    assert(streaminfo.total_samples >= 0);
+    assert(streaminfo.total_samples < (int64_t)(1ll << 36));
+    bs->write_64(bs, 36, streaminfo.total_samples);
+
+    for (i = 0; i < 16; i++)
+        bs->write(bs, 8, streaminfo.md5sum[i]);
 }
 
 void

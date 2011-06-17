@@ -249,7 +249,7 @@ br_abort(BitstreamReader *bs)
         longjmp(bs->exceptions->env, 1);
     } else {
         fprintf(stderr, "EOF encountered, aborting\n");
-        exit(1);
+        abort();
     }
 }
 
@@ -1560,7 +1560,7 @@ br_read_bytes_s(struct BitstreamReader_s* bs,
                 uint8_t* bytes,
                 unsigned int byte_count) {
     unsigned int i;
-    struct br_buffer* buffer;
+    struct bs_buffer* buffer;
     struct bs_callback* callback;
 
     if (bs->state == 0) {
@@ -1944,10 +1944,10 @@ br_byte_align(BitstreamReader* bs)
  and processing them separately
  *******************************************/
 
-struct br_buffer*
+struct bs_buffer*
 buf_new(void)
 {
-    struct br_buffer* stream = malloc(sizeof(struct br_buffer));
+    struct bs_buffer* stream = malloc(sizeof(struct bs_buffer));
     stream->buffer_size = 0;
     stream->buffer_total_size = 1;
     stream->buffer = malloc(stream->buffer_total_size);
@@ -1957,13 +1957,13 @@ buf_new(void)
 }
 
 uint32_t
-buf_size(struct br_buffer *stream)
+buf_size(struct bs_buffer *stream)
 {
     return stream->buffer_size - stream->buffer_position;
 }
 
 uint8_t*
-buf_extend(struct br_buffer *stream, uint32_t data_size)
+buf_extend(struct bs_buffer *stream, uint32_t data_size)
 {
     uint32_t remaining_bytes;
     uint8_t* extended_buffer;
@@ -1991,8 +1991,8 @@ buf_extend(struct br_buffer *stream, uint32_t data_size)
             if (data_size > (remaining_bytes + stream->buffer_position)) {
                 /*if there's not enough bytes to recycle,
                   just extended the buffer outright*/
-                while (data_size > (remaining_bytes +
-                                    stream->buffer_position)) {
+                while (data_size >
+                       (remaining_bytes + stream->buffer_position)) {
                     stream->buffer_total_size *= 2;
                     remaining_bytes = (stream->buffer_total_size -
                                        stream->buffer_size);
@@ -2020,7 +2020,7 @@ buf_extend(struct br_buffer *stream, uint32_t data_size)
 }
 
 void
-buf_reset(struct br_buffer *stream)
+buf_reset(struct bs_buffer *stream)
 {
     stream->buffer_size = 0;
     stream->buffer_position = 0;
@@ -2028,7 +2028,7 @@ buf_reset(struct br_buffer *stream)
 }
 
 int
-buf_getc(struct br_buffer *stream)
+buf_getc(struct bs_buffer *stream)
 {
     if (stream->buffer_position < stream->buffer_size) {
         return stream->buffer[stream->buffer_position++];
@@ -2036,8 +2036,23 @@ buf_getc(struct br_buffer *stream)
         return EOF;
 }
 
+int
+buf_putc(int i, struct bs_buffer *stream) {
+    uint8_t value = i;
+
+    if (stream->buffer_size >= stream->buffer_total_size) {
+        stream->buffer_total_size *= 2;
+        stream->buffer = realloc(stream->buffer,
+                                 sizeof(uint8_t) * stream->buffer_total_size);
+    }
+
+    stream->buffer[stream->buffer_size++] = value;
+
+    return i;
+}
+
 void
-buf_close(struct br_buffer *stream)
+buf_close(struct bs_buffer *stream)
 {
     if (stream->buffer != NULL)
         free(stream->buffer);
@@ -2451,11 +2466,9 @@ bw_open(FILE *f, bs_endianness endianness)
     BitstreamWriter *bs = malloc(sizeof(BitstreamWriter));
     bs->type = BW_FILE;
 
-    bs->output.file.file = f;
-    bs->output.file.buffer_size = 0;
-    bs->output.file.buffer = 0;
-
-    bs->used_placeholders = NULL;
+    bs->output.file = f;
+    bs->buffer_size = 0;
+    bs->buffer = 0;
 
     bs->callbacks = NULL;
     bs->callbacks_used = NULL;
@@ -2465,25 +2478,18 @@ bw_open(FILE *f, bs_endianness endianness)
         bs->write = bw_write_bits_f_be;
         bs->write_64 = bw_write_bits64_f_be;
         bs->set_endianness = bw_set_endianness_f_be;
-        bs->split_record = bw_split_record_be;
         break;
     case BS_LITTLE_ENDIAN:
         bs->write = bw_write_bits_f_le;
         bs->write_64 = bw_write_bits64_f_le;
         bs->set_endianness = bw_set_endianness_f_le;
-        bs->split_record = bw_split_record_le;
         break;
     }
 
-
-    bs->write_placeholder = bw_write_placeholder_f;
-    bs->write_placeholders = bw_write_placeholders_f;
-    bs->write_64_placeholder = bw_write_64_placeholder_f;
     bs->write_bytes = bw_write_bytes_f;
-    bs->write_bytes_placeholder = bw_write_bytes_placeholder_f;
     bs->write_signed = bw_write_signed_bits_f_r;
     bs->write_unary = bw_write_unary_f_r;
-    bs->byte_align = bw_byte_align_f;
+    bs->byte_align = bw_byte_align_f_r;
     bs->bits_written = bw_bits_written_f;
     bs->close = bw_close_new;
     bs->close_stream = bw_close_stream_f;
@@ -2498,29 +2504,16 @@ bw_open_accumulator(bs_endianness endianness)
     bs->type = BW_ACCUMULATOR;
 
     bs->output.accumulator = 0;
-
-    bs->used_placeholders = NULL;
+    bs->buffer = 0;
+    bs->buffer_size = 0;
 
     bs->callbacks = NULL;
     bs->callbacks_used = NULL;
 
-    switch (endianness) {
-    case BS_BIG_ENDIAN:
-        bs->split_record = bw_split_record_be;
-        break;
-    case BS_LITTLE_ENDIAN:
-        bs->split_record = bw_split_record_le;
-        break;
-    }
-
     bs->write = bw_write_bits_a;
-    bs->write_placeholder = bw_write_placeholder_a;
-    bs->write_placeholders = bw_write_placeholders_a;
     bs->write_bytes = bw_write_bytes_a;
-    bs->write_bytes_placeholder = bw_write_bytes_placeholder_a;
     bs->write_signed = bw_write_signed_bits_a;
     bs->write_64 = bw_write_bits64_a;
-    bs->write_64_placeholder = bw_write_64_placeholder_a;
     bs->write_unary = bw_write_unary_a;
     bs->byte_align = bw_byte_align_a;
     bs->set_endianness = bw_set_endianness_a;
@@ -2537,37 +2530,30 @@ bw_open_recorder(bs_endianness endianness)
     BitstreamWriter *bs = malloc(sizeof(BitstreamWriter));
     bs->type = BW_RECORDER;
 
-    bs->output.recorder.bits_written = 0;
-    bs->output.recorder.records_written = 0;
-    bs->output.recorder.records_total = 0x100;
-    bs->output.recorder.records = malloc(sizeof(BitstreamRecord) *
-                                         bs->output.recorder.records_total);
-
-    bs->used_placeholders = NULL;
+    bs->output.buffer = buf_new();
+    bs->buffer_size = 0;
+    bs->buffer = 0;
 
     bs->callbacks = NULL;
     bs->callbacks_used = NULL;
 
     switch (endianness) {
     case BS_BIG_ENDIAN:
-        bs->split_record = bw_split_record_be;
+        bs->write = bw_write_bits_r_be;
+        bs->write_64 = bw_write_bits64_r_be;
+        bs->set_endianness = bw_set_endianness_r_be;
         break;
     case BS_LITTLE_ENDIAN:
-        bs->split_record = bw_split_record_le;
+        bs->write = bw_write_bits_r_le;
+        bs->write_64 = bw_write_bits64_r_le;
+        bs->set_endianness = bw_set_endianness_r_le;
         break;
     }
 
-    bs->write = bw_write_bits_r;
-    bs->write_placeholder = bw_write_placeholder_r;
-    bs->write_placeholders = bw_write_placeholders_r;
     bs->write_bytes = bw_write_bytes_r;
-    bs->write_bytes_placeholder = bw_write_bytes_placeholder_r;
     bs->write_signed = bw_write_signed_bits_f_r;
-    bs->write_64 = bw_write_bits64_r;
-    bs->write_64_placeholder = bw_write_64_placeholder_r;
     bs->write_unary = bw_write_unary_f_r;
-    bs->byte_align = bw_byte_align_r;
-    bs->set_endianness = bw_set_endianness_r;
+    bs->byte_align = bw_byte_align_f_r;
     bs->bits_written = bw_bits_written_r;
     bs->close = bw_close_new;
     bs->close_stream = bw_close_stream_r;
@@ -2580,8 +2566,6 @@ bw_free(BitstreamWriter* bs)
 {
     struct bs_callback* callback;
     struct bs_callback* next_callback;
-    struct bw_placeholder* placeholder;
-    struct bw_placeholder* next_placeholder;
 
     for (callback = bs->callbacks;
          callback != NULL;
@@ -2594,13 +2578,6 @@ bw_free(BitstreamWriter* bs)
          callback = next_callback) {
         next_callback = callback->next;
         free(callback);
-    }
-
-    for (placeholder = bs->used_placeholders;
-         placeholder != NULL;
-         placeholder = next_placeholder) {
-        next_placeholder = placeholder->next;
-        free(placeholder);
     }
 
     free(bs);
@@ -2651,78 +2628,54 @@ bw_push_callback(BitstreamWriter* bs, struct bs_callback* callback) {
     }
 }
 
-static inline void
-bw_dump_record(BitstreamWriter* target, BitstreamRecord record) {
-    switch (record.type) {
-    case BS_WRITE_BITS:
-        target->write(target,
-                      record.count,
-                      record.value.unsigned_value);
-        break;
-    case BS_WRITE_BITS64:
-        target->write_64(target,
-                         record.count,
-                         record.value.value64);
-        break;
-    case BS_SET_ENDIANNESS:
-        target->set_endianness(target,
-                               record.value.endianness);
-        break;
-    }
-}
 
 void
 bw_dump_records(BitstreamWriter* target, BitstreamWriter* source)
 {
-    unsigned int records_written;
-    unsigned int new_records_total;
-    unsigned int i;
+    uint8_t* buffer;
+    uint32_t buffer_size;
+    uint8_t* target_buffer;
+    uint32_t i;
+    struct bs_callback* callback;
 
     assert(source->type == BW_RECORDER);
 
-    records_written = source->output.recorder.records_written;
+    buffer = source->output.buffer->buffer;
+    buffer_size = source->output.buffer->buffer_size;
 
-    switch (target->type) {
-    case BW_RECORDER:
-        /*when dumping from one recorder to another,
-          use memcpy instead of looping through the records*/
+    if (target->buffer_size == 0) {
+        /*perform faster dumping if target is byte-aligned*/
+        switch (target->type) {
+        case BW_FILE:
+            fwrite(buffer, sizeof(uint8_t), buffer_size, target->output.file);
+            break;
+        case BW_RECORDER:
+            target_buffer = buf_extend(target->output.buffer, buffer_size);
+            memcpy(target_buffer, buffer, buffer_size);
+            target->output.buffer->buffer_size += buffer_size;
+            break;
+        case BW_ACCUMULATOR:
+            target->output.accumulator += (buffer_size * 8);
+            break;
+        }
 
-        for (new_records_total = target->output.recorder.records_total;
-             (new_records_total -
-              target->output.recorder.records_written) < records_written;)
-            new_records_total *= 2;
-
-        if (new_records_total != target->output.recorder.records_total)
-            target->output.recorder.records =
-                realloc(target->output.recorder.records,
-                        sizeof(BitstreamRecord) *
-                        new_records_total);
-
-        memcpy(target->output.recorder.records +
-               target->output.recorder.records_written,
-               source->output.recorder.records,
-               sizeof(BitstreamRecord) *
-               source->output.recorder.records_written);
-
-        target->output.recorder.records_written +=
-            source->output.recorder.records_written;
-        target->output.recorder.bits_written +=
-            source->output.recorder.bits_written;
-        break;
-    case BW_ACCUMULATOR:
-        /*when dumping from a recorder to an accumulator,
-          simply copy over the total number of written bits*/
-        target->output.accumulator = source->output.recorder.bits_written;
-        break;
-    case BW_FILE:
-        for (i = 0; i < records_written; i++)
-            bw_dump_record(target, source->output.recorder.records[i]);
-        break;
-    default:
-        /*shouldn't get here*/
-        assert(0);
-        break;
+        /*perform callbacks on written bytes*/
+        for (callback = target->callbacks;
+             callback != NULL;
+             callback = callback->next)
+            for (i = 0; i < buffer_size; i++)
+                callback->callback(buffer[i], callback->data);
+    } else {
+        /*otherwise, proceed on a byte-by-byte basis*/
+        for (i = 0; i < buffer_size; i++)
+            target->write(target, 8, buffer[i]);
     }
+
+    /*dump remaining bits (if any) with a partial write() call*/
+    if (source->buffer_size > 0)
+        target->write(target,
+                      source->buffer_size,
+                      source->buffer & ((1 << source->buffer_size) - 1));
 }
 
 unsigned int
@@ -2730,83 +2683,119 @@ bw_dump_records_limited(BitstreamWriter* target,
                         BitstreamWriter* remaining,
                         BitstreamWriter* source,
                         unsigned int total_bytes) {
-    BitstreamRecord record;
-    BitstreamRecord head;
-    BitstreamRecord tail;
-    unsigned int records_written;
+    uint8_t* buffer;
+    uint32_t buffer_size;
+    uint8_t* target_buffer;
+    unsigned int to_target;
+    unsigned int to_remaining;
     unsigned int i;
-    unsigned int total_bits = total_bytes * 8;
-    unsigned int bits_dumped = 0;
-
-    /*FIXME - handle case in which "source" == "remaining"
-      in that event, wipe placeholders from source*/
+    unsigned int j;
+    struct bs_callback* callback;
 
     assert(source->type == BW_RECORDER);
 
-    records_written = source->output.recorder.records_written;
+    buffer = source->output.buffer->buffer;
+    buffer_size = source->output.buffer->buffer_size;
+    to_target = MIN(total_bytes, buffer_size);
+    to_remaining = buffer_size - to_target;
 
-    /*first, send records from "source" to "target"
-      until the bits or records are exhausted*/
-    for (i = 0; (total_bits > 0) && (i < records_written); i++) {
-        record = source->output.recorder.records[i];
+    /*first, dump up to "total_bytes" from source to "target"*/
+    if (to_target > 0) {
+        if (target->buffer_size == 0) {
+            /*perform faster dumping if target is byte-aligned*/
+            switch (target->type) {
+            case BW_FILE:
+                fwrite(buffer, sizeof(uint8_t), to_target, target->output.file);
+                break;
+            case BW_RECORDER:
+                target_buffer = buf_extend(target->output.buffer,
+                                           to_target);
+                memcpy(target_buffer, buffer, to_target);
+                target->output.buffer->buffer_size += to_target;
+                break;
+            case BW_ACCUMULATOR:
+                target->output.accumulator += (to_target * 8);
+                break;
+            }
 
-        /*if the sent record's size exceeds the bits remaining*/
-        if (record.count > total_bits) {
-            /*split it in two according to the target's endianness*/
-            target->split_record(&record, &head, &tail, total_bits);
+            /*perform callbacks on written bytes*/
+            for (callback = target->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                for (j = 0; j < to_target; i++)
+                    callback->callback(buffer[j], callback->data);
 
-            /*sending the head portion to "target"*/
-            bw_dump_record(target, head);
-
-            /*and sending the remainder to "remaining"*/
-            bw_dump_record(remaining, tail);
-
-            /*before decrementing the remaining bits according to head*/
-            total_bits -= head.count;
-
-            /*and incrementing the bits written according to head*/
-            bits_dumped += head.count;
+            /*set i as if the bytes have been traversed*/
+            i = to_target;
         } else {
-            /*otherwise, send it to "target" as-is*/
-            bw_dump_record(target, record);
+            /*otherwise, proceed on a byte-by-byte basis*/
+            for (i = 0; i < to_target; i++)
+                target->write(target, 8, buffer[i]);
+        }
+    } else {
+        i = 0;
+    }
 
-            /*before decrementing the remaining bits*/
-            total_bits -= record.count;
+    /*then, dump the remaining bytes from source to "remaining"*/
+    if (to_remaining > 0) {
+        if (remaining->buffer_size == 0) {
+            /*perform faster dumping if remaining is byte-aligned*/
+            switch (remaining->type) {
+            case BW_FILE:
+                fwrite(buffer + to_target, sizeof(uint8_t), to_remaining,
+                       remaining->output.file);
+                break;
+            case BW_RECORDER:
+                target_buffer = buf_extend(remaining->output.buffer,
+                                           to_remaining);
+                memcpy(target_buffer, buffer + to_target, to_remaining);
+                remaining->output.buffer->buffer_size += to_remaining;
+                break;
+            case BW_ACCUMULATOR:
+                remaining->output.accumulator += (to_remaining * 8);
+                break;
+            }
 
-            /*and incrementing the bits written*/
-            bits_dumped += record.count;
+            /*perform callbacks on written bytes*/
+            for (callback = target->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                for (j = 0; j < to_remaining; i++)
+                    callback->callback(buffer[to_target + j], callback->data);
+        } else {
+            /*otherwise, proceed on a byte-by-byte basis*/
+            for (; i < buffer_size; i++)
+                remaining->write(remaining, 8, buffer[i]);
         }
     }
 
-    /*if any records remain, send them to "remaining"*/
-    for (; i < records_written; i++) {
-        bw_dump_record(remaining, source->output.recorder.records[i]);
-    }
+    /*dump remaining bits (if any) with a partial write() call*/
+    if (source->buffer_size > 0)
+        remaining->write(remaining,
+                         source->buffer_size,
+                         source->buffer & ((1 << source->buffer_size) - 1));
 
-    assert((bits_dumped % 8) == 0);
-    return bits_dumped / 8;
+    return to_target;
 }
 
 void
 bw_swap_records(BitstreamWriter* a, BitstreamWriter* b)
 {
+    BitstreamWriter c;
+
     assert(a->type == BW_RECORDER);
     assert(b->type == BW_RECORDER);
+    assert(a->write == b->write);  /*ensure they have the same endianness*/
 
-    int bits_written = a->output.recorder.bits_written;
-    int records_written = a->output.recorder.records_written;
-    int records_total = a->output.recorder.records_total;
-    BitstreamRecord *records = a->output.recorder.records;
-
-    a->output.recorder.bits_written = b->output.recorder.bits_written;
-    a->output.recorder.records_written = b->output.recorder.records_written;
-    a->output.recorder.records_total = b->output.recorder.records_total;
-    a->output.recorder.records = b->output.recorder.records;
-
-    b->output.recorder.bits_written = bits_written;
-    b->output.recorder.records_written = records_written;
-    b->output.recorder.records_total = records_total;
-    b->output.recorder.records = records;
+    c.output.buffer = a->output.buffer;
+    c.buffer_size = a->buffer_size;
+    c.buffer = a->buffer;
+    a->output.buffer = b->output.buffer;
+    a->buffer_size = b->buffer_size;
+    a->buffer = b->buffer;
+    b->output.buffer = c.output.buffer;
+    b->buffer_size = c.buffer_size;
+    b->buffer = c.buffer;
 }
 
 void
@@ -2824,23 +2813,22 @@ bw_write_bits_f_be(BitstreamWriter* bs, unsigned int count, unsigned int value)
         bits_to_write = count > 8 ? 8 : count;
         value_to_write = value >> (count - bits_to_write);
 
-        /*prepend value to buffer*/
-        bs->output.file.buffer = ((bs->output.file.buffer << bits_to_write) |
-                                  value_to_write);
-        bs->output.file.buffer_size += bits_to_write;
+        /*new data is added to the buffer least-significant first*/
+        bs->buffer = ((bs->buffer << bits_to_write) | value_to_write);
+        bs->buffer_size += bits_to_write;
 
         /*if buffer is over 8 bits,
-          write a byte and remove it from the buffer*/
-        if (bs->output.file.buffer_size >= 8) {
-            byte = (bs->output.file.buffer >>
-                    (bs->output.file.buffer_size - 8)) & 0xFF;
-            fputc(byte, bs->output.file.file);
+          extract bits most-significant first
+          and remove them from the buffer*/
+        if (bs->buffer_size >= 8) {
+            byte = (bs->buffer >> (bs->buffer_size - 8)) & 0xFF;
+            fputc(byte, bs->output.file);
             for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
 
-            bs->output.file.buffer_size -= 8;
+            bs->buffer_size -= 8;
         }
 
         /*decrement the count and value*/
@@ -2864,22 +2852,22 @@ bw_write_bits_f_le(BitstreamWriter* bs, unsigned int count, unsigned int value)
         bits_to_write = count > 8 ? 8 : count;
         value_to_write = value & ((1 << bits_to_write) - 1);
 
-        /*append value to buffer*/
-        bs->output.file.buffer |= (value_to_write <<
-                                   bs->output.file.buffer_size);
-        bs->output.file.buffer_size += bits_to_write;
+        /*new data is added to the buffer most-significant first*/
+        bs->buffer |= (value_to_write << bs->buffer_size);
+        bs->buffer_size += bits_to_write;
 
         /*if buffer is over 8 bits,
-          write a byte and remove it from the buffer*/
-        if (bs->output.file.buffer_size >= 8) {
-            byte = bs->output.file.buffer & 0xFF;
-            fputc(byte, bs->output.file.file);
+          extract bits least-significant first
+          and remove them from the buffer*/
+        if (bs->buffer_size >= 8) {
+            byte = bs->buffer & 0xFF;
+            fputc(byte, bs->output.file);
             for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
-            bs->output.file.buffer >>= 8;
-            bs->output.file.buffer_size -= 8;
+            bs->buffer >>= 8;
+            bs->buffer_size -= 8;
         }
 
         /*decrement the count and value*/
@@ -2889,17 +2877,82 @@ bw_write_bits_f_le(BitstreamWriter* bs, unsigned int count, unsigned int value)
 }
 
 void
-bw_write_bits_r(BitstreamWriter* bs, unsigned int count, unsigned int value)
+bw_write_bits_r_be(BitstreamWriter* bs, unsigned int count, unsigned int value)
 {
-    BitstreamRecord record;
+    int bits_to_write;
+    int value_to_write;
+    unsigned int byte;
+    struct bs_callback* callback;
 
     assert(value < (1l << count));
-    record.type = BS_WRITE_BITS;
-    record.count = count;
-    record.value.unsigned_value = value;
-    bs_record_resize(bs);
-    bs->output.recorder.records[bs->output.recorder.records_written++] = record;
-    bs->output.recorder.bits_written += count;
+
+    while (count > 0) {
+        /*chop off up to 8 bits to write at a time*/
+        bits_to_write = count > 8 ? 8 : count;
+        value_to_write = value >> (count - bits_to_write);
+
+        /*prepend value to buffer*/
+        bs->buffer = ((bs->buffer << bits_to_write) |
+                                  value_to_write);
+        bs->buffer_size += bits_to_write;
+
+        /*if buffer is over 8 bits,
+          write a byte and remove it from the buffer*/
+        if (bs->buffer_size >= 8) {
+            byte = (bs->buffer >>
+                    (bs->buffer_size - 8)) & 0xFF;
+            buf_putc(byte, bs->output.buffer);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+
+            bs->buffer_size -= 8;
+        }
+
+        /*decrement the count and value*/
+        value -= (value_to_write << (count - bits_to_write));
+        count -= bits_to_write;
+    }
+}
+
+void
+bw_write_bits_r_le(BitstreamWriter* bs, unsigned int count, unsigned int value)
+{
+    int bits_to_write;
+    int value_to_write;
+    unsigned int byte;
+    struct bs_callback* callback;
+
+   assert(value < (int64_t)(1LL << count));
+
+    while (count > 0) {
+        /*chop off up to 8 bits to write at a time*/
+        bits_to_write = count > 8 ? 8 : count;
+        value_to_write = value & ((1 << bits_to_write) - 1);
+
+        /*append value to buffer*/
+        bs->buffer |= (value_to_write <<
+                                   bs->buffer_size);
+        bs->buffer_size += bits_to_write;
+
+        /*if buffer is over 8 bits,
+          write a byte and remove it from the buffer*/
+        if (bs->buffer_size >= 8) {
+            byte = bs->buffer & 0xFF;
+            buf_putc(byte, bs->output.buffer);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+            bs->buffer >>= 8;
+            bs->buffer_size -= 8;
+        }
+
+        /*decrement the count and value*/
+        value >>= bits_to_write;
+        count -= bits_to_write;
+    }
 }
 
 void
@@ -2910,424 +2963,15 @@ bw_write_bits_a(BitstreamWriter* bs, unsigned int count, unsigned int value)
 }
 
 
-struct bw_placeholder*
-bw_write_placeholder_f(BitstreamWriter* bs, unsigned int count,
-                       unsigned int temp_value) {
-    struct bw_placeholder* placeholder = bw_new_placeholder(bs);
-
-    /*populate placeholder*/
-    placeholder->type = BS_PLACEHOLDER_WRITE_BITS;
-    placeholder->count = count;
-    placeholder->function.write = bs->write;
-    placeholder->fill = bw_fill_placeholder_f;
-    bw_mark_f(bs, &(placeholder->position));
-
-    /*then write dummy value to stream*/
-    bs->write(bs, count, temp_value);
-
-    /*ensures file-based placeholder ends on a byte boundary*/
-    if (bs->output.file.buffer_size != 0) {
-        fprintf(stderr,
-                "Warning: placeholder does not end on byte boundary\n");
-        fprintf(stderr, "this is not what you want - "
-                "consider using write_placeholders()\n");
-    }
-
-    return placeholder;
-}
-
-struct bw_placeholder*
-bw_write_placeholder_r(BitstreamWriter* bs, unsigned int count,
-                       unsigned int temp_value)  {
-    struct bw_placeholder* placeholder = bw_new_placeholder(bs);
-
-    /*populate placeholder*/
-    placeholder->type = BS_PLACEHOLDER_WRITE_BITS;
-    placeholder->count = count;
-    placeholder->function.write = bs->write;
-    placeholder->fill = bw_fill_placeholder_r;
-    bw_mark_r(bs, &(placeholder->position));
-
-    /*then write dummy value to stream*/
-    bs->write(bs, count, temp_value);
-
-    return placeholder;
-}
-
-struct bw_placeholder*
-bw_write_placeholder_a(BitstreamWriter* bs, unsigned int count,
-                       unsigned int temp_value)  {
-    struct bw_placeholder* placeholder = bw_new_placeholder(bs);
-
-    /*populate placeholder*/
-    placeholder->type = BS_PLACEHOLDER_WRITE_BITS;
-    placeholder->fill = bw_fill_placeholder_a;
-
-    /*then write dummy value to stream*/
-    bs->output.accumulator += count;
-
-    return placeholder;
-}
-
-
-struct bw_placeholder*
-bw_allocate_sub_placeholders(const char* format, unsigned int* count) {
-    struct bw_placeholder* placeholders;
-
-    for (*count = 0; format[*count] != '\0'; (*count)++) {
-        switch(format[*count]) {
-        case 'i':
-        case 'l':
-        case 'b':
-            /*do nothing*/
-            break;
-        default:
-            fprintf(stderr, "unsupported character \'%c\' in string\n",
-                    format[*count]);
-            abort();
-        }
-    }
-
-    placeholders = malloc(sizeof(struct bw_placeholder) * (*count));
-    return placeholders;
-}
-
-struct bw_placeholder*
-bw_write_placeholders_f(BitstreamWriter* bs, const char* format, ...) {
-    va_list ap;
-    unsigned int i;
-    struct bw_placeholder* placeholder = bw_new_placeholder(bs);
-    struct bw_placeholder* sub_placeholders;
-
-    unsigned int count;
-    unsigned int temp_value;
-    uint64_t temp64;
-    uint8_t* temp_bytes;
-
-    /*populate placeholder*/
-    placeholder->type = BS_PLACEHOLDER_CONTAINER;
-    placeholder->sub_placeholders =
-        sub_placeholders =
-        bw_allocate_sub_placeholders(format, &(placeholder->count));
-    bw_mark_f(bs, &(placeholder->position));
-    placeholder->fill = bw_fill_placeholders_f;
-
-    /*populate sub-placeholders
-      and write their dummy values to stream*/
-    va_start(ap, format);
-    for (i = 0; i < placeholder->count; i++) {
-        switch (format[i]) {
-        case 'i':
-            count = va_arg(ap, unsigned int);
-            temp_value = va_arg(ap, unsigned int);
-
-            sub_placeholders[i].type = BS_PLACEHOLDER_WRITE_BITS;
-            sub_placeholders[i].stream = bs;
-            sub_placeholders[i].count = count;
-            sub_placeholders[i].function.write = bs->write;
-
-            /*write dummy value to stream*/
-            bs->write(bs, count, temp_value);
-            break;
-        case 'l':
-            count = va_arg(ap, unsigned int);
-            temp64 = va_arg(ap, uint64_t);
-
-            sub_placeholders[i].type = BS_PLACEHOLDER_WRITE_BITS64;
-            sub_placeholders[i].stream = bs;
-            sub_placeholders[i].count = count;
-            sub_placeholders[i].function.write_64 = bs->write_64;
-
-            /*write dummy value to stream*/
-            bs->write_64(bs, count, temp64);
-            break;
-        case 'b':
-            count = va_arg(ap, unsigned int);
-            temp_bytes = va_arg(ap, uint8_t*);
-
-            sub_placeholders[i].type = BS_PLACEHOLDER_WRITE_BYTES;
-            sub_placeholders[i].stream = bs;
-            sub_placeholders[i].count = count;
-            sub_placeholders[i].function.write = bs->write;
-
-            /*write dummy value to stream*/
-            bs->write_bytes(bs, temp_bytes, count);
-            break;
-        default:
-            fprintf(stderr, "unsupported character \'%c\' in string\n",
-                    format[i]);
-            abort();
-        }
-    }
-    va_end(ap);
-
-    /*ensure these placeholders end on a byte-boundary*/
-    if (bs->output.file.buffer_size != 0) {
-        fprintf(stderr,
-                "Warning: placeholder does not end on byte boundary\n");
-        fprintf(stderr, "this is not what you want\n");
-    }
-
-    return placeholder;
-}
-
-struct bw_placeholder*
-bw_write_placeholders_r(BitstreamWriter* bs, const char* format, ...) {
-    va_list ap;
-    unsigned int i,j;
-    struct bw_placeholder* placeholder = bw_new_placeholder(bs);
-    struct bw_placeholder* sub_placeholders;
-
-    unsigned int count;
-    unsigned int temp_value;
-    uint64_t temp64;
-    uint8_t* temp_bytes;
-
-    /*populate placeholder*/
-    placeholder->type = BS_PLACEHOLDER_CONTAINER;
-    placeholder->sub_placeholders =
-        sub_placeholders =
-        bw_allocate_sub_placeholders(format, &(placeholder->count));
-    placeholder->fill = bw_fill_placeholders_r;
-
-    /*populate sub-placeholders
-      and write their dummy values to stream*/
-    va_start(ap, format);
-    for (i = 0; i < placeholder->count; i++) {
-        switch (format[i]) {
-        case 'i':
-            count = va_arg(ap, unsigned int);
-            temp_value = va_arg(ap, unsigned int);
-
-            sub_placeholders[i].type = BS_PLACEHOLDER_WRITE_BITS;
-            sub_placeholders[i].stream = bs;
-            sub_placeholders[i].count = count;
-            sub_placeholders[i].function.write = bs->write;
-            bw_mark_r(bs, &(sub_placeholders[i].position));
-
-            /*write dummy value to stream*/
-            bs->write(bs, count, temp_value);
-            break;
-        case 'l':
-            count = va_arg(ap, unsigned int);
-            temp64 = va_arg(ap, uint64_t);
-
-            sub_placeholders[i].type = BS_PLACEHOLDER_WRITE_BITS64;
-            sub_placeholders[i].stream = bs;
-            sub_placeholders[i].count = count;
-            sub_placeholders[i].function.write_64 = bs->write_64;
-            bw_mark_r(bs, &(sub_placeholders[i].position));
-
-            /*write dummy value to stream*/
-            bs->write_64(bs, count, temp64);
-            break;
-        case 'b':
-            count = va_arg(ap, unsigned int);
-            temp_bytes = va_arg(ap, uint8_t*);
-
-            sub_placeholders[i].type = BS_PLACEHOLDER_WRITE_BYTES;
-            sub_placeholders[i].stream = bs;
-            sub_placeholders[i].count = count;
-            sub_placeholders[i].function.write = bs->write;
-            bw_mark_r(bs, &(sub_placeholders[i].position));
-
-            /*write dummy values to stream*/
-            for (j = 0; j < count; j++)
-                bs->write(bs, 8, temp_bytes[j]);
-            break;
-        default:
-            fprintf(stderr, "unsupported character \'%c\' in string\n",
-                    format[i]);
-            abort();
-        }
-    }
-    va_end(ap);
-
-    return placeholder;
-}
-
-struct bw_placeholder*
-bw_write_placeholders_a(BitstreamWriter* bs, const char* format, ...) {
-    va_list ap;
-    unsigned int i;
-    struct bw_placeholder* placeholder = bw_new_placeholder(bs);
-
-    unsigned int count;
-    unsigned int temp_value;
-    uint64_t temp64;
-    uint8_t* temp_bytes;
-
-    /*populate placeholder*/
-    placeholder->type = BS_PLACEHOLDER_CONTAINER;
-    placeholder->fill = bw_fill_placeholder_a;
-    placeholder->count = 0;
-
-    /*populate sub-placeholders
-      and write their dummy values to stream*/
-    va_start(ap, format);
-    for (i = 0; format[i] != '\0'; i++) {
-        switch (format[i]) {
-        case 'i':
-            count = va_arg(ap, unsigned int);
-            temp_value = va_arg(ap, unsigned int);
-
-            /*write dummy value to stream*/
-            bs->output.accumulator += count;
-            break;
-        case 'l':
-            count = va_arg(ap, unsigned int);
-            temp64 = va_arg(ap, uint64_t);
-
-            /*write dummy value to stream*/
-            bs->output.accumulator += count;
-            break;
-        case 'b':
-            count = va_arg(ap, unsigned int);
-            temp_bytes = va_arg(ap, uint8_t*);
-
-            bs->output.accumulator += (count * 8);
-            break;
-        default:
-            fprintf(stderr, "unsupported character \'%c\' in string\n",
-                    format[i]);
-            abort();
-        }
-        placeholder->count++;
-    }
-    va_end(ap);
-
-    return placeholder;
-}
-
-
-void
-bw_fill_placeholders_f(struct bw_placeholder* placeholder, ...) {
-    va_list ap;
-    unsigned int i,j;
-    union bw_mark original_position;
-    struct bw_placeholder sub_placeholder;
-    unsigned int final_value;
-    uint64_t final_64;
-    uint8_t* final_bytes;
-    BitstreamWriter* bs = placeholder->stream;
-    struct bs_callback* callback;
-
-    /*keep track of our original stream position*/
-    bw_mark_f(bs, &original_position);
-
-    /*move to the placeholder's stream position*/
-    bw_rewind_f(bs, &(placeholder->position));
-
-    /*fill in the final values*/
-    va_start(ap, placeholder);
-    for (i = 0; i < placeholder->count; i++) {
-        sub_placeholder = placeholder->sub_placeholders[i];
-        switch (sub_placeholder.type) {
-        case BS_PLACEHOLDER_WRITE_BITS:
-            final_value = va_arg(ap, unsigned int);
-            sub_placeholder.function.write(bs, sub_placeholder.count,
-                                           final_value);
-            break;
-        case BS_PLACEHOLDER_WRITE_BITS64:
-            final_64 = va_arg(ap, uint64_t);
-            sub_placeholder.function.write_64(bs, sub_placeholder.count,
-                                              final_64);
-            break;
-        case BS_PLACEHOLDER_WRITE_BYTES:
-            final_bytes = va_arg(ap, uint8_t*);
-            if (bs->output.file.buffer_size == 0) {
-                /*stream is byte-aligned, so optimize writing*/
-                fwrite(final_bytes, sizeof(uint8_t), sub_placeholder.count,
-                       bs->output.file.file);
-
-                /*run callbacks on output bytes*/
-                for (callback = bs->callbacks;
-                     callback != NULL;
-                     callback = callback->next)
-                    for (j = 0; j < sub_placeholder.count; j++)
-                        callback->callback(final_bytes[j], callback->data);
-            } else {
-                /*stream not byte-aligned, so write byte-by-byte*/
-                for (j = 0; j < sub_placeholder.count; j++)
-                    sub_placeholder.function.write(bs, 8, final_bytes[j]);
-            }
-            break;
-        default:
-            fprintf(stderr, "unsupported placeholder type found in stream\n");
-            break;
-        }
-    }
-    va_end(ap);
-
-    /*rewind back to the stream's original position*/
-    bw_rewind_f(bs, &original_position);
-
-    /*deallocate sub-placeholders*/
-    free(placeholder->sub_placeholders);
-
-    /*mark placeholder as used*/
-    bw_use_placeholder(placeholder);
-}
-
-void
-bw_fill_placeholders_r(struct bw_placeholder* placeholder, ...) {
-    va_list ap;
-    unsigned int i,j;
-    struct bw_placeholder sub_placeholder;
-    unsigned int final_value;
-    uint64_t final_64;
-    uint8_t* final_bytes;
-    BitstreamWriter* bs = placeholder->stream;
-
-    /*fill in the final values*/
-    va_start(ap, placeholder);
-    for (i = 0; i < placeholder->count; i++) {
-        sub_placeholder = placeholder->sub_placeholders[i];
-        switch (sub_placeholder.type) {
-        case BS_PLACEHOLDER_WRITE_BITS:
-            final_value = va_arg(ap, unsigned int);
-            bs->output.recorder.records[
-                sub_placeholder.position.recorder].value.unsigned_value =
-                final_value;
-            break;
-        case BS_PLACEHOLDER_WRITE_BITS64:
-            final_64 = va_arg(ap, uint64_t);
-            bs->output.recorder.records[
-                sub_placeholder.position.recorder].value.value64 =
-                final_64;
-            break;
-        case BS_PLACEHOLDER_WRITE_BYTES:
-            final_bytes = va_arg(ap, uint8_t*);
-            for (j = 0; j < sub_placeholder.count; j++) {
-                bs->output.recorder.records[
-                  sub_placeholder.position.recorder + j].value.unsigned_value =
-                    final_bytes[j];
-            }
-            break;
-        default:
-            fprintf(stderr, "unsupported placeholder type found in stream\n");
-            break;
-        }
-    }
-    va_end(ap);
-
-    /*deallocate sub-placeholders*/
-    free(placeholder->sub_placeholders);
-
-    /*mark placeholder as used*/
-    bw_use_placeholder(placeholder);
-}
-
-
 void
 bw_write_bytes_f(BitstreamWriter* bs, const uint8_t* bytes,
                  unsigned int count) {
     unsigned int i;
     struct bs_callback* callback;
 
-    if (bs->output.file.buffer_size == 0) {
+    if (bs->buffer_size == 0) {
         /*stream is byte aligned, so perform optimized write*/
-        fwrite(bytes, sizeof(uint8_t), count, bs->output.file.file);
+        fwrite(bytes, sizeof(uint8_t), count, bs->output.file);
 
         /*perform callbacks on the written bytes*/
         for (callback = bs->callbacks;
@@ -3362,142 +3006,6 @@ void
 bw_write_bytes_a(BitstreamWriter* bs, const uint8_t* bytes,
                  unsigned int count) {
     bs->output.accumulator += (count * 8);
-}
-
-
-struct bw_placeholder*
-bw_write_bytes_placeholder_f(BitstreamWriter* bs, const uint8_t* temp_bytes,
-                             unsigned int count) {
-    struct bw_placeholder* placeholder = bw_new_placeholder(bs);
-
-    /*populate placeholder*/
-    placeholder->type = BS_PLACEHOLDER_WRITE_BYTES;
-    placeholder->count = count;
-    placeholder->function.write = bs->write;
-    placeholder->fill = bw_fill_bytes_placeholder_f;
-    bw_mark_f(bs, &(placeholder->position));
-
-    /*then write dummy value to stream*/
-    bs->write_bytes(bs, temp_bytes, count);
-
-    /*ensure file-based placeholder ends on a byte boundary*/
-    if (bs->output.file.buffer_size != 0) {
-        fprintf(stderr,
-                "Warning: placeholder does not end on byte boundary\n");
-        fprintf(stderr, "this is not what you want - "
-                "consider using write_placeholders()\n");
-    }
-
-    return placeholder;
-}
-
-struct bw_placeholder*
-bw_write_bytes_placeholder_r(BitstreamWriter* bs, const uint8_t* temp_bytes,
-                             unsigned int count) {
-    struct bw_placeholder* placeholder = bw_new_placeholder(bs);
-    unsigned int i;
-
-    /*populate placeholder*/
-    placeholder->type = BS_PLACEHOLDER_WRITE_BYTES;
-    placeholder->count = count;
-    placeholder->function.write = bs->write;
-    placeholder->fill = bw_fill_bytes_placeholder_r;
-    bw_mark_r(bs, &(placeholder->position));
-
-    /*then write dummy values to stream*/
-    for (i = 0; i < count; i++)
-        bs->write(bs, 8, temp_bytes[i]);
-
-    return placeholder;
-}
-
-struct bw_placeholder*
-bw_write_bytes_placeholder_a(BitstreamWriter* bs, const uint8_t* temp_bytes,
-                             unsigned int count) {
-    struct bw_placeholder* placeholder = bw_new_placeholder(bs);
-
-    /*populate placeholder*/
-    placeholder->type = BS_PLACEHOLDER_WRITE_BYTES;
-    placeholder->fill = bw_fill_placeholder_a;
-
-    /*then write dummy value to stream*/
-    bs->output.accumulator += (count * 8);
-
-    return placeholder;
-}
-
-
-void
-bw_fill_bytes_placeholder_f(struct bw_placeholder* placeholder, ...) {
-    union bw_mark original_position;
-    uint8_t* bytes;
-    va_list ap;
-    unsigned int i;
-    struct bs_callback* callback;
-    BitstreamWriter* bs = placeholder->stream;
-
-    /*grab argument*/
-    va_start(ap, placeholder);
-    bytes = va_arg(ap, uint8_t*);
-    va_end(ap);
-
-    /*keep track of our original stream's position*/
-    bw_mark_f(placeholder->stream, &original_position);
-
-    /*move to the placeholder's stream position*/
-    bw_rewind_f(placeholder->stream, &(placeholder->position));
-
-    /*update the stream's value according
-      to whether the placeholder is byte-aligned
-      or using the saved write function
-      (which is why we can't punt this to stream->write_bytes
-       since endianness may have changed)*/
-    if (bs->output.file.buffer_size == 0) {
-        /*stream is byte aligned, so perform optimized write*/
-        fwrite(bytes, sizeof(uint8_t), placeholder->count,
-               bs->output.file.file);
-
-        /*perform callbacks on the written bytes*/
-        for (callback = bs->callbacks;
-             callback != NULL;
-             callback = callback->next)
-            for (i = 0; i < placeholder->count; i++)
-                callback->callback(bytes[i], callback->data);
-
-    } else {
-        /*stream is not byte-aligned, so perform multiple writes
-          even though it's a bad idea that's likely to break things*/
-        for (i = 0; i < placeholder->count; i++)
-            placeholder->function.write(bs, 8, bytes[i]);
-    }
-
-    /*move stream back to saved position*/
-    bw_rewind_f(placeholder->stream, &original_position);
-
-    /*mark placeholder as used*/
-    bw_use_placeholder(placeholder);
-}
-
-void
-bw_fill_bytes_placeholder_r(struct bw_placeholder* placeholder, ...) {
-    uint8_t* bytes;
-    va_list ap;
-    unsigned int i;
-
-    /*grab argument*/
-    va_start(ap, placeholder);
-    bytes = va_arg(ap, uint8_t*);
-    va_end(ap);
-
-    /*update the saved records' values on a byte-by-byte basis*/
-    for (i = 0; i < placeholder->count; i++) {
-    placeholder->stream->output.recorder.records[
-        placeholder->position.recorder + i].value.unsigned_value =
-        bytes[i];
-    }
-
-    /*mark placeholder as used*/
-    bw_use_placeholder(placeholder);
 }
 
 
@@ -3538,22 +3046,22 @@ bw_write_bits64_f_be(BitstreamWriter* bs, unsigned int count, uint64_t value)
         value_to_write = value >> (count - bits_to_write);
 
         /*prepend value to buffer*/
-        bs->output.file.buffer = ((bs->output.file.buffer << bits_to_write) |
+        bs->buffer = ((bs->buffer << bits_to_write) |
                                   value_to_write);
-        bs->output.file.buffer_size += bits_to_write;
+        bs->buffer_size += bits_to_write;
 
         /*if buffer is over 8 bits,
           write a byte and remove it from the buffer*/
-        if (bs->output.file.buffer_size >= 8) {
-            byte = (bs->output.file.buffer >>
-                    (bs->output.file.buffer_size - 8)) & 0xFF;
-            fputc(byte, bs->output.file.file);
+        if (bs->buffer_size >= 8) {
+            byte = (bs->buffer >>
+                    (bs->buffer_size - 8)) & 0xFF;
+            fputc(byte, bs->output.file);
             for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
 
-            bs->output.file.buffer_size -= 8;
+            bs->buffer_size -= 8;
         }
 
         /*decrement the count and value*/
@@ -3564,8 +3072,8 @@ bw_write_bits64_f_be(BitstreamWriter* bs, unsigned int count, uint64_t value)
 
 void
 bw_write_bits64_f_le(BitstreamWriter* bs,
-                       unsigned int count,
-                       uint64_t value)
+                     unsigned int count,
+                     uint64_t value)
 {
     int bits_to_write;
     int value_to_write;
@@ -3581,21 +3089,21 @@ bw_write_bits64_f_le(BitstreamWriter* bs,
         value_to_write = value & ((1 << bits_to_write) - 1);
 
         /*append value to buffer*/
-        bs->output.file.buffer |= (value_to_write <<
-                                   bs->output.file.buffer_size);
-        bs->output.file.buffer_size += bits_to_write;
+        bs->buffer |= (value_to_write <<
+                                   bs->buffer_size);
+        bs->buffer_size += bits_to_write;
 
         /*if buffer is over 8 bits,
           write a byte and remove it from the buffer*/
-        if (bs->output.file.buffer_size >= 8) {
-            byte = bs->output.file.buffer & 0xFF;
-            fputc(byte, bs->output.file.file);
+        if (bs->buffer_size >= 8) {
+            byte = bs->buffer & 0xFF;
+            fputc(byte, bs->output.file);
             for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
-            bs->output.file.buffer >>= 8;
-            bs->output.file.buffer_size -= 8;
+            bs->buffer >>= 8;
+            bs->buffer_size -= 8;
         }
 
         /*decrement the count and value*/
@@ -3605,20 +3113,87 @@ bw_write_bits64_f_le(BitstreamWriter* bs,
 }
 
 void
-bw_write_bits64_r(BitstreamWriter* bs, unsigned int count, uint64_t value)
+bw_write_bits64_r_be(BitstreamWriter* bs, unsigned int count, uint64_t value)
 {
-    BitstreamRecord record;
+    int bits_to_write;
+    int value_to_write;
+    unsigned int byte;
+    struct bs_callback* callback;
 
-    assert(value >= 0l);
     assert(value < (int64_t)(1ll << count));
 
-    record.type = BS_WRITE_BITS64;
-    record.count = count;
-    record.value.value64 = value;
-    bs_record_resize(bs);
-    bs->output.recorder.records[bs->output.recorder.records_written++] = record;
-    bs->output.recorder.bits_written += count;
+    while (count > 0) {
+        /*chop off up to 8 bits to write at a time*/
+        bits_to_write = count > 8 ? 8 : count;
+        value_to_write = value >> (count - bits_to_write);
+
+        /*prepend value to buffer*/
+        bs->buffer = ((bs->buffer << bits_to_write) |
+                                  value_to_write);
+        bs->buffer_size += bits_to_write;
+
+        /*if buffer is over 8 bits,
+          write a byte and remove it from the buffer*/
+        if (bs->buffer_size >= 8) {
+            byte = (bs->buffer >>
+                    (bs->buffer_size - 8)) & 0xFF;
+            buf_putc(byte, bs->output.buffer);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+
+            bs->buffer_size -= 8;
+        }
+
+        /*decrement the count and value*/
+        value -= (value_to_write << (count - bits_to_write));
+        count -= bits_to_write;
+    }
 }
+
+void
+bw_write_bits64_r_le(BitstreamWriter* bs,
+                     unsigned int count,
+                     uint64_t value)
+{
+    int bits_to_write;
+    int value_to_write;
+    unsigned int byte;
+    struct bs_callback* callback;
+
+    assert(value >= 0);
+    assert(value < (int64_t)(1ll << count));
+
+    while (count > 0) {
+        /*chop off up to 8 bits to write at a time*/
+        bits_to_write = count > 8 ? 8 : count;
+        value_to_write = value & ((1 << bits_to_write) - 1);
+
+        /*append value to buffer*/
+        bs->buffer |= (value_to_write <<
+                                   bs->buffer_size);
+        bs->buffer_size += bits_to_write;
+
+        /*if buffer is over 8 bits,
+          write a byte and remove it from the buffer*/
+        if (bs->buffer_size >= 8) {
+            byte = bs->buffer & 0xFF;
+            buf_putc(byte, bs->output.buffer);
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback((uint8_t)byte, callback->data);
+            bs->buffer >>= 8;
+            bs->buffer_size -= 8;
+        }
+
+        /*decrement the count and value*/
+        value >>= bits_to_write;
+        count -= bits_to_write;
+    }
+}
+
 
 void
 bw_write_bits64_a(BitstreamWriter* bs, unsigned int count, uint64_t value)
@@ -3626,67 +3201,6 @@ bw_write_bits64_a(BitstreamWriter* bs, unsigned int count, uint64_t value)
     assert(value >= 0l);
     assert(value < (int64_t)(1ll << count));
     bs->output.accumulator += count;
-}
-
-
-struct bw_placeholder*
-bw_write_64_placeholder_f(BitstreamWriter* bs, unsigned int count,
-                          uint64_t temp_value) {
-    struct bw_placeholder* placeholder = bw_new_placeholder(bs);
-
-    /*populate placeholder*/
-    placeholder->type = BS_PLACEHOLDER_WRITE_BITS64;
-    placeholder->count = count;
-    placeholder->function.write_64 = bs->write_64;
-    placeholder->fill = bw_fill_placeholder_64_f;
-    bw_mark_f(bs, &(placeholder->position));
-
-    /*then write dummy value to stream*/
-    bs->write_64(bs, count, temp_value);
-
-    /*ensure file-based placeholder ends on a byte-boundary*/
-    if (bs->output.file.buffer_size != 0) {
-        fprintf(stderr,
-                "Warning: placeholder does not end on byte boundary\n");
-        fprintf(stderr, "this is not what you want - "
-                "consider using write_placeholders()\n");
-    }
-
-
-    return placeholder;
-}
-
-struct bw_placeholder*
-bw_write_64_placeholder_r(BitstreamWriter* bs, unsigned int count,
-                          uint64_t temp_value) {
-    struct bw_placeholder* placeholder = bw_new_placeholder(bs);
-
-    /*populate placeholder*/
-    placeholder->type = BS_PLACEHOLDER_WRITE_BITS64;
-    placeholder->count = count;
-    placeholder->function.write_64 = bs->write_64;
-    placeholder->fill = bw_fill_placeholder_64_r;
-    bw_mark_r(bs, &(placeholder->position));
-
-    /*then write dummy value to stream*/
-    bs->write_64(bs, count, temp_value);
-
-    return placeholder;
-}
-
-struct bw_placeholder*
-bw_write_64_placeholder_a(BitstreamWriter* bs, unsigned int count,
-                          uint64_t temp_value) {
-    struct bw_placeholder* placeholder = bw_new_placeholder(bs);
-
-    /*populate placeholder*/
-    placeholder->type = BS_PLACEHOLDER_WRITE_BITS64;
-    placeholder->fill = bw_fill_placeholder_a;
-
-    /*then write dummy value to stream*/
-    bs->write(bs, count, temp_value);
-
-    return placeholder;
 }
 
 
@@ -3722,18 +3236,11 @@ bw_write_unary_a(BitstreamWriter* bs, int stop_bit, unsigned int value)
 
 
 void
-bw_byte_align_f(BitstreamWriter* bs) {
+bw_byte_align_f_r(BitstreamWriter* bs) {
     /*write enough 0 bits to completely fill the buffer
       which results in a byte being written*/
-    if (bs->output.file.buffer_size > 0)
-        bs->write(bs, 8 - bs->output.file.buffer_size, 0);
-}
-
-void
-bw_byte_align_r(BitstreamWriter* bs)
-{
-    if (bs->output.recorder.bits_written % 8)
-        bw_write_bits_r(bs, 8 - (bs->output.recorder.bits_written % 8), 0);
+    if (bs->buffer_size > 0)
+        bs->write(bs, 8 - bs->buffer_size, 0);
 }
 
 void
@@ -3754,7 +3261,8 @@ bw_bits_written_f(BitstreamWriter* bs) {
 
 unsigned int
 bw_bits_written_r(BitstreamWriter* bs) {
-    return bs->output.recorder.bits_written;
+    return ((bs->output.buffer->buffer_size -
+             bs->output.buffer->buffer_position) * 8) + bs->buffer_size;
 }
 
 unsigned int
@@ -3766,86 +3274,58 @@ bw_bits_written_a(BitstreamWriter* bs) {
 void
 bw_set_endianness_f_be(BitstreamWriter* bs, bs_endianness endianness)
 {
-    bs->output.file.buffer = 0;
-    bs->output.file.buffer_size = 0;
+    bs->buffer = 0;
+    bs->buffer_size = 0;
     if (endianness == BS_LITTLE_ENDIAN) {
         bs->write = bw_write_bits_f_le;
         bs->write_64 = bw_write_bits64_f_le;
         bs->set_endianness = bw_set_endianness_f_le;
-        bs->split_record = bw_split_record_le;
     }
 }
 
 void
 bw_set_endianness_f_le(BitstreamWriter* bs, bs_endianness endianness)
 {
-    bs->output.file.buffer = 0;
-    bs->output.file.buffer_size = 0;
+    bs->buffer = 0;
+    bs->buffer_size = 0;
     if (endianness == BS_BIG_ENDIAN) {
         bs->write = bw_write_bits_f_be;
         bs->write_64 = bw_write_bits64_f_be;
         bs->set_endianness = bw_set_endianness_f_be;
-        bs->split_record = bw_split_record_be;
     }
 }
 
 void
-bw_set_endianness_r(BitstreamWriter* bs, bs_endianness endianness)
+bw_set_endianness_r_be(BitstreamWriter* bs, bs_endianness endianness)
 {
-    BitstreamRecord record;
-    record.type = BS_SET_ENDIANNESS;
-    record.count = 0;
-    record.value.endianness = endianness;
-    bs_record_resize(bs);
-    bs->output.recorder.records[bs->output.recorder.records_written++] = record;
-
-    switch (endianness) {
-    case BS_BIG_ENDIAN:
-        bs->split_record = bw_split_record_be;
-        break;
-    case BS_LITTLE_ENDIAN:
-        bs->split_record = bw_split_record_le;
-        break;
+    bs->buffer = 0;
+    bs->buffer_size = 0;
+    if (endianness == BS_LITTLE_ENDIAN) {
+        bs->write = bw_write_bits_r_le;
+        bs->write_64 = bw_write_bits64_r_le;
+        bs->set_endianness = bw_set_endianness_r_le;
     }
+}
 
-    bw_byte_align_r(bs);
+void
+bw_set_endianness_r_le(BitstreamWriter* bs, bs_endianness endianness)
+{
+    bs->buffer = 0;
+    bs->buffer_size = 0;
+    if (endianness == BS_BIG_ENDIAN) {
+        bs->write = bw_write_bits_r_be;
+        bs->write_64 = bw_write_bits64_r_be;
+        bs->set_endianness = bw_set_endianness_r_be;
+    }
 }
 
 void
 bw_set_endianness_a(BitstreamWriter* bs, bs_endianness endianness)
 {
-    switch (endianness) {
-    case BS_BIG_ENDIAN:
-        bs->split_record = bw_split_record_be;
-        break;
-    case BS_LITTLE_ENDIAN:
-        bs->split_record = bw_split_record_le;
-        break;
-    }
-
     /*swapping endianness results in a byte alignment*/
     bw_byte_align_a(bs);
 }
 
-
-void
-bw_mark_f(BitstreamWriter* bs, union bw_mark* position) {
-    fgetpos(bs->output.file.file, &(position->file.pos));
-    position->file.buffer_size = bs->output.file.buffer_size;
-    position->file.buffer = bs->output.file.buffer;
-}
-
-void
-bw_mark_r(BitstreamWriter* bs, union bw_mark* position) {
-    position->recorder = bs->output.recorder.records_written;
-}
-
-void
-bw_rewind_f(BitstreamWriter* bs, union bw_mark* position) {
-    fsetpos(bs->output.file.file, &(position->file.pos));
-    bs->output.file.buffer_size = position->file.buffer_size;
-    bs->output.file.buffer = position->file.buffer;
-}
 
 void
 bw_close_new(BitstreamWriter* bs) {
@@ -3857,291 +3337,19 @@ bw_close_new(BitstreamWriter* bs) {
 void
 bw_close_stream_f(BitstreamWriter* bs)
 {
-    fclose(bs->output.file.file);
+    fclose(bs->output.file);
 }
 
 void
 bw_close_stream_r(BitstreamWriter* bs)
 {
-    free(bs->output.recorder.records);
+    buf_close(bs->output.buffer);
 }
 
 void
 bw_close_stream_a(BitstreamWriter* bs)
 {
     return;
-}
-
-void
-bw_split_record_be(BitstreamRecord* record,
-                   BitstreamRecord* head,
-                   BitstreamRecord* tail,
-                   unsigned int bits)
-{
-    assert((record->type == BS_WRITE_BITS) ||
-           (record->type == BS_WRITE_BITS64));
-
-    head->type = tail->type = record->type;
-
-    if (bits > 0) {
-        if (record->count > bits) {
-            /*put up to "bits" in "head"*/
-            /*and the remainder in "tail"*/
-            head->count = bits;
-            tail->count = record->count - bits;
-            switch (record->type) {
-            case BS_WRITE_BITS:
-                head->value.unsigned_value =
-                    record->value.unsigned_value >> tail->count;
-                tail->value.unsigned_value =
-                    record->value.unsigned_value & ((1 << tail->count) - 1);
-                break;
-            case BS_WRITE_BITS64:
-                head->value.value64 =
-                    record->value.value64 >> tail->count;
-                tail->value.value64 =
-                    record->value.value64 & ((1 << tail->count) - 1);
-                break;
-            default:
-                assert(0);
-                break;
-            }
-        } else {
-            /*put all data in "head"*/
-            /*and no data in "tail", which means a 0 bit write*/
-            head->count = record->count;
-            tail->count = 0;
-            switch (record->type) {
-            case BS_WRITE_BITS:
-                head->value.unsigned_value = record->value.unsigned_value;
-                tail->value.unsigned_value = 0;
-                break;
-            case BS_WRITE_BITS64:
-                head->value.value64 = record->value.value64;
-                tail->value.value64 = 0;
-                break;
-            default:
-                assert(0);
-                break;
-            }
-        }
-    } else {
-        /*put no data in "head", which means a 0 bit write*/
-        /*and all the data in "tail"*/
-        head->count = 0;
-        tail->count = record->count;
-        switch (record->type) {
-        case BS_WRITE_BITS:
-            head->value.unsigned_value = 0;
-            tail->value.unsigned_value = record->value.unsigned_value;
-            break;
-        case BS_WRITE_BITS64:
-            head->value.value64 = 0;
-            tail->value.value64 = record->value.value64;
-            break;
-        default:
-            assert(0);
-            break;
-        }
-    }
-}
-
-void
-bw_split_record_le(BitstreamRecord* record,
-                   BitstreamRecord* head,
-                   BitstreamRecord* tail,
-                   unsigned int bits)
-{
-    assert((record->type == BS_WRITE_BITS) ||
-           (record->type == BS_WRITE_BITS64));
-
-    head->type = tail->type = record->type;
-
-    if (bits > 0) {
-        if (record->count > bits) {
-            /*put up to "bits" in "head"*/
-            /*and the remainder in "tail"*/
-            head->count = bits;
-            tail->count = record->count - bits;
-            switch (record->type) {
-            case BS_WRITE_BITS:
-                head->value.unsigned_value =
-                    record->value.unsigned_value & ((1 << bits) - 1);
-                tail->value.unsigned_value =
-                    record->value.unsigned_value >> bits;
-                break;
-            case BS_WRITE_BITS64:
-                head->value.value64 =
-                    record->value.value64 & ((1 << bits) - 1);
-                tail->value.value64 =
-                    record->value.value64 >> bits;
-                break;
-            default:
-                assert(0);
-                break;
-            }
-        } else {
-            /*put all data in "head"*/
-            /*and no data in "tail", which means a 0 bit write*/
-            head->count = record->count;
-            tail->count = 0;
-            switch (record->type) {
-            case BS_WRITE_BITS:
-                head->value.unsigned_value = record->value.unsigned_value;
-                tail->value.unsigned_value = 0;
-                break;
-            case BS_WRITE_BITS64:
-                head->value.value64 = record->value.value64;
-                tail->value.value64 = 0;
-                break;
-            default:
-                assert(0);
-                break;
-            }
-        }
-    } else {
-        /*put no data in "head", which means a 0 bit write*/
-        /*and all the data in "tail"*/
-        head->count = 0;
-        tail->count = record->count;
-        switch (record->type) {
-        case BS_WRITE_BITS:
-            head->value.unsigned_value = 0;
-            tail->value.unsigned_value = record->value.unsigned_value;
-            break;
-        case BS_WRITE_BITS64:
-            head->value.value64 = 0;
-            tail->value.value64 = record->value.value64;
-            break;
-        default:
-            assert(0);
-            break;
-        }
-    }
-}
-
-struct bw_placeholder*
-bw_new_placeholder(BitstreamWriter* bs) {
-    struct bw_placeholder* placeholder;
-
-    /*first, either allocate or recycle a placeholder entry*/
-    if (bs->used_placeholders != NULL) {
-        /*pull placeholder off used stack*/
-        placeholder = bs->used_placeholders;
-        bs->used_placeholders = bs->used_placeholders->next;
-    } else {
-        /*allocate fresh placeholder*/
-        placeholder = malloc(sizeof(struct bw_placeholder));
-        placeholder->stream = bs;
-    }
-
-    return placeholder;
-}
-
-void
-bw_use_placeholder(struct bw_placeholder* placeholder) {
-    placeholder->next = placeholder->stream->used_placeholders;
-    placeholder->stream->used_placeholders = placeholder;
-}
-
-void
-bw_fill_placeholder_f(struct bw_placeholder* placeholder, ...) {
-    union bw_mark original_position;
-    unsigned int final_value;
-    va_list ap;
-
-    /*grab argument*/
-    va_start(ap, placeholder);
-    final_value = va_arg(ap, unsigned int);
-    va_end(ap);
-
-    /*save current position in stream*/
-    bw_mark_f(placeholder->stream, &original_position);
-
-    /*move stream to placeholder's position*/
-    bw_rewind_f(placeholder->stream, &(placeholder->position));
-
-    /*update placeholder's value according to its bit count
-      and saved write function (in case endianness has changed)*/
-    placeholder->function.write(placeholder->stream,
-                                placeholder->count, final_value);
-
-    /*move stream back to saved position*/
-    bw_rewind_f(placeholder->stream, &original_position);
-
-    /*mark placeholder as used*/
-    bw_use_placeholder(placeholder);
-}
-
-void
-bw_fill_placeholder_64_f(struct bw_placeholder* placeholder, ...) {
-    union bw_mark original_position;
-    uint64_t final_value;
-    va_list ap;
-
-    /*grab argument*/
-    va_start(ap, placeholder);
-    final_value = va_arg(ap, uint64_t);
-    va_end(ap);
-
-    /*save current position in stream*/
-    bw_mark_f(placeholder->stream, &original_position);
-
-    /*move stream to placeholder's position*/
-    bw_rewind_f(placeholder->stream, &(placeholder->position));
-
-    /*update placeholder's value according to its bit count
-      and saved write function (in case endianness has changed)*/
-    placeholder->function.write_64(placeholder->stream,
-                                   placeholder->count, final_value);
-
-    /*move stream back to saved position*/
-    bw_rewind_f(placeholder->stream, &original_position);
-
-    /*mark placeholder as used*/
-    bw_use_placeholder(placeholder);
-}
-
-void
-bw_fill_placeholder_r(struct bw_placeholder* placeholder, ...) {
-    unsigned int final_value;
-    va_list ap;
-
-    /*grab argument*/
-    va_start(ap, placeholder);
-    final_value = va_arg(ap, unsigned int);
-    va_end(ap);
-
-    /*overwrite record at placeholder position with new value*/
-    placeholder->stream->output.recorder.records[
-        placeholder->position.recorder].value.unsigned_value = final_value;
-
-    /*mark placeholder as used*/
-    bw_use_placeholder(placeholder);
-}
-
-void
-bw_fill_placeholder_64_r(struct bw_placeholder* placeholder, ...) {
-    uint64_t final_value;
-    va_list ap;
-
-    /*grab argument*/
-    va_start(ap, placeholder);
-    final_value = va_arg(ap, uint64_t);
-    va_end(ap);
-
-    /*overwrite record at placeholder position with new value*/
-    placeholder->stream->output.recorder.records[
-        placeholder->position.recorder].value.value64 = final_value;
-
-    /*mark placeholder as used*/
-    bw_use_placeholder(placeholder);
-}
-
-void
-bw_fill_placeholder_a(struct bw_placeholder* placeholder, ...) {
-    /*mark placeholder as used*/
-    bw_use_placeholder(placeholder);
 }
 
 
@@ -4912,6 +4120,46 @@ test_writer(bs_endianness endianness) {
         assert(writer->bits_written(writer) == 32);
         writer->close(writer);
     }
+
+    /*check swap records*/
+    output_file = fopen(temp_filename, "wb");
+    writer = bw_open(output_file, endianness);
+    sub_writer = bw_open_recorder(endianness);
+    sub_sub_writer = bw_open_recorder(endianness);
+    sub_sub_writer->write(sub_sub_writer, 8, 0xB1);
+    sub_sub_writer->write(sub_sub_writer, 8, 0xED);
+    sub_writer->write(sub_writer, 8, 0x3B);
+    sub_writer->write(sub_writer, 8, 0xC1);
+    bw_swap_records(sub_writer, sub_sub_writer);
+    bw_dump_records(writer, sub_writer);
+    bw_dump_records(writer, sub_sub_writer);
+    fflush(output_file);
+    check_output_file();
+    writer->close(writer);
+    sub_writer->close(sub_writer);
+    sub_sub_writer->close(sub_sub_writer);
+    fclose(output_file);
+
+    /*check recorder reset*/
+    output_file = fopen(temp_filename, "wb");
+    writer = bw_open(output_file, endianness);
+    sub_writer = bw_open_recorder(endianness);
+    sub_writer->write(sub_writer, 8, 0xAA);
+    sub_writer->write(sub_writer, 8, 0xBB);
+    sub_writer->write(sub_writer, 8, 0xCC);
+    sub_writer->write(sub_writer, 8, 0xDD);
+    sub_writer->write(sub_writer, 8, 0xEE);
+    bw_reset_recorder(sub_writer);
+    sub_writer->write(sub_writer, 8, 0xB1);
+    sub_writer->write(sub_writer, 8, 0xED);
+    sub_writer->write(sub_writer, 8, 0x3B);
+    sub_writer->write(sub_writer, 8, 0xC1);
+    bw_dump_records(writer, sub_writer);
+    fflush(output_file);
+    sub_writer->close(sub_writer);
+    writer->close(writer);
+    check_output_file();
+
 
     /*check endianness setting*/
     /*FIXME*/
