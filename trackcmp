@@ -138,110 +138,161 @@ if (__name__ == '__main__'):
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("trackcmp", options)
 
-    if (len(args) != 2):
-        msg.usage(_(u"<path 1> <path 2>"))
-        sys.exit(1)
-
     if (options.max_processes < 1):
         msg.error(_(u'You must run at least 1 process at a time'))
         sys.exit(1)
 
     check_function = audiotools.pcm_frame_cmp
 
-    if (os.path.isfile(args[0]) and os.path.isfile(args[1])):
-        audiofiles = audiotools.open_files(args, messenger=msg, sorted=False)
-        if (len(audiofiles) != 2):
-            msg.error(_(u"Both files to be compared must be audio files"))
-            sys.exit(1)
-        try:
-            frame_mismatch = check_function(audiofiles[0].to_pcm(),
-                                            audiofiles[1].to_pcm())
-            if (frame_mismatch is None):
-                pass
-            else:
-                msg.partial_info(
-                    _(u"%(file1)s <> %(file2)s : ") % \
-                        {"file1": msg.filename(audiofiles[0].filename),
-                         "file2": msg.filename(audiofiles[1].filename)})
-                msg.info(msg.ansi(
-                        _(u"differ at PCM frame %(frame_number)d") %
-                        {"frame_number": frame_mismatch + 1}, [msg.FG_RED]))
+    if (len(args) == 2):
+        if (os.path.isfile(args[0]) and os.path.isfile(args[1])):
+            audiofiles = audiotools.open_files(args,
+                                               messenger=msg,
+                                               sorted=False)
+            if (len(audiofiles) != 2):
+                msg.error(_(u"Both files to be compared must be audio files"))
                 sys.exit(1)
-        except (IOError, ValueError, audiotools.DecodingError), err:
-            msg.error(unicode(err))
+            try:
+                frame_mismatch = check_function(audiofiles[0].to_pcm(),
+                                                audiofiles[1].to_pcm())
+                if (frame_mismatch is None):
+                    pass
+                else:
+                    msg.partial_info(
+                        _(u"%(file1)s <> %(file2)s : ") % \
+                            {"file1": msg.filename(audiofiles[0].filename),
+                             "file2": msg.filename(audiofiles[1].filename)})
+                    msg.info(msg.ansi(
+                            _(u"differ at PCM frame %(frame_number)d") %
+                            {"frame_number": frame_mismatch + 1}, [msg.FG_RED]))
+                    sys.exit(1)
+            except (IOError, ValueError, audiotools.DecodingError), err:
+                msg.error(unicode(err))
+                sys.exit(1)
+
+        elif (os.path.isdir(args[0]) and os.path.isdir(args[1])):
+            results = Results(msg)
+
+            files1 = audiotools.open_files(
+                [os.path.join(args[0], f) for f in os.listdir(args[0])
+                 if os.path.isfile(os.path.join(args[0], f))],
+                messenger=msg)
+            files2 = audiotools.open_files(
+                [os.path.join(args[1], f) for f in os.listdir(args[1])
+                 if os.path.isfile(os.path.join(args[1], f))],
+                messenger=msg)
+
+            files1_map = dict([((f.album_number(), f.track_number()), f)
+                               for f in files1])
+            files2_map = dict([((f.album_number(), f.track_number()), f)
+                               for f in files2])
+
+            files1_tracknumbers = set(files1_map.keys())
+            files2_tracknumbers = set(files2_map.keys())
+
+            queue = audiotools.ExecProgressQueue(
+                audiotools.ProgressDisplay(msg))
+
+            for (album_number, track_number) in sorted(
+                list(files1_tracknumbers - files2_tracknumbers)):
+                results.missing(args[1], track_number, album_number)
+
+            for (album_number, track_number) in sorted(
+                list(files2_tracknumbers - files1_tracknumbers)):
+                results.missing(args[0], track_number, album_number)
+
+            for (album_number, track_number) in sorted(
+                list(files1_tracknumbers & files2_tracknumbers)):
+                queue.execute(
+                    function=cmp_files,
+                    progress_text=u"%s <> %s" % \
+                        (msg.filename(files1_map[(album_number,
+                                                  track_number)].filename),
+                         msg.filename(files2_map[(album_number,
+                                                  track_number)].filename)),
+                    completion_output=results.cmp_result,
+                    audiofile1=files1_map[(album_number, track_number)],
+                    audiofile2=files2_map[(album_number, track_number)])
+
+            queue.run(options.max_processes)
+
+            if (not options.no_summary):
+                msg.output(_(u"Results:"))
+                msg.output(u"")
+                msg.new_row()
+                msg.output_column(_(u"success"), True)
+                msg.output_column(u" ")
+                msg.output_column(_(u"failure"), True)
+                msg.output_column(u" ")
+                msg.output_column(_(u"total"), True)
+                msg.divider_row([u"-", u" ", u"-", u" ", u"-"])
+                msg.new_row()
+                msg.output_column(unicode(results.successes), True)
+                msg.output_column(u" ")
+                msg.output_column(unicode(results.failures), True)
+                msg.output_column(u" ")
+                msg.output_column(unicode(results.successes +
+                                          results.failures), True)
+                msg.output_rows()
+
+            if (results.failures > 0):
+                sys.exit(1)
+        else:
+            msg.error(_(u"%(file1)s <> %(file2)s : %(result)s") %
+                      {"file1": msg.filename(args[0]),
+                       "file2": msg.filename(args[1]),
+                       "result": msg.ansi(
+                        _(u"must be either files or directories"),
+                        [msg.FG_RED])})
+            sys.exit(1)
+    elif (len(args) > 2):
+        progress = audiotools.SingleProgressDisplay(msg, u"")
+        progress.delete_row(0)
+
+        audiofiles = audiotools.open_files(args, messenger=msg, sorted=False)
+
+        #try to compare the smaller files against the largest file
+
+        audiofiles.sort(lambda t1,t2: cmp(t1.total_frames(),
+                                          t2.total_frames()))
+
+        if (sum([t.total_frames() for t in audiofiles[0:-1]]) !=
+            audiofiles[-1].total_frames()):
+            msg.usage(u"<CD image> <track 1> <track 2> ...")
             sys.exit(1)
 
-    elif (os.path.isdir(args[0]) and os.path.isdir(args[1])):
-        results = Results(msg)
+        cd_image = audiofiles[-1]
+        tracks = audiofiles[0:-1]
 
-        files1 = audiotools.open_files(
-            [os.path.join(args[0], f) for f in os.listdir(args[0])
-             if os.path.isfile(os.path.join(args[0], f))],
-            messenger=msg)
-        files2 = audiotools.open_files(
-            [os.path.join(args[1], f) for f in os.listdir(args[1])
-             if os.path.isfile(os.path.join(args[1], f))],
-            messenger=msg)
+        #all tracks should have the same album number and track total
+        tracks.sort(lambda t1, t2: cmp(t1.track_number(),
+                                       t2.track_number()))
 
-        files1_map = dict([((f.album_number(), f.track_number()), f)
-                           for f in files1])
-        files2_map = dict([((f.album_number(), f.track_number()), f)
-                           for f in files2])
-
-        files1_tracknumbers = set(files1_map.keys())
-        files2_tracknumbers = set(files2_map.keys())
-
-        queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
-
-        for (album_number, track_number) in sorted(
-            list(files1_tracknumbers - files2_tracknumbers)):
-            results.missing(args[1], track_number, album_number)
-
-        for (album_number, track_number) in sorted(
-            list(files2_tracknumbers - files1_tracknumbers)):
-            results.missing(args[0], track_number, album_number)
-
-        for (album_number, track_number) in sorted(
-            list(files1_tracknumbers & files2_tracknumbers)):
-            queue.execute(
-                function=cmp_files,
-                progress_text=u"%s <> %s" % \
-                    (msg.filename(files1_map[(album_number,
-                                              track_number)].filename),
-                     msg.filename(files2_map[(album_number,
-                                              track_number)].filename)),
-                completion_output=results.cmp_result,
-                audiofile1=files1_map[(album_number, track_number)],
-                audiofile2=files2_map[(album_number, track_number)])
-
-        queue.run(options.max_processes)
-
-        if (not options.no_summary):
-            msg.output(_(u"Results:"))
-            msg.output(u"")
-            msg.new_row()
-            msg.output_column(_(u"success"), True)
-            msg.output_column(u" ")
-            msg.output_column(_(u"failure"), True)
-            msg.output_column(u" ")
-            msg.output_column(_(u"total"), True)
-            msg.divider_row([u"-", u" ", u"-", u" ", u"-"])
-            msg.new_row()
-            msg.output_column(unicode(results.successes), True)
-            msg.output_column(u" ")
-            msg.output_column(unicode(results.failures), True)
-            msg.output_column(u" ")
-            msg.output_column(unicode(results.successes +
-                                      results.failures), True)
-            msg.output_rows()
-
-        if (results.failures > 0):
-            sys.exit(1)
+        cd_data = audiotools.BufferedPCMReader(cd_image.to_pcm())
+        for track in tracks:
+            progress.add_row(0, u"%(file1)s <> %(file2)s" %
+                             {"file1":msg.filename(cd_image.filename),
+                              "file2":msg.filename(track.filename)})
+            mismatch = audiotools.pcm_frame_cmp(
+                audiotools.to_pcm_progress(track, progress.update),
+                audiotools.LimitedPCMReader(cd_data, track.total_frames()))
+            progress.delete_row(0)
+            progress.clear()
+            if (mismatch is None):
+                msg.output(_(u"%(path1)s <> %(path2)s : %(result)s") % {
+                        "path1": msg.filename(cd_image.filename),
+                        "path2": msg.filename(track.filename),
+                        "result": msg.ansi(
+                            _(u"OK"),
+                            [msg.FG_GREEN])})
+            else:
+                msg.output(_(u"%(path1)s <> %(path2)s : %(result)s") % {
+                        "path1": msg.filename(cd_image.filename),
+                        "path2": msg.filename(track.filename),
+                        "result": msg.ansi(
+                            _(u"differ at PCM frame %d") % (mismatch + 1),
+                            [msg.FG_RED])})
+                sys.exit(1)
     else:
-        msg.error(_(u"%(file1)s <> %(file2)s : %(result)s") %
-                  {"file1": msg.filename(args[0]),
-                   "file2": msg.filename(args[1]),
-                   "result": msg.ansi(
-                    _(u"must be either files or directories"),
-                    [msg.FG_RED])})
-        sys.exit(1)
+        msg.usage(u"<track 1> <track 2>")
+        msg.exit(1)
