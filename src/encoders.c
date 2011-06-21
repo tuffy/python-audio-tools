@@ -178,6 +178,103 @@ BitstreamWriter_set_endianness(encoders_BitstreamWriter *self,
 }
 
 static PyObject*
+BitstreamWriter_build(encoders_BitstreamWriter *self, PyObject *args) {
+    int result;
+    Py_ssize_t i = 0;
+    char* format;
+    PyObject *values;
+    PyObject *value = NULL;
+    unsigned int size;
+    bs_instruction type;
+    union {
+        unsigned int _unsigned;
+        int _signed;
+        uint64_t _unsigned64;
+        uint8_t* _bytes;
+    } inst;
+    Py_ssize_t bytes_len;
+
+    if (!PyArg_ParseTuple(args, "sO", &format, &values))
+        return NULL;
+
+    while ((result = bs_parse_format(&format, &size, &type)) == 0) {
+
+        switch (type) {
+        case BS_INST_UNSIGNED:
+            if ((value = PySequence_GetItem(values, i++)) != NULL) {
+                inst._unsigned = PyInt_AsUnsignedLongMask(value);
+                if (!PyErr_Occurred())
+                    self->bitstream->write(self->bitstream, size,
+                                           inst._unsigned);
+                else
+                    goto error;
+            } else {
+                goto error;
+            }
+            break;
+        case BS_INST_SIGNED:
+            if ((value = PySequence_GetItem(values, i++)) != NULL) {
+                inst._signed = PyInt_AsLong(value);
+                if (!PyErr_Occurred())
+                    self->bitstream->write_signed(self->bitstream, size,
+                                                  inst._signed);
+                else
+                    goto error;
+            } else {
+                goto error;
+            }
+            break;
+        case BS_INST_UNSIGNED64:
+            if ((value = PySequence_GetItem(values, i++)) != NULL) {
+                inst._unsigned64 = PyInt_AsUnsignedLongLongMask(value);
+                if (!PyErr_Occurred())
+                    self->bitstream->write_64(self->bitstream, size,
+                                              inst._unsigned64);
+                else
+                    goto error;
+            } else {
+                goto error;
+            }
+            break;
+        case BS_INST_SKIP:
+            self->bitstream->write(self->bitstream, size, 0);
+            break;
+        case BS_INST_BYTES:
+            if (((value = PySequence_GetItem(values, i++)) != NULL) &&
+                (PyString_AsStringAndSize(value,
+                                          (char **)(&inst._bytes),
+                                          &bytes_len) != -1)) {
+                if (size <= bytes_len) {
+                    self->bitstream->write_bytes(self->bitstream,
+                                                 inst._bytes,
+                                                 size);
+                } else {
+                    PyErr_SetString(PyExc_ValueError,
+                                    "string length too short");
+                    goto error;
+                }
+            } else {
+                goto error;
+            }
+            break;
+        case BS_INST_ALIGN:
+            self->bitstream->byte_align(self->bitstream);
+            break;
+        }
+    }
+
+    if (result == -1) {
+        PyErr_SetString(PyExc_ValueError, "error parsing format string");
+        return NULL;
+    } else {
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
+ error:
+    return NULL;
+}
+
+static PyObject*
 BitstreamWriter_close(encoders_BitstreamWriter *self, PyObject *args) {
     Py_INCREF(Py_None);
     return Py_None;

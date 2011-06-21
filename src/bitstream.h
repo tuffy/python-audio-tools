@@ -42,6 +42,8 @@
 typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 typedef enum {BR_FILE, BR_SUBSTREAM, BR_PYTHON} br_type;
 typedef enum {BW_FILE, BW_RECORDER, BW_ACCUMULATOR} bw_type;
+typedef enum {BS_INST_UNSIGNED, BS_INST_SIGNED, BS_INST_UNSIGNED64,
+              BS_INST_SKIP, BS_INST_BYTES, BS_INST_ALIGN} bs_instruction;
 
 typedef void (*bs_callback_func)(uint8_t, void*);
 
@@ -90,6 +92,13 @@ struct br_python_input {
     int mark_in_progress;
 };
 #endif
+
+/*parses (or continues parsing) the given format string
+  and places the results in the "size" and "type" variables
+  the position in "format" is incremented as necessary
+  returns 0 on success, 1 on end-of-string and -1 on error*/
+int
+bs_parse_format(char** format, unsigned int* size, bs_instruction* type);
 
 
 typedef struct BitstreamReader_s {
@@ -178,6 +187,35 @@ typedef struct BitstreamReader_s {
     (*read_bytes)(struct BitstreamReader_s* bs,
                   uint8_t* bytes,
                   unsigned int byte_count);
+
+    /*takes a format string,
+      performs the indicated read operations with prefixed numeric lengths
+      and places the results in the given argument pointers
+      where the format actions are:
+
+      | format | action      | argument      |
+      |--------+-------------+---------------|
+      | u      | read        | unsigned int* |
+      | s      | read_signed | int*          |
+      | U      | read_64     | uint64_t*     |
+      | p      | skip        | N/A           |
+      | b      | read_bytes  | uint8_t*      |
+      | a      | byte_align  | N/A           |
+
+      For example, one could read a 32 bit header as follows:
+
+      unsigned int arg1; //  2 unsigned bits
+      unsigned int arg2; //  3 unsigned bits
+      int arg3;          //  5 signed bits
+      unsigned int arg4; //  3 unsigned bits
+      uint64_t arg5;     // 19 unsigned bits
+
+      reader->parse(reader, "2u3u5s3u19U", &arg1, &arg2, &arg3, &arg4, &arg5);
+
+      a failed parse will trigger a call to br_abort
+    */
+    void
+    (*parse)(struct BitstreamReader_s* bs, char* format, ...);
 
     /*sets the stream's format to big endian or little endian
       which automatically byte aligns it*/
@@ -286,6 +324,35 @@ typedef struct BitstreamWriter_s {
     void
     (*set_endianness)(struct BitstreamWriter_s* bs,
                       bs_endianness endianness);
+
+    /*takes a format string,
+      peforms the indicated write operations with prefixed numeric lengths
+      using the values from the given arguments
+      where the format actions are
+
+      | format | action       | argument     |
+      |--------+--------------+--------------|
+      | u      | write        | unsigned int |
+      | s      | write_signed | int          |
+      | U      | write_64     | uint64_t     |
+      | p      | skip         | N/A          |
+      | b      | write_bytes  | uint8_t*     |
+      | a      | byte_align   | N/A          |
+
+      For example, one could write a 32 bit header as follows:
+
+      unsigned int arg1; //  2 unsigned bits
+      unsigned int arg2; //  3 unsigned bits
+      int arg3;          //  5 signed bits
+      unsigned int arg4; //  3 unsigned bits
+      uint64_t arg5;     // 19 unsigned bits
+
+      writer->build(writer, "2u3u5s3u19U", arg1, arg2, arg3, arg4, arg5);
+
+      this is designed to perform the inverse of a BitstreamReader->parse()
+     */
+    void
+    (*build)(struct BitstreamWriter_s* bs, char* format, ...);
 
     /*returns the total bits written to the stream thus far
 
@@ -603,6 +670,9 @@ br_unmark_p(BitstreamReader* bs);
 void
 br_byte_align(BitstreamReader* bs);
 
+void
+br_parse(struct BitstreamReader_s* stream, char* format, ...);
+
 
 /*returns a new bs_buffer struct which can be appended to and read from
   it must be closed later*/
@@ -903,6 +973,10 @@ void
 bw_set_endianness_r_le(BitstreamWriter* bs, bs_endianness endianness);
 void
 bw_set_endianness_a(BitstreamWriter* bs, bs_endianness endianness);
+
+
+void
+bw_build(struct BitstreamWriter_s* stream, char* format, ...);
 
 
 void

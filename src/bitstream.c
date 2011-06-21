@@ -1,5 +1,6 @@
 #include "bitstream.h"
 #include <string.h>
+#include <stdarg.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -94,6 +95,7 @@ br_open(FILE *f, bs_endianness endianness)
     bs->byte_align = br_byte_align;
     bs->read_huffman_code = br_read_huffman_code_f;
     bs->read_bytes = br_read_bytes_f;
+    bs->parse = br_parse;
     bs->substream_append = br_substream_append_f;
     bs->close = br_close;
     bs->close_stream = br_close_stream_f;
@@ -2102,6 +2104,7 @@ br_substream_new(bs_endianness endianness)
     bs->byte_align = br_byte_align;
     bs->read_huffman_code = br_read_huffman_code_s;
     bs->read_bytes = br_read_bytes_s;
+    bs->parse = br_parse;
     bs->substream_append = br_substream_append_s;
     bs->close = br_close;
     bs->close_stream = br_close_stream_s;
@@ -2255,6 +2258,53 @@ void
 br_close_stream_s(struct BitstreamReader_s *stream)
 {
     buf_close(stream->input.substream);
+}
+
+
+void
+br_parse(struct BitstreamReader_s* stream, char* format, ...)
+{
+    va_list ap;
+    char* s = format;
+    int result;
+    unsigned int size;
+    bs_instruction type;
+    union {
+        unsigned int* _unsigned;
+        int* _signed;
+        uint64_t* _unsigned64;
+        uint8_t* _bytes;
+    } inst;
+
+    va_start(ap, format);
+    while ((result = bs_parse_format(&s, &size, &type)) == 0) {
+        switch (type) {
+        case BS_INST_UNSIGNED:
+            inst._unsigned = va_arg(ap, unsigned int*);
+            *inst._unsigned = stream->read(stream, size);
+            break;
+        case BS_INST_SIGNED:
+            inst._signed = va_arg(ap, int*);
+            *inst._signed = stream->read_signed(stream, size);
+            break;
+        case BS_INST_UNSIGNED64:
+            inst._unsigned64 = va_arg(ap, uint64_t*);
+            *inst._unsigned64 = stream->read_64(stream, size);
+            break;
+        case BS_INST_SKIP:
+            stream->skip(stream, size);
+            break;
+        case BS_INST_BYTES:
+            inst._bytes = va_arg(ap, uint8_t*);
+            stream->read_bytes(stream, inst._bytes, size);
+            break;
+        case BS_INST_ALIGN:
+            stream->byte_align(stream);
+            break;
+        }
+    }
+
+    va_end(ap);
 }
 
 #ifndef STANDALONE
@@ -2435,6 +2485,7 @@ br_open_python(PyObject *reader, bs_endianness endianness)
     bs->byte_align = br_byte_align;
     bs->read_huffman_code = br_read_huffman_code_p;
     bs->read_bytes = br_read_bytes_p;
+    bs->parse = br_parse;
     bs->substream_append = br_substream_append_p;
     bs->close = br_close;
     bs->close_stream = br_close_stream_p;
@@ -2489,6 +2540,7 @@ bw_open(FILE *f, bs_endianness endianness)
     bs->write_bytes = bw_write_bytes_f;
     bs->write_signed = bw_write_signed_bits_f_r;
     bs->write_unary = bw_write_unary_f_r;
+    bs->build = bw_build;
     bs->byte_align = bw_byte_align_f_r;
     bs->bits_written = bw_bits_written_f;
     bs->close = bw_close_new;
@@ -2515,6 +2567,7 @@ bw_open_accumulator(bs_endianness endianness)
     bs->write_signed = bw_write_signed_bits_a;
     bs->write_64 = bw_write_bits64_a;
     bs->write_unary = bw_write_unary_a;
+    bs->build = bw_build;
     bs->byte_align = bw_byte_align_a;
     bs->set_endianness = bw_set_endianness_a;
     bs->bits_written = bw_bits_written_a;
@@ -2553,6 +2606,7 @@ bw_open_recorder(bs_endianness endianness)
     bs->write_bytes = bw_write_bytes_r;
     bs->write_signed = bw_write_signed_bits_f_r;
     bs->write_unary = bw_write_unary_f_r;
+    bs->build = bw_build;
     bs->byte_align = bw_byte_align_f_r;
     bs->bits_written = bw_bits_written_r;
     bs->close = bw_close_new;
@@ -3326,6 +3380,49 @@ bw_set_endianness_a(BitstreamWriter* bs, bs_endianness endianness)
     bw_byte_align_a(bs);
 }
 
+void
+bw_build(struct BitstreamWriter_s* stream, char* format, ...)
+{
+    va_list ap;
+    char* s = format;
+    int result;
+    unsigned int size;
+    bs_instruction type;
+    union {
+        unsigned int _unsigned;
+        int _signed;
+        uint64_t _unsigned64;
+        uint8_t* _bytes;
+    } inst;
+    va_start(ap, format);
+    while ((result = bs_parse_format(&s, &size, &type)) == 0) {
+        switch (type) {
+        case BS_INST_UNSIGNED:
+            inst._unsigned = va_arg(ap, unsigned int);
+            stream->write(stream, size, inst._unsigned);
+            break;
+        case BS_INST_SIGNED:
+            inst._signed = va_arg(ap, int);
+            stream->write_signed(stream, size, inst._signed);
+            break;
+        case BS_INST_UNSIGNED64:
+            inst._unsigned64 = va_arg(ap, uint64_t);
+            stream->write_64(stream, size, inst._unsigned64);
+            break;
+        case BS_INST_SKIP:
+            stream->write(stream, size, 0);
+            break;
+        case BS_INST_BYTES:
+            inst._bytes = va_arg(ap, uint8_t*);
+            stream->write_bytes(stream, inst._bytes, size);
+            break;
+        case BS_INST_ALIGN:
+            stream->byte_align(stream);
+            break;
+        }
+    }
+    va_end(ap);
+}
 
 void
 bw_close_new(BitstreamWriter* bs) {
@@ -3352,6 +3449,72 @@ bw_close_stream_a(BitstreamWriter* bs)
     return;
 }
 
+int
+bs_parse_format(char** format, unsigned int* size, bs_instruction* type) {
+    *size = 0;
+
+    for (;; *format += 1)
+        switch (**format) {
+        case '\0':
+            return 1;
+        case '0':
+            *size = (*size * 10) + 0;
+            break;
+        case '1':
+            *size = (*size * 10) + 1;
+            break;
+        case '2':
+            *size = (*size * 10) + 2;
+            break;
+        case '3':
+            *size = (*size * 10) + 3;
+            break;
+        case '4':
+            *size = (*size * 10) + 4;
+            break;
+        case '5':
+            *size = (*size * 10) + 5;
+            break;
+        case '6':
+            *size = (*size * 10) + 6;
+            break;
+        case '7':
+            *size = (*size * 10) + 7;
+            break;
+        case '8':
+            *size = (*size * 10) + 8;
+            break;
+        case '9':
+            *size = (*size * 10) + 9;
+            break;
+        case 'u':
+            *type = BS_INST_UNSIGNED;
+            *format += 1;
+            return 0;
+        case 's':
+            *type = BS_INST_SIGNED;
+            *format += 1;
+            return 0;
+        case 'U':
+            *type = BS_INST_UNSIGNED64;
+            *format += 1;
+            return 0;
+        case 'p':
+            *type = BS_INST_SKIP;
+            *format += 1;
+            return 0;
+        case 'b':
+            *type = BS_INST_BYTES;
+            *format += 1;
+            return 0;
+        case 'a':
+            *type = BS_INST_ALIGN;
+            *format += 1;
+            return 0;
+        default:
+            return -1;
+        }
+}
 
 /*****************************************************************
  BEGIN UNIT TESTS

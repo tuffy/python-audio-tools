@@ -494,6 +494,92 @@ BitstreamReader_substream_append(decoders_BitstreamReader *self,
     return Py_None;
 }
 
+static PyObject*
+BitstreamReader_parse(decoders_BitstreamReader *self, PyObject *args) {
+    char* format;
+    PyObject *values;
+    PyObject *value = NULL;
+    int result;
+    unsigned int size;
+    bs_instruction type;
+
+    if (!PyArg_ParseTuple(args, "s", &format))
+        return NULL;
+
+    values = PyList_New(0);
+
+    if (!setjmp(*br_try(self->bitstream))) {
+        while ((result = bs_parse_format(&format, &size, &type)) == 0) {
+            value = NULL;
+            switch (type) {
+            case BS_INST_UNSIGNED:
+                value = Py_BuildValue("I",
+                    self->bitstream->read(self->bitstream, size));
+                if (PyList_Append(values, value) == -1)
+                    goto error;
+                else
+                    Py_DECREF(value);
+                break;
+            case BS_INST_SIGNED:
+                value = Py_BuildValue("i",
+                    self->bitstream->read_signed(self->bitstream, size));
+                if (PyList_Append(values, value) == -1)
+                    goto error;
+                else
+                    Py_DECREF(value);
+                break;
+            case BS_INST_UNSIGNED64:
+                value = Py_BuildValue("K",
+                    self->bitstream->read_64(self->bitstream, size));
+                if (PyList_Append(values, value) == -1)
+                    goto error;
+                else
+                    Py_DECREF(value);
+                break;
+            case BS_INST_SKIP:
+                self->bitstream->skip(self->bitstream, size);
+                break;
+            case BS_INST_BYTES:
+                if ((value = PyString_FromStringAndSize(NULL, size)) == NULL)
+                    goto error;
+                self->bitstream->read_bytes(
+                      self->bitstream,
+                      (uint8_t*)PyString_AsString(value),
+                      size);
+                if (PyList_Append(values, value) == -1)
+                    goto error;
+                else
+                    Py_DECREF(value);
+                break;
+            case BS_INST_ALIGN:
+                self->bitstream->byte_align(self->bitstream);
+                break;
+            }
+        }
+
+        br_etry(self->bitstream);
+        if (result == -1) {
+            Py_DECREF(values);
+            PyErr_SetString(PyExc_ValueError, "error parsing format string");
+            return NULL;
+        } else {
+            return values;
+        }
+
+    error:
+        br_etry(self->bitstream);
+        Py_DECREF(values);
+        Py_XDECREF(value);
+        return NULL;
+    } else {
+        br_etry(self->bitstream);
+        Py_DECREF(values);
+        Py_XDECREF(value);
+        PyErr_SetString(PyExc_IOError, "I/O error parsing values");
+        return NULL;
+    }
+}
+
 PyObject*
 BitstreamReader_new(PyTypeObject *type,
                     PyObject *args, PyObject *kwds)
