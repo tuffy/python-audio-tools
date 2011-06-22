@@ -81,7 +81,9 @@ static PyObject*
 BitstreamWriter_set_endianness(encoders_BitstreamWriter *self,
                                PyObject *args);
 
-/*FIXME - add BitstreamWriter_write_bytes*/
+static PyObject*
+BitstreamWriter_write_bytes(encoders_BitstreamWriter *self,
+                            PyObject *args);
 
 static PyObject*
 BitstreamWriter_build(encoders_BitstreamWriter *self, PyObject *args);
@@ -107,6 +109,8 @@ PyMethodDef BitstreamWriter_methods[] = {
      METH_VARARGS, ""},
     {"set_endianness", (PyCFunction)BitstreamWriter_set_endianness,
      METH_VARARGS, ""},
+    {"write_bytes", (PyCFunction)BitstreamWriter_write_bytes,
+     METH_VARARGS, ""},
     {"build", (PyCFunction)BitstreamWriter_build,
      METH_VARARGS, ""},
     {NULL}
@@ -122,7 +126,7 @@ BitstreamWriter_new(PyTypeObject *type, PyObject *args,
 PyTypeObject encoders_BitstreamWriterType = {
     PyObject_HEAD_INIT(NULL)
     0,                         /*ob_size*/
-    "encoders.BitstreamWriters",    /*tp_name*/
+    "encoders.BitstreamWriter",    /*tp_name*/
     sizeof(encoders_BitstreamWriter), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
     (destructor)BitstreamWriter_dealloc, /*tp_dealloc*/
@@ -160,3 +164,148 @@ PyTypeObject encoders_BitstreamWriterType = {
     0,                         /* tp_alloc */
     BitstreamWriter_new,       /* tp_new */
 };
+
+
+typedef struct {
+    PyObject_HEAD
+
+    BitstreamWriter* bitstream;
+} encoders_BitstreamRecorder;
+
+static PyObject*
+BitstreamRecorder_write(encoders_BitstreamRecorder *self,
+                        PyObject *args);
+
+static PyObject*
+BitstreamRecorder_write_signed(encoders_BitstreamRecorder *self,
+                               PyObject *args);
+
+static PyObject*
+BitstreamRecorder_write64(encoders_BitstreamRecorder *self,
+                          PyObject *args);
+
+static PyObject*
+BitstreamRecorder_unary(encoders_BitstreamRecorder *self,
+                        PyObject *args);
+
+static PyObject*
+BitstreamRecorder_byte_align(encoders_BitstreamRecorder *self,
+                             PyObject *args);
+
+static PyObject*
+BitstreamRecorder_set_endianness(encoders_BitstreamRecorder *self,
+                                 PyObject *args);
+
+static PyObject*
+BitstreamRecorder_bits(encoders_BitstreamRecorder *self,
+                       PyObject *args);
+
+static PyObject*
+BitstreamRecorder_bytes(encoders_BitstreamRecorder *self,
+                        PyObject *args);
+
+static PyObject*
+BitstreamRecorder_write_bytes(encoders_BitstreamRecorder *self,
+                              PyObject *args);
+
+static PyObject*
+BitstreamRecorder_build(encoders_BitstreamRecorder *self,
+                        PyObject *args);
+
+static PyObject*
+BitstreamRecorder_reset(encoders_BitstreamRecorder *self,
+                        PyObject *args);
+
+static PyObject*
+BitstreamRecorder_dump(encoders_BitstreamRecorder *self,
+                       PyObject *args);
+
+static PyObject*
+BitstreamRecorder_close(encoders_BitstreamRecorder *self,
+                        PyObject *args);
+
+int
+BitstreamRecorder_init(encoders_BitstreamRecorder *self,
+                       PyObject *args);
+
+PyMethodDef BitstreamRecorder_methods[] = {
+    {"write", (PyCFunction)BitstreamRecorder_write,
+     METH_VARARGS, ""},
+    {"write_signed", (PyCFunction)BitstreamRecorder_write_signed,
+     METH_VARARGS, ""},
+    {"unary", (PyCFunction)BitstreamRecorder_unary,
+     METH_VARARGS, ""},
+    {"byte_align", (PyCFunction)BitstreamRecorder_byte_align,
+     METH_NOARGS, ""},
+    {"close", (PyCFunction)BitstreamRecorder_close,
+     METH_NOARGS, ""},
+    {"write64", (PyCFunction)BitstreamRecorder_write64,
+     METH_VARARGS, ""},
+    {"set_endianness", (PyCFunction)BitstreamRecorder_set_endianness,
+     METH_VARARGS, ""},
+    {"write_bytes", (PyCFunction)BitstreamRecorder_write_bytes,
+     METH_VARARGS, ""},
+    {"bits", (PyCFunction)BitstreamRecorder_bits,
+     METH_NOARGS, ""},
+    {"bytes", (PyCFunction)BitstreamRecorder_bytes,
+     METH_NOARGS, ""},
+    {"reset", (PyCFunction)BitstreamRecorder_reset,
+     METH_NOARGS, ""},
+    {"dump", (PyCFunction)BitstreamRecorder_dump,
+     METH_VARARGS, ""},
+    {"build", (PyCFunction)BitstreamRecorder_build,
+     METH_VARARGS, ""},
+    {NULL}
+};
+
+void
+BitstreamRecorder_dealloc(encoders_BitstreamRecorder *self);
+
+static PyObject*
+BitstreamRecorder_new(PyTypeObject *type, PyObject *args,
+                      PyObject *kwds);
+
+PyTypeObject encoders_BitstreamRecorderType = {
+    PyObject_HEAD_INIT(NULL)
+    0,                         /*ob_size*/
+    "encoders.BitstreamRecorder",    /*tp_name*/
+    sizeof(encoders_BitstreamRecorder), /*tp_basicsize*/
+    0,                         /*tp_itemsize*/
+    (destructor)BitstreamRecorder_dealloc, /*tp_dealloc*/
+    0,                         /*tp_print*/
+    0,                         /*tp_getattr*/
+    0,                         /*tp_setattr*/
+    0,                         /*tp_compare*/
+    0,                         /*tp_repr*/
+    0,                         /*tp_as_number*/
+    0,                         /*tp_as_sequence*/
+    0,                         /*tp_as_mapping*/
+    0,                         /*tp_hash */
+    0,                         /*tp_call*/
+    0,                         /*tp_str*/
+    0,                         /*tp_getattro*/
+    0,                         /*tp_setattro*/
+    0,                         /*tp_as_buffer*/
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
+    "BitstreamRecorder objects", /* tp_doc */
+    0,                         /* tp_traverse */
+    0,                         /* tp_clear */
+    0,                         /* tp_richcompare */
+    0,                         /*  tp_weaklistoffset */
+    0,                         /* tp_iter */
+    0,                         /* tp_iternext */
+    BitstreamRecorder_methods, /* tp_methods */
+    0,                         /* tp_members */
+    0,                         /* tp_getset */
+    0,                         /* tp_base */
+    0,                         /* tp_dict */
+    0,                         /* tp_descr_get */
+    0,                         /* tp_descr_set */
+    0,                         /* tp_dictoffset */
+    (initproc)BitstreamRecorder_init, /* tp_init */
+    0,                         /* tp_alloc */
+    BitstreamRecorder_new,       /* tp_new */
+};
+
+int
+bitstream_build(BitstreamWriter* stream, char* format, PyObject* values);
