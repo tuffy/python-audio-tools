@@ -2266,7 +2266,6 @@ br_parse(struct BitstreamReader_s* stream, char* format, ...)
 {
     va_list ap;
     char* s = format;
-    int result;
     unsigned int size;
     bs_instruction type;
     union {
@@ -2277,7 +2276,7 @@ br_parse(struct BitstreamReader_s* stream, char* format, ...)
     } inst;
 
     va_start(ap, format);
-    while ((result = bs_parse_format(&s, &size, &type)) == 0) {
+    while (!bs_parse_format(&s, &size, &type)) {
         switch (type) {
         case BS_INST_UNSIGNED:
             inst._unsigned = va_arg(ap, unsigned int*);
@@ -3385,7 +3384,6 @@ bw_build(struct BitstreamWriter_s* stream, char* format, ...)
 {
     va_list ap;
     char* s = format;
-    int result;
     unsigned int size;
     bs_instruction type;
     union {
@@ -3395,7 +3393,7 @@ bw_build(struct BitstreamWriter_s* stream, char* format, ...)
         uint8_t* _bytes;
     } inst;
     va_start(ap, format);
-    while ((result = bs_parse_format(&s, &size, &type)) == 0) {
+    while (!bs_parse_format(&s, &size, &type)) {
         switch (type) {
         case BS_INST_UNSIGNED:
             inst._unsigned = va_arg(ap, unsigned int);
@@ -3512,9 +3510,36 @@ bs_parse_format(char** format, unsigned int* size, bs_instruction* type) {
             *format += 1;
             return 0;
         default:
-            return -1;
+            break;
         }
 }
+
+unsigned int
+bs_format_size(char* format) {
+    unsigned int total_size = 0;
+    unsigned int format_size;
+    bs_instruction format_type;
+    char* format_pos = format;
+
+    while (!bs_parse_format(&format_pos, &format_size, &format_type))
+        switch (format_type) {
+        case BS_INST_UNSIGNED:
+        case BS_INST_SIGNED:
+        case BS_INST_UNSIGNED64:
+        case BS_INST_SKIP:
+            total_size += format_size;
+            break;
+        case BS_INST_BYTES:
+            total_size += (format_size * 8);
+            break;
+        case BS_INST_ALIGN:
+            total_size += (8 - (total_size % 8));
+            break;
+        }
+
+    return total_size;
+}
+
 
 /*****************************************************************
  BEGIN UNIT TESTS

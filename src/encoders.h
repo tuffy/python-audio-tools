@@ -28,20 +28,19 @@ typedef int Py_ssize_t;
 #endif
 
 PyObject*
-encoders_encode_flac(PyObject *dummy,
-                     PyObject *args, PyObject *keywds);
+encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds);
 
 PyObject*
-encoders_encode_shn(PyObject *dummy,
-                    PyObject *args, PyObject *keywds);
+encoders_encode_shn(PyObject *dummy, PyObject *args, PyObject *keywds);
 
 PyObject*
-encoders_encode_alac(PyObject *dummy,
-                     PyObject *args, PyObject *keywds);
+encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds);
 
 PyObject*
-encoders_encode_wavpack(PyObject *dummy,
-                        PyObject *args, PyObject *keywds);
+encoders_encode_wavpack(PyObject *dummy, PyObject *args, PyObject *keywds);
+
+PyObject*
+encoders_format_size(PyObject *dummy, PyObject *args);
 
 PyMethodDef module_methods[] = {
     {"encode_flac", (PyCFunction)encoders_encode_flac,
@@ -52,6 +51,8 @@ PyMethodDef module_methods[] = {
      METH_VARARGS | METH_KEYWORDS, "Encode ALAC file from PCMReader"},
     {"encode_wavpack", (PyCFunction)encoders_encode_wavpack,
      METH_VARARGS | METH_KEYWORDS, "Encode WavPack file from PCMReader"},
+    {"format_size", (PyCFunction)encoders_format_size,
+     METH_VARARGS, "Calculate size of format string"},
     {NULL}
 };
 

@@ -989,6 +989,7 @@ bw_close_stream_r(BitstreamWriter* bs);
 void
 bw_close_stream_a(BitstreamWriter* bs);
 
-
+unsigned int
+bs_format_size(char* format);
 
 #endif

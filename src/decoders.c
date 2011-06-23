@@ -499,7 +499,6 @@ BitstreamReader_parse(decoders_BitstreamReader *self, PyObject *args) {
     char* format;
     PyObject *values;
     PyObject *value = NULL;
-    int result;
     unsigned int size;
     bs_instruction type;
 
@@ -509,7 +508,7 @@ BitstreamReader_parse(decoders_BitstreamReader *self, PyObject *args) {
     values = PyList_New(0);
 
     if (!setjmp(*br_try(self->bitstream))) {
-        while ((result = bs_parse_format(&format, &size, &type)) == 0) {
+        while (!bs_parse_format(&format, &size, &type)) {
             value = NULL;
             switch (type) {
             case BS_INST_UNSIGNED:
@@ -558,13 +557,7 @@ BitstreamReader_parse(decoders_BitstreamReader *self, PyObject *args) {
         }
 
         br_etry(self->bitstream);
-        if (result == -1) {
-            Py_DECREF(values);
-            PyErr_SetString(PyExc_ValueError, "error parsing format string");
-            return NULL;
-        } else {
-            return values;
-        }
+        return values;
 
     error:
         br_etry(self->bitstream);

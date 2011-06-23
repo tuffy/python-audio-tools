@@ -451,7 +451,6 @@ BitstreamRecorder_new(PyTypeObject *type, PyObject *args,
 
 int
 bitstream_build(BitstreamWriter* stream, char* format, PyObject* values) {
-    int result;
     Py_ssize_t i = 0;
     PyObject *value = NULL;
     unsigned int size;
@@ -464,7 +463,7 @@ bitstream_build(BitstreamWriter* stream, char* format, PyObject* values) {
     } inst;
     Py_ssize_t bytes_len;
 
-    while ((result = bs_parse_format(&format, &size, &type)) == 0) {
+    while (!bs_parse_format(&format, &size, &type)) {
         switch (type) {
         case BS_INST_UNSIGNED:
             if ((value = PySequence_GetItem(values, i++)) != NULL) {
@@ -524,10 +523,15 @@ bitstream_build(BitstreamWriter* stream, char* format, PyObject* values) {
         }
     }
 
-    if (result == -1) {
-        PyErr_SetString(PyExc_ValueError, "error parsing format string");
-        return 1;
-    } else {
-        return 0;
-    }
+    return 0;
+}
+
+PyObject*
+encoders_format_size(PyObject *dummy, PyObject *args) {
+    char* format_string;
+
+    if (!PyArg_ParseTuple(args, "s", &format_string))
+        return NULL;
+
+    return Py_BuildValue("I", bs_format_size(format_string));
 }
