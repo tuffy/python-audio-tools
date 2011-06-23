@@ -42,25 +42,42 @@ def __number_pair__(current, total):
 #######################
 
 
+class ApeTagHeader:
+    FORMAT = "8b 32u 32u 32u [ 1u 2u 26p 1u 1u 1u ] 64p"
+
+    def __init__(self, preamble, version, tag_size, item_count, read_only,
+                 encoding, is_header, no_footer, has_header):
+        if (preamble != "APETAGEX"):
+            raise ValueError("invalid preamble")
+
+        self.version = version
+        self.tag_size = tag_size
+        self.item_count = item_count
+        self.read_only = read_only
+        self.encoding = encoding
+        self.is_header = is_header
+        self.no_footer = no_footer
+        self.has_header = has_header
+
+    def __repr__(self):
+        return "ApeTagHeader(%s)" % (
+            ",".join(["%s=%s" % (key, repr(getattr(self, key)))
+                      for key in ["version", "tag_size", "item_count",
+                                  "read_only", "encoding", "is_header",
+                                  "no_footer", "has_header"]]))
+
+    @classmethod
+    def parse(cls, reader):
+        return cls(*reader.parse(cls.FORMAT))
+
+    def build(self, writer):
+        writer.build(self.FORMAT,
+                     ("APETAGEX", self.version, self.tag_size,
+                      self.item_count, self.read_only, self.encoding,
+                      self.is_header, self.no_footer, self.has_header))
+
 class ApeTagItem:
-    """A container for APEv2 tag items."""
-
-    APEv2_FLAGS = Con.BitStruct("APEv2_FLAGS",
-      Con.Bits("undefined1", 5),
-      Con.Flag("read_only"),
-      Con.Bits("encoding", 2),
-      Con.Bits("undefined2", 16),
-      Con.Flag("contains_header"),
-      Con.Flag("contains_no_footer"),
-      Con.Flag("is_header"),
-      Con.Bits("undefined3", 5))
-
-    APEv2_TAG = Con.Struct("APEv2_TAG",
-      Con.ULInt32("length"),
-      Con.Embed(APEv2_FLAGS),
-      Con.CString("key"),
-      Con.MetaField("value",
-        lambda ctx: ctx["length"]))
+    FORMAT = "32u [ 1u 2u 29p ]"
 
     def __init__(self, item_type, read_only, key, data):
         """Fields are as follows:
@@ -89,21 +106,28 @@ class ApeTagItem:
     def __unicode__(self):
         return self.data.rstrip(chr(0)).decode('utf-8', 'replace')
 
-    def build(self):
-        """Returns this tag as a binary string of data."""
+    @classmethod
+    def parse(cls, reader):
+        (item_value_length,
+         read_only,
+         encoding) = reader.parse(cls.FORMAT)
 
-        return self.APEv2_TAG.build(
-            Con.Container(key=self.key,
-                          value=self.data,
-                          length=len(self.data),
-                          encoding=self.type,
-                          undefined1=0,
-                          undefined2=0,
-                          undefined3=0,
-                          read_only=self.read_only,
-                          contains_header=False,
-                          contains_no_footer=False,
-                          is_header=False))
+        key = []
+        c = reader.read(8)
+        while (c != 0):
+            key.append(chr(c))
+            c = reader.read(8)
+
+        value = reader.read_bytes(item_value_length)
+
+        return cls(encoding, read_only, "".join(key), value)
+
+    def build(self, writer):
+        writer.build("%s %db 8u %db" % (self.FORMAT,
+                                        len(self.key),
+                                        len(self.data)),
+                     (len(self.data), self.read_only, self.type,
+                      self.key, 0, self.data))
 
     @classmethod
     def binary(cls, key, data):
@@ -155,7 +179,7 @@ class ApeTag(MetaData):
 
     APEv2_HEADER = APEv2_FOOTER
 
-    APEv2_TAG = ApeTagItem.APEv2_TAG
+    # APEv2_TAG = ApeTagItem.APEv2_TAG
 
     ATTRIBUTE_MAP = {'track_name': 'Title',
                      'track_number': 'Track',
@@ -479,64 +503,58 @@ class ApeTag(MetaData):
 
         May return None if the file object has no tag."""
 
-        apefile.seek(-32, 2)
-        footer = cls.APEv2_FOOTER.parse(apefile.read(32))
+        from .decoders import BitstreamReader
 
-        if (footer.preamble != 'APETAGEX'):
+        apefile.seek(-32, 2)
+        reader = BitstreamReader(apefile, 1)
+
+        try:
+            footer = ApeTagHeader.parse(reader)
+        except ValueError:
             return None
 
         apefile.seek(-(footer.tag_size), 2)
 
-        return cls([ApeTagItem(item_type=tag.encoding,
-                               read_only=tag.read_only,
-                               key=tag.key,
-                               data=tag.value)
-                    for tag in Con.StrictRepeater(
-                      footer.item_count,
-                      cls.APEv2_TAG).parse(apefile.read())],
-                   tag_length=footer.tag_size + ApeTag.APEv2_FOOTER.sizeof()
-                     if footer.contains_header else
-                     footer.tag_size)
+        return cls([ApeTagItem.parse(reader)
+                    for i in xrange(footer.item_count)],
+                   tag_length=footer.tag_size + 32
+                   if footer.has_header else
+                   footer.tag_size)
 
-    def build(self):
+    def build(self, writer):
         """Returns an APEv2 tag as a binary string."""
 
-        header = Con.Container(preamble='APETAGEX',
-                               version_number=2000,
-                               tag_size=0,
-                               item_count=len(self.tags),
-                               undefined1=0,
-                               undefined2=0,
-                               undefined3=0,
-                               read_only=False,
-                               encoding=0,
-                               contains_header=True,
-                               contains_no_footer=False,
-                               is_header=True,
-                               reserved=0l)
+        from .encoders import BitstreamRecorder
 
-        footer = Con.Container(preamble=header.preamble,
-                               version_number=header.version_number,
-                               tag_size=0,
-                               item_count=len(self.tags),
-                               undefined1=0,
-                               undefined2=0,
-                               undefined3=0,
-                               read_only=False,
-                               encoding=0,
-                               contains_header=True,
-                               contains_no_footer=False,
-                               is_header=False,
-                               reserved=0l)
+        tags = BitstreamRecorder(1)
 
-        tags = "".join([tag.build() for tag in self.tags])
+        for tag in self.tags:
+            tag.build(tags)
 
-        footer.tag_size = header.tag_size = \
-          len(tags) + len(ApeTag.APEv2_FOOTER.build(footer))
+        header = ApeTagHeader(preamble="APETAGEX",
+                              version=2000,
+                              tag_size=tags.bytes() + 32,
+                              item_count=len(self.tags),
+                              read_only=0,
+                              encoding=0,
+                              is_header=1,
+                              no_footer=0,
+                              has_header=1)
 
-        return ApeTag.APEv2_FOOTER.build(header) + \
-               tags + \
-               ApeTag.APEv2_FOOTER.build(footer)
+        footer = ApeTagHeader(preamble="APETAGEX",
+                              version=2000,
+                              tag_size=tags.bytes() + 32,
+                              item_count=len(self.tags),
+                              read_only=0,
+                              encoding=0,
+                              is_header=0,
+                              no_footer=0,
+                              has_header=1)
+
+
+        header.build(writer)
+        tags.dump(writer)
+        footer.build(writer)
 
     def clean(self, fixes_applied):
         tag_items = []
@@ -614,6 +632,8 @@ class ApeTaggedAudio:
 
         Raises IOError if unable to write the file."""
 
+        from .encoders import BitstreamWriter
+
         apetag = self.APE_TAG_CLASS.converted(metadata)
 
         if (apetag is None):
@@ -626,11 +646,11 @@ class ApeTaggedAudio:
             f.close()
             f = file(self.filename, "wb")
             f.write(untagged_data)
-            f.write(apetag.build())
+            apetag.build(BitstreamWriter(f, 1))
             f.close()
         else:                               # no existing tags
             f = file(self.filename, "ab")
-            f.write(apetag.build())
+            apetag.build(BitstreamWriter(f, 1))
             f.close()
 
     def delete_metadata(self):
