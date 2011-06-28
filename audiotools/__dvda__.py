@@ -342,6 +342,7 @@ class DVDAudio:
                             timestamp.index_number].first_sector,
                         last_sector=sector_pointers[-1].last_sector))
 
+                dvda_title.__parse_info__()
                 titles.append(dvda_title)
 
             return titles
@@ -376,20 +377,24 @@ class DVDATitle:
         self.pts_length = pts_length
         self.tracks = tracks
 
-    def __len__(self):
-        return len(self.tracks)
+        self.sample_rate = 0
+        self.channels = 0
+        self.channel_mask = 0
+        self.bits_per_sample = 0
+        self.stream_id = 0
 
-    def __getitem__(self, index):
-        return self.tracks[index]
+    def __parse_info__(self):
+        """generates a cache of sample_rate, bits-per-sample, etc."""
 
-    def __repr__(self):
-        return "DVDATitle(%s)" % \
-            (",".join(["%s=%s" % (key, getattr(self, key))
-                       for key in ["titleset", "title", "pts_length",
-                                   "tracks"]]))
+        if (len(self.tracks) == 0):
+            return
 
-    def info(self):
-        """returns a (sample_rate, channels, channel_mask, bps, type) tuple"""
+        #Why is this post-init processing necessary?
+        #DVDATrack references DVDATitle
+        #so a DVDATitle must exist when DVDATrack is initialized.
+        #But because reading this info requires knowing the sector
+        #of the first track, we wind up with a circular dependency.
+        #Doing a "post-process" pass fixes that problem.
 
         #find the AOB file of the title's first track
         track_sector = self[0].first_sector
@@ -423,18 +428,39 @@ class DVDATitle:
             header = DVDAudio.PACKET_HEADER.parse_stream(aob_file)
 
             #return the values indicated by the header
-            return (DVDATrack.SAMPLE_RATE[
-                      header.info.group1_sample_rate],
-                    DVDATrack.CHANNELS[
-                      header.info.channel_assignment],
-                    DVDATrack.CHANNEL_MASK[
-                      header.info.channel_assignment],
-                    DVDATrack.BITS_PER_SAMPLE[
-                      header.info.group1_bps],
-                    header.stream_id)
+            self.sample_rate = DVDATrack.SAMPLE_RATE[
+                header.info.group1_sample_rate]
+            self.channels = DVDATrack.CHANNELS[
+                header.info.channel_assignment]
+            self.channel_mask = DVDATrack.CHANNEL_MASK[
+                header.info.channel_assignment]
+            self.bits_per_sample = DVDATrack.BITS_PER_SAMPLE[
+                header.info.group1_bps]
+            self.stream_id = header.stream_id
 
         finally:
             aob_file.close()
+
+    def __len__(self):
+        return len(self.tracks)
+
+    def __getitem__(self, index):
+        return self.tracks[index]
+
+    def __repr__(self):
+        return "DVDATitle(%s)" % \
+            (",".join(["%s=%s" % (key, getattr(self, key))
+                       for key in ["titleset", "title", "pts_length",
+                                   "tracks"]]))
+
+    def info(self):
+        """returns a (sample_rate, channels, channel_mask, bps, type) tuple"""
+
+        return (self.sample_rate,
+                self.channels,
+                self.channel_mask,
+                self.bits_per_sample,
+                self.stream_id)
 
     def stream(self):
         titleset = re.compile("ATS_%2.2d_\\d\\.AOB" % (self.titleset))
@@ -470,6 +496,18 @@ class DVDATitle:
                                  bits_per_sample)
         else:
             raise ValueError(_(u"unsupported DVD-Audio stream type"))
+
+    def total_frames(self):
+        """Returns the title's total PCM frames as an integer."""
+
+        import decimal
+
+        return int((decimal.Decimal(self.pts_length) /
+                    DVDAudio.PTS_PER_SECOND *
+                    self.sample_rate).quantize(
+                decimal.Decimal(1),
+                rounding=decimal.ROUND_HALF_EVEN))
+
 
 
 class DVDATrack:
@@ -525,6 +563,19 @@ class DVDATrack:
                                                (self.titleset, i + 1)],
                        intersection.start - start_sector,
                        intersection.end - start_sector)
+
+    def total_frames(self):
+        """Returns the track's total PCM frames as an integer.
+
+        This is based on its PTS ticks and the title's sample rate."""
+
+        import decimal
+
+        return int((decimal.Decimal(self.pts_length) /
+                    DVDAudio.PTS_PER_SECOND *
+                    self.title.sample_rate).quantize(
+                decimal.Decimal(1),
+                rounding=decimal.ROUND_HALF_EVEN))
 
 
 class Rangeset:

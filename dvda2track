@@ -305,8 +305,11 @@ if (__name__ == '__main__'):
 
     encoded = []
 
-    pcm_lengths = [(track.pts_length * sample_rate) /
-                   audiotools.DVDAudio.PTS_PER_SECOND for track in title]
+    if (sum([track.pts_length for track in title]) != title.pts_length):
+        msg.error(_(u"total track PTS ticks doesn't equal title's PTS ticks"))
+        sys.exit(1)
+
+    pcm_lengths = [track.total_frames() for track in title]
 
     for (i, (pcmreader,
              pcm_frames)) in enumerate(izip(pcm_split(title.to_pcm(),

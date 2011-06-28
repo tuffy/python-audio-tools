@@ -512,43 +512,59 @@ BitstreamReader_parse(decoders_BitstreamReader *self, PyObject *args) {
             value = NULL;
             switch (type) {
             case BS_INST_UNSIGNED:
-                value = Py_BuildValue("I",
-                    self->bitstream->read(self->bitstream, size));
-                if (PyList_Append(values, value) == -1)
+                if ((value =
+                     Py_BuildValue("I",
+                                   self->bitstream->read(self->bitstream,
+                                                         size))) == NULL) {
                     goto error;
-                else
+                } else if (PyList_Append(values, value) == -1) {
+                    goto error;
+                } else {
                     Py_DECREF(value);
+                }
                 break;
             case BS_INST_SIGNED:
-                value = Py_BuildValue("i",
-                    self->bitstream->read_signed(self->bitstream, size));
-                if (PyList_Append(values, value) == -1)
+                if ((value =
+                     Py_BuildValue("i",
+                                   self->bitstream->read_signed(self->bitstream,
+                                                                size))) ==
+                    NULL) {
                     goto error;
-                else
+                } else if (PyList_Append(values, value) == -1) {
+                    goto error;
+                } else {
                     Py_DECREF(value);
+                }
                 break;
             case BS_INST_UNSIGNED64:
-                value = Py_BuildValue("K",
-                    self->bitstream->read_64(self->bitstream, size));
-                if (PyList_Append(values, value) == -1)
+                if ((value =
+                     Py_BuildValue("K",
+                                   self->bitstream->read_64(self->bitstream,
+                                                            size))) ==
+                    NULL) {
                     goto error;
-                else
+                } else if (PyList_Append(values, value) == -1) {
+                    goto error;
+                } else {
                     Py_DECREF(value);
+                }
                 break;
             case BS_INST_SKIP:
                 self->bitstream->skip(self->bitstream, size);
                 break;
             case BS_INST_BYTES:
-                if ((value = PyString_FromStringAndSize(NULL, size)) == NULL)
+                if ((value = PyString_FromStringAndSize(NULL, size)) == NULL) {
                     goto error;
-                self->bitstream->read_bytes(
-                      self->bitstream,
-                      (uint8_t*)PyString_AsString(value),
-                      size);
-                if (PyList_Append(values, value) == -1)
-                    goto error;
-                else
-                    Py_DECREF(value);
+                } else {
+                    self->bitstream->read_bytes(
+                                           self->bitstream,
+                                           (uint8_t*)PyString_AsString(value),
+                                           size);
+                    if (PyList_Append(values, value) == -1)
+                        goto error;
+                    else
+                        Py_DECREF(value);
+                }
                 break;
             case BS_INST_ALIGN:
                 self->bitstream->byte_align(self->bitstream);
