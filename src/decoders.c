@@ -182,7 +182,7 @@ BitstreamReader_read64(decoders_BitstreamReader *self, PyObject *args) {
     if (!setjmp(*br_try(self->bitstream))) {
         result = self->bitstream->read_64(self->bitstream, count);
         br_etry(self->bitstream);
-        return Py_BuildValue("L", result);
+        return Py_BuildValue("K", result);
     } else {
         br_etry(self->bitstream);
         PyErr_SetString(PyExc_IOError, "I/O error reading stream");

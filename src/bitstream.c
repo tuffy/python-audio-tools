@@ -848,28 +848,44 @@ br_skip_bits_f_be(BitstreamReader* bs, unsigned int count)
     int byte;
     struct bs_callback* callback;
     int output_size;
+    static uint8_t dummy[1024];
+    size_t to_read;
 
-    while (count > 0) {
-        if (context == 0) {
-            if ((byte = fgetc(bs->input.file)) == EOF)
+    /*handle a common case where the input is byte-aligned,
+      the count is an even number of bytes
+      and there are no set callbacks to consider*/
+    if ((context == 0) && ((count % 8) == 0) && (bs->callbacks == NULL)) {
+        while (count > 0) {
+            to_read = MIN(1024, count / 8);
+            if (fread(dummy, sizeof(uint8_t), to_read, bs->input.file) !=
+                to_read)
                 br_abort(bs);
-            context = NEW_CONTEXT(byte);
-            for (callback = bs->callbacks;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback((uint8_t)byte, callback->data);
+            else
+                count -= (to_read * 8);
+        }
+    } else {
+        while (count > 0) {
+            if (context == 0) {
+                if ((byte = fgetc(bs->input.file)) == EOF)
+                    br_abort(bs);
+                context = NEW_CONTEXT(byte);
+                for (callback = bs->callbacks;
+                     callback != NULL;
+                     callback = callback->next)
+                    callback->callback((uint8_t)byte, callback->data);
+            }
+
+            result = read_bits_table[context][MIN(count, 8) - 1];
+
+            output_size = READ_BITS_OUTPUT_SIZE(result);
+
+            context = NEXT_CONTEXT(result);
+
+            count -= output_size;
         }
 
-        result = read_bits_table[context][MIN(count, 8) - 1];
-
-        output_size = READ_BITS_OUTPUT_SIZE(result);
-
-        context = NEXT_CONTEXT(result);
-
-        count -= output_size;
+        bs->state = context;
     }
-
-    bs->state = context;
 }
 
 void
@@ -880,31 +896,44 @@ br_skip_bits_f_le(BitstreamReader* bs, unsigned int count)
     int byte;
     struct bs_callback* callback;
     int output_size;
-    int bit_offset = 0;
+    static uint8_t dummy[1024];
+    size_t to_read;
 
-    while (count > 0) {
-        if (context == 0) {
-            if ((byte = fgetc(bs->input.file)) == EOF)
+    /*handle a common case where the input is byte-aligned,
+      the count is an even number of bytes
+      and there are no set callbacks to consider*/
+    if ((context == 0) && ((count % 8) == 0) && (bs->callbacks == NULL)) {
+        while (count > 0) {
+            to_read = MIN(1024, count / 8);
+            if (fread(dummy, sizeof(uint8_t), to_read, bs->input.file) !=
+                to_read)
                 br_abort(bs);
-            context = NEW_CONTEXT(byte);
-            for (callback = bs->callbacks;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback((uint8_t)byte, callback->data);
+            else
+                count -= (to_read * 8);
+        }
+    } else {
+        while (count > 0) {
+            if (context == 0) {
+                if ((byte = fgetc(bs->input.file)) == EOF)
+                    br_abort(bs);
+                context = NEW_CONTEXT(byte);
+                for (callback = bs->callbacks;
+                     callback != NULL;
+                     callback = callback->next)
+                    callback->callback((uint8_t)byte, callback->data);
+            }
+
+            result = read_bits_table_le[context][MIN(count, 8) - 1];
+
+            output_size = READ_BITS_OUTPUT_SIZE(result);
+
+            context = NEXT_CONTEXT(result);
+
+            count -= output_size;
         }
 
-        result = read_bits_table_le[context][MIN(count, 8) - 1];
-
-        output_size = READ_BITS_OUTPUT_SIZE(result);
-
-        context = NEXT_CONTEXT(result);
-
-        count -= output_size;
-
-        bit_offset += output_size;
+        bs->state = context;
     }
-
-    bs->state = context;
 }
 
 void
@@ -3087,7 +3116,7 @@ void
 bw_write_bits64_f_be(BitstreamWriter* bs, unsigned int count, uint64_t value)
 {
     int bits_to_write;
-    int value_to_write;
+    uint64_t value_to_write;
     unsigned int byte;
     struct bs_callback* callback;
 
@@ -3099,15 +3128,13 @@ bw_write_bits64_f_be(BitstreamWriter* bs, unsigned int count, uint64_t value)
         value_to_write = value >> (count - bits_to_write);
 
         /*prepend value to buffer*/
-        bs->buffer = ((bs->buffer << bits_to_write) |
-                                  value_to_write);
+        bs->buffer = ((bs->buffer << bits_to_write) | value_to_write);
         bs->buffer_size += bits_to_write;
 
         /*if buffer is over 8 bits,
           write a byte and remove it from the buffer*/
         if (bs->buffer_size >= 8) {
-            byte = (bs->buffer >>
-                    (bs->buffer_size - 8)) & 0xFF;
+            byte = (bs->buffer >> (bs->buffer_size - 8)) & 0xFF;
             fputc(byte, bs->output.file);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -3124,16 +3151,13 @@ bw_write_bits64_f_be(BitstreamWriter* bs, unsigned int count, uint64_t value)
 }
 
 void
-bw_write_bits64_f_le(BitstreamWriter* bs,
-                     unsigned int count,
-                     uint64_t value)
+bw_write_bits64_f_le(BitstreamWriter* bs, unsigned int count, uint64_t value)
 {
     int bits_to_write;
-    int value_to_write;
+    uint64_t value_to_write;
     unsigned int byte;
     struct bs_callback* callback;
 
-    assert(value >= 0);
     assert(value < (int64_t)(1ll << count));
 
     while (count > 0) {

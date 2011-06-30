@@ -134,7 +134,7 @@ BitstreamWriter_write64(encoders_BitstreamWriter *self, PyObject *args) {
     unsigned int count;
     uint64_t value;
 
-    if (!PyArg_ParseTuple(args, "IL", &count, &value))
+    if (!PyArg_ParseTuple(args, "IK", &count, &value))
         return NULL;
 
     self->bitstream->write_64(self->bitstream, count, value);
@@ -269,7 +269,7 @@ BitstreamRecorder_write64(encoders_BitstreamRecorder *self,
     unsigned int count;
     uint64_t value;
 
-    if (!PyArg_ParseTuple(args, "IL", &count, &value))
+    if (!PyArg_ParseTuple(args, "IK", &count, &value))
         return NULL;
 
     self->bitstream->write_64(self->bitstream, count, value);
@@ -619,7 +619,7 @@ BitstreamAccumulator_write64(encoders_BitstreamAccumulator *self,
     unsigned int count;
     uint64_t value;
 
-    if (!PyArg_ParseTuple(args, "IL", &count, &value))
+    if (!PyArg_ParseTuple(args, "IK", &count, &value))
         return NULL;
 
     self->bitstream->write_64(self->bitstream, count, value);
