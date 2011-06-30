@@ -310,3 +310,130 @@ PyTypeObject encoders_BitstreamRecorderType = {
 
 int
 bitstream_build(BitstreamWriter* stream, char* format, PyObject* values);
+
+typedef struct {
+    PyObject_HEAD
+
+    BitstreamWriter* bitstream;
+} encoders_BitstreamAccumulator;
+
+static PyObject*
+BitstreamAccumulator_write(encoders_BitstreamAccumulator *self,
+                           PyObject *args);
+
+static PyObject*
+BitstreamAccumulator_write_signed(encoders_BitstreamAccumulator *self,
+                                  PyObject *args);
+
+static PyObject*
+BitstreamAccumulator_write64(encoders_BitstreamAccumulator *self,
+                             PyObject *args);
+
+static PyObject*
+BitstreamAccumulator_unary(encoders_BitstreamAccumulator *self,
+                           PyObject *args);
+
+static PyObject*
+BitstreamAccumulator_byte_align(encoders_BitstreamAccumulator *self,
+                                PyObject *args);
+
+static PyObject*
+BitstreamAccumulator_set_endianness(encoders_BitstreamAccumulator *self,
+                                    PyObject *args);
+
+static PyObject*
+BitstreamAccumulator_write_bytes(encoders_BitstreamAccumulator *self,
+                                 PyObject *args);
+
+static PyObject*
+BitstreamAccumulator_build(encoders_BitstreamAccumulator *self, PyObject *args);
+
+static PyObject*
+BitstreamAccumulator_close(encoders_BitstreamAccumulator *self, PyObject *args);
+
+int
+BitstreamAccumulator_init(encoders_BitstreamAccumulator *self, PyObject *args);
+
+static PyObject*
+BitstreamAccumulator_bits(encoders_BitstreamAccumulator *self,
+                          PyObject *args);
+
+static PyObject*
+BitstreamAccumulator_bytes(encoders_BitstreamAccumulator *self,
+                           PyObject *args);
+
+
+PyMethodDef BitstreamAccumulator_methods[] = {
+    {"write", (PyCFunction)BitstreamAccumulator_write,
+     METH_VARARGS, ""},
+    {"write_signed", (PyCFunction)BitstreamAccumulator_write_signed,
+     METH_VARARGS, ""},
+    {"unary", (PyCFunction)BitstreamAccumulator_unary,
+     METH_VARARGS, ""},
+    {"byte_align", (PyCFunction)BitstreamAccumulator_byte_align,
+     METH_NOARGS, ""},
+    {"close", (PyCFunction)BitstreamAccumulator_close,
+     METH_NOARGS, ""},
+    {"write64", (PyCFunction)BitstreamAccumulator_write64,
+     METH_VARARGS, ""},
+    {"set_endianness", (PyCFunction)BitstreamAccumulator_set_endianness,
+     METH_VARARGS, ""},
+    {"write_bytes", (PyCFunction)BitstreamAccumulator_write_bytes,
+     METH_VARARGS, ""},
+    {"build", (PyCFunction)BitstreamAccumulator_build,
+     METH_VARARGS, ""},
+    {"bits", (PyCFunction)BitstreamAccumulator_bits,
+     METH_NOARGS, ""},
+    {"bytes", (PyCFunction)BitstreamAccumulator_bytes,
+     METH_NOARGS, ""},
+    {NULL}
+};
+
+void
+BitstreamAccumulator_dealloc(encoders_BitstreamAccumulator *self);
+
+static PyObject*
+BitstreamAccumulator_new(PyTypeObject *type, PyObject *args,
+                         PyObject *kwds);
+
+PyTypeObject encoders_BitstreamAccumulatorType = {
+    PyObject_HEAD_INIT(NULL)
+    0,                         /*ob_size*/
+    "encoders.BitstreamAccumulator",    /*tp_name*/
+    sizeof(encoders_BitstreamAccumulator), /*tp_basicsize*/
+    0,                         /*tp_itemsize*/
+    (destructor)BitstreamAccumulator_dealloc, /*tp_dealloc*/
+    0,                         /*tp_print*/
+    0,                         /*tp_getattr*/
+    0,                         /*tp_setattr*/
+    0,                         /*tp_compare*/
+    0,                         /*tp_repr*/
+    0,                         /*tp_as_number*/
+    0,                         /*tp_as_sequence*/
+    0,                         /*tp_as_mapping*/
+    0,                         /*tp_hash */
+    0,                         /*tp_call*/
+    0,                         /*tp_str*/
+    0,                         /*tp_getattro*/
+    0,                         /*tp_setattro*/
+    0,                         /*tp_as_buffer*/
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
+    "BitstreamAccumulator objects", /* tp_doc */
+    0,                         /* tp_traverse */
+    0,                         /* tp_clear */
+    0,                         /* tp_richcompare */
+    0,                         /*  tp_weaklistoffset */
+    0,                         /* tp_iter */
+    0,                         /* tp_iternext */
+    BitstreamAccumulator_methods,   /* tp_methods */
+    0,                         /* tp_members */
+    0,                         /* tp_getset */
+    0,                         /* tp_base */
+    0,                         /* tp_dict */
+    0,                         /* tp_descr_get */
+    0,                         /* tp_descr_set */
+    0,                         /* tp_dictoffset */
+    (initproc)BitstreamAccumulator_init,/* tp_init */
+    0,                         /* tp_alloc */
+    BitstreamAccumulator_new,  /* tp_new */
+};

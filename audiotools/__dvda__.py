@@ -484,8 +484,7 @@ class DVDATitle:
             from audiotools.decoders import MLPDecoder
 
             return MLPDecoder(IterReader(self.stream().packet_payloads()),
-                              (self.pts_length * sample_rate) /
-                              DVDAudio.PTS_PER_SECOND)
+                              self.total_frames())
         elif (stream_type == 0xA0):
             from audiotools.decoders import AOBPCMDecoder
 
@@ -506,7 +505,7 @@ class DVDATitle:
                     DVDAudio.PTS_PER_SECOND *
                     self.sample_rate).quantize(
                 decimal.Decimal(1),
-                rounding=decimal.ROUND_HALF_EVEN))
+                rounding=decimal.ROUND_UP))
 
 
 
@@ -575,7 +574,7 @@ class DVDATrack:
                     DVDAudio.PTS_PER_SECOND *
                     self.title.sample_rate).quantize(
                 decimal.Decimal(1),
-                rounding=decimal.ROUND_HALF_EVEN))
+                rounding=decimal.ROUND_UP))
 
 
 class Rangeset:

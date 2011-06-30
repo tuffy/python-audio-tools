@@ -451,9 +451,10 @@ BitstreamReader_substream(decoders_BitstreamReader *self, PyObject *args) {
         self->bitstream->substream_append(self->bitstream,
                                           obj->bitstream,
                                           bytes);
-
+        br_etry(self->bitstream);
         return (PyObject *)obj;
     } else {
+        br_etry(self->bitstream);
         /*read error occurred during substream_append*/
         Py_DECREF((PyObject *)obj);
         PyErr_SetString(PyExc_IOError, "I/O error creating substream");

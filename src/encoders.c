@@ -34,6 +34,10 @@ initencoders(void)
     if (PyType_Ready(&encoders_BitstreamRecorderType) < 0)
         return;
 
+    encoders_BitstreamAccumulatorType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&encoders_BitstreamAccumulatorType) < 0)
+        return;
+
     m = Py_InitModule3("encoders", module_methods,
                        "Low-level audio format encoders");
 
@@ -45,6 +49,9 @@ initencoders(void)
     PyModule_AddObject(m, "BitstreamRecorder",
                        (PyObject *)&encoders_BitstreamRecorderType);
 
+    Py_INCREF(&encoders_BitstreamAccumulatorType);
+    PyModule_AddObject(m, "BitstreamAccumulator",
+                       (PyObject *)&encoders_BitstreamAccumulatorType);
 }
 
 int
@@ -534,4 +541,189 @@ encoders_format_size(PyObject *dummy, PyObject *args) {
         return NULL;
 
     return Py_BuildValue("I", bs_format_size(format_string));
+}
+
+int
+BitstreamAccumulator_init(encoders_BitstreamAccumulator *self, PyObject *args) {
+    int little_endian;
+
+    self->bitstream = NULL;
+
+    if (!PyArg_ParseTuple(args, "i", &little_endian))
+        return -1;
+
+    self->bitstream = bw_open_accumulator(little_endian ?
+                                          BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
+
+    return 0;
+}
+
+void
+BitstreamAccumulator_dealloc(encoders_BitstreamAccumulator *self) {
+    if (self->bitstream != NULL)
+        self->bitstream->close(self->bitstream);
+
+    self->ob_type->tp_free((PyObject*)self);
+}
+
+static PyObject*
+BitstreamAccumulator_new(PyTypeObject *type, PyObject *args,
+                         PyObject *kwds) {
+    encoders_BitstreamAccumulator *self;
+
+    self = (encoders_BitstreamAccumulator *)type->tp_alloc(type, 0);
+
+    return (PyObject *)self;
+}
+
+static PyObject*
+BitstreamAccumulator_close(encoders_BitstreamAccumulator *self,
+                           PyObject *args) {
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+BitstreamAccumulator_write(encoders_BitstreamAccumulator *self,
+                           PyObject *args) {
+    unsigned int count;
+    int value;
+
+    if (!PyArg_ParseTuple(args, "Ii", &count, &value))
+        return NULL;
+
+    self->bitstream->write(self->bitstream, count, value);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+BitstreamAccumulator_write_signed(encoders_BitstreamAccumulator *self,
+                                  PyObject *args) {
+    unsigned int count;
+    int value;
+
+    if (!PyArg_ParseTuple(args, "Ii", &count, &value))
+        return NULL;
+
+    self->bitstream->write_signed(self->bitstream, count, value);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+BitstreamAccumulator_write64(encoders_BitstreamAccumulator *self,
+                             PyObject *args) {
+    unsigned int count;
+    uint64_t value;
+
+    if (!PyArg_ParseTuple(args, "IL", &count, &value))
+        return NULL;
+
+    self->bitstream->write_64(self->bitstream, count, value);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+BitstreamAccumulator_unary(encoders_BitstreamAccumulator *self,
+                           PyObject *args) {
+    int stop_bit;
+    int value;
+
+    if (!PyArg_ParseTuple(args, "ii", &stop_bit, &value))
+        return NULL;
+
+    if ((stop_bit != 0) && (stop_bit != 1)) {
+        PyErr_SetString(PyExc_ValueError, "stop bit must be 0 or 1");
+        return NULL;
+    }
+
+    self->bitstream->write_unary(self->bitstream, stop_bit, value);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+BitstreamAccumulator_byte_align(encoders_BitstreamAccumulator *self,
+                                PyObject *args) {
+    self->bitstream->byte_align(self->bitstream);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+BitstreamAccumulator_set_endianness(encoders_BitstreamAccumulator *self,
+                                    PyObject *args) {
+    int little_endian;
+
+    if (!PyArg_ParseTuple(args, "i", &little_endian))
+        return NULL;
+
+    if ((little_endian != 0) && (little_endian != 1)) {
+        PyErr_SetString(PyExc_ValueError,
+                    "endianness must be 0 (big-endian) or 1 (little-endian)");
+        return NULL;
+    }
+
+    self->bitstream->set_endianness(
+                    self->bitstream,
+                    little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+BitstreamAccumulator_write_bytes(encoders_BitstreamAccumulator *self,
+                                 PyObject *args) {
+    const char* bytes;
+#ifdef PY_SSIZE_T_CLEAN
+    Py_ssize_t bytes_len;
+#else
+    int bytes_len;
+#endif
+
+    if (!PyArg_ParseTuple(args, "s#", &bytes, &bytes_len))
+        return NULL;
+
+    self->bitstream->write_bytes(self->bitstream, (uint8_t*)bytes, bytes_len);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+BitstreamAccumulator_build(encoders_BitstreamAccumulator *self,
+                           PyObject *args) {
+    char* format;
+    PyObject *values;
+
+    if (!PyArg_ParseTuple(args, "sO", &format, &values))
+        return NULL;
+
+    if (bitstream_build(self->bitstream, format, values)) {
+        return NULL;
+    } else {
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
+}
+
+static PyObject*
+BitstreamAccumulator_bits(encoders_BitstreamAccumulator *self,
+                          PyObject *args) {
+    return Py_BuildValue("I", self->bitstream->bits_written(self->bitstream));
+}
+
+static PyObject*
+BitstreamAccumulator_bytes(encoders_BitstreamAccumulator *self,
+                          PyObject *args) {
+    return Py_BuildValue("I",
+                         self->bitstream->bits_written(self->bitstream) / 8);
 }
