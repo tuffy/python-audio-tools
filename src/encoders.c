@@ -144,6 +144,20 @@ BitstreamWriter_write64(encoders_BitstreamWriter *self, PyObject *args) {
 }
 
 static PyObject*
+BitstreamWriter_write_signed64(encoders_BitstreamWriter *self, PyObject *args) {
+    unsigned int count;
+    int64_t value;
+
+    if (!PyArg_ParseTuple(args, "IL", &count, &value))
+        return NULL;
+
+    self->bitstream->write_signed_64(self->bitstream, count, value);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
 BitstreamWriter_unary(encoders_BitstreamWriter *self, PyObject *args) {
     int stop_bit;
     int value;
@@ -273,6 +287,21 @@ BitstreamRecorder_write64(encoders_BitstreamRecorder *self,
         return NULL;
 
     self->bitstream->write_64(self->bitstream, count, value);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+BitstreamRecorder_write_signed64(encoders_BitstreamRecorder *self,
+                                 PyObject *args) {
+    unsigned int count;
+    int64_t value;
+
+    if (!PyArg_ParseTuple(args, "IL", &count, &value))
+        return NULL;
+
+    self->bitstream->write_signed_64(self->bitstream, count, value);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -476,21 +505,20 @@ bitstream_build(BitstreamWriter* stream, char* format, PyObject* values) {
     PyObject *value = NULL;
     unsigned int size;
     bs_instruction type;
-    union {
-        unsigned int _unsigned;
-        int _signed;
-        uint64_t _unsigned64;
-        uint8_t* _bytes;
-    } inst;
+    unsigned int _unsigned;
+    int _signed;
+    uint64_t _unsigned64;
+    int64_t _signed64;
+    uint8_t* _bytes;
     Py_ssize_t bytes_len;
 
     while (!bs_parse_format(&format, &size, &type)) {
         switch (type) {
         case BS_INST_UNSIGNED:
             if ((value = PySequence_GetItem(values, i++)) != NULL) {
-                inst._unsigned = PyInt_AsUnsignedLongMask(value);
+                _unsigned = PyInt_AsUnsignedLongMask(value);
                 if (!PyErr_Occurred())
-                    stream->write(stream, size, inst._unsigned);
+                    stream->write(stream, size, _unsigned);
                 else
                     return 1;
             } else {
@@ -499,9 +527,9 @@ bitstream_build(BitstreamWriter* stream, char* format, PyObject* values) {
             break;
         case BS_INST_SIGNED:
             if ((value = PySequence_GetItem(values, i++)) != NULL) {
-                inst._signed = PyInt_AsLong(value);
+                _signed = PyInt_AsLong(value);
                 if (!PyErr_Occurred())
-                    stream->write_signed(stream, size, inst._signed);
+                    stream->write_signed(stream, size, _signed);
                 else
                     return 1;
             } else {
@@ -510,9 +538,20 @@ bitstream_build(BitstreamWriter* stream, char* format, PyObject* values) {
             break;
         case BS_INST_UNSIGNED64:
             if ((value = PySequence_GetItem(values, i++)) != NULL) {
-                inst._unsigned64 = PyInt_AsUnsignedLongLongMask(value);
+                _unsigned64 = PyLong_AsUnsignedLongLong(value);
                 if (!PyErr_Occurred())
-                    stream->write_64(stream, size, inst._unsigned64);
+                    stream->write_64(stream, size, _unsigned64);
+                else
+                    return 1;
+            } else {
+                return 1;
+            }
+            break;
+        case BS_INST_SIGNED64:
+            if ((value = PySequence_GetItem(values, i++)) != NULL) {
+                _signed64 = PyLong_AsLongLong(value);
+                if (!PyErr_Occurred())
+                    stream->write_signed_64(stream, size, _signed64);
                 else
                     return 1;
             } else {
@@ -525,10 +564,10 @@ bitstream_build(BitstreamWriter* stream, char* format, PyObject* values) {
         case BS_INST_BYTES:
             if (((value = PySequence_GetItem(values, i++)) != NULL) &&
                 (PyString_AsStringAndSize(value,
-                                          (char **)(&inst._bytes),
+                                          (char **)(&_bytes),
                                           &bytes_len) != -1)) {
                 if (size <= bytes_len) {
-                    stream->write_bytes(stream, inst._bytes, size);
+                    stream->write_bytes(stream, _bytes, size);
                 } else {
                     PyErr_SetString(PyExc_ValueError,
                                     "string length too short");
@@ -637,6 +676,21 @@ BitstreamAccumulator_write64(encoders_BitstreamAccumulator *self,
         return NULL;
 
     self->bitstream->write_64(self->bitstream, count, value);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+BitstreamAccumulator_write_signed64(encoders_BitstreamAccumulator *self,
+                                    PyObject *args) {
+    unsigned int count;
+    int64_t value;
+
+    if (!PyArg_ParseTuple(args, "IL", &count, &value))
+        return NULL;
+
+    self->bitstream->write_signed_64(self->bitstream, count, value);
 
     Py_INCREF(Py_None);
     return Py_None;

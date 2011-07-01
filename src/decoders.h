@@ -62,6 +62,9 @@ static PyObject*
 BitstreamReader_read_signed(decoders_BitstreamReader *self, PyObject *args);
 
 static PyObject*
+BitstreamReader_read_signed64(decoders_BitstreamReader *self, PyObject *args);
+
+static PyObject*
 BitstreamReader_unary(decoders_BitstreamReader *self, PyObject *args);
 
 static PyObject*
@@ -124,6 +127,8 @@ PyMethodDef BitstreamReader_methods[] = {
     {"unread", (PyCFunction)BitstreamReader_unread,
      METH_VARARGS, ""},
     {"read_signed", (PyCFunction)BitstreamReader_read_signed,
+     METH_VARARGS, ""},
+    {"read_signed64", (PyCFunction)BitstreamReader_read_signed64,
      METH_VARARGS, ""},
     {"unary", (PyCFunction)BitstreamReader_unary,
      METH_VARARGS, ""},

@@ -72,8 +72,9 @@ br_open(FILE *f, bs_endianness endianness)
     switch (endianness) {
     case BS_BIG_ENDIAN:
         bs->read = br_read_bits_f_be;
-        bs->read_signed = br_read_signed_bits_f_be;
+        bs->read_signed = br_read_signed_bits_be;
         bs->read_64 = br_read_bits64_f_be;
+        bs->read_signed_64 = br_read_signed_bits64_be;
         bs->skip = br_skip_bits_f_be;
         bs->unread = br_unread_bit_be;
         bs->read_unary = br_read_unary_f_be;
@@ -82,8 +83,9 @@ br_open(FILE *f, bs_endianness endianness)
         break;
     case BS_LITTLE_ENDIAN:
         bs->read = br_read_bits_f_le;
-        bs->read_signed = br_read_signed_bits_f_le;
+        bs->read_signed = br_read_signed_bits_le;
         bs->read_64 = br_read_bits64_f_le;
+        bs->read_signed_64 = br_read_signed_bits64_le;
         bs->skip = br_skip_bits_f_le;
         bs->unread = br_unread_bit_le;
         bs->read_unary = br_read_unary_f_le;
@@ -536,72 +538,26 @@ br_read_bits_p_le(BitstreamReader* bs, unsigned int count)
 
 
 int
-br_read_signed_bits_f_be(BitstreamReader* bs, unsigned int count)
+br_read_signed_bits_be(BitstreamReader* bs, unsigned int count)
 {
-    if (!br_read_bits_f_be(bs, 1)) {
-        return br_read_bits_f_be(bs, count - 1);
+    if (!bs->read(bs, 1)) {
+        return bs->read(bs, count - 1);
     } else {
-        return br_read_bits_f_be(bs, count - 1) - (1 << (count - 1));
+        return bs->read(bs, count - 1) - (1 << (count - 1));
     }
 }
 
 int
-br_read_signed_bits_f_le(BitstreamReader* bs, unsigned int count)
+br_read_signed_bits_le(BitstreamReader* bs, unsigned int count)
 {
-    int unsigned_value = br_read_bits_f_le(bs, count - 1);
+    int unsigned_value = bs->read(bs, count - 1);
 
-    if (!br_read_bits_f_le(bs, 1)) {
+    if (!bs->read(bs, 1)) {
         return unsigned_value;
     } else {
         return unsigned_value - (1 << (count - 1));
     }
 }
-
-int
-br_read_signed_bits_s_be(BitstreamReader* bs, unsigned int count)
-{
-    if (!br_read_bits_s_be(bs, 1)) {
-        return br_read_bits_s_be(bs, count - 1);
-    } else {
-        return br_read_bits_s_be(bs, count - 1) - (1 << (count - 1));
-    }
-}
-
-int
-br_read_signed_bits_s_le(BitstreamReader* bs, unsigned int count)
-{
-    int unsigned_value = br_read_bits_s_le(bs, count - 1);
-
-    if (!br_read_bits_s_le(bs, 1)) {
-        return unsigned_value;
-    } else {
-        return unsigned_value - (1 << (count - 1));
-    }
-}
-
-#ifndef STANDALONE
-int
-br_read_signed_bits_p_be(BitstreamReader* bs, unsigned int count)
-{
-    if (!br_read_bits_p_be(bs, 1)) {
-        return br_read_bits_p_be(bs, count - 1);
-    } else {
-        return br_read_bits_p_be(bs, count - 1) - (1 << (count - 1));
-    }
-}
-
-int
-br_read_signed_bits_p_le(BitstreamReader* bs, unsigned int count)
-{
-    int unsigned_value = br_read_bits_p_le(bs, count - 1);
-
-    if (!br_read_bits_p_le(bs, 1)) {
-        return unsigned_value;
-    } else {
-        return unsigned_value - (1 << (count - 1));
-    }
-}
-#endif
 
 
 /*the read_bits64 functions differ from the read_bits functions
@@ -669,7 +625,7 @@ br_read_bits64_f_le(BitstreamReader* bs, unsigned int count)
 
         output_size = READ_BITS_OUTPUT_SIZE(result);
 
-        accumulator |= (READ_BITS_OUTPUT_BITS(result) << bit_offset);
+        accumulator |= ((uint64_t)READ_BITS_OUTPUT_BITS(result) << bit_offset);
 
         context = NEXT_CONTEXT(result);
 
@@ -835,6 +791,30 @@ br_read_bits64_p_le(BitstreamReader* bs, unsigned int count)
     return accumulator;
 }
 #endif
+
+
+int64_t
+br_read_signed_bits64_be(BitstreamReader* bs, unsigned int count)
+{
+    if (!bs->read(bs, 1)) {
+        return bs->read_64(bs, count - 1);
+    } else {
+        return bs->read_64(bs, count - 1) - (1ll << (count - 1));
+    }
+}
+
+int64_t
+br_read_signed_bits64_le(BitstreamReader* bs, unsigned int count)
+{
+    int64_t unsigned_value = bs->read_64(bs, count - 1);
+
+    if (!bs->read(bs, 1)) {
+        return unsigned_value;
+    } else {
+        return unsigned_value - (1ll << (count - 1));
+    }
+}
+
 
 
 /*the skip_bits functions differ from the read_bits functions
@@ -1650,8 +1630,9 @@ br_set_endianness_f_be(BitstreamReader *bs, bs_endianness endianness)
     bs->state = 0;
     if (endianness == BS_LITTLE_ENDIAN) {
         bs->read = br_read_bits_f_le;
-        bs->read_signed = br_read_signed_bits_f_le;
+        bs->read_signed = br_read_signed_bits_le;
         bs->read_64 = br_read_bits64_f_le;
+        bs->read_signed_64 = br_read_signed_bits64_le;
         bs->skip = br_skip_bits_f_le;
         bs->unread = br_unread_bit_le;
         bs->read_unary = br_read_unary_f_le;
@@ -1666,8 +1647,9 @@ br_set_endianness_f_le(BitstreamReader *bs, bs_endianness endianness)
     bs->state = 0;
     if (endianness == BS_BIG_ENDIAN) {
         bs->read = br_read_bits_f_be;
-        bs->read_signed = br_read_signed_bits_f_be;
+        bs->read_signed = br_read_signed_bits_be;
         bs->read_64 = br_read_bits64_f_be;
+        bs->read_signed_64 = br_read_signed_bits64_be;
         bs->skip = br_skip_bits_f_be;
         bs->unread = br_unread_bit_be;
         bs->read_unary = br_read_unary_f_be;
@@ -1682,8 +1664,9 @@ br_set_endianness_s_be(BitstreamReader *bs, bs_endianness endianness)
     bs->state = 0;
     if (endianness == BS_LITTLE_ENDIAN) {
         bs->read = br_read_bits_s_le;
-        bs->read_signed = br_read_signed_bits_s_le;
+        bs->read_signed = br_read_signed_bits_le;
         bs->read_64 = br_read_bits64_s_le;
+        bs->read_signed_64 = br_read_signed_bits64_le;
         bs->skip = br_skip_bits_s_le;
         bs->unread = br_unread_bit_le;
         bs->read_unary = br_read_unary_s_le;
@@ -1698,8 +1681,9 @@ br_set_endianness_s_le(BitstreamReader *bs, bs_endianness endianness)
     bs->state = 0;
     if (endianness == BS_BIG_ENDIAN) {
         bs->read = br_read_bits_s_be;
-        bs->read_signed = br_read_signed_bits_s_be;
+        bs->read_signed = br_read_signed_bits_be;
         bs->read_64 = br_read_bits64_s_be;
+        bs->read_signed_64 = br_read_signed_bits64_be;
         bs->skip = br_skip_bits_s_be;
         bs->unread = br_unread_bit_be;
         bs->read_unary = br_read_unary_s_be;
@@ -1715,8 +1699,9 @@ br_set_endianness_p_be(BitstreamReader *bs, bs_endianness endianness)
     bs->state = 0;
     if (endianness == BS_LITTLE_ENDIAN) {
         bs->read = br_read_bits_p_le;
-        bs->read_signed = br_read_signed_bits_p_le;
+        bs->read_signed = br_read_signed_bits_le;
         bs->read_64 = br_read_bits64_p_le;
+        bs->read_signed_64 = br_read_signed_bits64_le;
         bs->skip = br_skip_bits_p_le;
         bs->unread = br_unread_bit_le;
         bs->read_unary = br_read_unary_p_le;
@@ -1731,8 +1716,9 @@ br_set_endianness_p_le(BitstreamReader *bs, bs_endianness endianness)
     bs->state = 0;
     if (endianness == BS_BIG_ENDIAN) {
         bs->read = br_read_bits_p_be;
-        bs->read_signed = br_read_signed_bits_p_be;
+        bs->read_signed = br_read_signed_bits_be;
         bs->read_64 = br_read_bits64_p_be;
+        bs->read_signed_64 = br_read_signed_bits64_be;
         bs->skip = br_skip_bits_p_be;
         bs->unread = br_unread_bit_be;
         bs->read_unary = br_read_unary_p_be;
@@ -2110,8 +2096,9 @@ br_substream_new(bs_endianness endianness)
     switch (endianness) {
     case BS_BIG_ENDIAN:
         bs->read = br_read_bits_s_be;
-        bs->read_signed = br_read_signed_bits_s_be;
+        bs->read_signed = br_read_signed_bits_be;
         bs->read_64 = br_read_bits64_s_be;
+        bs->read_signed_64 = br_read_signed_bits64_be;
         bs->skip = br_skip_bits_s_be;
         bs->unread = br_unread_bit_be;
         bs->read_unary = br_read_unary_s_be;
@@ -2120,8 +2107,9 @@ br_substream_new(bs_endianness endianness)
         break;
     case BS_LITTLE_ENDIAN:
         bs->read = br_read_bits_s_le;
-        bs->read_signed = br_read_signed_bits_s_le;
+        bs->read_signed = br_read_signed_bits_le;
         bs->read_64 = br_read_bits64_s_le;
+        bs->read_signed_64 = br_read_signed_bits64_le;
         bs->skip = br_skip_bits_s_le;
         bs->unread = br_unread_bit_le;
         bs->read_unary = br_read_unary_s_le;
@@ -2297,34 +2285,37 @@ br_parse(struct BitstreamReader_s* stream, char* format, ...)
     char* s = format;
     unsigned int size;
     bs_instruction type;
-    union {
-        unsigned int* _unsigned;
-        int* _signed;
-        uint64_t* _unsigned64;
-        uint8_t* _bytes;
-    } inst;
+    unsigned int* _unsigned;
+    int* _signed;
+    uint64_t* _unsigned64;
+    int64_t* _signed64;
+    uint8_t* _bytes;
 
     va_start(ap, format);
     while (!bs_parse_format(&s, &size, &type)) {
         switch (type) {
         case BS_INST_UNSIGNED:
-            inst._unsigned = va_arg(ap, unsigned int*);
-            *inst._unsigned = stream->read(stream, size);
+            _unsigned = va_arg(ap, unsigned int*);
+            *_unsigned = stream->read(stream, size);
             break;
         case BS_INST_SIGNED:
-            inst._signed = va_arg(ap, int*);
-            *inst._signed = stream->read_signed(stream, size);
+            _signed = va_arg(ap, int*);
+            *_signed = stream->read_signed(stream, size);
             break;
         case BS_INST_UNSIGNED64:
-            inst._unsigned64 = va_arg(ap, uint64_t*);
-            *inst._unsigned64 = stream->read_64(stream, size);
+            _unsigned64 = va_arg(ap, uint64_t*);
+            *_unsigned64 = stream->read_64(stream, size);
+            break;
+        case BS_INST_SIGNED64:
+            _signed64 = va_arg(ap, int64_t*);
+            *_signed64 = stream->read_signed_64(stream, size);
             break;
         case BS_INST_SKIP:
             stream->skip(stream, size);
             break;
         case BS_INST_BYTES:
-            inst._bytes = va_arg(ap, uint8_t*);
-            stream->read_bytes(stream, inst._bytes, size);
+            _bytes = va_arg(ap, uint8_t*);
+            stream->read_bytes(stream, _bytes, size);
             break;
         case BS_INST_ALIGN:
             stream->byte_align(stream);
@@ -2490,8 +2481,9 @@ br_open_python(PyObject *reader, bs_endianness endianness)
     switch (endianness) {
     case BS_BIG_ENDIAN:
         bs->read = br_read_bits_p_be;
-        bs->read_signed = br_read_signed_bits_p_be;
+        bs->read_signed = br_read_signed_bits_be;
         bs->read_64 = br_read_bits64_p_be;
+        bs->read_signed_64 = br_read_signed_bits64_be;
         bs->skip = br_skip_bits_p_be;
         bs->unread = br_unread_bit_be;
         bs->read_unary = br_read_unary_p_be;
@@ -2500,8 +2492,9 @@ br_open_python(PyObject *reader, bs_endianness endianness)
         break;
     case BS_LITTLE_ENDIAN:
         bs->read = br_read_bits_p_le;
-        bs->read_signed = br_read_signed_bits_p_le;
+        bs->read_signed = br_read_signed_bits_le;
         bs->read_64 = br_read_bits64_p_le;
+        bs->read_signed_64 = br_read_signed_bits64_le;
         bs->skip = br_skip_bits_p_le;
         bs->unread = br_unread_bit_le;
         bs->read_unary = br_read_unary_p_le;
@@ -2556,17 +2549,20 @@ bw_open(FILE *f, bs_endianness endianness)
     case BS_BIG_ENDIAN:
         bs->write = bw_write_bits_f_be;
         bs->write_64 = bw_write_bits64_f_be;
+        bs->write_signed = bw_write_signed_bits_f_r_be;
+        bs->write_signed_64 = bw_write_signed_bits64_f_r_be;
         bs->set_endianness = bw_set_endianness_f_be;
         break;
     case BS_LITTLE_ENDIAN:
         bs->write = bw_write_bits_f_le;
         bs->write_64 = bw_write_bits64_f_le;
+        bs->write_signed = bw_write_signed_bits_f_r_le;
+        bs->write_signed_64 = bw_write_signed_bits64_f_r_le;
         bs->set_endianness = bw_set_endianness_f_le;
         break;
     }
 
     bs->write_bytes = bw_write_bytes_f;
-    bs->write_signed = bw_write_signed_bits_f_r;
     bs->write_unary = bw_write_unary_f_r;
     bs->build = bw_build;
     bs->byte_align = bw_byte_align_f_r;
@@ -2594,6 +2590,7 @@ bw_open_accumulator(bs_endianness endianness)
     bs->write_bytes = bw_write_bytes_a;
     bs->write_signed = bw_write_signed_bits_a;
     bs->write_64 = bw_write_bits64_a;
+    bs->write_signed_64 = bw_write_signed_bits64_a;
     bs->write_unary = bw_write_unary_a;
     bs->build = bw_build;
     bs->byte_align = bw_byte_align_a;
@@ -2622,17 +2619,20 @@ bw_open_recorder(bs_endianness endianness)
     case BS_BIG_ENDIAN:
         bs->write = bw_write_bits_r_be;
         bs->write_64 = bw_write_bits64_r_be;
+        bs->write_signed = bw_write_signed_bits_f_r_be;
+        bs->write_signed_64 = bw_write_signed_bits64_f_r_be;
         bs->set_endianness = bw_set_endianness_r_be;
         break;
     case BS_LITTLE_ENDIAN:
         bs->write = bw_write_bits_r_le;
         bs->write_64 = bw_write_bits64_r_le;
+        bs->write_signed = bw_write_signed_bits_f_r_le;
+        bs->write_signed_64 = bw_write_signed_bits64_f_r_le;
         bs->set_endianness = bw_set_endianness_r_le;
         break;
     }
 
     bs->write_bytes = bw_write_bytes_r;
-    bs->write_signed = bw_write_signed_bits_f_r;
     bs->write_unary = bw_write_unary_f_r;
     bs->build = bw_build;
     bs->byte_align = bw_byte_align_f_r;
@@ -3036,14 +3036,32 @@ bw_write_bytes_a(BitstreamWriter* bs, const uint8_t* bytes,
 
 
 void
-bw_write_signed_bits_f_r(BitstreamWriter* bs, unsigned int count, int value)
+bw_write_signed_bits_f_r_be(BitstreamWriter* bs, unsigned int count, int value)
 {
     assert(value < (1 << (count - 1)));
     assert(value >= -(1 << (count - 1)));
+
     if (value >= 0) {
-        bs->write(bs, count, value);
+        bs->write(bs, 1, 0);
+        bs->write(bs, count - 1, value);
     } else {
-        bs->write(bs, count, (1 << count) - (-value));
+        bs->write(bs, 1, 1);
+        bs->write(bs, count - 1, (1 << (count - 1)) + value);
+    }
+}
+
+void
+bw_write_signed_bits_f_r_le(BitstreamWriter* bs, unsigned int count, int value)
+{
+    assert(value < (1 << (count - 1)));
+    assert(value >= -(1 << (count - 1)));
+
+    if (value >= 0) {
+        bs->write(bs, count - 1, value);
+        bs->write(bs, 1, 0);
+    } else {
+        bs->write(bs, count - 1, (1 << (count - 1)) + value);
+        bs->write(bs, 1, 1);
     }
 }
 
@@ -3225,6 +3243,48 @@ bw_write_bits64_a(BitstreamWriter* bs, unsigned int count, uint64_t value)
 }
 
 
+void
+bw_write_signed_bits64_f_r_be(BitstreamWriter* bs, unsigned int count,
+                              int64_t value)
+{
+    assert(value < (1ll << (count - 1)));
+    assert(value >= -(1ll << (count - 1)));
+
+    if (value >= 0ll) {
+        bs->write(bs, 1, 0);
+        bs->write_64(bs, count - 1, value);
+    } else {
+        bs->write(bs, 1, 1);
+        bs->write_64(bs, count - 1, (1ll << (count - 1)) + value);
+    }
+}
+
+void
+bw_write_signed_bits64_f_r_le(BitstreamWriter* bs, unsigned int count,
+                              int64_t value)
+{
+    assert(value < (1ll << (count - 1)));
+    assert(value >= -(1ll << (count - 1)));
+
+    if (value >= 0ll) {
+        bs->write_64(bs, count - 1, value);
+        bs->write(bs, 1, 0);
+    } else {
+        bs->write_64(bs, count - 1, (1ll << (count - 1)) + value);
+        bs->write(bs, 1, 1);
+    }
+}
+
+void
+bw_write_signed_bits64_a(BitstreamWriter* bs, unsigned int count,
+                         int64_t value)
+{
+    assert(value < (1ll << (count - 1)));
+    assert(value >= -(1ll << (count - 1)));
+    bs->output.accumulator += count;
+}
+
+
 #define UNARY_BUFFER_SIZE 30
 
 void
@@ -3300,6 +3360,8 @@ bw_set_endianness_f_be(BitstreamWriter* bs, bs_endianness endianness)
     if (endianness == BS_LITTLE_ENDIAN) {
         bs->write = bw_write_bits_f_le;
         bs->write_64 = bw_write_bits64_f_le;
+        bs->write_signed = bw_write_signed_bits_f_r_le;
+        bs->write_signed_64 = bw_write_signed_bits64_f_r_le;
         bs->set_endianness = bw_set_endianness_f_le;
     }
 }
@@ -3312,6 +3374,8 @@ bw_set_endianness_f_le(BitstreamWriter* bs, bs_endianness endianness)
     if (endianness == BS_BIG_ENDIAN) {
         bs->write = bw_write_bits_f_be;
         bs->write_64 = bw_write_bits64_f_be;
+        bs->write_signed = bw_write_signed_bits_f_r_be;
+        bs->write_signed_64 = bw_write_signed_bits64_f_r_be;
         bs->set_endianness = bw_set_endianness_f_be;
     }
 }
@@ -3324,6 +3388,8 @@ bw_set_endianness_r_be(BitstreamWriter* bs, bs_endianness endianness)
     if (endianness == BS_LITTLE_ENDIAN) {
         bs->write = bw_write_bits_r_le;
         bs->write_64 = bw_write_bits64_r_le;
+        bs->write_signed = bw_write_signed_bits_f_r_le;
+        bs->write_signed_64 = bw_write_signed_bits64_f_r_le;
         bs->set_endianness = bw_set_endianness_r_le;
     }
 }
@@ -3336,6 +3402,8 @@ bw_set_endianness_r_le(BitstreamWriter* bs, bs_endianness endianness)
     if (endianness == BS_BIG_ENDIAN) {
         bs->write = bw_write_bits_r_be;
         bs->write_64 = bw_write_bits64_r_be;
+        bs->write_signed = bw_write_signed_bits_f_r_be;
+        bs->write_signed_64 = bw_write_signed_bits64_f_r_be;
         bs->set_endianness = bw_set_endianness_r_be;
     }
 }
@@ -3354,33 +3422,37 @@ bw_build(struct BitstreamWriter_s* stream, char* format, ...)
     char* s = format;
     unsigned int size;
     bs_instruction type;
-    union {
-        unsigned int _unsigned;
-        int _signed;
-        uint64_t _unsigned64;
-        uint8_t* _bytes;
-    } inst;
+    unsigned int _unsigned;
+    int _signed;
+    uint64_t _unsigned64;
+    int64_t _signed64;
+    uint8_t* _bytes;
+
     va_start(ap, format);
     while (!bs_parse_format(&s, &size, &type)) {
         switch (type) {
         case BS_INST_UNSIGNED:
-            inst._unsigned = va_arg(ap, unsigned int);
-            stream->write(stream, size, inst._unsigned);
+            _unsigned = va_arg(ap, unsigned int);
+            stream->write(stream, size, _unsigned);
             break;
         case BS_INST_SIGNED:
-            inst._signed = va_arg(ap, int);
-            stream->write_signed(stream, size, inst._signed);
+            _signed = va_arg(ap, int);
+            stream->write_signed(stream, size, _signed);
             break;
         case BS_INST_UNSIGNED64:
-            inst._unsigned64 = va_arg(ap, uint64_t);
-            stream->write_64(stream, size, inst._unsigned64);
+            _unsigned64 = va_arg(ap, uint64_t);
+            stream->write_64(stream, size, _unsigned64);
+            break;
+        case BS_INST_SIGNED64:
+            _signed64 = va_arg(ap, int64_t);
+            stream->write_signed_64(stream, size, _signed64);
             break;
         case BS_INST_SKIP:
             stream->write(stream, size, 0);
             break;
         case BS_INST_BYTES:
-            inst._bytes = va_arg(ap, uint8_t*);
-            stream->write_bytes(stream, inst._bytes, size);
+            _bytes = va_arg(ap, uint8_t*);
+            stream->write_bytes(stream, _bytes, size);
             break;
         case BS_INST_ALIGN:
             stream->byte_align(stream);
@@ -3418,6 +3490,22 @@ bw_close_stream_a(BitstreamWriter* bs)
 int
 bs_parse_format(char** format, unsigned int* size, bs_instruction* type) {
     *size = 0;
+
+    /*Ulimately, the amount of supportable formats is kept small
+      because it's difficult to handle lots of complex formats symmetrically.
+
+      Constant values are easy to handle for the BitstreamWriter
+      (just output the constant at the given size and consume no values)
+      but hard to handle for the BitstreamReader (what to do on a
+      constant value mismatch is a higher-level concern).
+
+      C-strings are similarly tricky, since the BitstreamReader
+      can't know how much space to allocate for one in advance.
+
+      So, lots of "nice to have" items from the Construct library
+      are left out in favor of keeping this routine specialized
+      and handling the most crucial cases.
+    */
 
     for (;; *format += 1)
         switch (**format) {
@@ -3465,6 +3553,10 @@ bs_parse_format(char** format, unsigned int* size, bs_instruction* type) {
             *type = BS_INST_UNSIGNED64;
             *format += 1;
             return 0;
+        case 'S':
+            *type = BS_INST_SIGNED64;
+            *format += 1;
+            return 0;
         case 'p':
             *type = BS_INST_SKIP;
             *format += 1;
@@ -3494,6 +3586,7 @@ bs_format_size(char* format) {
         case BS_INST_UNSIGNED:
         case BS_INST_SIGNED:
         case BS_INST_UNSIGNED64:
+        case BS_INST_SIGNED64:
         case BS_INST_SKIP:
             total_size += format_size;
             break;
@@ -3538,6 +3631,8 @@ void test_callbacks_reader(BitstreamReader* reader,
                            int unary_1_reads,
                            struct br_huffman_table (*table)[][0x200],
                            int huffman_code_count);
+
+void test_edge_cases(void);
 
 void
 byte_counter(uint8_t byte, unsigned int* count);
@@ -3699,8 +3794,12 @@ int main(int argc, char* argv[]) {
     free(be_table);
     free(le_table);
 
+    /*test the writer functions with each endianness*/
     test_writer(BS_BIG_ENDIAN);
     test_writer(BS_LITTLE_ENDIAN);
+
+    /*check edge cases against known values*/
+    test_edge_cases();
 
     fclose(temp_file);
 
@@ -4534,5 +4633,178 @@ check_output_file(void) {
     fclose(output_file);
 }
 
+void test_edge_cases(void) {
+    uint8_t big_endian[] = {0, 0, 0, 0, 255, 255, 255, 255,
+                            128, 0, 0, 0, 127, 255, 255, 255,
+                            0, 0, 0, 0, 0, 0, 0, 0,
+                            255, 255, 255, 255, 255, 255, 255, 255,
+                            128, 0, 0, 0, 0, 0, 0, 0,
+                            127, 255, 255, 255, 255, 255, 255, 255};
+    uint8_t little_endian[] = {0, 0, 0, 0, 255, 255, 255, 255,
+                               0, 0, 0, 128, 255, 255, 255, 127,
+                               0, 0, 0, 0, 0, 0, 0, 0,
+                               255, 255, 255, 255, 255, 255, 255, 255,
+                               0, 0, 0, 0, 0, 0, 0, 128,
+                               255, 255, 255, 255, 255, 255, 255, 127};
+    FILE* output_file;
+    FILE* input_file;
+    BitstreamReader* reader;
+    BitstreamWriter* writer;
+
+    unsigned int u_val_1;
+    unsigned int u_val_2;
+    unsigned int u_val_3;
+    unsigned int u_val_4;
+    int s_val_1;
+    int s_val_2;
+    int s_val_3;
+    int s_val_4;
+    uint64_t u_val64_1;
+    uint64_t u_val64_2;
+    uint64_t u_val64_3;
+    uint64_t u_val64_4;
+    int64_t s_val64_1;
+    int64_t s_val64_2;
+    int64_t s_val64_3;
+    int64_t s_val64_4;
+
+    /*write the temp file with a collection of known big-endian test bytes*/
+    output_file = fopen(temp_filename, "wb");
+    assert(fwrite(big_endian, sizeof(uint8_t), 96, output_file) == 96);
+    fclose(output_file);
+
+    /*ensure a big-endian reader reads the values correctly*/
+    reader = br_open(fopen(temp_filename, "rb"), BS_BIG_ENDIAN);
+    reader->mark(reader);
+
+    /*try the unsigned 32 and 64 bit values*/
+    assert(reader->read(reader, 32) == 0);
+    assert(reader->read(reader, 32) == 4294967295);
+    assert(reader->read(reader, 32) == 2147483648);
+    assert(reader->read(reader, 32) == 2147483647);
+    assert(reader->read_64(reader, 64) == 0);
+    assert(reader->read_64(reader, 64) == 0xFFFFFFFFFFFFFFFFULL);
+    assert(reader->read_64(reader, 64) == 9223372036854775808ULL);
+    assert(reader->read_64(reader, 64) == 9223372036854775807ULL);
+
+    /*try the signed 32 and 64 bit values*/
+    reader->rewind(reader);
+    assert(reader->read_signed(reader, 32) == 0);
+    assert(reader->read_signed(reader, 32) == -1);
+    assert(reader->read_signed(reader, 32) == -2147483648);
+    assert(reader->read_signed(reader, 32) == 2147483647);
+    assert(reader->read_signed_64(reader, 64) == 0);
+    assert(reader->read_signed_64(reader, 64) == -1);
+    assert(reader->read_signed_64(reader, 64) == (9223372036854775808ULL * -1));
+    assert(reader->read_signed_64(reader, 64) == 9223372036854775807LL);
+
+    /*try the unsigned values via parse()*/
+    reader->rewind(reader);
+    reader->parse(reader,
+                  "32u 32u 32u 32u 64U 64U 64U 64U",
+                  &u_val_1, &u_val_2, &u_val_3, &u_val_4,
+                  &u_val64_1, &u_val64_2, &u_val64_3, &u_val64_4);
+    assert(u_val_1 == 0);
+    assert(u_val_2 == 4294967295);
+    assert(u_val_3 == 2147483648);
+    assert(u_val_4 == 2147483647);
+    assert(u_val64_1 == 0);
+    assert(u_val64_2 == 0xFFFFFFFFFFFFFFFFULL);
+    assert(u_val64_3 == 9223372036854775808ULL);
+    assert(u_val64_4 == 9223372036854775807ULL);
+
+    /*try the signed values via parse()*/
+    reader->rewind(reader);
+    reader->parse(reader,
+                  "32s 32s 32s 32s 64S 64S 64S 64S",
+                  &s_val_1, &s_val_2, &s_val_3, &s_val_4,
+                  &s_val64_1, &s_val64_2, &s_val64_3, &s_val64_4);
+    assert(s_val_1 == 0);
+    assert(s_val_2 == -1);
+    assert(s_val_3 == -2147483648);
+    assert(s_val_4 == 2147483647);
+    assert(s_val64_1 == 0);
+    assert(s_val64_2 == -1);
+    assert(s_val64_3 == (9223372036854775808ULL * -1));
+    assert(s_val64_4 == 9223372036854775807LL);
+
+    reader->unmark(reader);
+    reader->close(reader);
+
+    /*write the temp file with a collection of known little-endian test bytes*/
+    output_file = fopen(temp_filename, "wb");
+    assert(fwrite(little_endian, sizeof(uint8_t), 96, output_file) == 96);
+    fclose(output_file);
+
+    /*ensure a little-endian reader reads the values correctly*/
+    reader = br_open(fopen(temp_filename, "rb"), BS_LITTLE_ENDIAN);
+    reader->mark(reader);
+
+    /*try the unsigned 32 and 64 bit values*/
+    assert(reader->read(reader, 32) == 0);
+    assert(reader->read(reader, 32) == 4294967295);
+    assert(reader->read(reader, 32) == 2147483648);
+    assert(reader->read(reader, 32) == 2147483647);
+    assert(reader->read_64(reader, 64) == 0);
+    assert(reader->read_64(reader, 64) == 0xFFFFFFFFFFFFFFFFULL);
+    assert(reader->read_64(reader, 64) == 9223372036854775808ULL);
+    assert(reader->read_64(reader, 64) == 9223372036854775807ULL);
+
+    /*try the signed 32 and 64 bit values*/
+    reader->rewind(reader);
+    assert(reader->read_signed(reader, 32) == 0);
+    assert(reader->read_signed(reader, 32) == -1);
+    assert(reader->read_signed(reader, 32) == -2147483648);
+    assert(reader->read_signed(reader, 32) == 2147483647);
+    assert(reader->read_signed_64(reader, 64) == 0);
+    assert(reader->read_signed_64(reader, 64) == -1);
+    assert(reader->read_signed_64(reader, 64) == (9223372036854775808ULL * -1));
+    assert(reader->read_signed_64(reader, 64) == 9223372036854775807LL);
+
+    /*try the unsigned values via parse()*/
+    reader->rewind(reader);
+    reader->parse(reader,
+                  "32u 32u 32u 32u 64U 64U 64U 64U",
+                  &u_val_1, &u_val_2, &u_val_3, &u_val_4,
+                  &u_val64_1, &u_val64_2, &u_val64_3, &u_val64_4);
+    assert(u_val_1 == 0);
+    assert(u_val_2 == 4294967295);
+    assert(u_val_3 == 2147483648);
+    assert(u_val_4 == 2147483647);
+    assert(u_val64_1 == 0);
+    assert(u_val64_2 == 0xFFFFFFFFFFFFFFFFULL);
+    assert(u_val64_3 == 9223372036854775808ULL);
+    assert(u_val64_4 == 9223372036854775807ULL);
+
+    /*try the signed values via parse()*/
+    reader->rewind(reader);
+    reader->parse(reader,
+                  "32s 32s 32s 32s 64S 64S 64S 64S",
+                  &s_val_1, &s_val_2, &s_val_3, &s_val_4,
+                  &s_val64_1, &s_val64_2, &s_val64_3, &s_val64_4);
+    assert(s_val_1 == 0);
+    assert(s_val_2 == -1);
+    assert(s_val_3 == -2147483648);
+    assert(s_val_4 == 2147483647);
+    assert(s_val64_1 == 0);
+    assert(s_val64_2 == -1);
+    assert(s_val64_3 == (9223372036854775808ULL * -1));
+    assert(s_val64_4 == 9223372036854775807LL);
+
+    reader->unmark(reader);
+    reader->close(reader);
+
+    /*write a bunch of known big-endian values via the bitstream writer*/
+    /*FIXME*/
+
+    /*ensure the file has the correct bytes*/
+    /*FIXME*/
+
+    /*write a bunch of known little-endian values via the bitstream writer*/
+    /*FIXME*/
+
+    /*ensure the file has the correct bytes*/
+    /*FIXME*/
+}
 
 #endif

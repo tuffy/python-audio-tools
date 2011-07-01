@@ -255,6 +255,26 @@ BitstreamReader_read_signed(decoders_BitstreamReader *self, PyObject *args) {
 }
 
 static PyObject*
+BitstreamReader_read_signed64(decoders_BitstreamReader *self, PyObject *args) {
+    unsigned int count;
+    int64_t result;
+
+    if (!PyArg_ParseTuple(args, "I", &count))
+        return NULL;
+
+    if (!setjmp(*br_try(self->bitstream))) {
+        result = self->bitstream->read_signed_64(self->bitstream, count);
+        br_etry(self->bitstream);
+        return Py_BuildValue("L", result);
+    } else {
+        br_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+        return NULL;
+    }
+}
+
+
+static PyObject*
 BitstreamReader_unary(decoders_BitstreamReader *self, PyObject *args) {
     int stop_bit;
     int result;
@@ -564,8 +584,8 @@ BitstreamReader_parse(decoders_BitstreamReader *self, PyObject *args) {
             case BS_INST_UNSIGNED:
                 if ((value =
                      Py_BuildValue("I",
-                                   self->bitstream->read(self->bitstream,
-                                                         size))) == NULL) {
+                                   self->bitstream->read(
+                                       self->bitstream, size))) == NULL) {
                     goto error;
                 } else if (PyList_Append(values, value) == -1) {
                     goto error;
@@ -576,9 +596,8 @@ BitstreamReader_parse(decoders_BitstreamReader *self, PyObject *args) {
             case BS_INST_SIGNED:
                 if ((value =
                      Py_BuildValue("i",
-                                   self->bitstream->read_signed(self->bitstream,
-                                                                size))) ==
-                    NULL) {
+                                   self->bitstream->read_signed(
+                                       self->bitstream, size))) == NULL) {
                     goto error;
                 } else if (PyList_Append(values, value) == -1) {
                     goto error;
@@ -589,9 +608,20 @@ BitstreamReader_parse(decoders_BitstreamReader *self, PyObject *args) {
             case BS_INST_UNSIGNED64:
                 if ((value =
                      Py_BuildValue("K",
-                                   self->bitstream->read_64(self->bitstream,
-                                                            size))) ==
-                    NULL) {
+                                   self->bitstream->read_64(
+                                       self->bitstream, size))) == NULL) {
+                    goto error;
+                } else if (PyList_Append(values, value) == -1) {
+                    goto error;
+                } else {
+                    Py_DECREF(value);
+                }
+                break;
+            case BS_INST_SIGNED64:
+                if ((value =
+                     Py_BuildValue("L",
+                                   self->bitstream->read_signed_64(
+                                       self->bitstream, size))) == NULL) {
                     goto error;
                 } else if (PyList_Append(values, value) == -1) {
                     goto error;

@@ -43,7 +43,8 @@ typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 typedef enum {BR_FILE, BR_SUBSTREAM, BR_PYTHON} br_type;
 typedef enum {BW_FILE, BW_RECORDER, BW_ACCUMULATOR} bw_type;
 typedef enum {BS_INST_UNSIGNED, BS_INST_SIGNED, BS_INST_UNSIGNED64,
-              BS_INST_SKIP, BS_INST_BYTES, BS_INST_ALIGN} bs_instruction;
+              BS_INST_SIGNED64, BS_INST_SKIP, BS_INST_BYTES,
+              BS_INST_ALIGN} bs_instruction;
 
 typedef void (*bs_callback_func)(uint8_t, void*);
 
@@ -138,6 +139,11 @@ typedef struct BitstreamReader_s {
     uint64_t
     (*read_64)(struct BitstreamReader_s* bs, unsigned int count);
 
+    /*returns "count" number of signed bits from the current stream
+      in the current endian format up to 64 bits wide*/
+    int64_t
+    (*read_signed_64)(struct BitstreamReader_s* bs, unsigned int count);
+
     /*skips "count" number of bits from the current stream as if read
 
       callbacks are called on each skipped byte*/
@@ -193,14 +199,15 @@ typedef struct BitstreamReader_s {
       and places the results in the given argument pointers
       where the format actions are:
 
-      | format | action      | argument      |
-      |--------+-------------+---------------|
-      | u      | read        | unsigned int* |
-      | s      | read_signed | int*          |
-      | U      | read_64     | uint64_t*     |
-      | p      | skip        | N/A           |
-      | b      | read_bytes  | uint8_t*      |
-      | a      | byte_align  | N/A           |
+      | format | action         | argument      |
+      |--------+----------------+---------------|
+      | u      | read           | unsigned int* |
+      | s      | read_signed    | int*          |
+      | U      | read_64        | uint64_t*     |
+      | S      | read_signed_64 | int64_t       |
+      | p      | skip           | N/A           |
+      | b      | read_bytes     | uint8_t*      |
+      | a      | byte_align     | N/A           |
 
       For example, one could read a 32 bit header as follows:
 
@@ -298,6 +305,11 @@ typedef struct BitstreamWriter_s {
                 unsigned int count,
                 uint64_t value);
 
+    void
+    (*write_signed_64)(struct BitstreamWriter_s* bs,
+                       unsigned int count,
+                       int64_t value);
+
     /*writes "byte_count" number of bytes to the output stream
 
       the stream is not required to be byte-aligned,
@@ -330,14 +342,15 @@ typedef struct BitstreamWriter_s {
       using the values from the given arguments
       where the format actions are
 
-      | format | action       | argument     |
-      |--------+--------------+--------------|
-      | u      | write        | unsigned int |
-      | s      | write_signed | int          |
-      | U      | write_64     | uint64_t     |
-      | p      | skip         | N/A          |
-      | b      | write_bytes  | uint8_t*     |
-      | a      | byte_align   | N/A          |
+      | format | action          | argument     |
+      |--------+-----------------+--------------|
+      | u      | write           | unsigned int |
+      | s      | write_signed    | int          |
+      | U      | write_64        | uint64_t     |
+      | S      | write_signed_64 | int64_t      |
+      | p      | skip            | N/A          |
+      | b      | write_bytes     | uint8_t*     |
+      | a      | byte_align      | N/A          |
 
       For example, one could write a 32 bit header as follows:
 
@@ -501,19 +514,9 @@ br_read_bits_p_le(BitstreamReader* bs, unsigned int count);
 
 
 int
-br_read_signed_bits_f_be(BitstreamReader* bs, unsigned int count);
+br_read_signed_bits_be(BitstreamReader* bs, unsigned int count);
 int
-br_read_signed_bits_f_le(BitstreamReader* bs, unsigned int count);
-int
-br_read_signed_bits_s_be(BitstreamReader* bs, unsigned int count);
-int
-br_read_signed_bits_s_le(BitstreamReader* bs, unsigned int count);
-#ifndef STANDALONE
-int
-br_read_signed_bits_p_be(BitstreamReader* bs, unsigned int count);
-int
-br_read_signed_bits_p_le(BitstreamReader* bs, unsigned int count);
-#endif
+br_read_signed_bits_le(BitstreamReader* bs, unsigned int count);
 
 
 uint64_t
@@ -530,6 +533,12 @@ br_read_bits64_p_be(BitstreamReader* bs, unsigned int count);
 uint64_t
 br_read_bits64_p_le(BitstreamReader* bs, unsigned int count);
 #endif
+
+
+int64_t
+br_read_signed_bits64_be(BitstreamReader* bs, unsigned int count);
+int64_t
+br_read_signed_bits64_le(BitstreamReader* bs, unsigned int count);
 
 
 void
@@ -933,9 +942,12 @@ bw_write_bytes_a(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
 
 
 void
-bw_write_signed_bits_f_r(BitstreamWriter* bs, unsigned int count, int value);
+bw_write_signed_bits_f_r_be(BitstreamWriter* bs, unsigned int count, int value);
+void
+bw_write_signed_bits_f_r_le(BitstreamWriter* bs, unsigned int count, int value);
 void
 bw_write_signed_bits_a(BitstreamWriter* bs, unsigned int count, int value);
+
 
 void
 bw_write_bits64_f_be(BitstreamWriter* bs, unsigned int count, uint64_t value);
@@ -947,6 +959,18 @@ void
 bw_write_bits64_r_le(BitstreamWriter* bs, unsigned int count, uint64_t value);
 void
 bw_write_bits64_a(BitstreamWriter* bs, unsigned int count, uint64_t value);
+
+
+void
+bw_write_signed_bits64_f_r_be(BitstreamWriter* bs, unsigned int count,
+                              int64_t value);
+void
+bw_write_signed_bits64_f_r_le(BitstreamWriter* bs, unsigned int count,
+                              int64_t value);
+void
+bw_write_signed_bits64_a(BitstreamWriter* bs, unsigned int count,
+                         int64_t value);
+
 
 
 void

@@ -73,6 +73,9 @@ static PyObject*
 BitstreamWriter_write64(encoders_BitstreamWriter *self, PyObject *args);
 
 static PyObject*
+BitstreamWriter_write_signed64(encoders_BitstreamWriter *self, PyObject *args);
+
+static PyObject*
 BitstreamWriter_unary(encoders_BitstreamWriter *self, PyObject *args);
 
 static PyObject*
@@ -107,6 +110,8 @@ PyMethodDef BitstreamWriter_methods[] = {
     {"close", (PyCFunction)BitstreamWriter_close,
      METH_NOARGS, ""},
     {"write64", (PyCFunction)BitstreamWriter_write64,
+     METH_VARARGS, ""},
+    {"write_signed64", (PyCFunction)BitstreamWriter_write_signed64,
      METH_VARARGS, ""},
     {"set_endianness", (PyCFunction)BitstreamWriter_set_endianness,
      METH_VARARGS, ""},
@@ -186,6 +191,10 @@ BitstreamRecorder_write64(encoders_BitstreamRecorder *self,
                           PyObject *args);
 
 static PyObject*
+BitstreamRecorder_write_signed64(encoders_BitstreamRecorder *self,
+                                 PyObject *args);
+
+static PyObject*
 BitstreamRecorder_unary(encoders_BitstreamRecorder *self,
                         PyObject *args);
 
@@ -246,6 +255,8 @@ PyMethodDef BitstreamRecorder_methods[] = {
     {"close", (PyCFunction)BitstreamRecorder_close,
      METH_NOARGS, ""},
     {"write64", (PyCFunction)BitstreamRecorder_write64,
+     METH_VARARGS, ""},
+    {"write_signed64", (PyCFunction)BitstreamRecorder_write_signed64,
      METH_VARARGS, ""},
     {"set_endianness", (PyCFunction)BitstreamRecorder_set_endianness,
      METH_VARARGS, ""},
@@ -335,6 +346,10 @@ BitstreamAccumulator_write64(encoders_BitstreamAccumulator *self,
                              PyObject *args);
 
 static PyObject*
+BitstreamAccumulator_write_signed64(encoders_BitstreamAccumulator *self,
+                                    PyObject *args);
+
+static PyObject*
 BitstreamAccumulator_unary(encoders_BitstreamAccumulator *self,
                            PyObject *args);
 
@@ -380,6 +395,8 @@ PyMethodDef BitstreamAccumulator_methods[] = {
     {"close", (PyCFunction)BitstreamAccumulator_close,
      METH_NOARGS, ""},
     {"write64", (PyCFunction)BitstreamAccumulator_write64,
+     METH_VARARGS, ""},
+    {"write_signed64", (PyCFunction)BitstreamAccumulator_write_signed64,
      METH_VARARGS, ""},
     {"set_endianness", (PyCFunction)BitstreamAccumulator_set_endianness,
      METH_VARARGS, ""},
