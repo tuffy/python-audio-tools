@@ -387,32 +387,46 @@ BitstreamRecorder_reset(encoders_BitstreamRecorder *self,
     return Py_None;
 }
 
+static BitstreamWriter*
+internal_writer(PyObject *writer) {
+    encoders_BitstreamWriter* writer_obj;
+    encoders_BitstreamRecorder* recorder_obj;
+    encoders_BitstreamAccumulator* accumulator_obj;
+
+    if (writer->ob_type == &encoders_BitstreamWriterType) {
+        writer_obj = (encoders_BitstreamWriter*)writer;
+        return writer_obj->bitstream;
+    } else if (writer->ob_type == &encoders_BitstreamRecorderType) {
+        recorder_obj = (encoders_BitstreamRecorder*)writer;
+        return recorder_obj->bitstream;
+    } else if (writer->ob_type == &encoders_BitstreamAccumulatorType) {
+        accumulator_obj = (encoders_BitstreamAccumulator*)writer;
+        return accumulator_obj->bitstream;
+    } else {
+        return NULL;
+    }
+}
+
 static PyObject*
 BitstreamRecorder_dump(encoders_BitstreamRecorder *self,
                        PyObject *args) {
     PyObject* bitstreamwriter_obj;
-    encoders_BitstreamWriter* writer_obj;
-    encoders_BitstreamRecorder* recorder_obj;
+    BitstreamWriter* target;
 
     if (!PyArg_ParseTuple(args, "O", &bitstreamwriter_obj))
         return NULL;
 
-    if (bitstreamwriter_obj->ob_type ==
-        &encoders_BitstreamWriterType) {
-        writer_obj = (encoders_BitstreamWriter*)bitstreamwriter_obj;
-        bw_dump_records(writer_obj->bitstream, self->bitstream);
-    } else if (bitstreamwriter_obj->ob_type ==
-               &encoders_BitstreamRecorderType) {
-        recorder_obj = (encoders_BitstreamRecorder*)bitstreamwriter_obj;
-        bw_dump_records(recorder_obj->bitstream, self->bitstream);
+    if ((target = internal_writer(bitstreamwriter_obj)) != NULL) {
+        bw_dump_records(target, self->bitstream);
+
+        Py_INCREF(Py_None);
+        return Py_None;
     } else {
         PyErr_SetString(PyExc_TypeError, "argument must be a "
-                        "BitstreamWriter or BitstreamRecorder");
+                        "BitstreamWriter, BitstreamRecorder "
+                        "or BitstreamAccumulator");
         return NULL;
     }
-
-    Py_INCREF(Py_None);
-    return Py_None;
 }
 
 static PyObject*

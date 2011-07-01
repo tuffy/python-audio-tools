@@ -2710,50 +2710,55 @@ bw_push_callback(BitstreamWriter* bs, struct bs_callback* callback) {
     }
 }
 
+void
+bw_dump_bytes(BitstreamWriter* target, uint8_t* buffer, unsigned int total) {
+    unsigned int i;
+    struct bs_callback* callback;
+    uint8_t* target_buffer;
+
+    if (total == 0) {
+        /*short-circuit an empty write*/
+        return;
+    } else if (target->buffer_size == 0) {
+        /*perform faster dumping if target is byte-aligned*/
+        switch (target->type) {
+        case BW_FILE:
+            fwrite(buffer, sizeof(uint8_t), total, target->output.file);
+            break;
+        case BW_RECORDER:
+            target_buffer = buf_extend(target->output.buffer, total);
+            memcpy(target_buffer, buffer, total);
+            target->output.buffer->buffer_size += total;
+            break;
+        case BW_ACCUMULATOR:
+            target->output.accumulator += (total * 8);
+            break;
+        }
+
+        /*perform callbacks from target on written bytes*/
+        for (callback = target->callbacks;
+             callback != NULL;
+             callback = callback->next)
+            for (i = 0; i < total; i++)
+                callback->callback(buffer[i], callback->data);
+    } else {
+        /*otherwise, proceed on a byte-by-byte basis*/
+        for (i = 0; i < total; i++)
+            target->write(target, 8, buffer[i]);
+    }
+}
 
 void
 bw_dump_records(BitstreamWriter* target, BitstreamWriter* source)
 {
-    uint8_t* buffer;
-    uint32_t buffer_size;
-    uint8_t* target_buffer;
-    uint32_t i;
-    struct bs_callback* callback;
-
     assert(source->type == BW_RECORDER);
 
-    buffer = source->output.buffer->buffer;
-    buffer_size = source->output.buffer->buffer_size;
+    /*dump all the bytes from our internal buffer*/
+    bw_dump_bytes(target,
+                  source->output.buffer->buffer,
+                  source->output.buffer->buffer_size);
 
-    if (target->buffer_size == 0) {
-        /*perform faster dumping if target is byte-aligned*/
-        switch (target->type) {
-        case BW_FILE:
-            fwrite(buffer, sizeof(uint8_t), buffer_size, target->output.file);
-            break;
-        case BW_RECORDER:
-            target_buffer = buf_extend(target->output.buffer, buffer_size);
-            memcpy(target_buffer, buffer, buffer_size);
-            target->output.buffer->buffer_size += buffer_size;
-            break;
-        case BW_ACCUMULATOR:
-            target->output.accumulator += (buffer_size * 8);
-            break;
-        }
-
-        /*perform callbacks on written bytes*/
-        for (callback = target->callbacks;
-             callback != NULL;
-             callback = callback->next)
-            for (i = 0; i < buffer_size; i++)
-                callback->callback(buffer[i], callback->data);
-    } else {
-        /*otherwise, proceed on a byte-by-byte basis*/
-        for (i = 0; i < buffer_size; i++)
-            target->write(target, 8, buffer[i]);
-    }
-
-    /*dump remaining bits (if any) with a partial write() call*/
+    /*then dump remaining bits (if any) with a partial write() call*/
     if (source->buffer_size > 0)
         target->write(target,
                       source->buffer_size,
@@ -2767,12 +2772,8 @@ bw_dump_records_limited(BitstreamWriter* target,
                         unsigned int total_bytes) {
     uint8_t* buffer;
     uint32_t buffer_size;
-    uint8_t* target_buffer;
     unsigned int to_target;
     unsigned int to_remaining;
-    unsigned int i;
-    unsigned int j;
-    struct bs_callback* callback;
 
     assert(source->type == BW_RECORDER);
 
@@ -2782,80 +2783,23 @@ bw_dump_records_limited(BitstreamWriter* target,
     to_remaining = buffer_size - to_target;
 
     /*first, dump up to "total_bytes" from source to "target"*/
-    if (to_target > 0) {
-        if (target->buffer_size == 0) {
-            /*perform faster dumping if target is byte-aligned*/
-            switch (target->type) {
-            case BW_FILE:
-                fwrite(buffer, sizeof(uint8_t), to_target, target->output.file);
-                break;
-            case BW_RECORDER:
-                target_buffer = buf_extend(target->output.buffer,
-                                           to_target);
-                memcpy(target_buffer, buffer, to_target);
-                target->output.buffer->buffer_size += to_target;
-                break;
-            case BW_ACCUMULATOR:
-                target->output.accumulator += (to_target * 8);
-                break;
-            }
+    bw_dump_bytes(target, buffer, to_target);
 
-            /*perform callbacks on written bytes*/
-            for (callback = target->callbacks;
-                 callback != NULL;
-                 callback = callback->next)
-                for (j = 0; j < to_target; i++)
-                    callback->callback(buffer[j], callback->data);
+    if (remaining != source) {
+        /*then, dump the remaining bytes from source to "remaining"
+          if it is a separate writer*/
+        bw_dump_bytes(remaining, buffer + to_target, to_remaining);
 
-            /*set i as if the bytes have been traversed*/
-            i = to_target;
-        } else {
-            /*otherwise, proceed on a byte-by-byte basis*/
-            for (i = 0; i < to_target; i++)
-                target->write(target, 8, buffer[i]);
-        }
+        if (source->buffer_size > 0)
+            remaining->write(remaining,
+                             source->buffer_size,
+                             source->buffer & ((1 << source->buffer_size) - 1));
     } else {
-        i = 0;
+        /*if remaining is the same as source,
+          shift source's output buffer down*/
+        memmove(buffer, buffer + to_target, to_remaining);
+        source->output.buffer->buffer_size -= to_target;
     }
-
-    /*then, dump the remaining bytes from source to "remaining"*/
-    if (to_remaining > 0) {
-        if (remaining->buffer_size == 0) {
-            /*perform faster dumping if remaining is byte-aligned*/
-            switch (remaining->type) {
-            case BW_FILE:
-                fwrite(buffer + to_target, sizeof(uint8_t), to_remaining,
-                       remaining->output.file);
-                break;
-            case BW_RECORDER:
-                target_buffer = buf_extend(remaining->output.buffer,
-                                           to_remaining);
-                memcpy(target_buffer, buffer + to_target, to_remaining);
-                remaining->output.buffer->buffer_size += to_remaining;
-                break;
-            case BW_ACCUMULATOR:
-                remaining->output.accumulator += (to_remaining * 8);
-                break;
-            }
-
-            /*perform callbacks on written bytes*/
-            for (callback = target->callbacks;
-                 callback != NULL;
-                 callback = callback->next)
-                for (j = 0; j < to_remaining; i++)
-                    callback->callback(buffer[to_target + j], callback->data);
-        } else {
-            /*otherwise, proceed on a byte-by-byte basis*/
-            for (; i < buffer_size; i++)
-                remaining->write(remaining, 8, buffer[i]);
-        }
-    }
-
-    /*dump remaining bits (if any) with a partial write() call*/
-    if (source->buffer_size > 0)
-        remaining->write(remaining,
-                         source->buffer_size,
-                         source->buffer & ((1 << source->buffer_size) - 1));
 
     return to_target;
 }

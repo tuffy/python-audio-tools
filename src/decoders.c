@@ -432,6 +432,55 @@ BitstreamReader_unmark(decoders_BitstreamReader *self, PyObject *args) {
 }
 
 static PyObject*
+BitstreamReader_add_callback(decoders_BitstreamReader *self, PyObject *args) {
+    PyObject* callback;
+
+    if (!PyArg_ParseTuple(args, "O", &callback))
+        return NULL;
+
+    if (!PyCallable_Check(callback)) {
+        PyErr_SetString(PyExc_TypeError, "callback must be callable");
+        return NULL;
+    }
+
+    Py_INCREF(callback);
+    br_add_callback(self->bitstream,
+                    (bs_callback_func)BitstreamReader_callback,
+                    callback);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+BitstreamReader_pop_callback(decoders_BitstreamReader *self, PyObject *args) {
+    struct bs_callback callback;
+    PyObject* callback_obj;
+
+    if (self->bitstream->callbacks != NULL) {
+        br_pop_callback(self->bitstream, &callback);
+        callback_obj = callback.data;
+        /*decref object from stack and then incref object for return
+          should have a net effect of noop*/
+        return callback_obj;
+    } else {
+        PyErr_SetString(PyExc_IndexError, "no callbacks to pop");
+        return NULL;
+    }
+}
+
+void
+BitstreamReader_callback(uint8_t byte, PyObject *callback) {
+    PyObject* result = PyObject_CallFunction(callback, "B", byte);
+
+    if (result != NULL) {
+        Py_DECREF(result);
+    } else {
+        PyErr_PrintEx(0);
+    }
+}
+
+static PyObject*
 BitstreamReader_substream(decoders_BitstreamReader *self, PyObject *args) {
     PyTypeObject *type = self->ob_type;
     unsigned int bytes;
@@ -633,8 +682,15 @@ BitstreamReader_init(decoders_BitstreamReader *self,
 void
 BitstreamReader_dealloc(decoders_BitstreamReader *self)
 {
-    if (self->bitstream != NULL)
+    struct bs_callback callback;
+
+    if (self->bitstream != NULL) {
+        while (self->bitstream->callbacks != NULL) {
+            br_pop_callback(self->bitstream, &callback);
+            Py_DECREF(callback.data);
+        }
         br_free(self->bitstream);
+    }
     Py_XDECREF(self->file_obj);
     self->file_obj = NULL;
 

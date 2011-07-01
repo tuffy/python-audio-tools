@@ -839,6 +839,9 @@ bw_ftell(BitstreamWriter* bs) {
     return ftell(bs->output.file);
 }
 
+/*writes "total" number of bytes from "buffer" to "target"*/
+void
+bw_dump_bytes(BitstreamWriter* target, uint8_t* buffer, unsigned int total);
 
 /*given a BitstreamWriter recorder "source",
   writes all of its recorded output to "target"*/

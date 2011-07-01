@@ -94,6 +94,12 @@ static PyObject*
 BitstreamReader_unmark(decoders_BitstreamReader *self, PyObject *args);
 
 static PyObject*
+BitstreamReader_add_callback(decoders_BitstreamReader *self, PyObject *args);
+
+static PyObject*
+BitstreamReader_pop_callback(decoders_BitstreamReader *self, PyObject *args);
+
+static PyObject*
 BitstreamReader_substream(decoders_BitstreamReader *self, PyObject *args);
 
 static PyObject*
@@ -141,6 +147,10 @@ PyMethodDef BitstreamReader_methods[] = {
      METH_NOARGS, ""},
     {"unmark", (PyCFunction)BitstreamReader_unmark,
      METH_NOARGS, ""},
+    {"add_callback", (PyCFunction)BitstreamReader_add_callback,
+     METH_VARARGS, ""},
+    {"pop_callback", (PyCFunction)BitstreamReader_pop_callback,
+     METH_NOARGS, ""},
     {"substream", (PyCFunction)BitstreamReader_substream,
      METH_VARARGS, ""},
     {"substream_append", (PyCFunction)BitstreamReader_substream_append,
@@ -154,6 +164,9 @@ BitstreamReader_dealloc(decoders_BitstreamReader *self);
 static PyObject*
 BitstreamReader_new(PyTypeObject *type, PyObject *args,
                     PyObject *kwds);
+
+void
+BitstreamReader_callback(uint8_t byte, PyObject *callback);
 
 PyTypeObject decoders_BitstreamReaderType = {
     PyObject_HEAD_INIT(NULL)

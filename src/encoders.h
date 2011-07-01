@@ -217,6 +217,11 @@ static PyObject*
 BitstreamRecorder_reset(encoders_BitstreamRecorder *self,
                         PyObject *args);
 
+/*returns the internal BitstreamWriter struct of the given object
+  or NULL if it is not a BitstreamWriter/Recorder/Accumulator*/
+static BitstreamWriter*
+internal_writer(PyObject *writer);
+
 static PyObject*
 BitstreamRecorder_dump(encoders_BitstreamRecorder *self,
                        PyObject *args);
