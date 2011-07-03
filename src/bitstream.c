@@ -701,7 +701,7 @@ br_read_bits64_s_le(BitstreamReader* bs, unsigned int count)
 
         output_size = READ_BITS_OUTPUT_SIZE(result);
 
-        accumulator |= (READ_BITS_OUTPUT_BITS(result) << bit_offset);
+        accumulator |= ((uint64_t)READ_BITS_OUTPUT_BITS(result) << bit_offset);
 
         context = NEXT_CONTEXT(result);
 
@@ -778,7 +778,7 @@ br_read_bits64_p_le(BitstreamReader* bs, unsigned int count)
 
         output_size = READ_BITS_OUTPUT_SIZE(result);
 
-        accumulator |= (READ_BITS_OUTPUT_BITS(result) << bit_offset);
+        accumulator |= ((uint64_t)READ_BITS_OUTPUT_BITS(result) << bit_offset);
 
         context = NEXT_CONTEXT(result);
 
@@ -3038,7 +3038,7 @@ bw_write_bytes_a(BitstreamWriter* bs, const uint8_t* bytes,
 void
 bw_write_signed_bits_f_r_be(BitstreamWriter* bs, unsigned int count, int value)
 {
-    assert(value < (1 << (count - 1)));
+    assert(value <= ((1 << (count - 1)) - 1));
     assert(value >= -(1 << (count - 1)));
 
     if (value >= 0) {
@@ -3053,7 +3053,7 @@ bw_write_signed_bits_f_r_be(BitstreamWriter* bs, unsigned int count, int value)
 void
 bw_write_signed_bits_f_r_le(BitstreamWriter* bs, unsigned int count, int value)
 {
-    assert(value < (1 << (count - 1)));
+    assert(value <= ((1 << (count - 1)) - 1));
     assert(value >= -(1 << (count - 1)));
 
     if (value >= 0) {
@@ -3068,7 +3068,7 @@ bw_write_signed_bits_f_r_le(BitstreamWriter* bs, unsigned int count, int value)
 void
 bw_write_signed_bits_a(BitstreamWriter* bs, unsigned int count, int value)
 {
-    assert(value < (1 << (count - 1)));
+    assert(value <= ((1 << (count - 1)) - 1));
     assert(value >= -(1 << (count - 1)));
     bs->output.accumulator += count;
 }
@@ -3082,7 +3082,7 @@ bw_write_bits64_f_be(BitstreamWriter* bs, unsigned int count, uint64_t value)
     unsigned int byte;
     struct bs_callback* callback;
 
-    assert(value < (int64_t)(1ll << count));
+    assert(count < 64 ? value < (int64_t)(1ll << count) : 1);
 
     while (count > 0) {
         /*chop off up to 8 bits to write at a time*/
@@ -3120,7 +3120,7 @@ bw_write_bits64_f_le(BitstreamWriter* bs, unsigned int count, uint64_t value)
     unsigned int byte;
     struct bs_callback* callback;
 
-    assert(value < (int64_t)(1ll << count));
+    assert(count < 64 ? value < (int64_t)(1ll << count) : 1);
 
     while (count > 0) {
         /*chop off up to 8 bits to write at a time*/
@@ -3128,8 +3128,7 @@ bw_write_bits64_f_le(BitstreamWriter* bs, unsigned int count, uint64_t value)
         value_to_write = value & ((1 << bits_to_write) - 1);
 
         /*append value to buffer*/
-        bs->buffer |= (value_to_write <<
-                                   bs->buffer_size);
+        bs->buffer |= (value_to_write << bs->buffer_size);
         bs->buffer_size += bits_to_write;
 
         /*if buffer is over 8 bits,
@@ -3155,11 +3154,11 @@ void
 bw_write_bits64_r_be(BitstreamWriter* bs, unsigned int count, uint64_t value)
 {
     int bits_to_write;
-    int value_to_write;
+    uint64_t value_to_write;
     unsigned int byte;
     struct bs_callback* callback;
 
-    assert(value < (int64_t)(1ll << count));
+    assert(count < 64 ? value < (int64_t)(1ll << count) : 1);
 
     while (count > 0) {
         /*chop off up to 8 bits to write at a time*/
@@ -3167,15 +3166,13 @@ bw_write_bits64_r_be(BitstreamWriter* bs, unsigned int count, uint64_t value)
         value_to_write = value >> (count - bits_to_write);
 
         /*prepend value to buffer*/
-        bs->buffer = ((bs->buffer << bits_to_write) |
-                                  value_to_write);
+        bs->buffer = ((bs->buffer << bits_to_write) | value_to_write);
         bs->buffer_size += bits_to_write;
 
         /*if buffer is over 8 bits,
           write a byte and remove it from the buffer*/
         if (bs->buffer_size >= 8) {
-            byte = (bs->buffer >>
-                    (bs->buffer_size - 8)) & 0xFF;
+            byte = (bs->buffer >> (bs->buffer_size - 8)) & 0xFF;
             buf_putc(byte, bs->output.buffer);
             for (callback = bs->callbacks;
                  callback != NULL;
@@ -3197,12 +3194,11 @@ bw_write_bits64_r_le(BitstreamWriter* bs,
                      uint64_t value)
 {
     int bits_to_write;
-    int value_to_write;
+    uint64_t value_to_write;
     unsigned int byte;
     struct bs_callback* callback;
 
-    assert(value >= 0);
-    assert(value < (int64_t)(1ll << count));
+    assert(count < 64 ? value < (int64_t)(1ll << count) : 1);
 
     while (count > 0) {
         /*chop off up to 8 bits to write at a time*/
@@ -3210,8 +3206,7 @@ bw_write_bits64_r_le(BitstreamWriter* bs,
         value_to_write = value & ((1 << bits_to_write) - 1);
 
         /*append value to buffer*/
-        bs->buffer |= (value_to_write <<
-                                   bs->buffer_size);
+        bs->buffer |= (value_to_write << bs->buffer_size);
         bs->buffer_size += bits_to_write;
 
         /*if buffer is over 8 bits,
@@ -3237,8 +3232,7 @@ bw_write_bits64_r_le(BitstreamWriter* bs,
 void
 bw_write_bits64_a(BitstreamWriter* bs, unsigned int count, uint64_t value)
 {
-    assert(value >= 0l);
-    assert(value < (int64_t)(1ll << count));
+    assert(count < 64 ? value < (int64_t)(1ll << count) : 1);
     bs->output.accumulator += count;
 }
 
@@ -3247,7 +3241,7 @@ void
 bw_write_signed_bits64_f_r_be(BitstreamWriter* bs, unsigned int count,
                               int64_t value)
 {
-    assert(value < (1ll << (count - 1)));
+    assert(value <= ((1ll << (count - 1)) - 1));
     assert(value >= -(1ll << (count - 1)));
 
     if (value >= 0ll) {
@@ -3263,7 +3257,7 @@ void
 bw_write_signed_bits64_f_r_le(BitstreamWriter* bs, unsigned int count,
                               int64_t value)
 {
-    assert(value < (1ll << (count - 1)));
+    assert(value <= ((1ll << (count - 1)) - 1));
     assert(value >= -(1ll << (count - 1)));
 
     if (value >= 0ll) {
@@ -3279,7 +3273,7 @@ void
 bw_write_signed_bits64_a(BitstreamWriter* bs, unsigned int count,
                          int64_t value)
 {
-    assert(value < (1ll << (count - 1)));
+    assert(value <= ((1ll << (count - 1)) - 1));
     assert(value >= -(1ll << (count - 1)));
     bs->output.accumulator += count;
 }
@@ -3615,24 +3609,63 @@ bs_format_size(char* format) {
 
 char temp_filename[] = "bitstream.XXXXXX";
 
-void atexit_cleanup(void);
-void sigabort_cleanup(int signum);
+void
+atexit_cleanup(void);
+void
+sigabort_cleanup(int signum);
 
-void test_big_endian_reader(BitstreamReader* reader,
-                            struct br_huffman_table (*table)[][0x200]);
-void test_little_endian_reader(BitstreamReader* reader,
-                               struct br_huffman_table (*table)[][0x200]);
+void
+test_big_endian_reader(BitstreamReader* reader,
+                       struct br_huffman_table (*table)[][0x200]);
+void
+test_little_endian_reader(BitstreamReader* reader,
+                          struct br_huffman_table (*table)[][0x200]);
 
-void test_try(BitstreamReader* reader,
-              struct br_huffman_table (*table)[][0x200]);
+void
+test_try(BitstreamReader* reader,
+         struct br_huffman_table (*table)[][0x200]);
 
-void test_callbacks_reader(BitstreamReader* reader,
-                           int unary_0_reads,
-                           int unary_1_reads,
-                           struct br_huffman_table (*table)[][0x200],
-                           int huffman_code_count);
+void
+test_callbacks_reader(BitstreamReader* reader,
+                      int unary_0_reads,
+                      int unary_1_reads,
+                      struct br_huffman_table (*table)[][0x200],
+                      int huffman_code_count);
 
-void test_edge_cases(void);
+void
+test_edge_cases(void);
+void
+test_edge_reader_be(BitstreamReader* reader);
+void
+test_edge_reader_le(BitstreamReader* reader);
+void
+test_edge_writer(BitstreamWriter* (*get_writer)(void),
+                 void (*validate_writer)(BitstreamWriter*));
+BitstreamWriter*
+get_edge_writer_be(void);
+BitstreamWriter*
+get_edge_recorder_be(void);
+BitstreamWriter*
+get_edge_accumulator_be(void);
+
+void
+validate_edge_writer_be(BitstreamWriter* writer);
+void
+validate_edge_recorder_be(BitstreamWriter* recorder);
+void
+validate_edge_accumulator(BitstreamWriter* accumulator);
+
+BitstreamWriter*
+get_edge_writer_le(void);
+BitstreamWriter*
+get_edge_recorder_le(void);
+BitstreamWriter*
+get_edge_accumulator_le(void);
+
+void
+validate_edge_writer_le(BitstreamWriter* writer);
+void
+validate_edge_recorder_le(BitstreamWriter* recorder);
 
 void
 byte_counter(uint8_t byte, unsigned int* count);
@@ -4393,7 +4426,6 @@ test_writer(bs_endianness endianness) {
     writer->close(writer);
     sub_writer->close(sub_writer);
     sub_sub_writer->close(sub_sub_writer);
-    fclose(output_file);
 
     /*check recorder reset*/
     output_file = fopen(temp_filename, "wb");
@@ -4634,21 +4666,237 @@ check_output_file(void) {
 }
 
 void test_edge_cases(void) {
-    uint8_t big_endian[] = {0, 0, 0, 0, 255, 255, 255, 255,
-                            128, 0, 0, 0, 127, 255, 255, 255,
-                            0, 0, 0, 0, 0, 0, 0, 0,
-                            255, 255, 255, 255, 255, 255, 255, 255,
-                            128, 0, 0, 0, 0, 0, 0, 0,
-                            127, 255, 255, 255, 255, 255, 255, 255};
-    uint8_t little_endian[] = {0, 0, 0, 0, 255, 255, 255, 255,
-                               0, 0, 0, 128, 255, 255, 255, 127,
-                               0, 0, 0, 0, 0, 0, 0, 0,
-                               255, 255, 255, 255, 255, 255, 255, 255,
-                               0, 0, 0, 0, 0, 0, 0, 128,
-                               255, 255, 255, 255, 255, 255, 255, 127};
+    const static uint8_t big_endian[] =
+        {0, 0, 0, 0, 255, 255, 255, 255,
+         128, 0, 0, 0, 127, 255, 255, 255,
+         0, 0, 0, 0, 0, 0, 0, 0,
+         255, 255, 255, 255, 255, 255, 255, 255,
+         128, 0, 0, 0, 0, 0, 0, 0,
+         127, 255, 255, 255, 255, 255, 255, 255};
+    const static uint8_t little_endian[] =
+        {0, 0, 0, 0, 255, 255, 255, 255,
+         0, 0, 0, 128, 255, 255, 255, 127,
+         0, 0, 0, 0, 0, 0, 0, 0,
+         255, 255, 255, 255, 255, 255, 255, 255,
+         0, 0, 0, 0, 0, 0, 0, 128,
+         255, 255, 255, 255, 255, 255, 255, 127};
+
     FILE* output_file;
-    FILE* input_file;
     BitstreamReader* reader;
+    BitstreamReader* sub_reader;
+
+    /*write the temp file with a collection of known big-endian test bytes*/
+    output_file = fopen(temp_filename, "wb");
+    assert(fwrite(big_endian, sizeof(uint8_t), 48, output_file) == 48);
+    fclose(output_file);
+
+    /*ensure a big-endian reader reads the values correctly*/
+    reader = br_open(fopen(temp_filename, "rb"), BS_BIG_ENDIAN);
+    test_edge_reader_be(reader);
+    reader->close(reader);
+
+    /*ensure a big-endian sub-reader reads the values correctly*/
+    reader = br_open(fopen(temp_filename, "rb"), BS_BIG_ENDIAN);
+    sub_reader = br_substream_new(BS_BIG_ENDIAN);
+    reader->substream_append(reader, sub_reader, 48);
+    test_edge_reader_be(sub_reader);
+    sub_reader->close(sub_reader);
+    reader->close(reader);
+
+    /*write the temp file with a collection of known little-endian test bytes*/
+    output_file = fopen(temp_filename, "wb");
+    assert(fwrite(little_endian, sizeof(uint8_t), 48, output_file) == 48);
+    fclose(output_file);
+
+    /*ensure a little-endian reader reads the values correctly*/
+    reader = br_open(fopen(temp_filename, "rb"), BS_LITTLE_ENDIAN);
+    test_edge_reader_le(reader);
+    reader->close(reader);
+
+    /*ensure a little-endian sub-reader reads the values correctly*/
+    reader = br_open(fopen(temp_filename, "rb"), BS_LITTLE_ENDIAN);
+    sub_reader = br_substream_new(BS_LITTLE_ENDIAN);
+    reader->substream_append(reader, sub_reader, 48);
+    test_edge_reader_le(sub_reader);
+    sub_reader->close(sub_reader);
+    reader->close(reader);
+
+    /*test a bunch of known big-endian values via the bitstream writer*/
+    test_edge_writer(get_edge_writer_be, validate_edge_writer_be);
+
+    /*test a bunch of known big-endian values via the bitstream recorder*/
+    test_edge_writer(get_edge_recorder_be, validate_edge_recorder_be);
+
+    /*test a bunch of known big-endian values via the bitstream accumulator*/
+    test_edge_writer(get_edge_accumulator_be, validate_edge_accumulator);
+
+    /*test a bunch of known little-endian values via the bitstream writer*/
+    test_edge_writer(get_edge_writer_le, validate_edge_writer_le);
+
+    /*test a bunch of known little-endian values via the bitstream recorder*/
+    test_edge_writer(get_edge_recorder_le, validate_edge_recorder_le);
+
+    /*test a bunch of known little-endian values via the bitstream accumulator*/
+    test_edge_writer(get_edge_accumulator_le, validate_edge_accumulator);
+}
+
+void
+test_edge_reader_be(BitstreamReader* reader)
+{
+    unsigned int u_val_1;
+    unsigned int u_val_2;
+    unsigned int u_val_3;
+    unsigned int u_val_4;
+    int s_val_1;
+    int s_val_2;
+    int s_val_3;
+    int s_val_4;
+    uint64_t u_val64_1;
+    uint64_t u_val64_2;
+    uint64_t u_val64_3;
+    uint64_t u_val64_4;
+    int64_t s_val64_1;
+    int64_t s_val64_2;
+    int64_t s_val64_3;
+    int64_t s_val64_4;
+
+    reader->mark(reader);
+
+    /*try the unsigned 32 and 64 bit values*/
+    reader->rewind(reader);
+    assert(reader->read(reader, 32) == 0);
+    assert(reader->read(reader, 32) == 4294967295);
+    assert(reader->read(reader, 32) == 2147483648);
+    assert(reader->read(reader, 32) == 2147483647);
+    assert(reader->read_64(reader, 64) == 0);
+    assert(reader->read_64(reader, 64) == 0xFFFFFFFFFFFFFFFFULL);
+    assert(reader->read_64(reader, 64) == 9223372036854775808ULL);
+    assert(reader->read_64(reader, 64) == 9223372036854775807ULL);
+
+    /*try the signed 32 and 64 bit values*/
+    reader->rewind(reader);
+    assert(reader->read_signed(reader, 32) == 0);
+    assert(reader->read_signed(reader, 32) == -1);
+    assert(reader->read_signed(reader, 32) == -2147483648);
+    assert(reader->read_signed(reader, 32) == 2147483647);
+    assert(reader->read_signed_64(reader, 64) == 0);
+    assert(reader->read_signed_64(reader, 64) == -1);
+    assert(reader->read_signed_64(reader, 64) == (9223372036854775808ULL * -1));
+    assert(reader->read_signed_64(reader, 64) == 9223372036854775807LL);
+
+    /*try the unsigned values via parse()*/
+    reader->rewind(reader);
+    reader->parse(reader,
+                  "32u 32u 32u 32u 64U 64U 64U 64U",
+                  &u_val_1, &u_val_2, &u_val_3, &u_val_4,
+                  &u_val64_1, &u_val64_2, &u_val64_3, &u_val64_4);
+    assert(u_val_1 == 0);
+    assert(u_val_2 == 4294967295);
+    assert(u_val_3 == 2147483648);
+    assert(u_val_4 == 2147483647);
+    assert(u_val64_1 == 0);
+    assert(u_val64_2 == 0xFFFFFFFFFFFFFFFFULL);
+    assert(u_val64_3 == 9223372036854775808ULL);
+    assert(u_val64_4 == 9223372036854775807ULL);
+
+    /*try the signed values via parse()*/
+    reader->rewind(reader);
+    reader->parse(reader,
+                  "32s 32s 32s 32s 64S 64S 64S 64S",
+                  &s_val_1, &s_val_2, &s_val_3, &s_val_4,
+                  &s_val64_1, &s_val64_2, &s_val64_3, &s_val64_4);
+    assert(s_val_1 == 0);
+    assert(s_val_2 == -1);
+    assert(s_val_3 == -2147483648);
+    assert(s_val_4 == 2147483647);
+    assert(s_val64_1 == 0);
+    assert(s_val64_2 == -1);
+    assert(s_val64_3 == (9223372036854775808ULL * -1));
+    assert(s_val64_4 == 9223372036854775807LL);
+
+    reader->unmark(reader);
+}
+
+void
+test_edge_reader_le(BitstreamReader* reader)
+{
+    unsigned int u_val_1;
+    unsigned int u_val_2;
+    unsigned int u_val_3;
+    unsigned int u_val_4;
+    int s_val_1;
+    int s_val_2;
+    int s_val_3;
+    int s_val_4;
+    uint64_t u_val64_1;
+    uint64_t u_val64_2;
+    uint64_t u_val64_3;
+    uint64_t u_val64_4;
+    int64_t s_val64_1;
+    int64_t s_val64_2;
+    int64_t s_val64_3;
+    int64_t s_val64_4;
+
+    reader->mark(reader);
+
+    /*try the unsigned 32 and 64 bit values*/
+    assert(reader->read(reader, 32) == 0);
+    assert(reader->read(reader, 32) == 4294967295);
+    assert(reader->read(reader, 32) == 2147483648);
+    assert(reader->read(reader, 32) == 2147483647);
+    assert(reader->read_64(reader, 64) == 0);
+    assert(reader->read_64(reader, 64) == 0xFFFFFFFFFFFFFFFFULL);
+    assert(reader->read_64(reader, 64) == 9223372036854775808ULL);
+    assert(reader->read_64(reader, 64) == 9223372036854775807ULL);
+
+    /*try the signed 32 and 64 bit values*/
+    reader->rewind(reader);
+    assert(reader->read_signed(reader, 32) == 0);
+    assert(reader->read_signed(reader, 32) == -1);
+    assert(reader->read_signed(reader, 32) == -2147483648);
+    assert(reader->read_signed(reader, 32) == 2147483647);
+    assert(reader->read_signed_64(reader, 64) == 0);
+    assert(reader->read_signed_64(reader, 64) == -1);
+    assert(reader->read_signed_64(reader, 64) == (9223372036854775808ULL * -1));
+    assert(reader->read_signed_64(reader, 64) == 9223372036854775807LL);
+
+    /*try the unsigned values via parse()*/
+    reader->rewind(reader);
+    reader->parse(reader,
+                  "32u 32u 32u 32u 64U 64U 64U 64U",
+                  &u_val_1, &u_val_2, &u_val_3, &u_val_4,
+                  &u_val64_1, &u_val64_2, &u_val64_3, &u_val64_4);
+    assert(u_val_1 == 0);
+    assert(u_val_2 == 4294967295);
+    assert(u_val_3 == 2147483648);
+    assert(u_val_4 == 2147483647);
+    assert(u_val64_1 == 0);
+    assert(u_val64_2 == 0xFFFFFFFFFFFFFFFFULL);
+    assert(u_val64_3 == 9223372036854775808ULL);
+    assert(u_val64_4 == 9223372036854775807ULL);
+
+    /*try the signed values via parse()*/
+    reader->rewind(reader);
+    reader->parse(reader,
+                  "32s 32s 32s 32s 64S 64S 64S 64S",
+                  &s_val_1, &s_val_2, &s_val_3, &s_val_4,
+                  &s_val64_1, &s_val64_2, &s_val64_3, &s_val64_4);
+    assert(s_val_1 == 0);
+    assert(s_val_2 == -1);
+    assert(s_val_3 == -2147483648);
+    assert(s_val_4 == 2147483647);
+    assert(s_val64_1 == 0);
+    assert(s_val64_2 == -1);
+    assert(s_val64_3 == (9223372036854775808ULL * -1));
+    assert(s_val64_4 == 9223372036854775807LL);
+
+    reader->unmark(reader);
+}
+
+void
+test_edge_writer(BitstreamWriter* (*get_writer)(void),
+                 void (*validate_writer)(BitstreamWriter*))
+{
     BitstreamWriter* writer;
 
     unsigned int u_val_1;
@@ -4668,143 +4916,189 @@ void test_edge_cases(void) {
     int64_t s_val64_3;
     int64_t s_val64_4;
 
-    /*write the temp file with a collection of known big-endian test bytes*/
-    output_file = fopen(temp_filename, "wb");
-    assert(fwrite(big_endian, sizeof(uint8_t), 96, output_file) == 96);
-    fclose(output_file);
-
-    /*ensure a big-endian reader reads the values correctly*/
-    reader = br_open(fopen(temp_filename, "rb"), BS_BIG_ENDIAN);
-    reader->mark(reader);
-
     /*try the unsigned 32 and 64 bit values*/
-    assert(reader->read(reader, 32) == 0);
-    assert(reader->read(reader, 32) == 4294967295);
-    assert(reader->read(reader, 32) == 2147483648);
-    assert(reader->read(reader, 32) == 2147483647);
-    assert(reader->read_64(reader, 64) == 0);
-    assert(reader->read_64(reader, 64) == 0xFFFFFFFFFFFFFFFFULL);
-    assert(reader->read_64(reader, 64) == 9223372036854775808ULL);
-    assert(reader->read_64(reader, 64) == 9223372036854775807ULL);
+    writer = get_writer();
+    writer->write(writer, 32, 0);
+    writer->write(writer, 32, 4294967295);
+    writer->write(writer, 32, 2147483648);
+    writer->write(writer, 32, 2147483647);
+    writer->write_64(writer, 64, 0);
+    writer->write_64(writer, 64, 0xFFFFFFFFFFFFFFFFULL);
+    writer->write_64(writer, 64, 9223372036854775808ULL);
+    writer->write_64(writer, 64, 9223372036854775807ULL);
+    validate_writer(writer);
 
     /*try the signed 32 and 64 bit values*/
-    reader->rewind(reader);
-    assert(reader->read_signed(reader, 32) == 0);
-    assert(reader->read_signed(reader, 32) == -1);
-    assert(reader->read_signed(reader, 32) == -2147483648);
-    assert(reader->read_signed(reader, 32) == 2147483647);
-    assert(reader->read_signed_64(reader, 64) == 0);
-    assert(reader->read_signed_64(reader, 64) == -1);
-    assert(reader->read_signed_64(reader, 64) == (9223372036854775808ULL * -1));
-    assert(reader->read_signed_64(reader, 64) == 9223372036854775807LL);
+    writer = get_writer();
+    writer->write_signed(writer, 32, 0);
+    writer->write_signed(writer, 32, -1);
+    writer->write_signed(writer, 32, -2147483648);
+    writer->write_signed(writer, 32, 2147483647);
+    writer->write_signed_64(writer, 64, 0);
+    writer->write_signed_64(writer, 64, -1);
+    writer->write_signed_64(writer, 64, (9223372036854775808ULL * -1));
+    writer->write_signed_64(writer, 64, 9223372036854775807LL);
+    validate_writer(writer);
 
-    /*try the unsigned values via parse()*/
-    reader->rewind(reader);
-    reader->parse(reader,
-                  "32u 32u 32u 32u 64U 64U 64U 64U",
-                  &u_val_1, &u_val_2, &u_val_3, &u_val_4,
-                  &u_val64_1, &u_val64_2, &u_val64_3, &u_val64_4);
-    assert(u_val_1 == 0);
-    assert(u_val_2 == 4294967295);
-    assert(u_val_3 == 2147483648);
-    assert(u_val_4 == 2147483647);
-    assert(u_val64_1 == 0);
-    assert(u_val64_2 == 0xFFFFFFFFFFFFFFFFULL);
-    assert(u_val64_3 == 9223372036854775808ULL);
-    assert(u_val64_4 == 9223372036854775807ULL);
+    /*try the unsigned values via build()*/
+    writer = get_writer();
+    u_val_1 = 0;
+    u_val_2 = 4294967295;
+    u_val_3 = 2147483648;
+    u_val_4 = 2147483647;
+    u_val64_1 = 0;
+    u_val64_2 = 0xFFFFFFFFFFFFFFFFULL;
+    u_val64_3 = 9223372036854775808ULL;
+    u_val64_4 = 9223372036854775807ULL;
+    writer->build(writer, "32u 32u 32u 32u 64U 64U 64U 64U",
+                  u_val_1, u_val_2, u_val_3, u_val_4,
+                  u_val64_1, u_val64_2, u_val64_3, u_val64_4);
+    validate_writer(writer);
 
-    /*try the signed values via parse()*/
-    reader->rewind(reader);
-    reader->parse(reader,
-                  "32s 32s 32s 32s 64S 64S 64S 64S",
-                  &s_val_1, &s_val_2, &s_val_3, &s_val_4,
-                  &s_val64_1, &s_val64_2, &s_val64_3, &s_val64_4);
-    assert(s_val_1 == 0);
-    assert(s_val_2 == -1);
-    assert(s_val_3 == -2147483648);
-    assert(s_val_4 == 2147483647);
-    assert(s_val64_1 == 0);
-    assert(s_val64_2 == -1);
-    assert(s_val64_3 == (9223372036854775808ULL * -1));
-    assert(s_val64_4 == 9223372036854775807LL);
-
-    reader->unmark(reader);
-    reader->close(reader);
-
-    /*write the temp file with a collection of known little-endian test bytes*/
-    output_file = fopen(temp_filename, "wb");
-    assert(fwrite(little_endian, sizeof(uint8_t), 96, output_file) == 96);
-    fclose(output_file);
-
-    /*ensure a little-endian reader reads the values correctly*/
-    reader = br_open(fopen(temp_filename, "rb"), BS_LITTLE_ENDIAN);
-    reader->mark(reader);
-
-    /*try the unsigned 32 and 64 bit values*/
-    assert(reader->read(reader, 32) == 0);
-    assert(reader->read(reader, 32) == 4294967295);
-    assert(reader->read(reader, 32) == 2147483648);
-    assert(reader->read(reader, 32) == 2147483647);
-    assert(reader->read_64(reader, 64) == 0);
-    assert(reader->read_64(reader, 64) == 0xFFFFFFFFFFFFFFFFULL);
-    assert(reader->read_64(reader, 64) == 9223372036854775808ULL);
-    assert(reader->read_64(reader, 64) == 9223372036854775807ULL);
-
-    /*try the signed 32 and 64 bit values*/
-    reader->rewind(reader);
-    assert(reader->read_signed(reader, 32) == 0);
-    assert(reader->read_signed(reader, 32) == -1);
-    assert(reader->read_signed(reader, 32) == -2147483648);
-    assert(reader->read_signed(reader, 32) == 2147483647);
-    assert(reader->read_signed_64(reader, 64) == 0);
-    assert(reader->read_signed_64(reader, 64) == -1);
-    assert(reader->read_signed_64(reader, 64) == (9223372036854775808ULL * -1));
-    assert(reader->read_signed_64(reader, 64) == 9223372036854775807LL);
-
-    /*try the unsigned values via parse()*/
-    reader->rewind(reader);
-    reader->parse(reader,
-                  "32u 32u 32u 32u 64U 64U 64U 64U",
-                  &u_val_1, &u_val_2, &u_val_3, &u_val_4,
-                  &u_val64_1, &u_val64_2, &u_val64_3, &u_val64_4);
-    assert(u_val_1 == 0);
-    assert(u_val_2 == 4294967295);
-    assert(u_val_3 == 2147483648);
-    assert(u_val_4 == 2147483647);
-    assert(u_val64_1 == 0);
-    assert(u_val64_2 == 0xFFFFFFFFFFFFFFFFULL);
-    assert(u_val64_3 == 9223372036854775808ULL);
-    assert(u_val64_4 == 9223372036854775807ULL);
-
-    /*try the signed values via parse()*/
-    reader->rewind(reader);
-    reader->parse(reader,
-                  "32s 32s 32s 32s 64S 64S 64S 64S",
-                  &s_val_1, &s_val_2, &s_val_3, &s_val_4,
-                  &s_val64_1, &s_val64_2, &s_val64_3, &s_val64_4);
-    assert(s_val_1 == 0);
-    assert(s_val_2 == -1);
-    assert(s_val_3 == -2147483648);
-    assert(s_val_4 == 2147483647);
-    assert(s_val64_1 == 0);
-    assert(s_val64_2 == -1);
-    assert(s_val64_3 == (9223372036854775808ULL * -1));
-    assert(s_val64_4 == 9223372036854775807LL);
-
-    reader->unmark(reader);
-    reader->close(reader);
-
-    /*write a bunch of known big-endian values via the bitstream writer*/
-    /*FIXME*/
-
-    /*ensure the file has the correct bytes*/
-    /*FIXME*/
-
-    /*write a bunch of known little-endian values via the bitstream writer*/
-    /*FIXME*/
-
-    /*ensure the file has the correct bytes*/
-    /*FIXME*/
+    /*try the signed values via build()*/
+    writer = get_writer();
+    s_val_1 = 0;
+    s_val_2 = -1;
+    s_val_3 = -2147483648;
+    s_val_4 = 2147483647;
+    s_val64_1 = 0;
+    s_val64_2 = -1;
+    s_val64_3 = (9223372036854775808ULL * -1);
+    s_val64_4 = 9223372036854775807LL;
+    writer->build(writer, "32s 32s 32s 32s 64S 64S 64S 64S",
+                  s_val_1, s_val_2, s_val_3, s_val_4,
+                  s_val64_1, s_val64_2, s_val64_3, s_val64_4);
+    validate_writer(writer);
 }
+
+BitstreamWriter*
+get_edge_writer_be(void)
+{
+    return bw_open(fopen(temp_filename, "wb"), BS_BIG_ENDIAN);
+}
+
+BitstreamWriter*
+get_edge_recorder_be(void)
+{
+    return bw_open_recorder(BS_BIG_ENDIAN);
+}
+
+BitstreamWriter*
+get_edge_accumulator_be(void)
+{
+    return bw_open_accumulator(BS_BIG_ENDIAN);
+}
+
+void
+validate_edge_writer_be(BitstreamWriter* writer)
+{
+    const static uint8_t big_endian[] =
+        {0, 0, 0, 0, 255, 255, 255, 255,
+         128, 0, 0, 0, 127, 255, 255, 255,
+         0, 0, 0, 0, 0, 0, 0, 0,
+         255, 255, 255, 255, 255, 255, 255, 255,
+         128, 0, 0, 0, 0, 0, 0, 0,
+         127, 255, 255, 255, 255, 255, 255, 255};
+    uint8_t data[48];
+    FILE* input_file;
+
+    writer->close(writer);
+    input_file = fopen(temp_filename, "rb");
+    assert(fread(data, sizeof(uint8_t), 48, input_file) == 48);
+    assert(memcmp(data, big_endian, 48) == 0);
+    fclose(input_file);
+}
+
+void
+validate_edge_recorder_be(BitstreamWriter* recorder)
+{
+    BitstreamWriter* writer;
+    const static uint8_t big_endian[] =
+        {0, 0, 0, 0, 255, 255, 255, 255,
+         128, 0, 0, 0, 127, 255, 255, 255,
+         0, 0, 0, 0, 0, 0, 0, 0,
+         255, 255, 255, 255, 255, 255, 255, 255,
+         128, 0, 0, 0, 0, 0, 0, 0,
+         127, 255, 255, 255, 255, 255, 255, 255};
+    uint8_t data[48];
+    FILE* input_file;
+
+    writer = bw_open(fopen(temp_filename, "wb"), BS_BIG_ENDIAN);
+    bw_dump_records(writer, recorder);
+    recorder->close(recorder);
+    writer->close(writer);
+    input_file = fopen(temp_filename, "rb");
+    assert(fread(data, sizeof(uint8_t), 48, input_file) == 48);
+    assert(memcmp(data, big_endian, 48) == 0);
+    fclose(input_file);
+}
+
+void
+validate_edge_accumulator(BitstreamWriter* accumulator)
+{
+    assert(accumulator->bits_written(accumulator) == 48 * 8);
+    accumulator->close(accumulator);
+}
+
+BitstreamWriter*
+get_edge_writer_le(void) {
+    return bw_open(fopen(temp_filename, "wb"), BS_LITTLE_ENDIAN);
+}
+
+BitstreamWriter*
+get_edge_recorder_le(void)
+{
+    return bw_open_recorder(BS_LITTLE_ENDIAN);
+}
+
+BitstreamWriter*
+get_edge_accumulator_le(void)
+{
+    return bw_open_accumulator(BS_LITTLE_ENDIAN);
+}
+
+void
+validate_edge_writer_le(BitstreamWriter* writer) {
+    const static uint8_t little_endian[] =
+        {0, 0, 0, 0, 255, 255, 255, 255,
+         0, 0, 0, 128, 255, 255, 255, 127,
+         0, 0, 0, 0, 0, 0, 0, 0,
+         255, 255, 255, 255, 255, 255, 255, 255,
+         0, 0, 0, 0, 0, 0, 0, 128,
+         255, 255, 255, 255, 255, 255, 255, 127};
+    uint8_t data[48];
+    FILE* input_file;
+
+    writer->close(writer);
+    input_file = fopen(temp_filename, "rb");
+    assert(fread(data, sizeof(uint8_t), 48, input_file) == 48);
+    assert(memcmp(data, little_endian, 48) == 0);
+    fclose(input_file);
+}
+
+void
+validate_edge_recorder_le(BitstreamWriter* recorder)
+{
+    BitstreamWriter* writer;
+    const static uint8_t little_endian[] =
+        {0, 0, 0, 0, 255, 255, 255, 255,
+         0, 0, 0, 128, 255, 255, 255, 127,
+         0, 0, 0, 0, 0, 0, 0, 0,
+         255, 255, 255, 255, 255, 255, 255, 255,
+         0, 0, 0, 0, 0, 0, 0, 128,
+         255, 255, 255, 255, 255, 255, 255, 127};
+    uint8_t data[48];
+    FILE* input_file;
+
+    writer = bw_open(fopen(temp_filename, "wb"), BS_LITTLE_ENDIAN);
+    bw_dump_records(writer, recorder);
+    recorder->close(recorder);
+    writer->close(writer);
+    input_file = fopen(temp_filename, "rb");
+    assert(fread(data, sizeof(uint8_t), 48, input_file) == 48);
+    assert(memcmp(data, little_endian, 48) == 0);
+    fclose(input_file);
+}
+
 
 #endif
