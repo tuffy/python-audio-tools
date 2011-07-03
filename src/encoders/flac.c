@@ -427,26 +427,26 @@ FlacEncoder_write_frame(BitstreamWriter *bs,
                         avg_subframe_bits + difference_subframe_bits))) {
                 /*do independent subframes*/
                 FlacEncoder_write_frame_header(bs, streaminfo, samples, 1);
-                bw_dump_records(bs, left_subframe);
-                bw_dump_records(bs, right_subframe);
+                bw_rec_copy(bs, left_subframe);
+                bw_rec_copy(bs, right_subframe);
             } else if ((left_subframe_bits + side_subframe_bits) <
                        MIN(side_subframe_bits + right_subframe_bits,
                            avg_subframe_bits + difference_subframe_bits)) {
                 /*do left-side subframes*/
                 FlacEncoder_write_frame_header(bs, streaminfo, samples, 0x8);
-                bw_dump_records(bs, left_subframe);
-                bw_dump_records(bs, side_subframe);
+                bw_rec_copy(bs, left_subframe);
+                bw_rec_copy(bs, side_subframe);
             } else if ((side_subframe_bits + right_subframe_bits) <
                        (avg_subframe_bits + difference_subframe_bits)) {
                 /*do side-right subframes*/
                 FlacEncoder_write_frame_header(bs, streaminfo, samples, 0x9);
-                bw_dump_records(bs, side_subframe);
-                bw_dump_records(bs, right_subframe);
+                bw_rec_copy(bs, side_subframe);
+                bw_rec_copy(bs, right_subframe);
             } else {
                 /*do mid-side subframes*/
                 FlacEncoder_write_frame_header(bs, streaminfo, samples, 0xA);
-                bw_dump_records(bs, avg_subframe);
-                bw_dump_records(bs, difference_subframe);
+                bw_rec_copy(bs, avg_subframe);
+                bw_rec_copy(bs, difference_subframe);
             }
 
             side_subframe->close(side_subframe);
@@ -467,12 +467,12 @@ FlacEncoder_write_frame(BitstreamWriter *bs,
             if ((left_subframe_bits + right_subframe_bits) <=
                 (avg_subframe_bits + difference_subframe_bits)) {
                 FlacEncoder_write_frame_header(bs, streaminfo, samples, 1);
-                bw_dump_records(bs, left_subframe);
-                bw_dump_records(bs, right_subframe);
+                bw_rec_copy(bs, left_subframe);
+                bw_rec_copy(bs, right_subframe);
             } else {
                 FlacEncoder_write_frame_header(bs, streaminfo, samples, 0xA);
-                bw_dump_records(bs, avg_subframe);
-                bw_dump_records(bs, difference_subframe);
+                bw_rec_copy(bs, avg_subframe);
+                bw_rec_copy(bs, difference_subframe);
             }
         }
 

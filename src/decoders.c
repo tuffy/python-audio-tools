@@ -490,7 +490,8 @@ BitstreamReader_pop_callback(decoders_BitstreamReader *self, PyObject *args) {
 }
 
 void
-BitstreamReader_callback(uint8_t byte, PyObject *callback) {
+BitstreamReader_callback(uint8_t byte, PyObject *callback)
+{
     PyObject* result = PyObject_CallFunction(callback, "B", byte);
 
     if (result != NULL) {

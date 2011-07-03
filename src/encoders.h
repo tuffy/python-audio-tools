@@ -90,6 +90,14 @@ BitstreamWriter_write_bytes(encoders_BitstreamWriter *self,
                             PyObject *args);
 
 static PyObject*
+BitstreamWriter_add_callback(encoders_BitstreamWriter *self,
+                             PyObject *args);
+
+static PyObject*
+BitstreamWriter_pop_callback(encoders_BitstreamWriter *self,
+                             PyObject *args);
+
+static PyObject*
 BitstreamWriter_build(encoders_BitstreamWriter *self, PyObject *args);
 
 static PyObject*
@@ -119,6 +127,10 @@ PyMethodDef BitstreamWriter_methods[] = {
      METH_VARARGS, ""},
     {"build", (PyCFunction)BitstreamWriter_build,
      METH_VARARGS, ""},
+    {"add_callback", (PyCFunction)BitstreamWriter_add_callback,
+     METH_VARARGS, ""},
+    {"pop_callback", (PyCFunction)BitstreamWriter_pop_callback,
+     METH_NOARGS, ""},
     {NULL}
 };
 
@@ -223,6 +235,14 @@ BitstreamRecorder_build(encoders_BitstreamRecorder *self,
                         PyObject *args);
 
 static PyObject*
+BitstreamRecorder_add_callback(encoders_BitstreamRecorder *self,
+                               PyObject *args);
+
+static PyObject*
+BitstreamRecorder_pop_callback(encoders_BitstreamRecorder *self,
+                               PyObject *args);
+
+static PyObject*
 BitstreamRecorder_reset(encoders_BitstreamRecorder *self,
                         PyObject *args);
 
@@ -232,8 +252,12 @@ static BitstreamWriter*
 internal_writer(PyObject *writer);
 
 static PyObject*
-BitstreamRecorder_dump(encoders_BitstreamRecorder *self,
+BitstreamRecorder_copy(encoders_BitstreamRecorder *self,
                        PyObject *args);
+
+static PyObject*
+BitstreamRecorder_split(encoders_BitstreamRecorder *self,
+                        PyObject *args);
 
 static PyObject*
 BitstreamRecorder_close(encoders_BitstreamRecorder *self,
@@ -268,10 +292,16 @@ PyMethodDef BitstreamRecorder_methods[] = {
      METH_NOARGS, ""},
     {"reset", (PyCFunction)BitstreamRecorder_reset,
      METH_NOARGS, ""},
-    {"dump", (PyCFunction)BitstreamRecorder_dump,
+    {"copy", (PyCFunction)BitstreamRecorder_copy,
+     METH_VARARGS, ""},
+    {"split", (PyCFunction)BitstreamRecorder_split,
      METH_VARARGS, ""},
     {"build", (PyCFunction)BitstreamRecorder_build,
      METH_VARARGS, ""},
+    {"add_callback", (PyCFunction)BitstreamRecorder_add_callback,
+     METH_VARARGS, ""},
+    {"pop_callback", (PyCFunction)BitstreamRecorder_pop_callback,
+     METH_NOARGS, ""},
     {NULL}
 };
 
@@ -459,3 +489,6 @@ PyTypeObject encoders_BitstreamAccumulatorType = {
     0,                         /* tp_alloc */
     BitstreamAccumulator_new,  /* tp_new */
 };
+
+void
+BitstreamWriter_callback(uint8_t byte, PyObject *callback);

@@ -2749,7 +2749,7 @@ bw_dump_bytes(BitstreamWriter* target, uint8_t* buffer, unsigned int total) {
 }
 
 void
-bw_dump_records(BitstreamWriter* target, BitstreamWriter* source)
+bw_rec_copy(BitstreamWriter* target, BitstreamWriter* source)
 {
     assert(source->type == BW_RECORDER);
 
@@ -2766,10 +2766,10 @@ bw_dump_records(BitstreamWriter* target, BitstreamWriter* source)
 }
 
 unsigned int
-bw_dump_records_limited(BitstreamWriter* target,
-                        BitstreamWriter* remaining,
-                        BitstreamWriter* source,
-                        unsigned int total_bytes) {
+bw_rec_split(BitstreamWriter* target,
+             BitstreamWriter* remaining,
+             BitstreamWriter* source,
+             unsigned int total_bytes) {
     uint8_t* buffer;
     uint32_t buffer_size;
     unsigned int to_target;
@@ -2782,23 +2782,29 @@ bw_dump_records_limited(BitstreamWriter* target,
     to_target = MIN(total_bytes, buffer_size);
     to_remaining = buffer_size - to_target;
 
-    /*first, dump up to "total_bytes" from source to "target"*/
-    bw_dump_bytes(target, buffer, to_target);
+    /*first, dump up to "total_bytes" from source to "target"
+      if available*/
+    if (target != NULL) {
+        bw_dump_bytes(target, buffer, to_target);
+    }
 
-    if (remaining != source) {
-        /*then, dump the remaining bytes from source to "remaining"
-          if it is a separate writer*/
-        bw_dump_bytes(remaining, buffer + to_target, to_remaining);
+    if (remaining != NULL) {
+        if (remaining != source) {
+            /*then, dump the remaining bytes from source to "remaining"
+              if it is a separate writer*/
+            bw_dump_bytes(remaining, buffer + to_target, to_remaining);
 
-        if (source->buffer_size > 0)
-            remaining->write(remaining,
-                             source->buffer_size,
-                             source->buffer & ((1 << source->buffer_size) - 1));
-    } else {
-        /*if remaining is the same as source,
-          shift source's output buffer down*/
-        memmove(buffer, buffer + to_target, to_remaining);
-        source->output.buffer->buffer_size -= to_target;
+            if (source->buffer_size > 0)
+                remaining->write(
+                    remaining,
+                    source->buffer_size,
+                    source->buffer & ((1 << source->buffer_size) - 1));
+        } else {
+            /*if remaining is the same as source,
+              shift source's output buffer down*/
+            memmove(buffer, buffer + to_target, to_remaining);
+            source->output.buffer->buffer_size -= to_target;
+        }
     }
 
     return to_target;
@@ -4391,7 +4397,7 @@ test_writer(bs_endianness endianness) {
         sub_writer = bw_open_recorder(endianness);
         assert(sub_writer->bits_written(sub_writer) == 0);
         checks[i](sub_writer, endianness);
-        bw_dump_records(writer, sub_writer);
+        bw_rec_copy(writer, sub_writer);
         fflush(output_file);
         check_output_file();
         bw_free(writer);
@@ -4419,8 +4425,8 @@ test_writer(bs_endianness endianness) {
     sub_writer->write(sub_writer, 8, 0x3B);
     sub_writer->write(sub_writer, 8, 0xC1);
     bw_swap_records(sub_writer, sub_sub_writer);
-    bw_dump_records(writer, sub_writer);
-    bw_dump_records(writer, sub_sub_writer);
+    bw_rec_copy(writer, sub_writer);
+    bw_rec_copy(writer, sub_sub_writer);
     fflush(output_file);
     check_output_file();
     writer->close(writer);
@@ -4441,7 +4447,7 @@ test_writer(bs_endianness endianness) {
     sub_writer->write(sub_writer, 8, 0xED);
     sub_writer->write(sub_writer, 8, 0x3B);
     sub_writer->write(sub_writer, 8, 0xC1);
-    bw_dump_records(writer, sub_writer);
+    bw_rec_copy(writer, sub_writer);
     fflush(output_file);
     sub_writer->close(sub_writer);
     writer->close(writer);
@@ -4475,10 +4481,10 @@ test_writer(bs_endianness endianness) {
         checks[i](sub_sub_writer, endianness);
         assert(sub_writer->bits_written(sub_writer) == 0);
         assert(sub_writer->bits_written(sub_sub_writer) == 32);
-        bw_dump_records(sub_writer, sub_sub_writer);
+        bw_rec_copy(sub_writer, sub_sub_writer);
         assert(sub_writer->bits_written(sub_writer) == 32);
         assert(sub_writer->bits_written(sub_sub_writer) == 32);
-        bw_dump_records(writer, sub_writer);
+        bw_rec_copy(writer, sub_writer);
         fflush(output_file);
         check_output_file();
         bw_free(writer);
@@ -4496,7 +4502,7 @@ test_writer(bs_endianness endianness) {
         checks[i](sub_writer, endianness);
         assert(writer->bits_written(writer) == 0);
         assert(sub_writer->bits_written(sub_writer) == 32);
-        bw_dump_records(writer, sub_writer);
+        bw_rec_copy(writer, sub_writer);
         assert(writer->bits_written(writer) == 32);
         assert(sub_writer->bits_written(sub_writer) == 32);
         writer->close(writer);
@@ -5024,7 +5030,7 @@ validate_edge_recorder_be(BitstreamWriter* recorder)
     FILE* input_file;
 
     writer = bw_open(fopen(temp_filename, "wb"), BS_BIG_ENDIAN);
-    bw_dump_records(writer, recorder);
+    bw_rec_copy(writer, recorder);
     recorder->close(recorder);
     writer->close(writer);
     input_file = fopen(temp_filename, "rb");
@@ -5091,7 +5097,7 @@ validate_edge_recorder_le(BitstreamWriter* recorder)
     FILE* input_file;
 
     writer = bw_open(fopen(temp_filename, "wb"), BS_LITTLE_ENDIAN);
-    bw_dump_records(writer, recorder);
+    bw_rec_copy(writer, recorder);
     recorder->close(recorder);
     writer->close(writer);
     input_file = fopen(temp_filename, "rb");

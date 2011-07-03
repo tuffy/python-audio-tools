@@ -855,20 +855,23 @@ bw_dump_bytes(BitstreamWriter* target, uint8_t* buffer, unsigned int total);
 /*given a BitstreamWriter recorder "source",
   writes all of its recorded output to "target"*/
 void
-bw_dump_records(BitstreamWriter* target, BitstreamWriter* source);
+bw_rec_copy(BitstreamWriter* target, BitstreamWriter* source);
 
 /*given a BitstreamWriter recorder "source",
   writes up to "total_bytes" of recorded output to "target"
   while any remaining records are sent to "remaining"
-  (if "remaining" is the same writer as "source",
-   sent records will be removed leaving only the remainder)
+
+  if "remaining" is the same writer as "source",
+  sent records will be removed leaving only the remainder
+
+  if "target" or "remaining" are NULL, those outputs are ignored
 
   returns the total bytes dumped to "target"*/
 unsigned int
-bw_dump_records_limited(BitstreamWriter* target,
-                        BitstreamWriter* remaining,
-                        BitstreamWriter* source,
-                        unsigned int total_bytes);
+bw_rec_split(BitstreamWriter* target,
+             BitstreamWriter* remaining,
+             BitstreamWriter* source,
+             unsigned int total_bytes);
 
 /*clear the recorded output and reset for new output*/
 static inline void

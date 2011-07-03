@@ -573,7 +573,7 @@ wavpack_write_block(BitstreamWriter* bs,
     wavpack_write_block_header(bs, &block_header);
 
     /*write sub-block data*/
-    bw_dump_records(bs, sub_blocks);
+    bw_rec_copy(bs, sub_blocks);
 
     /*clear temporary space*/
     ia_free(&decorrelation_terms);
@@ -756,7 +756,7 @@ wavpack_write_channel_info(BitstreamWriter *bs,
 
     wavpack_write_subblock_header(bs, WV_CHANNEL_INFO, 0,
                                   sub_block->bits_written(sub_block) / 8);
-    bw_dump_records(bs, sub_block);
+    bw_rec_copy(bs, sub_block);
     sub_block->close(sub_block);
 }
 
@@ -1038,7 +1038,7 @@ wavpack_write_residuals(BitstreamWriter *bs,
                                   residual_data->bits_written(residual_data) / 8);
 
     /*write out the residual data*/
-    bw_dump_records(bs, residual_data);
+    bw_rec_copy(bs, residual_data);
 }
 
 /*The actual median values are stored as fractions of integers.
@@ -2088,7 +2088,7 @@ wavpack_write_footer_block(BitstreamWriter *bs,
 
     block_header.block_size = 24 + (block_data->bits_written(block_data) / 8);
     wavpack_write_block_header(bs, &block_header);
-    bw_dump_records(bs, block_data);
+    bw_rec_copy(bs, block_data);
     block_data->close(block_data);
 }
 
@@ -2183,7 +2183,7 @@ wavpack_write_wave_header_sub_block(BitstreamWriter* stream,
 
     wavpack_write_subblock_header(stream, WV_WAVE_HEADER, 1,
                                   wave_header->bits_written(wave_header) / 8);
-    bw_dump_records(stream, wave_header);
+    bw_rec_copy(stream, wave_header);
     wave_header->close(wave_header);
 }
 

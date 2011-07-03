@@ -242,6 +242,46 @@ BitstreamWriter_build(encoders_BitstreamWriter *self, PyObject *args) {
 }
 
 static PyObject*
+BitstreamWriter_add_callback(encoders_BitstreamWriter *self,
+                             PyObject *args) {
+    PyObject* callback;
+
+    if (!PyArg_ParseTuple(args, "O", &callback))
+        return NULL;
+
+    if (!PyCallable_Check(callback)) {
+        PyErr_SetString(PyExc_TypeError, "callback must be callable");
+        return NULL;
+    }
+
+    Py_INCREF(callback);
+    bw_add_callback(self->bitstream,
+                    (bs_callback_func)BitstreamWriter_callback,
+                    callback);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+BitstreamWriter_pop_callback(encoders_BitstreamWriter *self,
+                             PyObject *args) {
+    struct bs_callback callback;
+    PyObject* callback_obj;
+
+    if (self->bitstream->callbacks != NULL) {
+        bw_pop_callback(self->bitstream, &callback);
+        callback_obj = callback.data;
+        /*decref object from stack and then incref object for return
+          should have a net effect of noop*/
+        return callback_obj;
+    } else {
+        PyErr_SetString(PyExc_IndexError, "no callbacks to pop");
+        return NULL;
+    }
+}
+
+static PyObject*
 BitstreamWriter_close(encoders_BitstreamWriter *self, PyObject *args) {
     Py_INCREF(Py_None);
     return Py_None;
@@ -437,7 +477,7 @@ internal_writer(PyObject *writer) {
 }
 
 static PyObject*
-BitstreamRecorder_dump(encoders_BitstreamRecorder *self,
+BitstreamRecorder_copy(encoders_BitstreamRecorder *self,
                        PyObject *args) {
     PyObject* bitstreamwriter_obj;
     BitstreamWriter* target;
@@ -446,17 +486,98 @@ BitstreamRecorder_dump(encoders_BitstreamRecorder *self,
         return NULL;
 
     if ((target = internal_writer(bitstreamwriter_obj)) != NULL) {
-        bw_dump_records(target, self->bitstream);
+        bw_rec_copy(target, self->bitstream);
 
         Py_INCREF(Py_None);
         return Py_None;
     } else {
-        PyErr_SetString(PyExc_TypeError, "argument must be a "
+        PyErr_SetString(PyExc_TypeError,
+                        "argument must be a "
                         "BitstreamWriter, BitstreamRecorder "
                         "or BitstreamAccumulator");
         return NULL;
     }
 }
+
+static PyObject*
+BitstreamRecorder_split(encoders_BitstreamRecorder *self,
+                        PyObject *args) {
+    PyObject* target_obj;
+    PyObject* remainder_obj;
+    BitstreamWriter* target;
+    BitstreamWriter* remainder;
+    unsigned int total_bytes;
+
+    if (!PyArg_ParseTuple(args, "OOI",
+                          &target_obj, &remainder_obj, &total_bytes))
+        return NULL;
+
+    if (target_obj == Py_None) {
+        target = NULL;
+    } else if ((target = internal_writer(target_obj)) == NULL) {
+        PyErr_SetString(PyExc_TypeError,
+                        "target argument must be None, a "
+                        "BitstreamWriter, BitstreamRecorder "
+                        "or BitstreamAccumulator");
+        return NULL;
+    }
+
+    if (remainder_obj == Py_None) {
+        remainder = NULL;
+    } else if ((remainder = internal_writer(remainder_obj)) == NULL) {
+        PyErr_SetString(PyExc_TypeError,
+                        "remainder argument must be None, a "
+                        "BitstreamWriter, BitstreamRecorder "
+                        "or BitstreamAccumulator");
+        return NULL;
+    }
+
+    return Py_BuildValue("I", bw_rec_split(target,
+                                           remainder,
+                                           self->bitstream,
+                                           total_bytes));
+}
+
+static PyObject*
+BitstreamRecorder_add_callback(encoders_BitstreamRecorder *self,
+                               PyObject *args) {
+    PyObject* callback;
+
+    if (!PyArg_ParseTuple(args, "O", &callback))
+        return NULL;
+
+    if (!PyCallable_Check(callback)) {
+        PyErr_SetString(PyExc_TypeError, "callback must be callable");
+        return NULL;
+    }
+
+    Py_INCREF(callback);
+    bw_add_callback(self->bitstream,
+                    (bs_callback_func)BitstreamWriter_callback,
+                    callback);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+BitstreamRecorder_pop_callback(encoders_BitstreamRecorder *self,
+                               PyObject *args) {
+    struct bs_callback callback;
+    PyObject* callback_obj;
+
+    if (self->bitstream->callbacks != NULL) {
+        bw_pop_callback(self->bitstream, &callback);
+        callback_obj = callback.data;
+        /*decref object from stack and then incref object for return
+          should have a net effect of noop*/
+        return callback_obj;
+    } else {
+        PyErr_SetString(PyExc_IndexError, "no callbacks to pop");
+        return NULL;
+    }
+}
+
 
 static PyObject*
 BitstreamRecorder_close(encoders_BitstreamRecorder *self,
@@ -794,4 +915,16 @@ BitstreamAccumulator_bytes(encoders_BitstreamAccumulator *self,
                           PyObject *args) {
     return Py_BuildValue("I",
                          self->bitstream->bits_written(self->bitstream) / 8);
+}
+
+void
+BitstreamWriter_callback(uint8_t byte, PyObject *callback)
+{
+    PyObject* result = PyObject_CallFunction(callback, "B", byte);
+
+    if (result != NULL) {
+        Py_DECREF(result);
+    } else {
+        PyErr_PrintEx(0);
+    }
 }

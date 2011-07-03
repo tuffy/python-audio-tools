@@ -377,7 +377,7 @@ alac_write_frame(BitstreamWriter *bs,
                 ((samples->size * samples->arrays[0].size * bits_per_sample) +
                  56))
                 /*if our compressed frame is small enough, write it out*/
-                bw_dump_records(bs, compressed_frame);
+                bw_rec_copy(bs, compressed_frame);
             else {
                 /*otherwise, build an uncompressed frame instead*/
                 if (alac_write_uncompressed_frame(bs,
@@ -483,7 +483,7 @@ alac_write_compressed_frame(BitstreamWriter *bs,
         }
 
         /*use the shift and leftweight that uses the least bits*/
-        bw_dump_records(bs, best_frame);
+        bw_rec_copy(bs, best_frame);
         return OK;
     error:
         return ERROR;
