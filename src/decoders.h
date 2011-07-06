@@ -103,6 +103,9 @@ static PyObject*
 BitstreamReader_pop_callback(decoders_BitstreamReader *self, PyObject *args);
 
 static PyObject*
+BitstreamReader_call_callbacks(decoders_BitstreamReader *self, PyObject *args);
+
+static PyObject*
 BitstreamReader_substream(decoders_BitstreamReader *self, PyObject *args);
 
 static PyObject*
@@ -156,6 +159,8 @@ PyMethodDef BitstreamReader_methods[] = {
      METH_VARARGS, ""},
     {"pop_callback", (PyCFunction)BitstreamReader_pop_callback,
      METH_NOARGS, ""},
+    {"call_callbacks", (PyCFunction)BitstreamReader_call_callbacks,
+     METH_VARARGS, ""},
     {"substream", (PyCFunction)BitstreamReader_substream,
      METH_VARARGS, ""},
     {"substream_append", (PyCFunction)BitstreamReader_substream_append,

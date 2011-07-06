@@ -468,7 +468,7 @@ class LimitedPCMReader(unittest.TestCase):
 
 
 class PCMCat(unittest.TestCase):
-    @LIB_CUSTOM
+    @LIB_CORE
     def test_read(self):
         reader1 = BLANK_PCM_Reader(1)
         reader2 = BLANK_PCM_Reader(2)
@@ -1518,16 +1518,462 @@ class __SimpleChunkReader__:
     def close(self):
         pass
 
+class ByteCounter:
+    def __init__(self):
+        self.bytes = 0
+
+    def __int__(self):
+        return self.bytes
+
+    def reset(self):
+        self.bytes = 0
+
+    def callback(self, i):
+        self.bytes += 1
+
 class Bitstream(unittest.TestCase):
+    def __test_big_endian_reader__(self, reader, table):
+        #check the bitstream reader
+        #against some known big-endian values
+
+        reader.mark()
+        self.assertEqual(reader.read(2), 0x2)
+        self.assertEqual(reader.read(3), 0x6)
+        self.assertEqual(reader.read(5), 0x07)
+        self.assertEqual(reader.read(3), 0x5)
+        self.assertEqual(reader.read(19), 0x53BC1)
+
+        reader.rewind()
+        self.assertEqual(reader.read64(2), 0x2)
+        self.assertEqual(reader.read64(3), 0x6)
+        self.assertEqual(reader.read64(5), 0x07)
+        self.assertEqual(reader.read64(3), 0x5)
+        self.assertEqual(reader.read64(19), 0x53BC1)
+
+        reader.rewind()
+        self.assertEqual(reader.read(2), 0x2)
+        reader.skip(3)
+        self.assertEqual(reader.read(5), 0x07)
+        reader.skip(3)
+        self.assertEqual(reader.read(19), 0x53BC1)
+
+        reader.rewind()
+        self.assertEqual(reader.read(1), 1)
+        bit = reader.read(1)
+        self.assertEqual(bit, 0)
+        reader.unread(bit)
+        self.assertEqual(reader.read(2), 1)
+        reader.byte_align()
+
+        reader.rewind()
+        self.assertEqual(reader.read(8), 0xB1)
+        reader.unread(0)
+        self.assertEqual(reader.read(1), 0)
+        reader.unread(1)
+        self.assertEqual(reader.read(1), 1)
+
+        reader.rewind()
+        self.assertEqual(reader.read_signed(2), -2)
+        self.assertEqual(reader.read_signed(3), -2)
+        self.assertEqual(reader.read_signed(5), 7)
+        self.assertEqual(reader.read_signed(3), -3)
+        self.assertEqual(reader.read_signed(19), -181311)
+
+        reader.rewind()
+        self.assertEqual(reader.read_signed64(2), -2)
+        self.assertEqual(reader.read_signed64(3), -2)
+        self.assertEqual(reader.read_signed64(5), 7)
+        self.assertEqual(reader.read_signed64(3), -3)
+        self.assertEqual(reader.read_signed64(19), -181311)
+
+        reader.rewind()
+        self.assertEqual(reader.unary(0), 1)
+        self.assertEqual(reader.unary(0), 2)
+        self.assertEqual(reader.unary(0), 0)
+        self.assertEqual(reader.unary(0), 0)
+        self.assertEqual(reader.unary(0), 4)
+
+        reader.rewind()
+        self.assertEqual(reader.unary(1), 0)
+        self.assertEqual(reader.unary(1), 1)
+        self.assertEqual(reader.unary(1), 0)
+        self.assertEqual(reader.unary(1), 3)
+        self.assertEqual(reader.unary(1), 0)
+
+        reader.rewind()
+        self.assertEqual(reader.limited_unary(0, 2), 1)
+        self.assertEqual(reader.limited_unary(0, 2), None)
+        reader.rewind()
+        self.assertEqual(reader.limited_unary(1, 2), 0)
+        self.assertEqual(reader.limited_unary(1, 2), 1)
+        self.assertEqual(reader.limited_unary(1, 2), 0)
+        self.assertEqual(reader.limited_unary(1, 2), None)
+
+        reader.rewind()
+        self.assertEqual(reader.read_huffman_code(table), 1)
+        self.assertEqual(reader.read_huffman_code(table), 0)
+        self.assertEqual(reader.read_huffman_code(table), 4)
+        self.assertEqual(reader.read_huffman_code(table), 0)
+        self.assertEqual(reader.read_huffman_code(table), 0)
+        self.assertEqual(reader.read_huffman_code(table), 2)
+        self.assertEqual(reader.read_huffman_code(table), 1)
+        self.assertEqual(reader.read_huffman_code(table), 1)
+        self.assertEqual(reader.read_huffman_code(table), 2)
+        self.assertEqual(reader.read_huffman_code(table), 0)
+        self.assertEqual(reader.read_huffman_code(table), 2)
+        self.assertEqual(reader.read_huffman_code(table), 0)
+        self.assertEqual(reader.read_huffman_code(table), 1)
+        self.assertEqual(reader.read_huffman_code(table), 4)
+        self.assertEqual(reader.read_huffman_code(table), 2)
+
+        reader.rewind()
+        self.assertEqual(reader.read(3), 5)
+        reader.byte_align()
+        self.assertEqual(reader.read(3), 7)
+        reader.byte_align()
+        reader.byte_align()
+        self.assertEqual(reader.read(8), 59)
+        reader.byte_align()
+        self.assertEqual(reader.read(4), 12)
+
+        reader.rewind()
+        self.assertEqual(reader.read_bytes(2), "\xB1\xED")
+        reader.rewind()
+        self.assertEqual(reader.read(4), 11)
+        self.assertEqual(reader.read_bytes(2), "\x1E\xD3")
+
+        reader.rewind()
+        self.assertEqual(reader.read(3), 5)
+        reader.set_endianness(1)
+        self.assertEqual(reader.read(3), 5)
+        reader.set_endianness(0)
+        self.assertEqual(reader.read(4), 3)
+        reader.set_endianness(0)
+        self.assertEqual(reader.read(4), 12)
+
+        reader.rewind()
+        reader.mark()
+        self.assertEqual(reader.read(4), 0xB)
+        reader.rewind()
+        self.assertEqual(reader.read(8), 0xB1)
+        reader.rewind()
+        self.assertEqual(reader.read(12), 0xB1E)
+        reader.unmark()
+        reader.mark()
+        self.assertEqual(reader.read(4), 0xD)
+        reader.rewind()
+        self.assertEqual(reader.read(8), 0xD3)
+        reader.rewind()
+        self.assertEqual(reader.read(12), 0xD3B)
+        reader.unmark()
+
+        reader.rewind()
+        reader.unmark()
+
+    def __test_little_endian_reader__(self, reader, table):
+        #check the bitstream reader
+        #against some known little-endian values
+
+        reader.mark()
+        self.assertEqual(reader.read(2), 0x1)
+        self.assertEqual(reader.read(3), 0x4)
+        self.assertEqual(reader.read(5), 0x0D)
+        self.assertEqual(reader.read(3), 0x3)
+        self.assertEqual(reader.read(19), 0x609DF)
+
+        reader.rewind()
+        self.assertEqual(reader.read64(2), 1)
+        self.assertEqual(reader.read64(3), 4)
+        self.assertEqual(reader.read64(5), 13)
+        self.assertEqual(reader.read64(3), 3)
+        self.assertEqual(reader.read64(19), 395743)
+
+        reader.rewind()
+        self.assertEqual(reader.read(2), 0x1)
+        reader.skip(3)
+        self.assertEqual(reader.read(5), 0x0D)
+        reader.skip(3)
+        self.assertEqual(reader.read(19), 0x609DF)
+
+        reader.rewind()
+        self.assertEqual(reader.read(1), 1)
+        bit = reader.read(1)
+        self.assertEqual(bit, 0)
+        reader.unread(bit)
+        self.assertEqual(reader.read(4), 8)
+        reader.byte_align()
+
+        reader.rewind()
+        self.assertEqual(reader.read(8), 0xB1)
+        reader.unread(0);
+        self.assertEqual(reader.read(1), 0)
+        reader.unread(1);
+        self.assertEqual(reader.read(1), 1)
+
+        reader.rewind()
+        self.assertEqual(reader.read_signed(2), 1)
+        self.assertEqual(reader.read_signed(3), -4)
+        self.assertEqual(reader.read_signed(5), 13)
+        self.assertEqual(reader.read_signed(3), 3)
+        self.assertEqual(reader.read_signed(19), -128545)
+
+        reader.rewind()
+        self.assertEqual(reader.read_signed64(2), 1)
+        self.assertEqual(reader.read_signed64(3), -4)
+        self.assertEqual(reader.read_signed64(5), 13)
+        self.assertEqual(reader.read_signed64(3), 3)
+        self.assertEqual(reader.read_signed64(19), -128545)
+
+        reader.rewind()
+        self.assertEqual(reader.unary(0), 1)
+        self.assertEqual(reader.unary(0), 0)
+        self.assertEqual(reader.unary(0), 0)
+        self.assertEqual(reader.unary(0), 2)
+        self.assertEqual(reader.unary(0), 2)
+
+        reader.rewind()
+        self.assertEqual(reader.unary(1), 0)
+        self.assertEqual(reader.unary(1), 3)
+        self.assertEqual(reader.unary(1), 0)
+        self.assertEqual(reader.unary(1), 1)
+        self.assertEqual(reader.unary(1), 0)
+
+        reader.rewind()
+        self.assertEqual(reader.limited_unary(0, 2), 1)
+        self.assertEqual(reader.limited_unary(0, 2), 0)
+        self.assertEqual(reader.limited_unary(0, 2), 0)
+        self.assertEqual(reader.limited_unary(0, 2), None)
+
+        reader.rewind()
+        self.assertEqual(reader.read_huffman_code(table), 1)
+        self.assertEqual(reader.read_huffman_code(table), 3)
+        self.assertEqual(reader.read_huffman_code(table), 1)
+        self.assertEqual(reader.read_huffman_code(table), 0)
+        self.assertEqual(reader.read_huffman_code(table), 2)
+        self.assertEqual(reader.read_huffman_code(table), 1)
+        self.assertEqual(reader.read_huffman_code(table), 0)
+        self.assertEqual(reader.read_huffman_code(table), 0)
+        self.assertEqual(reader.read_huffman_code(table), 1)
+        self.assertEqual(reader.read_huffman_code(table), 0)
+        self.assertEqual(reader.read_huffman_code(table), 1)
+        self.assertEqual(reader.read_huffman_code(table), 2)
+        self.assertEqual(reader.read_huffman_code(table), 4)
+        self.assertEqual(reader.read_huffman_code(table), 3)
+
+        reader.rewind()
+        self.assertEqual(reader.read_bytes(2), "\xB1\xED")
+        reader.rewind()
+        self.assertEqual(reader.read(4), 1)
+
+        self.assertEqual(reader.read_bytes(2), "\xDB\xBE")
+
+        reader.rewind()
+        self.assertEqual(reader.read(3), 1)
+        reader.byte_align()
+        self.assertEqual(reader.read(3), 5)
+        reader.byte_align()
+        reader.byte_align()
+        self.assertEqual(reader.read(8), 59)
+        reader.byte_align()
+        self.assertEqual(reader.read(4), 1)
+
+        reader.rewind()
+        self.assertEqual(reader.read(3), 1)
+        reader.set_endianness(0)
+        self.assertEqual(reader.read(3), 7)
+        reader.set_endianness(1)
+        self.assertEqual(reader.read(4), 11)
+        reader.set_endianness(1)
+        self.assertEqual(reader.read(4), 1)
+
+        reader.rewind()
+        self.assertEqual(reader.limited_unary(1, 2), 0)
+        self.assertEqual(reader.limited_unary(1, 2), None)
+
+        reader.rewind()
+        reader.mark()
+        self.assertEqual(reader.read(4), 0x1)
+        reader.rewind()
+        self.assertEqual(reader.read(8), 0xB1)
+        reader.rewind()
+        self.assertEqual(reader.read(12), 0xDB1)
+        reader.unmark()
+        reader.mark()
+        self.assertEqual(reader.read(4), 0xE)
+        reader.rewind()
+        self.assertEqual(reader.read(8), 0xBE)
+        reader.rewind()
+        self.assertEqual(reader.read(12), 0x3BE)
+        reader.unmark()
+
+        reader.rewind()
+        reader.unmark()
+
+    def __test_try__(self, reader, table):
+        reader.mark()
+
+        #bounce to the very end of the stream
+        reader.skip(31);
+        reader.mark()
+        self.assertEqual(reader.read(1), 1)
+        reader.rewind()
+
+        #then test all the read methods to ensure they trigger br_abort
+        #in the case of unary/Huffman, the stream ends on a "1" bit
+        #whether reading it big-endian or little-endian
+
+        self.assertRaises(IOError, reader.read, 2)
+        reader.rewind()
+        self.assertRaises(IOError, reader.read64, 2)
+        reader.rewind()
+        self.assertRaises(IOError, reader.read_signed, 2)
+        reader.rewind()
+        self.assertRaises(IOError, reader.read_signed64, 2)
+        reader.rewind()
+        self.assertRaises(IOError, reader.skip, 2)
+        reader.rewind()
+        self.assertRaises(IOError, reader.unary, 0)
+        reader.rewind()
+        self.assertEqual(reader.unary(1), 0)
+        self.assertRaises(IOError, reader.unary, 1)
+        reader.rewind()
+        self.assertRaises(IOError, reader.limited_unary, 0, 3)
+        reader.rewind()
+        self.assertEqual(reader.limited_unary(1, 3), 0)
+        self.assertRaises(IOError, reader.limited_unary, 1, 3)
+        reader.rewind()
+        self.assertRaises(IOError, reader.read_huffman_code, table)
+        reader.rewind()
+        self.assertRaises(IOError, reader.read_bytes, 2)
+        reader.rewind()
+        self.assertRaises(IOError, reader.substream, 1)
+
+        reader.unmark()
+
+        reader.rewind()
+        reader.unmark()
+
+    def __test_callbacks_reader__(self,
+                                  reader,
+                                  unary_0_reads,
+                                  unary_1_reads,
+                                  table,
+                                  huffman_code_count):
+        counter = ByteCounter()
+        reader.mark();
+        reader.add_callback(counter.callback)
+
+        #a single callback
+        counter.reset()
+        for i in xrange(8):
+            reader.read(4)
+        self.assertEqual(int(counter), 4)
+        reader.rewind()
+
+        #calling callbacks directly
+        counter.reset()
+        for i in xrange(20):
+            reader.call_callbacks(0)
+        self.assertEqual(int(counter), 20)
+
+        #two callbacks
+        counter.reset()
+        reader.add_callback(counter.callback)
+        for i in xrange(8):
+            reader.read(4)
+        self.assertEqual(int(counter), 8)
+        reader.pop_callback()
+        reader.rewind()
+
+        #temporarily suspending the callback
+        counter.reset()
+        reader.read(8);
+        self.assertEqual(int(counter), 1)
+        callback = reader.pop_callback()
+        reader.read(8)
+        reader.read(8)
+        reader.add_callback(counter.callback)
+        reader.read(8)
+        self.assertEqual(int(counter), 2)
+        reader.rewind()
+
+        #temporarily adding two callbacks
+        counter.reset()
+        reader.read(8)
+        self.assertEqual(int(counter), 1)
+        reader.add_callback(counter.callback)
+        reader.read(8)
+        reader.read(8)
+        reader.pop_callback()
+        reader.read(8)
+        self.assertEqual(int(counter), 6)
+        reader.rewind()
+
+        #read_signed
+        counter.reset()
+        for i in xrange(8):
+            reader.read_signed(4);
+        self.assertEqual(int(counter), 4)
+        reader.rewind()
+
+        #read_64
+        counter.reset()
+        for i in xrange(8):
+            reader.read64(4);
+        self.assertEqual(int(counter), 4)
+        reader.rewind()
+
+        #skip
+        counter.reset()
+        for i in xrange(8):
+            reader.skip(4);
+        self.assertEqual(int(counter), 4)
+        reader.rewind()
+
+        #read_unary
+        counter.reset()
+        for i in xrange(unary_0_reads):
+            reader.unary(0);
+        self.assertEqual(int(counter), 4)
+        counter.reset()
+        reader.rewind()
+        for i in xrange(unary_1_reads):
+            reader.unary(1)
+        self.assertEqual(int(counter), 4)
+        reader.rewind()
+
+        #read_limited_unary
+        counter.reset()
+        for i in xrange(unary_0_reads):
+            reader.limited_unary(0, 6);
+        self.assertEqual(int(counter), 4)
+        counter.reset()
+        reader.rewind()
+        for i in xrange(unary_1_reads):
+            reader.limited_unary(1, 6);
+        self.assertEqual(int(counter), 4)
+        reader.rewind()
+
+        #read_huffman_code
+        counter.reset()
+        for i in xrange(huffman_code_count):
+            reader.read_huffman_code(table);
+        self.assertEqual(int(counter), 4)
+        reader.rewind()
+
+        #read_bytes
+        counter.reset()
+        reader.read_bytes(2);
+        reader.read_bytes(2);
+        self.assertEqual(int(counter), 4)
+        reader.rewind()
+
+        reader.pop_callback()
+        reader.unmark();
+
     @LIB_CORE
     def test_simple_reader(self):
-        from audiotools.decoders import BitstreamReader
-
-        # self.assertRaises(TypeError, BitstreamReader, None, 0)
-        # self.assertRaises(TypeError, BitstreamReader, 1, 0)
-        # self.assertRaises(TypeError, BitstreamReader, "foo", 0)
-        # self.assertRaises(TypeError, BitstreamReader,
-        #                   cStringIO.StringIO("foo"), 0)
+        from audiotools.decoders import BitstreamReader,HuffmanTree
 
         temp = tempfile.TemporaryFile()
         try:
@@ -1537,179 +1983,410 @@ class Bitstream(unittest.TestCase):
             temp.write(chr(0xC1))
             temp.seek(0, 0)
 
-            #first, check the bitstream reader
-            #against some simple known big-endian values
-            bitstream = BitstreamReader(temp, 0)
-
-            self.assertEqual(bitstream.read(2), 2)
-            self.assertEqual(bitstream.read(3), 6)
-            self.assertEqual(bitstream.read(5), 7)
-            self.assertEqual(bitstream.read(3), 5)
-            self.assertEqual(bitstream.read(19), 342977)
-            self.assertEqual(bitstream.tell(), 4)
-
-            temp.seek(0, 0)
-            self.assertEqual(bitstream.read64(2), 2)
-            self.assertEqual(bitstream.read64(3), 6)
-            self.assertEqual(bitstream.read64(5), 7)
-            self.assertEqual(bitstream.read64(3), 5)
-            self.assertEqual(bitstream.read64(19), 342977)
-            self.assertEqual(bitstream.tell(), 4)
+            #test a big-endian stream built from a file
+            reader = BitstreamReader(temp, 0)
+            table = HuffmanTree([[1, 1], 0,
+                                 [1, 0], 1,
+                                 [0, 1], 2,
+                                 [0, 0, 1], 3,
+                                 [0, 0, 0], 4], 0)
+            self.__test_big_endian_reader__(reader, table)
+            self.__test_try__(reader, table)
+            self.__test_callbacks_reader__(reader, 14, 18, table, 14)
 
             temp.seek(0, 0)
-            self.assertEqual(bitstream.read_signed(2), -2)
-            self.assertEqual(bitstream.read_signed(3), -2)
-            self.assertEqual(bitstream.read_signed(5), 7)
-            self.assertEqual(bitstream.read_signed(3), -3)
-            self.assertEqual(bitstream.read_signed(19), -181311)
-            self.assertEqual(bitstream.tell(), 4)
 
-            temp.seek(0, 0)
-            self.assertEqual(bitstream.unary(0), 1)
-            self.assertEqual(bitstream.unary(0), 2)
-            self.assertEqual(bitstream.unary(0), 0)
-            self.assertEqual(bitstream.unary(0), 0)
-            self.assertEqual(bitstream.unary(0), 4)
-            bitstream.byte_align()
-            temp.seek(0, 0)
-            self.assertEqual(bitstream.unary(1), 0)
-            self.assertEqual(bitstream.unary(1), 1)
-            self.assertEqual(bitstream.unary(1), 0)
-            self.assertEqual(bitstream.unary(1), 3)
-            self.assertEqual(bitstream.unary(1), 0)
-            bitstream.byte_align()
+            #test a little-endian stream built from a file
+            reader = BitstreamReader(temp, 1)
+            table = HuffmanTree([[1, 1], 0,
+                                 [1, 0], 1,
+                                 [0, 1], 2,
+                                 [0, 0, 1], 3,
+                                 [0, 0, 0], 4], 1)
+            self.__test_little_endian_reader__(reader, table)
+            self.__test_try__(reader, table)
+            self.__test_callbacks_reader__(reader, 14, 18, table, 13)
 
-            temp.seek(0, 0)
-            self.assertEqual(bitstream.read(1), 1)
-            bit = bitstream.read(1)
-            self.assertEqual(bit, 0)
-            bitstream.unread(bit)
-            self.assertEqual(bitstream.read(2), 1)
-            bitstream.byte_align()
+            #pad the stream with some additional data at both ends
+            #FIXME
 
-            temp.seek(0, 0)
-            self.assertEqual(bitstream.read(8), 0xB1)
-            bitstream.unread(0)
-            self.assertEqual(bitstream.read(1), 0)
-            bitstream.unread(1)
-            self.assertEqual(bitstream.read(1), 1)
+            #check a big-endian substream built from a file
+            #FIXME
 
-            temp.seek(0, 0)
-            self.assertEqual(bitstream.limited_unary(0, 2), 1)
-            self.assertEqual(bitstream.limited_unary(0, 2), None)
-            bitstream.byte_align()
-            temp.seek(0, 0)
-            self.assertEqual(bitstream.limited_unary(1, 2), 0)
-            self.assertEqual(bitstream.limited_unary(1, 2), 1)
-            self.assertEqual(bitstream.limited_unary(1, 2), 0)
-            self.assertEqual(bitstream.limited_unary(1, 2), None)
+            #check a big-endian substream built from another substream
+            #FIXME
 
-            temp.seek(0, 0)
-            bitstream.byte_align()
-            bitstream.mark()
-            self.assertEqual(bitstream.read(4), 0xB)
-            bitstream.rewind()
-            self.assertEqual(bitstream.read(8), 0xB1)
-            bitstream.rewind()
-            self.assertEqual(bitstream.read(12), 0xB1E)
-            bitstream.unmark()
-            bitstream.mark()
-            self.assertEqual(bitstream.read(4), 0xD)
-            bitstream.rewind()
-            self.assertEqual(bitstream.read(8), 0xD3)
-            bitstream.rewind()
-            self.assertEqual(bitstream.read(12), 0xD3B)
-            bitstream.unmark()
+            #check a little-endian substream built from a file
+            #FIXME
 
+            #check a little-endian substream built from another substream
+            #FIXME
 
-            del(bitstream)
-            temp.seek(0, 0)
+            #test the writer functions with each endianness
+            #FIXME
 
-            #then, check the bitstream reader
-            #against some simple known little-endian values
-            bitstream = BitstreamReader(temp, 1)
-
-            self.assertEqual(bitstream.read(2), 1)
-            self.assertEqual(bitstream.read(3), 4)
-            self.assertEqual(bitstream.read(5), 13)
-            self.assertEqual(bitstream.read(3), 3)
-            self.assertEqual(bitstream.read(19), 395743)
-            self.assertEqual(bitstream.tell(), 4)
-
-            temp.seek(0, 0)
-            self.assertEqual(bitstream.read64(2), 1)
-            self.assertEqual(bitstream.read64(3), 4)
-            self.assertEqual(bitstream.read64(5), 13)
-            self.assertEqual(bitstream.read64(3), 3)
-            self.assertEqual(bitstream.read64(19), 395743)
-            self.assertEqual(bitstream.tell(), 4)
-
-            temp.seek(0, 0)
-            self.assertEqual(bitstream.read_signed(2), 1)
-            self.assertEqual(bitstream.read_signed(3), -4)
-            self.assertEqual(bitstream.read_signed(5), 13)
-            self.assertEqual(bitstream.read_signed(3), 3)
-            self.assertEqual(bitstream.read_signed(19), -128545)
-            self.assertEqual(bitstream.tell(), 4)
-
-            temp.seek(0, 0)
-            self.assertEqual(bitstream.unary(0), 1)
-            self.assertEqual(bitstream.unary(0), 0)
-            self.assertEqual(bitstream.unary(0), 0)
-            self.assertEqual(bitstream.unary(0), 2)
-            self.assertEqual(bitstream.unary(0), 2)
-            bitstream.byte_align()
-            temp.seek(0, 0)
-            self.assertEqual(bitstream.unary(1), 0)
-            self.assertEqual(bitstream.unary(1), 3)
-            self.assertEqual(bitstream.unary(1), 0)
-            self.assertEqual(bitstream.unary(1), 1)
-            self.assertEqual(bitstream.unary(1), 0)
-            bitstream.byte_align()
-
-            temp.seek(0, 0)
-            self.assertEqual(bitstream.read(1), 1)
-            bit = bitstream.read(1)
-            self.assertEqual(bit, 0)
-            bitstream.unread(bit)
-            self.assertEqual(bitstream.read(4), 8)
-            bitstream.byte_align()
-
-            temp.seek(0, 0)
-            self.assertEqual(bitstream.read(8), 0xB1)
-            bitstream.unread(0)
-            self.assertEqual(bitstream.read(1), 0)
-            bitstream.unread(1)
-            self.assertEqual(bitstream.read(1), 1)
-
-            temp.seek(0, 0)
-            self.assertEqual(bitstream.limited_unary(0, 2), 1)
-            self.assertEqual(bitstream.limited_unary(0, 2), 0)
-            self.assertEqual(bitstream.limited_unary(0, 2), 0)
-            self.assertEqual(bitstream.limited_unary(0, 2), None)
-            bitstream.byte_align()
-            temp.seek(0, 0)
-            self.assertEqual(bitstream.limited_unary(1, 2), 0)
-            self.assertEqual(bitstream.limited_unary(1, 2), None)
-
-            temp.seek(0, 0)
-            bitstream.byte_align()
-            bitstream.mark()
-            self.assertEqual(bitstream.read(4), 0x1)
-            bitstream.rewind()
-            self.assertEqual(bitstream.read(8), 0xB1)
-            bitstream.rewind()
-            self.assertEqual(bitstream.read(12), 0xDB1)
-            bitstream.unmark()
-            bitstream.mark()
-            self.assertEqual(bitstream.read(4), 0xE)
-            bitstream.rewind()
-            self.assertEqual(bitstream.read(8), 0xBE)
-            bitstream.rewind()
-            self.assertEqual(bitstream.read(12), 0x3BE)
-            bitstream.unmark()
         finally:
             temp.close()
+
+    def __test_edge_reader_be__(self, reader):
+        reader.mark()
+
+        #try the unsigned 32 and 64 bit values
+        reader.rewind()
+        self.assertEqual(reader.read(32), 0)
+        self.assertEqual(reader.read(32), 4294967295)
+        self.assertEqual(reader.read(32), 2147483648)
+        self.assertEqual(reader.read(32), 2147483647)
+        self.assertEqual(reader.read64(64), 0)
+        self.assertEqual(reader.read64(64), 0xFFFFFFFFFFFFFFFFL)
+        self.assertEqual(reader.read64(64), 9223372036854775808L)
+        self.assertEqual(reader.read64(64), 9223372036854775807L)
+
+        #try the signed 32 and 64 bit values
+        reader.rewind()
+        self.assertEqual(reader.read_signed(32), 0)
+        self.assertEqual(reader.read_signed(32), -1)
+        self.assertEqual(reader.read_signed(32), -2147483648)
+        self.assertEqual(reader.read_signed(32), 2147483647)
+        self.assertEqual(reader.read_signed64(64), 0)
+        self.assertEqual(reader.read_signed64(64), -1)
+        self.assertEqual(reader.read_signed64(64), -9223372036854775808L)
+        self.assertEqual(reader.read_signed64(64), 9223372036854775807L)
+
+        #try the unsigned values via parse()
+        reader.rewind()
+        (u_val_1,
+         u_val_2,
+         u_val_3,
+         u_val_4,
+         u_val64_1,
+         u_val64_2,
+         u_val64_3,
+         u_val64_4) = reader.parse("32u 32u 32u 32u 64U 64U 64U 64U")
+        self.assertEqual(u_val_1, 0)
+        self.assertEqual(u_val_2, 4294967295)
+        self.assertEqual(u_val_3, 2147483648)
+        self.assertEqual(u_val_4, 2147483647)
+        self.assertEqual(u_val64_1, 0)
+        self.assertEqual(u_val64_2, 0xFFFFFFFFFFFFFFFFL)
+        self.assertEqual(u_val64_3, 9223372036854775808L)
+        self.assertEqual(u_val64_4, 9223372036854775807L)
+
+        #try the signed values via parse()
+        reader.rewind()
+        (s_val_1,
+         s_val_2,
+         s_val_3,
+         s_val_4,
+         s_val64_1,
+         s_val64_2,
+         s_val64_3,
+         s_val64_4) = reader.parse("32s 32s 32s 32s 64S 64S 64S 64S")
+        self.assertEqual(s_val_1, 0)
+        self.assertEqual(s_val_2, -1)
+        self.assertEqual(s_val_3, -2147483648)
+        self.assertEqual(s_val_4, 2147483647)
+        self.assertEqual(s_val64_1, 0)
+        self.assertEqual(s_val64_2, -1)
+        self.assertEqual(s_val64_3, -9223372036854775808L)
+        self.assertEqual(s_val64_4, 9223372036854775807L)
+
+        reader.unmark()
+
+    def __test_edge_reader_le__(self, reader):
+        reader.mark()
+
+        #try the unsigned 32 and 64 bit values
+        self.assertEqual(reader.read(32), 0)
+        self.assertEqual(reader.read(32), 4294967295)
+        self.assertEqual(reader.read(32), 2147483648)
+        self.assertEqual(reader.read(32), 2147483647)
+        self.assertEqual(reader.read64(64), 0)
+        self.assertEqual(reader.read64(64), 0xFFFFFFFFFFFFFFFFL)
+        self.assertEqual(reader.read64(64), 9223372036854775808L)
+        self.assertEqual(reader.read64(64), 9223372036854775807L)
+
+        #try the signed 32 and 64 bit values
+        reader.rewind()
+        self.assertEqual(reader.read_signed(32), 0)
+        self.assertEqual(reader.read_signed(32), -1)
+        self.assertEqual(reader.read_signed(32), -2147483648)
+        self.assertEqual(reader.read_signed(32), 2147483647)
+        self.assertEqual(reader.read_signed64(64), 0)
+        self.assertEqual(reader.read_signed64(64), -1)
+        self.assertEqual(reader.read_signed64(64), -9223372036854775808L)
+        self.assertEqual(reader.read_signed64(64), 9223372036854775807L)
+
+        #try the unsigned values via parse()
+        reader.rewind()
+        (u_val_1,
+         u_val_2,
+         u_val_3,
+         u_val_4,
+         u_val64_1,
+         u_val64_2,
+         u_val64_3,
+         u_val64_4) = reader.parse("32u 32u 32u 32u 64U 64U 64U 64U")
+        self.assertEqual(u_val_1, 0)
+        self.assertEqual(u_val_2, 4294967295)
+        self.assertEqual(u_val_3, 2147483648)
+        self.assertEqual(u_val_4, 2147483647)
+        self.assertEqual(u_val64_1, 0)
+        self.assertEqual(u_val64_2, 0xFFFFFFFFFFFFFFFFL)
+        self.assertEqual(u_val64_3, 9223372036854775808L)
+        self.assertEqual(u_val64_4, 9223372036854775807L)
+
+        #try the signed values via parse()
+        reader.rewind()
+        (s_val_1,
+         s_val_2,
+         s_val_3,
+         s_val_4,
+         s_val64_1,
+         s_val64_2,
+         s_val64_3,
+         s_val64_4) = reader.parse("32s 32s 32s 32s 64S 64S 64S 64S")
+        self.assertEqual(s_val_1, 0)
+        self.assertEqual(s_val_2, -1)
+        self.assertEqual(s_val_3, -2147483648)
+        self.assertEqual(s_val_4, 2147483647)
+        self.assertEqual(s_val64_1, 0)
+        self.assertEqual(s_val64_2, -1)
+        self.assertEqual(s_val64_3, -9223372036854775808L)
+        self.assertEqual(s_val64_4, 9223372036854775807L)
+
+        reader.unmark()
+
+    def __test_edge_writer__(self, get_writer, validate_writer):
+        #try the unsigned 32 and 64 bit values
+        (writer, temp) = get_writer()
+        writer.write(32, 0)
+        writer.write(32, 4294967295)
+        writer.write(32, 2147483648)
+        writer.write(32, 2147483647)
+        writer.write64(64, 0)
+        writer.write64(64, 0xFFFFFFFFFFFFFFFFL)
+        writer.write64(64, 9223372036854775808L)
+        writer.write64(64, 9223372036854775807L)
+        validate_writer(writer, temp)
+
+        #try the signed 32 and 64 bit values
+        (writer, temp) = get_writer()
+        writer.write_signed(32, 0)
+        writer.write_signed(32, -1)
+        writer.write_signed(32, -2147483648)
+        writer.write_signed(32, 2147483647)
+        writer.write_signed64(64, 0)
+        writer.write_signed64(64, -1)
+        writer.write_signed64(64, -9223372036854775808L)
+        writer.write_signed64(64, 9223372036854775807L)
+        validate_writer(writer, temp)
+
+        #try the unsigned values via build()
+        (writer, temp) = get_writer()
+        u_val_1 = 0
+        u_val_2 = 4294967295
+        u_val_3 = 2147483648
+        u_val_4 = 2147483647
+        u_val64_1 = 0
+        u_val64_2 = 0xFFFFFFFFFFFFFFFFL
+        u_val64_3 = 9223372036854775808L
+        u_val64_4 = 9223372036854775807L
+        writer.build("32u 32u 32u 32u 64U 64U 64U 64U",
+                     [u_val_1, u_val_2, u_val_3, u_val_4,
+                      u_val64_1, u_val64_2, u_val64_3, u_val64_4])
+        validate_writer(writer, temp)
+
+        #try the signed values via build()
+        (writer, temp) = get_writer()
+        s_val_1 = 0;
+        s_val_2 = -1;
+        s_val_3 = -2147483648;
+        s_val_4 = 2147483647;
+        s_val64_1 = 0;
+        s_val64_2 = -1;
+        s_val64_3 = -9223372036854775808L;
+        s_val64_4 = 9223372036854775807L;
+        writer.build("32s 32s 32s 32s 64S 64S 64S 64S",
+                     [s_val_1, s_val_2, s_val_3, s_val_4,
+                      s_val64_1, s_val64_2, s_val64_3, s_val64_4])
+        validate_writer(writer, temp)
+
+    def __get_edge_writer_be__(self):
+        from audiotools.encoders import BitstreamWriter
+
+        temp_file = tempfile.NamedTemporaryFile()
+        return (BitstreamWriter(open(temp_file.name, "wb"), 0), temp_file)
+
+    def __validate_edge_writer_be__(self, writer, temp_file):
+        writer.close()
+
+        self.assertEqual(open(temp_file.name, "rb").read(),
+                         "".join(map(chr,
+                                     [0, 0, 0, 0, 255, 255, 255, 255,
+                                      128, 0, 0, 0, 127, 255, 255, 255,
+                                      0, 0, 0, 0, 0, 0, 0, 0,
+                                      255, 255, 255, 255, 255, 255, 255, 255,
+                                      128, 0, 0, 0, 0, 0, 0, 0,
+                                      127, 255, 255, 255, 255, 255, 255, 255])))
+
+        temp_file.close()
+
+    def __get_edge_recorder_be__(self):
+        from audiotools.encoders import BitstreamRecorder
+
+        return (BitstreamRecorder(0), tempfile.NamedTemporaryFile())
+
+    def __validate_edge_recorder_be__(self, writer, temp_file):
+        from audiotools.encoders import BitstreamWriter
+
+        writer2 = BitstreamWriter(open(temp_file.name, "wb"), 0)
+        writer.copy(writer2)
+        writer2.close()
+
+        self.assertEqual(open(temp_file.name, "rb").read(),
+                         "".join(map(chr,
+                                     [0, 0, 0, 0, 255, 255, 255, 255,
+                                      128, 0, 0, 0, 127, 255, 255, 255,
+                                      0, 0, 0, 0, 0, 0, 0, 0,
+                                      255, 255, 255, 255, 255, 255, 255, 255,
+                                      128, 0, 0, 0, 0, 0, 0, 0,
+                                      127, 255, 255, 255, 255, 255, 255, 255])))
+
+        temp_file.close()
+
+    def __get_edge_accumulator_be__(self):
+        from audiotools.encoders import BitstreamAccumulator
+
+        return (BitstreamAccumulator(0), None)
+
+    def __validate_edge_accumulator_be__(self, writer, temp_file):
+        self.assertEqual(writer.bits(), 48 * 8)
+
+
+    def __get_edge_writer_le__(self):
+        from audiotools.encoders import BitstreamWriter
+
+        temp_file = tempfile.NamedTemporaryFile()
+        return (BitstreamWriter(open(temp_file.name, "wb"), 1), temp_file)
+
+    def __validate_edge_writer_le__(self, writer, temp_file):
+        writer.close()
+
+        self.assertEqual(open(temp_file.name, "rb").read(),
+                         "".join(map(chr,
+                                     [0, 0, 0, 0, 255, 255, 255, 255,
+                                      0, 0, 0, 128, 255, 255, 255, 127,
+                                      0, 0, 0, 0, 0, 0, 0, 0,
+                                      255, 255, 255, 255, 255, 255, 255, 255,
+                                      0, 0, 0, 0, 0, 0, 0, 128,
+                                      255, 255, 255, 255, 255, 255, 255, 127])))
+
+        temp_file.close()
+
+    def __get_edge_recorder_le__(self):
+        from audiotools.encoders import BitstreamRecorder
+
+        return (BitstreamRecorder(1), tempfile.NamedTemporaryFile())
+
+    def __validate_edge_recorder_le__(self, writer, temp_file):
+        from audiotools.encoders import BitstreamWriter
+
+        writer2 = BitstreamWriter(open(temp_file.name, "wb"), 1)
+        writer.copy(writer2)
+        writer2.close()
+
+        self.assertEqual(open(temp_file.name, "rb").read(),
+                         "".join(map(chr,
+                                     [0, 0, 0, 0, 255, 255, 255, 255,
+                                      0, 0, 0, 128, 255, 255, 255, 127,
+                                      0, 0, 0, 0, 0, 0, 0, 0,
+                                      255, 255, 255, 255, 255, 255, 255, 255,
+                                      0, 0, 0, 0, 0, 0, 0, 128,
+                                      255, 255, 255, 255, 255, 255, 255, 127])))
+
+        temp_file.close()
+
+    def __get_edge_accumulator_le__(self):
+        from audiotools.encoders import BitstreamAccumulator
+
+        return (BitstreamAccumulator(1), None)
+
+    def __validate_edge_accumulator_le__(self, writer, temp_file):
+        self.assertEqual(writer.bits(), 48 * 8)
+
+
+    @LIB_CORE
+    def test_edge_cases(self):
+        from audiotools.decoders import BitstreamReader
+
+        temp = tempfile.NamedTemporaryFile()
+        try:
+            #write the temp file with a set of known big-endian data
+            temp.write("".join(map(chr,
+                                   [0, 0, 0, 0, 255, 255, 255, 255,
+                                    128, 0, 0, 0, 127, 255, 255, 255,
+                                    0, 0, 0, 0, 0, 0, 0, 0,
+                                    255, 255, 255, 255, 255, 255, 255, 255,
+                                    128, 0, 0, 0, 0, 0, 0, 0,
+                                    127, 255, 255, 255, 255, 255, 255, 255])))
+            temp.flush()
+
+            #ensure a big-endian reader reads the values correctly
+            reader = BitstreamReader(open(temp.name, "rb"), 0)
+            self.__test_edge_reader_be__(reader)
+            del(reader)
+
+            #ensure a big-endian sub-reader reads the values correctly
+            #FIXME
+        finally:
+            temp.close()
+
+        temp = tempfile.NamedTemporaryFile()
+        try:
+            #write the temp file with a collection of known little-endian data
+            temp.write("".join(map(chr,
+                                   [0, 0, 0, 0, 255, 255, 255, 255,
+                                    0, 0, 0, 128, 255, 255, 255, 127,
+                                    0, 0, 0, 0, 0, 0, 0, 0,
+                                    255, 255, 255, 255, 255, 255, 255, 255,
+                                    0, 0, 0, 0, 0, 0, 0, 128,
+                                    255, 255, 255, 255, 255, 255, 255, 127])))
+            temp.flush()
+
+            #ensure a little-endian reader reads the values correctly
+            reader = BitstreamReader(open(temp.name, "rb"), 1)
+            self.__test_edge_reader_le__(reader)
+            del(reader)
+
+            #ensure a little-endian sub-reader reads the values correctly
+            #FIXME
+        finally:
+            temp.close()
+
+        #test a bunch of big-endian values via the bitstream writer
+        self.__test_edge_writer__(self.__get_edge_writer_be__,
+                                  self.__validate_edge_writer_be__)
+
+        #test a bunch of big-endian values via the bitstream recorder
+        self.__test_edge_writer__(self.__get_edge_recorder_be__,
+                                  self.__validate_edge_recorder_be__)
+
+        #test a bunch of big-endian values via the bitstream accumulator
+        self.__test_edge_writer__(self.__get_edge_accumulator_be__,
+                                  self.__validate_edge_accumulator_be__)
+
+        #test a bunch of little-endian values via the bitstream writer
+        self.__test_edge_writer__(self.__get_edge_writer_le__,
+                                  self.__validate_edge_writer_le__)
+
+        #test a bunch of little-endian values via the bitstream recorder
+        self.__test_edge_writer__(self.__get_edge_recorder_le__,
+                                  self.__validate_edge_recorder_le__)
+
+        #test a bunch of little-endian values via the bitstream accumulator
+        self.__test_edge_writer__(self.__get_edge_accumulator_le__,
+                                  self.__validate_edge_accumulator_le__)
 
     @LIB_CORE
     def test_python_reader(self):

@@ -2567,6 +2567,7 @@ bw_open(FILE *f, bs_endianness endianness)
     bs->build = bw_build;
     bs->byte_align = bw_byte_align_f_r;
     bs->bits_written = bw_bits_written_f;
+    bs->flush = bw_flush_f;
     bs->close = bw_close_new;
     bs->close_stream = bw_close_stream_f;
 
@@ -2596,6 +2597,7 @@ bw_open_accumulator(bs_endianness endianness)
     bs->byte_align = bw_byte_align_a;
     bs->set_endianness = bw_set_endianness_a;
     bs->bits_written = bw_bits_written_a;
+    bs->flush = bw_noop;
     bs->close = bw_close_new;
     bs->close_stream = bw_close_stream_a;
 
@@ -2637,6 +2639,7 @@ bw_open_recorder(bs_endianness endianness)
     bs->build = bw_build;
     bs->byte_align = bw_byte_align_f_r;
     bs->bits_written = bw_bits_written_r;
+    bs->flush = bw_noop;
     bs->close = bw_close_new;
     bs->close_stream = bw_close_stream_r;
 
@@ -3463,7 +3466,20 @@ bw_build(struct BitstreamWriter_s* stream, char* format, ...)
 }
 
 void
-bw_close_new(BitstreamWriter* bs) {
+bw_flush_f(BitstreamWriter* bs)
+{
+    fflush(bs->output.file);
+}
+
+void
+bw_noop(BitstreamWriter* bs)
+{
+    return;
+}
+
+void
+bw_close_new(BitstreamWriter* bs)
+{
     bs->close_stream(bs);
     bw_free(bs);
 }
@@ -3905,6 +3921,13 @@ void test_big_endian_reader(BitstreamReader* reader,
     assert(reader->read_signed(reader, 19) == -181311);
 
     reader->rewind(reader);
+    assert(reader->read_signed_64(reader, 2) == -2);
+    assert(reader->read_signed_64(reader, 3) == -2);
+    assert(reader->read_signed_64(reader, 5) == 7);
+    assert(reader->read_signed_64(reader, 3) == -3);
+    assert(reader->read_signed_64(reader, 19) == -181311);
+
+    reader->rewind(reader);
     assert(reader->read_unary(reader, 0) == 1);
     assert(reader->read_unary(reader, 0) == 2);
     assert(reader->read_unary(reader, 0) == 0);
@@ -4043,6 +4066,13 @@ void test_little_endian_reader(BitstreamReader* reader,
     assert(reader->read_signed(reader, 19) == -128545);
 
     reader->rewind(reader);
+    assert(reader->read_signed_64(reader, 2) == 1);
+    assert(reader->read_signed_64(reader, 3) == -4);
+    assert(reader->read_signed_64(reader, 5) == 13);
+    assert(reader->read_signed_64(reader, 3) == 3);
+    assert(reader->read_signed_64(reader, 19) == -128545);
+
+    reader->rewind(reader);
     assert(reader->read_unary(reader, 0) == 1);
     assert(reader->read_unary(reader, 0) == 0);
     assert(reader->read_unary(reader, 0) == 0);
@@ -4163,6 +4193,13 @@ void test_try(BitstreamReader* reader,
     }
     if (!setjmp(*br_try(reader))) {
         reader->read_signed(reader, 2);
+        assert(0);
+    } else {
+        br_etry(reader);
+        reader->rewind(reader);
+    }
+    if (!setjmp(*br_try(reader))) {
+        reader->read_signed_64(reader, 2);
         assert(0);
     } else {
         br_etry(reader);
@@ -5028,6 +5065,8 @@ validate_edge_recorder_be(BitstreamWriter* recorder)
          127, 255, 255, 255, 255, 255, 255, 255};
     uint8_t data[48];
     FILE* input_file;
+
+    assert(recorder->bits_written(recorder) == (48 * 8));
 
     writer = bw_open(fopen(temp_filename, "wb"), BS_BIG_ENDIAN);
     bw_rec_copy(writer, recorder);

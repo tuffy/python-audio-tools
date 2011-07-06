@@ -104,9 +104,9 @@ BitstreamWriter_new(PyTypeObject *type, PyObject *args,
 static PyObject*
 BitstreamWriter_write(encoders_BitstreamWriter *self, PyObject *args) {
     unsigned int count;
-    int value;
+    unsigned int value;
 
-    if (!PyArg_ParseTuple(args, "Ii", &count, &value))
+    if (!PyArg_ParseTuple(args, "II", &count, &value))
         return NULL;
 
     self->bitstream->write(self->bitstream, count, value);
@@ -283,6 +283,8 @@ BitstreamWriter_pop_callback(encoders_BitstreamWriter *self,
 
 static PyObject*
 BitstreamWriter_close(encoders_BitstreamWriter *self, PyObject *args) {
+    self->bitstream->flush(self->bitstream);
+
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -291,9 +293,9 @@ static PyObject*
 BitstreamRecorder_write(encoders_BitstreamRecorder *self,
                         PyObject *args) {
     unsigned int count;
-    int value;
+    unsigned int value;
 
-    if (!PyArg_ParseTuple(args, "Ii", &count, &value))
+    if (!PyArg_ParseTuple(args, "II", &count, &value))
         return NULL;
 
     self->bitstream->write(self->bitstream, count, value);
@@ -659,7 +661,7 @@ bitstream_build(BitstreamWriter* stream, char* format, PyObject* values) {
             break;
         case BS_INST_UNSIGNED64:
             if ((value = PySequence_GetItem(values, i++)) != NULL) {
-                _unsigned64 = PyLong_AsUnsignedLongLong(value);
+                _unsigned64 = PyInt_AsUnsignedLongLongMask(value);
                 if (!PyErr_Occurred())
                     stream->write_64(stream, size, _unsigned64);
                 else
@@ -761,9 +763,9 @@ static PyObject*
 BitstreamAccumulator_write(encoders_BitstreamAccumulator *self,
                            PyObject *args) {
     unsigned int count;
-    int value;
+    unsigned int value;
 
-    if (!PyArg_ParseTuple(args, "Ii", &count, &value))
+    if (!PyArg_ParseTuple(args, "II", &count, &value))
         return NULL;
 
     self->bitstream->write(self->bitstream, count, value);

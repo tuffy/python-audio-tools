@@ -3703,3 +3703,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO BitstreamWriter recorder
 *** TODO BitstreamWriter accumulator
 ** TODO Add documentation
+* TODO Handle write errors more gracefully
+  Just as the BitstreamReader uses an exception mechanism to detect
+  and handle read errors, the BitstreamWriter should use a similar
+  mechanism to detect write errors and bubble-up a Python exception.
+
+  The problem is that invalid writes are difficult to unit test.
+  With a reader, one can simply truncate a valid file.
+  It's harder to constrict a writer to only have X number of bytes
+  available so that any errors can be checked.

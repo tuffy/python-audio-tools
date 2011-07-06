@@ -375,6 +375,10 @@ typedef struct BitstreamWriter_s {
     unsigned int
     (*bits_written)(struct BitstreamWriter_s* bs);
 
+    /*flushes the current output stream's pending data*/
+    void
+    (*flush)(struct BitstreamWriter_s* bs);
+
     /*closes the current output stream
       and deallocates the struct*/
     void
@@ -1011,6 +1015,11 @@ bw_build(struct BitstreamWriter_s* stream, char* format, ...);
 
 void
 bw_close_new(BitstreamWriter* bs);
+
+void
+bw_flush_f(BitstreamWriter* bs);
+void
+bw_noop(BitstreamWriter* bs);
 
 void
 bw_close_stream_f(BitstreamWriter* bs);
