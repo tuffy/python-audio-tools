@@ -3703,6 +3703,9 @@ writer_perform_write_signed(BitstreamWriter* writer, bs_endianness endianness);
 void
 writer_perform_write_64(BitstreamWriter* writer, bs_endianness endianness);
 void
+writer_perform_write_signed_64(BitstreamWriter* writer,
+                               bs_endianness endianness);
+void
 writer_perform_write_unary_0(BitstreamWriter* writer,
                              bs_endianness endianness);
 void
@@ -4410,6 +4413,7 @@ test_writer(bs_endianness endianness) {
     write_check checks[] = {writer_perform_write,
                             writer_perform_write_signed,
                             writer_perform_write_64,
+                            writer_perform_write_signed_64,
                             writer_perform_write_unary_0,
                             writer_perform_write_unary_1};
     int total_checks = 5;
@@ -4603,6 +4607,28 @@ writer_perform_write_64(BitstreamWriter* writer, bs_endianness endianness) {
         writer->write_64(writer, 5, 13);
         writer->write_64(writer, 3, 3);
         writer->write_64(writer, 19, 395743);
+        break;
+    }
+}
+
+void
+writer_perform_write_signed_64(BitstreamWriter* writer,
+                               bs_endianness endianness)
+{
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        writer->write_signed_64(writer, 2, -2);
+        writer->write_signed_64(writer, 3, -2);
+        writer->write_signed_64(writer, 5, 7);
+        writer->write_signed_64(writer, 3, -3);
+        writer->write_signed_64(writer, 19, -181311);
+        break;
+    case BS_LITTLE_ENDIAN:
+        writer->write_signed_64(writer, 2, 1);
+        writer->write_signed_64(writer, 3, -4);
+        writer->write_signed_64(writer, 5, 13);
+        writer->write_signed_64(writer, 3, 3);
+        writer->write_signed_64(writer, 19, -128545);
         break;
     }
 }

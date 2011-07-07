@@ -414,6 +414,21 @@ BitstreamRecorder_bytes(encoders_BitstreamRecorder *self,
 }
 
 static PyObject*
+BitstreamRecorder_swap(encoders_BitstreamRecorder *self,
+                       PyObject *args) {
+    encoders_BitstreamRecorder *to_swap;
+
+    if (!PyArg_ParseTuple(args, "O!",
+                          &encoders_BitstreamRecorderType, &to_swap))
+        return NULL;
+
+    bw_swap_records(self->bitstream, to_swap->bitstream);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
 BitstreamRecorder_write_bytes(encoders_BitstreamRecorder *self,
                               PyObject *args) {
     const char* bytes;

@@ -227,6 +227,10 @@ BitstreamRecorder_bytes(encoders_BitstreamRecorder *self,
                         PyObject *args);
 
 static PyObject*
+BitstreamRecorder_swap(encoders_BitstreamRecorder *self,
+                       PyObject *args);
+
+static PyObject*
 BitstreamRecorder_write_bytes(encoders_BitstreamRecorder *self,
                               PyObject *args);
 
@@ -297,6 +301,8 @@ PyMethodDef BitstreamRecorder_methods[] = {
     {"split", (PyCFunction)BitstreamRecorder_split,
      METH_VARARGS, ""},
     {"build", (PyCFunction)BitstreamRecorder_build,
+     METH_VARARGS, ""},
+    {"swap", (PyCFunction)BitstreamRecorder_swap,
      METH_VARARGS, ""},
     {"add_callback", (PyCFunction)BitstreamRecorder_add_callback,
      METH_VARARGS, ""},

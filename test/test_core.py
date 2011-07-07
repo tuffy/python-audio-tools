@@ -1985,45 +1985,88 @@ class Bitstream(unittest.TestCase):
 
             #test a big-endian stream built from a file
             reader = BitstreamReader(temp, 0)
-            table = HuffmanTree([[1, 1], 0,
-                                 [1, 0], 1,
-                                 [0, 1], 2,
-                                 [0, 0, 1], 3,
-                                 [0, 0, 0], 4], 0)
-            self.__test_big_endian_reader__(reader, table)
-            self.__test_try__(reader, table)
-            self.__test_callbacks_reader__(reader, 14, 18, table, 14)
+            table_be = HuffmanTree([[1, 1], 0,
+                                    [1, 0], 1,
+                                    [0, 1], 2,
+                                    [0, 0, 1], 3,
+                                    [0, 0, 0], 4], 0)
+            self.__test_big_endian_reader__(reader, table_be)
+            self.__test_try__(reader, table_be)
+            self.__test_callbacks_reader__(reader, 14, 18, table_be, 14)
 
             temp.seek(0, 0)
 
             #test a little-endian stream built from a file
             reader = BitstreamReader(temp, 1)
-            table = HuffmanTree([[1, 1], 0,
-                                 [1, 0], 1,
-                                 [0, 1], 2,
-                                 [0, 0, 1], 3,
-                                 [0, 0, 0], 4], 1)
-            self.__test_little_endian_reader__(reader, table)
-            self.__test_try__(reader, table)
-            self.__test_callbacks_reader__(reader, 14, 18, table, 13)
+            table_le = HuffmanTree([[1, 1], 0,
+                                    [1, 0], 1,
+                                    [0, 1], 2,
+                                    [0, 0, 1], 3,
+                                    [0, 0, 0], 4], 1)
+            self.__test_little_endian_reader__(reader, table_le)
+            self.__test_try__(reader, table_le)
+            self.__test_callbacks_reader__(reader, 14, 18, table_le, 13)
 
             #pad the stream with some additional data at both ends
-            #FIXME
+            temp.seek(0, 0)
+            temp.write(chr(0xFF))
+            temp.write(chr(0xFF))
+            temp.write(chr(0xB1))
+            temp.write(chr(0xED))
+            temp.write(chr(0x3B))
+            temp.write(chr(0xC1))
+            temp.write(chr(0xFF))
+            temp.write(chr(0xFF))
+            temp.flush()
+            temp.seek(0, 0)
+
+            reader = BitstreamReader(temp, 0)
+            reader.mark()
 
             #check a big-endian substream built from a file
-            #FIXME
+            reader.skip(16)
+            subreader = reader.substream(4)
+            self.__test_big_endian_reader__(subreader, table_be)
+            self.__test_try__(subreader, table_be)
+            self.__test_callbacks_reader__(subreader, 14, 18, table_be, 13)
 
             #check a big-endian substream built from another substream
-            #FIXME
+            reader.rewind()
+            reader.skip(8)
+            subreader1 = reader.substream(6)
+            subreader1.skip(8)
+            subreader2 = subreader.substream(4)
+            self.__test_big_endian_reader__(subreader2, table_be)
+            self.__test_try__(subreader2, table_be)
+            self.__test_callbacks_reader__(subreader2, 14, 18, table_be, 13)
+            reader.unmark()
+
+            temp.seek(0, 0)
+
+            reader = BitstreamReader(temp, 1)
+            reader.mark()
 
             #check a little-endian substream built from a file
-            #FIXME
+            reader.skip(16)
+            subreader = reader.substream(4)
+            self.__test_little_endian_reader__(subreader, table_le)
+            self.__test_try__(subreader, table_le)
+            self.__test_callbacks_reader__(subreader, 14, 18, table_le, 13)
 
             #check a little-endian substream built from another substream
-            #FIXME
+            reader.rewind()
+            reader.skip(8)
+            subreader1 = reader.substream(6)
+            subreader1.skip(8)
+            subreader2 = subreader.substream(4)
+            self.__test_little_endian_reader__(subreader2, table_le)
+            self.__test_try__(subreader2, table_le)
+            self.__test_callbacks_reader__(subreader2, 14, 18, table_le, 13)
+            reader.unmark()
 
             #test the writer functions with each endianness
-            #FIXME
+            self.__test_writer__(0)
+            self.__test_writer__(1)
 
         finally:
             temp.close()
@@ -2315,6 +2358,269 @@ class Bitstream(unittest.TestCase):
     def __validate_edge_accumulator_le__(self, writer, temp_file):
         self.assertEqual(writer.bits(), 48 * 8)
 
+    def __test_writer__(self, endianness):
+        from audiotools.encoders import BitstreamWriter
+        from audiotools.encoders import BitstreamRecorder
+        from audiotools.encoders import BitstreamAccumulator
+
+        checks = [self.__writer_perform_write__,
+                  self.__writer_perform_write_signed__,
+                  self.__writer_perform_write_64__,
+                  self.__writer_perform_write_signed_64__,
+                  self.__writer_perform_write_unary_0__,
+                  self.__writer_perform_write_unary_1__]
+
+        #perform file-based checks
+        for check in checks:
+            temp = tempfile.NamedTemporaryFile()
+            try:
+                writer = BitstreamWriter(open(temp.name, "wb"), endianness)
+                check(writer, endianness)
+                writer.close()
+                self.__check_output_file__(temp)
+            finally:
+                temp.close()
+
+        #perform recorder-based checks
+        for check in checks:
+            temp = tempfile.NamedTemporaryFile()
+            try:
+                writer = BitstreamWriter(open(temp.name, "wb"), endianness)
+                recorder = BitstreamRecorder(endianness)
+                check(recorder, endianness)
+                recorder.copy(writer)
+                writer.close()
+                self.__check_output_file__(temp)
+                self.assertEqual(recorder.bits(), 32)
+            finally:
+                temp.close()
+
+        #perform accumulator-based checks
+        for check in checks:
+            writer = BitstreamAccumulator(endianness)
+            check(writer, endianness)
+            self.assertEqual(writer.bits(), 32)
+
+        #check swap records
+        temp = tempfile.NamedTemporaryFile()
+        try:
+            writer = BitstreamWriter(open(temp.name, "wb"), endianness)
+            recorder1 = BitstreamRecorder(endianness)
+            recorder2 = BitstreamRecorder(endianness)
+            recorder2.write(8, 0xB1)
+            recorder2.write(8, 0xED)
+            recorder1.write(8, 0x3B)
+            recorder1.write(8, 0xC1)
+            recorder1.swap(recorder2)
+            recorder1.copy(writer)
+            recorder2.copy(writer)
+            writer.close()
+            self.__check_output_file__(temp)
+        finally:
+            temp.close()
+
+        #check recorder reset
+        temp = tempfile.NamedTemporaryFile()
+        try:
+            writer = BitstreamWriter(open(temp.name, "wb"), endianness)
+            recorder = BitstreamRecorder(endianness)
+            recorder.write(8, 0xAA)
+            recorder.write(8, 0xBB)
+            recorder.write(8, 0xCC)
+            recorder.write(8, 0xDD)
+            recorder.write(8, 0xEE)
+            recorder.reset()
+            recorder.write(8, 0xB1)
+            recorder.write(8, 0xED)
+            recorder.write(8, 0x3B)
+            recorder.write(8, 0xC1)
+            recorder.copy(writer)
+            writer.close()
+            self.__check_output_file__(temp)
+        finally:
+            temp.close()
+
+        #check endianness setting
+        #FIXME
+
+        #check a file-based byte-align
+        #FIXME
+
+        #check a recorder-based byte-align
+        #FIXME
+
+        #check an accumulator-based byte-align
+        #FIXME
+
+        #check a partial dump
+        #FIXME
+
+        #check that recorder->recorder->file works
+        for check in checks:
+            temp = tempfile.NamedTemporaryFile()
+            try:
+                writer = BitstreamWriter(open(temp.name, "wb"), endianness)
+                recorder1 = BitstreamRecorder(endianness)
+                recorder2 = BitstreamRecorder(endianness)
+                self.assertEqual(recorder1.bits(), 0)
+                self.assertEqual(recorder2.bits(), 0)
+                check(recorder2, endianness)
+                self.assertEqual(recorder1.bits(), 0)
+                self.assertEqual(recorder2.bits(), 32)
+                recorder2.copy(recorder1)
+                self.assertEqual(recorder1.bits(), 32)
+                self.assertEqual(recorder2.bits(), 32)
+                recorder1.copy(writer)
+                writer.close()
+                self.__check_output_file__(temp)
+            finally:
+                temp.close()
+
+        #check that recorder->accumulator works
+        for check in checks:
+            recorder = BitstreamRecorder(endianness)
+            accumulator = BitstreamAccumulator(endianness)
+            self.assertEqual(recorder.bits(), 0)
+            self.assertEqual(accumulator.bits(), 0)
+            check(recorder, endianness)
+            self.assertEqual(recorder.bits(), 32)
+            self.assertEqual(accumulator.bits(), 0)
+            recorder.copy(accumulator)
+            self.assertEqual(recorder.bits(), 32)
+            self.assertEqual(accumulator.bits(), 32)
+
+    def __writer_perform_write__(self, writer, endianness):
+        if (endianness == 0):
+            writer.write(2, 2)
+            writer.write(3, 6)
+            writer.write(5, 7)
+            writer.write(3, 5)
+            writer.write(19, 342977)
+        else:
+            writer.write(2, 1)
+            writer.write(3, 4)
+            writer.write(5, 13)
+            writer.write(3, 3)
+            writer.write(19, 395743)
+
+    def __writer_perform_write_signed__(self, writer, endianness):
+        if (endianness == 0):
+            writer.write_signed(2, -2)
+            writer.write_signed(3, -2)
+            writer.write_signed(5, 7)
+            writer.write_signed(3, -3)
+            writer.write_signed(19, -181311)
+        else:
+            writer.write_signed(2, 1)
+            writer.write_signed(3, -4)
+            writer.write_signed(5, 13)
+            writer.write_signed(3, 3)
+            writer.write_signed(19, -128545)
+
+    def __writer_perform_write_64__(self, writer, endianness):
+        if (endianness == 0):
+            writer.write64(2, 2)
+            writer.write64(3, 6)
+            writer.write64(5, 7)
+            writer.write64(3, 5)
+            writer.write64(19, 342977)
+        else:
+            writer.write64(2, 1)
+            writer.write64(3, 4)
+            writer.write64(5, 13)
+            writer.write64(3, 3)
+            writer.write64(19, 395743)
+
+    def __writer_perform_write_signed_64__(self, writer, endianness):
+        if (endianness == 0):
+            writer.write_signed64(2, -2)
+            writer.write_signed64(3, -2)
+            writer.write_signed64(5, 7)
+            writer.write_signed64(3, -3)
+            writer.write_signed64(19, -181311)
+        else:
+            writer.write_signed64(2, 1)
+            writer.write_signed64(3, -4)
+            writer.write_signed64(5, 13)
+            writer.write_signed64(3, 3)
+            writer.write_signed64(19, -128545)
+
+    def __writer_perform_write_unary_0__(self, writer, endianness):
+        if (endianness == 0):
+            writer.unary(0, 1)
+            writer.unary(0, 2)
+            writer.unary(0, 0)
+            writer.unary(0, 0)
+            writer.unary(0, 4)
+            writer.unary(0, 2)
+            writer.unary(0, 1)
+            writer.unary(0, 0)
+            writer.unary(0, 3)
+            writer.unary(0, 4)
+            writer.unary(0, 0)
+            writer.unary(0, 0)
+            writer.unary(0, 0)
+            writer.unary(0, 0)
+            writer.write(1, 1);
+        else:
+            writer.unary(0, 1)
+            writer.unary(0, 0)
+            writer.unary(0, 0)
+            writer.unary(0, 2)
+            writer.unary(0, 2)
+            writer.unary(0, 2)
+            writer.unary(0, 5)
+            writer.unary(0, 3)
+            writer.unary(0, 0)
+            writer.unary(0, 1)
+            writer.unary(0, 0)
+            writer.unary(0, 0)
+            writer.unary(0, 0)
+            writer.unary(0, 0)
+            writer.write(2, 3)
+
+    def __writer_perform_write_unary_1__(self, writer, endianness):
+        if (endianness == 0):
+            writer.unary(1, 0)
+            writer.unary(1, 1)
+            writer.unary(1, 0)
+            writer.unary(1, 3)
+            writer.unary(1, 0)
+            writer.unary(1, 0)
+            writer.unary(1, 0)
+            writer.unary(1, 1)
+            writer.unary(1, 0)
+            writer.unary(1, 1)
+            writer.unary(1, 2)
+            writer.unary(1, 0)
+            writer.unary(1, 0)
+            writer.unary(1, 1)
+            writer.unary(1, 0)
+            writer.unary(1, 0)
+            writer.unary(1, 0)
+            writer.unary(1, 5)
+        else:
+            writer.unary(1, 0)
+            writer.unary(1, 3)
+            writer.unary(1, 0)
+            writer.unary(1, 1)
+            writer.unary(1, 0)
+            writer.unary(1, 1)
+            writer.unary(1, 0)
+            writer.unary(1, 1)
+            writer.unary(1, 0)
+            writer.unary(1, 0)
+            writer.unary(1, 0)
+            writer.unary(1, 0)
+            writer.unary(1, 1)
+            writer.unary(1, 0)
+            writer.unary(1, 0)
+            writer.unary(1, 2)
+            writer.unary(1, 5)
+            writer.unary(1, 0)
+
+    def __check_output_file__(self, temp_file):
+        self.assertEqual(open(temp_file.name, "rb").read(), "\xB1\xED\x3B\xC1")
 
     @LIB_CORE
     def test_edge_cases(self):
@@ -2338,7 +2644,9 @@ class Bitstream(unittest.TestCase):
             del(reader)
 
             #ensure a big-endian sub-reader reads the values correctly
-            #FIXME
+            reader = BitstreamReader(open(temp.name, "rb"), 0)
+            subreader = reader.substream(48)
+            self.__test_edge_reader_be__(subreader)
         finally:
             temp.close()
 
@@ -2360,7 +2668,9 @@ class Bitstream(unittest.TestCase):
             del(reader)
 
             #ensure a little-endian sub-reader reads the values correctly
-            #FIXME
+            reader = BitstreamReader(open(temp.name, "rb"), 1)
+            subreader = reader.substream(48)
+            self.__test_edge_reader_be__(subreader)
         finally:
             temp.close()
 
