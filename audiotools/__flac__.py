@@ -52,116 +52,34 @@ class FlacMetaDataBlockTooLarge(Exception):
 
     pass
 
-
-class FlacMetaDataBlock:
-    """A container for FLAC metadata blocks."""
-
-    def __init__(self, type, data):
-        """Initialized with a type integer and data binary string."""
-
-        self.type = type
-        self.data = data
-
-    def build_block(self, last=0):
-        """Returns the entire block as a string, including header.
-
-        last is a bit indicating this is the last block before audio data.
-        Raises FlacMetaDataBlockTooLarge if data is too large to fit
-        in a single FLAC metadata block."""
-
-        if (len(self.data) > (1 << 24)):
-            raise FlacMetaDataBlockTooLarge()
-
-        return FlacAudio.METADATA_BLOCK_HEADER.build(
-            Con.Container(last_block=last,
-                          block_type=self.type,
-                          block_length=len(self.data))) + self.data
-
-
 class FlacMetaData(MetaData):
-    """A container for a FLAC file's list of metadata blocks."""
+    """A class for managing a native FLAC's metadata."""
 
-    def __init__(self, blocks):
-        """blocks is a list of plain FlacMetaDataBlock objects.
-
-        These are converted internally into MetaData/ImageMetaData fields
-        as needed, depending on the type.
-        """
+    def __init__(self, streaminfo=None, applications=None, seektable=None,
+                 vorbis_comment=None, cuesheet=None, pictures=None):
 
         #IMPORTANT!
         #Externally converted FlacMetaData likely won't have a valid STREAMINFO
         #so set_metadata() must override this value with the current
         #FLAC's streaminfo before setting the metadata blocks.
-        self.__dict__['streaminfo'] = None
+        self.__dict__["streaminfo"] = streaminfo
+
+        if (applications is None):
+            self.__dict__["applications"] = []
+        else:
+            self.__dict__["applications"] = applications
 
         #Don't use an external SEEKTABLE, either.
-        self.__dict__['seektable'] = None
+        self.__dict__["seektable"] = seektable
 
-        self.__dict__['vorbis_comment'] = None
-        self.__dict__['cuesheet'] = None
-        self.__dict__['image_blocks'] = []
-        self.__dict__['extra_blocks'] = []
+        self.__dict__["vorbis_comment"] = vorbis_comment
 
-        for block in blocks:
-            #metadata block data cannot exceed 2^24 bits
-            if (len(block.data) > (1 << 24)):
-                continue
+        self.__dict__["cuesheet"] = cuesheet
 
-            if ((block.type == 0) and (self.streaminfo is None)):
-                #only one STREAMINFO allowed
-                self.__dict__['streaminfo'] = block
-            elif ((block.type == 4) and (self.vorbis_comment is None)):
-                #only one VORBIS_COMMENT allowed
-                comments = {}
-
-                comment_container = FlacVorbisComment.VORBIS_COMMENT.parse(
-                    block.data)
-
-                for comment in comment_container.value:
-                    try:
-                        key = comment[0:comment.index("=")].upper()
-                        value = comment[comment.index("=") + 1:].decode(
-                            'utf-8')
-
-                        comments.setdefault(key, []).append(value)
-                    except ValueError:
-                        pass
-
-                self.__dict__['vorbis_comment'] = FlacVorbisComment(
-                    comments, comment_container.vendor_string)
-
-            elif ((block.type == 5) and (self.cuesheet is None)):
-                #only one CUESHEET allowed
-                self.__dict__['cuesheet'] = FlacCueSheet(
-                    FlacCueSheet.CUESHEET.parse(block.data),
-                    FlacAudio.STREAMINFO.parse(
-                        self.streaminfo.data).samplerate)
-            elif ((block.type == 3) and (self.seektable is None)):
-                #only one SEEKTABLE allowed
-                self.__dict__['seektable'] = FlacSeektable(
-                    [FlacSeekpoint(sample_number=point.sample_number,
-                                   byte_offset=point.byte_offset,
-                                   frame_samples=point.frame_samples)
-                     for point in FlacSeektable.SEEKTABLE.parse(block.data)])
-            elif (block.type == 6):
-                #multiple PICTURE blocks are ok
-                image = FlacAudio.PICTURE_COMMENT.parse(block.data)
-
-                self.__dict__['image_blocks'].append(FlacPictureComment(
-                    type=image.type,
-                    mime_type=image.mime_type.decode('ascii', 'replace'),
-                    description=image.description.decode('utf-8', 'replace'),
-                    width=image.width,
-                    height=image.height,
-                    color_depth=image.color_depth,
-                    color_count=image.color_count,
-                    data=image.data))
-            elif (block.type != 1):
-                #everything but the padding is stored as extra
-                self.__dict__['extra_blocks'].append(block)
-
-        if (self.vorbis_comment is None):
-            self.vorbis_comment = FlacVorbisComment({})
+        if (pictures is None):
+            self.__dict__["pictures"] = []
+        else:
+            self.__dict__["pictures"] = pictures
 
     def __comment_name__(self):
         return u'FLAC'
@@ -179,13 +97,22 @@ class FlacMetaData(MetaData):
 
     def __setattr__(self, key, value):
         if (key in self.__FIELDS__):
+            if (self.vorbis_comment is None):
+                self.vorbis_comment = Flac_VORBISCOMMENT(
+                    u"Python Audio Tools %s" % (VERSION), [])
+
             setattr(self.vorbis_comment, key, value)
         else:
             self.__dict__[key] = value
 
     def __getattr__(self, key):
         if (key in self.__FIELDS__):
-            return getattr(self.vorbis_comment, key)
+            if (self.vorbis_comment is not None):
+                return getattr(self.vorbis_comment, key)
+            elif (key in self.__INTEGER_FIELDS__):
+                return 0
+            else:
+                return u""
         else:
             try:
                 return self.__dict__[key]
@@ -194,7 +121,8 @@ class FlacMetaData(MetaData):
 
     def __delattr__(self, key):
         if (key in self.__FIELDS__):
-            delattr(self.vorbis_comment, key)
+            if (self.vorbis_comment is not None):
+                delattr(self.vorbis_comment, key)
         else:
             try:
                 del(self.__dict__[key])
@@ -208,23 +136,9 @@ class FlacMetaData(MetaData):
         if ((metadata is None) or (isinstance(metadata, FlacMetaData))):
             return metadata
         else:
-            blocks = []
-            try:
-                blocks.append(FlacMetaDataBlock(
-                        type=4,
-                        data=FlacVorbisComment.converted(metadata).build()))
-            except FlacMetaDataBlockTooLarge:
-                pass
-
-            for image in metadata.images():
-                try:
-                    blocks.append(FlacMetaDataBlock(
-                            type=6,
-                            data=FlacPictureComment.converted(image).build()))
-                except FlacMetaDataBlockTooLarge:
-                    pass
-
-            return FlacMetaData(blocks)
+            return cls(vorbis_comment=Flac_VORBISCOMMENT.converted(metadata),
+                       pictures=[Flac_PICTURE.converted(image)
+                                 for image in metadata.images()])
 
     def merge(self, metadata):
         """Updates any currently empty entries from metadata's values."""
@@ -237,76 +151,19 @@ class FlacMetaData(MetaData):
     def add_image(self, image):
         """Embeds an Image object in this metadata."""
 
-        self.__dict__['image_blocks'].append(
-            FlacPictureComment.converted(image))
+        self.__dict__['pictures'].append(Flac_PICTURE.converted(image))
 
     def delete_image(self, image):
         """Deletes an Image object from this metadata."""
 
-        image_blocks = self.__dict__['image_blocks']
-
-        if (image in image_blocks):
-            image_blocks.pop(image_blocks.index(image))
+        self.__dict__['pictures'] = [
+            cur_image for cur_image in self.__dict__['pictures']
+            if (cur_image != image)]
 
     def images(self):
         """Returns a list of embedded Image objects."""
 
-        return self.__dict__['image_blocks'][:]
-
-    def metadata_blocks(self):
-        """Yields all current blocks as FlacMetaDataBlock-compatible objects.
-
-        Note that any padding block is not returned.
-        """
-
-        yield self.streaminfo
-        yield self.vorbis_comment
-
-        if (self.seektable is not None):
-            yield self.seektable
-
-        if (self.cuesheet is not None):
-            yield self.cuesheet
-
-        for image in self.images():
-            yield image
-
-        for extra in self.extra_blocks:
-            yield extra
-
-    def build(self, padding_size=4096):
-        """Returns all of a FLAC file's metadata as a binary string.
-
-        padding_size indicates the side of the PADDING block to append
-        (not counting its 32 bit header).
-        """
-
-        built_blocks = []
-        blocks = self.metadata_blocks()
-
-        #STREAMINFO must always be first and is always a fixed size
-        built_blocks.append(blocks.next().build_block())
-
-        #then come the rest of the blocks in any order
-        for block in blocks:
-            try:
-                built_blocks.append(block.build_block())
-            except FlacMetaDataBlockTooLarge:
-                if (isinstance(block, VorbisComment)):
-                    #if VORBISCOMMENT is too large, substitute a blank one
-                    #(this only happens when one pushes over 16MB(!) of text
-                    # into a comment, which simply isn't going to happen
-                    # accidentcally)
-                    built_blocks.append(FlacVorbisComment(
-                            vorbis_data={},
-                            vendor_string=block.vendor_string).build_block())
-
-        #finally, append a fresh PADDING block
-        built_blocks.append(
-            FlacMetaDataBlock(type=1,
-                              data=chr(0) * padding_size).build_block(last=1))
-
-        return "".join(built_blocks)
+        return self.__dict__['pictures'][:]
 
     @classmethod
     def supports_images(cls):
@@ -319,74 +176,194 @@ class FlacMetaData(MetaData):
 
         Any fixes performed are appended to fixes_performed as Unicode."""
 
-        cleaned = FlacMetaData([])
-
-        if (self.streaminfo is not None):
-            cleaned.streaminfo = self.streaminfo
-
         #recursively clean up the text fields in FlacVorbisComment
         if (self.vorbis_comment is not None):
-            cleaned.vorbis_comment = self.vorbis_comment.clean(fixes_performed)
-
-        #add seektable if present
-        if (self.seektable is not None):
-            cleaned.seektable = self.seektable
-
-        #add cuesheet if present
-        if (self.cuesheet is not None):
-            cleaned.cuesheet = self.cuesheet
+            vorbis_comment = self.vorbis_comment.clean(fixes_performed)
+        else:
+            vorbis_comment = None
 
         #recursively clean up any image blocks
-        cleaned.image_blocks = [image.clean(fixes_performed)
-                                for image in self.image_blocks]
+        pictures = [image.clean(fixes_performed)
+                    for image in self.pictures]
 
-        #add any extra blocks
-        cleaned.extra_blocks = self.extra_blocks
+        return FlacMetaData(streaminfo=self.streaminfo,
+                            applications=self.applications,
+                            seektable=self.seektable,
+                            vorbis_comment=vorbis_comment,
+                            cuesheet=self.cuesheet,
+                            pictures=pictures)
 
-        return cleaned
+
+    def __repr__(self):
+        return ("FlacMetaData(%s)" %
+                (",".join(["%s=%s" % (key, getattr(self, key))
+                           for key in ["streaminfo",
+                                       "applications",
+                                       "seektable",
+                                       "vorbis_comment",
+                                       "cuesheet",
+                                       "pictures"]])))
+    @classmethod
+    def parse(cls, reader):
+        streaminfo = None
+        applications = []
+        seektable = None
+        vorbis_comment = None
+        cuesheet = None
+        pictures = []
+
+        (last, block_type, block_length) = reader.parse("1u7u24u")
+
+        while (not last):
+            if (block_type == 0):   #STREAMINFO
+                if (streaminfo is None):
+                    streaminfo = Flac_STREAMINFO.parse(
+                        reader.substream(block_length))
+                else:
+                    raise ValueError("only 1 STREAMINFO allowed in metadata")
+            elif (block_type == 1): #PADDING
+                reader.skip(block_length * 8)
+            elif (block_type == 2): #APPLICATION
+                raise NotImplementedError()
+            elif (block_type == 3): #SEEKTABLE
+                if (seektable is None):
+                    seektable = Flac_SEEKTABLE.parse(
+                        reader.substream(block_length), block_length / 18)
+            elif (block_type == 4): #VORBIS_COMMENT
+                if (vorbis_comment is None):
+                    vorbis_comment = Flac_VORBISCOMMENT.parse(
+                        reader.substream(block_length))
+                else:
+                    raise ValueError("only 1 VORBISCOMMENT allowed in metadata")
+            elif (block_type == 5): #CUESHEET
+                if (cuesheet is None):
+                    cuesheet = Flac_CUESHEET.parse(
+                        reader.substream(block_length))
+                else:
+                    raise ValueError("only 1 CUESHEET allowed in metadata")
+            elif (block_type == 6): #PICTURE
+                pictures.append(Flac_PICTURE.parse(
+                        reader.substream(block_length)))
+            elif ((block_type >= 7) and (block_type <= 126)):
+                raise ValueError("reserved metadata block type %d" %
+                                 (block_type))
+            else:
+                raise ValueError("invalid metadata block type")
+
+            (last, block_type, block_length) = reader.parse("1u7u24u")
+
+        return cls(streaminfo=streaminfo,
+                   applications=applications,
+                   seektable=seektable,
+                   vorbis_comment=vorbis_comment,
+                   cuesheet=cuesheet,
+                   pictures=pictures)
+
+    def blocks(self):
+        if (self.streaminfo is not None):
+            yield self.streaminfo
+        for application in self.applications:
+            yield self.application
+        if (self.seektable is not None):
+            yield self.seektable
+        if (self.vorbis_comment is not None):
+            yield self.vorbis_comment
+        if (self.cuesheet is not None):
+            yield self.cuesheet
+        for picture in self.pictures:
+            yield picture
+
+    def build(self, writer, padding_bytes):
+        from audiotools.encoders import BitstreamRecorder
+
+        for block in self.blocks():
+            block_data = BitstreamRecorder(0)
+            block.build(block_data)
+            if (block_data.bytes() < 2 ** 24):
+                #skip oversized blocks altogether
+                writer.build("1u7u24u", (0, block.BLOCK_ID, block_data.bytes()))
+                block_data.copy(writer)
+
+        writer.build("1u7u24u%dp" % (padding_bytes * 8),
+                     (1, 1, padding_bytes))
 
 
-class FlacVorbisComment(VorbisComment):
-    """A slight variation of VorbisComment without the framing bit.
+class Flac_STREAMINFO:
+    BLOCK_ID = 0
 
-    Also includes a build_block() method for FlacMetaDataBlock
-    compatiblity."""
+    def __init__(self, minimum_block_size, maximum_block_size,
+                 minimum_frame_size, maximum_frame_size,
+                 sample_rate, channels, bits_per_sample,
+                 total_samples, md5sum):
+        self.minimum_block_size = minimum_block_size
+        self.maximum_block_size = maximum_block_size
+        self.minimum_frame_size = minimum_frame_size
+        self.maximum_frame_size = maximum_frame_size
+        self.sample_rate = sample_rate
+        self.channels = channels
+        self.bits_per_sample = bits_per_sample
+        self.total_samples = total_samples
+        self.md5sum = md5sum
 
-    VORBIS_COMMENT = Con.Struct("vorbis_comment",
-                                Con.PascalString(
-            "vendor_string",
-            length_field=Con.ULInt32("length")),
-                                Con.PrefixedArray(
-        length_field=Con.ULInt32("length"),
-        subcon=Con.PascalString("value",
-                                length_field=Con.ULInt32("length"))))
+    def __eq__(self, metadata):
+        from operator import and_
 
-    def build_block(self, last=0):
-        """Returns the entire block as a string, including header.
+        return reduce(and_, [getattr(self, attr) == getattr(metadata, attr)
+                             for attr in ["minimum_block_size",
+                                          "maximum_block_size",
+                                          "minimum_frame_size",
+                                          "maximum_frame_size",
+                                          "sample_rate",
+                                          "channels",
+                                          "bits_per_sample",
+                                          "total_samples",
+                                          "md5sum"]])
 
-        last is a bit indicating this is the last block before audio data.
-        Raises FlacMetaDataBlockTooLarge if data is too large to fit
-        in a single FLAC metadata block."""
+    def __repr__(self):
+        return ("Flac_STREAMINFO(%s)" %
+                ",".join(["%s=%s" % (key, repr(getattr(self, key)))
+                          for key in ["minimum_block_size",
+                                      "maximum_block_size",
+                                      "minimum_frame_size",
+                                      "maximum_frame_size",
+                                      "sample_rate",
+                                      "channels",
+                                      "bits_per_sample",
+                                      "total_samples",
+                                      "md5sum"]]))
 
-        block = self.build()
-        if (len(block) > (1 << 24)):
-            raise FlacMetaDataBlockTooLarge()
+    @classmethod
+    def parse(cls, reader):
+        values = reader.parse("16u16u24u24u20u3u5u36U16b")
+        values[5] += 1  #channels
+        values[6] += 1  #bits-per-sample
+        return cls(*values)
 
-        return FlacAudio.METADATA_BLOCK_HEADER.build(
-            Con.Container(last_block=last,
-                          block_type=4,
-                          block_length=len(block))) + block
+    def build(self, writer):
+        writer.build("16u16u24u24u20u3u5u36U16b",
+                     (self.minimum_block_size,
+                      self.maximum_block_size,
+                      self.minimum_frame_size,
+                      self.maximum_frame_size,
+                      self.sample_rate,
+                      self.channels - 1,
+                      self.bits_per_sample - 1,
+                      self.total_samples,
+                      self.md5sum))
+
+class Flac_VORBISCOMMENT(VorbisComment):
+    BLOCK_ID = 4
 
     @classmethod
     def converted(cls, metadata):
-        """Converts metadata from another class to FlacVorbisComment."""
+        """Converts a MetaData object to a VorbisComment object."""
 
-        if ((metadata is None) or (isinstance(metadata, FlacVorbisComment))):
+        if ((metadata is None) or (isinstance(metadata, Flac_VORBISCOMMENT))):
             return metadata
         elif (isinstance(metadata, FlacMetaData)):
             return metadata.vorbis_comment
         elif (isinstance(metadata, VorbisComment)):
-            return FlacVorbisComment(metadata, metadata.vendor_string)
+            return cls(metadata, metadata.vendor_string)
         else:
             values = {}
             for key in cls.ATTRIBUTE_MAP.keys():
@@ -398,48 +375,127 @@ class FlacVorbisComment(VorbisComment):
                     values[cls.ATTRIBUTE_MAP[key]] = \
                         [unicode(getattr(metadata, key))]
 
-            return FlacVorbisComment(values)
+            return cls(values)
 
+    @classmethod
+    def parse(cls, reader):
+        reader.set_endianness(1)
+        vendor_string = reader.read_bytes(reader.read(32)).decode('utf-8')
+        comment_strings = {}
+        for (key, value) in [comment_string.split(u"=", 1) for comment_string in
+                             [reader.read_bytes(reader.read(32)).decode('utf-8')
+                              for i in xrange(reader.read(32))]
+                             if u"=" in comment_string]:
+            comment_strings.setdefault(key, []).append(value)
 
-class FlacPictureComment(Image):
-    """This is a container for FLAC's PICTURE metadata blocks."""
+        return cls(comment_strings, vendor_string)
 
-    def __init__(self, type, mime_type, description,
+    def build(self, writer):
+        writer.set_endianness(1)
+        vendor_string = self.vendor_string.encode('utf-8')
+        writer.build("32u%db" % (len(vendor_string)),
+                     (len(vendor_string), vendor_string))
+        writer.write(32, sum(map(len, self.values())))
+        for (key, values) in self.items():
+            for value in values:
+                comment = (u"%s=%s" % (key.upper(), value)).encode('utf-8')
+                writer.build("32u%db" % (len(comment)), (len(comment), comment))
+
+class Flac_PICTURE(Image):
+    BLOCK_ID = 6
+
+    def __init__(self, picture_type, mime_type, description,
                  width, height, color_depth, color_count, data):
-        """Initialization fields are as follows:
+        self.__dict__["data"] = data
+        self.__dict__["mime_type"] = mime_type
+        self.__dict__["width"] = width
+        self.__dict__["height"] = height
+        self.__dict__["color_depth"] = color_depth
+        self.__dict__["color_count"] = color_count
+        self.__dict__["description"] = description
+        self.__dict__["picture_type"] = picture_type
 
-        type - an integer type whose values are:
-               0 - front cover
-               1 - back cover
-               2 - leaflet page
-               3 - media
-               4 - other
-        mime_type   - unicode string of the image's MIME type
-        description - a unicode string
-        width       - width of image, as integer number of pixels
-        height      - height of image, as integer number of pixels
-        color_depth - color depth of image (24 for JPEG, 8 for GIF, etc.)
-        color_count - number of palette colors, or 0
-        data        - plain string of the actual binary image data
-        """
+    def __getattr__(self, key):
+        if (key == "type"):
+            #convert FLAC picture_type to Image type
+            #
+            # | Item         | FLAC Picture ID | Image type |
+            # |--------------+-----------------+------------|
+            # | Other        |               0 |          4 |
+            # | Front Cover  |               3 |          0 |
+            # | Back Cover   |               4 |          1 |
+            # | Leaflet Page |               5 |          2 |
+            # | Media        |               6 |          3 |
 
-        Image.__init__(self,
-                       data=data,
-                       mime_type=mime_type,
-                       width=width,
-                       height=height,
-                       color_depth=color_depth,
-                       color_count=color_count,
-                       description=description,
-                       type={3: 0, 4: 1, 5: 2, 6: 3}.get(type, 4))
-        self.flac_type = type
+            return {0:4, 3:0, 4:1, 5:2, 6:3}.get(self.picture_type, 4)
+        else:
+            try:
+                return self.__dict__[key]
+            except KeyError:
+                raise AttributeError(key)
+
+    def __setattr__(self, key, value):
+        if (key == "type"):
+            #convert Image type to FLAC picture_type
+            #
+            # | Item         | Image type | FLAC Picture ID |
+            # |--------------+------------+-----------------|
+            # | Other        |          4 |               0 |
+            # | Front Cover  |          0 |               3 |
+            # | Back Cover   |          1 |               4 |
+            # | Leaflet Page |          2 |               5 |
+            # | Media        |          3 |               6 |
+
+            self.picture_type = {4:0, 0:3, 1:4, 2:5, 3:6}.get(value, 0)
+        else:
+            self.__dict__[key] = value
+
+    def __repr__(self):
+        return ("Flac_PICTURE(%s)" %
+                ",".join(["%s=%s" % (key, repr(getattr(self, key)))
+                          for key in ["picture_type",
+                                      "mime_type",
+                                      "description",
+                                      "width",
+                                      "height",
+                                      "color_depth",
+                                      "color_count"]]))
+
+    @classmethod
+    def parse(cls, reader):
+        return cls(
+            picture_type=reader.read(32),
+            mime_type=reader.read_bytes(reader.read(32)).decode('ascii'),
+            description=reader.read_bytes(reader.read(32)).decode('utf-8'),
+            width=reader.read(32),
+            height=reader.read(32),
+            color_depth=reader.read(32),
+            color_count=reader.read(32),
+            data=reader.read_bytes(reader.read(32)))
+
+    def build(self, writer):
+        writer.build("32u [ 32u%db ] [32u%db ] 32u 32u 32u 32u [ 32u%db ]" %
+                     (len(self.mime_type.encode('ascii')),
+                      len(self.description.encode('utf-8')),
+                      len(self.data)),
+                     (self.picture_type,
+                      len(self.mime_type.encode('ascii')),
+                      self.mime_type.encode('ascii'),
+                      len(self.description.encode('utf-8')),
+                      self.description.encode('utf-8'),
+                      self.width,
+                      self.height,
+                      self.color_depth,
+                      self.color_count,
+                      len(self.data),
+                      self.data))
 
     @classmethod
     def converted(cls, image):
         """Converts an Image object to a FlacPictureComment."""
 
-        return FlacPictureComment(
-            type={0: 3, 1: 4, 2: 5, 3: 6}.get(image.type, 0),
+        return cls(
+            picture_type={4:0, 0:3, 1:4, 2:5, 3:6}.get(image.type, 0),
             mime_type=image.mime_type,
             description=image.description,
             width=image.width,
@@ -474,52 +530,8 @@ class FlacPictureComment(Image):
                 17: "A bright colored fish",
                 18: "Illustration",
                 19: "Band/Artist logotype",
-                20: "Publisher / Studio logotype"}.get(self.flac_type, "Other")
-
-    def __repr__(self):
-        return ("FlacPictureComment(type=%s,mime_type=%s,description=%s," +
-                "width=%s,height=%s,...)") % \
-                (repr(self.flac_type), repr(self.mime_type),
-                 repr(self.description),
-                 repr(self.width), repr(self.height))
-
-    def build(self):
-        """Returns a PICTURE comment as a raw string.
-
-        This does not include the 32 bit header."""
-
-        if (len(self.data) > (1 << 24)):
-            raise FlacMetaDataBlockTooLarge()
-
-        return FlacAudio.PICTURE_COMMENT.build(
-            Con.Container(type=self.flac_type,
-                          mime_type=self.mime_type.encode('ascii'),
-                          description=self.description.encode('utf-8'),
-                          width=self.width,
-                          height=self.height,
-                          color_depth=self.color_depth,
-                          color_count=self.color_count,
-                          data=self.data))
-
-    def build_block(self, last=0):
-        """Returns the entire block as a string, including header.
-
-        last is a bit indicating this is the last block before audio data.
-        Raises FlacMetaDataBlockTooLarge if data is too large to fit
-        in a single FLAC metadata block."""
-
-        block = self.build()
-        if (len(block) > (1 << 24)):
-            #why check both here and in build()?
-            #because while the raw image data itself might be small enough
-            #additional info like "description" could push it over
-            #the metadata block size limit
-            raise FlacMetaDataBlockTooLarge()
-
-        return FlacAudio.METADATA_BLOCK_HEADER.build(
-            Con.Container(last_block=last,
-                          block_type=6,
-                          block_length=len(block))) + block
+                20: "Publisher / Studio logotype"}.get(self.picture_type,
+                                                       "Other")
 
     def clean(self, fixes_performed):
         img = image_metrics(self.data)
@@ -530,7 +542,7 @@ class FlacPictureComment(Image):
             (self.color_depth != img.bits_per_pixel) or
             (self.color_count != img.color_count)):
             fixes_performed.append(_(u"fixed embedded image metadata fields"))
-            return FlacPictureComment.converted(Image(
+            return self.__class__.converted(Image(
                     type=self.type,
                     mime_type=img.mime_type,
                     description=self.description,
@@ -542,56 +554,78 @@ class FlacPictureComment(Image):
         else:
             return self
 
+class Flac_APPLICATION:
+    BLOCK_ID = 2
 
-class FlacCueSheet:
-    """A container for FLAC CUESHEET metadata blocks."""
+    def __init__(self, application_id, data):
+        self.application_id = application_id
+        self.data = data
 
-    CUESHEET = Con.Struct(
-        "flac_cuesheet",
-        Con.String("catalog_number", 128),
-        Con.UBInt64("lead_in_samples"),
-        Con.Embed(Con.BitStruct("flags",
-                                Con.Flag("is_cd"),
-                                Con.Padding(7))),  # reserved
-        Con.Padding(258),  # reserved
-        Con.PrefixedArray(
-            length_field=Con.Byte("count"),
-            subcon=Con.Struct("cuesheet_tracks",
-                              Con.UBInt64("track_offset"),
-                              Con.Byte("track_number"),
-                              Con.String("ISRC", 12),
-                              Con.Embed(Con.BitStruct("sub_flags",
-                                                      Con.Flag("non_audio"),
-                                                      Con.Flag("pre_emphasis"),
-                                                      Con.Padding(6))),
-                              Con.Padding(13),
-                              Con.PrefixedArray(
-                    length_field=Con.Byte("count"),
-                    subcon=Con.Struct("cuesheet_track_index",
-                                      Con.UBInt64("offset"),
-                                      Con.Byte("point_number"),
-                                      Con.Padding(3))))))  # reserved
+    def __repr__(self):
+        return "Flac_APPLICATION(%s, %s)" % (self.application_id, self.data)
 
-    def __init__(self, container, sample_rate=44100):
-        """container is a Container object returned by CUESHEET.parse()."""
+    @classmethod
+    def parse(cls, reader):
+        raise NotImplementedError()
 
-        self.type = 5
-        self.container = container
-        self.sample_rate = sample_rate
+    def build(self, writer):
+        raise NotImplementedError()
 
-    def build_block(self, last=0):
-        """Returns the entire block as a string, including header.
+class Flac_SEEKTABLE:
+    BLOCK_ID = 3
 
-        last is a bit indicating this is the last block before audio data."""
+    def __init__(self, seekpoints):
+        self.seekpoints = seekpoints
 
-        #the largest possible CUESHEET cannot exceed the metadata block size
-        #so no need to test for it
-        block = self.CUESHEET.build(self.container)
+    def __repr__(self):
+        return "Flac_SEEKTABLE(%s)" % (repr(self.seekpoints))
 
-        return FlacAudio.METADATA_BLOCK_HEADER.build(
-            Con.Container(last_block=last,
-                          block_type=5,
-                          block_length=len(block))) + block
+    @classmethod
+    def parse(cls, reader, total_seekpoints):
+        return cls([tuple(reader.parse("64U64U16u"))
+                    for i in xrange(total_seekpoints)])
+
+    def build(self, writer):
+        for seekpoint in self.seekpoints:
+            writer.build("64U64U16u", seekpoint)
+
+class Flac_CUESHEET:
+    BLOCK_ID = 5
+
+    def __init__(self, catalog_number, lead_in_samples, is_cdda, tracks):
+        self.catalog_number = catalog_number
+        self.lead_in_samples = lead_in_samples
+        self.is_cdda = is_cdda
+        self.tracks = tracks
+
+    def __repr__(self):
+        return ("Flac_CUESHEET(%s)" %
+                ",".join(["%s=%s" % (key, repr(getattr(self, key)))
+                          for key in ["catalog_number",
+                                      "lead_in_samples",
+                                      "is_cdda",
+                                      "tracks"]]))
+
+    @classmethod
+    def parse(cls, reader):
+        (catalog_number,
+         lead_in_samples,
+         is_cdda,
+         track_count) = reader.parse("128b64U1u2071p8u")
+        return cls(catalog_number,
+                   lead_in_samples,
+                   is_cdda,
+                   [Flac_CUESHEET_track.parse(reader)
+                    for i in xrange(track_count)])
+
+    def build(self, writer):
+        writer.build("128b64U1u2071p8u",
+                     (self.catalog_number,
+                      self.lead_in_samples,
+                      self.is_cdda,
+                      len(self.tracks)))
+        for track in self.tracks:
+            track.build(writer)
 
     @classmethod
     def converted(cls, sheet, total_frames, sample_rate=44100):
@@ -600,86 +634,70 @@ class FlacCueSheet:
         A total_frames integer (in PCM frames) is also required.
         """
 
-        #number is the track number integer
-        #ISRC is a 12 byte string, or None
-        #indexes is a list of indexes()-compatible index points
-        #(i.e. given incrementally as CD frames)
-        #returns a Container
-        def track_container(number, ISRC, indexes):
-            if (ISRC is None):
-                ISRC = chr(0) * 12
-
-            if (len(indexes) == 1):
-                base_number = 1
-            else:
-                base_number = 0
-
-            return Con.Container(
-                track_offset=indexes[0] * sample_rate / 75,
-                track_number=number,
-                ISRC=ISRC,
-                non_audio=False,
-                pre_emphasis=False,  # FIXME, check for this
-                cuesheet_track_index=[Con.Container(
-                        offset=((index - indexes[0]) * sample_rate / 75),
-                        point_number=point_number + base_number)
-                                      for (point_number, index) in
-                                      enumerate(indexes)])
-
-        catalog_number = sheet.catalog()
-        if (catalog_number is None):
-            catalog_number = ""
+        if (sheet.catalog() is None):
+            catalog_number = chr(0) * 128
+        else:
+            catalog_number = sheet.catalog() + (chr(0) *
+                                                (128 - len(sheet.catalog())))
 
         ISRCs = sheet.ISRCs()
 
-        return cls(Con.Container(
-                catalog_number=catalog_number + \
-                    (chr(0) * (128 - len(catalog_number))),
-                lead_in_samples=sample_rate * 2,
-                is_cd=True,
-                cuesheet_tracks=[track_container(i + 1,
-                                                 ISRCs.get(i + 1, None),
-                                                 indexes)
-                                 for (i, indexes) in
-                                 enumerate(sheet.indexes())] + \
-                                 [Con.Container(track_offset=total_frames,
-                                                track_number=170,
-                                                ISRC=chr(0) * 12,
-                                                non_audio=False,
-                                                pre_emphasis=False,
-                                                cuesheet_track_index=[])]),
-                   sample_rate)
+        return cls(catalog_number=catalog_number,
+                   lead_in_samples=sample_rate * 2,
+                   is_cd=1 if sample_rate == 44100 else 0,
+                   tracks=
+                   [Flac_CUESHEET_track(offset=indexes[0] * sample_rate / 75,
+                                        number=i + 1,
+                                        ISRC=ISRCs.get(i + 1, chr(0) * 12),
+                                        track_type=0,
+                                        pre_empasis=0,
+                                        index_points=
+                                        [Flac_CUESHEET_index(
+                            offset=(index - indexes[0]) * sample_rate / 75,
+                            number=point_number + (1 if len(indexes) == 1
+                                                   else 0))
+                                         for (point_number, index)
+                                         in enumerate(indexes)])
+                    for (i, indexes) in enumerate(sheet.indexes())] +
+                   #lead-out track
+                   [Flac_CUESHEET_track(offset=total_frames,
+                                        number=170,
+                                        ISRC=chr(0) * 12,
+                                        track_type=0,
+                                        pre_emphasis=0,
+                                        index_points=[])])
+
 
     def catalog(self):
         """Returns the cuesheet's catalog number as a plain string."""
 
-        if (len(self.container.catalog_number.rstrip(chr(0))) > 0):
-            return self.container.catalog_number.rstrip(chr(0))
+        catalog_number = self.catalog_number.rstrip(chr(0))
+
+        if (len(catalog_number) > 0):
+            return catalog_number
         else:
             return None
 
     def ISRCs(self):
-        """Returns a list of ISRC values as plain strings."""
+        """Returns a dict of ISRC values as plain strings."""
 
-        return dict([(track.track_number, track.ISRC) for track in
-                     self.container.cuesheet_tracks
-                     if ((track.track_number != 170) and
+        return dict([(track.number, track.ISRC) for track in
+                     self.tracks
+                     if ((track.number != 170) and
                          (len(track.ISRC.strip(chr(0))) > 0))])
 
-    def indexes(self):
+
+    def indexes(self, sample_rate=44100):
         """Returns a list of (start, end) integer tuples."""
 
-        return [tuple([(index.offset + track.track_offset) * 75 / \
-                           self.sample_rate
+        return [tuple([(index.offset + track.offset) * 75 / sample_rate
                        for index in
-                       sorted(track.cuesheet_track_index,
-                              lambda i1, i2: cmp(i1.point_number,
-                                                 i2.point_number))])
+                       sorted(track.index_points,
+                              lambda i1, i2: cmp(i1.number, i2.number))])
                 for track in
-                sorted(self.container.cuesheet_tracks,
-                       lambda t1, t2: cmp(t1.track_number,
-                                          t2.track_number))
-                if (track.track_number != 170)]
+                sorted(self.tracks, lambda t1, t2: cmp(t1.number, t2.number))
+                if (track.number != 170)]
+
 
     def pcm_lengths(self, total_length):
         """Returns a list of PCM lengths for all cuesheet audio tracks.
@@ -687,60 +705,81 @@ class FlacCueSheet:
         Note that the total length variable is only for compatibility.
         It is not necessary for FlacCueSheets.
         """
-        if (len(self.container.cuesheet_tracks) > 0):
+
+        if (len(self.tracks) > 0):
             return [(current.track_offset +
-                     max([i.offset for i in
-                          current.cuesheet_track_index] + [0])) -
+                     max([i.offset for i in current.index_points] + [0])) -
                     ((previous.track_offset +
-                      max([i.offset for i in
-                           previous.cuesheet_track_index] + [0])))
+                      max([i.offset for i in previous.index_points] + [0])))
                     for (previous, current) in
-                    zip(self.container.cuesheet_tracks,
-                        self.container.cuesheet_tracks[1:])]
+                    zip(self.tracks, self.tracks[1:])]
         else:
             return []
 
     def __unicode__(self):
-        return sheet_to_unicode(self, None)
+       return sheet_to_unicode(self, None)
 
 
-class FlacSeektable:
-    SEEKTABLE = Con.GreedyRepeater(
-            Con.Struct("seekpoint",
-                       Con.UBInt64("sample_number"),
-                       Con.UBInt64("byte_offset"),
-                       Con.UBInt16("frame_samples")))
-
-    def __init__(self, seekpoints):
-        self.seekpoints = seekpoints
-
-    def __repr__(self):
-        return "FlacSeektable(%s)" % (self.seekpoints)
-
-    def build_block(self, last=0):
-        seektable_data = FlacSeektable.SEEKTABLE.build(
-            [Con.Container(sample_number=point.sample_number,
-                           byte_offset=point.byte_offset,
-                           frame_samples=point.frame_samples)
-             for point in self.seekpoints])
-
-        return FlacAudio.METADATA_BLOCK_HEADER.build(
-            Con.Container(last_block=last,
-                          block_type=3,
-                          block_length=len(seektable_data))) + seektable_data
-
-
-class FlacSeekpoint:
-    def __init__(self, sample_number, byte_offset, frame_samples):
-        self.sample_number = sample_number
-        self.byte_offset = byte_offset
-        self.frame_samples = frame_samples
+class Flac_CUESHEET_track:
+    def __init__(self, offset, number, ISRC, track_type, pre_emphasis,
+                 index_points):
+        self.offset = offset
+        self.number = number
+        self.ISRC = ISRC
+        self.track_type = track_type
+        self.pre_emphasis = pre_emphasis
+        self.index_points = index_points
 
     def __repr__(self):
-        return "FLacSeekpoint(%s, %s, %s)" % \
-            (self.sample_number,
-             self.byte_offset,
-             self.frame_samples)
+        return ("Flac_CUESHEET_track(%s)" %
+                ",".join(["%s=%s" % (key, repr(getattr(self, key)))
+                          for key in ["offset",
+                                      "number",
+                                      "ISRC",
+                                      "track_type",
+                                      "pre_emphasis",
+                                      "index_points"]]))
+
+    @classmethod
+    def parse(cls, reader):
+        (offset,
+         number,
+         ISRC,
+         track_type,
+         pre_emphasis,
+         index_points) = reader.parse("64U8u12b1u1u110p8u")
+        return cls(offset, number, ISRC, track_type, pre_emphasis,
+                   [Flac_CUESHEET_index.parse(reader)
+                    for i in xrange(index_points)])
+
+    def build(self, writer):
+        writer.build("64U8u12b1u1u110p8u",
+                     (self.offset,
+                      self.number,
+                      self.ISRC,
+                      self.track_type,
+                      self.pre_emphasis,
+                      len(self.index_points)))
+        for index_point in self.index_points:
+            index_point.build(writer)
+
+class Flac_CUESHEET_index:
+    def __init__(self, offset, number):
+        self.offset = offset
+        self.number = number
+
+    def __repr__(self):
+        return "Flac_CUESHEET_index(%s, %s)" % (repr(self.offset),
+                                                repr(self.number))
+
+    @classmethod
+    def parse(cls, reader):
+        (offset, number) = reader.parse("64U8u24p")
+
+        return cls(offset, number)
+
+    def build(self, writer):
+        writer.build("64U8u24p", (self.offset, self.number))
 
 
 class FlacAudio(WaveContainer, AiffContainer):
@@ -895,17 +934,9 @@ class FlacAudio(WaveContainer, AiffContainer):
             if (f.read(4) != 'fLaC'):
                 raise InvalidFLAC(_(u'Invalid FLAC file'))
 
-            blocks = []
+            from .decoders import BitstreamReader
 
-            while (True):
-                header = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(f)
-                blocks.append(FlacMetaDataBlock(
-                    type=header.block_type,
-                    data=f.read(header.block_length)))
-                if (header.last_block == 1):
-                    break
-
-            return FlacMetaData(blocks)
+            return FlacMetaData.parse(BitstreamReader(f, 0))
         finally:
             f.close()
 
@@ -914,6 +945,10 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         This metadata includes track name, album name, and so on.
         Raises IOError if unable to write the file."""
+
+        from .encoders import BitstreamWriter
+        from .encoders import BitstreamRecorder
+        from .encoders import BitstreamAccumulator
 
         metadata = FlacMetaData.converted(metadata)
 
@@ -928,7 +963,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         #and assume higher-level routines know what they're doing
         if ((old_metadata.streaminfo is not None) and
             (metadata.streaminfo is not None) and
-            (old_metadata.streaminfo.data == metadata.streaminfo.data)):
+            (old_metadata.streaminfo == metadata.streaminfo)):
             #do nothing
             pass
         else:
@@ -947,23 +982,23 @@ class FlacAudio(WaveContainer, AiffContainer):
                     u"0x%.4x" % (int(self.channel_mask()))]
 
             #APPLICATION blocks should stay with the existing file (if any)
-            metadata.extra_blocks = [block for block in metadata.extra_blocks
+            metadata.applications = [block for block in metadata.applications
                                      if (block.type != 2)]
 
-            for block in old_metadata.extra_blocks:
-                if (block.type == 2):
-                    metadata.extra_blocks.append(block)
+        #always grab "vendor_string" from the existing file - if present
+        if ((old_metadata.vorbis_comment is not None) and
+            (metadata.vorbis_comment is not None)):
+            vendor_string = old_metadata.vorbis_comment.vendor_string
+            metadata.vorbis_comment.vendor_string = vendor_string
 
-        #always grab "vendor_string" from the existing file
-        vendor_string = old_metadata.vorbis_comment.vendor_string
-        metadata.vorbis_comment.vendor_string = vendor_string
-
-        minimum_metadata_length = len(metadata.build(padding_size=0)) + 4
+        new_metadata = BitstreamAccumulator(0)
+        metadata.build(new_metadata, 0)
+        minimum_metadata_length = new_metadata.bytes() + 4
         current_metadata_length = self.metadata_length()
 
         if ((minimum_metadata_length <= current_metadata_length) and
-            ((current_metadata_length -
-              minimum_metadata_length) < (4096 * 2)) and
+            ((current_metadata_length - minimum_metadata_length)
+             < (4096 * 2)) and
             (self.__stream_offset__ == 0)):
             #if the FLAC file's metadata + padding is large enough
             #to accomodate the new chunk of metadata,
@@ -971,9 +1006,9 @@ class FlacAudio(WaveContainer, AiffContainer):
 
             stream = file(self.filename, 'r+b')
             stream.write('fLaC')
-            stream.write(metadata.build(
-                    padding_size=current_metadata_length - \
-                        minimum_metadata_length))
+            metadata.build(BitstreamWriter(stream, 0),
+                           current_metadata_length -
+                           minimum_metadata_length)
             stream.close()
         else:
             #if the new metadata is too large to fit in the current file,
@@ -989,6 +1024,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                 raise InvalidFLAC(_(u'Invalid FLAC file'))
 
             #skip the existing metadata blocks
+            #FIXME - remove Construct-based parsing
             block = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(stream)
             while (block.last_block == 0):
                 stream.seek(block.block_length, 1)
@@ -1003,7 +1039,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             #finally, rebuild our file using new metadata and old stream
             stream = file(self.filename, 'wb')
             stream.write('fLaC')
-            stream.write(metadata.build())
+            metadata.build(BitstreamWriter(stream, 0), 4096)
             transfer_data(file_data.read, stream.write)
             file_data.close()
             stream.close()
@@ -1012,6 +1048,8 @@ class FlacAudio(WaveContainer, AiffContainer):
         """Returns the length of all FLAC metadata blocks as an integer.
 
         This includes the 4 byte "fLaC" file header."""
+
+        #FIXME - remove Construct-based parsing
 
         f = file(self.filename, 'rb')
         try:
@@ -1219,14 +1257,11 @@ class FlacAudio(WaveContainer, AiffContainer):
                                     flac.total_frames(),
                                     seekpoint_interval):
                 flac_frame = bisect_right(sample_offsets, pcm_frame) - 1
-                seekpoints.append(
-                    FlacSeekpoint(
-                        sample_number=sample_offsets[flac_frame],
-                        byte_offset=all_frames[sample_offsets[flac_frame]][0],
-                        frame_samples=all_frames[sample_offsets[flac_frame]][1]
-                        ))
+                seekpoints.append((sample_offsets[flac_frame],
+                                   all_frames[sample_offsets[flac_frame]][0],
+                                   all_frames[sample_offsets[flac_frame]][1]))
 
-            metadata.seektable = FlacSeektable(seekpoints)
+            metadata.seektable = Flac_SEEKTABLE(seekpoints)
 
             #if channels or bps is too high,
             #automatically generate and add channel mask

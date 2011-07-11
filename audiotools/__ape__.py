@@ -553,7 +553,7 @@ class ApeTag(MetaData):
 
 
         header.build(writer)
-        tags.dump(writer)
+        tags.copy(writer)
         footer.build(writer)
 
     def clean(self, fixes_applied):

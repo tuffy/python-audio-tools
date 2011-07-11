@@ -204,7 +204,7 @@ typedef struct BitstreamReader_s {
       | u      | read           | unsigned int* |
       | s      | read_signed    | int*          |
       | U      | read_64        | uint64_t*     |
-      | S      | read_signed_64 | int64_t       |
+      | S      | read_signed_64 | int64_t*      |
       | p      | skip           | N/A           |
       | b      | read_bytes     | uint8_t*      |
       | a      | byte_align     | N/A           |
