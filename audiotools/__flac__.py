@@ -644,13 +644,13 @@ class Flac_CUESHEET:
 
         return cls(catalog_number=catalog_number,
                    lead_in_samples=sample_rate * 2,
-                   is_cd=1 if sample_rate == 44100 else 0,
+                   is_cdda=1 if sample_rate == 44100 else 0,
                    tracks=
                    [Flac_CUESHEET_track(offset=indexes[0] * sample_rate / 75,
                                         number=i + 1,
                                         ISRC=ISRCs.get(i + 1, chr(0) * 12),
                                         track_type=0,
-                                        pre_empasis=0,
+                                        pre_emphasis=0,
                                         index_points=
                                         [Flac_CUESHEET_index(
                             offset=(index - indexes[0]) * sample_rate / 75,
@@ -707,9 +707,9 @@ class Flac_CUESHEET:
         """
 
         if (len(self.tracks) > 0):
-            return [(current.track_offset +
+            return [(current.offset +
                      max([i.offset for i in current.index_points] + [0])) -
-                    ((previous.track_offset +
+                    ((previous.offset +
                       max([i.offset for i in previous.index_points] + [0])))
                     for (previous, current) in
                     zip(self.tracks, self.tracks[1:])]
@@ -1103,7 +1103,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         if (metadata is None):
             metadata = FlacMetaData.converted(MetaData())
 
-        metadata.cuesheet = FlacCueSheet.converted(
+        metadata.cuesheet = Flac_CUESHEET.converted(
             cuesheet, self.total_frames(), self.sample_rate())
         self.set_metadata(metadata)
 
@@ -1290,9 +1290,8 @@ class FlacAudio(WaveContainer, AiffContainer):
         conversion should be routed through .wav conversion
         to avoid losing those chunks."""
 
-        return 'riff' in [block.data[0:4] for block in
-                          self.get_metadata().extra_blocks
-                          if block.type == 2]
+        return 'riff' in [block.application_id for block in
+                          self.get_metadata().applications]
 
     def riff_wave_chunks(self, progress=None):
         """Generate a set of (chunk_id,chunk_data tuples)
@@ -1302,10 +1301,10 @@ class FlacAudio(WaveContainer, AiffContainer):
         or generated from our PCM data."""
 
         for application_block in [block.data for block in
-                                  self.get_metadata().extra_blocks
-                                  if (block.data.startswith("riff"))]:
-            (chunk_id, chunk_data) = (application_block[4:8],
-                                      application_block[12:])
+                                  self.get_metadata().applications
+                                  if (block.application_id == "riff")]:
+            (chunk_id, chunk_data) = (application_block[0:4],
+                                      application_block[8:])
             if (chunk_id == 'RIFF'):
                 continue
             elif (chunk_id == 'data'):
@@ -1361,24 +1360,27 @@ class FlacAudio(WaveContainer, AiffContainer):
             try:
                 wav_header = wav.read(12)
 
-                metadata.extra_blocks.append(
-                    FlacMetaDataBlock(2, "riff" + wav_header))
+                metadata.applications.append(
+                    Flac_APPLICATION(application_id="riff",
+                                     data=wav_header))
 
                 total_size = WaveAudio.WAVE_HEADER.parse(
                     wav_header).wave_size - 4
                 while (total_size > 0):
                     chunk_header = WaveAudio.CHUNK_HEADER.parse(wav.read(8))
                     if (chunk_header.chunk_id != 'data'):
-                        metadata.extra_blocks.append(
-                            FlacMetaDataBlock(2, "riff" +
-                                              WaveAudio.CHUNK_HEADER.build(
+                        metadata.applications.append(
+                            Flac_APPLICATION(
+                                application_id="riff",
+                                data=WaveAudio.CHUNK_HEADER.build(
                                     chunk_header) +
-                                              wav.read(
+                                wav.read(
                                     chunk_header.chunk_length)))
                     else:
-                        metadata.extra_blocks.append(
-                            FlacMetaDataBlock(2, "riff" +
-                                              WaveAudio.CHUNK_HEADER.build(
+                        metadata.applications.append(
+                            Flac_APPLICATION(
+                                application_id="riff",
+                                data=WaveAudio.CHUNK_HEADER.build(
                                     chunk_header)))
                         wav.seek(chunk_header.chunk_length, 1)
                     total_size -= (chunk_header.chunk_length + 8)
@@ -1397,9 +1399,8 @@ class FlacAudio(WaveContainer, AiffContainer):
     def has_foreign_aiff_chunks(self):
         """Returns True if the audio file contains non-audio AIFF chunks."""
 
-        return 'aiff' in [block.data[0:4] for block in
-                          self.get_metadata().extra_blocks
-                          if block.type == 2]
+        return 'aiff' in [block.application_id for block in
+                          self.get_metadata().applications]
 
     @classmethod
     def from_aiff(cls, filename, aiff_filename, compression=None,
@@ -1429,26 +1430,27 @@ class FlacAudio(WaveContainer, AiffContainer):
             try:
                 aiff_header = aiff.read(12)
 
-                metadata.extra_blocks.append(
-                    FlacMetaDataBlock(2, "aiff" + aiff_header))
+                metadata.applications.append(
+                    Flac_APPLICATION(application_id="aiff",
+                                     data=aiff_header))
 
                 total_size = AiffAudio.AIFF_HEADER.parse(
                     aiff_header).aiff_size - 4
                 while (total_size > 0):
                     chunk_header = AiffAudio.CHUNK_HEADER.parse(aiff.read(8))
                     if (chunk_header.chunk_id != 'SSND'):
-                        metadata.extra_blocks.append(
-                            FlacMetaDataBlock(2, "aiff" +
-                                              AiffAudio.CHUNK_HEADER.build(
+                        metadata.applications.append(
+                            Flac_APPLICATION(
+                                application_id="aiff",
+                                data=AiffAudio.CHUNK_HEADER.build(
                                     chunk_header) +
-                                              aiff.read(
-                                    chunk_header.chunk_length)))
+                                aiff.read(chunk_header.chunk_length)))
                     else:
-                        metadata.extra_blocks.append(
-                            FlacMetaDataBlock(2, "aiff" +
-                                              AiffAudio.CHUNK_HEADER.build(
-                                    chunk_header) +
-                                              aiff.read(8)))
+                        metadata.applications.append(
+                                Flac_APPLICATION(
+                                    application_id="aiff",
+                                    data=AiffAudio.CHUNK_HEADER.build(
+                                        chunk_header) + aiff.read(8)))
                         aiff.seek(chunk_header.chunk_length - 8, 1)
                     total_size -= (chunk_header.chunk_length + 8)
 
@@ -1478,10 +1480,10 @@ class FlacAudio(WaveContainer, AiffContainer):
         or generated from our PCM data."""
 
         for application_block in [block.data for block in
-                                  self.get_metadata().extra_blocks
-                                  if (block.data.startswith("aiff"))]:
-            (chunk_id, chunk_data) = (application_block[4:8],
-                                      application_block[12:])
+                                  self.get_metadata().applications
+                                  if (block.application_id == "aiff")]:
+            (chunk_id, chunk_data) = (application_block[0:4],
+                                      application_block[8:])
             if (chunk_id == 'FORM'):
                 continue
             elif (chunk_id == 'SSND'):

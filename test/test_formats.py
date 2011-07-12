@@ -2477,8 +2477,12 @@ class FlacFileTest(TestForeignAiffChunks,
             self.assertEqual(orig_md5.hexdigest(),
                              new_md5.hexdigest())
 
+            track.set_metadata(audiotools.MetaData(track_name=u"Testing"))
+
             #ensure that vendor_string isn't modified by setting metadata
             metadata = track.get_metadata()
+            self.assert_(metadata is not None)
+            self.assert_(metadata.vorbis_comment is not None)
             proper_vendor_string = metadata.vorbis_comment.vendor_string
             metadata.vorbis_comment.vendor_string = u"Invalid String"
             track.set_metadata(metadata)
