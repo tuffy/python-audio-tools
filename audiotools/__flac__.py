@@ -85,7 +85,10 @@ class FlacMetaData(MetaData):
         return u'FLAC'
 
     def __comment_pairs__(self):
-        return self.vorbis_comment.__comment_pairs__()
+        if (self.vorbis_comment is not None):
+            return self.vorbis_comment.__comment_pairs__()
+        else:
+            return []
 
     def __unicode__(self):
         if (self.cuesheet is None):
@@ -186,12 +189,12 @@ class FlacMetaData(MetaData):
         pictures = [image.clean(fixes_performed)
                     for image in self.pictures]
 
-        return FlacMetaData(streaminfo=self.streaminfo,
-                            applications=self.applications,
-                            seektable=self.seektable,
-                            vorbis_comment=vorbis_comment,
-                            cuesheet=self.cuesheet,
-                            pictures=pictures)
+        return self.__class__(streaminfo=self.streaminfo,
+                              applications=self.applications,
+                              seektable=self.seektable,
+                              vorbis_comment=vorbis_comment,
+                              cuesheet=self.cuesheet,
+                              pictures=pictures)
 
 
     def __repr__(self):
@@ -220,35 +223,40 @@ class FlacMetaData(MetaData):
                     streaminfo = Flac_STREAMINFO.parse(
                         reader.substream(block_length))
                 else:
-                    raise ValueError("only 1 STREAMINFO allowed in metadata")
+                    raise ValueError(
+                        _(u"only 1 STREAMINFO allowed in metadata"))
             elif (block_type == 1): #PADDING
                 reader.skip(block_length * 8)
             elif (block_type == 2): #APPLICATION
-                raise NotImplementedError()
+                applications.append(Flac_APPLIACTION.parse(
+                        reader.substream(block_length), block_length))
             elif (block_type == 3): #SEEKTABLE
                 if (seektable is None):
                     seektable = Flac_SEEKTABLE.parse(
                         reader.substream(block_length), block_length / 18)
+                else:
+                    raise ValueError(_(u"only 1 SEEKTABLE allowed in metadata"))
             elif (block_type == 4): #VORBIS_COMMENT
                 if (vorbis_comment is None):
                     vorbis_comment = Flac_VORBISCOMMENT.parse(
                         reader.substream(block_length))
                 else:
-                    raise ValueError("only 1 VORBISCOMMENT allowed in metadata")
+                    raise ValueError(
+                        _(u"only 1 VORBISCOMMENT allowed in metadata"))
             elif (block_type == 5): #CUESHEET
                 if (cuesheet is None):
                     cuesheet = Flac_CUESHEET.parse(
                         reader.substream(block_length))
                 else:
-                    raise ValueError("only 1 CUESHEET allowed in metadata")
+                    raise ValueError(_(u"only 1 CUESHEET allowed in metadata"))
             elif (block_type == 6): #PICTURE
                 pictures.append(Flac_PICTURE.parse(
                         reader.substream(block_length)))
             elif ((block_type >= 7) and (block_type <= 126)):
-                raise ValueError("reserved metadata block type %d" %
+                raise ValueError(_(u"reserved metadata block type %d") %
                                  (block_type))
             else:
-                raise ValueError("invalid metadata block type")
+                raise ValueError(_(u"invalid metadata block type"))
 
             (last, block_type, block_length) = reader.parse("1u7u24u")
 
@@ -274,7 +282,7 @@ class FlacMetaData(MetaData):
             yield picture
 
     def build(self, writer, padding_bytes):
-        from audiotools.encoders import BitstreamRecorder
+        from .encoders import BitstreamRecorder
 
         for block in self.blocks():
             block_data = BitstreamRecorder(0)
@@ -565,11 +573,11 @@ class Flac_APPLICATION:
         return "Flac_APPLICATION(%s, %s)" % (self.application_id, self.data)
 
     @classmethod
-    def parse(cls, reader):
-        raise NotImplementedError()
+    def parse(cls, reader, block_length):
+        raise NotImplementedError() #FIXME
 
     def build(self, writer):
-        raise NotImplementedError()
+        raise NotImplementedError() #FIXME
 
 class Flac_SEEKTABLE:
     BLOCK_ID = 3
@@ -1865,6 +1873,139 @@ class FlacAudio(WaveContainer, AiffContainer):
 #######################
 
 
+class OggFlacMetaData(FlacMetaData):
+    @classmethod
+    def converted(cls, metadata):
+        raise NotImplementedError()
+
+    def __repr__(self):
+        return ("OggFlacMetaData(%s)" %
+                (",".join(["%s=%s" % (key, getattr(self, key))
+                           for key in ["streaminfo",
+                                       "applications",
+                                       "seektable",
+                                       "vorbis_comment",
+                                       "cuesheet",
+                                       "pictures"]])))
+
+
+    @classmethod
+    def parse(cls, reader):
+        streaminfo = None
+        applications = []
+        seektable = None
+        vorbis_comment = None
+        cuesheet = None
+        pictures = []
+
+        packets = read_ogg_packets(reader)
+
+        (packet_byte,
+         ogg_signature,
+         major_version,
+         minor_version,
+         header_packets,
+         flac_signature,
+         block_type,
+         block_length,
+         minimum_block_size,
+         maximum_block_size,
+         minimum_frame_size,
+         maximum_frame_size,
+         sample_rate,
+         channels,
+         bits_per_sample,
+         total_samples,
+         md5sum) = packets.next().parse(
+            "8u 4b 8u 8u 16u 4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b")
+
+        streaminfo = Flac_STREAMINFO(minimum_block_size=minimum_block_size,
+                                     maximum_block_size=maximum_block_size,
+                                     minimum_frame_size=minimum_frame_size,
+                                     maximum_frame_size=maximum_frame_size,
+                                     sample_rate=sample_rate,
+                                     channels=channels + 1,
+                                     bits_per_sample=bits_per_sample + 1,
+                                     total_samples=total_samples,
+                                     md5sum=md5sum)
+
+        for (i, packet) in zip(range(header_packets), packets):
+            (block_type, length) = packet.parse("1p 7u 24u")
+            if (block_type == 2):   #APPLICATION
+                applications.append(
+                    Flac_APPLICATION.parse(packet, block_length))
+            elif (block_type == 3): #SEEKTABLE
+                if (seektable is None):
+                    seektable = Flac_SEEKTABLE.parse(packet, block_length / 18)
+                else:
+                    raise ValueError(_(u"only 1 SEEKTABLE allowed in metadata"))
+            elif (block_type == 4): #VORBIS_COMMENT
+                if (vorbis_comment is None):
+                    vorbis_comment = Flac_VORBISCOMMENT.parse(packet)
+                else:
+                    raise ValueError(
+                        _(u"only 1 VORBISCOMMENT allowed in metadata"))
+            elif (block_type == 5): #CUESHEET
+                if (cuesheet is None):
+                    cuesheet = Flac_CUESHEET.parse(packet)
+                else:
+                    raise ValueError(_(u"only 1 CUESHEET allowed in metadata"))
+            elif (block_type == 6): #PICTURE
+                pictures.append(Flac_PICTURE.parse(packet))
+            elif ((block_type >= 7) and (block_type <= 126)):
+                raise ValueError(_(u"reserved metadata block type %d") %
+                                 (block_type))
+            elif (block_type == 127):
+                raise ValueError(_(u"invalid metadata block type"))
+
+
+
+        return cls(streaminfo=streaminfo,
+                   applications=applications,
+                   seektable=seektable,
+                   vorbis_comment=vorbis_comment,
+                   cuesheet=cuesheet,
+                   pictures=pictures)
+
+
+    def build(self, writer, padding_bytes):
+        from .encoders import BitstreamRecorder
+
+        #build a bunch of Ogg pages from our internal blocks
+
+        raise NotImplementedError()
+
+class __Counter__:
+    def __init__(self):
+        self.value = 0
+
+    def count_byte(self, i):
+        self.value += 1
+
+    def __int__(self):
+        return self.value
+
+def read_ogg_packets(reader):
+    from .decoders import Substream
+
+    header_type = 0
+
+    while (not (header_type & 0x4)):
+        (magic_number,
+         version,
+         header_type,
+         granule_position,
+         serial_number,
+         page_sequence_number,
+         checksum,
+         segment_count) = reader.parse("4b 8u 8u 64S 32u 32u 32u 8u")
+        packet = Substream(0)
+        for segment_length in [reader.read(8) for i in xrange(segment_count)]:
+            reader.substream_append(packet, segment_length)
+            if (segment_length != 255):
+                yield packet
+                packet = Substream(0)
+
 class OggFlacAudio(AudioFile):
     """A Free Lossless Audio Codec file inside an Ogg container."""
 
@@ -1986,29 +2127,13 @@ class OggFlacAudio(AudioFile):
 
         Raises IOError if unable to read the file."""
 
-        stream = OggStreamReader(file(self.filename, "rb"))
+        f = open(self.filename, "rb")
         try:
-            packets = stream.packets()
+            from .decoders import BitstreamReader
 
-            blocks = [FlacMetaDataBlock(
-                type=0,
-                data=FlacAudio.STREAMINFO.build(
-                  self.OGGFLAC_STREAMINFO.parse(packets.next())))]
-
-            while (True):
-                block = packets.next()
-                header = FlacAudio.METADATA_BLOCK_HEADER.parse(
-                    block[0:FlacAudio.METADATA_BLOCK_HEADER.sizeof()])
-                blocks.append(
-                    FlacMetaDataBlock(
-                      type=header.block_type,
-                      data=block[FlacAudio.METADATA_BLOCK_HEADER.sizeof():]))
-                if (header.last_block == 1):
-                    break
-
-            return FlacMetaData(blocks)
+            return OggFlacMetaData.parse(BitstreamReader(f, 1))
         finally:
-            stream.close()
+            f.close()
 
     def set_metadata(self, metadata):
         """Takes a MetaData object and sets this track's metadata.
@@ -2144,32 +2269,83 @@ class OggFlacAudio(AudioFile):
         self.set_metadata(MetaData())
 
     def metadata_length(self):
-        """Returns None."""
+        """Returns the length of all Ogg FLAC metadata blocks as an integer.
 
-        return None
+        This includes all Ogg page headers."""
+
+        from .decoders import BitstreamReader
+
+        f = file(self.filename, 'rb')
+        try:
+            byte_count = __Counter__()
+            ogg_stream = BitstreamReader(f, 1)
+            ogg_stream.add_callback(byte_count.count_byte)
+
+            OggFlacMetaData.parse(ogg_stream)
+
+            return int(byte_count)
+        finally:
+            f.close()
+
 
     def __read_streaminfo__(self):
-        stream = OggStreamReader(file(self.filename, "rb"))
+        from .decoders import BitstreamReader
+
+        f = open(self.filename, "rb")
         try:
-            packets = stream.packets()
-            try:
-                header = self.OGGFLAC_STREAMINFO.parse(packets.next())
-            except Con.ConstError:
-                raise InvalidFLAC(_(u'Invalid Ogg FLAC streaminfo'))
-            except StopIteration:
-                raise InvalidFLAC(_(u'Invalid Ogg FLAC streaminfo'))
+            ogg_reader = BitstreamReader(f, 1)
+            (magic_number,
+             version,
+             header_type,
+             granule_position,
+             serial_number,
+             page_sequence_number,
+             checksum,
+             segment_count) = ogg_reader.parse("4b 8u 8u 64S 32u 32u 32u 8u")
 
-            self.__samplerate__ = header.samplerate
-            self.__channels__ = header.channels + 1
-            self.__bitspersample__ = header.bits_per_sample + 1
-            self.__total_frames__ = header.total_samples
-            self.__header_packets__ = header.header_packets
+            if (magic_number != 'OggS'):
+                raise InvalidFLAC(_(u"invalid Ogg magic number"))
+            if (version != 0):
+                raise InvalidFLAC(_(u"invalid Ogg version"))
 
-            self.__md5__ = "".join([chr(c) for c in header.md5])
+            segment_length = ogg_reader.read(8)
 
-            del(packets)
+            ogg_reader.set_endianness(0)
+
+            (packet_byte,
+             ogg_signature,
+             major_version,
+             minor_version,
+             self.__header_packets__,
+             flac_signature,
+             block_type,
+             block_length,
+             minimum_block_size,
+             maximum_block_size,
+             minimum_frame_size,
+             maximum_frame_size,
+             self.__samplerate__,
+             self.__channels__,
+             self.__bitspersample__,
+             self.__total_frames__,
+             self.__md5__) = ogg_reader.parse(
+                "8u 4b 8u 8u 16u 4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b")
+
+            if (packet_byte != 0x7F):
+                raise InvalidFLAC(_(u"invalid packet byte"))
+            if (ogg_signature != 'FLAC'):
+                raise InvalidFLAC(_(u"invalid Ogg signature"))
+            if (major_version != 1):
+                raise InvalidFLAC(_(u"invalid major version"))
+            if (minor_version != 0):
+                raise InvalidFLAC(_(u"invalid minor version"))
+            if (flac_signature != 'fLaC'):
+                raise InvalidFLAC(_(u"invalid FLAC signature"))
+
+            self.__channels__ += 1
+            self.__bitspersample__ += 1
         finally:
-            stream.close()
+            f.close()
 
     def to_pcm(self):
         """Returns a PCMReader object containing the track's PCM data."""
@@ -2188,21 +2364,6 @@ class OggFlacAudio(AudioFile):
                                   channels=self.channels(),
                                   channel_mask=int(self.channel_mask()),
                                   bits_per_sample=self.bits_per_sample())
-        # sub = subprocess.Popen([BIN['flac'], "-s", "--ogg", "-d", "-c",
-        #                         "--force-raw-format",
-        #                         "--endian=little",
-        #                         "--sign=signed",
-        #                         self.filename],
-        #                        stdout=subprocess.PIPE,
-        #                        stderr=file(os.devnull, 'ab'))
-        # return PCMReader(sub.stdout,
-        #                  sample_rate=self.__samplerate__,
-        #                  channels=self.__channels__,
-        #                  bits_per_sample=self.__bitspersample__,
-        #                  channel_mask=int(self.channel_mask()),
-        #                  process=sub,
-        #                  signed=True,
-        #                  big_endian=False)
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):

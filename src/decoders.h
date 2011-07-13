@@ -27,7 +27,12 @@ typedef int Py_ssize_t;
 #define IS_PY3K
 #endif
 
+static PyObject*
+BitstreamReader_Substream(PyObject *dummy, PyObject *args);
+
 PyMethodDef module_methods[] = {
+    {"Substream", (PyCFunction)BitstreamReader_Substream,
+     METH_VARARGS, "build a fresh Substream BitstreamReader"},
     {NULL}
 };
 

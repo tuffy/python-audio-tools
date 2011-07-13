@@ -740,6 +740,26 @@ BitstreamReader_dealloc(decoders_BitstreamReader *self)
     self->ob_type->tp_free((PyObject*)self);
 }
 
+static PyObject*
+BitstreamReader_Substream(PyObject *dummy, PyObject *args) {
+    int endianness;
+    PyTypeObject *type = &decoders_BitstreamReaderType;
+    decoders_BitstreamReader *reader;
+
+    if (!PyArg_ParseTuple(args, "i", &endianness))
+        return NULL;
+
+    reader = (decoders_BitstreamReader *)type->tp_alloc(type, 0);
+
+    reader->file_obj = NULL;
+    reader->is_substream = 1;
+    reader->bitstream = br_substream_new(endianness ?
+                                         BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
+    reader->little_endian = endianness;
+
+    return (PyObject *)reader;
+}
+
 /*this functions similarly to json_to_frequencies -> compile_huffman_table*/
 int
 HuffmanTree_init(decoders_HuffmanTree *self, PyObject *args) {
