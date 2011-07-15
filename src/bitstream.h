@@ -1028,6 +1028,7 @@ bw_close_stream_r(BitstreamWriter* bs);
 void
 bw_close_stream_a(BitstreamWriter* bs);
 
+/*returns the size of the given format string in bits*/
 unsigned int
 bs_format_size(char* format);
 

@@ -76,8 +76,7 @@ class Byte_Bank:
 
         for size in range(1, 8 + 1):
             if (i < (1 << (size + 1))):
-                return cls(size=size,
-                           value=i % (1 << size))
+                return cls(size=size, value=i % (1 << size))
         else:
             raise ValueError("unable to make Byte_Bank from 0x%X" % (i))
 

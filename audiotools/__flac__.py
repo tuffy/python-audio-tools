@@ -1958,8 +1958,6 @@ class OggFlacMetaData(FlacMetaData):
             elif (block_type == 127):
                 raise ValueError(_(u"invalid metadata block type"))
 
-
-
         return cls(streaminfo=streaminfo,
                    applications=applications,
                    seektable=seektable,

@@ -3520,7 +3520,7 @@ bs_parse_format(char** format, unsigned int* size, bs_instruction* type) {
 
       So, lots of "nice to have" items from the Construct library
       are left out in favor of keeping this routine specialized
-      and handling the most crucial cases.
+      for handling the most crucial cases.
     */
 
     for (;; *format += 1)
