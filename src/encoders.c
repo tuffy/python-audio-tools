@@ -414,6 +414,16 @@ BitstreamRecorder_bytes(encoders_BitstreamRecorder *self,
 }
 
 static PyObject*
+BitstreamRecorder_data(encoders_BitstreamRecorder *self,
+                       PyObject *args) {
+    return PyString_FromStringAndSize(
+        (const char *)(self->bitstream->output.buffer->buffer +
+                       self->bitstream->output.buffer->buffer_position),
+        self->bitstream->output.buffer->buffer_size -
+        self->bitstream->output.buffer->buffer_position);
+}
+
+static PyObject*
 BitstreamRecorder_swap(encoders_BitstreamRecorder *self,
                        PyObject *args) {
     encoders_BitstreamRecorder *to_swap;

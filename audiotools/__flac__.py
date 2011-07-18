@@ -228,7 +228,7 @@ class FlacMetaData(MetaData):
             elif (block_type == 1): #PADDING
                 reader.skip(block_length * 8)
             elif (block_type == 2): #APPLICATION
-                applications.append(Flac_APPLIACTION.parse(
+                applications.append(Flac_APPLICATION.parse(
                         reader.substream(block_length), block_length))
             elif (block_type == 3): #SEEKTABLE
                 if (seektable is None):
@@ -574,10 +574,12 @@ class Flac_APPLICATION:
 
     @classmethod
     def parse(cls, reader, block_length):
-        raise NotImplementedError() #FIXME
+        return cls(application_id=reader.read_bytes(4),
+                   data=reader.read_bytes(block_length - 4))
 
     def build(self, writer):
-        raise NotImplementedError() #FIXME
+        writer.write_bytes(self.application_id)
+        writer.write_bytes(self.data)
 
 class Flac_SEEKTABLE:
     BLOCK_ID = 3
@@ -999,6 +1001,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             vendor_string = old_metadata.vorbis_comment.vendor_string
             metadata.vorbis_comment.vendor_string = vendor_string
 
+        #calculate minimum size of newly constructed metadata
         new_metadata = BitstreamAccumulator(0)
         metadata.build(new_metadata, 0)
         minimum_metadata_length = new_metadata.bytes() + 4
@@ -1876,7 +1879,20 @@ class FlacAudio(WaveContainer, AiffContainer):
 class OggFlacMetaData(FlacMetaData):
     @classmethod
     def converted(cls, metadata):
-        raise NotImplementedError()
+        if ((metadata is None) or (isinstance(metadata, OggFlacMetaData))):
+            return metadata
+        elif (isinstance(metadata, FlacMetaData)):
+            return cls(streaminfo=metadata.streaminfo,
+                       applications=metadata.applications,
+                       seektable=metadata.seektable,
+                       vorbis_comment=metadata.vorbis_comment,
+                       cuesheet=metadata.cuesheet,
+                       pictures=metadata.pictures)
+        else:
+            return cls(vorbis_comment=Flac_VORBISCOMMENT.converted(metadata),
+                       pictures=[Flac_PICTURE.converted(image)
+                                 for image in metadata.images()])
+
 
     def __repr__(self):
         return ("OggFlacMetaData(%s)" %
@@ -1933,10 +1949,10 @@ class OggFlacMetaData(FlacMetaData):
             (block_type, length) = packet.parse("1p 7u 24u")
             if (block_type == 2):   #APPLICATION
                 applications.append(
-                    Flac_APPLICATION.parse(packet, block_length))
+                    Flac_APPLICATION.parse(packet, length))
             elif (block_type == 3): #SEEKTABLE
                 if (seektable is None):
-                    seektable = Flac_SEEKTABLE.parse(packet, block_length / 18)
+                    seektable = Flac_SEEKTABLE.parse(packet, length / 18)
                 else:
                     raise ValueError(_(u"only 1 SEEKTABLE allowed in metadata"))
             elif (block_type == 4): #VORBIS_COMMENT
@@ -1966,12 +1982,75 @@ class OggFlacMetaData(FlacMetaData):
                    pictures=pictures)
 
 
-    def build(self, writer, padding_bytes):
-        from .encoders import BitstreamRecorder
+    def build(self, oggwriter, padding_bytes):
+        """oggwriter is an OggStreamWriter-compatible object"""
 
-        #build a bunch of Ogg pages from our internal blocks
+        from .encoders import BitstreamRecorder,format_size
+        from . import iter_first,iter_last
 
-        raise NotImplementedError()
+        if (self.streaminfo is None):
+            raise ValueError(_("STREAMINFO block is required"))
+        if (self.vorbis_comment is None):
+            raise ValueError(_("VORBISCOMMENT block is required"))
+
+        blocks = []
+        blocks.append(self.vorbis_comment)
+        blocks.extend(self.applications)
+        if (self.seektable is not None):
+            blocks.append(self.seektable)
+        if (self.cuesheet is not None):
+            blocks.append(self.cuesheet)
+        blocks.extend(self.pictures)
+
+        packet = BitstreamRecorder(0)
+
+        #build extended Ogg FLAC STREAMINFO block
+        #which will always occupy its own page
+        packet.build(
+            "8u 4b 8u 8u 16u 4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b",
+            (0x7F, "FLAC", 1, 0, len(blocks), "fLaC", 0,
+             format_size("16u 16u 24u 24u 20u 3u 5u 36U 16b") / 8,
+             self.streaminfo.minimum_block_size,
+             self.streaminfo.maximum_block_size,
+             self.streaminfo.minimum_frame_size,
+             self.streaminfo.maximum_frame_size,
+             self.streaminfo.sample_rate,
+             self.streaminfo.channels - 1,
+             self.streaminfo.bits_per_sample - 1,
+             self.streaminfo.total_samples,
+             self.streaminfo.md5sum))
+        oggwriter.write_page(0, [packet.data()], 0, 1, 0)
+        packet.reset()
+
+        #FIXME - adjust non-STREAMINFO blocks to use fewer pages
+
+        #pack remaining metadata blocks into as few pages as possible
+        for block in blocks:
+            print "Building block %s" % (repr(block))
+            block_data = BitstreamRecorder(0)
+            block.build(block_data)
+            packet.build("1u 7u 24u", (0, block.BLOCK_ID, block_data.bytes()))
+            block_data.copy(packet)
+            for (first_page, page_segments) in iter_first(
+                oggwriter.segments_to_pages(
+                    oggwriter.packet_to_segments(packet.data()))):
+                oggwriter.write_page(0 if first_page else -1,
+                                     page_segments,
+                                     0 if first_page else 1, 0, 0)
+            packet.reset()
+
+        #generate PADDING block(s) containing the given number of bytes
+        packet.build("1u 7u 24u %db" % (padding_bytes),
+                     (1, 1, padding_bytes, chr(0) * padding_bytes))
+        for (first_page, page_segments) in iter_first(
+            oggwriter.segments_to_pages(
+                oggwriter.packet_to_segments(packet.data()))):
+            oggwriter.write_page(0 if first_page else -1,
+                                 page_segments,
+                                 0 if first_page else 1, 0, 0)
+        packet.reset()
+
+
 
 class __Counter__:
     def __init__(self):
@@ -2003,6 +2082,28 @@ def read_ogg_packets(reader):
             if (segment_length != 255):
                 yield packet
                 packet = Substream(0)
+
+def read_ogg_packets2(reader):
+    from .decoders import Substream
+
+    header_type = 0
+    packet = ""
+
+    while (not (header_type & 0x4)):
+        (magic_number,
+         version,
+         header_type,
+         granule_position,
+         serial_number,
+         page_sequence_number,
+         checksum,
+         segment_count) = reader.parse("4b 8u 8u 64S 32u 32u 32u 8u")
+        for segment_length in [reader.read(8) for i in xrange(segment_count)]:
+            packet += reader.read_bytes(segment_length)
+            if (segment_length != 255):
+                yield packet
+                packet = ""
+
 
 class OggFlacAudio(AudioFile):
     """A Free Lossless Audio Codec file inside an Ogg container."""
@@ -2139,124 +2240,113 @@ class OggFlacAudio(AudioFile):
         This metadata includes track name, album name, and so on.
         Raises IOError if unable to write the file."""
 
-        import tempfile
+        from .encoders import BitstreamWriter
+        from .encoders import BitstreamRecorder
+        from .encoders import BitstreamAccumulator
+        from .decoders import BitstreamReader
+        from . import OggStreamReader2,OggStreamWriter2 #FIXME
 
-        comment = FlacMetaData.converted(metadata)
+        metadata = OggFlacMetaData.converted(metadata)
 
         #port over the old STREAMINFO and SEEKTABLE blocks
-        if (comment is None):
+        if (metadata is None):
             return
         old_metadata = self.get_metadata()
-        old_streaminfo = old_metadata.streaminfo
-        old_seektable = old_metadata.seektable
-        comment.streaminfo = old_streaminfo
-        if (old_seektable is not None):
-            comment.seektable = old_seektable
 
-        #grab "vendor_string" from the existing file
-        vendor_string = old_metadata.vorbis_comment.vendor_string
-        comment.vorbis_comment.vendor_string = vendor_string
+        if ((old_metadata.streaminfo is not None) and
+            (metadata.streaminfo is not None) and
+            (old_metadata.streaminfo == metadata.streaminfo)):
+            #do nothing
+            pass
+        else:
+            #port over the old STREAMINFO and SEEKTABLE blocks
+            old_streaminfo = old_metadata.streaminfo
+            old_seektable = old_metadata.seektable
+            metadata.streaminfo = old_streaminfo
+            if (old_seektable is not None):
+                metadata.seektable = old_seektable
 
-        #grab "WAVEFORMATEXTENSIBLE_CHANNEL_MASK" from existing file
-        #(if any)
-        if ((self.channels() > 2) or (self.bits_per_sample() > 16)):
-                comment.vorbis_comment[
+            #grab "WAVEFORMATEXTENSIBLE_CHANNEL_MASK" from existing file
+            #(if any)
+            if ((self.channels() > 2) or (self.bits_per_sample() > 16)):
+                metadata.vorbis_comment[
                     "WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
                     u"0x%.4x" % (int(self.channel_mask()))]
 
-        reader = OggStreamReader(file(self.filename, 'rb'))
+            #APPLICATION blocks should stay with the existing file (if any)
+            metadata.applications = [block for block in metadata.applications
+                                     if (block.type != 2)]
+
+
+        #always grab "vendor_string" from the existing file - if present
+        if ((old_metadata.vorbis_comment is not None) and
+            (metadata.vorbis_comment is not None)):
+            vendor_string = old_metadata.vorbis_comment.vendor_string
+            metadata.vorbis_comment.vendor_string = vendor_string
+
+        #calculate minimum size of newly constructed metadata
+        new_metadata = BitstreamAccumulator(0)
+        new_stream = OggStreamWriter2(new_metadata, self.__serial_number__)
+
+
+        metadata.build(new_stream, 0)
+        minimum_metadata_length = new_metadata.bytes()
+        current_metadata_length = self.metadata_length()
+
+        #always overwrite Ogg FLAC with fresh metadata
+        #
+        #The trouble with Ogg FLAC padding is that Ogg header overhead
+        #requires a variable amount of overhead bytes per Ogg page
+        #which makes it very difficult to calculate how many
+        #bytes to allocate to the PADDING packet.
+        #We'd have to build a bunch of empty pages for padding
+        #then go back and fill-in the initial padding page's length
+        #field before re-checksumming it.
+
+        import tempfile
+
         new_file = tempfile.TemporaryFile()
-        writer = OggStreamWriter(new_file)
-
-        #grab the serial number from the old file's current header
-        pages = reader.pages()
-        (header_page, header_data) = pages.next()
-        serial_number = header_page.bitstream_serial_number
-        del(pages)
-
-        #skip the metadata packets in the old file
-        packets = reader.packets(from_beginning=False)
-        while (True):
-            block = packets.next()
-            header = FlacAudio.METADATA_BLOCK_HEADER.parse(
-                block[0:FlacAudio.METADATA_BLOCK_HEADER.sizeof()])
-            if (header.last_block == 1):
-                break
-
-        del(packets)
-
-        #write our new comment blocks to the new file
-        blocks = list(comment.metadata_blocks())
-
-        #oggflac_streaminfo is a Container for STREAMINFO data
-        #Ogg FLAC STREAMINFO differs from FLAC STREAMINFO,
-        #so some fields need to be filled-in
-        oggflac_streaminfo = FlacAudio.STREAMINFO.parse(blocks.pop(0).data)
-        oggflac_streaminfo.packet_byte = 0x7F
-        oggflac_streaminfo.signature = 'FLAC'
-        oggflac_streaminfo.major_version = 0x1
-        oggflac_streaminfo.minor_version = 0x0
-        oggflac_streaminfo.header_packets = len(blocks) + 1  # +1 for padding
-        oggflac_streaminfo.flac_signature = 'fLaC'
-        oggflac_streaminfo.last_block = 0
-        oggflac_streaminfo.block_type = 0
-        oggflac_streaminfo.block_length = FlacAudio.STREAMINFO.sizeof()
-
-        sequence_number = 0
-        for (page_header, page_data) in OggStreamWriter.build_pages(
-            0, serial_number, sequence_number,
-            OggFlacAudio.OGGFLAC_STREAMINFO.build(oggflac_streaminfo),
-            header_type=0x2):
-            writer.write_page(page_header, page_data)
-            sequence_number += 1
-
-        #the non-STREAMINFO blocks are the same as FLAC, so write them out
-        for block in blocks:
+        try:
+            original_file = file(self.filename, 'rb')
             try:
-                for (page_header, page_data) in OggStreamWriter.build_pages(
-                    0, serial_number, sequence_number,
-                    block.build_block()):
-                    writer.write_page(page_header, page_data)
-                    sequence_number += 1
-            except FlacMetaDataBlockTooLarge:
-                if (isinstance(block, VorbisComment)):
-                    #VORBISCOMMENT can't be skipped, so build an empty one
-                    for (page_header,
-                         page_data) in OggStreamWriter.build_pages(
-                        0, serial_number, sequence_number,
-                        FlacVorbisComment(
-                            vorbis_data={},
-                            vendor_string=block.vendor_string).build_block()):
-                        writer.write_page(page_header, page_data)
-                        sequence_number += 1
-                else:
-                    pass
+                original_reader = BitstreamReader(original_file, 1)
+                original_ogg = OggStreamReader2(original_reader) #FIXME
 
-        #finally, write out a padding block
-        for (page_header, page_data) in OggStreamWriter.build_pages(
-            0, serial_number, sequence_number,
-            FlacMetaDataBlock(type=1,
-                              data=chr(0) * 4096).build_block(last=1)):
-            writer.write_page(page_header, page_data)
-            sequence_number += 1
+                new_writer = BitstreamWriter(new_file, 1)
+                new_ogg = OggStreamWriter2(new_writer, #FIXME
+                                           self.__serial_number__)
 
-        #now write the rest of the old pages to the new file,
-        #re-sequenced and re-checksummed
-        for (page, data) in reader.pages(from_beginning=False):
-            page.page_sequence_number = sequence_number
-            page.checksum = OggStreamReader.calculate_ogg_checksum(page, data)
-            writer.write_page(page, data)
-            sequence_number += 1
+                #write our new comment blocks to the new file
+                metadata.build(new_ogg, 4096)
 
-        reader.close()
+                #skip the metadata packets in the original file
+                OggFlacMetaData.parse(original_reader)
 
-        #re-write the file with our new data in "new_file"
-        f = file(self.filename, "wb")
-        new_file.seek(0, 0)
-        transfer_data(new_file.read, f.write)
-        new_file.close()
-        f.close()
-        writer.close()
+                #transfer the remaining pages from the original file
+                #(which are re-sequenced and re-checksummed automatically)
+                for (granule_position,
+                     segments,
+                     continuation,
+                     first_page,
+                     last_page) in original_ogg.pages():
+                    new_ogg.write_page(granule_position,
+                                       segments,
+                                       continuation,
+                                       first_page,
+                                       last_page)
+            finally:
+                original_file.close()
+
+            #copy temporary file data over our original file
+            original_file = file(self.filename, "wb")
+            try:
+                new_file.seek(0, 0)
+                transfer_data(new_file.read, original_file.write)
+                new_file.close()
+            finally:
+                original_file.close()
+        finally:
+            new_file.close()
 
     def delete_metadata(self):
         """Deletes the track's MetaData.
@@ -2296,7 +2386,7 @@ class OggFlacAudio(AudioFile):
              version,
              header_type,
              granule_position,
-             serial_number,
+             self.__serial_number__,
              page_sequence_number,
              checksum,
              segment_count) = ogg_reader.parse("4b 8u 8u 64S 32u 32u 32u 8u")
@@ -2482,7 +2572,7 @@ class OggFlacAudio(AudioFile):
         if (metadata is None):
             metadata = FlacMetaData.converted(MetaData())
 
-        metadata.cuesheet = FlacCueSheet.converted(
+        metadata.cuesheet = Flac_CUESHEET.converted(
             cuesheet, self.total_frames(), self.sample_rate())
         self.set_metadata(metadata)
 

@@ -83,9 +83,9 @@ class OggChecksum:
     def __int__(self):
         return self.checksum
 
-class OggStreamReader:
-    def __init__(self, stream):
-        self.reader = BitstreamReader(stream, 1)
+class OggStreamReader2:  #FIXME
+    def __init__(self, reader):
+        self.reader = reader
 
         #try to grab a few useful bits of info
         self.reader.mark()
@@ -149,16 +149,52 @@ class OggStreamReader:
             if (page[-1]):
                 break
 
-class OggStreamWriter:
-    def __init__(self, stream, serial_number):
-        """stream is a file-like object with read() and close() methods."""
+class OggStreamWriter2:  #FIXME
+    def __init__(self, writer, serial_number):
+        """writer is a BitstreamWriter-compatible object
 
-        self.writer = BitstreamWriter(stream, 1)
+        serial_number is a signed integer"""
+
+        self.writer = writer
         self.serial_number = serial_number
         self.sequence_number = 0
         self.temp = BitstreamRecorder(1)
         self.checksum = OggChecksum()
         self.temp.add_callback(self.checksum.update)
+
+    def packet_to_segments(self, packet):
+        """yields a segment string per segment of the packet string
+
+        where each segment is a string up to 255 bytes long
+
+        the final segment will be 0 bytes if the packet
+        is equally divisible by 255 bytes"""
+
+        use_pad = len(packet) % 255 == 0
+
+        while (len(packet) > 0):
+            yield packet[0:255]
+            packet = packet[255:]
+
+        if (use_pad):
+            yield ""
+
+    def segments_to_pages(self, segments):
+        """given an iterator of segment strings,
+
+        yields a list of strings where each list is up to 255 segments
+        """
+
+        page = []
+        for segment in segments:
+            page.append(segment)
+            if (len(page) == 255):
+                yield page
+                page = []
+
+        if (len(page) > 0):
+            yield page
+
 
     def write_page(self, granule_position, segments,
                    continuation, first_page, last_page):
@@ -166,7 +202,12 @@ class OggStreamWriter:
 
         segments is a list of strings containing binary data
 
-        last indicates whether this is the last Ogg page in the stream"""
+        continuation, first_page and last_page indicate this page's
+        position in the Ogg stream
+        """
+
+        assert(len(segments) < 0x100)
+        assert(max(map(len, segments)) < 0x100)
 
         self.temp.reset()
         self.checksum.reset()

@@ -3867,6 +3867,7 @@ from __image__ import *
 from __wav__ import *
 
 from __au__ import *
+from __ogg__ import *
 from __vorbiscomment__ import *
 from __id3__ import *
 from __aiff__ import *
@@ -4696,6 +4697,52 @@ class __JobProgress__:
         cPickle.dump(("progress", [self.job_id, current, total]),
                      self.output)
         self.output.flush()
+
+def iter_first(iterator):
+    """yields a (is_last, item) per item in the iterator
+
+    where is_first indicates whether the item is the first one
+
+    if the iterator has no items, yields (True, None)
+    """
+
+    try:
+        first_item = iterator.next()
+    except StopIteration:
+        yield (True, None)
+        return
+
+    yield (True, first_item)
+
+    while (True):
+        try:
+            yield (False, iterator.next())
+        except StopIteration:
+            return
+
+def iter_last(iterator):
+    """yields a (is_last, item) per item in the iterator
+
+    where is_last indicates whether the item is the final one
+
+    if the iterator has no items, yields (True, None)
+    """
+
+    try:
+        cached_item = iterator.next()
+    except StopIteration:
+        yield (True, None)
+        return
+
+    while (True):
+        try:
+            next_item = iterator.next()
+            yield (False, cached_item)
+            cached_item = next_item
+        except StopIteration:
+            yield (True, cached_item)
+            return
+
 
 
 #***ApeAudio temporarily removed***

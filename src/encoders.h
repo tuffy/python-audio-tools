@@ -227,6 +227,10 @@ BitstreamRecorder_bytes(encoders_BitstreamRecorder *self,
                         PyObject *args);
 
 static PyObject*
+BitstreamRecorder_data(encoders_BitstreamRecorder *self,
+                       PyObject *args);
+
+static PyObject*
 BitstreamRecorder_swap(encoders_BitstreamRecorder *self,
                        PyObject *args);
 
@@ -293,6 +297,8 @@ PyMethodDef BitstreamRecorder_methods[] = {
     {"bits", (PyCFunction)BitstreamRecorder_bits,
      METH_NOARGS, ""},
     {"bytes", (PyCFunction)BitstreamRecorder_bytes,
+     METH_NOARGS, ""},
+    {"data", (PyCFunction)BitstreamRecorder_data,
      METH_NOARGS, ""},
     {"reset", (PyCFunction)BitstreamRecorder_reset,
      METH_NOARGS, ""},
