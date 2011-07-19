@@ -608,6 +608,14 @@ class Flac_CUESHEET:
         self.is_cdda = is_cdda
         self.tracks = tracks
 
+    def __eq__(self, cuesheet):
+        from operator import and_
+        return reduce(and_, [getattr(self, attr) == getattr(cuesheet, attr)
+                             for attr in ["catalog_number",
+                                          "lead_in_samples",
+                                          "is_cdda",
+                                          "tracks"]])
+
     def __repr__(self):
         return ("Flac_CUESHEET(%s)" %
                 ",".join(["%s=%s" % (key, repr(getattr(self, key)))
@@ -639,7 +647,7 @@ class Flac_CUESHEET:
 
     @classmethod
     def converted(cls, sheet, total_frames, sample_rate=44100):
-        """Converts a cuesheet compatible object to FlacCueSheet objects.
+        """Converts a cuesheet compatible object to Flac_CUESHEET objects.
 
         A total_frames integer (in PCM frames) is also required.
         """
@@ -750,6 +758,16 @@ class Flac_CUESHEET_track:
                                       "pre_emphasis",
                                       "index_points"]]))
 
+    def __eq__(self, track):
+        from operator import and_
+        return reduce(and_, [getattr(self, attr) == getattr(track, attr)
+                             for attr in ["offset",
+                                          "number",
+                                          "ISRC",
+                                          "track_type",
+                                          "pre_emphasis",
+                                          "index_points"]])
+
     @classmethod
     def parse(cls, reader):
         (offset,
@@ -781,6 +799,9 @@ class Flac_CUESHEET_index:
     def __repr__(self):
         return "Flac_CUESHEET_index(%s, %s)" % (repr(self.offset),
                                                 repr(self.number))
+
+    def __eq__(self, index):
+        return ((self.offset == index.offset) and (self.number == index.number))
 
     @classmethod
     def parse(cls, reader):
@@ -2008,7 +2029,7 @@ class OggFlacMetaData(FlacMetaData):
         #which will always occupy its own page
         packet.build(
             "8u 4b 8u 8u 16u 4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b",
-            (0x7F, "FLAC", 1, 0, len(blocks), "fLaC", 0,
+            (0x7F, "FLAC", 1, 0, len(blocks) + 1, "fLaC", 0,
              format_size("16u 16u 24u 24u 20u 3u 5u 36U 16b") / 8,
              self.streaminfo.minimum_block_size,
              self.streaminfo.maximum_block_size,
@@ -2026,7 +2047,6 @@ class OggFlacMetaData(FlacMetaData):
 
         #pack remaining metadata blocks into as few pages as possible
         for block in blocks:
-            print "Building block %s" % (repr(block))
             block_data = BitstreamRecorder(0)
             block.build(block_data)
             packet.build("1u 7u 24u", (0, block.BLOCK_ID, block_data.bytes()))
@@ -2260,9 +2280,8 @@ class OggFlacAudio(AudioFile):
             pass
         else:
             #port over the old STREAMINFO and SEEKTABLE blocks
-            old_streaminfo = old_metadata.streaminfo
+            metadata.streaminfo = old_metadata.streaminfo
             old_seektable = old_metadata.seektable
-            metadata.streaminfo = old_streaminfo
             if (old_seektable is not None):
                 metadata.seektable = old_seektable
 
@@ -2277,17 +2296,14 @@ class OggFlacAudio(AudioFile):
             metadata.applications = [block for block in metadata.applications
                                      if (block.type != 2)]
 
+            #always grab "vendor_string" from the existing file - if present
+            if ((old_metadata.vorbis_comment is not None) and
+                (metadata.vorbis_comment is not None)):
+                vendor_string = old_metadata.vorbis_comment.vendor_string
+                metadata.vorbis_comment.vendor_string = vendor_string
 
-        #always grab "vendor_string" from the existing file - if present
-        if ((old_metadata.vorbis_comment is not None) and
-            (metadata.vorbis_comment is not None)):
-            vendor_string = old_metadata.vorbis_comment.vendor_string
-            metadata.vorbis_comment.vendor_string = vendor_string
-
-        #calculate minimum size of newly constructed metadata
         new_metadata = BitstreamAccumulator(0)
         new_stream = OggStreamWriter2(new_metadata, self.__serial_number__)
-
 
         metadata.build(new_stream, 0)
         minimum_metadata_length = new_metadata.bytes()
@@ -2317,7 +2333,7 @@ class OggFlacAudio(AudioFile):
                                            self.__serial_number__)
 
                 #write our new comment blocks to the new file
-                metadata.build(new_ogg, 4096)
+                metadata.build(new_ogg, 256)
 
                 #skip the metadata packets in the original file
                 OggFlacMetaData.parse(original_reader)
@@ -2570,7 +2586,7 @@ class OggFlacAudio(AudioFile):
 
         metadata = self.get_metadata()
         if (metadata is None):
-            metadata = FlacMetaData.converted(MetaData())
+            metadata = OggFlacMetaData.converted(MetaData())
 
         metadata.cuesheet = Flac_CUESHEET.converted(
             cuesheet, self.total_frames(), self.sample_rate())
