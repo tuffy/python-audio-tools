@@ -665,7 +665,7 @@ class Test_group_tracks(unittest.TestCase):
 
 
 class Test_open(unittest.TestCase):
-    @LIB_CORE
+    @LIB_CUSTOM
     def setUp(self):
         self.dummy1 = tempfile.NamedTemporaryFile()
         self.dummy2 = tempfile.NamedTemporaryFile()
@@ -676,16 +676,15 @@ class Test_open(unittest.TestCase):
         self.dummy2.flush()
 
         data = open("flac-allframes.flac", "rb").read()
-        self.dummy3.write(data[0:0x6 + 1] + chr(0x21) +
-                          data[0x8:0x34 + 1] + data[0x36:])
+        self.dummy3.write(data[0:0x4] + chr(0xFF) + data[0x5:])
         self.dummy3.flush()
 
-    @LIB_CORE
+    @LIB_CUSTOM
     def tearDown(self):
         self.dummy1.close()
         self.dummy2.close()
 
-    @LIB_CORE
+    @LIB_CUSTOM
     def test_open(self):
         #ensure open on dummy file raises UnsupportedFile
         self.assertRaises(audiotools.UnsupportedFile,
@@ -713,7 +712,7 @@ class Test_open(unittest.TestCase):
 
         #ensure a file whose __init__ method triggers InvalidFile
         #raises UnsupportedFile
-        self.assertRaises(audiotools.InvalidFile,
+        self.assertRaises(audiotools.UnsupportedFile,
                           audiotools.open,
                           self.dummy3.name)
 

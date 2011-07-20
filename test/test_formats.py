@@ -2600,71 +2600,30 @@ class FlacFileTest(TestForeignAiffChunks,
 
         #test a FLAC file with an invalid STREAMINFO block
         mismatch_streaminfos = [
-            Con.Container(minimum_blocksize=4096,
-                          maximum_blocksize=4096,
-                          minimum_framesize=12,
-                          maximum_framesize=12,
-                          samplerate=44101,
-                          channels=0,
-                          bits_per_sample=15,
-                          total_samples=80,
-                          md5=[245, 63, 134, 135, 109, 205, 119,
-                               131, 34, 92, 147, 186, 138, 147,
-                               140, 125]),
-            Con.Container(minimum_blocksize=4096,
-                          maximum_blocksize=4096,
-                          minimum_framesize=12,
-                          maximum_framesize=12,
-                          samplerate=44100,
-                          channels=1,
-                          bits_per_sample=15,
-                          total_samples=80,
-                          md5=[245, 63, 134, 135, 109, 205, 119,
-                               131, 34, 92, 147, 186, 138, 147,
-                               140, 125]),
-            Con.Container(minimum_blocksize=4096,
-                          maximum_blocksize=4096,
-                          minimum_framesize=12,
-                          maximum_framesize=12,
-                          samplerate=44100,
-                          channels=0,
-                          bits_per_sample=7,
-                          total_samples=80,
-                          md5=[245, 63, 134, 135, 109, 205, 119,
-                               131, 34, 92, 147, 186, 138, 147,
-                               140, 125]),
-            Con.Container(minimum_blocksize=4096,
-                          maximum_blocksize=1,
-                          minimum_framesize=12,
-                          maximum_framesize=12,
-                          samplerate=44100,
-                          channels=0,
-                          bits_per_sample=15,
-                          total_samples=80,
-                          md5=[245, 63, 134, 135, 109, 205, 119,
-                               131, 34, 92, 147, 186, 138, 147,
-                               140, 125]),
-            Con.Container(minimum_blocksize=4096,
-                          maximum_blocksize=1,
-                          minimum_framesize=12,
-                          maximum_framesize=12,
-                          samplerate=44100,
-                          channels=0,
-                          bits_per_sample=15,
-                          total_samples=80,
-                          md5=[246, 63, 134, 135, 109, 205, 119,
-                               131, 34, 92, 147, 186, 138, 147,
-                               140, 125])]
+            (4096, 4096, 12, 12, 44101, 0, 15, 80,
+             '\xf5?\x86\x87m\xcdw\x83"\\\x93\xba\x8a\x93\x8c}'),
+            (4096, 4096, 12, 12, 44100, 1, 15, 80,
+             '\xf5?\x86\x87m\xcdw\x83"\\\x93\xba\x8a\x93\x8c}'),
+            (4096, 4096, 12, 12, 44100, 0, 7, 80,
+             '\xf5?\x86\x87m\xcdw\x83"\\\x93\xba\x8a\x93\x8c}'),
+            (4096, 1, 12, 12, 44100, 0, 15, 80,
+             '\xf5?\x86\x87m\xcdw\x83"\\\x93\xba\x8a\x93\x8c}'),
+            (4096, 4096, 12, 12, 44100, 0, 15, 80,
+             '\xf5?\x86\x87m\xcdw\x83"\\\x93\xba\x8a\x93\x8d}')]
 
         header = flac_data[0:8]
         data = flac_data[0x2A:]
+
+        from audiotools.encoders import BitstreamWriter
 
         for streaminfo in mismatch_streaminfos:
             temp = tempfile.NamedTemporaryFile(suffix=".flac")
             try:
                 temp.seek(0, 0)
                 temp.write(header)
-                temp.write(audiotools.FlacAudio.STREAMINFO.build(streaminfo)),
+                BitstreamWriter(temp.file, 0).build(
+                    "16u 16u 24u 24u 20u 3u 5u 36U 16b",
+                    streaminfo)
                 temp.write(data)
                 temp.flush()
                 decoders = audiotools.open(temp.name).to_pcm()

@@ -19,7 +19,7 @@
 
 
 from audiotools import (AudioFile, MetaData, InvalidFile, PCMReader,
-                        Con, transfer_data, transfer_framelist_data,
+                        transfer_data, transfer_framelist_data,
                         subprocess, BIN, BUFFER_SIZE, cStringIO,
                         os, open_files, Image, sys, WaveAudio, AiffAudio,
                         ReplayGain, ignore_sigint, sheet_to_unicode,
@@ -610,11 +610,14 @@ class Flac_CUESHEET:
 
     def __eq__(self, cuesheet):
         from operator import and_
-        return reduce(and_, [getattr(self, attr) == getattr(cuesheet, attr)
-                             for attr in ["catalog_number",
-                                          "lead_in_samples",
-                                          "is_cdda",
-                                          "tracks"]])
+        try:
+            return reduce(and_, [getattr(self, attr) == getattr(cuesheet, attr)
+                                 for attr in ["catalog_number",
+                                              "lead_in_samples",
+                                              "is_cdda",
+                                              "tracks"]])
+        except AttributeError:
+            return False
 
     def __repr__(self):
         return ("Flac_CUESHEET(%s)" %
@@ -760,13 +763,16 @@ class Flac_CUESHEET_track:
 
     def __eq__(self, track):
         from operator import and_
-        return reduce(and_, [getattr(self, attr) == getattr(track, attr)
-                             for attr in ["offset",
-                                          "number",
-                                          "ISRC",
-                                          "track_type",
-                                          "pre_emphasis",
-                                          "index_points"]])
+        try:
+            return reduce(and_, [getattr(self, attr) == getattr(track, attr)
+                                 for attr in ["offset",
+                                              "number",
+                                              "ISRC",
+                                              "track_type",
+                                              "pre_emphasis",
+                                              "index_points"]])
+        except AttributeError:
+            return False
 
     @classmethod
     def parse(cls, reader):
@@ -801,7 +807,11 @@ class Flac_CUESHEET_index:
                                                 repr(self.number))
 
     def __eq__(self, index):
-        return ((self.offset == index.offset) and (self.number == index.number))
+        try:
+            return ((self.offset == index.offset) and
+                    (self.number == index.number))
+        except AttributeError:
+            return False
 
     @classmethod
     def parse(cls, reader):
@@ -825,39 +835,6 @@ class FlacAudio(WaveContainer, AiffContainer):
                                 "8": _(u"most amount of compression, " +
                                        u"slowest compression speed")}
 
-    METADATA_BLOCK_HEADER = Con.BitStruct("metadata_block_header",
-                                          Con.Bit("last_block"),
-                                          Con.Bits("block_type", 7),
-                                          Con.Bits("block_length", 24))
-
-    STREAMINFO = Con.Struct("flac_streaminfo",
-                                 Con.UBInt16("minimum_blocksize"),
-                                 Con.UBInt16("maximum_blocksize"),
-                                 Con.Embed(Con.BitStruct("flags",
-                                   Con.Bits("minimum_framesize", 24),
-                                   Con.Bits("maximum_framesize", 24),
-                                   Con.Bits("samplerate", 20),
-                                   Con.Bits("channels", 3),
-                                   Con.Bits("bits_per_sample", 5),
-                                   Con.Bits("total_samples", 36))),
-                                 Con.StrictRepeater(16, Con.Byte("md5")))
-
-    PICTURE_COMMENT = Con.Struct("picture_comment",
-                                 Con.UBInt32("type"),
-                                 Con.PascalString(
-            "mime_type",
-            length_field=Con.UBInt32("mime_type_length")),
-                                 Con.PascalString(
-            "description",
-            length_field=Con.UBInt32("description_length")),
-                                 Con.UBInt32("width"),
-                                 Con.UBInt32("height"),
-                                 Con.UBInt32("color_depth"),
-                                 Con.UBInt32("color_count"),
-                                 Con.PascalString(
-            "data",
-            length_field=Con.UBInt32("data_length")))
-
     def __init__(self, filename):
         """filename is a plain string."""
 
@@ -867,13 +844,12 @@ class FlacAudio(WaveContainer, AiffContainer):
         self.__bitspersample__ = 0
         self.__total_frames__ = 0
         self.__stream_offset__ = 0
+        self.__md5__ = chr(0) * 16
 
         try:
             self.__read_streaminfo__()
         except IOError, msg:
             raise InvalidFLAC(str(msg))
-        except (Con.FieldError, Con.ArrayError):
-            raise InvalidFLAC("invalid STREAMINFO block")
 
     @classmethod
     def is_type(cls, file):
@@ -886,7 +862,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             #proper FLAC file with no junk at the beginning
             try:
                 block_ids = list(cls.__block_ids__(file))
-            except Con.FieldError:
+            except (ValueError,IOError):
                 return False
             if ((len(block_ids) == 0) or (0 not in block_ids)):
                 return False
@@ -902,7 +878,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                 if (file.read(4) == 'fLaC'):
                     try:
                         block_ids = list(cls.__block_ids__(file))
-                    except Con.FieldError:
+                    except (ValueError,IOError):
                         return False
                     if ((len(block_ids) == 0) or (0 not in block_ids)):
                         return False
@@ -980,6 +956,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         from .encoders import BitstreamWriter
         from .encoders import BitstreamRecorder
         from .encoders import BitstreamAccumulator
+        from .decoders import BitstreamReader
 
         metadata = FlacMetaData.converted(metadata)
 
@@ -1056,12 +1033,11 @@ class FlacAudio(WaveContainer, AiffContainer):
                 raise InvalidFLAC(_(u'Invalid FLAC file'))
 
             #skip the existing metadata blocks
-            #FIXME - remove Construct-based parsing
-            block = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(stream)
-            while (block.last_block == 0):
-                stream.seek(block.block_length, 1)
-                block = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(stream)
-            stream.seek(block.block_length, 1)
+            stop = 0
+            reader = BitstreamReader(stream, 0)
+            while (stop == 0):
+                (stop, length) = reader.parse("1u 7p 24u")
+                reader.skip(length * 8)
 
             #write the remaining data stream to a temp file
             file_data = tempfile.TemporaryFile()
@@ -1081,20 +1057,28 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         This includes the 4 byte "fLaC" file header."""
 
-        #FIXME - remove Construct-based parsing
+        from .decoders import BitstreamReader
 
+        counter = 0
         f = file(self.filename, 'rb')
         try:
             f.seek(self.__stream_offset__, 0)
-            if (f.read(4) != 'fLaC'):
-                raise InvalidFLAC(_(u'Invalid FLAC file'))
+            reader = BitstreamReader(f, 0)
 
-            header = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(f)
-            f.seek(header.block_length, 1)
-            while (header.last_block == 0):
-                header = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(f)
-                f.seek(header.block_length, 1)
-            return f.tell()
+            if (reader.read_bytes(4) != 'fLaC'):
+                raise InvalidFLAC(_(u'Invalid FLAC file'))
+            else:
+                counter += 4
+
+            stop = 0
+            while (stop == 0):
+                (stop, block_id, length) = reader.parse("1u 7u 24u")
+                counter += 4
+
+                reader.skip(length * 8)
+                counter += length
+
+            return counter
         finally:
             f.close()
 
@@ -1107,20 +1091,23 @@ class FlacAudio(WaveContainer, AiffContainer):
         self.set_metadata(MetaData())
 
     @classmethod
-    def __read_flac_header__(cls, flacfile):
-        p = FlacAudio.METADATA_BLOCK_HEADER.parse(flacfile.read(4))
-        return (p.last_block, p.block_type, p.block_length)
-
-    @classmethod
     def __block_ids__(cls, flacfile):
-        p = Con.Container(last_block=False,
-                          block_type=None,
-                          block_length=0)
+        """yields a block_id int per metadata block
 
-        while (not p.last_block):
-            p = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(flacfile)
-            yield p.block_type
-            flacfile.seek(p.block_length, 1)
+        raises ValueError if a block_id is invalid
+        """
+
+        valid_block_ids = frozenset(range(0, 6 + 1))
+        from .decoders import BitstreamReader
+        reader = BitstreamReader(flacfile, 0)
+        stop = 0
+        while (stop == 0):
+            (stop, block_id, length) = reader.parse("1u 7u 24u")
+            if (block_id in valid_block_ids):
+                yield block_id
+            else:
+                raise ValueError(_(u"invalid FLAC block ID"))
+            reader.skip(length * 8)
 
     def set_cuesheet(self, cuesheet):
         """Imports cuesheet data from a Cuesheet-compatible object.
@@ -1601,28 +1588,37 @@ class FlacAudio(WaveContainer, AiffContainer):
         return self.__samplerate__
 
     def __read_streaminfo__(self):
+        valid_header_types = frozenset(range(0, 6 + 1))
         f = file(self.filename, "rb")
-        self.__stream_offset__ = ID3v2Comment.skip(f)
-        f.read(4)
+        try:
+            self.__stream_offset__ = ID3v2Comment.skip(f)
+            f.read(4)
 
-        (stop, header_type, length) = (False, None, 0)
-        while (not stop):
-            (stop, header_type, length) = \
-                FlacAudio.__read_flac_header__(f)
-            if (header_type == 0):
-                p = self.STREAMINFO.parse(f.read(length))
+            from .decoders import BitstreamReader
 
-                md5sum = "".join(["%.2X" % (x) for x in p.md5]).lower()
+            reader = BitstreamReader(f, 0)
 
-                self.__samplerate__ = p.samplerate
-                self.__channels__ = p.channels + 1
-                self.__bitspersample__ = p.bits_per_sample + 1
-                self.__total_frames__ = p.total_samples
-                self.__md5__ = "".join([chr(c) for c in p.md5])
-                break
-            else:
-                f.seek(length, 1)
-        f.close()
+            stop = 0
+
+            while (stop == 0):
+                (stop, header_type, length) = reader.parse("1u 7u 24u")
+                if (header_type not in valid_header_types):
+                    raise InvalidFile(_("invalid header type"))
+                elif (header_type == 0):
+                    (self.__samplerate__,
+                     self.__channels__,
+                     self.__bitspersample__,
+                     self.__total_frames__,
+                     self.__md5__) = reader.parse("80p 20u 3u 5u 36U 16b")
+                    self.__channels__ += 1
+                    self.__bitspersample__ += 1
+                    break
+                else:
+                    #though the STREAMINFO should always be first,
+                    #we'll be permissive and check them all if necessary
+                    reader.skip(length * 8)
+        finally:
+            f.close()
 
     def seektable(self, pcm_frames):
         """Returns a new FlacSeektable block from this file's data."""
@@ -2006,8 +2002,15 @@ class OggFlacMetaData(FlacMetaData):
     def build(self, oggwriter, padding_bytes):
         """oggwriter is an OggStreamWriter-compatible object"""
 
-        from .encoders import BitstreamRecorder,format_size
+        from .encoders import BitstreamAccumulator
+        from .encoders import BitstreamRecorder
+        from .encoders import format_size
         from . import iter_first,iter_last
+
+        def small_enough(block):
+            size = BitstreamAccumulator(0)
+            block.build(size)
+            return size.bytes() < 2 ** 24
 
         if (self.streaminfo is None):
             raise ValueError(_("STREAMINFO block is required"))
@@ -2022,6 +2025,7 @@ class OggFlacMetaData(FlacMetaData):
         if (self.cuesheet is not None):
             blocks.append(self.cuesheet)
         blocks.extend(self.pictures)
+        blocks = filter(small_enough, blocks)
 
         packet = BitstreamRecorder(0)
 
@@ -2049,7 +2053,8 @@ class OggFlacMetaData(FlacMetaData):
         for block in blocks:
             block_data = BitstreamRecorder(0)
             block.build(block_data)
-            packet.build("1u 7u 24u", (0, block.BLOCK_ID, block_data.bytes()))
+            packet.build("1u 7u 24u",
+                         (0, block.BLOCK_ID, block_data.bytes()))
             block_data.copy(packet)
             for (first_page, page_segments) in iter_first(
                 oggwriter.segments_to_pages(
@@ -2138,21 +2143,6 @@ class OggFlacAudio(AudioFile):
                                        u"slowest compression speed")}
     BINARIES = ("flac",)
 
-    OGGFLAC_STREAMINFO = Con.Struct('oggflac_streaminfo',
-                                    Con.Const(Con.Byte('packet_byte'),
-                                              0x7F),
-                                    Con.Const(Con.String('signature', 4),
-                                              'FLAC'),
-                                    Con.Byte('major_version'),
-                                    Con.Byte('minor_version'),
-                                    Con.UBInt16('header_packets'),
-                                    Con.Const(Con.String('flac_signature', 4),
-                                              'fLaC'),
-                                    Con.Embed(
-        FlacAudio.METADATA_BLOCK_HEADER),
-                                    Con.Embed(
-        FlacAudio.STREAMINFO))
-
     def __init__(self, filename):
         """filename is a plain string."""
 
@@ -2166,8 +2156,6 @@ class OggFlacAudio(AudioFile):
             self.__read_streaminfo__()
         except IOError, msg:
             raise InvalidFLAC(str(msg))
-        except (Con.FieldError, Con.ArrayError):
-            raise InvalidFLAC("invalid STREAMINFO block")
 
     @classmethod
     def is_type(cls, file):
