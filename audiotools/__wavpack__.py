@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import (AudioFile, InvalidFile, Con, subprocess, BIN,
+from audiotools import (AudioFile, InvalidFile, subprocess, BIN,
                         open_files, os, ReplayGain, ignore_sigint,
                         transfer_data, transfer_framelist_data,
                         BufferedPCMReader, Image, MetaData, sheet_to_unicode,
@@ -37,35 +37,32 @@ gettext.install("audiotools", unicode=True)
 class InvalidWavPack(InvalidFile):
     pass
 
+def __riff_chunk_ids__(data_size, data):
+    data_size = __Counter__(data_size)
+    data.add_callback(data_size.callback)
+    (riff, size, wave) = data.parse("4b 32u 4b")
+    if (riff != "RIFF"):
+        return
+    elif (wave != "WAVE"):
+        return
 
-class __24BitsLE__(Con.Adapter):
-    def _encode(self, value, context):
-        return  chr(value & 0x0000FF) + \
-                chr((value & 0x00FF00) >> 8) + \
-                chr((value & 0xFF0000) >> 16)
-
-    def _decode(self, obj, context):
-        return (ord(obj[2]) << 16) | (ord(obj[1]) << 8) | ord(obj[0])
-
-
-def ULInt24(name):
-    return __24BitsLE__(Con.Bytes(name, 3))
-
-
-def __riff_chunk_ids__(data):
-    import cStringIO
-
-    total_size = len(data)
-    data = cStringIO.StringIO(data)
-    header = WaveAudio.WAVE_HEADER.parse_stream(data)
-
-    while (data.tell() < total_size):
-        chunk_header = WaveAudio.CHUNK_HEADER.parse_stream(data)
-        chunk_size = chunk_header.chunk_length
-        if ((chunk_size & 1) == 1):
+    while (int(data_size) > 0):
+        (chunk_id, chunk_size) = data.parse("4b 32u")
+        if ((chunk_size % 2) == 1):
             chunk_size += 1
-        data.seek(chunk_size, 1)
-        yield chunk_header.chunk_id
+        yield chunk_id
+        if (chunk_id != 'data'):
+            data.skip(chunk_size * 8)
+
+class __Counter__:
+    def __init__(self, value):
+        self.value = value
+
+    def callback(self, byte):
+        self.value -= 1
+
+    def __int__(self):
+        return self.value
 
 
 #######################
@@ -140,55 +137,6 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
 
     APE_TAG_CLASS = WavPackAPEv2
 
-    HEADER = Con.Struct("wavpackheader",
-                        Con.Const(Con.String("id", 4), 'wvpk'),
-                        Con.ULInt32("block_size"),
-                        Con.ULInt16("version"),
-                        Con.ULInt8("track_number"),
-                        Con.ULInt8("index_number"),
-                        Con.ULInt32("total_samples"),
-                        Con.ULInt32("block_index"),
-                        Con.ULInt32("block_samples"),
-                        Con.Embed(
-            Con.BitStruct("flags",
-                          Con.Flag("floating_point_data"),
-                          Con.Flag("hybrid_noise_shaping"),
-                          Con.Flag("cross_channel_decorrelation"),
-                          Con.Flag("joint_stereo"),
-                          Con.Flag("hybrid_mode"),
-                          Con.Flag("mono_output"),
-                          Con.Bits("bits_per_sample", 2),
-
-                          Con.Bits("left_shift_data_low", 3),
-                          Con.Flag("final_block_in_sequence"),
-                          Con.Flag("initial_block_in_sequence"),
-                          Con.Flag("hybrid_noise_balanced"),
-                          Con.Flag("hybrid_mode_control_bitrate"),
-                          Con.Flag("extended_size_integers"),
-
-                          Con.Bit("sampling_rate_low"),
-                          Con.Bits("maximum_magnitude", 5),
-                          Con.Bits("left_shift_data_high", 2),
-
-                          Con.Flag("reserved2"),
-                          Con.Flag("false_stereo"),
-                          Con.Flag("use_IIR"),
-                          Con.Bits("reserved1", 2),
-                          Con.Bits("sampling_rate_high", 3))),
-                        Con.ULInt32("crc"))
-
-    SUB_HEADER = Con.Struct("wavpacksubheader",
-                            Con.Embed(
-            Con.BitStruct("flags",
-                          Con.Flag("large_block"),
-                          Con.Flag("actual_size_1_less"),
-                          Con.Flag("nondecoder_data"),
-                          Con.Bits("metadata_function", 5))),
-                            Con.IfThenElse('size',
-                                           lambda ctx: ctx['large_block'],
-                                           ULInt24('s'),
-                                           Con.Byte('s')))
-
     BITS_PER_SAMPLE = (8, 16, 24, 32)
     SAMPLING_RATE = (6000,  8000,  9600,   11025,
                      12000, 16000, 22050,  24000,
@@ -251,17 +199,7 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
     def channel_mask(self):
         """Returns a ChannelMask object of this track's channel layout."""
 
-        if ((self.__channels__ == 1) or (self.__channels__ == 2)):
-            return ChannelMask.from_channels(self.__channels__)
-        else:
-            for (block_id, nondecoder, data) in self.sub_frames():
-                if ((block_id == 0xD) and not nondecoder):
-                    mask = 0
-                    for byte in reversed(map(ord, data[1:])):
-                        mask = (mask << 8) | byte
-                    return ChannelMask(mask)
-            else:
-                return ChannelMask(0)
+        return self.__channel_mask__
 
     def get_metadata(self):
         """Returns a MetaData object, or None.
@@ -281,125 +219,159 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
         conversion should be routed through .wav conversion
         to avoid losing those chunks."""
 
-        for (sub_header, nondecoder, data) in self.sub_frames():
+        for (sub_header, nondecoder, data_size, data) in self.sub_blocks():
             if ((sub_header == 1) and nondecoder):
-                if (set(__riff_chunk_ids__(data)) != set(['fmt ', 'data'])):
+                if (set(__riff_chunk_ids__(data_size, data)) !=
+                    set(['fmt ', 'data'])):
                     return True
             elif ((sub_header == 2) and nondecoder):
                 return True
         else:
             return False
 
-    def frames(self):
-        """Yields (header, data) tuples of WavPack frames.
+    def blocks(self, reader=None):
+        """yields (length, reader) tuples of WavPack frames
 
-        header is a Container parsed from WavPackAudio.HEADER.
-        data is a binary string.
+        length is the total length of all the substreams
+        reader is a BitstreamReader which can be parsed
         """
 
-        f = file(self.filename)
-        total_size = os.path.getsize(self.filename)
+        if (reader is None):
+            from .decoders import BitstreamReader
+
+            reader = BitstreamReader(file(self.filename), 1)
+            try:
+                for block in self.__blocks__(reader):
+                    yield block
+            finally:
+                reader.close()
+        else:
+            for block in self.__blocks__(reader):
+                yield block
+
+    def __blocks__(self, reader):
         try:
-            while (f.tell() < total_size):
-                try:
-                    header = WavPackAudio.HEADER.parse(f.read(
-                            WavPackAudio.HEADER.sizeof()))
-                except Con.ConstError:
-                    break
+            while (True):
+                (wvpk, block_size) = reader.parse("4b 32u 192p")
+                if (wvpk == 'wvpk'):
+                    yield (block_size - 24,
+                           reader.substream(block_size - 24))
+                else:
+                    return
+        except IOError:
+            return
 
-                data = f.read(header.block_size - 24)
+    def sub_blocks(self, reader=None):
+        """yields (function, nondecoder, data_size, data) tuples
 
-                yield (header, data)
-        finally:
-            f.close()
-
-    def sub_frames(self):
-        """Yields (function,nondecoder,data) tuples.
-
-        function is an integer.
-        nondecoder is a boolean indicating non-decoder data.
-        data is a binary string.
+        function is an integer
+        nondecoder is a boolean indicating non-decoder data
+        data is a BitstreamReader which can be parsed
         """
 
-        import cStringIO
+        for (frame_size, frame_data) in self.blocks(reader):
+            frame_size = __Counter__(frame_size)
+            frame_data.add_callback(frame_size.callback)
+            while (int(frame_size) > 0):
+                (metadata_function,
+                 nondecoder_data,
+                 actual_size_1_less,
+                 large_block) = frame_data.parse("5u 1u 1u 1u")
 
-        for (header, data) in self.frames():
-            total_size = len(data)
-            data = cStringIO.StringIO(data)
-            while (data.tell() < total_size):
-                sub_header = WavPackAudio.SUB_HEADER.parse_stream(data)
-                if (sub_header.actual_size_1_less):
-                    yield (sub_header.metadata_function,
-                           sub_header.nondecoder_data,
-                           data.read((sub_header.size * 2) - 1))
-                    data.read(1)
+                block_size = frame_data.read(24 if large_block else 8)
+                if (actual_size_1_less):
+                    yield (metadata_function,
+                           nondecoder_data,
+                           block_size * 2 - 1,
+                           frame_data.substream(block_size * 2 - 1))
+                    frame_data.skip(8)
                 else:
-                    yield (sub_header.metadata_function,
-                           sub_header.nondecoder_data,
-                           data.read(sub_header.size * 2))
+                    yield (metadata_function,
+                           nondecoder_data,
+                           block_size * 2,
+                           frame_data.substream(block_size * 2))
+
 
     def __read_info__(self):
-        f = file(self.filename)
+        from .decoders import BitstreamReader
+
+        reader = BitstreamReader(file(self.filename, "rb"), 1)
+        reader.mark()
         try:
-            try:
-                header = WavPackAudio.HEADER.parse(f.read(
-                    WavPackAudio.HEADER.sizeof()))
-            except Con.ConstError:
+            (block_id,
+             total_samples,
+             bits_per_sample,
+             mono_output,
+             initial_block,
+             final_block,
+             sample_rate) = reader.parse(
+                "4b 64p 32u 64p 2u 1u 8p 1u 1u 5p 5p 4u 37p")
+
+            if (block_id != 'wvpk'):
                 raise InvalidWavPack(_(u'WavPack header ID invalid'))
-            except Con.FieldError:
-                raise InvalidWavPack(_(u'WavPack header ID invalid'))
 
-            self.__samplerate__ = WavPackAudio.SAMPLING_RATE[
-                (header.sampling_rate_high << 1) |
-                header.sampling_rate_low]
-
-            if (self.__samplerate__ == 0):
-                #if unknown, pull from the RIFF WAVE header
-                for (function, nondecoder, data) in self.sub_frames():
-                    if ((function == 1) and nondecoder):
-                        #fmt chunk must be in the header
-                        #since it must come before the data chunk
-
-                        import cStringIO
-
-                        chunks = cStringIO.StringIO(data[12:-8])
-                        try:
-                            while (True):
-                                chunk_header = \
-                                    WaveAudio.CHUNK_HEADER.parse_stream(
-                                    chunks)
-                                chunk_data = chunks.read(
-                                    chunk_header.chunk_length)
-                                if (chunk_header.chunk_id == 'fmt '):
-                                    self.__samplerate__ = \
-                                        WaveAudio.FMT_CHUNK.parse(
-                                        chunk_data).sample_rate
-                        except Con.FieldError:
-                            pass  # finished with chunks
-
-            self.__bitspersample__ = WavPackAudio.BITS_PER_SAMPLE[
-                header.bits_per_sample]
-            self.__total_frames__ = header.total_samples
-
-            self.__channels__ = 0
-
-            #go through as many headers as necessary
-            #to count the number of channels
-            if (header.mono_output):
-                self.__channels__ += 1
+            if (sample_rate != 0xF):
+                self.__samplerate__ = WavPackAudio.SAMPLING_RATE[sample_rate]
             else:
-                self.__channels__ += 2
-
-            while (not header.final_block_in_sequence):
-                f.seek(header.block_size - 24, 1)
-                header = WavPackAudio.HEADER.parse(f.read(
-                        WavPackAudio.HEADER.sizeof()))
-                if (header.mono_output):
-                    self.__channels__ += 1
+                #if unknown, pull from SAMPLE_RATE sub-block
+                for (block_id,
+                     nondecoder,
+                     data_size,
+                     data) in self.sub_blocks(reader):
+                    if ((block_id == 0x7) and nondecoder):
+                        self.__samplerate__ = data.read(data_size * 8)
+                        break
                 else:
-                    self.__channels__ += 2
+                    #no SAMPLE RATE sub-block found
+                    #so pull info from FMT chunk
+                    reader.rewind()
+                    (self.__samplerate__,) = self.fmt_chunk(reader).parse(
+                        "32p 32u")
+
+            self.__bitspersample__ = [8,16,24,32][bits_per_sample]
+            self.__total_frames__ = total_samples
+
+            if (initial_block and final_block):
+                if (mono_output):
+                    self.__channels__ = 1
+                    self.__channel_mask__ = ChannelMask(0x3)
+                else:
+                    self.__channels__ = 2
+                    self.__channel_mask__ = ChannelMask(0x4)
+            else:
+                #if not mono or stereo, pull from CHANNEL INFO sub-block
+                reader.rewind()
+                for (block_id,
+                     nondecoder,
+                     data_size,
+                     data) in self.sub_blocks(reader):
+                    if ((block_id == 0xD) and not nondecoder):
+                        self.__channels__ = data.read(8)
+                        self.__channel_mask__ = ChannelMask(
+                            data.read((data_size - 1) * 8))
+                        break
+                else:
+                    #no CHANNEL INFO sub-block found
+                    #so pull info from FMT chunk
+                    reader.rewind()
+                    fmt = self.fmt_chunk(reader)
+                    compression_code = fmt.read(16)
+                    self.__channels__ = fmt.read(16)
+                    if (compression_code == 1):
+                        #this is theoretically possible
+                        #with very old .wav files,
+                        #but shouldn't happen in practice
+                        self.__channel_mask__ = 0
+                    elif (compression_code == 0xFFFE):
+                        fmt.skip(128)
+                        mask = fmt.read(32)
+                        self.__channel_mask__ = ChannelMask(mask)
+                    else:
+                        raise InvalidWavPack(_(u"unsupported FMT compression"))
+
         finally:
-            f.close()
+            reader.unmark()
+            reader.close()
 
     def bits_per_sample(self):
         """Returns an integer number of bits-per-sample this track contains."""
@@ -540,13 +512,38 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
         head = ""
         tail = ""
 
-        for (sub_block_id, nondecoder, data) in self.sub_frames():
+        for (sub_block_id, nondecoder, data_size, data) in self.sub_blocks():
             if ((sub_block_id == 1) and nondecoder):
-                head = data
+                head = data.read_bytes(data_size)
             elif ((sub_block_id == 2) and nondecoder):
-                tail = data
+                tail = data.read_bytes(data_size)
 
         return (head, tail)
+
+    def fmt_chunk(self, reader=None):
+        """Returns the 'fmt' chunk as a BitstreamReader"""
+
+        for (block_id,
+             nondecoder,
+             data_size,
+             data) in self.sub_blocks(reader):
+            if ((block_id == 1) and nondecoder):
+                (riff, wave) = data.parse("4b 32p 4b")
+                if ((riff != 'RIFF') or (wave != 'WAVE')):
+                    raise InvalidWavPack(_(u'invalid FMT chunk'))
+                else:
+                    while (True):
+                        (chunk_id, chunk_size) = data.parse("4b 32u")
+                        if (chunk_id == 'fmt '):
+                            return data.substream(chunk_size)
+                        elif (chunk_id == 'data'):
+                            raise InvalidWavPack(_(u'invalid FMT chunk'))
+                        else:
+                            data.skip(chunk_size * 8)
+        else:
+            raise InvalidWavPack(_(u'FMT chunk not found in WavPack'))
+
+
 
     @classmethod
     def add_replay_gain(cls, filenames, progress=None):
