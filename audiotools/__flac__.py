@@ -282,7 +282,7 @@ class FlacMetaData(MetaData):
             yield picture
 
     def build(self, writer, padding_bytes):
-        from .encoders import BitstreamRecorder
+        from .bitstream import BitstreamRecorder
 
         for block in self.blocks():
             block_data = BitstreamRecorder(0)
@@ -941,7 +941,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             if (f.read(4) != 'fLaC'):
                 raise InvalidFLAC(_(u'Invalid FLAC file'))
 
-            from .decoders import BitstreamReader
+            from .bitstream import BitstreamReader
 
             return FlacMetaData.parse(BitstreamReader(f, 0))
         finally:
@@ -953,10 +953,10 @@ class FlacAudio(WaveContainer, AiffContainer):
         This metadata includes track name, album name, and so on.
         Raises IOError if unable to write the file."""
 
-        from .encoders import BitstreamWriter
-        from .encoders import BitstreamRecorder
-        from .encoders import BitstreamAccumulator
-        from .decoders import BitstreamReader
+        from .bitstream import BitstreamWriter
+        from .bitstream import BitstreamRecorder
+        from .bitstream import BitstreamAccumulator
+        from .bitstream import BitstreamReader
 
         metadata = FlacMetaData.converted(metadata)
 
@@ -1057,7 +1057,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         This includes the 4 byte "fLaC" file header."""
 
-        from .decoders import BitstreamReader
+        from .bitstream import BitstreamReader
 
         counter = 0
         f = file(self.filename, 'rb')
@@ -1098,7 +1098,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         """
 
         valid_block_ids = frozenset(range(0, 6 + 1))
-        from .decoders import BitstreamReader
+        from .bitstream import BitstreamReader
         reader = BitstreamReader(flacfile, 0)
         stop = 0
         while (stop == 0):
@@ -1594,7 +1594,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             self.__stream_offset__ = ID3v2Comment.skip(f)
             f.read(4)
 
-            from .decoders import BitstreamReader
+            from .bitstream import BitstreamReader
 
             reader = BitstreamReader(f, 0)
 
@@ -2002,9 +2002,9 @@ class OggFlacMetaData(FlacMetaData):
     def build(self, oggwriter, padding_bytes):
         """oggwriter is an OggStreamWriter-compatible object"""
 
-        from .encoders import BitstreamAccumulator
-        from .encoders import BitstreamRecorder
-        from .encoders import format_size
+        from .bitstream import BitstreamAccumulator
+        from .bitstream import BitstreamRecorder
+        from .bitstream import format_size
         from . import iter_first,iter_last
 
         def small_enough(block):
@@ -2088,7 +2088,7 @@ class __Counter__:
         return self.value
 
 def read_ogg_packets(reader):
-    from .decoders import Substream
+    from .bitstream import Substream
 
     header_type = 0
 
@@ -2109,7 +2109,7 @@ def read_ogg_packets(reader):
                 packet = Substream(0)
 
 def read_ogg_packets2(reader):
-    from .decoders import Substream
+    from .bitstream import Substream
 
     header_type = 0
     packet = ""
@@ -2236,7 +2236,7 @@ class OggFlacAudio(AudioFile):
 
         f = open(self.filename, "rb")
         try:
-            from .decoders import BitstreamReader
+            from .bitstream import BitstreamReader
 
             return OggFlacMetaData.parse(BitstreamReader(f, 1))
         finally:
@@ -2248,10 +2248,10 @@ class OggFlacAudio(AudioFile):
         This metadata includes track name, album name, and so on.
         Raises IOError if unable to write the file."""
 
-        from .encoders import BitstreamWriter
-        from .encoders import BitstreamRecorder
-        from .encoders import BitstreamAccumulator
-        from .decoders import BitstreamReader
+        from .bitstream import BitstreamWriter
+        from .bitstream import BitstreamRecorder
+        from .bitstream import BitstreamAccumulator
+        from .bitstream import BitstreamReader
         from . import OggStreamReader2,OggStreamWriter2 #FIXME
 
         metadata = OggFlacMetaData.converted(metadata)
@@ -2365,7 +2365,7 @@ class OggFlacAudio(AudioFile):
 
         This includes all Ogg page headers."""
 
-        from .decoders import BitstreamReader
+        from .bitstream import BitstreamReader
 
         f = file(self.filename, 'rb')
         try:
@@ -2381,7 +2381,7 @@ class OggFlacAudio(AudioFile):
 
 
     def __read_streaminfo__(self):
-        from .decoders import BitstreamReader
+        from .bitstream import BitstreamReader
 
         f = open(self.filename, "rb")
         try:

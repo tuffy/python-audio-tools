@@ -42,9 +42,9 @@ PyMethodDef module_methods[] = {
      METH_VARARGS,
      "from_float_channels(floatframelist_list) -> FloatFrameList"},
     {"__blank__", (PyCFunction)FrameList_blank,
-     METH_NOARGS, "Creates an empty FrameList"},
+     METH_NOARGS, "__blank__() -> FrameList"},
     {"__blank_float__", (PyCFunction)FloatFrameList_blank,
-     METH_NOARGS, "Creates an empty FloatFrameList"},
+     METH_NOARGS, "__blank_float()__ -> FloatFrameList"},
     {NULL}
 };
 

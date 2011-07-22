@@ -1,8 +1,5 @@
 #!/usr/bin/python
 
-from .decoders import BitstreamReader
-from .encoders import BitstreamWriter,BitstreamRecorder,format_size
-
 class OggChecksum:
     CRC_LOOKUP = (0x00000000, 0x04c11db7, 0x09823b6e, 0x0d4326d9,
                   0x130476dc, 0x17c56b6b, 0x1a864db2, 0x1e475005,
@@ -155,6 +152,8 @@ class OggStreamWriter2:  #FIXME
 
         serial_number is a signed integer"""
 
+        from .bitstream import BitstreamRecorder
+
         self.writer = writer
         self.serial_number = serial_number
         self.sequence_number = 0
@@ -205,6 +204,8 @@ class OggStreamWriter2:  #FIXME
         continuation, first_page and last_page indicate this page's
         position in the Ogg stream
         """
+
+        from .bitstream import format_size
 
         assert(len(segments) < 0x100)
         assert(max(map(len, segments)) < 0x100)

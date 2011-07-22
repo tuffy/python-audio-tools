@@ -27,7 +27,7 @@ from audiotools import (AudioFile, InvalidFile, subprocess, BIN,
                         PCMReader, ChannelMask,
                         InvalidWave, __default_quality__,
                         WaveContainer, to_pcm_progress)
-from __wav__ import WaveAudio, WaveReader
+from __wav__ import WaveAudio
 from __ape__ import ApeTaggedAudio, ApeTag, __number_pair__
 import gettext
 
@@ -237,7 +237,7 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
         """
 
         if (reader is None):
-            from .decoders import BitstreamReader
+            from .bitstream import BitstreamReader
 
             reader = BitstreamReader(file(self.filename), 1)
             try:
@@ -293,7 +293,7 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
 
 
     def __read_info__(self):
-        from .decoders import BitstreamReader
+        from .bitstream import BitstreamReader
 
         reader = BitstreamReader(file(self.filename, "rb"), 1)
         reader.mark()
@@ -334,10 +334,10 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
             if (initial_block and final_block):
                 if (mono_output):
                     self.__channels__ = 1
-                    self.__channel_mask__ = ChannelMask(0x3)
+                    self.__channel_mask__ = ChannelMask(0x4)
                 else:
                     self.__channels__ = 2
-                    self.__channel_mask__ = ChannelMask(0x4)
+                    self.__channel_mask__ = ChannelMask(0x3)
             else:
                 #if not mono or stereo, pull from CHANNEL INFO sub-block
                 reader.rewind()
@@ -361,7 +361,26 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
                         #this is theoretically possible
                         #with very old .wav files,
                         #but shouldn't happen in practice
-                        self.__channel_mask__ = 0
+                        self.__channel_mask__ = {
+                            1:ChannelMask.from_fields(
+                                front_center=True),
+                            2:ChannelMask.from_fields(
+                                front_left=True, front_right=True),
+                            3:ChannelMask.from_fields(
+                                front_left=True, front_right=True,
+                                front_center=True),
+                            4:ChannelMask.from_fields(
+                                front_left=True, front_right=True,
+                                back_left=True, back_right=True),
+                            5:ChannelMask.from_fields(
+                                front_left=True, front_right=True,
+                                back_left=True, back_right=True,
+                                front_center=True),
+                            6:ChannelMask.from_fields(
+                                front_left=True, front_right=True,
+                                back_left=True, back_right=True,
+                                front_center=True, low_frequency=True)
+                            }.get(self.__channels__, ChannelMask(0))
                     elif (compression_code == 0xFFFE):
                         fmt.skip(128)
                         mask = fmt.read(32)

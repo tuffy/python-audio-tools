@@ -503,7 +503,7 @@ class ApeTag(MetaData):
 
         May return None if the file object has no tag."""
 
-        from .decoders import BitstreamReader
+        from .bitstream import BitstreamReader
 
         apefile.seek(-32, 2)
         reader = BitstreamReader(apefile, 1)
@@ -524,7 +524,7 @@ class ApeTag(MetaData):
     def build(self, writer):
         """Returns an APEv2 tag as a binary string."""
 
-        from .encoders import BitstreamRecorder
+        from .bitstream import BitstreamRecorder
 
         tags = BitstreamRecorder(1)
 
@@ -632,7 +632,7 @@ class ApeTaggedAudio:
 
         Raises IOError if unable to write the file."""
 
-        from .encoders import BitstreamWriter
+        from .bitstream import BitstreamWriter
 
         apetag = self.APE_TAG_CLASS.converted(metadata)
 

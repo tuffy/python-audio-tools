@@ -665,7 +665,7 @@ class Test_group_tracks(unittest.TestCase):
 
 
 class Test_open(unittest.TestCase):
-    @LIB_CUSTOM
+    @LIB_CORE
     def setUp(self):
         self.dummy1 = tempfile.NamedTemporaryFile()
         self.dummy2 = tempfile.NamedTemporaryFile()
@@ -679,12 +679,12 @@ class Test_open(unittest.TestCase):
         self.dummy3.write(data[0:0x4] + chr(0xFF) + data[0x5:])
         self.dummy3.flush()
 
-    @LIB_CUSTOM
+    @LIB_CORE
     def tearDown(self):
         self.dummy1.close()
         self.dummy2.close()
 
-    @LIB_CUSTOM
+    @LIB_CORE
     def test_open(self):
         #ensure open on dummy file raises UnsupportedFile
         self.assertRaises(audiotools.UnsupportedFile,
@@ -1973,7 +1973,7 @@ class Bitstream(unittest.TestCase):
 
     @LIB_CORE
     def test_simple_reader(self):
-        from audiotools.decoders import BitstreamReader,HuffmanTree
+        from audiotools.bitstream import BitstreamReader,HuffmanTree
 
         temp = tempfile.TemporaryFile()
         try:
@@ -2256,7 +2256,7 @@ class Bitstream(unittest.TestCase):
         validate_writer(writer, temp)
 
     def __get_edge_writer_be__(self):
-        from audiotools.encoders import BitstreamWriter
+        from audiotools.bitstream import BitstreamWriter
 
         temp_file = tempfile.NamedTemporaryFile()
         return (BitstreamWriter(open(temp_file.name, "wb"), 0), temp_file)
@@ -2276,12 +2276,12 @@ class Bitstream(unittest.TestCase):
         temp_file.close()
 
     def __get_edge_recorder_be__(self):
-        from audiotools.encoders import BitstreamRecorder
+        from audiotools.bitstream import BitstreamRecorder
 
         return (BitstreamRecorder(0), tempfile.NamedTemporaryFile())
 
     def __validate_edge_recorder_be__(self, writer, temp_file):
-        from audiotools.encoders import BitstreamWriter
+        from audiotools.bitstream import BitstreamWriter
 
         writer2 = BitstreamWriter(open(temp_file.name, "wb"), 0)
         writer.copy(writer2)
@@ -2299,7 +2299,7 @@ class Bitstream(unittest.TestCase):
         temp_file.close()
 
     def __get_edge_accumulator_be__(self):
-        from audiotools.encoders import BitstreamAccumulator
+        from audiotools.bitstream import BitstreamAccumulator
 
         return (BitstreamAccumulator(0), None)
 
@@ -2308,7 +2308,7 @@ class Bitstream(unittest.TestCase):
 
 
     def __get_edge_writer_le__(self):
-        from audiotools.encoders import BitstreamWriter
+        from audiotools.bitstream import BitstreamWriter
 
         temp_file = tempfile.NamedTemporaryFile()
         return (BitstreamWriter(open(temp_file.name, "wb"), 1), temp_file)
@@ -2328,12 +2328,12 @@ class Bitstream(unittest.TestCase):
         temp_file.close()
 
     def __get_edge_recorder_le__(self):
-        from audiotools.encoders import BitstreamRecorder
+        from audiotools.bitstream import BitstreamRecorder
 
         return (BitstreamRecorder(1), tempfile.NamedTemporaryFile())
 
     def __validate_edge_recorder_le__(self, writer, temp_file):
-        from audiotools.encoders import BitstreamWriter
+        from audiotools.bitstream import BitstreamWriter
 
         writer2 = BitstreamWriter(open(temp_file.name, "wb"), 1)
         writer.copy(writer2)
@@ -2351,7 +2351,7 @@ class Bitstream(unittest.TestCase):
         temp_file.close()
 
     def __get_edge_accumulator_le__(self):
-        from audiotools.encoders import BitstreamAccumulator
+        from audiotools.bitstream import BitstreamAccumulator
 
         return (BitstreamAccumulator(1), None)
 
@@ -2359,9 +2359,9 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(writer.bits(), 48 * 8)
 
     def __test_writer__(self, endianness):
-        from audiotools.encoders import BitstreamWriter
-        from audiotools.encoders import BitstreamRecorder
-        from audiotools.encoders import BitstreamAccumulator
+        from audiotools.bitstream import BitstreamWriter
+        from audiotools.bitstream import BitstreamRecorder
+        from audiotools.bitstream import BitstreamAccumulator
 
         checks = [self.__writer_perform_write__,
                   self.__writer_perform_write_signed__,
@@ -2624,7 +2624,7 @@ class Bitstream(unittest.TestCase):
 
     @LIB_CORE
     def test_edge_cases(self):
-        from audiotools.decoders import BitstreamReader
+        from audiotools.bitstream import BitstreamReader
 
         temp = tempfile.NamedTemporaryFile()
         try:
@@ -2700,7 +2700,7 @@ class Bitstream(unittest.TestCase):
 
     @LIB_CORE
     def test_python_reader(self):
-        from audiotools.decoders import BitstreamReader
+        from audiotools.bitstream import BitstreamReader
 
         #Vanilla, file-based BitstreamReader uses a 1 character buffer
         #and relies on stdio to perform buffering which is fast enough.
@@ -2752,7 +2752,6 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.read(5), 7)
             self.assertEqual(bitstream.read(3), 5)
             self.assertEqual(bitstream.read(19), 342977)
-            self.assertEqual(bitstream.tell(), 4)
 
             bitstream = BitstreamReader(new_temp(), 0)
             self.assertEqual(bitstream.read64(2), 2)
@@ -2760,7 +2759,6 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.read64(5), 7)
             self.assertEqual(bitstream.read64(3), 5)
             self.assertEqual(bitstream.read64(19), 342977)
-            self.assertEqual(bitstream.tell(), 4)
 
             bitstream = BitstreamReader(new_temp(), 0)
             self.assertEqual(bitstream.read_signed(2), -2)
@@ -2768,7 +2766,6 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.read_signed(5), 7)
             self.assertEqual(bitstream.read_signed(3), -3)
             self.assertEqual(bitstream.read_signed(19), -181311)
-            self.assertEqual(bitstream.tell(), 4)
 
             bitstream = BitstreamReader(new_temp(), 0)
             self.assertEqual(bitstream.unary(0), 1)
@@ -2838,7 +2835,6 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.read(5), 13)
             self.assertEqual(bitstream.read(3), 3)
             self.assertEqual(bitstream.read(19), 395743)
-            self.assertEqual(bitstream.tell(), 4)
 
             bitstream = BitstreamReader(new_temp(), 1)
             self.assertEqual(bitstream.read64(2), 1)
@@ -2846,7 +2842,6 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.read64(5), 13)
             self.assertEqual(bitstream.read64(3), 3)
             self.assertEqual(bitstream.read64(19), 395743)
-            self.assertEqual(bitstream.tell(), 4)
 
             bitstream = BitstreamReader(new_temp(), 1)
             self.assertEqual(bitstream.read_signed(2), 1)
@@ -2854,7 +2849,6 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.read_signed(5), 13)
             self.assertEqual(bitstream.read_signed(3), 3)
             self.assertEqual(bitstream.read_signed(19), -128545)
-            self.assertEqual(bitstream.tell(), 4)
 
             bitstream = BitstreamReader(new_temp(), 1)
             self.assertEqual(bitstream.unary(0), 1)
@@ -2915,7 +2909,7 @@ class Bitstream(unittest.TestCase):
 
     @LIB_CORE
     def test_simple_writer(self):
-        from audiotools.encoders import BitstreamWriter
+        from audiotools.bitstream import BitstreamWriter
 
         self.assertRaises(TypeError, BitstreamWriter, None, 0)
         self.assertRaises(TypeError, BitstreamWriter, 1, 0)
@@ -3114,7 +3108,7 @@ class Bitstream(unittest.TestCase):
 
     @LIB_CORE
     def close_test(self):
-        from audiotools.decoders import BitstreamReader
+        from audiotools.bitstream import BitstreamReader
 
         r1 = BitstreamReader(open("test.py", "rb"), False)
         r1.read(8)
@@ -5524,7 +5518,11 @@ class TestMultiChannel(unittest.TestCase):
                     [BLANK_PCM_Reader(2, channels=1)
                      for i in xrange(len(channel_mask))],
                     channel_mask))
-            self.assertEqual(temp_track.channel_mask(), channel_mask)
+            self.assertEqual(temp_track.channel_mask(), channel_mask,
+                             "%s != %s for format %s" %
+                             (temp_track.channel_mask(),
+                              channel_mask,
+                              audio_class.NAME))
 
             pcm = temp_track.to_pcm()
             self.assertEqual(int(pcm.channel_mask), int(channel_mask))
@@ -5551,7 +5549,10 @@ class TestMultiChannel(unittest.TestCase):
                 audiotools.transfer_framelist_data(pcm, lambda x: x)
                 pcm.close()
             else:
-                self.assertNotEqual(int(temp_track.channel_mask()), 0)
+                self.assertNotEqual(int(temp_track.channel_mask()), 0,
+                                    "mask = %s for format %s" %
+                                    (temp_track.channel_mask(),
+                                     audio_class))
                 pcm = temp_track.to_pcm()
                 self.assertEqual(int(pcm.channel_mask),
                                  int(temp_track.channel_mask()))

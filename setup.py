@@ -90,6 +90,10 @@ encodersmodule = Extension('audiotools.encoders',
                                     'src/encoders.c'],
                            define_macros=[("VERSION", VERSION)])
 
+bitstreammodule = Extension('audiotools.bitstream',
+                            sources=['src/mod_bitstream.c',
+                                     'src/bitstream.c'])
+
 verifymodule = Extension('audiotools.verify',
                          sources=['src/verify.c',
                                   'src/common/ogg_crc.c',
@@ -101,6 +105,7 @@ extensions = [cdiomodule,
               replaygainmodule,
               decodersmodule,
               encodersmodule,
+              bitstreammodule,
               verifymodule]
 
 if (sys.platform == 'linux2'):
