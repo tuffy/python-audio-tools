@@ -43,8 +43,8 @@ typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 typedef enum {BR_FILE, BR_SUBSTREAM, BR_PYTHON} br_type;
 typedef enum {BW_FILE, BW_RECORDER, BW_ACCUMULATOR} bw_type;
 typedef enum {BS_INST_UNSIGNED, BS_INST_SIGNED, BS_INST_UNSIGNED64,
-              BS_INST_SIGNED64, BS_INST_SKIP, BS_INST_BYTES,
-              BS_INST_ALIGN} bs_instruction;
+              BS_INST_SIGNED64, BS_INST_SKIP, BS_INST_SKIP_BYTES,
+              BS_INST_BYTES, BS_INST_ALIGN} bs_instruction;
 
 typedef void (*bs_callback_func)(uint8_t, void*);
 
@@ -103,9 +103,7 @@ bs_parse_format(char** format, unsigned int* size, bs_instruction* type);
 
 
 typedef struct BitstreamReader_s {
-#ifndef NDEBUG
     br_type type;
-#endif
 
     union {
         FILE* file;
@@ -149,6 +147,12 @@ typedef struct BitstreamReader_s {
       callbacks are called on each skipped byte*/
     void
     (*skip)(struct BitstreamReader_s* bs, unsigned int count);
+
+    /*skips "count" number of bytes from the current stream as if read
+
+      callbacks are called on each skipped byte*/
+    void
+    (*skip_bytes)(struct BitstreamReader_s* bs, unsigned int count);
 
     /*pushes a single 0 or 1 bit back onto the stream
       in the current endian format
@@ -206,6 +210,7 @@ typedef struct BitstreamReader_s {
       | U      | read_64        | uint64_t*     |
       | S      | read_signed_64 | int64_t*      |
       | p      | skip           | N/A           |
+      | P      | skip_bytes     | N/A           |
       | b      | read_bytes     | uint8_t*      |
       | a      | byte_align     | N/A           |
 
@@ -349,6 +354,7 @@ typedef struct BitstreamWriter_s {
       | U      | write_64        | uint64_t     |
       | S      | write_signed_64 | int64_t      |
       | p      | skip            | N/A          |
+      | P      | skip_bytes      | N/A          |
       | b      | write_bytes     | uint8_t*     |
       | a      | byte_align      | N/A          |
 
@@ -559,6 +565,10 @@ br_skip_bits_p_be(BitstreamReader* bs, unsigned int count);
 void
 br_skip_bits_p_le(BitstreamReader* bs, unsigned int count);
 #endif
+
+
+void
+br_skip_bytes(BitstreamReader* bs, unsigned int count);
 
 
 /*unread_bit has no file/substream/Python variants
@@ -838,6 +848,11 @@ bw_pop_callback(BitstreamWriter* bs, struct bs_callback* callback);
   it does not need to be allocated from the heap*/
 void
 bw_push_callback(BitstreamWriter* bs, struct bs_callback* callback);
+
+/*explicitly passes "byte" to the set callbacks,
+  as if the byte were written to the output stream*/
+void
+bw_call_callbacks(BitstreamWriter *bs, uint8_t byte);
 
 
 static inline int

@@ -226,7 +226,7 @@ class FlacMetaData(MetaData):
                     raise ValueError(
                         _(u"only 1 STREAMINFO allowed in metadata"))
             elif (block_type == 1): #PADDING
-                reader.skip(block_length * 8)
+                reader.skip_bytes(block_length)
             elif (block_type == 2): #APPLICATION
                 applications.append(Flac_APPLICATION.parse(
                         reader.substream(block_length), block_length))
@@ -292,8 +292,7 @@ class FlacMetaData(MetaData):
                 writer.build("1u7u24u", (0, block.BLOCK_ID, block_data.bytes()))
                 block_data.copy(writer)
 
-        writer.build("1u7u24u%dp" % (padding_bytes * 8),
-                     (1, 1, padding_bytes))
+        writer.build("1u7u24u%dP" % (padding_bytes), (1, 1, padding_bytes))
 
 
 class Flac_STREAMINFO:
@@ -1037,7 +1036,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             reader = BitstreamReader(stream, 0)
             while (stop == 0):
                 (stop, length) = reader.parse("1u 7p 24u")
-                reader.skip(length * 8)
+                reader.skip_bytes(length)
 
             #write the remaining data stream to a temp file
             file_data = tempfile.TemporaryFile()
@@ -1075,7 +1074,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                 (stop, block_id, length) = reader.parse("1u 7u 24u")
                 counter += 4
 
-                reader.skip(length * 8)
+                reader.skip_bytes(length)
                 counter += length
 
             return counter
@@ -1107,7 +1106,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                 yield block_id
             else:
                 raise ValueError(_(u"invalid FLAC block ID"))
-            reader.skip(length * 8)
+            reader.skip_bytes(length)
 
     def set_cuesheet(self, cuesheet):
         """Imports cuesheet data from a Cuesheet-compatible object.
@@ -1616,7 +1615,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                 else:
                     #though the STREAMINFO should always be first,
                     #we'll be permissive and check them all if necessary
-                    reader.skip(length * 8)
+                    reader.skip_bytes(length)
         finally:
             f.close()
 

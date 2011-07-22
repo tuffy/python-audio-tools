@@ -52,7 +52,7 @@ def __riff_chunk_ids__(data_size, data):
             chunk_size += 1
         yield chunk_id
         if (chunk_id != 'data'):
-            data.skip(chunk_size * 8)
+            data.skip_bytes(chunk_size)
 
 class __Counter__:
     def __init__(self, value):
@@ -558,7 +558,7 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
                         elif (chunk_id == 'data'):
                             raise InvalidWavPack(_(u'invalid FMT chunk'))
                         else:
-                            data.skip(chunk_size * 8)
+                            data.skip_bytes(chunk_size)
         else:
             raise InvalidWavPack(_(u'FMT chunk not found in WavPack'))
 

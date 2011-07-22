@@ -321,6 +321,8 @@ class WaveAudio(WaveContainer):
                                          Con.Bits('undefined2', 8)),
                            Con.String('sub_format', 16)))))
 
+    PRINTABLE_ASCII = frozenset([chr(i) for i in xrange(0x20, 0x7E + 1)])
+
     def __init__(self, filename):
         """filename is a plain string."""
 
@@ -903,54 +905,54 @@ class WaveAudio(WaveContainer):
         For example:
 
         >>> w = audiotools.open("input.wav")
-        >>> (head,tail) = w.pcm_split()
-        >>> f = open("output.wav","wb")
+        >>> (head, tail) = w.pcm_split()
+        >>> f = open("output.wav", "wb")
         >>> f.write(head)
-        >>> audiotools.transfer_framelist_data(w.to_pcm(),f.write)
+        >>> audiotools.transfer_framelist_data(w.to_pcm(), f.write)
         >>> f.write(tail)
         >>> f.close()
 
         should result in "output.wav" being identical to "input.wav".
         """
 
-        head = cStringIO.StringIO()
-        tail = cStringIO.StringIO()
+        from .bitstream import BitstreamReader
+        from .bitstream import BitstreamRecorder
+
+        head = BitstreamRecorder(1)
+        tail = BitstreamRecorder(1)
         current_block = head
 
-        wave_file = open(self.filename, 'rb')
+        wave_file = BitstreamReader(open(self.filename, 'rb'), 1)
         try:
-            try:
-                #transfer the 12-byte "RIFFsizeWAVE" header to head
-                header = WaveAudio.WAVE_HEADER.parse(wave_file.read(12))
-                total_size = header.wave_size - 4
-                current_block.write(WaveAudio.WAVE_HEADER.build(header))
-            except Con.ConstError:
+            #transfer the 12-byte "RIFFsizeWAVE" header to head
+            (riff, size, wave) = wave_file.parse("4b 32u 4b")
+            if (riff != 'RIFF'):
                 raise InvalidWave(_(u"Not a RIFF WAVE file"))
-            except Con.core.FieldError:
+            elif (wave != 'WAVE'):
                 raise InvalidWave(_(u"Invalid RIFF WAVE file"))
+            else:
+                current_block.build("4b 32u 4b", (riff, size, wave))
+                total_size = size - 4
 
             while (total_size > 0):
-                try:
-                    #transfer each chunk header
-                    chunk_header = WaveAudio.CHUNK_HEADER.parse(
-                        wave_file.read(8))
-                    current_block.write(WaveAudio.CHUNK_HEADER.build(
-                            chunk_header))
+                #transfer each chunk header
+                (chunk_id, chunk_size) = wave_file.parse("4b 32u")
+                if (not frozenset(chunk_id).issubset(self.PRINTABLE_ASCII)):
+                    raise InvalidWave(_(u"Invalid RIFF WAVE chunk ID"))
+                else:
+                    current_block.build("4b 32u", (chunk_id, chunk_size))
                     total_size -= 8
-                except Con.core.FieldError:
-                    raise InvalidWave(_(u"Invalid RIFF WAVE file"))
 
                 #and transfer the full content of non-data chunks
-                if (chunk_header.chunk_id != "data"):
-                    current_block.write(
-                        wave_file.read(chunk_header.chunk_length))
+                if (chunk_id != "data"):
+                    current_block.write_bytes(wave_file.read_bytes(chunk_size))
                 else:
-                    wave_file.seek(chunk_header.chunk_length, os.SEEK_CUR)
+                    wave_file.skip_bytes(chunk_size)
                     current_block = tail
 
-                total_size -= chunk_header.chunk_length
+                total_size -= chunk_size
 
-            return (head.getvalue(), tail.getvalue())
+            return (head.data(), tail.data())
         finally:
             wave_file.close()
 

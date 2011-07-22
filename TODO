@@ -3612,7 +3612,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 * TODO Cleanup bitstream module
   This is at the heart of a lot of things so it should be properly cleaned up.
 ** DONE Merge bitstream_r and bitstream_w source files
-** TODO Make BitstreamReader and BitstreamWriter more symmetric
+** DONE Make BitstreamReader and BitstreamWriter more symmetric
 ** DONE Add placeholders to BitstreamWriter
    These allow one to put temporary values in the stream
    which can be automatically filled-in later on.
@@ -3644,12 +3644,13 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    and run with no external dependencies.
    The idea is to build something valgrind-able to ensure
    there's no memory errors.
-*** DONE BitstreamReader
-**** DONE big-endian
+*** TODO BitstreamReader
+**** TODO big-endian
      - [X] read
      - [X] read_signed
      - [X] read_64
      - [X] skip
+     - [ ] skip_bytes
      - [X] unread
      - [X] read_unary
      - [X] read_limited_unary
@@ -3660,11 +3661,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] mark
      - [X] unmark
      - [X] rewind
-**** DONE little-endian
+**** TODO little-endian
      - [X] read
      - [X] read_signed
      - [X] read_64
      - [X] skip
+     - [ ] skip_bytes
      - [X] unread
      - [X] read_unary
      - [X] read_limited_unary
@@ -3675,21 +3677,23 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] mark
      - [X] unmark
      - [X] rewind
-**** DONE br_try/etry
+**** TODO br_try/etry
      - [X] read
      - [X] read_signed
      - [X] read_64
      - [X] skip
+     - [ ] skip_bytes
      - [X] read_unary
      - [X] read_limited_unary
      - [X] read_huffman_code
      - [X] read_bytes
      - [X] substream_append
-**** DONE Callbacks
+**** TODO Callbacks
      - [X] read
      - [X] read_signed
      - [X] read_64
      - [X] skip
+     - [ ] skip_bytes
      - [X] read_unary
      - [X] read_limited_unary
      - [X] read_huffman_code
@@ -3702,7 +3706,48 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** TODO placeholders
 *** TODO BitstreamWriter recorder
 *** TODO BitstreamWriter accumulator
-** TODO Add documentation
+** DONE Shift BitstreamReader/BitstreamWriters to audiotools.bitstream
+** TODO Make BitstreaReader/BitstreamWriter thread-friendly?
+   Although it seems like a no-brainer, this is surprisingly tricky.
+   The trouble is that there's few obvious places to attach
+   the SaveState/RestoreState code because the C-based functions
+   aren't Python-aware.
+   For instance, in br_read_bytes_f, we'd like to enable threads
+   around the blocking fread call, but not around the callbacks -
+   and we'd like to enable threads around the bs->read loop,
+   but not have to toggle them on each individual read.
+   It's easier to keep them off entirely for now.
+** TODO Add documentation for audiotools.bitstream
+* TODO Remove Construct module
+  Convert all usage of Construct to BitstreamReader/BitstreamWriter.
+  Since this is unlikely to be updated for Python 3,
+  removing it should smooth that inevitable transition.
+** TODO __accuraterip__.py
+** TODO __aiff__.py
+** TODO __ape__.py
+** TODO __au__.py
+** DONE cue.py
+** TODO __dvda__.py
+** DONE __flac__.py
+** TODO __freedb__.py
+** TODO __id3__.py
+** TODO __id3v1__.py
+** TODO __image__.py
+** DONE __init__.py
+** TODO __m4a__.py
+** TODO __m4a_atoms__.py
+** TODO __mp3__.py
+** TODO __musepack__.py
+** DONE __musicbrainz__.py
+** DONE __ogg__.py
+** DONE player.py
+** DONE __shn__.py
+** TODO __speex__.py
+** DONE toc.py
+** TODO __vorbis__.py
+** TODO __vorbiscomment__.py
+** TODO __wav__.py
+** DONE __wavpack__.py
 * TODO Handle write errors more gracefully
   Just as the BitstreamReader uses an exception mechanism to detect
   and handle read errors, the BitstreamWriter should use a similar
@@ -3712,3 +3757,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   With a reader, one can simply truncate a valid file.
   It's harder to constrict a writer to only have X number of bytes
   available so that any errors can be checked.
+** TODO Add try/etry support to BitstreamWriter
+** TODO Update BitstreamWriter methods to raise exceptions
+** TODO Update Python-based BitstreamWriter to catch C exceptions
+** TODO Update encoders to catch C exceptions and raise Python exceptions
+** TODO Unit test write errors

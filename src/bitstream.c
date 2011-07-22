@@ -57,9 +57,7 @@ BitstreamReader*
 br_open(FILE *f, bs_endianness endianness)
 {
     BitstreamReader *bs = malloc(sizeof(BitstreamReader));
-#ifndef NDEBUG
     bs->type = BR_FILE;
-#endif
     bs->input.file = f;
     bs->state = 0;
     bs->callbacks = NULL;
@@ -94,6 +92,7 @@ br_open(FILE *f, bs_endianness endianness)
         break;
     }
 
+    bs->skip_bytes = br_skip_bytes;
     bs->byte_align = br_byte_align;
     bs->read_huffman_code = br_read_huffman_code_f;
     bs->read_bytes = br_read_bytes_f;
@@ -925,6 +924,10 @@ br_skip_bits_s_be(BitstreamReader* bs, unsigned int count)
     struct bs_callback* callback;
     int output_size;
 
+
+    /*FIXME - handle a common case where the input is byte-aligned,
+      the count is an even number of bytes
+      and there are no set callbacks to consider*/
     while (count > 0) {
         if (context == 0) {
             if ((byte = buf_getc(bs->input.substream)) == EOF)
@@ -958,6 +961,9 @@ br_skip_bits_s_le(BitstreamReader* bs, unsigned int count)
     int output_size;
     int bit_offset = 0;
 
+    /*FIXME - handle a common case where the input is byte-aligned,
+      the count is an even number of bytes
+      and there are no set callbacks to consider*/
     while (count > 0) {
         if (context == 0) {
             if ((byte = buf_getc(bs->input.substream)) == EOF)
@@ -1051,6 +1057,20 @@ br_skip_bits_p_le(BitstreamReader* bs, unsigned int count)
     bs->state = context;
 }
 #endif
+
+
+void
+br_skip_bytes(BitstreamReader* bs, unsigned int count)
+{
+    unsigned int bytes_to_write;
+
+    /*try to generate large, byte-aligned chunks of bit skips*/
+    while (count > 0) {
+        bytes_to_write = MIN(0x10000000, count);
+        bs->skip(bs, bytes_to_write * 8);
+        count -= bytes_to_write;
+    }
+}
 
 
 void
@@ -2081,9 +2101,7 @@ struct BitstreamReader_s*
 br_substream_new(bs_endianness endianness)
 {
     BitstreamReader *bs = malloc(sizeof(BitstreamReader));
-#ifndef NDEBUG
     bs->type = BR_SUBSTREAM;
-#endif
     bs->input.substream = buf_new();
     bs->state = 0;
     bs->callbacks = NULL;
@@ -2118,6 +2136,7 @@ br_substream_new(bs_endianness endianness)
         break;
     }
 
+    bs->skip_bytes = br_skip_bytes;
     bs->byte_align = br_byte_align;
     bs->read_huffman_code = br_read_huffman_code_s;
     bs->read_bytes = br_read_bytes_s;
@@ -2313,6 +2332,9 @@ br_parse(struct BitstreamReader_s* stream, char* format, ...)
         case BS_INST_SKIP:
             stream->skip(stream, size);
             break;
+        case BS_INST_SKIP_BYTES:
+            stream->skip_bytes(stream, size);
+            break;
         case BS_INST_BYTES:
             _bytes = va_arg(ap, uint8_t*);
             stream->read_bytes(stream, _bytes, size);
@@ -2466,9 +2488,7 @@ BitstreamReader*
 br_open_python(PyObject *reader, bs_endianness endianness)
 {
     BitstreamReader *bs = malloc(sizeof(BitstreamReader));
-#ifndef NDEBUG
     bs->type = BR_PYTHON;
-#endif
     bs->input.python = py_open(reader);
     bs->state = 0;
     bs->callbacks = NULL;
@@ -2503,6 +2523,7 @@ br_open_python(PyObject *reader, bs_endianness endianness)
         break;
     }
 
+    bs->skip_bytes = br_skip_bytes;
     bs->byte_align = br_byte_align;
     bs->read_huffman_code = br_read_huffman_code_p;
     bs->read_bytes = br_read_bytes_p;
@@ -2711,6 +2732,15 @@ bw_push_callback(BitstreamWriter* bs, struct bs_callback* callback) {
         callback_node->next = bs->callbacks;
         bs->callbacks = callback_node;
     }
+}
+
+void
+bw_call_callbacks(BitstreamWriter *bs, uint8_t byte) {
+    struct bs_callback *callback;
+    for (callback = bs->callbacks;
+         callback != NULL;
+         callback = callback->next)
+        callback->callback(byte, callback->data);
 }
 
 void
@@ -3453,6 +3483,18 @@ bw_build(struct BitstreamWriter_s* stream, char* format, ...)
         case BS_INST_SKIP:
             stream->write(stream, size, 0);
             break;
+        case BS_INST_SKIP_BYTES:
+            /*somewhat inefficient,
+              but byte skipping is rare for BitstreamWriters anyway*/
+            stream->write(stream, size, 0);
+            stream->write(stream, size, 0);
+            stream->write(stream, size, 0);
+            stream->write(stream, size, 0);
+            stream->write(stream, size, 0);
+            stream->write(stream, size, 0);
+            stream->write(stream, size, 0);
+            stream->write(stream, size, 0);
+            break;
         case BS_INST_BYTES:
             _bytes = va_arg(ap, uint8_t*);
             stream->write_bytes(stream, _bytes, size);
@@ -3606,6 +3648,7 @@ bs_format_size(char* format) {
         case BS_INST_SKIP:
             total_size += format_size;
             break;
+        case BS_INST_SKIP_BYTES:
         case BS_INST_BYTES:
             total_size += (format_size * 8);
             break;

@@ -50,7 +50,6 @@ typedef struct {
     PyObject* file_obj;
     BitstreamReader* bitstream;
     int little_endian;
-    int is_substream;
 } bitstream_BitstreamReader;
 
 static PyObject*
@@ -64,6 +63,9 @@ BitstreamReader_byte_align(bitstream_BitstreamReader *self, PyObject *args);
 
 static PyObject*
 BitstreamReader_skip(bitstream_BitstreamReader *self, PyObject *args);
+
+static PyObject*
+BitstreamReader_skip_bytes(bitstream_BitstreamReader *self, PyObject *args);
 
 static PyObject*
 BitstreamReader_unread(bitstream_BitstreamReader *self, PyObject *args);
@@ -135,6 +137,9 @@ PyMethodDef BitstreamReader_methods[] = {
     {"skip", (PyCFunction)BitstreamReader_skip, METH_VARARGS,
      "skip(bits)\n"
      "skips over the given number of bits"},
+    {"skip_bytes", (PyCFunction)BitstreamReader_skip_bytes, METH_VARARGS,
+     "skip_bytes(bytes)\n"
+     "skips over the given number of bytes"},
     {"byte_align", (PyCFunction)BitstreamReader_byte_align, METH_NOARGS,
      "byte_align()\n"
      "moves to the next whole byte boundary, if necessary"},
@@ -173,6 +178,7 @@ PyMethodDef BitstreamReader_methods[] = {
      "\"#U\" -> read64(#)\n"
      "\"#S\" -> read_signed64(#)\n"
      "\"#p\" -> skip(#)\n"
+     "\"#P\" -> skip_bytes(#)\n"
      "\"#b\" -> read_bytes(#)\n"
      "\"a\"  -> byte_align()\n\n"
      "for instance:\n"
@@ -375,6 +381,10 @@ BitstreamWriter_pop_callback(bitstream_BitstreamWriter *self,
                              PyObject *args);
 
 static PyObject*
+BitstreamWriter_call_callbacks(bitstream_BitstreamWriter *self,
+                               PyObject *args);
+
+static PyObject*
 BitstreamWriter_build(bitstream_BitstreamWriter *self, PyObject *args);
 
 static PyObject*
@@ -422,6 +432,7 @@ PyMethodDef BitstreamWriter_methods[] = {
      "\"#U\" -> write64(#, unsigned long value)\n"
      "\"#S\" -> write_signed64(#, signed long value)\n"
      "\"#p\" -> write(#, 0)\n"
+     "\"#P\" -> write(# * 8, 0)\n"
      "\"#b\" -> write_bytes(#, string value)\n"
      "\"a\"  -> byte_align()\n\n"
      "for instance:\n"
@@ -434,6 +445,10 @@ PyMethodDef BitstreamWriter_methods[] = {
     {"pop_callback", (PyCFunction)BitstreamWriter_pop_callback, METH_NOARGS,
      "pop_callback() -> function\n"
      "removes and returns the most recently added callback"},
+    {"call_callbacks", (PyCFunction)BitstreamWriter_call_callbacks,
+     METH_VARARGS,
+     "call_callbacks(byte)\n"
+     "calls the attached callbacks as if the byte had been written"},
     {NULL}
 };
 
@@ -554,6 +569,11 @@ BitstreamRecorder_pop_callback(bitstream_BitstreamRecorder *self,
                                PyObject *args);
 
 static PyObject*
+BitstreamRecorder_call_callbacks(bitstream_BitstreamRecorder *self,
+                                 PyObject *args);
+
+
+static PyObject*
 BitstreamRecorder_reset(bitstream_BitstreamRecorder *self,
                         PyObject *args);
 
@@ -639,6 +659,7 @@ PyMethodDef BitstreamRecorder_methods[] = {
      "\"#U\" -> write64(#, unsigned long value)\n"
      "\"#S\" -> write_signed64(#, signed long value)\n"
      "\"#p\" -> write(#, 0)\n"
+     "\"#P\" -> write(# * 8, 0)\n"
      "\"#b\" -> write_bytes(#, string value)\n"
      "\"a\"  -> byte_align()\n\n"
      "for instance:\n"
@@ -654,6 +675,10 @@ PyMethodDef BitstreamRecorder_methods[] = {
     {"pop_callback", (PyCFunction)BitstreamRecorder_pop_callback, METH_NOARGS,
      "pop_callback() -> function\n"
      "removes and returns the most recently added callback"},
+    {"call_callbacks", (PyCFunction)BitstreamRecorder_call_callbacks,
+     METH_VARARGS,
+     "call_callbacks(byte)\n"
+     "calls the attached callbacks as if the byte had been written"},
     {NULL}
 };
 
@@ -805,6 +830,7 @@ PyMethodDef BitstreamAccumulator_methods[] = {
      "\"#U\" -> write64(#, unsigned long value)\n"
      "\"#S\" -> write_signed64(#, signed long value)\n"
      "\"#p\" -> write(#, 0)\n"
+     "\"#P\" -> write(# * 8, 0)\n"
      "\"#b\" -> write_bytes(#, string value)\n"
      "\"a\"  -> byte_align()\n\n"
      "for instance:\n"

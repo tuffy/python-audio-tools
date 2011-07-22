@@ -133,6 +133,26 @@ BitstreamReader_skip(bitstream_BitstreamReader *self, PyObject *args)
 }
 
 static PyObject*
+BitstreamReader_skip_bytes(bitstream_BitstreamReader *self, PyObject *args)
+{
+    unsigned int count;
+
+    if (!PyArg_ParseTuple(args, "I", &count))
+        return NULL;
+
+    if (!setjmp(*br_try(self->bitstream))) {
+        self->bitstream->skip_bytes(self->bitstream, count);
+        br_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        br_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+        return NULL;
+    }
+}
+
+static PyObject*
 BitstreamReader_byte_align(bitstream_BitstreamReader *self, PyObject *args)
 {
     self->bitstream->byte_align(self->bitstream);
@@ -250,17 +270,18 @@ BitstreamReader_limited_unary(bitstream_BitstreamReader *self, PyObject *args)
         result = self->bitstream->read_limited_unary(self->bitstream,
                                                      stop_bit,
                                                      maximum_bits);
-        br_etry(self->bitstream);
-        if (result >= 0)
-            return Py_BuildValue("i", result);
-        else {
-            Py_INCREF(Py_None);
-            return Py_None;
-        }
     } else {
         br_etry(self->bitstream);
         PyErr_SetString(PyExc_IOError, "I/O error reading stream");
         return NULL;
+    }
+
+    br_etry(self->bitstream);
+    if (result >= 0) {
+        return Py_BuildValue("i", result);
+    } else {
+        Py_INCREF(Py_None);
+        return Py_None;
     }
 }
 
@@ -461,7 +482,6 @@ BitstreamReader_substream(bitstream_BitstreamReader *self, PyObject *args)
     obj = (bitstream_BitstreamReader *)type->tp_alloc(type, 0);
     obj->file_obj = NULL;
     obj->little_endian = self->little_endian;
-    obj->is_substream = 1;
     obj->bitstream = br_substream_new(obj->little_endian ?
                                       BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
 
@@ -500,7 +520,7 @@ BitstreamReader_substream_append(bitstream_BitstreamReader *self,
     } else
         substream = (bitstream_BitstreamReader*)substream_obj;
 
-    if (!substream->is_substream) {
+    if (substream->bitstream->type != BR_SUBSTREAM) {
         PyErr_SetString(PyExc_TypeError,
                         "first argument must be a substream");
         return NULL;
@@ -583,6 +603,9 @@ BitstreamReader_parse(bitstream_BitstreamReader *self, PyObject *args)
             case BS_INST_SKIP:
                 self->bitstream->skip(self->bitstream, size);
                 break;
+            case BS_INST_SKIP_BYTES:
+                self->bitstream->skip_bytes(self->bitstream, size);
+                break;
             case BS_INST_BYTES:
                 if ((value = PyString_FromStringAndSize(NULL, size)) == NULL) {
                     goto error;
@@ -638,7 +661,6 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
     PyObject *file_obj;
 
     self->file_obj = NULL;
-    self->is_substream = 0;
 
     if (!PyArg_ParseTuple(args, "Oi", &file_obj, &(self->little_endian)))
         return -1;
@@ -690,7 +712,6 @@ BitstreamReader_Substream(PyObject *dummy, PyObject *args)
     reader = (bitstream_BitstreamReader *)type->tp_alloc(type, 0);
 
     reader->file_obj = NULL;
-    reader->is_substream = 1;
     reader->bitstream = br_substream_new(endianness ?
                                          BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
     reader->little_endian = endianness;
@@ -1079,6 +1100,21 @@ BitstreamWriter_pop_callback(bitstream_BitstreamWriter *self,
 }
 
 static PyObject*
+BitstreamWriter_call_callbacks(bitstream_BitstreamWriter *self,
+                               PyObject *args)
+{
+    uint8_t byte;
+
+    if (!PyArg_ParseTuple(args, "b", &byte))
+        return NULL;
+
+    bw_call_callbacks(self->bitstream, byte);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
 BitstreamWriter_close(bitstream_BitstreamWriter *self, PyObject *args)
 {
     self->bitstream->flush(self->bitstream);
@@ -1422,6 +1458,20 @@ BitstreamRecorder_pop_callback(bitstream_BitstreamRecorder *self,
     }
 }
 
+static PyObject*
+BitstreamRecorder_call_callbacks(bitstream_BitstreamRecorder *self,
+                                 PyObject *args)
+{
+    uint8_t byte;
+
+    if (!PyArg_ParseTuple(args, "b", &byte))
+        return NULL;
+
+    bw_call_callbacks(self->bitstream, byte);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
 
 static PyObject*
 BitstreamRecorder_close(bitstream_BitstreamRecorder *self,
@@ -1529,6 +1579,16 @@ bitstream_build(BitstreamWriter* stream, char* format, PyObject* values)
             }
             break;
         case BS_INST_SKIP:
+            stream->write(stream, size, 0);
+            break;
+        case BS_INST_SKIP_BYTES:
+            stream->write(stream, size, 0);
+            stream->write(stream, size, 0);
+            stream->write(stream, size, 0);
+            stream->write(stream, size, 0);
+            stream->write(stream, size, 0);
+            stream->write(stream, size, 0);
+            stream->write(stream, size, 0);
             stream->write(stream, size, 0);
             break;
         case BS_INST_BYTES:
