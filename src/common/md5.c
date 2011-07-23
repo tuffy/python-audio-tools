@@ -184,7 +184,7 @@ audiotools__MD5Update(audiotools__MD5Context *ctx,
     /* Update byte count */
 
     t = ctx->bytes[0];
-    if ((ctx->bytes[0] = t + len) < t)
+    if ((ctx->bytes[0] = t + (uint32_t)len) < t)
         ctx->bytes[1]++;	/* Carry from low to high */
 
     t = 64 - (t & 0x3f);	/* Space available in ctx->in (at least 1) */

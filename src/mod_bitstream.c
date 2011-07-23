@@ -786,7 +786,8 @@ HuffmanTree_init(bitstream_HuffmanTree *self, PyObject *args)
                 goto error;
             }
 
-            frequency.bits = ((frequency.bits << 1) | bits_int_value);
+            frequency.bits = (unsigned int)((frequency.bits << 1) |
+                                            bits_int_value);
             frequency.length++;
 
             Py_DECREF(bits_int);
@@ -798,7 +799,7 @@ HuffmanTree_init(bitstream_HuffmanTree *self, PyObject *args)
             PyErr_Occurred())
             goto error;
 
-        frequency.value = value_int_value;
+        frequency.value = (int)value_int_value;
 
         frequencies[o] = frequency;
 
@@ -809,7 +810,7 @@ HuffmanTree_init(bitstream_HuffmanTree *self, PyObject *args)
 
     switch (compile_huffman_table(&(self->table),
                                   frequencies,
-                                  list_length / 2,
+                                  (unsigned int)(list_length / 2),
                                   little_endian ?
                                   BS_LITTLE_ENDIAN : BS_BIG_ENDIAN)) {
     case HUFFMAN_MISSING_LEAF:
@@ -1536,7 +1537,7 @@ bitstream_build(BitstreamWriter* stream, char* format, PyObject* values)
         switch (type) {
         case BS_INST_UNSIGNED:
             if ((value = PySequence_GetItem(values, i++)) != NULL) {
-                _unsigned = PyInt_AsUnsignedLongMask(value);
+                _unsigned = (unsigned int)PyInt_AsUnsignedLongMask(value);
                 if (!PyErr_Occurred())
                     stream->write(stream, size, _unsigned);
                 else
@@ -1547,7 +1548,7 @@ bitstream_build(BitstreamWriter* stream, char* format, PyObject* values)
             break;
         case BS_INST_SIGNED:
             if ((value = PySequence_GetItem(values, i++)) != NULL) {
-                _signed = PyInt_AsLong(value);
+                _signed = (int)PyInt_AsLong(value);
                 if (!PyErr_Occurred())
                     stream->write_signed(stream, size, _signed);
                 else

@@ -92,7 +92,8 @@ encodersmodule = Extension('audiotools.encoders',
 
 bitstreammodule = Extension('audiotools.bitstream',
                             sources=['src/mod_bitstream.c',
-                                     'src/bitstream.c'])
+                                     'src/bitstream.c',
+                                     'src/huffman.c'])
 
 verifymodule = Extension('audiotools.verify',
                          sources=['src/verify.c',

@@ -140,8 +140,8 @@ encoders_encode_wavpack(char *filename,
     context.byte_count = 0;
     ia_init(&(context.block_offsets), 1);
 
-    context.wrap.passes = wavpack_init_decorrelation_passes(
-                                                      reader->channels);
+    context.wrap.passes =
+        wavpack_init_decorrelation_passes(reader->channels);
 
 
     context.cache.sub_blocks = bw_open_recorder(BS_LITTLE_ENDIAN);
@@ -160,7 +160,7 @@ encoders_encode_wavpack(char *filename,
                       context.bits_per_sample != 8, 1);
     bw_add_callback(stream, wavpack_count_bytes, &(context.byte_count));
 
-    iaa_init(&samples, reader->channels, block_size);
+    iaa_init(&samples, (ia_size_t)reader->channels, (ia_size_t)block_size);
 
     /*build frames until reader is empty
       (WavPack doesn't have actual frames as such; it has sets of
@@ -252,7 +252,7 @@ void
 wavpack_write_frame(BitstreamWriter *bs,
                     struct wavpack_encoder_context *context,
                     struct ia_array *samples,
-                    long channel_mask) {
+                    unsigned int channel_mask) {
     struct i_array counts;
     int current_channel;
     int i;
@@ -589,14 +589,14 @@ wavpack_write_block(BitstreamWriter* bs,
 void
 wavpack_write_block_header(BitstreamWriter *bs,
                            struct wavpack_block_header *header) {
-    bs->write_64(bs, 32, 0x6B707677); /*block header*/
-    bs->write_64(bs, 32, header->block_size);
+    bs->write(bs, 32, 0x6B707677); /*block header*/
+    bs->write(bs, 32, header->block_size);
     bs->write(bs, 16, header->version);
     bs->write(bs, 8,  header->track_number);
     bs->write(bs, 8,  header->index_number);
-    bs->write_64(bs, 32, header->total_samples);
-    bs->write_64(bs, 32, header->block_index);
-    bs->write_64(bs, 32, header->block_samples);
+    bs->write(bs, 32, header->total_samples);
+    bs->write(bs, 32, header->block_index);
+    bs->write(bs, 32, header->block_samples);
     switch (header->bits_per_sample) {
     case 8:  bs->write(bs, 2, 0); break;
     case 16: bs->write(bs, 2, 1); break;
@@ -638,7 +638,7 @@ wavpack_write_block_header(BitstreamWriter *bs,
     bs->write(bs, 1,  header->use_IIR);
     bs->write(bs, 1,  header->false_stereo);
     bs->write(bs, 1,  0);
-    bs->write_64(bs, 32, header->crc);
+    bs->write(bs, 32, header->crc);
 }
 
 void
@@ -1468,7 +1468,7 @@ wavpack_print_residual(FILE* output,
 
 static inline int
 apply_weight(int weight, int64_t sample) {
-    return ((weight * sample) + 512) >> 10;
+    return (int)(((weight * sample) + 512) >> 10);
 }
 
 static inline int
@@ -2116,7 +2116,7 @@ wavpack_md5_callback(void* md5, unsigned char* data, unsigned long data_len) {
 void
 wavpack_count_pcm_bytes(void* data, unsigned char* buffer, unsigned long len) {
     uint32_t* total_bytes = (uint32_t*)data;
-    *total_bytes += len;
+    *total_bytes += (uint32_t)len;
 }
 
 void
@@ -2133,19 +2133,19 @@ wavpack_write_wave_header_sub_block(BitstreamWriter* stream,
     if ((context->total_channels <= 2) && (context->bits_per_sample <= 16)) {
         /*build a standard WAVE header if channels <= 2 and bps <= 16*/
 
-        wave_header->write_64(wave_header, 32, 0x46464952); /*ID*/
-        wave_header->write_64(wave_header, 32, 4 + 8 + 16 + 8 + pcm_bytes);
-        wave_header->write_64(wave_header, 32, 0x45564157); /*Type*/
-        wave_header->write_64(wave_header, 32, 0x20746D66); /*chunk ID*/
-        wave_header->write_64(wave_header, 32, 16); /*fmt size*/
+        wave_header->write(wave_header, 32, 0x46464952); /*ID*/
+        wave_header->write(wave_header, 32, 4 + 8 + 16 + 8 + pcm_bytes);
+        wave_header->write(wave_header, 32, 0x45564157); /*Type*/
+        wave_header->write(wave_header, 32, 0x20746D66); /*chunk ID*/
+        wave_header->write(wave_header, 32, 16); /*fmt size*/
 
         wave_header->write(wave_header, 16, 1);  /*uncompressed*/
         wave_header->write(wave_header, 16, context->total_channels);
-        wave_header->write_64(wave_header, 32, context->sample_rate);
-        wave_header->write_64(wave_header, 32,
-                              (context->sample_rate *
-                               context->total_channels *
-                               context->bits_per_sample) / 8);
+        wave_header->write(wave_header, 32, context->sample_rate);
+        wave_header->write(wave_header, 32,
+                           (context->sample_rate *
+                            context->total_channels *
+                            context->bits_per_sample) / 8);
         wave_header->write(wave_header, 16,
                            (context->total_channels *
                             context->bits_per_sample) / 8);
@@ -2153,33 +2153,33 @@ wavpack_write_wave_header_sub_block(BitstreamWriter* stream,
     } else {
         /*otherwise, build a WAVEFORMATEXTENSIBLE header*/
 
-        wave_header->write_64(wave_header, 32, 0x46464952); /*ID*/
-        wave_header->write_64(wave_header, 32, 4 + 8 + 40 + 8 + pcm_bytes);
-        wave_header->write_64(wave_header, 32, 0x45564157); /*Type*/
-        wave_header->write_64(wave_header, 32, 0x20746D66); /*chunk ID*/
-        wave_header->write_64(wave_header, 32, 40);     /*fmt size*/
+        wave_header->write(wave_header, 32, 0x46464952); /*ID*/
+        wave_header->write(wave_header, 32, 4 + 8 + 40 + 8 + pcm_bytes);
+        wave_header->write(wave_header, 32, 0x45564157); /*Type*/
+        wave_header->write(wave_header, 32, 0x20746D66); /*chunk ID*/
+        wave_header->write(wave_header, 32, 40);     /*fmt size*/
 
         wave_header->write(wave_header, 16, 0xFFFE); /*extensible*/
         wave_header->write(wave_header, 16, context->total_channels);
-        wave_header->write_64(wave_header, 32, context->sample_rate);
-        wave_header->write_64(wave_header, 32,
-                              (context->sample_rate *
-                               context->total_channels *
-                               context->bits_per_sample) / 8);
+        wave_header->write(wave_header, 32, context->sample_rate);
+        wave_header->write(wave_header, 32,
+                           (context->sample_rate *
+                            context->total_channels *
+                            context->bits_per_sample) / 8);
         wave_header->write(wave_header, 16,
                            (context->total_channels *
                             context->bits_per_sample) / 8);
         wave_header->write(wave_header, 16, context->bits_per_sample);
         wave_header->write(wave_header, 16, 22);
         wave_header->write(wave_header, 16, context->bits_per_sample);
-        wave_header->write_64(wave_header, 32, context->channel_mask);
+        wave_header->write(wave_header, 32, context->channel_mask);
         for (i = 0; i < 16; i++)
             wave_header->write(wave_header, 8, extensible_sub_format[i]);
     }
 
     /*then write a 'data' chunk header*/
-    wave_header->write_64(wave_header, 32, 0x61746164); /*'data' chunk ID*/
-    wave_header->write_64(wave_header, 32, pcm_bytes);  /*data size*/
+    wave_header->write(wave_header, 32, 0x61746164); /*'data' chunk ID*/
+    wave_header->write(wave_header, 32, pcm_bytes);  /*data size*/
 
     wavpack_write_subblock_header(stream, WV_WAVE_HEADER, 1,
                                   wave_header->bits_written(wave_header) / 8);
@@ -2219,8 +2219,8 @@ wavpack_max_wasted_bits_per_sample(struct i_array *samples)
 }
 
 struct wavpack_decorrelation_pass*
-wavpack_init_decorrelation_passes(int channel_count) {
-    int i;
+wavpack_init_decorrelation_passes(long channel_count) {
+    long i;
     struct wavpack_decorrelation_pass* passes;
 
     passes = malloc(sizeof(struct wavpack_decorrelation_pass) *

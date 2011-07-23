@@ -571,11 +571,11 @@ FrameList_from_list(PyObject *dummy, PyObject *args)
     Py_ssize_t list_len, i;
     long integer_val;
     int adjustment;
-    int channels;
-    int bits_per_sample;
+    unsigned int channels;
+    unsigned int bits_per_sample;
     int is_signed;
 
-    if (!PyArg_ParseTuple(args, "Oiii", &list,
+    if (!PyArg_ParseTuple(args, "OIIi", &list,
                           &channels,
                           &bits_per_sample,
                           &is_signed))
@@ -612,8 +612,8 @@ FrameList_from_list(PyObject *dummy, PyObject *args)
     framelist->channels = channels;
     framelist->bits_per_sample = bits_per_sample;
     framelist->samples = malloc(sizeof(ia_data_t) * list_len);
-    framelist->samples_length = list_len;
-    framelist->frames = list_len / framelist->channels;
+    framelist->samples_length = (unsigned int)list_len;
+    framelist->frames = (unsigned int)list_len / framelist->channels;
     for (i = 0; i < list_len; i++) {
         if ((integer = PySequence_GetItem(list, i)) == NULL)
             goto error;
@@ -621,7 +621,7 @@ FrameList_from_list(PyObject *dummy, PyObject *args)
             PyErr_Occurred())
             goto error;
         else {
-            framelist->samples[i] = integer_val - adjustment;
+            framelist->samples[i] = (ia_data_t)(integer_val - adjustment);
             Py_DECREF(integer);
         }
     }
@@ -666,10 +666,10 @@ FrameList_from_frames(PyObject *dummy, PyObject *args)
     }
 
     framelist = FrameList_create();
-    framelist->frames = list_len;
+    framelist->frames = (unsigned int)list_len;
     framelist->channels = frame->channels;
     framelist->bits_per_sample = frame->bits_per_sample;
-    framelist->samples_length = list_len * frame->channels;
+    framelist->samples_length = (unsigned int)list_len * frame->channels;
     framelist->samples = malloc(sizeof(ia_data_t) * framelist->samples_length);
 
     memcpy(framelist->samples, frame->samples,
@@ -753,9 +753,9 @@ FrameList_from_channels(PyObject *dummy, PyObject *args)
 
     framelist = FrameList_create();
     framelist->frames = channel->frames;
-    framelist->channels = list_len;
+    framelist->channels = (unsigned int)list_len;
     framelist->bits_per_sample = channel->bits_per_sample;
-    framelist->samples_length = framelist->frames * list_len;
+    framelist->samples_length = framelist->frames * (unsigned int)list_len;
     framelist->samples = malloc(sizeof(ia_data_t) * framelist->samples_length);
 
     for (j = 0; j < channel->samples_length; j++) {
@@ -928,7 +928,7 @@ FloatFrameList_init(pcm_FloatFrameList *self, PyObject *args, PyObject *kwds)
                         "number of channels");
         return -1;
     } else {
-        self->samples_length = data_size;
+        self->samples_length = (unsigned int)data_size;
         self->frames = (self->samples_length / self->channels);
         self->samples = malloc(sizeof(fa_data_t) * self->samples_length);
     }
@@ -1221,9 +1221,9 @@ FloatFrameList_from_frames(PyObject *dummy, PyObject *args)
     }
 
     framelist = FloatFrameList_create();
-    framelist->frames = list_len;
+    framelist->frames = (unsigned int)list_len;
     framelist->channels = frame->channels;
-    framelist->samples_length = list_len * frame->channels;
+    framelist->samples_length = (unsigned int)list_len * frame->channels;
     framelist->samples = malloc(sizeof(fa_data_t) * framelist->samples_length);
 
     memcpy(framelist->samples, frame->samples,
@@ -1301,8 +1301,8 @@ FloatFrameList_from_channels(PyObject *dummy, PyObject *args)
 
     framelist = FloatFrameList_create();
     framelist->frames = channel->frames;
-    framelist->channels = list_len;
-    framelist->samples_length = framelist->frames * list_len;
+    framelist->channels = (unsigned int)list_len;
+    framelist->samples_length = framelist->frames * (unsigned int)list_len;
     framelist->samples = malloc(sizeof(fa_data_t) * framelist->samples_length);
 
     for (j = 0; j < channel->samples_length; j++) {

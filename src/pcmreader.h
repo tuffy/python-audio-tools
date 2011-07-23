@@ -48,12 +48,12 @@ struct pcm_reader {
 #else
     FILE *read;
 #endif
-    long sample_rate;
-    long channels;
-    long channel_mask;
-    long bits_per_sample;
-    long big_endian;
-    long is_signed;
+    unsigned int sample_rate;
+    unsigned int channels;
+    unsigned int channel_mask;
+    unsigned int bits_per_sample;
+    unsigned int big_endian;
+    unsigned int is_signed;
 
     struct pcmr_callback *callback;
 };
@@ -66,12 +66,12 @@ pcmr_open(PyObject *pcmreader);
 #else
 struct pcm_reader*
 pcmr_open(FILE *pcmreader,
-          long sample_rate,
-          long channels,
-          long channel_mask,
-          long bits_per_sample,
-          long big_endian,
-          long is_signed);
+          unsigned int sample_rate,
+          unsigned int channels,
+          unsigned int channel_mask,
+          unsigned int bits_per_sample,
+          unsigned int big_endian,
+          unsigned int is_signed);
 #endif
 
 int

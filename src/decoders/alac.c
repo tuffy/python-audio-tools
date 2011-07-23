@@ -415,7 +415,7 @@ ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args)
     int channel;
     int interlacing_shift;
     int interlacing_leftweight;
-    int offset;
+    long offset;
     PyObject *frame = NULL;
     PyObject *frame_list = NULL;
 

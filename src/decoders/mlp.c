@@ -1871,10 +1871,10 @@ mlp_filter_channel(struct i_array* unfiltered,
                             (int64_t)iir_coefficients.data[j]);
 
         accumulator >>= shift;
-        result = (accumulator + residual) & mask;
+        result = (int32_t)(accumulator + residual) & mask;
         ia_append(filtered, result);
         ia_append(fir_state, result);
-        ia_append(iir_state, result - accumulator);
+        ia_append(iir_state, (ia_data_t)(result - accumulator));
     }
 
     ia_free(&fir_coefficients);

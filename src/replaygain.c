@@ -633,7 +633,7 @@ ReplayGain_analyze_samples(replaygain_ReplayGain* self,
     long            batchsamples;
     long            cursamples;
     long            cursamplepos;
-    int             i;
+    long            i;
 
     if ( num_samples == 0 )
         return GAIN_ANALYSIS_OK;
@@ -977,8 +977,8 @@ ReplayGainReader_read(replaygain_ReplayGainReader* self, PyObject *args) {
 
         for (i = 0; i < framelist->samples_length; i++) {
             output_framelist->samples[i] =
-                MIN(MAX(lround(framelist->samples[i] *
-                               multiplier) ^
+                MIN(MAX((ia_data_t)lround(framelist->samples[i] *
+                                          multiplier) ^
                         (dither[i / 8] & (1 << (i % 8))) >> (i % 8),
                         min_value),
                     max_value);

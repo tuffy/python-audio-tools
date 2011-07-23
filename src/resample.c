@@ -205,7 +205,7 @@ Resampler_process(resample_Resampler* self, PyObject *args)
     src_data.src_ratio = self->ratio;
 
     for (i = 0; i < framelist->samples_length; i++) {
-        src_data.data_in[i] = framelist->samples[i];
+        src_data.data_in[i] = (float)framelist->samples[i];
     }
 
     /*run src_process() on our self->SRC_STATE and SRC_DATA*/
@@ -221,26 +221,28 @@ Resampler_process(resample_Resampler* self, PyObject *args)
     if ((processed_samples = (pcm_FloatFrameList*)PyObject_CallMethod(
                     self->pcm_module, "__blank_float__", NULL)) == NULL)
         goto error;
-    processed_samples->channels = self->channels;
-    processed_samples->frames = src_data.output_frames_gen;
-    processed_samples->samples_length = processed_samples->frames *
-        processed_samples->channels;
-    processed_samples->samples = realloc(processed_samples->samples,
-                                         sizeof(fa_data_t) *
-                                         processed_samples->samples_length);
+    processed_samples->channels =
+        self->channels;
+    processed_samples->frames =
+        (unsigned int)src_data.output_frames_gen;
+    processed_samples->samples_length =
+        (unsigned int)processed_samples->frames * processed_samples->channels;
+    processed_samples->samples =
+        realloc(processed_samples->samples,
+                sizeof(fa_data_t) * processed_samples->samples_length);
 
     if ((unprocessed_samples = (pcm_FloatFrameList*)PyObject_CallMethod(
                     self->pcm_module, "__blank_float__", NULL)) == NULL)
         goto error;
-    unprocessed_samples->channels = self->channels;
-    unprocessed_samples->frames = src_data.input_frames -
-        src_data.input_frames_used;
-    unprocessed_samples->samples_length = unprocessed_samples->frames *
-        unprocessed_samples->channels;
-    unprocessed_samples->samples = realloc(
-                    unprocessed_samples->samples,
-                    sizeof(fa_data_t) *
-                    unprocessed_samples->samples_length);
+    unprocessed_samples->channels =
+        self->channels;
+    unprocessed_samples->frames =
+        (unsigned int)(src_data.input_frames - src_data.input_frames_used);
+    unprocessed_samples->samples_length =
+        unprocessed_samples->frames * unprocessed_samples->channels;
+    unprocessed_samples->samples =
+        realloc(unprocessed_samples->samples,
+                sizeof(fa_data_t) * unprocessed_samples->samples_length);
 
 
     /*successfully processed samples*/

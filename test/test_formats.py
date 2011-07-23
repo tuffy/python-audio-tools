@@ -2614,7 +2614,7 @@ class FlacFileTest(TestForeignAiffChunks,
         header = flac_data[0:8]
         data = flac_data[0x2A:]
 
-        from audiotools.encoders import BitstreamWriter
+        from audiotools.bitstream import BitstreamWriter
 
         for streaminfo in mismatch_streaminfos:
             temp = tempfile.NamedTemporaryFile(suffix=".flac")

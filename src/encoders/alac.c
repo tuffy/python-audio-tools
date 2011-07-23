@@ -91,7 +91,9 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
     options.current_frame = bw_open_recorder(BS_BIG_ENDIAN);
 
     /*initialize a buffer for input samples*/
-    iaa_init(&samples, reader->channels, options.block_size);
+    iaa_init(&samples,
+             (ia_size_t)reader->channels,
+             (ia_size_t)options.block_size);
 
     /*initialize the output log*/
     alac_log_init(&encode_log);
@@ -334,7 +336,7 @@ alac_write_frameset(BitstreamWriter *bs,
     ia_append(iaa_getitem(&(log->frame_log), LOG_BYTE_SIZE),
               log->frame_byte_size);
     ia_append(iaa_getitem(&(log->frame_log), LOG_FILE_OFFSET),
-              starting_offset);
+              (ia_size_t)starting_offset);
 
     ia_free(&channel_counts);
     return OK;

@@ -19,10 +19,10 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-int
-count_one_bits(int i);
+unsigned int
+count_one_bits(unsigned int i);
 
 void
 channel_mask_splits(struct i_array *counts,
-                    int channel_count,
-                    long channel_mask);
+                    unsigned int channel_count,
+                    unsigned int channel_mask);

@@ -47,7 +47,7 @@ struct alac_encoding_options {
     int maximum_interlacing_leftweight;
     int minimum_interlacing_shift;
     int maximum_interlacing_shift;
-    int channel_mask;
+    unsigned int channel_mask;
 
     /*a couple of temporary buffers
       so we don't have to allocate them all the time*/

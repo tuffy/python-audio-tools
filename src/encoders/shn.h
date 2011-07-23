@@ -46,13 +46,17 @@ enum {FN_DIFF0     = 0,
 typedef enum {OK, ERROR} status;
 
 void
-ShortenEncoder_put_uvar(BitstreamWriter* bs, int size, int value);
+ShortenEncoder_put_uvar(BitstreamWriter* bs,
+                        unsigned int size,
+                        unsigned int value);
 
 void
-ShortenEncoder_put_var(BitstreamWriter* bs, int size, int value);
+ShortenEncoder_put_var(BitstreamWriter* bs,
+                       unsigned int size,
+                       int value);
 
 void
-ShortenEncoder_put_long(BitstreamWriter* bs, int value);
+ShortenEncoder_put_long(BitstreamWriter* bs, unsigned int value);
 
 int
 ShortenEncoder_encode_stream(BitstreamWriter* bs,

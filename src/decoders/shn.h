@@ -62,9 +62,9 @@ typedef struct {
     int read_started;
     int read_finished;
 
-    int bits_per_sample;
-    int sample_rate;
-    int channel_mask;
+    unsigned int bits_per_sample;
+    unsigned int sample_rate;
+    unsigned int channel_mask;
 
     struct ia_array buffer;
     struct ia_array offset;

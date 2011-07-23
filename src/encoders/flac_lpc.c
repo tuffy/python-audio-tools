@@ -410,9 +410,8 @@ FlacEncoder_quantize_coefficients(struct f_array *lp_coefficients,
 
     for (i = 0; i < lp_coefficients->size; i++) {
         error += fa_getitem(lp_coefficients, i) * (1 << *shift_needed);
-        qlp = MIN(MAX(lround(error), qlp_coeff_min), qlp_coeff_max);
+        qlp = MIN(MAX((int32_t)lround(error), qlp_coeff_min), qlp_coeff_max);
         ia_append(qlp_coefficients, qlp);
         error -= qlp;
     }
 }
-

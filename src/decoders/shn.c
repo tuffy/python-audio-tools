@@ -144,26 +144,26 @@ SHNDecoder_new(PyTypeObject *type,
 static PyObject*
 SHNDecoder_version(decoders_SHNDecoder *self, void *closure)
 {
-    return Py_BuildValue("i", self->version);
+    return Py_BuildValue("I", self->version);
 }
 
 static PyObject*
 SHNDecoder_file_type(decoders_SHNDecoder *self, void *closure)
 {
-    return Py_BuildValue("i", self->file_type);
+    return Py_BuildValue("I", self->file_type);
 }
 
 static PyObject*
 SHNDecoder_channels(decoders_SHNDecoder *self, void *closure)
 {
-    return Py_BuildValue("i", self->channels);
+    return Py_BuildValue("I", self->channels);
 }
 
 static PyObject*
 SHNDecoder_bits_per_sample(decoders_SHNDecoder *self,
                            void *closure)
 {
-    return Py_BuildValue("i", self->bits_per_sample);
+    return Py_BuildValue("I", self->bits_per_sample);
 }
 
 static int
@@ -171,7 +171,7 @@ SHNDecoder_set_sample_rate(decoders_SHNDecoder *self,
                            PyObject *value,
                            void *closure)
 {
-    long long_value;
+    unsigned int long_value;
 
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError,
@@ -179,7 +179,8 @@ SHNDecoder_set_sample_rate(decoders_SHNDecoder *self,
         return -1;
     }
 
-    if (((long_value = PyInt_AsLong(value)) == -1) && PyErr_Occurred())
+    long_value = (unsigned int)PyInt_AsUnsignedLongMask(value);
+    if (PyErr_Occurred())
         return -1;
 
     self->sample_rate = long_value;
@@ -190,13 +191,13 @@ SHNDecoder_set_sample_rate(decoders_SHNDecoder *self,
 static PyObject*
 SHNDecoder_sample_rate(decoders_SHNDecoder *self, void *closure)
 {
-    return Py_BuildValue("i", self->sample_rate);
+    return Py_BuildValue("I", self->sample_rate);
 }
 
 static PyObject*
 SHNDecoder_channel_mask(decoders_SHNDecoder *self, void *closure)
 {
-    return Py_BuildValue("i", self->channel_mask);
+    return Py_BuildValue("I", self->channel_mask);
 }
 
 static int
@@ -204,7 +205,7 @@ SHNDecoder_set_channel_mask(decoders_SHNDecoder *self,
                             PyObject *value,
                             void *closure)
 {
-    long long_value;
+    unsigned int long_value;
 
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError,
@@ -212,10 +213,11 @@ SHNDecoder_set_channel_mask(decoders_SHNDecoder *self,
         return -1;
     }
 
-    if (((long_value = PyInt_AsLong(value)) == -1) && PyErr_Occurred())
+    long_value = (unsigned int)PyInt_AsUnsignedLongMask(value);
+    if (PyErr_Occurred())
         return -1;
-
-    self->channel_mask = long_value;
+    else
+        self->channel_mask = long_value;
 
     return 0;
 }
@@ -575,7 +577,7 @@ SHNDecoder_analyze_frame(decoders_SHNDecoder* self, PyObject *args)
     unsigned int lpc_count;
     struct i_array *buffer = &(self->buffer.arrays[0]);
     struct i_array coefficients = self->lpc_coeffs;
-    int byte_offset;
+    long byte_offset;
     int i;
 
     if (!self->read_started) {

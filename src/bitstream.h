@@ -64,7 +64,9 @@ struct br_mark {
     union {
         fpos_t file;
         uint32_t substream;
-        uint32_t python;
+#ifndef STANDALONE
+        Py_ssize_t python;
+#endif
     } position;
     int state;
     struct br_mark *next;
@@ -87,9 +89,9 @@ struct bs_buffer {
 struct br_python_input {
     PyObject* reader_obj;
     uint8_t* buffer;
-    uint32_t buffer_total_size;
-    uint32_t buffer_size;
-    uint32_t buffer_position;
+    Py_ssize_t buffer_total_size;
+    Py_ssize_t buffer_size;
+    Py_ssize_t buffer_position;
     int mark_in_progress;
 };
 #endif

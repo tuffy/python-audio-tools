@@ -248,15 +248,16 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
 
         /*read 1 subframe per channel*/
         for (channel = 0; channel < frame_header.channel_count; channel++)
-            if ((error = FlacDecoder_read_subframe(
-                        self->bitstream,
-                        &(self->qlp_coeffs),
-                        &(self->residuals),
-                        MIN(frame_header.block_size,
-                            self->remaining_samples),
-                        FlacDecoder_subframe_bits_per_sample(&frame_header,
-                                                             channel),
-                        &(self->subframe_data.arrays[channel]))) != OK) {
+            if ((error =
+                 FlacDecoder_read_subframe(
+                     self->bitstream,
+                     &(self->qlp_coeffs),
+                     &(self->residuals),
+                     (unsigned int)MIN(frame_header.block_size,
+                                       self->remaining_samples),
+                     FlacDecoder_subframe_bits_per_sample(&frame_header,
+                                                          channel),
+                     &(self->subframe_data.arrays[channel]))) != OK) {
                 PyEval_RestoreThread(thread_state);
                 PyErr_SetString(PyExc_ValueError, FlacDecoder_strerror(error));
                 goto error;
@@ -307,8 +308,8 @@ PyObject*
 FlacDecoder_analyze_frame(decoders_FlacDecoder* self, PyObject *args)
 {
     struct flac_frame_header frame_header;
-    int channel;
-    int offset;
+    unsigned int channel;
+    long offset;
     PyObject *subframe;
     PyObject *subframes;
     flac_status error;
@@ -503,8 +504,8 @@ flac_status
 FlacDecoder_read_subframe(BitstreamReader *bitstream,
                           struct i_array *qlp_coeffs,
                           struct i_array *residuals,
-                          uint32_t block_size,
-                          uint8_t bits_per_sample,
+                          unsigned int block_size,
+                          unsigned int bits_per_sample,
                           struct i_array *samples)
 {
     struct flac_subframe_header subframe_header;
@@ -597,9 +598,9 @@ FlacDecoder_read_subframe_header(BitstreamReader *bitstream,
     return OK;
 }
 
-int
+unsigned int
 FlacDecoder_subframe_bits_per_sample(struct flac_frame_header *frame_header,
-                                     int channel_number) {
+                                     unsigned int channel_number) {
     if (((frame_header->channel_assignment == 0x8) &&
          (channel_number == 1)) ||
         ((frame_header->channel_assignment == 0x9) &&
@@ -769,8 +770,8 @@ FlacDecoder_read_lpc_subframe(BitstreamReader *bitstream,
                 (int64_t)ia_getitem(qlp_coeffs, j);
         }
         ia_append(samples,
-                  (accumulator >> qlp_shift_needed) +
-                  ia_getitem(residuals, i));
+                  (ia_data_t)((accumulator >> qlp_shift_needed) +
+                              ia_getitem(residuals, i)));
     }
 
     return OK;
@@ -882,8 +883,8 @@ FlacDecoder_decorrelate_channels(struct flac_frame_header *frame_header,
             mid = subframe_data->arrays[0].data[i];
             side = subframe_data->arrays[1].data[i];
             mid = (mid << 1) | (side & 1);
-            subframe_data->arrays[0].data[i] = (mid + side) >> 1;
-            subframe_data->arrays[1].data[i] = (mid - side) >> 1;
+            subframe_data->arrays[0].data[i] = (ia_data_t)((mid + side) >> 1);
+            subframe_data->arrays[1].data[i] = (ia_data_t)((mid - side) >> 1);
         }
         break;
     default:

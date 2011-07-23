@@ -212,7 +212,7 @@ encoders_encode_flac(char *filename,
     /*write VORBIS_COMMENT*/
     stream->write(stream, 1, 0);
     stream->write(stream, 7, 4);
-    stream->write(stream, 24, 4 + strlen(version_string) + 4);
+    stream->write(stream, 24, (unsigned int)(4 + strlen(version_string) + 4));
 
     /*write VORBIS_COMMENT fields as little-endian output*/
     stream->set_endianness(stream, BS_LITTLE_ENDIAN);
@@ -327,7 +327,7 @@ FlacEncoder_write_frame(BitstreamWriter *bs,
 {
     ia_size_t i;
     long startpos;
-    long framesize;
+    unsigned int framesize;
 
     BitstreamWriter *left_subframe;
     BitstreamWriter *right_subframe;
@@ -490,7 +490,7 @@ FlacEncoder_write_frame(BitstreamWriter *bs,
     bs->write(bs, 16, streaminfo->crc16);
 
     /*update streaminfo with new values*/
-    framesize = bw_ftell(bs) - startpos;
+    framesize = (unsigned int)(bw_ftell(bs) - startpos);
 
     /* streaminfo->minimum_block_size = MIN(streaminfo->minimum_block_size, */
     /*                     iaa_getitem(samples,0)->size); */

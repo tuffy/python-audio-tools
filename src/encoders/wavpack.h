@@ -54,16 +54,16 @@ struct wavpack_decorrelation_pass {
 };
 
 struct wavpack_encoder_context {
-    uint8_t bits_per_sample;
-    uint32_t sample_rate;
-    uint16_t total_channels;
-    uint32_t channel_mask;
+    unsigned int bits_per_sample;
+    unsigned int sample_rate;
+    unsigned int total_channels;
+    unsigned int channel_mask;
 
     uint32_t block_index;
     uint32_t byte_count;
     struct i_array block_offsets;
 
-    uint8_t channel_info_written;
+    int channel_info_written;
 
     audiotools__MD5Context md5;
     uint32_t pcm_bytes;
@@ -175,7 +175,7 @@ void
 wavpack_write_frame(BitstreamWriter *bs,
                     struct wavpack_encoder_context *context,
                     struct ia_array *samples,
-                    long channel_mask);
+                    unsigned int channel_mask);
 
 void
 wavpack_write_footer_block(BitstreamWriter *bs,
@@ -435,7 +435,7 @@ int
 wavpack_max_wasted_bits_per_sample(struct i_array *samples);
 
 struct wavpack_decorrelation_pass*
-wavpack_init_decorrelation_passes(int channel_count);
+wavpack_init_decorrelation_passes(long channel_count);
 
 void
 wavpack_free_decorrelation_passes(struct wavpack_decorrelation_pass* passes,

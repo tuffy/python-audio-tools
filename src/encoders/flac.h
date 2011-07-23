@@ -45,15 +45,15 @@ struct flac_encoding_options {
 };
 
 struct flac_STREAMINFO {
-    uint16_t minimum_block_size;  /*16  bits*/
-    uint16_t maximum_block_size;  /*16  bits*/
-    uint32_t minimum_frame_size;  /*24  bits*/
-    uint32_t maximum_frame_size;  /*24  bits*/
-    uint32_t sample_rate;         /*20  bits*/
-    uint8_t channels;             /*3   bits*/
-    uint8_t bits_per_sample;      /*5   bits*/
-    uint64_t total_samples;       /*36  bits*/
-    unsigned char md5sum[16];     /*128 bits*/
+    unsigned int minimum_block_size;  /* 16 bits*/
+    unsigned int maximum_block_size;  /* 16 bits*/
+    unsigned int minimum_frame_size;  /* 24 bits*/
+    unsigned int maximum_frame_size;  /* 24 bits*/
+    unsigned int sample_rate;         /* 20 bits*/
+    unsigned int channels;            /*  3 bits*/
+    unsigned int bits_per_sample;     /*  5 bits*/
+    uint64_t total_samples;           /* 36 bits*/
+    unsigned char md5sum[16];         /*128 bits*/
 
     unsigned int crc8;
     unsigned int crc16;

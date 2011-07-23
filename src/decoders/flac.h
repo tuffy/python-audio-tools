@@ -179,9 +179,9 @@ flac_status
 FlacDecoder_read_subframe_header(BitstreamReader *bitstream,
                                  struct flac_subframe_header *subframe_header);
 
-int
+unsigned int
 FlacDecoder_subframe_bits_per_sample(struct flac_frame_header *frame_header,
-                                     int channel_number);
+                                     unsigned int channel_number);
 
 /*reads a FLAC subframe from "bitstream"
   with "block_size" and "bits_per_sample" (determined from the frame header)
@@ -193,8 +193,8 @@ flac_status
 FlacDecoder_read_subframe(BitstreamReader *bitstream,
                           struct i_array *qlp_coeffs,
                           struct i_array *residuals,
-                          uint32_t block_size,
-                          uint8_t bits_per_sample,
+                          unsigned int block_size,
+                          unsigned int bits_per_sample,
                           struct i_array *samples);
 
 /*the following four functions are called by FlacDecoder_read_subframe

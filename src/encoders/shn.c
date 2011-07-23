@@ -100,7 +100,7 @@ encoders_encode_shn(PyObject *dummy,
     iaa_init(&wrapped_samples, reader->channels, wrap);
     for (i = 0; i < reader->channels; i++) {
         for (j = 0; j < wrap; j++) {
-            ia_append(iaa_getitem(&wrapped_samples, i), 0);
+            ia_append(iaa_getitem(&wrapped_samples, (ia_size_t)i), 0);
         }
     }
 
@@ -132,10 +132,11 @@ encoders_encode_shn(PyObject *dummy,
                 goto error;
             }
             ShortenEncoder_put_uvar(stream, 2, FN_VERBATIM);
-            ShortenEncoder_put_uvar(stream, VERBATIM_CHUNK_SIZE, string_len);
+            ShortenEncoder_put_uvar(stream, VERBATIM_CHUNK_SIZE,
+                                    (unsigned int)string_len);
             for (j = 0; j < string_len; j++)
                 ShortenEncoder_put_uvar(stream, VERBATIM_BYTE_SIZE,
-                                        (unsigned char)string[j]);
+                                        (unsigned int)string[j]);
 
         } else if (!encoding_performed) {
             /*once None is hit, perform full encoding of reader,
@@ -475,19 +476,23 @@ ShortenEncoder_encode_residuals(BitstreamWriter* bs, struct i_array* residuals)
 }
 
 void
-ShortenEncoder_put_uvar(BitstreamWriter* bs, int size, int value)
+ShortenEncoder_put_uvar(BitstreamWriter* bs,
+                        unsigned int size,
+                        unsigned int value)
 {
-    register int32_t msb; /*most significant bits*/
-    register int32_t lsb; /*least significant bits*/
+    register unsigned int msb; /*most significant bits*/
+    register unsigned int lsb; /*least significant bits*/
 
-    msb = (int32_t)(value >> size);
-    lsb = (int32_t)(value - (msb << size));
+    msb = value >> size;
+    lsb = value - (msb << size);
     bs->write_unary(bs, 1, msb);
     bs->write(bs, size, lsb);
 }
 
 void
-ShortenEncoder_put_var(BitstreamWriter* bs, int size, int value)
+ShortenEncoder_put_var(BitstreamWriter* bs,
+                       unsigned int size,
+                       int value)
 {
     if (value >= 0) {
         ShortenEncoder_put_uvar(bs, size + 1, value << 1);
@@ -497,12 +502,12 @@ ShortenEncoder_put_var(BitstreamWriter* bs, int size, int value)
 }
 
 void
-ShortenEncoder_put_long(BitstreamWriter* bs, int value)
+ShortenEncoder_put_long(BitstreamWriter* bs, unsigned int value)
 {
-    int long_size = 3; /*this is supposed to be computed dynamically
-                         but I'm not convinced it really matters
-                         considering how little longs are used
-                         in the Shorten stream*/
+    unsigned int long_size = 3; /*this is supposed to be computed dynamically
+                                  but I'm not convinced it really matters
+                                  considering how little longs are used
+                                  in the Shorten stream*/
 
     ShortenEncoder_put_uvar(bs, 2, long_size);
     ShortenEncoder_put_uvar(bs, long_size, value);

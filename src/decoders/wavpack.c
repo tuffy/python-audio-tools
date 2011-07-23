@@ -1502,7 +1502,7 @@ wavpack_decode_subblock(decoders_WavPackDecoder* self,
 
 static inline int
 apply_weight(int weight, int64_t sample) {
-    return ((weight * sample) + 512) >> 10;
+    return (int)(((weight * sample) + 512) >> 10);
 }
 
 static inline int

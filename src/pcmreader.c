@@ -34,30 +34,30 @@ pcmr_open(PyObject *pcmreader)
 
     if ((attr = PyObject_GetAttrString(pcmreader, "sample_rate")) == NULL)
         goto error;
-    reader->sample_rate = PyInt_AsLong(attr);
+    reader->sample_rate = (unsigned int)PyInt_AsUnsignedLongMask(attr);
     Py_DECREF(attr);
-    if ((reader->sample_rate == -1) && (PyErr_Occurred()))
+    if (PyErr_Occurred())
         goto error;
 
     if ((attr = PyObject_GetAttrString(pcmreader, "bits_per_sample")) == NULL)
         goto error;
-    reader->bits_per_sample = PyInt_AsLong(attr);
+    reader->bits_per_sample = (unsigned int)PyInt_AsUnsignedLongMask(attr);
     Py_DECREF(attr);
-    if ((reader->bits_per_sample == -1) && (PyErr_Occurred()))
+    if (PyErr_Occurred())
         goto error;
 
     if ((attr = PyObject_GetAttrString(pcmreader, "channels")) == NULL)
         goto error;
-    reader->channels = PyInt_AsLong(attr);
+    reader->channels = (unsigned int)PyInt_AsUnsignedLongMask(attr);
     Py_DECREF(attr);
-    if ((reader->channels == -1) && (PyErr_Occurred()))
+    if (PyErr_Occurred())
         goto error;
 
     if ((attr = PyObject_GetAttrString(pcmreader, "channel_mask")) == NULL)
         goto error;
-    reader->channel_mask = PyInt_AsLong(attr);
+    reader->channel_mask = (unsigned int)PyInt_AsUnsignedLongMask(attr);
     Py_DECREF(attr);
-    if ((reader->channel_mask == -1) && (PyErr_Occurred()))
+    if (PyErr_Occurred())
         goto error;
 
     if ((reader->read = PyObject_GetAttrString(pcmreader, "read")) == NULL)
@@ -113,12 +113,12 @@ pcmr_close(struct pcm_reader *reader)
 
 struct pcm_reader*
 pcmr_open(FILE *pcmreader,
-          long sample_rate,
-          long channels,
-          long channel_mask,
-          long bits_per_sample,
-          long big_endian,
-          long is_signed)
+          unsigned int sample_rate,
+          unsigned int channels,
+          unsigned int channel_mask,
+          unsigned int bits_per_sample,
+          unsigned int big_endian,
+          unsigned int is_signed)
 {
     struct pcm_reader *reader = malloc(sizeof(struct pcm_reader));
     reader->read = pcmreader;

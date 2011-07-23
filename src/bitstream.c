@@ -828,7 +828,7 @@ br_skip_bits_f_be(BitstreamReader* bs, unsigned int count)
     struct bs_callback* callback;
     int output_size;
     static uint8_t dummy[1024];
-    size_t to_read;
+    unsigned int to_read;
 
     /*handle a common case where the input is byte-aligned,
       the count is an even number of bytes
@@ -876,7 +876,7 @@ br_skip_bits_f_le(BitstreamReader* bs, unsigned int count)
     struct bs_callback* callback;
     int output_size;
     static uint8_t dummy[1024];
-    size_t to_read;
+    unsigned int to_read;
 
     /*handle a common case where the input is byte-aligned,
       the count is an even number of bytes
@@ -3129,7 +3129,8 @@ bw_write_bits64_f_be(BitstreamWriter* bs, unsigned int count, uint64_t value)
         value_to_write = value >> (count - bits_to_write);
 
         /*prepend value to buffer*/
-        bs->buffer = ((bs->buffer << bits_to_write) | value_to_write);
+        bs->buffer = (unsigned int)((bs->buffer << bits_to_write) |
+                                    value_to_write);
         bs->buffer_size += bits_to_write;
 
         /*if buffer is over 8 bits,
@@ -3167,7 +3168,7 @@ bw_write_bits64_f_le(BitstreamWriter* bs, unsigned int count, uint64_t value)
         value_to_write = value & ((1 << bits_to_write) - 1);
 
         /*append value to buffer*/
-        bs->buffer |= (value_to_write << bs->buffer_size);
+        bs->buffer |= (unsigned int)(value_to_write << bs->buffer_size);
         bs->buffer_size += bits_to_write;
 
         /*if buffer is over 8 bits,
@@ -3205,7 +3206,8 @@ bw_write_bits64_r_be(BitstreamWriter* bs, unsigned int count, uint64_t value)
         value_to_write = value >> (count - bits_to_write);
 
         /*prepend value to buffer*/
-        bs->buffer = ((bs->buffer << bits_to_write) | value_to_write);
+        bs->buffer = (unsigned int)((bs->buffer << bits_to_write) |
+                                    value_to_write);
         bs->buffer_size += bits_to_write;
 
         /*if buffer is over 8 bits,
@@ -3245,7 +3247,7 @@ bw_write_bits64_r_le(BitstreamWriter* bs,
         value_to_write = value & ((1 << bits_to_write) - 1);
 
         /*append value to buffer*/
-        bs->buffer |= (value_to_write << bs->buffer_size);
+        bs->buffer |= (unsigned int)(value_to_write << bs->buffer_size);
         bs->buffer_size += bits_to_write;
 
         /*if buffer is over 8 bits,

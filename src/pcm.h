@@ -43,11 +43,11 @@ typedef int Py_ssize_t;
 typedef struct {
     PyObject_HEAD;
 
-    int frames;          /*the total number of PCM frames in this FrameList
+    unsigned int frames; /*the total number of PCM frames in this FrameList
                            aka the total number of rows in the "samples" array*/
-    int channels;        /*the total number of channels in this FrameList
-                           aka the total number of columns in "samples*/
-    int bits_per_sample; /*the maximum size of each sample, in bits*/
+    unsigned int channels; /*the total number of channels in this FrameList
+                             aka the total number of columns in "samples*/
+    unsigned int bits_per_sample; /*the maximum size of each sample, in bits*/
 
     ia_data_t* samples;    /*the actual sample data itself,
                              stored raw as 32-bit signed integers*/
@@ -134,10 +134,10 @@ FrameList_from_channels(PyObject *dummy, PyObject *args);
 typedef struct {
     PyObject_HEAD;
 
-    int frames;          /*the total number of PCM frames in this FrameList
+    unsigned int frames; /*the total number of PCM frames in this FrameList
                            aka the total number of rows in the "samples" array*/
-    int channels;        /*the total number of channels in this FrameList
-                           aka the total number of columns in "samples*/
+    unsigned int channels; /*the total number of channels in this FrameList
+                             aka the total number of columns in "samples*/
 
     fa_data_t *samples;  /*the actual sample data itself,
                            stored raw as doubles*/

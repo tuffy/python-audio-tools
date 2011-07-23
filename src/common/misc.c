@@ -22,21 +22,21 @@
 
 void
 channel_mask_splits(struct i_array *counts,
-                    int channel_count,
-                    long channel_mask) {
+                    unsigned int channel_count,
+                    unsigned int channel_mask) {
     /*Although the WAVEFORMATEXTENSIBLE channel mask
       supports more left/right channels than these,
       everything beyond side-left/side-right
       is stored with a center channel in-between
       which means we can't pull them apart in pairs.*/
-    long masks[] = {0x3,   0x1,   0x2,        /*fLfR, fL, fR*/
-                    0x4,   0x8,               /*fC, LFE*/
-                    0x30,  0x10,  0x20,       /*bLbR, bL, bR*/
-                    0xC0,  0x40,  0x80,       /*fLoCfRoC, fLoC, fRoC*/
-                    0x100,                    /*bC*/
-                    0x600, 0x200, 0x400,      /*sLsR, sL, sR*/
-                    0};
-    int channels;
+    unsigned int masks[] = {0x3,   0x1,   0x2,        /*fLfR, fL, fR*/
+                            0x4,   0x8,               /*fC, LFE*/
+                            0x30,  0x10,  0x20,       /*bLbR, bL, bR*/
+                            0xC0,  0x40,  0x80,       /*fLoC, fRoC, fLoC, fRoC*/
+                            0x100,                    /*bC*/
+                            0x600, 0x200, 0x400,      /*sLsR, sL, sR*/
+                            0};
+    unsigned int channels;
     int i;
 
     assert(channel_count > 0);
@@ -58,9 +58,9 @@ channel_mask_splits(struct i_array *counts,
     }
 }
 
-int
-count_one_bits(int i) {
-    int bits;
+unsigned int
+count_one_bits(unsigned int i) {
+    unsigned int bits;
 
     for (bits = 0; i != 0; i >>= 1)
         bits += (i & 1);
