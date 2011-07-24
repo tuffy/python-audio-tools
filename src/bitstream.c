@@ -3621,6 +3621,10 @@ bs_parse_format(char** format, unsigned int* size, bs_instruction* type) {
             *type = BS_INST_SKIP;
             *format += 1;
             return 0;
+        case 'P':
+            *type = BS_INST_SKIP_BYTES;
+            *format += 1;
+            return 0;
         case 'b':
             *type = BS_INST_BYTES;
             *format += 1;

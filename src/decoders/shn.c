@@ -225,7 +225,7 @@ SHNDecoder_set_channel_mask(decoders_SHNDecoder *self,
 static PyObject*
 SHNDecoder_block_size(decoders_SHNDecoder *self, void *closure)
 {
-    return Py_BuildValue("i", self->block_size);
+    return Py_BuildValue("I", self->block_size);
 }
 
 

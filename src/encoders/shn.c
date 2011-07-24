@@ -131,12 +131,14 @@ encoders_encode_shn(PyObject *dummy,
                 Py_DECREF(verbatim_chunk);
                 goto error;
             }
+
             ShortenEncoder_put_uvar(stream, 2, FN_VERBATIM);
             ShortenEncoder_put_uvar(stream, VERBATIM_CHUNK_SIZE,
                                     (unsigned int)string_len);
-            for (j = 0; j < string_len; j++)
+            for (j = 0; j < string_len; j++) {
                 ShortenEncoder_put_uvar(stream, VERBATIM_BYTE_SIZE,
-                                        (unsigned int)string[j]);
+                                        (unsigned char)string[j]);
+            }
 
         } else if (!encoding_performed) {
             /*once None is hit, perform full encoding of reader,

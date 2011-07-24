@@ -215,9 +215,11 @@ class FlacMetaData(MetaData):
         cuesheet = None
         pictures = []
 
-        (last, block_type, block_length) = reader.parse("1u7u24u")
+        last = 0
 
-        while (not last):
+        while (last != 1):
+            (last, block_type, block_length) = reader.parse("1u7u24u")
+
             if (block_type == 0):   #STREAMINFO
                 if (streaminfo is None):
                     streaminfo = Flac_STREAMINFO.parse(
@@ -258,8 +260,6 @@ class FlacMetaData(MetaData):
             else:
                 raise ValueError(_(u"invalid metadata block type"))
 
-            (last, block_type, block_length) = reader.parse("1u7u24u")
-
         return cls(streaminfo=streaminfo,
                    applications=applications,
                    seektable=seektable,
@@ -271,7 +271,7 @@ class FlacMetaData(MetaData):
         if (self.streaminfo is not None):
             yield self.streaminfo
         for application in self.applications:
-            yield self.application
+            yield application
         if (self.seektable is not None):
             yield self.seektable
         if (self.vorbis_comment is not None):
@@ -989,8 +989,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                     u"0x%.4x" % (int(self.channel_mask()))]
 
             #APPLICATION blocks should stay with the existing file (if any)
-            metadata.applications = [block for block in metadata.applications
-                                     if (block.type != 2)]
+            metadata.applications = old_metadata.applications[:]
 
         #always grab "vendor_string" from the existing file - if present
         if ((old_metadata.vorbis_comment is not None) and
@@ -1046,7 +1045,9 @@ class FlacAudio(WaveContainer, AiffContainer):
             #finally, rebuild our file using new metadata and old stream
             stream = file(self.filename, 'wb')
             stream.write('fLaC')
-            metadata.build(BitstreamWriter(stream, 0), 4096)
+            writer = BitstreamWriter(stream, 0)
+            metadata.build(writer, 4096)
+            writer.close()
             transfer_data(file_data.read, stream.write)
             file_data.close()
             stream.close()
