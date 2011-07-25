@@ -56,26 +56,31 @@ class WaveReader(PCMReader):
 
         self.process = process
 
+        from .bitstream import BitstreamReader
+
         #build a capped reader for the data chunk
+        wave_reader = BitstreamReader(wave_file, 1)
         try:
-            header = WaveAudio.WAVE_HEADER.parse_stream(self.file)
-        except Con.ConstError:
-            raise InvalidWave(_(u'Invalid WAVE file'))
-        except Con.core.FieldError:
-            raise InvalidWave(_(u'Invalid WAVE file'))
+            (riff, wave) = wave_reader.parse("4b 32p 4b")
+            if (riff != 'RIFF'):
+                raise InvalidWave(_(u"Not a RIFF WAVE file"))
+            elif (wave != 'WAVE'):
+                raise InvalidWave(_(u"Invalid RIFF WAVE file"))
 
-        #this won't be pretty for a WAVE file missing a 'data' chunk
-        #but those are seriously invalid anyway
-        chunk_header = WaveAudio.CHUNK_HEADER.parse_stream(self.file)
-        while (chunk_header.chunk_id != 'data'):
-            #self.file.seek(chunk_header.chunk_length,1)
-            self.file.read(chunk_header.chunk_length)
-            chunk_header = WaveAudio.CHUNK_HEADER.parse_stream(self.file)
+            while (True):
+                (chunk_id, chunk_size) = wave_reader.parse("4b 32u")
+                if (chunk_id == 'data'):
+                    self.wave = __capped_stream_reader__(self.file,
+                                                         chunk_size)
+                    self.data_chunk_length = chunk_size
+                    break
+                else:
+                    wave_reader.skip_bytes(chunk_size)
+                    if (chunk_size % 2):
+                        wave_reader.skip(1)
 
-        #build a reader which reads no further than the 'data' chunk
-        self.wave = __capped_stream_reader__(self.file,
-                                             chunk_header.chunk_length)
-        self.data_chunk_length = chunk_header.chunk_length
+        except IOError:
+            raise InvalidWave(_(u"data chunk not found"))
 
     def read(self, bytes):
         """Try to read a pcm.FrameList of size "bytes"."""
@@ -335,18 +340,104 @@ class WaveAudio(WaveContainer):
         self.__blockalign__ = 0
         self.__bitspersample__ = 0
         self.__data_size__ = 0
-        self.__channel_mask__ = 0
+        self.__channel_mask__ = ChannelMask(0)
 
         self.__chunk_ids__ = []
 
+        from .bitstream import BitstreamReader
+
         try:
-            self.__read_chunks__()
-        except Con.ValidationError:
-            raise InvalidFile
-        except InvalidWave, msg:
-            raise InvalidFile(str(msg))
-        except IOError, msg:
-            raise InvalidFile(str(msg))
+            wave_file = BitstreamReader(open(filename, 'rb'), 1)
+            try:
+                (riff, total_size, wave) = wave_file.parse("4b 32u 4b")
+                if (riff != 'RIFF'):
+                    raise InvalidWave(_(u"Not a RIFF WAVE file"))
+                elif (wave != 'WAVE'):
+                    raise InvalidWave(_(u"Invalid RIFF WAVE file"))
+                else:
+                    total_size -= 4
+
+                while (total_size > 0):
+                    (chunk_id, chunk_size) = wave_file.parse("4b 32u")
+                    self.__chunk_ids__.append(chunk_id)
+
+                    if (not frozenset(chunk_id).issubset(self.PRINTABLE_ASCII)):
+                        raise InvalidWave(_(u"Invalid RIFF WAVE chunk ID"))
+                    else:
+                        total_size -= 8
+
+                    if (chunk_id == 'fmt '):
+                        (compression,
+                         self.__channels__,
+                         self.__samplespersec__,
+                         self.__bytespersec__,
+                         self.__blockalign__,
+                         self.__bitspersample__) = wave_file.parse(
+                            "16u 16u 32u 32u 16u 16u")
+                        if (compression == 1):
+                            #if we have a multi-channel WAVE file
+                            #that's not WAVEFORMATEXTENSIBLE,
+                            #assume the channels follow
+                            #SMPTE/ITU-R recommendations
+                            #and hope for the best
+                            if (self.__channels__ == 1):
+                                self.__channel_mask__ = ChannelMask.from_fields(
+                                    front_center=True)
+                            elif (self.__channels__ == 2):
+                                self.__channel_mask__ = ChannelMask.from_fields(
+                                    front_left=True, front_right=True)
+                            elif (self.__channels__ == 3):
+                                self.__channel_mask__ = ChannelMask.from_fields(
+                                    front_left=True, front_right=True,
+                                    front_center=True)
+                            elif (self.__channels__ == 4):
+                                self.__channel_mask__ = ChannelMask.from_fields(
+                                    front_left=True, front_right=True,
+                                    back_left=True, back_right=True)
+                            elif (self.__channels__ == 5):
+                                self.__channel_mask__ = ChannelMask.from_fields(
+                                    front_left=True, front_right=True,
+                                    back_left=True, back_right=True,
+                                    front_center=True)
+                            elif (self.__channels__ == 6):
+                                self.__channel_mask__ = ChannelMask.from_fields(
+                                    front_left=True, front_right=True,
+                                    back_left=True, back_right=True,
+                                    front_center=True, low_frequency=True)
+                            else:
+                                self.__channel_mask__ = ChannelMask(0)
+
+                        elif (compression == 0xFFFE):
+                            (cb_size,
+                             valid_bits_per_sample,
+                             channel_mask,
+                             sub_format) = wave_file.parse("16u 16u 32u 16b")
+                            if (sub_format !=
+                                ('\x01\x00\x00\x00\x00\x00\x10\x00' +
+                                 '\x80\x00\x00\xaa\x00\x38\x9b\x71')):
+                                raise InvalidWave(_(u"Invalid WAVE sub-format"))
+                            else:
+                                self.__channel_mask__ = \
+                                    ChannelMask(channel_mask)
+                        else:
+                            raise InvalidWave(
+                                _(u"Unsupported WAVE compression"))
+                    elif (chunk_id == 'data'):
+                        self.__data_size__ = chunk_size
+                        wave_file.skip_bytes(chunk_size)
+                    else:
+                        wave_file.skip_bytes(chunk_size)
+
+                    total_size -= chunk_size
+
+                    #round up chunk sizes to 16 bits
+                    if (chunk_size % 2):
+                        wave_file.skip(8)
+                        total_size -= 1
+            except IOError, msg:
+                raise InvalidWave(str(msg))
+        finally:
+            wave_file.close()
 
     @classmethod
     def is_type(cls, file):
@@ -400,62 +491,61 @@ class WaveAudio(WaveContainer):
         at the given filename with the specified compression level
         and returns a new WaveAudio object."""
 
+        from .bitstream import BitstreamWriter,format_size
+
         try:
             f = file(filename, "wb")
+            wave = BitstreamWriter(f, 1)
         except IOError, err:
             raise EncodingError(str(err))
 
         try:
-            header = Con.Container()
-            header.wave_id = 'RIFF'
-            header.riff_type = 'WAVE'
-            header.wave_size = 0
+            total_size = 0
+            data_size = 0
 
-            fmt_header = Con.Container()
-            fmt_header.chunk_id = 'fmt '
-
-            fmt = Con.Container()
+            avg_bytes_per_second = (pcmreader.sample_rate *
+                                    pcmreader.channels *
+                                    (pcmreader.bits_per_sample / 8))
+            block_align = (pcmreader.channels *
+                           (pcmreader.bits_per_sample / 8))
 
             if ((pcmreader.channels <= 2) and
                 (pcmreader.bits_per_sample <= 16)):
-                fmt_header.chunk_length = 16
-                fmt.compression = 1
+                fmt = "16u 16u 32u 32u 16u 16u"
+                fmt_fields = (1,   #compression code
+                              pcmreader.channels,
+                              pcmreader.sample_rate,
+                              avg_bytes_per_second,
+                              block_align,
+                              pcmreader.bits_per_sample)
             else:
-                fmt_header.chunk_length = 40
-                fmt.compression = 0xFFFE
-
-            fmt.channels = pcmreader.channels
-            fmt.sample_rate = pcmreader.sample_rate
-            fmt.bytes_per_second = \
-                pcmreader.sample_rate * \
-                pcmreader.channels * \
-                (pcmreader.bits_per_sample / 8)
-            fmt.block_align = \
-                pcmreader.channels * \
-                (pcmreader.bits_per_sample / 8)
-            fmt.bits_per_sample = pcmreader.bits_per_sample
-
-            #these fields only apply to WAVEFORMATEXTENSIBLE Waves
-            fmt.cb_size = 22
-            fmt.valid_bits_per_sample = pcmreader.bits_per_sample
-            fmt.sub_format = "0100000000001000800000aa00389b71".decode('hex')
-            if (fmt.compression == 0xFFFE):
-                fmt.channel_mask = __channel_mask__(filename,
-                                                    pcmreader.channel_mask,
-                                                    pcmreader.channels)
-            else:
-                fmt.channel_mask = __blank_channel_mask__()
-
-            data_header = Con.Container()
-            data_header.chunk_id = 'data'
-            data_header.chunk_length = 0
+                fmt = "16u 16u 32u 32u 16u 16u" + "16u 16u 32u 16b"
+                fmt_fields = (0xFFFE,   #compression code
+                              pcmreader.channels,
+                              pcmreader.sample_rate,
+                              avg_bytes_per_second,
+                              block_align,
+                              pcmreader.bits_per_sample,
+                              22,       #CB size
+                              pcmreader.bits_per_sample,
+                              pcmreader.channel_mask,
+                              '\x01\x00\x00\x00\x00\x00\x10\x00' +
+                              '\x80\x00\x00\xaa\x00\x38\x9b\x71' #sub format
+                              )
 
             #write out the basic headers first
             #we'll be back later to clean up the sizes
-            f.write(WaveAudio.WAVE_HEADER.build(header))
-            f.write(WaveAudio.CHUNK_HEADER.build(fmt_header))
-            f.write(WaveAudio.FMT_CHUNK.build(fmt))
-            f.write(WaveAudio.CHUNK_HEADER.build(data_header))
+            wave.build("4b 32u 4b", ("RIFF", total_size, "WAVE"))
+            total_size += 4
+
+            wave.build("4b 32u", ('fmt ', format_size(fmt) / 8))
+            total_size += format_size("4b 32u") / 8
+
+            wave.build(fmt, fmt_fields)
+            total_size += format_size(fmt) / 8
+
+            wave.build("4b 32u", ('data', data_size))
+            total_size += format_size("4b 32u") / 8
 
             #dump pcmreader's FrameLists into the file as little-endian
             try:
@@ -467,7 +557,9 @@ class WaveAudio(WaveContainer):
                         bytes = framelist.to_bytes(False, False)
 
                     f.write(bytes)
-                    data_header.chunk_length += len(bytes)
+                    total_size += len(bytes)
+                    data_size += len(bytes)
+
                     framelist = pcmreader.read(BUFFER_SIZE)
             except (IOError, ValueError), err:
                 cls.__unlink__(filename)
@@ -476,7 +568,12 @@ class WaveAudio(WaveContainer):
                 cls.__unlink__(filename)
                 raise err
 
-            #close up the PCM reader and flush our output
+            #handle odd-sized data chunks
+            if (data_size % 2):
+                wave.write(8, 0)
+                total_size += 1
+
+            #close the PCM reader and flush our output
             try:
                 pcmreader.close()
             except DecodingError, err:
@@ -486,16 +583,10 @@ class WaveAudio(WaveContainer):
 
             #go back to the beginning the re-write the header
             f.seek(0, 0)
-            header.wave_size = 4 + \
-                WaveAudio.CHUNK_HEADER.sizeof() + \
-                fmt_header.chunk_length + \
-                WaveAudio.CHUNK_HEADER.sizeof() + \
-                data_header.chunk_length
-
-            f.write(WaveAudio.WAVE_HEADER.build(header))
-            f.write(WaveAudio.CHUNK_HEADER.build(fmt_header))
-            f.write(WaveAudio.FMT_CHUNK.build(fmt))
-            f.write(WaveAudio.CHUNK_HEADER.build(data_header))
+            wave.build("4b 32u 4b", ("RIFF", total_size, "WAVE"))
+            wave.build("4b 32u", ('fmt ', format_size(fmt) / 8))
+            wave.build(fmt, fmt_fields)
+            wave.build("4b 32u", ('data', data_size))
 
         finally:
             f.close()
@@ -705,136 +796,6 @@ class WaveAudio(WaveContainer):
         return AudioFile.track_name(file_path, track_metadata, format,
                                     suffix=cls.SUFFIX)
 
-    def __read_chunks__(self):
-        wave_file = file(self.filename, "rb")
-
-        __chunklist__ = []
-
-        totalsize = self.__read_wave_header__(wave_file) - 4
-
-        while (totalsize > 0):
-            (chunk_format, chunk_size) = self.__read_chunk_header__(wave_file)
-            self.__chunk_ids__.append(chunk_format)
-
-            __chunklist__.append(chunk_format)
-            #Fix odd-sized chunk sizes to be even
-            if ((chunk_size & 1) == 1):
-                chunk_size += 1
-
-            if (chunk_format == "fmt "):
-                self.__read_format_chunk__(wave_file, chunk_size)
-            elif (chunk_format == "data"):
-                self.__read_data_chunk__(wave_file, chunk_size)
-            else:
-                wave_file.seek(chunk_size, 1)
-            totalsize -= (chunk_size + 8)
-
-    def __read_wave_header__(self, wave_file):
-        try:
-            header = WaveAudio.WAVE_HEADER.parse(wave_file.read(12))
-            return header.wave_size
-        except Con.ConstError:
-            raise InvalidWave(_(u"Not a RIFF WAVE file"))
-        except Con.core.FieldError:
-            raise InvalidWave(_(u"Invalid RIFF WAVE file"))
-
-    def __read_chunk_header__(self, wave_file):
-        try:
-            chunk = WaveAudio.CHUNK_HEADER.parse(wave_file.read(8))
-            return (chunk.chunk_id, chunk.chunk_length)
-        except Con.core.FieldError:
-            raise InvalidWave(_(u"Invalid RIFF WAVE file"))
-
-    @classmethod
-    def fmt_chunk_to_channel_mask(cls, fmt_channel_mask):
-        """Builds a ChannelMask object from Container data.
-
-        The Container is parsed from fmt_chunk.channel_mask."""
-
-        channel_mask = ChannelMask(0)
-        attr_map = {'front_left': "front_left",
-                    'front_right': "front_right",
-                    'front_center': "front_center",
-                    'LFE': "low_frequency",
-                    'rear_left': "back_left",
-                    'rear_right': "back_right",
-                    'front_left_of_center': "front_left_of_center",
-                    'front_right_of_center': "front_right_of_center",
-                    'rear_center': "back_center",
-                    'side_left': "side_left",
-                    'side_right': "side_right",
-                    'top_center': "top_center",
-                    'top_front_left': "top_front_left",
-                    'top_front_center': "top_front_center",
-                    'top_front_right': "top_front_right",
-                    'top_back_left': "top_back_left",
-                    'top_back_center': "top_back_center",
-                    'top_back_right': "top_back_right"}
-        for (key, value) in attr_map.items():
-            if (getattr(fmt_channel_mask, key)):
-                setattr(channel_mask, value, True)
-            else:
-                setattr(channel_mask, value, False)
-
-        return channel_mask
-
-    def __read_format_chunk__(self, wave_file, chunk_size):
-        if (chunk_size < 16):
-            raise InvalidWave(_(u"fmt chunk is too short"))
-
-        try:
-            fmt = WaveAudio.FMT_CHUNK.parse(wave_file.read(chunk_size))
-        except Con.FieldError:
-            raise InvalidWave(_(u"fmt chunk is too short"))
-
-        self.__wavtype__ = fmt.compression
-        self.__channels__ = fmt.channels
-        self.__samplespersec__ = fmt.sample_rate
-        self.__bytespersec__ = fmt.bytes_per_second
-        self.__blockalign__ = fmt.block_align
-        self.__bitspersample__ = fmt.bits_per_sample
-
-        if (self.__wavtype__ == 0xFFFE):
-            self.__channel_mask__ = WaveAudio.fmt_chunk_to_channel_mask(
-                fmt.channel_mask)
-        else:
-            if (self.__channels__ == 1):
-                self.__channel_mask__ = ChannelMask.from_fields(
-                    front_center=True)
-            elif (self.__channels__ == 2):
-                self.__channel_mask__ = ChannelMask.from_fields(
-                    front_left=True, front_right=True)
-            #if we have a multi-channel WAVE file
-            #that's not WAVEFORMATEXTENSIBLE,
-            #assume the channels follow SMPTE/ITU-R recommendations
-            #and hope for the best
-            elif (self.__channels__ == 3):
-                self.__channel_mask__ = ChannelMask.from_fields(
-                    front_left=True, front_right=True, front_center=True)
-            elif (self.__channels__ == 4):
-                self.__channel_mask__ = ChannelMask.from_fields(
-                    front_left=True, front_right=True,
-                    back_left=True, back_right=True)
-            elif (self.__channels__ == 5):
-                self.__channel_mask__ = ChannelMask.from_fields(
-                    front_left=True, front_right=True,
-                    back_left=True, back_right=True,
-                    front_center=True)
-            elif (self.__channels__ == 6):
-                self.__channel_mask__ = ChannelMask.from_fields(
-                    front_left=True, front_right=True,
-                    back_left=True, back_right=True,
-                    front_center=True, low_frequency=True)
-            else:
-                self.__channel_mask__ = ChannelMask(0)
-
-        if ((self.__wavtype__ != 1) and (self.__wavtype__ != 0xFFFE)):
-            raise InvalidWave(_(u"No support for compressed WAVE files"))
-
-    def __read_data_chunk__(self, wave_file, chunk_size):
-        self.__data_size__ = chunk_size
-        wave_file.seek(chunk_size, 1)
-
     def chunk_ids(self):
         """Returns a list of RIFF WAVE chunk ID strings."""
 
@@ -845,19 +806,38 @@ class WaveAudio(WaveContainer):
 
         chunk_id and chunk_data are both binary strings."""
 
-        wave_file = file(self.filename, 'rb')
-        total_size = self.__read_wave_header__(wave_file) - 4
+        from .bitstream import BitstreamReader
 
-        while (total_size > 0):
-            (chunk_id, chunk_size) = self.__read_chunk_header__(wave_file)
+        wave_file = BitstreamReader(file(self.filename, 'rb'), 1)
+        try:
+            (riff, total_size, wave) = wave_file.parse("4b 32u 4b")
+            if (riff != 'RIFF'):
+                raise InvalidWave(_(u"Not a RIFF WAVE file"))
+            elif (wave != 'WAVE'):
+                raise InvalidWave(_(u"Invalid RIFF WAVE file"))
+            else:
+                total_size -= 4
 
-            #Fix odd-sized chunks to have 16-bit boundaries
-            if ((chunk_size & 1) == 1):
-                chunk_size += 1
+            while (total_size > 0):
+                #read the chunk header and ensure its validity
+                (chunk_id, chunk_size) = wave_file.parse("4b 32u")
+                if (not frozenset(chunk_id).issubset(self.PRINTABLE_ASCII)):
+                    raise InvalidWave(_(u"Invalid RIFF WAVE chunk ID"))
+                else:
+                    total_size -= 8
 
-            yield (chunk_id, wave_file.read(chunk_size))
+                #yield the (chunk_id, chunk_data) strings
+                yield (chunk_id, wave_file.read_bytes(chunk_size))
 
-            total_size -= (chunk_size + 8)
+                total_size -= chunk_size
+
+                #round up chunk size to 16 bits
+                if (chunk_size % 2):
+                    wave_file.skip(8)
+                    total_size -= 1
+
+        finally:
+            wave_file.close()
 
     @classmethod
     def wave_from_chunks(cls, filename, chunk_iter):
@@ -867,35 +847,32 @@ class WaveAudio(WaveContainer):
         chunk_iter should yield (chunk_id, chunk_data) tuples.
         """
 
-        f = file(filename, 'wb')
+        from .bitstream import BitstreamWriter
 
-        header = Con.Container()
-        header.wave_id = 'RIFF'
-        header.riff_type = 'WAVE'
-        header.wave_size = 4
+        wave = file(filename, 'wb')
+        wave_file = BitstreamWriter(wave, 1)
+        try:
+            total_size = 4
 
-        #write an unfinished header with an invalid size (for now)
-        f.write(cls.WAVE_HEADER.build(header))
+            #write an unfinished header with a placeholder size
+            wave_file.build("4b 32u 4b", ("RIFF", total_size, "WAVE"))
 
-        for (chunk_id, chunk_data) in chunk_iter:
+            #write the individual chunks
+            for (chunk_id, chunk_data) in chunk_iter:
+                wave_file.build("4b 32u %db" % (len(chunk_data)),
+                                (chunk_id, len(chunk_data), chunk_data))
+                total_size += (8 + len(chunk_data))
 
-            #fix odd-sized chunks to fall on 16-bit boundaries
-            if ((len(chunk_data) & 1) == 1):
-                chunk_data += chr(0)
+                #round up chunks to 16 bit boundries
+                if (len(chunk_data) % 2):
+                    wave_file.write(8, 0)
+                    total_size += 1
 
-            chunk_header = cls.CHUNK_HEADER.build(
-                Con.Container(chunk_id=chunk_id,
-                              chunk_length=len(chunk_data)))
-            f.write(chunk_header)
-            header.wave_size += len(chunk_header)
-
-            f.write(chunk_data)
-            header.wave_size += len(chunk_data)
-
-        #now that the chunks are done, go back and re-write the header
-        f.seek(0, 0)
-        f.write(cls.WAVE_HEADER.build(header))
-        f.close()
+            #once the chunks are done, go back and re-write the header
+            wave.seek(4, 0)
+            wave_file.write(32, total_size)
+        finally:
+            wave_file.close()
 
     def pcm_split(self):
         """Returns a pair of data strings before and after PCM data.
@@ -942,6 +919,10 @@ class WaveAudio(WaveContainer):
                 else:
                     current_block.build("4b 32u", (chunk_id, chunk_size))
                     total_size -= 8
+
+                #round up chunk size to 16 bits
+                if (chunk_size % 2):
+                    chunk_size += 1
 
                 #and transfer the full content of non-data chunks
                 if (chunk_id != "data"):

@@ -455,7 +455,7 @@ br_ftell(BitstreamReader *bs) {
 
 /*Called by the read functions if one attempts to read past
   the end of the stream.
-  If an exception stack is available (with bs_try),
+  If an exception stack is available (with br_try),
   this jumps to that location via longjmp(3).
   If not, this prints an error message and performs an unconditional exit.
 */
@@ -823,6 +823,15 @@ bw_open_recorder(bs_endianness endianness);
 
 void
 bw_free(BitstreamWriter* bs);
+
+
+/*Called by the write functions if a write failure is indicated.
+  If an exception is available (with bw_try),
+  this jumps to that location via longjmp(3).
+  If not, this prints an error message and performs an unconditional exit.*/
+void
+bw_abort(BitstreamWriter* bs);
+
 
 /*adds a callback function, which is called on every byte written
   the function's arguments are the written byte and a generic

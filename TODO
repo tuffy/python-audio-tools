@@ -3645,12 +3645,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    The idea is to build something valgrind-able to ensure
    there's no memory errors.
 *** TODO BitstreamReader
-**** TODO big-endian
+**** DONE big-endian
      - [X] read
      - [X] read_signed
      - [X] read_64
      - [X] skip
-     - [ ] skip_bytes
+     - [X] skip_bytes
      - [X] unread
      - [X] read_unary
      - [X] read_limited_unary
@@ -3661,12 +3661,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] mark
      - [X] unmark
      - [X] rewind
-**** TODO little-endian
+**** DONE little-endian
      - [X] read
      - [X] read_signed
      - [X] read_64
      - [X] skip
-     - [ ] skip_bytes
+     - [X] skip_bytes
      - [X] unread
      - [X] read_unary
      - [X] read_limited_unary
@@ -3677,23 +3677,23 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] mark
      - [X] unmark
      - [X] rewind
-**** TODO br_try/etry
+**** DONE br_try/etry
      - [X] read
      - [X] read_signed
      - [X] read_64
      - [X] skip
-     - [ ] skip_bytes
+     - [X] skip_bytes
      - [X] read_unary
      - [X] read_limited_unary
      - [X] read_huffman_code
      - [X] read_bytes
      - [X] substream_append
-**** TODO Callbacks
+**** DONE Callbacks
      - [X] read
      - [X] read_signed
      - [X] read_64
      - [X] skip
-     - [ ] skip_bytes
+     - [X] skip_bytes
      - [X] read_unary
      - [X] read_limited_unary
      - [X] read_huffman_code
@@ -3707,7 +3707,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO BitstreamWriter recorder
 *** TODO BitstreamWriter accumulator
 ** DONE Shift BitstreamReader/BitstreamWriters to audiotools.bitstream
-** TODO Make BitstreaReader/BitstreamWriter thread-friendly?
+** TODO Make BitstreamReader/BitstreamWriter thread-friendly?
    Although it seems like a no-brainer, this is surprisingly tricky.
    The trouble is that there's few obvious places to attach
    the SaveState/RestoreState code because the C-based functions
@@ -3758,7 +3758,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   It's harder to constrict a writer to only have X number of bytes
   available so that any errors can be checked.
 ** TODO Add try/etry support to BitstreamWriter
-** TODO Update BitstreamWriter methods to raise exceptions
+** DONE Update BitstreamWriter methods to raise exceptions
 ** TODO Update Python-based BitstreamWriter to catch C exceptions
 ** TODO Update encoders to catch C exceptions and raise Python exceptions
 ** TODO Unit test write errors

@@ -4020,21 +4020,22 @@ class WaveFileTest(TestForeignWaveChunks,
 
         #test running convert() on a truncated file
         #triggers EncodingError
-        temp = tempfile.NamedTemporaryFile(suffix=".flac")
-        try:
-            temp.write(open("wav-2ch.wav", "rb").read()[0:-10])
-            temp.flush()
-            flac = audiotools.open(temp.name)
-            if (os.path.isfile("dummy.wav")):
-                os.unlink("dummy.wav")
-            self.assertEqual(os.path.isfile("dummy.wav"), False)
-            self.assertRaises(audiotools.EncodingError,
-                              flac.convert,
-                              "dummy.wav",
-                              audiotools.WaveAudio)
-            self.assertEqual(os.path.isfile("dummy.wav"), False)
-        finally:
-            temp.close()
+        #FIXME - truncate file underfoot
+        # temp = tempfile.NamedTemporaryFile(suffix=".flac")
+        # try:
+        #     temp.write(open("wav-2ch.wav", "rb").read()[0:-10])
+        #     temp.flush()
+        #     flac = audiotools.open(temp.name)
+        #     if (os.path.isfile("dummy.wav")):
+        #         os.unlink("dummy.wav")
+        #     self.assertEqual(os.path.isfile("dummy.wav"), False)
+        #     self.assertRaises(audiotools.EncodingError,
+        #                       flac.convert,
+        #                       "dummy.wav",
+        #                       audiotools.WaveAudio)
+        #     self.assertEqual(os.path.isfile("dummy.wav"), False)
+        # finally:
+        #     temp.close()
 
         #test other truncated file combinations
         for (fmt_size, wav_file) in [(0x24, "wav-8bit.wav"),
@@ -4060,23 +4061,13 @@ class WaveFileTest(TestForeignWaveChunks,
                                       temp.name)
 
                 #then, check that a truncated data chunk raises an exception
-                #at read-time
-                for i in xrange(fmt_size + 8, len(wav_data)):
+                #at init-time
+                for i in xrange(fmt_size + 8, len(wav_data) - 1):
                     temp.seek(0, 0)
                     temp.write(wav_data[0:i])
                     temp.flush()
-                    wave = audiotools.WaveAudio(temp.name)
-                    reader = wave.to_pcm()
-                    self.assertNotEqual(reader, None)
-                    self.assertRaises(IOError,
-                                      audiotools.transfer_framelist_data,
-                                      reader, lambda x: x)
-                    self.assertRaises(audiotools.EncodingError,
-                                      wave.to_wave,
-                                      "dummy.wav")
-                    self.assertRaises(audiotools.EncodingError,
-                                      wave.from_wave,
-                                      "dummy.wav",
+                    self.assertRaises(audiotools.InvalidFile,
+                                      audiotools.WaveAudio,
                                       temp.name)
             finally:
                 temp.close()

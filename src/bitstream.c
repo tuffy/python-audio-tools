@@ -256,7 +256,6 @@ br_abort(BitstreamReader *bs)
     }
 }
 
-
 jmp_buf*
 br_try(BitstreamReader *bs)
 {
@@ -814,7 +813,7 @@ br_read_signed_bits64_le(BitstreamReader* bs, unsigned int count)
     }
 }
 
-
+#define SKIP_BUFFER_SIZE 4096
 
 /*the skip_bits functions differ from the read_bits functions
   in that they have no accumulator
@@ -827,7 +826,7 @@ br_skip_bits_f_be(BitstreamReader* bs, unsigned int count)
     int byte;
     struct bs_callback* callback;
     int output_size;
-    static uint8_t dummy[1024];
+    static uint8_t dummy[SKIP_BUFFER_SIZE];
     unsigned int to_read;
 
     /*handle a common case where the input is byte-aligned,
@@ -835,7 +834,7 @@ br_skip_bits_f_be(BitstreamReader* bs, unsigned int count)
       and there are no set callbacks to consider*/
     if ((context == 0) && ((count % 8) == 0) && (bs->callbacks == NULL)) {
         while (count > 0) {
-            to_read = MIN(1024, count / 8);
+            to_read = MIN(SKIP_BUFFER_SIZE, count / 8);
             if (fread(dummy, sizeof(uint8_t), to_read, bs->input.file) !=
                 to_read)
                 br_abort(bs);
@@ -875,7 +874,7 @@ br_skip_bits_f_le(BitstreamReader* bs, unsigned int count)
     int byte;
     struct bs_callback* callback;
     int output_size;
-    static uint8_t dummy[1024];
+    static uint8_t dummy[SKIP_BUFFER_SIZE];
     unsigned int to_read;
 
     /*handle a common case where the input is byte-aligned,
@@ -883,7 +882,7 @@ br_skip_bits_f_le(BitstreamReader* bs, unsigned int count)
       and there are no set callbacks to consider*/
     if ((context == 0) && ((count % 8) == 0) && (bs->callbacks == NULL)) {
         while (count > 0) {
-            to_read = MIN(1024, count / 8);
+            to_read = MIN(SKIP_BUFFER_SIZE, count / 8);
             if (fread(dummy, sizeof(uint8_t), to_read, bs->input.file) !=
                 to_read)
                 br_abort(bs);
@@ -1062,13 +1061,13 @@ br_skip_bits_p_le(BitstreamReader* bs, unsigned int count)
 void
 br_skip_bytes(BitstreamReader* bs, unsigned int count)
 {
-    unsigned int bytes_to_write;
+    unsigned int bytes_to_skip;
 
     /*try to generate large, byte-aligned chunks of bit skips*/
     while (count > 0) {
-        bytes_to_write = MIN(0x10000000, count);
-        bs->skip(bs, bytes_to_write * 8);
-        count -= bytes_to_write;
+        bytes_to_skip = MIN(0x10000000, count);
+        bs->skip(bs, bytes_to_skip * 8);
+        count -= bytes_to_skip;
     }
 }
 
@@ -2344,7 +2343,6 @@ br_parse(struct BitstreamReader_s* stream, char* format, ...)
             break;
         }
     }
-
     va_end(ap);
 }
 
@@ -2552,6 +2550,14 @@ br_close_stream_p(BitstreamReader *bs)
 #endif
 
 
+void
+bw_abort(BitstreamWriter *bs)
+{
+    fprintf(stderr, "EOF encountered, aborting\n");
+    abort();
+}
+
+
 
 BitstreamWriter*
 bw_open(FILE *f, bs_endianness endianness)
@@ -2756,7 +2762,9 @@ bw_dump_bytes(BitstreamWriter* target, uint8_t* buffer, unsigned int total) {
         /*perform faster dumping if target is byte-aligned*/
         switch (target->type) {
         case BW_FILE:
-            fwrite(buffer, sizeof(uint8_t), total, target->output.file);
+            if (fwrite(buffer, sizeof(uint8_t),
+                       total, target->output.file) != total)
+                bw_abort(target);
             break;
         case BW_RECORDER:
             target_buffer = buf_extend(target->output.buffer, total);
@@ -2887,7 +2895,8 @@ bw_write_bits_f_be(BitstreamWriter* bs, unsigned int count, unsigned int value)
           and remove them from the buffer*/
         if (bs->buffer_size >= 8) {
             byte = (bs->buffer >> (bs->buffer_size - 8)) & 0xFF;
-            fputc(byte, bs->output.file);
+            if (putc(byte, bs->output.file) == EOF)
+                bw_abort(bs);
             for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
@@ -2926,7 +2935,8 @@ bw_write_bits_f_le(BitstreamWriter* bs, unsigned int count, unsigned int value)
           and remove them from the buffer*/
         if (bs->buffer_size >= 8) {
             byte = bs->buffer & 0xFF;
-            fputc(byte, bs->output.file);
+            if (putc(byte, bs->output.file) == EOF)
+                bw_abort(bs);
             for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
@@ -3036,7 +3046,8 @@ bw_write_bytes_f(BitstreamWriter* bs, const uint8_t* bytes,
 
     if (bs->buffer_size == 0) {
         /*stream is byte aligned, so perform optimized write*/
-        fwrite(bytes, sizeof(uint8_t), count, bs->output.file);
+        if (fwrite(bytes, sizeof(uint8_t), count, bs->output.file) != count)
+            bw_abort(bs);
 
         /*perform callbacks on the written bytes*/
         for (callback = bs->callbacks;
@@ -3137,7 +3148,8 @@ bw_write_bits64_f_be(BitstreamWriter* bs, unsigned int count, uint64_t value)
           write a byte and remove it from the buffer*/
         if (bs->buffer_size >= 8) {
             byte = (bs->buffer >> (bs->buffer_size - 8)) & 0xFF;
-            fputc(byte, bs->output.file);
+            if (putc(byte, bs->output.file) == EOF)
+                bw_abort(bs);
             for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
@@ -3175,7 +3187,8 @@ bw_write_bits64_f_le(BitstreamWriter* bs, unsigned int count, uint64_t value)
           write a byte and remove it from the buffer*/
         if (bs->buffer_size >= 8) {
             byte = bs->buffer & 0xFF;
-            fputc(byte, bs->output.file);
+            if (putc(byte, bs->output.file) == EOF)
+                bw_abort(bs);
             for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
@@ -3951,6 +3964,30 @@ void test_big_endian_reader(BitstreamReader* reader,
     assert(reader->read(reader, 19) == 0x53BC1);
 
     reader->rewind(reader);
+    reader->skip_bytes(reader, 1);
+    assert(reader->read(reader, 4) == 0xE);
+    reader->rewind(reader);
+    reader->skip_bytes(reader, 2);
+    assert(reader->read(reader, 4) == 0x3);
+    reader->rewind(reader);
+    reader->skip_bytes(reader, 3);
+    assert(reader->read(reader, 4) == 0xC);
+
+    reader->rewind(reader);
+    assert(reader->read(reader, 1) == 1);
+    reader->skip_bytes(reader, 1);
+    assert(reader->read(reader, 4) == 0xD);
+    reader->rewind(reader);
+    assert(reader->read(reader, 1) == 1);
+    reader->skip_bytes(reader, 2);
+    assert(reader->read(reader, 4) == 0x7);
+    reader->rewind(reader);
+    assert(reader->read(reader, 1) == 1);
+    reader->skip_bytes(reader, 3);
+    assert(reader->read(reader, 4) == 0x8);
+    reader->rewind(reader);
+
+    reader->rewind(reader);
     assert(reader->read(reader, 1) == 1);
     bit = reader->read(reader, 1);
     assert(bit == 0);
@@ -4094,6 +4131,30 @@ void test_little_endian_reader(BitstreamReader* reader,
     assert(reader->read(reader, 5) == 0x0D);
     reader->skip(reader, 3);
     assert(reader->read(reader, 19) == 0x609DF);
+
+    reader->rewind(reader);
+    reader->skip_bytes(reader, 1);
+    assert(reader->read(reader, 4) == 0xD);
+    reader->rewind(reader);
+    reader->skip_bytes(reader, 2);
+    assert(reader->read(reader, 4) == 0xB);
+    reader->rewind(reader);
+    reader->skip_bytes(reader, 3);
+    assert(reader->read(reader, 4) == 0x1);
+
+    reader->rewind(reader);
+    assert(reader->read(reader, 1) == 1);
+    reader->skip_bytes(reader, 1);
+    assert(reader->read(reader, 4) == 0x6);
+    reader->rewind(reader);
+    assert(reader->read(reader, 1) == 1);
+    reader->skip_bytes(reader, 2);
+    assert(reader->read(reader, 4) == 0xD);
+    reader->rewind(reader);
+    assert(reader->read(reader, 1) == 1);
+    reader->skip_bytes(reader, 3);
+    assert(reader->read(reader, 4) == 0x0);
+    reader->rewind(reader);
 
     reader->rewind(reader);
     assert(reader->read(reader, 1) == 1);
@@ -4265,6 +4326,13 @@ void test_try(BitstreamReader* reader,
         reader->rewind(reader);
     }
     if (!setjmp(*br_try(reader))) {
+        reader->skip_bytes(reader, 1);
+        assert(0);
+    } else {
+        br_etry(reader);
+        reader->rewind(reader);
+    }
+    if (!setjmp(*br_try(reader))) {
         reader->read_unary(reader, 0);
         assert(0);
     } else {
@@ -4401,6 +4469,13 @@ void test_callbacks_reader(BitstreamReader* reader,
     byte_count = 0;
     for (i = 0; i < 8; i++)
         reader->skip(reader, 4);
+    assert(byte_count == 4);
+    reader->rewind(reader);
+
+    /*skip_bytes*/
+    byte_count = 0;
+    for (i = 0; i < 2; i++)
+        reader->skip_bytes(reader, 2);
     assert(byte_count == 4);
     reader->rewind(reader);
 
