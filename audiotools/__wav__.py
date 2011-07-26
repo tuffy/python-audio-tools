@@ -172,6 +172,10 @@ class WaveAudio(WaveContainer):
 
         try:
             wave_file = BitstreamReader(open(filename, 'rb'), 1)
+        except IOError, msg:
+            raise InvalidWave(str(msg))
+
+        try:
             try:
                 (riff, total_size, wave) = wave_file.parse("4b 32u 4b")
                 if (riff != 'RIFF'):
@@ -628,7 +632,8 @@ class WaveAudio(WaveContainer):
     def chunks(self):
         """Yields (chunk_id, chunk_data) tuples.
 
-        chunk_id and chunk_data are both binary strings."""
+        chunk_id is a binary strings
+        chunk_data is a BitstreamReader"""
 
         from .bitstream import BitstreamReader
 

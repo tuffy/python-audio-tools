@@ -3724,6 +3724,16 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   removing it should smooth that inevitable transition.
 ** TODO __accuraterip__.py
 ** TODO __aiff__.py
+   - [ ] chunks
+   - [ ] comm_chunk
+   - [ ] chunk_files
+   - [ ] get_metadata
+   - [ ] set_metadata
+   - [ ] delete_metadata
+   - [ ] to_pcm
+   - [ ] from_pcm
+   - [ ] pcm_split
+   - [ ] aiff_from_chunks
 ** TODO __ape__.py
 ** TODO __au__.py
 ** DONE cue.py
@@ -3731,7 +3741,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE __flac__.py
 ** TODO __freedb__.py
 ** TODO __id3__.py
-** TODO __id3v1__.py
+** DONE __id3v1__.py
 ** TODO __image__.py
 ** DONE __init__.py
 ** TODO __m4a__.py

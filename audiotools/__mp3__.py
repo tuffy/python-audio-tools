@@ -474,21 +474,22 @@ class MP3Audio(AudioFile):
         f = file(self.filename, "rb")
         try:
             if (f.read(3) != "ID3"):      # no ID3v2 tag, try ID3v1
-                id3v1 = ID3v1Comment.read_id3v1_comment(self.filename)
-                if (id3v1[-1] == -1):     # no ID3v1 either
+                try:
+                    # no ID3v2, yes ID3v1
+                    return ID3v1Comment.parse(f)
+                except ValueError:
+                    # no ID3v2, no ID3v1
                     return None
-                else:
-                    return ID3v1Comment(id3v1)
             else:
                 id3v2 = ID3v2Comment.read_id3v2_comment(self.filename)
 
-                id3v1 = ID3v1Comment.read_id3v1_comment(self.filename)
-                if (id3v1[-1] == -1):      # only ID3v2, no ID3v1
+                try:
+                    # yes IDv2, yes ID3v1
+                    return ID3CommentPair(id3v2,
+                                          ID3v1Comment.parse(f))
+                except ValueError:
+                    # yes ID3v2, no ID3v1
                     return id3v2
-                else:                      # both ID3v2 and ID3v1
-                    return ID3CommentPair(
-                        id3v2,
-                        ID3v1Comment(id3v1))
         finally:
             f.close()
 
@@ -538,21 +539,18 @@ class MP3Audio(AudioFile):
         mp3_data = f.read(data_end - data_start)
         f.close()
 
-        if (isinstance(metadata, ID3CommentPair)):
-            id3v2 = metadata.id3v2.build()
-            id3v1 = metadata.id3v1.build_tag()
-        elif (isinstance(metadata, ID3v2Comment)):
-            id3v2 = metadata.build()
-            id3v1 = ""
-        elif (isinstance(metadata, ID3v1Comment)):
-            id3v2 = ""
-            id3v1 = metadata.build_tag()
-
         #write id3v2 + data + id3v1 to file
         f = file(self.filename, "wb")
-        f.write(id3v2)
-        f.write(mp3_data)
-        f.write(id3v1)
+        if (isinstance(metadata, ID3CommentPair)):
+            f.write(metadata.id3v2.build())
+            f.write(mp3_data)
+            metadata.id3v1.build(f)
+        elif (isinstance(metadata, ID3v2Comment)):
+            f.write(metadata.build())
+            f.write(mp3_data)
+        elif (isinstance(metadata, ID3v1Comment)):
+            f.write(mp3_data)
+            metadata.build(f)
         f.close()
 
     def delete_metadata(self):

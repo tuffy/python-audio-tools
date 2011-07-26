@@ -74,6 +74,33 @@ class IEEE_Extended(Con.Adapter):
                 f = obj.mantissa * (2.0 ** (obj.exponent - 16383 - 63))
                 return f if not obj.signed else -f
 
+def parse_ieee_extended(bitstream):
+    (signed, exponent, mantissa) = bitstream.parse("1u 15u 64U")
+    if ((exponent == 0) and (mantissa == 0)):
+        return 0
+    elif (exponent == 0x7FFF):
+        return 1.79769313486231e+308
+    else:
+        f = mantissa * (2.0 ** (exponent - 16383 - 63))
+        return f if not signed else -f
+
+def build_ieee_extended(bitstream, value):
+    if (value < 0):
+        signed = 1
+        value = abs(value)
+    else:
+        signed = 0
+
+    (fmant, exponent) = math.frexp(value)
+    if ((exponent > 16384) or (fmant >= 1)):
+        exponent = 0x7FFF
+        mantissa = 0
+    else:
+        exponent += 16382
+        mantissa = fmant * (2 ** 64)
+
+    bitstream.build("1u 15u 64U", (signed, exponent, mantissa))
+
 #######################
 #AIFF
 #######################
@@ -173,40 +200,74 @@ class AiffAudio(AiffContainer):
 
         self.filename = filename
 
-        comm_found = False
-        ssnd_found = False
-        try:
-            f = open(self.filename, 'rb')
-            for (chunk_id, chunk_length, chunk_offset) in self.chunks():
-                if (chunk_id == 'COMM'):
-                    f.seek(chunk_offset, 0)
-                    comm = self.COMM_CHUNK.parse(f.read(chunk_length))
-                    self.__channels__ = comm.channels
-                    self.__total_sample_frames__ = comm.total_sample_frames
-                    self.__sample_size__ = comm.sample_size
-                    self.__sample_rate__ = int(comm.sample_rate)
-                    comm_found = True
-                elif (chunk_id == 'SSND'):
-                    f.seek(chunk_offset, 0)
-                    ssnd = self.SSND_ALIGN.parse_stream(f)
-                    ssnd_found = True
-                elif (not set(chunk_id).issubset(self.PRINTABLE_ASCII)):
-                    raise InvalidAIFF(_("chunk header not ASCII"))
+        self.__channels__ = 0
+        self.__bits_per_sample__ = 0
+        self.__sample_rate__ = 0
+        self.__channel_mask__ = ChannelMask(0)
+        self.__total_sample_frames__ = 0
 
-            if (not comm_found):
-                raise InvalidAIFF(_("no COMM chunk found"))
-            if (not ssnd_found):
-                raise InvalidAIFF(_("no SSND chunk found"))
-            f.close()
+        from .bitstream import BitstreamReader
+
+        try:
+            aiff_file = BitstreamReader(open(filename, 'rb'), 0)
         except IOError, msg:
             raise InvalidAIFF(str(msg))
-        except Con.FieldError:
-            raise InvalidAIFF(_("invalid COMM or SSND chunk"))
+
+        try:
+            (form, total_size, aiff) = aiff_file.parse("4b 32u 4b")
+            if (form != 'FORM'):
+                raise InvalidAIFF(_(u"Not an AIFF file"))
+            elif (aiff != 'AIFF'):
+                raise InvalidAIFF(_(u"Invalid AIFF file"))
+            else:
+                total_size -= 4
+
+            while (total_size > 0):
+                (chunk_id, chunk_size) = aiff_file.parse("4b 32u")
+                total_size -= 8
+                if (chunk_id == 'COMM'):
+                    (self.__channels__,
+                     self.__total_sample_frames__,
+                     self.__bits_per_sample__) = aiff_file.parse("16u 32u 16u")
+                    self.__sample_rate__ = int(parse_ieee_extended(aiff_file))
+
+                    #this unusual arrangement is taken from
+                    #the AIFF-C specification
+                    if (self.__channels__ <= 2):
+                        self.__channel_mask__ = ChannelMask.from_channels(
+                            self.__channels__)
+                    elif (self.__channels__ == 3):
+                        self.__channel_mask__ = ChannelMask.from_fields(
+                            front_left=True, front_right=True,
+                            front_center=True)
+                    elif (self.__channels__ == 4):
+                        self.__channel_mask__ = ChannelMask.from_fields(
+                            front_left=True, front_right=True,
+                            back_left=True, back_right=True)
+                    elif (self.__channels__ == 6):
+                        self.__channel_mask__ = ChannelMask.from_fields(
+                            front_left=True, side_left=True,
+                            front_center=True, front_right=True,
+                            side_right=True, back_center=True)
+                    else:
+                        self.__channel_mask__ = ChannelMask(0)
+                    break
+                else:
+                    aiff_file.skip_bytes(chunk_size)
+                    total_size -= chunk_size
+                    if (chunk_size % 2):
+                        aiff_file.skip(8)
+                        total_size -= 1
+            else:
+                raise InvalidAIFF(_(u"COMM chunk not found"))
+
+        finally:
+            aiff_file.close()
 
     def bits_per_sample(self):
         """Returns an integer number of bits-per-sample this track contains."""
 
-        return self.__sample_size__
+        return self.__bits_per_sample__
 
     def channels(self):
         """Returns an integer number of channels this track contains."""
@@ -216,23 +277,7 @@ class AiffAudio(AiffContainer):
     def channel_mask(self):
         """Returns a ChannelMask object of this track's channel layout."""
 
-        #this unusual arrangement is taken from the AIFF specification
-        if (self.channels() <= 2):
-            return ChannelMask.from_channels(self.channels())
-        elif (self.channels() == 3):
-            return ChannelMask.from_fields(
-                front_left=True, front_right=True, front_center=True)
-        elif (self.channels() == 4):
-            return ChannelMask.from_fields(
-                front_left=True, front_right=True,
-                back_left=True, back_right=True)
-        elif (self.channels() == 6):
-            return ChannelMask.from_fields(
-                front_left=True, side_left=True,
-                front_center=True, front_right=True,
-                side_right=True, back_center=True)
-        else:
-            return ChannelMask(0)
+        return self.__channel_mask__
 
     def lossless(self):
         """Returns True."""

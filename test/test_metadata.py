@@ -847,7 +847,13 @@ class ID3v1MetaData(MetaDataTest):
                                   audiotools.MP2Audio]
 
     def empty_metadata(self):
-        return self.metadata_class((u"", u"", u"", u"", u"", 0))
+        return self.metadata_class(track_name=u"",
+                                   artist_name=u"",
+                                   album_name=u"",
+                                   year=u"",
+                                   comment=u"",
+                                   track_number=0,
+                                   genre=0)
 
     @METADATA_ID3V1
     def test_supports_images(self):
@@ -940,12 +946,12 @@ class ID3v1MetaData(MetaDataTest):
 
     @METADATA_ID3V1
     def test_field_mapping(self):
-        mapping = [('track_name', 0, u'a'),
-                   ('artist_name', 1, u'b'),
-                   ('album_name', 2, u'c'),
-                   ('year', 3, u'1234'),
-                   ('comment', 4, u'd'),
-                   ('track_number', 5, 1)]
+        mapping = [('track_name', u'a'),
+                   ('artist_name', u'b'),
+                   ('album_name', u'c'),
+                   ('year', u'1234'),
+                   ('comment', u'd'),
+                   ('track_number', 1)]
 
         for format in self.supported_formats:
             temp_file = tempfile.NamedTemporaryFile(suffix="." + format.SUFFIX)
@@ -954,53 +960,69 @@ class ID3v1MetaData(MetaDataTest):
 
                 #ensure that setting a class field
                 #updates its corresponding low-level implementation
-                for (field, key, value) in mapping:
+                for (field, value) in mapping:
                     track.delete_metadata()
                     metadata = self.empty_metadata()
                     setattr(metadata, field, value)
                     self.assertEqual(getattr(metadata, field), value)
-                    self.assertEqual(unicode(metadata[key]), unicode(value))
                     track.set_metadata(metadata)
                     metadata2 = track.get_metadata()
                     self.assertEqual(getattr(metadata2, field), value)
-                    self.assertEqual(unicode(metadata2[key]), unicode(value))
 
-                #ensure that updating the low-level implementation
-                #is reflected in the class field
-                for (field, key, value) in mapping:
-                    track.delete_metadata()
-                    metadata = self.empty_metadata()
-                    metadata[key] = value
-                    self.assertEqual(getattr(metadata, field), value)
-                    self.assertEqual(unicode(metadata[key]), unicode(value))
-                    track.set_metadata(metadata)
-                    metadata2 = track.get_metadata()
-                    self.assertEqual(getattr(metadata, field), value)
-                    self.assertEqual(unicode(metadata[key]), unicode(value))
+                #ID3v1 no longer has a low-level implementation
+                #since it builds and parses directly on strings
             finally:
                 temp_file.close()
 
     @METADATA_ID3V1
     def test_clean(self):
         #check trailing whitespace
-        metadata = audiotools.ID3v1Comment((u"Title ", u"", u"", u"", u"", 1))
+        metadata = audiotools.ID3v1Comment(
+            track_name=u"Title ",
+            artist_name=u"",
+            album_name=u"",
+            year=u"",
+            comment=u"",
+            track_number=1,
+            genre=0)
         results = []
         cleaned = metadata.clean(results)
         self.assertEqual(results,
                          [_(u"removed trailing whitespace from title")])
         self.assertEqual(
             cleaned,
-            audiotools.ID3v1Comment((u"Title", u"", u"", u"", u"", 1)))
+            audiotools.ID3v1Comment(
+                track_name=u"Title",
+                artist_name=u"",
+                album_name=u"",
+                year=u"",
+                comment=u"",
+                track_number=1,
+                genre=0))
 
         #check leading whitespace
-        metadata = audiotools.ID3v1Comment((u" Title", u"", u"", u"", u"", 1))
+        metadata = audiotools.ID3v1Comment(
+                track_name=u" Title",
+                artist_name=u"",
+                album_name=u"",
+                year=u"",
+                comment=u"",
+                track_number=1,
+                genre=0)
         results = []
         cleaned = metadata.clean(results)
         self.assertEqual(results,
                          [_(u"removed leading whitespace from title")])
         self.assertEqual(
             cleaned,
-            audiotools.ID3v1Comment((u"Title", u"", u"", u"", u"", 1)))
+            audiotools.ID3v1Comment(
+                    track_name=u"Title",
+                    artist_name=u"",
+                    album_name=u"",
+                    year=u"",
+                    comment=u"",
+                    track_number=1,
+                    genre=0))
 
         #ID3v1 has no empty fields, image data or leading zeroes
         #so those can be safely ignored
