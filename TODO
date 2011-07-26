@@ -3746,7 +3746,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE toc.py
 ** TODO __vorbis__.py
 ** TODO __vorbiscomment__.py
-** TODO __wav__.py
+** DONE __wav__.py
 ** DONE __wavpack__.py
 * TODO Handle write errors more gracefully
   Just as the BitstreamReader uses an exception mechanism to detect

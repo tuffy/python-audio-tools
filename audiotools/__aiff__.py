@@ -166,7 +166,7 @@ class AiffAudio(AiffContainer):
                             Con.UBInt32("offset"),
                             Con.UBInt32("blocksize"))
 
-    PRINTABLE_ASCII = set([chr(i) for i in xrange(0x20, 0x7E + 1)])
+    PRINTABLE_ASCII = frozenset([chr(i) for i in xrange(0x20, 0x7E + 1)])
 
     def __init__(self, filename):
         """filename is a plain string."""

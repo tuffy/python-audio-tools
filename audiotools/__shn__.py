@@ -105,12 +105,12 @@ class ShortenAudio(WaveContainer, AiffContainer):
             if (self.__format__ is WaveAudio):
                 for (chunk_id, chunk_data) in self.__wave_chunks__():
                     if (chunk_id == 'fmt '):
-                        fmt_chunk = WaveAudio.FMT_CHUNK.parse(chunk_data)
-                        self.__sample_rate__ = fmt_chunk.sample_rate
-                        if (fmt_chunk.compression == 0xFFFE):
-                            self.__channel_mask__ = \
-                                WaveAudio.fmt_chunk_to_channel_mask(
-                                fmt_chunk.channel_mask)
+                        (compression,
+                         self.__sample_rate__) = chunk_data.parse(
+                            "16u 16p 32u 32p 16p 16p")
+                        if (compression == 0xFFFE):
+                            self.__channel_mask__ = ChannelMask(
+                                chunk_data.parse("16p 16p 32u 16P")[0])
             elif (self.__format__ is AiffAudio):
                 for (chunk_id, chunk_data) in self.__aiff_chunks__():
                     if (chunk_id == 'COMM'):
@@ -118,26 +118,34 @@ class ShortenAudio(WaveContainer, AiffContainer):
                         self.__sample_rate__ = comm_chunk.sample_rate
 
     def __wave_chunks__(self):
+        from .bitstream import BitstreamReader
+
         total_size = sum([len(block) for block in self.__blocks__
                           if block is not None])
-        wave_data = cStringIO.StringIO("".join([block for block in
-                                                self.__blocks__
-                                                if block is not None]))
+        wave_data = BitstreamReader(
+            cStringIO.StringIO("".join([block for block in
+                                        self.__blocks__
+                                        if block is not None])), 1)
 
-        wave_data.read(12)  # skip the RIFFxxxxWAVE header data
+        wave_data.skip_bytes(12)  # skip the RIFFxxxxWAVE header data
         total_size -= 12
 
         #iterate over all the non-data chunks
         while (total_size > 0):
-            header = WaveAudio.CHUNK_HEADER.parse_stream(wave_data)
+            (chunk_id, chunk_size) = wave_data.parse("4b 32u")
             total_size -= 8
-            if (header.chunk_id != 'data'):
-                yield (header.chunk_id, wave_data.read(header.chunk_length))
-                total_size -= header.chunk_length
+            if (chunk_id != 'data'):
+                yield (chunk_id, wave_data.substream(chunk_size))
+                total_size -= chunk_size
+                if (chunk_size % 2):
+                    wave_data.skip(8)
+                    total_size -= 1
             else:
                 continue
 
     def __aiff_chunks__(self):
+        #FIXME - convert this to BitstreamReader
+
         total_size = sum([len(block) for block in self.__blocks__
                           if block is not None])
         aiff_data = cStringIO.StringIO("".join([block for block in

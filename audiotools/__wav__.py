@@ -19,7 +19,7 @@
 
 
 from audiotools import (AudioFile, InvalidFile, ChannelMask, PCMReader,
-                        Con, BUFFER_SIZE, transfer_data,
+                        BUFFER_SIZE, transfer_data,
                         transfer_framelist_data,
                         __capped_stream_reader__, FILENAME_FORMAT,
                         BIN, open_files, os, subprocess, cStringIO,
@@ -144,187 +144,11 @@ class InvalidWave(InvalidFile):
     pass
 
 
-def __blank_channel_mask__():
-    c = Con.Container(undefined=0, undefined2=0)
-
-    for attr in ('front_right_of_center',
-                 'front_left_of_center',
-                 'rear_right',
-                 'rear_left',
-                 'LFE',
-                 'front_center',
-                 'front_right',
-                 'front_left',
-                 'top_back_left',
-                 'top_front_right',
-                 'top_front_center',
-                 'top_front_left',
-                 'top_center',
-                 'side_right',
-                 'side_left',
-                 'rear_center',
-                 'top_back_right',
-                 'top_back_center'):
-        setattr(c, attr, False)
-
-    return c
-
-
-def __channel_mask__(filename, mask, channel_count):
-    mask = ChannelMask(mask)
-    c = __blank_channel_mask__()
-
-    if (mask.defined()):
-        attr_map = {"front_left": 'front_left',
-                    "front_right": 'front_right',
-                    "front_center": 'front_center',
-                    "low_frequency": 'LFE',
-                    "back_left": 'rear_left',
-                    "back_right": 'rear_right',
-                    "front_left_of_center": 'front_left_of_center',
-                    "front_right_of_center": 'front_right_of_center',
-                    "back_center": 'rear_center',
-                    "side_left": 'side_left',
-                    "side_right": 'side_right',
-                    "top_center": 'top_center',
-                    "top_front_left": 'top_front_left',
-                    "top_front_center": 'top_front_center',
-                    "top_front_right": 'top_front_right',
-                    "top_back_left": 'top_back_left',
-                    "top_back_center": 'top_back_center',
-                    "top_back_right": 'top_back_right'}
-
-        for channel in mask.channels():
-            setattr(c, attr_map[channel], True)
-    else:
-        attr_map = ['front_left',
-                    'front_right',
-                    'front_center',
-                    'LFE',
-                    'rear_left',
-                    'rear_right',
-                    'front_left_of_center',
-                    'front_right_of_center',
-                    'rear_center',
-                    'side_left',
-                    'side_right',
-                    'top_center',
-                    'top_front_left',
-                    'top_front_center',
-                    'top_front_right',
-                    'top_back_left',
-                    'top_back_center',
-                    'top_back_right']
-        if (channel_count <= len(attr_map)):
-            for channel in attr_map[0:channel_count]:
-                setattr(c, channel, True)
-        else:
-            raise UnsupportedChannelMask(filename, mask)
-
-    return c
-
-
-class __ASCII_String__(Con.Validator):
-    """Validates that its data string is printable ASCII."""
-
-    PRINTABLE_ASCII = set([chr(i) for i in xrange(0x20, 0x7E + 1)])
-
-    def _validate(self, obj, context):
-        return set(obj).issubset(self.PRINTABLE_ASCII)
-
-
 class WaveAudio(WaveContainer):
     """A waveform audio file."""
 
     SUFFIX = "wav"
     NAME = SUFFIX
-
-    WAVE_HEADER = Con.Struct("wave_header",
-                             Con.Const(Con.Bytes("wave_id", 4), 'RIFF'),
-                             Con.ULInt32("wave_size"),
-                             Con.Const(Con.Bytes("riff_type", 4), 'WAVE'))
-
-    CHUNK_HEADER = Con.Struct("chunk_header",
-                              __ASCII_String__(Con.Bytes("chunk_id", 4)),
-                              Con.ULInt32("chunk_length"))
-
-    FMT_CHUNK = Con.Struct("fmt_chunk",
-                           Con.ULInt16("compression"),
-                           Con.ULInt16("channels"),
-                           Con.ULInt32("sample_rate"),
-                           Con.ULInt32("bytes_per_second"),
-                           Con.ULInt16("block_align"),
-                           Con.ULInt16("bits_per_sample"),
-                           Con.If(lambda ctx: ctx['compression'] == 0xFFFE,
-                                  Con.Embed(
-                Con.Struct('extensible',
-                           Con.ULInt16('cb_size'),
-                           Con.ULInt16('valid_bits_per_sample'),
-                           Con.BitStruct('channel_mask',
-                                         #0x80
-                                         Con.Flag('front_right_of_center'),
-
-                                         #0x40
-                                         Con.Flag('front_left_of_center'),
-
-                                         #0x20
-                                         Con.Flag('rear_right'),
-
-                                         #0x10
-                                         Con.Flag('rear_left'),
-
-                                         #0x8
-                                         Con.Flag('LFE'),
-
-                                         #0x4
-                                         Con.Flag('front_center'),
-
-                                         #0x2
-                                         Con.Flag('front_right'),
-
-                                         #0x1
-                                         Con.Flag('front_left'),
-
-                                         #0x8000
-                                         Con.Flag('top_back_left'),
-
-                                         #0x4000
-                                         Con.Flag('top_front_right'),
-
-                                         #0x2000
-                                         Con.Flag('top_front_center'),
-
-                                         #0x1000
-                                         Con.Flag('top_front_left'),
-
-                                         #0x800
-                                         Con.Flag('top_center'),
-
-                                         #0x400
-                                         Con.Flag('side_right'),
-
-                                         #0x200
-                                         Con.Flag('side_left'),
-
-                                         #0x100
-                                         Con.Flag('rear_center'),
-
-                                         #0x800000
-                                         #0x400000
-                                         #0x200000
-                                         #0x100000
-                                         #0x80000
-                                         #0x40000
-                                         Con.Bits('undefined', 6),
-
-                                         #0x20000
-                                         Con.Flag('top_back_right'),
-
-                                         #0x10000
-                                         Con.Flag('top_back_center'),
-
-                                         Con.Bits('undefined2', 8)),
-                           Con.String('sub_format', 16)))))
 
     PRINTABLE_ASCII = frozenset([chr(i) for i in xrange(0x20, 0x7E + 1)])
 
@@ -944,63 +768,58 @@ class WaveAudio(WaveContainer):
         Raises an InvalidFile with an error message if there is
         some problem with the file."""
 
+        from .bitstream import BitstreamReader
+
         #RIFF WAVE chunk verification is likely to be so fast
         #that individual calls to progress() are
         #a waste of time.
         if (progress is not None):
             progress(0, 1)
 
-        try:
-            f = open(self.filename, 'rb')
-        except IOError, msg:
-            raise InvalidWave(str(msg))
+        fmt_found = False
+        data_found = False
 
         try:
-            #check the RIFF WAVE header is correct
+            wave_file = BitstreamReader(open(self.filename, 'rb'), 1)
             try:
-                wave_header = self.WAVE_HEADER.parse_stream(f)
-            except (Con.ConstError, Con.FieldError):
-                raise InvalidWave(u"error parsing RIFF WAVE header")
-
-            if (os.path.getsize(self.filename) != (wave_header.wave_size + 8)):
-                raise InvalidWave(u"wave file appears truncated")
-
-            bytes_remaining = wave_header.wave_size - 4
-
-            fmt_chunk_found = data_chunk_found = False
-
-            #bounce through all the chunks
-            while (bytes_remaining > 0):
-                try:
-                    chunk_header = self.CHUNK_HEADER.parse_stream(f)
-                except (Con.FieldError, Con.ValidationError):
-                    raise InvalidWave(u"error parsing chunk header")
-                bytes_remaining -= 8
-
-                if (chunk_header.chunk_id == 'fmt '):
-                    #verify the fmt chunk is sane
-                    try:
-                        fmt_chunk = self.FMT_CHUNK.parse_stream(f)
-                        fmt_chunk_found = True
-                        fmt_chunk_size = len(self.FMT_CHUNK.build(fmt_chunk))
-                        bytes_remaining -= fmt_chunk_size
-                    except Con.FieldError:
-                        raise InvalidWave(u"invalid fmt chunk")
+                (riff, total_size, wave) = wave_file.parse("4b 32u 4b")
+                if (riff != 'RIFF'):
+                    raise InvalidWave(_(u"Not a RIFF WAVE file"))
+                elif (wave != 'WAVE'):
+                    raise InvalidWave(_(u"Invalid RIFF WAVE file"))
                 else:
-                    if (chunk_header.chunk_id == 'data'):
-                        data_chunk_found = True
-                    #verify all other chunks are the correct size
-                    f.seek(chunk_header.chunk_length, 1)
-                    bytes_remaining -= chunk_header.chunk_length
+                    total_size -= 4
 
-            if (fmt_chunk_found and data_chunk_found):
+                while (total_size > 0):
+                    (chunk_id, chunk_size) = wave_file.parse("4b 32u")
+                    if (not frozenset(chunk_id).issubset(self.PRINTABLE_ASCII)):
+                        raise InvalidWave(_(u"Invalid RIFF WAVE chunk ID"))
+                    else:
+                        total_size -= 8
+
+                    if (chunk_id == "fmt "):
+                        if (not fmt_found):
+                            fmt_found = True
+                        else:
+                            raise InvalidWave(_(u"Multiple fmt chunks found"))
+                    elif (chunk_id == "data"):
+                        if (not fmt_found):
+                            raise InvalidWave(_(u"Data chunk found before fmt"))
+                        elif (data_found):
+                            raise InvalidWave(_(u"Multiple data chunks found"))
+                        else:
+                            data_found = True
+
+                    wave_file.skip_bytes(chunk_size)
+                    total_size -= chunk_size
+
+                    if (chunk_size % 2):
+                        wave_file.skip(8)
+                        total_size -= 1
+
                 if (progress is not None):
                     progress(1, 1)
-
-                return True
-            elif (not fmt_chunk_found):
-                raise InvalidWave(u"fmt chunk not found")
-            else:
-                raise InvalidWave(u"data chunk not found")
-        finally:
-            f.close()
+            finally:
+                wave_file.close()
+        except IOError:
+            raise InvalidWave(_(u"I/O error reading file"))
