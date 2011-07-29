@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import (MetaData, Con, re, os, cStringIO,
+from audiotools import (MetaData, re, os, cStringIO,
                         Image, InvalidImage, config)
 import codecs
 import gettext
@@ -78,28 +78,6 @@ class UnsupportedID3v2Version(Exception):
 
     pass
 
-
-class Syncsafe32(Con.Adapter):
-    """An adapter for padding 24 bit values to 32 bits."""
-
-    def __init__(self, name):
-        Con.Adapter.__init__(self,
-                             Con.StrictRepeater(4, Con.UBInt8(name)))
-
-    def _encode(self, value, context):
-        data = []
-        for i in xrange(4):
-            data.append(value & 0x7F)
-            value = value >> 7
-        data.reverse()
-        return data
-
-    def _decode(self, obj, context):
-        i = 0
-        for x in obj:
-            i = (i << 7) | (x & 0x7F)
-        return i
-
 def decode_syncsafe32(reader):
     from operator import or_
     return reduce(or_,
@@ -142,72 +120,6 @@ class __Counter__:
 
     def decrement(self, b):
         self.value -= 1
-
-
-class __24BitsBE__(Con.Adapter):
-    def _encode(self, value, context):
-        return chr((value & 0xFF0000) >> 16) + \
-               chr((value & 0x00FF00) >> 8) + \
-               chr(value & 0x0000FF)
-
-    def _decode(self, obj, context):
-        return (ord(obj[0]) << 16) | (ord(obj[1]) << 8) | ord(obj[2])
-
-
-def UBInt24(name):
-    """An unsigned, big-endian, 24-bit struct."""
-
-    return __24BitsBE__(Con.Bytes(name, 3))
-
-
-#UTF16CString and UTF16BECString implement a null-terminated string
-#of UTF-16 characters by reading them as unsigned 16-bit integers,
-#looking for the null terminator (0x0000) and then converting the integers
-#back before decoding.  It's a little half-assed, but it seems to work.
-#Even large UTF-16 characters with surrogate pairs (those above U+FFFF)
-#shouldn't have embedded 0x0000 bytes in them,
-#which ID3v2.2/2.3 aren't supposed to use anyway since they're limited
-#to UCS-2 encoding.
-
-class WidecharCStringAdapter(Con.Adapter):
-    """An adapter for handling NULL-terminated UTF-16/UCS-2 strings."""
-
-    def __init__(self, obj, encoding):
-        Con.Adapter.__init__(self, obj)
-        self.encoding = encoding
-
-    def _encode(self, obj, context):
-        return Con.GreedyRepeater(Con.UBInt16("s")).parse(obj.encode(
-                self.encoding)) + [0]
-
-    def _decode(self, obj, context):
-        c = Con.UBInt16("s")
-
-        return "".join([c.build(s) for s in obj[0:-1]]).decode(self.encoding)
-
-
-def UCS2CString(name):
-    """A UCS-2 encoded, NULL-terminated string."""
-
-    return WidecharCStringAdapter(Con.RepeatUntil(lambda obj, ctx: obj == 0x0,
-                                                  Con.UBInt16(name)),
-                                  encoding='ucs2')
-
-
-def UTF16CString(name):
-    """A UTF-16 encoded, NULL-terminated string."""
-
-    return WidecharCStringAdapter(Con.RepeatUntil(lambda obj, ctx: obj == 0x0,
-                                                  Con.UBInt16(name)),
-                                  encoding='utf-16')
-
-
-def UTF16BECString(name):
-    """A UTF-16BE encoded, NULL-terminated string."""
-
-    return WidecharCStringAdapter(Con.RepeatUntil(lambda obj, ctx: obj == 0x0,
-                                                  Con.UBInt16(name)),
-                                  encoding='utf-16be')
 
 
 def __attrib_equals__(attributes, o1, o2):
@@ -620,16 +532,6 @@ class ID3v22Comment(MetaData):
     PictureFrame = ID3v22PicFrame
     CommentFrame = ID3v22ComFrame
 
-    TAG_HEADER = Con.Struct("id3v22_header",
-                            Con.Const(Con.Bytes("file_id", 3), 'ID3'),
-                            Con.Byte("version_major"),
-                            Con.Byte("version_minor"),
-                            Con.Embed(Con.BitStruct("flags",
-                                                    Con.Flag("unsync"),
-                                                    Con.Flag("compression"),
-                                                    Con.Padding(6))),
-                            Syncsafe32("length"))
-
     ATTRIBUTE_MAP = {'track_name': 'TT2',
                      'track_number': 'TRK',
                      'track_total': 'TRK',
@@ -933,37 +835,54 @@ class ID3v22Comment(MetaData):
     @classmethod
     def skip(cls, file):
         """Seeks past an ID3v2 comment if found in the file stream.
+        Returns the number of bytes skipped.
 
         The stream must be seekable, obviously."""
 
-        if (file.read(3) == 'ID3'):
-            file.seek(0, 0)
-            bytes_skipped = 0
+        from .bitstream import BitstreamReader
+
+        reader = BitstreamReader(file, 0)
+        reader.mark()
+        try:
+            (tag_id, tag_version) = reader.parse("3b 16u 8p")
+        except IOError, err:
+            reader.unmark()
+            raise err
+
+        if ((tag_id == 'ID3') and (tag_version in (2, 3, 4))):
+            reader.unmark()
 
             #parse the header
-            h = cls.TAG_HEADER.parse_stream(file)
-            bytes_skipped += cls.TAG_HEADER.sizeof()
+            bytes_skipped += 6
+            tag_size = decode_syncsafe32(reader)
+            bytes_skipped += 4
 
-            #seek to the end of its length
-            file.seek(h.length, 1)
-            bytes_skipped += h.length
+            #skip to the end of its length
+            reader.skip_bytes(tag_size)
+            bytes_skipped += tag_size
 
-            #skip any null bytes after the ID3v2 tag
-            c = file.read(1)
-            bytes_skipped += 1
-            while (c == '\x00'):
-                c = file.read(1)
-                bytes_skipped += 1
-
-            file.seek(-1, 1)
-            bytes_skipped -= 1
-            return bytes_skipped
-        else:
+            #skip any null bytes after the IDv2 tag
+            reader.mark()
             try:
-                file.seek(-3, 1)
-            except IOError:
-                pass
+                byte = reader.read(8)
+                while (byte == 0):
+                    reader.unmark()
+                    bytes_skipped += 1
+                    reader.mark()
+                    byte = reader.read(8)
+
+                reader.rewind()
+                reader.unmark()
+
+                return bytes_skipped
+            except IOError, err:
+                reader.unmark()
+                raise err
+        else:
+            reader.rewind()
+            reader.unmark()
             return 0
+
 
     @classmethod
     def read_id3v2_comment(cls, filename):
@@ -1076,22 +995,6 @@ class ID3v22Comment(MetaData):
 class ID3v23Frame(ID3v22Frame):
     """A container for individual ID3v2.3 frames."""
 
-    def build(self, data=None):
-        """Returns a binary string of ID3v2.3 frame data."""
-
-        if (data is None):
-            data = self.data
-
-        return self.FRAME.build(Con.Container(frame_id=self.id,
-                                              size=len(data),
-                                              tag_alter=False,
-                                              file_alter=False,
-                                              read_only=False,
-                                              compression=False,
-                                              encryption=False,
-                                              grouping=False,
-                                              data=data))
-
     @classmethod
     def parse(cls, frame_id, frame_size, frame_data):
         """given an id string, size int and data BitstreamReader
@@ -1202,16 +1105,6 @@ class ID3v23TextFrame(ID3v23Frame):
 
 class ID3v23PicFrame(ID3v23Frame, Image):
     """A container for ID3v2.3 image (APIC) frames."""
-
-    FRAME_HEADER = Con.Struct('apic_frame',
-                              Con.Byte('text_encoding'),
-                              Con.CString('mime_type'),
-                              Con.Byte('picture_type'),
-                              Con.Switch("description",
-                                         lambda ctx: ctx.text_encoding,
-                                         {0x00: Con.CString(
-                    "s", encoding='latin-1'),
-                                          0x01: UCS2CString("s")}))
 
     def __init__(self, data, mime_type, encoding, description, pic_type):
         """Fields are as follows:
@@ -1329,18 +1222,6 @@ class ID3v23Comment(ID3v22Comment):
     Frame = ID3v23Frame
     TextFrame = ID3v23TextFrame
     PictureFrame = ID3v23PicFrame
-
-    TAG_HEADER = Con.Struct("id3v23_header",
-                            Con.Const(Con.Bytes("file_id", 3), 'ID3'),
-                            Con.Byte("version_major"),
-                            Con.Byte("version_minor"),
-                            Con.Embed(Con.BitStruct("flags",
-                                                    Con.Flag("unsync"),
-                                                    Con.Flag("extended"),
-                                                    Con.Flag("experimental"),
-                                                    Con.Flag("footer"),
-                                                    Con.Padding(4))),
-                            Syncsafe32("length"))
 
     ATTRIBUTE_MAP = {'track_name': 'TIT2',
                      'track_number': 'TRCK',
@@ -1488,41 +1369,6 @@ class ID3v24Frame(ID3v23Frame):
                 0x01: "utf-16",
                 0x02: "utf-16be",
                 0x03: "utf-8"}
-
-    FRAME = Con.Struct("id3v24_frame",
-                       Con.Bytes("frame_id", 4),
-                       Syncsafe32("size"),
-                       Con.Embed(Con.BitStruct("flags",
-                                               Con.Padding(1),
-                                               Con.Flag('tag_alter'),
-                                               Con.Flag('file_alter'),
-                                               Con.Flag('read_only'),
-                                               Con.Padding(5),
-                                               Con.Flag('grouping'),
-                                               Con.Padding(2),
-                                               Con.Flag('compression'),
-                                               Con.Flag('encryption'),
-                                               Con.Flag('unsync'),
-                                               Con.Flag('data_length'))),
-                       Con.String("data", length=lambda ctx: ctx["size"]))
-
-    def build(self, data=None):
-        """Returns a binary string of ID3v2.4 frame data."""
-
-        if (data is None):
-            data = self.data
-
-        return self.FRAME.build(Con.Container(frame_id=self.id,
-                                              size=len(data),
-                                              tag_alter=False,
-                                              file_alter=False,
-                                              read_only=False,
-                                              compression=False,
-                                              encryption=False,
-                                              grouping=False,
-                                              unsync=False,
-                                              data_length=False,
-                                              data=data))
 
     @classmethod
     def decode_c_string(cls, reader, encoding_byte):
@@ -1716,19 +1562,6 @@ class ID3v24TextFrame(ID3v24Frame):
 class ID3v24PicFrame(ID3v24Frame, Image):
     """A container for ID3v2.4 image (APIC) frames."""
 
-    FRAME_HEADER = Con.Struct('apic_frame',
-                              Con.Byte('text_encoding'),
-                              Con.CString('mime_type'),
-                              Con.Byte('picture_type'),
-                              Con.Switch("description",
-                                         lambda ctx: ctx.text_encoding,
-                                         {0x00: Con.CString(
-                    "s", encoding='latin-1'),
-                                          0x01: UTF16CString("s"),
-                                          0x02: UTF16BECString("s"),
-                                          0x03: Con.CString(
-                    "s", encoding='utf-8')}))
-
     def __init__(self, data, mime_type, encoding, description, pic_type):
         """Fields are as follows:
 
@@ -1790,17 +1623,6 @@ class ID3v24PicFrame(ID3v24Frame, Image):
 
 class ID3v24ComFrame(ID3v24TextFrame):
     """A container for ID3v2.4 comment (COMM) frames."""
-
-    COMMENT_HEADER = Con.Struct(
-        "com_frame",
-        Con.Byte("encoding"),
-        Con.String("language", 3),
-        Con.Switch("short_description",
-                   lambda ctx: ctx.encoding,
-                   {0x00: Con.CString("s", encoding='latin-1'),
-                    0x01: UTF16CString("s"),
-                    0x02: UTF16BECString("s"),
-                    0x03: Con.CString("s", encoding='utf-8')}))
 
     TEXT_TYPE = True
 
