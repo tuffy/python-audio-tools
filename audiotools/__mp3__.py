@@ -542,11 +542,11 @@ class MP3Audio(AudioFile):
         #write id3v2 + data + id3v1 to file
         f = file(self.filename, "wb")
         if (isinstance(metadata, ID3CommentPair)):
-            f.write(metadata.id3v2.build())
+            metadata.id3v2.build(f)
             f.write(mp3_data)
             metadata.id3v1.build(f)
         elif (isinstance(metadata, ID3v2Comment)):
-            f.write(metadata.build())
+            metadata.build(f)
             f.write(mp3_data)
         elif (isinstance(metadata, ID3v1Comment)):
             f.write(mp3_data)

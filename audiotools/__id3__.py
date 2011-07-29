@@ -100,6 +100,49 @@ class Syncsafe32(Con.Adapter):
             i = (i << 7) | (x & 0x7F)
         return i
 
+def decode_syncsafe32(reader):
+    from operator import or_
+    return reduce(or_,
+                  [size << (7 * (3 - i))
+                   for (i, size) in
+                   enumerate(reader.parse("1p 7u 1p 7u 1p 7u 1p 7u"))])
+
+def encode_syncsafe32(writer, value):
+    writer.build("1p 7u 1p 7u 1p 7u 1p 7u",
+                 [(value >> (7 * i)) & 0x7F for i in [3, 2, 1, 0]])
+
+def decode_ascii_c_string(reader):
+    """given a BitstreamReader and encoding byte, return unicode string
+
+    encoding is ASCII and unknown characters are replaced"""
+
+    chars = []
+    char = reader.read(8)
+    while (char != 0):
+        chars.append(char)
+        char = reader.read(8)
+    return "".join(map(chr, chars)).decode('ascii','replace')
+
+def encode_ascii_c_string(writer, s):
+    """write NULL-terminated ASCII unicode string to stream"""
+
+    encoded = s.encode('ascii', 'replace')
+    writer.build("%db 8u" % (len(encoded)), (encoded, 0))
+
+
+class __Counter__:
+    def __init__(self, value=0):
+        self.value = value
+
+    def __int__(self):
+        return self.value
+
+    def increment(self, b):
+        self.value += 1
+
+    def decrement(self, b):
+        self.value -= 1
+
 
 class __24BitsBE__(Con.Adapter):
     def _encode(self, value, context):
@@ -211,9 +254,9 @@ else:
 class ID3v22Frame:
     """A container for individual ID3v2.2 frames."""
 
-    FRAME = Con.Struct("id3v22_frame",
-                       Con.Bytes("frame_id", 3),
-                       Con.PascalString("data", length_field=UBInt24("size")))
+    ENCODING = {0x00: "latin-1",
+                0x01: "ucs2"}
+
     #we use TEXT_TYPE to differentiate frames which are
     #supposed to return text unicode when __unicode__ is called
     #from those that just return summary data
@@ -231,11 +274,10 @@ class ID3v22Frame:
     def __eq__(self, o):
         return __attrib_equals__(["frame_id", "data"], self, o)
 
-    def build(self):
-        """Returns a binary string of ID3v2.2 frame data."""
+    def build(self, writer):
+        """writes frame data to BitstreamWriter, without the header"""
 
-        return self.FRAME.build(Con.Container(frame_id=self.id,
-                                              data=self.data))
+        writer.write_bytes(self.data)
 
     def __unicode__(self):
         if (self.id.startswith('W')):
@@ -248,56 +290,136 @@ class ID3v22Frame:
                         u"\u2026")
 
     @classmethod
-    def parse(cls, container):
-        """Returns the appropriate ID3v22Frame subclass from a Container.
+    def decode_text(cls, byte_string, encoding_byte):
+        """given a plain text string and encoding byte, returns unicode
 
-        Container is parsed from ID3v22Frame.FRAME
-        and contains "frame_id and "data" attributes.
+        if the byte is valid, this presumes the encoding is correct and uses
+        text.decode('encoding', 'replace') to handle errors
+
+        if the byte is invalid, we assume ASCII
         """
 
-        if (container.frame_id.startswith('T')):
-            try:
-                encoding_byte = ord(container.data[0])
-                return ID3v22TextFrame(container.frame_id,
-                                       encoding_byte,
-                                       container.data[1:].decode(
-                        ID3v22TextFrame.ENCODING[encoding_byte]))
-            except IndexError:
-                return ID3v22TextFrame(container.frame_id,
-                                       0,
-                                       u"")
-        elif (container.frame_id == 'PIC'):
-            frame_data = cStringIO.StringIO(container.data)
-            pic_header = ID3v22PicFrame.FRAME_HEADER.parse_stream(frame_data)
-            return ID3v22PicFrame(
-                frame_data.read(),
-                pic_header.format.decode('ascii', 'replace'),
-                pic_header.description,
-                pic_header.picture_type)
-        elif (container.frame_id == 'COM'):
-            com_data = cStringIO.StringIO(container.data)
-            try:
-                com = ID3v22ComFrame.COMMENT_HEADER.parse_stream(com_data)
-                return ID3v22ComFrame(
-                    com.encoding,
-                    com.language,
-                    com.short_description,
-                    com_data.read().decode(
-                        ID3v22TextFrame.ENCODING[com.encoding], 'replace'))
-            except Con.core.ArrayError:
-                return cls(frame_id=container.frame_id, data=container.data)
-            except Con.core.FieldError:
-                return cls(frame_id=container.frame_id, data=container.data)
-        else:
-            return cls(frame_id=container.frame_id,
-                       data=container.data)
+        try:
+            return byte_string.decode(cls.ENCODING[encoding_byte], 'replace')
+        except KeyError:
+            return byte_string.decode('ascii', 'replace')
 
+    @classmethod
+    def encode_text(cls, unicode_string, encoding_byte):
+        """given unicode text and an encoding byte, returns a raw string
+
+        this presumes the encoding byte is sane,
+        otherwise unicode.encode('encoding', 'replace') is applied
+        """
+
+        return unicode_string.encode(cls.ENCODING[encoding_byte], 'replace')
+
+    @classmethod
+    def decode_c_string(cls, reader, encoding_byte):
+        """given a BitstreamReader and encoding byte, return unicode string
+
+        this is designed to handle the dicey problem of string
+        NULL terminators for wide characters
+        """
+
+        if (encoding_byte == 0):
+            chars = []
+            char = reader.read(8)
+            while (char != 0):
+                chars.append(char)
+                char = reader.read(8)
+            return "".join(map(chr, chars)).decode('latin-1','replace')
+        elif (encoding_byte == 1):
+            chars = []
+            (high, low) = reader.parse("8u 8u")
+            while ((high != 0) and (low != 0)):
+                chars.append(high)
+                chars.append(low)
+                (high, low) = reader.parse("8u 8u")
+            return "".join(map(chr, chars)).decode('ucs2','replace')
+        else:
+            raise ValueError(_(u"invalid encoding byte"))
+
+    @classmethod
+    def encode_c_string(cls, writer, unicode_string, encoding_byte):
+        """given BitstreamWriter, unicode and encoding, write C string
+
+        as with the decode_c_string, this is meant to handle
+        NULL termination correctly
+        """
+
+        if (encoding_byte == 0):
+            encoded = unicode_string.encode('latin-1')
+            writer.build("%db 8u" % (len(encoded)), (encoded, 0))
+        elif (encoding_byte == 1):
+            encoded = unicode_string.encode('ucs2', 'replace')
+            writer.build("%db 16u" % (len(encoded)), (encoded, 0))
+        else:
+            raise ValueError(_(u"invalid encoding byte"))
+
+    @classmethod
+    def encoding_byte(cls, unicode_string):
+        """given a unicode string, returns the best encoding byte for it
+
+        since all ID3v2 tags support some sort of unicode,
+        something is certain to work
+        """
+
+        #see if unicode_string falls into a set of latin-1 chars
+        #otherwise use unicode
+        if (frozenset(unicode_string).issubset(
+                frozenset(map(unichr, range(32, 127) + range(160,256))))):
+            return 0
+        else:
+            return 1
+
+    @classmethod
+    def parse(cls, frame_id, frame_size, frame_data):
+        """given an id string, size int and data BitstreamReader
+
+        returns an ID3v22Frame or subclass"""
+
+        if (frame_id.startswith('T')):
+            encoding = frame_data.read(8)
+            return ID3v22TextFrame(
+                frame_id,
+                encoding,
+                cls.decode_text(frame_data.read_bytes(frame_size - 1),
+                                encoding))
+
+        elif (frame_id == 'PIC'):
+            remaining_bytes = __Counter__(frame_size)
+            frame_data.add_callback(remaining_bytes.decrement)
+            (encoding,
+             image_format,
+             picture_type) = frame_data.parse("8u 3b 8u")
+            description = cls.decode_c_string(frame_data, encoding)
+            data = frame_data.read_bytes(remaining_bytes)
+
+            return ID3v22PicFrame(data,
+                                  image_format.decode('ascii', 'replace'),
+                                  encoding,
+                                  description,
+                                  picture_type)
+
+        elif (frame_id == 'COM'):
+            remaining_bytes = __Counter__(frame_size)
+            frame_data.add_callback(remaining_bytes.decrement)
+            (encoding,
+             language) = frame_data.parse("8u 3b")
+            description = cls.decode_c_string(frame_data, encoding)
+            content = cls.decode_text(frame_data.read_bytes(remaining_bytes),
+                                      encoding)
+
+            return ID3v22ComFrame(encoding,
+                                  language,
+                                  description,
+                                  content)
+        else:
+            return cls(frame_id, frame_data.read_bytes(frame_size))
 
 class ID3v22TextFrame(ID3v22Frame):
     """A container for individual ID3v2.2 text frames."""
-
-    ENCODING = {0x00: "latin-1",
-                0x01: "ucs2"}
 
     TEXT_TYPE = True
 
@@ -337,35 +459,17 @@ class ID3v22TextFrame(ID3v22Frame):
 
         if (frame_id == 'COM'):
             return ID3v22ComFrame.from_unicode(s)
+        else:
+            return cls(frame_id, cls.encoding_byte(s), s)
 
-        for encoding in 0x00, 0x01:
-            try:
-                s.encode(cls.ENCODING[encoding])
-                return cls(frame_id, encoding, s)
-            except UnicodeEncodeError:
-                continue
+    def build(self, writer):
+        """builds an ID3v2.2 text frame on the given BitstreamWriter"""
 
-    def build(self):
-        """Returns a binary string of ID3v2.2 frame data."""
-
-        return self.FRAME.build(Con.Container(
-                frame_id=self.id,
-                data=chr(self.encoding) + \
-                    self.string.encode(self.ENCODING[self.encoding],
-                                       'replace')))
-
+        writer.write(8, self.encoding)
+        writer.write_bytes(self.encode_text(self.string, self.encoding))
 
 class ID3v22ComFrame(ID3v22TextFrame):
     """A container for ID3v2.2 comment (COM) frames."""
-
-    COMMENT_HEADER = Con.Struct(
-        "com_frame",
-        Con.Byte("encoding"),
-        Con.String("language", 3),
-        Con.Switch("short_description",
-                   lambda ctx: ctx.encoding,
-                   {0x00: Con.CString("s", encoding='latin-1'),
-                    0x01: UCS2CString("s")}))
 
     TEXT_TYPE = True
 
@@ -398,44 +502,25 @@ class ID3v22ComFrame(ID3v22TextFrame):
     def from_unicode(cls, s):
         """Builds an ID3v22ComFrame from a unicode string."""
 
-        for encoding in 0x00, 0x01:
-            try:
-                s.encode(cls.ENCODING[encoding])
-                return cls(encoding, 'eng', u'', s)
-            except UnicodeEncodeError:
-                continue
+        return cls(cls.encoding_byte(s), 'eng', u'', s)
 
-    def build(self):
-        """Returns a binary string of ID3v2.2 frame data."""
+    def build(self, writer):
+        """builds a binary string of COM data to the given BitstreamWriter"""
 
-        return self.FRAME.build(Con.Container(
-                frame_id=self.id,
-                data=self.COMMENT_HEADER.build(Con.Container(
-                        encoding=self.encoding,
-                        language=self.language,
-                        short_description=self.short_description)) +
-                  self.content.encode(self.ENCODING[self.encoding],
-                                      'replace')))
+        writer.build("8u 3b", (self.encoding, self.language))
+        self.encode_c_string(writer, self.short_description, self.encoding)
+        writer.write_bytes(self.encode_text(self.content, self.encoding))
 
 
 class ID3v22PicFrame(ID3v22Frame, Image):
     """A container for ID3v2.2 image (PIC) frames."""
 
-    FRAME_HEADER = Con.Struct('pic_frame',
-                              Con.Byte('text_encoding'),
-                              Con.String('format', 3),
-                              Con.Byte('picture_type'),
-                              Con.Switch("description",
-                                         lambda ctx: ctx.text_encoding,
-                                         {0x00: Con.CString(
-                    "s",  encoding='latin-1'),
-                                          0x01: UCS2CString("s")}))
-
-    def __init__(self, data, format, description, pic_type):
+    def __init__(self, data, format, encoding, description, pic_type):
         """Fields are as follows:
 
         data        - a binary string of raw image data
         format      - a unicode string
+        encoding    - a text encoding byte for the description
         description - a unicode string
         pic_type    - an integer
         """
@@ -451,6 +536,7 @@ class ID3v22PicFrame(ID3v22Frame, Image):
 
         self.pic_type = pic_type
         self.format = format
+        self.encoding = encoding
         Image.__init__(self,
                        data=data,
                        mime_type=img.mime_type,
@@ -497,22 +583,17 @@ class ID3v22PicFrame(ID3v22Frame, Image):
     def __eq__(self, i):
         return Image.__eq__(self, i)
 
-    def build(self):
-        """Returns a binary string of ID3v2.2 frame data."""
+    def build(self, writer):
+        """builds a binary string of PIC data to the given BitstreamWriter"""
 
-        try:
-            self.description.encode('latin-1')
-            text_encoding = 0
-        except UnicodeEncodeError:
-            text_encoding = 1
+        writer.build("8u 3b 8u",
+                     (self.encoding,
+                      self.format.encode('ascii', 'replace'),
+                      self.pic_type))
+        self.encode_c_string(writer, description, self.encoding)
+        writer.write_bytes(self.data)
 
-        return ID3v22Frame.FRAME.build(
-            Con.Container(frame_id='PIC',
-                          data=self.FRAME_HEADER.build(
-                    Con.Container(text_encoding=text_encoding,
-                                  format=self.format.encode('ascii'),
-                                  picture_type=self.pic_type,
-                                  description=self.description)) + self.data))
+
 
     @classmethod
     def converted(cls, image):
@@ -526,6 +607,7 @@ class ID3v22PicFrame(ID3v22Frame, Image):
                            u"image/gif": u"GIF",
                            u"image/tiff": u"TIF"}.get(image.mime_type,
                                                      u"JPG"),
+                   encoding=cls.encoding_byte(image.description),
                    description=image.description,
                    pic_type={0: 3, 1: 4, 2: 5, 3: 6}.get(image.type, 0))
 
@@ -746,31 +828,28 @@ class ID3v22Comment(MetaData):
 
     @classmethod
     def parse(cls, stream):
-        """Given a file stream, returns an ID3v22Comment object."""
+        """given a BitstreamReader, returns an ID3v22Comment object"""
 
-        header = cls.TAG_HEADER.parse_stream(stream)
+        (tag_id,
+         major_version,
+         minor_version,
+         unsync,
+         compression) = stream.parse("3b 8u 8u 1u 1u 6p")
 
-        #read in the whole tag
-        stream = cStringIO.StringIO(stream.read(header.length))
+        if (major_version != 0x2):
+            raise ValueError(_(u"unsupported major version"))
 
-        #read in a collection of parsed Frame containers
+        total_size = decode_syncsafe32(stream)
+        tag_stream = stream.substream(total_size)
         frames = []
 
-        while (stream.tell() < header.length):
-            try:
-                container = cls.Frame.FRAME.parse_stream(stream)
-            except Con.core.FieldError:
-                break
-            except Con.core.ArrayError:
-                break
-
-            if (chr(0) in container.frame_id):
-                break
-            else:
-                try:
-                    frames.append(cls.Frame.parse(container))
-                except UnicodeDecodeError:
-                    break
+        while (total_size > 0):
+            (frame_id, frame_size) = tag_stream.parse("3b 24u")
+            total_size -= 6
+            frames.append(cls.Frame.parse(frame_id,
+                                          frame_size,
+                                          tag_stream.substream(frame_size)))
+            total_size -= frame_size
 
         return cls(frames)
 
@@ -779,8 +858,7 @@ class ID3v22Comment(MetaData):
         """Converts a MetaData object to an ID3v22Comment object."""
 
         if ((metadata is None) or
-            (isinstance(metadata, cls) and
-             (cls.Frame is metadata.Frame))):
+            (isinstance(metadata, cls) and (cls.Frame is metadata.Frame))):
             return metadata
 
         frames = []
@@ -832,19 +910,25 @@ class ID3v22Comment(MetaData):
                 (getattr(metadata, attr) != 0)):
                 setattr(self, attr, getattr(metadata, attr))
 
-    def build(self):
-        """Returns an ID3v2.2 comment as a binary string."""
+    def build(self, stream):
+        """generates an ID3v2.2 tag to the given BitstreamWriter"""
 
-        subframes = "".join(["".join([value.build() for value in values])
-                             for values in self.frames.values()])
+        from .bitstream import BitstreamWriter
+        from .bitstream import BitstreamRecorder
 
-        return self.TAG_HEADER.build(
-            Con.Container(file_id='ID3',
-                          version_major=0x02,
-                          version_minor=0x00,
-                          unsync=False,
-                          compression=False,
-                          length=len(subframes))) + subframes
+        writer = BitstreamWriter(stream, 0)
+        subframes = BitstreamRecorder(0)
+        frame_data = BitstreamRecorder(0)
+        for frames in self.frames.values():
+            for frame in frames:
+                frame_data.reset()
+                frame.build(frame_data)
+                subframes.build("3b 24u", (frame.id, frame_data.bytes()))
+                frame_data.copy(subframes)
+
+        writer.build("3b 8u 8u 1u 1u 6p", ("ID3", 2, 0, 0, 0))
+        encode_syncsafe32(writer, subframes.bytes())
+        subframes.copy(writer)
 
     @classmethod
     def skip(cls, file):
@@ -889,29 +973,28 @@ class ID3v22Comment(MetaData):
         this returns an ID3v23Comment.
         """
 
-        import cStringIO
+        from .bitstream import BitstreamReader
 
-        f = file(filename, "rb")
-
+        reader = BitstreamReader(file(filename, "rb"), 0)
+        reader.mark()
         try:
-            f.seek(0, 0)
-            try:
-                header = ID3v2Comment.TAG_HEADER.parse_stream(f)
-            except Con.ConstError:
+            (tag, version_major, version_minor) = reader.parse("3b 8u 8u")
+            if (tag != 'ID3'):
                 raise UnsupportedID3v2Version()
-            if (header.version_major == 0x04):
-                comment_class = ID3v24Comment
-            elif (header.version_major == 0x03):
-                comment_class = ID3v23Comment
-            elif (header.version_major == 0x02):
-                comment_class = ID3v22Comment
+            elif (version_major == 0x2):
+                reader.rewind()
+                return ID3v22Comment.parse(reader)
+            elif (version_major == 0x3):
+                reader.rewind()
+                return ID3v23Comment.parse(reader)
+            elif (version_major == 0x4):
+                reader.rewind()
+                return ID3v24Comment.parse(reader)
             else:
                 raise UnsupportedID3v2Version()
-
-            f.seek(0, 0)
-            return comment_class.parse(f)
         finally:
-            f.close()
+            reader.unmark()
+            reader.close()
 
     def clean(self, fixes_performed):
         cleaned_frames = []
@@ -993,20 +1076,6 @@ class ID3v22Comment(MetaData):
 class ID3v23Frame(ID3v22Frame):
     """A container for individual ID3v2.3 frames."""
 
-    FRAME = Con.Struct("id3v23_frame",
-                       Con.Bytes("frame_id", 4),
-                       Con.UBInt32("size"),
-                       Con.Embed(Con.BitStruct("flags",
-                                               Con.Flag('tag_alter'),
-                                               Con.Flag('file_alter'),
-                                               Con.Flag('read_only'),
-                                               Con.Padding(5),
-                                               Con.Flag('compression'),
-                                               Con.Flag('encryption'),
-                                               Con.Flag('grouping'),
-                                               Con.Padding(5))),
-                       Con.String("data", length=lambda ctx: ctx["size"]))
-
     def build(self, data=None):
         """Returns a binary string of ID3v2.3 frame data."""
 
@@ -1024,49 +1093,45 @@ class ID3v23Frame(ID3v22Frame):
                                               data=data))
 
     @classmethod
-    def parse(cls, container):
-        """Returns the appropriate ID3v23Frame subclass from a Container.
+    def parse(cls, frame_id, frame_size, frame_data):
+        """given an id string, size int and data BitstreamReader
 
-        Container is parsed from ID3v23Frame.FRAME
-        and contains "frame_id and "data" attributes.
-        """
+        returns an ID3v22Frame or subclass"""
 
-        if (container.frame_id.startswith('T')):
-            try:
-                encoding_byte = ord(container.data[0])
-                return ID3v23TextFrame(container.frame_id,
-                                       encoding_byte,
-                                       container.data[1:].decode(
-                        ID3v23TextFrame.ENCODING[encoding_byte]))
-            except IndexError:
-                return ID3v23TextFrame(container.frame_id,
-                                       0,
-                                       u"")
-        elif (container.frame_id == 'APIC'):
-            frame_data = cStringIO.StringIO(container.data)
-            pic_header = ID3v23PicFrame.FRAME_HEADER.parse_stream(frame_data)
-            return ID3v23PicFrame(
-                frame_data.read(),
-                pic_header.mime_type,
-                pic_header.description,
-                pic_header.picture_type)
-        elif (container.frame_id == 'COMM'):
-            com_data = cStringIO.StringIO(container.data)
-            try:
-                com = ID3v23ComFrame.COMMENT_HEADER.parse_stream(com_data)
-                return ID3v23ComFrame(
-                    com.encoding,
-                    com.language,
-                    com.short_description,
-                    com_data.read().decode(
-                        ID3v23TextFrame.ENCODING[com.encoding], 'replace'))
-            except Con.core.ArrayError:
-                return cls(frame_id=container.frame_id, data=container.data)
-            except Con.core.FieldError:
-                return cls(frame_id=container.frame_id, data=container.data)
+        if (frame_id.startswith('T')):
+            encoding = frame_data.read(8)
+            return ID3v23TextFrame(
+                frame_id,
+                encoding,
+                cls.decode_text(frame_data.read_bytes(frame_size - 1),
+                                encoding))
+        elif (frame_id == 'APIC'):
+            remaining_bytes = __Counter__(frame_size)
+            frame_data.add_callback(remaining_bytes.decrement)
+            encoding = frame_data.read(8)
+            mime_type = decode_ascii_c_string(frame_data)
+            picture_type = frame_data.read(8)
+            description = cls.decode_c_string(frame_data, encoding)
+            data = frame_data.read_bytes(remaining_bytes)
+            return ID3v23PicFrame(data,
+                                  mime_type,
+                                  encoding,
+                                  description,
+                                  picture_type)
+        elif (frame_id == 'COMM'):
+            remaining_bytes = __Counter__(frame_size)
+            frame_data.add_callback(remaining_bytes.decrement)
+            (encoding,
+             language) = frame_data.parse("8u 3b")
+            description = cls.decode_c_string(frame_data, encoding)
+            content = cls.decode_text(frame_data.read_bytes(remaining_bytes),
+                                      encoding)
+            return ID3v23ComFrame(encoding,
+                                  language,
+                                  description,
+                                  content)
         else:
-            return cls(frame_id=container.frame_id,
-                       data=container.data)
+            return cls(frame_id, frame_data.read_bytes(frame_size))
 
     def __unicode__(self):
         if (self.id.startswith('W')):
@@ -1081,9 +1146,6 @@ class ID3v23Frame(ID3v22Frame):
 
 class ID3v23TextFrame(ID3v23Frame):
     """A container for individual ID3v2.3 text frames."""
-
-    ENCODING = {0x00: "latin-1",
-                0x01: "ucs2"}
 
     TEXT_TYPE = True
 
@@ -1131,14 +1193,11 @@ class ID3v23TextFrame(ID3v23Frame):
             except UnicodeEncodeError:
                 continue
 
-    def build(self):
-        """Returns a binary string of ID3v2.3 frame data."""
+    def build(self, writer):
+        """builds an ID3v2.3 text frame on the given BitstreamWriter"""
 
-        return ID3v23Frame.build(
-            self,
-            chr(self.encoding) + \
-                self.string.encode(self.ENCODING[self.encoding],
-                                   'replace'))
+        writer.write(8, self.encoding)
+        writer.write_bytes(self.encode_text(self.string, self.encoding))
 
 
 class ID3v23PicFrame(ID3v23Frame, Image):
@@ -1154,11 +1213,12 @@ class ID3v23PicFrame(ID3v23Frame, Image):
                     "s", encoding='latin-1'),
                                           0x01: UCS2CString("s")}))
 
-    def __init__(self, data, mime_type, description, pic_type):
+    def __init__(self, data, mime_type, encoding, description, pic_type):
         """Fields are as follows:
 
         data        - a binary string of raw image data
         mime_type   - a unicode string
+        encoding    - an encoding byte
         description - a unicode string
         pic_type    - an integer
         """
@@ -1173,6 +1233,7 @@ class ID3v23PicFrame(ID3v23Frame, Image):
                         description=u'', type=0)
 
         self.pic_type = pic_type
+        self.encoding = encoding
         Image.__init__(self,
                        data=data,
                        mime_type=mime_type,
@@ -1191,21 +1252,14 @@ class ID3v23PicFrame(ID3v23Frame, Image):
                (self.type_string(),
                 self.width, self.height, self.mime_type)
 
-    def build(self):
-        """Returns a binary string of ID3v2.3 frame data."""
+    def build(self, writer):
+        """builds a binary string of APIC data to the given BitstreamWriter"""
 
-        try:
-            self.description.encode('latin-1')
-            text_encoding = 0
-        except UnicodeEncodeError:
-            text_encoding = 1
-
-        return ID3v23Frame.build(self,
-                                 self.FRAME_HEADER.build(
-                Con.Container(text_encoding=text_encoding,
-                              picture_type=self.pic_type,
-                              mime_type=self.mime_type,
-                              description=self.description)) + self.data)
+        writer.write(8, self.encoding)
+        encode_ascii_c_string(writer, self.mime_type)
+        writer.write(8, self.pic_type)
+        self.encode_c_string(writer, self.description, self.encoding)
+        writer.write_bytes(self.data)
 
     @classmethod
     def converted(cls, image):
@@ -1213,14 +1267,13 @@ class ID3v23PicFrame(ID3v23Frame, Image):
 
         return cls(data=image.data,
                    mime_type=image.mime_type,
+                   encoding=cls.encoding_byte(image.description),
                    description=image.description,
                    pic_type={0: 3, 1: 4, 2: 5, 3: 6}.get(image.type, 0))
 
 
 class ID3v23ComFrame(ID3v23TextFrame):
     """A container for ID3v2.3 comment (COMM) frames."""
-
-    COMMENT_HEADER = ID3v22ComFrame.COMMENT_HEADER
 
     TEXT_TYPE = True
 
@@ -1263,17 +1316,12 @@ class ID3v23ComFrame(ID3v23TextFrame):
             except UnicodeEncodeError:
                 continue
 
-    def build(self):
-        """Returns a binary string of ID3v2.3 frame data."""
+    def build(self, writer):
+        """builds a binary string of COM data to the given BitstreamWriter"""
 
-        return ID3v23Frame.build(
-            self,
-            self.COMMENT_HEADER.build(Con.Container(
-                    encoding=self.encoding,
-                    language=self.language,
-                    short_description=self.short_description)) + \
-                self.content.encode(self.ENCODING[self.encoding], 'replace'))
-
+        writer.build("8u 3b", (self.encoding, self.language))
+        self.encode_c_string(writer, self.short_description, self.encoding)
+        writer.write_bytes(self.encode_text(self.content, self.encoding))
 
 class ID3v23Comment(ID3v22Comment):
     """A complete ID3v2.3 comment."""
@@ -1368,21 +1416,64 @@ class ID3v23Comment(ID3v22Comment):
         else:
             return []
 
-    def build(self):
-        """Returns an ID3v2.3 comment as a binary string."""
+    @classmethod
+    def parse(cls, stream):
+        """given a BitstreamReader, returns an ID3v23Comment object"""
 
-        subframes = "".join(["".join([value.build() for value in values])
-                             for values in self.frames.values()])
+        (tag_id,
+         major_version,
+         minor_version,
+         unsync,
+         extended,
+         experimental,
+         footer) = stream.parse("3b 8u 8u 1u 1u 1u 1u 4p")
 
-        return self.TAG_HEADER.build(
-            Con.Container(file_id='ID3',
-                          version_major=0x03,
-                          version_minor=0x00,
-                          unsync=False,
-                          extended=False,
-                          experimental=False,
-                          footer=False,
-                          length=len(subframes))) + subframes
+        if (major_version != 0x3):
+            raise ValueError(_(u"unsupported major version"))
+
+        total_size = decode_syncsafe32(stream)
+        tag_stream = stream.substream(total_size)
+        frames = []
+
+        while (total_size > 0):
+            (frame_id,
+             frame_size,
+             tag_alter,
+             file_alter,
+             read_only,
+             compression,
+             encryption,
+             grouping) = tag_stream.parse("4b 32u 1u 1u 1u 5p 1u 1u 1u 5p")
+            total_size -= 10
+            frames.append(cls.Frame.parse(frame_id,
+                                          frame_size,
+                                          tag_stream.substream(frame_size)))
+            total_size -= frame_size
+
+        return cls(frames)
+
+
+    def build(self, stream):
+        """generates an ID3v2.3 tag to the given BitstreamWriter"""
+
+        from .bitstream import BitstreamWriter
+        from .bitstream import BitstreamRecorder
+
+        writer = BitstreamWriter(stream, 0)
+        subframes = BitstreamRecorder(0)
+        frame_data = BitstreamRecorder(0)
+        for frames in self.frames.values():
+            for frame in frames:
+                frame_data.reset()
+                frame.build(frame_data)
+                subframes.build("4b 32u 1u 1u 1u 5p 1u 1u 1u 5p",
+                                (frame.id, frame_data.bytes(),
+                                 0, 0, 0, 0, 0, 0))
+                frame_data.copy(subframes)
+
+        writer.build("3b 8u 8u 1u 1u 1u 1u 4p", ("ID3", 3, 0, 0, 0, 0, 0))
+        encode_syncsafe32(writer, subframes.bytes())
+        subframes.copy(writer)
 
 
 #######################
@@ -1392,6 +1483,11 @@ class ID3v23Comment(ID3v22Comment):
 
 class ID3v24Frame(ID3v23Frame):
     """A container for individual ID3v2.4 frames."""
+
+    ENCODING = {0x00: "latin-1",
+                0x01: "utf-16",
+                0x02: "utf-16be",
+                0x03: "utf-8"}
 
     FRAME = Con.Struct("id3v24_frame",
                        Con.Bytes("frame_id", 4),
@@ -1429,49 +1525,119 @@ class ID3v24Frame(ID3v23Frame):
                                               data=data))
 
     @classmethod
-    def parse(cls, container):
-        """Returns the appropriate ID3v24Frame subclass from a Container.
+    def decode_c_string(cls, reader, encoding_byte):
+        if (encoding_byte == 0):
+            chars = []
+            char = reader.read(8)
+            while (char != 0):
+                chars.append(char)
+                char = reader.read(8)
+            return "".join(map(chr, chars)).decode('latin-1','replace')
+        elif (encoding_byte == 1):
+            chars = []
+            (high, low) = reader.parse("8u 8u")
+            while ((high != 0) and (low != 0)):
+                chars.append(high)
+                chars.append(low)
+                (high, low) = reader.parse("8u 8u")
+            return "".join(map(chr, chars)).decode('utf-16','replace')
+        elif (encoding_byte == 2):
+            chars = []
+            (high, low) = reader.parse("8u 8u")
+            while ((high != 0) and (low != 0)):
+                chars.append(high)
+                chars.append(low)
+                (high, low) = reader.parse("8u 8u")
+            return "".join(map(chr, chars)).decode('utf-16be','replace')
+        elif (encoding_byte == 3):
+            chars = []
+            char = reader.read(8)
+            while (char != 0):
+                chars.append(char)
+                char = reader.read(8)
+            return "".join(map(chr, chars)).decode('utf-8','replace')
+        else:
+            raise ValueError(_(u"invalid encoding byte"))
 
-        Container is parsed from ID3v24Frame.FRAME
-        and contains "frame_id and "data" attributes.
+    @classmethod
+    def encode_c_string(cls, writer, unicode_string, encoding_byte):
+        """given BitstreamWriter, unicode and encoding, write C string
+
+        as with the decode_c_string, this is meant to handle
+        NULL termination correctly
         """
 
-        if (container.frame_id.startswith('T')):
-            try:
-                encoding_byte = ord(container.data[0])
-                return ID3v24TextFrame(container.frame_id,
-                                       encoding_byte,
-                                       container.data[1:].decode(
-                        ID3v24TextFrame.ENCODING[encoding_byte]))
-            except IndexError:
-                return ID3v24TextFrame(container.frame_id,
-                                       0,
-                                       u"")
-        elif (container.frame_id == 'APIC'):
-            frame_data = cStringIO.StringIO(container.data)
-            pic_header = ID3v24PicFrame.FRAME_HEADER.parse_stream(frame_data)
-            return ID3v24PicFrame(
-                frame_data.read(),
-                pic_header.mime_type,
-                pic_header.description,
-                pic_header.picture_type)
-        elif (container.frame_id == 'COMM'):
-            com_data = cStringIO.StringIO(container.data)
-            try:
-                com = ID3v24ComFrame.COMMENT_HEADER.parse_stream(com_data)
-                return ID3v24ComFrame(
-                    com.encoding,
-                    com.language,
-                    com.short_description,
-                    com_data.read().decode(
-                        ID3v24TextFrame.ENCODING[com.encoding], 'replace'))
-            except Con.core.ArrayError:
-                return cls(frame_id=container.frame_id, data=container.data)
-            except Con.core.FieldError:
-                return cls(frame_id=container.frame_id, data=container.data)
+        if (encoding_byte == 0):
+            encoded = unicode_string.encode('latin-1')
+            writer.build("%db 8u" % (len(encoded)), (encoded, 0))
+        elif (encoding_byte == 1):
+            encoded = unicode_string.encode('utf-16', 'replace')
+            writer.build("%db 16u" % (len(encoded)), (encoded, 0))
+        elif (encoding_byte == 2):
+            encoded = unicode_string.encode('utf-16be', 'replace')
+            writer.build("%db 16u" % (len(encoded)), (encoded, 0))
+        elif (encoding_byte == 3):
+            encoded = unicode_string.encode('utf-8')
+            writer.build("%db 8u" % (len(encoded)), (encoded, 0))
         else:
-            return cls(frame_id=container.frame_id,
-                       data=container.data)
+            raise ValueError(_(u"invalid encoding byte"))
+
+    @classmethod
+    def encoding_byte(cls, unicode_string):
+        """given a unicode string, returns the best encoding byte for it
+
+        since all ID3v2 tags support some sort of unicode,
+        something is certain to work
+        """
+
+        #see if unicode_string falls into a set of latin-1 chars
+        #otherwise use unicode
+        if (frozenset(unicode_string).issubset(
+                frozenset(map(unichr, range(32, 127) + range(160,256))))):
+            return 0
+        else:
+            return 3
+
+    @classmethod
+    def parse(cls, frame_id, frame_size, frame_data):
+        """given an id string, size int and data BitstreamReader
+
+        returns an ID3v24Frame or subclass"""
+
+        if (frame_id.startswith('T')):
+            encoding = frame_data.read(8)
+            return ID3v24TextFrame(
+                frame_id,
+                encoding,
+                cls.decode_text(frame_data.read_bytes(frame_size - 1),
+                                encoding))
+        elif (frame_id == 'APIC'):
+            remaining_bytes = __Counter__(frame_size)
+            frame_data.add_callback(remaining_bytes.decrement)
+            encoding = frame_data.read(8)
+            mime_type = decode_ascii_c_string(frame_data)
+            picture_type = frame_data.read(8)
+            description = cls.decode_c_string(frame_data, encoding)
+            data = frame_data.read_bytes(remaining_bytes)
+            return ID3v24PicFrame(data,
+                                  mime_type,
+                                  encoding,
+                                  description,
+                                  picture_type)
+        elif (frame_id == 'COMM'):
+            remaining_bytes = __Counter__(frame_size)
+            frame_data.add_callback(remaining_bytes.decrement)
+            (encoding,
+             language) = frame_data.parse("8u 3b")
+            description = cls.decode_c_string(frame_data, encoding)
+            content = cls.decode_text(frame_data.read_bytes(remaining_bytes),
+                                      encoding)
+            return ID3v24ComFrame(encoding,
+                                  language,
+                                  description,
+                                  content)
+        else:
+            return cls(frame_id, frame_data.read_bytes(frame_size))
 
     def __unicode__(self):
         if (self.id.startswith('W')):
@@ -1540,14 +1706,11 @@ class ID3v24TextFrame(ID3v24Frame):
             except UnicodeEncodeError:
                 continue
 
-    def build(self):
-        """Returns a binary string of ID3v2.4 frame data."""
+    def build(self, writer):
+        """builds an ID3v2.4 text frame on the given BitstreamWriter"""
 
-        return ID3v24Frame.build(
-            self,
-            chr(self.encoding) + \
-                self.string.encode(self.ENCODING[self.encoding],
-                                   'replace'))
+        writer.write(8, self.encoding)
+        writer.write_bytes(self.encode_text(self.string, self.encoding))
 
 
 class ID3v24PicFrame(ID3v24Frame, Image):
@@ -1566,11 +1729,12 @@ class ID3v24PicFrame(ID3v24Frame, Image):
                                           0x03: Con.CString(
                     "s", encoding='utf-8')}))
 
-    def __init__(self, data, mime_type, description, pic_type):
+    def __init__(self, data, mime_type, encoding, description, pic_type):
         """Fields are as follows:
 
         data        - a binary string of raw image data
         mime_type   - a unicode string
+        encoding    - an encoding byte
         description - a unicode string
         pic_type    - an integer
         """
@@ -1585,6 +1749,7 @@ class ID3v24PicFrame(ID3v24Frame, Image):
                         description=u'', type=0)
 
         self.pic_type = pic_type
+        self.encoding = encoding
         Image.__init__(self,
                        data=data,
                        mime_type=mime_type,
@@ -1603,21 +1768,14 @@ class ID3v24PicFrame(ID3v24Frame, Image):
                (self.type_string(),
                 self.width, self.height, self.mime_type)
 
-    def build(self):
-        """Returns a binary string of ID3v2.4 frame data."""
+    def build(self, writer):
+        """builds a binary string of APIC data to the given BitstreamWriter"""
 
-        try:
-            self.description.encode('latin-1')
-            text_encoding = 0
-        except UnicodeEncodeError:
-            text_encoding = 1
-
-        return ID3v24Frame.build(self,
-                                 self.FRAME_HEADER.build(
-                Con.Container(text_encoding=text_encoding,
-                              picture_type=self.pic_type,
-                              mime_type=self.mime_type,
-                              description=self.description)) + self.data)
+        writer.write(8, self.encoding)
+        encode_ascii_c_string(writer, self.mime_type)
+        writer.write(8, self.pic_type)
+        self.encode_c_string(writer, self.description, self.encoding)
+        writer.write_bytes(self.data)
 
     @classmethod
     def converted(cls, image):
@@ -1625,6 +1783,7 @@ class ID3v24PicFrame(ID3v24Frame, Image):
 
         return cls(data=image.data,
                    mime_type=image.mime_type,
+                   encoding=cls.encoding_byte(image.description),
                    description=image.description,
                    pic_type={0: 3, 1: 4, 2: 5, 3: 6}.get(image.type, 0))
 
@@ -1660,6 +1819,9 @@ class ID3v24ComFrame(ID3v24TextFrame):
         self.content = content
         self.id = 'COMM'
 
+    def __len__(self):
+        return len(self.content)
+
     def __eq__(self, o):
         return __attrib_equals__(["encoding", "language",
                                   "short_description", "content"], self, o)
@@ -1681,16 +1843,12 @@ class ID3v24ComFrame(ID3v24TextFrame):
             except UnicodeEncodeError:
                 continue
 
-    def build(self):
-        """Returns a binary string of ID3v2.4 frame data."""
+    def build(self, writer):
+        """builds a binary string of COM data to the given BitstreamWriter"""
 
-        return ID3v24Frame.build(
-            self,
-            self.COMMENT_HEADER.build(Con.Container(
-                    encoding=self.encoding,
-                    language=self.language,
-                    short_description=self.short_description)) + \
-                self.content.encode(self.ENCODING[self.encoding], 'replace'))
+        writer.build("8u 3b", (self.encoding, self.language))
+        self.encode_c_string(writer, self.short_description, self.encoding)
+        writer.write_bytes(self.encode_text(self.content, self.encoding))
 
 
 class ID3v24Comment(ID3v23Comment):
@@ -1706,21 +1864,67 @@ class ID3v24Comment(ID3v23Comment):
     def __comment_name__(self):
         return u'ID3v2.4'
 
-    def build(self):
-        """Returns an ID3v2.4 comment as a binary string."""
+    def build(self, stream):
+        """generates an ID3v2.4 tag to the given BitstreamWriter"""
 
-        subframes = "".join(["".join([value.build() for value in values])
-                             for values in self.frames.values()])
+        from .bitstream import BitstreamWriter
+        from .bitstream import BitstreamRecorder
 
-        return self.TAG_HEADER.build(
-            Con.Container(file_id='ID3',
-                          version_major=0x04,
-                          version_minor=0x00,
-                          unsync=False,
-                          extended=False,
-                          experimental=False,
-                          footer=False,
-                          length=len(subframes))) + subframes
+        writer = BitstreamWriter(stream, 0)
+        subframes = BitstreamRecorder(0)
+        frame_data = BitstreamRecorder(0)
+        for frames in self.frames.values():
+            for frame in frames:
+                frame_data.reset()
+                frame.build(frame_data)
+                subframes.write_bytes(frame.id)
+                encode_syncsafe32(subframes, frame_data.bytes())
+                subframes.build("1p 1u 1u 1u 4p 1p 1u 2p 1u 1u 1u 1u",
+                                (0, 0, 0, 0, 0, 0, 0, 0))
+                frame_data.copy(subframes)
+
+        writer.build("3b 8u 8u 1u 1u 1u 1u 4p", ("ID3", 4, 0, 0, 0, 0, 0))
+        encode_syncsafe32(writer, subframes.bytes())
+        subframes.copy(writer)
+
+    @classmethod
+    def parse(cls, stream):
+        """given a BitstreamReader, returns an ID3v24Comment object"""
+
+        (tag_id,
+         major_version,
+         minor_version,
+         unsync,
+         extended,
+         experimental,
+         footer) = stream.parse("3b 8u 8u 1u 1u 1u 1u 4p")
+
+        if (major_version != 0x4):
+            raise ValueError(_(u"unsupported major version"))
+
+        total_size = decode_syncsafe32(stream)
+        tag_stream = stream.substream(total_size)
+        frames = []
+
+        while (total_size > 0):
+            frame_id = tag_stream.read_bytes(4)
+            frame_size = decode_syncsafe32(tag_stream)
+            (tag_alter,
+             file_alter,
+             read_only,
+             grouping,
+             compression,
+             encryption,
+             unsync,
+             data_length) = tag_stream.parse(
+                "1p 1u 1u 1u 4p 1p 1u 2p 1u 1u 1u 1u")
+            total_size -= 10
+            frames.append(cls.Frame.parse(frame_id,
+                                          frame_size,
+                                          tag_stream.substream(frame_size)))
+            total_size -= frame_size
+
+        return cls(frames)
 
 
 ID3v2Comment = ID3v22Comment

@@ -1519,6 +1519,7 @@ class ID3v23MetaData(ID3v22MetaData):
 p8QbyAAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB9sEBBMWM3PnvjMAAAALSURBVAjXY2DA
 BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'),
                                        u"image/jpeg",
+                                       0,
                                        u"",
                                        3)])
         fixes = []
@@ -1691,6 +1692,7 @@ class ID3v24MetaData(ID3v22MetaData):
 p8QbyAAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB9sEBBMWM3PnvjMAAAALSURBVAjXY2DA
 BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'),
                                        u"image/jpeg",
+                                       0,
                                        u"",
                                        3)])
         fixes = []
