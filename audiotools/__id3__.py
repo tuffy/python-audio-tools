@@ -742,11 +742,14 @@ class ID3v22Comment(MetaData):
             raise ValueError(_(u"unsupported major version"))
 
         total_size = decode_syncsafe32(stream)
+
         tag_stream = stream.substream(total_size)
         frames = []
 
         while (total_size > 0):
             (frame_id, frame_size) = tag_stream.parse("3b 24u")
+            if ((frame_id == (chr(0) * 3)) and (frame_size == 0)):
+                break
             total_size -= 6
             frames.append(cls.Frame.parse(frame_id,
                                           frame_size,
@@ -812,13 +815,11 @@ class ID3v22Comment(MetaData):
                 (getattr(metadata, attr) != 0)):
                 setattr(self, attr, getattr(metadata, attr))
 
-    def build(self, stream):
-        """generates an ID3v2.2 tag to the given BitstreamWriter"""
+    def build(self, writer):
+        """generates an ID3v2.2 tag to the given file object"""
 
-        from .bitstream import BitstreamWriter
         from .bitstream import BitstreamRecorder
 
-        writer = BitstreamWriter(stream, 0)
         subframes = BitstreamRecorder(0)
         frame_data = BitstreamRecorder(0)
         for frames in self.frames.values():
@@ -1325,6 +1326,8 @@ class ID3v23Comment(ID3v22Comment):
              compression,
              encryption,
              grouping) = tag_stream.parse("4b 32u 1u 1u 1u 5p 1u 1u 1u 5p")
+            if ((frame_id == (chr(0) * 4)) and (frame_size == 0)):
+                break
             total_size -= 10
             frames.append(cls.Frame.parse(frame_id,
                                           frame_size,
@@ -1334,13 +1337,11 @@ class ID3v23Comment(ID3v22Comment):
         return cls(frames)
 
 
-    def build(self, stream):
+    def build(self, writer):
         """generates an ID3v2.3 tag to the given BitstreamWriter"""
 
-        from .bitstream import BitstreamWriter
         from .bitstream import BitstreamRecorder
 
-        writer = BitstreamWriter(stream, 0)
         subframes = BitstreamRecorder(0)
         frame_data = BitstreamRecorder(0)
         for frames in self.frames.values():
@@ -1686,13 +1687,11 @@ class ID3v24Comment(ID3v23Comment):
     def __comment_name__(self):
         return u'ID3v2.4'
 
-    def build(self, stream):
+    def build(self, writer):
         """generates an ID3v2.4 tag to the given BitstreamWriter"""
 
-        from .bitstream import BitstreamWriter
         from .bitstream import BitstreamRecorder
 
-        writer = BitstreamWriter(stream, 0)
         subframes = BitstreamRecorder(0)
         frame_data = BitstreamRecorder(0)
         for frames in self.frames.values():
@@ -1740,6 +1739,8 @@ class ID3v24Comment(ID3v23Comment):
              unsync,
              data_length) = tag_stream.parse(
                 "1p 1u 1u 1u 4p 1p 1u 2p 1u 1u 1u 1u")
+            if ((frame_id == (chr(0) * 4)) and (frame_size == 0)):
+                break
             total_size -= 10
             frames.append(cls.Frame.parse(frame_id,
                                           frame_size,

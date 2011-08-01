@@ -539,14 +539,16 @@ class MP3Audio(AudioFile):
         mp3_data = f.read(data_end - data_start)
         f.close()
 
+        from .bitstream import BitstreamWriter
+
         #write id3v2 + data + id3v1 to file
         f = file(self.filename, "wb")
         if (isinstance(metadata, ID3CommentPair)):
-            metadata.id3v2.build(f)
+            metadata.id3v2.build(BitstreamWriter(f, 0))
             f.write(mp3_data)
             metadata.id3v1.build(f)
         elif (isinstance(metadata, ID3v2Comment)):
-            metadata.build(f)
+            metadata.build(BitstreamWriter(f, 0))
             f.write(mp3_data)
         elif (isinstance(metadata, ID3v1Comment)):
             f.write(mp3_data)

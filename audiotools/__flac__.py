@@ -1313,7 +1313,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                           self.get_metadata().applications]
 
     def riff_wave_chunks(self, progress=None):
-        """Generate a set of (chunk_id,chunk_data tuples)
+        """Generate a set of (chunk_id, chunk_data tuples)
 
         These are for use by WaveAudio.from_chunks
         and are taken from "riff" APPLICATION blocks

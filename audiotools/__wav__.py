@@ -77,7 +77,7 @@ class WaveReader(PCMReader):
                 else:
                     wave_reader.skip_bytes(chunk_size)
                     if (chunk_size % 2):
-                        wave_reader.skip(1)
+                        wave_reader.skip(8)
 
         except IOError:
             raise InvalidWave(_(u"data chunk not found"))
@@ -337,6 +337,8 @@ class WaveAudio(WaveContainer):
             block_align = (pcmreader.channels *
                            (pcmreader.bits_per_sample / 8))
 
+            #build a regular or extended fmt chunk
+            #based on the reader's attributes
             if ((pcmreader.channels <= 2) and
                 (pcmreader.bits_per_sample <= 16)):
                 fmt = "16u 16u 32u 32u 16u 16u"
@@ -409,7 +411,7 @@ class WaveAudio(WaveContainer):
                 raise EncodingError(err.error_message)
             f.flush()
 
-            #go back to the beginning the re-write the header
+            #go back to the beginning the rewrite the header
             f.seek(0, 0)
             wave.build("4b 32u 4b", ("RIFF", total_size, "WAVE"))
             wave.build("4b 32u", ('fmt ', format_size(fmt) / 8))
@@ -630,10 +632,10 @@ class WaveAudio(WaveContainer):
         return self.__chunk_ids__[:]
 
     def chunks(self):
-        """Yields (chunk_id, chunk_data) tuples.
+        """yields (chunk_id, chunk_data) tuples
 
-        chunk_id is a binary strings
-        chunk_data is a BitstreamReader"""
+        chunk_id is a binary string
+        chunk_data is a binary string"""
 
         from .bitstream import BitstreamReader
 
