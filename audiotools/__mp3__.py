@@ -198,11 +198,6 @@ class MP3Audio(AudioFile):
                    (416, 320, 256, 224, 144, 144),
                    (448, 384, 320, 256, 160, 160))
 
-    #MPEG1, MPEG2, MPEG2.5
-    MP3_SAMPLERATE = ((44100, 22050, 11025),
-                      (48000, 24000, 12000),
-                      (32000, 16000, 8000))
-
     MP3_FRAME_HEADER = Con.BitStruct("mp3_header",
                                   Con.Const(Con.Bits("sync", 11), 0x7FF),
                                   Con.Bits("mpeg_version", 2),
@@ -218,33 +213,135 @@ class MP3Audio(AudioFile):
                                   Con.Flag("original", 1),
                                   Con.Bits("emphasis", 2))
 
-    XING_HEADER = Con.Struct("xing_header",
-                             Con.Bytes("header_id", 4),
-                             Con.Bytes("flags", 4),
-                             Con.UBInt32("num_frames"),
-                             Con.UBInt32("bytes"),
-                             Con.StrictRepeater(100, Con.Byte("toc_entries")),
-                             Con.UBInt32("quality"))
+    SAMPLE_RATE = ((11025, 12000, 8000, None),  #MPEG-2.5
+                   (None, None, None, None),    #reserved
+                   (22050, 24000, 16000, None), #MPEG-2
+                   (44100, 48000, 32000, None)) #MPEG-1
+
+    BIT_RATE = (
+        #MPEG-2.5
+        (
+            #reserved
+            (None,) * 16,
+            #layer III
+            (None, 8000, 16000, 24000, 32000, 40000, 48000, 56000,
+             64000, 80000, 96000, 112000, 128000, 144000, 160000, None),
+            #layer II
+            (None, 8000, 16000, 24000, 32000, 40000, 48000, 56000,
+             64000, 80000, 96000, 112000, 128000, 144000, 160000, None),
+            #layer I
+            (None, 32000, 48000, 56000, 64000, 80000, 96000, 112000,
+             128000, 144000, 160000, 176000, 192000, 224000, 256000, None),
+        ),
+        #reserved
+        ((None,) * 16, ) * 4,
+        #MPEG-2
+        (
+            #reserved
+            (None,) * 16,
+            #layer III
+            (None, 8000, 16000, 24000, 32000, 40000, 48000, 56000,
+             64000, 80000, 96000, 112000, 128000, 144000, 160000, None),
+            #layer II
+            (None, 8000, 16000, 24000, 32000, 40000, 48000, 56000,
+             64000, 80000, 96000, 112000, 128000, 144000, 160000, None),
+            #layer I
+            (None, 32000, 48000, 56000, 64000, 80000, 96000, 112000,
+             128000, 144000, 160000, 176000, 192000, 224000, 256000, None),
+            ),
+        #MPEG-1
+        (
+            #reserved
+            (None,) * 16,
+            #layer III
+            (None, 32000, 40000, 48000, 56000, 64000, 80000, 96000,
+             112000, 128000, 160000, 192000, 224000, 256000, 320000, None),
+            #layer II
+            (None, 32000, 48000, 56000, 64000, 80000, 96000, 112000,
+             128000, 160000, 192000, 224000, 256000, 320000, 384000, None),
+            #layer I
+            (None, 32000, 64000, 96000, 128000, 160000, 192000, 224000,
+             256000, 288000, 320000, 352000, 384000, 416000, 448000, None)
+            )
+        )
+
+    PCM_FRAMES_PER_MPEG_FRAME = (None, 1152, 1152, 384)
 
     def __init__(self, filename):
         """filename is a plain string."""
 
         AudioFile.__init__(self, filename)
 
+        from .bitstream import BitstreamReader
+
         try:
-            mp3file = file(filename, "rb")
+            mp3file = open(filename, "rb")
         except IOError, msg:
             raise InvalidMP3(str(msg))
 
         try:
             try:
-                MP3Audio.__find_next_mp3_frame__(mp3file)
-            except ValueError:
+                header_bytes = MP3Audio.__find_next_mp3_frame__(mp3file)
+            except IOError:
                 raise InvalidMP3(_(u"MP3 frame not found"))
-            fr = MP3Audio.MP3_FRAME_HEADER.parse(mp3file.read(4))
-            self.__samplerate__ = MP3Audio.__get_mp3_frame_sample_rate__(fr)
-            self.__channels__ = MP3Audio.__get_mp3_frame_channels__(fr)
-            self.__framelength__ = self.__length__()
+
+            (frame_sync,
+             mpeg_id,
+             layer,
+             bit_rate,
+             sample_rate,
+             pad,
+             channels) = BitstreamReader(mp3file, 0).parse(
+                "11u 2u 2u 1p 4u 2u 1u 1p 2u 6p")
+
+            self.__samplerate__ = self.SAMPLE_RATE[mpeg_id][sample_rate]
+            if (self.__samplerate__ is None):
+                raise InvalidMP3(_(u"Invalid sample rate"))
+            if (channels in (0, 1, 2)):
+                self.__channels__ = 2
+            else:
+                self.__channels__ = 1
+
+            first_frame = mp3file.read(self.frame_length(mpeg_id,
+                                                         layer,
+                                                         bit_rate,
+                                                         sample_rate,
+                                                         pad) - 4)
+
+            if ("Xing" in first_frame):
+                #pull length from Xing header, if present
+                self.__pcm_frames__ = (
+                    BitstreamReader(
+                        cStringIO.StringIO(
+                            first_frame[first_frame.index("Xing"):
+                                            first_frame.index("Xing") + 160]),
+                        0).parse("32p 32p 32u 32p 832p")[0] *
+                    self.PCM_FRAMES_PER_MPEG_FRAME[layer])
+            else:
+                #otherwise, bounce through file frames
+                reader = BitstreamReader(mp3file, 0)
+                self.__pcm_frames__ = 0
+
+                try:
+                    while (frame_sync == 0x7FF):
+                        self.__pcm_frames__ += \
+                            self.PCM_FRAMES_PER_MPEG_FRAME[layer]
+                        (frame_sync,
+                         mpeg_id,
+                         layer,
+                         bit_rate,
+                         sample_rate,
+                         pad) = reader.parse(
+                            "11u 2u 2u 1p 4u 2u 1u 9p")
+                        reader.skip_bytes(self.frame_length(mpeg_id,
+                                                            layer,
+                                                            bit_rate,
+                                                            sample_rate,
+                                                            pad) - 4)
+                except IOError:
+                    pass
+                except ValueError:
+                    raise InvalidMP3(_(u"Invalid frame header values"))
         finally:
             mp3file.close()
 
@@ -254,26 +351,17 @@ class MP3Audio(AudioFile):
 
         Takes a seekable file pointer rewound to the start of the file."""
 
+        from .bitstream import BitstreamReader
+
         ID3v2Comment.skip(file)
 
-        try:
-            frame = cls.MP3_FRAME_HEADER.parse_stream(file)
-            if ((frame.sync == 0x07FF) and
-                (frame.mpeg_version in (0x03, 0x02, 0x00)) and
-                (frame.layer in (0x01, 0x03))):
-                return True
-            else:
-                #oddly, MP3s sometimes turn up in RIFF containers
-                #this isn't a good idea, but can be supported nonetheless
-                file.seek(-cls.MP3_FRAME_HEADER.sizeof(), 1)
-                header = file.read(12)
-                if ((header[0:4] == 'RIFF') and
-                    (header[8:12] == 'RMP3')):
-                    return True
-                else:
-                    return False
-        except:
-            return False
+        (frame_sync,
+         mpeg_id,
+         layer) = BitstreamReader(file, 0).parse("11u 2u 2u 1p")
+
+        return ((frame_sync == 0x7FF) and
+                (mpeg_id in (0, 2, 3)) and
+                (layer in (1, 3)))
 
     def lossless(self):
         """Returns False."""
@@ -580,59 +668,75 @@ class MP3Audio(AudioFile):
     @classmethod
     def __find_next_mp3_frame__(cls, mp3file):
         #if we're starting at an ID3v2 header, skip it to save a bunch of time
-        ID3v2Comment.skip(mp3file)
+        bytes_skipped = ID3v2Comment.skip(mp3file)
 
         #then find the next mp3 frame
-        (b1, b2) = mp3file.read(2)
-        while ((b1 != chr(0xFF)) or ((ord(b2) & 0xE0) != 0xE0)):
-            mp3file.seek(-1, 1)
-            (b1, b2) = mp3file.read(2)
-        mp3file.seek(-2, 1)
+        from .bitstream import BitstreamReader
 
-    #places mp3file at the position of the MP3 file's start
-    #either at the next frame (most commonly)
-    #or at the "RIFF????RMP3" header
+        reader = BitstreamReader(mp3file, 0)
+        reader.mark()
+        try:
+            (sync,
+             mpeg_id,
+             layer_description) = reader.parse("11u 2u 2u 1p")
+        except IOError, err:
+            reader.unmark()
+            raise err
+
+        while (not ((sync == 0x7FF) and
+                    (mpeg_id in (0, 2, 3)) and
+                    (layer_description in (1, 2, 3)))):
+            reader.rewind()
+            reader.unmark()
+            reader.skip(8)
+            bytes_skipped += 1
+            reader.mark()
+            try:
+                (sync,
+                 mpeg_id,
+                 layer_description) = reader.parse("11u 2u 2u 1p")
+            except IOError, err:
+                reader.unmark()
+                raise err
+        else:
+            reader.rewind()
+            reader.unmark()
+            return bytes_skipped
+
     @classmethod
     def __find_mp3_start__(cls, mp3file):
+        """places mp3file at the position of the MP3 file's start"""
+
         #if we're starting at an ID3v2 header, skip it to save a bunch of time
         ID3v2Comment.skip(mp3file)
 
-        while (True):
-            byte = mp3file.read(1)
-            while ((byte != chr(0xFF)) and (byte != 'R') and (len(byte) > 0)):
-                byte = mp3file.read(1)
+        from .bitstream import BitstreamReader
 
-            if (byte == chr(0xFF)):  # possibly a frame sync
-                mp3file.seek(-1, 1)
-                try:
-                    header = cls.MP3_FRAME_HEADER.parse_stream(mp3file)
-                    if ((header.sync == 0x07FF) and
-                        (header.mpeg_version in (0x03, 0x02, 0x00)) and
-                        (header.layer in (0x01, 0x02, 0x03))):
-                        mp3file.seek(-4, 1)
-                        return
-                    else:
-                        mp3file.seek(-3, 1)
-                except:
-                    continue
-            elif (byte == 'R'):     # possibly a 'RIFF????RMP3' header
-                header = mp3file.read(11)
-                if ((header[0:3] == 'IFF') and
-                    (header[7:11] == 'RMP3')):
-                    mp3file.seek(-12, 1)
-                    return
-                else:
-                    mp3file.seek(-11, 1)
-            elif (len(byte) == 0):  # we've run out of MP3 file
-                return
+        reader = BitstreamReader(mp3file, 0)
 
-    #places mp3file at the position of the last MP3 frame's end
-    #(either the last byte in the file or just before the ID3v1 tag)
-    #this may not be strictly accurate if ReplayGain data is present,
-    #since APEv2 tags came before the ID3v1 tag,
-    #but we're not planning to change that tag anyway
+        #skip over any bytes that aren't a valid MPEG header
+        reader.mark()
+        (frame_sync, mpeg_id, layer) = reader.parse("11u 2u 2u 1p")
+        while (not ((frame_sync == 0x7FF) and
+                    (mpeg_id in (0, 2, 3)) and
+                    (layer in (1, 2, 3)))):
+            reader.rewind()
+            reader.unmark()
+            reader.skip(8)
+            reader.mark()
+        reader.rewind()
+        reader.unmark()
+
     @classmethod
     def __find_last_mp3_frame__(cls, mp3file):
+        """places mp3file at the position of the last MP3 frame's end
+
+        (either the last byte in the file or just before the ID3v1 tag)
+        this may not be strictly accurate if ReplayGain data is present,
+        since APEv2 tags came before the ID3v1 tag,
+        but we're not planning to change that tag anyway
+        """
+
         mp3file.seek(-128, 2)
         if (mp3file.read(3) == 'TAG'):
             mp3file.seek(-128, 2)
@@ -641,136 +745,33 @@ class MP3Audio(AudioFile):
             mp3file.seek(0, 2)
         return
 
-    #header is a Construct parsed from 4 bytes sent to MP3_FRAME_HEADER
-    #returns the total length of the frame, including the header
-    #(subtract 4 when doing a seek or read to the next one)
-    @classmethod
-    def __mp3_frame_length__(cls, header):
-        layer = 4 - header.layer  # layer 1, 2 or 3
+    def frame_length(self, mpeg_id, layer, bit_rate, sample_rate, pad):
+        """returns the total MP3 frame length in bytes
 
-        bit_rate = MP3Audio.__get_mp3_frame_bitrate__(header)
+        the given arguments are the header's bit values
+        mpeg_id     = 2 bits
+        layer       = 2 bits
+        bit_rate    = 4 bits
+        sample_rate = 2 bits
+        pad         = 1 bit
+        """
+
+        sample_rate = self.SAMPLE_RATE[mpeg_id][sample_rate]
+        if (sample_rate is None):
+            raise ValueError(_(u"Invalid sample rate"))
+        bit_rate = self.BIT_RATE[mpeg_id][layer][bit_rate]
         if (bit_rate is None):
-            raise InvalidMP3(_(u"Invalid bit rate"))
+            raise ValueError(_(u"Invalid bit rate"))
+        if (layer == 3): #layer I
+            return (((12 * bit_rate) / sample_rate) + pad) * 4
+        else:            #layer II/III
+            return ((144 * bit_rate) / sample_rate) + pad
 
-        sample_rate = MP3Audio.__get_mp3_frame_sample_rate__(header)
-
-        if (layer == 1):
-            return (12 * (bit_rate * 1000) / sample_rate + header.padding) * 4
-        else:
-            return 144 * (bit_rate * 1000) / sample_rate + header.padding
-
-    #takes a parsed MP3_FRAME_HEADER
-    #returns the mp3's sample rate based on that information
-    #(typically 44100)
-    @classmethod
-    def __get_mp3_frame_sample_rate__(cls, frame):
-        try:
-            if (frame.mpeg_version == 0x00):    # MPEG 2.5
-                return MP3Audio.MP3_SAMPLERATE[frame.sampling_rate][2]
-            elif (frame.mpeg_version == 0x02):  # MPEG 2
-                return MP3Audio.MP3_SAMPLERATE[frame.sampling_rate][1]
-            else:                               # MPEG 1
-                return MP3Audio.MP3_SAMPLERATE[frame.sampling_rate][0]
-        except IndexError:
-            raise InvalidMP3(_(u"Invalid sampling rate"))
-
-    @classmethod
-    def __get_mp3_frame_channels__(cls, frame):
-        if (frame.channel == 0x03):
-            return 1
-        else:
-            return 2
-
-    @classmethod
-    def __get_mp3_frame_bitrate__(cls, frame):
-        layer = 4 - frame.layer  # layer 1, 2 or 3
-
-        try:
-            if (frame.mpeg_version == 0x00):    # MPEG 2.5
-                return MP3Audio.MP3_BITRATE[frame.bitrate][layer + 2]
-            elif (frame.mpeg_version == 0x02):  # MPEG 2
-                return MP3Audio.MP3_BITRATE[frame.bitrate][layer + 2]
-            elif (frame.mpeg_version == 0x03):  # MPEG 1
-                return MP3Audio.MP3_BITRATE[frame.bitrate][layer - 1]
-            else:
-                return 0
-        except IndexError:
-            raise InvalidMP3(_(u"Invalid bit rate"))
-
-    def cd_frames(self):
-        """Returns the total length of the track in CD frames.
-
-        Each CD frame is 1/75th of a second."""
-
-        #calculate length at create-time so that we can
-        #throw InvalidMP3 as soon as possible
-        return self.__framelength__
-
-    #returns the length of this file in CD frame
-    #raises InvalidMP3 if any portion of the frame is invalid
-    def __length__(self):
-        mp3file = file(self.filename, "rb")
-
-        try:
-            MP3Audio.__find_next_mp3_frame__(mp3file)
-
-            start_position = mp3file.tell()
-
-            fr = MP3Audio.MP3_FRAME_HEADER.parse(mp3file.read(4))
-
-            first_frame = mp3file.read(MP3Audio.__mp3_frame_length__(fr) - 4)
-
-            sample_rate = MP3Audio.__get_mp3_frame_sample_rate__(fr)
-
-            if (fr.mpeg_version == 0x00):    # MPEG 2.5
-                version = 3
-            elif (fr.mpeg_version == 0x02):  # MPEG 2
-                version = 3
-            else:                            # MPEG 1
-                version = 0
-
-            try:
-                if (fr.layer == 0x03):    # layer 1
-                    frames_per_sample = 384
-                    bit_rate = MP3Audio.MP3_BITRATE[fr.bitrate][version]
-                elif (fr.layer == 0x02):  # layer 2
-                    frames_per_sample = 1152
-                    bit_rate = MP3Audio.MP3_BITRATE[fr.bitrate][version + 1]
-                elif (fr.layer == 0x01):  # layer 3
-                    frames_per_sample = 1152
-                    bit_rate = MP3Audio.MP3_BITRATE[fr.bitrate][version + 2]
-                else:
-                    raise InvalidMP3(_(u"Unsupported MPEG layer"))
-            except IndexError:
-                raise InvalidMP3(_(u"Invalid bit rate"))
-
-            if ('Xing' in first_frame):
-                #the first frame has a Xing header,
-                #use that to calculate the mp3's length
-                xing_header = MP3Audio.XING_HEADER.parse(
-                    first_frame[first_frame.index('Xing'):])
-
-                return (xing_header.num_frames * frames_per_sample * 75 /
-                        sample_rate)
-            else:
-                #no Xing header,
-                #assume a constant bitrate file
-                mp3file.seek(-128, 2)
-                if (mp3file.read(3) == "TAG"):
-                    end_position = mp3file.tell() - 3
-                else:
-                    mp3file.seek(0, 2)
-                    end_position = mp3file.tell()
-
-                return ((end_position - start_position) * 75 * 8 /
-                        (bit_rate * 1000))
-        finally:
-            mp3file.close()
 
     def total_frames(self):
         """Returns the total PCM frames of the track as an integer."""
 
-        return self.cd_frames() * self.sample_rate() / 75
+        return self.__pcm_frames__
 
     @classmethod
     def can_add_replay_gain(cls):
@@ -889,16 +890,17 @@ class MP2Audio(MP3Audio):
 
         Takes a seekable file pointer rewound to the start of the file."""
 
+        from .bitstream import BitstreamReader
+
         ID3v2Comment.skip(file)
 
-        try:
-            frame = cls.MP3_FRAME_HEADER.parse_stream(file)
+        (frame_sync,
+         mpeg_id,
+         layer) = BitstreamReader(file, 0).parse("11u 2u 2u 1p")
 
-            return ((frame.sync == 0x07FF) and
-                    (frame.mpeg_version in (0x03, 0x02, 0x00)) and
-                    (frame.layer == 0x02))
-        except:
-            return False
+        return ((frame_sync == 0x7FF) and
+                (mpeg_id in (0, 2, 3)) and
+                (layer == 2))
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):

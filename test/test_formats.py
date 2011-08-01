@@ -1667,9 +1667,15 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
 
     @FORMAT_AIFF
     def test_ieee_extended(self):
-        ieee = audiotools.IEEE_Extended("i")
+        from audiotools.bitstream import BitstreamReader,BitstreamRecorder
+
         for i in xrange(0, 192000 + 1):
-            assert(i == int(ieee.parse(ieee.build(float(i)))))
+            w = BitstreamRecorder(0)
+            audiotools.build_ieee_extended(w, float(i))
+            s = cStringIO.StringIO(w.data())
+            self.assertEqual(w.data(), s.getvalue())
+            self.assertEqual(i, audiotools.parse_ieee_extended(
+                    BitstreamReader(s, 0)))
 
     @FORMAT_AIFF
     def test_channel_mask(self):

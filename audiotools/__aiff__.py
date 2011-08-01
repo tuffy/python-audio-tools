@@ -183,55 +183,60 @@ class AiffAudio(AiffContainer):
             raise InvalidAIFF(str(msg))
 
         try:
-            (form, total_size, aiff) = aiff_file.parse("4b 32u 4b")
-            if (form != 'FORM'):
-                raise InvalidAIFF(_(u"Not an AIFF file"))
-            elif (aiff != 'AIFF'):
-                raise InvalidAIFF(_(u"Invalid AIFF file"))
-            else:
-                total_size -= 4
-
-            while (total_size > 0):
-                (chunk_id, chunk_size) = aiff_file.parse("4b 32u")
-                total_size -= 8
-                if (chunk_id == 'COMM'):
-                    (self.__channels__,
-                     self.__total_sample_frames__,
-                     self.__bits_per_sample__) = aiff_file.parse("16u 32u 16u")
-                    self.__sample_rate__ = int(parse_ieee_extended(aiff_file))
-
-                    #this unusual arrangement is taken from
-                    #the AIFF-C specification
-                    if (self.__channels__ <= 2):
-                        self.__channel_mask__ = ChannelMask.from_channels(
-                            self.__channels__)
-                    elif (self.__channels__ == 3):
-                        self.__channel_mask__ = ChannelMask.from_fields(
-                            front_left=True, front_right=True,
-                            front_center=True)
-                    elif (self.__channels__ == 4):
-                        self.__channel_mask__ = ChannelMask.from_fields(
-                            front_left=True, front_right=True,
-                            back_left=True, back_right=True)
-                    elif (self.__channels__ == 6):
-                        self.__channel_mask__ = ChannelMask.from_fields(
-                            front_left=True, side_left=True,
-                            front_center=True, front_right=True,
-                            side_right=True, back_center=True)
-                    else:
-                        self.__channel_mask__ = ChannelMask(0)
-                    break
-                elif (not frozenset(chunk_id).issubset(self.PRINTABLE_ASCII)):
-                    raise InvalidWave(_(u"Invalid AIFF chunk ID"))
+            try:
+                (form, total_size, aiff) = aiff_file.parse("4b 32u 4b")
+                if (form != 'FORM'):
+                    raise InvalidAIFF(_(u"Not an AIFF file"))
+                elif (aiff != 'AIFF'):
+                    raise InvalidAIFF(_(u"Invalid AIFF file"))
                 else:
-                    aiff_file.skip_bytes(chunk_size)
-                    total_size -= chunk_size
-                    if (chunk_size % 2):
-                        aiff_file.skip(8)
-                        total_size -= 1
-            else:
-                raise InvalidAIFF(_(u"COMM chunk not found"))
+                    total_size -= 4
 
+                while (total_size > 0):
+                    (chunk_id, chunk_size) = aiff_file.parse("4b 32u")
+                    total_size -= 8
+                    if (chunk_id == 'COMM'):
+                        (self.__channels__,
+                         self.__total_sample_frames__,
+                         self.__bits_per_sample__) = aiff_file.parse(
+                            "16u 32u 16u")
+                        self.__sample_rate__ = int(
+                            parse_ieee_extended(aiff_file))
+
+                        #this unusual arrangement is taken from
+                        #the AIFF-C specification
+                        if (self.__channels__ <= 2):
+                            self.__channel_mask__ = ChannelMask.from_channels(
+                                self.__channels__)
+                        elif (self.__channels__ == 3):
+                            self.__channel_mask__ = ChannelMask.from_fields(
+                                front_left=True, front_right=True,
+                                front_center=True)
+                        elif (self.__channels__ == 4):
+                            self.__channel_mask__ = ChannelMask.from_fields(
+                                front_left=True, front_right=True,
+                                back_left=True, back_right=True)
+                        elif (self.__channels__ == 6):
+                            self.__channel_mask__ = ChannelMask.from_fields(
+                                front_left=True, side_left=True,
+                                front_center=True, front_right=True,
+                                side_right=True, back_center=True)
+                        else:
+                            self.__channel_mask__ = ChannelMask(0)
+                        break
+                    elif (not frozenset(chunk_id).issubset(
+                            self.PRINTABLE_ASCII)):
+                        raise InvalidWave(_(u"Invalid AIFF chunk ID"))
+                    else:
+                        aiff_file.skip_bytes(chunk_size)
+                        total_size -= chunk_size
+                        if (chunk_size % 2):
+                            aiff_file.skip(8)
+                            total_size -= 1
+                else:
+                    raise InvalidAIFF(_(u"COMM chunk not found"))
+            except IOError:
+                raise InvalidAIFF(_(u"I/O error in AIFF headers "))
         finally:
             aiff_file.close()
 
@@ -542,6 +547,8 @@ class AiffAudio(AiffContainer):
             aiff.build("4b 32u", ("SSND", data_size))
         finally:
             f.close()
+
+        return AiffAudio(filename)
 
     def to_aiff(self, aiff_filename, progress=None):
         """Writes the contents of this file to the given .aiff filename string.

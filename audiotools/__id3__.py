@@ -842,15 +842,16 @@ class ID3v22Comment(MetaData):
 
         from .bitstream import BitstreamReader
 
+        bytes_skipped = 0
         reader = BitstreamReader(file, 0)
         reader.mark()
         try:
-            (tag_id, tag_version) = reader.parse("3b 16u 8p")
+            (tag_id, version_major, version_minor) = reader.parse("3b 8u 8u 8p")
         except IOError, err:
             reader.unmark()
             raise err
 
-        if ((tag_id == 'ID3') and (tag_version in (2, 3, 4))):
+        if ((tag_id == 'ID3') and (version_major in (2, 3, 4))):
             reader.unmark()
 
             #parse the header

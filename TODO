@@ -3723,14 +3723,14 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   Since this is unlikely to be updated for Python 3,
   removing it should smooth that inevitable transition.
 ** TODO __accuraterip__.py
-** TODO __aiff__.py
+** DONE __aiff__.py
    - [X] chunks
    - [X] get_metadata
    - [X] set_metadata
    - [X] delete_metadata
    - [X] to_pcm
    - [X] from_pcm
-   - [ ] pcm_split
+   - [X] pcm_split
    - [X] aiff_from_chunks
 *** DONE AiffReader
     - [X] __init__
@@ -3748,6 +3748,16 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO __m4a__.py
 ** TODO __m4a_atoms__.py
 ** TODO __mp3__.py
+*** TODO MP3
+    - [X] __init__
+    - [X] is_type
+    - [X] __find_next_mp3_frame__
+    - [X] __find_mp3_start__
+    - [X] __find_last_mp3_frame__
+    - [ ] mpeg_frames
+    - [X] verify
+*** DONE MP2
+    - [X] is_type
 ** TODO __musepack__.py
 ** DONE __musicbrainz__.py
 ** DONE __ogg__.py
