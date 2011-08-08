@@ -47,6 +47,8 @@ typedef struct {
     struct ia_array wasted_bits_samples;  /*a buffer for wasted-bits samples*/
     struct ia_array residuals; /*a buffer for residual values*/
     struct alac_subframe_header *subframe_headers;
+
+    int data_allocated; /*indicates the init method allocated data*/
 } decoders_ALACDecoder;
 
 struct alac_frame_header {

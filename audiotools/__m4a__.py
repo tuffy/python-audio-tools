@@ -27,7 +27,7 @@ from audiotools import (AudioFile, InvalidFile, PCMReader, PCMConverter,
                         ChannelMask, UnsupportedBitsPerSample,
                         BufferedPCMReader, to_pcm_progress,
                         at_a_time, VERSION, PCMReaderError,
-                        __default_quality__)
+                        __default_quality__, iter_last)
 from __m4a_atoms__ import *
 import gettext
 
@@ -42,6 +42,24 @@ gettext.install("audiotools", unicode=True)
 class InvalidM4A(InvalidFile):
     pass
 
+def get_m4a_atom(reader, *atoms):
+    """given a BitstreamReader and atom name strings
+    returns a substream of the final atom
+    after traversing the parent atoms
+    """
+
+    for (last, next_atom) in iter_last(iter(atoms)):
+        try:
+            (length, stream_atom) = reader.parse("32u 4b")
+            while (stream_atom != next_atom):
+                reader.skip_bytes(length - 8)
+                (length, stream_atom) = reader.parse("32u 4b")
+            if (last):
+                return reader.substream(length - 8)
+            else:
+                reader = reader.substream(length - 8)
+        except IOError:
+            raise KeyError(next_atom)
 
 #M4A files are made up of QuickTime Atoms
 #some of those Atoms are containers for sub-Atoms
@@ -1297,27 +1315,63 @@ class ALACAudio(M4AAudio_faac):
     def __init__(self, filename):
         """filename is a plain string."""
 
+        from .bitstream import BitstreamReader
+
         self.filename = filename
+
+        #first, fetch the mdia atom
+        #which is the parent of both the alac and mdhd atoms
         try:
-            self.qt_stream = __Qt_Atom_Stream__(file(self.filename, "rb"))
-        except IOError, msg:
-            raise InvalidALAC(str(msg))
-
-        try:
-            alac = ALACAudio.ALAC_ATOM.parse(
-                ATOM_STSD.parse(self.qt_stream['moov']['trak']['mdia'][
-                        'minf']['stbl']['stsd'].data).descriptions[0].data)
-
-            self.__channels__ = alac.alac.channels
-            self.__bits_per_sample__ = alac.bits_per_sample
-            self.__sample_rate__ = alac.alac.sample_rate
-
-            mdhd = M4AAudio.MDHD_ATOM.parse(
-                self.qt_stream['moov']['trak']['mdia']['mdhd'].data)
-
-            self.__length__ = mdhd.track_length
+            mdia = get_m4a_atom(BitstreamReader(file(filename, 'rb'), 0),
+                                "moov", "trak", "mdia")
+        except IOError:
+            raise InvalidALAC(_(u"I/O error opening ALAC file"))
         except KeyError:
-            raise InvalidALAC(_(u'Required moov atom not found'))
+            raise InvalidALAC(_(u"Required mdia atom not found"))
+        mdia.mark()
+        try:
+            try:
+                stsd = get_m4a_atom(mdia, "minf", "stbl", "stsd")
+            except KeyError:
+                raise InvalidALAC(_(u"Required stsd atom not found"))
+
+            try:
+                (stsd_version, descriptions) = stsd.parse("8u 24p 32u")
+                (alac1,
+                 alac2,
+                 self.__bits_per_sample__,
+                 self.__channels__,
+                 self.__sample_rate__) = stsd.parse(
+                    #ignore much of the stuff in the "high" ALAC atom
+                    "32p 4b 6P 16p 16p 16p 4P 16p 16p 16p 16p 4P" +
+                    #and use the attributes in the "low" ALAC atom instead
+                    "32p 4b 4P 32p 1P 8u 8p 8p 8p 8u 16p 32p 32p 32u")
+            except IOError:
+                raise InvalidALAC(_(u"Invalid alac atom"))
+
+            if ((alac1 != 'alac') or (alac2 != 'alac')):
+                mdia.unmark()
+                raise InvalidFLAC(_(u"Invalid alac atom"))
+
+            mdia.rewind()
+            try:
+                mdhd = get_m4a_atom(mdia, "mdhd")
+            except KeyError:
+                raise InvalidALAC(_(u"Required mdhd atom not found"))
+            try:
+                (version, ) = mdhd.parse("8u 24p")
+                if (version == 0):
+                    (self.__length__,) = mdhd.parse("32p 32p 32p 32u 2P 16p")
+                elif (version == 1):
+                    (self.__length__,) = mdhd.parse("64p 64p 32p 64U 2P 16p")
+                else:
+                    raise InvalidALAC(_(u"Unsupported mdhd version"))
+            except IOError:
+                raise InvalidFLAC(_(u"Invalid mdhd atom"))
+        finally:
+            mdia.unmark()
+
+        self.qt_stream = __Qt_Atom_Stream__(file(self.filename, 'rb'))
 
     @classmethod
     def is_type(cls, file):
@@ -1325,18 +1379,33 @@ class ALACAudio(M4AAudio_faac):
 
         Takes a seekable file pointer rewound to the start of the file."""
 
-        header = file.read(12)
+        from .bitstream import BitstreamReader
 
-        if ((header[4:8] == 'ftyp') and
-            (header[8:12] in ('mp41', 'mp42', 'M4A ', 'M4B '))):
-            file.seek(0, 0)
-            atoms = __Qt_Atom_Stream__(file)
+        reader = BitstreamReader(file, 0)
+        reader.mark()
+        try:
+            (ftyp, major_brand) = reader.parse("32p 4b 4b")
+        except IOError:
+            reader.unmark()
+            return False
+
+        if ((ftyp == 'ftyp') and
+            (major_brand in ('mp41', 'mp42', 'M4A ', 'M4B '))):
+            reader.rewind()
+            reader.unmark()
             try:
-                return (ATOM_STSD.parse(atoms['moov']['trak']['mdia']['minf']['stbl']['stsd'].data).descriptions[0].type == 'alac')
-            except (Con.ConstError, Con.FieldError, Con.ArrayError, KeyError,
-                    IndexError):
+                stsd = get_m4a_atom(reader, "moov", "trak", "mdia",
+                                    "minf", "stbl", "stsd")
+                try:
+                    (stsd_version, descriptions) = stsd.parse("8u 24p 32u")
+                    (alac_size, alac_type) = stsd.parse("32u 4b")
+                    return (alac_type == 'alac')
+                except IOError:
+                    return False
+            except KeyError:
                 return False
         else:
+            reader.unmark()
             return False
 
     def total_frames(self):

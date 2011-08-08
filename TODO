@@ -3746,6 +3746,48 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO __image__.py
 ** DONE __init__.py
 ** TODO __m4a__.py
+*** TODO M4AAudio_faac
+    - [ ] __init__
+    - [ ] is_type
+    - [ ] get_metadata
+    - [ ] set_metadata
+    - [ ] __set_meta_atom__
+*** TODO ILST_Atom
+    - [ ] __init__
+    - [ ] eq
+    - [ ] __len__
+    - [ ] is_text
+    - [ ] __unicode__
+    - [ ] __str__
+*** TODO M4AMetaData
+    - [ ] binary_atom
+    - [ ] text_atom
+    - [ ] trkn_atom
+    - [ ] disk_atom
+    - [ ] covr_atom
+    - [ ] __setattr__
+    - [ ] __getattr__
+    - [ ] __delattr__
+    - [ ] images
+    - [ ] add_image
+    - [ ] delete_image
+    - [ ] converted
+    - [ ] merge
+    - [ ] to_atom
+    - [ ] clean
+*** TODO ALACAudio
+    - [ ] __init__
+    - [X] is_type
+    - [ ] to_pcm
+    - [ ] from_pcm
+    - [ ] __build_ftyp_atom__
+    - [ ] __build_moov_atom__
+    - [ ] __build_free_atom__
+*** TODO AACAudio
+    - [ ] __init__
+    - [ ] is_type
+    - [ ] aac_frames
+    - [ ] aac_frame_count
 ** TODO __m4a_atoms__.py
 ** TODO __mp3__.py
 *** TODO MP3

@@ -36,12 +36,14 @@ ALACDecoder_init(decoders_ALACDecoder *self,
                              "max_samples_per_frame",
                              "history_multiplier",
                              "initial_history",
-                             "maximum_k"};
+                             "maximum_k",
+                             NULL};
+    int total_frames;
 
     self->filename = NULL;
     self->file = NULL;
     self->bitstream = NULL;
-    int total_frames;
+    self->data_allocated = 0;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "siiiiiiiii", kwlist,
                                      &filename,
@@ -86,6 +88,8 @@ ALACDecoder_init(decoders_ALACDecoder *self,
         ia_init(&(self->subframe_headers[i].predictor_coef_table), 8);
     }
 
+    self->data_allocated = 1;
+
     /*open the alac file*/
     if ((self->file = fopen(filename, "rb")) == NULL) {
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
@@ -110,17 +114,21 @@ ALACDecoder_dealloc(decoders_ALACDecoder *self)
 {
     int i;
 
-    iaa_free(&(self->samples));
-    iaa_free(&(self->subframe_samples));
-    iaa_free(&(self->wasted_bits_samples));
-    iaa_free(&(self->residuals));
-    for (i = 0; i < self->channels; i++)
-        ia_free(&(self->subframe_headers[i].predictor_coef_table));
-    free(self->subframe_headers);
+    if (self->data_allocated) {
+        for (i = 0; i < self->channels; i++)
+            ia_free(&(self->subframe_headers[i].predictor_coef_table));
 
-    if (self->filename != NULL)
+        free(self->subframe_headers);
         free(self->filename);
-    self->bitstream->close(self->bitstream); /*this closes self->file also*/
+        iaa_free(&(self->samples));
+        iaa_free(&(self->subframe_samples));
+        iaa_free(&(self->wasted_bits_samples));
+        iaa_free(&(self->residuals));
+
+        if (self->bitstream != NULL)
+            /*this closes self->file also*/
+            self->bitstream->close(self->bitstream);
+    }
 
     self->ob_type->tp_free((PyObject*)self);
 }
