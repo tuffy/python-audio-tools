@@ -3746,11 +3746,30 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO __image__.py
 ** DONE __init__.py
 ** TODO __m4a__.py
+*** TODO M4ATaggedAudio
+    - [ ] get_metadata
+    - [ ] set_metadata
+    - [X] delete_metadata
+*** TODO M4A_META_Atom
+    - [X] __init__
+    - [X] __repr__
+    - [X] parse
+    - [X] __getattr__
+    - [ ] __setattr__
+    - [ ] __delattr__
+    - [ ] images
+    - [ ] add_image
+    - [ ] delete_image
+    - [ ] converted
+    - [ ] merge
+    - [X] __comment_name__
+    - [X] supports_images
+    - [X] __by_pair__
+    - [ ] __comment_pairs__
+    - [ ] __clean__
 *** TODO M4AAudio_faac
     - [ ] __init__
     - [ ] is_type
-    - [ ] get_metadata
-    - [ ] set_metadata
     - [ ] __set_meta_atom__
 *** TODO ILST_Atom
     - [ ] __init__
@@ -3825,3 +3844,29 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Update Python-based BitstreamWriter to catch C exceptions
 ** TODO Update encoders to catch C exceptions and raise Python exceptions
 ** TODO Unit test write errors
+* TODO Check objects for invalid init calls
+  If an init fails, the subsequent dealloc call shouldn't segfault Python.
+** TODO audiotools.bitstream
+   - [ ] BitstreamAccumulator
+   - [ ] BitstreamReader
+   - [ ] BitstreamRecorder
+   - [ ] BitstreamWriter
+** TODO audiotools.cdio
+   - [ ] CDDA
+   - [ ] CDImage
+** TODO audiotools.decoders
+   - [ ] ALACDecoder
+   - [ ] AOBPCMDecoder
+   - [ ] FlacDecoder
+   - [ ] MLPDecoder
+   - [ ] OggFlacDecoder
+   - [ ] SHNDecoder
+   - [ ] Sine_Mono
+   - [ ] Sine_Simple
+   - [ ] Sine_Stereo
+   - [ ] WavPackDecoder
+** TODO audiotools.pcm
+   - [ ] FrameList
+   - [ ] FloatFrameList
+** TODO audiotools.resample
+   - [ ] Resampler

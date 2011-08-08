@@ -1832,6 +1832,16 @@ BitstreamAccumulator_bytes(bitstream_BitstreamAccumulator *self,
                          self->bitstream->bits_written(self->bitstream) / 8);
 }
 
+static PyObject*
+BitstreamAccumulator_reset(bitstream_BitstreamAccumulator *self,
+                           PyObject *args)
+{
+    bw_reset_accumulator(self->bitstream);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 void
 BitstreamWriter_callback(uint8_t byte, PyObject *callback)
 {

@@ -914,6 +914,14 @@ bw_reset_recorder(BitstreamWriter* bs)
     bs->output.buffer->buffer_size = 0;
 }
 
+static inline void
+bw_reset_accumulator(BitstreamWriter* bs)
+{
+    assert(bs->type == BW_ACCUMULATOR);
+
+    bs->output.accumulator = 0;
+}
+
 /*set the recorded output to the maximum possible size
   as recorded by bs->bits_written(bs)
   as a placeholder value to be filled later*/

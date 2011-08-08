@@ -789,6 +789,10 @@ static PyObject*
 BitstreamAccumulator_bytes(bitstream_BitstreamAccumulator *self,
                            PyObject *args);
 
+static PyObject*
+BitstreamAccumulator_reset(bitstream_BitstreamAccumulator *self,
+                           PyObject *args);
+
 
 PyMethodDef BitstreamAccumulator_methods[] = {
     {"write", (PyCFunction)BitstreamAccumulator_write, METH_VARARGS,
@@ -842,6 +846,8 @@ PyMethodDef BitstreamAccumulator_methods[] = {
     {"bytes", (PyCFunction)BitstreamAccumulator_bytes, METH_NOARGS,
      "bytes() -> unsigned int\n"
      "returns the total number of bytes written thus far"},
+    {"reset", (PyCFunction)BitstreamAccumulator_reset, METH_NOARGS,
+     "reset()\n"},
     {NULL}
 };
 
