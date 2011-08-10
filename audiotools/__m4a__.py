@@ -21,7 +21,8 @@
 from audiotools import (AudioFile, InvalidFile, PCMReader, PCMConverter,
                         Con, transfer_data, transfer_framelist_data,
                         subprocess, BIN, cStringIO, MetaData, os,
-                        Image, InvalidImage, ignore_sigint, InvalidFormat,
+                        Image, image_metrics, InvalidImage,
+                        ignore_sigint, InvalidFormat,
                         open, open_files, EncodingError, DecodingError,
                         WaveAudio, TempWaveReader,
                         ChannelMask, UnsupportedBitsPerSample,
@@ -95,8 +96,12 @@ class M4ATaggedAudio:
 
         reader = BitstreamReader(file(self.filename, 'rb'), 0)
         try:
-            (meta_size, meta_reader) = get_m4a_atom(reader,
-                                                    "moov", "udta", "meta")
+            try:
+                (meta_size,
+                 meta_reader) = get_m4a_atom(reader, "moov", "udta", "meta")
+            except KeyError:
+                return None
+
             return M4A_META_Atom.parse("meta", meta_size, meta_reader,
                                        {"ilst":M4A_Tree_Atom,
                                         "\xa9alb":M4A_ILST_Leaf_Atom,
@@ -120,28 +125,99 @@ class M4ATaggedAudio:
             reader.close()
 
     def set_metadata(self, metadata):
+        from .bitstream import BitstreamWriter,BitstreamReader
+
         if (metadata is None):
             return
 
+        old_metadata = self.get_metadata()
         metadata = M4A_META_Atom.converted(metadata)
 
         #transfer "----" atoms from current metadata to new metadata
+        #FIXME
 
         #transfer "\xa9too" atoms from current metadata to new metadata
+        #FIXME
 
         #M4A streams often have *two* "free" atoms we can attempt to resize
 
         #first, attempt to resize the one inside the "meta" atom
+        if ((old_metadata is not None) and
+            metadata.has_child("free") and
+            ((metadata.size() - metadata["free"].size()) <=
+             old_metadata.size())):
 
-        #if there's insufficient room, attempt to resize the outermost "free"
+            metadata.replace_child(
+                M4A_Leaf_Atom("free",
+                              chr(0) * (old_metadata.size() -
+                                        (metadata.size() -
+                                         metadata["free"].size()))))
 
-        #this is only possible if the file is laid out correctly,
-        #with "free" coming after "moov" but before "mdat"
+            f = file(self.filename, 'r+b')
+            (meta_size, meta_offset) = get_m4a_atom_offset(
+                BitstreamReader(f, 0), "moov", "udta", "meta")
+            f.seek(meta_offset + 8, 0)
+            metadata.build(BitstreamWriter(f, 0))
+            f.close()
+            return
+        else:
+            #if there's insufficient room,
+            #attempt to resize the outermost "free" also
 
-        #if neither fix is possible, the whole file must be rewritten
-        #which also requires adjusting the "stco" atom offsets
+            #this is only possible if the file is laid out correctly,
+            #with "free" coming after "moov" but before "mdat"
+            #FIXME
 
-        raise NotImplementedError()
+            #if neither fix is possible, the whole file must be rewritten
+            #which also requires adjusting the "stco" atom offsets
+            m4a_tree = M4A_Tree_Atom.parse(
+                None,
+                os.path.getsize(self.filename),
+                BitstreamReader(file(self.filename, "rb"), 0),
+                {"moov":M4A_Tree_Atom,
+                 "trak":M4A_Tree_Atom,
+                 "mdia":M4A_Tree_Atom,
+                 "minf":M4A_Tree_Atom,
+                 "stbl":M4A_Tree_Atom,
+                 "stco":M4A_STCO_Atom,
+                 "udta":M4A_Tree_Atom})
+
+            #find initial mdat offset
+            initial_mdat_offset = m4a_tree.child_offset("mdat")
+
+            #adjust moov -> udta -> meta atom
+            #(generating sub-atoms as necessary)
+            if (not m4a_tree.has_child("moov")):
+                return
+            else:
+                moov = m4a_tree["moov"]
+            if (not moov.has_child("udta")):
+                moov.append_child(M4A_Tree_Atom("udta", []))
+            udta = moov["udta"]
+            if (not udta.has_child("meta")):
+                udta.append_child(metadata)
+            else:
+                udta.replace_child(metadata)
+
+            #find new mdat offset
+            new_mdat_offset = m4a_tree.child_offset("mdat")
+
+            #adjust moov -> trak -> mdia -> minf -> stbl -> stco offsets
+            #based on the difference between the new mdat position and the old
+            try:
+                delta_offset = new_mdat_offset - initial_mdat_offset
+                stco = m4a_tree["moov"]["trak"]["mdia"]["minf"]["stbl"]["stco"]
+                stco.offsets = [offset + delta_offset for offset in
+                                stco.offsets]
+            except KeyError:
+                #if there is no stco atom, don't worry about it
+                pass
+
+            #then write entire tree back to disk
+            writer = BitstreamWriter(file(self.filename, "wb"), 0)
+            m4a_tree.build(writer)
+            writer.close()
+
 
     def delete_metadata(self):
         """Deletes the track's MetaData.
@@ -187,11 +263,62 @@ class M4A_Tree_Atom:
             yield leaf
 
     def __getitem__(self, atom_name):
+        return self.get_child(atom_name)
+
+    def get_child(self, atom_name):
         for leaf in self:
             if (leaf.name == atom_name):
                 return leaf
         else:
             raise KeyError(atom_name)
+
+    def has_child(self, atom_name):
+        for leaf in self:
+            if (leaf.name == atom_name):
+                return True
+        else:
+            return False
+
+    def add_child(self, atom_obj):
+        self.leaf_atoms.append(atom_obj)
+
+    def remove_child(self, atom_name):
+        new_leaf_atoms = []
+        data_deleted = False
+        for leaf_atom in self:
+            if ((leaf_atom.name == atom_obj.name) and (not data_deleted)):
+                data_deleted = True
+            else:
+                new_leaf_atoms.append(leaf_atom)
+
+        self.leaf_atoms = new_leaf_atoms
+
+    def replace_child(self, atom_obj):
+        new_leaf_atoms = []
+        data_replaced = False
+        for leaf_atom in self:
+            if ((leaf_atom.name == atom_obj.name) and (not data_replaced)):
+                new_leaf_atoms.append(atom_obj)
+                data_replaced = True
+            else:
+                new_leaf_atoms.append(leaf_atom)
+
+        self.leaf_atoms = new_leaf_atoms
+
+    def child_offset(self, *child_path):
+        offset = 0
+        next_child = child_path[0]
+        for leaf_atom in self:
+            if (leaf_atom.name == next_child):
+                if (len(child_path) > 1):
+                    return (offset + 8 +
+                            leaf_atom.child_offset(*(child_path[1:])))
+                else:
+                    return offset
+            else:
+                offset += (8 + leaf_atom.size())
+        else:
+            raise KeyError(next_child)
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
@@ -225,6 +352,10 @@ class M4A_Leaf_Atom:
     def __repr__(self):
         return "M4A_Leaf_Atom(%s, %s)" % \
             (repr(self.name), repr(self.data))
+
+    def __unicode__(self):
+        #FIXME
+        return self.data.encode('hex')[0:40].decode('ascii')
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
@@ -278,8 +409,6 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                    parse_sub_atoms(data_size - 4, reader, parsers))
 
     def build(self, writer):
-        #FIXME - support adjusting "free" size here
-
         from .bitstream import BitstreamAccumulator
 
         leaf_size = BitstreamAccumulator(0)
@@ -371,6 +500,8 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                                                     int(value)))
                     else:
                         new_leaf_atoms.append(new_data_atom(attribute, value))
+
+                    data_replaced = True
                 else:
                     new_leaf_atoms.append(leaf_atom)
 
@@ -405,23 +536,30 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
 
 
     def __delattr__(self, key):
-        raise NotImplementedError()
+        raise NotImplementedError() #FIXME
 
     def images(self):
-        raise NotImplementedError()
+        if (self.ilst_atom is not None):
+            return [atom for atom in self.ilst_atom
+                    if atom.name == 'covr']
+        else:
+            return []
 
     def add_image(self, image):
-        raise NotImplementedError()
+        raise NotImplementedError() #FIXME
 
     def delete_image(self, image):
-        raise NotImplementedError()
+        raise NotImplementedError() #FIXME
 
     @classmethod
     def converted(cls, metadata):
-        raise NotImplementedError()
+        if ((metadata is None) or isinstance(metadata, cls)):
+            return metadata
+        else:
+            raise NotImplementedError() #FIXME
 
     def merge(self, metadata):
-        raise NotImplementedError()
+        raise NotImplementedError() #FIXME
 
     def __comment_name__(self):
         return u'M4A'
@@ -433,23 +571,27 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
         return True
 
     @classmethod
-    def __by_pair__(cls, pair1, pair2):
-        KEY_MAP = {" nam": 1,
-                   " ART": 6,
-                   " com": 5,
-                   " alb": 2,
+    def __by_pair__(cls, atom1, atom2):
+        KEY_MAP = {"\xa9nam": 1,
+                   "\xa9ART": 6,
+                   "\xa9com": 5,
+                   "\xa9alb": 2,
                    "trkn": 3,
                    "disk": 4,
                    "----": 8}
 
-        return cmp((KEY_MAP.get(pair1[0], 7), pair1[0], pair1[1]),
-                   (KEY_MAP.get(pair2[0], 7), pair2[0], pair2[1]))
+        return cmp(KEY_MAP.get(atom1.name, 7), KEY_MAP.get(atom2.name, 7))
 
     def __comment_pairs__(self):
-        raise NotImplementedError()
+        if (self.ilst_atom is not None):
+            return [(atom.name.replace(chr(0xA9), " "), unicode(atom))
+                    for atom in sorted(self.ilst_atom, self.__by_pair__)
+                    if (atom.name not in ('covr', ))]
+        else:
+            return []
 
     def clean(self, fixes_applied):
-        raise NotImplementedError()
+        raise NotImplementedError() #FIXME
 
 
 class M4A_ILST_Leaf_Atom(M4A_Tree_Atom):
@@ -471,6 +613,7 @@ class M4A_ILST_Leaf_Atom(M4A_Tree_Atom):
                          "\xa9nam":M4A_ILST_Unicode_Data_Atom,
                          "\xa9too":M4A_ILST_Unicode_Data_Atom,
                          "\xa9wrt":M4A_ILST_Unicode_Data_Atom,
+                         "covr":M4A_ILST_COVR_Data_Atom,
                          "trkn":M4A_ILST_TRKN_Data_Atom,
                          "disk":M4A_ILST_DISK_Data_Atom}.get(
                         name, M4A_Leaf_Atom)}))
@@ -533,6 +676,12 @@ class M4A_ILST_TRKN_Data_Atom(M4A_Leaf_Atom):
         return "M4A_ILST_TRKN_Data_Atom(%d, %d)" % \
             (self.track_number, self.track_total)
 
+    def __unicode__(self):
+        if (self.track_total > 0):
+            return u"%d/%d" % (self.track_number, self.track_total)
+        else:
+            return unicode(self.track_number)
+
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
         assert(name == "data")
@@ -561,6 +710,12 @@ class M4A_ILST_DISK_Data_Atom(M4A_Leaf_Atom):
         return "M4A_ILST_DISK_Data_Atom(%d, %d)" % \
             (self.disk_number, self.disk_total)
 
+    def __unicode__(self):
+        if (self.disk_total > 0):
+            return u"%d/%d" % (self.disk_number, self.disk_total)
+        else:
+            return unicode(self.disk_number)
+
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
         assert(name == "data")
@@ -578,6 +733,39 @@ class M4A_ILST_DISK_Data_Atom(M4A_Leaf_Atom):
 
     def total(self):
         return self.disk_total
+
+class M4A_ILST_COVR_Data_Atom(Image, M4A_Leaf_Atom):
+    def __init__(self, image_data):
+        self.name = "data"
+
+        img = image_metrics(image_data)
+        Image.__init__(self,
+                       data=image_data,
+                       mime_type=img.mime_type,
+                       width=img.width,
+                       height=img.height,
+                       color_depth=img.bits_per_pixel,
+                       color_count=img.color_count,
+                       description=u"",
+                       type=0)
+
+    def __repr__(self):
+        return "M4A_ILST_COVR_Data_Atom(...)"
+
+    @classmethod
+    def parse(cls, name, data_size, reader, parsers):
+        assert(name == "data")
+        reader.skip_bytes(8)
+        return cls(reader.read_bytes(data_size - 8))
+
+    def build(self, writer):
+        writer.write_bytes(chr(0) * 8)
+        writer.write_bytes(self.data)
+
+    def size(self):
+        return len(self.data) + 8
+
+
 
 class M4A_STCO_Atom(M4A_Leaf_Atom):
     def __init__(self, version, flags, offsets):

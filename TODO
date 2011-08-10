@@ -3747,7 +3747,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE __init__.py
 ** TODO __m4a__.py
 *** TODO M4ATaggedAudio
-    - [ ] get_metadata
+    - [X] get_metadata
     - [ ] set_metadata
     - [X] delete_metadata
 *** TODO M4A_META_Atom
@@ -3765,7 +3765,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] __comment_name__
     - [X] supports_images
     - [X] __by_pair__
-    - [ ] __comment_pairs__
+    - [X] __comment_pairs__
     - [ ] __clean__
 *** TODO M4AAudio_faac
     - [ ] __init__
