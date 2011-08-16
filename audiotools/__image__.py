@@ -17,10 +17,10 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import Con
 import imghdr
 import cStringIO
 import gettext
+from .bitstream import BitstreamReader,format_size
 
 gettext.install("audiotools", unicode=True)
 
@@ -116,67 +116,40 @@ class InvalidJPEG(InvalidImage):
 
 
 class __JPEG__(ImageMetrics):
-    SEGMENT_HEADER = Con.Struct('segment_header',
-                                Con.Const(Con.Byte('header'), 0xFF),
-                                Con.Byte('type'),
-                                Con.If(
-        lambda ctx: ctx['type'] not in (0xD8, 0xD9),
-        Con.UBInt16('length')))
-
-    APP0 = Con.Struct('JFIF_segment_marker',
-                      Con.String('identifier', 5),
-                      Con.Byte('major_version'),
-                      Con.Byte('minor_version'),
-                      Con.Byte('density_units'),
-                      Con.UBInt16('x_density'),
-                      Con.UBInt16('y_density'),
-                      Con.Byte('thumbnail_width'),
-                      Con.Byte('thumbnail_height'))
-
-    SOF = Con.Struct('start_of_frame',
-                     Con.Byte('data_precision'),
-                     Con.UBInt16('image_height'),
-                     Con.UBInt16('image_width'),
-                     Con.Byte('components'))
-
     def __init__(self, width, height, bits_per_pixel):
         ImageMetrics.__init__(self, width, height, bits_per_pixel,
                               0, u'image/jpeg')
 
     @classmethod
     def parse(cls, file):
-        try:
-            header = cls.SEGMENT_HEADER.parse_stream(file)
-            if (header.type != 0xD8):
-                raise InvalidJPEG(_(u'Invalid JPEG header'))
+        def segments(reader):
+            if (reader.read(8) != 0xFF):
+                raise InvalidJPEG(_(u"Invalid JPEG segment marker"))
+            segment_type = reader.read(8)
 
-            segment = cls.SEGMENT_HEADER.parse_stream(file)
-            while (segment.type != 0xD9):
-                if (segment.type == 0xDA):
-                    break
-
-                if (segment.type in (0xC0, 0xC1, 0xC2, 0xC3,
-                                     0xC5, 0XC5, 0xC6, 0xC7,
-                                     0xC9, 0xCA, 0xCB, 0xCD,
-                                     0xCE, 0xCF)):  # start of frame
-                    segment_data = cStringIO.StringIO(
-                        file.read(segment.length - 2))
-                    frame0 = cls.SOF.parse_stream(segment_data)
-                    segment_data.close()
-
-                    return __JPEG__(width=frame0.image_width,
-                                    height=frame0.image_height,
-                                    bits_per_pixel=(frame0.data_precision *
-                                                    frame0.components))
+            while (segment_type != 0xDA):
+                if (segment_type not in (0xD8, 0xD9)):
+                    yield (segment_type, reader.substream(reader.read(16) - 2))
                 else:
-                    file.seek(segment.length - 2, 1)
+                    yield (segment_type, None)
 
-                segment = cls.SEGMENT_HEADER.parse_stream(file)
+                if (reader.read(8) != 0xFF):
+                    raise InvalidJPEG(_(u"Invalid JPEG segment marker"))
+                segment_type = reader.read(8)
 
-            raise InvalidJPEG(_(u'Start of frame not found'))
-        except Con.ConstError:
-            raise InvalidJPEG(_(u"Invalid JPEG segment marker at 0x%X") % \
-                                  (file.tell()))
+
+        for (segment_type, segment_data) in segments(BitstreamReader(file, 0)):
+            if (segment_type in (0xC0, 0xC1, 0xC2, 0xC3,
+                                 0xC5, 0XC5, 0xC6, 0xC7,
+                                 0xC9, 0xCA, 0xCB, 0xCD,
+                                 0xCE, 0xCF)):  #start of frame
+                (data_precision,
+                 image_height,
+                 image_width,
+                 components) = segment_data.parse("8u 16u 16u 8u")
+                return __JPEG__(width=image_width,
+                                height=image_height,
+                                bits_per_pixel=data_precision * components)
 
 
 #######################
@@ -191,72 +164,71 @@ class InvalidPNG(InvalidImage):
 
 
 class __PNG__(ImageMetrics):
-    HEADER = Con.Const(Con.String('header', 8),
-                       '89504e470d0a1a0a'.decode('hex'))
-    CHUNK_HEADER = Con.Struct('chunk',
-                              Con.UBInt32('length'),
-                              Con.String('type', 4))
-    CHUNK_FOOTER = Con.Struct('crc32',
-                              Con.UBInt32('crc'))
-
-    IHDR = Con.Struct('IHDR',
-                      Con.UBInt32('width'),
-                      Con.UBInt32('height'),
-                      Con.Byte('bit_depth'),
-                      Con.Byte('color_type'),
-                      Con.Byte('compression_method'),
-                      Con.Byte('filter_method'),
-                      Con.Byte('interlace_method'))
-
     def __init__(self, width, height, bits_per_pixel, color_count):
         ImageMetrics.__init__(self, width, height, bits_per_pixel, color_count,
                               u'image/png')
 
     @classmethod
     def parse(cls, file):
+        def chunks(reader):
+            if (reader.read_bytes(8) != '\x89\x50\x4E\x47\x0D\x0A\x1A\x0A'):
+                raise InvalidPNG(_(u'Invalid PNG'))
+            (chunk_length, chunk_type) = reader.parse("32u 4b")
+            while (chunk_type != 'IEND'):
+                yield (chunk_type, chunk_length, reader.substream(chunk_length))
+                chunk_crc = reader.read(32)
+                (chunk_length, chunk_type) = reader.parse("32u 4b")
+
         ihdr = None
-        plte = None
+        plte_length = 0
 
-        try:
-            header = cls.HEADER.parse_stream(file)
+        for (chunk_type,
+             chunk_length,
+             chunk_data) in chunks(BitstreamReader(file, 0)):
+            if (chunk_type == 'IHDR'):
+                ihdr = chunk_data
+            elif (chunk_type == 'PLTE'):
+                plte_length = chunk_length
 
-            chunk_header = cls.CHUNK_HEADER.parse_stream(file)
-            data = file.read(chunk_header.length)
-            chunk_footer = cls.CHUNK_FOOTER.parse_stream(file)
-            while (chunk_header.type != 'IEND'):
-                if (chunk_header.type == 'IHDR'):
-                    ihdr = cls.IHDR.parse(data)
-                elif (chunk_header.type == 'PLTE'):
-                    plte = data
+        if (ihdr is None):
+            raise InvalidPNG(_(u"Invalid PNG"))
 
-                chunk_header = cls.CHUNK_HEADER.parse_stream(file)
-                data = file.read(chunk_header.length)
-                chunk_footer = cls.CHUNK_FOOTER.parse_stream(file)
+        (width,
+         height,
+         bit_depth,
+         color_type,
+         compression_method,
+         filter_method,
+         interlace_method) = ihdr.parse("32u 32u 8u 8u 8u 8u 8u")
 
-            if (ihdr.color_type == 0):    # grayscale
-                bits_per_pixel = ihdr.bit_depth
-                color_count = 0
-            elif (ihdr.color_type == 2):  # RGB
-                bits_per_pixel = ihdr.bit_depth * 3
-                color_count = 0
-            elif (ihdr.color_type == 3):  # palette
-                bits_per_pixel = 8
-                if ((len(plte) % 3) != 0):
-                    raise InvalidPNG(_(u'Invalid PLTE chunk length'))
-                else:
-                    color_count = len(plte) / 3
-            elif (ihdr.color_type == 4):  # grayscale + alpha
-                bits_per_pixel = ihdr.bit_depth * 2
-                color_count = 0
-            elif (ihdr.color_type == 6):  # RGB + alpha
-                bits_per_pixel = ihdr.bit_depth * 4
-                color_count = 0
-
-            return __PNG__(ihdr.width, ihdr.height, bits_per_pixel,
-                           color_count)
-        except Con.ConstError:
-            raise InvalidPNG(_(u'Invalid PNG'))
-
+        if (color_type == 0):    # grayscale
+            return cls(width=width,
+                       height=height,
+                       bits_per_pixel=bit_depth,
+                       color_count=0)
+        elif (color_type == 2):  # RGB
+            return cls(width=width,
+                       height=height,
+                       bits_per_pixel=bit_depth * 3,
+                       color_count=0)
+        elif (color_type == 3):  # palette
+            if ((plte_length % 3) != 0):
+                raise InvalidPNG(_(u'Invalid PLTE chunk length'))
+            else:
+                return cls(width=width,
+                           height=height,
+                           bits_per_pixel=8,
+                           color_count=plte_length / 3)
+        elif (color_type == 4):  # grayscale + alpha
+            return cls(width=width,
+                       height=height,
+                       bits_per_pixel=ihdr.bit_depth * 2,
+                       color_count=0)
+        elif (color_type == 6):  # RGB + alpha
+            return cls(width=width,
+                       height=height,
+                       bits_per_pixel=ihdr.bit_depth * 4,
+                       color_count=0)
 
 #######################
 #BMP
@@ -270,42 +242,35 @@ class InvalidBMP(InvalidImage):
 
 
 class __BMP__(ImageMetrics):
-    HEADER = Con.Struct('bmp_header',
-                        Con.Const(Con.String('magic_number', 2), 'BM'),
-                        Con.ULInt32('file_size'),
-                        Con.ULInt16('reserved1'),
-                        Con.ULInt16('reserved2'),
-                        Con.ULInt32('bitmap_data_offset'))
-
-    INFORMATION = Con.Struct('bmp_information',
-                             Con.ULInt32('header_size'),
-                             Con.ULInt32('width'),
-                             Con.ULInt32('height'),
-                             Con.ULInt16('color_planes'),
-                             Con.ULInt16('bits_per_pixel'),
-                             Con.ULInt32('compression_method'),
-                             Con.ULInt32('image_size'),
-                             Con.ULInt32('horizontal_resolution'),
-                             Con.ULInt32('vertical_resolution'),
-                             Con.ULInt32('colors_used'),
-                             Con.ULInt32('important_colors_used'))
-
     def __init__(self, width, height, bits_per_pixel, color_count):
         ImageMetrics.__init__(self, width, height, bits_per_pixel, color_count,
                               u'image/x-ms-bmp')
 
     @classmethod
     def parse(cls, file):
-        try:
-            header = cls.HEADER.parse_stream(file)
-            information = cls.INFORMATION.parse_stream(file)
-
-            return __BMP__(information.width, information.height,
-                           information.bits_per_pixel,
-                           information.colors_used)
-
-        except Con.ConstError:
+        (magic_number,
+         file_size,
+         data_offset,
+         header_size,
+         width,
+         height,
+         color_planes,
+         bits_per_pixel,
+         compression_method,
+         image_size,
+         horizontal_resolution,
+         vertical_resolution,
+         colors_used,
+         important_colors_used) = BitstreamReader(file, 1).parse(
+            "2b 32u 16p 16p 32u " +
+            "32u 32u 32u 16u 16u 32u 32u 32u 32u 32u 32u")
+        if (magic_number != 'BM'):
             raise InvalidBMP(_(u'Invalid BMP'))
+        else:
+            return cls(width=width,
+                       height=height,
+                       bits_per_pixel=bits_per_pixel,
+                       color_count=colors_used)
 
 
 #######################
@@ -320,36 +285,24 @@ class InvalidGIF(InvalidImage):
 
 
 class __GIF__(ImageMetrics):
-    HEADER = Con.Struct('header',
-                        Con.Const(Con.String('gif', 3), 'GIF'),
-                        Con.String('version', 3))
-
-    SCREEN_DESCRIPTOR = Con.Struct('logical_screen_descriptor',
-                                   Con.ULInt16('width'),
-                                   Con.ULInt16('height'),
-                                   Con.Embed(
-        Con.BitStruct('packed_fields',
-                      Con.Flag('global_color_table'),
-                      Con.Bits('color_resolution', 3),
-                      Con.Flag('sort'),
-                      Con.Bits('global_color_table_size', 3))),
-                                   Con.Byte('background_color_index'),
-                                   Con.Byte('pixel_aspect_ratio'))
-
     def __init__(self, width, height, color_count):
         ImageMetrics.__init__(self, width, height, 8, color_count,
                               u'image/gif')
 
     @classmethod
     def parse(cls, file):
-        try:
-            header = cls.HEADER.parse_stream(file)
-            descriptor = cls.SCREEN_DESCRIPTOR.parse_stream(file)
-
-            return __GIF__(descriptor.width, descriptor.height,
-                           2 ** (descriptor.global_color_table_size + 1))
-        except Con.ConstError:
-            raise InvalidGIF(_(u'Invalid GIF'))
+        (gif,
+         version,
+         width,
+         height,
+         color_table_size) = BitstreamReader(file, 1).parse(
+            "3b 3b 16u 16u 3u 5p")
+        if (gif != 'GIF'):
+            raise InvalidGIF(u'Invalid GIF')
+        else:
+            return cls(width=width,
+                       height=height,
+                       color_count=2 ** (color_table_size + 1))
 
 
 #######################
@@ -364,127 +317,80 @@ class InvalidTIFF(InvalidImage):
 
 
 class __TIFF__(ImageMetrics):
-    HEADER = Con.Struct('header',
-                        Con.String('byte_order', 2),
-                        Con.Switch('order',
-                                   lambda ctx: ctx['byte_order'],
-                                   {"II": Con.Embed(
-        Con.Struct('little_endian',
-                   Con.Const(Con.ULInt16('version'), 42),
-                   Con.ULInt32('offset'))),
-                                    "MM": Con.Embed(
-        Con.Struct('big_endian',
-                   Con.Const(Con.UBInt16('version'), 42),
-                   Con.UBInt32('offset')))}))
-
-    L_IFD = Con.Struct('ifd',
-                       Con.PrefixedArray(
-        length_field=Con.ULInt16('length'),
-        subcon=Con.Struct('tags',
-                          Con.ULInt16('id'),
-                          Con.ULInt16('type'),
-                          Con.ULInt32('count'),
-                          Con.ULInt32('offset'))),
-                       Con.ULInt32('next'))
-
-    B_IFD = Con.Struct('ifd',
-                       Con.PrefixedArray(
-        length_field=Con.UBInt16('length'),
-        subcon=Con.Struct('tags',
-                          Con.UBInt16('id'),
-                          Con.UBInt16('type'),
-                          Con.UBInt32('count'),
-                          Con.UBInt32('offset'))),
-                       Con.UBInt32('next'))
-
     def __init__(self, width, height, bits_per_pixel, color_count):
         ImageMetrics.__init__(self, width, height,
                               bits_per_pixel, color_count,
                               u'image/tiff')
 
     @classmethod
-    def b_tag_value(cls, file, tag):
-        subtype = {1: Con.Byte("data"),
-                   2: Con.CString("data"),
-                   3: Con.UBInt16("data"),
-                   4: Con.UBInt32("data"),
-                   5: Con.Struct("data",
-                                 Con.UBInt32("high"),
-                                 Con.UBInt32("low"))}[tag.type]
-
-        data = Con.StrictRepeater(tag.count,
-                                  subtype)
-        if ((tag.type != 2) and (data.sizeof() <= 4)):
-            return tag.offset
-        else:
-            file.seek(tag.offset, 0)
-            return data.parse_stream(file)
-
-    @classmethod
-    def l_tag_value(cls, file, tag):
-        subtype = {1: Con.Byte("data"),
-                   2: Con.CString("data"),
-                   3: Con.ULInt16("data"),
-                   4: Con.ULInt32("data"),
-                   5: Con.Struct("data",
-                                 Con.ULInt32("high"),
-                                 Con.ULInt32("low"))}[tag.type]
-
-        data = Con.StrictRepeater(tag.count,
-                                  subtype)
-        if ((tag.type != 2) and (data.sizeof() <= 4)):
-            return tag.offset
-        else:
-            file.seek(tag.offset, 0)
-            return data.parse_stream(file)
-
-    @classmethod
     def parse(cls, file):
+        def tags(file, order):
+            while (True):
+                reader = BitstreamReader(file, order)
+                #read all the tags in an IFD
+                tag_count = reader.read(16)
+                sub_reader = reader.substream(tag_count * 12)
+                next_ifd = reader.read(32)
+
+                for i in xrange(tag_count):
+                    (tag_code,
+                     tag_datatype,
+                     tag_value_count) = sub_reader.parse("16u 16u 32u")
+                    if (tag_datatype == 1):   #BYTE type
+                        tag_struct = "8u" * tag_value_count
+                    elif (tag_datatype == 3): #SHORT type
+                        tag_struct = "16u" * tag_value_count
+                    elif (tag_datatype == 4): #LONG type
+                        tag_struct = "32u" * tag_value_count
+                    else:                     #all other types
+                        tag_struct = "4b"
+                    if (format_size(tag_struct) <= 32):
+                        yield (tag_code, sub_reader.parse(tag_struct))
+                        sub_reader.skip(32 - format_size(tag_struct))
+                    else:
+                        offset = sub_reader.read(32)
+                        file.seek(offset, 0)
+                        yield (tag_code,
+                               BitstreamReader(file, order).parse(tag_struct))
+
+
+                if (next_ifd != 0):
+                    file.seek(next_ifd, 0)
+                else:
+                    break
+
+        byte_order = file.read(2)
+        if (byte_order == 'II'):
+            order = 1
+        elif (byte_order == 'MM'):
+            order = 0
+        else:
+            raise InvalidTIFF(_(u"Invalid TIFF"))
+        reader = BitstreamReader(file, order)
+        if (reader.read(16) != 42):
+            raise InvalidTIFF(_(u"Invalid TIFF"))
+
+        initial_ifd = reader.read(32)
+        file.seek(initial_ifd, 0)
+
         width = 0
         height = 0
-        bits_per_sample = 0
+        bits_per_pixel = 0
         color_count = 0
+        for (tag_id, tag_values) in tags(file, order):
+            if (tag_id == 0x0100):
+                width = tag_values[0]
+            elif (tag_id == 0x0101):
+                height = tag_values[0]
+            elif (tag_id == 0x0102):
+                bits_per_pixel = sum(tag_values)
+            elif (tag_id == 0x0140):
+                color_count = len(tag_values) / 3
 
-        try:
-            header = cls.HEADER.parse_stream(file)
-            if (header.byte_order == 'II'):
-                IFD = cls.L_IFD
-                tag_value = cls.l_tag_value
-            elif (header.byte_order == 'MM'):
-                IFD = cls.B_IFD
-                tag_value = cls.b_tag_value
-            else:
-                raise InvalidTIFF(_(u'Invalid byte order'))
-
-            file.seek(header.offset, 0)
-
-            ifd = IFD.parse_stream(file)
-
-            while (True):
-                for tag in ifd.tags:
-                    if (tag.id == 0x0100):
-                        width = tag_value(file, tag)
-                    elif (tag.id == 0x0101):
-                        height = tag_value(file, tag)
-                    elif (tag.id == 0x0102):
-                        try:
-                            bits_per_sample = sum(tag_value(file, tag))
-                        except TypeError:
-                            bits_per_sample = tag_value(file, tag)
-                    elif (tag.id == 0x0140):
-                        color_count = tag.count / 3
-                    else:
-                        pass
-
-                if (ifd.next == 0x00):
-                    break
-                else:
-                    file.seek(ifd.next, 0)
-                    ifd = IFD.parse_stream(file)
-
-            return __TIFF__(width, height, bits_per_sample, color_count)
-        except Con.ConstError:
-            raise InvalidTIFF(_(u'Invalid TIFF'))
+        return cls(width=width,
+                   height=height,
+                   bits_per_pixel=bits_per_pixel,
+                   color_count=color_count)
 
 
 def can_thumbnail():
