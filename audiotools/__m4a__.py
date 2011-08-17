@@ -103,7 +103,9 @@ class M4ATaggedAudio:
                 return None
 
             return M4A_META_Atom.parse("meta", meta_size, meta_reader,
-                                       {"ilst":M4A_Tree_Atom,
+                                       {"hdlr":M4A_HDLR_Atom,
+                                        "ilst":M4A_Tree_Atom,
+                                        "free":M4A_FREE_Atom,
                                         "\xa9alb":M4A_ILST_Leaf_Atom,
                                         "\xa9ART":M4A_ILST_Leaf_Atom,
                                         "\xa9cmt":M4A_ILST_Leaf_Atom,
@@ -148,10 +150,9 @@ class M4ATaggedAudio:
              old_metadata.size())):
 
             metadata.replace_child(
-                M4A_Leaf_Atom("free",
-                              chr(0) * (old_metadata.size() -
-                                        (metadata.size() -
-                                         metadata["free"].size()))))
+                M4A_FREE_Atom(old_metadata.size() -
+                              (metadata.size() -
+                               metadata["free"].size())))
 
             f = file(self.filename, 'r+b')
             (meta_size, meta_offset) = get_m4a_atom_offset(
@@ -555,8 +556,31 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
     def converted(cls, metadata):
         if ((metadata is None) or isinstance(metadata, cls)):
             return metadata
-        else:
-            raise NotImplementedError() #FIXME
+
+        return cls(0, 0, [
+                M4A_HDLR_Atom(0, 0, '\x00\x00\x00\x00',
+                              'mdir', 'appl', 0, 0, '', 0),
+                M4A_Tree_Atom(
+                    'ilst',
+                    [M4A_ILST_Leaf_Atom(
+                            self.UNICODE_ATTRIB_TO_ILST[attrib]
+                            [M4A_ILST_Unicode_Data_Atom(
+                                    0, 1, getattr(metadata,
+                                                  attrib).encode('utf-8'))])
+                     for attrib in self.__FIELDS__
+                     if attrib in self.UNICODE_ATTRIB_TO_ILST] +
+                    [M4A_ILST_Leaf_Atom(
+                            'trkn',
+                            M4A_ILST_TRKN_Data_Atom(
+                                metadata.track_numer,
+                                metadata.track_total)),
+                     M4A_ILST_Leaf_Atom(
+                            'disk',
+                            M4A_ILST_DISK_Data_Atom(
+                                metadata.album_numer,
+                                metadata.album_total))]),
+                M4A_FREE_Atom(1024)])
+
 
     def merge(self, metadata):
         raise NotImplementedError() #FIXME
@@ -735,7 +759,9 @@ class M4A_ILST_DISK_Data_Atom(M4A_Leaf_Atom):
         return self.disk_total
 
 class M4A_ILST_COVR_Data_Atom(Image, M4A_Leaf_Atom):
-    def __init__(self, image_data):
+    def __init__(self, version, flags, image_data):
+        self.version = version
+        self.flags = flags
         self.name = "data"
 
         img = image_metrics(image_data)
@@ -750,21 +776,21 @@ class M4A_ILST_COVR_Data_Atom(Image, M4A_Leaf_Atom):
                        type=0)
 
     def __repr__(self):
-        return "M4A_ILST_COVR_Data_Atom(...)"
+        return "M4A_ILST_COVR_Data_Atom(%s, %s, ...)" % \
+            (self.version, self.flags)
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
         assert(name == "data")
-        reader.skip_bytes(8)
-        return cls(reader.read_bytes(data_size - 8))
+        (version, flags) = reader.parse("8u 24u 32p")
+        return cls(version, flags, reader.read_bytes(data_size - 8))
 
     def build(self, writer):
-        writer.write_bytes(chr(0) * 8)
-        writer.write_bytes(self.data)
+        writer.build("8u 24u 32p %db" % (len(self.data)),
+                     (self.version, self.flags, self.data))
 
     def size(self):
-        return len(self.data) + 8
-
+        return 8 + len(self.data)
 
 
 class M4A_STCO_Atom(M4A_Leaf_Atom):
@@ -794,6 +820,83 @@ class M4A_STCO_Atom(M4A_Leaf_Atom):
     def size(self):
         return 8 + (4 * len(self.offsets))
 
+
+class M4A_HDLR_Atom(M4A_Leaf_Atom):
+    def __init__(self, version, flags, qt_type, qt_subtype,
+                 qt_manufacturer, qt_reserved_flags, qt_reserved_flags_mask,
+                 component_name, padding):
+        self.name = 'hdlr'
+        self.version = version
+        self.flags = flags
+        self.qt_type = qt_type
+        self.qt_subtype = qt_subtype
+        self.qt_manufacturer = qt_manufacturer
+        self.qt_reserved_flags = qt_reserved_flags
+        self.qt_reserved_flags_mask = qt_reserved_flags_mask
+        self.component_name = component_name
+        self.padding = padding
+
+    def __repr__(self):
+        return "M4A_HDLR_Atom(%s, %s, %s, %s, %s, %s, %s, %s, %s)" % \
+            (self.version, self.flags, repr(self.qt_type),
+             repr(self.qt_subtype), repr(self.qt_manufacturer),
+             self.qt_reserved_flags, self.qt_reserved_flags_mask,
+             repr(self.component_name), self.padding)
+
+    @classmethod
+    def parse(cls, name, data_size, reader, parsers):
+        assert(name == 'hdlr')
+        (version,
+         flags,
+         qt_type,
+         qt_subtype,
+         qt_manufacturer,
+         qt_reserved_flags,
+         qt_reserved_flags_mask) = reader.parse(
+            "8u 24u 4b 4b 4b 32u 32u")
+        component_name = reader.read_bytes(reader.read(8))
+        padding = reader.read(8)
+        return cls(version, flags, qt_type, qt_subtype,
+                   qt_manufacturer, qt_reserved_flags,
+                   qt_reserved_flags_mask, component_name,
+                   padding)
+
+    def build(self, writer):
+        writer.build("8u 24u 4b 4b 4b 32u 32u 8u %db 8u" % \
+                         (len(self.component_name)),
+                     (self.version,
+                      self.flags,
+                      self.qt_type,
+                      self.qt_subtype,
+                      self.qt_manufacturer,
+                      self.qt_reserved_flags,
+                      self.qt_reserved_flags_mask,
+                      len(self.component_name),
+                      self.component_name,
+                      self.padding))
+
+    def size(self):
+        return 26 + len(self.component_name)
+
+class M4A_FREE_Atom(M4A_Leaf_Atom):
+    def __init__(self, bytes):
+        self.name = "free"
+        self.bytes = bytes
+
+    def __repr__(self):
+        return "M4A_FREE_Atom(%d)" % (self.bytes)
+
+    @classmethod
+    def parse(cls, name, data_size, reader, parsers):
+        assert(name == "free")
+        reader.skip_bytes(data_size)
+        return cls(data_size)
+
+    def build(self, writer):
+        writer.write_bytes(chr(0) * self.bytes)
+
+    def size(self):
+        return self.bytes
 
 #M4A files are made up of QuickTime Atoms
 #some of those Atoms are containers for sub-Atoms

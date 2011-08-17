@@ -3870,3 +3870,17 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] FloatFrameList
 ** TODO audiotools.resample
    - [ ] Resampler
+* TODO Calculate multi-album ReplayGain concurrently
+  For instance, if one is calculating --replay-gain for four seperate
+  albums and -j 4 is indicated, calculate each album's gain across
+  its own core using the existing ProgressQueue facilities.
+* TODO Make metadata fully round-trippable
+  For instance, the following should hold:
+
+  >>> track_data1 = open(track.filename).read()
+  >>> track.set_metadata(track.get_metadata())
+  >>> track_data2 = open(track.filename).read()
+  >>> track_data1 == track_data2
+  True
+
+  This requires metadata to not jumble fields around until required.

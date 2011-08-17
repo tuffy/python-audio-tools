@@ -21,6 +21,7 @@
   </row>
   <row>
     <col start="256" end="263" width=".4">Component Name Length</col>
-    <col start="264" style="dashed" width=".6">Component Name</col>
+    <col start="264" style="dashed" width=".4">Component Name</col>
+    <col start="0" end="7" width=".2">Padding (0)</col>
   </row>
 </diagram>
