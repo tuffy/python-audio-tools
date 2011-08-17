@@ -3744,6 +3744,13 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE __id3__.py
 ** DONE __id3v1__.py
 ** TODO __image__.py
+   - [X] __JPEG__
+   - [X] __PNG__
+   - [X] __GIF__
+   - [X] __BMP__
+   - [X] __TIFF__
+*** TODO check these against PIL's output
+*** TODO check against truncated images
 ** DONE __init__.py
 ** TODO __m4a__.py
 *** TODO M4ATaggedAudio
