@@ -135,12 +135,6 @@ class M4ATaggedAudio:
         old_metadata = self.get_metadata()
         metadata = M4A_META_Atom.converted(metadata)
 
-        #transfer "----" atoms from current metadata to new metadata
-        #FIXME
-
-        #transfer "\xa9too" atoms from current metadata to new metadata
-        #FIXME
-
         #M4A streams often have *two* "free" atoms we can attempt to resize
 
         #first, attempt to resize the one inside the "meta" atom
@@ -557,29 +551,45 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
         if ((metadata is None) or isinstance(metadata, cls)):
             return metadata
 
-        return cls(0, 0, [
-                M4A_HDLR_Atom(0, 0, '\x00\x00\x00\x00',
-                              'mdir', 'appl', 0, 0, '', 0),
-                M4A_Tree_Atom(
-                    'ilst',
-                    [M4A_ILST_Leaf_Atom(
-                            self.UNICODE_ATTRIB_TO_ILST[attrib]
-                            [M4A_ILST_Unicode_Data_Atom(
-                                    0, 1, getattr(metadata,
-                                                  attrib).encode('utf-8'))])
-                     for attrib in self.__FIELDS__
-                     if attrib in self.UNICODE_ATTRIB_TO_ILST] +
-                    [M4A_ILST_Leaf_Atom(
-                            'trkn',
-                            M4A_ILST_TRKN_Data_Atom(
-                                metadata.track_numer,
-                                metadata.track_total)),
-                     M4A_ILST_Leaf_Atom(
-                            'disk',
-                            M4A_ILST_DISK_Data_Atom(
-                                metadata.album_numer,
-                                metadata.album_total))]),
-                M4A_FREE_Atom(1024)])
+        ilst_atoms = [M4A_ILST_Leaf_Atom(
+                cls.UNICODE_ATTRIB_TO_ILST[attrib],
+                [M4A_ILST_Unicode_Data_Atom(
+                        0, 1, getattr(metadata,
+                                      attrib).encode('utf-8'))])
+                      for attrib in cls.__FIELDS__
+                      if (attrib in cls.UNICODE_ATTRIB_TO_ILST)]
+
+        if ((metadata.track_number != 0) or
+            (metadata.track_total != 0)):
+            ilst_atoms.append(M4A_ILST_Leaf_Atom(
+                    'trkn',
+                    [M4A_ILST_TRKN_Data_Atom(
+                            metadata.track_number,
+                            metadata.track_total)]))
+
+        if ((metadata.album_number != 0) or
+            (metadata.album_total != 0)):
+            ilst_atoms.append(M4A_ILST_Leaf_Atom(
+                    'disk',
+                    [M4A_ILST_DISK_Data_Atom(
+                            metadata.album_number,
+                            metadata.album_total)]))
+
+        if (len(metadata.front_covers()) > 0):
+            ilst_atoms.append(M4A_ILST_Leaf_Atom(
+                    'covr',
+                    [M4A_ILST_COVR_Data_Atom.converted(
+                            metadata.front_covers()[0])]))
+
+        ilst_atoms.append(M4A_ILST_Leaf_Atom(
+                'cpil',
+                [M4A_Leaf_Atom('data',
+                               '\x00\x00\x00\x15\x00\x00\x00\x00\x01')]))
+
+        return cls(0, 0, [M4A_HDLR_Atom(0, 0, '\x00\x00\x00\x00',
+                                        'mdir', 'appl', 0, 0, '', 0),
+                          M4A_Tree_Atom('ilst', ilst_atoms),
+                          M4A_FREE_Atom(1024)])
 
 
     def merge(self, metadata):
@@ -791,6 +801,10 @@ class M4A_ILST_COVR_Data_Atom(Image, M4A_Leaf_Atom):
 
     def size(self):
         return 8 + len(self.data)
+
+    @classmethod
+    def converted(cls, image):
+        return cls(0, 0, image.data)
 
 
 class M4A_STCO_Atom(M4A_Leaf_Atom):

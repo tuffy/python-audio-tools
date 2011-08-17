@@ -946,56 +946,20 @@ class FlacAudio(WaveContainer, AiffContainer):
         finally:
             f.close()
 
-    def set_metadata(self, metadata):
-        """Takes a MetaData object and sets this track's metadata.
+    def update_metadata(self, metadata):
+        """Takes this track's current MetaData object
+        as returned by get_metadata() and sets this track's metadata
+        with any fields updated in that object.
 
-        This metadata includes track name, album name, and so on.
-        Raises IOError if unable to write the file."""
+        Raises IOError if unable to write the file.
+        """
 
         from .bitstream import BitstreamWriter
-        from .bitstream import BitstreamRecorder
         from .bitstream import BitstreamAccumulator
         from .bitstream import BitstreamReader
 
-        metadata = FlacMetaData.converted(metadata)
-
-        if (metadata is None):
-            return
-        old_metadata = self.get_metadata()
-
-        #if metadata's STREAMINFO block matches old_metadata's STREAMINFO
-        #we're almost certainly setting a modified version
-        #of our original metadata
-        #in that case, we skip the metadata block porting
-        #and assume higher-level routines know what they're doing
-        if ((old_metadata.streaminfo is not None) and
-            (metadata.streaminfo is not None) and
-            (old_metadata.streaminfo == metadata.streaminfo)):
-            #do nothing
-            pass
-        else:
-            #port over the old STREAMINFO and SEEKTABLE blocks
-            old_streaminfo = old_metadata.streaminfo
-            old_seektable = old_metadata.seektable
-            metadata.streaminfo = old_streaminfo
-            if (old_seektable is not None):
-                metadata.seektable = old_seektable
-
-            #grab "WAVEFORMATEXTENSIBLE_CHANNEL_MASK" from existing file
-            #(if any)
-            if ((self.channels() > 2) or (self.bits_per_sample() > 16)):
-                metadata.vorbis_comment[
-                    "WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
-                    u"0x%.4x" % (int(self.channel_mask()))]
-
-            #APPLICATION blocks should stay with the existing file (if any)
-            metadata.applications = old_metadata.applications[:]
-
-        #always grab "vendor_string" from the existing file - if present
-        if ((old_metadata.vorbis_comment is not None) and
-            (metadata.vorbis_comment is not None)):
-            vendor_string = old_metadata.vorbis_comment.vendor_string
-            metadata.vorbis_comment.vendor_string = vendor_string
+        if (not isinstance(metadata, FlacMetaData)):
+            raise ValueError(_(u"metadata not from audio file"))
 
         #calculate minimum size of newly constructed metadata
         new_metadata = BitstreamAccumulator(0)
@@ -1051,6 +1015,43 @@ class FlacAudio(WaveContainer, AiffContainer):
             transfer_data(file_data.read, stream.write)
             file_data.close()
             stream.close()
+
+    def set_metadata(self, metadata):
+        """Takes a MetaData object and sets this track's metadata.
+
+        This metadata includes track name, album name, and so on.
+        Raises IOError if unable to write the file."""
+
+        metadata = FlacMetaData.converted(metadata)
+
+        if (metadata is None):
+            return
+        old_metadata = self.get_metadata()
+
+        #port over the old STREAMINFO and SEEKTABLE blocks
+        old_streaminfo = old_metadata.streaminfo
+        old_seektable = old_metadata.seektable
+        metadata.streaminfo = old_streaminfo
+        if (old_seektable is not None):
+            metadata.seektable = old_seektable
+
+        #grab "WAVEFORMATEXTENSIBLE_CHANNEL_MASK" from existing file
+        #(if any)
+        if ((self.channels() > 2) or (self.bits_per_sample() > 16)):
+            metadata.vorbis_comment[
+                "WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
+                u"0x%.4x" % (int(self.channel_mask()))]
+
+        #APPLICATION blocks should stay with the existing file (if any)
+        metadata.applications = old_metadata.applications[:]
+
+        #always grab "vendor_string" from the existing file - if present
+        if ((old_metadata.vorbis_comment is not None) and
+            (metadata.vorbis_comment is not None)):
+            vendor_string = old_metadata.vorbis_comment.vendor_string
+            metadata.vorbis_comment.vendor_string = vendor_string
+
+        self.update_metadata(metadata)
 
     def metadata_length(self):
         """Returns the length of all FLAC metadata blocks as an integer.
@@ -1856,17 +1857,9 @@ class FlacAudio(WaveContainer, AiffContainer):
                     fixes_performed.append(
                         _(u"moved STREAMINFO to first block"))
 
-                #fix remaining metadata problems
-                #which automatically shifts STREAMINFO to the right place
-                #(the message indicating the fix has already been output)
                 metadata = self.get_metadata()
-                if (metadata is not None):
-                    output_track.set_metadata(metadata.clean(fixes_performed))
 
                 #fix empty MD5SUM
-                #once the ID3 tags have been removed
-                #and the STREAMINFO block moved to the first
-                #which ensures the MD5SUM field is at a consistent place
                 if (self.__md5__ == chr(0) * 16):
                     from hashlib import md5
                     md5sum = md5()
@@ -1875,13 +1868,13 @@ class FlacAudio(WaveContainer, AiffContainer):
                         md5sum.update,
                         signed=True,
                         big_endian=False)
-                    output_f = open(output_filename, "r+b")
-                    try:
-                        output_f.seek(4 + 4 + 18)
-                        output_f.write(md5sum.digest())
-                    finally:
-                        output_f.close()
+                    metadata.streaminfo.md5sum = md5sum.digest()
                     fixes_performed.append(_(u"populated empty MD5SUM"))
+
+                #fix remaining metadata problems
+                #which automatically shifts STREAMINFO to the right place
+                #(the message indicating the fix has already been output)
+                output_track.update_metadata(metadata.clean(fixes_performed))
 
                 return output_track
             finally:

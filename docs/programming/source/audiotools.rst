@@ -312,6 +312,33 @@ AudioFile Objects
    metadata to that value, if possible.
    Raises :exc:`IOError` if a problem occurs when writing the file.
 
+.. method:: AudioFile.update_metadata(metadata)
+
+   Takes the :class:`MetaData`-compatible object returned by this
+   audio file's :meth:`AudioFile.get_metadata` method
+   and sets this audiofile's metadata to that value, if possible.
+   Raises :exc:`IOError` if a problem occurs when writing the file.
+
+.. note::
+
+   What's the difference between :meth:`AudioFile.set_metadata`
+   and :meth:`AudioFile.update_metadata`?
+
+   Metadata implementations may also contain side information
+   such as track length, file encoder, and so forth.
+   :meth:`AudioFile.set_metadata` presumes the :class:`MetaData`
+   object is from a different :class:`AudioFile` object or has
+   been built from scratch.
+   Therefore, it will update the newly added
+   metadata side info as needed so as to not break the file.
+
+   :meth:`AudioFile.update_metadata` presumes the :class:`MetaData`
+   object is either taken from the original :class:`AudioFile` object
+   or has been carefully constructed to not break anything when
+   applied to the file.
+   It is a lower-level routine which does *not* update metadata side info
+   (which may be necessary when modifying that side info is required).
+
 .. method:: AudioFile.get_metadata()
 
    Returns a :class:`MetaData`-compatible object representing this

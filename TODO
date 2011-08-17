@@ -3881,6 +3881,103 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   For instance, if one is calculating --replay-gain for four seperate
   albums and -j 4 is indicated, calculate each album's gain across
   its own core using the existing ProgressQueue facilities.
+* TODO Add update_metadata() method to AudioFile
+  Consider how AudioFile.set_metadata() handles six different cases:
+
+  Case 1: adjusting a file's own textual metadata (tracktag)
+  >>> m = flac1.get_metadata()
+  >>> m.track_name = u"Fixed Name"
+  >>> flac1.set_metadata(m)
+
+  Case 2: transferring metadata from the same audio type (track2track)
+  >>> flac1.set_metadata(flac2.get_metadata())
+
+  Case 3: transferring metadata from a different audio type (track2track)
+  >>> flac1.set_metadata(mp3.get_metadata())
+
+  Case 4: adjusting a file's own low-level metadata (tracklint)
+  >>> m = flac1.get_metadata()
+  >>> m.streaminfo.md5sum = fixed_md5sum
+  >>> flac1.set_metadata(m)
+
+  Case 5: building new metadata from scratch (cd2track)
+  >>> flac1 = FlacAudio.from_pcm(pcm_reader)
+  >>> flac1.set_metadata(MetaData(track_name=u"New Name", ...))
+
+  Case 6: transferring adjusted metadata from the same audio type
+  >>> m = flac2.get_metadata()
+  >>> m.track_name = u"Adjusted Name"
+  >>> flac1.set_metadata(m)
+
+  What happens to stuff like the STREAMINFO block
+  which contains track length, md5sum, etc.
+  and is part of FLAC's metadata?
+
+  If set_metadata() works naively and doesn't override any values,
+  case 2 breaks since flac1 suddenly has flac'2 track length.
+
+  If set_metadata() overrides new metadata with stuff from the current file,
+  case 4 breaks since the fixed_md5sum gets overridden.
+
+  Counting on set_metadata() being smart enough to know what you mean
+  is a losing proposition for FLAC, M4A and other metadata formats
+  with embedded non-textual (side) metadata.
+
+  One solution is to add a low-level AudioFile.update_metadata() method
+  which takes only the AudioFile's required metadata type
+  and leaves side data as-is.  So case 1 becomes:
+
+  >>> m = flac1.get_metadata()
+  >>> m.track_name = u"Fixed Name"
+  >>> flac1.update_metadata(m)
+
+  and case 4 becomes:
+
+  >>> m = flac1.get_metadata()
+  >>> m.streaminfo.md5sum = fixed_md5sum
+  >>> flac1.update_metadata(m)
+
+  while the other cases remain unchanged.
+** TODO Add update_metadata() method to AudioFile and subclasses
+   for formats which take metadata at all
+   - [ ] ALACAudio
+   - [ ] AiffAudio
+   - [X] AudioFile
+   - [X] FlacAudio
+   - [ ] M4AAudio
+   - [ ] MP2Audio
+   - [ ] MP3Audio
+   - [ ] OggFlacAudio
+   - [ ] SpeexAudio
+   - [ ] VorbisAudio
+   - [ ] WavPackAudio
+** TODO Update clean() method to use update_metadata()
+   for formats which implement clean() at all
+   - [ ] ALACAudio
+   - [ ] AiffAudio
+   - [X] FlacAudio
+   - [ ] M4AAudio
+   - [ ] MP2Audio
+   - [ ] MP3Audio
+   - [ ] OggFlacAudio
+   - [ ] SpeexAudio
+   - [ ] VorbisAudio
+   - [ ] WavPackAudio
+** TODO Add update_metadata() to tracktag
+   when not using -r/--replace option
+** DONE Document new set_metadata() behavior
+** DONE Document update_metadata() method
+** TODO Add unit tests for update_metadata()
+   - [ ] ALACAudio
+   - [ ] AiffAudio
+   - [X] FlacAudio
+   - [ ] M4AAudio
+   - [ ] MP2Audio
+   - [ ] MP3Audio
+   - [ ] OggFlacAudio
+   - [ ] SpeexAudio
+   - [ ] VorbisAudio
+   - [ ] WavPackAudio
 * TODO Make metadata fully round-trippable
   For instance, the following should hold:
 

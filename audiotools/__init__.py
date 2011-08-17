@@ -3176,11 +3176,33 @@ class AudioFile:
 
         raise NotImplementedError()
 
+    def update_metadata(self, metadata):
+        """Takes this track's current MetaData object
+        as returned by get_metadata() and sets this track's metadata
+        with any fields updated in that object.
+
+        Raises IOError if unable to write the file.
+        """
+
+        #this is a sort of low-level implementation
+        #which assumes higher-level routines have
+        #modified metadata properly
+
+        if (metadata is not None):
+            raise NotImplementedError()
+        else:
+            raise ValueError(_(u"metadata not from audio file"))
+
     def set_metadata(self, metadata):
         """Takes a MetaData object and sets this track's metadata.
 
         This metadata includes track name, album name, and so on.
         Raises IOError if unable to write the file."""
+
+        #this is a higher-level implementation
+        #which assumes metadata is from a different audio file
+        #or constructed from scratch and converts it accordingly
+        #before passing it on to update_metadata()
 
         pass
 
