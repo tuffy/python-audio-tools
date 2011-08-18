@@ -3914,7 +3914,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   and is part of FLAC's metadata?
 
   If set_metadata() works naively and doesn't override any values,
-  case 2 breaks since flac1 suddenly has flac'2 track length.
+  case 2 breaks since flac1 suddenly has flac2's track length.
 
   If set_metadata() overrides new metadata with stuff from the current file,
   case 4 breaks since the fixed_md5sum gets overridden.
@@ -3944,7 +3944,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] AiffAudio
    - [X] AudioFile
    - [X] FlacAudio
-   - [ ] M4AAudio
+   - [X] M4AAudio
    - [ ] MP2Audio
    - [ ] MP3Audio
    - [ ] OggFlacAudio

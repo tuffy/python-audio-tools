@@ -126,14 +126,16 @@ class M4ATaggedAudio:
         finally:
             reader.close()
 
-    def set_metadata(self, metadata):
-        from .bitstream import BitstreamWriter,BitstreamReader
+    def update_metadata(self, metadata, old_metadata=None):
+        from .bitstream import BitstreamWriter
+        from .bitstream import BitstreamReader
 
-        if (metadata is None):
-            return
+        if (not isinstance(metadata, M4A_META_Atom)):
+            raise ValueError(_(u"metadata not from audio file"))
 
-        old_metadata = self.get_metadata()
-        metadata = M4A_META_Atom.converted(metadata)
+        if (old_metadata is None):
+            #this may still be None, and that's okay
+            old_metadata = self.get_metadata()
 
         #M4A streams often have *two* "free" atoms we can attempt to resize
 
@@ -214,6 +216,31 @@ class M4ATaggedAudio:
             writer.close()
 
 
+    def set_metadata(self, metadata):
+        if (metadata is None):
+            return
+
+        old_metadata = self.get_metadata()
+        metadata = M4A_META_Atom.converted(metadata)
+
+        #replace file-specific atoms in new metadata
+        #with ones from old metadata (if any)
+        #which can happen if we're shifting metadata
+        #from one M4A file to another
+        file_specific_atoms = frozenset(['\xa9too', '----', 'pgap', 'tmpo'])
+
+        if (metadata.ilst_atom is not None):
+            metadata.ilst_atom.leaf_atoms = filter(
+                lambda atom: atom.name not in file_specific_atoms,
+                metadata.ilst_atom)
+
+            if (old_metadata.ilst_atom is not None):
+                metadata.ilst_atom.leaf_atoms.extend(
+                    filter(lambda atom: atom.name in file_specific_atoms,
+                           old_metadata.ilst_atom))
+
+        self.update_metadata(metadata, old_metadata)
+
     def delete_metadata(self):
         """Deletes the track's MetaData.
 
@@ -231,7 +258,7 @@ def parse_sub_atoms(data_size, reader, parsers):
             parsers.get(leaf_name, M4A_Leaf_Atom).parse(
                 leaf_name,
                 leaf_size - 8,
-                reader,
+                reader.substream(leaf_size - 8),
                 parsers))
         data_size -= leaf_size
 
@@ -247,6 +274,10 @@ class M4A_Tree_Atom:
         children should be a list of M4A_Tree_Atoms or M4A_Leaf_Atoms"""
 
         self.name = name
+        try:
+            iter(leaf_atoms)
+        except TypeError:
+            raise TypeError(_(u"leaf atoms must be a list"))
         self.leaf_atoms = leaf_atoms
 
     def __repr__(self):
@@ -523,28 +554,79 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                     break
             else:
                 #atom not present, so append new parent and data sub-atom
-                self.ilst_atom.append(
+                self.ilst_atom.add_child(
                     M4A_ILST_Leaf_Atom(ilst_leaf, [new_data_atom(key, value)]))
         else:
             #no ilst atom, so build one and add the appropriate sub-atoms
+            #FIXME
             raise NotImplementedError()
 
 
     def __delattr__(self, key):
-        raise NotImplementedError() #FIXME
+        if (self.ilst_atom is not None):
+            if (key in self.UNICODE_ATTRIB_TO_ILST):
+                self.ilst_atom.leaf_atoms = filter(
+                    lambda atom: atom.name != self.UNICODE_ATTRIB_TO_ILST[key],
+                    self.ilst_atom)
+            elif (key == "track_number"):
+                if (self.track_total == 0):
+                    self.ilst_atom.leaf_atoms = filter(
+                        lambda atom: atom.name != "trkn", self.ilst_atom)
+                else:
+                    self.track_number = 0
+            elif (key == "track_total"):
+                if (self.track_number == 0):
+                    self.ilst_atom.leaf_atoms = filter(
+                        lambda atom: atom.name != "trkn", self.ilst_atom)
+                else:
+                    self.track_total = 0
+            elif (key == "album_number"):
+                if (self.album_total == 0):
+                    self.ilst_atom.leaf_atoms = filter(
+                        lambda atom: atom.name != "disk", self.ilst_atom)
+                else:
+                    self.album_number = 0
+            elif (key == "album_total"):
+                if (self.album_number == 0):
+                    self.ilst_atom.leaf_atoms = filter(
+                        lambda atom: atom.name != "disk", self.ilst_atom)
+                else:
+                    self.album_total = 0
+            else:
+                try:
+                    del(self.__dict__[key])
+                except KeyError:
+                    raise AttributeError(key)
 
     def images(self):
         if (self.ilst_atom is not None):
-            return [atom for atom in self.ilst_atom
-                    if atom.name == 'covr']
+            return [atom['data'] for atom in self.ilst_atom
+                    if ((atom.name == 'covr') and (atom.has_child('data')))]
         else:
             return []
 
     def add_image(self, image):
-        raise NotImplementedError() #FIXME
+        if (self.ilst_atom is not None):
+            #filter out old cover image before adding new one
+            self.ilst_atom.leaf_atoms = filter(
+                lambda atom: not ((atom.name == 'covr') and
+                                  (atom.has_child('data')) and
+                                  (atom['data'].data == image.data)),
+                self.ilst_atom) + [M4A_ILST_Leaf_Atom(
+                    'covr',
+                    [M4A_ILST_COVR_Data_Atom.converted(image)])]
+        else:
+            #no ilst atom, so build one and add the appropriate sub-atoms
+            #FIXME
+            raise NotImplementedError()
 
     def delete_image(self, image):
-        raise NotImplementedError() #FIXME
+        if (self.ilst_atom is not None):
+            self.ilst_atom.leaf_atoms = filter(
+                lambda atom: not ((atom.name == 'covr') and
+                                  (atom.has_child('data')) and
+                                  (atom['data'].data == image.data)),
+                self.ilst_atom)
 
     @classmethod
     def converted(cls, metadata):
@@ -592,8 +674,8 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                           M4A_FREE_Atom(1024)])
 
 
-    def merge(self, metadata):
-        raise NotImplementedError() #FIXME
+    # def merge(self, metadata):
+    #     raise NotImplementedError() #FIXME
 
     def __comment_name__(self):
         return u'M4A'
@@ -625,7 +707,46 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
             return []
 
     def clean(self, fixes_applied):
-        raise NotImplementedError() #FIXME
+        def cleaned_atom(atom):
+            #numerical fields are stored in bytes,
+            #so no leading zeroes are possible
+
+            #image fields don't store metadata,
+            #so no field problems are possible there either
+
+            if (atom.name in self.UNICODE_ATTRIB_TO_ILST.values()):
+                text = atom['data'].data.decode('utf-8')
+                fix1 = text.rstrip()
+                if (fix1 != text):
+                    fixes_applied.append(
+                        _(u"removed trailing whitespace from %(field)s") %
+                        {"field":atom.name.lstrip('\xa9').decode('ascii')})
+                fix2 = fix1.lstrip()
+                if (fix2 != fix1):
+                    fixes_applied.append(
+                        _(u"removed leading whitespace from %(field)s") %
+                        {"field":atom.name.lstrip('\xa9').decode('ascii')})
+                if (len(fix2) > 0):
+                    return M4A_ILST_Leaf_Atom(
+                        atom.name,
+                        [M4A_ILST_Unicode_Data_Atom(0, 1,
+                                                    fix2.encode('utf-8'))])
+                else:
+                    fixes_applied.append(
+                        _(u"removed empty field %(field)s") %
+                        {"field":atom.name.lstrip('\xa9').decode('ascii')})
+                    return None
+            else:
+                return atom
+
+        if (self.ilst_atom is not None):
+            cleaned_leaf_atoms = filter(lambda atom: atom is not None,
+                                        map(cleaned_atom, self.ilst_atom))
+        else:
+            print "no ilst atom"
+
+        return M4A_META_Atom(self.version, self.flags,
+                             [M4A_Tree_Atom('ilst', cleaned_leaf_atoms)])
 
 
 class M4A_ILST_Leaf_Atom(M4A_Tree_Atom):
@@ -838,7 +959,7 @@ class M4A_STCO_Atom(M4A_Leaf_Atom):
 class M4A_HDLR_Atom(M4A_Leaf_Atom):
     def __init__(self, version, flags, qt_type, qt_subtype,
                  qt_manufacturer, qt_reserved_flags, qt_reserved_flags_mask,
-                 component_name, padding):
+                 component_name, padding_size):
         self.name = 'hdlr'
         self.version = version
         self.flags = flags
@@ -848,14 +969,14 @@ class M4A_HDLR_Atom(M4A_Leaf_Atom):
         self.qt_reserved_flags = qt_reserved_flags
         self.qt_reserved_flags_mask = qt_reserved_flags_mask
         self.component_name = component_name
-        self.padding = padding
+        self.padding_size = padding_size
 
     def __repr__(self):
-        return "M4A_HDLR_Atom(%s, %s, %s, %s, %s, %s, %s, %s, %s)" % \
+        return "M4A_HDLR_Atom(%s, %s, %s, %s, %s, %s, %s, %s, %d)" % \
             (self.version, self.flags, repr(self.qt_type),
              repr(self.qt_subtype), repr(self.qt_manufacturer),
              self.qt_reserved_flags, self.qt_reserved_flags_mask,
-             repr(self.component_name), self.padding)
+             repr(self.component_name), self.padding_size)
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
@@ -869,15 +990,15 @@ class M4A_HDLR_Atom(M4A_Leaf_Atom):
          qt_reserved_flags_mask) = reader.parse(
             "8u 24u 4b 4b 4b 32u 32u")
         component_name = reader.read_bytes(reader.read(8))
-        padding = reader.read(8)
         return cls(version, flags, qt_type, qt_subtype,
                    qt_manufacturer, qt_reserved_flags,
                    qt_reserved_flags_mask, component_name,
-                   padding)
+                   data_size - len(component_name) - 25)
 
     def build(self, writer):
-        writer.build("8u 24u 4b 4b 4b 32u 32u 8u %db 8u" % \
-                         (len(self.component_name)),
+        writer.build("8u 24u 4b 4b 4b 32u 32u 8u %db %dP" % \
+                         (len(self.component_name),
+                          self.padding_size),
                      (self.version,
                       self.flags,
                       self.qt_type,
@@ -886,11 +1007,10 @@ class M4A_HDLR_Atom(M4A_Leaf_Atom):
                       self.qt_reserved_flags,
                       self.qt_reserved_flags_mask,
                       len(self.component_name),
-                      self.component_name,
-                      self.padding))
+                      self.component_name))
 
     def size(self):
-        return 26 + len(self.component_name)
+        return 25 + len(self.component_name) + self.padding_size
 
 class M4A_FREE_Atom(M4A_Leaf_Atom):
     def __init__(self, bytes):
@@ -1082,7 +1202,7 @@ def __remove_qt_atom__(qt_atom, atom_name):
                     [__remove_qt_atom__(a, atom_name) for a in qt_atom]))
 
 
-class M4AAudio_faac(AudioFile):
+class M4AAudio_faac(M4ATaggedAudio,AudioFile):
     """An M4A audio file using faac/faad binaries for I/O."""
 
     SUFFIX = "m4a"
@@ -1216,133 +1336,6 @@ class M4AAudio_faac(AudioFile):
         """Returns the total PCM frames of the track as an integer."""
 
         return self.__length__ - 1024
-
-    def get_metadata(self):
-        """Returns a MetaData object, or None.
-
-        Raises IOError if unable to read the file."""
-
-        f = file(self.filename, 'rb')
-        try:
-            qt_stream = __Qt_Atom_Stream__(f)
-            try:
-                meta_atom = ATOM_META.parse(
-                    qt_stream['moov']['udta']['meta'].data)
-            except KeyError:
-                return None
-
-            for atom in meta_atom.atoms:
-                if (atom.type == 'ilst'):
-                    return M4AMetaData([
-                            ILST_Atom(
-                                type=ilst_atom.type,
-                                sub_atoms=[__Qt_Atom__(type=sub_atom.type,
-                                                       data=sub_atom.data,
-                                                       offset=0)
-                                           for sub_atom in ilst_atom.data])
-                            for ilst_atom in ATOM_ILST.parse(atom.data)])
-            else:
-                return None
-        finally:
-            f.close()
-
-    def set_metadata(self, metadata):
-        """Takes a MetaData object and sets this track's metadata.
-
-        This metadata includes track name, album name, and so on.
-        Raises IOError if unable to write the file."""
-
-        metadata = M4AMetaData.converted(metadata)
-        if (metadata is None):
-            return
-
-        old_metadata = self.get_metadata()
-        if (old_metadata is not None):
-            if ('----' in old_metadata.keys()):
-                metadata['----'] = old_metadata['----']
-            if ('=A9too'.decode('quopri') in old_metadata.keys()):
-                metadata['=A9too'.decode('quopri')] = \
-                    old_metadata['=A9too'.decode('quopri')]
-
-        new_meta = metadata.to_atom(self.qt_stream['moov']['udta']['meta'])
-
-        #first, attempt to replace the meta atom by resizing free
-
-        #check to ensure our file is laid out correctly for that purpose
-        if (self.qt_stream.keys() == ['ftyp', 'moov', 'free', 'mdat']):
-            old_pre_mdat_size = sum([len(self.qt_stream[atom].data) + 8
-                                     for atom in 'ftyp', 'moov', 'free'])
-
-            #if so, replace moov's old meta atom with our new one
-            new_moov = __replace_qt_atom__(self.qt_stream['moov'],
-                                           new_meta)
-
-            #and see if we can shrink the free atom enough to fit
-            new_pre_mdat_size = (len(self.qt_stream['ftyp'].data) + 8 +
-                                   len(new_moov) + 8)
-
-            if (new_pre_mdat_size <= old_pre_mdat_size):
-                #if we can, replace the start of the file with a new set of
-                #ftyp, moov, free  atoms while leaving mdat alone
-                f = file(self.filename, 'r+b')
-                f.write(self.qt_stream['ftyp'].build())
-                f.write(new_moov)
-                f.write(__build_qt_atom__('free',
-                                          chr(0) * (old_pre_mdat_size -
-                                                    new_pre_mdat_size)))
-                f.close()
-
-                f = file(self.filename, "rb")
-                self.qt_stream = __Qt_Atom_Stream__(f)
-            else:
-                self.__set_meta_atom__(new_meta)
-        else:
-            #otherwise, run a traditional full file replacement
-            self.__set_meta_atom__(new_meta)
-
-    #this updates our old 'meta' atom with a new 'meta' atom
-    #where meta_atom is a __Qt_Atom__ object
-    def __set_meta_atom__(self, meta_atom):
-        #this is a two-pass operation
-        #first we replace the contents of the moov->udta->meta atom
-        #with our new 'meta' atom
-        #this may move the 'mdat' atom, so we must go back
-        #and update the contents of
-        #moov->trak->mdia->minf->stbl->stco
-        #with new offset information
-
-        stco = ATOM_STCO.parse(
-           self.qt_stream['moov']['trak']['mdia']['minf']['stbl']['stco'].data)
-
-        mdat_offset = stco.offset[0] - self.qt_stream['mdat'].offset
-
-        new_file = __Qt_Atom_Stream__(cStringIO.StringIO(
-                __replace_qt_atom__(self.qt_stream, meta_atom)))
-
-        mdat_offset = new_file['mdat'].offset + mdat_offset
-
-        stco.offset = [x - stco.offset[0] + mdat_offset
-                       for x in stco.offset]
-
-        new_file = __replace_qt_atom__(new_file,
-                                       __Qt_Atom__('stco',
-                                                   ATOM_STCO.build(stco),
-                                                   0))
-
-        f = file(self.filename, "wb")
-        f.write(new_file)
-        f.close()
-
-        f = file(self.filename, "rb")
-        self.qt_stream = __Qt_Atom_Stream__(f)
-
-    def delete_metadata(self):
-        """Deletes the track's MetaData.
-
-        This removes or unsets tags as necessary in order to remove all data.
-        Raises IOError if unable to write the file."""
-
-        self.set_metadata(MetaData())
 
     def to_pcm(self):
         """Returns a PCMReader object containing the track's PCM data."""
@@ -1635,417 +1628,417 @@ else:
     M4AAudio = M4AAudio_faac
 
 
-class ILST_Atom:
-    """An ILST sub-atom, which itself is a container for other atoms.
-
-    For human-readable fields, those will contain a single DATA sub-atom
-    containing the data itself.
-    For instance:
-
-    'ilst' atom
-      |
-      +-'\xa9nam' atom
-            |
-            +-'data' atom
-               |
-               +-'\x00\x00\x00\x01\x00\x00\x00\x00Track Name' data
-    """
-
-    #type is a string
-    #sub_atoms is a list of __Qt_Atom__-compatible sub-atom objects
-    def __init__(self, type, sub_atoms):
-        self.type = type
-        self.data = sub_atoms
-
-    def __eq__(self, o):
-        if (hasattr(o, "type") and
-            hasattr(o, "data")):
-            return ((self.type == o.type) and
-                    (self.data == o.data))
-        else:
-            return False
-
-    def __len__(self):
-        return len(self.data)
-
-    def __repr__(self):
-        return "ILST_Atom(%s,%s)" % (repr(self.type),
-                                     repr(self.data))
-
-    def is_text(self):
-        for atom in self.data:
-            if (atom.data.startswith('0000000100000000'.decode('hex'))):
-                return True
-        else:
-            return False
-
-    def __unicode__(self):
-        for atom in self.data:
-            if (atom.type == 'data'):
-                if (atom.data.startswith('0000000100000000'.decode('hex'))):
-                    return atom.data[8:].decode('utf-8')
-                elif (self.type == 'trkn'):
-                    trkn = ATOM_TRKN.parse(atom.data[8:])
-                    if (trkn.total_tracks > 0):
-                        return u"%d/%d" % (trkn.track_number,
-                                           trkn.total_tracks)
-                    else:
-                        return unicode(trkn.track_number)
-                elif (self.type == 'disk'):
-                    disk = ATOM_DISK.parse(atom.data[8:])
-                    if (disk.total_disks > 0):
-                        return u"%d/%d" % (disk.disk_number,
-                                           disk.total_disks)
-                    else:
-                        return unicode(disk.disk_number)
-                else:
-                    if (len(atom.data) > 28):
-                        return unicode(
-                            atom.data[8:20].encode('hex').upper()) + u"\u2026"
-                    else:
-                        return unicode(atom.data[8:].encode('hex'))
-        else:
-            return u""
-
-    def __str__(self):
-        for atom in self.data:
-            if (atom.type == 'data'):
-                return atom.data
-        else:
-            return ""
-
-
-class M4AMetaData(MetaData, dict):
-    """meta atoms are typically laid out like:
-
-    meta
-      |-hdlr
-      |-ilst
-      |   |- nam
-      |   |   \-data
-      |   \-trkn
-      |       \-data
-      \-free
-
-    where the stuff we're interested in is in ilst
-    and its data grandchild atoms.
-    """
-                                                    # iTunes ID:
-    ATTRIBUTE_MAP = {
-        'track_name': '=A9nam'.decode('quopri'),     # Name
-        'artist_name': '=A9ART'.decode('quopri'),    # Artist
-        'year': '=A9day'.decode('quopri'),           # Year
-        'track_number': 'trkn',                      # Track Number
-        'track_total': 'trkn',
-        'album_name': '=A9alb'.decode('quopri'),     # Album
-        'album_number': 'disk',                      # Disc Number
-        'album_total': 'disk',
-        'composer_name': '=A9wrt'.decode('quopri'),  # Composer
-        'comment': '=A9cmt'.decode('quopri'),        # Comments
-        'copyright': 'cprt'}                         # (not listed)
-
-    def __init__(self, ilst_atoms):
-        dict.__init__(self)
-        for ilst_atom in ilst_atoms:
-            self.setdefault(ilst_atom.type, []).append(ilst_atom)
-
-    @classmethod
-    def binary_atom(cls, key, value):
-        """Generates a binary ILST_Atom list from key and value strings.
-
-        The returned list is suitable for adding to our internal dict."""
-
-        return [ILST_Atom(key,
-                              [__Qt_Atom__(
-                        "data",
-                        value,
-                        0)])]
-
-    @classmethod
-    def text_atom(cls, key, text):
-        """Generates a text ILST_Atom list from key and text values.
-
-        key is a binary string, text is a unicode string.
-        The returned list is suitable for adding to our internal dict."""
-
-        return cls.binary_atom(key, '0000000100000000'.decode('hex') + \
-                                   text.encode('utf-8'))
-
-    @classmethod
-    def trkn_atom(cls, track_number, track_total):
-        """Generates a trkn ILST_Atom list from integer values."""
-
-        return cls.binary_atom('trkn',
-                               '0000000000000000'.decode('hex') + \
-                                   ATOM_TRKN.build(
-                                       Con.Container(
-                    track_number=track_number,
-                    total_tracks=track_total)))
-
-    @classmethod
-    def disk_atom(cls, disk_number, disk_total):
-        """Generates a disk ILST_Atom list from integer values."""
-
-        return cls.binary_atom('disk',
-                               '0000000000000000'.decode('hex') + \
-                                   ATOM_DISK.build(
-                                       Con.Container(
-                    disk_number=disk_number,
-                    total_disks=disk_total)))
-
-    @classmethod
-    def covr_atom(cls, image_data):
-        """Generates a covr ILST_Atom list from raw image binary data."""
-
-        return cls.binary_atom('covr',
-                               '0000000000000000'.decode('hex') + \
-                                   image_data)
-
-    #if an attribute is updated (e.g. self.track_name)
-    #make sure to update the corresponding dict pair
-    def __setattr__(self, key, value):
-        if (key in self.ATTRIBUTE_MAP.keys()):
-            if (key not in MetaData.__INTEGER_FIELDS__):
-                self[self.ATTRIBUTE_MAP[key]] = self.__class__.text_atom(
-                    self.ATTRIBUTE_MAP[key],
-                    value)
-
-            elif (key == 'track_number'):
-                self[self.ATTRIBUTE_MAP[key]] = self.__class__.trkn_atom(
-                    int(value), self.track_total)
-
-            elif (key == 'track_total'):
-                self[self.ATTRIBUTE_MAP[key]] = self.__class__.trkn_atom(
-                    self.track_number, int(value))
-
-            elif (key == 'album_number'):
-                self[self.ATTRIBUTE_MAP[key]] = self.__class__.disk_atom(
-                    int(value), self.album_total)
-
-            elif (key == 'album_total'):
-                self[self.ATTRIBUTE_MAP[key]] = self.__class__.disk_atom(
-                    self.album_number, int(value))
-
-    def __getattr__(self, key):
-        if (key == 'track_number'):
-            return ATOM_TRKN.parse(
-                str(self.get('trkn', [chr(0) * 16])[0])[8:]).track_number
-        elif (key == 'track_total'):
-            return ATOM_TRKN.parse(
-                str(self.get('trkn', [chr(0) * 16])[0])[8:]).total_tracks
-        elif (key == 'album_number'):
-            return ATOM_DISK.parse(
-                str(self.get('disk', [chr(0) * 14])[0])[8:]).disk_number
-        elif (key == 'album_total'):
-            return ATOM_DISK.parse(
-                str(self.get('disk', [chr(0) * 14])[0])[8:]).total_disks
-        elif (key in self.ATTRIBUTE_MAP):
-            return unicode(self.get(self.ATTRIBUTE_MAP[key], [u''])[0])
-        elif (key in MetaData.__FIELDS__):
-            return u''
-        else:
-            try:
-                return self.__dict__[key]
-            except KeyError:
-                raise AttributeError(key)
-
-    def __delattr__(self, key):
-        if (key == 'track_number'):
-            setattr(self, 'track_number', 0)
-            if ((self.track_number == 0) and (self.track_total == 0)):
-                del(self['trkn'])
-        elif (key == 'track_total'):
-            setattr(self, 'track_total', 0)
-            if ((self.track_number == 0) and (self.track_total == 0)):
-                del(self['trkn'])
-        elif (key == 'album_number'):
-            setattr(self, 'album_number', 0)
-            if ((self.album_number == 0) and (self.album_total == 0)):
-                del(self['disk'])
-        elif (key == 'album_total'):
-            setattr(self, 'album_total', 0)
-            if ((self.album_number == 0) and (self.album_total == 0)):
-                del(self['disk'])
-        elif (key in self.ATTRIBUTE_MAP):
-            if (self.ATTRIBUTE_MAP[key] in self):
-                del(self[self.ATTRIBUTE_MAP[key]])
-        elif (key in MetaData.__FIELDS__):
-            pass
-        else:
-            try:
-                del(self.__dict__[key])
-            except KeyError:
-                raise AttributeError(key)
-
-    def images(self):
-        """Returns a list of embedded Image objects."""
-
-        try:
-            return [M4ACovr(str(i)[8:]) for i in self['covr']
-                    if (len(str(i)) > 8)]
-        except KeyError:
-            return list()
-
-    def add_image(self, image):
-        """Embeds an Image object in this metadata."""
-
-        if (image.type == 0):
-            self.setdefault('covr', []).append(self.__class__.covr_atom(
-                    image.data)[0])
-
-    def delete_image(self, image):
-        """Deletes an Image object from this metadata."""
-
-        i = 0
-        for image_atom in self.get('covr', []):
-            if (str(image_atom)[8:] == image.data):
-                del(self['covr'][i])
-                break
-
-    @classmethod
-    def converted(cls, metadata):
-        """Converts a MetaData object to a M4AMetaData object."""
-
-        if ((metadata is None) or (isinstance(metadata, M4AMetaData))):
-            return metadata
-
-        m4a = M4AMetaData([])
-
-        for (field, key) in cls.ATTRIBUTE_MAP.items():
-            value = getattr(metadata, field)
-            if (field not in cls.__INTEGER_FIELDS__):
-                if (value != u''):
-                    m4a[key] = cls.text_atom(key, value)
-
-        if ((metadata.track_number != 0) or
-            (metadata.track_total != 0)):
-            m4a['trkn'] = cls.trkn_atom(metadata.track_number,
-                                         metadata.track_total)
-
-        if ((metadata.album_number != 0) or
-            (metadata.album_total != 0)):
-            m4a['disk'] = cls.disk_atom(metadata.album_number,
-                                         metadata.album_total)
-
-        if (len(metadata.front_covers()) > 0):
-            m4a['covr'] = [cls.covr_atom(i.data)[0]
-                            for i in metadata.front_covers()]
-
-        m4a['cpil'] = cls.binary_atom(
-            'cpil',
-            '0000001500000000'.decode('hex') + chr(1))
-
-        return m4a
-
-    def merge(self, metadata):
-        """Updates any currently empty entries from metadata's values."""
-
-        metadata = self.__class__.converted(metadata)
-        if (metadata is None):
-            return
-
-        for (key, values) in metadata.items():
-            if ((key not in 'trkn', 'disk') and
-                (len(values) > 0) and
-                (len(self.get(key, [])) == 0)):
-                self[key] = values
-        for attr in ("track_number", "track_total",
-                     "album_number", "album_total"):
-            if ((getattr(self, attr) == 0) and
-                (getattr(metadata, attr) != 0)):
-                setattr(self, attr, getattr(metadata, attr))
-
-    def to_atom(self, previous_meta):
-        """Returns a 'meta' __Qt_Atom__ object from this M4AMetaData."""
-
-        previous_meta = ATOM_META.parse(previous_meta.data)
-
-        new_meta = Con.Container(version=previous_meta.version,
-                                 flags=previous_meta.flags,
-                                 atoms=[])
-
-        ilst = []
-        for values in self.values():
-            for ilst_atom in values:
-                ilst.append(Con.Container(type=ilst_atom.type,
-                                          data=[
-                            Con.Container(type=sub_atom.type,
-                                          data=sub_atom.data)
-                            for sub_atom in ilst_atom.data]))
-
-        #port the non-ilst atoms from old atom to new atom directly
-        for sub_atom in previous_meta.atoms:
-            if (sub_atom.type == 'ilst'):
-                new_meta.atoms.append(Con.Container(
-                        type='ilst',
-                        data=ATOM_ILST.build(ilst)))
-            else:
-                new_meta.atoms.append(sub_atom)
-
-        return __Qt_Atom__(
-            'meta',
-            ATOM_META.build(new_meta),
-            0)
-
-    def __comment_name__(self):
-        return u'M4A'
-
-    @classmethod
-    def supports_images(self):
-        """Returns True."""
-
-        return True
-
-    @classmethod
-    def __by_pair__(cls, pair1, pair2):
-        KEY_MAP = {" nam": 1,
-                   " ART": 6,
-                   " com": 5,
-                   " alb": 2,
-                   "trkn": 3,
-                   "disk": 4,
-                   "----": 8}
-
-        return cmp((KEY_MAP.get(pair1[0], 7), pair1[0], pair1[1]),
-                   (KEY_MAP.get(pair2[0], 7), pair2[0], pair2[1]))
-
-    def __comment_pairs__(self):
-        pairs = []
-        for (key, values) in self.items():
-            for value in values:
-                pairs.append((key.replace(chr(0xA9), ' '), unicode(value)))
-        pairs.sort(M4AMetaData.__by_pair__)
-        return pairs
-
-    def clean(self, fixes_applied):
-        ilst_atoms = []
-        for (key, children) in self.items():
-            for child in children:
-                if (child.is_text()):
-                    fix1 = unicode(child).rstrip()
-                    if (fix1 != unicode(child)):
-                        fixes_applied.append(
-                            _(u"removed trailing whitespace from %(field)s") %
-                            {"field":key.lstrip('\xa9').decode('ascii')})
-                    fix2 = fix1.lstrip()
-                    if (fix2 != fix1):
-                        fixes_applied.append(
-                            _(u"removed leading whitespace from %(field)s") %
-                            {"field":key.lstrip('\xa9').decode('ascii')})
-
-                    if (len(unicode(fix2)) > 0):
-                        if (fix2 != unicode(child)):
-                            ilst_atoms.extend(M4AMetaData.text_atom(key, fix2))
-                        else:
-                            ilst_atoms.append(child)
-                    else:
-                        fixes_applied.append(
-                            _(u"removed empty field %(field)s") %
-                            {"field":key.lstrip('\xa9').decode('ascii')})
-                else:
-                    ilst_atoms.append(child)
-
-        return M4AMetaData(ilst_atoms)
+# class ILST_Atom:
+#     """An ILST sub-atom, which itself is a container for other atoms.
+
+#     For human-readable fields, those will contain a single DATA sub-atom
+#     containing the data itself.
+#     For instance:
+
+#     'ilst' atom
+#       |
+#       +-'\xa9nam' atom
+#             |
+#             +-'data' atom
+#                |
+#                +-'\x00\x00\x00\x01\x00\x00\x00\x00Track Name' data
+#     """
+
+#     #type is a string
+#     #sub_atoms is a list of __Qt_Atom__-compatible sub-atom objects
+#     def __init__(self, type, sub_atoms):
+#         self.type = type
+#         self.data = sub_atoms
+
+#     def __eq__(self, o):
+#         if (hasattr(o, "type") and
+#             hasattr(o, "data")):
+#             return ((self.type == o.type) and
+#                     (self.data == o.data))
+#         else:
+#             return False
+
+#     def __len__(self):
+#         return len(self.data)
+
+#     def __repr__(self):
+#         return "ILST_Atom(%s,%s)" % (repr(self.type),
+#                                      repr(self.data))
+
+#     def is_text(self):
+#         for atom in self.data:
+#             if (atom.data.startswith('0000000100000000'.decode('hex'))):
+#                 return True
+#         else:
+#             return False
+
+#     def __unicode__(self):
+#         for atom in self.data:
+#             if (atom.type == 'data'):
+#                 if (atom.data.startswith('0000000100000000'.decode('hex'))):
+#                     return atom.data[8:].decode('utf-8')
+#                 elif (self.type == 'trkn'):
+#                     trkn = ATOM_TRKN.parse(atom.data[8:])
+#                     if (trkn.total_tracks > 0):
+#                         return u"%d/%d" % (trkn.track_number,
+#                                            trkn.total_tracks)
+#                     else:
+#                         return unicode(trkn.track_number)
+#                 elif (self.type == 'disk'):
+#                     disk = ATOM_DISK.parse(atom.data[8:])
+#                     if (disk.total_disks > 0):
+#                         return u"%d/%d" % (disk.disk_number,
+#                                            disk.total_disks)
+#                     else:
+#                         return unicode(disk.disk_number)
+#                 else:
+#                     if (len(atom.data) > 28):
+#                         return unicode(
+#                             atom.data[8:20].encode('hex').upper()) + u"\u2026"
+#                     else:
+#                         return unicode(atom.data[8:].encode('hex'))
+#         else:
+#             return u""
+
+#     def __str__(self):
+#         for atom in self.data:
+#             if (atom.type == 'data'):
+#                 return atom.data
+#         else:
+#             return ""
+
+
+# class M4AMetaData(MetaData, dict):
+#     """meta atoms are typically laid out like:
+
+#     meta
+#       |-hdlr
+#       |-ilst
+#       |   |- nam
+#       |   |   \-data
+#       |   \-trkn
+#       |       \-data
+#       \-free
+
+#     where the stuff we're interested in is in ilst
+#     and its data grandchild atoms.
+#     """
+#                                                     # iTunes ID:
+#     ATTRIBUTE_MAP = {
+#         'track_name': '=A9nam'.decode('quopri'),     # Name
+#         'artist_name': '=A9ART'.decode('quopri'),    # Artist
+#         'year': '=A9day'.decode('quopri'),           # Year
+#         'track_number': 'trkn',                      # Track Number
+#         'track_total': 'trkn',
+#         'album_name': '=A9alb'.decode('quopri'),     # Album
+#         'album_number': 'disk',                      # Disc Number
+#         'album_total': 'disk',
+#         'composer_name': '=A9wrt'.decode('quopri'),  # Composer
+#         'comment': '=A9cmt'.decode('quopri'),        # Comments
+#         'copyright': 'cprt'}                         # (not listed)
+
+#     def __init__(self, ilst_atoms):
+#         dict.__init__(self)
+#         for ilst_atom in ilst_atoms:
+#             self.setdefault(ilst_atom.type, []).append(ilst_atom)
+
+#     @classmethod
+#     def binary_atom(cls, key, value):
+#         """Generates a binary ILST_Atom list from key and value strings.
+
+#         The returned list is suitable for adding to our internal dict."""
+
+#         return [ILST_Atom(key,
+#                               [__Qt_Atom__(
+#                         "data",
+#                         value,
+#                         0)])]
+
+#     @classmethod
+#     def text_atom(cls, key, text):
+#         """Generates a text ILST_Atom list from key and text values.
+
+#         key is a binary string, text is a unicode string.
+#         The returned list is suitable for adding to our internal dict."""
+
+#         return cls.binary_atom(key, '0000000100000000'.decode('hex') + \
+#                                    text.encode('utf-8'))
+
+#     @classmethod
+#     def trkn_atom(cls, track_number, track_total):
+#         """Generates a trkn ILST_Atom list from integer values."""
+
+#         return cls.binary_atom('trkn',
+#                                '0000000000000000'.decode('hex') + \
+#                                    ATOM_TRKN.build(
+#                                        Con.Container(
+#                     track_number=track_number,
+#                     total_tracks=track_total)))
+
+#     @classmethod
+#     def disk_atom(cls, disk_number, disk_total):
+#         """Generates a disk ILST_Atom list from integer values."""
+
+#         return cls.binary_atom('disk',
+#                                '0000000000000000'.decode('hex') + \
+#                                    ATOM_DISK.build(
+#                                        Con.Container(
+#                     disk_number=disk_number,
+#                     total_disks=disk_total)))
+
+#     @classmethod
+#     def covr_atom(cls, image_data):
+#         """Generates a covr ILST_Atom list from raw image binary data."""
+
+#         return cls.binary_atom('covr',
+#                                '0000000000000000'.decode('hex') + \
+#                                    image_data)
+
+#     #if an attribute is updated (e.g. self.track_name)
+#     #make sure to update the corresponding dict pair
+#     def __setattr__(self, key, value):
+#         if (key in self.ATTRIBUTE_MAP.keys()):
+#             if (key not in MetaData.__INTEGER_FIELDS__):
+#                 self[self.ATTRIBUTE_MAP[key]] = self.__class__.text_atom(
+#                     self.ATTRIBUTE_MAP[key],
+#                     value)
+
+#             elif (key == 'track_number'):
+#                 self[self.ATTRIBUTE_MAP[key]] = self.__class__.trkn_atom(
+#                     int(value), self.track_total)
+
+#             elif (key == 'track_total'):
+#                 self[self.ATTRIBUTE_MAP[key]] = self.__class__.trkn_atom(
+#                     self.track_number, int(value))
+
+#             elif (key == 'album_number'):
+#                 self[self.ATTRIBUTE_MAP[key]] = self.__class__.disk_atom(
+#                     int(value), self.album_total)
+
+#             elif (key == 'album_total'):
+#                 self[self.ATTRIBUTE_MAP[key]] = self.__class__.disk_atom(
+#                     self.album_number, int(value))
+
+#     def __getattr__(self, key):
+#         if (key == 'track_number'):
+#             return ATOM_TRKN.parse(
+#                 str(self.get('trkn', [chr(0) * 16])[0])[8:]).track_number
+#         elif (key == 'track_total'):
+#             return ATOM_TRKN.parse(
+#                 str(self.get('trkn', [chr(0) * 16])[0])[8:]).total_tracks
+#         elif (key == 'album_number'):
+#             return ATOM_DISK.parse(
+#                 str(self.get('disk', [chr(0) * 14])[0])[8:]).disk_number
+#         elif (key == 'album_total'):
+#             return ATOM_DISK.parse(
+#                 str(self.get('disk', [chr(0) * 14])[0])[8:]).total_disks
+#         elif (key in self.ATTRIBUTE_MAP):
+#             return unicode(self.get(self.ATTRIBUTE_MAP[key], [u''])[0])
+#         elif (key in MetaData.__FIELDS__):
+#             return u''
+#         else:
+#             try:
+#                 return self.__dict__[key]
+#             except KeyError:
+#                 raise AttributeError(key)
+
+#     def __delattr__(self, key):
+#         if (key == 'track_number'):
+#             setattr(self, 'track_number', 0)
+#             if ((self.track_number == 0) and (self.track_total == 0)):
+#                 del(self['trkn'])
+#         elif (key == 'track_total'):
+#             setattr(self, 'track_total', 0)
+#             if ((self.track_number == 0) and (self.track_total == 0)):
+#                 del(self['trkn'])
+#         elif (key == 'album_number'):
+#             setattr(self, 'album_number', 0)
+#             if ((self.album_number == 0) and (self.album_total == 0)):
+#                 del(self['disk'])
+#         elif (key == 'album_total'):
+#             setattr(self, 'album_total', 0)
+#             if ((self.album_number == 0) and (self.album_total == 0)):
+#                 del(self['disk'])
+#         elif (key in self.ATTRIBUTE_MAP):
+#             if (self.ATTRIBUTE_MAP[key] in self):
+#                 del(self[self.ATTRIBUTE_MAP[key]])
+#         elif (key in MetaData.__FIELDS__):
+#             pass
+#         else:
+#             try:
+#                 del(self.__dict__[key])
+#             except KeyError:
+#                 raise AttributeError(key)
+
+#     def images(self):
+#         """Returns a list of embedded Image objects."""
+
+#         try:
+#             return [M4ACovr(str(i)[8:]) for i in self['covr']
+#                     if (len(str(i)) > 8)]
+#         except KeyError:
+#             return list()
+
+#     def add_image(self, image):
+#         """Embeds an Image object in this metadata."""
+
+#         if (image.type == 0):
+#             self.setdefault('covr', []).append(self.__class__.covr_atom(
+#                     image.data)[0])
+
+#     def delete_image(self, image):
+#         """Deletes an Image object from this metadata."""
+
+#         i = 0
+#         for image_atom in self.get('covr', []):
+#             if (str(image_atom)[8:] == image.data):
+#                 del(self['covr'][i])
+#                 break
+
+#     @classmethod
+#     def converted(cls, metadata):
+#         """Converts a MetaData object to a M4AMetaData object."""
+
+#         if ((metadata is None) or (isinstance(metadata, M4AMetaData))):
+#             return metadata
+
+#         m4a = M4AMetaData([])
+
+#         for (field, key) in cls.ATTRIBUTE_MAP.items():
+#             value = getattr(metadata, field)
+#             if (field not in cls.__INTEGER_FIELDS__):
+#                 if (value != u''):
+#                     m4a[key] = cls.text_atom(key, value)
+
+#         if ((metadata.track_number != 0) or
+#             (metadata.track_total != 0)):
+#             m4a['trkn'] = cls.trkn_atom(metadata.track_number,
+#                                          metadata.track_total)
+
+#         if ((metadata.album_number != 0) or
+#             (metadata.album_total != 0)):
+#             m4a['disk'] = cls.disk_atom(metadata.album_number,
+#                                          metadata.album_total)
+
+#         if (len(metadata.front_covers()) > 0):
+#             m4a['covr'] = [cls.covr_atom(i.data)[0]
+#                             for i in metadata.front_covers()]
+
+#         m4a['cpil'] = cls.binary_atom(
+#             'cpil',
+#             '0000001500000000'.decode('hex') + chr(1))
+
+#         return m4a
+
+#     def merge(self, metadata):
+#         """Updates any currently empty entries from metadata's values."""
+
+#         metadata = self.__class__.converted(metadata)
+#         if (metadata is None):
+#             return
+
+#         for (key, values) in metadata.items():
+#             if ((key not in 'trkn', 'disk') and
+#                 (len(values) > 0) and
+#                 (len(self.get(key, [])) == 0)):
+#                 self[key] = values
+#         for attr in ("track_number", "track_total",
+#                      "album_number", "album_total"):
+#             if ((getattr(self, attr) == 0) and
+#                 (getattr(metadata, attr) != 0)):
+#                 setattr(self, attr, getattr(metadata, attr))
+
+#     def to_atom(self, previous_meta):
+#         """Returns a 'meta' __Qt_Atom__ object from this M4AMetaData."""
+
+#         previous_meta = ATOM_META.parse(previous_meta.data)
+
+#         new_meta = Con.Container(version=previous_meta.version,
+#                                  flags=previous_meta.flags,
+#                                  atoms=[])
+
+#         ilst = []
+#         for values in self.values():
+#             for ilst_atom in values:
+#                 ilst.append(Con.Container(type=ilst_atom.type,
+#                                           data=[
+#                             Con.Container(type=sub_atom.type,
+#                                           data=sub_atom.data)
+#                             for sub_atom in ilst_atom.data]))
+
+#         #port the non-ilst atoms from old atom to new atom directly
+#         for sub_atom in previous_meta.atoms:
+#             if (sub_atom.type == 'ilst'):
+#                 new_meta.atoms.append(Con.Container(
+#                         type='ilst',
+#                         data=ATOM_ILST.build(ilst)))
+#             else:
+#                 new_meta.atoms.append(sub_atom)
+
+#         return __Qt_Atom__(
+#             'meta',
+#             ATOM_META.build(new_meta),
+#             0)
+
+#     def __comment_name__(self):
+#         return u'M4A'
+
+#     @classmethod
+#     def supports_images(self):
+#         """Returns True."""
+
+#         return True
+
+#     @classmethod
+#     def __by_pair__(cls, pair1, pair2):
+#         KEY_MAP = {" nam": 1,
+#                    " ART": 6,
+#                    " com": 5,
+#                    " alb": 2,
+#                    "trkn": 3,
+#                    "disk": 4,
+#                    "----": 8}
+
+#         return cmp((KEY_MAP.get(pair1[0], 7), pair1[0], pair1[1]),
+#                    (KEY_MAP.get(pair2[0], 7), pair2[0], pair2[1]))
+
+#     def __comment_pairs__(self):
+#         pairs = []
+#         for (key, values) in self.items():
+#             for value in values:
+#                 pairs.append((key.replace(chr(0xA9), ' '), unicode(value)))
+#         pairs.sort(M4AMetaData.__by_pair__)
+#         return pairs
+
+#     def clean(self, fixes_applied):
+#         ilst_atoms = []
+#         for (key, children) in self.items():
+#             for child in children:
+#                 if (child.is_text()):
+#                     fix1 = unicode(child).rstrip()
+#                     if (fix1 != unicode(child)):
+#                         fixes_applied.append(
+#                             _(u"removed trailing whitespace from %(field)s") %
+#                             {"field":key.lstrip('\xa9').decode('ascii')})
+#                     fix2 = fix1.lstrip()
+#                     if (fix2 != fix1):
+#                         fixes_applied.append(
+#                             _(u"removed leading whitespace from %(field)s") %
+#                             {"field":key.lstrip('\xa9').decode('ascii')})
+
+#                     if (len(unicode(fix2)) > 0):
+#                         if (fix2 != unicode(child)):
+#                             ilst_atoms.extend(M4AMetaData.text_atom(key, fix2))
+#                         else:
+#                             ilst_atoms.append(child)
+#                     else:
+#                         fixes_applied.append(
+#                             _(u"removed empty field %(field)s") %
+#                             {"field":key.lstrip('\xa9').decode('ascii')})
+#                 else:
+#                     ilst_atoms.append(child)
+
+#         return M4AMetaData(ilst_atoms)
 
 
 class M4ACovr(Image):
@@ -2088,7 +2081,7 @@ class InvalidALAC(InvalidFile):
     pass
 
 
-class ALACAudio(M4AAudio_faac):
+class ALACAudio(M4ATaggedAudio,AudioFile):
     """An Apple Lossless audio file."""
 
     SUFFIX = "m4a"
