@@ -122,8 +122,12 @@ class ID3v1Comment(MetaData):
         return u'ID3v1'
 
     def __comment_pairs__(self):
-        return zip(('Title', 'Artist', 'Album', 'Year', 'Comment', 'Tracknum'),
-                   self)
+        return (("Title", self.track_name),
+                ("Artist", self.artist_name),
+                ("Album", self.album_name),
+                ("Year", self.year),
+                ("Comment", self.comment),
+                ("Tracknum", unicode(self.track_number)))
 
     def images(self):
         """Returns an empty list of Image objects."""

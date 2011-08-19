@@ -285,6 +285,8 @@ br_etry(BitstreamReader *bs)
     }
 }
 
+#define BUF_REMAINING_BYTES(b) ((b)->buffer_total_size - (b)->buffer_position)
+
 /*These are helper macros for unpacking the results
   of the various jump tables in a less error-prone fashion.*/
 #define BYTE_BANK_SIZE 9
@@ -924,30 +926,39 @@ br_skip_bits_s_be(BitstreamReader* bs, unsigned int count)
     int output_size;
 
 
-    /*FIXME - handle a common case where the input is byte-aligned,
+    /*handle a common case where the input is byte-aligned,
       the count is an even number of bytes
       and there are no set callbacks to consider*/
-    while (count > 0) {
-        if (context == 0) {
-            if ((byte = buf_getc(bs->input.substream)) == EOF)
-                br_abort(bs);
-            context = NEW_CONTEXT(byte);
-            for (callback = bs->callbacks;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback((uint8_t)byte, callback->data);
+    if ((context == 0) && ((count % 8) == 0) && (bs->callbacks == NULL)) {
+        count /= 8;
+        if (count <= BUF_REMAINING_BYTES(bs->input.substream)) {
+            bs->input.substream->buffer_position += count;
+        } else {
+            br_abort(bs);
+        }
+    } else {
+        while (count > 0) {
+            if (context == 0) {
+                if ((byte = buf_getc(bs->input.substream)) == EOF)
+                    br_abort(bs);
+                context = NEW_CONTEXT(byte);
+                for (callback = bs->callbacks;
+                     callback != NULL;
+                     callback = callback->next)
+                    callback->callback((uint8_t)byte, callback->data);
+            }
+
+            result = read_bits_table[context][MIN(count, 8) - 1];
+
+            output_size = READ_BITS_OUTPUT_SIZE(result);
+
+            context = NEXT_CONTEXT(result);
+
+            count -= output_size;
         }
 
-        result = read_bits_table[context][MIN(count, 8) - 1];
-
-        output_size = READ_BITS_OUTPUT_SIZE(result);
-
-        context = NEXT_CONTEXT(result);
-
-        count -= output_size;
+        bs->state = context;
     }
-
-    bs->state = context;
 }
 
 void
@@ -960,32 +971,41 @@ br_skip_bits_s_le(BitstreamReader* bs, unsigned int count)
     int output_size;
     int bit_offset = 0;
 
-    /*FIXME - handle a common case where the input is byte-aligned,
+    /*handle a common case where the input is byte-aligned,
       the count is an even number of bytes
       and there are no set callbacks to consider*/
-    while (count > 0) {
-        if (context == 0) {
-            if ((byte = buf_getc(bs->input.substream)) == EOF)
-                br_abort(bs);
-            context = NEW_CONTEXT(byte);
-            for (callback = bs->callbacks;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback((uint8_t)byte, callback->data);
+    if ((context == 0) && ((count % 8) == 0) && (bs->callbacks == NULL)) {
+        count /= 8;
+        if (count <= BUF_REMAINING_BYTES(bs->input.substream)) {
+            bs->input.substream->buffer_position += count;
+        } else {
+            br_abort(bs);
+        }
+    } else {
+        while (count > 0) {
+            if (context == 0) {
+                if ((byte = buf_getc(bs->input.substream)) == EOF)
+                    br_abort(bs);
+                context = NEW_CONTEXT(byte);
+                for (callback = bs->callbacks;
+                     callback != NULL;
+                     callback = callback->next)
+                    callback->callback((uint8_t)byte, callback->data);
+            }
+
+            result = read_bits_table_le[context][MIN(count, 8) - 1];
+
+            output_size = READ_BITS_OUTPUT_SIZE(result);
+
+            context = NEXT_CONTEXT(result);
+
+            count -= output_size;
+
+            bit_offset += output_size;
         }
 
-        result = read_bits_table_le[context][MIN(count, 8) - 1];
-
-        output_size = READ_BITS_OUTPUT_SIZE(result);
-
-        context = NEXT_CONTEXT(result);
-
-        count -= output_size;
-
-        bit_offset += output_size;
+        bs->state = context;
     }
-
-    bs->state = context;
 }
 
 #ifndef STANDALONE
@@ -1598,7 +1618,7 @@ br_read_bytes_s(struct BitstreamReader_s* bs,
 
         buffer = bs->input.substream;
 
-        if ((buffer->buffer_size - buffer->buffer_position) >= byte_count) {
+        if (BUF_REMAINING_BYTES(buffer) >= byte_count) {
             /*the buffer has enough bytes to read*/
 
             /*so copy bytes from buffer to output*/
@@ -1992,12 +2012,6 @@ buf_new(void)
     return stream;
 }
 
-uint32_t
-buf_size(struct bs_buffer *stream)
-{
-    return stream->buffer_size - stream->buffer_position;
-}
-
 uint8_t*
 buf_extend(struct bs_buffer *stream, uint32_t data_size)
 {
@@ -2262,7 +2276,7 @@ br_substream_append_s(struct BitstreamReader_s *stream,
 
     /*abort if there's sufficient bytes remaining
       in the input stream to pass to the output stream*/
-    if (buf_size(stream->input.substream) < bytes)
+    if (BUF_REMAINING_BYTES(stream->input.substream) < bytes)
         br_abort(stream);
 
     /*extend the output stream's current buffer to fit additional bytes*/
