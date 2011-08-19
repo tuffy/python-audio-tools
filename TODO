@@ -3753,9 +3753,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO check against truncated images
 ** DONE __init__.py
 ** TODO __m4a__.py
-*** TODO M4ATaggedAudio
+*** DONE M4ATaggedAudio
     - [X] get_metadata
-    - [ ] set_metadata
+    - [X] set_metadata
     - [X] delete_metadata
 *** TODO M4A_META_Atom
     - [X] __init__
@@ -3763,48 +3763,24 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] parse
     - [X] __getattr__
     - [ ] __setattr__
-    - [ ] __delattr__
-    - [ ] images
+    - [X] __delattr__
+    - [X] images
     - [ ] add_image
-    - [ ] delete_image
-    - [ ] converted
+    - [X] delete_image
+    - [X] converted
     - [ ] merge
     - [X] __comment_name__
     - [X] supports_images
     - [X] __by_pair__
     - [X] __comment_pairs__
-    - [ ] __clean__
-*** TODO M4AAudio_faac
-    - [ ] __init__
-    - [ ] is_type
-    - [ ] __set_meta_atom__
-*** TODO ILST_Atom
-    - [ ] __init__
-    - [ ] eq
-    - [ ] __len__
-    - [ ] is_text
-    - [ ] __unicode__
-    - [ ] __str__
-*** TODO M4AMetaData
-    - [ ] binary_atom
-    - [ ] text_atom
-    - [ ] trkn_atom
-    - [ ] disk_atom
-    - [ ] covr_atom
-    - [ ] __setattr__
-    - [ ] __getattr__
-    - [ ] __delattr__
-    - [ ] images
-    - [ ] add_image
-    - [ ] delete_image
-    - [ ] converted
-    - [ ] merge
-    - [ ] to_atom
-    - [ ] clean
-*** TODO ALACAudio
-    - [ ] __init__
+    - [X] clean
+*** DONE M4AAudio_faac
+    - [X] __init__
     - [X] is_type
-    - [ ] to_pcm
+*** TODO ALACAudio
+    - [X] __init__
+    - [X] is_type
+    - [X] to_pcm
     - [ ] from_pcm
     - [ ] __build_ftyp_atom__
     - [ ] __build_moov_atom__
@@ -3815,6 +3791,29 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [ ] aac_frames
     - [ ] aac_frame_count
 ** TODO __m4a_atoms__.py
+   Re-implement atom parsing/building without Construct
+*** DONE ftyp
+*** DONE moov
+**** DONE mvhd
+**** DONE trak
+***** DONE tkhd
+***** DONE mdia
+****** DONE mdhd
+****** DONE hdlr
+****** DONE minf
+******* DONE smhd
+******* DONE dinf
+******** DONE dref
+******* DONE stbl
+******** DONE stsd
+********* DONE alac
+******** DONE stts
+******** DONE stsc
+******** DONE stsz
+******** DONE stco
+**** DONE udta
+***** DONE meta
+*** DONE free
 ** TODO __mp3__.py
 *** TODO MP3
     - [X] __init__
