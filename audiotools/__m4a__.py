@@ -29,7 +29,6 @@ from audiotools import (AudioFile, InvalidFile, PCMReader, PCMConverter,
                         BufferedPCMReader, to_pcm_progress,
                         at_a_time, VERSION, PCMReaderError,
                         __default_quality__, iter_last)
-from __m4a_atoms__ import *
 from __m4a_atoms2__ import *
 import gettext
 
@@ -249,175 +248,6 @@ class M4ATaggedAudio:
         Raises IOError if unable to write the file."""
 
         self.set_metadata(MetaData())
-
-#M4A files are made up of QuickTime Atoms
-#some of those Atoms are containers for sub-Atoms
-class __Qt_Atom__:
-    CONTAINERS = frozenset(
-        ['dinf', 'edts', 'imag', 'imap', 'mdia', 'mdra', 'minf',
-         'moov', 'rmra', 'stbl', 'trak', 'tref', 'udta', 'vnrp'])
-
-    STRUCT = Con.Struct("qt_atom",
-                     Con.UBInt32("size"),
-                     Con.String("type", 4))
-
-    def __init__(self, type, data, offset):
-        self.type = type
-        self.data = data
-        self.offset = offset
-
-    def __repr__(self):
-        return "__Qt_Atom__(%s,%s,%s)" % \
-            (repr(self.type),
-             repr(self.data),
-             repr(self.offset))
-
-    def __eq__(self, o):
-        if (hasattr(o, "type") and
-            hasattr(o, "data")):
-            return ((self.type == o.type) and
-                    (self.data == o.data))
-        else:
-            return False
-
-    #takes an 8 byte string
-    #returns an Atom's (type,size) as a tuple
-    @classmethod
-    def parse(cls, header_data):
-        header = cls.STRUCT.parse(header_data)
-        return (header.type, header.size)
-
-    def build(self):
-        return __build_qt_atom__(self.type, self.data)
-
-    #performs a search of all sub-atoms to find the one
-    #with the given type, or None if one cannot be found
-    def get_atom(self, type):
-        if (self.type == type):
-            return self
-        elif (self.is_container()):
-            for atom in self:
-                returned_atom = atom.get_atom(type)
-                if (returned_atom is not None):
-                    return returned_atom
-
-        return None
-
-    #returns True if the Atom is a container, False if not
-    def is_container(self):
-        return self.type in self.CONTAINERS
-
-    def __iter__(self):
-        for atom in __parse_qt_atoms__(cStringIO.StringIO(self.data),
-                                       __Qt_Atom__):
-            yield atom
-
-    def __len__(self):
-        count = 0
-        for atom in self:
-            count += 1
-        return count
-
-    def __getitem__(self, type):
-        for atom in self:
-            if (atom.type == type):
-                return atom
-        raise KeyError(type)
-
-    def keys(self):
-        return [atom.type for atom in self]
-
-
-#a stream of __Qt_Atom__ objects
-#though it is an Atom-like container, it has no type of its own
-class __Qt_Atom_Stream__(__Qt_Atom__):
-    def __init__(self, stream):
-        self.stream = stream
-        self.atom_class = __Qt_Atom__
-
-        __Qt_Atom__.__init__(self, None, None, 0)
-
-    def is_container(self):
-        return True
-
-    def __iter__(self):
-        self.stream.seek(0, 0)
-
-        for atom in __parse_qt_atoms__(self.stream,
-                                       self.atom_class,
-                                       self.offset):
-            yield atom
-
-
-Qt_Atom_Stream = __Qt_Atom_Stream__
-
-
-#takes a stream object with a read() method
-#iterates over all of the atoms it contains and yields
-#a series of qt_class objects, which defaults to __Qt_Atom__
-def __parse_qt_atoms__(stream, qt_class=__Qt_Atom__, base_offset=0):
-    h = stream.read(8)
-    while (len(h) == 8):
-        (header_type, header_size) = qt_class.parse(h)
-        if (header_size == 0):
-            yield qt_class(header_type,
-                           stream.read(),
-                           base_offset)
-        else:
-            yield qt_class(header_type,
-                           stream.read(header_size - 8),
-                           base_offset)
-        base_offset += header_size
-
-        h = stream.read(8)
-
-
-def __build_qt_atom__(atom_type, atom_data):
-    con = Con.Container()
-    con.type = atom_type
-    con.size = len(atom_data) + __Qt_Atom__.STRUCT.sizeof()
-    return __Qt_Atom__.STRUCT.build(con) + atom_data
-
-
-#takes an existing __Qt_Atom__ object (possibly a container)
-#and a __Qt_Atom__ to replace
-#finds all sub-atoms with the same type as new_atom and replaces them
-#returns a string
-def __replace_qt_atom__(qt_atom, new_atom):
-    if (qt_atom.type is None):
-        return "".join(
-            [__replace_qt_atom__(a, new_atom) for a in qt_atom])
-    elif (qt_atom.type == new_atom.type):
-        #if we've found the atom to replace,
-        #build a new atom string from new_atom's data
-        return __build_qt_atom__(new_atom.type, new_atom.data)
-    else:
-        #if we're still looking for the atom to replace
-        if (not qt_atom.is_container()):
-            #build the old atom string from qt_atom's data
-            #if it is not a container
-            return __build_qt_atom__(qt_atom.type, qt_atom.data)
-        else:
-            #recursively build the old atom's data
-            #with values from __replace_qt_atom__
-            return __build_qt_atom__(qt_atom.type,
-                                     "".join(
-                    [__replace_qt_atom__(a, new_atom) for a in qt_atom]))
-
-
-def __remove_qt_atom__(qt_atom, atom_name):
-    if (qt_atom.type is None):
-        return "".join(
-            [__remove_qt_atom__(a, atom_name) for a in qt_atom])
-    elif (qt_atom.type == atom_name):
-        return ""
-    else:
-        if (not qt_atom.is_container()):
-            return __build_qt_atom__(qt_atom.type, qt_atom.data)
-        else:
-            return __build_qt_atom__(qt_atom.type,
-                                     "".join(
-                    [__remove_qt_atom__(a, atom_name) for a in qt_atom]))
 
 
 class M4AAudio_faac(M4ATaggedAudio,AudioFile):
@@ -871,419 +701,6 @@ else:
     M4AAudio = M4AAudio_faac
 
 
-# class ILST_Atom:
-#     """An ILST sub-atom, which itself is a container for other atoms.
-
-#     For human-readable fields, those will contain a single DATA sub-atom
-#     containing the data itself.
-#     For instance:
-
-#     'ilst' atom
-#       |
-#       +-'\xa9nam' atom
-#             |
-#             +-'data' atom
-#                |
-#                +-'\x00\x00\x00\x01\x00\x00\x00\x00Track Name' data
-#     """
-
-#     #type is a string
-#     #sub_atoms is a list of __Qt_Atom__-compatible sub-atom objects
-#     def __init__(self, type, sub_atoms):
-#         self.type = type
-#         self.data = sub_atoms
-
-#     def __eq__(self, o):
-#         if (hasattr(o, "type") and
-#             hasattr(o, "data")):
-#             return ((self.type == o.type) and
-#                     (self.data == o.data))
-#         else:
-#             return False
-
-#     def __len__(self):
-#         return len(self.data)
-
-#     def __repr__(self):
-#         return "ILST_Atom(%s,%s)" % (repr(self.type),
-#                                      repr(self.data))
-
-#     def is_text(self):
-#         for atom in self.data:
-#             if (atom.data.startswith('0000000100000000'.decode('hex'))):
-#                 return True
-#         else:
-#             return False
-
-#     def __unicode__(self):
-#         for atom in self.data:
-#             if (atom.type == 'data'):
-#                 if (atom.data.startswith('0000000100000000'.decode('hex'))):
-#                     return atom.data[8:].decode('utf-8')
-#                 elif (self.type == 'trkn'):
-#                     trkn = ATOM_TRKN.parse(atom.data[8:])
-#                     if (trkn.total_tracks > 0):
-#                         return u"%d/%d" % (trkn.track_number,
-#                                            trkn.total_tracks)
-#                     else:
-#                         return unicode(trkn.track_number)
-#                 elif (self.type == 'disk'):
-#                     disk = ATOM_DISK.parse(atom.data[8:])
-#                     if (disk.total_disks > 0):
-#                         return u"%d/%d" % (disk.disk_number,
-#                                            disk.total_disks)
-#                     else:
-#                         return unicode(disk.disk_number)
-#                 else:
-#                     if (len(atom.data) > 28):
-#                         return unicode(
-#                             atom.data[8:20].encode('hex').upper()) + u"\u2026"
-#                     else:
-#                         return unicode(atom.data[8:].encode('hex'))
-#         else:
-#             return u""
-
-#     def __str__(self):
-#         for atom in self.data:
-#             if (atom.type == 'data'):
-#                 return atom.data
-#         else:
-#             return ""
-
-
-# class M4AMetaData(MetaData, dict):
-#     """meta atoms are typically laid out like:
-
-#     meta
-#       |-hdlr
-#       |-ilst
-#       |   |- nam
-#       |   |   \-data
-#       |   \-trkn
-#       |       \-data
-#       \-free
-
-#     where the stuff we're interested in is in ilst
-#     and its data grandchild atoms.
-#     """
-#                                                     # iTunes ID:
-#     ATTRIBUTE_MAP = {
-#         'track_name': '=A9nam'.decode('quopri'),     # Name
-#         'artist_name': '=A9ART'.decode('quopri'),    # Artist
-#         'year': '=A9day'.decode('quopri'),           # Year
-#         'track_number': 'trkn',                      # Track Number
-#         'track_total': 'trkn',
-#         'album_name': '=A9alb'.decode('quopri'),     # Album
-#         'album_number': 'disk',                      # Disc Number
-#         'album_total': 'disk',
-#         'composer_name': '=A9wrt'.decode('quopri'),  # Composer
-#         'comment': '=A9cmt'.decode('quopri'),        # Comments
-#         'copyright': 'cprt'}                         # (not listed)
-
-#     def __init__(self, ilst_atoms):
-#         dict.__init__(self)
-#         for ilst_atom in ilst_atoms:
-#             self.setdefault(ilst_atom.type, []).append(ilst_atom)
-
-#     @classmethod
-#     def binary_atom(cls, key, value):
-#         """Generates a binary ILST_Atom list from key and value strings.
-
-#         The returned list is suitable for adding to our internal dict."""
-
-#         return [ILST_Atom(key,
-#                               [__Qt_Atom__(
-#                         "data",
-#                         value,
-#                         0)])]
-
-#     @classmethod
-#     def text_atom(cls, key, text):
-#         """Generates a text ILST_Atom list from key and text values.
-
-#         key is a binary string, text is a unicode string.
-#         The returned list is suitable for adding to our internal dict."""
-
-#         return cls.binary_atom(key, '0000000100000000'.decode('hex') + \
-#                                    text.encode('utf-8'))
-
-#     @classmethod
-#     def trkn_atom(cls, track_number, track_total):
-#         """Generates a trkn ILST_Atom list from integer values."""
-
-#         return cls.binary_atom('trkn',
-#                                '0000000000000000'.decode('hex') + \
-#                                    ATOM_TRKN.build(
-#                                        Con.Container(
-#                     track_number=track_number,
-#                     total_tracks=track_total)))
-
-#     @classmethod
-#     def disk_atom(cls, disk_number, disk_total):
-#         """Generates a disk ILST_Atom list from integer values."""
-
-#         return cls.binary_atom('disk',
-#                                '0000000000000000'.decode('hex') + \
-#                                    ATOM_DISK.build(
-#                                        Con.Container(
-#                     disk_number=disk_number,
-#                     total_disks=disk_total)))
-
-#     @classmethod
-#     def covr_atom(cls, image_data):
-#         """Generates a covr ILST_Atom list from raw image binary data."""
-
-#         return cls.binary_atom('covr',
-#                                '0000000000000000'.decode('hex') + \
-#                                    image_data)
-
-#     #if an attribute is updated (e.g. self.track_name)
-#     #make sure to update the corresponding dict pair
-#     def __setattr__(self, key, value):
-#         if (key in self.ATTRIBUTE_MAP.keys()):
-#             if (key not in MetaData.__INTEGER_FIELDS__):
-#                 self[self.ATTRIBUTE_MAP[key]] = self.__class__.text_atom(
-#                     self.ATTRIBUTE_MAP[key],
-#                     value)
-
-#             elif (key == 'track_number'):
-#                 self[self.ATTRIBUTE_MAP[key]] = self.__class__.trkn_atom(
-#                     int(value), self.track_total)
-
-#             elif (key == 'track_total'):
-#                 self[self.ATTRIBUTE_MAP[key]] = self.__class__.trkn_atom(
-#                     self.track_number, int(value))
-
-#             elif (key == 'album_number'):
-#                 self[self.ATTRIBUTE_MAP[key]] = self.__class__.disk_atom(
-#                     int(value), self.album_total)
-
-#             elif (key == 'album_total'):
-#                 self[self.ATTRIBUTE_MAP[key]] = self.__class__.disk_atom(
-#                     self.album_number, int(value))
-
-#     def __getattr__(self, key):
-#         if (key == 'track_number'):
-#             return ATOM_TRKN.parse(
-#                 str(self.get('trkn', [chr(0) * 16])[0])[8:]).track_number
-#         elif (key == 'track_total'):
-#             return ATOM_TRKN.parse(
-#                 str(self.get('trkn', [chr(0) * 16])[0])[8:]).total_tracks
-#         elif (key == 'album_number'):
-#             return ATOM_DISK.parse(
-#                 str(self.get('disk', [chr(0) * 14])[0])[8:]).disk_number
-#         elif (key == 'album_total'):
-#             return ATOM_DISK.parse(
-#                 str(self.get('disk', [chr(0) * 14])[0])[8:]).total_disks
-#         elif (key in self.ATTRIBUTE_MAP):
-#             return unicode(self.get(self.ATTRIBUTE_MAP[key], [u''])[0])
-#         elif (key in MetaData.__FIELDS__):
-#             return u''
-#         else:
-#             try:
-#                 return self.__dict__[key]
-#             except KeyError:
-#                 raise AttributeError(key)
-
-#     def __delattr__(self, key):
-#         if (key == 'track_number'):
-#             setattr(self, 'track_number', 0)
-#             if ((self.track_number == 0) and (self.track_total == 0)):
-#                 del(self['trkn'])
-#         elif (key == 'track_total'):
-#             setattr(self, 'track_total', 0)
-#             if ((self.track_number == 0) and (self.track_total == 0)):
-#                 del(self['trkn'])
-#         elif (key == 'album_number'):
-#             setattr(self, 'album_number', 0)
-#             if ((self.album_number == 0) and (self.album_total == 0)):
-#                 del(self['disk'])
-#         elif (key == 'album_total'):
-#             setattr(self, 'album_total', 0)
-#             if ((self.album_number == 0) and (self.album_total == 0)):
-#                 del(self['disk'])
-#         elif (key in self.ATTRIBUTE_MAP):
-#             if (self.ATTRIBUTE_MAP[key] in self):
-#                 del(self[self.ATTRIBUTE_MAP[key]])
-#         elif (key in MetaData.__FIELDS__):
-#             pass
-#         else:
-#             try:
-#                 del(self.__dict__[key])
-#             except KeyError:
-#                 raise AttributeError(key)
-
-#     def images(self):
-#         """Returns a list of embedded Image objects."""
-
-#         try:
-#             return [M4ACovr(str(i)[8:]) for i in self['covr']
-#                     if (len(str(i)) > 8)]
-#         except KeyError:
-#             return list()
-
-#     def add_image(self, image):
-#         """Embeds an Image object in this metadata."""
-
-#         if (image.type == 0):
-#             self.setdefault('covr', []).append(self.__class__.covr_atom(
-#                     image.data)[0])
-
-#     def delete_image(self, image):
-#         """Deletes an Image object from this metadata."""
-
-#         i = 0
-#         for image_atom in self.get('covr', []):
-#             if (str(image_atom)[8:] == image.data):
-#                 del(self['covr'][i])
-#                 break
-
-#     @classmethod
-#     def converted(cls, metadata):
-#         """Converts a MetaData object to a M4AMetaData object."""
-
-#         if ((metadata is None) or (isinstance(metadata, M4AMetaData))):
-#             return metadata
-
-#         m4a = M4AMetaData([])
-
-#         for (field, key) in cls.ATTRIBUTE_MAP.items():
-#             value = getattr(metadata, field)
-#             if (field not in cls.__INTEGER_FIELDS__):
-#                 if (value != u''):
-#                     m4a[key] = cls.text_atom(key, value)
-
-#         if ((metadata.track_number != 0) or
-#             (metadata.track_total != 0)):
-#             m4a['trkn'] = cls.trkn_atom(metadata.track_number,
-#                                          metadata.track_total)
-
-#         if ((metadata.album_number != 0) or
-#             (metadata.album_total != 0)):
-#             m4a['disk'] = cls.disk_atom(metadata.album_number,
-#                                          metadata.album_total)
-
-#         if (len(metadata.front_covers()) > 0):
-#             m4a['covr'] = [cls.covr_atom(i.data)[0]
-#                             for i in metadata.front_covers()]
-
-#         m4a['cpil'] = cls.binary_atom(
-#             'cpil',
-#             '0000001500000000'.decode('hex') + chr(1))
-
-#         return m4a
-
-#     def merge(self, metadata):
-#         """Updates any currently empty entries from metadata's values."""
-
-#         metadata = self.__class__.converted(metadata)
-#         if (metadata is None):
-#             return
-
-#         for (key, values) in metadata.items():
-#             if ((key not in 'trkn', 'disk') and
-#                 (len(values) > 0) and
-#                 (len(self.get(key, [])) == 0)):
-#                 self[key] = values
-#         for attr in ("track_number", "track_total",
-#                      "album_number", "album_total"):
-#             if ((getattr(self, attr) == 0) and
-#                 (getattr(metadata, attr) != 0)):
-#                 setattr(self, attr, getattr(metadata, attr))
-
-#     def to_atom(self, previous_meta):
-#         """Returns a 'meta' __Qt_Atom__ object from this M4AMetaData."""
-
-#         previous_meta = ATOM_META.parse(previous_meta.data)
-
-#         new_meta = Con.Container(version=previous_meta.version,
-#                                  flags=previous_meta.flags,
-#                                  atoms=[])
-
-#         ilst = []
-#         for values in self.values():
-#             for ilst_atom in values:
-#                 ilst.append(Con.Container(type=ilst_atom.type,
-#                                           data=[
-#                             Con.Container(type=sub_atom.type,
-#                                           data=sub_atom.data)
-#                             for sub_atom in ilst_atom.data]))
-
-#         #port the non-ilst atoms from old atom to new atom directly
-#         for sub_atom in previous_meta.atoms:
-#             if (sub_atom.type == 'ilst'):
-#                 new_meta.atoms.append(Con.Container(
-#                         type='ilst',
-#                         data=ATOM_ILST.build(ilst)))
-#             else:
-#                 new_meta.atoms.append(sub_atom)
-
-#         return __Qt_Atom__(
-#             'meta',
-#             ATOM_META.build(new_meta),
-#             0)
-
-#     def __comment_name__(self):
-#         return u'M4A'
-
-#     @classmethod
-#     def supports_images(self):
-#         """Returns True."""
-
-#         return True
-
-#     @classmethod
-#     def __by_pair__(cls, pair1, pair2):
-#         KEY_MAP = {" nam": 1,
-#                    " ART": 6,
-#                    " com": 5,
-#                    " alb": 2,
-#                    "trkn": 3,
-#                    "disk": 4,
-#                    "----": 8}
-
-#         return cmp((KEY_MAP.get(pair1[0], 7), pair1[0], pair1[1]),
-#                    (KEY_MAP.get(pair2[0], 7), pair2[0], pair2[1]))
-
-#     def __comment_pairs__(self):
-#         pairs = []
-#         for (key, values) in self.items():
-#             for value in values:
-#                 pairs.append((key.replace(chr(0xA9), ' '), unicode(value)))
-#         pairs.sort(M4AMetaData.__by_pair__)
-#         return pairs
-
-#     def clean(self, fixes_applied):
-#         ilst_atoms = []
-#         for (key, children) in self.items():
-#             for child in children:
-#                 if (child.is_text()):
-#                     fix1 = unicode(child).rstrip()
-#                     if (fix1 != unicode(child)):
-#                         fixes_applied.append(
-#                             _(u"removed trailing whitespace from %(field)s") %
-#                             {"field":key.lstrip('\xa9').decode('ascii')})
-#                     fix2 = fix1.lstrip()
-#                     if (fix2 != fix1):
-#                         fixes_applied.append(
-#                             _(u"removed leading whitespace from %(field)s") %
-#                             {"field":key.lstrip('\xa9').decode('ascii')})
-
-#                     if (len(unicode(fix2)) > 0):
-#                         if (fix2 != unicode(child)):
-#                             ilst_atoms.extend(M4AMetaData.text_atom(key, fix2))
-#                         else:
-#                             ilst_atoms.append(child)
-#                     else:
-#                         fixes_applied.append(
-#                             _(u"removed empty field %(field)s") %
-#                             {"field":key.lstrip('\xa9').decode('ascii')})
-#                 else:
-#                     ilst_atoms.append(child)
-
-#         return M4AMetaData(ilst_atoms)
-
-
 class M4ACovr(Image):
     """A subclass of Image to store M4A 'covr' atoms."""
 
@@ -1332,66 +749,6 @@ class ALACAudio(M4ATaggedAudio,AudioFile):
     DEFAULT_COMPRESSION = ""
     COMPRESSION_MODES = ("",)
     BINARIES = tuple()
-
-    ALAC_ATOM = Con.Struct("stsd_alac",
-                           Con.String("reserved", 6),
-                           Con.UBInt16("reference_index"),
-                           Con.UBInt16("version"),
-                           Con.UBInt16("revision_level"),
-                           Con.String("vendor", 4),
-                           Con.UBInt16("channels"),
-                           Con.UBInt16("bits_per_sample"),
-                           Con.UBInt16("compression_id"),
-                           Con.UBInt16("audio_packet_size"),
-                           #this sample rate always seems to be 0xAC440000
-                           #no matter what the other sample rate fields are
-                           Con.Bytes("sample_rate", 4),
-                           Con.Struct("alac",
-                                      Con.UBInt32("length"),
-                                      Con.Const(Con.String("type", 4),
-                                                'alac'),
-                                      Con.Padding(4),
-                                      Con.UBInt32("max_samples_per_frame"),
-                                      Con.Padding(1),
-                                      Con.UBInt8("sample_size"),
-                                      Con.UBInt8("history_multiplier"),
-                                      Con.UBInt8("initial_history"),
-                                      Con.UBInt8("maximum_k"),
-                                      Con.UBInt8("channels"),
-                                      Con.UBInt16("unknown"),
-                                      Con.UBInt32("max_coded_frame_size"),
-                                      Con.UBInt32("bitrate"),
-                                      Con.UBInt32("sample_rate")))
-
-    ALAC_FTYP = AtomWrapper("ftyp", ATOM_FTYP)
-
-    ALAC_MOOV = AtomWrapper(
-        "moov", Con.Struct(
-            "moov",
-            AtomWrapper("mvhd", ATOM_MVHD),
-            AtomWrapper("trak", Con.Struct(
-                    "trak",
-                    AtomWrapper("tkhd", ATOM_TKHD),
-                    AtomWrapper("mdia", Con.Struct(
-                            "mdia",
-                            AtomWrapper("mdhd", ATOM_MDHD),
-                            AtomWrapper("hdlr", ATOM_HDLR),
-                            AtomWrapper("minf", Con.Struct(
-                                    "minf",
-                                    AtomWrapper("smhd", ATOM_SMHD),
-                                    AtomWrapper("dinf", Con.Struct(
-                                            "dinf",
-                                            AtomWrapper("dref", ATOM_DREF))),
-                                    AtomWrapper("stbl", Con.Struct(
-                                            "stbl",
-                                            AtomWrapper("stsd", ATOM_STSD),
-                                            AtomWrapper("stts", ATOM_STTS),
-                                            AtomWrapper("stsc", ATOM_STSC),
-                                            AtomWrapper("stsz", ATOM_STSZ),
-                                            AtomWrapper("stco", ATOM_STCO))))))))),
-            AtomWrapper("udta", Con.Struct(
-                    "udta",
-                    AtomWrapper("meta", ATOM_META)))))
 
     BLOCK_SIZE = 4096
     INITIAL_HISTORY = 10
@@ -1572,15 +929,15 @@ class ALACAudio(M4ATaggedAudio,AudioFile):
             raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
 
         from . import encoders
+        from .bitstream import BitstreamWriter
         import time
         import tempfile
 
         mdat_file = tempfile.TemporaryFile()
 
         #perform encode_alac() on pcmreader to our output file
-        #which returns a tuple of output values:
-        #(framelist, - a list of (frame_samples,frame_size,frame_offset) tuples
-        # various fields for the "alac" atom)
+        #which returns a tuple of output values
+        #which are various fields for the "alac" atom
         try:
             (frame_sample_sizes,
              frame_byte_sizes,
@@ -1602,6 +959,8 @@ class ALACAudio(M4ATaggedAudio,AudioFile):
         stts_frame_counts = {}
         for sample_size in frame_sample_sizes:
             stts_frame_counts.setdefault(sample_size, __counter__()).incr()
+        stts_frame_counts = dict([(k, int(v)) for (k, v)
+                                  in stts_frame_counts.items()])
 
         offsets = frame_file_offsets[:]
         chunks = []
@@ -1612,44 +971,48 @@ class ALACAudio(M4ATaggedAudio,AudioFile):
         del(offsets)
 
         #add the size of ftyp + moov + free to our absolute file offsets
-        pre_mdat_size = (len(cls.__build_ftyp_atom__()) +
-                         len(cls.__build_moov_atom__(pcmreader,
-                                                     create_date,
-                                                     mdat_size,
-                                                     total_pcm_frames,
-                                                     frame_sample_sizes,
-                                                     stts_frame_counts,
-                                                     chunks,
-                                                     frame_byte_sizes)) +
-                         len(cls.__build_free_atom__(0x1000)))
+        pre_mdat_size = (8 + cls.__ftyp_atom__().size() +
+                         8 + cls.__moov_atom__(pcmreader,
+                                               create_date,
+                                               mdat_size,
+                                               total_pcm_frames,
+                                               frame_sample_sizes,
+                                               stts_frame_counts,
+                                               chunks,
+                                               frame_byte_sizes).size() +
+                         8 + cls.__free_atom__(0x1000).size())
+
         chunks = [[chunk + pre_mdat_size for chunk in chunk_list]
                   for chunk_list in chunks]
 
         #then regenerate our live ftyp, moov and free atoms
         #with actual data
-        ftyp = cls.__build_ftyp_atom__()
+        ftyp = cls.__ftyp_atom__()
 
-        moov = cls.__build_moov_atom__(pcmreader,
-                                       create_date,
-                                       mdat_size,
-                                       total_pcm_frames,
-                                       frame_sample_sizes,
-                                       stts_frame_counts,
-                                       chunks,
-                                       frame_byte_sizes)
+        moov = cls.__moov_atom__(pcmreader,
+                                 create_date,
+                                 mdat_size,
+                                 total_pcm_frames,
+                                 frame_sample_sizes,
+                                 stts_frame_counts,
+                                 chunks,
+                                 frame_byte_sizes)
 
-        free = cls.__build_free_atom__(0x1000)
+        free = cls.__free_atom__(0x1000)
 
         #build our complete output file
         try:
             f = file(filename, 'wb')
-
+            m4a_writer = BitstreamWriter(f, 0)
+            m4a_writer.build("32u 4b", (ftyp.size() + 8, ftyp.name))
+            ftyp.build(m4a_writer)
+            m4a_writer.build("32u 4b", (moov.size() + 8, moov.name))
+            moov.build(m4a_writer)
+            m4a_writer.build("32u 4b", (free.size() + 8, free.name))
+            free.build(m4a_writer)
             mdat_file.seek(0, 0)
-            f.write(ftyp)
-            f.write(moov)
-            f.write(free)
             transfer_data(mdat_file.read, f.write)
-            f.close()
+            m4a_writer.close()
             mdat_file.close()
         except (IOError), err:
             mdat_file.close()
@@ -1658,214 +1021,235 @@ class ALACAudio(M4ATaggedAudio,AudioFile):
         return cls(filename)
 
     @classmethod
-    def __build_ftyp_atom__(cls):
-        return cls.ALAC_FTYP.build(
-            Con.Container(major_brand='M4A ',
-                          major_brand_version=0,
-                          compatible_brands=['M4A ',
-                                             'mp42',
-                                             'isom',
-                                             chr(0) * 4]))
+    def __ftyp_atom__(cls):
+        return M4A_FTYP_Atom(major_brand='M4A ',
+                             major_brand_version=0,
+                             compatible_brands=['M4A ',
+                                                'mp42',
+                                                'isom',
+                                                chr(0) * 4])
 
     @classmethod
-    def __build_moov_atom__(cls, pcmreader,
-                            create_date,
-                            mdat_size,
-                            total_pcm_frames,
-                            frame_sample_sizes,
-                            stts_frame_counts,
-                            chunks,
-                            frame_byte_sizes):
-        version = (chr(0) * 3) + chr(1) + (chr(0) * 4) + (
-            "Python Audio Tools %s" % (VERSION))
-
-        tool = Con.Struct('tool',
-                          Con.UBInt32('size'),
-                          Con.String('type', 4),
-                          Con.Struct('data',
-                                     Con.UBInt32('size'),
-                                     Con.String('type', 4),
-                                     Con.String(
-                    'data',
-                    lambda ctx: ctx["size"] - 8))).build(
-            Con.Container(size=len(version) + 16,
-                          type=chr(0xa9) + 'too',
-                          data=Con.Container(size=len(version) + 8,
-                                             type='data',
-                                             data=version)))
-
-        return cls.ALAC_MOOV.build(
-            Con.Container(
-                mvhd=Con.Container(version=0,
-                                   flags=chr(0) * 3,
-                                   created_mac_UTC_date=create_date,
-                                   modified_mac_UTC_date=create_date,
-                                   time_scale=pcmreader.sample_rate,
-                                   duration=total_pcm_frames,
-                                   playback_speed=0x10000,
-                                   user_volume=0x100,
-                                   windows=Con.Container(
-                        geometry_matrix_a=0x10000,
-                        geometry_matrix_b=0,
-                        geometry_matrix_u=0,
-                        geometry_matrix_c=0,
-                        geometry_matrix_d=0x10000,
-                        geometry_matrix_v=0,
-                        geometry_matrix_x=0,
-                        geometry_matrix_y=0,
-                        geometry_matrix_w=0x40000000),
-                                   quicktime_preview=0,
-                                   quicktime_still_poster=0,
-                                   quicktime_selection_time=0,
-                                   quicktime_current_time=0,
-                                   next_track_id=2),
-                trak=Con.Container(
-                    tkhd=Con.Container(version=0,
-                                       flags=Con.Container(
-                            TrackInPoster=0,
-                            TrackInPreview=1,
-                            TrackInMovie=1,
-                            TrackEnabled=1),
-                                       created_mac_UTC_date=create_date,
-                                       modified_mac_UTC_date=create_date,
-                                       track_id=1,
-                                       duration=total_pcm_frames,
-                                       video_layer=0,
-                                       quicktime_alternate=0,
-                                       volume=0x100,
-                                       video=Con.Container(
-                            geometry_matrix_a=0x10000,
-                            geometry_matrix_b=0,
-                            geometry_matrix_u=0,
-                            geometry_matrix_c=0,
-                            geometry_matrix_d=0x10000,
-                            geometry_matrix_v=0,
-                            geometry_matrix_x=0,
-                            geometry_matrix_y=0,
-                            geometry_matrix_w=0x40000000),
-                                       video_width=0,
-                                       video_height=0),
-                    mdia=Con.Container(
-                        mdhd=Con.Container(version=0,
-                                           flags=chr(0) * 3,
-                                           created_mac_UTC_date=create_date,
-                                           modified_mac_UTC_date=create_date,
-                                           time_scale=pcmreader.sample_rate,
-                                           duration=total_pcm_frames,
-                                           languages=Con.Container(
-                                language=[0x15, 0x0E, 0x04]),
-                                           quicktime_quality=0),
-                        hdlr=Con.Container(
-                            version=0,
-                            flags=chr(0) * 3,
-                            quicktime_type=chr(0) * 4,
-                            subtype='soun',
-                            quicktime_manufacturer=chr(0) * 4,
-                            quicktime_component_reserved_flags=0,
-                            quicktime_component_reserved_flags_mask=0,
-                            component_name=""),
-                        minf=Con.Container(
-                            smhd=Con.Container(version=0,
-                                               flags=chr(0) * 3,
-                                               audio_balance=chr(0) * 2),
-                            dinf=Con.Container(dref=Con.Container(
-                                    version=0,
-                                    flags=chr(0) * 3,
-                                    references=[Con.Container(
-                                            size=12,
-                                            type='url ',
-                                            data="\x00\x00\x00\x01")])),
-                            stbl=Con.Container(stsd=Con.Container(
-                                    version=0,
-                                    flags=chr(0) * 3,
-                                    descriptions=[Con.Container(
-                                            type="alac",
-                                            data=cls.ALAC_ATOM.build(
-                                                Con.Container(
-                                                    reserved=chr(0) * 6,
-                                                    reference_index=1,
-                                                    version=0,
-                                                revision_level=0,
-                                                vendor=chr(0) * 4,
-                                                channels=pcmreader.channels,
-                                                bits_per_sample=pcmreader.bits_per_sample,
-                                                compression_id=0,
-                                                audio_packet_size=0,
-                                                sample_rate=chr(0xAC) + chr(0x44) + chr(0x00) + chr(0x00),
-                                                alac=Con.Container(
-                                                    length=36,
-                                                    type='alac',
-                                                    max_samples_per_frame=max(frame_sample_sizes),
-                                                    sample_size=pcmreader.bits_per_sample,
-                                                    history_multiplier=cls.HISTORY_MULTIPLIER,
-                                                    initial_history=cls.INITIAL_HISTORY,
-                                                    maximum_k=cls.MAXIMUM_K,
-                                                    channels=pcmreader.channels,
-                                                    unknown=0x00FF,
-                                                    max_coded_frame_size=max(frame_byte_sizes),
-                                                    bitrate=((mdat_size * 8 * pcmreader.sample_rate) / sum(frame_sample_sizes)),
-                                                    sample_rate=pcmreader.sample_rate))))]),
-
-                                stts=Con.Container(
-                                    version=0,
-                                    flags=chr(0) * 3,
-                                    frame_size_counts=[
-                                        Con.Container(
-                                            frame_count=int(stts_frame_counts[samples]),
-                                            duration=samples)
-                                        for samples in
-                                        reversed(sorted(stts_frame_counts.keys()))]),
-
-                                stsc=Con.Container(
-                                    version=0,
-                                    flags=chr(0) * 3,
-                                    block=[Con.Container(
-                                            first_chunk=i + 1,
-                                            samples_per_chunk=current,
-                                            sample_description_index=1)
-                                           for (i, (current, previous))
-                                           in enumerate(zip(map(len, chunks),
-                                                            [0] + map(len, chunks)))
-                                           if (current != previous)]),
-
-                                stsz=Con.Container(
-                                    version=0,
-                                    flags=chr(0) * 3,
-                                    block_byte_size=0,
-                                    block_byte_sizes=frame_byte_sizes),
-
-                                stco=Con.Container(
-                                    version=0,
-                                    flags=chr(0) * 3,
-                                    offset=[chunk[0] for chunk in chunks]))))),
-                udta=Con.Container(
-                    meta=Con.Container(
-                        version=0,
-                        flags=chr(0) * 3,
-                        atoms=[Con.Container(
-                                type='hdlr',
-                                data=ATOM_HDLR.build(
-                                    Con.Container(
-                                        version=0,
-                                        flags=chr(0) * 3,
-                                        quicktime_type=chr(0) * 4,
-                                        subtype='mdir',
-                                        quicktime_manufacturer='appl',
-                                        quicktime_component_reserved_flags=0,
-                                        quicktime_component_reserved_flags_mask=0,
-                                        component_name=""))),
-                               Con.Container(
-                                type='ilst',
-                                data=tool),
-                               Con.Container(
-                                type='free',
-                                data=chr(0) * 1024)]))))
+    def __moov_atom__(cls, pcmreader,
+                      create_date,
+                      mdat_size,
+                      total_pcm_frames,
+                      frame_sample_sizes,
+                      stts_frame_counts,
+                      chunks,
+                      frame_byte_sizes):
+        return M4A_Tree_Atom(
+            "moov",
+            [cls.__mvhd_atom__(pcmreader, create_date, total_pcm_frames),
+             M4A_Tree_Atom(
+                    "trak",
+                    [cls.__tkhd_atom__(create_date, total_pcm_frames),
+                     M4A_Tree_Atom(
+                            "mdia",
+                            [cls.__mdhd_atom__(pcmreader,
+                                               create_date,
+                                               total_pcm_frames),
+                             cls.__hdlr_atom__(),
+                             M4A_Tree_Atom(
+                                    "minf",
+                                    [cls.__smhd_atom__(),
+                                     M4A_Tree_Atom(
+                                            "dinf",
+                                            [cls.__dref_atom__()]),
+                                     M4A_Tree_Atom(
+                                            "stbl",
+                                            [cls.__stsd_atom__(
+                                                    pcmreader,
+                                                    mdat_size,
+                                                    frame_sample_sizes,
+                                                    frame_byte_sizes),
+                                             cls.__stts_atom__(
+                                                    stts_frame_counts),
+                                             cls.__stsc_atom__(
+                                                    chunks),
+                                             cls.__stsz_atom__(
+                                                    frame_byte_sizes),
+                                             cls.__stco_atom__(
+                                                    chunks)])])])]),
+             M4A_Tree_Atom(
+                    "udta",
+                    [cls.__meta_atom__()])])
 
     @classmethod
-    def __build_free_atom__(cls, size):
-        return Atom('free').build(Con.Container(
-                type='free',
-                data=chr(0) * size))
+    def __mvhd_atom__(cls, pcmreader, create_date, total_pcm_frames):
+        return M4A_MVHD_Atom(version=0,
+                             flags=0,
+                             created_utc_date=create_date,
+                             modified_utc_date=create_date,
+                             time_scale=pcmreader.sample_rate,
+                             duration=total_pcm_frames,
+                             playback_speed=0x10000,
+                             user_volume=0x100,
+                             geometry_matrices=[0x10000,
+                                                0,
+                                                0,
+                                                0,
+                                                0x10000,
+                                                0,
+                                                0,
+                                                0,
+                                                0x40000000],
+                             qt_preview=0,
+                             qt_still_poster=0,
+                             qt_selection_time=0,
+                             qt_current_time=0,
+                             next_track_id=2)
+
+    @classmethod
+    def __tkhd_atom__(cls, create_date, total_pcm_frames):
+        return M4A_TKHD_Atom(version=0,
+                             track_in_poster=0,
+                             track_in_preview=1,
+                             track_in_movie=1,
+                             track_enabled=1,
+                             created_utc_date=create_date,
+                             modified_utc_date=create_date,
+                             track_id=1,
+                             duration=total_pcm_frames,
+                             video_layer=0,
+                             qt_alternate=0,
+                             volume=0x100,
+                             geometry_matrices=[0x10000,
+                                                0,
+                                                0,
+                                                0,
+                                                0x10000,
+                                                0,
+                                                0,
+                                                0,
+                                                0x40000000],
+                             video_width=0,
+                             video_height=0)
+
+    @classmethod
+    def __mdhd_atom__(cls, pcmreader, create_date, total_pcm_frames):
+        return M4A_MDHD_Atom(version=0,
+                             flags=0,
+                             created_utc_date=create_date,
+                             modified_utc_date=create_date,
+                             sample_rate=pcmreader.sample_rate,
+                             track_length=total_pcm_frames,
+                             language=[ord(c) - 0x60 for c in "und"],
+                             quality=0)
+
+    @classmethod
+    def __hdlr_atom__(cls):
+        return M4A_HDLR_Atom(version=0,
+                             flags=0,
+                             qt_type=chr(0) * 4,
+                             qt_subtype='soun',
+                             qt_manufacturer=chr(0) * 4,
+                             qt_reserved_flags=0,
+                             qt_reserved_flags_mask=0,
+                             component_name="",
+                             padding_size=1)
+
+    @classmethod
+    def __smhd_atom__(cls):
+        return M4A_SMHD_Atom(version=0,
+                             flags=0,
+                             audio_balance=0)
+
+    @classmethod
+    def __dref_atom__(cls):
+        return M4A_DREF_Atom(version=0,
+                             flags=0,
+                             references=[M4A_Leaf_Atom("url ",
+                                                       "\x00\x00\x00\x01")])
+
+    @classmethod
+    def __stsd_atom__(cls, pcmreader, mdat_size, frame_sample_sizes,
+                      frame_byte_sizes):
+        return M4A_STSD_Atom(
+            version=0,
+            flags=0,
+            descriptions=[M4A_ALAC_Atom(
+                    reference_index=1,
+                    qt_version=0,
+                    qt_revision_level=0,
+                    qt_vendor=chr(0) * 4,
+                    channels=pcmreader.channels,
+                    bits_per_sample=pcmreader.bits_per_sample,
+                    qt_compression_id=0,
+                    audio_packet_size=0,
+                    sample_rate=0xAC440000, #regardless of actual sample rate
+                    sub_alac=M4A_SUB_ALAC_Atom(
+                        max_samples_per_frame=max(frame_sample_sizes),
+                        bits_per_sample=pcmreader.bits_per_sample,
+                        history_multiplier=cls.HISTORY_MULTIPLIER,
+                        initial_history=cls.INITIAL_HISTORY,
+                        maximum_k=cls.MAXIMUM_K,
+                        channels=pcmreader.channels,
+                        unknown=0x00FF,
+                        max_coded_frame_size=max(frame_byte_sizes),
+                        bitrate=((mdat_size * 8 * pcmreader.sample_rate) /
+                                 sum(frame_sample_sizes)),
+                        sample_rate=pcmreader.sample_rate))])
+
+    @classmethod
+    def __stts_atom__(cls, stts_frame_counts):
+        return M4A_STTS_Atom(
+            version=0,
+            flags=0,
+            times=[(int(stts_frame_counts[samples]), samples)
+                   for samples in reversed(sorted(stts_frame_counts.keys()))])
+
+    @classmethod
+    def __stsc_atom__(cls, chunks):
+        return M4A_STSC_Atom(
+            version=0,
+            flags=0,
+            blocks=[(i + 1, current, 1) for (i, (current, previous))
+                    in enumerate(zip(map(len, chunks), [0] + map(len, chunks)))
+                    if (current != previous)])
+
+    @classmethod
+    def __stsz_atom__(cls, frame_byte_sizes):
+        return M4A_STSZ_Atom(
+            version=0,
+            flags=0,
+            byte_size=0,
+            block_sizes=frame_byte_sizes)
+
+    @classmethod
+    def __stco_atom__(cls, chunks):
+        return M4A_STCO_Atom(
+            version=0,
+            flags=0,
+            offsets=[chunk[0] for chunk in chunks])
+
+    @classmethod
+    def __meta_atom__(cls):
+        return M4A_META_Atom(
+            version=0,
+            flags=0,
+            leaf_atoms=[
+                M4A_HDLR_Atom(version=0,
+                              flags=0,
+                              qt_type=chr(0) * 4,
+                              qt_subtype='mdir',
+                              qt_manufacturer='appl',
+                              qt_reserved_flags=0,
+                              qt_reserved_flags_mask=0,
+                              component_name="",
+                              padding_size=1),
+                M4A_Tree_Atom(
+                    "ilst",
+                    [M4A_ILST_Leaf_Atom(
+                            '\xa9too',
+                            [M4A_ILST_Unicode_Data_Atom(
+                                    0, 1,
+                                    "Python Audio Tools %s" % (VERSION))])]),
+                M4A_FREE_Atom(1024)])
+
+    @classmethod
+    def __free_atom__(cls, size):
+        return M4A_FREE_Atom(size)
 
 #######################
 #AAC File

@@ -448,7 +448,7 @@ class M4A_MDHD_Atom(M4A_Leaf_Atom):
          modified_utc_date,
          sample_rate,
          track_length) = reader.parse(atom_format)
-        language = reader.parse("1u 5u 5u 5u")
+        language = reader.parse("1p 5u 5u 5u")
         quality = reader.read(16)
 
         return cls(version=version,
@@ -469,7 +469,7 @@ class M4A_MDHD_Atom(M4A_Leaf_Atom):
         writer.build(atom_format,
                      (self.created_utc_date, self.modified_utc_date,
                       self.sample_rate, self.track_length))
-        writer.build("1u 5u 5u 5u", self.language)
+        writer.build("1p 5u 5u 5u", self.language)
         writer.write(16, self.quality)
 
     def size(self):
