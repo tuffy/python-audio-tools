@@ -3464,6 +3464,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 * TODO Restore Monkey's Audio support
   This needs to be assimilated with a native decoder/encoder.
   I've seen these out in the wild, but only rarely.
+* TODO Add True Audio support
+
 * TODO Assimilate Vorbis support
 ** TODO Add Vorbis decoder
 *** TODO Add VorbisDecoder Python object to decoders
@@ -3777,14 +3779,14 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE M4AAudio_faac
     - [X] __init__
     - [X] is_type
-*** TODO ALACAudio
+*** DONE ALACAudio
     - [X] __init__
     - [X] is_type
     - [X] to_pcm
-    - [ ] from_pcm
-    - [ ] __build_ftyp_atom__
-    - [ ] __build_moov_atom__
-    - [ ] __build_free_atom__
+    - [X] from_pcm
+    - [X] __ftyp_atom__
+    - [X] __moov_atom__
+    - [X] __free_atom__
 *** TODO AACAudio
     - [ ] __init__
     - [ ] is_type
@@ -3833,6 +3835,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO __speex__.py
 ** DONE toc.py
 ** TODO __vorbis__.py
+*** TODO VorbisAudio
+    - [ ] __read_metadata__
+    - [ ] total_frames
+    - [ ] set_metadata
+    - [ ] get_metadata
 ** TODO __vorbiscomment__.py
 ** DONE __wav__.py
 ** DONE __wavpack__.py
@@ -3987,3 +3994,37 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   True
 
   This requires metadata to not jumble fields around until required.
+* TODO Verify metadata against reference implementations
+  Where feasible, try to ensure our metadata
+  matches what's read/written by known reference implementations.
+** TODO FlacAudio
+   against metaflac
+** TODO M4AAudio/ALACAudio
+   against taglib?
+** TODO MP3Audio/MP2Audio
+   against id3lib
+** TODO VorbisAudio
+   against vorbis-tools
+** TODO WavPackAudio
+   against tablib?
+
+* TODO Add progress to track2cd audio file conversion
+* TODO Have trackinfo display metadata fields by default
+  Instead of displaying the low-level info,
+  show fields like "track name", "album name", etc.
+  unless a -R/--raw flag is indicated.
+** TODO Replace MetaData.comment_pairs() with MetaData.raw_data()
+   This should be even lower level than it is now, and unsorted.
+** DONE Convert MetaData.__unicode__() to display fields by name
+   This should always use the higher level implementation
+   and sort fields by name.
+** DONE Update trackinfo to use MetaData's unicode output by default
+** TODO Add -R/--raw flac to trackinfo
+** TODO Update unit tests
+* TODO Update FLAC/Vorbis to support TOTALTRACKS field for track_total
+  This seems to be catching on as a standard.
+  The best solution may be to implement a set of "fallback" fields
+  such that a single metadata field may use a number of
+  different Vorbis comment names and the first match is used.
+** TODO Preserve TOTALTRACKS when updating track_total
+** TODO Add unit tests to ensure TOTALTRACKS works

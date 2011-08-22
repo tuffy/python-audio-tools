@@ -358,7 +358,7 @@ class Flac_STREAMINFO:
                       self.total_samples,
                       self.md5sum))
 
-class Flac_VORBISCOMMENT(VorbisComment):
+class Flac_VORBISCOMMENT(VorbisComment2):
     BLOCK_ID = 4
 
     @classmethod
@@ -367,46 +367,31 @@ class Flac_VORBISCOMMENT(VorbisComment):
 
         if ((metadata is None) or (isinstance(metadata, Flac_VORBISCOMMENT))):
             return metadata
-        elif (isinstance(metadata, FlacMetaData)):
-            return metadata.vorbis_comment
-        elif (isinstance(metadata, VorbisComment)):
-            return cls(metadata, metadata.vendor_string)
         else:
-            values = {}
-            for key in cls.ATTRIBUTE_MAP.keys():
-                if (key in cls.__INTEGER_FIELDS__):
-                    if (getattr(metadata, key) != 0):
-                        values[cls.ATTRIBUTE_MAP[key]] = \
-                            [unicode(getattr(metadata, key))]
-                elif (getattr(metadata, key) != u""):
-                    values[cls.ATTRIBUTE_MAP[key]] = \
-                        [unicode(getattr(metadata, key))]
-
-            return cls(values)
+            #make VorbisComment do all the work,
+            #then lift its data into a new Flac_VORBISCOMMENT
+            metadata = VorbisComment2.converted(metadata)
+            return cls(metadata.comment_strings,
+                       metadata.vendor_string)
 
     @classmethod
     def parse(cls, reader):
         reader.set_endianness(1)
         vendor_string = reader.read_bytes(reader.read(32)).decode('utf-8')
-        comment_strings = {}
-        for (key, value) in [comment_string.split(u"=", 1) for comment_string in
-                             [reader.read_bytes(reader.read(32)).decode('utf-8')
-                              for i in xrange(reader.read(32))]
-                             if u"=" in comment_string]:
-            comment_strings.setdefault(key, []).append(value)
-
-        return cls(comment_strings, vendor_string)
+        return cls([reader.read_bytes(reader.read(32)).decode('utf-8')
+                    for i in xrange(reader.read(32))], vendor_string)
 
     def build(self, writer):
         writer.set_endianness(1)
         vendor_string = self.vendor_string.encode('utf-8')
         writer.build("32u%db" % (len(vendor_string)),
                      (len(vendor_string), vendor_string))
-        writer.write(32, sum(map(len, self.values())))
-        for (key, values) in self.items():
-            for value in values:
-                comment = (u"%s=%s" % (key.upper(), value)).encode('utf-8')
-                writer.build("32u%db" % (len(comment)), (len(comment), comment))
+        writer.write(32, len(self.comment_strings))
+        for comment_string in self.comment_strings:
+            comment_string = comment_string.encode('utf-8')
+            writer.build("32u%db" % (len(comment_string)),
+                         (len(comment_string), comment_string))
+
 
 class Flac_PICTURE(Image):
     BLOCK_ID = 6

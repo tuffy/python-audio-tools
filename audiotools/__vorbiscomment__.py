@@ -337,3 +337,355 @@ class VorbisComment(MetaData, dict):
         #FIXME - check vendor string for fixes?
 
         return self.__class__(fixed, self.vendor_string)
+
+
+class VorbisComment2(MetaData):
+    ATTRIBUTE_MAP = {'track_name':[u'TITLE'],
+                     'track_number':[u'TRACKNUMBER'],
+                     'track_total':[u'TRACKTOTAL',u'TOTALTRACKS'],
+                     'album_name':[u'ALBUM'],
+                     'artist_name':[u'ARTIST'],
+                     'performer_name':[u'PERFORMER'],
+                     'composer_name':[u'COMPOSER'],
+                     'conductor_name':[u'CONDUCTOR'],
+                     'media':[u'SOURCE MEDIUM'],
+                     'ISRC':[u'ISRC'],
+                     'catalog':[u'CATALOG'],
+                     'copyright':[u'COPYRIGHT'],
+                     'publisher':[u'PUBLISHER'],
+                     'year':[u'DATE'],
+                     'date':[],
+                     'album_number':[u'DISCNUMBER'],
+                     'album_total':[u'DISCTOTAL'],
+                     'comment':[u'COMMENT']}
+
+    UNSLASHED_FIELD = re.compile(r'(\d+)')
+    SLASHED_FIELD = re.compile(r'(\d+)\s*/\s*(\d+)')
+
+    SLASHED_FIELDS = {'track_number':(0, [u'TRACKNUMBER']),
+                      'track_total':(1, [u'TRACKNUMBER']),
+                      'album_number':(0, [u'DISCNUMBER']),
+                      'album_total':(1, [u'DISCTOTAL'])}
+
+    def __init__(self, comment_strings, vendor_string):
+        """comment_strings is a list of unicode strings
+
+        vendor_string is a unicode string"""
+
+        self.__dict__["comment_strings"] = comment_strings
+        self.__dict__["vendor_string"] = vendor_string
+
+    def __repr__(self):
+        return "VorbisComment2(%s, %s)" % \
+            (repr(self.comment_strings), repr(self.vendor_string))
+
+    def __getattr__(self, attr):
+        #returns the first matching key for the given attribute
+        #in our list of comment strings
+
+        if (attr in self.SLASHED_FIELDS):
+            #handle rare u'TRACKNUMBER=1/2' cases
+            #which must always be numerical fields
+            matching_slashed_fields = frozenset(self.SLASHED_FIELDS[attr][1])
+            matching_unslashed_fields = frozenset(self.ATTRIBUTE_MAP[attr])
+
+            for (key, value) in [comment.split(u"=", 1)
+                                 for comment in self.comment_strings
+                                 if (u"=" in comment)]:
+                key = key.upper()
+
+                #first, attempt to search for a slashed value, like:
+                #u'TRACKNUMBER=1/2'
+                #and return the appropriate side of the value as an int
+                if (key in matching_slashed_fields):
+                    slashed_value = self.SLASHED_FIELD.search(value)
+                    if (slashed_value is not None):
+                        return int(slashed_value.group(
+                                self.SLASHED_FIELDS[attr][0] + 1))
+
+                #then, attempt to search for an unslashed value, like:
+                #u'TRACKNUMBER=1'
+                #and return the int result
+                if (key in matching_unslashed_fields):
+                    unslashed_value = self.UNSLASHED_FIELD.search(value)
+                    if (unslashed_value is not None):
+                        return int(unslashed_value.group(1))
+
+                #otherwise, continue through the list of fields
+            else:
+                return 0
+        elif (attr in self.ATTRIBUTE_MAP):
+            matching_fields = frozenset(self.ATTRIBUTE_MAP[attr])
+            for (key, value) in [comment.split(u"=", 1)
+                                 for comment in self.comment_strings
+                                 if (u"=" in comment)]:
+                if (key.upper() in matching_fields):
+                    return value
+            else:
+                return u""
+        else:
+            try:
+                return self.__dict__[attr]
+            except KeyError:
+                raise AttributeError(attr)
+
+    def __setattr__(self, attr, value):
+        #updates the first matching key for the given attribute
+        #in our list of comment strings
+
+        if (attr in self.SLASHED_FIELDS):
+            #handle rare u'TRACKNUMBER=1/2' cases
+            #which must always be numerical fields
+            matching_slashed_fields = frozenset(self.SLASHED_FIELDS[attr][1])
+            matching_unslashed_fields = frozenset(self.ATTRIBUTE_MAP[attr])
+
+            updated_comment_strings = []
+            matched = False
+
+            for comment_string in self.__dict__["comment_strings"]:
+                if ((not matched) and (u"=" in comment_string)):
+                    (key, cur_value) = comment_string.split(u"=", 1)
+                    key = key.upper()
+
+                    #first, attempt to search for a slashed value, like:
+                    #u'TRACKNUMBER=1/2'
+                    #and update the appropriate side of the value
+                    #while preserving the other side
+                    if ((key in matching_slashed_fields) and
+                        (self.SLASHED_FIELD.search(cur_value) is not None)):
+                        slashed_value = self.SLASHED_FIELD.search(cur_value)
+                        if (self.SLASHED_FIELDS[attr][0] == 0):
+                            #update left side, preserve right side
+                            updated_comment_strings.append(
+                                "%s=%s/%s" % (key,
+                                              value,
+                                              slashed_value.group(2)))
+                        else:
+                            #update right side, preserve left side
+                            updated_comment_strings.append(
+                                "%s=%s/%s" % (key,
+                                              slashed_value.group(1),
+                                              value))
+                        matched = True
+
+                    #then, attempt to search for an unslashed value, like:
+                    #u'TRACKNUMBER=1'
+                    #and update the value outright
+                    elif ((key in matching_unslashed_fields) and
+                          (self.UNSLASHED_FIELD.search(cur_value) is not None)):
+                        updated_comment_strings.append(
+                            u"%s=%d" % (self.ATTRIBUTE_MAP[attr][0], value))
+                        matched = True
+
+                    #otherwise, continue porting the list of fields
+                    else:
+                        updated_comment_strings.append(comment_string)
+                else:
+                    updated_comment_strings.append(comment_string)
+            else:
+                #no matching fields, so append a new one as unslashed
+                if (not matched):
+                    updated_comment_strings.append(
+                        u"%s=%d" %  (self.ATTRIBUTE_MAP[attr][0], value))
+
+            self.__dict__["comment_strings"] = updated_comment_strings
+
+        #plain text fields are easier,
+        #but still require checking a set of aliased key names
+        elif (attr in self.ATTRIBUTE_MAP):
+            matching_fields = frozenset(self.ATTRIBUTE_MAP[attr])
+            updated_comment_strings = []
+            matched = False
+
+            for comment_string in self.__dict__["comment_strings"]:
+                if ((not matched) and (u"=" in comment_string)):
+                    key = comment_string.split(u"=", 1)[0].upper()
+                    if (key in matching_fields):
+                        #update the first matching field
+                        updated_comment_strings.append(
+                            u"%s=%s" % (key, value))
+                        matched = True
+                    else:
+                        updated_comment_strings.append(comment_string)
+                else:
+                    updated_comment_strings.append(comment_string)
+            else:
+                #no matching fields, so append a new one
+                if (not matched):
+                    updated_comment_strings.append(
+                        u"%s=%s" % (self.ATTRIBUTE_MAP[attr][0], value))
+
+            self.__dict__["comment_strings"] = updated_comment_strings
+        else:
+            self.__dict__[attr] = value
+
+    def __delattr__(self, attr):
+        #deletes all matching keys for the given attribute
+        #in our list of comment strings
+
+        if (attr in self.SLASHED_FIELDS):
+            #handle rate u'TRACKNUMBER=1/2' cases
+            #which must always be numerical fields
+            matching_slashed_fields = frozenset(self.SLASHED_FIELDS[attr][1])
+            matching_unslashed_fields = frozenset(self.ATTRIBUTE_MAP[attr])
+
+            updated_comment_strings = []
+
+            for comment_string in self.__dict__["comment_strings"]:
+                if (u"=" in comment_string):
+                    (key, cur_value) = comment_string.split("=", 1)
+                    key = key.upper()
+
+                    #first attempt to search for a slashed value, like
+                    #u'TRACKNUMBER=1/2'
+                    #and delete the appropriate side of the value
+                    #while preserving the other side
+                    if ((key in matching_slashed_fields) and
+                        (self.SLASHED_FIELD.search(cur_value) is not None)):
+                        slashed_value = self.SLASHED_FIELD.search(cur_value)
+                        if (self.SLASHED_FIELDS[attr][0] == 0):
+                            #zero out left side, preserve right side
+                            updated_comment_strings.append(
+                                "%s=0/%s" % (key, slashed_value.group(2)))
+                        else:
+                            #preserve left side, remove right side
+                            #so long as the left side is non-zero
+                            try:
+                                if (int(slashed_value.group(1)) != 0):
+                                    updated_comment_strings.append(
+                                        "%s=%s" % (key, slashed_value.group(1)))
+                            except ValueError:
+                                updated_comment_strings.append(
+                                    "%s=%s" % (key, slashed_value.group(1)))
+
+                    #then, attempt to search for an unslashed value, like
+                    #u'TRACKNUMBER=1'
+                    #and delete the value outright
+                    elif (key in matching_unslashed_fields):
+                        continue
+
+                    #otherwise, continue to port unmatching values
+                    else:
+                        updated_comment_strings.append(comment_string)
+                else:
+                    updated_comment_strings.append(comment_string)
+
+            self.__dict__["comment_strings"] = updated_comment_strings
+
+        elif (attr in self.ATTRIBUTE_MAP):
+            matching_fields = frozenset(self.ATTRIBUTE_MAP[attr])
+            updated_comment_strings = []
+
+            for comment_string in self.__dict__["comment_strings"]:
+                if (u"=" in comment_string):
+                    if (comment_string.split(u"=", 1)[0].upper()
+                        not in matching_fields):
+                        updated_comment_strings.append(comment_string)
+                else:
+                    updated_comment_strings.append(comment_string)
+
+            self.__dict__["comment_strings"] = updated_comment_strings
+        else:
+            try:
+                del(self.__dict__[attr])
+            except KeyError:
+                raise AttributeError(attr)
+
+    def __comment_name__(self):
+        return u"VorbisComment"
+
+    def __eq__(self, metadata):
+        raise NotImplementedError()
+
+    @classmethod
+    def converted(cls, metadata):
+        """Converts metadata from another class to VorbisComment"""
+
+        if ((metadata is None) or (isinstance(metadata, VorbisComment2))):
+            return metadata
+        elif (metadata.__class__.__name__ == 'FlacMetaData'):
+            if (metadata.vorbis_comment is not None):
+                return cls(metadata.vorbis_comment.comment_strings,
+                           metadata.vorbis_comment.vendor_string)
+            else:
+                return cls([], u"Python Audio Tools %s" % (VERSION))
+        elif (metadata.__class__.__name__ == 'Flac_VORBISCOMMENT'):
+            return cls(metadata.comment_strings,
+                       metadata.vendor_string)
+        else:
+            comment_strings = []
+
+            for (attr, keys) in cls.ATTRIBUTE_MAP.items():
+                if (attr not in cls.__INTEGER_FIELDS__):
+                    if (len(getattr(metadata, attr)) > 0):
+                        comment_strings.append(
+                            "%s=%s" % (cls.ATTRIBUTE_MAP[attr][0],
+                                       getattr(metadata, attr)))
+                else:
+                    if (getattr(metadata, attr) > 0):
+                        comment_strings.append(
+                            "%s=%s" % (cls.ATTRIBUTE_MAP[attr][0],
+                                       getattr(metadata, attr)))
+
+            return cls(comment_strings, u"Python Audio Tools %s" % (VERSION))
+
+
+    @classmethod
+    def supports_images(cls):
+        """returns False"""
+
+        #There's actually a (proposed?) standard to add embedded covers
+        #to Vorbis Comments by base64 encoding them.
+        #This strikes me as messy and convoluted.
+        #In addition, I'd have to perform a special case of
+        #image extraction and re-insertion whenever converting
+        #to FlacMetaData.  The whole thought gives me a headache.
+
+        return False
+
+    def images(self):
+        """Returns a list of embedded Image objects."""
+
+        return []
+
+    def merge(self, metadata):
+        """Updates any currently empty entries from metadata's values."""
+
+        if (metadata is None):
+            return
+        else:
+            metadata = self.__class__.converted(metadata)
+
+            #build a field -> frozenset dict
+            #such as {u"TRACKTOTAL":frozenset([u"TRACKTOTAL",u"TOTALTRACKS"]),
+            #         u"TOTALTRACKS":frozenset([u"TRACKTOTAL",u"TOTALTRACKS"])}
+            #for ensuring we don't merge a duplicate field
+            #simply because it has an aliased name
+            field_aliases = {}
+            for fields in self.ATTRIBUTE_MAP.values():
+                field_set = frozenset(fields)
+                for field in fields:
+                    field_aliases[field] = field_set
+
+            #FIXME - merge #/# fields properly
+
+            #build a set of all in-use fields
+            #using the aliasing dict
+            #so that all the "track_total" variants are present, for example
+            current_fields = set([])
+            for comment_string in self.comment_strings:
+                if (u"=" in comment_string):
+                    key = comment_string.split(u"=", 1)[0]
+                    current_fields |= field_aliases.get(key, set([key]))
+
+            #finally, merge in all fields from the new metadata
+            #that aren't in our set of in-use fields
+            for comment_string in metadata.comment_strings:
+                if ((u"=" in comment_string) and
+                    (comment_string.split(u"=", 1)[0] not in current_fields)):
+                    self.comment_strings.append(comment_string)
+
+    def clean(self, fixes_performed):
+        """Returns a new MetaData object that's been cleaned of problems."""
+
+        raise NotImplementedError()

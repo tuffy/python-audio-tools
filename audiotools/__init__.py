@@ -2608,26 +2608,59 @@ class MetaData:
                     self.comment))
 
     def __unicode__(self):
-        comment_pairs = self.__comment_pairs__()
-        if (len(comment_pairs) > 0):
-            max_key_length = max([len(pair[0]) for pair in comment_pairs])
-            line_template = u"%%(key)%(length)d.%(length)ds : %%(value)s" % \
-                            {"length": max_key_length}
+        comment_pairs = []
 
-            base_comment = unicode(os.linesep.join(
-                [_(u"%s Comment:") % (self.__comment_name__())] + \
-                [line_template % {"key": key, "value": value} for
-                 (key, value) in comment_pairs]))
-        else:
-            base_comment = u""
+        #handle the first batch of text fields
+        for (attr, name) in zip(
+            ["track_name", "artist_name", "performer_name",
+             "composer_name", "conductor_name", "album_name",
+             "catalog"],
+            [u"Title", u"Artist", u"Performer", u"Composer",
+             u"Conductor", u"Album", u"Catalog"]):
+            if (len(getattr(self, attr)) > 0):
+                comment_pairs.append((display_unicode(name),
+                                      getattr(self, attr)))
 
-        if (len(self.images()) > 0):
-            return u"%s%s%s" % \
-                   (base_comment,
-                    os.linesep * 2,
-                    os.linesep.join([unicode(p) for p in self.images()]))
-        else:
-            return base_comment
+        #handle the numerical fields
+        if (self.track_total != 0):
+            comment_pairs.append((display_unicode("Track #"),
+                                  u"%d/%d" % (self.track_number,
+                                              self.track_total)))
+        elif (self.track_number != 0):
+            comment_pairs.append((display_unicode("Track #"),
+                                  u"%d" % (self.track_number)))
+
+        if (self.album_total != 0):
+            comment_pairs.append((display_unicode("Album #"),
+                                  u"%d/%d" % (self.album_number,
+                                              self.album_total)))
+        elif (self.album_number != 0):
+            comment_pairs.append((display_unicode("Album #"),
+                                  u"%d" % (self.album_number)))
+
+        #handle the last batch of text fields
+        for (attr, name) in zip(
+            ["ISRC", "publisher", "media", "year", "date", "copyright",
+             "comment"],
+            [u"ISRC", u"Publisher", u"Media", u"Year", u"Date",
+             u"Copyright", u"Comment"]):
+            if (len(getattr(self, attr)) > 0):
+                comment_pairs.append((display_unicode(name),
+                                      getattr(self, attr)))
+
+        #append image data, if necessary
+        for image in self.images():
+            comment_pairs.append((display_unicode(_(u"Picture")),
+                                  unicode(image)))
+
+        #right-align the comment key values
+        #and turn them into unicode strings
+        #before returning the completed comment
+        field_len = max([len(field) for (field, value) in comment_pairs])
+        return os.linesep.decode('ascii').join(
+            [u"%s%s : %s" % (u" " * (field_len - len(field)),
+                             field, value)
+             for (field, value) in comment_pairs])
 
     def __eq__(self, metadata):
         if (metadata is not None):
@@ -3007,7 +3040,7 @@ class Image:
                  repr(self.description), repr(self.type))
 
     def __unicode__(self):
-        return u"Picture : %s (%d\u00D7%d,'%s')" % \
+        return u"%s (%d\u00D7%d,'%s')" % \
                (self.type_string(),
                 self.width, self.height, self.mime_type)
 
