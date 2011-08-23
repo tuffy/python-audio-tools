@@ -340,32 +340,36 @@ class VorbisComment(MetaData, dict):
 
 
 class VorbisComment2(MetaData):
-    ATTRIBUTE_MAP = {'track_name':[u'TITLE'],
-                     'track_number':[u'TRACKNUMBER'],
-                     'track_total':[u'TRACKTOTAL',u'TOTALTRACKS'],
-                     'album_name':[u'ALBUM'],
-                     'artist_name':[u'ARTIST'],
-                     'performer_name':[u'PERFORMER'],
-                     'composer_name':[u'COMPOSER'],
-                     'conductor_name':[u'CONDUCTOR'],
-                     'media':[u'SOURCE MEDIUM'],
-                     'ISRC':[u'ISRC'],
-                     'catalog':[u'CATALOG'],
-                     'copyright':[u'COPYRIGHT'],
-                     'publisher':[u'PUBLISHER'],
-                     'year':[u'DATE'],
-                     'date':[],
-                     'album_number':[u'DISCNUMBER'],
-                     'album_total':[u'DISCTOTAL'],
-                     'comment':[u'COMMENT']}
+    ATTRIBUTE_MAP = {'track_name':u'TITLE',
+                     'track_number':u'TRACKNUMBER',
+                     'track_total':u'TRACKTOTAL',
+                     'album_name':u'ALBUM',
+                     'artist_name':u'ARTIST',
+                     'performer_name':u'PERFORMER',
+                     'composer_name':u'COMPOSER',
+                     'conductor_name':u'CONDUCTOR',
+                     'media':u'SOURCE MEDIUM',
+                     'ISRC':u'ISRC',
+                     'catalog':u'CATALOG',
+                     'copyright':u'COPYRIGHT',
+                     'publisher':u'PUBLISHER',
+                     'year':u'DATE',
+                     'album_number':u'DISCNUMBER',
+                     'album_total':u'DISCTOTAL',
+                     'comment':u'COMMENT'}
 
-    UNSLASHED_FIELD = re.compile(r'(\d+)')
+    ALIASES = {}
+
+    for aliases in [frozenset([u'TRACKTOTAL', u'TOTALTRACKS'])]:
+        for alias in aliases:
+            ALIASES[alias] = aliases
+
     SLASHED_FIELD = re.compile(r'(\d+)\s*/\s*(\d+)')
 
-    SLASHED_FIELDS = {'track_number':(0, [u'TRACKNUMBER']),
-                      'track_total':(1, [u'TRACKNUMBER']),
-                      'album_number':(0, [u'DISCNUMBER']),
-                      'album_total':(1, [u'DISCTOTAL'])}
+    SLASHED_FIELDS = {'track_number':(u'TRACKNUMBER', 0),
+                      'track_total':(u'TRACKNUMBER', 1),
+                      'album_number':(u'DISCNUMBER', 0),
+                      'album_total':(u'DISCNUMBER', 1)}
 
     def __init__(self, comment_strings, vendor_string):
         """comment_strings is a list of unicode strings
@@ -374,6 +378,56 @@ class VorbisComment2(MetaData):
 
         self.__dict__["comment_strings"] = comment_strings
         self.__dict__["vendor_string"] = vendor_string
+
+    def keys(self):
+        return list(set([comment.split(u"=", 1)[0]
+                         for comment in self.comment_strings
+                         if (u"=" in comment)]))
+
+    def values(self):
+        return [comment.split(u"=", 1)[1]
+                for comment in self.comment_strings
+                if (u"=" in comment)]
+
+    def items(self):
+        return [tuple(comment.split(u"=", 1))
+                for comment in self.comment_strings
+                if (u"=" in comment)]
+
+    def __getitem__(self, key):
+        matching_keys = self.ALIASES.get(key.upper(), frozenset([key.upper()]))
+
+        return [item_value for (item_key, item_value) in self.items()
+                if (item_key.upper() in matching_keys)]
+
+    def __setitem__(self, key, values):
+        new_values = values[:]
+        new_comment_strings = []
+        matching_keys = self.ALIASES.get(key.upper(), frozenset([key.upper()]))
+
+        for comment in self.comment_strings:
+            if (u"=" in comment):
+                (c_key, c_value) = comment.split(u"=", 1)
+                if (c_key in matching_keys):
+                    try:
+                        #replace current value with newly set value
+                        new_comment_strings.append(
+                            u"%s=%s" % (c_key, new_values.pop(0)))
+                    except IndexError:
+                        #no more newly set values, so remove current value
+                        continue
+                else:
+                    #passthrough unmatching values
+                    new_comment_strings.append(comment)
+            else:
+                #passthrough values with no "=" sign
+                new_comment_strings.append(comment)
+
+        #append any leftover values
+        for new_value in new_values:
+            new_comment_strings.append(u"%s=%s" % (key.upper(), new_value))
+
+        self.__dict__["comment_strings"] = new_comment_strings
 
     def __repr__(self):
         return "VorbisComment2(%s, %s)" % \
@@ -386,43 +440,31 @@ class VorbisComment2(MetaData):
         if (attr in self.SLASHED_FIELDS):
             #handle rare u'TRACKNUMBER=1/2' cases
             #which must always be numerical fields
-            matching_slashed_fields = frozenset(self.SLASHED_FIELDS[attr][1])
-            matching_unslashed_fields = frozenset(self.ATTRIBUTE_MAP[attr])
 
-            for (key, value) in [comment.split(u"=", 1)
-                                 for comment in self.comment_strings
-                                 if (u"=" in comment)]:
-                key = key.upper()
+            (slashed_field, slash_side) = self.SLASHED_FIELDS[attr]
 
-                #first, attempt to search for a slashed value, like:
-                #u'TRACKNUMBER=1/2'
-                #and return the appropriate side of the value as an int
-                if (key in matching_slashed_fields):
-                    slashed_value = self.SLASHED_FIELD.search(value)
-                    if (slashed_value is not None):
-                        return int(slashed_value.group(
-                                self.SLASHED_FIELDS[attr][0] + 1))
+            try:
+                return int([match.group(slash_side + 1)
+                            for match in
+                            [self.SLASHED_FIELD.search(field)
+                             for field in self[slashed_field]]
+                            if (match is not None)][0])
+            except IndexError:
+                pass
 
-                #then, attempt to search for an unslashed value, like:
-                #u'TRACKNUMBER=1'
-                #and return the int result
-                if (key in matching_unslashed_fields):
-                    unslashed_value = self.UNSLASHED_FIELD.search(value)
-                    if (unslashed_value is not None):
-                        return int(unslashed_value.group(1))
-
-                #otherwise, continue through the list of fields
-            else:
+        if (attr in self.__INTEGER_FIELDS__):
+            #all integer fields are present in attribute map
+            try:
+                return int(self[self.ATTRIBUTE_MAP[attr]][0])
+            except (IndexError, ValueError):
                 return 0
         elif (attr in self.ATTRIBUTE_MAP):
-            matching_fields = frozenset(self.ATTRIBUTE_MAP[attr])
-            for (key, value) in [comment.split(u"=", 1)
-                                 for comment in self.comment_strings
-                                 if (u"=" in comment)]:
-                if (key.upper() in matching_fields):
-                    return value
-            else:
+            try:
+                return self[self.ATTRIBUTE_MAP[attr]][0]
+            except IndexError:
                 return u""
+        elif (attr in self.__FIELDS__):
+            return u""
         else:
             try:
                 return self.__dict__[attr]
@@ -434,88 +476,45 @@ class VorbisComment2(MetaData):
         #in our list of comment strings
 
         if (attr in self.SLASHED_FIELDS):
+            #setting numerical fields to 0
+            #is equivilent to deleting them
+            #in our high level implementation
+            if (value == 0):
+                self.__delattr__(attr)
+
             #handle rare u'TRACKNUMBER=1/2' cases
             #which must always be numerical fields
-            matching_slashed_fields = frozenset(self.SLASHED_FIELDS[attr][1])
-            matching_unslashed_fields = frozenset(self.ATTRIBUTE_MAP[attr])
+            (slashed_field, slash_side) = self.SLASHED_FIELDS[attr]
 
-            updated_comment_strings = []
-            matched = False
+            slashed_matches = [match for match in
+                               [self.SLASHED_FIELD.search(field)
+                                for field in self[slashed_field]]
+                               if (match is not None)]
 
-            for comment_string in self.__dict__["comment_strings"]:
-                if ((not matched) and (u"=" in comment_string)):
-                    (key, cur_value) = comment_string.split(u"=", 1)
-                    key = key.upper()
-
-                    #first, attempt to search for a slashed value, like:
-                    #u'TRACKNUMBER=1/2'
-                    #and update the appropriate side of the value
-                    #while preserving the other side
-                    if ((key in matching_slashed_fields) and
-                        (self.SLASHED_FIELD.search(cur_value) is not None)):
-                        slashed_value = self.SLASHED_FIELD.search(cur_value)
-                        if (self.SLASHED_FIELDS[attr][0] == 0):
-                            #update left side, preserve right side
-                            updated_comment_strings.append(
-                                "%s=%s/%s" % (key,
-                                              value,
-                                              slashed_value.group(2)))
-                        else:
-                            #update right side, preserve left side
-                            updated_comment_strings.append(
-                                "%s=%s/%s" % (key,
-                                              slashed_value.group(1),
-                                              value))
-                        matched = True
-
-                    #then, attempt to search for an unslashed value, like:
-                    #u'TRACKNUMBER=1'
-                    #and update the value outright
-                    elif ((key in matching_unslashed_fields) and
-                          (self.UNSLASHED_FIELD.search(cur_value) is not None)):
-                        updated_comment_strings.append(
-                            u"%s=%d" % (self.ATTRIBUTE_MAP[attr][0], value))
-                        matched = True
-
-                    #otherwise, continue porting the list of fields
-                    else:
-                        updated_comment_strings.append(comment_string)
+            if (len(slashed_matches) > 0):
+                if (slash_side == 0):
+                    #retain the number on the right side
+                    self[slashed_field] = (
+                        [u"%d/%s" % (int(value),
+                                     slashed_matches[0].group(2))] +
+                        [m.group(0) for m in slashed_matches][1:])
                 else:
-                    updated_comment_strings.append(comment_string)
+                    #retain the number on the left side
+                    self[slashed_field] = (
+                        [u"%s/%d" % (slashed_matches[0].group(1),
+                                     int(value))] +
+                        [m.group(0) for m in slashed_matches][1:])
+
             else:
-                #no matching fields, so append a new one as unslashed
-                if (not matched):
-                    updated_comment_strings.append(
-                        u"%s=%d" %  (self.ATTRIBUTE_MAP[attr][0], value))
+                current_values = self[self.ATTRIBUTE_MAP[attr]]
+                self[self.ATTRIBUTE_MAP[attr]] = ([unicode(value)] +
+                                                  current_values[1:])
 
-            self.__dict__["comment_strings"] = updated_comment_strings
-
-        #plain text fields are easier,
-        #but still require checking a set of aliased key names
+        #plain text fields are easier
         elif (attr in self.ATTRIBUTE_MAP):
-            matching_fields = frozenset(self.ATTRIBUTE_MAP[attr])
-            updated_comment_strings = []
-            matched = False
-
-            for comment_string in self.__dict__["comment_strings"]:
-                if ((not matched) and (u"=" in comment_string)):
-                    key = comment_string.split(u"=", 1)[0].upper()
-                    if (key in matching_fields):
-                        #update the first matching field
-                        updated_comment_strings.append(
-                            u"%s=%s" % (key, value))
-                        matched = True
-                    else:
-                        updated_comment_strings.append(comment_string)
-                else:
-                    updated_comment_strings.append(comment_string)
-            else:
-                #no matching fields, so append a new one
-                if (not matched):
-                    updated_comment_strings.append(
-                        u"%s=%s" % (self.ATTRIBUTE_MAP[attr][0], value))
-
-            self.__dict__["comment_strings"] = updated_comment_strings
+            #try to leave subsequent fields as-is
+            current_values = self[self.ATTRIBUTE_MAP[attr]]
+            self[self.ATTRIBUTE_MAP[attr]] = [value] + current_values[1:]
         else:
             self.__dict__[attr] = value
 
@@ -524,67 +523,36 @@ class VorbisComment2(MetaData):
         #in our list of comment strings
 
         if (attr in self.SLASHED_FIELDS):
-            #handle rate u'TRACKNUMBER=1/2' cases
+            #handle rare u'TRACKNUMBER=1/2' cases
             #which must always be numerical fields
-            matching_slashed_fields = frozenset(self.SLASHED_FIELDS[attr][1])
-            matching_unslashed_fields = frozenset(self.ATTRIBUTE_MAP[attr])
+            (slashed_field, slash_side) = self.SLASHED_FIELDS[attr]
 
-            updated_comment_strings = []
+            slashed_matches = [match for match in
+                               [self.SLASHED_FIELD.search(field)
+                                for field in self[slashed_field]]
+                               if (match is not None)]
 
-            for comment_string in self.__dict__["comment_strings"]:
-                if (u"=" in comment_string):
-                    (key, cur_value) = comment_string.split("=", 1)
-                    key = key.upper()
-
-                    #first attempt to search for a slashed value, like
-                    #u'TRACKNUMBER=1/2'
-                    #and delete the appropriate side of the value
-                    #while preserving the other side
-                    if ((key in matching_slashed_fields) and
-                        (self.SLASHED_FIELD.search(cur_value) is not None)):
-                        slashed_value = self.SLASHED_FIELD.search(cur_value)
-                        if (self.SLASHED_FIELDS[attr][0] == 0):
-                            #zero out left side, preserve right side
-                            updated_comment_strings.append(
-                                "%s=0/%s" % (key, slashed_value.group(2)))
-                        else:
-                            #preserve left side, remove right side
-                            #so long as the left side is non-zero
-                            try:
-                                if (int(slashed_value.group(1)) != 0):
-                                    updated_comment_strings.append(
-                                        "%s=%s" % (key, slashed_value.group(1)))
-                            except ValueError:
-                                updated_comment_strings.append(
-                                    "%s=%s" % (key, slashed_value.group(1)))
-
-                    #then, attempt to search for an unslashed value, like
-                    #u'TRACKNUMBER=1'
-                    #and delete the value outright
-                    elif (key in matching_unslashed_fields):
-                        continue
-
-                    #otherwise, continue to port unmatching values
-                    else:
-                        updated_comment_strings.append(comment_string)
+            if (len(slashed_matches) > 0):
+                if (slash_side == 0):
+                    #retain the number on the right side
+                    self[slashed_field] = \
+                        [u"0/%s" % (m.group(2)) for m in slashed_matches
+                         if (int(m.group(2)) != 0)]
                 else:
-                    updated_comment_strings.append(comment_string)
+                    #retain the number on the left side
+                    self[slashed_field] = \
+                        [m.group(1) for m in slashed_matches
+                         if (int(m.group(1)) != 0)]
+                    #FIXME - also wipe non-slashed field?
 
-            self.__dict__["comment_strings"] = updated_comment_strings
+            else:
+                self[self.ATTRIBUTE_MAP[attr]] = []
 
         elif (attr in self.ATTRIBUTE_MAP):
-            matching_fields = frozenset(self.ATTRIBUTE_MAP[attr])
-            updated_comment_strings = []
-
-            for comment_string in self.__dict__["comment_strings"]:
-                if (u"=" in comment_string):
-                    if (comment_string.split(u"=", 1)[0].upper()
-                        not in matching_fields):
-                        updated_comment_strings.append(comment_string)
-                else:
-                    updated_comment_strings.append(comment_string)
-
-            self.__dict__["comment_strings"] = updated_comment_strings
+            #unlike __setattr_, which tries to preserve multiple instances
+            #of fields, __delattr__ wipes them all
+            #so that orphaned fields don't show up after deletion
+            self[self.ATTRIBUTE_MAP[attr]] = []
         else:
             try:
                 del(self.__dict__[attr])
@@ -654,38 +622,81 @@ class VorbisComment2(MetaData):
         if (metadata is None):
             return
         else:
+            from operator import or_
+
             metadata = self.__class__.converted(metadata)
 
-            #build a field -> frozenset dict
-            #such as {u"TRACKTOTAL":frozenset([u"TRACKTOTAL",u"TOTALTRACKS"]),
-            #         u"TOTALTRACKS":frozenset([u"TRACKTOTAL",u"TOTALTRACKS"])}
-            #for ensuring we don't merge a duplicate field
-            #simply because it has an aliased name
-            field_aliases = {}
-            for fields in self.ATTRIBUTE_MAP.values():
-                field_set = frozenset(fields)
-                for field in fields:
-                    field_aliases[field] = field_set
+            #first, port over the known fields
+            for field in self.__FIELDS__:
+                if (field not in self.__INTEGER_FIELDS__):
+                    if (len(getattr(self, field)) == 0):
+                        setattr(self, field, getattr(metadata, field))
+                else:
+                    if (getattr(self, field) == 0):
+                        setattr(self, field, getattr(metadata, field))
 
-            #FIXME - merge #/# fields properly
-
-            #build a set of all in-use fields
-            #using the aliasing dict
-            #so that all the "track_total" variants are present, for example
-            current_fields = set([])
-            for comment_string in self.comment_strings:
-                if (u"=" in comment_string):
-                    key = comment_string.split(u"=", 1)[0]
-                    current_fields |= field_aliases.get(key, set([key]))
-
-            #finally, merge in all fields from the new metadata
-            #that aren't in our set of in-use fields
-            for comment_string in metadata.comment_strings:
-                if ((u"=" in comment_string) and
-                    (comment_string.split(u"=", 1)[0] not in current_fields)):
-                    self.comment_strings.append(comment_string)
+            #then, port over any unknown fields
+            known_keys = reduce(or_,
+                                [self.ALIASES.get(field, frozenset([field]))
+                                 for field in self.ATTRIBUTE_MAP.values()])
+            for key in metadata.keys():
+                if (key.upper() not in known_keys):
+                    self[key] = metadata[key]
 
     def clean(self, fixes_performed):
         """Returns a new MetaData object that's been cleaned of problems."""
 
-        raise NotImplementedError()
+        reverse_attr_map = {}
+        for (attr, key) in self.ATTRIBUTE_MAP.items():
+            reverse_attr_map[key] = attr
+            if (key in self.ALIASES):
+                for alias in self.ALIASES[key]:
+                    reverse_attr_map[alias] = attr
+
+        cleaned_fields = []
+
+        for comment_string in self.comment_strings:
+            if (u"=" in comment_string):
+                (key, value) = comment_string.split(u"=", 1)
+                key = key.upper()
+                if (key in reverse_attr_map):
+                    attr = reverse_attr_map[key]
+                    #handle all text fields by stripping whitespace
+                    fix1 = value.rstrip()
+                    if (fix1 != value):
+                        fixes_performed.append(
+                            _(u"removed trailing whitespace from %(field)s") %
+                            {"field":key})
+
+                    fix2 = fix1.lstrip()
+                    if (fix2 != fix1):
+                        fixes_performed.append(
+                            _(u"removed leading whitespace from %(field)s") %
+                            {"field":key})
+
+                    #integer fields also strip leading zeroes
+                    if ((attr in self.SLASHED_FIELDS) and
+                        (self.SLASHED_FIELD.search(fix2) is not None)):
+                        match = self.SLASHED_FIELD.search(value)
+                        fix3 = "%d/%d" % (int(match.group(1)),
+                                          int(match.group(2)))
+                        if (fix3 != fix2):
+                            fixes_performed.append(
+                                _(u"removed whitespace/zeroes from %(field)s" %
+                                  {"field":key}))
+                    elif (attr in self.__INTEGER_FIELDS__):
+                        fix3 = fix2.lstrip(u"0")
+                        if (fix3 != fix2):
+                            fixes_performed.append(
+                                _(u"removed leading zeroes from %(field)s") %
+                                {"field":key})
+                    else:
+                        fix3 = fix2
+
+                    cleaned_fields.append(u"%s=%s" % (key, fix3))
+                else:
+                    cleaned_fields.append(comment_string)
+            else:
+                cleaned_fields.append(comment_string)
+
+        return self.__class__(cleaned_fields, self.vendor_string)

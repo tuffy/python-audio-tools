@@ -4026,5 +4026,5 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   The best solution may be to implement a set of "fallback" fields
   such that a single metadata field may use a number of
   different Vorbis comment names and the first match is used.
-** TODO Preserve TOTALTRACKS when updating track_total
+** DONE Preserve TOTALTRACKS when updating track_total
 ** TODO Add unit tests to ensure TOTALTRACKS works

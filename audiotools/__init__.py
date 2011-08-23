@@ -2777,7 +2777,6 @@ class MetaData:
         if (metadata is None):
             return
 
-        fields = {}
         for field in self.__FIELDS__:
             if (field not in self.__INTEGER_FIELDS__):
                 if (len(getattr(self, field)) == 0):

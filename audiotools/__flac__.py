@@ -1685,9 +1685,11 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         vorbis_metadata = self.get_metadata().vorbis_comment
 
-        if (set(['REPLAYGAIN_TRACK_PEAK', 'REPLAYGAIN_TRACK_GAIN',
+        if ((vorbis_metadata is not None) and
+            set(['REPLAYGAIN_TRACK_PEAK', 'REPLAYGAIN_TRACK_GAIN',
                  'REPLAYGAIN_ALBUM_PEAK', 'REPLAYGAIN_ALBUM_GAIN']).issubset(
-                vorbis_metadata.keys())):  # we have ReplayGain data
+                [key.upper() for key in vorbis_metadata.keys()])):
+            # we have ReplayGain data
             try:
                 return ReplayGain(
                     vorbis_metadata['REPLAYGAIN_TRACK_GAIN'][0][0:-len(" dB")],
