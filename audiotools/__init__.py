@@ -2662,6 +2662,17 @@ class MetaData:
                              field, value)
              for (field, value) in comment_pairs])
 
+    def raw_info(self):
+        """returns a Unicode string of low-level MetaData information
+
+        whereas __unicode__ is meant to contain complete information
+        at a very high level
+        raw_info() should be more developer-specific and with
+        very little adjustment or reordering to the data itself
+        """
+
+        raise NotImplementedError()
+
     def __eq__(self, metadata):
         if (metadata is not None):
             return set([(getattr(self, attr) == getattr(metadata, attr))

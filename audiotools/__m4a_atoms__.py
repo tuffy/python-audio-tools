@@ -183,6 +183,16 @@ class M4A_Leaf_Atom:
         #FIXME
         return self.data.encode('hex')[0:40].decode('ascii')
 
+    def raw_info(self):
+        if (len(self.data) > 20):
+            return u"%s : %s\u2026" % \
+                (self.name.decode('ascii', 'replace'),
+                 u"".join([u"%2.2X" % (ord(b)) for b in self.data[0:20]]))
+        else:
+            return u"%s : %s" % \
+                (self.name.decode('ascii', 'replace'),
+                 u"".join([u"%2.2X" % (ord(b)) for b in self.data]))
+
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
         return cls(name, reader.read_bytes(data_size))
@@ -872,6 +882,23 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
         return "M4A_META_Atom(%s, %s, %s)" % \
             (repr(self.version), repr(self.flags), repr(self.leaf_atoms))
 
+    def raw_info(self):
+        from os import linesep
+        from . import display_unicode
+
+        if (self.ilst_atom is not None):
+            comment_lines = [u"M4A:"]
+
+            for atom in self.ilst_atom:
+                if (hasattr(atom, "raw_info_lines")):
+                    comment_lines.extend(atom.raw_info_lines())
+                else:
+                    comment_lines.append(u"%s : (%d bytes)" %
+                                         (atom.name.decode('ascii', 'replace'),
+                                          atom.size()))
+
+            return linesep.decode('ascii').join(comment_lines)
+
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
         """given a 4 byte name, data_size int, BitstreamReader
@@ -1218,6 +1245,7 @@ class M4A_ILST_Leaf_Atom(M4A_Tree_Atom):
                          "\xa9nam":M4A_ILST_Unicode_Data_Atom,
                          "\xa9too":M4A_ILST_Unicode_Data_Atom,
                          "\xa9wrt":M4A_ILST_Unicode_Data_Atom,
+                         'aART':M4A_ILST_Unicode_Data_Atom,
                          "covr":M4A_ILST_COVR_Data_Atom,
                          "trkn":M4A_ILST_TRKN_Data_Atom,
                          "disk":M4A_ILST_DISK_Data_Atom}.get(
@@ -1229,6 +1257,14 @@ class M4A_ILST_Leaf_Atom(M4A_Tree_Atom):
                                   self.leaf_atoms)[0])
         except IndexError:
             return u""
+
+    def raw_info_lines(self):
+        for leaf_atom in self.leaf_atoms:
+            name = self.name.replace("\xa9", " ").decode('ascii')
+            if (hasattr(leaf_atom, "raw_info")):
+                yield u"%s : %s" % (name, leaf_atom.raw_info())
+            else:
+                yield u"%s : %s" % (name, repr(leaf_atom)) #FIXME
 
     def __int__(self):
         try:
@@ -1254,6 +1290,9 @@ class M4A_ILST_Unicode_Data_Atom(M4A_Leaf_Atom):
     def __repr__(self):
         return "M4A_ILST_Unicode_Data_Atom(%s, %s, %s)" % \
             (repr(self.type), repr(self.flags), repr(self.data))
+
+    def raw_info(self):
+        return self.data.decode('utf-8')
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
@@ -1286,6 +1325,9 @@ class M4A_ILST_TRKN_Data_Atom(M4A_Leaf_Atom):
             return u"%d/%d" % (self.track_number, self.track_total)
         else:
             return unicode(self.track_number)
+
+    def raw_info(self):
+        return u"%d/%d" % (self.track_number, self.track_total)
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
@@ -1320,6 +1362,9 @@ class M4A_ILST_DISK_Data_Atom(M4A_Leaf_Atom):
             return u"%d/%d" % (self.disk_number, self.disk_total)
         else:
             return unicode(self.disk_number)
+
+    def raw_info(self):
+        return u"%d/%d" % (self.disk_number, self.disk_total)
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
@@ -1359,6 +1404,15 @@ class M4A_ILST_COVR_Data_Atom(Image, M4A_Leaf_Atom):
     def __repr__(self):
         return "M4A_ILST_COVR_Data_Atom(%s, %s, ...)" % \
             (self.version, self.flags)
+
+    def raw_info(self):
+        if (len(self.data) > 20):
+            return (u"(%d bytes) " % (len(self.data)) +
+                    u"".join([u"%2.2X" % (ord(b)) for b in self.data[0:20]]) +
+                    u"\u2026")
+        else:
+            return (u"(%d bytes) " % (len(self.data)) +
+                    u"".join([u"%2.2X" % (ord(b)) for b in self.data[0:20]]))
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):

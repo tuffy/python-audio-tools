@@ -266,6 +266,14 @@ class FlacMetaData(MetaData):
                    cuesheet=cuesheet,
                    pictures=pictures)
 
+    def raw_info(self):
+        from os import linesep
+
+        #FIXME - adjust this to display blocks as-is
+
+        return linesep.decode('ascii').join(
+            ["FLAC Tags:"] + [block.raw_info() for block in self.blocks()])
+
     def blocks(self):
         if (self.streaminfo is not None):
             yield self.streaminfo
@@ -338,6 +346,22 @@ class Flac_STREAMINFO:
                                       "total_samples",
                                       "md5sum"]]))
 
+    def raw_info(self):
+        from os import linesep
+
+        return linesep.decode('ascii').join(
+            [u"  STREAMINFO:",
+             u"    minimum block size = %d" % (self.minimum_block_size),
+             u"    maximum block size = %d" % (self.maximum_block_size),
+             u"    minimum frame size = %d" % (self.minimum_frame_size),
+             u"    maximum frame size = %d" % (self.maximum_frame_size),
+             u"           sample rate = %d" % (self.sample_rate),
+             u"              channels = %d" % (self.channels),
+             u"       bits-per-sample = %d" % (self.bits_per_sample),
+             u"         total samples = %d" % (self.total_samples),
+             u"               MD5 sum = %s" % (u"".join(
+                        ["%2.2X" % (ord(b)) for b in self.md5sum]))])
+
     @classmethod
     def parse(cls, reader):
         values = reader.parse("16u16u24u24u20u3u5u36U16b")
@@ -359,6 +383,32 @@ class Flac_STREAMINFO:
 
 class Flac_VORBISCOMMENT(VorbisComment):
     BLOCK_ID = 4
+
+    def raw_info(self):
+        from os import linesep
+        from . import display_unicode
+
+        #align the text strings on the "=" sign, if any
+
+        max_indent = max([len(display_unicode(comment.split(u"=", 1)[0]))
+                          for comment in self.comment_strings
+                          if u"=" in comment])
+
+        comment_strings = []
+        for comment in self.comment_strings:
+            if (u"=" in comment):
+                comment_strings.append(
+                    u" " * (4 + max_indent -
+                            len(display_unicode(comment.split(u"=", 1)[0]))) +
+                    comment)
+            else:
+                comment_strings.append(u" " * 4 + comment)
+
+        return linesep.decode('ascii').join(
+            [u"  VORBIS_COMMENT:",
+             u"    %s" % (self.vendor_string)] +
+            comment_strings)
+
 
     @classmethod
     def converted(cls, metadata):
@@ -451,6 +501,20 @@ class Flac_PICTURE(Image):
                                       "height",
                                       "color_depth",
                                       "color_count"]]))
+
+    def raw_info(self):
+        from os import linesep
+
+        return linesep.decode('ascii').join(
+            [u"  PICTURE:",
+             u"    picture type = %d" % (self.picture_type),
+             u"       MIME type = %s" % (self.mime_type),
+             u"     description = %s" % (self.description),
+             u"           width = %d" % (self.width),
+             u"          height = %d" % (self.height),
+             u"     color depth = %d" % (self.color_depth),
+             u"     color count = %d" % (self.color_count),
+             u"           bytes = %d" % (len(self.data))])
 
     @classmethod
     def parse(cls, reader):
@@ -555,6 +619,14 @@ class Flac_APPLICATION:
     def __repr__(self):
         return "Flac_APPLICATION(%s, %s)" % (self.application_id, self.data)
 
+    def raw_info(self):
+        from os import linesep
+
+        return u"  APPLICATION:%s    %s (%d bytes)" % \
+            (linesep.decode('ascii'),
+             self.application_id.decode('ascii'),
+             len(self.data))
+
     @classmethod
     def parse(cls, reader, block_length):
         return cls(application_id=reader.read_bytes(4),
@@ -572,6 +644,15 @@ class Flac_SEEKTABLE:
 
     def __repr__(self):
         return "Flac_SEEKTABLE(%s)" % (repr(self.seekpoints))
+
+    def raw_info(self):
+        from os import linesep
+
+        return linesep.decode('ascii').join(
+            [u"  SEEKTABLE:",
+             u"    first sample   file offset   frame samples"] +
+            [u"  %14.d %13.X %15.d" % seekpoint
+             for seekpoint in self.seekpoints])
 
     @classmethod
     def parse(cls, reader, total_seekpoints):
@@ -609,6 +690,18 @@ class Flac_CUESHEET:
                                       "lead_in_samples",
                                       "is_cdda",
                                       "tracks"]]))
+
+    def raw_info(self):
+        from os import linesep
+
+        return linesep.decode('ascii').join(
+            [u"  CUESHEET:",
+             u"     catalog number = %s" % \
+                 (self.catalog_number.decode('ascii', 'replace')),
+             u"    lead-in samples = %d" % (self.lead_in_samples),
+             u"            is CDDA = %d" % (self.is_cdda),
+             u"    track        offset          ISRC"] +
+            [track.raw_info() for track in self.tracks])
 
     @classmethod
     def parse(cls, reader):
@@ -743,6 +836,14 @@ class Flac_CUESHEET_track:
                                       "track_type",
                                       "pre_emphasis",
                                       "index_points"]]))
+
+    def raw_info(self):
+        if (len(self.ISRC.strip(chr(0))) > 0):
+            return u"%9.d %13.d  %s" % \
+                (self.number, self.offset, self.ISRC)
+        else:
+            return u"%9.d %13.d" % \
+                (self.number, self.offset)
 
     def __eq__(self, track):
         from operator import and_

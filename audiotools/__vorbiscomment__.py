@@ -115,6 +115,31 @@ class VorbisComment(MetaData):
         return "VorbisComment(%s, %s)" % \
             (repr(self.comment_strings), repr(self.vendor_string))
 
+    def raw_info(self):
+        from os import linesep
+        from . import display_unicode
+
+        #align the text strings on the "=" sign, if any
+
+        max_indent = max([len(display_unicode(comment.split(u"=", 1)[0]))
+                          for comment in self.comment_strings
+                          if u"=" in comment])
+
+        comment_strings = []
+        for comment in self.comment_strings:
+            if (u"=" in comment):
+                comment_strings.append(
+                    u" " * (max_indent -
+                            len(display_unicode(comment.split(u"=", 1)[0]))) +
+                    comment)
+            else:
+                comment_strings.append(comment)
+
+        return linesep.decode('ascii').join(
+            [u"Vorbis Comment:  %s" % (self.vendor_string)] +
+            comment_strings)
+
+
     def __getattr__(self, attr):
         #returns the first matching key for the given attribute
         #in our list of comment strings
@@ -240,9 +265,6 @@ class VorbisComment(MetaData):
                 del(self.__dict__[attr])
             except KeyError:
                 raise AttributeError(attr)
-
-    def __comment_name__(self):
-        return u"VorbisComment"
 
     def __eq__(self, metadata):
         raise NotImplementedError()

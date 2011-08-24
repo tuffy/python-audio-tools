@@ -32,6 +32,10 @@ if (__name__ == '__main__'):
                       action="store_true", dest="no_metadata",
                       default=False)
 
+    parser.add_option("-L", "--low-level",
+                      action="store_true", dest="low_level",
+                      default=False)
+
     parser.add_option("-b", "--bitrate",
                       action="store_true", dest="show_bitrate")
 
@@ -78,25 +82,29 @@ if (__name__ == '__main__'):
                  "filename": msg.filename(file.filename)})
         if (not options.no_metadata):
             metadata = file.get_metadata()
-            if (metadata is not None):
-                msg.output(unicode(metadata))
-                msg.output(u"")
-            replay_gain = file.replay_gain()
-            if (replay_gain is not None):
-                msg.output(_("ReplayGain:"))
-                msg.new_row()
-                msg.output_column(_(u"Track Gain : "), True)
-                msg.output_column(unicode(replay_gain.track_gain) + u" dB")
-                msg.new_row()
-                msg.output_column(_(u"Track Peak : "), True)
-                msg.output_column(u"%f" % (replay_gain.track_peak))
-                msg.new_row()
-                msg.output_column(_(u"Album Gain : "), True)
-                msg.output_column(unicode(replay_gain.album_gain) + u" dB")
-                msg.new_row()
-                msg.output_column(_(u"Album Peak : "), True)
-                msg.output_column(u"%f" % (replay_gain.album_peak))
-                msg.output_rows()
+            if (not options.low_level):
+                if (metadata is not None):
+                    msg.output(unicode(metadata))
+                    msg.output(u"")
+                replay_gain = file.replay_gain()
+                if (replay_gain is not None):
+                    msg.output(_("ReplayGain:"))
+                    msg.new_row()
+                    msg.output_column(_(u"Track Gain : "), True)
+                    msg.output_column(unicode(replay_gain.track_gain) + u" dB")
+                    msg.new_row()
+                    msg.output_column(_(u"Track Peak : "), True)
+                    msg.output_column(u"%f" % (replay_gain.track_peak))
+                    msg.new_row()
+                    msg.output_column(_(u"Album Gain : "), True)
+                    msg.output_column(unicode(replay_gain.album_gain) + u" dB")
+                    msg.new_row()
+                    msg.output_column(_(u"Album Peak : "), True)
+                    msg.output_column(u"%f" % (replay_gain.album_peak))
+                    msg.output_rows()
+                    msg.output(u"")
+            else:
+                msg.output(metadata.raw_info())
                 msg.output(u"")
         if (options.channel_assignment):
             msg.output(_("Assigned Channels:"))
