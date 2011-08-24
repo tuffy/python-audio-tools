@@ -354,8 +354,10 @@ class VorbisAudio(AudioFile):
         """filename is a plain string."""
 
         AudioFile.__init__(self, filename)
+        self.__sample_rate__ = 0
+        self.__channels__ = 0
         try:
-            self.__read_metadata__()
+            self.__read_identification__()
         except IOError, msg:
             raise InvalidVorbis(str(msg))
 
@@ -370,44 +372,51 @@ class VorbisAudio(AudioFile):
         return (header.startswith('OggS') and
                 header[0x1C:0x23] == '\x01vorbis')
 
-    def __read_metadata__(self):
-        f = OggStreamReader(file(self.filename, "rb"))
-        packets = f.packets()
+    def __read_identification__(self):
+        from .bitstream import BitstreamReader
 
+        f = open(self.filename, "rb")
         try:
-            #we'll assume this Vorbis file isn't interleaved
-            #with any other Ogg stream
+            ogg_reader = BitstreamReader(f, 1)
+            (magic_number,
+             version,
+             header_type,
+             granule_position,
+             self.__serial_number__,
+             page_sequence_number,
+             checksum,
+             segment_count) = ogg_reader.parse("4b 8u 8u 64S 32u 32u 32u 8u")
 
-            #the Identification packet comes first
-            try:
-                id_packet = packets.next()
-            except StopIteration:
-                raise InvalidVorbis("Vorbis identification packet not found")
+            if (magic_number != 'OggS'):
+                raise InvalidFLAC(_(u"invalid Ogg magic number"))
+            if (version != 0):
+                raise InvalidFLAC(_(u"invalid Ogg version"))
 
-            header = VorbisAudio.COMMENT_HEADER.parse(
-                id_packet[0:VorbisAudio.COMMENT_HEADER.sizeof()])
-            if ((header.packet_type == 0x01) and
-                (header.vorbis == 'vorbis')):
-                identification = VorbisAudio.OGG_IDENTIFICATION.parse(
-                    id_packet[VorbisAudio.COMMENT_HEADER.sizeof():])
-                self.__sample_rate__ = identification.sample_rate
-                self.__channels__ = identification.channels
-            else:
-                raise InvalidVorbis(_(u'First packet is not Vorbis'))
+            segment_length = ogg_reader.read(8)
 
-            #the Comment packet comes next
-            comment_packet = packets.next()
-            header = VorbisAudio.COMMENT_HEADER.parse(
-                comment_packet[0:VorbisAudio.COMMENT_HEADER.sizeof()])
-            if ((header.packet_type == 0x03) and
-                (header.vorbis == 'vorbis')):
-                self.comment = VorbisComment.VORBIS_COMMENT.parse(
-                    comment_packet[VorbisAudio.COMMENT_HEADER.sizeof():])
+            (vorbis_type,
+             header,
+             version,
+             self.__channels__,
+             self.__sample_rate__,
+             maximum_bitrate,
+             nominal_bitrate,
+             minimum_bitrate,
+             blocksize0,
+             blocksize1,
+             framing) = ogg_reader.parse(
+                "8u 6b 32u 8u 32u 32u 32u 32u 4u 4u 1u")
 
+            if (vorbis_type != 1):
+                raise InvalidVorbis(_(u"invalid Vorbis type"))
+            if (header != 'vorbis'):
+                raise InvalidVorbis(_(u"invalid Vorbis header"))
+            if (version != 0):
+                raise InvalidVorbis(_(u"invalid Vorbis version"))
+            if (framing != 1):
+                raise InvalidVorbis(_(u"invalid framing bit"))
         finally:
-            del(packets)
             f.close()
-            del(f)
 
     def lossless(self):
         """Returns False."""
@@ -470,22 +479,20 @@ class VorbisAudio(AudioFile):
     def total_frames(self):
         """Returns the total PCM frames of the track as an integer."""
 
-        pcm_samples = 0
-        f = file(self.filename, "rb")
-        try:
-            while (True):
-                try:
-                    page = OggStreamReader.OGGS.parse_stream(f)
-                    pcm_samples = page.granule_position
-                    f.seek(sum(page.segment_lengths), 1)
-                except Con.core.FieldError:
-                    break
-                except Con.ConstError:
-                    break
+        from .bitstream import BitstreamReader
+        from . import OggStreamReader2
 
-            return pcm_samples
-        finally:
-            f.close()
+        pcm_samples = 0
+        for (granule_position,
+             segments,
+             continuation,
+             first_page,
+             last_page) in OggStreamReader2(
+            BitstreamReader(file(self.filename, "rb"), 1)).pages():
+             if (granule_position >= 0):
+                 pcm_samples = granule_position
+        return pcm_samples
+
 
     def sample_rate(self):
         """Returns the rate of the track's audio as an integer number of Hz."""
@@ -611,93 +618,196 @@ class VorbisAudio(AudioFile):
         else:
             raise EncodingError(u"unable to encode file with oggenc")
 
+    def update_metadata(self, metadata):
+        """Takes this track's current MetaData object
+        as returned by get_metadata() and sets this track's metadata
+        with any fields updated in that object.
+
+        Raises IOError if unable to write the file.
+        """
+
+        if (not isinstance(metadata, VorbisComment2)):
+            raise ValueError(_(u"metadata not from audio file"))
+
+        from .bitstream import BitstreamReader
+        from .bitstream import BitstreamRecorder
+        from .bitstream import BitstreamWriter
+        from . import OggStreamWriter2
+        from . import OggStreamReader2
+        from . import read_ogg_packets_data
+        from . import iter_first
+
+        original_reader = BitstreamReader(open(self.filename, "rb"), 1)
+        original_ogg = OggStreamReader2(original_reader)
+        original_serial_number = original_ogg.serial_number
+        original_packets = read_ogg_packets_data(original_reader)
+
+        #save the current file's identification page/packet
+        #(the ID packet is always fixed size, and fits in one page)
+        identification_page = original_ogg.read_page()
+
+        #discard the current file's comment packet
+        original_packets.next()
+
+        #save the current file's setup packet
+        setup_packet = original_packets.next()
+
+        #save all the subsequent Ogg pages
+        data_pages = list(original_ogg.pages())
+
+        del(original_ogg)
+        del(original_packets)
+        original_reader.close()
+
+        updated_writer = BitstreamWriter(open(self.filename, "wb"), 1)
+        updated_ogg = OggStreamWriter2(updated_writer, original_serial_number)
+
+        #write the identification packet in its own page
+        updated_ogg.write_page(*identification_page)
+
+        #write the new comment packet in its own page(s)
+        comment_writer = BitstreamRecorder(1)
+        comment_writer.build("8u 6b", (3, "vorbis"))
+        vendor_string = metadata.vendor_string.encode('utf-8')
+        comment_writer.build("32u %db" % (len(vendor_string)),
+                             (len(vendor_string), vendor_string))
+        comment_writer.write(32, len(metadata.comment_strings))
+        for comment_string in metadata.comment_strings:
+            comment_string = comment_string.encode('utf-8')
+            comment_writer.build("32u %db" % (len(comment_string)),
+                                 (len(comment_string), comment_string))
+
+        comment_writer.build("1u a", (1,))
+
+        for (first_page, segments) in iter_first(
+            updated_ogg.segments_to_pages(
+                updated_ogg.packet_to_segments(comment_writer.data()))):
+            updated_ogg.write_page(0, segments, 0 if first_page else 1, 0, 0)
+
+        #write the setup packet in its own page(s)
+        for (first_page, segments) in iter_first(
+            updated_ogg.segments_to_pages(
+                updated_ogg.packet_to_segments(setup_packet))):
+            updated_ogg.write_page(0, segments, 0 if first_page else 1, 0, 0)
+
+        #write the subsequent Ogg pages
+        for page in data_pages:
+            updated_ogg.write_page(*page)
+
+
+
     def set_metadata(self, metadata):
         """Takes a MetaData object and sets this track's metadata.
 
         This metadata includes track name, album name, and so on.
         Raises IOError if unable to write the file."""
 
-        metadata = VorbisComment.converted(metadata)
+        if (metadata is not None):
+            metadata = VorbisComment2.converted(metadata)
 
-        if (metadata is None):
-            return
+            metadata.vendor_string = self.get_metadata().vendor_string
 
-        reader = OggStreamReader(file(self.filename, 'rb'))
-        new_file = cStringIO.StringIO()
-        writer = OggStreamWriter(new_file)
-        current_sequence_number = 0
+            self.update_metadata(metadata)
 
-        pages = reader.pages()
 
-        #transfer our old header
-        #this must always be the first packet and the first page
-        (header_page, header_data) = pages.next()
-        writer.write_page(header_page, header_data)
-        current_sequence_number += 1
+    # def set_metadata(self, metadata):
+    #     """Takes a MetaData object and sets this track's metadata.
 
-        #grab the current "comment" and "setup headers" packets
-        #these may take one or more pages,
-        #but will always end on a page boundary
-        del(pages)
-        packets = reader.packets(from_beginning=False)
+    #     This metadata includes track name, album name, and so on.
+    #     Raises IOError if unable to write the file."""
 
-        comment_packet = packets.next()
-        headers_packet = packets.next()
+    #     metadata = VorbisComment.converted(metadata)
 
-        #write the pages for our new "comment" packet
-        for (page, data) in OggStreamWriter.build_pages(
-            0,
-            header_page.bitstream_serial_number,
-            current_sequence_number,
-            VorbisAudio.COMMENT_HEADER.build(Con.Container(
-                    packet_type=3,
-                    vorbis='vorbis')) + metadata.build()):
-            writer.write_page(page, data)
-            current_sequence_number += 1
+    #     if (metadata is None):
+    #         return
 
-        #write the pages for the old "setup headers" packet
-        for (page, data) in OggStreamWriter.build_pages(
-            0,
-            header_page.bitstream_serial_number,
-            current_sequence_number,
-            headers_packet):
-            writer.write_page(page, data)
-            current_sequence_number += 1
+    #     reader = OggStreamReader(file(self.filename, 'rb'))
+    #     new_file = cStringIO.StringIO()
+    #     writer = OggStreamWriter(new_file)
+    #     current_sequence_number = 0
 
-        #write the rest of the pages, re-sequenced and re-checksummed
-        del(packets)
-        pages = reader.pages(from_beginning=False)
+    #     pages = reader.pages()
 
-        for (i, (page, data)) in enumerate(pages):
-            page.page_sequence_number = i + current_sequence_number
-            page.checksum = OggStreamReader.calculate_ogg_checksum(page, data)
-            writer.write_page(page, data)
+    #     #transfer our old header
+    #     #this must always be the first packet and the first page
+    #     (header_page, header_data) = pages.next()
+    #     writer.write_page(header_page, header_data)
+    #     current_sequence_number += 1
 
-        reader.close()
+    #     #grab the current "comment" and "setup headers" packets
+    #     #these may take one or more pages,
+    #     #but will always end on a page boundary
+    #     del(pages)
+    #     packets = reader.packets(from_beginning=False)
 
-        #re-write the file with our new data in "new_file"
-        f = file(self.filename, "wb")
-        f.write(new_file.getvalue())
-        f.close()
-        writer.close()
+    #     comment_packet = packets.next()
+    #     headers_packet = packets.next()
 
-        self.__read_metadata__()
+    #     #write the pages for our new "comment" packet
+    #     for (page, data) in OggStreamWriter.build_pages(
+    #         0,
+    #         header_page.bitstream_serial_number,
+    #         current_sequence_number,
+    #         VorbisAudio.COMMENT_HEADER.build(Con.Container(
+    #                 packet_type=3,
+    #                 vorbis='vorbis')) + metadata.build()):
+    #         writer.write_page(page, data)
+    #         current_sequence_number += 1
+
+    #     #write the pages for the old "setup headers" packet
+    #     for (page, data) in OggStreamWriter.build_pages(
+    #         0,
+    #         header_page.bitstream_serial_number,
+    #         current_sequence_number,
+    #         headers_packet):
+    #         writer.write_page(page, data)
+    #         current_sequence_number += 1
+
+    #     #write the rest of the pages, re-sequenced and re-checksummed
+    #     del(packets)
+    #     pages = reader.pages(from_beginning=False)
+
+    #     for (i, (page, data)) in enumerate(pages):
+    #         page.page_sequence_number = i + current_sequence_number
+    #         page.checksum = OggStreamReader.calculate_ogg_checksum(page, data)
+    #         writer.write_page(page, data)
+
+    #     reader.close()
+
+    #     #re-write the file with our new data in "new_file"
+    #     f = file(self.filename, "wb")
+    #     f.write(new_file.getvalue())
+    #     f.close()
+    #     writer.close()
+
+    #     self.__read_metadata__()
 
     def get_metadata(self):
         """Returns a MetaData object, or None.
 
         Raises IOError if unable to read the file."""
 
-        self.__read_metadata__()
-        data = {}
-        for pair in self.comment.value:
-            try:
-                (key, value) = pair.split('=', 1)
-                data.setdefault(key, []).append(value.decode('utf-8'))
-            except ValueError:
-                continue
+        from .bitstream import BitstreamReader
+        from . import read_ogg_packets
 
-        return VorbisComment(data)
+        packets = read_ogg_packets(
+            BitstreamReader(open(self.filename, "rb"), 1))
+
+        identification = packets.next()
+        comment = packets.next()
+
+        (packet_type, packet_header) = comment.parse("8u 6b")
+        if ((packet_type != 3) or (packet_header != 'vorbis')):
+            return None
+        else:
+            vendor_string = comment.read_bytes(comment.read(32)).decode('utf-8')
+            comment_strings = [
+                comment.read_bytes(comment.read(32)).decode('utf-8')
+                for i in xrange(comment.read(32))]
+            if (comment.read(1) == 1):  #framing bit
+                return VorbisComment2(comment_strings, vendor_string)
+            else:
+                return None
 
     def delete_metadata(self):
         """Deletes the track's MetaData.
@@ -705,6 +815,8 @@ class VorbisAudio(AudioFile):
         This removes or unsets tags as necessary in order to remove all data.
         Raises IOError if unable to write the file."""
 
+        #the vorbis comment packet is required,
+        #so simply zero out its contents
         self.set_metadata(MetaData())
 
     @classmethod
@@ -755,16 +867,17 @@ class VorbisAudio(AudioFile):
 
         vorbis_metadata = self.get_metadata()
 
-        if (set(['REPLAYGAIN_TRACK_PEAK', 'REPLAYGAIN_TRACK_GAIN',
-                 'REPLAYGAIN_ALBUM_PEAK', 'REPLAYGAIN_ALBUM_GAIN']).issubset(
-                vorbis_metadata.keys())):  # we have ReplayGain data
+        if ((vorbis_metadata is not None) and
+            (set(['REPLAYGAIN_TRACK_PEAK', 'REPLAYGAIN_TRACK_GAIN',
+                  'REPLAYGAIN_ALBUM_PEAK', 'REPLAYGAIN_ALBUM_GAIN']).issubset(
+                    vorbis_metadata.keys()))):  # we have ReplayGain data
             try:
                 return ReplayGain(
                     vorbis_metadata['REPLAYGAIN_TRACK_GAIN'][0][0:-len(" dB")],
                     vorbis_metadata['REPLAYGAIN_TRACK_PEAK'][0],
                     vorbis_metadata['REPLAYGAIN_ALBUM_GAIN'][0][0:-len(" dB")],
                     vorbis_metadata['REPLAYGAIN_ALBUM_PEAK'][0])
-            except ValueError:
+            except (IndexError,ValueError):
                 return None
         else:
             return None

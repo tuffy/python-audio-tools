@@ -1904,6 +1904,8 @@ class OggFlacMetaData(FlacMetaData):
 
     @classmethod
     def parse(cls, reader):
+        from . import read_ogg_packets
+
         streaminfo = None
         applications = []
         seektable = None
@@ -1912,6 +1914,9 @@ class OggFlacMetaData(FlacMetaData):
         pictures = []
 
         packets = read_ogg_packets(reader)
+
+        streaminfo_packet = packets.next()
+        streaminfo_packet.set_endianness(0)
 
         (packet_byte,
          ogg_signature,
@@ -1929,7 +1934,7 @@ class OggFlacMetaData(FlacMetaData):
          channels,
          bits_per_sample,
          total_samples,
-         md5sum) = packets.next().parse(
+         md5sum) = streaminfo_packet.parse(
             "8u 4b 8u 8u 16u 4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b")
 
         streaminfo = Flac_STREAMINFO(minimum_block_size=minimum_block_size,
@@ -1943,6 +1948,7 @@ class OggFlacMetaData(FlacMetaData):
                                      md5sum=md5sum)
 
         for (i, packet) in zip(range(header_packets), packets):
+            packet.set_endianness(0)
             (block_type, length) = packet.parse("1p 7u 24u")
             if (block_type == 2):   #APPLICATION
                 applications.append(
@@ -2066,48 +2072,6 @@ class __Counter__:
 
     def __int__(self):
         return self.value
-
-def read_ogg_packets(reader):
-    from .bitstream import Substream
-
-    header_type = 0
-
-    while (not (header_type & 0x4)):
-        (magic_number,
-         version,
-         header_type,
-         granule_position,
-         serial_number,
-         page_sequence_number,
-         checksum,
-         segment_count) = reader.parse("4b 8u 8u 64S 32u 32u 32u 8u")
-        packet = Substream(0)
-        for segment_length in [reader.read(8) for i in xrange(segment_count)]:
-            reader.substream_append(packet, segment_length)
-            if (segment_length != 255):
-                yield packet
-                packet = Substream(0)
-
-def read_ogg_packets2(reader):
-    from .bitstream import Substream
-
-    header_type = 0
-    packet = ""
-
-    while (not (header_type & 0x4)):
-        (magic_number,
-         version,
-         header_type,
-         granule_position,
-         serial_number,
-         page_sequence_number,
-         checksum,
-         segment_count) = reader.parse("4b 8u 8u 64S 32u 32u 32u 8u")
-        for segment_length in [reader.read(8) for i in xrange(segment_count)]:
-            packet += reader.read_bytes(segment_length)
-            if (segment_length != 255):
-                yield packet
-                packet = ""
 
 
 class OggFlacAudio(AudioFile):
@@ -2241,6 +2205,7 @@ class OggFlacAudio(AudioFile):
             return
         old_metadata = self.get_metadata()
 
+        #FIXME - split this into the update_metadata routine
         if ((old_metadata.streaminfo is not None) and
             (metadata.streaminfo is not None) and
             (old_metadata.streaminfo == metadata.streaminfo)):
@@ -2269,13 +2234,6 @@ class OggFlacAudio(AudioFile):
                 (metadata.vorbis_comment is not None)):
                 vendor_string = old_metadata.vorbis_comment.vendor_string
                 metadata.vorbis_comment.vendor_string = vendor_string
-
-        new_metadata = BitstreamAccumulator(0)
-        new_stream = OggStreamWriter2(new_metadata, self.__serial_number__)
-
-        metadata.build(new_stream, 0)
-        minimum_metadata_length = new_metadata.bytes()
-        current_metadata_length = self.metadata_length()
 
         #always overwrite Ogg FLAC with fresh metadata
         #

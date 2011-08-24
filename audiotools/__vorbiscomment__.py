@@ -408,7 +408,7 @@ class VorbisComment2(MetaData):
         for comment in self.comment_strings:
             if (u"=" in comment):
                 (c_key, c_value) = comment.split(u"=", 1)
-                if (c_key in matching_keys):
+                if (c_key.upper() in matching_keys):
                     try:
                         #replace current value with newly set value
                         new_comment_strings.append(
@@ -587,12 +587,12 @@ class VorbisComment2(MetaData):
                 if (attr not in cls.__INTEGER_FIELDS__):
                     if (len(getattr(metadata, attr)) > 0):
                         comment_strings.append(
-                            "%s=%s" % (cls.ATTRIBUTE_MAP[attr][0],
+                            "%s=%s" % (cls.ATTRIBUTE_MAP[attr],
                                        getattr(metadata, attr)))
                 else:
                     if (getattr(metadata, attr) > 0):
                         comment_strings.append(
-                            "%s=%s" % (cls.ATTRIBUTE_MAP[attr][0],
+                            "%s=%s" % (cls.ATTRIBUTE_MAP[attr],
                                        getattr(metadata, attr)))
 
             return cls(comment_strings, u"Python Audio Tools %s" % (VERSION))
@@ -627,12 +627,14 @@ class VorbisComment2(MetaData):
             metadata = self.__class__.converted(metadata)
 
             #first, port over the known fields
-            for field in self.__FIELDS__:
+            for field in self.ATTRIBUTE_MAP.keys():
                 if (field not in self.__INTEGER_FIELDS__):
-                    if (len(getattr(self, field)) == 0):
+                    if ((len(getattr(self, field)) == 0) and
+                        (len(getattr(metadata, field)) > 0)):
                         setattr(self, field, getattr(metadata, field))
                 else:
-                    if (getattr(self, field) == 0):
+                    if ((getattr(self, field) == 0) and
+                        (getattr(metadata, field) > 0)):
                         setattr(self, field, getattr(metadata, field))
 
             #then, port over any unknown fields

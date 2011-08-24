@@ -3816,6 +3816,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE udta
 ***** DONE meta
 *** DONE free
+*** TODO Rename __m4a_atoms2__.py to __m4a_atoms__.py
 ** TODO __mp3__.py
 *** TODO MP3
     - [X] __init__
@@ -3835,12 +3836,15 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO __speex__.py
 ** DONE toc.py
 ** TODO __vorbis__.py
-*** TODO VorbisAudio
-    - [ ] __read_metadata__
-    - [ ] total_frames
-    - [ ] set_metadata
-    - [ ] get_metadata
-** TODO __vorbiscomment__.py
+*** DONE VorbisAudio
+    - [X] __read_metadata__
+    - [X] total_frames
+    - [X] get_metadata
+    - [X] set_metadata
+*** TODO Remove cruft
+    - [ ] OggStreamReader
+    - [ ] OggStreamWriter
+** DONE __vorbiscomment__.py
 ** DONE __wav__.py
 ** DONE __wavpack__.py
 * TODO Handle write errors more gracefully
@@ -3946,7 +3950,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   while the other cases remain unchanged.
 ** TODO Add update_metadata() method to AudioFile and subclasses
    for formats which take metadata at all
-   - [ ] ALACAudio
+   - [X] ALACAudio
    - [ ] AiffAudio
    - [X] AudioFile
    - [X] FlacAudio

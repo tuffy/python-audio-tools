@@ -1,5 +1,47 @@
 #!/usr/bin/python
 
+def read_ogg_packets(reader):
+    from .bitstream import Substream
+
+    header_type = 0
+    packet = Substream(1)
+
+    while (not (header_type & 0x4)):
+        (magic_number,
+         version,
+         header_type,
+         granule_position,
+         serial_number,
+         page_sequence_number,
+         checksum,
+         segment_count) = reader.parse("4b 8u 8u 64S 32u 32u 32u 8u")
+        for segment_length in [reader.read(8) for i in xrange(segment_count)]:
+            reader.substream_append(packet, segment_length)
+            if (segment_length != 255):
+                yield packet
+                packet = Substream(1)
+
+
+def read_ogg_packets_data(reader):
+    header_type = 0
+    packet = []
+
+    while (not (header_type & 0x4)):
+        (magic_number,
+         version,
+         header_type,
+         granule_position,
+         serial_number,
+         page_sequence_number,
+         checksum,
+         segment_count) = reader.parse("4b 8u 8u 64S 32u 32u 32u 8u")
+        for segment_length in [reader.read(8) for i in xrange(segment_count)]:
+            packet.append(reader.read_bytes(segment_length))
+            if (segment_length != 255):
+                yield "".join(packet)
+                packet = []
+
+
 class OggChecksum:
     CRC_LOOKUP = (0x00000000, 0x04c11db7, 0x09823b6e, 0x0d4326d9,
                   0x130476dc, 0x17c56b6b, 0x1a864db2, 0x1e475005,
@@ -146,6 +188,7 @@ class OggStreamReader2:  #FIXME
             if (page[-1]):
                 break
 
+
 class OggStreamWriter2:  #FIXME
     def __init__(self, writer, serial_number):
         """writer is a BitstreamWriter-compatible object
@@ -193,7 +236,6 @@ class OggStreamWriter2:  #FIXME
 
         if (len(page) > 0):
             yield page
-
 
     def write_page(self, granule_position, segments,
                    continuation, first_page, last_page):
