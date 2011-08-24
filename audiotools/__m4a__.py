@@ -29,7 +29,7 @@ from audiotools import (AudioFile, InvalidFile, PCMReader, PCMConverter,
                         BufferedPCMReader, to_pcm_progress,
                         at_a_time, VERSION, PCMReaderError,
                         __default_quality__, iter_last)
-from __m4a_atoms2__ import *
+from __m4a_atoms__ import *
 import gettext
 
 gettext.install("audiotools", unicode=True)

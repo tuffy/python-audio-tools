@@ -3792,7 +3792,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [ ] is_type
     - [ ] aac_frames
     - [ ] aac_frame_count
-** TODO __m4a_atoms__.py
+** DONE __m4a_atoms__.py
    Re-implement atom parsing/building without Construct
 *** DONE ftyp
 *** DONE moov
@@ -3816,7 +3816,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE udta
 ***** DONE meta
 *** DONE free
-*** TODO Rename __m4a_atoms2__.py to __m4a_atoms__.py
+*** DONE Rename __m4a_atoms2__.py to __m4a_atoms__.py
 ** TODO __mp3__.py
 *** TODO MP3
     - [X] __init__
@@ -3835,15 +3835,15 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE __shn__.py
 ** TODO __speex__.py
 ** DONE toc.py
-** TODO __vorbis__.py
+** DONE __vorbis__.py
 *** DONE VorbisAudio
     - [X] __read_metadata__
     - [X] total_frames
     - [X] get_metadata
     - [X] set_metadata
-*** TODO Remove cruft
-    - [ ] OggStreamReader
-    - [ ] OggStreamWriter
+*** DONE Remove cruft
+    - [X] OggStreamReader
+    - [X] OggStreamWriter
 ** DONE __vorbiscomment__.py
 ** DONE __wav__.py
 ** DONE __wavpack__.py

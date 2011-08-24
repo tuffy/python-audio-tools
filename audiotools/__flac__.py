@@ -31,7 +31,6 @@ from audiotools import (AudioFile, MetaData, InvalidFile, PCMReader,
                         image_metrics)
 from __vorbiscomment__ import *
 from __id3__ import ID3v2Comment
-from __vorbis__ import OggStreamReader, OggStreamWriter
 
 import gettext
 
@@ -358,7 +357,7 @@ class Flac_STREAMINFO:
                       self.total_samples,
                       self.md5sum))
 
-class Flac_VORBISCOMMENT(VorbisComment2):
+class Flac_VORBISCOMMENT(VorbisComment):
     BLOCK_ID = 4
 
     @classmethod
@@ -370,7 +369,7 @@ class Flac_VORBISCOMMENT(VorbisComment2):
         else:
             #make VorbisComment do all the work,
             #then lift its data into a new Flac_VORBISCOMMENT
-            metadata = VorbisComment2.converted(metadata)
+            metadata = VorbisComment.converted(metadata)
             return cls(metadata.comment_strings,
                        metadata.vendor_string)
 
@@ -2196,7 +2195,7 @@ class OggFlacAudio(AudioFile):
         from .bitstream import BitstreamRecorder
         from .bitstream import BitstreamAccumulator
         from .bitstream import BitstreamReader
-        from . import OggStreamReader2,OggStreamWriter2 #FIXME
+        from . import OggStreamReader,OggStreamWriter
 
         metadata = OggFlacMetaData.converted(metadata)
 
@@ -2252,11 +2251,11 @@ class OggFlacAudio(AudioFile):
             original_file = file(self.filename, 'rb')
             try:
                 original_reader = BitstreamReader(original_file, 1)
-                original_ogg = OggStreamReader2(original_reader) #FIXME
+                original_ogg = OggStreamReader(original_reader)
 
                 new_writer = BitstreamWriter(new_file, 1)
-                new_ogg = OggStreamWriter2(new_writer, #FIXME
-                                           self.__serial_number__)
+                new_ogg = OggStreamWriter(new_writer,
+                                          self.__serial_number__)
 
                 #write our new comment blocks to the new file
                 metadata.build(new_ogg, 256)

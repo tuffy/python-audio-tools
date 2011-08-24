@@ -122,7 +122,7 @@ class OggChecksum:
     def __int__(self):
         return self.checksum
 
-class OggStreamReader2:  #FIXME
+class OggStreamReader:
     def __init__(self, reader):
         self.reader = reader
 
@@ -189,7 +189,7 @@ class OggStreamReader2:  #FIXME
                 break
 
 
-class OggStreamWriter2:  #FIXME
+class OggStreamWriter:
     def __init__(self, writer, serial_number):
         """writer is a BitstreamWriter-compatible object
 
