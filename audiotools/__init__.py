@@ -2656,11 +2656,14 @@ class MetaData:
         #right-align the comment key values
         #and turn them into unicode strings
         #before returning the completed comment
-        field_len = max([len(field) for (field, value) in comment_pairs])
-        return os.linesep.decode('ascii').join(
-            [u"%s%s : %s" % (u" " * (field_len - len(field)),
-                             field, value)
-             for (field, value) in comment_pairs])
+        if (len(comment_pairs) > 0):
+            field_len = max([len(field) for (field, value) in comment_pairs])
+            return os.linesep.decode('ascii').join(
+                [u"%s%s : %s" % (u" " * (field_len - len(field)),
+                                 field, value)
+                 for (field, value) in comment_pairs])
+        else:
+            return u""
 
     def raw_info(self):
         """returns a Unicode string of low-level MetaData information

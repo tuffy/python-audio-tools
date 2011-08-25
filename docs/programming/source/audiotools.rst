@@ -795,6 +795,12 @@ MetaData Objects
    Text descriptions of the fixes performed are appended
    to that list as unicode strings.
 
+.. method:: MetaData.raw_info()
+
+   Returns a unicode string of raw metadata information
+   with as little filtering as possible.
+   This is meant to be useful for debugging purposes.
+
 AlbumMetaData Objects
 ---------------------
 

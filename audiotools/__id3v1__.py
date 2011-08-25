@@ -35,6 +35,19 @@ class ID3v1Comment(MetaData):
                           track_number=track_number)
         self.__dict__['genre'] = genre
 
+    def raw_info(self):
+        from os import linesep
+
+        return linesep.decode('ascii').join(
+            [u"ID3v1:",
+             u"  track name = %s" % (self.track_name),
+             u" artist name = %s" % (self.artist_name),
+             u"  album name = %s" % (self.album_name),
+             u"        year = %s" % (self.year),
+             u"     comment = %s" % (self.comment),
+             u"track number = %d" % (self.track_number),
+             u"       genre = %d" % (self.genre)])
+
     @classmethod
     def parse(cls, mp3_file):
         """given an MP3 file, returns an ID3v1Comment
@@ -117,17 +130,6 @@ class ID3v1Comment(MetaData):
                             comment=metadata.comment,
                             track_number=metadata.track_number,
                             genre=0)
-
-    def __comment_name__(self):
-        return u'ID3v1'
-
-    def __comment_pairs__(self):
-        return (("Title", self.track_name),
-                ("Artist", self.artist_name),
-                ("Album", self.album_name),
-                ("Year", self.year),
-                ("Comment", self.comment),
-                ("Tracknum", unicode(self.track_number)))
 
     def images(self):
         """Returns an empty list of Image objects."""

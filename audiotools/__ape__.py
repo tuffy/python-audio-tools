@@ -100,6 +100,23 @@ class ApeTagItem:
              repr(self.key),
              repr(self.data))
 
+    def raw_info_pair(self):
+        if (self.type == 0):   #text
+            if (self.read_only):
+                return (self.key.decode('ascii'),
+                        u"(read only) %s" % (self.data.decode('utf-8')))
+            else:
+                return (self.key.decode('ascii'), self.data.decode('utf-8'))
+        elif (self.type == 1): #binary
+            return (self.key.decode('ascii'),
+                    u"(binary) %d bytes" % (len(self.data)))
+        elif (self.type == 2): #external
+            return (self.key.decode('ascii'),
+                    u"(external) %d bytes" % (len(self.data)))
+        else:                  #reserved
+            return (self.key.decode('ascii'),
+                    u"(reserved) %d bytes" % (len(self.data)))
+
     def __str__(self):
         return self.data
 
@@ -158,28 +175,6 @@ class ApeTag(MetaData):
     """A complete APEv2 tag."""
 
     ITEM = ApeTagItem
-
-    APEv2_FLAGS = Con.BitStruct("APEv2_FLAGS",
-      Con.Bits("undefined1", 5),
-      Con.Flag("read_only"),
-      Con.Bits("encoding", 2),
-      Con.Bits("undefined2", 16),
-      Con.Flag("contains_header"),
-      Con.Flag("contains_no_footer"),
-      Con.Flag("is_header"),
-      Con.Bits("undefined3", 5))
-
-    APEv2_FOOTER = Con.Struct("APEv2",
-      Con.String("preamble", 8),
-      Con.ULInt32("version_number"),
-      Con.ULInt32("tag_size"),
-      Con.ULInt32("item_count"),
-      Con.Embed(APEv2_FLAGS),
-      Con.ULInt64("reserved"))
-
-    APEv2_HEADER = APEv2_FOOTER
-
-    # APEv2_TAG = ApeTagItem.APEv2_TAG
 
     ATTRIBUTE_MAP = {'track_name': 'Title',
                      'track_number': 'Track',
@@ -405,50 +400,22 @@ class ApeTag(MetaData):
                 (getattr(metadata, attr) != 0)):
                 setattr(self, attr, getattr(metadata, attr))
 
-    def __comment_name__(self):
-        return u'APEv2'
+    def raw_info(self):
+        from os import linesep
+        from . import display_unicode
 
-    #takes two (key,value) apetag pairs
-    #returns cmp on the weighted set of them
-    #(title first, then artist, album, tracknumber)
-    @classmethod
-    def __by_pair__(cls, pair1, pair2):
-        KEY_MAP = {"Title": 1,
-                   "Album": 2,
-                   "Track": 3,
-                   "Media": 4,
-                   "Artist": 5,
-                   "Performer": 6,
-                   "Composer": 7,
-                   "Conductor": 8,
-                   "Catalog": 9,
-                   "Publisher": 10,
-                   "ISRC": 11,
-                   #"Media": 12,
-                   "Year": 13,
-                   "Record Date": 14,
-                   "Copyright": 15}
+        #align tag values on the "=" sign
+        if (len(self.tags) > 0):
+            max_indent = max([len(display_unicode(tag.raw_info_pair()[0]))
+                              for tag in self.tags])
+            tag_strings = [u"%s%s = %s" %
+                           (u" " * (max_indent - len(display_unicode(key))),
+                            key, value) for (key, value) in
+                           [tag.raw_info_pair() for tag in self.tags]]
+        else:
+            tag_strings = []
 
-        return cmp((KEY_MAP.get(pair1[0], 16), pair1[0], pair1[1]),
-                   (KEY_MAP.get(pair2[0], 16), pair2[0], pair2[1]))
-
-    def __comment_pairs__(self):
-        items = []
-
-        for tag in self.tags:
-            if (tag.key in ('Cover Art (front)', 'Cover Art (back)')):
-                pass
-            elif (tag.type == 0):
-                items.append((tag.key, unicode(tag)))
-            else:
-                if (len(str(tag)) <= 20):
-                    items.append((tag.key, str(tag).encode('hex')))
-                else:
-                    items.append((tag.key,
-                                  str(tag).encode('hex')[0:39].upper() +
-                                  u"\u2026"))
-
-        return sorted(items, ApeTag.__by_pair__)
+        return linesep.decode('ascii').join([u"APEv2:"] + tag_strings)
 
     @classmethod
     def supports_images(cls):
@@ -457,25 +424,32 @@ class ApeTag(MetaData):
         return True
 
     def __parse_image__(self, key, type):
-        data = cStringIO.StringIO(str(self[key]))
-        description = Con.CString(None).parse_stream(data).decode('utf-8',
-                                                                  'replace')
-        data = data.read()
-        return Image.new(data, description, type)
+        data = cStringIO.StringIO(self[key].data)
+        description = []
+        c = data.read(1)
+        while (c != '\x00'):
+            description.append(c)
+            c = data.read(1)
+
+        return Image.new(data.read(),
+                         "".join(description).decode('utf-8', 'replace'),
+                         type)
 
     def add_image(self, image):
         """Embeds an Image object in this metadata."""
 
         if (image.type == 0):
-            self['Cover Art (front)'] = self.ITEM.external(
+            self['Cover Art (front)'] = self.ITEM.binary(
                 'Cover Art (front)',
-                Con.CString(None).build(image.description.encode(
-                        'utf-8', 'replace')) + image.data)
+                image.description.encode('utf-8', 'replace') +
+                chr(0) +
+                image.data)
         elif (image.type == 1):
             self['Cover Art (back)'] = self.ITEM.binary(
                 'Cover Art (back)',
-                Con.CString(None).build(image.description.encode(
-                        'utf-8', 'replace')) + image.data)
+                image.description.encode('utf-8', 'replace') +
+                chr(0) +
+                image.data)
 
     def delete_image(self, image):
         """Deletes an Image object from this metadata."""

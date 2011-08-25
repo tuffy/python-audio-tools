@@ -121,19 +121,23 @@ class VorbisComment(MetaData):
 
         #align the text strings on the "=" sign, if any
 
-        max_indent = max([len(display_unicode(comment.split(u"=", 1)[0]))
-                          for comment in self.comment_strings
-                          if u"=" in comment])
+        if (len(self.comment_strings) > 0):
+            max_indent = max([len(display_unicode(comment.split(u"=", 1)[0]))
+                              for comment in self.comment_strings
+                              if u"=" in comment])
 
-        comment_strings = []
-        for comment in self.comment_strings:
-            if (u"=" in comment):
-                comment_strings.append(
-                    u" " * (max_indent -
-                            len(display_unicode(comment.split(u"=", 1)[0]))) +
-                    comment)
-            else:
-                comment_strings.append(comment)
+            comment_strings = []
+            for comment in self.comment_strings:
+                if (u"=" in comment):
+                    comment_strings.append(
+                        u" " * (max_indent -
+                                len(
+                                display_unicode(comment.split(u"=", 1)[0]))) +
+                        comment)
+                else:
+                    comment_strings.append(comment)
+        else:
+            comment_strings = 0
 
         return linesep.decode('ascii').join(
             [u"Vorbis Comment:  %s" % (self.vendor_string)] +

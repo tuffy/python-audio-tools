@@ -17,6 +17,10 @@
     <option short="n" long="no-metadata">
       do not print track metadata such as track name, album name and so forth
     </option>
+    <option short="L" long="low-level">
+      display low-level metadata information such as ID3 frames,
+      Vorbis comment pairs, and so on
+    </option>
     <option short="b" long="bitrate">
       prints the average bitrate of the track in kilobytes-per-second
       instead of the usual track information

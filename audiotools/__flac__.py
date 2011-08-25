@@ -80,23 +80,6 @@ class FlacMetaData(MetaData):
         else:
             self.__dict__["pictures"] = pictures
 
-    def __comment_name__(self):
-        return u'FLAC'
-
-    def __comment_pairs__(self):
-        if (self.vorbis_comment is not None):
-            return self.vorbis_comment.__comment_pairs__()
-        else:
-            return []
-
-    def __unicode__(self):
-        if (self.cuesheet is None):
-            return MetaData.__unicode__(self)
-        else:
-            return u"%s%sCuesheet:\n%s" % (MetaData.__unicode__(self),
-                                           os.linesep * 2,
-                                           unicode(self.cuesheet))
-
     def __setattr__(self, key, value):
         if (key in self.__FIELDS__):
             if (self.vorbis_comment is None):

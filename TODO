@@ -4017,25 +4017,25 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   Instead of displaying the low-level info,
   show fields like "track name", "album name", etc.
   unless a -R/--raw flag is indicated.
-** TODO Replace MetaData.comment_pairs() with MetaData.raw_info()
+** DONE Replace MetaData.comment_pairs() with MetaData.raw_info()
    This should be even lower level than it is now, and unsorted.
-   - [ ] ApeTag
+   - [X] ApeTag
    - [X] FlacMetaData
-   - [ ] ID3CommentPair
-   - [ ] ID3v1Comment
-   - [ ] ID3v22Comment
-   - [ ] ID3v23Comment
-   - [ ] ID3v24Comment
+   - [X] ID3CommentPair
+   - [X] ID3v1Comment
+   - [X] ID3v22Comment
+   - [X] ID3v23Comment
+   - [X] ID3v24Comment
    - [X] M4A_META_Atom
-   - [ ] OggFlacMetaData
+   - [X] OggFlacMetaData
    - [X] VorbisComment
-*** TODO Document MetaData.raw_info() method
+*** DONE Document MetaData.raw_info() method
 ** DONE Convert MetaData.__unicode__() to display fields by name
    This should always use the higher level implementation
    and sort fields by name.
 ** DONE Update trackinfo to use MetaData's unicode output by default
 ** DONE Add -L/--low-level option to trackinfo
-** TODO Add -L/--low-level option to trackinfo.1
+** DONE Add -L/--low-level option to trackinfo.1
 ** TODO Update unit tests
 * TODO Update FLAC/Vorbis to support TOTALTRACKS field for track_total
   This seems to be catching on as a standard.
@@ -4044,3 +4044,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   different Vorbis comment names and the first match is used.
 ** DONE Preserve TOTALTRACKS when updating track_total
 ** TODO Add unit tests to ensure TOTALTRACKS works
+* TODO Adjust FlacMetaData to store blocks internally in order
+  That is, they should output in the same order that they are stored on disk.
+* TODO Adjust ID3v2 to store frames internally in order
+  That is, they should output in the same order that they are stored on disk.
+** TODO ID3v22Comment
+** TODO ID3v23Comment
+** TODO ID3v24Comment

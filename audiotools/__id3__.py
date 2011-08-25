@@ -191,15 +191,26 @@ class ID3v22Frame:
 
         writer.write_bytes(self.data)
 
-    def __unicode__(self):
-        if (self.id.startswith('W')):
-            return self.data.rstrip(chr(0)).decode('iso-8859-1', 'replace')
+    def raw_info(self):
+        if (len(self.data) > 20):
+            return u"%s = %s\u2026" % \
+                (self.id.decode('ascii', 'replace'),
+                 u"".join([u"%2.2X" % (ord(b)) for b in self.data[0:20]]))
         else:
-            if (len(self.data) <= 20):
-                return unicode(self.data.encode('hex').upper())
-            else:
-                return (unicode(self.data[0:19].encode('hex').upper()) +
-                        u"\u2026")
+            return u"%s = %s" % \
+                (self.id.decode('ascii', 'replace'),
+                 u"".join([u"%2.2X" % (ord(b)) for b in self.data]))
+
+    #FIXME
+    # def __unicode__(self):
+    #     if (self.id.startswith('W')):
+    #         return self.data.rstrip(chr(0)).decode('iso-8859-1', 'replace')
+    #     else:
+    #         if (len(self.data) <= 20):
+    #             return unicode(self.data.encode('hex').upper())
+    #         else:
+    #             return (unicode(self.data[0:19].encode('hex').upper()) +
+    #                     u"\u2026")
 
     @classmethod
     def decode_text(cls, byte_string, encoding_byte):
@@ -351,6 +362,12 @@ class ID3v22TextFrame(ID3v22Frame):
     def __unicode__(self):
         return self.string
 
+    def raw_info(self):
+        if (self.encoding == 0):
+            return u"%s = (latin-1) %s" % (self.id.decode('ascii'), self.string)
+        else:
+            return u"%s = (UCS-2) %s" % (self.id.decode('ascii'), self.string)
+
     def __int__(self):
         try:
             return int(re.findall(r'\d+', self.string)[0])
@@ -406,6 +423,18 @@ class ID3v22ComFrame(ID3v22TextFrame):
 
     def __unicode__(self):
         return self.content
+
+    def raw_info(self):
+        if (self.encoding == 0):
+            encoding = u"latin-1"
+        else:
+            encoding = u"UCS-2"
+
+        return u"COM = (%s, %s, \"%s\") %s" % \
+            (encoding,
+             self.language.decode('ascii', 'replace'),
+             self.short_description,
+             self.content)
 
     def __int__(self):
         return 0
@@ -487,10 +516,14 @@ class ID3v22PicFrame(ID3v22Frame, Image):
                 19: "Band/Artist logotype",
                 20: "Publisher/Studio logotype"}.get(self.pic_type, "Other")
 
-    def __unicode__(self):
-        return u"%s (%d\u00D7%d,'%s')" % \
-               (self.type_string(),
-                self.width, self.height, self.mime_type)
+    def raw_info(self):
+        return u"PIC = (%s, %d\u00D7%d, %s, \"%s\") %d bytes" % \
+            (self.type_string(),
+             self.width,
+             self.height,
+             self.mime_type,
+             self.description,
+             len(self.data))
 
     def __eq__(self, i):
         return Image.__eq__(self, i)
@@ -504,8 +537,6 @@ class ID3v22PicFrame(ID3v22Frame, Image):
                       self.pic_type))
         self.encode_c_string(writer, description, self.encoding)
         writer.write_bytes(self.data)
-
-
 
     @classmethod
     def converted(cls, image):
@@ -563,51 +594,23 @@ class ID3v22Comment(MetaData):
         for frame in frames:
             self.__dict__["frames"].setdefault(frame.id, []).append(frame)
 
+    def __iter__(self):
+        for frame_list in self.frames.values():
+            for frame in frame_list:
+                yield frame
+
     def __repr__(self):
         return "ID3v22Comment(%s)" % (repr(self.__dict__["frames"]))
 
+    def raw_info(self):
+        from os import linesep
+
+        return linesep.decode('ascii').join(
+            ["%s:" % (self.__comment_name__())] +
+            [frame.raw_info() for frame in self])
+
     def __comment_name__(self):
         return u'ID3v2.2'
-
-    def __comment_pairs__(self):
-        key_order = list(self.KEY_ORDER)
-
-        def by_weight(keyval1, keyval2):
-            (key1, key2) = (keyval1[0], keyval2[0])
-
-            if (key1 in key_order):
-                order1 = key_order.index(key1)
-            else:
-                order1 = key_order.index(None)
-
-            if (key2 in key_order):
-                order2 = key_order.index(key2)
-            else:
-                order2 = key_order.index(None)
-
-            return cmp((order1, key1), (order2, key2))
-
-        pairs = []
-
-        for (key, values) in sorted(self.frames.items(), by_weight):
-            for value in values:
-                pairs.append(('     ' + key, unicode(value)))
-
-        return pairs
-
-    def __unicode__(self):
-        comment_pairs = self.__comment_pairs__()
-        if (len(comment_pairs) > 0):
-            max_key_length = max([len(pair[0]) for pair in comment_pairs])
-            line_template = u"%%(key)%(length)d.%(length)ds : %%(value)s" % \
-                            {"length": max_key_length}
-
-            return unicode(os.linesep.join(
-                [u"%s Comment:" % (self.__comment_name__())] + \
-                [line_template % {"key": key, "value": value} for
-                 (key, value) in comment_pairs]))
-        else:
-            return u""
 
     #if an attribute is updated (e.g. self.track_name)
     #make sure to update the corresponding dict pair
@@ -1038,15 +1041,16 @@ class ID3v23Frame(ID3v22Frame):
         else:
             return cls(frame_id, frame_data.read_bytes(frame_size))
 
-    def __unicode__(self):
-        if (self.id.startswith('W')):
-            return self.data.rstrip(chr(0)).decode('iso-8859-1', 'replace')
-        else:
-            if (len(self.data) <= 20):
-                return unicode(self.data.encode('hex').upper())
-            else:
-                return (unicode(self.data[0:19].encode('hex').upper()) +
-                        u"\u2026")
+    #FIXME
+    # def __unicode__(self):
+    #     if (self.id.startswith('W')):
+    #         return self.data.rstrip(chr(0)).decode('iso-8859-1', 'replace')
+    #     else:
+    #         if (len(self.data) <= 20):
+    #             return unicode(self.data.encode('hex').upper())
+    #         else:
+    #             return (unicode(self.data[0:19].encode('hex').upper()) +
+    #                     u"\u2026")
 
 
 class ID3v23TextFrame(ID3v23Frame):
@@ -1069,6 +1073,12 @@ class ID3v23TextFrame(ID3v23Frame):
 
     def __unicode__(self):
         return self.string
+
+    def raw_info(self):
+        if (self.encoding == 0):
+            return u"%s = (latin-1) %s" % (self.id.decode('ascii'), self.string)
+        else:
+            return u"%s = (UCS-2) %s" % (self.id.decode('ascii'), self.string)
 
     def __int__(self):
         try:
@@ -1142,10 +1152,14 @@ class ID3v23PicFrame(ID3v23Frame, Image):
     def __eq__(self, i):
         return Image.__eq__(self, i)
 
-    def __unicode__(self):
-        return u"%s (%d\u00D7%d,'%s')" % \
-               (self.type_string(),
-                self.width, self.height, self.mime_type)
+    def raw_info(self):
+        return u"APIC = (%s, %d\u00D7%d, %s, \"%s\") %d bytes" % \
+            (self.type_string(),
+             self.width,
+             self.height,
+             self.mime_type,
+             self.description,
+             len(self.data))
 
     def build(self, writer):
         """builds a binary string of APIC data to the given BitstreamWriter"""
@@ -1196,6 +1210,18 @@ class ID3v23ComFrame(ID3v23TextFrame):
 
     def __unicode__(self):
         return self.content
+
+    def raw_info(self):
+        if (self.encoding == 0):
+            encoding = u"latin-1"
+        else:
+            encoding = u"UCS-2"
+
+        return u"COMM = (%s, %s, \"%s\") %s" % \
+            (encoding,
+             self.language.decode('ascii', 'replace'),
+             self.short_description,
+             self.content)
 
     def __int__(self):
         return 0
@@ -1250,6 +1276,9 @@ class ID3v23Comment(ID3v22Comment):
                  None, 'COMM', 'APIC')
 
     ITUNES_COMPILATION = 'TCMP'
+
+    def __repr__(self):
+        return "ID3v23Comment(%s)" % (repr(self.__dict__["frames"]))
 
     def __comment_name__(self):
         return u'ID3v2.3'
@@ -1487,15 +1516,16 @@ class ID3v24Frame(ID3v23Frame):
         else:
             return cls(frame_id, frame_data.read_bytes(frame_size))
 
-    def __unicode__(self):
-        if (self.id.startswith('W')):
-            return self.data.rstrip(chr(0)).decode('iso-8859-1', 'replace')
-        else:
-            if (len(self.data) <= 20):
-                return unicode(self.data.encode('hex').upper())
-            else:
-                return (unicode(self.data[0:19].encode('hex').upper()) +
-                        u"\u2026")
+    #FIXME
+    # def __unicode__(self):
+    #     if (self.id.startswith('W')):
+    #         return self.data.rstrip(chr(0)).decode('iso-8859-1', 'replace')
+    #     else:
+    #         if (len(self.data) <= 20):
+    #             return unicode(self.data.encode('hex').upper())
+    #         else:
+    #             return (unicode(self.data[0:19].encode('hex').upper()) +
+    #                     u"\u2026")
 
 
 class ID3v24TextFrame(ID3v24Frame):
@@ -1525,6 +1555,12 @@ class ID3v24TextFrame(ID3v24Frame):
 
     def __unicode__(self):
         return self.string
+
+    def raw_info(self):
+        encoding = [u"latin-1", u"UTF-16", u"UTF-16BE", u"UTF-8"][self.encoding]
+        return u"%s = (%s) %s" % (self.id.decode('ascii'),
+                                  encoding,
+                                  self.string)
 
     def __int__(self):
         try:
@@ -1598,10 +1634,14 @@ class ID3v24PicFrame(ID3v24Frame, Image):
     def __eq__(self, i):
         return Image.__eq__(self, i)
 
-    def __unicode__(self):
-        return u"%s (%d\u00D7%d,'%s')" % \
-               (self.type_string(),
-                self.width, self.height, self.mime_type)
+    def raw_info(self):
+        return u"APIC = (%s, %d\u00D7%d, %s, \"%s\") %d bytes" % \
+            (self.type_string(),
+             self.width,
+             self.height,
+             self.mime_type,
+             self.description,
+             len(self.data))
 
     def build(self, writer):
         """builds a binary string of APIC data to the given BitstreamWriter"""
@@ -1652,6 +1692,15 @@ class ID3v24ComFrame(ID3v24TextFrame):
 
     def __unicode__(self):
         return self.content
+
+    def raw_info(self):
+        encoding = [u"latin-1", u"UTF-16", u"UTF-16BE", u"UTF-8"][self.encoding]
+
+        return u"COMM = (%s, %s, \"%s\") %s" % \
+            (encoding,
+             self.language.decode('ascii', 'replace'),
+             self.short_description,
+             self.content)
 
     def __int__(self):
         return 0
@@ -1833,18 +1882,18 @@ class ID3CommentPair(MetaData):
         self.id3v2.merge(metadata)
         self.id3v1.merge(metadata)
 
-    def __unicode__(self):
+    def raw_info(self):
         if ((self.id3v2 is not None) and (self.id3v1 is not None)):
             #both comments present
-            return unicode(self.id3v2) + \
-                   (os.linesep * 2) + \
-                   unicode(self.id3v1)
+            return (self.id3v2.raw_info() +
+                    os.linesep.decode('ascii') * 2 +
+                    self.id3v1.raw_info())
         elif (self.id3v2 is not None):
             #only ID3v2
-            return unicode(self.id3v2)
+            return self.id3v2.raw_info()
         elif (self.id3v1 is not None):
             #only ID3v1
-            return unicode(self.id3v1)
+            return self.id3v1.raw_info()
         else:
             return u''
 
