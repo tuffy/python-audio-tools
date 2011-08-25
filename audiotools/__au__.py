@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import (AudioFile, InvalidFile, PCMReader, Con,
+from audiotools import (AudioFile, InvalidFile, PCMReader,
                         transfer_data, InvalidFormat,
                         __capped_stream_reader__, BUFFER_SIZE,
                         FILENAME_FORMAT, EncodingError, DecodingError,
@@ -84,40 +84,30 @@ class AuAudio(AudioFile):
     SUFFIX = "au"
     NAME = SUFFIX
 
-    AU_HEADER = Con.Struct('header',
-                           Con.Const(Con.String('magic_number', 4), '.snd'),
-                           Con.UBInt32('data_offset'),
-                           Con.UBInt32('data_size'),
-                           Con.UBInt32('encoding_format'),
-                           Con.UBInt32('sample_rate'),
-                           Con.UBInt32('channels'))
-
     def __init__(self, filename):
         AudioFile.__init__(self, filename)
 
+        from .bitstream import BitstreamReader
+
         try:
             f = file(filename, 'rb')
+
+            (magic_number,
+             self.__data_offset__,
+             self.__data_size__,
+             encoding_format,
+             self.__sample_rate__,
+             self.__channels__) = BitstreamReader(f, 0).parse(
+                "4b 32u 32u 32u 32u 32u")
         except IOError, msg:
             raise InvalidAU(str(msg))
+
+        if (magic_number != '.snd'):
+            raise InvalidAU(_(u"Invalid Sun AU header"))
         try:
-            header = AuAudio.AU_HEADER.parse_stream(f)
-
-            if (header.encoding_format not in (2, 3, 4)):
-                raise InvalidFile(_(u"Unsupported Sun AU encoding format"))
-
-            self.__bits_per_sample__ = {2: 8, 3: 16, 4: 24}[
-                header.encoding_format]
-            self.__channels__ = header.channels
-            self.__sample_rate__ = header.sample_rate
-            self.__total_frames__ = header.data_size / \
-                (self.__bits_per_sample__ / 8) / \
-                self.__channels__
-            self.__data_offset__ = header.data_offset
-            self.__data_size__ = header.data_size
-        except Con.ConstError:
-            raise InvalidFile(_(u"Invalid Sun AU header"))
-        except Con.FieldError:
-                raise InvalidAU(_(u"Invalid Sun AU header"))
+            self.__bits_per_sample__ = {2: 8, 3: 16, 4: 24}[encoding_format]
+        except KeyError:
+            raise InvalidAU(_(u"Unsupported encoding format"))
 
     @classmethod
     def is_type(cls, file):
@@ -158,7 +148,9 @@ class AuAudio(AudioFile):
     def total_frames(self):
         """Returns the total PCM frames of the track as an integer."""
 
-        return self.__total_frames__
+        return (self.__data_size__ /
+                (self.__bits_per_sample__ / 8) /
+                self.__channels__)
 
     def to_pcm(self):
         """Returns a PCMReader object containing the track's PCM data."""
@@ -183,29 +175,26 @@ class AuAudio(AudioFile):
         at the given filename with the specified compression level
         and returns a new AuAudio object."""
 
+        from .bitstream import BitstreamWriter
+
         if (pcmreader.bits_per_sample not in (8, 16, 24)):
             raise InvalidFormat(
                 _(u"Unsupported bits per sample %s") % (
                     pcmreader.bits_per_sample))
 
-        bytes_per_sample = pcmreader.bits_per_sample / 8
-
-        header = Con.Container(magic_number='.snd',
-                               data_offset=0,
-                               data_size=0,
-                               encoding_format={8: 2, 16: 3, 24: 4}[
-                pcmreader.bits_per_sample],
-                               sample_rate=pcmreader.sample_rate,
-                               channels=pcmreader.channels)
+        data_size = 0
+        encoding_format = {8: 2, 16: 3, 24: 4}[pcmreader.bits_per_sample]
 
         try:
             f = file(filename, 'wb')
+            au = BitstreamWriter(f, 0)
         except IOError, err:
             raise EncodingError(str(err))
         try:
             #send out a dummy header
-            f.write(AuAudio.AU_HEADER.build(header))
-            header.data_offset = f.tell()
+            au.build("4b 32u 32u 32u 32u 32u",
+                     (".snd", 24, data_size, encoding_format,
+                      pcmreader.sample_rate, pcmreader.channels))
 
             #send our big-endian PCM data
             #d will be a list of ints, so we can't use transfer_data
@@ -214,7 +203,7 @@ class AuAudio(AudioFile):
                 while (len(framelist) > 0):
                     bytes = framelist.to_bytes(True, True)
                     f.write(bytes)
-                    header.data_size += len(bytes)
+                    data_size += len(bytes)
                     framelist = pcmreader.read(BUFFER_SIZE)
             except (IOError, ValueError), err:
                 cls.__unlink__(filename)
@@ -225,7 +214,9 @@ class AuAudio(AudioFile):
 
             #send out a complete header
             f.seek(0, 0)
-            f.write(AuAudio.AU_HEADER.build(header))
+            au.build("4b 32u 32u 32u 32u 32u",
+                     (".snd", 24, data_size, encoding_format,
+                      pcmreader.sample_rate, pcmreader.channels))
         finally:
             f.close()
 

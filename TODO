@@ -3738,7 +3738,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] __init__
     - [X] read
 ** TODO __ape__.py
-** TODO __au__.py
+** DONE __au__.py
 ** DONE cue.py
 ** TODO __dvda__.py
 ** DONE __flac__.py
@@ -4036,6 +4036,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Update trackinfo to use MetaData's unicode output by default
 ** DONE Add -L/--low-level option to trackinfo
 ** DONE Add -L/--low-level option to trackinfo.1
+** TODO Add consistent embedded cuesheet display
 ** TODO Update unit tests
 * TODO Update FLAC/Vorbis to support TOTALTRACKS field for track_total
   This seems to be catching on as a standard.

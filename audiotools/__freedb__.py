@@ -355,14 +355,18 @@ class DiscID:
             else:
                 return (i % 10) + __count_digits__(i / 10)
 
-        disc_id = Con.Container()
+        track_count = len(self.tracks)
+        length = self.length() / 75
+        digit_sum = sum([__count_digits__(o / 75)
+                         for o in self.offsets()]) % 0xFF
 
-        disc_id.track_count = len(self.tracks)
-        disc_id.length = self.length() / 75
-        disc_id.digit_sum = sum([__count_digits__(o / 75)
-                                 for o in self.offsets()]) % 0xFF
+        print repr("%8.8X" % (((digit_sum & 0xFF) << 24) |
+                              ((length & 0xFFFF) << 8) |
+                              (track_count & 0xFF)))
 
-        return DiscID.DISCID.build(disc_id).encode('hex')
+        return "%8.8X" % (((digit_sum & 0xFF) << 24) |
+                          ((length & 0xFFFF) << 8) |
+                          (track_count & 0xFF))
 
     def freedb_id(self):
         """Returns the entire FreeDB disc ID, including suffix."""

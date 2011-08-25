@@ -83,28 +83,6 @@ class WavPackAPEv2(ApeTag):
         ApeTag.__init__(self, tags=tags, tag_length=tag_length)
         self.frame_count = frame_count
 
-    def __comment_pairs__(self):
-        return filter(lambda pair: pair[0] != 'Cuesheet',
-                      ApeTag.__comment_pairs__(self))
-
-    def __unicode__(self):
-        if ('Cuesheet' not in self.keys()):
-            return ApeTag.__unicode__(self)
-        else:
-            import cue
-
-            try:
-                return u"%s%sCuesheet:\n%s" % \
-                    (MetaData.__unicode__(self),
-                     os.linesep * 2,
-                     sheet_to_unicode(
-                            cue.parse(
-                                cue.tokens(unicode(self['Cuesheet']).encode(
-                                        'ascii', 'replace'))),
-                            self.frame_count))
-            except cue.CueException:
-                return ApeTag.__unicode__(self)
-
     @classmethod
     def converted(cls, metadata):
         """Converts a MetaData object to a WavPackAPEv2 object."""
