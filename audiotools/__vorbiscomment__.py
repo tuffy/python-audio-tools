@@ -119,7 +119,7 @@ class VorbisComment(MetaData):
         from os import linesep
         from . import display_unicode
 
-        #align the text strings on the "=" sign, if any
+        #align text strings on the "=" sign, if any
 
         if (len(self.comment_strings) > 0):
             max_indent = max([len(display_unicode(comment.split(u"=", 1)[0]))

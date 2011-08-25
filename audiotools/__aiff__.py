@@ -368,14 +368,18 @@ class AiffAudio(AiffContainer):
         else:
             return None
 
-    def set_metadata(self, metadata):
-        """Takes a MetaData object and sets this track's metadata.
+    def update_metadata(self, metadata):
+        """Takes this track's current MetaData object
+        as returned by get_metadata() and sets this track's metadata
+        with any fields updated in that object.
 
-        This metadata includes track name, album name, and so on.
-        Raises IOError if unable to write the file."""
+        Raises IOError if unable to write the file.
+        """
 
         if (metadata is None):
             return
+        elif (not isinstance(metadata, ID3v22Comment)):
+            raise _(u"metadata not from audio file")
 
         def chunk_filter(chunks, id3_chunk):
             id3_found = False
@@ -393,21 +397,35 @@ class AiffAudio(AiffContainer):
         import tempfile
         from .bitstream import BitstreamRecorder
 
+        #turn our ID3v2.2 tag into a raw binary chunk
         id3_chunk = BitstreamRecorder(0)
-        ID3v22Comment.converted(metadata).build(id3_chunk)
+        metadata.build(id3_chunk)
         id3_chunk = id3_chunk.data()
 
+        #generate a temporary AIFF file in which our new ID3v2.2 chunk
+        #replaces the existing ID3v2.2 chunk
         new_aiff = tempfile.NamedTemporaryFile(suffix=self.SUFFIX)
         self.__class__.aiff_from_chunks(new_aiff.name,
                                         chunk_filter(self.chunks(),
                                                      id3_chunk))
 
+        #replace the existing file with data from the temporary file
         new_file = open(new_aiff.name, 'rb')
         old_file = open(self.filename, 'wb')
         transfer_data(new_file.read, old_file.write)
         old_file.close()
         new_file.close()
 
+    def set_metadata(self, metadata):
+        """Takes a MetaData object and sets this track's metadata.
+
+        This metadata includes track name, album name, and so on.
+        Raises IOError if unable to write the file."""
+
+        if (metadata is None):
+            return
+        else:
+            self.update_metadata(ID3v22Comment.converted(metadata))
 
     def delete_metadata(self):
         """Deletes the track's MetaData.

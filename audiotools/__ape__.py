@@ -601,6 +601,33 @@ class ApeTaggedAudio:
         finally:
             f.close()
 
+    def update_metadata(self, metadata):
+        if (metadata is None):
+            return
+        elif (not isinstance(metadata, self.APE_TAG_CLASS)):
+            raise ValueError(_(u"metadata not from audio file"))
+
+        from .bitstream import BitstreamWriter
+
+        f = file(self.filename, "rb")
+
+        #FIXME - pull metadata length finding from ApeTag entirely
+        #we can't trust metadata's .tag_length
+        #because the same metadata object may have been used for an update
+        #which is perfectly legal, but invalidates the old length:
+        # >>> wv = audiotools.open("file.wv")
+        # >>> m = wv.get_metadata()
+        # >>> m.track_name = u"New Name"
+        # >>> wv.update_metadata(m)
+        # >>> m.track_name = u"Another New Name"
+        # >>> wv.update_metadata(m)
+        untagged_data = f.read()[0:-self.get_metadata().tag_length]
+        f.close()
+        f = file(self.filename, "wb")
+        f.write(untagged_data)
+        metadata.build(BitstreamWriter(f, 1))
+        f.close()
+
     def set_metadata(self, metadata):
         """Takes a MetaData object and sets this track's metadata.
 
@@ -608,24 +635,18 @@ class ApeTaggedAudio:
 
         from .bitstream import BitstreamWriter
 
-        apetag = self.APE_TAG_CLASS.converted(metadata)
+        new_metadata = self.APE_TAG_CLASS.converted(metadata)
 
-        if (apetag is None):
-            return
-
-        current_metadata = self.get_metadata()
-        if (current_metadata is not None):  # there's existing tags to delete
-            f = file(self.filename, "rb")
-            untagged_data = f.read()[0:-current_metadata.tag_length]
-            f.close()
-            f = file(self.filename, "wb")
-            f.write(untagged_data)
-            apetag.build(BitstreamWriter(f, 1))
-            f.close()
-        else:                               # no existing tags
-            f = file(self.filename, "ab")
-            apetag.build(BitstreamWriter(f, 1))
-            f.close()
+        if (new_metadata is not None):
+            existing_metadata = self.get_metadata()
+            if (existing_metadata is not None):
+                #replace existing metadata with new metadata
+                self.update_metadata(new_metadata)
+            else:
+                #no existing metadata, so simply append a fresh tag
+                f = file(self.filename, "ab")
+                new_metadata.build(BitstreamWriter(f, 1))
+                f.close()
 
     def delete_metadata(self):
         """Deletes the track's MetaData.

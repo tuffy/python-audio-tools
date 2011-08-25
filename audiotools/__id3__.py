@@ -535,7 +535,7 @@ class ID3v22PicFrame(ID3v22Frame, Image):
                      (self.encoding,
                       self.format.encode('ascii', 'replace'),
                       self.pic_type))
-        self.encode_c_string(writer, description, self.encoding)
+        self.encode_c_string(writer, self.description, self.encoding)
         writer.write_bytes(self.data)
 
     @classmethod

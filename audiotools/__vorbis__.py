@@ -409,8 +409,6 @@ class VorbisAudio(AudioFile):
         for page in data_pages:
             updated_ogg.write_page(*page)
 
-
-
     def set_metadata(self, metadata):
         """Takes a MetaData object and sets this track's metadata.
 

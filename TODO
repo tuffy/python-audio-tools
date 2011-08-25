@@ -3951,16 +3951,16 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Add update_metadata() method to AudioFile and subclasses
    for formats which take metadata at all
    - [X] ALACAudio
-   - [ ] AiffAudio
+   - [X] AiffAudio
    - [X] AudioFile
    - [X] FlacAudio
    - [X] M4AAudio
-   - [ ] MP2Audio
-   - [ ] MP3Audio
-   - [ ] OggFlacAudio
+   - [X] MP2Audio
+   - [X] MP3Audio
+   - [X] OggFlacAudio
    - [ ] SpeexAudio
-   - [ ] VorbisAudio
-   - [ ] WavPackAudio
+   - [X] VorbisAudio
+   - [X] WavPackAudio
 ** TODO Update clean() method to use update_metadata()
    for formats which implement clean() at all
    - [ ] ALACAudio

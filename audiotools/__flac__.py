@@ -902,6 +902,8 @@ class FlacAudio(WaveContainer, AiffContainer):
                                 "8": _(u"most amount of compression, " +
                                        u"slowest compression speed")}
 
+    METADATA_CLASS = FlacMetaData
+
     def __init__(self, filename):
         """filename is a plain string."""
 
@@ -1090,16 +1092,15 @@ class FlacAudio(WaveContainer, AiffContainer):
         This metadata includes track name, album name, and so on.
         Raises IOError if unable to write the file."""
 
-        metadata = FlacMetaData.converted(metadata)
+        metadata = self.METADATA_CLASS.converted(metadata)
 
         if (metadata is None):
             return
         old_metadata = self.get_metadata()
 
         #port over the old STREAMINFO and SEEKTABLE blocks
-        old_streaminfo = old_metadata.streaminfo
+        metadata.streaminfo = old_metadata.streaminfo
         old_seektable = old_metadata.seektable
-        metadata.streaminfo = old_streaminfo
         if (old_seektable is not None):
             metadata.seektable = old_seektable
 
@@ -2170,6 +2171,8 @@ class OggFlacAudio(AudioFile):
                                        u"slowest compression speed")}
     BINARIES = ("flac",)
 
+    METADATA_CLASS = OggFlacMetaData
+
     def __init__(self, filename):
         """filename is a plain string."""
 
@@ -2269,56 +2272,18 @@ class OggFlacAudio(AudioFile):
         finally:
             f.close()
 
-    def set_metadata(self, metadata):
-        """Takes a MetaData object and sets this track's metadata.
+    def update_metadata(self, metadata):
+        """Takes this track's current MetaData object
+        as returned by get_metadata() and sets this track's metadata
+        with any fields updated in that object.
 
-        This metadata includes track name, album name, and so on.
-        Raises IOError if unable to write the file."""
+        Raises IOError if unable to write the file.
+        """
 
-        from .bitstream import BitstreamWriter
-        from .bitstream import BitstreamRecorder
-        from .bitstream import BitstreamAccumulator
-        from .bitstream import BitstreamReader
-        from . import OggStreamReader,OggStreamWriter
+        if (not isinstance(metadata, OggFlacMetaData)):
+            raise ValueError(_(u"metadata not from audio file"))
 
-        metadata = OggFlacMetaData.converted(metadata)
-
-        #port over the old STREAMINFO and SEEKTABLE blocks
-        if (metadata is None):
-            return
-        old_metadata = self.get_metadata()
-
-        #FIXME - split this into the update_metadata routine
-        if ((old_metadata.streaminfo is not None) and
-            (metadata.streaminfo is not None) and
-            (old_metadata.streaminfo == metadata.streaminfo)):
-            #do nothing
-            pass
-        else:
-            #port over the old STREAMINFO and SEEKTABLE blocks
-            metadata.streaminfo = old_metadata.streaminfo
-            old_seektable = old_metadata.seektable
-            if (old_seektable is not None):
-                metadata.seektable = old_seektable
-
-            #grab "WAVEFORMATEXTENSIBLE_CHANNEL_MASK" from existing file
-            #(if any)
-            if ((self.channels() > 2) or (self.bits_per_sample() > 16)):
-                metadata.vorbis_comment[
-                    "WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
-                    u"0x%.4x" % (int(self.channel_mask()))]
-
-            #APPLICATION blocks should stay with the existing file (if any)
-            metadata.applications = [block for block in metadata.applications
-                                     if (block.type != 2)]
-
-            #always grab "vendor_string" from the existing file - if present
-            if ((old_metadata.vorbis_comment is not None) and
-                (metadata.vorbis_comment is not None)):
-                vendor_string = old_metadata.vorbis_comment.vendor_string
-                metadata.vorbis_comment.vendor_string = vendor_string
-
-        #always overwrite Ogg FLAC with fresh metadata
+                #always overwrite Ogg FLAC with fresh metadata
         #
         #The trouble with Ogg FLAC padding is that Ogg header overhead
         #requires a variable amount of overhead bytes per Ogg page
@@ -2329,6 +2294,12 @@ class OggFlacAudio(AudioFile):
         #field before re-checksumming it.
 
         import tempfile
+
+        from .bitstream import BitstreamWriter
+        from .bitstream import BitstreamRecorder
+        from .bitstream import BitstreamAccumulator
+        from .bitstream import BitstreamReader
+        from . import OggStreamReader,OggStreamWriter
 
         new_file = tempfile.TemporaryFile()
         try:
@@ -2372,6 +2343,44 @@ class OggFlacAudio(AudioFile):
                 original_file.close()
         finally:
             new_file.close()
+
+    def set_metadata(self, metadata):
+        """Takes a MetaData object and sets this track's metadata.
+
+        This metadata includes track name, album name, and so on.
+        Raises IOError if unable to write the file."""
+
+        metadata = OggFlacMetaData.converted(metadata)
+
+        if (metadata is None):
+            return
+
+        old_metadata = self.get_metadata()
+
+        #port over the old STREAMINFO and SEEKTABLE blocks
+        metadata.streaminfo = old_metadata.streaminfo
+        old_seektable = old_metadata.seektable
+        if (old_seektable is not None):
+            metadata.seektable = old_seektable
+
+        #grab "WAVEFORMATEXTENSIBLE_CHANNEL_MASK" from existing file
+        #(if any)
+        if ((self.channels() > 2) or (self.bits_per_sample() > 16)):
+            metadata.vorbis_comment[
+                "WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
+                u"0x%.4x" % (int(self.channel_mask()))]
+
+        #APPLICATION blocks should stay with the existing file (if any)
+        metadata.applications = [block for block in metadata.applications
+                                 if (block.type != 2)]
+
+        #always grab "vendor_string" from the existing file - if present
+        if ((old_metadata.vorbis_comment is not None) and
+            (metadata.vorbis_comment is not None)):
+            vendor_string = old_metadata.vorbis_comment.vendor_string
+            metadata.vorbis_comment.vendor_string = vendor_string
+
+        self.update_metadata(metadata)
 
     def delete_metadata(self):
         """Deletes the track's MetaData.

@@ -581,41 +581,20 @@ class MP3Audio(AudioFile):
         finally:
             f.close()
 
-    def set_metadata(self, metadata):
-        """Takes a MetaData object and sets this track's metadata.
+    def update_metadata(self, metadata):
+        """Takes this track's current MetaData object
+        as returned by get_metadata() and sets this track's metadata
+        with any fields updated in that object.
 
-        This metadata includes track name, album name, and so on.
-        Raises IOError if unable to write the file."""
+        Raises IOError if unable to write the file.
+        """
 
         if (metadata is None):
             return
-
-        if ((not isinstance(metadata, ID3v2Comment)) and
-            (not isinstance(metadata, ID3v1Comment))):
-            DEFAULT_ID3V2 = "id3v2.3"
-            DEFAULT_ID3V1 = "id3v1.1"
-
-            id3v2_class = {"id3v2.2": ID3v22Comment,
-                           "id3v2.3": ID3v23Comment,
-                           "id3v2.4": ID3v24Comment,
-                           "none": None}.get(config.get_default("ID3",
-                                                                "id3v2",
-                                                                DEFAULT_ID3V2),
-                                             DEFAULT_ID3V2)
-            id3v1_class = {"id3v1.1": ID3v1Comment,
-                           "none": None}.get(config.get_default("ID3",
-                                                                "id3v1",
-                                                                DEFAULT_ID3V1))
-            if ((id3v2_class is not None) and (id3v1_class is not None)):
-                metadata = ID3CommentPair.converted(metadata,
-                                                    id3v2_class=id3v2_class,
-                                                    id3v1_class=id3v1_class)
-            elif (id3v2_class is not None):
-                metadata = id3v2_class.converted(metadata)
-            elif (id3v1_class is not None):
-                metadata = id3v1_class.converted(metadata)
-            else:
-                return
+        elif (not (isinstance(metadata, ID3v2Comment) or
+                   isinstance(metadata, ID3CommentPair) or
+                   isinstance(metadata, ID3v1Comment))):
+            raise _(u"metadata not from audio file")
 
         #get the original MP3 data
         f = file(self.filename, "rb")
@@ -642,6 +621,46 @@ class MP3Audio(AudioFile):
             f.write(mp3_data)
             metadata.build(f)
         f.close()
+
+    def set_metadata(self, metadata):
+        """Takes a MetaData object and sets this track's metadata.
+
+        This metadata includes track name, album name, and so on.
+        Raises IOError if unable to write the file."""
+
+        if (metadata is None):
+            return
+
+        if (not (isinstance(metadata, ID3v2Comment) or
+                 isinstance(metadata, ID3CommentPair) or
+                 isinstance(metadata, ID3v1Comment))):
+            DEFAULT_ID3V2 = "id3v2.3"
+            DEFAULT_ID3V1 = "id3v1.1"
+
+            id3v2_class = {"id3v2.2": ID3v22Comment,
+                           "id3v2.3": ID3v23Comment,
+                           "id3v2.4": ID3v24Comment,
+                           "none": None}.get(config.get_default("ID3",
+                                                                "id3v2",
+                                                                DEFAULT_ID3V2),
+                                             DEFAULT_ID3V2)
+            id3v1_class = {"id3v1.1": ID3v1Comment,
+                           "none": None}.get(config.get_default("ID3",
+                                                                "id3v1",
+                                                                DEFAULT_ID3V1))
+            if ((id3v2_class is not None) and (id3v1_class is not None)):
+                self.update_metadata(
+                    ID3CommentPair.converted(metadata,
+                                             id3v2_class=id3v2_class,
+                                             id3v1_class=id3v1_class))
+            elif (id3v2_class is not None):
+                self.update_metadata(id3v2_class.converted(metadata))
+            elif (id3v1_class is not None):
+                self.update_metadata(id3v1_class.converted(metadata))
+            else:
+                return
+        else:
+            self.update_metadata(metadata)
 
     def delete_metadata(self):
         """Deletes the track's MetaData.
