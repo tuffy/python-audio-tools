@@ -81,7 +81,7 @@ class FlacMetaData(MetaData):
             self.__dict__["pictures"] = pictures
 
     def __setattr__(self, key, value):
-        if (key in self.__FIELDS__):
+        if (key in self.FIELDS):
             if (self.vorbis_comment is None):
                 self.vorbis_comment = Flac_VORBISCOMMENT(
                     u"Python Audio Tools %s" % (VERSION), [])
@@ -91,10 +91,10 @@ class FlacMetaData(MetaData):
             self.__dict__[key] = value
 
     def __getattr__(self, key):
-        if (key in self.__FIELDS__):
+        if (key in self.FIELDS):
             if (self.vorbis_comment is not None):
                 return getattr(self.vorbis_comment, key)
-            elif (key in self.__INTEGER_FIELDS__):
+            elif (key in self.INTEGER_FIELDS):
                 return 0
             else:
                 return u""
@@ -105,7 +105,7 @@ class FlacMetaData(MetaData):
                 raise AttributeError(key)
 
     def __delattr__(self, key):
-        if (key in self.__FIELDS__):
+        if (key in self.FIELDS):
             if (self.vorbis_comment is not None):
                 delattr(self.vorbis_comment, key)
         else:

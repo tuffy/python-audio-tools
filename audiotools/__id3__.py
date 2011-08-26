@@ -628,7 +628,7 @@ class ID3v22Comment(MetaData):
             self.frames[self.ATTRIBUTE_MAP[key]] = [
                 self.TextFrame.from_unicode(self.ATTRIBUTE_MAP[key],
                                             unicode(value))]
-        elif (key in MetaData.__FIELDS__):
+        elif (key in MetaData.FIELDS):
             pass
         else:
             self.__dict__[key] = value
@@ -644,11 +644,11 @@ class ID3v22Comment(MetaData):
                 else:
                     return unicode(frame)
             except KeyError:
-                if (key in MetaData.__INTEGER_FIELDS__):
+                if (key in MetaData.INTEGER_FIELDS):
                     return 0
                 else:
                     return u""
-        elif (key in MetaData.__FIELDS__):
+        elif (key in MetaData.FIELDS):
             return u""
         else:
             raise AttributeError(key)
@@ -673,7 +673,7 @@ class ID3v22Comment(MetaData):
                     del(self.frames[self.ATTRIBUTE_MAP[key]])
             elif (self.ATTRIBUTE_MAP[key] in self.frames):
                 del(self.frames[self.ATTRIBUTE_MAP[key]])
-        elif (key in MetaData.__FIELDS__):
+        elif (key in MetaData.FIELDS):
             pass
         else:
             raise AttributeError(key)
@@ -1826,7 +1826,7 @@ class ID3CommentPair(MetaData):
             raise ValueError(_(u"ID3v2 and ID3v1 cannot both be blank"))
 
     def __getattr__(self, key):
-        if (key in self.__INTEGER_FIELDS__):
+        if (key in self.INTEGER_FIELDS):
             if ((self.id3v2 is not None) and
                 (getattr(self.id3v2, key) != 0)):
                     return getattr(self.id3v2, key)
@@ -1834,7 +1834,7 @@ class ID3CommentPair(MetaData):
                 return getattr(self.id3v1, key)
             else:
                 raise ValueError(_(u"ID3v2 and ID3v1 cannot both be blank"))
-        elif (key in self.__FIELDS__):
+        elif (key in self.FIELDS):
             if ((self.id3v2 is not None) and
                 (getattr(self.id3v2, key) != u'')):
                     return getattr(self.id3v2, key)

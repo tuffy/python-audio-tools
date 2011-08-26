@@ -219,11 +219,11 @@ class AudioFileTest(unittest.TestCase):
 
         dummy_metadata = audiotools.MetaData(**dict(
                 [(field, char) for (field, char) in
-                 zip(audiotools.MetaData.__FIELDS__,
+                 zip(audiotools.MetaData.FIELDS,
                      string.ascii_letters)
-                 if field not in audiotools.MetaData.__INTEGER_FIELDS__] +
+                 if field not in audiotools.MetaData.INTEGER_FIELDS] +
                 [(field, i + 1) for (i, field) in
-                 enumerate(audiotools.MetaData.__INTEGER_FIELDS__)]))
+                 enumerate(audiotools.MetaData.INTEGER_FIELDS)]))
         temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
         try:
             track = self.audio_class.from_pcm(temp.name,
@@ -443,8 +443,8 @@ class AudioFileTest(unittest.TestCase):
 
         format_template = u"Fo\u00f3 %%(%(field)s)s"
         #first, test the many unicode string fields
-        for field in audiotools.MetaData.__FIELDS__:
-            if (field not in audiotools.MetaData.__INTEGER_FIELDS__):
+        for field in audiotools.MetaData.FIELDS:
+            if (field not in audiotools.MetaData.INTEGER_FIELDS):
                 metadata = audiotools.MetaData()
                 value = u"\u00dcnicode value \u2ec1"
                 setattr(metadata, field, value)

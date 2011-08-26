@@ -156,7 +156,7 @@ if (__name__ == '__main__'):
         track_fields = dict([(field,
                               set([getattr(m, field)
                                    for m in track_metadatas]))
-                             for field in audiotools.MetaData.__FIELDS__])
+                             for field in audiotools.MetaData.FIELDS])
 
         metadata = audiotools.MetaData(**dict([(field, list(values)[0])
                                                for (field, values) in

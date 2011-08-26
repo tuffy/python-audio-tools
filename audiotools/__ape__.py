@@ -313,7 +313,7 @@ class ApeTag(MetaData):
                 return 0
         elif (key in self.ATTRIBUTE_MAP):
             return unicode(self.get(self.ATTRIBUTE_MAP[key], u''))
-        elif (key in MetaData.__FIELDS__):
+        elif (key in MetaData.FIELDS):
             return u''
         else:
             try:
@@ -343,7 +343,7 @@ class ApeTag(MetaData):
                 del(self[self.ATTRIBUTE_MAP[key]])
             except ValueError:
                 pass
-        elif (key in MetaData.__FIELDS__):
+        elif (key in MetaData.FIELDS):
             pass
         else:
             try:
@@ -360,7 +360,7 @@ class ApeTag(MetaData):
         else:
             tags = cls([])
             for (field, key) in cls.ATTRIBUTE_MAP.items():
-                if (field not in cls.__INTEGER_FIELDS__):
+                if (field not in cls.INTEGER_FIELDS):
                     field = unicode(getattr(metadata, field))
                     if (len(field) > 0):
                         tags[key] = cls.ITEM.string(key, field)

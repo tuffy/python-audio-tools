@@ -960,7 +960,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                     return 0
             else:
                 return 0
-        elif (key in self.__FIELDS__):
+        elif (key in self.FIELDS):
             return u""
         else:
             raise AttributeError(key)
@@ -1115,7 +1115,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                 [M4A_ILST_Unicode_Data_Atom(
                         0, 1, getattr(metadata,
                                       attrib).encode('utf-8'))])
-                      for attrib in cls.__FIELDS__
+                      for attrib in cls.FIELDS
                       if (attrib in cls.UNICODE_ATTRIB_TO_ILST)]
 
         if ((metadata.track_number != 0) or

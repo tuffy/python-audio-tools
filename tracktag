@@ -25,69 +25,6 @@ import gettext
 
 gettext.install("audiotools", unicode=True)
 
-
-#--replace-metadata, no XMCD file given
-#completely wipe out existing metadata
-#and replace with tags given on command-line
-def blank_metadata(track, xmcd):
-    return audiotools.MetaData()
-
-
-#no --replace-metadata, no XMCD file given
-#use metadata from existing tracks as base
-#and merge with tags given on command-line
-def track_metadata(track, xmcd):
-    return track.get_metadata()
-
-
-#--replace-metadata, XMCD file given
-#completely wipe out existing metadata
-#and replace with command-line tags merged with XMCD metadata
-def xmcd_metadata(track, xmcd):
-    metadata = xmcd.get(track.track_number(), None)
-    if (metadata is not None):
-        return metadata
-    elif (len(xmcd) > 0):
-        return xmcd.metadata()
-    else:
-        return None
-
-
-#no --replace metadata, XMCD file given
-#replace with command-line tags merged with XMCD metadata
-#*and* existing metadata
-def xmcd_track_metadata(track, xmcd):
-    track_metadata = track.get_metadata()
-
-    if (track_metadata is not None):
-        xmcd_md = track_metadata.__class__.converted(
-            xmcd_metadata(track, xmcd))
-    elif (len(xmcd) > 0):
-        xmcd_md = xmcd.get(track.track_number(), None)
-        if (xmcd_md is None):
-            xmcd_md = xmcd.metadata()
-    else:
-        xmcd_md = None
-
-    if (xmcd_md is not None):
-        xmcd_md.merge(track_metadata)
-
-    return xmcd_md
-
-
-#--replace-metadata
-def replace_cuesheet(track, import_cuesheet):
-    return import_cuesheet
-
-
-#no --replace-metadata
-def noreplace_cuesheet(track, import_cuesheet):
-    if (import_cuesheet is None):
-        return track.get_cuesheet()
-    else:
-        return import_cuesheet
-
-
 #tries to return a populated Image object of the appropriate type
 #raises InvalidImage if something goes wrong during opening or parsing
 def get_raw_image(filename, type):
@@ -136,6 +73,8 @@ def read_comment(filename, messenger):
 
 
 if (__name__ == '__main__'):
+    #add an enormous number of options to the parser
+    #neatly categorized for convenience
     parser = audiotools.OptionParser(
         usage=_(u"%prog [options] [-x XMCD file] <track 1> [track 2] ..."),
         version="Python Audio Tools %s" % (audiotools.VERSION))
@@ -166,7 +105,7 @@ if (__name__ == '__main__'):
         ('--date', 'date', _(u'the date of recording')),
         ('--copyright', 'copyright', _(u'copyright information')),
         ('--comment', 'comment', _(u'a text comment'))]:
-        if (destination not in audiotools.MetaData.__INTEGER_FIELDS__):
+        if (destination not in audiotools.MetaData.INTEGER_FIELDS):
             text_group.add_option(option,
                                   action='store',
                                   type='string',
@@ -305,8 +244,10 @@ if (__name__ == '__main__'):
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("tracktag", options)
 
+    #open our set of input files for tagging
     audiofiles = audiotools.open_files(args, messenger=msg)
 
+    #along with the --xmcd file
     if (options.xmcd is not None):
         try:
             xmcd = audiotools.read_metadata_file(options.xmcd)
@@ -316,6 +257,7 @@ if (__name__ == '__main__'):
     else:
         xmcd = None
 
+    #and the --cue file
     isrcs = {}
     import_cuesheet = None
     if (options.cue is not None):
@@ -337,19 +279,6 @@ if (__name__ == '__main__'):
         except audiotools.SheetException, err:
             msg.error(unicode(err))
             sys.exit(1)
-
-    if (options.replace):
-        if (xmcd is None):
-            metadata_function = blank_metadata
-        else:
-            metadata_function = xmcd_metadata
-        cuesheet_function = replace_cuesheet
-    else:
-        if (xmcd is None):
-            metadata_function = track_metadata
-        else:
-            metadata_function = xmcd_track_metadata
-        cuesheet_function = noreplace_cuesheet
 
     if (options.thumbnail):
         if (not audiotools.can_thumbnail()):
@@ -374,59 +303,27 @@ if (__name__ == '__main__'):
         get_image = get_raw_image
 
     for file in audiofiles:
-        #our command-line built MetaData block,
-        #which takes precedence over the others
-        metadata = audiotools.MetaData()
+        #determine which MetaData to use as our base
+        #depending on whether we're performing a full replacement
+        if (not options.replace):
+            metadata = file.get_metadata()
+            if (metadata is not None):
+                update_method = "update_metadata"
+            else:
+                metadata = audiotools.MetaData()
+                update_method = "set_metadata"
+        else:
+            metadata = audiotools.MetaData()
+            update_method = "set_metadata"
 
-        if (file.track_number() in isrcs.keys()):
-            metadata.ISRC = isrcs[file.track_number()]
+        #apply tagging options to that metadata in reverse order of precedence
 
-        for field in ('track_name',
-                      'artist_name',
-                      'performer_name',
-                      'composer_name',
-                      'conductor_name',
-                      'album_name',
-                      'catalog',
-                      'track_number',
-                      'track_total',
-                      'album_number',
-                      'album_total',
-                      'ISRC',
-                      'publisher',
-                      'media_type',
-                      'year',
-                      'date',
-                      'copyright',
-                      'comment'):
-            if (getattr(options, field) is not None):
-                attr = getattr(options, field)
-                if (isinstance(attr, str)):
-                    attr = attr.decode(audiotools.IO_ENCODING,
-                                       'replace')
-                setattr(metadata, field, attr)
-
-        if (options.comment_file is not None):
-            metadata.comment = read_comment(options.comment_file, msg)
-
-        #our MetaData block built from the existing file
-        #and any given XMCD file
-        track_metadata = metadata_function(file, xmcd)
-
-        #our cuesheet block built from any given cuesheet file
-        track_cuesheet = cuesheet_function(file, import_cuesheet)
-
-        #transfer images from old MetaData block
-        #and from command-line options
+        #perform the image tagging
         try:
             if (metadata.supports_images()):
-                if (track_metadata is not None):
-                    if (not options.remove_images):
-                        for i in track_metadata.images():
-                            metadata.add_image(i)
-                    else:
-                        for i in track_metadata.images():
-                            track_metadata.delete_image(i)
+                if (options.remove_images):
+                    for i in metadata.images():
+                        metadata.delete_image(i)
 
                 if (options.front_cover is not None):
                     for path in options.front_cover:
@@ -453,43 +350,94 @@ if (__name__ == '__main__'):
                            "message": unicode(err)})
             sys.exit(1)
 
-        if (track_metadata is not None):
-            #remove attributes from old MetaData
-            for field in ('track_name',
-                          'artist_name',
-                          'performer_name',
-                          'composer_name',
-                          'conductor_name',
-                          'album_name',
-                          'catalog',
-                          'track_number',
-                          'track_total',
-                          'album_number',
-                          'album_total',
-                          'ISRC',
-                          'publisher',
-                          'media_type',
-                          'year',
-                          'date',
-                          'copyright',
-                          'comment'):
-                if (getattr(options, 'remove_' + field)):
-                    delattr(track_metadata, field)
+        #apply text field removal
+        for field in ('track_name',
+                      'artist_name',
+                      'performer_name',
+                      'composer_name',
+                      'conductor_name',
+                      'album_name',
+                      'catalog',
+                      'track_number',
+                      'track_total',
+                      'album_number',
+                      'album_total',
+                      'ISRC',
+                      'publisher',
+                      'media_type',
+                      'year',
+                      'date',
+                      'copyright',
+                      'comment'):
+            if (getattr(options, 'remove_' + field)):
+                delattr(metadata, field)
 
-            metadata = track_metadata.__class__.converted(metadata)
-            metadata.merge(track_metadata)
+        if (options.track_number is not None):
+            track_number = options.track_number
+        else:
+            track_number = file.track_number()
+
+        #handle cuesheet ISRC data
+        if (track_number in isrcs):
+            metadata.ISRC = isrcs[track_number]
+
+        #update fields from the XMCD file metadata
+        if (xmcd is not None):
+            xmcd_metadata = xmcd.get(track_number, None)
+            if (xmcd_metadata is not None):
+                for attr in xmcd_metadata.FIELDS:
+                    if (attr not in xmcd_metadata.INTEGER_FIELDS):
+                        if (len(getattr(xmcd_metadata, attr)) > 0):
+                            setattr(metadata, attr,
+                                    getattr(xmcd_metadata, attr))
+                    else:
+                        if (getattr(xmcd_metadata, attr) > 0):
+                            setattr(metadata, attr,
+                                    getattr(xmcd_metadata, attr))
+
+        #update fields from the command line
+        for field in ('track_name',
+                      'artist_name',
+                      'performer_name',
+                      'composer_name',
+                      'conductor_name',
+                      'album_name',
+                      'catalog',
+                      'track_number',
+                      'track_total',
+                      'album_number',
+                      'album_total',
+                      'ISRC',
+                      'publisher',
+                      'media_type',
+                      'year',
+                      'date',
+                      'copyright',
+                      'comment'):
+            if (getattr(options, field) is not None):
+                attr = getattr(options, field)
+                if (isinstance(attr, str)):
+                    attr = attr.decode(audiotools.IO_ENCODING, 'replace')
+                setattr(metadata, field, attr)
+
+        #add comment-file
+        if (options.comment_file is not None):
+            metadata.comment = read_comment(options.comment_file, msg)
 
         try:
-            file.set_metadata(metadata)
-            if (track_cuesheet is not None):
-                file.set_cuesheet(track_cuesheet)
+            #either set or update metadata
+            #depending on whether we're performing a full replacement
+            getattr(file, update_method)(metadata)
+
+            #insert embedded cuesheet file
+            if (import_cuesheet is not None):
+                file.set_cuesheet(import_cuesheet)
         except IOError:
             msg.error(_(u"Unable to modify \"%s\"") % \
                           msg.filename(file.filename))
             sys.exit(1)
 
-    #we're assuming all tracks are the same type
-    #add_replay_gain should check if they are not
+    #finally, add/apply replay_gain to tracks if indicated
     if (options.add_replay_gain and
         (len(audiofiles) > 0) and
         (audiofiles[0].can_add_replay_gain())):

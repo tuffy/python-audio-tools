@@ -439,7 +439,7 @@ class cd2track(UtilTest):
                     self.__check_error__(
                         _(u"Unknown field \"%s\" in file format") % ("foo"))
                     self.__check_info__(_(u"Supported fields are:"))
-                    for field in sorted(audiotools.MetaData.__FIELDS__ + \
+                    for field in sorted(audiotools.MetaData.FIELDS + \
                                             ("album_track_number", "suffix")):
                         if (field == 'track_number'):
                             self.__check_info__(u"%(track_number)2.2d")
@@ -1237,7 +1237,7 @@ class track2track(UtilTest):
                     self.__check_error__(
                         _(u"Unknown field \"%s\" in file format") % ("foo"))
                     self.__check_info__(_(u"Supported fields are:"))
-                    for field in sorted(audiotools.MetaData.__FIELDS__ + \
+                    for field in sorted(audiotools.MetaData.FIELDS + \
                                             ("album_track_number", "suffix")):
                         if (field == 'track_number'):
                             self.__check_info__(u"%(track_number)2.2d")
@@ -3372,13 +3372,15 @@ class tracktag(UtilTest):
                                      options +
                                      [self.track_file.name]), 0)
 
+                print options
+
                 track = audiotools.open(self.track_file.name)
                 track.verify()
                 metadata = track.get_metadata()
 
                 if ("--name" in options):
                     self.assertEqual(metadata.track_name, u"Name 3")
-                elif ("-x" in options):
+                elif (("-x" in options) and ("--number" not in options)):
                     self.assertEqual(metadata.track_name, u"Name 2")
                 elif ("-r" in options):
                     self.assertEqual(metadata.track_name, u"")
@@ -3387,7 +3389,7 @@ class tracktag(UtilTest):
 
                 if ("--artist" in options):
                     self.assertEqual(metadata.artist_name, u"Artist 3")
-                elif ("-x" in options):
+                elif (("-x" in options) and ("--number" not in options)):
                     self.assertEqual(metadata.artist_name, u"Artist 2")
                 elif ("-r" in options):
                     self.assertEqual(metadata.artist_name, u"")
@@ -3396,7 +3398,7 @@ class tracktag(UtilTest):
 
                 if ("--album" in options):
                     self.assertEqual(metadata.album_name, u"Album 3")
-                elif ("-x" in options):
+                elif (("-x" in options) and ("--number" not in options)):
                     self.assertEqual(metadata.album_name, u"Album 2")
                 elif ("-r" in options):
                     self.assertEqual(metadata.album_name, u"")
@@ -3414,7 +3416,7 @@ class tracktag(UtilTest):
 
                 if ("--track-total" in options):
                     self.assertEqual(metadata.track_total, 6)
-                elif ("-x" in options):
+                elif (("-x" in options) and ("--number" not in options)):
                     self.assertEqual(metadata.track_total, 1)
                 elif ("-r" in options):
                     self.assertEqual(metadata.track_total, 0)
@@ -3444,7 +3446,7 @@ class tracktag(UtilTest):
                 else:
                     self.assertEqual(metadata.comment, u"Comment 1")
 
-                if ("--cue" in options):
+                if (("--cue" in options) and ("--number" not in options)):
                     self.assertEqual(metadata.ISRC, u"JPPI00652340")
                 elif ("-r" in options):
                     self.assertEqual(metadata.ISRC, u"")
@@ -3799,11 +3801,11 @@ class tracktag_misc(UtilTest):
 
                 def number_fields_values(fields):
                     values = set([])
-                    for field in audiotools.MetaData.__INTEGER_FIELDS__:
+                    for field in audiotools.MetaData.INTEGER_FIELDS:
                         if (field in fields):
                             values.add(
                                 (field,
-                                 audiotools.MetaData.__INTEGER_FIELDS__.index(
+                                 audiotools.MetaData.INTEGER_FIELDS.index(
                                         field) + 1))
                         else:
                             values.add((field, 0))
@@ -3811,11 +3813,11 @@ class tracktag_misc(UtilTest):
 
                 def deleted_number_fields_values(fields):
                     values = set([])
-                    for field in audiotools.MetaData.__INTEGER_FIELDS__:
+                    for field in audiotools.MetaData.INTEGER_FIELDS:
                         if (field not in fields):
                             values.add(
                                 (field,
-                                 audiotools.MetaData.__INTEGER_FIELDS__.index(
+                                 audiotools.MetaData.INTEGER_FIELDS.index(
                                         field) + 1))
                         else:
                             values.add((field, 0))
@@ -3823,7 +3825,7 @@ class tracktag_misc(UtilTest):
 
                 def metadata_fields_values(metadata):
                     values = set([])
-                    for field in audiotools.MetaData.__INTEGER_FIELDS__:
+                    for field in audiotools.MetaData.INTEGER_FIELDS:
                         values.add((field, getattr(metadata, field)))
                     return values
 
@@ -4309,7 +4311,7 @@ class trackrename(UtilTest):
             self.__check_error__(_(u"Unknown field \"%s\" in file format") % \
                                      ("foo"))
             self.__check_info__(_(u"Supported fields are:"))
-            for field in sorted(audiotools.MetaData.__FIELDS__ + \
+            for field in sorted(audiotools.MetaData.FIELDS + \
                                     ("album_track_number", "suffix")):
                 if (field == 'track_number'):
                     self.__check_info__(u"%(track_number)2.2d")
@@ -4798,7 +4800,7 @@ class tracksplit(UtilTest):
                     self.__check_error__(
                         _(u"Unknown field \"%s\" in file format") % ("foo"))
                     self.__check_info__(_(u"Supported fields are:"))
-                    for field in sorted(audiotools.MetaData.__FIELDS__ + \
+                    for field in sorted(audiotools.MetaData.FIELDS + \
                                             ("album_track_number", "suffix")):
                         if (field == 'track_number'):
                             self.__check_info__(u"%(track_number)2.2d")

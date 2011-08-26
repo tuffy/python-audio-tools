@@ -88,7 +88,7 @@ if (__name__ == '__main__'):
                     msg.output(u"")
                 replay_gain = file.replay_gain()
                 if (replay_gain is not None):
-                    msg.output(_("ReplayGain:"))
+                    msg.output(_(u"ReplayGain:"))
                     msg.new_row()
                     msg.output_column(_(u"Track Gain : "), True)
                     msg.output_column(unicode(replay_gain.track_gain) + u" dB")
@@ -101,6 +101,37 @@ if (__name__ == '__main__'):
                     msg.new_row()
                     msg.output_column(_(u"Album Peak : "), True)
                     msg.output_column(u"%f" % (replay_gain.album_peak))
+                    msg.output_rows()
+                    msg.output(u"")
+                cuesheet = file.get_cuesheet()
+                if (cuesheet is not None):
+                    ISRCs = cuesheet.ISRCs()
+                    msg.output(_(u"Cuesheet:"))
+                    msg.new_row()
+                    msg.output_column(u"  ")
+                    msg.output_column(_(u"track"), True)
+                    msg.output_column(u"  ")
+                    msg.output_column(_(u"length"), True)
+                    msg.output_column(u"  ")
+                    msg.output_column(_(u"ISRC"))
+                    for (i, pcm_length) in enumerate(
+                        cuesheet.pcm_lengths(file.total_frames())):
+                        ISRC = ISRCs.get(i + 1, None)
+                        msg.new_row()
+                        msg.output_column(u"")
+                        msg.output_column(unicode(i + 1), True)
+                        msg.output_column(u"")
+                        msg.output_column(
+                            u"%d:%2.2d" % (pcm_length /
+                                           file.sample_rate() / 60,
+                                           pcm_length /
+                                           file.sample_rate() % 60),
+                            True)
+                        msg.output_column(u"")
+                        if (ISRC is not None):
+                            msg.output_column(ISRC.decode('ascii'))
+                        else:
+                            msg.output_column(u"")
                     msg.output_rows()
                     msg.output(u"")
             else:

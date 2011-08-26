@@ -360,10 +360,6 @@ class DiscID:
         digit_sum = sum([__count_digits__(o / 75)
                          for o in self.offsets()]) % 0xFF
 
-        print repr("%8.8X" % (((digit_sum & 0xFF) << 24) |
-                              ((length & 0xFFFF) << 8) |
-                              (track_count & 0xFF)))
-
         return "%8.8X" % (((digit_sum & 0xFF) << 24) |
                           ((length & 0xFFFF) << 8) |
                           (track_count & 0xFF))

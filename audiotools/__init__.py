@@ -2474,15 +2474,15 @@ class MetaData:
     accordingly.
     """
 
-    __FIELDS__ = ("track_name", "track_number", "track_total",
-                  "album_name", "artist_name",
-                  "performer_name", "composer_name", "conductor_name",
-                  "media", "ISRC", "catalog", "copyright",
-                  "publisher", "year", "date", "album_number", "album_total",
-                  "comment")
+    FIELDS = ("track_name", "track_number", "track_total",
+              "album_name", "artist_name",
+              "performer_name", "composer_name", "conductor_name",
+              "media", "ISRC", "catalog", "copyright",
+              "publisher", "year", "date", "album_number", "album_total",
+              "comment")
 
-    __INTEGER_FIELDS__ = ("track_number", "track_total",
-                          "album_number", "album_total")
+    INTEGER_FIELDS = ("track_number", "track_total",
+                      "album_number", "album_total")
 
     def __init__(self,
                  track_name=u"",
@@ -2560,13 +2560,13 @@ class MetaData:
 
     def __repr__(self):
         return ("MetaData(%s)" % (
-                ",".join(["%s"] * (len(MetaData.__FIELDS__))))) % \
+                ",".join(["%s"] * (len(MetaData.FIELDS))))) % \
                 tuple(["%s=%s" % (field, repr(getattr(self, field)))
-                       for field in MetaData.__FIELDS__])
+                       for field in MetaData.FIELDS])
 
     def __delattr__(self, field):
-        if (field in self.__FIELDS__):
-            if (field in self.__INTEGER_FIELDS__):
+        if (field in self.FIELDS):
+            if (field in self.INTEGER_FIELDS):
                 self.__dict__[field] = 0
             else:
                 self.__dict__[field] = u""
@@ -2679,7 +2679,7 @@ class MetaData:
     def __eq__(self, metadata):
         if (metadata is not None):
             return set([(getattr(self, attr) == getattr(metadata, attr))
-                        for attr in MetaData.__FIELDS__]) == set([True])
+                        for attr in MetaData.FIELDS]) == set([True])
         else:
             return False
 
@@ -2699,7 +2699,7 @@ class MetaData:
 
         if (metadata is not None):
             fields = dict([(field, getattr(metadata, field))
-                           for field in cls.__FIELDS__])
+                           for field in cls.FIELDS])
             fields["images"] = metadata.images()
             return MetaData(**fields)
         else:
@@ -2791,8 +2791,8 @@ class MetaData:
         if (metadata is None):
             return
 
-        for field in self.__FIELDS__:
-            if (field not in self.__INTEGER_FIELDS__):
+        for field in self.FIELDS:
+            if (field not in self.INTEGER_FIELDS):
                 if (len(getattr(self, field)) == 0):
                     setattr(self, field, getattr(metadata, field))
             else:
@@ -2843,7 +2843,7 @@ class AlbumMetaData(dict):
                                 [(field,
                                   set([getattr(track, field) for track
                                        in self.values()]))
-                                 for field in MetaData.__FIELDS__]
+                                 for field in MetaData.FIELDS]
                                 if (len(items) == 1)]))
 
 
@@ -2981,7 +2981,7 @@ class AlbumMetaDataFile:
                                 [(field,
                                   set([getattr(track, field) for track
                                        in self.track_metadatas()]))
-                                 for field in MetaData.__FIELDS__]
+                                 for field in MetaData.FIELDS]
                                 if (len(items) == 1)]))
 
 #######################
@@ -3158,7 +3158,7 @@ class UnsupportedTracknameField(Exception):
         messenger.error(_(u"Unknown field \"%s\" in file format") % \
                             (self.field))
         messenger.info(_(u"Supported fields are:"))
-        for field in sorted(MetaData.__FIELDS__ + \
+        for field in sorted(MetaData.FIELDS + \
                             ("album_track_number", "suffix")):
             if (field == 'track_number'):
                 messenger.info(u"%(track_number)2.2d")
@@ -3463,15 +3463,15 @@ class AudioFile:
                     (album_number, track_number))
 
             if (track_metadata is not None):
-                for field in track_metadata.__FIELDS__:
+                for field in track_metadata.FIELDS:
                     if ((field != "suffix") and
-                        (field not in MetaData.__INTEGER_FIELDS__)):
+                        (field not in MetaData.INTEGER_FIELDS)):
                         format_dict[field.decode('ascii')] = getattr(
                             track_metadata,
                             field).replace(u'/', u'-').replace(unichr(0), u' ')
             else:
-                for field in MetaData.__FIELDS__:
-                    if (field not in MetaData.__INTEGER_FIELDS__):
+                for field in MetaData.FIELDS:
+                    if (field not in MetaData.INTEGER_FIELDS):
                         format_dict[field.decode('ascii')] = u""
 
             format_dict[u"basename"] = os.path.splitext(

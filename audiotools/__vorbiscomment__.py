@@ -163,7 +163,7 @@ class VorbisComment(MetaData):
             except IndexError:
                 pass
 
-        if (attr in self.__INTEGER_FIELDS__):
+        if (attr in self.INTEGER_FIELDS):
             #all integer fields are present in attribute map
             try:
                 return int(self[self.ATTRIBUTE_MAP[attr]][0])
@@ -174,7 +174,7 @@ class VorbisComment(MetaData):
                 return self[self.ATTRIBUTE_MAP[attr]][0]
             except IndexError:
                 return u""
-        elif (attr in self.__FIELDS__):
+        elif (attr in self.FIELDS):
             return u""
         else:
             try:
@@ -292,7 +292,7 @@ class VorbisComment(MetaData):
             comment_strings = []
 
             for (attr, keys) in cls.ATTRIBUTE_MAP.items():
-                if (attr not in cls.__INTEGER_FIELDS__):
+                if (attr not in cls.INTEGER_FIELDS):
                     if (len(getattr(metadata, attr)) > 0):
                         comment_strings.append(
                             "%s=%s" % (cls.ATTRIBUTE_MAP[attr],
@@ -336,7 +336,7 @@ class VorbisComment(MetaData):
 
             #first, port over the known fields
             for field in self.ATTRIBUTE_MAP.keys():
-                if (field not in self.__INTEGER_FIELDS__):
+                if (field not in self.INTEGER_FIELDS):
                     if ((len(getattr(self, field)) == 0) and
                         (len(getattr(metadata, field)) > 0)):
                         setattr(self, field, getattr(metadata, field))
@@ -394,7 +394,7 @@ class VorbisComment(MetaData):
                             fixes_performed.append(
                                 _(u"removed whitespace/zeroes from %(field)s" %
                                   {"field":key}))
-                    elif (attr in self.__INTEGER_FIELDS__):
+                    elif (attr in self.INTEGER_FIELDS):
                         fix3 = fix2.lstrip(u"0")
                         if (fix3 != fix2):
                             fixes_performed.append(

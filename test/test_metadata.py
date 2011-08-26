@@ -109,7 +109,7 @@ class MetaDataTest(unittest.TestCase):
                 #check that setting the fields to random values works
                 for field in self.supported_fields:
                     metadata = self.empty_metadata()
-                    if (field not in audiotools.MetaData.__INTEGER_FIELDS__):
+                    if (field not in audiotools.MetaData.INTEGER_FIELDS):
                         unicode_string = u"".join(
                             [random.choice(chars)
                              for i in xrange(random.choice(range(1, 21)))])
@@ -128,7 +128,7 @@ class MetaDataTest(unittest.TestCase):
                 #check that blanking out the fields works
                 for field in self.supported_fields:
                     metadata = self.empty_metadata()
-                    if (field not in audiotools.MetaData.__INTEGER_FIELDS__):
+                    if (field not in audiotools.MetaData.INTEGER_FIELDS):
                         setattr(metadata, field, u"")
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
@@ -142,7 +142,7 @@ class MetaDataTest(unittest.TestCase):
                 #re-set the fields with random values
                 for field in self.supported_fields:
                     metadata = self.empty_metadata()
-                    if (field not in audiotools.MetaData.__INTEGER_FIELDS__):
+                    if (field not in audiotools.MetaData.INTEGER_FIELDS):
                         unicode_string = u"".join(
                             [random.choice(chars)
                              for i in xrange(random.choice(range(1, 21)))])
@@ -162,7 +162,7 @@ class MetaDataTest(unittest.TestCase):
                     delattr(metadata, field)
                     track.set_metadata(metadata)
                     metadata = track.get_metadata()
-                    if (field not in audiotools.MetaData.__INTEGER_FIELDS__):
+                    if (field not in audiotools.MetaData.INTEGER_FIELDS):
                         self.assertEqual(getattr(metadata, field), u"")
                     else:
                         self.assertEqual(getattr(metadata, field), 0)
@@ -216,11 +216,11 @@ class MetaDataTest(unittest.TestCase):
         self.assertEqual(metadata_new.__class__, self.metadata_class)
 
         #ensure our fields match
-        for field in audiotools.MetaData.__FIELDS__:
+        for field in audiotools.MetaData.FIELDS:
             if (field in self.supported_fields):
                 self.assertEqual(getattr(metadata_orig, field),
                                  getattr(metadata_new, field))
-            elif (field in audiotools.MetaData.__INTEGER_FIELDS__):
+            elif (field in audiotools.MetaData.INTEGER_FIELDS):
                 self.assertEqual(getattr(metadata_new, field), 0)
             else:
                 self.assertEqual(getattr(metadata_new, field), u"")
@@ -308,7 +308,7 @@ class MetaDataTest(unittest.TestCase):
         import random
 
         def field_val(field, value, int_value):
-            if (field in audiotools.MetaData.__INTEGER_FIELDS__):
+            if (field in audiotools.MetaData.INTEGER_FIELDS):
                 return int_value
             else:
                 return value
@@ -358,7 +358,7 @@ class MetaDataTest(unittest.TestCase):
                         for field in self.supported_fields:
                             if (field in fields_a):
                                 if (field in
-                                    audiotools.MetaData.__INTEGER_FIELDS__):
+                                    audiotools.MetaData.INTEGER_FIELDS):
                                     self.assertEqual(
                                         getattr(metadata_c, field), 1)
                                 else:
@@ -366,7 +366,7 @@ class MetaDataTest(unittest.TestCase):
                                         getattr(metadata_c, field), u"a")
                             elif (field in fields_b):
                                 if (field in
-                                    audiotools.MetaData.__INTEGER_FIELDS__):
+                                    audiotools.MetaData.INTEGER_FIELDS):
                                     self.assertEqual(
                                         getattr(metadata_c, field), 2)
                                 else:
@@ -374,7 +374,7 @@ class MetaDataTest(unittest.TestCase):
                                         getattr(metadata_c, field), u"b")
                             else:
                                 if (field in
-                                    audiotools.MetaData.__INTEGER_FIELDS__):
+                                    audiotools.MetaData.INTEGER_FIELDS):
                                     self.assertEqual(
                                         getattr(metadata_c, field), 0)
                                 else:
@@ -662,11 +662,11 @@ class WavPackApeTagMetaData(MetaDataTest):
         self.assertEqual(metadata_new.__class__, self.metadata_class)
 
         #ensure our fields match
-        for field in audiotools.MetaData.__FIELDS__:
+        for field in audiotools.MetaData.FIELDS:
             if (field in self.supported_fields):
                 self.assertEqual(getattr(metadata_orig, field),
                                  getattr(metadata_new, field))
-            elif (field in audiotools.MetaData.__INTEGER_FIELDS__):
+            elif (field in audiotools.MetaData.INTEGER_FIELDS):
                 self.assertEqual(getattr(metadata_new, field), 0)
             else:
                 self.assertEqual(getattr(metadata_new, field), u"")
@@ -881,7 +881,7 @@ class ID3v1MetaData(MetaDataTest):
                 #check that setting the fields to random values works
                 for field in self.supported_fields:
                     metadata = self.empty_metadata()
-                    if (field not in audiotools.MetaData.__INTEGER_FIELDS__):
+                    if (field not in audiotools.MetaData.INTEGER_FIELDS):
                         unicode_string = u"".join(
                             [random.choice(chars)
                              for i in xrange(random.choice(range(1, 5)))])
@@ -900,7 +900,7 @@ class ID3v1MetaData(MetaDataTest):
                 #check that blanking out the fields works
                 for field in self.supported_fields:
                     metadata = self.empty_metadata()
-                    if (field not in audiotools.MetaData.__INTEGER_FIELDS__):
+                    if (field not in audiotools.MetaData.INTEGER_FIELDS):
                         setattr(metadata, field, u"")
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
@@ -914,7 +914,7 @@ class ID3v1MetaData(MetaDataTest):
                 #re-set the fields with random values
                 for field in self.supported_fields:
                     metadata = self.empty_metadata()
-                    if (field not in audiotools.MetaData.__INTEGER_FIELDS__):
+                    if (field not in audiotools.MetaData.INTEGER_FIELDS):
                         unicode_string = u"".join(
                             [random.choice(chars)
                              for i in xrange(random.choice(range(1, 5)))])
@@ -936,7 +936,7 @@ class ID3v1MetaData(MetaDataTest):
                     delattr(metadata, field)
                     track.set_metadata(metadata)
                     metadata = track.get_metadata()
-                    if (field not in audiotools.MetaData.__INTEGER_FIELDS__):
+                    if (field not in audiotools.MetaData.INTEGER_FIELDS):
                         self.assertEqual(getattr(metadata, field), u"")
                     else:
                         self.assertEqual(getattr(metadata, field), 0)
@@ -2445,11 +2445,11 @@ class M4AMetaDataTest(MetaDataTest):
         self.assertEqual(metadata_new.__class__, self.metadata_class)
 
         #ensure our fields match
-        for field in audiotools.MetaData.__FIELDS__:
+        for field in audiotools.MetaData.FIELDS:
             if (field in self.supported_fields):
                 self.assertEqual(getattr(metadata_orig, field),
                                  getattr(metadata_new, field))
-            elif (field in audiotools.MetaData.__INTEGER_FIELDS__):
+            elif (field in audiotools.MetaData.INTEGER_FIELDS):
                 self.assertEqual(getattr(metadata_new, field), 0)
             else:
                 self.assertEqual(getattr(metadata_new, field), u"")
