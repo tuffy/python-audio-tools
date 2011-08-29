@@ -3458,7 +3458,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   This needs to be assimilated with a native decoder/encoder.
   I've seen these out in the wild, but only rarely.
 * TODO Add True Audio support
-
+  This compresses well and does seem to be used in some circles,
+  so it would be a good idea to add.
+  The tricky part is that its reference implementation doesn't compile well.
 * TODO Assimilate Vorbis support
 ** TODO Add Vorbis decoder
 *** TODO Add VorbisDecoder Python object to decoders
@@ -3717,7 +3719,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   Convert all usage of Construct to BitstreamReader/BitstreamWriter.
   Since this is unlikely to be updated for Python 3,
   removing it should smooth that inevitable transition.
-** TODO __accuraterip__.py
+** DONE __accuraterip__.py
 ** DONE __aiff__.py
    - [X] chunks
    - [X] get_metadata
@@ -3730,7 +3732,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE AiffReader
     - [X] __init__
     - [X] read
-** TODO __ape__.py
+** DONE __ape__.py
 ** DONE __au__.py
 ** DONE cue.py
 ** DONE __dvda__.py
@@ -3810,18 +3812,17 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ***** DONE meta
 *** DONE free
 *** DONE Rename __m4a_atoms2__.py to __m4a_atoms__.py
-** TODO __mp3__.py
-*** TODO MP3
+** DONE __mp3__.py
+*** DONE MP3
     - [X] __init__
     - [X] is_type
     - [X] __find_next_mp3_frame__
     - [X] __find_mp3_start__
     - [X] __find_last_mp3_frame__
-    - [ ] mpeg_frames
     - [X] verify
 *** DONE MP2
     - [X] is_type
-** TODO __musepack__.py
+** DONE __musepack__.py
 ** DONE __musicbrainz__.py
 ** DONE __ogg__.py
 ** DONE player.py
@@ -3839,6 +3840,20 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE __vorbiscomment__.py
 ** DONE __wav__.py
 ** DONE __wavpack__.py
+** DONE test/test_core.py
+*** DONE TestFrameList
+    - [X] test_8bit_roundtrip
+    - [X] test_16bit_roundtrip
+    - [X] test_24bit_roundtrip
+** DONE test/test_formats.py
+*** DONE ALACFileTest
+    - [X] test_blocksizes
+*** DONE FlacFileTest
+    - [X] test_blocksizes
+*** DONE ShortenFileTest
+    - [X] test_blocksizes
+*** DONE WavpackFileTest
+    - [X] test_blocksizes
 * TODO Handle write errors more gracefully
   Just as the BitstreamReader uses an exception mechanism to detect
   and handle read errors, the BitstreamWriter should use a similar

@@ -1,3 +1,0 @@
-"""
-Microsoft Word Document 
-"""

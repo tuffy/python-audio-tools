@@ -19,7 +19,7 @@
 
 
 from audiotools import (AudioFile, WaveAudio, InvalidFile, PCMReader,
-                        Con, transfer_data, subprocess, BIN, MetaData,
+                        transfer_data, subprocess, BIN, MetaData,
                         os, re, TempWaveReader, Image, cStringIO)
 import gettext
 
@@ -672,42 +672,42 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
     COMPRESSION_MODES = tuple([str(x * 1000) for x in range(1, 6)])
     BINARIES = ("mac",)
 
-    FILE_HEAD = Con.Struct("ape_head",
-                           Con.String('id', 4),
-                           Con.ULInt16('version'))
+    # FILE_HEAD = Con.Struct("ape_head",
+    #                        Con.String('id', 4),
+    #                        Con.ULInt16('version'))
 
-    #version >= 3.98
-    APE_DESCRIPTOR = Con.Struct("ape_descriptor",
-                                Con.ULInt16('padding'),
-                                Con.ULInt32('descriptor_bytes'),
-                                Con.ULInt32('header_bytes'),
-                                Con.ULInt32('seektable_bytes'),
-                                Con.ULInt32('header_data_bytes'),
-                                Con.ULInt32('frame_data_bytes'),
-                                Con.ULInt32('frame_data_bytes_high'),
-                                Con.ULInt32('terminating_data_bytes'),
-                                Con.String('md5', 16))
+    # #version >= 3.98
+    # APE_DESCRIPTOR = Con.Struct("ape_descriptor",
+    #                             Con.ULInt16('padding'),
+    #                             Con.ULInt32('descriptor_bytes'),
+    #                             Con.ULInt32('header_bytes'),
+    #                             Con.ULInt32('seektable_bytes'),
+    #                             Con.ULInt32('header_data_bytes'),
+    #                             Con.ULInt32('frame_data_bytes'),
+    #                             Con.ULInt32('frame_data_bytes_high'),
+    #                             Con.ULInt32('terminating_data_bytes'),
+    #                             Con.String('md5', 16))
 
-    APE_HEADER = Con.Struct("ape_header",
-                            Con.ULInt16('compression_level'),
-                            Con.ULInt16('format_flags'),
-                            Con.ULInt32('blocks_per_frame'),
-                            Con.ULInt32('final_frame_blocks'),
-                            Con.ULInt32('total_frames'),
-                            Con.ULInt16('bits_per_sample'),
-                            Con.ULInt16('number_of_channels'),
-                            Con.ULInt32('sample_rate'))
+    # APE_HEADER = Con.Struct("ape_header",
+    #                         Con.ULInt16('compression_level'),
+    #                         Con.ULInt16('format_flags'),
+    #                         Con.ULInt32('blocks_per_frame'),
+    #                         Con.ULInt32('final_frame_blocks'),
+    #                         Con.ULInt32('total_frames'),
+    #                         Con.ULInt16('bits_per_sample'),
+    #                         Con.ULInt16('number_of_channels'),
+    #                         Con.ULInt32('sample_rate'))
 
-    #version <= 3.97
-    APE_HEADER_OLD = Con.Struct("ape_header_old",
-                                Con.ULInt16('compression_level'),
-                                Con.ULInt16('format_flags'),
-                                Con.ULInt16('number_of_channels'),
-                                Con.ULInt32('sample_rate'),
-                                Con.ULInt32('header_bytes'),
-                                Con.ULInt32('terminating_bytes'),
-                                Con.ULInt32('total_frames'),
-                                Con.ULInt32('final_frame_blocks'))
+    # #version <= 3.97
+    # APE_HEADER_OLD = Con.Struct("ape_header_old",
+    #                             Con.ULInt16('compression_level'),
+    #                             Con.ULInt16('format_flags'),
+    #                             Con.ULInt16('number_of_channels'),
+    #                             Con.ULInt32('sample_rate'),
+    #                             Con.ULInt32('header_bytes'),
+    #                             Con.ULInt32('terminating_bytes'),
+    #                             Con.ULInt32('total_frames'),
+    #                             Con.ULInt32('final_frame_blocks'))
 
     def __init__(self, filename):
         """filename is a plain string."""

@@ -47,12 +47,12 @@ if (__name__ == '__main__'):
         '-s', '--speed', action='store',
         type='int', dest='speed')
 
-    parser.add_option(
-        '--accuraterip',
-        action='store_true',
-        default=False,
-        dest='accuraterip',
-        help=_(u'attempt to fetch AccurateRip information'))
+    # parser.add_option(
+    #     '--accuraterip',
+    #     action='store_true',
+    #     default=False,
+    #     dest='accuraterip',
+    #     help=_(u'attempt to fetch AccurateRip information'))
 
     conversion = audiotools.OptionGroup(parser, _(u"Extraction Options"))
 
@@ -201,9 +201,9 @@ if (__name__ == '__main__'):
 
     #attempt to fetch AccurateRip information
     #given the given CD if requested
-    if (options.accuraterip):
-        db_entry = audiotools.AccurateRipEntry.from_disc_id(
-            audiotools.AccurateRipDiscID.from_cdda(cdda))
+    # if (options.accuraterip):
+    #     db_entry = audiotools.AccurateRipEntry.from_disc_id(
+    #         audiotools.AccurateRipDiscID.from_cdda(cdda))
 
     if (len(args) == 0):
         to_rip = [track for track in cdda]
@@ -268,19 +268,19 @@ if (__name__ == '__main__'):
             encoded.append(track)
 
             rip_log[cd_track.track_number] = cd_track.rip_log
-            if (options.accuraterip):
-                if (db_entry is not None):
-                    for entry in db_entry[cd_track.track_number - 1]:
-                        if (entry.crc == int(cd_track.accuraterip_crc)):
-                            rip_log[cd_track.track_number]["accuraterip"] = \
-                                _(u"confidence %d") % (entry.confidence)
-                            break
-                    else:
-                        rip_log[cd_track.track_number]["accuraterip"] = \
-                            _(u"unverified")
-                else:
-                    rip_log[cd_track.track_number]["accuraterip"] = \
-                        _(u"unknown")
+            # if (options.accuraterip):
+            #     if (db_entry is not None):
+            #         for entry in db_entry[cd_track.track_number - 1]:
+            #             if (entry.crc == int(cd_track.accuraterip_crc)):
+            #                 rip_log[cd_track.track_number]["accuraterip"] = \
+            #                     _(u"confidence %d") % (entry.confidence)
+            #                 break
+            #         else:
+            #             rip_log[cd_track.track_number]["accuraterip"] = \
+            #                 _(u"unverified")
+            #     else:
+            #         rip_log[cd_track.track_number]["accuraterip"] = \
+            #             _(u"unknown")
 
             msg.info(_(u"track %(track_number)2.2d -> %(filename)s") % \
                          {"track_number": cd_track.track_number,
@@ -319,9 +319,9 @@ if (__name__ == '__main__'):
     headers = [u"track", u"rderr", u"skip", u"atom",
                u"edge", u"drop", u"dup", u"drift"]
     keys = ["rderr", "skip", "atom", "edge", "drop", "dup", "drift"]
-    if (options.accuraterip):
-        headers.append(u"   AccurateRip")
-        keys.append("accuraterip")
+    # if (options.accuraterip):
+    #     headers.append(u"   AccurateRip")
+    #     keys.append("accuraterip")
     dividers = []
     for header in headers:
         msg.output_column(header, True)

@@ -1,4 +1,0 @@
-"""
-application layer (various) protocols
-"""
-

@@ -28,7 +28,7 @@ import decimal
 import test_streams
 import cStringIO
 import subprocess
-from audiotools import Con
+import struct
 
 from test import (parser,
                   BLANK_PCM_Reader, RANDOM_PCM_Reader,
@@ -2138,7 +2138,7 @@ class ALACFileTest(LosslessFileTest):
 
     @FORMAT_ALAC
     def test_blocksizes(self):
-        noise = audiotools.Con.GreedyRepeater(audiotools.Con.SBInt16(None)).parse(os.urandom(64))
+        noise = struct.unpack(">32h", os.urandom(64))
 
         for block_size in [16, 17, 18, 19, 20, 21, 22, 23, 24,
                            25, 26, 27, 28, 29, 30, 31, 32, 33]:
@@ -2950,7 +2950,8 @@ class FlacFileTest(TestForeignAiffChunks,
     @FORMAT_FLAC
     def test_blocksizes(self):
         #FIXME - handle 8bps/24bps also
-        noise = audiotools.Con.GreedyRepeater(audiotools.Con.SBInt16(None)).parse(os.urandom(64))
+        noise = struct.unpack(">32h", os.urandom(64))
+
         encoding_args = {"min_residual_partition_order": 0,
                          "max_residual_partition_order": 6,
                          "mid_side": True,
@@ -3930,7 +3931,7 @@ class ShortenFileTest(TestForeignWaveChunks,
 
     @FORMAT_SHORTEN
     def test_blocksizes(self):
-        noise = audiotools.Con.GreedyRepeater(audiotools.Con.SBInt16(None)).parse(os.urandom(64))
+        noise = struct.unpack(">32h", os.urandom(64))
 
         for block_size in [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
                            256, 1024]:
@@ -4477,7 +4478,8 @@ class WavPackFileTest(TestForeignWaveChunks,
 
     @FORMAT_WAVPACK
     def test_blocksizes(self):
-        noise = audiotools.Con.GreedyRepeater(audiotools.Con.SBInt16(None)).parse(os.urandom(64))
+        noise = struct.unpack(">32h", os.urandom(64))
+
         opts = {"false_stereo": False,
                 "wasted_bits": False,
                 "joint_stereo": False}

@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import (DiscID, Con)
+from audiotools import DiscID
 
 class AccurateRipDiscID:
     def __init__(self, offsets):
@@ -79,17 +79,17 @@ class AccurateRipDiscID:
 
 
 class AccurateRipEntry:
-    ACCURATERIP_DB_ENTRY = Con.GreedyRepeater(
-        Con.Struct("db_entry",
-                   Con.ULInt8("track_count"),
-                   Con.ULInt32("disc_id1"),
-                   Con.ULInt32("disc_id2"),
-                   Con.ULInt32("freedb_id"),
-                   Con.StrictRepeater(lambda ctx: ctx["track_count"],
-                                      Con.Struct("tracks",
-                                                 Con.ULInt8("confidence"),
-                                                 Con.ULInt32("crc"),
-                                                 Con.ULInt32("crc2")))))
+    # ACCURATERIP_DB_ENTRY = Con.GreedyRepeater(
+    #     Con.Struct("db_entry",
+    #                Con.ULInt8("track_count"),
+    #                Con.ULInt32("disc_id1"),
+    #                Con.ULInt32("disc_id2"),
+    #                Con.ULInt32("freedb_id"),
+    #                Con.StrictRepeater(lambda ctx: ctx["track_count"],
+    #                                   Con.Struct("tracks",
+    #                                              Con.ULInt8("confidence"),
+    #                                              Con.ULInt32("crc"),
+    #                                              Con.ULInt32("crc2")))))
 
     def __init__(self, disc_id1, disc_id2, freedb_id, track_entries):
         """disc_id1, disc_id2 and freedb_id are ints

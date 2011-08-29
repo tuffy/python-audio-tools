@@ -26,7 +26,6 @@ if (sys.version_info < (2, 5, 0, 'final', 0)):
     sys.exit(1)
 
 
-from . import construct as Con
 from . import pcm as pcm
 import subprocess
 import re
@@ -3991,7 +3990,6 @@ from __mp3__ import *
 from __vorbis__ import *
 from __m4a__ import *
 from __wavpack__ import *
-from __musepack__ import *
 from __shn__ import *
 
 from __dvda__ import *

@@ -1,4 +1,0 @@
-"""
-the Trivial FTP protocol
-"""
-

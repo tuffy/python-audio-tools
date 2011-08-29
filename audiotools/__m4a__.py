@@ -19,7 +19,7 @@
 
 
 from audiotools import (AudioFile, InvalidFile, PCMReader, PCMConverter,
-                        Con, transfer_data, transfer_framelist_data,
+                        transfer_data, transfer_framelist_data,
                         subprocess, BIN, cStringIO, MetaData, os,
                         Image, image_metrics, InvalidImage,
                         ignore_sigint, InvalidFormat,
