@@ -3740,9 +3740,14 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO __ape__.py
 ** DONE __au__.py
 ** DONE cue.py
-** TODO __dvda__.py
+** DONE __dvda__.py
+*** DONE DVDAudio
+    - [X] __titlesets__
+    - [X] __titles__
+*** DONE DVDATitle
+    - [X] __parse_info__
 ** DONE __flac__.py
-** TODO __freedb__.py
+** DONE __freedb__.py
 ** DONE __id3__.py
 ** DONE __id3v1__.py
 ** TODO __image__.py
@@ -4052,3 +4057,103 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO ID3v22Comment
 ** TODO ID3v23Comment
 ** TODO ID3v24Comment
+* TODO Make MetaData set-like
+  That is, we can perform stuff like:
+  >>> flacmetadata3 = flacmetadata1.union(flacmetadata2)
+  which makes flacmetadata3 have all the fields that are common
+  to flacmetadata1 and flacmetadata2.
+
+  Though of only limited use right now
+  (trackcat could use MetaData.intersection(), for example)
+  this sort of abstraction could be helpful down the line.
+** TODO ApeTag
+   - [ ] isdisjoint
+   - [ ] issubset
+   - [ ] issuperset
+   - [ ] union
+   - [ ] intersection
+   - [ ] difference
+   - [ ] symmetric_difference
+** TODO FlacMetaData
+   - [ ] isdisjoint
+   - [ ] issubset
+   - [ ] issuperset
+   - [ ] union
+   - [ ] intersection
+   - [ ] difference
+   - [ ] symmetric_difference
+** TODO ID3CommentPair
+   - [ ] isdisjoint
+   - [ ] issubset
+   - [ ] issuperset
+   - [ ] union
+   - [ ] intersection
+   - [ ] difference
+   - [ ] symmetric_difference
+** TODO ID3v1Comment
+   - [ ] isdisjoint
+   - [ ] issubset
+   - [ ] issuperset
+   - [ ] union
+   - [ ] intersection
+   - [ ] difference
+   - [ ] symmetric_difference
+** TODO ID3v22Comment
+   - [ ] isdisjoint
+   - [ ] issubset
+   - [ ] issuperset
+   - [ ] union
+   - [ ] intersection
+   - [ ] difference
+   - [ ] symmetric_difference
+** TODO ID3v23Comment
+   - [ ] isdisjoint
+   - [ ] issubset
+   - [ ] issuperset
+   - [ ] union
+   - [ ] intersection
+   - [ ] difference
+   - [ ] symmetric_difference
+** TODO ID3v24Comment
+   - [ ] isdisjoint
+   - [ ] issubset
+   - [ ] issuperset
+   - [ ] union
+   - [ ] intersection
+   - [ ] difference
+   - [ ] symmetric_difference
+** TODO M4A_META_Atom
+   - [ ] isdisjoint
+   - [ ] issubset
+   - [ ] issuperset
+   - [ ] union
+   - [ ] intersection
+   - [ ] difference
+   - [ ] symmetric_difference
+** TODO MetaData
+   - [ ] isdisjoint
+   - [ ] issubset
+   - [ ] issuperset
+   - [ ] union
+   - [ ] intersection
+   - [ ] difference
+   - [ ] symmetric_difference
+** TODO OggFlacMetaData
+   - [ ] isdisjoint
+   - [ ] issubset
+   - [ ] issuperset
+   - [ ] union
+   - [ ] intersection
+   - [ ] difference
+   - [ ] symmetric_difference
+** TODO VorbisComment
+   - [ ] isdisjoint
+   - [ ] issubset
+   - [ ] issuperset
+   - [ ] union
+   - [ ] intersection
+   - [ ] difference
+   - [ ] symmetric_difference
+
+** TODO Document new methods
+** TODO Unit test new methods

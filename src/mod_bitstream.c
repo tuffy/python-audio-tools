@@ -659,10 +659,12 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
                      PyObject *args)
 {
     PyObject *file_obj;
+    unsigned int buffer_size = 4096;
 
     self->file_obj = NULL;
 
-    if (!PyArg_ParseTuple(args, "Oi", &file_obj, &(self->little_endian)))
+    if (!PyArg_ParseTuple(args, "Oi|I", &file_obj, &(self->little_endian),
+                          &buffer_size))
         return -1;
 
     Py_INCREF(file_obj);
@@ -675,7 +677,8 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
     } else {
         self->bitstream = br_open_python(
             self->file_obj,
-            self->little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
+            self->little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN,
+            buffer_size);
     }
 
     return 0;

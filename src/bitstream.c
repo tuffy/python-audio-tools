@@ -2370,13 +2370,13 @@ br_parse(struct BitstreamReader_s* stream, char* format, ...)
  *******************************************/
 
 struct br_python_input*
-py_open(PyObject* reader)
+py_open(PyObject* reader, unsigned int buffer_size)
 {
     struct br_python_input* input = malloc(sizeof(struct br_python_input));
     Py_INCREF(reader);
     input->reader_obj = reader;
-    input->buffer = malloc(4096 * sizeof(uint8_t));
-    input->buffer_total_size = 4096;
+    input->buffer = malloc(buffer_size * sizeof(uint8_t));
+    input->buffer_total_size = buffer_size;
     input->buffer_size = 0;
     input->buffer_position = 0;
     input->mark_in_progress = 0;
@@ -2401,7 +2401,7 @@ py_getc(struct br_python_input *stream)
         buffer_obj = PyObject_CallMethod(stream->reader_obj,
                                          "read",
                                          "i",
-                                         4096);
+                                         stream->buffer_total_size);
 
         if (buffer_obj != NULL) {
             /*if calling read() succeeded, convert our new buffer into bytes*/
@@ -2497,11 +2497,12 @@ py_free(struct br_python_input *stream)
 
 
 BitstreamReader*
-br_open_python(PyObject *reader, bs_endianness endianness)
+br_open_python(PyObject *reader, bs_endianness endianness,
+               unsigned int buffer_size)
 {
     BitstreamReader *bs = malloc(sizeof(BitstreamReader));
     bs->type = BR_PYTHON;
-    bs->input.python = py_open(reader);
+    bs->input.python = py_open(reader, buffer_size);
     bs->state = 0;
     bs->callbacks = NULL;
     bs->exceptions = NULL;

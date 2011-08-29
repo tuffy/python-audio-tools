@@ -788,7 +788,7 @@ br_substream_append_s(struct BitstreamReader_s *stream,
 
   object is increfed*/
 struct br_python_input*
-py_open(PyObject* reader);
+py_open(PyObject* reader, unsigned int buffer_size);
 
 /*analagous to fgetc, returns EOF at the end of stream
   or if some exception occurs when fetching from the reader object*/
@@ -804,7 +804,8 @@ void
 py_free(struct br_python_input *stream);
 
 BitstreamReader*
-br_open_python(PyObject *reader, bs_endianness endianness);
+br_open_python(PyObject *reader, bs_endianness endianness,
+               unsigned int buffer_size);
 
 void
 br_close_stream_p(BitstreamReader *bs);

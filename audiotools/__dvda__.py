@@ -18,7 +18,8 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import Con, re, os, pcm, cStringIO, struct
+from audiotools import re, os, pcm, cStringIO, struct
+from .bitstream import BitstreamReader
 
 
 class DVDAudio:
@@ -32,157 +33,6 @@ class DVDAudio:
 
     SECTOR_SIZE = 2048
     PTS_PER_SECOND = 90000
-
-    AUDIO_TS_IFO = Con.Struct(
-        "AUDIO_TS_IFO",
-        Con.Const(Con.Bytes("identifier", 12), "DVDAUDIO-AMG"),
-        Con.UBInt32("AMG_start_sector"),
-        Con.Padding(12),
-        Con.UBInt32("AMGI_end_sector"),
-        Con.UBInt16("DVD_version"),
-        Con.Padding(4),
-        Con.UBInt16("volume_count"),
-        Con.UBInt16("volume_number"),
-        Con.UBInt8("disc_side"),
-        Con.Padding(4),
-        Con.UBInt8("autoplay"),
-        Con.UBInt32("ts_to_sv"),
-        Con.Padding(10),
-        Con.UBInt8("video_titlesets"),
-        Con.UBInt8("audio_titlesets"),
-        Con.Bytes("provider_identifier", 40))
-
-    ATS_XX_S1 = Con.Struct(
-        "ATS_XX",
-        Con.Const(Con.String("identifier", 12), "DVDAUDIO-ATS"),
-        Con.UBInt32("ATS_end_sector"),
-        Con.Padding(12),
-        Con.UBInt32("ATSI_end_sector"),
-        Con.UBInt16("DVD_specification_version"),
-        Con.UBInt32("VTS_category"),
-        Con.Padding(90),
-        Con.UBInt32("ATSI_MAT_end_sector"),
-        Con.Padding(60),
-        Con.UBInt32("VTSM_VOBS_start_sector"),
-        Con.UBInt32("ATST_AOBS_start_sector"),
-        Con.UBInt32("VTS_PTT_SRPT_start_sector"),
-        Con.UBInt32("ATS_PGCI_UT_start_sector"),
-        Con.UBInt32("VTSM_PGCI_UT_start_sector"),
-        Con.UBInt32("VTS_TMAPT_start_sector"),
-        Con.UBInt32("VTSM_C_ADT_start_sector"),
-        Con.UBInt32("VTSM_VOBU_ADMA_start_sector"),
-        Con.UBInt32("VTS_C_ADT_start_sector"),
-        Con.UBInt32("VTS_VOBU_ADMAP_start_sector"),
-        Con.Padding(24))
-
-    ATS_XX_S2 = Con.Struct(
-        "ATS_XX2",
-        Con.UBInt16("title_count"),
-        Con.Padding(2),
-        Con.UBInt32("last_byte_address"),
-        Con.StrictRepeater(
-            lambda ctx: ctx['title_count'],
-            Con.Struct('titles',
-                       Con.UBInt16("unknown1"),
-                       Con.UBInt16("unknown2"),
-                       Con.UBInt32("byte_offset"))))
-
-    ATS_TITLE = Con.Struct(
-        "ATS_title",
-        Con.Bytes("unknown1", 2),
-        Con.UBInt8("tracks"),
-        Con.UBInt8("indexes"),
-        Con.UBInt32("track_length"),
-        Con.Bytes("unknown2", 4),
-        Con.UBInt16("sector_pointers_table"),
-        Con.Bytes("unknown3", 2),
-        Con.StrictRepeater(
-            lambda ctx: ctx["tracks"],
-            Con.Struct("timestamps",
-                       Con.Bytes("unknown1", 2),
-                       Con.Bytes("unknown2", 2),
-                       Con.UBInt8("index_number"),
-                       Con.Bytes("unknown3", 1),
-                       Con.UBInt32("first_pts"),
-                       Con.UBInt32("pts_length"),
-                       Con.Padding(6))))
-
-    ATS_SECTOR_POINTER = Con.Struct(
-        "sector_pointer",
-        Con.Const(Con.Bytes("unknown", 4),
-                  '\x01\x00\x00\x00'),
-        Con.UBInt32("first_sector"),
-        Con.UBInt32("last_sector"))
-
-    PACK_HEADER = Con.Struct(
-        "pack_header",
-        Con.Const(Con.UBInt32("sync_bytes"), 0x1BA),
-        Con.Embed(Con.BitStruct(
-                "markers",
-                Con.Const(Con.Bits("marker1", 2), 1),
-                Con.Bits("system_clock_high", 3),
-                Con.Const(Con.Bits("marker2", 1), 1),
-                Con.Bits("system_clock_mid", 15),
-                Con.Const(Con.Bits("marker3", 1), 1),
-                Con.Bits("system_clock_low", 15),
-                Con.Const(Con.Bits("marker4", 1), 1),
-                Con.Bits("scr_extension", 9),
-                Con.Const(Con.Bits("marker5", 1), 1),
-                Con.Bits("bit_rate", 22),
-                Con.Const(Con.Bits("marker6", 2), 3),
-                Con.Bits("reserved", 5),
-                Con.Bits("stuffing_length", 3))),
-        Con.StrictRepeater(lambda ctx: ctx["stuffing_length"],
-                           Con.UBInt8("stuffing")))
-
-    PES_HEADER = Con.Struct(
-        "pes_header",
-        Con.Const(Con.Bytes("start_code", 3), "\x00\x00\x01"),
-        Con.UBInt8("stream_id"),
-        Con.UBInt16("packet_length"))
-
-    PACKET_HEADER = Con.Struct(
-        "packet_header",
-        Con.UBInt16("unknown1"),
-        Con.Byte("pad1_size"),
-        Con.StrictRepeater(lambda ctx: ctx["pad1_size"],
-                           Con.Byte("pad1")),
-        Con.Byte("stream_id"),
-        Con.Byte("crc"),
-        Con.Byte("padding"),
-        Con.Switch("info",
-                   lambda ctx: ctx["stream_id"],
-                   {0xA0: Con.Struct(   # PCM info
-                    "pcm",
-                    Con.Byte("pad2_size"),
-                    Con.UBInt16("first_audio_frame"),
-                    Con.UBInt8("padding2"),
-                    Con.Embed(Con.BitStruct(
-                            "flags",
-                            Con.Bits("group1_bps", 4),
-                            Con.Bits("group2_bps", 4),
-                            Con.Bits("group1_sample_rate", 4),
-                            Con.Bits("group2_sample_rate", 4))),
-                    Con.UBInt8("padding3"),
-                    Con.UBInt8("channel_assignment")),
-
-                    0xA1: Con.Struct(   # MLP info
-                    "mlp",
-                    Con.Byte("pad2_size"),
-                    Con.StrictRepeater(lambda ctx: ctx["pad2_size"],
-                                       Con.Byte("pad2")),
-                    Con.Bytes("mlp_size", 4),
-                    Con.Const(Con.Bytes("sync_words", 3), "\xF8\x72\x6F"),
-                    Con.Const(Con.UBInt8("stream_type"), 0xBB),
-                    Con.Embed(Con.BitStruct(
-                            "flags",
-                            Con.Bits("group1_bps", 4),
-                            Con.Bits("group2_bps", 4),
-                            Con.Bits("group1_sample_rate", 4),
-                            Con.Bits("group2_sample_rate", 4),
-                            Con.Bits("unknown1", 11),
-                            Con.Bits("channel_assignment", 5),
-                            Con.Bits("unknown2", 48))))}))
 
     def __init__(self, audio_ts_path, cdrom_device=None):
         """A DVD-A which contains PCMReader-compatible track objects."""
@@ -246,25 +96,38 @@ class DVDAudio:
         except (KeyError, IOError):
             raise InvalidDVDA(_(u"unable to open AUDIO_TS.IFO"))
         try:
-            try:
-                for titleset in xrange(
-                    1,
-                    DVDAudio.AUDIO_TS_IFO.parse_stream(f).audio_titlesets + 1):
-                    #ensure there are IFO files and AOBs
-                    #for each valid titleset
-                    if (("ATS_%2.2d_0.IFO" % (titleset) in
-                         self.files.keys()) and
-                        ("ATS_%2.2d_1.AOB" % (titleset) in
-                         self.files.keys())):
-                        yield titleset
+            (identifier,
+             AMG_start_sector,
+             AMGI_end_sector,
+             DVD_version,
+             volume_count,
+             volume_number,
+             disc_side,
+             autoplay,
+             ts_to_sv,
+             video_titlesets,
+             audio_titlesets,
+             provider_information) = BitstreamReader(f, 0).parse(
+                "12b 32u 12P 32u 16u 4P 16u 16u 8u 4P 8u 32u 10P 8u 8u 40b")
 
-            except Con.ConstError:
-                raise InvalidDVDA(_(u"invalid AUDIO_TS.IFO"))
+            if (identifier != 'DVDAUDIO-AMG'):
+                raise InvalidDVDA(_(u"invalid AUDIO_TS.IFO file"))
+
+            for titleset in xrange(1, audio_titlesets + 1):
+                #ensure there are IFO files and AOBs
+                #for each valid titleset
+                if (("ATS_%2.2d_0.IFO" % (titleset) in
+                     self.files.keys()) and
+                    ("ATS_%2.2d_1.AOB" % (titleset) in
+                     self.files.keys())):
+                    yield titleset
         finally:
             f.close()
 
     def __titles__(self, titleset):
         """returns a list of DVDATitle objects for the given titleset"""
+
+        #this requires bouncing all over the ATS_XX_0.IFO file
 
         try:
             f = open(self.files['ATS_%2.2d_0.IFO' % (titleset)], 'rb')
@@ -272,77 +135,96 @@ class DVDAudio:
             raise InvalidDVDA(
                 _(u"unable to open ATS_%2.2d_0.IFO") % (titleset))
         try:
-            try:
-                #the first sector contains little of interest
-                #but we'll read it to check the identifier string
-                DVDAudio.ATS_XX_S1.parse_stream(f)
-            except Con.ConstError:
+            #ensure the file's identifier is correct
+            #which is all we care about from the first sector
+            if (f.read(12) != 'DVDAUDIO-ATS'):
                 raise InvalidDVDA(_(u"invalid ATS_%2.2d_0.IFO") % (titleset))
 
-            #then move to the second sector and continue parsing
-            f.seek(DVDAudio.SECTOR_SIZE, os.SEEK_SET)
 
-            #may contain one or more titles
-            title_records = DVDAudio.ATS_XX_S2.parse_stream(f)
+            #seek to the second sector and read the title count
+            #and list of title table offset values
+            f.seek(DVDAudio.SECTOR_SIZE, os.SEEK_SET)
+            ats_reader = BitstreamReader(f, 0)
+            (title_count, last_byte_address) = ats_reader.parse("16u 16p 32u")
+            title_offsets = [ats_reader.parse("8u 24p 32u")[1] for title in
+                             xrange(title_count)]
 
             titles = []
 
-            for (title_number,
-                 title_offset) in enumerate(title_records.titles):
-                f.seek(DVDAudio.SECTOR_SIZE +
-                       title_offset.byte_offset,
-                       os.SEEK_SET)
-                title = DVDAudio.ATS_TITLE.parse_stream(f)
+            for (title_number, title_offset) in enumerate(title_offsets):
+                #for each title, seek to its title table
+                #and read the title's values and its track timestamps
+                f.seek(DVDAudio.SECTOR_SIZE + title_offset, os.SEEK_SET)
+                ats_reader = BitstreamReader(f, 0)
+                (tracks,
+                 indexes,
+                 track_length,
+                 sector_pointers_table) = ats_reader.parse(
+                    "16p 8u 8u 32u 4P 16u 2P")
+                timestamps = [ats_reader.parse("32p 8u 8p 32u 32u 48p")
+                              for track in xrange(tracks)]
 
+                #seek to the title's sector pointers table
+                #and read the first and last sector values for title's tracks
                 f.seek(DVDAudio.SECTOR_SIZE +
-                       title_offset.byte_offset +
-                       title.sector_pointers_table,
+                       title_offset +
+                       sector_pointers_table,
                        os.SEEK_SET)
-                sector_pointers = ([None] +
-                                   [DVDAudio.ATS_SECTOR_POINTER.parse_stream(f)
-                                    for i in xrange(title.indexes)])
+                ats_reader = BitstreamReader(f, 0)
+                sector_pointers = [ats_reader.parse("32u 32u 32u")
+                                   for i in xrange(indexes)]
+                if (set([p[0] for p in sector_pointers[1:]]) !=
+                    set([0x01000000])):
+                    raise InvalidDVDA(_(u"invalid sector pointer"))
+                else:
+                    sector_pointers = [None] + sector_pointers
 
+                #build a preliminary DVDATitle object
+                #which we'll populate with track data
                 dvda_title = DVDATitle(dvdaudio=self,
                                        titleset=titleset,
                                        title=title_number + 1,
-                                       pts_length=title.track_length,
+                                       pts_length=track_length,
                                        tracks=[])
 
                 #for each track, determine its first and last sector
                 #based on the sector pointers between the track's
                 #initial index and the next track's initial index
                 for (track_number,
-                     (timestamp, next_timestamp)) in enumerate(zip(
-                        title.timestamps, title.timestamps[1:])):
-                     dvda_title.tracks.append(
-                         DVDATrack(
-                             dvdaudio=self,
-                             titleset=titleset,
-                             title=dvda_title,
-                             track=track_number + 1,
-                             first_pts=timestamp.first_pts,
-                             pts_length=timestamp.pts_length,
-                             first_sector=sector_pointers[
-                                 timestamp.index_number].first_sector,
-                             last_sector=sector_pointers[
-                                 next_timestamp.index_number - 1].last_sector))
+                     (timestamp,
+                      next_timestamp)) in enumerate(zip(timestamps,
+                                                        timestamps[1:])):
+                    (index_number, first_pts, pts_length) = timestamp
+                    next_timestamp_index = next_timestamp[0]
+                    dvda_title.tracks.append(
+                        DVDATrack(
+                            dvdaudio=self,
+                            titleset=titleset,
+                            title=dvda_title,
+                            track=track_number + 1,
+                            first_pts=first_pts,
+                            pts_length=pts_length,
+                            first_sector=sector_pointers[index_number][1],
+                            last_sector=sector_pointers[
+                                next_timestamp_index - 1][2]))
 
                 #for the last track, its sector pointers
                 #simply consume what remains on the list
-                timestamp = title.timestamps[-1]
+                (index_number, first_pts, pts_length) = timestamps[-1]
                 dvda_title.tracks.append(
                     DVDATrack(
                         dvdaudio=self,
                         titleset=titleset,
                         title=dvda_title,
-                        track=len(title.timestamps),
-                        first_pts=timestamp.first_pts,
-                        pts_length=timestamp.pts_length,
-                        first_sector=sector_pointers[
-                            timestamp.index_number].first_sector,
-                        last_sector=sector_pointers[-1].last_sector))
+                        track=len(timestamps),
+                        first_pts=first_pts,
+                        pts_length=pts_length,
+                        first_sector=sector_pointers[index_number][1],
+                        last_sector=sector_pointers[-1][2]))
 
+                #fill in the title's info such as sample_rate, channels, etc.
                 dvda_title.__parse_info__()
+
                 titles.append(dvda_title)
 
             return titles
@@ -414,29 +296,85 @@ class DVDATitle:
         aob_file = open(aob_path, 'rb')
         try:
             aob_file.seek(track_sector * DVDAudio.SECTOR_SIZE)
+            aob_reader = BitstreamReader(aob_file, 0)
 
-            #read the pack header
-            DVDAudio.PACK_HEADER.parse_stream(aob_file)
+            #read and validate the pack header
+            #(there's one pack header per sector, at the sector's start)
+            (sync_bytes,
+             marker1,
+             current_pts_high,
+             marker2,
+             current_pts_mid,
+             marker3,
+             current_pts_low,
+             marker4,
+             scr_extension,
+             marker5,
+             bit_rate,
+             marker6,
+             stuffing_length) = aob_reader.parse(
+                "32u 2u 3u 1u 15u 1u 15u 1u 9u 1u 22u 2u 5p 3u")
+            aob_reader.skip_bytes(stuffing_length)
+            if (sync_bytes != 0x1BA):
+                raise InvalidDVDA(_(u"invalid AOB sync bytes"))
+            if ((marker1 != 1) or (marker2 != 1) or (marker3 != 1) or
+                (marker4 != 1) or (marker5 != 1) or (marker6 != 3)):
+                raise InvalidDVDA(_(u"invalid AOB marker bits"))
+            packet_pts = ((current_pts_high << 30) |
+                          (current_pts_mid << 15) |
+                          current_pts_low)
 
-            #skip packets until the stream ID 0xBD is found
-            pes_header = DVDAudio.PES_HEADER.parse_stream(aob_file)
-            while (pes_header.stream_id != 0xBD):
-                aob_file.read(pes_header.packet_length)
-                pes_header = DVDAudio.PES_HEADER.parse_stream(aob_file)
+            #skip packets until one with a stream ID of 0xBD is found
+            (start_code,
+             stream_id,
+             packet_length) = aob_reader.parse("24u 8u 16u")
+            if (start_code != 1):
+                raise InvalidDVDA(_(u"invalid AOB packet start code"))
+            while (stream_id != 0xBD):
+                aob_reader.skip_bytes(packet_length)
+                (start_code,
+                 stream_id,
+                 packet_length) = aob_reader.parse("24u 8u 16u")
+                if (start_code != 1):
+                    raise InvalidDVDA(_(u"invalid AOB packet start code"))
 
-            #parse the PCM/MLP header
-            header = DVDAudio.PACKET_HEADER.parse_stream(aob_file)
+            #parse the PCM/MLP header in the packet data
+            (pad1_size,) = aob_reader.parse("16p 8u")
+            aob_reader.skip_bytes(pad1_size)
+            (stream_id, crc) = aob_reader.parse("8u 8u 8p")
+            if (stream_id == 0xA0):  #PCM
+                #read a PCM reader
+                (pad2_size,
+                 first_audio_frame,
+                 padding2,
+                 group1_bps,
+                 group2_bps,
+                 group1_sample_rate,
+                 group2_sample_rate,
+                 padding3,
+                 channel_assignment) = aob_reader.parse(
+                    "8u 16u 8u 4u 4u 4u 4u 8u 8u")
+            else:                    #MLP
+                aob_reader.skip_bytes(aob_reader.read(8)) #skip pad2
+                #read a total frame size + MLP major sync header
+                (total_frame_size,
+                 sync_words,
+                 stream_type,
+                 group1_bps,
+                 group2_bps,
+                 group1_sample_rate,
+                 group2_sample_rate,
+                 unknown1,
+                 channel_assignment,
+                 unknown2) = aob_reader.parse(
+                    "4p 12u 16p 24u 8u 4u 4u 4u 4u 11u 5u 48u")
 
             #return the values indicated by the header
-            self.sample_rate = DVDATrack.SAMPLE_RATE[
-                header.info.group1_sample_rate]
-            self.channels = DVDATrack.CHANNELS[
-                header.info.channel_assignment]
-            self.channel_mask = DVDATrack.CHANNEL_MASK[
-                header.info.channel_assignment]
-            self.bits_per_sample = DVDATrack.BITS_PER_SAMPLE[
-                header.info.group1_bps]
-            self.stream_id = header.stream_id
+            self.sample_rate = DVDATrack.SAMPLE_RATE[group1_sample_rate]
+            self.channels = DVDATrack.CHANNELS[channel_assignment]
+            self.channel_mask = DVDATrack.CHANNEL_MASK[channel_assignment]
+            self.bits_per_sample = DVDATrack.BITS_PER_SAMPLE[group1_bps]
+            self.stream_id = stream_id
 
         finally:
             aob_file.close()
@@ -603,7 +541,7 @@ class Rangeset:
         return "Rangeset(%s, %s)" % (repr(self.start), repr(self.end))
 
     def __len__(self):
-        return self.end - self.start
+        return int(self.end - self.start)
 
     def __getitem__(self, i):
         if (i >= 0):

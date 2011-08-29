@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import (VERSION, Con, cStringIO, sys, re, MetaData,
+from audiotools import (VERSION, cStringIO, sys, re, MetaData,
                         AlbumMetaData, AlbumMetaDataFile, __most_numerous__,
                         DummyAudioFile, MetaDataFileException)
 import StringIO
@@ -275,11 +275,6 @@ class XMCD(AlbumMetaDataFile):
 
 class DiscID:
     """An object representing a 32 bit FreeDB disc ID value."""
-
-    DISCID = Con.Struct('discid',
-                        Con.UBInt8('digit_sum'),
-                        Con.UBInt16('length'),
-                        Con.UBInt8('track_count'))
 
     def __init__(self, tracks=[], offsets=None, length=None, lead_in=150):
         """Fields are as follows:
