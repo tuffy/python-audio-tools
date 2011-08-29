@@ -2549,8 +2549,7 @@ class VorbisCommentTest(MetaDataTest):
                                  "album_number",
                                  "album_total",
                                  "comment"]
-        self.supported_formats = [audiotools.VorbisAudio,
-                                  audiotools.SpeexAudio]
+        self.supported_formats = [audiotools.VorbisAudio]
 
     def empty_metadata(self):
         return self.metadata_class.converted(audiotools.MetaData())

@@ -2393,8 +2393,7 @@ class tracklint(UtilTest):
     @UTIL_TRACKLINT
     def test_vorbis(self):
         for audio_class in [audiotools.OggFlacAudio,
-                            audiotools.VorbisAudio,
-                            audiotools.SpeexAudio]:
+                            audiotools.VorbisAudio]:
             bad_vorbiscomment = audiotools.VorbisComment(
                 {"TITLE": [u"Track Name  "],
                  "TRACKNUMBER": [u"02"],

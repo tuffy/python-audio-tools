@@ -1643,23 +1643,6 @@ class TestForeignAiffChunks:
             output_aiff.close()
 
 
-class AACFileTest(LossyFileTest):
-    def setUp(self):
-        self.audio_class = audiotools.AACAudio
-        self.suffix = "." + self.audio_class.SUFFIX
-
-    @FORMAT_AAC
-    def test_length(self):
-        temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
-        try:
-            for seconds in [1, 2, 3, 4, 5, 10, 20, 60, 120]:
-                track = self.audio_class.from_pcm(temp.name,
-                                                  BLANK_PCM_Reader(seconds))
-                self.assertEqual(int(round(track.seconds_length())), seconds)
-        finally:
-            temp.close()
-
-
 class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
     def setUp(self):
         self.audio_class = audiotools.AiffAudio
@@ -3977,56 +3960,6 @@ class ShortenFileTest(TestForeignWaveChunks,
                                 channel_mask=mask,
                                 bits_per_sample=bps)),
                         **encode_opts)
-
-class SpeexFileTest(LossyFileTest):
-    def setUp(self):
-        self.audio_class = audiotools.SpeexAudio
-        self.suffix = "." + self.audio_class.SUFFIX
-
-    @FORMAT_SPEEX
-    def test_verify(self):
-        good_file = tempfile.NamedTemporaryFile(suffix=self.suffix)
-        bad_file = tempfile.NamedTemporaryFile(suffix=self.suffix)
-        try:
-            good_track = self.audio_class.from_pcm(
-                good_file.name,
-                BLANK_PCM_Reader(1))
-            good_file.seek(0, 0)
-            good_file_data = good_file.read()
-            self.assertEqual(len(good_file_data),
-                             os.path.getsize(good_file.name))
-            bad_file.write(good_file_data)
-            bad_file.flush()
-
-            track = audiotools.open(bad_file.name)
-            self.assertEqual(track.verify(), True)
-
-            #first, try truncating the file
-            for i in xrange(len(good_file_data)):
-                f = open(bad_file.name, "wb")
-                f.write(good_file_data[0:i])
-                f.flush()
-                self.assertEqual(os.path.getsize(bad_file.name), i)
-                self.assertRaises(audiotools.InvalidFile,
-                                  track.verify)
-
-            #then, try flipping a bit
-            for i in xrange(len(good_file_data)):
-                for j in xrange(8):
-                    bad_file_data = list(good_file_data)
-                    bad_file_data[i] = chr(ord(bad_file_data[i]) ^ (1 << j))
-                    f = open(bad_file.name, "wb")
-                    f.write("".join(bad_file_data))
-                    f.close()
-                    self.assertEqual(os.path.getsize(bad_file.name),
-                                     len(good_file_data))
-                    self.assertRaises(audiotools.InvalidFile,
-                                      track.verify)
-
-            #convert() doesn't seem to error out properly
-        finally:
-            good_file.close()
-            bad_file.close()
 
 
 class VorbisFileTest(OggVerify, LossyFileTest):

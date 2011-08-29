@@ -2664,7 +2664,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] __musepack__ ?
    - [ ] __musicbrainz__
    - [ ] __shn__
-   - [ ] __speex__
    - [ ] __vorbis__
    - [ ] __vorbiscomment__
    - [ ] __wav__
@@ -2719,7 +2718,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO add a .verify() method to AudioFile classes
    Returns True if the file is okay.  Raises InvalidFile if not.
    Include unit test.
-   - [ ] AACAudio
    - [ ] AiffAudio
    - [X] ALACAudio
    - [ ] AuAudio
@@ -3184,9 +3182,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] test_sample_rate
     - [X] test_pcm
     - [X] test_convert
-*** TODO AACAudio
-    - [X] test_length
-    - [ ] test_verify
 *** DONE ALACAudio
     - [X] test_init
     - [X] test_bits_per_sample
@@ -3257,9 +3252,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] test_sines
     - [X] test_blocksizes
     - [X] test_noise
-*** TODO SpeexAudio
-    - [ ] test_init
-    - [X] test_verify
 *** TODO VorbisAudio
     - [ ] test_init
     - [X] test_channels
@@ -3450,17 +3442,18 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    This needs to be rewritten to support multiple audio sources
    and constructed with a threaded GUI, or dropped.
    The current implementation is entirely too half-assed.
-** TODO AACAudio / M4AAudio_faac
+** DONE AACAudio
+** DONE SpeexAudio
+   I don't believe this format was ever meant for standalone use,
+   and I doubt anybody is using it that way either.
+   I just threw it in because it was easy and because
+   I already had a lot of Ogg stream parsing infrastructure in place.
+** TODO M4AAudio_faac
    The authors of faad/faac have moved on to neroAacEnc/neroAacDec.
    Even though M4AAudio_nero is also a hack involving intermediate
    wav files, at least it gets updated.
    Having two different, slightly incompatible M4A implementations
    needlessly complicates things.
-** TODO SpeexAudio
-   I don't believe this format was ever meant for standalone use,
-   and I doubt anybody is using it that way either.
-   I just threw it in because it was easy and because
-   I already had a lot of Ogg stream parsing infrastructure in place.
 * TODO Restore Monkey's Audio support
   This needs to be assimilated with a native decoder/encoder.
   I've seen these out in the wild, but only rarely.
@@ -3792,11 +3785,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] __ftyp_atom__
     - [X] __moov_atom__
     - [X] __free_atom__
-*** TODO AACAudio
-    - [ ] __init__
-    - [ ] is_type
-    - [ ] aac_frames
-    - [ ] aac_frame_count
 ** DONE __m4a_atoms__.py
    Re-implement atom parsing/building without Construct
 *** DONE ftyp
@@ -3838,7 +3826,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE __ogg__.py
 ** DONE player.py
 ** DONE __shn__.py
-** TODO __speex__.py
 ** DONE toc.py
 ** DONE __vorbis__.py
 *** DONE VorbisAudio
@@ -3953,7 +3940,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   >>> flac1.update_metadata(m)
 
   while the other cases remain unchanged.
-** TODO Add update_metadata() method to AudioFile and subclasses
+** DONE Add update_metadata() method to AudioFile and subclasses
    for formats which take metadata at all
    - [X] ALACAudio
    - [X] AiffAudio
@@ -3963,7 +3950,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] MP2Audio
    - [X] MP3Audio
    - [X] OggFlacAudio
-   - [ ] SpeexAudio
    - [X] VorbisAudio
    - [X] WavPackAudio
 ** TODO Update clean() method to use update_metadata()
@@ -3975,7 +3961,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] MP2Audio
    - [ ] MP3Audio
    - [ ] OggFlacAudio
-   - [ ] SpeexAudio
    - [ ] VorbisAudio
    - [ ] WavPackAudio
 ** DONE Add update_metadata() to tracktag
@@ -3990,7 +3975,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] MP2Audio
    - [ ] MP3Audio
    - [ ] OggFlacAudio
-   - [ ] SpeexAudio
    - [ ] VorbisAudio
    - [ ] WavPackAudio
 * TODO Make metadata fully round-trippable

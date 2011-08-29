@@ -5950,8 +5950,6 @@ class TestMultiChannel(unittest.TestCase):
 
         for stereo_audio_class in [audiotools.MP3Audio,
                                    audiotools.MP2Audio,
-                                   audiotools.SpeexAudio,
-                                   audiotools.AACAudio,
                                    audiotools.M4AAudio_faac]:
 
             self.__test_undefined_mask_blank__(stereo_audio_class,

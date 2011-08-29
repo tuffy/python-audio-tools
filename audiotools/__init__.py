@@ -3992,7 +3992,6 @@ from __vorbis__ import *
 from __m4a__ import *
 from __wavpack__ import *
 from __musepack__ import *
-from __speex__ import *
 from __shn__ import *
 
 from __dvda__ import *
@@ -4822,11 +4821,9 @@ AVAILABLE_TYPES = (FlacAudio,
                    MP2Audio,
                    WaveAudio,
                    VorbisAudio,
-                   SpeexAudio,
                    AiffAudio,
                    AuAudio,
                    M4AAudio,
-                   AACAudio,
                    ALACAudio,
                    WavPackAudio,
                    ShortenAudio)
