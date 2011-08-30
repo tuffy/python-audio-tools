@@ -29,7 +29,6 @@ import decimal
 import test_streams
 import cStringIO
 import subprocess
-from audiotools import Con
 
 parser = ConfigParser.SafeConfigParser()
 parser.read("test.cfg")

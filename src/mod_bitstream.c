@@ -867,24 +867,27 @@ BitstreamWriter_init(bitstream_BitstreamWriter *self, PyObject *args)
 {
     PyObject *file_obj;
     int little_endian;
+    unsigned int buffer_size = 4096;
 
     self->file_obj = NULL;
 
-    if (!PyArg_ParseTuple(args, "Oi", &file_obj, &little_endian))
+    if (!PyArg_ParseTuple(args, "Oi|I", &file_obj, &little_endian,
+                          &buffer_size))
         return -1;
-
-    if (!PyFile_CheckExact(file_obj)) {
-        PyErr_SetString(PyExc_TypeError,
-                        "first argument must be an actual file object");
-        return -1;
-    }
 
     Py_INCREF(file_obj);
     self->file_obj = file_obj;
 
-    self->bitstream = bw_open(PyFile_AsFile(self->file_obj),
-                              little_endian ?
-                              BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
+    if (PyFile_CheckExact(file_obj)) {
+        self->bitstream = bw_open(PyFile_AsFile(self->file_obj),
+                                  little_endian ?
+                                  BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
+    } else {
+        self->bitstream = bw_open_python(self->file_obj,
+                                         little_endian ?
+                                         BS_LITTLE_ENDIAN : BS_BIG_ENDIAN,
+                                         buffer_size);
+    }
 
     return 0;
 }
@@ -892,9 +895,12 @@ BitstreamWriter_init(bitstream_BitstreamWriter *self, PyObject *args)
 void
 BitstreamWriter_dealloc(bitstream_BitstreamWriter *self)
 {
-    if (self->file_obj != NULL) {
-        self->bitstream->output.file = NULL;
+    if (self->bitstream != NULL) {
+        self->bitstream->flush(self->bitstream);
         bw_free(self->bitstream);
+    }
+
+    if (self->file_obj != NULL) {
         Py_DECREF(self->file_obj);
     }
 
@@ -1062,6 +1068,14 @@ BitstreamWriter_build(bitstream_BitstreamWriter *self, PyObject *args)
 }
 
 static PyObject*
+BitstreamWriter_flush(bitstream_BitstreamWriter *self, PyObject *args)
+{
+    self->bitstream->flush(self->bitstream);
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
 BitstreamWriter_add_callback(bitstream_BitstreamWriter *self,
                              PyObject *args)
 {
@@ -1123,8 +1137,14 @@ BitstreamWriter_close(bitstream_BitstreamWriter *self, PyObject *args)
 {
     self->bitstream->flush(self->bitstream);
 
-    Py_INCREF(Py_None);
-    return Py_None;
+    PyObject* close_result = PyObject_CallMethod(self->file_obj,
+                                                 "close", NULL);
+    if (close_result) {
+        Py_DECREF(close_result);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else
+        return NULL;
 }
 
 static PyObject*
@@ -1323,6 +1343,14 @@ BitstreamRecorder_build(bitstream_BitstreamRecorder *self,
         Py_INCREF(Py_None);
         return Py_None;
     }
+}
+
+static PyObject*
+BitstreamRecorder_flush(bitstream_BitstreamRecorder *self, PyObject *args)
+{
+    self->bitstream->flush(self->bitstream);
+    Py_INCREF(Py_None);
+    return Py_None;
 }
 
 static PyObject*
@@ -1818,6 +1846,14 @@ BitstreamAccumulator_build(bitstream_BitstreamAccumulator *self,
         Py_INCREF(Py_None);
         return Py_None;
     }
+}
+
+static PyObject*
+BitstreamAccumulator_flush(bitstream_BitstreamAccumulator *self, PyObject *args)
+{
+    self->bitstream->flush(self->bitstream);
+    Py_INCREF(Py_None);
+    return Py_None;
 }
 
 static PyObject*

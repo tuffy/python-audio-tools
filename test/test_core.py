@@ -19,7 +19,6 @@
 
 import unittest
 import audiotools
-from audiotools import Con
 import struct
 import random
 import tempfile
@@ -1672,9 +1671,9 @@ class Bitstream(unittest.TestCase):
 
         reader.rewind()
         self.assertEqual(reader.read(8), 0xB1)
-        reader.unread(0);
+        reader.unread(0)
         self.assertEqual(reader.read(1), 0)
-        reader.unread(1);
+        reader.unread(1)
         self.assertEqual(reader.read(1), 1)
 
         reader.rewind()
@@ -1780,7 +1779,7 @@ class Bitstream(unittest.TestCase):
         reader.mark()
 
         #bounce to the very end of the stream
-        reader.skip(31);
+        reader.skip(31)
         reader.mark()
         self.assertEqual(reader.read(1), 1)
         reader.rewind()
@@ -1827,7 +1826,7 @@ class Bitstream(unittest.TestCase):
                                   table,
                                   huffman_code_count):
         counter = ByteCounter()
-        reader.mark();
+        reader.mark()
         reader.add_callback(counter.callback)
 
         #a single callback
@@ -1854,7 +1853,7 @@ class Bitstream(unittest.TestCase):
 
         #temporarily suspending the callback
         counter.reset()
-        reader.read(8);
+        reader.read(8)
         self.assertEqual(int(counter), 1)
         callback = reader.pop_callback()
         reader.read(8)
@@ -1879,28 +1878,28 @@ class Bitstream(unittest.TestCase):
         #read_signed
         counter.reset()
         for i in xrange(8):
-            reader.read_signed(4);
+            reader.read_signed(4)
         self.assertEqual(int(counter), 4)
         reader.rewind()
 
         #read_64
         counter.reset()
         for i in xrange(8):
-            reader.read64(4);
+            reader.read64(4)
         self.assertEqual(int(counter), 4)
         reader.rewind()
 
         #skip
         counter.reset()
         for i in xrange(8):
-            reader.skip(4);
+            reader.skip(4)
         self.assertEqual(int(counter), 4)
         reader.rewind()
 
         #read_unary
         counter.reset()
         for i in xrange(unary_0_reads):
-            reader.unary(0);
+            reader.unary(0)
         self.assertEqual(int(counter), 4)
         counter.reset()
         reader.rewind()
@@ -1912,31 +1911,46 @@ class Bitstream(unittest.TestCase):
         #read_limited_unary
         counter.reset()
         for i in xrange(unary_0_reads):
-            reader.limited_unary(0, 6);
+            reader.limited_unary(0, 6)
         self.assertEqual(int(counter), 4)
         counter.reset()
         reader.rewind()
         for i in xrange(unary_1_reads):
-            reader.limited_unary(1, 6);
+            reader.limited_unary(1, 6)
         self.assertEqual(int(counter), 4)
         reader.rewind()
 
         #read_huffman_code
         counter.reset()
         for i in xrange(huffman_code_count):
-            reader.read_huffman_code(table);
+            reader.read_huffman_code(table)
         self.assertEqual(int(counter), 4)
         reader.rewind()
 
         #read_bytes
         counter.reset()
-        reader.read_bytes(2);
-        reader.read_bytes(2);
+        reader.read_bytes(2)
+        reader.read_bytes(2)
         self.assertEqual(int(counter), 4)
         reader.rewind()
 
         reader.pop_callback()
-        reader.unmark();
+        reader.unmark()
+
+
+    @LIB_CORE
+    def test_init_error(self):
+        from audiotools.bitstream import BitstreamAccumulator
+        from audiotools.bitstream import BitstreamReader
+        from audiotools.bitstream import BitstreamRecorder
+        from audiotools.bitstream import BitstreamWriter
+
+        self.assertRaises(TypeError, BitstreamAccumulator)
+        self.assertRaises(TypeError, BitstreamAccumulator, None)
+        self.assertRaises(TypeError, BitstreamRecorder)
+        self.assertRaises(TypeError, BitstreamRecorder, None)
+        self.assertRaises(TypeError, BitstreamWriter)
+        self.assertRaises(TypeError, BitstreamReader)
 
     @LIB_CORE
     def test_simple_reader(self):
@@ -2209,14 +2223,14 @@ class Bitstream(unittest.TestCase):
 
         #try the signed values via build()
         (writer, temp) = get_writer()
-        s_val_1 = 0;
-        s_val_2 = -1;
-        s_val_3 = -2147483648;
-        s_val_4 = 2147483647;
-        s_val64_1 = 0;
-        s_val64_2 = -1;
-        s_val64_3 = -9223372036854775808L;
-        s_val64_4 = 9223372036854775807L;
+        s_val_1 = 0
+        s_val_2 = -1
+        s_val_3 = -2147483648
+        s_val_4 = 2147483647
+        s_val64_1 = 0
+        s_val64_2 = -1
+        s_val64_3 = -9223372036854775808L
+        s_val64_4 = 9223372036854775807L
         writer.build("32s 32s 32s 32s 64S 64S 64S 64S",
                      [s_val_1, s_val_2, s_val_3, s_val_4,
                       s_val64_1, s_val64_2, s_val64_3, s_val64_4])
@@ -2347,6 +2361,12 @@ class Bitstream(unittest.TestCase):
                 self.__check_output_file__(temp)
             finally:
                 temp.close()
+
+            data = cStringIO.StringIO()
+            writer = BitstreamWriter(data, endianness)
+            check(writer, endianness)
+            del(writer)
+            self.assertEqual(data.getvalue(), "\xB1\xED\x3B\xC1")
 
         #perform recorder-based checks
         for check in checks:
@@ -2528,7 +2548,7 @@ class Bitstream(unittest.TestCase):
             writer.unary(0, 0)
             writer.unary(0, 0)
             writer.unary(0, 0)
-            writer.write(1, 1);
+            writer.write(1, 1)
         else:
             writer.unary(0, 1)
             writer.unary(0, 0)
@@ -2877,12 +2897,6 @@ class Bitstream(unittest.TestCase):
     @LIB_CORE
     def test_simple_writer(self):
         from audiotools.bitstream import BitstreamWriter
-
-        self.assertRaises(TypeError, BitstreamWriter, None, 0)
-        self.assertRaises(TypeError, BitstreamWriter, 1, 0)
-        self.assertRaises(TypeError, BitstreamWriter, "foo", 0)
-        self.assertRaises(TypeError, BitstreamWriter,
-                          cStringIO.StringIO("foo"), 0)
 
         temp = tempfile.NamedTemporaryFile()
         try:

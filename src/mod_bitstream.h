@@ -388,6 +388,9 @@ static PyObject*
 BitstreamWriter_build(bitstream_BitstreamWriter *self, PyObject *args);
 
 static PyObject*
+BitstreamWriter_flush(bitstream_BitstreamWriter *self, PyObject *args);
+
+static PyObject*
 BitstreamWriter_close(bitstream_BitstreamWriter *self, PyObject *args);
 
 int
@@ -408,6 +411,9 @@ PyMethodDef BitstreamWriter_methods[] = {
     {"byte_align", (PyCFunction)BitstreamWriter_byte_align, METH_NOARGS,
      "byte_align()\n"
      "pads the stream with 0 bits until the next whole byte"},
+    {"flush", (PyCFunction)BitstreamWriter_flush, METH_NOARGS,
+     "flush()\n"
+     "flushes pending data to any underlying file object"},
     {"close", (PyCFunction)BitstreamWriter_close, METH_NOARGS,
      "close()\n"
      "closes the stream and any underlying file object"},
@@ -572,6 +578,9 @@ static PyObject*
 BitstreamRecorder_call_callbacks(bitstream_BitstreamRecorder *self,
                                  PyObject *args);
 
+static PyObject*
+BitstreamRecorder_flush(bitstream_BitstreamRecorder *self,
+                        PyObject *args);
 
 static PyObject*
 BitstreamRecorder_reset(bitstream_BitstreamRecorder *self,
@@ -613,6 +622,9 @@ PyMethodDef BitstreamRecorder_methods[] = {
     {"byte_align", (PyCFunction)BitstreamRecorder_byte_align, METH_NOARGS,
      "byte_align()\n"
      "pads the stream with 0 bits until the next whole byte"},
+    {"flush", (PyCFunction)BitstreamRecorder_flush, METH_NOARGS,
+     "flush()\n"
+     "flushes pending data to any underlying file object"},
     {"close", (PyCFunction)BitstreamRecorder_close, METH_NOARGS,
     "close()\n"},
     {"write64", (PyCFunction)BitstreamRecorder_write64, METH_VARARGS,
@@ -773,7 +785,12 @@ BitstreamAccumulator_write_bytes(bitstream_BitstreamAccumulator *self,
                                  PyObject *args);
 
 static PyObject*
-BitstreamAccumulator_build(bitstream_BitstreamAccumulator *self, PyObject *args);
+BitstreamAccumulator_build(bitstream_BitstreamAccumulator *self,
+                           PyObject *args);
+
+static PyObject*
+BitstreamAccumulator_flush(bitstream_BitstreamAccumulator *self,
+                           PyObject *args);
 
 static PyObject*
 BitstreamAccumulator_close(bitstream_BitstreamAccumulator *self, PyObject *args);
@@ -810,6 +827,9 @@ PyMethodDef BitstreamAccumulator_methods[] = {
     {"byte_align", (PyCFunction)BitstreamAccumulator_byte_align, METH_NOARGS,
      "byte_align()\n"
      "pads the stream with 0 bits until the next whole byte"},
+    {"flush", (PyCFunction)BitstreamAccumulator_flush, METH_NOARGS,
+     "flush()\n"
+     "flushes pending data to any underlying file object"},
     {"close", (PyCFunction)BitstreamAccumulator_close, METH_NOARGS,
      "close()\n"
      "closes the stream and any underlying file object"},

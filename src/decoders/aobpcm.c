@@ -37,7 +37,7 @@ AOBPCMDecoder_init(decoders_AOBPCMDecoder *self,
                           &(self->bits_per_sample)))
         return -1;
 
-    self->reader = py_open(reader, 4096);
+    self->reader = py_open_r(reader, 4096);
 
     self->chunk_size = (self->bits_per_sample / 8) * self->channels * 2;
     self->buffer_size = DEFAULT_BUFFER_SIZE;
@@ -65,7 +65,7 @@ AOBPCMDecoder_new(PyTypeObject *type,
 void
 AOBPCMDecoder_dealloc(decoders_AOBPCMDecoder *self) {
     if (self->reader != NULL)
-        py_free(self->reader);
+        py_free_r(self->reader);
     if (self->buffer != NULL)
         free(self->buffer);
 

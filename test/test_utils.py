@@ -2330,6 +2330,21 @@ class trackcmp(UtilTest):
                                      "%2.2d.%s" % (i, self.type.SUFFIX))),
                     "result":_(u"OK")})
 
+
+class trackinfo(UtilTest):
+    @UTIL_TRACKINFO
+    def setUp(self):
+        pass
+
+    @UTIL_TRACKINFO
+    def tearDown(self):
+        pass
+
+    @UTIL_TRACKINFO
+    def test_trackinfo(self):
+        pass #FIXME - try all the options
+
+
 class tracklength(UtilTest):
     @UTIL_TRACKLENGTH
     def setUp(self):

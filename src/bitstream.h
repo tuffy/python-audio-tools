@@ -41,7 +41,7 @@
 
 typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 typedef enum {BR_FILE, BR_SUBSTREAM, BR_PYTHON} br_type;
-typedef enum {BW_FILE, BW_RECORDER, BW_ACCUMULATOR} bw_type;
+typedef enum {BW_FILE, BW_PYTHON, BW_RECORDER, BW_ACCUMULATOR} bw_type;
 typedef enum {BS_INST_UNSIGNED, BS_INST_SIGNED, BS_INST_UNSIGNED64,
               BS_INST_SIGNED64, BS_INST_SKIP, BS_INST_SKIP_BYTES,
               BS_INST_BYTES, BS_INST_ALIGN} bs_instruction;
@@ -94,6 +94,14 @@ struct br_python_input {
     Py_ssize_t buffer_position;
     int mark_in_progress;
 };
+
+struct bw_python_output {
+    PyObject* writer_obj;
+    uint8_t* buffer;
+    Py_ssize_t buffer_total_size;
+    Py_ssize_t buffer_size;
+};
+
 #endif
 
 /*parses (or continues parsing) the given format string
@@ -281,6 +289,9 @@ typedef struct BitstreamWriter_s {
         FILE* file;
         struct bs_buffer* buffer;
         unsigned int accumulator;
+#ifndef STANDALONE
+        struct bw_python_output* python;
+#endif
     } output;
 
     unsigned int buffer_size;
@@ -788,7 +799,7 @@ br_substream_append_s(struct BitstreamReader_s *stream,
 
   object is increfed*/
 struct br_python_input*
-py_open(PyObject* reader, unsigned int buffer_size);
+py_open_r(PyObject* reader, unsigned int buffer_size);
 
 /*analagous to fgetc, returns EOF at the end of stream
   or if some exception occurs when fetching from the reader object*/
@@ -797,11 +808,11 @@ py_getc(struct br_python_input *stream);
 
 /*closes the input stream and decrefs any objects*/
 int
-py_close(struct br_python_input *stream);
+py_close_r(struct br_python_input *stream);
 
 /*decrefs any objects and space, but does not close input stream*/
 void
-py_free(struct br_python_input *stream);
+py_free_r(struct br_python_input *stream);
 
 BitstreamReader*
 br_open_python(PyObject *reader, bs_endianness endianness,
@@ -810,11 +821,35 @@ br_open_python(PyObject *reader, bs_endianness endianness,
 void
 br_close_stream_p(BitstreamReader *bs);
 
+
+struct bw_python_output*
+py_open_w(PyObject* writer, unsigned int buffer_size);
+
+int
+py_putc(int c, struct bw_python_output *stream);
+
+int
+py_flush_w(struct bw_python_output *stream);
+
+void
+py_free_w(struct bw_python_output *stream);
+
+void
+py_close_w(struct bw_python_output *stream);
+
 #endif
 
 
 BitstreamWriter*
 bw_open(FILE *f, bs_endianness endianness);
+
+#ifndef STANDALONE
+
+BitstreamWriter*
+bw_open_python(PyObject *writer, bs_endianness endianness,
+               unsigned int buffer_size);
+
+#endif
 
 BitstreamWriter*
 bw_open_accumulator(bs_endianness endianness);
@@ -948,7 +983,8 @@ bw_swap_records(BitstreamWriter* a, BitstreamWriter* b);
 
  bw_function_x or bw_function_x_yy
 
- where "x" is "f" for raw file, "r" for recorder or "a" for accumulator
+ where "x" is "f" for raw file, "p" for Python, "r" for recorder
+ or "a" for accumulator
  and "yy" is "be" for big endian or "le" for little endian.
 
  For example:
@@ -957,6 +993,8 @@ bw_swap_records(BitstreamWriter* a, BitstreamWriter* b);
  |--------------------+-------------+---------------|
  | bw_write_bits_f_be | raw file    | big endian    |
  | bw_write_bits_f_le | raw file    | little endian |
+ | bw_write_bits_p_be | Python      | big endian    |
+ | bw_write_bits_p_le | Python      | little endian |
  | bw_write_bits_r_be | recorder    | big endian    |
  | bw_write_bits_r_le | recorder    | little endian |
  | bw_write_bits_a    | accumulator | N/A           |
@@ -967,6 +1005,12 @@ void
 bw_write_bits_f_be(BitstreamWriter* bs, unsigned int count, unsigned int value);
 void
 bw_write_bits_f_le(BitstreamWriter* bs, unsigned int count, unsigned int value);
+#ifndef STANDALONE
+void
+bw_write_bits_p_be(BitstreamWriter* bs, unsigned int count, unsigned int value);
+void
+bw_write_bits_p_le(BitstreamWriter* bs, unsigned int count, unsigned int value);
+#endif
 void
 bw_write_bits_r_be(BitstreamWriter* bs, unsigned int count, unsigned int value);
 void
@@ -977,6 +1021,10 @@ bw_write_bits_a(BitstreamWriter* bs, unsigned int count, unsigned int value);
 
 void
 bw_write_bytes_f(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
+#ifndef STANDALONE
+void
+bw_write_bytes_p(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
+#endif
 void
 bw_write_bytes_r(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
 void
@@ -984,9 +1032,11 @@ bw_write_bytes_a(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
 
 
 void
-bw_write_signed_bits_f_r_be(BitstreamWriter* bs, unsigned int count, int value);
+bw_write_signed_bits_f_p_r_be(BitstreamWriter* bs, unsigned int count,
+                              int value);
 void
-bw_write_signed_bits_f_r_le(BitstreamWriter* bs, unsigned int count, int value);
+bw_write_signed_bits_f_p_r_le(BitstreamWriter* bs, unsigned int count,
+                              int value);
 void
 bw_write_signed_bits_a(BitstreamWriter* bs, unsigned int count, int value);
 
@@ -995,6 +1045,12 @@ void
 bw_write_bits64_f_be(BitstreamWriter* bs, unsigned int count, uint64_t value);
 void
 bw_write_bits64_f_le(BitstreamWriter* bs, unsigned int count, uint64_t value);
+#ifndef STANDALONE
+void
+bw_write_bits64_p_be(BitstreamWriter* bs, unsigned int count, uint64_t value);
+void
+bw_write_bits64_p_le(BitstreamWriter* bs, unsigned int count, uint64_t value);
+#endif
 void
 bw_write_bits64_r_be(BitstreamWriter* bs, unsigned int count, uint64_t value);
 void
@@ -1004,11 +1060,11 @@ bw_write_bits64_a(BitstreamWriter* bs, unsigned int count, uint64_t value);
 
 
 void
-bw_write_signed_bits64_f_r_be(BitstreamWriter* bs, unsigned int count,
-                              int64_t value);
+bw_write_signed_bits64_f_p_r_be(BitstreamWriter* bs, unsigned int count,
+                                int64_t value);
 void
-bw_write_signed_bits64_f_r_le(BitstreamWriter* bs, unsigned int count,
-                              int64_t value);
+bw_write_signed_bits64_f_p_r_le(BitstreamWriter* bs, unsigned int count,
+                                int64_t value);
 void
 bw_write_signed_bits64_a(BitstreamWriter* bs, unsigned int count,
                          int64_t value);
@@ -1016,17 +1072,17 @@ bw_write_signed_bits64_a(BitstreamWriter* bs, unsigned int count,
 
 
 void
-bw_write_unary_f_r(BitstreamWriter* bs, int stop_bit, unsigned int value);
+bw_write_unary_f_p_r(BitstreamWriter* bs, int stop_bit, unsigned int value);
 void
 bw_write_unary_a(BitstreamWriter* bs, int stop_bit, unsigned int value);
 
 void
-bw_byte_align_f_r(BitstreamWriter* bs);
+bw_byte_align_f_p_r(BitstreamWriter* bs);
 void
 bw_byte_align_a(BitstreamWriter* bs);
 
 unsigned int
-bw_bits_written_f(BitstreamWriter* bs);
+bw_bits_written_f_p(BitstreamWriter* bs);
 unsigned int
 bw_bits_written_r(BitstreamWriter* bs);
 unsigned int
@@ -1036,6 +1092,12 @@ void
 bw_set_endianness_f_be(BitstreamWriter* bs, bs_endianness endianness);
 void
 bw_set_endianness_f_le(BitstreamWriter* bs, bs_endianness endianness);
+#ifndef STANDALONE
+void
+bw_set_endianness_p_be(BitstreamWriter* bs, bs_endianness endianness);
+void
+bw_set_endianness_p_le(BitstreamWriter* bs, bs_endianness endianness);
+#endif
 void
 bw_set_endianness_r_be(BitstreamWriter* bs, bs_endianness endianness);
 void
@@ -1053,11 +1115,19 @@ bw_close_new(BitstreamWriter* bs);
 
 void
 bw_flush_f(BitstreamWriter* bs);
+#ifndef STANDALONE
+void
+bw_flush_p(BitstreamWriter* bs);
+#endif
 void
 bw_noop(BitstreamWriter* bs);
 
 void
 bw_close_stream_f(BitstreamWriter* bs);
+#ifndef STANDALONE
+void
+bw_close_stream_p(BitstreamWriter* bs);
+#endif
 void
 bw_close_stream_r(BitstreamWriter* bs);
 void

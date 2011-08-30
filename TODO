@@ -3870,11 +3870,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Unit test write errors
 * TODO Check objects for invalid init calls
   If an init fails, the subsequent dealloc call shouldn't segfault Python.
-** TODO audiotools.bitstream
-   - [ ] BitstreamAccumulator
-   - [ ] BitstreamReader
-   - [ ] BitstreamRecorder
-   - [ ] BitstreamWriter
+** DONE audiotools.bitstream
+   - [X] BitstreamAccumulator
+   - [X] BitstreamReader
+   - [X] BitstreamRecorder
+   - [X] BitstreamWriter
 ** TODO audiotools.cdio
    - [ ] CDDA
    - [ ] CDImage
@@ -4156,3 +4156,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 
 ** TODO Document new methods
 ** TODO Unit test new methods
+* DONE Update BitstreamWriter to work on Python objects
+  That is, anything with a .write() and .close() method,
+  similar to how BitstreamReader operates.
