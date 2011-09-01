@@ -2636,6 +2636,95 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE Ensure an empty MD5 doesn't trigger an error at read time
 **** DONE Ensure an empty MD5 doesn't trigger an error at verify time
 **** DONE Ensure tracklint populates an empty MD5 correctly
+* DONE Add substream support to bitstream reader
+  Its function is to allow one to pull pieces out of a larger bitstream
+  and process them separately.
+  For example, while parsing an Ogg stream's pages with one bitstream,
+  the extracted Vorbis packets could be processed with smaller substreams -
+  including substreams that span one or more pages.
+  It's also potentially helpful for MP3, Ogg FLAC, DVD-A and any other format
+  with nontrivial wrappers that need to be parsed seperately
+  from the main bitstream.
+** DONE Implement substream reader methods
+*** DONE bs_read_bits_s_be
+*** DONE bs_read_bits_s_le
+*** DONE bs_read_signed_bits_s_be
+*** DONE bs_read_signed_bits_s_le
+*** DONE bs_read_bits64_s_be
+*** DONE bs_read_bits64_s_le
+*** DONE bs_skip_bits_s_be
+*** DONE bs_skip_bits_s_le
+*** DONE bs_read_unary_s_be
+*** DONE bs_read_unary_s_le
+*** DONE bs_read_limited_unary_s_be
+*** DONE bs_read_limited_unary_s_le
+*** DONE bs_set_endianness_s_be
+*** DONE bs_set_endianness_s_le
+*** DONE bs_read_huffman_code_s
+*** DONE bs_mark_s
+*** DONE bs_rewind_s
+*** DONE bs_unmark_s
+*** DONE bs_close_stream_s
+*** DONE bs_substream_new
+*** DONE bs_substream_f_be
+*** DONE bs_substream_f_le
+*** DONE bs_substream_p_be
+*** DONE bs_substream_p_le
+*** DONE bs_substream_s_be
+*** DONE bs_substream_s_le
+*** DONE bs_substream_append_f
+*** DONE bs_substream_append_p
+*** DONE bs_substream_append_s
+** DONE Add substream and substream_append to stream initializers
+*** DONE bs_open
+    - [X] substream
+    - [X] substream_append
+*** DONE bs_open_python
+    - [X] substream
+    - [X] substream_append
+** DONE Update current endianness setters with substream method
+*** DONE bs_set_endianness_f_be
+*** DONE bs_set_endianness_f_le
+*** DONE bs_set_endianness_p_be
+*** DONE bs_set_endianness_p_le
+** DONE Add garbage collection to substream
+   It should be possible to create a substream, process it partway,
+   then append more data to it without causing any overflow problems.
+   That is, data at the beginning of the buffer will be recycled
+   at append time if it hasn't been marked for rewinding back to.
+** DONE Add Python interface to substream
+*** DONE audiotools.decoders.BitstreamReader.substream
+*** DONE audiotools.decoders.BitstreamReader.substream_append
+** TODO Add unit tests to substream
+* DONE Check objects for invalid init calls
+  If an init fails, the subsequent dealloc call shouldn't segfault Python.
+** DONE audiotools.bitstream
+   - [X] BitstreamAccumulator
+   - [X] BitstreamReader
+   - [X] BitstreamRecorder
+   - [X] BitstreamWriter
+** DONE audiotools.cdio
+   - [X] CDDA
+   - [X] CDImage
+** DONE audiotools.decoders
+   - [X] ALACDecoder
+   - [X] AOBPCMDecoder
+   - [X] FlacDecoder
+   - [X] MLPDecoder
+   - [X] OggFlacDecoder
+   - [X] SHNDecoder
+   - [X] Sine_Mono
+   - [X] Sine_Simple
+   - [X] Sine_Stereo
+   - [X] WavPackDecoder
+** DONE audiotools.pcm
+   - [X] FrameList
+   - [X] FloatFrameList
+** DONE audiotools.resample
+   - [X] Resampler
+* DONE Update BitstreamWriter to work on Python objects
+  That is, anything with a .write() and .close() method,
+  similar to how BitstreamReader operates.
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -3546,66 +3635,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] checking the confidence level
 ** TODO Add programming docstrings
 ** TODO Add programming documentation
-* DONE Add substream support to bitstream reader
-  Its function is to allow one to pull pieces out of a larger bitstream
-  and process them separately.
-  For example, while parsing an Ogg stream's pages with one bitstream,
-  the extracted Vorbis packets could be processed with smaller substreams -
-  including substreams that span one or more pages.
-  It's also potentially helpful for MP3, Ogg FLAC, DVD-A and any other format
-  with nontrivial wrappers that need to be parsed seperately
-  from the main bitstream.
-** DONE Implement substream reader methods
-*** DONE bs_read_bits_s_be
-*** DONE bs_read_bits_s_le
-*** DONE bs_read_signed_bits_s_be
-*** DONE bs_read_signed_bits_s_le
-*** DONE bs_read_bits64_s_be
-*** DONE bs_read_bits64_s_le
-*** DONE bs_skip_bits_s_be
-*** DONE bs_skip_bits_s_le
-*** DONE bs_read_unary_s_be
-*** DONE bs_read_unary_s_le
-*** DONE bs_read_limited_unary_s_be
-*** DONE bs_read_limited_unary_s_le
-*** DONE bs_set_endianness_s_be
-*** DONE bs_set_endianness_s_le
-*** DONE bs_read_huffman_code_s
-*** DONE bs_mark_s
-*** DONE bs_rewind_s
-*** DONE bs_unmark_s
-*** DONE bs_close_stream_s
-*** DONE bs_substream_new
-*** DONE bs_substream_f_be
-*** DONE bs_substream_f_le
-*** DONE bs_substream_p_be
-*** DONE bs_substream_p_le
-*** DONE bs_substream_s_be
-*** DONE bs_substream_s_le
-*** DONE bs_substream_append_f
-*** DONE bs_substream_append_p
-*** DONE bs_substream_append_s
-** DONE Add substream and substream_append to stream initializers
-*** DONE bs_open
-    - [X] substream
-    - [X] substream_append
-*** DONE bs_open_python
-    - [X] substream
-    - [X] substream_append
-** DONE Update current endianness setters with substream method
-*** DONE bs_set_endianness_f_be
-*** DONE bs_set_endianness_f_le
-*** DONE bs_set_endianness_p_be
-*** DONE bs_set_endianness_p_le
-** DONE Add garbage collection to substream
-   It should be possible to create a substream, process it partway,
-   then append more data to it without causing any overflow problems.
-   That is, data at the beginning of the buffer will be recycled
-   at append time if it hasn't been marked for rewinding back to.
-** DONE Add Python interface to substream
-*** DONE audiotools.decoders.BitstreamReader.substream
-*** DONE audiotools.decoders.BitstreamReader.substream_append
-** TODO Add unit tests to substream
 * TODO Cleanup bitstream module
   This is at the heart of a lot of things so it should be properly cleaned up.
 ** DONE Merge bitstream_r and bitstream_w source files
@@ -3868,32 +3897,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Update Python-based BitstreamWriter to catch C exceptions
 ** TODO Update encoders to catch C exceptions and raise Python exceptions
 ** TODO Unit test write errors
-* TODO Check objects for invalid init calls
-  If an init fails, the subsequent dealloc call shouldn't segfault Python.
-** DONE audiotools.bitstream
-   - [X] BitstreamAccumulator
-   - [X] BitstreamReader
-   - [X] BitstreamRecorder
-   - [X] BitstreamWriter
-** TODO audiotools.cdio
-   - [ ] CDDA
-   - [ ] CDImage
-** TODO audiotools.decoders
-   - [ ] ALACDecoder
-   - [ ] AOBPCMDecoder
-   - [ ] FlacDecoder
-   - [ ] MLPDecoder
-   - [ ] OggFlacDecoder
-   - [ ] SHNDecoder
-   - [ ] Sine_Mono
-   - [ ] Sine_Simple
-   - [ ] Sine_Stereo
-   - [ ] WavPackDecoder
-** TODO audiotools.pcm
-   - [ ] FrameList
-   - [ ] FloatFrameList
-** TODO audiotools.resample
-   - [ ] Resampler
 * TODO Calculate multi-album ReplayGain concurrently
   For instance, if one is calculating --replay-gain for four seperate
   albums and -j 4 is indicated, calculate each album's gain across
@@ -4015,7 +4018,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    against vorbis-tools
 ** TODO WavPackAudio
    against tablib?
-
 * TODO Add progress to track2cd audio file conversion
 * TODO Have trackinfo display metadata fields by default
   Instead of displaying the low-level info,
@@ -4156,6 +4158,3 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 
 ** TODO Document new methods
 ** TODO Unit test new methods
-* DONE Update BitstreamWriter to work on Python objects
-  That is, anything with a .write() and .close() method,
-  similar to how BitstreamReader operates.

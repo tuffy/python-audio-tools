@@ -1081,7 +1081,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             stream.write('fLaC')
             writer = BitstreamWriter(stream, 0)
             metadata.build(writer, 4096)
-            writer.close()
+            writer.flush()
             transfer_data(file_data.read, stream.write)
             file_data.close()
             stream.close()
@@ -1673,7 +1673,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             while (stop == 0):
                 (stop, header_type, length) = reader.parse("1u 7u 24u")
                 if (header_type not in valid_header_types):
-                    raise InvalidFile(_("invalid header type"))
+                    raise InvalidFLAC(_("invalid header type"))
                 elif (header_type == 0):
                     (self.__samplerate__,
                      self.__channels__,

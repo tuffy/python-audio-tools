@@ -41,6 +41,15 @@ FlacDecoder_init(decoders_FlacDecoder *self,
                           &stream_offset))
         goto error;
 
+    if (self->channel_mask < 0) {
+        PyErr_SetString(PyExc_ValueError, "channel_mask must be >= 0");
+        return -1;
+    }
+    if (stream_offset < 0) {
+        PyErr_SetString(PyExc_ValueError, "stream offset must be >= 0");
+        return -1;
+    }
+
     /*open the flac file*/
     self->file = fopen(filename, "rb");
     if (self->file == NULL) {

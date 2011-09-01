@@ -37,6 +37,27 @@ AOBPCMDecoder_init(decoders_AOBPCMDecoder *self,
                           &(self->bits_per_sample)))
         return -1;
 
+    if (self->sample_rate < 1) {
+        PyErr_SetString(PyExc_ValueError, "sample_rate must be > 0");
+        return -1;
+    }
+
+    if (self->channels < 1) {
+        PyErr_SetString(PyExc_ValueError, "channels must be > 0");
+        return -1;
+    }
+
+    if (self->channel_mask < 0) {
+        PyErr_SetString(PyExc_ValueError, "channel_mask must be >= 0");
+        return -1;
+    }
+
+    if ((self->bits_per_sample != 16) &&
+        (self->bits_per_sample != 24)) {
+        PyErr_SetString(PyExc_ValueError, "bits_per_sample must be 16,24");
+        return -1;
+    }
+
     self->reader = py_open_r(reader, 4096);
 
     self->chunk_size = (self->bits_per_sample / 8) * self->channels * 2;

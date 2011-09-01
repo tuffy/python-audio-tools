@@ -172,7 +172,7 @@ FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds)
     int is_signed;
     FrameList_char_to_int_converter converter;
 
-    if (!PyArg_ParseTuple(args, "s#iiii",
+    if (!PyArg_ParseTuple(args, "s#IIii",
                           &data, &data_size,
                           &(self->channels),
                           &(self->bits_per_sample),
@@ -180,7 +180,17 @@ FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds)
                           &is_signed))
         return -1;
 
-    if (data_size % (self->channels * self->bits_per_sample / 8)) {
+    if (self->channels < 1) {
+        PyErr_SetString(PyExc_ValueError,
+                        "number of channels must be > 0");
+        return -1;
+    } else if ((self->bits_per_sample != 16) &&
+               (self->bits_per_sample != 24) &&
+               (self->bits_per_sample != 8)) {
+        PyErr_SetString(PyExc_ValueError,
+                        "bits_per_sample must be 8, 16 or 24");
+        return -1;
+    } else if (data_size % (self->channels * self->bits_per_sample / 8)) {
         PyErr_SetString(PyExc_ValueError,
                         "number of samples must be divisible by "
                         "bits-per-sample and number of channels");
@@ -915,12 +925,16 @@ FloatFrameList_init(pcm_FloatFrameList *self, PyObject *args, PyObject *kwds)
     Py_ssize_t data_size;
     Py_ssize_t i;
 
-    if (!PyArg_ParseTuple(args, "Oi",
+    if (!PyArg_ParseTuple(args, "OI",
                           &data,
                           &(self->channels)))
         return -1;
 
-    if ((data_size = PySequence_Size(data)) == -1) {
+    if (self->channels < 1) {
+        PyErr_SetString(PyExc_ValueError,
+                        "number of channels must be > 0");
+        return -1;
+    } else if ((data_size = PySequence_Size(data)) == -1) {
         return -1;
     } else if (data_size % (self->channels)) {
         PyErr_SetString(PyExc_ValueError,

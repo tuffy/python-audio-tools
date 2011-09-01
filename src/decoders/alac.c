@@ -58,6 +58,40 @@ ALACDecoder_init(decoders_ALACDecoder *self,
                                      &(self->maximum_k)))
         return -1;
 
+    if (self->sample_rate < 1) {
+        PyErr_SetString(PyExc_ValueError, "sample_rate must be > 0");
+        return -1;
+    }
+    if (self->channels < 1) {
+        PyErr_SetString(PyExc_ValueError, "channels must be > 0");
+        return -1;
+    }
+    if (self->channel_mask < 0) {
+        PyErr_SetString(PyExc_ValueError, "channel_mask must be >= 0");
+        return -1;
+    }
+    if ((self->bits_per_sample != 16) &&
+        (self->bits_per_sample != 24)) {
+        PyErr_SetString(PyExc_ValueError, "bits per sample must be 16 or 24");
+        return -1;
+    }
+    if (total_frames < 0) {
+        PyErr_SetString(PyExc_ValueError, "total_frames must be >= 0");
+        return -1;
+    }
+    if (self->history_multiplier < 1) {
+        PyErr_SetString(PyExc_ValueError, "history_multiplier must be > 0");
+        return -1;
+    }
+    if (self->initial_history < 0) {
+        PyErr_SetString(PyExc_ValueError, "initial_history must be >= 0");
+        return -1;
+    }
+    if (self->maximum_k < 1) {
+        PyErr_SetString(PyExc_ValueError, "maximum_k must be > 0");
+        return -1;
+    }
+
     self->total_samples = total_frames * self->channels;
 
     /*initialize final buffer*/

@@ -47,7 +47,17 @@ Sine_Mono_init(decoders_Sine_Mono* self, PyObject *args, PyObject *kwds) {
         self->full_scale = 0x7FFFFF;
         break;
     default:
-        PyErr_SetString(PyExc_ValueError, "unsupported bits per sample");
+        PyErr_SetString(PyExc_ValueError, "bits per sample must be 8, 16, 24");
+        return -1;
+    }
+
+    if (self->total_pcm_frames < 0) {
+        PyErr_SetString(PyExc_ValueError, "total_pcm_frames must be >= 0");
+        return -1;
+    }
+
+    if (self->sample_rate < 1) {
+        PyErr_SetString(PyExc_ValueError, "sample_rate must be > 0");
         return -1;
     }
 
@@ -176,7 +186,17 @@ Sine_Stereo_init(decoders_Sine_Stereo* self, PyObject *args, PyObject *kwds) {
         self->full_scale = 0x7FFFFF;
         break;
     default:
-        PyErr_SetString(PyExc_ValueError, "unsupported bits per sample");
+        PyErr_SetString(PyExc_ValueError, "bits per sample must be 8, 16, 24");
+        return -1;
+    }
+
+    if (self->total_pcm_frames < 0) {
+        PyErr_SetString(PyExc_ValueError, "total_pcm_frames must be >= 0");
+        return -1;
+    }
+
+    if (self->sample_rate < 1) {
+        PyErr_SetString(PyExc_ValueError, "sample_rate must be > 0");
         return -1;
     }
 
@@ -294,6 +314,27 @@ Sine_Simple_init(decoders_Sine_Simple* self, PyObject *args, PyObject *kwds) {
                           &(self->max_value),
                           &(self->count)))
         return -1;
+
+    switch (self->bits_per_sample) {
+    case 8:
+    case 16:
+    case 24:
+        break;
+    default:
+        PyErr_SetString(PyExc_ValueError, "bits per sample must be 8, 16, 24");
+        return -1;
+    }
+
+    if (self->total_pcm_frames < 0) {
+        PyErr_SetString(PyExc_ValueError, "total_pcm_frames must be >= 0");
+        return -1;
+    }
+
+    if (self->sample_rate < 1) {
+        PyErr_SetString(PyExc_ValueError, "sample_rate must be > 0");
+        return -1;
+    }
+
 
     self->remaining_pcm_frames = self->total_pcm_frames;
     self->i = 0;

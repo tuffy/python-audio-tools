@@ -53,6 +53,12 @@ OggFlacDecoder_init(decoders_OggFlacDecoder *self,
 
     if (!PyArg_ParseTuple(args, "si", &filename, &(self->channel_mask)))
         goto error;
+
+    if (self->channel_mask < 0) {
+        PyErr_SetString(PyExc_ValueError, "channel_mask must be >= 0");
+        return -1;
+    }
+
     self->ogg_file = fopen(filename, "rb");
     if (self->ogg_file == NULL) {
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);

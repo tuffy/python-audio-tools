@@ -150,6 +150,17 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
                                       self.sample_offset)
 
     @LIB_CORE
+    def test_init(self):
+        from audiotools.cdio import CDDA
+        from audiotools.cdio import CDImage
+
+        self.assertRaises(TypeError, CDDA)
+        self.assertRaises(TypeError, CDDA, None)
+        self.assertRaises(TypeError, CDImage)
+        self.assertRaises(ValueError, CDImage, "", -1)
+
+
+    @LIB_CORE
     def test_cdda(self):
         cdda = audiotools.CDDA(self.cue)
         self.assertEqual(len(cdda), 4)
@@ -410,6 +421,16 @@ class PCMConverter(unittest.TestCase):
     @LIB_CORE
     def tearDown(self):
         self.tempwav.close()
+
+    @LIB_CORE
+    def test_resampler_init(self):
+        from audiotools.resample import Resampler
+
+        self.assertRaises(TypeError, Resampler)
+        self.assertRaises(ValueError, Resampler, -1, 1.0, 0)
+        self.assertRaises(ValueError, Resampler, 0, 1.0, 0)
+        self.assertRaises(ValueError, Resampler, 2, 1.0, -1)
+        self.assertRaises(ValueError, Resampler, 2, 1.0, 5)
 
     @LIB_CORE
     def test_conversions(self):
@@ -1353,6 +1374,28 @@ class TestFrameList(unittest.TestCase):
             finally:
                 temp_track.close()
 
+    @LIB_CORE
+    def test_errors(self):
+        #check list that's too large
+        self.assertRaises(ValueError,
+                          audiotools.pcm.FloatFrameList,
+                          [0.0] * 5, 2)
+
+        #check list that's too small
+        self.assertRaises(ValueError,
+                          audiotools.pcm.FloatFrameList,
+                          [0.0] * 3, 2)
+
+        #check channels <= 0
+        self.assertRaises(ValueError,
+                          audiotools.pcm.FloatFrameList,
+                          [0.0] * 4, 0)
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.FloatFrameList,
+                          [0.0] * 4, -1)
+
+
 class TestFloatFrameList(unittest.TestCase):
     @LIB_CORE
     def test_basics(self):
@@ -1464,6 +1507,36 @@ class TestFloatFrameList(unittest.TestCase):
             self.assertEqual(
                 l,
                 list(audiotools.pcm.from_list(l, 1, bps, True).to_float().to_int(bps)))
+
+    @LIB_CORE
+    def test_errors(self):
+        #check string that's too large
+        self.assertRaises(ValueError,
+                          audiotools.pcm.FrameList,
+                          chr(0) * 5, 2, 16, 1, 1)
+
+        #check string that's too small
+        self.assertRaises(ValueError,
+                          audiotools.pcm.FrameList,
+                          chr(0) * 3, 2, 16, 1, 1)
+
+
+        #check channels <= 0
+        self.assertRaises(ValueError,
+                          audiotools.pcm.FrameList,
+                          chr(0) * 4, 0, 16, 1, 1)
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.FrameList,
+                          chr(0) * 4, -1, 16, 1, 1)
+
+
+        #check bps != 8,16,24
+        for bps in [0,7,9,15,17,23,25,64]:
+            self.assertRaises(ValueError,
+                              audiotools.pcm.FrameList,
+                              chr(0) * 4, 2, bps, 1, 1)
+
 
 
 class __SimpleChunkReader__:

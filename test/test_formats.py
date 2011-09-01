@@ -1804,6 +1804,36 @@ class ALACFileTest(LosslessFileTest):
         finally:
             invalid_file.close()
 
+        #check some decoder errors,
+        #mostly to ensure a failed init doesn't make Python explode
+        self.assertRaises(TypeError, self.decoder)
+
+        self.assertRaises(TypeError, self.decoder, None)
+
+        self.assertRaises(ValueError, self.decoder,
+                          filename="filename",
+                          sample_rate=44100,
+                          channels=0,
+                          channel_mask=0,
+                          bits_per_sample=16,
+                          total_frames=44100,
+                          max_samples_per_frame=4096,
+                          history_multiplier=40,
+                          initial_history=10,
+                          maximum_k=14)
+
+        self.assertRaises(ValueError, self.decoder,
+                          filename="filename",
+                          sample_rate=44100,
+                          channels=2,
+                          channel_mask=0,
+                          bits_per_sample=15,
+                          total_frames=44100,
+                          max_samples_per_frame=4096,
+                          history_multiplier=40,
+                          initial_history=10,
+                          maximum_k=14)
+
 
     @FORMAT_ALAC
     def test_bits_per_sample(self):
@@ -1921,13 +1951,11 @@ class ALACFileTest(LosslessFileTest):
                 temp.name,
                 BLANK_PCM_Reader(1))
             metadata = track.get_metadata()
-            encoder = unicode(metadata[chr(0xA9) + 'too'][0])
-            track.set_metadata(audiotools.MetaData(
-                    track_name=u"Foo"))
+            encoder = unicode(metadata['ilst']['\xa9too'])
+            track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
             metadata = track.get_metadata()
             self.assertEqual(metadata.track_name, u"Foo")
-            self.assertEqual(unicode(metadata[chr(0xA9) + 'too'][0]),
-                             encoder)
+            self.assertEqual(unicode(metadata['ilst']['\xa9too']), encoder)
         finally:
             temp.close()
 
@@ -2380,6 +2408,36 @@ class FlacFileTest(TestForeignAiffChunks,
                              "exhaustive_model_search":True,
                              "min_residual_partition_order":0,
                              "max_residual_partition_order":6}]
+
+    @FORMAT_FLAC
+    def test_init(self):
+        #check missing file
+        self.assertRaises(audiotools.InvalidFLAC,
+                          audiotools.FlacAudio,
+                          "/dev/null/foo")
+
+        #check invalid file
+        invalid_file = tempfile.NamedTemporaryFile(suffix=".flac")
+        try:
+            for c in "invalidstringxxx":
+                invalid_file.write(c)
+                invalid_file.flush()
+                self.assertRaises(audiotools.InvalidFLAC,
+                                  audiotools.FlacAudio,
+                                  invalid_file.name)
+        finally:
+            invalid_file.close()
+
+        #check some decoder errors,
+        #mostly to ensure a failed init doesn't make Python explode
+        self.assertRaises(TypeError, self.decoder)
+
+        self.assertRaises(TypeError, self.decoder, None)
+
+        self.assertRaises(ValueError, self.decoder, "/dev/null", -1)
+
+        self.assertRaises(ValueError, self.decoder, "/dev/null", 0x3, -1)
+
 
     @FORMAT_FLAC
     def test_metadata2(self):
@@ -3603,8 +3661,39 @@ class OggVerify:
 class OggFlacFileTest(OggVerify,
                       LosslessFileTest):
     def setUp(self):
+        from audiotools.decoders import OggFlacDecoder
+
         self.audio_class = audiotools.OggFlacAudio
         self.suffix = "." + self.audio_class.SUFFIX
+
+        self.decoder = OggFlacDecoder
+
+    @FORMAT_OGGFLAC
+    def test_init(self):
+        #check missing file
+        self.assertRaises(audiotools.InvalidFLAC,
+                          audiotools.OggFlacAudio,
+                          "/dev/null/foo")
+
+        #check invalid file
+        invalid_file = tempfile.NamedTemporaryFile(suffix=".oga")
+        try:
+            for c in "invalidstringxxx":
+                invalid_file.write(c)
+                invalid_file.flush()
+                self.assertRaises(audiotools.InvalidFLAC,
+                                  audiotools.OggFlacAudio,
+                                  invalid_file.name)
+        finally:
+            invalid_file.close()
+
+        #check some decoder errors,
+        #mostly to ensure a failed init doesn't make Python explode
+        self.assertRaises(TypeError, self.decoder)
+
+        self.assertRaises(TypeError, self.decoder, None)
+
+        self.assertRaises(ValueError, self.decoder, "/dev/null", -1)
 
 
 class ShortenFileTest(TestForeignWaveChunks,
@@ -3621,6 +3710,33 @@ class ShortenFileTest(TestForeignWaveChunks,
         self.encode_opts = [{"block_size": 4},
                             {"block_size": 256},
                             {"block_size": 1024}]
+
+    @FORMAT_SHORTEN
+    def test_init(self):
+        #check missing file
+        self.assertRaises(audiotools.InvalidShorten,
+                          audiotools.ShortenAudio,
+                          "/dev/null/foo")
+
+        #check invalid file
+        invalid_file = tempfile.NamedTemporaryFile(suffix=".shn")
+        try:
+            for c in "invalidstringxxx":
+                invalid_file.write(c)
+                invalid_file.flush()
+                self.assertRaises(audiotools.InvalidShorten,
+                                  audiotools.ShortenAudio,
+                                  invalid_file.name)
+        finally:
+            invalid_file.close()
+
+        #check some decoder errors,
+        #mostly to ensure a failed init doesn't make Python explode
+        self.assertRaises(TypeError, self.decoder)
+
+        self.assertRaises(TypeError, self.decoder, None)
+
+        self.assertRaises(IOError, self.decoder, "/dev/null/foo")
 
     @FORMAT_SHORTEN
     def test_bits_per_sample(self):
@@ -4182,6 +4298,35 @@ class WavPackFileTest(TestForeignWaveChunks,
                              "decorrelation_passes": 16}]
 
     @FORMAT_WAVPACK
+    def test_init(self):
+        #check missing file
+        self.assertRaises(audiotools.InvalidWavPack,
+                          audiotools.WavPackAudio,
+                          "/dev/null/foo")
+
+        #check invalid file
+        invalid_file = tempfile.NamedTemporaryFile(suffix=".wv")
+        try:
+            for c in "invalidstringxxx":
+                invalid_file.write(c)
+                invalid_file.flush()
+                self.assertRaises(audiotools.InvalidWavPack,
+                                  audiotools.WavPackAudio,
+                                  invalid_file.name)
+        finally:
+            invalid_file.close()
+
+        #check some decoder errors,
+        #mostly to ensure a failed init doesn't make Python explode
+        self.assertRaises(TypeError, self.decoder)
+
+        self.assertRaises(TypeError, self.decoder, None)
+
+        self.assertRaises(IOError, self.decoder, "/dev/null/foo")
+
+        self.assertRaises(IOError, self.decoder, "/dev/null", sample_rate=-1)
+
+    @FORMAT_WAVPACK
     def test_verify(self):
         #test truncating a WavPack file causes verify()
         #to raise InvalidFile as necessary
@@ -4662,3 +4807,55 @@ class WavPackFileTest(TestForeignWaveChunks,
                                 wasted_bits=wasted_bits,
                                 joint_stereo=joint_stereo,
                                 decorrelation_passes=decorrelation_passes)
+
+
+class SineStreamTest(unittest.TestCase):
+    @FORMAT_SINES
+    def test_init(self):
+        from audiotools.decoders import Sine_Mono
+        from audiotools.decoders import Sine_Stereo
+        from audiotools.decoders import Sine_Simple
+
+        #ensure that failed inits don't make Python explode
+        self.assertRaises(ValueError, Sine_Mono,
+                          -1, 4000, 44100, 1.0, 1.0, 1.0, 1.0)
+        self.assertRaises(ValueError, Sine_Mono,
+                          16, -1, 44100, 1.0, 1.0, 1.0, 1.0)
+        self.assertRaises(ValueError, Sine_Mono,
+                          16, 4000, -1, 1.0, 1.0, 1.0, 1.0)
+
+        self.assertRaises(ValueError, Sine_Stereo,
+                          -1, 4000, 44100, 1.0, 1.0, 1.0, 1.0, 1.0)
+        self.assertRaises(ValueError, Sine_Stereo,
+                          16, -1, 44100, 1.0, 1.0, 1.0, 1.0, 1.0)
+        self.assertRaises(ValueError, Sine_Stereo,
+                          16, 4000, -1, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+        self.assertRaises(ValueError, Sine_Simple,
+                          -1, 4000, 44100, 100, 100)
+        self.assertRaises(ValueError, Sine_Simple,
+                          16, -1, 44100, 100, 100)
+        self.assertRaises(ValueError, Sine_Simple,
+                          16, 4000, -1, 100, 100)
+
+
+class DVDAFormatsTest(unittest.TestCase):
+    @FORMAT_DVDA
+    def test_init(self):
+        from audiotools.decoders import AOBPCMDecoder
+        from audiotools.decoders import MLPDecoder
+
+        #ensure that failed inits don't make Python explode
+
+        self.assertRaises(ValueError,
+                          AOBPCMDecoder, None, -1, 2, 0x3, 16)
+        self.assertRaises(ValueError,
+                          AOBPCMDecoder, None, 44100, -1, 0x3, 16)
+        self.assertRaises(ValueError,
+                          AOBPCMDecoder, None, 44100, 2, -1, 16)
+        self.assertRaises(ValueError,
+                          AOBPCMDecoder, None, 44100, 2, 0x3, -1)
+
+        self.assertRaises(TypeError, MLPDecoder)
+
+        self.assertRaises(TypeError, MLPDecoder, None)

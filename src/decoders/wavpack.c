@@ -51,6 +51,11 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     if (!PyArg_ParseTuple(args, "s|i", &filename, &(self->sample_rate)))
         return -1;
 
+    if (self->sample_rate < 0) {
+        PyErr_SetString(PyExc_ValueError, "sample_rate must be >= 0");
+        return -1;
+    }
+
     /*open the WavPack file*/
     self->file = fopen(filename, "rb");
     if (self->file == NULL) {
