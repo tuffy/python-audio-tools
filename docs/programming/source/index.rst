@@ -13,6 +13,7 @@ Contents:
 
    audiotools.rst
    audiotools_pcm.rst
+   audiotools_bitstream.rst
    audiotools_resample.rst
    audiotools_replaygain.rst
    audiotools_cdio.rst

@@ -3751,6 +3751,84 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    but not have to toggle them on each individual read.
    It's easier to keep them off entirely for now.
 ** TODO Add documentation for audiotools.bitstream
+*** DONE BitstreamReader
+    - [X] add_callback
+    - [X] byte_align
+    - [X] call_callbacks
+    - [X] close
+    - [X] limited_unary
+    - [X] mark
+    - [X] parse
+    - [X] pop_callback
+    - [X] read
+    - [X] read64
+    - [X] read_bytes
+    - [X] read_huffman_code
+    - [X] read_signed
+    - [X] read_signed64
+    - [X] rewind
+    - [X] set_endianness
+    - [X] skip
+    - [X] skip_bytes
+    - [X] substream
+    - [X] substream_append
+    - [X] unary
+    - [X] unmark
+    - [X] unread
+*** TODO BitstreamWriter
+    - [ ] add_callback
+    - [ ] build
+    - [ ] byte_align
+    - [ ] call_callbacks
+    - [ ] close
+    - [ ] flush
+    - [ ] pop_callback
+    - [ ] set_endianness
+    - [ ] unary
+    - [ ] write
+    - [ ] write64
+    - [ ] write_bytes
+    - [ ] write_signed
+    - [ ] write_signed64
+*** TODO BitstreamRecorder
+    - [ ] add_callback
+    - [ ] bits
+    - [ ] build
+    - [ ] byte_align
+    - [ ] bytes
+    - [ ] call_callbacks
+    - [ ] close
+    - [ ] copy
+    - [ ] data
+    - [ ] flush
+    - [ ] pop_callback
+    - [ ] reset
+    - [ ] set_endianness
+    - [ ] split
+    - [ ] swap
+    - [ ] unary
+    - [ ] write
+    - [ ] write64
+    - [ ] write_bytes
+    - [ ] write_signed
+    - [ ] write_signed64
+*** TODO BitstreamAccumulator
+    - [ ] bits
+    - [ ] build
+    - [ ] byte_align
+    - [ ] bytes
+    - [ ] close
+    - [ ] reset
+    - [ ] set_endianness
+    - [ ] unary
+    - [ ] write
+    - [ ] write64
+    - [ ] write_bytes
+    - [ ] write_signed
+    - [ ] write_signed64
+*** TODO HuffmanTree
+*** TODO Substream
+*** TODO format_size
 * TODO Remove Construct module
   Convert all usage of Construct to BitstreamReader/BitstreamWriter.
   Since this is unlikely to be updated for Python 3,

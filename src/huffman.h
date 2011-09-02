@@ -57,8 +57,8 @@ enum {
     HUFFMAN_EMPTY_TREE = -4
 };
 
-/*given a set of huffman_frequency values
-  (followed by a negative length terminator frequency)
+/*given a set of huffman_frequency values,
+  the total number of frequency values
   and BS_BIG_ENDIAN or BS_LITTLE_ENDIAN,
   compiles the Huffman tree into a jump table
   suitable for use by bitstream->read_huffman_code
