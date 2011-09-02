@@ -234,6 +234,14 @@ if (__name__ == '__main__'):
         help=_(u'add ReplayGain metadata to track(s)'))
 
     parser.add_option(
+        '-j', '--joint',
+        action='store',
+        type='int',
+        default=audiotools.MAX_JOBS,
+        dest='max_processes',
+        help=_(u'the maximum number of processes to run at a time'))
+
+    parser.add_option(
         '-V', '--verbose',
         action='store',
         dest='verbosity',
@@ -441,20 +449,47 @@ if (__name__ == '__main__'):
     if (options.add_replay_gain and
         (len(audiofiles) > 0) and
         (audiofiles[0].can_add_replay_gain())):
-
-        rg_progress = audiotools.ReplayGainProgressDisplay(
-            msg, audiofiles[0].lossless_replay_gain())
-        rg_progress.initial_message()
+        #separate encoded files by album_name and album_number
         try:
-            #separate encoded files by album_name and album_number
+            queue = audiotools.ExecProgressQueue(
+                audiotools.ProgressDisplay(msg))
+
             for album in audiotools.group_tracks(audiofiles):
                 #add ReplayGain to groups of files
                 #belonging to the same album
 
-                album[0].add_replay_gain([a.filename for a in album],
-                                         rg_progress.update)
+                album_number = set([a.album_number() for a in album]).pop()
+                audio_type = album[0].__class__
+
+                if (album_number == 0):
+                    if (audio_type.lossless_replay_gain()):
+                        progress_text = _(u"Adding ReplayGain")
+                        completion_output = _(u"ReplayGain added")
+                    else:
+                        progress_text = _(u"Applying ReplayGain")
+                        completion_output = _(u"ReplayGain applied")
+                else:
+                    if (audio_type.lossless_replay_gain()):
+                        progress_text = (
+                            _(u"Adding ReplayGain to album %d") %
+                            (album_number))
+                        completion_output = (
+                            _(u"ReplayGain added to album %d") %
+                            (album_number))
+                    else:
+                        progress_text = (
+                            _(u"Applying ReplayGain to album %d") %
+                            (album_number))
+                        completion_output = (
+                            _(u"ReplayGain applied to album %d") %
+                            (album_number))
+
+                queue.execute(audio_type.add_replay_gain,
+                              progress_text,
+                              completion_output,
+                              [a.filename for a in album])
+
+            queue.run(options.max_processes)
         except ValueError, err:
-            rg_progress.clear()
             msg.error(unicode(err))
             sys.exit(1)
-        rg_progress.final_message()

@@ -2725,6 +2725,13 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 * DONE Update BitstreamWriter to work on Python objects
   That is, anything with a .write() and .close() method,
   similar to how BitstreamReader operates.
+* DONE Calculate multi-album ReplayGain concurrently
+  For instance, if one is calculating --replay-gain for four seperate
+  albums and -j 4 is indicated, calculate each album's gain across
+  its own core using the existing ProgressQueue facilities.
+** DONE track2track
+** DONE tracktag
+*** DONE update man page with -j option
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -3897,10 +3904,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Update Python-based BitstreamWriter to catch C exceptions
 ** TODO Update encoders to catch C exceptions and raise Python exceptions
 ** TODO Unit test write errors
-* TODO Calculate multi-album ReplayGain concurrently
-  For instance, if one is calculating --replay-gain for four seperate
-  albums and -j 4 is indicated, calculate each album's gain across
-  its own core using the existing ProgressQueue facilities.
 * TODO Add update_metadata() method to AudioFile
   Consider how AudioFile.set_metadata() handles six different cases:
 

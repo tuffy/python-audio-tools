@@ -36,6 +36,9 @@
     <option long="replay-gain">
       add ReplayGain metadata to tracks
     </option>
+    <option short="j" long="joint" arg="processes">
+      The maximum number of albums to calculate ReplayGain for at one time.
+    </option>
   </options>
   <options category="text">
     <option long="name" arg="name">
