@@ -84,7 +84,7 @@ class FlacMetaData(MetaData):
         if (key in self.FIELDS):
             if (self.vorbis_comment is None):
                 self.vorbis_comment = Flac_VORBISCOMMENT(
-                    u"Python Audio Tools %s" % (VERSION), [])
+                    [], u"Python Audio Tools %s" % (VERSION))
 
             setattr(self.vorbis_comment, key, value)
         else:
@@ -373,9 +373,12 @@ class Flac_VORBISCOMMENT(VorbisComment):
 
         #align the text strings on the "=" sign, if any
 
-        max_indent = max([len(display_unicode(comment.split(u"=", 1)[0]))
-                          for comment in self.comment_strings
-                          if u"=" in comment])
+        if (len(self.comment_strings) > 0):
+            max_indent = max([len(display_unicode(comment.split(u"=", 1)[0]))
+                              for comment in self.comment_strings
+                              if u"=" in comment])
+        else:
+            max_indent = 0
 
         comment_strings = []
         for comment in self.comment_strings:
@@ -391,7 +394,6 @@ class Flac_VORBISCOMMENT(VorbisComment):
             [u"  VORBIS_COMMENT:",
              u"    %s" % (self.vendor_string)] +
             comment_strings)
-
 
     @classmethod
     def converted(cls, metadata):
@@ -965,7 +967,9 @@ class FlacAudio(WaveContainer, AiffContainer):
             return ChannelMask.from_channels(self.channels())
         else:
             vorbis_comment = self.get_metadata().vorbis_comment
-            if ("WAVEFORMATEXTENSIBLE_CHANNEL_MASK" in vorbis_comment.keys()):
+
+            if ((vorbis_comment is not None) and
+                ("WAVEFORMATEXTENSIBLE_CHANNEL_MASK" in vorbis_comment.keys())):
                 try:
                     return ChannelMask(
                         int(vorbis_comment[
@@ -1109,7 +1113,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         if ((self.channels() > 2) or (self.bits_per_sample() > 16)):
             metadata.vorbis_comment[
                 "WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
-                u"0x%.4x" % (int(self.channel_mask()))]
+                u"0x%.4X" % (int(self.channel_mask()))]
 
         #APPLICATION blocks should stay with the existing file (if any)
         metadata.applications = old_metadata.applications[:]
@@ -1359,7 +1363,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                 (channel_mask != 0)):
                 metadata.vorbis_comment[
                     "WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
-                    u"0x%.4x" % (channel_mask)]
+                    u"0x%.4X" % (channel_mask)]
 
             flac.set_metadata(metadata)
 
@@ -1879,14 +1883,27 @@ class FlacAudio(WaveContainer, AiffContainer):
                     fixes_performed.append(
                         _(u"moved STREAMINFO to first block"))
 
+                #fix empty MD5SUM
+                if (self.__md5__ == chr(0) * 16):
+                    fixes_performed.append(_(u"populated empty MD5SUM"))
+
+                #fix missing WAVEFORMATEXTENSIBLE_CHANNEL_MASK
+                if ((self.channels() > 2) or (self.bits_per_sample() > 16)):
+                    #FLAC should always have metadata
+                    metadata = self.get_metadata()
+                    if (metadata.vorbis_comment is None):
+                        fixes_performed.append(
+                            _(u"added WAVEFORMATEXTENSIBLE_CHANNEL_MASK"))
+                    elif ("WAVEFORMATEXTENSIBLE_CHANNEL_MASK" not in
+                          metadata.vorbis_comment.keys()):
+                        fixes_performed.append(
+                            _(u"added WAVEFORMATEXTENSIBLE_CHANNEL_MASK"))
+
                 #fix any remaining metadata problems
                 metadata = self.get_metadata()
                 if (metadata is not None):
                     metadata.clean(fixes_performed)
 
-                #fix empty MD5SUM
-                if (self.__md5__ == chr(0) * 16):
-                    fixes_performed.append(_(u"populated empty MD5SUM"))
             finally:
                 input_f.close()
         else:
@@ -1941,6 +1958,20 @@ class FlacAudio(WaveContainer, AiffContainer):
                         big_endian=False)
                     metadata.streaminfo.md5sum = md5sum.digest()
                     fixes_performed.append(_(u"populated empty MD5SUM"))
+
+                #fix missing WAVEFORMATEXTENSIBLE_CHANNEL_MASK
+                if ((self.channels() > 2) or (self.bits_per_sample() > 16)):
+                    if (metadata.vorbis_comment is None):
+                        metadata.vorbis_comment = Flac_VORBISCOMMENT(
+                            ["WAVEFORMATEXTENSIBLE_CHANNEL_MASK=0x%.4X" %
+                             (int(self.channel_mask()))],
+                            u"Python Audio Tools %s" % (VERSION))
+                    else:
+                        metadata.vorbis_comment[
+                            "WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = \
+                            [u"0x%.4X" % (int(self.channel_mask()))]
+                    fixes_performed.append(
+                        _(u"added WAVEFORMATEXTENSIBLE_CHANNEL_MASK"))
 
                 #fix remaining metadata problems
                 #which automatically shifts STREAMINFO to the right place

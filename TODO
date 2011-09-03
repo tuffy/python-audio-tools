@@ -4239,3 +4239,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 
 ** TODO Document new methods
 ** TODO Unit test new methods
+* TODO Have tracklint add channel mask info to hi-def FLAC files
+  If omitted.  Fix cases in which the tag is missing
+  from the VORBISCOMMENT block, or the VORBISCOMMENT block
+  is absent altogether.
+** TODO Add unit test
+** TODO Add fix to man page

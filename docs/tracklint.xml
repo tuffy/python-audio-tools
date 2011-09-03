@@ -79,6 +79,11 @@
       <li>
         FLAC files with misordered STREAMINFO blocks are reordered.
       </li>
+      <li>
+        A WAVEFORMATEXTENSIBLE_CHANNEL_MASK tag is added to
+        multi-channel or 24 bits-per-sample FLAC files
+        if one isn't present in its metadata.
+      </li>
     </ul>
   </element>
 </manpage>
