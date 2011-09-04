@@ -3677,7 +3677,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    and run with no external dependencies.
    The idea is to build something valgrind-able to ensure
    there's no memory errors.
-*** TODO BitstreamReader
+*** DONE BitstreamReader
 **** DONE big-endian
      - [X] read
      - [X] read_signed
@@ -3750,7 +3750,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    and we'd like to enable threads around the bs->read loop,
    but not have to toggle them on each individual read.
    It's easier to keep them off entirely for now.
-** TODO Add documentation for audiotools.bitstream
+** DONE Add documentation for audiotools.bitstream
 *** DONE BitstreamReader
     - [X] add_callback
     - [X] byte_align
@@ -3775,60 +3775,60 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] unary
     - [X] unmark
     - [X] unread
-*** TODO BitstreamWriter
-    - [ ] add_callback
-    - [ ] build
-    - [ ] byte_align
-    - [ ] call_callbacks
-    - [ ] close
-    - [ ] flush
-    - [ ] pop_callback
-    - [ ] set_endianness
-    - [ ] unary
-    - [ ] write
-    - [ ] write64
-    - [ ] write_bytes
-    - [ ] write_signed
-    - [ ] write_signed64
-*** TODO BitstreamRecorder
-    - [ ] add_callback
-    - [ ] bits
-    - [ ] build
-    - [ ] byte_align
-    - [ ] bytes
-    - [ ] call_callbacks
-    - [ ] close
-    - [ ] copy
-    - [ ] data
-    - [ ] flush
-    - [ ] pop_callback
-    - [ ] reset
-    - [ ] set_endianness
-    - [ ] split
-    - [ ] swap
-    - [ ] unary
-    - [ ] write
-    - [ ] write64
-    - [ ] write_bytes
-    - [ ] write_signed
-    - [ ] write_signed64
-*** TODO BitstreamAccumulator
-    - [ ] bits
-    - [ ] build
-    - [ ] byte_align
-    - [ ] bytes
-    - [ ] close
-    - [ ] reset
-    - [ ] set_endianness
-    - [ ] unary
-    - [ ] write
-    - [ ] write64
-    - [ ] write_bytes
-    - [ ] write_signed
-    - [ ] write_signed64
-*** TODO HuffmanTree
-*** TODO Substream
-*** TODO format_size
+*** DONE BitstreamWriter
+    - [X] add_callback
+    - [X] build
+    - [X] byte_align
+    - [X] call_callbacks
+    - [X] close
+    - [X] flush
+    - [X] pop_callback
+    - [X] set_endianness
+    - [X] unary
+    - [X] write
+    - [X] write64
+    - [X] write_bytes
+    - [X] write_signed
+    - [X] write_signed64
+*** DONE BitstreamRecorder
+    - [X] add_callback
+    - [X] bits
+    - [X] build
+    - [X] byte_align
+    - [X] bytes
+    - [X] call_callbacks
+    - [X] close
+    - [X] copy
+    - [X] data
+    - [X] flush
+    - [X] pop_callback
+    - [X] reset
+    - [X] set_endianness
+    - [X] split
+    - [X] swap
+    - [X] unary
+    - [X] write
+    - [X] write64
+    - [X] write_bytes
+    - [X] write_signed
+    - [X] write_signed64
+*** DONE BitstreamAccumulator
+    - [X] bits
+    - [X] build
+    - [X] byte_align
+    - [X] bytes
+    - [X] close
+    - [X] reset
+    - [X] set_endianness
+    - [X] unary
+    - [X] write
+    - [X] write64
+    - [X] write_bytes
+    - [X] write_signed
+    - [X] write_signed64
+*** DONE HuffmanTree
+*** DONE Substream
+*** DONE format_size
 * TODO Remove Construct module
   Convert all usage of Construct to BitstreamReader/BitstreamWriter.
   Since this is unlikely to be updated for Python 3,
@@ -4239,9 +4239,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 
 ** TODO Document new methods
 ** TODO Unit test new methods
-* TODO Have tracklint add channel mask info to hi-def FLAC files
+* DONE Have tracklint add channel mask info to hi-def FLAC files
   If omitted.  Fix cases in which the tag is missing
   from the VORBISCOMMENT block, or the VORBISCOMMENT block
   is absent altogether.
-** TODO Add unit test
-** TODO Add fix to man page
+** DONE Add unit test
+** DONE Add fix to man page

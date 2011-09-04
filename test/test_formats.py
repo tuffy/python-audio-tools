@@ -3281,6 +3281,35 @@ class FlacFileTest(TestForeignAiffChunks,
         finally:
             temp.close()
 
+        #check 24bps/6ch FLAC files without WAVEFORMATEXTENSIBLE_CHANNEL_MASK
+        for (path, mask) in [("flac-nomask1.flac", 0x3F),
+                             ("flac-nomask2.flac", 0x3F),
+                             ("flac-nomask3.flac", 0x3),
+                             ("flac-nomask4.flac", 0x3)]:
+            track = audiotools.open(path)
+            fixes = []
+            self.assertEqual(track.clean(fixes), None)
+            self.assertEqual(fixes,
+                             [_(u"added WAVEFORMATEXTENSIBLE_CHANNEL_MASK")])
+            temp = tempfile.NamedTemporaryFile(suffix=".flac")
+            try:
+                fixes = []
+                track.clean(fixes, temp.name)
+                self.assertEqual(
+                    fixes,
+                    [_(u"added WAVEFORMATEXTENSIBLE_CHANNEL_MASK")])
+                new_track = audiotools.open(temp.name)
+                self.assertEqual(new_track.channel_mask(),
+                                 track.channel_mask())
+                self.assertEqual(int(new_track.channel_mask()), mask)
+                metadata = new_track.get_metadata()
+                self.assertEqual(
+                    metadata.vorbis_comment[
+                        u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"][0],
+                    u"0x%.4X" % (mask))
+            finally:
+                temp.close()
+
     @FORMAT_FLAC
     def test_nonmd5(self):
         flac = audiotools.open("flac-nonmd5.flac")

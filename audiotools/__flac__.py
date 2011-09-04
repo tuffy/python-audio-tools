@@ -969,11 +969,12 @@ class FlacAudio(WaveContainer, AiffContainer):
             vorbis_comment = self.get_metadata().vorbis_comment
 
             if ((vorbis_comment is not None) and
-                ("WAVEFORMATEXTENSIBLE_CHANNEL_MASK" in vorbis_comment.keys())):
+                (u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK" in
+                 vorbis_comment.keys())):
                 try:
                     return ChannelMask(
                         int(vorbis_comment[
-                                "WAVEFORMATEXTENSIBLE_CHANNEL_MASK"][0], 16))
+                                u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"][0], 16))
                 except ValueError:
                     pass
 
@@ -2399,7 +2400,7 @@ class OggFlacAudio(AudioFile):
         if ((self.channels() > 2) or (self.bits_per_sample() > 16)):
             metadata.vorbis_comment[
                 "WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
-                u"0x%.4x" % (int(self.channel_mask()))]
+                u"0x%.4X" % (int(self.channel_mask()))]
 
         #APPLICATION blocks should stay with the existing file (if any)
         metadata.applications = [block for block in metadata.applications
@@ -2618,7 +2619,7 @@ class OggFlacAudio(AudioFile):
                 metadata = oggflac.get_metadata()
                 metadata.vorbis_comment[
                     "WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
-                    u"0x%.4x" % (channel_mask)]
+                    u"0x%.4X" % (channel_mask)]
                 oggflac.set_metadata(metadata)
             return oggflac
         else:
