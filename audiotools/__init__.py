@@ -4674,6 +4674,46 @@ class ExecProgressQueue:
             args,
             kwargs)
 
+    def execute_next_job_nothreads(self):
+        """Executes the next queued job without spawning a subprocess."""
+
+        #pull job off queue
+        (job_id,
+         progress_text,
+         completion_output,
+         function,
+         args,
+         kwargs) = self.queued_jobs.pop(0)
+
+        #add job to progress display
+        if (progress_text is not None):
+            self.progress_display.add_row(job_id, progress_text)
+
+        #execute job
+        result = function(*args,
+                           progress=__UnthreadedJobProgress__(
+                job_id, self.progress_display).progress, **kwargs)
+
+        #add result to results
+        self.results[job_id] = result
+
+        #remove job from progress display, if present
+        self.progress_display.delete_row(job_id)
+        self.progress_display.update_row(-1,
+                                         len(self.results),
+                                         self.total_queued_jobs)
+        self.progress_display.clear()
+
+        #display output text, if any
+        if (completion_output is not None):
+            if (callable(completion_output)):
+                output = completion_output(result)
+                if (output is not None):
+                    self.progress_display.messenger.info(unicode(output))
+            else:
+                self.progress_display.messenger.info(
+                    unicode(completion_output))
+
     def completed(self, job_id, result):
         """Handles the completion of the given job and its result."""
 
@@ -4738,27 +4778,31 @@ class ExecProgressQueue:
         if (len(self.queued_jobs) == 0):
             return
 
-        for i in xrange(min(max_processes, len(self.queued_jobs))):
-            self.execute_next_job()
+        if ((max_processes == 1) or (len(self.queued_jobs) == 1)):
+            while (len(self.queued_jobs) > 0):
+                self.execute_next_job_nothreads()
+        else:
+            for i in xrange(min(max_processes, len(self.queued_jobs))):
+                self.execute_next_job()
 
-        if (self.total_progress_message is not None):
-            self.progress_display.add_row(-1, self.total_progress_message)
+            if (self.total_progress_message is not None):
+                self.progress_display.add_row(-1, self.total_progress_message)
 
-        try:
-            while (True):
-                (rlist,
-                 wlist,
-                 xlist) = select.select([job.output for job
-                                         in self.running_job_pool.values()],
-                                        [], [])
-                for reader in rlist:
-                    (command, args) = cPickle.load(reader)
-                    getattr(self, command)(*args)
-        except ProgressJobQueueComplete:
-            if (self.cached_exception is not None):
-                raise self.cached_exception
-            else:
-                return
+            try:
+                while (True):
+                    (rlist,
+                     wlist,
+                     xlist) = select.select([job.output for job
+                                             in self.running_job_pool.values()],
+                                            [], [])
+                    for reader in rlist:
+                        (command, args) = cPickle.load(reader)
+                        getattr(self, command)(*args)
+            except ProgressJobQueueComplete:
+                if (self.cached_exception is not None):
+                    raise self.cached_exception
+                else:
+                    return
 
 
 class __ExecProgressQueueJob__:
@@ -4807,6 +4851,14 @@ class __JobProgress__:
         cPickle.dump(("progress", [self.job_id, current, total]),
                      self.output)
         self.output.flush()
+
+class __UnthreadedJobProgress__:
+    def __init__(self, job_id, progress_display):
+        self.job_id = job_id
+        self.progress_display = progress_display
+
+    def progress(self, current, total):
+        self.progress_display.update_row(self.job_id, current, total)
 
 #***ApeAudio temporarily removed***
 #Without a legal alternative to mac-port, I shall have to re-implement

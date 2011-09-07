@@ -104,7 +104,7 @@ class AiffReader(PCMReader):
                     if (chunk_size % 2):
                         aiff_reader.skip(8)
         except IOError:
-            raise InvalidAIFF(_(u"ssnd chunk not found"))
+            self.read = self.read_error
 
         #handle AIFF unusual channel order
         standard_channel_mask = ChannelMask(self.channel_mask)
@@ -145,6 +145,9 @@ class AiffReader(PCMReader):
                                  self.channels,
                                  self.bits_per_sample,
                                  True, True)
+
+    def read_error(self, bytes):
+        raise IOError()
 
 class InvalidAIFF(InvalidFile):
     """Raised if some problem occurs parsing AIFF chunks."""
@@ -282,12 +285,12 @@ class AiffAudio(AiffContainer):
                 (header[8:12] == 'AIFF'))
 
     def chunks(self):
-        """yields a (chunk_id, chunk_data) tuples
+        """yields a (chunk_id, chunk_size, chunk_data) tuples
 
-        chunk_id is a binary strings
-        chunk_data is a binary string"""
+        all fields are binary strings"""
 
         from .bitstream import BitstreamReader
+        from struct import pack
 
         aiff_file = BitstreamReader(file(self.filename, 'rb'), 0)
         try:
@@ -307,15 +310,18 @@ class AiffAudio(AiffContainer):
                 else:
                     total_size -= 8
 
-                #yield the (chunk_id, chunk_data) strings
-                yield (chunk_id, aiff_file.read_bytes(chunk_size))
-
-                total_size -= chunk_size
-
-                #round up chunk size to 16 bits
+                #yield the (chunk_id, chunk_size, chunk_data) strings
                 if (chunk_size % 2):
-                    aiff_file.skip(8)
-                    total_size -= 1
+                    yield (chunk_id,
+                           pack(">I", chunk_size),
+                           aiff_file.read_bytes(chunk_size + 1))
+                    total_size -= (chunk_size + 1)
+                else:
+                    yield (chunk_id,
+                           pack(">I", chunk_size),
+                           aiff_file.read_bytes(chunk_size))
+                    total_size -= chunk_size
+
         finally:
             aiff_file.close()
 
@@ -338,15 +344,10 @@ class AiffAudio(AiffContainer):
             aiff_file.build("4b 32u 4b", ("FORM", total_size, "AIFF"))
 
             #write the individual chunks
-            for (chunk_id, chunk_data) in chunk_iter:
-                aiff_file.build("4b 32u %db" % (len(chunk_data)),
-                                (chunk_id, len(chunk_data), chunk_data))
+            for (chunk_id, chunk_size, chunk_data) in chunk_iter:
+                aiff_file.build("4b 4b %db" % (len(chunk_data)),
+                                (chunk_id, chunk_size, chunk_data))
                 total_size += (8 + len(chunk_data))
-
-                #round up chunks to 16 bit boundries
-                if (len(chunk_data) % 2):
-                    aiff_file.write(8, 0)
-                    total_size += 1
 
             #once the chunks are done, go back and re-write the header
             aiff.seek(4, 0)
@@ -376,6 +377,8 @@ class AiffAudio(AiffContainer):
         Raises IOError if unable to write the file.
         """
 
+        from struct import pack
+
         if (metadata is None):
             return
         elif (not isinstance(metadata, ID3v22Comment)):
@@ -384,15 +387,22 @@ class AiffAudio(AiffContainer):
         def chunk_filter(chunks, id3_chunk):
             id3_found = False
 
-            for (chunk_id, chunk_data) in chunks:
+            for (chunk_id, chunk_size, chunk_data) in chunks:
                 if (chunk_id == 'ID3 '):
-                    yield (chunk_id, id3_chunk)
+                    if (len(id3_chunk) % 2):
+                        yield (chunk_id,
+                               pack(">I", len(id3_chunk)),
+                               id3_chunk + chr(0))
+                    else:
+                        yield (chunk_id,
+                               pack(">I", len(id3_chunk)),
+                               id3_chunk)
                     id3_found = True
                 else:
-                    yield (chunk_id, chunk_data)
+                    yield (chunk_id, chunk_size, chunk_data)
             else:
                 if (not id3_found):
-                    yield ('ID3 ', id3_chunk)
+                    yield ('ID3 ', chunk_size, id3_chunk)
 
         import tempfile
         from .bitstream import BitstreamRecorder
@@ -434,11 +444,11 @@ class AiffAudio(AiffContainer):
         Raises IOError if unable to write the file."""
 
         def chunk_filter(chunks):
-            for (chunk_id, chunk_data) in chunks:
+            for (chunk_id, chunk_size, chunk_data) in chunks:
                 if (chunk_id == 'ID3 '):
                     continue
                 else:
-                    yield (chunk_id, chunk_data)
+                    yield (chunk_id, chunk_size, chunk_data)
 
         import tempfile
 
@@ -682,7 +692,7 @@ class AiffAudio(AiffContainer):
                 #transfer each chunk header
                 (chunk_id, chunk_size) = aiff_file.parse("4b 32u")
                 if (not frozenset(chunk_id).issubset(self.PRINTABLE_ASCII)):
-                    raise InvalidWave(_(u"Invalid AIFF chunk ID"))
+                    raise InvalidAIFF(_(u"Invalid AIFF chunk ID"))
                 else:
                     current_block.build("4b 32u", (chunk_id, chunk_size))
                     total_size -= 8
@@ -710,6 +720,32 @@ class AiffAudio(AiffContainer):
     def has_foreign_aiff_chunks(self):
         return (set(['COMM', 'SSND']) !=
                 set([chunk[0] for chunk in self.chunks()]))
+
+    def verify(self, progress=None):
+        COMM_found = False
+        SSND_found = False
+
+        try:
+            for (chunk_id, chunk_size, chunk_length) in self.chunks():
+                if (not frozenset(chunk_id).issubset(self.PRINTABLE_ASCII)):
+                    raise InvalidAIFF(_(u"Invalid AIFF chunk ID"))
+                elif (chunk_id == 'COMM'):
+                    if (COMM_found):
+                        raise InvalidAIFF(_(u"duplicate COMM chunk found"))
+                    else:
+                        COMM_found = True
+                elif (chunk_id == 'SSND'):
+                    if (SSND_found):
+                        raise InvalidAIFF(_(u"duplicate SSND chunk found"))
+                    else:
+                        SSND_found = True
+            else:
+                if (not COMM_found):
+                    raise InvalidAIFF(_(u"COMM chunk not found"))
+                elif (not SSND_found):
+                    raise InvalidAIFF(_(u"SSND chunk not found"))
+        except IOError:
+            raise InvalidAIFF(_(u"I/O error reading AIFF chunks"))
 
 
 class AIFFChannelMask(ChannelMask):

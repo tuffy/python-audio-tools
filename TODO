@@ -3737,8 +3737,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** TODO little-endian
 **** TODO callbacks
 **** TODO placeholders
-*** TODO BitstreamWriter recorder
-*** TODO BitstreamWriter accumulator
+*** TODO BitstreamRecorder
+*** TODO BitstreamAccumulator
 ** DONE Shift BitstreamReader/BitstreamWriters to audiotools.bitstream
 ** TODO Make BitstreamReader/BitstreamWriter thread-friendly?
    Although it seems like a no-brainer, this is surprisingly tricky.
@@ -4134,6 +4134,61 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Add unit tests to ensure TOTALTRACKS works
 * TODO Adjust FlacMetaData to store blocks internally in order
   That is, they should output in the same order that they are stored on disk.
+** DONE Add size() method to FLAC blocks
+   This returns the size of the block data, not including its 32-bit header
+   - [X] Flac_STREAMINFO
+   - [X] Flac_VORBISCOMMENT
+   - [X] Flac_PICTURE
+   - [X] Flac_APPLICATION
+   - [X] Flac_SEEKTABLE
+   - [X] Flac_CUESHEET
+   - [X] Flac_PADDING
+** TODO FlacMetaData
+   - [X] __init__
+   - [X] __setattr__
+   - [X] __getattr__
+   - [X] __delattr__
+   - [X] converted
+   - [ ] merge
+   - [X] add_image
+   - [X] delete_image
+   - [X] images
+   - [ ] clean
+   - [X] __repr__
+   - [X] parse
+   - [X] raw_info
+   - [X] blocks
+   - [X] build
+** TODO FlacAudio
+   - [X] channel_mask
+   - [X] get_metadata
+   - [X] update_metadata
+   - [X] set_metadata
+   - [X] set_cuesheet
+   - [X] get_cuesheet
+   - [X] has_foreign_riff_chunks
+   - [X] riff_wave_chunks
+   - [X] from_wave
+   - [X] has_foreign_aiff_chunks
+   - [X] from_aiff
+   - [X] aiff_chunks
+   - [ ] seektable
+   - [X] add_replay_gain
+   - [X] replay_gain
+   - [ ] clean
+** TODO OggFlacMetaData
+   - [ ] converted
+   - [ ] __repr__
+   - [ ] parse
+   - [ ] build
+** TODO OggFlacAudio
+   - [ ] channel_mask
+   - [ ] update_metadata
+   - [ ] set_metadata
+   - [ ] set_cuesheet
+   - [ ] get_cuesheet
+   - [ ] add_replay_gain
+   - [ ] replay_gain
 * TODO Adjust ID3v2 to store frames internally in order
   That is, they should output in the same order that they are stored on disk.
 ** TODO ID3v22Comment

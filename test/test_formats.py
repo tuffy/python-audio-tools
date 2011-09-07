@@ -1700,10 +1700,10 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
     @FORMAT_AIFF
     def test_verify(self):
         #test truncated file
-        for (comm_size, aiff_file) in [(0x25, "aiff-8bit.aiff"),
-                                       (0x25, "aiff-1ch.aiff"),
-                                       (0x25, "aiff-2ch.aiff"),
-                                       (0x25, "aiff-6ch.aiff")]:
+        for aiff_file in ["aiff-8bit.aiff",
+                          "aiff-1ch.aiff",
+                          "aiff-2ch.aiff",
+                          "aiff-6ch.aiff"]:
             f = open(aiff_file, 'rb')
             aiff_data = f.read()
             f.close()
@@ -1713,7 +1713,7 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
             try:
                 #first, check that a truncated comm chunk raises an exception
                 #at init-time
-                for i in xrange(0, comm_size + 17):
+                for i in xrange(0, 0x25):
                     temp.seek(0, 0)
                     temp.write(aiff_data[0:i])
                     temp.flush()
@@ -1725,7 +1725,7 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
 
                 #then, check that a truncated ssnd chunk raises an exception
                 #at read-time
-                for i in xrange(comm_size + 17, len(aiff_data)):
+                for i in xrange(0x2F, len(aiff_data)):
                     temp.seek(0, 0)
                     temp.write(aiff_data[0:i])
                     temp.flush()
@@ -1747,16 +1747,15 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
             temp.seek(0, 0)
             temp.write("".join(aiff_data))
             temp.flush()
+            aiff = audiotools.open(temp.name)
             self.assertRaises(audiotools.InvalidFile,
-                              audiotools.open,
-                              temp.name)
+                              aiff.verify)
         finally:
             temp.close()
 
         #test no SSND chunk
-        self.assertRaises(audiotools.InvalidFile,
-                          audiotools.AiffAudio,
-                          "aiff-nossnd.aiff")
+        aiff = audiotools.open("aiff-nossnd.aiff")
+        self.assertRaises(audiotools.InvalidFile, aiff.verify)
 
         #test convert errors
         temp = tempfile.NamedTemporaryFile(suffix=".aiff")
@@ -4259,8 +4258,10 @@ class WaveFileTest(TestForeignWaveChunks,
                 temp.close()
 
         #test for non-ASCII chunk IDs
+        from struct import pack
+
         chunks = list(audiotools.open("wav-2ch.wav").chunks()) + \
-            [("fooz", chr(0) * 10)]
+            [("fooz", pack("<I", 10), chr(0) * 10)]
         temp = tempfile.NamedTemporaryFile(suffix=".wav")
         try:
             audiotools.WaveAudio.wave_from_chunks(temp.name,

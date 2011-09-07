@@ -632,12 +632,12 @@ class WaveAudio(WaveContainer):
         return self.__chunk_ids__[:]
 
     def chunks(self):
-        """yields (chunk_id, chunk_data) tuples
+        """yields (chunk_id, chunk_size, chunk_data) tuples
 
-        chunk_id is a binary string
-        chunk_data is a binary string"""
+        all fields are binary strings"""
 
         from .bitstream import BitstreamReader
+        from struct import pack
 
         wave_file = BitstreamReader(file(self.filename, 'rb'), 1)
         try:
@@ -657,15 +657,17 @@ class WaveAudio(WaveContainer):
                 else:
                     total_size -= 8
 
-                #yield the (chunk_id, chunk_data) strings
-                yield (chunk_id, wave_file.read_bytes(chunk_size))
-
-                total_size -= chunk_size
-
-                #round up chunk size to 16 bits
+                #yield the (chunk_id, chunk_size, chunk_data) strings
                 if (chunk_size % 2):
-                    wave_file.skip(8)
-                    total_size -= 1
+                    yield (chunk_id,
+                           pack("<I", chunk_size),
+                           wave_file.read_bytes(chunk_size + 1))
+                    total_size -= (chunk_size + 1)
+                else:
+                    yield (chunk_id,
+                           pack("<I", chunk_size),
+                           wave_file.read_bytes(chunk_size))
+                    total_size -= chunk_size
 
         finally:
             wave_file.close()
@@ -675,7 +677,7 @@ class WaveAudio(WaveContainer):
         """Builds a new RIFF WAVE file from a chunk data iterator.
 
         filename is the path to the wave file to build.
-        chunk_iter should yield (chunk_id, chunk_data) tuples.
+        chunk_iter should yield (chunk_id, chunk_size, chunk_data) tuples.
         """
 
         from .bitstream import BitstreamWriter
@@ -689,15 +691,10 @@ class WaveAudio(WaveContainer):
             wave_file.build("4b 32u 4b", ("RIFF", total_size, "WAVE"))
 
             #write the individual chunks
-            for (chunk_id, chunk_data) in chunk_iter:
-                wave_file.build("4b 32u %db" % (len(chunk_data)),
-                                (chunk_id, len(chunk_data), chunk_data))
+            for (chunk_id, chunk_size, chunk_data) in chunk_iter:
+                wave_file.build("4b 4b %db" % (len(chunk_data)),
+                                (chunk_id, chunk_size, chunk_data))
                 total_size += (8 + len(chunk_data))
-
-                #round up chunks to 16 bit boundries
-                if (len(chunk_data) % 2):
-                    wave_file.write(8, 0)
-                    total_size += 1
 
             #once the chunks are done, go back and re-write the header
             wave.seek(4, 0)

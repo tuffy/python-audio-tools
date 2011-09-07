@@ -135,8 +135,9 @@ if (__name__ == '__main__'):
                     msg.output_rows()
                     msg.output(u"")
             else:
-                msg.output(metadata.raw_info())
-                msg.output(u"")
+                if (metadata is not None):
+                    msg.output(metadata.raw_info())
+                    msg.output(u"")
         if (options.channel_assignment):
             msg.output(_("Assigned Channels:"))
             channel_names = {
