@@ -1767,15 +1767,15 @@ class FlacMetaData(MetaDataTest):
 
     @METADATA_FLAC
     def test_foreign_field(self):
-        metadata = audiotools.FlacMetaData(
-            vorbis_comment=audiotools.Flac_VORBISCOMMENT(
-                        {"TITLE": [u'Track Name'],
-                         "ALBUM": [u'Album Name'],
-                         "TRACKNUMBER": [u"1"],
-                         "TRACKTOTAL": [u"3"],
-                         "DISCNUMBER": [u"2"],
-                         "DISCTOTAL": [u"4"],
-                         "FOO": [u"Bar"]}))
+        metadata = audiotools.FlacMetaData([
+                audiotools.Flac_VORBISCOMMENT(
+                    [u"TITLE=Track Name",
+                     u"ALBUM=Album Name",
+                     u"TRACKNUMBER=1",
+                     u"TRACKTOTAL=3",
+                     u"DISCNUMBER=2",
+                     u"DISCTOTAL=4",
+                     u"FOO=Bar"], u"")])
         for format in self.supported_formats:
             temp_file = tempfile.NamedTemporaryFile(
                 suffix="." + format.SUFFIX)
@@ -1786,7 +1786,8 @@ class FlacMetaData(MetaDataTest):
                 metadata2 = track.get_metadata()
                 self.assertEqual(metadata, metadata2)
                 self.assertEqual(metadata.__class__, metadata2.__class__)
-                self.assertEqual(track.get_metadata().vorbis_comment["FOO"],
+                self.assertEqual(track.get_metadata().get_block(
+                        audiotools.Flac_VORBISCOMMENT.BLOCK_ID)["FOO"],
                                  [u"Bar"])
             finally:
                 temp_file.close()
@@ -1823,13 +1824,15 @@ class FlacMetaData(MetaDataTest):
                     setattr(metadata, field, value)
                     self.assertEqual(getattr(metadata, field), value)
                     self.assertEqual(
-                        metadata.vorbis_comment[key][0],
+                        metadata.get_block(
+                            audiotools.Flac_VORBISCOMMENT.BLOCK_ID)[key][0],
                         unicode(value))
                     track.set_metadata(metadata)
                     metadata2 = track.get_metadata()
                     self.assertEqual(getattr(metadata2, field), value)
                     self.assertEqual(
-                        metadata2.vorbis_comment[key][0],
+                        metadata2.get_block(
+                            audiotools.Flac_VORBISCOMMENT.BLOCK_ID)[key][0],
                         unicode(value))
 
                 #ensure that updating the low-level implementation
@@ -1837,16 +1840,20 @@ class FlacMetaData(MetaDataTest):
                 for (field, key, value) in mapping:
                     track.delete_metadata()
                     metadata = self.empty_metadata()
-                    metadata.vorbis_comment[key] = [unicode(value)]
+                    metadata.get_block(
+                        audiotools.Flac_VORBISCOMMENT.BLOCK_ID)[key] = \
+                        [unicode(value)]
                     self.assertEqual(getattr(metadata, field), value)
                     self.assertEqual(
-                        metadata.vorbis_comment[key][0],
+                        metadata.get_block(
+                            audiotools.Flac_VORBISCOMMENT.BLOCK_ID)[key][0],
                         unicode(value))
                     track.set_metadata(metadata)
                     metadata2 = track.get_metadata()
                     self.assertEqual(getattr(metadata2, field), value)
                     self.assertEqual(
-                        metadata2.vorbis_comment[key][0],
+                        metadata2.get_block(
+                            audiotools.Flac_VORBISCOMMENT.BLOCK_ID)[key][0],
                         unicode(value))
             finally:
                 # temp_file.close()
@@ -1857,14 +1864,18 @@ class FlacMetaData(MetaDataTest):
         MetaDataTest.test_converted(self)
 
         metadata_orig = self.empty_metadata()
-        metadata_orig.vorbis_comment['FOO'] = [u'bar']
+        metadata_orig.get_block(
+            audiotools.Flac_VORBISCOMMENT.BLOCK_ID)[u'FOO'] = [u'bar']
 
-        self.assertEqual(metadata_orig.vorbis_comment['FOO'], [u'bar'])
+        self.assertEqual(metadata_orig.get_block(
+            audiotools.Flac_VORBISCOMMENT.BLOCK_ID)[u'FOO'], [u'bar'])
 
         metadata_new = self.metadata_class.converted(metadata_orig)
 
-        self.assertEqual(metadata_orig.vorbis_comment['FOO'],
-                         metadata_new.vorbis_comment['FOO'])
+        self.assertEqual(metadata_orig.get_block(
+                audiotools.Flac_VORBISCOMMENT.BLOCK_ID)[u'FOO'],
+                         metadata_new.get_block(
+                audiotools.Flac_VORBISCOMMENT.BLOCK_ID)[u'FOO'])
 
     @METADATA_FLAC
     def test_oversized(self):
@@ -1910,21 +1921,23 @@ class FlacMetaData(MetaDataTest):
     @METADATA_FLAC
     def test_totals(self):
         metadata = self.empty_metadata()
-        metadata.vorbis_comment["TRACKNUMBER"] = [u"2/4"]
+        metadata.get_block(
+            audiotools.Flac_VORBISCOMMENT.BLOCK_ID)["TRACKNUMBER"] = [u"2/4"]
         self.assertEqual(metadata.track_number, 2)
         self.assertEqual(metadata.track_total, 4)
 
         metadata = self.empty_metadata()
-        metadata.vorbis_comment["DISCNUMBER"] = [u"1/3"]
+        metadata.get_block(
+            audiotools.Flac_VORBISCOMMENT.BLOCK_ID)["DISCNUMBER"] = [u"1/3"]
         self.assertEqual(metadata.album_number, 1)
         self.assertEqual(metadata.album_total, 3)
 
     @METADATA_FLAC
     def test_clean(self):
         #check trailing whitespace
-        metadata = audiotools.FlacMetaData(
-            vorbis_comment=audiotools.Flac_VORBISCOMMENT(
-                        {"TITLE": [u'Foo ']}))
+        metadata = audiotools.FlacMetaData([
+                audiotools.Flac_VORBISCOMMENT(
+                    [u"TITLE=Foo "], u"")])
         self.assertEqual(metadata.track_name, u'Foo ')
         results = []
         cleaned = metadata.clean(results)
@@ -1934,9 +1947,9 @@ class FlacMetaData(MetaDataTest):
                           {"field":u"TITLE"}])
 
         #check leading whitespace
-        metadata = audiotools.FlacMetaData(
-            vorbis_comment=audiotools.Flac_VORBISCOMMENT(
-                        {"TITLE": [u' Foo']}))
+        metadata = audiotools.FlacMetaData([
+                audiotools.Flac_VORBISCOMMENT(
+                    [u"TITLE= Foo"], u"")])
         self.assertEqual(metadata.track_name, u' Foo')
         results = []
         cleaned = metadata.clean(results)
@@ -1946,41 +1959,47 @@ class FlacMetaData(MetaDataTest):
                           {"field":u"TITLE"}])
 
         #check leading zeroes
-        metadata = audiotools.FlacMetaData(
-            vorbis_comment=audiotools.Flac_VORBISCOMMENT(
-                        {"TRACKNUMBER": [u'01']}))
-        self.assertEqual(metadata.vorbis_comment["TRACKNUMBER"],[u"01"])
+        metadata = audiotools.FlacMetaData([
+                audiotools.Flac_VORBISCOMMENT(
+                    [u"TRACKNUMBER=01"], u"")])
+        self.assertEqual(
+            metadata.get_block(
+                audiotools.Flac_VORBISCOMMENT.BLOCK_ID)["TRACKNUMBER"],[u"01"])
         results = []
         cleaned = metadata.clean(results)
-        self.assertEqual(cleaned.vorbis_comment["TRACKNUMBER"],[u"1"])
+        self.assertEqual(
+            cleaned.get_block(
+                audiotools.Flac_VORBISCOMMENT.BLOCK_ID)["TRACKNUMBER"],[u"1"])
         self.assertEqual(results,
                          [_(u"removed leading zeroes from %(field)s") %
                           {"field":u"TRACKNUMBER"}])
 
         #check empty fields
-        metadata = audiotools.FlacMetaData(
-                vorbis_comment=audiotools.Flac_VORBISCOMMENT(
-                        {"TITLE": [u'  ']}))
-        self.assertEqual(metadata.vorbis_comment["TITLE"], [u'  '])
+        metadata = audiotools.FlacMetaData([
+                audiotools.Flac_VORBISCOMMENT(
+                        ["TITLE=  "], u"")])
+        self.assertEqual(
+            metadata.get_block(
+                audiotools.Flac_VORBISCOMMENT.BLOCK_ID)["TITLE"], [u'  '])
         results = []
         cleaned = metadata.clean(results)
         self.assertEqual(cleaned,
-                         audiotools.FlacMetaData(
-                        vorbis_comment=audiotools.Flac_VORBISCOMMENT({})))
+                         audiotools.FlacMetaData([
+                    audiotools.Flac_VORBISCOMMENT([], u"")]))
+
         self.assertEqual(results,
-                         [_(u"removed trailing whitespace from %(field)s") %
-                          {"field":u"TITLE"},
-                          _(u"removed empty field %(field)s") %
+                         [_(u"removed empty field %(field)s") %
                           {"field":u"TITLE"}])
 
         #check mis-tagged images
         metadata = audiotools.FlacMetaData(
-                    pictures=[audiotools.Flac_PICTURE(
+                    [audiotools.Flac_PICTURE(
                         0, "image/jpeg", u"", 20, 20, 24, 10,
 """iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKAQMAAAC3/F3+AAAAAXNSR0IArs4c6QAAAANQTFRF////
 p8QbyAAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB9sEBBMWM3PnvjMAAAALSURBVAjXY2DA
 BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
-        self.assertEqual(len(metadata.pictures), 1)
+        self.assertEqual(
+            len(metadata.get_blocks(audiotools.Flac_PICTURE.BLOCK_ID)), 1)
         image = metadata.images()[0]
         self.assertEqual(image.mime_type, "image/jpeg")
         self.assertEqual(image.width, 20)
@@ -1992,7 +2011,8 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
         cleaned = metadata.clean(results)
         self.assertEqual(results,
                          [_(u"fixed embedded image metadata fields")])
-        self.assertEqual(len(cleaned.pictures), 1)
+        self.assertEqual(
+            len(cleaned.get_blocks(audiotools.Flac_PICTURE.BLOCK_ID)), 1)
         image = cleaned.images()[0]
         self.assertEqual(image.mime_type, "image/png")
         self.assertEqual(image.width, 10)
@@ -2003,8 +2023,8 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
 
         #check that cleanup doesn't disturb other metadata blocks
         #FIXME
-        metadata = audiotools.FlacMetaData(
-            streaminfo=audiotools.Flac_STREAMINFO(
+        metadata = audiotools.FlacMetaData([
+            audiotools.Flac_STREAMINFO(
                 minimum_block_size=4096,
                 maximum_block_size=4096,
                 minimum_frame_size=14,
@@ -2015,37 +2035,37 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
                 total_samples=149606016L,
                 md5sum='\xae\x87\x1c\x8e\xe1\xfc\x16\xde' +
                 '\x86\x81&\x8e\xc8\xd52\xff'),
-            applications=[audiotools.Flac_APPLICATION(
-                application_id="FOOZ",
-                data="KELP")],
-            seektable=audiotools.Flac_SEEKTABLE([
-                (0L, 0L, 4096),
-                (8335360L, 30397L, 4096),
-                (8445952L, 30816L, 4096),
-                (17379328L, 65712L, 4096),
-                (17489920L, 66144L, 4096),
-                (28041216L, 107360L, 4096),
-                (28151808L, 107792L, 4096),
-                (41672704L, 160608L, 4096),
-                (41783296L, 161040L, 4096),
-                (54444032L, 210496L, 4096),
-                (54558720L, 210944L, 4096),
-                (65687552L, 254416L, 4096),
-                (65802240L, 254864L, 4096),
-                (76267520L, 295744L, 4096),
-                (76378112L, 296176L, 4096),
-                (89624576L, 347920L, 4096),
-                (89739264L, 348368L, 4096),
-                (99688448L, 387232L, 4096),
-                (99803136L, 387680L, 4096),
-                (114176000L, 443824L, 4096),
-                (114286592L, 444256L, 4096),
-                (125415424L, 487728L, 4096),
-                (125526016L, 488160L, 4096),
-                (138788864L, 539968L, 4096),
-                (138903552L, 540416L, 4096)]),
-            vorbis_comment=audiotools.Flac_VORBISCOMMENT({"TITLE":[u"Foo "]}),
-            cuesheet=audiotools.Flac_CUESHEET(
+            audiotools.Flac_APPLICATION(
+                    application_id="FOOZ",
+                    data="KELP"),
+            audiotools.Flac_SEEKTABLE([
+                        (0L, 0L, 4096),
+                        (8335360L, 30397L, 4096),
+                        (8445952L, 30816L, 4096),
+                        (17379328L, 65712L, 4096),
+                        (17489920L, 66144L, 4096),
+                        (28041216L, 107360L, 4096),
+                        (28151808L, 107792L, 4096),
+                        (41672704L, 160608L, 4096),
+                        (41783296L, 161040L, 4096),
+                        (54444032L, 210496L, 4096),
+                        (54558720L, 210944L, 4096),
+                        (65687552L, 254416L, 4096),
+                        (65802240L, 254864L, 4096),
+                        (76267520L, 295744L, 4096),
+                        (76378112L, 296176L, 4096),
+                        (89624576L, 347920L, 4096),
+                        (89739264L, 348368L, 4096),
+                        (99688448L, 387232L, 4096),
+                        (99803136L, 387680L, 4096),
+                        (114176000L, 443824L, 4096),
+                        (114286592L, 444256L, 4096),
+                        (125415424L, 487728L, 4096),
+                        (125526016L, 488160L, 4096),
+                        (138788864L, 539968L, 4096),
+                        (138903552L, 540416L, 4096)]),
+            audiotools.Flac_VORBISCOMMENT(["TITLE=Foo "], u""),
+            audiotools.Flac_CUESHEET(
                 catalog_number='4560248013904\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
                 lead_in_samples=88200L,
                 is_cdda=1,
@@ -2173,16 +2193,16 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[])]),
-            pictures=[audiotools.Flac_PICTURE(0, "image/jpeg", u"",
-                                              500, 500, 24, 0, TEST_COVER1)])
+            audiotools.Flac_PICTURE(0, "image/jpeg", u"",
+                                    500, 500, 24, 0, TEST_COVER1)])
 
-
-        self.assert_(metadata.streaminfo is not None)
-        self.assert_(metadata.vorbis_comment is not None)
-        self.assert_(metadata.seektable is not None)
-        self.assert_(metadata.cuesheet is not None)
-        self.assertEqual(len(metadata.pictures), 1)
-        self.assertEqual(len(metadata.applications), 1)
+        self.assertEqual([b.BLOCK_ID for b in metadata.block_list],
+                         [audiotools.Flac_STREAMINFO.BLOCK_ID,
+                          audiotools.Flac_APPLICATION.BLOCK_ID,
+                          audiotools.Flac_SEEKTABLE.BLOCK_ID,
+                          audiotools.Flac_VORBISCOMMENT.BLOCK_ID,
+                          audiotools.Flac_CUESHEET.BLOCK_ID,
+                          audiotools.Flac_PICTURE.BLOCK_ID])
 
         results = []
         cleaned = metadata.clean(results)
@@ -2190,11 +2210,16 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
                          [_(u"removed trailing whitespace from %(field)s") %
                           {"field":u"TITLE"}])
 
-        self.assertEqual(cleaned.streaminfo, metadata.streaminfo)
-        self.assertEqual(cleaned.seektable, metadata.seektable)
-        self.assertEqual(cleaned.cuesheet, metadata.cuesheet)
-        self.assertEqual(cleaned.pictures, metadata.pictures)
-        self.assertEqual(cleaned.applications, metadata.applications)
+        for block_id in [audiotools.Flac_STREAMINFO.BLOCK_ID,
+                         audiotools.Flac_APPLICATION.BLOCK_ID,
+                         audiotools.Flac_SEEKTABLE.BLOCK_ID,
+                         audiotools.Flac_CUESHEET.BLOCK_ID,
+                         audiotools.Flac_PICTURE.BLOCK_ID]:
+            self.assertEqual(metadata.get_blocks(block_id),
+                             cleaned.get_blocks(block_id))
+        self.assertNotEqual(
+            metadata.get_blocks(audiotools.Flac_VORBISCOMMENT.BLOCK_ID),
+            cleaned.get_blocks(audiotools.Flac_VORBISCOMMENT.BLOCK_ID))
 
 
 class M4AMetaDataTest(MetaDataTest):

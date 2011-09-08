@@ -2466,7 +2466,7 @@ class FlacFileTest(TestForeignAiffChunks,
             metadata.add_image(
                 audiotools.Image.new(HUGE_BMP.decode('bz2'), u'', 0))
 
-            track.set_metadata(metadata)
+            track.update_metadata(metadata)
 
             #ensure that setting the metadata doesn't break the file
             new_md5 = md5()
@@ -2497,7 +2497,7 @@ class FlacFileTest(TestForeignAiffChunks,
             metadata = track.get_metadata()
             metadata.comment = "QlpoOTFBWSZTWYmtEk8AgICBAKAAAAggADCAKRoBANIBAOLuSKcKEhE1okng".decode('base64').decode('bz2').decode('ascii')
 
-            track.set_metadata(metadata)
+            track.update_metadata(metadata)
 
             #ensure that setting the metadata doesn't break the file
             new_md5 = md5()
@@ -2528,12 +2528,20 @@ class FlacFileTest(TestForeignAiffChunks,
             #ensure that vendor_string isn't modified by setting metadata
             metadata = track.get_metadata()
             self.assert_(metadata is not None)
-            self.assert_(metadata.vorbis_comment is not None)
-            proper_vendor_string = metadata.vorbis_comment.vendor_string
-            metadata.vorbis_comment.vendor_string = u"Invalid String"
+            self.assertEqual(metadata.track_name, u"Testing")
+            self.assert_(
+                metadata.get_block(audiotools.Flac_VORBISCOMMENT.BLOCK_ID)
+                is not None)
+            vorbis_comment = metadata.get_blocks(
+                audiotools.Flac_VORBISCOMMENT.BLOCK_ID)
+            proper_vendor_string = vorbis_comment[0].vendor_string
+            vorbis_comment[0].vendor_string = u"Different String"
+            metadata.replace_blocks(audiotools.Flac_VORBISCOMMENT.BLOCK_ID,
+                                    vorbis_comment)
             track.set_metadata(metadata)
-            self.assertEqual(track.get_metadata().vorbis_comment.vendor_string,
-                             proper_vendor_string)
+            vendor_string = track.get_metadata().get_block(
+                audiotools.Flac_VORBISCOMMENT.BLOCK_ID).vendor_string
+            self.assertEqual(vendor_string, proper_vendor_string)
 
             #FIXME - ensure that channel mask isn't modified
             #by setting metadata
@@ -2551,73 +2559,84 @@ class FlacFileTest(TestForeignAiffChunks,
 
             #attempt to adjust its metadata with bogus side data fields
             metadata = flac_file.get_metadata()
+            streaminfo = metadata.get_block(audiotools.Flac_STREAMINFO.BLOCK_ID)
 
-            minimum_block_size = metadata.streaminfo.minimum_block_size
-            maximum_block_size = metadata.streaminfo.maximum_block_size
-            minimum_frame_size = metadata.streaminfo.minimum_frame_size
-            maximum_frame_size = metadata.streaminfo.maximum_frame_size
-            sample_rate = metadata.streaminfo.sample_rate
-            channels = metadata.streaminfo.channels
-            bits_per_sample = metadata.streaminfo.bits_per_sample
-            total_samples = metadata.streaminfo.total_samples
-            md5sum = metadata.streaminfo.md5sum
+            minimum_block_size = streaminfo.minimum_block_size
+            maximum_block_size = streaminfo.maximum_block_size
+            minimum_frame_size = streaminfo.minimum_frame_size
+            maximum_frame_size = streaminfo.maximum_frame_size
+            sample_rate = streaminfo.sample_rate
+            channels = streaminfo.channels
+            bits_per_sample = streaminfo.bits_per_sample
+            total_samples = streaminfo.total_samples
+            md5sum = streaminfo.md5sum
 
-            metadata.streaminfo.minimum_block_size = 1
-            metadata.streaminfo.maximum_block_size = 10
-            metadata.streaminfo.minimum_frame_size = 2
-            metadata.streaminfo.maximum_frame_size = 11
-            metadata.streaminfo.sample_rate = 96000
-            metadata.streaminfo.channels = 4
-            metadata.streaminfo.bits_per_sample = 24
-            metadata.streaminfo.total_samples = 96000
-            metadata.streaminfo.md5sum = chr(1) * 16
+            streaminfo.minimum_block_size = 1
+            streaminfo.maximum_block_size = 10
+            streaminfo.minimum_frame_size = 2
+            streaminfo.maximum_frame_size = 11
+            streaminfo.sample_rate = 96000
+            streaminfo.channels = 4
+            streaminfo.bits_per_sample = 24
+            streaminfo.total_samples = 96000
+            streaminfo.md5sum = chr(1) * 16
+
+            metadata.replace_blocks(audiotools.Flac_STREAMINFO.BLOCK_ID,
+                                    [streaminfo])
 
             #ensure that set_metadata() restores fields to original values
             flac_file.set_metadata(metadata)
             metadata = flac_file.get_metadata()
+            streaminfo = metadata.get_block(audiotools.Flac_STREAMINFO.BLOCK_ID)
+
             self.assertEqual(minimum_block_size,
-                             metadata.streaminfo.minimum_block_size)
+                             streaminfo.minimum_block_size)
             self.assertEqual(maximum_block_size,
-                             metadata.streaminfo.maximum_block_size)
+                             streaminfo.maximum_block_size)
             self.assertEqual(minimum_frame_size,
-                             metadata.streaminfo.minimum_frame_size)
+                             streaminfo.minimum_frame_size)
             self.assertEqual(maximum_frame_size,
-                             metadata.streaminfo.maximum_frame_size)
+                             streaminfo.maximum_frame_size)
             self.assertEqual(sample_rate,
-                             metadata.streaminfo.sample_rate)
+                             streaminfo.sample_rate)
             self.assertEqual(channels,
-                             metadata.streaminfo.channels)
+                             streaminfo.channels)
             self.assertEqual(bits_per_sample,
-                             metadata.streaminfo.bits_per_sample)
+                             streaminfo.bits_per_sample)
             self.assertEqual(total_samples,
-                             metadata.streaminfo.total_samples)
+                             streaminfo.total_samples)
             self.assertEqual(md5sum,
-                             metadata.streaminfo.md5sum)
+                             streaminfo.md5sum)
 
             #adjust its metadata with new bogus side data files
             metadata = flac_file.get_metadata()
-            metadata.streaminfo.minimum_block_size = 1
-            metadata.streaminfo.maximum_block_size = 10
-            metadata.streaminfo.minimum_frame_size = 2
-            metadata.streaminfo.maximum_frame_size = 11
-            metadata.streaminfo.sample_rate = 96000
-            metadata.streaminfo.channels = 4
-            metadata.streaminfo.bits_per_sample = 24
-            metadata.streaminfo.total_samples = 96000
-            metadata.streaminfo.md5sum = chr(1) * 16
+            streaminfo = metadata.get_block(audiotools.Flac_STREAMINFO.BLOCK_ID)
+            streaminfo.minimum_block_size = 1
+            streaminfo.maximum_block_size = 10
+            streaminfo.minimum_frame_size = 2
+            streaminfo.maximum_frame_size = 11
+            streaminfo.sample_rate = 96000
+            streaminfo.channels = 4
+            streaminfo.bits_per_sample = 24
+            streaminfo.total_samples = 96000
+            streaminfo.md5sum = chr(1) * 16
+
+            metadata.replace_blocks(audiotools.Flac_STREAMINFO.BLOCK_ID,
+                                    [streaminfo])
 
             #ensure that update_metadata() uses the bogus side data
             flac_file.update_metadata(metadata)
             metadata = flac_file.get_metadata()
-            self.assertEqual(metadata.streaminfo.minimum_block_size, 1)
-            self.assertEqual(metadata.streaminfo.maximum_block_size, 10)
-            self.assertEqual(metadata.streaminfo.minimum_frame_size, 2)
-            self.assertEqual(metadata.streaminfo.maximum_frame_size, 11)
-            self.assertEqual(metadata.streaminfo.sample_rate, 96000)
-            self.assertEqual(metadata.streaminfo.channels, 4)
-            self.assertEqual(metadata.streaminfo.bits_per_sample, 24)
-            self.assertEqual(metadata.streaminfo.total_samples, 96000)
-            self.assertEqual(metadata.streaminfo.md5sum, chr(1) * 16)
+            streaminfo = metadata.get_block(audiotools.Flac_STREAMINFO.BLOCK_ID)
+            self.assertEqual(streaminfo.minimum_block_size, 1)
+            self.assertEqual(streaminfo.maximum_block_size, 10)
+            self.assertEqual(streaminfo.minimum_frame_size, 2)
+            self.assertEqual(streaminfo.maximum_frame_size, 11)
+            self.assertEqual(streaminfo.sample_rate, 96000)
+            self.assertEqual(streaminfo.channels, 4)
+            self.assertEqual(streaminfo.bits_per_sample, 24)
+            self.assertEqual(streaminfo.total_samples, 96000)
+            self.assertEqual(streaminfo.md5sum, chr(1) * 16)
         finally:
             temp.close()
 
@@ -3263,7 +3282,8 @@ class FlacFileTest(TestForeignAiffChunks,
         #check FLAC files with empty MD5 sum
         track = audiotools.open("flac-nonmd5.flac")
         fixes = []
-        self.assertEqual(track.get_metadata().streaminfo.md5sum, chr(0) * 16)
+        self.assertEqual(track.get_metadata().get_block(
+                audiotools.Flac_STREAMINFO.BLOCK_ID).md5sum, chr(0) * 16)
         self.assertEqual(track.clean(fixes), None)
         self.assertEqual(fixes, [_(u"populated empty MD5SUM")])
         temp = tempfile.NamedTemporaryFile(suffix=".flac")
@@ -3272,7 +3292,8 @@ class FlacFileTest(TestForeignAiffChunks,
             self.assertNotEqual(track.clean(fixes, temp.name), None)
             self.assertEqual(fixes, [_(u"populated empty MD5SUM")])
             track2 = audiotools.open(temp.name)
-            self.assertEqual(track2.get_metadata().streaminfo.md5sum,
+            self.assertEqual(track2.get_metadata().get_block(
+                    audiotools.Flac_STREAMINFO.BLOCK_ID).md5sum,
                              '\xd2\xb1 \x19\x90\x19\xb69' +
                              '\xd5\xa7\xe2\xb3F>\x9c\x97')
             self.assertEqual(audiotools.pcm_frame_cmp(
@@ -3302,8 +3323,9 @@ class FlacFileTest(TestForeignAiffChunks,
                                  track.channel_mask())
                 self.assertEqual(int(new_track.channel_mask()), mask)
                 metadata = new_track.get_metadata()
+
                 self.assertEqual(
-                    metadata.vorbis_comment[
+                    metadata.get_block(audiotools.Flac_VORBISCOMMENT.BLOCK_ID)[
                         u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"][0],
                     u"0x%.4X" % (mask))
             finally:

@@ -271,7 +271,11 @@ class VorbisComment(MetaData):
                 raise AttributeError(attr)
 
     def __eq__(self, metadata):
-        raise NotImplementedError()
+        if (isinstance(metadata, self.__class__)):
+            return ((self.comment_strings == metadata.comment_strings) and
+                    (self.vendor_string == metadata.vendor_string))
+        else:
+            return MetaData.__eq__(self, metadata)
 
     @classmethod
     def converted(cls, metadata):
@@ -368,42 +372,46 @@ class VorbisComment(MetaData):
         for comment_string in self.comment_strings:
             if (u"=" in comment_string):
                 (key, value) = comment_string.split(u"=", 1)
-                key = key.upper()
-                if (key in reverse_attr_map):
-                    attr = reverse_attr_map[key]
+                if (key.upper() in reverse_attr_map):
+                    attr = reverse_attr_map[key.upper()]
                     #handle all text fields by stripping whitespace
-                    fix1 = value.rstrip()
-                    if (fix1 != value):
+                    if (len(value.strip()) == 0):
                         fixes_performed.append(
-                            _(u"removed trailing whitespace from %(field)s") %
+                            _(u"removed empty field %(field)s") %
                             {"field":key})
-
-                    fix2 = fix1.lstrip()
-                    if (fix2 != fix1):
-                        fixes_performed.append(
-                            _(u"removed leading whitespace from %(field)s") %
-                            {"field":key})
-
-                    #integer fields also strip leading zeroes
-                    if ((attr in self.SLASHED_FIELDS) and
-                        (self.SLASHED_FIELD.search(fix2) is not None)):
-                        match = self.SLASHED_FIELD.search(value)
-                        fix3 = "%d/%d" % (int(match.group(1)),
-                                          int(match.group(2)))
-                        if (fix3 != fix2):
-                            fixes_performed.append(
-                                _(u"removed whitespace/zeroes from %(field)s" %
-                                  {"field":key}))
-                    elif (attr in self.INTEGER_FIELDS):
-                        fix3 = fix2.lstrip(u"0")
-                        if (fix3 != fix2):
-                            fixes_performed.append(
-                                _(u"removed leading zeroes from %(field)s") %
-                                {"field":key})
                     else:
-                        fix3 = fix2
+                        fix1 = value.rstrip()
+                        if (fix1 != value):
+                            fixes_performed.append(
+                              _(u"removed trailing whitespace from %(field)s") %
+                              {"field":key})
 
-                    cleaned_fields.append(u"%s=%s" % (key, fix3))
+                        fix2 = fix1.lstrip()
+                        if (fix2 != fix1):
+                            fixes_performed.append(
+                              _(u"removed leading whitespace from %(field)s") %
+                              {"field":key})
+
+                        #integer fields also strip leading zeroes
+                        if ((attr in self.SLASHED_FIELDS) and
+                            (self.SLASHED_FIELD.search(fix2) is not None)):
+                            match = self.SLASHED_FIELD.search(value)
+                            fix3 = "%d/%d" % (int(match.group(1)),
+                                              int(match.group(2)))
+                            if (fix3 != fix2):
+                                fixes_performed.append(
+                                 _(u"removed whitespace/zeroes from %(field)s" %
+                                   {"field":key}))
+                        elif (attr in self.INTEGER_FIELDS):
+                            fix3 = fix2.lstrip(u"0")
+                            if (fix3 != fix2):
+                                fixes_performed.append(
+                                 _(u"removed leading zeroes from %(field)s") %
+                                 {"field":key})
+                        else:
+                            fix3 = fix2
+
+                        cleaned_fields.append(u"%s=%s" % (key, fix3))
                 else:
                     cleaned_fields.append(comment_string)
             else:

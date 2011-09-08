@@ -58,7 +58,7 @@ class FlacMetaData(MetaData):
         self.__dict__["block_list"] = list(blocks)
 
     def has_block(self, block_id):
-        return block_in in [b.BLOCK_ID for b in self.block_list]
+        return block_id in [b.BLOCK_ID for b in self.block_list]
 
     def add_block(self, block):
         """adds the given block to our list of blocks"""
@@ -71,7 +71,11 @@ class FlacMetaData(MetaData):
 
         may raise IndexError if the block is not in our list of blocks"""
 
-        return [b for b in self.block_list if (b.BLOCK_ID == block_id)][0]
+        for block in self.block_list:
+            if (block.BLOCK_ID == block_id):
+                return block
+        else:
+            raise IndexError()
 
     def get_blocks(self, block_id):
         """returns all instances of the given block_id in our list of blocks"""
@@ -152,7 +156,9 @@ class FlacMetaData(MetaData):
     def converted(cls, metadata):
         """Takes a MetaData object and returns a FlacMetaData object."""
 
-        if ((metadata is None) or (isinstance(metadata, FlacMetaData))):
+        if (isinstance(metadata, OggFlacMetaData)):
+            return cls(metadata.block_list)
+        elif ((metadata is None) or (isinstance(metadata, FlacMetaData))):
             return metadata
         else:
             return cls([Flac_VORBISCOMMENT.converted(metadata)] +
@@ -163,7 +169,13 @@ class FlacMetaData(MetaData):
     def merge(self, metadata):
         """Updates any currently empty entries from metadata's values."""
 
-        self.vorbis_comment.merge(metadata)
+        try:
+            vorbis_comment = self.get_block(Flac_VORBISCOMMENT.BLOCK_ID)
+        except IndexError:
+            vorbis_comment = Flac_VORBISCOMMENT(
+                [], u"Python Audio Tools %s" % (VERSION))
+
+        vorbis_comment.merge(metadata)
         if (len(self.images()) == 0):
             for image in metadata.images():
                 self.add_image(image)
@@ -196,22 +208,54 @@ class FlacMetaData(MetaData):
 
         Any fixes performed are appended to fixes_performed as Unicode."""
 
-        #recursively clean up the text fields in FlacVorbisComment
-        if (self.vorbis_comment is not None):
-            vorbis_comment = self.vorbis_comment.clean(fixes_performed)
-        else:
-            vorbis_comment = None
+        cleaned_blocks = []
 
-        #recursively clean up any image blocks
-        pictures = [image.clean(fixes_performed)
-                    for image in self.pictures]
+        for block in self.block_list:
+            if (block.BLOCK_ID == Flac_STREAMINFO.BLOCK_ID):
+                #reorder STREAMINFO block to be first, if necessary
+                if (len(cleaned_blocks) == 0):
+                    cleaned_blocks.append(block)
+                elif (cleaned_blocks[0].BLOCK_ID != block.BLOCK_ID):
+                    fixes_performed.append(
+                        _(u"moved STREAMINFO to first block"))
+                    cleaned_blocks.insert(0, block)
+                else:
+                    fixes_performed.append(
+                        _(u"removing redundant STREAMINFO block"))
+            elif (block.BLOCK_ID == Flac_VORBISCOMMENT.BLOCK_ID):
+                if (block.BLOCK_ID in [b.BLOCK_ID for b in cleaned_blocks]):
+                    #remove redundant VORBIS_COMMENT blocks
+                    fixes_performed.append(
+                        _(u"removing redundant VORBIS_COMMENT block"))
+                else:
+                    #recursively clean up the text fields in FlacVorbisComment
+                    cleaned_blocks.append(block.clean(fixes_performed))
+            elif (block.BLOCK_ID == Flac_PICTURE.BLOCK_ID):
+                #recursively clean up any image blocks
+                cleaned_blocks.append(block.clean(fixes_performed))
+            elif (block.BLOCK_ID == Flac_APPLICATION.BLOCK_ID):
+                cleaned_blocks.append(block)
+            elif (block.BLOCK_ID == Flac_SEEKTABLE.BLOCK_ID):
+                #remove redundant seektable, if necessary
+                if (block.BLOCK_ID in [b.BLOCK_ID for b in cleaned_blocks]):
+                    fixes_performed.append(
+                        _(u"removing redundant SEEKTABLE block"))
+                else:
+                    cleaned_blocks.append(block)
+            elif (block.BLOCK_ID == Flac_CUESHEET.BLOCK_ID):
+                #remove redundant cuesheet, if necessary
+                if (block.BLOCK_ID in [b.BLOCK_ID for b in cleaned_blocks]):
+                    fixes_performed.append(
+                        _(u"removing redundant CUESHEET block"))
+                else:
+                    cleaned_blocks.append(block)
+            elif (block.BLOCK_ID == Flac_PADDING.BLOCK_ID):
+                cleaned_blocks.append(block)
+            else:
+                #remove undefined blocks
+                fixes_performed.append(_(u"removing undefined block"))
 
-        return self.__class__(streaminfo=self.streaminfo,
-                              applications=self.applications,
-                              seektable=self.seektable,
-                              vorbis_comment=vorbis_comment,
-                              cuesheet=self.cuesheet,
-                              pictures=pictures)
+        return self.__class__(cleaned_blocks)
 
 
     def __repr__(self):
@@ -222,6 +266,9 @@ class FlacMetaData(MetaData):
         block_list = []
 
         last = 0
+
+        #FIXME - it may be better to accept errors now
+        #so they can be dealt with in clean()
 
         while (last != 1):
             (last, block_type, block_length) = reader.parse("1u7u24u")
@@ -283,14 +330,9 @@ class FlacMetaData(MetaData):
 
     def build(self, writer):
         from . import iter_last
-        from .bitstream import BitstreamAccumulator
 
         for (last_block, block) in iter_last(iter([b for b in self.blocks()
                                                    if (b.size() < (2 ** 24))])):
-            a = BitstreamAccumulator(0)
-            block.build(a)
-            assert(a.bytes() == block.size())
-
             if (not last_block):
                 writer.build("1u7u24u", (0, block.BLOCK_ID, block.size()))
             else:
@@ -389,6 +431,10 @@ class Flac_STREAMINFO:
 
 class Flac_VORBISCOMMENT(VorbisComment):
     BLOCK_ID = 4
+
+    def __repr__(self):
+        return "Flac_VORBISCOMMENT(%s, %s)" % \
+            (repr(self.comment_strings), repr(self.vendor_string))
 
     def raw_info(self):
         from os import linesep
@@ -1127,7 +1173,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         if (has_padding):
             total_padding_size = sum(
-                [b.size() for b in metadata.get_blocks(Flac_PADDING)])
+                [b.size() for b in metadata.get_blocks(Flac_PADDING.BLOCK_ID)])
         else:
             total_padding_size = 0
 
@@ -1211,28 +1257,36 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         #replace old metadata's VORBIS_COMMENT with one from new metadata
         #(if any)
-        try:
+        if (new_metadata.has_block(Flac_VORBISCOMMENT.BLOCK_ID)):
             new_vorbiscomment = new_metadata.get_block(
                 Flac_VORBISCOMMENT.BLOCK_ID)
-            old_vorbiscomment = old_metadata.get_block(
-                Flac_VORBISCOMMENT.BLOCK_ID)
 
-            #update VORBIS_COMMENT block with vendor string
-            #from our current VORBIS_COMMENT block
-            new_vorbiscomment.vendor_string = old_vorbiscomment.vendor_string
+            if (old_metadata.has_block(Flac_VORBISCOMMENT.BLOCK_ID)):
+                #both new and old metadata has a VORBIS_COMMENT block
 
-            #update VORBIS_COMMENT block with WAVEFORMATEXTENSIBLE_CHANNEL_MASK
-            #from our current VORBIS_COMMENT block
-            if (((self.channels() > 2) or (self.bits_per_sample() > 16)) and
-                (u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK" in
-                 old_vorbiscomment.keys())):
-                new_vorbiscomment[u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = \
-                    old_vorbiscomment[u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"]
+                old_vorbiscomment = old_metadata.get_block(
+                    Flac_VORBISCOMMENT.BLOCK_ID)
 
-            old_metadata.replace_blocks(Flac_VORBISCOMMENT.BLOCK_ID,
-                                        [new_vorbiscomment])
-        except IndexError:
-            #either the new or old metadata has no VORBIS_COMMENT block
+                #update vendor string from our current VORBIS_COMMENT block
+                new_vorbiscomment.vendor_string = \
+                    old_vorbiscomment.vendor_string
+
+                #update WAVEFORMATEXTENSIBLE_CHANNEL_MASK
+                #from our current VORBIS_COMMENT block
+                if (((self.channels() > 2) or (self.bits_per_sample() > 16)) and
+                    (u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK" in
+                     old_vorbiscomment.keys())):
+                    new_vorbiscomment[u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = \
+                        old_vorbiscomment[u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"]
+
+                old_metadata.replace_blocks(Flac_VORBISCOMMENT.BLOCK_ID,
+                                            [new_vorbiscomment])
+            else:
+                #new metadata has VORBIS_COMMENT block,
+                #but old metadata does not
+                old_metadata.add_block(new_vorbiscomment)
+        else:
+            #new metadata has no VORBIS_COMMENT block
             pass
 
         #replace old metadata's PICTURE blocks with those from new metadata
@@ -1884,8 +1938,9 @@ class FlacAudio(WaveContainer, AiffContainer):
                  track_peak,
                  album_gain,
                  album_peak) in calculate_replay_gain(tracks, progress):
+                metadata = track.get_metadata()
                 try:
-                    comment = track.get_metadata().get_block(
+                    comment = metadata.get_block(
                         Flac_VORBISCOMMENT.BLOCK_ID)
                 except IndexError:
                     comment = Flac_VORBISCOMMENT(
@@ -1986,33 +2041,27 @@ class FlacAudio(WaveContainer, AiffContainer):
                 if (input_f.read(3) == 'TAG'):
                     fixes_performed.append(_(u"removed ID3v1 tag"))
 
-                #reorder metadata blocks such that STREAMINFO is first
-                input_f.seek(stream_offset, 0)
-                input_f.read(4)
-                if (list(FlacAudio.__block_ids__(input_f))[0] != 0):
-                    fixes_performed.append(
-                        _(u"moved STREAMINFO to first block"))
-
                 #fix empty MD5SUM
                 if (self.__md5__ == chr(0) * 16):
                     fixes_performed.append(_(u"populated empty MD5SUM"))
 
+                #FLAC should always have metadata
+                metadata = self.get_metadata()
+
                 #fix missing WAVEFORMATEXTENSIBLE_CHANNEL_MASK
                 if ((self.channels() > 2) or (self.bits_per_sample() > 16)):
-                    #FLAC should always have metadata
-                    metadata = self.get_metadata()
-                    if (metadata.vorbis_comment is None):
-                        fixes_performed.append(
-                            _(u"added WAVEFORMATEXTENSIBLE_CHANNEL_MASK"))
-                    elif ("WAVEFORMATEXTENSIBLE_CHANNEL_MASK" not in
-                          metadata.vorbis_comment.keys()):
+                    try:
+                        if (u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK" not in
+                            metadata.get_block(
+                                Flac_VORBISCOMMENT.BLOCK_ID).keys()):
+                            fixes_performed.append(
+                                _(u"added WAVEFORMATEXTENSIBLE_CHANNEL_MASK"))
+                    except IndexError:
                         fixes_performed.append(
                             _(u"added WAVEFORMATEXTENSIBLE_CHANNEL_MASK"))
 
                 #fix any remaining metadata problems
-                metadata = self.get_metadata()
-                if (metadata is not None):
-                    metadata.clean(fixes_performed)
+                metadata.clean(fixes_performed)
 
             finally:
                 input_f.close()
@@ -2048,13 +2097,6 @@ class FlacAudio(WaveContainer, AiffContainer):
 
                 output_track = FlacAudio(output_filename)
 
-                #reorder metadata blocks such that STREAMINFO is first
-                input_f.seek(stream_offset, 0)
-                input_f.read(4)
-                if (list(FlacAudio.__block_ids__(input_f))[0] != 0):
-                    fixes_performed.append(
-                        _(u"moved STREAMINFO to first block"))
-
                 metadata = self.get_metadata()
 
                 #fix empty MD5SUM
@@ -2066,22 +2108,29 @@ class FlacAudio(WaveContainer, AiffContainer):
                         md5sum.update,
                         signed=True,
                         big_endian=False)
-                    metadata.streaminfo.md5sum = md5sum.digest()
+                    metadata.get_block(
+                        Flac_STREAMINFO.BLOCK_ID).md5sum = md5sum.digest()
                     fixes_performed.append(_(u"populated empty MD5SUM"))
 
                 #fix missing WAVEFORMATEXTENSIBLE_CHANNEL_MASK
                 if ((self.channels() > 2) or (self.bits_per_sample() > 16)):
-                    if (metadata.vorbis_comment is None):
-                        metadata.vorbis_comment = Flac_VORBISCOMMENT(
-                            ["WAVEFORMATEXTENSIBLE_CHANNEL_MASK=0x%.4X" %
-                             (int(self.channel_mask()))],
-                            u"Python Audio Tools %s" % (VERSION))
-                    else:
-                        metadata.vorbis_comment[
-                            "WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = \
-                            [u"0x%.4X" % (int(self.channel_mask()))]
-                    fixes_performed.append(
-                        _(u"added WAVEFORMATEXTENSIBLE_CHANNEL_MASK"))
+                    try:
+                        vorbis_comment = metadata.get_block(
+                            Flac_VORBISCOMMENT.BLOCK_ID)
+                    except IndexError:
+                        vorbis_comment = Flac_VORBISCOMMENT(
+                            [], u"Python Audio Tools %s" % (VERSION))
+
+                    if (u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK" not in
+                        vorbis_comment.keys()):
+                        fixes_performed.append(
+                            _(u"added WAVEFORMATEXTENSIBLE_CHANNEL_MASK"))
+                        vorbis_comment[
+                            u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = \
+                            [u"0x%.4X" % (self.channel_mask())]
+
+                        metadata.replace_blocks(Flac_VORBISCOMMENT.BLOCK_ID,
+                                                [vorbis_comment])
 
                 #fix remaining metadata problems
                 #which automatically shifts STREAMINFO to the right place
@@ -2104,27 +2153,15 @@ class OggFlacMetaData(FlacMetaData):
         if ((metadata is None) or (isinstance(metadata, OggFlacMetaData))):
             return metadata
         elif (isinstance(metadata, FlacMetaData)):
-            return cls(streaminfo=metadata.streaminfo,
-                       applications=metadata.applications,
-                       seektable=metadata.seektable,
-                       vorbis_comment=metadata.vorbis_comment,
-                       cuesheet=metadata.cuesheet,
-                       pictures=metadata.pictures)
+            return cls(metadata.block_list)
         else:
-            return cls(vorbis_comment=Flac_VORBISCOMMENT.converted(metadata),
-                       pictures=[Flac_PICTURE.converted(image)
-                                 for image in metadata.images()])
+            return cls([Flac_VORBISCOMMENT.converted(metadata)] +
+                       [Flac_PICTURE.converted(image)
+                        for image in metadata.images()])
 
 
     def __repr__(self):
-        return ("OggFlacMetaData(%s)" %
-                (",".join(["%s=%s" % (key, getattr(self, key))
-                           for key in ["streaminfo",
-                                       "applications",
-                                       "seektable",
-                                       "vorbis_comment",
-                                       "cuesheet",
-                                       "pictures"]])))
+        return ("OggFlacMetaData(%s)" % (repr(self.block_list)))
 
 
     @classmethod
@@ -2162,7 +2199,7 @@ class OggFlacMetaData(FlacMetaData):
          md5sum) = streaminfo_packet.parse(
             "8u 4b 8u 8u 16u 4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b")
 
-        streaminfo = Flac_STREAMINFO(minimum_block_size=minimum_block_size,
+        block_list =[Flac_STREAMINFO(minimum_block_size=minimum_block_size,
                                      maximum_block_size=maximum_block_size,
                                      minimum_frame_size=minimum_frame_size,
                                      maximum_frame_size=maximum_frame_size,
@@ -2170,122 +2207,83 @@ class OggFlacMetaData(FlacMetaData):
                                      channels=channels + 1,
                                      bits_per_sample=bits_per_sample + 1,
                                      total_samples=total_samples,
-                                     md5sum=md5sum)
+                                     md5sum=md5sum)]
 
         for (i, packet) in zip(range(header_packets), packets):
             packet.set_endianness(0)
             (block_type, length) = packet.parse("1p 7u 24u")
+            if (block_type == 1):   #PADDING
+                block_list.append(Flac_PADDING.parse(packet, length))
             if (block_type == 2):   #APPLICATION
-                applications.append(
-                    Flac_APPLICATION.parse(packet, length))
+                block_list.append(Flac_APPLICATION.parse(packet, length))
             elif (block_type == 3): #SEEKTABLE
-                if (seektable is None):
-                    seektable = Flac_SEEKTABLE.parse(packet, length / 18)
-                else:
-                    raise ValueError(_(u"only 1 SEEKTABLE allowed in metadata"))
+                block_list.append(Flac_SEEKTABLE.parse(packet, length / 18))
             elif (block_type == 4): #VORBIS_COMMENT
-                if (vorbis_comment is None):
-                    vorbis_comment = Flac_VORBISCOMMENT.parse(packet)
-                else:
-                    raise ValueError(
-                        _(u"only 1 VORBISCOMMENT allowed in metadata"))
+                block_list.append(Flac_VORBISCOMMENT.parse(packet))
             elif (block_type == 5): #CUESHEET
-                if (cuesheet is None):
-                    cuesheet = Flac_CUESHEET.parse(packet)
-                else:
-                    raise ValueError(_(u"only 1 CUESHEET allowed in metadata"))
+                block_list.append(Flac_CUESHEET.parse(packet))
             elif (block_type == 6): #PICTURE
-                pictures.append(Flac_PICTURE.parse(packet))
+                block_list.append(Flac_PICTURE.parse(packet))
             elif ((block_type >= 7) and (block_type <= 126)):
                 raise ValueError(_(u"reserved metadata block type %d") %
                                  (block_type))
             elif (block_type == 127):
                 raise ValueError(_(u"invalid metadata block type"))
 
-        return cls(streaminfo=streaminfo,
-                   applications=applications,
-                   seektable=seektable,
-                   vorbis_comment=vorbis_comment,
-                   cuesheet=cuesheet,
-                   pictures=pictures)
+        return cls(block_list)
 
-
-    def build(self, oggwriter, padding_bytes):
+    def build(self, oggwriter):
         """oggwriter is an OggStreamWriter-compatible object"""
 
-        from .bitstream import BitstreamAccumulator
         from .bitstream import BitstreamRecorder
         from .bitstream import format_size
         from . import iter_first,iter_last
-
-        def small_enough(block):
-            size = BitstreamAccumulator(0)
-            block.build(size)
-            return size.bytes() < 2 ** 24
-
-        if (self.streaminfo is None):
-            raise ValueError(_("STREAMINFO block is required"))
-        if (self.vorbis_comment is None):
-            raise ValueError(_("VORBISCOMMENT block is required"))
-
-        blocks = []
-        blocks.append(self.vorbis_comment)
-        blocks.extend(self.applications)
-        if (self.seektable is not None):
-            blocks.append(self.seektable)
-        if (self.cuesheet is not None):
-            blocks.append(self.cuesheet)
-        blocks.extend(self.pictures)
-        blocks = filter(small_enough, blocks)
 
         packet = BitstreamRecorder(0)
 
         #build extended Ogg FLAC STREAMINFO block
         #which will always occupy its own page
+        streaminfo = self.get_block(Flac_STREAMINFO.BLOCK_ID)
+
+        #all our non-STREAMINFO blocks that are small enough
+        #to fit in the output stream
+        valid_blocks = [b for b in self.blocks()
+                        if ((b.BLOCK_ID != Flac_STREAMINFO.BLOCK_ID) and
+                            (b.size() < (2 ** 24)))]
+
         packet.build(
             "8u 4b 8u 8u 16u 4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b",
-            (0x7F, "FLAC", 1, 0, len(blocks) + 1, "fLaC", 0,
+            (0x7F, "FLAC", 1, 0, len(valid_blocks), "fLaC", 0,
              format_size("16u 16u 24u 24u 20u 3u 5u 36U 16b") / 8,
-             self.streaminfo.minimum_block_size,
-             self.streaminfo.maximum_block_size,
-             self.streaminfo.minimum_frame_size,
-             self.streaminfo.maximum_frame_size,
-             self.streaminfo.sample_rate,
-             self.streaminfo.channels - 1,
-             self.streaminfo.bits_per_sample - 1,
-             self.streaminfo.total_samples,
-             self.streaminfo.md5sum))
+             streaminfo.minimum_block_size,
+             streaminfo.maximum_block_size,
+             streaminfo.minimum_frame_size,
+             streaminfo.maximum_frame_size,
+             streaminfo.sample_rate,
+             streaminfo.channels - 1,
+             streaminfo.bits_per_sample - 1,
+             streaminfo.total_samples,
+             streaminfo.md5sum))
         oggwriter.write_page(0, [packet.data()], 0, 1, 0)
-        packet.reset()
 
         #FIXME - adjust non-STREAMINFO blocks to use fewer pages
 
         #pack remaining metadata blocks into as few pages as possible
-        for block in blocks:
-            block_data = BitstreamRecorder(0)
-            block.build(block_data)
-            packet.build("1u 7u 24u",
-                         (0, block.BLOCK_ID, block_data.bytes()))
-            block_data.copy(packet)
+        for (last_block, block) in iter_last(iter(valid_blocks)):
+
+            packet.reset()
+            if (not last_block):
+                packet.build("1u 7u 24u", (0, block.BLOCK_ID, block.size()))
+            else:
+                packet.build("1u 7u 24u", (1, block.BLOCK_ID, block.size()))
+
+            block.build(packet)
             for (first_page, page_segments) in iter_first(
                 oggwriter.segments_to_pages(
                     oggwriter.packet_to_segments(packet.data()))):
                 oggwriter.write_page(0 if first_page else -1,
                                      page_segments,
                                      0 if first_page else 1, 0, 0)
-            packet.reset()
-
-        #generate PADDING block(s) containing the given number of bytes
-        packet.build("1u 7u 24u %db" % (padding_bytes),
-                     (1, 1, padding_bytes, chr(0) * padding_bytes))
-        for (first_page, page_segments) in iter_first(
-            oggwriter.segments_to_pages(
-                oggwriter.packet_to_segments(packet.data()))):
-            oggwriter.write_page(0 if first_page else -1,
-                                 page_segments,
-                                 0 if first_page else 1, 0, 0)
-        packet.reset()
-
 
 
 class __Counter__:
@@ -2299,7 +2297,7 @@ class __Counter__:
         return self.value
 
 
-class OggFlacAudio(AudioFile):
+class OggFlacAudio(FlacAudio):
     """A Free Lossless Audio Codec file inside an Ogg container."""
 
     SUFFIX = "oga"
@@ -2359,47 +2357,6 @@ class OggFlacAudio(AudioFile):
 
         return self.__samplerate__
 
-    def channel_mask(self):
-        """Returns a ChannelMask object of this track's channel layout."""
-
-        if (self.channels() <= 2):
-            return ChannelMask.from_channels(self.channels())
-        else:
-            vorbis_comment = self.get_metadata().vorbis_comment
-            if ("WAVEFORMATEXTENSIBLE_CHANNEL_MASK" in vorbis_comment.keys()):
-                try:
-                    return ChannelMask(
-                        int(vorbis_comment[
-                                "WAVEFORMATEXTENSIBLE_CHANNEL_MASK"][0], 16))
-                except ValueError:
-                    pass
-
-            #if there is no WAVEFORMATEXTENSIBLE_CHANNEL_MASK
-            #or it's not an integer, use FLAC's default mask based on channels
-            if (self.channels() == 3):
-                return ChannelMask.from_fields(
-                    front_left=True, front_right=True, front_center=True)
-            elif (self.channels() == 4):
-                return ChannelMask.from_fields(
-                    front_left=True, front_right=True,
-                    back_left=True, back_right=True)
-            elif (self.channels() == 5):
-                return ChannelMask.from_fields(
-                    front_left=True, front_right=True, front_center=True,
-                    back_left=True, back_right=True)
-            elif (self.channels() == 6):
-                return ChannelMask.from_fields(
-                    front_left=True, front_right=True, front_center=True,
-                    back_left=True, back_right=True,
-                    low_frequency=True)
-            else:
-                return ChannelMask(0)
-
-    def lossless(self):
-        """Returns True."""
-
-        return True
-
     def get_metadata(self):
         """Returns a MetaData object, or None.
 
@@ -2424,7 +2381,7 @@ class OggFlacAudio(AudioFile):
         if (not isinstance(metadata, OggFlacMetaData)):
             raise ValueError(_(u"metadata not from audio file"))
 
-                #always overwrite Ogg FLAC with fresh metadata
+        #always overwrite Ogg FLAC with fresh metadata
         #
         #The trouble with Ogg FLAC padding is that Ogg header overhead
         #requires a variable amount of overhead bytes per Ogg page
@@ -2454,7 +2411,7 @@ class OggFlacAudio(AudioFile):
                                           self.__serial_number__)
 
                 #write our new comment blocks to the new file
-                metadata.build(new_ogg, 256)
+                metadata.build(new_ogg)
 
                 #skip the metadata packets in the original file
                 OggFlacMetaData.parse(original_reader)
@@ -2485,52 +2442,6 @@ class OggFlacAudio(AudioFile):
         finally:
             new_file.close()
 
-    def set_metadata(self, metadata):
-        """Takes a MetaData object and sets this track's metadata.
-
-        This metadata includes track name, album name, and so on.
-        Raises IOError if unable to write the file."""
-
-        metadata = OggFlacMetaData.converted(metadata)
-
-        if (metadata is None):
-            return
-
-        old_metadata = self.get_metadata()
-
-        #port over the old STREAMINFO and SEEKTABLE blocks
-        metadata.streaminfo = old_metadata.streaminfo
-        old_seektable = old_metadata.seektable
-        if (old_seektable is not None):
-            metadata.seektable = old_seektable
-
-        #grab "WAVEFORMATEXTENSIBLE_CHANNEL_MASK" from existing file
-        #(if any)
-        if ((self.channels() > 2) or (self.bits_per_sample() > 16)):
-            metadata.vorbis_comment[
-                "WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
-                u"0x%.4X" % (int(self.channel_mask()))]
-
-        #APPLICATION blocks should stay with the existing file (if any)
-        metadata.applications = [block for block in metadata.applications
-                                 if (block.type != 2)]
-
-        #always grab "vendor_string" from the existing file - if present
-        if ((old_metadata.vorbis_comment is not None) and
-            (metadata.vorbis_comment is not None)):
-            vendor_string = old_metadata.vorbis_comment.vendor_string
-            metadata.vorbis_comment.vendor_string = vendor_string
-
-        self.update_metadata(metadata)
-
-    def delete_metadata(self):
-        """Deletes the track's MetaData.
-
-        This removes or unsets tags as necessary in order to remove all data.
-        Raises IOError if unable to write the file."""
-
-        self.set_metadata(MetaData())
-
     def metadata_length(self):
         """Returns the length of all Ogg FLAC metadata blocks as an integer.
 
@@ -2549,7 +2460,6 @@ class OggFlacAudio(AudioFile):
             return int(byte_count)
         finally:
             f.close()
-
 
     def __read_streaminfo__(self):
         from .bitstream import BitstreamReader
@@ -2734,34 +2644,6 @@ class OggFlacAudio(AudioFile):
         else:
             raise EncodingError(u"error encoding file with flac")
 
-    def set_cuesheet(self, cuesheet):
-        """Imports cuesheet data from a Cuesheet-compatible object.
-
-        This are objects with catalog(), ISRCs(), indexes(), and pcm_lengths()
-        methods.  Raises IOError if an error occurs setting the cuesheet."""
-
-        if (cuesheet is None):
-            return
-
-        metadata = self.get_metadata()
-        if (metadata is None):
-            metadata = OggFlacMetaData.converted(MetaData())
-
-        metadata.cuesheet = Flac_CUESHEET.converted(
-            cuesheet, self.total_frames(), self.sample_rate())
-        self.set_metadata(metadata)
-
-    def get_cuesheet(self):
-        """Returns the embedded Cuesheet-compatible object, or None.
-
-        Raises IOError if a problem occurs when reading the file."""
-
-        metadata = self.get_metadata()
-        if (metadata is not None):
-            return metadata.cuesheet
-        else:
-            return None
-
     def sub_pcm_tracks(self):
         """Yields a PCMReader object per cuesheet track.
 
@@ -2800,66 +2682,3 @@ class OggFlacAudio(AudioFile):
                 raise InvalidFLAC(str(err))
         finally:
             f.close()
-
-    @classmethod
-    def add_replay_gain(cls, filenames, progress=None):
-        """Adds ReplayGain values to a list of filename strings.
-
-        All the filenames must be of this AudioFile type.
-        Raises ValueError if some problem occurs during ReplayGain application.
-        """
-
-        tracks = [track for track in open_files(filenames) if
-                  isinstance(track, cls)]
-
-        if (len(tracks) > 0):
-            for (track,
-                 track_gain,
-                 track_peak,
-                 album_gain,
-                 album_peak) in calculate_replay_gain(tracks, progress):
-                metadata = track.get_metadata()
-                if (hasattr(metadata, "vorbis_comment")):
-                    comment = metadata.vorbis_comment
-                    comment["REPLAYGAIN_TRACK_GAIN"] = [
-                        "%1.2f dB" % (track_gain)]
-                    comment["REPLAYGAIN_TRACK_PEAK"] = [
-                        "%1.8f" % (track_peak)]
-                    comment["REPLAYGAIN_ALBUM_GAIN"] = [
-                        "%1.2f dB" % (album_gain)]
-                    comment["REPLAYGAIN_ALBUM_PEAK"] = ["%1.8f" % (album_peak)]
-                    comment["REPLAYGAIN_REFERENCE_LOUDNESS"] = [u"89.0 dB"]
-                    track.set_metadata(metadata)
-
-    @classmethod
-    def can_add_replay_gain(cls):
-        """Returns True."""
-
-        return True
-
-    @classmethod
-    def lossless_replay_gain(cls):
-        """Returns True."""
-
-        return True
-
-    def replay_gain(self):
-        """Returns a ReplayGain object of our ReplayGain values.
-
-        Returns None if we have no values."""
-
-        vorbis_metadata = self.get_metadata().vorbis_comment
-
-        if (set(['REPLAYGAIN_TRACK_PEAK', 'REPLAYGAIN_TRACK_GAIN',
-                 'REPLAYGAIN_ALBUM_PEAK', 'REPLAYGAIN_ALBUM_GAIN']).issubset(
-                vorbis_metadata.keys())):  # we have ReplayGain data
-            try:
-                return ReplayGain(
-                    vorbis_metadata['REPLAYGAIN_TRACK_GAIN'][0][0:-len(" dB")],
-                    vorbis_metadata['REPLAYGAIN_TRACK_PEAK'][0],
-                    vorbis_metadata['REPLAYGAIN_ALBUM_GAIN'][0][0:-len(" dB")],
-                    vorbis_metadata['REPLAYGAIN_ALBUM_PEAK'][0])
-            except ValueError:
-                return None
-        else:
-            return None

@@ -4143,17 +4143,17 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] Flac_SEEKTABLE
    - [X] Flac_CUESHEET
    - [X] Flac_PADDING
-** TODO FlacMetaData
+** DONE FlacMetaData
    - [X] __init__
    - [X] __setattr__
    - [X] __getattr__
    - [X] __delattr__
    - [X] converted
-   - [ ] merge
+   - [X] merge
    - [X] add_image
    - [X] delete_image
    - [X] images
-   - [ ] clean
+   - [X] clean
    - [X] __repr__
    - [X] parse
    - [X] raw_info
@@ -4175,20 +4175,16 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] seektable
    - [X] add_replay_gain
    - [X] replay_gain
-   - [ ] clean
-** TODO OggFlacMetaData
-   - [ ] converted
-   - [ ] __repr__
-   - [ ] parse
-   - [ ] build
-** TODO OggFlacAudio
-   - [ ] channel_mask
-   - [ ] update_metadata
-   - [ ] set_metadata
-   - [ ] set_cuesheet
-   - [ ] get_cuesheet
-   - [ ] add_replay_gain
-   - [ ] replay_gain
+   - [X] clean
+** DONE OggFlacMetaData
+   - [X] converted
+   - [X] __repr__
+   - [X] parse
+   - [X] build
+** DONE OggFlacAudio
+   - [X] channel_mask
+   - [X] update_metadata
+   - [X] replay_gain
 * TODO Adjust ID3v2 to store frames internally in order
   That is, they should output in the same order that they are stored on disk.
 ** TODO ID3v22Comment
@@ -4300,3 +4296,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   is absent altogether.
 ** DONE Add unit test
 ** DONE Add fix to man page
+* TODO Ensure APEv2 preserves file-specific tags with set_metadata()
+** TODO ReplayGain tags shouldn't be overridden
+** TODO Embedded cuesheet shouldn't be overridden
+* TODO Ensure Vorbis preserves file-specific tags with set_metadata()
+** TODO ReplayGain tags shouldn't be overridden
