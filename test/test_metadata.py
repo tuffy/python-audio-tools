@@ -2581,14 +2581,13 @@ class VorbisCommentTest(MetaDataTest):
 
     @METADATA_VORBIS
     def test_foreign_field(self):
-        metadata = audiotools.VorbisComment(
-            {"TITLE": [u'Track Name'],
-             "ALBUM": [u'Album Name'],
-             "TRACKNUMBER": [u"1"],
-             "TRACKTOTAL": [u"3"],
-             "DISCNUMBER": [u"2"],
-             "DISCTOTAL": [u"4"],
-             "FOO": [u"Bar"]})
+        metadata = audiotools.VorbisComment([u"TITLE=Track Name",
+                                             u"ALBUM=Album Name",
+                                             u"TRACKNUMBER=1",
+                                             u"TRACKTOTAL=3",
+                                             u"DISCNUMBER=2",
+                                             u"DISCTOTAL=4",
+                                             u"FOO=Bar"], u"")
         for format in self.supported_formats:
             temp_file = tempfile.NamedTemporaryFile(
                 suffix="." + format.SUFFIX)
@@ -2599,7 +2598,7 @@ class VorbisCommentTest(MetaDataTest):
                 metadata2 = track.get_metadata()
                 self.assertEqual(metadata, metadata2)
                 self.assertEqual(metadata.__class__, metadata2.__class__)
-                self.assertEqual(metadata2["FOO"], [u"Bar"])
+                self.assertEqual(metadata2[u"FOO"], [u"Bar"])
             finally:
                 temp_file.close()
 
@@ -2677,23 +2676,23 @@ class VorbisCommentTest(MetaDataTest):
                                               BLANK_PCM_Reader(1))
 
                 lc_metadata = audiotools.VorbisComment(
-                        {"title": [u"track name"],
-                         "tracknumber": [u"1"],
-                         "tracktotal": [u"3"],
-                         "album": [u"album name"],
-                         "artist": [u"artist name"],
-                         "performer": [u"performer name"],
-                         "composer": [u"composer name"],
-                         "conductor": [u"conductor name"],
-                         "source medium": [u"media"],
-                         "isrc": [u"isrc"],
-                         "catalog": [u"catalog"],
-                         "copyright": [u"copyright"],
-                         "publisher": [u"publisher"],
-                         "date": [u"2009"],
-                         "discnumber": [u"2"],
-                         "disctotal": [u"4"],
-                         "comment": [u"some comment"]},
+                        [u"title=track name",
+                         u"tracknumber=1",
+                         u"tracktotal=3",
+                         u"album=album name",
+                         u"artist=artist name",
+                         u"performer=performer name",
+                         u"composer=composer name",
+                         u"conductor=conductor name",
+                         u"source medium=media",
+                         u"isrc=isrc",
+                         u"catalog=catalog",
+                         u"copyright=copyright",
+                         u"publisher=publisher",
+                         u"date=2009",
+                         u"discnumber=2",
+                         u"disctotal=4",
+                         u"comment=some comment"],
                         u"vendor string")
 
                 metadata = audiotools.MetaData(
@@ -2753,72 +2752,129 @@ class VorbisCommentTest(MetaDataTest):
     @METADATA_VORBIS
     def test_totals(self):
         metadata = self.empty_metadata()
-        metadata["TRACKNUMBER"] = [u"2/4"]
+        metadata[u"TRACKNUMBER"] = [u"2/4"]
         self.assertEqual(metadata.track_number, 2)
         self.assertEqual(metadata.track_total, 4)
 
         metadata = self.empty_metadata()
-        metadata["DISCNUMBER"] = [u"1/3"]
+        metadata[u"TRACKNUMBER"] = [u"02/4"]
+        self.assertEqual(metadata.track_number, 2)
+        self.assertEqual(metadata.track_total, 4)
+
+        metadata = self.empty_metadata()
+        metadata[u"TRACKNUMBER"] = [u"2/04"]
+        self.assertEqual(metadata.track_number, 2)
+        self.assertEqual(metadata.track_total, 4)
+
+        metadata = self.empty_metadata()
+        metadata[u"TRACKNUMBER"] = [u"02/04"]
+        self.assertEqual(metadata.track_number, 2)
+        self.assertEqual(metadata.track_total, 4)
+
+        metadata = self.empty_metadata()
+        metadata[u"DISCNUMBER"] = [u"1/3"]
+        self.assertEqual(metadata.album_number, 1)
+        self.assertEqual(metadata.album_total, 3)
+
+        metadata = self.empty_metadata()
+        metadata[u"DISCNUMBER"] = [u"01/3"]
+        self.assertEqual(metadata.album_number, 1)
+        self.assertEqual(metadata.album_total, 3)
+
+        metadata = self.empty_metadata()
+        metadata[u"DISCNUMBER"] = [u"1/03"]
+        self.assertEqual(metadata.album_number, 1)
+        self.assertEqual(metadata.album_total, 3)
+
+        metadata = self.empty_metadata()
+        metadata[u"DISCNUMBER"] = [u"01/03"]
         self.assertEqual(metadata.album_number, 1)
         self.assertEqual(metadata.album_total, 3)
 
     @METADATA_VORBIS
     def test_clean(self):
         #check trailing whitespace
-        metadata = audiotools.VorbisComment({"TITLE":[u"Foo "]},
-                                            u"vendor")
+        metadata = audiotools.VorbisComment([u"TITLE=Foo "], u"vendor")
         results = []
         cleaned = metadata.clean(results)
         self.assertEqual(cleaned,
-                         audiotools.VorbisComment({"TITLE":[u"Foo"]},
-                                                  u"vendor"))
+                         audiotools.VorbisComment(["TITLE=Foo"], u"vendor"))
         self.assertEqual(results,
                          [_(u"removed trailing whitespace from %(field)s") %
                           {"field":u"TITLE"}])
 
         #check leading whitespace
-        metadata = audiotools.VorbisComment({"TITLE":[u" Foo"]},
-                                            u"vendor")
+        metadata = audiotools.VorbisComment([u"TITLE= Foo"], u"vendor")
         results = []
         cleaned = metadata.clean(results)
         self.assertEqual(cleaned,
-                         audiotools.VorbisComment({"TITLE":[u"Foo"]},
-                                                  u"vendor"))
+                         audiotools.VorbisComment([u"TITLE=Foo"], u"vendor"))
         self.assertEqual(results,
                          [_(u"removed leading whitespace from %(field)s") %
                           {"field":u"TITLE"}])
 
         #check leading zeroes
-        metadata = audiotools.VorbisComment({"TRACKNUMBER":[u"001"]},
-                                            u"vendor")
+        metadata = audiotools.VorbisComment([u"TRACKNUMBER=001"], u"vendor")
         results = []
         cleaned = metadata.clean(results)
         self.assertEqual(cleaned,
-                         audiotools.VorbisComment({"TRACKNUMBER":[u"1"]},
+                         audiotools.VorbisComment([u"TRACKNUMBER=1"],
                                                   u"vendor"))
         self.assertEqual(results,
                          [_(u"removed leading zeroes from %(field)s") %
                           {"field":u"TRACKNUMBER"}])
 
         #check empty fields
-        metadata = audiotools.VorbisComment({"TITLE":[u""]},
-                                            u"vendor")
+        metadata = audiotools.VorbisComment([u"TITLE="], u"vendor")
         results = []
         cleaned = metadata.clean(results)
         self.assertEqual(cleaned,
-                         audiotools.VorbisComment({}, u"vendor"))
+                         audiotools.VorbisComment([], u"vendor"))
         self.assertEqual(results,
                          [_(u"removed empty field %(field)s") %
                           {"field":u"TITLE"}])
 
-        metadata = audiotools.VorbisComment({"TITLE":[u"    "]},
-                                            u"vendor")
+        metadata = audiotools.VorbisComment([u"TITLE=    "], u"vendor")
         results = []
         cleaned = metadata.clean(results)
         self.assertEqual(cleaned,
-                         audiotools.VorbisComment({}, u"vendor"))
+                         audiotools.VorbisComment([], u"vendor"))
         self.assertEqual(results,
-                         [_(u"removed trailing whitespace from %(field)s") %
-                          {"field":u"TITLE"},
-                          _(u"removed empty field %(field)s") %
+                         [_(u"removed empty field %(field)s") %
                           {"field":u"TITLE"}])
+
+    @METADATA_VORBIS
+    def test_aliases(self):
+        for (key, map_to) in audiotools.VorbisComment.ALIASES.items():
+            attr = [attr for (attr, item) in
+                    audiotools.VorbisComment.ATTRIBUTE_MAP.items()
+                    if item in map_to][0]
+
+            if (attr in audiotools.VorbisComment.INTEGER_FIELDS):
+                old_raw_value = u"1"
+                old_attr_value = 1
+                new_raw_value = u"2"
+                new_attr_value = 2
+            else:
+                old_raw_value = old_attr_value = u"Foo"
+                new_raw_value = new_attr_value = u"Bar"
+
+            metadata = audiotools.VorbisComment([], u"")
+
+            #ensure setting aliased field shows up in attribute
+            metadata[key] = [old_raw_value]
+            self.assertEqual(getattr(metadata, attr), old_attr_value)
+
+            #ensure updating attribute reflects in aliased field
+            setattr(metadata, attr, new_attr_value)
+            self.assertEqual(getattr(metadata, attr), new_attr_value)
+            self.assertEqual(metadata[key], [new_raw_value])
+
+            self.assertEqual(metadata.keys(), [key])
+
+            #ensure updating the metadata with an aliased key
+            #doesn't change the aliased key field
+            for new_key in map_to:
+                if (new_key != key):
+                    metadata[new_key] = [old_raw_value]
+                    self.assertEqual(metadata.keys(), [key])

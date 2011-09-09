@@ -63,8 +63,26 @@ class FlacMetaData(MetaData):
     def add_block(self, block):
         """adds the given block to our list of blocks"""
 
-        #FIXME - place block at a predefined position in the list, if possible
-        self.block_list.append(block)
+        #the specification only requires that STREAMINFO be first
+        #the rest are largely arbitrary,
+        #though I like to keep PADDING as the last block for aesthetic reasons
+        PREFERRED_ORDER = [Flac_STREAMINFO.BLOCK_ID,
+                           Flac_SEEKTABLE.BLOCK_ID,
+                           Flac_CUESHEET.BLOCK_ID,
+                           Flac_VORBISCOMMENT.BLOCK_ID,
+                           Flac_PICTURE.BLOCK_ID,
+                           Flac_APPLICATION.BLOCK_ID,
+                           Flac_PADDING.BLOCK_ID]
+
+        blocks_to_skip = set(PREFERRED_ORDER[0:PREFERRED_ORDER.index(
+                    block.BLOCK_ID)])
+
+        for (index, old_block) in enumerate(self.block_list):
+            if (old_block.BLOCK_ID not in blocks_to_skip):
+                self.block_list.insert(index, block)
+                break
+        else:
+            self.block_list.append(block)
 
     def get_block(self, block_id):
         """returns the first instance of the given block_id
@@ -267,19 +285,12 @@ class FlacMetaData(MetaData):
 
         last = 0
 
-        #FIXME - it may be better to accept errors now
-        #so they can be dealt with in clean()
-
         while (last != 1):
             (last, block_type, block_length) = reader.parse("1u7u24u")
 
             if (block_type == 0):   #STREAMINFO
-                block = Flac_STREAMINFO.parse(reader.substream(block_length))
-                if (block.BLOCK_ID in [b.BLOCK_ID for b in block_list]):
-                    raise ValueError(
-                        _(u"only 1 STREAMINFO allowed in metadata"))
-                else:
-                    block_list.append(block)
+                block_list.append(
+                    Flac_STREAMINFO.parse(reader.substream(block_length)))
             elif (block_type == 1): #PADDING
                 block_list.append(Flac_PADDING.parse(
                         reader.substream(block_length), block_length))
@@ -287,26 +298,15 @@ class FlacMetaData(MetaData):
                 block_list.append(Flac_APPLICATION.parse(
                         reader.substream(block_length), block_length))
             elif (block_type == 3): #SEEKTABLE
-                block = Flac_SEEKTABLE.parse(reader.substream(block_length),
-                                             block_length / 18)
-                if (block.BLOCK_ID in [b.BLOCK_ID for b in block_list]):
-                    raise ValueError(_(u"only 1 SEEKTABLE allowed in metadata"))
-                else:
-                    block_list.append(block)
+                block_list.append(
+                    Flac_SEEKTABLE.parse(reader.substream(block_length),
+                                         block_length / 18))
             elif (block_type == 4): #VORBIS_COMMENT
-                block = Flac_VORBISCOMMENT.parse(
-                     reader.substream(block_length))
-                if (block.BLOCK_ID in [b.BLOCK_ID for b in block_list]):
-                    raise ValueError(
-                        _(u"only 1 VORBISCOMMENT allowed in metadata"))
-                else:
-                    block_list.append(block)
+                block_list.append(Flac_VORBISCOMMENT.parse(
+                        reader.substream(block_length)))
             elif (block_type == 5): #CUESHEET
-                block = Flac_CUESHEET.parse(reader.substream(block_length))
-                if (block.BLOCK_ID in [b.BLOCK_ID for b in block_list]):
-                    raise ValueError(_(u"only 1 CUESHEET allowed in metadata"))
-                else:
-                    block_list.append(block)
+                block_list.append(
+                    Flac_CUESHEET.parse(reader.substream(block_length)))
             elif (block_type == 6): #PICTURE
                 block_list.append(Flac_PICTURE.parse(
                         reader.substream(block_length)))
@@ -1526,7 +1526,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                  (pcmreader.bits_per_sample > 16)) and
                 (channel_mask != 0)):
                 metadata.get_block(Flac_VORBISCOMMENT.BLOCK_ID)[
-                    "uWAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
+                    u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
                     u"0x%.4X" % (channel_mask)]
 
             flac.update_metadata(metadata)
@@ -1890,36 +1890,6 @@ class FlacAudio(WaveContainer, AiffContainer):
                     reader.skip_bytes(length)
         finally:
             f.close()
-
-    def seektable(self, pcm_frames):
-        """Returns a new FlacSeektable block from this file's data."""
-
-        from bisect import bisect_right
-
-        def seekpoints(reader, metadata_length):
-            total_samples = 0
-
-            for frame in analyze_frames(reader):
-                yield (total_samples, frame['offset'] - metadata_length,
-                       frame['block_size'])
-                total_samples += frame['block_size']
-
-        all_frames = dict([(point[0], (point[1], point[2]))
-                           for point in seekpoints(self.to_pcm(),
-                                                   self.metadata_length())])
-        sample_offsets = all_frames.keys()
-        sample_offsets.sort()
-
-        seekpoints = []
-        for pcm_frame in xrange(0, self.total_frames(), pcm_frames):
-            flac_frame = bisect_right(sample_offsets, pcm_frame) - 1
-            seekpoints.append(
-                FlacSeekpoint(
-                    sample_number=sample_offsets[flac_frame],
-                    byte_offset=all_frames[sample_offsets[flac_frame]][0],
-                    frame_samples=all_frames[sample_offsets[flac_frame]][1]))
-
-        return FlacSeektable(seekpoints)
 
     @classmethod
     def add_replay_gain(cls, filenames, progress=None):
@@ -2637,7 +2607,7 @@ class OggFlacAudio(FlacAudio):
                 (channel_mask != 0)):
                 metadata = oggflac.get_metadata()
                 metadata.vorbis_comment[
-                    "WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
+                    u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
                     u"0x%.4X" % (channel_mask)]
                 oggflac.set_metadata(metadata)
             return oggflac
