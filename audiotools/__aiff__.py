@@ -362,7 +362,7 @@ class AiffAudio(AiffContainer):
 
         from .bitstream import BitstreamReader
 
-        for (chunk_id, chunk_data) in self.chunks():
+        for (chunk_id, chunk_size, chunk_data) in self.chunks():
             if (chunk_id == 'ID3 '):
                 return ID3v22Comment.parse(
                     BitstreamReader(cStringIO.StringIO(chunk_data), 0))
@@ -402,7 +402,14 @@ class AiffAudio(AiffContainer):
                     yield (chunk_id, chunk_size, chunk_data)
             else:
                 if (not id3_found):
-                    yield ('ID3 ', chunk_size, id3_chunk)
+                    if (len(id3_chunk) % 2):
+                        yield ('ID3 ',
+                               pack(">I", len(id3_chunk)),
+                               id3_chunk + chr(0))
+                    else:
+                        yield ('ID3 ',
+                               pack(">I", len(id3_chunk)),
+                               id3_chunk)
 
         import tempfile
         from .bitstream import BitstreamRecorder

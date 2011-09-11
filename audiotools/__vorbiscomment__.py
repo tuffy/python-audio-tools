@@ -67,19 +67,17 @@ class VorbisComment(MetaData):
                          if (u"=" in comment)]))
 
     def values(self):
-        return [comment.split(u"=", 1)[1]
-                for comment in self.comment_strings
-                if (u"=" in comment)]
+        return [self[key] for key in self.keys()]
 
     def items(self):
-        return [tuple(comment.split(u"=", 1))
-                for comment in self.comment_strings
-                if (u"=" in comment)]
+        return [(key, self[key]) for key in self.keys()]
 
     def __getitem__(self, key):
         matching_keys = self.ALIASES.get(key.upper(), frozenset([key.upper()]))
 
-        return [item_value for (item_key, item_value) in self.items()
+        return [item_value for (item_key, item_value) in
+                [comment.split(u"=", 1) for comment in self.comment_strings
+                 if (u"=" in comment)]
                 if (item_key.upper() in matching_keys)]
 
     def __setitem__(self, key, values):
@@ -396,12 +394,12 @@ class VorbisComment(MetaData):
                         if ((attr in self.SLASHED_FIELDS) and
                             (self.SLASHED_FIELD.search(fix2) is not None)):
                             match = self.SLASHED_FIELD.search(value)
-                            fix3 = "%d/%d" % (int(match.group(1)),
-                                              int(match.group(2)))
+                            fix3 = u"%d/%d" % (int(match.group(1)),
+                                               int(match.group(2)))
                             if (fix3 != fix2):
                                 fixes_performed.append(
-                                 _(u"removed whitespace/zeroes from %(field)s" %
-                                   {"field":key}))
+                                    _(u"removed whitespace/zeroes from %(field)s") %
+                                    {"field":key})
                         elif (attr in self.INTEGER_FIELDS):
                             fix3 = fix2.lstrip(u"0")
                             if (fix3 != fix2):
