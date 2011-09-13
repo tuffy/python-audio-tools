@@ -793,7 +793,9 @@ class ID3v22Comment(MetaData):
         while (total_size > 0):
             (frame_id, frame_size) = reader.parse("3b 24u")
 
-            if (frame_id.startswith('T')):
+            if (frame_id == chr(0) * 3):
+                break
+            elif (frame_id.startswith('T')):
                 frames.append(cls.TEXT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             elif (frame_id == 'COM'):
@@ -1270,7 +1272,9 @@ class ID3v23Comment(ID3v22Comment):
         while (total_size > 0):
             (frame_id, frame_size, frame_flags) = reader.parse("4b 32u 16u")
 
-            if (frame_id.startswith('T')):
+            if (frame_id == chr(0) * 4):
+                break
+            elif (frame_id.startswith('T')):
                 frames.append(cls.TEXT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             elif (frame_id == 'COMM'):
@@ -1576,7 +1580,9 @@ class ID3v24Comment(ID3v23Comment):
             frame_size = decode_syncsafe32(reader)
             flags = reader.read(16)
 
-            if (frame_id.startswith('T')):
+            if (frame_id == chr(0) * 4):
+                break
+            elif (frame_id.startswith('T')):
                 frames.append(cls.TEXT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             elif (frame_id == 'COMM'):
