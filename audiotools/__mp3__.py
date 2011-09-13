@@ -206,7 +206,7 @@ class MP3Audio(AudioFile):
 
         from .bitstream import BitstreamReader
 
-        ID3v2Comment.skip(file)
+        skip_id3v2_comment(file)
 
         (frame_sync,
          mpeg_id,
@@ -422,7 +422,7 @@ class MP3Audio(AudioFile):
                     # no ID3v2, no ID3v1
                     return None
             else:
-                id3v2 = ID3v2Comment.read_id3v2_comment(self.filename)
+                id3v2 = read_id3v2_comment(self.filename)
 
                 try:
                     # yes IDv2, yes ID3v1
@@ -540,7 +540,7 @@ class MP3Audio(AudioFile):
     @classmethod
     def __find_next_mp3_frame__(cls, mp3file):
         #if we're starting at an ID3v2 header, skip it to save a bunch of time
-        bytes_skipped = ID3v2Comment.skip(mp3file)
+        bytes_skipped = skip_id3v2_comment(mp3file)
 
         #then find the next mp3 frame
         from .bitstream import BitstreamReader
@@ -580,7 +580,7 @@ class MP3Audio(AudioFile):
         """places mp3file at the position of the MP3 file's start"""
 
         #if we're starting at an ID3v2 header, skip it to save a bunch of time
-        ID3v2Comment.skip(mp3file)
+        skip_id3v2_comment(mp3file)
 
         from .bitstream import BitstreamReader
 
@@ -742,7 +742,7 @@ class MP2Audio(MP3Audio):
 
         from .bitstream import BitstreamReader
 
-        ID3v2Comment.skip(file)
+        skip_id3v2_comment(file)
 
         (frame_sync,
          mpeg_id,

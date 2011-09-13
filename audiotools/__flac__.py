@@ -30,7 +30,7 @@ from audiotools import (AudioFile, MetaData, InvalidFile, PCMReader,
                         WaveContainer, AiffContainer, to_pcm_progress,
                         image_metrics)
 from __vorbiscomment__ import *
-from __id3__ import ID3v2Comment
+from __id3__ import skip_id3v2_comment
 
 import gettext
 
@@ -1077,7 +1077,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             file.seek(0, 0)
             if (file.read(3) == 'ID3'):
                 file.seek(-3, 1)
-                ID3v2Comment.skip(file)
+                skip_id3v2_comment(file)
                 if (file.read(4) == 'fLaC'):
                     try:
                         block_ids = list(cls.__block_ids__(file))
@@ -1862,7 +1862,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         valid_header_types = frozenset(range(0, 6 + 1))
         f = file(self.filename, "rb")
         try:
-            self.__stream_offset__ = ID3v2Comment.skip(f)
+            self.__stream_offset__ = skip_id3v2_comment(f)
             f.read(4)
 
             from .bitstream import BitstreamReader
@@ -2004,7 +2004,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             input_f = open(self.filename, "rb")
             try:
                 #remove ID3 tags from before and after FLAC stream
-                stream_offset = ID3v2Comment.skip(input_f)
+                stream_offset = skip_id3v2_comment(input_f)
                 if (stream_offset > 0):
                     fixes_performed.append(_(u"removed ID3v2 tag"))
                 input_f.seek(-128, 2)
@@ -2043,7 +2043,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                 #remove ID3 tags from before and after FLAC stream
                 stream_size = os.path.getsize(self.filename)
 
-                stream_offset = ID3v2Comment.skip(input_f)
+                stream_offset = skip_id3v2_comment(input_f)
                 if (stream_offset > 0):
                     fixes_performed.append(_(u"removed ID3v2 tag"))
                     stream_size -= stream_offset

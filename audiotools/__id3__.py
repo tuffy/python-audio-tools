@@ -22,7 +22,12 @@ from audiotools import (MetaData, re, os, cStringIO,
 import codecs
 import gettext
 
-gettext.install("audiotools", unicode=True)
+
+def is_latin_1(unicode_string):
+    """returns True if the given unicode string is a subset of latin-1"""
+
+    return frozenset(unicode_string).issubset(
+        frozenset(map(unichr, range(32, 127) + range(160,256))))
 
 
 class UCS2Codec(codecs.Codec):
@@ -72,12 +77,6 @@ def __reg_ucs2__(name):
 
 codecs.register(__reg_ucs2__)
 
-
-class UnsupportedID3v2Version(Exception):
-    """Raised if one encounters an ID3v2 tag not version .2, .3 or .4."""
-
-    pass
-
 def decode_syncsafe32(reader):
     from operator import or_
     return reduce(or_,
@@ -89,37 +88,71 @@ def encode_syncsafe32(writer, value):
     writer.build("1p 7u 1p 7u 1p 7u 1p 7u",
                  [(value >> (7 * i)) & 0x7F for i in [3, 2, 1, 0]])
 
-def decode_ascii_c_string(reader):
-    """given a BitstreamReader and encoding byte, return unicode string
+class C_string:
+    TERMINATOR = {'ascii':chr(0),
+                  'latin_1':chr(0),
+                  'latin-1':chr(0),
+                  'ucs2':chr(0) * 2,
+                  'utf_16':chr(0) * 2,
+                  'utf-16':chr(0) * 2,
+                  'utf_16be':chr(0) * 2,
+                  'utf-16be':chr(0) * 2,
+                  'utf_8':chr(0),
+                  'utf-8':chr(0)}
 
-    encoding is ASCII and unknown characters are replaced"""
+    def __init__(self, encoding, unicode_string):
+        """encoding is a string such as 'utf-8', 'latin-1', etc."""
 
-    chars = []
-    char = reader.read(8)
-    while (char != 0):
-        chars.append(char)
-        char = reader.read(8)
-    return "".join(map(chr, chars)).decode('ascii','replace')
+        self.encoding = encoding
+        self.unicode_string = unicode_string
 
-def encode_ascii_c_string(writer, s):
-    """write NULL-terminated ASCII unicode string to stream"""
+    def __repr__(self):
+        return "C_string(%s, %s)" % (repr(self.encoding),
+                                     repr(self.unicode_string))
 
-    encoded = s.encode('ascii', 'replace')
-    writer.build("%db 8u" % (len(encoded)), (encoded, 0))
+    def __unicode__(self):
+        return self.unicode_string
 
+    def __getitem__(self, char):
+        return self.unicode_string[char]
 
-class __Counter__:
-    def __init__(self, value=0):
-        self.value = value
+    def __len__(self):
+        return len(self.unicode_string)
 
-    def __int__(self):
-        return self.value
+    @classmethod
+    def parse(cls, encoding, reader):
+        """returns a C_string with the given encoding string
+        from the given BitstreamReader
+        raises LookupError if encoding is unknown
+        raises IOError if a problem occurs reading the stream
+        """
 
-    def increment(self, b):
-        self.value += 1
+        try:
+            terminator = cls.TERMINATOR[encoding]
+            terminator_size = len(terminator)
+        except KeyError:
+            raise LookupError(encoding)
 
-    def decrement(self, b):
-        self.value -= 1
+        s = []
+        char = reader.read_bytes(terminator_size)
+        while (char != terminator):
+            s.append(char)
+            char = reader.read_bytes(terminator_size)
+
+        return cls(encoding, "".join(s).decode(encoding, 'replace'))
+
+    def build(self, writer):
+        """writes our C_string data to the given BitstreamWriter
+        with the appropriate terminator"""
+
+        writer.write_bytes(self.unicode_string.encode(self.encoding, 'replace'))
+        writer.write_bytes(self.TERMINATOR[self.encoding])
+
+    def size(self):
+        """returns the length of our C string in bytes"""
+
+        return (len(self.unicode_string.encode(self.encoding, 'replace')) +
+                len(self.TERMINATOR[self.encoding]))
 
 
 def __attrib_equals__(attributes, o1, o2):
@@ -127,11 +160,11 @@ def __attrib_equals__(attributes, o1, o2):
 
     try:
         return reduce(operator.and_,
-                      [getattr(o1, attrib) == getattr(o2, attrib)
+                      [(hasattr(o2, attrib) and
+                        (getattr(o1, attrib) == getattr(o2, attrib)))
                        for attrib in attributes])
     except AttributeError:
         return False
-
 
 #takes a pair of integers for the current and total values
 #returns a unicode string of their combined pair
@@ -158,38 +191,101 @@ else:
     __number_pair__ = __unpadded_number_pair__
 
 
-#######################
-#ID3v2.2
-#######################
+def read_id3v2_comment(filename):
+    """Given a filename, returns an ID3v22Comment or a subclass.
+
+    For example, if the file is ID3v2.3 tagged,
+    this returns an ID3v23Comment.
+    """
+
+    from .bitstream import BitstreamReader
+
+    reader = BitstreamReader(file(filename, "rb"), 0)
+    reader.mark()
+    try:
+        (tag, version_major, version_minor) = reader.parse("3b 8u 8u")
+        if (tag != 'ID3'):
+            raise ValueError("invalid ID3 header")
+        elif (version_major == 0x2):
+            reader.rewind()
+            return ID3v22Comment.parse(reader)
+        elif (version_major == 0x3):
+            reader.rewind()
+            return ID3v23Comment.parse(reader)
+        elif (version_major == 0x4):
+            reader.rewind()
+            return ID3v24Comment.parse(reader)
+        else:
+            raise ValueError("unsupported ID3 version")
+    finally:
+        reader.unmark()
+        reader.close()
 
 
-class ID3v22Frame:
-    """A container for individual ID3v2.2 frames."""
+def skip_id3v2_comment(file):
+    """Seeks past an ID3v2 comment if found in the file stream.
+    Returns the number of bytes skipped.
 
-    ENCODING = {0x00: "latin-1",
-                0x01: "ucs2"}
+    The stream must be seekable, obviously."""
 
-    #we use TEXT_TYPE to differentiate frames which are
-    #supposed to return text unicode when __unicode__ is called
-    #from those that just return summary data
-    TEXT_TYPE = False
+    from .bitstream import BitstreamReader
 
+    bytes_skipped = 0
+    reader = BitstreamReader(file, 0)
+    reader.mark()
+    try:
+        (tag_id, version_major, version_minor) = reader.parse("3b 8u 8u 8p")
+    except IOError, err:
+        reader.unmark()
+        raise err
+
+    if ((tag_id == 'ID3') and (version_major in (2, 3, 4))):
+        reader.unmark()
+
+        #parse the header
+        bytes_skipped += 6
+        tag_size = decode_syncsafe32(reader)
+        bytes_skipped += 4
+
+        #skip to the end of its length
+        reader.skip_bytes(tag_size)
+        bytes_skipped += tag_size
+
+        #skip any null bytes after the IDv2 tag
+        reader.mark()
+        try:
+            byte = reader.read(8)
+            while (byte == 0):
+                reader.unmark()
+                bytes_skipped += 1
+                reader.mark()
+                byte = reader.read(8)
+
+            reader.rewind()
+            reader.unmark()
+
+            return bytes_skipped
+        except IOError, err:
+            reader.unmark()
+            raise err
+    else:
+        reader.rewind()
+        reader.unmark()
+        return 0
+
+
+############################################################
+# ID3v2.2 Comment
+############################################################
+
+
+class ID3v22_Frame:
     def __init__(self, frame_id, data):
-        """frame_id is the 3 byte ID.  data is a binary string."""
-
         self.id = frame_id
         self.data = data
 
-    def __len__(self):
-        return len(self.data)
-
-    def __eq__(self, o):
-        return __attrib_equals__(["frame_id", "data"], self, o)
-
-    def build(self, writer):
-        """writes frame data to BitstreamWriter, without the header"""
-
-        writer.write_bytes(self.data)
+    def __repr__(self):
+        return "ID3v22_Frame(%s, %s)" % (repr(self.id), repr(self.data))
 
     def raw_info(self):
         if (len(self.data) > 20):
@@ -201,299 +297,329 @@ class ID3v22Frame:
                 (self.id.decode('ascii', 'replace'),
                  u"".join([u"%2.2X" % (ord(b)) for b in self.data]))
 
-    #FIXME
-    # def __unicode__(self):
-    #     if (self.id.startswith('W')):
-    #         return self.data.rstrip(chr(0)).decode('iso-8859-1', 'replace')
-    #     else:
-    #         if (len(self.data) <= 20):
-    #             return unicode(self.data.encode('hex').upper())
-    #         else:
-    #             return (unicode(self.data[0:19].encode('hex').upper()) +
-    #                     u"\u2026")
+    def __eq__(self, frame):
+        return __attrib_equals__(["id", "data"], self, frame)
 
     @classmethod
-    def decode_text(cls, byte_string, encoding_byte):
-        """given a plain text string and encoding byte, returns unicode
+    def parse(cls, frame_id, frame_size, reader):
+        """given a frame_id string, frame_size int and BitstreamReader
+        of the remaining frame data, returns a parsed ID3v2?_Frame"""
 
-        if the byte is valid, this presumes the encoding is correct and uses
-        text.decode('encoding', 'replace') to handle errors
+        return cls(frame_id, reader.read_bytes(frame_size))
 
-        if the byte is invalid, we assume ASCII
+    def build(self, writer):
+        """writes the frame's data to the BitstreamWriter
+        not including its 6 byte header"""
+
+        writer.write_bytes(self.data)
+
+    def size(self):
+        """returns the frame's total size
+        not including its 6 byte header"""
+
+        return len(self.data)
+
+    @classmethod
+    def converted(cls, frame_id, o):
+        """given foreign data, returns an ID3v22_Frame"""
+
+        raise NotImplementedError()
+
+    def clean(self, fixes_applied):
+        """returns a cleaned ID3v22_Frame,
+        or None if the frame should be removed entirely
+        any fixes are appended to fixes_applied as unicode string"""
+
+        return self.__class__(self.id, self.data)
+
+
+class ID3v22_TXX_Frame:
+    NUMERICAL_IDS = ('TRK', 'TPA')
+
+    def __init__(self, frame_id, encoding, data):
+        """Fields are as follows:
+        | frame_id | 3 byte frame ID string  |
+        | encoding | 1 byte encoding int     |
+        | data     | text data as raw string |
         """
 
-        try:
-            return byte_string.decode(cls.ENCODING[encoding_byte], 'replace')
-        except KeyError:
-            return byte_string.decode('ascii', 'replace')
-
-    @classmethod
-    def encode_text(cls, unicode_string, encoding_byte):
-        """given unicode text and an encoding byte, returns a raw string
-
-        this presumes the encoding byte is sane,
-        otherwise unicode.encode('encoding', 'replace') is applied
-        """
-
-        return unicode_string.encode(cls.ENCODING[encoding_byte], 'replace')
-
-    @classmethod
-    def decode_c_string(cls, reader, encoding_byte):
-        """given a BitstreamReader and encoding byte, return unicode string
-
-        this is designed to handle the dicey problem of string
-        NULL terminators for wide characters
-        """
-
-        if (encoding_byte == 0):
-            chars = []
-            char = reader.read(8)
-            while (char != 0):
-                chars.append(char)
-                char = reader.read(8)
-            return "".join(map(chr, chars)).decode('latin-1','replace')
-        elif (encoding_byte == 1):
-            chars = []
-            (high, low) = reader.parse("8u 8u")
-            while ((high != 0) and (low != 0)):
-                chars.append(high)
-                chars.append(low)
-                (high, low) = reader.parse("8u 8u")
-            return "".join(map(chr, chars)).decode('ucs2','replace')
-        else:
-            raise ValueError(_(u"invalid encoding byte"))
-
-    @classmethod
-    def encode_c_string(cls, writer, unicode_string, encoding_byte):
-        """given BitstreamWriter, unicode and encoding, write C string
-
-        as with the decode_c_string, this is meant to handle
-        NULL termination correctly
-        """
-
-        if (encoding_byte == 0):
-            encoded = unicode_string.encode('latin-1')
-            writer.build("%db 8u" % (len(encoded)), (encoded, 0))
-        elif (encoding_byte == 1):
-            encoded = unicode_string.encode('ucs2', 'replace')
-            writer.build("%db 16u" % (len(encoded)), (encoded, 0))
-        else:
-            raise ValueError(_(u"invalid encoding byte"))
-
-    @classmethod
-    def encoding_byte(cls, unicode_string):
-        """given a unicode string, returns the best encoding byte for it
-
-        since all ID3v2 tags support some sort of unicode,
-        something is certain to work
-        """
-
-        #see if unicode_string falls into a set of latin-1 chars
-        #otherwise use unicode
-        if (frozenset(unicode_string).issubset(
-                frozenset(map(unichr, range(32, 127) + range(160,256))))):
-            return 0
-        else:
-            return 1
-
-    @classmethod
-    def parse(cls, frame_id, frame_size, frame_data):
-        """given an id string, size int and data BitstreamReader
-
-        returns an ID3v22Frame or subclass"""
-
-        if (frame_id.startswith('T')):
-            encoding = frame_data.read(8)
-            return ID3v22TextFrame(
-                frame_id,
-                encoding,
-                cls.decode_text(frame_data.read_bytes(frame_size - 1),
-                                encoding))
-
-        elif (frame_id == 'PIC'):
-            remaining_bytes = __Counter__(frame_size)
-            frame_data.add_callback(remaining_bytes.decrement)
-            (encoding,
-             image_format,
-             picture_type) = frame_data.parse("8u 3b 8u")
-            description = cls.decode_c_string(frame_data, encoding)
-            data = frame_data.read_bytes(remaining_bytes)
-
-            return ID3v22PicFrame(data,
-                                  image_format.decode('ascii', 'replace'),
-                                  encoding,
-                                  description,
-                                  picture_type)
-
-        elif (frame_id == 'COM'):
-            remaining_bytes = __Counter__(frame_size)
-            frame_data.add_callback(remaining_bytes.decrement)
-            (encoding,
-             language) = frame_data.parse("8u 3b")
-            description = cls.decode_c_string(frame_data, encoding)
-            content = cls.decode_text(frame_data.read_bytes(remaining_bytes),
-                                      encoding)
-
-            return ID3v22ComFrame(encoding,
-                                  language,
-                                  description,
-                                  content)
-        else:
-            return cls(frame_id, frame_data.read_bytes(frame_size))
-
-class ID3v22TextFrame(ID3v22Frame):
-    """A container for individual ID3v2.2 text frames."""
-
-    TEXT_TYPE = True
-
-    def __init__(self, frame_id, encoding, s):
-        """frame_id is a 3 byte ID, encoding is 0/1, s is a unicode string."""
+        assert((encoding == 0) or (encoding == 1))
 
         self.id = frame_id
         self.encoding = encoding
-        self.string = s
+        self.data = data
 
-    def __eq__(self, o):
-        return __attrib_equals__(["id", "encoding", "string"], self, o)
-
-    def __len__(self):
-        return len(self.string)
-
-    def __unicode__(self):
-        return self.string
+    def __repr__(self):
+        return "ID3v22_TXX_Frame(%s, %s, %s)" % \
+            (repr(self.id), repr(self.encoding), repr(self.data))
 
     def raw_info(self):
         if (self.encoding == 0):
-            return u"%s = (latin-1) %s" % (self.id.decode('ascii'), self.string)
+            return u"%s = (latin-1) %s" % (self.id.decode('ascii'),
+                                           self.data.decode('latin-1'))
         else:
-            return u"%s = (UCS-2) %s" % (self.id.decode('ascii'), self.string)
+            return u"%s = (UCS-2) %s" % (self.id.decode('ascii'),
+                                         self.data.decode('ucs2'))
 
-    def __int__(self):
-        try:
-            return int(re.findall(r'\d+', self.string)[0])
-        except IndexError:
-            return 0
+
+    def __eq__(self, frame):
+        return __attrib_equals__(["id", "encoding", "data"], self, frame)
+
+    def __unicode__(self):
+        if (self.encoding == 0):
+            return self.data.decode('latin-1', 'replace')
+        else:
+            return self.data.decode('ucs2', 'replace')
+
+    def number(self):
+        """if the frame is numerical, returns the track/album_number portion
+        raises TypeError if not"""
+
+        if (self.id in self.NUMERICAL_IDS):
+            try:
+                return int(re.findall(r'\d+', unicode(self))[0])
+            except IndexError:
+                return 0
+        else:
+            raise TypeError()
 
     def total(self):
-        """If the frame is number/total formatted, return the "total" int."""
+        """if the frame is numerical, returns the track/album_total portion
+        raises TypeError if not"""
 
-        try:
-            return int(re.findall(r'\d+/(\d+)', self.string)[0])
-        except IndexError:
-            return 0
+        if (self.id in self.NUMERICAL_IDS):
+            try:
+                return int(re.findall(r'\d+/(\d+)', unicode(self))[0])
+            except IndexError:
+                return 0
+        else:
+            raise TypeError()
 
     @classmethod
-    def from_unicode(cls, frame_id, s):
-        """Builds an ID3v22TextFrame from 3 byte frame_id and unicode s."""
+    def parse(cls, frame_id, frame_size, reader):
+        """given a frame_id string, frame_size int and BitstreamReader
+        of the remaining frame data, returns a parsed text frame"""
 
-        if (frame_id == 'COM'):
-            return ID3v22ComFrame.from_unicode(s)
-        else:
-            return cls(frame_id, cls.encoding_byte(s), s)
+        encoding = reader.read(8)
+        return cls(frame_id, encoding, reader.read_bytes(frame_size - 1))
 
     def build(self, writer):
-        """builds an ID3v2.2 text frame on the given BitstreamWriter"""
+        """writes the frame's data to the BitstreamWriter
+        not including its frame header"""
 
-        writer.write(8, self.encoding)
-        writer.write_bytes(self.encode_text(self.string, self.encoding))
+        writer.build("8u %db" % (len(self.data)), (self.encoding, self.data))
 
-class ID3v22ComFrame(ID3v22TextFrame):
-    """A container for ID3v2.2 comment (COM) frames."""
+    def size(self):
+        """returns the frame's total size
+        not including its frame header"""
 
-    TEXT_TYPE = True
+        return 1 + len(self.data)
 
-    def __init__(self, encoding, language, short_description, content):
-        """encoding is 0/1, language is a string, the rest are unicode.
+    @classmethod
+    def converted(cls, frame_id, unicode_string):
+        """given a unicode string, returns a text frame"""
 
-        We're mostly interested in encoding and content.
-        The language and short_description fields are rarely used."""
+        if (is_latin_1(unicode_string)):
+            return cls(frame_id, 0, unicode_string.encode('latin-1'))
+        else:
+            return cls(frame_id, 1, unicode_string.encode('ucs2'))
 
+    def clean(self, fixes_performed):
+        """returns a cleaned frame,
+        or None if the frame should be removed entirely
+        any fixes are appended to fixes_applied as unicode string"""
+
+        field = self.id.decode('ascii')
+        value = unicode(self)
+
+        #check for an empty tag
+        if (len(value.strip()) == 0):
+            fixes_performed.append(
+                u"removed empty field %(field)s" % {"field":field})
+            return None
+
+        #check trailing whitespace
+        fix1 = value.rstrip()
+        if (fix1 != value):
+            fixes_performed.append(
+                u"removed trailing whitespace from %(field)s" %
+                {"field":field})
+
+        #check leading whitespace
+        fix2 = fix1.lstrip()
+        if (fix2 != fix1):
+            fixes_performed.append(
+                u"removed leading whitespace from %(field)s" %
+                {"field":field})
+
+        #check leading zeroes for a numerical tag
+        if (self.id in self.NUMERICAL_IDS):
+            fix3 = __number_pair__(self.number(), self.total())
+            if (fix3 != fix2):
+                if (__number_pair__ is __unpadded_number_pair__):
+                    fixes_performed.append(
+                        u"removed leading zeroes from %(field)s" %
+                        {"field":field})
+                else:
+                    fixes_performed.append(
+                        u"added leading zeroes to %(field)s" %
+                        {"field":field})
+        else:
+            fix3 = fix2
+
+        return self.__class__.converted(self.id, fix3)
+
+
+class ID3v22_COM_Frame:
+    def __init__(self, encoding, language, short_description, data):
+        """Fields are as follows:
+        | encoding          | 1 byte int of the comment's text encoding |
+        | language          | 3 byte string of the comment's language   |
+        | short_description | C_string of a short description           |
+        | data              | plain string of the comment data itself   |
+        """
+
+        self.id = "COM"
         self.encoding = encoding
         self.language = language
         self.short_description = short_description
-        self.content = content
-        self.id = 'COM'
+        self.data = data
 
-    def __len__(self):
-        return len(self.content)
-
-    def __eq__(self, o):
-        return __attrib_equals__(["encoding", "language",
-                                  "short_description", "content"], self, o)
-
-    def __unicode__(self):
-        return self.content
+    def __repr__(self):
+        return "ID3v22_COM_Frame(%s, %s, %s, %s)" % \
+            (repr(self.encoding), repr(self.language),
+             repr(self.short_description), repr(self.data))
 
     def raw_info(self):
-        if (self.encoding == 0):
-            encoding = u"latin-1"
-        else:
-            encoding = u"UCS-2"
-
         return u"COM = (%s, %s, \"%s\") %s" % \
-            (encoding,
+            ({0:u'Latin-1', 1:'UCS-2'}[self.encoding],
              self.language.decode('ascii', 'replace'),
              self.short_description,
-             self.content)
+             self.data.decode({0:'latin-1', 1:'ucs2'}[self.encoding]))
 
-    def __int__(self):
-        return 0
+    def __eq__(self):
+        return __attrib_equals__(["encoding", "language",
+                                  "short_description", "data"], self, frame)
+
+    def __unicode__(self):
+        return self.data.decode({0:'latin-1', 1:'ucs2'}[self.encoding],
+                                'replace')
+
 
     @classmethod
-    def from_unicode(cls, s):
-        """Builds an ID3v22ComFrame from a unicode string."""
+    def parse(cls, frame_id, frame_size, reader):
+        """given a frame_id string, frame_size int and BitstreamReader
+        of the remaining frame data, returns a parsed ID3v22_COM_Frame"""
 
-        return cls(cls.encoding_byte(s), 'eng', u'', s)
+        (encoding, language) = reader.parse("8u 3b")
+        short_description = C_string.parse({0:'latin-1', 1:'ucs2'}[encoding],
+                                           reader)
+        data = reader.read_bytes(frame_size - (4 + short_description.size()))
+
+        return cls(encoding, language, short_description, data)
 
     def build(self, writer):
-        """builds a binary string of COM data to the given BitstreamWriter"""
-
         writer.build("8u 3b", (self.encoding, self.language))
-        self.encode_c_string(writer, self.short_description, self.encoding)
-        writer.write_bytes(self.encode_text(self.content, self.encoding))
+        self.short_description.build(writer)
+        writer.write_bytes(self.data)
+
+    def size(self):
+        return 4 + self.short_description.size() + len(self.data)
+
+    @classmethod
+    def converted(cls, frame_id, unicode_string):
+        if (is_latin_1(unicode_string)):
+            return cls(0, "eng", C_string("latin-1", u""),
+                       unicode_string.encode('latin-1'))
+        else:
+            return cls(1, "eng", C_string("ucs2", u""),
+                       unicode_string.encode('ucs2'))
+
+    def clean(self, fixes_performed):
+        """returns a cleaned frame of the same class
+        or None if the frame should be omitted
+        fix text will be appended to fixes_performed, if necessary"""
+
+        field = self.id.decode('ascii')
+        text_encoding = {0:'latin-1', 1:'ucs2'}
+
+        value = self.data.decode(text_encoding, 'replace')
+
+        #check for an empty tag
+        if (len(value.strip()) == 0):
+            fixes_performed.append(
+                u"removed empty field %(field)s" % {"field":field})
+            return None
+
+        #check trailing whitespace
+        fix1 = value.rstrip()
+        if (fix1 != value):
+            fixes_performed.append(
+                u"removed trailing whitespace from %(field)s" %
+                {"field":field})
+
+        #check leading whitespace
+        fix2 = fix1.lstrip()
+        if (fix2 != fix1):
+            fixes_performed.append(
+                u"removed leading whitespace from %(field)s" %
+                {"field":field})
+
+        #stripping whitespace shouldn't alter text/description encoding
+
+        return self.__class__(self.encoding,
+                              self.language,
+                              self.short_description,
+                              fix2.encode(text_encoding))
 
 
-class ID3v22PicFrame(ID3v22Frame, Image):
-    """A container for ID3v2.2 image (PIC) frames."""
-
-    def __init__(self, data, format, encoding, description, pic_type):
+class ID3v22_PIC_Frame(Image):
+    def __init__(self, image_format, picture_type, description, data):
         """Fields are as follows:
-
-        data        - a binary string of raw image data
-        format      - a unicode string
-        encoding    - a text encoding byte for the description
-        description - a unicode string
-        pic_type    - an integer
+        | image_format | a 3 byte image format, such as 'JPG'        |
+        | picture_type | a 1 byte field indicating front cover, etc. |
+        | description  | a description of the image as a C_string    |
+        | data         | image data itself as a raw string           |
         """
 
-        ID3v22Frame.__init__(self, 'PIC', None)
+        self.id = 'PIC'
 
+        #add PIC-specific fields
+        self.pic_format = image_format
+        self.pic_type = picture_type
+        self.pic_description = description
+
+        #figure out image metrics from raw data
         try:
-            img = Image.new(data, u'', 0)
+            metrics = Image.new(data, u'', 0)
         except InvalidImage:
-            img = Image(data=data, mime_type=u'',
-                        width=0, height=0, color_depth=0, color_count=0,
-                        description=u'', type=0)
+            metrics = Image(data=data, mime_type=u'',
+                            width=0, height=0, color_depth=0, color_count=0,
+                            description=u'', type=0)
 
-        self.pic_type = pic_type
-        self.format = format
-        self.encoding = encoding
-        Image.__init__(self,
-                       data=data,
-                       mime_type=img.mime_type,
-                       width=img.width,
-                       height=img.height,
-                       color_depth=img.color_depth,
-                       color_count=img.color_count,
-                       description=description,
-                       type={3: 0, 4: 1, 5: 2, 6: 3}.get(pic_type, 4))
+        #then initialize Image parent fields from metrics
+        self.mime_type = metrics.mime_type
+        self.width = metrics.width
+        self.height = metrics.height
+        self.color_depth = metrics.color_depth
+        self.color_count = metrics.color_count
+        self.data = data
+
+    def __repr__(self):
+        return "ID3v22_PIC_Frame(%s, %s, %s, ...)" % \
+            (repr(self.pic_format), repr(self.pic_type),
+             repr(self.pic_description))
+
+    def raw_info(self):
+        return u"PIC = (%s, %d\u00D7%d, %s, \"%s\") %d bytes" % \
+            (self.type_string(),
+             self.width,
+             self.height,
+             self.mime_type,
+             self.pic_description,
+             len(self.data))
 
     def type_string(self):
-        """Returns the image's type as a human readable plain string.
-
-        For example, an image of type 0 returns "Front Cover"""
-
-        #FIXME - these should be internationalized
         return {0: "Other",
                 1: "32x32 pixels 'file icon' (PNG only)",
                 2: "Other file icon",
@@ -516,52 +642,95 @@ class ID3v22PicFrame(ID3v22Frame, Image):
                 19: "Band/Artist logotype",
                 20: "Publisher/Studio logotype"}.get(self.pic_type, "Other")
 
-    def raw_info(self):
-        return u"PIC = (%s, %d\u00D7%d, %s, \"%s\") %d bytes" % \
-            (self.type_string(),
-             self.width,
-             self.height,
-             self.mime_type,
-             self.description,
-             len(self.data))
+    def __getattr__(self, attr):
+        if (attr == 'type'):
+            return {3:0,                    #front cover
+                    4:1,                    #back cover
+                    5:2,                    #leaflet page
+                    6:3                     #media
+                    }.get(self.pic_type, 4) #other
+        elif (attr == 'description'):
+            return unicode(self.pic_description)
+        else:
+            raise AttributeError(attr)
 
-    def __eq__(self, i):
-        return Image.__eq__(self, i)
-
-    def build(self, writer):
-        """builds a binary string of PIC data to the given BitstreamWriter"""
-
-        writer.build("8u 3b 8u",
-                     (self.encoding,
-                      self.format.encode('ascii', 'replace'),
-                      self.pic_type))
-        self.encode_c_string(writer, self.description, self.encoding)
-        writer.write_bytes(self.data)
+    def __setattr__(self, attr, value):
+        if (attr == 'type'):
+            self.__dict__["pic_type"] = {0:3,            #front cover
+                                         1:4,            #back cover
+                                         2:5,            #leaflet page
+                                         3:6,            #media
+                                         }.get(value, 0) #other
+        elif (attr == 'description'):
+            if (is_latin_1(value)):
+                self.__dict__["pic_description"] = C_string('latin-1', value)
+            else:
+                self.__dict__["pic_description"] = C_string('ucs2', value)
+        else:
+            self.__dict__[attr] = value
 
     @classmethod
-    def converted(cls, image):
-        """Given an Image object, returns an ID3v22PicFrame object."""
+    def parse(cls, frame_id, frame_size, reader):
+        (encoding, image_format, picture_type) = reader.parse("8u 3b 8u")
+        description = C_string.parse({0:'latin-1', 1:'ucs2'}[encoding], reader)
+        data = reader.read_bytes(frame_size - (5 + description.size()))
+        return cls(image_format,
+                   picture_type,
+                   description,
+                   data)
 
-        return cls(data=image.data,
-                   format={u"image/png": u"PNG",
-                           u"image/jpeg": u"JPG",
-                           u"image/jpg": u"JPG",
-                           u"image/x-ms-bmp": u"BMP",
-                           u"image/gif": u"GIF",
-                           u"image/tiff": u"TIF"}.get(image.mime_type,
-                                                     u"JPG"),
-                   encoding=cls.encoding_byte(image.description),
-                   description=image.description,
-                   pic_type={0: 3, 1: 4, 2: 5, 3: 6}.get(image.type, 0))
+    def build(self, writer):
+        writer.build("8u 3b 8u", ({'latin-1':0,
+                                   'ucs2':1}[self.pic_description.encoding],
+                                  self.pic_format,
+                                  self.pic_type))
+        self.pic_description.build(writer)
+        writer.write_bytes(self.data)
+
+    def size(self):
+        return (5 + self.pic_description.size() + len(self.data))
+
+    @classmethod
+    def converted(cls, frame_id, image):
+        if (is_latin_1(image.description)):
+            description = C_string('latin-1', image.description)
+        else:
+            description = C_string('ucs2', image.description)
+
+        return cls(image_format={u"image/png": u"PNG",
+                                 u"image/jpeg": u"JPG",
+                                 u"image/jpg": u"JPG",
+                                 u"image/x-ms-bmp": u"BMP",
+                                 u"image/gif": u"GIF",
+                                 u"image/tiff": u"TIF"}.get(image.mime_type,
+                                                            'UNK'),
+                   picture_type={0:3,                   #front cover
+                                 1:4,                   #back cover
+                                 2:5,                   #leaflet page
+                                 3:6,                   #media
+                                 }.get(image.type, 0),  #other
+                   description=description,
+                   data=image.data)
+
+    def clean(self, fixes_performed):
+        """returns a cleaned ID3v22_PIC_Frame,
+        or None if the frame should be removed entirely
+        any fixes are appended to fixes_applied as unicode string"""
+
+        #all the fields are derived from the image data
+        #so there's no need to test for a mismatch
+
+        #not sure if it's worth testing for bugs in the description
+        #or format fields
+
+        return ID3v22_PIC_Frame(self.pic_format,
+                                self.pic_type,
+                                self.pic_description,
+                                self.data)
 
 
 class ID3v22Comment(MetaData):
-    """A complete ID3v2.2 comment."""
-
-    Frame = ID3v22Frame
-    TextFrame = ID3v22TextFrame
-    PictureFrame = ID3v22PicFrame
-    CommentFrame = ID3v22ComFrame
+    NAME = u'ID3v2.2'
 
     ATTRIBUTE_MAP = {'track_name': 'TT2',
                      'track_number': 'TRK',
@@ -581,675 +750,476 @@ class ID3v22Comment(MetaData):
                      'album_total': 'TPA',
                      'comment': 'COM'}
 
-    INTEGER_ITEMS = ('TRK', 'TPA')
-
-    KEY_ORDER = ('TT2', 'TAL', 'TRK', 'TPA', 'TP1', 'TP2', 'TCM', 'TP3',
-                 'TPB', 'TRC', 'TYE', 'TRD', None, 'COM', 'PIC')
+    RAW_FRAME = ID3v22_Frame
+    TEXT_FRAME = ID3v22_TXX_Frame
+    COMMENT_FRAME = ID3v22_COM_Frame
+    IMAGE_FRAME = ID3v22_PIC_Frame
+    IMAGE_FRAME_ID = 'PIC'
 
     def __init__(self, frames):
-        """frames should be a list of ID3v2?Frame-compatible objects."""
-
-        self.__dict__["frames"] = {}  # a frame_id->[frame list] mapping
-
-        for frame in frames:
-            self.__dict__["frames"].setdefault(frame.id, []).append(frame)
-
-    def __iter__(self):
-        for frame_list in self.frames.values():
-            for frame in frame_list:
-                yield frame
+        self.__dict__["frames"] = frames[:]
 
     def __repr__(self):
-        return "ID3v22Comment(%s)" % (repr(self.__dict__["frames"]))
+        return "ID3v22Comment(%s)" % (repr(self.frames))
+
+    def __iter__(self):
+        return iter(self.frames)
 
     def raw_info(self):
         from os import linesep
 
         return linesep.decode('ascii').join(
-            ["%s:" % (self.__comment_name__())] +
+            ["%s:" % (self.NAME)] +
             [frame.raw_info() for frame in self])
 
-    def __comment_name__(self):
-        return u'ID3v2.2'
+    @classmethod
+    def parse(cls, reader):
+        """given a BitstreamReader, returns a parsed ID3v22Comment"""
 
-    #if an attribute is updated (e.g. self.track_name)
-    #make sure to update the corresponding dict pair
-    def __setattr__(self, key, value):
-        if (key in self.ATTRIBUTE_MAP):
-            if (key == 'track_number'):
-                value = __number_pair__(value, self.track_total)
-            elif (key == 'track_total'):
-                value = __number_pair__(self.track_number, value)
-            elif (key == 'album_number'):
-                value = __number_pair__(value, self.album_total)
-            elif (key == 'album_total'):
-                value = __number_pair__(self.album_number, value)
+        (id3,
+         major_version,
+         minor_version,
+         flags) = reader.parse("3b 8u 8u 8u")
+        if (id3 != 'ID3'):
+            raise ValueError("invalid ID3 header")
+        elif (major_version != 0x02):
+            raise ValueError("invalid major version")
+        elif (minor_version != 0x00):
+            raise ValueError("invalid minor version")
+        total_size = decode_syncsafe32(reader)
 
-            self.frames[self.ATTRIBUTE_MAP[key]] = [
-                self.TextFrame.from_unicode(self.ATTRIBUTE_MAP[key],
-                                            unicode(value))]
-        elif (key in MetaData.FIELDS):
-            pass
+        frames = []
+
+        while (total_size > 0):
+            (frame_id, frame_size) = reader.parse("3b 24u")
+
+            if (frame_id.startswith('T')):
+                frames.append(cls.TEXT_FRAME.parse(
+                        frame_id, frame_size, reader.substream(frame_size)))
+            elif (frame_id == 'COM'):
+                frames.append(cls.COMMENT_FRAME.parse(
+                        frame_id, frame_size, reader.substream(frame_size)))
+            elif (frame_id == 'PIC'):
+                frames.append(cls.IMAGE_FRAME.parse(
+                        frame_id, frame_size, reader.substream(frame_size)))
+            else:
+                frames.append(cls.RAW_FRAME.parse(
+                        frame_id, frame_size, reader.substream(frame_size)))
+
+            total_size -= (6 + frame_size)
+
+        return cls(frames)
+
+    def build(self, writer):
+        """writes the complete ID3v22Comment data
+        to the given BitstreamWriter"""
+
+        from operator import add
+
+        writer.build("3b 8u 8u 8u", ("ID3", 0x02, 0x00, 0x00))
+        encode_syncsafe32(writer,
+                          reduce(add, [6 + frame.size() for frame in self], 0))
+
+        for frame in self:
+            writer.build("3b 24u", (frame.id, frame.size()))
+            frame.build(writer)
+
+    def size(self):
+        """returns the total size of the ID3v22Comment, including its header"""
+
+        from operator import add
+
+        return reduce(add, [6 + frame.size() for frame in self], 10)
+
+    def __len__(self):
+        return len(self.frames)
+
+    def __getitem__(self, frame_id):
+        frames = [frame for frame in self if (frame.id == frame_id)]
+        if (len(frames) > 0):
+            return frames
         else:
-            self.__dict__[key] = value
+            raise KeyError(frame_id)
 
-    def __getattr__(self, key):
-        if (key in self.ATTRIBUTE_MAP):
+    def __setitem__(self, frame_id, frames):
+        new_frames = frames[:]
+        updated_frames = []
+
+        for old_frame in self:
+            if (old_frame.id == frame_id):
+                try:
+                    #replace current frame with newly set frame
+                    updated_frames.append(new_frames.pop(0))
+                except IndexError:
+                    #no more newly set frames, so remove current frame
+                    continue
+            else:
+                #passthrough unmatched frames
+                updated_frames.append(old_frame)
+        else:
+            #append any leftover frames
+            for new_frame in new_frames:
+                updated_frames.append(new_frame)
+
+        self.__dict__["frames"] = updated_frames
+
+    def __delitem__(self, frame_id):
+        updated_frames = [frame for frame in self if frame.id != frame_id]
+        if (len(updated_frames) < len(self)):
+            self.__dict__["frames"] = updated_frames
+        else:
+            raise KeyError(frame_id)
+
+    def keys(self):
+        return list(set([frame.id for frame in self]))
+
+    def values(self):
+        return [self[key] for key in self.keys()]
+
+    def items(self):
+        return [(key, self[key]) for key in self.keys()]
+
+    def __getattr__(self, attr):
+        if (attr in self.ATTRIBUTE_MAP):
             try:
-                frame = self.frames[self.ATTRIBUTE_MAP[key]][0]
-                if (key in ('track_number', 'album_number')):
-                    return int(frame)
-                elif (key in ('track_total', 'album_total')):
+                frame = self[self.ATTRIBUTE_MAP[attr]][0]
+                if (attr in ('track_number', 'album_number')):
+                    return frame.number()
+                elif (attr in ('track_total', 'album_total')):
                     return frame.total()
                 else:
                     return unicode(frame)
             except KeyError:
-                if (key in MetaData.INTEGER_FIELDS):
+                if (attr in self.INTEGER_FIELDS):
                     return 0
                 else:
                     return u""
-        elif (key in MetaData.FIELDS):
+        elif (attr in self.FIELDS):
             return u""
         else:
-            raise AttributeError(key)
+            raise AttributeError(attr)
 
-    def __delattr__(self, key):
-        if (key in self.ATTRIBUTE_MAP):
-            if (key == 'track_number'):
-                setattr(self, 'track_number', 0)
-                if ((self.track_number == 0) and (self.track_total == 0)):
-                    del(self.frames[self.ATTRIBUTE_MAP[key]])
-            elif (key == 'track_total'):
-                setattr(self, 'track_total', 0)
-                if ((self.track_number == 0) and (self.track_total == 0)):
-                    del(self.frames[self.ATTRIBUTE_MAP[key]])
-            elif (key == 'album_number'):
-                setattr(self, 'album_number', 0)
-                if ((self.album_number == 0) and (self.album_total == 0)):
-                    del(self.frames[self.ATTRIBUTE_MAP[key]])
-            elif (key == 'album_total'):
-                setattr(self, 'album_total', 0)
-                if ((self.album_number == 0) and (self.album_total == 0)):
-                    del(self.frames[self.ATTRIBUTE_MAP[key]])
-            elif (self.ATTRIBUTE_MAP[key] in self.frames):
-                del(self.frames[self.ATTRIBUTE_MAP[key]])
-        elif (key in MetaData.FIELDS):
+    def __setattr__(self, attr, value):
+        if (attr in self.ATTRIBUTE_MAP):
+            frame_id = self.ATTRIBUTE_MAP[attr]
+            if (attr == 'track_number'):
+                self[frame_id] = [self.TEXT_FRAME.converted(
+                        frame_id, __number_pair__(value, self.track_total))]
+            elif (attr == 'track_total'):
+                self[frame_id] = [self.TEXT_FRAME.converted(
+                        frame_id, __number_pair__(self.track_number, value))]
+            elif (attr == 'album_number'):
+                self[frame_id] = [self.TEXT_FRAME.converted(
+                        frame_id, __number_pair__(value, self.album_total))]
+            elif (attr == 'album_total'):
+                self[frame_id] = [self.TEXT_FRAME.converted(
+                        frame_id, __number_pair__(self.album_number, value))]
+            elif (attr == 'comment'):
+                self[frame_id] = [self.COMMENT_FRAME.converted(
+                        frame_id, value)]
+            else:
+                self[frame_id] = [
+                    self.TEXT_FRAME.converted(frame_id, unicode(value))]
+        elif (attr in MetaData.FIELDS):
             pass
         else:
-            raise AttributeError(key)
+            self.__dict__[attr] = value
 
-    def add_image(self, image):
-        """Embeds an Image object in this metadata."""
+    def __delattr__(self, attr):
+        if (attr in self.ATTRIBUTE_MAP):
+            updated_frames = []
+            delete_frame_id = self.ATTRIBUTE_MAP[attr]
+            for frame in self:
+                if (frame.id == delete_frame_id):
+                    if ((attr == 'track_number') or (attr == 'album_number')):
+                        #handle the *_number numerical fields
+                        if (frame.total() != 0):
+                            #if *_number is deleted, but *_total is present
+                            #build new frame with only the *_total field
+                            updated_frames.append(
+                                self.TEXT_FRAME(
+                                    frame.id,
+                                    frame.encoding,
+                                    __number_pair__(0, frame.total())))
+                        else:
+                            #if both *_number and *_total are deleted,
+                            #delete frame entirely
+                            continue
+                    elif ((attr == 'track_total') or (attr == 'album_total')):
+                        #handle the *_total numerical fields
+                        if (frame.number() != 0):
+                            #if *_total is deleted, but *_number is present
+                            #build a new frame with only the *_number field
+                            updated_frames.append(
+                                self.TEXT_FRAME(
+                                    frame.id,
+                                    frame.encoding,
+                                    __number_pair__(frame.number(), 0)))
+                        else:
+                            #if both *_number and *_total are deleted,
+                            #delete frame entirely
+                            continue
+                    else:
+                        #handle the textual fields
+                        #which are simply deleted outright
+                        continue
+                else:
+                    updated_frames.append(frame)
 
-        image = self.PictureFrame.converted(image)
-        self.frames.setdefault('PIC', []).append(image)
+            self.__dict__["frames"] = updated_frames
 
-    def delete_image(self, image):
-        """Deletes an Image object from this metadata."""
-
-        del(self.frames['PIC'][self['PIC'].index(image)])
+        elif (attr in MetaData.FIELDS):
+            #ignore deleted attributes which are in MetaData
+            #but we don't support
+            pass
+        else:
+            try:
+                del(self.__dict__[attr])
+            except KeyError:
+                raise AttributeError(attr)
 
     def images(self):
-        """Returns a list of embedded Image objects."""
+        return [frame for frame in self if (frame.id == self.IMAGE_FRAME_ID)]
 
-        if ('PIC' in self.frames.keys()):
-            return self.frames['PIC'][:]
-        else:
-            return []
+    def add_image(self, image):
+        self.frames.append(
+            self.IMAGE_FRAME.converted(self.IMAGE_FRAME_ID, image))
 
-    def __getitem__(self, key):
-        return self.frames[key]
-
-    #this should always take a list of items,
-    #either unicode strings (for text fields)
-    #or something Frame-compatible (for everything else)
-    #or possibly both in one list
-    def __setitem__(self, key, values):
-        frames = []
-        for value in values:
-            if (isinstance(value, unicode)):
-                frames.append(self.TextFrame.from_unicode(key, value))
-            elif (isinstance(value, int)):
-                frames.append(self.TextFrame.from_unicode(key, unicode(value)))
-            elif (isinstance(value, self.Frame)):
-                frames.append(value)
-
-        self.frames[key] = frames
-
-    def __delitem__(self, key):
-        del(self.frames[key])
-
-    def len(self):
-        return len(self.frames)
-
-    def keys(self):
-        return self.frames.keys()
-
-    def values(self):
-        return self.frames.values()
-
-    def items(self):
-        return self.frames.items()
-
-    @classmethod
-    def parse(cls, stream):
-        """given a BitstreamReader, returns an ID3v22Comment object"""
-
-        (tag_id,
-         major_version,
-         minor_version,
-         unsync,
-         compression) = stream.parse("3b 8u 8u 1u 1u 6p")
-
-        if (major_version != 0x2):
-            raise ValueError(_(u"unsupported major version"))
-
-        total_size = decode_syncsafe32(stream)
-
-        tag_stream = stream.substream(total_size)
-        frames = []
-
-        while (total_size > 0):
-            (frame_id, frame_size) = tag_stream.parse("3b 24u")
-            if ((frame_id == (chr(0) * 3)) and (frame_size == 0)):
-                break
-            total_size -= 6
-            frames.append(cls.Frame.parse(frame_id,
-                                          frame_size,
-                                          tag_stream.substream(frame_size)))
-            total_size -= frame_size
-
-        return cls(frames)
+    def delete_image(self, image):
+        self.__dict__["frames"] = [frame for frame in self if
+                                   ((frame.id != self.IMAGE_FRAME_ID) or
+                                    (frame != image))]
 
     @classmethod
     def converted(cls, metadata):
-        """Converts a MetaData object to an ID3v22Comment object."""
+        """Converts a MetaData object to an ID3v2*Comment object."""
 
-        if ((metadata is None) or
-            (isinstance(metadata, cls) and (cls.Frame is metadata.Frame))):
+        if ((metadata is None) or (cls is metadata.__class__)):
             return metadata
 
         frames = []
 
-        for (field, key) in cls.ATTRIBUTE_MAP.items():
-            value = getattr(metadata, field)
-            if (key not in cls.INTEGER_ITEMS):
-                if (len(value.strip()) > 0):
-                    frames.append(cls.TextFrame.from_unicode(key, value))
+        for (attr, key) in cls.ATTRIBUTE_MAP.items():
+            value = getattr(metadata, attr)
+            if ((attr not in cls.INTEGER_FIELDS) and
+                (len(value) > 0)):
+                frames.append(cls.TEXT_FRAME.converted(key, value))
 
-        frames.append(cls.TextFrame.from_unicode(
-                cls.INTEGER_ITEMS[0],
-                __number_pair__(metadata.track_number,
-                                metadata.track_total)))
+        if ((metadata.track_number != 0) or
+            (metadata.track_total != 0)):
+            frames.append(cls.TEXT_FRAME.converted(
+                    cls.ATTRIBUTE_MAP["track_number"],
+                    __number_pair__(metadata.track_number,
+                                    metadata.track_total)))
 
         if ((metadata.album_number != 0) or
             (metadata.album_total != 0)):
-            frames.append(cls.TextFrame.from_unicode(
-                cls.INTEGER_ITEMS[1],
-                __number_pair__(metadata.album_number,
-                                metadata.album_total)))
+            frames.append(cls.TEXT_FRAME.converted(
+                    cls.ATTRIBUTE_MAP["album_number"],
+                    __number_pair__(metadata.album_number,
+                                    metadata.album_total)))
 
         for image in metadata.images():
-            frames.append(cls.PictureFrame.converted(image))
+            frames.append(cls.IMAGE_FRAME.converted(cls.IMAGE_FRAME_ID, image))
 
-        if (hasattr(cls, 'ITUNES_COMPILATION')):
-            frames.append(cls.TextFrame.from_unicode(
-                    cls.ITUNES_COMPILATION, u'1'))
+        if (hasattr(cls, 'ITUNES_COMPILATION_ID')):
+            frames.append(cls.TEXT_FRAME.converted(
+                    cls.ITUNES_COMPILATION_ID, u'1'))
 
         return cls(frames)
 
-    def merge(self, metadata):
-        """Updates any currently empty entries from metadata's values."""
-
-        metadata = self.__class__.converted(metadata)
-        if (metadata is None):
-            return
-
-        for (key, values) in metadata.frames.items():
-            if ((key not in self.INTEGER_ITEMS) and
-                (len(values) > 0) and
-                (len(values[0]) > 0) and
-                (len(self.frames.get(key, [])) == 0)):
-                self.frames[key] = values
-
-        for attr in ("track_number", "track_total",
-                     "album_number", "album_total"):
-            if ((getattr(self, attr) == 0) and
-                (getattr(metadata, attr) != 0)):
-                setattr(self, attr, getattr(metadata, attr))
-
-    def build(self, writer):
-        """generates an ID3v2.2 tag to the given file object"""
-
-        from .bitstream import BitstreamRecorder
-
-        subframes = BitstreamRecorder(0)
-        frame_data = BitstreamRecorder(0)
-        for frames in self.frames.values():
-            for frame in frames:
-                frame_data.reset()
-                frame.build(frame_data)
-                subframes.build("3b 24u", (frame.id, frame_data.bytes()))
-                frame_data.copy(subframes)
-
-        writer.build("3b 8u 8u 1u 1u 6p", ("ID3", 2, 0, 0, 0))
-        encode_syncsafe32(writer, subframes.bytes())
-        subframes.copy(writer)
-
-    @classmethod
-    def skip(cls, file):
-        """Seeks past an ID3v2 comment if found in the file stream.
-        Returns the number of bytes skipped.
-
-        The stream must be seekable, obviously."""
-
-        from .bitstream import BitstreamReader
-
-        bytes_skipped = 0
-        reader = BitstreamReader(file, 0)
-        reader.mark()
-        try:
-            (tag_id, version_major, version_minor) = reader.parse("3b 8u 8u 8p")
-        except IOError, err:
-            reader.unmark()
-            raise err
-
-        if ((tag_id == 'ID3') and (version_major in (2, 3, 4))):
-            reader.unmark()
-
-            #parse the header
-            bytes_skipped += 6
-            tag_size = decode_syncsafe32(reader)
-            bytes_skipped += 4
-
-            #skip to the end of its length
-            reader.skip_bytes(tag_size)
-            bytes_skipped += tag_size
-
-            #skip any null bytes after the IDv2 tag
-            reader.mark()
-            try:
-                byte = reader.read(8)
-                while (byte == 0):
-                    reader.unmark()
-                    bytes_skipped += 1
-                    reader.mark()
-                    byte = reader.read(8)
-
-                reader.rewind()
-                reader.unmark()
-
-                return bytes_skipped
-            except IOError, err:
-                reader.unmark()
-                raise err
-        else:
-            reader.rewind()
-            reader.unmark()
-            return 0
-
-
-    @classmethod
-    def read_id3v2_comment(cls, filename):
-        """Given a filename, returns an ID3v22Comment or a subclass.
-
-        For example, if the file is ID3v2.3 tagged,
-        this returns an ID3v23Comment.
-        """
-
-        from .bitstream import BitstreamReader
-
-        reader = BitstreamReader(file(filename, "rb"), 0)
-        reader.mark()
-        try:
-            (tag, version_major, version_minor) = reader.parse("3b 8u 8u")
-            if (tag != 'ID3'):
-                raise UnsupportedID3v2Version()
-            elif (version_major == 0x2):
-                reader.rewind()
-                return ID3v22Comment.parse(reader)
-            elif (version_major == 0x3):
-                reader.rewind()
-                return ID3v23Comment.parse(reader)
-            elif (version_major == 0x4):
-                reader.rewind()
-                return ID3v24Comment.parse(reader)
-            else:
-                raise UnsupportedID3v2Version()
-        finally:
-            reader.unmark()
-            reader.close()
-
     def clean(self, fixes_performed):
-        cleaned_frames = []
+        """Returns a new MetaData object that's been cleaned of problems."""
 
-        for (key, frames) in self.frames.items():
-            for frame in frames:
-                if (hasattr(frame, "id") and
-                    hasattr(frame, "encoding") and
-                    hasattr(frame, "string")):
-                    #check trailing whitespace
-                    fix1 = frame.__class__(frame.id,
-                                           frame.encoding,
-                                           frame.string.rstrip())
-                    if (fix1.string != frame.string):
-                        fixes_performed.append(
-                            _(u"removed trailing whitespace from %(field)s") %
-                            {"field":frame.id.decode('ascii')})
-
-                    #check leading whitespace
-                    fix2 = frame.__class__(fix1.id,
-                                           fix1.encoding,
-                                           fix1.string.lstrip())
-                    if (fix2.string != fix1.string):
-                        fixes_performed.append(
-                            _(u"removed leading whitespace from %(field)s") %
-                            {"field":frame.id.decode('ascii')})
-
-                    #check numerical field padding
-                    if (fix2.id in self.INTEGER_ITEMS):
-                        fix3 = frame.__class__(
-                            fix2.id,
-                            fix2.encoding,
-                            __number_pair__(int(fix2), fix2.total()))
-                        if (fix3.string != fix2.string):
-                            if (__number_pair__ is __unpadded_number_pair__):
-                                fixes_performed.append(
-                                    _(u"removed leading zeroes from %(field)s" %
-                                      {"field":frame.id.decode('ascii')}))
-                            else:
-                                fixes_performed.append(
-                                    _(u"added leading zeroes to %(field)s" %
-                                      {"field":frame.id.decode('ascii')}))
-                    else:
-                        fix3 = fix2
-
-                    #check empty fields here
-                    if (len(fix3.string) == 0):
-                        fixes_performed.append(
-                            _(u"removed empty field %(field)s") %
-                            {"field":frame.id.decode('ascii')})
-                    else:
-                        cleaned_frames.append(fix3)
-                elif (isinstance(frame, Image)):
-                    fixed_image = Image.new(frame.data,
-                                            frame.description,
-                                            frame.type)
-                    if ((fixed_image.mime_type != frame.mime_type) or
-                        (fixed_image.width != frame.width) or
-                        (fixed_image.height != frame.height) or
-                        (fixed_image.color_depth != frame.color_depth) or
-                        (fixed_image.color_count != frame.color_count)):
-                        fixes_performed.append(
-                            _(u"fixed embedded image metadata fields"))
-                        cleaned_frames.append(
-                            frame.__class__.converted(fixed_image))
-                    else:
-                        cleaned_frames.append(frame)
-                else:
-                    cleaned_frames.append(frame)
-
-        return self.__class__(cleaned_frames)
+        return self.__class__([filtered_frame for filtered_frame in
+                               [frame.clean(fixes_performed) for frame in self]
+                               if filtered_frame is not None])
 
 
-#######################
-#ID3v2.3
-#######################
+############################################################
+# ID3v2.3 Comment
+############################################################
 
 
-class ID3v23Frame(ID3v22Frame):
-    """A container for individual ID3v2.3 frames."""
-
-    @classmethod
-    def parse(cls, frame_id, frame_size, frame_data):
-        """given an id string, size int and data BitstreamReader
-
-        returns an ID3v22Frame or subclass"""
-
-        if (frame_id.startswith('T')):
-            encoding = frame_data.read(8)
-            return ID3v23TextFrame(
-                frame_id,
-                encoding,
-                cls.decode_text(frame_data.read_bytes(frame_size - 1),
-                                encoding))
-        elif (frame_id == 'APIC'):
-            remaining_bytes = __Counter__(frame_size)
-            frame_data.add_callback(remaining_bytes.decrement)
-            encoding = frame_data.read(8)
-            mime_type = decode_ascii_c_string(frame_data)
-            picture_type = frame_data.read(8)
-            description = cls.decode_c_string(frame_data, encoding)
-            data = frame_data.read_bytes(remaining_bytes)
-            return ID3v23PicFrame(data,
-                                  mime_type,
-                                  encoding,
-                                  description,
-                                  picture_type)
-        elif (frame_id == 'COMM'):
-            remaining_bytes = __Counter__(frame_size)
-            frame_data.add_callback(remaining_bytes.decrement)
-            (encoding,
-             language) = frame_data.parse("8u 3b")
-            description = cls.decode_c_string(frame_data, encoding)
-            content = cls.decode_text(frame_data.read_bytes(remaining_bytes),
-                                      encoding)
-            return ID3v23ComFrame(encoding,
-                                  language,
-                                  description,
-                                  content)
-        else:
-            return cls(frame_id, frame_data.read_bytes(frame_size))
-
-    #FIXME
-    # def __unicode__(self):
-    #     if (self.id.startswith('W')):
-    #         return self.data.rstrip(chr(0)).decode('iso-8859-1', 'replace')
-    #     else:
-    #         if (len(self.data) <= 20):
-    #             return unicode(self.data.encode('hex').upper())
-    #         else:
-    #             return (unicode(self.data[0:19].encode('hex').upper()) +
-    #                     u"\u2026")
+class ID3v23_Frame(ID3v22_Frame):
+    def __repr__(self):
+        return "ID3v23_Frame(%s, %s)" % (repr(self.id), repr(self.data))
 
 
-class ID3v23TextFrame(ID3v23Frame):
-    """A container for individual ID3v2.3 text frames."""
+class ID3v23_TXXX_Frame(ID3v22_TXX_Frame):
+    NUMERICAL_IDS = ('TRCK', 'TPOS')
 
-    TEXT_TYPE = True
-
-    def __init__(self, frame_id, encoding, s):
-        """frame_id is a 4 byte ID, encoding is 0/1, s is a unicode string."""
-
-        self.id = frame_id
-        self.encoding = encoding
-        self.string = s
-
-    def __len__(self):
-        return len(self.string)
-
-    def __eq__(self, o):
-        return __attrib_equals__(["id", "encoding", "string"], self, o)
-
-    def __unicode__(self):
-        return self.string
-
-    def raw_info(self):
-        if (self.encoding == 0):
-            return u"%s = (latin-1) %s" % (self.id.decode('ascii'), self.string)
-        else:
-            return u"%s = (UCS-2) %s" % (self.id.decode('ascii'), self.string)
-
-    def __int__(self):
-        try:
-            return int(re.findall(r'\d+', self.string)[0])
-        except IndexError:
-            return 0
-
-    def total(self):
-        """If the frame is number/total formatted, return the "total" int."""
-
-        try:
-            return int(re.findall(r'\d+/(\d+)', self.string)[0])
-        except IndexError:
-            return 0
-
-    @classmethod
-    def from_unicode(cls, frame_id, s):
-        """Builds an ID3v23TextFrame from 4 byte frame_id and unicode s."""
-
-        if (frame_id == 'COMM'):
-            return ID3v23ComFrame.from_unicode(s)
-
-        for encoding in 0x00, 0x01:
-            try:
-                s.encode(cls.ENCODING[encoding])
-                return ID3v23TextFrame(frame_id, encoding, s)
-            except UnicodeEncodeError:
-                continue
-
-    def build(self, writer):
-        """builds an ID3v2.3 text frame on the given BitstreamWriter"""
-
-        writer.write(8, self.encoding)
-        writer.write_bytes(self.encode_text(self.string, self.encoding))
+    def __repr__(self):
+        return "ID3v23_TXXX_Frame(%s, %s, %s)" % \
+            (repr(self.id), repr(self.encoding), repr(self.data))
 
 
-class ID3v23PicFrame(ID3v23Frame, Image):
-    """A container for ID3v2.3 image (APIC) frames."""
-
-    def __init__(self, data, mime_type, encoding, description, pic_type):
+class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
+    def __init__(self, mime_type, picture_type, description, data):
         """Fields are as follows:
-
-        data        - a binary string of raw image data
-        mime_type   - a unicode string
-        encoding    - an encoding byte
-        description - a unicode string
-        pic_type    - an integer
+        | mime_type    | a C_string of the image's MIME type         |
+        | picture_type | a 1 byte field indicating front cover, etc. |
+        | description  | a description of the image as a C_string    |
+        | data         | image data itself as a raw string           |
         """
 
-        ID3v23Frame.__init__(self, 'APIC', None)
+        self.id = 'APIC'
 
+        #add APIC-specific fields
+        self.pic_type = picture_type
+        self.pic_description = description
+        self.pic_mime_type = mime_type
+
+        #figure out image metrics from raw data
         try:
-            img = Image.new(data, u'', 0)
+            metrics = Image.new(data, u'', 0)
         except InvalidImage:
-            img = Image(data=data, mime_type=u'',
-                        width=0, height=0, color_depth=0, color_count=0,
-                        description=u'', type=0)
+            metrics = Image(data=data, mime_type=u'',
+                            width=0, height=0, color_depth=0, color_count=0,
+                            description=u'', type=0)
 
-        self.pic_type = pic_type
-        self.encoding = encoding
-        Image.__init__(self,
-                       data=data,
-                       mime_type=mime_type,
-                       width=img.width,
-                       height=img.height,
-                       color_depth=img.color_depth,
-                       color_count=img.color_count,
-                       description=description,
-                       type={3: 0, 4: 1, 5: 2, 6: 3}.get(pic_type, 4))
+        #then initialize Image parent fields from metrics
+        self.width = metrics.width
+        self.height = metrics.height
+        self.color_depth = metrics.color_depth
+        self.color_count = metrics.color_count
+        self.data = data
 
-    def __eq__(self, i):
-        return Image.__eq__(self, i)
+    def __repr__(self):
+        return "ID3v23_APIC_Frame(%s, %s, %s, ...)" % \
+            (repr(self.pic_mime_type), repr(self.pic_type),
+             repr(self.pic_description))
 
     def raw_info(self):
         return u"APIC = (%s, %d\u00D7%d, %s, \"%s\") %d bytes" % \
             (self.type_string(),
              self.width,
              self.height,
-             self.mime_type,
-             self.description,
+             self.pic_mime_type,
+             self.pic_description,
              len(self.data))
 
-    def build(self, writer):
-        """builds a binary string of APIC data to the given BitstreamWriter"""
+    def __getattr__(self, attr):
+        if (attr == 'type'):
+            return {3:0,                    #front cover
+                    4:1,                    #back cover
+                    5:2,                    #leaflet page
+                    6:3                     #media
+                    }.get(self.pic_type, 4) #other
+        elif (attr == 'description'):
+            return unicode(self.pic_description)
+        elif (attr == 'mime_type'):
+            return unicode(self.pic_mime_type)
+        else:
+            raise AttributeError(attr)
 
-        writer.write(8, self.encoding)
-        encode_ascii_c_string(writer, self.mime_type)
-        writer.write(8, self.pic_type)
-        self.encode_c_string(writer, self.description, self.encoding)
-        writer.write_bytes(self.data)
+    def __setattr__(self, attr, value):
+        if (attr == 'type'):
+            self.__dict__["pic_type"] = {0:3,            #front cover
+                                         1:4,            #back cover
+                                         2:5,            #leaflet page
+                                         3:6,            #media
+                                         }.get(value, 0) #other
+        elif (attr == 'description'):
+            if (is_latin_1(value)):
+                self.__dict__["pic_description"] = C_string('latin-1', value)
+            else:
+                self.__dict__["pic_description"] = C_string('ucs2', value)
+        elif (attr == 'mime_type'):
+            self.__dict__["pic_mime_type"] = C_string('ascii', value)
+        else:
+            self.__dict__[attr] = value
 
     @classmethod
-    def converted(cls, image):
-        """Given an Image object, returns an ID3v23PicFrame object."""
+    def parse(cls, frame_id, frame_size, reader):
+        encoding = reader.read(8)
+        mime_type = C_string.parse('ascii', reader)
+        picture_type = reader.read(8)
+        description = C_string.parse({0:'latin-1', 1:'ucs2'}[encoding], reader)
+        data = reader.read_bytes(frame_size - (1 +
+                                               mime_type.size() +
+                                               1 +
+                                               description.size()))
 
-        return cls(data=image.data,
-                   mime_type=image.mime_type,
-                   encoding=cls.encoding_byte(image.description),
-                   description=image.description,
-                   pic_type={0: 3, 1: 4, 2: 5, 3: 6}.get(image.type, 0))
+        return cls(mime_type, picture_type, description, data)
+
+    def build(self, writer):
+        writer.write(8, {'latin-1':0, 'ucs2':1}[self.pic_description.encoding])
+        self.pic_mime_type.build(writer)
+        writer.write(8, self.pic_type)
+        self.pic_description.build(writer)
+        writer.write_bytes(self.data)
+
+    def size(self):
+        return (1 +
+                self.pic_mime_type.size() +
+                1 +
+                self.pic_description.size() +
+                len(self.data))
+
+    @classmethod
+    def converted(cls, frame_id, image):
+        if (is_latin_1(image.description)):
+            description = C_string('latin-1', image.description)
+        else:
+            description = C_string('ucs2', image.description)
+
+        return cls(mime_type=C_string('ascii', image.mime_type),
+                   picture_type={0:3,                   #front cover
+                                 1:4,                   #back cover
+                                 2:5,                   #leaflet page
+                                 3:6,                   #media
+                                 }.get(image.type, 0),  #other
+                   description=description,
+                   data=image.data)
+
+    def clean(self, fixes_performed):
+        """returns a cleaned ID3v23_PIC_Frame,
+        or None if the frame should be removed entirely
+        any fixes are appended to fixes_applied as unicode string"""
+
+        #all the fields are derived from the image data
+        #so there's no need to test for a mismatch
+
+        #not sure if it's worth testing for bugs in the description
+        #or format fields
+
+        return ID3v23_APIC_Frame(self.pic_mime_type,
+                                 self.pic_type,
+                                 self.pic_description,
+                                 self.data)
 
 
-class ID3v23ComFrame(ID3v23TextFrame):
-    """A container for ID3v2.3 comment (COMM) frames."""
-
-    TEXT_TYPE = True
-
-    def __init__(self, encoding, language, short_description, content):
+class ID3v23_COMM_Frame(ID3v22_COM_Frame):
+    def __init__(self, encoding, language, short_description, data):
         """Fields are as follows:
-
-        encoding          - a text encoding integer 0/1
-        language          - a 3 byte language field
-        short_description - a unicode string
-        contenxt          - a unicode string
+        | encoding          | 1 byte int of the comment's text encoding |
+        | language          | 3 byte string of the comment's language   |
+        | short_description | C_string of a short description           |
+        | data              | plain string of the comment data itself   |
         """
 
+        self.id = "COMM"
         self.encoding = encoding
         self.language = language
         self.short_description = short_description
-        self.content = content
-        self.id = 'COMM'
+        self.data = data
 
-    def __len__(self):
-        return len(self.content)
-
-    def __eq__(self, o):
-        return __attrib_equals__(["encoding", "language",
-                                  "short_description", "content"], self, o)
-
-    def __unicode__(self):
-        return self.content
+    def __repr__(self):
+        return "ID3v23_COMM_Frame(%s, %s, %s, %s)" % \
+            (repr(self.encoding), repr(self.language),
+             repr(self.short_description), repr(self.data))
 
     def raw_info(self):
-        if (self.encoding == 0):
-            encoding = u"latin-1"
-        else:
-            encoding = u"UCS-2"
-
         return u"COMM = (%s, %s, \"%s\") %s" % \
-            (encoding,
+            ({0:u'Latin-1', 1:'UCS-2'}[self.encoding],
              self.language.decode('ascii', 'replace'),
              self.short_description,
-             self.content)
+             self.data.decode({0:'latin-1', 1:'ucs2'}[self.encoding]))
 
-    def __int__(self):
-        return 0
-
-    @classmethod
-    def from_unicode(cls, s):
-        """Builds an ID3v23ComFrame from a unicode string."""
-
-        for encoding in 0x00, 0x01:
-            try:
-                s.encode(cls.ENCODING[encoding])
-                return cls(encoding, 'eng', u'', s)
-            except UnicodeEncodeError:
-                continue
-
-    def build(self, writer):
-        """builds a binary string of COM data to the given BitstreamWriter"""
-
-        writer.build("8u 3b", (self.encoding, self.language))
-        self.encode_c_string(writer, self.short_description, self.encoding)
-        writer.write_bytes(self.encode_text(self.content, self.encoding))
 
 class ID3v23Comment(ID3v22Comment):
-    """A complete ID3v2.3 comment."""
-
-    Frame = ID3v23Frame
-    TextFrame = ID3v23TextFrame
-    PictureFrame = ID3v23PicFrame
+    NAME = u'ID3v2.3'
 
     ATTRIBUTE_MAP = {'track_name': 'TIT2',
                      'track_number': 'TRCK',
@@ -1269,535 +1239,383 @@ class ID3v23Comment(ID3v22Comment):
                      'album_total': 'TPOS',
                      'comment': 'COMM'}
 
-    INTEGER_ITEMS = ('TRCK', 'TPOS')
-
-    KEY_ORDER = ('TIT2', 'TALB', 'TRCK', 'TPOS', 'TPE1', 'TPE2', 'TCOM',
-                 'TPE3', 'TPUB', 'TSRC', 'TMED', 'TYER', 'TRDA', 'TCOP',
-                 None, 'COMM', 'APIC')
-
-    ITUNES_COMPILATION = 'TCMP'
+    RAW_FRAME = ID3v23_Frame
+    TEXT_FRAME = ID3v23_TXXX_Frame
+    COMMENT_FRAME = ID3v23_COMM_Frame
+    IMAGE_FRAME = ID3v23_APIC_Frame
+    IMAGE_FRAME_ID = 'APIC'
+    ITUNES_COMPILATION_ID = 'TCMP'
 
     def __repr__(self):
-        return "ID3v23Comment(%s)" % (repr(self.__dict__["frames"]))
-
-    def __comment_name__(self):
-        return u'ID3v2.3'
-
-    def __comment_pairs__(self):
-        key_order = list(self.KEY_ORDER)
-
-        def by_weight(keyval1, keyval2):
-            (key1, key2) = (keyval1[0], keyval2[0])
-
-            if (key1 in key_order):
-                order1 = key_order.index(key1)
-            else:
-                order1 = key_order.index(None)
-
-            if (key2 in key_order):
-                order2 = key_order.index(key2)
-            else:
-                order2 = key_order.index(None)
-
-            return cmp((order1, key1), (order2, key2))
-
-        pairs = []
-
-        for (key, values) in sorted(self.frames.items(), by_weight):
-            for value in values:
-                pairs.append(('    ' + key, unicode(value)))
-
-        return pairs
-
-    def add_image(self,  image):
-        """Embeds an Image object in this metadata."""
-
-        image = self.PictureFrame.converted(image)
-        self.frames.setdefault('APIC', []).append(image)
-
-    def delete_image(self, image):
-        """Deletes an Image object from this metadata."""
-
-        del(self.frames['APIC'][self['APIC'].index(image)])
-
-    def images(self):
-        """Returns a list of embedded Image objects."""
-
-        if ('APIC' in self.frames.keys()):
-            return self.frames['APIC'][:]
-        else:
-            return []
+        return "ID3v23Comment(%s)" % (repr(self.frames))
 
     @classmethod
-    def parse(cls, stream):
-        """given a BitstreamReader, returns an ID3v23Comment object"""
+    def parse(cls, reader):
+        """given a BitstreamReader, returns a parsed ID3v23Comment"""
 
-        (tag_id,
+        (id3,
          major_version,
          minor_version,
-         unsync,
-         extended,
-         experimental,
-         footer) = stream.parse("3b 8u 8u 1u 1u 1u 1u 4p")
+         flags) = reader.parse("3b 8u 8u 8u")
+        if (id3 != 'ID3'):
+            raise ValueError("invalid ID3 header")
+        elif (major_version != 0x03):
+            raise ValueError("invalid major version")
+        elif (minor_version != 0x00):
+            raise ValueError("invalid minor version")
+        total_size = decode_syncsafe32(reader)
 
-        if (major_version != 0x3):
-            raise ValueError(_(u"unsupported major version"))
-
-        total_size = decode_syncsafe32(stream)
-        tag_stream = stream.substream(total_size)
         frames = []
 
         while (total_size > 0):
-            (frame_id,
-             frame_size,
-             tag_alter,
-             file_alter,
-             read_only,
-             compression,
-             encryption,
-             grouping) = tag_stream.parse("4b 32u 1u 1u 1u 5p 1u 1u 1u 5p")
-            if ((frame_id == (chr(0) * 4)) and (frame_size == 0)):
-                break
-            total_size -= 10
-            frames.append(cls.Frame.parse(frame_id,
-                                          frame_size,
-                                          tag_stream.substream(frame_size)))
-            total_size -= frame_size
+            (frame_id, frame_size, frame_flags) = reader.parse("4b 32u 16u")
+
+            if (frame_id.startswith('T')):
+                frames.append(cls.TEXT_FRAME.parse(
+                        frame_id, frame_size, reader.substream(frame_size)))
+            elif (frame_id == 'COMM'):
+                frames.append(cls.COMMENT_FRAME.parse(
+                        frame_id, frame_size, reader.substream(frame_size)))
+            elif (frame_id == 'APIC'):
+                frames.append(cls.IMAGE_FRAME.parse(
+                        frame_id, frame_size, reader.substream(frame_size)))
+            else:
+                frames.append(cls.RAW_FRAME.parse(
+                        frame_id, frame_size, reader.substream(frame_size)))
+
+            total_size -= (10 + frame_size)
 
         return cls(frames)
 
-
     def build(self, writer):
-        """generates an ID3v2.3 tag to the given BitstreamWriter"""
+        """writes the complete ID3v23Comment data
+        to the given BitstreamWriter"""
 
-        from .bitstream import BitstreamRecorder
+        from operator import add
 
-        subframes = BitstreamRecorder(0)
-        frame_data = BitstreamRecorder(0)
-        for frames in self.frames.values():
-            for frame in frames:
-                frame_data.reset()
-                frame.build(frame_data)
-                subframes.build("4b 32u 1u 1u 1u 5p 1u 1u 1u 5p",
-                                (frame.id, frame_data.bytes(),
-                                 0, 0, 0, 0, 0, 0))
-                frame_data.copy(subframes)
+        writer.build("3b 8u 8u 8u", ("ID3", 0x03, 0x00, 0x00))
+        encode_syncsafe32(writer,
+                          reduce(add, [10 + frame.size() for frame in self], 0))
 
-        writer.build("3b 8u 8u 1u 1u 1u 1u 4p", ("ID3", 3, 0, 0, 0, 0, 0))
-        encode_syncsafe32(writer, subframes.bytes())
-        subframes.copy(writer)
+        for frame in self:
+            writer.build("4b 32u 16u", (frame.id, frame.size(), 0))
+            frame.build(writer)
 
+    def size(self):
+        """returns the total size of the ID3v23Comment, including its header"""
 
-#######################
-#ID3v2.4
-#######################
+        from operator import add
+
+        return reduce(add, [10 + frame.size() for frame in self], 10)
 
 
-class ID3v24Frame(ID3v23Frame):
-    """A container for individual ID3v2.4 frames."""
-
-    ENCODING = {0x00: "latin-1",
-                0x01: "utf-16",
-                0x02: "utf-16be",
-                0x03: "utf-8"}
-
-    @classmethod
-    def decode_c_string(cls, reader, encoding_byte):
-        if (encoding_byte == 0):
-            chars = []
-            char = reader.read(8)
-            while (char != 0):
-                chars.append(char)
-                char = reader.read(8)
-            return "".join(map(chr, chars)).decode('latin-1','replace')
-        elif (encoding_byte == 1):
-            chars = []
-            (high, low) = reader.parse("8u 8u")
-            while ((high != 0) and (low != 0)):
-                chars.append(high)
-                chars.append(low)
-                (high, low) = reader.parse("8u 8u")
-            return "".join(map(chr, chars)).decode('utf-16','replace')
-        elif (encoding_byte == 2):
-            chars = []
-            (high, low) = reader.parse("8u 8u")
-            while ((high != 0) and (low != 0)):
-                chars.append(high)
-                chars.append(low)
-                (high, low) = reader.parse("8u 8u")
-            return "".join(map(chr, chars)).decode('utf-16be','replace')
-        elif (encoding_byte == 3):
-            chars = []
-            char = reader.read(8)
-            while (char != 0):
-                chars.append(char)
-                char = reader.read(8)
-            return "".join(map(chr, chars)).decode('utf-8','replace')
-        else:
-            raise ValueError(_(u"invalid encoding byte"))
-
-    @classmethod
-    def encode_c_string(cls, writer, unicode_string, encoding_byte):
-        """given BitstreamWriter, unicode and encoding, write C string
-
-        as with the decode_c_string, this is meant to handle
-        NULL termination correctly
-        """
-
-        if (encoding_byte == 0):
-            encoded = unicode_string.encode('latin-1')
-            writer.build("%db 8u" % (len(encoded)), (encoded, 0))
-        elif (encoding_byte == 1):
-            encoded = unicode_string.encode('utf-16', 'replace')
-            writer.build("%db 16u" % (len(encoded)), (encoded, 0))
-        elif (encoding_byte == 2):
-            encoded = unicode_string.encode('utf-16be', 'replace')
-            writer.build("%db 16u" % (len(encoded)), (encoded, 0))
-        elif (encoding_byte == 3):
-            encoded = unicode_string.encode('utf-8')
-            writer.build("%db 8u" % (len(encoded)), (encoded, 0))
-        else:
-            raise ValueError(_(u"invalid encoding byte"))
-
-    @classmethod
-    def encoding_byte(cls, unicode_string):
-        """given a unicode string, returns the best encoding byte for it
-
-        since all ID3v2 tags support some sort of unicode,
-        something is certain to work
-        """
-
-        #see if unicode_string falls into a set of latin-1 chars
-        #otherwise use unicode
-        if (frozenset(unicode_string).issubset(
-                frozenset(map(unichr, range(32, 127) + range(160,256))))):
-            return 0
-        else:
-            return 3
-
-    @classmethod
-    def parse(cls, frame_id, frame_size, frame_data):
-        """given an id string, size int and data BitstreamReader
-
-        returns an ID3v24Frame or subclass"""
-
-        if (frame_id.startswith('T')):
-            encoding = frame_data.read(8)
-            return ID3v24TextFrame(
-                frame_id,
-                encoding,
-                cls.decode_text(frame_data.read_bytes(frame_size - 1),
-                                encoding))
-        elif (frame_id == 'APIC'):
-            remaining_bytes = __Counter__(frame_size)
-            frame_data.add_callback(remaining_bytes.decrement)
-            encoding = frame_data.read(8)
-            mime_type = decode_ascii_c_string(frame_data)
-            picture_type = frame_data.read(8)
-            description = cls.decode_c_string(frame_data, encoding)
-            data = frame_data.read_bytes(remaining_bytes)
-            return ID3v24PicFrame(data,
-                                  mime_type,
-                                  encoding,
-                                  description,
-                                  picture_type)
-        elif (frame_id == 'COMM'):
-            remaining_bytes = __Counter__(frame_size)
-            frame_data.add_callback(remaining_bytes.decrement)
-            (encoding,
-             language) = frame_data.parse("8u 3b")
-            description = cls.decode_c_string(frame_data, encoding)
-            content = cls.decode_text(frame_data.read_bytes(remaining_bytes),
-                                      encoding)
-            return ID3v24ComFrame(encoding,
-                                  language,
-                                  description,
-                                  content)
-        else:
-            return cls(frame_id, frame_data.read_bytes(frame_size))
-
-    #FIXME
-    # def __unicode__(self):
-    #     if (self.id.startswith('W')):
-    #         return self.data.rstrip(chr(0)).decode('iso-8859-1', 'replace')
-    #     else:
-    #         if (len(self.data) <= 20):
-    #             return unicode(self.data.encode('hex').upper())
-    #         else:
-    #             return (unicode(self.data[0:19].encode('hex').upper()) +
-    #                     u"\u2026")
 
 
-class ID3v24TextFrame(ID3v24Frame):
-    """A container for individual ID3v2.4 text frames."""
+############################################################
+# ID3v2.4 Comment
+############################################################
 
-    ENCODING = {0x00: "latin-1",
-                0x01: "utf-16",
-                0x02: "utf-16be",
-                0x03: "utf-8"}
 
-    TEXT_TYPE = True
+class ID3v24_Frame(ID3v23_Frame):
+    def __repr__(self):
+        return "ID3v24_Frame(%s, %s)" % (repr(self.id), repr(self.data))
 
-    #encoding is an encoding byte
-    #s is a unicode string
-    def __init__(self, frame_id, encoding, s):
-        """frame_id is a 4 byte ID, encoding is 0-3, s is a unicode string."""
+
+class ID3v24_TXXX_Frame(ID3v23_TXXX_Frame):
+    def __init__(self, frame_id, encoding, data):
+        assert((encoding == 0) or (encoding == 1) or
+               (encoding == 2) or (encoding == 3))
 
         self.id = frame_id
         self.encoding = encoding
-        self.string = s
+        self.data = data
 
-    def __eq__(self, o):
-        return __attrib_equals__(["id", "encoding", "string"], self, o)
-
-    def __len__(self):
-        return len(self.string)
+    def __repr__(self):
+        return "ID3v24_TXXX_Frame(%s, %s, %s)" % \
+            (repr(self.id), repr(self.encoding), repr(self.data))
 
     def __unicode__(self):
-        return self.string
+        if (self.encoding == 0):
+            return self.data.decode('latin-1', 'replace')
+        elif (self.encoding == 3):
+            return self.data.decode('utf-8', 'replace')
+        elif (self.encoding == 1):
+            return self.data.decode('utf-16', 'replace')
+        elif (self.encoding == 2):
+            return self.data.decode('utf-16be', 'replace')
 
     def raw_info(self):
-        encoding = [u"latin-1", u"UTF-16", u"UTF-16BE", u"UTF-8"][self.encoding]
-        return u"%s = (%s) %s" % (self.id.decode('ascii'),
-                                  encoding,
-                                  self.string)
-
-    def __int__(self):
-        try:
-            return int(re.findall(r'\d+', self.string)[0])
-        except IndexError:
-            return 0
-
-    def total(self):
-        """If the frame is number/total formatted, return the "total" int."""
-
-        try:
-            return int(re.findall(r'\d+/(\d+)', self.string)[0])
-        except IndexError:
-            return 0
+        if (self.encoding == 0):
+            return u"%s = (latin-1) %s" % (self.id.decode('ascii'),
+                                           self.data.decode('latin-1'))
+        elif (self.encoding == 3):
+            return u"%s = (UTF-8) %s" % (self.id.decode('ascii'),
+                                            self.data.decode('utf-8'))
+        elif (self.encoding == 1):
+            return u"%s = (UTF-16) %s" % (self.id.decode('ascii'),
+                                            self.data.decode('utf-16'))
+        elif (self.encoding == 2):
+            return u"%s = (UTF-16BE) %s" % (self.id.decode('ascii'),
+                                            self.data.decode('utf-16be'))
 
     @classmethod
-    def from_unicode(cls, frame_id, s):
-        """Builds an ID3v24TextFrame from 4 byte frame_id and unicode s."""
+    def converted(cls, frame_id, unicode_string):
+        """given a unicode string, returns a text frame"""
 
-        if (frame_id == 'COMM'):
-            return ID3v24ComFrame.from_unicode(s)
-
-        for encoding in 0x00, 0x03, 0x01, 0x02:
-            try:
-                s.encode(cls.ENCODING[encoding])
-                return ID3v24TextFrame(frame_id, encoding, s)
-            except UnicodeEncodeError:
-                continue
-
-    def build(self, writer):
-        """builds an ID3v2.4 text frame on the given BitstreamWriter"""
-
-        writer.write(8, self.encoding)
-        writer.write_bytes(self.encode_text(self.string, self.encoding))
+        if (is_latin_1(unicode_string)):
+            return cls(frame_id, 0, unicode_string.encode('latin-1'))
+        else:
+            return cls(frame_id, 3, unicode_string.encode('utf-8'))
 
 
-class ID3v24PicFrame(ID3v24Frame, Image):
-    """A container for ID3v2.4 image (APIC) frames."""
+class ID3v24_APIC_Frame(ID3v23_APIC_Frame):
+    def __repr__(self):
+        return "ID3v24_APIC_Frame(%s, %s, %s, ...)" % \
+            (repr(self.pic_mime_type), repr(self.pic_type),
+             repr(self.pic_description))
 
-    def __init__(self, data, mime_type, encoding, description, pic_type):
-        """Fields are as follows:
+    def __setattr__(self, attr, value):
+        if (attr == 'type'):
+            self.__dict__["pic_type"] = {0:3,            #front cover
+                                         1:4,            #back cover
+                                         2:5,            #leaflet page
+                                         3:6,            #media
+                                         }.get(value, 0) #other
+        elif (attr == 'description'):
+            if (is_latin_1(value)):
+                self.__dict__["pic_description"] = C_string('latin-1', value)
+            else:
+                self.__dict__["pic_description"] = C_string('utf-8', value)
+        elif (attr == 'mime_type'):
+            self.__dict__["pic_mime_type"] = C_string('ascii', value)
+        else:
+            self.__dict__[attr] = value
 
-        data        - a binary string of raw image data
-        mime_type   - a unicode string
-        encoding    - an encoding byte
-        description - a unicode string
-        pic_type    - an integer
-        """
+    @classmethod
+    def parse(cls, frame_id, frame_size, reader):
+        encoding = reader.read(8)
+        mime_type = C_string.parse('ascii', reader)
+        picture_type = reader.read(8)
+        description = C_string.parse({0:'latin-1',
+                                      1:'utf-16',
+                                      2:'utf-16be',
+                                      3:'utf-8'}[encoding], reader)
+        data = reader.read_bytes(frame_size - (1 +
+                                               mime_type.size() +
+                                               1 +
+                                               description.size()))
 
-        ID3v24Frame.__init__(self, 'APIC', None)
-
-        try:
-            img = Image.new(data, u'', 0)
-        except InvalidImage:
-            img = Image(data=data, mime_type=u'',
-                        width=0, height=0, color_depth=0, color_count=0,
-                        description=u'', type=0)
-
-        self.pic_type = pic_type
-        self.encoding = encoding
-        Image.__init__(self,
-                       data=data,
-                       mime_type=mime_type,
-                       width=img.width,
-                       height=img.height,
-                       color_depth=img.color_depth,
-                       color_count=img.color_count,
-                       description=description,
-                       type={3: 0, 4: 1, 5: 2, 6: 3}.get(pic_type, 4))
-
-    def __eq__(self, i):
-        return Image.__eq__(self, i)
-
-    def raw_info(self):
-        return u"APIC = (%s, %d\u00D7%d, %s, \"%s\") %d bytes" % \
-            (self.type_string(),
-             self.width,
-             self.height,
-             self.mime_type,
-             self.description,
-             len(self.data))
+        return cls(mime_type, picture_type, description, data)
 
     def build(self, writer):
-        """builds a binary string of APIC data to the given BitstreamWriter"""
-
-        writer.write(8, self.encoding)
-        encode_ascii_c_string(writer, self.mime_type)
+        writer.write(8, {'latin-1':0,
+                         'utf-16':1,
+                         'utf-16be':2,
+                         'utf-8':3}[self.pic_description.encoding])
+        self.pic_mime_type.build(writer)
         writer.write(8, self.pic_type)
-        self.encode_c_string(writer, self.description, self.encoding)
+        self.pic_description.build(writer)
         writer.write_bytes(self.data)
 
     @classmethod
-    def converted(cls, image):
-        """Given an Image object, returns an ID3v24PicFrame object."""
+    def converted(cls, frame_id, image):
+        if (is_latin_1(image.description)):
+            description = C_string('latin-1', image.description)
+        else:
+            description = C_string('utf-8', image.description)
 
-        return cls(data=image.data,
-                   mime_type=image.mime_type,
-                   encoding=cls.encoding_byte(image.description),
-                   description=image.description,
-                   pic_type={0: 3, 1: 4, 2: 5, 3: 6}.get(image.type, 0))
+        return cls(mime_type=C_string('ascii', image.mime_type),
+                   picture_type={0:3,                   #front cover
+                                 1:4,                   #back cover
+                                 2:5,                   #leaflet page
+                                 3:6,                   #media
+                                 }.get(image.type, 0),  #other
+                   description=description,
+                   data=image.data)
+
+    def clean(self, fixes_performed):
+        """returns a cleaned ID3v23_PIC_Frame,
+        or None if the frame should be removed entirely
+        any fixes are appended to fixes_applied as unicode string"""
+
+        #all the fields are derived from the image data
+        #so there's no need to test for a mismatch
+
+        #not sure if it's worth testing for bugs in the description
+        #or format fields
+
+        return ID3v24_APIC_Frame(self.pic_mime_type,
+                                 self.pic_type,
+                                 self.pic_description,
+                                 self.data)
 
 
-class ID3v24ComFrame(ID3v24TextFrame):
-    """A container for ID3v2.4 comment (COMM) frames."""
-
-    TEXT_TYPE = True
-
-    def __init__(self, encoding, language, short_description, content):
-        """Fields are as follows:
-
-        encoding          - a text encoding integer 0-3
-        language          - a 3 byte language field
-        short_description - a unicode string
-        contenxt          - a unicode string
-        """
-
-        self.encoding = encoding
-        self.language = language
-        self.short_description = short_description
-        self.content = content
-        self.id = 'COMM'
-
-    def __len__(self):
-        return len(self.content)
-
-    def __eq__(self, o):
-        return __attrib_equals__(["encoding", "language",
-                                  "short_description", "content"], self, o)
+class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
+    def __repr__(self):
+        return "ID3v24_COMM_Frame(%s, %s, %s, %s)" % \
+            (repr(self.encoding), repr(self.language),
+             repr(self.short_description), repr(self.data))
 
     def __unicode__(self):
-        return self.content
+        return self.data.decode({0:'latin-1',
+                                 1:'utf-16',
+                                 2:'utf-16be',
+                                 3:'utf-8'}[self.encoding], 'replace')
 
     def raw_info(self):
-        encoding = [u"latin-1", u"UTF-16", u"UTF-16BE", u"UTF-8"][self.encoding]
-
         return u"COMM = (%s, %s, \"%s\") %s" % \
-            (encoding,
+            ({0:u'Latin-1',
+              1:'UTF-16',
+              2:'UTF-16BE',
+              3:'UTF-8'}[self.encoding],
              self.language.decode('ascii', 'replace'),
              self.short_description,
-             self.content)
-
-    def __int__(self):
-        return 0
+             self.data.decode({0:'latin-1',
+                               1:'utf-16',
+                               2:'utf-16be',
+                               3:'utf-8'}[self.encoding]))
 
     @classmethod
-    def from_unicode(cls, s):
-        """Builds an ID3v24ComFrame from a unicode string."""
+    def parse(cls, frame_id, frame_size, reader):
+        """given a frame_id string, frame_size int and BitstreamReader
+        of the remaining frame data, returns a parsed ID3v22_COM_Frame"""
 
-        for encoding in 0x00, 0x03, 0x01, 0x02:
-            try:
-                s.encode(cls.ENCODING[encoding])
-                return cls(encoding, 'eng', u'', s)
-            except UnicodeEncodeError:
-                continue
+        (encoding, language) = reader.parse("8u 3b")
+        short_description = C_string.parse({0:'latin-1',
+                                            1:'utf-16',
+                                            2:'utf-16be',
+                                            3:'utf-8'}[encoding],
+                                           reader)
+        data = reader.read_bytes(frame_size - (4 + short_description.size()))
 
-    def build(self, writer):
-        """builds a binary string of COM data to the given BitstreamWriter"""
+        return cls(encoding, language, short_description, data)
 
-        writer.build("8u 3b", (self.encoding, self.language))
-        self.encode_c_string(writer, self.short_description, self.encoding)
-        writer.write_bytes(self.encode_text(self.content, self.encoding))
+    @classmethod
+    def converted(cls, frame_id, unicode_string):
+        if (is_latin_1(unicode_string)):
+            return cls(0, "eng", C_string("latin-1", u""),
+                       unicode_string.encode('latin-1'))
+        else:
+            return cls(1, "eng", C_string("utf-8", u""),
+                       unicode_string.encode('utf-8'))
+
+    def clean(self, fixes_performed):
+        """returns a cleaned frame of the same class
+        or None if the frame should be omitted
+        fix text will be appended to fixes_performed, if necessary"""
+
+        field = self.id.decode('ascii')
+        text_encoding = {0:'latin-1',
+                         1:'utf-16',
+                         2:'utf-16be',
+                         3:'utf-8'}
+
+        value = self.data.decode(text_encoding, 'replace')
+
+        #check for an empty tag
+        if (len(value.strip()) == 0):
+            fixes_performed.append(
+                u"removed empty field %(field)s" % {"field":field})
+            return None
+
+        #check trailing whitespace
+        fix1 = value.rstrip()
+        if (fix1 != value):
+            fixes_performed.append(
+                u"removed trailing whitespace from %(field)s" %
+                {"field":field})
+
+        #check leading whitespace
+        fix2 = fix1.lstrip()
+        if (fix2 != fix1):
+            fixes_performed.append(
+                u"removed leading whitespace from %(field)s" %
+                {"field":field})
+
+        #stripping whitespace shouldn't alter text/description encoding
+
+        return self.__class__(self.encoding,
+                              self.language,
+                              self.short_description,
+                              fix2.encode(text_encoding))
 
 
 class ID3v24Comment(ID3v23Comment):
-    """A complete ID3v2.4 comment."""
+    NAME = u'ID3v2.4'
 
-    Frame = ID3v24Frame
-    TextFrame = ID3v24TextFrame
-    PictureFrame = ID3v24PicFrame
+    RAW_FRAME = ID3v24_Frame
+    TEXT_FRAME = ID3v24_TXXX_Frame
+    COMMENT_FRAME = ID3v24_COMM_Frame
+    IMAGE_FRAME = ID3v23_APIC_Frame
+    IMAGE_FRAME_ID = 'APIC'
+    ITUNES_COMPILATION_ID = 'TCMP'
 
     def __repr__(self):
-        return "ID3v24Comment(%s)" % (repr(self.__dict__["frames"]))
-
-    def __comment_name__(self):
-        return u'ID3v2.4'
-
-    def build(self, writer):
-        """generates an ID3v2.4 tag to the given BitstreamWriter"""
-
-        from .bitstream import BitstreamRecorder
-
-        subframes = BitstreamRecorder(0)
-        frame_data = BitstreamRecorder(0)
-        for frames in self.frames.values():
-            for frame in frames:
-                frame_data.reset()
-                frame.build(frame_data)
-                subframes.write_bytes(frame.id)
-                encode_syncsafe32(subframes, frame_data.bytes())
-                subframes.build("1p 1u 1u 1u 4p 1p 1u 2p 1u 1u 1u 1u",
-                                (0, 0, 0, 0, 0, 0, 0, 0))
-                frame_data.copy(subframes)
-
-        writer.build("3b 8u 8u 1u 1u 1u 1u 4p", ("ID3", 4, 0, 0, 0, 0, 0))
-        encode_syncsafe32(writer, subframes.bytes())
-        subframes.copy(writer)
+        return "ID3v24Comment(%s)" % (repr(self.frames))
 
     @classmethod
-    def parse(cls, stream):
-        """given a BitstreamReader, returns an ID3v24Comment object"""
+    def parse(cls, reader):
+        """given a BitstreamReader, returns a parsed ID3v24Comment"""
 
-        (tag_id,
+        (id3,
          major_version,
          minor_version,
-         unsync,
-         extended,
-         experimental,
-         footer) = stream.parse("3b 8u 8u 1u 1u 1u 1u 4p")
+         flags) = reader.parse("3b 8u 8u 8u")
+        if (id3 != 'ID3'):
+            raise ValueError("invalid ID3 header")
+        elif (major_version != 0x04):
+            raise ValueError("invalid major version")
+        elif (minor_version != 0x00):
+            raise ValueError("invalid minor version")
+        total_size = decode_syncsafe32(reader)
 
-        if (major_version != 0x4):
-            raise ValueError(_(u"unsupported major version"))
-
-        total_size = decode_syncsafe32(stream)
-        tag_stream = stream.substream(total_size)
         frames = []
 
         while (total_size > 0):
-            frame_id = tag_stream.read_bytes(4)
-            frame_size = decode_syncsafe32(tag_stream)
-            (tag_alter,
-             file_alter,
-             read_only,
-             grouping,
-             compression,
-             encryption,
-             unsync,
-             data_length) = tag_stream.parse(
-                "1p 1u 1u 1u 4p 1p 1u 2p 1u 1u 1u 1u")
-            if ((frame_id == (chr(0) * 4)) and (frame_size == 0)):
-                break
-            total_size -= 10
-            frames.append(cls.Frame.parse(frame_id,
-                                          frame_size,
-                                          tag_stream.substream(frame_size)))
-            total_size -= frame_size
+            frame_id = reader.read_bytes(4)
+            frame_size = decode_syncsafe32(reader)
+            flags = reader.read(16)
+
+            if (frame_id.startswith('T')):
+                frames.append(cls.TEXT_FRAME.parse(
+                        frame_id, frame_size, reader.substream(frame_size)))
+            elif (frame_id == 'COMM'):
+                frames.append(cls.COMMENT_FRAME.parse(
+                        frame_id, frame_size, reader.substream(frame_size)))
+            elif (frame_id == 'APIC'):
+                frames.append(cls.IMAGE_FRAME.parse(
+                        frame_id, frame_size, reader.substream(frame_size)))
+            else:
+                frames.append(cls.RAW_FRAME.parse(
+                        frame_id, frame_size, reader.substream(frame_size)))
+
+            total_size -= (10 + frame_size)
 
         return cls(frames)
+
+    def build(self, writer):
+        """writes the complete ID3v24Comment data
+        to the given BitstreamWriter"""
+
+        from operator import add
+
+        writer.build("3b 8u 8u 8u", ("ID3", 0x04, 0x00, 0x00))
+        encode_syncsafe32(writer,
+                          reduce(add, [10 + frame.size() for frame in self], 0))
+
+        for frame in self:
+            writer.write_bytes(frame.id)
+            encode_syncsafe32(writer, frame.size())
+            writer.write(16, 0)
+            frame.build(writer)
+
+    def size(self):
+        """returns the total size of the ID3v24Comment, including its header"""
+
+        from operator import add
+
+        return reduce(add, [10 + frame.size() for frame in self], 10)
+
 
 
 ID3v2Comment = ID3v22Comment
@@ -1823,7 +1641,7 @@ class ID3CommentPair(MetaData):
         elif (self.id3v1 is not None):
             base_comment = self.id3v1
         else:
-            raise ValueError(_(u"ID3v2 and ID3v1 cannot both be blank"))
+            raise ValueError("ID3v2 and ID3v1 cannot both be blank")
 
     def __getattr__(self, key):
         if (key in self.INTEGER_FIELDS):
@@ -1833,7 +1651,7 @@ class ID3CommentPair(MetaData):
             if (self.id3v1 is not None):
                 return getattr(self.id3v1, key)
             else:
-                raise ValueError(_(u"ID3v2 and ID3v1 cannot both be blank"))
+                raise ValueError("ID3v2 and ID3v1 cannot both be blank")
         elif (key in self.FIELDS):
             if ((self.id3v2 is not None) and
                 (getattr(self.id3v2, key) != u'')):
@@ -1841,7 +1659,7 @@ class ID3CommentPair(MetaData):
             if (self.id3v1 is not None):
                 return getattr(self.id3v1, key)
             else:
-                raise ValueError(_(u"ID3v2 and ID3v1 cannot both be blank"))
+                raise ValueError("ID3v2 and ID3v1 cannot both be blank")
         else:
             raise AttributeError(key)
 

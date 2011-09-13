@@ -4192,111 +4192,287 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Update unit tests
 * TODO Adjust ID3v2 to store frames internally in order
   That is, they should output in the same order that they are stored on disk.
-** TODO ID3v22Comment
-** TODO ID3v23Comment
-** TODO ID3v24Comment
-* TODO Make MetaData set-like
-  That is, we can perform stuff like:
-  >>> flacmetadata3 = flacmetadata1.union(flacmetadata2)
-  which makes flacmetadata3 have all the fields that are common
-  to flacmetadata1 and flacmetadata2.
+** TODO Rebuild and simplify the ID3v2 frame handling
+   Create a simple "frame protocol" which the frames can implement
+   and the ID3v2 formats can use so that they parse/build consistently.
+*** DONE is_latin_1
+*** DONE UCS2Codec
+*** DONE decode_syncsafe32
+*** DONE encode_syncsafe32
+*** DONE __padded_number_pair__
+*** DONE __unpadded_number_pair__
+*** DONE __number_pair__
+*** DONE decode_ascii_c_string
+*** DONE encode_ascii_c_string
+*** DONE read_id3v2_comment()
+    convert to standalone function
+*** DONE skip_id3v2_comment()
+    convert to standalone function
+*** TODO ID3v22Comment
+    - [X] __repr__
+    - [X] parse
+    - [X] build
+    - [X] size
+    - [X] __len__
+    - [X] __getitem__
+    - [X] __setitem__
+    - [X] __delitem__
+    - [X] keys
+    - [X] values
+    - [X] items
+    - [X] __getattr__
+    - [X] __setattr__
+    - [X] __delattr__
+    - [X] raw_info
+    - [X] add_image
+    - [X] delete_image
+    - [X] images
+    - [X] converted
+    - [X] clean
+    - [ ] merge
+**** DONE ID3v22_Frame
+     - [X] __init__
+     - [X] __repr__
+     - [X] __eq__
+     - [X] parse
+     - [X] build
+     - [X] size
+     - [X] converted
+     - [X] clean
+     - [X] raw_info
+**** DONE ID3v22_TXX_Frame
+     - [X] __init__
+     - [X] __repr__
+     - [X] __eq__
+     - [X] __unicode__
+     - [X] parse
+     - [X] build
+     - [X] size
+     - [X] converted
+     - [X] number
+     - [X] total
+     - [X] raw_info
+     - [X] clean
+**** DONE ID3v22_PIC_Frame
+     - [X] __init__
+     - [X] __repr__
+     - [X] __eq__
+     - [X] __getattr__
+     - [X] __setattr__
+     - [X] parse
+     - [X] build
+     - [X] size
+     - [X] converted
+     - [X] raw_info
+     - [X] clean
+**** DONE ID3v22_COM_Frame
+     - [X] __init__
+     - [X] __repr__
+     - [X] __eq__
+     - [X] __unicode__
+     - [X] parse
+     - [X] build
+     - [X] size
+     - [X] converted
+     - [X] raw_info
+     - [X] clean
+*** TODO ID3v23Comment
+    - [X] __repr__
+    - [X] parse
+    - [X] build
+    - [X] size
+    - [X] __len__
+    - [X] __getitem__
+    - [X] __setitem__
+    - [X] __delitem__
+    - [X] keys
+    - [X] values
+    - [X] items
+    - [X] __setattr__
+    - [X] __getattr__
+    - [X] __delattr__
+    - [X] raw_info
+    - [X] add_image
+    - [X] delete_image
+    - [X] images
+    - [X] converted
+    - [X] clean
+    - [ ] merge
+**** DONE ID3v23_Frame
+     - [X] __init__
+     - [X] __repr__
+     - [X] __eq__
+     - [X] raw_info
+     - [X] parse
+     - [X] build
+     - [X] size
+     - [X] converted
+     - [X] clean
+**** DONE ID3v23_TXXX_Frame
+     - [X] __init__
+     - [X] __repr__
+     - [X] __eq__
+     - [X] __unicode__
+     - [X] raw_info
+     - [X] parse
+     - [X] build
+     - [X] size
+     - [X] converted
+     - [X] clean
+     - [X] number
+     - [X] total
+**** DONE ID3v23_APIC_Frame
+     - [X] __init__
+     - [X] __repr__
+     - [X] __eq__
+     - [X] __getattr__
+     - [X] __setattr__
+     - [X] raw_info
+     - [X] parse
+     - [X] build
+     - [X] size
+     - [X] converted
+     - [X] clean
+**** DONE ID3v23_COMM_Frame
+     - [X] __init__
+     - [X] __repr__
+     - [X] __eq__
+     - [X] __unicode__
+     - [X] raw_info
+     - [X] parse
+     - [X] build
+     - [X] size
+     - [X] converted
+     - [X] clean
+*** TODO ID3v24Comment
+    - [X] __repr__
+    - [X] parse
+    - [X] build
+    - [X] size
+    - [X] __len__
+    - [X] __getitem__
+    - [X] __setitem__
+    - [X] __delitem__
+    - [X] keys
+    - [X] values
+    - [X] items
+    - [X] __setattr__
+    - [X] __getattr__
+    - [X] __delattr__
+    - [X] raw_info
+    - [X] add_image
+    - [X] delete_image
+    - [X] images
+    - [X] converted
+    - [X] clean
+    - [ ] merge
+**** DONE ID3v24_Frame
+     - [X] __init__
+     - [X] __repr__
+     - [X] __eq__
+     - [X] raw_info
+     - [X] parse
+     - [X] build
+     - [X] size
+     - [X] converted
+     - [X] clean
+**** DONE ID3v24_TXXX_Frame
+     - [X] __init__
+     - [X] __repr__
+     - [X] __eq__
+     - [X] __unicode__
+     - [X] raw_info
+     - [X] parse
+     - [X] build
+     - [X] size
+     - [X] converted
+     - [X] clean
+     - [X] number
+     - [X] total
+**** DONE ID3v24_APIC_Frame
+     - [X] __init__
+     - [X] __repr__
+     - [X] __eq__
+     - [X] __getattr__
+     - [X] __setattr__
+     - [X] raw_info
+     - [X] parse
+     - [X] build
+     - [X] size
+     - [X] converted
+     - [X] clean
+**** DONE ID3v24_COMM_Frame
+     - [X] __init__
+     - [X] __repr__
+     - [X] __eq__
+     - [X] __unicode__
+     - [X] raw_info
+     - [X] parse
+     - [X] build
+     - [X] size
+     - [X] converted
+     - [X] clean
+** DONE Ensure they pass unit tests
+** DONE Ensure UCS-2 C strings are handled correctly
+   For UCS-2/UTF-16 encoding, the string should end on 2 NULL bytes
+   - [X] ID3v22_COM_Frame
+   - [X] ID3v22_PIC_Frame
+   - [X] ID3v23_COMM_Frame
+   - [X] ID3v23_APIC_Frame
+   - [X] ID3v24_COMM_Frame
+   - [X] ID3v24_APIC_Frame
+** TODO Update tests to always check required/prohibited leading zeroes
+* TODO Have MetaData.converted() always return a new object
+  The following should hold for all metadata objects:
 
-  Though of only limited use right now
-  (trackcat could use MetaData.intersection(), for example)
-  this sort of abstraction could be helpful down the line.
-** TODO ApeTag
-   - [ ] isdisjoint
-   - [ ] issubset
-   - [ ] issuperset
-   - [ ] union
-   - [ ] intersection
-   - [ ] difference
-   - [ ] symmetric_difference
-** TODO FlacMetaData
-   - [ ] isdisjoint
-   - [ ] issubset
-   - [ ] issuperset
-   - [ ] union
-   - [ ] intersection
-   - [ ] difference
-   - [ ] symmetric_difference
-** TODO ID3CommentPair
-   - [ ] isdisjoint
-   - [ ] issubset
-   - [ ] issuperset
-   - [ ] union
-   - [ ] intersection
-   - [ ] difference
-   - [ ] symmetric_difference
-** TODO ID3v1Comment
-   - [ ] isdisjoint
-   - [ ] issubset
-   - [ ] issuperset
-   - [ ] union
-   - [ ] intersection
-   - [ ] difference
-   - [ ] symmetric_difference
-** TODO ID3v22Comment
-   - [ ] isdisjoint
-   - [ ] issubset
-   - [ ] issuperset
-   - [ ] union
-   - [ ] intersection
-   - [ ] difference
-   - [ ] symmetric_difference
-** TODO ID3v23Comment
-   - [ ] isdisjoint
-   - [ ] issubset
-   - [ ] issuperset
-   - [ ] union
-   - [ ] intersection
-   - [ ] difference
-   - [ ] symmetric_difference
-** TODO ID3v24Comment
-   - [ ] isdisjoint
-   - [ ] issubset
-   - [ ] issuperset
-   - [ ] union
-   - [ ] intersection
-   - [ ] difference
-   - [ ] symmetric_difference
-** TODO M4A_META_Atom
-   - [ ] isdisjoint
-   - [ ] issubset
-   - [ ] issuperset
-   - [ ] union
-   - [ ] intersection
-   - [ ] difference
-   - [ ] symmetric_difference
-** TODO MetaData
-   - [ ] isdisjoint
-   - [ ] issubset
-   - [ ] issuperset
-   - [ ] union
-   - [ ] intersection
-   - [ ] difference
-   - [ ] symmetric_difference
-** TODO OggFlacMetaData
-   - [ ] isdisjoint
-   - [ ] issubset
-   - [ ] issuperset
-   - [ ] union
-   - [ ] intersection
-   - [ ] difference
-   - [ ] symmetric_difference
-** TODO VorbisComment
-   - [ ] isdisjoint
-   - [ ] issubset
-   - [ ] issuperset
-   - [ ] union
-   - [ ] intersection
-   - [ ] difference
-   - [ ] symmetric_difference
+  >>> a = MetaData(track_name=u"Foo")
+  >>> b = MetaData.converted(a)
+  >>> b.track_name = u"Bar"
+  >>> a.track_name != b.track_name
+  True
+** TODO Update MetaData classes
+   - [ ] ApeTag
+   - [ ] FlacMetaData
+   - [ ] ID3CommentPair
+   - [ ] ID3v1Comment
+   - [ ] ID3v22Comment
+   - [ ] ID3v23Comment
+   - [ ] ID3v24Comment
+   - [ ] M4A_META_Atom
+   - [ ] OggFlacMetaData
+   - [ ] VorbisComment
+** TODO Update documentation for converted()'s behavior
+** TODO Add unit tests to all MetaData classes
+   - [ ] ApeTag
+   - [ ] FlacMetaData
+   - [ ] ID3CommentPair
+   - [ ] ID3v1Comment
+   - [ ] ID3v22Comment
+   - [ ] ID3v23Comment
+   - [ ] ID3v24Comment
+   - [ ] M4A_META_Atom
+   - [ ] OggFlacMetaData
+   - [ ] VorbisComment
+* TODO Don't port ReplayGain tags with AudioFile.set_metadata()
+  That is, if we perform:
 
-** TODO Document new methods
-** TODO Unit test new methods
-* TODO Ensure APEv2 preserves file-specific tags with set_metadata()
-** TODO ReplayGain tags shouldn't be overridden
-** TODO Embedded cuesheet shouldn't be overridden
-* TODO Ensure Vorbis preserves file-specific tags with set_metadata()
-** TODO ReplayGain tags shouldn't be overridden
+  >>> track1 = audiotools.open("file1")
+  >>> track2 = audiotools.open("file2")
+  >>> track1.set_metadata(track2.get_metadata())
+  >>> track1.replay_gain() != track2.replay_gain()
+  True
+
+  For all audio formats that store ReplayGain as embedded tags
+** TODO Update formats
+   - [ ] FlacAudio
+   - [ ] OggFlacAudio
+   - [ ] VorbisAudio
+   - [ ] WavPackAudio
+** TODO Add unit tests
+   - [ ] FlacAudio
+   - [ ] OggFlacAudio
+   - [ ] VorbisAudio
+   - [ ] WavPackAudio
+* TODO Don't port cuesheets with AudioFile.set_metadata()
+  This is mostly for WavPack since it embeds cuesheet data
+  in the APEv2 tag.
