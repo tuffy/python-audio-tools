@@ -833,6 +833,68 @@ class WavPackApeTagMetaData(MetaDataTest):
         #images don't store metadata,
         #so no need to check their fields
 
+    @METADATA_WAVPACK
+    def test_replay_gain(self):
+        import test_streams
+
+        for input_class in [audiotools.WavPackAudio]:
+            temp1 = tempfile.NamedTemporaryFile(suffix="." + input_class.SUFFIX)
+            try:
+                track1 = input_class.from_pcm(
+                    temp1.name,
+                    test_streams.Sine16_Stereo(44100, 44100,
+                                               441.0, 0.50,
+                                               4410.0, 0.49, 1.0))
+                self.assert_(track1.replay_gain() is None,
+                             "ReplayGain present for class %s" % \
+                                 (input_class.NAME))
+                track1.set_metadata(audiotools.MetaData(track_name=u"Foo"))
+                input_class.add_replay_gain([track1.filename])
+                self.assertEqual(track1.get_metadata().track_name, u"Foo")
+                self.assert_(track1.replay_gain() is not None,
+                             "ReplayGain not present for class %s" % \
+                                 (input_class.NAME))
+
+                for output_class in [audiotools.WavPackAudio]:
+                    temp2 = tempfile.NamedTemporaryFile(
+                        suffix="." + input_class.SUFFIX)
+                    try:
+                        track2 = output_class.from_pcm(
+                            temp2.name,
+                            test_streams.Sine16_Stereo(66150, 44100,
+                                                       8820.0, 0.70,
+                                                       4410.0, 0.29, 1.0))
+
+                        #ensure that ReplayGain doesn't get ported
+                        #via set_metadata()
+                        self.assert_(track2.replay_gain() is None,
+                                     "ReplayGain present for class %s" % \
+                                         (output_class.NAME))
+                        track2.set_metadata(track1.get_metadata())
+                        self.assertEqual(track2.get_metadata().track_name,
+                                         u"Foo")
+                        self.assert_(track2.replay_gain() is None,
+                                "ReplayGain present for class %s from %s" % \
+                                         (output_class.NAME,
+                                          input_class.NAME))
+
+                        #and if ReplayGain is already set,
+                        #ensure set_metadata() doesn't remove it
+                        output_class.add_replay_gain([track2.filename])
+                        old_replay_gain = track2.replay_gain()
+                        self.assert_(old_replay_gain is not None)
+                        track2.set_metadata(audiotools.MetaData(
+                                track_name=u"Bar"))
+                        self.assertEqual(track2.get_metadata().track_name,
+                                         u"Bar")
+                        self.assertEqual(track2.replay_gain(),
+                                         old_replay_gain)
+
+                    finally:
+                        temp2.close()
+            finally:
+                temp1.close()
+
 
 class ID3v1MetaData(MetaDataTest):
     def setUp(self):
@@ -1728,9 +1790,8 @@ class FlacMetaData(MetaDataTest):
                                  "album_number",
                                  "album_total",
                                  "comment"]
-        # self.supported_formats = [audiotools.FlacAudio,
-        #                           audiotools.OggFlacAudio] #FIXME
-        self.supported_formats = [audiotools.FlacAudio]
+        self.supported_formats = [audiotools.FlacAudio,
+                                  audiotools.OggFlacAudio]
 
     def empty_metadata(self):
         return self.metadata_class.converted(audiotools.MetaData())
@@ -1755,7 +1816,7 @@ class FlacMetaData(MetaDataTest):
                 track.set_metadata(metadata)
                 metadata2 = track.get_metadata()
                 self.assertEqual(metadata, metadata2)
-                self.assertEqual(metadata.__class__, metadata2.__class__)
+                self.assert_(isinstance(metadata, audiotools.FlacMetaData))
                 self.assertEqual(track.get_metadata().get_block(
                         audiotools.Flac_VORBISCOMMENT.BLOCK_ID)["FOO"],
                                  [u"Bar"])
@@ -2190,6 +2251,70 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
         self.assertNotEqual(
             metadata.get_blocks(audiotools.Flac_VORBISCOMMENT.BLOCK_ID),
             cleaned.get_blocks(audiotools.Flac_VORBISCOMMENT.BLOCK_ID))
+
+    @METADATA_FLAC
+    def test_replay_gain(self):
+        import test_streams
+
+        for input_class in [audiotools.FlacAudio,
+                            audiotools.OggFlacAudio,
+                            audiotools.VorbisAudio]:
+            temp1 = tempfile.NamedTemporaryFile(suffix="." + input_class.SUFFIX)
+            try:
+                track1 = input_class.from_pcm(
+                    temp1.name,
+                    test_streams.Sine16_Stereo(44100, 44100,
+                                               441.0, 0.50,
+                                               4410.0, 0.49, 1.0))
+                self.assert_(track1.replay_gain() is None,
+                             "ReplayGain present for class %s" % \
+                                 (input_class.NAME))
+                track1.set_metadata(audiotools.MetaData(track_name=u"Foo"))
+                input_class.add_replay_gain([track1.filename])
+                self.assertEqual(track1.get_metadata().track_name, u"Foo")
+                self.assert_(track1.replay_gain() is not None,
+                             "ReplayGain not present for class %s" % \
+                                 (input_class.NAME))
+
+                for output_class in [audiotools.FlacAudio,
+                                     audiotools.OggFlacAudio]:
+                    temp2 = tempfile.NamedTemporaryFile(
+                        suffix="." + input_class.SUFFIX)
+                    try:
+                        track2 = output_class.from_pcm(
+                            temp2.name,
+                            test_streams.Sine16_Stereo(66150, 44100,
+                                                       8820.0, 0.70,
+                                                       4410.0, 0.29, 1.0))
+
+                        #ensure that ReplayGain doesn't get ported
+                        #via set_metadata()
+                        self.assert_(track2.replay_gain() is None,
+                                     "ReplayGain present for class %s" % \
+                                         (output_class.NAME))
+                        track2.set_metadata(track1.get_metadata())
+                        self.assertEqual(track2.get_metadata().track_name,
+                                         u"Foo")
+                        self.assert_(track2.replay_gain() is None,
+                                "ReplayGain present for class %s from %s" % \
+                                         (output_class.NAME,
+                                          input_class.NAME))
+
+                        #and if ReplayGain is already set,
+                        #ensure set_metadata() doesn't remove it
+                        output_class.add_replay_gain([track2.filename])
+                        old_replay_gain = track2.replay_gain()
+                        self.assert_(old_replay_gain is not None)
+                        track2.set_metadata(audiotools.MetaData(
+                                track_name=u"Bar"))
+                        self.assertEqual(track2.get_metadata().track_name,
+                                         u"Bar")
+                        self.assertEqual(track2.replay_gain(),
+                                         old_replay_gain)
+                    finally:
+                        temp2.close()
+            finally:
+                temp1.close()
 
 
 class M4AMetaDataTest(MetaDataTest):
@@ -2848,3 +2973,66 @@ class VorbisCommentTest(MetaDataTest):
                 if (new_key != key):
                     metadata[new_key] = [old_raw_value]
                     self.assertEqual(metadata.keys(), [key])
+
+    @METADATA_VORBIS
+    def test_replay_gain(self):
+        import test_streams
+
+        for input_class in [audiotools.FlacAudio,
+                            audiotools.OggFlacAudio,
+                            audiotools.VorbisAudio]:
+            temp1 = tempfile.NamedTemporaryFile(suffix="." + input_class.SUFFIX)
+            try:
+                track1 = input_class.from_pcm(
+                    temp1.name,
+                    test_streams.Sine16_Stereo(44100, 44100,
+                                               441.0, 0.50,
+                                               4410.0, 0.49, 1.0))
+                self.assert_(track1.replay_gain() is None,
+                             "ReplayGain present for class %s" % \
+                                 (input_class.NAME))
+                track1.set_metadata(audiotools.MetaData(track_name=u"Foo"))
+                input_class.add_replay_gain([track1.filename])
+                self.assertEqual(track1.get_metadata().track_name, u"Foo")
+                self.assert_(track1.replay_gain() is not None,
+                             "ReplayGain not present for class %s" % \
+                                 (input_class.NAME))
+
+                for output_class in [audiotools.VorbisAudio]:
+                    temp2 = tempfile.NamedTemporaryFile(
+                        suffix="." + input_class.SUFFIX)
+                    try:
+                        track2 = output_class.from_pcm(
+                            temp2.name,
+                            test_streams.Sine16_Stereo(66150, 44100,
+                                                       8820.0, 0.70,
+                                                       4410.0, 0.29, 1.0))
+
+                        #ensure that ReplayGain doesn't get ported
+                        #via set_metadata()
+                        self.assert_(track2.replay_gain() is None,
+                                     "ReplayGain present for class %s" % \
+                                         (output_class.NAME))
+                        track2.set_metadata(track1.get_metadata())
+                        self.assertEqual(track2.get_metadata().track_name,
+                                         u"Foo")
+                        self.assert_(track2.replay_gain() is None,
+                                "ReplayGain present for class %s from %s" % \
+                                         (output_class.NAME,
+                                          input_class.NAME))
+
+                        #and if ReplayGain is already set,
+                        #ensure set_metadata() doesn't remove it
+                        output_class.add_replay_gain([track2.filename])
+                        old_replay_gain = track2.replay_gain()
+                        self.assert_(old_replay_gain is not None)
+                        track2.set_metadata(audiotools.MetaData(
+                                track_name=u"Bar"))
+                        self.assertEqual(track2.get_metadata().track_name,
+                                         u"Bar")
+                        self.assertEqual(track2.replay_gain(),
+                                         old_replay_gain)
+                    finally:
+                        temp2.close()
+            finally:
+                temp1.close()

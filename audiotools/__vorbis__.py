@@ -418,7 +418,20 @@ class VorbisAudio(AudioFile):
         if (metadata is not None):
             metadata = VorbisComment.converted(metadata)
 
-            metadata.vendor_string = self.get_metadata().vendor_string
+            old_metadata = self.get_metadata()
+
+            metadata.vendor_string = old_metadata.vendor_string
+
+            #remove REPLAYGAIN_* tags from new metadata (if any)
+            for key in [u"REPLAYGAIN_TRACK_GAIN",
+                        u"REPLAYGAIN_TRACK_PEAK",
+                        u"REPLAYGAIN_ALBUM_GAIN",
+                        u"REPLAYGAIN_ALBUM_PEAK",
+                        u"REPLAYGAIN_REFERENCE_LOUDNESS"]:
+                try:
+                    metadata[key] = old_metadata[key]
+                except KeyError:
+                    metadata[key] = []
 
             self.update_metadata(metadata)
 

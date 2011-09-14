@@ -1271,8 +1271,19 @@ class FlacAudio(WaveContainer, AiffContainer):
                 new_vorbiscomment.vendor_string = \
                     old_vorbiscomment.vendor_string
 
+                #update REPLAYGAIN_* tags from our current VORBIS_COMMENT block
+                for key in [u"REPLAYGAIN_TRACK_GAIN",
+                            u"REPLAYGAIN_TRACK_PEAK",
+                            u"REPLAYGAIN_ALBUM_GAIN",
+                            u"REPLAYGAIN_ALBUM_PEAK",
+                            u"REPLAYGAIN_REFERENCE_LOUDNESS"]:
+                    try:
+                        new_vorbiscomment[key] = old_vorbiscomment[key]
+                    except KeyError:
+                        new_vorbiscomment[key] = []
+
                 #update WAVEFORMATEXTENSIBLE_CHANNEL_MASK
-                #from our current VORBIS_COMMENT block
+                #from our current VORBIS_COMMENT block, if any
                 if (((self.channels() > 2) or (self.bits_per_sample() > 16)) and
                     (u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK" in
                      old_vorbiscomment.keys())):
@@ -1284,6 +1295,21 @@ class FlacAudio(WaveContainer, AiffContainer):
             else:
                 #new metadata has VORBIS_COMMENT block,
                 #but old metadata does not
+
+                #remove REPLAYGAIN_* tags from new VORBIS_COMMENT block
+                for key in [u"REPLAYGAIN_TRACK_GAIN",
+                            u"REPLAYGAIN_TRACK_PEAK",
+                            u"REPLAYGAIN_ALBUM_GAIN",
+                            u"REPLAYGAIN_ALBUM_PEAK",
+                            u"REPLAYGAIN_REFERENCE_LOUDNESS"]:
+                    new_vorbiscomment[key] = []
+
+                #update WAVEFORMATEXTENSIBLE_CHANNEL_MASK
+                #from our actual mask if necessary
+                if ((self.channels() > 2) or (self.bits_per_sample() > 16)):
+                    new_vorbiscomment[u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
+                        u"0x%.4X" % (self.channel_mask())]
+
                 old_metadata.add_block(new_vorbiscomment)
         else:
             #new metadata has no VORBIS_COMMENT block

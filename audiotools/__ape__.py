@@ -209,6 +209,9 @@ class ApeTag(MetaData):
         self.__dict__["tags"] = tags
         self.__dict__["tag_length"] = tag_length
 
+    def __repr__(self):
+        return "ApeTag(%s, %s)" % (repr(self.tags), repr(self.tag_length))
+
     def __eq__(self, metadata):
         if (isinstance(metadata, ApeTag)):
             if (set(self.keys()) != set(metadata.keys())):
@@ -263,6 +266,8 @@ class ApeTag(MetaData):
             if (self.tags[i].key == key):
                 del(self.tags[i])
                 return
+        else:
+            raise KeyError(key)
 
     #if an attribute is updated (e.g. self.track_name)
     #make sure to update the corresponding dict pair
@@ -633,20 +638,47 @@ class ApeTaggedAudio:
 
         Raises IOError if unable to write the file."""
 
+        if (metadata is None):
+            return
+
         from .bitstream import BitstreamWriter
 
+        old_metadata = self.get_metadata()
         new_metadata = self.APE_TAG_CLASS.converted(metadata)
 
-        if (new_metadata is not None):
-            existing_metadata = self.get_metadata()
-            if (existing_metadata is not None):
-                #replace existing metadata with new metadata
-                self.update_metadata(new_metadata)
-            else:
-                #no existing metadata, so simply append a fresh tag
-                f = file(self.filename, "ab")
-                new_metadata.build(BitstreamWriter(f, 1))
-                f.close()
+        if (old_metadata is not None):
+            #transfer ReplayGain tags from old metadata to new metadata
+            for tag in ["replaygain_track_gain",
+                        "replaygain_track_peak",
+                        "replaygain_album_gain",
+                        "replaygain_album_peak"]:
+                try:
+                    #if old_metadata has tag, shift it over
+                    new_metadata[tag] = old_metadata[tag]
+                except KeyError:
+                    try:
+                        #otherwise, if new_metadata has tag, delete it
+                        del(new_metadata[tag])
+                    except KeyError:
+                        #if neither has tag, ignore it
+                        continue
+
+            self.update_metadata(new_metadata)
+        else:
+            #delete ReplayGain tags from new metadata
+            for tag in ["replaygain_track_gain",
+                        "replaygain_track_peak",
+                        "replaygain_album_gain",
+                        "replaygain_album_peak"]:
+                try:
+                    del(new_metadata[tag])
+                except KeyError:
+                    continue
+
+            #no existing metadata, so simply append a fresh tag
+            f = file(self.filename, "ab")
+            new_metadata.build(BitstreamWriter(f, 1))
+            f.close()
 
     def delete_metadata(self):
         """Deletes the track's MetaData.

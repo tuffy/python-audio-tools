@@ -75,10 +75,15 @@ class VorbisComment(MetaData):
     def __getitem__(self, key):
         matching_keys = self.ALIASES.get(key.upper(), frozenset([key.upper()]))
 
-        return [item_value for (item_key, item_value) in
-                [comment.split(u"=", 1) for comment in self.comment_strings
-                 if (u"=" in comment)]
-                if (item_key.upper() in matching_keys)]
+        values = [item_value for (item_key, item_value) in
+                  [comment.split(u"=", 1) for comment in self.comment_strings
+                   if (u"=" in comment)]
+                  if (item_key.upper() in matching_keys)]
+
+        if (len(values) > 0):
+            return values
+        else:
+            raise KeyError(key)
 
     def __setitem__(self, key, values):
         new_values = values[:]
@@ -158,19 +163,19 @@ class VorbisComment(MetaData):
                             [self.SLASHED_FIELD.search(field)
                              for field in self[slashed_field]]
                             if (match is not None)][0])
-            except IndexError:
+            except (KeyError, IndexError):
                 pass
 
         if (attr in self.INTEGER_FIELDS):
             #all integer fields are present in attribute map
             try:
                 return int(self[self.ATTRIBUTE_MAP[attr]][0])
-            except (IndexError, ValueError):
+            except (KeyError, ValueError):
                 return 0
         elif (attr in self.ATTRIBUTE_MAP):
             try:
                 return self[self.ATTRIBUTE_MAP[attr]][0]
-            except IndexError:
+            except KeyError:
                 return u""
         elif (attr in self.FIELDS):
             return u""
@@ -195,10 +200,13 @@ class VorbisComment(MetaData):
             #which must always be numerical fields
             (slashed_field, slash_side) = self.SLASHED_FIELDS[attr]
 
-            slashed_matches = [match for match in
-                               [self.SLASHED_FIELD.search(field)
-                                for field in self[slashed_field]]
-                               if (match is not None)]
+            try:
+                slashed_matches = [match for match in
+                                   [self.SLASHED_FIELD.search(field)
+                                    for field in self[slashed_field]]
+                                   if (match is not None)]
+            except KeyError:
+                slashed_matches = []
 
             if (len(slashed_matches) > 0):
                 if (slash_side == 0):
@@ -215,14 +223,20 @@ class VorbisComment(MetaData):
                         [m.group(0) for m in slashed_matches][1:])
 
             else:
-                current_values = self[self.ATTRIBUTE_MAP[attr]]
+                try:
+                    current_values = self[self.ATTRIBUTE_MAP[attr]]
+                except KeyError:
+                    current_values = []
                 self[self.ATTRIBUTE_MAP[attr]] = ([unicode(value)] +
                                                   current_values[1:])
 
         #plain text fields are easier
         elif (attr in self.ATTRIBUTE_MAP):
             #try to leave subsequent fields as-is
-            current_values = self[self.ATTRIBUTE_MAP[attr]]
+            try:
+                current_values = self[self.ATTRIBUTE_MAP[attr]]
+            except KeyError:
+                current_values = []
             self[self.ATTRIBUTE_MAP[attr]] = [value] + current_values[1:]
         else:
             self.__dict__[attr] = value
@@ -282,9 +296,10 @@ class VorbisComment(MetaData):
         if ((metadata is None) or (isinstance(metadata, VorbisComment))):
             return metadata
         elif (metadata.__class__.__name__ == 'FlacMetaData'):
-            if (metadata.vorbis_comment is not None):
-                return cls(metadata.vorbis_comment.comment_strings,
-                           metadata.vorbis_comment.vendor_string)
+            if (metadata.has_block(4)):
+                vorbis_comment = metadata.get_block(4)
+                return cls(vorbis_comment.comment_strings,
+                           vorbis_comment.vendor_string)
             else:
                 return cls([], u"Python Audio Tools %s" % (VERSION))
         elif (metadata.__class__.__name__ == 'Flac_VORBISCOMMENT'):

@@ -574,7 +574,7 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
                 metadata["replaygain_album_peak"] = ApeTagItem.string(
                     "replaygain_album_peak",
                     u"%1.6f" % (album_peak))
-                track.set_metadata(metadata)
+                track.update_metadata(metadata)
 
     @classmethod
     def can_add_replay_gain(cls):
@@ -652,4 +652,4 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
                                                         cue.Cuesheet.file(
                 cuesheet,
                 os.path.basename(self.filename)).decode('ascii', 'replace'))
-        self.set_metadata(metadata)
+        self.update_metadata(metadata)
