@@ -87,10 +87,16 @@ class WavPackAPEv2(ApeTag):
     def converted(cls, metadata):
         """Converts a MetaData object to a WavPackAPEv2 object."""
 
-        if ((metadata is None) or (isinstance(metadata, WavPackAPEv2))):
-            return metadata
+        if (metadata is None):
+            return None
+        elif (isinstance(metadata, WavPackAPEv2)):
+            return WavPackAPEv2([tag.copy() for tag in metadata.tags],
+                                metadata.tag_length,
+                                metadata.frame_count)
         elif (isinstance(metadata, ApeTag)):
-            return WavPackAPEv2(metadata.tags)
+            return WavPackAPEv2([tag.copy() for tag in metadata.tags],
+                                metadata.tag_length,
+                                0)
         else:
             return WavPackAPEv2(ApeTag.converted(metadata).tags)
 

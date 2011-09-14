@@ -2817,6 +2817,61 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] OggFlacAudio
    - [X] VorbisAudio
    - [X] WavPackAudio
+* DONE Have MetaData.converted() always return a new object
+  The following should hold for all metadata objects:
+
+  >>> a = MetaData(track_name=u"Foo")
+  >>> b = MetaData.converted(a)
+  >>> b.track_name = u"Bar"
+  >>> a.track_name != b.track_name
+  True
+** DONE Update MetaData classes
+*** DONE ApeTag
+*** DONE FlacMetaData
+*** DONE ID3CommentPair
+*** DONE ID3v1Comment
+*** DONE ID3v22Comment
+    - [X] ID3v22_Frame
+    - [X] ID3v22_TXX_Frame
+    - [X] ID3v22_COM_Frame
+    - [X] ID3v22_PIC_Frame
+*** DONE ID3v23Comment
+    - [X] ID3v23_Frame
+    - [X] ID3v23_TXXX_Frame
+    - [X] ID3v23_COMM_Frame
+    - [X] ID3v23_APIC_Frame
+*** DONE ID3v24Comment
+    - [X] ID3v24_Frame
+    - [X] ID3v24_TXXX_Frame
+    - [X] ID3v24_COMM_Frame
+    - [X] ID3v24_APIC_Frame
+*** DONE M4A_META_Atom
+    - [X] M4A_Tree_Atom
+    - [X] M4A_Leaf_Atom
+    - [X] M4A_META_Atom
+    - [X] M4A_FREE_Atom
+    - [X] M4A_HDLR_Atom
+    - [X] M4A_ILST_Leaf_Atom
+    - [X] M4A_ILST_COVR_Data_Atom
+    - [X] M4A_ILST_DISK_Data_Atom
+    - [X] M4A_ILST_TRKN_Data_Atom
+    - [ ] M4A_ILST_Unicode_Data_Atom
+*** DONE MetaData
+*** DONE OggFlacMetaData
+*** DONE VorbisComment
+** DONE Update documentation for converted()'s behavior
+** DONE Add unit tests to all MetaData classes
+   - [X] ApeTag
+   - [X] FlacMetaData
+   - [X] ID3CommentPair
+   - [X] ID3v1Comment
+   - [X] ID3v22Comment
+   - [X] ID3v23Comment
+   - [X] ID3v24Comment
+   - [X] M4A_META_Atom
+   - [X] MetaData
+   - [X] OggFlacMetaData
+   - [X] VorbisComment
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -4442,37 +4497,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] ID3v24_COMM_Frame
    - [X] ID3v24_APIC_Frame
 ** TODO Update tests to always check required/prohibited leading zeroes
-* TODO Have MetaData.converted() always return a new object
-  The following should hold for all metadata objects:
-
-  >>> a = MetaData(track_name=u"Foo")
-  >>> b = MetaData.converted(a)
-  >>> b.track_name = u"Bar"
-  >>> a.track_name != b.track_name
-  True
-** TODO Update MetaData classes
-   - [ ] ApeTag
-   - [ ] FlacMetaData
-   - [ ] ID3CommentPair
-   - [ ] ID3v1Comment
-   - [ ] ID3v22Comment
-   - [ ] ID3v23Comment
-   - [ ] ID3v24Comment
-   - [ ] M4A_META_Atom
-   - [ ] OggFlacMetaData
-   - [ ] VorbisComment
-** TODO Update documentation for converted()'s behavior
-** TODO Add unit tests to all MetaData classes
-   - [ ] ApeTag
-   - [ ] FlacMetaData
-   - [ ] ID3CommentPair
-   - [ ] ID3v1Comment
-   - [ ] ID3v22Comment
-   - [ ] ID3v23Comment
-   - [ ] ID3v24Comment
-   - [ ] M4A_META_Atom
-   - [ ] OggFlacMetaData
-   - [ ] VorbisComment
 * TODO Don't port cuesheets with AudioFile.set_metadata()
   This is mostly for WavPack since it embeds cuesheet data
   in the APEv2 tag.

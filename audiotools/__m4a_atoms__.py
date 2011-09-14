@@ -80,6 +80,9 @@ class M4A_Tree_Atom:
             raise TypeError(_(u"leaf atoms must be a list"))
         self.leaf_atoms = leaf_atoms
 
+    def copy(self):
+        return M4A_Tree_Atom(self.name, [leaf.copy() for leaf in self])
+
     def __repr__(self):
         return "M4A_Tree_Atom(%s, %s)" % \
             (repr(self.name), repr(self.leaf_atoms))
@@ -174,6 +177,9 @@ class M4A_Leaf_Atom:
 
         self.name = name
         self.data = data
+
+    def copy(self):
+        return M4A_Leaf_Atom(self.name, self.data)
 
     def __repr__(self):
         return "M4A_Leaf_Atom(%s, %s)" % \
@@ -1107,8 +1113,12 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
 
     @classmethod
     def converted(cls, metadata):
-        if ((metadata is None) or isinstance(metadata, cls)):
-            return metadata
+        if (metadata is None):
+            return None
+        elif (isinstance(metadata, cls)):
+            return cls(metadata.version,
+                       metadata.flags,
+                       [leaf.copy() for leaf in metadata])
 
         ilst_atoms = [M4A_ILST_Leaf_Atom(
                 cls.UNICODE_ATTRIB_TO_ILST[attrib],
@@ -1227,6 +1237,9 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
 
 
 class M4A_ILST_Leaf_Atom(M4A_Tree_Atom):
+    def copy(self):
+        return M4A_ILST_Leaf_Atom(self.name, [leaf.copy() for leaf in self])
+
     def __repr__(self):
         return "M4A_ILST_Leaf_Atom(%s, %s)" % \
             (repr(self.name), repr(self.leaf_atoms))
@@ -1287,6 +1300,9 @@ class M4A_ILST_Unicode_Data_Atom(M4A_Leaf_Atom):
         self.flags = flags
         self.data = data
 
+    def copy(self):
+        return M4A_ILST_Unicode_Data_Atom(self.type, self.flags, self.data)
+
     def __repr__(self):
         return "M4A_ILST_Unicode_Data_Atom(%s, %s, %s)" % \
             (repr(self.type), repr(self.flags), repr(self.data))
@@ -1315,6 +1331,9 @@ class M4A_ILST_TRKN_Data_Atom(M4A_Leaf_Atom):
         self.name = "data"
         self.track_number = track_number
         self.track_total = track_total
+
+    def copy(self):
+        return M4A_ILST_TRKN_Data_Atom(self.track_number, self.track_total)
 
     def __repr__(self):
         return "M4A_ILST_TRKN_Data_Atom(%d, %d)" % \
@@ -1352,6 +1371,9 @@ class M4A_ILST_DISK_Data_Atom(M4A_Leaf_Atom):
         self.name = "data"
         self.disk_number = disk_number
         self.disk_total = disk_total
+
+    def copy(self):
+        return M4A_ILST_DISK_Data_Atom(self.disk_number, self.disk_total)
 
     def __repr__(self):
         return "M4A_ILST_DISK_Data_Atom(%d, %d)" % \
@@ -1401,6 +1423,9 @@ class M4A_ILST_COVR_Data_Atom(Image, M4A_Leaf_Atom):
                        description=u"",
                        type=0)
 
+    def copy(self):
+        return M4A_ILST_COVR_Data_Atom(self.version, self.flags, self.data)
+
     def __repr__(self):
         return "M4A_ILST_COVR_Data_Atom(%s, %s, ...)" % \
             (self.version, self.flags)
@@ -1447,6 +1472,17 @@ class M4A_HDLR_Atom(M4A_Leaf_Atom):
         self.component_name = component_name
         self.padding_size = padding_size
 
+    def copy(self):
+        return M4A_HDLR_Atom(self.version,
+                             self.flags,
+                             self.qt_type,
+                             self.qt_subtype,
+                             self.qt_manufacturer,
+                             self.qt_reserved_flags,
+                             self.qt_reserved_flags_mask,
+                             self.component_name,
+                             self.padding_size)
+
     def __repr__(self):
         return "M4A_HDLR_Atom(%s, %s, %s, %s, %s, %s, %s, %s, %d)" % \
             (self.version, self.flags, repr(self.qt_type),
@@ -1492,6 +1528,9 @@ class M4A_FREE_Atom(M4A_Leaf_Atom):
     def __init__(self, bytes):
         self.name = "free"
         self.bytes = bytes
+
+    def copy(self):
+        return M4A_FREE_Atom(self.bytes)
 
     def __repr__(self):
         return "M4A_FREE_Atom(%d)" % (self.bytes)

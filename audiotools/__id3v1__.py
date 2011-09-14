@@ -120,16 +120,24 @@ class ID3v1Comment(MetaData):
     def converted(cls, metadata):
         """Converts a MetaData object to an ID3v1Comment object."""
 
-        if ((metadata is None) or (isinstance(metadata, ID3v1Comment))):
-            return metadata
-
-        return ID3v1Comment(track_name=metadata.track_name,
-                            artist_name=metadata.artist_name,
-                            album_name=metadata.album_name,
-                            year=metadata.year,
-                            comment=metadata.comment,
-                            track_number=metadata.track_number,
-                            genre=0)
+        if (metadata is None):
+            return None
+        elif (isinstance(metadata, ID3v1Comment)):
+            return ID3v1Comment(track_name=metadata.track_name,
+                                artist_name=metadata.artist_name,
+                                album_name=metadata.album_name,
+                                year=metadata.year,
+                                comment=metadata.comment,
+                                track_number=metadata.track_number,
+                                genre=metadata.genre)
+        else:
+            return ID3v1Comment(track_name=metadata.track_name,
+                                artist_name=metadata.artist_name,
+                                album_name=metadata.album_name,
+                                year=metadata.year,
+                                comment=metadata.comment,
+                                track_number=metadata.track_number,
+                                genre=0)
 
     def images(self):
         """Returns an empty list of Image objects."""

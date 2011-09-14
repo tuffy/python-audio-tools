@@ -284,6 +284,9 @@ class ID3v22_Frame:
         self.id = frame_id
         self.data = data
 
+    def copy(self):
+        return self.__class__(self.id, self.data)
+
     def __repr__(self):
         return "ID3v22_Frame(%s, %s)" % (repr(self.id), repr(self.data))
 
@@ -348,6 +351,9 @@ class ID3v22_TXX_Frame:
         self.id = frame_id
         self.encoding = encoding
         self.data = data
+
+    def copy(self):
+        return self.__class__(self.id, self.encoding, self.data)
 
     def __repr__(self):
         return "ID3v22_TXX_Frame(%s, %s, %s)" % \
@@ -485,6 +491,12 @@ class ID3v22_COM_Frame:
         self.short_description = short_description
         self.data = data
 
+    def copy(self):
+        return self.__class__(self.encoding,
+                              self.language,
+                              self.short_description,
+                              self.data)
+
     def __repr__(self):
         return "ID3v22_COM_Frame(%s, %s, %s, %s)" % \
             (repr(self.encoding), repr(self.language),
@@ -604,6 +616,12 @@ class ID3v22_PIC_Frame(Image):
         self.color_depth = metrics.color_depth
         self.color_count = metrics.color_count
         self.data = data
+
+    def copy(self):
+        return ID3v22_PIC_Frame(self.pic_format,
+                                self.pic_type,
+                                self.pic_description,
+                                self.data)
 
     def __repr__(self):
         return "ID3v22_PIC_Frame(%s, %s, %s, ...)" % \
@@ -758,6 +776,9 @@ class ID3v22Comment(MetaData):
 
     def __init__(self, frames):
         self.__dict__["frames"] = frames[:]
+
+    def copy(self):
+        return self.__class__([frame.copy() for frame in self])
 
     def __repr__(self):
         return "ID3v22Comment(%s)" % (repr(self.frames))
@@ -996,8 +1017,10 @@ class ID3v22Comment(MetaData):
     def converted(cls, metadata):
         """Converts a MetaData object to an ID3v2*Comment object."""
 
-        if ((metadata is None) or (cls is metadata.__class__)):
-            return metadata
+        if (metadata is None):
+            return None
+        elif (cls is metadata.__class__):
+            return cls([frame.copy() for frame in metadata])
 
         frames = []
 
@@ -1086,6 +1109,12 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
         self.color_depth = metrics.color_depth
         self.color_count = metrics.color_count
         self.data = data
+
+    def copy(self):
+        return self.__class__(self.pic_mime_type,
+                              self.pic_type,
+                              self.pic_description,
+                              self.data)
 
     def __repr__(self):
         return "ID3v23_APIC_Frame(%s, %s, %s, ...)" % \
@@ -1550,7 +1579,7 @@ class ID3v24Comment(ID3v23Comment):
     RAW_FRAME = ID3v24_Frame
     TEXT_FRAME = ID3v24_TXXX_Frame
     COMMENT_FRAME = ID3v24_COMM_Frame
-    IMAGE_FRAME = ID3v23_APIC_Frame
+    IMAGE_FRAME = ID3v24_APIC_Frame
     IMAGE_FRAME_ID = 'APIC'
     ITUNES_COMPILATION_ID = 'TCMP'
 
@@ -1689,10 +1718,13 @@ class ID3CommentPair(MetaData):
                   id3v1_class=ID3v1Comment):
         """Takes a MetaData object and returns an ID3CommentPair object."""
 
-        if ((metadata is None) or (isinstance(metadata, ID3CommentPair))):
-            return metadata
-
-        if (isinstance(metadata, ID3v2Comment)):
+        if (metadata is None):
+            return None
+        elif (isinstance(metadata, ID3CommentPair)):
+            return ID3CommentPair(
+                metadata.id3v2.__class__.converted(metadata.id3v2),
+                metadata.id3v1.__class__.converted(metadata.id3v1))
+        elif (isinstance(metadata, ID3v2Comment)):
             return ID3CommentPair(metadata,
                                   id3v1_class.converted(metadata))
         else:

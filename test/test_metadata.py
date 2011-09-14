@@ -232,6 +232,15 @@ class MetaDataTest(unittest.TestCase):
 
         #subclasses should ensure non-MetaData fields are converted
 
+        #ensure that convert() builds a whole new object
+        metadata_new.track_name = u"Foo"
+        self.assertEqual(metadata_new.track_name, u"Foo")
+        metadata_new2 = self.metadata_class.converted(metadata_new)
+        self.assertEqual(metadata_new2.track_name, u"Foo")
+        metadata_new2.track_name = u"Bar"
+        self.assertEqual(metadata_new2.track_name, u"Bar")
+        self.assertEqual(metadata_new.track_name, u"Foo")
+
     @METADATA_METADATA
     def test_supports_images(self):
         self.assertEqual(self.metadata_class.supports_images(), True)
@@ -681,6 +690,15 @@ class WavPackApeTagMetaData(MetaDataTest):
         metadata_new = self.metadata_class.converted(metadata_orig)
         self.assertEqual(metadata_orig['Foo'].data,
                          metadata_new['Foo'].data)
+
+        #ensure that convert() builds a whole new object
+        metadata_new.track_name = u"Foo"
+        self.assertEqual(metadata_new.track_name, u"Foo")
+        metadata_new2 = self.metadata_class.converted(metadata_new)
+        self.assertEqual(metadata_new2.track_name, u"Foo")
+        metadata_new2.track_name = u"Bar"
+        self.assertEqual(metadata_new2.track_name, u"Bar")
+        self.assertEqual(metadata_new.track_name, u"Foo")
 
     @METADATA_WAVPACK
     def test_images(self):
@@ -1908,6 +1926,15 @@ class FlacMetaData(MetaDataTest):
                          metadata_new.get_block(
                 audiotools.Flac_VORBISCOMMENT.BLOCK_ID)[u'FOO'])
 
+        #ensure that convert() builds a whole new object
+        metadata_new.track_name = u"Foo"
+        self.assertEqual(metadata_new.track_name, u"Foo")
+        metadata_new2 = self.metadata_class.converted(metadata_new)
+        self.assertEqual(metadata_new2, metadata_new)
+        metadata_new2.track_name = u"Bar"
+        self.assertEqual(metadata_new2.track_name, u"Bar")
+        self.assertEqual(metadata_new.track_name, u"Foo")
+
     @METADATA_FLAC
     def test_oversized(self):
         oversized_image = audiotools.Image.new(HUGE_BMP.decode('bz2'), u'', 0)
@@ -2588,6 +2615,15 @@ class M4AMetaDataTest(MetaDataTest):
         metadata_new = self.metadata_class.converted(metadata_orig)
         self.assertEqual(metadata_orig['ilst']['test']['data'].data, "foobar")
 
+        #ensure that convert() builds a whole new object
+        metadata_new.track_name = u"Foo"
+        self.assertEqual(metadata_new.track_name, u"Foo")
+        metadata_new2 = self.metadata_class.converted(metadata_new)
+        self.assertEqual(metadata_new2.track_name, u"Foo")
+        metadata_new2.track_name = u"Bar"
+        self.assertEqual(metadata_new2.track_name, u"Bar")
+        self.assertEqual(metadata_new.track_name, u"Foo")
+
     @METADATA_M4A
     def test_clean(self):
         #check trailing whitespace
@@ -2691,7 +2727,8 @@ class VorbisCommentTest(MetaDataTest):
                                         BLANK_PCM_Reader(1))
                 track.set_metadata(metadata)
                 metadata2 = track.get_metadata()
-                self.assertEqual(metadata, metadata2)
+                self.assertEqual(metadata.comment_strings,
+                                 metadata2.comment_strings)
                 self.assertEqual(metadata.__class__, metadata2.__class__)
                 self.assertEqual(metadata2[u"FOO"], [u"Bar"])
             finally:

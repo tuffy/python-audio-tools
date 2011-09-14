@@ -93,6 +93,12 @@ class ApeTagItem:
         self.key = key
         self.data = data
 
+    def copy(self):
+        return ApeTagItem(self.type,
+                          self.read_only,
+                          self.key,
+                          self.data)
+
     def __repr__(self):
         return "ApeTagItem(%s,%s,%s,%s)" % \
             (repr(self.type),
@@ -360,8 +366,11 @@ class ApeTag(MetaData):
     def converted(cls, metadata):
         """Converts a MetaData object to an ApeTag object."""
 
-        if ((metadata is None) or (isinstance(metadata, ApeTag))):
-            return metadata
+        if (metadata is None):
+            return None
+        elif (isinstance(metadata, ApeTag)):
+            return ApeTag([tag.copy() for tag in metadata.tags],
+                          metadata.tag_length)
         else:
             tags = cls([])
             for (field, key) in cls.ATTRIBUTE_MAP.items():

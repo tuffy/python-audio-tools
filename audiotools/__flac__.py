@@ -174,10 +174,10 @@ class FlacMetaData(MetaData):
     def converted(cls, metadata):
         """Takes a MetaData object and returns a FlacMetaData object."""
 
-        if (isinstance(metadata, OggFlacMetaData)):
-            return cls(metadata.block_list)
-        elif ((metadata is None) or (isinstance(metadata, FlacMetaData))):
-            return metadata
+        if (metadata is None):
+            return None
+        elif (isinstance(metadata, FlacMetaData)):
+            return cls([block.copy() for block in metadata.block_list])
         else:
             return cls([Flac_VORBISCOMMENT.converted(metadata)] +
                        [Flac_PICTURE.converted(image)
@@ -363,6 +363,17 @@ class Flac_STREAMINFO:
         self.total_samples = total_samples
         self.md5sum = md5sum
 
+    def copy(self):
+        return Flac_STREAMINFO(self.minimum_block_size,
+                               self.maximum_block_size,
+                               self.minimum_frame_size,
+                               self.maximum_frame_size,
+                               self.sample_rate,
+                               self.channels,
+                               self.bits_per_sample,
+                               self.total_samples,
+                               self.md5sum)
+
     def __eq__(self, metadata):
         from operator import and_
 
@@ -431,6 +442,10 @@ class Flac_STREAMINFO:
 
 class Flac_VORBISCOMMENT(VorbisComment):
     BLOCK_ID = 4
+
+    def copy(self):
+        return Flac_VORBISCOMMENT(self.comment_strings[:],
+                                  self.vendor_string)
 
     def __repr__(self):
         return "Flac_VORBISCOMMENT(%s, %s)" % \
@@ -518,6 +533,16 @@ class Flac_PICTURE(Image):
         self.__dict__["color_count"] = color_count
         self.__dict__["description"] = description
         self.__dict__["picture_type"] = picture_type
+
+    def copy(self):
+        return Flac_PICTURE(self.picture_type,
+                            self.mime_type,
+                            self.description,
+                            self.width,
+                            self.height,
+                            self.color_depth,
+                            self.color_count,
+                            self.data)
 
     def __getattr__(self, key):
         if (key == "type"):
@@ -688,6 +713,10 @@ class Flac_APPLICATION:
         self.application_id = application_id
         self.data = data
 
+    def copy(self):
+        return Flac_APPLICATION(self.application_id,
+                                self.data)
+
     def __repr__(self):
         return "Flac_APPLICATION(%s, %s)" % (repr(self.application_id),
                                              repr(self.data))
@@ -717,6 +746,9 @@ class Flac_SEEKTABLE:
 
     def __init__(self, seekpoints):
         self.seekpoints = seekpoints
+
+    def copy(self):
+        return Flac_SEEKTABLE(self.seekpoints[:])
 
     def __repr__(self):
         return "Flac_SEEKTABLE(%s)" % (repr(self.seekpoints))
@@ -752,6 +784,12 @@ class Flac_CUESHEET:
         self.lead_in_samples = lead_in_samples
         self.is_cdda = is_cdda
         self.tracks = tracks
+
+    def copy(self):
+        return Flac_CUESHEET(self.catalog_number,
+                             self.lead_in_samples,
+                             self.is_cdda,
+                             [track.copy() for track in self.tracks])
 
     def __eq__(self, cuesheet):
         from operator import and_
@@ -871,7 +909,6 @@ class Flac_CUESHEET:
                      if ((track.number != 170) and
                          (len(track.ISRC.strip(chr(0))) > 0))])
 
-
     def indexes(self, sample_rate=44100):
         """Returns a list of (start, end) integer tuples."""
 
@@ -882,7 +919,6 @@ class Flac_CUESHEET:
                 for track in
                 sorted(self.tracks, lambda t1, t2: cmp(t1.number, t2.number))
                 if (track.number != 170)]
-
 
     def pcm_lengths(self, total_length):
         """Returns a list of PCM lengths for all cuesheet audio tracks.
@@ -914,6 +950,15 @@ class Flac_CUESHEET_track:
         self.track_type = track_type
         self.pre_emphasis = pre_emphasis
         self.index_points = index_points
+
+    def copy(self):
+        return Flac_CUESHEET_track(self.offset,
+                                   self.number,
+                                   self.ISRC,
+                                   self.track_type,
+                                   self.pre_emphasis,
+                                   [index.copy() for index in
+                                    self.index_points])
 
     def __repr__(self):
         return ("Flac_CUESHEET_track(%s)" %
@@ -975,6 +1020,9 @@ class Flac_CUESHEET_index:
         self.offset = offset
         self.number = number
 
+    def copy(self):
+        return Flac_CUESHEET_index(self.offset, self.number)
+
     def __repr__(self):
         return "Flac_CUESHEET_index(%s, %s)" % (repr(self.offset),
                                                 repr(self.number))
@@ -1001,6 +1049,9 @@ class Flac_PADDING:
 
     def __init__(self, length):
         self.length = length
+
+    def copy(self):
+        return Flac_PADDING(self.length)
 
     def __repr__(self):
         return "Flac_PADDING(%d)" % (self.length)
@@ -2146,10 +2197,10 @@ class FlacAudio(WaveContainer, AiffContainer):
 class OggFlacMetaData(FlacMetaData):
     @classmethod
     def converted(cls, metadata):
-        if ((metadata is None) or (isinstance(metadata, OggFlacMetaData))):
-            return metadata
+        if (metadata is None):
+            return None
         elif (isinstance(metadata, FlacMetaData)):
-            return cls(metadata.block_list)
+            return cls([block.copy() for block in metadata.block_list])
         else:
             return cls([Flac_VORBISCOMMENT.converted(metadata)] +
                        [Flac_PICTURE.converted(image)
@@ -2158,7 +2209,6 @@ class OggFlacMetaData(FlacMetaData):
 
     def __repr__(self):
         return ("OggFlacMetaData(%s)" % (repr(self.block_list)))
-
 
     @classmethod
     def parse(cls, reader):

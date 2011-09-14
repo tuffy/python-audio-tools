@@ -293,17 +293,20 @@ class VorbisComment(MetaData):
     def converted(cls, metadata):
         """Converts metadata from another class to VorbisComment"""
 
-        if ((metadata is None) or (isinstance(metadata, VorbisComment))):
-            return metadata
+        if (metadata is None):
+            return None
+        elif (isinstance(metadata, VorbisComment)):
+            return cls(metadata.comment_strings[:],
+                       metadata.vendor_string)
         elif (metadata.__class__.__name__ == 'FlacMetaData'):
             if (metadata.has_block(4)):
                 vorbis_comment = metadata.get_block(4)
-                return cls(vorbis_comment.comment_strings,
+                return cls(vorbis_comment.comment_strings[:],
                            vorbis_comment.vendor_string)
             else:
                 return cls([], u"Python Audio Tools %s" % (VERSION))
         elif (metadata.__class__.__name__ == 'Flac_VORBISCOMMENT'):
-            return cls(metadata.comment_strings,
+            return cls(metadata.comment_strings[:],
                        metadata.vendor_string)
         else:
             comment_strings = []
