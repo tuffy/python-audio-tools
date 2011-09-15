@@ -694,7 +694,7 @@ BitstreamReader_dealloc(bitstream_BitstreamReader *self)
             br_pop_callback(self->bitstream, &callback);
             Py_DECREF(callback.data);
         }
-        br_free(self->bitstream);
+        self->bitstream->free(self->bitstream);
     }
     Py_XDECREF(self->file_obj);
     self->file_obj = NULL;
@@ -897,7 +897,7 @@ BitstreamWriter_dealloc(bitstream_BitstreamWriter *self)
 {
     if (self->bitstream != NULL) {
         self->bitstream->flush(self->bitstream);
-        bw_free(self->bitstream);
+        self->bitstream->free(self->bitstream);
     }
 
     if (self->file_obj != NULL) {

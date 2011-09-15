@@ -157,7 +157,7 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
 
     /*close and free allocated files/buffers*/
     pcmr_close(reader);
-    bw_free(stream);
+    stream->free(stream);
     iaa_free(&samples);
     options.best_frame->close(options.best_frame);
     options.current_frame->close(options.current_frame);
@@ -171,7 +171,7 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
     options.best_frame->close(options.best_frame);
     options.current_frame->close(options.current_frame);
     pcmr_close(reader);
-    bw_free(stream);
+    stream->free(stream);
     iaa_free(&samples);
     alac_log_free(&encode_log);
     return NULL;

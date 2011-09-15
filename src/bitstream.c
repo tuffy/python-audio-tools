@@ -53,6 +53,7 @@ const unsigned int read_limited_unary_table_le[0x200][18] =
 #include "read_limited_unary_table_le.h"
     ;
 
+
 BitstreamReader*
 br_open(FILE *f, bs_endianness endianness)
 {
@@ -98,8 +99,9 @@ br_open(FILE *f, bs_endianness endianness)
     bs->read_bytes = br_read_bytes_f;
     bs->parse = br_parse;
     bs->substream_append = br_substream_append_f;
+    bs->close_substream = br_close_substream_f;
+    bs->free = br_free_f;
     bs->close = br_close;
-    bs->close_stream = br_close_stream_f;
     bs->mark = br_mark_f;
     bs->rewind = br_rewind_f;
     bs->unmark = br_unmark_f;
@@ -107,189 +109,117 @@ br_open(FILE *f, bs_endianness endianness)
     return bs;
 }
 
-void
-br_free(BitstreamReader *bs)
-{
-    struct bs_callback *c_node;
-    struct bs_callback *c_next;
-    struct bs_exception *e_node;
-    struct bs_exception *e_next;
-    struct br_mark *m_node;
-    struct br_mark *m_next;
-
-    if (bs == NULL)
-        return;
-
-    for (c_node = bs->callbacks; c_node != NULL; c_node = c_next) {
-        c_next = c_node->next;
-        free(c_node);
-    }
-    for (c_node = bs->callbacks_used; c_node != NULL; c_node = c_next) {
-        c_next = c_node->next;
-        free(c_node);
-    }
-
-    if (bs->exceptions != NULL) {
-        fprintf(stderr, "Warning: leftover etry entries on stack\n");
-    }
-    for (e_node = bs->exceptions; e_node != NULL; e_node = e_next) {
-        e_next = e_node->next;
-        free(e_node);
-    }
-
-    for (e_node = bs->exceptions_used; e_node != NULL; e_node = e_next) {
-        e_next = e_node->next;
-        free(e_node);
-    }
-
-    if (bs->marks != NULL) {
-        fprintf(stderr, "Warning: leftover marks on stack\n");
-    }
-    for (m_node = bs->marks; m_node != NULL; m_node = m_next) {
-        m_next = m_node->next;
-        free(m_node);
-    }
-    for (m_node = bs->marks_used; m_node != NULL; m_node = m_next) {
-        m_next = m_node->next;
-        free(m_node);
-    }
-
 #ifndef STANDALONE
-    if (bs->type == BR_PYTHON) {
-        py_free_r(bs->input.python);
+BitstreamReader*
+br_open_python(PyObject *reader, bs_endianness endianness,
+               unsigned int buffer_size)
+{
+    BitstreamReader *bs = malloc(sizeof(BitstreamReader));
+    bs->type = BR_PYTHON;
+    bs->input.python = py_open_r(reader, buffer_size);
+    bs->state = 0;
+    bs->callbacks = NULL;
+    bs->exceptions = NULL;
+    bs->marks = NULL;
+    bs->callbacks_used = NULL;
+    bs->exceptions_used = NULL;
+    bs->marks_used = NULL;
+
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        bs->read = br_read_bits_p_be;
+        bs->read_signed = br_read_signed_bits_be;
+        bs->read_64 = br_read_bits64_p_be;
+        bs->read_signed_64 = br_read_signed_bits64_be;
+        bs->skip = br_skip_bits_p_be;
+        bs->unread = br_unread_bit_be;
+        bs->read_unary = br_read_unary_p_be;
+        bs->read_limited_unary = br_read_limited_unary_p_be;
+        bs->set_endianness = br_set_endianness_p_be;
+        break;
+    case BS_LITTLE_ENDIAN:
+        bs->read = br_read_bits_p_le;
+        bs->read_signed = br_read_signed_bits_le;
+        bs->read_64 = br_read_bits64_p_le;
+        bs->read_signed_64 = br_read_signed_bits64_le;
+        bs->skip = br_skip_bits_p_le;
+        bs->unread = br_unread_bit_le;
+        bs->read_unary = br_read_unary_p_le;
+        bs->read_limited_unary = br_read_limited_unary_p_le;
+        bs->set_endianness = br_set_endianness_p_le;
+        break;
     }
+
+    bs->skip_bytes = br_skip_bytes;
+    bs->byte_align = br_byte_align;
+    bs->read_huffman_code = br_read_huffman_code_p;
+    bs->read_bytes = br_read_bytes_p;
+    bs->parse = br_parse;
+    bs->substream_append = br_substream_append_p;
+    bs->close_substream = br_close_substream_p;
+    bs->free = br_free_p;
+    bs->close = br_close;
+    bs->mark = br_mark_p;
+    bs->rewind = br_rewind_p;
+    bs->unmark = br_unmark_p;
+
+    return bs;
+}
 #endif
 
-    free(bs);
-}
-
-void
-br_close(BitstreamReader *bs)
+struct BitstreamReader_s*
+br_substream_new(bs_endianness endianness)
 {
-    bs->close_stream(bs);
-    br_free(bs);
-}
+    BitstreamReader *bs = malloc(sizeof(BitstreamReader));
+    bs->type = BR_SUBSTREAM;
+    bs->input.substream = buf_new();
+    bs->state = 0;
+    bs->callbacks = NULL;
+    bs->exceptions = NULL;
+    bs->marks = NULL;
+    bs->callbacks_used = NULL;
+    bs->exceptions_used = NULL;
+    bs->marks_used = NULL;
 
-void
-br_noop(BitstreamReader *bs)
-{
-    return;
-}
-
-void
-br_close_stream_f(BitstreamReader *bs)
-{
-    if (bs == NULL)
-        return;
-    else if (bs->input.file != NULL) {
-        fclose(bs->input.file);
-        bs->close_stream = br_noop;
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        bs->read = br_read_bits_s_be;
+        bs->read_signed = br_read_signed_bits_be;
+        bs->read_64 = br_read_bits64_s_be;
+        bs->read_signed_64 = br_read_signed_bits64_be;
+        bs->skip = br_skip_bits_s_be;
+        bs->unread = br_unread_bit_be;
+        bs->read_unary = br_read_unary_s_be;
+        bs->read_limited_unary = br_read_limited_unary_s_be;
+        bs->set_endianness = br_set_endianness_s_be;
+        break;
+    case BS_LITTLE_ENDIAN:
+        bs->read = br_read_bits_s_le;
+        bs->read_signed = br_read_signed_bits_le;
+        bs->read_64 = br_read_bits64_s_le;
+        bs->read_signed_64 = br_read_signed_bits64_le;
+        bs->skip = br_skip_bits_s_le;
+        bs->unread = br_unread_bit_le;
+        bs->read_unary = br_read_unary_s_le;
+        bs->read_limited_unary = br_read_limited_unary_s_le;
+        bs->set_endianness = br_set_endianness_s_le;
+        break;
     }
-}
 
-void
-br_add_callback(BitstreamReader *bs, bs_callback_func callback, void *data)
-{
-    struct bs_callback *callback_node;
+    bs->skip_bytes = br_skip_bytes;
+    bs->byte_align = br_byte_align;
+    bs->read_huffman_code = br_read_huffman_code_s;
+    bs->read_bytes = br_read_bytes_s;
+    bs->parse = br_parse;
+    bs->substream_append = br_substream_append_s;
+    bs->close_substream = br_close_substream_s;
+    bs->free = br_free_s;
+    bs->close = br_close;
+    bs->mark = br_mark_s;
+    bs->rewind = br_rewind_s;
+    bs->unmark = br_unmark_s;
 
-    if (bs->callbacks_used == NULL)
-        callback_node = malloc(sizeof(struct bs_callback));
-    else {
-        callback_node = bs->callbacks_used;
-        bs->callbacks_used = bs->callbacks_used->next;
-    }
-    callback_node->callback = callback;
-    callback_node->data = data;
-    callback_node->next = bs->callbacks;
-    bs->callbacks = callback_node;
-}
-
-void
-br_call_callbacks(BitstreamReader *bs, uint8_t byte)
-{
-    struct bs_callback *callback;
-    for (callback = bs->callbacks;
-         callback != NULL;
-         callback = callback->next)
-        callback->callback(byte, callback->data);
-}
-
-void
-br_push_callback(BitstreamReader *bs, struct bs_callback *callback)
-{
-    struct bs_callback *callback_node;
-
-    if (callback != NULL) {
-        if (bs->callbacks_used == NULL)
-            callback_node = malloc(sizeof(struct bs_callback));
-        else {
-            callback_node = bs->callbacks_used;
-            bs->callbacks_used = bs->callbacks_used->next;
-        }
-        callback_node->callback = callback->callback;
-        callback_node->data = callback->data;
-        callback_node->next = bs->callbacks;
-        bs->callbacks = callback_node;
-    }
-}
-
-void
-br_pop_callback(BitstreamReader *bs, struct bs_callback *callback)
-{
-    struct bs_callback *c_node = bs->callbacks;
-    if (c_node != NULL) {
-        if (callback != NULL) {
-            callback->callback = c_node->callback;
-            callback->data = c_node->data;
-            callback->next = NULL;
-        }
-        bs->callbacks = c_node->next;
-        c_node->next = bs->callbacks_used;
-        bs->callbacks_used = c_node;
-    } else {
-        fprintf(stderr, "warning: no callbacks available to pop\n");
-    }
-}
-
-
-void
-br_abort(BitstreamReader *bs)
-{
-    if (bs->exceptions != NULL) {
-        longjmp(bs->exceptions->env, 1);
-    } else {
-        fprintf(stderr, "EOF encountered, aborting\n");
-        abort();
-    }
-}
-
-jmp_buf*
-br_try(BitstreamReader *bs)
-{
-    struct bs_exception *node;
-
-    if (bs->exceptions_used == NULL)
-        node = malloc(sizeof(struct bs_exception));
-    else {
-        node = bs->exceptions_used;
-        bs->exceptions_used = bs->exceptions_used->next;
-    }
-    node->next = bs->exceptions;
-    bs->exceptions = node;
-    return &(node->env);
-}
-
-void
-br_etry(BitstreamReader *bs)
-{
-    struct bs_exception *node = bs->exceptions;
-    if (node != NULL) {
-        bs->exceptions = node->next;
-        node->next = bs->exceptions_used;
-        bs->exceptions_used = node;
-    } else {
-        fprintf(stderr, "Warning: trying to pop from empty etry stack\n");
-    }
+    return bs;
 }
 
 #define BUF_REMAINING_BYTES(b) ((b)->buffer_total_size - (b)->buffer_position)
@@ -389,114 +319,6 @@ br_etry(BitstreamReader *bs)
         return accumulator;                                             \
     }
 
-#define FUNC_READ_UNARY(FUNC_NAME, BYTE_FUNC, BYTE_FUNC_ARG, UNARY_TABLE) \
-    unsigned int                                                        \
-    FUNC_NAME(BitstreamReader* bs, int stop_bit)                        \
-    {                                                                   \
-        int context = bs->state;                                        \
-        unsigned int result;                                            \
-        struct bs_callback* callback;                                   \
-        int byte;                                                       \
-        unsigned int accumulator = 0;                                   \
-                                                                        \
-        do {                                                            \
-            if (context == 0) {                                         \
-                if ((byte = BYTE_FUNC(BYTE_FUNC_ARG)) == EOF)           \
-                    br_abort(bs);                                       \
-                context = NEW_CONTEXT(byte);                            \
-                for (callback = bs->callbacks;                          \
-                     callback != NULL;                                  \
-                     callback = callback->next)                         \
-                    callback->callback((uint8_t)byte, callback->data);  \
-            }                                                           \
-                                                                        \
-            result = UNARY_TABLE[context][stop_bit];                    \
-                                                                        \
-            accumulator += READ_UNARY_OUTPUT_BITS(result);              \
-                                                                        \
-            context = NEXT_CONTEXT(result);                             \
-        } while (READ_UNARY_CONTINUE(result));                          \
-                                                                        \
-        bs->state = context;                                            \
-        return accumulator;                                             \
-    }
-
-#define FUNC_READ_LIMITED_UNARY(FUNC_NAME, BYTE_FUNC, BYTE_FUNC_ARG, UNARY_TABLE) \
-    int                                                                 \
-    FUNC_NAME(BitstreamReader* bs, int stop_bit, int maximum_bits)      \
-    {                                                                   \
-        int context = bs->state;                                        \
-        unsigned int result;                                            \
-        unsigned int value;                                             \
-        struct bs_callback* callback;                                   \
-        int byte;                                                       \
-        int accumulator = 0;                                            \
-        stop_bit *= 9;                                                  \
-                                                                        \
-        assert(maximum_bits > 0);                                       \
-                                                                        \
-        do {                                                            \
-            if (context == 0) {                                         \
-                if ((byte = BYTE_FUNC(BYTE_FUNC_ARG)) == EOF)           \
-                    br_abort(bs);                                       \
-                context = NEW_CONTEXT(byte);                            \
-                for (callback = bs->callbacks;                          \
-                     callback != NULL;                                  \
-                     callback = callback->next)                         \
-                    callback->callback((uint8_t)byte, callback->data);  \
-            }                                                           \
-                                                                        \
-            result = UNARY_TABLE[context][stop_bit +                    \
-                                          MIN(maximum_bits, 8)];        \
-                                                                        \
-            value = READ_UNARY_OUTPUT_BITS(result);                     \
-                                                                        \
-            accumulator += value;                                       \
-            maximum_bits -= value;                                      \
-                                                                        \
-            context = NEXT_CONTEXT(result);                             \
-        } while (READ_UNARY_CONTINUE(result));                          \
-                                                                        \
-        bs->state = context;                                            \
-                                                                        \
-        if (READ_UNARY_LIMIT_REACHED(result)) {                         \
-            /*maximum_bits reached*/                                    \
-            return -1;                                                  \
-        } else {                                                        \
-            /*stop bit reached*/                                        \
-            return accumulator;                                         \
-        }                                                               \
-    }
-
-#define FUNC_READ_HUFFMAN_CODE(FUNC_NAME, BYTE_FUNC, BYTE_FUNC_ARG) \
-    int                                                             \
-    FUNC_NAME(BitstreamReader *bs,                                  \
-              struct br_huffman_table table[][0x200])               \
-    {                                                               \
-        struct br_huffman_table entry;                              \
-        int node = 0;                                               \
-        int context = bs->state;                                    \
-        struct bs_callback* callback;                               \
-        int byte;                                                   \
-                                                                    \
-        entry = table[node][context];                               \
-        while (READ_HUFFMAN_CONTINUE(entry.context_node)) {         \
-            if ((byte = BYTE_FUNC(BYTE_FUNC_ARG)) == EOF)           \
-                br_abort(bs);                                       \
-            context = NEW_CONTEXT(byte);                            \
-                                                                    \
-            for (callback = bs->callbacks;                              \
-                 callback != NULL;                                      \
-                 callback = callback->next)                             \
-                callback->callback((uint8_t)byte, callback->data);      \
-                                                                        \
-            entry = table[READ_HUFFMAN_NEXT_NODE(entry.context_node)][context]; \
-        }                                                               \
-                                                                        \
-        bs->state = NEXT_CONTEXT(entry.context_node);                   \
-        return entry.value;                                             \
-    }
-
 FUNC_READ_BITS_BE(br_read_bits_f_be,
                   unsigned int, fgetc, bs->input.file)
 FUNC_READ_BITS_LE(br_read_bits_f_le,
@@ -505,62 +327,18 @@ FUNC_READ_BITS_BE(br_read_bits_s_be,
                   unsigned int, buf_getc, bs->input.substream)
 FUNC_READ_BITS_LE(br_read_bits_s_le,
                   unsigned int, buf_getc, bs->input.substream)
-
 #ifndef STANDALONE
 FUNC_READ_BITS_BE(br_read_bits_p_be,
                   unsigned int, py_getc, bs->input.python)
 FUNC_READ_BITS_LE(br_read_bits_p_le,
                   unsigned int, py_getc, bs->input.python)
-FUNC_READ_BITS_BE(br_read_bits64_p_be,
-                  uint64_t, py_getc, bs->input.python)
-FUNC_READ_BITS_LE(br_read_bits64_p_le,
-                  uint64_t, py_getc, bs->input.python)
-
-FUNC_READ_UNARY(br_read_unary_p_be,
-                py_getc, bs->input.python, read_unary_table)
-FUNC_READ_UNARY(br_read_unary_p_le,
-                py_getc, bs->input.python, read_unary_table_le)
-
-FUNC_READ_LIMITED_UNARY(br_read_limited_unary_p_be,
-                        py_getc, bs->input.python,
-                        read_limited_unary_table)
-FUNC_READ_LIMITED_UNARY(br_read_limited_unary_p_le,
-                        py_getc, bs->input.python,
-                        read_limited_unary_table_le)
-FUNC_READ_HUFFMAN_CODE(br_read_huffman_code_p, py_getc, bs->input.python)
 #endif
-
-FUNC_READ_BITS_BE(br_read_bits64_f_be,
-                  uint64_t, fgetc, bs->input.file)
-FUNC_READ_BITS_LE(br_read_bits64_f_le,
-                  uint64_t, fgetc, bs->input.file)
-FUNC_READ_BITS_BE(br_read_bits64_s_be,
-                  uint64_t, buf_getc, bs->input.substream)
-FUNC_READ_BITS_LE(br_read_bits64_s_le,
-                  uint64_t, buf_getc, bs->input.substream)
-
-FUNC_READ_UNARY(br_read_unary_f_be,
-                fgetc, bs->input.file, read_unary_table)
-FUNC_READ_UNARY(br_read_unary_f_le,
-                fgetc, bs->input.file, read_unary_table_le)
-FUNC_READ_UNARY(br_read_unary_s_be,
-                buf_getc, bs->input.substream, read_unary_table)
-FUNC_READ_UNARY(br_read_unary_s_le,
-                buf_getc, bs->input.substream, read_unary_table_le)
-
-FUNC_READ_LIMITED_UNARY(br_read_limited_unary_f_be,
-                        fgetc, bs->input.file, read_limited_unary_table)
-FUNC_READ_LIMITED_UNARY(br_read_limited_unary_f_le,
-                        fgetc, bs->input.file, read_limited_unary_table_le)
-FUNC_READ_LIMITED_UNARY(br_read_limited_unary_s_be,
-                        buf_getc, bs->input.substream,
-                        read_limited_unary_table)
-FUNC_READ_LIMITED_UNARY(br_read_limited_unary_s_le,
-                        buf_getc, bs->input.substream,
-                        read_limited_unary_table_le)
-
-FUNC_READ_HUFFMAN_CODE(br_read_huffman_code_f, fgetc, bs->input.file)
-FUNC_READ_HUFFMAN_CODE(br_read_huffman_code_s, buf_getc, bs->input.substream)
+unsigned int
+br_read_bits_c(BitstreamReader* bs, unsigned int count)
+{
+    br_abort(bs);
+    return 0;
+}
 
 
 int
@@ -583,6 +361,28 @@ br_read_signed_bits_le(BitstreamReader* bs, unsigned int count)
     } else {
         return unsigned_value - (1 << (count - 1));
     }
+}
+
+
+FUNC_READ_BITS_BE(br_read_bits64_f_be,
+                  uint64_t, fgetc, bs->input.file)
+FUNC_READ_BITS_LE(br_read_bits64_f_le,
+                  uint64_t, fgetc, bs->input.file)
+FUNC_READ_BITS_BE(br_read_bits64_s_be,
+                  uint64_t, buf_getc, bs->input.substream)
+FUNC_READ_BITS_LE(br_read_bits64_s_le,
+                  uint64_t, buf_getc, bs->input.substream)
+#ifndef STANDALONE
+FUNC_READ_BITS_BE(br_read_bits64_p_be,
+                  uint64_t, py_getc, bs->input.python)
+FUNC_READ_BITS_LE(br_read_bits64_p_le,
+                  uint64_t, py_getc, bs->input.python)
+#endif
+uint64_t
+br_read_bits64_c(BitstreamReader* bs, unsigned int count)
+{
+    br_abort(bs);
+    return 0;
 }
 
 int64_t
@@ -868,6 +668,12 @@ br_skip_bits_p_le(BitstreamReader* bs, unsigned int count)
 }
 #endif
 
+void
+br_skip_bits_c(BitstreamReader* bs, unsigned int count)
+{
+    br_abort(bs);
+}
+
 
 void
 br_skip_bytes(BitstreamReader* bs, unsigned int count)
@@ -900,9 +706,193 @@ br_unread_bit_le(BitstreamReader* bs, int unread_bit)
 }
 
 void
+br_unread_bit_c(BitstreamReader* bs, int unread_bit)
+{
+    return;
+}
+
+
+#define FUNC_READ_UNARY(FUNC_NAME, BYTE_FUNC, BYTE_FUNC_ARG, UNARY_TABLE) \
+    unsigned int                                                        \
+    FUNC_NAME(BitstreamReader* bs, int stop_bit)                        \
+    {                                                                   \
+        int context = bs->state;                                        \
+        unsigned int result;                                            \
+        struct bs_callback* callback;                                   \
+        int byte;                                                       \
+        unsigned int accumulator = 0;                                   \
+                                                                        \
+        do {                                                            \
+            if (context == 0) {                                         \
+                if ((byte = BYTE_FUNC(BYTE_FUNC_ARG)) == EOF)           \
+                    br_abort(bs);                                       \
+                context = NEW_CONTEXT(byte);                            \
+                for (callback = bs->callbacks;                          \
+                     callback != NULL;                                  \
+                     callback = callback->next)                         \
+                    callback->callback((uint8_t)byte, callback->data);  \
+            }                                                           \
+                                                                        \
+            result = UNARY_TABLE[context][stop_bit];                    \
+                                                                        \
+            accumulator += READ_UNARY_OUTPUT_BITS(result);              \
+                                                                        \
+            context = NEXT_CONTEXT(result);                             \
+        } while (READ_UNARY_CONTINUE(result));                          \
+                                                                        \
+        bs->state = context;                                            \
+        return accumulator;                                             \
+    }
+
+FUNC_READ_UNARY(br_read_unary_f_be,
+                fgetc, bs->input.file, read_unary_table)
+FUNC_READ_UNARY(br_read_unary_f_le,
+                fgetc, bs->input.file, read_unary_table_le)
+FUNC_READ_UNARY(br_read_unary_s_be,
+                buf_getc, bs->input.substream, read_unary_table)
+FUNC_READ_UNARY(br_read_unary_s_le,
+                buf_getc, bs->input.substream, read_unary_table_le)
+#ifndef STANDALONE
+FUNC_READ_UNARY(br_read_unary_p_be,
+                py_getc, bs->input.python, read_unary_table)
+FUNC_READ_UNARY(br_read_unary_p_le,
+                py_getc, bs->input.python, read_unary_table_le)
+#endif
+unsigned int
+br_read_unary_c(BitstreamReader* bs, int stop_bit)
+{
+    br_abort(bs);
+    return 0;
+}
+
+
+#define FUNC_READ_LIMITED_UNARY(FUNC_NAME, BYTE_FUNC, BYTE_FUNC_ARG, UNARY_TABLE) \
+    int                                                                 \
+    FUNC_NAME(BitstreamReader* bs, int stop_bit, int maximum_bits)      \
+    {                                                                   \
+        int context = bs->state;                                        \
+        unsigned int result;                                            \
+        unsigned int value;                                             \
+        struct bs_callback* callback;                                   \
+        int byte;                                                       \
+        int accumulator = 0;                                            \
+        stop_bit *= 9;                                                  \
+                                                                        \
+        assert(maximum_bits > 0);                                       \
+                                                                        \
+        do {                                                            \
+            if (context == 0) {                                         \
+                if ((byte = BYTE_FUNC(BYTE_FUNC_ARG)) == EOF)           \
+                    br_abort(bs);                                       \
+                context = NEW_CONTEXT(byte);                            \
+                for (callback = bs->callbacks;                          \
+                     callback != NULL;                                  \
+                     callback = callback->next)                         \
+                    callback->callback((uint8_t)byte, callback->data);  \
+            }                                                           \
+                                                                        \
+            result = UNARY_TABLE[context][stop_bit +                    \
+                                          MIN(maximum_bits, 8)];        \
+                                                                        \
+            value = READ_UNARY_OUTPUT_BITS(result);                     \
+                                                                        \
+            accumulator += value;                                       \
+            maximum_bits -= value;                                      \
+                                                                        \
+            context = NEXT_CONTEXT(result);                             \
+        } while (READ_UNARY_CONTINUE(result));                          \
+                                                                        \
+        bs->state = context;                                            \
+                                                                        \
+        if (READ_UNARY_LIMIT_REACHED(result)) {                         \
+            /*maximum_bits reached*/                                    \
+            return -1;                                                  \
+        } else {                                                        \
+            /*stop bit reached*/                                        \
+            return accumulator;                                         \
+        }                                                               \
+    }
+
+FUNC_READ_LIMITED_UNARY(br_read_limited_unary_f_be,
+                        fgetc, bs->input.file, read_limited_unary_table)
+FUNC_READ_LIMITED_UNARY(br_read_limited_unary_f_le,
+                        fgetc, bs->input.file, read_limited_unary_table_le)
+FUNC_READ_LIMITED_UNARY(br_read_limited_unary_s_be,
+                        buf_getc, bs->input.substream,
+                        read_limited_unary_table)
+FUNC_READ_LIMITED_UNARY(br_read_limited_unary_s_le,
+                        buf_getc, bs->input.substream,
+                        read_limited_unary_table_le)
+#ifndef STANDALONE
+FUNC_READ_LIMITED_UNARY(br_read_limited_unary_p_be,
+                        py_getc, bs->input.python,
+                        read_limited_unary_table)
+FUNC_READ_LIMITED_UNARY(br_read_limited_unary_p_le,
+                        py_getc, bs->input.python,
+                        read_limited_unary_table_le)
+#endif
+int
+br_read_limited_unary_c(BitstreamReader* bs, int stop_bit, int maximum_bits)
+{
+    br_abort(bs);
+    return 0;
+}
+
+
+#define FUNC_READ_HUFFMAN_CODE(FUNC_NAME, BYTE_FUNC, BYTE_FUNC_ARG) \
+    int                                                             \
+    FUNC_NAME(BitstreamReader *bs,                                  \
+              struct br_huffman_table table[][0x200])               \
+    {                                                               \
+        struct br_huffman_table entry;                              \
+        int node = 0;                                               \
+        int context = bs->state;                                    \
+        struct bs_callback* callback;                               \
+        int byte;                                                   \
+                                                                    \
+        entry = table[node][context];                               \
+        while (READ_HUFFMAN_CONTINUE(entry.context_node)) {         \
+            if ((byte = BYTE_FUNC(BYTE_FUNC_ARG)) == EOF)           \
+                br_abort(bs);                                       \
+            context = NEW_CONTEXT(byte);                            \
+                                                                    \
+            for (callback = bs->callbacks;                              \
+                 callback != NULL;                                      \
+                 callback = callback->next)                             \
+                callback->callback((uint8_t)byte, callback->data);      \
+                                                                        \
+            entry = table[READ_HUFFMAN_NEXT_NODE(entry.context_node)][context]; \
+        }                                                               \
+                                                                        \
+        bs->state = NEXT_CONTEXT(entry.context_node);                   \
+        return entry.value;                                             \
+    }
+
+FUNC_READ_HUFFMAN_CODE(br_read_huffman_code_f, fgetc, bs->input.file)
+FUNC_READ_HUFFMAN_CODE(br_read_huffman_code_s, buf_getc, bs->input.substream)
+#ifndef STANDALONE
+FUNC_READ_HUFFMAN_CODE(br_read_huffman_code_p, py_getc, bs->input.python)
+#endif
+int
+br_read_huffman_code_c(BitstreamReader *bs,
+                       struct br_huffman_table table[][0x200])
+{
+    br_abort(bs);
+    return 0;
+}
+
+void
+br_byte_align(BitstreamReader* bs)
+{
+    bs->state = 0;
+}
+
+
+void
 br_read_bytes_f(struct BitstreamReader_s* bs,
                 uint8_t* bytes,
-                unsigned int byte_count) {
+                unsigned int byte_count)
+{
     unsigned int i;
     struct bs_callback* callback;
 
@@ -933,7 +923,8 @@ br_read_bytes_f(struct BitstreamReader_s* bs,
 void
 br_read_bytes_s(struct BitstreamReader_s* bs,
                 uint8_t* bytes,
-                unsigned int byte_count) {
+                unsigned int byte_count)
+{
     unsigned int i;
     struct bs_buffer* buffer;
     struct bs_callback* callback;
@@ -976,7 +967,8 @@ br_read_bytes_s(struct BitstreamReader_s* bs,
 void
 br_read_bytes_p(struct BitstreamReader_s* bs,
                 uint8_t* bytes,
-                unsigned int byte_count) {
+                unsigned int byte_count)
+{
     unsigned int i;
 
     /*this is the unoptimized version
@@ -986,6 +978,65 @@ br_read_bytes_p(struct BitstreamReader_s* bs,
         bytes[i] = bs->read(bs, 8);
 }
 #endif
+
+void
+br_read_bytes_c(struct BitstreamReader_s* bs,
+                uint8_t* bytes,
+                unsigned int byte_count)
+{
+    br_abort(bs);
+}
+
+
+void
+br_parse(struct BitstreamReader_s* stream, char* format, ...)
+{
+    va_list ap;
+    char* s = format;
+    unsigned int size;
+    bs_instruction type;
+    unsigned int* _unsigned;
+    int* _signed;
+    uint64_t* _unsigned64;
+    int64_t* _signed64;
+    uint8_t* _bytes;
+
+    va_start(ap, format);
+    while (!bs_parse_format(&s, &size, &type)) {
+        switch (type) {
+        case BS_INST_UNSIGNED:
+            _unsigned = va_arg(ap, unsigned int*);
+            *_unsigned = stream->read(stream, size);
+            break;
+        case BS_INST_SIGNED:
+            _signed = va_arg(ap, int*);
+            *_signed = stream->read_signed(stream, size);
+            break;
+        case BS_INST_UNSIGNED64:
+            _unsigned64 = va_arg(ap, uint64_t*);
+            *_unsigned64 = stream->read_64(stream, size);
+            break;
+        case BS_INST_SIGNED64:
+            _signed64 = va_arg(ap, int64_t*);
+            *_signed64 = stream->read_signed_64(stream, size);
+            break;
+        case BS_INST_SKIP:
+            stream->skip(stream, size);
+            break;
+        case BS_INST_SKIP_BYTES:
+            stream->skip_bytes(stream, size);
+            break;
+        case BS_INST_BYTES:
+            _bytes = va_arg(ap, uint8_t*);
+            stream->read_bytes(stream, _bytes, size);
+            break;
+        case BS_INST_ALIGN:
+            stream->byte_align(stream);
+            break;
+        }
+    }
+    va_end(ap);
+}
 
 
 void
@@ -1093,6 +1144,169 @@ br_set_endianness_p_le(BitstreamReader *bs, bs_endianness endianness)
 #endif
 
 void
+br_set_endianness_c(BitstreamReader *bs, bs_endianness endianness)
+{
+    return;
+}
+
+
+static inline void
+br_close_methods(BitstreamReader* bs)
+{
+    /*swap read methods with closed methods that generate read errors*/
+    bs->read = br_read_bits_c;
+    bs->read_64 = br_read_bits64_c;
+    bs->skip = br_skip_bits_c;
+    bs->unread = br_unread_bit_c;
+    bs->read_unary = br_read_unary_c;
+    bs->read_limited_unary = br_read_limited_unary_c;
+    bs->read_huffman_code = br_read_huffman_code_c;
+    bs->read_bytes = br_read_bytes_c;
+    bs->set_endianness = br_set_endianness_c;
+    bs->close_substream = br_close_substream_c;
+    bs->mark = br_mark_c;
+    bs->rewind = br_rewind_c;
+    bs->unmark = br_unmark_c;
+    bs->substream_append = br_substream_append_c;
+}
+
+void
+br_close_substream_f(BitstreamReader* bs)
+{
+    /*perform fclose on FILE object*/
+    fclose(bs->input.file);
+
+    /*swap read methods with closed methods*/
+    br_close_methods(bs);
+}
+
+void
+br_close_substream_s(BitstreamReader* bs)
+{
+    /*swap read methods with closed methods*/
+    br_close_methods(bs);
+}
+
+#ifndef STANDALONE
+void
+br_close_substream_p(BitstreamReader* bs) {
+    PyObject* close_result;
+
+    /*call .close() method on Python object*/
+    close_result = PyObject_CallMethod(bs->input.python->reader_obj,
+                                       "close",
+                                       NULL);
+    if (close_result != NULL)
+        Py_DECREF(close_result);
+    else {
+        /*some exception occurred when calling close()
+          so simply print it out and continue on
+          since there's little we can do about it*/
+        PyErr_PrintEx(1);
+    }
+
+    /*swap read methods with closed methods*/
+    br_close_methods(bs);
+}
+#endif
+
+void
+br_close_substream_c(BitstreamReader* bs)
+{
+    return;
+}
+
+
+void
+br_free_f(BitstreamReader* bs)
+{
+    struct bs_callback *c_node;
+    struct bs_callback *c_next;
+    struct bs_exception *e_node;
+    struct bs_exception *e_next;
+    struct br_mark *m_node;
+    struct br_mark *m_next;
+
+    /*deallocate callbacks*/
+    for (c_node = bs->callbacks; c_node != NULL; c_node = c_next) {
+        c_next = c_node->next;
+        free(c_node);
+    }
+
+    /*deallocate used callbacks*/
+    for (c_node = bs->callbacks_used; c_node != NULL; c_node = c_next) {
+        c_next = c_node->next;
+        free(c_node);
+    }
+
+    /*deallocate exceptions*/
+    if (bs->exceptions != NULL) {
+        fprintf(stderr, "Warning: leftover etry entries on stack\n");
+    }
+    for (e_node = bs->exceptions; e_node != NULL; e_node = e_next) {
+        e_next = e_node->next;
+        free(e_node);
+    }
+
+    /*deallocate used exceptions*/
+    for (e_node = bs->exceptions_used; e_node != NULL; e_node = e_next) {
+        e_next = e_node->next;
+        free(e_node);
+    }
+
+    /*dealloate marks*/
+    if (bs->marks != NULL) {
+        fprintf(stderr, "Warning: leftover marks on stack\n");
+    }
+    for (m_node = bs->marks; m_node != NULL; m_node = m_next) {
+        m_next = m_node->next;
+        free(m_node);
+    }
+
+    /*deallocate used marks*/
+    for (m_node = bs->marks_used; m_node != NULL; m_node = m_next) {
+        m_next = m_node->next;
+        free(m_node);
+    }
+
+    /*deallocate the struct itself*/
+    free(bs);
+}
+
+void
+br_free_s(BitstreamReader* bs)
+{
+    /*deallocate buffer*/
+    buf_close(bs->input.substream);
+
+    /*perform additional deallocations on rest of struct*/
+    br_free_f(bs);
+}
+
+#ifndef STANDALONE
+void
+br_free_p(BitstreamReader* bs)
+{
+    /*decref Python object and remove buffer*/
+    py_close_r(bs->input.python);
+
+    /*perform additional deallocations on rest of struct*/
+    br_free_f(bs);
+}
+#endif
+
+
+
+void
+br_close(BitstreamReader* bs)
+{
+    bs->close_substream(bs);
+    bs->free(bs);
+}
+
+
+
+void
 br_mark_f(BitstreamReader* bs)
 {
     struct br_mark* mark;
@@ -1150,6 +1364,11 @@ br_mark_p(BitstreamReader* bs)
 }
 #endif
 
+void
+br_mark_c(BitstreamReader* bs)
+{
+    return;
+}
 
 void
 br_rewind_f(BitstreamReader* bs)
@@ -1186,6 +1405,11 @@ br_rewind_p(BitstreamReader* bs)
 }
 #endif
 
+void
+br_rewind_c(BitstreamReader* bs)
+{
+    return;
+}
 
 void
 br_unmark_f(BitstreamReader* bs)
@@ -1218,20 +1442,1361 @@ br_unmark_p(BitstreamReader* bs)
 }
 #endif
 
-
 void
-br_byte_align(BitstreamReader* bs)
+br_unmark_c(BitstreamReader* bs)
 {
-    bs->state = 0;
+    return;
 }
 
 
-/*******************************************
- substream handlers
+void
+br_substream_append_f(struct BitstreamReader_s *stream,
+                      struct BitstreamReader_s *substream,
+                      uint32_t bytes)
+{
+    uint8_t* extended_buffer;
+    struct bs_callback *callback;
+    uint32_t i;
 
- for pulling smaller pieces out of a larger stream
- and processing them separately
- *******************************************/
+    /*byte align the input stream*/
+    stream->state = 0;
+
+    /*extend the output stream's current buffer to fit additional bytes*/
+    extended_buffer = buf_extend(substream->input.substream, bytes);
+
+    /*read input stream to extended buffer*/
+    if (fread(extended_buffer, sizeof(uint8_t), bytes,
+              stream->input.file) != bytes)
+        /*abort if the amount of read bytes is insufficient*/
+        br_abort(stream);
+
+    /*perform callbacks on bytes in extended buffer*/
+    for (callback = stream->callbacks;
+         callback != NULL;
+         callback = callback->next) {
+        for (i = 0; i < bytes; i++)
+            callback->callback(extended_buffer[i], callback->data);
+    }
+
+    /*complete buffer extension*/
+    substream->input.substream->buffer_size += bytes;
+}
+
+void
+br_substream_append_s(struct BitstreamReader_s *stream,
+                      struct BitstreamReader_s *substream,
+                      uint32_t bytes)
+{
+    uint8_t* extended_buffer;
+    struct bs_callback *callback;
+    uint32_t i;
+
+    /*byte align the input stream*/
+    stream->state = 0;
+
+    /*abort if there's sufficient bytes remaining
+      in the input stream to pass to the output stream*/
+    if (BUF_REMAINING_BYTES(stream->input.substream) < bytes)
+        br_abort(stream);
+
+    /*extend the output stream's current buffer to fit additional bytes*/
+    extended_buffer = buf_extend(substream->input.substream, bytes);
+
+    /*copy the requested bytes from the input buffer to the output buffer*/
+    memcpy(extended_buffer,
+           stream->input.substream->buffer +
+           stream->input.substream->buffer_position,
+           bytes);
+
+    /*advance the input buffer past the requested bytes*/
+    stream->input.substream->buffer_position += bytes;
+
+    /*perform callbacks on bytes in the extended buffer*/
+    for (callback = stream->callbacks;
+         callback != NULL;
+         callback = callback->next) {
+        for (i = 0; i < bytes; i++)
+            callback->callback(extended_buffer[i], callback->data);
+    }
+
+    /*complete buffer extension*/
+    substream->input.substream->buffer_size += bytes;
+}
+
+#ifndef STANDALONE
+void
+br_substream_append_p(struct BitstreamReader_s *stream,
+                      struct BitstreamReader_s *substream,
+                      uint32_t bytes)
+{
+    uint8_t* extended_buffer;
+    struct bs_callback *callback;
+    int byte;
+    uint32_t i;
+
+    /*byte align the input stream*/
+    stream->state = 0;
+
+    /*extend the output stream's current buffer to fit additional bytes*/
+    extended_buffer = buf_extend(substream->input.substream, bytes);
+
+    /*read input stream to extended buffer
+
+      (it would be faster to incorperate py_getc's
+       Python buffer handling in this routine
+       instead of reading one byte at a time,
+       but I'd like to separate those parts out beforehand*/
+    for (i = 0; i < bytes; i++) {
+        byte = py_getc(stream->input.python);
+        if (byte != EOF)
+            extended_buffer[i] = byte;
+        else
+            /*abort if EOF encountered during read*/
+            br_abort(stream);
+    }
+
+    /*perform callbacks on bytes in extended buffer*/
+    for (callback = stream->callbacks;
+         callback != NULL;
+         callback = callback->next) {
+        for (i = 0; i < bytes; i++)
+            callback->callback(extended_buffer[i], callback->data);
+    }
+
+    /*complete buffer extension*/
+    substream->input.substream->buffer_size += bytes;
+}
+#endif
+
+void
+br_substream_append_c(struct BitstreamReader_s *stream,
+                      struct BitstreamReader_s *substream,
+                      uint32_t bytes)
+{
+    br_abort(stream);
+}
+
+
+void
+br_add_callback(BitstreamReader *bs, bs_callback_func callback, void *data)
+{
+    struct bs_callback *callback_node;
+
+    if (bs->callbacks_used == NULL)
+        callback_node = malloc(sizeof(struct bs_callback));
+    else {
+        callback_node = bs->callbacks_used;
+        bs->callbacks_used = bs->callbacks_used->next;
+    }
+    callback_node->callback = callback;
+    callback_node->data = data;
+    callback_node->next = bs->callbacks;
+    bs->callbacks = callback_node;
+}
+
+void
+br_call_callbacks(BitstreamReader *bs, uint8_t byte)
+{
+    struct bs_callback *callback;
+    for (callback = bs->callbacks;
+         callback != NULL;
+         callback = callback->next)
+        callback->callback(byte, callback->data);
+}
+
+void
+br_pop_callback(BitstreamReader *bs, struct bs_callback *callback)
+{
+    struct bs_callback *c_node = bs->callbacks;
+    if (c_node != NULL) {
+        if (callback != NULL) {
+            callback->callback = c_node->callback;
+            callback->data = c_node->data;
+            callback->next = NULL;
+        }
+        bs->callbacks = c_node->next;
+        c_node->next = bs->callbacks_used;
+        bs->callbacks_used = c_node;
+    } else {
+        fprintf(stderr, "warning: no callbacks available to pop\n");
+    }
+}
+
+void
+br_push_callback(BitstreamReader *bs, struct bs_callback *callback)
+{
+    struct bs_callback *callback_node;
+
+    if (callback != NULL) {
+        if (bs->callbacks_used == NULL)
+            callback_node = malloc(sizeof(struct bs_callback));
+        else {
+            callback_node = bs->callbacks_used;
+            bs->callbacks_used = bs->callbacks_used->next;
+        }
+        callback_node->callback = callback->callback;
+        callback_node->data = callback->data;
+        callback_node->next = bs->callbacks;
+        bs->callbacks = callback_node;
+    }
+}
+
+
+void
+br_abort(BitstreamReader *bs)
+{
+    if (bs->exceptions != NULL) {
+        longjmp(bs->exceptions->env, 1);
+    } else {
+        fprintf(stderr, "EOF encountered, aborting\n");
+        abort();
+    }
+}
+
+jmp_buf*
+br_try(BitstreamReader *bs)
+{
+    struct bs_exception *node;
+
+    if (bs->exceptions_used == NULL)
+        node = malloc(sizeof(struct bs_exception));
+    else {
+        node = bs->exceptions_used;
+        bs->exceptions_used = bs->exceptions_used->next;
+    }
+    node->next = bs->exceptions;
+    bs->exceptions = node;
+    return &(node->env);
+}
+
+void
+br_etry(BitstreamReader *bs)
+{
+    struct bs_exception *node = bs->exceptions;
+    if (node != NULL) {
+        bs->exceptions = node->next;
+        node->next = bs->exceptions_used;
+        bs->exceptions_used = node;
+    } else {
+        fprintf(stderr, "Warning: trying to pop from empty etry stack\n");
+    }
+}
+
+void
+br_substream_reset(struct BitstreamReader_s *substream)
+{
+    struct br_mark *m_node;
+    struct br_mark *m_next;
+
+    assert(substream->type == BR_SUBSTREAM);
+
+    substream->state = 0;
+    /*transfer all marks to recycle stack*/
+    for (m_node = substream->marks; m_node != NULL; m_node = m_next) {
+        m_next = m_node->next;
+        m_node->next = substream->marks_used;
+        substream->marks_used = m_node;
+    }
+    substream->marks = NULL;
+
+    buf_reset(substream->input.substream);
+}
+
+
+BitstreamWriter*
+bw_open(FILE *f, bs_endianness endianness)
+{
+    BitstreamWriter *bs = malloc(sizeof(BitstreamWriter));
+    bs->type = BW_FILE;
+
+    bs->output.file = f;
+    bs->buffer_size = 0;
+    bs->buffer = 0;
+
+    bs->callbacks = NULL;
+    bs->exceptions = NULL;
+    bs->callbacks_used = NULL;
+    bs->exceptions_used = NULL;
+
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        bs->write = bw_write_bits_f_be;
+        bs->write_64 = bw_write_bits64_f_be;
+        bs->write_signed = bw_write_signed_bits_f_p_r_be;
+        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_be;
+        bs->set_endianness = bw_set_endianness_f_be;
+        break;
+    case BS_LITTLE_ENDIAN:
+        bs->write = bw_write_bits_f_le;
+        bs->write_64 = bw_write_bits64_f_le;
+        bs->write_signed = bw_write_signed_bits_f_p_r_le;
+        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_le;
+        bs->set_endianness = bw_set_endianness_f_le;
+        break;
+    }
+
+    bs->write_bytes = bw_write_bytes_f;
+    bs->write_unary = bw_write_unary_f_p_r;
+    bs->build = bw_build;
+    bs->byte_align = bw_byte_align_f_p_r;
+    bs->bits_written = bw_bits_written_f_p_c;
+    bs->flush = bw_flush_f;
+    bs->close_substream = bw_close_substream_f;
+    bs->free = bw_free_f_a;
+    bs->close = bw_close;
+
+    return bs;
+}
+
+#ifndef STANDALONE
+BitstreamWriter*
+bw_open_python(PyObject *writer, bs_endianness endianness,
+               unsigned int buffer_size)
+{
+    BitstreamWriter *bs = malloc(sizeof(BitstreamWriter));
+    bs->type = BW_PYTHON;
+
+    bs->output.python = py_open_w(writer, buffer_size);
+    bs->buffer_size = 0;
+    bs->buffer = 0;
+
+    bs->callbacks = NULL;
+    bs->exceptions = NULL;
+    bs->callbacks_used = NULL;
+    bs->exceptions_used = NULL;
+
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        bs->write = bw_write_bits_p_be;
+        bs->write_64 = bw_write_bits64_p_be;
+        bs->write_signed = bw_write_signed_bits_f_p_r_be;
+        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_be;
+        bs->set_endianness = bw_set_endianness_p_be;
+        break;
+    case BS_LITTLE_ENDIAN:
+        bs->write = bw_write_bits_p_le;
+        bs->write_64 = bw_write_bits64_p_le;
+        bs->write_signed = bw_write_signed_bits_f_p_r_le;
+        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_le;
+        bs->set_endianness = bw_set_endianness_p_le;
+        break;
+    }
+
+    bs->write_bytes = bw_write_bytes_p;
+    bs->write_unary = bw_write_unary_f_p_r;
+    bs->build = bw_build;
+    bs->byte_align = bw_byte_align_f_p_r;
+    bs->bits_written = bw_bits_written_f_p_c;
+    bs->flush = bw_flush_p;
+    bs->close_substream = bw_close_substream_p;
+    bs->free = bw_free_p;
+    bs->close = bw_close;
+
+    return bs;
+}
+
+#endif
+
+BitstreamWriter*
+bw_open_recorder(bs_endianness endianness)
+{
+    BitstreamWriter *bs = malloc(sizeof(BitstreamWriter));
+    bs->type = BW_RECORDER;
+
+    bs->output.buffer = buf_new();
+    bs->buffer_size = 0;
+    bs->buffer = 0;
+
+    bs->callbacks = NULL;
+    bs->exceptions = NULL;
+    bs->callbacks_used = NULL;
+    bs->exceptions_used = NULL;
+
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        bs->write = bw_write_bits_r_be;
+        bs->write_64 = bw_write_bits64_r_be;
+        bs->write_signed = bw_write_signed_bits_f_p_r_be;
+        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_be;
+        bs->set_endianness = bw_set_endianness_r_be;
+        break;
+    case BS_LITTLE_ENDIAN:
+        bs->write = bw_write_bits_r_le;
+        bs->write_64 = bw_write_bits64_r_le;
+        bs->write_signed = bw_write_signed_bits_f_p_r_le;
+        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_le;
+        bs->set_endianness = bw_set_endianness_r_le;
+        break;
+    }
+
+    bs->write_bytes = bw_write_bytes_r;
+    bs->write_unary = bw_write_unary_f_p_r;
+    bs->build = bw_build;
+    bs->byte_align = bw_byte_align_f_p_r;
+    bs->bits_written = bw_bits_written_r;
+    bs->flush = bw_flush_r_a_c;
+    bs->close_substream = bw_close_substream_r_a;
+    bs->free = bw_free_r;
+    bs->close = bw_close;
+
+    return bs;
+}
+
+BitstreamWriter*
+bw_open_accumulator(bs_endianness endianness)
+{
+    BitstreamWriter *bs = malloc(sizeof(BitstreamWriter));
+    bs->type = BW_ACCUMULATOR;
+
+    bs->output.accumulator = 0;
+    bs->buffer = 0;
+    bs->buffer_size = 0;
+
+    bs->callbacks = NULL;
+    bs->exceptions = NULL;
+    bs->callbacks_used = NULL;
+    bs->exceptions_used = NULL;
+
+    bs->write = bw_write_bits_a;
+    bs->write_bytes = bw_write_bytes_a;
+    bs->write_signed = bw_write_signed_bits_a;
+    bs->write_64 = bw_write_bits64_a;
+    bs->write_signed_64 = bw_write_signed_bits64_a;
+    bs->write_unary = bw_write_unary_a;
+    bs->build = bw_build;
+    bs->byte_align = bw_byte_align_a;
+    bs->set_endianness = bw_set_endianness_a;
+    bs->bits_written = bw_bits_written_a;
+    bs->flush = bw_flush_r_a_c;
+    bs->close_substream = bw_close_substream_r_a;
+    bs->free = bw_free_f_a;
+    bs->close = bw_close;
+
+    return bs;
+}
+
+
+#define FUNC_WRITE_BITS_BE(FUNC_NAME, VALUE_TYPE, BYTE_FUNC, BYTE_FUNC_ARG) \
+    void                                                                \
+    FUNC_NAME(BitstreamWriter* bs, unsigned int count, VALUE_TYPE value) \
+    {                                                                   \
+        int bits_to_write;                                              \
+        VALUE_TYPE value_to_write;                                      \
+        unsigned int byte;                                              \
+        struct bs_callback* callback;                                   \
+                                                                        \
+        /* assert(value < (1l << count));  */                           \
+                                                                        \
+        while (count > 0) {                                             \
+            /*chop off up to 8 bits to write at a time*/                \
+            bits_to_write = count > 8 ? 8 : count;                      \
+            value_to_write = value >> (count - bits_to_write);          \
+                                                                        \
+            /*new data is added to the buffer least-significant first*/ \
+            bs->buffer = ((bs->buffer << bits_to_write) | value_to_write); \
+            bs->buffer_size += bits_to_write;                           \
+                                                                        \
+            /*if buffer is over 8 bits,*/                               \
+            /*extract bits most-significant first*/                     \
+            /*and remove them from the buffer*/                         \
+            if (bs->buffer_size >= 8) {                                 \
+                byte = (bs->buffer >> (bs->buffer_size - 8)) & 0xFF;    \
+                if (BYTE_FUNC(byte, BYTE_FUNC_ARG) == EOF)              \
+                    bw_abort(bs);                                       \
+                for (callback = bs->callbacks;                          \
+                     callback != NULL;                                  \
+                     callback = callback->next)                         \
+                    callback->callback((uint8_t)byte, callback->data);  \
+                                                                        \
+                bs->buffer_size -= 8;                                   \
+            }                                                           \
+                                                                        \
+            /*decrement the count and value*/                           \
+            value -= (value_to_write << (count - bits_to_write));       \
+            count -= bits_to_write;                                     \
+        }                                                               \
+    }
+
+#define FUNC_WRITE_BITS_LE(FUNC_NAME, VALUE_TYPE, BYTE_FUNC, BYTE_FUNC_ARG) \
+    void                                                                \
+    FUNC_NAME(BitstreamWriter* bs, unsigned int count, VALUE_TYPE value) \
+    {                                                                   \
+        int bits_to_write;                                              \
+        VALUE_TYPE value_to_write;                                      \
+        unsigned int byte;                                              \
+        struct bs_callback* callback;                                   \
+                                                                        \
+        /* assert(value < (int64_t)(1LL << count)); */                  \
+                                                                        \
+        while (count > 0) {                                             \
+            /*chop off up to 8 bits to write at a time*/                \
+            bits_to_write = count > 8 ? 8 : count;                      \
+            value_to_write = value & ((1 << bits_to_write) - 1);        \
+                                                                        \
+            /*new data is added to the buffer most-significant first*/  \
+            bs->buffer |= (value_to_write << bs->buffer_size);          \
+            bs->buffer_size += bits_to_write;                           \
+                                                                        \
+            /*if buffer is over 8 bits,*/                               \
+            /*extract bits least-significant first*/                    \
+            /*and remove them from the buffer*/                         \
+            if (bs->buffer_size >= 8) {                                 \
+                byte = bs->buffer & 0xFF;                               \
+                if (BYTE_FUNC(byte, BYTE_FUNC_ARG) == EOF)              \
+                    bw_abort(bs);                                       \
+                for (callback = bs->callbacks;                          \
+                     callback != NULL;                                  \
+                     callback = callback->next)                         \
+                    callback->callback((uint8_t)byte, callback->data);  \
+                bs->buffer >>= 8;                                       \
+                bs->buffer_size -= 8;                                   \
+            }                                                           \
+                                                                        \
+            /*decrement the count and value*/                           \
+            value >>= bits_to_write;                                    \
+            count -= bits_to_write;                                     \
+        }                                                               \
+    }
+
+FUNC_WRITE_BITS_BE(bw_write_bits_f_be,
+                   unsigned int, putc, bs->output.file)
+FUNC_WRITE_BITS_LE(bw_write_bits_f_le,
+                   unsigned int, putc, bs->output.file)
+#ifndef STANDALONE
+FUNC_WRITE_BITS_BE(bw_write_bits_p_be,
+                   unsigned int, py_putc, bs->output.python)
+FUNC_WRITE_BITS_LE(bw_write_bits_p_le,
+                   unsigned int, py_putc, bs->output.python)
+#endif
+FUNC_WRITE_BITS_BE(bw_write_bits_r_be,
+                   unsigned int, buf_putc, bs->output.buffer)
+FUNC_WRITE_BITS_LE(bw_write_bits_r_le,
+                   unsigned int, buf_putc, bs->output.buffer)
+
+void
+bw_write_bits_a(BitstreamWriter* bs, unsigned int count, unsigned int value)
+{
+    assert(value < (1ll << count));
+    bs->output.accumulator += count;
+}
+
+void
+bw_write_bits_c(BitstreamWriter* bs, unsigned int count, unsigned int value)
+{
+    bw_abort(bs);
+}
+
+
+
+void
+bw_write_signed_bits_f_p_r_be(BitstreamWriter* bs, unsigned int count,
+                              int value)
+{
+    assert(value <= ((1 << (count - 1)) - 1));
+    assert(value >= -(1 << (count - 1)));
+
+    if (value >= 0) {
+        bs->write(bs, 1, 0);
+        bs->write(bs, count - 1, value);
+    } else {
+        bs->write(bs, 1, 1);
+        bs->write(bs, count - 1, (1 << (count - 1)) + value);
+    }
+}
+
+void
+bw_write_signed_bits_f_p_r_le(BitstreamWriter* bs, unsigned int count,
+                              int value)
+{
+    assert(value <= ((1 << (count - 1)) - 1));
+    assert(value >= -(1 << (count - 1)));
+
+    if (value >= 0) {
+        bs->write(bs, count - 1, value);
+        bs->write(bs, 1, 0);
+    } else {
+        bs->write(bs, count - 1, (1 << (count - 1)) + value);
+        bs->write(bs, 1, 1);
+    }
+}
+
+void
+bw_write_signed_bits_a(BitstreamWriter* bs, unsigned int count, int value)
+{
+    assert(value <= ((1 << (count - 1)) - 1));
+    assert(value >= -(1 << (count - 1)));
+    bs->output.accumulator += count;
+}
+
+void
+bw_write_signed_bits_c(BitstreamWriter* bs, unsigned int count, int value)
+{
+    bw_abort(bs);
+}
+
+
+FUNC_WRITE_BITS_BE(bw_write_bits64_f_be,
+                   uint64_t, putc, bs->output.file)
+FUNC_WRITE_BITS_LE(bw_write_bits64_f_le,
+                   uint64_t, putc, bs->output.file)
+#ifndef STANDALONE
+FUNC_WRITE_BITS_BE(bw_write_bits64_p_be,
+                   uint64_t, py_putc, bs->output.python)
+FUNC_WRITE_BITS_LE(bw_write_bits64_p_le,
+                   uint64_t, py_putc, bs->output.python)
+#endif
+FUNC_WRITE_BITS_BE(bw_write_bits64_r_be,
+                   uint64_t, buf_putc, bs->output.buffer)
+FUNC_WRITE_BITS_LE(bw_write_bits64_r_le,
+                   uint64_t, buf_putc, bs->output.buffer)
+
+void
+bw_write_bits64_a(BitstreamWriter* bs, unsigned int count, uint64_t value)
+{
+    assert(count < 64 ? value < (int64_t)(1ll << count) : 1);
+    bs->output.accumulator += count;
+}
+
+void
+bw_write_bits64_c(BitstreamWriter* bs, unsigned int count, uint64_t value)
+{
+    bw_abort(bs);
+}
+
+void
+bw_write_signed_bits64_f_p_r_be(BitstreamWriter* bs, unsigned int count,
+                                int64_t value)
+{
+    assert(value <= ((1ll << (count - 1)) - 1));
+    assert(value >= -(1ll << (count - 1)));
+
+    if (value >= 0ll) {
+        bs->write(bs, 1, 0);
+        bs->write_64(bs, count - 1, value);
+    } else {
+        bs->write(bs, 1, 1);
+        bs->write_64(bs, count - 1, (1ll << (count - 1)) + value);
+    }
+}
+
+void
+bw_write_signed_bits64_f_p_r_le(BitstreamWriter* bs, unsigned int count,
+                                int64_t value)
+{
+    assert(value <= ((1ll << (count - 1)) - 1));
+    assert(value >= -(1ll << (count - 1)));
+
+    if (value >= 0ll) {
+        bs->write_64(bs, count - 1, value);
+        bs->write(bs, 1, 0);
+    } else {
+        bs->write_64(bs, count - 1, (1ll << (count - 1)) + value);
+        bs->write(bs, 1, 1);
+    }
+}
+
+void
+bw_write_signed_bits64_a(BitstreamWriter* bs, unsigned int count,
+                         int64_t value)
+{
+    assert(value <= ((1ll << (count - 1)) - 1));
+    assert(value >= -(1ll << (count - 1)));
+    bs->output.accumulator += count;
+}
+
+void
+bw_write_signed_bits64_c(BitstreamWriter* bs, unsigned int count,
+                         int64_t value)
+{
+    bw_abort(bs);
+}
+
+
+void
+bw_write_bytes_f(BitstreamWriter* bs, const uint8_t* bytes,
+                 unsigned int count)
+{
+    unsigned int i;
+    struct bs_callback* callback;
+
+    if (bs->buffer_size == 0) {
+        /*stream is byte aligned, so perform optimized write*/
+        if (fwrite(bytes, sizeof(uint8_t), count, bs->output.file) != count)
+            bw_abort(bs);
+
+        /*perform callbacks on the written bytes*/
+        for (callback = bs->callbacks;
+             callback != NULL;
+             callback = callback->next)
+            for (i = 0; i < count; i++)
+                callback->callback(bytes[i], callback->data);
+    } else {
+        /*stream is not byte-aligned, so perform multiple writes*/
+        for (i = 0; i < count; i++)
+            bs->write(bs, 8, bytes[i]);
+    }
+}
+
+#ifndef STANDALONE
+
+void
+bw_write_bytes_p(BitstreamWriter* bs, const uint8_t* bytes,
+                 unsigned int count)
+{
+    unsigned int i;
+
+    for (i = 0; i < count; i++)
+        bs->write(bs, 8, bytes[i]);
+}
+
+#endif
+
+void
+bw_write_bytes_r(BitstreamWriter* bs, const uint8_t* bytes,
+                 unsigned int count)
+{
+    unsigned int i;
+
+    /*byte writing to a recorder
+      is implemented as a series of individual writes
+      rather than a single record containing one big write
+
+      since this is a relatively rare operation,
+      it's best to keep it simple
+      rather than make a mess of split_record()*/
+    for (i = 0; i < count; i++)
+        bs->write(bs, 8, bytes[i]);
+}
+
+void
+bw_write_bytes_a(BitstreamWriter* bs, const uint8_t* bytes,
+                 unsigned int count) {
+    bs->output.accumulator += (count * 8);
+}
+
+void
+bw_write_bytes_c(BitstreamWriter* bs, const uint8_t* bytes,
+                 unsigned int count)
+{
+    bw_abort(bs);
+}
+
+#define UNARY_BUFFER_SIZE 30
+
+void
+bw_write_unary_f_p_r(BitstreamWriter* bs, int stop_bit, unsigned int value)
+{
+    unsigned int bits_to_write;
+
+    /*send our pre-stop bits to write() in 30-bit chunks*/
+    while (value > 0) {
+        bits_to_write = value <= UNARY_BUFFER_SIZE ? value : UNARY_BUFFER_SIZE;
+        if (stop_bit) { /*stop bit of 1, buffer value of all 0s*/
+            bs->write(bs, bits_to_write, 0);
+        } else {        /*stop bit of 0, buffer value of all 1s*/
+            bs->write(bs, bits_to_write, (1 << bits_to_write) - 1);
+        }
+        value -= bits_to_write;
+    }
+
+    /*finally, send our stop bit*/
+    bs->write(bs, 1, stop_bit);
+}
+
+void
+bw_write_unary_a(BitstreamWriter* bs, int stop_bit, unsigned int value)
+{
+    assert(value >= 0);
+    bs->output.accumulator += (value + 1);
+}
+
+void
+bw_write_unary_c(BitstreamWriter* bs, int stop_bit, unsigned int value)
+{
+    bw_abort(bs);
+}
+
+
+void
+bw_byte_align_f_p_r(BitstreamWriter* bs) {
+    /*write enough 0 bits to completely fill the buffer
+      which results in a byte being written*/
+    if (bs->buffer_size > 0)
+        bs->write(bs, 8 - bs->buffer_size, 0);
+}
+
+void
+bw_byte_align_a(BitstreamWriter* bs)
+{
+    if (bs->output.accumulator % 8)
+        bs->output.accumulator += (8 - (bs->output.accumulator % 8));
+}
+
+
+void
+bw_set_endianness_f_be(BitstreamWriter* bs, bs_endianness endianness)
+{
+    bs->buffer = 0;
+    bs->buffer_size = 0;
+    if (endianness == BS_LITTLE_ENDIAN) {
+        bs->write = bw_write_bits_f_le;
+        bs->write_64 = bw_write_bits64_f_le;
+        bs->write_signed = bw_write_signed_bits_f_p_r_le;
+        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_le;
+        bs->set_endianness = bw_set_endianness_f_le;
+    }
+}
+
+void
+bw_set_endianness_f_le(BitstreamWriter* bs, bs_endianness endianness)
+{
+    bs->buffer = 0;
+    bs->buffer_size = 0;
+    if (endianness == BS_BIG_ENDIAN) {
+        bs->write = bw_write_bits_f_be;
+        bs->write_64 = bw_write_bits64_f_be;
+        bs->write_signed = bw_write_signed_bits_f_p_r_be;
+        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_be;
+        bs->set_endianness = bw_set_endianness_f_be;
+    }
+}
+
+void
+bw_set_endianness_r_be(BitstreamWriter* bs, bs_endianness endianness)
+{
+    bs->buffer = 0;
+    bs->buffer_size = 0;
+    if (endianness == BS_LITTLE_ENDIAN) {
+        bs->write = bw_write_bits_r_le;
+        bs->write_64 = bw_write_bits64_r_le;
+        bs->write_signed = bw_write_signed_bits_f_p_r_le;
+        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_le;
+        bs->set_endianness = bw_set_endianness_r_le;
+    }
+}
+
+void
+bw_set_endianness_r_le(BitstreamWriter* bs, bs_endianness endianness)
+{
+    bs->buffer = 0;
+    bs->buffer_size = 0;
+    if (endianness == BS_BIG_ENDIAN) {
+        bs->write = bw_write_bits_r_be;
+        bs->write_64 = bw_write_bits64_r_be;
+        bs->write_signed = bw_write_signed_bits_f_p_r_be;
+        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_be;
+        bs->set_endianness = bw_set_endianness_r_be;
+    }
+}
+
+#ifndef STANDALONE
+
+void
+bw_set_endianness_p_be(BitstreamWriter* bs, bs_endianness endianness)
+{
+    bs->buffer = 0;
+    bs->buffer_size = 0;
+    if (endianness == BS_LITTLE_ENDIAN) {
+        bs->write = bw_write_bits_p_le;
+        bs->write_64 = bw_write_bits64_p_le;
+        bs->write_signed = bw_write_signed_bits_f_p_r_le;
+        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_le;
+        bs->set_endianness = bw_set_endianness_p_le;
+    }
+}
+
+void
+bw_set_endianness_p_le(BitstreamWriter* bs, bs_endianness endianness)
+{
+    bs->buffer = 0;
+    bs->buffer_size = 0;
+    if (endianness == BS_BIG_ENDIAN) {
+        bs->write = bw_write_bits_p_be;
+        bs->write_64 = bw_write_bits64_p_be;
+        bs->write_signed = bw_write_signed_bits_f_p_r_be;
+        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_be;
+        bs->set_endianness = bw_set_endianness_p_be;
+    }
+}
+
+#endif
+
+void
+bw_set_endianness_a(BitstreamWriter* bs, bs_endianness endianness)
+{
+    /*swapping endianness results in a byte alignment*/
+    bw_byte_align_a(bs);
+}
+
+void
+bw_set_endianness_c(BitstreamWriter* bs, bs_endianness endianness)
+{
+    return;
+}
+
+
+
+void
+bw_build(struct BitstreamWriter_s* stream, char* format, ...)
+{
+    va_list ap;
+    char* s = format;
+    unsigned int size;
+    bs_instruction type;
+    unsigned int _unsigned;
+    int _signed;
+    uint64_t _unsigned64;
+    int64_t _signed64;
+    uint8_t* _bytes;
+
+    va_start(ap, format);
+    while (!bs_parse_format(&s, &size, &type)) {
+        switch (type) {
+        case BS_INST_UNSIGNED:
+            _unsigned = va_arg(ap, unsigned int);
+            stream->write(stream, size, _unsigned);
+            break;
+        case BS_INST_SIGNED:
+            _signed = va_arg(ap, int);
+            stream->write_signed(stream, size, _signed);
+            break;
+        case BS_INST_UNSIGNED64:
+            _unsigned64 = va_arg(ap, uint64_t);
+            stream->write_64(stream, size, _unsigned64);
+            break;
+        case BS_INST_SIGNED64:
+            _signed64 = va_arg(ap, int64_t);
+            stream->write_signed_64(stream, size, _signed64);
+            break;
+        case BS_INST_SKIP:
+            stream->write(stream, size, 0);
+            break;
+        case BS_INST_SKIP_BYTES:
+            /*somewhat inefficient,
+              but byte skipping is rare for BitstreamWriters anyway*/
+            stream->write(stream, size, 0);
+            stream->write(stream, size, 0);
+            stream->write(stream, size, 0);
+            stream->write(stream, size, 0);
+            stream->write(stream, size, 0);
+            stream->write(stream, size, 0);
+            stream->write(stream, size, 0);
+            stream->write(stream, size, 0);
+            break;
+        case BS_INST_BYTES:
+            _bytes = va_arg(ap, uint8_t*);
+            stream->write_bytes(stream, _bytes, size);
+            break;
+        case BS_INST_ALIGN:
+            stream->byte_align(stream);
+            break;
+        }
+    }
+    va_end(ap);
+}
+
+
+unsigned int
+bw_bits_written_f_p_c(BitstreamWriter* bs) {
+    /*actual file writing doesn't keep track of bits written
+      since the total could be extremely large*/
+    return 0;
+}
+
+unsigned int
+bw_bits_written_r(BitstreamWriter* bs) {
+    return ((bs->output.buffer->buffer_size -
+             bs->output.buffer->buffer_position) * 8) + bs->buffer_size;
+}
+
+unsigned int
+bw_bits_written_a(BitstreamWriter* bs) {
+    return bs->output.accumulator;
+}
+
+
+void
+bw_flush_f(BitstreamWriter* bs)
+{
+    fflush(bs->output.file);
+}
+
+void
+bw_flush_r_a_c(BitstreamWriter* bs)
+{
+    return;
+}
+
+
+#ifndef STANDALONE
+void
+bw_flush_p(BitstreamWriter* bs)
+{
+    py_flush_w(bs->output.python);
+}
+#endif
+
+
+static inline void
+bw_close_methods(BitstreamWriter* bs)
+{
+    /*swap read methods with closed methods that generate read errors*/
+    bs->write = bw_write_bits_c;
+    bs->write_64 = bw_write_bits64_c;
+    bs->write_bytes = bw_write_bytes_c;
+    bs->write_signed = bw_write_signed_bits_c;
+    bs->write_signed_64 = bw_write_signed_bits64_c;
+    bs->write_unary = bw_write_unary_c;
+    bs->set_endianness = bw_set_endianness_c;
+    bs->close_substream = bw_close_substream_c;
+}
+
+void
+bw_close_substream_f(BitstreamWriter* bs)
+{
+    /*perform fclose on FILE object*/
+    fclose(bs->output.file);
+
+    /*swap read methods with closed methods*/
+    bw_close_methods(bs);
+}
+
+void
+bw_close_substream_r_a(BitstreamWriter* bs)
+{
+    bw_close_methods(bs);
+}
+
+#ifndef STANDALONE
+void
+bw_close_substream_p(BitstreamWriter* bs)
+{
+    PyObject* close_result;
+
+    /*call .close() method on Python object*/
+    close_result = PyObject_CallMethod(bs->output.python->writer_obj,
+                                       "close",
+                                       NULL);
+    if (close_result != NULL)
+        Py_DECREF(close_result);
+    else {
+        /*some exception occurred when calling close()
+          so simply print it out and continue on
+          since there's little we can do about it*/
+        PyErr_PrintEx(1);
+    }
+
+    /*swap read methods with closed methods*/
+    bw_close_methods(bs);
+}
+
+#endif
+
+void
+bw_close_substream_c(BitstreamWriter* bs)
+{
+    return;
+}
+
+
+void
+bw_free_f_a(BitstreamWriter* bs)
+{
+    struct bs_callback *c_node;
+    struct bs_callback *c_next;
+    struct bs_exception *e_node;
+    struct bs_exception *e_next;
+
+    /*deallocate callbacks*/
+    for (c_node = bs->callbacks; c_node != NULL; c_node = c_next) {
+        c_next = c_node->next;
+        free(c_node);
+    }
+
+    /*deallocate used callbacks*/
+    for (c_node = bs->callbacks_used; c_node != NULL; c_node = c_next) {
+        c_next = c_node->next;
+        free(c_node);
+    }
+
+    /*deallocate exceptions*/
+    if (bs->exceptions != NULL) {
+        fprintf(stderr, "Warning: leftover etry entries on stack\n");
+    }
+    for (e_node = bs->exceptions; e_node != NULL; e_node = e_next) {
+        e_next = e_node->next;
+        free(e_node);
+    }
+
+    /*deallocate used exceptions*/
+    for (e_node = bs->exceptions_used; e_node != NULL; e_node = e_next) {
+        e_next = e_node->next;
+        free(e_node);
+    }
+
+    /*deallocate the struct itself*/
+    free(bs);
+}
+
+void
+bw_free_r(BitstreamWriter* bs)
+{
+    /*deallocate buffer*/
+    buf_close(bs->output.buffer);
+
+    /*perform additional deallocations on rest of struct*/
+    bw_free_f_a(bs);
+}
+
+#ifndef STANDALONE
+void
+bw_free_p(BitstreamWriter* bs)
+{
+    /*decref Python object and remove buffer*/
+    py_close_w(bs->output.python);
+
+    /*perform additional deallocations on rest of struct*/
+    bw_free_f_a(bs);
+}
+
+#endif
+
+void
+bw_close(BitstreamWriter* bs)
+{
+    bs->close_substream(bs);
+    bs->free(bs);
+}
+
+
+void
+bw_add_callback(BitstreamWriter *bs, bs_callback_func callback, void *data)
+{
+    struct bs_callback *callback_node = malloc(sizeof(struct bs_callback));
+    callback_node->callback = callback;
+    callback_node->data = data;
+    callback_node->next = bs->callbacks;
+    bs->callbacks = callback_node;
+}
+
+void
+bw_pop_callback(BitstreamWriter* bs, struct bs_callback* callback) {
+    struct bs_callback *c_node = bs->callbacks;
+    if (c_node != NULL) {
+        if (callback != NULL) {
+            callback->callback = c_node->callback;
+            callback->data = c_node->data;
+            callback->next = NULL;
+        }
+        bs->callbacks = c_node->next;
+        c_node->next = bs->callbacks_used;
+        bs->callbacks_used = c_node;
+    } else {
+        fprintf(stderr, "warning: no callbacks available to pop\n");
+    }
+}
+
+void
+bw_push_callback(BitstreamWriter* bs, struct bs_callback* callback) {
+    struct bs_callback *callback_node;
+
+    if (callback != NULL) {
+        if (bs->callbacks_used == NULL)
+            callback_node = malloc(sizeof(struct bs_callback));
+        else {
+            callback_node = bs->callbacks_used;
+            bs->callbacks_used = bs->callbacks_used->next;
+        }
+        callback_node->callback = callback->callback;
+        callback_node->data = callback->data;
+        callback_node->next = bs->callbacks;
+        bs->callbacks = callback_node;
+    }
+}
+
+void
+bw_call_callbacks(BitstreamWriter *bs, uint8_t byte) {
+    struct bs_callback *callback;
+    for (callback = bs->callbacks;
+         callback != NULL;
+         callback = callback->next)
+        callback->callback(byte, callback->data);
+}
+
+
+void
+bw_abort(BitstreamWriter *bs)
+{
+    if (bs->exceptions != NULL) {
+        longjmp(bs->exceptions->env, 1);
+    } else {
+        fprintf(stderr, "EOF encountered, aborting\n");
+        abort();
+    }
+}
+
+
+jmp_buf*
+bw_try(BitstreamWriter *bs)
+{
+    struct bs_exception *node;
+
+    if (bs->exceptions_used == NULL)
+        node = malloc(sizeof(struct bs_exception));
+    else {
+        node = bs->exceptions_used;
+        bs->exceptions_used = bs->exceptions_used->next;
+    }
+    node->next = bs->exceptions;
+    bs->exceptions = node;
+    return &(node->env);
+}
+
+void
+bw_etry(BitstreamWriter *bs)
+{
+    struct bs_exception *node = bs->exceptions;
+    if (node != NULL) {
+        bs->exceptions = node->next;
+        node->next = bs->exceptions_used;
+        bs->exceptions_used = node;
+    } else {
+        fprintf(stderr, "Warning: trying to pop from empty etry stack\n");
+    }
+}
+
+
+void
+bw_dump_bytes(BitstreamWriter* target, uint8_t* buffer, unsigned int total) {
+    unsigned int i;
+    struct bs_callback* callback;
+    uint8_t* target_buffer;
+
+    if (total == 0) {
+        /*short-circuit an empty write*/
+        return;
+    } else if (target->buffer_size == 0) {
+        /*perform faster dumping if target is byte-aligned*/
+        switch (target->type) {
+        case BW_FILE:
+            if (fwrite(buffer, sizeof(uint8_t),
+                       total, target->output.file) != total)
+                bw_abort(target);
+            break;
+        case BW_PYTHON:
+#ifndef STANDALONE
+            for (i = 0; i < total; i++)
+                target->write(target, 8, buffer[i]);
+#endif
+            break;
+        case BW_RECORDER:
+            target_buffer = buf_extend(target->output.buffer, total);
+            memcpy(target_buffer, buffer, total);
+            target->output.buffer->buffer_size += total;
+            break;
+        case BW_ACCUMULATOR:
+            target->output.accumulator += (total * 8);
+            break;
+        }
+
+        /*perform callbacks from target on written bytes*/
+        for (callback = target->callbacks;
+             callback != NULL;
+             callback = callback->next)
+            for (i = 0; i < total; i++)
+                callback->callback(buffer[i], callback->data);
+    } else {
+        /*otherwise, proceed on a byte-by-byte basis*/
+        for (i = 0; i < total; i++)
+            target->write(target, 8, buffer[i]);
+    }
+}
+
+
+void
+bw_rec_copy(BitstreamWriter* target, BitstreamWriter* source)
+{
+    assert(source->type == BW_RECORDER);
+
+    /*dump all the bytes from our internal buffer*/
+    bw_dump_bytes(target,
+                  source->output.buffer->buffer,
+                  source->output.buffer->buffer_size);
+
+    /*then dump remaining bits (if any) with a partial write() call*/
+    if (source->buffer_size > 0)
+        target->write(target,
+                      source->buffer_size,
+                      source->buffer & ((1 << source->buffer_size) - 1));
+}
+
+
+unsigned int
+bw_rec_split(BitstreamWriter* target,
+             BitstreamWriter* remaining,
+             BitstreamWriter* source,
+             unsigned int total_bytes) {
+    uint8_t* buffer;
+    uint32_t buffer_size;
+    unsigned int to_target;
+    unsigned int to_remaining;
+
+    assert(source->type == BW_RECORDER);
+
+    buffer = source->output.buffer->buffer;
+    buffer_size = source->output.buffer->buffer_size;
+    to_target = MIN(total_bytes, buffer_size);
+    to_remaining = buffer_size - to_target;
+
+    /*first, dump up to "total_bytes" from source to "target"
+      if available*/
+    if (target != NULL) {
+        bw_dump_bytes(target, buffer, to_target);
+    }
+
+    if (remaining != NULL) {
+        if (remaining != source) {
+            /*then, dump the remaining bytes from source to "remaining"
+              if it is a separate writer*/
+            bw_dump_bytes(remaining, buffer + to_target, to_remaining);
+
+            if (source->buffer_size > 0)
+                remaining->write(
+                    remaining,
+                    source->buffer_size,
+                    source->buffer & ((1 << source->buffer_size) - 1));
+        } else {
+            /*if remaining is the same as source,
+              shift source's output buffer down*/
+            memmove(buffer, buffer + to_target, to_remaining);
+            source->output.buffer->buffer_size -= to_target;
+        }
+    }
+
+    return to_target;
+}
+
+
+void
+bw_swap_records(BitstreamWriter* a, BitstreamWriter* b)
+{
+    BitstreamWriter c;
+
+    assert(a->type == BW_RECORDER);
+    assert(b->type == BW_RECORDER);
+    assert(a->write == b->write);  /*ensure they have the same endianness*/
+
+    c.output.buffer = a->output.buffer;
+    c.buffer_size = a->buffer_size;
+    c.buffer = a->buffer;
+    a->output.buffer = b->output.buffer;
+    a->buffer_size = b->buffer_size;
+    a->buffer = b->buffer;
+    b->output.buffer = c.output.buffer;
+    b->buffer_size = c.buffer_size;
+    b->buffer = c.buffer;
+}
+
 
 struct bs_buffer*
 buf_new(void)
@@ -1342,265 +2907,7 @@ buf_close(struct bs_buffer *stream)
     free(stream);
 }
 
-
-struct BitstreamReader_s*
-br_substream_new(bs_endianness endianness)
-{
-    BitstreamReader *bs = malloc(sizeof(BitstreamReader));
-    bs->type = BR_SUBSTREAM;
-    bs->input.substream = buf_new();
-    bs->state = 0;
-    bs->callbacks = NULL;
-    bs->exceptions = NULL;
-    bs->marks = NULL;
-    bs->callbacks_used = NULL;
-    bs->exceptions_used = NULL;
-    bs->marks_used = NULL;
-
-    switch (endianness) {
-    case BS_BIG_ENDIAN:
-        bs->read = br_read_bits_s_be;
-        bs->read_signed = br_read_signed_bits_be;
-        bs->read_64 = br_read_bits64_s_be;
-        bs->read_signed_64 = br_read_signed_bits64_be;
-        bs->skip = br_skip_bits_s_be;
-        bs->unread = br_unread_bit_be;
-        bs->read_unary = br_read_unary_s_be;
-        bs->read_limited_unary = br_read_limited_unary_s_be;
-        bs->set_endianness = br_set_endianness_s_be;
-        break;
-    case BS_LITTLE_ENDIAN:
-        bs->read = br_read_bits_s_le;
-        bs->read_signed = br_read_signed_bits_le;
-        bs->read_64 = br_read_bits64_s_le;
-        bs->read_signed_64 = br_read_signed_bits64_le;
-        bs->skip = br_skip_bits_s_le;
-        bs->unread = br_unread_bit_le;
-        bs->read_unary = br_read_unary_s_le;
-        bs->read_limited_unary = br_read_limited_unary_s_le;
-        bs->set_endianness = br_set_endianness_s_le;
-        break;
-    }
-
-    bs->skip_bytes = br_skip_bytes;
-    bs->byte_align = br_byte_align;
-    bs->read_huffman_code = br_read_huffman_code_s;
-    bs->read_bytes = br_read_bytes_s;
-    bs->parse = br_parse;
-    bs->substream_append = br_substream_append_s;
-    bs->close = br_close;
-    bs->close_stream = br_close_stream_s;
-    bs->mark = br_mark_s;
-    bs->rewind = br_rewind_s;
-    bs->unmark = br_unmark_s;
-
-    return bs;
-}
-
-void
-br_substream_reset(struct BitstreamReader_s *substream)
-{
-    struct br_mark *m_node;
-    struct br_mark *m_next;
-
-    assert(substream->type == BR_SUBSTREAM);
-
-    substream->state = 0;
-    /*transfer all marks to recycle stack*/
-    for (m_node = substream->marks; m_node != NULL; m_node = m_next) {
-        m_next = m_node->next;
-        m_node->next = substream->marks_used;
-        substream->marks_used = m_node;
-    }
-    substream->marks = NULL;
-
-    buf_reset(substream->input.substream);
-}
-
-void
-br_substream_append_f(struct BitstreamReader_s *stream,
-                      struct BitstreamReader_s *substream,
-                      uint32_t bytes)
-{
-    uint8_t* extended_buffer;
-    struct bs_callback *callback;
-    uint32_t i;
-
-    /*byte align the input stream*/
-    stream->state = 0;
-
-    /*extend the output stream's current buffer to fit additional bytes*/
-    extended_buffer = buf_extend(substream->input.substream, bytes);
-
-    /*read input stream to extended buffer*/
-    if (fread(extended_buffer, sizeof(uint8_t), bytes,
-              stream->input.file) != bytes)
-        /*abort if the amount of read bytes is insufficient*/
-        br_abort(stream);
-
-    /*perform callbacks on bytes in extended buffer*/
-    for (callback = stream->callbacks;
-         callback != NULL;
-         callback = callback->next) {
-        for (i = 0; i < bytes; i++)
-            callback->callback(extended_buffer[i], callback->data);
-    }
-
-    /*complete buffer extension*/
-    substream->input.substream->buffer_size += bytes;
-}
-
 #ifndef STANDALONE
-void
-br_substream_append_p(struct BitstreamReader_s *stream,
-                      struct BitstreamReader_s *substream,
-                      uint32_t bytes)
-{
-    uint8_t* extended_buffer;
-    struct bs_callback *callback;
-    int byte;
-    uint32_t i;
-
-    /*byte align the input stream*/
-    stream->state = 0;
-
-    /*extend the output stream's current buffer to fit additional bytes*/
-    extended_buffer = buf_extend(substream->input.substream, bytes);
-
-    /*read input stream to extended buffer
-
-      (it would be faster to incorperate py_getc's
-       Python buffer handling in this routine
-       instead of reading one byte at a time,
-       but I'd like to separate those parts out beforehand*/
-    for (i = 0; i < bytes; i++) {
-        byte = py_getc(stream->input.python);
-        if (byte != EOF)
-            extended_buffer[i] = byte;
-        else
-            /*abort if EOF encountered during read*/
-            br_abort(stream);
-    }
-
-    /*perform callbacks on bytes in extended buffer*/
-    for (callback = stream->callbacks;
-         callback != NULL;
-         callback = callback->next) {
-        for (i = 0; i < bytes; i++)
-            callback->callback(extended_buffer[i], callback->data);
-    }
-
-    /*complete buffer extension*/
-    substream->input.substream->buffer_size += bytes;
-}
-#endif
-
-void
-br_substream_append_s(struct BitstreamReader_s *stream,
-                      struct BitstreamReader_s *substream,
-                      uint32_t bytes)
-{
-    uint8_t* extended_buffer;
-    struct bs_callback *callback;
-    uint32_t i;
-
-    /*byte align the input stream*/
-    stream->state = 0;
-
-    /*abort if there's sufficient bytes remaining
-      in the input stream to pass to the output stream*/
-    if (BUF_REMAINING_BYTES(stream->input.substream) < bytes)
-        br_abort(stream);
-
-    /*extend the output stream's current buffer to fit additional bytes*/
-    extended_buffer = buf_extend(substream->input.substream, bytes);
-
-    /*copy the requested bytes from the input buffer to the output buffer*/
-    memcpy(extended_buffer,
-           stream->input.substream->buffer +
-           stream->input.substream->buffer_position,
-           bytes);
-
-    /*advance the input buffer past the requested bytes*/
-    stream->input.substream->buffer_position += bytes;
-
-    /*perform callbacks on bytes in the extended buffer*/
-    for (callback = stream->callbacks;
-         callback != NULL;
-         callback = callback->next) {
-        for (i = 0; i < bytes; i++)
-            callback->callback(extended_buffer[i], callback->data);
-    }
-
-    /*complete buffer extension*/
-    substream->input.substream->buffer_size += bytes;
-}
-
-void
-br_close_stream_s(struct BitstreamReader_s *stream)
-{
-    buf_close(stream->input.substream);
-}
-
-
-void
-br_parse(struct BitstreamReader_s* stream, char* format, ...)
-{
-    va_list ap;
-    char* s = format;
-    unsigned int size;
-    bs_instruction type;
-    unsigned int* _unsigned;
-    int* _signed;
-    uint64_t* _unsigned64;
-    int64_t* _signed64;
-    uint8_t* _bytes;
-
-    va_start(ap, format);
-    while (!bs_parse_format(&s, &size, &type)) {
-        switch (type) {
-        case BS_INST_UNSIGNED:
-            _unsigned = va_arg(ap, unsigned int*);
-            *_unsigned = stream->read(stream, size);
-            break;
-        case BS_INST_SIGNED:
-            _signed = va_arg(ap, int*);
-            *_signed = stream->read_signed(stream, size);
-            break;
-        case BS_INST_UNSIGNED64:
-            _unsigned64 = va_arg(ap, uint64_t*);
-            *_unsigned64 = stream->read_64(stream, size);
-            break;
-        case BS_INST_SIGNED64:
-            _signed64 = va_arg(ap, int64_t*);
-            *_signed64 = stream->read_signed_64(stream, size);
-            break;
-        case BS_INST_SKIP:
-            stream->skip(stream, size);
-            break;
-        case BS_INST_SKIP_BYTES:
-            stream->skip_bytes(stream, size);
-            break;
-        case BS_INST_BYTES:
-            _bytes = va_arg(ap, uint8_t*);
-            stream->read_bytes(stream, _bytes, size);
-            break;
-        case BS_INST_ALIGN:
-            stream->byte_align(stream);
-            break;
-        }
-    }
-    va_end(ap);
-}
-
-#ifndef STANDALONE
-
-/*******************************************
- Python stream handlers
-
- for making a Python file-like object behave
- like C file pointers
- *******************************************/
 
 struct br_python_input*
 py_open_r(PyObject* reader, unsigned int buffer_size)
@@ -1615,6 +2922,16 @@ py_open_r(PyObject* reader, unsigned int buffer_size)
     input->mark_in_progress = 0;
 
     return input;
+}
+
+int
+py_close_r(struct br_python_input *stream)
+{
+    Py_DECREF(stream->reader_obj);
+    free(stream->buffer);
+    free(stream);
+
+    return 0;
 }
 
 int
@@ -1698,157 +3015,6 @@ py_getc(struct br_python_input *stream)
     }
 }
 
-int
-py_close_r(struct br_python_input *stream)
-{
-    PyObject* close_result;
-
-    close_result = PyObject_CallMethod(stream->reader_obj,
-                                       "close",
-                                       NULL);
-    if (close_result != NULL)
-        Py_DECREF(close_result);
-    else {
-        /*some exception occurred when calling close()
-          so simply print it out and continue on
-          since there's little we can do about it*/
-        PyErr_PrintEx(1);
-    }
-
-    py_free_r(stream);
-
-    return 0;
-}
-
-void
-py_free_r(struct br_python_input *stream)
-{
-    Py_XDECREF(stream->reader_obj);
-    free(stream->buffer);
-    free(stream);
-}
-
-
-BitstreamReader*
-br_open_python(PyObject *reader, bs_endianness endianness,
-               unsigned int buffer_size)
-{
-    BitstreamReader *bs = malloc(sizeof(BitstreamReader));
-    bs->type = BR_PYTHON;
-    bs->input.python = py_open_r(reader, buffer_size);
-    bs->state = 0;
-    bs->callbacks = NULL;
-    bs->exceptions = NULL;
-    bs->marks = NULL;
-    bs->callbacks_used = NULL;
-    bs->exceptions_used = NULL;
-    bs->marks_used = NULL;
-
-    switch (endianness) {
-    case BS_BIG_ENDIAN:
-        bs->read = br_read_bits_p_be;
-        bs->read_signed = br_read_signed_bits_be;
-        bs->read_64 = br_read_bits64_p_be;
-        bs->read_signed_64 = br_read_signed_bits64_be;
-        bs->skip = br_skip_bits_p_be;
-        bs->unread = br_unread_bit_be;
-        bs->read_unary = br_read_unary_p_be;
-        bs->read_limited_unary = br_read_limited_unary_p_be;
-        bs->set_endianness = br_set_endianness_p_be;
-        break;
-    case BS_LITTLE_ENDIAN:
-        bs->read = br_read_bits_p_le;
-        bs->read_signed = br_read_signed_bits_le;
-        bs->read_64 = br_read_bits64_p_le;
-        bs->read_signed_64 = br_read_signed_bits64_le;
-        bs->skip = br_skip_bits_p_le;
-        bs->unread = br_unread_bit_le;
-        bs->read_unary = br_read_unary_p_le;
-        bs->read_limited_unary = br_read_limited_unary_p_le;
-        bs->set_endianness = br_set_endianness_p_le;
-        break;
-    }
-
-    bs->skip_bytes = br_skip_bytes;
-    bs->byte_align = br_byte_align;
-    bs->read_huffman_code = br_read_huffman_code_p;
-    bs->read_bytes = br_read_bytes_p;
-    bs->parse = br_parse;
-    bs->substream_append = br_substream_append_p;
-    bs->close = br_close;
-    bs->close_stream = br_close_stream_p;
-    bs->mark = br_mark_p;
-    bs->rewind = br_rewind_p;
-    bs->unmark = br_unmark_p;
-
-    return bs;
-}
-
-void
-br_close_stream_p(BitstreamReader *bs)
-{
-    if (bs == NULL)
-        return;
-    else if (bs->input.python != NULL) {
-        py_close_r(bs->input.python);
-        bs->close_stream = br_noop;
-    }
-}
-
-#endif
-
-
-void
-bw_abort(BitstreamWriter *bs)
-{
-    fprintf(stderr, "EOF encountered, aborting\n");
-    abort();
-}
-
-BitstreamWriter*
-bw_open(FILE *f, bs_endianness endianness)
-{
-    BitstreamWriter *bs = malloc(sizeof(BitstreamWriter));
-    bs->type = BW_FILE;
-
-    bs->output.file = f;
-    bs->buffer_size = 0;
-    bs->buffer = 0;
-
-    bs->callbacks = NULL;
-    bs->callbacks_used = NULL;
-
-    switch (endianness) {
-    case BS_BIG_ENDIAN:
-        bs->write = bw_write_bits_f_be;
-        bs->write_64 = bw_write_bits64_f_be;
-        bs->write_signed = bw_write_signed_bits_f_p_r_be;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_be;
-        bs->set_endianness = bw_set_endianness_f_be;
-        break;
-    case BS_LITTLE_ENDIAN:
-        bs->write = bw_write_bits_f_le;
-        bs->write_64 = bw_write_bits64_f_le;
-        bs->write_signed = bw_write_signed_bits_f_p_r_le;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_le;
-        bs->set_endianness = bw_set_endianness_f_le;
-        break;
-    }
-
-    bs->write_bytes = bw_write_bytes_f;
-    bs->write_unary = bw_write_unary_f_p_r;
-    bs->build = bw_build;
-    bs->byte_align = bw_byte_align_f_p_r;
-    bs->bits_written = bw_bits_written_f_p;
-    bs->flush = bw_flush_f;
-    bs->close = bw_close_new;
-    bs->close_stream = bw_close_stream_f;
-
-    return bs;
-}
-
-#ifndef STANDALONE
-
 struct bw_python_output*
 py_open_w(PyObject* writer, unsigned int buffer_size)
 {
@@ -1860,6 +3026,16 @@ py_open_w(PyObject* writer, unsigned int buffer_size)
     output->buffer_size = 0;
 
     return output;
+}
+
+int
+py_close_w(struct bw_python_output *stream)
+{
+    Py_DECREF(stream->writer_obj);
+    free(stream->buffer);
+    free(stream);
+
+    return 0;
 }
 
 int
@@ -1897,902 +3073,9 @@ py_flush_w(struct bw_python_output *stream)
     return 0;
 }
 
-void
-py_close_w(struct bw_python_output *stream)
-{
-    return;
-}
-
-void
-py_free_w(struct bw_python_output *stream)
-{
-    Py_XDECREF(stream->writer_obj);
-    free(stream->buffer);
-    free(stream);
-}
-
-BitstreamWriter*
-bw_open_python(PyObject *writer, bs_endianness endianness,
-               unsigned int buffer_size)
-{
-    BitstreamWriter *bs = malloc(sizeof(BitstreamWriter));
-    bs->type = BW_PYTHON;
-
-    bs->output.python = py_open_w(writer, buffer_size);
-    bs->buffer_size = 0;
-    bs->buffer = 0;
-
-    bs->callbacks = NULL;
-    bs->callbacks_used = NULL;
-
-    switch (endianness) {
-    case BS_BIG_ENDIAN:
-        bs->write = bw_write_bits_p_be;
-        bs->write_64 = bw_write_bits64_p_be;
-        bs->write_signed = bw_write_signed_bits_f_p_r_be;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_be;
-        bs->set_endianness = bw_set_endianness_p_be;
-        break;
-    case BS_LITTLE_ENDIAN:
-        bs->write = bw_write_bits_p_le;
-        bs->write_64 = bw_write_bits64_p_le;
-        bs->write_signed = bw_write_signed_bits_f_p_r_le;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_le;
-        bs->set_endianness = bw_set_endianness_p_le;
-        break;
-    }
-
-    bs->write_bytes = bw_write_bytes_p;
-    bs->write_unary = bw_write_unary_f_p_r;
-    bs->build = bw_build;
-    bs->byte_align = bw_byte_align_f_p_r;
-    bs->bits_written = bw_bits_written_f_p;
-    bs->flush = bw_flush_p;
-    bs->close = bw_close_new;
-    bs->close_stream = bw_close_stream_p;
-
-    return bs;
-}
 
 #endif
 
-BitstreamWriter*
-bw_open_accumulator(bs_endianness endianness)
-{
-    BitstreamWriter *bs = malloc(sizeof(BitstreamWriter));
-    bs->type = BW_ACCUMULATOR;
-
-    bs->output.accumulator = 0;
-    bs->buffer = 0;
-    bs->buffer_size = 0;
-
-    bs->callbacks = NULL;
-    bs->callbacks_used = NULL;
-
-    bs->write = bw_write_bits_a;
-    bs->write_bytes = bw_write_bytes_a;
-    bs->write_signed = bw_write_signed_bits_a;
-    bs->write_64 = bw_write_bits64_a;
-    bs->write_signed_64 = bw_write_signed_bits64_a;
-    bs->write_unary = bw_write_unary_a;
-    bs->build = bw_build;
-    bs->byte_align = bw_byte_align_a;
-    bs->set_endianness = bw_set_endianness_a;
-    bs->bits_written = bw_bits_written_a;
-    bs->flush = bw_noop;
-    bs->close = bw_close_new;
-    bs->close_stream = bw_close_stream_a;
-
-    return bs;
-}
-
-BitstreamWriter*
-bw_open_recorder(bs_endianness endianness)
-{
-    BitstreamWriter *bs = malloc(sizeof(BitstreamWriter));
-    bs->type = BW_RECORDER;
-
-    bs->output.buffer = buf_new();
-    bs->buffer_size = 0;
-    bs->buffer = 0;
-
-    bs->callbacks = NULL;
-    bs->callbacks_used = NULL;
-
-    switch (endianness) {
-    case BS_BIG_ENDIAN:
-        bs->write = bw_write_bits_r_be;
-        bs->write_64 = bw_write_bits64_r_be;
-        bs->write_signed = bw_write_signed_bits_f_p_r_be;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_be;
-        bs->set_endianness = bw_set_endianness_r_be;
-        break;
-    case BS_LITTLE_ENDIAN:
-        bs->write = bw_write_bits_r_le;
-        bs->write_64 = bw_write_bits64_r_le;
-        bs->write_signed = bw_write_signed_bits_f_p_r_le;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_le;
-        bs->set_endianness = bw_set_endianness_r_le;
-        break;
-    }
-
-    bs->write_bytes = bw_write_bytes_r;
-    bs->write_unary = bw_write_unary_f_p_r;
-    bs->build = bw_build;
-    bs->byte_align = bw_byte_align_f_p_r;
-    bs->bits_written = bw_bits_written_r;
-    bs->flush = bw_noop;
-    bs->close = bw_close_new;
-    bs->close_stream = bw_close_stream_r;
-
-    return bs;
-}
-
-void
-bw_free(BitstreamWriter* bs)
-{
-    struct bs_callback* callback;
-    struct bs_callback* next_callback;
-
-    for (callback = bs->callbacks;
-         callback != NULL;
-         callback = next_callback) {
-        next_callback = callback->next;
-        free(callback);
-    }
-    for (callback = bs->callbacks_used;
-         callback != NULL;
-         callback = next_callback) {
-        next_callback = callback->next;
-        free(callback);
-    }
-
-#ifndef STANDALONE
-    if (bs->type == BW_PYTHON) {
-        py_free_w(bs->output.python);
-    }
-#endif
-
-    free(bs);
-}
-
-void
-bw_add_callback(BitstreamWriter *bs, bs_callback_func callback, void *data)
-{
-    struct bs_callback *callback_node = malloc(sizeof(struct bs_callback));
-    callback_node->callback = callback;
-    callback_node->data = data;
-    callback_node->next = bs->callbacks;
-    bs->callbacks = callback_node;
-}
-
-void
-bw_pop_callback(BitstreamWriter* bs, struct bs_callback* callback) {
-    struct bs_callback *c_node = bs->callbacks;
-    if (c_node != NULL) {
-        if (callback != NULL) {
-            callback->callback = c_node->callback;
-            callback->data = c_node->data;
-            callback->next = NULL;
-        }
-        bs->callbacks = c_node->next;
-        c_node->next = bs->callbacks_used;
-        bs->callbacks_used = c_node;
-    } else {
-        fprintf(stderr, "warning: no callbacks available to pop\n");
-    }
-}
-
-void
-bw_push_callback(BitstreamWriter* bs, struct bs_callback* callback) {
-    struct bs_callback *callback_node;
-
-    if (callback != NULL) {
-        if (bs->callbacks_used == NULL)
-            callback_node = malloc(sizeof(struct bs_callback));
-        else {
-            callback_node = bs->callbacks_used;
-            bs->callbacks_used = bs->callbacks_used->next;
-        }
-        callback_node->callback = callback->callback;
-        callback_node->data = callback->data;
-        callback_node->next = bs->callbacks;
-        bs->callbacks = callback_node;
-    }
-}
-
-void
-bw_call_callbacks(BitstreamWriter *bs, uint8_t byte) {
-    struct bs_callback *callback;
-    for (callback = bs->callbacks;
-         callback != NULL;
-         callback = callback->next)
-        callback->callback(byte, callback->data);
-}
-
-void
-bw_dump_bytes(BitstreamWriter* target, uint8_t* buffer, unsigned int total) {
-    unsigned int i;
-    struct bs_callback* callback;
-    uint8_t* target_buffer;
-
-    if (total == 0) {
-        /*short-circuit an empty write*/
-        return;
-    } else if (target->buffer_size == 0) {
-        /*perform faster dumping if target is byte-aligned*/
-        switch (target->type) {
-        case BW_FILE:
-            if (fwrite(buffer, sizeof(uint8_t),
-                       total, target->output.file) != total)
-                bw_abort(target);
-            break;
-        case BW_PYTHON:
-#ifndef STANDALONE
-            for (i = 0; i < total; i++)
-                target->write(target, 8, buffer[i]);
-#endif
-            break;
-        case BW_RECORDER:
-            target_buffer = buf_extend(target->output.buffer, total);
-            memcpy(target_buffer, buffer, total);
-            target->output.buffer->buffer_size += total;
-            break;
-        case BW_ACCUMULATOR:
-            target->output.accumulator += (total * 8);
-            break;
-        }
-
-        /*perform callbacks from target on written bytes*/
-        for (callback = target->callbacks;
-             callback != NULL;
-             callback = callback->next)
-            for (i = 0; i < total; i++)
-                callback->callback(buffer[i], callback->data);
-    } else {
-        /*otherwise, proceed on a byte-by-byte basis*/
-        for (i = 0; i < total; i++)
-            target->write(target, 8, buffer[i]);
-    }
-}
-
-void
-bw_rec_copy(BitstreamWriter* target, BitstreamWriter* source)
-{
-    assert(source->type == BW_RECORDER);
-
-    /*dump all the bytes from our internal buffer*/
-    bw_dump_bytes(target,
-                  source->output.buffer->buffer,
-                  source->output.buffer->buffer_size);
-
-    /*then dump remaining bits (if any) with a partial write() call*/
-    if (source->buffer_size > 0)
-        target->write(target,
-                      source->buffer_size,
-                      source->buffer & ((1 << source->buffer_size) - 1));
-}
-
-unsigned int
-bw_rec_split(BitstreamWriter* target,
-             BitstreamWriter* remaining,
-             BitstreamWriter* source,
-             unsigned int total_bytes) {
-    uint8_t* buffer;
-    uint32_t buffer_size;
-    unsigned int to_target;
-    unsigned int to_remaining;
-
-    assert(source->type == BW_RECORDER);
-
-    buffer = source->output.buffer->buffer;
-    buffer_size = source->output.buffer->buffer_size;
-    to_target = MIN(total_bytes, buffer_size);
-    to_remaining = buffer_size - to_target;
-
-    /*first, dump up to "total_bytes" from source to "target"
-      if available*/
-    if (target != NULL) {
-        bw_dump_bytes(target, buffer, to_target);
-    }
-
-    if (remaining != NULL) {
-        if (remaining != source) {
-            /*then, dump the remaining bytes from source to "remaining"
-              if it is a separate writer*/
-            bw_dump_bytes(remaining, buffer + to_target, to_remaining);
-
-            if (source->buffer_size > 0)
-                remaining->write(
-                    remaining,
-                    source->buffer_size,
-                    source->buffer & ((1 << source->buffer_size) - 1));
-        } else {
-            /*if remaining is the same as source,
-              shift source's output buffer down*/
-            memmove(buffer, buffer + to_target, to_remaining);
-            source->output.buffer->buffer_size -= to_target;
-        }
-    }
-
-    return to_target;
-}
-
-void
-bw_swap_records(BitstreamWriter* a, BitstreamWriter* b)
-{
-    BitstreamWriter c;
-
-    assert(a->type == BW_RECORDER);
-    assert(b->type == BW_RECORDER);
-    assert(a->write == b->write);  /*ensure they have the same endianness*/
-
-    c.output.buffer = a->output.buffer;
-    c.buffer_size = a->buffer_size;
-    c.buffer = a->buffer;
-    a->output.buffer = b->output.buffer;
-    a->buffer_size = b->buffer_size;
-    a->buffer = b->buffer;
-    b->output.buffer = c.output.buffer;
-    b->buffer_size = c.buffer_size;
-    b->buffer = c.buffer;
-}
-
-#define FUNC_WRITE_BITS_BE(FUNC_NAME, VALUE_TYPE, BYTE_FUNC, BYTE_FUNC_ARG) \
-    void                                                                \
-    FUNC_NAME(BitstreamWriter* bs, unsigned int count, VALUE_TYPE value) \
-    {                                                                   \
-        int bits_to_write;                                              \
-        VALUE_TYPE value_to_write;                                      \
-        unsigned int byte;                                              \
-        struct bs_callback* callback;                                   \
-                                                                        \
-        /* assert(value < (1l << count));  */                           \
-                                                                        \
-        while (count > 0) {                                             \
-            /*chop off up to 8 bits to write at a time*/                \
-            bits_to_write = count > 8 ? 8 : count;                      \
-            value_to_write = value >> (count - bits_to_write);          \
-                                                                        \
-            /*new data is added to the buffer least-significant first*/ \
-            bs->buffer = ((bs->buffer << bits_to_write) | value_to_write); \
-            bs->buffer_size += bits_to_write;                           \
-                                                                        \
-            /*if buffer is over 8 bits,*/                               \
-            /*extract bits most-significant first*/                     \
-            /*and remove them from the buffer*/                         \
-            if (bs->buffer_size >= 8) {                                 \
-                byte = (bs->buffer >> (bs->buffer_size - 8)) & 0xFF;    \
-                if (BYTE_FUNC(byte, BYTE_FUNC_ARG) == EOF)              \
-                    bw_abort(bs);                                       \
-                for (callback = bs->callbacks;                          \
-                     callback != NULL;                                  \
-                     callback = callback->next)                         \
-                    callback->callback((uint8_t)byte, callback->data);  \
-                                                                        \
-                bs->buffer_size -= 8;                                   \
-            }                                                           \
-                                                                        \
-            /*decrement the count and value*/                           \
-            value -= (value_to_write << (count - bits_to_write));       \
-            count -= bits_to_write;                                     \
-        }                                                               \
-    }
-
-#define FUNC_WRITE_BITS_LE(FUNC_NAME, VALUE_TYPE, BYTE_FUNC, BYTE_FUNC_ARG) \
-    void                                                                \
-    FUNC_NAME(BitstreamWriter* bs, unsigned int count, VALUE_TYPE value) \
-    {                                                                   \
-        int bits_to_write;                                              \
-        VALUE_TYPE value_to_write;                                      \
-        unsigned int byte;                                              \
-        struct bs_callback* callback;                                   \
-                                                                        \
-        /* assert(value < (int64_t)(1LL << count)); */                  \
-                                                                        \
-        while (count > 0) {                                             \
-            /*chop off up to 8 bits to write at a time*/                \
-            bits_to_write = count > 8 ? 8 : count;                      \
-            value_to_write = value & ((1 << bits_to_write) - 1);        \
-                                                                        \
-            /*new data is added to the buffer most-significant first*/  \
-            bs->buffer |= (value_to_write << bs->buffer_size);          \
-            bs->buffer_size += bits_to_write;                           \
-                                                                        \
-            /*if buffer is over 8 bits,*/                               \
-            /*extract bits least-significant first*/                    \
-            /*and remove them from the buffer*/                         \
-            if (bs->buffer_size >= 8) {                                 \
-                byte = bs->buffer & 0xFF;                               \
-                if (BYTE_FUNC(byte, BYTE_FUNC_ARG) == EOF)              \
-                    bw_abort(bs);                                       \
-                for (callback = bs->callbacks;                          \
-                     callback != NULL;                                  \
-                     callback = callback->next)                         \
-                    callback->callback((uint8_t)byte, callback->data);  \
-                bs->buffer >>= 8;                                       \
-                bs->buffer_size -= 8;                                   \
-            }                                                           \
-                                                                        \
-            /*decrement the count and value*/                           \
-            value >>= bits_to_write;                                    \
-            count -= bits_to_write;                                     \
-        }                                                               \
-    }
-
-FUNC_WRITE_BITS_BE(bw_write_bits_f_be,
-                   unsigned int, putc, bs->output.file)
-FUNC_WRITE_BITS_LE(bw_write_bits_f_le,
-                   unsigned int, putc, bs->output.file)
-FUNC_WRITE_BITS_BE(bw_write_bits64_f_be,
-                   uint64_t, putc, bs->output.file)
-FUNC_WRITE_BITS_LE(bw_write_bits64_f_le,
-                   uint64_t, putc, bs->output.file)
-
-#ifndef STANDALONE
-FUNC_WRITE_BITS_BE(bw_write_bits_p_be,
-                   unsigned int, py_putc, bs->output.python)
-FUNC_WRITE_BITS_LE(bw_write_bits_p_le,
-                   unsigned int, py_putc, bs->output.python)
-FUNC_WRITE_BITS_BE(bw_write_bits64_p_be,
-                   uint64_t, py_putc, bs->output.python)
-FUNC_WRITE_BITS_LE(bw_write_bits64_p_le,
-                   uint64_t, py_putc, bs->output.python)
-#endif
-
-FUNC_WRITE_BITS_BE(bw_write_bits_r_be,
-                   unsigned int, buf_putc, bs->output.buffer)
-FUNC_WRITE_BITS_LE(bw_write_bits_r_le,
-                   unsigned int, buf_putc, bs->output.buffer)
-FUNC_WRITE_BITS_BE(bw_write_bits64_r_be,
-                   uint64_t, buf_putc, bs->output.buffer)
-FUNC_WRITE_BITS_LE(bw_write_bits64_r_le,
-                   uint64_t, buf_putc, bs->output.buffer)
-
-void
-bw_write_bits_a(BitstreamWriter* bs, unsigned int count, unsigned int value)
-{
-    assert(value < (1l << count));
-    bs->output.accumulator += count;
-}
-
-
-void
-bw_write_bytes_f(BitstreamWriter* bs, const uint8_t* bytes,
-                 unsigned int count)
-{
-    unsigned int i;
-    struct bs_callback* callback;
-
-    if (bs->buffer_size == 0) {
-        /*stream is byte aligned, so perform optimized write*/
-        if (fwrite(bytes, sizeof(uint8_t), count, bs->output.file) != count)
-            bw_abort(bs);
-
-        /*perform callbacks on the written bytes*/
-        for (callback = bs->callbacks;
-             callback != NULL;
-             callback = callback->next)
-            for (i = 0; i < count; i++)
-                callback->callback(bytes[i], callback->data);
-    } else {
-        /*stream is not byte-aligned, so perform multiple writes*/
-        for (i = 0; i < count; i++)
-            bs->write(bs, 8, bytes[i]);
-    }
-}
-
-#ifndef STANDALONE
-
-void
-bw_write_bytes_p(BitstreamWriter* bs, const uint8_t* bytes,
-                 unsigned int count)
-{
-    unsigned int i;
-
-    for (i = 0; i < count; i++)
-        bs->write(bs, 8, bytes[i]);
-}
-
-#endif
-
-void
-bw_write_bytes_r(BitstreamWriter* bs, const uint8_t* bytes,
-                 unsigned int count)
-{
-    unsigned int i;
-
-    /*byte writing to a recorder
-      is implemented as a series of individual writes
-      rather than a single record containing one big write
-
-      since this is a relatively rare operation,
-      it's best to keep it simple
-      rather than make a mess of split_record()*/
-    for (i = 0; i < count; i++)
-        bs->write(bs, 8, bytes[i]);
-}
-
-void
-bw_write_bytes_a(BitstreamWriter* bs, const uint8_t* bytes,
-                 unsigned int count) {
-    bs->output.accumulator += (count * 8);
-}
-
-
-void
-bw_write_signed_bits_f_p_r_be(BitstreamWriter* bs, unsigned int count,
-                              int value)
-{
-    assert(value <= ((1 << (count - 1)) - 1));
-    assert(value >= -(1 << (count - 1)));
-
-    if (value >= 0) {
-        bs->write(bs, 1, 0);
-        bs->write(bs, count - 1, value);
-    } else {
-        bs->write(bs, 1, 1);
-        bs->write(bs, count - 1, (1 << (count - 1)) + value);
-    }
-}
-
-void
-bw_write_signed_bits_f_p_r_le(BitstreamWriter* bs, unsigned int count,
-                              int value)
-{
-    assert(value <= ((1 << (count - 1)) - 1));
-    assert(value >= -(1 << (count - 1)));
-
-    if (value >= 0) {
-        bs->write(bs, count - 1, value);
-        bs->write(bs, 1, 0);
-    } else {
-        bs->write(bs, count - 1, (1 << (count - 1)) + value);
-        bs->write(bs, 1, 1);
-    }
-}
-
-void
-bw_write_signed_bits_a(BitstreamWriter* bs, unsigned int count, int value)
-{
-    assert(value <= ((1 << (count - 1)) - 1));
-    assert(value >= -(1 << (count - 1)));
-    bs->output.accumulator += count;
-}
-
-void
-bw_write_bits64_a(BitstreamWriter* bs, unsigned int count, uint64_t value)
-{
-    assert(count < 64 ? value < (int64_t)(1ll << count) : 1);
-    bs->output.accumulator += count;
-}
-
-
-void
-bw_write_signed_bits64_f_p_r_be(BitstreamWriter* bs, unsigned int count,
-                                int64_t value)
-{
-    assert(value <= ((1ll << (count - 1)) - 1));
-    assert(value >= -(1ll << (count - 1)));
-
-    if (value >= 0ll) {
-        bs->write(bs, 1, 0);
-        bs->write_64(bs, count - 1, value);
-    } else {
-        bs->write(bs, 1, 1);
-        bs->write_64(bs, count - 1, (1ll << (count - 1)) + value);
-    }
-}
-
-void
-bw_write_signed_bits64_f_p_r_le(BitstreamWriter* bs, unsigned int count,
-                                int64_t value)
-{
-    assert(value <= ((1ll << (count - 1)) - 1));
-    assert(value >= -(1ll << (count - 1)));
-
-    if (value >= 0ll) {
-        bs->write_64(bs, count - 1, value);
-        bs->write(bs, 1, 0);
-    } else {
-        bs->write_64(bs, count - 1, (1ll << (count - 1)) + value);
-        bs->write(bs, 1, 1);
-    }
-}
-
-void
-bw_write_signed_bits64_a(BitstreamWriter* bs, unsigned int count,
-                         int64_t value)
-{
-    assert(value <= ((1ll << (count - 1)) - 1));
-    assert(value >= -(1ll << (count - 1)));
-    bs->output.accumulator += count;
-}
-
-
-#define UNARY_BUFFER_SIZE 30
-
-void
-bw_write_unary_f_p_r(BitstreamWriter* bs, int stop_bit, unsigned int value)
-{
-    unsigned int bits_to_write;
-
-    /*send our pre-stop bits to write() in 30-bit chunks*/
-    while (value > 0) {
-        bits_to_write = value <= UNARY_BUFFER_SIZE ? value : UNARY_BUFFER_SIZE;
-        if (stop_bit) { /*stop bit of 1, buffer value of all 0s*/
-            bs->write(bs, bits_to_write, 0);
-        } else {        /*stop bit of 0, buffer value of all 1s*/
-            bs->write(bs, bits_to_write, (1 << bits_to_write) - 1);
-        }
-        value -= bits_to_write;
-    }
-
-    /*finally, send our stop bit*/
-    bs->write(bs, 1, stop_bit);
-}
-
-void
-bw_write_unary_a(BitstreamWriter* bs, int stop_bit, unsigned int value)
-{
-    assert(value >= 0);
-    bs->output.accumulator += (value + 1);
-}
-
-
-
-void
-bw_byte_align_f_p_r(BitstreamWriter* bs) {
-    /*write enough 0 bits to completely fill the buffer
-      which results in a byte being written*/
-    if (bs->buffer_size > 0)
-        bs->write(bs, 8 - bs->buffer_size, 0);
-}
-
-void
-bw_byte_align_a(BitstreamWriter* bs)
-{
-    if (bs->output.accumulator % 8)
-        bs->output.accumulator += (8 - (bs->output.accumulator % 8));
-}
-
-
-
-unsigned int
-bw_bits_written_f_p(BitstreamWriter* bs) {
-    /*actual file writing doesn't keep track of bits written
-      since the total could be extremely large*/
-    return 0;
-}
-
-unsigned int
-bw_bits_written_r(BitstreamWriter* bs) {
-    return ((bs->output.buffer->buffer_size -
-             bs->output.buffer->buffer_position) * 8) + bs->buffer_size;
-}
-
-unsigned int
-bw_bits_written_a(BitstreamWriter* bs) {
-    return bs->output.accumulator;
-}
-
-
-void
-bw_set_endianness_f_be(BitstreamWriter* bs, bs_endianness endianness)
-{
-    bs->buffer = 0;
-    bs->buffer_size = 0;
-    if (endianness == BS_LITTLE_ENDIAN) {
-        bs->write = bw_write_bits_f_le;
-        bs->write_64 = bw_write_bits64_f_le;
-        bs->write_signed = bw_write_signed_bits_f_p_r_le;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_le;
-        bs->set_endianness = bw_set_endianness_f_le;
-    }
-}
-
-void
-bw_set_endianness_f_le(BitstreamWriter* bs, bs_endianness endianness)
-{
-    bs->buffer = 0;
-    bs->buffer_size = 0;
-    if (endianness == BS_BIG_ENDIAN) {
-        bs->write = bw_write_bits_f_be;
-        bs->write_64 = bw_write_bits64_f_be;
-        bs->write_signed = bw_write_signed_bits_f_p_r_be;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_be;
-        bs->set_endianness = bw_set_endianness_f_be;
-    }
-}
-
-void
-bw_set_endianness_r_be(BitstreamWriter* bs, bs_endianness endianness)
-{
-    bs->buffer = 0;
-    bs->buffer_size = 0;
-    if (endianness == BS_LITTLE_ENDIAN) {
-        bs->write = bw_write_bits_r_le;
-        bs->write_64 = bw_write_bits64_r_le;
-        bs->write_signed = bw_write_signed_bits_f_p_r_le;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_le;
-        bs->set_endianness = bw_set_endianness_r_le;
-    }
-}
-
-void
-bw_set_endianness_r_le(BitstreamWriter* bs, bs_endianness endianness)
-{
-    bs->buffer = 0;
-    bs->buffer_size = 0;
-    if (endianness == BS_BIG_ENDIAN) {
-        bs->write = bw_write_bits_r_be;
-        bs->write_64 = bw_write_bits64_r_be;
-        bs->write_signed = bw_write_signed_bits_f_p_r_be;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_be;
-        bs->set_endianness = bw_set_endianness_r_be;
-    }
-}
-
-#ifndef STANDALONE
-
-void
-bw_set_endianness_p_be(BitstreamWriter* bs, bs_endianness endianness)
-{
-    bs->buffer = 0;
-    bs->buffer_size = 0;
-    if (endianness == BS_LITTLE_ENDIAN) {
-        bs->write = bw_write_bits_p_le;
-        bs->write_64 = bw_write_bits64_p_le;
-        bs->write_signed = bw_write_signed_bits_f_p_r_le;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_le;
-        bs->set_endianness = bw_set_endianness_p_le;
-    }
-}
-
-void
-bw_set_endianness_p_le(BitstreamWriter* bs, bs_endianness endianness)
-{
-    bs->buffer = 0;
-    bs->buffer_size = 0;
-    if (endianness == BS_BIG_ENDIAN) {
-        bs->write = bw_write_bits_p_be;
-        bs->write_64 = bw_write_bits64_p_be;
-        bs->write_signed = bw_write_signed_bits_f_p_r_be;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_be;
-        bs->set_endianness = bw_set_endianness_p_be;
-    }
-}
-
-#endif
-
-void
-bw_set_endianness_a(BitstreamWriter* bs, bs_endianness endianness)
-{
-    /*swapping endianness results in a byte alignment*/
-    bw_byte_align_a(bs);
-}
-
-void
-bw_build(struct BitstreamWriter_s* stream, char* format, ...)
-{
-    va_list ap;
-    char* s = format;
-    unsigned int size;
-    bs_instruction type;
-    unsigned int _unsigned;
-    int _signed;
-    uint64_t _unsigned64;
-    int64_t _signed64;
-    uint8_t* _bytes;
-
-    va_start(ap, format);
-    while (!bs_parse_format(&s, &size, &type)) {
-        switch (type) {
-        case BS_INST_UNSIGNED:
-            _unsigned = va_arg(ap, unsigned int);
-            stream->write(stream, size, _unsigned);
-            break;
-        case BS_INST_SIGNED:
-            _signed = va_arg(ap, int);
-            stream->write_signed(stream, size, _signed);
-            break;
-        case BS_INST_UNSIGNED64:
-            _unsigned64 = va_arg(ap, uint64_t);
-            stream->write_64(stream, size, _unsigned64);
-            break;
-        case BS_INST_SIGNED64:
-            _signed64 = va_arg(ap, int64_t);
-            stream->write_signed_64(stream, size, _signed64);
-            break;
-        case BS_INST_SKIP:
-            stream->write(stream, size, 0);
-            break;
-        case BS_INST_SKIP_BYTES:
-            /*somewhat inefficient,
-              but byte skipping is rare for BitstreamWriters anyway*/
-            stream->write(stream, size, 0);
-            stream->write(stream, size, 0);
-            stream->write(stream, size, 0);
-            stream->write(stream, size, 0);
-            stream->write(stream, size, 0);
-            stream->write(stream, size, 0);
-            stream->write(stream, size, 0);
-            stream->write(stream, size, 0);
-            break;
-        case BS_INST_BYTES:
-            _bytes = va_arg(ap, uint8_t*);
-            stream->write_bytes(stream, _bytes, size);
-            break;
-        case BS_INST_ALIGN:
-            stream->byte_align(stream);
-            break;
-        }
-    }
-    va_end(ap);
-}
-
-void
-bw_flush_f(BitstreamWriter* bs)
-{
-    fflush(bs->output.file);
-}
-
-#ifndef STANDALONE
-
-void
-bw_flush_p(BitstreamWriter* bs)
-{
-    py_flush_w(bs->output.python);
-}
-
-#endif
-
-void
-bw_noop(BitstreamWriter* bs)
-{
-    return;
-}
-
-void
-bw_close_new(BitstreamWriter* bs)
-{
-    bs->close_stream(bs);
-    bw_free(bs);
-}
-
-
-void
-bw_close_stream_f(BitstreamWriter* bs)
-{
-    fclose(bs->output.file);
-}
-
-#ifndef STANDALONE
-
-void
-bw_close_stream_p(BitstreamWriter* bs)
-{
-    if (bs == NULL)
-        return;
-    else if (bs->output.python != NULL) {
-        py_close_w(bs->output.python);
-        bs->close_stream = bw_noop;
-    }
-}
-
-#endif
-
-void
-bw_close_stream_r(BitstreamWriter* bs)
-{
-    buf_close(bs->output.buffer);
-}
-
-void
-bw_close_stream_a(BitstreamWriter* bs)
-{
-    return;
-}
 
 int
 bs_parse_format(char** format, unsigned int* size, bs_instruction* type) {
@@ -2940,6 +3223,10 @@ test_little_endian_reader(BitstreamReader* reader,
                           struct br_huffman_table (*table)[][0x200]);
 
 void
+test_close_errors(BitstreamReader* reader,
+                  struct br_huffman_table (*table)[][0x200]);
+
+void
 test_try(BitstreamReader* reader,
          struct br_huffman_table (*table)[][0x200]);
 
@@ -2993,6 +3280,9 @@ void
 test_writer(bs_endianness endianness);
 
 void
+test_writer_close_errors(BitstreamWriter* writer);
+
+void
 writer_perform_write(BitstreamWriter* writer, bs_endianness endianness);
 void
 writer_perform_write_signed(BitstreamWriter* writer, bs_endianness endianness);
@@ -3017,6 +3307,7 @@ check_output_file(void);
 int main(int argc, char* argv[]) {
     int fd;
     FILE* temp_file;
+    FILE* temp_file2;
     BitstreamReader* reader;
     BitstreamReader* subreader;
     BitstreamReader* subsubreader;
@@ -3066,7 +3357,14 @@ int main(int argc, char* argv[]) {
     test_big_endian_reader(reader, be_table);
     test_try(reader, be_table);
     test_callbacks_reader(reader, 14, 18, be_table, 14);
-    br_free(reader);
+    reader->free(reader);
+
+    temp_file2 = fopen(temp_filename, "rb");
+    reader = br_open(temp_file2, BS_BIG_ENDIAN);
+    test_close_errors(reader, be_table);
+    reader->set_endianness(reader, BS_LITTLE_ENDIAN);
+    test_close_errors(reader, le_table);
+    reader->free(reader);
 
     fseek(temp_file, 0, SEEK_SET);
 
@@ -3075,7 +3373,14 @@ int main(int argc, char* argv[]) {
     test_little_endian_reader(reader, le_table);
     test_try(reader, le_table);
     test_callbacks_reader(reader, 14, 18, le_table, 13);
-    br_free(reader);
+    reader->free(reader);
+
+    temp_file2 = fopen(temp_filename, "rb");
+    reader = br_open(temp_file2, BS_LITTLE_ENDIAN);
+    test_close_errors(reader, le_table);
+    reader->set_endianness(reader, BS_BIG_ENDIAN);
+    test_close_errors(reader, be_table);
+    reader->free(reader);
 
     /*pad the stream with some additional data on both ends*/
     fseek(temp_file, 0, SEEK_SET);
@@ -3101,6 +3406,14 @@ int main(int argc, char* argv[]) {
     test_callbacks_reader(subreader, 14, 18, be_table, 14);
     br_substream_reset(subreader);
 
+    reader->rewind(reader);
+    reader->skip(reader, 16);
+    reader->substream_append(reader, subreader, 4);
+    test_close_errors(subreader, be_table);
+    br_substream_reset(subreader);
+    subreader->free(subreader);
+    subreader = br_substream_new(BS_BIG_ENDIAN);
+
     /*check a big-endian substream built from another substream*/
     reader->rewind(reader);
     reader->skip(reader, 8);
@@ -3115,7 +3428,7 @@ int main(int argc, char* argv[]) {
     subreader->close(subreader);
     reader->rewind(reader);
     reader->unmark(reader);
-    br_free(reader);
+    reader->free(reader);
 
     reader = br_open(temp_file, BS_LITTLE_ENDIAN);
     reader->mark(reader);
@@ -3128,6 +3441,14 @@ int main(int argc, char* argv[]) {
     test_try(subreader, le_table);
     test_callbacks_reader(subreader, 14, 18, le_table, 13);
     br_substream_reset(subreader);
+
+    reader->rewind(reader);
+    reader->skip(reader, 16);
+    reader->substream_append(reader, subreader, 4);
+    test_close_errors(subreader, le_table);
+    br_substream_reset(subreader);
+    subreader->free(subreader);
+    subreader = br_substream_new(BS_LITTLE_ENDIAN);
 
     /*check a little-endian substream built from another substream*/
     reader->rewind(reader);
@@ -3143,7 +3464,7 @@ int main(int argc, char* argv[]) {
     subreader->close(subreader);
     reader->rewind(reader);
     reader->unmark(reader);
-    br_free(reader);
+    reader->free(reader);
 
     free(be_table);
     free(le_table);
@@ -3506,6 +3827,120 @@ void test_little_endian_reader(BitstreamReader* reader,
     reader->unmark(reader);
 }
 
+void
+test_close_errors(BitstreamReader* reader,
+                  struct br_huffman_table (*table)[][0x200]) {
+    uint8_t bytes[10];
+    struct BitstreamReader_s* subreader;
+
+    reader->close_substream(reader);
+
+    /*ensure all read methods on a closed file
+      either call br_abort or do nothing*/
+
+    if (!setjmp(*br_try(reader))) {
+        reader->read(reader, 2);
+        assert(0);
+    } else {
+        br_etry(reader);
+    }
+
+    if (!setjmp(*br_try(reader))) {
+        reader->read_signed(reader, 3);
+        assert(0);
+    } else {
+        br_etry(reader);
+    }
+
+    if (!setjmp(*br_try(reader))) {
+        reader->read_64(reader, 4);
+        assert(0);
+    } else {
+        br_etry(reader);
+    }
+
+    if (!setjmp(*br_try(reader))) {
+        reader->read_signed_64(reader, 5);
+        assert(0);
+    } else {
+        br_etry(reader);
+    }
+
+    if (!setjmp(*br_try(reader))) {
+        reader->skip(reader, 6);
+        assert(0);
+    } else {
+        br_etry(reader);
+    }
+
+    if (!setjmp(*br_try(reader))) {
+        reader->skip_bytes(reader, 1);
+        assert(0);
+    } else {
+        br_etry(reader);
+    }
+
+    reader->unread(reader, 1); /*should do nothing*/
+
+    if (!setjmp(*br_try(reader))) {
+        reader->read_unary(reader, 1);
+        assert(0);
+    } else {
+        br_etry(reader);
+    }
+
+    if (!setjmp(*br_try(reader))) {
+        reader->read_limited_unary(reader, 0, 10);
+        assert(0);
+    } else {
+        br_etry(reader);
+    }
+
+    if (!setjmp(*br_try(reader))) {
+        reader->read_huffman_code(reader, *table);
+        assert(0);
+    } else {
+        br_etry(reader);
+    }
+
+    reader->byte_align(reader); /*should do nothing*/
+
+    if (!setjmp(*br_try(reader))) {
+        reader->read_bytes(reader, bytes, 10);
+        assert(0);
+    } else {
+        br_etry(reader);
+    }
+
+    if (!setjmp(*br_try(reader))) {
+        reader->parse(reader, "10b", bytes);
+        assert(0);
+    } else {
+        br_etry(reader);
+    }
+
+    reader->mark(reader); /*should do nothing*/
+
+    if (!setjmp(*br_try(reader))) {
+        reader->read(reader, 1);
+        assert(0);
+    } else {
+        br_etry(reader);
+    }
+
+    reader->rewind(reader);
+    reader->unmark(reader);
+
+    subreader = br_substream_new(BS_BIG_ENDIAN); /*doesn't really matter*/
+    if (!setjmp(*br_try(reader))) {
+        reader->substream_append(reader, subreader, 1);
+        assert(0);
+    } else {
+        br_etry(reader);
+    }
+    subreader->close(subreader);
+}
+
 void test_try(BitstreamReader* reader,
               struct br_huffman_table (*table)[][0x200]) {
     uint8_t bytes[2];
@@ -3784,9 +4219,17 @@ test_writer(bs_endianness endianness) {
         checks[i](writer, endianness);
         fflush(output_file);
         check_output_file();
-        bw_free(writer);
+        writer->free(writer);
         fclose(output_file);
     }
+
+    output_file = fopen(temp_filename, "wb");
+    writer = bw_open(output_file, endianness);
+    test_writer_close_errors(writer);
+    writer->set_endianness(writer, endianness == BS_BIG_ENDIAN ?
+                           BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
+    test_writer_close_errors(writer);
+    writer->free(writer);
 
     /*perform recorder-based checks*/
     for (i = 0; i < total_checks; i++) {
@@ -3799,11 +4242,18 @@ test_writer(bs_endianness endianness) {
         bw_rec_copy(writer, sub_writer);
         fflush(output_file);
         check_output_file();
-        bw_free(writer);
+        writer->free(writer);
         assert(sub_writer->bits_written(sub_writer) == 32);
         sub_writer->close(sub_writer);
         fclose(output_file);
     }
+
+    sub_writer = bw_open_recorder(endianness);
+    test_writer_close_errors(sub_writer);
+    sub_writer->set_endianness(sub_writer, endianness == BS_BIG_ENDIAN ?
+                               BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
+    test_writer_close_errors(sub_writer);
+    sub_writer->free(sub_writer);
 
     /*perform accumulator-based checks*/
     for (i = 0; i < total_checks; i++) {
@@ -3813,6 +4263,13 @@ test_writer(bs_endianness endianness) {
         assert(writer->bits_written(writer) == 32);
         writer->close(writer);
     }
+
+    writer = bw_open_accumulator(endianness);
+    test_writer_close_errors(writer);
+    writer->set_endianness(writer, endianness == BS_BIG_ENDIAN ?
+                           BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
+    test_writer_close_errors(writer);
+    writer->free(writer);
 
     /*check swap records*/
     output_file = fopen(temp_filename, "wb");
@@ -3886,7 +4343,7 @@ test_writer(bs_endianness endianness) {
         bw_rec_copy(writer, sub_writer);
         fflush(output_file);
         check_output_file();
-        bw_free(writer);
+        writer->free(writer);
         sub_writer->close(sub_writer);
         sub_sub_writer->close(sub_sub_writer);
         fclose(output_file);
@@ -3907,6 +4364,70 @@ test_writer(bs_endianness endianness) {
         writer->close(writer);
         sub_writer->close(sub_writer);
     }
+}
+
+void
+test_writer_close_errors(BitstreamWriter* writer)
+{
+    writer->close_substream(writer);
+
+    if (!setjmp(*bw_try(writer))) {
+        writer->write(writer, 2, 1);
+        assert(0);
+    } else {
+        bw_etry(writer);
+    }
+
+    if (!setjmp(*bw_try(writer))) {
+        writer->write_signed(writer, 3, 1);
+        assert(0);
+    } else {
+        bw_etry(writer);
+    }
+
+    if (!setjmp(*bw_try(writer))) {
+        writer->write_64(writer, 4, 1);
+        assert(0);
+    } else {
+        bw_etry(writer);
+    }
+
+    if (!setjmp(*bw_try(writer))) {
+        writer->write_signed_64(writer, 5, 1);
+        assert(0);
+    } else {
+        bw_etry(writer);
+    }
+
+    if (!setjmp(*bw_try(writer))) {
+        writer->write_bytes(writer, (uint8_t*)"abcde", 5);
+        assert(0);
+    } else {
+        bw_etry(writer);
+    }
+
+    writer->byte_align(writer);
+
+    if (!setjmp(*bw_try(writer))) {
+        writer->write_unary(writer, 0, 5);
+        assert(0);
+    } else {
+        bw_etry(writer);
+    }
+
+    if (!setjmp(*bw_try(writer))) {
+        writer->build(writer, "1u", 1);
+        assert(0);
+    } else {
+        bw_etry(writer);
+    }
+
+    assert(writer->bits_written(writer) == 0);
+
+    writer->flush(writer);
+
+
+
 }
 
 void

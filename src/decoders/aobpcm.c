@@ -86,7 +86,7 @@ AOBPCMDecoder_new(PyTypeObject *type,
 void
 AOBPCMDecoder_dealloc(decoders_AOBPCMDecoder *self) {
     if (self->reader != NULL)
-        py_free_r(self->reader);
+        py_close_r(self->reader);
     if (self->buffer != NULL)
         free(self->buffer);
 
