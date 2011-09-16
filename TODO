@@ -4568,7 +4568,48 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] bw_write_unary_c
      - [X] bw_set_endianness_c
      - [X] bw_close_substream_c
-*** TODO Update mod_python.c to use new hooks properly
+     - [X] bw_byte_align_c
+**** DONE Ensure bw_rec_split detects closed stream(s) properly
+     Call bw_abort if one attempts to split from or to a closed stream.
+**** DONE Ensure bw_dump_bytes detects closed stream properly
+     Call bw_abort if one attempts to dump bytes to a closed stream.
+**** DONE Ensure bw_rec_copy detects closed stream properly
+     Call bw_abort if one attempts to copy records to a closed stream.
+*** DONE Update mod_python.c to use new hooks properly
+**** DONE Add bw_try/bw_etry wrappers around write methods
+     - [X] BitstreamWriter_write
+     - [X] BitstreamWriter_write_signed
+     - [X] BitstreamWriter_write64
+     - [X] BitstreamWriter_write_signed64
+     - [X] BitstreamWriter_unary
+     - [X] BitstreamWriter_byte_align
+     - [X] BitstreamWriter_write_bytes
+     - [X] BitstreamWriter_flush
+     - [X] BitstreamRecorder_write
+     - [X] BitstreamRecorder_write_signed
+     - [X] BitstreamRecorder_write64
+     - [X] BitstreamRecorder_write_signed64
+     - [X] BitstreamRecorder_unary
+     - [X] BitstreamRecorder_byte_align
+     - [X] BitstreamRecorder_write_bytes
+     - [X] BitstreamRecorder_copy
+     - [X] BitstreamRecorder_split
+     - [X] bitstream_build
+     - [X] BitstreamAccumulator_write
+     - [X] BitstreamAccumulator_write_signed
+     - [X] BitstreamAccumulator_write64
+     - [X] BitstreamAccumulator_write_signed64
+     - [X] BitstreamAccumulator_unary
+     - [X] BitstreamAccumulator_byte_align
+     - [X] BitstreamAccumulator_write_bytes
+**** DONE Ensure close() method calls bs->close_substream()
+     - [X] BitstreamWriter
+     - [X] BitstreamRecorder
+     - [X] BitstreamAccumulator
+**** DONE Ensure dealloc method calls bs->free()
+     - [X] BitstreamWriter
+     - [X] BitstreamRecorder
+     - [X] BitstreamAccumulator
 *** TODO Double-check existing C modules for proper free/close usage
 ** TODO Ensure that reading/writing closed streams always fails
    Once a stream's been closed,

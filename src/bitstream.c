@@ -2232,6 +2232,11 @@ bw_byte_align_a(BitstreamWriter* bs)
         bs->output.accumulator += (8 - (bs->output.accumulator % 8));
 }
 
+void
+bw_byte_align_c(BitstreamWriter* bs)
+{
+    bw_abort(bs);
+}
 
 void
 bw_set_endianness_f_be(BitstreamWriter* bs, bs_endianness endianness)
@@ -2447,6 +2452,8 @@ bw_close_methods(BitstreamWriter* bs)
     bs->write_signed = bw_write_signed_bits_c;
     bs->write_signed_64 = bw_write_signed_bits64_c;
     bs->write_unary = bw_write_unary_c;
+    bs->flush = bw_flush_r_a_c;
+    bs->byte_align = bw_byte_align_c;
     bs->set_endianness = bw_set_endianness_c;
     bs->close_substream = bw_close_substream_c;
 }
@@ -2454,7 +2461,8 @@ bw_close_methods(BitstreamWriter* bs)
 void
 bw_close_substream_f(BitstreamWriter* bs)
 {
-    /*perform fclose on FILE object*/
+    /*perform fclose on FILE object
+      which automatically flushes its output*/
     fclose(bs->output.file);
 
     /*swap read methods with closed methods*/
@@ -2472,6 +2480,9 @@ void
 bw_close_substream_p(BitstreamWriter* bs)
 {
     PyObject* close_result;
+
+    /*flush pending data to Python object*/
+    py_flush_w(bs->output.python);
 
     /*call .close() method on Python object*/
     close_result = PyObject_CallMethod(bs->output.python->writer_obj,
@@ -2552,6 +2563,10 @@ bw_free_r(BitstreamWriter* bs)
 void
 bw_free_p(BitstreamWriter* bs)
 {
+    /*flush pending data if necessary*/
+    if (!bw_closed(bs))
+        py_flush_w(bs->output.python);
+
     /*decref Python object and remove buffer*/
     py_close_w(bs->output.python);
 
@@ -2672,6 +2687,9 @@ bw_dump_bytes(BitstreamWriter* target, uint8_t* buffer, unsigned int total) {
     struct bs_callback* callback;
     uint8_t* target_buffer;
 
+    if (bw_closed(target))
+        bw_abort(target);
+
     if (total == 0) {
         /*short-circuit an empty write*/
         return;
@@ -2718,6 +2736,9 @@ bw_rec_copy(BitstreamWriter* target, BitstreamWriter* source)
 {
     assert(source->type == BW_RECORDER);
 
+    if (bw_closed(source) || bw_closed(target))
+        bw_abort(source);
+
     /*dump all the bytes from our internal buffer*/
     bw_dump_bytes(target,
                   source->output.buffer->buffer,
@@ -2742,6 +2763,9 @@ bw_rec_split(BitstreamWriter* target,
     unsigned int to_remaining;
 
     assert(source->type == BW_RECORDER);
+
+    if (bw_closed(target) || bw_closed(remaining) || bw_closed(source))
+        bw_abort(source);
 
     buffer = source->output.buffer->buffer;
     buffer_size = source->output.buffer->buffer_size;

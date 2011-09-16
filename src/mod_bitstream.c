@@ -896,7 +896,6 @@ void
 BitstreamWriter_dealloc(bitstream_BitstreamWriter *self)
 {
     if (self->bitstream != NULL) {
-        self->bitstream->flush(self->bitstream);
         self->bitstream->free(self->bitstream);
     }
 
@@ -927,10 +926,16 @@ BitstreamWriter_write(bitstream_BitstreamWriter *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "II", &count, &value))
         return NULL;
 
-    self->bitstream->write(self->bitstream, count, value);
-
-    Py_INCREF(Py_None);
-    return Py_None;
+    if (!setjmp(*bw_try(self->bitstream))) {
+        self->bitstream->write(self->bitstream, count, value);
+        bw_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
+    }
 }
 
 static PyObject*
@@ -942,10 +947,16 @@ BitstreamWriter_write_signed(bitstream_BitstreamWriter *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "Ii", &count, &value))
         return NULL;
 
-    self->bitstream->write_signed(self->bitstream, count, value);
-
-    Py_INCREF(Py_None);
-    return Py_None;
+    if (!setjmp(*bw_try(self->bitstream))) {
+        self->bitstream->write_signed(self->bitstream, count, value);
+        bw_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
+    }
 }
 
 static PyObject*
@@ -957,10 +968,16 @@ BitstreamWriter_write64(bitstream_BitstreamWriter *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "IK", &count, &value))
         return NULL;
 
-    self->bitstream->write_64(self->bitstream, count, value);
-
-    Py_INCREF(Py_None);
-    return Py_None;
+    if (!setjmp(*bw_try(self->bitstream))) {
+        self->bitstream->write_64(self->bitstream, count, value);
+        bw_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
+    }
 }
 
 static PyObject*
@@ -972,10 +989,16 @@ BitstreamWriter_write_signed64(bitstream_BitstreamWriter *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "IL", &count, &value))
         return NULL;
 
-    self->bitstream->write_signed_64(self->bitstream, count, value);
-
-    Py_INCREF(Py_None);
-    return Py_None;
+    if (!setjmp(*bw_try(self->bitstream))) {
+        self->bitstream->write_signed_64(self->bitstream, count, value);
+        bw_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
+    }
 }
 
 static PyObject*
@@ -992,19 +1015,31 @@ BitstreamWriter_unary(bitstream_BitstreamWriter *self, PyObject *args)
         return NULL;
     }
 
-    self->bitstream->write_unary(self->bitstream, stop_bit, value);
-
-    Py_INCREF(Py_None);
-    return Py_None;
+    if (!setjmp(*bw_try(self->bitstream))) {
+        self->bitstream->write_unary(self->bitstream, stop_bit, value);
+        bw_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
+    }
 }
 
 static PyObject*
 BitstreamWriter_byte_align(bitstream_BitstreamWriter *self, PyObject *args)
 {
-    self->bitstream->byte_align(self->bitstream);
-
-    Py_INCREF(Py_None);
-    return Py_None;
+    if (!setjmp(*bw_try(self->bitstream))) {
+        self->bitstream->byte_align(self->bitstream);
+        bw_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
+    }
 }
 
 static PyObject*
@@ -1044,10 +1079,17 @@ BitstreamWriter_write_bytes(bitstream_BitstreamWriter *self,
     if (!PyArg_ParseTuple(args, "s#", &bytes, &bytes_len))
         return NULL;
 
-    self->bitstream->write_bytes(self->bitstream, (uint8_t*)bytes, bytes_len);
-
-    Py_INCREF(Py_None);
-    return Py_None;
+    if (!setjmp(*bw_try(self->bitstream))) {
+        self->bitstream->write_bytes(self->bitstream,
+                                     (uint8_t*)bytes, bytes_len);
+        bw_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
+    }
 }
 
 static PyObject*
@@ -1135,16 +1177,9 @@ BitstreamWriter_call_callbacks(bitstream_BitstreamWriter *self,
 static PyObject*
 BitstreamWriter_close(bitstream_BitstreamWriter *self, PyObject *args)
 {
-    self->bitstream->flush(self->bitstream);
-
-    PyObject* close_result = PyObject_CallMethod(self->file_obj,
-                                                 "close", NULL);
-    if (close_result) {
-        Py_DECREF(close_result);
-        Py_INCREF(Py_None);
-        return Py_None;
-    } else
-        return NULL;
+    self->bitstream->close_substream(self->bitstream);
+    Py_INCREF(Py_None);
+    return Py_None;
 }
 
 static PyObject*
@@ -1157,10 +1192,16 @@ BitstreamRecorder_write(bitstream_BitstreamRecorder *self,
     if (!PyArg_ParseTuple(args, "II", &count, &value))
         return NULL;
 
-    self->bitstream->write(self->bitstream, count, value);
-
-    Py_INCREF(Py_None);
-    return Py_None;
+    if (!setjmp(*bw_try(self->bitstream))) {
+        self->bitstream->write(self->bitstream, count, value);
+        bw_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
+    }
 }
 
 static PyObject*
@@ -1173,10 +1214,16 @@ BitstreamRecorder_write_signed(bitstream_BitstreamRecorder *self,
     if (!PyArg_ParseTuple(args, "Ii", &count, &value))
         return NULL;
 
-    self->bitstream->write_signed(self->bitstream, count, value);
-
-    Py_INCREF(Py_None);
-    return Py_None;
+    if (!setjmp(*bw_try(self->bitstream))) {
+        self->bitstream->write_signed(self->bitstream, count, value);
+        bw_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
+    }
 }
 
 static PyObject*
@@ -1189,10 +1236,16 @@ BitstreamRecorder_write64(bitstream_BitstreamRecorder *self,
     if (!PyArg_ParseTuple(args, "IK", &count, &value))
         return NULL;
 
-    self->bitstream->write_64(self->bitstream, count, value);
-
-    Py_INCREF(Py_None);
-    return Py_None;
+    if (!setjmp(*bw_try(self->bitstream))) {
+        self->bitstream->write_64(self->bitstream, count, value);
+        bw_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
+    }
 }
 
 static PyObject*
@@ -1205,10 +1258,16 @@ BitstreamRecorder_write_signed64(bitstream_BitstreamRecorder *self,
     if (!PyArg_ParseTuple(args, "IL", &count, &value))
         return NULL;
 
-    self->bitstream->write_signed_64(self->bitstream, count, value);
-
-    Py_INCREF(Py_None);
-    return Py_None;
+    if (!setjmp(*bw_try(self->bitstream))) {
+        self->bitstream->write_signed_64(self->bitstream, count, value);
+        bw_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
+    }
 }
 
 static PyObject*
@@ -1216,9 +1275,9 @@ BitstreamRecorder_unary(bitstream_BitstreamRecorder *self,
                         PyObject *args)
 {
     int stop_bit;
-    int value;
+    unsigned int value;
 
-    if (!PyArg_ParseTuple(args, "ii", &stop_bit, &value))
+    if (!PyArg_ParseTuple(args, "iI", &stop_bit, &value))
         return NULL;
 
     if ((stop_bit != 0) && (stop_bit != 1)) {
@@ -1226,18 +1285,83 @@ BitstreamRecorder_unary(bitstream_BitstreamRecorder *self,
         return NULL;
     }
 
-    self->bitstream->write_unary(self->bitstream, stop_bit, value);
-
-    Py_INCREF(Py_None);
-    return Py_None;
+    if (!setjmp(*bw_try(self->bitstream))) {
+        self->bitstream->write_unary(self->bitstream, stop_bit, value);
+        bw_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
+    }
 }
 
 static PyObject*
 BitstreamRecorder_byte_align(bitstream_BitstreamRecorder *self,
                              PyObject *args)
 {
-    self->bitstream->byte_align(self->bitstream);
+    if (!setjmp(*bw_try(self->bitstream))) {
+        self->bitstream->byte_align(self->bitstream);
+        bw_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
+    }
+}
 
+static PyObject*
+BitstreamRecorder_write_bytes(bitstream_BitstreamRecorder *self,
+                              PyObject *args)
+{
+    const char* bytes;
+#ifdef PY_SSIZE_T_CLEAN
+    Py_ssize_t bytes_len;
+#else
+    int bytes_len;
+#endif
+
+    if (!PyArg_ParseTuple(args, "s#", &bytes, &bytes_len))
+        return NULL;
+
+    if (!setjmp(*bw_try(self->bitstream))) {
+        self->bitstream->write_bytes(self->bitstream,
+                                     (uint8_t*)bytes, bytes_len);
+        bw_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
+    }
+}
+
+static PyObject*
+BitstreamRecorder_build(bitstream_BitstreamRecorder *self,
+                        PyObject *args)
+{
+    char* format;
+    PyObject *values;
+
+    if (!PyArg_ParseTuple(args, "sO", &format, &values))
+        return NULL;
+
+    if (bitstream_build(self->bitstream, format, values)) {
+        return NULL;
+    } else {
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
+}
+
+static PyObject*
+BitstreamRecorder_flush(bitstream_BitstreamRecorder *self, PyObject *args)
+{
+    self->bitstream->flush(self->bitstream);
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -1308,52 +1432,6 @@ BitstreamRecorder_swap(bitstream_BitstreamRecorder *self,
 }
 
 static PyObject*
-BitstreamRecorder_write_bytes(bitstream_BitstreamRecorder *self,
-                              PyObject *args)
-{
-    const char* bytes;
-#ifdef PY_SSIZE_T_CLEAN
-    Py_ssize_t bytes_len;
-#else
-    int bytes_len;
-#endif
-
-    if (!PyArg_ParseTuple(args, "s#", &bytes, &bytes_len))
-        return NULL;
-
-    self->bitstream->write_bytes(self->bitstream, (uint8_t*)bytes, bytes_len);
-
-    Py_INCREF(Py_None);
-    return Py_None;
-}
-
-static PyObject*
-BitstreamRecorder_build(bitstream_BitstreamRecorder *self,
-                        PyObject *args)
-{
-    char* format;
-    PyObject *values;
-
-    if (!PyArg_ParseTuple(args, "sO", &format, &values))
-        return NULL;
-
-    if (bitstream_build(self->bitstream, format, values)) {
-        return NULL;
-    } else {
-        Py_INCREF(Py_None);
-        return Py_None;
-    }
-}
-
-static PyObject*
-BitstreamRecorder_flush(bitstream_BitstreamRecorder *self, PyObject *args)
-{
-    self->bitstream->flush(self->bitstream);
-    Py_INCREF(Py_None);
-    return Py_None;
-}
-
-static PyObject*
 BitstreamRecorder_reset(bitstream_BitstreamRecorder *self,
                         PyObject *args)
 {
@@ -1395,10 +1473,16 @@ BitstreamRecorder_copy(bitstream_BitstreamRecorder *self,
         return NULL;
 
     if ((target = internal_writer(bitstreamwriter_obj)) != NULL) {
-        bw_rec_copy(target, self->bitstream);
-
-        Py_INCREF(Py_None);
-        return Py_None;
+        if (!setjmp(*bw_try(self->bitstream))) {
+            bw_rec_copy(target, self->bitstream);
+            bw_etry(self->bitstream);
+            Py_INCREF(Py_None);
+            return Py_None;
+        } else {
+            bw_etry(self->bitstream);
+            PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+            return NULL;
+        }
     } else {
         PyErr_SetString(PyExc_TypeError,
                         "argument must be a "
@@ -1442,10 +1526,17 @@ BitstreamRecorder_split(bitstream_BitstreamRecorder *self,
         return NULL;
     }
 
-    return Py_BuildValue("I", bw_rec_split(target,
-                                           remainder,
-                                           self->bitstream,
-                                           total_bytes));
+
+    if (!setjmp(*bw_try(self->bitstream))) {
+        total_bytes = bw_rec_split(target, remainder,
+                                   self->bitstream, total_bytes);
+        bw_etry(self->bitstream);
+        return Py_BuildValue("I", total_bytes);
+    } else {
+        bw_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
+    }
 }
 
 static PyObject*
@@ -1509,6 +1600,7 @@ static PyObject*
 BitstreamRecorder_close(bitstream_BitstreamRecorder *self,
                         PyObject *args)
 {
+    self->bitstream->close_substream(self->bitstream);
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -1534,7 +1626,7 @@ void
 BitstreamRecorder_dealloc(bitstream_BitstreamRecorder *self)
 {
     if (self->bitstream != NULL)
-        self->bitstream->close(self->bitstream);
+        self->bitstream->free(self->bitstream);
 
     self->ob_type->tp_free((PyObject*)self);
 }
@@ -1564,88 +1656,98 @@ bitstream_build(BitstreamWriter* stream, char* format, PyObject* values)
     uint8_t* _bytes;
     Py_ssize_t bytes_len;
 
-    while (!bs_parse_format(&format, &size, &type)) {
-        switch (type) {
-        case BS_INST_UNSIGNED:
-            if ((value = PySequence_GetItem(values, i++)) != NULL) {
-                _unsigned = (unsigned int)PyInt_AsUnsignedLongMask(value);
-                if (!PyErr_Occurred())
-                    stream->write(stream, size, _unsigned);
-                else
-                    return 1;
-            } else {
-                return 1;
-            }
-            break;
-        case BS_INST_SIGNED:
-            if ((value = PySequence_GetItem(values, i++)) != NULL) {
-                _signed = (int)PyInt_AsLong(value);
-                if (!PyErr_Occurred())
-                    stream->write_signed(stream, size, _signed);
-                else
-                    return 1;
-            } else {
-                return 1;
-            }
-            break;
-        case BS_INST_UNSIGNED64:
-            if ((value = PySequence_GetItem(values, i++)) != NULL) {
-                _unsigned64 = PyInt_AsUnsignedLongLongMask(value);
-                if (!PyErr_Occurred())
-                    stream->write_64(stream, size, _unsigned64);
-                else
-                    return 1;
-            } else {
-                return 1;
-            }
-            break;
-        case BS_INST_SIGNED64:
-            if ((value = PySequence_GetItem(values, i++)) != NULL) {
-                _signed64 = PyLong_AsLongLong(value);
-                if (!PyErr_Occurred())
-                    stream->write_signed_64(stream, size, _signed64);
-                else
-                    return 1;
-            } else {
-                return 1;
-            }
-            break;
-        case BS_INST_SKIP:
-            stream->write(stream, size, 0);
-            break;
-        case BS_INST_SKIP_BYTES:
-            stream->write(stream, size, 0);
-            stream->write(stream, size, 0);
-            stream->write(stream, size, 0);
-            stream->write(stream, size, 0);
-            stream->write(stream, size, 0);
-            stream->write(stream, size, 0);
-            stream->write(stream, size, 0);
-            stream->write(stream, size, 0);
-            break;
-        case BS_INST_BYTES:
-            if (((value = PySequence_GetItem(values, i++)) != NULL) &&
-                (PyString_AsStringAndSize(value,
-                                          (char **)(&_bytes),
-                                          &bytes_len) != -1)) {
-                if (size <= bytes_len) {
-                    stream->write_bytes(stream, _bytes, size);
+    if (!setjmp(*bw_try(stream))) {
+        while (!bs_parse_format(&format, &size, &type)) {
+            switch (type) {
+            case BS_INST_UNSIGNED:
+                if ((value = PySequence_GetItem(values, i++)) != NULL) {
+                    _unsigned = (unsigned int)PyInt_AsUnsignedLongMask(value);
+                    if (!PyErr_Occurred())
+                        stream->write(stream, size, _unsigned);
+                    else
+                        goto read_error;
                 } else {
-                    PyErr_SetString(PyExc_ValueError,
-                                    "string length too short");
-                    return 1;
+                    goto read_error;
                 }
-            } else {
-                return 1;
+                break;
+            case BS_INST_SIGNED:
+                if ((value = PySequence_GetItem(values, i++)) != NULL) {
+                    _signed = (int)PyInt_AsLong(value);
+                    if (!PyErr_Occurred())
+                        stream->write_signed(stream, size, _signed);
+                    else
+                        goto read_error;
+                } else {
+                    goto read_error;
+                }
+                break;
+            case BS_INST_UNSIGNED64:
+                if ((value = PySequence_GetItem(values, i++)) != NULL) {
+                    _unsigned64 = PyInt_AsUnsignedLongLongMask(value);
+                    if (!PyErr_Occurred())
+                        stream->write_64(stream, size, _unsigned64);
+                    else
+                        goto read_error;
+                } else {
+                    goto read_error;
+                }
+                break;
+            case BS_INST_SIGNED64:
+                if ((value = PySequence_GetItem(values, i++)) != NULL) {
+                    _signed64 = PyLong_AsLongLong(value);
+                    if (!PyErr_Occurred())
+                        stream->write_signed_64(stream, size, _signed64);
+                    else
+                        goto read_error;
+                } else {
+                    goto read_error;
+                }
+                break;
+            case BS_INST_SKIP:
+                stream->write(stream, size, 0);
+                break;
+            case BS_INST_SKIP_BYTES:
+                stream->write(stream, size, 0);
+                stream->write(stream, size, 0);
+                stream->write(stream, size, 0);
+                stream->write(stream, size, 0);
+                stream->write(stream, size, 0);
+                stream->write(stream, size, 0);
+                stream->write(stream, size, 0);
+                stream->write(stream, size, 0);
+                break;
+            case BS_INST_BYTES:
+                if (((value = PySequence_GetItem(values, i++)) != NULL) &&
+                    (PyString_AsStringAndSize(value,
+                                              (char **)(&_bytes),
+                                              &bytes_len) != -1)) {
+                    if (size <= bytes_len) {
+                        stream->write_bytes(stream, _bytes, size);
+                    } else {
+                        PyErr_SetString(PyExc_ValueError,
+                                        "string length too short");
+                        goto read_error;
+                    }
+                } else {
+                    goto read_error;
+                }
+                break;
+            case BS_INST_ALIGN:
+                stream->byte_align(stream);
+                break;
             }
-            break;
-        case BS_INST_ALIGN:
-            stream->byte_align(stream);
-            break;
         }
+
+        bw_etry(stream);
+        return 0;
+    } else {
+        bw_etry(stream);
+        return 1;
     }
 
-    return 0;
+ read_error:
+    bw_etry(stream);
+    return 1;
 }
 
 int
@@ -1668,7 +1770,7 @@ void
 BitstreamAccumulator_dealloc(bitstream_BitstreamAccumulator *self)
 {
     if (self->bitstream != NULL)
-        self->bitstream->close(self->bitstream);
+        self->bitstream->free(self->bitstream);
 
     self->ob_type->tp_free((PyObject*)self);
 }
@@ -1688,6 +1790,7 @@ static PyObject*
 BitstreamAccumulator_close(bitstream_BitstreamAccumulator *self,
                            PyObject *args)
 {
+    self->bitstream->close_substream(self->bitstream);
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -1702,10 +1805,16 @@ BitstreamAccumulator_write(bitstream_BitstreamAccumulator *self,
     if (!PyArg_ParseTuple(args, "II", &count, &value))
         return NULL;
 
-    self->bitstream->write(self->bitstream, count, value);
-
-    Py_INCREF(Py_None);
-    return Py_None;
+    if (!setjmp(*bw_try(self->bitstream))) {
+        self->bitstream->write(self->bitstream, count, value);
+        bw_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
+    }
 }
 
 static PyObject*
@@ -1718,10 +1827,16 @@ BitstreamAccumulator_write_signed(bitstream_BitstreamAccumulator *self,
     if (!PyArg_ParseTuple(args, "Ii", &count, &value))
         return NULL;
 
-    self->bitstream->write_signed(self->bitstream, count, value);
-
-    Py_INCREF(Py_None);
-    return Py_None;
+    if (!setjmp(*bw_try(self->bitstream))) {
+        self->bitstream->write_signed(self->bitstream, count, value);
+        bw_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
+    }
 }
 
 static PyObject*
@@ -1734,10 +1849,16 @@ BitstreamAccumulator_write64(bitstream_BitstreamAccumulator *self,
     if (!PyArg_ParseTuple(args, "IK", &count, &value))
         return NULL;
 
-    self->bitstream->write_64(self->bitstream, count, value);
-
-    Py_INCREF(Py_None);
-    return Py_None;
+    if (!setjmp(*bw_try(self->bitstream))) {
+        self->bitstream->write_64(self->bitstream, count, value);
+        bw_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
+    }
 }
 
 static PyObject*
@@ -1750,10 +1871,16 @@ BitstreamAccumulator_write_signed64(bitstream_BitstreamAccumulator *self,
     if (!PyArg_ParseTuple(args, "IL", &count, &value))
         return NULL;
 
-    self->bitstream->write_signed_64(self->bitstream, count, value);
-
-    Py_INCREF(Py_None);
-    return Py_None;
+    if (!setjmp(*bw_try(self->bitstream))) {
+        self->bitstream->write_signed_64(self->bitstream, count, value);
+        bw_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
+    }
 }
 
 static PyObject*
@@ -1761,9 +1888,9 @@ BitstreamAccumulator_unary(bitstream_BitstreamAccumulator *self,
                            PyObject *args)
 {
     int stop_bit;
-    int value;
+    unsigned int value;
 
-    if (!PyArg_ParseTuple(args, "ii", &stop_bit, &value))
+    if (!PyArg_ParseTuple(args, "iI", &stop_bit, &value))
         return NULL;
 
     if ((stop_bit != 0) && (stop_bit != 1)) {
@@ -1771,20 +1898,32 @@ BitstreamAccumulator_unary(bitstream_BitstreamAccumulator *self,
         return NULL;
     }
 
-    self->bitstream->write_unary(self->bitstream, stop_bit, value);
-
-    Py_INCREF(Py_None);
-    return Py_None;
+    if (!setjmp(*bw_try(self->bitstream))) {
+        self->bitstream->write_unary(self->bitstream, stop_bit, value);
+        bw_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
+    }
 }
 
 static PyObject*
 BitstreamAccumulator_byte_align(bitstream_BitstreamAccumulator *self,
                                 PyObject *args)
 {
-    self->bitstream->byte_align(self->bitstream);
-
-    Py_INCREF(Py_None);
-    return Py_None;
+    if (!setjmp(*bw_try(self->bitstream))) {
+        self->bitstream->byte_align(self->bitstream);
+        bw_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
+    }
 }
 
 static PyObject*
@@ -1824,10 +1963,17 @@ BitstreamAccumulator_write_bytes(bitstream_BitstreamAccumulator *self,
     if (!PyArg_ParseTuple(args, "s#", &bytes, &bytes_len))
         return NULL;
 
-    self->bitstream->write_bytes(self->bitstream, (uint8_t*)bytes, bytes_len);
-
-    Py_INCREF(Py_None);
-    return Py_None;
+    if (!setjmp(*bw_try(self->bitstream))) {
+        self->bitstream->write_bytes(self->bitstream,
+                                     (uint8_t*)bytes, bytes_len);
+        bw_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
+    }
 }
 
 static PyObject*

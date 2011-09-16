@@ -816,11 +816,11 @@ typedef struct BitstreamWriter_s {
     void
     (*flush)(struct BitstreamWriter_s* bs);
 
-    /*closes the current output substream
+    /*flushes and closes the current output substream
 
      * for FILE objects, performs fclose
      * for recorders, does nothing
-     * for Python writers, calls its .close() method
+     * for Python writers, flushes output and calls substream's .close() method
 
      once the substream is closed,
      the writer's I/O methods are updated to generate errors if called again*/
@@ -828,7 +828,7 @@ typedef struct BitstreamWriter_s {
     (*close_substream)(struct BitstreamWriter_s* bs);
 
     /*for recorders, deallocates buffer
-      for Python writers, decrefs Python object
+      for Python writers, flushes output if necessary and decrefs Python object
 
       deallocates any callbacks
 
@@ -981,6 +981,8 @@ void
 bw_byte_align_f_p_r(BitstreamWriter* bs);
 void
 bw_byte_align_a(BitstreamWriter* bs);
+void
+bw_byte_align_c(BitstreamWriter* bs);
 
 
 /*bs->set_endianness(bs, endianness)  methods*/
@@ -1123,6 +1125,11 @@ bw_try(BitstreamWriter *bs);
 void
 bw_etry(BitstreamWriter *bs);
 
+
+static inline int
+bw_closed(BitstreamWriter* bs) {
+    return (bs->write == bw_write_bits_c);
+}
 
 static inline int
 bw_eof(BitstreamWriter* bs) {
