@@ -18,14 +18,14 @@ Its stream of data is stored little-endian, as described on page
 
 \section{the WavPack File Stream}
 \begin{figure}[h]
-\includegraphics{figures/wavpack_stream.pdf}
+\includegraphics{figures/wavpack/stream.pdf}
 \end{figure}
 
 \clearpage
 
 \section{the WavPack Block Header}
 \begin{figure}[h]
-\includegraphics{figures/wavpack_block_header.pdf}
+\includegraphics{figures/wavpack/block_header.pdf}
 \end{figure}
 \begin{wrapfigure}[10]{r}{1.5in}
 \begin{tabular}{|c|r|}
@@ -88,7 +88,7 @@ Initial Block & Final Block & Mono Output & Channels \\
 
 \subsection{WavPack Sub-Block}
 \begin{figure}[h]
-\includegraphics{figures/wavpack_subblock_header.pdf}
+\includegraphics{figures/wavpack/subblock_header.pdf}
 \end{figure}
 \par
 \noindent
@@ -144,7 +144,7 @@ One can presume this sub-block will occur prior to the
 
 \label{wavpack_decorr_terms}
 \begin{figure}[h]
-\includegraphics{figures/wavpack_decorr_terms.pdf}
+\includegraphics{figures/wavpack/decorr_terms.pdf}
 \end{figure}
 \par
 \noindent
@@ -178,7 +178,7 @@ bits (the \VAR{Decorrelation Delta} value) are on the left side of each byte.
 
 \subsection{the Decorrelation Weights Sub-Block}
 \begin{figure}[h]
-\includegraphics{figures/wavpack_decorr_weights.pdf}
+\includegraphics{figures/wavpack/decorr_weights.pdf}
 \end{figure}
 \par
 \noindent
@@ -236,7 +236,7 @@ In that event, those low weight values are set to 0.
 \subsection{the Decorrelation Samples Sub-Block}
 \label{wavpack_decorr_samples}
 \begin{figure}[h]
-\includegraphics{figures/wavpack_decorr_samples.pdf}
+\includegraphics{figures/wavpack/decorr_samples.pdf}
 \end{figure}
 \par
 \noindent
@@ -318,7 +318,7 @@ As with \VAR{Decorrelation Weights},
 alternate between channels and depend on the corresponding
 \VAR{Decorrelation Term} values.
 \begin{figure}[h]
-\includegraphics{figures/wavpack_decorr_samples2.pdf}
+\includegraphics{figures/wavpack/decorr_samples2.pdf}
 \end{figure}
 \par
 \noindent
@@ -335,7 +335,7 @@ decoding the \VAR{Bitstream} sub-block's data.
 These entropy variables are median values which are stored
 as fractions of integers.
 \begin{figure}[h]
-\includegraphics{figures/wavpack_entropy_vars.pdf}
+\includegraphics{figures/wavpack/entropy_vars.pdf}
 \end{figure}
 \par
 \noindent
@@ -373,7 +373,7 @@ our \VAR{Entropy Variables} are:
 This sub-block contains the block's residual values.
 Once decoded, these will ultimately become our file's raw PCM values.
 \begin{figure}[h]
-\includegraphics{figures/wavpack_bitstream.pdf}
+\includegraphics{figures/wavpack/bitstream.pdf}
 \end{figure}
 \par
 \noindent
@@ -404,7 +404,7 @@ The remaining three are as follows as a little-endian stream:
 \clearpage
 \subsubsection{Determining t}
 \begin{wrapfigure}[37]{r}{3in}
-\includegraphics{figures/wavpack_read_residual1.pdf}
+\includegraphics{figures/wavpack/read_residual1.pdf}
 \caption{Step 1: determining t}
 \end{wrapfigure}
 The first step is taking two boolean values called
@@ -439,7 +439,7 @@ consumed 2 bits from the sub-block's bitstream.
 The next step is taking \VAR{t} and calculating \VAR{Base} and \VAR{Add}
 from our entropy variables, updating our entropy variables in the process.
 \begin{figure}[h]
-\includegraphics{figures/wavpack_read_residual2.pdf}
+\includegraphics{figures/wavpack/read_residual2.pdf}
 \caption{Step 2: determining base/add}
 \end{figure}
 \par
@@ -458,7 +458,7 @@ So to continue our example:
 
 \subsubsection{Determining Value}
 \begin{wrapfigure}[30]{r}{3in}
-\includegraphics{figures/wavpack_read_residual3.pdf}
+\includegraphics{figures/wavpack/read_residual3.pdf}
 \caption{Step 3: determining value}
 \end{wrapfigure}
 Finally, given our \VAR{Base} and \VAR{Add} values, we
@@ -539,7 +539,7 @@ $\text{Entropy B}_1$ is less than 2 (for non-mono blocks),
 and \VAR{Holding One} and \VAR{Holding Zero} are both false.
 
 \begin{wrapfigure}[14]{r}{3in}
-\includegraphics{figures/wavpack_read_zeroes.pdf}
+\includegraphics{figures/wavpack/read_zeroes.pdf}
 \end{wrapfigure}
 
 In that instance, we read a residual-like value to determine
@@ -682,13 +682,13 @@ visualized on a 1 channel sine wave example stream:
 
 \begin{figure}[h]
 \subfloat{
-\includegraphics{figures/wavpack_decorrelation1.pdf}
+\includegraphics{figures/wavpack/decorrelation1.pdf}
 }
 \subfloat{
-\includegraphics{figures/wavpack_decorrelation2.pdf}
+\includegraphics{figures/wavpack/decorrelation2.pdf}
 }
 \subfloat{
-\includegraphics{figures/wavpack_decorrelation3.pdf}
+\includegraphics{figures/wavpack/decorrelation3.pdf}
 }
 \end{figure}
 
@@ -852,7 +852,7 @@ there should be an \VAR{Int32 Info} sub-block present whose layout
 is as follows:
 
 \begin{figure}[h]
-\includegraphics{figures/wavpack_extended_integers.pdf}
+\includegraphics{figures/wavpack/extended_integers.pdf}
 \end{figure}
 
 Curiously, these values are exclusive; if \VAR{Zero Bits} is present,
@@ -884,7 +884,7 @@ This can be summarized as follows:
 A WavPack file with more than 2 channels should have a \VAR{Channel Info}
 sub-block to indicate its channel layout.
 \begin{figure}[h]
-\includegraphics{figures/wavpack_channel_info.pdf}
+\includegraphics{figures/wavpack/channel_info.pdf}
 \end{figure}
 \par
 \noindent
@@ -908,22 +908,22 @@ The header must always be present in the file while
 the footer is optional.
 
 \begin{figure}[h]
-\includegraphics{figures/wavpack_wave_header.pdf}
+\includegraphics{figures/wavpack/wave_header.pdf}
 \vskip .25in
-\includegraphics{figures/wavpack_wave_footer.pdf}
+\includegraphics{figures/wavpack/wave_footer.pdf}
 \end{figure}
 \par
 \noindent
 One can think of them as halves of a `PCM sandwich'
 of which our decoded data comprises the `meat':
 \begin{figure}[h]
-\includegraphics{figures/wavpack_pcm_sandwich.pdf}
+\includegraphics{figures/wavpack/pcm_sandwich.pdf}
 \end{figure}
 
 \subsection{MD5}
 This optional sub-block is typically found in the final WavPack block.
 \begin{figure}[h]
-\includegraphics{figures/wavpack_md5sum.pdf}
+\includegraphics{figures/wavpack/md5sum.pdf}
 \end{figure}
 \par
 \noindent
@@ -1061,7 +1061,7 @@ Once the \VAR{False Stereo}, \VAR{Extended Size Integers},
 \VAR{Joint Stereo} and \VAR{CRC} values are decided,
 we can finally write a block header based on our input:
 \begin{figure}[h]
-\includegraphics{figures/wavpack_block_header.pdf}
+\includegraphics{figures/wavpack/block_header.pdf}
 \end{figure}
 \par
 \noindent
@@ -1170,7 +1170,7 @@ $\text{Delta}_{16}$ & & & & & 2 \\
 \noindent
 They are placed in a sub-block as follows:
 \begin{figure}[h]
-\includegraphics{figures/wavpack_decorr_terms.pdf}
+\includegraphics{figures/wavpack/decorr_terms.pdf}
 \end{figure}
 \par
 \noindent
@@ -1346,7 +1346,7 @@ Converting their values to 8 bits requires the following formula:
 Weights are placed in a sub-block in reverse order as follows:
 
 \begin{figure}[h]
-\includegraphics{figures/wavpack_decorr_weights.pdf}
+\includegraphics{figures/wavpack/decorr_weights.pdf}
 \end{figure}
 
 Since each decorrelation weight value is stored in 8 bits,
@@ -1455,7 +1455,7 @@ value &= (5 \times 2^8) + \text{wv\_log2}((28 \times 2^{9 - 5}) \bmod{256}) \\
 
 These samples are then placed in a sub-block as follows:
 \begin{figure}[h]
-\includegraphics{figures/wavpack_decorr_samples.pdf}
+\includegraphics{figures/wavpack/decorr_samples.pdf}
 \end{figure}
 \par
 \noindent
@@ -1551,7 +1551,7 @@ where \VAR{wv\_exp2} is defined from the following base-16 table:
 \subsection{the Entropy Variables Sub-Block}
 
 \begin{figure}[h]
-\includegraphics{figures/wavpack_entropy_vars.pdf}
+\includegraphics{figures/wavpack/entropy_vars.pdf}
 \end{figure}
 \par
 \noindent
@@ -1575,7 +1575,7 @@ the sub-block is finished, or first write the residuals to temporary space
 before writing the sub-block header.
 
 \begin{figure}[h]
-\includegraphics{figures/wavpack_bitstream.pdf}
+\includegraphics{figures/wavpack/bitstream.pdf}
 \end{figure}
 
 As with decoding, writing each residual value is a multi-stage
@@ -1736,7 +1736,7 @@ $((\text{unary}_{i - 1} - 16) \bmod{2 ^ {\text{count\_bits}(\text{unary}_{i - 1}
 \subsubsection{Handle Groups Of Zero Residuals}
 \label{wavpack_zero_residuals}
 \begin{wrapfigure}[12]{r}{1.5in}
-\includegraphics{figures/wavpack_write_zeroes.pdf}
+\includegraphics{figures/wavpack/write_zeroes.pdf}
 \end{wrapfigure}
 This is necessary when $\text{Entropy A}_{i~0} < 2$ and,
 for 2 channel blocks, $\text{Entropy B}_{i~0} < 2$,
@@ -1766,7 +1766,7 @@ as explained on page \pageref{wavpack_encode_extended_integers},
 we generate the following sub-block to store our
 \VAR{Zero Bits} value:
 \begin{figure}[h]
-\includegraphics{figures/wavpack_extended_integers.pdf}
+\includegraphics{figures/wavpack/extended_integers.pdf}
 \end{figure}
 
 \clearpage
@@ -1778,7 +1778,7 @@ first block within the file.
 This sub-block is laid out as follows:
 
 \begin{figure}[h]
-\includegraphics{figures/wavpack_wave_header.pdf}
+\includegraphics{figures/wavpack/wave_header.pdf}
 \end{figure}
 
 The RIFF WAVE header is everything from the start of a RIFF WAVE file
@@ -1796,12 +1796,12 @@ data after the \texttt{data} chunk.
 
 \subsubsection{RIFF WAVE Footer}
 \begin{figure}[h]
-\includegraphics{figures/wavpack_wave_footer.pdf}
+\includegraphics{figures/wavpack/wave_footer.pdf}
 \end{figure}
 
 \subsubsection{MD5 Sum}
 \begin{figure}[h]
-\includegraphics{figures/wavpack_md5sum.pdf}
+\includegraphics{figures/wavpack/md5sum.pdf}
 \end{figure}
 \par
 \noindent

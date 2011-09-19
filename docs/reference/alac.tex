@@ -16,7 +16,7 @@ The key difference is the contents of its \texttt{mdat} atom.
 
 \section{the ALAC File Stream}
 \begin{wrapfigure}[6]{r}{1.5in}
-\includegraphics{figures/alac_atoms.pdf}
+\includegraphics{figures/alac/atoms.pdf}
 \end{wrapfigure}
 
 This is the typical arrangements of ALAC atoms as encoded by iTunes.
@@ -28,7 +28,7 @@ contains an \texttt{alac} description sub-atom rather than an
 Its layout is as follows:
 
 \begin{figure}[h]
-\includegraphics{figures/alac_alac_atom.pdf}
+\includegraphics{figures/alac/alac_atom.pdf}
 \end{figure}
 
 \pagebreak
@@ -39,7 +39,7 @@ An ALAC stream is made up of individual framesets within the \texttt{mdat}
 atom, as follows:
 
 \begin{figure}[h]
-\includegraphics{figures/alac_stream.pdf}
+\includegraphics{figures/alac/stream.pdf}
 \end{figure}
 \par
 \noindent
@@ -61,7 +61,7 @@ depending on the \VAR{Is Not Compressed} bit in the frame header.
 An uncompressed frame is laid out as follows:
 \label{alac_uncompressed}
 \begin{figure}[h]
-\includegraphics{figures/alac_uncompressed_frame.pdf}
+\includegraphics{figures/alac/uncompressed_frame.pdf}
 \end{figure}
 \par
 \noindent
@@ -89,7 +89,7 @@ new frameset begins on an aligned byte boundary.
 A compressed frame is laid out as follows:
 
 \begin{figure}[h]
-\includegraphics{figures/alac_compressed_frame.pdf}
+\includegraphics{figures/alac/compressed_frame.pdf}
 \end{figure}
 \par
 \noindent
@@ -115,7 +115,7 @@ This process is explained in more detail on page \pageref{alac_wasted_bits}.
 Each subframe header is laid out as follows:
 
 \begin{figure}[h]
-\includegraphics{figures/alac_subframe_header.pdf}
+\includegraphics{figures/alac/subframe_header.pdf}
 \end{figure}
 \par
 \noindent
@@ -152,7 +152,7 @@ For mono streams, this is typically equal to the stream's
 while for stereo streams it's often the \VAR{Bits per Sample} plus 1.
 
 \begin{wrapfigure}[14]{r}{2.5in}
-\includegraphics{figures/alac_read_residual.pdf}
+\includegraphics{figures/alac/read_residual.pdf}
 \end{wrapfigure}
 The $\kappa$ and \VAR{Bits per Sample} values are used to read a
 single unsigned residual value in the following way:
@@ -227,7 +227,7 @@ after each unary value) will remain 2 for this batch of residuals,
 but why that is so will be explained below.
 
 \begin{figure}[h]
-\includegraphics{figures/alac_residual.pdf}
+\includegraphics{figures/alac/residual.pdf}
 \end{figure}
 \begin{itemize}
 \setlength{\itemsep}{0in}
@@ -460,7 +460,7 @@ For example, given a 2 channel stream with 24 bits-per-sample and
 a \VAR{Wasted Bits} value of 1 (meaning our ``wasted'' samples
 are 8 bits large), our final output is as follows:
 \begin{figure}[h]
-\includegraphics{figures/alac_wasted.pdf}
+\includegraphics{figures/alac/wasted.pdf}
 \end{figure}
 
 \clearpage
@@ -1079,7 +1079,7 @@ to be broken apart into 1-2 channel sets such that each set
 becomes an ALAC frame and all the frames become an ALAC frameset.
 
 \begin{figure}[h]
-\includegraphics{figures/alac_stream.pdf}
+\includegraphics{figures/alac/stream.pdf}
 \end{figure}
 
 We then have to decide whether to turn a set of 1-2 channel PCM frames
@@ -1095,7 +1095,7 @@ will be the better choice.
 As you'll recall, a compressed frame is laid out as follows:
 
 \begin{figure}[h]
-\includegraphics{figures/alac_compressed_frame.pdf}
+\includegraphics{figures/alac/compressed_frame.pdf}
 \end{figure}
 \par
 \noindent
@@ -1158,7 +1158,7 @@ to generate \VAR{Prediction Quantitization},
 \VAR{Coefficient Count} and a set of \VAR{Coefficient} values.
 We'll set \VAR{Prediction Type} to 0 and \VAR{Rice Modifier} to 4.
 \begin{figure}[h]
-\includegraphics{figures/alac_subframe_header.pdf}
+\includegraphics{figures/alac/subframe_header.pdf}
 \end{figure}
 \par
 \noindent
@@ -1191,13 +1191,13 @@ two.
 
 \begin{figure}[h]
 \subfloat{
-\includegraphics{figures/flac_hann.pdf}
+\includegraphics{figures/flac/hann.pdf}
 }
 \subfloat{
-\includegraphics{figures/flac_rectangular.pdf}
+\includegraphics{figures/flac/rectangular.pdf}
 }
 \subfloat{
-\includegraphics{figures/flac_tukey.pdf}
+\includegraphics{figures/flac/tukey.pdf}
 }
 \end{figure}
 
@@ -1247,7 +1247,7 @@ The lagged signal is simply the original signal with \VAR{lag} number of
 samples removed from the beginning.
 
 \begin{figure}[h]
-\includegraphics{figures/alac_lag.pdf}
+\includegraphics{figures/alac/lag.pdf}
 \end{figure}
 
 In this example are autocorrelation values are:
@@ -1601,7 +1601,7 @@ Note that if $\kappa$ exceeds the \VAR{Maximum K} value from the
 \texttt{alac} atom, \VAR{Maximum K} is used instead.
 
 \begin{wrapfigure}[22]{r}{2.5in}
-\includegraphics{figures/alac_write_residual.pdf}
+\includegraphics{figures/alac/write_residual.pdf}
 \end{wrapfigure}
 
 The $\kappa$ and \VAR{Bits per Sample} values are used to write
@@ -1690,5 +1690,5 @@ and our signed residual values are 1, 9 and -1:
 \end{itemize}
 \end{itemize}
 \begin{figure}[h]
-\includegraphics{figures/alac_residual_w.pdf}
+\includegraphics{figures/alac/residual_w.pdf}
 \end{figure}

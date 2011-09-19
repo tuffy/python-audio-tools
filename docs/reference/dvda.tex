@@ -19,7 +19,7 @@ a DVD-Audio disc contains one or more titlesets.
 Each titleset contains one or more titles, and each
 title contains one or more tracks.
 \begin{figure}[h]
-\includegraphics{figures/dvda_layout.pdf}
+\includegraphics{figures/dvda/layout.pdf}
 \end{figure}
 \par
 \noindent
@@ -57,14 +57,14 @@ other files on disc.
 However, for our purposes, we're only interested
 in the \VAR{Audio Titleset Count} value.
 \begin{figure}[h]
-\includegraphics{figures/dvda_audio_ts_ifo.pdf}
+\includegraphics{figures/dvda/audio_ts_ifo.pdf}
 \end{figure}
 \section{ATS\_XX\_0.IFO}
 Known as the ``Audio Titleset Information'' or ``ATSI'',
 there is one of these files per \VAR{Audio Titleset Count}.
 Each is typically 4096 bytes long (2 sectors).
 \begin{figure}[h]
-\includegraphics{figures/dvda_ats_xx_0.pdf}
+\includegraphics{figures/dvda/ats_xx_0.pdf}
 \end{figure}
 \par
 \noindent
@@ -82,7 +82,7 @@ to read the title's information.
 For each title in the titleset, there is a title table.
 
 \begin{figure}[h]
-\includegraphics{figures/dvda_ats_title.pdf}
+\includegraphics{figures/dvda/ats_title.pdf}
 \end{figure}
 \par
 \noindent
@@ -110,7 +110,7 @@ For each title in the titleset, there is a sector pointers table
 containing \VAR{Index Count} number of 96 bit values.
 
 \begin{figure}[h]
-\includegraphics{figures/dvda_ats_sectors.pdf}
+\includegraphics{figures/dvda/ats_sectors.pdf}
 \end{figure}
 \par
 \noindent
@@ -138,14 +138,14 @@ Each sector contains one or more packets as part of a
 ``Packetized Elementary Stream''.
 
 \begin{figure}[h]
-\includegraphics{figures/dvda_ats_xx_x.pdf}
+\includegraphics{figures/dvda/ats_xx_x.pdf}
 \end{figure}
 \par
 \noindent
 Each sector within an AOB file is prefixed by a \VAR{Pack Header},
 as follows:
 \begin{figure}[h]
-\includegraphics{figures/dvda_aob_pack_header.pdf}
+\includegraphics{figures/dvda/aob_pack_header.pdf}
 \end{figure}
 \par
 \noindent
@@ -171,7 +171,7 @@ and channel assignment.
 \subsubsection{PCM Header}
 
 \begin{figure}[h]
-\includegraphics{figures/dvda_aob_pcm_payload.pdf}
+\includegraphics{figures/dvda/aob_pcm_payload.pdf}
 \end{figure}
 
 \begin{table}[h]
@@ -240,7 +240,7 @@ Decoding the PCM data is explained on page \pageref{aob_pcm}.
 \subsubsection{MLP Header}
 
 \begin{figure}[h]
-\includegraphics{figures/dvda_aob_mlp_payload.pdf}
+\includegraphics{figures/dvda/aob_mlp_payload.pdf}
 \end{figure}
 \par
 \noindent
@@ -264,7 +264,7 @@ how many channels the stream has.
 This reshuffling occurs across \textit{two} PCM frames.
 A 1 channel stream is reshuffled as follows:
 \begin{figure}[h]
-\includegraphics{figures/aob_pcm_24bps_1ch.pdf}
+\includegraphics{figures/aobpcm/24bps_1ch.pdf}
 \caption{1 channel, 24 bits-per-sample}
 \end{figure}
 \par
@@ -291,7 +291,7 @@ Streams with more than one channel are handled similarly.
 \clearpage
 
 \begin{figure}[h!]
-\includegraphics{figures/aob_pcm_24bps_2ch.pdf}
+\includegraphics{figures/aobpcm/24bps_2ch.pdf}
 \caption{2 channels, 24 bits-per-sample}
 \end{figure}
 \par
@@ -320,24 +320,24 @@ little-endian samples:
 \clearpage
 
 \begin{figure}[h!]
-\includegraphics{figures/aob_pcm_24bps_3ch.pdf}
+\includegraphics{figures/aobpcm/24bps_3ch.pdf}
 \caption{3 channels, 24 bits-per-sample}
 \end{figure}
 
 \begin{figure}[h!]
-\includegraphics{figures/aob_pcm_24bps_4ch.pdf}
+\includegraphics{figures/aobpcm/24bps_4ch.pdf}
 \caption{4 channels, 24 bits-per-sample}
 \end{figure}
 
 \clearpage
 
 \begin{figure}[h!]
-\includegraphics{figures/aob_pcm_24bps_5ch.pdf}
+\includegraphics{figures/aobpcm/24bps_5ch.pdf}
 \caption{5 channels, 24 bits-per-sample}
 \end{figure}
 
 \begin{figure}[h!]
-\includegraphics{figures/aob_pcm_24bps_6ch.pdf}
+\includegraphics{figures/aobpcm/24bps_6ch.pdf}
 \caption{6 channels, 24 bits-per-sample}
 \end{figure}
 

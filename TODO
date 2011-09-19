@@ -4344,13 +4344,13 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] TYE
    - [ ] UFI
    - [ ] ULT
-   - [ ] WAF
-   - [ ] WAR
-   - [ ] WAS
-   - [ ] WCM
-   - [ ] WCP
-   - [ ] WPB
-   - [ ] WXX
+   - [X] WAF
+   - [X] WAR
+   - [X] WAS
+   - [X] WCM
+   - [X] WCP
+   - [X] WPB
+   - [X] WXX
 ** TODO ID3v2.3
    - [ ] AENC
    - [ ] APIC
@@ -4509,6 +4509,159 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] WPAY
    - [ ] WPUB
    - [ ] WXXX
+* TODO Cleaup documentation layout
+  Add subdirectories for format figures.
+** TODO FLAC
+   - [X] flac_application.pdf
+   - [X] flac_channels.pdf
+   - [X] flac_cuesheet.pdf
+   - [X] flac_exhaustive.pdf
+   - [X] flac_fixed.pdf
+   - [X] flac_frame.pdf
+   - [X] flac_hann.pdf
+   - [X] flac_lag.pdf
+   - [X] flac_lpc.pdf
+   - [X] flac_nonexhaustive.pdf
+   - [X] flac_picture.pdf
+   - [X] flac_read_residual.pdf
+   - [X] flac_read_utf8.pdf
+   - [X] flac_rectangular.pdf
+   - [X] flac_residual.pdf
+   - [X] flac_rice1.pdf
+   - [X] flac_rice2.pdf
+   - [X] flac_rice3.pdf
+   - [X] flac_rice4.pdf
+   - [X] flac_seektable.pdf
+   - [X] flac_stream.pdf
+   - [X] flac_stream2.pdf
+   - [X] flac_streaminfo.pdf
+   - [X] flac_tukey.pdf
+   - [X] flac_verbatim.pdf
+   - [X] flac_vorbiscomment.pdf
+   - [X] flac_write_residual.pdf
+   - [X] flac_write_utf8.pdf
+   - [ ] oggflac_stream.pdf
+   - [ ] utf-8-1.pdf
+   - [ ] utf-8-2.pdf
+   - [ ] utf-8-3.pdf
+** DONE M4A
+   - [X] m4a_quicktime.pdf
+   - [X] m4a_atom.pdf
+   - [X] m4a_atom2.pdf
+   - [X] m4a_atoms.pdf
+   - [X] m4a_ftyp.pdf
+   - [X] m4a_mvhd.pdf
+   - [X] m4a_tkhd.pdf
+   - [X] m4a_mdhd.pdf
+   - [X] m4a_hdlr.pdf
+   - [X] m4a_smhd.pdf
+   - [X] m4a_dref.pdf
+   - [X] m4a_stsd.pdf
+   - [X] m4a_mp4a.pdf
+   - [X] m4a_stts.pdf
+   - [X] m4a_stsc.pdf
+   - [X] m4a_stsz.pdf
+   - [X] m4a_stco.pdf
+   - [X] m4a_meta_atoms.pdf
+   - [X] m4a_meta.pdf
+   - [X] m4a_data.pdf
+   - [X] m4a_trkn.pdf
+   - [X] m4a_disk.pdf
+** DONE WAVPACK
+   - [X] wavpack_bitstream.pdf
+   - [X] wavpack_block_header.pdf
+   - [X] wavpack_channel_info.pdf
+   - [X] wavpack_decorr_samples.pdf
+   - [X] wavpack_decorr_samples2.pdf
+   - [X] wavpack_decorr_terms.pdf
+   - [X] wavpack_decorr_weights.pdf
+   - [X] wavpack_decorrelation1.pdf
+   - [X] wavpack_decorrelation2.pdf
+   - [X] wavpack_decorrelation3.pdf
+   - [X] wavpack_entropy_vars.pdf
+   - [X] wavpack_extended_integers.pdf
+   - [X] wavpack_md5sum.pdf
+   - [X] wavpack_pcm_sandwich.pdf
+   - [X] wavpack_read_residual.pdf
+   - [X] wavpack_read_residual1.pdf
+   - [X] wavpack_read_residual2.pdf
+   - [X] wavpack_read_residual3.pdf
+   - [X] wavpack_read_zeroes.pdf
+   - [X] wavpack_stream.pdf
+   - [X] wavpack_subblock_header.pdf
+   - [X] wavpack_wave_footer.pdf
+   - [X] wavpack_wave_header.pdf
+   - [X] wavpack_write_zeroes.pdf
+** DONE SHORTEN
+   - [X] shorten_diff.pdf
+   - [X] shorten_qlpc.pdf
+   - [X] shorten_sandwich.pdf
+   - [X] shorten_signed.pdf
+   - [X] shorten_stream.pdf
+   - [X] shorten_unsigned.pdf
+   - [X] shorten_verbatim.pdf
+** DONE ALAC
+   - [X] alac_alac_atom.pdf
+   - [X] alac_atoms.pdf
+   - [X] alac_compressed_frame.pdf
+   - [X] alac_frame_header.pdf
+   - [X] alac_lag.pdf
+   - [X] alac_read_residual.pdf
+   - [X] alac_residual.pdf
+   - [X] alac_residual_w.pdf
+   - [X] alac_stream.pdf
+   - [X] alac_subframe_header.pdf
+   - [X] alac_uncompressed_frame.pdf
+   - [X] alac_wasted.pdf
+   - [X] alac_write_residual.pdf
+** DONE MLP
+   - [X] mlp_channel_parameters.pdf
+   - [X] mlp_codebook1.pdf
+   - [X] mlp_codebook2.pdf
+   - [X] mlp_codebook3.pdf
+   - [X] mlp_decoding_params.pdf
+   - [X] mlp_filter_params_fir.pdf
+   - [X] mlp_filter_params_iir.pdf
+   - [X] mlp_major_sync.pdf
+   - [X] mlp_matrix_params.pdf
+   - [X] mlp_output_shifts.pdf
+   - [X] mlp_parameter_presence_flags.pdf
+   - [X] mlp_quant_steps.pdf
+   - [X] mlp_residuals.pdf
+   - [X] mlp_restart_header.pdf
+   - [X] mlp_stream.pdf
+   - [X] mlp_substream.pdf
+   - [X] mlp_substream_size.pdf
+** DONE DVDA
+   - [X] dvda_aob_mlp_payload.pdf
+   - [X] dvda_aob_pack_header.pdf
+   - [X] dvda_aob_pcm_payload.pdf
+   - [X] dvda_ats_sectors.pdf
+   - [X] dvda_ats_title.pdf
+   - [X] dvda_ats_xx_0.pdf
+   - [X] dvda_ats_xx_x.pdf
+   - [X] dvda_audio_ts_ifo.pdf
+   - [X] dvda_layout.pdf
+** DONE AOBPCM
+   - [X] aob_pcm_24bps_1ch.pdf
+   - [X] aob_pcm_24bps_2ch.pdf
+   - [X] aob_pcm_24bps_3ch.pdf
+   - [X] aob_pcm_24bps_4ch.pdf
+   - [X] aob_pcm_24bps_5ch.pdf
+   - [X] aob_pcm_24bps_6ch.pdf
+** TODO VORBIS
+   - [ ] ogg_stream.pdf
+   - [ ] ogg_packets.pdf
+   - [X] vorbis_identification.pdf
+   - [X] vorbis_comment.pdf
+   - [X] vorbis_codebooks.pdf
+   - [X] vorbis_float32.pdf
+   - [X] vorbis_setup_packet.pdf
+   - [X] vorbis_ordered_entries.pdf
+   - [X] vorbis_huffman_example1.pdf
+   - [X] vorbis_huffman_example2.pdf
+   - [X] vorbis_huffman_example3.pdf
+   - [X] vorbis_huffman_example4.pdf
 * TODO Cleanup bitstream module
   This is at the heart of a lot of things so it should be properly cleaned up.
 ** DONE Merge bitstream_r and bitstream_w source files

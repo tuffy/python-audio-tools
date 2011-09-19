@@ -13,7 +13,7 @@ it may also contain other formats such as MPEG-1 audio.
 
 \section{the QuickTime File Stream}
 \begin{figure}[h]
-\includegraphics{figures/m4a_quicktime.pdf}
+\includegraphics{figures/m4a/quicktime.pdf}
 \end{figure}
 \par
 \noindent
@@ -21,7 +21,7 @@ Unlike other chunked formats such as RIFF WAVE, QuickTime's atom chunks
 may be containers for other atoms.  All of its fields are big-endian.
 \subsection{a QuickTime Atom}
 \begin{figure}[h]
-\includegraphics{figures/m4a_atom.pdf}
+\includegraphics{figures/m4a/atom.pdf}
 \end{figure}
 \VAR{Atom Type} is an ASCII string.
 \VAR{Atom Length} is the length of the entire atom, including the header.
@@ -30,7 +30,7 @@ If \VAR{Atom Length} is 1, the atom has an extended size.  This means
 there is a 64-bit length field immediately after the header which is
 the atom's actual size.
 \begin{figure}[h]
-\includegraphics{figures/m4a_atom2.pdf}
+\includegraphics{figures/m4a/atom2.pdf}
 \end{figure}
 \subsection{Container Atoms}
 There is no flag or field to tell a QuickTime parser which
@@ -45,16 +45,16 @@ an optional `free' atom with nothing but empty space
 containing the song data itself.
 \begin{figure}[h]
 \parpic[r]{
-\includegraphics{figures/m4a_atoms.pdf}
+\includegraphics{figures/m4a/atoms.pdf}
 }
 \subsection{the ftyp Atom}
-\includegraphics{figures/m4a_ftyp.pdf}
+\includegraphics{figures/m4a/ftyp.pdf}
 \par
 The \VAR{Major Brand} and \VAR{Compatible Brand} fields are ASCII strings.
 \VAR{Major Brand Version} is an integer.
 
 \subsection{the mvhd Atom}
-\includegraphics{figures/m4a_mvhd.pdf}
+\includegraphics{figures/m4a/mvhd.pdf}
 \par
 If \VAR{Version} is 0, \VAR{Created Mac UTC Date}, \VAR{Modified Mac UTC Date} and
 \VAR{Duration} are 32-bit fields.  If it is 1, they are 64-bit fields.
@@ -65,7 +65,7 @@ If \VAR{Version} is 0, \VAR{Created Mac UTC Date}, \VAR{Modified Mac UTC Date} a
 \subsection{the tkhd Atom}
 \par
 \begin{figure}[h]
-\includegraphics{figures/m4a_tkhd.pdf}
+\includegraphics{figures/m4a/tkhd.pdf}
 \end{figure}
 \par
 \noindent
@@ -79,7 +79,7 @@ The \ATOM{mdhd} atom contains track information such as samples-per-second,
 track length and creation/modification times.
 
 \begin{figure}[h]
-\includegraphics{figures/m4a_mdhd.pdf}
+\includegraphics{figures/m4a/mdhd.pdf}
 \end{figure}
 \par
 \noindent
@@ -92,7 +92,7 @@ If it is 1, they are 64-bit fields.
 \subsection{the hdlr Atom}
 
 \begin{figure}[h]
-\includegraphics{figures/m4a_hdlr.pdf}
+\includegraphics{figures/m4a/hdlr.pdf}
 \end{figure}
 \par
 \noindent
@@ -102,13 +102,13 @@ are integers.  The rest are ASCII strings.
 \subsection{the smhd Atom}
 
 \begin{figure}[h]
-\includegraphics{figures/m4a_smhd.pdf}
+\includegraphics{figures/m4a/smhd.pdf}
 \end{figure}
 
 \subsection{the dref Atom}
 
 \begin{figure}[h]
-\includegraphics{figures/m4a_dref.pdf}
+\includegraphics{figures/m4a/dref.pdf}
 \end{figure}
 
 \pagebreak
@@ -116,7 +116,7 @@ are integers.  The rest are ASCII strings.
 \subsection{the stsd Atom}
 
 \begin{figure}[h]
-\includegraphics{figures/m4a_stsd.pdf}
+\includegraphics{figures/m4a/stsd.pdf}
 \end{figure}
 
 \subsection{the mp4a Atom}
@@ -125,7 +125,7 @@ The \ATOM{mp4a} atom contains information such as the number of channels
 and bits-per-sample.  It can be found in the \ATOM{stsd} atom.
 
 \begin{figure}[h]
-\includegraphics{figures/m4a_mp4a.pdf}
+\includegraphics{figures/m4a/mp4a.pdf}
 \end{figure}
 
 \pagebreak
@@ -133,19 +133,19 @@ and bits-per-sample.  It can be found in the \ATOM{stsd} atom.
 \subsection{the stts Atom}
 
 \begin{figure}[h]
-\includegraphics{figures/m4a_stts.pdf}
+\includegraphics{figures/m4a/stts.pdf}
 \end{figure}
 
 \subsection{the stsc Atom}
 
 \begin{figure}[h]
-\includegraphics{figures/m4a_stsc.pdf}
+\includegraphics{figures/m4a/stsc.pdf}
 \end{figure}
 
 \subsection{the stsz Atom}
 
 \begin{figure}[h]
-\includegraphics{figures/m4a_stsz.pdf}
+\includegraphics{figures/m4a/stsz.pdf}
 \end{figure}
 
 \pagebreak
@@ -153,7 +153,7 @@ and bits-per-sample.  It can be found in the \ATOM{stsd} atom.
 \subsection{the stco Atom}
 
 \begin{figure}[h]
-\includegraphics{figures/m4a_stco.pdf}
+\includegraphics{figures/m4a/stco.pdf}
 \end{figure}
 \par
 \noindent
@@ -168,15 +168,15 @@ be re-adjusted in the \ATOM{stco} atom or the file may become unplayable.
 \label{m4a_meta}
 \begin{figure}[h]
 \parpic[r]{
-\includegraphics{figures/m4a_meta_atoms.pdf}
+\includegraphics{figures/m4a/meta_atoms.pdf}
 }
-\includegraphics{figures/m4a_meta.pdf}
+\includegraphics{figures/m4a/meta.pdf}
 The atoms within the \ATOM{ilst} container are all containers themselves,
 each with a \ATOM{data} atom of its own.
 Notice that many of \ATOM{ilst}'s sub-atoms begin with the
 non-ASCII 0xA9 byte.
 
-\includegraphics{figures/m4a_data.pdf}
+\includegraphics{figures/m4a/data.pdf}
 \par
 \noindent
 Text data atoms have a \VAR{Type} of 1.
@@ -218,7 +218,7 @@ Atom & Description & Atom & Description & Atom & Description \\
 \ATOM{trkn} is a binary sub-atom of \ATOM{meta} which contains
 the track number.
 \begin{figure}[h]
-\includegraphics{figures/m4a_trkn.pdf}
+\includegraphics{figures/m4a/trkn.pdf}
 \end{figure}
 
 \subsubsection{the disk Sub-Atom}
@@ -227,5 +227,5 @@ the disc number.
 For example, if the track belongs to the first disc in a set of
 two discs, the sub-atom will contain that information.
 \begin{figure}[h]
-\includegraphics{figures/m4a_disk.pdf}
+\includegraphics{figures/m4a/disk.pdf}
 \end{figure}

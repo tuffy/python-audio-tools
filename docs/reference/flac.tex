@@ -16,7 +16,7 @@ Except for the contents of the VORBIS\_COMMENT metadata block, everything in FLA
 
 \section{the FLAC File Stream}
 \begin{figure}[h]
-\includegraphics{figures/flac_stream.pdf}
+\includegraphics{figures/flac/stream.pdf}
 \end{figure}
 \par
 \noindent
@@ -48,7 +48,7 @@ Block Type & Block \\
 
 \subsection{STREAMINFO}
 \begin{figure}[h]
-\includegraphics{figures/flac_streaminfo.pdf}
+\includegraphics{figures/flac/streaminfo.pdf}
 \end{figure}
 
 \subsection{PADDING}
@@ -62,7 +62,7 @@ adding space to the padding.
 
 \subsection{APPLICATION}
 \begin{figure}[h]
-\includegraphics{figures/flac_application.pdf}
+\includegraphics{figures/flac/application.pdf}
 \end{figure}
 \noindent
 APPLICATION is a general-purpose metadata block used by a variety of
@@ -71,14 +71,14 @@ Its contents are defined by the ASCII Application ID value.
 
 \subsection{SEEKTABLE}
 \begin{figure}[h]
-\includegraphics{figures/flac_seektable.pdf}
+\includegraphics{figures/flac/seektable.pdf}
 \end{figure}
 
 \pagebreak
 
 \subsection{VORBIS\_COMMENT}
 \begin{figure}[h]
-\includegraphics{figures/flac_vorbiscomment.pdf}
+\includegraphics{figures/flac/vorbiscomment.pdf}
 \end{figure}
 \par
 \noindent
@@ -136,12 +136,12 @@ Fields marked with * are proposed extension fields and not part of the official 
 
 \subsection{CUESHEET}
 \begin{figure}[h]
-\includegraphics{figures/flac_cuesheet.pdf}
+\includegraphics{figures/flac/cuesheet.pdf}
 \end{figure}
 
 \subsection{PICTURE}
 \begin{figure}[h]
-\includegraphics{figures/flac_picture.pdf}
+\includegraphics{figures/flac/picture.pdf}
 \end{figure}
 \begin{tabular}{|r|l|}
 \hline
@@ -174,7 +174,7 @@ Picture Type & Type \\
 \section{FLAC Decoding}
 A FLAC stream is made up of individual FLAC frames, as follows:
 \begin{figure}[h]
-\includegraphics{figures/flac_frame.pdf}
+\includegraphics{figures/flac/frame.pdf}
 \end{figure}
 
 \label{flac_encoded_fields}
@@ -249,7 +249,7 @@ numbers.
 One can decode this field in the following way:
 
 \begin{figure}[h]
-\includegraphics{figures/flac_read_utf8.pdf}
+\includegraphics{figures/flac/read_utf8.pdf}
 \end{figure}
 
 \pagebreak
@@ -304,7 +304,7 @@ of digital silence (samples with a value of 0) very efficiently.
 \subsection{VERBATIM Subframe}
 
 \begin{figure}[h]
-\includegraphics{figures/flac_verbatim.pdf}
+\includegraphics{figures/flac/verbatim.pdf}
 \end{figure}
 \noindent
 Each sample is the size of the subframe's \VAR{Bits per Sample}.
@@ -316,7 +316,7 @@ noisy portions of a track where no suitable predictor can be found.
 \subsection{FIXED Subframe}
 
 \begin{figure}[h]
-\includegraphics{figures/flac_fixed.pdf}
+\includegraphics{figures/flac/fixed.pdf}
 \end{figure}
 \noindent
 The number of warm-up samples equals the \VAR{Predictor Order}
@@ -386,7 +386,7 @@ How to extract the encoded residual is explained on page
 
 \subsection{LPC Subframe}
 \begin{figure}[h]
-\includegraphics{figures/flac_lpc.pdf}
+\includegraphics{figures/flac/lpc.pdf}
 \end{figure}
 \par
 \noindent
@@ -478,7 +478,7 @@ The difference between the two is that when \VAR{Coding Method} is 0,
 the Rice Parameter in each partition is 4 bits.
 When the \VAR{Coding Method} is 1, that parameter is 5 bits.
 \begin{figure}[h]
-\includegraphics{figures/flac_residual.pdf}
+\includegraphics{figures/flac/residual.pdf}
 \end{figure}
 \par
 \noindent
@@ -521,7 +521,7 @@ Decoding the residuals requires the Rice parameter
 and may be easier to explain with a flowchart of the process,
 which is repeated for each residual in the partition:
 \begin{figure}[h]
-\includegraphics{figures/flac_read_residual.pdf}
+\includegraphics{figures/flac/read_residual.pdf}
 \end{figure}
 
 \clearpage
@@ -529,7 +529,7 @@ which is repeated for each residual in the partition:
 Lets run through an example in which the Rice parameter is 1,
 indicating 1 least-significant bit per residual value:
 \begin{figure}[h]
-\includegraphics{figures/flac_rice1.pdf}
+\includegraphics{figures/flac/rice1.pdf}
 \end{figure}
 \par
 \noindent
@@ -538,7 +538,7 @@ consumed a total of 12 bits from the stream.
 
 Next, lets run through an example in which the Rice parameter is 4:
 \begin{figure}[h]
-\includegraphics{figures/flac_rice2.pdf}
+\includegraphics{figures/flac/rice2.pdf}
 \end{figure}
 \par
 \noindent
@@ -547,7 +547,7 @@ In this case, our final residual values are -35, -11, 4 and -12.
 Finally, we'll try a case in which the Rice parameter is 0,
 indicating no least-significant bits at all:
 \begin{figure}[h]
-\includegraphics{figures/flac_rice4.pdf}
+\includegraphics{figures/flac/rice4.pdf}
 \end{figure}
 \par
 Our final residual values are 1, 2, -1 and 0.
@@ -563,7 +563,7 @@ them together in the proper order.
 Let's take an example of 2 channel, 16-bit audio stored this way:
 
 \begin{figure}[h]
-\includegraphics{figures/flac_channels.pdf}
+\includegraphics{figures/flac/channels.pdf}
 \end{figure}
 
 This is the simplest case.
@@ -632,7 +632,7 @@ stream's sample rate, number of channels and bits per sample.
 Creating a valid FLAC file is then a matter of writing the proper
 file header, metadata blocks and FLAC frames.
 \begin{figure}[h]
-\includegraphics{figures/flac_stream2.pdf}
+\includegraphics{figures/flac/stream2.pdf}
 \end{figure}
 
 \begin{figure}[h]
@@ -721,7 +721,7 @@ and choose a predefined block size for as many FLAC frames as possible.
 
 \subsection{UTF-8 Frame Number}
 \begin{wrapfigure}[10]{r}{3in}
-\includegraphics{figures/flac_write_utf8.pdf}
+\includegraphics{figures/flac/write_utf8.pdf}
 \end{wrapfigure}
 
 A FLAC file's frame number starts at 0 and increments by one
@@ -918,14 +918,14 @@ predictor order is 1:
 \clearpage
 
 \subsection{the LPC Subframe}
-\label{flac_lpc_encoding}
+\label{_encoding}
 Unlike the FIXED subframe which required only input samples and a
 predictor order, LPC subframes also require a list of QLP coefficients,
 a QLP precision value of those coefficients, and a QLP shift needed
 value.
 
 \begin{figure}[h]
-\includegraphics{figures/flac_lpc.pdf}
+\includegraphics{figures/flac/lpc.pdf}
 \end{figure}
 \par
 \noindent
@@ -935,11 +935,11 @@ exhaustive LP coefficient order search or not:
 
 \begin{figure}[h]
 \subfloat[non-exhaustive search]{
-\includegraphics{figures/flac_nonexhaustive.pdf}
+\includegraphics{figures/flac/nonexhaustive.pdf}
 }
 \qquad
 \subfloat[exhaustive search]{
-\includegraphics{figures/flac_exhaustive.pdf}
+\includegraphics{figures/flac/exhaustive.pdf}
 }
 \end{figure}
 
@@ -966,13 +966,13 @@ two.
 
 \begin{figure}[h]
 \subfloat{
-\includegraphics{figures/flac_hann.pdf}
+\includegraphics{figures/flac/hann.pdf}
 }
 \subfloat{
-\includegraphics{figures/flac_rectangular.pdf}
+\includegraphics{figures/flac/rectangular.pdf}
 }
 \subfloat{
-\includegraphics{figures/flac_tukey.pdf}
+\includegraphics{figures/flac/tukey.pdf}
 }
 \end{figure}
 
@@ -1021,7 +1021,7 @@ The lagged signal is simply the original signal with \VAR{lag} number of
 samples removed from the beginning.
 
 \begin{figure}[h]
-\includegraphics{figures/flac_lag.pdf}
+\includegraphics{figures/flac/lag.pdf}
 \end{figure}
 
 The lagged sums from 0 to the maximum LPC order are our autocorrelation
@@ -1322,7 +1322,7 @@ Given a stream of residual values, one must place them in one or more
 partitions, each with its own Rice parameter, and prepended with a
 small header:
 \begin{figure}[h]
-\includegraphics{figures/flac_residual.pdf}
+\includegraphics{figures/flac/residual.pdf}
 \end{figure}
 
 
@@ -1387,7 +1387,7 @@ $2 ^ 4$ using coding method 0, or $2 ^ 5$ using coding method 1.
 \subsubsection{Residual Values}
 
 \begin{wrapfigure}[5]{r}{4in}
-\includegraphics{figures/flac_write_residual.pdf}
+\includegraphics{figures/flac/write_residual.pdf}
 \end{wrapfigure}
 Encoding individual residual values to Rice coding requires only
 the Rice parameter and the residuals themselves.
@@ -1397,7 +1397,7 @@ the Rice parameter and the residuals themselves.
 As an example, we'll encode the residual values 18, -25 and 12
 with a Rice parameter of 3:
 \begin{figure}[h]
-\includegraphics{figures/flac_rice3.pdf}
+\includegraphics{figures/flac/rice3.pdf}
 \end{figure}
 
 \clearpage

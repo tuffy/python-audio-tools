@@ -18,7 +18,7 @@ Each substream contains one or more blocks.
 Finally, each block contains \VAR{Block Data} residuals
 and, optionally, decoding information.
 \begin{figure}[h]
-\includegraphics{figures/mlp_stream.pdf}
+\includegraphics{figures/mlp/stream.pdf}
 \end{figure}
 \par
 \noindent
@@ -49,7 +49,7 @@ into a single set of PCM frames and returned.
 \subsection{The Major Sync}
 \VAR{Major Sync} is an optional frame header:
 \begin{figure}[h]
-\includegraphics{figures/mlp_major_sync.pdf}
+\includegraphics{figures/mlp/major_sync.pdf}
 \end{figure}
 \par
 \noindent
@@ -98,7 +98,7 @@ Value & Bits & Sample Rate & Channels & Channel Assignment \\
 There is one \VAR{Substream Info} header per frame substream
 (as indicated in the \VAR{Major Sync}).
 \begin{figure}[h]
-\includegraphics{figures/mlp_substream_size.pdf}
+\includegraphics{figures/mlp/substream_size.pdf}
 \end{figure}
 \par
 \noindent
@@ -110,7 +110,7 @@ starting from the end of the last \VAR{Substream Info} value.
 \subsection{Substream Data}
 
 \begin{figure}[h]
-\includegraphics{figures/mlp_substream.pdf}
+\includegraphics{figures/mlp/substream.pdf}
 \end{figure}
 We continue to read blocks until a block's \VAR{Last} bit is set.
 Each block is prefixed by a \VAR{Parameters Present} bit.
@@ -129,7 +129,7 @@ and an 8-bit CRC value.
 
 \subsection{Restart Header}
 \begin{figure}[h]
-\includegraphics{figures/mlp_restart_header.pdf}
+\includegraphics{figures/mlp/restart_header.pdf}
 \end{figure}
 \par
 \noindent
@@ -159,7 +159,7 @@ Note that the first decoding parameter is the 8-bit
 \VAR{Parameter Presence Flags} value itself.
 
 \begin{figure}[h]
-\includegraphics{figures/mlp_decoding_params.pdf}
+\includegraphics{figures/mlp/decoding_params.pdf}
 \end{figure}
 \par
 \noindent
@@ -177,7 +177,7 @@ optional $\text{Channel Parameters}_2$ through $\text{Channel Parameters}_5$.
 \subsubsection{Parameter Presence Flags}
 
 \begin{figure}[h]
-\includegraphics{figures/mlp_parameter_presence_flags.pdf}
+\includegraphics{figures/mlp/parameter_presence_flags.pdf}
 \end{figure}
 \par
 \noindent
@@ -199,7 +199,7 @@ All channels within a block will have the same number of samples.
 %% If \VAR{Matrix Parameters} is indicated during parameter decoding:
 
 \begin{figure}[h]
-\includegraphics{figures/mlp_matrix_params.pdf}
+\includegraphics{figures/mlp/matrix_params.pdf}
 \end{figure}
 \par
 \noindent
@@ -220,7 +220,7 @@ treat \VAR{Matrix Count} as 0 by default.
 %% If \VAR{Output Shifts} is indicated during parameter decoding:
 
 \begin{figure}[h]
-\includegraphics{figures/mlp_output_shifts.pdf}
+\includegraphics{figures/mlp/output_shifts.pdf}
 \end{figure}
 \par
 \noindent
@@ -235,7 +235,7 @@ decoding, all $\text{Output Shift}_i$ values are 0 by default.
 
 %% If \VAR{Quant Step Sizes} is indicated during parameter decoding:
 \begin{figure}[h]
-\includegraphics{figures/mlp_quant_steps.pdf}
+\includegraphics{figures/mlp/quant_steps.pdf}
 \end{figure}
 \par
 \noindent
@@ -256,7 +256,7 @@ decoding, all $\text{Quant Step Size}_i$ values are 0 by default.
 \subsubsection{Channel Parameters}
 
 \begin{figure}[h]
-\includegraphics{figures/mlp_channel_parameters.pdf}
+\includegraphics{figures/mlp/channel_parameters.pdf}
 \end{figure}
 \par
 \noindent
@@ -296,7 +296,7 @@ and \VAR{Huffman Least-Significant Bits} is 23.
 
 \subsubsection{FIR Filter Parameters}
 \begin{figure}[h!]
-\includegraphics{figures/mlp_filter_params_fir.pdf}
+\includegraphics{figures/mlp/filter_params_fir.pdf}
 \end{figure}
 \par
 \noindent
@@ -316,7 +316,7 @@ Note that the \VAR{Set State} value must be 0.  By default,
 
 \subsubsection{IIR Filter Parameters}
 \begin{figure}[h]
-\includegraphics{figures/mlp_filter_params_iir.pdf}
+\includegraphics{figures/mlp/filter_params_iir.pdf}
 \end{figure}
 
 As with FIR, if \VAR{Order} is 0, we forego reading the rest of the
@@ -354,7 +354,7 @@ one must read a \VAR{Bypassed LSB} bit per PCM frame's worth of
 residuals prior to reading the residuals themselves.
 
 \begin{figure}[h]
-\includegraphics{figures/mlp_residuals.pdf}
+\includegraphics{figures/mlp/residuals.pdf}
 \end{figure}
 
 Decoding a given residual value requires the
@@ -389,13 +389,13 @@ This is how MLP stores large runs of 0 residuals.
 
 \begin{figure}[h]
 \label{mlp_codebooks}
-\includegraphics{figures/mlp_codebook1.pdf}
+\includegraphics{figures/mlp/codebook1.pdf}
 \caption{Codebook 1}
 \vskip 2em
-\includegraphics{figures/mlp_codebook2.pdf}
+\includegraphics{figures/mlp/codebook2.pdf}
 \caption{Codebook 2}
 \vskip 2em
-\includegraphics{figures/mlp_codebook3.pdf}
+\includegraphics{figures/mlp/codebook3.pdf}
 \caption{Codebook 3}
 \end{figure}
 

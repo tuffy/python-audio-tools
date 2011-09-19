@@ -16,34 +16,163 @@ figures/id3v22/txx.pdf \
 figures/id3v22/w__.pdf \
 figures/id3v22/wxx.pdf
 
+FLAC = \
+figures/flac/application.pdf \
+figures/flac/channels.pdf \
+figures/flac/cuesheet.pdf \
+figures/flac/exhaustive.pdf \
+figures/flac/fixed.pdf \
+figures/flac/frame.pdf \
+figures/flac/hann.pdf \
+figures/flac/lag.pdf \
+figures/flac/lpc.pdf \
+figures/flac/nonexhaustive.pdf \
+figures/flac/picture.pdf \
+figures/flac/read_residual.pdf \
+figures/flac/read_utf8.pdf \
+figures/flac/rectangular.pdf \
+figures/flac/residual.pdf \
+figures/flac/rice1.pdf \
+figures/flac/rice2.pdf \
+figures/flac/rice3.pdf \
+figures/flac/rice4.pdf \
+figures/flac/seektable.pdf \
+figures/flac/stream.pdf \
+figures/flac/stream2.pdf \
+figures/flac/streaminfo.pdf \
+figures/flac/tukey.pdf \
+figures/flac/verbatim.pdf \
+figures/flac/vorbiscomment.pdf \
+figures/flac/write_residual.pdf \
+figures/flac/write_utf8.pdf \
+figures/oggflac_stream.pdf \
+figures/utf-8-1.pdf \
+figures/utf-8-2.pdf \
+figures/utf-8-3.pdf
+
+M4A = figures/m4a/quicktime.pdf \
+figures/m4a/atom.pdf \
+figures/m4a/atom2.pdf \
+figures/m4a/atoms.pdf \
+figures/m4a/data.pdf \
+figures/m4a/disk.pdf \
+figures/m4a/dref.pdf \
+figures/m4a/ftyp.pdf \
+figures/m4a/hdlr.pdf \
+figures/m4a/mdhd.pdf \
+figures/m4a/meta.pdf \
+figures/m4a/meta_atoms.pdf \
+figures/m4a/mp4a.pdf \
+figures/m4a/mvhd.pdf \
+figures/m4a/smhd.pdf \
+figures/m4a/stco.pdf \
+figures/m4a/stsc.pdf \
+figures/m4a/stsd.pdf \
+figures/m4a/stsz.pdf \
+figures/m4a/stts.pdf \
+figures/m4a/tkhd.pdf \
+figures/m4a/trkn.pdf
+
+WAVPACK = figures/wavpack/bitstream.pdf \
+figures/wavpack/block_header.pdf \
+figures/wavpack/channel_info.pdf \
+figures/wavpack/decorr_samples.pdf \
+figures/wavpack/decorr_samples2.pdf \
+figures/wavpack/decorr_terms.pdf \
+figures/wavpack/decorr_weights.pdf \
+figures/wavpack/decorrelation1.pdf \
+figures/wavpack/decorrelation2.pdf \
+figures/wavpack/decorrelation3.pdf \
+figures/wavpack/entropy_vars.pdf\
+figures/wavpack/extended_integers.pdf \
+figures/wavpack/md5sum.pdf \
+figures/wavpack/pcm_sandwich.pdf \
+figures/wavpack/read_residual.pdf \
+figures/wavpack/read_residual1.pdf \
+figures/wavpack/read_residual2.pdf \
+figures/wavpack/read_residual3.pdf \
+figures/wavpack/read_zeroes.pdf \
+figures/wavpack/stream.pdf \
+figures/wavpack/subblock_header.pdf \
+figures/wavpack/wave_footer.pdf \
+figures/wavpack/wave_header.pdf \
+figures/wavpack/write_zeroes.pdf
+
+SHORTEN = figures/shorten/diff.pdf \
+figures/shorten/qlpc.pdf \
+figures/shorten/sandwich.pdf \
+figures/shorten/signed.pdf \
+figures/shorten/stream.pdf \
+figures/shorten/unsigned.pdf \
+figures/shorten/verbatim.pdf
+
+ALAC = figures/alac/alac_atom.pdf \
+figures/alac/atoms.pdf \
+figures/alac/compressed_frame.pdf \
+figures/alac/frame_header.pdf \
+figures/alac/lag.pdf \
+figures/alac/read_residual.pdf \
+figures/alac/residual.pdf \
+figures/alac/residual_w.pdf \
+figures/alac/stream.pdf \
+figures/alac/subframe_header.pdf \
+figures/alac/uncompressed_frame.pdf \
+figures/alac/wasted.pdf \
+figures/alac/write_residual.pdf
+
+MLP = figures/mlp/channel_parameters.pdf \
+figures/mlp/codebook1.pdf \
+figures/mlp/codebook2.pdf \
+figures/mlp/codebook3.pdf \
+figures/mlp/decoding_params.pdf \
+figures/mlp/filter_params_fir.pdf \
+figures/mlp/filter_params_iir.pdf \
+figures/mlp/major_sync.pdf \
+figures/mlp/matrix_params.pdf \
+figures/mlp/output_shifts.pdf \
+figures/mlp/parameter_presence_flags.pdf \
+figures/mlp/quant_steps.pdf \
+figures/mlp/residuals.pdf \
+figures/mlp/restart_header.pdf \
+figures/mlp/stream.pdf \
+figures/mlp/substream.pdf \
+figures/mlp/substream_size.pdf
+
+DVDA = figures/dvda/aob_mlp_payload.pdf \
+figures/dvda/aob_pack_header.pdf \
+figures/dvda/aob_pcm_payload.pdf \
+figures/dvda/ats_sectors.pdf \
+figures/dvda/ats_title.pdf \
+figures/dvda/ats_xx_0.pdf \
+figures/dvda/ats_xx_x.pdf \
+figures/dvda/audio_ts_ifo.pdf \
+figures/dvda/layout.pdf
+
+AOBPCM = figures/aobpcm/24bps_1ch.pdf \
+figures/aobpcm/24bps_2ch.pdf \
+figures/aobpcm/24bps_3ch.pdf \
+figures/aobpcm/24bps_4ch.pdf \
+figures/aobpcm/24bps_5ch.pdf \
+figures/aobpcm/24bps_6ch.pdf
+
+VORBIS = figures/ogg_packets.pdf \
+figures/ogg_stream.pdf \
+figures/vorbis/codebooks.pdf \
+figures/vorbis/comment.pdf \
+figures/vorbis/float32.pdf \
+figures/vorbis/huffman_example1.pdf \
+figures/vorbis/huffman_example2.pdf \
+figures/vorbis/huffman_example3.pdf \
+figures/vorbis/huffman_example4.pdf \
+figures/vorbis/identification.pdf \
+figures/vorbis/ordered_entries.pdf \
+figures/vorbis/setup_packet.pdf
+
+
 FIGURES = figures/binary.pdf figures/pcm.pdf figures/wav_stream.pdf \
 figures/wav_fmt.pdf figures/wav_fmtext.pdf figures/wav_data.pdf \
 figures/aiff_stream.pdf figures/aiff_comm.pdf figures/aiff_ssnd.pdf \
 figures/au_stream.pdf \
-figures/flac_stream.pdf figures/flac_streaminfo.pdf \
-figures/flac_application.pdf figures/flac_seektable.pdf \
-figures/flac_vorbiscomment.pdf figures/flac_cuesheet.pdf \
-figures/flac_picture.pdf figures/flac_read_utf8.pdf \
-figures/flac_write_utf8.pdf \
-figures/utf-8-1.pdf figures/utf-8-2.pdf figures/utf-8-3.pdf \
-figures/flac_frame.pdf \
-figures/flac_verbatim.pdf figures/flac_fixed.pdf figures/flac_lpc.pdf \
-figures/flac_residual.pdf \
-figures/flac_rice1.pdf figures/flac_rice2.pdf figures/flac_rice3.pdf \
-figures/flac_rice4.pdf figures/flac_channels.pdf \
-figures/flac_stream2.pdf \
-figures/flac_nonexhaustive.pdf figures/flac_exhaustive.pdf \
-figures/flac_hann.pdf figures/flac_rectangular.pdf figures/flac_tukey.pdf \
-figures/flac_lag.pdf figures/oggflac_stream.pdf \
-figures/flac_read_residual.pdf figures/flac_write_residual.pdf \
-figures/m4a_quicktime.pdf figures/m4a_atom.pdf figures/m4a_atom2.pdf \
-figures/m4a_atoms.pdf figures/m4a_ftyp.pdf figures/m4a_mvhd.pdf \
-figures/m4a_tkhd.pdf figures/m4a_mdhd.pdf figures/m4a_hdlr.pdf \
-figures/m4a_smhd.pdf figures/m4a_dref.pdf figures/m4a_stsd.pdf \
-figures/m4a_mp4a.pdf figures/m4a_stts.pdf figures/m4a_stsc.pdf \
-figures/m4a_stsz.pdf figures/m4a_stco.pdf \
-figures/m4a_meta_atoms.pdf figures/m4a_meta.pdf figures/m4a_data.pdf \
-figures/m4a_trkn.pdf figures/m4a_disk.pdf \
 figures/mp3_stream.pdf figures/mp3_xing.pdf \
 figures/mp3_id3v1.pdf figures/mp3_id3v11.pdf \
 figures/mp3_id3v2_stream.pdf \
@@ -52,26 +181,6 @@ figures/mp3_id3v23_header.pdf figures/mp3_id3v23_frame.pdf \
 figures/mp3_id3v23_textframe.pdf figures/mp3_id3v23_apic.pdf \
 figures/mp3_id3v24_header.pdf figures/mp3_id3v24_frame.pdf \
 figures/mp3_id3v24_textframe.pdf figures/mp3_id3v24_apic.pdf \
-$(ID3v22) \
-figures/ogg_stream.pdf figures/ogg_packets.pdf \
-figures/vorbis_identification.pdf figures/vorbis_comment.pdf \
-figures/vorbis_codebooks.pdf figures/vorbis_float32.pdf \
-figures/vorbis_setup_packet.pdf figures/vorbis_ordered_entries.pdf \
-figures/vorbis_huffman_example1.pdf figures/vorbis_huffman_example2.pdf \
-figures/vorbis_huffman_example3.pdf figures/vorbis_huffman_example4.pdf \
-figures/wavpack_stream.pdf figures/wavpack_block_header.pdf \
-figures/wavpack_subblock_header.pdf \
-figures/wavpack_decorr_terms.pdf figures/wavpack_decorr_weights.pdf \
-figures/wavpack_bitstream.pdf \
-figures/wavpack_decorr_samples.pdf figures/wavpack_entropy_vars.pdf\
-figures/wavpack_read_residual1.pdf figures/wavpack_read_residual2.pdf \
-figures/wavpack_read_residual3.pdf figures/wavpack_read_residual.pdf \
-figures/wavpack_read_zeroes.pdf figures/wavpack_decorr_samples2.pdf \
-figures/wavpack_decorrelation1.pdf figures/wavpack_decorrelation2.pdf \
-figures/wavpack_decorrelation3.pdf figures/wavpack_extended_integers.pdf \
-figures/wavpack_write_zeroes.pdf figures/wavpack_wave_header.pdf \
-figures/wavpack_wave_footer.pdf figures/wavpack_md5sum.pdf \
-figures/wavpack_pcm_sandwich.pdf figures/wavpack_channel_info.pdf \
 figures/ape_stream.pdf figures/ape_descriptor.pdf figures/ape_header.pdf \
 figures/apev2_tag.pdf figures/apev2_tagheader.pdf figures/apev2_flags.pdf \
 figures/speex_header.pdf \
@@ -80,35 +189,19 @@ figures/musepack_sv8_sh.pdf figures/musepack_sv8_rg.pdf \
 figures/musepack_sv8_ei.pdf figures/musepack_sv8_nut.pdf \
 figures/freedb_sequence.pdf figures/freedb_discid.pdf \
 figures/musicbrainz_discid.pdf figures/musicbrainz_xml.pdf \
-figures/shorten_stream.pdf figures/shorten_unsigned.pdf \
-figures/shorten_signed.pdf figures/shorten_diff.pdf \
-figures/shorten_verbatim.pdf figures/shorten_qlpc.pdf \
-figures/shorten_sandwich.pdf \
-figures/alac_stream.pdf figures/alac_atoms.pdf figures/alac_alac_atom.pdf \
-figures/alac_frame_header.pdf figures/alac_subframe_header.pdf \
-figures/alac_uncompressed_frame.pdf figures/alac_compressed_frame.pdf \
-figures/alac_read_residual.pdf figures/alac_residual.pdf \
-figures/alac_wasted.pdf figures/alac_write_residual.pdf \
-figures/alac_residual_w.pdf figures/alac_lag.pdf \
 figures/bitstream_struct.pdf figures/bitstream_bigendian.pdf \
 figures/bitstream_littleendian.pdf figures/bitstream_littleendian_alt.pdf \
-figures/mlp_stream.pdf figures/mlp_major_sync.pdf \
-figures/mlp_substream_size.pdf figures/mlp_substream.pdf \
-figures/mlp_restart_header.pdf figures/mlp_decoding_params.pdf \
-figures/mlp_parameter_presence_flags.pdf figures/mlp_matrix_params.pdf \
-figures/mlp_output_shifts.pdf figures/mlp_quant_steps.pdf \
-figures/mlp_channel_parameters.pdf figures/mlp_filter_params_fir.pdf \
-figures/mlp_filter_params_iir.pdf figures/mlp_codebook1.pdf \
-figures/mlp_codebook2.pdf figures/mlp_codebook3.pdf \
-figures/mlp_residuals.pdf \
-figures/dvda_ats_xx_x.pdf figures/dvda_aob_pack_header.pdf \
-figures/dvda_aob_pcm_payload.pdf figures/dvda_aob_mlp_payload.pdf \
-figures/dvda_layout.pdf figures/dvda_audio_ts_ifo.pdf \
-figures/dvda_ats_xx_0.pdf figures/dvda_ats_title.pdf \
-figures/dvda_ats_sectors.pdf \
-figures/aob_pcm_24bps_1ch.pdf figures/aob_pcm_24bps_2ch.pdf \
-figures/aob_pcm_24bps_3ch.pdf figures/aob_pcm_24bps_4ch.pdf \
-figures/aob_pcm_24bps_5ch.pdf figures/aob_pcm_24bps_6ch.pdf
+$(FLAC) \
+$(M4A) \
+$(ID3v22) \
+$(WAVPACK) \
+$(VORBIS) \
+$(SHORTEN) \
+$(ALAC) \
+$(MLP) \
+$(DVDA) \
+$(AOBPCM)
+
 
 CHAPTERS = basics.tex wav.tex flac.tex m4a.tex mp3.tex vorbis.tex \
 wavpack.tex ape.tex aiff.tex au.tex speex.tex oggflac.tex musepack.tex \
@@ -119,7 +212,7 @@ all: audioformats-letter.pdf audioformats-a4.pdf
 
 clean:
 	rm -f *.toc *.aux *.log *.out $(FIGURES)
-	rm -f figures/pcm.fig figures/flac_hann.fig figures/flac_rectangular.fig figures/flac_tukey.fig
+	rm -f figures/pcm.fig figures/flac/hann.fig figures/flac/rectangular.fig figures/flac/tukey.fig
 	rm -f audiotools-a4.tex audiotools-letter.tex
 
 audioformats-letter.pdf: audioformats-letter.tex $(CHAPTERS) $(FIGURES)
@@ -152,34 +245,34 @@ figures/pcm.pdf: figures/pcm.fig
 figures/pcm.fig: figures/pcm.plot
 	./figures/pcm.plot > $@
 
-figures/flac_hann.pdf: figures/flac_hann.fig
+figures/flac/hann.pdf: figures/flac/hann.fig
 	fig2dev -Z 2 -L pdf $< $@
 
-figures/flac_hann.fig: figures/flac_hann.plot
-	./figures/flac_hann.plot > $@
+figures/flac/hann.fig: figures/flac/hann.plot
+	./figures/flac/hann.plot > $@
 
-figures/flac_rectangular.pdf: figures/flac_rectangular.fig
+figures/flac/rectangular.pdf: figures/flac/rectangular.fig
 	fig2dev -Z 2 -L pdf $< $@
 
-figures/flac_rectangular.fig: figures/flac_rectangular.plot
-	./figures/flac_rectangular.plot > $@
+figures/flac/rectangular.fig: figures/flac/rectangular.plot
+	./figures/flac/rectangular.plot > $@
 
-figures/flac_tukey.pdf: figures/flac_tukey.fig
+figures/flac/tukey.pdf: figures/flac/tukey.fig
 	fig2dev -Z 2 -L pdf $< $@
 
-figures/flac_tukey.fig: figures/flac_tukey.plot
-	./figures/flac_tukey.plot > $@
+figures/flac/tukey.fig: figures/flac/tukey.plot
+	./figures/flac/tukey.plot > $@
 
-figures/flac_rice1.pdf: figures/flac_rice1.fig
+figures/flac/rice1.pdf: figures/flac/rice1.fig
 	fig2dev -Z 5 -L pdf $< $@
 
-figures/flac_rice2.pdf: figures/flac_rice2.fig
+figures/flac/rice2.pdf: figures/flac/rice2.fig
 	fig2dev -Z 6 -L pdf $< $@
 
-figures/flac_rice3.pdf: figures/flac_rice3.fig
+figures/flac/rice3.pdf: figures/flac/rice3.fig
 	fig2dev -Z 6 -L pdf $< $@
 
-figures/flac_rice4.pdf: figures/flac_rice4.fig
+figures/flac/rice4.pdf: figures/flac/rice4.fig
 	fig2dev -Z 3 -L pdf $< $@
 
 figures/utf-8-1.pdf: figures/utf-8-1.fig
@@ -191,13 +284,13 @@ figures/utf-8-2.pdf: figures/utf-8-2.fig
 figures/utf-8-3.pdf: figures/utf-8-3.fig
 	fig2dev -Z 5 -L pdf $< $@
 
-figures/flac_lag.pdf: figures/flac_lag.fig
+figures/flac/lag.pdf: figures/flac/lag.fig
 	fig2dev -Z 6 -L pdf $< $@
 
-figures/flac_nonexhaustive.pdf: figures/flac_nonexhaustive.fig
+figures/flac/nonexhaustive.pdf: figures/flac/nonexhaustive.fig
 	fig2dev -Z 3.5 -L pdf $< $@
 
-figures/flac_exhaustive.pdf: figures/flac_exhaustive.fig
+figures/flac/exhaustive.pdf: figures/flac/exhaustive.fig
 	fig2dev -Z 3.5 -L pdf $< $@
 
 figures/freedb_sequence.pdf: figures/freedb_sequence.fig
@@ -206,13 +299,13 @@ figures/freedb_sequence.pdf: figures/freedb_sequence.fig
 figures/musicbrainz_xml.pdf: figures/musicbrainz_xml.fig
 	fig2dev -Z 4 -L pdf $< $@
 
-figures/m4a_atoms.pdf: figures/m4a_atoms.fig
+figures/m4a/atoms.pdf: figures/m4a/atoms.fig
 	fig2dev -Z 6 -L pdf $< $@
 
-figures/m4a_meta_atoms.pdf: figures/m4a_meta_atoms.fig
+figures/m4a/meta_atoms.pdf: figures/m4a/meta_atoms.fig
 	fig2dev -Z 3 -L pdf $< $@
 
-figures/alac_atoms.pdf: figures/alac_atoms.fig
+figures/alac/atoms.pdf: figures/alac/atoms.fig
 	fig2dev -Z 5 -L pdf $< $@
 
 # figures/alac_read_residual.pdf: figures/alac_read_residual.fig
@@ -227,13 +320,13 @@ figures/alac_atoms.pdf: figures/alac_atoms.fig
 # figures/alac_write_residual.pdf: figures/alac_write_residual.dot
 # 	dot -Tpdf $< -o $@
 
-figures/alac_residual.pdf: figures/alac_residual.fig
+figures/alac/residual.pdf: figures/alac/residual.fig
 	fig2dev -Z 5 -L pdf $< $@
 
-figures/alac_residual_w.pdf: figures/alac_residual_w.fig
+figures/alac/residual_w.pdf: figures/alac/residual_w.fig
 	fig2dev -Z 5 -L pdf $< $@
 
-figures/alac_lag.pdf: figures/alac_lag.fig
+figures/alac/lag.pdf: figures/alac/lag.fig
 	fig2dev -Z 6 -L pdf $< $@
 
 figures/bitstream_bigendian.pdf: figures/bitstream_bigendian.fig
@@ -245,7 +338,7 @@ figures/bitstream_littleendian.pdf: figures/bitstream_littleendian.fig
 figures/bitstream_littleendian_alt.pdf: figures/bitstream_littleendian_alt.fig
 	fig2dev -Z 6 -L pdf $< $@
 
-figures/vorbis_ordered_entries.pdf: figures/vorbis_ordered_entries.dot
+figures/vorbis/ordered_entries.pdf: figures/vorbis/ordered_entries.dot
 	dot -Tpdf $< -o $@
 
 .SUFFIXES: .pdf .xml .dot
@@ -271,26 +364,26 @@ figures/m4a_data.pdf: figures/m4a_data.xml
 figures/alac_alac_atom.pdf: figures/alac_alac_atom.xml
 	./bitdiagram.py -w 324 -i $< -o $@
 
-figures/shorten_unsigned.pdf: figures/shorten_unsigned.fig
+figures/shorten/unsigned.pdf: figures/shorten/unsigned.fig
 	fig2dev -Z 2 -L pdf $< $@
 
-figures/shorten_signed.pdf: figures/shorten_signed.fig
+figures/shorten/signed.pdf: figures/shorten/signed.fig
 	fig2dev -Z 2 -L pdf $< $@
 
-figures/wavpack_decorrelation1.fig: figures/wavpack_decorrelation1.plot
-	./figures/wavpack_decorrelation1.plot > $@
+figures/wavpack/decorrelation1.fig: figures/wavpack/decorrelation1.plot
+	./figures/wavpack/decorrelation1.plot > $@
 
-figures/wavpack_decorrelation1.pdf: figures/wavpack_decorrelation1.fig
+figures/wavpack/decorrelation1.pdf: figures/wavpack/decorrelation1.fig
 	fig2dev -Z 2 -L pdf $< $@
 
-figures/wavpack_decorrelation2.fig: figures/wavpack_decorrelation2.plot
-	./figures/wavpack_decorrelation2.plot > $@
+figures/wavpack/decorrelation2.fig: figures/wavpack/decorrelation2.plot
+	./figures/wavpack/decorrelation2.plot > $@
 
-figures/wavpack_decorrelation2.pdf: figures/wavpack_decorrelation2.fig
+figures/wavpack/decorrelation2.pdf: figures/wavpack/decorrelation2.fig
 	fig2dev -Z 2 -L pdf $< $@
 
-figures/wavpack_decorrelation3.fig: figures/wavpack_decorrelation3.plot
-	./figures/wavpack_decorrelation3.plot > $@
+figures/wavpack/decorrelation3.fig: figures/wavpack/decorrelation3.plot
+	./figures/wavpack/decorrelation3.plot > $@
 
-figures/wavpack_decorrelation3.pdf: figures/wavpack_decorrelation3.fig
+figures/wavpack/decorrelation3.pdf: figures/wavpack/decorrelation3.fig
 	fig2dev -Z 2 -L pdf $< $@

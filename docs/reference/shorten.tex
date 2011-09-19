@@ -9,9 +9,9 @@ Instead, it uses its own set of variable-length types which I'll
 refer to as \texttt{unsigned}, \texttt{signed} and \texttt{long}.
 
 \begin{wrapfigure}[16]{r}{2in}
-\includegraphics{figures/shorten_unsigned.pdf}
+\includegraphics{figures/shorten/unsigned.pdf}
 \caption{Unsigned}
-\includegraphics{figures/shorten_signed.pdf}
+\includegraphics{figures/shorten/signed.pdf}
 \caption{Signed}
 \end{wrapfigure}
 An \texttt{unsigned} field of a certain \VAR{size} means we first
@@ -62,7 +62,7 @@ description, it means an \texttt{unsigned} field of size 3.
 \section{the Shorten File Stream}
 \label{shorten_stream}
 \begin{figure}[h]
-\includegraphics{figures/shorten_stream.pdf}
+\includegraphics{figures/shorten/stream.pdf}
 \end{figure}
 \begin{table}[h]
 \begin{tabular}{|r|l|}
@@ -121,7 +121,7 @@ arguments.
 \subsection{the DIFF Command}
 All four \texttt{DIFF} commands are structured the same:
 \begin{figure}[h]
-\includegraphics{figures/shorten_diff.pdf}
+\includegraphics{figures/shorten/diff.pdf}
 \end{figure}
 \par
 \noindent
@@ -236,7 +236,7 @@ and \VAR{coffset} calculation\footnote{See page \pageref{shorten_coffset}}.
 The \texttt{QLPC} command is structured as follows:
 
 \begin{figure}[h]
-\includegraphics{figures/shorten_qlpc.pdf}
+\includegraphics{figures/shorten/qlpc.pdf}
 \end{figure}
 \par
 \noindent
@@ -349,7 +349,7 @@ that total 1056, its offset value is:
 This command is for generating raw, non-audio data such
 as .wav or .aiff chunks and is structured as follows:
 \begin{figure}[h]
-\includegraphics{figures/shorten_verbatim.pdf}
+\includegraphics{figures/shorten/verbatim.pdf}
 \end{figure}
 \par
 \noindent
@@ -370,7 +370,7 @@ and replace values.
 Therefore, everything encoded to Shorten must be written in order.
 
 \begin{figure}[h]
-\includegraphics{figures/shorten_stream.pdf}
+\includegraphics{figures/shorten/stream.pdf}
 \end{figure}
 \par
 \noindent
@@ -423,7 +423,7 @@ Shorten encodes these files by turning non-audio data at
 the beginning and end of the container into \texttt{VERBATIM} commands,
 often in the following format:
 \begin{figure}[h]
-\includegraphics{figures/shorten_sandwich.pdf}
+\includegraphics{figures/shorten/sandwich.pdf}
 \end{figure}
 \par
 \noindent
@@ -471,7 +471,7 @@ which are \texttt{unsigned(2)} command variables 1, 2, and 3
 for \texttt{DIFF1}, \texttt{DIFF2} and \texttt{DIFF3}, respectively,
 followed by the same argument syntax:
 \begin{figure}[h]
-\includegraphics{figures/shorten_diff.pdf}
+\includegraphics{figures/shorten/diff.pdf}
 \end{figure}
 \par
 Given a set of input samples, we decide which \texttt{DIFF} command

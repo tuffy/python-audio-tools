@@ -87,7 +87,7 @@ converted into a certain number of bits in the decoding process.
 To find the total samples, use the \VAR{Granule Position} value
 in the stream's final Ogg page.
 \begin{figure}[h]
-\includegraphics{figures/vorbis_identification.pdf}
+\includegraphics{figures/vorbis/identification.pdf}
 \end{figure}
 \par
 \noindent
@@ -110,7 +110,7 @@ $\text{Blocksize}_0 \leq \text{Blocksize}_1$
 The second packet within a Vorbis stream is the Comment packet.
 
 \begin{figure}[h]
-\includegraphics{figures/vorbis_comment.pdf}
+\includegraphics{figures/vorbis/comment.pdf}
 \end{figure}
 
 The \VAR{Vendor String} and \VAR{Comment Strings} are all UTF-8 encoded.
@@ -167,7 +167,7 @@ Fields marked with * are proposed extension fields and not part of the official 
 The third packet in the Vorbis stream is the Setup packet.
 
 \begin{figure}[h]
-\includegraphics{figures/vorbis_setup_packet.pdf}
+\includegraphics{figures/vorbis/setup_packet.pdf}
 \end{figure}
 
 It contains six sections of data required for decoding.
@@ -180,7 +180,7 @@ The \VAR{Codebooks} section of the setup packet stores
 the Huffman lookup trees.
 
 \begin{figure}[h]
-\includegraphics{figures/vorbis_codebooks.pdf}
+\includegraphics{figures/vorbis/codebooks.pdf}
 \end{figure}
 \par
 \noindent
@@ -267,7 +267,7 @@ Since the zero bits are filled first when adding a node 2 bits deep,
 it initially looks like:
 
 \begin{figure}[h]
-\includegraphics{figures/vorbis_huffman_example1.pdf}
+\includegraphics{figures/vorbis/huffman_example1.pdf}
 \caption{$\text{Entry Length}_0$ placed with 2 bits}
 \end{figure}
 \par
@@ -276,7 +276,7 @@ We then place $\text{Entry Length}_1$ into the Huffman tree as a 4 bit value.
 Since the \texttt{0 0} branch is already populated by $\text{Entry Length}_0$,
 we switch to the empty \texttt{0 1} branch as follows:
 \begin{figure}[h]
-\includegraphics{figures/vorbis_huffman_example2.pdf}
+\includegraphics{figures/vorbis/huffman_example2.pdf}
 \caption{$\text{Entry Length}_1$ placed with 4 bits}
 \end{figure}
 \par
@@ -284,14 +284,14 @@ we switch to the empty \texttt{0 1} branch as follows:
 The 4 bit $\text{Entry Length}_2$, $\text{Entry Length}_3$ and $\text{Entry Length}_4$
 values are placed similarly along the \texttt{0 1} branch:
 \begin{figure}[h]
-\includegraphics{figures/vorbis_huffman_example3.pdf}
+\includegraphics{figures/vorbis/huffman_example3.pdf}
 \caption{$\text{Entry Length}_2$, $\text{Entry Length}_3$ and $\text{Entry Length}_4$ placed with 4 bits}
 \end{figure}
 \par
 \noindent
 Finally, the remaining three entries are populated along the \texttt{1} branch:
 \begin{figure}[h]
-\includegraphics{figures/vorbis_huffman_example4.pdf}
+\includegraphics{figures/vorbis/huffman_example4.pdf}
 \caption{$\text{Entry Length}_5$, $\text{Entry Length}_6$ and $\text{Entry Length}_7$ are placed}
 \end{figure}
 
@@ -304,7 +304,7 @@ greater than 2 is an error.
 \VAR{Minimum Value} and \VAR{Delta Value} are 32-bit floating point values
 which can be parsed in the following way:
 \begin{figure}[h]
-\includegraphics{figures/vorbis_float32.pdf}
+\includegraphics{figures/vorbis/float32.pdf}
 \end{figure}
 \begin{equation*}
 \text{Float} =
