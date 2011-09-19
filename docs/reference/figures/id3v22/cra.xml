@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="23" width=".5">`CRA' (0x435241)</col>
+    <col start="24" end="47" width=".5">Size</col>
+  </row>
+  <row>
+    <col start="48" width=".75">Owner Identifier</col>
+    <col start="0" end="7/15" width=".25">NULL</col>
+  </row>
+  <row>
+    <col start="0" end="15" width=".30">Preview Start</col>
+    <col start="16" end="31" width=".30">Preview Length</col>
+    <col start="32" width=".40" style="dashed">Encryption Info</col>
+  </row>
+</diagram>

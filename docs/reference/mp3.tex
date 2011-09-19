@@ -167,50 +167,89 @@ That is, no possible size value will result in a false
 MP3 frame sync (11 bits set in a row).
 This size field is the length of the entire tag, not including the header.
 
-\subsubsection{ID3v2.2 Frame}
-
+\subsubsection{CNT Frame}
 \begin{figure}[h]
-\includegraphics{figures/mp3_id3v22_frame.pdf}
+\includegraphics{figures/id3v22/cnt.pdf}
 \end{figure}
-\par
-\noindent
-Frame IDs that begin with the letter `T' (0x54) are text frames.
-These have an additional text encoding byte before the actual
-text data.
-All text strings may be terminated by a null character
-(0x00 or 0x0000, depending on the encoding).
+This frame is a 32-bit counter of the number of times the track
+has been played.
+According to the spec, additional bytes are added should the counter
+overflow.
+In practice, audio players typically don't update tags during playback
+and one is unlikely to exceed 4 billion plays of a single track.
 
-\pagebreak
+\clearpage
 
+\subsubsection{COM Frame}
 \begin{figure}[h]
-\includegraphics{figures/mp3_id3v22_textframe.pdf}
-\begin{tabular}{r|l}
-Encoding Byte & Text Encoding \\
-\hline
-\texttt{0x00} & ISO-8859-1 \\
-\texttt{0x01} & UCS-16 \\
-\end{tabular}
+\includegraphics{figures/id3v22/com.pdf}
 \end{figure}
+This frame is a lengthy string of comment text.
+\VAR{Encoding} is 0 for Latin-1, 1 for UCS-2.
+\VAR{Language} is a 3 byte ASCII string.
+\VAR{Short Content Description} is a NULL-terminated string
+containing a short description of the comment.
+Note that for UCS-2 comments, the NULL terminator is 2 bytes.
+The remainder of the frame is the comment text itself.
 
-\subsubsection{ID3v2.2 PIC Frame}
-
-`PIC' frames are attached pictures.
-This allows an ID3v2.2 tag to contain a JPEG or PNG image,
-typically of album artwork which can be displayed to the user
-when the track is played.
-
+\subsubsection{CRA Frame}
 \begin{figure}[h]
-\includegraphics{figures/mp3_id3v22_pic.pdf}
+\includegraphics{figures/id3v22/cra.pdf}
 \end{figure}
-\par
-\noindent
-Text Encoding is the encoding of the Description field.
-Its value is either ISO-8859-1 or UCS-16 - the same as in
-text frames.
-Image Format is a 3 byte string indicating the format of the image,
+This frame indicates audio encryption information.
+\VAR{Owner Identifier} is a NULL-terminated string
+containing a URL, email address or link.
+\VAR{Preview Start} and \VAR{Preview Length}
+indicate how many of the file's frames are unencrypted.
+
+\subsubsection{CRM Frame}
+\begin{figure}[h]
+\includegraphics{figures/id3v22/crm.pdf}
+\end{figure}
+This frame contains encrypted side data such as pictures or text.
+\VAR{Owner Identifier} and \VAR{Content / Explanation} are
+NULL-terminated strings.
+
+\clearpage
+
+\subsubsection{GEO Frame}
+\begin{figure}[h]
+\includegraphics{figures/id3v22/geo.pdf}
+\end{figure}
+This frame contains an embedded file.
+\VAR{MIME Type} and \VAR{Filename} are encoded as NULL-terminated
+Latin-1 strings.
+\VAR{Description} is encoded as a Latin-1 or UCS-2 NULL-terminated
+string, depending on if \VAR{Encoding} is 0 or 1, respectively.
+The remainder of the frame is the file's binary data.
+
+\subsubsection{IPL Frame}
+\begin{figure}[h]
+\includegraphics{figures/id3v22/ipl.pdf}
+\end{figure}
+This frame contains a list of people involved in the file's creation.
+Each string is encoded as a Latin-1 or UCS-2 NULL-terminated
+string, depending on if \VAR{Encoding} is 0 or 1, respectively.
+
+\subsubsection{MCI Frame}
+\begin{figure}[h]
+\includegraphics{figures/id3v22/mci.pdf}
+\end{figure}
+This frame contains the binary data from a CD's Table of Contents.
+That TOC consists of a 4 byte header followed by 8 bytes per CD track.
+Valid \VAR{TRK} frames are required if this frame is present.
+
+\clearpage
+
+\subsubsection{PIC Frame}
+\begin{figure}[h]
+\includegraphics{figures/id3v22/pic.pdf}
+\end{figure}
+This frame contains an embedded image file.
+\VAR{Image Format} is a 3 byte string indicating the format of the image,
 typically `JPG' for JPEG images or 'PNG' for PNG images.
-Description is a NULL-terminated C-string which contains
-a text description of the image.
+\VAR{Description} is a Latin-1 or UCS-2 NULL-terminated string,
+depending on if \VAR{Encoding} is 0 or 1, respectively.
 
 \begin{table}[h]
 {\relsize{-1}
@@ -235,80 +274,136 @@ value & type & value & type \\
 }
 \end{table}
 
-\pagebreak
+\subsubsection{POP Frame}
+\begin{figure}[h]
+\includegraphics{figures/id3v22/pop.pdf}
+\end{figure}
+This frame contains a ``popularimeter''.
+\VAR{User Email} is a NULL-terminated string of the user's email address.
+\VAR{Rating} is a value from 1 (worst) to 255 (best), where 0 is unknown.
+\VAR{Play Counter} is the number of times the track has been played.
+This frame may occur multiple times, but each must have a different email
+address.
 
-\subsubsection{ID3v2.2 Frame IDs}
-\begin{multicols}{3}
+\clearpage
+
+\subsubsection{REV Frame}
+\begin{figure}[h]
+\includegraphics{figures/id3v22/rev.pdf}
+\end{figure}
+This frame contains user-defined reverb values for echo effects.
+
+\subsubsection{RVA Frame}
+\begin{figure}[h]
+\includegraphics{figures/id3v22/rva.pdf}
+\end{figure}
+This frame contains a user-defined relative volume adjustment
+to apply to each channel.
+If \VAR{Left Channel} is set, the volume change is used to increment
+the left channel's values.
+If not set, the volume change is used to decrement the left channel's
+values.
+
+\subsubsection{SLT Frame}
+\begin{figure}[h]
+\includegraphics{figures/id3v22/slt.pdf}
+\end{figure}
+This is a frame of synced lyrics for karaoke.
+\VAR{Timestamp Format} is 1 for MPEG frames or 2 for milliseconds.
+The NULL-terminated text strings are designed to be displayed
+as individual syllables at specific timestamps.
+
+\subsubsection{Text Frames}
+\begin{figure}[h]
+\includegraphics{figures/id3v22/t__.pdf}
+\end{figure}
+These frames are for textual information.
+\VAR{Encoding} is 0 for Latin-1 encoding, 1 for UCS-2 encoding.
+\begin{table}[h]
 {\relsize{-2}
-\begin{description}
-\item[\texttt{BUF}] Recommended buffer size
-\item[\texttt{CNT}] Play counter
-\item[\texttt{COM}] Comments
-\item[\texttt{CRA}] Audio encryption
-\item[\texttt{CRM}] Encrypted meta frame
-\item[\texttt{ETC}] Event timing codes
-\item[\texttt{EQU}] Equalization
-\item[\texttt{GEO}] General encapsulated object
-\item[\texttt{IPL}] Involved people list
-\item[\texttt{LNK}] Linked information
-\item[\texttt{MCI}] Music CD Identifier
-\item[\texttt{MLL}] MPEG location lookup table
-\item[\texttt{PIC}] Attached picture
-\item[\texttt{POP}] Popularimeter
-\item[\texttt{REV}] Reverb
-\item[\texttt{RVA}] Relative volume adjustment
-\item[\texttt{SLT}] Synchronized lyric/text
-\item[\texttt{STC}] Synced tempo codes
-\item[\texttt{TAL}] Album/Movie/Show title
-\item[\texttt{TBP}] BPM (Beats Per Minute)
-\item[\texttt{TCM}] Composer
-\item[\texttt{TCO}] Content type
-\item[\texttt{TCR}] Copyright message
-\item[\texttt{TDA}] Date
-\item[\texttt{TDY}] Playlist delay
-\item[\texttt{TEN}] Encoded by
-\item[\texttt{TFT}] File type
-\item[\texttt{TIM}] Time
-\item[\texttt{TKE}] Initial key
-\item[\texttt{TLA}] Language(s)
-\item[\texttt{TLE}] Length
-\item[\texttt{TMT}] Media type
-\item[\texttt{TOA}] Original artist(s) / performer(s)
-\item[\texttt{TOF}] Original filename
-\item[\texttt{TOL}] Original Lyricist(s) / text writer(s)
-\item[\texttt{TOR}] Original release year
-\item[\texttt{TOT}] Original album / Movie / Show title
-\item[\texttt{TP1}] Lead artist(s) / performer(s) / Soloist(s) / Performing group
-\item[\texttt{TP2}] Band / Orchestra / Accompaniment
-\item[\texttt{TP3}] Conductor / Performer refinement
-\item[\texttt{TP4}] Interpreted, remixed, or otherwise modified by
-\item[\texttt{TPA}] Part of a set
-\item[\texttt{TPB}] Publisher
-\item[\texttt{TRC}] ISRC (International Standard Recording Code)
-\item[\texttt{TRD}] Recording dates
-\item[\texttt{TRK}] Track number / Position in set
-\item[\texttt{TSI}] Size
-\item[\texttt{TSS}] Software / hardware and settings used for encoding
-\item[\texttt{TT1}] Content group description
-\item[\texttt{TT2}] Title / Songname / Content description
-\item[\texttt{TT3}] Subtitle / Description refinement
-\item[\texttt{TXT}] Lyricist / text writer
-\item[\texttt{TXX}] User defined text information frame
-\item[\texttt{TYE}] Year
-\item[\texttt{UFI}] Unique file identifier
-\item[\texttt{ULT}] Unsychronized lyric / text transcription
-\item[\texttt{WAF}] Official audio file webpage
-\item[\texttt{WAR}] Official artist / performer webpage
-\item[\texttt{WAS}] Official audio source webpage
-\item[\texttt{WCM}] Commercial information
-\item[\texttt{WCP}] Copyright / Legal information
-\item[\texttt{WPB}] Publishers official webpage
-\item[\texttt{WXX}] User defined URL link frame
-\end{description}
+\begin{tabular}{|r|l|}
+\hline
+Frame ID & Meaning \\
+\hline
+\texttt{TAL} & album / movie / show title \\
+\texttt{TBP} & BPM (beats per minute) \\
+\texttt{TCM} & composer \\
+\texttt{TCO} & content type \\
+\texttt{TCR} & copyright message \\
+\texttt{TDA} & date \\
+\texttt{TDY} & playlist delay \\
+\texttt{TEN} & encoded by \\
+\texttt{TFT} & file type \\
+\texttt{TIM} & time \\
+\texttt{TKE} & initial key \\
+\texttt{TLA} & language(s) \\
+\texttt{TLE} & length \\
+\texttt{TMT} & media type \\
+\texttt{TOA} & original artist(s) / performer(s) \\
+\texttt{TOF} & original filename \\
+\texttt{TOL} & original Lyricist(s) / text writer(s) \\
+\texttt{TOR} & original release year \\
+\texttt{TOT} & original album / movie / show title \\
+\texttt{TP1} & lead artist(s) / performer(s) / soloist(s) / performing group \\
+\texttt{TP2} & band / orchestra / accompaniment \\
+\texttt{TP3} & conductor / performer refinement \\
+\texttt{TP4} & interpreted, remixed, or otherwise modified by \\
+\texttt{TPA} & album number / part of a set \\
+\texttt{TPB} & publisher \\
+\texttt{TRC} & ISRC (International Standard Recording Code) \\
+\texttt{TRD} & recording dates \\
+\texttt{TRK} & track number / position in set \\
+\texttt{TSI} & size \\
+\texttt{TSS} & software / hardware and settings used for encoding \\
+\texttt{TT1} & content group description \\
+\texttt{TT2} & title / songname / content description \\
+\texttt{TT3} & subtitle / description refinement \\
+\texttt{TXT} & lyricist / text writer \\
+\texttt{TYE} & year \\
+\hline
+\end{tabular}
 }
-\end{multicols}
+\end{table}
+\par
+The \texttt{TRK} and \texttt{TPA} numeric fields may be extended
+with the ``/'' character, indicating the field's total number.
+For example, a \texttt{TRK} of ``3/5'' means the track is number
+3 out of a total of 5.
 
-\pagebreak
+\begin{figure}[h]
+\includegraphics{figures/id3v22/txx.pdf}
+\end{figure}
+This frame is for user-defined text information.
+\VAR{Description} is a NULL-terminated string indicating
+what the frame is for.
+\VAR{Encoding} is 0 for Latin-1 encoding, 1 for UCS-2 encoding.
+
+\subsubsection{URL Frames}
+
+\begin{figure}[h]
+\includegraphics{figures/id3v22/w__.pdf}
+\end{figure}
+These frames are for URL links to external resources.
+\par
+\begin{table}[h]
+\begin{tabular}{|r|l|}
+\hline
+Frame ID & Meaning \\
+\hline
+\texttt{WAF} & official audio file webpage \\
+\texttt{WAR} & official artist / performer webpage \\
+\texttt{WAS} & official audio source webpage \\
+\texttt{WCM} & commercial information \\
+\texttt{WCP} & copyright / legal information \\
+\texttt{WPB} & publishers official webpage \\
+\hline
+\end{tabular}
+\end{table}
+\begin{figure}[h]
+\includegraphics{figures/id3v22/wxx.pdf}
+\end{figure}
+
+\clearpage
 
 \subsection{ID3v2.3}
 \subsubsection{ID3v2.3 Header}

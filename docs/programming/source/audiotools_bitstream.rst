@@ -651,7 +651,7 @@ This is a compiled Huffman tree for use by :class:`BitstreamReader`.
 
    For example, given the following Huffman tree definition:
 
-   .. image:: huffman.png
+   .. image:: huffman.svg
 
    we define our Huffman tree for a big-endian stream as follows:
 

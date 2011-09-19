@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="23" width=".5">`REV' (0x524556)</col>
+    <col start="24" end="47" width=".5">Size</col>
+  </row>
+  <row>
+    <col start="48" end="63" width=".5">Reverb Left (milliseconds)</col>
+    <col start="64" end="79" width=".5">Reverb Right (milliseconds)</col>
+  </row>
+  <row>
+    <col start="80" end="87" width=".5">Reverb Bounces, Left</col>
+    <col start="88" end="95" width=".5">Reverb Bounces, Right</col>
+  </row>
+  <row>
+    <col start="96" end="103" width=".5">Reverb Feedback, Left to Left</col>
+    <col start="104" end="111" width=".5">Reverb Feedback, Left to Right</col>
+  </row>
+  <row>
+    <col start="112" end="119" width=".5">Reverb Feedback, Right to Right</col>
+    <col start="120" end="127" width=".5">Reverb Feedback, Right to Left</col>
+  </row>
+  <row>
+    <col start="128" end="135" width=".5">Premix Left to Right</col>
+    <col start="136" end="143" width=".5">Premix Right to Left</col>
+  </row>
+</diagram>

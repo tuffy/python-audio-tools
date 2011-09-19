@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="23" width=".5">`SLT' (0x534C54)</col>
+    <col start="24" end="47" width=".5">Size</col>
+  </row>
+  <row>
+    <col start="48" end="55" width=".25">Encoding</col>
+    <col start="56" end="79" width=".25">Language</col>
+    <col start="80" end="87" width=".25">Timestamp Format</col>
+    <col start="88" end="95" width=".25">Content Type</col>
+  </row>
+  <row>
+    <col start="96" width=".85">Content Descriptor</col>
+    <col start="0" end="7/15" width=".15">NULL</col>
+  </row>
+  <row>
+    <col width=".25" id="text">Text₁</col>
+    <col width=".25">Text₂</col>
+    <col width=".25">Text₃</col>
+    <col width=".25" style="dashed">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col id="text_start" width=".6">Synced Text</col>
+    <col width=".15" start="0" end="7/15">NULL</col>
+    <col id="text_end" width=".25" start="0" end="31">Timestamp</col>
+  </row>
+  <line style="dotted">
+    <start id="text" corner="sw"/>
+    <end id="text_start" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="text" corner="se"/>
+    <end id="text_end" corner="ne"/>
+  </line>
+</diagram>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="23" width=".5">`TXX' (0x545858)</col>
+    <col start="24" end="47" width=".5">Size</col>
+  </row>
+  <row>
+    <col start="48" end="55" width=".25">Encoding</col>
+    <col start="56" width=".60">Description</col>
+    <col start="0" end="7/15" width=".15">NULL</col>
+  </row>
+  <row>
+    <col>Text</col>
+  </row>
+</diagram>

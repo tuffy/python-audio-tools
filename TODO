@@ -2878,36 +2878,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   We should be able to translate between them if necessary, and if possible.
 * TODO Add Python3 support
 ** TODO Update C modules to compile on Python3
-   - [ ] audiotools.cdio
-   - [ ] audiotools.resample
-   - [ ] audiotools.pcm
-   - [ ] audiotools.replaygain
-   - [ ] audiotools.decoders
-   - [ ] audiotools.encoders
 ** TODO Update Python modules to operate on Python3
-   - [ ] audiotools __init__ core
-   - [ ] __aiff__
-   - [ ] __ape__ ?
-   - [ ] __au__
-   - [ ] __flac__
-   - [ ] __freedb__
-   - [ ] __id3__
-   - [ ] __id3v1__
-   - [ ] __image__
-   - [ ] __m4a__
-   - [ ] __m4a_atoms__
-   - [ ] __mp3__
-   - [ ] __musepack__ ?
-   - [ ] __musicbrainz__
-   - [ ] __shn__
-   - [ ] __vorbis__
-   - [ ] __vorbiscomment__
-   - [ ] __wav__
-   - [ ] cue
-   - [ ] toc
-** TODO Patch Construct for Python3
-   Since pyconstruct hasn't been updated in almost 2 years,
-   I'll likely have to update it myself to ensure it'll run on Python3.
 ** TODO Remove Python Imaging Library support?
    Unless this gets ported, I'll need an alternative method to make thumbnails
 ** TODO Remove PyGTK support?
@@ -4317,8 +4288,227 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   Do full explanations/diagrams of all the frames,
   not just the most interesting ones.
 ** TODO ID3v2.2
+   - [ ] BUF
+   - [X] CNT
+   - [X] COM
+   - [X] CRA
+   - [X] CRM
+   - [ ] ETC
+   - [ ] EQU
+   - [X] GEO
+   - [X] IPL
+   - [ ] LNK
+   - [X] MCI
+   - [ ] MLL
+   - [X] PIC
+   - [X] POP
+   - [X] REV
+   - [X] RVA
+   - [X] SLT
+   - [ ] STC
+   - [X] TAL
+   - [X] TBP
+   - [X] TCM
+   - [X] TCO
+   - [X] TCR
+   - [X] TDA
+   - [X] TDY
+   - [X] TEN
+   - [X] TFT
+   - [X] TIM
+   - [X] TKE
+   - [X] TLA
+   - [X] TLE
+   - [X] TMT
+   - [X] TOA
+   - [X] TOF
+   - [X] TOL
+   - [X] TOR
+   - [X] TOT
+   - [X] TP1
+   - [X] TP2
+   - [X] TP3
+   - [X] TP4
+   - [X] TPA
+   - [X] TPB
+   - [X] TRC
+   - [X] TRD
+   - [X] TRK
+   - [X] TSI
+   - [X] TSS
+   - [X] TT1
+   - [X] TT2
+   - [X] TT3
+   - [X] TXT
+   - [X] TXX
+   - [X] TYE
+   - [ ] UFI
+   - [ ] ULT
+   - [ ] WAF
+   - [ ] WAR
+   - [ ] WAS
+   - [ ] WCM
+   - [ ] WCP
+   - [ ] WPB
+   - [ ] WXX
 ** TODO ID3v2.3
+   - [ ] AENC
+   - [ ] APIC
+   - [ ] COMM
+   - [ ] ENCR
+   - [ ] EQUA
+   - [ ] ETCO
+   - [ ] GEOB
+   - [ ] GRID
+   - [ ] IPLS
+   - [ ] LINK
+   - [ ] MCDI
+   - [ ] MLLT
+   - [ ] OWNE
+   - [ ] PRIV
+   - [ ] PCNT
+   - [ ] POPM
+   - [ ] POSS
+   - [ ] RBUF
+   - [ ] RVAD
+   - [ ] RVRB
+   - [ ] SYLT
+   - [ ] SYTC
+   - [ ] TALB
+   - [ ] TBPM
+   - [ ] TCOM
+   - [ ] TCON
+   - [ ] TCOP
+   - [ ] TDAT
+   - [ ] TDLY
+   - [ ] TENC
+   - [ ] TEXT
+   - [ ] TFLT
+   - [ ] TIME
+   - [ ] TIT1
+   - [ ] TIT2
+   - [ ] TIT3
+   - [ ] TKEY
+   - [ ] TLAN
+   - [ ] TLEN
+   - [ ] TMED
+   - [ ] TOAL
+   - [ ] TOFN
+   - [ ] TOLY
+   - [ ] TOPE
+   - [ ] TORY
+   - [ ] TOWN
+   - [ ] TPE1
+   - [ ] TPE2
+   - [ ] TPE3
+   - [ ] TPE4
+   - [ ] TPOS
+   - [ ] TPUB
+   - [ ] TRCK
+   - [ ] TRDA
+   - [ ] TRSN
+   - [ ] TRSO
+   - [ ] TSIZ
+   - [ ] TSRC
+   - [ ] TSSE
+   - [ ] TYER
+   - [ ] TXXX
+   - [ ] UFID
+   - [ ] USER
+   - [ ] USLT
+   - [ ] WCOM
+   - [ ] WCOP
+   - [ ] WOAF
+   - [ ] WOAR
+   - [ ] WOAS
+   - [ ] WORS
+   - [ ] WPAY
+   - [ ] WPUB
+   - [ ] WXXX
 ** TODO ID3v2.4
+   - [ ] AENC
+   - [ ] APIC
+   - [ ] ASPI
+   - [ ] COMM
+   - [ ] COMR
+   - [ ] ENCR
+   - [ ] EQU2
+   - [ ] ETCO
+   - [ ] GEOB
+   - [ ] GRID
+   - [ ] LINK
+   - [ ] MCDI
+   - [ ] MLLT
+   - [ ] OWNE
+   - [ ] PRIV
+   - [ ] PCNT
+   - [ ] POPM
+   - [ ] POSS
+   - [ ] RBUF
+   - [ ] RVA2
+   - [ ] RVRB
+   - [ ] SEEK
+   - [ ] SIGN
+   - [ ] SYLT
+   - [ ] SYLC
+   - [ ] TALM
+   - [ ] TBPM
+   - [ ] TCOM
+   - [ ] TCON
+   - [ ] TCOP
+   - [ ] TDEN
+   - [ ] TDLY
+   - [ ] TDOR
+   - [ ] TDRC
+   - [ ] TDRL
+   - [ ] TDTG
+   - [ ] TENC
+   - [ ] TEXT
+   - [ ] TFLT
+   - [ ] TIPL
+   - [ ] TIT1
+   - [ ] TIT2
+   - [ ] TIT3
+   - [ ] TKEY
+   - [ ] TLAN
+   - [ ] TLEN
+   - [ ] TMCL
+   - [ ] TMED
+   - [ ] TMOO
+   - [ ] TOAL
+   - [ ] TOFN
+   - [ ] TOLY
+   - [ ] TOPE
+   - [ ] TOWN
+   - [ ] TPE1
+   - [ ] TPE2
+   - [ ] TPE3
+   - [ ] TPE4
+   - [ ] TPOS
+   - [ ] TPRO
+   - [ ] TPUB
+   - [ ] TRCK
+   - [ ] TRSN
+   - [ ] TRSO
+   - [ ] TSOA
+   - [ ] TSOP
+   - [ ] TSOT
+   - [ ] TSRC
+   - [ ] TSSE
+   - [ ] TSST
+   - [ ] TXXX
+   - [ ] UFID
+   - [ ] USER
+   - [ ] USLT
+   - [ ] WCOM
+   - [ ] WCOP
+   - [ ] WOAF
+   - [ ] WOAR
+   - [ ] WOAS
+   - [ ] WORS
+   - [ ] WPAY
+   - [ ] WPUB
+   - [ ] WXXX
 * TODO Cleanup bitstream module
   This is at the heart of a lot of things so it should be properly cleaned up.
 ** DONE Merge bitstream_r and bitstream_w source files
@@ -4617,3 +4807,18 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    and further closes should do nothing.
 *** DONE Add unit test to bitstream.c
 *** TODO Add unit test to Python side
+* TODO Convert core to C
+  Instead of having the tools be a Python core that's been extended with C,
+  I'd like to convert them to a C core that's been extended with Python -
+  analagous to how the bitstream module is structured.
+
+  This allows me to unit test a much wider array of interactions
+  through Valgrind to check against memory leaks/access errors.
+
+  It'll speed up the tools and reduce their memory footprint.
+
+  It'll improve stability by catching more implementation errors
+  at compile-time.
+
+  It smooths the transition to Python 3 by reducing the amount of Python
+  that I'll need to translate to the new language.

@@ -1,4 +1,21 @@
 #FIXME - reorganize this big mess
+ID3v22 = figures/id3v22/cnt.pdf \
+figures/id3v22/com.pdf \
+figures/id3v22/cra.pdf \
+figures/id3v22/crm.pdf \
+figures/id3v22/geo.pdf \
+figures/id3v22/ipl.pdf \
+figures/id3v22/mci.pdf \
+figures/id3v22/pic.pdf \
+figures/id3v22/pop.pdf \
+figures/id3v22/rev.pdf \
+figures/id3v22/rva.pdf \
+figures/id3v22/slt.pdf \
+figures/id3v22/t__.pdf \
+figures/id3v22/txx.pdf \
+figures/id3v22/w__.pdf \
+figures/id3v22/wxx.pdf
+
 FIGURES = figures/binary.pdf figures/pcm.pdf figures/wav_stream.pdf \
 figures/wav_fmt.pdf figures/wav_fmtext.pdf figures/wav_data.pdf \
 figures/aiff_stream.pdf figures/aiff_comm.pdf figures/aiff_ssnd.pdf \
@@ -31,11 +48,11 @@ figures/mp3_stream.pdf figures/mp3_xing.pdf \
 figures/mp3_id3v1.pdf figures/mp3_id3v11.pdf \
 figures/mp3_id3v2_stream.pdf \
 figures/mp3_id3v22_header.pdf figures/mp3_id3v22_frame.pdf \
-figures/mp3_id3v22_textframe.pdf figures/mp3_id3v22_pic.pdf \
 figures/mp3_id3v23_header.pdf figures/mp3_id3v23_frame.pdf \
 figures/mp3_id3v23_textframe.pdf figures/mp3_id3v23_apic.pdf \
 figures/mp3_id3v24_header.pdf figures/mp3_id3v24_frame.pdf \
 figures/mp3_id3v24_textframe.pdf figures/mp3_id3v24_apic.pdf \
+$(ID3v22) \
 figures/ogg_stream.pdf figures/ogg_packets.pdf \
 figures/vorbis_identification.pdf figures/vorbis_comment.pdf \
 figures/vorbis_codebooks.pdf figures/vorbis_float32.pdf \
