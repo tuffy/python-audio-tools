@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="31" width=".5">`IPLS' (0x49504C53)</col>
+    <col start="32" end="63" width=".5">Size</col>
+  </row>
+  <row>
+    <col start="64" end="64" width=".13">Tag Alter</col>
+    <col start="65" end="65" width=".13">File Alter</col>
+    <col start="66" end="66" width=".13">Read Only</col>
+    <col start="67" end="71" width=".1">NULL</col>
+    <col start="72" end="72" width=".15">Compression</col>
+    <col start="73" end="73" width=".13">Encryption</col>
+    <col start="74" end="74" width=".13">Grouping</col>
+    <col start="75" end="79" width=".1">NULL</col>
+  </row>
+  <row>
+    <col start="80" end="87" width=".25">Encoding</col>
+    <col width=".25" id="person">Person₁</col>
+    <col width=".25">Person₂</col>
+    <col width=".25" style="dashed">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col width=".85" id="person_start">Involved Person Text</col>
+    <col start="0" end="7/15" width=".15" id="person_end">NULL</col>
+  </row>
+  <line style="dotted">
+    <start id="person" corner="sw"/>
+    <end id="person_start" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="person" corner="se"/>
+    <end id="person_end" corner="ne"/>
+  </line>
+</diagram>

@@ -16,6 +16,21 @@ figures/id3v22/txx.pdf \
 figures/id3v22/w__.pdf \
 figures/id3v22/wxx.pdf
 
+ID3v23 = figures/id3v23/aenc.pdf \
+figures/id3v23/apic.pdf \
+figures/id3v23/comm.pdf \
+figures/id3v23/encr.pdf \
+figures/id3v23/geob.pdf \
+figures/id3v23/ipls.pdf \
+figures/id3v23/mcdi.pdf \
+figures/id3v23/priv.pdf \
+figures/id3v23/pcnt.pdf \
+figures/id3v23/popm.pdf \
+figures/id3v23/t___.pdf \
+figures/id3v23/txxx.pdf \
+figures/id3v23/w___.pdf \
+figures/id3v23/wxxx.pdf
+
 FLAC = \
 figures/flac/application.pdf \
 figures/flac/channels.pdf \
@@ -178,7 +193,6 @@ figures/mp3_id3v1.pdf figures/mp3_id3v11.pdf \
 figures/mp3_id3v2_stream.pdf \
 figures/mp3_id3v22_header.pdf figures/mp3_id3v22_frame.pdf \
 figures/mp3_id3v23_header.pdf figures/mp3_id3v23_frame.pdf \
-figures/mp3_id3v23_textframe.pdf figures/mp3_id3v23_apic.pdf \
 figures/mp3_id3v24_header.pdf figures/mp3_id3v24_frame.pdf \
 figures/mp3_id3v24_textframe.pdf figures/mp3_id3v24_apic.pdf \
 figures/ape_stream.pdf figures/ape_descriptor.pdf figures/ape_header.pdf \
@@ -194,6 +208,7 @@ figures/bitstream_littleendian.pdf figures/bitstream_littleendian_alt.pdf \
 $(FLAC) \
 $(M4A) \
 $(ID3v22) \
+$(ID3v23) \
 $(WAVPACK) \
 $(VORBIS) \
 $(SHORTEN) \

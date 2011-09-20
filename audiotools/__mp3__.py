@@ -176,25 +176,33 @@ class MP3Audio(AudioFile):
                 self.__pcm_frames__ = 0
 
                 try:
+                    (frame_sync,
+                     mpeg_id,
+                     layer,
+                     bit_rate,
+                     sample_rate,
+                     pad) = reader.parse("11u 2u 2u 1p 4u 2u 1u 9p")
+
                     while (frame_sync == 0x7FF):
                         self.__pcm_frames__ += \
                             self.PCM_FRAMES_PER_MPEG_FRAME[layer]
-                        (frame_sync,
-                         mpeg_id,
-                         layer,
-                         bit_rate,
-                         sample_rate,
-                         pad) = reader.parse(
-                            "11u 2u 2u 1p 4u 2u 1u 9p")
+
                         reader.skip_bytes(self.frame_length(mpeg_id,
                                                             layer,
                                                             bit_rate,
                                                             sample_rate,
                                                             pad) - 4)
+
+                        (frame_sync,
+                         mpeg_id,
+                         layer,
+                         bit_rate,
+                         sample_rate,
+                         pad) = reader.parse("11u 2u 2u 1p 4u 2u 1u 9p")
                 except IOError:
                     pass
-                except ValueError:
-                    raise InvalidMP3(_(u"Invalid frame header values"))
+                except ValueError,err:
+                    raise InvalidMP3(unicode(err))
         finally:
             mp3file.close()
 
