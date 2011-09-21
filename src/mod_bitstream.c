@@ -1662,45 +1662,49 @@ bitstream_build(BitstreamWriter* stream, char* format, PyObject* values)
             case BS_INST_UNSIGNED:
                 if ((value = PySequence_GetItem(values, i++)) != NULL) {
                     _unsigned = (unsigned int)PyInt_AsUnsignedLongMask(value);
+                    Py_DECREF(value);
                     if (!PyErr_Occurred())
                         stream->write(stream, size, _unsigned);
                     else
-                        goto read_error;
+                        goto write_error;
                 } else {
-                    goto read_error;
+                    goto write_error;
                 }
                 break;
             case BS_INST_SIGNED:
                 if ((value = PySequence_GetItem(values, i++)) != NULL) {
                     _signed = (int)PyInt_AsLong(value);
+                    Py_DECREF(value);
                     if (!PyErr_Occurred())
                         stream->write_signed(stream, size, _signed);
                     else
-                        goto read_error;
+                        goto write_error;
                 } else {
-                    goto read_error;
+                    goto write_error;
                 }
                 break;
             case BS_INST_UNSIGNED64:
                 if ((value = PySequence_GetItem(values, i++)) != NULL) {
                     _unsigned64 = PyInt_AsUnsignedLongLongMask(value);
+                    Py_DECREF(value);
                     if (!PyErr_Occurred())
                         stream->write_64(stream, size, _unsigned64);
                     else
-                        goto read_error;
+                        goto write_error;
                 } else {
-                    goto read_error;
+                    goto write_error;
                 }
                 break;
             case BS_INST_SIGNED64:
                 if ((value = PySequence_GetItem(values, i++)) != NULL) {
                     _signed64 = PyLong_AsLongLong(value);
+                    Py_DECREF(value);
                     if (!PyErr_Occurred())
                         stream->write_signed_64(stream, size, _signed64);
                     else
-                        goto read_error;
+                        goto write_error;
                 } else {
-                    goto read_error;
+                    goto write_error;
                 }
                 break;
             case BS_INST_SKIP:
@@ -1717,19 +1721,25 @@ bitstream_build(BitstreamWriter* stream, char* format, PyObject* values)
                 stream->write(stream, size, 0);
                 break;
             case BS_INST_BYTES:
-                if (((value = PySequence_GetItem(values, i++)) != NULL) &&
-                    (PyString_AsStringAndSize(value,
-                                              (char **)(&_bytes),
-                                              &bytes_len) != -1)) {
-                    if (size <= bytes_len) {
-                        stream->write_bytes(stream, _bytes, size);
+                if ((value = PySequence_GetItem(values, i++)) != NULL) {
+                    if (PyString_AsStringAndSize(value,
+                                                 (char **)(&_bytes),
+                                                 &bytes_len) != -1) {
+                        if (size <= bytes_len) {
+                            stream->write_bytes(stream, _bytes, size);
+                            Py_DECREF(value);
+                        } else {
+                            PyErr_SetString(PyExc_ValueError,
+                                            "string length too short");
+                            Py_DECREF(value);
+                            goto write_error;
+                        }
                     } else {
-                        PyErr_SetString(PyExc_ValueError,
-                                        "string length too short");
-                        goto read_error;
+                        Py_DECREF(value);
+                        goto write_error;
                     }
                 } else {
-                    goto read_error;
+                    goto write_error;
                 }
                 break;
             case BS_INST_ALIGN:
@@ -1745,7 +1755,7 @@ bitstream_build(BitstreamWriter* stream, char* format, PyObject* values)
         return 1;
     }
 
- read_error:
+ write_error:
     bw_etry(stream);
     return 1;
 }

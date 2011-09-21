@@ -4919,18 +4919,3 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    and further closes should do nothing.
 *** DONE Add unit test to bitstream.c
 *** TODO Add unit test to Python side
-* TODO Convert core to C
-  Instead of having the tools be a Python core that's been extended with C,
-  I'd like to convert them to a C core that's been extended with Python -
-  analagous to how the bitstream module is structured.
-
-  This allows me to unit test a much wider array of interactions
-  through Valgrind to check against memory leaks/access errors.
-
-  It'll speed up the tools and reduce their memory footprint.
-
-  It'll improve stability by catching more implementation errors
-  at compile-time.
-
-  It smooths the transition to Python 3 by reducing the amount of Python
-  that I'll need to translate to the new language.
