@@ -336,7 +336,7 @@ class ID3v22_Frame:
         return self.__class__(self.id, self.data)
 
 
-class ID3v22_TXX_Frame:
+class ID3v22_T__Frame:
     NUMERICAL_IDS = ('TRK', 'TPA')
 
     def __init__(self, frame_id, encoding, data):
@@ -356,26 +356,21 @@ class ID3v22_TXX_Frame:
         return self.__class__(self.id, self.encoding, self.data)
 
     def __repr__(self):
-        return "ID3v22_TXX_Frame(%s, %s, %s)" % \
+        return "ID3v22_T__Frame(%s, %s, %s)" % \
             (repr(self.id), repr(self.encoding), repr(self.data))
 
     def raw_info(self):
-        if (self.encoding == 0):
-            return u"%s = (latin-1) %s" % (self.id.decode('ascii'),
-                                           self.data.decode('latin-1'))
-        else:
-            return u"%s = (UCS-2) %s" % (self.id.decode('ascii'),
-                                         self.data.decode('ucs2'))
-
+        return u"%s = (%s) %s" % \
+            (self.id.decode('ascii'),
+             {0:u"Latin-1", 1:u"UCS-2"}[self.encoding],
+             unicode(self))
 
     def __eq__(self, frame):
         return __attrib_equals__(["id", "encoding", "data"], self, frame)
 
     def __unicode__(self):
-        if (self.encoding == 0):
-            return self.data.decode('latin-1', 'replace')
-        else:
-            return self.data.decode('ucs2', 'replace')
+        return self.data.decode({0:'latin-1', 1:'ucs2'}[self.encoding],
+                                'replace')
 
     def number(self):
         """if the frame is numerical, returns the track/album_number portion
@@ -476,6 +471,174 @@ class ID3v22_TXX_Frame:
         return self.__class__.converted(self.id, fix3)
 
 
+class ID3v22_TXX_Frame:
+    def __init__(self, encoding, description, data):
+        self.id = 'TXX'
+
+        self.encoding = encoding
+        self.description = description
+        self.data = data
+
+    def copy(self):
+        return self.__class__(self.encoding,
+                              self.description,
+                              self.data)
+
+    def __repr__(self):
+        return "ID3v22_TXX_Frame(%s, %s, %s)" % \
+            (repr(self.encoding), repr(self.description), repr(self.data))
+
+    def raw_info(self):
+        return u"%s = (%s, \"%s\") %s" % \
+            (self.id,
+             {0:u"Latin-1", 1:u"UCS-2"}[self.encoding],
+             self.description,
+             unicode(self))
+
+    def __eq__(self, frame):
+        return __attrib_equals__(["id", "encoding", "description", "data"])
+
+    def __unicode__(self):
+        return self.data.decode({0:'latin-1', 1:'ucs2'}[self.encoding],
+                                'replace')
+
+    @classmethod
+    def parse(cls, frame_id, frame_size, reader):
+        """given a frame_id string, frame_size int and BitstreamReader
+        of the remaining frame data, returns a parsed text frame"""
+
+        encoding = reader.read(8)
+        description = C_string.parse({0:"latin-1", 1:"ucs2"}[encoding],
+                                     reader)
+        data = reader.read_bytes(frame_size - 1 - description.size())
+
+        return cls(encoding, description, data)
+
+    def build(self, writer):
+        writer.write(8, self.encoding)
+        self.description.build(writer)
+        writer.write_bytes(self.data)
+
+    def size(self):
+        return 1 + self.description.size() + len(self.data)
+
+    def clean(self, fixes_performed):
+        """returns a cleaned frame,
+        or None if the frame should be removed entirely
+        any fixes are appended to fixes_applied as unicode string"""
+
+        field = self.id.decode('ascii')
+        value = unicode(self)
+
+        #check for an empty tag
+        if (len(value.strip()) == 0):
+            fixes_performed.append(
+                u"removed empty field %(field)s" % {"field":field})
+            return None
+
+        #check trailing whitespace
+        fix1 = value.rstrip()
+        if (fix1 != value):
+            fixes_performed.append(
+                u"removed trailing whitespace from %(field)s" %
+                {"field":field})
+
+        #check leading whitespace
+        fix2 = fix1.lstrip()
+        if (fix2 != fix1):
+            fixes_performed.append(
+                u"removed leading whitespace from %(field)s" %
+                {"field":field})
+
+        return self.__class__(self.encoding, self.description, fix2)
+
+
+class ID3v22_W__Frame:
+    def __init__(self, frame_id, data):
+        self.id = frame_id
+        self.data = data
+
+    def copy(self):
+        return self.__class__(self.frame_id, self.data)
+
+    def __repr__(self):
+        return "ID3v22_W__Frame(%s, %s)" % \
+            (repr(self.frame_id), repr(self.data))
+
+    def raw_info(self):
+        return u"%s = %s" % (self.id.decode('ascii'),
+                             self.data.decode('ascii', 'replace'))
+
+    def __eq__(self):
+        return __attrib_equals__(["id", "data"], self, frame)
+
+    @classmethod
+    def parse(cls, frame_id, frame_size, reader):
+        return cls(frame_id, reader.read_bytes(frame_size))
+
+    def build(self, writer):
+        writer.write_bytes(self.data)
+
+    def size(self):
+        return len(self.data)
+
+    def clean(self, fixes_applied):
+        return self.__class__(self.frame_id, self.data)
+
+
+class ID3v22_WXX_Frame:
+    def __init__(self, encoding, description, data):
+        self.id = 'WXX'
+
+        self.encoding = encoding
+        self.description = description
+        self.data = data
+
+    def copy(self):
+        return self.__class__(self.encoding,
+                              self.description,
+                              self.data)
+
+    def __repr__(self):
+        return "ID3v22_WXX_Frame(%s, %s, %s)" % \
+            (repr(self.encoding), repr(self.description), repr(self.data))
+
+    def raw_info(self):
+        return u"%s = (%s, \"%s\") %s" % \
+            (self.id,
+             {0:u"Latin-1", 1:u"UCS-2"}[self.encoding],
+             self.description,
+             self.data.decode('ascii', 'replace'))
+
+    def __eq__(self, frame):
+        return __attrib_equals__(["id", "encoding", "description", "data"])
+
+    @classmethod
+    def parse(cls, frame_id, frame_size, reader):
+        """given a frame_id string, frame_size int and BitstreamReader
+        of the remaining frame data, returns a parsed text frame"""
+
+        encoding = reader.read(8)
+        description = C_string.parse({0:"latin-1", 1:"ucs2"}[encoding],
+                                     reader)
+        data = reader.read_bytes(frame_size - 1 - description.size())
+
+        return cls(encoding, description, data)
+
+    def build(self, writer):
+        writer.write(8, self.encoding)
+        self.description.build(writer)
+        writer.write_bytes(self.data)
+
+    def size(self):
+        return 1 + self.description.size() + len(self.data)
+
+    def clean(self, fixes_performed):
+        return self.__class__(self.encoding,
+                              self.description,
+                              self.data)
+
+
 class ID3v22_COM_Frame:
     def __init__(self, encoding, language, short_description, data):
         """Fields are as follows:
@@ -516,7 +679,6 @@ class ID3v22_COM_Frame:
     def __unicode__(self):
         return self.data.decode({0:'latin-1', 1:'ucs2'}[self.encoding],
                                 'replace')
-
 
     @classmethod
     def parse(cls, frame_id, frame_size, reader):
@@ -769,7 +931,10 @@ class ID3v22Comment(MetaData):
                      'comment': 'COM'}
 
     RAW_FRAME = ID3v22_Frame
-    TEXT_FRAME = ID3v22_TXX_Frame
+    TEXT_FRAME = ID3v22_T__Frame
+    USER_TEXT_FRAME = ID3v22_TXX_Frame
+    WEB_FRAME = ID3v22_W__Frame
+    USER_WEB_FRAME = ID3v22_WXX_Frame
     COMMENT_FRAME = ID3v22_COM_Frame
     IMAGE_FRAME = ID3v22_PIC_Frame
     IMAGE_FRAME_ID = 'PIC'
@@ -816,14 +981,23 @@ class ID3v22Comment(MetaData):
 
             if (frame_id == chr(0) * 3):
                 break
-            elif (frame_id.startswith('T')):
-                frames.append(cls.TEXT_FRAME.parse(
+            elif (frame_id == 'TXX'):
+                frames.append(cls.USER_TEXT_FRAME.parse(
+                        frame_id, frame_size, reader.substream(frame_size)))
+            elif (frame_id == 'WXX'):
+                frames.append(cls.USER_WEB_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             elif (frame_id == 'COM'):
                 frames.append(cls.COMMENT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             elif (frame_id == 'PIC'):
                 frames.append(cls.IMAGE_FRAME.parse(
+                        frame_id, frame_size, reader.substream(frame_size)))
+            elif (frame_id.startswith('T')):
+                frames.append(cls.TEXT_FRAME.parse(
+                        frame_id, frame_size, reader.substream(frame_size)))
+            elif (frame_id.startswith('W')):
+                frames.append(cls.WEB_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             else:
                 frames.append(cls.RAW_FRAME.parse(
@@ -1071,12 +1245,44 @@ class ID3v23_Frame(ID3v22_Frame):
         return "ID3v23_Frame(%s, %s)" % (repr(self.id), repr(self.data))
 
 
-class ID3v23_TXXX_Frame(ID3v22_TXX_Frame):
+class ID3v23_T___Frame(ID3v22_T__Frame):
     NUMERICAL_IDS = ('TRCK', 'TPOS')
 
     def __repr__(self):
-        return "ID3v23_TXXX_Frame(%s, %s, %s)" % \
+        return "ID3v23_T___Frame(%s, %s, %s)" % \
             (repr(self.id), repr(self.encoding), repr(self.data))
+
+
+class ID3v23_TXXX_Frame(ID3v22_TXX_Frame):
+    def __init__(self, encoding, description, data):
+        self.id = 'TXXX'
+
+        self.encoding = encoding
+        self.description = description
+        self.data = data
+
+    def __repr__(self):
+        return "ID3v23_TXXX_Frame(%s, %s, %s)" % \
+            (repr(self.encoding), repr(self.description), repr(self.data))
+
+
+class ID3v23_W___Frame(ID3v22_W__Frame):
+    def __repr__(self):
+        return "ID3v23_W___Frame(%s, %s)" % \
+            (repr(self.frame_id), repr(self.data))
+
+
+class ID3v23_WXXX_Frame(ID3v22_WXX_Frame):
+    def __init__(self, encoding, description, data):
+        self.id = 'WXXX'
+
+        self.encoding = encoding
+        self.description = description
+        self.data = data
+
+    def __repr__(self):
+        return "ID3v23_WXXX_Frame(%s, %s, %s)" % \
+            (repr(self.encoding), repr(self.description), repr(self.data))
 
 
 class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
@@ -1271,7 +1477,10 @@ class ID3v23Comment(ID3v22Comment):
                      'comment': 'COMM'}
 
     RAW_FRAME = ID3v23_Frame
-    TEXT_FRAME = ID3v23_TXXX_Frame
+    TEXT_FRAME = ID3v23_T___Frame
+    WEB_FRAME = ID3v23_W___Frame
+    USER_TEXT_FRAME = ID3v23_TXXX_Frame
+    USER_WEB_FRAME = ID3v23_WXXX_Frame
     COMMENT_FRAME = ID3v23_COMM_Frame
     IMAGE_FRAME = ID3v23_APIC_Frame
     IMAGE_FRAME_ID = 'APIC'
@@ -1303,14 +1512,23 @@ class ID3v23Comment(ID3v22Comment):
 
             if (frame_id == chr(0) * 4):
                 break
-            elif (frame_id.startswith('T')):
-                frames.append(cls.TEXT_FRAME.parse(
+            elif (frame_id == 'TXXX'):
+                frames.append(cls.USER_TEXT_FRAME.parse(
+                        frame_id, frame_size, reader.substream(frame_size)))
+            elif (frame_id == 'WXXX'):
+                frames.append(cls.USER_WEB_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             elif (frame_id == 'COMM'):
                 frames.append(cls.COMMENT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             elif (frame_id == 'APIC'):
                 frames.append(cls.IMAGE_FRAME.parse(
+                        frame_id, frame_size, reader.substream(frame_size)))
+            elif (frame_id.startswith('T')):
+                frames.append(cls.TEXT_FRAME.parse(
+                        frame_id, frame_size, reader.substream(frame_size)))
+            elif (frame_id.startswith('W')):
+                frames.append(cls.WEB_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             else:
                 frames.append(cls.RAW_FRAME.parse(
@@ -1354,7 +1572,7 @@ class ID3v24_Frame(ID3v23_Frame):
         return "ID3v24_Frame(%s, %s)" % (repr(self.id), repr(self.data))
 
 
-class ID3v24_TXXX_Frame(ID3v23_TXXX_Frame):
+class ID3v24_T___Frame(ID3v23_T___Frame):
     def __init__(self, frame_id, encoding, data):
         assert((encoding == 0) or (encoding == 1) or
                (encoding == 2) or (encoding == 3))
@@ -1364,32 +1582,22 @@ class ID3v24_TXXX_Frame(ID3v23_TXXX_Frame):
         self.data = data
 
     def __repr__(self):
-        return "ID3v24_TXXX_Frame(%s, %s, %s)" % \
+        return "ID3v24_T___Frame(%s, %s, %s)" % \
             (repr(self.id), repr(self.encoding), repr(self.data))
 
     def __unicode__(self):
-        if (self.encoding == 0):
-            return self.data.decode('latin-1', 'replace')
-        elif (self.encoding == 3):
-            return self.data.decode('utf-8', 'replace')
-        elif (self.encoding == 1):
-            return self.data.decode('utf-16', 'replace')
-        elif (self.encoding == 2):
-            return self.data.decode('utf-16be', 'replace')
+        return self.data.decode({0:u"latin-1",
+                                 1:u"utf-16",
+                                 2:u"utf-16BE",
+                                 3:u"utf-8"}[self.encoding], 'replace')
 
     def raw_info(self):
-        if (self.encoding == 0):
-            return u"%s = (latin-1) %s" % (self.id.decode('ascii'),
-                                           self.data.decode('latin-1'))
-        elif (self.encoding == 3):
-            return u"%s = (UTF-8) %s" % (self.id.decode('ascii'),
-                                            self.data.decode('utf-8'))
-        elif (self.encoding == 1):
-            return u"%s = (UTF-16) %s" % (self.id.decode('ascii'),
-                                            self.data.decode('utf-16'))
-        elif (self.encoding == 2):
-            return u"%s = (UTF-16BE) %s" % (self.id.decode('ascii'),
-                                            self.data.decode('utf-16be'))
+        return u"%s = (%s) %s" % (self.id.decode('ascii'),
+                                  {0:u"Latin-1",
+                                   1:u"UTF-16",
+                                   2:u"UTF-16BE",
+                                   3:u"UTF-8"}[self.encoding],
+                                  unicode(self))
 
     @classmethod
     def converted(cls, frame_id, unicode_string):
@@ -1399,6 +1607,43 @@ class ID3v24_TXXX_Frame(ID3v23_TXXX_Frame):
             return cls(frame_id, 0, unicode_string.encode('latin-1'))
         else:
             return cls(frame_id, 3, unicode_string.encode('utf-8'))
+
+
+class ID3v24_TXXX_Frame(ID3v23_TXXX_Frame):
+    def __repr__(self):
+        return "ID3v24_TXXX_Frame(%s, %s, %s)" % \
+            (repr(self.encoding), repr(self.description), repr(self.data))
+
+    def raw_info(self):
+        return u"%s = (%s, \"%s\") %s" % \
+            (self.id,
+             {0:u"Latin-1",
+              1:u"UTF-16",
+              2:u"UTF-16BE",
+              3:u"UTF-8"}[self.encoding],
+             self.description,
+             unicode(self))
+
+    def __unicode__(self):
+        return self.data.decode({0:u"latin-1",
+                                 1:u"utf-16",
+                                 2:u"utf-16BE",
+                                 3:u"utf-8"}[self.encoding], 'replace')
+
+    @classmethod
+    def parse(cls, frame_id, frame_size, reader):
+        """given a frame_id string, frame_size int and BitstreamReader
+        of the remaining frame data, returns a parsed text frame"""
+
+        encoding = reader.read(8)
+        description = C_string.parse({0:"latin-1",
+                                      1:"utf-16",
+                                      2:"utf-16be",
+                                      3:"utf-8"}[encoding],
+                                     reader)
+        data = reader.read_bytes(frame_size - 1 - description.size())
+
+        return cls(encoding, description, data)
 
 
 class ID3v24_APIC_Frame(ID3v23_APIC_Frame):
@@ -1481,6 +1726,43 @@ class ID3v24_APIC_Frame(ID3v23_APIC_Frame):
                                  self.pic_type,
                                  self.pic_description,
                                  self.data)
+
+
+class ID3v24_W___Frame(ID3v23_W___Frame):
+    def __repr__(self):
+        return "ID3v24_W___Frame(%s, %s)" % \
+            (repr(self.frame_id), repr(self.data))
+
+
+class ID3v24_WXXX_Frame(ID3v23_WXXX_Frame):
+    def __repr__(self):
+        return "ID3v24_WXXX_Frame(%s, %s, %s)" % \
+            (repr(self.encoding), repr(self.description), repr(self.data))
+
+    def raw_info(self):
+        return u"%s = (%s, \"%s\") %s" % \
+            (self.id,
+             {0:u'Latin-1',
+              1:'UTF-16',
+              2:'UTF-16BE',
+              3:'UTF-8'}[self.encoding],
+             self.description,
+             self.data.decode('ascii', 'replace'))
+
+    @classmethod
+    def parse(cls, frame_id, frame_size, reader):
+        """given a frame_id string, frame_size int and BitstreamReader
+        of the remaining frame data, returns a parsed text frame"""
+
+        encoding = reader.read(8)
+        description = C_string.parse({0:'latin-1',
+                                      1:'utf-16',
+                                      2:'utf-16be',
+                                      3:'utf-8'}[encoding],
+                                     reader)
+        data = reader.read_bytes(frame_size - 1 - description.size())
+
+        return cls(encoding, description, data)
 
 
 class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
@@ -1577,7 +1859,10 @@ class ID3v24Comment(ID3v23Comment):
     NAME = u'ID3v2.4'
 
     RAW_FRAME = ID3v24_Frame
-    TEXT_FRAME = ID3v24_TXXX_Frame
+    TEXT_FRAME = ID3v24_T___Frame
+    USER_TEXT_FRAME = ID3v24_TXXX_Frame
+    WEB_FRAME = ID3v24_W___Frame
+    USER_WEB_FRAME = ID3v24_WXXX_Frame
     COMMENT_FRAME = ID3v24_COMM_Frame
     IMAGE_FRAME = ID3v24_APIC_Frame
     IMAGE_FRAME_ID = 'APIC'
@@ -1611,14 +1896,23 @@ class ID3v24Comment(ID3v23Comment):
 
             if (frame_id == chr(0) * 4):
                 break
-            elif (frame_id.startswith('T')):
-                frames.append(cls.TEXT_FRAME.parse(
+            elif (frame_id == 'TXXX'):
+                frames.append(cls.USER_TEXT_FRAME.parse(
+                        frame_id, frame_size, reader.substream(frame_size)))
+            elif (frame_id == 'WXXX'):
+                frames.append(cls.USER_WEB_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             elif (frame_id == 'COMM'):
                 frames.append(cls.COMMENT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             elif (frame_id == 'APIC'):
                 frames.append(cls.IMAGE_FRAME.parse(
+                        frame_id, frame_size, reader.substream(frame_size)))
+            elif (frame_id.startswith('T')):
+                frames.append(cls.TEXT_FRAME.parse(
+                        frame_id, frame_size, reader.substream(frame_size)))
+            elif (frame_id.startswith('W')):
+                frames.append(cls.WEB_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             else:
                 frames.append(cls.RAW_FRAME.parse(
