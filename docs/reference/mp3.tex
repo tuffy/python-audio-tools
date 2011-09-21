@@ -167,19 +167,6 @@ That is, no possible size value will result in a false
 MP3 frame sync (11 bits set in a row).
 This size field is the length of the entire tag, not including the header.
 
-\subsubsection{CNT Frame}
-\begin{figure}[h]
-\includegraphics{figures/id3v22/cnt.pdf}
-\end{figure}
-This frame is a 32-bit counter of the number of times the track
-has been played.
-According to the spec, additional bytes are added should the counter
-overflow.
-In practice, audio players typically don't update tags during playback
-and one is unlikely to exceed 4 billion plays of a single track.
-
-\clearpage
-
 \subsubsection{COM Frame}
 \begin{figure}[h]
 \includegraphics{figures/id3v22/com.pdf}
@@ -191,24 +178,6 @@ This frame is a lengthy string of comment text.
 containing a short description of the comment.
 Note that for UCS-2 comments, the NULL terminator is 2 bytes.
 The remainder of the frame is the comment text itself.
-
-\subsubsection{CRA Frame}
-\begin{figure}[h]
-\includegraphics{figures/id3v22/cra.pdf}
-\end{figure}
-This frame indicates audio encryption information.
-\VAR{Owner Identifier} is a NULL-terminated string
-containing a URL, email address or link.
-\VAR{Preview Start} and \VAR{Preview Length}
-indicate how many of the file's frames are unencrypted.
-
-\subsubsection{CRM Frame}
-\begin{figure}[h]
-\includegraphics{figures/id3v22/crm.pdf}
-\end{figure}
-This frame contains encrypted side data such as pictures or text.
-\VAR{Owner Identifier} and \VAR{Content / Explanation} are
-NULL-terminated strings.
 
 \clearpage
 
@@ -222,24 +191,6 @@ Latin-1 strings.
 \VAR{Description} is encoded as a Latin-1 or UCS-2 NULL-terminated
 string, depending on if \VAR{Encoding} is 0 or 1, respectively.
 The remainder of the frame is the file's binary data.
-
-\subsubsection{IPL Frame}
-\begin{figure}[h]
-\includegraphics{figures/id3v22/ipl.pdf}
-\end{figure}
-This frame contains a list of people involved in the file's creation.
-Each string is encoded as a Latin-1 or UCS-2 NULL-terminated
-string, depending on if \VAR{Encoding} is 0 or 1, respectively.
-
-\subsubsection{MCI Frame}
-\begin{figure}[h]
-\includegraphics{figures/id3v22/mci.pdf}
-\end{figure}
-This frame contains the binary data from a CD's Table of Contents.
-That TOC consists of a 4 byte header followed by 8 bytes per CD track.
-Valid \VAR{TRK} frames are required if this frame is present.
-
-\clearpage
 
 \subsubsection{PIC Frame}
 \begin{figure}[h]
@@ -258,61 +209,22 @@ depending on if \VAR{Encoding} is 0 or 1, respectively.
 \hline
 value & type & value & type \\
 \hline
-0 & Other & 1 & 32x32 pixels `file icon' (PNG only) \\
-2 & Other file icon & 3 & Cover (front) \\
-4 & Cover (back) & 5 & Leaflet page \\
-6 & Media (e.g. label side of CD) & 7 & Lead artist / Lead performer / Soloist \\
-8 & Artist / Performer & 9 & Conductor \\
-10 & Band / Orchestra & 11 & Composer \\
-12 & Lyricist / Text writer & 13 & Recording location \\
-14 & During recording & 15 & During performance \\
-16 & Movie / Video screen capture & 17 & A bright colored fish \\
-18 & Illustration & 19 & Band / Artist logotype \\
-20 & Publisher / Studio logotype & &  \\
+0 & other & 1 & 32x32 pixels `file icon' (PNG only) \\
+2 & other file icon & 3 & cover (front) \\
+4 & cover (back) & 5 & leaflet page \\
+6 & media (e.g. label side of CD) & 7 & lead artist / lead performer / soloist \\
+8 & artist / performer & 9 & conductor \\
+10 & band / orchestra & 11 & composer \\
+12 & lyricist / text writer & 13 & recording location \\
+14 & during recording & 15 & during performance \\
+16 & movie / video screen capture & 17 & a bright colored fish \\
+18 & illustration & 19 & band / artist logotype \\
+20 & publisher / studio logotype & &  \\
 \hline
 \end{tabular}
 \caption{PIC image types}
 }
 \end{table}
-
-\subsubsection{POP Frame}
-\begin{figure}[h]
-\includegraphics{figures/id3v22/pop.pdf}
-\end{figure}
-This frame contains a ``popularimeter''.
-\VAR{User Email} is a NULL-terminated string of the user's email address.
-\VAR{Rating} is a value from 1 (worst) to 255 (best), where 0 is unknown.
-\VAR{Play Counter} is the number of times the track has been played.
-This frame may occur multiple times, but each must have a different email
-address.
-
-\clearpage
-
-\subsubsection{REV Frame}
-\begin{figure}[h]
-\includegraphics{figures/id3v22/rev.pdf}
-\end{figure}
-This frame contains user-defined reverb values for echo effects.
-
-\subsubsection{RVA Frame}
-\begin{figure}[h]
-\includegraphics{figures/id3v22/rva.pdf}
-\end{figure}
-This frame contains a user-defined relative volume adjustment
-to apply to each channel.
-If \VAR{Left Channel} is set, the volume change is used to increment
-the left channel's values.
-If not set, the volume change is used to decrement the left channel's
-values.
-
-\subsubsection{SLT Frame}
-\begin{figure}[h]
-\includegraphics{figures/id3v22/slt.pdf}
-\end{figure}
-This is a frame of synced lyrics for karaoke.
-\VAR{Timestamp Format} is 1 for MPEG frames or 2 for milliseconds.
-The NULL-terminated text strings are designed to be displayed
-as individual syllables at specific timestamps.
 
 \subsubsection{Text Frames}
 \begin{figure}[h]
@@ -371,6 +283,8 @@ with the ``/'' character, indicating the field's total number.
 For example, a \texttt{TRK} of ``3/5'' means the track is number
 3 out of a total of 5.
 
+\clearpage
+
 \begin{figure}[h]
 \includegraphics{figures/id3v22/txx.pdf}
 \end{figure}
@@ -379,10 +293,7 @@ This frame is for user-defined text information.
 what the frame is for.
 \VAR{Encoding} is 0 for Latin-1 encoding, 1 for UCS-2 encoding.
 
-\clearpage
-
 \subsubsection{URL Frames}
-
 \begin{figure}[h]
 \includegraphics{figures/id3v22/w__.pdf}
 \end{figure}
@@ -423,16 +334,6 @@ The single Size field is split by NULL (0x00) bytes in order to make
 it `sync-safe'.
 This size field is the length of the entire tag, not including the header.
 
-\subsubsection{AENC Frame}
-\begin{figure}[h]
-\includegraphics{figures/id3v23/aenc.pdf}
-\end{figure}
-This frame contains details about the file's encryption.
-\VAR{Owner} is a NULL-terminated string of the file's owner.
-\VAR{Preview Start} and \VAR{Preview Length} are MPEG frame offsets
-indicating unencrypted portions of audio.
-\VAR{Encryption Info} is a binary blob of encryption data.
-
 \subsubsection{APIC Frame}
 \begin{figure}[h]
 \includegraphics{figures/id3v23/apic.pdf}
@@ -449,17 +350,17 @@ depending on if \VAR{Encoding} is 0 or 1, respectively.
 \hline
 value & type & value & type \\
 \hline
-0 & Other & 1 & 32x32 pixels `file icon' (PNG only) \\
-2 & Other file icon & 3 & Cover (front) \\
-4 & Cover (back) & 5 & Leaflet page \\
-6 & Media (e.g. label side of CD) & 7 & Lead artist / Lead performer / Soloist \\
-8 & Artist / Performer & 9 & Conductor \\
-10 & Band / Orchestra & 11 & Composer \\
-12 & Lyricist / Text writer & 13 & Recording location \\
-14 & During recording & 15 & During performance \\
-16 & Movie / Video screen capture & 17 & A bright colored fish \\
-18 & Illustration & 19 & Band / Artist logotype \\
-20 & Publisher / Studio logotype & &  \\
+0 & other & 1 & 32x32 pixels `file icon' (PNG only) \\
+2 & other file icon & 3 & cover (front) \\
+4 & cover (back) & 5 & leaflet page \\
+6 & media (e.g. label side of CD) & 7 & lead artist / lead performer / soloist \\
+8 & artist / performer & 9 & conductor \\
+10 & band / orchestra & 11 & composer \\
+12 & lyricist / text writer & 13 & recording location \\
+14 & during recording & 15 & during performance \\
+16 & movie / video screen capture & 17 & a bright colored fish \\
+18 & illustration & 19 & band / artist logotype \\
+20 & publisher / studio logotype & &  \\
 \hline
 \end{tabular}
 \caption{APIC image types}
@@ -478,12 +379,6 @@ containing a short description of the comment.
 Note that for UCS-2 comments, the NULL terminator is 2 bytes.
 The remainder of the frame is the comment text itself.
 
-\subsubsection{ENCR Frame}
-\begin{figure}[h]
-\includegraphics{figures/id3v23/encr.pdf}
-\end{figure}
-This frame is encryption method registration.
-
 \subsubsection{GEOB Frame}
 \begin{figure}[h]
 \includegraphics{figures/id3v23/geob.pdf}
@@ -494,52 +389,6 @@ This frame contains an embedded file.
 Latin-1 or UCS-2 encoded strings, if \VAR{Encoding} is 0 or 1,
 respectively.
 \VAR{Encapsulated Object} is binary file data.
-
-\subsubsection{IPLS Frame}
-\begin{figure}[h]
-\includegraphics{figures/id3v23/ipls.pdf}
-\end{figure}
-This frame contains a list of people involved in the file's creation.
-Each string is encoded as a Latin-1 or UCS-2 NULL-terminated
-string, depending on if \VAR{Encoding} is 0 or 1, respectively.
-
-\subsubsection{MCDI Frame}
-\begin{figure}[h]
-\includegraphics{figures/id3v23/mcdi.pdf}
-\end{figure}
-This frame contains the binary data from a CD's Table of Contents.
-That TOC consists of a 4 byte header followed by 8 bytes per CD track.
-Valid \VAR{TRCK} frames are required if this frame is present.
-
-\subsubsection{PRIV Frame}
-\begin{figure}[h]
-\includegraphics{figures/id3v23/priv.pdf}
-\end{figure}
-This is a frame for private information.
-\VAR{Owner} is a NULL-terminated email address or link.
-\VAR{Private Data} is binary data.
-
-\subsubsection{PCNT Frame}
-\begin{figure}[h]
-\includegraphics{figures/id3v23/pcnt.pdf}
-\end{figure}
-This frame is a 32-bit counter of the number of times the track
-has been played.
-According to the spec, additional bytes are added should the counter
-overflow.
-In practice, audio players typically don't update tags during playback
-and one is unlikely to exceed 4 billion plays of a single track.
-
-\subsubsection{POPM Frame}
-\begin{figure}[h]
-\includegraphics{figures/id3v23/popm.pdf}
-\end{figure}
-This frame contains a ``popularimeter''.
-\VAR{User Email} is a NULL-terminated string of the user's email address.
-\VAR{Rating} is a value from 1 (worst) to 255 (best), where 0 is unknown.
-\VAR{Play Counter} is the number of times the track has been played.
-This frame may occur multiple times, but each must have a different email
-address.
 
 \clearpage
 
@@ -572,7 +421,7 @@ ID & Meaning & ID & Meaning \\
 \texttt{TLAN} & language(s) \\
 \texttt{TLEN} & length &
 \texttt{TMED} & media type \\
-\texttt{TOAL} & original album/movie/show title &
+\texttt{TOAL} & original album / movie / show title &
 \texttt{TOFN} & original filename \\
 \texttt{TOLY} & original lyricist(s) / text writer(s) &
 \texttt{TOPE} & original artist(s) / performer(s) \\
@@ -645,157 +494,188 @@ what the frame is for.
 \includegraphics{figures/mp3_id3v24_header.pdf}
 \end{figure}
 
-\subsubsection{ID3v2.4 Frame}
+\subsubsection{APIC Frame}
 \begin{figure}[h]
-\includegraphics{figures/mp3_id3v24_frame.pdf}
+\includegraphics{figures/id3v24/apic.pdf}
 \end{figure}
-\par
-\noindent
-Frame IDs that begin with the letter `T' (0x54) are text frames.
-These have an additional text encoding byte before the actual
-text data.
-All text strings may be terminated by a null character
-(0x00 or 0x0000, depending on the encoding).
-\begin{figure}[h]
-\includegraphics{figures/mp3_id3v24_textframe.pdf}
-\begin{tabular}{r|l}
-Encoding Byte & Text Encoding \\
-\hline
-\texttt{0x00} & ISO-8859-1 \\
-\texttt{0x01} & UTF-16 \\
-\texttt{0x02} & UTF-16BE \\
-\texttt{0x03} & UTF-8
-\end{tabular}
-\end{figure}
-
-\pagebreak
-
-\subsubsection{ID3v2.4 APIC Frame}
-\begin{figure}[h]
-\includegraphics{figures/mp3_id3v24_apic.pdf}
-\end{figure}
-\par
-\noindent
-Text Encoding is the encoding of the Description field.
-Its value is either ISO-8859-1, UTF-16 or UTF-8 - the same as in
-text frames.
-MIME Type is a NULL-terminated, ASCII C-string which contains the
-image's MIME type, such as `image/jpeg' or `image/png'.
-Description is a NULL-terminated C-string which contains
-a text description of the image.
+This frame contains an embedded image file.
+\VAR{MIME Type} is a NULL-terminated MIME type such as ``image/jpeg''
+or ``image/png''.
+\VAR{Description} is a NULL-terminated string
+in one of the following encodings:
+\begin{inparaenum}
+\item[\itshape 0\upshape)] Latin-1
+\item[\itshape 1\upshape)] UTF-16
+\item[\itshape 2\upshape)] UTF-16BE
+\item[\itshape 3\upshape)] UTF-8
+\end{inparaenum}
+, depending on \VAR{Encoding}.
+\VAR{Picture Type} is one of the following:
 \begin{table}[h]
 {\relsize{-1}
 \begin{tabular}{|r|l||r|l|}
 \hline
 value & type & value & type \\
 \hline
-0 & Other & 1 & 32x32 pixels `file icon' (PNG only) \\
-2 & Other file icon & 3 & Cover (front) \\
-4 & Cover (back) & 5 & Leaflet page \\
-6 & Media (e.g. label side of CD) & 7 & Lead artist / Lead performer / Soloist \\
-8 & Artist / Performer & 9 & Conductor \\
-10 & Band / Orchestra & 11 & Composer \\
-12 & Lyricist / Text writer & 13 & Recording location \\
-14 & During recording & 15 & During performance \\
-16 & Movie / Video screen capture & 17 & A bright colored fish \\
-18 & Illustration & 19 & Band / Artist logotype \\
-20 & Publisher / Studio logotype & &  \\
+0 & other & 1 & 32x32 pixels `file icon' (PNG only) \\
+2 & other file icon & 3 & cover (front) \\
+4 & cover (back) & 5 & leaflet page \\
+6 & media (e.g. label side of CD) & 7 & lead artist / lead performer / soloist \\
+8 & artist / performer & 9 & conductor \\
+10 & band / orchestra & 11 & composer \\
+12 & lyricist / text writer & 13 & recording location \\
+14 & during recording & 15 & during performance \\
+16 & movie / video screen capture & 17 & a bright colored fish \\
+18 & illustration & 19 & band / artist logotype \\
+20 & publisher / studio logotype & &  \\
 \hline
 \end{tabular}
 \caption{APIC image types}
 }
 \end{table}
 
-\pagebreak
+\clearpage
 
-\subsubsection{ID3v2.4 Frame IDs}
+\subsubsection{COMM Frame}
+\begin{figure}[h]
+\includegraphics{figures/id3v24/comm.pdf}
+\end{figure}
+This frame is a lengthy string of comment text.
+\VAR{Language} is a 3 byte ASCII string.
+\VAR{Description} is a NULL-terminated string
+in one of the following encodings:
+\begin{inparaenum}
+\item[\itshape 0\upshape)] Latin-1
+\item[\itshape 1\upshape)] UTF-16
+\item[\itshape 2\upshape)] UTF-16BE
+\item[\itshape 3\upshape)] UTF-8
+\end{inparaenum}
+, depending on \VAR{Encoding}.
+The remainder of the frame is the comment text itself.
 
-\begin{multicols}{3}
+\subsubsection{GEOB Frame}
+\begin{figure}[h]
+\includegraphics{figures/id3v24/geob.pdf}
+\end{figure}
+This frame contains an embedded file.
+\VAR{MIME Type} is a NULL-terminated Latin-1 string.
+\VAR{Filename} and \VAR{Content Description} are NULL-terminated
+strings in one of the following encodings:
+\begin{inparaenum}
+\item[\itshape 0\upshape)] Latin-1
+\item[\itshape 1\upshape)] UTF-16
+\item[\itshape 2\upshape)] UTF-16BE
+\item[\itshape 3\upshape)] UTF-8
+\end{inparaenum}
+, depending on \VAR{Encoding}.
+\VAR{Encapsulated Object} is binary file data.
+
+\clearpage
+
+\subsubsection{Text Frames}
+\begin{figure}[h]
+\includegraphics{figures/id3v24/t___.pdf}
+\end{figure}
+\VAR{Encoding} is 0 for Latin-1 encoding, 1 for UTF-16 encoding,
+2 for UTF-16BE encoding and 3 for UTF-8 encoding.
+\begin{table}[h]
 {\relsize{-2}
-\begin{description}
-\item[\texttt{AENC}] Audio encryption
-\item[\texttt{APIC}] Attached picture
-\item[\texttt{ASPI}] Audio seek point index
-\item[\texttt{COMM}] Comments
-\item[\texttt{COMR}] Commercial frame
-\item[\texttt{ENCR}] Encryption method registration
-\item[\texttt{EQU2}] Equalisation (2)
-\item[\texttt{ETCO}] Event timing codes
-\item[\texttt{GEOB}] General encapsulated object
-\item[\texttt{GRID}] Group identification registration
-\item[\texttt{LINK}] Linked information
-\item[\texttt{MCDI}] Music CD identifier
-\item[\texttt{MLLT}] MPEG location lookup table
-\item[\texttt{OWNE}] Ownership frame
-\item[\texttt{PRIV}] Private frame
-\item[\texttt{PCNT}] Play counter
-\item[\texttt{POPM}] Popularimeter
-\item[\texttt{POSS}] Position synchronisation frame
-\item[\texttt{RBUF}] Recommended buffer size
-\item[\texttt{RVA2}] Relative volume adjustment (2)
-\item[\texttt{RVRB}] Reverb
-\item[\texttt{SEEK}] Seek frame
-\item[\texttt{SIGN}] Signature frame
-\item[\texttt{SYLT}] Synchronised lyric/text
-\item[\texttt{SYTC}] Synchronised tempo codes
-\item[\texttt{TALB}] Album/Movie/Show title
-\item[\texttt{TBPM}] BPM (beats per minute)
-\item[\texttt{TCOM}] Composer
-\item[\texttt{TCON}] Content type
-\item[\texttt{TCOP}] Copyright message
-\item[\texttt{TDEN}] Encoding time
-\item[\texttt{TDLY}] Playlist delay
-\item[\texttt{TDOR}] Original release time
-\item[\texttt{TDRC}] Recording time
-\item[\texttt{TDRL}] Release time
-\item[\texttt{TDTG}] Tagging time
-\item[\texttt{TENC}] Encoded by
-\item[\texttt{TEXT}] Lyricist/Text writer
-\item[\texttt{TFLT}] File type
-\item[\texttt{TIPL}] Involved people list
-\item[\texttt{TIT1}] Content group description
-\item[\texttt{TIT2}] Title/songname/content description
-\item[\texttt{TIT3}] Subtitle/Description refinement
-\item[\texttt{TKEY}] Initial key
-\item[\texttt{TLAN}] Language(s)
-\item[\texttt{TLEN}] Length
-\item[\texttt{TMCL}] Musician credits list
-\item[\texttt{TMED}] Media type
-\item[\texttt{TMOO}] Mood
-\item[\texttt{TOAL}] Original album/movie/show title
-\item[\texttt{TOFN}] Original filename
-\item[\texttt{TOLY}] Original lyricist(s)/text writer(s)
-\item[\texttt{TOPE}] Original artist(s)/performer(s)
-\item[\texttt{TOWN}] File owner/licensee
-\item[\texttt{TPE1}] Lead performer(s)/Soloist(s)
-\item[\texttt{TPE2}] Band/orchestra/accompaniment
-\item[\texttt{TPE3}] Conductor/performer refinement
-\item[\texttt{TPE4}] Interpreted, remixed, or otherwise modified by
-\item[\texttt{TPOS}] Part of a set
-\item[\texttt{TPRO}] Produced notice
-\item[\texttt{TPUB}] Publisher
-\item[\texttt{TRCK}] Track number/Position in set
-\item[\texttt{TRSN}] Internet radio station name
-\item[\texttt{TRSO}] Internet radio station owner
-\item[\texttt{TSOA}] Album sort order
-\item[\texttt{TSOP}] Performer sort order
-\item[\texttt{TSOT}] Title sort order
-\item[\texttt{TSRC}] ISRC (international standard recording code)
-\item[\texttt{TSSE}] Software/Hardware and settings used for encoding
-\item[\texttt{TSST}] Set subtitle
-\item[\texttt{TXXX}] User defined text information frame
-\item[\texttt{UFID}] Unique file identifier
-\item[\texttt{USER}] Terms of use
-\item[\texttt{USLT}] Unsynchronised lyric/text transcription
-\item[\texttt{WCOM}] Commercial information
-\item[\texttt{WCOP}] Copyright/Legal information
-\item[\texttt{WOAF}] Official audio file webpage
-\item[\texttt{WOAR}] Official artist/performer webpage
-\item[\texttt{WOAS}] Official audio source webpage
-\item[\texttt{WORS}] Official Internet radio station homepage
-\item[\texttt{WPAY}] Payment
-\item[\texttt{WPUB}] Publishers official webpage
-\item[\texttt{WXXX}] User defined URL link frame
-\end{description}
+\begin{tabular}{|c|l||c|l|}
+\hline
+ID & Meaning & ID & Meaning \\
+\hline
+\texttt{TALB} & album name &
+\texttt{TBPM} & beats-per-minute \\
+\texttt{TCOM} & composer &
+\texttt{TCON} & content type \\
+\texttt{TCOP} & copyright message &
+\texttt{TDAT} & date \\
+\texttt{TDEN} & encoding time &
+\texttt{TDLY} & playlist delay \\
+\texttt{TDOR} & original release time &
+\texttt{TDRC} & recording time \\
+\texttt{TDRL} & release time &
+\texttt{TDTG} & tagging time \\
+\texttt{TENC} & encoded by &
+\texttt{TEXT} & lyricist / text writer \\
+\texttt{TFLT} & file type &
+\texttt{TIPL} & involved people list \\
+\texttt{TIT1} & content group description &
+\texttt{TIT2} & title / songname / content description \\
+\texttt{TIT3} & subtitle / description refinement &
+\texttt{TKEY} & initial key \\
+\texttt{TLAN} & language(s) &
+\texttt{TLEN} & length \\
+\texttt{TMCL} & musician credits list &
+\texttt{TMED} & media type \\
+\texttt{TMOO} & mood &
+\texttt{TOAL} & original album / movie / show title \\
+\texttt{TOFN} & original filename &
+\texttt{TOLY} & original lyricist(s) / text writer(s) \\
+\texttt{TOPE} & original artist(s) / performer(s) &
+\texttt{TOWN} & file owner / licensee \\
+\texttt{TPE1} & lead performer(s) / soloist(s) &
+\texttt{TPE2} & band / orchestra / accompaniment \\
+\texttt{TPE3} & conductor / performer refinement &
+\texttt{TPE4} & interpreted, remixed, or otherwise modified by \\
+\texttt{TPOS} & part of a set &
+\texttt{TPRO} & produced notice \\
+\texttt{TPUB} & publisher &
+\texttt{TRCK} & track number / position in set \\
+\texttt{TRSN} & internet radio station name &
+\texttt{TRSO} & internet radio station owner \\
+\texttt{TSOA} & album sort order &
+\texttt{TSOP} & performer sort order \\
+\texttt{TSOT} & title sort order &
+\texttt{TSRC} & ISRC (International Standard Recording Code) \\
+\texttt{TSSE} & software / hardware and encoding settings &
+\texttt{TSST} & set subtitle \\
+\hline
+\end{tabular}
 }
-\end{multicols}
+\end{table}
+
+\clearpage
+
+\begin{figure}[h]
+\includegraphics{figures/id3v24/txxx.pdf}
+\end{figure}
+This frame is for user-defined text information.
+\VAR{Description} is a NULL-terminated string indicating
+what the frame is for.
+\VAR{Encoding} is 0 for Latin-1 encoding, 1 for UTF-16 encoding,
+2 for UTF-16BE encoding and 3 for UTF-8 encoding.
+
+\subsubsection{URL Frames}
+\begin{figure}[h]
+\includegraphics{figures/id3v24/w___.pdf}
+\end{figure}
+These frames are for URL links to external resources.
+\par
+\begin{table}[h]
+\begin{tabular}{|c|l|}
+\hline
+ID & Meaning \\
+\hline
+\texttt{WCOM} & commercial information \\
+\texttt{WCOP} & copyright / legal information \\
+\texttt{WOAF} & official audio file webpage \\
+\texttt{WOAR} & official artist/performer webpage \\
+\texttt{WOAS} & official audio source webpage \\
+\texttt{WORS} & official internet radio station homepage \\
+\texttt{WPAY} & payment \\
+\texttt{WPUB} & publisher's official webpage \\
+\hline
+\end{tabular}
+\end{table}
+
+\clearpage
+
+\begin{figure}[h]
+\includegraphics{figures/id3v24/wxxx.pdf}
+\end{figure}
+This is a frame for user-defined links to external resources.
+\VAR{Description} is a NULL-terminated string indicating
+what the frame is for.
+\VAR{Encoding} is 0 for Latin-1 encoding, 1 for UTF-16 encoding,
+2 for UTF-16BE encoding and 3 for UTF-8 encoding.

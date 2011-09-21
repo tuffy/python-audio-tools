@@ -4297,27 +4297,20 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   This is mostly for WavPack since it embeds cuesheet data
   in the APEv2 tag.
 * TODO Add better ID3v2 documentation
-  Do full explanations/diagrams of all the frames,
-  not just the most interesting ones.
+  Do a full explanation for frames one will find in nature.
+  Don't be too concerned about obscure frames no one ever uses.
+  | Frame                       | ID3v2.2 | ID3v2.3 | ID3v2.4 |
+  |-----------------------------+---------+---------+---------|
+  | all text                    | T__     | T___    | T___    |
+  | all web                     | W__     | W___    | W___    |
+  | picture                     | PIC     | APIC    | APIC    |
+  | comment                     | COM     | COMM    | COMM    |
+  | general encapsulated object | GEO     | GEOB    | GEOB    |
+  | unsynchronized lyrics       | ULT     | USLT    | USLT    |
 ** TODO ID3v2.2
-   - [ ] BUF
-   - [X] CNT
    - [X] COM
-   - [X] CRA
-   - [X] CRM
-   - [ ] ETC
-   - [ ] EQU
    - [X] GEO
-   - [X] IPL
-   - [ ] LNK
-   - [X] MCI
-   - [ ] MLL
    - [X] PIC
-   - [X] POP
-   - [X] REV
-   - [X] RVA
-   - [X] SLT
-   - [ ] STC
    - [X] TAL
    - [X] TBP
    - [X] TCM
@@ -4354,7 +4347,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] TXT
    - [X] TXX
    - [X] TYE
-   - [ ] UFI
    - [ ] ULT
    - [X] WAF
    - [X] WAR
@@ -4364,28 +4356,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] WPB
    - [X] WXX
 ** TODO ID3v2.3
-   - [X] AENC
    - [X] APIC
    - [X] COMM
-   - [X] ENCR
-   - [ ] EQUA
-   - [ ] ETCO
    - [X] GEOB
-   - [ ] GRID
-   - [X] IPLS
-   - [ ] LINK
-   - [X] MCDI
-   - [ ] MLLT
-   - [ ] OWNE
-   - [X] PRIV
-   - [X] PCNT
-   - [X] POPM
-   - [ ] POSS
-   - [ ] RBUF
-   - [ ] RVAD
-   - [ ] RVRB
-   - [ ] SYLT
-   - [ ] SYTC
    - [X] TALB
    - [X] TBPM
    - [X] TCOM
@@ -4425,8 +4398,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] TSSE
    - [X] TXXX
    - [X] TYER
-   - [ ] UFID
-   - [ ] USER
    - [ ] USLT
    - [X] WCOM
    - [X] WCOP
@@ -4438,89 +4409,65 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] WPUB
    - [X] WXXX
 ** TODO ID3v2.4
-   - [ ] AENC
-   - [ ] APIC
-   - [ ] ASPI
-   - [ ] COMM
-   - [ ] COMR
-   - [ ] ENCR
-   - [ ] EQU2
-   - [ ] ETCO
-   - [ ] GEOB
-   - [ ] GRID
-   - [ ] LINK
-   - [ ] MCDI
-   - [ ] MLLT
-   - [ ] OWNE
-   - [ ] PRIV
-   - [ ] PCNT
-   - [ ] POPM
-   - [ ] POSS
-   - [ ] RBUF
-   - [ ] RVA2
-   - [ ] RVRB
-   - [ ] SEEK
-   - [ ] SIGN
-   - [ ] SYLT
-   - [ ] SYLC
-   - [ ] TALM
-   - [ ] TBPM
-   - [ ] TCOM
-   - [ ] TCON
-   - [ ] TCOP
-   - [ ] TDEN
-   - [ ] TDLY
-   - [ ] TDOR
-   - [ ] TDRC
-   - [ ] TDRL
-   - [ ] TDTG
-   - [ ] TENC
-   - [ ] TEXT
-   - [ ] TFLT
-   - [ ] TIPL
-   - [ ] TIT1
-   - [ ] TIT2
-   - [ ] TIT3
-   - [ ] TKEY
-   - [ ] TLAN
-   - [ ] TLEN
-   - [ ] TMCL
-   - [ ] TMED
-   - [ ] TMOO
-   - [ ] TOAL
-   - [ ] TOFN
-   - [ ] TOLY
-   - [ ] TOPE
-   - [ ] TOWN
-   - [ ] TPE1
-   - [ ] TPE2
-   - [ ] TPE3
-   - [ ] TPE4
-   - [ ] TPOS
-   - [ ] TPRO
-   - [ ] TPUB
-   - [ ] TRCK
-   - [ ] TRSN
-   - [ ] TRSO
-   - [ ] TSOA
-   - [ ] TSOP
-   - [ ] TSOT
-   - [ ] TSRC
-   - [ ] TSSE
-   - [ ] TSST
-   - [ ] TXXX
-   - [ ] UFID
-   - [ ] USER
+   - [X] APIC
+   - [X] COMM
+   - [X] GEOB
+   - [X] TALB
+   - [X] TBPM
+   - [X] TCOM
+   - [X] TCON
+   - [X] TCOP
+   - [X] TDEN
+   - [X] TDLY
+   - [X] TDOR
+   - [X] TDRC
+   - [X] TDRL
+   - [X] TDTG
+   - [X] TENC
+   - [X] TEXT
+   - [X] TFLT
+   - [X] TIPL
+   - [X] TIT1
+   - [X] TIT2
+   - [X] TIT3
+   - [X] TKEY
+   - [X] TLAN
+   - [X] TLEN
+   - [X] TMCL
+   - [X] TMED
+   - [X] TMOO
+   - [X] TOAL
+   - [X] TOFN
+   - [X] TOLY
+   - [X] TOPE
+   - [X] TOWN
+   - [X] TPE1
+   - [X] TPE2
+   - [X] TPE3
+   - [X] TPE4
+   - [X] TPOS
+   - [X] TPRO
+   - [X] TPUB
+   - [X] TRCK
+   - [X] TRSN
+   - [X] TRSO
+   - [X] TSOA
+   - [X] TSOP
+   - [X] TSOT
+   - [X] TSRC
+   - [X] TSSE
+   - [X] TSST
+   - [X] TXXX
    - [ ] USLT
-   - [ ] WCOM
-   - [ ] WCOP
-   - [ ] WOAF
-   - [ ] WOAR
-   - [ ] WOAS
-   - [ ] WORS
-   - [ ] WPAY
-   - [ ] WPUB
-   - [ ] WXXX
+   - [X] WCOM
+   - [X] WCOP
+   - [X] WOAF
+   - [X] WOAR
+   - [X] WOAS
+   - [X] WORS
+   - [X] WPAY
+   - [X] WPUB
+   - [X] WXXX
 * TODO Cleaup documentation layout
   Add subdirectories for format figures.
 ** TODO FLAC

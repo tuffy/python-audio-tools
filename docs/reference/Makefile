@@ -1,35 +1,30 @@
 #FIXME - reorganize this big mess
-ID3v22 = figures/id3v22/cnt.pdf \
+ID3v22 = \
 figures/id3v22/com.pdf \
-figures/id3v22/cra.pdf \
-figures/id3v22/crm.pdf \
 figures/id3v22/geo.pdf \
-figures/id3v22/ipl.pdf \
-figures/id3v22/mci.pdf \
 figures/id3v22/pic.pdf \
-figures/id3v22/pop.pdf \
-figures/id3v22/rev.pdf \
-figures/id3v22/rva.pdf \
-figures/id3v22/slt.pdf \
 figures/id3v22/t__.pdf \
 figures/id3v22/txx.pdf \
 figures/id3v22/w__.pdf \
 figures/id3v22/wxx.pdf
 
-ID3v23 = figures/id3v23/aenc.pdf \
+ID3v23 = \
 figures/id3v23/apic.pdf \
 figures/id3v23/comm.pdf \
-figures/id3v23/encr.pdf \
 figures/id3v23/geob.pdf \
-figures/id3v23/ipls.pdf \
-figures/id3v23/mcdi.pdf \
-figures/id3v23/priv.pdf \
-figures/id3v23/pcnt.pdf \
-figures/id3v23/popm.pdf \
 figures/id3v23/t___.pdf \
 figures/id3v23/txxx.pdf \
 figures/id3v23/w___.pdf \
 figures/id3v23/wxxx.pdf
+
+ID3v24 = \
+figures/id3v24/apic.pdf \
+figures/id3v24/comm.pdf \
+figures/id3v24/geob.pdf \
+figures/id3v24/t___.pdf \
+figures/id3v24/txxx.pdf \
+figures/id3v24/w___.pdf \
+figures/id3v24/wxxx.pdf
 
 FLAC = \
 figures/flac/application.pdf \
@@ -209,6 +204,7 @@ $(FLAC) \
 $(M4A) \
 $(ID3v22) \
 $(ID3v23) \
+$(ID3v24) \
 $(WAVPACK) \
 $(VORBIS) \
 $(SHORTEN) \
