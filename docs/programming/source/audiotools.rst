@@ -709,6 +709,18 @@ MetaData Objects
 
    This track's comment as a Unicode string.
 
+.. method:: MetaData.fields()
+
+   Yields an ``(attr, value)`` tuple per :class:`MetaData` field.
+
+.. method:: MetaData.filled_fields()
+
+   Yields an ``(attr, value)`` tuple per non-blank :class:`MetaData` field.
+   Non-blank fields are text fields with a length greater than 0,
+   or numerical fields with a value greater than 0.
+   Note that text fields containing nothing but whitespace
+   are treated as non-blank.
+
 .. classmethod:: MetaData.converted(metadata)
 
    Takes a :class:`MetaData`-compatible object (or ``None``)

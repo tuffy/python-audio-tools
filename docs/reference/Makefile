@@ -5,6 +5,7 @@ figures/id3v22/geo.pdf \
 figures/id3v22/pic.pdf \
 figures/id3v22/t__.pdf \
 figures/id3v22/txx.pdf \
+figures/id3v22/ult.pdf \
 figures/id3v22/w__.pdf \
 figures/id3v22/wxx.pdf
 
@@ -14,6 +15,7 @@ figures/id3v23/comm.pdf \
 figures/id3v23/geob.pdf \
 figures/id3v23/t___.pdf \
 figures/id3v23/txxx.pdf \
+figures/id3v23/uslt.pdf \
 figures/id3v23/w___.pdf \
 figures/id3v23/wxxx.pdf
 
@@ -23,6 +25,7 @@ figures/id3v24/comm.pdf \
 figures/id3v24/geob.pdf \
 figures/id3v24/t___.pdf \
 figures/id3v24/txxx.pdf \
+figures/id3v24/uslt.pdf \
 figures/id3v24/w___.pdf \
 figures/id3v24/wxxx.pdf
 

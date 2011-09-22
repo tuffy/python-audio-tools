@@ -200,32 +200,35 @@ if (__name__ == '__main__'):
     #pull initial metadata from the base file, where appropriate
     base_metadata = audiofile.get_metadata()
     if (base_metadata is not None):
-        base = audiotools.AlbumMetaData([])
+        track_metadatas = audiotools.AlbumMetaData([])
         ISRCs = cuesheet.ISRCs()
         for (i, indexes) in enumerate(cuesheet.indexes()):
-            track_metadata = audiotools.MetaData.converted(base_metadata)
+            track_metadata = base_metadata.__class__.converted(base_metadata)
             track_metadata.track_name = u""
             track_metadata.track_number = i + 1
             track_metadata.track_total = len(list(cuesheet.indexes()))
             track_metadata.ISRC = ISRCs.get(i + 1, u"")
 
-            base[i + 1] = track_metadata
+            track_metadatas[i + 1] = track_metadata
     else:
-        base = audiotools.AlbumMetaData(
+        track_metadatas = audiotools.AlbumMetaData(
             [audiotools.MetaData(track_number=i + 1)
                   for (i, indexes) in enumerate(cuesheet.indexes())])
 
-    #if we're using an XMCD file, use that file for track MetaData
+    #if we're using an XMCD file,
+    #have that take priority over the base
     if (options.xmcd is not None):
         try:
-            xmcd = audiotools.read_metadata_file(options.xmcd)
+            for track_metadata in audiotools.read_metadata_file(
+                options.xmcd).track_metadatas():
+                track_number = track_metadata.track_number
+                if (track_number in track_metadatas):
+                    for (attr, value) in track_metadata.filled_fields():
+                        setattr(track_metadatas[track_number], attr, value)
+
         except audiotools.MetaDataFileException, err:
             msg.error(unicode(err))
             sys.exit(1)
-    else:
-        xmcd = audiotools.AlbumMetaData(
-            [audiotools.MetaData(track_number=i + 1)
-                  for (i, indexes) in enumerate(cuesheet.indexes())])
 
     encoded_files = []
     total_pcm = audiotools.BufferedPCMReader(audiofile.to_pcm())
@@ -234,18 +237,14 @@ if (__name__ == '__main__'):
         for (i, pcm_frames) in enumerate(
             cuesheet.pcm_lengths(audiofile.total_frames())):
             track_number = i + 1
-
-            metadata = xmcd.get(track_number, None)
-            if (metadata is not None):
-                metadata.merge(base.get(track_number, None))
-            else:
-                metadata = base.get(track_number, None)
+            track_metadata = track_metadatas.get(track_number, None)
 
             filename = os.path.join(
                 base_directory,
-                AudioType.track_name(file_path=audiofile.filename,
-                                     track_metadata=metadata,
-                                     format=options.format))
+                AudioType.track_name(
+                    file_path=audiofile.filename,
+                    track_metadata=track_metadata,
+                    format=options.format))
 
             audiotools.make_dirs(filename)
 
@@ -261,7 +260,7 @@ if (__name__ == '__main__'):
                         pcm_frames,
                         progress.update),
                     options.quality))
-            encoded_files[-1].set_metadata(metadata)
+            encoded_files[-1].set_metadata(track_metadata)
             progress.clear()
             msg.info(u"%s -> %s" %
                      (msg.filename(audiofile.filename),

@@ -2575,36 +2575,23 @@ class MetaData:
             except KeyError:
                 raise AttributeError(field)
 
-    #returns the type of comment this is, as a unicode string
-    def __comment_name__(self):
-        return u'MetaData'
+    def fields(self):
+        """yields an (attr, value) tuple per MetaData field"""
 
-    #returns a list of (key,value) tuples
-    def __comment_pairs__(self):
-        return zip(("Title", "Artist", "Performer", "Composer", "Conductor",
-                    "Album", "Catalog",
-                    "Track Number", "Track Total",
-                    "Volume Number", "Volume Total",
-                    "ISRC", "Publisher", "Media", "Year", "Date", "Copyright",
-                    "Comment"),
-                   (self.track_name,
-                    self.artist_name,
-                    self.performer_name,
-                    self.composer_name,
-                    self.conductor_name,
-                    self.album_name,
-                    self.catalog,
-                    str(self.track_number),
-                    str(self.track_total),
-                    str(self.album_number),
-                    str(self.album_total),
-                    self.ISRC,
-                    self.publisher,
-                    self.media,
-                    self.year,
-                    self.date,
-                    self.copyright,
-                    self.comment))
+        for attr in self.FIELDS:
+            yield (attr, getattr(self, attr))
+
+    def filled_fields(self):
+        """yields an (attr, value) tuple per MetaData field
+        which is not blank"""
+
+        for (attr, field) in self.fields():
+            if (attr in self.INTEGER_FIELDS):
+                if (field > 0):
+                    yield (attr, field)
+            else:
+                if (len(field) > 0):
+                    yield (attr, field)
 
     def __unicode__(self):
         comment_pairs = []

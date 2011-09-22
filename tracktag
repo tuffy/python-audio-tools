@@ -393,15 +393,8 @@ if (__name__ == '__main__'):
         if (xmcd is not None):
             xmcd_metadata = xmcd.get(track_number, None)
             if (xmcd_metadata is not None):
-                for attr in xmcd_metadata.FIELDS:
-                    if (attr not in xmcd_metadata.INTEGER_FIELDS):
-                        if (len(getattr(xmcd_metadata, attr)) > 0):
-                            setattr(metadata, attr,
-                                    getattr(xmcd_metadata, attr))
-                    else:
-                        if (getattr(xmcd_metadata, attr) > 0):
-                            setattr(metadata, attr,
-                                    getattr(xmcd_metadata, attr))
+                for (attr, value) in xmcd_metadata.filled_fields():
+                    setattr(metadata, attr, value)
 
         #update fields from the command line
         for field in ('track_name',

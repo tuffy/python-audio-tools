@@ -51,6 +51,7 @@ class FlacMetaDataBlockTooLarge(Exception):
 
     pass
 
+
 class FlacMetaData(MetaData):
     """A class for managing a native FLAC's metadata."""
 
@@ -706,6 +707,7 @@ class Flac_PICTURE(Image):
         else:
             return self
 
+
 class Flac_APPLICATION:
     BLOCK_ID = 2
 
@@ -741,6 +743,7 @@ class Flac_APPLICATION:
     def size(self):
         return len(self.application_id) + len(self.data)
 
+
 class Flac_SEEKTABLE:
     BLOCK_ID = 3
 
@@ -775,6 +778,7 @@ class Flac_SEEKTABLE:
         from .bitstream import format_size
 
         return (format_size("64U64U16u") / 8) * len(self.seekpoints)
+
 
 class Flac_CUESHEET:
     BLOCK_ID = 5

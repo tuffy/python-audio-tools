@@ -285,60 +285,75 @@ if (__name__ == '__main__'):
         queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
 
         for audiofile in audiofiles:
-            try:
-                track_number = audiofile.track_number()
+            track_metadata = audiofile.get_metadata()
 
-                if (xmcd is not None):
-                    track_metadata = audiofile.get_metadata()
+            if (xmcd is not None):
+                #got an XMCD file
+
+                #try to get the track's entry in the file
+                xmcd_metadata = xmcd.get(audiofile.track_number(), None)
+
+                if (xmcd_metadata is not None):
+                    #got the track's entry in the XMCD file
+
                     if (track_metadata is not None):
-                        xmcd_metadata = track_metadata.__class__.converted(
-                            xmcd.get(track_number, None))
-                        xmcd_metadata.merge(track_metadata)
-                        metadata = xmcd_metadata
+                        #update old track's metadata
+                        #from the XMCD file metadata
+                        #for new track
+                        for (attr, value) in xmcd_metadata.filled_fields():
+                            setattr(track_metadata, attr, value)
                     else:
-                        metadata = xmcd.get(track_number, None)
+                        #use XMCD file metadata for new track
+                        track_metadata = xmcd_metadata
                 else:
-                    metadata = audiofile.get_metadata()
+                    #no entry for track in XMCD file
+                    #so use old track's metadata for new track, if any
+                    track_metadata = audiofile.get_metadata()
+            else:
+                #no XMCD file at all
+                #so use old track's metadata for new track, if any
+                track_metadata = audiofile.get_metadata()
 
+            try:
                 filename = os.path.join(
-                            base_directory,
-                            AudioType.track_name(
-                        file_path=audiofile.filename,
-                        track_metadata=metadata,
-                        format=options.format))
-
-                try:
-                    audiotools.make_dirs(filename)
-                except OSError:
-                    msg.error(_(u"Unable to write \"%s\"") % \
-                                  (filename))
-                    sys.exit(1)
-
-                queue.execute(
-                    function=convert,
-                    progress_text=msg.filename(filename),
-                    completion_output=u"%s -> %s" % \
-                        (msg.filename(audiofile.filename),
-                         msg.filename(filename)),
-                    source_audiofile=audiofile,
-                    destination_filename=filename,
-                    destination_class=AudioType,
-                    compression=quality,
-                    metadata=metadata,
-                    thumbnail_images=options.thumbnail)
-
+                    base_directory,
+                    AudioType.track_name(file_path=audiofile.filename,
+                                         track_metadata=track_metadata,
+                                         format=options.format))
             except audiotools.UnsupportedTracknameField, err:
                 err.error_msg(msg)
                 sys.exit(1)
-            except KeyError:
-                continue
 
+            #try to create subdirectories in advance
+            #so as to bail out as early as possible
+            try:
+                audiotools.make_dirs(filename)
+            except OSError:
+                msg.error(_(u"Unable to write \"%s\"") % \
+                              (filename))
+                sys.exit(1)
+
+            #queue up conversion job
+            queue.execute(function=convert,
+                          progress_text=msg.filename(filename),
+                          completion_output=u"%s -> %s" % \
+                              (msg.filename(audiofile.filename),
+                               msg.filename(filename)),
+                          source_audiofile=audiofile,
+                          destination_filename=filename,
+                          destination_class=AudioType,
+                          compression=quality,
+                          metadata=track_metadata,
+                          thumbnail_images=options.thumbnail)
+
+        #perform all queued conversion jobs
         try:
             queue.run(max_processes)
         except audiotools.EncodingError, err:
             msg.error(unicode(err))
             sys.exit(1)
 
+        #add ReplayGain to converted files, if necessary
         if (options.add_replay_gain and AudioType.can_add_replay_gain()):
             try:
                 #separate encoded files by album_name and album_number
@@ -384,30 +399,46 @@ if (__name__ == '__main__'):
     else:
         #encoding only a single file
         audiofile = audiofiles[0]
+        track_metadata = audiofile.get_metadata()
 
         if (xmcd is not None):
-            track_metadata = audiofile.get_metadata()
-            if (track_metadata is not None):
-                xmcd_metadata = track_metadata.__class__.converted(
-                    xmcd.get(audiofile.track_number(), None))
-                xmcd_metadata.merge(track_metadata)
-                metadata = xmcd_metadata
+            #got an XMCD file
+
+            #try to get the track's entry in the file
+            xmcd_metadata = xmcd.get(audiofile.track_number(), None)
+
+            if (xmcd_metadata is not None):
+                #got the track's entry in the XMCD file
+
+                if (track_metadata is not None):
+                    #update old track's metadata
+                    #from the XMCD file metadata
+                    #for new track
+                    for (attr, value) in xmcd_metadata.filled_fields():
+                        setattr(track_metadata, attr, value)
+                else:
+                    #use XMCD file metadata for new track
+                    track_metadata = xmcd_metadata
             else:
-                metadata = xmcd.get(audiofile.track_number(), None)
+                #no entry for track in XMCD file
+                #so use old track's metadata for new track, if any
+                pass
         else:
-            metadata = audiofile.get_metadata()
+            #no XMCD file at all
+            #so use old track's metadata for new track, if any
+            pass
 
         queue = audiotools.ExecProgressQueue(
             audiotools.ProgressDisplay(
                 audiotools.SilentMessenger("track2track")))
-        queue.execute(
-            function=convert,
-            source_audiofile=audiofile,
-            destination_filename=options.output,
-            destination_class=AudioType,
-            compression=quality,
-            metadata=metadata,
-            thumbnail_images=options.thumbnail)
+
+        queue.execute(function=convert,
+                      source_audiofile=audiofile,
+                      destination_filename=options.output,
+                      destination_class=AudioType,
+                      compression=quality,
+                      metadata=track_metadata,
+                      thumbnail_images=options.thumbnail)
 
         try:
             queue.run(1)

@@ -69,15 +69,38 @@ if (__name__ == '__main__'):
             msg.error(unicode(err))
             sys.exit(1)
     else:
-        xmcd = audiotools.AlbumMetaData([])
+        xmcd = None
 
     try:
         for track in audiofiles:
-            track_metadata = xmcd.get(track.track_number(), None)
-            if (track_metadata is None):
-                track_metadata = track.get_metadata()
+            track_metadata = track.get_metadata()
+
+            if (xmcd is not None):
+                #got an XMCD file
+
+                #try to get the track's entry in the file
+                xmcd_metadata = xmcd.get(track.track_number(), None)
+
+                if (xmcd_metadata is not None):
+                    #got the track's entry in the XMCD file
+
+                    if (track_metadata is not None):
+                        #update track's metadata
+                        #from the XMCD file metadata
+                        #for renamed track
+                        for (attr, value) in xmcd_metadata.filled_fields():
+                            setattr(track_metadata, attr, value)
+                    else:
+                        #use XMCD file metadata for renamed track
+                        track_metadata = xmcd_metadata
+                else:
+                    #no entry for track in XMCD file
+                    #so use old track's metadata for new track, if any
+                    pass
             else:
-                track_metadata.merge(track.get_metadata())
+                #no XMCD file at all
+                #so use track's metadata for new name, if any
+                pass
 
             new_name = track.track_name(file_path=track.filename,
                                         track_metadata=track_metadata,

@@ -3386,8 +3386,6 @@ class tracktag(UtilTest):
                                      options +
                                      [self.track_file.name]), 0)
 
-                print options
-
                 track = audiotools.open(self.track_file.name)
                 track.verify()
                 metadata = track.get_metadata()
@@ -3490,15 +3488,15 @@ class tracktag(UtilTest):
                         if ("-T" in options):
                             self.assertEqual(
                                 metadata.front_covers(),
-                                [self.image,
-                                 self.thumbnailed_front_cover_image])
+                                [self.thumbnailed_front_cover_image,
+                                 self.image])
                             self.assertEqual(
                                 metadata.back_covers(),
                                 [self.thumbnailed_back_cover_image])
                         else:
                             self.assertEqual(metadata.front_covers(),
-                                             [self.image,
-                                              self.front_cover_image])
+                                             [self.front_cover_image,
+                                              self.image])
                             self.assertEqual(metadata.back_covers(),
                                              [self.back_cover_image])
                         self.assertEqual(len(metadata.images()), 3)
@@ -3519,12 +3517,12 @@ class tracktag(UtilTest):
                         if ("-T" in options):
                             self.assertEqual(
                                 metadata.images(),
-                                [self.image,
-                                 self.thumbnailed_front_cover_image])
+                                [self.thumbnailed_front_cover_image,
+                                 self.image])
                         else:
                             self.assertEqual(metadata.images(),
-                                             [self.image,
-                                              self.front_cover_image])
+                                             [self.front_cover_image,
+                                              self.image])
                         self.assertEqual(len(metadata.images()), 2)
                 elif ("--back-cover" in options):
                     #adding back cover
@@ -3541,7 +3539,7 @@ class tracktag(UtilTest):
                         self.assertEqual(len(metadata.images()), 1)
                     else:
                         self.assertEqual(metadata.front_covers(),
-                                             [self.image])
+                                         [self.image])
                         if ("-T" in options):
                             self.assertEqual(
                                 metadata.back_covers(),

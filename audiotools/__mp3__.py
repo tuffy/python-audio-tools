@@ -214,15 +214,18 @@ class MP3Audio(AudioFile):
 
         from .bitstream import BitstreamReader
 
-        skip_id3v2_comment(file)
+        try:
+            skip_id3v2_comment(file)
 
-        (frame_sync,
-         mpeg_id,
-         layer) = BitstreamReader(file, 0).parse("11u 2u 2u 1p")
+            (frame_sync,
+             mpeg_id,
+             layer) = BitstreamReader(file, 0).parse("11u 2u 2u 1p")
 
-        return ((frame_sync == 0x7FF) and
-                (mpeg_id in (0, 2, 3)) and
-                (layer in (1, 3)))
+            return ((frame_sync == 0x7FF) and
+                    (mpeg_id in (0, 2, 3)) and
+                    (layer in (1, 3)))
+        except IOError:
+            return False
 
     def lossless(self):
         """Returns False."""
@@ -750,15 +753,18 @@ class MP2Audio(MP3Audio):
 
         from .bitstream import BitstreamReader
 
-        skip_id3v2_comment(file)
+        try:
+            skip_id3v2_comment(file)
 
-        (frame_sync,
-         mpeg_id,
-         layer) = BitstreamReader(file, 0).parse("11u 2u 2u 1p")
+            (frame_sync,
+             mpeg_id,
+             layer) = BitstreamReader(file, 0).parse("11u 2u 2u 1p")
 
-        return ((frame_sync == 0x7FF) and
-                (mpeg_id in (0, 2, 3)) and
-                (layer == 2))
+            return ((frame_sync == 0x7FF) and
+                    (mpeg_id in (0, 2, 3)) and
+                    (layer == 2))
+        except IOError:
+            return False
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):

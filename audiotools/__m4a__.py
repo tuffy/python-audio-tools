@@ -215,8 +215,6 @@ class M4ATaggedAudio:
             #then write entire tree back to disk
             writer = BitstreamWriter(file(self.filename, "wb"), 0)
             m4a_tree.build(writer)
-            writer.close()
-
 
     def set_metadata(self, metadata):
         if (metadata is None):
@@ -274,15 +272,15 @@ class M4AAudio_faac(M4ATaggedAudio,AudioFile):
             mdia = get_m4a_atom(BitstreamReader(file(filename, 'rb'), 0),
                                 "moov", "trak", "mdia")[1]
         except IOError:
-            raise InvalidALAC(_(u"I/O error opening M4A file"))
+            raise InvalidM4A(_(u"I/O error opening M4A file"))
         except KeyError:
-            raise InvalidALAC(_(u"Required mdia atom not found"))
+            raise InvalidM4A(_(u"Required mdia atom not found"))
         mdia.mark()
         try:
             try:
                 stsd = get_m4a_atom(mdia, "minf", "stbl", "stsd")[1]
             except KeyError:
-                raise InvalidALAC(_(u"Required stsd atom not found"))
+                raise InvalidM4A(_(u"Required stsd atom not found"))
 
             #then, fetch the mp4a atom for bps, channels and sample rate
             try:
@@ -292,14 +290,14 @@ class M4AAudio_faac(M4ATaggedAudio,AudioFile):
                  self.__bits_per_sample__) = stsd.parse(
                     "32p 4b 48p 16p 16p 16p 4P 16u 16u 16p 16p 32p")
             except IOError:
-                raise InvalidALAC(_(u"Invalid mp4a atom"))
+                raise InvalidM4A(_(u"Invalid mp4a atom"))
 
             #finally, fetch the mdhd atom for total track length
             mdia.rewind()
             try:
                 mdhd = get_m4a_atom(mdia, "mdhd")[1]
             except KeyError:
-                raise InvalidALAC(_(u"Required mdhd atom not found"))
+                raise InvalidM4A(_(u"Required mdhd atom not found"))
             try:
                 (version, ) = mdhd.parse("8u 24p")
                 if (version == 0):
@@ -309,9 +307,9 @@ class M4AAudio_faac(M4ATaggedAudio,AudioFile):
                     (self.__sample_rate__,
                      self.__length__,) = mdhd.parse("64p 64p 32u 64U 2P 16p")
                 else:
-                    raise InvalidALAC(_(u"Unsupported mdhd version"))
+                    raise InvalidM4A(_(u"Unsupported mdhd version"))
             except IOError:
-                raise InvalidFLAC(_(u"Invalid mdhd atom"))
+                raise InvalidM4A(_(u"Invalid mdhd atom"))
         finally:
             mdia.unmark()
 
@@ -1014,7 +1012,6 @@ class ALACAudio(M4ATaggedAudio,AudioFile):
             free.build(m4a_writer)
             mdat_file.seek(0, 0)
             transfer_data(mdat_file.read, f.write)
-            m4a_writer.close()
             mdat_file.close()
         except (IOError), err:
             mdat_file.close()

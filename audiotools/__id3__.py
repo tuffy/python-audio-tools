@@ -369,8 +369,9 @@ class ID3v22_T__Frame:
         return __attrib_equals__(["id", "encoding", "data"], self, frame)
 
     def __unicode__(self):
-        return self.data.decode({0:'latin-1', 1:'ucs2'}[self.encoding],
-                                'replace')
+        return self.data.decode(
+            {0:'latin-1', 1:'ucs2'}[self.encoding],
+            'replace').split(unichr(0), 1)[0]
 
     def number(self):
         """if the frame is numerical, returns the track/album_number portion
@@ -499,8 +500,9 @@ class ID3v22_TXX_Frame:
         return __attrib_equals__(["id", "encoding", "description", "data"])
 
     def __unicode__(self):
-        return self.data.decode({0:'latin-1', 1:'ucs2'}[self.encoding],
-                                'replace')
+        return self.data.decode(
+            {0:'latin-1', 1:'ucs2'}[self.encoding],
+            'replace').split(unichr(0), 1)[0]
 
     @classmethod
     def parse(cls, frame_id, frame_size, reader):
@@ -1586,10 +1588,11 @@ class ID3v24_T___Frame(ID3v23_T___Frame):
             (repr(self.id), repr(self.encoding), repr(self.data))
 
     def __unicode__(self):
-        return self.data.decode({0:u"latin-1",
-                                 1:u"utf-16",
-                                 2:u"utf-16BE",
-                                 3:u"utf-8"}[self.encoding], 'replace')
+        return self.data.decode(
+            {0:u"latin-1",
+             1:u"utf-16",
+             2:u"utf-16BE",
+             3:u"utf-8"}[self.encoding], 'replace').split(unichr(0), 1)[0]
 
     def raw_info(self):
         return u"%s = (%s) %s" % (self.id.decode('ascii'),
@@ -1625,10 +1628,11 @@ class ID3v24_TXXX_Frame(ID3v23_TXXX_Frame):
              unicode(self))
 
     def __unicode__(self):
-        return self.data.decode({0:u"latin-1",
-                                 1:u"utf-16",
-                                 2:u"utf-16BE",
-                                 3:u"utf-8"}[self.encoding], 'replace')
+        return self.data.decode(
+            {0:u"latin-1",
+             1:u"utf-16",
+             2:u"utf-16BE",
+             3:u"utf-8"}[self.encoding], 'replace').split(unichr(0), 1)[0]
 
     @classmethod
     def parse(cls, frame_id, frame_size, reader):
