@@ -2030,12 +2030,6 @@ class ID3CommentPair(MetaData):
                 id3v2_class.converted(metadata),
                 id3v1_class.converted(metadata))
 
-    def merge(self, metadata):
-        """Updates any currently empty entries from metadata's values."""
-
-        self.id3v2.merge(metadata)
-        self.id3v1.merge(metadata)
-
     def raw_info(self):
         if ((self.id3v2 is not None) and (self.id3v1 is not None)):
             #both comments present

@@ -3048,15 +3048,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
   We should be able to translate between them if necessary, and if possible.
-* TODO Add Python3 support
-** TODO Update C modules to compile on Python3
-** TODO Update Python modules to operate on Python3
-** TODO Remove Python Imaging Library support?
-   Unless this gets ported, I'll need an alternative method to make thumbnails
-** TODO Remove PyGTK support?
-   Unless this gets ported, I'll need another way to make GUIs.
-   Perhaps I'll look into Tkinter again, which is portable
-   but may not have the widgets I want.
 * TODO Add support for genre tag?
   I'm not a big fan of the genre tag.
   Unlike track number, album name, ISRC, etc. in which a value
@@ -4223,7 +4214,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Update unit tests
 * TODO Adjust ID3v2 to store frames internally in order
   That is, they should output in the same order that they are stored on disk.
-** TODO Rebuild and simplify the ID3v2 frame handling
+** DONE Rebuild and simplify the ID3v2 frame handling
    Create a simple "frame protocol" which the frames can implement
    and the ID3v2 formats can use so that they parse/build consistently.
 *** DONE is_latin_1
@@ -4239,7 +4230,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     convert to standalone function
 *** DONE skip_id3v2_comment()
     convert to standalone function
-*** TODO ID3v22Comment
+*** DONE ID3v22Comment
     - [X] __repr__
     - [X] parse
     - [X] build
@@ -4260,7 +4251,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] images
     - [X] converted
     - [X] clean
-    - [ ] merge
 **** DONE ID3v22_Frame
      - [X] __init__
      - [X] __repr__
@@ -4307,7 +4297,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] converted
      - [X] raw_info
      - [X] clean
-*** TODO ID3v23Comment
+*** DONE ID3v23Comment
     - [X] __repr__
     - [X] parse
     - [X] build
@@ -4328,7 +4318,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] images
     - [X] converted
     - [X] clean
-    - [ ] merge
 **** DONE ID3v23_Frame
      - [X] __init__
      - [X] __repr__
@@ -4375,7 +4364,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] size
      - [X] converted
      - [X] clean
-*** TODO ID3v24Comment
+*** DONE ID3v24Comment
     - [X] __repr__
     - [X] parse
     - [X] build
@@ -4396,7 +4385,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] images
     - [X] converted
     - [X] clean
-    - [ ] merge
 **** DONE ID3v24_Frame
      - [X] __init__
      - [X] __repr__
@@ -4886,7 +4874,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      Call bw_abort if one attempts to dump bytes to a closed stream.
 **** DONE Ensure bw_rec_copy detects closed stream properly
      Call bw_abort if one attempts to copy records to a closed stream.
-*** DONE Update mod_python.c to use new hooks properly
+*** DONE Update mod_bitstream.c to use new hooks properly
 **** DONE Add bw_try/bw_etry wrappers around write methods
      - [X] BitstreamWriter_write
      - [X] BitstreamWriter_write_signed
@@ -4921,13 +4909,27 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] BitstreamWriter
      - [X] BitstreamRecorder
      - [X] BitstreamAccumulator
+**** DONE Don't fclose() file objects from underneath Python file objects
+     Although we may convert a Python file object to a FILE struct,
+     we must not fclose that struct out from underneath its parent.
+***** DONE BitstreamReader_close
+      - [X] call .close() method on Python file object
+      - [X] set read methods to raise errors
+      - [X] return result of .close() method
+***** DONE BitstreamWriter_close
+      - [X] flush pending output
+      - [X] call .close() method on Python file object
+      - [X] set write methods to raise errors
+      - [X] return result of .close() method
+***** DONE BitstreamRecorder_close
+***** DONE BitstreamAccumulator_close
 *** TODO Double-check existing C modules for proper free/close usage
-** TODO Ensure that reading/writing closed streams always fails
+** DONE Ensure that reading/writing closed streams always fails
    Once a stream's been closed,
    the bitstream should set I/O functions to error generators
    and further closes should do nothing.
 *** DONE Add unit test to bitstream.c
-*** TODO Add unit test to Python side
+*** DONE Add unit test to Python side
 * TODO Add lyrics metadata support
   Supporting storing lyrics text in the audio files themselves
   would be quite useful.
@@ -4951,7 +4953,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 
   Unfortunately, Chrome doesn't do MathML and IE doesn't do SVG
   which makes it non-viable right now.
-
 * TODO Eliminate the MetaData.merge() method
   The idea of this method is to provide some sort of precedence
   which combining metadata from two sources.
@@ -4966,20 +4967,26 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   the track's metadata to update those fields.
 
   MetaData with the highest priority would call __setattr__ last.
-** TODO Remove method from MetaData and subclasses
-   - [ ] ApeTag
-   - [ ] FlacMetaData
-   - [ ] ID3v22Comment
-   - [ ] ID3v23Comment
-   - [ ] ID3v24Comment
-   - [ ] ID3CommentPair
-   - [ ] M4A_META_Atom
-   - [ ] MetaData
-   - [ ] VorbisComment
+** DONE Remove method from MetaData and subclasses
+   - [X] ApeTag
+   - [X] FlacMetaData
+   - [X] ID3v22Comment
+   - [X] ID3v23Comment
+   - [X] ID3v24Comment
+   - [X] ID3CommentPair
+   - [X] M4A_META_Atom
+   - [X] MetaData
+   - [X] VorbisComment
 ** DONE Remove method from tools
    - [X] track2track
    - [X] trackrename
    - [X] tracksplit
    - [X] tracktag
-** TODO Remove method from documentation
+** DONE Remove method from documentation
 ** TODO Remove method from tests
+* TODO Shift to Cython?
+  Rather than push toward Python 3, which is slower than 2
+  and not yet as widely supported, it may be better to shift toward
+  Cython for handling lots of low-level file processing.
+  It would add a dependency, but has the potential to make
+  chunks of the code faster and smaller.

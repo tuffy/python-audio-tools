@@ -396,24 +396,6 @@ class ApeTag(MetaData):
 
             return tags
 
-    def merge(self, metadata):
-        """Updates any currently empty entries from metadata's values."""
-
-        metadata = self.__class__.converted(metadata)
-        if (metadata is None):
-            return
-
-        for tag in metadata.tags:
-            if ((tag.key not in ('Track', 'Media')) and
-                (len(str(tag)) > 0) and
-                (len(str(self.get(tag.key, ""))) == 0)):
-                self[tag.key] = tag
-        for attr in ("track_number", "track_total",
-                     "album_number", "album_total"):
-            if ((getattr(self, attr) == 0) and
-                (getattr(metadata, attr) != 0)):
-                setattr(self, attr, getattr(metadata, attr))
-
     def raw_info(self):
         from os import linesep
         from . import display_unicode

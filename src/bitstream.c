@@ -1150,7 +1150,7 @@ br_set_endianness_c(BitstreamReader *bs, bs_endianness endianness)
 }
 
 
-static inline void
+void
 br_close_methods(BitstreamReader* bs)
 {
     /*swap read methods with closed methods that generate read errors*/
@@ -2442,7 +2442,7 @@ bw_flush_p(BitstreamWriter* bs)
 #endif
 
 
-static inline void
+void
 bw_close_methods(BitstreamWriter* bs)
 {
     /*swap read methods with closed methods that generate read errors*/
@@ -2465,7 +2465,7 @@ bw_close_substream_f(BitstreamWriter* bs)
       which automatically flushes its output*/
     fclose(bs->output.file);
 
-    /*swap read methods with closed methods*/
+    /*swap write methods with closed methods*/
     bw_close_methods(bs);
 }
 

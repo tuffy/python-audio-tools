@@ -2966,7 +2966,6 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.read(12), 0x3BE)
             bitstream.unmark()
 
-
     @LIB_CORE
     def test_simple_writer(self):
         from audiotools.bitstream import BitstreamWriter
@@ -3161,25 +3160,155 @@ class Bitstream(unittest.TestCase):
     #and have the bitstream reader check those values are accurate
 
     @LIB_CORE
-    def close_test(self):
-        from audiotools.bitstream import BitstreamReader
+    def test_reader_close(self):
+        from audiotools.bitstream import BitstreamReader,HuffmanTree
 
-        r1 = BitstreamReader(open("test.py", "rb"), False)
-        r1.read(8)
-        r1.close()
-        self.assertRaises(IOError,
-                          r1.read,
-                          8)
-        del(r1)
+        def test_reader(reader):
+            self.assertRaises(IOError, reader.read, 1)
+            self.assertRaises(IOError, reader.read64, 2)
+            self.assertRaises(IOError, reader.skip, 3)
+            self.assertRaises(IOError, reader.skip_bytes, 1)
+            self.assertRaises(IOError, reader.read_signed, 2)
+            self.assertRaises(IOError, reader.read_signed64, 3)
+            self.assertRaises(IOError, reader.unary, 1)
+            self.assertRaises(IOError, reader.limited_unary, 1, 2)
+            self.assertRaises(IOError, reader.read_bytes, 1)
+            self.assertRaises(IOError, reader.parse, "1b2b3b")
+            self.assertRaises(IOError, reader.substream, 2)
+            self.assertRaises(IOError, reader.read_huffman_code,
+                              HuffmanTree([(1, ),     1,
+                                           (0, 1),    2,
+                                           (0, 0, 1), 3,
+                                           (0, 0, 0), 4], False))
 
-        r1 = BitstreamReader(cStringIO.StringIO("abcd"), False)
-        r1.read(8)
-        r1.close()
-        self.assertRaises(IOError,
-                          r1.read,
-                          8)
-        del(r1)
+        def new_temp():
+            temp = cStringIO.StringIO()
+            temp.write(chr(0xB1))
+            temp.write(chr(0xED))
+            temp.write(chr(0x3B))
+            temp.write(chr(0xC1))
+            temp.seek(0, 0)
+            return temp
 
+        #test a BitstreamReader from a Python file object
+        f = open("test_core.py", "rb")
+
+        reader = BitstreamReader(f, 0)
+        reader.close()
+        test_reader(reader)
+        reader.set_endianness(1)
+        test_reader(reader)
+
+        reader = BitstreamReader(f, 1)
+        reader.close()
+        test_reader(reader)
+        reader.set_endianness(0)
+        test_reader(reader)
+
+        f.close()
+        del(f)
+
+        #test a BitstreamReader from a Python cStringIO object
+        reader = BitstreamReader(new_temp(), 0)
+        reader.close()
+        test_reader(reader)
+        reader.set_endianness(1)
+        test_reader(reader)
+
+        reader = BitstreamReader(new_temp(), 1)
+        reader.close()
+        test_reader(reader)
+        reader.set_endianness(0)
+        test_reader(reader)
+
+    @LIB_CORE
+    def test_writer_close(self):
+        from audiotools.bitstream import BitstreamWriter
+        from audiotools.bitstream import BitstreamRecorder
+        from audiotools.bitstream import BitstreamAccumulator
+
+        def test_writer(writer):
+            self.assertRaises(IOError, writer.write, 1, 1)
+            self.assertRaises(IOError, writer.write_signed, 2, 1)
+            self.assertRaises(IOError, writer.unary, 1, 1)
+            self.assertRaises(IOError, writer.write64, 1, 1)
+            self.assertRaises(IOError, writer.write_signed64, 2, 1)
+            self.assertRaises(IOError, writer.write_bytes, "foo")
+            self.assertRaises(IOError, writer.build, "1u2u3u", [0, 1, 2])
+
+        #test a BitstreamWriter to a Python file object
+        f = open("test.bin", "wb")
+        try:
+            writer = BitstreamWriter(f, 0)
+            writer.close()
+            test_writer(writer)
+            writer.set_endianness(1)
+            test_writer(writer)
+            f.close()
+            del(f)
+        finally:
+            os.unlink("test.bin")
+
+        f = open("test.bin", "wb")
+        try:
+            writer = BitstreamWriter(f, 1)
+            writer.close()
+            test_writer(writer)
+            writer.set_endianness(0)
+            test_writer(writer)
+            f.close()
+            del(f)
+        finally:
+            os.unlink("test.bin")
+
+        #test a BitstreamWriter to a Python cStringIO object
+        s = cStringIO.StringIO()
+        writer = BitstreamWriter(s, 0)
+        writer.close()
+        test_writer(writer)
+        writer.set_endianness(1)
+        test_writer(writer)
+        del(writer)
+        del(s)
+
+        s = cStringIO.StringIO()
+        writer = BitstreamWriter(s, 1)
+        writer.close()
+        test_writer(writer)
+        writer.set_endianness(0)
+        test_writer(writer)
+        del(writer)
+        del(s)
+
+        #test a BitstreamRecorder
+        writer = BitstreamRecorder(0)
+        writer.close()
+        test_writer(writer)
+        writer.set_endianness(1)
+        test_writer(writer)
+        del(writer)
+
+        writer = BitstreamRecorder(1)
+        writer.close()
+        test_writer(writer)
+        writer.set_endianness(0)
+        test_writer(writer)
+        del(writer)
+
+        #test a BitstreamAccumulator
+        writer = BitstreamAccumulator(0)
+        writer.close()
+        test_writer(writer)
+        writer.set_endianness(1)
+        test_writer(writer)
+        del(writer)
+
+        writer = BitstreamAccumulator(1)
+        writer.close()
+        test_writer(writer)
+        writer.set_endianness(0)
+        test_writer(writer)
+        del(writer)
 
 class TestReplayGain(unittest.TestCase):
     @LIB_CORE

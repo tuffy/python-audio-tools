@@ -344,35 +344,6 @@ class VorbisComment(MetaData):
 
         return []
 
-    def merge(self, metadata):
-        """Updates any currently empty entries from metadata's values."""
-
-        if (metadata is None):
-            return
-        else:
-            from operator import or_
-
-            metadata = self.__class__.converted(metadata)
-
-            #first, port over the known fields
-            for field in self.ATTRIBUTE_MAP.keys():
-                if (field not in self.INTEGER_FIELDS):
-                    if ((len(getattr(self, field)) == 0) and
-                        (len(getattr(metadata, field)) > 0)):
-                        setattr(self, field, getattr(metadata, field))
-                else:
-                    if ((getattr(self, field) == 0) and
-                        (getattr(metadata, field) > 0)):
-                        setattr(self, field, getattr(metadata, field))
-
-            #then, port over any unknown fields
-            known_keys = reduce(or_,
-                                [self.ALIASES.get(field, frozenset([field]))
-                                 for field in self.ATTRIBUTE_MAP.values()])
-            for key in metadata.keys():
-                if (key.upper() not in known_keys):
-                    self[key] = metadata[key]
-
     def clean(self, fixes_performed):
         """Returns a new MetaData object that's been cleaned of problems."""
 

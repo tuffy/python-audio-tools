@@ -185,20 +185,6 @@ class FlacMetaData(MetaData):
                         for image in metadata.images()] +
                        [Flac_PADDING(4096)])
 
-    def merge(self, metadata):
-        """Updates any currently empty entries from metadata's values."""
-
-        try:
-            vorbis_comment = self.get_block(Flac_VORBISCOMMENT.BLOCK_ID)
-        except IndexError:
-            vorbis_comment = Flac_VORBISCOMMENT(
-                [], u"Python Audio Tools %s" % (VERSION))
-
-        vorbis_comment.merge(metadata)
-        if (len(self.images()) == 0):
-            for image in metadata.images():
-                self.add_image(image)
-
     def add_image(self, image):
         """Embeds an Image object in this metadata."""
 

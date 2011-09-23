@@ -2757,38 +2757,6 @@ class MetaData:
         else:
             raise ValueError(_(u"This MetaData type does not support images"))
 
-    def merge(self, metadata):
-        """Updates any currently empty entries from metadata's values.
-
-        >>> m = MetaData(track_name=u"Track 1",artist_name=u"Artist")
-        >>> m2 = MetaData(track_name=u"Track 2",album_name=u"Album")
-        >>> m.merge(m2)
-        >>> m.track_name
-        u'Track 1'
-        >>> m.artist_name
-        u'Artist'
-        >>> m.album_name
-        u'Album'
-
-        Subclasses of MetaData should implement this method
-        to handle any empty fields their format supports.
-        """
-
-        if (metadata is None):
-            return
-
-        for field in self.FIELDS:
-            if (field not in self.INTEGER_FIELDS):
-                if (len(getattr(self, field)) == 0):
-                    setattr(self, field, getattr(metadata, field))
-            else:
-                if (getattr(self, field) == 0):
-                    setattr(self, field, getattr(metadata, field))
-
-        if ((len(self.images()) == 0) and self.supports_images()):
-            for img in metadata.images():
-                self.add_image(img)
-
     def clean(self, fixes_performed):
         """Returns a new MetaData object that's been cleaned of problems.
 

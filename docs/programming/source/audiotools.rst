@@ -787,11 +787,6 @@ MetaData Objects
    Takes an :class:`Image` from this class, as returned by :meth:`images`,
    and removes it from this metadata's list of images.
 
-.. method:: MetaData.merge(new_metadata)
-
-   Updates this metadata by replacing empty fields with those
-   from ``new_metadata``.  Non-empty fields are left as-is.
-
 .. method:: MetaData.clean(fixes_performed)
 
    Returns a new :class:`MetaData` object of the same class

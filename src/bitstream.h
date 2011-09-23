@@ -520,6 +520,9 @@ br_set_endianness_c(BitstreamReader *bs, bs_endianness endianness);
 
 /*bs->close_substream(bs)  methods*/
 void
+br_close_methods(BitstreamReader* bs);
+
+void
 br_close_substream_f(BitstreamReader* bs);
 void
 br_close_substream_s(BitstreamReader* bs);
@@ -1032,6 +1035,9 @@ bw_flush_p(BitstreamWriter* bs);
 
 
 /*bs->close_substream(bs)  methods*/
+void
+bw_close_methods(BitstreamWriter* bs);
+
 void
 bw_close_substream_f(BitstreamWriter* bs);
 void

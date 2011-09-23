@@ -1160,10 +1160,6 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                           M4A_Tree_Atom('ilst', ilst_atoms),
                           M4A_FREE_Atom(1024)])
 
-
-    # def merge(self, metadata):
-    #     raise NotImplementedError() #FIXME
-
     def __comment_name__(self):
         return u'M4A'
 
