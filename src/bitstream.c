@@ -1893,7 +1893,8 @@ bw_open_accumulator(bs_endianness endianness)
             value_to_write = value >> (count - bits_to_write);          \
                                                                         \
             /*new data is added to the buffer least-significant first*/ \
-            bs->buffer = ((bs->buffer << bits_to_write) | value_to_write); \
+            bs->buffer = (unsigned int)((bs->buffer << bits_to_write) | \
+                                        value_to_write);                \
             bs->buffer_size += bits_to_write;                           \
                                                                         \
             /*if buffer is over 8 bits,*/                               \
@@ -1934,7 +1935,8 @@ bw_open_accumulator(bs_endianness endianness)
             value_to_write = value & ((1 << bits_to_write) - 1);        \
                                                                         \
             /*new data is added to the buffer most-significant first*/  \
-            bs->buffer |= (value_to_write << bs->buffer_size);          \
+            bs->buffer |= (unsigned int)(value_to_write <<              \
+                                         bs->buffer_size);              \
             bs->buffer_size += bits_to_write;                           \
                                                                         \
             /*if buffer is over 8 bits,*/                               \
@@ -4430,7 +4432,12 @@ test_writer_close_errors(BitstreamWriter* writer)
         bw_etry(writer);
     }
 
-    writer->byte_align(writer);
+    if (!setjmp(*bw_try(writer))) {
+        writer->byte_align(writer);
+        assert(0);
+    } else {
+        bw_etry(writer);
+    }
 
     if (!setjmp(*bw_try(writer))) {
         writer->write_unary(writer, 0, 5);
@@ -4737,9 +4744,9 @@ test_edge_reader_be(BitstreamReader* reader)
     /*try the unsigned 32 and 64 bit values*/
     reader->rewind(reader);
     assert(reader->read(reader, 32) == 0);
-    assert(reader->read(reader, 32) == 4294967295);
-    assert(reader->read(reader, 32) == 2147483648);
-    assert(reader->read(reader, 32) == 2147483647);
+    assert(reader->read(reader, 32) == 4294967295UL);
+    assert(reader->read(reader, 32) == 2147483648UL);
+    assert(reader->read(reader, 32) == 2147483647UL);
     assert(reader->read_64(reader, 64) == 0);
     assert(reader->read_64(reader, 64) == 0xFFFFFFFFFFFFFFFFULL);
     assert(reader->read_64(reader, 64) == 9223372036854775808ULL);
@@ -4749,8 +4756,8 @@ test_edge_reader_be(BitstreamReader* reader)
     reader->rewind(reader);
     assert(reader->read_signed(reader, 32) == 0);
     assert(reader->read_signed(reader, 32) == -1);
-    assert(reader->read_signed(reader, 32) == -2147483648);
-    assert(reader->read_signed(reader, 32) == 2147483647);
+    assert(reader->read_signed(reader, 32) == -2147483648LL);
+    assert(reader->read_signed(reader, 32) == 2147483647LL);
     assert(reader->read_signed_64(reader, 64) == 0);
     assert(reader->read_signed_64(reader, 64) == -1);
     assert(reader->read_signed_64(reader, 64) == (9223372036854775808ULL * -1));
@@ -4763,9 +4770,9 @@ test_edge_reader_be(BitstreamReader* reader)
                   &u_val_1, &u_val_2, &u_val_3, &u_val_4,
                   &u_val64_1, &u_val64_2, &u_val64_3, &u_val64_4);
     assert(u_val_1 == 0);
-    assert(u_val_2 == 4294967295);
-    assert(u_val_3 == 2147483648);
-    assert(u_val_4 == 2147483647);
+    assert(u_val_2 == 4294967295UL);
+    assert(u_val_3 == 2147483648UL);
+    assert(u_val_4 == 2147483647UL);
     assert(u_val64_1 == 0);
     assert(u_val64_2 == 0xFFFFFFFFFFFFFFFFULL);
     assert(u_val64_3 == 9223372036854775808ULL);
@@ -4779,8 +4786,8 @@ test_edge_reader_be(BitstreamReader* reader)
                   &s_val64_1, &s_val64_2, &s_val64_3, &s_val64_4);
     assert(s_val_1 == 0);
     assert(s_val_2 == -1);
-    assert(s_val_3 == -2147483648);
-    assert(s_val_4 == 2147483647);
+    assert(s_val_3 == -2147483648LL);
+    assert(s_val_4 == 2147483647LL);
     assert(s_val64_1 == 0);
     assert(s_val64_2 == -1);
     assert(s_val64_3 == (9223372036854775808ULL * -1));
@@ -4813,9 +4820,9 @@ test_edge_reader_le(BitstreamReader* reader)
 
     /*try the unsigned 32 and 64 bit values*/
     assert(reader->read(reader, 32) == 0);
-    assert(reader->read(reader, 32) == 4294967295);
-    assert(reader->read(reader, 32) == 2147483648);
-    assert(reader->read(reader, 32) == 2147483647);
+    assert(reader->read(reader, 32) == 4294967295UL);
+    assert(reader->read(reader, 32) == 2147483648UL);
+    assert(reader->read(reader, 32) == 2147483647UL);
     assert(reader->read_64(reader, 64) == 0);
     assert(reader->read_64(reader, 64) == 0xFFFFFFFFFFFFFFFFULL);
     assert(reader->read_64(reader, 64) == 9223372036854775808ULL);
@@ -4825,8 +4832,8 @@ test_edge_reader_le(BitstreamReader* reader)
     reader->rewind(reader);
     assert(reader->read_signed(reader, 32) == 0);
     assert(reader->read_signed(reader, 32) == -1);
-    assert(reader->read_signed(reader, 32) == -2147483648);
-    assert(reader->read_signed(reader, 32) == 2147483647);
+    assert(reader->read_signed(reader, 32) == -2147483648LL);
+    assert(reader->read_signed(reader, 32) == 2147483647LL);
     assert(reader->read_signed_64(reader, 64) == 0);
     assert(reader->read_signed_64(reader, 64) == -1);
     assert(reader->read_signed_64(reader, 64) == (9223372036854775808ULL * -1));
@@ -4839,9 +4846,9 @@ test_edge_reader_le(BitstreamReader* reader)
                   &u_val_1, &u_val_2, &u_val_3, &u_val_4,
                   &u_val64_1, &u_val64_2, &u_val64_3, &u_val64_4);
     assert(u_val_1 == 0);
-    assert(u_val_2 == 4294967295);
-    assert(u_val_3 == 2147483648);
-    assert(u_val_4 == 2147483647);
+    assert(u_val_2 == 4294967295UL);
+    assert(u_val_3 == 2147483648UL);
+    assert(u_val_4 == 2147483647UL);
     assert(u_val64_1 == 0);
     assert(u_val64_2 == 0xFFFFFFFFFFFFFFFFULL);
     assert(u_val64_3 == 9223372036854775808ULL);
@@ -4855,8 +4862,8 @@ test_edge_reader_le(BitstreamReader* reader)
                   &s_val64_1, &s_val64_2, &s_val64_3, &s_val64_4);
     assert(s_val_1 == 0);
     assert(s_val_2 == -1);
-    assert(s_val_3 == -2147483648);
-    assert(s_val_4 == 2147483647);
+    assert(s_val_3 == -2147483648LL);
+    assert(s_val_4 == 2147483647LL);
     assert(s_val64_1 == 0);
     assert(s_val64_2 == -1);
     assert(s_val64_3 == (9223372036854775808ULL * -1));
@@ -4891,9 +4898,9 @@ test_edge_writer(BitstreamWriter* (*get_writer)(void),
     /*try the unsigned 32 and 64 bit values*/
     writer = get_writer();
     writer->write(writer, 32, 0);
-    writer->write(writer, 32, 4294967295);
-    writer->write(writer, 32, 2147483648);
-    writer->write(writer, 32, 2147483647);
+    writer->write(writer, 32, 4294967295UL);
+    writer->write(writer, 32, 2147483648UL);
+    writer->write(writer, 32, 2147483647UL);
     writer->write_64(writer, 64, 0);
     writer->write_64(writer, 64, 0xFFFFFFFFFFFFFFFFULL);
     writer->write_64(writer, 64, 9223372036854775808ULL);
@@ -4904,8 +4911,8 @@ test_edge_writer(BitstreamWriter* (*get_writer)(void),
     writer = get_writer();
     writer->write_signed(writer, 32, 0);
     writer->write_signed(writer, 32, -1);
-    writer->write_signed(writer, 32, -2147483648);
-    writer->write_signed(writer, 32, 2147483647);
+    writer->write_signed(writer, 32, -2147483648LL);
+    writer->write_signed(writer, 32, 2147483647LL);
     writer->write_signed_64(writer, 64, 0);
     writer->write_signed_64(writer, 64, -1);
     writer->write_signed_64(writer, 64, (9223372036854775808ULL * -1));
@@ -4915,9 +4922,9 @@ test_edge_writer(BitstreamWriter* (*get_writer)(void),
     /*try the unsigned values via build()*/
     writer = get_writer();
     u_val_1 = 0;
-    u_val_2 = 4294967295;
-    u_val_3 = 2147483648;
-    u_val_4 = 2147483647;
+    u_val_2 = 4294967295UL;
+    u_val_3 = 2147483648UL;
+    u_val_4 = 2147483647UL;
     u_val64_1 = 0;
     u_val64_2 = 0xFFFFFFFFFFFFFFFFULL;
     u_val64_3 = 9223372036854775808ULL;
@@ -4931,8 +4938,8 @@ test_edge_writer(BitstreamWriter* (*get_writer)(void),
     writer = get_writer();
     s_val_1 = 0;
     s_val_2 = -1;
-    s_val_3 = -2147483648;
-    s_val_4 = 2147483647;
+    s_val_3 = -2147483648LL;
+    s_val_4 = 2147483647LL;
     s_val64_1 = 0;
     s_val64_2 = -1;
     s_val64_3 = (9223372036854775808ULL * -1);

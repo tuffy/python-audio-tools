@@ -1342,8 +1342,14 @@ class ID3v22MetaData(MetaDataTest):
 
         #check leading zeroes,
         #depending on whether we're preserving them or not
-        if (audiotools.config.getboolean_default("ID3", "pad", False)):
+
+        id3_pad = audiotools.config.get_default("ID3", "pad", "off")
+        try:
             #pad ID3v2 tags with 0
+            audiotools.config.set_default("ID3", "pad", "on")
+            self.assertEqual(audiotools.config.getboolean("ID3", "pad"),
+                             True)
+
             metadata = audiotools.ID3v22Comment(
                 [audiotools.ID3v22_T__Frame.converted("TRK", u"1")])
             self.assertEqual(metadata.track_number, 1)
@@ -1371,8 +1377,13 @@ class ID3v22MetaData(MetaDataTest):
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
             self.assertEqual(cleaned["TRK"][0].data, "01/02")
-        else:
+
+
             #don't pad ID3v2 tags with 0
+            audiotools.config.set_default("ID3", "pad", "off")
+            self.assertEqual(audiotools.config.getboolean("ID3", "pad"),
+                             False)
+
             metadata = audiotools.ID3v22Comment(
                 [audiotools.ID3v22_T__Frame.converted("TRK", u"01")])
             self.assertEqual(metadata.track_number, 1)
@@ -1428,7 +1439,8 @@ class ID3v22MetaData(MetaDataTest):
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
             self.assertEqual(cleaned["TRK"][0].data, "1/2")
-
+        finally:
+            audiotools.config.set_default("ID3", "pad", id3_pad)
 
 class ID3v23MetaData(ID3v22MetaData):
     def setUp(self):
@@ -1517,8 +1529,14 @@ class ID3v23MetaData(ID3v22MetaData):
 
         #check leading zeroes,
         #depending on whether we're preserving them or not
-        if (audiotools.config.getboolean_default("ID3", "pad", False)):
+
+        id3_pad = audiotools.config.get_default("ID3", "pad", "off")
+        try:
             #pad ID3v2 tags with 0
+            audiotools.config.set_default("ID3", "pad", "on")
+            self.assertEqual(audiotools.config.getboolean("ID3", "pad"),
+                             True)
+
             metadata = audiotools.ID3v23Comment(
                 [audiotools.ID3v23_T___Frame.converted("TRCK", u"1")])
             self.assertEqual(metadata.track_number, 1)
@@ -1546,8 +1564,13 @@ class ID3v23MetaData(ID3v22MetaData):
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
             self.assertEqual(cleaned["TRCK"][0].data, "01/02")
-        else:
+
+
             #don't pad ID3v2 tags with 0
+            audiotools.config.set_default("ID3", "pad", "off")
+            self.assertEqual(audiotools.config.getboolean("ID3", "pad"),
+                             False)
+
             metadata = audiotools.ID3v23Comment(
                 [audiotools.ID3v23_T___Frame.converted("TRCK", u"01")])
             self.assertEqual(metadata.track_number, 1)
@@ -1603,6 +1626,8 @@ class ID3v23MetaData(ID3v22MetaData):
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
             self.assertEqual(cleaned["TRCK"][0].data, "1/2")
+        finally:
+            audiotools.config.set_default("ID3", "pad", id3_pad)
 
 
 class ID3v24MetaData(ID3v22MetaData):
@@ -1670,8 +1695,14 @@ class ID3v24MetaData(ID3v22MetaData):
 
         #check leading zeroes,
         #depending on whether we're preserving them or not
-        if (audiotools.config.getboolean_default("ID3", "pad", False)):
+
+        id3_pad = audiotools.config.get_default("ID3", "pad", "off")
+        try:
             #pad ID3v2 tags with 0
+            audiotools.config.set_default("ID3", "pad", "on")
+            self.assertEqual(audiotools.config.getboolean("ID3", "pad"),
+                             True)
+
             metadata = audiotools.ID3v24Comment(
                 [audiotools.ID3v24_T___Frame.converted("TRCK", u"1")])
             self.assertEqual(metadata.track_number, 1)
@@ -1699,8 +1730,13 @@ class ID3v24MetaData(ID3v22MetaData):
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
             self.assertEqual(cleaned["TRCK"][0].data, "01/02")
-        else:
+
+
             #don't pad ID3v2 tags with 0
+            audiotools.config.set_default("ID3", "pad", "off")
+            self.assertEqual(audiotools.config.getboolean("ID3", "pad"),
+                             False)
+
             metadata = audiotools.ID3v24Comment(
                 [audiotools.ID3v24_T___Frame.converted("TRCK", u"01")])
             self.assertEqual(metadata.track_number, 1)
@@ -1756,6 +1792,8 @@ class ID3v24MetaData(ID3v22MetaData):
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
             self.assertEqual(cleaned["TRCK"][0].data, "1/2")
+        finally:
+            audiotools.config.set_default("ID3", "pad", id3_pad)
 
 class ID3CommentPairMetaData(MetaDataTest):
     def setUp(self):

@@ -170,25 +170,17 @@ def __attrib_equals__(attributes, o1, o2):
 #returns a unicode string of their combined pair
 #for example, __number_pair__(2,3) returns u"2/3"
 #whereas      __number_pair__(4,0) returns u"4"
-
-def __padded_number_pair__(current, total):
-    if (total == 0):
-        return u"%2.2d" % (current)
+def __number_pair__(current, total):
+    if (config.getboolean_default("ID3", "pad", False)):
+        if (total == 0):
+            return u"%2.2d" % (current)
+        else:
+            return u"%2.2d/%2.2d" % (current, total)
     else:
-        return u"%2.2d/%2.2d" % (current, total)
-
-
-def __unpadded_number_pair__(current, total):
-    if (total == 0):
-        return u"%d" % (current)
-    else:
-        return u"%d/%d" % (current, total)
-
-
-if (config.getboolean_default("ID3", "pad", False)):
-    __number_pair__ = __padded_number_pair__
-else:
-    __number_pair__ = __unpadded_number_pair__
+        if (total == 0):
+            return u"%d" % (current)
+        else:
+            return u"%d/%d" % (current, total)
 
 
 def read_id3v2_comment(filename):
@@ -458,13 +450,13 @@ class ID3v22_T__Frame:
         if (self.id in self.NUMERICAL_IDS):
             fix3 = __number_pair__(self.number(), self.total())
             if (fix3 != fix2):
-                if (__number_pair__ is __unpadded_number_pair__):
+                if (config.getboolean_default("ID3", "pad", False)):
                     fixes_performed.append(
-                        u"removed leading zeroes from %(field)s" %
+                        u"added leading zeroes to %(field)s" %
                         {"field":field})
                 else:
                     fixes_performed.append(
-                        u"added leading zeroes to %(field)s" %
+                        u"removed leading zeroes from %(field)s" %
                         {"field":field})
         else:
             fix3 = fix2
