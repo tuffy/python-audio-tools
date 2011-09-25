@@ -878,24 +878,43 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
         M4A_Tree_Atom.__init__(self, "meta", leaf_atoms)
         self.__dict__["version"] = version
         self.__dict__["flags"] = flags
-        try:
-            self.__dict__["ilst_atom"] = filter(lambda l: l.name == 'ilst',
-                                                self.leaf_atoms)[0]
-        except IndexError:
-            self.__dict__["ilst_atom"] = None
 
     def __repr__(self):
         return "M4A_META_Atom(%s, %s, %s)" % \
             (repr(self.version), repr(self.flags), repr(self.leaf_atoms))
 
+    def has_ilst_atom(self):
+        for a in self.leaf_atoms:
+            if (a.name == 'ilst'):
+                return True
+        else:
+            return False
+
+    def ilst_atom(self):
+        for a in self.leaf_atoms:
+            if (a.name == 'ilst'):
+                return a
+        else:
+            return None
+
+    def add_ilst_atom(self):
+        #place new ilst atom after the first hdlr atom, if any
+
+        for (index, atom) in enumerate(self.leaf_atoms):
+            if (atom.name == 'hdlr'):
+                self.leaf_atoms.insert(index, M4A_Tree_Atom('ilst', []))
+                break
+        else:
+            self.leaf_atoms.append(M4A_Tree_Atom('ilst', []))
+
     def raw_info(self):
         from os import linesep
         from . import display_unicode
 
-        if (self.ilst_atom is not None):
+        if (self.has_ilst_atom()):
             comment_lines = [u"M4A:"]
 
-            for atom in self.ilst_atom:
+            for atom in self.ilst_atom():
                 if (hasattr(atom, "raw_info_lines")):
                     comment_lines.extend(atom.raw_info_lines())
                 else:
@@ -904,6 +923,8 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                                           atom.size()))
 
             return linesep.decode('ascii').join(comment_lines)
+        else:
+            return u""
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
@@ -934,12 +955,11 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
             total_size += (8 + sub_atom.size())
         return total_size
 
-
     def __getattr__(self, key):
         if (key in self.UNICODE_ATTRIB_TO_ILST):
-            if (self.ilst_atom is not None):
+            if (self.has_ilst_atom()):
                 try:
-                    return unicode([a for a in self.ilst_atom
+                    return unicode([a for a in self.ilst_atom()
                                     if (a.name ==
                                         self.UNICODE_ATTRIB_TO_ILST[key])][0])
                 except IndexError:
@@ -947,9 +967,9 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
             else:
                 return u""
         elif (key in self.INT_ATTRIB_TO_ILST):
-            if (self.ilst_atom is not None):
+            if (self.has_ilst_atom()):
                 try:
-                    return int([a for a in self.ilst_atom
+                    return int([a for a in self.ilst_atom()
                                 if (a.name ==
                                     self.INT_ATTRIB_TO_ILST[key])][0])
                 except IndexError:
@@ -957,9 +977,9 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
             else:
                 return 0
         elif (key in self.TOTAL_ATTRIB_TO_ILST):
-            if (self.ilst_atom is not None):
+            if (self.has_ilst_atom()):
                 try:
-                    return [a for a in self.ilst_atom
+                    return [a for a in self.ilst_atom()
                             if (a.name ==
                                 self.TOTAL_ATTRIB_TO_ILST[key])][0].total()
                 except IndexError:
@@ -1028,51 +1048,50 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
             self.__dict__[key] = value
             return
 
-        if (self.ilst_atom is not None):
-            #an ilst atom is present, so check its sub-atoms
-            for ilst_atom in self.ilst_atom:
-                if (ilst_atom.name == ilst_leaf):
-                    #atom already present, so adjust its data sub-atom
-                    replace_data_atom(key, ilst_atom, value)
-                    break
-            else:
-                #atom not present, so append new parent and data sub-atom
-                self.ilst_atom.add_child(
-                    M4A_ILST_Leaf_Atom(ilst_leaf, [new_data_atom(key, value)]))
-        else:
-            #no ilst atom, so build one and add the appropriate sub-atoms
-            #FIXME
-            raise NotImplementedError()
+        if (not self.has_ilst_atom()):
+            self.add_ilst_atom()
 
+        #an ilst atom is present, so check its sub-atoms
+        for ilst_atom in self.ilst_atom():
+            if (ilst_atom.name == ilst_leaf):
+                #atom already present, so adjust its data sub-atom
+                replace_data_atom(key, ilst_atom, value)
+                break
+        else:
+            #atom not present, so append new parent and data sub-atom
+            self.ilst_atom().add_child(
+                M4A_ILST_Leaf_Atom(ilst_leaf, [new_data_atom(key, value)]))
 
     def __delattr__(self, key):
-        if (self.ilst_atom is not None):
+        if (self.has_ilst_atom()):
+            ilst_atom = self.ilst_atom()
+
             if (key in self.UNICODE_ATTRIB_TO_ILST):
-                self.ilst_atom.leaf_atoms = filter(
+                ilst_atom.leaf_atoms = filter(
                     lambda atom: atom.name != self.UNICODE_ATTRIB_TO_ILST[key],
-                    self.ilst_atom)
+                    ilst_atom)
             elif (key == "track_number"):
                 if (self.track_total == 0):
-                    self.ilst_atom.leaf_atoms = filter(
-                        lambda atom: atom.name != "trkn", self.ilst_atom)
+                    ilst_atom.leaf_atoms = filter(
+                        lambda atom: atom.name != "trkn", ilst_atom)
                 else:
                     self.track_number = 0
             elif (key == "track_total"):
                 if (self.track_number == 0):
-                    self.ilst_atom.leaf_atoms = filter(
-                        lambda atom: atom.name != "trkn", self.ilst_atom)
+                    ilst_atom.leaf_atoms = filter(
+                        lambda atom: atom.name != "trkn", ilst_atom)
                 else:
                     self.track_total = 0
             elif (key == "album_number"):
                 if (self.album_total == 0):
-                    self.ilst_atom.leaf_atoms = filter(
-                        lambda atom: atom.name != "disk", self.ilst_atom)
+                    ilst_atom.leaf_atoms = filter(
+                        lambda atom: atom.name != "disk", ilst_atom)
                 else:
                     self.album_number = 0
             elif (key == "album_total"):
                 if (self.album_number == 0):
-                    self.ilst_atom.leaf_atoms = filter(
-                        lambda atom: atom.name != "disk", self.ilst_atom)
+                    ilst_atom.leaf_atoms = filter(
+                        lambda atom: atom.name != "disk", ilst_atom)
                 else:
                     self.album_total = 0
             else:
@@ -1082,34 +1101,35 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                     raise AttributeError(key)
 
     def images(self):
-        if (self.ilst_atom is not None):
-            return [atom['data'] for atom in self.ilst_atom
+        if (self.has_ilst_atom()):
+            return [atom['data'] for atom in self.ilst_atom()
                     if ((atom.name == 'covr') and (atom.has_child('data')))]
         else:
             return []
 
     def add_image(self, image):
-        if (self.ilst_atom is not None):
-            #filter out old cover image before adding new one
-            self.ilst_atom.leaf_atoms = filter(
-                lambda atom: not ((atom.name == 'covr') and
-                                  (atom.has_child('data')) and
-                                  (atom['data'].data == image.data)),
-                self.ilst_atom) + [M4A_ILST_Leaf_Atom(
-                    'covr',
-                    [M4A_ILST_COVR_Data_Atom.converted(image)])]
-        else:
-            #no ilst atom, so build one and add the appropriate sub-atoms
-            #FIXME
-            raise NotImplementedError()
+        if (not self.has_ilst_atom()):
+            self.add_ilst_atom()
+
+        ilst_atom = self.ilst_atom()
+
+        #filter out old cover image before adding new one
+        ilst_atom.leaf_atoms = filter(
+            lambda atom: not ((atom.name == 'covr') and
+                              (atom.has_child('data'))),
+            ilst_atom) + [M4A_ILST_Leaf_Atom(
+                'covr',
+                [M4A_ILST_COVR_Data_Atom.converted(image)])]
 
     def delete_image(self, image):
-        if (self.ilst_atom is not None):
-            self.ilst_atom.leaf_atoms = filter(
+        if (self.has_ilst_atom()):
+            ilst_atom = self.ilst_atom()
+
+            ilst_atom.leaf_atoms = filter(
                 lambda atom: not ((atom.name == 'covr') and
                                   (atom.has_child('data')) and
                                   (atom['data'].data == image.data)),
-                self.ilst_atom)
+                ilst_atom)
 
     @classmethod
     def converted(cls, metadata):
@@ -1160,34 +1180,11 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                           M4A_Tree_Atom('ilst', ilst_atoms),
                           M4A_FREE_Atom(1024)])
 
-    def __comment_name__(self):
-        return u'M4A'
-
     @classmethod
     def supports_images(self):
         """Returns True."""
 
         return True
-
-    @classmethod
-    def __by_pair__(cls, atom1, atom2):
-        KEY_MAP = {"\xa9nam": 1,
-                   "\xa9ART": 6,
-                   "\xa9com": 5,
-                   "\xa9alb": 2,
-                   "trkn": 3,
-                   "disk": 4,
-                   "----": 8}
-
-        return cmp(KEY_MAP.get(atom1.name, 7), KEY_MAP.get(atom2.name, 7))
-
-    def __comment_pairs__(self):
-        if (self.ilst_atom is not None):
-            return [(atom.name.replace(chr(0xA9), " "), unicode(atom))
-                    for atom in sorted(self.ilst_atom, self.__by_pair__)
-                    if (atom.name not in ('covr', ))]
-        else:
-            return []
 
     def clean(self, fixes_applied):
         def cleaned_atom(atom):
@@ -1222,14 +1219,20 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
             else:
                 return atom
 
-        if (self.ilst_atom is not None):
-            cleaned_leaf_atoms = filter(lambda atom: atom is not None,
-                                        map(cleaned_atom, self.ilst_atom))
+        if (self.has_ilst_atom()):
+            return M4A_META_Atom(
+                self.version,
+                self.flags,
+                [M4A_Tree_Atom('ilst',
+                               filter(lambda atom: atom is not None,
+                                      map(cleaned_atom, self.ilst_atom())))])
         else:
-            print "no ilst atom"
-
-        return M4A_META_Atom(self.version, self.flags,
-                             [M4A_Tree_Atom('ilst', cleaned_leaf_atoms)])
+            #if no ilst atom, return a copy of the meta atom as-is
+            return M4A_META_Atom(
+                self.version,
+                self.flags,
+                [M4A_Tree_Atom('ilst',
+                               [atom.copy() for atom in self.ilst_atom()])])
 
 
 class M4A_ILST_Leaf_Atom(M4A_Tree_Atom):

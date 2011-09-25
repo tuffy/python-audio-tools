@@ -2445,7 +2445,7 @@ class M4AMetaDataTest(MetaDataTest):
                 self.assertEqual(metadata, metadata2)
                 self.assertEqual(metadata.__class__, metadata2.__class__)
                 self.assertEqual(
-                    track.get_metadata().ilst_atom["\xa9foo"].data,
+                    track.get_metadata().ilst_atom()["\xa9foo"].data,
                     "Bar")
             finally:
                 temp_file.close()

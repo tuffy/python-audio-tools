@@ -222,12 +222,12 @@ class __PNG__(ImageMetrics):
         elif (color_type == 4):  # grayscale + alpha
             return cls(width=width,
                        height=height,
-                       bits_per_pixel=ihdr.bit_depth * 2,
+                       bits_per_pixel=bit_depth * 2,
                        color_count=0)
         elif (color_type == 6):  # RGB + alpha
             return cls(width=width,
                        height=height,
-                       bits_per_pixel=ihdr.bit_depth * 4,
+                       bits_per_pixel=bit_depth * 4,
                        color_count=0)
 
 #######################

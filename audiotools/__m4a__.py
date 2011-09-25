@@ -229,15 +229,15 @@ class M4ATaggedAudio:
         #from one M4A file to another
         file_specific_atoms = frozenset(['\xa9too', '----', 'pgap', 'tmpo'])
 
-        if (metadata.ilst_atom is not None):
-            metadata.ilst_atom.leaf_atoms = filter(
+        if (metadata.has_ilst_atom()):
+            metadata.ilst_atom().leaf_atoms = filter(
                 lambda atom: atom.name not in file_specific_atoms,
-                metadata.ilst_atom)
+                metadata.ilst_atom())
 
-            if (old_metadata.ilst_atom is not None):
-                metadata.ilst_atom.leaf_atoms.extend(
+            if (old_metadata.has_ilst_atom()):
+                metadata.ilst_atom().leaf_atoms.extend(
                     filter(lambda atom: atom.name in file_specific_atoms,
-                           old_metadata.ilst_atom))
+                           old_metadata.ilst_atom()))
 
         self.update_metadata(metadata, old_metadata)
 

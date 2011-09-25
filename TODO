@@ -4208,23 +4208,22 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO check these against PIL's output
 *** TODO check against truncated images
 ** DONE __init__.py
-** TODO __m4a__.py
+** DONE __m4a__.py
 *** DONE M4ATaggedAudio
     - [X] get_metadata
     - [X] set_metadata
     - [X] delete_metadata
-*** TODO M4A_META_Atom
+*** DONE M4A_META_Atom
     - [X] __init__
     - [X] __repr__
     - [X] parse
     - [X] __getattr__
-    - [ ] __setattr__
+    - [X] __setattr__
     - [X] __delattr__
     - [X] images
-    - [ ] add_image
+    - [X] add_image
     - [X] delete_image
     - [X] converted
-    - [ ] merge
     - [X] __comment_name__
     - [X] supports_images
     - [X] __by_pair__
