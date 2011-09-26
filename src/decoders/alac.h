@@ -29,18 +29,17 @@ typedef struct {
     FILE* file;
     BitstreamReader* bitstream;
 
-    int sample_rate;
-    int channels;
-    int channel_mask;
-    int bits_per_sample;
+    unsigned int sample_rate;
+    unsigned int channels;
+    unsigned int bits_per_sample;
 
-    int total_samples;
+    unsigned int total_samples;
 
     /*a bunch of decoding fields pulled from the stream's 'alac' atom*/
-    int max_samples_per_frame;
-    int history_multiplier;
-    int initial_history;
-    int maximum_k;
+    unsigned int max_samples_per_frame;
+    unsigned int history_multiplier;
+    unsigned int initial_history;
+    unsigned int maximum_k;
 
     struct ia_array samples; /*a sample buffer for an entire group of frames*/
     struct ia_array subframe_samples; /*a sample buffer for subframe output*/
@@ -48,7 +47,8 @@ typedef struct {
     struct ia_array residuals; /*a buffer for residual values*/
     struct alac_subframe_header *subframe_headers;
 
-    int data_allocated; /*indicates the init method allocated data*/
+    int data_allocated; /*indicates the init method allocated
+                          the preceding ia_array and subframe header structs*/
 } decoders_ALACDecoder;
 
 struct alac_frame_header {
@@ -100,16 +100,19 @@ int
 ALACDecoder_init(decoders_ALACDecoder *self,
                  PyObject *args, PyObject *kwds);
 
+int
+ALACDecoder_parse_decoding_parameters(decoders_ALACDecoder *self);
+
 /*walks through the open QuickTime stream looking for the 'mdat' atom
   or returns ERROR if one cannot be found*/
 status
-ALACDecoder_seek_mdat(decoders_ALACDecoder *self);
+ALACDecoder_seek_mdat(BitstreamReader* alac_stream);
 
 /*reads "frame_header" from the current bitstream*/
 void
 ALACDecoder_read_frame_header(BitstreamReader *bs,
                               struct alac_frame_header *frame_header,
-                              int max_samples_per_frame);
+                              unsigned int max_samples_per_frame);
 
 /*reads "subframe header" from the current bitstream*/
 void
@@ -128,11 +131,11 @@ ALACDecoder_read_wasted_bits(BitstreamReader *bs,
 void
 ALACDecoder_read_residuals(BitstreamReader *bs,
                            struct i_array *residuals,
-                           int residual_count,
-                           int sample_size,
-                           int initial_history,
-                           int history_multiplier,
-                           int maximum_k);
+                           unsigned int residual_count,
+                           unsigned int sample_size,
+                           unsigned int initial_history,
+                           unsigned int history_multiplier,
+                           unsigned int maximum_k);
 
 /*reads an unsigned residual from the current bitstream*/
 int
@@ -234,3 +237,44 @@ PyTypeObject decoders_ALACDecoderType = {
     0,                         /* tp_alloc */
     ALACDecoder_new,           /* tp_new */
 };
+
+/*returns 0 if the given sub atom name is found in the parent
+  and sets "sub_atom" to that atom data and "sub_atom_size" to its size
+  (not including the 64 bit header)
+  returns 1 if the sub atom is not found in the parent*/
+int
+find_atom(BitstreamReader* parent,
+          BitstreamReader* sub_atom, uint32_t* sub_atom_size,
+          const char* sub_atom_name);
+
+/*returns 0 if the given sub atom path is found in the parent
+  and sets "sub_atom" to that atom data and "sub_atom_size" to its size
+  (not including the 64 bit header)
+  returns 1 if the sub atom path is not found in the parent*/
+int
+find_sub_atom(BitstreamReader* parent,
+              BitstreamReader* sub_atom, uint32_t* sub_atom_size,
+              ...);
+
+void
+swap_readers(BitstreamReader** a, BitstreamReader** b);
+
+/*returns 0 if the atom is read successfully,
+  1 on an I/O error,
+  2 if there's a parsing error*/
+int
+read_alac_atom(BitstreamReader* stsd_atom,
+               unsigned int* max_samples_per_frame,
+               unsigned int* bits_per_sample,
+               unsigned int* history_multiplier,
+               unsigned int* initial_history,
+               unsigned int* maximum_k,
+               unsigned int* channels,
+               unsigned int* sample_rate);
+
+/*returns 0 if the atom is read successfully,
+  1 on an I/O error,
+  2 if the version is unsupported*/
+int
+read_mdhd_atom(BitstreamReader* mdhd_atom,
+               unsigned int* total_frames);

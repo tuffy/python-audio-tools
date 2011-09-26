@@ -1809,31 +1809,6 @@ class ALACFileTest(LosslessFileTest):
 
         self.assertRaises(TypeError, self.decoder, None)
 
-        self.assertRaises(ValueError, self.decoder,
-                          filename="filename",
-                          sample_rate=44100,
-                          channels=0,
-                          channel_mask=0,
-                          bits_per_sample=16,
-                          total_frames=44100,
-                          max_samples_per_frame=4096,
-                          history_multiplier=40,
-                          initial_history=10,
-                          maximum_k=14)
-
-        self.assertRaises(ValueError, self.decoder,
-                          filename="filename",
-                          sample_rate=44100,
-                          channels=2,
-                          channel_mask=0,
-                          bits_per_sample=15,
-                          total_frames=44100,
-                          max_samples_per_frame=4096,
-                          history_multiplier=40,
-                          initial_history=10,
-                          maximum_k=14)
-
-
     @FORMAT_ALAC
     def test_bits_per_sample(self):
         temp = tempfile.NamedTemporaryFile(suffix=self.suffix)

@@ -780,6 +780,9 @@ class ALACAudio(M4ATaggedAudio,AudioFile):
 
             #then, fetch the alac atom for bps, channels and sample rate
             try:
+                #though some of these fields are parsed redundantly
+                #in .to_pcm(), we still need to parse them here
+                #to fetch values for .bits_per_sample(), etc.
                 (stsd_version, descriptions) = stsd.parse("8u 24p 32u")
                 (alac1,
                  alac2,
@@ -899,20 +902,14 @@ class ALACAudio(M4ATaggedAudio,AudioFile):
 
         import audiotools.decoders
 
-        #FIXME - in the future,
-        #it'd be better to have ALACDecoder figure out these values
-        #on its own and raise an exception if necessary
-        return audiotools.decoders.ALACDecoder(
-            filename=self.filename,
-            sample_rate=self.__sample_rate__,
-            channels=self.__channels__,
-            channel_mask=self.channel_mask(),
-            bits_per_sample=self.__bits_per_sample__,
-            total_frames=self.__length__,
-            max_samples_per_frame=self.__max_samples_per_frame__,
-            history_multiplier=self.__history_multiplier__,
-            initial_history=self.__initial_history__,
-            maximum_k=self.__maximum_k__)
+        try:
+            return audiotools.decoders.ALACDecoder(self.filename)
+        except (IOError, ValueError), msg:
+            return PCMReaderError(error_message=str(msg),
+                                  sample_rate=self.sample_rate(),
+                                  channels=self.channels(),
+                                  channel_mask=int(self.channel_mask()),
+                                  bits_per_sample=self.bits_per_sample())
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None,
