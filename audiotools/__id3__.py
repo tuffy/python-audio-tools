@@ -1196,7 +1196,10 @@ class ID3v22Comment(MetaData):
             value = getattr(metadata, attr)
             if ((attr not in cls.INTEGER_FIELDS) and
                 (len(value) > 0)):
-                frames.append(cls.TEXT_FRAME.converted(key, value))
+                if (attr == 'comment'):
+                    frames.append(cls.COMMENT_FRAME.converted(key, value))
+                else:
+                    frames.append(cls.TEXT_FRAME.converted(key, value))
 
         if ((metadata.track_number != 0) or
             (metadata.track_total != 0)):

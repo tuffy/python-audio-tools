@@ -2332,18 +2332,98 @@ class trackcmp(UtilTest):
 
 
 class trackinfo(UtilTest):
+    METADATA_FORMATS = (audiotools.FlacAudio,
+                        audiotools.OggFlacAudio,
+                        audiotools.MP3Audio,
+                        audiotools.MP2Audio,
+                        audiotools.VorbisAudio,
+                        audiotools.AiffAudio,
+                        audiotools.M4AAudio,
+                        audiotools.ALACAudio,
+                        audiotools.WavPackAudio)
+
     @UTIL_TRACKINFO
     def setUp(self):
-        pass
+        self.metadata_files = [
+            tempfile.NamedTemporaryFile(suffix="." + format.SUFFIX)
+            for format in self.METADATA_FORMATS]
+
+        self.metadata_tracks = [
+            format.from_pcm(file.name, BLANK_PCM_Reader(1))
+            for (file, format) in zip(self.metadata_files,
+                                      self.METADATA_FORMATS)]
+
+        metadata = audiotools.MetaData(track_name=u"a",
+                                       track_number=1,
+                                       track_total=2,
+                                       album_name=u"b",
+                                       artist_name=u"c",
+                                       comment=u"d")
+
+        for track in self.metadata_tracks:
+            track.set_metadata(metadata)
 
     @UTIL_TRACKINFO
     def tearDown(self):
-        pass
+        for file in self.metadata_files:
+            file.close()
 
     @UTIL_TRACKINFO
     def test_trackinfo(self):
-        pass #FIXME - try all the options
+        import re
+        import StringIO
 
+        all_options = ["-n", "-L", "-b", "-%", "-C"]
+
+        for track in self.metadata_tracks:
+            for count in xrange(1, len(all_options) + 1):
+                for options in Combinations(all_options, count):
+                    # print track.filename,repr(options)
+                    # if (self.__run_app__(["trackinfo"] + options + [track.filename]) != 0):
+                    #     print self.stderr.getvalue()
+                    #     self.assert_(False)
+                    self.assertEqual(
+                        self.__run_app__(
+                            ["trackinfo"] + options + [track.filename]), 0)
+
+                    #check the initial output line
+                    line = self.stdout.readline()
+                    if ("-b" in options):
+                        self.assert_(
+                            re.match(r'\s*\d+ kbps: %s\n' %
+                                     (track.filename), line) is not None)
+                    elif ("-%" in options):
+                        self.assert_(
+                            re.match(r'\s*\d+%%: %s\n' %
+                                     (track.filename), line) is not None)
+                    else:
+                        self.assert_(
+                            re.match(r'\d+:\d+ 2ch 44100Hz 16-bit: %s\n' %
+                                     (track.filename), line) is not None)
+
+                    #check metadata/low-level metadata if -n not present
+                    if ("-n" not in options):
+                        if ("-L" not in options):
+                            self.__check_output__(u"  Title : a")
+                            self.__check_output__(u" Artist : c")
+                            self.__check_output__(u"  Album : b")
+                            self.__check_output__(u"Track # : 1/2")
+                            self.__check_output__(u"Comment : d")
+                        else:
+                            for line in StringIO.StringIO(
+                                track.get_metadata().raw_info()):
+                                self.__check_output__(line.rstrip('\r\n'))
+                        if ("-C" in options):
+                            self.__check_output__(u"")
+                    else:
+                        #no metadata display at all
+                        pass
+
+                    #check channel assignment if -C present
+                    if ("-C" in options):
+                        self.__check_output__(_(u"Assigned Channels:"))
+                        self.__check_output__(_(u"channel 1 - Front Left"))
+                        self.__check_output__(_(u"channel 2 - Front Right"))
 
 class tracklength(UtilTest):
     @UTIL_TRACKLENGTH

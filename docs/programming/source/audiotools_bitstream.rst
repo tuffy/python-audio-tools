@@ -51,28 +51,28 @@ out of a larger binary file stream.
 
    Given a number of bits to read from the stream,
    returns an unsigned integer.
-   Bits must be: ``0 ≤ bits ≤ 32`` .
+   Bits must be: ``0 <= bits <= 32`` .
    May raise :exc:`IOError` if an error occurs reading the stream.
 
 .. method:: BitstreamReader.read64(bits)
 
    Given a number of bits to read from the stream,
    returns an unsigned long.
-   Bits must be: ``0 ≤ bits ≤ 64`` .
+   Bits must be: ``0 <= bits <= 64`` .
    May raise :exc:`IOError` if an error occurs reading the stream.
 
 .. method:: BitstreamReader.read_signed(bits)
 
    Given a number of bits to read from the stream as a two's complement value,
    returns a signed integer.
-   Bits must be: ``1 ≤ bits ≤ 32`` .
+   Bits must be: ``1 <= bits <= 32`` .
    May raise :exc:`IOError` if an error occurs reading the stream.
 
 .. method:: BitstreamReader.read_signed64(bits)
 
    Given a number of bits to read from the stream as a two's complement value,
    returns a signed integer.
-   Bits must be: ``1 ≤ bits ≤ 64`` .
+   Bits must be: ``1 <= bits <= 64`` .
    May raise :exc:`IOError` if an error occurs reading the stream.
 
 .. method:: BitstreamReader.skip(bits)
@@ -249,32 +249,32 @@ into a larger binary file stream.
 
    Writes the given unsigned integer value to the stream
    using the given number of bits.
-   Bits must be: ``0 ≤ bits ≤ 32`` .
-   Value must be: ``0 ≤ value < (2 ** bits)`` .
+   Bits must be: ``0 <= bits <= 32`` .
+   Value must be: ``0 <= value < (2 ** bits)`` .
    May raise :exc:`IOError` if an error occurs writing the stream.
 
 .. method:: BitstreamWriter.write64(bits, value)
 
    Writes the given unsigned integer value to the stream
    using the given number of bits.
-   Bits must be: ``0 ≤ bits ≤ 64`` .
-   Value must be: ``0 ≤ value < (2 ** bits)`` .
+   Bits must be: ``0 <= bits <= 64`` .
+   Value must be: ``0 <= value < (2 ** bits)`` .
    May raise :exc:`IOError` if an error occurs writing the stream.
 
 .. method:: BitstreamWriter.write_signed(bits, value)
 
    Writes the given signed integer value to the stream
    using the given number of bits.
-   Bits must be: ``0 ≤ bits ≤ 32`` .
-   Value must be: ``-(2 ** (bits - 1)) ≤ value < 2 ** (bits - 1)`` .
+   Bits must be: ``0 <= bits <= 32`` .
+   Value must be: ``-(2 ** (bits - 1)) <= value < 2 ** (bits - 1)`` .
    May raise :exc:`IOError` if an error occurs writing the stream.
 
 .. method:: BitstreamWriter.write_signed64(bits, value)
 
    Writes the given signed integer value to the stream
    using the given number of bits.
-   Bits must be: ``0 ≤ bits ≤ 64`` .
-   Value must be: ``-(2 ** (bits - 1)) ≤ value < 2 ** (bits - 1)`` .
+   Bits must be: ``0 <= bits <= 64`` .
+   Value must be: ``-(2 ** (bits - 1)) <= value < 2 ** (bits - 1)`` .
    May raise :exc:`IOError` if an error occurs writing the stream.
 
 .. method:: BitstreamWriter.unary(stop_bit, value)
@@ -377,29 +377,29 @@ bits or bytes, for possible output into a :class:`BitstreamWriter`.
 
    Records the given unsigned integer value to the stream
    using the given number of bits.
-   Bits must be: ``0 ≤ bits ≤ 32`` .
-   Value must be: ``0 ≤ value < (2 ** bits)`` .
+   Bits must be: ``0 <= bits <= 32`` .
+   Value must be: ``0 <= value < (2 ** bits)`` .
 
 .. method:: BitstreamRecorder.write64(bits, value)
 
    Records the given unsigned integer value to the stream
    using the given number of bits.
-   Bits must be: ``0 ≤ bits ≤ 64`` .
-   Value must be: ``0 ≤ value < (2 ** bits)`` .
+   Bits must be: ``0 <= bits <= 64`` .
+   Value must be: ``0 <= value < (2 ** bits)`` .
 
 .. method:: BitstreamRecorder.write_signed(bits, value)
 
    Records the given signed integer value to the stream
    using the given number of bits.
-   Bits must be: ``0 ≤ bits ≤ 32`` .
-   Value must be: ``-(2 ** (bits - 1)) ≤ value < 2 ** (bits - 1)`` .
+   Bits must be: ``0 <= bits <= 32`` .
+   Value must be: ``-(2 ** (bits - 1)) <= value < 2 ** (bits - 1)`` .
 
 .. method:: BitstreamRecorder.write_signed64(bits, value)
 
    Records the given signed integer value to the stream
    using the given number of bits.
-   Bits must be: ``0 ≤ bits ≤ 64`` .
-   Value must be: ``-(2 ** (bits - 1)) ≤ value < 2 ** (bits - 1)`` .
+   Bits must be: ``0 <= bits <= 64`` .
+   Value must be: ``-(2 ** (bits - 1)) <= value < 2 ** (bits - 1)`` .
 
 .. method:: BitstreamRecorder.unary(stop_bit, value)
 
@@ -550,26 +550,26 @@ The actual writes themselves are not recorded.
 .. method:: BitstreamAccumulator.write(bits, value)
 
    Counts the given number of bits written to the stream.
-   Bits must be: ``0 ≤ bits ≤ 32`` .
-   Value must be: ``0 ≤ value < (2 ** bits)`` .
+   Bits must be: ``0 <= bits <= 32`` .
+   Value must be: ``0 <= value < (2 ** bits)`` .
 
 .. method:: BitstreamAccumulator.write64(bits, value)
 
    Counts the given number of bits written to the stream.
-   Bits must be: ``0 ≤ bits ≤ 64`` .
-   Value must be: ``0 ≤ value < (2 ** bits)`` .
+   Bits must be: ``0 <= bits <= 64`` .
+   Value must be: ``0 <= value < (2 ** bits)`` .
 
 .. method:: BitstreamAccumulator.write_signed(bits, value)
 
    Counts the given number of bits written to the stream.
-   Bits must be: ``0 ≤ bits ≤ 32`` .
-   Value must be: ``-(2 ** (bits - 1)) ≤ value < 2 ** (bits - 1)`` .
+   Bits must be: ``0 <= bits <= 32`` .
+   Value must be: ``-(2 ** (bits - 1)) <= value < 2 ** (bits - 1)`` .
 
 .. method:: BitstreamAccumulator.write_signed64(bits, value)
 
    Counts the given number of bits written to the stream.
-   Bits must be: ``0 ≤ bits ≤ 64`` .
-   Value must be: ``-(2 ** (bits - 1)) ≤ value < 2 ** (bits - 1)`` .
+   Bits must be: ``0 <= bits <= 64`` .
+   Value must be: ``-(2 ** (bits - 1)) <= value < 2 ** (bits - 1)`` .
 
 .. method:: BitstreamAccumulator.unary(stop_bit, value)
 
@@ -651,7 +651,7 @@ This is a compiled Huffman tree for use by :class:`BitstreamReader`.
 
    For example, given the following Huffman tree definition:
 
-   .. image:: huffman.svg
+   .. image:: huffman.png
 
    we define our Huffman tree for a big-endian stream as follows:
 

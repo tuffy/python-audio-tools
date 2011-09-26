@@ -3297,6 +3297,62 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] ID3v22Comment
    - [X] ID3v23Comment
    - [X] ID3v24Comment
+* DONE Eliminate the MetaData.merge() method
+  The idea of this method is to provide some sort of precedence
+  which combining metadata from two sources.
+  For example, in track2track, we want provided XMCD metadata
+  to override metadata inside the track itself.
+  The .merge() method takes a raw MetaData object from XMCD
+  and merges it with non-blank fields from the original file
+  which means the XMCD metadata is the "base" of sorts.
+
+  A cleaner approach would be to take the raw MetaData object from XMCD,
+  get a list of its non-empty fields and call __setattr__ on
+  the track's metadata to update those fields.
+
+  MetaData with the highest priority would call __setattr__ last.
+** DONE Remove method from MetaData and subclasses
+   - [X] ApeTag
+   - [X] FlacMetaData
+   - [X] ID3v22Comment
+   - [X] ID3v23Comment
+   - [X] ID3v24Comment
+   - [X] ID3CommentPair
+   - [X] M4A_META_Atom
+   - [X] MetaData
+   - [X] VorbisComment
+** DONE Remove method from tools
+   - [X] track2track
+   - [X] trackrename
+   - [X] tracksplit
+   - [X] tracktag
+** DONE Remove method from documentation
+** DONE Remove method from tests
+* DONE Have trackinfo display metadata fields by default
+  Instead of displaying the low-level info,
+  show fields like "track name", "album name", etc.
+  unless a -R/--raw flag is indicated.
+** DONE Replace MetaData.comment_pairs() with MetaData.raw_info()
+   This should be even lower level than it is now, and unsorted.
+   - [X] ApeTag
+   - [X] FlacMetaData
+   - [X] ID3CommentPair
+   - [X] ID3v1Comment
+   - [X] ID3v22Comment
+   - [X] ID3v23Comment
+   - [X] ID3v24Comment
+   - [X] M4A_META_Atom
+   - [X] OggFlacMetaData
+   - [X] VorbisComment
+*** DONE Document MetaData.raw_info() method
+** DONE Convert MetaData.__unicode__() to display fields by name
+   This should always use the higher level implementation
+   and sort fields by name.
+** DONE Update trackinfo to use MetaData's unicode output by default
+** DONE Add -L/--low-level option to trackinfo
+** DONE Add -L/--low-level option to trackinfo.1
+** DONE Add consistent embedded cuesheet display
+** DONE Update unit tests
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -4439,31 +4495,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO WavPackAudio
    against tablib?
 * TODO Add progress to track2cd audio file conversion
-* TODO Have trackinfo display metadata fields by default
-  Instead of displaying the low-level info,
-  show fields like "track name", "album name", etc.
-  unless a -R/--raw flag is indicated.
-** DONE Replace MetaData.comment_pairs() with MetaData.raw_info()
-   This should be even lower level than it is now, and unsorted.
-   - [X] ApeTag
-   - [X] FlacMetaData
-   - [X] ID3CommentPair
-   - [X] ID3v1Comment
-   - [X] ID3v22Comment
-   - [X] ID3v23Comment
-   - [X] ID3v24Comment
-   - [X] M4A_META_Atom
-   - [X] OggFlacMetaData
-   - [X] VorbisComment
-*** DONE Document MetaData.raw_info() method
-** DONE Convert MetaData.__unicode__() to display fields by name
-   This should always use the higher level implementation
-   and sort fields by name.
-** DONE Update trackinfo to use MetaData's unicode output by default
-** DONE Add -L/--low-level option to trackinfo
-** DONE Add -L/--low-level option to trackinfo.1
-** DONE Add consistent embedded cuesheet display
-** TODO Update unit tests
 * TODO Don't port cuesheets with AudioFile.set_metadata()
   This is mostly for WavPack since it embeds cuesheet data
   in the APEv2 tag.
@@ -4955,37 +4986,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 
   Unfortunately, Chrome doesn't do MathML and IE doesn't do SVG
   which makes it non-viable right now.
-* TODO Eliminate the MetaData.merge() method
-  The idea of this method is to provide some sort of precedence
-  which combining metadata from two sources.
-  For example, in track2track, we want provided XMCD metadata
-  to override metadata inside the track itself.
-  The .merge() method takes a raw MetaData object from XMCD
-  and merges it with non-blank fields from the original file
-  which means the XMCD metadata is the "base" of sorts.
-
-  A cleaner approach would be to take the raw MetaData object from XMCD,
-  get a list of its non-empty fields and call __setattr__ on
-  the track's metadata to update those fields.
-
-  MetaData with the highest priority would call __setattr__ last.
-** DONE Remove method from MetaData and subclasses
-   - [X] ApeTag
-   - [X] FlacMetaData
-   - [X] ID3v22Comment
-   - [X] ID3v23Comment
-   - [X] ID3v24Comment
-   - [X] ID3CommentPair
-   - [X] M4A_META_Atom
-   - [X] MetaData
-   - [X] VorbisComment
-** DONE Remove method from tools
-   - [X] track2track
-   - [X] trackrename
-   - [X] tracksplit
-   - [X] tracktag
-** DONE Remove method from documentation
-** TODO Remove method from tests
 * TODO Shift to Cython?
   Rather than push toward Python 3, which is slower than 2
   and not yet as widely supported, it may be better to shift toward

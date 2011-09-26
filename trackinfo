@@ -51,11 +51,17 @@ if (__name__ == '__main__'):
     for file in audiotools.open_files(args, messenger=msg):
         length = int(file.seconds_length())
         if (options.show_bitrate):
-            msg.output(
-                _(u"%(bitrate)4.4s kbps: %(filename)s") %
-                {'bitrate': ((os.path.getsize(file.filename) * 8) /
-                             2 ** 10) / length,
-                 'filename': msg.filename(file.filename)})
+            try:
+                msg.output(
+                    _(u"%(bitrate)4.4s kbps: %(filename)s") %
+                    {'bitrate': ((os.path.getsize(file.filename) * 8) /
+                                 2 ** 10) / length,
+                     'filename': msg.filename(file.filename)})
+            except ZeroDivisionError:
+                msg.output(
+                    _(u"%(bitrate)4.4s kbps: %(filename)s") %
+                    {'bitrate': 0,
+                     'filename': msg.filename(file.filename)})
         elif (options.show_percentage):
             try:
                 msg.output(
