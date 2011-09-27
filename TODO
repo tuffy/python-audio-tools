@@ -4489,7 +4489,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO M4AAudio/ALACAudio
    against taglib?
 ** TODO MP3Audio/MP2Audio
-   against id3lib
+   Against taglib, perhaps?  Venerable id3lib doesn't work with UCS-2.
 ** TODO VorbisAudio
    against vorbis-tools
 ** TODO WavPackAudio
@@ -5012,6 +5012,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   demonstrating how the decoding process works in a relatively simple
   manner through the use of the BitstreamReader objects.
   They would also provide reference implementations.
+** TODO py_decoders/FlacDecoder
+** TODO py_decoders/OggFlacDecoder
+** TODO py_decoders/SHNDecoder
+** TODO py_decoders/ALACDecoder
+** TODO py_decoders/WavPackDecoder
 ** TODO Add .analyze_frame() option to Python-based decoders
 ** TODO Remove .analyze_frame() option from C-based decoders
    These add significant code clutter to code that needs to be kept simple
