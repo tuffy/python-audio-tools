@@ -117,7 +117,7 @@ verifymodule_mpeg(PyObject *dummy, PyObject *args) {
 
     br_etry(bitstream);
     bitstream->input.file = NULL;
-    bitstream->close(bitstream);
+    bitstream->free(bitstream);
     if (data_buffer != NULL)
         free(data_buffer);
     Py_INCREF(Py_None);
@@ -127,7 +127,7 @@ verifymodule_mpeg(PyObject *dummy, PyObject *args) {
     bitstream->input.file = NULL;
     if (data_buffer != NULL)
         free(data_buffer);
-    bitstream->close(bitstream);
+    bitstream->free(bitstream);
     return NULL;
 }
 

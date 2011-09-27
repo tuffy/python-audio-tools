@@ -958,4 +958,3 @@ alac_log_output(struct alac_encode_log *log)
                          log->mdat_byte_size);
 }
 #endif
-

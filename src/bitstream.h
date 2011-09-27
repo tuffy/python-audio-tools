@@ -238,7 +238,7 @@ typedef struct BitstreamReader_s {
     (*parse)(struct BitstreamReader_s* bs, char* format, ...);
 
     /*sets the stream's format to big endian or little endian
-      /which automatically byte aligns it*/
+      which automatically byte aligns it*/
     void
     (*set_endianness)(struct BitstreamReader_s* bs,
                       bs_endianness endianness);

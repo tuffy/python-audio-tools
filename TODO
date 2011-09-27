@@ -4838,7 +4838,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE HuffmanTree
 *** DONE Substream
 *** DONE format_size
-** TODO Handle bitstream closing more consistently
+** DONE Handle bitstream closing more consistently
    The basic handle cycle is:
 
    h = open_handle(substream); /*allocates space for handle*/
@@ -4956,7 +4956,22 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
       - [X] return result of .close() method
 ***** DONE BitstreamRecorder_close
 ***** DONE BitstreamAccumulator_close
-*** TODO Double-check existing C modules for proper free/close usage
+*** DONE Double-check existing C modules for proper free/close usage
+    - [X] bitstream.c
+    - [X] decoders/alac.c
+    - [X] decoders/flac.c
+    - [X] decoders/mlp.c
+    - [X] decoders/ogg.c
+    - [X] decoders/shn.c
+    - [X] decoders/wavpack.c
+    - [X] encoders/alac.c
+    - [X] encoders/flac.c
+    - [X] encoders/flac_lpc.c
+    - [X] encoders/shn.c
+    - [X] encoders/wavpack.c
+    - [X] mod_bitstream.c
+    - [X] verify/mpeg.c
+    - [X] verify/ogg.c
 ** DONE Ensure that reading/writing closed streams always fails
    Once a stream's been closed,
    the bitstream should set I/O functions to error generators
@@ -4992,3 +5007,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   Cython for handling lots of low-level file processing.
   It would add a dependency, but has the potential to make
   chunks of the code faster and smaller.
+* TODO Add Python-based file decoders
+  These would be low-performance, Python-based PCMReader-style objects
+  demonstrating how the decoding process works in a relatively simple
+  manner through the use of the BitstreamReader objects.
+  They would also provide reference implementations.
+** TODO Add .analyze_frame() option to Python-based decoders
+** TODO Remove .analyze_frame() option from C-based decoders
+   These add significant code clutter to code that needs to be kept simple

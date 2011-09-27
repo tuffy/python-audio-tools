@@ -107,7 +107,7 @@ verifymodule_ogg(PyObject *dummy, PyObject *args) {
     br_etry(bitstream);
     free(data_buffer);
     bitstream->input.file = NULL;
-    bitstream->close(bitstream);
+    bitstream->free(bitstream);
     Py_INCREF(Py_None);
     return Py_None;
  error:
@@ -115,7 +115,7 @@ verifymodule_ogg(PyObject *dummy, PyObject *args) {
     if (data_buffer != NULL)
         free(data_buffer);
     bitstream->input.file = NULL;
-    bitstream->close(bitstream);
+    bitstream->free(bitstream);
     return NULL;
 }
 
