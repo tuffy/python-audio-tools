@@ -33,7 +33,7 @@
   </row>
   <row>
     <col end="95" start="64" width=".5">Padding (0x00000000)</col>
-    <col end="127" start="96" width=".5">Max Samples Per Frame</col>
+    <col end="127" start="96" width=".5">Samples per Frame</col>
   </row>
   <row>
     <col end="135" start="128" width=".20">Padding (0)</col>
@@ -42,7 +42,7 @@
   </row>
   <row>
     <col end="159" start="152" width=".25">Initial History</col>
-    <col end="167" start="160" width=".25">Maximum K</col>
+    <col end="167" start="160" width=".25">Maximum LSBs</col>
     <col end="175" start="168" width=".25">Channels</col>
     <col end="191" start="176" width=".25">Unknown</col>
   </row>

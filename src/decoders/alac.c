@@ -682,7 +682,6 @@ ALACDecoder_read_frame_header(BitstreamReader *bs,
                               struct alac_frame_header *frame_header,
                               unsigned int max_samples_per_frame)
 {
-    /* frame_header->channels = bs->read(bs, 3) + 1; */
     bs->read(bs, 16); /*nobody seems to know what these are for*/
     frame_header->has_size = bs->read(bs, 1);
     frame_header->wasted_bits = bs->read(bs, 2);

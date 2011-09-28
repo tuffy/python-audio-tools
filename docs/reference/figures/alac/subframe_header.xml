@@ -2,15 +2,15 @@
 <diagram>
   <row>
     <col start="0" end="3" width=".5">Prediction Type</col>
-    <col start="4" end="7" width=".5">Prediction Quantitization</col>
+    <col start="4" end="7" width=".5">QLP Shift Needed</col>
   </row>
   <row>
     <col start="8" end="10" width=".5">Rice Modifier</col>
     <col start="11" end="15" width=".5">Coefficient Count</col>
   </row>
   <row>
-    <col start="16" end="31" width=".333333">Coefficient₁</col>
-    <col start="32" end="47" width=".333333">Coefficient₂</col>
+    <col start="16" end="31" width=".333333">QLP Coefficient₁</col>
+    <col start="32" end="47" width=".333333">QLP Coefficient₂</col>
     <col style="dashed" width=".333333">...</col>
   </row>
 </diagram>

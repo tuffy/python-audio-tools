@@ -375,7 +375,7 @@ figures/m4a_meta.pdf: figures/m4a_meta.xml
 figures/m4a_data.pdf: figures/m4a_data.xml
 	./bitdiagram.py -w 306 -i $< -o $@
 
-figures/alac_alac_atom.pdf: figures/alac_alac_atom.xml
+figures/alac/alac_atom.pdf: figures/alac/alac_atom.xml
 	./bitdiagram.py -w 324 -i $< -o $@
 
 figures/shorten/unsigned.pdf: figures/shorten/unsigned.fig
