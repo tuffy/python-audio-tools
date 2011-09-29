@@ -767,55 +767,54 @@ ALACDecoder_read_residuals(BitstreamReader *bs,
                            unsigned int maximum_k)
 {
     int history = initial_history;
-    int sign_modifier = 0;
-    int decoded_value;
-    int residual;
-    int block_size;
+    unsigned int sign_modifier = 0;
+    unsigned int unsigned_residual;
+    unsigned int zero_block_size;
     int i, j;
-    int k;
 
     ia_reset(residuals);
 
     for (i = 0; i < residual_count; i++) {
-        /*figure out "k" based on the value of "history"*/
-        k = MIN(LOG2((history >> 9) + 3), maximum_k);
-
-        /*get an unsigned decoded_value based on "k"
+        /*get an unsigned residual based on "history"
           and on "sample_size" as a last resort*/
-        decoded_value = ALACDecoder_read_residual(bs, k, sample_size) +
-            sign_modifier;
+        unsigned_residual = ALACDecoder_read_residual(
+            bs,
+            MIN(LOG2((history >> 9) + 3), maximum_k),
+            sample_size) + sign_modifier;
 
-        /*change decoded_value into a signed residual
+        /*change unsigned residual into a signed residual
           and append it to "residuals"*/
-        residual = (decoded_value + 1) >> 1;
-        if (decoded_value & 1)
-            residual *= -1;
+        if (unsigned_residual & 1) {
+            ia_append(residuals, -((unsigned_residual + 1) >> 1));
+        } else {
+            ia_append(residuals, (unsigned_residual + 1) >> 1);
+        }
 
-        ia_append(residuals, residual);
-
-        /*then use our old unsigned decoded_value to update "history"
+        /*then use our old unsigned residual to update "history"
           and reset "sign_modifier"*/
         sign_modifier = 0;
 
-        if (decoded_value > 0xFFFF)
+        if (unsigned_residual > 0xFFFF)
             history = 0xFFFF;
         else
-            history += ((decoded_value * history_multiplier) -
+            history += ((unsigned_residual * history_multiplier) -
                         ((history * history_multiplier) >> 9));
 
         /*if history gets too small, we may have a block of 0 samples
           which can be compressed more efficiently*/
         if ((history < 128) && ((i + 1) < residual_count)) {
-            k = MIN(7 - LOG2(history) + ((history + 16) / 64), maximum_k);
-            block_size = ALACDecoder_read_residual(bs, k, 16);
-            if (block_size > 0) {
+            zero_block_size = ALACDecoder_read_residual(
+                bs,
+                MIN(7 - LOG2(history) + ((history + 16) / 64), maximum_k),
+                16);
+            if (zero_block_size > 0) {
                 /*block of 0s found, so write them out*/
-                for (j = 0; j < block_size; j++) {
+                for (j = 0; j < zero_block_size; j++) {
                     ia_append(residuals, 0);
                     i++;
                 }
             }
-            if (block_size <= 0xFFFF) {
+            if (zero_block_size <= 0xFFFF) {
                 sign_modifier = 1;
             }
 
@@ -826,38 +825,38 @@ ALACDecoder_read_residuals(BitstreamReader *bs,
 
 #define RICE_THRESHOLD 8
 
-int
+unsigned int
 ALACDecoder_read_residual(BitstreamReader *bs,
-                          int k,
-                          int sample_size)
+                          unsigned int lsb_count,
+                          unsigned int sample_size)
 {
-    int x = 0;  /*our final value*/
-    int extrabits;
+    int msb;
+    unsigned int lsb;
 
     /*read a unary 0 value to a maximum of RICE_THRESHOLD (8)*/
-    x = bs->read_limited_unary(bs, 0, RICE_THRESHOLD + 1);
-
-    if (x == -1) {
-        x = bs->read(bs, sample_size);
+    if ((msb = bs->read_limited_unary(bs, 0, RICE_THRESHOLD + 1)) == -1) {
+        /*we've exceeded the maximum number of 1 bits,
+          so return an unencoded value*/
+        return bs->read(bs, sample_size);
+    } else if (lsb_count == 0) {
+        /*no least-significant bits to read, so return most-significant bits*/
+        return (unsigned int)msb;
     } else {
-        if (k > 1) {
-            /*x = x * ((2 ** k) - 1)*/
-            x *= ((1 << k) - 1);
-
-            extrabits = bs->read(bs, k);
-            if (extrabits > 1)
-                x += (extrabits - 1);
-            else {
-                if (extrabits == 1) {
-                    bs->unread(bs, 1);
-                } else {
-                    bs->unread(bs, 0);
-                }
-            }
+        /*read a set of least-significant bits*/
+        lsb = bs->read(bs, lsb_count);
+        if (lsb > 1) {
+            /*if > 1, combine with MSB and return*/
+            return (msb * ((1 << lsb_count) - 1)) + (lsb - 1);
+        } else if (lsb == 1) {
+            /*if = 1, unread single 1 bit and return shifted MSB*/
+            bs->unread(bs, 1);
+            return msb * ((1 << lsb_count) - 1);
+        } else {
+            /*if = 0, unread single 0 bit and return shifted MSB*/
+            bs->unread(bs, 0);
+            return msb * ((1 << lsb_count) - 1);
         }
     }
-
-    return x;
 }
 
 static inline int

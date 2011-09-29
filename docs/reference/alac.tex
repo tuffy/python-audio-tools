@@ -116,7 +116,7 @@ samples in order to handle streams which are 24 bits-per-sample or more.
 
 \clearpage
 
-\subsubsection{Residual Decoding}
+\subsubsection{Residual Block Decoding}
 Each residual block contains one residual value per PCM frame.
 Decoding these residuals requires the
 \VAR{Initial History}, \VAR{History Multiplier},
@@ -125,49 +125,94 @@ from the \texttt{alac} atom,
 as well as the \VAR{Channel Count} and \VAR{Uncompressed LSBs}
 values from the frame header.
 
-The process for reading each signed $\text{residual}_i$ is as follows:
-\begin{enumerate}[I.]
-\item if $\text{history}_i \geq 128$:
+\begin{enumerate}[1)]
+\item $\text{sample size} = \text{\VAR{Bits per Sample}} - (\text{\VAR{Uncompressed LSBs}} \times 8) + \text{\VAR{Channel Count}} - 1$
+\item $h_0 = \text{\VAR{Initial History}}$
+\item $\text{sign modifier}_0 = 0$
+\item $i = 0$
+\item $\text{LSB Count}_i = \text{min}( \lfloor \log_2 ( h_i \div {2 ^ 9} + 3 ) \rfloor , \text{\VAR{Maximum LSBs}} ) $
+\item $u_i = \text{read\_residual}(\text{LSB Count}_i, \text{sample size}) + \text{sign modifier}_i$
+\item $\textbf{residual}_i = \begin{cases} \lfloor (u_i + 1) \div 2 \rfloor & \text{ if } u_i \mod 2 = 0 \\ -\lfloor (u_i + 1) \div 2 \rfloor & \text{ if } u_i \mod 2 = 1 \end{cases}$
+\item $h_{i + 1} = \begin{cases} h_i + (u_i \times \text{\VAR{History Multiplier}}) - \left\lfloor\frac{h_i \times \text{\VAR{History Multiplier}}}{2 ^ 9}\right\rfloor & \text{ if } u_i \leq 65535 \\ 65535 & \text{ if } u_i > 65535 \end{cases}$
+\item if $h_{i + 1} \geq 128$ or $i + 1 = \text{\VAR{PCM Frame Count}}$ then \newline
+$\text{sign modifier}_{i + 1} = 0$ and goto step 15
+\item $\text{Zeroes LSB Count}_i = \text{min}(7 - \lfloor \log_2 ( h_i ) \rfloor + \lfloor (h_i + 16) \div 64 \rfloor , \text{\VAR{Maximum LSBs}} )$
+\item $\text{Zero Residuals}_i = \text{read\_residual}(\text{Zeroes LSB Count}_i , 16)$
+\item if $\text{Zero Residuals}_i > 0$
+\begin{enumerate}[a)]
+\item $[ \textbf{residual}_{i + 1} , \textbf{residual}_{i + \text{Zero Residuals}_i} ] = 0$
+\item $i \leftarrow i + \text{Zero Residuals}_i$
+\end{enumerate}
+\item $\text{sign modifier}_{i + 1} = \begin{cases} 1 & \text{ if } \text{\VAR{PCM Frame Count}} \leq 65535 \\ 0 & \text{ if } \text{\VAR{PCM Frame Count}} > 65535 \end{cases}$
+\item $h_{i + 1} \leftarrow 0$
+\item $i \leftarrow i + 1$
+\item if $i < \text{\VAR{PCM Frame Count}}$ then goto step 5
+\item return \textbf{residual} values
+\end{enumerate}
+
+\clearpage
+
+\subsubsection{Individual Residual Decoding}
+The $\text{read\_residual}(\text{lsb\_count}, \text{sample\_size})$
+function is defined as follows:
 \begin{enumerate}[1)]
 \item read a unary value from the stream with a stop bit of \texttt{0}
-as our $\text{MSB}_i$ (most-significant-bits) value,
-stopping if the number of \texttt{1} bits reaches 9\footnote{This
+as our $\text{MSB}$ (most-significant bits) value,
+stopping if the number of \texttt{1} bits reaches 9
+\item if $\text{MSB} = 9$, return an unsigned value from the stream
+\VAR{sample\_size} bits large\footnote{This
 is an escape code for excessively large residuals}
-\item if the number of \texttt{1} bits is 9,
-read $\text{unsigned}_i$ as
-\newline
-$\text{\VAR{Bits per Sample}} - (\text{\VAR{Uncompressed LSBs}} \times 2) + \text{\VAR{Channel Count}} - 1$
-\newline
-number of unsigned bits and goto step 9
-\item otherwise, $\text{LSB Count}_i = \lfloor\log_2 (\text{history}_i \div {2 ^ 9} + 3) \rfloor$
-\newline
-where $\text{LSB Count}_i$ cannot exceed \VAR{Maximum LSBs}
-\item if $\text{LSB Count}_i = 0$ then $\text{unsigned}_i = \text{MSB}_i$
-and goto step 9
-\item otherwise, read $\text{LSB}_i$ (least-significant bits) as $\text{LSB Count}_i$
-number of unsigned bits
-\item if $\text{LSB}_i > 1$ then $\text{unsigned}_i$ = $\text{MSB}_i \times (2 ^ {\text{LSB Count}_i} - 1) + (\text{LSB}_i - 1)$
-\item if $\text{LSB}_i = 1$ then $\text{unsigned}_i = \text{MSB}_i \times (2 ^ {\text{LSB Count}_i} - 1)$
-\newline
-and one must unread a single \texttt{1} bit to the stream
-\item if $\text{LSB}_i = 0$ then $\text{unsigned}_i = \text{MSB}_i \times (2 ^ {\text{LSB Count}_i} - 1)$
-\newline
-and one must unread a single \texttt{0} bit to the stream
-\item if $\text{unsigned}_i \leq 65535$ then
-\newline
-$\text{history}_{i + 1} = \text{history}_i + (\text{unsigned}_i \times \text{\VAR{History Multiplier}}) - \left\lfloor\frac{\text{history}_i \times \text{\VAR{History Multiplier}}}{2 ^ 9}\right\rfloor$
-\item if $\text{unsigned}_i > 65535$ then
-\newline
-$\text{history}_{i + 1} = 65535$
-\item if $\text{unsigned}_i \mod 2 = 0$ then
-$\text{residual}_i = \lfloor(\text{unsigned}_i + 1) \div 2\rfloor$
-\item if $\text{unsigned}_i \mod 2 = 1$ then
-$\text{residual}_i = -\lfloor(\text{unsigned}_i + 1) \div 2\rfloor$
+\item if $\text{\VAR{lsb\_count}} = 0$, return $\text{MSB}$
+\item read an unsigned value from the stream, $\text{\VAR{lsb\_count}}$
+bits large as our $\text{LSB}$ (least-significant bits value)
+\item if $\text{LSB} > 1$, return $\text{MSB} \times (2 ^ {\text{\VAR{lsb\_count}}} - 1) + (\text{LSB} - 1)$
+\item if $\text{LSB} = 1$, unread a single \texttt{1} bit and return $\text{MSB} \times (2 ^ {\text{\VAR{lsb\_count}}} - 1)$
+\item if $\text{LSB} = 1$, unread a single \texttt{0} bit and return $\text{MSB} \times (2 ^ {\text{\VAR{lsb\_count}}} - 1)$
 \end{enumerate}
-\clearpage
-\item if $\text{history}_i < 128$:
 
-\end{enumerate}
+%% The process for reading each signed $\text{residual}_i$ is as follows:
+%% \begin{enumerate}[I.]
+%% \item if $\text{history}_i \geq 128$:
+%% \begin{enumerate}[1)]
+%% \item read a unary value from the stream with a stop bit of \texttt{0}
+%% as our $\text{MSB}_i$ (most-significant-bits) value,
+%% stopping if the number of \texttt{1} bits reaches 9\footnote{This
+%% is an escape code for excessively large residuals}
+%% \item if the number of \texttt{1} bits is 9,
+%% read $\text{unsigned}_i$ as
+%% \newline
+%% $\text{\VAR{Bits per Sample}} - (\text{\VAR{Uncompressed LSBs}} \times 2) + \text{\VAR{Channel Count}} - 1$
+%% \newline
+%% number of unsigned bits and goto step 9
+%% \item otherwise, $\text{LSB Count}_i = \lfloor\log_2 (\text{history}_i \div {2 ^ 9} + 3) \rfloor$
+%% \newline
+%% where $\text{LSB Count}_i$ cannot exceed \VAR{Maximum LSBs}
+%% \item if $\text{LSB Count}_i = 0$ then $\text{unsigned}_i = \text{MSB}_i$
+%% and goto step 9
+%% \item otherwise, read $\text{LSB}_i$ (least-significant bits) as $\text{LSB Count}_i$
+%% number of unsigned bits
+%% \item if $\text{LSB}_i > 1$ then $\text{unsigned}_i$ = $\text{MSB}_i \times (2 ^ {\text{LSB Count}_i} - 1) + (\text{LSB}_i - 1)$
+%% \item if $\text{LSB}_i = 1$ then $\text{unsigned}_i = \text{MSB}_i \times (2 ^ {\text{LSB Count}_i} - 1)$
+%% \newline
+%% and one must unread a single \texttt{1} bit to the stream
+%% \item if $\text{LSB}_i = 0$ then $\text{unsigned}_i = \text{MSB}_i \times (2 ^ {\text{LSB Count}_i} - 1)$
+%% \newline
+%% and one must unread a single \texttt{0} bit to the stream
+%% \item if $\text{unsigned}_i \leq 65535$ then
+%% \newline
+%% $\text{history}_{i + 1} = \text{history}_i + (\text{unsigned}_i \times \text{\VAR{History Multiplier}}) - \left\lfloor\frac{\text{history}_i \times \text{\VAR{History Multiplier}}}{2 ^ 9}\right\rfloor$
+%% \item if $\text{unsigned}_i > 65535$ then
+%% \newline
+%% $\text{history}_{i + 1} = 65535$
+%% \item if $\text{unsigned}_i \mod 2 = 0$ then
+%% $\text{residual}_i = \lfloor(\text{unsigned}_i + 1) \div 2\rfloor$
+%% \item if $\text{unsigned}_i \mod 2 = 1$ then
+%% $\text{residual}_i = -\lfloor(\text{unsigned}_i + 1) \div 2\rfloor$
+%% \end{enumerate}
+%% \clearpage
+%% \item if $\text{history}_i < 128$:
+
+%% \end{enumerate}
 
 %% An uncompressed frame is laid out as follows:
 %% \label{alac_uncompressed}
@@ -314,22 +359,78 @@ $\text{residual}_i = -\lfloor(\text{unsigned}_i + 1) \div 2\rfloor$
 %% we add 1 to the unsigned value of the next residual in the block (if any).
 %% Finally, \VAR{history} is automatically set to 0.
 
-%% \clearpage
+\clearpage
 
-%% \subsubsection{Residual Decoding Example}
+\subsubsection{Residual Decoding Example}
+{\relsize{-2}
+In this example, we'll decode a group of 4 residuals in which
+\VAR{Initial History} is 1130, \VAR{History Multiplier} is 40,
+\VAR{Maximum LSBs} is 14, \VAR{Bits per Sample} is 16,
+\VAR{Channel Count} is 2 and \VAR{Uncompressed LSBs} is 0.
+}
+\begin{figure}[h]
+\includegraphics[height=.75in]{figures/alac/residual.pdf}
+\end{figure}
+{\relsize{-1}
+\begin{itemize}
+\setlength{\itemsep}{0in}
+\setlength{\parskip}{0in}
+\item $h_0 = 1130$
+\item $\text{sign modifier}_0 = 0$
+\item $i = 0$
+\item $\text{LSB Count}_0 = \text{min}(\lfloor \log_2 ( 1130 \div {2 ^ 9} + 3 ) \rfloor, 14) = \text{min}(\lfloor \log_2 ( 5 ) \rfloor, 14) = 2$
+\item $u_0 = \text{read\_residual}(2, 17) + 0$
+\begin{itemize}
+\setlength{\itemsep}{0in}
+\setlength{\parskip}{0in}
+\item $\text{MSB}_0 = 0$
+\item $\text{LSB}_0 = 3$
+\item $u_0 = 0 \times (2 ^ 2 - 1) + (3 - 1) = 2$
+\end{itemize}
+\item $\textbf{residual}_0 = \lfloor (2 + 1) \div 2 \rfloor = \textbf{1}$
+\item $h_1 = 1130 + (2 \times 40) - \left\lfloor\frac{1130 \times 40}{2 ^ 9}\right\rfloor = 1130 + 80 - 88 = 1122$
+\item $i \leftarrow 1$
+\item $\text{LSB Count}_1 = \text{min}(\lfloor \log_2 ( 1122 \div {2 ^ 9} + 3 ) \rfloor, 14) = \text{min}(\lfloor \log_2 ( 5 ) \rfloor, 14) = 2$
+\item $u_1 = \text{read\_residual}(2, 17) + 0$
+\begin{itemize}
+\setlength{\itemsep}{0in}
+\setlength{\parskip}{0in}
+\item $\text{MSB}_1 = 2$
+\item $\text{LSB}_1 = 3$
+\item $u_1 = 2 \times (2 ^ 2 - 1) + (3 - 1) = 8$
+\end{itemize}
+\item $\textbf{residual}_1 = \lfloor (8 + 1) \div 2 \rfloor = \textbf{4}$
+\item $h_2 = 1122 + (8 \times 40) - \left\lfloor\frac{1122 \times 40}{2 ^ 9}\right\rfloor = 1122 + 320 - 87 = 1355$
+\item $i \leftarrow 2$
+\item $\text{LSB Count}_2 = \text{min}(\lfloor \log_2 ( 1355 \div {2 ^ 9} + 3 ) \rfloor, 14) = \text{min}(\lfloor \log_2 ( 5 ) \rfloor, 14) = 2$
+\item $u_2 = \text{read\_residual}(2, 17) + 0$
+\begin{itemize}
+\setlength{\itemsep}{0in}
+\setlength{\parskip}{0in}
+\item $\text{MSB}_2 = 1$
+\item $\text{LSB}_2 = 0$ (unread a single 0 bit here)
+\item $u_2 = 1 \times (2 ^ 2 - 1) = 3$
+\end{itemize}
+\item $\textbf{residual}_3 = -\lfloor (3 + 1) \div 2 \rfloor = \textbf{-2}$
+\item $h_3 = 1355 + (3 \times 40) - \left\lfloor\frac{1355 \times 40}{2 ^ 9}\right\rfloor = 1355 + 120 - 105 = 1370$
+\item $i \leftarrow 3$
+\item $\text{LSB Count}_3 = \text{min}( \lfloor \log_2 ( 1370 \div {2 ^ 9} + 3 ) \rfloor , 14 ) = \text{min}( \lfloor \log_2 ( 5 ) \rfloor , 14 ) = 2$
+\item $u_3 = \text{read\_residual}(2, 17) + 0$
+\begin{itemize}
+\setlength{\itemsep}{0in}
+\setlength{\parskip}{0in}
+\item $\text{MSB}_3 = 0$
+\item $\text{LSB}_3 = 3$
+\item $u_3 = 0 \times (2 ^ 2 - 1) + (3 - 1) = 2$
+\end{itemize}
+\item $\textbf{residual}_4 = \lfloor (2 + 1) \div 2 \rfloor = \textbf{1}$
+\item $h_4 = 1370 + (2 \times 40) - \left\lfloor\frac{1370 \times 40}{2 ^ 9}\right\rfloor = 1370 + 80 - 107 = 1343$
+\item $i \leftarrow 4$ and done
+\end{itemize}
+}
 
-%% In this example, we'll decode a group of residuals in which our
-%% \VAR{Initial History} is 1130 and our \VAR{History Multiplier} is 40.
-%% As a spoiler, $\kappa$ (the amount of non-unary bits to read
-%% after each unary value) will remain 2 for this batch of residuals,
-%% but why that is so will be explained below.
-
-%% \begin{figure}[h]
-%% \includegraphics{figures/alac/residual.pdf}
-%% \end{figure}
 %% \begin{itemize}
-%% \setlength{\itemsep}{0in}
-%% \setlength{\parskip}{0in}
+
 %% \item Residual 1
 %% \begin{itemize}
 %% \item $\kappa = \lfloor\log_2((1130 \div 2^9) + 3)\rfloor = \lfloor\log_2(5)\rfloor = 2$
@@ -359,7 +460,7 @@ $\text{residual}_i = -\lfloor(\text{unsigned}_i + 1) \div 2\rfloor$
 %% \item $\text{history} = 1370 + (\textbf{2} \times 40) - \lfloor(1370 \times 40) \div 2^9\rfloor = 1370 + 80 - 107 = 1343$
 %% \end{itemize}
 %% \end{itemize}
-%% Thus, our batch of signed residual values are 1, 4, -2 and 1.
+Thus, our batch of signed residual values are 1, 4, -2 and 1.
 
 %% \clearpage
 

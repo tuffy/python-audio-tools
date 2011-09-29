@@ -80,8 +80,8 @@
   </row>
   <row>
     <col style="blank" width=".25"/>
-    <col width=".375" border-color="orange">Residuals₁</col>
-    <col style="dashed" width=".375" border-color="orange">Residuals₂</col>
+    <col width=".375" border-color="orange">Residual Block₁</col>
+    <col style="dashed" width=".375" border-color="orange">Residual Block₂</col>
   </row>
   <line style="dotted">
     <start corner="sw" id="mdat"/>

@@ -138,10 +138,10 @@ ALACDecoder_read_residuals(BitstreamReader *bs,
                            unsigned int maximum_k);
 
 /*reads an unsigned residual from the current bitstream*/
-int
+unsigned int
 ALACDecoder_read_residual(BitstreamReader *bs,
-                          int k,
-                          int sample_size);
+                          unsigned int lsb_count,
+                          unsigned int sample_size);
 
 /*takes a set of residuals, coefficients and a predictor_quantitization value
   returns a set of decoded samples*/
