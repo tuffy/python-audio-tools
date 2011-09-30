@@ -802,7 +802,7 @@ class ALACAudio(M4ATaggedAudio,AudioFile):
 
             if ((alac1 != 'alac') or (alac2 != 'alac')):
                 mdia.unmark()
-                raise InvalidFLAC(_(u"Invalid alac atom"))
+                raise InvalidALAC(_(u"Invalid alac atom"))
 
             #finally, fetch the mdhd atom for total track length
             mdia.rewind()
@@ -819,7 +819,7 @@ class ALACAudio(M4ATaggedAudio,AudioFile):
                 else:
                     raise InvalidALAC(_(u"Unsupported mdhd version"))
             except IOError:
-                raise InvalidFLAC(_(u"Invalid mdhd atom"))
+                raise InvalidALAC(_(u"Invalid mdhd atom"))
         finally:
             mdia.unmark()
 

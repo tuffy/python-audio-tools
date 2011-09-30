@@ -16,16 +16,16 @@
   </row>
   <spacer height=".75"/>
   <row>
-    <col end="3" id="channels" start="0" width=".15"
+    <col end="2" id="channels" start="0" width=".15"
          border-color="blue">Channels₁</col>
     <col id="frame" width=".25"
          border-color="blue"
          background-color="#7F7F0033">Frame₁</col>
-    <col end="3" start="0" style="dashed" width=".15"
+    <col end="2" start="0" style="dashed" width=".15"
          border-color="blue">Channels₂</col>
     <col style="dashed" width=".25"
          border-color="blue">Frame₂</col>
-    <col end="3" start="0" width=".15"
+    <col end="2" start="0" width=".15"
          border-color="blue">Footer (0x7)</col>
     <col id="pad" style="dashed" width=".05"
          border-color="blue">Pad</col>

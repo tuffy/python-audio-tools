@@ -21,22 +21,25 @@ class FlacDecoder:
 
         self.current_md5sum = md5()
 
+        #locate the STREAMINFO,
+        #which is sometimes needed to handle non-subset streams
         for (block_id,
              block_size,
              block_reader) in self.metadata_blocks(self.reader):
             if (block_id == 0):
-                (self.minimum_block_size,
-                 self.maximum_block_size,
-                 self.minimum_frame_size,
-                 self.maximum_frame_size,
-                 self.sample_rate,
-                 self.channels,
-                 self.bits_per_sample,
-                 self.total_frames,
-                 self.md5sum) = block_reader.parse(
-                    "16u 16u 24u 24u 20u 3u 5u 36U 16b")
-                self.channels += 1
-                self.bits_per_sample += 1
+                #read STREAMINFO
+                self.minimum_block_size = block_reader.read(16)
+                self.maximum_block_size = block_reader.read(16)
+                self.minimum_frame_size = block_reader.read(24)
+                self.maximum_frame_size = block_reader.read(24)
+                self.sample_rate = block_reader.read(20)
+                self.channels = block_reader.read(3) + 1
+                self.bits_per_sample = block_reader.read(5) + 1
+                self.total_frames = block_reader.read64(36)
+                self.md5sum = block_reader.read_bytes(16)
+
+                #these are frame header lookup tables
+                #which vary slightly depending on STREAMINFO's values
                 self.BLOCK_SIZE = [self.maximum_block_size,
                                     192,  576,  1152,
                                    2304, 4608,  None,  None,
@@ -61,57 +64,9 @@ class FlacDecoder:
         else:
             yield (block_id, block_size, self.reader.substream(block_size))
 
-    def read_frame_header(self):
-        crc8 = CRC8()
-
-        self.reader.add_callback(crc8.update)
-
-        #the first 32 bits of a FLAC frame header are fixed
-        (sync_code,
-         blocking_strategy,
-         block_size,
-         sample_rate,
-         channel_assignment,
-         bits_per_sample) = self.reader.parse(
-            "14u 1p 1u 4u 4u 4u 3u 1p")
-
-        if (sync_code != 0x3FFE):
-            raise ValueError("invalid sync code")
-
-        frame_number = self.read_utf8()
-
-        if (block_size == 0x6):
-            block_size = self.reader.read(8) + 1
-        elif (block_size == 0x7):
-            block_size = self.reader.read(16) + 1
-        else:
-            block_size = self.BLOCK_SIZE[block_size]
-
-        if (sample_rate == 0xC):
-            sample_rate = self.reader.read(8) * 1000
-        elif (sample_rate == 0xD):
-            sample_rate = self.reader.read(16)
-        elif (sample_rate == 0xE):
-            sample_rate = self.reader.read(16) * 10
-        elif (sample_rate == 0xF):
-            raise ValueError("invalid sample rate")
-        else:
-            sample_rate = self.SAMPLE_RATE[sample_rate]
-
-        if ((bits_per_sample == 0x3) or (bits_per_sample == 0x7)):
-            raise ValueError("invalid bits per sample")
-        else:
-            bits_per_sample = self.BITS_PER_SAMPLE[bits_per_sample]
-
-        self.reader.read(8) #CRC-8
-
-        self.reader.pop_callback()
-        if (int(crc8) != 0):
-            raise ValueError("CRC8 mismatch in frame header")
-
-        return (block_size, channel_assignment, bits_per_sample)
-
     def read(self, bytes):
+        #if the stream is exhausted,
+        #verify its MD5 sum and return an empty pcm.FrameList object
         if (self.total_frames < 1):
             if (self.md5sum == self.current_md5sum.digest()):
                 return from_list([], self.channels, self.bits_per_sample, True)
@@ -121,6 +76,7 @@ class FlacDecoder:
         crc16 = CRC16()
         self.reader.add_callback(crc16.update)
 
+        #fetch the decoding parameters from the frame header
         (block_size,
          channel_assignment,
          bits_per_sample) = self.read_frame_header()
@@ -128,24 +84,37 @@ class FlacDecoder:
         if (channel_count == None):
             raise ValueError("invalid channel assignment")
 
+        #channel data will be a list of signed sample lists, one per channel
+        #such as  [[1, 2, 3, ...], [4, 5, 6, ...]]  for a 2 channel stream
         channel_data = []
+
         for channel_number in xrange(channel_count):
             if ((channel_assignment == 0x8) and
                 (channel_number == 1)):
+                #for left-difference assignment
+                #the difference channel has 1 additional bit
                 channel_data.append(self.read_subframe(block_size,
                                                        bits_per_sample + 1))
             elif ((channel_assignment == 0x9) and
                   (channel_number == 0)):
+                #for difference-right assignment
+                #the difference channel has 1 additional bit
                 channel_data.append(self.read_subframe(block_size,
                                                        bits_per_sample + 1))
             elif ((channel_assignment == 0xA) and
                   (channel_number == 1)):
+                #for mid-side assignment
+                #the side channel has 1 additional bit
                 channel_data.append(self.read_subframe(block_size,
                                                        bits_per_sample + 1))
             else:
+                #otherwise, use the frame's bits-per-sample value
                 channel_data.append(self.read_subframe(block_size,
                                                        bits_per_sample))
 
+
+        #one all the subframes have been decoded,
+        #reconstruct them depending on the channel assignment
         if (channel_assignment == 0x8):
             #left-difference
             samples = []
@@ -171,26 +140,99 @@ class FlacDecoder:
                 samples[i::channel_count] = channel
 
         self.reader.byte_align()
-        self.reader.read(16) #CRC16
 
+        #read and verify the frame's trailing CRC-16 footer
+        self.reader.read(16)
         self.reader.pop_callback()
         if (int(crc16) != 0):
             raise ValueError("CRC16 mismatch in frame footer")
 
+        #deduct the amount of PCM frames from the remaining amount
         self.total_frames -= block_size
 
+        #build a pcm.FrameList object from the combined samples
         framelist = from_list(samples, channel_count, bits_per_sample, True)
+
+        #update the running MD5 sum calculation with the frame's data
         self.current_md5sum.update(framelist.to_bytes(0, 1))
+
+        #and finally return the frame data
         return framelist
+
+    def read_frame_header(self):
+        crc8 = CRC8()
+        self.reader.add_callback(crc8.update)
+
+        #read the 32-bit FLAC frame header
+        sync_code = self.reader.read(14)
+        if (sync_code != 0x3FFE):
+            raise ValueError("invalid sync code")
+
+        self.reader.skip(1)
+        blocking_strategy = self.reader.read(1)
+        block_size_bits = self.reader.read(4)
+        sample_rate_bits = self.reader.read(4)
+        channel_assignment = self.reader.read(4)
+        bits_per_sample_bits = self.reader.read(3)
+        self.reader.skip(1)
+
+        #the frame number is a UTF-8 encoded value
+        #which takes a variable number of whole bytes
+        frame_number = self.read_utf8()
+
+        #unpack the 4 bit block size field
+        #which is the total PCM frames in the FLAC frame
+        #and may require up to 16 more bits if the frame is usually-sized
+        #(which typically happens at the end of the stream)
+        if (block_size_bits == 0x6):
+            block_size = self.reader.read(8) + 1
+        elif (block_size_bits == 0x7):
+            block_size = self.reader.read(16) + 1
+        else:
+            block_size = self.BLOCK_SIZE[block_size_bits]
+
+        #unpack the 4 bit sample rate field
+        #which is used for playback, but not needed for decoding
+        #and may require up to 16 more bits
+        #if the stream has a particularly unusual sample rate
+        if (sample_rate_bits == 0xC):
+            sample_rate = self.reader.read(8) * 1000
+        elif (sample_rate_bits == 0xD):
+            sample_rate = self.reader.read(16)
+        elif (sample_rate_bits == 0xE):
+            sample_rate = self.reader.read(16) * 10
+        elif (sample_rate_bits == 0xF):
+            raise ValueError("invalid sample rate")
+        else:
+            sample_rate = self.SAMPLE_RATE[sample_rate_bits]
+
+        #unpack the 3 bit bits-per-sample field
+        #this never requires additional bits
+        if ((bits_per_sample_bits == 0x3) or
+            (bits_per_sample_bits == 0x7)):
+            raise ValueError("invalid bits per sample")
+        else:
+            bits_per_sample = self.BITS_PER_SAMPLE[bits_per_sample_bits]
+
+        #read and verify frame's CRC-8 value
+        self.reader.read(8)
+        self.reader.pop_callback()
+        if (int(crc8) != 0):
+            raise ValueError("CRC8 mismatch in frame header")
+
+        return (block_size, channel_assignment, bits_per_sample)
 
     def read_subframe_header(self):
         """returns a tuple of (subframe_type, subframe_order, wasted_bps)"""
 
-        (subframe_type, has_wasted_bps) = self.reader.parse("1p 6u 1u")
-        if (has_wasted_bps):
+        self.reader.skip(1)
+        subframe_type = self.reader.read(6)
+        if (self.reader.read(1) == 1):
             wasted_bps = self.reader.unary(1) + 1
         else:
             wasted_bps = 0
+
+        #extract "order" value from 6 bit subframe type, if necessary
         if (subframe_type == 0):
             return (self.SUBFRAME_CONSTANT, None, wasted_bps)
         elif (subframe_type == 1):
@@ -207,6 +249,9 @@ class FlacDecoder:
          subframe_order,
          wasted_bps) = self.read_subframe_header()
 
+        #read a list of signed sample values
+        #depending on the subframe type, block size,
+        #adjusted bits per sample and optional subframe order
         if (subframe_type == self.SUBFRAME_CONSTANT):
             subframe_samples = self.read_constant_subframe(
                 block_size, bits_per_sample - wasted_bps)
@@ -220,6 +265,7 @@ class FlacDecoder:
             subframe_samples = self.read_lpc_subframe(
                 block_size, bits_per_sample - wasted_bps, subframe_order)
 
+        #account for wasted bits-per-sample, if necessary
         if (wasted_bps):
             return [sample << wasted_bps for sample in subframe_samples]
         else:
@@ -234,15 +280,23 @@ class FlacDecoder:
                 for x in xrange(block_size)]
 
     def read_fixed_subframe(self, block_size, bits_per_sample, order):
+        #"order" number of warm-up samples
         samples = [self.reader.read_signed(bits_per_sample)
                    for i in xrange(order)]
+
+        #"block_size" - "order" number of residual values
         residuals = self.read_residual(block_size, order)
 
+        #which are applied to the warm-up samples
+        #depending on the FIXED subframe order
+        #and results in "block_size" number of total samples
         if (order == 0):
             return residuals
         elif (order == 1):
             for residual in residuals:
-                samples.append(samples[-1] + residual)
+                samples.append(
+                    samples[-1] +
+                    residual)
             return samples
         elif (order == 2):
             for residual in residuals:
@@ -272,16 +326,29 @@ class FlacDecoder:
             raise ValueError("unsupported FIXED subframe order")
 
     def read_lpc_subframe(self, block_size, bits_per_sample, order):
+        #"order" number of warm-up samples
         samples = [self.reader.read_signed(bits_per_sample)
                    for i in xrange(order)]
+
+        #the size of each QLP coefficient, in bits
         qlp_precision = self.reader.read(4)
-        qlp_shift_needed = self.reader.read_signed(5)
+
+        #the amount of right shift to apply
+        #during LPC calculation
+        #(though this is a signed value, negative shifts are noops
+        # in the reference FLAC decoder)
+        qlp_shift_needed = max(self.reader.read_signed(5), 0)
+
+        #"order" number of signed QLP coefficients
         qlp_coeffs = [self.reader.read_signed(qlp_precision + 1)
                       for i in xrange(order)]
-        residuals = self.read_residual(block_size, order)
-
+        #QLP coefficients are applied in reverse order
         qlp_coeffs.reverse()
 
+        #"block_size" - "order" number of residual values
+        residuals = self.read_residual(block_size, order)
+
+        #which are applied to the running LPC calculation
         for residual in residuals:
             samples.append((sum([coeff * sample for (coeff, sample) in
                                  zip(qlp_coeffs, samples[-order:])]) >>
@@ -292,10 +359,15 @@ class FlacDecoder:
     def read_residual(self, block_size, order):
         residuals = []
 
-        (coding_method, partition_order) = self.reader.parse("2u 4u")
+        coding_method = self.reader.read(2)
+        partition_order = self.reader.read(4)
 
+        #each parititon contains  block_size / 2 ** partition_order
+        #number of residuals
         for partition_number in xrange(2 ** partition_order):
             if (partition_number == 0):
+                #except for the first partition
+                #which contains "order" less than the rest
                 residuals.extend(
                     self.read_residual_partition(
                         coding_method,
@@ -310,12 +382,16 @@ class FlacDecoder:
 
     def read_residual_partition(self, coding_method, residual_count):
         if (coding_method == 0):
+            #the Rice parameters determines the number of
+            #least-significant bits to read for each residual
             rice_parameter = self.reader.read(4)
             if (rice_parameter == 0xF):
                 escape_code = self.reader.read(5)
                 return [self.reader.read_signed(escape_code)
                         for i in xrange(residual_count)]
         elif (coding_method == 1):
+            #24 bps streams may use a 5-bit Rice parameter
+            #for better compression
             rice_parameter = self.reader.read(5)
             if (rice_parameter == 0x1F):
                 escape_code = self.reader.read(5)
@@ -324,13 +400,14 @@ class FlacDecoder:
         else:
             raise ValueError("invalid Rice coding parameter")
 
+        #a list of signed residual values
         partition_residuals = []
 
         for i in xrange(residual_count):
-            msb = self.reader.unary(1)
-            lsb = self.reader.read(rice_parameter)
-            value = (msb << rice_parameter) | lsb
-            if (value & 1):
+            msb = self.reader.unary(1)             #most-significant bits
+            lsb = self.reader.read(rice_parameter) #least-significant bits
+            value = (msb << rice_parameter) | lsb  #combined into a value
+            if (value & 1):   #whose least-significant bit is the sign value
                 partition_residuals.append(-(value >> 1) - 1)
             else:
                 partition_residuals.append(value >> 1)
@@ -347,6 +424,7 @@ class FlacDecoder:
 
     def close(self):
         self.reader.close()
+
 
 class CRC8:
     TABLE = [0x00, 0x07, 0x0E, 0x09, 0x1C, 0x1B, 0x12, 0x15,
@@ -390,6 +468,7 @@ class CRC8:
 
     def update(self, byte):
         self.value = self.TABLE[self.value ^ byte]
+
 
 class CRC16(CRC8):
     TABLE = [0x0000, 0x8005, 0x800f, 0x000a, 0x801b, 0x001e, 0x0014, 0x8011,
