@@ -244,6 +244,9 @@ figures/mp3_granule.pdf figures/mp3_main.pdf figures/mp3_scalefactors.pdf
 mp3_decode.pdf: mp3_decode.tex $(MP3_FIGURES)
 	python pdflatexbuild.py -halt-on-error $<
 
+flac-codec.pdf: flac-codec.tex flac.tex $(FLAC)
+	python pdflatexbuild.py -halt-on-error $<
+
 audioformats-letter.tex: audioformats.m4
 	m4 -D PAPERSIZE=letterpaper $< > $@
 
