@@ -6,7 +6,7 @@
 %171 Second Street, Suite 300,
 %San Francisco, California, 94105, USA.
 
-\documentclass[PAPERSIZE]{scrbook}
+\documentclass[letter]{scrbook}
 \setlength{\pdfpagewidth}{\paperwidth}
 \setlength{\pdfpageheight}{\paperheight}
 \setlength{\textwidth}{6in}
@@ -26,7 +26,7 @@
 \usepackage{rotating}
 \usepackage[toc,page]{appendix}
 \usepackage{hyperref}
-\usepackage[lined,boxed,commentsnumbered]{algorithm2e}
+\usepackage[vlined,lined,commentsnumbered]{algorithm2e}
 \newcommand{\xor}{\textbf{ xor }}
 %#1 = i
 %#2 = byte
@@ -45,11 +45,15 @@
 \newcommand{\COEFF}[0]{\text{LPC Coefficient}}
 \newcommand{\SCOEFF}[0]{C}
 \newcommand{\SSAMPLE}[0]{S}
-\newcommand{\ALGORITHM}{\begin{algorithm}[H]
+\newcommand{\ALGORITHM}[2]{\begin{algorithm}[H]
 \DontPrintSemicolon
 \SetKw{READ}{read}
 \SetKw{SKIP}{skip}
-\SetKw{ASSERT}{assert}}
+\SetKw{ASSERT}{assert}
+\KwIn{#1}
+\KwOut{#2}
+\BlankLine
+}
 \newcommand{\EALGORITHM}{\end{algorithm}}
 \title{Audio Formats Reference}
 \author{Brian Langenberger}

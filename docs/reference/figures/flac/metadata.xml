@@ -1,0 +1,54 @@
+<?xml version="1.0" ?><diagram>
+  <row>
+    <col id="metadata" width=".333333">Metadata Block₁</col>
+    <col width=".333333">Metadata Block₂</col>
+    <col style="dashed" width=".333333">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col id="metadata_s" start="0" end="0" width=".10">last</col>
+    <col start="1" end="7" width=".10">type</col>
+    <col start="8" end="31" width=".10">size</col>
+    <col start="32" width=".7" id="metadata_e">metadata block data</col>
+  </row>
+  <spacer/>
+  <row>
+    <col width=".12" style="blank">type = 0</col>
+    <col start="0" end="15" width=".44"
+         id="streaminfo_s">minimum block size</col>
+    <col start="16" end="31" width=".44"
+         id="streaminfo_e">maximum block size</col>
+  </row>
+  <row>
+    <col width=".12" style="blank"/>
+    <col start="32" end="55" width=".44">minimum frame size</col>
+    <col start="56" end="79" width=".44">maximum frame size</col>
+  </row>
+  <row>
+    <col width=".12" style="blank"/>
+    <col start="80" end="99" width=".4">sample rate</col>
+    <col start="100" end="102" width=".20">channels (+1)</col>
+    <col start="103" end="107" width=".28">bits per sample (+1)</col>
+  </row>
+  <row>
+    <col width=".12" style="blank"/>
+    <col start="108" end="143" width=".30">total PCM frames</col>
+    <col start="144" end="271" width=".58">MD5 sum</col>
+  </row>
+  <line style="dotted">
+    <start id="metadata" corner="sw"/>
+    <end id="metadata_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="metadata" corner="se"/>
+    <end id="metadata_e" corner="ne"/>
+  </line>
+  <line style="dotted">
+    <start id="metadata_e" corner="sw"/>
+    <end id="streaminfo_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="metadata_e" corner="se"/>
+    <end id="streaminfo_e" corner="ne"/>
+  </line>
+</diagram>

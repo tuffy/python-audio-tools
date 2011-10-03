@@ -1,0 +1,11 @@
+<?xml version="1.0" ?><diagram>
+  <row>
+    <col end="31" start="0" width=".18">File Header</col>
+    <col id="metadata" start="32" width=".20">Metadata Block₁</col>
+    <col width=".20">Metadata Block₂</col>
+    <col style="dashed" width=".05">...</col>
+    <col id="frame" width=".16">FLAC Frame₁</col>
+    <col width=".16">FLAC Frame₂</col>
+    <col style="dashed" width=".05">...</col>
+  </row>
+</diagram>

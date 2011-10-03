@@ -200,8 +200,8 @@ style is one of the style enumerations such as SOLID, DASHED, etc."""
             if ((self.start_size == self.end_size) and
                 (self.start_size is not None)):
                 pdf.drawCentredString((self.ne[0] + self.nw[0]) / 2,
-                                  self.se[1] + 3,
-                                  self.start_size)
+                                      self.se[1] + 3,
+                                      self.start_size)
             else:
                 if (self.start_size is not None):
                     pdf.drawString(self.sw[0] + 4,

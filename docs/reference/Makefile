@@ -31,6 +31,7 @@ figures/id3v24/wxxx.pdf
 
 FLAC = \
 figures/flac/application.pdf \
+figures/flac/block_header.pdf \
 figures/flac/channels.pdf \
 figures/flac/cuesheet.pdf \
 figures/flac/exhaustive.pdf \
@@ -39,6 +40,7 @@ figures/flac/frame.pdf \
 figures/flac/hann.pdf \
 figures/flac/lag.pdf \
 figures/flac/lpc.pdf \
+figures/flac/metadata.pdf \
 figures/flac/nonexhaustive.pdf \
 figures/flac/picture.pdf \
 figures/flac/read_residual.pdf \
@@ -52,6 +54,7 @@ figures/flac/rice4.pdf \
 figures/flac/seektable.pdf \
 figures/flac/stream.pdf \
 figures/flac/stream2.pdf \
+figures/flac/stream3.pdf \
 figures/flac/streaminfo.pdf \
 figures/flac/tukey.pdf \
 figures/flac/verbatim.pdf \
@@ -358,10 +361,13 @@ figures/bitstream_littleendian_alt.pdf: figures/bitstream_littleendian_alt.fig
 figures/vorbis/ordered_entries.pdf: figures/vorbis/ordered_entries.dot
 	dot -Tpdf $< -o $@
 
-.SUFFIXES: .pdf .xml .dot
+.SUFFIXES: .pdf .xml .bpx .dot
 
 .xml.pdf:
 	./bitdiagram.py -i $< -o $@
+
+.bpx.pdf:
+	./bitparse.py -i $< -o $@
 
 .dot.pdf:
 	dot -Tpdf $< -o $@
