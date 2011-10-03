@@ -1,0 +1,15 @@
+<?xml version="1.0" ?>
+<struct endianness="big">
+  <field size="1" value="0x1">last</field>
+  <field size="7" value="0x0">type</field>
+  <field size="24" value="0x22">size</field>
+  <field size="16" value="4096">minimum block size</field>
+  <field size="16" value="4096">maximum block size</field>
+  <field size="24" value="12">minimum frame size</field>
+  <field size="24" value="12">maximum frame size</field>
+  <field size="20" value="44100">sample rate</field>
+  <field size="3" value="1">channels (+1)</field>
+  <field size="5" value="15">bits-per-sample (+1)</field>
+  <field size="36" value="80">total PCM frames</field>
+  <text size="16">MD5 sum</text>
+</struct>
