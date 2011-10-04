@@ -449,7 +449,7 @@ if (__name__ == '__main__'):
 
     (options,args) = parser.parse_args()
 
-    x_offset = (options.width - (16 * BIT_WIDTH)) / 2
+    x_offset = (options.width - (options.bits_per_row * BIT_WIDTH)) / 2
 
     ChunkTable(list(align_rows(chunks_to_rows(
                     chunks_iter=xml_to_chunks(options.input),

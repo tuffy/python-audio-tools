@@ -45,11 +45,17 @@
 \newcommand{\COEFF}[0]{\text{LPC Coefficient}}
 \newcommand{\SCOEFF}[0]{C}
 \newcommand{\SSAMPLE}[0]{S}
-\newcommand{\ALGORITHM}{\begin{algorithm}[H]
+\newcommand{\ALGORITHM}[2]{\begin{algorithm}[H]
 \DontPrintSemicolon
 \SetKw{READ}{read}
+\SetKw{UNARY}{read unary}
 \SetKw{SKIP}{skip}
-\SetKw{ASSERT}{assert}}
+\SetKw{ASSERT}{assert}
+\SetKw{IN}{in}
+\KwIn{#1}
+\KwOut{#2}
+\BlankLine
+}
 \newcommand{\EALGORITHM}{\end{algorithm}}
 \title{Audio Formats Reference}
 \author{Brian Langenberger}

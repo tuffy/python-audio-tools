@@ -37,7 +37,9 @@ figures/flac/cuesheet.pdf \
 figures/flac/exhaustive.pdf \
 figures/flac/fixed.pdf \
 figures/flac/frame.pdf \
+figures/flac/frames.pdf \
 figures/flac/hann.pdf \
+figures/flac/header-example.pdf \
 figures/flac/lag.pdf \
 figures/flac/lpc.pdf \
 figures/flac/metadata.pdf \
@@ -57,6 +59,7 @@ figures/flac/stream2.pdf \
 figures/flac/stream3.pdf \
 figures/flac/streaminfo.pdf \
 figures/flac/tukey.pdf \
+figures/flac/utf8.pdf \
 figures/flac/verbatim.pdf \
 figures/flac/vorbiscomment.pdf \
 figures/flac/write_residual.pdf \
@@ -410,3 +413,6 @@ figures/wavpack/decorrelation3.fig: figures/wavpack/decorrelation3.plot
 
 figures/wavpack/decorrelation3.pdf: figures/wavpack/decorrelation3.fig
 	fig2dev -Z 2 -L pdf $< $@
+
+figures/flac/utf8.pdf: figures/flac/utf8.bpx
+	./bitparse.py -i $< -o $@ -b 8 -w 170
