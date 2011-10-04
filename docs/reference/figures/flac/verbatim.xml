@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" width=".20">Sample₁</col>
-    <col width=".20">Sample₂</col>
-    <col width=".20">Sample₃</col>
-    <col width=".20" style="dashed">...</col>
-    <col width=".20">Sampleₓ</col>
+    <col width=".283" start="0"
+         end="subframe bps - 1">uncompressed sample₀</col>
+    <col width=".283" start="0"
+         end="subframe bps - 1">uncompressed sample₁</col>
+    <col width=".283" start="0"
+         end="subframe bps - 1">uncompressed sample₂</col>
+    <col width=".15" style="dashed">...</col>
   </row>
 </diagram>

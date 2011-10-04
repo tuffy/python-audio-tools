@@ -257,7 +257,6 @@ total PCM frames & $\leftarrow$ & \texttt{0x50} & = & 80
 \ALGORITHM{STREAMINFO values and the FLAC file stream}{decoded PCM samples}
 read frame header to determine channel count, assignment and bits-per-sample\;
 \ForEach{channel \IN channel count}{
-  determine subframe's effective bits-per-sample\;
   decode subframe to PCM samples based on its effective bits-per-sample\;
 }
 byte-align file stream\;
@@ -284,10 +283,10 @@ $encoded~channels$ & $\leftarrow$ & \READ 4 unsigned bits\; \\
 $encoded~bps$ & $\leftarrow$ & \READ 3 unsigned bits\; \\
 & & \SKIP 1 bit\; \\
 frame number & $\leftarrow$ & \READ UTF-8 value\; \\
-block size & $\leftarrow$ & decode block size($encoded~block~size$)\; \\
-sample rate & $\leftarrow$ & decode sample rate($encoded~sample~rate$)\; \\
-bits per sample & $\leftarrow$ & decode bps($encoded~bps$)\; \\
-channel count & $\leftarrow$ & decode channel count(channel assignment)\; \\
+block size & $\leftarrow$ & decode $encoded~block~size$\; \\
+sample rate & $\leftarrow$ & decode $encoded~sample~rate$\; \\
+bits per sample & $\leftarrow$ & decode $encoded~bps$\; \\
+channel count & $\leftarrow$ & decode $encoded~channels$\; \\
 $CRC8$ & $\leftarrow$ & \READ 8 unsigned bits\; \\
 & & verify $CRC8$\;
 \end{tabular}
@@ -473,6 +472,119 @@ or 0 as an initial value:
 \end{align*}
 Note that the final checksum (including the CRC-8 byte itself)
 should always be 0.
+
+\clearpage
+
+\subsection{Decoding a FLAC Subframe}
+\ALGORITHM{the frame's block size and bits per sample, the subframe's channel assignment and the FLAC file stream}{decoded PCM samples}
+\SetKwData{DIFFERENCE}{Difference}
+\SetKwData{SIDE}{Side}
+\SetKwData{ORDER}{order}
+\SetKwData{SAMPLES}{subframe samples}
+\SKIP 1 bit\;
+$type\_order \leftarrow$ \READ 6 unsigned bits\;
+\eIf(\tcc*[f]{account for wasted bits}){(\READ 1 unsigned bit) $ = 1$}{
+  $wasted~BPS \leftarrow$ (\UNARY stop bit 1) + 1\;
+  subframe's bits per sample $\leftarrow \text{frame header's bits per sample} - wasted~bps$\;
+}{
+  $wasted~BPS \leftarrow 0$\;
+  subframe's bits per sample $\leftarrow \text{frame header's bits per sample}$\;
+}
+\If{subframe's channel assignment is \DIFFERENCE or \SIDE}{
+  subframe's bits per sample $\leftarrow$ subframe's bits per sample + 1
+}
+\uIf{$type\_order = 0$}{
+  \SAMPLES $\leftarrow$ decode CONSTANT subframe
+}
+\uElseIf{$type\_order = 1$} {
+  \SAMPLES $\leftarrow$ decode VERBATIM subframe\;
+}
+\uElseIf{$8 \leq type\_order \leq 12$} {
+  \SAMPLES $\leftarrow$ decode FIXED subframe with \ORDER ($type\_order - 8$)\;
+}
+\uElseIf{$32 \leq type\_order \leq 63$} {
+  \SAMPLES $\leftarrow$ decode LPC subframe with \ORDER ($type\_order - 31$)\;
+}
+\Else {
+  undefined subframe type error\;
+}
+\If(\tcc*[f]{prepend any wasted bits to each sample}){$wasted~BPS > 0$}{
+  \ForEach{sample \IN \SAMPLES}{
+    $sample \leftarrow sample \times 2 ^ {wasted~BPS}$\;
+  }
+}
+\Return \SAMPLES\;
+\EALGORITHM
+\begin{figure}[h]
+\includegraphics{figures/flac/subframes.pdf}
+\end{figure}
+
+\clearpage
+
+\subsubsection{Decoding CONSTANT Subframe}
+\ALGORITHM{the frame's block size, the subframe's bits per sample and the FLAC file stream}{decoded PCM samples}
+\SetKwData{BPS}{bits per sample}
+constant $\leftarrow$ \READ (\BPS) signed bits\;
+\For{i = 0 \emph{\KwTo}block size}{
+  $sample_i \leftarrow $ constant\;
+}
+\EALGORITHM
+
+\subsubsection{Decoding VERBATIM Subframe}
+\ALGORITHM{the frame's block size, the subframe's bits per sample and the FLAC file stream}{decoded PCM samples}
+\SetKwData{BPS}{bits per sample}
+\For{i = 0 \emph{\KwTo}block size}{
+  $sample_i \leftarrow $ \READ (\BPS) signed bits\;
+}
+\EALGORITHM
+\begin{figure}[h]
+\includegraphics{figures/flac/verbatim.pdf}
+\end{figure}
+
+\clearpage
+
+\subsubsection{Decoding FIXED Subframe}
+\ALGORITHM{the frame's block size and predictor order, the subframe's bits per sample and the FLAC file stream}{decoded PCM samples}
+\SetKwData{BPS}{bits per sample}
+\SetKwData{ORDER}{order}
+\SetKwData{RESIDUALS}{residuals}
+\SetKwData{BLOCKSIZE}{block size}
+\For(\tcc*[f]{warm-up samples}){i = 0 \emph{\KwTo}\ORDER}{
+  $sample_i \leftarrow $ \READ (\BPS) signed bits\;
+}
+\RESIDUALS $\leftarrow$ read residual block with frame's \BLOCKSIZE and subframe's \ORDER\;
+\Switch{\ORDER}{
+  \uCase{0} {
+    \For{i = 0 \emph{\KwTo}\BLOCKSIZE}{
+      $sample_i \leftarrow residual_i$
+    }
+  }
+  \uCase{1} {
+    \For{i = 1 \emph{\KwTo}\BLOCKSIZE}{
+      $sample_i \leftarrow sample_{i - 1} + residual_i$
+    }
+  }
+  \uCase{2} {
+    \For{i = 2 \emph{\KwTo}\BLOCKSIZE}{
+      $sample_i \leftarrow (2 \times sample_{i - 1}) - sample_{i - 2} + residual_i$
+    }
+  }
+  \uCase{3} {
+    \For{i = 3 \emph{\KwTo}\BLOCKSIZE}{
+      $sample_i \leftarrow (3 \times sample_{i - 1}) - (3 \times sample_{i - 2}) + sample_{i - 3} + residual_i$
+    }
+  }
+  \Case{4} {
+    \For{i = 0 \emph{\KwTo}\BLOCKSIZE}{
+      $sample_i \leftarrow (4 \times sample_{i - 1}) - (6 \times sample_{i - 2}) + (4 \times sample_{i - 3}) - sample_{i - 4} + residual_i$
+    }
+  }
+}
+\Return samples\;
+\EALGORITHM
+\begin{figure}[h]
+\includegraphics{figures/flac/fixed.pdf}
+\end{figure}
 
 %% A FLAC stream is made up of individual FLAC frames, as follows:
 %% \begin{figure}[h]

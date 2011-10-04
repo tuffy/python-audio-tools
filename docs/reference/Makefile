@@ -58,6 +58,7 @@ figures/flac/stream.pdf \
 figures/flac/stream2.pdf \
 figures/flac/stream3.pdf \
 figures/flac/streaminfo.pdf \
+figures/flac/subframes.pdf \
 figures/flac/tukey.pdf \
 figures/flac/utf8.pdf \
 figures/flac/verbatim.pdf \

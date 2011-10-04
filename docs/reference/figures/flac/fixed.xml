@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" width=".25">Warm-Up Sample₁</col>
-    <col width=".25">Warm-Up Sample₂</col>
-    <col width=".10" style="dashed">...</col>
-    <col width=".40">Residual</col>
+    <col width=".283" start="0"
+         end="subframe bps - 1">warm-up sample₀</col>
+    <col width=".283" start="0"
+         end="subframe bps - 1">warm-up sample₁</col>
+    <col width=".283" start="0"
+         end="subframe bps - 1">warm-up sample₂</col>
+    <col width=".15" style="dashed">...</col>
+  </row>
+  <row>
+    <col>residual block</col>
   </row>
 </diagram>
