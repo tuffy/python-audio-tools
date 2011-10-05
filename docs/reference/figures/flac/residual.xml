@@ -1,24 +1,24 @@
 <?xml version="1.0" ?><diagram>
   <row>
-    <col end="1" start="0" width=".20">Coding Method</col>
-    <col end="5" start="2" width=".20">Partition Order</col>
-    <col id="partition" start="6" width=".20">Partition₁</col>
-    <col width=".20">Partition₂</col>
+    <col end="1" start="0" width=".20">coding method</col>
+    <col end="5" start="2" width=".20">partition order</col>
+    <col id="partition" start="6" width=".20">partition₁</col>
+    <col width=".20">partition₂</col>
     <col style="dashed" width=".20">...</col>
   </row>
   <row><blank/></row>
   <row>
-    <col style="blank" width=".17">Method = 0</col>
-    <col end="3" id="rice" start="0" width=".20">Rice Parameter</col>
-    <col end="8" start="4" style="dashed" width=".20">Escape Code</col>
-    <col id="residual" width=".38">Encoded Residuals</col>
+    <col style="blank" width=".17">method = 0</col>
+    <col end="3" id="rice" start="0" width=".20">Rice parameter</col>
+    <col end="8" start="4" style="dashed" width=".20">escape code</col>
+    <col id="residual" width=".38">encoded residuals</col>
   </row>
   <spacer height=".5"/>
   <row>
-    <col style="blank" width=".17">Method = 1</col>
-    <col end="4" start="0" width=".25">Rice Parameter</col>
-    <col end="9" start="5" style="dashed" width=".20">Escape Code</col>
-    <col width=".38">Encoded Residuals</col>
+    <col style="blank" width=".17">method = 1</col>
+    <col end="4" start="0" width=".25">Rice parameter</col>
+    <col end="9" start="5" style="dashed" width=".20">escape code</col>
+    <col width=".38">encoded residuals</col>
   </row>
   <line style="dotted"><start corner="sw" id="partition"/><end corner="nw" id="rice"/></line>
   <line style="dotted"><start corner="se" id="partition"/><end corner="ne" id="residual"/></line>

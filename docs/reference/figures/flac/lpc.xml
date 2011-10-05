@@ -1,19 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" width=".25">Warm-Up Sample₁</col>
-    <col width=".25">Warm-Up Sample₂</col>
+    <col start="0" end="subframe bps - 1" width=".25">warm-up sample₁</col>
+    <col start="0" end="subframe bps - 1" width=".25">Warm-up sample₂</col>
+    <col start="0" end="subframe bps - 1" width=".25">warm-up sample₃</col>
     <col width=".25" style="dashed">...</col>
-    <col width=".25">Warm-Up Sampleₓ</col>
   </row>
   <row>
-    <col start="0" end="3" width=".18">QLP Precision</col>
-    <col start="4" end="8" width=".22">QLP Shift Needed</col>
-    <col start="9" width=".20">QLP Coefficient₁</col>
-    <col width=".20">QLP Coefficient₂</col>
-    <col style="dashed" width=".20">...</col>
+    <col start="0" end="3" width=".40">QLP precision</col>
+    <col start="4" end="8" width=".60">QLP shift needed</col>
   </row>
   <row>
-    <col>Residual</col>
+    <col start="0" end ="QLP precision - 1" width=".25">QLP coefficient₁</col>
+    <col start="0" end ="QLP precision - 1" width=".25">QLP coefficient₂</col>
+    <col start="0" end ="QLP precision - 1" width=".25">QLP coefficient₃</col>
+    <col style="dashed" width=".25">...</col>
+  </row>
+  <row>
+    <col>residual block</col>
   </row>
 </diagram>

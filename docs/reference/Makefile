@@ -36,12 +36,14 @@ figures/flac/channels.pdf \
 figures/flac/cuesheet.pdf \
 figures/flac/exhaustive.pdf \
 figures/flac/fixed.pdf \
+figures/flac/fixed-parse.pdf \
 figures/flac/frame.pdf \
 figures/flac/frames.pdf \
 figures/flac/hann.pdf \
 figures/flac/header-example.pdf \
 figures/flac/lag.pdf \
 figures/flac/lpc.pdf \
+figures/flac/lpc-parse.pdf \
 figures/flac/metadata.pdf \
 figures/flac/nonexhaustive.pdf \
 figures/flac/picture.pdf \
@@ -49,6 +51,7 @@ figures/flac/read_residual.pdf \
 figures/flac/read_utf8.pdf \
 figures/flac/rectangular.pdf \
 figures/flac/residual.pdf \
+figures/flac/residual-parse.pdf \
 figures/flac/rice1.pdf \
 figures/flac/rice2.pdf \
 figures/flac/rice3.pdf \
