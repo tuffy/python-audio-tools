@@ -11,9 +11,9 @@
     <col start="4" end="8" width=".60">QLP shift needed</col>
   </row>
   <row>
-    <col start="0" end ="QLP precision - 1" width=".25">QLP coefficient₁</col>
-    <col start="0" end ="QLP precision - 1" width=".25">QLP coefficient₂</col>
-    <col start="0" end ="QLP precision - 1" width=".25">QLP coefficient₃</col>
+    <col start="0" end ="QLP precision" width=".25">QLP coefficient₁</col>
+    <col start="0" end ="QLP precision" width=".25">QLP coefficient₂</col>
+    <col start="0" end ="QLP precision" width=".25">QLP coefficient₃</col>
     <col style="dashed" width=".25">...</col>
   </row>
   <row>
