@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
+    <col start="0" end="subframe bps - 1" width=".25">warm-up sample₀</col>
     <col start="0" end="subframe bps - 1" width=".25">warm-up sample₁</col>
-    <col start="0" end="subframe bps - 1" width=".25">Warm-up sample₂</col>
-    <col start="0" end="subframe bps - 1" width=".25">warm-up sample₃</col>
+    <col start="0" end="subframe bps - 1" width=".25">warm-up sample₂</col>
     <col width=".25" style="dashed">...</col>
   </row>
   <row>
-    <col start="0" end="3" width=".40">QLP precision</col>
+    <col start="0" end="3" width=".40">QLP precision (+1)</col>
     <col start="4" end="8" width=".60">QLP shift needed</col>
   </row>
   <row>
-    <col start="0" end ="QLP precision" width=".25">QLP coefficient₁</col>
-    <col start="0" end ="QLP precision" width=".25">QLP coefficient₂</col>
-    <col start="0" end ="QLP precision" width=".25">QLP coefficient₃</col>
+    <col start="0" end ="QLP precision - 1" width=".25">QLP coefficient₀</col>
+    <col start="0" end ="QLP precision - 1" width=".25">QLP coefficient₁</col>
+    <col start="0" end ="QLP precision - 1" width=".25">QLP coefficient₂</col>
     <col style="dashed" width=".25">...</col>
   </row>
   <row>

@@ -6,7 +6,7 @@
   <field size="16" value="43">warm-up sample₀</field>
   <field size="16" value="48">warm-up sample₁</field>
   <field size="16" value="50">warm-up sample₂</field>
-  <field size="4" value="11">QLP precision</field>
+  <field size="4" value="11">QLP precision (+1)</field>
   <field size="5" value="10">QLP shift needed</field>
   <field size="12" value="1451">QLP coefficient₀</field>
   <field size="12" value="0xebd">QLP coefficient₁</field>

@@ -486,7 +486,7 @@ should always be 0.
 $type\_order \leftarrow$ \READ 6 unsigned bits\;
 \eIf(\tcc*[f]{account for wasted bits}){(\READ 1 unsigned bit) $ = 1$}{
   $wasted~BPS \leftarrow$ (\UNARY stop bit 1) + 1\;
-  subframe's bits per sample $\leftarrow \text{frame header's bits per sample} - wasted~bps$\;
+  subframe's bits per sample $\leftarrow \text{frame header's bits per sample} - wasted~BPS$\;
 }{
   $wasted~BPS \leftarrow 0$\;
   subframe's bits per sample $\leftarrow \text{frame header's bits per sample}$\;
@@ -593,7 +593,7 @@ constant $\leftarrow$ \READ (\BPS) signed bits\;
 
 \subsubsection{FIXED Subframe Decoding Example}
 
-Given the subframe bytes\footnote{Decoding the residual block is explained on page \pageref{residual_decoding_example}}:
+Given the subframe bytes of a 16 bits per sample stream\footnote{Decoding the residual block is explained on page \pageref{residual_decoding_example}}:
 \begin{figure}[h]
 \includegraphics{figures/flac/fixed-parse.pdf}
 \end{figure}
@@ -647,10 +647,10 @@ $\text{sample}_{10}$ & $\leftarrow$ & 26 + 1 = \textbf{27} \\
 \For(\tcc*[f]{warm-up samples}){i = 0 \emph{\KwTo}\ORDER}{
   $sample_i \leftarrow $ \READ (\BPS) signed bits\;
 }
-QLP precision $\leftarrow$ \READ 4 unsigned bits\;
+QLP precision $\leftarrow$ (\READ 4 unsigned bits) + 1\;
 QLP shift needed $\leftarrow$ \MAX(\READ 5 signed bits, 0)\footnote{negative shifts are noops in the decoder}\;
 \For{i = 0 \emph{\KwTo}\ORDER}{
-  $QLP~coefficient_i \leftarrow$ \READ (QLP precision + 1) signed bits\;
+  $QLP~coefficient_i \leftarrow$ \READ (QLP precision) signed bits\;
 }
 \RESIDUALS $\leftarrow$ read residual block with frame's \BLOCKSIZE and subframe's \ORDER\;
 \For{i = \ORDER \emph{\KwTo}\BLOCKSIZE}{
@@ -677,7 +677,7 @@ $\text{residual}_3$ & $\leftarrow$ & -2 \\
 $\text{sample}_1$ & $\leftarrow$ & 48 &
 $\text{residual}_4$ & $\leftarrow$ & -3 \\
 $\text{sample}_2$ & $\leftarrow$ & 50 & & & \\
-QLP precision & $\leftarrow$ & 11 & & & \\
+QLP precision & $\leftarrow$ & 12 & & & \\
 QLP shift needed & $\leftarrow$ & 10 & & & \\
 $\text{QLP coefficient}_0$ & $\leftarrow$ & 1451 & & & \\
 $\text{QLP coefficient}_1$ & $\leftarrow$ & -323 & & & \\
@@ -753,7 +753,7 @@ partition order $\leftarrow$ \READ 4 unsigned bits\;
     LSB $\leftarrow$ \READ (Rice parameter) unsigned bits\;
     unsigned $\leftarrow \text{MSB} \times 2 ^ \text{Rice parameter} + \text{LSB}$\;
     \eIf{unsigned is even}{
-      $residual_i \leftarrow \lfloor unsigned \div 2 \rfloor$\;
+      $residual_i \leftarrow unsigned \div 2$\;
     }{
       $residual_i \leftarrow -\lfloor unsigned \div 2 \rfloor - 1$\;
     }
@@ -796,8 +796,8 @@ $\text{LSB}_1$ & $\leftarrow$ & 2 &
 $\text{LSB}_6$ & $\leftarrow$ & 0 \\
 $\text{unsigned}_1$ & $\leftarrow$ & $1 \times 2 ^ 2 + 2 = 6$ &
 $\text{unsigned}_6$ & $\leftarrow$ & $2 \times 2 ^ 2 + 0 = 8$ \\
-$\text{residual}_1$ & $\leftarrow$ & $\lfloor 6 \div 2\rfloor = 3$ &
-$\text{residual}_6$ & $\leftarrow$ & $\lfloor 8 \div 2\rfloor = 4$ \\
+$\text{residual}_1$ & $\leftarrow$ & $6 \div 2 = 3$ &
+$\text{residual}_6$ & $\leftarrow$ & $8 \div 2 = 4$ \\
 \hline
 $\text{MSB}_2$ & $\leftarrow$ & 0 &
 $\text{MSB}_7$ & $\leftarrow$ & 0 \\
@@ -823,8 +823,8 @@ $\text{LSB}_4$ & $\leftarrow$ & 2 &
 $\text{LSB}_9$ & $\leftarrow$ & 2 \\
 $\text{unsigned}_4$ & $\leftarrow$ & $0 \times 2 ^ 2 + 2 = 2$ &
 $\text{unsigned}_9$ & $\leftarrow$ & $0 \times 2 ^ 2 + 2 = 2$ \\
-$\text{residual}_4$ & $\leftarrow$ & $\lfloor 6 \div 2\rfloor = 1$ &
-$\text{residual}_9$ & $\leftarrow$ & $\lfloor 6 \div 2\rfloor = 1$ \\
+$\text{residual}_4$ & $\leftarrow$ & $2 \div 2 = 1$ &
+$\text{residual}_9$ & $\leftarrow$ & $2 \div 2 = 1$ \\
 \end{tabular}
 }
 \par
@@ -875,8 +875,8 @@ and the checksum is always truncated to 16-bits.
 \par
 \noindent
 For example, given the frame bytes:
-\texttt{FF, F8, CC, 1C, 00, C0, EB, 00, 00, 00, 00,
-00, 00, 00, 00}, the frame's CRC-16 can be calculated:
+\texttt{FF F8 CC 1C 00 C0 EB 00 00 00 00 00 00 00 00},
+the frame's CRC-16 can be calculated:
 {\relsize{-2}
 \begin{align*}
 \CRCSIXTEEN{0}{0xFF}{0x0000}{0xFF}{0x0000}{0x0202} \\
@@ -907,7 +907,7 @@ the result will also always be 0, just as in the CRC-8.
 
 \subsection{Recombining Subframes}
 
-\ALGORITHM{the frame's block size and channel assignment, a set of decoded subframe samples\footnote{$subframe_{x~y}$ indicates the $y$th sample in subframe $x$}}{a single list of signed PCM samples}
+\ALGORITHM{the frame's block size and channel assignment, a set of decoded subframe samples\footnote{$subframe_{x~y}$ indicates the $y$th sample in subframe $x$}}{a single list of signed PCM frames}
 \uIf(\tcc*[f]{independent}){$0 \leq encoded~channels \leq 7$}{
  channel count $\leftarrow encoded~channels + 1$\;
   \For{i = 0 \emph{\KwTo}block size}{
