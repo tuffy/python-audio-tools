@@ -204,7 +204,7 @@ However, this block is not needed for decoding.
 \subsection{Reading Metadata Blocks}
 \ALGORITHM{the FLAC file stream}{nine STREAMINFO values used for decoding}
 \Repeat{last = 1}{
-  $last \leftarrow$ \READ 1 unsigned bits\;
+  $last \leftarrow$ \READ 1 unsigned bit\;
   $type \leftarrow$ \READ 7 unsigned bits\;
   $size \leftarrow$ \READ 24 unsigned bits\;
 \eIf(\tcc*[f]{read STREAMINFO metadata block}){type = 0}{
@@ -906,7 +906,7 @@ the result will also always be 0, just as in the CRC-8.
 \clearpage
 
 \subsection{Recombining Subframes}
-
+\label{flac_recombining_subframes}
 \ALGORITHM{the frame's block size and channel assignment, a set of decoded subframe samples\footnote{$subframe_{x~y}$ indicates the $y$th sample in subframe $x$}}{a single list of signed PCM frames}
 \uIf(\tcc*[f]{independent}){$0 \leq encoded~channels \leq 7$}{
  channel count $\leftarrow encoded~channels + 1$\;
@@ -945,7 +945,7 @@ the result will also always be 0, just as in the CRC-8.
 
 \clearpage
 
-\subsection{Updating Stream MD5 sum}
+\subsection{Updating Stream MD5 Sum}
 
 \ALGORITHM{the frame's signed PCM samples\footnote{$sample_{x~y}$ indicates the $y$th sample in channel $x$}}{the stream's updated MD5 sum}
 \For{i = 0 \emph{\KwTo}block size}{
@@ -996,433 +996,262 @@ whose MD5 sum is:
 \noindent
 \texttt{E7482f6462B27EE04EADC079291C79E9}
 
+\clearpage
 
-%% A FLAC stream is made up of individual FLAC frames, as follows:
-%% \begin{figure}[h]
-%% \includegraphics{figures/flac/frame.pdf}
-%% \end{figure}
+\section{FLAC Encoding}
 
+The basic process for encoding a FLAC file is as follows:
+\par
+\noindent
+\ALGORITHM{PCM frames, a default block size and various encoding parameters:
+\newline
+\begin{tabular}{rll}
+parameter & possible values & typical values \\
+\hline
+block size & a positive number of PCM frames & 1152 or 4096 \\
+maximum LPC order & integer between 0 and 32, inclusive & 0, 6, 8 or 12 \\
+minimum partition order & integer between 0 and 16, inclusive & 0 \\
+maximum partition order & integer between 0 and 16, inclusive & 3, 4, 5 or 6 \\
+try mid-side & true or false & \\
+try adaptive mid-side & true or false & \\
+exhaustive model search & true or false & \\
+\end{tabular}
+}{an encoded FLAC file}
+\SetKwData{BLOCKSIZE}{block size}
+\WRITE \texttt{"fLaC"} in 4 bytes\;
+write placeholder STREAMINFO metadata block\;
+write PADDING metadata block\;
+initialize stream's MD5 sum\;
+\While{PCM frames remain}{
+  take \BLOCKSIZE PCM frames from the input\;
+  update the stream's MD5 sum with that PCM data\;
+  encode a FLAC frame from PCM frames using the given encoding parameters\;
+  update STREAMINFO's values from the FLAC frame\;
+}
+return to the start of the file and rewrite the STREAMINFO metadata block\;
+\EALGORITHM
+\begin{figure}[h]
+\includegraphics{figures/flac/stream3.pdf}
+\end{figure}
+\par
+\noindent
+All of the fields in the FLAC stream are big-endian.
 
-%% \par
-%% \parpic[r]{
-%% \begin{tabular}{|c|l|}
-%% \hline
-%% Value & Subframe Type \\
-%% \hline
-%% \texttt{000000} & \texttt{SUBFRAME\_CONSTANT} \\
-%% \texttt{000001} & \texttt{SUBFRAME\_VERBATIM} \\
-%% \texttt{00001x} & reserved \\
-%% \texttt{0001xx} & reserved \\
-%% \texttt{001xxx} & \texttt{SUBFRAME\_FIXED} \\
-%% & \texttt{xxx} = predictor order \\
-%% \texttt{01xxxx} & reserved \\
-%% \texttt{1xxxxx} & \texttt{SUBFRAME\_LPC} \\
-%% & \texttt{xxxxx} = predictor order - 1 \\
-%% \hline
-%% \end{tabular}
-%% }
-%% \noindent
-%% \VAR{Sample/Frame Number} is a UTF-8 coded value.
-%% If the \VAR{Blocking Strategy} is 0, it decodes to a 32-bit frame number.
-%% If the \VAR{Blocking Strategy} is 1, it decodes to a 36-bit sample number.
+\clearpage
 
-%% There is one \VAR{Subframe} per channel.
-
-%% \VAR{Wasted Bits Per Sample} is typically a single bit set to 0, indicating
-%% no wasted bits per sample.  If set to 1, a unary-encoded value
-%% follows which indicates how many bits are wasted per sample.
-
-%% Padding is added as needed between the final subframe and CRC-16
-%% in order to byte-align frames.
-
-%% \pagebreak
-
-%% \subsection{UTF-8 Frame Number}
-
-%% UTF-8 was originally designed as a method of encoding
-%% Unicode text in a way that's backwards-compatible with ASCII.
-%% FLAC uses this encoding as a method to store the frame number
-%% such that the smaller numbers use fewer bytes than the larger
-%% numbers.
-
-%% One can decode this field in the following way:
-
-%% \begin{figure}[h]
-%% \includegraphics{figures/flac/read_utf8.pdf}
-%% \end{figure}
-
-%% \pagebreak
-
-%% For example, given the UTF-8 byte \texttt{0x55}:
-
-%% \begin{figure}[h]
-%% \includegraphics{figures/utf-8-1.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% In this instance, the decoded UTF-8 value is the same as the byte's value.
-%% This is how UTF-8 maintains backwards compatibility with ASCII.
-
-%% However, given the UTF-8 bytes \texttt{0xCA 0x95}:
-%% \begin{figure}[h]
-%% \includegraphics{figures/utf-8-2.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% Notice that the unary value from the first byte dictates the
-%% total number of bytes, and that the subsequent bytes
-%% are prefixed by a fixed, 2-bit header.
-
-%% Finally, given the UTF-8 bytes \texttt{0xE5 0x95 0xAA}:
-%% \begin{figure}[h]
-%% \includegraphics{figures/utf-8-3.pdf}
-%% \end{figure}
+\subsection{Writing Placeholder Metadata Blocks}
+\ALGORITHM{input stream's attributes, a default block size}{1 or more metadata blocks to the FLAC file stream}
+\WRITE 0 as 1 unsigned bit\tcc*[r]{is last block}
+\WRITE 0 as 7 unsigned bits\tcc*[r]{STREAMINFO type}
+\WRITE 34 as 24 unsigned bits\tcc*[r]{STREAMINFO size}
+\WRITE default block size as 16 unsigned bits\tcc*[r]{minimum block size}
+\WRITE default block size as 16 unsigned bits\tcc*[r]{maximum block size}
+\WRITE 0 as 24 unsigned bits\tcc*[r]{minimum frame size}
+\WRITE 0 as 24 unsigned bits\tcc*[r]{maximum frame size}
+\WRITE stream's sample rate as 20 unsigned bits\;
+\WRITE (stream's channels - 1) as 3 unsigned bits\;
+\WRITE (streams bits per sample - 1) as 5 unsigned bits\;
+\WRITE 0 as 36 unsigned bits\tcc*[r]{total PCM frames}
+\WRITE 0 as 16 bytes\tcc*[r]{stream's MD5 sum}
+\BlankLine
+\BlankLine
+\WRITE 1 as 1 unsigned bit\tcc*[r]{is last block}
+\WRITE 1 as 7 unsigned bits\tcc*[r]{PADDING type}
+\WRITE 4096 as 24 unsigned bits\tcc*[r]{PADDING size}
+\WRITE 0 as 4096 bytes\tcc*[r]{PADDING's data}
+\EALGORITHM
+\par
+\noindent
+PADDING can be some size other than 4096 bytes.
+One simply wants to leave enough room for a VORBIS\_COMMENT block,
+SEEKTABLE and so forth.
+Other fields such as the minimum/maximum frame size
+and the stream's final MD5 sum can't be known in advance;
+we'll need to return to this block once encoding is finished
+in order to populate them.
+\begin{figure}[h]
+\includegraphics{figures/flac/metadata.pdf}
+\end{figure}
 
 
-%% \pagebreak
+\clearpage
 
-%% \subsection{CONSTANT Subframe}
+\subsection{Updating Stream MD5 Sum}
+\ALGORITHM{the frame's signed PCM input samples\footnote{$sample_{x~y}$ indicates the $y$th sample in channel $x$}}{the stream's updated MD5 sum}
+\For{i = 0 \emph{\KwTo}block size}{
+  \For{j = 0 \emph{\KwTo}channel count}{
+    bytes $\leftarrow sample_{j~i}$ as signed, little-endian bytes\;
+    update stream's MD5 sum with bytes\;
+  }
+}
+\EALGORITHM
+\par
+\noindent
+For example, given a 16 bits per sample stream with the signed sample values:
+\begin{table}[h]
+\begin{tabular}{r|rr}
+& $channel_0$ & $channel_1$ \\
+\hline
+$sample_0$ & 1 & -1 \\
+$sample_1$ & 2 & -2 \\
+$sample_2$ & 3 & -3 \\
+\end{tabular}
+\end{table}
+\par
+\noindent
+are translated to the bytes:
+\begin{table}[h]
+\begin{tabular}{r|rr}
+& $channel_0$ & $channel_1$ \\
+\hline
+$sample_0$ & \texttt{01 00} & \texttt{FF FF} \\
+$sample_1$ & \texttt{02 00} & \texttt{FE FF} \\
+$sample_2$ & \texttt{03 00} & \texttt{FD FF} \\
+\end{tabular}
+\end{table}
+\par
+\noindent
+and combined as:
+\vskip .15in
+\par
+\noindent
+\texttt{01 00 FF FF 02 00 FE FF 03 00 FD FF}
+\vskip .15in
+\par
+\noindent
+whose MD5 sum is:
+\vskip .15in
+\par
+\noindent
+\texttt{E7482f6462B27EE04EADC079291C79E9}
+\vskip .25in
+\par
+This process is identical to the MD5 sum calculation performed
+during FLAC decoding, but performed in the opposite order.
 
-%% This is the simplest possible subframe.
-%% It consists of a single value whose size is equal to the subframe's
-%% \VAR{Bits per Sample}\footnote{
-%% The subframe's \VAR{Bits per Sample} may not be the same size as the frame's
-%% \VAR{Bits per Sample};
-%% if the subframe is a difference or side channel, the subframe's
-%% \VAR{Bits per Sample} is 1 bit larger than the frame's.
-%% Or, if the subframe has wasted-bits, it is treated as having
-%% that many bits fewer.
-%% This is explained in more detail on page \pageref{flac_channels}.}.
-%% For instance, a 16-bit subframe would have CONSTANT subframes
-%% 16 bits in length.
-%% The value of the subframe is the value of all samples the subframe
-%% contains.
-%% An obvious use of this subframe is to store an entire subframe's worth
-%% of digital silence (samples with a value of 0) very efficiently.
+\clearpage
 
-%% \subsection{VERBATIM Subframe}
+\section{Encoding a FLAC Frame}
+{\relsize{-1}
+\ALGORITHM{up to ``block size'' number of PCM frames, encoding parameters}{a single FLAC frame}
+\SetKw{AND}{and}
+\SetKw{OR}{or}
+\SetKwFunction{MIN}{min}
+\SetKwFunction{BUILDSUBFRAME}{build subframe}
+\SetKwFunction{CALCMIDSIDE}{calculate mid-side}
+\eIf{channels = 2 \AND (try mid-side \OR try adaptive mid-side)}{
+  $average$, $difference$ $\leftarrow$ \CALCMIDSIDE($channel_0$, $channel_1$)\;
+  left subframe $\leftarrow$ \BUILDSUBFRAME($channel_0$, stream's bits per sample)\;
+  right subframe $\leftarrow$ \BUILDSUBFRAME($channel_1$, stream's bits per sample)\;
+  average subframe $\leftarrow$ \BUILDSUBFRAME($average$, stream's bits per sample)\;
+  difference subframe $\leftarrow$ \BUILDSUBFRAME($difference$, stream's bits per sample + 1)\;
+  left bits $\leftarrow$ left subframe length, in bits\;
+  right bits $\leftarrow$ right subframe length, in bits\;
+  avg bits $\leftarrow$ average subframe length, in bits\;
+  diff bits $\leftarrow$ difference subframe length, in bits\;
+  \BlankLine
+  \uIf{try mid-side}{
+    \uIf{left bits + right bits $<$ \MIN(left bits + diff bits, diff bits + right bits, avg bits + diff bits)}{
+      write frame header with channel assignment \texttt{0x1}\;
+      write left subframe\;
+      write right subframe\;
+    }
+    \uElseIf{left bits $<$ \MIN(right bits, avg bits)}{
+      write frame header with channel assignment \texttt{0x8}\;
+      write left subframe\;
+      write difference subframe\;
+    }
+    \uElseIf{right bits $<$ avg bits}{
+      write frame header with channel assignment \texttt{0x9}\;
+      write difference subframe\;
+      write right subframe\;
+    }
+    \Else{
+      write frame header with channel assignment \texttt{0xA}\;
+      write average subframe\;
+      write difference subframe\;
+    }
+  }\uElseIf{left bits + right bits $<$ avg bits + diff bits}{
+    write frame header with channel assignment \texttt{0x1}\;
+    write left subframe\;
+    write right subframe\;
+  }
+  \Else{
+    write frame header with channel assignment \texttt{0xA}\;
+    write average subframe\;
+    write difference subframe\;
+  }
+}(\tcc*[f]{store subframes independently}){
+  write frame header with channel assigment $channels - 1$\;
+  \ForEach{channel \IN channels}{
+    subframe $\leftarrow$ \BUILDSUBFRAME($channel$, stream's bits per sample)\;
+    write subframe\;
+  }
+}
+byte align the stream\;
+write frame's CRC-16 checksum\;
+\EALGORITHM
+}
+\clearpage
 
-%% \begin{figure}[h]
-%% \includegraphics{figures/flac/verbatim.pdf}
-%% \end{figure}
-%% \noindent
-%% Each sample is the size of the subframe's \VAR{Bits per Sample}.
-%% The total number of samples equals the subframe's \VAR{Block Size}.
-%% Since it does no compression whatsoever and simply stores
-%% audio samples as-is, this subframe is only suitable for especially
-%% noisy portions of a track where no suitable predictor can be found.
+\subsubsection{Calculating Mid-Side}
+For each sample in $channel_0$ and $channel_1$:
+\begin{align*}
+average_i &\leftarrow \left\lfloor\frac{channel_{0~i} + channel_{1~i}}{2}\right\rfloor \\
+difference_i &\leftarrow channel_{0~i} - channel_{1~i}
+\intertext{For example, given the input samples:}
+channel_{0~0} &\leftarrow 10 \\
+channel_{1~0} &\leftarrow 15
+\intertext{Our average and difference samples are:}
+average_0 &\leftarrow \left\lfloor\frac{10 + 15}{2}\right\rfloor = 12 \\
+difference_0 &\leftarrow 10 - 15 = -5
+\intertext{Note that the $difference$ channel is identical for left-difference,
+difference-right and mid-side channel assignments.
+For example, when recombined from left-difference\footnotemark:}
+sample_0 &\leftarrow 10 \\
+sample_1 &\leftarrow 10 - (-5) = 15
+\intertext{difference-right:}
+sample_0 &\leftarrow -5 + 15 = 10 \\
+sample_1 &\leftarrow 15
+\intertext{and mid-side:}
+sample_0 &\leftarrow \lfloor(((12 \times 2) + (-5 \bmod 2)) + -5) \div 2\rfloor  = \lfloor((24 + 1 - 5) \div 2\rfloor = 10 \\
+sample_1 &\leftarrow \lfloor(((12 \times 2) + (-5 \bmod 2)) - -5) \div 2\rfloor =  \lfloor((24 + 1 + 5) \div 2\rfloor = 15
+\end{align*}
+\footnotetext{See the recombining subframes algorithms on page
+\pageref{flac_recombining_subframes}.}
 
-%% \subsection{FIXED Subframe}
+\clearpage
 
-%% \begin{figure}[h]
-%% \includegraphics{figures/flac/fixed.pdf}
-%% \end{figure}
-%% \noindent
-%% The number of warm-up samples equals the \VAR{Predictor Order}
-%% (which is encoded in the \VAR{Subframe Type}).
-%% Each warm-up sample is the same size as the subframe's
-%% \VAR{Bits per Sample}.
-%% These samples are sent out as-is; they are the subframe's
-%% `starting point' upon which further samples build when decompressing
-%% the stream.
-%% Determining the value of the current sample is then a matter of
-%% looking backwards at previously decoded samples (or warm-up samples),
-%% applying a simple formula on their values (which depends on the
-%% Predictor Order) and adding the residual.
+\subsubsection{Writing Frame Header}
+\ALGORITHM{the frame's channel assignment, the input stream's parameters}{a FLAC frame header}
+\SetKw{OR}{or}
+\WRITE \texttt{0x3FFE} in 14 unsigned bits\tcc*[r]{sync code}
+\WRITE 0 in 1 unsigned bit\;
+\WRITE 0 in 1 unsigned bit\tcc*[r]{blocking strategy}
+\WRITE $encoded~block~size$ in 4 unsigned bits\;
+\WRITE $encoded~sample~rate$ in 4 unsigned bits\;
+\WRITE $encoded~channels$ in 4 unsigned bits\;
+\WRITE $encoded~bps$ in 3 unsigned bits\;
+\WRITE 0 in 1 unsigned bit\;
+\WRITE frame number as a UTF-8 encoded value\;
+\uIf{encoded block size = 6}{
+  \WRITE (block size - 1) in 8 unsigned bits\;
+}
+\ElseIf{encoded block size = 7}{
+  \WRITE (block size - 1) in 16 unsigned bits\;
+}
+\uIf{encoded sample rate = 12}{
+  \WRITE ($\text{sample rate} \div 1000$) in 8 unsigned bits\;
+}
+\uElseIf{encoded sample rate = 13}{
+  \WRITE sample rate in 16 unsigned bits\;
+}
+\ElseIf{encoded sample rate = 14}{
+  \WRITE ($\text{sample rate} \div 10$) in 16 unsigned bits\;
+}
+\WRITE header CRC8 in 8 unsigned bits\;
+\EALGORITHM
 
-%% \clearpage
-
-%% \begin{align*}
-%% \intertext{For Order 0:}
-%% \SAMPLE_i &= \RESIDUAL_i \text{ for } i = 0 \text{ to Block Size} - 1 \\
-%% \intertext{For Order 1:}
-%% \SAMPLE_i &=
-%% \begin{cases}
-%% \WARMUP_i & \text{ for } i = 0 \\
-%% \SAMPLE_{i - 1} + \RESIDUAL_{i - 1} & \text{ for } i = 1 \text{ to Block Size} - 1
-%% \end{cases} \\
-%% \intertext{For Order 2:}
-%% \SAMPLE_i &=
-%% \begin{cases}
-%% \WARMUP_i & \text{ for } i = 0 \text{ to } 1 \\
-%% ( 2 \times \SAMPLE_{i - 1} ) - \SAMPLE_{i - 2} + \RESIDUAL_{i - 2} & \text{ for } i = 2 \text{ to Block Size} - 1
-%% \end{cases} \\
-%% \intertext{For Order 3:}
-%% \SAMPLE_i &=
-%% \begin{cases}
-%% \WARMUP_i \\
-%% \text{ for } i = 0 \text{ to } 2 \\
-%% ( 3 \times \SAMPLE_{i - 1} ) - ( 3 \times \SAMPLE_{i - 2} ) + \SAMPLE_{i - 3} + \RESIDUAL_{i - 3} \\
-%% \text{ for } i = 3 \text{ to Block Size} - 1
-%% \end{cases} \\
-%% \intertext{For Order 4:}
-%% \SAMPLE_i &=
-%% \begin{cases}
-%% \WARMUP_i \\
-%% \text{ for } i = 0 \text{ to } 3 \\
-%% ( 4 \times \SAMPLE_{i - 1} ) - ( 6 \times \SAMPLE_{i - 2} ) + (4 \times \SAMPLE_{i - 3} ) - \SAMPLE_{i - 4} + \RESIDUAL_{i - 4} \\
-%% \text{ for } i = 4 \text{ to Block Size} - 1
-%% \end{cases}
-%% \end{align*}
-
-%% For example, given a FIXED order of 1, a $\WARMUP_0$ of 10,
-%% the residuals 1, 2, -2, 1 -1, and a \VAR{Block Size} of 6, we calculate
-%% samples as follows:
-%% \begin{align*}
-%% \SAMPLE_0 &= \WARMUP_0 = \textbf{10} \\
-%% \SAMPLE_1 &= \SAMPLE_0 + \RESIDUAL_0 = 10 + 1 = \textbf{11} \\
-%% \SAMPLE_2 &= \SAMPLE_1 + \RESIDUAL_1 = 11 + 2 = \textbf{13} \\
-%% \SAMPLE_3 &= \SAMPLE_2 + \RESIDUAL_2 = 13 - 2 = \textbf{11} \\
-%% \SAMPLE_4 &= \SAMPLE_3 + \RESIDUAL_3 = 11 + 1 = \textbf{12} \\
-%% \SAMPLE_5 &= \SAMPLE_4 + \RESIDUAL_4 = 12 - 1 = \textbf{11}
-%% \end{align*}
-%% \par
-%% \noindent
-%% How to extract the encoded residual is explained on page
-%% \pageref{flac_residual}.
-
-%% \clearpage
-
-%% \subsection{LPC Subframe}
-%% \begin{figure}[h]
-%% \includegraphics{figures/flac/lpc.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% The number of warm-up samples equals the \VAR{LPC Order}
-%% (which is encoded in the \VAR{Subframe Type}).
-%% The size if each warm-up sample equals the subframe's \VAR{Bits per Sample}.
-%% The size of each QLP Coefficient is equal to
-%% \VAR{QLP Precision} number of bits, plus 1.
-%% \VAR{QLP Shift Needed} and the value of each Coefficient are
-%% signed two's-complement integers.
-%% The number of Coefficients equals the \VAR{LPC Order}.
-%% \begin{align*}
-%% \intertext{For $i = 0$ to $Order - 1$:}
-%% \SAMPLE_i &= \WARMUP_i \\
-%% \intertext{For $i = Order$ to Block Size - 1:}
-%% \SAMPLE_i &= \left\lfloor \frac{\overset{Order - 1}{\underset{j = 0}{\sum}}
-%%   \COEFF_j \times \SAMPLE_{i - j - 1} } {2 ^ \text{QLP Shift Needed}}\right\rfloor + \RESIDUAL_{i - Order}
-%% \end{align*}
-%% This simply means we're taking the sum of the calculated values from
-%% 0 to Order - 1, bit-shifting that sum down and added the residual
-%% when determining the current sample.
-%% Much like the FIXED subframe, LPC subframes also contain warm-up
-%% samples which serve as our calculation's starting point.
-
-%% In this example, the \VAR{LPC Order} is 5, the \VAR{QLP Shift Needed} is 9,
-%% the \VAR{Block Size} is 10
-%% and the remaining subframe values are as follows:
-
-%% \begin{table}[h]
-%% \begin{tabular}{r r | r r | r r }
-%% $\WARMUP_0$ & 1053 &
-%% $\COEFF_0$ & 1241 &
-%% $\RESIDUAL_0$ & 11 \\
-%% $\WARMUP_1$ & 1116 &
-%% $\COEFF_1$ & -944 &
-%% $\RESIDUAL_1$ & 79 \\
-%% $\WARMUP_2$ & 1257 &
-%% $\COEFF_2$ & 14 &
-%% $\RESIDUAL_2$ & 24 \\
-%% $\WARMUP_3$ & 1423 &
-%% $\COEFF_3$ & 342 &
-%% $\RESIDUAL_3$ & -81 \\
-%% $\WARMUP_4$ & 1529 &
-%% $\COEFF_4$ & -147 &
-%% $\RESIDUAL_4$ & -72 \\
-%% \end{tabular}
-%% \end{table}
-%% \par
-%% \noindent
-%% Note that the number is residuals equals Block Size minus Order
-%% which happens to be 5 in this simple example ($10 - 5 = 5$).
-%% Most of the time it will be much larger.
-
-%% For the sake of brevity, in this example we'll abbreviate
-%% \VAR{QLP Coefficient} as \VAR{C} and \VAR{Sample} as \VAR{S}.
-
-%% \clearpage
-%% \begin{align*}
-%% \SAMPLE_0 &= \WARMUP_0 = \textbf{1053} \\
-%% \SAMPLE_1 &= \WARMUP_1 = \textbf{1116} \\
-%% \SAMPLE_2 &= \WARMUP_2 = \textbf{1257} \\
-%% \SAMPLE_3 &= \WARMUP_3 = \textbf{1423} \\
-%% \SAMPLE_4 &= \WARMUP_4 = \textbf{1529} \\
-%% \SAMPLE_5 &= \left\lfloor \frac{(\SCOEFF_0 \times \SSAMPLE_4) + (\SCOEFF_1 \times \SSAMPLE_3) + (\SCOEFF_2 \times \SSAMPLE_2) + (\SCOEFF_3 \times \SSAMPLE_1) + (\SCOEFF_4 \times \SSAMPLE_0)}{2 ^ 9}\right\rfloor + \RESIDUAL_0 \\
-%% &= \left\lfloor \frac{(1241 \times 1529) + (-944 \times 1423) + (14 \times 1257) + (342 \times 1116) + (-147 \times 1053)}{512}\right\rfloor + 11 \\
-%% &= \left\lfloor \frac{798656}{512} \right\rfloor + 11 = 1559 + 11 = \textbf{1570} \\
-%% \SAMPLE_6 &= \left\lfloor \frac{(\SCOEFF_0 \times \SSAMPLE_5) + (\SCOEFF_1 \times \SSAMPLE_4) + (\SCOEFF_2 \times \SSAMPLE_3) + (\SCOEFF_3 \times \SSAMPLE_2) + (\SCOEFF_4 \times \SSAMPLE_1)}{2 ^ 9}\right\rfloor + \RESIDUAL_1 \\
-%% &= \left\lfloor \frac{(1241 \times 1570) + (-944 \times 1529) + (14 \times 1423) + (342 \times 1257) + (-147 \times 1116)}{512}\right\rfloor + 79 \\
-%% &= \left\lfloor \frac{790758}{512} \right\rfloor + 79 = 1544 + 79 = \textbf{1623} \\
-%% \SAMPLE_7 &= \left\lfloor \frac{(\SCOEFF_0 \times \SSAMPLE_6) + (\SCOEFF_1 \times \SSAMPLE_5) + (\SCOEFF_2 \times \SSAMPLE_4) + (\SCOEFF_3 \times \SSAMPLE_3) + (\SCOEFF_4 \times \SSAMPLE_2)}{2 ^ 9}\right\rfloor + \RESIDUAL_2 \\
-%% &= \left\lfloor \frac{(1241 \times 1623) + (-944 \times 1570) + (14 \times 1529) + (342 \times 1423) + (-147 \times 1257)}{512}\right\rfloor + 24 \\
-%% &= \left\lfloor \frac{855356}{512} \right\rfloor + 24 = 1670 + 24 = \textbf{1694} \\
-%% \SAMPLE_8 &= \left\lfloor \frac{(\SCOEFF_0 \times \SSAMPLE_7) + (\SCOEFF_1 \times \SSAMPLE_6) + (\SCOEFF_2 \times \SSAMPLE_5) + (\SCOEFF_3 \times \SSAMPLE_4) + (\SCOEFF_4 \times \SSAMPLE_3)}{2 ^ 9}\right\rfloor + \RESIDUAL_3 \\
-%% &= \left\lfloor \frac{(1241 \times 1694) + (-944 \times 1623) + (14 \times 1570) + (342 \times 1529) + (-147 \times 1423)}{512}\right\rfloor - 81 \\
-%% &= \left\lfloor \frac{1769}{512} \right\rfloor - 81 = 1769 - 81 = \textbf{1688} \\
-%% \SAMPLE_9 &= \left\lfloor \frac{(\SCOEFF_0 \times \SSAMPLE_8) + (\SCOEFF_1 \times \SSAMPLE_7) + (\SCOEFF_2 \times \SSAMPLE_6) + (\SCOEFF_3 \times \SSAMPLE_5) + (\SCOEFF_4 \times \SSAMPLE_4)}{2 ^ 9}\right\rfloor + \RESIDUAL_4 \\
-%% &= \left\lfloor \frac{(1241 \times 1688) + (-944 \times 1694) + (14 \times 1623) + (342 \times 1570) + (-147 \times 1529)}{512}\right\rfloor - 72 \\
-%% &= \left\lfloor \frac{830571}{512} \right\rfloor - 72 = 1622 - 72 = \textbf{1550} \\
-%% \end{align*}
-
-%% \clearpage
-
-%% \subsection{the Residual}
-%% \label{flac_residual}
-%% Though the FLAC format allows for different forms of
-%% residual coding, two forms of partitioned Rice are the only ones
-%% currently supported.
-%% The difference between the two is that when \VAR{Coding Method} is 0,
-%% the Rice Parameter in each partition is 4 bits.
-%% When the \VAR{Coding Method} is 1, that parameter is 5 bits.
-%% \begin{figure}[h]
-%% \includegraphics{figures/flac/residual.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-
-%% There are $2 ^ \text{Partition Order}$ number of Partitions.
-%% The number of decoded residuals in a Partition depends on the
-%% its position in the subframe.
-%% The first partition in the subframe contains:
-%% \begin{align*}
-%% \text{Total Residuals} &= \frac{\text{Frame's Block Size}}{2 ^ {\text{Partition Order}}} - \text{Predictor Order} \\
-%% \intertext{Subsequent partitions contain:}
-%% \text{Total Residuals} &= \frac{\text{Frame's Block Size}}{2 ^ {\text{Partition Order}}} \\
-%% \intertext{Unless the Partition Order is 0.  In that case:}
-%% \text{Total Residuals} &= \text{Frame's Block Size} - \text{Predictor Order}
-%% \end{align*}
-%% \noindent
-%% since there is only one partition which takes up the entire block.
-
-%% Why does the subframe's block of residuals always have \VAR{Predictor Order}
-%% less residuals than the frame's block size?
-%% The reason is that FIXED or LPC subframes have \VAR{Predictor Order}
-%% number of unencoded warm-up samples.
-%% So, the total number of warm-up samples and the total number residuals
-%% adds up to the frame's block size.
-
-%% If all of the bits in \VAR{Rice Parameter} are set,
-%% the partition is unencoded binary using \VAR{Escape Code} number of bits per
-%% sample.
-
-%% %%It'd be nice to pad this to one more page
-%% %%so that the Rice encoding flowchart and example are on opposite pages
-%% %%and the channel assignment and example are on opposite pages
-
-%% \clearpage
-
-%% \subsubsection{Rice Encoding}
-%% The residual uses Rice coding to compress lots of mostly small values
-%% in a very small amount of space.
-%% Decoding the residuals requires the Rice parameter
-%% and may be easier to explain with a flowchart of the process,
-%% which is repeated for each residual in the partition:
-%% \begin{figure}[h]
-%% \includegraphics{figures/flac/read_residual.pdf}
-%% \end{figure}
-
-%% \clearpage
-
-%% Lets run through an example in which the Rice parameter is 1,
-%% indicating 1 least-significant bit per residual value:
-%% \begin{figure}[h]
-%% \includegraphics{figures/flac/rice1.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% Thus, our final decoded residual values are 1, 2, -2 and -1 and have
-%% consumed a total of 12 bits from the stream.
-
-%% Next, lets run through an example in which the Rice parameter is 4:
-%% \begin{figure}[h]
-%% \includegraphics{figures/flac/rice2.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% In this case, our final residual values are -35, -11, 4 and -12.
-
-%% Finally, we'll try a case in which the Rice parameter is 0,
-%% indicating no least-significant bits at all:
-%% \begin{figure}[h]
-%% \includegraphics{figures/flac/rice4.pdf}
-%% \end{figure}
-%% \par
-%% Our final residual values are 1, 2, -1 and 0.
-
-%% \clearpage
-
-%% \subsection{Channel Assignment}
-%% \label{flac_channels}
-%% Since most audio has more than one channel, it is important to
-%% understand how FLAC handles putting it back together.
-%% When channels are stored independently, one simply interleaves
-%% them together in the proper order.
-%% Let's take an example of 2 channel, 16-bit audio stored this way:
-
-%% \begin{figure}[h]
-%% \includegraphics{figures/flac/channels.pdf}
-%% \end{figure}
-
-%% This is the simplest case.
-%% However, in the case of difference or mid-side channels,
-%% one subframe will contain actual channel data and the other channel
-%% will contain signed difference data which is applied to that actual data
-%% in order to reconstruct both channels.
-%% It's very important to remember that the difference (and side) channel
-%% has 1 additional bit per sample which will be consumed during
-%% reconstruction.
-%% Why 1 additional bit?
-%% Let's take an example where the left sample's value is -30000
-%% and the right sample's value is +30000.
-%% Storing this pair as left + difference means the left
-%% sample remains -30000 and the difference is -60000
-%% ($-30000 - -60000 = +30000$).
-%% -60000 won't fit into a 16-bit signed integer.
-%% Adding that 1 additional bit doubles our range of values
-%% and that's just enough to cover any possible difference between
-%% two samples.
-
-%% Performing the actual channel decorrelation is as follows:
-%% \begin{align*}
-%% \intertext{Left-Difference (assignment \texttt{0x8}):}
-%% \text{Left}_i &= \text{Subframe}_{0~i} \\
-%% \text{Right}_i &= \text{Subframe}_{0~i} - \text{Subframe}_{1~i} \\
-%% \intertext{Difference-Right (assignment \texttt{0x9}):}
-%% \text{Left}_i &= \text{Subframe}_{0~i} + \text{Subframe}_{1~i} \\
-%% \text{Right}_i &= \text{Subframe}_{1~i} \\
-%% \intertext{Mid-Side (assignment \texttt{0xA}):}
-%% \text{Left}_i &= \lfloor (((\text{Subframe}_{0~i} \times 2) + (\text{Subframe}_{1~i} \bmod{2})) + \text{Subframe}_{1~i}) \div 2 \rfloor \\
-%% \text{Right}_i &= \lfloor (((\text{Subframe}_{0~i} \times 2) + (\text{Subframe}_{1~i} \bmod{2})) - \text{Subframe}_{1~i}) \div 2 \rfloor
-%% \end{align*}
-
-%% \clearpage
-
-%% Let's take an example of two Mid-Side encoded samples: 1533 and 3039
-%% for $\text{Subframe}_0$ and $\text{Subframe}_1$, respectively:
-%% \begin{align*}
-%% \text{Left} &= \lfloor (((1533 \times 2) + (3039 \bmod{2})) + 3039) \div 2 \rfloor \\
-%% &= \lfloor ((3066 + 1) + 3039) \div 2 \rfloor \\
-%% &= \lfloor 6106 \div 2 \rfloor = \textbf{3053} \\
-%% \text{Right} &= \lfloor (((1533 \times 2) + (3039 \bmod{2})) - 3039) \div 2 \rfloor \\
-%% &= \lfloor ((3066 + 1) - 3039) \div 2 \rfloor \\
-%% &= \lfloor 28 \div 2 \rfloor = \textbf{14}
-%% \end{align*}
-
-%% \subsection{Wasted Bits per Sample}
-%% Though rare in practice, FLAC subframes support `wasted bits per sample'.
-%% Put simply, these wasted bits are removed during subframe calculation
-%% and restored to the subframe's least significant bits as zero value bits
-%% when it is returned.
-%% For instance, a subframe with 1 wasted bit per sample in a 16-bit FLAC
-%% stream is treated as having only 15 bits per sample when reading
-%% warm-up samples and then all through the rest of the subframe
-%% calculation.
-%% That wasted zero bit is then prepended to each sample prior to returning
-%% the subframe.
-
-%% \clearpage
 
 %% \section{FLAC Encoding}
 %% For the purposes of discussing FLAC encoding,
@@ -2198,13 +2027,3 @@ whose MD5 sum is:
 %% \begin{figure}[h]
 %% \includegraphics{figures/flac/rice3.pdf}
 %% \end{figure}
-
-%% \clearpage
-
-%% \subsection{Checksums}
-
-%% Calculating the frame header's CRC-8 and frame footer's CRC-16 is necessary
-%% both for FLAC encoders and decoders, but the process is the same for each.
-
-
-%% \subsubsection{CRC-16}

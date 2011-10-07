@@ -48,6 +48,7 @@
 \newcommand{\ALGORITHM}[2]{\begin{algorithm}[H]
 \DontPrintSemicolon
 \SetKw{READ}{read}
+\SetKw{WRITE}{write}
 \SetKw{UNARY}{read unary}
 \SetKw{SKIP}{skip}
 \SetKw{ASSERT}{assert}
