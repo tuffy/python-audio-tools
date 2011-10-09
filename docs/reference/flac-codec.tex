@@ -50,6 +50,7 @@
 \SetKw{READ}{read}
 \SetKw{WRITE}{write}
 \SetKw{UNARY}{read unary}
+\SetKw{WUNARY}{write unary}
 \SetKw{SKIP}{skip}
 \SetKw{ASSERT}{assert}
 \SetKw{IN}{in}
