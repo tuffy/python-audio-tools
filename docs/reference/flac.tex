@@ -1459,6 +1459,105 @@ Note how the CRC-8 is calculated from the preceding 5 header bytes:
 
 \clearpage
 
+\subsection{Encoding a FLAC Subframe}
+\ALGORITHM{signed subframe samples, subframe's bits per sample}{a FLAC subframe}
+\SetKwFunction{LEN}{len}
+\SetKwFunction{MIN}{min}
+\eIf{all samples are the same}{
+  \Return CONSTANT subframe using $sample_0$\;
+}{
+  wasted BPS $\leftarrow$ calculate wasted bits per sample\;
+  \If{wasted BPS $> 0$}{
+    \ForEach{sample \IN subframe samples}{
+      sample $\leftarrow \lfloor \text{sample} \div 2 ^ \text{wasted BPS} \rfloor$
+    }
+    subframes's bits per sample $\leftarrow$ subframe's bits per sample - wasted BPS\;
+  }
+  \BlankLine
+  best FIXED order $\leftarrow$ calculate FIXED subframe order for samples\;
+  FIXED subframe data $\leftarrow$ build FIXED subframe with best FIXED order\;
+  \BlankLine
+  \eIf(\tcc*[f]{from encoding parameters}){maximum LPC order $ > 0$}{
+    LPC subframe parameters $\leftarrow$ compute best LPC coefficients\;
+    LPC subframe data $\leftarrow$ compute LPC subframe with LPC parameters\;
+    \BlankLine
+    \uIf{$(\text{bits per sample} \times \text{sample count}) < $ \newline\MIN(\LEN(LPC subframe data), \LEN(FIXED subframe data))}{
+      \Return VERBATIM subframe using subframe's samples and bits per sample\;
+    }
+    \uElseIf{\LEN(FIXED subframe data) $<$ \LEN(LPC subframe data)}{
+      \Return FIXED subframe data as encoded FLAC subframe\;
+    }
+    \Else{
+      \Return LPC subframe data\;
+    }
+  }{
+    \eIf{\LEN(FIXED subframe data) $< (\text{bits per sample} \times \text{sample count})$}{
+      \Return FIXED subframe data\;
+    }{
+      \Return VERBATIM subframe using subframe's sample and bits per sample\;
+    }
+  }
+}
+\EALGORITHM
+\par
+\noindent
+{\relsize{-1}
+Note that FIXED and LPC subframes aren't typically written to the stream
+outright.
+Instead, they're written to temporary spaces.
+The size of those spaces are compared to each other, and to a hypothetical
+VERBATIM subframe.
+The smallest subframe is the one written to disk.
+}
+\begin{figure}[h]
+\includegraphics{figures/flac/subframes.pdf}
+\end{figure}
+
+\clearpage
+
+\subsubsection{Calculating Wasted Bits Per Sample}
+\ALGORITHM{signed subframe samples}{the amount of wasted bits per sample as an unsigned integer}
+\SetKw{AND}{and}
+\SetKwFunction{MIN}{min}
+wasted BPS $\leftarrow$ maximum unsigned integer\;
+\ForEach{sample \IN subframe samples}{
+  \If{sample $\neq 0$}{
+    wasted $\leftarrow$ 0\;
+    \While{sample $\bmod~2 = 0$}{
+      wasted $\leftarrow$ wasted + 1\;
+      sample $\leftarrow \text{sample} \div 2$\;
+    }
+    \eIf{wasted $= 0$}{
+      \Return 0\tcc*[r]{stop once a sample has no wasted bits}
+    }{
+      wasted BPS $\leftarrow$ \MIN(wasted BPS, wasted)\;
+    }
+  }
+}
+\tcc{if all samples are 0, we should return a CONSTANT subframe}
+\Return wasted BPS\;
+\EALGORITHM
+
+\subsubsection{Encoding a CONSTANT Subframe}
+\ALGORITHM{signed subframe sample, subframe's bits per sample}{a CONSTANT subframe}
+\WRITE 0 in 1 unsigned bit\tcc*[r]{pad}
+\WRITE 0 in 6 unsigned bits\tcc*[r]{subframe type}
+\WRITE 0 in 1 unsigned bit\tcc*[r]{no wasted BPS}
+\WRITE sample in (bits per sample) signed bits\;
+\EALGORITHM
+
+\subsubsection{Encoding a VERBATIM Subframe}
+\ALGORITHM{signed subframe samples, subframe's bits per sample}{a VERBATIM subframe}
+\WRITE 0 in 1 unsigned bit\tcc*[r]{pad}
+\WRITE 1 in 6 unsigned bits\tcc*[r]{subframe type}
+\WRITE 0 in 1 unsigned bit\tcc*[r]{no wasted BPS}
+\ForEach{sample \IN subframe samples}{
+  \WRITE sample in (bits per sample) signed bits\;
+}
+\EALGORITHM
+
+
+
 %% \section{FLAC Encoding}
 %% For the purposes of discussing FLAC encoding,
 %% we'll assume one has a stream of input PCM values along with the

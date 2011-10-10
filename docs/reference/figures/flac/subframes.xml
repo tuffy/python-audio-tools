@@ -1,13 +1,13 @@
 <?xml version="1.0" ?>
 <diagram>
   <row>
-    <col width=".333333" id="subframe">Subframe₁</col>
-    <col width=".333333">Subframe₂</col>
+    <col width=".333333" id="subframe">Subframe₀</col>
+    <col width=".333333">Subframe₁</col>
     <col style="dashed" width=".333333">...</col>
   </row>
   <spacer/>
   <row>
-    <col width=".1" start="0" end="0" id="subframe_s">skip</col>
+    <col width=".1" start="0" end="0" id="subframe_s">pad</col>
     <col width=".45" start="1" end="6">subframe type and order</col>
     <col width=".2" start="7" end="7">has wasted BPS</col>
     <col style="dashed" width=".25" id="subframe_e">wasted BPS (+1)</col>

@@ -1,15 +1,15 @@
 <?xml version="1.0" ?>
 <diagram>
   <row>
-    <col width=".333333" id="frame">Frame₁</col>
-    <col width=".333333">Frame₂</col>
+    <col width=".333333" id="frame">Frame₀</col>
+    <col width=".333333">Frame₁</col>
     <col style="dashed" width=".333333">...</col>
   </row>
   <spacer/>
   <row>
     <col width=".25" id="frame_s">Frame Header</col>
+    <col width=".25">Subframe₀</col>
     <col width=".25">Subframe₁</col>
-    <col width=".25">Subframe₂</col>
     <col width=".1" style="dashed">...</col>
     <col width=".15" style="dashed" id="frame_e">byte-align</col>
   </row>
@@ -48,5 +48,4 @@
     <start id="frame_s" corner="se"/>
     <end id="frame_h_e" corner="ne"/>
   </line>
-
 </diagram>
