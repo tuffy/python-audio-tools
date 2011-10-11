@@ -225,7 +225,7 @@ class Bits:
     def __repr__(self):
         return "Bits(%s, %s)" % (repr(self.name), repr(self.bits))
 
-    def chunk(self, superscript_bits, bits_lookup, background_color):
+    def chunk(self, superscript_bits, bits_lookup):
         chunk_superscripts = []
         for bit in self.bits:
             superscript_bits.append(bit)
@@ -238,8 +238,7 @@ class Bits:
 
         return Chunk(bits=self.bits,
                      superscripts=chunk_superscripts,
-                     name=self.name,
-                     background_color=background_color)
+                     name=self.name)
 
 
 class Text:
@@ -250,62 +249,36 @@ class Text:
     def __repr__(self):
         return "Text(%s, %s)" % (repr(self.name), repr(self.bit_count))
 
-    def chunk(self, superscript_bits, bits_lookup, background_color):
+    def chunk(self, superscript_bits, bits_lookup):
         for i in xrange(len(superscript_bits)):
             superscript_bits.pop(-1)
 
         return TextChunk(bit_width=self.bit_count,
-                         name=self.name,
-                         background_color=background_color)
+                         name=self.name)
+
+def bits(v):
+    for i in xrange(8):
+        yield v & 1
+        v >>= 1
 
 
-BE_LOOKUP = {(0, 0, 0, 0):u"0",
-             (0, 0, 0, 1):u"1",
-             (0, 0, 1, 0):u"2",
-             (0, 0, 1, 1):u"3",
-             (0, 1, 0, 0):u"4",
-             (0, 1, 0, 1):u"5",
-             (0, 1, 1, 0):u"6",
-             (0, 1, 1, 1):u"7",
-             (1, 0, 0, 0):u"8",
-             (1, 0, 0, 1):u"9",
-             (1, 0, 1, 0):u"A",
-             (1, 0, 1, 1):u"B",
-             (1, 1, 0, 0):u"C",
-             (1, 1, 0, 1):u"D",
-             (1, 1, 1, 0):u"E",
-             (1, 1, 1, 1):u"F"}
+BE_LOOKUP = dict([(tuple(reversed(list(bits(value)))), "%2.2X" % (value))
+                  for value in xrange(0,0x100)])
 
-LE_LOOKUP = {(0, 0, 0, 0):u"0",
-             (1, 0, 0, 0):u"1",
-             (0, 1, 0, 0):u"2",
-             (1, 1, 0, 0):u"3",
-             (0, 0, 1, 0):u"4",
-             (1, 0, 1, 0):u"5",
-             (0, 1, 1, 0):u"6",
-             (1, 1, 1, 0):u"7",
-             (0, 0, 0, 1):u"8",
-             (1, 0, 0, 1):u"9",
-             (0, 1, 0, 1):u"A",
-             (1, 1, 0, 1):u"B",
-             (0, 0, 1, 1):u"C",
-             (1, 0, 1, 1):u"D",
-             (0, 1, 1, 1):u"E",
-             (1, 1, 1, 1):u"F"}
+LE_LOOKUP = dict([(tuple(bits(value)), "%2.2X" % (value))
+                  for value in xrange(0,0x100)])
 
 
-def bits_to_chunks(bits_iter, colors, lookup=BE_LOOKUP):
+def bits_to_chunks(bits_iter, lookup=BE_LOOKUP):
     """for each Bits object in bits_iter, yields a Chunk object
     whose bits, superscripts, name and background_color have been populated
 
     positions and borders must be populated afterward
     """
 
-    from itertools import izip,cycle
-
     superscript_bits = []
-    for (bits, background_color) in izip(bits_iter,cycle(colors)):
-        yield bits.chunk(superscript_bits, lookup, background_color)
+    for bits in bits_iter:
+        yield bits.chunk(superscript_bits, lookup)
 
 
 def chunks_to_rows(chunks_iter, bits_per_row, x_offset=0):
@@ -432,7 +405,7 @@ def xml_to_chunks(xml_filename):
             bits.append(Text(part.childNodes[0].data.strip(),
                              int_converter(part.getAttribute(u"size"))))
 
-    return bits_to_chunks(bits, [None], lookup)
+    return bits_to_chunks(bits, lookup)
 
 
 if (__name__ == '__main__'):
