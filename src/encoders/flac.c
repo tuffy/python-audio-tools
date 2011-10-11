@@ -1340,8 +1340,9 @@ FlacEncoder_compute_best_fixed_predictor_order(struct i_array *samples)
     ia_free(&delta3);
     ia_free(&delta4);
 
-    if (delta0_sum < MIN(delta1_sum, MIN(delta2_sum,
-                                         MIN(delta3_sum, delta4_sum))))
+    if (delta0_sum < MIN(delta1_sum,
+                         MIN(delta2_sum,
+                             MIN(delta3_sum, delta4_sum))))
         return 0;
     else if (delta1_sum < MIN(delta2_sum, MIN(delta3_sum, delta4_sum)))
         return 1;
