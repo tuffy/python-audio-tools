@@ -711,7 +711,7 @@ class ID3v22_COM_Frame:
         field = self.id.decode('ascii')
         text_encoding = {0:'latin-1', 1:'ucs2'}
 
-        value = self.data.decode(text_encoding, 'replace')
+        value = self.data.decode(text_encoding[self.encoding], 'replace')
 
         #check for an empty tag
         if (len(value.strip()) == 0):
@@ -738,7 +738,7 @@ class ID3v22_COM_Frame:
         return self.__class__(self.encoding,
                               self.language,
                               self.short_description,
-                              fix2.encode(text_encoding))
+                              fix2.encode(text_encoding[self.encoding]))
 
 
 class ID3v22_PIC_Frame(Image):
@@ -1824,7 +1824,7 @@ class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
                          2:'utf-16be',
                          3:'utf-8'}
 
-        value = self.data.decode(text_encoding, 'replace')
+        value = self.data.decode(text_encoding[self.encoding], 'replace')
 
         #check for an empty tag
         if (len(value.strip()) == 0):
@@ -1851,7 +1851,7 @@ class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
         return self.__class__(self.encoding,
                               self.language,
                               self.short_description,
-                              fix2.encode(text_encoding))
+                              fix2.encode(text_encoding[self.encoding]))
 
 
 class ID3v24Comment(ID3v23Comment):
