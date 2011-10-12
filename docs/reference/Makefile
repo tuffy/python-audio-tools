@@ -368,9 +368,9 @@ figures/bitstream_littleendian_alt.pdf: figures/bitstream_littleendian_alt.fig
 figures/vorbis/ordered_entries.pdf: figures/vorbis/ordered_entries.dot
 	dot -Tpdf $< -o $@
 
-.SUFFIXES: .pdf .xml .bpx .dot
+.SUFFIXES: .pdf .bdx .bpx .dot
 
-.xml.pdf:
+.bdx.pdf:
 	./bitdiagram.py -i $< -o $@
 
 .bpx.pdf:
@@ -379,19 +379,19 @@ figures/vorbis/ordered_entries.pdf: figures/vorbis/ordered_entries.dot
 .dot.pdf:
 	dot -Tpdf $< -o $@
 
-figures/m4a_ftyp.pdf: figures/m4a_ftyp.xml
+figures/m4a_ftyp.pdf: figures/m4a_ftyp.bdx
 	./bitdiagram.py -w 270 -i $< -o $@
 
-figures/m4a_mvhd.pdf: figures/m4a_mvhd.xml
+figures/m4a_mvhd.pdf: figures/m4a_mvhd.bdx
 	./bitdiagram.py -w 270 -i $< -o $@
 
-figures/m4a_meta.pdf: figures/m4a_meta.xml
+figures/m4a_meta.pdf: figures/m4a_meta.bdx
 	./bitdiagram.py -w 306 -i $< -o $@
 
-figures/m4a_data.pdf: figures/m4a_data.xml
+figures/m4a_data.pdf: figures/m4a_data.bdx
 	./bitdiagram.py -w 306 -i $< -o $@
 
-figures/alac/alac_atom.pdf: figures/alac/alac_atom.xml
+figures/alac/alac_atom.pdf: figures/alac/alac_atom.bdx
 	./bitdiagram.py -w 324 -i $< -o $@
 
 figures/shorten/unsigned.pdf: figures/shorten/unsigned.fig
