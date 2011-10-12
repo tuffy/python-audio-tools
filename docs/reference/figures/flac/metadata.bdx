@@ -1,7 +1,7 @@
 <?xml version="1.0" ?><diagram>
   <row>
-    <col id="metadata" width=".333333">Metadata Block₁</col>
-    <col width=".333333">Metadata Block₂</col>
+    <col id="metadata" width=".333333">Metadata Block₀</col>
+    <col width=".333333">Metadata Block₁</col>
     <col style="dashed" width=".333333">...</col>
   </row>
   <spacer/>

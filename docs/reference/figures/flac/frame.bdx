@@ -1,34 +1,34 @@
 <?xml version="1.0" ?><diagram>
   <row>
-    <col end="13" start="0" width=".55">Sync Code (0x3FFE)</col>
-    <col end="14" start="14" width=".20">Reserved (0)</col>
-    <col end="15" start="15" width=".25">Blocking Strategy</col>
+    <col end="13" start="0" width=".55">sync code (0x3FFE)</col>
+    <col end="14" start="14" width=".20">reserved (0)</col>
+    <col end="15" start="15" width=".25">blocking strategy</col>
   </row>
   <row>
-    <col end="19" start="16" width=".20">Block Size</col>
-    <col end="23" start="20" width=".20">Sample Rate</col>
-    <col end="27" start="24" width=".25">Channel Assignment</col>
-    <col end="30" start="28" width=".20">Bits per Sample</col>
-    <col end="31" start="31" width=".15">Padding</col>
+    <col end="19" start="16" width=".20">block size</col>
+    <col end="23" start="20" width=".20">sample rate</col>
+    <col end="27" start="24" width=".25">channel assignment</col>
+    <col end="30" start="28" width=".20">bits per sample</col>
+    <col end="31" start="31" width=".15">padding</col>
   </row>
   <row>
-    <col end="39-87" start="32" width=".30">Sample/Frame Number</col>
-    <col end="0/7/15" start="0" style="dashed" width=".25">Block Size</col>
-    <col end="0/7/15" start="0" style="dashed" width=".25">Sample Rate</col>
+    <col end="39-87" start="32" width=".30">sample/frame number</col>
+    <col end="0/7/15" start="0" style="dashed" width=".25">block size</col>
+    <col end="0/7/15" start="0" style="dashed" width=".25">sample rate</col>
     <col end="7" start="0" width=".20">CRC-8</col>
   </row>
   <row>
-    <col id="subframe" width=".20">Subframe₁</col>
-    <col width=".20">Subframe₂</col>
+    <col id="subframe" width=".20">Subframe₀</col>
+    <col width=".20">subframe₁</col>
     <col style="dashed" width=".20">...</col>
-    <col style="dashed" width=".11">Padding</col>
+    <col style="dashed" width=".11">padding</col>
     <col end="15" start="0" width=".29">CRC-16</col>
   </row>
   <row><blank/></row>
   <row>
-    <col end="0" id="subframe_s" start="0" width=".11">Padding</col>
-    <col end="6" start="1" width=".50">Subframe Type</col>
-    <col id="subframe_e" start="7" width=".39">Wasted Bits per Sample</col>
+    <col end="0" id="subframe_s" start="0" width=".11">padding</col>
+    <col end="6" start="1" width=".50">subframe type</col>
+    <col id="subframe_e" start="7" width=".39">wasted bits per sample</col>
   </row>
   <row>
     <col style="dashed">Subframe Data</col>

@@ -15,21 +15,21 @@
   </row>
   <spacer/>
   <row>
-    <col end="13" start="0" width=".55" id="frame_h_s">Sync Code (0x3FFE)</col>
-    <col end="14" start="14" width=".20">Reserved (0)</col>
-    <col end="15" start="15" width=".25" id="frame_h_e">Blocking Strategy</col>
+    <col end="13" start="0" width=".55" id="frame_h_s">sync code (0x3FFE)</col>
+    <col end="14" start="14" width=".20">reserved (0)</col>
+    <col end="15" start="15" width=".25" id="frame_h_e">blocking strategy</col>
   </row>
   <row>
-    <col end="19" start="16" width=".20">Block Size</col>
-    <col end="23" start="20" width=".20">Sample Rate</col>
-    <col end="27" start="24" width=".25">Channel Assignment</col>
-    <col end="30" start="28" width=".20">Bits per Sample</col>
-    <col end="31" start="31" width=".15">Padding</col>
+    <col end="19" start="16" width=".20">block size</col>
+    <col end="23" start="20" width=".20">sample rate</col>
+    <col end="27" start="24" width=".25">channel assignment</col>
+    <col end="30" start="28" width=".20">bits per sample</col>
+    <col end="31" start="31" width=".15">padding</col>
   </row>
   <row>
-    <col end="39-87" start="32" width=".30">Sample/Frame Number</col>
-    <col end="0/7/15" start="0" style="dashed" width=".25">Block Size</col>
-    <col end="0/7/15" start="0" style="dashed" width=".25">Sample Rate</col>
+    <col end="39-87" start="32" width=".30">sample/frame number</col>
+    <col end="0/7/15" start="0" style="dashed" width=".25">block size</col>
+    <col end="0/7/15" start="0" style="dashed" width=".25">sample rate</col>
     <col end="7" start="0" width=".20">CRC-8</col>
   </row>
   <line style="dotted">
