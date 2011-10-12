@@ -26,7 +26,7 @@
 \usepackage{rotating}
 \usepackage[toc,page]{appendix}
 \usepackage{hyperref}
-\usepackage[lined,boxed,commentsnumbered]{algorithm2e}
+\usepackage[vlined,lined,commentsnumbered]{algorithm2e}
 \newcommand{\xor}{\textbf{ xor }}
 %#1 = i
 %#2 = byte

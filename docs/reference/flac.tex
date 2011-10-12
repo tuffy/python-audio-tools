@@ -416,12 +416,13 @@ encoded & count & channel assignment \\
 \begin{figure}[h]
 \includegraphics{figures/flac/header-example.pdf}
 \end{figure}
+{\relsize{-1}
 \begin{tabular}{rcr}
 $sync~code$ & = & \texttt{0x3FFE} \\
-$encoded~block~size$ & = & \texttt{0x1100} \\
-$encoded~sample~rate$ & = & \texttt{0x1001} \\
-$encoded~channels$ & = & \texttt{0x0001} \\
-$encoded~bps$ & = & \texttt{0x100} \\
+$encoded~block~size$ & = & \texttt{1100b} \\
+$encoded~sample~rate$ & = & \texttt{1001b} \\
+$encoded~channels$ & = & \texttt{0001b} \\
+$encoded~bps$ & = & \texttt{100b} \\
 frame number & = & 0 \\
 block size & = & 4096 samples \\
 sample rate & = & 44100Hz \\
@@ -429,9 +430,8 @@ bits per sample & = & 16 \\
 channel count & = & 2 \\
 channel assignment & = & front left, front right
 \end{tabular}
-
+}
 \subsubsection{Calculating Frame Header CRC-8}
-
 Given a header byte and previous CRC-8 checksum,
 or 0 as an initial value:
 \begin{equation*}
@@ -473,6 +473,7 @@ or 0 as an initial value:
 \end{align*}
 Note that the final checksum (including the CRC-8 byte itself)
 should always be 0.
+
 
 \clearpage
 
@@ -1253,6 +1254,7 @@ sample_1 &\leftarrow \lfloor(((12 \times 2) + (-5 \bmod 2)) - -5) \div 2\rfloor 
 \EALGORITHM
 
 \subsubsection{Encoding Block Size}
+{\relsize{-1}
 \ALGORITHM{block size in samples}{encoded block size as 4 bit value}
 \uIf{block size \IN}{
   \begin{tabular}{rr|rr|rr}
@@ -1283,10 +1285,12 @@ sample_1 &\leftarrow \lfloor(((12 \times 2) + (-5 \bmod 2)) - -5) \div 2\rfloor 
   $encoded~block~size \leftarrow 0$
 }
 \EALGORITHM
+}
 
 \clearpage
 
 \subsubsection{Encoding Sample Rate}
+{\relsize{-1}
 \ALGORITHM{sample rate in Hz}{encoded sample rate as 4 bit value}
 \SetKw{AND}{and}
 \uIf{sample rate \IN}{
@@ -1317,8 +1321,9 @@ sample_1 &\leftarrow \lfloor(((12 \times 2) + (-5 \bmod 2)) - -5) \div 2\rfloor 
 }
 \Else{$encoded~sample~rate = 0$}
 \EALGORITHM
-
+}
 \subsubsection{Encoding Bits Per Sample}
+{\relsize{-1}
 \ALGORITHM{bits per sample}{encoded bits per sample as 3 bit value}
 \eIf{bits per sample \IN}{
   \begin{tabular}{rr|rr}
@@ -1334,6 +1339,7 @@ sample_1 &\leftarrow \lfloor(((12 \times 2) + (-5 \bmod 2)) - -5) \div 2\rfloor 
   $encoded~bps \leftarrow 0$\;
 }
 \EALGORITHM
+}
 \begin{figure}[h]
 \includegraphics{figures/flac/frames.pdf}
 \end{figure}
@@ -1460,6 +1466,7 @@ Note how the CRC-8 is calculated from the preceding 5 header bytes:
 \clearpage
 
 \subsection{Encoding a FLAC Subframe}
+{\relsize{-1}
 \ALGORITHM{signed subframe samples, subframe's bits per sample}{a FLAC subframe}
 \SetKwFunction{LEN}{len}
 \SetKwFunction{MIN}{min}
@@ -1501,7 +1508,6 @@ Note how the CRC-8 is calculated from the preceding 5 header bytes:
 \EALGORITHM
 \par
 \noindent
-{\relsize{-1}
 Note that FIXED and LPC subframes aren't typically written to the stream
 outright.
 Instead, they're written to temporary spaces.
