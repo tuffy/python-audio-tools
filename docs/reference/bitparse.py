@@ -110,7 +110,7 @@ class Chunk:
                                   unicode(self.name))
 
         pdf.setStrokeColorRGB(0.0,0.0,0.0)
-        #drop top and bottom borders
+        #draw top and bottom borders
         pdf.line(self.nw[0], self.nw[1],
                  self.ne[0], self.ne[1])
         pdf.line(self.sw[0], self.sw[1],
@@ -123,6 +123,91 @@ class Chunk:
         if (self.e_border):
             pdf.line(self.ne[0], self.ne[1],
                      self.se[0], self.se[1])
+
+    def to_svg(self, dom, svg, total_height):
+        pts_per_bit = self.pt_width() / float(len(self.bits))
+        pt_offset = self.nw[0] + (pts_per_bit / 2)
+
+        #draw background color, if any
+        #FIXME
+
+        for (i, (bit, superscript)) in enumerate(zip(self.bits,
+                                                     self.superscripts)):
+            #draw bit
+            bit_xml = dom.createElement(u"text")
+            bit_xml.setAttribute(u"style",
+                                 u"font-size: 18pt; font-family: Courier")
+            bit_xml.setAttribute(u"text-anchor", u"middle")
+            bit_xml.setAttribute(u"x",
+                                 u"%dpt" % ((i * pts_per_bit) + pt_offset))
+            bit_xml.setAttribute(u"y",
+                                 u"%dpt" % (total_height -
+                                            (self.se[1]) - 12))
+            bit_text = dom.createTextNode(unicode(bit))
+            bit_xml.appendChild(bit_text)
+            svg.appendChild(bit_xml)
+
+            #draw superscript, if any
+            if (superscript is not None):
+                ss_xml = dom.createElement(u"text")
+                ss_xml.setAttribute(u"style",
+                                    u"font-size: 5pt; font-family: Courier")
+                ss_xml.setAttribute(u"text-anchor", u"end")
+                ss_xml.setAttribute(u"x",
+                                    u"%dpt" % (self.nw[0] +
+                                               ((i + 1) * pts_per_bit) - 2))
+                ss_xml.setAttribute(u"y",
+                                    u"%dpt" % (total_height -
+                                               (self.se[1]) - 25))
+                ss_text = dom.createTextNode(unicode(superscript))
+                ss_xml.appendChild(ss_text)
+                svg.appendChild(ss_xml)
+
+        #draw centered name, if any
+        name = dom.createElement(u"text")
+        name.setAttribute(u"style", u"font-size: 6pt; font-family: sans-serif")
+        name.setAttribute(u"text-anchor", u"middle")
+        name.setAttribute(u"x", u"%dpt" % (self.nw[0] + (self.pt_width() / 2)))
+        name.setAttribute(u"y", u"%dpt" % (total_height - (self.se[1]) - 2))
+        name_text = dom.createTextNode(unicode(self.name))
+        name.appendChild(name_text)
+        svg.appendChild(name)
+
+        #draw top and bottom borders
+        top = dom.createElement(u"line")
+        top.setAttribute(u"x1", "%dpt" % (self.nw[0]))
+        top.setAttribute(u"y1", "%dpt" % (total_height - self.nw[1]))
+        top.setAttribute(u"x2", "%dpt" % (self.ne[0]))
+        top.setAttribute(u"y2", "%dpt" % (total_height - self.ne[1]))
+        top.setAttribute(u"style", u"stroke: black;")
+        svg.appendChild(top)
+
+        bottom = dom.createElement(u"line")
+        bottom.setAttribute(u"x1", "%dpt" % (self.sw[0]))
+        bottom.setAttribute(u"y1", "%dpt" % (total_height - self.sw[1]))
+        bottom.setAttribute(u"x2", "%dpt" % (self.se[0]))
+        bottom.setAttribute(u"y2", "%dpt" % (total_height - self.se[1]))
+        bottom.setAttribute(u"style", u"stroke: black;")
+        svg.appendChild(bottom)
+
+        #drop left and right borders, if any
+        if (self.w_border):
+            left = dom.createElement(u"line")
+            left.setAttribute(u"x1", "%dpt" % (self.nw[0]))
+            left.setAttribute(u"y1", "%dpt" % (total_height - self.nw[1]))
+            left.setAttribute(u"x2", "%dpt" % (self.sw[0]))
+            left.setAttribute(u"y2", "%dpt" % (total_height - self.sw[1]))
+            left.setAttribute(u"style", u"stroke: black;")
+            svg.appendChild(left)
+
+        if (self.e_border):
+            right = dom.createElement(u"line")
+            right.setAttribute(u"x1", "%dpt" % (self.ne[0]))
+            right.setAttribute(u"y1", "%dpt" % (total_height - self.ne[1]))
+            right.setAttribute(u"x2", "%dpt" % (self.se[0]))
+            right.setAttribute(u"y2", "%dpt" % (total_height - self.se[1]))
+            right.setAttribute(u"style", u"stroke: black;")
+            svg.appendChild(right)
 
 
 class TextChunk(Chunk):
@@ -193,6 +278,60 @@ class TextChunk(Chunk):
             pdf.line(self.ne[0], self.ne[1],
                      self.se[0], self.se[1])
 
+    def to_svg(self, dom, svg, total_height):
+        pts_per_bit = self.pt_width() / float(self.bit_width)
+        pt_offset = self.nw[0] + (pts_per_bit / 2)
+
+        #draw background color, if any
+        #FIXME
+
+        #draw centered name, if any
+        name = dom.createElement(u"text")
+        name.setAttribute(u"style", u"font-size: 18; font-family: sans-serif")
+        name.setAttribute(u"text-anchor", u"middle")
+        name.setAttribute(u"x", u"%dpt" % (self.nw[0] + (self.pt_width() / 2)))
+        name.setAttribute(u"y", u"%dpt" % (total_height -
+                                           self.se[1] - 12))
+        name_text = dom.createTextNode(unicode(self.name))
+        name.appendChild(name_text)
+        svg.appendChild(name)
+
+        #drop top and bottom borders
+        top = dom.createElement(u"line")
+        top.setAttribute(u"x1", "%dpt" % (self.nw[0]))
+        top.setAttribute(u"y1", "%dpt" % (total_height - self.nw[1]))
+        top.setAttribute(u"x2", "%dpt" % (self.ne[0]))
+        top.setAttribute(u"y2", "%dpt" % (total_height - self.ne[1]))
+        top.setAttribute(u"style", u"stroke: black;")
+        svg.appendChild(top)
+
+        bottom = dom.createElement(u"line")
+        bottom.setAttribute(u"x1", "%dpt" % (self.sw[0]))
+        bottom.setAttribute(u"y1", "%dpt" % (total_height - self.sw[1]))
+        bottom.setAttribute(u"x2", "%dpt" % (self.se[0]))
+        bottom.setAttribute(u"y2", "%dpt" % (total_height - self.se[1]))
+        bottom.setAttribute(u"style", u"stroke: black;")
+        svg.appendChild(bottom)
+
+        #drop left and right borders, if any
+        if (self.w_border):
+            left = dom.createElement(u"line")
+            left.setAttribute(u"x1", "%dpt" % (self.nw[0]))
+            left.setAttribute(u"y1", "%dpt" % (total_height - self.nw[1]))
+            left.setAttribute(u"x2", "%dpt" % (self.sw[0]))
+            left.setAttribute(u"y2", "%dpt" % (total_height - self.sw[1]))
+            left.setAttribute(u"style", u"stroke: black;")
+            svg.appendChild(left)
+
+        if (self.e_border):
+            right = dom.createElement(u"line")
+            right.setAttribute(u"x1", "%dpt" % (self.ne[0]))
+            right.setAttribute(u"y1", "%dpt" % (total_height - self.ne[1]))
+            right.setAttribute(u"x2", "%dpt" % (self.se[0]))
+            right.setAttribute(u"y2", "%dpt" % (total_height - self.se[1]))
+            right.setAttribute(u"style", u"stroke: black;")
+            svg.appendChild(right)
+
 
 class ChunkTable:
     def __init__(self, chunks):
@@ -211,6 +350,29 @@ class ChunkTable:
 
         pdf.showPage()
         pdf.save()
+
+    def to_svg(self, total_width, filename):
+        total_height = max([chunk.nw[1] for chunk in self.chunks])
+
+        import xml.dom.minidom
+
+        impl = xml.dom.minidom.getDOMImplementation()
+        dom = impl.createDocument(None, None, None)
+
+        svg = dom.createElement(u"svg")
+        svg.setAttribute(u"xmlns",u"http://www.w3.org/2000/svg")
+        svg.setAttribute(u"version", u"1.1")
+        svg.setAttribute(u"width", u"%dpt" % (total_width))
+        svg.setAttribute(u"height", u"%dpt" % (total_height))
+
+        for chunk in self.chunks:
+            chunk.to_svg(dom, svg, total_height)
+
+        dom.appendChild(svg)
+
+        f = open(filename, "w")
+        dom.writexml(f)
+        f.close()
 
 
 class Bits:
@@ -413,18 +575,30 @@ if (__name__ == '__main__'):
 
     parser = optparse.OptionParser()
     parser.add_option('-i','--input',dest='input',help='input XML file')
-    parser.add_option('-o','--output',dest='output',help='output PDF file')
+    parser.add_option('-o','--output',dest='output',help='output file')
     parser.add_option('-b', '--bits-per-row', dest='bits_per_row',
                       type='int', default=16)
     parser.add_option('-w','--width',dest='width',
                       type='int', default=6 * 72,
                       help='digram width, in PostScript points')
+    parser.add_option('-t','--type',dest='type',
+                      choices=("pdf", "svg"),
+                      help="type of output file",
+                      default="pdf")
 
     (options,args) = parser.parse_args()
 
     x_offset = (options.width - (options.bits_per_row * BIT_WIDTH)) / 2
 
-    ChunkTable(list(align_rows(chunks_to_rows(
+    table = ChunkTable(list(align_rows(chunks_to_rows(
                     chunks_iter=xml_to_chunks(options.input),
                     bits_per_row=options.bits_per_row,
-                    x_offset=x_offset)))).to_pdf(options.width, options.output)
+                    x_offset=x_offset))))
+
+    if (options.type == 'pdf'):
+        table.to_pdf(options.width, options.output)
+    elif (options.type == 'svg'):
+        table.to_svg(options.width, options.output)
+    else:
+        print >>sys.stderr,"unknown output type"
+        sys.exit(1)
