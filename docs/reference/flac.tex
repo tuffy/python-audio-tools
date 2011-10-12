@@ -1550,6 +1550,7 @@ wasted BPS $\leftarrow$ maximum unsigned integer\;
 \WRITE 0 in 6 unsigned bits\tcc*[r]{subframe type}
 \WRITE 0 in 1 unsigned bit\tcc*[r]{no wasted BPS}
 \WRITE sample in (bits per sample) signed bits\;
+\Return a CONSTANT subframe\;
 \EALGORITHM
 
 \subsubsection{Encoding a VERBATIM Subframe}
@@ -1560,6 +1561,7 @@ wasted BPS $\leftarrow$ maximum unsigned integer\;
 \ForEach{sample \IN subframe samples}{
   \WRITE sample in (bits per sample) signed bits\;
 }
+\Return a VERBATIM subframe\;
 \EALGORITHM
 
 \clearpage
@@ -1617,7 +1619,7 @@ wasted BPS $\leftarrow$ maximum unsigned integer\;
 \clearpage
 
 \subsubsection{FIXED Subframe Order Calculation Example}
-Given the samples: \texttt{18, 20, 26, 24, 24, 23, 21, 24, 23, 20}:
+Given the subframe samples: \texttt{18, 20, 26, 24, 24, 23, 21, 24, 23, 20}:
 \begin{align*}
 \text{initial last error}_1 &\leftarrow 24 - 26 = -2 \\
 \text{initial last error}_2 &\leftarrow -2 - (26 - 20) = -8 \\
@@ -1673,6 +1675,101 @@ $\text{last error}_3$ & $6$ & $-9$ & $2$ \\
 Since $\text{total error}_1$'s value of 10 is the smallest of the five
 total error values,
 the best FIXED predictor order for these samples is 1.
+
+\clearpage
+
+\subsubsection{Encoding a FIXED Subframe}
+\ALGORITHM{signed subframe samples, subframe order, subframe's bits per sample, wasted BPS}{a FIXED subframe}
+\WRITE 0 in 1 unsigned bit\tcc*[r]{pad}
+\WRITE 1 in 3 unsigned bits\tcc*[r]{subframe type}
+\WRITE subframe order in 3 unsigned bits\;
+\eIf{$wasted~BPS > 0$}{
+  \WRITE 1 in 1 unsigned bit\;
+  \WUNARY (wasted BPS - 1) with stop bit 1\;
+}{
+  \WRITE 0 in 1 unsigned bit\;
+}
+\For(\tcc*[f]{warm-up samples}){i = 0 \emph{\KwTo}subframe order}{
+  \WRITE $sample_i$ in (bits per sample) signed bits\;
+}
+calculate FIXED subframe's residuals based on signed samples and subframe order\;
+write encoded residual block based on signed residual values\;
+\Return a FIXED subframe\;
+\EALGORITHM
+
+\begin{figure}[h]
+\includegraphics{figures/flac/fixed2.pdf}
+\end{figure}
+\par
+\noindent
+Building a residual block from signed residual values is explained
+on page XXX.
+
+\clearpage
+
+\subsubsection{Calculating FIXED Subframe Residuals}
+\ALGORITHM{signed subframe samples, subframe order}{signed residual values}
+\Switch{subframe order}{
+  \uCase{0}{
+    \For{i = 0 \emph{\KwTo}sample count}{
+      $residual_i \leftarrow sample_i$\;
+    }
+  }
+  \uCase{1}{
+    \For{i = 0 \emph{\KwTo}sample count - 1}{
+      $residual_i \leftarrow sample_{i + 1} - sample_i$
+    }
+  }
+  \uCase{2}{
+    \For{i = 0 \emph{\KwTo}sample count - 2}{
+      $residual_i \leftarrow sample_{i + 2} - ((2 \times sample_{i + 1}) - sample_i)$
+    }
+  }
+  \uCase{3}{
+    \For{i = 3 \emph{\KwTo}sample count}{
+      $residual_i \leftarrow sample_{i + 3} - ((3 \times sample_{i + 2}) - (3 \times sample_{i + 1}) + sample_i)$
+    }
+  }
+  \Case{4}{
+    \For{i = 4 \emph{\KwTo}sample count}{
+      $residual_i \leftarrow sample_{i + 4} - ((4 \times sample_{i + 3}) - (6 \times sample_{i + 2}) + (4 \times sample_{i + 1}) - sample_i)$
+    }
+  }
+}
+\EALGORITHM
+
+\subsubsection{FIXED Subframe Residual Calculation Example}
+
+Given the subframe samples: \texttt{18, 20, 26, 24, 24, 23, 21, 24, 23, 20}:
+\begin{table}[h]
+{\relsize{-1}
+\begin{tabular}{r|r|r|r|r|r}
+& order 0 & order 1 & order 2 & order 3 & order 4 \\
+\hline
+$residual_0$ & 18 & 2 & 4 & -12 & 22 \\
+$residual_1$ & 20 & 6 & -8 & 10 & -13 \\
+$residual_2$ & 26 & -2 & 2 & -3 & 3 \\
+$residual_3$ & 24 & 0 & -1 & 0 & 6 \\
+$residual_4$ & 24 & -1 & -1 & 6 & -15 \\
+$residual_5$ & 23 & -2 & 5 & -9 & 11 \\
+$residual_6$ & 21 & 3 & -4 & 2 \\
+$residual_7$ & 24 & -1 & -2 \\
+$residual_8$ & 23 & -3 \\
+$residual_9$ & 20 \\
+\hline
+total error & 135 & 10 & 15 & 30 & 70 \\
+\end{tabular}
+}
+\end{table}
+\par
+\noindent
+Note how the total number of residuals equals the
+total number of samples minus the subframe's order,
+to account for the warm-up samples.
+Also note that if you remove the first $4 - order$ residuals
+and sum the absolute value of the remainding residuals,
+the result is the \VAR{total error} value
+used when calculating the best FIXED subframe order.
 
 %% \section{FLAC Encoding}
 %% For the purposes of discussing FLAC encoding,

@@ -36,6 +36,7 @@ figures/flac/channels.pdf \
 figures/flac/cuesheet.pdf \
 figures/flac/exhaustive.pdf \
 figures/flac/fixed.pdf \
+figures/flac/fixed2.pdf \
 figures/flac/fixed-parse.pdf \
 figures/flac/frame.pdf \
 figures/flac/frames.pdf \
