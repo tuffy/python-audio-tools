@@ -1132,7 +1132,7 @@ during FLAC decoding, but performed in the opposite order.
 
 \clearpage
 
-\section{Encoding a FLAC Frame}
+\subsection{Encoding a FLAC Frame}
 {\relsize{-1}
 \ALGORITHM{up to ``block size'' number of PCM frames, encoding parameters}{a single FLAC frame}
 \SetKw{AND}{and}
@@ -1492,7 +1492,7 @@ Note how the CRC-8 is calculated from the preceding 5 header bytes:
       \Return VERBATIM subframe using subframe's samples and bits per sample\;
     }
     \uElseIf{$\LEN(\text{FIXED subframe data}) < \LEN(\text{LPC subframe data})$}{
-      \Return FIXED subframe data as encoded FLAC subframe\;
+      \Return FIXED subframe data\;
     }
     \Else{
       \Return LPC subframe data\;
@@ -1703,7 +1703,7 @@ write encoded residual block based on signed residual values\;
 \par
 \noindent
 Building a residual block from signed residual values is explained
-on page XXX.
+on page \pageref{flac_residual_encoding}.
 
 \clearpage
 
@@ -1770,6 +1770,170 @@ Also note that if you remove the first $4 - order$ residuals
 and sum the absolute value of the remainding residuals,
 the result is the \VAR{total error} value
 used when calculating the best FIXED subframe order.
+
+\subsection{Residual Encoding}
+\label{flac_residual_encoding}
+{\relsize{-1}
+\ALGORITHM{a set of signed residual values, the subframe's block size and order, minimum and maximum partition order from encoding parameters}{an encoded block of residuals}
+\SetKwData{PORDER}{porder}
+\SetKwData{BPORDER}{best porder}
+\SetKwData{BSIZE}{best size}
+\SetKwData{PARTITION}{partition}
+\SetKwFunction{LEN}{len}
+\tcc{calculate best Rice parameters, partition order and coding method}
+\BPORDER $\leftarrow 0$\;
+\BSIZE $\leftarrow$ maximum integer\;
+\For{\PORDER = minimum partition order \emph{\KwTo}(maximum partition order + 1)}{
+  \If{block size equally divisible into $2^{\PORDER}$ partitions}{
+    $\text{partition size}_{\PORDER} \leftarrow 0$\;
+    \For{p = 0 \emph{\KwTo}$2 ^ {\PORDER}$} {
+      $\text{partition size}_{\PORDER} \leftarrow \text{partition size}_{\PORDER} + 4$\tcc*[r]{partition header bits}
+      \eIf{p = 0}{
+        $partition_{\PORDER~0} \leftarrow block~size \div 2 ^ {\PORDER} - subframe~order$ residuals
+      }{
+        $partition_{\PORDER~p} \leftarrow block~size \div 2 ^ {\PORDER}$ residuals
+      }
+      \BlankLine
+      $Rice_{\PORDER~p} \leftarrow$ compute best Rice parameter for $partition_{\PORDER~p}$\;
+      \BlankLine
+      $encoded~residuals_{\PORDER~p} \leftarrow$ encode residual partition with $Rice_{\PORDER~p}$\;
+      \BlankLine
+      $\text{partition size}_{\PORDER} \leftarrow \text{partition size}_{\PORDER} + \LEN(encoded~residuals_{\PORDER~p})$\;
+    }
+    \If{$\text{partition size}_{\PORDER} < \BSIZE$}{
+      \BPORDER $\leftarrow$ \PORDER\;
+      \BSIZE $\leftarrow \text{partition size}_{\PORDER}$\;
+    }
+  }
+}
+\BlankLine
+\tcc{write best residual partition(s) to residual block}
+\eIf{any $Rice_{\BPORDER} > 14$}{
+  coding method $\leftarrow 1$\;
+}{
+  coding method $\leftarrow 0$\;
+}
+\WRITE coding method in 2 unsigned bits\;
+\WRITE \BPORDER in 4 unsigned bits\;
+\For{p = 0 \emph{\KwTo}$2 ^ {\BPORDER}$} {
+  \eIf{coding method = 0}{
+    \WRITE $Rice_{\BPORDER~p}$ in 4 unsigned bits\;
+  }{
+    \WRITE $Rice_{\BPORDER~p}$ in 5 unsigned bits\;
+  }
+  write $encoded~residuals_{\PORDER~p}$\;
+}
+\Return encoded residual block\;
+\EALGORITHM
+}
+
+\clearpage
+
+\subsubsection{Computing Best Rice Parameter}
+\ALGORITHM{a set of signed residual values, the stream's bits per sample}{the Rice parameter as an unsigned integer}
+\SetKwData{PARAMETER}{Rice parameter}
+\SetKwData{PSUM}{partition sum}
+\SetKwFunction{MIN}{min}
+\PSUM $\leftarrow \overset{partition~size - 1}{\underset{i = 0}{\sum}} |residual_i|$\;
+$\PARAMETER \leftarrow 0$\;
+\While{$partition~size \times 2 ^ \text{\PARAMETER} < \PSUM$}{
+  $\PARAMETER \leftarrow \PARAMETER + 1$\;
+}
+\eIf{bits per sample $\leq 16$}{
+  \Return \MIN(\PARAMETER , 14)\tcc*[r]{coding method 0}
+}{
+  \Return \MIN(\PARAMETER , 30)\tcc*[r]{coding method 1}
+}
+\Return \PARAMETER\;
+\EALGORITHM
+
+\subsubsection{Encoding Residual Partition}
+\ALGORITHM{a set of signed residual values, the partition's Rice parameter}{an encoded residual partition}
+\ForEach{residual \emph{\KwTo}residuals}{
+  \eIf{$residual \geq 0$}{
+    $unsigned \leftarrow residual \times 2$\;
+  }{
+    $unsigned \leftarrow ((-residual - 1) \times 2) + 1$\;
+  }
+  MSB $\leftarrow \lfloor unsigned \div 2 ^ \text{Rice parameter} \rfloor$\;
+  LSB $\leftarrow unsigned - (\text{MSB} \times 2 ^ \text{Rice parameter})$\;
+  \WUNARY MSB with stop bit 1\;
+  \WRITE LSB in (Rice parameter) unsigned bits\;
+}
+\Return encoded partition\;
+\EALGORITHM
+
+\begin{figure}[h]
+\includegraphics{figures/flac/residual.pdf}
+\end{figure}
+
+\clearpage
+
+\subsubsection{Residual Encoding Example}
+Given a block size of 10 and the residuals \texttt{2, 6, -2, 0, -1, -2, 3, -1, -3}:
+\begin{align*}
+\intertext{for $\text{partition order (porder)} = 0$:}
+partition_{0~0} &\leftarrow \texttt{[2, 6, -2, 0, -1, -2, 3, -1, -3]} \\
+\text{partition sum}_{0~0} &\leftarrow 2 + 6 + 2 + 0 + 1 + 2 + 3 + 1 + 3 = 20 \\
+Rice_{0~0} &\leftarrow 1~~(9 \times 2 ^ 0 < 20~,~9 \times 2 ^ 1 < 20~,~9 \times 2 ^ 2 > 20) \\
+\intertext{which is encoded to $encoded~residuals_{0~0}$:
+\newline
+\includegraphics{figures/flac/residual-example1.pdf}}
+\intertext{for partition order (porder) = 1:}
+partition_{1~0} &\leftarrow \texttt{[2, 6, -2, 0]} \\
+\text{partition sum}_{1~0} &\leftarrow 2 + 6 + 2 + 0 = 10 \\
+Rice_{1~0} &\leftarrow 1~~(4 \times 2 ^ 0 < 10~,~4 \times 2 ^ 1 < 10~,~4 \times 2 ^ 2 > 10) \\
+\intertext{which is encoded to $encoded~residuals_{1~0}$:
+\newline
+\includegraphics{figures/flac/residual-example2.pdf}}
+partition_{1~1} &\leftarrow \texttt{[-1, -2, 3, -1, -3]} \\
+\text{partition sum}_{1~1} &\leftarrow 1 + 2 + 3 + 1 + 3 = 10 \\
+Rice_{1~1} &\leftarrow 1~~(4 \times 2 ^ 0 < 10~,~4 \times 2 ^ 1 < 10~,~4 \times 2 ^ 2 > 10) \\
+\intertext{which is encoded to $encoded~residuals_{1~1}$:
+\newline
+\includegraphics{figures/flac/residual-example3.pdf}}
+\end{align*}
+\par
+\noindent
+Since partition order 0's 33 bits, + 4 bits for one partition header,
+is smaller than partition order 1's 17 bits + 16 bits + 8 bits
+for two partition headers, the ideal partition order for these residuals is 0.
+
+\clearpage
+
+The 33 bit partition is packaged into a complete residual block
+in which:
+\newline
+\begin{tabular}{rl}
+$partition_{0~0}$ & $\leftarrow$ \texttt{2, 6, -2, 0, -1, -2, 3, -1, -3} \\
+$Rice_{0~0}$ & $\leftarrow 1$ \\
+partition order & $\leftarrow 0$ \\
+coding method & $\leftarrow 0$ \\
+\end{tabular}
+\begin{figure}[h]
+\includegraphics{figures/flac/residual-example4.pdf}
+\end{figure}
+\par
+Finally, we package these residuals into a FIXED subframe in which:
+\newline
+\begin{tabular}{rl}
+predictor order & $\leftarrow 1$ \\
+$\text{warm-up sample}_0$ & $\leftarrow $ 18 \\
+\end{tabular}
+\begin{figure}[h]
+\includegraphics{figures/flac/residual-example5.pdf}
+\end{figure}
+\par
+\noindent
+Reducing our 10, 16-bit samples from a total of 160 bits
+down to only 67 bits - or about 40\% of their original size.
+
+%% \clearpage
+
+
+
+%% \subsubsection{Encoding Residual Partition}
+
 
 %% \section{FLAC Encoding}
 %% For the purposes of discussing FLAC encoding,

@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<struct endianness="big">
+  <field size="1" value="1b">MSB₀</field>
+  <field size="1" value="1b">LSB₀</field>
+  <field size="2" value="01b">MSB₁</field>
+  <field size="1" value="1b">LSB₁</field>
+  <field size="4" value="0001b">MSB₂</field>
+  <field size="1" value="0b">LSB₂</field>
+  <field size="1" value="1b">MSB₃</field>
+  <field size="1" value="1b">LSB₃</field>
+  <field size="3" value="001b">MSB₄</field>
+  <field size="1" value="1b">LSB₄</field>
+</struct>

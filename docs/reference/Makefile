@@ -52,6 +52,11 @@ figures/flac/read_residual.pdf \
 figures/flac/read_utf8.pdf \
 figures/flac/rectangular.pdf \
 figures/flac/residual.pdf \
+figures/flac/residual-example1.pdf \
+figures/flac/residual-example2.pdf \
+figures/flac/residual-example3.pdf \
+figures/flac/residual-example4.pdf \
+figures/flac/residual-example5.pdf \
 figures/flac/residual-parse.pdf \
 figures/flac/rice1.pdf \
 figures/flac/rice2.pdf \
