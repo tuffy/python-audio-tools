@@ -26,6 +26,7 @@
 \usepackage{rotating}
 \usepackage[toc,page]{appendix}
 \usepackage{hyperref}
+\usepackage{units}
 \usepackage[vlined,lined,commentsnumbered]{algorithm2e}
 \newcommand{\xor}{\textbf{ xor }}
 %#1 = i

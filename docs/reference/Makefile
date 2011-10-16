@@ -43,6 +43,9 @@ figures/flac/frames.pdf \
 figures/flac/hann.pdf \
 figures/flac/header-example.pdf \
 figures/flac/lag.pdf \
+figures/flac/lag0.pdf \
+figures/flac/lag1.pdf \
+figures/flac/lag2.pdf \
 figures/flac/lpc.pdf \
 figures/flac/lpc-parse.pdf \
 figures/flac/metadata.pdf \
@@ -319,6 +322,15 @@ figures/utf-8-3.pdf: figures/utf-8-3.fig
 
 figures/flac/lag.pdf: figures/flac/lag.fig
 	fig2dev -Z 6 -L pdf $< $@
+
+figures/flac/lag0.pdf: figures/flac/lag0.fig
+	fig2dev -Z 3.5 -L pdf $< $@
+
+figures/flac/lag1.pdf: figures/flac/lag1.fig
+	fig2dev -Z 3.5 -L pdf $< $@
+
+figures/flac/lag2.pdf: figures/flac/lag2.fig
+	fig2dev -Z 3.5 -L pdf $< $@
 
 figures/flac/nonexhaustive.pdf: figures/flac/nonexhaustive.fig
 	fig2dev -Z 3.5 -L pdf $< $@

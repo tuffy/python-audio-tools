@@ -1928,11 +1928,126 @@ $\text{warm-up sample}_0$ & $\leftarrow $ 18 \\
 Reducing our 10, 16-bit samples from a total of 160 bits
 down to only 67 bits - or about 40\% of their original size.
 
-%% \clearpage
+\clearpage
 
+\subsubsection{Windowing the Input Samples}
+\ALGORITHM{a list of signed input sample integers}{a list of signed windowed samples as floats}
+\SetKwFunction{TUKEY}{tukey}
+\For{i = 0 \emph{\KwTo}sample count}{
+  $windowed_i = sample_i \times \TUKEY(i)$\;
+}
+\Return windowed samples\;
+\EALGORITHM
+\par
+\noindent
+The \VAR{Tukey} function is defined as:
+\begin{equation*}
+tukey(n) =
+\begin{cases}
+\frac{1}{2} \times \left[1 + cos\left(\pi \times \left(\frac{2 \times n}{\alpha \times (N - 1)} - 1 \right)\right)\right] & \text{ if } 0 \leq n \leq \frac{\alpha \times (N - 1)}{2} \\
+1 & \text{ if } \frac{\alpha \times (N - 1)}{2} \leq n \leq (N - 1) \times (1 - \frac{\alpha}{2}) \\
+\frac{1}{2} \times \left[1 + cos\left(\pi \times \left(\frac{2 \times n}{\alpha \times (N - 1)} - \frac{2}{\alpha} + 1 \right)\right)\right] & \text{ if } (N - 1) \times (1 - \frac{\alpha}{2}) \leq n \leq (N - 1) \\
+\end{cases}
+\end{equation*}
+\par
+\noindent
+Where $N$ is the total number of samples and $\alpha$ is $\nicefrac{1}{2}$.
+\par
+\noindent
+\begin{wrapfigure}[5]{r}{2in}
+\includegraphics{figures/flac/tukey.pdf}
+\end{wrapfigure}
+\begin{table}[h]
+\begin{tabular}{r|r|r|r}
+$i$ & $sample_i$ & $tukey(i)$ & $windowed_i$ \\
+\hline
+0 & 18 & 0 & 0.0 \\
+1 & 20 & .41 & 8.2 \\
+2 & 26 & .97 & 25.2 \\
+3 & 24 & 1 & 24.0 \\
+4 & 24 & 1 & 24.0 \\
+5 & 23 & 1 & 23.0 \\
+6 & 21 & 1 & 21.0 \\
+7 & 24 & .97 & 23.3 \\
+8 & 23 & .41 & 9.4 \\
+9 & 20 & 0 & 0.0 \\
+\end{tabular}
+\end{table}
 
+\clearpage
 
-%% \subsubsection{Encoding Residual Partition}
+\subsubsection{Performing Autocorrelation}
+
+\ALGORITHM{a list of signed windowed samples, the maximum LPC order}{a list of signed autocorrelation values}
+\For{lag = 0 \emph{\KwTo}maximum LPC order}{
+  $\text{autocorrelation}_{\text{lag}} = \overset{\text{total samples} - \text{lag} - 1}{\underset{i = 0}{\sum}}\text{sample}_i \times \text{sample}_{i + \text{lag}}$\;
+}
+\EALGORITHM
+For example, given the windowed samples:
+\texttt{0.0, 8.2, 25.2, 24.0, 24.0, 23.0, 21.0, 23.3, 9.4, 0.0}
+and a maximum LPC order of 3 (from the encoding parameters):
+\begin{figure}[h]
+\subfloat{
+  {\relsize{-1}
+    \begin{tabular}{rrrrr}
+      \texttt{0.0} & $\times$ & \texttt{0.0} & $=$ & \texttt{0.00} \\
+      \texttt{8.2} & $\times$ & \texttt{8.2} & $=$ & \texttt{67.24} \\
+      \texttt{25.2} & $\times$ & \texttt{25.2} & $=$ & \texttt{635.04} \\
+      \texttt{24.0} & $\times$ & \texttt{24.0} & $=$ & \texttt{576.00} \\
+      \texttt{24.0} & $\times$ & \texttt{24.0} & $=$ & \texttt{576.00} \\
+      \texttt{23.0} & $\times$ & \texttt{23.0} & $=$ & \texttt{529.00} \\
+      \texttt{21.0} & $\times$ & \texttt{21.0} & $=$ & \texttt{441.00} \\
+      \texttt{23.3} & $\times$ & \texttt{23.3} & $=$ & \texttt{542.89} \\
+      \texttt{9.4} & $\times$ & \texttt{9.4} & $=$ & \texttt{88.36} \\
+      \texttt{0.0} & $\times$ & \texttt{0.0} & $=$ & \texttt{0.00} \\
+      \hline
+      \multicolumn{3}{r}{$\text{autocorrelation}_0$} & $=$ & \texttt{3455.53} \\
+    \end{tabular}
+  }
+}
+\includegraphics{figures/flac/lag0.pdf}
+\end{figure}
+
+\begin{figure}[h]
+\subfloat{
+  {\relsize{-1}
+    \begin{tabular}{rrrrr}
+      \texttt{0.0} & $\times$ & \texttt{8.2} & $=$ & \texttt{0.00} \\
+      \texttt{8.2} & $\times$ & \texttt{25.2} & $=$ & \texttt{206.64} \\
+      \texttt{25.2} & $\times$ & \texttt{24.0} & $=$ & \texttt{604.80} \\
+      \texttt{24.0} & $\times$ & \texttt{24.0} & $=$ & \texttt{576.00} \\
+      \texttt{24.0} & $\times$ & \texttt{23.0} & $=$ & \texttt{552.00} \\
+      \texttt{23.0} & $\times$ & \texttt{21.0} & $=$ & \texttt{483.00} \\
+      \texttt{21.0} & $\times$ & \texttt{23.3} & $=$ & \texttt{489.30} \\
+      \texttt{23.3} & $\times$ & \texttt{9.4} & $=$ & \texttt{219.02} \\
+      \texttt{9.4} & $\times$ & \texttt{0.0} & $=$ & \texttt{0.00} \\
+      \hline
+      \multicolumn{3}{r}{$\text{autocorrelation}_1$} & $=$ & \texttt{3130.76} \\
+    \end{tabular}
+  }
+}
+\includegraphics{figures/flac/lag1.pdf}
+\end{figure}
+
+\begin{figure}[h]
+\subfloat{
+  {\relsize{-1}
+    \begin{tabular}{rrrrr}
+      \texttt{0.0} & $\times$ & \texttt{25.2} & $=$ & \texttt{0.00} \\
+      \texttt{8.2} & $\times$ & \texttt{24.0} & $=$ & \texttt{196.80} \\
+      \texttt{25.2} & $\times$ & \texttt{24.0} & $=$ & \texttt{604.80} \\
+      \texttt{24.0} & $\times$ & \texttt{23.0} & $=$ & \texttt{552.00} \\
+      \texttt{24.0} & $\times$ & \texttt{21.0} & $=$ & \texttt{504.00} \\
+      \texttt{23.0} & $\times$ & \texttt{23.3} & $=$ & \texttt{535.90} \\
+      \texttt{21.0} & $\times$ & \texttt{9.4} & $=$ & \texttt{197.40} \\
+      \texttt{23.3} & $\times$ & \texttt{0.0} & $=$ & \texttt{0.00} \\
+      \hline
+      \multicolumn{3}{r}{$\text{autocorrelation}_2$} & $=$ & \texttt{2590.90} \\
+    \end{tabular}
+  }
+}
+\includegraphics{figures/flac/lag2.pdf}
+\end{figure}
 
 
 %% \section{FLAC Encoding}

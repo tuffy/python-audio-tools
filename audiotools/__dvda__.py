@@ -173,8 +173,9 @@ class DVDAudio:
                 ats_reader = BitstreamReader(f, 0)
                 sector_pointers = [ats_reader.parse("32u 32u 32u")
                                    for i in xrange(indexes)]
-                if (set([p[0] for p in sector_pointers[1:]]) !=
-                    set([0x01000000])):
+                if ((len(sector_pointers) > 1) and
+                    (set([p[0] for p in sector_pointers[1:]]) !=
+                     set([0x01000000]))):
                     raise InvalidDVDA(_(u"invalid sector pointer"))
                 else:
                     sector_pointers = [None] + sector_pointers
