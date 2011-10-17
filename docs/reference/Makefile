@@ -46,6 +46,7 @@ figures/flac/lag.pdf \
 figures/flac/lag0.pdf \
 figures/flac/lag1.pdf \
 figures/flac/lag2.pdf \
+figures/flac/lag3.pdf \
 figures/flac/lpc.pdf \
 figures/flac/lpc-parse.pdf \
 figures/flac/metadata.pdf \
@@ -330,6 +331,9 @@ figures/flac/lag1.pdf: figures/flac/lag1.fig
 	fig2dev -Z 3.5 -L pdf $< $@
 
 figures/flac/lag2.pdf: figures/flac/lag2.fig
+	fig2dev -Z 3.5 -L pdf $< $@
+
+figures/flac/lag3.pdf: figures/flac/lag3.fig
 	fig2dev -Z 3.5 -L pdf $< $@
 
 figures/flac/nonexhaustive.pdf: figures/flac/nonexhaustive.fig

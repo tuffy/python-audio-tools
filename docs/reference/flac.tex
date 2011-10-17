@@ -1979,16 +1979,16 @@ $i$ & $sample_i$ & $tukey(i)$ & $windowed_i$ \\
 \subsubsection{Performing Autocorrelation}
 
 \ALGORITHM{a list of signed windowed samples, the maximum LPC order}{a list of signed autocorrelation values}
-\For{lag = 0 \emph{\KwTo}maximum LPC order}{
+\For{lag = 0 \emph{\KwTo}maximum LPC order + 1}{
   $\text{autocorrelation}_{\text{lag}} = \overset{\text{total samples} - \text{lag} - 1}{\underset{i = 0}{\sum}}\text{sample}_i \times \text{sample}_{i + \text{lag}}$\;
 }
 \EALGORITHM
 For example, given the windowed samples:
 \texttt{0.0, 8.2, 25.2, 24.0, 24.0, 23.0, 21.0, 23.3, 9.4, 0.0}
-and a maximum LPC order of 3 (from the encoding parameters):
+and a maximum LPC order of 3:
 \begin{figure}[h]
 \subfloat{
-  {\relsize{-1}
+  {\relsize{-2}
     \begin{tabular}{rrrrr}
       \texttt{0.0} & $\times$ & \texttt{0.0} & $=$ & \texttt{0.00} \\
       \texttt{8.2} & $\times$ & \texttt{8.2} & $=$ & \texttt{67.24} \\
@@ -2006,11 +2006,9 @@ and a maximum LPC order of 3 (from the encoding parameters):
   }
 }
 \includegraphics{figures/flac/lag0.pdf}
-\end{figure}
 
-\begin{figure}[h]
 \subfloat{
-  {\relsize{-1}
+  {\relsize{-2}
     \begin{tabular}{rrrrr}
       \texttt{0.0} & $\times$ & \texttt{8.2} & $=$ & \texttt{0.00} \\
       \texttt{8.2} & $\times$ & \texttt{25.2} & $=$ & \texttt{206.64} \\
@@ -2027,11 +2025,9 @@ and a maximum LPC order of 3 (from the encoding parameters):
   }
 }
 \includegraphics{figures/flac/lag1.pdf}
-\end{figure}
 
-\begin{figure}[h]
 \subfloat{
-  {\relsize{-1}
+  {\relsize{-2}
     \begin{tabular}{rrrrr}
       \texttt{0.0} & $\times$ & \texttt{25.2} & $=$ & \texttt{0.00} \\
       \texttt{8.2} & $\times$ & \texttt{24.0} & $=$ & \texttt{196.80} \\
@@ -2047,8 +2043,133 @@ and a maximum LPC order of 3 (from the encoding parameters):
   }
 }
 \includegraphics{figures/flac/lag2.pdf}
-\end{figure}
 
+\subfloat{
+  {\relsize{-2}
+    \begin{tabular}{rrrrr}
+      \texttt{0.0} & $\times$ & \texttt{24.0} & $=$ & \texttt{0.00} \\
+      \texttt{8.2} & $\times$ & \texttt{24.0} & $=$ & \texttt{196.80} \\
+      \texttt{25.2} & $\times$ & \texttt{23.0} & $=$ & \texttt{579.60} \\
+      \texttt{24.0} & $\times$ & \texttt{21.0} & $=$ & \texttt{504.00} \\
+      \texttt{24.0} & $\times$ & \texttt{23.3} & $=$ & \texttt{559.20} \\
+      \texttt{23.0} & $\times$ & \texttt{9.4} & $=$ & \texttt{216.20} \\
+      \texttt{21.0} & $\times$ & \texttt{0.0} & $=$ & \texttt{0.00} \\
+      \hline
+      \multicolumn{3}{r}{$\text{autocorrelation}_3$} & $=$ & \texttt{2055.80} \\
+    \end{tabular}
+  }
+}
+\includegraphics{figures/flac/lag3.pdf}
+\end{figure}
+\par
+\noindent
+Note that the total number of autocorrelation values equals
+the maximum LPC order + 1.
+
+\clearpage
+
+\subsubsection{LP Coefficient Calculation}
+{\relsize{-1}
+\ALGORITHM{a list of autocorrelation floats, the maximum LPC order}{a list of LP coefficient lists, a list of error values}
+\SetKwData{LPCOEFF}{LP coefficient}
+\SetKwData{ERROR}{error}
+\SetKwData{AUTOCORRELATION}{autocorrelation}
+\begin{tabular}{rcl}
+$\ERROR_0$ &$\leftarrow$ & $\AUTOCORRELATION_0$ \\
+$\kappa_0$ &$\leftarrow$ & $ \AUTOCORRELATION_1 \div \ERROR_0$ \\
+$\LPCOEFF_{0~0}$ &$\leftarrow$ & $ \kappa_0$ \\
+$\ERROR_1$ &$\leftarrow$ & $ \ERROR_0 \times (1 - {\kappa_0} ^ 2)$ \\
+\end{tabular}\;
+\For{i = 1 \emph{\KwTo}maximum LPC order + 1}{
+  $q_i \leftarrow \AUTOCORRELATION_{i + 1}$\;
+  \tcc{"zip" all of the previous row's LP coefficients
+    \newline
+    and the reversed autocorrelation values from 1 to i + 1
+    \newline
+    into ($c$,$a$) pairs}
+  \For{j = 0 \emph{\KwTo}i}{
+    \tcc{$q_i$ is $\AUTOCORRELATION_{i + 1}$ minus the sum of those mutiplied ($c$,$a$) pairs}
+    $q_i \leftarrow q_i - (\LPCOEFF_{(i - 1)~j} \times \AUTOCORRELATION_{i - j})$\;
+  }
+  $\kappa_i = q_i \div \ERROR_i$\;
+  \BlankLine
+  \tcc{"zip" all of the previous row's LP coefficients
+    \newline
+    and the previous row's LP coefficients reversed
+    \newline
+    into ($c$,$r$) pairs}
+  \For{j = 0 \emph{\KwTo}i}{
+    \tcc{then build a new coefficient list of $c - (\kappa_i * r)$ for each ($c$,$r$) pair}
+    $\LPCOEFF_{i~j} \leftarrow \LPCOEFF_{(i - 1)~j} - (\kappa_i \times \LPCOEFF_{(i - 1)~(i - j - 1)})$\;
+  }
+  $\text{LP coefficient}_{i~i} \leftarrow \kappa_i$\tcc*[r]{and append $\kappa_i$ as the final coefficient in that list}
+  \BlankLine
+  $\ERROR_{i + 1} \leftarrow \ERROR_i \times (1 - {\kappa_i}^2)$\;
+}
+\Return list of LP coefficient lists, and error value list\;
+\EALGORITHM
+}
+
+\clearpage
+
+Calculating the LP coefficients uses the Levinson-Durbin recursive method.\footnote{This algorithm is taken from \LINK{http://www.engineer.tamuk.edu/SPark/chap7.pdf} }
+Our inputs are $M$, the maximum LPC order plus 1, and $r$ autocorrelation
+values, from $r(0)$ to $r(M - 1)$.
+Our outputs are $a$, a list of LP coefficient lists from
+$a_{11}$ to $a_{(M - 1)(M - 1)}$, and $E$, a list
+of error values from $E_0$ to $E_{(M - 1)}$.
+$q_m$ and $\kappa_m$ are temporary values.
+\par
+\noindent
+Initial values:
+\begin{align}
+E_0 &= r(0) \\
+a_{11} &= \kappa_1 = \frac{r(1)}{E_0} \\
+E_1 &= E_0 {(1 - {{\kappa_1} ^ 2})}
+\end{align}
+\noindent
+With $m \geq 2$, the following recursive algorithm is performed:
+\begin{align}
+\text{Step 1. } && q_m &= r(m) - \overset{m - 1}{\underset{i = 1}{\sum}} a_{i(m - 1)}r(m - i) \\
+\text{Step 2. } && \kappa_m &= \frac{q_m}{E_{(m - 1)}} \\
+\text{Step 3. } && a_{mm} &= \kappa_m \\
+\text{Step 4. } && a_{im} &= a_{i(m - 1)} - \kappa_m a_{(m - i)(m - 1)} \text{ for $i = 1$, $i = 2$,...,$i = m - 1$} \\
+\text{Step 5. } && E_m &= E_{m - 1}(1 - {\kappa_m} ^ 2) \\
+\text{Step 6. } &&& \text{If $m < M$ then $m \leftarrow m + 1$ and goto step 1.  If $m = M$ then stop.}
+\end{align}
+
+Let's run through an example in which $M = 4$, $r(0) = 11018$, $r(1) = 9690$,
+$r(2) = 8443$ and $r(3) = 7280$:
+{\relsize{-2}
+\begin{align*}
+E_0 &= r(0) = 11018 \\
+a_{11} &= \kappa_1 = \frac{r(1)}{E_0} = \frac{9690}{11018} = 0.8795 \\
+E_1 &= E_o(1 - {\kappa_1} ^ 2) = 11018(1 - 0.8795 ^ 2) = 2495 \\
+q_2 &= r(2) - \overset{1}{\underset{i = 1}{\sum}} a_{i1}r(2 - i) = 8443 - (0.8795)(9690) = -79.35 \\
+\kappa_2 &= \frac{q_2}{E_1} = \frac{-79.35}{2495} = -0.0318 \\
+a_{22} &= \kappa_2 = -0.0318 \\
+a_{12} &= a_{11} - \kappa_2 a_{11} = 0.8795 - (-0.0318)(0.8795) = 0.9074 \\
+E_2 &= E_1 (1 - {\kappa_2} ^ 2 ) = 2495(1 - {-0.0318 ^ 2}) = 2492 \\
+q_3 &= r(3) - \overset{2}{\underset{i = 1}{\sum}} a_{i2} r(3 - i) = 7280 - ((0.9074)(8443) + (-0.0318)(9690)) = -73.04 \\
+\kappa_3 &= \frac{q_3}{E_2} = \frac{-73.04}{2492} = -0.0293 \\
+a_{33} &= \kappa_3 = -0.0293 \\
+a_{13} &= a_{12} - \kappa_3 a_{22} = 0.9074 - (-0.0293)(-0.0318) = 0.9065 \\
+a_{23} &= a_{22} - \kappa_3 a_{12} = -0.0318 - (-0.0293)(0.9074) = -0.0052 \\
+E_3 &= E_2 (1 - {\kappa_3} ^ 2 ) = 2492(1 - {-0.0293 ^ 2}) = 2490
+\end{align*}
+}
+Our final values are:
+{\relsize{-2}
+\begin{align*}
+a_{11} &= 0.8795 & & & & \\
+a_{12} &= 0.9074 & a_{22} &= -0.0318 & & \\
+a_{13} &= 0.9065 & a_{23} &= -0.0052 & a_{33} &= -0.0293 \\
+E_1 &= 2495 & E_2 &= 2492 & E_3 &= 2490
+\end{align*}
+}
+\noindent
+These values have been rounded to the nearest significant digit
+and will not be an exact match to those generated by a computer.
 
 %% \section{FLAC Encoding}
 %% For the purposes of discussing FLAC encoding,
@@ -2423,66 +2544,7 @@ and a maximum LPC order of 3 (from the encoding parameters):
 %% The lagged sums from 0 to the maximum LPC order are our autocorrelation
 %% values.  In this example, they are 14979.0, 13651.0 and 12405.0.
 
-%% \subsubsection{LP Coefficient Calculation}
 
-%% Calculating the LP coefficients uses the Levinson-Durbin recursive method.\footnote{This algorithm is taken from \LINK{http://www.engineer.tamuk.edu/SPark/chap7.pdf} }
-%% Our inputs are $M$, the maximum LPC order minus 1, and $r$ autocorrelation
-%% values, from $r(0)$ to $r(M - 1)$.
-%% Our outputs are $a$, a list of LP coefficient lists from
-%% $a_{11}$ to $a_{(M - 1)(M - 1)}$, and $E$, a list
-%% of error values from $E_0$ to $E_{(M - 1)}$.
-%% $q_m$ and $\kappa_m$ are temporary values.
-%% \par
-%% \noindent
-%% Initial values:
-%% \begin{align}
-%% E_0 &= r(0) \\
-%% a_{11} &= \kappa_1 = \frac{r(1)}{E_0} \\
-%% E_1 &= E_0 {(1 - {{\kappa_1} ^ 2})}
-%% \end{align}
-%% \noindent
-%% With $m \geq 2$, the following recursive algorithm is performed:
-%% \begin{align}
-%% \text{Step 1. } && q_m &= r(m) - \overset{m - 1}{\underset{i = 1}{\sum}} a_{i(m - 1)}r(m - i) \\
-%% \text{Step 2. } && \kappa_m &= \frac{q_m}{E_{(m - 1)}} \\
-%% \text{Step 3. } && a_{mm} &= \kappa_m \\
-%% \text{Step 4. } && a_{im} &= a_{i(m - 1)} - \kappa_m a_{(m - i)(m - 1)} \text{ for $i = 1$, $i = 2$,...,$i = m - 1$} \\
-%% \text{Step 5. } && E_m &= E_{m - 1}(1 - {\kappa_m} ^ 2) \\
-%% \text{Step 6. } &&& \text{If $m < M$ then $m \leftarrow m + 1$ and goto step 1.  If $m = M$ then stop.}
-%% \end{align}
-
-%% Let's run through an example in which $M = 4$, $r(0) = 11018$, $r(1) = 9690$,
-%% $r(2) = 8443$ and $r(3) = 7280$:
-%% {\relsize{-2}
-%% \begin{align*}
-%% E_0 &= r(0) = 11018 \\
-%% a_{11} &= \kappa_1 = \frac{r(1)}{E_0} = \frac{9690}{11018} = 0.8795 \\
-%% E_1 &= E_o(1 - {\kappa_1} ^ 2) = 11018(1 - 0.8795 ^ 2) = 2495 \\
-%% q_2 &= r(2) - \overset{1}{\underset{i = 1}{\sum}} a_{i1}r(2 - i) = 8443 - (0.8795)(9690) = -79.35 \\
-%% \kappa_2 &= \frac{q_2}{E_1} = \frac{-79.35}{2495} = -0.0318 \\
-%% a_{22} &= \kappa_2 = -0.0318 \\
-%% a_{12} &= a_{11} - \kappa_2 a_{11} = 0.8795 - (-0.0318)(0.8795) = 0.9074 \\
-%% E_2 &= E_1 (1 - {\kappa_2} ^ 2 ) = 2495(1 - {-0.0318 ^ 2}) = 2492 \\
-%% q_3 &= r(3) - \overset{2}{\underset{i = 1}{\sum}} a_{i2} r(3 - i) = 7280 - ((0.9074)(8443) + (-0.0318)(9690)) = -73.04 \\
-%% \kappa_3 &= \frac{q_3}{E_2} = \frac{-73.04}{2492} = -0.0293 \\
-%% a_{33} &= \kappa_3 = -0.0293 \\
-%% a_{13} &= a_{12} - \kappa_3 a_{22} = 0.9074 - (-0.0293)(-0.0318) = 0.9065 \\
-%% a_{23} &= a_{22} - \kappa_3 a_{12} = -0.0318 - (-0.0293)(0.9074) = -0.0052 \\
-%% E_3 &= E_2 (1 - {\kappa_3} ^ 2 ) = 2492(1 - {-0.0293 ^ 2}) = 2490
-%% \end{align*}
-%% }
-%% Our final values are:
-%% {\relsize{-2}
-%% \begin{align*}
-%% a_{11} &= 0.8795 & & & & \\
-%% a_{12} &= 0.9074 & a_{22} &= -0.0318 & & \\
-%% a_{13} &= 0.9065 & a_{23} &= -0.0052 & a_{33} &= -0.0293 \\
-%% E_1 &= 2495 & E_2 &= 2492 & E_3 &= 2490
-%% \end{align*}
-%% }
-%% \noindent
-%% These values have been rounded to the nearest significant digit
-%% and will not be an exact match to those generated by a computer.
 
 %% \pagebreak
 
