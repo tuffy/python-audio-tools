@@ -1319,7 +1319,7 @@ sample_1 &\leftarrow \lfloor(((12 \times 2) + (-5 \bmod 2)) - -5) \div 2\rfloor 
 \uElseIf{$sample~rate \leq 65535$}{
   $encoded~sample~rate \leftarrow 13$\;
 }
-\Else{$encoded~sample~rate = 0$}
+\Else{$encoded~sample~rate \leftarrow 0$}
 \EALGORITHM
 }
 \subsubsection{Encoding Bits Per Sample}
@@ -1368,7 +1368,7 @@ sample_1 &\leftarrow \lfloor(((12 \times 2) + (-5 \bmod 2)) - -5) \div 2\rfloor 
     total bytes $\leftarrow 6$\;
   }
   shift $\leftarrow (total~bytes - 1) \times 6$\;
-  \WUNARY total bytes with stop bit 1\;
+  \WUNARY total bytes with stop bit 0\;
   \WRITE $\lfloor \text{value} \div 2 ^ \text{shift} \rfloor$ in (7 - total bytes) unsigned bits\tcc*[r]{initial value}
   shift $\leftarrow$ shift - 6\;
   \While{$shift \geq 0$}{
@@ -1486,7 +1486,7 @@ Note how the CRC-8 is calculated from the preceding 5 header bytes:
   \BlankLine
   \eIf(\tcc*[f]{from encoding parameters}){maximum LPC order $ > 0$}{
     LPC subframe parameters $\leftarrow$ compute best LPC coefficients\;
-    LPC subframe data $\leftarrow$ compute LPC subframe with LPC parameters\;
+    LPC subframe data $\leftarrow$ build LPC subframe with LPC parameters\;
     \BlankLine
     \uIf{$(\text{bits per sample} \times \text{sample count}) < $ \newline$\MIN(\LEN(\text{LPC subframe data}) , \LEN(\text{FIXED subframe data}))$}{
       \Return VERBATIM subframe using subframe's samples and bits per sample\;
@@ -1930,6 +1930,63 @@ down to only 67 bits - or about 40\% of their original size.
 
 \clearpage
 
+\subsubsection{Computing LPC Coefficients}
+
+{\relsize{-1}
+\ALGORITHM{signed subframe samples}{LPC subframe order, QLP coefficients, QLP precision and QLP shift needed}
+\SetKwFunction{WINDOW}{window}
+\SetKwFunction{AUTOCORRELATE}{autocorrelate}
+\SetKwFunction{LEN}{len}
+\SetKw{AND}{and}
+\SetKw{NOT}{not}
+\SetKwData{WINDOWED}{windowed samples}
+\SetKwData{AUTOCORRELATIONS}{autocorrelation values}
+\SetKwData{LPCOEFFS}{LP coefficients}
+\SetKwData{ERRORS}{error}
+\SetKwData{ORDER}{order}
+\SetKwData{QLPCOEFFS}{QLP coefficients}
+\SetKwData{QLPPRECISION}{QLP precision}
+\SetKwData{QLPSHIFT}{QLP shift needed}
+\SetKwData{BESTLPCPARAMS}{best LPC parameters}
+\SetKwData{LPCDATA}{LPC subframe data}
+\tcc{windowed sample count equals subframe sample count}
+\WINDOWED $\leftarrow$ \WINDOW(subframe samples)\;
+\BlankLine
+\tcc{autocorrelation value count equals the maximum LPC order + 1}
+\AUTOCORRELATIONS $\leftarrow$ \AUTOCORRELATE(\WINDOWED)\;
+\BlankLine
+\eIf{$\LEN(\AUTOCORRELATIONS) > 1$ \AND \AUTOCORRELATIONS aren't all 0.0}{
+  (\LPCOEFFS, \ERRORS) $\leftarrow$ compute LP coefficients from \AUTOCORRELATIONS\;
+  \BlankLine
+  \eIf(\tcc*[f]{from encoding parameters}){\NOT exhaustive model search}{
+    \tcc{estimate which set of LP coefficients is the smallest
+      and return those}
+    \ORDER $\leftarrow$ estimate best order from \ERRORS, sample count and bits per sample\;
+    (\QLPCOEFFS, \QLPPRECISION, \QLPSHIFT) $\leftarrow$ quantize \LPCOEFFS at estimated best \ORDER\;
+    \Return (\ORDER, \QLPCOEFFS, \QLPPRECISION, \QLPSHIFT)\;
+  }{
+    \tcc{build a complete LPC subframe from each set of LP coefficients
+    and return the parameters of the one which is smallest}
+    best LPC subframe size $\leftarrow$ maximum integer\;
+    \For{\ORDER = 1 \emph{\KwTo}maximum LPC order + 1}{
+      (\QLPCOEFFS, \QLPPRECISION, \QLPSHIFT) $\leftarrow$ quantize \LPCOEFFS at \ORDER\;
+      \LPCDATA $\leftarrow$ build LPC subframe from \ORDER, \QLPCOEFFS, \QLPPRECISION, \QLPSHIFT\;
+      \If{$\LEN(\LPCDATA) < \text{best LPC subframe size}$}{
+        \BESTLPCPARAMS $\leftarrow$ (\ORDER, \QLPCOEFFS, \QLPPRECISION, \QLPSHIFT)\;
+        best LPC subframe size $\leftarrow \LEN(\LPCDATA)$\;
+      }
+      \Return \BESTLPCPARAMS\;
+    }
+  }
+}{
+  TODO\;
+}
+\EALGORITHM
+}
+
+\clearpage
+
+
 \subsubsection{Windowing the Input Samples}
 \ALGORITHM{a list of signed input sample integers}{a list of signed windowed samples as floats}
 \SetKwFunction{TUKEY}{tukey}
@@ -1954,7 +2011,7 @@ tukey(n) =
 Where $N$ is the total number of samples and $\alpha$ is $\nicefrac{1}{2}$.
 \par
 \noindent
-\begin{wrapfigure}[5]{r}{2in}
+\begin{wrapfigure}[5]{r}{3in}
 \includegraphics{figures/flac/tukey.pdf}
 \end{wrapfigure}
 \begin{table}[h]
@@ -2075,10 +2132,9 @@ the maximum LPC order + 1.
 \SetKwData{ERROR}{error}
 \SetKwData{AUTOCORRELATION}{autocorrelation}
 \begin{tabular}{rcl}
-$\ERROR_0$ &$\leftarrow$ & $\AUTOCORRELATION_0$ \\
-$\kappa_0$ &$\leftarrow$ & $ \AUTOCORRELATION_1 \div \ERROR_0$ \\
+$\kappa_0$ &$\leftarrow$ & $ \AUTOCORRELATION_1 \div \AUTOCORRELATION_0$ \\
 $\LPCOEFF_{0~0}$ &$\leftarrow$ & $ \kappa_0$ \\
-$\ERROR_1$ &$\leftarrow$ & $ \ERROR_0 \times (1 - {\kappa_0} ^ 2)$ \\
+$\ERROR_0$ &$\leftarrow$ & $ \AUTOCORRELATION_0 \times (1 - {\kappa_0} ^ 2)$ \\
 \end{tabular}\;
 \For{i = 1 \emph{\KwTo}maximum LPC order + 1}{
   $q_i \leftarrow \AUTOCORRELATION_{i + 1}$\;
@@ -2091,7 +2147,7 @@ $\ERROR_1$ &$\leftarrow$ & $ \ERROR_0 \times (1 - {\kappa_0} ^ 2)$ \\
     \tcc{$q_i$ is $\AUTOCORRELATION_{i + 1}$ minus the sum of those mutiplied ($c$,$a$) pairs}
     $q_i \leftarrow q_i - (\LPCOEFF_{(i - 1)~j} \times \AUTOCORRELATION_{i - j})$\;
   }
-  $\kappa_i = q_i \div \ERROR_i$\;
+  $\kappa_i = q_i \div \ERROR_{i - 1}$\;
   \BlankLine
   \tcc{"zip" all of the previous row's LP coefficients
     \newline
@@ -2104,72 +2160,233 @@ $\ERROR_1$ &$\leftarrow$ & $ \ERROR_0 \times (1 - {\kappa_0} ^ 2)$ \\
   }
   $\text{LP coefficient}_{i~i} \leftarrow \kappa_i$\tcc*[r]{and append $\kappa_i$ as the final coefficient in that list}
   \BlankLine
-  $\ERROR_{i + 1} \leftarrow \ERROR_i \times (1 - {\kappa_i}^2)$\;
+  $\ERROR_i \leftarrow \ERROR_{i - 1} \times (1 - {\kappa_i}^2)$\;
 }
-\Return list of LP coefficient lists, and error value list\;
+\Return list of LP coefficient lists, error value list\;
 \EALGORITHM
 }
+\par
+\noindent
+Given a a maximum LPC order of 3 and 4 autocorrelation values:
+{\relsize{-1}
+\begin{align*}
+\kappa_0 &\leftarrow \text{autocorrelation}_1 \div \text{autocorrelation}_0 \\
+\text{LP coefficient}_{0~0} &\leftarrow \kappa_0 \\
+\text{error}_0 &\leftarrow \text{autocorrelation}_0 \times (1 - {\kappa_0} ^ 2) \\
+i &= 1 \\
+q_1 &\leftarrow \text{autocorrelation}_2 - (\text{LP coefficient}_{0~0} \times \text{autocorrelation}_{1}) \\
+\kappa_1 &\leftarrow q_1 \div error_0 \\
+\text{LP coefficient}_{1~0} &\leftarrow \text{LP coefficient}_{0~0} - (\kappa_1 \times \text{LP coefficient}_{0~0}) \\
+\text{LP coefficient}_{1~1} &\leftarrow \kappa_1 \\
+\text{error}_1 &\leftarrow \text{error}_0 \times (1 - {\kappa_1} ^ 2) \\
+i &= 2 \\
+q_2 &\leftarrow \text{autocorrelation}_3 - (\text{LP coefficient}_{1~0} \times \text{autocorrelation}_{2} + \text{LP coefficient}_{1~1} \times \text{autocorrelation}_{1}) \\
+\kappa_2 &\leftarrow q_2 \div \text{error}_1 \\
+\text{LP coefficient}_{2~0} &\leftarrow \text{LP coefficient}_{1~0} - (\kappa_2 \times \text{LP coefficient}_{1~1}) \\
+\text{LP coefficient}_{2~1} &\leftarrow \text{LP coefficient}_{1~1} - (\kappa_2 \times \text{LP coefficient}_{1~0}) \\
+\text{LP coefficient}_{2~2} &\leftarrow \kappa_2 \\
+\text{error}_2 &\leftarrow \text{error}_1 \times (1 - {\kappa_2} ^ 2) \\
+\end{align*}
+}
+
+Performing this calculation with the autocorrelation values
+\texttt{3455.53, 3130.76, 2590.90, 2055.80}:
+{\relsize{-1}
+\begin{align*}
+\kappa_0 &\leftarrow 3130.76 \div 3455.53 = 0.906 \\
+\text{LP coefficient}_{0~0} &\leftarrow 0.906 \\
+\text{error}_0 &\leftarrow 3455.53 \times (1 - {0.906} ^ 2) = 619.107 \\
+i &= 1 \\
+q_1 &\leftarrow 2590.90 - (0.906 \times 3130.76) = -245.569 \\
+\kappa_1 &\leftarrow -245.569 \div 619.107 = -0.397 \\
+\text{LP coefficient}_{1~0} &\leftarrow 0.906 - (-0.397 \times 0.906) = 1.266 \\
+\text{LP coefficient}_{1~1} &\leftarrow -0.397 \\
+\text{error}_1 &\leftarrow 619.107 \times (1 - {-0.397} ^ 2) = 521.530 \\
+i &= 2 \\
+q_2 &\leftarrow 2055.80 - (1.266 \times 2590.90 + -0.397 \times 3130.76) = 18.632 \\
+\kappa_2 &\leftarrow 18.632 \div 521.53 = 0.036 \\
+\text{LP coefficient}_{2~0} &\leftarrow 1.266 - (0.036 \times -0.397) = 1.28 \\
+\text{LP coefficient}_{2~1} &\leftarrow -0.397 - (0.036 \times 1.266) = -0.443 \\
+\text{LP coefficient}_{2~2} &\leftarrow 0.036 \\
+\text{error}_2 &\leftarrow 521.53 \times (1 - {0.036} ^ 2) = 520.854 \\
+\end{align*}
+}
+\par
+\noindent
+With the final result of:
+\begin{table}[h]
+\begin{tabular}{r|rrr}
+order & \multicolumn{3}{c}{LP coefficients} \\
+\hline
+1 & \texttt{0.906} \\
+2 & \texttt{1.266} & \texttt{-0.397} \\
+3 & \texttt{1.280} & \texttt{-0.443} & \texttt{0.036} \\
+\end{tabular}
+\end{table}
+\par
+\noindent
+and error values: \texttt{619.107, 521.530, 520.854}
 
 \clearpage
 
-Calculating the LP coefficients uses the Levinson-Durbin recursive method.\footnote{This algorithm is taken from \LINK{http://www.engineer.tamuk.edu/SPark/chap7.pdf} }
-Our inputs are $M$, the maximum LPC order plus 1, and $r$ autocorrelation
-values, from $r(0)$ to $r(M - 1)$.
-Our outputs are $a$, a list of LP coefficient lists from
-$a_{11}$ to $a_{(M - 1)(M - 1)}$, and $E$, a list
-of error values from $E_0$ to $E_{(M - 1)}$.
-$q_m$ and $\kappa_m$ are temporary values.
+\subsubsection{Estimating Best Order}
+
+TODO
+
+\clearpage
+
+\subsubsection{Quantizing LP Coefficients}
+{\relsize{-1}
+\ALGORITHM{LP coefficients, a positive order value, the encoding parameters block size}{QLP coefficients, QLP precision, QLP shift needed}
+\SetKwFunction{MIN}{min}
+\SetKwFunction{MAX}{max}
+\SetKwFunction{ROUND}{round}
+\uIf{block size $\leq 192$}{
+  QLP precision $\leftarrow 7$\;
+}
+\uElseIf{block size $\leq 384$}{
+  QLP precision $\leftarrow 8$\;
+}
+\uElseIf{block size $\leq 576$}{
+  QLP precision $\leftarrow 9$\;
+}
+\uElseIf{block size $\leq 1152$}{
+  QLP precision $\leftarrow 10$\;
+}
+\uElseIf{block size $\leq 2304$}{
+  QLP precision $\leftarrow 11$\;
+}
+\uElseIf{block size $\leq 4608$}{
+  QLP precision $\leftarrow 12$\;
+}
+\Else{
+  QLP precision $\leftarrow 13$\;
+}
+\BlankLine
+$l \leftarrow $ maximum $|c|$ for $c$ in $\text{LP Coefficient}_{order~0}$ to $\text{LP Coefficient}_{order~order}$\;
+QLP shift needed $\leftarrow \text{QLP precision} - \lfloor \log_2(l) \rfloor - 2$\;
+\uIf(\tcc*[f]{ensure shift fits into signed 5 bit field}){QLP shift needed $> 2 ^ 4 - 1$}{
+  QLP shift needed $\leftarrow 2 ^ 4 - 1$\;
+}
+\ElseIf{QLP shift needed $< -(2 ^ 4)$}{
+  \Return error\tcc*[r]{too much shift required for coefficients}
+}
+
+\BlankLine
+\tcc{QLP min and max are the smallest and largest QLP coefficients that fit in a signed field that's "QLP precision" bits wide}
+QLP max $\leftarrow 2 ^ \text{QLP precision - 1} - 1$\;
+QLP min $\leftarrow -(2 ^ \text{QLP precision - 1})$\;
+$error \leftarrow 0.0$\;
+\eIf{$\text{QLP shift needed} \geq 0$}{
+  \For{i = 0 \emph{\KwTo}order + 1}{
+    $error \leftarrow error + \text{LP Coefficients}_{order~i} \times 2 ^ \text{QLP shift needed}$\;
+    $\text{QLP coefficient}_i \leftarrow \MIN(\MAX(\ROUND(error), \text{QLP min}), \text{QLP max})$\;
+    $error \leftarrow error - \text{QLP coefficient}_i$\;
+  }
+  \Return (QLP coefficients, QLP precision, QLP shift needed)\;
+}(\tcc*[f]{negative shifts are not allowed, so shrink coefficients}){
+  \For{i = 0 \emph{\KwTo}order + 1}{
+    $error \leftarrow error + \text{LP Coefficients}_{order~i} \div 2 ^ \text{QLP shift needed}$\;
+    $\text{QLP coefficient}_i \leftarrow \MIN(\MAX(\ROUND(error), \text{QLP min}), \text{QLP max})$\;
+    $error \leftarrow error - \text{QLP coefficient}_i$\;
+  }
+  \Return (QLP coefficients, QLP precision, 0)\;
+}
+\EALGORITHM
+}
+\clearpage
+
+For example, given the $\texttt{LP coefficients}_3$ \texttt{1.280, -0.443, 0.036},
+an order of \texttt{3} and a block size of \texttt{4096}:
+{\relsize{-1}
+\begin{align*}
+\text{QLP precision} &\leftarrow 12 \\
+l &\leftarrow 1.280 \\
+\text{QLP shift needed} &\leftarrow 12 - \lfloor \log_2(1.280) \rfloor - 2 = 10 \\
+\text{QLP max} &\leftarrow 2047 \\
+\text{QLP min} &\leftarrow -2048 \\
+error &\leftarrow 0.0 \\
+i &= 0 \\
+error &\leftarrow 0.0 + 1.280 \times 2 ^ {10} = 1310.72 \\
+\text{QLP coefficient}_0 &\leftarrow 1311 \\
+error &\leftarrow 1310.72 - 1311 = -0.28 \\
+i &= 1 \\
+error &\leftarrow -0.28 + -0.443 \times 2 ^ {10} = -453.912 \\
+\text{QLP coefficient}_1 &\leftarrow -454 \\
+error &\leftarrow -453.912 - -454 = 0.088 \\
+i &= 2 \\
+error &\leftarrow 0.088 + 0.036 \times 2 ^ {10} = 36.952 \\
+\text{QLP coefficient}_2 &\leftarrow 37 \\
+error &\leftarrow 36.952 - 37 = -0.048 \\
+\end{align*}
 \par
 \noindent
-Initial values:
-\begin{align}
-E_0 &= r(0) \\
-a_{11} &= \kappa_1 = \frac{r(1)}{E_0} \\
-E_1 &= E_0 {(1 - {{\kappa_1} ^ 2})}
-\end{align}
-\noindent
-With $m \geq 2$, the following recursive algorithm is performed:
-\begin{align}
-\text{Step 1. } && q_m &= r(m) - \overset{m - 1}{\underset{i = 1}{\sum}} a_{i(m - 1)}r(m - i) \\
-\text{Step 2. } && \kappa_m &= \frac{q_m}{E_{(m - 1)}} \\
-\text{Step 3. } && a_{mm} &= \kappa_m \\
-\text{Step 4. } && a_{im} &= a_{i(m - 1)} - \kappa_m a_{(m - i)(m - 1)} \text{ for $i = 1$, $i = 2$,...,$i = m - 1$} \\
-\text{Step 5. } && E_m &= E_{m - 1}(1 - {\kappa_m} ^ 2) \\
-\text{Step 6. } &&& \text{If $m < M$ then $m \leftarrow m + 1$ and goto step 1.  If $m = M$ then stop.}
-\end{align}
+Resulting in the QLP coefficients \texttt{1311, -454, 37},
+a QLP precision of \texttt{12} and a QLP shift needed of \texttt{10}.
+}
+\par
+These values are inserted directly into a desired QLP subframe header
+and are used to calculate its residuals.
 
-Let's run through an example in which $M = 4$, $r(0) = 11018$, $r(1) = 9690$,
-$r(2) = 8443$ and $r(3) = 7280$:
-{\relsize{-2}
+\clearpage
+
+\subsubsection{Encoding an LPC Subframe}
+\ALGORITHM{signed subframe samples, subframe order, QLP coefficients, QLP precision, QLP shift needed, subframe's bits per sample, wasted BPS}{an LPC subframe}
+\WRITE 0 in 1 unsigned bit\tcc*[r]{pad}
+\WRITE 1 in 1 unsigned bit\tcc*[r]{subframe type}
+\WRITE (subframe order - 1) in 5 unsigned bits\;
+\eIf{$wasted~BPS > 0$}{
+  \WRITE 1 in 1 unsigned bit\;
+  \WUNARY (wasted BPS - 1) with stop bit 1\;
+}{
+  \WRITE 0 in 1 unsigned bit\;
+}
+\For(\tcc*[f]{warm-up samples}){i = 0 \emph{\KwTo}subframe order}{
+  \WRITE $sample_i$ in (bits per sample) signed bits\;
+}
+\WRITE (QLP precision - 1) in 4 unsigned bits\;
+\WRITE QLP shift needed in 5 signed bits\;
+\For(\tcc*[f]{QLP coefficients}){i = 0 \emph{\KwTo}subframe order}{
+  \WRITE $\text{QLP coefficient}_i$ in (QLP precision) signed bits\;
+}
+calculate LPC subframe's residuals based on remaining signed samples, subframe's order, QLP coefficients, QLP precision and QLP shift needed\;
+write encoded residual block based on signed residual values\;
+\Return an LPC subframe\;
+\EALGORITHM
+\begin{figure}[h]
+\includegraphics{figures/flac/lpc2.pdf}
+\end{figure}
+
+\clearpage
+
+\subsubsection{Calculating LPC Subframe Residuals}
+\ALGORITHM{signed subframe samples, subframe order, QLP coefficients, QLP precision, QLP shift needed}{signed residual values}
+\For{i = 0 \emph{\KwTo}sample count - order}{
+  $residual_i \leftarrow sample_{i + order} - \left \lfloor \frac{\overset{order - 1}{\underset{j = 0}{\sum}} \text{QLP coefficient}_j \times sample_{i + order - j - 1} }{2 ^ \text{QLP shift needed}} \right \rfloor$
+}
+\EALGORITHM
+
+\subsubsection{LPC Subframe Residuals Calculcation Example}
+\begin{table}[h]
+\begin{tabular}{rl}
+samples : & \texttt{18, 20, 26, 24, 24, 23, 21, 24, 23, 20} \\
+order : & \texttt{3} \\
+QLP coefficients : & \texttt{1311, -454, 37} \\
+QLP shift needed : & \texttt{10} \\
+\end{tabular}
+\end{table}
+{\relsize{-1}
 \begin{align*}
-E_0 &= r(0) = 11018 \\
-a_{11} &= \kappa_1 = \frac{r(1)}{E_0} = \frac{9690}{11018} = 0.8795 \\
-E_1 &= E_o(1 - {\kappa_1} ^ 2) = 11018(1 - 0.8795 ^ 2) = 2495 \\
-q_2 &= r(2) - \overset{1}{\underset{i = 1}{\sum}} a_{i1}r(2 - i) = 8443 - (0.8795)(9690) = -79.35 \\
-\kappa_2 &= \frac{q_2}{E_1} = \frac{-79.35}{2495} = -0.0318 \\
-a_{22} &= \kappa_2 = -0.0318 \\
-a_{12} &= a_{11} - \kappa_2 a_{11} = 0.8795 - (-0.0318)(0.8795) = 0.9074 \\
-E_2 &= E_1 (1 - {\kappa_2} ^ 2 ) = 2495(1 - {-0.0318 ^ 2}) = 2492 \\
-q_3 &= r(3) - \overset{2}{\underset{i = 1}{\sum}} a_{i2} r(3 - i) = 7280 - ((0.9074)(8443) + (-0.0318)(9690)) = -73.04 \\
-\kappa_3 &= \frac{q_3}{E_2} = \frac{-73.04}{2492} = -0.0293 \\
-a_{33} &= \kappa_3 = -0.0293 \\
-a_{13} &= a_{12} - \kappa_3 a_{22} = 0.9074 - (-0.0293)(-0.0318) = 0.9065 \\
-a_{23} &= a_{22} - \kappa_3 a_{12} = -0.0318 - (-0.0293)(0.9074) = -0.0052 \\
-E_3 &= E_2 (1 - {\kappa_3} ^ 2 ) = 2492(1 - {-0.0293 ^ 2}) = 2490
+residual_0 &\leftarrow 24 - \left\lfloor\frac{1311 \times 26 + -454 \times 20 + 37 \times 18}{2 ^ {10}}\right\rfloor = 24 - \left\lfloor\frac{25672}{1024}\right\rfloor = 24 - 25 = -1 \\
+residual_1 &\leftarrow 24 - \left\lfloor\frac{1311 \times 24 + -454 \times 26 + 37 \times 20}{2 ^ {10}}\right\rfloor = 24 - \left\lfloor\frac{20400}{1024}\right\rfloor = 24 - 19 = 5 \\
+residual_2 &\leftarrow 23 - \left\lfloor\frac{1311 \times 24 + -454 \times 24 + 37 \times 26}{2 ^ {10}}\right\rfloor = 23 - \left\lfloor\frac{21530}{1024}\right\rfloor = 23 - 21 = 2 \\
+residual_3 &\leftarrow 21 - \left\lfloor\frac{1311 \times 23 + -454 \times 24 + 37 \times 24}{2 ^ {10}}\right\rfloor = 21 - \left\lfloor\frac{20145}{1024}\right\rfloor = 21 - 19 = 2 \\
+residual_4 &\leftarrow 24 - \left\lfloor\frac{1311 \times 21 + -454 \times 23 + 37 \times 24}{2 ^ {10}}\right\rfloor = 24 - \left\lfloor\frac{17977}{1024}\right\rfloor = 24 - 17 = 7 \\
+residual_5 &\leftarrow 23 - \left\lfloor\frac{1311 \times 24 + -454 \times 21 + 37 \times 23}{2 ^ {10}}\right\rfloor = 23 - \left\lfloor\frac{22781}{1024}\right\rfloor = 23 - 22 = 1 \\
+residual_6 &\leftarrow 20 - \left\lfloor\frac{1311 \times 23 + -454 \times 24 + 37 \times 21}{2 ^ {10}}\right\rfloor = 20 - \left\lfloor\frac{20034}{1024}\right\rfloor = 20 - 19 = 1 \\
 \end{align*}
 }
-Our final values are:
-{\relsize{-2}
-\begin{align*}
-a_{11} &= 0.8795 & & & & \\
-a_{12} &= 0.9074 & a_{22} &= -0.0318 & & \\
-a_{13} &= 0.9065 & a_{23} &= -0.0052 & a_{33} &= -0.0293 \\
-E_1 &= 2495 & E_2 &= 2492 & E_3 &= 2490
-\end{align*}
-}
-\noindent
-These values have been rounded to the nearest significant digit
-and will not be an exact match to those generated by a computer.
+Leading to a final set of 7 residual values: \texttt{-1, 5, 2, 2, 7, 1, 1}.
 
 %% \section{FLAC Encoding}
 %% For the purposes of discussing FLAC encoding,

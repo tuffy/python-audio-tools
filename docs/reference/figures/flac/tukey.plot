@@ -6,7 +6,7 @@ set border 3
 set xtics nomirror
 set ytics nomirror
 set ylabel "multiplier"
-set xlabel "sample"
+set xlabel "sample number"
 hann(x) = 0.5 - (0.5 * cos((2.0 * pi * x) / 1023))
 hann2(x) = 0.5 - (0.5 * cos((2.0 * pi * (x - 3072)) / 1023))
 rectangle(x) = 1

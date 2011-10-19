@@ -48,6 +48,7 @@ figures/flac/lag1.pdf \
 figures/flac/lag2.pdf \
 figures/flac/lag3.pdf \
 figures/flac/lpc.pdf \
+figures/flac/lpc2.pdf \
 figures/flac/lpc-parse.pdf \
 figures/flac/metadata.pdf \
 figures/flac/nonexhaustive.pdf \
@@ -295,7 +296,7 @@ figures/flac/rectangular.fig: figures/flac/rectangular.plot
 	./figures/flac/rectangular.plot > $@
 
 figures/flac/tukey.pdf: figures/flac/tukey.fig
-	fig2dev -Z 2 -L pdf $< $@
+	fig2dev -Z 3 -L pdf $< $@
 
 figures/flac/tukey.fig: figures/flac/tukey.plot
 	./figures/flac/tukey.plot > $@
