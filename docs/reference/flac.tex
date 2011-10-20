@@ -1544,7 +1544,7 @@ wasted BPS $\leftarrow$ maximum unsigned integer\;
 \Return wasted BPS\;
 \EALGORITHM
 
-\subsubsection{Encoding a CONSTANT Subframe}
+\subsection{Encoding a CONSTANT Subframe}
 \ALGORITHM{signed subframe sample, subframe's bits per sample}{a CONSTANT subframe}
 \WRITE 0 in 1 unsigned bit\tcc*[r]{pad}
 \WRITE 0 in 6 unsigned bits\tcc*[r]{subframe type}
@@ -1553,7 +1553,7 @@ wasted BPS $\leftarrow$ maximum unsigned integer\;
 \Return a CONSTANT subframe\;
 \EALGORITHM
 
-\subsubsection{Encoding a VERBATIM Subframe}
+\subsection{Encoding a VERBATIM Subframe}
 \ALGORITHM{signed subframe samples, subframe's bits per sample}{a VERBATIM subframe}
 \WRITE 0 in 1 unsigned bit\tcc*[r]{pad}
 \WRITE 1 in 6 unsigned bits\tcc*[r]{subframe type}
@@ -1566,7 +1566,7 @@ wasted BPS $\leftarrow$ maximum unsigned integer\;
 
 \clearpage
 
-\subsubsection{Calculating FIXED Subframe Order}
+\subsection{Calculating FIXED Subframe Order}
 \ALGORITHM{signed subframe samples}{the FIXED subframe order, between 0 and 4}
 \SetKwFunction{MIN}{min}
 \eIf{sample count $\geq 4$}{
@@ -1678,7 +1678,7 @@ the best FIXED predictor order for these samples is 1.
 
 \clearpage
 
-\subsubsection{Encoding a FIXED Subframe}
+\subsection{Encoding a FIXED Subframe}
 \ALGORITHM{signed subframe samples, subframe order, subframe's bits per sample, wasted BPS}{a FIXED subframe}
 \WRITE 0 in 1 unsigned bit\tcc*[r]{pad}
 \WRITE 1 in 3 unsigned bits\tcc*[r]{subframe type}
@@ -1930,7 +1930,7 @@ down to only 67 bits - or about 40\% of their original size.
 
 \clearpage
 
-\subsubsection{Computing LPC Coefficients}
+\subsection{Computing LPC Coefficients}
 
 {\relsize{-1}
 \ALGORITHM{signed subframe samples}{LPC subframe order, QLP coefficients, QLP precision and QLP shift needed}
@@ -1979,7 +1979,8 @@ down to only 67 bits - or about 40\% of their original size.
     }
   }
 }{
-  TODO\;
+  \tcc{all samples are 0, so return very basic coefficients}
+  \Return (1, [0], 2, 0)\;
 }
 \EALGORITHM
 }
@@ -2230,8 +2231,59 @@ and error values: \texttt{619.107, 521.530, 520.854}
 \clearpage
 
 \subsubsection{Estimating Best Order}
-
-TODO
+{\relsize{-1}
+\ALGORITHM{floating point error values, maximum LPC order, block size, sample count, bits per sample}{the best stimated order value to use}
+\SetKwData{BORDER}{best order}
+\SetKwData{BSIZE}{best subframe bits}
+\SetKwData{ERROR}{error}
+\SetKwData{ERRORSCALE}{error scale}
+\SetKwFunction{MAX}{max}
+\tcc{block size and sample count are typically identical until the last frame
+\newline
+at which point sample count may be smaller than the requested block size}
+\uIf{block size $\leq 192$}{
+  QLP precision $\leftarrow 7$\;
+}
+\uElseIf{block size $\leq 384$}{
+  QLP precision $\leftarrow 8$\;
+}
+\uElseIf{block size $\leq 576$}{
+  QLP precision $\leftarrow 9$\;
+}
+\uElseIf{block size $\leq 1152$}{
+  QLP precision $\leftarrow 10$\;
+}
+\uElseIf{block size $\leq 2304$}{
+  QLP precision $\leftarrow 11$\;
+}
+\uElseIf{block size $\leq 4608$}{
+  QLP precision $\leftarrow 12$\;
+}
+\Else{
+  QLP precision $\leftarrow 13$\;
+}
+\BlankLine
+\ERRORSCALE $\leftarrow \frac{\log_e(2) ^ 2}{\text{sample count} \times 2}$\;
+\BSIZE $\leftarrow$ maximum floating point\;
+\For{i = 0 \emph{\KwTo}maximum LPC order}{
+  $order \leftarrow i + 1$\;
+  \uIf{$\text{error}_i > 0.0$}{
+    $header~bits \leftarrow order \times (\text{bits per sample} + \text{QLP precision})$\;
+    $bits~per~residual \leftarrow \MAX\left(\frac{\log_e(error_i \times \text{\ERRORSCALE})}{\log_e(2) \times 2} , 0.0\right)$\;
+    $estimated~subframe~bits \leftarrow header~bits + bits~per~residual \times \text{sample count}$\;
+    \BlankLine
+    \If{$estimated~subframe~bits < \text{\BSIZE}$}{
+      \BORDER $\leftarrow order$\;
+      \BSIZE $\leftarrow estimated~subframe~bits$\;
+    }
+  }
+  \ElseIf{$\text{error}_i = 0.0$}{
+    \Return $order$\;
+  }
+}
+\Return \BORDER\;
+\EALGORITHM
+}
 
 \clearpage
 
@@ -2298,7 +2350,6 @@ $error \leftarrow 0.0$\;
 
 For example, given the $\texttt{LP coefficients}_3$ \texttt{1.280, -0.443, 0.036},
 an order of \texttt{3} and a block size of \texttt{4096}:
-{\relsize{-1}
 \begin{align*}
 \text{QLP precision} &\leftarrow 12 \\
 l &\leftarrow 1.280 \\
@@ -2323,14 +2374,12 @@ error &\leftarrow 36.952 - 37 = -0.048 \\
 \noindent
 Resulting in the QLP coefficients \texttt{1311, -454, 37},
 a QLP precision of \texttt{12} and a QLP shift needed of \texttt{10}.
-}
-\par
 These values are inserted directly into a desired QLP subframe header
 and are used to calculate its residuals.
 
 \clearpage
 
-\subsubsection{Encoding an LPC Subframe}
+\subsection{Encoding an LPC Subframe}
 \ALGORITHM{signed subframe samples, subframe order, QLP coefficients, QLP precision, QLP shift needed, subframe's bits per sample, wasted BPS}{an LPC subframe}
 \WRITE 0 in 1 unsigned bit\tcc*[r]{pad}
 \WRITE 1 in 1 unsigned bit\tcc*[r]{subframe type}
@@ -2349,7 +2398,10 @@ and are used to calculate its residuals.
 \For(\tcc*[f]{QLP coefficients}){i = 0 \emph{\KwTo}subframe order}{
   \WRITE $\text{QLP coefficient}_i$ in (QLP precision) signed bits\;
 }
-calculate LPC subframe's residuals based on remaining signed samples, subframe's order, QLP coefficients, QLP precision and QLP shift needed\;
+\BlankLine
+\For(\tcc*[f]{calculate signed residuals}){i = 0 \emph{\KwTo}sample count - order}{
+  $residual_i \leftarrow sample_{i + order} - \left \lfloor \frac{\overset{order - 1}{\underset{j = 0}{\sum}} \text{QLP coefficient}_j \times sample_{i + order - j - 1} }{2 ^ \text{QLP shift needed}} \right \rfloor$
+}
 write encoded residual block based on signed residual values\;
 \Return an LPC subframe\;
 \EALGORITHM
@@ -2359,23 +2411,15 @@ write encoded residual block based on signed residual values\;
 
 \clearpage
 
-\subsubsection{Calculating LPC Subframe Residuals}
-\ALGORITHM{signed subframe samples, subframe order, QLP coefficients, QLP precision, QLP shift needed}{signed residual values}
-\For{i = 0 \emph{\KwTo}sample count - order}{
-  $residual_i \leftarrow sample_{i + order} - \left \lfloor \frac{\overset{order - 1}{\underset{j = 0}{\sum}} \text{QLP coefficient}_j \times sample_{i + order - j - 1} }{2 ^ \text{QLP shift needed}} \right \rfloor$
-}
-\EALGORITHM
-
 \subsubsection{LPC Subframe Residuals Calculcation Example}
-\begin{table}[h]
 \begin{tabular}{rl}
 samples : & \texttt{18, 20, 26, 24, 24, 23, 21, 24, 23, 20} \\
 order : & \texttt{3} \\
-QLP coefficients : & \texttt{1311, -454, 37} \\
+QLP precision : &\texttt{12} \\
 QLP shift needed : & \texttt{10} \\
+QLP coefficients : & \texttt{1311, -454, 37} \\
 \end{tabular}
-\end{table}
-{\relsize{-1}
+\newline
 \begin{align*}
 residual_0 &\leftarrow 24 - \left\lfloor\frac{1311 \times 26 + -454 \times 20 + 37 \times 18}{2 ^ {10}}\right\rfloor = 24 - \left\lfloor\frac{25672}{1024}\right\rfloor = 24 - 25 = -1 \\
 residual_1 &\leftarrow 24 - \left\lfloor\frac{1311 \times 24 + -454 \times 26 + 37 \times 20}{2 ^ {10}}\right\rfloor = 24 - \left\lfloor\frac{20400}{1024}\right\rfloor = 24 - 19 = 5 \\
@@ -2383,694 +2427,78 @@ residual_2 &\leftarrow 23 - \left\lfloor\frac{1311 \times 24 + -454 \times 24 + 
 residual_3 &\leftarrow 21 - \left\lfloor\frac{1311 \times 23 + -454 \times 24 + 37 \times 24}{2 ^ {10}}\right\rfloor = 21 - \left\lfloor\frac{20145}{1024}\right\rfloor = 21 - 19 = 2 \\
 residual_4 &\leftarrow 24 - \left\lfloor\frac{1311 \times 21 + -454 \times 23 + 37 \times 24}{2 ^ {10}}\right\rfloor = 24 - \left\lfloor\frac{17977}{1024}\right\rfloor = 24 - 17 = 7 \\
 residual_5 &\leftarrow 23 - \left\lfloor\frac{1311 \times 24 + -454 \times 21 + 37 \times 23}{2 ^ {10}}\right\rfloor = 23 - \left\lfloor\frac{22781}{1024}\right\rfloor = 23 - 22 = 1 \\
-residual_6 &\leftarrow 20 - \left\lfloor\frac{1311 \times 23 + -454 \times 24 + 37 \times 21}{2 ^ {10}}\right\rfloor = 20 - \left\lfloor\frac{20034}{1024}\right\rfloor = 20 - 19 = 1 \\
+residual_6 &\leftarrow 20 - \left\lfloor\frac{1311 \times 23 + -454 \times 24 + 37 \times 21}{2 ^ {10}}\right\rfloor = 20 - \left\lfloor\frac{20034}{1024}\right\rfloor = 20 - 19 = 1
 \end{align*}
-}
 Leading to a final set of 7 residual values: \texttt{-1, 5, 2, 2, 7, 1, 1}.
-
-%% \section{FLAC Encoding}
-%% For the purposes of discussing FLAC encoding,
-%% we'll assume one has a stream of input PCM values along with the
-%% stream's sample rate, number of channels and bits per sample.
-%% Creating a valid FLAC file is then a matter of writing the proper
-%% file header, metadata blocks and FLAC frames.
-%% \begin{figure}[h]
-%% \includegraphics{figures/flac/stream2.pdf}
-%% \end{figure}
-
-%% \begin{figure}[h]
-%% \begin{tabular}{|r|l|}
-%% \hline
-%% bits & value \\
-%% \hline
-%% 1 & 0 if additional metadata blocks follow, 1 if not \\
-%% 7 & 0 for STREAMINFO, 1 for PADDING, 4 for VORBIS\_COMMENT, etc. \\
-%% 24 & the length of the block data in bytes, not including the header \\
-%% \hline
-%% \end{tabular}
-%% \caption{Metadata Header}
-%% \end{figure}
-
-%% \subsection{the STREAMINFO Metadata Block}
-%% \begin{figure}[h]
-%% \begin{tabular}{|r|l|}
-%% \hline
-%% bits & value \\
-%% \hline
-%% 16 & the minimum FLAC frame size, in PCM frames \\
-%% 16 & the maximum FLAC frame size, in PCM frames \\
-%% 24 & the minimum FLAC frame size, in bytes \\
-%% 24 & the maximum FLAC frame size, in bytes \\
-%% 20 & the stream's sample rate, in Hz \\
-%% 3 & the stream's channel count, minus one \\
-%% 5 & the stream's bit-per-sample, minus one \\
-%% 36 & the stream's total number of PCM frames \\
-%% 128 & an MD5 sum of the PCM stream's bytes \\
-%% \hline
-%% \end{tabular}
-%% \end{figure}
-%% \par
-%% \noindent
-%% This metadata block must come first and is the only required block
-%% in a FLAC file.
-
-%% When encoding a FLAC file, many of these fields cannot be known in advance.
-%% Instead, one must keep track of those values during encoding and then
-%% rewrite the STREAMINFO block when finished.
-
-%% \subsection{the Frame Header}
-%% \begin{table}[h]
-%% \begin{tabular}{|r|l|}
-%% \hline
-%% bits & value \\
-%% \hline
-%% 14 & \texttt{0x3FFE} sync code \\
-%% 1 & \texttt{0} reserved \\
-%% 1 & \texttt{0} if the header encodes the frame number, \texttt{1} if it encodes the sample number \\
-%% 4 & this frame's block size, as encoded PCM frames \\
-%% 4 & this frame's encoded sample rate \\
-%% 4 & this frame's encoded channel assignment \\
-%% 3 & this frame's encoded bits per sample \\
-%% 1 & \texttt{0} padding \\
-%% 8-56 & the frame number, or sample number, UTF-8 encoded and starting from 0 \\
-%% 0/8/16 & the number of PCM frames (minus one) in this FLAC frame \\
-%% & if block size is \texttt{0x6} (8 bits) or \texttt{0x7} (16 bits) \\
-%% 0/8/16 & the sample rate of this FLAC frame \\
-%% & if sample rate is \texttt{0xC} (8 bits), \texttt{0xD} (16 bits) or \texttt{0xE} (16 bits) \\
-%% 8 & the CRC-8 of all data from the beginning of the frame header \\
-%% \hline
-%% \end{tabular}
-%% \end{table}
-%% \par
-%% \noindent
-%% The FLAC frame's block size in PCM frames
-%% (called ``channel independent samples'' in FLAC's documentation)
-%% is typically encoded in the 4 bit `block size' field.
-%% But for odd-sized frames - which often occur at the end of the stream -
-%% that value is stored as an 8 or 16 bit integer following the UTF-8 encoded
-%% frame number.
-
-%% In addition, odd sample rate values are stored as 8 bit (in kHz),
-%% 16 bit (in Hz) or 16 bit (in 10s of Hz) prior to the CRC-8,
-%% should a predefined value not be available.
-
-%% Up until this point, nearly all of these fields can be filled from
-%% the PCM stream data.
-%% Unless you're writing a variable block size encoder,
-%% one should encode the frame number starting from 0 in the frame header
-%% and choose a predefined block size for as many FLAC frames as possible.
-
-%% \clearpage
-
-%% \subsection{UTF-8 Frame Number}
-%% \begin{wrapfigure}[10]{r}{3in}
-%% \includegraphics{figures/flac/write_utf8.pdf}
-%% \end{wrapfigure}
-
-%% A FLAC file's frame number starts at 0 and increments by one
-%% for each encoded frame.
-%% It is stored in the frame header as a UTF-8 encoded value,
-%% which uses a variable number of bytes as the number increases.
-%% \vskip .25in
-%% \par
-%% \noindent
-%% {\relsize{-1}
-%% \begin{tabular}{|c|r|}
-%% \hline
-%% Frame Number & Total Bytes \\
-%% \hline
-%% $0 \leq f \leq 127$ & 1 \\
-%% $127 < f \leq 2047$ & 2 \\
-%% $2047 < f \leq 65535$ & 3 \\
-%% $65535 < f \leq 2097151$ & 4 \\
-%% $2097151 < f \leq 67108863$ & 5 \\
-%% $67108863 < f \leq 2147483647$ & 6 \\
-%% \hline
-%% \end{tabular}
-%% }
-%% \vskip .25in
-%% \par
-%% As the inverse of decoding, this splits the value into
-%% multiple 6 bit fields (each prefixed by a unary 1 value)
-%% and indicates the total number of bytes as a unary value.
-
-%% \clearpage
-
-%% \subsection{Channel Assignment}
-
-%% If the input stream has a number of channels other than 2,
-%% one has no choice but to store them independently.
-%% If the number of channels equals 2, one can try all four possible
-%% assignments and use the one which takes the least amount of space.
-
-%% \begin{align*}
-%% \intertext{Left-Difference (assignment \texttt{0x8}):}
-%% \text{Subframe}_{0~i} &= \text{Left}_i \\
-%% \text{Subframe}_{1~i} &= \text{Left}_i - \text{Right}_i \\
-%% \intertext{Difference-Right (assignment \texttt{0x9}):}
-%% \text{Subframe}_{0~i} &= \text{Left}_i - \text{Right}_i \\
-%% \text{Subframe}_{1~i} &= \text{Right}_i \\
-%% \intertext{Mid-Side (assignment \texttt{0xA}):}
-%% \text{Subframe}_{0~i} &= \lfloor (\text{Left}_i + \text{Right}_i) \div 2 \rfloor \\
-%% \text{Subframe}_{1~i} &= \text{Left}_i - \text{Right}_i \\
-%% \end{align*}
-%% \par
-%% \noindent
-%% Remember that the difference and side channels are treated as having
-%% 1 additional bit during encoding.
-%% Thus, a 16 bit frame would have a 17 bit difference subframe
-%% when calculating warm-up samples.
-
-%% \subsection{the Subframe Header}
-%% \begin{tabular}{|r|l|}
-%% \hline
-%% bits & value \\
-%% \hline
-%% 1 & \texttt{0} padding \\
-%% \texttt{000000} & \texttt{SUBFRAME\_CONSTANT} \\
-%% \texttt{000001} & \texttt{SUBFRAME\_VERBATIM} \\
-%% \texttt{001xxx} & \texttt{SUBFRAME\_FIXED} (\texttt{xxx} = Predictor Order) \\
-%% \texttt{1xxxxx} & \texttt{SUBFRAME\_LPC} (\texttt{xxxxx} = Predictor Order - 1) \\
-%% 1 & \texttt{0} if no wasted bits per sample, \texttt{1} if a unary-encoded number follows \\
-%% 0+ & the number of wasted bits per sample (minus one) encoded as unary \\
-%% \hline
-%% \end{tabular}
-
-%% \subsection{the CONSTANT Subframe}
-
-%% If all the samples in a subframe are identical, one can encode them
-%% using a \texttt{CONSTANT} subframe.
-
-%% \subsection{the VERBATIM Subframe}
-
-%% This subframe simply stores all the samples as-is,
-%% with no compression whatsoever.
-
-%% \subsection{the FIXED Subframe}
-
-%% This subframe consists of \VAR{predictor order} number of unencoded
-%% warm-up samples followed by a residual.
-%% Determining which predictor order to use on a given set of input samples
-%% depends on their minimum delta sum.
-%% This process is best explained by example:
-
-
-%% \par
-%% \noindent
-%% Note that the numbers in italics play a part in the delta
-%% calculation to their right, but do \textbf{not} figure into the
-%% delta's absolute value sum, below.
-
-%% In this example, $\Delta ^ 1$'s value of 26 is the smallest.
-%% Therefore, when compressing this set of samples in a FIXED subframe,
-%% it's best to use a predictor order of 1.
-
-%% The predictor order indicates how many warm-up samples to take from
-%% the PCM stream.
-%% Determining the residual values can then be done automatically
-%% based on the current $\text{Sample}_i$ and previously encoded samples, or
-%% warm-up samples.
-
-%% \clearpage
-
-%% The residual encoding process is then the simple inverse of the
-%% decoding process, as follows:
-
-%% \begin{align*}
-%% \intertext{For Order 0:}
-%% \RESIDUAL_i &= \SAMPLE_i \\
-%% & \text{ for } i = 0 \text{ to Block Size} - 1 \\
-%% \intertext{For Order 1:}
-%% \WARMUP_0 &= \SAMPLE_0 \\
-%% \RESIDUAL_i &= \SAMPLE_{i + 1} - \SAMPLE_i \\
-%% & \text{ for } i = 0 \text{ to Block Size} - 2 \\
-%% \intertext{For Order 2:}
-%% \WARMUP_j &= \SAMPLE_j \\
-%% & \text{ for } j = 0 \text{ to } 1 \\
-%% \RESIDUAL_i &= \SAMPLE_{i + 2} - ((2 \times \SAMPLE_{i + 1}) - \SAMPLE_i) \\
-%% & \text{ for } i = 0 \text{ to Block Size} - 3 \\
-%% \intertext{For Order 3:}
-%% \WARMUP_j &= \SAMPLE_j \\
-%% & \text{ for } j = 0 \text{ to } 2 \\
-%% \RESIDUAL_i &= \SAMPLE_{i + 3} - ((3 \times \SAMPLE_{i + 2}) - (3 \times \SAMPLE_{i + 1}) + \SAMPLE_i) \\
-%% & \text{ for } i = 0 \text{ to Block Size} - 4 \\
-%% \intertext{For Order 4:}
-%% \WARMUP_j &= \SAMPLE_j \\
-%% & \text{ for } j = 0 \text{ to } 3 \\
-%% \RESIDUAL_i &= \SAMPLE_{i + 4} - ((4 \times \SAMPLE_{i + 3}) - (6 \times \SAMPLE_{i + 2}) + (4 \times \SAMPLE_{i + 1}) - \SAMPLE_i) \\
-%% & \text{ for } i = 0 \text{ to Block Size} - 5 \\
-%% \end{align*}
-
-%% \clearpage
-
-%% So to complete our FIXED subframe encoding example in which the
-%% predictor order is 1:
-
-%% \begin{align*}
-%% \WARMUP_0 &= \SAMPLE_0 = \textbf{-40} \\
-%% \RESIDUAL_0 &= \SAMPLE_1 - \SAMPLE_0 = -41 - -40 = \textbf{-1} \\
-%% \RESIDUAL_1 &= \SAMPLE_2 - \SAMPLE_1 = -40 - -41 = \textbf{1} \\
-%% \RESIDUAL_2 &= \SAMPLE_3 - \SAMPLE_2 = -39 - -40 = \textbf{1} \\
-%% \RESIDUAL_3 &= \SAMPLE_4 - \SAMPLE_3 = -38 - -39 = \textbf{1} \\
-%% \RESIDUAL_4 &= \SAMPLE_5 - \SAMPLE_4 = -38 - -38 = \textbf{0} \\
-%% \RESIDUAL_5 &= \SAMPLE_6 - \SAMPLE_5 = -35 - -38 = \textbf{3} \\
-%% \RESIDUAL_6 &= \SAMPLE_7 - \SAMPLE_6 = -35 - -35 = \textbf{0} \\
-%% \RESIDUAL_7 &= \SAMPLE_8 - \SAMPLE_7 = -39 - -35 = \textbf{-4} \\
-%% \RESIDUAL_8 &= \SAMPLE_9 - \SAMPLE_8 = -40 - -39 = \textbf{-1} \\
-%% \RESIDUAL_9 &= \SAMPLE_{10} - \SAMPLE_9 = -40 - -40 = \textbf{0} \\
-%% \RESIDUAL_{10} &= \SAMPLE_{11} - \SAMPLE_{10} = -39 - -40 = \textbf{1} \\
-%% \RESIDUAL_{11} &= \SAMPLE_{12} - \SAMPLE_{11} = -38 - -39 = \textbf{1} \\
-%% \RESIDUAL_{12} &= \SAMPLE_{13} - \SAMPLE_{12} = -37 - -38 = \textbf{1} \\
-%% \RESIDUAL_{13} &= \SAMPLE_{14} - \SAMPLE_{13} = -33 - -37 = \textbf{4} \\
-%% \RESIDUAL_{14} &= \SAMPLE_{15} - \SAMPLE_{14} = -36 - -33 = \textbf{-3} \\
-%% \RESIDUAL_{15} &= \SAMPLE_{16} - \SAMPLE_{15} = -35 - -36 = \textbf{1} \\
-%% \RESIDUAL_{16} &= \SAMPLE_{17} - \SAMPLE_{16} = -31 - -35 = \textbf{4} \\
-%% \RESIDUAL_{17} &= \SAMPLE_{18} - \SAMPLE_{17} = -32 - -31 = \textbf{-1} \\
-%% \RESIDUAL_{18} &= \SAMPLE_{19} - \SAMPLE_{18} = -33 - -32 = \textbf{-1} \\
-%% \end{align*}
-
-%% \clearpage
-
-%% \subsection{the LPC Subframe}
-%% \label{_encoding}
-%% Unlike the FIXED subframe which required only input samples and a
-%% predictor order, LPC subframes also require a list of QLP coefficients,
-%% a QLP precision value of those coefficients, and a QLP shift needed
-%% value.
-
-%% \begin{figure}[h]
-%% \includegraphics{figures/flac/lpc.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% Determining these values for a given input PCM signal is a somewhat
-%% complicated process which depends on whether one is performing an
-%% exhaustive LP coefficient order search or not:
-
-%% \begin{figure}[h]
-%% \subfloat[non-exhaustive search]{
-%% \includegraphics{figures/flac/nonexhaustive.pdf}
-%% }
-%% \qquad
-%% \subfloat[exhaustive search]{
-%% \includegraphics{figures/flac/exhaustive.pdf}
-%% }
-%% \end{figure}
-
-%% \pagebreak
-
-%% \subsubsection{Windowing}
-
-%% The first step in LPC subframe encoding is `windowing' the input signal.
-%% Put simply, this is a process of multiplying each input sample by
-%% an equivalent value from the window, which are floats from 0.0 to 1.0.
-%% In this case, the default is a Tukey window with a ratio of 0.5.
-%% A Tukey window is a combination of the Hann and Rectangular windows.
-%% The ratio of 0.5 means there's 0.5 samples in the Hann window per
-%% sample in the Rectangular window.
-
-%% \begin{align}
-%% \text{hann}(n) &= \frac{1}{2} \left ( 1 - \cos \left ( \frac{2 \pi n}{\text{sample count} - 1} \right ) \right ) \\
-%% \text{rectangle}(n) &= 1.0
-%% \end{align}
-
-%% The Tukey window is defined by taking a Hann window, splitting it at
-%% the halfway point, and inserting a Rectangular window between the
-%% two.
-
-%% \begin{figure}[h]
-%% \subfloat{
-%% \includegraphics{figures/flac/hann.pdf}
-%% }
-%% \subfloat{
-%% \includegraphics{figures/flac/rectangular.pdf}
-%% }
-%% \subfloat{
-%% \includegraphics{figures/flac/tukey.pdf}
-%% }
-%% \end{figure}
-
-%% Let's run through a short example with 20 samples:
-
-%% {\relsize{-1}
-%% \begin{tabular}{|r|r >{$}c<{$} r >{$}c<{$} r|}
-%% \hline
-%% & input & & Tukey & & windowed \\
-%% index & sample & & window & & signal \\
-%% \hline
-%% 0 & -40 & \times & 0.0000 & = & 0.00 \\
-%% 1 & -41 & \times & 0.1464 & = & -6.00 \\
-%% 2 & -40 & \times & 0.5000 & = & -20.00 \\
-%% 3 & -39 & \times & 0.8536 & = & -33.29 \\
-%% 4 & -38 & \times & 1.0000 & = & -38.00 \\
-%% 5 & -38 & \times & 1.0000 & = & -38.00 \\
-%% 6 & -35 & \times & 1.0000 & = & -35.00 \\
-%% 7 & -35 & \times & 1.0000 & = & -35.00 \\
-%% 8 & -39 & \times & 1.0000 & = & -39.00 \\
-%% 9 & -40 & \times & 1.0000 & = & -40.00 \\
-%% 10 & -40 & \times & 1.0000 & = & -40.00 \\
-%% 11 & -39 & \times & 1.0000 & = & -39.00 \\
-%% 12 & -38 & \times & 1.0000 & = & -38.00 \\
-%% 13 & -37 & \times & 1.0000 & = & -37.00 \\
-%% 14 & -33 & \times & 1.0000 & = & -33.00 \\
-%% 15 & -36 & \times & 1.0000 & = & -36.00 \\
-%% 16 & -35 & \times & 0.8536 & = & -29.88 \\
-%% 17 & -31 & \times & 0.5000 & = & -15.50 \\
-%% 18 & -32 & \times & 0.1464 & = & -4.68 \\
-%% 19 & -33 & \times & 0.0000 & = & 0.00 \\
-%% \hline
-%% \end{tabular}
-%% }
-
-%% \pagebreak
-
-%% \subsubsection{Computing Autocorrelation}
-
-%% Once our input samples have been converted to a windowed signal,
-%% we then compute the autocorrelation values from that signal.
-%% Each autocorrelation value is determined by multiplying the signal's
-%% samples by the samples of a lagged version of that same signal,
-%% and then taking the sum.
-%% The lagged signal is simply the original signal with \VAR{lag} number of
-%% samples removed from the beginning.
-
-%% \begin{figure}[h]
-%% \includegraphics{figures/flac/lag.pdf}
-%% \end{figure}
-
-%% The lagged sums from 0 to the maximum LPC order are our autocorrelation
-%% values.  In this example, they are 14979.0, 13651.0 and 12405.0.
-
-
-
-%% \pagebreak
-
-%% \subsubsection{Best Order Estimation}
-
-%% At this point, we have an array of prospective LP coefficient lists,
-%% a list of error values and must decide which LPC order to use.
-%% There are two ways to accomplish this:  we can either estimate
-%% the total bits from the error values or perform an exhaustive search.
-%% Making the estimation requires the total number of samples
-%% in the subframe, the number of overhead bits per order (by default,
-%% this is the number of bits per sample in the subframe, plus 5),
-%% and an error scale constant in addition to the LPC error values:
-%% \begin{equation}
-%% \text{Error Scale} = \frac{\ln(2) ^ 2}{2 \times \text{Total Samples}}
-%% \end{equation}
-%% \noindent
-%% Once the error scale has been calculated, one can generate a
-%% \VAR{Bits per Residual} estimation function which, given an \VAR{LPC Error}
-%% value, returns what its name implies:
-%% \begin{equation}
-%% \text{Bits per Residual}(\text{LPC Error}) = \frac{\ln(\text{Error Scale} \times \text{LPC Error})}{2 \times \ln(2)}
-%% \end{equation}
-%% With this function, we can estimate how many bits the entire LPC subframe
-%% will take for each \VAR{LPC Error} value and its associated \VAR{Order}:
-%% {\relsize{-2}
-%% \begin{equation*}
-%% \text{Total Bits}(\text{LPC Error},\text{Order}) = \text{Bits per Residual}(\text{LPC Error}) \times (\text{Total Samples} - \text{Order}) + (\text{Order} \times \text{Overhead bits})
-%% \end{equation*}
-%% }
-%% Continuing with our example, we have 20 samples and
-%% now have the error values of 2495, 2492 and 2490.
-%% This gives us an error scale of:
-%% $\frac{{\ln(2) ^ 2}}{2 \times 20} = \frac{.6931 ^ 2}{40} = .01201$
-%% \begin{align*}
-%% \intertext{At LPC order 1, our bits per residual are:}
-%% \frac{\ln(.01201 \times 2495)}{2 \times \ln (2)} = \frac{\ln(29.96)}{1.386} &= 2.453 \\
-%% \intertext{And our total bits are:}
-%% (2.453 \times (20 - 1)) + (1 \times (16 + 5)) = 46.61 + 21 &= 67.61 \\
-%% \intertext{At LPC order 2, our bits per residual are:}
-%% \frac{\ln(.01201 \times 2492)}{2 \times \ln(2)} = \frac{\ln(29.92)}{1.386} &= 2.452 \\
-%% \intertext{And our total bits are:}
-%% (2.452 \times (20 - 2)) + (2 \times (16 + 5)) = 44.14 + 42 &= 86.14 \\
-%% \intertext{At LPC order 3, our bits per residual are:}
-%% \frac{\ln(.01201 \times 2490)}{2 \times \ln(2)} = \frac{\ln(29.90)}{1.386} &= 2.451
-%% \intertext{And our total bits are:}
-%% (2.451 \times (20 - 3)) + (3 \times (16 + 5)) = 41.67 + 63 &= 104.7
-%% \end{align*}
-%% \par
-%% \noindent
-%% Therefore, since the total bits for order 1 are the smallest,
-%% the best order for this group of samples is 1.
-
-%% Though as you'll notice, the bits per residual for order 3 were the smallest.
-%% So if this group of samples was very large, it's likely that order 3
-%% would prevail since the residuals multiplied by a smaller bits per residual
-%% would counteract the relatively fixed overhead bits per order value.
-
-%% \subsubsection{Best Order Exhaustive Search}
-
-%% In a curious bit of recursion, finding the best order for an LPC subframe
-%% via an exhaustive search requires taking each list of LP Coefficients
-%% calculated previously, quantizing them into a list of QLP Coefficients
-%% and a QLP Shift Needed value,\footnote{Quantizing coefficients will be covered in the next section.}
-%% determining the total amount of bits each hypothetical LPC subframe
-%% uses and using the LPC order which uses the fewest.
-
-%% Remember that building an LPC subframe requires the following values:
-%% LPC Order, QLP Precision, QLP Shift Needed and QLP Coefficients along
-%% with the subframe's samples and bits-per-sample.
-%% For each possible LPC Order, the QLP Shift Needed and the QLP Coefficient
-%% list values can be calculated by quantizing the LP Coefficients.
-%% QLP Precision is the size of each QLP Coefficient list value in the
-%% subframe header.
-%% Simply choose the field with the largest number of bits in the
-%% QLP Coefficient list for the QLP Precision value.
-
-%% Finally, instead of writing these hypothetical LPC subframes directly to disk,
-%% one only has to capture how many bits they \textit{would} use.
-%% The hypothetical LPC subframe that uses the fewest number of bits
-%% is the one we should actually write to disk.
-
-%% \pagebreak
-
-%% \subsubsection{Quantizing Coefficients}
-
-%% Quantizing coefficients is a process of taking a list of LP Coefficients
-%% along with a QLP Coefficients Precision value and
-%% returning a list of QLP Coefficients and a QLP Shift Needed value.
-%% The first step is determining the upper and lower limits of the
-%% QLP Coefficients:
-%% \begin{align}
-%% \text{QLP coefficient maximum} &= 2 ^ {precision - 1} - 1 \\
-%% \text{QLP coefficient minimum} &= - 2 ^ {precision - 1}
-%% \end{align}
-%% The QLP Coefficients Precision value is typically based on the encoder's
-%% block size:
-%% \begin{table}[h]
-%% \begin{tabular}{|>{$}r<{$}|r||>{$}r<{$}|r|}
-%% \hline
-%% \text{Block Size} & Precision & \text{Block Size} & Precision \\
-%% \hline
-%% \text{Size} \leq 192 & 7 & \text{Size} \leq 384 & 8 \\
-%% \text{Size} \leq 576 & 9 & \text{Size} \leq 1152 & 10 \\
-%% \text{Size} \leq 2304 & 11 & \text{Size} \leq 4608 & 12 \\
-%% \text{Size} > 4608 & 13 & & \\
-%% \hline
-%% \end{tabular}
-%% \end{table}
-%% \par
-%% \noindent
-%% So in our example of a block of 20 samples,
-%% \begin{align*}
-%% \text{QLP Coefficient maximum} = 2 ^ {7 - 1} -1 = 64 - 1 &= 63 \\
-%% \text{QLP Coefficient minimum} = - 2 ^ {7 - 1} &= -64
-%% \end{align*}
-%% \par
-%% \noindent
-%% Now we determine the initial QLP Shift Needed value:
-%% \begin{equation}
-%% \text{shift} = \text{precision} - \left \lceil \frac{\log(\max(|\text{LP Coefficients}|))}{\log(2) } \right \rceil - 1
-%% \end{equation}
-%% \par
-%% \noindent
-%% where `shift' is adjusted if necessary such that:
-%% $0 \leq \text{shift} \leq \texttt{0xF }$
-%% , since it must fit into a 5-bit signed field and negative shifts
-%% are no-ops in the FLAC decoder.
-
-%% Continuing our ongoing example, let's assume we're quantizing the LP
-%% coefficients 0.9065, -0.0052 and -0.0293.  So our shift should be:
-%% \begin{equation*}
-%% \text{shift} = 7 - \left \lceil \frac{\log(0.9065)}{\log(2)} \right \rceil - 1
-%% = 7 - \left \lceil \frac{-0.0981}{0.6931} \right \rceil - 1 = 7 - 0 - 1 = 6
-%% \end{equation*}
-%% \par
-%% \noindent
-%% Finally, we determine the QLP Coefficient values themselves via a small
-%% recursive routine:
-%% \begin{align}
-%% X(i) &= E(i - 1) + (\text{LP Coefficient}_i \times 2 ^ {shift}) \\
-%% \text{QLP Coefficient}_i &= \text{round}(X(i)) \\
-%% E(i) &= X(i) - \text{QLP Coefficient}_i
-%% \end{align}
-%% \par
-%% \noindent
-%% where $E(0) = 0$ and each QLP Coefficient is adjusted
-%% prior to calculating the next $E(i)$ value such that:
-%% $\text{QLP coefficient minimum} \leq \text{QLP Coefficient}_i \leq \text{QLP coefficient maximum}$
-
-%% \pagebreak
-
-%% So to finish our LPC example:
-%% \begin{align*}
-%% X(1) &= E(0) + (0.9065 \times 2 ^ 6 ) = 0 + 58.016 = \textbf{58.016} \\
-%% \text{QLP Coefficient}_1 &= \text{round}(58.016) = \textbf{58} \\
-%% E(1) &= X(1) - \text{QLP Coefficient}_1 = 58.016 - 58 = \textbf{0.016} \\
-%% X(2) &= E(1) + (-0.0052 \times 2 ^ 6 ) = 0.016 + -0.3328 = \textbf{0.3168} \\
-%% \text{QLP Coefficient}_2 &= \text{round}(0.3168) = \textbf{0} \\
-%% E(2) &= X(2) - \text{QLP Coefficient}_2 = 0.3168 - 0 = \textbf{0.3168} \\
-%% X(3) &= E(2) + (-0.0293 \times 2 ^ 6 ) = 0.3168 + -1.875 = \textbf{-1.558} \\
-%% \text{QLP Coefficient}_3 &= \text{round}(-1.558) = \textbf{-2} \\
-%% E(3) &= X(3) - \text{QLP Coefficient}_3 = -1.558 - -2 = \textbf{0.4420}
-%% \end{align*}
-%% \par
-%% \noindent
-%% Therefore, the LPC order is 3.
-%% The QLP Coefficients are 58, 0 and -2.
-%% The QLP Shift Needed value is 6.
-%% And, the QLP precision value can be calculated from the bits required
-%% for the largest absolute QLP Coefficient value.
-%% In this case, 6 bits are required to hold the value 58 so
-%% QLP precision can be 6.
-
-%% %% The LPC Order, QLP Precision, QLP Shift Needed, and QLP Coefficients
-%% %% make up the LPC subframe.
-
-%% \clearpage
-
-%% \subsubsection{Calculating LPC Residual}
-
-%% Warm-up samples and residuals are calculated as follows:
-%% \begin{align*}
-%% \intertext{For $i = 0$ to $Order - 1$:}
-%% \WARMUP_i &= \SAMPLE_i \\
-%% \intertext{For $i = Order$ to Block Size - 1:}
-%% \text{Residual}_{i - Order} &= \text{Sample}_i -
-%% \left \lfloor \frac{\overset{Order - 1}{\underset{j = 0}{\sum}}
-%%   \text{QLP Coefficient}_j \times \text{Sample}_{i - j - 1} }{
-%% 2 ^ \text{QLP Shift Needed}} \right \rfloor
-%% \end{align*}
-%% \par
-%% \noindent
-%% Therefore, if \VAR{LPC Order} is 3, \VAR{QLP Shift Needed} is 6,
-%% and we have the following values:
-%% \begin{tabular}{r r | r r}
-%% $\SAMPLE_0$ & -37 & $\COEFF_0$ & 58 \\
-%% $\SAMPLE_1$ & -33 & $\COEFF_1$ & 0 \\
-%% $\SAMPLE_2$ & -36 & $\COEFF_2$ & -2 \\
-%% $\SAMPLE_3$ & -35 & & \\
-%% $\SAMPLE_4$ & -31 & & \\
-%% $\SAMPLE_5$ & -32 & & \\
-%% $\SAMPLE_6$ & -33 & & \\
-%% \end{tabular}
-
-%% \clearpage
-
-%% \begin{align*}
-%% \WARMUP_0 &= \SAMPLE_0 = \textbf{-37} \\
-%% \WARMUP_1 &= \SAMPLE_1 = \textbf{-33} \\
-%% \WARMUP_2 &= \SAMPLE_2 = \textbf{-36} \\
-%% \RESIDUAL_0 &= \SAMPLE_3 - \left\lfloor\frac{(C_0 \times S_2) + (C_1 \times S_1) + (C_2 \times S_2)}{2 ^ 6}\right\rfloor \\
-%% &= -35 - \left\lfloor\frac{(58 \times -36) + (0 \times -33) + (-2 \times -37)}{64}\right\rfloor \\
-%% &= -35 - \left\lfloor\frac{-2014}{64}\right\rfloor = -35 - -32 = \textbf{-3} \\
-%% \RESIDUAL_1 &= \SAMPLE_4 - \left\lfloor\frac{(C_0 \times S_3) + (C_1 \times S_2) + (C_2 \times S_1)}{2 ^ 6}\right\rfloor \\
-%% &= -31 - \left\lfloor\frac{(58 \times -35) + (0 \times -36) + (-2 \times -33)}{64}\right\rfloor \\
-%% &= -31 - \left\lfloor\frac{-1964}{64}\right\rfloor = -31 - -31 = \textbf{0} \\
-%% \RESIDUAL_2 &= \SAMPLE_5 - \left\lfloor\frac{(C_0 \times S_4) + (C_1 \times S_3) + (C_2 \times S_2)}{2 ^ 6}\right\rfloor \\
-%% &= -32 - \left\lfloor\frac{(58 \times -31) + (0 \times -35) + (-2 \times -36)}{64}\right\rfloor \\
-%% &= -32 - \left\lfloor\frac{-1726}{64}\right\rfloor = -32 - -27 = \textbf{-5} \\
-%% \RESIDUAL_3 &= \SAMPLE_6 - \left\lfloor\frac{(C_0 \times S_5) + (C_1 \times S_4) + (C_2 \times S_3)}{2 ^ 6}\right\rfloor \\
-%% &= -33 - \left\lfloor\frac{(58 \times -32) + (0 \times -31) + (-2 \times -35)}{64}\right\rfloor \\
-%% &= -33 - \left\lfloor\frac{-1786}{64}\right\rfloor = -33 - -28 = \textbf{-5} \\
-%% \end{align*}
-%% Therefore, our warm-up samples are -37, -33 and -36; and our
-%% residual values are -3, 0, -5 and -5.
-
-%% \clearpage
-
-%% \subsection{the Residual}
-
-%% Given a stream of residual values, one must place them in one or more
-%% partitions, each with its own Rice parameter, and prepended with a
-%% small header:
-%% \begin{figure}[h]
-%% \includegraphics{figures/flac/residual.pdf}
-%% \end{figure}
-
-
-%% The residual's coding method is typically 0, unless one is encoding
-%% audio with more than 16 bits-per-sample and one of the partitions
-%% requests a Rice parameter higher than $2 ^ 4$.
-%% The residual's partition order is chosen exhaustively, which means
-%% trying all of them within a certain range (e.g. 0 to 5) such that
-%% the residuals can be divided evenly between them and then the partition
-%% order which uses the smallest estimated amount of space is chosen.
-
-%% Choosing the best Rice parameter is a matter of selecting the smallest
-%% value of `x' such that:
-%% \begin{equation}
-%% \text{sample count} \times 2 ^ x > \overset{\text{residual count} - 1}{\underset{i = 0}{\sum}} |\text{residual}_i|
-%% \end{equation}
-%% \begin{wrapfigure}[10]{r}{2in}
-%% \begin{tabular}{|c|r|r|}
-%% \hline
-%% index & $\text{residual}_i$ & $|\text{residual}_i|$ \\
-%% \hline
-%% 0 & -1 & 1 \\
-%% 1 & 1 & 1 \\
-%% 2 & 1 & 1 \\
-%% 3 & 1 & 1 \\
-%% 4 & 0 & 0 \\
-%% 5 & 3 & 3 \\
-%% 6 & 0 & 0 \\
-%% 7 & -4 & 4 \\
-%% 8 & -1 & 1 \\
-%% 9 & 0 & 0 \\
-%% 10 & 1 & 1 \\
-%% 11 & 1 & 1 \\
-%% 12 & 1 & 1 \\
-%% 13 & 4 & 4 \\
-%% 14 & -3 & 3 \\
-%% 15 & 1 & 1 \\
-%% 16 & 4 & 4 \\
-%% 17 & -1 & 1 \\
-%% 18 & -1 & 1 \\
-%% \hline
-%% $|\text{sum}|$ & & \textbf{29} \\
-%% \hline
-%% \end{tabular}
-%% \end{wrapfigure}
-%% \par
-%% Again, this is easier to understand with a block of example residuals,
-%% 19 in total:
-%% \par
-%% \noindent
-%% $19 \times {2 ^ 0}$ is not larger than 29.
-%% \par
-%% \noindent
-%% $19 \times {2 ^ 1}$ is larger than 29, so the best Rice parameter
-%% for this block of residuals is 1.
-%% \par
-%% Remember that the Rice parameter's maximum value is limited to
-%% $2 ^ 4$ using coding method 0, or $2 ^ 5$ using coding method 1.
-
-%% \clearpage
-
-%% \subsubsection{Residual Values}
-
-%% \begin{wrapfigure}[5]{r}{4in}
-%% \includegraphics{figures/flac/write_residual.pdf}
-%% \end{wrapfigure}
-%% Encoding individual residual values to Rice coding requires only
-%% the Rice parameter and the residuals themselves.
-%% \vskip 26em
-%% \par
-%% \noindent
-%% As an example, we'll encode the residual values 18, -25 and 12
-%% with a Rice parameter of 3:
-%% \begin{figure}[h]
-%% \includegraphics{figures/flac/rice3.pdf}
-%% \end{figure}
+Encoding them to a residual block, our final LPC subframe is:
+\begin{figure}[h]
+\includegraphics{figures/flac/lpc-parse2.pdf}
+\end{figure}
+
+\subsection{Calculating Frame CRC-16}
+CRC-16 is used to checksum the entire FLAC frame, including the header
+and any padding bits after the final subframe.
+Given a byte of input and the previous CRC-16 checksum,
+or 0 as an initial value, the current checksum can be calculated as follows:
+\begin{equation}
+\text{checksum}_i = \text{CRC16}(byte\xor(\text{checksum}_{i - 1} \gg 8 ))\xor(\text{checksum}_{i - 1} \ll 8)
+\end{equation}
+\par
+\noindent
+and the checksum is always truncated to 16-bits.
+\begin{table}[h]
+{\relsize{-3}\ttfamily
+\begin{tabular}{|r||r|r|r|r|r|r|r|r|r|r|r|r|r|r|r|r|}
+\hline
+ & 0x?0 & 0x?1 & 0x?2 & 0x?3 & 0x?4 & 0x?5 & 0x?6 & 0x?7 & 0x?8 & 0x?9 & 0x?A & 0x?B & 0x?C & 0x?D & 0x?E & 0x?F \\
+\hline
+0x0? & 0000 & 8005 & 800f & 000a & 801b & 001e & 0014 & 8011 & 8033 & 0036 & 003c & 8039 & 0028 & 802d & 8027 & 0022 \\
+0x1? & 8063 & 0066 & 006c & 8069 & 0078 & 807d & 8077 & 0072 & 0050 & 8055 & 805f & 005a & 804b & 004e & 0044 & 8041 \\
+0x2? & 80c3 & 00c6 & 00cc & 80c9 & 00d8 & 80dd & 80d7 & 00d2 & 00f0 & 80f5 & 80ff & 00fa & 80eb & 00ee & 00e4 & 80e1 \\
+0x3? & 00a0 & 80a5 & 80af & 00aa & 80bb & 00be & 00b4 & 80b1 & 8093 & 0096 & 009c & 8099 & 0088 & 808d & 8087 & 0082 \\
+0x4? & 8183 & 0186 & 018c & 8189 & 0198 & 819d & 8197 & 0192 & 01b0 & 81b5 & 81bf & 01ba & 81ab & 01ae & 01a4 & 81a1 \\
+0x5? & 01e0 & 81e5 & 81ef & 01ea & 81fb & 01fe & 01f4 & 81f1 & 81d3 & 01d6 & 01dc & 81d9 & 01c8 & 81cd & 81c7 & 01c2 \\
+0x6? & 0140 & 8145 & 814f & 014a & 815b & 015e & 0154 & 8151 & 8173 & 0176 & 017c & 8179 & 0168 & 816d & 8167 & 0162 \\
+0x7? & 8123 & 0126 & 012c & 8129 & 0138 & 813d & 8137 & 0132 & 0110 & 8115 & 811f & 011a & 810b & 010e & 0104 & 8101 \\
+0x8? & 8303 & 0306 & 030c & 8309 & 0318 & 831d & 8317 & 0312 & 0330 & 8335 & 833f & 033a & 832b & 032e & 0324 & 8321 \\
+0x9? & 0360 & 8365 & 836f & 036a & 837b & 037e & 0374 & 8371 & 8353 & 0356 & 035c & 8359 & 0348 & 834d & 8347 & 0342 \\
+0xA? & 03c0 & 83c5 & 83cf & 03ca & 83db & 03de & 03d4 & 83d1 & 83f3 & 03f6 & 03fc & 83f9 & 03e8 & 83ed & 83e7 & 03e2 \\
+0xB? & 83a3 & 03a6 & 03ac & 83a9 & 03b8 & 83bd & 83b7 & 03b2 & 0390 & 8395 & 839f & 039a & 838b & 038e & 0384 & 8381 \\
+0xC? & 0280 & 8285 & 828f & 028a & 829b & 029e & 0294 & 8291 & 82b3 & 02b6 & 02bc & 82b9 & 02a8 & 82ad & 82a7 & 02a2 \\
+0xD? & 82e3 & 02e6 & 02ec & 82e9 & 02f8 & 82fd & 82f7 & 02f2 & 02d0 & 82d5 & 82df & 02da & 82cb & 02ce & 02c4 & 82c1 \\
+0xE? & 8243 & 0246 & 024c & 8249 & 0258 & 825d & 8257 & 0252 & 0270 & 8275 & 827f & 027a & 826b & 026e & 0264 & 8261 \\
+0xF? & 0220 & 8225 & 822f & 022a & 823b & 023e & 0234 & 8231 & 8213 & 0216 & 021c & 8219 & 0208 & 820d & 8207 & 0202 \\
+\hline
+\end{tabular}
+}
+\end{table}
+\par
+\noindent
+For example, given the frame bytes:
+\texttt{FF F8 CC 1C 00 C0 EB 00 00 00 00 00 00 00 00},
+the frame's CRC-16 can be calculated:
+{\relsize{-2}
+\begin{align*}
+\CRCSIXTEEN{0}{0xFF}{0x0000}{0xFF}{0x0000}{0x0202} \\
+\CRCSIXTEEN{1}{0xF8}{0x0202}{0xFA}{0x0200}{0x001C} \\
+\CRCSIXTEEN{2}{0xCC}{0x001C}{0xCC}{0x1C00}{0x1EA8} \\
+\CRCSIXTEEN{3}{0x1C}{0x1EA8}{0x02}{0xA800}{0x280F} \\
+\CRCSIXTEEN{4}{0x00}{0x280F}{0x28}{0x0F00}{0x0FF0} \\
+\CRCSIXTEEN{5}{0xC0}{0x0FF0}{0xCF}{0xF000}{0xF2A2} \\
+\CRCSIXTEEN{6}{0xEB}{0xF2A2}{0x19}{0xA200}{0x2255} \\
+\CRCSIXTEEN{7}{0x00}{0x2255}{0x22}{0x5500}{0x55CC} \\
+\CRCSIXTEEN{8}{0x00}{0x55CC}{0x55}{0xCC00}{0xCDFE} \\
+\CRCSIXTEEN{9}{0x00}{0xCDFE}{0xCD}{0xFE00}{0x7CAD} \\
+\CRCSIXTEEN{10}{0x00}{0x7CAD}{0x7C}{0xAD00}{0x2C0B} \\
+\CRCSIXTEEN{11}{0x00}{0x2C0B}{0x2C}{0x0B00}{0x8BEB} \\
+\CRCSIXTEEN{12}{0x00}{0x8BEB}{0x8B}{0xEB00}{0xE83A} \\
+\CRCSIXTEEN{13}{0x00}{0xE83A}{0xE8}{0x3A00}{0x3870} \\
+\CRCSIXTEEN{14}{0x00}{0x3870}{0x38}{0x7000}{0xF093} \\
+\intertext{Thus, the next two bytes after the final subframe should be
+\texttt{0xF0} and \texttt{0x93}.
+Again, when the checksum bytes are run through the checksumming procedure:}
+\CRCSIXTEEN{15}{0xF0}{0xF093}{0x00}{0x9300}{0x9300} \\
+\CRCSIXTEEN{16}{0x93}{0x9300}{0x00}{0x0000}{0x0000}
+\end{align*}
+the result will also always be 0, just as in the CRC-8.
+}

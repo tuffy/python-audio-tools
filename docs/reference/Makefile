@@ -50,6 +50,7 @@ figures/flac/lag3.pdf \
 figures/flac/lpc.pdf \
 figures/flac/lpc2.pdf \
 figures/flac/lpc-parse.pdf \
+figures/flac/lpc-parse2.pdf \
 figures/flac/metadata.pdf \
 figures/flac/nonexhaustive.pdf \
 figures/flac/picture.pdf \
@@ -443,3 +444,6 @@ figures/wavpack/decorrelation3.pdf: figures/wavpack/decorrelation3.fig
 
 figures/flac/utf8.pdf: figures/flac/utf8.bpx
 	./bitparse.py -i $< -o $@ -b 8 -w 170
+
+figures/flac/lpc-parse2.pdf: figures/flac/lpc-parse2.bpx
+	./bitparse.py -i $< -o $@ -b 24 -w 480

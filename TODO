@@ -5044,3 +5044,4 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO generate max_lpc_order + 1 autocorrelation values
 ** TODO properly generate max_lpc_order LP coefficients and error values
 ** TODO Update LP coefficient quantizer to handle negative shifts/etc.
+** TODO Update best order estimation for better accuracy
