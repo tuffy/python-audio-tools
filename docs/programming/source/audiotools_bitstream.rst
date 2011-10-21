@@ -305,7 +305,7 @@ into a larger binary file stream.
    "#U"   unsigned long write64(#, ul)
    "#S"   signed long   write_signed64(#, sl)
    "#p"   N/A           write(#, 0)
-   "#P"   N/A           write_bytes(# * 8, 0)
+   "#P"   N/A           write(# * 8, 0)
    "#b"   string        write_bytes(#, s)
    "a"    N/A           byte_align()
    ====== ============= =====================
@@ -427,7 +427,7 @@ bits or bytes, for possible output into a :class:`BitstreamWriter`.
    "#U"   unsigned long write64(#, ul)
    "#S"   signed long   write_signed64(#, sl)
    "#p"   N/A           write(#, 0)
-   "#P"   N/A           write_bytes(# * 8, 0)
+   "#P"   N/A           write(# * 8, 0)
    "#b"   string        write_bytes(#, s)
    "a"    N/A           byte_align()
    ====== ============= =====================
@@ -594,7 +594,7 @@ The actual writes themselves are not recorded.
    "#U"   unsigned long write64(#, ul)
    "#S"   signed long   write_signed64(#, sl)
    "#p"   N/A           write(#, 0)
-   "#P"   N/A           write_bytes(# * 8, 0)
+   "#P"   N/A           write(# * 8, 0)
    "#b"   string        write_bytes(#, s)
    "a"    N/A           byte_align()
    ====== ============= =====================

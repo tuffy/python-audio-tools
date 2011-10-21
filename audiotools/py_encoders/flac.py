@@ -57,13 +57,15 @@ class STREAMINFO:
 class Encoding_Options:
     def __init__(self, block_size, max_lpc_order,
                  adaptive_mid_side, mid_side,
-                 exhaustive_model_search, max_residual_partition_order):
+                 exhaustive_model_search, max_residual_partition_order,
+                 max_rice_parameter):
         self.block_size = block_size
         self.max_lpc_order = max_lpc_order
         self.adaptive_mid_side = adaptive_mid_side
         self.mid_side = mid_side
         self.exhaustive_model_search = exhaustive_model_search
         self.max_residual_partition_order = max_residual_partition_order
+        self.max_rice_parameter = max_rice_parameter
 
 
 def encode_flac(filename, pcmreader,
@@ -79,7 +81,8 @@ def encode_flac(filename, pcmreader,
                                adaptive_mid_side,
                                mid_side,
                                exhaustive_model_search,
-                               max_residual_partition_order)
+                               max_residual_partition_order,
+                               14 if pcmreader.bits_per_sample <= 16 else 30)
 
     streaminfo = STREAMINFO(block_size, block_size,
                             0, 0,
@@ -118,21 +121,29 @@ def encode_flac(filename, pcmreader,
     streaminfo.write(writer)
     writer.close()
 
+
 def encode_flac_frame(writer, pcmreader, options, frame_number, frame):
     crc16 = CRC16()
     writer.add_callback(crc16.update)
+
+    #FIXME - if 2ch, calculate mid-side here
+    #FIXME - if 2ch, build left/right/average/difference
+    #FIXME - if 2ch, try different subframes based on encoding options
+    #FIXME - if 2ch, write best header/subframes to disk
 
     write_frame_header(writer, pcmreader, frame_number, frame,
                        pcmreader.channels - 1)
 
     for i in xrange(frame.channels):
-        encode_verbatim_subframe(writer,
-                                 pcmreader.bits_per_sample,
-                                 frame.channel(i))
+        encode_subframe(writer,
+                        options,
+                        pcmreader.bits_per_sample,
+                        list(frame.channel(i)))
 
     writer.byte_align()
     writer.pop_callback()
     writer.write(16, int(crc16))
+
 
 def write_frame_header(writer, pcmreader, frame_number, frame,
                        channel_assignment):
@@ -199,13 +210,161 @@ def write_utf8(writer, value):
     if (value <= 127):
         writer.write(8, value)
     else:
+        #FIXME
         raise NotImplementedError()
 
 
+def encode_subframe(writer, options, bits_per_sample, samples):
+    def all_identical(l):
+        if (len(l) == 1):
+            return True
+        else:
+            for i in l[1:]:
+                if (i != l[0]):
+                    return False
+            else:
+                return True
+
+    if (all_identical(samples)):
+        encode_constant_subframe(writer, bits_per_sample, samples[0])
+    else:
+        #FIXME - account for wasted BPS here
+        wasted_bps = 0
+
+        fixed_subframe = BitstreamRecorder(0)
+        encode_fixed_subframe(fixed_subframe,
+                              options,
+                              wasted_bps,
+                              bits_per_sample, samples)
+
+        # encode_verbatim_subframe(writer, bits_per_sample, samples)
+        fixed_subframe.copy(writer)
+
+
+def encode_constant_subframe(writer, bits_per_sample, sample):
+    #write frame header
+    writer.build("1p 6u 1u", [0, 0])
+
+    #write frame data
+    writer.write_signed(bits_per_sample, sample)
+
+
 def encode_verbatim_subframe(writer, bits_per_sample, samples):
-    writer.build("1u 6u 1u", [0, 1, 0])
-    for sample in samples:
+    #write frame header
+    writer.build("1p 6u 1u", [1, 0])
+
+    #write frame data
+    writer.build(("%ds" % (bits_per_sample)) * len(samples), samples)
+
+
+
+def encode_fixed_subframe(writer, options, wasted_bps, bits_per_sample,
+                          samples):
+    def next_order(residuals):
+        return [(x - y) for (x,y) in zip(residuals[1:],residuals)]
+
+    #decide which subframe order to use
+    residuals = [samples]
+    total_error = [sum(map(abs, residuals[-1][4:]))]
+
+    for order in xrange(1, 5):
+        residuals.append(next_order(residuals[-1]))
+        total_error.append(sum(map(abs, residuals[-1][4 - order:])))
+
+    for order in xrange(4):
+        if (total_error[order] < min(total_error[order + 1:])):
+            break
+    else:
+        order = 4
+
+    #then write the subframe to disk
+
+    #write frame header
+    writer.build("1p 3u 3u", [1, order])
+    if (wasted_bps > 0):
+        writer.write(1, 1)
+        writer.unary(1, wasted_bps - 1)
+    else:
+        writer.write(1, 0)
+
+    #write warm-up samples
+    for sample in samples[0:order]:
         writer.write_signed(bits_per_sample, sample)
+
+    #write residual block to disk
+    encode_residuals(writer, options, order, len(samples), residuals[order])
+
+
+def encode_residuals(writer, options, order, block_size, residuals):
+    #first, determine the best set of residual partitions to use
+    best_porder = 0
+    best_size = 2 ** 31
+
+    for porder in xrange(0, options.max_residual_partition_order + 1):
+        if ((block_size % (2 ** porder)) == 0):
+            unencoded_residuals = residuals[:]
+            partitions = []
+            for p in xrange(0, 2 ** porder):
+                if (p == 0):
+                    partition_size = block_size / (2 ** porder) - order
+                else:
+                    partition_size = block_size / (2 ** porder)
+                partitions.append(unencoded_residuals[0:partition_size])
+                unencoded_residuals = unencoded_residuals[partition_size:]
+
+            rice_parameters = [best_rice_parameter(options, p)
+                               for p in partitions]
+
+            encoded_partitions = [encode_residual_partition(r, p)
+                                  for (r, p) in zip(rice_parameters,
+                                                    partitions)]
+
+            partition_bit_size = sum([4 + p.bits() for p in encoded_partitions])
+
+            if (partition_bit_size < best_size):
+                best_porder = porder
+                best_size = partition_bit_size
+                best_parameters = rice_parameters
+                best_encoded_partitions = encoded_partitions
+
+    #then output those residual partitions into a single block
+    if (max(best_parameters) > 14):
+        coding_method = 1
+    else:
+        coding_method = 0
+
+    writer.write(2, coding_method)
+    writer.write(4, best_porder)
+    for (rice, partition) in zip(best_parameters, best_encoded_partitions):
+        if (coding_method == 0):
+            writer.write(4, rice)
+        else:
+            writer.write(5, rice)
+        partition.copy(writer)
+
+
+def best_rice_parameter(options, residuals):
+    partition_sum = sum(map(abs, residuals))
+    rice_parameter = 0
+    while ((len(residuals) * (2 ** rice_parameter)) < partition_sum):
+        rice_parameter += 1
+
+    return min(rice_parameter, options.max_rice_parameter)
+
+
+def encode_residual_partition(rice_parameter, residuals):
+    partition = BitstreamRecorder(0)
+    for residual in residuals:
+        if (residual >= 0):
+            unsigned = residual << 1
+        else:
+            unsigned = ((-residual - 1) << 1) | 1
+        MSB = unsigned >> rice_parameter
+        LSB = unsigned - (MSB << rice_parameter)
+        partition.unary(1, MSB)
+        partition.write(rice_parameter, LSB)
+
+    return partition
 
 
 class CRC8:

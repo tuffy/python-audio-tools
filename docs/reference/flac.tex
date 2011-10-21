@@ -1566,120 +1566,28 @@ wasted BPS $\leftarrow$ maximum unsigned integer\;
 
 \clearpage
 
-\subsection{Calculating FIXED Subframe Order}
-\ALGORITHM{signed subframe samples}{the FIXED subframe order, between 0 and 4}
-\SetKwFunction{MIN}{min}
-\eIf{sample count $\geq 4$}{
-  $\text{last error}_1 \leftarrow \text{sample}_3 - \text{sample}_2$\;
-  $\text{last error}_2 \leftarrow \text{last error}_1 - (\text{sample}_2 - \text{sample}_1)$\;
-  $\text{last error}_3 \leftarrow \text{last error}_2 - (\text{sample}_2 - (\text{sample}_1 \times 2) + \text{sample}_0)$\;
-  \BlankLine
-  $\text{total error}_0 \leftarrow 0$\;
-  $\text{total error}_1 \leftarrow 0$\;
-  $\text{total error}_2 \leftarrow 0$\;
-  $\text{total error}_3 \leftarrow 0$\;
-  $\text{total error}_4 \leftarrow 0$\;
-  \BlankLine
-  \For{i = 4 \emph{\KwTo}sample count}{
-    $\text{error}_0 \leftarrow \text{sample}_i - \text{sample}_{i - 1}$\;
-    $\text{error}_1 \leftarrow \text{error}_0 - \text{last error}_1$\;
-    $\text{error}_2 \leftarrow \text{error}_1 - \text{last error}_2$\;
-    $\text{error}_3 \leftarrow \text{error}_2 - \text{last error}_3$\;
-    \BlankLine
-    $\text{total error}_0 \leftarrow \text{total error}_0 + |\text{sample}_i|$\;
-    $\text{total error}_1 \leftarrow \text{total error}_1 + |\text{error}_0|$\;
-    $\text{total error}_2 \leftarrow \text{total error}_2 + |\text{error}_1|$\;
-    $\text{total error}_3 \leftarrow \text{total error}_3 + |\text{error}_2|$\;
-    $\text{total error}_4 \leftarrow \text{total error}_4 + |\text{error}_3|$\;
-    \BlankLine
-    $\text{last error}_1 \leftarrow \text{error}_0$\;
-    $\text{last error}_2 \leftarrow \text{error}_1$\;
-    $\text{last error}_3 \leftarrow \text{error}_2$\;
-  }
-  \uIf{$\text{total error}_0 < \MIN(\text{total error}_1 , \text{total error}_2 , \text{total error}_3 , \text{total error}_4)$}{
-    \Return 0\;
-  }
-  \uElseIf{$\text{total error}_1 < \MIN(\text{total error}_2 , \text{total error}_3 , \text{total error}_4)$}{
-    \Return 1\;
-  }
-  \uElseIf{$\text{total error}_2 < \MIN(\text{total error}_3 , \text{total error}_4)$}{
-    \Return 2\;
-  }
-  \uElseIf{$\text{total error}_3 < \text{total error}_4$}{
-    \Return 3\;
-  }
-  \Else{
-    \Return 4\;
-  }
-}{
-  \Return 0\;
-}
-\EALGORITHM
-
-\clearpage
-
-\subsubsection{FIXED Subframe Order Calculation Example}
-Given the subframe samples: \texttt{18, 20, 26, 24, 24, 23, 21, 24, 23, 20}:
-\begin{align*}
-\text{initial last error}_1 &\leftarrow 24 - 26 = -2 \\
-\text{initial last error}_2 &\leftarrow -2 - (26 - 20) = -8 \\
-\text{initial last error}_3 &\leftarrow -8 - (26 - (20 \times 2) + 18) = -12
-\end{align*}
-
-\begin{table}[h]
-\begin{tabular}{r|r|r|r}
-\hline
-\hline
-$i$ & 4 & 5 & 6 \\
-$\text{sample}_i$ & $24$ & $23$ & $21$ \\
-\hline
-$\text{error}_0$ & $24 - 24 = 0$ & $23 - 24 = -1$ & $21 - 23 = -2$ \\
-$\text{error}_1$ & $0 - -2 = 2$ & $-1 - 0 = -1$ & $-2 - -1 = -1$ \\
-$\text{error}_2$ & $2 - -8 = 10$ & $-1 - 2 = -3$ & $-1 - -1 = 0$ \\
-$\text{error}_3$ & $6 - -8 = 22$ & $-3 - 10 = -13$ & $0 - -3 = 3$ \\
-\hline
-$\text{total error}_0$ & $0 + |24| = 24$ & $24 + |23| = 47$ & $47 + |21| = 68$ \\
-$\text{total error}_1$ & $0 + 0 = 0$ & $0 + |-1| = 1$ & $1 + |-2| = 3$ \\
-$\text{total error}_2$ & $0 + 2 = 2$ & $2 + |-1| = 3$ & $3 + |-1| = 4$ \\
-$\text{total error}_3$ & $0 + 10 = 10$ & $10 + |-3| = 13$ & $13 + |0| = 13$ \\
-$\text{total error}_4$ & $0 + 22 = 22$ & $22 + |-13| = 35$ & $35 + |3| = 38$ \\
-\hline
-$\text{last error}_1$ & $0$ & $-1$ & $-2$ \\
-$\text{last error}_2$ & $2$ & $-1$ & $-1$ \\
-$\text{last error}_3$ & $10$ & $-3$ & $0$ \\
-\hline
-\hline
-$i$ & 7 & 8 & 9 \\
-$\text{sample}_i$ & $24$ & $23$ & $20$ \\
-\hline
-$\text{error}_0$ & $24 - 21 = 3$ & $23 - 24 = -1$ & $20 - 23 = -3$ \\
-$\text{error}_1$ & $3 - -2 = 5$ & $-1 - 3 = -4$ & $-3 - -1 = -2$ \\
-$\text{error}_2$ & $5 - -1 = 6$ & $-4 - 5 = -9$ & $-2 - -4 = 2$ \\
-$\text{error}_3$ & $6 - 0 = 6$ & $-9 - 6 = -15$ & $2 - -9 = 11$ \\
-\hline
-$\text{total error}_0$ & $68 + |24| = 92$ & $92 + |23| = 115$ & $115 + |20| = 135$ \\
-$\text{total error}_1$ & $3 + |3| = 6$ & $6 + |-1| = 7$ & $7 + |-3| = 10$ \\
-$\text{total error}_2$ & $4 + |5| = 9$ & $9 + |-4| = 13$ & $13 + |-2| = 15$ \\
-$\text{total error}_3$ & $13 + |6| = 19$ & $19 + |-9| = 28$ & $28 + |2| = 30$ \\
-$\text{total error}_4$ & $38 + |6| = 44$ & $44 + |15| = 59$ & $59 + |11| = 70$ \\
-\hline
-$\text{last error}_1$ & $3$ & $-1$ & $-3$ \\
-$\text{last error}_2$ & $5$ & $-4$ & $-2$ \\
-$\text{last error}_3$ & $6$ & $-9$ & $2$ \\
-\hline
-\hline
-\end{tabular}
-\end{table}
-\par
-\noindent
-Since $\text{total error}_1$'s value of 10 is the smallest of the five
-total error values,
-the best FIXED predictor order for these samples is 1.
-
-\clearpage
-
 \subsection{Encoding a FIXED Subframe}
-\ALGORITHM{signed subframe samples, subframe order, subframe's bits per sample, wasted BPS}{a FIXED subframe}
+\ALGORITHM{signed subframe samples, subframe's bits per sample, wasted BPS}{a FIXED subframe}
+\tcc{first decide which FIXED subframe order to use}
+\For(\tcc*[f]{order 0}){i = 0 \emph{\KwTo}sample count}{
+$residual_{0~i} \leftarrow sample_i$\;
+}
+$total~error_0 \leftarrow \overset{sample~count - 1}{\underset{i = 4}{\sum}}|residual_{0~i}|$\;
+\BlankLine
+\eIf{sample count $> 4$}{
+\For(\tcc*[f]{order 1-4}){order = 1 \emph{\KwTo}5}{
+  \For{i = 0 \emph{\KwTo}sample count - order}{
+  $residual_{order~i} \leftarrow residual_{order - 1~i + 1} - residual_{order - 1~i}$\;
+  }
+  $total~error_{order} \leftarrow \overset{sample~count - order - 1}{\underset{i = 4 - order}{\sum}}|residual_{order~i}|$\;
+}
+\BlankLine
+choose subframe order such that $total~error_{order}$ is smallest\;
+}{
+use subframe order 0\;
+}
+\BlankLine
+\tcc{then return a FIXED subframe with that order}
 \WRITE 0 in 1 unsigned bit\tcc*[r]{pad}
 \WRITE 1 in 3 unsigned bits\tcc*[r]{subframe type}
 \WRITE subframe order in 3 unsigned bits\;
@@ -1692,11 +1600,8 @@ the best FIXED predictor order for these samples is 1.
 \For(\tcc*[f]{warm-up samples}){i = 0 \emph{\KwTo}subframe order}{
   \WRITE $sample_i$ in (bits per sample) signed bits\;
 }
-calculate FIXED subframe's residuals based on signed samples and subframe order\;
-write encoded residual block based on signed residual values\;
-\Return a FIXED subframe\;
+write encoded residual block based on $residual_{order}$'s signed values\;
 \EALGORITHM
-
 \begin{figure}[h]
 \includegraphics{figures/flac/fixed2.pdf}
 \end{figure}
@@ -1707,59 +1612,26 @@ on page \pageref{flac_residual_encoding}.
 
 \clearpage
 
-\subsubsection{Calculating FIXED Subframe Residuals}
-\ALGORITHM{signed subframe samples, subframe order}{signed residual values}
-\Switch{subframe order}{
-  \uCase{0}{
-    \For{i = 0 \emph{\KwTo}sample count}{
-      $residual_i \leftarrow sample_i$\;
-    }
-  }
-  \uCase{1}{
-    \For{i = 0 \emph{\KwTo}sample count - 1}{
-      $residual_i \leftarrow sample_{i + 1} - sample_i$
-    }
-  }
-  \uCase{2}{
-    \For{i = 0 \emph{\KwTo}sample count - 2}{
-      $residual_i \leftarrow sample_{i + 2} - ((2 \times sample_{i + 1}) - sample_i)$
-    }
-  }
-  \uCase{3}{
-    \For{i = 3 \emph{\KwTo}sample count}{
-      $residual_i \leftarrow sample_{i + 3} - ((3 \times sample_{i + 2}) - (3 \times sample_{i + 1}) + sample_i)$
-    }
-  }
-  \Case{4}{
-    \For{i = 4 \emph{\KwTo}sample count}{
-      $residual_i \leftarrow sample_{i + 4} - ((4 \times sample_{i + 3}) - (6 \times sample_{i + 2}) + (4 \times sample_{i + 1}) - sample_i)$
-    }
-  }
-}
-\EALGORITHM
-
-\subsubsection{FIXED Subframe Residual Calculation Example}
+\subsubsection{FIXED Subframe Calculation Example}
 
 Given the subframe samples: \texttt{18, 20, 26, 24, 24, 23, 21, 24, 23, 20}:
 \begin{table}[h]
-{\relsize{-1}
 \begin{tabular}{r|r|r|r|r|r}
 & order 0 & order 1 & order 2 & order 3 & order 4 \\
 \hline
-$residual_0$ & 18 & 2 & 4 & -12 & 22 \\
-$residual_1$ & 20 & 6 & -8 & 10 & -13 \\
-$residual_2$ & 26 & -2 & 2 & -3 & 3 \\
-$residual_3$ & 24 & 0 & -1 & 0 & 6 \\
-$residual_4$ & 24 & -1 & -1 & 6 & -15 \\
-$residual_5$ & 23 & -2 & 5 & -9 & 11 \\
-$residual_6$ & 21 & 3 & -4 & 2 \\
-$residual_7$ & 24 & -1 & -2 \\
-$residual_8$ & 23 & -3 \\
-$residual_9$ & 20 \\
+$residual_{order~0}$ & \texttt{\color{gray}18} & \texttt{\color{gray}2} & \texttt{\color{gray}4} & \texttt{\color{gray}-12} & \texttt{22} \\
+$residual_{order~1}$ & \texttt{\color{gray}20} & \texttt{\color{gray}6} & \texttt{\color{gray}-8} & \texttt{10} & \texttt{-13} \\
+$residual_{order~2}$ & \texttt{\color{gray}26} & \texttt{\color{gray}-2} & \texttt{2} & \texttt{-3} & \texttt{3} \\
+$residual_{order~3}$ & \texttt{\color{gray}24} & \texttt{0} & \texttt{-1} & \texttt{0} & \texttt{6} \\
+$residual_{order~4}$ & \texttt{24} & \texttt{-1} & \texttt{-1} & \texttt{6} & \texttt{-15} \\
+$residual_{order~5}$ & \texttt{23} & \texttt{-2} & \texttt{5} & \texttt{-9} & \texttt{11} \\
+$residual_{order~6}$ & \texttt{21} & \texttt{3} & \texttt{-4} & \texttt{2} \\
+$residual_{order~7}$ & \texttt{24} & \texttt{-1} & \texttt{-2} \\
+$residual_{order~8}$ & \texttt{23} & \texttt{-3} \\
+$residual_{order~9}$ & \texttt{20} \\
 \hline
-total error & 135 & 10 & 15 & 30 & 70 \\
+$total~error_{order}$ & \texttt{135} & \texttt{10} & \texttt{15} & \texttt{30} & \texttt{70} \\
 \end{tabular}
-}
 \end{table}
 \par
 \noindent
@@ -1770,6 +1642,8 @@ Also note that if you remove the first $4 - order$ residuals
 and sum the absolute value of the remainding residuals,
 the result is the \VAR{total error} value
 used when calculating the best FIXED subframe order.
+
+\clearpage
 
 \subsection{Residual Encoding}
 \label{flac_residual_encoding}

@@ -27,6 +27,8 @@
 \usepackage[toc,page]{appendix}
 \usepackage{hyperref}
 \usepackage{units}
+\usepackage{color}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
 \usepackage[vlined,lined,commentsnumbered]{algorithm2e}
 \newcommand{\xor}{\textbf{ xor }}
 %#1 = i
