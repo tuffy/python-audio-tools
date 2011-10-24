@@ -1006,6 +1006,7 @@ The basic process for encoding a FLAC file is as follows:
 \noindent
 \ALGORITHM{PCM frames, a default block size and various encoding parameters:
 \newline
+{\relsize{-1}
 \begin{tabular}{rll}
 parameter & possible values & typical values \\
 \hline
@@ -1013,10 +1014,21 @@ block size & a positive number of PCM frames & 1152 or 4096 \\
 maximum LPC order & integer between 0 and 32, inclusive & 0, 6, 8 or 12 \\
 minimum partition order & integer between 0 and 16, inclusive & 0 \\
 maximum partition order & integer between 0 and 16, inclusive & 3, 4, 5 or 6 \\
+maximum Rice parameter & 14 if bits-per-sample $\leq 16$, otherwise 30 & \\
 try mid-side & true or false & \\
 try adaptive mid-side & true or false & \\
+QLP precision & $\begin{cases}
+7 & 0 < \text{block size} \leq 192 \\
+8 & 192 < \text{block size} \leq 384 \\
+9 & 384 < \text{block size} \leq 576 \\
+10 & 576 < \text{block size} \leq 1152 \\
+11 & 1152 < \text{block size} \leq 2304 \\
+12 & 2304 < \text{block size} \leq 4608 \\
+13 & \text{block size} > 4608 \\
+\end{cases}$ & \\
 exhaustive model search & true or false & \\
 \end{tabular}
+}
 }{an encoded FLAC file}
 \SetKwData{BLOCKSIZE}{block size}
 \WRITE \texttt{"fLaC"} in 4 bytes\;
@@ -1522,6 +1534,7 @@ The smallest subframe is the one written to disk.
 \clearpage
 
 \subsubsection{Calculating Wasted Bits Per Sample}
+{\relsize{-1}
 \ALGORITHM{signed subframe samples}{the amount of wasted bits per sample as an unsigned integer}
 \SetKw{AND}{and}
 \SetKwFunction{MIN}{min}
@@ -1534,15 +1547,19 @@ wasted BPS $\leftarrow$ maximum unsigned integer\;
       sample $\leftarrow \text{sample} \div 2$\;
     }
     \eIf{wasted $= 0$}{
-      \Return 0\tcc*[r]{stop once a sample has no wasted bits}
+      \Return 0\tcc*[r]{stop once any sample has no wasted bits}
     }{
       wasted BPS $\leftarrow$ \MIN(wasted BPS, wasted)\;
     }
   }
 }
-\tcc{if all samples are 0, we should return a CONSTANT subframe}
-\Return wasted BPS\;
+\eIf{wasted BPS = maximum unsigned integer}{
+  \Return 0\;
+}{
+  \Return wasted BPS\;
+}
 \EALGORITHM
+}
 
 \subsection{Encoding a CONSTANT Subframe}
 \ALGORITHM{signed subframe sample, subframe's bits per sample}{a CONSTANT subframe}
@@ -1704,21 +1721,17 @@ used when calculating the best FIXED subframe order.
 \clearpage
 
 \subsubsection{Computing Best Rice Parameter}
-\ALGORITHM{a set of signed residual values, the stream's bits per sample}{the Rice parameter as an unsigned integer}
+\ALGORITHM{a set of signed residual values, maximum Rice parameter from encoding options}{the Rice parameter as an unsigned integer}
 \SetKwData{PARAMETER}{Rice parameter}
 \SetKwData{PSUM}{partition sum}
+\SetKwData{MAXPARAMETER}{maximum Rice parameter}
 \SetKwFunction{MIN}{min}
-\PSUM $\leftarrow \overset{partition~size - 1}{\underset{i = 0}{\sum}} |residual_i|$\;
+\PSUM $\leftarrow \overset{residuals~count - 1}{\underset{i = 0}{\sum}} |residual_i|$\;
 $\PARAMETER \leftarrow 0$\;
-\While{$partition~size \times 2 ^ \text{\PARAMETER} < \PSUM$}{
+\While{$residuals~count \times 2 ^ \text{\PARAMETER} < \PSUM$}{
   $\PARAMETER \leftarrow \PARAMETER + 1$\;
 }
-\eIf{bits per sample $\leq 16$}{
-  \Return \MIN(\PARAMETER , 14)\tcc*[r]{coding method 0}
-}{
-  \Return \MIN(\PARAMETER , 30)\tcc*[r]{coding method 1}
-}
-\Return \PARAMETER\;
+\Return \MIN(\PARAMETER , \MAXPARAMETER)
 \EALGORITHM
 
 \subsubsection{Encoding Residual Partition}
@@ -2011,24 +2024,25 @@ $\kappa_0$ &$\leftarrow$ & $ \AUTOCORRELATION_1 \div \AUTOCORRELATION_0$ \\
 $\LPCOEFF_{0~0}$ &$\leftarrow$ & $ \kappa_0$ \\
 $\ERROR_0$ &$\leftarrow$ & $ \AUTOCORRELATION_0 \times (1 - {\kappa_0} ^ 2)$ \\
 \end{tabular}\;
-\For{i = 1 \emph{\KwTo}maximum LPC order + 1}{
-  $q_i \leftarrow \AUTOCORRELATION_{i + 1}$\;
+\For{i = 1 \emph{\KwTo}maximum LPC order}{
   \tcc{"zip" all of the previous row's LP coefficients
     \newline
     and the reversed autocorrelation values from 1 to i + 1
     \newline
-    into ($c$,$a$) pairs}
+    into ($c$,$a$) pairs
+    \newline
+    $q_i$ is $\AUTOCORRELATION_{i + 1}$ minus the sum of those mutiplied ($c$,$a$) pairs}
+  $q_i \leftarrow \AUTOCORRELATION_{i + 1}$\;
   \For{j = 0 \emph{\KwTo}i}{
-    \tcc{$q_i$ is $\AUTOCORRELATION_{i + 1}$ minus the sum of those mutiplied ($c$,$a$) pairs}
     $q_i \leftarrow q_i - (\LPCOEFF_{(i - 1)~j} \times \AUTOCORRELATION_{i - j})$\;
   }
-  $\kappa_i = q_i \div \ERROR_{i - 1}$\;
   \BlankLine
   \tcc{"zip" all of the previous row's LP coefficients
     \newline
     and the previous row's LP coefficients reversed
     \newline
     into ($c$,$r$) pairs}
+  $\kappa_i = q_i \div \ERROR_{i - 1}$\;
   \For{j = 0 \emph{\KwTo}i}{
     \tcc{then build a new coefficient list of $c - (\kappa_i * r)$ for each ($c$,$r$) pair}
     $\LPCOEFF_{i~j} \leftarrow \LPCOEFF_{(i - 1)~j} - (\kappa_i \times \LPCOEFF_{(i - 1)~(i - j - 1)})$\;
@@ -2106,45 +2120,21 @@ and error values: \texttt{619.107, 521.530, 520.854}
 
 \subsubsection{Estimating Best Order}
 {\relsize{-1}
-\ALGORITHM{floating point error values, maximum LPC order, block size, sample count, bits per sample}{the best stimated order value to use}
+\ALGORITHM{floating point error values, block size, bits per sample, QLP precision and maximum LPC order from encoding parameters}{the best stimated order value to use}
 \SetKwData{BORDER}{best order}
 \SetKwData{BSIZE}{best subframe bits}
 \SetKwData{ERROR}{error}
 \SetKwData{ERRORSCALE}{error scale}
 \SetKwFunction{MAX}{max}
-\tcc{block size and sample count are typically identical until the last frame
-\newline
-at which point sample count may be smaller than the requested block size}
-\uIf{block size $\leq 192$}{
-  QLP precision $\leftarrow 7$\;
-}
-\uElseIf{block size $\leq 384$}{
-  QLP precision $\leftarrow 8$\;
-}
-\uElseIf{block size $\leq 576$}{
-  QLP precision $\leftarrow 9$\;
-}
-\uElseIf{block size $\leq 1152$}{
-  QLP precision $\leftarrow 10$\;
-}
-\uElseIf{block size $\leq 2304$}{
-  QLP precision $\leftarrow 11$\;
-}
-\uElseIf{block size $\leq 4608$}{
-  QLP precision $\leftarrow 12$\;
-}
-\Else{
-  QLP precision $\leftarrow 13$\;
-}
-\BlankLine
-\ERRORSCALE $\leftarrow \frac{\log_e(2) ^ 2}{\text{sample count} \times 2}$\;
+\ERRORSCALE $\leftarrow \frac{\log_e(2) ^ 2}{\text{block size} \times 2}$\;
+\BORDER $\leftarrow 0$\;
 \BSIZE $\leftarrow$ maximum floating point\;
 \For{i = 0 \emph{\KwTo}maximum LPC order}{
   $order \leftarrow i + 1$\;
   \uIf{$\text{error}_i > 0.0$}{
     $header~bits \leftarrow order \times (\text{bits per sample} + \text{QLP precision})$\;
     $bits~per~residual \leftarrow \MAX\left(\frac{\log_e(error_i \times \text{\ERRORSCALE})}{\log_e(2) \times 2} , 0.0\right)$\;
-    $estimated~subframe~bits \leftarrow header~bits + bits~per~residual \times \text{sample count}$\;
+    $estimated~subframe~bits \leftarrow header~bits + bits~per~residual \times (\text{block size} - order)$\;
     \BlankLine
     \If{$estimated~subframe~bits < \text{\BSIZE}$}{
       \BORDER $\leftarrow order$\;
@@ -2163,33 +2153,11 @@ at which point sample count may be smaller than the requested block size}
 
 \subsubsection{Quantizing LP Coefficients}
 {\relsize{-1}
-\ALGORITHM{LP coefficients, a positive order value, the encoding parameters block size}{QLP coefficients, QLP precision, QLP shift needed}
+\ALGORITHM{LP coefficients, a positive order value, QLP precision from encoding parameters}{QLP coefficients as a list of integers, QLP shift needed as a non-negative integer}
 \SetKwFunction{MIN}{min}
 \SetKwFunction{MAX}{max}
 \SetKwFunction{ROUND}{round}
-\uIf{block size $\leq 192$}{
-  QLP precision $\leftarrow 7$\;
-}
-\uElseIf{block size $\leq 384$}{
-  QLP precision $\leftarrow 8$\;
-}
-\uElseIf{block size $\leq 576$}{
-  QLP precision $\leftarrow 9$\;
-}
-\uElseIf{block size $\leq 1152$}{
-  QLP precision $\leftarrow 10$\;
-}
-\uElseIf{block size $\leq 2304$}{
-  QLP precision $\leftarrow 11$\;
-}
-\uElseIf{block size $\leq 4608$}{
-  QLP precision $\leftarrow 12$\;
-}
-\Else{
-  QLP precision $\leftarrow 13$\;
-}
-\BlankLine
-$l \leftarrow $ maximum $|c|$ for $c$ in $\text{LP Coefficient}_{order~0}$ to $\text{LP Coefficient}_{order~order}$\;
+$l \leftarrow $ maximum $|c|$ for $c$ in $\text{LP Coefficient}_{order - 1~0}$ to $\text{LP Coefficient}_{order - 1~order}$\;
 QLP shift needed $\leftarrow \text{QLP precision} - \lfloor \log_2(l) \rfloor - 2$\;
 \uIf(\tcc*[f]{ensure shift fits into signed 5 bit field}){QLP shift needed $> 2 ^ 4 - 1$}{
   QLP shift needed $\leftarrow 2 ^ 4 - 1$\;
@@ -2204,28 +2172,27 @@ QLP max $\leftarrow 2 ^ \text{QLP precision - 1} - 1$\;
 QLP min $\leftarrow -(2 ^ \text{QLP precision - 1})$\;
 $error \leftarrow 0.0$\;
 \eIf{$\text{QLP shift needed} \geq 0$}{
-  \For{i = 0 \emph{\KwTo}order + 1}{
-    $error \leftarrow error + \text{LP Coefficients}_{order~i} \times 2 ^ \text{QLP shift needed}$\;
+  \For{i = 0 \emph{\KwTo}order}{
+    $error \leftarrow error + \text{LP Coefficients}_{order - 1~i} \times 2 ^ \text{QLP shift needed}$\;
     $\text{QLP coefficient}_i \leftarrow \MIN(\MAX(\ROUND(error), \text{QLP min}), \text{QLP max})$\;
     $error \leftarrow error - \text{QLP coefficient}_i$\;
   }
-  \Return (QLP coefficients, QLP precision, QLP shift needed)\;
+  \Return (QLP coefficients, QLP shift needed)\;
 }(\tcc*[f]{negative shifts are not allowed, so shrink coefficients}){
-  \For{i = 0 \emph{\KwTo}order + 1}{
-    $error \leftarrow error + \text{LP Coefficients}_{order~i} \div 2 ^ \text{QLP shift needed}$\;
+  \For{i = 0 \emph{\KwTo}order}{
+    $error \leftarrow error + \text{LP Coefficients}_{order - 1~i} \div 2 ^ \text{QLP shift needed}$\;
     $\text{QLP coefficient}_i \leftarrow \MIN(\MAX(\ROUND(error), \text{QLP min}), \text{QLP max})$\;
     $error \leftarrow error - \text{QLP coefficient}_i$\;
   }
-  \Return (QLP coefficients, QLP precision, 0)\;
+  \Return (QLP coefficients, 0)\;
 }
 \EALGORITHM
 }
 \clearpage
 
 For example, given the $\texttt{LP coefficients}_3$ \texttt{1.280, -0.443, 0.036},
-an order of \texttt{3} and a block size of \texttt{4096}:
+an order of \texttt{3} and a QLP precision \texttt{12}:
 \begin{align*}
-\text{QLP precision} &\leftarrow 12 \\
 l &\leftarrow 1.280 \\
 \text{QLP shift needed} &\leftarrow 12 - \lfloor \log_2(1.280) \rfloor - 2 = 10 \\
 \text{QLP max} &\leftarrow 2047 \\
@@ -2246,10 +2213,11 @@ error &\leftarrow 36.952 - 37 = -0.048 \\
 \end{align*}
 \par
 \noindent
-Resulting in the QLP coefficients \texttt{1311, -454, 37},
-a QLP precision of \texttt{12} and a QLP shift needed of \texttt{10}.
-These values are inserted directly into a desired QLP subframe header
-and are used to calculate its residuals.
+Resulting in the QLP coefficients \texttt{1311, -454, 37}
+and a QLP shift needed of \texttt{10}.
+These values, in addition to QLP precision,
+are inserted directly into a desired QLP subframe header
+and are also used to calculate its residuals.
 
 \clearpage
 
