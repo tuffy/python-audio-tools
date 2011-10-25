@@ -229,7 +229,7 @@ Resampler_process(resample_Resampler* self, PyObject *args)
         (unsigned int)processed_samples->frames * processed_samples->channels;
     processed_samples->samples =
         realloc(processed_samples->samples,
-                sizeof(fa_data_t) * processed_samples->samples_length);
+                sizeof(double) * processed_samples->samples_length);
 
     if ((unprocessed_samples = (pcm_FloatFrameList*)PyObject_CallMethod(
                     self->pcm_module, "__blank_float__", NULL)) == NULL)
@@ -242,7 +242,7 @@ Resampler_process(resample_Resampler* self, PyObject *args)
         unprocessed_samples->frames * unprocessed_samples->channels;
     unprocessed_samples->samples =
         realloc(unprocessed_samples->samples,
-                sizeof(fa_data_t) * unprocessed_samples->samples_length);
+                sizeof(double) * unprocessed_samples->samples_length);
 
 
     /*successfully processed samples*/

@@ -29,7 +29,7 @@
  *                        integer arrays                       *
  ***************************************************************/
 
-typedef struct array_i_s {
+struct array_i_s {
     int *data;
     unsigned size;
     unsigned total_size;
@@ -88,7 +88,7 @@ typedef struct array_i_s {
     void (*split)(struct array_i_s *array, unsigned count,
                   struct array_i_s *head, struct array_i_s *tail);
 
-    /*returns a new array with items copied from "start" up to "end"*/
+    /*copies items from "start" up to "end" to "slice"*/
     void (*slice)(struct array_i_s *array,
                   unsigned start, unsigned end, unsigned jump,
                   struct array_i_s *slice);
@@ -100,41 +100,45 @@ typedef struct array_i_s {
     void (*sort)(struct array_i_s *array);
 
     void (*print)(struct array_i_s *array, FILE* output);
-} array_i;
+};
+
+typedef struct array_i_s array_i;
 
 /*returns a new array_i with space for "count" items*/
-array_i* array_i_new(unsigned count);
+struct array_i_s* array_i_new(unsigned count);
 
-array_i* array_i_wrap(int* data, unsigned size, unsigned total_size);
+struct array_i_s* array_i_wrap(int* data, unsigned size, unsigned total_size);
 
-void array_i_del(array_i *array);
-void array_i_resize(array_i *array, unsigned minimum);
-void array_i_reset(array_i *array);
-void array_i_append(array_i *array, int value);
-void array_i_vappend(array_i *array, unsigned count, ...);
-void array_i_extend(array_i *array, array_i *to_add);
-int array_i_equals(array_i *array, array_i *compare);
-int array_i_min(array_i *array);
-int array_i_max(array_i *array);
-int array_i_sum(array_i *array);
-void array_i_copy(array_i *array, array_i *copy);
-void array_i_head(array_i *array, unsigned count, array_i *head);
-void array_i_tail(array_i *array, unsigned count, array_i *tail);
-void array_i_split(array_i *array, unsigned count,
-                   array_i *head, array_i *tail);
-void array_i_slice(array_i *array,
+void array_i_del(struct array_i_s *array);
+void array_i_resize(struct array_i_s *array, unsigned minimum);
+void array_i_reset(struct array_i_s *array);
+void array_i_append(struct array_i_s *array, int value);
+void array_i_vappend(struct array_i_s *array, unsigned count, ...);
+void array_i_extend(struct array_i_s *array, struct array_i_s *to_add);
+int array_i_equals(struct array_i_s *array, struct array_i_s *compare);
+int array_i_min(struct array_i_s *array);
+int array_i_max(struct array_i_s *array);
+int array_i_sum(struct array_i_s *array);
+void array_i_copy(struct array_i_s *array, struct array_i_s *copy);
+void array_i_head(struct array_i_s *array, unsigned count,
+                  struct array_i_s *head);
+void array_i_tail(struct array_i_s *array, unsigned count,
+                  struct array_i_s *tail);
+void array_i_split(struct array_i_s *array, unsigned count,
+                   struct array_i_s *head, struct array_i_s *tail);
+void array_i_slice(struct array_i_s *array,
                    unsigned start, unsigned end, unsigned jump,
-                   array_i *slice);
-void array_i_reverse(array_i *array);
-void array_i_sort(array_i *array);
-void array_i_print(array_i *array, FILE* output);
+                   struct array_i_s *slice);
+void array_i_reverse(struct array_i_s *array);
+void array_i_sort(struct array_i_s *array);
+void array_i_print(struct array_i_s *array, FILE* output);
 
 
 /***************************************************************
  *                     floating point arrays                   *
  ***************************************************************/
 
-typedef struct array_f_s {
+struct array_f_s {
     double *data;
     unsigned size;
     unsigned total_size;
@@ -193,7 +197,7 @@ typedef struct array_f_s {
     void (*split)(struct array_f_s *array, unsigned count,
                   struct array_f_s *head, struct array_f_s *tail);
 
-    /*returns a new array with items copied from "start" up to "end"*/
+    /*copies items from "start" to "end" to "slice"*/
     void (*slice)(struct array_f_s *array,
                   unsigned start, unsigned end, unsigned jump,
                   struct array_f_s *slice);
@@ -205,42 +209,47 @@ typedef struct array_f_s {
     void (*sort)(struct array_f_s *array);
 
     void (*print)(struct array_f_s *array, FILE* output);
-} array_f;
+};
+
+typedef struct array_f_s array_f;
 
 /*returns a new array_f with space for "count" items*/
-array_f* array_f_new(unsigned count);
+struct array_f_s* array_f_new(unsigned count);
 
-array_f* array_f_wrap(double* data, unsigned size, unsigned total_size);
+struct array_f_s* array_f_wrap(double* data, unsigned size,
+                               unsigned total_size);
 
-void array_f_del(array_f *array);
-void array_f_resize(array_f *array, unsigned minimum);
-void array_f_reset(array_f *array);
-void array_f_append(array_f *array, double value);
-void array_f_vappend(array_f *array, unsigned count, ...);
-void array_f_extend(array_f *array, array_f *to_add);
-int array_f_equals(array_f *array, array_f *compare);
-double array_f_min(array_f *array);
-double array_f_max(array_f *array);
-double array_f_sum(array_f *array);
-void array_f_copy(array_f *array, array_f *copy);
-void array_f_head(array_f *array, unsigned count, array_f *head);
-void array_f_tail(array_f *array, unsigned count, array_f *tail);
-void array_f_split(array_f *array, unsigned count,
-                   array_f *head, array_f *tail);
-void array_f_slice(array_f *array,
+void array_f_del(struct array_f_s *array);
+void array_f_resize(struct array_f_s *array, unsigned minimum);
+void array_f_reset(struct array_f_s *array);
+void array_f_append(struct array_f_s *array, double value);
+void array_f_vappend(struct array_f_s *array, unsigned count, ...);
+void array_f_extend(struct array_f_s *array, struct array_f_s *to_add);
+int array_f_equals(struct array_f_s *array, struct array_f_s *compare);
+double array_f_min(struct array_f_s *array);
+double array_f_max(struct array_f_s *array);
+double array_f_sum(struct array_f_s *array);
+void array_f_copy(struct array_f_s *array, struct array_f_s *copy);
+void array_f_head(struct array_f_s *array, unsigned count,
+                  struct array_f_s *head);
+void array_f_tail(struct array_f_s *array, unsigned count,
+                  struct array_f_s *tail);
+void array_f_split(struct array_f_s *array, unsigned count,
+                   struct array_f_s *head, struct array_f_s *tail);
+void array_f_slice(struct array_f_s *array,
                    unsigned start, unsigned end, unsigned jump,
-                   array_f *slice);
-void array_f_reverse(array_f *array);
-void array_f_sort(array_f *array);
-void array_f_print(array_f *array, FILE* output);
+                   struct array_f_s *slice);
+void array_f_reverse(struct array_f_s *array);
+void array_f_sort(struct array_f_s *array);
+void array_f_print(struct array_f_s *array, FILE* output);
 
 
 /***************************************************************
  *                    arrays of integer arrays                 *
  ***************************************************************/
 
-typedef struct array_ia_s {
-    array_i **data;
+struct array_ia_s {
+    struct array_i_s **data;
     unsigned size;
     unsigned total_size;
 
@@ -255,14 +264,9 @@ typedef struct array_ia_s {
       so that it can be re-populated with new data*/
     void (*reset)(struct array_ia_s *array);
 
-    /*appends a single value to the array*/
-    void (*append)(struct array_ia_s *array, array_i *value);
-
-    /*appends several values to the array*/
-    void (*vappend)(struct array_ia_s *array, unsigned count, ...);
-
-    /*appends all the items in "to_add" to this array*/
-    void (*extend)(struct array_ia_s *array, struct array_ia_s *to_add);
+    /*returns a freshly appended array_i which values can be added to
+      this array should *not* be deleted once it is done being used*/
+    struct array_i_s* (*append)(struct array_ia_s *array);
 
     /*returns 1 if all items in array equal those in compare,
       returns 0 if not*/
@@ -272,27 +276,27 @@ typedef struct array_ia_s {
     void (*reverse)(struct array_ia_s *array);
 
     void (*print)(struct array_ia_s *array, FILE* output);
-} array_ia;
+};
 
-array_ia* array_ia_new(unsigned count);
+typedef struct array_ia_s array_ia;
 
-void array_ia_del(array_ia *array);
-void array_ia_resize(array_ia *array, unsigned minimum);
-void array_ia_reset(array_ia *array);
-void array_ia_append(array_ia *array, array_i *value);
-void array_ia_vappend(array_ia *array, unsigned count, ...);
-void array_ia_extend(array_ia *array, array_ia *to_add);
-int array_ia_equals(array_ia *array, array_ia *compare);
-void array_ia_reverse(array_ia *array);
-void array_ia_print(array_ia *array, FILE* output);
+struct array_ia_s* array_ia_new(unsigned count);
+
+void array_ia_del(struct array_ia_s *array);
+void array_ia_resize(struct array_ia_s *array, unsigned minimum);
+void array_ia_reset(struct array_ia_s *array);
+struct array_i_s* array_ia_append(struct array_ia_s *array);
+int array_ia_equals(struct array_ia_s *array, struct array_ia_s *compare);
+void array_ia_reverse(struct array_ia_s *array);
+void array_ia_print(struct array_ia_s *array, FILE* output);
 
 
 /***************************************************************
  *                     arrays of float arrays                  *
  ***************************************************************/
 
-typedef struct array_fa_s {
-    array_f **data;
+struct array_fa_s {
+    struct array_f_s **data;
     unsigned size;
     unsigned total_size;
 
@@ -307,14 +311,9 @@ typedef struct array_fa_s {
       so that it can be re-populated with new data*/
     void (*reset)(struct array_fa_s *array);
 
-    /*appends a single value to the array*/
-    void (*append)(struct array_fa_s *array, array_f *value);
-
-    /*appends several values to the array*/
-    void (*vappend)(struct array_fa_s *array, unsigned count, ...);
-
-    /*appends all the items in "to_add" to this array*/
-    void (*extend)(struct array_fa_s *array, struct array_fa_s *to_add);
+    /*returns a freshly appended array_f which values can be added to
+      this array should *not* be deleted once it is done being used*/
+    struct array_f_s* (*append)(struct array_fa_s *array);
 
     /*returns 1 if all items in array equal those in compare,
       returns 0 if not*/
@@ -324,18 +323,18 @@ typedef struct array_fa_s {
     void (*reverse)(struct array_fa_s *array);
 
     void (*print)(struct array_fa_s *array, FILE* output);
-} array_fa;
+};
 
-array_fa* array_fa_new(unsigned count);
+typedef struct array_fa_s array_fa;
 
-void array_fa_del(array_fa *array);
-void array_fa_resize(array_fa *array, unsigned minimum);
-void array_fa_reset(array_fa *array);
-void array_fa_append(array_fa *array, array_f *value);
-void array_fa_vappend(array_fa *array, unsigned count, ...);
-void array_fa_extend(array_fa *array, array_fa *to_add);
-int array_fa_equals(array_fa *array, array_fa *compare);
-void array_fa_reverse(array_fa *array);
-void array_fa_print(array_fa *array, FILE* output);
+struct array_fa_s* array_fa_new(unsigned count);
+
+void array_fa_del(struct array_fa_s *array);
+void array_fa_resize(struct array_fa_s *array, unsigned minimum);
+void array_fa_reset(struct array_fa_s *array);
+struct array_f_s* array_fa_append(struct array_fa_s *array);
+int array_fa_equals(struct array_fa_s *array, struct array_fa_s *compare);
+void array_fa_reverse(struct array_fa_s *array);
+void array_fa_print(struct array_fa_s *array, FILE* output);
 
 #endif

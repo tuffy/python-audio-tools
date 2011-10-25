@@ -170,7 +170,7 @@ CDDA_read_sector(cdio_CDDAObject* self)
     sector->bits_per_sample = 16;
     sector->samples_length = (sector->frames * sector->channels);
     sector->samples = realloc(sector->samples,
-                              sector->samples_length * sizeof(ia_data_t));
+                              sector->samples_length * sizeof(int));
 
     raw_sector = cdio_paranoia_read_limited(self->paranoia,
                                             &read_sector_callback,
@@ -216,7 +216,7 @@ CDDA_read_sectors(cdio_CDDAObject* self, PyObject *args)
     sectors->bits_per_sample = 16;
     sectors->samples_length = (sectors->frames * sectors->channels);
     sectors->samples = realloc(sectors->samples,
-                               sectors->samples_length * sizeof(ia_data_t));
+                               sectors->samples_length * sizeof(int));
 
     for (sectors_read = 0; sectors_read < sectors_to_read; sectors_read++) {
         raw_sector = cdio_paranoia_read_limited(self->paranoia,
@@ -582,9 +582,9 @@ cdio_accuraterip_crc(PyObject *dummy, PyObject *args) {
     PyObject *framelist_class;
     PyObject *framelist_obj;
     pcm_FrameList *framelist;
-    ia_size_t i;
-    ia_data_t left_v;
-    ia_data_t right_v;
+    unsigned i;
+    int left_v;
+    int right_v;
     uint32_t left;
     uint32_t right;
 

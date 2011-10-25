@@ -1,7 +1,7 @@
 #include <Python.h>
 #include <stdint.h>
 #include "../bitstream.h"
-#include "../array.h"
+#include "../array2.h"
 #include "../common/md5.h"
 #include "../common/flac_crc.h"
 
@@ -89,9 +89,13 @@ typedef struct {
     int stream_finalized;
 
     /*temporary buffers we don't want to reallocate each time*/
-    struct ia_array subframe_data;
-    struct i_array residuals;
-    struct i_array qlp_coeffs;
+    array_ia* subframe_data;
+    array_i* residuals;
+    array_i* qlp_coeffs;
+    array_i* framelist_data;
+
+    /*a framelist generator*/
+    PyObject* framelist_gen;
 } decoders_FlacDecoder;
 
 /*the FlacDecoder.sample_rate attribute getter*/
@@ -113,10 +117,6 @@ FlacDecoder_channel_mask(decoders_FlacDecoder *self, void *closure);
 /*the FlacDecoder.read() method*/
 static PyObject*
 FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args);
-
-/*the FlacDecoder.analyze_frame() method*/
-static PyObject*
-FlacDecoder_analyze_frame(decoders_FlacDecoder* self, PyObject *args);
 
 /*the FlacDecoder.close() method*/
 static PyObject*
@@ -143,8 +143,6 @@ PyMethodDef FlacDecoder_methods[] = {
     {"read", (PyCFunction)FlacDecoder_read,
      METH_VARARGS,
      "Reads the given number of bytes from the FLAC file, if possible"},
-    {"analyze_frame", (PyCFunction)FlacDecoder_analyze_frame,
-     METH_NOARGS, "Returns the analysis of the next frame"},
     {"close", (PyCFunction)FlacDecoder_close,
      METH_NOARGS, "Closes the FLAC decoder stream"},
     {NULL}
@@ -190,94 +188,64 @@ FlacDecoder_subframe_bits_per_sample(struct flac_frame_header *frame_header,
   "qlp_coeffs" and "residuals" are temporary buffers
   to be recycled as needed*/
 flac_status
-FlacDecoder_read_subframe(BitstreamReader *bitstream,
-                          struct i_array *qlp_coeffs,
-                          struct i_array *residuals,
+FlacDecoder_read_subframe(BitstreamReader* bitstream,
+                          array_i* qlp_coeffs,
+                          array_i* residuals,
                           unsigned int block_size,
                           unsigned int bits_per_sample,
-                          struct i_array *samples);
+                          array_i* samples);
 
 /*the following four functions are called by FlacDecoder_read_subframe
   depending on the subframe type in the subframe header
   all take the same arguments as FlacDecoder_read_subframe
   and, for fixed and lpc, an "order" argument - also from the subframe header*/
 flac_status
-FlacDecoder_read_constant_subframe(BitstreamReader *bitstream,
+FlacDecoder_read_constant_subframe(BitstreamReader* bitstream,
                                    uint32_t block_size,
                                    uint8_t bits_per_sample,
-                                   struct i_array *samples);
+                                   array_i* samples);
 
 flac_status
-FlacDecoder_read_verbatim_subframe(BitstreamReader *bitstream,
+FlacDecoder_read_verbatim_subframe(BitstreamReader* bitstream,
                                    uint32_t block_size,
                                    uint8_t bits_per_sample,
-                                   struct i_array *samples);
+                                   array_i* samples);
 
 flac_status
-FlacDecoder_read_fixed_subframe(BitstreamReader *bitstream,
-                                struct i_array *residuals,
+FlacDecoder_read_fixed_subframe(BitstreamReader* bitstream,
+                                array_i* residuals,
                                 uint8_t order,
                                 uint32_t block_size,
                                 uint8_t bits_per_sample,
-                                struct i_array *samples);
+                                array_i* samples);
 
 flac_status
-FlacDecoder_read_lpc_subframe(BitstreamReader *bitstream,
-                              struct i_array *qlp_coeffs,
-                              struct i_array *residuals,
+FlacDecoder_read_lpc_subframe(BitstreamReader* bitstream,
+                              array_i* qlp_coeffs,
+                              array_i* residuals,
                               uint8_t order,
                               uint32_t block_size,
                               uint8_t bits_per_sample,
-                              struct i_array *samples);
+                              array_i* samples);
 
 /*reads a chunk of residuals with the given "order" and "block_size"
   (determined from read_fixed_subframe or read_lpc_subframe)
   and places the result in "residuals"*/
 flac_status
-FlacDecoder_read_residual(BitstreamReader *bitstream,
+FlacDecoder_read_residual(BitstreamReader* bitstream,
                           uint8_t order,
                           uint32_t block_size,
-                          struct i_array *residuals);
+                          array_i* residuals);
 
 void
-FlacDecoder_decorrelate_channels(struct flac_frame_header *frame_header,
-                                 struct ia_array *subframe_data);
+FlacDecoder_decorrelate_channels(uint8_t channel_assignment,
+                                 array_ia* subframes,
+                                 array_i* framelist);
 
 const char*
 FlacDecoder_strerror(flac_status error);
 
 #ifndef OGG_FLAC
-PyObject*
-FlacDecoder_analyze_subframe(decoders_FlacDecoder *self,
-                             uint32_t block_size,
-                             uint8_t bits_per_sample);
-
-PyObject*
-FlacDecoder_analyze_constant_subframe(decoders_FlacDecoder *self,
-                                      uint32_t block_size,
-                                      uint8_t bits_per_sample);
-
-PyObject*
-FlacDecoder_analyze_verbatim_subframe(decoders_FlacDecoder *self,
-                                      uint32_t block_size,
-                                      uint8_t bits_per_sample);
-
-PyObject*
-FlacDecoder_analyze_fixed_subframe(decoders_FlacDecoder *self,
-                                   uint8_t order,
-                                   uint32_t block_size,
-                                   uint8_t bits_per_sample);
-
-PyObject*
-FlacDecoder_analyze_lpc_subframe(decoders_FlacDecoder *self,
-                                 uint8_t order,
-                                 uint32_t block_size,
-                                 uint8_t bits_per_sample);
-
-PyObject*
-FlacDecoder_analyze_residual(decoders_FlacDecoder *self,
-                             uint8_t order,
-                             uint32_t block_size);
 
 flac_status
 FlacDecoder_update_md5sum(decoders_FlacDecoder *self,

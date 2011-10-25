@@ -30,6 +30,13 @@
  *    http://www.replaygain.org/
  */
 
+#ifndef MIN
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
+#endif
+#ifndef MAX
+#define MAX(x, y) ((x) > (y) ? (x) : (y))
+#endif
+
 PyMethodDef module_methods[] = {
     {NULL}
 };
@@ -186,7 +193,7 @@ ReplayGain_update(replaygain_ReplayGain *self, PyObject *args)
     long channel_count;
     double *channel_l_buffer = NULL;
     double *channel_r_buffer = NULL;
-    fa_size_t sample;
+    unsigned sample;
     double peak;
     int32_t peak_shift;
 
@@ -900,9 +907,9 @@ ReplayGainReader_read(replaygain_ReplayGainReader* self, PyObject *args) {
     uint8_t* dither;
     Py_ssize_t dither_length;
 
-    ia_data_t max_value;
-    ia_data_t min_value;
-    ia_size_t i;
+    int max_value;
+    int min_value;
+    unsigned i;
     double multiplier = self->multiplier;
 
     if (!PyArg_ParseTuple(args, "O", &bytes))
@@ -967,7 +974,7 @@ ReplayGainReader_read(replaygain_ReplayGainReader* self, PyObject *args) {
         output_framelist->bits_per_sample = framelist->bits_per_sample;
         output_framelist->samples_length = framelist->samples_length;
         output_framelist->samples = realloc(output_framelist->samples,
-                                            sizeof(ia_data_t) *
+                                            sizeof(int) *
                                             framelist->samples_length);
 
         /*apply our multiplier to framelist's integer samples
@@ -977,7 +984,7 @@ ReplayGainReader_read(replaygain_ReplayGainReader* self, PyObject *args) {
 
         for (i = 0; i < framelist->samples_length; i++) {
             output_framelist->samples[i] =
-                MIN(MAX((ia_data_t)lround(framelist->samples[i] *
+                MIN(MAX((int)lround(framelist->samples[i] *
                                           multiplier) ^
                         (dither[i / 8] & (1 << (i % 8))) >> (i % 8),
                         min_value),

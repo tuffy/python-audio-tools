@@ -33,7 +33,6 @@ typedef int Py_ssize_t;
 #endif
 
 #include <stdint.h>
-#include "array.h"
 
 /******************
   FrameList Object
@@ -49,11 +48,11 @@ typedef struct {
                              aka the total number of columns in "samples*/
     unsigned int bits_per_sample; /*the maximum size of each sample, in bits*/
 
-    ia_data_t* samples;    /*the actual sample data itself,
-                             stored raw as 32-bit signed integers*/
-    ia_size_t samples_length; /*the total number of samples
-                                which must be evenly distributable
-                                between channels and bits-per-sample*/
+    int* samples;            /*the actual sample data itself,
+                               stored raw as 32-bit signed integers*/
+    unsigned samples_length; /*the total number of samples
+                               which must be evenly distributable
+                               between channels and bits-per-sample*/
 } pcm_FrameList;
 
 void
@@ -139,9 +138,9 @@ typedef struct {
     unsigned int channels; /*the total number of channels in this FrameList
                              aka the total number of columns in "samples*/
 
-    fa_data_t *samples;  /*the actual sample data itself,
-                           stored raw as doubles*/
-    fa_size_t samples_length; /*the total number of samples
+    double *samples;          /*the actual sample data itself,
+                                stored raw as doubles*/
+    unsigned samples_length;  /*the total number of samples
                                 which must be evenly distributable
                                 between channels*/
 } pcm_FloatFrameList;
@@ -199,13 +198,13 @@ FloatFrameList_from_channels(PyObject *dummy, PyObject *args);
 
 #endif
 
-typedef ia_data_t (*FrameList_char_to_int_converter)(unsigned char *s);
+typedef int (*FrameList_char_to_int_converter)(unsigned char *s);
 
 void
-FrameList_char_to_samples(ia_data_t *samples,
+FrameList_char_to_samples(int *samples,
                           unsigned char *data,
                           FrameList_char_to_int_converter converter,
-                          ia_size_t samples_length,
+                          unsigned samples_length,
                           int bits_per_sample);
 
 FrameList_char_to_int_converter
@@ -213,44 +212,44 @@ FrameList_get_char_to_int_converter(int bits_per_sample,
                                     int is_big_endian,
                                     int is_signed);
 
-ia_data_t
+int
 FrameList_S8_char_to_int(unsigned char *s);
 
-ia_data_t
+int
 FrameList_U8_char_to_int(unsigned char *s);
 
-ia_data_t
+int
 FrameList_SL16_char_to_int(unsigned char *s);
 
-ia_data_t
+int
 FrameList_SB16_char_to_int(unsigned char *s);
 
-ia_data_t
+int
 FrameList_UL16_char_to_int(unsigned char *s);
 
-ia_data_t
+int
 FrameList_UB16_char_to_int(unsigned char *s);
 
-ia_data_t
+int
 FrameList_SL24_char_to_int(unsigned char *s);
 
-ia_data_t
+int
 FrameList_SB24_char_to_int(unsigned char *s);
 
-ia_data_t
+int
 FrameList_UL24_char_to_int(unsigned char *s);
 
-ia_data_t
+int
 FrameList_UB24_char_to_int(unsigned char *s);
 
 
-typedef void (*FrameList_int_to_char_converter)(ia_data_t i, unsigned char *s);
+typedef void (*FrameList_int_to_char_converter)(int i, unsigned char *s);
 
 void
 FrameList_samples_to_char(unsigned char *data,
-                          ia_data_t *samples,
+                          int *samples,
                           FrameList_int_to_char_converter converter,
-                          ia_size_t samples_length,
+                          unsigned samples_length,
                           int bits_per_sample);
 
 FrameList_int_to_char_converter
@@ -259,33 +258,33 @@ FrameList_get_int_to_char_converter(int bits_per_sample,
                                     int is_signed);
 
 void
-FrameList_int_to_S8_char(ia_data_t i, unsigned char *s);
+FrameList_int_to_S8_char(int i, unsigned char *s);
 
 void
-FrameList_int_to_U8_char(ia_data_t i, unsigned char *s);
+FrameList_int_to_U8_char(int i, unsigned char *s);
 
 void
-FrameList_int_to_UB16_char(ia_data_t i, unsigned char *s);
+FrameList_int_to_UB16_char(int i, unsigned char *s);
 
 void
-FrameList_int_to_SB16_char(ia_data_t i, unsigned char *s);
+FrameList_int_to_SB16_char(int i, unsigned char *s);
 
 void
-FrameList_int_to_UL16_char(ia_data_t i, unsigned char *s);
+FrameList_int_to_UL16_char(int i, unsigned char *s);
 
 void
-FrameList_int_to_SL16_char(ia_data_t i, unsigned char *s);
+FrameList_int_to_SL16_char(int i, unsigned char *s);
 
 void
-FrameList_int_to_UB24_char(ia_data_t i, unsigned char *s);
+FrameList_int_to_UB24_char(int i, unsigned char *s);
 
 void
-FrameList_int_to_SB24_char(ia_data_t i, unsigned char *s);
+FrameList_int_to_SB24_char(int i, unsigned char *s);
 
 void
-FrameList_int_to_UL24_char(ia_data_t i, unsigned char *s);
+FrameList_int_to_UL24_char(int i, unsigned char *s);
 
 void
-FrameList_int_to_SL24_char(ia_data_t i, unsigned char *s);
+FrameList_int_to_SL24_char(int i, unsigned char *s);
 
 #endif

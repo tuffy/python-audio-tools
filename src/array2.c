@@ -31,16 +31,16 @@
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 #endif
 
-array_i* array_i_new(unsigned count)
+struct array_i_s* array_i_new(unsigned count)
 {
     int* data = malloc(sizeof(int) * count);
 
     return array_i_wrap(data, 0, count);
 }
 
-array_i* array_i_wrap(int* data, unsigned size, unsigned total_size)
+struct array_i_s* array_i_wrap(int* data, unsigned size, unsigned total_size)
 {
-    array_i* a = malloc(sizeof(array_i));
+    struct array_i_s* a = malloc(sizeof(struct array_i_s));
     a->data = data;
     a->size = size;
     a->total_size = total_size;
@@ -475,13 +475,13 @@ void array_f_print(array_f *array, FILE* output)
 }
 
 
-array_ia*
+struct array_ia_s*
 array_ia_new(unsigned count)
 {
-    array_ia* a = malloc(sizeof(array_ia));
+    struct array_ia_s* a = malloc(sizeof(struct array_ia_s));
     unsigned i;
 
-    a->data = malloc(sizeof(array_i*) * count);
+    a->data = malloc(sizeof(struct array_i_s*) * count);
     a->size = 0;
     a->total_size = count;
 
@@ -493,8 +493,6 @@ array_ia_new(unsigned count)
     a->resize = array_ia_resize;
     a->reset = array_ia_reset;
     a->append = array_ia_append;
-    a->vappend = array_ia_vappend;
-    a->extend = array_ia_extend;
     a->equals = array_ia_equals;
     a->print = array_ia_print;
 
@@ -530,55 +528,29 @@ ARRAY_A_DEL(array_fa_del, array_fa)
 ARRAY_A_RESIZE(array_ia_resize, array_ia, array_i_new)
 ARRAY_A_RESIZE(array_fa_resize, array_fa, array_f_new)
 
-void array_ia_reset(array_ia *array)
-{
-    array->size = 0;
-}
+#define ARRAY_A_RESET(FUNC_NAME, ARRAY_TYPE) \
+    void                                     \
+    FUNC_NAME(ARRAY_TYPE *array)             \
+    {                                        \
+        unsigned i;                                 \
+        for (i = 0; i < array->size; i++)           \
+            array->data[i]->reset(array->data[i]);  \
+        array->size = 0;                            \
+    }
+ARRAY_A_RESET(array_ia_reset, array_ia)
+ARRAY_A_RESET(array_fa_reset, array_fa)
 
 #define ARRAY_A_APPEND(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE) \
-    void                                                       \
-    FUNC_NAME(ARRAY_TYPE *array, ARRAY_DATA_TYPE *value)       \
+    ARRAY_DATA_TYPE*                                           \
+    FUNC_NAME(ARRAY_TYPE *array)                               \
     {                                                          \
         if (array->size == array->total_size)                  \
             array->resize(array, array->total_size * 2);       \
                                                                \
-        value->copy(value, array->data[array->size++]);        \
+        return array->data[array->size++];                     \
     }
 ARRAY_A_APPEND(array_ia_append, array_ia, array_i)
 ARRAY_A_APPEND(array_fa_append, array_fa, array_f)
-
-#define ARRAY_A_VAPPEND(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE) \
-    void                                                        \
-    FUNC_NAME(ARRAY_TYPE *array, unsigned count, ...)           \
-    {                                                           \
-        ARRAY_DATA_TYPE *a;                                     \
-        va_list ap;                                             \
-                                                                \
-        array->resize(array, array->size + count);              \
-        va_start(ap, count);                                    \
-        for (; count > 0; count--) {                            \
-            a = va_arg(ap, ARRAY_DATA_TYPE*);                   \
-            a->copy(a, array->data[array->size++]);             \
-        }                                                       \
-        va_end(ap);                                             \
-    }
-ARRAY_A_VAPPEND(array_ia_vappend, array_ia, array_i)
-ARRAY_A_VAPPEND(array_fa_vappend, array_fa, array_f)
-
-#define ARRAY_A_EXTEND(FUNC_NAME, ARRAY_TYPE)      \
-    void                                                \
-    FUNC_NAME(ARRAY_TYPE *array, ARRAY_TYPE *to_add)    \
-    {                                                   \
-        unsigned i;                                     \
-                                                        \
-        array->resize(array, array->size + to_add->size);   \
-        for (i = 0; i < to_add->size; i++) {                            \
-            to_add->data[i]->copy(to_add->data[i],                      \
-                                  array->data[array->size++]);          \
-        }                                                               \
-    }
-ARRAY_A_EXTEND(array_ia_extend, array_ia)
-ARRAY_A_EXTEND(array_fa_extend, array_fa)
 
 #define ARRAY_A_EQUALS(FUNC_NAME, ARRAY_TYPE) \
     int                                               \
@@ -639,15 +611,8 @@ array_fa_new(unsigned count)
     a->resize = array_fa_resize;
     a->reset = array_fa_reset;
     a->append = array_fa_append;
-    a->vappend = array_fa_vappend;
-    a->extend = array_fa_extend;
     a->equals = array_fa_equals;
     a->print = array_fa_print;
 
     return a;
-}
-
-void array_fa_reset(array_fa *array)
-{
-    array->size = 0;
 }

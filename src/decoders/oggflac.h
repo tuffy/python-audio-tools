@@ -1,7 +1,7 @@
 #include <Python.h>
 #include <stdint.h>
 #include "../bitstream.h"
-#include "../array.h"
+#include "../array2.h"
 #include "ogg.h"
 #define OGG_FLAC
 #include "flac.h"
@@ -38,9 +38,14 @@ typedef struct {
     uint32_t crc16;
     audiotools__MD5Context md5;
 
-    struct ia_array subframe_data;
-    struct i_array residuals;
-    struct i_array qlp_coeffs;
+    /*temporary buffers we don't want to reallocate each time*/
+    array_ia* subframe_data;
+    array_i* residuals;
+    array_i* qlp_coeffs;
+    array_i* framelist_data;
+
+    /*a framelist generator*/
+    PyObject* framelist_gen;
 } decoders_OggFlacDecoder;
 
 static PyObject*
@@ -57,9 +62,6 @@ OggFlacDecoder_channel_mask(decoders_OggFlacDecoder *self, void *closure);
 
 static PyObject*
 OggFlacDecoder_read(decoders_OggFlacDecoder *self, PyObject *args);
-
-static PyObject*
-OggFlacDecoder_analyze_frame(decoders_OggFlacDecoder *self, PyObject *args);
 
 static PyObject*
 OggFlacDecoder_close(decoders_OggFlacDecoder *self, PyObject *args);
@@ -84,7 +86,6 @@ PyGetSetDef OggFlacDecoder_getseters[] = {
 
 PyMethodDef OggFlacDecoder_methods[] = {
     {"read", (PyCFunction)OggFlacDecoder_read, METH_VARARGS, ""},
-    {"analyze_frame", (PyCFunction)OggFlacDecoder_analyze_frame, METH_NOARGS, ""},
     {"close", (PyCFunction)OggFlacDecoder_close, METH_NOARGS, ""},
     {NULL}
   };
