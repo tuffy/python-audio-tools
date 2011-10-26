@@ -6,7 +6,7 @@
 
 #include <stdint.h>
 #include "../bitstream.h"
-#include "../array.h"
+#include "../array2.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -28,20 +28,21 @@
 *******************************************************/
 
 struct flac_encoding_options {
-    int block_size;
-    int min_residual_partition_order;
-    int max_residual_partition_order;
-    int max_lpc_order;
-    int qlp_coeff_precision;
-    int exhaustive_model_search;
-    int mid_side;
-    int adaptive_mid_side;
-    int max_rice_parameter;
+    unsigned block_size;                    /*typically 1152 or 4096*/
+    unsigned min_residual_partition_order;  /*typically 0*/
+    unsigned max_residual_partition_order;  /*typically 3-6*/
+    unsigned max_lpc_order;                 /*typically 0,6,8,12*/
+    int exhaustive_model_search;            /*a boolean*/
+    int mid_side;                           /*a boolean*/
+    int adaptive_mid_side;                  /*a boolean*/
 
-    int no_verbatim_subframes;
-    int no_constant_subframes;
-    int no_fixed_subframes;
-    int no_lpc_subframes;
+    int no_verbatim_subframes;              /*a boolean for debugging*/
+    int no_constant_subframes;              /*a boolean for debugging*/
+    int no_fixed_subframes;                 /*a boolean for debugging*/
+    int no_lpc_subframes;                   /*a boolean for debugging*/
+
+    unsigned qlp_coeff_precision;           /*derived from block size*/
+    unsigned max_rice_parameter;            /*derived from bits-per-sample*/
 };
 
 struct flac_STREAMINFO {
@@ -54,11 +55,16 @@ struct flac_STREAMINFO {
     unsigned int bits_per_sample;     /*  5 bits*/
     uint64_t total_samples;           /* 36 bits*/
     unsigned char md5sum[16];         /*128 bits*/
+};
 
-    unsigned int crc8;
-    unsigned int crc16;
-    unsigned int total_frames;
+/*this is a container for encoding options, STREAMINFO
+  and reusable data buffers*/
+struct flac_context {
     struct flac_encoding_options options;
+    struct flac_STREAMINFO streaminfo;
+    unsigned int total_flac_frames;
+
+    BitstreamWriter* frame;
 };
 
 struct flac_frame_header {
@@ -86,179 +92,16 @@ typedef enum {OK, ERROR} status;
 
 /*writes a STREAMINFO metadata block to the bitstream*/
 void
-FlacEncoder_write_streaminfo(BitstreamWriter *bs,
-                             struct flac_STREAMINFO streaminfo);
+flacenc_write_streaminfo(BitstreamWriter* bs,
+                         const struct flac_STREAMINFO* streaminfo);
 
 /*takes a list of sample lists (one per channel)
   and the FLAC's streaminfo
   writes a full FLAC frame to the bitstream*/
 void
-FlacEncoder_write_frame(BitstreamWriter *bs,
-                        struct flac_STREAMINFO *streaminfo,
-                        struct ia_array *samples);
-
-/*takes a list of sample lists (one per channel)
-  and the FLAC's streaminfo
-  writes a FLAC frame header to the bitstream*/
-void
-FlacEncoder_write_frame_header(BitstreamWriter *bs,
-                               struct flac_STREAMINFO *streaminfo,
-                               struct ia_array *samples,
-                               int channel_assignment);
-
-/*given a bits_per_sample and list of sample values,
-  and the user-defined encoding options
-  writes the best subframe to the bitbuffer*/
-void
-FlacEncoder_write_subframe(BitstreamWriter *bs,
-                           struct flac_encoding_options *options,
-                           int bits_per_sample,
-                           struct i_array *samples);
-
-/*writes a CONSTANT subframe with the value "sample"
-  to the bitbuffer*/
-void
-FlacEncoder_write_constant_subframe(BitstreamWriter *bs,
-                                    int bits_per_sample,
-                                    int wasted_bits_per_sample,
-                                    int32_t sample);
-
-/*writes a VERBATIM subframe with the values "samples"
-  to the bitbuffer*/
-void
-FlacEncoder_write_verbatim_subframe(BitstreamWriter *bs,
-                                    int bits_per_sample,
-                                    int wasted_bits_per_sample,
-                                    struct i_array *samples);
-
-/*given bits_per_sample, samples, predictor order and encoding options,
-  calculates a set of warm_up_samples, residuals and rice_parameters*/
-void
-FlacEncoder_evaluate_fixed_subframe(struct i_array *warm_up_samples,
-                                    struct i_array *residuals,
-                                    struct i_array *rice_parameters,
-
-                                    struct flac_encoding_options *options,
-                                    int bits_per_sample,
-                                    struct i_array *samples,
-                                    int predictor_order);
-
-/*given warm_up_samples, rice_parameters, residuals
-  along with bits_per_sample and the FIXED predictor order,
-  writes a FIXED subframe to the given BitstreamWriter*/
-void
-FlacEncoder_write_fixed_subframe(BitstreamWriter *bs,
-                                 struct i_array *warm_up_samples,
-                                 struct i_array *rice_parameters,
-                                 struct i_array *residuals,
-                                 int bits_per_sample,
-                                 int wasted_bits_per_sample,
-                                 int predictor_order);
-
-/*given bits_per_sample, samples, LPC coefficients (whose length is LPC order)
-  a shift_needed value and encoding options,
-  calculates a set of warm_up_samples, residuals and rice_parameters*/
-void
-FlacEncoder_evaluate_lpc_subframe(struct i_array *warm_up_samples,
-                                  struct i_array *residual,
-                                  struct i_array *rice_parameters,
-
-                                  struct flac_encoding_options *options,
-                                  int bits_per_sample,
-                                  struct i_array *samples,
-                                  struct i_array *coeffs,
-                                  int shift_needed);
-
-/*given warm_up_samples, rice_parameters, residuals,
-  along with bits_per_sample, LPC coefficients (whose length is LPC order)
-  and a shift_needed value, writes an LPC subframe to the given BitstreamWriter*/
-void
-FlacEncoder_write_lpc_subframe(BitstreamWriter *bs,
-                               struct i_array *warm_up_samples,
-                               struct i_array *rice_parameters,
-                               struct i_array *residuals,
-                               int bits_per_sample,
-                               int wasted_bits_per_sample,
-                               struct i_array *coeffs,
-                               int shift_needed);
-
-/*given a rice_parameter, set of residuals and
-  the sum of their absolute values,
-  returns the estimated size of their residual partition*/
-int
-FlacEncoder_estimate_residual_partition_size(
-                                int rice_parameter,
-                                struct i_array *residuals,
-                                uint64_t abs_residual_partition_sum);
-
-/*given a predictor order (from the FIXED or LPC subframe)
-  encoding options and a set of residuals,
-  calculates the best set of rice_parameters for those residuals*/
-void
-FlacEncoder_evaluate_best_residual(struct i_array *rice_parameters,
-
-                                   struct flac_encoding_options *options,
-                                   int predictor_order,
-                                   struct i_array *residuals);
-
-/*given a "predictor_order" int
-  given a coding method (0 or 1)
-  a list of rice_parameters ints
-  and a list of residuals ints
-  encodes the residuals into partitions and writes them to the BitstreamWriter
-  (a Rice partition also requires a "partition_order" which can
-  be derived from the length of "rice_parameters")
-*/
-void
-FlacEncoder_write_residual(BitstreamWriter *bs,
-                           int predictor_order,
-                           struct i_array *rice_parameters,
-                           struct i_array *residuals);
-
-/*given a coding method (0 or 1)
-  a rice_parameter int
-  and a list of residuals ints
-  encodes the residual partition and writes them to the BitstreamWriter*/
-void
-FlacEncoder_write_residual_partition(BitstreamWriter *bs,
-                                     int coding_method,
-                                     int rice_parameter,
-                                     struct i_array *residuals);
-
-/*given a list of samples,
-  return the best predictor_order for FIXED subframes*/
-int
-FlacEncoder_compute_best_fixed_predictor_order(struct i_array *samples);
-
-/*given a set of residuals and the sum of their absolute values,
-  returns the best Rice parameter for those residuals*/
-int
-FlacEncoder_compute_best_rice_parameter(struct i_array *residuals,
-                                        uint64_t abs_residual_partition_sum);
-
-/*given a block_size, returns a QLP coefficient precision value*/
-int
-FlacEncoder_qlp_coeff_precision(int block_size);
-
-/*given a set of sample i_arrays, calculates the side values
-  for left-side channel assignment*/
-void
-FlacEncoder_build_left_side_subframes(struct ia_array *samples,
-                                      struct i_array *left_side);
-
-/*given a set of sample i_arrays, calculates the side values
-  for a side-right channel assignment
-  note that this function generates the same side values as left_side*/
-void
-FlacEncoder_build_side_right_subframes(struct ia_array *samples,
-                                       struct i_array *side_right);
-
-/*given a set of sample i_arrays, calculates the average and difference values
-  for a mid-side channel assignment*/
-void
-FlacEncoder_build_mid_side_subframes(struct ia_array *samples,
-                                     struct i_array *mid_subframe,
-                                     struct i_array *side_subframe);
+flacenc_write_frame(BitstreamWriter* bs,
+                    struct flac_context* encoder,
+                    const array_ia* samples);
 
 /*writes a UTF-8 value to the bitstream*/
 void
@@ -269,25 +112,41 @@ void
 md5_update(void *data, unsigned char *buffer, unsigned long len);
 
 int
-maximum_bits_size(int value, int current_maximum);
+flacenc_max_wasted_bits_per_sample(const array_i* samples);
 
-/*given a set of samples, returns the maximum amount of wasted bits*/
-int
-flac_max_wasted_bits_per_sample(struct i_array *samples);
+/*takes a list of sample lists (one per channel)
+  and the FLAC's streaminfo
+  writes a FLAC frame header to the bitstream*/
+void
+flacenc_write_frame_header(BitstreamWriter* bs,
+                           const struct flac_STREAMINFO *streaminfo,
+                           unsigned block_size,
+                           unsigned channel_assignment,
+                           unsigned frame_number);
 
-static inline uint64_t
-abs_sum(struct i_array *a)
-{
-    register uint64_t sum = 0;
-    ia_size_t a_size = a->size;
-    ia_data_t *a_data = a->data;
-    ia_size_t i;
+/*given a bits_per_sample and list of sample values,
+  and the user-defined encoding options
+  writes the best subframe to the bitbuffer*/
+void
+flacenc_write_subframe(struct flac_context* encoder,
+                       int bits_per_sample,
+                       const array_i* samples);
 
-    for (i = 0; i < a_size; i++)
-        sum += abs(a_data[i]);
+/*writes a CONSTANT subframe with the value "sample"
+  to the bitbuffer*/
+void
+flacenc_write_constant_subframe(BitstreamWriter* bs,
+                                int bits_per_sample,
+                                int wasted_bits_per_sample,
+                                int sample);
 
-    return sum;
-}
+/*writes a VERBATIM subframe with the values "samples"
+  to the bitbuffer*/
+void
+flacenc_write_verbatim_subframe(BitstreamWriter *bs,
+                                int bits_per_sample,
+                                int wasted_bits_per_sample,
+                                const array_i* samples);
 
 #include "../common/flac_crc.h"
 

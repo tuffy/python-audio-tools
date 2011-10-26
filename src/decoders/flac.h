@@ -95,7 +95,7 @@ typedef struct {
     array_i* framelist_data;
 
     /*a framelist generator*/
-    PyObject* framelist_gen;
+    PyObject* audiotools_pcm;
 } decoders_FlacDecoder;
 
 /*the FlacDecoder.sample_rate attribute getter*/

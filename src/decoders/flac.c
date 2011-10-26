@@ -24,7 +24,6 @@ int
 FlacDecoder_init(decoders_FlacDecoder *self,
                  PyObject *args, PyObject *kwds)
 {
-    PyObject* audiotools_pcm = NULL;
     char* filename;
     int stream_offset = 0;
 
@@ -35,7 +34,7 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     self->residuals = array_i_new(1);
     self->qlp_coeffs = array_i_new(1);
     self->framelist_data = array_i_new(1);
-    self->framelist_gen = NULL;
+    self->audiotools_pcm = NULL;
     self->remaining_samples = 0;
 
     if (!PyArg_ParseTuple(args, "si|i",
@@ -84,17 +83,9 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     br_add_callback(self->bitstream, flac_crc16, &(self->crc16));
 
     /*setup a framelist generator function*/
-    if ((audiotools_pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
+    if ((self->audiotools_pcm =
+         PyImport_ImportModule("audiotools.pcm")) == NULL)
         return -1;
-    else {
-        if ((self->framelist_gen =
-             PyObject_GetAttrString(audiotools_pcm, "__blank__")) == NULL) {
-            Py_DECREF(audiotools_pcm);
-            return -1;
-        } else {
-            Py_DECREF(audiotools_pcm);
-        }
-    }
 
     return 0;
 }
@@ -115,7 +106,7 @@ FlacDecoder_dealloc(decoders_FlacDecoder *self)
     self->residuals->del(self->residuals);
     self->qlp_coeffs->del(self->qlp_coeffs);
     self->framelist_data->del(self->framelist_data);
-    Py_XDECREF(self->framelist_gen);
+    Py_XDECREF(self->audiotools_pcm);
 
     if (self->filename != NULL)
         free(self->filename);
@@ -228,8 +219,8 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
 
     /*if all samples have been read, return an empty FrameList*/
     if (self->stream_finalized) {
-        framelist = (pcm_FrameList*)PyObject_Call(self->framelist_gen,
-                                                  NULL, NULL);
+        framelist = (pcm_FrameList*)PyObject_CallMethod(self->audiotools_pcm,
+                                                        "__blank__", NULL);
         if (framelist != NULL) {
             framelist->channels = self->streaminfo.channels;
             framelist->bits_per_sample = self->streaminfo.bits_per_sample;
@@ -243,8 +234,9 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
         self->stream_finalized = 1;
 
         if (FlacDecoder_verify_okay(self)) {
-            framelist = (pcm_FrameList*)PyObject_Call(self->framelist_gen,
-                                                      NULL, NULL);
+            framelist =
+                (pcm_FrameList*)PyObject_CallMethod(self->audiotools_pcm,
+                                                    "__blank__", NULL);
             if (framelist != NULL) {
                 framelist->channels = self->streaminfo.channels;
                 framelist->bits_per_sample = self->streaminfo.bits_per_sample;
@@ -315,8 +307,8 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
     br_etry(self->bitstream);
     PyEval_RestoreThread(thread_state);
 
-    framelist = (pcm_FrameList*)PyObject_Call(self->framelist_gen,
-                                              NULL, NULL);
+    framelist = (pcm_FrameList*)PyObject_CallMethod(self->audiotools_pcm,
+                                                    "__blank__", NULL);
     if (framelist != NULL) {
         framelist->frames = frame_header.block_size;
         framelist->channels = frame_header.channel_count;
@@ -591,9 +583,10 @@ FlacDecoder_read_constant_subframe(BitstreamReader* bitstream,
     int32_t i;
 
     samples->reset(samples);
+    samples->resize(samples, block_size);
 
     for (i = 0; i < block_size; i++)
-        samples->append(samples, value);
+        a_append(samples, value);
 
     return OK;
 }
@@ -607,9 +600,11 @@ FlacDecoder_read_verbatim_subframe(BitstreamReader* bitstream,
     int32_t i;
 
     samples->reset(samples);
+    samples->resize(samples, block_size);
+
     for (i = 0; i < block_size; i++)
-        samples->append(samples,
-                        bitstream->read_signed(bitstream, bits_per_sample));
+        a_append(samples,
+                 bitstream->read_signed(bitstream, bits_per_sample));
 
     return OK;
 }
@@ -636,8 +631,8 @@ FlacDecoder_read_fixed_subframe(BitstreamReader* bitstream,
 
     /*read "order" number of warm-up samples*/
     for (i = 0; i < order; i++) {
-        samples->append(samples,
-                        bitstream->read_signed(bitstream, bits_per_sample));
+        a_append(samples,
+                 bitstream->read_signed(bitstream, bits_per_sample));
     }
 
     /*read the residual block*/
@@ -654,31 +649,31 @@ FlacDecoder_read_fixed_subframe(BitstreamReader* bitstream,
         break;
     case 1:
         for (i = 1; i < block_size; i++)
-            samples->append(samples, s_data[i - 1] + r_data[i - 1]);
+            a_append(samples, s_data[i - 1] + r_data[i - 1]);
         break;
     case 2:
         for (i = 2; i < block_size; i++)
-            samples->append(samples,
-                            (2 * s_data[i - 1]) -
-                            s_data[i - 2] +
-                            r_data[i - 2]);
+            a_append(samples,
+                     (2 * s_data[i - 1]) -
+                     s_data[i - 2] +
+                     r_data[i - 2]);
         break;
     case 3:
         for (i = 3; i < block_size; i++)
-            samples->append(samples,
-                            (3 * s_data[i - 1]) -
-                            (3 * s_data[i - 2]) +
-                            s_data[i - 3] +
-                            r_data[i - 3]);
+            a_append(samples,
+                     (3 * s_data[i - 1]) -
+                     (3 * s_data[i - 2]) +
+                     s_data[i - 3] +
+                     r_data[i - 3]);
         break;
     case 4:
         for (i = 4; i < block_size; i++)
-            samples->append(samples,
-                            (4 * s_data[i - 1]) -
-                            (6 * s_data[i - 2]) +
-                            (4 * s_data[i - 3]) -
-                            s_data[i - 4] +
-                            r_data[i - 4]);
+            a_append(samples,
+                     (4 * s_data[i - 1]) -
+                     (6 * s_data[i - 2]) +
+                     (4 * s_data[i - 3]) -
+                     s_data[i - 4] +
+                     r_data[i - 4]);
 
         break;
     default:
@@ -715,15 +710,16 @@ FlacDecoder_read_lpc_subframe(BitstreamReader* bitstream,
 
     /*read order number of warm-up samples*/
     for (i = 0; i < order; i++) {
-        samples->append(samples,
-                        bitstream->read_signed(bitstream, bits_per_sample));
+        a_append(samples,
+                 bitstream->read_signed(bitstream, bits_per_sample));
     }
 
     /*read QLP precision*/
     qlp_precision = bitstream->read(bitstream, 4) + 1;
 
     /*read QLP shift needed*/
-    qlp_shift_needed = MAX(bitstream->read_signed(bitstream, 5), 0);
+    qlp_shift_needed = bitstream->read_signed(bitstream, 5);
+    qlp_shift_needed = MAX(qlp_shift_needed, 0);
 
     /*read order number of QLP coefficients of size qlp_precision*/
     for (i = 0; i < order; i++) {
@@ -746,7 +742,9 @@ FlacDecoder_read_lpc_subframe(BitstreamReader* bitstream,
         for (j = 0; j < order; j++) {
             accumulator += qlp_data[j] * s_data[i - j - 1];
         }
-        samples->append(samples, (int)(accumulator >> qlp_shift_needed));
+
+        a_append(samples,
+                 (int)(accumulator >> qlp_shift_needed) + r_data[i - order]);
     }
 
     return OK;

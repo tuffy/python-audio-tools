@@ -6,8 +6,8 @@ FLAGS = -Wall -g
 
 all: flacenc alacenc shnenc wvenc mlpdec huffman bitstream
 
-flacenc: $(OBJS) encoders/flac.c encoders/flac.h flac_lpc.o flac_crc.o md5.o
-	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o flacenc encoders/flac.c $(OBJS) flac_lpc.o md5.o flac_crc.o -DSTANDALONE -lm
+flacenc: $(OBJS) encoders/flac.c encoders/flac.h flac_crc.o md5.o pcmreader2.o array2.o
+	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o flacenc encoders/flac.c $(OBJS) array2.o md5.o flac_crc.o pcmreader2.o -DSTANDALONE -lm
 
 alacenc: $(OBJS) encoders/alac.c encoders/alac.h alac_lpc.o misc.o
 	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o alacenc encoders/alac.c misc.o $(OBJS) alac_lpc.o -DSTANDALONE -lm
@@ -30,6 +30,9 @@ clean:
 array.o: array.c array.h
 	$(CC) $(FLAGS) -c array.c -DSTANDALONE
 
+array2.o: array2.c array2.h
+	$(CC) $(FLAGS) -c array2.c -DSTANDALONE
+
 pcm.o: pcm.c pcm.h
 	$(CC) $(FLAGS) -c pcm.c -DSTANDALONE
 
@@ -38,6 +41,9 @@ bitstream.o: bitstream.c bitstream.h
 
 pcmreader.o: pcmreader.c pcmreader.h
 	$(CC) $(FLAGS) -c pcmreader.c -DSTANDALONE
+
+pcmreader2.o: pcmreader2.c pcmreader2.h
+	$(CC) $(FLAGS) -c pcmreader2.c -DSTANDALONE
 
 md5.o: common/md5.c common/md5.h
 	$(CC) $(FLAGS) -c common/md5.c -DSTANDALONE

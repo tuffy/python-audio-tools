@@ -1,6 +1,7 @@
 #ifndef STANDALONE
 #include <Python.h>
 #endif
+#include <stdlib.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
