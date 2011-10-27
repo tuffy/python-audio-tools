@@ -319,8 +319,8 @@ flacenc_init_encoder(struct flac_context* encoder)
     encoder->best_rice_parameters = array_i_new(1);
     encoder->partition_sizes = array_i_new(1);
     encoder->rice_parameters = array_i_new(1);
-    encoder->residuals = array_i_new(1);
-    encoder->residual_partition = array_i_new(1);
+    encoder->residuals = array_li_new();
+    encoder->residual_partition = array_li_new();
 }
 
 void
@@ -678,8 +678,8 @@ flacenc_encode_residuals(BitstreamWriter* bs,
     array_i* best_rice_parameters = encoder->best_rice_parameters;
     array_i* partition_sizes = encoder->partition_sizes;
     array_i* rice_parameters = encoder->rice_parameters;
-    array_i* remaining_residuals = encoder->residuals;
-    array_i* residual_partition = encoder->residual_partition;
+    array_li* remaining_residuals = encoder->residuals;
+    array_li* residual_partition = encoder->residual_partition;
 
     uint64_t abs_partition_sum;
     unsigned rice_parameter;
@@ -700,7 +700,7 @@ flacenc_encode_residuals(BitstreamWriter* bs,
 
         /*FIXME - add array linking to avoid lots of memory copies
           on essentially read-only data*/
-        residuals->copy(residuals, remaining_residuals);
+        residuals->link(residuals, remaining_residuals);
         partition_sizes->reset(partition_sizes);
         rice_parameters->reset(rice_parameters);
 
@@ -752,7 +752,7 @@ flacenc_encode_residuals(BitstreamWriter* bs,
     bs->write(bs, 2, coding_method);
     bs->write(bs, 4, best_partition_order);
 
-    residuals->copy(residuals, remaining_residuals);
+    residuals->link(residuals, remaining_residuals);
     for (partition = 0; partition < (1 << best_partition_order); partition++) {
         if (partition == 0)
             remaining_residuals->split(remaining_residuals,
@@ -781,7 +781,7 @@ flacenc_encode_residuals(BitstreamWriter* bs,
 void
 flacenc_encode_residual_partition(BitstreamWriter* bs,
                                   unsigned rice_parameter,
-                                  const array_i* residual_partition)
+                                  const array_li* residual_partition)
 {
     unsigned partition_size = residual_partition->size;
     const int* residuals = residual_partition->data;
@@ -942,7 +942,7 @@ flacenc_all_identical(const array_i* samples)
 }
 
 uint64_t
-flacenc_abs_sum(const array_i* data)
+flacenc_abs_sum(const array_li* data)
 {
     uint64_t accumulator = 0;
     unsigned i;

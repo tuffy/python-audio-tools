@@ -72,8 +72,8 @@ struct flac_context {
     array_i* best_rice_parameters;
     array_i* partition_sizes;
     array_i* rice_parameters;
-    array_i* residuals;
-    array_i* residual_partition;
+    array_li* residuals;
+    array_li* residual_partition;
 };
 
 struct flac_frame_header {
@@ -188,13 +188,13 @@ flacenc_encode_residuals(BitstreamWriter* bs,
 void
 flacenc_encode_residual_partition(BitstreamWriter* bs,
                                   unsigned rice_parameter,
-                                  const array_i* residual_partition);
+                                  const array_li* residual_partition);
 
 int
 flacenc_all_identical(const array_i* samples);
 
 uint64_t
-flacenc_abs_sum(const array_i* data);
+flacenc_abs_sum(const array_li* data);
 
 unsigned
 flacenc_best_rice_parameter(const struct flac_context* encoder,
