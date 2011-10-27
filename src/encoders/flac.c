@@ -29,7 +29,8 @@
 #define VERSION_STRING(x) VERSION_STRING_(x)
 const static char* AUDIOTOOLS_VERSION = VERSION_STRING(VERSION);
 
-#define DEFAULT_PADDING_SIZE 4096
+/* #define DEFAULT_PADDING_SIZE 4096 */
+#define DEFAULT_PADDING_SIZE 0
 
 #ifndef MIN
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
@@ -203,8 +204,8 @@ encoders_encode_flac(char *filename,
            "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
            16);
 
-    encoder.frame = bw_open_recorder(BS_BIG_ENDIAN);
     encoder.total_flac_frames = 0;
+    flacenc_init_encoder(&encoder);
 
     /*write FLAC stream header*/
     output_stream->write_64(output_stream, 32, 0x664C6143);
@@ -280,8 +281,8 @@ encoders_encode_flac(char *filename,
 
     samples->del(samples); /*deallocate the temporary samples block*/
     pcmr_close2(reader); /*close the pcm_reader object
-                              which calls pcmreader.close() in the process*/
-    encoder.frame->close(encoder.frame); /*close temporary frame buffer*/
+                           which calls pcmreader.close() in the process*/
+    flacenc_free_encoder(&encoder);
     output_stream->close(output_stream); /*close the output file*/
 #ifndef STANDALONE
     return frame_offsets;
@@ -291,7 +292,7 @@ encoders_encode_flac(char *filename,
     Py_XDECREF(frame_offsets);
     samples->del(samples);
     pcmr_close2(reader);
-    encoder.frame->close(encoder.frame); /*close temporary frame buffer*/
+    flacenc_free_encoder(&encoder);
     output_stream->close(output_stream); /*close the output file*/
     return NULL;
 }
@@ -300,12 +301,42 @@ encoders_encode_flac(char *filename,
  error:
     samples->del(samples);
     pcmr_close2(reader);
-    encoder.frame->close(encoder.frame); /*close temporary frame buffer*/
+    flacenc_free_encoder(&encoder);
     output_stream->close(output_stream); /*close the output file*/
     return 0;
 }
 #endif
 
+
+void
+flacenc_init_encoder(struct flac_context* encoder)
+{
+    encoder->frame = bw_open_recorder(BS_BIG_ENDIAN);
+    encoder->fixed_subframe = bw_open_recorder(BS_BIG_ENDIAN);
+    encoder->fixed_subframe_orders = array_ia_new(5);
+
+    encoder->best_partition_sizes = array_i_new(1);
+    encoder->best_rice_parameters = array_i_new(1);
+    encoder->partition_sizes = array_i_new(1);
+    encoder->rice_parameters = array_i_new(1);
+    encoder->residuals = array_i_new(1);
+    encoder->residual_partition = array_i_new(1);
+}
+
+void
+flacenc_free_encoder(struct flac_context* encoder)
+{
+    encoder->frame->close(encoder->frame);
+    encoder->fixed_subframe->close(encoder->fixed_subframe);
+    encoder->fixed_subframe_orders->del(encoder->fixed_subframe_orders);
+
+    encoder->best_partition_sizes->del(encoder->best_partition_sizes);
+    encoder->best_rice_parameters->del(encoder->best_rice_parameters);
+    encoder->partition_sizes->del(encoder->partition_sizes);
+    encoder->rice_parameters->del(encoder->rice_parameters);
+    encoder->residuals->del(encoder->residuals);
+    encoder->residual_partition->del(encoder->residual_partition);
+}
 
 void
 flacenc_write_streaminfo(BitstreamWriter* bs,
@@ -463,6 +494,8 @@ flacenc_write_frame(BitstreamWriter* bs,
 
     bw_add_callback(bs, flac_crc16, &crc16);
 
+    /*FIXME - check side frames here and determine which is best*/
+
     flacenc_write_frame_header(bs,
                                &(encoder->streaminfo),
                                block_size,
@@ -470,10 +503,10 @@ flacenc_write_frame(BitstreamWriter* bs,
                                encoder->total_flac_frames++);
 
     for (channel = 0; channel < channel_count; channel++)
-        flacenc_write_verbatim_subframe(bs,
-                                        encoder->streaminfo.bits_per_sample,
-                                        0,
-                                        samples->data[channel]);
+        flacenc_write_subframe(bs,
+                               encoder,
+                               encoder->streaminfo.bits_per_sample,
+                               samples->data[channel]);
 
     bs->byte_align(bs);
     bw_pop_callback(bs, NULL);
@@ -481,9 +514,75 @@ flacenc_write_frame(BitstreamWriter* bs,
 }
 
 void
+flacenc_write_subframe(BitstreamWriter* bs,
+                       struct flac_context* encoder,
+                       unsigned bits_per_sample,
+                       const array_i* samples)
+{
+    int try_VERBATIM = !encoder->options.no_verbatim_subframes;
+    int try_CONSTANT = !encoder->options.no_constant_subframes;
+    int try_FIXED = !encoder->options.no_fixed_subframes;
+    int try_LPC = ((!encoder->options.no_fixed_subframes) &&
+                   (encoder->options.max_lpc_order > 0));
+    unsigned wasted_bps;
+
+    /*check for CONSTANT subframe and return one, if allowed*/
+    if (try_CONSTANT && flacenc_all_identical(samples)) {
+        flacenc_write_constant_subframe(bs, bits_per_sample, 0,
+                                        samples->data[0]);
+    } else {
+        /*extract wasted bits-per-sample, if any*/
+        /*FIXME*/
+        wasted_bps = 0;
+
+        /*build FIXED subframe, if allowed*/
+        if (try_FIXED) {
+            bw_reset_recorder(encoder->fixed_subframe);
+            flacenc_write_fixed_subframe(bs,
+                                         encoder,
+                                         bits_per_sample,
+                                         wasted_bps,
+                                         samples);
+        }
+
+        /*build LPC subframe, if allowed*/
+        /*FIXME*/
+
+        /*if FIXED = n , LPC = n , VERBATIM = n
+          return VERBATIM subframe anyway*/
+
+        /*if FIXED = y , LPC = n , VERBATIM = n
+          return FIXED subframe*/
+
+        /*if FIXED = n , LPC = y , VERBATIM = n
+          return LPC subframe*/
+
+        /*if FIXED = y , LPC = y , VERBATIM = n
+          return min(FIXED, LPC) subframes*/
+
+        /*if FIXED = n , LPC = n , VERBATIM = y
+          return VERBATIM subframe*/
+
+        /*if FIXED = y , LPC = n , VERBATIM = y
+          return min(FIXED, VERBATIM) subframes*/
+
+        /*if FIXED = n , LPC = y , VERBATIM = y
+          return min(LPC, VERBATIM) subframes*/
+
+        /*if FIXED = y , LPC = y , VERBATIM = y
+          return min(FIXED, LPC, VERBATIM) subframes*/
+
+        /* flacenc_write_verbatim_subframe(bs, */
+        /*                                 bits_per_sample, */
+        /*                                 0, */
+        /*                                 samples); */
+    }
+}
+
+void
 flacenc_write_constant_subframe(BitstreamWriter *bs,
-                                int bits_per_sample,
-                                int wasted_bits_per_sample,
+                                unsigned bits_per_sample,
+                                unsigned wasted_bits_per_sample,
                                 int sample)
 {
     /*write subframe header*/
@@ -501,8 +600,8 @@ flacenc_write_constant_subframe(BitstreamWriter *bs,
 
 void
 flacenc_write_verbatim_subframe(BitstreamWriter *bs,
-                                int bits_per_sample,
-                                int wasted_bits_per_sample,
+                                unsigned bits_per_sample,
+                                unsigned wasted_bits_per_sample,
                                 const array_i* samples)
 {
     unsigned i;
@@ -519,6 +618,231 @@ flacenc_write_verbatim_subframe(BitstreamWriter *bs,
     /*write subframe samples*/
     for (i = 0; i < samples->size; i++) {
         bs->write_signed(bs, bits_per_sample, samples->data[i]);
+    }
+}
+
+void
+flacenc_write_fixed_subframe(BitstreamWriter* bs,
+                             struct flac_context* encoder,
+                             unsigned bits_per_sample,
+                             unsigned wasted_bits_per_sample,
+                             const array_i* samples)
+{
+    array_i* order;
+    unsigned best_order;
+    unsigned i;
+
+    encoder->fixed_subframe_orders->reset(encoder->fixed_subframe_orders);
+    order =
+        encoder->fixed_subframe_orders->append(encoder->fixed_subframe_orders);
+    order->extend(order, samples);  /*order 0*/
+    /*FIXME - generate orders 1-4*/
+    /*FIXME - choose best order*/
+    best_order = 0;
+
+    bs->write(bs, 1, 0);               /*pad*/
+    bs->write(bs, 3, 1);               /*FIXED subframe type*/
+    bs->write(bs, 3, best_order);      /*FIXED subframe order*/
+    if (wasted_bits_per_sample > 0) {  /*wasted bits-per-sample*/
+        bs->write(bs, 1, 1);
+        bs->write_unary(bs, 1, wasted_bits_per_sample - 1);
+    } else {
+        bs->write(bs, 1, 0);
+    }
+
+    for (i = 0; i < best_order; i++)   /*warm-up samples*/
+        bs->write_signed(bs, bits_per_sample - wasted_bits_per_sample,
+                         samples->data[i]);
+
+    flacenc_encode_residuals(bs,
+                             encoder,
+                             samples->size,
+                             best_order,
+                             encoder->fixed_subframe_orders->data[best_order]);
+}
+
+void
+flacenc_encode_residuals(BitstreamWriter* bs,
+                         struct flac_context* encoder,
+                         unsigned block_size,
+                         unsigned order,
+                         const array_i* residuals)
+{
+    unsigned coding_method;
+    unsigned partition_order;
+    unsigned best_partition_order = 0;
+    unsigned partition;
+
+    /*local links to the cached arrays*/
+    array_i* best_partition_sizes = encoder->best_partition_sizes;
+    array_i* best_rice_parameters = encoder->best_rice_parameters;
+    array_i* partition_sizes = encoder->partition_sizes;
+    array_i* rice_parameters = encoder->rice_parameters;
+    array_i* remaining_residuals = encoder->residuals;
+    array_i* residual_partition = encoder->residual_partition;
+
+    uint64_t abs_partition_sum;
+    unsigned rice_parameter;
+    unsigned partition_size;
+
+    best_partition_sizes->reset(best_partition_sizes);
+    best_rice_parameters->reset(best_rice_parameters);
+    best_partition_sizes->append(best_partition_sizes, INT_MAX);
+
+    for (partition_order = 0;
+         partition_order <= encoder->options.max_residual_partition_order;
+         partition_order++) {
+
+        if (block_size % (1 << partition_order))
+            /*stop once block_size is no longer equally divisible by
+              2 ^ partition_order*/
+            break;
+
+        /*FIXME - add array linking to avoid lots of memory copies
+          on essentially read-only data*/
+        residuals->copy(residuals, remaining_residuals);
+        partition_sizes->reset(partition_sizes);
+        rice_parameters->reset(rice_parameters);
+
+        for (partition = 0; partition < (1 << partition_order); partition++) {
+            if (partition == 0)
+                remaining_residuals->split(remaining_residuals,
+                                           (block_size /
+                                            (1 << partition_order)) - order,
+                                           residual_partition,
+                                           remaining_residuals);
+            else
+                remaining_residuals->split(remaining_residuals,
+                                           (block_size /
+                                            (1 << partition_order)),
+                                           residual_partition,
+                                           remaining_residuals);
+
+            abs_partition_sum = flacenc_abs_sum(residual_partition);
+            rice_parameter =
+                flacenc_best_rice_parameter(encoder,
+                                            abs_partition_sum,
+                                            residual_partition->size);
+            partition_size =
+                flacenc_estimate_partition_size(rice_parameter,
+                                                abs_partition_sum,
+                                                residual_partition->size);
+            rice_parameters->append(rice_parameters, rice_parameter);
+            partition_sizes->append(partition_sizes, partition_size);
+        }
+
+        if (partition_sizes->sum(partition_sizes) <
+            best_partition_sizes->sum(best_partition_sizes)) {
+            best_partition_order = partition_order;
+            partition_sizes->swap(partition_sizes,
+                                  best_partition_sizes);
+            rice_parameters->swap(rice_parameters,
+                                  best_rice_parameters);
+        }
+    }
+
+    assert(remaining_residuals->size == 0);
+    assert(best_rice_parameters->size == best_partition_sizes->size);
+
+    if (best_rice_parameters->max(best_rice_parameters) > 14)
+        coding_method = 1;
+    else
+        coding_method = 0;
+
+    bs->write(bs, 2, coding_method);
+    bs->write(bs, 4, best_partition_order);
+
+    residuals->copy(residuals, remaining_residuals);
+    for (partition = 0; partition < (1 << best_partition_order); partition++) {
+        if (partition == 0)
+            remaining_residuals->split(remaining_residuals,
+                                       (block_size /
+                                        (1 << best_partition_order)) - order,
+                                       residual_partition,
+                                       remaining_residuals);
+        else
+            remaining_residuals->split(remaining_residuals,
+                                       (block_size /
+                                        (1 << best_partition_order)),
+                                       residual_partition,
+                                       remaining_residuals);
+
+        if (coding_method == 0)
+            bs->write(bs, 4, best_rice_parameters->data[partition]);
+        else
+            bs->write(bs, 5, best_rice_parameters->data[partition]);
+
+        flacenc_encode_residual_partition(bs,
+                                          best_rice_parameters->data[partition],
+                                          residual_partition);
+    }
+}
+
+void
+flacenc_encode_residual_partition(BitstreamWriter* bs,
+                                  unsigned rice_parameter,
+                                  const array_i* residual_partition)
+{
+    unsigned partition_size = residual_partition->size;
+    const int* residuals = residual_partition->data;
+    unsigned value;
+    unsigned msb;
+    unsigned lsb;
+    unsigned i;
+
+    void (*write)(struct BitstreamWriter_s* bs, unsigned int count,
+                  unsigned int value);
+
+    void (*write_unary)(struct BitstreamWriter_s* bs, int stop_bit,
+                        unsigned int value);
+
+    write = bs->write;
+    write_unary = bs->write_unary;
+
+    for (i = 0; i < partition_size; i++) {
+        if (residuals[i] >= 0)
+            value = residuals[i] << 1;
+        else
+            value = ((-residuals[i] - 1) << 1) | 1;
+        msb = value >> rice_parameter;
+        lsb = value - (msb << rice_parameter);
+        write_unary(bs, 1, msb);
+        write(bs, rice_parameter, lsb);
+    }
+}
+
+unsigned
+flacenc_best_rice_parameter(const struct flac_context* encoder,
+                            uint64_t abs_partition_sum,
+                            unsigned partition_size)
+{
+    unsigned rice_parameter = 0;
+
+    while ((partition_size * (1 << rice_parameter)) < abs_partition_sum)
+        rice_parameter++;
+
+    return rice_parameter;
+}
+
+unsigned
+flacenc_estimate_partition_size(unsigned rice_parameter,
+                                uint64_t abs_partition_sum,
+                                unsigned partition_size)
+{
+    if (rice_parameter > 0) {
+        return (4 + /*4 bit partition header*/
+                /*residual MSBs minus sign bit*/
+                (unsigned)(abs_partition_sum >> (rice_parameter - 1)) +
+                /*residual LSBs plus stop bit*/
+                ((1 + rice_parameter) * partition_size) -
+                (partition_size / 2));
+    } else {
+        return (4 + /*4 bit partition header*/
+                /*residual MSBs minus sign bit*/
+                (unsigned)(abs_partition_sum << 1) +
+                /*residual LSBs plus stop bit*/
+                ((1 + rice_parameter) * partition_size) -
+                (partition_size / 2));
     }
 }
 
@@ -597,6 +921,35 @@ flacenc_max_wasted_bits_per_sample(const array_i* samples)
     } else {
         return wasted_bits_per_sample;
     }
+}
+
+int
+flacenc_all_identical(const array_i* samples)
+{
+    int first;
+    unsigned i;
+
+    if (samples->size > 1) {
+        first = samples->data[0];
+        for (i = 1; i < samples->size; i++)
+            if (samples->data[i] != first)
+                return 0;
+
+        return 1;
+    } else {
+        return 1;
+    }
+}
+
+uint64_t
+flacenc_abs_sum(const array_i* data)
+{
+    uint64_t accumulator = 0;
+    unsigned i;
+    for (i = 0; i < data->size; i++)
+        accumulator += abs(data->data[i]);
+
+    return accumulator;
 }
 
 #ifdef STANDALONE

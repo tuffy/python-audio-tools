@@ -87,6 +87,9 @@ struct array_i_s {
     /*returns a new array with all the items copied from this array*/
     void (*copy)(const struct array_i_s *array, struct array_i_s *copy);
 
+    /*swaps the contents of this array with another array*/
+    void (*swap)(struct array_i_s *array, struct array_i_s *swap);
+
     /*returns a new array with "count" number of items
       copied from the start of this array, or as many as possible*/
     void (*head)(const struct array_i_s *array, unsigned count,
@@ -136,6 +139,7 @@ int array_i_min(const struct array_i_s *array);
 int array_i_max(const struct array_i_s *array);
 int array_i_sum(const struct array_i_s *array);
 void array_i_copy(const struct array_i_s *array, struct array_i_s *copy);
+void array_i_swap(struct array_i_s *array, struct array_i_s *swap);
 void array_i_head(const struct array_i_s *array, unsigned count,
                   struct array_i_s *head);
 void array_i_tail(const struct array_i_s *array, unsigned count,
@@ -198,6 +202,9 @@ struct array_f_s {
     /*returns a new array with all the items copied from this array*/
     void (*copy)(const struct array_f_s *array, struct array_f_s *copy);
 
+    /*swaps the contents of this array with another array*/
+    void (*swap)(struct array_f_s *array, struct array_f_s *swap);
+
     /*returns a new array with "count" number of items
       copied from the start of this array, or as many as possible*/
     void (*head)(const struct array_f_s *array, unsigned count,
@@ -248,6 +255,7 @@ double array_f_min(const struct array_f_s *array);
 double array_f_max(const struct array_f_s *array);
 double array_f_sum(const struct array_f_s *array);
 void array_f_copy(const struct array_f_s *array, struct array_f_s *copy);
+void array_f_swap(struct array_f_s *array, struct array_f_s *swap);
 void array_f_head(const struct array_f_s *array, unsigned count,
                   struct array_f_s *head);
 void array_f_tail(const struct array_f_s *array, unsigned count,

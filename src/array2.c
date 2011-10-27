@@ -56,6 +56,7 @@ struct array_i_s* array_i_wrap(int* data, unsigned size, unsigned total_size)
     a->max = array_i_max;
     a->sum = array_i_sum;
     a->copy = array_i_copy;
+    a->swap = array_i_swap;
     a->head = array_i_head;
     a->tail = array_i_tail;
     a->split = array_i_split;
@@ -201,6 +202,24 @@ int array_i_sum(const array_i *array)
     }
 FUNC_ARRAY_COPY(array_i_copy, array_i, int)
 FUNC_ARRAY_COPY(array_f_copy, array_f, double)
+
+#define FUNC_ARRAY_SWAP(FUNC_NAME, ARRAY_TYPE)                  \
+    void                                                        \
+    FUNC_NAME(ARRAY_TYPE *array, ARRAY_TYPE *swap)              \
+    {                                                           \
+        ARRAY_TYPE temp;                                        \
+        temp.data = array->data;                                \
+        temp.size = array->size;                                \
+        temp.total_size = array->total_size;                    \
+        array->data = swap->data;                               \
+        array->size = swap->size;                               \
+        array->total_size = swap->total_size;                   \
+        swap->data = temp.data;                                 \
+        swap->size = temp.size;                                 \
+        swap->total_size = temp.total_size;                     \
+    }
+FUNC_ARRAY_SWAP(array_i_swap, array_i)
+FUNC_ARRAY_SWAP(array_f_swap, array_f)
 
 #define FUNC_ARRAY_HEAD(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE)     \
     void                                                            \
@@ -403,6 +422,7 @@ array_f* array_f_wrap(double* data, unsigned size, unsigned total_size)
     a->max = array_f_max;
     a->sum = array_f_sum;
     a->copy = array_f_copy;
+    a->swap = array_f_swap;
     a->head = array_f_head;
     a->tail = array_f_tail;
     a->split = array_f_split;

@@ -60,7 +60,7 @@ struct pcm_reader2 {
 
     unsigned buffer_size;
 
-#ifndef STANDALONE
+#ifdef STANDALONE
     uint8_t* buffer;
     FrameList_char_to_int_converter buffer_converter;
 #endif

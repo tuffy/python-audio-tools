@@ -124,7 +124,7 @@ pcmr_read2(struct pcm_reader2 *reader,
     struct pcmr_callback2* callback;
     PyObject* string_obj;
     unsigned char* string;
-    unsigned long string_length;
+    Py_ssize_t string_length;
 
     /*make a call to "pcmreader.read(bytes)"
       where "bytes" is set to the proper PCM frame count*/

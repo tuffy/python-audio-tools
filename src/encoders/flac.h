@@ -65,6 +65,15 @@ struct flac_context {
     unsigned int total_flac_frames;
 
     BitstreamWriter* frame;
+    BitstreamWriter* fixed_subframe;
+    array_ia* fixed_subframe_orders;
+
+    array_i* best_partition_sizes;
+    array_i* best_rice_parameters;
+    array_i* partition_sizes;
+    array_i* rice_parameters;
+    array_i* residuals;
+    array_i* residual_partition;
 };
 
 struct flac_frame_header {
@@ -90,6 +99,14 @@ struct flac_subframe_header {
 
 typedef enum {OK, ERROR} status;
 
+/*initializes all the temporary buffers in encoder*/
+void
+flacenc_init_encoder(struct flac_context* encoder);
+
+/*deallocates all the temporary buffers in encoder*/
+void
+flacenc_free_encoder(struct flac_context* encoder);
+
 /*writes a STREAMINFO metadata block to the bitstream*/
 void
 flacenc_write_streaminfo(BitstreamWriter* bs,
@@ -102,6 +119,16 @@ void
 flacenc_write_frame(BitstreamWriter* bs,
                     struct flac_context* encoder,
                     const array_ia* samples);
+
+/*takes a list of samples and the subframe's bits-per-sample
+  (which may differ from the frame's bits-per-sample)
+  and encodes the best subframe to the given bitstream
+  depending on encoding parameters*/
+void
+flacenc_write_subframe(BitstreamWriter* bs,
+                       struct flac_context* encoder,
+                       unsigned bits_per_sample,
+                       const array_i* samples);
 
 /*writes a UTF-8 value to the bitstream*/
 void
@@ -124,29 +151,60 @@ flacenc_write_frame_header(BitstreamWriter* bs,
                            unsigned channel_assignment,
                            unsigned frame_number);
 
-/*given a bits_per_sample and list of sample values,
-  and the user-defined encoding options
-  writes the best subframe to the bitbuffer*/
-void
-flacenc_write_subframe(struct flac_context* encoder,
-                       int bits_per_sample,
-                       const array_i* samples);
-
 /*writes a CONSTANT subframe with the value "sample"
   to the bitbuffer*/
 void
 flacenc_write_constant_subframe(BitstreamWriter* bs,
-                                int bits_per_sample,
-                                int wasted_bits_per_sample,
+                                unsigned bits_per_sample,
+                                unsigned wasted_bits_per_sample,
                                 int sample);
 
 /*writes a VERBATIM subframe with the values "samples"
   to the bitbuffer*/
 void
 flacenc_write_verbatim_subframe(BitstreamWriter *bs,
-                                int bits_per_sample,
-                                int wasted_bits_per_sample,
+                                unsigned bits_per_sample,
+                                unsigned wasted_bits_per_sample,
                                 const array_i* samples);
+
+/*writes a FIXED subframe with the values "samples"
+  to the bitbuffer*/
+void
+flacenc_write_fixed_subframe(BitstreamWriter* bs,
+                             struct flac_context* encoder,
+                             unsigned bits_per_sample,
+                             unsigned wasted_bits_per_sample,
+                             const array_i* samples);
+
+void
+flacenc_encode_residuals(BitstreamWriter* bs,
+                         struct flac_context* encoder,
+                         unsigned block_size,
+                         unsigned order,
+                         const array_i* residuals);
+
+/*encodes the given residual partition,
+  not including its 4-5 bit Rice parameter*/
+void
+flacenc_encode_residual_partition(BitstreamWriter* bs,
+                                  unsigned rice_parameter,
+                                  const array_i* residual_partition);
+
+int
+flacenc_all_identical(const array_i* samples);
+
+uint64_t
+flacenc_abs_sum(const array_i* data);
+
+unsigned
+flacenc_best_rice_parameter(const struct flac_context* encoder,
+                            uint64_t abs_partition_sum,
+                            unsigned partition_size);
+
+unsigned
+flacenc_estimate_partition_size(unsigned rice_parameter,
+                                uint64_t abs_partition_sum,
+                                unsigned partition_size);
 
 #include "../common/flac_crc.h"
 

@@ -6,7 +6,7 @@
     <col width=".20">partition₁</col>
     <col style="dashed" width=".20">...</col>
   </row>
-  <row><blank/></row>
+  <spacer/>
   <row>
     <col style="blank" width=".17">method = 0</col>
     <col end="3" id="rice" start="0" width=".20">Rice parameter</col>

@@ -1671,14 +1671,13 @@ used when calculating the best FIXED subframe order.
 \SetKwData{BSIZE}{best size}
 \SetKwData{PARTITION}{partition}
 \SetKwFunction{LEN}{len}
-\tcc{calculate best Rice parameters, partition order and coding method}
-\BPORDER $\leftarrow 0$\;
-\BSIZE $\leftarrow$ maximum integer\;
+\tcc{calculate best partition order and Rice parameters for that order}
+\BPORDER $\leftarrow 0$\tcc*[r]{best partition order}
+\BSIZE $\leftarrow$ maximum integer\tcc*[r]{total size of best partition order}
 \For{\PORDER = minimum partition order \emph{\KwTo}(maximum partition order + 1)}{
   \If{block size equally divisible into $2^{\PORDER}$ partitions}{
-    $\text{partition size}_{\PORDER} \leftarrow 0$\;
+    $\text{order size}_{\PORDER} \leftarrow 0$\tcc*[r]{the total size of a given partition order}
     \For{p = 0 \emph{\KwTo}$2 ^ {\PORDER}$} {
-      $\text{partition size}_{\PORDER} \leftarrow \text{partition size}_{\PORDER} + 4$\tcc*[r]{partition header bits}
       \eIf{p = 0}{
         $partition_{\PORDER~0} \leftarrow block~size \div 2 ^ {\PORDER} - subframe~order$ residuals
       }{
@@ -1687,11 +1686,11 @@ used when calculating the best FIXED subframe order.
       \BlankLine
       $Rice_{\PORDER~p} \leftarrow$ compute best Rice parameter for $partition_{\PORDER~p}$\;
       \BlankLine
-      $encoded~residuals_{\PORDER~p} \leftarrow$ encode residual partition with $Rice_{\PORDER~p}$\;
+      $partition~size_{\PORDER~p} \leftarrow$ estimate partition size of $partition_{\PORDER~p}$ with $Rice_{\PORDER~p}$\;
       \BlankLine
-      $\text{partition size}_{\PORDER} \leftarrow \text{partition size}_{\PORDER} + \LEN(encoded~residuals_{\PORDER~p})$\;
+      $\text{order size}_{\PORDER} \leftarrow \text{order size}_{\PORDER} + partition~size_{\PORDER}$\;
     }
-    \If{$\text{partition size}_{\PORDER} < \BSIZE$}{
+    \If{$\text{order size}_{\PORDER} < \BSIZE$}{
       \BPORDER $\leftarrow$ \PORDER\;
       \BSIZE $\leftarrow \text{partition size}_{\PORDER}$\;
     }
@@ -1712,15 +1711,20 @@ used when calculating the best FIXED subframe order.
   }{
     \WRITE $Rice_{\BPORDER~p}$ in 5 unsigned bits\;
   }
-  write $encoded~residuals_{\PORDER~p}$\;
+  encode residuals from $partition_{\BPORDER~p}$ with $Rice_{\BPORDER~p}$\;
 }
 \Return encoded residual block\;
 \EALGORITHM
 }
 
+\begin{figure}[h]
+\includegraphics{figures/flac/residual.pdf}
+\end{figure}
+
 \clearpage
 
 \subsubsection{Computing Best Rice Parameter}
+{\relsize{-1}
 \ALGORITHM{a set of signed residual values, maximum Rice parameter from encoding options}{the Rice parameter as an unsigned integer}
 \SetKwData{PARAMETER}{Rice parameter}
 \SetKwData{PSUM}{partition sum}
@@ -1733,6 +1737,21 @@ $\PARAMETER \leftarrow 0$\;
 }
 \Return \MIN(\PARAMETER , \MAXPARAMETER)
 \EALGORITHM
+}
+
+\subsubsection{Estimating Residual Partition Size}
+{\relsize{-1}
+\ALGORITHM{a set of signed residual partition values, a Rice parameter as an unsigned integer}{the estimated size of the residual partition in bits}
+\SetKwData{PARAMETER}{Rice parameter}
+\SetKwData{PSUM}{partition sum}
+\PSUM $\leftarrow \overset{residuals~count - 1}{\underset{i = 0}{\sum}} |residual_i|$\;
+\eIf{\PARAMETER $> 0$}{
+\Return $4 + ((1 + \PARAMETER) \times residuals~count) + \left\lfloor\frac{\PSUM}{2 ^ {\PARAMETER - 1}}\right\rfloor - \left\lfloor\frac{residuals~count}{2}\right\rfloor$\;
+}{
+\Return $4 + ((1 + \PARAMETER) \times residuals~count) + (\PSUM \times 2) - \left\lfloor\frac{residuals~count}{2}\right\rfloor$\;
+}
+\EALGORITHM
+}
 
 \subsubsection{Encoding Residual Partition}
 \ALGORITHM{a set of signed residual values, the partition's Rice parameter}{an encoded residual partition}
@@ -1750,9 +1769,7 @@ $\PARAMETER \leftarrow 0$\;
 \Return encoded partition\;
 \EALGORITHM
 
-\begin{figure}[h]
-\includegraphics{figures/flac/residual.pdf}
-\end{figure}
+
 
 \clearpage
 
