@@ -4,6 +4,8 @@
 #include "../common/md5.h"
 #include <string.h>
 #include <limits.h>
+#include <float.h>
+#include <math.h>
 #include <assert.h>
 
 /********************************************************
@@ -316,11 +318,20 @@ flacenc_init_encoder(struct flac_context* encoder)
     encoder->fixed_subframe_orders = array_ia_new(5);
     encoder->truncated_order = array_li_new();
 
+    encoder->lpc_subframe = bw_open_recorder(BS_BIG_ENDIAN);
+    encoder->tukey_window = array_f_new(1);
+    encoder->windowed_signal = array_f_new(1);
+    encoder->autocorrelation_values = array_f_new(1);
+    encoder->lp_coefficients = array_fa_new(1);
+    encoder->lp_error = array_f_new(1);
+    encoder->qlp_coefficients = array_i_new(1);
+    encoder->lpc_residual = array_i_new(1);
+
     encoder->best_partition_sizes = array_i_new(1);
     encoder->best_rice_parameters = array_i_new(1);
     encoder->partition_sizes = array_i_new(1);
     encoder->rice_parameters = array_i_new(1);
-    encoder->residuals = array_li_new();
+    encoder->remaining_residuals = array_li_new();
     encoder->residual_partition = array_li_new();
 }
 
@@ -332,11 +343,20 @@ flacenc_free_encoder(struct flac_context* encoder)
     encoder->fixed_subframe_orders->del(encoder->fixed_subframe_orders);
     encoder->truncated_order->del(encoder->truncated_order);
 
+    encoder->lpc_subframe->close(encoder->lpc_subframe);
+    encoder->tukey_window->del(encoder->tukey_window);
+    encoder->windowed_signal->del(encoder->windowed_signal);
+    encoder->autocorrelation_values->del(encoder->autocorrelation_values);
+    encoder->lp_coefficients->del(encoder->lp_coefficients);
+    encoder->lp_error->del(encoder->lp_error);
+    encoder->qlp_coefficients->del(encoder->qlp_coefficients);
+    encoder->lpc_residual->del(encoder->lpc_residual);
+
     encoder->best_partition_sizes->del(encoder->best_partition_sizes);
     encoder->best_rice_parameters->del(encoder->best_rice_parameters);
     encoder->partition_sizes->del(encoder->partition_sizes);
     encoder->rice_parameters->del(encoder->rice_parameters);
-    encoder->residuals->del(encoder->residuals);
+    encoder->remaining_residuals->del(encoder->remaining_residuals);
     encoder->residual_partition->del(encoder->residual_partition);
 }
 
@@ -540,7 +560,7 @@ flacenc_write_subframe(BitstreamWriter* bs,
         /*build FIXED subframe, if allowed*/
         if (try_FIXED) {
             bw_reset_recorder(encoder->fixed_subframe);
-            flacenc_write_fixed_subframe(bs,
+            flacenc_write_fixed_subframe(encoder->fixed_subframe,
                                          encoder,
                                          bits_per_sample,
                                          wasted_bps,
@@ -548,7 +568,14 @@ flacenc_write_subframe(BitstreamWriter* bs,
         }
 
         /*build LPC subframe, if allowed*/
-        /*FIXME*/
+        if (try_LPC) {
+            bw_reset_recorder(encoder->lpc_subframe);
+            flacenc_write_lpc_subframe(bs,
+                                       encoder,
+                                       bits_per_sample,
+                                       wasted_bps,
+                                       samples);
+        }
 
         /*if FIXED = n , LPC = n , VERBATIM = n
           return VERBATIM subframe anyway*/
@@ -701,6 +728,343 @@ flacenc_next_fixed_order(const array_i* order, array_i* next_order)
 }
 
 void
+flacenc_write_lpc_subframe(BitstreamWriter* bs,
+                           struct flac_context* encoder,
+                           unsigned bits_per_sample,
+                           unsigned wasted_bits_per_sample,
+                           const array_i* samples)
+{
+    array_i* qlp_coefficients = encoder->qlp_coefficients;
+    array_i* lpc_residual = encoder->lpc_residual;
+    unsigned qlp_precision;
+    int qlp_shift_needed;
+    unsigned order;
+    int64_t accumulator;
+    unsigned i;
+    unsigned j;
+
+    flacenc_best_lpc_coefficients(bits_per_sample,
+                                  encoder,
+                                  samples,
+                                  qlp_coefficients,
+                                  &qlp_precision,
+                                  &qlp_shift_needed);
+
+    assert(qlp_coefficients->size > 0);
+    order = qlp_coefficients->size;
+
+    bs->write(bs, 1, 0);               /*pad*/
+    bs->write(bs, 1, 1);               /*subframe type*/
+    bs->write(bs, 5, order - 1);       /*subframe order*/
+    if (wasted_bits_per_sample > 0) {  /*wasted bits-per-sample*/
+        bs->write(bs, 1, 1);
+        bs->write_unary(bs, 1, wasted_bits_per_sample - 1);
+    } else {
+        bs->write(bs, 1, 0);
+    }
+
+    for (i = 0; i < order; i++)        /*warm-up samples*/
+        bs->write_signed(bs, bits_per_sample - wasted_bits_per_sample,
+                         samples->data[i]);
+
+    bs->write(bs, 4, qlp_precision - 1);
+    bs->write_signed(bs, 5, qlp_shift_needed);
+
+    for (i = 0; i < order; i++)        /*QLP coefficients*/
+        bs->write_signed(bs, qlp_precision, qlp_coefficients->data[i]);
+
+    /*calculate signed residuals*/
+    lpc_residual->reset(lpc_residual);
+    lpc_residual->resize(lpc_residual, samples->size - order);
+    for (i = 0; i < samples->size - order; i++) {
+        accumulator = 0;
+        for (j = 0; j < order; j++)
+            accumulator += ((int64_t)qlp_coefficients->data[j] *
+                            (int64_t)samples->data[i + order - j - 1]);
+        accumulator >>= qlp_shift_needed;
+        a_append(lpc_residual,
+                 samples->data[i + order] - (int)accumulator);
+    }
+
+    /*write residual block*/
+    flacenc_encode_residuals(bs,
+                             encoder,
+                             samples->size,
+                             order,
+                             lpc_residual);
+}
+
+void
+flacenc_best_lpc_coefficients(unsigned bits_per_sample,
+                              struct flac_context* encoder,
+                              const array_i* samples,
+                              array_i* qlp_coefficients,
+                              unsigned* qlp_precision,
+                              int* qlp_shift_needed)
+{
+    array_f* windowed_signal = encoder->windowed_signal;
+    array_f* autocorrelation_values = encoder->autocorrelation_values;
+    array_fa* lp_coefficients = encoder->lp_coefficients;
+    array_f* lp_error = encoder->lp_error;
+    unsigned best_order;
+
+    if (samples->size > (encoder->options.max_lpc_order + 1)) {
+        /*window signal*/
+        flacenc_window_signal(samples,
+                              encoder->tukey_window,
+                              windowed_signal);
+
+        /*transform windowed signal to autocorrelation values*/
+        flacenc_autocorrelate(encoder->options.max_lpc_order,
+                              windowed_signal,
+                              autocorrelation_values);
+
+        /*calculate LP coefficients from autocorrelation values*/
+        flacenc_compute_lp_coefficients(encoder->options.max_lpc_order,
+                                        autocorrelation_values,
+                                        lp_coefficients,
+                                        lp_error);
+
+        if (!encoder->options.exhaustive_model_search) {
+            /*if not performing exhaustive model search
+              estimate the best order from the error values*/
+
+            best_order =
+                flacenc_estimate_best_lpc_order(
+                    bits_per_sample,
+                    encoder->options.qlp_coeff_precision,
+                    encoder->options.max_lpc_order,
+                    samples->size,
+                    lp_error);
+
+            flacenc_quantize_coefficients(lp_coefficients,
+                                          best_order,
+                                          encoder->options.qlp_coeff_precision,
+                                          qlp_coefficients,
+                                          qlp_shift_needed);
+
+            *qlp_precision = encoder->options.qlp_coeff_precision;
+        } else {
+            assert(0);
+            /*FIXME*/
+
+            /*otherwise, build LPC subframe from each set of LP coefficients*/
+            /*FIXME*/
+
+            /*and return the parameters of the one which is smallest*/
+            /*FIXME*/
+        }
+    } else {
+        /*use a set of dummy coefficients*/
+        qlp_coefficients->reset(qlp_coefficients);
+        qlp_coefficients->vappend(qlp_coefficients, 1, 1);
+        *qlp_precision = 2;
+        *qlp_shift_needed = 0;
+    }
+}
+
+void
+flacenc_window_signal(const array_i* samples,
+                      array_f* tukey_window,
+                      array_f* windowed_signal)
+{
+    unsigned N = samples->size;
+    unsigned n;
+    double alpha = 0.5;
+    unsigned window1;
+    unsigned window2;
+
+    if (tukey_window->size != samples->size) {
+        tukey_window->resize(tukey_window, samples->size);
+        tukey_window->reset(tukey_window);
+
+        window1 = (unsigned)(alpha * (N - 1)) / 2;
+        window2 = (unsigned)((N - 1) * (1.0 - (alpha / 2.0)));
+
+        for (n = 0; n < N; n++) {
+            if (n <= window1) {
+                a_append(tukey_window,
+                         0.5 *
+                         (1.0 +
+                          cos(M_PI * (((2 * n) / (alpha * (N - 1))) - 1.0))));
+            } else if (n <= window2) {
+                a_append(tukey_window, 1.0);
+            } else {
+                a_append(tukey_window,
+                         0.5 *
+                         (1.0 +
+                          cos(M_PI * (((2.0 * n) / (alpha * (N - 1))) -
+                                      (2.0 / alpha) + 1.0))));
+            }
+        }
+    }
+
+    windowed_signal->resize(windowed_signal, samples->size);
+    windowed_signal->reset(windowed_signal);
+    for (n = 0; n < N; n++) {
+        a_append(windowed_signal, samples->data[n] * tukey_window->data[n]);
+    }
+}
+
+void
+flacenc_autocorrelate(unsigned max_lpc_order,
+                      const array_f* windowed_signal,
+                      array_f* autocorrelation_values)
+{
+    unsigned lag;
+    unsigned i;
+    double accumulator;
+
+    autocorrelation_values->reset(autocorrelation_values);
+
+    for (lag = 0; lag <= max_lpc_order; lag++) {
+        accumulator = 0.0;
+        assert((windowed_signal->size - lag) > 0);
+        for (i = 0; i < windowed_signal->size - lag; i++)
+            accumulator += (windowed_signal->data[i] *
+                            windowed_signal->data[i + lag]);
+        autocorrelation_values->append(autocorrelation_values, accumulator);
+    }
+}
+
+void
+flacenc_compute_lp_coefficients(unsigned max_lpc_order,
+                                const array_f* autocorrelation,
+                                array_fa* lp_coefficients,
+                                array_f* lp_error)
+{
+    unsigned i;
+    unsigned j;
+    array_f* lp_coeff;
+    double k;
+    double q;
+
+    assert(autocorrelation->size == (max_lpc_order + 1));
+
+    lp_coefficients->reset(lp_coefficients);
+    lp_error->reset(lp_error);
+
+    k = autocorrelation->data[1] / autocorrelation->data[0];
+    lp_coeff = lp_coefficients->append(lp_coefficients);
+    lp_coeff->append(lp_coeff, k);
+    lp_error->append(lp_error,
+                     autocorrelation->data[0] * (1.0 - (k * k)));
+
+    for (i = 1; i < max_lpc_order; i++) {
+        q = autocorrelation->data[i + 1];
+        for (j = 0; j < i; j++)
+            q -= (lp_coefficients->data[i - 1]->data[j] *
+                  autocorrelation->data[i - j]);
+
+        k = q / lp_error->data[i - 1];
+
+        lp_coeff = lp_coefficients->append(lp_coefficients);
+        for (j = 0; j < i; j++) {
+            lp_coeff->append(lp_coeff,
+                             lp_coefficients->data[i - 1]->data[j] -
+                             (k *
+                              lp_coefficients->data[i - 1]->data[i - j - 1]));
+        }
+        lp_coeff->append(lp_coeff, k);
+
+        lp_error->append(lp_error, lp_error->data[i - 1] * (1.0 - (k * k)));
+    }
+}
+
+unsigned
+flacenc_estimate_best_lpc_order(unsigned bits_per_sample,
+                                unsigned qlp_precision,
+                                unsigned max_lpc_order,
+                                unsigned block_size,
+                                const array_f* lp_error)
+{
+    double error_scale = (M_LN2 * M_LN2) / ((double)block_size * 2.0);
+    unsigned best_order = 0;
+    double best_subframe_bits = DBL_MAX;
+    unsigned header_bits;
+    double bits_per_residual;
+    double estimated_subframe_bits;
+    unsigned i;
+    unsigned order;
+
+    assert(block_size > 0);
+
+    for (i = 0; i < max_lpc_order; i++) {
+        order = i + 1;
+        if (lp_error->data[i] > 0.0) {
+            header_bits = order * (bits_per_sample + qlp_precision);
+            bits_per_residual = MAX(log(lp_error->data[i] * error_scale) /
+                                    (M_LN2 * 2), 0.0);
+            estimated_subframe_bits =
+                (header_bits + bits_per_residual * (block_size - order));
+
+            if (estimated_subframe_bits < best_subframe_bits) {
+                best_order = order;
+                best_subframe_bits = estimated_subframe_bits;
+            }
+        } else {
+            return order;
+        }
+    }
+
+    assert(best_order > 0);
+    return best_order;
+}
+
+void
+flacenc_quantize_coefficients(const array_fa* lp_coefficients,
+                              unsigned order,
+                              unsigned qlp_precision,
+                              array_i* qlp_coefficients,
+                              int* qlp_shift_needed)
+{
+    array_f* lp_coeffs = lp_coefficients->data[order - 1];
+    double l = DBL_MIN;
+    int log2cmax;
+    unsigned i;
+    int qlp_max;
+    int qlp_min;
+    double error;
+    int error_i;
+
+    qlp_coefficients->reset(qlp_coefficients);
+
+    for (i = 0; i < lp_coeffs->size; i++)
+        l = MAX(fabs(lp_coeffs->data[i]), l);
+
+    frexp(l, &log2cmax);
+
+    *qlp_shift_needed = (int)(qlp_precision - 1) - (log2cmax - 1) - 1;
+    *qlp_shift_needed = MAX(*qlp_shift_needed, -(1 << 4));
+    *qlp_shift_needed = MIN(*qlp_shift_needed, (1 << 4) - 1);
+
+    qlp_max = (1 << (qlp_precision - 1)) - 1;
+    qlp_min = -(1 << (qlp_precision - 1));
+
+    error = 0.0;
+
+    if (*qlp_shift_needed >= 0) {
+        for (i = 0; i < order; i++) {
+            error += (lp_coeffs->data[i] * (1 << *qlp_shift_needed));
+            error_i = (int)round(error);
+            qlp_coefficients->append(qlp_coefficients,
+                                     MIN(MAX(error_i, qlp_min), qlp_max));
+            error -= (double)error_i;
+        }
+    } else {
+        /*negative shifts are not allowed, so shrink coefficients*/
+        for (i = 0; i < order; i++) {
+            error += (lp_coeffs->data[i] / (1 << *qlp_shift_needed));
+            error_i = (int)round(error);
+            qlp_coefficients->append(qlp_coefficients,
+                                     MIN(MAX(error_i, qlp_min), qlp_max));
+            error -= (double)error_i;
+        }
+        *qlp_shift_needed = 0;
+    }
+}
+
+void
 flacenc_encode_residuals(BitstreamWriter* bs,
                          struct flac_context* encoder,
                          unsigned block_size,
@@ -717,7 +1081,7 @@ flacenc_encode_residuals(BitstreamWriter* bs,
     array_i* best_rice_parameters = encoder->best_rice_parameters;
     array_i* partition_sizes = encoder->partition_sizes;
     array_i* rice_parameters = encoder->rice_parameters;
-    array_li* remaining_residuals = encoder->residuals;
+    array_li* remaining_residuals = encoder->remaining_residuals;
     array_li* residual_partition = encoder->residual_partition;
 
     uint64_t abs_partition_sum;
@@ -737,8 +1101,6 @@ flacenc_encode_residuals(BitstreamWriter* bs,
               2 ^ partition_order*/
             break;
 
-        /*FIXME - add array linking to avoid lots of memory copies
-          on essentially read-only data*/
         residuals->link(residuals, remaining_residuals);
         partition_sizes->reset(partition_sizes);
         rice_parameters->reset(rice_parameters);
@@ -996,7 +1358,7 @@ flacenc_abs_sum(const array_li* data)
 int main(int argc, char *argv[]) {
     encoders_encode_flac(argv[1],
                          stdin,
-                         4096, 12, 0, 6, 1, 1, 1);
+                         4096, 12, 0, 6, 1, 1, 0);
 
     return 0;
 }

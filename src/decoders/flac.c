@@ -740,7 +740,7 @@ FlacDecoder_read_lpc_subframe(BitstreamReader* bitstream,
     for (i = order; i < block_size; i++) {
         accumulator = 0;
         for (j = 0; j < order; j++) {
-            accumulator += qlp_data[j] * s_data[i - j - 1];
+            accumulator += (int64_t)qlp_data[j] * (int64_t)s_data[i - j - 1];
         }
 
         a_append(samples,

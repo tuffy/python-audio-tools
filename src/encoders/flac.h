@@ -69,11 +69,20 @@ struct flac_context {
     array_ia* fixed_subframe_orders;
     array_li* truncated_order;
 
+    BitstreamWriter* lpc_subframe;
+    array_f* tukey_window;
+    array_f* windowed_signal;
+    array_f* autocorrelation_values;
+    array_fa* lp_coefficients;
+    array_f* lp_error;
+    array_i* qlp_coefficients;
+    array_i* lpc_residual;
+
     array_i* best_partition_sizes;
     array_i* best_rice_parameters;
     array_i* partition_sizes;
     array_i* rice_parameters;
-    array_li* residuals;
+    array_li* remaining_residuals;
     array_li* residual_partition;
 };
 
@@ -181,6 +190,51 @@ flacenc_write_fixed_subframe(BitstreamWriter* bs,
 
 void
 flacenc_next_fixed_order(const array_i* order, array_i* next_order);
+
+void
+flacenc_write_lpc_subframe(BitstreamWriter* bs,
+                           struct flac_context* encoder,
+                           unsigned bits_per_sample,
+                           unsigned wasted_bits_per_sample,
+                           const array_i* samples);
+
+void
+flacenc_best_lpc_coefficients(unsigned bits_per_sample,
+                              struct flac_context* encoder,
+                              const array_i* samples,
+                              array_i* qlp_coefficients,
+                              unsigned* qlp_precision,
+                              int* qlp_shift_needed);
+
+void
+flacenc_window_signal(const array_i* samples,
+                      array_f* tukey_window,
+                      array_f* windowed_signal);
+
+void
+flacenc_autocorrelate(unsigned max_lpc_order,
+                      const array_f* windowed_signal,
+                      array_f* autocorrelation_values);
+
+void
+flacenc_compute_lp_coefficients(unsigned max_lpc_order,
+                                const array_f* autocorrelation,
+                                array_fa* lp_coefficients,
+                                array_f* lp_error);
+
+unsigned
+flacenc_estimate_best_lpc_order(unsigned bits_per_sample,
+                                unsigned qlp_precision,
+                                unsigned max_lpc_order,
+                                unsigned block_size,
+                                const array_f* lp_error);
+
+void
+flacenc_quantize_coefficients(const array_fa* lp_coefficients,
+                              unsigned order,
+                              unsigned qlp_precision,
+                              array_i* qlp_coefficients,
+                              int* qlp_shift_needed);
 
 void
 flacenc_encode_residuals(BitstreamWriter* bs,

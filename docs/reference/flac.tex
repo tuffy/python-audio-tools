@@ -2175,7 +2175,7 @@ and error values: \texttt{619.107, 521.530, 520.854}
 \SetKwFunction{MAX}{max}
 \SetKwFunction{ROUND}{round}
 $l \leftarrow $ maximum $|c|$ for $c$ in $\text{LP Coefficient}_{order - 1~0}$ to $\text{LP Coefficient}_{order - 1~order}$\;
-QLP shift needed $\leftarrow \text{QLP precision} - \lfloor \log_2(l) \rfloor - 2$\;
+QLP shift needed $\leftarrow (\text{QLP precision} - 1) - (\lfloor \log_2(l) \rfloor - 1) - 1$\;
 \uIf(\tcc*[f]{ensure shift fits into signed 5 bit field}){QLP shift needed $> 2 ^ 4 - 1$}{
   QLP shift needed $\leftarrow 2 ^ 4 - 1$\;
 }
