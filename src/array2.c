@@ -60,6 +60,8 @@ struct array_i_s* array_i_wrap(int* data, unsigned size, unsigned total_size)
     a->swap = array_i_swap;
     a->head = array_i_head;
     a->tail = array_i_tail;
+    a->de_head = array_i_de_head;
+    a->de_tail = array_i_de_tail;
     a->split = array_i_split;
     a->slice = array_i_slice;
     a->reverse = array_i_reverse;
@@ -144,6 +146,8 @@ ARRAY_EXTEND(array_f_extend, array_f, double)
     int                                                            \
     FUNC_NAME(const ARRAY_TYPE *array, const ARRAY_TYPE *compare)  \
     {                                                              \
+        assert(array->data != NULL);                               \
+        assert(compare->data != NULL);                             \
         if (array->size == compare->size) {                        \
             return (memcmp(array->data, compare->data,                  \
                            sizeof(ARRAY_DATA_TYPE) * array->size) == 0); \
@@ -163,6 +167,7 @@ ARRAY_EQUALS(array_lf_equals, array_lf, double)
         int min = INT_MAX;                 \
         unsigned i;                        \
                                            \
+        assert(array->data != NULL);       \
         for (i = 0; i < array->size; i++)  \
             if (array->data[i] < min)      \
                 min = array->data[i];      \
@@ -179,6 +184,7 @@ ARRAY_I_MIN(array_li_min, array_li)
         int max = INT_MIN;                       \
         unsigned i;                              \
                                                  \
+        assert(array->data != NULL);             \
         for (i = 0; i < array->size; i++)        \
             if (array->data[i] > max)            \
                 max = array->data[i];            \
@@ -197,6 +203,7 @@ ARRAY_I_MAX(array_li_max, array_li)
         unsigned size = array->size;            \
         unsigned i;                             \
                                                 \
+        assert(array->data != NULL);            \
         for (i = 0; i < size; i++)              \
             accumulator += data[i];             \
                                                 \
@@ -265,6 +272,28 @@ ARRAY_SWAP(array_f_swap, array_f)
 ARRAY_HEAD(array_i_head, array_i, int)
 ARRAY_HEAD(array_f_head, array_f, double)
 
+#define ARRAY_DE_HEAD(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE)        \
+    void                                                             \
+    FUNC_NAME(const ARRAY_TYPE *array, unsigned count, ARRAY_TYPE *tail) \
+    {                                                                   \
+        unsigned to_copy;                                               \
+        count = MIN(count, array->size);                                \
+        to_copy = array->size - count;                                  \
+                                                                        \
+        if (tail != array) {                                            \
+            tail->resize(tail, to_copy);                                \
+            memcpy(tail->data, array->data + count,                     \
+                   sizeof(ARRAY_DATA_TYPE) * to_copy);                  \
+            tail->size = to_copy;                                       \
+        } else {                                                        \
+            memmove(tail->data, array->data + count,                    \
+                    sizeof(ARRAY_DATA_TYPE) * to_copy);                 \
+            tail->size = to_copy;                                       \
+        }                                                               \
+    }
+ARRAY_DE_HEAD(array_i_de_head, array_i, int)
+ARRAY_DE_HEAD(array_f_de_head, array_f, double)
+
 #define ARRAY_TAIL(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE)     \
     void                                                            \
     FUNC_NAME(const ARRAY_TYPE *array, unsigned count, ARRAY_TYPE *tail) \
@@ -284,6 +313,26 @@ ARRAY_HEAD(array_f_head, array_f, double)
     }
 ARRAY_TAIL(array_i_tail, array_i, int)
 ARRAY_TAIL(array_f_tail, array_f, double)
+
+#define ARRAY_DE_TAIL(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE)   \
+    void                                                             \
+    FUNC_NAME(const ARRAY_TYPE *array, unsigned count, ARRAY_TYPE *head) \
+    {                                                                   \
+        unsigned to_copy;                                               \
+        count = MAX(count, array->size);                                \
+        to_copy = array->size - count;                                  \
+                                                                        \
+        if (head != array) {                                            \
+            head->resize(head, to_copy);                                \
+            memcpy(head->data, array->data,                             \
+                   sizeof(ARRAY_DATA_TYPE) * to_copy);                  \
+            head->size = to_copy;                                       \
+        } else {                                                        \
+            head->size = to_copy;                                       \
+        }                                                               \
+    }
+ARRAY_DE_TAIL(array_i_de_tail, array_i, int)
+ARRAY_DE_TAIL(array_f_de_tail, array_f, double)
 
 #define ARRAY_SPLIT(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE) \
     void                                                               \
@@ -435,6 +484,8 @@ struct array_li_s* array_li_new(void)
     array->swap = array_li_swap;
     array->head = array_li_head;
     array->tail = array_li_tail;
+    array->de_head = array_li_de_head;
+    array->de_tail = array_li_de_tail;
     array->split = array_li_split;
     array->print = array_li_print;
 
@@ -470,22 +521,49 @@ ARRAY_L_SWAP(array_lf_swap, array_lf)
     FUNC_NAME(const ARRAY_TYPE *array, unsigned count, ARRAY_TYPE *head) \
     {                                                                   \
         unsigned to_copy = MIN(count, array->size);                     \
+        assert(array->data != NULL);                                    \
         head->data = array->data;                                       \
         head->size = to_copy;                                           \
     }
 ARRAY_L_HEAD(array_li_head, array_li)
 ARRAY_L_HEAD(array_lf_head, array_lf)
 
+#define ARRAY_L_DE_HEAD(FUNC_NAME, ARRAY_TYPE)  \
+    void                                                                \
+    FUNC_NAME(const ARRAY_TYPE *array, unsigned count, ARRAY_TYPE *tail) \
+    {                                                                   \
+        unsigned to_copy;                                               \
+        assert(array->data != NULL);                                    \
+        count = MIN(count, array->size);                                \
+        to_copy = array->size - count;                                  \
+                                                                        \
+        tail->data = array->data + count;                               \
+        tail->size = to_copy;                                           \
+    }
+ARRAY_L_DE_HEAD(array_li_de_head, array_li)
+ARRAY_L_DE_HEAD(array_lf_de_head, array_lf)
+
 #define ARRAY_L_TAIL(FUNC_NAME, ARRAY_TYPE) \
     void                                                                \
     FUNC_NAME(const ARRAY_TYPE *array, unsigned count, ARRAY_TYPE *tail) \
     {                                                                   \
         unsigned to_copy = MIN(count, array->size);                     \
+        assert(array->data != NULL);                                    \
         tail->data = array->data + (array->size - to_copy);             \
         tail->size = to_copy;                                           \
     }
 ARRAY_L_TAIL(array_li_tail, array_li)
 ARRAY_L_TAIL(array_lf_tail, array_lf)
+
+#define ARRAY_L_DE_TAIL(FUNC_NAME, ARRAY_TYPE)  \
+    void                                                             \
+    FUNC_NAME(const ARRAY_TYPE *array, unsigned count, ARRAY_TYPE *head) \
+    {                                                                   \
+        assert(array->data != NULL);                                    \
+        head->size = array->size - MAX(count, array->size);             \
+    }
+ARRAY_L_DE_TAIL(array_li_de_tail, array_li)
+ARRAY_L_DE_TAIL(array_lf_de_tail, array_lf)
 
 #define ARRAY_L_SPLIT(FUNC_NAME, ARRAY_TYPE)            \
     void                                                \
@@ -495,6 +573,7 @@ ARRAY_L_TAIL(array_lf_tail, array_lf)
         /*ensure we don't try to move too many items*/                  \
         unsigned to_head = MIN(count, array->size);                     \
         unsigned to_tail = array->size - to_head;                       \
+        assert(array->data != NULL);                                    \
                                                                         \
         if ((head == array) && (tail == array)) {                       \
             /*do nothing*/                                              \
@@ -543,6 +622,8 @@ array_f* array_f_wrap(double* data, unsigned size, unsigned total_size)
     a->swap = array_f_swap;
     a->head = array_f_head;
     a->tail = array_f_tail;
+    a->de_head = array_f_de_head;
+    a->de_tail = array_f_de_tail;
     a->split = array_f_split;
     a->slice = array_f_slice;
     a->reverse = array_f_reverse;
@@ -559,6 +640,7 @@ array_f* array_f_wrap(double* data, unsigned size, unsigned total_size)
         double min = DBL_MAX;                    \
         unsigned i;                              \
                                                  \
+        assert(array->data != NULL);             \
         for (i = 0; i < array->size; i++)        \
             if (array->data[i] < min)            \
                 min = array->data[i];            \
@@ -575,6 +657,7 @@ ARRAY_F_MIN(array_lf_min, array_lf)
         double max = DBL_MIN;                   \
         unsigned i;                             \
                                                 \
+        assert(array->data != NULL);            \
         for (i = 0; i < array->size; i++)       \
             if (array->data[i] > max)           \
                 max = array->data[i];           \
@@ -593,6 +676,7 @@ ARRAY_F_MAX(array_lf_max, array_lf)
         unsigned size = array->size;            \
         unsigned i;                             \
                                                 \
+        assert(array->data != NULL);            \
         for (i = 0; i < size; i++)              \
             accumulator += data[i];             \
                                                 \
@@ -649,6 +733,8 @@ struct array_lf_s* array_lf_new(void)
     array->swap = array_lf_swap;
     array->head = array_lf_head;
     array->tail = array_lf_tail;
+    array->de_head = array_lf_de_head;
+    array->de_tail = array_lf_de_tail;
     array->split = array_lf_split;
     array->print = array_lf_print;
 

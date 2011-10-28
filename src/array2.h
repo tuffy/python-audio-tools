@@ -95,15 +95,25 @@ struct array_i_s {
     /*swaps the contents of this array with another array*/
     void (*swap)(struct array_i_s *array, struct array_i_s *swap);
 
-    /*returns a new array with "count" number of items
-      copied from the start of this array, or as many as possible*/
+    /*moves "count" number of items from the start of this array
+      to "head", or as many as possible*/
     void (*head)(const struct array_i_s *array, unsigned count,
                  struct array_i_s *head);
 
-    /*returns a new array with "count" number of items
-      copied from the end of this array, or as many as possible*/
+    /*moves "count" number of items from the end of this array
+      to "tail", or as many as possible*/
     void (*tail)(const struct array_i_s *array, unsigned count,
                  struct array_i_s *tail);
+
+    /*moves all except the first "count" number of items
+      from this array to "tail", or as many as possible*/
+    void (*de_head)(const struct array_i_s *array, unsigned count,
+                    struct array_i_s *tail);
+
+    /*moves all except the last "count" number of items
+      from this array to "head", or as many as possible*/
+    void (*de_tail)(const struct array_i_s *array, unsigned count,
+                    struct array_i_s *head);
 
     /*splits the array into "head" and "tail" arrays
       such that "head" contains a copy of up to "count" items
@@ -150,6 +160,10 @@ void array_i_head(const struct array_i_s *array, unsigned count,
                   struct array_i_s *head);
 void array_i_tail(const struct array_i_s *array, unsigned count,
                   struct array_i_s *tail);
+void array_i_de_head(const struct array_i_s *array, unsigned count,
+                     struct array_i_s *tail);
+void array_i_de_tail(const struct array_i_s *array, unsigned count,
+                     struct array_i_s *head);
 void array_i_split(const struct array_i_s *array, unsigned count,
                    struct array_i_s *head, struct array_i_s *tail);
 void array_i_slice(const struct array_i_s *array,
@@ -190,15 +204,25 @@ struct array_li_s {
     /*swaps the contents of this array with another array*/
     void (*swap)(struct array_li_s *array, struct array_li_s *swap);
 
-    /*returns a new array with "count" number of items
-      copied from the start of this array, or as many as possible*/
+    /*moves "count" number of items from the start of this array
+      to "head", or as many as possible*/
     void (*head)(const struct array_li_s *array, unsigned count,
                  struct array_li_s *head);
 
-    /*returns a new array with "count" number of items
-      copied from the end of this array, or as many as possible*/
+    /*moves "count" number of items from the start of this array
+      to "head", or as many as possible*/
     void (*tail)(const struct array_li_s *array, unsigned count,
                  struct array_li_s *tail);
+
+    /*moves all except the first "count" number of items
+      from this array to "tail", or as many as possible*/
+    void (*de_head)(const struct array_li_s *array, unsigned count,
+                    struct array_li_s *tail);
+
+    /*moves all except the last "count" number of items
+      from this array to "head", or as many as possible*/
+    void (*de_tail)(const struct array_li_s *array, unsigned count,
+                    struct array_li_s *head);
 
     /*splits the array into "head" and "tail" arrays
       such that "head" contains a copy of up to "count" items
@@ -224,6 +248,10 @@ void array_li_head(const struct array_li_s *array, unsigned count,
                    struct array_li_s *head);
 void array_li_tail(const struct array_li_s *array, unsigned count,
                    struct array_li_s *tail);
+void array_li_de_head(const struct array_li_s *array, unsigned count,
+                      struct array_li_s *tail);
+void array_li_de_tail(const struct array_li_s *array, unsigned count,
+                      struct array_li_s *head);
 void array_li_split(const struct array_li_s *array, unsigned count,
                     struct array_li_s *head, struct array_li_s *tail);
 void array_li_print(const struct array_li_s *array, FILE* output);
@@ -295,6 +323,16 @@ struct array_f_s {
     void (*tail)(const struct array_f_s *array, unsigned count,
                  struct array_f_s *tail);
 
+    /*moves all except the first "count" number of items
+      from this array to "tail", or as many as possible*/
+    void (*de_head)(const struct array_f_s *array, unsigned count,
+                    struct array_f_s *tail);
+
+    /*moves all except the last "count" number of items
+      from this array to "head", or as many as possible*/
+    void (*de_tail)(const struct array_f_s *array, unsigned count,
+                    struct array_f_s *head);
+
     /*splits the array into "head" and "tail" arrays
       such that "head" contains a copy of up to "count" items
       while "tail" contains the rest*/
@@ -341,6 +379,10 @@ void array_f_head(const struct array_f_s *array, unsigned count,
                   struct array_f_s *head);
 void array_f_tail(const struct array_f_s *array, unsigned count,
                   struct array_f_s *tail);
+void array_f_de_head(const struct array_f_s *array, unsigned count,
+                     struct array_f_s *tail);
+void array_f_de_tail(const struct array_f_s *array, unsigned count,
+                     struct array_f_s *head);
 void array_f_split(const struct array_f_s *array, unsigned count,
                    struct array_f_s *head, struct array_f_s *tail);
 void array_f_slice(const struct array_f_s *array,
@@ -391,6 +433,16 @@ struct array_lf_s {
     void (*tail)(const struct array_lf_s *array, unsigned count,
                  struct array_lf_s *tail);
 
+    /*moves all except the first "count" number of items
+      from this array to "tail", or as many as possible*/
+    void (*de_head)(const struct array_lf_s *array, unsigned count,
+                    struct array_lf_s *tail);
+
+    /*moves all except the last "count" number of items
+      from this array to "head", or as many as possible*/
+    void (*de_tail)(const struct array_lf_s *array, unsigned count,
+                    struct array_lf_s *head);
+
     /*splits the array into "head" and "tail" arrays
       such that "head" contains a copy of up to "count" items
       while "tail" contains the rest*/
@@ -415,6 +467,10 @@ void array_lf_head(const struct array_lf_s *array, unsigned count,
                    struct array_lf_s *head);
 void array_lf_tail(const struct array_lf_s *array, unsigned count,
                    struct array_lf_s *tail);
+void array_lf_de_head(const struct array_lf_s *array, unsigned count,
+                      struct array_lf_s *tail);
+void array_lf_de_tail(const struct array_lf_s *array, unsigned count,
+                      struct array_lf_s *head);
 void array_lf_split(const struct array_lf_s *array, unsigned count,
                     struct array_lf_s *head, struct array_lf_s *tail);
 void array_lf_print(const struct array_lf_s *array, FILE* output);

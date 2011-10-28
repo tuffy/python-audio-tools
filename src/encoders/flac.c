@@ -314,6 +314,7 @@ flacenc_init_encoder(struct flac_context* encoder)
     encoder->frame = bw_open_recorder(BS_BIG_ENDIAN);
     encoder->fixed_subframe = bw_open_recorder(BS_BIG_ENDIAN);
     encoder->fixed_subframe_orders = array_ia_new(5);
+    encoder->truncated_order = array_li_new();
 
     encoder->best_partition_sizes = array_i_new(1);
     encoder->best_rice_parameters = array_i_new(1);
@@ -329,6 +330,7 @@ flacenc_free_encoder(struct flac_context* encoder)
     encoder->frame->close(encoder->frame);
     encoder->fixed_subframe->close(encoder->fixed_subframe);
     encoder->fixed_subframe_orders->del(encoder->fixed_subframe_orders);
+    encoder->truncated_order->del(encoder->truncated_order);
 
     encoder->best_partition_sizes->del(encoder->best_partition_sizes);
     encoder->best_rice_parameters->del(encoder->best_rice_parameters);
@@ -628,17 +630,39 @@ flacenc_write_fixed_subframe(BitstreamWriter* bs,
                              unsigned wasted_bits_per_sample,
                              const array_i* samples)
 {
+    array_ia* fixed_subframe_orders = encoder->fixed_subframe_orders;
     array_i* order;
+    array_li* truncated_order = encoder->truncated_order;
+
+    uint64_t best_order_abs_sum;
     unsigned best_order;
+    uint64_t order_abs_sum;
     unsigned i;
 
-    encoder->fixed_subframe_orders->reset(encoder->fixed_subframe_orders);
-    order =
-        encoder->fixed_subframe_orders->append(encoder->fixed_subframe_orders);
+    fixed_subframe_orders->reset(fixed_subframe_orders);
+    order = fixed_subframe_orders->append(fixed_subframe_orders);
     order->extend(order, samples);  /*order 0*/
-    /*FIXME - generate orders 1-4*/
-    /*FIXME - choose best order*/
+    order->link(order, truncated_order);
+
+    truncated_order->de_head(truncated_order, 4, truncated_order);
+    best_order_abs_sum = flacenc_abs_sum(truncated_order);
     best_order = 0;
+
+    if (samples->size > 4) {
+        for (i = 0; i < MAX_FIXED_ORDER; i++) {
+            /*orders 1 - 4*/
+            order = fixed_subframe_orders->append(fixed_subframe_orders);
+            flacenc_next_fixed_order(fixed_subframe_orders->data[i], order);
+            order->link(order, truncated_order);
+            truncated_order->de_head(truncated_order, 4 - (i + 1),
+                                     truncated_order);
+            order_abs_sum = flacenc_abs_sum(truncated_order);
+            if (order_abs_sum < best_order_abs_sum) {
+                best_order_abs_sum = order_abs_sum;
+                best_order = i + 1;
+            }
+        }
+    }
 
     bs->write(bs, 1, 0);               /*pad*/
     bs->write(bs, 3, 1);               /*FIXED subframe type*/
@@ -659,6 +683,21 @@ flacenc_write_fixed_subframe(BitstreamWriter* bs,
                              samples->size,
                              best_order,
                              encoder->fixed_subframe_orders->data[best_order]);
+}
+
+void
+flacenc_next_fixed_order(const array_i* order, array_i* next_order)
+{
+    unsigned i;
+    unsigned order_size = order->size;
+    int* order_data = order->data;
+
+    assert(order_size > 1);
+    next_order->resize(next_order, order_size - 1);
+    next_order->reset(next_order);
+    for (i = 1; i < order_size; i++) {
+        a_append(next_order, order_data[i] - order_data[i - 1]);
+    }
 }
 
 void

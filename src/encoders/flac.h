@@ -67,6 +67,7 @@ struct flac_context {
     BitstreamWriter* frame;
     BitstreamWriter* fixed_subframe;
     array_ia* fixed_subframe_orders;
+    array_li* truncated_order;
 
     array_i* best_partition_sizes;
     array_i* best_rice_parameters;
@@ -98,6 +99,8 @@ struct flac_subframe_header {
 };
 
 typedef enum {OK, ERROR} status;
+
+#define MAX_FIXED_ORDER 4
 
 /*initializes all the temporary buffers in encoder*/
 void
@@ -175,6 +178,9 @@ flacenc_write_fixed_subframe(BitstreamWriter* bs,
                              unsigned bits_per_sample,
                              unsigned wasted_bits_per_sample,
                              const array_i* samples);
+
+void
+flacenc_next_fixed_order(const array_i* order, array_i* next_order);
 
 void
 flacenc_encode_residuals(BitstreamWriter* bs,
