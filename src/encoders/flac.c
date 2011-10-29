@@ -1,5 +1,4 @@
 #include "flac.h"
-/* #include "flac_lpc.h" */
 #include "../pcmreader2.h"
 #include "../common/md5.h"
 #include <string.h>
@@ -31,8 +30,7 @@
 #define VERSION_STRING(x) VERSION_STRING_(x)
 const static char* AUDIOTOOLS_VERSION = VERSION_STRING(VERSION);
 
-/* #define DEFAULT_PADDING_SIZE 4096 */
-#define DEFAULT_PADDING_SIZE 0
+#define DEFAULT_PADDING_SIZE 4096
 
 #ifndef MIN
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
@@ -313,6 +311,13 @@ encoders_encode_flac(char *filename,
 void
 flacenc_init_encoder(struct flac_context* encoder)
 {
+    encoder->average_samples = array_i_new(1);
+    encoder->difference_samples = array_i_new(1);
+    encoder->left_subframe = bw_open_recorder(BS_BIG_ENDIAN);
+    encoder->right_subframe = bw_open_recorder(BS_BIG_ENDIAN);
+    encoder->average_subframe = bw_open_recorder(BS_BIG_ENDIAN);
+    encoder->difference_subframe = bw_open_recorder(BS_BIG_ENDIAN);
+
     encoder->subframe_samples = array_i_new(1);
 
     encoder->frame = bw_open_recorder(BS_BIG_ENDIAN);
@@ -340,6 +345,13 @@ flacenc_init_encoder(struct flac_context* encoder)
 void
 flacenc_free_encoder(struct flac_context* encoder)
 {
+    encoder->average_samples->del(encoder->average_samples);
+    encoder->difference_samples->del(encoder->difference_samples);
+    encoder->left_subframe->close(encoder->left_subframe);
+    encoder->right_subframe->close(encoder->right_subframe);
+    encoder->average_subframe->close(encoder->average_subframe);
+    encoder->difference_subframe->close(encoder->difference_subframe);
+
     encoder->subframe_samples->del(encoder->subframe_samples);
 
     encoder->frame->close(encoder->frame);
@@ -520,19 +532,141 @@ flacenc_write_frame(BitstreamWriter* bs,
 
     bw_add_callback(bs, flac_crc16, &crc16);
 
-    /*FIXME - check side frames here and determine which is best*/
+    if ((encoder->streaminfo.channels == 2) &&
+        ((encoder->options.mid_side || encoder->options.adaptive_mid_side))) {
+        BitstreamWriter* left_subframe = encoder->left_subframe;
+        BitstreamWriter* right_subframe = encoder->right_subframe;
+        BitstreamWriter* average_subframe = encoder->average_subframe;
+        BitstreamWriter* difference_subframe = encoder->difference_subframe;
+        unsigned left_subframe_bits;
+        unsigned right_subframe_bits;
+        unsigned average_subframe_bits;
+        unsigned difference_subframe_bits;
 
-    flacenc_write_frame_header(bs,
-                               &(encoder->streaminfo),
-                               block_size,
-                               channel_count - 1,
-                               encoder->total_flac_frames++);
+        bw_reset_recorder(left_subframe);
+        bw_reset_recorder(right_subframe);
+        bw_reset_recorder(average_subframe);
+        bw_reset_recorder(difference_subframe);
 
-    for (channel = 0; channel < channel_count; channel++)
-        flacenc_write_subframe(bs,
+        flacenc_average_difference(samples,
+                                   encoder->average_samples,
+                                   encoder->difference_samples);
+
+        flacenc_write_subframe(left_subframe,
                                encoder,
                                encoder->streaminfo.bits_per_sample,
-                               samples->data[channel]);
+                               samples->data[0]);
+
+        flacenc_write_subframe(right_subframe,
+                               encoder,
+                               encoder->streaminfo.bits_per_sample,
+                               samples->data[1]);
+
+        flacenc_write_subframe(average_subframe,
+                               encoder,
+                               encoder->streaminfo.bits_per_sample,
+                               encoder->average_samples);
+
+        flacenc_write_subframe(difference_subframe,
+                               encoder,
+                               encoder->streaminfo.bits_per_sample + 1,
+                               encoder->difference_samples);
+
+        left_subframe_bits =
+            left_subframe->bits_written(left_subframe);
+        right_subframe_bits =
+            right_subframe->bits_written(right_subframe);
+        average_subframe_bits =
+            average_subframe->bits_written(average_subframe);
+        difference_subframe_bits =
+            difference_subframe->bits_written(difference_subframe);
+
+        if (encoder->options.mid_side) {
+            if ((left_subframe_bits + right_subframe_bits) <
+                MIN(MIN(left_subframe_bits + difference_subframe_bits,
+                        difference_subframe_bits + right_subframe_bits),
+                    average_subframe_bits + difference_subframe_bits)) {
+                /*write subframes independently*/
+
+                flacenc_write_frame_header(bs,
+                                           &(encoder->streaminfo),
+                                           block_size,
+                                           0x1,
+                                           encoder->total_flac_frames++);
+                bw_rec_copy(bs, left_subframe);
+                bw_rec_copy(bs, right_subframe);
+
+            } else if (left_subframe_bits <
+                       MIN(right_subframe_bits, average_subframe_bits)) {
+                /*write left-difference subframes*/
+
+                flacenc_write_frame_header(bs,
+                                           &(encoder->streaminfo),
+                                           block_size,
+                                           0x8,
+                                           encoder->total_flac_frames++);
+                bw_rec_copy(bs, left_subframe);
+                bw_rec_copy(bs, difference_subframe);
+
+            } else if (right_subframe_bits < average_subframe_bits) {
+                /*write difference-right subframes*/
+
+                flacenc_write_frame_header(bs,
+                                           &(encoder->streaminfo),
+                                           block_size,
+                                           0x9,
+                                           encoder->total_flac_frames++);
+                bw_rec_copy(bs, difference_subframe);
+                bw_rec_copy(bs, right_subframe);
+
+            } else {
+                /*write average-difference subframes*/
+
+                flacenc_write_frame_header(bs,
+                                           &(encoder->streaminfo),
+                                           block_size,
+                                           0xA,
+                                           encoder->total_flac_frames++);
+                bw_rec_copy(bs, average_subframe);
+                bw_rec_copy(bs, difference_subframe);
+            }
+        } else if ((left_subframe_bits + right_subframe_bits) <
+                   (average_subframe_bits + difference_subframe_bits)) {
+            /*write subframes independently*/
+
+            flacenc_write_frame_header(bs,
+                                       &(encoder->streaminfo),
+                                       block_size,
+                                       0x1,
+                                       encoder->total_flac_frames++);
+            bw_rec_copy(bs, left_subframe);
+            bw_rec_copy(bs, right_subframe);
+
+        } else {
+            /*write average-difference subframes*/
+
+            flacenc_write_frame_header(bs,
+                                       &(encoder->streaminfo),
+                                       block_size,
+                                       0xA,
+                                       encoder->total_flac_frames++);
+            bw_rec_copy(bs, average_subframe);
+            bw_rec_copy(bs, difference_subframe);
+        }
+    } else {
+        /*write channels indepedently*/
+        flacenc_write_frame_header(bs,
+                                   &(encoder->streaminfo),
+                                   block_size,
+                                   channel_count - 1,
+                                   encoder->total_flac_frames++);
+
+        for (channel = 0; channel < channel_count; channel++)
+            flacenc_write_subframe(bs,
+                                   encoder,
+                                   encoder->streaminfo.bits_per_sample,
+                                   samples->data[channel]);
+    }
 
     bs->byte_align(bs);
     bw_pop_callback(bs, NULL);
@@ -554,7 +688,7 @@ flacenc_write_subframe(BitstreamWriter* bs,
                     (encoder->options.max_lpc_order == 0));
 
     unsigned wasted_bps;
-    unsigned verbatim_bits;
+    unsigned verbatim_bits = INT_MAX;
 
     /*check for CONSTANT subframe and return one, if allowed*/
     if (try_CONSTANT && flacenc_all_identical(samples)) {
@@ -1384,6 +1518,31 @@ flacenc_estimate_partition_size(unsigned rice_parameter,
     }
 }
 
+void
+flacenc_average_difference(const array_ia* samples,
+                           array_i* average,
+                           array_i* difference)
+{
+    int* channel0;
+    int* channel1;
+    unsigned sample_count = samples->data[0]->size;
+    unsigned i;
+
+    assert(samples->data[0]->size == samples->data[1]->size);
+
+    average->reset(average);
+    average->resize(average, sample_count);
+    difference->reset(difference);
+    difference->resize(difference, sample_count);
+
+    channel0 = samples->data[0]->data;
+    channel1 = samples->data[1]->data;
+
+    for (i = 0; i < sample_count; i++) {
+        a_append(average, (channel0[i] + channel1[i]) >> 1);
+        a_append(difference, channel0[i] - channel1[i]);
+    }
+}
 
 void
 write_utf8(BitstreamWriter* bs, unsigned int value) {
@@ -1495,7 +1654,7 @@ flacenc_abs_sum(const array_li* data)
 int main(int argc, char *argv[]) {
     encoders_encode_flac(argv[1],
                          stdin,
-                         4096, 12, 0, 6, 1, 1, 0);
+                         4096, 12, 0, 6, 1, 1, 1);
 
     return 0;
 }

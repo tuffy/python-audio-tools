@@ -64,6 +64,13 @@ struct flac_context {
     struct flac_STREAMINFO streaminfo;
     unsigned int total_flac_frames;
 
+    array_i* average_samples;
+    array_i* difference_samples;
+    BitstreamWriter* left_subframe;
+    BitstreamWriter* right_subframe;
+    BitstreamWriter* average_subframe;
+    BitstreamWriter* difference_subframe;
+
     array_i* subframe_samples;
 
     BitstreamWriter* frame;
@@ -154,6 +161,11 @@ md5_update(void *data, unsigned char *buffer, unsigned long len);
 
 unsigned
 flacenc_max_wasted_bits_per_sample(const array_i* samples);
+
+void
+flacenc_average_difference(const array_ia* samples,
+                           array_i* average,
+                           array_i* difference);
 
 /*takes a list of sample lists (one per channel)
   and the FLAC's streaminfo
