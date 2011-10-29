@@ -313,6 +313,8 @@ encoders_encode_flac(char *filename,
 void
 flacenc_init_encoder(struct flac_context* encoder)
 {
+    encoder->subframe_samples = array_i_new(1);
+
     encoder->frame = bw_open_recorder(BS_BIG_ENDIAN);
     encoder->fixed_subframe = bw_open_recorder(BS_BIG_ENDIAN);
     encoder->fixed_subframe_orders = array_ia_new(5);
@@ -338,6 +340,8 @@ flacenc_init_encoder(struct flac_context* encoder)
 void
 flacenc_free_encoder(struct flac_context* encoder)
 {
+    encoder->subframe_samples->del(encoder->subframe_samples);
+
     encoder->frame->close(encoder->frame);
     encoder->fixed_subframe->close(encoder->fixed_subframe);
     encoder->fixed_subframe_orders->del(encoder->fixed_subframe_orders);
@@ -541,12 +545,16 @@ flacenc_write_subframe(BitstreamWriter* bs,
                        unsigned bits_per_sample,
                        const array_i* samples)
 {
+    array_i* subframe_samples = encoder->subframe_samples;
+
     int try_VERBATIM = !encoder->options.no_verbatim_subframes;
     int try_CONSTANT = !encoder->options.no_constant_subframes;
     int try_FIXED = !encoder->options.no_fixed_subframes;
-    int try_LPC = ((!encoder->options.no_fixed_subframes) &&
-                   (encoder->options.max_lpc_order > 0));
+    int try_LPC = !((encoder->options.no_lpc_subframes) ||
+                    (encoder->options.max_lpc_order == 0));
+
     unsigned wasted_bps;
+    unsigned verbatim_bits;
 
     /*check for CONSTANT subframe and return one, if allowed*/
     if (try_CONSTANT && flacenc_all_identical(samples)) {
@@ -554,8 +562,17 @@ flacenc_write_subframe(BitstreamWriter* bs,
                                         samples->data[0]);
     } else {
         /*extract wasted bits-per-sample, if any*/
-        /*FIXME*/
-        wasted_bps = 0;
+        wasted_bps = flacenc_max_wasted_bits_per_sample(samples);
+        if (wasted_bps > 0) {
+            unsigned i;
+
+            subframe_samples->resize(subframe_samples, samples->size);
+            subframe_samples->reset(subframe_samples);
+            for (i = 0; i < samples->size; i++)
+                a_append(subframe_samples, samples->data[i] >> wasted_bps);
+        } else {
+            samples->copy(samples, subframe_samples);
+        }
 
         /*build FIXED subframe, if allowed*/
         if (try_FIXED) {
@@ -564,51 +581,102 @@ flacenc_write_subframe(BitstreamWriter* bs,
                                          encoder,
                                          bits_per_sample,
                                          wasted_bps,
-                                         samples);
+                                         subframe_samples);
         }
 
         /*build LPC subframe, if allowed*/
         if (try_LPC) {
             bw_reset_recorder(encoder->lpc_subframe);
-            flacenc_write_lpc_subframe(bs,
+            flacenc_write_lpc_subframe(encoder->lpc_subframe,
                                        encoder,
                                        bits_per_sample,
                                        wasted_bps,
-                                       samples);
+                                       subframe_samples);
         }
 
-        /*if FIXED = n , LPC = n , VERBATIM = n
-          return VERBATIM subframe anyway*/
-        /*FIXME*/
+        if (try_VERBATIM) {
+            verbatim_bits = ((bits_per_sample - wasted_bps) *
+                             subframe_samples->size);
+        }
 
-        /*if FIXED = y , LPC = n , VERBATIM = n
-          return FIXED subframe*/
-        /*FIXME*/
+        if (try_FIXED && try_LPC && try_VERBATIM) {
+            /*if FIXED = y , LPC = y , VERBATIM = y
+              return min(FIXED, LPC, VERBATIM) subframes*/
+            unsigned fixed_bits =
+                encoder->fixed_subframe->bits_written(encoder->fixed_subframe);
+            unsigned lpc_bits =
+                encoder->lpc_subframe->bits_written(encoder->lpc_subframe);
 
-        /*if FIXED = n , LPC = y , VERBATIM = n
-          return LPC subframe*/
-        /*FIXME*/
-
-        /*if FIXED = y , LPC = y , VERBATIM = n
-          return min(FIXED, LPC) subframes*/
-        /*FIXME*/
-
-        /*if FIXED = n , LPC = n , VERBATIM = y
-          return VERBATIM subframe*/
-        /*FIXME*/
-
-        /*if FIXED = y , LPC = n , VERBATIM = y
-          return min(FIXED, VERBATIM) subframes*/
-        /*FIXME*/
-
-        /*if FIXED = n , LPC = y , VERBATIM = y
-          return min(LPC, VERBATIM) subframes*/
-        /*FIXME*/
-
-        /*if FIXED = y , LPC = y , VERBATIM = y
-          return min(FIXED, LPC, VERBATIM) subframes*/
-        /*FIXME*/
-
+            if (fixed_bits < MIN(lpc_bits, verbatim_bits)) {
+                bw_rec_copy(bs, encoder->fixed_subframe);
+            } else if (lpc_bits < verbatim_bits) {
+                bw_rec_copy(bs, encoder->lpc_subframe);
+            } else {
+                flacenc_write_verbatim_subframe(bs,
+                                                bits_per_sample,
+                                                wasted_bps,
+                                                subframe_samples);
+            }
+        } else if (!try_FIXED && !try_LPC && !try_VERBATIM) {
+            /*if FIXED = n , LPC = n , VERBATIM = n
+              return VERBATIM subframe anyway*/
+            flacenc_write_verbatim_subframe(bs,
+                                            bits_per_sample,
+                                            wasted_bps,
+                                            subframe_samples);
+        } else if (try_FIXED && !try_LPC && !try_VERBATIM) {
+            /*if FIXED = y , LPC = n , VERBATIM = n
+              return FIXED subframe*/
+            bw_rec_copy(bs, encoder->fixed_subframe);
+        } else if (!try_FIXED && try_LPC && !try_VERBATIM) {
+            /*if FIXED = n , LPC = y , VERBATIM = n
+              return LPC subframe*/
+            bw_rec_copy(bs, encoder->lpc_subframe);
+        } else if (try_FIXED && try_LPC && !try_VERBATIM) {
+            /*if FIXED = y , LPC = y , VERBATIM = n
+              return min(FIXED, LPC) subframes*/
+            if (encoder->fixed_subframe->bits_written(encoder->fixed_subframe) <
+                encoder->lpc_subframe->bits_written(encoder->lpc_subframe)) {
+                bw_rec_copy(bs, encoder->fixed_subframe);
+            } else {
+                bw_rec_copy(bs, encoder->lpc_subframe);
+            }
+        } else if (!try_FIXED && !try_LPC && try_VERBATIM) {
+            /*if FIXED = n , LPC = n , VERBATIM = y
+              return VERBATIM subframe*/
+            flacenc_write_verbatim_subframe(bs,
+                                            bits_per_sample,
+                                            wasted_bps,
+                                            subframe_samples);
+        } else if (try_FIXED && !try_LPC && try_VERBATIM) {
+            /*if FIXED = y , LPC = n , VERBATIM = y
+              return min(FIXED, VERBATIM) subframes*/
+            if (encoder->fixed_subframe->bits_written(encoder->fixed_subframe) <
+                verbatim_bits) {
+                bw_rec_copy(bs, encoder->fixed_subframe);
+            } else {
+                flacenc_write_verbatim_subframe(bs,
+                                                bits_per_sample,
+                                                wasted_bps,
+                                                subframe_samples);
+            }
+        } else if (!try_FIXED && try_LPC && try_VERBATIM) {
+            /*if FIXED = n , LPC = y , VERBATIM = y
+              return min(LPC, VERBATIM) subframes*/
+            if (encoder->lpc_subframe->bits_written(encoder->lpc_subframe) <
+                verbatim_bits) {
+                bw_rec_copy(bs, encoder->lpc_subframe);
+            } else {
+                flacenc_write_verbatim_subframe(bs,
+                                                bits_per_sample,
+                                                wasted_bps,
+                                                subframe_samples);
+            }
+        } else {
+            /*shouldn't get here
+              since all the options are tested exhaustively*/
+            assert(0);
+        }
     }
 }
 
@@ -650,7 +718,8 @@ flacenc_write_verbatim_subframe(BitstreamWriter *bs,
 
     /*write subframe samples*/
     for (i = 0; i < samples->size; i++) {
-        bs->write_signed(bs, bits_per_sample, samples->data[i]);
+        bs->write_signed(bs, bits_per_sample - wasted_bits_per_sample,
+                         samples->data[i]);
     }
 }
 
@@ -1363,13 +1432,13 @@ md5_update(void *data, unsigned char *buffer, unsigned long len)
                           len);
 }
 
-int
+unsigned
 flacenc_max_wasted_bits_per_sample(const array_i* samples)
 {
     unsigned i;
     int sample;
-    int wasted_bits;
-    int wasted_bits_per_sample = INT_MAX;
+    unsigned wasted_bits;
+    unsigned wasted_bits_per_sample = INT_MAX;
 
     for (i = 0; i < samples->size; i++) {
         sample = samples->data[i];
