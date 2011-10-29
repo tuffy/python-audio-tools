@@ -579,32 +579,36 @@ flacenc_write_subframe(BitstreamWriter* bs,
 
         /*if FIXED = n , LPC = n , VERBATIM = n
           return VERBATIM subframe anyway*/
+        /*FIXME*/
 
         /*if FIXED = y , LPC = n , VERBATIM = n
           return FIXED subframe*/
+        /*FIXME*/
 
         /*if FIXED = n , LPC = y , VERBATIM = n
           return LPC subframe*/
+        /*FIXME*/
 
         /*if FIXED = y , LPC = y , VERBATIM = n
           return min(FIXED, LPC) subframes*/
+        /*FIXME*/
 
         /*if FIXED = n , LPC = n , VERBATIM = y
           return VERBATIM subframe*/
+        /*FIXME*/
 
         /*if FIXED = y , LPC = n , VERBATIM = y
           return min(FIXED, VERBATIM) subframes*/
+        /*FIXME*/
 
         /*if FIXED = n , LPC = y , VERBATIM = y
           return min(LPC, VERBATIM) subframes*/
+        /*FIXME*/
 
         /*if FIXED = y , LPC = y , VERBATIM = y
           return min(FIXED, LPC, VERBATIM) subframes*/
+        /*FIXME*/
 
-        /* flacenc_write_verbatim_subframe(bs, */
-        /*                                 bits_per_sample, */
-        /*                                 0, */
-        /*                                 samples); */
     }
 }
 
@@ -735,20 +739,42 @@ flacenc_write_lpc_subframe(BitstreamWriter* bs,
                            const array_i* samples)
 {
     array_i* qlp_coefficients = encoder->qlp_coefficients;
-    array_i* lpc_residual = encoder->lpc_residual;
     unsigned qlp_precision;
     int qlp_shift_needed;
-    unsigned order;
-    int64_t accumulator;
-    unsigned i;
-    unsigned j;
 
     flacenc_best_lpc_coefficients(bits_per_sample,
+                                  wasted_bits_per_sample,
                                   encoder,
                                   samples,
                                   qlp_coefficients,
                                   &qlp_precision,
                                   &qlp_shift_needed);
+
+    flacenc_encode_lpc_subframe(bs,
+                                encoder,
+                                bits_per_sample,
+                                wasted_bits_per_sample,
+                                qlp_precision,
+                                qlp_shift_needed,
+                                qlp_coefficients,
+                                samples);
+}
+
+void
+flacenc_encode_lpc_subframe(BitstreamWriter* bs,
+                            struct flac_context* encoder,
+                            unsigned bits_per_sample,
+                            unsigned wasted_bits_per_sample,
+                            unsigned qlp_precision,
+                            unsigned qlp_shift_needed,
+                            const array_i* qlp_coefficients,
+                            const array_i* samples)
+{
+    array_i* lpc_residual = encoder->lpc_residual;
+    unsigned order;
+    int64_t accumulator;
+    unsigned i;
+    unsigned j;
 
     assert(qlp_coefficients->size > 0);
     order = qlp_coefficients->size;
@@ -796,6 +822,7 @@ flacenc_write_lpc_subframe(BitstreamWriter* bs,
 
 void
 flacenc_best_lpc_coefficients(unsigned bits_per_sample,
+                              unsigned wasted_bits_per_sample,
                               struct flac_context* encoder,
                               const array_i* samples,
                               array_i* qlp_coefficients,
@@ -845,14 +872,55 @@ flacenc_best_lpc_coefficients(unsigned bits_per_sample,
 
             *qlp_precision = encoder->options.qlp_coeff_precision;
         } else {
-            assert(0);
-            /*FIXME*/
+            unsigned order;
+            array_i* candidate_coeffs = array_i_new(1);
+            int candidate_shift;
+            BitstreamWriter* candidate_subframe =
+                bw_open_accumulator(BS_BIG_ENDIAN);
+
+            array_i* best_coeffs = array_i_new(1);
+            int best_shift_needed = 0;
+            unsigned best_bits = INT_MAX;
 
             /*otherwise, build LPC subframe from each set of LP coefficients*/
-            /*FIXME*/
+            for (order = 1; order <= encoder->options.max_lpc_order; order++) {
+                bw_reset_accumulator(candidate_subframe);
+
+                flacenc_quantize_coefficients(
+                    lp_coefficients,
+                    order,
+                    encoder->options.qlp_coeff_precision,
+                    candidate_coeffs,
+                    &candidate_shift);
+
+                flacenc_encode_lpc_subframe(
+                    candidate_subframe,
+                    encoder,
+                    bits_per_sample,
+                    wasted_bits_per_sample,
+                    encoder->options.qlp_coeff_precision,
+                    candidate_shift,
+                    candidate_coeffs,
+                    samples);
+
+                if (candidate_subframe->bits_written(candidate_subframe) <
+                    best_bits) {
+                    best_bits =
+                        candidate_subframe->bits_written(candidate_subframe);
+                    candidate_coeffs->swap(candidate_coeffs, best_coeffs);
+                    best_shift_needed = candidate_shift;
+                }
+            }
 
             /*and return the parameters of the one which is smallest*/
-            /*FIXME*/
+            best_coeffs->copy(best_coeffs, qlp_coefficients);
+            *qlp_precision = encoder->options.qlp_coeff_precision;
+            *qlp_shift_needed = best_shift_needed;
+
+            /*before deallocating any temporary space*/
+            candidate_coeffs->del(candidate_coeffs);
+            candidate_subframe->close(candidate_subframe);
+            best_coeffs->del(best_coeffs);
         }
     } else {
         /*use a set of dummy coefficients*/

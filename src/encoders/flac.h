@@ -199,7 +199,18 @@ flacenc_write_lpc_subframe(BitstreamWriter* bs,
                            const array_i* samples);
 
 void
+flacenc_encode_lpc_subframe(BitstreamWriter* bs,
+                            struct flac_context* encoder,
+                            unsigned bits_per_sample,
+                            unsigned wasted_bits_per_sample,
+                            unsigned qlp_precision,
+                            unsigned qlp_shift_needed,
+                            const array_i* qlp_coefficients,
+                            const array_i* samples);
+
+void
 flacenc_best_lpc_coefficients(unsigned bits_per_sample,
+                              unsigned wasted_bits_per_sample,
                               struct flac_context* encoder,
                               const array_i* samples,
                               array_i* qlp_coefficients,
