@@ -707,14 +707,14 @@ void array_f_sort(array_f *array)
         unsigned i;                                     \
                                                         \
         putc('[', output);                              \
-        if (array->size == 1) {                         \
-            printf("%f", array->data[0]);               \
-        } else if (array->size > 1) {                   \
-            for (i = 0; i < array->size - 1; i++)       \
-                printf("%f, ", array->data[i]);         \
-            printf("%f", array->data[i]);               \
-        }                                               \
-        putc(']', output);                              \
+        if (array->size == 1) {                          \
+            fprintf(output, "%f", array->data[0]);       \
+        } else if (array->size > 1) {                    \
+            for (i = 0; i < array->size - 1; i++)         \
+                fprintf(output, "%f, ", array->data[i]);   \
+            fprintf(output, "%f", array->data[i]);         \
+        }                                                  \
+        putc(']', output);                                 \
     }
 ARRAY_F_PRINT(array_f_print, array_f)
 ARRAY_F_PRINT(array_lf_print, array_lf)

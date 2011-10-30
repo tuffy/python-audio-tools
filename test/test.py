@@ -273,11 +273,6 @@ class FrameCounter:
                           (self.bits_per_sample / 8) *
                           self.sample_rate)))
 
-def run_analysis(pcmreader):
-    f = pcmreader.analyze_frame()
-    while (f is not None):
-        f = pcmreader.analyze_frame()
-
 
 #probstat does this better, but I don't want to require that
 #for something used only rarely

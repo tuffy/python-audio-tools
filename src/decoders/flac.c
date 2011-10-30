@@ -763,11 +763,9 @@ FlacDecoder_read_residual(BitstreamReader* bitstream,
     uint32_t rice_parameter;
     uint32_t escape_code;
     uint32_t partition_samples;
-    uint32_t sample;
     int32_t msb;
     int32_t lsb;
     int32_t value;
-    int* residuals_data;
 
     unsigned int (*read)(struct BitstreamReader_s* bs, unsigned int count);
     unsigned int (*read_unary)(struct BitstreamReader_s* bs, int stop_bit);
@@ -775,10 +773,7 @@ FlacDecoder_read_residual(BitstreamReader* bitstream,
     read = bitstream->read;
     read_unary = bitstream->read_unary;
 
-    residuals->resize(residuals, block_size - order);
-    residuals->size = block_size - order;
-    residuals_data = residuals->data;
-    sample = 0;
+    residuals->reset(residuals);
 
     /*read 2^partition_order number of partitions*/
     for (partition = 0; partition < total_partitions; partition++) {
@@ -815,15 +810,16 @@ FlacDecoder_read_residual(BitstreamReader* bitstream,
                 lsb = read(bitstream, rice_parameter);
                 value = (msb << rice_parameter) | lsb;
                 if (value & 1) {
-                    residuals_data[sample++] = -(value >> 1) - 1;
+                    residuals->append(residuals, -(value >> 1) - 1);
                 } else {
-                    residuals_data[sample++] = value >> 1;
+                    residuals->append(residuals, value >> 1);
                 }
             }
         } else {
             for (;partition_samples; partition_samples--) {
-                residuals_data[sample++] = bitstream->read_signed(bitstream,
-                                                                  escape_code);
+                residuals->append(residuals,
+                                  bitstream->read_signed(bitstream,
+                                                         escape_code));
             }
         }
     }

@@ -36,7 +36,7 @@ from test import (parser,
                   Variable_Reader,
                   EXACT_RANDOM_PCM_Reader, MD5_Reader,
                   Join_Reader, FrameCounter,
-                  run_analysis, Combinations,
+                  Combinations,
                   TEST_COVER1, TEST_COVER2, TEST_COVER3,
                   HUGE_BMP)
 
@@ -1890,9 +1890,6 @@ class ALACFileTest(LosslessFileTest):
                                   audiotools.transfer_framelist_data,
                                   decoder, lambda x: x)
 
-                decoder = audiotools.open(temp.name).to_pcm()
-                self.assertNotEqual(decoder, None)
-                self.assertRaises(IOError, run_analysis, decoder)
                 self.assertRaises(audiotools.InvalidFile,
                                   audiotools.open(temp.name).verify)
         finally:
@@ -2684,9 +2681,6 @@ class FlacFileTest(TestForeignAiffChunks,
                                   audiotools.transfer_framelist_data,
                                   decoder, lambda x: x)
 
-                decoder = audiotools.open(temp.name).to_pcm()
-                self.assertNotEqual(decoder, None)
-                self.assertRaises(IOError, run_analysis, decoder)
                 self.assertRaises(audiotools.InvalidFile,
                                   audiotools.open(temp.name).verify)
         finally:
@@ -2977,6 +2971,8 @@ class FlacFileTest(TestForeignAiffChunks,
 
     @FORMAT_FLAC
     def test_sines(self):
+        import sys
+
         for g in self.__stream_variations__():
             self.__test_reader__(g,
                                  block_size=1152,
@@ -3790,11 +3786,6 @@ class ShortenFileTest(TestForeignWaveChunks,
             else:
                 return frame['offset']
 
-        def run_analysis(pcmreader):
-            f = pcmreader.analyze_frame()
-            while (f is not None):
-                f = pcmreader.analyze_frame()
-
         #test changing the file underfoot
         temp = tempfile.NamedTemporaryFile(suffix=".shn")
         try:
@@ -3854,12 +3845,6 @@ class ShortenFileTest(TestForeignWaveChunks,
                     self.assertRaises(IOError,
                                       audiotools.transfer_framelist_data,
                                       decoder, lambda x: x)
-
-                    decoder = audiotools.decoders.SHNDecoder(temp.name)
-                    decoder.sample_rate = 44100
-                    decoder.channel_mask = 1
-                    self.assertNotEqual(decoder, None)
-                    self.assertRaises(IOError, run_analysis, decoder)
             finally:
                 temp.close()
 
@@ -4412,10 +4397,6 @@ class WavPackFileTest(TestForeignWaveChunks,
                 self.assertRaises(IOError,
                                   audiotools.transfer_framelist_data,
                                   decoder, lambda f: f)
-
-                decoder = WavPackDecoder(temp.name)
-                self.assertNotEqual(decoder, None)
-                self.assertRaises(IOError, run_analysis, decoder)
         finally:
             temp.close()
 

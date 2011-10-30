@@ -1298,6 +1298,8 @@ flacenc_quantize_coefficients(const array_fa* lp_coefficients,
     double error;
     int error_i;
 
+    assert(lp_coeffs->size == order);
+
     qlp_coefficients->reset(qlp_coefficients);
 
     for (i = 0; i < lp_coeffs->size; i++)
@@ -1325,7 +1327,7 @@ flacenc_quantize_coefficients(const array_fa* lp_coefficients,
     } else {
         /*negative shifts are not allowed, so shrink coefficients*/
         for (i = 0; i < order; i++) {
-            error += (lp_coeffs->data[i] / (1 << *qlp_shift_needed));
+            error += (lp_coeffs->data[i] / (1 << -(*qlp_shift_needed)));
             error_i = (int)round(error);
             qlp_coefficients->append(qlp_coefficients,
                                      MIN(MAX(error_i, qlp_min), qlp_max));
@@ -1491,7 +1493,10 @@ flacenc_best_rice_parameter(const struct flac_context* encoder,
     unsigned rice_parameter = 0;
 
     while ((partition_size * (1 << rice_parameter)) < abs_partition_sum)
-        rice_parameter++;
+        if (rice_parameter < encoder->options.max_rice_parameter)
+            rice_parameter++;
+        else
+            break;
 
     return rice_parameter;
 }

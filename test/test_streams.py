@@ -109,6 +109,7 @@ class Sine8_Mono(Sine_Mono):
                  f1, a1, f2, a2):
         Sine_Mono.__init__(self, 8, pcm_frames, sample_rate,
                            f1, a1, f2, a2)
+        self.pcm_frames = pcm_frames
         self.f1 = f1
         self.a1 = a1
         self.f2 = f2
@@ -131,8 +132,9 @@ class Sine8_Mono(Sine_Mono):
         self.md5 = md5()
 
     def __repr__(self):
-        return "Sine8_Mono(%s, %s, %s, %s, %s)" % \
-            (repr(self.sample_rate),
+        return "Sine8_Mono(%s, %s, %s, %s, %s, %s)" % \
+            (repr(self.pcm_frames),
+             repr(self.sample_rate),
              repr(self.f1),
              repr(self.a1),
              repr(self.f2),
@@ -144,6 +146,7 @@ class Sine8_Stereo(Sine_Stereo):
                  f1, a1, f2, a2, fmult):
         Sine_Stereo.__init__(self, 8, pcm_frames,
                              sample_rate, f1, a1, f2, a2, fmult)
+        self.pcm_frames = pcm_frames
         self.f1 = f1
         self.a1 = a1
         self.f2 = f2
@@ -167,8 +170,9 @@ class Sine8_Stereo(Sine_Stereo):
         self.md5 = md5()
 
     def __repr__(self):
-        return "Sine8_Stereo(%s, %s, %s, %s, %s, %s)" % \
-            (repr(self.sample_rate),
+        return "Sine8_Stereo(%s, %s, %s, %s, %s, %s, %s)" % \
+            (repr(self.pcm_frames),
+             repr(self.sample_rate),
              repr(self.f1),
              repr(self.a1),
              repr(self.f2),
@@ -181,6 +185,7 @@ class Sine16_Mono(Sine8_Mono):
                  f1, a1, f2, a2):
         Sine_Mono.__init__(self, 16, pcm_frames, sample_rate,
                            f1, a1, f2, a2)
+        self.pcm_frames = pcm_frames
         self.f1 = f1
         self.a1 = a1
         self.f2 = f2
@@ -188,8 +193,9 @@ class Sine16_Mono(Sine8_Mono):
         self.md5 = md5()
 
     def __repr__(self):
-        return "Sine16_Mono(%s, %s, %s, %s, %s)" % \
-            (repr(self.sample_rate),
+        return "Sine16_Mono(%s, %s, %s, %s, %s, %s)" % \
+            (repr(self.pcm_frames),
+             repr(self.sample_rate),
              repr(self.f1),
              repr(self.a1),
              repr(self.f2),
@@ -201,6 +207,7 @@ class Sine16_Stereo(Sine8_Stereo):
                  f1, a1, f2, a2, fmult):
         Sine_Stereo.__init__(self, 16, pcm_frames, sample_rate,
                              f1, a1, f2, a2, fmult)
+        self.pcm_frames = pcm_frames
         self.f1 = f1
         self.a1 = a1
         self.f2 = f2
@@ -209,8 +216,9 @@ class Sine16_Stereo(Sine8_Stereo):
         self.md5 = md5()
 
     def __repr__(self):
-        return "Sine16_Stereo(%s, %s, %s, %s, %s, %s)" % \
-            (repr(self.sample_rate),
+        return "Sine16_Stereo(%s, %s, %s, %s, %s, %s, %s)" % \
+            (repr(self.pcm_frames),
+             repr(self.sample_rate),
              repr(self.f1),
              repr(self.a1),
              repr(self.f2),
@@ -223,6 +231,7 @@ class Sine24_Mono(Sine8_Mono):
                  f1, a1, f2, a2):
         Sine_Mono.__init__(self, 24, pcm_frames, sample_rate,
                             f1, a1, f2, a2)
+        self.pcm_frames = pcm_frames
         self.f1 = f1
         self.a1 = a1
         self.f2 = f2
@@ -230,8 +239,9 @@ class Sine24_Mono(Sine8_Mono):
         self.md5 = md5()
 
     def __repr__(self):
-        return "Sine24_Mono(%s, %s, %s, %s, %s)" % \
-            (repr(self.sample_rate),
+        return "Sine24_Mono(%s, %s, %s, %s, %s, %s)" % \
+            (repr(self.pcm_frames),
+             repr(self.sample_rate),
              repr(self.f1),
              repr(self.a1),
              repr(self.f2),
@@ -243,6 +253,7 @@ class Sine24_Stereo(Sine8_Stereo):
                  f1, a1, f2, a2, fmult):
         Sine_Stereo.__init__(self, 24, pcm_frames, sample_rate,
                              f1, a1, f2, a2, fmult)
+        self.pcm_frames = pcm_frames
         self.f1 = f1
         self.a1 = a1
         self.f2 = f2
@@ -251,8 +262,9 @@ class Sine24_Stereo(Sine8_Stereo):
         self.md5 = md5()
 
     def __repr__(self):
-        return "Sine24_Stereo(%s, %s, %s, %s, %s, %s)" % \
-            (repr(self.sample_rate),
+        return "Sine24_Stereo(%s, %s, %s, %s, %s, %s, %s)" % \
+            (repr(self.pcm_frames),
+             repr(self.sample_rate),
              repr(self.f1),
              repr(self.a1),
              repr(self.f2),
