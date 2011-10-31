@@ -769,9 +769,11 @@ FlacDecoder_read_residual(BitstreamReader* bitstream,
 
     unsigned int (*read)(struct BitstreamReader_s* bs, unsigned int count);
     unsigned int (*read_unary)(struct BitstreamReader_s* bs, int stop_bit);
+    void (*append)(array_i* array, int value);
 
     read = bitstream->read;
     read_unary = bitstream->read_unary;
+    append = residuals->append;
 
     residuals->reset(residuals);
 
@@ -810,16 +812,15 @@ FlacDecoder_read_residual(BitstreamReader* bitstream,
                 lsb = read(bitstream, rice_parameter);
                 value = (msb << rice_parameter) | lsb;
                 if (value & 1) {
-                    residuals->append(residuals, -(value >> 1) - 1);
+                    append(residuals, -(value >> 1) - 1);
                 } else {
-                    residuals->append(residuals, value >> 1);
+                    append(residuals, value >> 1);
                 }
             }
         } else {
             for (;partition_samples; partition_samples--) {
-                residuals->append(residuals,
-                                  bitstream->read_signed(bitstream,
-                                                         escape_code));
+                append(residuals,
+                       bitstream->read_signed(bitstream, escape_code));
             }
         }
     }

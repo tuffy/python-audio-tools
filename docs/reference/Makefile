@@ -32,17 +32,13 @@ figures/id3v24/wxxx.pdf
 FLAC = \
 figures/flac/application.pdf \
 figures/flac/block_header.pdf \
-figures/flac/channels.pdf \
 figures/flac/cuesheet.pdf \
-figures/flac/exhaustive.pdf \
 figures/flac/fixed.pdf \
 figures/flac/fixed2.pdf \
 figures/flac/fixed-parse.pdf \
 figures/flac/frame.pdf \
 figures/flac/frames.pdf \
-figures/flac/hann.pdf \
 figures/flac/header-example.pdf \
-figures/flac/lag.pdf \
 figures/flac/lag0.pdf \
 figures/flac/lag1.pdf \
 figures/flac/lag2.pdf \
@@ -52,11 +48,8 @@ figures/flac/lpc2.pdf \
 figures/flac/lpc-parse.pdf \
 figures/flac/lpc-parse2.pdf \
 figures/flac/metadata.pdf \
-figures/flac/nonexhaustive.pdf \
 figures/flac/picture.pdf \
-figures/flac/read_residual.pdf \
 figures/flac/read_utf8.pdf \
-figures/flac/rectangular.pdf \
 figures/flac/residual.pdf \
 figures/flac/residual-example1.pdf \
 figures/flac/residual-example2.pdf \
@@ -64,10 +57,6 @@ figures/flac/residual-example3.pdf \
 figures/flac/residual-example4.pdf \
 figures/flac/residual-example5.pdf \
 figures/flac/residual-parse.pdf \
-figures/flac/rice1.pdf \
-figures/flac/rice2.pdf \
-figures/flac/rice3.pdf \
-figures/flac/rice4.pdf \
 figures/flac/seektable.pdf \
 figures/flac/stream.pdf \
 figures/flac/stream2.pdf \
@@ -78,7 +67,6 @@ figures/flac/tukey.pdf \
 figures/flac/utf8.pdf \
 figures/flac/verbatim.pdf \
 figures/flac/vorbiscomment.pdf \
-figures/flac/write_residual.pdf \
 figures/flac/write_utf8.pdf \
 figures/oggflac_stream.pdf \
 figures/utf-8-1.pdf \
@@ -248,7 +236,7 @@ all: audioformats-letter.pdf audioformats-a4.pdf
 
 clean:
 	rm -f *.toc *.aux *.log *.out $(FIGURES)
-	rm -f figures/pcm.fig figures/flac/hann.fig figures/flac/rectangular.fig figures/flac/tukey.fig
+	rm -f figures/pcm.fig figures/flac/tukey.fig
 	rm -f audiotools-a4.tex audiotools-letter.tex
 
 audioformats-letter.pdf: audioformats-letter.tex $(CHAPTERS) $(FIGURES)
@@ -284,35 +272,11 @@ figures/pcm.pdf: figures/pcm.fig
 figures/pcm.fig: figures/pcm.plot
 	./figures/pcm.plot > $@
 
-figures/flac/hann.pdf: figures/flac/hann.fig
-	fig2dev -Z 2 -L pdf $< $@
-
-figures/flac/hann.fig: figures/flac/hann.plot
-	./figures/flac/hann.plot > $@
-
-figures/flac/rectangular.pdf: figures/flac/rectangular.fig
-	fig2dev -Z 2 -L pdf $< $@
-
-figures/flac/rectangular.fig: figures/flac/rectangular.plot
-	./figures/flac/rectangular.plot > $@
-
 figures/flac/tukey.pdf: figures/flac/tukey.fig
 	fig2dev -Z 3 -L pdf $< $@
 
 figures/flac/tukey.fig: figures/flac/tukey.plot
 	./figures/flac/tukey.plot > $@
-
-figures/flac/rice1.pdf: figures/flac/rice1.fig
-	fig2dev -Z 5 -L pdf $< $@
-
-figures/flac/rice2.pdf: figures/flac/rice2.fig
-	fig2dev -Z 6 -L pdf $< $@
-
-figures/flac/rice3.pdf: figures/flac/rice3.fig
-	fig2dev -Z 6 -L pdf $< $@
-
-figures/flac/rice4.pdf: figures/flac/rice4.fig
-	fig2dev -Z 3 -L pdf $< $@
 
 figures/utf-8-1.pdf: figures/utf-8-1.fig
 	fig2dev -Z 3 -L pdf $< $@
@@ -322,9 +286,6 @@ figures/utf-8-2.pdf: figures/utf-8-2.fig
 
 figures/utf-8-3.pdf: figures/utf-8-3.fig
 	fig2dev -Z 5 -L pdf $< $@
-
-figures/flac/lag.pdf: figures/flac/lag.fig
-	fig2dev -Z 6 -L pdf $< $@
 
 figures/flac/lag0.pdf: figures/flac/lag0.fig
 	fig2dev -Z 3.5 -L pdf $< $@
@@ -336,12 +297,6 @@ figures/flac/lag2.pdf: figures/flac/lag2.fig
 	fig2dev -Z 3.5 -L pdf $< $@
 
 figures/flac/lag3.pdf: figures/flac/lag3.fig
-	fig2dev -Z 3.5 -L pdf $< $@
-
-figures/flac/nonexhaustive.pdf: figures/flac/nonexhaustive.fig
-	fig2dev -Z 3.5 -L pdf $< $@
-
-figures/flac/exhaustive.pdf: figures/flac/exhaustive.fig
 	fig2dev -Z 3.5 -L pdf $< $@
 
 figures/freedb_sequence.pdf: figures/freedb_sequence.fig

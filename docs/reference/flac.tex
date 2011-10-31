@@ -1733,9 +1733,13 @@ used when calculating the best FIXED subframe order.
 \PSUM $\leftarrow \overset{residuals~count - 1}{\underset{i = 0}{\sum}} |residual_i|$\;
 $\PARAMETER \leftarrow 0$\;
 \While{$residuals~count \times 2 ^ \text{\PARAMETER} < \PSUM$}{
-  $\PARAMETER \leftarrow \PARAMETER + 1$\;
+  \eIf{\PARAMETER $<$ \MAXPARAMETER}{
+    $\PARAMETER \leftarrow \PARAMETER + 1$\;
+  }{
+    \Return \MAXPARAMETER\;
+  }
 }
-\Return \MIN(\PARAMETER , \MAXPARAMETER)
+\Return \PARAMETER\;
 \EALGORITHM
 }
 
@@ -2197,7 +2201,7 @@ $error \leftarrow 0.0$\;
   \Return (QLP coefficients, QLP shift needed)\;
 }(\tcc*[f]{negative shifts are not allowed, so shrink coefficients}){
   \For{i = 0 \emph{\KwTo}order}{
-    $error \leftarrow error + \text{LP Coefficients}_{order - 1~i} \div 2 ^ \text{QLP shift needed}$\;
+    $error \leftarrow error + \text{LP Coefficients}_{order - 1~i} \div 2 ^ {-\text{QLP shift needed}}$\;
     $\text{QLP coefficient}_i \leftarrow \MIN(\MAX(\ROUND(error), \text{QLP min}), \text{QLP max})$\;
     $error \leftarrow error - \text{QLP coefficient}_i$\;
   }

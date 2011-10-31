@@ -945,9 +945,9 @@ flacenc_write_lpc_subframe(BitstreamWriter* bs,
     unsigned qlp_precision;
     int qlp_shift_needed;
 
-    flacenc_best_lpc_coefficients(bits_per_sample,
+    flacenc_best_lpc_coefficients(encoder,
+                                  bits_per_sample,
                                   wasted_bits_per_sample,
-                                  encoder,
                                   samples,
                                   qlp_coefficients,
                                   &qlp_precision,
@@ -1024,10 +1024,11 @@ flacenc_encode_lpc_subframe(BitstreamWriter* bs,
 }
 
 void
-flacenc_best_lpc_coefficients(unsigned bits_per_sample,
+flacenc_best_lpc_coefficients(struct flac_context* encoder,
+                              unsigned bits_per_sample,
                               unsigned wasted_bits_per_sample,
-                              struct flac_context* encoder,
                               const array_i* samples,
+
                               array_i* qlp_coefficients,
                               unsigned* qlp_precision,
                               int* qlp_shift_needed)
@@ -1040,8 +1041,8 @@ flacenc_best_lpc_coefficients(unsigned bits_per_sample,
 
     if (samples->size > (encoder->options.max_lpc_order + 1)) {
         /*window signal*/
-        flacenc_window_signal(samples,
-                              encoder->tukey_window,
+        flacenc_window_signal(encoder,
+                              samples,
                               windowed_signal);
 
         /*transform windowed signal to autocorrelation values*/
@@ -1135,10 +1136,11 @@ flacenc_best_lpc_coefficients(unsigned bits_per_sample,
 }
 
 void
-flacenc_window_signal(const array_i* samples,
-                      array_f* tukey_window,
+flacenc_window_signal(struct flac_context* encoder,
+                      const array_i* samples,
                       array_f* windowed_signal)
 {
+    array_f* tukey_window = encoder->tukey_window;
     unsigned N = samples->size;
     unsigned n;
     double alpha = 0.5;
@@ -1200,7 +1202,7 @@ flacenc_autocorrelate(unsigned max_lpc_order,
 
 void
 flacenc_compute_lp_coefficients(unsigned max_lpc_order,
-                                const array_f* autocorrelation,
+                                const array_f* autocorrelation_values,
                                 array_fa* lp_coefficients,
                                 array_f* lp_error)
 {
@@ -1210,22 +1212,22 @@ flacenc_compute_lp_coefficients(unsigned max_lpc_order,
     double k;
     double q;
 
-    assert(autocorrelation->size == (max_lpc_order + 1));
+    assert(autocorrelation_values->size == (max_lpc_order + 1));
 
     lp_coefficients->reset(lp_coefficients);
     lp_error->reset(lp_error);
 
-    k = autocorrelation->data[1] / autocorrelation->data[0];
+    k = autocorrelation_values->data[1] / autocorrelation_values->data[0];
     lp_coeff = lp_coefficients->append(lp_coefficients);
     lp_coeff->append(lp_coeff, k);
     lp_error->append(lp_error,
-                     autocorrelation->data[0] * (1.0 - (k * k)));
+                     autocorrelation_values->data[0] * (1.0 - (k * k)));
 
     for (i = 1; i < max_lpc_order; i++) {
-        q = autocorrelation->data[i + 1];
+        q = autocorrelation_values->data[i + 1];
         for (j = 0; j < i; j++)
             q -= (lp_coefficients->data[i - 1]->data[j] *
-                  autocorrelation->data[i - j]);
+                  autocorrelation_values->data[i - j]);
 
         k = q / lp_error->data[i - 1];
 
@@ -1286,6 +1288,7 @@ void
 flacenc_quantize_coefficients(const array_fa* lp_coefficients,
                               unsigned order,
                               unsigned qlp_precision,
+
                               array_i* qlp_coefficients,
                               int* qlp_shift_needed)
 {

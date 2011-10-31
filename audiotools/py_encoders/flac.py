@@ -505,9 +505,12 @@ def best_rice_parameter(options, residuals):
     partition_sum = sum(map(abs, residuals))
     rice_parameter = 0
     while ((len(residuals) * (2 ** rice_parameter)) < partition_sum):
-        rice_parameter += 1
+        if (rice_parameter < options.max_rice_parameter):
+            rice_parameter += 1
+        else:
+            return options.max_rice_parameter
 
-    return min(rice_parameter, options.max_rice_parameter)
+    return rice_parameter
 
 
 def encode_residual_partition(rice_parameter, residuals):
@@ -667,7 +670,8 @@ def quantize_coefficients(qlp_precision, lp_coefficients, order):
     from math import log
 
     l = max(map(abs, lp_coefficients[order - 1]))
-    qlp_shift_needed = min(qlp_precision - int(log(l) / log(2)) - 2,
+    qlp_shift_needed = min((qlp_precision - 1) -
+                           (int(log(l) / log(2)) - 1) - 1,
                            (2 ** 4) - 1)
     if (qlp_shift_needed < -(2 ** 4)):
         raise ValueError("too much negative shift needed")
@@ -686,7 +690,7 @@ def quantize_coefficients(qlp_precision, lp_coefficients, order):
         return (qlp_coeffs, qlp_shift_needed)
     else:
         for lp_coeff in lp_coefficients[order - 1]:
-            error += (lp_coeff / 2 ** qlp_shift_needed)
+            error += (lp_coeff / 2 ** -qlp_shift_needed)
             qlp_coeffs.append(min(max(int(round(error)), qlp_min), qlp_max))
             error -= qlp_coeffs[-1]
 
