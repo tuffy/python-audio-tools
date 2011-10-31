@@ -138,7 +138,7 @@ struct array_i_s {
 typedef struct array_i_s array_i;
 
 /*returns a new array_i with space for "count" items*/
-struct array_i_s* array_i_new(unsigned count);
+struct array_i_s* array_i_new(void);
 
 struct array_i_s* array_i_wrap(int* data, unsigned size, unsigned total_size);
 
@@ -356,7 +356,7 @@ struct array_f_s {
 typedef struct array_f_s array_f;
 
 /*returns a new array_f with space for "count" items*/
-struct array_f_s* array_f_new(unsigned count);
+struct array_f_s* array_f_new(void);
 
 struct array_f_s* array_f_wrap(double* data, unsigned size,
                                unsigned total_size);
@@ -514,7 +514,7 @@ struct array_ia_s {
 
 typedef struct array_ia_s array_ia;
 
-struct array_ia_s* array_ia_new(unsigned count);
+struct array_ia_s* array_ia_new(void);
 
 void array_ia_del(struct array_ia_s *array);
 void array_ia_resize(struct array_ia_s *array, unsigned minimum);
@@ -563,7 +563,7 @@ struct array_fa_s {
 
 typedef struct array_fa_s array_fa;
 
-struct array_fa_s* array_fa_new(unsigned count);
+struct array_fa_s* array_fa_new(void);
 
 void array_fa_del(struct array_fa_s *array);
 void array_fa_resize(struct array_fa_s *array, unsigned minimum);

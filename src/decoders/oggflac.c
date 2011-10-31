@@ -55,10 +55,10 @@ OggFlacDecoder_init(decoders_OggFlacDecoder *self,
 
     self->ogg_stream = NULL;
     self->ogg_file = NULL;
-    self->subframe_data = array_ia_new(1);
-    self->residuals = array_i_new(1);
-    self->qlp_coeffs = array_i_new(1);
-    self->framelist_data = array_i_new(1);
+    self->subframe_data = array_ia_new();
+    self->residuals = array_i_new();
+    self->qlp_coeffs = array_i_new();
+    self->framelist_data = array_i_new();
     self->framelist_gen = NULL;
     self->packet = br_substream_new(BS_BIG_ENDIAN);
 

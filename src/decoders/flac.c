@@ -30,10 +30,10 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     self->filename = NULL;
     self->file = NULL;
     self->bitstream = NULL;
-    self->subframe_data = array_ia_new(1);
-    self->residuals = array_i_new(1);
-    self->qlp_coeffs = array_i_new(1);
-    self->framelist_data = array_i_new(1);
+    self->subframe_data = array_ia_new();
+    self->residuals = array_i_new();
+    self->qlp_coeffs = array_i_new();
+    self->framelist_data = array_i_new();
     self->audiotools_pcm = NULL;
     self->remaining_samples = 0;
 

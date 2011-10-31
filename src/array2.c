@@ -31,11 +31,11 @@
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 #endif
 
-struct array_i_s* array_i_new(unsigned count)
+struct array_i_s* array_i_new(void)
 {
-    int* data = malloc(sizeof(int) * count);
+    int* data = malloc(sizeof(int) * 1);
 
-    return array_i_wrap(data, 0, count);
+    return array_i_wrap(data, 0, 1);
 }
 
 struct array_i_s* array_i_wrap(int* data, unsigned size, unsigned total_size)
@@ -410,7 +410,7 @@ ARRAY_SPLIT(array_f_split, array_f, double)
                         sizeof(ARRAY_DATA_TYPE) * (end - start));   \
                 slice->size = end - start;                          \
             } else {                                                \
-                temp = ARRAY_NEW(1);                                \
+                temp = ARRAY_NEW();                                 \
                 for (; start < end; start += jump)                  \
                     temp->append(temp, array->data[start]);         \
                 temp->copy(temp, slice);                            \
@@ -588,11 +588,11 @@ ARRAY_L_DE_TAIL(array_lf_de_tail, array_lf)
 ARRAY_L_SPLIT(array_li_split, array_li)
 ARRAY_L_SPLIT(array_lf_split, array_lf)
 
-array_f* array_f_new(unsigned count)
+array_f* array_f_new(void)
 {
-    double* data = malloc(sizeof(double) * count);
+    double* data = malloc(sizeof(double) * 1);
 
-    return array_f_wrap(data, 0, count);
+    return array_f_wrap(data, 0, 1);
 }
 
 void array_f_reset(array_f *array)
@@ -743,17 +743,17 @@ struct array_lf_s* array_lf_new(void)
 
 
 struct array_ia_s*
-array_ia_new(unsigned count)
+array_ia_new(void)
 {
     struct array_ia_s* a = malloc(sizeof(struct array_ia_s));
     unsigned i;
 
-    a->data = malloc(sizeof(struct array_i_s*) * count);
+    a->data = malloc(sizeof(struct array_i_s*) * 1);
     a->size = 0;
-    a->total_size = count;
+    a->total_size = 1;
 
-    for (i = 0; i < count; i++) {
-        a->data[i] = array_i_new(1);
+    for (i = 0; i < 1; i++) {
+        a->data[i] = array_i_new();
     }
 
     a->del = array_ia_del;
@@ -788,7 +788,7 @@ ARRAY_A_DEL(array_fa_del, array_fa)
         if (minimum > array->total_size) {                              \
             array->data = realloc(array->data, sizeof(array_i*) * minimum); \
             while (array->total_size < minimum) {                       \
-                array->data[array->total_size++] = NEW_FUNC(1);         \
+                array->data[array->total_size++] = NEW_FUNC();          \
             }                                                           \
         }                                                               \
     }
@@ -861,17 +861,17 @@ ARRAY_A_PRINT(array_fa_print, array_fa)
 
 
 array_fa*
-array_fa_new(unsigned count)
+array_fa_new(void)
 {
     array_fa* a = malloc(sizeof(array_f));
     unsigned i;
 
-    a->data = malloc(sizeof(array_f*) * count);
+    a->data = malloc(sizeof(array_f*) * 1);
     a->size = 0;
-    a->total_size = count;
+    a->total_size = 1;
 
-    for (i = 0; i < count; i++) {
-        a->data[i] = array_f_new(1);
+    for (i = 0; i < 1; i++) {
+        a->data[i] = array_f_new();
     }
 
     a->del = array_fa_del;

@@ -241,7 +241,7 @@ encoders_encode_flac(char *filename,
 
     /*build frames until reader is empty,
       which updates STREAMINFO in the process*/
-    samples = array_ia_new(reader->channels);
+    samples = array_ia_new();
 
     if (!pcmr_read2(reader, block_size, samples))
         goto error;
@@ -311,33 +311,33 @@ encoders_encode_flac(char *filename,
 void
 flacenc_init_encoder(struct flac_context* encoder)
 {
-    encoder->average_samples = array_i_new(1);
-    encoder->difference_samples = array_i_new(1);
+    encoder->average_samples = array_i_new();
+    encoder->difference_samples = array_i_new();
     encoder->left_subframe = bw_open_recorder(BS_BIG_ENDIAN);
     encoder->right_subframe = bw_open_recorder(BS_BIG_ENDIAN);
     encoder->average_subframe = bw_open_recorder(BS_BIG_ENDIAN);
     encoder->difference_subframe = bw_open_recorder(BS_BIG_ENDIAN);
 
-    encoder->subframe_samples = array_i_new(1);
+    encoder->subframe_samples = array_i_new();
 
     encoder->frame = bw_open_recorder(BS_BIG_ENDIAN);
     encoder->fixed_subframe = bw_open_recorder(BS_BIG_ENDIAN);
-    encoder->fixed_subframe_orders = array_ia_new(5);
+    encoder->fixed_subframe_orders = array_ia_new();
     encoder->truncated_order = array_li_new();
 
     encoder->lpc_subframe = bw_open_recorder(BS_BIG_ENDIAN);
-    encoder->tukey_window = array_f_new(1);
-    encoder->windowed_signal = array_f_new(1);
-    encoder->autocorrelation_values = array_f_new(1);
-    encoder->lp_coefficients = array_fa_new(1);
-    encoder->lp_error = array_f_new(1);
-    encoder->qlp_coefficients = array_i_new(1);
-    encoder->lpc_residual = array_i_new(1);
+    encoder->tukey_window = array_f_new();
+    encoder->windowed_signal = array_f_new();
+    encoder->autocorrelation_values = array_f_new();
+    encoder->lp_coefficients = array_fa_new();
+    encoder->lp_error = array_f_new();
+    encoder->qlp_coefficients = array_i_new();
+    encoder->lpc_residual = array_i_new();
 
-    encoder->best_partition_sizes = array_i_new(1);
-    encoder->best_rice_parameters = array_i_new(1);
-    encoder->partition_sizes = array_i_new(1);
-    encoder->rice_parameters = array_i_new(1);
+    encoder->best_partition_sizes = array_i_new();
+    encoder->best_rice_parameters = array_i_new();
+    encoder->partition_sizes = array_i_new();
+    encoder->rice_parameters = array_i_new();
     encoder->remaining_residuals = array_li_new();
     encoder->residual_partition = array_li_new();
 }
@@ -1077,12 +1077,12 @@ flacenc_best_lpc_coefficients(struct flac_context* encoder,
             *qlp_precision = encoder->options.qlp_coeff_precision;
         } else {
             unsigned order;
-            array_i* candidate_coeffs = array_i_new(1);
+            array_i* candidate_coeffs = array_i_new();
             int candidate_shift;
             BitstreamWriter* candidate_subframe =
                 bw_open_accumulator(BS_BIG_ENDIAN);
 
-            array_i* best_coeffs = array_i_new(1);
+            array_i* best_coeffs = array_i_new();
             int best_shift_needed = 0;
             unsigned best_bits = INT_MAX;
 
