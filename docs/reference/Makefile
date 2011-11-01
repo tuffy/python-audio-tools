@@ -130,6 +130,8 @@ figures/shorten/unsigned.pdf \
 figures/shorten/verbatim.pdf
 
 ALAC = figures/alac/alac_atom.pdf \
+figures/alac/alac-atom-parse.pdf \
+figures/alac/atom.pdf \
 figures/alac/atoms.pdf \
 figures/alac/compressed_frame.pdf \
 figures/alac/frame_header.pdf \
@@ -257,6 +259,9 @@ mp3_decode.pdf: mp3_decode.tex $(MP3_FIGURES)
 flac-codec.pdf: flac-codec.tex flac.tex $(FLAC)
 	python pdflatexbuild.py -halt-on-error $<
 
+alac-codec.pdf: alac-codec.tex alac.tex $(ALAC)
+	python pdflatexbuild.py -halt-on-error $<
+
 audioformats-letter.tex: audioformats.m4
 	m4 -D PAPERSIZE=letterpaper $< > $@
 
@@ -370,8 +375,11 @@ figures/m4a_meta.pdf: figures/m4a_meta.bdx
 figures/m4a_data.pdf: figures/m4a_data.bdx
 	./bitdiagram.py -w 306 -i $< -o $@
 
-figures/alac/alac_atom.pdf: figures/alac/alac_atom.bdx
+figures/alac/atom.pdf: figures/m4a/atom.bdx
 	./bitdiagram.py -w 324 -i $< -o $@
+
+figures/alac/alac-atom-parse.pdf: figures/alac/alac-atom-parse.bpx
+	./bitparse.py -w 480 -b 24 -i $< -o $@
 
 figures/shorten/unsigned.pdf: figures/shorten/unsigned.fig
 	fig2dev -Z 2 -L pdf $< $@

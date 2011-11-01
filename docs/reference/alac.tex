@@ -14,270 +14,1813 @@ Its stream is the same collection of atoms as covered on page
 \pageref{m4a}.
 The key difference is the contents of its \texttt{mdat} atom.
 
-\section{the ALAC File Stream}
+\section{ALAC Decoding}
 \begin{wrapfigure}[6]{r}{1.5in}
 \includegraphics{figures/alac/atoms.pdf}
 \end{wrapfigure}
+The basic process for decoding an ALAC file is as follows:
+\par
+\begin{wrapfigure}[6]{l}{4.5in}
+{\relsize{-1}
+\ALGORITHM{an ALAC encoded file}{PCM samples}
+read \texttt{alac} atom to obtain decoding parameters\;
+seek to \texttt{mdat} atom's data\;
+\While{$PCM~frame~count > 0$}{
+  decode ALAC frame to 1 or more PCM frames\;
+  deduct ALAC frame's samples from stream's $PCM~frame~count$\;
+  return decoded PCM frames\;
+}
+\EALGORITHM
+}
+\par
+Seeking to a particular atom within the ALAC file is a recursive
+process.
+Each ALAC atom is laid out as follows:
+\vskip .1in
+\includegraphics{figures/alac/atom.pdf}
+\vskip .1in
+where \VAR{atom length} is the full size of the atom in bytes,
+including the 8 byte atom header,
+\VAR{atom type} an ASCII string and \VAR{atom data}
+may contain one or more sub-atoms.
+\end{wrapfigure}
 
-This is the typical arrangements of ALAC atoms as encoded by iTunes.
-As you can see, it is almost identical to the layout of AAC audio.
-One of the key differences is that ALAC's \texttt{stsd} atom
-contains an \texttt{alac} description sub-atom rather than an
-\texttt{mp4a} description atom.
+\clearpage
 
-Its layout is as follows:
+\subsection{Parsing the alac Atom}
 
+The \texttt{stsd} atom contains a single \texttt{alac} atom
+which contains an \texttt{alac} sub-atom of its own.
 \begin{figure}[h]
 \includegraphics{figures/alac/alac_atom.pdf}
 \end{figure}
-
-\pagebreak
-
-\section{ALAC Decoding}
-
-An ALAC stream is made up of individual framesets within the \texttt{mdat}
-atom, as follows:
-
-\begin{figure}[h]
-\includegraphics{figures/alac/stream.pdf}
-\end{figure}
 \par
 \noindent
-Note that the \VAR{Channels} field is the total number of channels
-in the following frame, offset by 1;
-\texttt{0} is mono and \texttt{1} is stereo.
-The frames within a frameset continue until the value \texttt{0x7} is
-encountered in the \VAR{Channels} field.
-Each frameset will contain only a single frame in most cases.
-However, multichannel audio may contain more.
-For example, a 6 channel stream may have framesets with 4 frames
-each where $\text{Frame}_1$ has channels 1-2,
-$\text{Frame}_2$ has channel 3,
-$\text{Frame}_3$ has channel 4 and $\text{Frame}_4$ has channel 5-6.
+Many of these fields appear redundant between the outer \texttt{alac} atom
+and the inner sub-atom.
+However, for proper decoding, one must ignore the outer atom entirely
+and use only the parameters from the innermost \texttt{alac} atom.
 
-Note that all ALAC framesets have padding as needed such that each
-new frameset begins on an aligned byte boundary.
-
-If \VAR{Has Sample Count} is not set, the total number of PCM frames
-in the ALAC frame equals the \VAR{Samples per Frame} value in the
-\texttt{alac} atom.
-If not, the total number of samples is indicated by a 32-bit
-\VAR{Sample Count} value at the end of the frame header.
-
-ALAC frames come in two varieties: compressed and uncompressed,
-depending on the \VAR{Uncompressed} bit in the frame header.
+Of these, we'll be interested in \VAR{samples per frame},
+\VAR{bits per sample}, \VAR{history multiplier}, \VAR{initial history},
+\VAR{maximum K}, \VAR{channels} and \VAR{sample rate}.
+The others can safely be ignored.
 
 \clearpage
 
-\subsection{Uncompressed Frames}
-
-Uncompressed frames are a simple collection of signed sample values,
-each \VAR{Bits per Sample} bits long (as indicated in the \texttt{alac} atom).
-This is a trivial case for handling frames which do not compress,
-such as random noise.
-For 2 channel frames, uncompressed frames interleave samples
-between channels during decoding.
-For example, $\text{Sample}_1$ is on $\text{Channel}_1$,
-$\text{Sample}_2$ on $\text{Channel}_2$,
-$\text{Sample}_3$ on $\text{Channel}_1$,
-$\text{Sample}_4$ on $\text{Channel}_2$ and so on.
-
-\subsection{Compressed Frames}
-
-Compressed frames are prefixed by unsigned, 8-bit \VAR{Interlacing Shift}
-and \VAR{Interlacing Leftweight} values.
-For 2 channel frames, these values are used during channel
-reconstruction once the subframes have been decoded.
-These are followed by one subframe header per channel,
-which is laid out as follows:
-
-\begin{figure}[h]
-\includegraphics{figures/alac/subframe_header.pdf}
-\end{figure}
+For example, given the bytes:
 \par
-\noindent
-\VAR{Prediction Type} is always 0.
-\VAR{QLP Shift Needed} is an unsigned value.
-\VAR{Rice Modifier} is typically 4.
-There are \VAR{Coefficient Count} number of signed,
-16-bit \VAR{QLP Coefficient} values.
-\VAR{QLP Shift Needed} and the \VAR{QLP Coefficients}
-will be used to transform decoded residuals into sample values.
+\begin{figure}[h]
+\includegraphics{figures/alac/alac-atom-parse.pdf}
+\end{figure}
+\begin{tabular}{rcrcl}
+$alac~length$ & $\leftarrow$ & \texttt{00000024} & = & 36 \\
+$alac$ & $\leftarrow$ & \texttt{616C6163} & = & \texttt{"alac"} \\
+$padding$ & $\leftarrow$ & \texttt{00000000} & = & 0 \\
+samples per frame & $\leftarrow$ & \texttt{00001000} & = & 4096 \\
+compatible version & $\leftarrow$ & \texttt{00} & = & 0 \\
+bits per sample & $\leftarrow$ & \texttt{10} & = & 16 \\
+history multiplier & $\leftarrow$ & \texttt{28} & = & 40 \\
+initial history & $\leftarrow$ & \texttt{0A} & = & 10 \\
+maximum K & $\leftarrow$ & \texttt{0E} & = & 14 \\
+channels & $\leftarrow$ & \texttt{02} & = & 2 \\
+max run & $\leftarrow$ & \texttt{FF} & = & 255 \\
+max coded frame size & $\leftarrow$ & \texttt{24} & = & 36 bytes \\
+bitrate & $\leftarrow$ & \texttt{0AC4} & = & 2756 \\
+sample rate & $\leftarrow$ & \texttt{0000AC44} & = & 44100 Hz\\
+\end{tabular}
 
-\VAR{Uncompressed LSBs}, if nonzero, indicates the frame contains
-uncompressed least-significant-bit samples between
-the subframe headers and encoded residuals.
-Its value is the size of those samples, in bytes.
-The number of LSB samples equals the ALAC frame's PCM frame count
-times the frame's channel count,
-and those samples are interleaved between channels.
-These samples will be prepended to the channel's decoded
-samples in order to handle streams which are 24 bits-per-sample or more.
 
-\clearpage
+%% This is the typical arrangements of ALAC atoms as encoded by iTunes.
+%% As you can see, it is almost identical to the layout of AAC audio.
+%% One of the key differences is that ALAC's \texttt{stsd} atom
+%% contains an \texttt{alac} description sub-atom rather than an
+%% \texttt{mp4a} description atom.
 
-\subsubsection{Residual Block Decoding}
-Each residual block contains one residual value per PCM frame.
-Decoding these residuals requires the
-\VAR{Initial History}, \VAR{History Multiplier},
-\VAR{Maximum LSBs} and \VAR{Bits per Sample} values
-from the \texttt{alac} atom,
-as well as the \VAR{Channel Count} and \VAR{Uncompressed LSBs}
-values from the frame header.
+%% Its layout is as follows:
 
-\begin{enumerate}[1)]
-\item $\text{sample size} = \text{\VAR{Bits per Sample}} - (\text{\VAR{Uncompressed LSBs}} \times 8) + \text{\VAR{Channel Count}} - 1$
-\item $h_0 = \text{\VAR{Initial History}}$
-\item $\text{sign modifier}_0 = 0$
-\item $i = 0$
-\item $\text{LSB Count}_i = \text{min}( \lfloor \log_2 ( h_i \div {2 ^ 9} + 3 ) \rfloor , \text{\VAR{Maximum LSBs}} ) $
-\item $u_i = \text{read\_residual}(\text{LSB Count}_i, \text{sample size}) + \text{sign modifier}_i$
-\item $\textbf{residual}_i = \begin{cases} \lfloor (u_i + 1) \div 2 \rfloor & \text{ if } u_i \mod 2 = 0 \\ -\lfloor (u_i + 1) \div 2 \rfloor & \text{ if } u_i \mod 2 = 1 \end{cases}$
-\item $h_{i + 1} = \begin{cases} h_i + (u_i \times \text{\VAR{History Multiplier}}) - \left\lfloor\frac{h_i \times \text{\VAR{History Multiplier}}}{2 ^ 9}\right\rfloor & \text{ if } u_i \leq 65535 \\ 65535 & \text{ if } u_i > 65535 \end{cases}$
-\item if $h_{i + 1} \geq 128$ or $i + 1 = \text{\VAR{PCM Frame Count}}$ then \newline
-$\text{sign modifier}_{i + 1} = 0$ and goto step 15
-\item $\text{Zeroes LSB Count}_i = \text{min}(7 - \lfloor \log_2 ( h_i ) \rfloor + \lfloor (h_i + 16) \div 64 \rfloor , \text{\VAR{Maximum LSBs}} )$
-\item $\text{Zero Residuals}_i = \text{read\_residual}(\text{Zeroes LSB Count}_i , 16)$
-\item if $\text{Zero Residuals}_i > 0$
-\begin{enumerate}[a)]
-\item $[ \textbf{residual}_{i + 1} , \textbf{residual}_{i + \text{Zero Residuals}_i} ] = 0$
-\item $i \leftarrow i + \text{Zero Residuals}_i$
-\end{enumerate}
-\item $\text{sign modifier}_{i + 1} = \begin{cases} 1 & \text{ if } \text{\VAR{PCM Frame Count}} \leq 65535 \\ 0 & \text{ if } \text{\VAR{PCM Frame Count}} > 65535 \end{cases}$
-\item $h_{i + 1} \leftarrow 0$
-\item $i \leftarrow i + 1$
-\item if $i < \text{\VAR{PCM Frame Count}}$ then goto step 5
-\item return \textbf{residual} values
-\end{enumerate}
-
-\clearpage
-
-\subsubsection{Individual Residual Decoding}
-The $\text{read\_residual}(\text{lsb\_count}, \text{sample\_size})$
-function is defined as follows:
-\begin{enumerate}[1)]
-\item read a unary value from the stream with a stop bit of \texttt{0}
-as our $\text{MSB}$ (most-significant bits) value,
-stopping if the number of \texttt{1} bits reaches 9
-\item if $\text{MSB} = 9$, return an unsigned value from the stream
-\VAR{sample\_size} bits large\footnote{This
-is an escape code for excessively large residuals}
-\item if $\text{\VAR{lsb\_count}} = 0$, return $\text{MSB}$
-\item read an unsigned value from the stream, $\text{\VAR{lsb\_count}}$
-bits large as our $\text{LSB}$ (least-significant bits value)
-\item if $\text{LSB} > 1$, return $\text{MSB} \times (2 ^ {\text{\VAR{lsb\_count}}} - 1) + (\text{LSB} - 1)$
-\item if $\text{LSB} = 1$, unread a single \texttt{1} bit and return $\text{MSB} \times (2 ^ {\text{\VAR{lsb\_count}}} - 1)$
-\item if $\text{LSB} = 1$, unread a single \texttt{0} bit and return $\text{MSB} \times (2 ^ {\text{\VAR{lsb\_count}}} - 1)$
-\end{enumerate}
-
-%% The process for reading each signed $\text{residual}_i$ is as follows:
-%% \begin{enumerate}[I.]
-%% \item if $\text{history}_i \geq 128$:
-%% \begin{enumerate}[1)]
-%% \item read a unary value from the stream with a stop bit of \texttt{0}
-%% as our $\text{MSB}_i$ (most-significant-bits) value,
-%% stopping if the number of \texttt{1} bits reaches 9\footnote{This
-%% is an escape code for excessively large residuals}
-%% \item if the number of \texttt{1} bits is 9,
-%% read $\text{unsigned}_i$ as
-%% \newline
-%% $\text{\VAR{Bits per Sample}} - (\text{\VAR{Uncompressed LSBs}} \times 2) + \text{\VAR{Channel Count}} - 1$
-%% \newline
-%% number of unsigned bits and goto step 9
-%% \item otherwise, $\text{LSB Count}_i = \lfloor\log_2 (\text{history}_i \div {2 ^ 9} + 3) \rfloor$
-%% \newline
-%% where $\text{LSB Count}_i$ cannot exceed \VAR{Maximum LSBs}
-%% \item if $\text{LSB Count}_i = 0$ then $\text{unsigned}_i = \text{MSB}_i$
-%% and goto step 9
-%% \item otherwise, read $\text{LSB}_i$ (least-significant bits) as $\text{LSB Count}_i$
-%% number of unsigned bits
-%% \item if $\text{LSB}_i > 1$ then $\text{unsigned}_i$ = $\text{MSB}_i \times (2 ^ {\text{LSB Count}_i} - 1) + (\text{LSB}_i - 1)$
-%% \item if $\text{LSB}_i = 1$ then $\text{unsigned}_i = \text{MSB}_i \times (2 ^ {\text{LSB Count}_i} - 1)$
-%% \newline
-%% and one must unread a single \texttt{1} bit to the stream
-%% \item if $\text{LSB}_i = 0$ then $\text{unsigned}_i = \text{MSB}_i \times (2 ^ {\text{LSB Count}_i} - 1)$
-%% \newline
-%% and one must unread a single \texttt{0} bit to the stream
-%% \item if $\text{unsigned}_i \leq 65535$ then
-%% \newline
-%% $\text{history}_{i + 1} = \text{history}_i + (\text{unsigned}_i \times \text{\VAR{History Multiplier}}) - \left\lfloor\frac{\text{history}_i \times \text{\VAR{History Multiplier}}}{2 ^ 9}\right\rfloor$
-%% \item if $\text{unsigned}_i > 65535$ then
-%% \newline
-%% $\text{history}_{i + 1} = 65535$
-%% \item if $\text{unsigned}_i \mod 2 = 0$ then
-%% $\text{residual}_i = \lfloor(\text{unsigned}_i + 1) \div 2\rfloor$
-%% \item if $\text{unsigned}_i \mod 2 = 1$ then
-%% $\text{residual}_i = -\lfloor(\text{unsigned}_i + 1) \div 2\rfloor$
-%% \end{enumerate}
-%% \clearpage
-%% \item if $\text{history}_i < 128$:
-
-%% \end{enumerate}
-
-%% An uncompressed frame is laid out as follows:
-%% \label{alac_uncompressed}
 %% \begin{figure}[h]
-%% \includegraphics{figures/alac/uncompressed_frame.pdf}
+%% \includegraphics{figures/alac/alac_atom.pdf}
 %% \end{figure}
-%% \par
-%% \noindent
-%% The number of PCM frames in an ALAC frame depends on the \VAR{Has Sample Size}
-%% bit.
-%% If set, the number of PCM frames equals the 32-bit \VAR{Sample Size}
-%% value.
-%% If not set, the total number of PCM frames equals the \VAR{Max Coded Frame Size}
-%% value in the \texttt{alac} atom and the \VAR{Sample Size} value is omitted.
-%% ALAC streams typically use the same number of samples per frame
-%% until the end of the stream, at which point the leftover samples
-%% are placed in a different-sized frame.
-
-
 
 %% \pagebreak
 
-%% A compressed frame is laid out as follows:
+%% \section{ALAC Decoding}
+
+%% An ALAC stream is made up of individual framesets within the \texttt{mdat}
+%% atom, as follows:
+
+%% \begin{figure}[h]
+%% \includegraphics{figures/alac/stream.pdf}
+%% \end{figure}
+%% \par
+%% \noindent
+%% Note that the \VAR{Channels} field is the total number of channels
+%% in the following frame, offset by 1;
+%% \texttt{0} is mono and \texttt{1} is stereo.
+%% The frames within a frameset continue until the value \texttt{0x7} is
+%% encountered in the \VAR{Channels} field.
+%% Each frameset will contain only a single frame in most cases.
+%% However, multichannel audio may contain more.
+%% For example, a 6 channel stream may have framesets with 4 frames
+%% each where $\text{Frame}_1$ has channels 1-2,
+%% $\text{Frame}_2$ has channel 3,
+%% $\text{Frame}_3$ has channel 4 and $\text{Frame}_4$ has channel 5-6.
+
+%% Note that all ALAC framesets have padding as needed such that each
+%% new frameset begins on an aligned byte boundary.
+
+%% If \VAR{Has Sample Count} is not set, the total number of PCM frames
+%% in the ALAC frame equals the \VAR{Samples per Frame} value in the
+%% \texttt{alac} atom.
+%% If not, the total number of samples is indicated by a 32-bit
+%% \VAR{Sample Count} value at the end of the frame header.
+
+%% ALAC frames come in two varieties: compressed and uncompressed,
+%% depending on the \VAR{Uncompressed} bit in the frame header.
+
+%% \clearpage
+
+%% \subsection{Uncompressed Frames}
+
+%% Uncompressed frames are a simple collection of signed sample values,
+%% each \VAR{Bits per Sample} bits long (as indicated in the \texttt{alac} atom).
+%% This is a trivial case for handling frames which do not compress,
+%% such as random noise.
+%% For 2 channel frames, uncompressed frames interleave samples
+%% between channels during decoding.
+%% For example, $\text{Sample}_1$ is on $\text{Channel}_1$,
+%% $\text{Sample}_2$ on $\text{Channel}_2$,
+%% $\text{Sample}_3$ on $\text{Channel}_1$,
+%% $\text{Sample}_4$ on $\text{Channel}_2$ and so on.
+
+%% \subsection{Compressed Frames}
+
+%% Compressed frames are prefixed by unsigned, 8-bit \VAR{Interlacing Shift}
+%% and \VAR{Interlacing Leftweight} values.
+%% For 2 channel frames, these values are used during channel
+%% reconstruction once the subframes have been decoded.
+%% These are followed by one subframe header per channel,
+%% which is laid out as follows:
+
+%% \begin{figure}[h]
+%% \includegraphics{figures/alac/subframe_header.pdf}
+%% \end{figure}
+%% \par
+%% \noindent
+%% \VAR{Prediction Type} is always 0.
+%% \VAR{QLP Shift Needed} is an unsigned value.
+%% \VAR{Rice Modifier} is typically 4.
+%% There are \VAR{Coefficient Count} number of signed,
+%% 16-bit \VAR{QLP Coefficient} values.
+%% \VAR{QLP Shift Needed} and the \VAR{QLP Coefficients}
+%% will be used to transform decoded residuals into sample values.
+
+%% \VAR{Uncompressed LSBs}, if nonzero, indicates the frame contains
+%% uncompressed least-significant-bit samples between
+%% the subframe headers and encoded residuals.
+%% Its value is the size of those samples, in bytes.
+%% The number of LSB samples equals the ALAC frame's PCM frame count
+%% times the frame's channel count,
+%% and those samples are interleaved between channels.
+%% These samples will be prepended to the channel's decoded
+%% samples in order to handle streams which are 24 bits-per-sample or more.
+
+%% \clearpage
+
+%% \subsubsection{Residual Block Decoding}
+%% Each residual block contains one residual value per PCM frame.
+%% Decoding these residuals requires the
+%% \VAR{Initial History}, \VAR{History Multiplier},
+%% \VAR{Maximum LSBs} and \VAR{Bits per Sample} values
+%% from the \texttt{alac} atom,
+%% as well as the \VAR{Channel Count} and \VAR{Uncompressed LSBs}
+%% values from the frame header.
+
+%% \begin{enumerate}[1)]
+%% \item $\text{sample size} = \text{\VAR{Bits per Sample}} - (\text{\VAR{Uncompressed LSBs}} \times 8) + \text{\VAR{Channel Count}} - 1$
+%% \item $h_0 = \text{\VAR{Initial History}}$
+%% \item $\text{sign modifier}_0 = 0$
+%% \item $i = 0$
+%% \item $\text{LSB Count}_i = \text{min}( \lfloor \log_2 ( h_i \div {2 ^ 9} + 3 ) \rfloor , \text{\VAR{Maximum LSBs}} ) $
+%% \item $u_i = \text{read\_residual}(\text{LSB Count}_i, \text{sample size}) + \text{sign modifier}_i$
+%% \item $\textbf{residual}_i = \begin{cases} \lfloor (u_i + 1) \div 2 \rfloor & \text{ if } u_i \mod 2 = 0 \\ -\lfloor (u_i + 1) \div 2 \rfloor & \text{ if } u_i \mod 2 = 1 \end{cases}$
+%% \item $h_{i + 1} = \begin{cases} h_i + (u_i \times \text{\VAR{History Multiplier}}) - \left\lfloor\frac{h_i \times \text{\VAR{History Multiplier}}}{2 ^ 9}\right\rfloor & \text{ if } u_i \leq 65535 \\ 65535 & \text{ if } u_i > 65535 \end{cases}$
+%% \item if $h_{i + 1} \geq 128$ or $i + 1 = \text{\VAR{PCM Frame Count}}$ then \newline
+%% $\text{sign modifier}_{i + 1} = 0$ and goto step 15
+%% \item $\text{Zeroes LSB Count}_i = \text{min}(7 - \lfloor \log_2 ( h_i ) \rfloor + \lfloor (h_i + 16) \div 64 \rfloor , \text{\VAR{Maximum LSBs}} )$
+%% \item $\text{Zero Residuals}_i = \text{read\_residual}(\text{Zeroes LSB Count}_i , 16)$
+%% \item if $\text{Zero Residuals}_i > 0$
+%% \begin{enumerate}[a)]
+%% \item $[ \textbf{residual}_{i + 1} , \textbf{residual}_{i + \text{Zero Residuals}_i} ] = 0$
+%% \item $i \leftarrow i + \text{Zero Residuals}_i$
+%% \end{enumerate}
+%% \item $\text{sign modifier}_{i + 1} = \begin{cases} 1 & \text{ if } \text{\VAR{PCM Frame Count}} \leq 65535 \\ 0 & \text{ if } \text{\VAR{PCM Frame Count}} > 65535 \end{cases}$
+%% \item $h_{i + 1} \leftarrow 0$
+%% \item $i \leftarrow i + 1$
+%% \item if $i < \text{\VAR{PCM Frame Count}}$ then goto step 5
+%% \item return \textbf{residual} values
+%% \end{enumerate}
+
+%% \clearpage
+
+%% \subsubsection{Individual Residual Decoding}
+%% The $\text{read\_residual}(\text{lsb\_count}, \text{sample\_size})$
+%% function is defined as follows:
+%% \begin{enumerate}[1)]
+%% \item read a unary value from the stream with a stop bit of \texttt{0}
+%% as our $\text{MSB}$ (most-significant bits) value,
+%% stopping if the number of \texttt{1} bits reaches 9
+%% \item if $\text{MSB} = 9$, return an unsigned value from the stream
+%% \VAR{sample\_size} bits large\footnote{This
+%% is an escape code for excessively large residuals}
+%% \item if $\text{\VAR{lsb\_count}} = 0$, return $\text{MSB}$
+%% \item read an unsigned value from the stream, $\text{\VAR{lsb\_count}}$
+%% bits large as our $\text{LSB}$ (least-significant bits value)
+%% \item if $\text{LSB} > 1$, return $\text{MSB} \times (2 ^ {\text{\VAR{lsb\_count}}} - 1) + (\text{LSB} - 1)$
+%% \item if $\text{LSB} = 1$, unread a single \texttt{1} bit and return $\text{MSB} \times (2 ^ {\text{\VAR{lsb\_count}}} - 1)$
+%% \item if $\text{LSB} = 1$, unread a single \texttt{0} bit and return $\text{MSB} \times (2 ^ {\text{\VAR{lsb\_count}}} - 1)$
+%% \end{enumerate}
+
+%% %% The process for reading each signed $\text{residual}_i$ is as follows:
+%% %% \begin{enumerate}[I.]
+%% %% \item if $\text{history}_i \geq 128$:
+%% %% \begin{enumerate}[1)]
+%% %% \item read a unary value from the stream with a stop bit of \texttt{0}
+%% %% as our $\text{MSB}_i$ (most-significant-bits) value,
+%% %% stopping if the number of \texttt{1} bits reaches 9\footnote{This
+%% %% is an escape code for excessively large residuals}
+%% %% \item if the number of \texttt{1} bits is 9,
+%% %% read $\text{unsigned}_i$ as
+%% %% \newline
+%% %% $\text{\VAR{Bits per Sample}} - (\text{\VAR{Uncompressed LSBs}} \times 2) + \text{\VAR{Channel Count}} - 1$
+%% %% \newline
+%% %% number of unsigned bits and goto step 9
+%% %% \item otherwise, $\text{LSB Count}_i = \lfloor\log_2 (\text{history}_i \div {2 ^ 9} + 3) \rfloor$
+%% %% \newline
+%% %% where $\text{LSB Count}_i$ cannot exceed \VAR{Maximum LSBs}
+%% %% \item if $\text{LSB Count}_i = 0$ then $\text{unsigned}_i = \text{MSB}_i$
+%% %% and goto step 9
+%% %% \item otherwise, read $\text{LSB}_i$ (least-significant bits) as $\text{LSB Count}_i$
+%% %% number of unsigned bits
+%% %% \item if $\text{LSB}_i > 1$ then $\text{unsigned}_i$ = $\text{MSB}_i \times (2 ^ {\text{LSB Count}_i} - 1) + (\text{LSB}_i - 1)$
+%% %% \item if $\text{LSB}_i = 1$ then $\text{unsigned}_i = \text{MSB}_i \times (2 ^ {\text{LSB Count}_i} - 1)$
+%% %% \newline
+%% %% and one must unread a single \texttt{1} bit to the stream
+%% %% \item if $\text{LSB}_i = 0$ then $\text{unsigned}_i = \text{MSB}_i \times (2 ^ {\text{LSB Count}_i} - 1)$
+%% %% \newline
+%% %% and one must unread a single \texttt{0} bit to the stream
+%% %% \item if $\text{unsigned}_i \leq 65535$ then
+%% %% \newline
+%% %% $\text{history}_{i + 1} = \text{history}_i + (\text{unsigned}_i \times \text{\VAR{History Multiplier}}) - \left\lfloor\frac{\text{history}_i \times \text{\VAR{History Multiplier}}}{2 ^ 9}\right\rfloor$
+%% %% \item if $\text{unsigned}_i > 65535$ then
+%% %% \newline
+%% %% $\text{history}_{i + 1} = 65535$
+%% %% \item if $\text{unsigned}_i \mod 2 = 0$ then
+%% %% $\text{residual}_i = \lfloor(\text{unsigned}_i + 1) \div 2\rfloor$
+%% %% \item if $\text{unsigned}_i \mod 2 = 1$ then
+%% %% $\text{residual}_i = -\lfloor(\text{unsigned}_i + 1) \div 2\rfloor$
+%% %% \end{enumerate}
+%% %% \clearpage
+%% %% \item if $\text{history}_i < 128$:
+
+%% %% \end{enumerate}
+
+%% %% An uncompressed frame is laid out as follows:
+%% %% \label{alac_uncompressed}
+%% %% \begin{figure}[h]
+%% %% \includegraphics{figures/alac/uncompressed_frame.pdf}
+%% %% \end{figure}
+%% %% \par
+%% %% \noindent
+%% %% The number of PCM frames in an ALAC frame depends on the \VAR{Has Sample Size}
+%% %% bit.
+%% %% If set, the number of PCM frames equals the 32-bit \VAR{Sample Size}
+%% %% value.
+%% %% If not set, the total number of PCM frames equals the \VAR{Max Coded Frame Size}
+%% %% value in the \texttt{alac} atom and the \VAR{Sample Size} value is omitted.
+%% %% ALAC streams typically use the same number of samples per frame
+%% %% until the end of the stream, at which point the leftover samples
+%% %% are placed in a different-sized frame.
+
+
+
+%% %% \pagebreak
+
+%% %% A compressed frame is laid out as follows:
+
+%% %% \begin{figure}[h]
+%% %% \includegraphics{figures/alac/compressed_frame.pdf}
+%% %% \end{figure}
+%% %% \par
+%% %% \noindent
+%% %% \VAR{Interlacing Shift} and \VAR{Interlacing Leftweight} are used
+%% %% for channel decorrelation after the subframes have been decoded.
+
+%% %% There is one subframe header and one residual block per
+%% %% channel.
+%% %% If \VAR{Wasted Bits} is greater than 0, there is also
+%% %% a block of wasted bits samples after the subframe headers but before
+%% %% the residuals.
+
+%% %% \VAR{Wasted Bits} is an attempt to store the least significant bits
+%% %% of each sample more efficiently at high bits-per-sample, where
+%% %% that data will often be indistinguishable from random noise.
+%% %% In effect, it's a block of interlaced uncompressed samples
+%% %% (similar to an uncompressed ALAC frame) each $8 \times \text{\VAR{Wasted Bits}}$
+%% %% bits large.
+%% %% Those wasted bits are then prepended to each sample after channel
+%% %% decorrelation.
+%% %% This process is explained in more detail on page \pageref{alac_wasted_bits}.
+
+%% %% Each subframe header is laid out as follows:
+
+
+
+%% %% \pagebreak
+
+%% %% \subsection{Residual Decoding}
+
+%% %% There are \VAR{Sample Size} number of residuals per residual block.
+%% %% Decoding a residual block requires knowing the \VAR{Initial History},
+%% %% \VAR{History Multiplier}, \VAR{Maximum K}, \VAR{Channels}, \VAR{Wasted Bits} and
+%% %% \VAR{Bits per Sample} values, from the \texttt{alac} atom and frame header.
+%% %% Fortunately, most of these values are rarely used;
+%% %% we'll mostly be concerned with the \VAR{History} and \VAR{History Multiplier}.
+
+%% %% For each residual block, \VAR{History} starts with the value of
+%% %% \VAR{Initial History} and will change during residual decoding.
+%% %% We use it to calculate $\kappa$ using the following formula:
+%% %% \begin{equation}
+%% %% \kappa = \left\lfloor\log_2 \left( \frac{\text{history}}{2 ^ 9} + 3 \right) \right\rfloor
+%% %% \end{equation}
+%% %% Note that if $\kappa$ exceeds the \VAR{Maximum K} value from the
+%% %% \texttt{alac} atom, \VAR{Maximum K} is used instead.
+
+%% %% We then need to know the \VAR{Bits per Sample} value of the residual
+%% %% block, which is equal to:
+%% %% \begin{equation}
+%% %% \text{Bits per Sample}_{Residual} = \text{Bits per Sample}_{ALAC} - (\text{Wasted Bits} \times 8) + \text{Channels} - 1
+%% %% \end{equation}
+%% %% For mono streams, this is typically equal to the stream's
+%% %% \VAR{Bits per Sample},
+%% %% while for stereo streams it's often the \VAR{Bits per Sample} plus 1.
+
+%% %% \begin{wrapfigure}[14]{r}{2.5in}
+%% %% \includegraphics{figures/alac/read_residual.pdf}
+%% %% \end{wrapfigure}
+%% %% The $\kappa$ and \VAR{Bits per Sample} values are used to read a
+%% %% single unsigned residual value in the following way:
+
+%% %% The initial bit reading portion of the process
+%% %% involves reading a unary value with a stop bit of `0'
+%% %% and a maximum value of 8.
+%% %% If the maximum value is exceeded, we read \VAR{Bits per Sample}
+%% %% number of bits as our final value
+%% %% (the only place \VAR{Bits per Sample} is used throughout the
+%% %% residual decoding process).
+
+%% %% Otherwise, we read $\kappa$ number of \VAR{extra} bits if $\kappa > 1$.
+%% %% If \VAR{extra} is greater than 1, we return
+%% %% $(\text{\VAR{unary}} \times (2^k - 1)) + (\text{\VAR{extra}} - 1)$.
+%% %% If not, we push a single \VAR{extra} bit back on the stream and return our
+%% %% $\text{\VAR{unary}} \times (2^k - 1)$ value.
+
+%% %% \clearpage
+
+%% %% We perform the following to convert unsigned residuals to signed residuals
+%% %% which are returned to the subframe decoder:
+%% %% \begin{equation}
+%% %% \text{signed} =
+%% %% \begin{cases}
+%% %% \lfloor (\text{unsigned} + 1) \div 2 \rfloor & \text{if unsigned is even} \\
+%% %% -\lfloor (\text{unsigned} + 1) \div 2 \rfloor & \text{if unsigned is odd}
+%% %% \end{cases}
+%% %% \end{equation}
+
+%% %% Finally, we use our unsigned value to update \VAR{history}
+%% %% before reading the next residual:
+%% %% {\relsize{-1}
+%% %% \begin{equation*}
+%% %% \text{history} =
+%% %% \begin{cases}
+%% %% \text{history} + (\text{unsigned} \times \text{history multiplier}) - \left\lfloor\frac{\text{history} \times \text{history multiplier}}{2^9}\right\rfloor & \text{if unsigned} \leq 65535 \\
+%% %% 65535 & \text{if unsigned} > 65535
+%% %% \end{cases}
+%% %% \end{equation*}
+%% %% }
+
+%% %% Thus far, residual decoding isn't overly complex.
+%% %% We simply calculate $\kappa$ from \VAR{history}, read a residual,
+%% %% update \VAR{history} from its unsigned value and repeat the process
+%% %% until we've read an entire subframe's worth of residuals.
+%% %% The bulk of an ALAC file's residuals will be read in this way.
+%% %% However, ALAC also features an ``escape code'' for large chunks
+%% %% of 0 residuals (which may happen during a long stretch of
+%% %% digital silence, for example).
+
+%% %% If \VAR{history} ever falls below 128, this special case is triggered.
+%% %% First, we read a special \VAR{block size} residual value
+%% %% with a \VAR{Bits per Sample} value of 16 and a $\kappa$\footnote{Again, $\kappa$ cannot exceed \VAR{Maximum K} as encoded in the \texttt{alac} atom.} value of:
+%% %% \begin{equation}
+%% %% \kappa_{\text{blocksize}} = 7 - \log_2(\text{history}) + \frac{\text{history} + 16}{64}
+%% %% \end{equation}
+%% %% This \VAR{block size} is how many 0 residuals to send outright -
+%% %% which may be 0, indicating no 0 residuals to send.
+%% %% Either way, if $\text{\VAR{block size}} \leq 65535$,
+%% %% we add 1 to the unsigned value of the next residual in the block (if any).
+%% %% Finally, \VAR{history} is automatically set to 0.
+
+%% \clearpage
+
+%% \subsubsection{Residual Decoding Example}
+%% {\relsize{-2}
+%% In this example, we'll decode a group of 4 residuals in which
+%% \VAR{Initial History} is 1130, \VAR{History Multiplier} is 40,
+%% \VAR{Maximum LSBs} is 14, \VAR{Bits per Sample} is 16,
+%% \VAR{Channel Count} is 2 and \VAR{Uncompressed LSBs} is 0.
+%% }
+%% \begin{figure}[h]
+%% \includegraphics[height=.75in]{figures/alac/residual.pdf}
+%% \end{figure}
+%% {\relsize{-1}
+%% \begin{itemize}
+%% \setlength{\itemsep}{0in}
+%% \setlength{\parskip}{0in}
+%% \item $h_0 = 1130$
+%% \item $\text{sign modifier}_0 = 0$
+%% \item $i = 0$
+%% \item $\text{LSB Count}_0 = \text{min}(\lfloor \log_2 ( 1130 \div {2 ^ 9} + 3 ) \rfloor, 14) = \text{min}(\lfloor \log_2 ( 5 ) \rfloor, 14) = 2$
+%% \item $u_0 = \text{read\_residual}(2, 17) + 0$
+%% \begin{itemize}
+%% \setlength{\itemsep}{0in}
+%% \setlength{\parskip}{0in}
+%% \item $\text{MSB}_0 = 0$
+%% \item $\text{LSB}_0 = 3$
+%% \item $u_0 = 0 \times (2 ^ 2 - 1) + (3 - 1) = 2$
+%% \end{itemize}
+%% \item $\textbf{residual}_0 = \lfloor (2 + 1) \div 2 \rfloor = \textbf{1}$
+%% \item $h_1 = 1130 + (2 \times 40) - \left\lfloor\frac{1130 \times 40}{2 ^ 9}\right\rfloor = 1130 + 80 - 88 = 1122$
+%% \item $i \leftarrow 1$
+%% \item $\text{LSB Count}_1 = \text{min}(\lfloor \log_2 ( 1122 \div {2 ^ 9} + 3 ) \rfloor, 14) = \text{min}(\lfloor \log_2 ( 5 ) \rfloor, 14) = 2$
+%% \item $u_1 = \text{read\_residual}(2, 17) + 0$
+%% \begin{itemize}
+%% \setlength{\itemsep}{0in}
+%% \setlength{\parskip}{0in}
+%% \item $\text{MSB}_1 = 2$
+%% \item $\text{LSB}_1 = 3$
+%% \item $u_1 = 2 \times (2 ^ 2 - 1) + (3 - 1) = 8$
+%% \end{itemize}
+%% \item $\textbf{residual}_1 = \lfloor (8 + 1) \div 2 \rfloor = \textbf{4}$
+%% \item $h_2 = 1122 + (8 \times 40) - \left\lfloor\frac{1122 \times 40}{2 ^ 9}\right\rfloor = 1122 + 320 - 87 = 1355$
+%% \item $i \leftarrow 2$
+%% \item $\text{LSB Count}_2 = \text{min}(\lfloor \log_2 ( 1355 \div {2 ^ 9} + 3 ) \rfloor, 14) = \text{min}(\lfloor \log_2 ( 5 ) \rfloor, 14) = 2$
+%% \item $u_2 = \text{read\_residual}(2, 17) + 0$
+%% \begin{itemize}
+%% \setlength{\itemsep}{0in}
+%% \setlength{\parskip}{0in}
+%% \item $\text{MSB}_2 = 1$
+%% \item $\text{LSB}_2 = 0$ (unread a single 0 bit here)
+%% \item $u_2 = 1 \times (2 ^ 2 - 1) = 3$
+%% \end{itemize}
+%% \item $\textbf{residual}_2 = -\lfloor (3 + 1) \div 2 \rfloor = \textbf{-2}$
+%% \item $h_3 = 1355 + (3 \times 40) - \left\lfloor\frac{1355 \times 40}{2 ^ 9}\right\rfloor = 1355 + 120 - 105 = 1370$
+%% \item $i \leftarrow 3$
+%% \item $\text{LSB Count}_3 = \text{min}( \lfloor \log_2 ( 1370 \div {2 ^ 9} + 3 ) \rfloor , 14 ) = \text{min}( \lfloor \log_2 ( 5 ) \rfloor , 14 ) = 2$
+%% \item $u_3 = \text{read\_residual}(2, 17) + 0$
+%% \begin{itemize}
+%% \setlength{\itemsep}{0in}
+%% \setlength{\parskip}{0in}
+%% \item $\text{MSB}_3 = 0$
+%% \item $\text{LSB}_3 = 3$
+%% \item $u_3 = 0 \times (2 ^ 2 - 1) + (3 - 1) = 2$
+%% \end{itemize}
+%% \item $\textbf{residual}_3 = \lfloor (2 + 1) \div 2 \rfloor = \textbf{1}$
+%% \item $h_4 = 1370 + (2 \times 40) - \left\lfloor\frac{1370 \times 40}{2 ^ 9}\right\rfloor = 1370 + 80 - 107 = 1343$
+%% \item $i \leftarrow 4$ and done
+%% \end{itemize}
+%% }
+
+%% Thus, our batch of signed residual values are 1, 4, -2 and 1.
+
+%% \clearpage
+
+%% \subsection{Subframe Calculation}
+
+%% % example:
+%% % decode residuals [16, 1, 9, -1, -1, 1, -4, 7, -7, -1]
+%% % with starting coeffs [1122, -766, 107, 122]
+%% % and prediction_quantitization 9
+%% % to samples [16, 17, 26, 25, 24, 23, 20, 24, 23, 20]
+
+%% Given our list of decoded residual values;
+%% along with a list of coefficients,
+%% a \VAR{Coefficient Count} and a \VAR{Prediction Quantitization} value
+%% (all from the subframe header),
+%% we can now generate a list of signed subframe samples for a
+%% given channel.
+
+%% The first residual is always the first output sample:
+%% \begin{align*}
+%% \text{Sample}_0 &= \text{Residual}_0 \\
+%% \intertext{Then, for the next \VAR{Coefficient Count} number of residuals:}
+%% \text{Sample}_i &= \text{Residual}_i + \text{Sample}_{i - 1}
+%% \end{align*}
+
+%% For example, given that we have a \VAR{Coefficient Count} of 4
+%% and our first five residuals are 16, 1, 9, -1 and -1;
+%% our first five sample values are:
+%% \begin{align*}
+%% \text{Sample}_0 &= \textbf{16} \\
+%% \text{Sample}_1 = 16 + 1 &= \textbf{17} \\
+%% \text{Sample}_2 = 17 + 9 &= \textbf{26} \\
+%% \text{Sample}_3 = 26 - 1 &= \textbf{25} \\
+%% \text{Sample}_4 = 25 - 1 &= \textbf{24}
+%% \end{align*}
+%% These are our ``starting point'' samples upon which the remainder
+%% of the subframe will be built.
+
+%% Subsequent samples are calculated in the following way:
+
+%% \begin{align*}
+%% \text{LPC Sum}_i &= \overset{coeffs - 1}{\underset{j = 0}{\sum}}
+%% \text{Coefficient}_j \times (\text{Sample}_{i - j - 1} - \text{Sample}_{i - coeffs - 1}) \\
+%% \text{Sample}_i &= \left\lfloor \frac{\text{LPC Sum}_i + 2^{\text{Predictor Quantitization - 1}}} {2 ^ \text{Predictor Quantitization}}\right\rfloor + \text{Residual}_i + \text{Sample}_{i - coeffs - 1} \\
+%% \intertext{For example, given $\text{Residual}_5$ = 1,
+%% \VAR{Predictor Quantitization} = 9
+%% and the coefficients 1122, -766, 107 and 122:}
+%% \text{LPC Sum}_5 &=
+%% (1122 \times (24 - 16)) + (-766 \times (25 - 16)) +
+%%  (107 \times (26 - 16)) + (122 \times (17 - 16)) \\
+%% &= (1122 \times 8) + (-766 \times 9) + (107 \times 10) + (122 \times 1) \\
+%% &= 8976 + -6894 + 1070 + 122 = \textbf{3274} \\
+%% \text{Sample}_5 &= \left\lfloor\frac{\textbf{3274} + 2^8}{2^9}\right\rfloor + 1 + 16
+%% = \left\lfloor\frac{3530}{512}\right\rfloor + 1 + 16 = \textbf{23}
+%% \end{align*}
+%% But before calculating $\text{Sample}_6$,
+%% we need to adjust our coefficient list.
+
+%% \clearpage
+%% \label{alac_coefficient_adjustment}
+%% Updating the coefficient list first requires the \VAR{sign} function:
+%% {\relsize{-2}
+%% \begin{equation}
+%% \text{sign}(x) =
+%% \begin{cases}
+%% 1 & \text{if } x > 0 \\
+%% 0 & \text{if } x = 0 \\
+%% -1 & \text{if } x < 0
+%% \end{cases}
+%% \end{equation}
+%% }
+%% We then take our \VAR{samples}, index $i$, \VAR{coefficients},
+%% coefficient \VAR{count}, \VAR{residual}, \VAR{predictor quantitization}
+%% values and go through the following routine if $\text{residual} \neq 0$:
+%% \par
+%% {\relsize{-1}
+%% \begin{tabular}{|l>{$}r<{$}c>{$}l<{$}|}
+%% \hline
+%% Step 1. & \text{original sign} &=& \text{sign}(residual) \\
+%% Step 2. & j &=& 0 \\
+%% Step 3. & v &=& \text{Sample}_{i - \text{count} - 1} - \text{Sample}_{i - \text{count} + j} \\
+%% Step 4. & sign &=& \begin{cases}\text{sign}(v) & \text{if original sign} > 0 \\
+%% -\text{sign}(v) & \text{if original sign} \leq 0\end{cases} \\
+%% Step 5. & \text{Coefficient}_{\text{count} - j - 1} &=& \text{Coefficient}_{\text{count} - j - 1} - sign \\
+%% Step 6. & residual &=& residual - \left( \left\lfloor\frac{v \times sign}{2 ^ \text{Predictor Quantitization}}\right\rfloor \times (j + 1) \right) \\
+%% Step 7. & j &=& j + 1 \\
+%% Step 8. & \multicolumn{3}{l|}{if ($j < count$) and ($\text{sign}(residual) = \text{original sign}$), goto step 3} \\
+%% \hline
+%% \end{tabular}
+%% }
+%% \par
+%% \noindent
+%% To continue our example:
+%% {\relsize{-2}
+%% \begin{align*}
+%% \text{original sign} &= \text{sign}(1) = \textbf{1} \\
+%% j &= 0 \\
+%% v &= \text{Sample}_0 - \text{Sample}_{1} = 16 - 17 = \textbf{-1} \\
+%% sign &= \text{sign}(-1) = \textbf{-1} \\
+%% \text{Coefficient}_3 &= \text{Coefficient}_3 - -1 = 122 + 1 = \textbf{123} \\
+%% residual &= residual - \left( \left\lfloor\frac{-1 \times -1}{2 ^ 9}\right\rfloor \times (0 + 1)\right) = 1 - (0 \times 1) = \textbf{1} \\
+%% j &= 1 \\
+%% v &= \text{Sample}_0 - \text{Sample}_{2} = 16 - 26 = \textbf{-10} \\
+%% sign &= \text{sign}(-10) = \textbf{-1} \\
+%% \text{Coefficient}_2 &= \text{Coefficient}_2 - -1 = 107 + 1 = \textbf{108} \\
+%% residual &= residual - \left( \left\lfloor\frac{-10 \times -1}{2 ^ 9}\right\rfloor \times (1 + 1)\right) = 1 - (0 \times 2) = \textbf{1} \\
+%% j &= 2 \\
+%% v &= \text{Sample}_0 - \text{Sample}_{3} = 16 - 25 = \textbf{-9} \\
+%% sign &= \text{sign}(-9) = \textbf{-1} \\
+%% \text{Coefficient}_1 &= \text{Coefficient}_1 - -1 = -766 + 1 = \textbf{-765} \\
+%% residual &= residual - \left( \left\lfloor\frac{-9 \times -1}{2 ^ 9}\right\rfloor \times (2 + 1)\right) = 1 - (0 \times 3) = \textbf{1} \\
+%% j &= 3 \\
+%% v &= \text{Sample}_0 - \text{Sample}_{4} = 16 - 25 = \textbf{-8} \\
+%% sign &= \text{sign}(-8) = \textbf{-1} \\
+%% \text{Coefficient}_0 &= \text{Coefficient}_0 - -1 = 1122 + 1 = \textbf{1123} \\
+%% residual &= residual - \left( \left\lfloor\frac{-8 \times -1}{2 ^ 9}\right\rfloor \times (3 + 1)\right) = 1 - (0 \times 4) = \textbf{1} \\
+%% j &= 4\text{ and stop, since 4 equals our coefficient count} \\
+%% \end{align*}
+%% }
+
+%% \clearpage
+
+%% Given that $\text{Residual}_6$ is -4, the calculation of $\text{Sample}_6$
+%% is as follows:
+%% \begin{align*}
+%% \text{LPC Sum}_6 &= (1123 \times (23 - 17)) + (-765 \times (24 - 17)) + (108 \times (25 - 17)) + (123 \times (26 - 17)) \\
+%% &= (1123 \times 6) + (-765 \times 7) + (108 \times 8) + (123 \times 9) \\
+%% &= 6738 + -5355 + 864 + 1107 = \textbf{3354} \\
+%% \text{Sample}_6 &= \left\lfloor\frac{\textbf{3354} + 2^8}{2^9}\right\rfloor + -4 + 17 = \left\lfloor\frac{3610}{512}\right\rfloor + -4 + 17 = \textbf{20} \\
+%% %% \end{align*}
+%% %% \begin{align*}
+%% \text{original sign} &= \text{sign}(-4) = -1 \\
+%% j &= 0 \\
+%% v &= \text{Sample}_1 - \text{Sample}_2 = 17 - 26 = \textbf{-9} \\
+%% sign &= -\text{sign}(-9) = \textbf{1} \\
+%% \text{Coefficient}_3 &= \text{Coefficient}_3 - 1 = 123 - 1 = \textbf{122} \\
+%% residual &= residual - \left( \left\lfloor\frac{-9 \times 1}{2 ^ 9}\right\rfloor \times (0 + 1)\right) = -4 - (-1 \times 1) = \textbf{-3} \\
+%% j &= 1 \\
+%% v &= \text{Sample}_1 - \text{Sample}_3 = 17 - 25 = \textbf{-8} \\
+%% sign &= -\text{sign}(-8) = \textbf{1} \\
+%% \text{Coefficient}_2 &= \text{Coefficient}_2 - 1 = 108 - 1 = \textbf{107} \\
+%% residual &= residual - \left( \left\lfloor\frac{-8 \times 1}{2 ^ 9}\right\rfloor \times (1 + 1)\right) = -3 - (-1 \times 2) = \textbf{-1} \\
+%% j &= 2 \\
+%% v &= \text{Sample}_1 - \text{Sample}_4 = 17 - 24 = \textbf{-7} \\
+%% sign &= -\text{sign}(-7) = \textbf{1} \\
+%% \text{Coefficient}_1 &= \text{Coefficient}_1 - 1 = -765 - 1 = \textbf{-766} \\
+%% residual &= residual - \left( \left\lfloor\frac{-7 \times 1}{2 ^ 9}\right\rfloor \times (2 + 1)\right) = -1 - (-1 \times 3) = \textbf{2} \\
+%% &\text{and stop, since sign}(2) \neq \text{sign}(-4) \text{ (our \VAR{original sign} value)}
+%% \end{align*}
+
+%% So, the coefficients for $\text{Sample}_7$ are 1123, -766, 107 and 122.
+
+%% \clearpage
+
+%% \subsection{Channel Decorrelation}
+%% \label{alac_decorrelation}
+%% If we have more than one channel of output, the next step is
+%% performing channel decorrelation.
+%% If our \VAR{Interlacing Leftweight} value from the frame header is 0,
+%% our channels are stored independently.
+%% In that case, the $\text{Channel}_1$ is our left samples and
+%% $\text{Channel}_2$ is our right samples.
+
+%% If \VAR{Interlacing Leftweight} is greater than zero,
+%% we calculate samples as follows:
+%% \begin{align*}
+%% \text{Right}_i &= \text{Channel}_1 - \left\lfloor\frac{\text{Channel}_2 \times \text{Interlacing Leftweight}}{2 ^ \text{Interlacing Shift}}\right\rfloor \\
+%% \text{Left}_i &= \text{Channel}_2 + \text{Right}_i
+%% \end{align*}
+
+%% For example, given the $\text{Channel}_1$ samples of 14, 15, 19, 17, 18;
+%% the $\text{Channel}_2$ samples of 16, 17, 26, 25, 24,
+%% an \VAR{Interlacing Shift} value of 2 and an \VAR{Interlacing Leftweight}
+%% values of 3, we calculate output samples as follows:
+%% \begin{table}[h]
+%% \begin{tabular}{|c||>{$}r<{$}|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|}
+%% \hline
+%% Sample & \text{Channel}_1 & \text{Channel}_2 & \text{Right}_i & \text{Left}_i \\
+%% \hline
+%% 0 & 14 & 16 & 14 - \lfloor(16 \times 3) \div 2^2\rfloor = \textbf{2} & 16 + \textbf{2} = \textbf{18} \\
+%% 1 & 15 & 17 & 15 - \lfloor(17 \times 3) \div 2^2\rfloor = \textbf{3} & 17 + \textbf{3} = \textbf{20} \\
+%% 2 & 19 & 26 & 19 - \lfloor(26 \times 3) \div 2^2\rfloor = \textbf{0} & 26 + \textbf{0} = \textbf{26} \\
+%% 3 & 17 & 25 & 17 - \lfloor(25 \times 3) \div 2^2\rfloor = \textbf{-1} & 25 + \textbf{-1} = \textbf{24} \\
+%% 4 & 18 & 24 & 18 - \lfloor(24 \times 3) \div 2^2\rfloor = \textbf{0} & 24 + \textbf{0} = \textbf{24} \\
+%% \hline
+%% \end{tabular}
+%% \end{table}
+
+%% \subsection{Wasted Bits}
+%% \label{alac_wasted_bits}
+%% A compressed ALAC frame
+%% with \VAR{Wasted Bits} stores them interleaved between channels.
+%% Then, after channel decorrelation, these verbatim values are
+%% prepended to each sample.
+%% For example, given a 2 channel stream with 24 bits-per-sample and
+%% a \VAR{Wasted Bits} value of 1 (meaning our ``wasted'' samples
+%% are 8 bits large), our final output is as follows:
+%% \begin{figure}[h]
+%% \includegraphics{figures/alac/wasted.pdf}
+%% \end{figure}
+
+%% \clearpage
+
+%% \section{ALAC Encoding}
+
+%% To encode an ALAC file, we need a stream of PCM sample integers
+%% along with that stream's sample rate, bits-per-sample and number of
+%% channels.
+%% We'll start by encoding all of the non-audio ALAC atoms,
+%% most of which are contained within the \ATOM{moov} atom.
+%% There's over twenty atoms in a typical ALAC file,
+%% most of which are packed with seemingly redundant or
+%% nonessential data,
+%% so it will take awhile before we can move on to the actual
+%% audio encoding process.
+
+%% Remember, all of an ALAC's fields are big-endian.
+
+%% \subsection{ALAC Atoms}
+
+%% We'll encode our ALAC file in iTunes order, which means
+%% it contains the \ATOM{ftyp}, \ATOM{moov}, \ATOM{free} and
+%% \ATOM{mdat} atoms, in that order.
+
+%% \subsubsection{the ftyp Atom}
+
+%% \begin{table}[h]
+%% \begin{tabular}{|l|r|l|}
+%% \hline
+%% Field & Size & Value \\
+%% \hline
+%% atom length & 32 & 32 \\
+%% atom type & 32 & `ftyp' (\texttt{0x66747970}) \\
+%% \hline
+%% major brand & 32 & `M4A ' (\texttt{0x4d344120}) \\
+%% major brand version & 32 & \texttt{0} \\
+%% compatible brand & 32 & `M4A ' (\texttt{0x4d344120}) \\
+%% compatible brand & 32 & `mp42' (\texttt{0x6d703432}) \\
+%% compatible brand & 32 & `isom' (\texttt{0x69736f6d}) \\
+%% compatible brand & 32 & \texttt{0x00000000} \\
+%% \hline
+%% \end{tabular}
+%% \end{table}
+
+%% \subsubsection{the moov Atom}
+
+%% \begin{table}[h]
+%% \begin{tabular}{|l|r|l|}
+%% \hline
+%% Field & Size & Value \\
+%% \hline
+%% atom length & 32 & \ATOM{mvhd} size + \ATOM{trak} size + \ATOM{udta} size + 8 \\
+%% atom type & 32 & `moov' (\texttt{0x6d6f6f76}) \\
+%% \hline
+%% \ATOM{mvhd} atom & \ATOM{mvhd} size & \ATOM{mvhd} data \\
+%% \ATOM{trak} atom & \ATOM{trak} size & \ATOM{trak} data \\
+%% \ATOM{udta} atom & \ATOM{udta} size & \ATOM{udta} data \\
+%% \hline
+%% \end{tabular}
+%% \end{table}
+
+%% \clearpage
+
+%% \subsubsection{the mvhd Atom}
+
+%% \begin{table}[h]
+%% \begin{tabular}{|l|r|l|}
+%% \hline
+%% Field & Size & Value \\
+%% \hline
+%% atom length & 32 & 108/120 \\
+%% atom type & 32 & `mvhd' (\texttt{0x6d766864}) \\
+%% \hline
+%% version & 8 & \texttt{0x00} \\
+%% flags & 24 & \texttt{0x000000} \\
+%% created date & 32/64 & creation date as Mac UTC \\
+%% modified date & 32/64 & modification date as Mac UTC \\
+%% time scale & 32 & sample rate \\
+%% duration & 32/64 & total PCM frames \\
+%% playback speed & 32 & \texttt{0x10000} \\
+%% user volume & 16 & \texttt{0x100} \\
+%% padding & 80 & \texttt{0x00000000000000000000} \\
+%% window geometry matrix a & 32 & \texttt{0x10000} \\
+%% window geometry matrix b & 32 & \texttt{0} \\
+%% window geometry matrix u & 32 & \texttt{0} \\
+%% window geometry matrix c & 32 & \texttt{0} \\
+%% window geometry matrix d & 32 & \texttt{0x10000} \\
+%% window geometry matrix v & 32 & \texttt{0} \\
+%% window geometry matrix x & 32 & \texttt{0} \\
+%% window geometry matrix y & 32 & \texttt{0} \\
+%% window geometry matrix w & 32 & \texttt{0x40000000} \\
+%% QuickTime preview & 64 & \texttt{0} \\
+%% QuickTime still poster & 32 & \texttt{0} \\
+%% QuickTime selection time & 64 & \texttt{0} \\
+%% QuickTime current time & 32 & \texttt{0} \\
+%% next track ID & 32 & \texttt{2} \\
+%% \hline
+%% \end{tabular}
+%% \end{table}
+
+%% If \VAR{version} is 0, \VAR{created date}, \VAR{modified date} and
+%% \VAR{duration} are 32 bit fields.
+%% Otherwise, they are 64 bit fields.
+%% The \VAR{created date} and \VAR{modified date} are seconds
+%% since the Macintosh Epoch, which is 00:00:00, January 1st, 1904.\footnote{Why 1904?  It's the first leap year of the 20th century.}
+%% To convert a Unix Epoch timestamp (seconds since January 1st, 1970) to
+%% a Macintosh Epoch, one needs to add 24,107 days -
+%% or \texttt{2082844800} seconds.
+
+%% \clearpage
+
+%% \subsubsection{the trak Atom}
+%% \begin{tabular}{|l|r|l|}
+%% \hline
+%% Field & Size & Value \\
+%% \hline
+%% atom length & 32 & \ATOM{tkhd} size + \ATOM{mdia} size + 8 \\
+%% atom type & 32 & `trak' (\texttt{0x7472616b}) \\
+%% \hline
+%% \ATOM{tkhd} atom & \ATOM{tkhd} size & \ATOM{tkhd} data \\
+%% \ATOM{mdia} atom & \ATOM{mdia} size & \ATOM{mdia} data \\
+%% \hline
+%% \end{tabular}
+
+%% \subsubsection{the tkhd Atom}
+
+%% \begin{table}[h]
+%% \begin{tabular}{|l|r|l|}
+%% \hline
+%% Field & Size & Value \\
+%% \hline
+%% atom length & 32 & 92/104 \\
+%% atom type & 32 & `tkhd' (\texttt{0x746b6864}) \\
+%% \hline
+%% version & 8 & \texttt{0x00} \\
+%% padding & 20 & \texttt{0x000000} \\
+%% track in poster & 1 & \texttt{0} \\
+%% track in preview & 1 & \texttt{1} \\
+%% track in movie & 1 & \texttt{1} \\
+%% track enabled & 1 & \texttt{1} \\
+%% created date & 32/64 & creation date as Mac UTC \\
+%% modified date & 32/64 & modification date as Mac UTC \\
+%% track ID & 32 & \texttt{1} \\
+%% padding & 32 & \texttt{0x00000000} \\
+%% duration & 32/64 & total PCM frames \\
+%% padding & 64 & \texttt{0x0000000000000000} \\
+%% video layer & 16 & \texttt{0} \\
+%% QuickTime alternate & 16 & \texttt{0} \\
+%% volume & 16 & \texttt{0x1000} \\
+%% padding & 16 & \texttt{0x0000} \\
+%% video geometry matrix a & 32 & \texttt{0x10000} \\
+%% video geometry matrix b & 32 & \texttt{0} \\
+%% video geometry matrix u & 32 & \texttt{0} \\
+%% video geometry matrix c & 32 & \texttt{0} \\
+%% video geometry matrix d & 32 & \texttt{0x10000} \\
+%% video geometry matrix v & 32 & \texttt{0} \\
+%% video geometry matrix x & 32 & \texttt{0} \\
+%% video geometry matrix y & 32 & \texttt{0} \\
+%% video geometry matrix w & 32 & \texttt{0x40000000} \\
+%% video width & 32 & \texttt{0} \\
+%% video height & 32 & \texttt{0} \\
+%% \hline
+%% \end{tabular}
+%% \end{table}
+
+%% \clearpage
+
+%% \subsubsection{the mdia Atom}
+
+%% \begin{table}[h]
+%% \begin{tabular}{|l|r|l|}
+%% \hline
+%% Field & Size & Value \\
+%% \hline
+%% atom length & 32 & \ATOM{mdhd} size + \ATOM{hdlr} size + \ATOM{minf} size + 8 \\
+%% atom type & 32 & `mdia' (\texttt{0x6d646961}) \\
+%% \hline
+%% \ATOM{mdhd} atom & \ATOM{mdhd} size & \ATOM{mdhd} data \\
+%% \ATOM{hdlr} atom & \ATOM{hdlr} size & \ATOM{hdlr} data \\
+%% \ATOM{minf} atom & \ATOM{minf} size & \ATOM{minf} data \\
+%% \hline
+%% \end{tabular}
+%% \end{table}
+
+%% \subsubsection{the mdhd Atom}
+
+%% \begin{table}[h]
+%% \begin{tabular}{|l|r|l|}
+%% \hline
+%% Field & Size & Value \\
+%% \hline
+%% atom length & 32 & 32/44 \\
+%% atom type & 32 & `mdhd' (\texttt{0x6d646864}) \\
+%% \hline
+%% version & 8 & \texttt{0x00} \\
+%% flags & 24 & \texttt{0x000000} \\
+%% created date & 32/64 & creation date as Mac UTC \\
+%% modified date & 32/64 & modification date as Mac UTC \\
+%% time scale & 32 & sample rate \\
+%% duration & 32/64 & total PCM frames \\
+%% padding & 1 & \texttt{0} \\
+%% language & 5 & \\
+%% language & 5 & language value as ISO 639-2 \\
+%% language & 5 & \\
+%% QuickTime quality & 16 & \texttt{0} \\
+%% \hline
+%% \end{tabular}
+%% \end{table}
+%% Note the three, 5-bit \VAR{language} fields.
+%% By adding 0x60 to each value and converting the result to ASCII characters,
+%% the result is an \href{http://www.loc.gov/standards/iso639-2/}{ISO 639-2}
+%% string of the file's language representation.
+%% For example, given the values \texttt{0x15}, \texttt{0x0E} and \texttt{0x04}:
+%% \begin{align*}
+%% \text{language}_0 &= \texttt{0x15} + \texttt{0x60} = \texttt{0x75} = \texttt{u} \\
+%% \text{language}_1 &= \texttt{0x0E} + \texttt{0x60} = \texttt{0x6E} = \texttt{n} \\
+%% \text{language}_2 &= \texttt{0x04} + \texttt{0x60} = \texttt{0x64} = \texttt{d}
+%% \end{align*}
+%% Which is the code `\texttt{und}', meaning `undetermined' - which is typical.
+
+%% \clearpage
+
+%% \subsubsection{the hdlr Atom}
+%% \label{alac_hdlr}
+%% \begin{tabular}{|l|r|l|}
+%% \hline
+%% Field & Size & Value \\
+%% \hline
+%% atom length & 32 & 33 + component \\
+%% atom type & 32 & `hdlr' (\texttt{0x68646c72}) \\
+%% \hline
+%% version & 8 & \texttt{0x00} \\
+%% flags & 24 & \texttt{0x000000} \\
+%% QuickTime type & 32 & \texttt{0x00000000} \\
+%% QuickTime subtype & 32 & `soun' (\texttt{0x736f756e}) \\
+%% QuickTime manufacturer & 32 & \texttt{0x00000000} \\
+%% QuickTime component reserved flags & 32 & \texttt{0x00000000} \\
+%% QuickTime component reserved flags mask & 32 & \texttt{0x00000000} \\
+%% component name length & 8 & \texttt{0x00} \\
+%% component name & component name length $\times$ 8 & \\
+%% \hline
+%% \end{tabular}
+
+
+%% \subsubsection{the minf Atom}
+%% \begin{tabular}{|l|r|l|}
+%% \hline
+%% Field & Size & Value \\
+%% \hline
+%% atom length & 32 & \ATOM{smhd} size + \ATOM{dinf} size + \ATOM{stbl} size + 8 \\
+%% atom type & 32 & `minf' (\texttt{0x6d696e66}) \\
+%% \hline
+%% \ATOM{smhd} atom & \ATOM{smhd} size & \ATOM{smhd} data \\
+%% \ATOM{dinf} atom & \ATOM{dinf} size & \ATOM{dinf} data \\
+%% \ATOM{stbl} atom & \ATOM{stbl} size & \ATOM{stbl} data \\
+%% \hline
+%% \end{tabular}
+
+%% \subsubsection{the smhd Atom}
+%% \begin{tabular}{|l|r|l|}
+%% \hline
+%% Field & Size & Value \\
+%% \hline
+%% atom length & 32 & 16 \\
+%% atom type & 32 & `smhd' (\texttt{0x736d6864}) \\
+%% \hline
+%% version & 8 & \texttt{0x00} \\
+%% flags & 24 & \texttt{0x000000} \\
+%% audio balance & 16 & \texttt{0x0000} \\
+%% padding & 16 & \texttt{0x0000} \\
+%% \hline
+%% \end{tabular}
+
+%% \subsubsection{the dinf Atom}
+%% \begin{tabular}{|l|r|l|}
+%% \hline
+%% Field & Size & Value \\
+%% \hline
+%% atom length & 32 & \ATOM{dref} size + 8 \\
+%% atom type & 32 & `dinf' (\texttt{0x64696e66}) \\
+%% \hline
+%% \ATOM{dref} atom & \ATOM{dref} size & \ATOM{dref} data \\
+%% \hline
+%% \end{tabular}
+
+%% \clearpage
+
+%% \subsubsection{the dref Atom}
+
+%% \begin{table}[h]
+%% \begin{tabular}{|l|r|l|}
+%% \hline
+%% Field & Size & Value \\
+%% \hline
+%% atom length & 32 & 28 \\
+%% atom type & 32 & `dref' (\texttt{0x64726566}) \\
+%% \hline
+%% version & 8 & \texttt{0x00} \\
+%% flags & 24 & \texttt{0x000000} \\
+%% number of references & 32 & \texttt{1} \\
+%% \hline
+%% \hline
+%% reference atom size & 32 & \texttt{12} \\
+%% reference atom type & 32 & `url ' (\texttt{0x75726c20}) \\
+%% reference atom data & 32 & \texttt{0x00000001} \\
+%% \hline
+%% \end{tabular}
+%% \end{table}
+
+%% \subsubsection{the stbl Atom}
+
+%% \begin{table}[h]
+%% \begin{tabular}{|l|r|l|}
+%% \hline
+%% Field & Size & Value \\
+%% \hline
+%% atom length & 32 & \ATOM{stsd} size + \ATOM{stts} size + \ATOM{stsc} size + \\
+%% & & \ATOM{stsz} size + \ATOM{stco} size + 8 \\
+%% atom type & 32 & `stbl' (\texttt{0x7374626c}) \\
+%% \hline
+%% \ATOM{stsd} atom & \ATOM{stsd} size & \ATOM{stsd} data \\
+%% \ATOM{stts} atom & \ATOM{stts} size & \ATOM{stts} data \\
+%% \ATOM{stsc} atom & \ATOM{stsc} size & \ATOM{stsc} data \\
+%% \ATOM{stsz} atom & \ATOM{stsz} size & \ATOM{stsz} data \\
+%% \ATOM{stco} atom & \ATOM{stco} size & \ATOM{stco} data \\
+%% \hline
+%% \end{tabular}
+%% \end{table}
+
+%% \subsubsection{the stsd Atom}
+
+%% \begin{table}[h]
+%% \begin{tabular}{|l|r|l|}
+%% \hline
+%% Field & Size & Value \\
+%% \hline
+%% atom length & 32 & \ATOM{alac} size + 16 \\
+%% atom type & 32 & `stsd' (\texttt{0x73747364}) \\
+%% \hline
+%% version & 8 & \texttt{0x00} \\
+%% flags & 24 & \texttt{0x000000} \\
+%% number of descriptions & 32 & \texttt{1} \\
+%% \hline
+%% \ATOM{alac} atom & \ATOM{alac} size & \ATOM{alac} data \\
+%% \hline
+%% \end{tabular}
+%% \end{table}
+
+%% \clearpage
+
+%% \subsubsection{the alac Atom}
+
+%% \begin{table}[h]
+%% \begin{tabular}{|l|r|l|}
+%% \hline
+%% Field & Size & Value \\
+%% \hline
+%% atom length & 32 & 72 \\
+%% atom type & 32 & `alac' (\texttt{0x616c6163}) \\
+%% \hline
+%% reserved & 48 & \texttt{0x000000000000} \\
+%% reference index & 16 & \texttt{1} \\
+%% version & 16 & \texttt{0} \\
+%% revision level & 16 & \texttt{0} \\
+%% vendor & 32 & \texttt{0x00000000} \\
+%% channels & 16 & channel count \\
+%% bits per sample & 16 & bits per sample \\
+%% compression ID & 16 & \texttt{0} \\
+%% audio packet size & 16 & \texttt{0} \\
+%% %FIXME
+%% %not entirely sure on this one.  it might be a float
+%% sample rate & 16 & sample rate \\
+%% padding & 16 & \texttt{0x0000} \\
+%% \hline
+%% \hline
+%% atom length & 32 & 36 \\
+%% atom type & 32 & `alac' (\texttt{0x616c6163}) \\
+%% \hline
+%% padding & 32 & \texttt{0x00000000} \\
+%% max samples per frame & 32 & largest number of PCM frames per ALAC frame \\
+%% padding & 8 & \texttt{0x00} \\
+%% sample size & 8 & bits per sample \\
+%% history multiplier & 8 & \texttt{40} \\
+%% initial history & 8 & \texttt{10} \\
+%% maximum K & 8 & \texttt{14} \\
+%% channels & 8 & channel count \\
+%% unknown & 16 & \texttt{0x00FF} \\
+%% max coded frame size & 32 & largest ALAC frame size, in bytes \\
+%% bitrate & 32 & $((\text{\ATOM{mdat} size} \times 8 ) \div (\text{total PCM frames} \div \text{sample rate}))$ \\
+%% sample rate & 32 & sample rate \\
+%% \hline
+%% \end{tabular}
+%% \end{table}
+%% The \VAR{history multiplier}, \VAR{initial history} and \VAR{maximum K}
+%% values are encode-time options, typically set to 40, 10 and 14,
+%% respectively.
+
+%% Note that the \VAR{bitrate} field can't be known in advance;
+%% we must fill that value with 0 for now and then
+%% return to this atom once encoding is completed
+%% and its size has been determined.
+
+%% \clearpage
+
+%% \subsubsection{the stts Atom}
+
+%% \begin{table}[h]
+%% \begin{tabular}{|l|r|l|}
+%% \hline
+%% Field & Size & Value \\
+%% \hline
+%% atom length & 32 & number of times $\times$ 8 + 16\\
+%% atom type & 32 & `stts' (\texttt{0x73747473}) \\
+%% \hline
+%% version & 8 & \texttt{0x00} \\
+%% flags & 24 & \texttt{0x000000} \\
+%% number of times & 32 & \\
+%% \hline
+%% frame count 1 & 32 & number of occurrences \\
+%% frame duration 1 & 32 & PCM frame count \\
+%% \hline
+%% \multicolumn{3}{|c|}{...} \\
+%% \hline
+%% \end{tabular}
+%% \end{table}
+%% This atom keeps track of how many different sizes of ALAC frames
+%% occur in the ALAC file, in PCM frames.
+%% It will typically have only two ``times'', the block size we're
+%% using for most of our samples and the final block size for
+%% any remaining samples.
+
+%% For example, let's imagine encoding a 1 minute audio file
+%% at 44100Hz with a block size of 4096 frames.
+%% This file has a total of 2,646,000 PCM frames ($60 \times 44100 = 2646000$).
+%% 2,646,000 PCM frames divided by a 4096 block size means
+%% we have 645 ALAC frames of size 4096, and 1 ALAC frame of size 4080.
+
+%% Therefore:
+%% \begin{align*}
+%% \text{number of times} &= 2 \\
+%% \text{frame count}_1 &= 645 \\
+%% \text{frame duration}_1 &= 4096 \\
+%% \text{frame count}_2 &= 1 \\
+%% \text{frame duration}_2 &= 4080
+%% \end{align*}
+
+%% \subsubsection{the stsc Atom}
+
+%% \begin{table}[h]
+%% \begin{tabular}{|l|r|l|}
+%% \hline
+%% Field & Size & Value \\
+%% \hline
+%% atom length & 32 & entries $\times$ 12 + 16 \\
+%% atom type & 32 & `stsc' (\texttt{0x73747363}) \\
+%% \hline
+%% version & 8 & \texttt{0x00} \\
+%% flags & 24 & \texttt{0x000000} \\
+%% number of entries & 32 & \\
+%% \hline
+%% first chunk & 32 & \\
+%% ALAC frames per chunk & 32 & \\
+%% description index & 32 & \texttt{1} \\
+%% \hline
+%% \multicolumn{3}{|c|}{...} \\
+%% \hline
+%% \end{tabular}
+%% \end{table}
+
+%% This atom stores how many ALAC frames are in a given ``chunk''.
+%% In this instance a ``chunk'' represents an entry in
+%% the \ATOM{stco} atom table, used for seeking backwards and forwards
+%% through the file.
+%% \VAR{First chunk} is the starting offset of its frames-per-chunk
+%% value, beginning at 1.
+
+%% As an example, let's take a one minute, 44100Hz audio file
+%% that's been broken into 130 chunks
+%% (each with an entry in the \ATOM{stco} atom).
+%% Its \ATOM{stsc} entries would typically be:
+%% \begin{align*}
+%% \text{first chunk}_1 &= 1 \\
+%% \text{frames per chunk}_1 &= 5 \\
+%% \text{first chunk}_2 &= 130 \\
+%% \text{frames per chunk}_2 &= 1
+%% \end{align*}
+%% What this means is that chunks 1 through 129 have 5 ALAC frames each
+%% while chunk 130 has 1 ALAC frame.
+%% This is a total of 646 ALAC frames, which matches the contents of
+%% the \ATOM{stts} atom.
+
+%% \subsubsection{the stsz Atom}
+
+%% \begin{tabular}{|l|r|l|}
+%% \hline
+%% Field & Size & Value \\
+%% \hline
+%% atom length & 32 & sizes $\times$ 4 + 20 \\
+%% atom type & 32 & `stsz' (\texttt{0x7374737a}) \\
+%% \hline
+%% version & 8 & \texttt{0x00} \\
+%% flags & 24 & \texttt{0x000000} \\
+%% block byte size & 32 & \texttt{0x00000000} \\
+%% number of sizes & 32 & \\
+%% \hline
+%% frame size & 32 & \\
+%% \hline
+%% \multicolumn{3}{|c|}{...} \\
+%% \hline
+%% \end{tabular}
+
+%% This atom is a list of ALAC frame sizes, each in bytes.
+%% For example, our 646 frame file would have 646 corresponding
+%% \ATOM{stsz} entries.
+
+%% \subsubsection{the stco Atom}
+
+%% \begin{tabular}{|l|r|l|}
+%% \hline
+%% Field & Size & Value \\
+%% \hline
+%% atom length & 32 & offset $\times$ 4 + 16 \\
+%% atom type & 32 & `stco' (\texttt{0x7374636f}) \\
+%% \hline
+%% version & 8 & \texttt{0x00} \\
+%% flags & 24 & \texttt{0x000000} \\
+%% number of offsets & 32 & \\
+%% \hline
+%% frame offset & 32 & \\
+%% \hline
+%% \multicolumn{3}{|c|}{...} \\
+%% \hline
+%% \end{tabular}
+
+%% This atom is a list of absolute file offsets for each chunk, where
+%% each chunk is typically 5 ALAC frames large.
+
+%% \clearpage
+
+%% \subsubsection{the udta Atom}
+
+%% \begin{tabular}{|l|r|l|}
+%% \hline
+%% Field & Size & Value \\
+%% \hline
+%% atom length & 32 & \ATOM{meta} size + 8 \\
+%% atom type & 32 & `udta' (\texttt{0x75647461}) \\
+%% \hline
+%% \ATOM{meta} atom & \ATOM{meta} size & \ATOM{meta} data \\
+%% \hline
+%% \end{tabular}
+
+%% \subsubsection{the meta Atom}
+
+%% \begin{tabular}{|l|r|l|}
+%% \hline
+%% Field & Size & Value \\
+%% \hline
+%% atom length & 32 & \ATOM{hdlr} size + \ATOM{ilst} size + \ATOM{free} size + 12 \\
+%% atom type & 32 & `meta' (\texttt{0x6d657461}) \\
+%% \hline
+%% version & 8 & \texttt{0x00} \\
+%% flags & 24 & \texttt{0x000000} \\
+%% \hline
+%% \ATOM{hdlr} atom & \ATOM{hdlr} size & \ATOM{hdlr} data \\
+%% \ATOM{ilst} atom & \ATOM{ilst} size & \ATOM{ilst} data \\
+%% \ATOM{free} atom & \ATOM{free} size & \ATOM{free} data \\
+%% \hline
+%% \end{tabular}
+
+%% \subsubsection{the hdlr atom (revisited)}
+
+%% \begin{tabular}{|l|r|l|}
+%% \hline
+%% Field & Size & Value \\
+%% \hline
+%% atom length & 32 & 34 \\
+%% atom type & 32 & `hdlr' (\texttt{0x68646c72}) \\
+%% \hline
+%% version & 8 & \texttt{0x00} \\
+%% flags & 24 & \texttt{0x000000} \\
+%% QuickTime type & 32 & \texttt{0x00000000} \\
+%% QuickTime subtype & 32 & `mdir' (\texttt{0x6d646972}) \\
+%% QuickTime manufacturer & 32 & `appl' (\texttt{0x6170706c}) \\
+%% QuickTime component reserved flags & 32 & \texttt{0x00000000} \\
+%% QuickTime component reserved flags mask & 32 & \texttt{0x00000000} \\
+%% component name length & 8 & \texttt{0x00} \\
+%% component name & 0 & \\
+%% \hline
+%% \end{tabular}
+
+%% This atom is laid out identically to the ALAC file's primary
+%% \ATOM{hdlr} atom (described on page \pageref{alac_hdlr}).
+%% The only difference is the contents of its fields.
+
+%% \subsubsection{the ilst Atom}
+
+%% This atom is a collection of \ATOM{data} sub-atoms
+%% and is described on page \pageref{m4a_meta}.
+
+%% \subsubsection{the free Atom}
+
+%% These atoms are simple collection of NULL bytes which can easily be
+%% resized to make room for other atoms without rewriting the entire file.
+
+%% \clearpage
+
+%% \subsection{Compressed and Uncompressed Frames}
+
+%% Now that we've built a set of non-audio ALAC atoms,
+%% the next step is to break our audio into a set of PCM frames
+%% of a certain block size - typically 4096.
+%% When encoding more than 2 channels, these PCM frames then need
+%% to be broken apart into 1-2 channel sets such that each set
+%% becomes an ALAC frame and all the frames become an ALAC frameset.
+
+%% \begin{figure}[h]
+%% \includegraphics{figures/alac/stream.pdf}
+%% \end{figure}
+
+%% We then have to decide whether to turn a set of 1-2 channel PCM frames
+%% into a compressed or uncompressed ALAC frame.
+%% This is done by first attempting a compressed frame while keeping
+%% track of its size.
+%% If that compressed frame's size is greater than what an
+%% uncompressed frame would be
+%% ($(\text{block size} \times \text{channels} \times \text{bits per sample} \div 8) + 7$), use an uncompressed frame instead.\footnote{See page \pageref{alac_uncompressed}}
+%% For any audio data that isn't random noise, compressed frames
+%% will be the better choice.
+
+%% As you'll recall, a compressed frame is laid out as follows:
 
 %% \begin{figure}[h]
 %% \includegraphics{figures/alac/compressed_frame.pdf}
 %% \end{figure}
 %% \par
 %% \noindent
-%% \VAR{Interlacing Shift} and \VAR{Interlacing Leftweight} are used
-%% for channel decorrelation after the subframes have been decoded.
+%% \VAR{Has Sample Size} will be 0 so long as we have enough
+%% remaining samples to fill our consistent block size.
+%% But, at the end of the stream, this value will be 1 to cover any
+%% remaining samples whose size will be stored in the \VAR{Sample Size} field.
+%% Next, we use a \VAR{Wasted Bits} value of 1 if our stream's bits-per-sample
+%% is greater than 16.
 
-%% There is one subframe header and one residual block per
-%% channel.
-%% If \VAR{Wasted Bits} is greater than 0, there is also
-%% a block of wasted bits samples after the subframe headers but before
-%% the residuals.
+%% In the event we have wasted bits, we simply chop off the bottom 8 bits
+%% of each sample and store them as a block of wasted bits samples
+%% (whose values are typically random noise, which does not compress well)
+%% and then treat the stream as having 16 bits per sample
+%% throughout the remainder of compression.
 
-%% \VAR{Wasted Bits} is an attempt to store the least significant bits
-%% of each sample more efficiently at high bits-per-sample, where
-%% that data will often be indistinguishable from random noise.
-%% In effect, it's a block of interlaced uncompressed samples
-%% (similar to an uncompressed ALAC frame) each $8 \times \text{\VAR{Wasted Bits}}$
-%% bits large.
-%% Those wasted bits are then prepended to each sample after channel
-%% decorrelation.
-%% This process is explained in more detail on page \pageref{alac_wasted_bits}.
+%% \subsection{Channel Correlation}
 
-%% Each subframe header is laid out as follows:
+%% For stereo streams, we must determine good \VAR{Interlacing Shift}
+%% and \VAR{Interlacing Leftweight} values to exploit similarities
+%% between the left and right channels.
+
+%% In this case, we'll use an \VAR{Interlacing Shift} value of 2
+%% and try all all \VAR{Interlacing Leftweight} values between 0 and 4
+%% (inclusive), using the one that generates the smallest subframes.
+
+%% Correlating our left and right channel samples using
+%% \VAR{Interlacing Shift} and \VAR{Interlacing Leftweight} is done
+%% using the inverse of decorrelation:
+%% \begin{align*}
+%% \text{Channel}_1 &= \text{Right}_i + \left\lfloor\frac{(\text{Left}_i - \text{Right}_i) \times \text{Interlacing Leftweight}}{2 ^ \text{Interlacing Shift}}\right\rfloor \\
+%% \text{Channel}_2 &= \text{Left}_i - \text{Right}_i
+%% \end{align*}
+%% \par
+%% For example, given the left channels 18, 20, 26, 24, 24;
+%% the right channels of 2, 3, 0, -1. 0; an \VAR{Interlacing Shift} value
+%% of 2 and an \VAR{Interlacing Leftweight} value of 3, we
+%% calculate ALAC channels as follows:
+%% \begin{table}[h]
+%% \begin{tabular}{|c||>{$}r<{$}|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|}
+%% \hline
+%% Sample & \text{Left}_i & \text{Right}_i & \text{Channel}_1 & \text{Channel}_2 \\
+%% \hline
+%% 0 & 18 & 2 & 2 + \left\lfloor\frac{(18 - 2) \times 3}{2 ^ 2}\right\rfloor = 2 + 12 = \textbf{14} & 18 - 2 = \textbf{16} \\
+%% 1 & 20 & 3 & 3 + \left\lfloor\frac{(20 - 3) \times 3}{2 ^ 2}\right\rfloor = 3 + 12 = \textbf{15} & 20 - 3 = \textbf{17} \\
+%% 2 & 26 & 0 & 0 + \left\lfloor\frac{(26 - 0) \times 3}{2 ^ 2}\right\rfloor = 0 + 19 = \textbf{19} & 26 - 0 = \textbf{26} \\
+%% 3 & 24 & -1 & -1 + \left\lfloor\frac{(24 + 1) \times 3}{2 ^ 2}\right\rfloor = -1 + 18 = \textbf{17} & 24 - -1 = \textbf{25} \\
+%% 4 & 24 & 0 & 0 + \left\lfloor\frac{(24 - 0) \times 3}{2 ^ 2}\right\rfloor = 0 + 18 = \textbf{18} & 24 - 0 = \textbf{24} \\
+%% \hline
+%% \end{tabular}
+%% \end{table}
+
+%% \subsection{Coefficient Calculation}
+%% %example samples: [14, 15, 19, 17, 18, 17, 16, 18, 17, 15,
+%% %                  13, 13, 12, 12, 15, 17, 16, 17, 16, 13]
+
+%% Given a list of correlated samples, we need to generate
+%% one subframe header per channel by performing coefficient calculation
+%% to generate \VAR{Prediction Quantitization},
+%% \VAR{Coefficient Count} and a set of \VAR{Coefficient} values.
+%% We'll set \VAR{Prediction Type} to 0 and \VAR{Rice Modifier} to 4.
+%% \begin{figure}[h]
+%% \includegraphics{figures/alac/subframe_header.pdf}
+%% \end{figure}
+%% \par
+%% \noindent
+%% %We'll adapt FLAC's LPC subframe calculation routine\footnote{See page \pageref{flac_lpc_encoding}} for this purpose.
+
+%% \clearpage
+
+%% \subsubsection{Windowing}
+%% %windowed to: [0.000000,2.196699,9.500000,14.510408,18.000000,
+%% %              17.000000,16.000000,18.000000,17.000000,15.000000,
+%% %              13.000000,13.000000,12.000000,12.000000,15.000000,
+%% %              17.000000,13.656854,8.500000,2.343146,0.000000]
+
+%% The first step in ALAC subframe encoding is `windowing' the input signal.
+%% Put simply, this is a process of multiplying each input sample by
+%% an equivalent value from the window, which are floats from 0.0 to 1.0.
+%% In this case, the default is a Tukey window with a ratio of 0.5.
+%% A Tukey window is a combination of the Hann and Rectangular windows.
+%% The ratio of 0.5 means there's 0.5 samples in the Hann window per
+%% sample in the Rectangular window.
+
+%% \begin{align}
+%% \text{hann}(n) &= \frac{1}{2} \left ( 1 - \cos \left ( \frac{2 \pi n}{\text{sample count} - 1} \right ) \right ) \\
+%% \text{rectangle}(n) &= 1.0
+%% \end{align}
+
+%% The Tukey window is defined by taking a Hann window, splitting it at
+%% the halfway point, and inserting a Rectangular window between the
+%% two.
+
+%% Let's run through a short example with 20 samples:
+
+%% {\relsize{-1}
+%% \begin{tabular}{|r|r >{$}c<{$} r >{$}c<{$} r|}
+%% \hline
+%% & input & & Tukey & & windowed \\
+%% index & sample & & window & & signal \\
+%% \hline
+%% 0 & 14 & \times & 0.0000 & = & 0.00 \\
+%% 1 & 15 & \times & 0.1464 & = & 2.20 \\
+%% 2 & 19 & \times & 0.5000 & = & 9.50 \\
+%% 3 & 17 & \times & 0.8536 & = & 14.51 \\
+%% 4 & 18 & \times & 1.0000 & = & 18.00 \\
+%% 5 & 17 & \times & 1.0000 & = & 17.00 \\
+%% 6 & 16 & \times & 1.0000 & = & 16.00 \\
+%% 7 & 18 & \times & 1.0000 & = & 18.00 \\
+%% 8 & 17 & \times & 1.0000 & = & 17.00 \\
+%% 9 & 15 & \times & 1.0000 & = & 15.00 \\
+%% 10 & 13 & \times & 1.0000 & = & 13.00 \\
+%% 11 & 13 & \times & 1.0000 & = & 13.00 \\
+%% 12 & 12 & \times & 1.0000 & = & 12.00 \\
+%% 13 & 12 & \times & 1.0000 & = & 12.00 \\
+%% 14 & 15 & \times & 1.0000 & = & 15.00 \\
+%% 15 & 17 & \times & 1.0000 & = & 17.00 \\
+%% 16 & 16 & \times & 0.8536 & = & 13.66 \\
+%% 17 & 17 & \times & 0.5000 & = & 8.50 \\
+%% 18 & 16 & \times & 0.1464 & = & 2.34 \\
+%% 19 & 13 & \times & 0.0000 & = & 0.00 \\
+%% \hline
+%% \end{tabular}
+%% }
+
+%% \subsubsection{Computing Autocorrelation}
+%% %autocorrelated to: [3416.877417,3314.071374,3078.904744,2807.422836,
+%% %                    2554.560660,2325.480970,2107.853553,1903.292893,
+%% %                    1701.213203]
+
+%% Once our input samples have been converted to a windowed signal,
+%% we then compute the autocorrelation values from that signal.
+%% Each autocorrelation value is determined by multiplying the signal's
+%% samples by the samples of a lagged version of that same signal,
+%% and then taking the sum.
+%% The lagged signal is simply the original signal with \VAR{lag} number of
+%% samples removed from the beginning.
+
+%% \begin{figure}[h]
+%% \includegraphics{figures/alac/lag.pdf}
+%% \end{figure}
+
+%% In this example are autocorrelation values are:
+%% 3416.9513, 3314.1450, 3078.9564, 2807.4600, 2554.6000,
+%% 2325.5300, 2107.9100, 1903.3500 and 1701.2700.
+
+%% \clearpage
+
+%% \subsubsection{LP Coefficient Calculation}
+
+%% Calculating the LP coefficients uses the Levinson-Durbin recursive method.\footnote{This algorithm is taken from \LINK{http://www.engineer.tamuk.edu/SPark/chap7.pdf} }
+%% Our inputs are $M$, the maximum coefficient count, and $r$ autocorrelation
+%% values, from $r(0)$ to $r(M - 1)$.
+%% Our outputs are $a$, a list of LP coefficient lists from
+%% $a_{11}$ to $a_{(M - 1)(M - 1)}$, and $E$, a list
+%% of error values from $E_0$ to $E_{(M - 1)}$.
+%% $q_m$ and $\kappa_m$ are temporary values.
+%% \par
+%% \noindent
+%% Initial values:
+%% \begin{align*}
+%% && E_0 &= r(0) \\
+%% && a_{11} &= \kappa_1 = \frac{r(1)}{E_0} \\
+%% && E_1 &= E_0 {(1 - {{\kappa_1} ^ 2})}
+%% \intertext{With $m \geq 2$, the following recursive algorithm is performed:}
+%% \text{Step 1. } && q_m &= r(m) - \overset{m - 1}{\underset{i = 1}{\sum}} a_{i(m - 1)}r(m - i) \\
+%% \text{Step 2. } && \kappa_m &= \frac{q_m}{E_{(m - 1)}} \\
+%% \text{Step 3. } && a_{mm} &= \kappa_m \\
+%% \text{Step 4. } && a_{im} &= a_{i(m - 1)} - \kappa_m a_{(m - i)(m - 1)} \text{ for $i = 1$, $i = 2$,...,$i = m - 1$} \\
+%% \text{Step 5. } && E_m &= E_{m - 1}(1 - {\kappa_m} ^ 2) \\
+%% \text{Step 6. } &&& \text{If $m < M$ then $m \leftarrow m + 1$ and goto step 1.  If $m = M$ then stop.}
+%% \end{align*}
+
+%% Let's run through an example in which $M = 9$,
+%% $r(0) = 3417$, $r(1) = 3314$, $r(2) = 3079$, $r(3) = 2807$,
+%% $r(4) = 2555$, $r(5) = 2326$, $r(6) = 2108$, $r(7) = 1903$
+%% and $r(8) = 1701$:
+%% \clearpage
+
+%% {\relsize{-2}
+%% \begin{align*}
+%% E_0 &= r(0) = 3417 \\
+%% a_{11} &= \kappa_1 = \frac{r(1)}{E_0} = \frac{3314}{3417} = 0.97 \\
+%% E_1 &= E_o(1 - {\kappa_1} ^ 2) = 3417(1 - .97 ^ 2) = 201.95 \\
+%% q_2 &= r(2) - \overset{1}{\underset{i = 1}{\sum}} a_{i1}r(2 - i) = 3079 - (0.97)(3314) = -135.58 \\
+%% \kappa_2 &= \frac{q_2}{E_1} = \frac{-135.58}{201.95} = -0.671 \\
+%% a_{22} &= \kappa_2 = -0.671 \\
+%% a_{12} &= a_{11} - \kappa_2 a_{11} = 0.97 - (-0.671)(0.97) = 1.621 \\
+%% E_2 &= E_1 (1 - {\kappa_2} ^ 2 ) = 201.95(1 - {-0.671 ^ 2}) = 111.024 \\
+%% q_3 &= r(3) - \overset{2}{\underset{i = 1}{\sum}} a_{i2} r(3 - i) = 2807 - ((1.621)(3079) + (-0.671)(3314)) = 39.635 \\
+%% \kappa_3 &= \frac{q_3}{E_2} = \frac{39.635}{111.024} = 0.357 \\
+%% a_{33} &= \kappa_3 = 0.357 \\
+%% a_{13} &= a_{12} - \kappa_3 a_{22} = 1.621 - (0.357)(-0.671) = 1.861 \\
+%% a_{23} &= a_{22} - \kappa_3 a_{12} = -0.671 - (0.357)(1.621) = -1.25 \\
+%% E_3 &= E_2 (1 - {\kappa_3} ^ 2 ) = 111.024(1 - {0.357 ^ 2}) = 96.874 \\
+%% q_4 &= r(4) - \overset{3}{\underset{i = 1}{\sum}} a_{i3} r(4 - i) = 2555 - ((1.861)(2807) + (-1.25)(3079) + (0.357)(3314)) = -3.175 \\
+%% \kappa_4 &= \frac{q_4}{E_3} = \frac{-3.175}{96.874} = -0.033 \\
+%% a_{44} &= \kappa_4 = -0.033 \\
+%% a_{14} &= a_{13} - \kappa_4 a_{33} = 1.861 - (-0.033)(0.357) = 1.873 \\
+%% a_{24} &= a_{23} - \kappa_4 a_{23} = -1.25 - (-0.033)(-1.25) = -1.291 \\
+%% a_{34} &= a_{33} - \kappa_4 a_{33} = 0.357 - (-0.033)(1.861) = 0.418 \\
+%% E_4 &= E_3 (1 - {\kappa_4} ^ 2) = 96.874(1 - {-0.033 ^ 2}) = 96.769
+%% \end{align*}
+%% }
+%% Calculating $E_5$ through $E_8$ and $a_{15}$ though $a_{88}$ will be
+%% left as an exercise for the reader.
+%% Our final values are:
+%% {\relsize{-2}
+%% \begin{align*}
+%% a_{11} &= 0.970 &&&&&&&&&&&&&& \\
+%% a_{12} &= 1.621 & a_{22} &= -0.67 &&&&&&&&&&&& \\
+%% a_{13} &= 1.861 & a_{23} &= -1.25 & a_{33} &= 0.357 &&&&&&&&&& \\
+%% a_{14} &= 1.873 & a_{24} &= -1.29 & a_{34} &= 0.418 & a_{44} &= -0.03 &&&&&&&& \\
+%% a_{15} &= 1.868 & a_{25} &= -1.28 & a_{35} &= 0.340 & a_{45} &= 0.122 & a_{55} &= -0.14 &&&&&& \\
+%% a_{16} &= 1.874 & a_{26} &= -1.28 & a_{36} &= 0.341 & a_{46} &= 0.119 & a_{56} &= -0.09 & a_{66} &= 0.00 &&&& \\
+%% a_{17} &= 1.875 & a_{27} &= -1.27 & a_{37} &= 0.332 & a_{47} &= 0.091 & a_{57} &= 0.011 & a_{67} &= -0.15 & a_{77} &= 0.078 & & \\
+%% a_{18} &= 1.892 & a_{28} &= -1.30 & a_{38} &= 0.338 & a_{48} &= 0.112 & a_{58} &= 0.082 & a_{68} &= -0.42 & a_{78} &= 0.479 & a_{88} &= -0.214 \\
+%% E_1 &= 202.0 & E_2 &= 111.0 & E_3 &= 96.9 & E_4 &= 96.8 & E_5 &= 96.1 & E_6 &= 96.1 & E_7 &= 95.6 & E_8 &= 91.2
+%% \end{align*}
+%% }
+%% \par
+%% \noindent
+%% These values have been rounded to the nearest significant digit
+%% and will not be an exact match to those generated by a computer.
+
+%% \clearpage
+
+%% \subsubsection{Best Order Estimation}
+
+%% At this point, we have an array of prospective LP coefficient lists,
+%% a list of error values and must decide which LPC order to use.
+%% Making an estimation requires the total number of samples
+%% in the subframe, the number of overhead bits per order (by default,
+%% this is the number of bits per sample in the subframe, plus 5),
+%% and an error scale constant in addition to the LPC error values:
+%% \begin{equation}
+%% \text{Error Scale} = \frac{\ln(2) ^ 2}{2 \times \text{Total Samples}}
+%% \end{equation}
+%% \noindent
+%% Once the error scale has been calculated, one can generate a
+%% \VAR{Bits per Residual} estimation function which, given an \VAR{LPC Error}
+%% value, returns what its name implies:
+%% \begin{equation}
+%% \text{Bits per Residual}(\text{LPC Error}) = \frac{\ln(\text{Error Scale} \times \text{LPC Error})}{2 \times \ln(2)}
+%% \end{equation}
+%% With this function, we can estimate how many bits the entire ALAC subframe
+%% will take for each \VAR{LPC Error} value and its associated \VAR{Order}:
+%% {\relsize{-2}
+%% \begin{equation*}
+%% \text{Total Bits}(\text{LPC Error},\text{Order}) = \text{Bits per Residual}(\text{LPC Error}) \times (\text{Total Samples} - \text{Order}) + (\text{Order} \times \text{Overhead bits})
+%% \end{equation*}
+%% }
+%% Continuing with our example, we have 20 samples which gives us an
+%% error scale of: $\frac{{\ln(2) ^ 2}}{2 \times 20} = \frac{.6931 ^ 2}{40} = .01201$
+
+%% Now, we'll estimate the bits used by order 4 and order 8,
+%% which use LPC Error values 96.8 and 91.2, respectively:
+
+%% \begin{align*}
+%% \intertext{At LPC order 4, our bits per residual are:}
+%% \frac{\ln(.01201 \times 96.8)}{2 \times \ln (2)} = \frac{\ln(1.163)}{1.386} &= 0.1089 \\
+%% \intertext{And our total bits are:}
+%% (0.1089 \times (20 - 1)) + (1 \times (16 + 5)) = 2.069 + 21 &= 23.069 \\
+%% \intertext{At LPC order 8, our bits per residual are:}
+%% \frac{\ln(.01201 \times 91.2)}{2 \times \ln(2)} = \frac{\ln(1.095)}{1.386} &= 0.065 \\
+%% \intertext{And our total bits are:}
+%% (0.065 \times (20 - 2)) + (2 \times (16 + 5)) = 1.17 + 42 &= 43.17 \\
+%% \end{align*}
+%% \par
+%% \noindent
+%% Therefore, since the total bits for order 4 are the smallest,
+%% the best order for this group of samples is 4.
+
+%% \subsubsection{Quantizing Coefficients}
+
+%% Quantizing coefficients is a process of taking a list of LP Coefficients
+%% along with a QLP Coefficients Precision value and
+%% returning a list of Coefficients and a Prediction Quantitization value.
+%% The first step is determining the upper and lower limits of the
+%% Coefficients, which well set to the upper and lower bounds that iTunes
+%% supports:
+%% \begin{align}
+%% \text{Coefficient Maximum} &= 2 ^ {12 - 1} - 1 = 2047\\
+%% \text{Coefficient Minimum} &= - 2 ^ {12 - 1} = -2048
+%% \end{align}
+%% \par
+%% \noindent
+%% Prediction Quantitization is always 9 in iTunes, so we'll use that value also:
+%% \begin{equation}
+%% \text{Prediction Quantitization} = 9
+%% \end{equation}
+%% \par
+%% \noindent
+%% We determine the Coefficient values themselves via a small
+%% recursive routine:
+%% \begin{align}
+%% X(i) &= E(i - 1) + (\text{LP Coefficient}_i \times 2 ^ {quantitization}) \\
+%% \text{Coefficient}_i &= \text{round}(X(i)) \\
+%% E(i) &= X(i) - \text{Coefficient}_i
+%% \end{align}
+%% \par
+%% \noindent
+%% where $E(0) = 0$ and each Coefficient is adjusted
+%% prior to calculating the next $E(i)$ value such that:
+%% \begin{equation}
+%% \text{Coefficient Minimum} \leq \text{Coefficient}_i \leq \text{Coefficient Maximum}
+%% \end{equation}
+%% \par
+%% So to finish our example in which we're quantizing the LP
+%% coefficients 1.873, -1.29, 0.418 and -0.03:
+%% \begin{align*}
+%% X(1) &= E(0) + (1.873 \times 2 ^ {9} ) = 0 + 958.976 = \textbf{958.976} \\
+%% \text{QLP Coefficient}_1 &= \text{round}(958.976) = \textbf{959} \\
+%% E(1) &= X(1) - \text{QLP Coefficient}_1 = 958.976 - 959 = \textbf{-0.024} \\
+%% X(2) &= E(1) + (-1.29 \times 2 ^ {9} ) = -0.024 + -660.48 = \textbf{-660.504} \\
+%% \text{QLP Coefficient}_2 &= \text{round}(-660.504) = \textbf{-661} \\
+%% E(2) &= X(2) - \text{QLP Coefficient}_2 = -660.504 - -661 = \textbf{0.496} \\
+%% X(3) &= E(2) + (0.418 \times 2 ^ {9} ) = 0.496 + 214.015 = \textbf{214.511} \\
+%% \text{QLP Coefficient}_3 &= \text{round}(214.511) = \textbf{215} \\
+%% E(3) &= X(3) - \text{QLP Coefficient}_3 = 214.511 - 215 = \textbf{-0.489} \\
+%% X(4) &= E(3) + (-0.03 \times 2 ^ {9} ) = -0.489 + -15.36 = \textbf{-15.849} \\
+%% \text{QLP Coefficient}_4 &= \text{round}(-15.849) = \textbf{-16} \\
+%% \end{align*}
+%% \par
+%% \noindent
+%% Therefore, the \VAR{Coefficient Count} is 4,
+%% the \VAR{Coefficient} values are 959, -661, 215, -16,
+%% and the \VAR{Prediction Quantitization} value is 9.
 
 
+%% \clearpage
 
-%% \pagebreak
+%% \subsection{Subframe Calculation}
 
-%% \subsection{Residual Decoding}
+%% Given our list of correlated samples; along with a list of
+%% coefficients, a \VAR{Coefficient Count} and a \VAR{Prediction Quantitization}
+%% value, we can now generate a list of signed residuals values
+%% for a given channel.
 
-%% There are \VAR{Sample Size} number of residuals per residual block.
-%% Decoding a residual block requires knowing the \VAR{Initial History},
-%% \VAR{History Multiplier}, \VAR{Maximum K}, \VAR{Channels}, \VAR{Wasted Bits} and
-%% \VAR{Bits per Sample} values, from the \texttt{alac} atom and frame header.
-%% Fortunately, most of these values are rarely used;
-%% we'll mostly be concerned with the \VAR{History} and \VAR{History Multiplier}.
+%% The first residual is always the first input sample:
+%% \begin{align*}
+%% \text{Residual}_0 &= \text{Sample}_0 \\
+%% \intertext{Then, for the next \VAR{Coefficient Count} number of samples:}
+%% \text{Residual}_i &= \text{Sample}_i - \text{Sample}_{i - 1}
+%% \end{align*}
 
+%% For example, given that we have a \VAR{Coefficient Count} of 4
+%% and our first five samples are 16, 17, 26, 25 and 24;
+%% our first five residual values are:
+%% \begin{align*}
+%% \text{Residual}_0 &= \textbf{16} \\
+%% \text{Residual}_1 = 17 - 16 &= \textbf{1} \\
+%% \text{Residual}_2 = 26 - 17 &= \textbf{9} \\
+%% \text{Residual}_3 = 25 - 26 &= \textbf{-1} \\
+%% \text{Residual}_4 = 24 - 25 &= \textbf{-1}
+%% \end{align*}
+
+%% These are our ``starting point'' residuals upon which the
+%% remainder of the residuals will be calculated from.
+
+%% Subsequent residuals are calculated in the following way:
+%% \begin{align*}
+%% \text{LPC Sum}_i &= \overset{coeffs - 1}{\underset{j = 0}{\sum}}
+%% \text{Coefficient}_j \times (\text{Sample}_{i - j - 1} - \text{Sample}_{i - coeffs - 1}) \\
+%% \text{Residual}_i &= \text{Sample}_i - \left( \left\lfloor \frac{\text{LPC Sum}_i + 2^{\text{Predictor Quantitization - 1}}} {2 ^ \text{Predictor Quantitization}}\right\rfloor + \text{Sample}_{i - coeffs - 1} \right) \\
+%% \intertext{For example, given $\text{Sample}_5$ = 23,
+%% \VAR{Predictor Quantitization} = 9 and the coefficients
+%% 1122, -766, 107 and 122:}
+%% \text{LPC Sum}_5 &=
+%% (1122 \times (24 - 16)) + (-766 \times (25 - 16)) +
+%%  (107 \times (26 - 16)) + (122 \times (17 - 16)) \\
+%% &= (1122 \times 8) + (-766 \times 9) + (107 \times 10) + (122 \times 1) \\
+%% &= 8976 + -6894 + 1070 + 122 = \textbf{3274} \\
+%% \text{Residual}_5 &= 23 - \left( \left\lfloor \frac{\textbf{3274} + 2^8}{2 ^ 9}\right\rfloor + 16 \right) =  23 - \left( \left\lfloor \frac{3530}{512} \right\rfloor + 16 \right) = 23 - (6 + 16) = \textbf{1}
+%% \end{align*}
+%% But before calculation $\text{Residual}_6$, we need to adjust
+%% our coefficient list in the same way as residual decoding.
+
+%% \clearpage
+
+%% As described on page \pageref{alac_coefficient_adjustment},
+%% we run through the following process:
+%% \par
+%% {\relsize{-1}
+%% \begin{tabular}{|l>{$}r<{$}c>{$}l<{$}|}
+%% \hline
+%% Step 1. & \text{original sign} &=& \text{sign}(residual) \\
+%% Step 2. & j &=& 0 \\
+%% Step 3. & v &=& \text{Sample}_{i - \text{count} - 1} - \text{Sample}_{i - \text{count} + j} \\
+%% Step 4. & sign &=& \begin{cases}\text{sign}(v) & \text{if original sign} > 0 \\
+%% -\text{sign}(v) & \text{if original sign} \leq 0\end{cases} \\
+%% Step 5. & \text{Coefficient}_{\text{count} - j - 1} &=& \text{Coefficient}_{\text{count} - j - 1} - sign \\
+%% Step 6. & residual &=& residual - \left( \left\lfloor\frac{v \times sign}{2 ^ \text{Predictor Quantitization}}\right\rfloor \times (j + 1) \right) \\
+%% Step 7. & j &=& j + 1 \\
+%% Step 8. & \multicolumn{3}{l|}{if ($j < count$) and ($\text{sign}(residual) = \text{original sign}$), goto step 3} \\
+%% \hline
+%% \end{tabular}
+%% }
+%% \par
+%% \noindent
+%% To continue our example:
+%% {\relsize{-1}
+%% \begin{align*}
+%% \text{original sign} &= \text{sign}(1) = \textbf{1} \\
+%% j &= 0 \\
+%% v &= \text{Sample}_0 - \text{Sample}_{1} = 16 - 17 = \textbf{-1} \\
+%% sign &= \text{sign}(-1) = \textbf{-1} \\
+%% \text{Coefficient}_3 &= \text{Coefficient}_3 - -1 = 122 + 1 = \textbf{123} \\
+%% residual &= residual - \left( \left\lfloor\frac{-1 \times -1}{2 ^ 9}\right\rfloor \times (0 + 1)\right) = 1 - (0 \times 1) = \textbf{1} \\
+%% j &= 1 \\
+%% v &= \text{Sample}_0 - \text{Sample}_{2} = 16 - 26 = \textbf{-10} \\
+%% sign &= \text{sign}(-10) = \textbf{-1} \\
+%% \text{Coefficient}_2 &= \text{Coefficient}_2 - -1 = 107 + 1 = \textbf{108} \\
+%% residual &= residual - \left( \left\lfloor\frac{-10 \times -1}{2 ^ 9}\right\rfloor \times (1 + 1)\right) = 1 - (0 \times 2) = \textbf{1} \\
+%% j &= 2 \\
+%% v &= \text{Sample}_0 - \text{Sample}_{3} = 16 - 25 = \textbf{-9} \\
+%% sign &= \text{sign}(-9) = \textbf{-1} \\
+%% \text{Coefficient}_1 &= \text{Coefficient}_1 - -1 = -766 + 1 = \textbf{-765} \\
+%% residual &= residual - \left( \left\lfloor\frac{-9 \times -1}{2 ^ 9}\right\rfloor \times (2 + 1)\right) = 1 - (0 \times 3) = \textbf{1} \\
+%% j &= 3 \\
+%% v &= \text{Sample}_0 - \text{Sample}_{4} = 16 - 25 = \textbf{-8} \\
+%% sign &= \text{sign}(-8) = \textbf{-1} \\
+%% \text{Coefficient}_0 &= \text{Coefficient}_0 - -1 = 1122 + 1 = \textbf{1123} \\
+%% residual &= residual - \left( \left\lfloor\frac{-8 \times -1}{2 ^ 9}\right\rfloor \times (3 + 1)\right) = 1 - (0 \times 4) = \textbf{1} \\
+%% j &= 4\text{ and stop, since 4 equals our coefficient count} \\
+%% \end{align*}
+%% }
+%% \par
+%% Which, you'll notice, is identical to the procedure used during
+%% residual decoding.
+
+%% \clearpage
+
+%% Given that $\text{Sample}_6$ is 20, the calculation of $\text{Residual}_6$
+%% is as follows:
+%% \begin{align*}
+%% \text{LPC Sum}_6 &= (1123 \times (23 - 17)) + (-765 \times (24 - 17)) + (108 \times (25 - 17)) + (123 \times (26 - 17)) \\
+%% &= (1123 \times 6) + (-765 \times 7) + (108 \times 8) + (123 \times 9) \\
+%% &= 6738 + -5355 + 864 + 1107 = \textbf{3354} \\
+%% \text{Residual}_6 &= 20 - \left( \left\lfloor \frac{\textbf{3354} + 2^8}{2 ^ 9}\right\rfloor + 17 \right) =  20 - \left( \left\lfloor \frac{3610}{512} \right\rfloor + 17 \right) = 20 - (7 + 17) = \textbf{-4} \\
+%% %% \end{align*}
+%% %% \begin{align*}
+%% \text{original sign} &= \text{sign}(-4) = -1 \\
+%% j &= 0 \\
+%% v &= \text{Sample}_1 - \text{Sample}_2 = 17 - 26 = \textbf{-9} \\
+%% sign &= -\text{sign}(-9) = \textbf{1} \\
+%% \text{Coefficient}_3 &= \text{Coefficient}_3 - 1 = 123 - 1 = \textbf{122} \\
+%% residual &= residual - \left( \left\lfloor\frac{-9 \times 1}{2 ^ 9}\right\rfloor \times (0 + 1)\right) = -4 - (-1 \times 1) = \textbf{-3} \\
+%% j &= 1 \\
+%% v &= \text{Sample}_1 - \text{Sample}_3 = 17 - 25 = \textbf{-8} \\
+%% sign &= -\text{sign}(-8) = \textbf{1} \\
+%% \text{Coefficient}_2 &= \text{Coefficient}_2 - 1 = 108 - 1 = \textbf{107} \\
+%% residual &= residual - \left( \left\lfloor\frac{-8 \times 1}{2 ^ 9}\right\rfloor \times (1 + 1)\right) = -3 - (-1 \times 2) = \textbf{-1} \\
+%% j &= 2 \\
+%% v &= \text{Sample}_1 - \text{Sample}_4 = 17 - 24 = \textbf{-7} \\
+%% sign &= -\text{sign}(-7) = \textbf{1} \\
+%% \text{Coefficient}_1 &= \text{Coefficient}_1 - 1 = -765 - 1 = \textbf{-766} \\
+%% residual &= residual - \left( \left\lfloor\frac{-7 \times 1}{2 ^ 9}\right\rfloor \times (2 + 1)\right) = -1 - (-1 \times 3) = \textbf{2} \\
+%% &\text{and stop, since sign}(2) \neq \text{sign}(-4) \text{ (our \VAR{original sign} value)}
+%% \end{align*}
+
+%% So, the coefficients for $\text{Residual}_7$ are 1123, -766, 107 and 122.
+
+%% \clearpage
+
+%% \subsection{Residual Encoding}
+
+%% The final step of frame encoding is writing our list of residual values.
+%% As with decoding, this also requires knowing several additional
+%% values whose defaults are as follows:
+%% \begin{table}[h]
+%% \begin{tabular}{|r|l|}
+%% \hline
+%% value & default \\
+%% \hline
+%% Initial History & 10 \\
+%% History Multiplier & 40 \\
+%% Maximum K & 14 \\
+%% Bits per Sample & $\text{Stream's BPS} - (\text{Wasted Bits} \times 8) + \text{Channels} - 1$ \\
+%% \hline
+%% \end{tabular}
+%% \end{table}
+%% \par
 %% For each residual block, \VAR{History} starts with the value of
-%% \VAR{Initial History} and will change during residual decoding.
+%% \VAR{Initial History} and will change during residual encoding.
 %% We use it to calculate $\kappa$ using the following formula:
 %% \begin{equation}
 %% \kappa = \left\lfloor\log_2 \left( \frac{\text{history}}{2 ^ 9} + 3 \right) \right\rfloor
@@ -285,49 +1828,46 @@ bits large as our $\text{LSB}$ (least-significant bits value)
 %% Note that if $\kappa$ exceeds the \VAR{Maximum K} value from the
 %% \texttt{alac} atom, \VAR{Maximum K} is used instead.
 
-%% We then need to know the \VAR{Bits per Sample} value of the residual
-%% block, which is equal to:
-%% \begin{equation}
-%% \text{Bits per Sample}_{Residual} = \text{Bits per Sample}_{ALAC} - (\text{Wasted Bits} \times 8) + \text{Channels} - 1
-%% \end{equation}
-%% For mono streams, this is typically equal to the stream's
-%% \VAR{Bits per Sample},
-%% while for stereo streams it's often the \VAR{Bits per Sample} plus 1.
-
-%% \begin{wrapfigure}[14]{r}{2.5in}
-%% \includegraphics{figures/alac/read_residual.pdf}
+%% \begin{wrapfigure}[22]{r}{2.5in}
+%% \includegraphics{figures/alac/write_residual.pdf}
 %% \end{wrapfigure}
-%% The $\kappa$ and \VAR{Bits per Sample} values are used to read a
-%% single unsigned residual value in the following way:
 
-%% The initial bit reading portion of the process
-%% involves reading a unary value with a stop bit of `0'
-%% and a maximum value of 8.
-%% If the maximum value is exceeded, we read \VAR{Bits per Sample}
-%% number of bits as our final value
-%% (the only place \VAR{Bits per Sample} is used throughout the
-%% residual decoding process).
+%% The $\kappa$ and \VAR{Bits per Sample} values are used to write
+%% a single unsigned residual value $r$ in the following way:
 
-%% Otherwise, we read $\kappa$ number of \VAR{extra} bits if $\kappa > 1$.
-%% If \VAR{extra} is greater than 1, we return
-%% $(\text{\VAR{unary}} \times (2^k - 1)) + (\text{\VAR{extra}} - 1)$.
-%% If not, we push a single \VAR{extra} bit back on the stream and return our
-%% $\text{\VAR{unary}} \times (2^k - 1)$ value.
+%% First, we convert our signed residual to an unsigned value:
+%% \begin{equation*}
+%% \text{unsigned} =
+%% \begin{cases}
+%% \text{signed} \times 2 & \text{if signed} \geq 0 \\
+%% (-\text{signed} \times 2) - 1 & \text{if signed} < 0
+%% \end{cases}
+%% \end{equation*}
+
+%% We then divide our unsigned residual into quotient and remainder values:
+%% \begin{align*}
+%% q &= \lfloor r \div (2^k - 1) \rfloor \\
+%% %% e &= r - (q \times (2^k - 1))
+%% e &= r\mod{2^k - 1}
+%% \end{align*}
+
+%% If $q$ is greater than 8, we write a 9 bit value \texttt{0x1FF}
+%% (i.e. the bits `\texttt{1 1 1 1 1 1 1 1 1 1}')
+%% before writing the value $r$ verbatim using \VAR{Bits per Sample}
+%% number of bits.
+
+%% If $q$ is greater than 0, we write its value in unary.
+%% Otherwise, we write a single \texttt{0} bit.
+
+%% Finally, if $e$ is greater than 0, we write the value
+%% $e + 1$ using $\kappa$ of bits.
+%% Otherwise, we write the value 0 using $\kappa - 1$ number of bits.
+%% Assuming $\kappa$ is greater than 1, of course.
 
 %% \clearpage
 
-%% We perform the following to convert unsigned residuals to signed residuals
-%% which are returned to the subframe decoder:
-%% \begin{equation}
-%% \text{signed} =
-%% \begin{cases}
-%% \lfloor (\text{unsigned} + 1) \div 2 \rfloor & \text{if unsigned is even} \\
-%% -\lfloor (\text{unsigned} + 1) \div 2 \rfloor & \text{if unsigned is odd}
-%% \end{cases}
-%% \end{equation}
-
-%% Finally, we use our unsigned value to update \VAR{history}
-%% before reading the next residual:
+%% As with decoding, we then use our unsigned value to update \VAR{history}
+%% before encoding the next residual:
 %% {\relsize{-1}
 %% \begin{equation*}
 %% \text{history} =
@@ -337,1514 +1877,46 @@ bits large as our $\text{LSB}$ (least-significant bits value)
 %% \end{cases}
 %% \end{equation*}
 %% }
-
-%% Thus far, residual decoding isn't overly complex.
-%% We simply calculate $\kappa$ from \VAR{history}, read a residual,
-%% update \VAR{history} from its unsigned value and repeat the process
-%% until we've read an entire subframe's worth of residuals.
-%% The bulk of an ALAC file's residuals will be read in this way.
-%% However, ALAC also features an ``escape code'' for large chunks
-%% of 0 residuals (which may happen during a long stretch of
-%% digital silence, for example).
-
-%% If \VAR{history} ever falls below 128, this special case is triggered.
-%% First, we read a special \VAR{block size} residual value
-%% with a \VAR{Bits per Sample} value of 16 and a $\kappa$\footnote{Again, $\kappa$ cannot exceed \VAR{Maximum K} as encoded in the \texttt{alac} atom.} value of:
+%% Should history ever fall below 128, we generate a special
+%% residual value.
+%% That residual's \VAR{Bits per Sample} value is 16, its
+%% $\kappa$ value is:
 %% \begin{equation}
 %% \kappa_{\text{blocksize}} = 7 - \log_2(\text{history}) + \frac{\text{history} + 16}{64}
 %% \end{equation}
-%% This \VAR{block size} is how many 0 residuals to send outright -
-%% which may be 0, indicating no 0 residuals to send.
-%% Either way, if $\text{\VAR{block size}} \leq 65535$,
-%% we add 1 to the unsigned value of the next residual in the block (if any).
-%% Finally, \VAR{history} is automatically set to 0.
-
-\clearpage
-
-\subsubsection{Residual Decoding Example}
-{\relsize{-2}
-In this example, we'll decode a group of 4 residuals in which
-\VAR{Initial History} is 1130, \VAR{History Multiplier} is 40,
-\VAR{Maximum LSBs} is 14, \VAR{Bits per Sample} is 16,
-\VAR{Channel Count} is 2 and \VAR{Uncompressed LSBs} is 0.
-}
-\begin{figure}[h]
-\includegraphics[height=.75in]{figures/alac/residual.pdf}
-\end{figure}
-{\relsize{-1}
-\begin{itemize}
-\setlength{\itemsep}{0in}
-\setlength{\parskip}{0in}
-\item $h_0 = 1130$
-\item $\text{sign modifier}_0 = 0$
-\item $i = 0$
-\item $\text{LSB Count}_0 = \text{min}(\lfloor \log_2 ( 1130 \div {2 ^ 9} + 3 ) \rfloor, 14) = \text{min}(\lfloor \log_2 ( 5 ) \rfloor, 14) = 2$
-\item $u_0 = \text{read\_residual}(2, 17) + 0$
-\begin{itemize}
-\setlength{\itemsep}{0in}
-\setlength{\parskip}{0in}
-\item $\text{MSB}_0 = 0$
-\item $\text{LSB}_0 = 3$
-\item $u_0 = 0 \times (2 ^ 2 - 1) + (3 - 1) = 2$
-\end{itemize}
-\item $\textbf{residual}_0 = \lfloor (2 + 1) \div 2 \rfloor = \textbf{1}$
-\item $h_1 = 1130 + (2 \times 40) - \left\lfloor\frac{1130 \times 40}{2 ^ 9}\right\rfloor = 1130 + 80 - 88 = 1122$
-\item $i \leftarrow 1$
-\item $\text{LSB Count}_1 = \text{min}(\lfloor \log_2 ( 1122 \div {2 ^ 9} + 3 ) \rfloor, 14) = \text{min}(\lfloor \log_2 ( 5 ) \rfloor, 14) = 2$
-\item $u_1 = \text{read\_residual}(2, 17) + 0$
-\begin{itemize}
-\setlength{\itemsep}{0in}
-\setlength{\parskip}{0in}
-\item $\text{MSB}_1 = 2$
-\item $\text{LSB}_1 = 3$
-\item $u_1 = 2 \times (2 ^ 2 - 1) + (3 - 1) = 8$
-\end{itemize}
-\item $\textbf{residual}_1 = \lfloor (8 + 1) \div 2 \rfloor = \textbf{4}$
-\item $h_2 = 1122 + (8 \times 40) - \left\lfloor\frac{1122 \times 40}{2 ^ 9}\right\rfloor = 1122 + 320 - 87 = 1355$
-\item $i \leftarrow 2$
-\item $\text{LSB Count}_2 = \text{min}(\lfloor \log_2 ( 1355 \div {2 ^ 9} + 3 ) \rfloor, 14) = \text{min}(\lfloor \log_2 ( 5 ) \rfloor, 14) = 2$
-\item $u_2 = \text{read\_residual}(2, 17) + 0$
-\begin{itemize}
-\setlength{\itemsep}{0in}
-\setlength{\parskip}{0in}
-\item $\text{MSB}_2 = 1$
-\item $\text{LSB}_2 = 0$ (unread a single 0 bit here)
-\item $u_2 = 1 \times (2 ^ 2 - 1) = 3$
-\end{itemize}
-\item $\textbf{residual}_2 = -\lfloor (3 + 1) \div 2 \rfloor = \textbf{-2}$
-\item $h_3 = 1355 + (3 \times 40) - \left\lfloor\frac{1355 \times 40}{2 ^ 9}\right\rfloor = 1355 + 120 - 105 = 1370$
-\item $i \leftarrow 3$
-\item $\text{LSB Count}_3 = \text{min}( \lfloor \log_2 ( 1370 \div {2 ^ 9} + 3 ) \rfloor , 14 ) = \text{min}( \lfloor \log_2 ( 5 ) \rfloor , 14 ) = 2$
-\item $u_3 = \text{read\_residual}(2, 17) + 0$
-\begin{itemize}
-\setlength{\itemsep}{0in}
-\setlength{\parskip}{0in}
-\item $\text{MSB}_3 = 0$
-\item $\text{LSB}_3 = 3$
-\item $u_3 = 0 \times (2 ^ 2 - 1) + (3 - 1) = 2$
-\end{itemize}
-\item $\textbf{residual}_3 = \lfloor (2 + 1) \div 2 \rfloor = \textbf{1}$
-\item $h_4 = 1370 + (2 \times 40) - \left\lfloor\frac{1370 \times 40}{2 ^ 9}\right\rfloor = 1370 + 80 - 107 = 1343$
-\item $i \leftarrow 4$ and done
-\end{itemize}
-}
-
-Thus, our batch of signed residual values are 1, 4, -2 and 1.
-
-\clearpage
-
-\subsection{Subframe Calculation}
-
-% example:
-% decode residuals [16, 1, 9, -1, -1, 1, -4, 7, -7, -1]
-% with starting coeffs [1122, -766, 107, 122]
-% and prediction_quantitization 9
-% to samples [16, 17, 26, 25, 24, 23, 20, 24, 23, 20]
-
-Given our list of decoded residual values;
-along with a list of coefficients,
-a \VAR{Coefficient Count} and a \VAR{Prediction Quantitization} value
-(all from the subframe header),
-we can now generate a list of signed subframe samples for a
-given channel.
-
-The first residual is always the first output sample:
-\begin{align*}
-\text{Sample}_0 &= \text{Residual}_0 \\
-\intertext{Then, for the next \VAR{Coefficient Count} number of residuals:}
-\text{Sample}_i &= \text{Residual}_i + \text{Sample}_{i - 1}
-\end{align*}
-
-For example, given that we have a \VAR{Coefficient Count} of 4
-and our first five residuals are 16, 1, 9, -1 and -1;
-our first five sample values are:
-\begin{align*}
-\text{Sample}_0 &= \textbf{16} \\
-\text{Sample}_1 = 16 + 1 &= \textbf{17} \\
-\text{Sample}_2 = 17 + 9 &= \textbf{26} \\
-\text{Sample}_3 = 26 - 1 &= \textbf{25} \\
-\text{Sample}_4 = 25 - 1 &= \textbf{24}
-\end{align*}
-These are our ``starting point'' samples upon which the remainder
-of the subframe will be built.
-
-Subsequent samples are calculated in the following way:
-
-\begin{align*}
-\text{LPC Sum}_i &= \overset{coeffs - 1}{\underset{j = 0}{\sum}}
-\text{Coefficient}_j \times (\text{Sample}_{i - j - 1} - \text{Sample}_{i - coeffs - 1}) \\
-\text{Sample}_i &= \left\lfloor \frac{\text{LPC Sum}_i + 2^{\text{Predictor Quantitization - 1}}} {2 ^ \text{Predictor Quantitization}}\right\rfloor + \text{Residual}_i + \text{Sample}_{i - coeffs - 1} \\
-\intertext{For example, given $\text{Residual}_5$ = 1,
-\VAR{Predictor Quantitization} = 9
-and the coefficients 1122, -766, 107 and 122:}
-\text{LPC Sum}_5 &=
-(1122 \times (24 - 16)) + (-766 \times (25 - 16)) +
- (107 \times (26 - 16)) + (122 \times (17 - 16)) \\
-&= (1122 \times 8) + (-766 \times 9) + (107 \times 10) + (122 \times 1) \\
-&= 8976 + -6894 + 1070 + 122 = \textbf{3274} \\
-\text{Sample}_5 &= \left\lfloor\frac{\textbf{3274} + 2^8}{2^9}\right\rfloor + 1 + 16
-= \left\lfloor\frac{3530}{512}\right\rfloor + 1 + 16 = \textbf{23}
-\end{align*}
-But before calculating $\text{Sample}_6$,
-we need to adjust our coefficient list.
-
-\clearpage
-\label{alac_coefficient_adjustment}
-Updating the coefficient list first requires the \VAR{sign} function:
-{\relsize{-2}
-\begin{equation}
-\text{sign}(x) =
-\begin{cases}
-1 & \text{if } x > 0 \\
-0 & \text{if } x = 0 \\
--1 & \text{if } x < 0
-\end{cases}
-\end{equation}
-}
-We then take our \VAR{samples}, index $i$, \VAR{coefficients},
-coefficient \VAR{count}, \VAR{residual}, \VAR{predictor quantitization}
-values and go through the following routine if $\text{residual} \neq 0$:
-\par
-{\relsize{-1}
-\begin{tabular}{|l>{$}r<{$}c>{$}l<{$}|}
-\hline
-Step 1. & \text{original sign} &=& \text{sign}(residual) \\
-Step 2. & j &=& 0 \\
-Step 3. & v &=& \text{Sample}_{i - \text{count} - 1} - \text{Sample}_{i - \text{count} + j} \\
-Step 4. & sign &=& \begin{cases}\text{sign}(v) & \text{if original sign} > 0 \\
--\text{sign}(v) & \text{if original sign} \leq 0\end{cases} \\
-Step 5. & \text{Coefficient}_{\text{count} - j - 1} &=& \text{Coefficient}_{\text{count} - j - 1} - sign \\
-Step 6. & residual &=& residual - \left( \left\lfloor\frac{v \times sign}{2 ^ \text{Predictor Quantitization}}\right\rfloor \times (j + 1) \right) \\
-Step 7. & j &=& j + 1 \\
-Step 8. & \multicolumn{3}{l|}{if ($j < count$) and ($\text{sign}(residual) = \text{original sign}$), goto step 3} \\
-\hline
-\end{tabular}
-}
-\par
-\noindent
-To continue our example:
-{\relsize{-2}
-\begin{align*}
-\text{original sign} &= \text{sign}(1) = \textbf{1} \\
-j &= 0 \\
-v &= \text{Sample}_0 - \text{Sample}_{1} = 16 - 17 = \textbf{-1} \\
-sign &= \text{sign}(-1) = \textbf{-1} \\
-\text{Coefficient}_3 &= \text{Coefficient}_3 - -1 = 122 + 1 = \textbf{123} \\
-residual &= residual - \left( \left\lfloor\frac{-1 \times -1}{2 ^ 9}\right\rfloor \times (0 + 1)\right) = 1 - (0 \times 1) = \textbf{1} \\
-j &= 1 \\
-v &= \text{Sample}_0 - \text{Sample}_{2} = 16 - 26 = \textbf{-10} \\
-sign &= \text{sign}(-10) = \textbf{-1} \\
-\text{Coefficient}_2 &= \text{Coefficient}_2 - -1 = 107 + 1 = \textbf{108} \\
-residual &= residual - \left( \left\lfloor\frac{-10 \times -1}{2 ^ 9}\right\rfloor \times (1 + 1)\right) = 1 - (0 \times 2) = \textbf{1} \\
-j &= 2 \\
-v &= \text{Sample}_0 - \text{Sample}_{3} = 16 - 25 = \textbf{-9} \\
-sign &= \text{sign}(-9) = \textbf{-1} \\
-\text{Coefficient}_1 &= \text{Coefficient}_1 - -1 = -766 + 1 = \textbf{-765} \\
-residual &= residual - \left( \left\lfloor\frac{-9 \times -1}{2 ^ 9}\right\rfloor \times (2 + 1)\right) = 1 - (0 \times 3) = \textbf{1} \\
-j &= 3 \\
-v &= \text{Sample}_0 - \text{Sample}_{4} = 16 - 25 = \textbf{-8} \\
-sign &= \text{sign}(-8) = \textbf{-1} \\
-\text{Coefficient}_0 &= \text{Coefficient}_0 - -1 = 1122 + 1 = \textbf{1123} \\
-residual &= residual - \left( \left\lfloor\frac{-8 \times -1}{2 ^ 9}\right\rfloor \times (3 + 1)\right) = 1 - (0 \times 4) = \textbf{1} \\
-j &= 4\text{ and stop, since 4 equals our coefficient count} \\
-\end{align*}
-}
-
-\clearpage
-
-Given that $\text{Residual}_6$ is -4, the calculation of $\text{Sample}_6$
-is as follows:
-\begin{align*}
-\text{LPC Sum}_6 &= (1123 \times (23 - 17)) + (-765 \times (24 - 17)) + (108 \times (25 - 17)) + (123 \times (26 - 17)) \\
-&= (1123 \times 6) + (-765 \times 7) + (108 \times 8) + (123 \times 9) \\
-&= 6738 + -5355 + 864 + 1107 = \textbf{3354} \\
-\text{Sample}_6 &= \left\lfloor\frac{\textbf{3354} + 2^8}{2^9}\right\rfloor + -4 + 17 = \left\lfloor\frac{3610}{512}\right\rfloor + -4 + 17 = \textbf{20} \\
-%% \end{align*}
-%% \begin{align*}
-\text{original sign} &= \text{sign}(-4) = -1 \\
-j &= 0 \\
-v &= \text{Sample}_1 - \text{Sample}_2 = 17 - 26 = \textbf{-9} \\
-sign &= -\text{sign}(-9) = \textbf{1} \\
-\text{Coefficient}_3 &= \text{Coefficient}_3 - 1 = 123 - 1 = \textbf{122} \\
-residual &= residual - \left( \left\lfloor\frac{-9 \times 1}{2 ^ 9}\right\rfloor \times (0 + 1)\right) = -4 - (-1 \times 1) = \textbf{-3} \\
-j &= 1 \\
-v &= \text{Sample}_1 - \text{Sample}_3 = 17 - 25 = \textbf{-8} \\
-sign &= -\text{sign}(-8) = \textbf{1} \\
-\text{Coefficient}_2 &= \text{Coefficient}_2 - 1 = 108 - 1 = \textbf{107} \\
-residual &= residual - \left( \left\lfloor\frac{-8 \times 1}{2 ^ 9}\right\rfloor \times (1 + 1)\right) = -3 - (-1 \times 2) = \textbf{-1} \\
-j &= 2 \\
-v &= \text{Sample}_1 - \text{Sample}_4 = 17 - 24 = \textbf{-7} \\
-sign &= -\text{sign}(-7) = \textbf{1} \\
-\text{Coefficient}_1 &= \text{Coefficient}_1 - 1 = -765 - 1 = \textbf{-766} \\
-residual &= residual - \left( \left\lfloor\frac{-7 \times 1}{2 ^ 9}\right\rfloor \times (2 + 1)\right) = -1 - (-1 \times 3) = \textbf{2} \\
-&\text{and stop, since sign}(2) \neq \text{sign}(-4) \text{ (our \VAR{original sign} value)}
-\end{align*}
-
-So, the coefficients for $\text{Sample}_7$ are 1123, -766, 107 and 122.
-
-\clearpage
-
-\subsection{Channel Decorrelation}
-\label{alac_decorrelation}
-If we have more than one channel of output, the next step is
-performing channel decorrelation.
-If our \VAR{Interlacing Leftweight} value from the frame header is 0,
-our channels are stored independently.
-In that case, the $\text{Channel}_1$ is our left samples and
-$\text{Channel}_2$ is our right samples.
-
-If \VAR{Interlacing Leftweight} is greater than zero,
-we calculate samples as follows:
-\begin{align*}
-\text{Right}_i &= \text{Channel}_1 - \left\lfloor\frac{\text{Channel}_2 \times \text{Interlacing Leftweight}}{2 ^ \text{Interlacing Shift}}\right\rfloor \\
-\text{Left}_i &= \text{Channel}_2 + \text{Right}_i
-\end{align*}
-
-For example, given the $\text{Channel}_1$ samples of 14, 15, 19, 17, 18;
-the $\text{Channel}_2$ samples of 16, 17, 26, 25, 24,
-an \VAR{Interlacing Shift} value of 2 and an \VAR{Interlacing Leftweight}
-values of 3, we calculate output samples as follows:
-\begin{table}[h]
-\begin{tabular}{|c||>{$}r<{$}|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|}
-\hline
-Sample & \text{Channel}_1 & \text{Channel}_2 & \text{Right}_i & \text{Left}_i \\
-\hline
-0 & 14 & 16 & 14 - \lfloor(16 \times 3) \div 2^2\rfloor = \textbf{2} & 16 + \textbf{2} = \textbf{18} \\
-1 & 15 & 17 & 15 - \lfloor(17 \times 3) \div 2^2\rfloor = \textbf{3} & 17 + \textbf{3} = \textbf{20} \\
-2 & 19 & 26 & 19 - \lfloor(26 \times 3) \div 2^2\rfloor = \textbf{0} & 26 + \textbf{0} = \textbf{26} \\
-3 & 17 & 25 & 17 - \lfloor(25 \times 3) \div 2^2\rfloor = \textbf{-1} & 25 + \textbf{-1} = \textbf{24} \\
-4 & 18 & 24 & 18 - \lfloor(24 \times 3) \div 2^2\rfloor = \textbf{0} & 24 + \textbf{0} = \textbf{24} \\
-\hline
-\end{tabular}
-\end{table}
-
-\subsection{Wasted Bits}
-\label{alac_wasted_bits}
-A compressed ALAC frame
-with \VAR{Wasted Bits} stores them interleaved between channels.
-Then, after channel decorrelation, these verbatim values are
-prepended to each sample.
-For example, given a 2 channel stream with 24 bits-per-sample and
-a \VAR{Wasted Bits} value of 1 (meaning our ``wasted'' samples
-are 8 bits large), our final output is as follows:
-\begin{figure}[h]
-\includegraphics{figures/alac/wasted.pdf}
-\end{figure}
-
-\clearpage
-
-\section{ALAC Encoding}
-
-To encode an ALAC file, we need a stream of PCM sample integers
-along with that stream's sample rate, bits-per-sample and number of
-channels.
-We'll start by encoding all of the non-audio ALAC atoms,
-most of which are contained within the \ATOM{moov} atom.
-There's over twenty atoms in a typical ALAC file,
-most of which are packed with seemingly redundant or
-nonessential data,
-so it will take awhile before we can move on to the actual
-audio encoding process.
-
-Remember, all of an ALAC's fields are big-endian.
-
-\subsection{ALAC Atoms}
-
-We'll encode our ALAC file in iTunes order, which means
-it contains the \ATOM{ftyp}, \ATOM{moov}, \ATOM{free} and
-\ATOM{mdat} atoms, in that order.
-
-\subsubsection{the ftyp Atom}
-
-\begin{table}[h]
-\begin{tabular}{|l|r|l|}
-\hline
-Field & Size & Value \\
-\hline
-atom length & 32 & 32 \\
-atom type & 32 & `ftyp' (\texttt{0x66747970}) \\
-\hline
-major brand & 32 & `M4A ' (\texttt{0x4d344120}) \\
-major brand version & 32 & \texttt{0} \\
-compatible brand & 32 & `M4A ' (\texttt{0x4d344120}) \\
-compatible brand & 32 & `mp42' (\texttt{0x6d703432}) \\
-compatible brand & 32 & `isom' (\texttt{0x69736f6d}) \\
-compatible brand & 32 & \texttt{0x00000000} \\
-\hline
-\end{tabular}
-\end{table}
-
-\subsubsection{the moov Atom}
-
-\begin{table}[h]
-\begin{tabular}{|l|r|l|}
-\hline
-Field & Size & Value \\
-\hline
-atom length & 32 & \ATOM{mvhd} size + \ATOM{trak} size + \ATOM{udta} size + 8 \\
-atom type & 32 & `moov' (\texttt{0x6d6f6f76}) \\
-\hline
-\ATOM{mvhd} atom & \ATOM{mvhd} size & \ATOM{mvhd} data \\
-\ATOM{trak} atom & \ATOM{trak} size & \ATOM{trak} data \\
-\ATOM{udta} atom & \ATOM{udta} size & \ATOM{udta} data \\
-\hline
-\end{tabular}
-\end{table}
-
-\clearpage
-
-\subsubsection{the mvhd Atom}
-
-\begin{table}[h]
-\begin{tabular}{|l|r|l|}
-\hline
-Field & Size & Value \\
-\hline
-atom length & 32 & 108/120 \\
-atom type & 32 & `mvhd' (\texttt{0x6d766864}) \\
-\hline
-version & 8 & \texttt{0x00} \\
-flags & 24 & \texttt{0x000000} \\
-created date & 32/64 & creation date as Mac UTC \\
-modified date & 32/64 & modification date as Mac UTC \\
-time scale & 32 & sample rate \\
-duration & 32/64 & total PCM frames \\
-playback speed & 32 & \texttt{0x10000} \\
-user volume & 16 & \texttt{0x100} \\
-padding & 80 & \texttt{0x00000000000000000000} \\
-window geometry matrix a & 32 & \texttt{0x10000} \\
-window geometry matrix b & 32 & \texttt{0} \\
-window geometry matrix u & 32 & \texttt{0} \\
-window geometry matrix c & 32 & \texttt{0} \\
-window geometry matrix d & 32 & \texttt{0x10000} \\
-window geometry matrix v & 32 & \texttt{0} \\
-window geometry matrix x & 32 & \texttt{0} \\
-window geometry matrix y & 32 & \texttt{0} \\
-window geometry matrix w & 32 & \texttt{0x40000000} \\
-QuickTime preview & 64 & \texttt{0} \\
-QuickTime still poster & 32 & \texttt{0} \\
-QuickTime selection time & 64 & \texttt{0} \\
-QuickTime current time & 32 & \texttt{0} \\
-next track ID & 32 & \texttt{2} \\
-\hline
-\end{tabular}
-\end{table}
-
-If \VAR{version} is 0, \VAR{created date}, \VAR{modified date} and
-\VAR{duration} are 32 bit fields.
-Otherwise, they are 64 bit fields.
-The \VAR{created date} and \VAR{modified date} are seconds
-since the Macintosh Epoch, which is 00:00:00, January 1st, 1904.\footnote{Why 1904?  It's the first leap year of the 20th century.}
-To convert a Unix Epoch timestamp (seconds since January 1st, 1970) to
-a Macintosh Epoch, one needs to add 24,107 days -
-or \texttt{2082844800} seconds.
-
-\clearpage
-
-\subsubsection{the trak Atom}
-\begin{tabular}{|l|r|l|}
-\hline
-Field & Size & Value \\
-\hline
-atom length & 32 & \ATOM{tkhd} size + \ATOM{mdia} size + 8 \\
-atom type & 32 & `trak' (\texttt{0x7472616b}) \\
-\hline
-\ATOM{tkhd} atom & \ATOM{tkhd} size & \ATOM{tkhd} data \\
-\ATOM{mdia} atom & \ATOM{mdia} size & \ATOM{mdia} data \\
-\hline
-\end{tabular}
-
-\subsubsection{the tkhd Atom}
-
-\begin{table}[h]
-\begin{tabular}{|l|r|l|}
-\hline
-Field & Size & Value \\
-\hline
-atom length & 32 & 92/104 \\
-atom type & 32 & `tkhd' (\texttt{0x746b6864}) \\
-\hline
-version & 8 & \texttt{0x00} \\
-padding & 20 & \texttt{0x000000} \\
-track in poster & 1 & \texttt{0} \\
-track in preview & 1 & \texttt{1} \\
-track in movie & 1 & \texttt{1} \\
-track enabled & 1 & \texttt{1} \\
-created date & 32/64 & creation date as Mac UTC \\
-modified date & 32/64 & modification date as Mac UTC \\
-track ID & 32 & \texttt{1} \\
-padding & 32 & \texttt{0x00000000} \\
-duration & 32/64 & total PCM frames \\
-padding & 64 & \texttt{0x0000000000000000} \\
-video layer & 16 & \texttt{0} \\
-QuickTime alternate & 16 & \texttt{0} \\
-volume & 16 & \texttt{0x1000} \\
-padding & 16 & \texttt{0x0000} \\
-video geometry matrix a & 32 & \texttt{0x10000} \\
-video geometry matrix b & 32 & \texttt{0} \\
-video geometry matrix u & 32 & \texttt{0} \\
-video geometry matrix c & 32 & \texttt{0} \\
-video geometry matrix d & 32 & \texttt{0x10000} \\
-video geometry matrix v & 32 & \texttt{0} \\
-video geometry matrix x & 32 & \texttt{0} \\
-video geometry matrix y & 32 & \texttt{0} \\
-video geometry matrix w & 32 & \texttt{0x40000000} \\
-video width & 32 & \texttt{0} \\
-video height & 32 & \texttt{0} \\
-\hline
-\end{tabular}
-\end{table}
-
-\clearpage
-
-\subsubsection{the mdia Atom}
-
-\begin{table}[h]
-\begin{tabular}{|l|r|l|}
-\hline
-Field & Size & Value \\
-\hline
-atom length & 32 & \ATOM{mdhd} size + \ATOM{hdlr} size + \ATOM{minf} size + 8 \\
-atom type & 32 & `mdia' (\texttt{0x6d646961}) \\
-\hline
-\ATOM{mdhd} atom & \ATOM{mdhd} size & \ATOM{mdhd} data \\
-\ATOM{hdlr} atom & \ATOM{hdlr} size & \ATOM{hdlr} data \\
-\ATOM{minf} atom & \ATOM{minf} size & \ATOM{minf} data \\
-\hline
-\end{tabular}
-\end{table}
-
-\subsubsection{the mdhd Atom}
-
-\begin{table}[h]
-\begin{tabular}{|l|r|l|}
-\hline
-Field & Size & Value \\
-\hline
-atom length & 32 & 32/44 \\
-atom type & 32 & `mdhd' (\texttt{0x6d646864}) \\
-\hline
-version & 8 & \texttt{0x00} \\
-flags & 24 & \texttt{0x000000} \\
-created date & 32/64 & creation date as Mac UTC \\
-modified date & 32/64 & modification date as Mac UTC \\
-time scale & 32 & sample rate \\
-duration & 32/64 & total PCM frames \\
-padding & 1 & \texttt{0} \\
-language & 5 & \\
-language & 5 & language value as ISO 639-2 \\
-language & 5 & \\
-QuickTime quality & 16 & \texttt{0} \\
-\hline
-\end{tabular}
-\end{table}
-Note the three, 5-bit \VAR{language} fields.
-By adding 0x60 to each value and converting the result to ASCII characters,
-the result is an \href{http://www.loc.gov/standards/iso639-2/}{ISO 639-2}
-string of the file's language representation.
-For example, given the values \texttt{0x15}, \texttt{0x0E} and \texttt{0x04}:
-\begin{align*}
-\text{language}_0 &= \texttt{0x15} + \texttt{0x60} = \texttt{0x75} = \texttt{u} \\
-\text{language}_1 &= \texttt{0x0E} + \texttt{0x60} = \texttt{0x6E} = \texttt{n} \\
-\text{language}_2 &= \texttt{0x04} + \texttt{0x60} = \texttt{0x64} = \texttt{d}
-\end{align*}
-Which is the code `\texttt{und}', meaning `undetermined' - which is typical.
-
-\clearpage
-
-\subsubsection{the hdlr Atom}
-\label{alac_hdlr}
-\begin{tabular}{|l|r|l|}
-\hline
-Field & Size & Value \\
-\hline
-atom length & 32 & 33 + component \\
-atom type & 32 & `hdlr' (\texttt{0x68646c72}) \\
-\hline
-version & 8 & \texttt{0x00} \\
-flags & 24 & \texttt{0x000000} \\
-QuickTime type & 32 & \texttt{0x00000000} \\
-QuickTime subtype & 32 & `soun' (\texttt{0x736f756e}) \\
-QuickTime manufacturer & 32 & \texttt{0x00000000} \\
-QuickTime component reserved flags & 32 & \texttt{0x00000000} \\
-QuickTime component reserved flags mask & 32 & \texttt{0x00000000} \\
-component name length & 8 & \texttt{0x00} \\
-component name & component name length $\times$ 8 & \\
-\hline
-\end{tabular}
-
-
-\subsubsection{the minf Atom}
-\begin{tabular}{|l|r|l|}
-\hline
-Field & Size & Value \\
-\hline
-atom length & 32 & \ATOM{smhd} size + \ATOM{dinf} size + \ATOM{stbl} size + 8 \\
-atom type & 32 & `minf' (\texttt{0x6d696e66}) \\
-\hline
-\ATOM{smhd} atom & \ATOM{smhd} size & \ATOM{smhd} data \\
-\ATOM{dinf} atom & \ATOM{dinf} size & \ATOM{dinf} data \\
-\ATOM{stbl} atom & \ATOM{stbl} size & \ATOM{stbl} data \\
-\hline
-\end{tabular}
-
-\subsubsection{the smhd Atom}
-\begin{tabular}{|l|r|l|}
-\hline
-Field & Size & Value \\
-\hline
-atom length & 32 & 16 \\
-atom type & 32 & `smhd' (\texttt{0x736d6864}) \\
-\hline
-version & 8 & \texttt{0x00} \\
-flags & 24 & \texttt{0x000000} \\
-audio balance & 16 & \texttt{0x0000} \\
-padding & 16 & \texttt{0x0000} \\
-\hline
-\end{tabular}
-
-\subsubsection{the dinf Atom}
-\begin{tabular}{|l|r|l|}
-\hline
-Field & Size & Value \\
-\hline
-atom length & 32 & \ATOM{dref} size + 8 \\
-atom type & 32 & `dinf' (\texttt{0x64696e66}) \\
-\hline
-\ATOM{dref} atom & \ATOM{dref} size & \ATOM{dref} data \\
-\hline
-\end{tabular}
-
-\clearpage
-
-\subsubsection{the dref Atom}
-
-\begin{table}[h]
-\begin{tabular}{|l|r|l|}
-\hline
-Field & Size & Value \\
-\hline
-atom length & 32 & 28 \\
-atom type & 32 & `dref' (\texttt{0x64726566}) \\
-\hline
-version & 8 & \texttt{0x00} \\
-flags & 24 & \texttt{0x000000} \\
-number of references & 32 & \texttt{1} \\
-\hline
-\hline
-reference atom size & 32 & \texttt{12} \\
-reference atom type & 32 & `url ' (\texttt{0x75726c20}) \\
-reference atom data & 32 & \texttt{0x00000001} \\
-\hline
-\end{tabular}
-\end{table}
-
-\subsubsection{the stbl Atom}
-
-\begin{table}[h]
-\begin{tabular}{|l|r|l|}
-\hline
-Field & Size & Value \\
-\hline
-atom length & 32 & \ATOM{stsd} size + \ATOM{stts} size + \ATOM{stsc} size + \\
-& & \ATOM{stsz} size + \ATOM{stco} size + 8 \\
-atom type & 32 & `stbl' (\texttt{0x7374626c}) \\
-\hline
-\ATOM{stsd} atom & \ATOM{stsd} size & \ATOM{stsd} data \\
-\ATOM{stts} atom & \ATOM{stts} size & \ATOM{stts} data \\
-\ATOM{stsc} atom & \ATOM{stsc} size & \ATOM{stsc} data \\
-\ATOM{stsz} atom & \ATOM{stsz} size & \ATOM{stsz} data \\
-\ATOM{stco} atom & \ATOM{stco} size & \ATOM{stco} data \\
-\hline
-\end{tabular}
-\end{table}
-
-\subsubsection{the stsd Atom}
-
-\begin{table}[h]
-\begin{tabular}{|l|r|l|}
-\hline
-Field & Size & Value \\
-\hline
-atom length & 32 & \ATOM{alac} size + 16 \\
-atom type & 32 & `stsd' (\texttt{0x73747364}) \\
-\hline
-version & 8 & \texttt{0x00} \\
-flags & 24 & \texttt{0x000000} \\
-number of descriptions & 32 & \texttt{1} \\
-\hline
-\ATOM{alac} atom & \ATOM{alac} size & \ATOM{alac} data \\
-\hline
-\end{tabular}
-\end{table}
-
-\clearpage
-
-\subsubsection{the alac Atom}
-
-\begin{table}[h]
-\begin{tabular}{|l|r|l|}
-\hline
-Field & Size & Value \\
-\hline
-atom length & 32 & 72 \\
-atom type & 32 & `alac' (\texttt{0x616c6163}) \\
-\hline
-reserved & 48 & \texttt{0x000000000000} \\
-reference index & 16 & \texttt{1} \\
-version & 16 & \texttt{0} \\
-revision level & 16 & \texttt{0} \\
-vendor & 32 & \texttt{0x00000000} \\
-channels & 16 & channel count \\
-bits per sample & 16 & bits per sample \\
-compression ID & 16 & \texttt{0} \\
-audio packet size & 16 & \texttt{0} \\
-%FIXME
-%not entirely sure on this one.  it might be a float
-sample rate & 16 & sample rate \\
-padding & 16 & \texttt{0x0000} \\
-\hline
-\hline
-atom length & 32 & 36 \\
-atom type & 32 & `alac' (\texttt{0x616c6163}) \\
-\hline
-padding & 32 & \texttt{0x00000000} \\
-max samples per frame & 32 & largest number of PCM frames per ALAC frame \\
-padding & 8 & \texttt{0x00} \\
-sample size & 8 & bits per sample \\
-history multiplier & 8 & \texttt{40} \\
-initial history & 8 & \texttt{10} \\
-maximum K & 8 & \texttt{14} \\
-channels & 8 & channel count \\
-unknown & 16 & \texttt{0x00FF} \\
-max coded frame size & 32 & largest ALAC frame size, in bytes \\
-bitrate & 32 & $((\text{\ATOM{mdat} size} \times 8 ) \div (\text{total PCM frames} \div \text{sample rate}))$ \\
-sample rate & 32 & sample rate \\
-\hline
-\end{tabular}
-\end{table}
-The \VAR{history multiplier}, \VAR{initial history} and \VAR{maximum K}
-values are encode-time options, typically set to 40, 10 and 14,
-respectively.
-
-Note that the \VAR{bitrate} field can't be known in advance;
-we must fill that value with 0 for now and then
-return to this atom once encoding is completed
-and its size has been determined.
-
-\clearpage
-
-\subsubsection{the stts Atom}
-
-\begin{table}[h]
-\begin{tabular}{|l|r|l|}
-\hline
-Field & Size & Value \\
-\hline
-atom length & 32 & number of times $\times$ 8 + 16\\
-atom type & 32 & `stts' (\texttt{0x73747473}) \\
-\hline
-version & 8 & \texttt{0x00} \\
-flags & 24 & \texttt{0x000000} \\
-number of times & 32 & \\
-\hline
-frame count 1 & 32 & number of occurrences \\
-frame duration 1 & 32 & PCM frame count \\
-\hline
-\multicolumn{3}{|c|}{...} \\
-\hline
-\end{tabular}
-\end{table}
-This atom keeps track of how many different sizes of ALAC frames
-occur in the ALAC file, in PCM frames.
-It will typically have only two ``times'', the block size we're
-using for most of our samples and the final block size for
-any remaining samples.
-
-For example, let's imagine encoding a 1 minute audio file
-at 44100Hz with a block size of 4096 frames.
-This file has a total of 2,646,000 PCM frames ($60 \times 44100 = 2646000$).
-2,646,000 PCM frames divided by a 4096 block size means
-we have 645 ALAC frames of size 4096, and 1 ALAC frame of size 4080.
-
-Therefore:
-\begin{align*}
-\text{number of times} &= 2 \\
-\text{frame count}_1 &= 645 \\
-\text{frame duration}_1 &= 4096 \\
-\text{frame count}_2 &= 1 \\
-\text{frame duration}_2 &= 4080
-\end{align*}
-
-\subsubsection{the stsc Atom}
-
-\begin{table}[h]
-\begin{tabular}{|l|r|l|}
-\hline
-Field & Size & Value \\
-\hline
-atom length & 32 & entries $\times$ 12 + 16 \\
-atom type & 32 & `stsc' (\texttt{0x73747363}) \\
-\hline
-version & 8 & \texttt{0x00} \\
-flags & 24 & \texttt{0x000000} \\
-number of entries & 32 & \\
-\hline
-first chunk & 32 & \\
-ALAC frames per chunk & 32 & \\
-description index & 32 & \texttt{1} \\
-\hline
-\multicolumn{3}{|c|}{...} \\
-\hline
-\end{tabular}
-\end{table}
-
-This atom stores how many ALAC frames are in a given ``chunk''.
-In this instance a ``chunk'' represents an entry in
-the \ATOM{stco} atom table, used for seeking backwards and forwards
-through the file.
-\VAR{First chunk} is the starting offset of its frames-per-chunk
-value, beginning at 1.
-
-As an example, let's take a one minute, 44100Hz audio file
-that's been broken into 130 chunks
-(each with an entry in the \ATOM{stco} atom).
-Its \ATOM{stsc} entries would typically be:
-\begin{align*}
-\text{first chunk}_1 &= 1 \\
-\text{frames per chunk}_1 &= 5 \\
-\text{first chunk}_2 &= 130 \\
-\text{frames per chunk}_2 &= 1
-\end{align*}
-What this means is that chunks 1 through 129 have 5 ALAC frames each
-while chunk 130 has 1 ALAC frame.
-This is a total of 646 ALAC frames, which matches the contents of
-the \ATOM{stts} atom.
-
-\subsubsection{the stsz Atom}
-
-\begin{tabular}{|l|r|l|}
-\hline
-Field & Size & Value \\
-\hline
-atom length & 32 & sizes $\times$ 4 + 20 \\
-atom type & 32 & `stsz' (\texttt{0x7374737a}) \\
-\hline
-version & 8 & \texttt{0x00} \\
-flags & 24 & \texttt{0x000000} \\
-block byte size & 32 & \texttt{0x00000000} \\
-number of sizes & 32 & \\
-\hline
-frame size & 32 & \\
-\hline
-\multicolumn{3}{|c|}{...} \\
-\hline
-\end{tabular}
-
-This atom is a list of ALAC frame sizes, each in bytes.
-For example, our 646 frame file would have 646 corresponding
-\ATOM{stsz} entries.
-
-\subsubsection{the stco Atom}
-
-\begin{tabular}{|l|r|l|}
-\hline
-Field & Size & Value \\
-\hline
-atom length & 32 & offset $\times$ 4 + 16 \\
-atom type & 32 & `stco' (\texttt{0x7374636f}) \\
-\hline
-version & 8 & \texttt{0x00} \\
-flags & 24 & \texttt{0x000000} \\
-number of offsets & 32 & \\
-\hline
-frame offset & 32 & \\
-\hline
-\multicolumn{3}{|c|}{...} \\
-\hline
-\end{tabular}
-
-This atom is a list of absolute file offsets for each chunk, where
-each chunk is typically 5 ALAC frames large.
-
-\clearpage
-
-\subsubsection{the udta Atom}
-
-\begin{tabular}{|l|r|l|}
-\hline
-Field & Size & Value \\
-\hline
-atom length & 32 & \ATOM{meta} size + 8 \\
-atom type & 32 & `udta' (\texttt{0x75647461}) \\
-\hline
-\ATOM{meta} atom & \ATOM{meta} size & \ATOM{meta} data \\
-\hline
-\end{tabular}
-
-\subsubsection{the meta Atom}
-
-\begin{tabular}{|l|r|l|}
-\hline
-Field & Size & Value \\
-\hline
-atom length & 32 & \ATOM{hdlr} size + \ATOM{ilst} size + \ATOM{free} size + 12 \\
-atom type & 32 & `meta' (\texttt{0x6d657461}) \\
-\hline
-version & 8 & \texttt{0x00} \\
-flags & 24 & \texttt{0x000000} \\
-\hline
-\ATOM{hdlr} atom & \ATOM{hdlr} size & \ATOM{hdlr} data \\
-\ATOM{ilst} atom & \ATOM{ilst} size & \ATOM{ilst} data \\
-\ATOM{free} atom & \ATOM{free} size & \ATOM{free} data \\
-\hline
-\end{tabular}
-
-\subsubsection{the hdlr atom (revisited)}
-
-\begin{tabular}{|l|r|l|}
-\hline
-Field & Size & Value \\
-\hline
-atom length & 32 & 34 \\
-atom type & 32 & `hdlr' (\texttt{0x68646c72}) \\
-\hline
-version & 8 & \texttt{0x00} \\
-flags & 24 & \texttt{0x000000} \\
-QuickTime type & 32 & \texttt{0x00000000} \\
-QuickTime subtype & 32 & `mdir' (\texttt{0x6d646972}) \\
-QuickTime manufacturer & 32 & `appl' (\texttt{0x6170706c}) \\
-QuickTime component reserved flags & 32 & \texttt{0x00000000} \\
-QuickTime component reserved flags mask & 32 & \texttt{0x00000000} \\
-component name length & 8 & \texttt{0x00} \\
-component name & 0 & \\
-\hline
-\end{tabular}
-
-This atom is laid out identically to the ALAC file's primary
-\ATOM{hdlr} atom (described on page \pageref{alac_hdlr}).
-The only difference is the contents of its fields.
-
-\subsubsection{the ilst Atom}
-
-This atom is a collection of \ATOM{data} sub-atoms
-and is described on page \pageref{m4a_meta}.
-
-\subsubsection{the free Atom}
-
-These atoms are simple collection of NULL bytes which can easily be
-resized to make room for other atoms without rewriting the entire file.
-
-\clearpage
-
-\subsection{Compressed and Uncompressed Frames}
-
-Now that we've built a set of non-audio ALAC atoms,
-the next step is to break our audio into a set of PCM frames
-of a certain block size - typically 4096.
-When encoding more than 2 channels, these PCM frames then need
-to be broken apart into 1-2 channel sets such that each set
-becomes an ALAC frame and all the frames become an ALAC frameset.
-
-\begin{figure}[h]
-\includegraphics{figures/alac/stream.pdf}
-\end{figure}
-
-We then have to decide whether to turn a set of 1-2 channel PCM frames
-into a compressed or uncompressed ALAC frame.
-This is done by first attempting a compressed frame while keeping
-track of its size.
-If that compressed frame's size is greater than what an
-uncompressed frame would be
-($(\text{block size} \times \text{channels} \times \text{bits per sample} \div 8) + 7$), use an uncompressed frame instead.\footnote{See page \pageref{alac_uncompressed}}
-For any audio data that isn't random noise, compressed frames
-will be the better choice.
-
-As you'll recall, a compressed frame is laid out as follows:
-
-\begin{figure}[h]
-\includegraphics{figures/alac/compressed_frame.pdf}
-\end{figure}
-\par
-\noindent
-\VAR{Has Sample Size} will be 0 so long as we have enough
-remaining samples to fill our consistent block size.
-But, at the end of the stream, this value will be 1 to cover any
-remaining samples whose size will be stored in the \VAR{Sample Size} field.
-Next, we use a \VAR{Wasted Bits} value of 1 if our stream's bits-per-sample
-is greater than 16.
-
-In the event we have wasted bits, we simply chop off the bottom 8 bits
-of each sample and store them as a block of wasted bits samples
-(whose values are typically random noise, which does not compress well)
-and then treat the stream as having 16 bits per sample
-throughout the remainder of compression.
-
-\subsection{Channel Correlation}
-
-For stereo streams, we must determine good \VAR{Interlacing Shift}
-and \VAR{Interlacing Leftweight} values to exploit similarities
-between the left and right channels.
-
-In this case, we'll use an \VAR{Interlacing Shift} value of 2
-and try all all \VAR{Interlacing Leftweight} values between 0 and 4
-(inclusive), using the one that generates the smallest subframes.
-
-Correlating our left and right channel samples using
-\VAR{Interlacing Shift} and \VAR{Interlacing Leftweight} is done
-using the inverse of decorrelation:
-\begin{align*}
-\text{Channel}_1 &= \text{Right}_i + \left\lfloor\frac{(\text{Left}_i - \text{Right}_i) \times \text{Interlacing Leftweight}}{2 ^ \text{Interlacing Shift}}\right\rfloor \\
-\text{Channel}_2 &= \text{Left}_i - \text{Right}_i
-\end{align*}
-\par
-For example, given the left channels 18, 20, 26, 24, 24;
-the right channels of 2, 3, 0, -1. 0; an \VAR{Interlacing Shift} value
-of 2 and an \VAR{Interlacing Leftweight} value of 3, we
-calculate ALAC channels as follows:
-\begin{table}[h]
-\begin{tabular}{|c||>{$}r<{$}|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|}
-\hline
-Sample & \text{Left}_i & \text{Right}_i & \text{Channel}_1 & \text{Channel}_2 \\
-\hline
-0 & 18 & 2 & 2 + \left\lfloor\frac{(18 - 2) \times 3}{2 ^ 2}\right\rfloor = 2 + 12 = \textbf{14} & 18 - 2 = \textbf{16} \\
-1 & 20 & 3 & 3 + \left\lfloor\frac{(20 - 3) \times 3}{2 ^ 2}\right\rfloor = 3 + 12 = \textbf{15} & 20 - 3 = \textbf{17} \\
-2 & 26 & 0 & 0 + \left\lfloor\frac{(26 - 0) \times 3}{2 ^ 2}\right\rfloor = 0 + 19 = \textbf{19} & 26 - 0 = \textbf{26} \\
-3 & 24 & -1 & -1 + \left\lfloor\frac{(24 + 1) \times 3}{2 ^ 2}\right\rfloor = -1 + 18 = \textbf{17} & 24 - -1 = \textbf{25} \\
-4 & 24 & 0 & 0 + \left\lfloor\frac{(24 - 0) \times 3}{2 ^ 2}\right\rfloor = 0 + 18 = \textbf{18} & 24 - 0 = \textbf{24} \\
-\hline
-\end{tabular}
-\end{table}
-
-\subsection{Coefficient Calculation}
-%example samples: [14, 15, 19, 17, 18, 17, 16, 18, 17, 15,
-%                  13, 13, 12, 12, 15, 17, 16, 17, 16, 13]
-
-Given a list of correlated samples, we need to generate
-one subframe header per channel by performing coefficient calculation
-to generate \VAR{Prediction Quantitization},
-\VAR{Coefficient Count} and a set of \VAR{Coefficient} values.
-We'll set \VAR{Prediction Type} to 0 and \VAR{Rice Modifier} to 4.
-\begin{figure}[h]
-\includegraphics{figures/alac/subframe_header.pdf}
-\end{figure}
-\par
-\noindent
-%We'll adapt FLAC's LPC subframe calculation routine\footnote{See page \pageref{flac_lpc_encoding}} for this purpose.
-
-\clearpage
-
-\subsubsection{Windowing}
-%windowed to: [0.000000,2.196699,9.500000,14.510408,18.000000,
-%              17.000000,16.000000,18.000000,17.000000,15.000000,
-%              13.000000,13.000000,12.000000,12.000000,15.000000,
-%              17.000000,13.656854,8.500000,2.343146,0.000000]
-
-The first step in ALAC subframe encoding is `windowing' the input signal.
-Put simply, this is a process of multiplying each input sample by
-an equivalent value from the window, which are floats from 0.0 to 1.0.
-In this case, the default is a Tukey window with a ratio of 0.5.
-A Tukey window is a combination of the Hann and Rectangular windows.
-The ratio of 0.5 means there's 0.5 samples in the Hann window per
-sample in the Rectangular window.
-
-\begin{align}
-\text{hann}(n) &= \frac{1}{2} \left ( 1 - \cos \left ( \frac{2 \pi n}{\text{sample count} - 1} \right ) \right ) \\
-\text{rectangle}(n) &= 1.0
-\end{align}
-
-The Tukey window is defined by taking a Hann window, splitting it at
-the halfway point, and inserting a Rectangular window between the
-two.
-
-Let's run through a short example with 20 samples:
-
-{\relsize{-1}
-\begin{tabular}{|r|r >{$}c<{$} r >{$}c<{$} r|}
-\hline
-& input & & Tukey & & windowed \\
-index & sample & & window & & signal \\
-\hline
-0 & 14 & \times & 0.0000 & = & 0.00 \\
-1 & 15 & \times & 0.1464 & = & 2.20 \\
-2 & 19 & \times & 0.5000 & = & 9.50 \\
-3 & 17 & \times & 0.8536 & = & 14.51 \\
-4 & 18 & \times & 1.0000 & = & 18.00 \\
-5 & 17 & \times & 1.0000 & = & 17.00 \\
-6 & 16 & \times & 1.0000 & = & 16.00 \\
-7 & 18 & \times & 1.0000 & = & 18.00 \\
-8 & 17 & \times & 1.0000 & = & 17.00 \\
-9 & 15 & \times & 1.0000 & = & 15.00 \\
-10 & 13 & \times & 1.0000 & = & 13.00 \\
-11 & 13 & \times & 1.0000 & = & 13.00 \\
-12 & 12 & \times & 1.0000 & = & 12.00 \\
-13 & 12 & \times & 1.0000 & = & 12.00 \\
-14 & 15 & \times & 1.0000 & = & 15.00 \\
-15 & 17 & \times & 1.0000 & = & 17.00 \\
-16 & 16 & \times & 0.8536 & = & 13.66 \\
-17 & 17 & \times & 0.5000 & = & 8.50 \\
-18 & 16 & \times & 0.1464 & = & 2.34 \\
-19 & 13 & \times & 0.0000 & = & 0.00 \\
-\hline
-\end{tabular}
-}
-
-\subsubsection{Computing Autocorrelation}
-%autocorrelated to: [3416.877417,3314.071374,3078.904744,2807.422836,
-%                    2554.560660,2325.480970,2107.853553,1903.292893,
-%                    1701.213203]
-
-Once our input samples have been converted to a windowed signal,
-we then compute the autocorrelation values from that signal.
-Each autocorrelation value is determined by multiplying the signal's
-samples by the samples of a lagged version of that same signal,
-and then taking the sum.
-The lagged signal is simply the original signal with \VAR{lag} number of
-samples removed from the beginning.
-
-\begin{figure}[h]
-\includegraphics{figures/alac/lag.pdf}
-\end{figure}
-
-In this example are autocorrelation values are:
-3416.9513, 3314.1450, 3078.9564, 2807.4600, 2554.6000,
-2325.5300, 2107.9100, 1903.3500 and 1701.2700.
-
-\clearpage
-
-\subsubsection{LP Coefficient Calculation}
-
-Calculating the LP coefficients uses the Levinson-Durbin recursive method.\footnote{This algorithm is taken from \LINK{http://www.engineer.tamuk.edu/SPark/chap7.pdf} }
-Our inputs are $M$, the maximum coefficient count, and $r$ autocorrelation
-values, from $r(0)$ to $r(M - 1)$.
-Our outputs are $a$, a list of LP coefficient lists from
-$a_{11}$ to $a_{(M - 1)(M - 1)}$, and $E$, a list
-of error values from $E_0$ to $E_{(M - 1)}$.
-$q_m$ and $\kappa_m$ are temporary values.
-\par
-\noindent
-Initial values:
-\begin{align*}
-&& E_0 &= r(0) \\
-&& a_{11} &= \kappa_1 = \frac{r(1)}{E_0} \\
-&& E_1 &= E_0 {(1 - {{\kappa_1} ^ 2})}
-\intertext{With $m \geq 2$, the following recursive algorithm is performed:}
-\text{Step 1. } && q_m &= r(m) - \overset{m - 1}{\underset{i = 1}{\sum}} a_{i(m - 1)}r(m - i) \\
-\text{Step 2. } && \kappa_m &= \frac{q_m}{E_{(m - 1)}} \\
-\text{Step 3. } && a_{mm} &= \kappa_m \\
-\text{Step 4. } && a_{im} &= a_{i(m - 1)} - \kappa_m a_{(m - i)(m - 1)} \text{ for $i = 1$, $i = 2$,...,$i = m - 1$} \\
-\text{Step 5. } && E_m &= E_{m - 1}(1 - {\kappa_m} ^ 2) \\
-\text{Step 6. } &&& \text{If $m < M$ then $m \leftarrow m + 1$ and goto step 1.  If $m = M$ then stop.}
-\end{align*}
-
-Let's run through an example in which $M = 9$,
-$r(0) = 3417$, $r(1) = 3314$, $r(2) = 3079$, $r(3) = 2807$,
-$r(4) = 2555$, $r(5) = 2326$, $r(6) = 2108$, $r(7) = 1903$
-and $r(8) = 1701$:
-\clearpage
-
-{\relsize{-2}
-\begin{align*}
-E_0 &= r(0) = 3417 \\
-a_{11} &= \kappa_1 = \frac{r(1)}{E_0} = \frac{3314}{3417} = 0.97 \\
-E_1 &= E_o(1 - {\kappa_1} ^ 2) = 3417(1 - .97 ^ 2) = 201.95 \\
-q_2 &= r(2) - \overset{1}{\underset{i = 1}{\sum}} a_{i1}r(2 - i) = 3079 - (0.97)(3314) = -135.58 \\
-\kappa_2 &= \frac{q_2}{E_1} = \frac{-135.58}{201.95} = -0.671 \\
-a_{22} &= \kappa_2 = -0.671 \\
-a_{12} &= a_{11} - \kappa_2 a_{11} = 0.97 - (-0.671)(0.97) = 1.621 \\
-E_2 &= E_1 (1 - {\kappa_2} ^ 2 ) = 201.95(1 - {-0.671 ^ 2}) = 111.024 \\
-q_3 &= r(3) - \overset{2}{\underset{i = 1}{\sum}} a_{i2} r(3 - i) = 2807 - ((1.621)(3079) + (-0.671)(3314)) = 39.635 \\
-\kappa_3 &= \frac{q_3}{E_2} = \frac{39.635}{111.024} = 0.357 \\
-a_{33} &= \kappa_3 = 0.357 \\
-a_{13} &= a_{12} - \kappa_3 a_{22} = 1.621 - (0.357)(-0.671) = 1.861 \\
-a_{23} &= a_{22} - \kappa_3 a_{12} = -0.671 - (0.357)(1.621) = -1.25 \\
-E_3 &= E_2 (1 - {\kappa_3} ^ 2 ) = 111.024(1 - {0.357 ^ 2}) = 96.874 \\
-q_4 &= r(4) - \overset{3}{\underset{i = 1}{\sum}} a_{i3} r(4 - i) = 2555 - ((1.861)(2807) + (-1.25)(3079) + (0.357)(3314)) = -3.175 \\
-\kappa_4 &= \frac{q_4}{E_3} = \frac{-3.175}{96.874} = -0.033 \\
-a_{44} &= \kappa_4 = -0.033 \\
-a_{14} &= a_{13} - \kappa_4 a_{33} = 1.861 - (-0.033)(0.357) = 1.873 \\
-a_{24} &= a_{23} - \kappa_4 a_{23} = -1.25 - (-0.033)(-1.25) = -1.291 \\
-a_{34} &= a_{33} - \kappa_4 a_{33} = 0.357 - (-0.033)(1.861) = 0.418 \\
-E_4 &= E_3 (1 - {\kappa_4} ^ 2) = 96.874(1 - {-0.033 ^ 2}) = 96.769
-\end{align*}
-}
-Calculating $E_5$ through $E_8$ and $a_{15}$ though $a_{88}$ will be
-left as an exercise for the reader.
-Our final values are:
-{\relsize{-2}
-\begin{align*}
-a_{11} &= 0.970 &&&&&&&&&&&&&& \\
-a_{12} &= 1.621 & a_{22} &= -0.67 &&&&&&&&&&&& \\
-a_{13} &= 1.861 & a_{23} &= -1.25 & a_{33} &= 0.357 &&&&&&&&&& \\
-a_{14} &= 1.873 & a_{24} &= -1.29 & a_{34} &= 0.418 & a_{44} &= -0.03 &&&&&&&& \\
-a_{15} &= 1.868 & a_{25} &= -1.28 & a_{35} &= 0.340 & a_{45} &= 0.122 & a_{55} &= -0.14 &&&&&& \\
-a_{16} &= 1.874 & a_{26} &= -1.28 & a_{36} &= 0.341 & a_{46} &= 0.119 & a_{56} &= -0.09 & a_{66} &= 0.00 &&&& \\
-a_{17} &= 1.875 & a_{27} &= -1.27 & a_{37} &= 0.332 & a_{47} &= 0.091 & a_{57} &= 0.011 & a_{67} &= -0.15 & a_{77} &= 0.078 & & \\
-a_{18} &= 1.892 & a_{28} &= -1.30 & a_{38} &= 0.338 & a_{48} &= 0.112 & a_{58} &= 0.082 & a_{68} &= -0.42 & a_{78} &= 0.479 & a_{88} &= -0.214 \\
-E_1 &= 202.0 & E_2 &= 111.0 & E_3 &= 96.9 & E_4 &= 96.8 & E_5 &= 96.1 & E_6 &= 96.1 & E_7 &= 95.6 & E_8 &= 91.2
-\end{align*}
-}
-\par
-\noindent
-These values have been rounded to the nearest significant digit
-and will not be an exact match to those generated by a computer.
-
-\clearpage
-
-\subsubsection{Best Order Estimation}
-
-At this point, we have an array of prospective LP coefficient lists,
-a list of error values and must decide which LPC order to use.
-Making an estimation requires the total number of samples
-in the subframe, the number of overhead bits per order (by default,
-this is the number of bits per sample in the subframe, plus 5),
-and an error scale constant in addition to the LPC error values:
-\begin{equation}
-\text{Error Scale} = \frac{\ln(2) ^ 2}{2 \times \text{Total Samples}}
-\end{equation}
-\noindent
-Once the error scale has been calculated, one can generate a
-\VAR{Bits per Residual} estimation function which, given an \VAR{LPC Error}
-value, returns what its name implies:
-\begin{equation}
-\text{Bits per Residual}(\text{LPC Error}) = \frac{\ln(\text{Error Scale} \times \text{LPC Error})}{2 \times \ln(2)}
-\end{equation}
-With this function, we can estimate how many bits the entire ALAC subframe
-will take for each \VAR{LPC Error} value and its associated \VAR{Order}:
-{\relsize{-2}
-\begin{equation*}
-\text{Total Bits}(\text{LPC Error},\text{Order}) = \text{Bits per Residual}(\text{LPC Error}) \times (\text{Total Samples} - \text{Order}) + (\text{Order} \times \text{Overhead bits})
-\end{equation*}
-}
-Continuing with our example, we have 20 samples which gives us an
-error scale of: $\frac{{\ln(2) ^ 2}}{2 \times 20} = \frac{.6931 ^ 2}{40} = .01201$
-
-Now, we'll estimate the bits used by order 4 and order 8,
-which use LPC Error values 96.8 and 91.2, respectively:
-
-\begin{align*}
-\intertext{At LPC order 4, our bits per residual are:}
-\frac{\ln(.01201 \times 96.8)}{2 \times \ln (2)} = \frac{\ln(1.163)}{1.386} &= 0.1089 \\
-\intertext{And our total bits are:}
-(0.1089 \times (20 - 1)) + (1 \times (16 + 5)) = 2.069 + 21 &= 23.069 \\
-\intertext{At LPC order 8, our bits per residual are:}
-\frac{\ln(.01201 \times 91.2)}{2 \times \ln(2)} = \frac{\ln(1.095)}{1.386} &= 0.065 \\
-\intertext{And our total bits are:}
-(0.065 \times (20 - 2)) + (2 \times (16 + 5)) = 1.17 + 42 &= 43.17 \\
-\end{align*}
-\par
-\noindent
-Therefore, since the total bits for order 4 are the smallest,
-the best order for this group of samples is 4.
-
-\subsubsection{Quantizing Coefficients}
-
-Quantizing coefficients is a process of taking a list of LP Coefficients
-along with a QLP Coefficients Precision value and
-returning a list of Coefficients and a Prediction Quantitization value.
-The first step is determining the upper and lower limits of the
-Coefficients, which well set to the upper and lower bounds that iTunes
-supports:
-\begin{align}
-\text{Coefficient Maximum} &= 2 ^ {12 - 1} - 1 = 2047\\
-\text{Coefficient Minimum} &= - 2 ^ {12 - 1} = -2048
-\end{align}
-\par
-\noindent
-Prediction Quantitization is always 9 in iTunes, so we'll use that value also:
-\begin{equation}
-\text{Prediction Quantitization} = 9
-\end{equation}
-\par
-\noindent
-We determine the Coefficient values themselves via a small
-recursive routine:
-\begin{align}
-X(i) &= E(i - 1) + (\text{LP Coefficient}_i \times 2 ^ {quantitization}) \\
-\text{Coefficient}_i &= \text{round}(X(i)) \\
-E(i) &= X(i) - \text{Coefficient}_i
-\end{align}
-\par
-\noindent
-where $E(0) = 0$ and each Coefficient is adjusted
-prior to calculating the next $E(i)$ value such that:
-\begin{equation}
-\text{Coefficient Minimum} \leq \text{Coefficient}_i \leq \text{Coefficient Maximum}
-\end{equation}
-\par
-So to finish our example in which we're quantizing the LP
-coefficients 1.873, -1.29, 0.418 and -0.03:
-\begin{align*}
-X(1) &= E(0) + (1.873 \times 2 ^ {9} ) = 0 + 958.976 = \textbf{958.976} \\
-\text{QLP Coefficient}_1 &= \text{round}(958.976) = \textbf{959} \\
-E(1) &= X(1) - \text{QLP Coefficient}_1 = 958.976 - 959 = \textbf{-0.024} \\
-X(2) &= E(1) + (-1.29 \times 2 ^ {9} ) = -0.024 + -660.48 = \textbf{-660.504} \\
-\text{QLP Coefficient}_2 &= \text{round}(-660.504) = \textbf{-661} \\
-E(2) &= X(2) - \text{QLP Coefficient}_2 = -660.504 - -661 = \textbf{0.496} \\
-X(3) &= E(2) + (0.418 \times 2 ^ {9} ) = 0.496 + 214.015 = \textbf{214.511} \\
-\text{QLP Coefficient}_3 &= \text{round}(214.511) = \textbf{215} \\
-E(3) &= X(3) - \text{QLP Coefficient}_3 = 214.511 - 215 = \textbf{-0.489} \\
-X(4) &= E(3) + (-0.03 \times 2 ^ {9} ) = -0.489 + -15.36 = \textbf{-15.849} \\
-\text{QLP Coefficient}_4 &= \text{round}(-15.849) = \textbf{-16} \\
-\end{align*}
-\par
-\noindent
-Therefore, the \VAR{Coefficient Count} is 4,
-the \VAR{Coefficient} values are 959, -661, 215, -16,
-and the \VAR{Prediction Quantitization} value is 9.
-
-
-\clearpage
-
-\subsection{Subframe Calculation}
-
-Given our list of correlated samples; along with a list of
-coefficients, a \VAR{Coefficient Count} and a \VAR{Prediction Quantitization}
-value, we can now generate a list of signed residuals values
-for a given channel.
-
-The first residual is always the first input sample:
-\begin{align*}
-\text{Residual}_0 &= \text{Sample}_0 \\
-\intertext{Then, for the next \VAR{Coefficient Count} number of samples:}
-\text{Residual}_i &= \text{Sample}_i - \text{Sample}_{i - 1}
-\end{align*}
-
-For example, given that we have a \VAR{Coefficient Count} of 4
-and our first five samples are 16, 17, 26, 25 and 24;
-our first five residual values are:
-\begin{align*}
-\text{Residual}_0 &= \textbf{16} \\
-\text{Residual}_1 = 17 - 16 &= \textbf{1} \\
-\text{Residual}_2 = 26 - 17 &= \textbf{9} \\
-\text{Residual}_3 = 25 - 26 &= \textbf{-1} \\
-\text{Residual}_4 = 24 - 25 &= \textbf{-1}
-\end{align*}
-
-These are our ``starting point'' residuals upon which the
-remainder of the residuals will be calculated from.
-
-Subsequent residuals are calculated in the following way:
-\begin{align*}
-\text{LPC Sum}_i &= \overset{coeffs - 1}{\underset{j = 0}{\sum}}
-\text{Coefficient}_j \times (\text{Sample}_{i - j - 1} - \text{Sample}_{i - coeffs - 1}) \\
-\text{Residual}_i &= \text{Sample}_i - \left( \left\lfloor \frac{\text{LPC Sum}_i + 2^{\text{Predictor Quantitization - 1}}} {2 ^ \text{Predictor Quantitization}}\right\rfloor + \text{Sample}_{i - coeffs - 1} \right) \\
-\intertext{For example, given $\text{Sample}_5$ = 23,
-\VAR{Predictor Quantitization} = 9 and the coefficients
-1122, -766, 107 and 122:}
-\text{LPC Sum}_5 &=
-(1122 \times (24 - 16)) + (-766 \times (25 - 16)) +
- (107 \times (26 - 16)) + (122 \times (17 - 16)) \\
-&= (1122 \times 8) + (-766 \times 9) + (107 \times 10) + (122 \times 1) \\
-&= 8976 + -6894 + 1070 + 122 = \textbf{3274} \\
-\text{Residual}_5 &= 23 - \left( \left\lfloor \frac{\textbf{3274} + 2^8}{2 ^ 9}\right\rfloor + 16 \right) =  23 - \left( \left\lfloor \frac{3530}{512} \right\rfloor + 16 \right) = 23 - (6 + 16) = \textbf{1}
-\end{align*}
-But before calculation $\text{Residual}_6$, we need to adjust
-our coefficient list in the same way as residual decoding.
-
-\clearpage
-
-As described on page \pageref{alac_coefficient_adjustment},
-we run through the following process:
-\par
-{\relsize{-1}
-\begin{tabular}{|l>{$}r<{$}c>{$}l<{$}|}
-\hline
-Step 1. & \text{original sign} &=& \text{sign}(residual) \\
-Step 2. & j &=& 0 \\
-Step 3. & v &=& \text{Sample}_{i - \text{count} - 1} - \text{Sample}_{i - \text{count} + j} \\
-Step 4. & sign &=& \begin{cases}\text{sign}(v) & \text{if original sign} > 0 \\
--\text{sign}(v) & \text{if original sign} \leq 0\end{cases} \\
-Step 5. & \text{Coefficient}_{\text{count} - j - 1} &=& \text{Coefficient}_{\text{count} - j - 1} - sign \\
-Step 6. & residual &=& residual - \left( \left\lfloor\frac{v \times sign}{2 ^ \text{Predictor Quantitization}}\right\rfloor \times (j + 1) \right) \\
-Step 7. & j &=& j + 1 \\
-Step 8. & \multicolumn{3}{l|}{if ($j < count$) and ($\text{sign}(residual) = \text{original sign}$), goto step 3} \\
-\hline
-\end{tabular}
-}
-\par
-\noindent
-To continue our example:
-{\relsize{-1}
-\begin{align*}
-\text{original sign} &= \text{sign}(1) = \textbf{1} \\
-j &= 0 \\
-v &= \text{Sample}_0 - \text{Sample}_{1} = 16 - 17 = \textbf{-1} \\
-sign &= \text{sign}(-1) = \textbf{-1} \\
-\text{Coefficient}_3 &= \text{Coefficient}_3 - -1 = 122 + 1 = \textbf{123} \\
-residual &= residual - \left( \left\lfloor\frac{-1 \times -1}{2 ^ 9}\right\rfloor \times (0 + 1)\right) = 1 - (0 \times 1) = \textbf{1} \\
-j &= 1 \\
-v &= \text{Sample}_0 - \text{Sample}_{2} = 16 - 26 = \textbf{-10} \\
-sign &= \text{sign}(-10) = \textbf{-1} \\
-\text{Coefficient}_2 &= \text{Coefficient}_2 - -1 = 107 + 1 = \textbf{108} \\
-residual &= residual - \left( \left\lfloor\frac{-10 \times -1}{2 ^ 9}\right\rfloor \times (1 + 1)\right) = 1 - (0 \times 2) = \textbf{1} \\
-j &= 2 \\
-v &= \text{Sample}_0 - \text{Sample}_{3} = 16 - 25 = \textbf{-9} \\
-sign &= \text{sign}(-9) = \textbf{-1} \\
-\text{Coefficient}_1 &= \text{Coefficient}_1 - -1 = -766 + 1 = \textbf{-765} \\
-residual &= residual - \left( \left\lfloor\frac{-9 \times -1}{2 ^ 9}\right\rfloor \times (2 + 1)\right) = 1 - (0 \times 3) = \textbf{1} \\
-j &= 3 \\
-v &= \text{Sample}_0 - \text{Sample}_{4} = 16 - 25 = \textbf{-8} \\
-sign &= \text{sign}(-8) = \textbf{-1} \\
-\text{Coefficient}_0 &= \text{Coefficient}_0 - -1 = 1122 + 1 = \textbf{1123} \\
-residual &= residual - \left( \left\lfloor\frac{-8 \times -1}{2 ^ 9}\right\rfloor \times (3 + 1)\right) = 1 - (0 \times 4) = \textbf{1} \\
-j &= 4\text{ and stop, since 4 equals our coefficient count} \\
-\end{align*}
-}
-\par
-Which, you'll notice, is identical to the procedure used during
-residual decoding.
-
-\clearpage
-
-Given that $\text{Sample}_6$ is 20, the calculation of $\text{Residual}_6$
-is as follows:
-\begin{align*}
-\text{LPC Sum}_6 &= (1123 \times (23 - 17)) + (-765 \times (24 - 17)) + (108 \times (25 - 17)) + (123 \times (26 - 17)) \\
-&= (1123 \times 6) + (-765 \times 7) + (108 \times 8) + (123 \times 9) \\
-&= 6738 + -5355 + 864 + 1107 = \textbf{3354} \\
-\text{Residual}_6 &= 20 - \left( \left\lfloor \frac{\textbf{3354} + 2^8}{2 ^ 9}\right\rfloor + 17 \right) =  20 - \left( \left\lfloor \frac{3610}{512} \right\rfloor + 17 \right) = 20 - (7 + 17) = \textbf{-4} \\
-%% \end{align*}
-%% \begin{align*}
-\text{original sign} &= \text{sign}(-4) = -1 \\
-j &= 0 \\
-v &= \text{Sample}_1 - \text{Sample}_2 = 17 - 26 = \textbf{-9} \\
-sign &= -\text{sign}(-9) = \textbf{1} \\
-\text{Coefficient}_3 &= \text{Coefficient}_3 - 1 = 123 - 1 = \textbf{122} \\
-residual &= residual - \left( \left\lfloor\frac{-9 \times 1}{2 ^ 9}\right\rfloor \times (0 + 1)\right) = -4 - (-1 \times 1) = \textbf{-3} \\
-j &= 1 \\
-v &= \text{Sample}_1 - \text{Sample}_3 = 17 - 25 = \textbf{-8} \\
-sign &= -\text{sign}(-8) = \textbf{1} \\
-\text{Coefficient}_2 &= \text{Coefficient}_2 - 1 = 108 - 1 = \textbf{107} \\
-residual &= residual - \left( \left\lfloor\frac{-8 \times 1}{2 ^ 9}\right\rfloor \times (1 + 1)\right) = -3 - (-1 \times 2) = \textbf{-1} \\
-j &= 2 \\
-v &= \text{Sample}_1 - \text{Sample}_4 = 17 - 24 = \textbf{-7} \\
-sign &= -\text{sign}(-7) = \textbf{1} \\
-\text{Coefficient}_1 &= \text{Coefficient}_1 - 1 = -765 - 1 = \textbf{-766} \\
-residual &= residual - \left( \left\lfloor\frac{-7 \times 1}{2 ^ 9}\right\rfloor \times (2 + 1)\right) = -1 - (-1 \times 3) = \textbf{2} \\
-&\text{and stop, since sign}(2) \neq \text{sign}(-4) \text{ (our \VAR{original sign} value)}
-\end{align*}
-
-So, the coefficients for $\text{Residual}_7$ are 1123, -766, 107 and 122.
-
-\clearpage
-
-\subsection{Residual Encoding}
-
-The final step of frame encoding is writing our list of residual values.
-As with decoding, this also requires knowing several additional
-values whose defaults are as follows:
-\begin{table}[h]
-\begin{tabular}{|r|l|}
-\hline
-value & default \\
-\hline
-Initial History & 10 \\
-History Multiplier & 40 \\
-Maximum K & 14 \\
-Bits per Sample & $\text{Stream's BPS} - (\text{Wasted Bits} \times 8) + \text{Channels} - 1$ \\
-\hline
-\end{tabular}
-\end{table}
-\par
-For each residual block, \VAR{History} starts with the value of
-\VAR{Initial History} and will change during residual encoding.
-We use it to calculate $\kappa$ using the following formula:
-\begin{equation}
-\kappa = \left\lfloor\log_2 \left( \frac{\text{history}}{2 ^ 9} + 3 \right) \right\rfloor
-\end{equation}
-Note that if $\kappa$ exceeds the \VAR{Maximum K} value from the
-\texttt{alac} atom, \VAR{Maximum K} is used instead.
-
-\begin{wrapfigure}[22]{r}{2.5in}
-\includegraphics{figures/alac/write_residual.pdf}
-\end{wrapfigure}
-
-The $\kappa$ and \VAR{Bits per Sample} values are used to write
-a single unsigned residual value $r$ in the following way:
-
-First, we convert our signed residual to an unsigned value:
-\begin{equation*}
-\text{unsigned} =
-\begin{cases}
-\text{signed} \times 2 & \text{if signed} \geq 0 \\
-(-\text{signed} \times 2) - 1 & \text{if signed} < 0
-\end{cases}
-\end{equation*}
-
-We then divide our unsigned residual into quotient and remainder values:
-\begin{align*}
-q &= \lfloor r \div (2^k - 1) \rfloor \\
-%% e &= r - (q \times (2^k - 1))
-e &= r\mod{2^k - 1}
-\end{align*}
-
-If $q$ is greater than 8, we write a 9 bit value \texttt{0x1FF}
-(i.e. the bits `\texttt{1 1 1 1 1 1 1 1 1 1}')
-before writing the value $r$ verbatim using \VAR{Bits per Sample}
-number of bits.
-
-If $q$ is greater than 0, we write its value in unary.
-Otherwise, we write a single \texttt{0} bit.
-
-Finally, if $e$ is greater than 0, we write the value
-$e + 1$ using $\kappa$ of bits.
-Otherwise, we write the value 0 using $\kappa - 1$ number of bits.
-Assuming $\kappa$ is greater than 1, of course.
-
-\clearpage
-
-As with decoding, we then use our unsigned value to update \VAR{history}
-before encoding the next residual:
-{\relsize{-1}
-\begin{equation*}
-\text{history} =
-\begin{cases}
-\text{history} + (\text{unsigned} \times \text{history multiplier}) - \left\lfloor\frac{\text{history} \times \text{history multiplier}}{2^9}\right\rfloor & \text{if unsigned} \leq 65535 \\
-65535 & \text{if unsigned} > 65535
-\end{cases}
-\end{equation*}
-}
-Should history ever fall below 128, we generate a special
-residual value.
-That residual's \VAR{Bits per Sample} value is 16, its
-$\kappa$ value is:
-\begin{equation}
-\kappa_{\text{blocksize}} = 7 - \log_2(\text{history}) + \frac{\text{history} + 16}{64}
-\end{equation}
-and its value is how many consecutive `0' residuals follow -
-which may be 0 if the next residual is not `0'.
-Either way, if $\text{\VAR{block size}} \leq 65535$, we
-subtract 1 to the next unsigned value of the next residual in the block
-(if any).  Finally, \VAR{history} is automatically set to 0.
-
-\subsubsection{Residual Encoding Example}
-
-In this example, we'll encode a group of residuals in which our
-\VAR{Initial History} is 1290, our \VAR{History Multiplier} is 40
-and our signed residual values are 1, 9 and -1:
-\begin{itemize}
-\setlength{\itemsep}{0in}
-\setlength{\parskip}{0in}
-\item Residual 1
-\begin{itemize}
-\item $\kappa = \lfloor\log_2((1290 \div 2^9) + 3)\rfloor = \lfloor\log_2(5)\rfloor = 2$
-\item $\text{unsigned}_1 = 2 \times 1 = \textbf{2}$
-\item $\text{history} = 1290 + (2 \times 40) - \lfloor (1290 \times 40) \div 2^9 \rfloor = 1370 - 100 = 1270$
-\end{itemize}
-\item Residual 2
-\begin{itemize}
-\item $\kappa = \lfloor\log_2((1270 \div 2^9) + 3)\rfloor = \lfloor\log_2(5)\rfloor = 2$
-\item $\text{unsigned}_2 = 2 \times 9 = \textbf{18}$
-\item $\text{history} = 1270 + (18 \times 40) - \lfloor (1270 \times 40) \div 2^9 \rfloor = 1990 - 99 = 1891$
-\end{itemize}
-\item Residual 3
-\begin{itemize}
-\item $\kappa = \lfloor\log_2((1891 \div 2^9) + 3)\rfloor = \lfloor\log_2(6)\rfloor = 2$
-\item $\text{unsigned}_3 = (1 \times 2) - 1 = \textbf{1}$
-\item $\text{history} = 1891 + (1 \times 40) - \lfloor (1891 \times 40) \div 2^9 \rfloor = 1931 - 147 = 1784$
-\end{itemize}
-\end{itemize}
-\begin{figure}[h]
-\includegraphics{figures/alac/residual_w.pdf}
-\end{figure}
+%% and its value is how many consecutive `0' residuals follow -
+%% which may be 0 if the next residual is not `0'.
+%% Either way, if $\text{\VAR{block size}} \leq 65535$, we
+%% subtract 1 to the next unsigned value of the next residual in the block
+%% (if any).  Finally, \VAR{history} is automatically set to 0.
+
+%% \subsubsection{Residual Encoding Example}
+
+%% In this example, we'll encode a group of residuals in which our
+%% \VAR{Initial History} is 1290, our \VAR{History Multiplier} is 40
+%% and our signed residual values are 1, 9 and -1:
+%% \begin{itemize}
+%% \setlength{\itemsep}{0in}
+%% \setlength{\parskip}{0in}
+%% \item Residual 1
+%% \begin{itemize}
+%% \item $\kappa = \lfloor\log_2((1290 \div 2^9) + 3)\rfloor = \lfloor\log_2(5)\rfloor = 2$
+%% \item $\text{unsigned}_1 = 2 \times 1 = \textbf{2}$
+%% \item $\text{history} = 1290 + (2 \times 40) - \lfloor (1290 \times 40) \div 2^9 \rfloor = 1370 - 100 = 1270$
+%% \end{itemize}
+%% \item Residual 2
+%% \begin{itemize}
+%% \item $\kappa = \lfloor\log_2((1270 \div 2^9) + 3)\rfloor = \lfloor\log_2(5)\rfloor = 2$
+%% \item $\text{unsigned}_2 = 2 \times 9 = \textbf{18}$
+%% \item $\text{history} = 1270 + (18 \times 40) - \lfloor (1270 \times 40) \div 2^9 \rfloor = 1990 - 99 = 1891$
+%% \end{itemize}
+%% \item Residual 3
+%% \begin{itemize}
+%% \item $\kappa = \lfloor\log_2((1891 \div 2^9) + 3)\rfloor = \lfloor\log_2(6)\rfloor = 2$
+%% \item $\text{unsigned}_3 = (1 \times 2) - 1 = \textbf{1}$
+%% \item $\text{history} = 1891 + (1 \times 40) - \lfloor (1891 \times 40) \div 2^9 \rfloor = 1931 - 147 = 1784$
+%% \end{itemize}
+%% \end{itemize}
+%% \begin{figure}[h]
+%% \includegraphics{figures/alac/residual_w.pdf}
+%% \end{figure}

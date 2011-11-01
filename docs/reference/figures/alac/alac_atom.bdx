@@ -1,56 +1,75 @@
 <?xml version="1.0" ?><diagram>
   <row>
-    <col end="31" start="0" width=".5">alac Length</col>
-    <col end="63" start="32" width=".5">`alac' (0x616C6163)</col>
+    <col start="0" end="31" width=".25">stsd length (88)</col>
+    <col start="32" end="63" width=".25">`stsd'</col>
+    <col start="64" end="71" width=".20">version (0)</col>
+    <col start="72" end="95" width=".30">flags (0)</col>
   </row>
   <row>
-    <col end="111" start="64" width=".5">Reserved (0x000000000000)</col>
-    <col end="127" start="112" width=".5">Reference Index</col>
+    <col start="96" end="127" width=".40">description count (1)</col>
+    <col start="128" end="703" width=".60" id="alac1">alac atom</col>
+  </row>
+  <spacer/>
+  <row>
+    <col start="128" end="159" width=".25" id="alac1_s">alac length (72)</col>
+    <col start="160" end="191" width=".25">`alac'</col>
+    <col start="192" end="239" width=".50" id="alac1_e">reserved (0)</col>
   </row>
   <row>
-    <col end="143" start="128" width=".5">QuickTime Version</col>
-    <col end="159" start="144" width=".5">QuickTime Revision Level</col>
+    <col start="240" end="255" width=".333333">reference index</col>
+    <col start="256" end="271" width=".333333">QuickTime version</col>
+    <col start="272" end="287" width=".333333">QuickTime revision level</col>
   </row>
   <row>
-    <col end="191" start="160">QuickTime Audio Encoding Vendor</col>
+    <col start="288" end="319" width=".5">QuickTime audio encoding vendor</col>
+    <col start="320" end="335" width=".25">channels</col>
+    <col start="336" end="351" width=".25">bits per sample</col>
   </row>
   <row>
-    <col end="207" start="192" width=".5">Channels</col>
-    <col end="223" start="208" width=".5">Bits per Sample</col>
+    <col start="352" end="367" width=".5">QuickTime compression ID</col>
+    <col start="368" end="383" width=".5">audio packet size</col>
   </row>
   <row>
-    <col end="239" start="224" width=".5">QuickTime Compression ID</col>
-    <col end="255" start="240" width=".5">Audio Packet Size</col>
+     <col start="384" end="415" width=".5">audio sample rate</col>
+     <col start="416" end="703" width=".5" id="alac2">`alac' atom</col>
+  </row>
+  <spacer/>
+  <row>
+    <col start="416" end="447" id="alac2_s" width=".25">alac length (36)</col>
+    <col start="448" end="479" width=".25">`alac'</col>
+    <col start="480" end="511" width=".5" id="alac2_e">padding (0)</col>
   </row>
   <row>
-     <col end="287" start="256" width=".5">Audio Sample Rate</col>
-     <col id="alac" start="288" width=".5">`alac' atom</col>
-  </row>
-  <row><blank/></row>
-  <row>
-    <col end="31" id="alac_len" start="0" width=".5">alac Length</col>
-    <col end="63" id="alac_id" start="32" width=".5">`alac' (0x616C6163)</col>
+    <col start="512" end="543" width=".333333">samples per frame</col>
+    <col start="544" end="551" width=".333333">compatible version</col>
+    <col start="552" end="559" width=".333333">bits per sample</col>
   </row>
   <row>
-    <col end="95" start="64" width=".5">Padding (0x00000000)</col>
-    <col end="127" start="96" width=".5">Samples per Frame</col>
+    <col start="560" end="567" width=".25">history multiplier</col>
+    <col start="568" end="575" width=".25">initial history</col>
+    <col start="576" end="583" width=".25">maximum K</col>
+    <col start="584" end="591" width=".25">channels</col>
   </row>
   <row>
-    <col end="135" start="128" width=".20">Padding (0)</col>
-    <col end="143" start="136" width=".40">Bits per Sample</col>
-    <col end="151" start="144" width=".40">History Multiplier</col>
+    <col start="592" end="607" width=".2">max run</col>
+    <col start="608" end="639" width=".3">max coded frame size</col>
+    <col start="640" end="671" width=".25">bitrate</col>
+    <col start="672" end="703" width=".25">sample rate</col>
   </row>
-  <row>
-    <col end="159" start="152" width=".25">Initial History</col>
-    <col end="167" start="160" width=".25">Maximum LSBs</col>
-    <col end="175" start="168" width=".25">Channels</col>
-    <col end="191" start="176" width=".25">Unknown</col>
-  </row>
-  <row>
-    <col end="223" start="192" width=".4">Max Coded Frame Size</col>
-    <col end="255" start="224" width=".3">Bitrate</col>
-    <col end="287" start="256" width=".3">Sample Rate</col>
-  </row>
-  <line style="dotted"><start corner="sw" id="alac"/><end corner="nw" id="alac_len"/></line>
-  <line style="dotted"><start corner="se" id="alac"/><end corner="ne" id="alac_id"/></line>
+  <line style="dotted">
+    <start id="alac1" corner="sw"/>
+    <end id="alac1_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="alac1" corner="se"/>
+    <end id="alac1_e" corner="ne"/>
+  </line>
+  <line style="dotted">
+    <start id="alac2" corner="sw"/>
+    <end id="alac2_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="alac2" corner="se"/>
+    <end id="alac2_e" corner="ne"/>
+  </line>
 </diagram>

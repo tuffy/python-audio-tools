@@ -10,6 +10,6 @@
   <field size="20" value="44100">sample rate</field>
   <field size="3" value="1">channels (+1)</field>
   <field size="5" value="15">bits-per-sample (+1)</field>
-  <field size="36" value="80">total PCM frames</field>
-  <text size="16">MD5 sum</text>
+  <field size="36" value="50">total PCM frames</field>
+  <bytes value="6D0BB00954CEB7FBEE436BB55A8397A9">MD5 sum</bytes>
 </struct>

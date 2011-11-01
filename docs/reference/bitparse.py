@@ -332,6 +332,86 @@ class TextChunk(Chunk):
             right.setAttribute(u"style", u"stroke: black;")
             svg.appendChild(right)
 
+class BytesChunk(Chunk):
+    def __init__(self, bit_width, superscripts,
+                 name=None,
+                 background_color=None,
+                 w_border=False, e_border=False):
+        assert(bit_width == len(superscripts))
+        self.bit_width = bit_width
+        self.superscripts = superscripts
+        self.name = name
+        self.background_color = background_color
+        self.w_border = w_border
+        self.e_border = e_border
+
+        #the chunk's location in the PDF, in x,y point pairs
+        self.ne = self.nw = self.se = self.sw = (0, 0)
+
+    def size(self):
+        return self.bit_width
+
+    def split(self, bits):
+        return (BytesChunk(bit_width=bits,
+                           superscripts=self.superscripts[0:bits],
+                           name=self.name,
+                           background_color=self.background_color,
+                           w_border=self.w_border,
+                           e_border=False),
+                BytesChunk(bit_width=self.bit_width - bits,
+                           superscripts=self.superscripts[bits:],
+                           name=self.name,
+                           background_color=self.background_color,
+                           w_border=False,
+                           e_border=self.e_border))
+
+    def __repr__(self):
+        return "BytesChunk(%s)" % \
+            ",".join([repr(getattr(self, attr))
+                      for attr in ["bit_width", "superscripts", "name",
+                                   "background_color", "w_border", "e_border",
+                                   "nw", "ne", "sw", "se"]])
+
+    def to_pdf(self, pdf):
+        pts_per_bit = self.pt_width() / float(self.size())
+        pt_offset = self.nw[0] + (pts_per_bit / 2)
+
+        #draw background color, if any
+        #FIXME
+
+        pdf.setFillColorRGB(0.0, 0.0, 0.0)
+        #draw superscripts, if any
+        for (i, superscript) in enumerate(self.superscripts):
+            pdf.setFont("Courier", 5)
+            pdf.drawRightString(self.nw[0] + ((i + 1) * pts_per_bit) - 2,
+                                self.se[1] + 25,
+                                unicode(superscript))
+
+        #draw centered name, if any
+        if (self.name is not None):
+            pdf.setFont("DejaVu", 12)
+            pdf.drawCentredString(self.nw[0] + (self.pt_width() / 2),
+                                  self.se[1] + 12,
+                                  unicode(self.name))
+
+        pdf.setStrokeColorRGB(0.0,0.0,0.0)
+        #draw top and bottom borders
+        pdf.line(self.nw[0], self.nw[1],
+                 self.ne[0], self.ne[1])
+        pdf.line(self.sw[0], self.sw[1],
+                 self.se[0], self.se[1])
+
+        #draw left and right borders, if any
+        if (self.w_border):
+            pdf.line(self.nw[0], self.nw[1],
+                     self.sw[0], self.sw[1])
+        if (self.e_border):
+            pdf.line(self.ne[0], self.ne[1],
+                     self.se[0], self.se[1])
+
+    def to_svg(self, dom, svg, total_height):
+        raise NotImplementedError()
+
 
 class ChunkTable:
     def __init__(self, chunks):
@@ -417,6 +497,35 @@ class Text:
 
         return TextChunk(bit_width=self.bit_count,
                          name=self.name)
+
+class Bytes:
+    def __init__(self, name, bytes_list):
+        self.name = name
+        self.bytes = list(bytes_list)
+
+    def __repr__(self):
+        return "Bytes(%s, %s)" % (repr(self.name), repr(self.bytes))
+
+    def chunk(self, superscript_bits, bits_lookup):
+        reverse_bits_lookup = dict([(value, key) for (key, value) in
+                                    bits_lookup.items()])
+        superscript_len = list(set(map(len, bits_lookup.keys())))[0]
+
+        if (len(superscript_bits) != 0):
+            print >>sys.stderr,"*** Warning: <bytes> tag %s not byte-aligned" % (repr(self.name))
+
+        chunk_superscripts = []
+        for byte in self.bytes:
+            superscript_bits.extend(
+                list(reverse_bits_lookup["%2.2X" % (byte)]))
+            chunk_superscripts.append(
+                bits_lookup[tuple(superscript_bits[0:superscript_len])])
+            for i in xrange(superscript_len):
+                superscript_bits.pop(0)
+
+        return BytesChunk(bit_width=len(self.bytes),
+                          superscripts=chunk_superscripts,
+                          name=self.name)
 
 def bits(v):
     for i in xrange(8):
@@ -536,6 +645,18 @@ def bits_converter_le(size, value):
 
     return bits
 
+def byte_converter(value):
+    if (not re.match(r'^[0-9a-fA-F]+$', value)):
+        raise ValueError("bytes value must be hexadecimal")
+    elif ((len(value) % 2) != 0):
+        raise ValueError("bytes value must be an even number of digits")
+    elif (len(value) == 0):
+        raise ValueError("at least 1 byte must be present")
+    else:
+        while (len(value) > 0):
+            yield int(value[0:2], 16)
+            value = value[2:]
+
 
 def xml_to_chunks(xml_filename):
     import xml.dom.minidom
@@ -566,6 +687,13 @@ def xml_to_chunks(xml_filename):
         elif (part.nodeName == u'text'):
             bits.append(Text(part.childNodes[0].data.strip(),
                              int_converter(part.getAttribute(u"size"))))
+        elif (part.nodeName == u'bytes'):
+            try:
+                bits.append(Bytes(part.childNodes[0].data.strip(),
+                                  byte_converter(part.getAttribute(u"value"))))
+            except ValueError,msg:
+                print >>sys.stderr,str(msg)
+                sys.exit(1)
 
     return bits_to_chunks(bits, lookup)
 
