@@ -1,24 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="31" width=".5">mdhd Length</col>
-    <col start="32" end="63" width=".5">`mdhd' (0x6D646864)</col>
+    <col start="0" end="31" width=".25">mdhd length</col>
+    <col start="32" end="63" width=".25">`mdhd'</col>
+    <col start="64" end="71" width=".20">version</col>
+    <col start="72" end="95" width=".30">flags (0)</col>
   </row>
   <row>
-    <col start="64" end="71" width=".25">Version</col>
-    <col start="72" end="95" width=".75">Flags (0x000000)</col>
+    <col start="96" end="127/159" width=".5">created Mac UTC date</col>
+    <col start="128/60" end="159/223" width=".5">modified Mac UTC date</col>
   </row>
   <row>
-    <col start="96" end="127/159" width=".5">Created Mac UTC Date</col>
-    <col start="128/60" end="159/223" width=".5">Modified Mac UTC Date</col>
+    <col start="160/224" end="191/255" width=".5">sample rate</col>
+    <col start="192/256" end="223/319" width=".5">track length</col>
   </row>
   <row>
-    <col start="160/224" end="191/255" width=".5">Sample Rate</col>
-    <col start="192/256" end="223/319" width=".5">Track Length</col>
-  </row>
-  <row>
-    <col start="224/320" end="224/320" width=".2">Pad</col>
-    <col start="225/321" end="239/335" width=".3">Language</col>
-    <col start="240/336" end="255/351" width=".5">Quality</col>
+    <col start="224/320" end="224/320" width=".2">pad</col>
+    <col start="225/321" end="239/335" width=".3">language</col>
+    <col start="240/336" end="255/351" width=".5">quality</col>
   </row>
 </diagram>

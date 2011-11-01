@@ -24,6 +24,7 @@ The basic process for decoding an ALAC file is as follows:
 {\relsize{-1}
 \ALGORITHM{an ALAC encoded file}{PCM samples}
 read \texttt{alac} atom to obtain decoding parameters\;
+read \texttt{mdhd} atom to obtain $PCM~frame~count$\;
 seek to \texttt{mdat} atom's data\;
 \While{$PCM~frame~count > 0$}{
   decode ALAC frame to 1 or more PCM frames\;
@@ -40,9 +41,10 @@ Each ALAC atom is laid out as follows:
 \includegraphics{figures/alac/atom.pdf}
 \vskip .1in
 where \VAR{atom length} is the full size of the atom in bytes,
-including the 8 byte atom header,
-\VAR{atom type} an ASCII string and \VAR{atom data}
-may contain one or more sub-atoms.
+including the 8 byte atom header.
+\VAR{atom type} is an ASCII string
+\VAR{atom data} is a binary blob of data
+which may contain one or more sub-atoms.
 \end{wrapfigure}
 
 \clearpage
@@ -90,7 +92,51 @@ bitrate & $\leftarrow$ & \texttt{0AC4} & = & 2756 \\
 sample rate & $\leftarrow$ & \texttt{0000AC44} & = & 44100 Hz\\
 \end{tabular}
 
+\clearpage
 
+\subsection{Parsing the mdhd atom}
+\begin{figure}[h]
+\includegraphics{figures/alac/mdhd.pdf}
+\end{figure}
+\par
+\noindent
+\VAR{version} indicates whether the Mac UTC date fields are 32 or 64 bit.
+These date fields are seconds since the Macintosh Epoch,
+which is 00:00:00, January 1st, 1904.\footnote{Why 1904?
+ It's the first leap year of the 20th century.}
+To convert the Macintosh Epoch to a Unix Epoch timestamp
+(seconds since January 1st, 1970), one needs to subtract 24,107 days -
+or \texttt{2082844800} seconds.
+\par
+\noindent
+\VAR{track length} is the total length of the ALAC file, in PCM frames.
+\par
+\noindent
+\VAR{language} is 3, 5 bit fields encoded as ISO 639-2.
+Add 96 to each field to convert the value to ASCII.
+
+\clearpage
+
+For example, given the bytes:
+\begin{figure}[h]
+\includegraphics{figures/alac/mdhd-parse.pdf}
+\end{figure}
+\par
+\noindent
+\begin{tabular}{rcrcll}
+created MAC UTC date & $\leftarrow$ & \texttt{CA6BF4A9} & = & 3396072617 \\
+modified MAC UTC date & $\leftarrow$ & \texttt{CA6BFF5E} & = & 3396075358 \\
+sample rate & $\leftarrow$ & \texttt{0000AC44} & = & 44100 Hz \\
+track length & $\leftarrow$ & \texttt{8EACE80} & = & 149606016 & \texttt{56m 32s} \\
+$\text{language}_0$ & $\leftarrow$ & \texttt{15} & = & 21 & + 96 = `\texttt{u}'\\
+$\text{language}_1$ & $\leftarrow$ & \texttt{0E} & = & 14 & + 96 = `\texttt{n}'\\
+$\text{language}_2$ & $\leftarrow$ & \texttt{04} & = & 4 & + 96 = `\texttt{d}'\\
+\end{tabular}
+\vskip .15in
+\par
+\noindent
+Note that the language field is typically \texttt{und},
+meaning ``undetermined''.
 %% This is the typical arrangements of ALAC atoms as encoded by iTunes.
 %% As you can see, it is almost identical to the layout of AAC audio.
 %% One of the key differences is that ALAC's \texttt{stsd} atom

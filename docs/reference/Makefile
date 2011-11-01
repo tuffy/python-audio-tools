@@ -136,6 +136,8 @@ figures/alac/atoms.pdf \
 figures/alac/compressed_frame.pdf \
 figures/alac/frame_header.pdf \
 figures/alac/lag.pdf \
+figures/alac/mdhd.pdf \
+figures/alac/mdhd-parse.pdf \
 figures/alac/read_residual.pdf \
 figures/alac/residual.pdf \
 figures/alac/residual_w.pdf \
@@ -380,6 +382,9 @@ figures/alac/atom.pdf: figures/m4a/atom.bdx
 
 figures/alac/alac-atom-parse.pdf: figures/alac/alac-atom-parse.bpx
 	./bitparse.py -w 480 -b 24 -i $< -o $@
+
+figures/alac/mdhd.pdf: figures/m4a/mdhd.bdx
+	./bitdiagram.py -i $< -o $@
 
 figures/shorten/unsigned.pdf: figures/shorten/unsigned.fig
 	fig2dev -Z 2 -L pdf $< $@
