@@ -1,0 +1,27 @@
+<?xml version="1.0" ?>
+<struct endianness="big">
+  <field size="3" value="1">channels (+1)</field>
+  <field size="16" value="0">unused</field>
+  <field size="1" value="1">count?</field>
+  <field size="2" value="0">LSBs?</field>
+  <field size="1" value="0">raw?</field>
+  <field size="32" value="25">samples</field>
+  <field size="8" value="2">interlacing shift</field>
+  <field size="8" value="2">interlacing leftweight</field>
+  <field size="4" value="0">prediction type</field>
+  <field size="4" value="9">QLP shift needed</field>
+  <field size="3" value="4">Rice modifier</field>
+  <field size="5" value="4">coefficient count</field>
+  <field size="16" value="1446">coefficient₀</field>
+  <field size="16" value="63811">coefficient₁</field>
+  <field size="16" value="1072">coefficient₂</field>
+  <field size="16" value="65231">coefficient₃</field>
+  <field size="4" value="0">prediction type</field>
+  <field size="4" value="9">QLP shift needed</field>
+  <field size="3" value="4">Rice modifier</field>
+  <field size="5" value="4">coefficient count</field>
+  <field size="16" value="1415">coefficient₀</field>
+  <field size="16" value="63879">coefficient₁</field>
+  <field size="16" value="1011">coefficient₂</field>
+  <field size="16" value="65253">coefficient₃</field>
+</struct>

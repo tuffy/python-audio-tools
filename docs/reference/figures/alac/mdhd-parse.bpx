@@ -7,7 +7,7 @@
   <field size="32" value="0xCA6BF4A9">created MAC UTC date</field>
   <field size="32" value="0xCA6BFF5E">modified MAC UTC date</field>
   <field size="32" value="44100">sample rate</field>
-  <field size="32" value="149606016">track length</field>
+  <field size="32" value="149606016">PCM frame count</field>
   <field size="1" value="0">pad</field>
   <field size="5" value="21">language₀</field>
   <field size="5" value="14">language₁</field>

@@ -27,8 +27,8 @@ read \texttt{alac} atom to obtain decoding parameters\;
 read \texttt{mdhd} atom to obtain $PCM~frame~count$\;
 seek to \texttt{mdat} atom's data\;
 \While{$PCM~frame~count > 0$}{
-  decode ALAC frame to 1 or more PCM frames\;
-  deduct ALAC frame's samples from stream's $PCM~frame~count$\;
+  decode ALAC frameset to 1 or more PCM frames\;
+  deduct ALAC frameset's samples from stream's $PCM~frame~count$\;
   return decoded PCM frames\;
 }
 \EALGORITHM
@@ -127,7 +127,7 @@ For example, given the bytes:
 created MAC UTC date & $\leftarrow$ & \texttt{CA6BF4A9} & = & 3396072617 \\
 modified MAC UTC date & $\leftarrow$ & \texttt{CA6BFF5E} & = & 3396075358 \\
 sample rate & $\leftarrow$ & \texttt{0000AC44} & = & 44100 Hz \\
-track length & $\leftarrow$ & \texttt{8EACE80} & = & 149606016 & \texttt{56m 32s} \\
+PCM frame count & $\leftarrow$ & \texttt{8EACE80} & = & 149606016 & \texttt{56m 32s} \\
 $\text{language}_0$ & $\leftarrow$ & \texttt{15} & = & 21 & + 96 = `\texttt{u}'\\
 $\text{language}_1$ & $\leftarrow$ & \texttt{0E} & = & 14 & + 96 = `\texttt{n}'\\
 $\text{language}_2$ & $\leftarrow$ & \texttt{04} & = & 4 & + 96 = `\texttt{d}'\\
@@ -137,6 +137,144 @@ $\text{language}_2$ & $\leftarrow$ & \texttt{04} & = & 4 & + 96 = `\texttt{d}'\\
 \noindent
 Note that the language field is typically \texttt{und},
 meaning ``undetermined''.
+
+\clearpage
+
+\subsection{Decoding ALAC Frameset}
+ALAC framesets contain multiple frames,
+each of which contains 1 or 2 subframes.
+\par
+\noindent
+\ALGORITHM{\texttt{mdat} atom data, decoding parameters from \texttt{alac} atom}{decoded PCM frames}
+$channels \leftarrow$ (\READ 3 unsigned bits) + 1\;
+\While{$channels \neq 8$}{
+  decode ALAC frame to 1 or 2 channels of PCM data\;
+  $channels \leftarrow$ (\READ 3 unsigned bits) + 1\;
+}
+byte-align file stream\;
+\Return all frames' channels as PCM frames\;
+\EALGORITHM
+\begin{figure}[h]
+\includegraphics{figures/alac/stream.pdf}
+\end{figure}
+
+\clearpage
+
+\subsection{Decoding ALAC Frame}
+\ALGORITHM{\texttt{mdat} atom data, channel count, decoding parameters from \texttt{alac} atom}{1 or 2 decoded channels of PCM data}
+\SKIP 16 bits\;
+$has~sample~count \leftarrow$ \READ 1 unsigned bit\;
+$uncompressed~LSBs \leftarrow$ \READ 2 unsigned bits\;
+$not~compressed \leftarrow$ \READ 1 unsigned bit\;
+\eIf{$has~sample~count = 0$}{
+  sample count $\leftarrow$ samples per frame from \texttt{alac} atom\;
+}{
+  sample count $\leftarrow$ \READ 32 unsigned bits\;
+}
+\eIf(\tcc*[f]{raw, uncompressed frame}){$not~compressed = 1$}{
+  \For{i = 0 \emph{\KwTo}sample count}{
+    \For{c = 0 \emph{\KwTo}channel count}{
+      \tcc{bits per sample taken from alac atom}
+      $\text{channel}_{i~c} \leftarrow$ \READ (bits per sample) signed bits\;
+    }
+  }
+}(\tcc*[f]{compressed frame}){
+  interlacing shift $\leftarrow$ \READ 8 unsigned bits\;
+  interlacing leftweight $\leftarrow$ \READ 8 unsigned bits\;
+  \For{c = 0 \emph{\KwTo}channel count}{
+    $\text{subframe header}_c \leftarrow$ read subframe header\;
+  }
+  \If{$uncompressed~LSBs > 0$}{
+    \For{i = 0 \emph{\KwTo}sample count}{
+      \For{c = 0 \emph{\KwTo}channel count}{
+        $\text{LSBs}_{i~c} \leftarrow$ \READ ($uncompressed~LSBs \times 8$) signed bits\;
+      }
+    }
+  }
+  \For{c = 0 \emph{\KwTo}channel count}{
+    $\text{residual block}_c \leftarrow$ read residual block\;
+    decode $\text{subframe}_c$ from $\text{subframe header}_c$ and $\text{residual block}_c$\;
+  }
+  \eIf{$channel~count = 2$}{
+    decorrelate $\text{subframe}_0$ and $\text{subframe}_1$ to $\text{channel}_0$ and $\text{channel}_1$ according to interlacing shift and interlacing leftweight\;
+  }{
+    \For{c = 0 \emph{\KwTo}channel count}{
+      $\text{channel}_c \leftarrow \text{subframe}_c$\;
+    }
+  }
+  \If{$uncompressed~LSBs > 0$}{
+    prepend each $\text{LSBs}_{i~c}$ to its corresponding $\text{channel}_{i~c}$ sample\;
+  }
+}
+\Return channel data\;
+\EALGORITHM
+
+\clearpage
+
+\subsection{Reading Subframe Header}
+\ALGORITHM{\texttt{mdat} atom data}{subframe decoding parameters}
+$prediction~type \leftarrow$ \READ 4 unsigned bits\tcc*[r]{must be 0}
+QLP shift needed $\leftarrow$ \READ 4 unsigned bits\;
+Rice modifier $\leftarrow$ \READ 3 unsigned bits\tcc*[r]{unusued}
+$\text{coefficient count} \leftarrow$ \READ 5 unsigned bits\tcc*[r]{always 4 or 8}
+\For{i = 0 \emph{\KwTo}coefficient count}{
+  $\text{QLP coefficient}_i \leftarrow$ \READ 16 signed bits\;
+}
+\Return QLP shift needed, QLP coefficients
+\EALGORITHM
+\begin{figure}[h]
+\includegraphics{figures/alac/subframe_header.pdf}
+\end{figure}
+\par
+\noindent
+For example, given the bytes on the opposite page,
+our frame and subframe headers are:
+\begin{table}[h]
+{\relsize{-1}
+\begin{tabular}{rclcl}
+\multicolumn{5}{l}{frame header:} \\
+$channels$ & $\leftarrow$ & \texttt{0} (+1) &=& 2 \\
+$has~sample~count$ & $\leftarrow$ & \texttt{1} \\
+$uncompressed~LSBs$ & $\leftarrow$ & \texttt{0} \\
+$not~compressed$ & $\leftarrow$ & \texttt{0} \\
+sample count & $\leftarrow$ & \texttt{0x19} &=& 25 \\
+interlacing shift & $\leftarrow$ & \texttt{2} \\
+interlacing leftweight & $\leftarrow$ & \texttt{2} \\
+\hline
+\multicolumn{5}{l}{subframe header 0:} \\
+$prediction~type_0$ & $\leftarrow$ & \texttt{0} \\
+$\text{QLP shift needed}_0$ & $\leftarrow$ & \texttt{9} \\
+$\text{Rice modifier}_0$ & $\leftarrow$ & \texttt{4} \\
+$\text{coefficient count}_0$ & $\leftarrow$ & \texttt{4} \\
+$\text{coefficient}_{0~0}$ & $\leftarrow$ & \texttt{0x05A6} &=& 1446 \\
+$\text{coefficient}_{0~1}$ & $\leftarrow$ & \texttt{0xF943} &=& -1725 \\
+$\text{coefficient}_{0~2}$ & $\leftarrow$ & \texttt{0x0430} &=& 1072 \\
+$\text{coefficient}_{0~3}$ & $\leftarrow$ & \texttt{0xFECF} &=& -305 \\
+\hline
+\multicolumn{5}{l}{subframe header 1:} \\
+$prediction~type_1$ & $\leftarrow$ & \texttt{0} \\
+$\text{QLP shift needed}_1$ & $\leftarrow$ & \texttt{9} \\
+$\text{Rice modifier}_1$ & $\leftarrow$ & \texttt{4} \\
+$\text{coefficient count}_1$ & $\leftarrow$ & \texttt{4} \\
+$\text{coefficient}_{1~0}$ & $\leftarrow$ & \texttt{0x0587} &=& 1415 \\
+$\text{coefficient}_{1~1}$ & $\leftarrow$ & \texttt{0xF987} &=& -1657 \\
+$\text{coefficient}_{1~2}$ & $\leftarrow$ & \texttt{0x03F3} &=& 1011 \\
+$\text{coefficient}_{1~3}$ & $\leftarrow$ & \texttt{0xFEE5} &=& -283 \\
+\end{tabular}
+}
+\end{table}
+
+\clearpage
+
+\begin{figure}[h]
+\includegraphics{figures/alac/subframe-parse.pdf}
+\caption{mdat atom bytes}
+\end{figure}
+
+%% \begin{figure}[h]
+
+%% \end{figure}
+
 %% This is the typical arrangements of ALAC atoms as encoded by iTunes.
 %% As you can see, it is almost identical to the layout of AAC audio.
 %% One of the key differences is that ALAC's \texttt{stsd} atom

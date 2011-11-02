@@ -1,117 +1,102 @@
 <?xml version="1.0" ?><diagram>
   <row>
-    <col start="0" width=".25">`ftyp' atom</col>
-    <col width=".25">`moov' atom</col>
-    <col width=".25">`free' atom</col>
-    <col id="mdat" width=".25">`mdat' atom</col>
+    <col end="31" id="mdat_len" start="0" width=".20">mdat length</col>
+    <col end="63" start="32" width=".20">`mdat'</col>
+    <col id="frameset" start="64" width=".20"
+         >frame set₀</col>
+    <col width=".20">frame set₁</col>
+    <col id="mdat_end" style="dashed" width=".20">...</col>
   </row>
   <spacer height=".75"/>
   <row>
-    <col end="31" id="mdat_len" start="0" width=".15">mdat Length</col>
-    <col end="63" start="32" width=".26">`mdat' (0x6D646174)</col>
-    <col id="frameset" start="64" width=".19666666"
-         background-color="#0000FF33">Frame Set₁</col>
-    <col width=".19666666">Frame Set₂</col>
-    <col id="mdat_end" style="dashed" width=".19666666">...</col>
-  </row>
-  <spacer height=".75"/>
-  <row>
-    <col end="2" id="channels" start="0" width=".15"
-         border-color="blue">Channels₁</col>
-    <col id="frame" width=".25"
-         border-color="blue"
-         background-color="#7F7F0033">Frame₁</col>
-    <col end="2" start="0" style="dashed" width=".15"
-         border-color="blue">Channels₂</col>
-    <col style="dashed" width=".25"
-         border-color="blue">Frame₂</col>
-    <col end="2" start="0" width=".15"
-         border-color="blue">Footer (0x7)</col>
+    <col end="2" id="channels" start="0" width="0.183"
+         >channels₀ (+1)</col>
+    <col id="frame" width=".20"
+
+         >frame₀</col>
+    <col end="2" start="0" style="dashed" width="0.183"
+         >channels₁ (+1)</col>
+    <col style="dashed" width="0.20"
+         >frame₁</col>
+    <col end="2" start="0" width="0.183"
+         >channels₂ (7)</col>
     <col id="pad" style="dashed" width=".05"
-         border-color="blue">Pad</col>
+         >pad</col>
   </row>
   <spacer/>
   <row>
     <col start="3" end="18" width=".25" id="frame_s"
-         border-color="olive">Unknown</col>
+         >unused</col>
     <col start="19" end="19" width=".25"
-         border-color="olive">Has Sample Count</col>
+         >has sample count</col>
     <col start="20" end="21" width=".25"
-         border-color="olive">Uncompressed LSBs</col>
+         >uncompressed LSBs</col>
     <col start="22" end="22" width=".25" id="frame_e"
-         border-color="olive">Uncompressed</col>
+         >not compressed</col>
   </row>
   <row>
     <col start="23" end="54" style="dashed" width=".40"
-         border-color="olive">Sample Count</col>
+         >sample count</col>
     <col width=".6" id="frame_d"
-         border-color="olive"
-         background-color="#FF660033">Frame Data</col>
+
+         >frame data</col>
   </row>
   <spacer/>
   <row>
-    <col style="blank" width=".25">Uncompressed = 1</col>
+    <col style="blank" width=".25">not compressed = 1</col>
     <col width=".25" id="frame_d_s"
-         border-color="orange">Sample₁</col>
+         >sample₀</col>
     <col width=".25"
-         border-color="orange">Sample₂</col>
+         >sample₁</col>
     <col width=".25" style="dashed" id="frame_d_e"
-         border-color="orange">...</col>
+         >...</col>
   </row>
   <spacer height=".5"/>
   <row>
     <col style="blank" width=".25"
-         border-color="orange">Uncompressed = 0</col>
+         >not compressed = 0</col>
     <col width=".375" start="0" end="7"
-         border-color="orange">Interlacing Shift</col>
+         >interlacing shift</col>
     <col width=".375" start="8" end="15"
-         border-color="orange">Interlacing Leftweight</col>
+         >interlacing leftweight</col>
   </row>
   <row>
     <col style="blank" width=".25"/>
-    <col width=".375" border-color="orange">Subframe Header₁</col>
+    <col width=".375" >subframe header₀</col>
     <col style="dashed" width=".375"
-         border-color="orange">Subframe Header₂</col>
+         >subframe header₁</col>
   </row>
   <row>
     <col style="blank" width=".25"/>
     <col style="dashed" width=".75"
-         border-color="orange">Uncompressed LSB Samples</col>
+         >uncompressed LSB samples</col>
   </row>
   <row>
     <col style="blank" width=".25"/>
-    <col width=".375" border-color="orange">Residual Block₁</col>
-    <col style="dashed" width=".375" border-color="orange">Residual Block₂</col>
+    <col width=".375" >residual block₀</col>
+    <col style="dashed" width=".375" >residual block₁</col>
   </row>
-  <line style="dotted">
-    <start corner="sw" id="mdat"/>
-    <end corner="nw" id="mdat_len"/>
-  </line>
-  <line style="dotted">
-    <start corner="se" id="mdat"/>
-    <end corner="ne" id="mdat_end"/>
-  </line>
-  <line style="dotted" color="blue">
+  <line style="dotted" >
     <start corner="sw" id="frameset"/>
     <end corner="nw" id="channels"/>
   </line>
-  <line style="dotted" color="blue">
+  <line style="dotted" >
     <start corner="se" id="frameset"/>
     <end corner="ne" id="pad"/>
   </line>
-  <line style="dotted" color="olive">
+  <line style="dotted" >
     <start corner="sw" id="frame"/>
     <end corner="nw" id="frame_s"/>
   </line>
-  <line style="dotted" color="olive">
+  <line style="dotted" >
     <start corner="se" id="frame"/>
     <end corner="ne" id="frame_e"/>
   </line>
-  <line style="dotted" color="orange">
+  <line style="dotted" >
     <start id="frame_d" corner="sw"/>
     <end id="frame_d_s" corner="nw"/>
   </line>
-  <line style="dotted" color="orange">
+  <line style="dotted" >
     <start id="frame_d" corner="se"/>
     <end id="frame_d_e" corner="ne"/>
   </line>

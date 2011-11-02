@@ -12,7 +12,7 @@
   </row>
   <row>
     <col start="160/224" end="191/255" width=".5">sample rate</col>
-    <col start="192/256" end="223/319" width=".5">track length</col>
+    <col start="192/256" end="223/319" width=".5">PCM frame count</col>
   </row>
   <row>
     <col start="224/320" end="224/320" width=".2">pad</col>
