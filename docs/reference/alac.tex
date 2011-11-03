@@ -271,6 +271,141 @@ $\text{coefficient}_{1~3}$ & $\leftarrow$ & \texttt{0xFEE5} &=& -283 \\
 \caption{mdat atom bytes}
 \end{figure}
 
+\clearpage
+
+\subsection{Reading Residual Block}
+\ALGORITHM{\texttt{mdat} atom data, initial history and maximum K from \texttt{alac} atom, sample count, sample size}{a decoded list of signed residuals}
+\SetKwData{SIGN}{sign modifier}
+\SetKwData{HISTORY}{history}
+\SetKwData{HISTORYMULT}{history multiplier}
+\SetKwData{ZEROES}{zero residuals count}
+\SetKw{AND}{and}
+\SetKwFunction{MIN}{min}
+\SetKwFunction{READRESIDUAL}{read residual}
+\HISTORY $\leftarrow$ initial history\;
+\SIGN $\leftarrow 0$\;
+\For{i = 0 \emph{\KwTo}sample count}{
+  $\kappa \leftarrow \MIN(\lfloor\log_2(\HISTORY \div 2 ^ 9 + 3)\rfloor~,~\text{maximum K})$\;
+  $\text{unsigned}_i \leftarrow \READRESIDUAL(\kappa~,~\text{sample size}) + \SIGN$\;
+  \BlankLine
+  \eIf(\tcc*[f]{apply sign bit}){$\text{unsigned}_i$ is even}{
+    $\text{residual}_i \leftarrow \text{unsigned}_i \div 2$\;
+  }{
+    $\text{residual}_i \leftarrow -((\text{unsigned}_i + 1) \div 2)$\;
+  }
+  \BlankLine
+  \eIf(\tcc*[f]{update history}){$\text{unsigned}_i \leq 65535$}{
+    \HISTORY $\leftarrow \HISTORY + (\text{unsigned}_i \times \HISTORYMULT) - \left\lfloor\frac{\HISTORY \times \HISTORYMULT}{2 ^ 9}\right\rfloor$\;
+    \If{$\HISTORY < 128$ \AND $(i + 1) < sample~count$}{
+      \tcc{generate run of 0 residuals if history gets too small}
+      $\kappa \leftarrow \MIN(7 - \lfloor\log_2(\HISTORY)\rfloor + ((\HISTORY + 16) \div 64)~,~\text{maximum K})$\;
+      \ZEROES $\leftarrow \READRESIDUAL(\kappa~,~16)$\;
+      \For{j = 0 \emph{\KwTo}\ZEROES}{
+        $\text{residual}_{i + j + 1} \leftarrow 0$\;
+      }
+      $i \leftarrow i + j$\;
+      \HISTORY $\leftarrow 0$\;
+      \If{$\ZEROES \leq 65535$}{
+        \SIGN $\leftarrow 1$\;
+      }
+    }
+  }{
+    \HISTORY $\leftarrow 65535$\;
+  }
+}
+\Return signed residual values\;
+\EALGORITHM
+
+\clearpage
+
+\subsubsection{Reading Residual}
+\ALGORITHM{\texttt{mdat} atom data, $\kappa$, sample size}{an unsigned residual}
+\SetKwData{MSB}{MSB}
+\SetKwData{LSB}{LSB}
+\SetKw{UNREAD}{unread}
+\MSB $\leftarrow$ \UNARY with stop bit 0, to a maximum of 8 bits\;
+\uIf{9, \texttt{1} bits encountered}{
+  \Return \READ (sample size) unsigned bits\;
+}
+\uElseIf{$\kappa = 0$}{
+  \Return \MSB\;
+}
+\Else{
+  \LSB $\leftarrow$ \READ $\kappa$ unsigned bits\;
+  \uIf{$\LSB > 1$}{
+    \Return $(\MSB \times (2 ^ \kappa - 1)) + (\LSB - 1)$\;
+  }
+  \uElseIf{$\LSB = 1$}{
+    \UNREAD single \texttt{1} bit back into stream\;
+    \Return $\MSB \times (2 ^ \kappa - 1)$\;
+  }
+  \Else{
+    \UNREAD single \texttt{0} bit back into stream\;
+    \Return $\MSB \times (2 ^ \kappa - 1)$\;
+  }
+}
+\EALGORITHM
+
+\clearpage
+
+\subsubsection{Residual Decoding Example}
+\begin{align*}
+\text{history} &\leftarrow 10 \text{ (initial history)} \\
+\text{sign modifier} & \leftarrow 0 \\
+i &\leftarrow 0 \\
+\kappa & \leftarrow \lfloor\log_2(10 \div 2 ^ 9 + 3)\rfloor = 1 \\
+\text{MSB}_0 &\leftarrow 9 \\
+\text{unsigned}_0 &\leftarrow 64 \\
+\text{residual}_0 &\leftarrow 64 \div 2 = 32 \\
+\text{history} &\leftarrow 10 + (64 \times 40) - \left\lfloor\frac{10 \times 40}{2 ^ 9}\right\rfloor = 2570 \\
+\end{align*}
+\begin{align*}
+i &\leftarrow 1 \\
+\kappa &\leftarrow \lfloor\log_2(2570 \div 2 ^ 9 + 3)\rfloor = 3 \\
+\text{MSB}_1 &\leftarrow 2 \\
+\text{LSB}_1 &\leftarrow 1 \text{ (unread single \texttt{1} bit)}\\
+\text{unsigned}_1 &\leftarrow 2 \times (2 ^ 3 - 1) = 14 \\
+\text{residual}_1 &\leftarrow 14 \div 2 = 7 \\
+\text{history} &\leftarrow 2570 + (14 \times 40) - \left\lfloor\frac{2570 \times 40}{2 ^ 9}\right\rfloor = 2930 \\
+\end{align*}
+\begin{align*}
+i &\leftarrow 2 \\
+\kappa &\leftarrow \lfloor\log_2(2930 \div 2 ^ 9 + 3)\rfloor = 3 \\
+\text{MSB}_2 &\leftarrow 1 \\
+\text{LSB}_2 &\leftarrow 2 \\
+\text{unsigned}_2 &\leftarrow (1 \times (2 ^ 3 - 1)) + (2 - 1) = 8 \\
+\text{residual}_2 &\leftarrow 8 \div 2 = 4 \\
+\text{history} &\leftarrow 2930 + (8 \times 40) - \left\lfloor\frac{2930 \times 40}{2 ^ 9}\right\rfloor = 3022 \\
+\end{align*}
+\clearpage
+\begin{align*}
+i &\leftarrow 3 \\
+\kappa &\leftarrow \lfloor\log_2(3022 \div 2 ^ 9 + 3)\rfloor = 3 \\
+\text{MSB}_3 &\leftarrow 0 \\
+\text{LSB}_3 &\leftarrow 5 \\
+\text{unsigned}_3 &\leftarrow (0 \times (2 ^ 3 - 1)) + (5 - 1) = 4 \\
+\text{residual}_3 &\leftarrow 4 \div 2 = 2 \\
+\text{history} &\leftarrow 3022 + (4 \times 40) - \left\lfloor\frac{3022 \times 40}{2 ^ 9}\right\rfloor = 2946 \\
+\end{align*}
+\begin{align*}
+i &\leftarrow 4 \\
+\kappa &\leftarrow \lfloor\log_2(2946 \div 2 ^ 9 + 3)\rfloor = 3 \\
+\text{MSB}_4 &\leftarrow 0 \\
+\text{LSB}_4 &\leftarrow 2 \\
+\text{unsigned}_4 &\leftarrow (0 \times (2 ^ 3 - 1)) + (2 - 1) = 1 \\
+\text{residual}_4 &\leftarrow -((1 + 1) \div 2) = -1 \\
+\text{history} &\leftarrow 2946 + (1 \times 40) - \left\lfloor\frac{2946 \times 40}{2 ^ 9}\right\rfloor = 2756 \\
+\end{align*}
+\begin{figure}[h]
+\includegraphics{figures/alac/residual-parse.pdf}
+\end{figure}
+\par
+\noindent
+Decoding the remaining residuals is left as an exercise for the reader.
+The final values of all 25 residuals are:
+\texttt{32, 7, 4, 2, -1, -1, -1, -4, -1, -4, -2, -3, -1, -1, -1,
+1, 0, 0, 3, 2, 1, 4, 1, 3, 2}
+
 %% \begin{figure}[h]
 
 %% \end{figure}

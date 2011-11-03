@@ -140,6 +140,7 @@ figures/alac/mdhd.pdf \
 figures/alac/mdhd-parse.pdf \
 figures/alac/read_residual.pdf \
 figures/alac/residual.pdf \
+figures/alac/residual-parse.pdf \
 figures/alac/residual_w.pdf \
 figures/alac/stream.pdf \
 figures/alac/subframe-parse.pdf \
@@ -392,6 +393,9 @@ figures/alac/mdhd.pdf: figures/m4a/mdhd.bdx
 
 figures/alac/subframe-parse.pdf: figures/alac/subframe-parse.bpx
 	./bitparse.py -w 432 -b 16 -i $< -o $@
+
+figures/alac/residual-parse.pdf: figures/alac/residual-parse.bpx
+	./bitparse.py -w 480 -b 24 -i $< -o $@
 
 figures/shorten/unsigned.pdf: figures/shorten/unsigned.fig
 	fig2dev -Z 2 -L pdf $< $@
