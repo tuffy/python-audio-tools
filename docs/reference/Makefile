@@ -395,7 +395,7 @@ figures/alac/subframe-parse.pdf: figures/alac/subframe-parse.bpx
 	./bitparse.py -w 432 -b 16 -i $< -o $@
 
 figures/alac/residual-parse.pdf: figures/alac/residual-parse.bpx
-	./bitparse.py -w 480 -b 24 -i $< -o $@
+	./bitparse.py -w 490 -b 24 -i $< -o $@
 
 figures/shorten/unsigned.pdf: figures/shorten/unsigned.fig
 	fig2dev -Z 2 -L pdf $< $@

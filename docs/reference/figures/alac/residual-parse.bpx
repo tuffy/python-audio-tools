@@ -1,11 +1,14 @@
 <?xml version="1.0" ?>
 <struct endianness="big">
-  <field size="9" value="111111111b">MSB₀</field>
+  <text size="7">frame header</text>
+  <text size="8">subframe header₀</text>
+  <text size="8">subframe header₁</text>
+  <field size="9" value="111111111b" init="1,1,0,0,1,0,1">MSB₀</field>
   <field size="17" value="64">unsigned₀</field>
   <field size="3" value="110b">MSB₁</field>
-  <field size="2" value="00b">LSB₁</field>
-  <field size="1" value="1b">₁↔₂</field>
-  <field size="1" value="0">MSB₂</field>
+  <field size="2" value="00b" border_e="blank">LSB₁</field>
+  <field size="1" value="1b" border_e="dotted" border_w="dotted">₁↔₂</field>
+  <field size="1" value="0" border_w="blank">MSB₂</field>
   <field size="3" value="2">LSB₂</field>
   <field size="1" value="0">MSB₃</field>
   <field size="3" value="5">LSB₃</field>
@@ -22,10 +25,10 @@
   <field size="3" value="110b">MSB₉</field>
   <field size="2" value="2">LSB₉</field>
   <field size="2" value="10b">MSB₁₀</field>
-  <field size="1" value="0">LSB₁₀</field>
-  <field size="1" value="1">₁₀↔₁₁</field>
-  <field size="2" value="10b">MSB₁₁</field>
-  <field size="2" value="3">LSB₁₁</field>
+  <field size="1" value="0" border_e="blank">LSB₁₀</field>
+  <field size="1" value="1" border_e="dotted" border_w="dotted">₁₀↔₁₁</field>
+  <field size="1" value="0" border_w="blank">MSB₁₁</field>
+  <field size="2" value="11b" border_w="blank">LSB₁₁</field>
   <field size="1" value="0">MSB₁₂</field>
   <field size="2" value="2">LSB₁₂</field>
   <field size="1" value="0">MSB₁₃</field>
@@ -35,14 +38,14 @@
   <field size="1" value="0">MSB₁₅</field>
   <field size="2" value="3">LSB₁₅</field>
   <field size="1" value="0">MSB₁₆</field>
-  <field size="2" value="0">LSB₁₆</field>
-  <field size="1" value="0">₁₆↔₁₇</field>
-  <field size="1" value="0">MSB₁₇</field>
-  <field size="1" value="1">₁₇↔₁₈</field>
-  <field size="2" value="10b">MSB₁₈</field>
-  <field size="1" value="0">LSB₁₈</field>
-  <field size="1" value="1">₁₈↔₁₉</field>
-  <field size="1" value="0">MSB₁₉</field>
+  <field size="1" value="0" border_e="blank">LSB₁₆</field>
+  <field size="1" value="0" border_e="dotted" border_w="dotted">₁₆↔₁₇</field>
+  <field size="1" value="0" border_e="blank" border_w="blank">LSB₁₇</field>
+  <field size="1" value="1" border_e="dotted" border_w="dotted">₁₇↔₁₈</field>
+  <field size="2" value="10b" border_w="blank">MSB₁₈</field>
+  <field size="1" value="0" border_e="blank">LSB₁₈</field>
+  <field size="1" value="1" border_e="dotted" border_w="dotted">₁₈↔₁₉</field>
+  <field size="1" value="0" border_w="blank">MSB₁₉</field>
   <field size="2" value="2">LSB₁₉</field>
   <field size="1" value="0">MSB₂₀</field>
   <field size="2" value="3">LSB₂₀</field>
@@ -51,8 +54,8 @@
   <field size="1" value="0">MSB₂₂</field>
   <field size="2" value="3">LSB₂₂</field>
   <field size="3" value="110b">MSB₂₃</field>
-  <field size="1" value="0">LSB₂₃</field>
-  <field size="1" value="1">₂₃↔₂₄</field>
-  <field size="1" value="0">MSB₂₄</field>
-  <field size="2" value="2">LSB₂₄</field>
+  <field size="1" value="0" border_e="blank">LSB₂₃</field>
+  <field size="1" value="1" border_e="dotted" border_w="dotted">₂₃↔₂₄</field>
+  <field size="1" value="0" border_w="blank">MSB₂₄</field>
+  <field size="2" value="3">LSB₂₄</field>
 </struct>

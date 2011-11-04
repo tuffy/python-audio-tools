@@ -17,12 +17,13 @@ except ImportError:
 BIT_WIDTH = 20
 BIT_HEIGHT = 30
 
+(BORDER_NONE, BORDER_LINE, BORDER_DOTTED) = range(3)
 
 class Chunk:
     def __init__(self, bits, superscripts,
                  name=None,
                  background_color=None,
-                 w_border=False, e_border=False):
+                 w_border=BORDER_NONE, e_border=BORDER_NONE):
         assert(len(bits) == len(superscripts))
         self.bits = bits
         self.superscripts = superscripts
@@ -55,17 +56,17 @@ class Chunk:
                       name=self.name,
                       background_color=self.background_color,
                       w_border=self.w_border,
-                      e_border=False),
+                      e_border=BORDER_NONE),
                 Chunk(bits=self.bits[bits:],
                       superscripts=self.superscripts[bits:],
                       name=self.name,
                       background_color=self.background_color,
-                      w_border=False,
+                      w_border=BORDER_NONE,
                       e_border=self.e_border))
 
     def __repr__(self):
         return "Chunk(%s)" % \
-            ",".join([repr(getattr(self, attr))
+            ",".join(["%s=%s" % (attr, repr(getattr(self, attr)))
                       for attr in ["bits", "superscripts", "name",
                                    "background_color",
                                    "w_border", "e_border",
@@ -111,16 +112,28 @@ class Chunk:
 
         pdf.setStrokeColorRGB(0.0,0.0,0.0)
         #draw top and bottom borders
+        pdf.setDash(1, 0)
         pdf.line(self.nw[0], self.nw[1],
                  self.ne[0], self.ne[1])
         pdf.line(self.sw[0], self.sw[1],
                  self.se[0], self.se[1])
 
         #draw left and right borders, if any
-        if (self.w_border):
+        if (self.w_border == BORDER_LINE):
+            pdf.setDash(1, 0)
             pdf.line(self.nw[0], self.nw[1],
                      self.sw[0], self.sw[1])
-        if (self.e_border):
+        elif (self.w_border == BORDER_DOTTED):
+            pdf.setDash(1, 6)
+            pdf.line(self.nw[0], self.nw[1],
+                     self.sw[0], self.sw[1])
+
+        if (self.e_border == BORDER_LINE):
+            pdf.setDash(1, 0)
+            pdf.line(self.ne[0], self.ne[1],
+                     self.se[0], self.se[1])
+        elif (self.e_border == BORDER_DOTTED):
+            pdf.setDash(1, 6)
             pdf.line(self.ne[0], self.ne[1],
                      self.se[0], self.se[1])
 
@@ -191,6 +204,7 @@ class Chunk:
         svg.appendChild(bottom)
 
         #drop left and right borders, if any
+        #FIXME - handle dotted/line borders
         if (self.w_border):
             left = dom.createElement(u"line")
             left.setAttribute(u"x1", "%dpt" % (self.nw[0]))
@@ -200,6 +214,7 @@ class Chunk:
             left.setAttribute(u"style", u"stroke: black;")
             svg.appendChild(left)
 
+        #FIXME - handle dotted/line borders
         if (self.e_border):
             right = dom.createElement(u"line")
             right.setAttribute(u"x1", "%dpt" % (self.ne[0]))
@@ -214,7 +229,7 @@ class TextChunk(Chunk):
     def __init__(self, bit_width,
                  name=None,
                  background_color=None,
-                 w_border=False, e_border=False):
+                 w_border=BORDER_NONE, e_border=BORDER_NONE):
         self.bit_width = bit_width
         self.name = name
         self.background_color = background_color
@@ -232,12 +247,12 @@ class TextChunk(Chunk):
                           name=self.name,
                           background_color=self.background_color,
                           w_border=self.w_border,
-                          e_border=False),
+                          e_border=BORDER_NONE),
                 TextChunk(bit_width=self.bit_width - bits,
                           name=self.name,
                           background_color=self.background_color,
                           w_border=self.w_border,
-                          e_border=False))
+                          e_border=BORDER_NONE))
 
     def __repr__(self):
         return "TextChunk(%s)" % \
@@ -258,23 +273,35 @@ class TextChunk(Chunk):
                      stroke=0, fill=1)
 
         #draw centered name, if any
-        pdf.setFont("DejaVu", 18)
+        pdf.setFont("DejaVu", 12)
         pdf.drawCentredString(self.nw[0] + (self.pt_width() / 2),
                               self.se[1] + 12,
                               unicode(self.name))
 
         pdf.setStrokeColorRGB(0.0,0.0,0.0)
         #drop top and bottom borders
+        pdf.setDash(1, 0)
         pdf.line(self.nw[0], self.nw[1],
                  self.ne[0], self.ne[1])
         pdf.line(self.sw[0], self.sw[1],
                  self.se[0], self.se[1])
 
         #draw left and right borders, if any
-        if (self.w_border):
+        if (self.w_border == BORDER_LINE):
+            pdf.setDash(1, 0)
             pdf.line(self.nw[0], self.nw[1],
                      self.sw[0], self.sw[1])
-        if (self.e_border):
+        elif (self.w_border == BORDER_DOTTED):
+            pdf.setDash(1, 6)
+            pdf.line(self.nw[0], self.nw[1],
+                     self.sw[0], self.sw[1])
+
+        if (self.e_border == BORDER_LINE):
+            pdf.setDash(1, 0)
+            pdf.line(self.ne[0], self.ne[1],
+                     self.se[0], self.se[1])
+        elif (self.e_border == BORDER_DOTTED):
+            pdf.setDash(1, 6)
             pdf.line(self.ne[0], self.ne[1],
                      self.se[0], self.se[1])
 
@@ -314,6 +341,7 @@ class TextChunk(Chunk):
         svg.appendChild(bottom)
 
         #drop left and right borders, if any
+        #FIXME - handle dotted/line borders
         if (self.w_border):
             left = dom.createElement(u"line")
             left.setAttribute(u"x1", "%dpt" % (self.nw[0]))
@@ -323,6 +351,7 @@ class TextChunk(Chunk):
             left.setAttribute(u"style", u"stroke: black;")
             svg.appendChild(left)
 
+        #FIXME - handle dotted/line borders
         if (self.e_border):
             right = dom.createElement(u"line")
             right.setAttribute(u"x1", "%dpt" % (self.ne[0]))
@@ -336,7 +365,7 @@ class BytesChunk(Chunk):
     def __init__(self, bit_width, superscripts,
                  name=None,
                  background_color=None,
-                 w_border=False, e_border=False):
+                 w_border=BORDER_NONE, e_border=BORDER_NONE):
         assert(bit_width == len(superscripts))
         self.bit_width = bit_width
         self.superscripts = superscripts
@@ -357,12 +386,12 @@ class BytesChunk(Chunk):
                            name=self.name,
                            background_color=self.background_color,
                            w_border=self.w_border,
-                           e_border=False),
+                           e_border=BORDER_NONE),
                 BytesChunk(bit_width=self.bit_width - bits,
                            superscripts=self.superscripts[bits:],
                            name=self.name,
                            background_color=self.background_color,
-                           w_border=False,
+                           w_border=BORDER_NONE,
                            e_border=self.e_border))
 
     def __repr__(self):
@@ -396,16 +425,28 @@ class BytesChunk(Chunk):
 
         pdf.setStrokeColorRGB(0.0,0.0,0.0)
         #draw top and bottom borders
+        pdf.setDash(1, 0)
         pdf.line(self.nw[0], self.nw[1],
                  self.ne[0], self.ne[1])
         pdf.line(self.sw[0], self.sw[1],
                  self.se[0], self.se[1])
 
         #draw left and right borders, if any
-        if (self.w_border):
+        if (self.w_border == BORDER_LINE):
+            pdf.setDash(1, 0)
             pdf.line(self.nw[0], self.nw[1],
                      self.sw[0], self.sw[1])
-        if (self.e_border):
+        elif (self.w_border == BORDER_DOTTED):
+            pdf.setDash(1, 6)
+            pdf.line(self.nw[0], self.nw[1],
+                     self.sw[0], self.sw[1])
+
+        if (self.e_border == BORDER_LINE):
+            pdf.setDash(1, 0)
+            pdf.line(self.ne[0], self.ne[1],
+                     self.se[0], self.se[1])
+        elif (self.e_border == BORDER_DOTTED):
+            pdf.setDash(1, 6)
             pdf.line(self.ne[0], self.ne[1],
                      self.se[0], self.se[1])
 
@@ -456,18 +497,29 @@ class ChunkTable:
 
 
 class Bits:
-    def __init__(self, name, bits):
+    def __init__(self, name, bits, init, e_border, w_border):
         """name is a unicode string
         bits is a list of individual bit values
         this generates chunks to be displayed"""
 
         self.name = name
         self.bits = bits
+        self.init = init
+        self.e_border = e_border
+        self.w_border = w_border
 
     def __repr__(self):
-        return "Bits(%s, %s)" % (repr(self.name), repr(self.bits))
+        return "Bits(%s)" % \
+            ",".join(["%s=%s" % (attr, repr(getattr(self, attr)))
+                      for attr in ["name", "bits", "init",
+                                   "e_border", "w_border"]])
 
     def chunk(self, superscript_bits, bits_lookup):
+        if (self.init is not None):
+            for i in xrange(len(superscript_bits)):
+                superscript_bits.pop(-1)
+            superscript_bits.extend(self.init)
+
         chunk_superscripts = []
         for bit in self.bits:
             superscript_bits.append(bit)
@@ -480,31 +532,46 @@ class Bits:
 
         return Chunk(bits=self.bits,
                      superscripts=chunk_superscripts,
-                     name=self.name)
+                     name=self.name,
+                     e_border=self.e_border,
+                     w_border=self.w_border)
 
 
 class Text:
-    def __init__(self, name, bit_count):
+    def __init__(self, name, bit_count, e_border, w_border):
         self.name = name
         self.bit_count = bit_count
+        self.e_border = e_border
+        self.w_border = w_border
 
     def __repr__(self):
-        return "Text(%s, %s)" % (repr(self.name), repr(self.bit_count))
+        return "Text(%s)" % \
+            ",".join(["%s=%s" % (attr, repr(getattr(self, attr)))
+                      for attr in ["name", "bit_count",
+                                   "e_border", "w_border"]])
 
     def chunk(self, superscript_bits, bits_lookup):
         for i in xrange(len(superscript_bits)):
             superscript_bits.pop(-1)
 
         return TextChunk(bit_width=self.bit_count,
-                         name=self.name)
+                         name=self.name,
+                         e_border=self.e_border,
+                         w_border=self.w_border)
 
 class Bytes:
-    def __init__(self, name, bytes_list):
+    def __init__(self, name, bytes_list, e_border, w_border):
         self.name = name
         self.bytes = list(bytes_list)
+        self.e_border = e_border
+        self.w_border = w_border
 
     def __repr__(self):
-        return "Bytes(%s, %s)" % (repr(self.name), repr(self.bytes))
+        return "Text(%s)" % \
+            ",".join(["%s=%s" % (attr, repr(getattr(self, attr)))
+                      for attr in ["name", "bytes",
+                                   "e_border", "w_border"]])
+
 
     def chunk(self, superscript_bits, bits_lookup):
         reverse_bits_lookup = dict([(value, key) for (key, value) in
@@ -525,7 +592,9 @@ class Bytes:
 
         return BytesChunk(bit_width=len(self.bytes),
                           superscripts=chunk_superscripts,
-                          name=self.name)
+                          name=self.name,
+                          e_border=self.e_border,
+                          w_border=self.w_border)
 
 def bits(v):
     for i in xrange(8):
@@ -540,14 +609,17 @@ LE_LOOKUP = dict([(tuple(bits(value)), "%2.2X" % (value))
                   for value in xrange(0,0x100)])
 
 
-def bits_to_chunks(bits_iter, lookup=BE_LOOKUP):
+def bits_to_chunks(bits_iter, lookup=BE_LOOKUP, initial_superscript_bits=None):
     """for each Bits object in bits_iter, yields a Chunk object
     whose bits, superscripts, name and background_color have been populated
 
     positions and borders must be populated afterward
     """
 
-    superscript_bits = []
+    if (initial_superscript_bits is None):
+        superscript_bits = []
+    else:
+        superscript_bits = initial_superscript_bits
     for bits in bits_iter:
         yield bits.chunk(superscript_bits, lookup)
 
@@ -561,9 +633,6 @@ def chunks_to_rows(chunks_iter, bits_per_row, x_offset=0):
     x_position = x_offset
 
     for chunk in chunks_iter:
-        #populate the chunk's borders
-        chunk.w_border = chunk.e_border = True
-
         remaining_bits = bits_per_row - sum([c.size() for c in chunk_list])
 
         #split a single chunk across multiple rows, if necessary
@@ -657,6 +726,27 @@ def byte_converter(value):
             yield int(value[0:2], 16)
             value = value[2:]
 
+def init_converter(node):
+    if (node.hasAttribute(u"init")):
+        lookup = {u"0":0, u"1":1}
+        return [lookup[char] for char in
+                node.getAttribute(u'init').split(u",")]
+    else:
+        return None
+
+def get_border(node, attrib):
+    if (node.hasAttribute(attrib)):
+        style = node.getAttribute(attrib)
+        if (style == u'blank'):
+            return BORDER_NONE
+        elif (style == u'line'):
+            return BORDER_LINE
+        elif (style == u'dotted'):
+            return BORDER_DOTTED
+        else:
+            raise ValueError(u"unknown border style %s" % (style))
+    else:
+        return BORDER_LINE
 
 def xml_to_chunks(xml_filename):
     import xml.dom.minidom
@@ -667,6 +757,13 @@ def xml_to_chunks(xml_filename):
     if (not struct.hasAttribute(u'endianness')):
         print >>sys.stderr,"struct tag's endianness must be big or little"
         sys.exit(1)
+
+    if (struct.hasAttribute(u'init')):
+        lookup = {u"0":0, u"1":1}
+        superscript_bits = [lookup[char] for char in
+                            struct.getAttribute(u'init').split(u",")]
+    else:
+        superscript_bits = None
 
     if (struct.getAttribute(u'endianness') == u'big'):
         lookup = BE_LOOKUP
@@ -681,21 +778,31 @@ def xml_to_chunks(xml_filename):
     bits = []
     for part in struct.childNodes:
         if (part.nodeName == u'field'):
-            bits.append(Bits(part.childNodes[0].data.strip(),
-                             bits_converter(part.getAttribute(u"size"),
-                                            part.getAttribute(u"value"))))
+            bits.append(Bits(
+                    name=part.childNodes[0].data.strip(),
+                    bits=bits_converter(part.getAttribute(u"size"),
+                                        part.getAttribute(u"value")),
+                    init=init_converter(part),
+                    e_border=get_border(part, u"border_e"),
+                    w_border=get_border(part, u"border_w")))
         elif (part.nodeName == u'text'):
-            bits.append(Text(part.childNodes[0].data.strip(),
-                             int_converter(part.getAttribute(u"size"))))
+            bits.append(Text(
+                    name=part.childNodes[0].data.strip(),
+                    bit_count=int_converter(part.getAttribute(u"size")),
+                    e_border=get_border(part, u"border_e"),
+                    w_border=get_border(part, u"border_w")))
         elif (part.nodeName == u'bytes'):
             try:
-                bits.append(Bytes(part.childNodes[0].data.strip(),
-                                  byte_converter(part.getAttribute(u"value"))))
+                bits.append(Bytes(
+                        name=part.childNodes[0].data.strip(),
+                        bytes_list=byte_converter(part.getAttribute(u"value")),
+                        e_border=get_border(part, u"border_e"),
+                        w_border=get_border(part, u"border_w")))
             except ValueError,msg:
                 print >>sys.stderr,str(msg)
                 sys.exit(1)
 
-    return bits_to_chunks(bits, lookup)
+    return bits_to_chunks(bits, lookup, superscript_bits)
 
 
 if (__name__ == '__main__'):
