@@ -287,6 +287,7 @@ $\text{coefficient}_{1~3}$ & $\leftarrow$ & \texttt{0xFEE5} &=& -283 \\
 \For{i = 0 \emph{\KwTo}sample count}{
   $\kappa \leftarrow \MIN(\lfloor\log_2(\HISTORY \div 2 ^ 9 + 3)\rfloor~,~\text{maximum K})$\;
   $\text{unsigned}_i \leftarrow \READRESIDUAL(\kappa~,~\text{sample size}) + \SIGN$\;
+  \SIGN $\leftarrow 0$\;
   \BlankLine
   \eIf(\tcc*[f]{apply sign bit}){$\text{unsigned}_i$ is even}{
     $\text{residual}_i \leftarrow \text{unsigned}_i \div 2$\;
@@ -333,7 +334,7 @@ $\text{coefficient}_{1~3}$ & $\leftarrow$ & \texttt{0xFEE5} &=& -283 \\
 \Else{
   \LSB $\leftarrow$ \READ $\kappa$ unsigned bits\;
   \uIf{$\LSB > 1$}{
-    \Return $(\MSB \times (2 ^ \kappa - 1)) + (\LSB - 1)$\;
+    \Return $\MSB \times (2 ^ \kappa - 1) + (\LSB - 1)$\;
   }
   \uElseIf{$\LSB = 1$}{
     \UNREAD single \texttt{1} bit back into stream\;
@@ -346,73 +347,184 @@ $\text{coefficient}_{1~3}$ & $\leftarrow$ & \texttt{0xFEE5} &=& -283 \\
 }
 \EALGORITHM
 
-\clearpage
-
+\begin{landscape}
 \subsubsection{Residual Decoding Example}
-{\relsize{-1}
-\begin{align*}
-\text{history} &\leftarrow 10 \text{ (initial history)} \\
-\text{sign modifier} & \leftarrow 0 \\
-i &\leftarrow 0 \\
-\kappa & \leftarrow \lfloor\log_2(10 \div 2 ^ 9 + 3)\rfloor = 1 \\
-\text{MSB}_0 &\leftarrow 9 \\
-\text{unsigned}_0 &\leftarrow 64 \\
-\text{residual}_0 &\leftarrow 64 \div 2 = 32 \\
-\text{history} &\leftarrow 10 + (64 \times 40) - \left\lfloor\frac{10 \times 40}{2 ^ 9}\right\rfloor = 2570 \\
-\end{align*}
-\begin{align*}
-i &\leftarrow 1 \\
-\kappa &\leftarrow \lfloor\log_2(2570 \div 2 ^ 9 + 3)\rfloor = 3 \\
-\text{MSB}_1 &\leftarrow 2 \\
-\text{LSB}_1 &\leftarrow 1 \text{ (unread single \texttt{1} bit)}\\
-\text{unsigned}_1 &\leftarrow 2 \times (2 ^ 3 - 1) = 14 \\
-\text{residual}_1 &\leftarrow 14 \div 2 = 7 \\
-\text{history} &\leftarrow 2570 + (14 \times 40) - \left\lfloor\frac{2570 \times 40}{2 ^ 9}\right\rfloor = 2930 \\
-\end{align*}
-\begin{align*}
-i &\leftarrow 2 \\
-\kappa &\leftarrow \lfloor\log_2(2930 \div 2 ^ 9 + 3)\rfloor = 3 \\
-\text{MSB}_2 &\leftarrow 1 \\
-\text{LSB}_2 &\leftarrow 2 \\
-\text{unsigned}_2 &\leftarrow (1 \times (2 ^ 3 - 1)) + (2 - 1) = 8 \\
-\text{residual}_2 &\leftarrow 8 \div 2 = 4 \\
-\text{history} &\leftarrow 2930 + (8 \times 40) - \left\lfloor\frac{2930 \times 40}{2 ^ 9}\right\rfloor = 3022 \\
-\end{align*}
-\begin{align*}
-i &\leftarrow 3 \\
-\kappa &\leftarrow \lfloor\log_2(3022 \div 2 ^ 9 + 3)\rfloor = 3 \\
-\text{MSB}_3 &\leftarrow 0 \\
-\text{LSB}_3 &\leftarrow 5 \\
-\text{unsigned}_3 &\leftarrow (0 \times (2 ^ 3 - 1)) + (5 - 1) = 4 \\
-\text{residual}_3 &\leftarrow 4 \div 2 = 2 \\
-\text{history} &\leftarrow 3022 + (4 \times 40) - \left\lfloor\frac{3022 \times 40}{2 ^ 9}\right\rfloor = 2946 \\
-\end{align*}
-\clearpage
-\begin{align*}
-i &\leftarrow 4 \\
-\kappa &\leftarrow \lfloor\log_2(2946 \div 2 ^ 9 + 3)\rfloor = 3 \\
-\text{MSB}_4 &\leftarrow 0 \\
-\text{LSB}_4 &\leftarrow 2 \\
-\text{unsigned}_4 &\leftarrow (0 \times (2 ^ 3 - 1)) + (2 - 1) = 1 \\
-\text{residual}_4 &\leftarrow -((1 + 1) \div 2) = -1 \\
-\text{history} &\leftarrow 2946 + (1 \times 40) - \left\lfloor\frac{2946 \times 40}{2 ^ 9}\right\rfloor = 2756 \\
-\end{align*}
-}
+For this example, \VAR{initial history} (from the \texttt{alac} atom) is 10.
+\par
+\begin{figure}[h]
+\includegraphics{figures/alac/residual-parse.pdf}
+\end{figure}
 \par
 \noindent
 Note how unreading a bit when $i = 1$ means that $\text{LSB}_1$'s 3rd bit
 (a \texttt{1} in this case) is also $\text{MSB}_2$'s 1st bit.
 This is signified by $\text{}_1 \leftrightarrow \text{}_2$
 since the same bit is in both fields.
-\begin{figure}[h]
-\includegraphics{figures/alac/residual-parse.pdf}
-\end{figure}
-\par
-\noindent
-Decoding the remaining residuals is left as an exercise for the reader.
-The final values of all 25 residuals are:
-\texttt{32, 7, 4, 2, -1, -1, -1, -4, -1, -4, -2, -3, -1, -1, -1,
-1, 0, 0, 3, 2, 1, 4, 1, 3, 2}
+
+\clearpage
+
+\begin{table}[h]
+{\relsize{-1}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{r||>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}}
+$i$ & \kappa & \text{MSB}_i & \text{LSB}_i & \text{unsigned}_i &
+\text{residual}_i & \text{history}_{i + 1} \\
+\hline
+0 &
+\lfloor\log_2(10 \div 2 ^ 9 + 3)\rfloor = 1 &
+9 & & 64 &
+64 \div 2 = 32 &
+10 + (64 \times 40) - \left\lfloor\frac{10 \times 40}{2 ^ 9}\right\rfloor = 2570
+\\
+1 &
+\lfloor\log_2(2570 \div 2 ^ 9 + 3)\rfloor = 3 &
+2 & *1 & 2 \times (2 ^ 3 - 1) = 14 &
+14 \div 2 = 7 &
+2570 + (14 \times 40) - \left\lfloor\frac{2570 \times 40}{2 ^ 9}\right\rfloor = 2930
+\\
+2 &
+\lfloor\log_2(2930 \div 2 ^ 9 + 3)\rfloor = 3 &
+1 & 2 & 1 \times (2 ^ 3 - 1) + (2 - 1) = 8 &
+8 \div 2 = 4 &
+2930 + (8 \times 40) - \left\lfloor\frac{2930 \times 40}{2 ^ 9}\right\rfloor = 3022
+\\
+3 &
+\lfloor\log_2(3022 \div 2 ^ 9 + 3)\rfloor = 3 &
+0 & 5 & 0 \times (2 ^ 3 - 1) + (5 - 1) = 4 &
+4 \div 2 = 2 &
+3022 + (4 \times 40) - \left\lfloor\frac{3022 \times 40}{2 ^ 9}\right\rfloor = 2946
+\\
+4 &
+\lfloor\log_2(2946 \div 2 ^ 9 + 3)\rfloor = 3 &
+0 & 2 & 0 \times (2 ^ 3 - 1) + (2 - 1) = 1 &
+-((1 + 1) \div 2) = -1 &
+2946 + (1 \times 40) - \left\lfloor\frac{2946 \times 40}{2 ^ 9}\right\rfloor = 2756
+\\
+5 &
+\lfloor\log_2(2756 \div 2 ^ 9 + 3)\rfloor = 3 &
+0 & 2 & 0 \times (2 ^ 3 - 1) + (2 - 1) = 1 &
+-((1 + 1) \div 2) = -1 &
+2756 + (1 \times 40) - \left\lfloor\frac{2756 \times 40}{2 ^ 9}\right\rfloor = 2581
+\\
+6 &
+\lfloor\log_2(2581 \div 2 ^ 9 + 3)\rfloor = 3 &
+0 & 2 & 0 \times (2 ^ 3 - 1) + (2 - 1) = 1 &
+-((1 + 1) \div 2) = -1 &
+2581 + (1 \times 40) - \left\lfloor\frac{2581 \times 40}{2 ^ 9}\right\rfloor = 2420
+\\
+7 &
+\lfloor\log_2(2420 \div 2 ^ 9 + 3)\rfloor = 2 &
+2 & 2 & 2 \times (2 ^ 2 - 1) + (2 - 1) = 7 &
+-((7 + 1) \div 2) = -4 &
+2420 + (7 \times 40) - \left\lfloor\frac{2420 \times 40}{2 ^ 9}\right\rfloor = 2511
+\\
+8 &
+\lfloor\log_2(2511 \div 2 ^ 9 + 3)\rfloor = 2 &
+0 & 2 & 0 \times (2 ^ 2 - 1) + (2 - 1) = 1 &
+-((1 + 1) \div 2) = -1 &
+2511 + (1 \times 40) - \left\lfloor\frac{2511 \times 40}{2 ^ 9}\right\rfloor = 2355
+\\
+9 &
+\lfloor\log_2(2355 \div 2 ^ 9 + 3)\rfloor = 2 &
+2 & 2 & 2 \times (2 ^ 2 - 1) + (2 - 1) = 7 &
+-((7 + 1) \div 2) = -4 &
+2355 + (7 \times 40) - \left\lfloor\frac{2355 \times 40}{2 ^ 9}\right\rfloor = 2452
+\\
+10 &
+\lfloor\log_2(2452 \div 2 ^ 9 + 3)\rfloor = 2 &
+1 & *1 & 1 \times (2 ^ 2 - 1) = 3 &
+-((3 + 1) \div 2) = -2 &
+2452 + (3 \times 40) - \left\lfloor\frac{2452 \times 40}{2 ^ 9}\right\rfloor = 2381
+\\
+11 &
+\lfloor\log_2(2381 \div 2 ^ 9 + 3)\rfloor = 2 &
+1 & 3 & 1 \times (2 ^ 2 - 1) + (3 - 1) = 5 &
+-((5 + 1) \div 2) = -3 &
+2381 + (5 \times 40) - \left\lfloor\frac{2381 \times 40}{2 ^ 9}\right\rfloor = 2395
+\\
+12 &
+\lfloor\log_2(2395 \div 2 ^ 9 + 3)\rfloor = 2 &
+0 & 2 & 0 \times (2 ^ 2 - 1) + (2 - 1) = 1 &
+-((1 + 1) \div 2) = -1 &
+2395 + (1 \times 40) - \left\lfloor\frac{2395 \times 40}{2 ^ 9}\right\rfloor = 2248
+\\
+13 &
+\lfloor\log_2(2248 \div 2 ^ 9 + 3)\rfloor = 2 &
+0 & 2 & 0 \times (2 ^ 2 - 1) + (2 - 1) = 1 &
+-((1 + 1) \div 2) = -1 &
+2248 + (1 \times 40) - \left\lfloor\frac{2248 \times 40}{2 ^ 9}\right\rfloor = 2113
+\\
+14 &
+\lfloor\log_2(2113 \div 2 ^ 9 + 3)\rfloor = 2 &
+0 & 2 & 0 \times (2 ^ 2 - 1) + (2 - 1) = 1 &
+-((1 + 1) \div 2) = -1 &
+2113 + (1 \times 40) - \left\lfloor\frac{2113 \times 40}{2 ^ 9}\right\rfloor = 1988
+\\
+15 &
+\lfloor\log_2(1988 \div 2 ^ 9 + 3)\rfloor = 2 &
+0 & 3 & 0 \times (2 ^ 2 - 1) + (3 - 1) = 2 &
+2 \div 2 = 1 &
+1988 + (2 \times 40) - \left\lfloor\frac{1988 \times 40}{2 ^ 9}\right\rfloor = 1913
+\\
+16 &
+\lfloor\log_2(1913 \div 2 ^ 9 + 3)\rfloor = 2 &
+0 & *0 & 0 \times (2 ^ 2 - 1) = 0 &
+0 \div 2 = 0 &
+1913 + (0 \times 40) - \left\lfloor\frac{1913 \times 40}{2 ^ 9}\right\rfloor = 1764
+\\
+17 &
+\lfloor\log_2(1764 \div 2 ^ 9 + 3)\rfloor = 2 &
+0 & *1 & 0 \times (2 ^ 2 - 1) = 0 &
+0 \div 2 = 0 &
+1764 + (0 \times 40) - \left\lfloor\frac{1764 \times 40}{2 ^ 9}\right\rfloor = 1627
+\\
+18 &
+\lfloor\log_2(1627 \div 2 ^ 9 + 3)\rfloor = 2 &
+2 & *1 & 2 \times (2 ^ 2 - 1) = 6 &
+6 \div 2 = 3 &
+1627 + (6 \times 40) - \left\lfloor\frac{1627 \times 40}{2 ^ 9}\right\rfloor = 1740
+\\
+19 &
+\lfloor\log_2(1740 \div 2 ^ 9 + 3)\rfloor = 2 &
+1 & 2 & 1 \times (2 ^ 2 - 1) + (2 - 1) = 4 &
+4 \div 2 = 2 &
+1740 + (4 \times 40) - \left\lfloor\frac{1740 \times 40}{2 ^ 9}\right\rfloor = 1765
+\\
+20 &
+\lfloor\log_2(1765 \div 2 ^ 9 + 3)\rfloor = 2 &
+0 & 3 & 0 \times (2 ^ 2 - 1) + (3 - 1) = 2 &
+2 \div 2 = 1 &
+1765 + (2 \times 40) - \left\lfloor\frac{1765 \times 40}{2 ^ 9}\right\rfloor = 1708
+\\
+21 &
+\lfloor\log_2(1708 \div 2 ^ 9 + 3)\rfloor = 2 &
+2 & 3 & 2 \times (2 ^ 2 - 1) + (3 - 1) = 8 &
+8 \div 2 = 4 &
+1708 + (8 \times 40) - \left\lfloor\frac{1708 \times 40}{2 ^ 9}\right\rfloor = 1895
+\\
+22 &
+\lfloor\log_2(1895 \div 2 ^ 9 + 3)\rfloor = 2 &
+0 & 3 & 0 \times (2 ^ 2 - 1) + (3 - 1) = 2 &
+2 \div 2 = 1 &
+1895 + (2 \times 40) - \left\lfloor\frac{1895 \times 40}{2 ^ 9}\right\rfloor = 1827
+\\
+23 &
+\lfloor\log_2(1827 \div 2 ^ 9 + 3)\rfloor = 2 &
+2 & *1 & 2 \times (2 ^ 2 - 1) = 6 &
+6 \div 2 = 3 &
+1827 + (6 \times 40) - \left\lfloor\frac{1827 \times 40}{2 ^ 9}\right\rfloor = 1925
+\\
+24 &
+\lfloor\log_2(1925 \div 2 ^ 9 + 3)\rfloor = 2 &
+1 & 2 & 1 \times (2 ^ 2 - 1) + (2 - 1) = 4 &
+4 \div 2 = 2 &
+1925 + (4 \times 40) - \left\lfloor\frac{1925 \times 40}{2 ^ 9}\right\rfloor = 1935
+\\
+\end{tabular}
+\renewcommand{\arraystretch}{1.0}
+}
+\end{table}
+\end{landscape}
 
 \clearpage
 

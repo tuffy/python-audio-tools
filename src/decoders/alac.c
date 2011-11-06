@@ -782,6 +782,9 @@ ALACDecoder_read_residuals(BitstreamReader *bs,
             MIN(LOG2((history >> 9) + 3), maximum_k),
             sample_size) + sign_modifier;
 
+        /*clear out old sign modifier, if any */
+        sign_modifier = 0;
+
         /*change unsigned residual into a signed residual
           and append it to "residuals"*/
         if (unsigned_residual & 1) {
@@ -790,10 +793,7 @@ ALACDecoder_read_residuals(BitstreamReader *bs,
             ia_append(residuals, (unsigned_residual + 1) >> 1);
         }
 
-        /*then use our old unsigned residual to update "history"
-          and reset "sign_modifier"*/
-        sign_modifier = 0;
-
+        /*then use our old unsigned residual to update "history"*/
         if (unsigned_residual > 0xFFFF)
             history = 0xFFFF;
         else
@@ -814,11 +814,12 @@ ALACDecoder_read_residuals(BitstreamReader *bs,
                     i++;
                 }
             }
+
+            history = 0;
+
             if (zero_block_size <= 0xFFFF) {
                 sign_modifier = 1;
             }
-
-            history = 0;
         }
     }
 }
@@ -827,7 +828,7 @@ ALACDecoder_read_residuals(BitstreamReader *bs,
 
 unsigned int
 ALACDecoder_read_residual(BitstreamReader *bs,
-                          unsigned int lsb_count,
+                          unsigned int k,
                           unsigned int sample_size)
 {
     int msb;
@@ -838,23 +839,23 @@ ALACDecoder_read_residual(BitstreamReader *bs,
         /*we've exceeded the maximum number of 1 bits,
           so return an unencoded value*/
         return bs->read(bs, sample_size);
-    } else if (lsb_count == 0) {
+    } else if (k == 0) {
         /*no least-significant bits to read, so return most-significant bits*/
         return (unsigned int)msb;
     } else {
         /*read a set of least-significant bits*/
-        lsb = bs->read(bs, lsb_count);
+        lsb = bs->read(bs, k);
         if (lsb > 1) {
             /*if > 1, combine with MSB and return*/
-            return (msb * ((1 << lsb_count) - 1)) + (lsb - 1);
+            return (msb * ((1 << k) - 1)) + (lsb - 1);
         } else if (lsb == 1) {
             /*if = 1, unread single 1 bit and return shifted MSB*/
             bs->unread(bs, 1);
-            return msb * ((1 << lsb_count) - 1);
+            return msb * ((1 << k) - 1);
         } else {
             /*if = 0, unread single 0 bit and return shifted MSB*/
             bs->unread(bs, 0);
-            return msb * ((1 << lsb_count) - 1);
+            return msb * ((1 << k) - 1);
         }
     }
 }
@@ -876,13 +877,12 @@ ALACDecoder_decode_subframe(struct i_array *samples,
                             struct i_array *coefficients,
                             int predictor_quantitization)
 {
-    ia_data_t buffer0;
+    ia_data_t base_sample;
     ia_data_t residual;
     int64_t lpc_sum;
     int32_t output_value;
-    int32_t val;
+    int32_t diff;
     int sign;
-    int original_sign;
     int i = 0;
     int j;
 
@@ -900,45 +900,51 @@ ALACDecoder_decode_subframe(struct i_array *samples,
     }
 
     /*then calculate a new sample per remaining residual*/
-    for (;i < residuals->size; i++) {
+    for (; i < residuals->size; i++) {
         residual = residuals->data[i];
         lpc_sum = 1 << (predictor_quantitization - 1);
 
-        /*Note that buffer0 gets stripped from previously encoded samples
+        /*Note that base_sample gets stripped from previously encoded samples
           then re-added prior to adding the next sample.
           It's a watermark sample, of sorts.*/
-        buffer0 = samples->data[i - (coefficients->size + 1)];
+        base_sample = samples->data[i - (coefficients->size + 1)];
 
         for (j = 0; j < coefficients->size; j++) {
             lpc_sum += ((int64_t)coefficients->data[j] *
-                        (int64_t)(samples->data[i - j - 1] - buffer0));
+                        (int64_t)(samples->data[i - j - 1] - base_sample));
         }
 
-        /*sample = ((sum + 2 ^ (quant - 1)) / (2 ^ quant)) + residual + buffer0*/
+        /*sample = ((sum + 2 ^ (quant - 1)) / (2 ^ quant)) + residual + base_sample*/
         lpc_sum >>= predictor_quantitization;
-        lpc_sum += buffer0;
+        lpc_sum += base_sample;
         output_value = (int32_t)(residual + lpc_sum);
         ia_append(samples, output_value);
 
-        /*At this point, except for buffer0, everything looks a lot like
+        /*At this point, except for base_sample, everything looks a lot like
           a FLAC LPC subframe.
           We're not done yet, though.
           ALAC's adaptive algorithm then adjusts the coefficients
           up or down 1 step based on previously decoded samples
           and the residual*/
-        if (residual) {
-            original_sign = SIGN_ONLY(residual);
 
+        if (residual > 0) {
             for (j = 0; j < coefficients->size; j++) {
-                val = buffer0 - samples->data[i - coefficients->size + j];
-                if (original_sign >= 0)
-                    sign = SIGN_ONLY(val);
-                else
-                    sign = -SIGN_ONLY(val);
+                diff = base_sample - samples->data[i - coefficients->size + j];
+                sign = SIGN_ONLY(diff);
                 coefficients->data[coefficients->size - j - 1] -= sign;
-                residual -= (((val * sign) >> predictor_quantitization) *
+                residual -= (((diff * sign) >> predictor_quantitization) *
                              (j + 1));
-                if (SIGN_ONLY(residual) != original_sign)
+                if (residual <= 0)
+                    break;
+            }
+        } else if (residual < 0) {
+            for (j = 0; j < coefficients->size; j++) {
+                diff = base_sample - samples->data[i - coefficients->size + j];
+                sign = SIGN_ONLY(diff);
+                coefficients->data[coefficients->size - j - 1] += sign;
+                residual -= (((diff * -sign) >> predictor_quantitization) *
+                             (j + 1));
+                if (residual >= 0)
                     break;
             }
         }

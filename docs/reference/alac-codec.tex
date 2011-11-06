@@ -30,6 +30,7 @@
 \usepackage{color}
 \definecolor{gray}{rgb}{0.5,0.5,0.5}
 \usepackage[vlined,lined,commentsnumbered]{algorithm2e}
+\usepackage{lscape}
 \newcommand{\xor}{\textbf{ xor }}
 %#1 = i
 %#2 = byte

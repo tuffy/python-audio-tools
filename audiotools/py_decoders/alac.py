@@ -43,7 +43,7 @@ class ALACDecoder:
              self.bits_per_sample,
              self.history_multiplier,
              self.initial_history,
-             self.maximum_lsbs,
+             self.maximum_k,
              self.channels,
              self.sample_rate) = stsd.parse(
                 #ignore much of the stuff in the "high" ALAC atom
@@ -141,7 +141,9 @@ class ALACDecoder:
         if (uncompressed == 1):
             #if the frame is uncompressed,
             #read the raw, interlaced samples
-            raise NotImplementedError()
+            samples = [self.reader.read_signed(self.bits_per_sample)
+                       for i in xrange(sample_count * channel_count)]
+            return [samples[i::channel_count] for i in xrange(channel_count)]
         else:
             #if the frame is compressed,
             #read the interlacing parameters
@@ -154,7 +156,7 @@ class ALACDecoder:
 
             #optional uncompressed LSB values
             if (uncompressed_lsb_size > 0):
-                uncompressed_lsbs = [self.reader.read_signed(
+                uncompressed_lsbs = [self.reader.read(
                         uncompressed_lsb_size * 8)
                                      for i in xrange(sample_count *
                                                      channel_count)]
@@ -178,12 +180,25 @@ class ALACDecoder:
                                  zip(subframe_headers,
                                      residual_blocks)]
 
-            #return decorrelated channels
-            return self.decorrelate_channels(
+            #decorrelate channels according interlacing shift and leftweight
+            decorrelated_channels = self.decorrelate_channels(
                 decoded_subframes,
                 interlacing_shift,
                 interlacing_leftweight)
 
+            #if uncompressed LSB values are present,
+            #prepend them to each sample of each channel
+            if (uncompressed_lsb_size > 0):
+                channels = []
+                for (i, channel) in enumerate(decorrelated_channels):
+                    assert(len(channel) ==
+                           len(uncompressed_lsbs[i::channel_count]))
+                    channels.append([s << (uncompressed_lsb_size * 8) | l
+                                     for (s, l) in zip(
+                                channel, uncompressed_lsbs[i::channel_count])])
+                return channels
+            else:
+                return decorrelated_channels
 
     def read_subframe_header(self):
         prediction_type = self.reader.read(4)
@@ -201,57 +216,65 @@ class ALACDecoder:
         i = 0
 
         while (i < sample_count):
-            lsb_count = min(log2(history / (2 ** 9) + 3), self.maximum_lsbs)
-            unsigned = self.read_residual(lsb_count,
-                                          sample_size) + sign_modifier
+            #get an unsigned residual based on "history"
+            #and on "sample_size" as a lst resort
+            k = min(log2(history / (2 ** 9) + 3), self.maximum_k)
+
+            unsigned = self.read_residual(k, sample_size) + sign_modifier
+
+            #clear out old sign modifier, if any
+            sign_modifier = 0
+
+            #change unsigned residual to signed residual
             if (unsigned & 1):
                 residuals.append(-((unsigned + 1) / 2))
             else:
-                residuals.append((unsigned + 1) / 2)
+                residuals.append(unsigned / 2)
 
+            #update history based on unsigned residual
             if (unsigned <= 0xFFFF):
                 history += ((unsigned * self.history_multiplier) -
                             ((history * self.history_multiplier) >> 9))
             else:
                 history = 0xFFFF
 
+            #if history gets too small, we may have a block of 0 samples
+            #which can be compressed more efficiently
             if ((history < 128) and ((i + 1) < sample_count)):
-                zeroes_lsb_count = min(7 -
-                                       log2(history) +
-                                       ((history + 16) / 64),
-                                       self.maximum_lsbs)
-                zero_residuals = self.read_residual(zeroes_lsb_count, 16)
+                zeroes_k = min(7 -
+                               log2(history) +
+                               ((history + 16) / 64),
+                               self.maximum_k)
+                zero_residuals = self.read_residual(zeroes_k, 16)
                 if (zero_residuals > 0):
                     residuals.extend([0] * zero_residuals)
                     i += zero_residuals
-                if (sample_count <= 0xFFFF):
-                    sign_modifier = 1
-                else:
-                    sign_modifier = 0
+
                 history = 0
-            else:
-                sign_modifier = 0
+
+                if (zero_residuals <= 0xFFFF):
+                    sign_modifier = 1
 
             i += 1
 
         return residuals
 
-    def read_residual(self, lsb_count, sample_size):
+    def read_residual(self, k, sample_size):
         msb = self.reader.limited_unary(0, 9)
         if (msb is None):
             return self.reader.read(sample_size)
-        elif (lsb_count == 0):
+        elif (k == 0):
             return msb
         else:
-            lsb = self.reader.read(lsb_count)
+            lsb = self.reader.read(k)
             if (lsb > 1):
-                return msb * ((1 << lsb_count) - 1) + (lsb - 1)
+                return msb * ((1 << k) - 1) + (lsb - 1)
             elif (lsb == 1):
                 self.reader.unread(1)
-                return msb * ((1 << lsb_count) - 1)
+                return msb * ((1 << k) - 1)
             else:
                 self.reader.unread(0)
-                return msb * ((1 << lsb_count) - 1)
+                return msb * ((1 << k) - 1)
 
     def decode_subframe(self, qlp_shift_needed, qlp_coefficients, residuals):
         samples = [residuals.pop(0)]
@@ -259,13 +282,13 @@ class ALACDecoder:
             samples.append(samples[-1] + residuals.pop(0))
 
         for residual in residuals:
-            buffer0 = samples[-len(qlp_coefficients) - 1]
-            lpc_sum = sum([(s - buffer0) * c for (s,c) in
+            base_sample = samples[-len(qlp_coefficients) - 1]
+            lpc_sum = sum([(s - base_sample) * c for (s,c) in
                            zip(samples[-len(qlp_coefficients):],
                                reversed(qlp_coefficients))])
             outval = (1 << (qlp_shift_needed - 1)) + lpc_sum
             outval >>= qlp_shift_needed
-            samples.append(outval + residual + buffer0)
+            samples.append(outval + residual + base_sample)
 
             buf = samples[-len(qlp_coefficients) - 2:-1]
 
