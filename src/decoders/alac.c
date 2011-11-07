@@ -1,6 +1,5 @@
 #include "alac.h"
 #include "../pcm.h"
-#include "pcm.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -26,13 +25,22 @@ ALACDecoder_init(decoders_ALACDecoder *self,
                  PyObject *args, PyObject *kwds)
 {
     char *filename;
-    int i;
     static char *kwlist[] = {"filename", NULL};
+    unsigned i;
 
     self->filename = NULL;
     self->file = NULL;
     self->bitstream = NULL;
-    self->data_allocated = 0;
+    self->audiotools_pcm = NULL;
+
+    self->frameset_channels = array_ia_new();
+    self->frame_channels = array_ia_new();
+    self->uncompressed_LSBs = array_i_new();
+    self->residuals = array_i_new();
+
+    for (i = 0; i < MAX_CHANNELS; i++) {
+        self->subframe_headers[i].qlp_coeff = array_i_new();
+    }
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "s", kwlist, &filename))
         return -1;
@@ -48,8 +56,7 @@ ALACDecoder_init(decoders_ALACDecoder *self,
 
     self->bitstream->mark(self->bitstream);
 
-
-    if (ALACDecoder_parse_decoding_parameters(self)) {
+    if (alacdec_parse_decoding_parameters(self)) {
         self->bitstream->unmark(self->bitstream);
         return -1;
     } else {
@@ -57,7 +64,7 @@ ALACDecoder_init(decoders_ALACDecoder *self,
     }
 
     /*seek to the 'mdat' atom, which contains the ALAC stream*/
-    if (ALACDecoder_seek_mdat(self->bitstream) == ERROR) {
+    if (alacdec_seek_mdat(self->bitstream) == ERROR) {
         self->bitstream->unmark(self->bitstream);
         PyErr_SetString(PyExc_ValueError,
                         "Unable to locate 'mdat' atom in stream");
@@ -66,35 +73,10 @@ ALACDecoder_init(decoders_ALACDecoder *self,
         self->bitstream->unmark(self->bitstream);
     }
 
-    /*initialize final buffer*/
-    iaa_init(&(self->samples),
-             self->channels,
-             self->max_samples_per_frame);
-
-    /*initialize wasted-bits buffer, just in case*/
-    iaa_init(&(self->wasted_bits_samples),
-             self->channels,
-             self->max_samples_per_frame);
-
-    /*initialize a residuals buffer*/
-    iaa_init(&(self->residuals),
-             self->channels,
-             self->max_samples_per_frame);
-
-    /*initialize a subframe output buffer,
-      whose data is not yet decorrelated*/
-    iaa_init(&(self->subframe_samples),
-             self->channels,
-             self->max_samples_per_frame);
-
-    /*initialize a list of subframe headers, one per channel*/
-    self->subframe_headers = malloc(sizeof(struct alac_subframe_header) *
-                                    self->channels);
-    for (i = 0; i < self->channels; i++) {
-        ia_init(&(self->subframe_headers[i].predictor_coef_table), 8);
-    }
-
-    self->data_allocated = 1;
+    /*setup a framelist generator function*/
+    if ((self->audiotools_pcm =
+         PyImport_ImportModule("audiotools.pcm")) == NULL)
+        return -1;
 
     return 0;
 }
@@ -111,22 +93,22 @@ ALACDecoder_dealloc(decoders_ALACDecoder *self)
         /*this closes self->file also*/
         self->bitstream->close(self->bitstream);
 
-    if (self->data_allocated) {
-        for (i = 0; i < self->channels; i++)
-            ia_free(&(self->subframe_headers[i].predictor_coef_table));
+    for (i = 0; i < MAX_CHANNELS; i++)
+        self->subframe_headers[i].qlp_coeff->del(
+            self->subframe_headers[i].qlp_coeff);
 
-        free(self->subframe_headers);
-        iaa_free(&(self->samples));
-        iaa_free(&(self->subframe_samples));
-        iaa_free(&(self->wasted_bits_samples));
-        iaa_free(&(self->residuals));
-    }
+    self->frameset_channels->del(self->frameset_channels);
+    self->frame_channels->del(self->frame_channels);
+    self->uncompressed_LSBs->del(self->uncompressed_LSBs);
+    self->residuals->del(self->residuals);
+
+    Py_XDECREF(self->audiotools_pcm);
 
     self->ob_type->tp_free((PyObject*)self);
 }
 
 int
-ALACDecoder_parse_decoding_parameters(decoders_ALACDecoder *self)
+alacdec_parse_decoding_parameters(decoders_ALACDecoder *self)
 {
     BitstreamReader* mdia_atom = br_substream_new(BS_BIG_ENDIAN);
     BitstreamReader* stsd_atom = br_substream_new(BS_BIG_ENDIAN);
@@ -196,7 +178,7 @@ ALACDecoder_parse_decoding_parameters(decoders_ALACDecoder *self)
         PyErr_SetString(PyExc_ValueError, "invalid mdhd atom");
         goto error;
     default:
-        self->total_samples = total_frames * self->channels;
+        self->remaining_frames = total_frames;
         break;
     }
 
@@ -259,395 +241,219 @@ ALACDecoder_channel_mask(decoders_ALACDecoder *self, void *closure)
 static PyObject*
 ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
 {
-    int current_channel = 0;
-    int frame_channels;
-    struct alac_frame_header frame_header;
-    struct ia_array frame_samples;
-    struct ia_array frame_subframe_samples;
-    struct ia_array frame_wasted_bits;
-    struct ia_array frame_residuals;
-
-    int interlacing_shift;
-    int interlacing_leftweight;
-
-    int channel;
-    int i, j;
+    unsigned channel_count;
+    BitstreamReader* mdat = self->bitstream;
+    array_ia* frameset_channels = self->frameset_channels;
     PyThreadState *thread_state;
+    pcm_FrameList *framelist;
 
-    frame_header.output_samples = 0;
-    iaa_reset(&(self->samples));
-
-    if (self->total_samples == 0)
-        goto write_frame;
+    /*return an empty framelist if total samples are exhausted*/
+    if (self->remaining_frames == 0) {
+        framelist = (pcm_FrameList*)PyObject_CallMethod(self->audiotools_pcm,
+                                                        "__blank__", NULL);
+        framelist->frames = 0;
+        framelist->channels = self->channels;
+        framelist->bits_per_sample = self->bits_per_sample;
+        framelist->samples_length = 0;
+        return (PyObject*)framelist;
+    }
 
     thread_state = PyEval_SaveThread();
 
-    if (!setjmp(*br_try(self->bitstream))) {
-        for (frame_channels = self->bitstream->read(self->bitstream, 3) + 1;
-             frame_channels != 8;
-             current_channel += frame_channels,
-             frame_channels = self->bitstream->read(self->bitstream, 3) + 1) {
+    if (!setjmp(*br_try(mdat))) {
+        frameset_channels->reset(frameset_channels);
 
-            /*initialize a set of partial output arrays
-              as subset of our total output*/
-            iaa_link(&frame_samples, &(self->samples));
-            iaa_link(&frame_subframe_samples, &(self->subframe_samples));
-            iaa_link(&frame_wasted_bits, &(self->wasted_bits_samples));
-            iaa_link(&frame_residuals, &(self->residuals));
-            frame_samples.arrays += current_channel;
-            frame_samples.size = frame_channels;
-            frame_subframe_samples.arrays += current_channel;
-            frame_subframe_samples.size = frame_channels;
-            frame_wasted_bits.arrays += current_channel;
-            frame_wasted_bits.size = frame_channels;
-            frame_residuals.arrays += current_channel;
-            frame_residuals.size = frame_channels;
-
-            ALACDecoder_read_frame_header(self->bitstream,
-                                          &frame_header,
-                                          self->max_samples_per_frame);
-
-            if (frame_header.is_not_compressed) {
-                /*uncompressed samples are interlaced between channels*/
-                for (i = 0; i < frame_header.output_samples; i++)
-                    for (channel = 0; channel < frame_channels; channel++)
-                        ia_append(&(frame_samples.arrays[channel]),
-                                  self->bitstream->read_signed(
-                                                      self->bitstream,
-                                                      self->bits_per_sample));
-            } else {
-                interlacing_shift =
-                    self->bitstream->read(self->bitstream, 8);
-                interlacing_leftweight =
-                    self->bitstream->read(self->bitstream, 8);
-
-                /*read the subframe headers*/
-                for (i = 0; i < frame_channels; i++) {
-                    ALACDecoder_read_subframe_header(
-                            self->bitstream,
-                            &(self->subframe_headers[current_channel + i]));
-                    /*sanity check substream headers*/
-                    if (self->subframe_headers[current_channel + i
-                                               ].predictor_coef_table.size < 1) {
-                        PyEval_RestoreThread(thread_state);
-                        PyErr_SetString(PyExc_ValueError,
-                                        "coefficient count must be greater than 0");
-                        goto error;
-                    }
-
-                    if (self->subframe_headers[current_channel + i
-                                               ].prediction_type != 0) {
-                        PyEval_RestoreThread(thread_state);
-                        PyErr_SetString(PyExc_ValueError,
-                                        "unsupported prediction type");
-                        goto error;
-                    }
-                }
-
-                /*if there are wasted bits, read a block of interlaced
-                  wasted-bits samples, each (wasted_bits * 8) large*/
-                if (frame_header.wasted_bits > 0) {
-                    iaa_reset(&frame_wasted_bits);
-                    ALACDecoder_read_wasted_bits(self->bitstream,
-                                                 &frame_wasted_bits,
-                                                 frame_header.output_samples,
-                                                 frame_channels,
-                                                 frame_header.wasted_bits * 8);
-                }
-
-                /*then read in one residual block per frame channel*/
-                for (i = 0; i < frame_channels; i++)
-                    ALACDecoder_read_residuals(self->bitstream,
-                                               &(frame_residuals.arrays[i]),
-                                               frame_header.output_samples,
-                                               self->bits_per_sample -
-                                               (frame_header.wasted_bits * 8) +
-                                               frame_channels - 1,
-                                               self->initial_history,
-                                               self->history_multiplier,
-                                               self->maximum_k);
-
-                /*decode the residuals into subframe_samples*/
-                for (i = 0; i < frame_channels; i++)
-                    ALACDecoder_decode_subframe(
-                          &(frame_subframe_samples.arrays[i]),
-                          &(frame_residuals.arrays[i]),
-                          &(self->subframe_headers[
-                            current_channel + i].predictor_coef_table),
-                          self->subframe_headers[
-                            current_channel + i].prediction_quantitization);
-
-                /*perform channel decorrelation*/
-                ALACDecoder_decorrelate_channels(
-                          &frame_samples,
-                          &frame_subframe_samples,
-                          interlacing_shift,
-                          interlacing_leftweight);
-
-                /*finally, apply any wasted bits, if present*/
-                if (frame_header.wasted_bits > 0) {
-                    for (i = 0; i < frame_channels; i++)
-                        for (j = 0; j < frame_header.output_samples; j++)
-                            frame_samples.arrays[i].data[j] =
-                                ((frame_samples.arrays[i].data[j] <<
-                                  (frame_header.wasted_bits * 8)) |
-                                 frame_wasted_bits.arrays[i].data[j]);
-                }
-            }
-
-            /*whether compressed or uncompressed,
-              deduct the frame's total samples from our remaining total*/
-            self->total_samples -= MIN((frame_header.output_samples *
-                                        frame_channels),
-                                       self->total_samples);
-        }
-
-        /*once the '111' stop value has been read,
-          byte align the stream for the next frame*/
-        self->bitstream->byte_align(self->bitstream);
-    } else {
-        PyEval_RestoreThread(thread_state);
-        PyErr_SetString(PyExc_IOError,
-                        "EOF during frame reading");
-        goto error;
-    }
-
-    br_etry(self->bitstream);
-    PyEval_RestoreThread(thread_state);
-
- write_frame:
-    /*transform the contents of self->samples into a pcm.FrameList object*/
-    return ia_array_to_framelist(&(self->samples),
-                                 self->bits_per_sample);
- error:
-    br_etry(self->bitstream);
-
-    return NULL;
-}
-
-static PyObject*
-i_array_to_list(struct i_array *list)
-{
-    PyObject* toreturn;
-    PyObject* item;
-    ia_size_t i;
-
-    if ((toreturn = PyList_New(0)) == NULL)
-        return NULL;
-    else {
-        for (i = 0; i < list->size; i++) {
-            item = PyInt_FromLong(list->data[i]);
-            PyList_Append(toreturn, item);
-            Py_DECREF(item);
-        }
-        return toreturn;
-    }
-}
-
-static PyObject*
-ia_array_to_list(struct ia_array *list)
-{
-    PyObject *toreturn;
-    PyObject *sub_list;
-    ia_size_t i;
-
-    if ((toreturn = PyList_New(0)) == NULL)
-        return NULL;
-    else {
-        for (i = 0; i < list->size; i++) {
-            sub_list = i_array_to_list(&(list->arrays[i]));
-            PyList_Append(toreturn, sub_list);
-            Py_DECREF(sub_list);
-        }
-        return toreturn;
-    }
-}
-
-static PyObject*
-subframe_headers_list(struct alac_subframe_header *headers, int count)
-{
-    PyObject *list;
-    PyObject *header;
-    int i;
-
-    if ((list = PyList_New(0)) == NULL)
-        return NULL;
-    else {
-        for (i = 0; i < count; i++) {
-            header = Py_BuildValue(
-                    "{si si si sN}",
-                    "prediction_type",
-                    headers[i].prediction_type,
-                    "prediction_quantitization",
-                    headers[i].prediction_quantitization,
-                    "rice_modifier",
-                    headers[i].rice_modifier,
-                    "coefficients",
-                    i_array_to_list(&(headers[i].predictor_coef_table)));
-            if (header != NULL) {
-                PyList_Append(list, header);
-                Py_DECREF(header);
-            } else {
-                Py_DECREF(list);
+        /*get initial frame's channel count*/
+        channel_count = mdat->read(mdat, 3) + 1;
+        while (channel_count != 8) {
+            /*read a frame from the frameset into "channels"*/
+            if (alacdec_read_frame(self, mdat,
+                                   frameset_channels, channel_count) != OK) {
+                br_etry(mdat);
+                PyEval_RestoreThread(thread_state);
                 return NULL;
+            } else {
+                /*ensure all frames have the same sample count*/
+                /*FIXME*/
+
+                /*read the channel count of the next frame
+                  in the frameset, if any*/
+                channel_count = mdat->read(mdat, 3) + 1;
             }
         }
-        return list;
+
+        /*once all the frames in the frameset are read,
+          byte-align the output stream*/
+        mdat->byte_align(mdat);
+        br_etry(mdat);
+        PyEval_RestoreThread(thread_state);
+
+        /*decrement the remaining sample count*/
+        self->remaining_frames -= MIN(self->remaining_frames,
+                                      frameset_channels->data[0]->size);
+
+        /*finally, build and return framelist object from the sample data*/
+        framelist = (pcm_FrameList*)PyObject_CallMethod(self->audiotools_pcm,
+                                                        "__blank__", NULL);
+        if (framelist != NULL) {
+            unsigned channel;
+            unsigned sample;
+            array_i* channel_data;
+
+            framelist->frames = frameset_channels->data[0]->size;
+            framelist->channels = frameset_channels->size;
+            framelist->bits_per_sample = self->bits_per_sample;
+            framelist->samples_length = (framelist->frames *
+                                         framelist->channels);
+            framelist->samples = realloc(framelist->samples,
+                                         framelist->samples_length *
+                                         sizeof(int));
+
+            for (channel = 0; channel < frameset_channels->size; channel++) {
+                channel_data = frameset_channels->data[channel];
+                for (sample = 0; sample < channel_data->size; sample++) {
+                    framelist->samples[(sample * frameset_channels->size) +
+                                       channel] =
+                        channel_data->data[sample];
+                }
+            }
+
+            return (PyObject*)framelist;
+        } else {
+            return NULL;
+        }
+    } else {
+        br_etry(mdat);
+        PyEval_RestoreThread(thread_state);
+        PyErr_SetString(PyExc_IOError, "EOF during frame reading");
+        return NULL;
     }
 }
 
-/*this is essentially a stripped-down read() method
-  which performs no actual frame calculation
-  but returns a tree of frame data instead*/
-static PyObject*
-ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args)
+status
+alacdec_read_frame(decoders_ALACDecoder *self,
+                   BitstreamReader* mdat,
+                   array_ia* frameset_channels,
+                   unsigned channel_count)
 {
-    int frame_channels;
-    struct alac_frame_header frame_header;
-    struct ia_array frame_samples;
-    struct ia_array frame_wasted_bits;
-    struct ia_array frame_residuals;
-    int i;
-    int channel;
-    int interlacing_shift;
-    int interlacing_leftweight;
-    long offset;
-    PyObject *frame = NULL;
-    PyObject *frame_list = NULL;
+    unsigned has_sample_count;
+    unsigned uncompressed_LSBs;
+    unsigned not_compressed;
+    unsigned sample_count;
 
-    if (self->total_samples == 0)
-        goto finished;
+    /*read frame header*/
+    mdat->skip(mdat, 16);                   /*unused*/
+    has_sample_count = mdat->read(mdat, 1);
+    uncompressed_LSBs = mdat->read(mdat, 2);
+    not_compressed = mdat->read(mdat, 1);
+    if (has_sample_count == 0)
+        sample_count = self->max_samples_per_frame;
+    else
+        sample_count = mdat->read(mdat, 32);
 
-    offset = br_ftell(self->bitstream);
 
-    if (!setjmp(*br_try(self->bitstream))) {
-        frame_list = PyList_New(0);
-        for (frame_channels = self->bitstream->read(self->bitstream, 3) + 1;
-             frame_channels != 8;
-             frame_channels = self->bitstream->read(self->bitstream, 3) + 1) {
+    if (not_compressed == 1) {
+        unsigned channel;
+        unsigned i;
+        array_ia* frame_channels = self->frame_channels;
 
-            iaa_link(&frame_samples, &(self->samples));
-            iaa_link(&frame_wasted_bits, &(self->wasted_bits_samples));
-            iaa_link(&frame_residuals, &(self->residuals));
-            frame_samples.size = frame_channels;
-            frame_wasted_bits.size = frame_channels;
-            frame_residuals.size = frame_channels;
+        /*if uncompressed, read and return a bunch of verbatim samples*/
 
-            ALACDecoder_read_frame_header(self->bitstream,
-                                          &frame_header,
-                                          self->max_samples_per_frame);
+        frame_channels->reset(frame_channels);
+        for (channel = 0; channel < channel_count; channel++)
+            frame_channels->append(frame_channels);
 
-            if (frame_header.is_not_compressed) {
-                iaa_reset(&frame_samples);
-                for (i = 0; i < frame_header.output_samples; i++) {
-                    for (channel = 0; channel < frame_channels; channel++) {
-                        ia_append(&(frame_samples.arrays[channel]),
-                                  self->bitstream->read_signed(
-                                                      self->bitstream,
-                                                      self->bits_per_sample));
-                    }
-                }
-
-                frame = Py_BuildValue("{si si si si si sN si}",
-                                      "channels",
-                                      frame_channels,
-                                      "has_size",
-                                      frame_header.has_size,
-                                      "wasted_bits",
-                                      frame_header.wasted_bits,
-                                      "is_not_compressed",
-                                      frame_header.is_not_compressed,
-                                      "output_samples",
-                                      frame_header.output_samples,
-                                      "samples",
-                                      ia_array_to_list(&(frame_samples)),
-                                      "offset", offset);
-            } else {
-                interlacing_shift =
-                    self->bitstream->read(self->bitstream, 8);
-                interlacing_leftweight =
-                    self->bitstream->read(self->bitstream, 8);
-
-                /*read the subframe headers*/
-                for (i = 0; i < frame_channels; i++) {
-                    ALACDecoder_read_subframe_header(
-                                              self->bitstream,
-                                              &(self->subframe_headers[i]));
-                }
-
-                /*if there are wasted bits, read a block of interlaced
-                  wasted-bits samples, each (wasted_bits * 8) large*/
-                iaa_reset(&(self->wasted_bits_samples));
-                if (frame_header.wasted_bits > 0) {
-                    ALACDecoder_read_wasted_bits(self->bitstream,
-                                                 &(frame_wasted_bits),
-                                                 frame_header.output_samples,
-                                                 frame_channels,
-                                                 frame_header.wasted_bits * 8);
-                }
-
-                /*read a block of residuals for each subframe*/
-                for (i = 0; i < frame_channels; i++)
-                    ALACDecoder_read_residuals(self->bitstream,
-                                               &(frame_residuals.arrays[i]),
-                                               frame_header.output_samples,
-                                               self->bits_per_sample -
-                                               (frame_header.wasted_bits * 8) +
-                                               frame_channels - 1,
-                                               self->initial_history,
-                                               self->history_multiplier,
-                                               self->maximum_k);
-
-                frame = Py_BuildValue("{si si si si si si si sN sN sN si}",
-                                      "channels",
-                                      frame_channels,
-                                      "has_size",
-                                      frame_header.has_size,
-                                      "wasted_bits",
-                                      frame_header.wasted_bits,
-                                      "is_not_compressed",
-                                      frame_header.is_not_compressed,
-                                      "output_samples",
-                                      frame_header.output_samples,
-                                      "interlacing_shift",
-                                      interlacing_shift,
-                                      "interlacing_leftweight",
-                                      interlacing_leftweight,
-                                      "subframe_headers",
-                                      subframe_headers_list(
-                                                      self->subframe_headers,
-                                                      frame_channels),
-                                      "wasted_bits",
-                                      ia_array_to_list(&(frame_wasted_bits)),
-                                      "residuals",
-                                      ia_array_to_list(&(frame_residuals)),
-                                      "offset",
-                                      offset);
+        for (i = 0; i < sample_count; i++) {
+            for (channel = 0; channel < channel_count; channel++) {
+                frame_channels->data[channel]->append(
+                    frame_channels->data[channel],
+                    mdat->read_signed(mdat, self->bits_per_sample));
             }
-
-            self->total_samples -= MIN((frame_header.output_samples *
-                                        frame_channels),
-                                      self->total_samples);
-
-            PyList_Append(frame_list, frame);
         }
+
+        frameset_channels->extend(frameset_channels, frame_channels);
+
+        return OK;
     } else {
-        Py_XDECREF(frame);
-        Py_XDECREF(frame_list);
-        PyErr_SetString(PyExc_IOError,
-                        "EOF during frame reading");
-        goto error;
+        unsigned interlacing_shift;
+        unsigned interlacing_leftweight;
+        unsigned channel;
+        unsigned i;
+        array_i* LSBs;
+        array_i* residuals = self->residuals;
+        array_ia* frame_channels = self->frame_channels;
+        array_i* channel_data;
+
+        frame_channels->reset(frame_channels);
+
+        /*if compressed, read interlacing shift and leftweight*/
+        interlacing_shift = mdat->read(mdat, 8);
+        interlacing_leftweight = mdat->read(mdat, 8);
+
+        /*read a subframe header per channel*/
+        for (channel = 0; channel < channel_count; channel++) {
+            alacdec_read_subframe_header(mdat,
+                                         &(self->subframe_headers[channel]));
+        }
+
+        /*if uncompressed LSBs, read a block of partial samples to prepend*/
+        if (uncompressed_LSBs > 0) {
+            LSBs = self->uncompressed_LSBs;
+            LSBs->reset(LSBs);
+            for (i = 0; i < (channel_count * sample_count); i++)
+                LSBs->append(LSBs,
+                             mdat->read(mdat, uncompressed_LSBs * 8));
+        }
+
+        /*read a residual block per channel
+          and calculate the subframe's samples*/
+        for (channel = 0; channel < channel_count; channel++) {
+            residuals->reset(residuals);
+            alacdec_read_residuals(
+                mdat,
+                residuals,
+                sample_count,
+                self->bits_per_sample -
+                (uncompressed_LSBs * 8) +
+                (channel_count - 1),
+                self->initial_history,
+                self->history_multiplier,
+                self->maximum_k);
+
+            alacdec_decode_subframe(
+                frame_channels->append(frame_channels),
+                residuals,
+                self->subframe_headers[channel].qlp_coeff,
+                self->subframe_headers[channel].qlp_shift_needed);
+        }
+
+        /*if stereo, decorrelate channels
+          according to interlacing shift and interlacing leftweight*/
+        if ((channel_count == 2) && (interlacing_leftweight > 0)) {
+            alacdec_decorrelate_channels(frame_channels->data[0],
+                                         frame_channels->data[1],
+                                         interlacing_shift,
+                                         interlacing_leftweight);
+        }
+
+        /*if uncompressed LSBs, prepend partial samples to output*/
+        if (uncompressed_LSBs > 0) {
+            for (channel = 0; channel < channel_count; channel++) {
+                channel_data = frame_channels->data[channel];
+                for (i = 0; i < sample_count; i++) {
+                    channel_data->data[i] = ((channel_data->data[i] <<
+                                              uncompressed_LSBs * 8) |
+                                             LSBs->data[(i * channel_count) +
+                                                        channel]);
+                }
+            }
+        }
+
+        /*finally, return frame's channel data*/
+        frameset_channels->extend(frameset_channels, frame_channels);
+
+        return OK;
     }
-
-    br_etry(self->bitstream);
-
-    return frame_list;
- finished:
-    Py_INCREF(Py_None);
-    return Py_None;
- error:
-    br_etry(self->bitstream);
-    return NULL;
 }
 
 static PyObject*
@@ -658,7 +464,7 @@ ALACDecoder_close(decoders_ALACDecoder* self, PyObject *args)
 }
 
 status
-ALACDecoder_seek_mdat(BitstreamReader* alac_stream)
+alacdec_seek_mdat(BitstreamReader* alac_stream)
 {
     unsigned int atom_size;
     uint8_t atom_type[4];
@@ -678,57 +484,21 @@ ALACDecoder_seek_mdat(BitstreamReader* alac_stream)
 }
 
 void
-ALACDecoder_read_frame_header(BitstreamReader *bs,
-                              struct alac_frame_header *frame_header,
-                              unsigned int max_samples_per_frame)
+alacdec_read_subframe_header(BitstreamReader *bs,
+                             struct alac_subframe_header *subframe_header)
 {
-    bs->read(bs, 16); /*nobody seems to know what these are for*/
-    frame_header->has_size = bs->read(bs, 1);
-    frame_header->wasted_bits = bs->read(bs, 2);
-    frame_header->is_not_compressed = bs->read(bs, 1);
-    if (frame_header->has_size) {
-        /*for when we hit the end of the stream
-          and need a non-typical amount of samples*/
-        frame_header->output_samples = bs->read(bs, 32);
-    } else {
-        frame_header->output_samples = max_samples_per_frame;
-    }
-}
-
-void
-ALACDecoder_read_subframe_header(BitstreamReader *bs,
-                                 struct alac_subframe_header *subframe_header)
-{
-    int predictor_coef_num;
-    int i;
+    unsigned predictor_coef_num;
+    unsigned i;
 
     subframe_header->prediction_type = bs->read(bs, 4);
-    subframe_header->prediction_quantitization = bs->read(bs, 4);
+    subframe_header->qlp_shift_needed = bs->read(bs, 4);
     subframe_header->rice_modifier = bs->read(bs, 3);
     predictor_coef_num = bs->read(bs, 5);
-    ia_reset(&(subframe_header->predictor_coef_table));
-    for (i = 0; i < predictor_coef_num; i++) {
-        ia_append(&(subframe_header->predictor_coef_table),
-                  bs->read_signed(bs, 16));
-    }
-}
 
-void
-ALACDecoder_read_wasted_bits(BitstreamReader *bs,
-                             struct ia_array *wasted_bits_samples,
-                             int sample_count,
-                             int channels,
-                             int wasted_bits_size)
-{
-    int i;
-    int channel;
-
-    for (i = 0; i < sample_count; i++) {
-        for (channel = 0; channel < channels; channel++) {
-            ia_append(iaa_getitem(wasted_bits_samples, channel),
-                      bs->read(bs, wasted_bits_size));
-        }
-    }
+    subframe_header->qlp_coeff->reset(subframe_header->qlp_coeff);
+    for (i = 0; i < predictor_coef_num; i++)
+        subframe_header->qlp_coeff->append(subframe_header->qlp_coeff,
+                                           bs->read_signed(bs, 16));
 }
 
 /*this is the slow version*/
@@ -758,13 +528,13 @@ LOG2(int value)
 }
 
 void
-ALACDecoder_read_residuals(BitstreamReader *bs,
-                           struct i_array *residuals,
-                           unsigned int residual_count,
-                           unsigned int sample_size,
-                           unsigned int initial_history,
-                           unsigned int history_multiplier,
-                           unsigned int maximum_k)
+alacdec_read_residuals(BitstreamReader *bs,
+                       array_i* residuals,
+                       unsigned int residual_count,
+                       unsigned int sample_size,
+                       unsigned int initial_history,
+                       unsigned int history_multiplier,
+                       unsigned int maximum_k)
 {
     int history = initial_history;
     unsigned int sign_modifier = 0;
@@ -772,12 +542,13 @@ ALACDecoder_read_residuals(BitstreamReader *bs,
     unsigned int zero_block_size;
     int i, j;
 
-    ia_reset(residuals);
+    residuals->reset(residuals);
+    residuals->resize(residuals, residual_count);
 
     for (i = 0; i < residual_count; i++) {
         /*get an unsigned residual based on "history"
           and on "sample_size" as a last resort*/
-        unsigned_residual = ALACDecoder_read_residual(
+        unsigned_residual = alacdec_read_residual(
             bs,
             MIN(LOG2((history >> 9) + 3), maximum_k),
             sample_size) + sign_modifier;
@@ -788,9 +559,9 @@ ALACDecoder_read_residuals(BitstreamReader *bs,
         /*change unsigned residual into a signed residual
           and append it to "residuals"*/
         if (unsigned_residual & 1) {
-            ia_append(residuals, -((unsigned_residual + 1) >> 1));
+            a_append(residuals, -((unsigned_residual + 1) >> 1));
         } else {
-            ia_append(residuals, (unsigned_residual + 1) >> 1);
+            a_append(residuals, unsigned_residual >> 1);
         }
 
         /*then use our old unsigned residual to update "history"*/
@@ -803,14 +574,14 @@ ALACDecoder_read_residuals(BitstreamReader *bs,
         /*if history gets too small, we may have a block of 0 samples
           which can be compressed more efficiently*/
         if ((history < 128) && ((i + 1) < residual_count)) {
-            zero_block_size = ALACDecoder_read_residual(
+            zero_block_size = alacdec_read_residual(
                 bs,
                 MIN(7 - LOG2(history) + ((history + 16) / 64), maximum_k),
                 16);
             if (zero_block_size > 0) {
                 /*block of 0s found, so write them out*/
                 for (j = 0; j < zero_block_size; j++) {
-                    ia_append(residuals, 0);
+                    a_append(residuals, 0);
                     i++;
                 }
             }
@@ -826,10 +597,10 @@ ALACDecoder_read_residuals(BitstreamReader *bs,
 
 #define RICE_THRESHOLD 8
 
-unsigned int
-ALACDecoder_read_residual(BitstreamReader *bs,
-                          unsigned int k,
-                          unsigned int sample_size)
+unsigned
+alacdec_read_residual(BitstreamReader *bs,
+                      unsigned int k,
+                      unsigned int sample_size)
 {
     int msb;
     unsigned int lsb;
@@ -872,77 +643,79 @@ SIGN_ONLY(int value)
 }
 
 void
-ALACDecoder_decode_subframe(struct i_array *samples,
-                            struct i_array *residuals,
-                            struct i_array *coefficients,
-                            int predictor_quantitization)
+alacdec_decode_subframe(array_i* samples,
+                        array_i* residuals,
+                        array_i* qlp_coeff,
+                        uint8_t qlp_shift_needed)
 {
-    ia_data_t base_sample;
-    ia_data_t residual;
+    int* residuals_data = residuals->data;
+    int base_sample;
+    int residual;
     int64_t lpc_sum;
-    int32_t output_value;
-    int32_t diff;
+    int output_value;
+    int diff;
     int sign;
     int i = 0;
     int j;
 
-    ia_reset(samples);
+    samples->reset(samples);
 
     /*first sample always copied verbatim*/
-    ia_append(samples, residuals->data[i++]);
+    samples->append(samples, residuals_data[i++]);
 
     /*grab a number of warm-up samples equal to coefficients' length*/
-    for (j = 0; j < coefficients->size; j++) {
+    for (j = 0; j < qlp_coeff->size; j++) {
         /*these are adjustments to the previous sample
           rather than copied verbatim*/
-        ia_append(samples, residuals->data[i] + samples->data[i - 1]);
+        samples->append(samples, residuals_data[i] + samples->data[i - 1]);
         i++;
     }
 
     /*then calculate a new sample per remaining residual*/
     for (; i < residuals->size; i++) {
-        residual = residuals->data[i];
-        lpc_sum = 1 << (predictor_quantitization - 1);
+        residual = residuals_data[i];
+        lpc_sum = 1 << (qlp_shift_needed - 1);
 
         /*Note that base_sample gets stripped from previously encoded samples
           then re-added prior to adding the next sample.
           It's a watermark sample, of sorts.*/
-        base_sample = samples->data[i - (coefficients->size + 1)];
+        base_sample = samples->data[i - (qlp_coeff->size + 1)];
 
-        for (j = 0; j < coefficients->size; j++) {
-            lpc_sum += ((int64_t)coefficients->data[j] *
+        for (j = 0; j < qlp_coeff->size; j++) {
+            lpc_sum += ((int64_t)qlp_coeff->data[j] *
                         (int64_t)(samples->data[i - j - 1] - base_sample));
         }
 
-        /*sample = ((sum + 2 ^ (quant - 1)) / (2 ^ quant)) + residual + base_sample*/
-        lpc_sum >>= predictor_quantitization;
+        /*sample = ((sum + 2 ^ (quant - 1)) / (2 ^ quant)) +
+          residual + base_sample*/
+        lpc_sum >>= qlp_shift_needed;
         lpc_sum += base_sample;
-        output_value = (int32_t)(residual + lpc_sum);
-        ia_append(samples, output_value);
+        output_value = (int)(residual + lpc_sum);
+        samples->append(samples, output_value);
 
         /*At this point, except for base_sample, everything looks a lot like
           a FLAC LPC subframe.
           We're not done yet, though.
-          ALAC's adaptive algorithm then adjusts the coefficients
+          ALAC's adaptive algorithm then adjusts the QLP coefficients
           up or down 1 step based on previously decoded samples
           and the residual*/
 
         if (residual > 0) {
-            for (j = 0; j < coefficients->size; j++) {
-                diff = base_sample - samples->data[i - coefficients->size + j];
+            for (j = 0; j < qlp_coeff->size; j++) {
+                diff = base_sample - samples->data[i - qlp_coeff->size + j];
                 sign = SIGN_ONLY(diff);
-                coefficients->data[coefficients->size - j - 1] -= sign;
-                residual -= (((diff * sign) >> predictor_quantitization) *
+                qlp_coeff->data[qlp_coeff->size - j - 1] -= sign;
+                residual -= (((diff * sign) >> qlp_shift_needed) *
                              (j + 1));
                 if (residual <= 0)
                     break;
             }
         } else if (residual < 0) {
-            for (j = 0; j < coefficients->size; j++) {
-                diff = base_sample - samples->data[i - coefficients->size + j];
+            for (j = 0; j < qlp_coeff->size; j++) {
+                diff = base_sample - samples->data[i - qlp_coeff->size + j];
                 sign = SIGN_ONLY(diff);
-                coefficients->data[coefficients->size - j - 1] += sign;
-                residual -= (((diff * -sign) >> predictor_quantitization) *
+                qlp_coeff->data[qlp_coeff->size - j - 1] += sign;
+                residual -= (((diff * -sign) >> qlp_shift_needed) *
                              (j + 1));
                 if (residual >= 0)
                     break;
@@ -952,75 +725,29 @@ ALACDecoder_decode_subframe(struct i_array *samples,
 }
 
 void
-ALACDecoder_decorrelate_channels(struct ia_array *output,
-                                 struct ia_array *input,
-                                 int interlacing_shift,
-                                 int interlacing_leftweight)
+alacdec_decorrelate_channels(array_i* left,
+                             array_i* right,
+                             unsigned interlacing_shift,
+                             unsigned interlacing_leftweight)
 {
-    struct i_array *left_channel;
-    struct i_array *right_channel;
-    struct i_array *channel1;
-    struct i_array *channel2;
-    ia_size_t pcm_frames, i;
-    ia_data_t right_i;
+    unsigned size = left->size;
+    unsigned i;
+    int ch0_s;
+    int ch1_s;
+    int left_s;
+    int right_s;
 
-    if (input->size != 2) {
-        for (i = 0; i < input->size; i++) {
-            ia_copy(iaa_getitem(output, i), iaa_getitem(input, i));
-        }
-    } else {
-        channel1 = iaa_getitem(input, 0);
-        channel2 = iaa_getitem(input, 1);
-        left_channel = iaa_getitem(output, 0);
-        right_channel = iaa_getitem(output, 1);
-        ia_reset(left_channel);
-        ia_reset(right_channel);
-        pcm_frames = channel1->size;
+    for (i = 0; i < size; i++) {
+        ch0_s = left->data[i];
+        ch1_s = right->data[i];
 
-        if (interlacing_leftweight == 0) {
-            ia_copy(left_channel, channel1);
-            ia_copy(right_channel, channel2);
-        } else {
-            for (i = 0; i < pcm_frames; i++) {
-                ia_append(right_channel,
-                          (right_i = (channel1->data[i] -
-                                      ((channel2->data[i] *
-                                        interlacing_leftweight) >>
-                                       interlacing_shift))));
-                ia_append(left_channel, channel2->data[i] + right_i);
-            }
-        }
+        right_s = ch0_s - ((ch1_s * (int)interlacing_leftweight) >>
+                           (int)interlacing_shift);
+        left_s = ch1_s + right_s;
+
+        left->data[i]  = left_s;
+        right->data[i] = right_s;
     }
-}
-
-void
-ALACDecoder_print_frame_header(FILE *output,
-                               struct alac_frame_header *frame_header)
-{
-    fprintf(output, "has_size : %d\n",
-            frame_header->has_size);
-    fprintf(output, "wasted bits : %d\n",
-            frame_header->wasted_bits);
-    fprintf(output, "is_not_compressed : %d\n",
-            frame_header->is_not_compressed);
-    fprintf(output, "output_samples : %d\n",
-            frame_header->output_samples);
-}
-
-void
-ALACDecoder_print_subframe_header(FILE *output,
-                                  struct alac_subframe_header *subframe_header)
-{
-    fprintf(output, "prediction type : %d\n",
-            subframe_header->prediction_type);
-    fprintf(output, "prediction quantitization : %d\n",
-            subframe_header->prediction_quantitization);
-    fprintf(output, "rice modifier : %d\n",
-            subframe_header->rice_modifier);
-    fprintf(output, "predictor coefficients : ");
-    ia_print(stdout,
-             &(subframe_header->predictor_coef_table));
-    fprintf(output, "\n");
 }
 
 int
@@ -1176,5 +903,3 @@ read_mdhd_atom(BitstreamReader* mdhd_atom,
         return 1;
     }
 }
-
-#include "pcm.c"

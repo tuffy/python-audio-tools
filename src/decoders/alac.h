@@ -1,7 +1,7 @@
 #include <Python.h>
 #include <stdint.h>
 #include "../bitstream.h"
-#include "../array.h"
+#include "../array2.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -22,6 +22,15 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+#define MAX_CHANNELS 8
+
+struct alac_subframe_header {
+    uint8_t prediction_type;
+    uint8_t qlp_shift_needed;
+    uint8_t rice_modifier;
+    array_i* qlp_coeff;
+};
+
 typedef struct {
     PyObject_HEAD
 
@@ -33,7 +42,7 @@ typedef struct {
     unsigned int channels;
     unsigned int bits_per_sample;
 
-    unsigned int total_samples;
+    unsigned int remaining_frames;
 
     /*a bunch of decoding fields pulled from the stream's 'alac' atom*/
     unsigned int max_samples_per_frame;
@@ -41,29 +50,15 @@ typedef struct {
     unsigned int initial_history;
     unsigned int maximum_k;
 
-    struct ia_array samples; /*a sample buffer for an entire group of frames*/
-    struct ia_array subframe_samples; /*a sample buffer for subframe output*/
-    struct ia_array wasted_bits_samples;  /*a buffer for wasted-bits samples*/
-    struct ia_array residuals; /*a buffer for residual values*/
-    struct alac_subframe_header *subframe_headers;
+    array_ia* frameset_channels;
+    array_ia* frame_channels;
+    array_i* uncompressed_LSBs;
+    array_i* residuals;
+    struct alac_subframe_header subframe_headers[MAX_CHANNELS];
 
-    int data_allocated; /*indicates the init method allocated
-                          the preceding ia_array and subframe header structs*/
+    /*a framelist generator*/
+    PyObject* audiotools_pcm;
 } decoders_ALACDecoder;
-
-struct alac_frame_header {
-    uint8_t has_size;
-    uint8_t wasted_bits;
-    uint8_t is_not_compressed;
-    uint32_t output_samples;
-};
-
-struct alac_subframe_header {
-    uint8_t prediction_type;
-    uint8_t prediction_quantitization;
-    uint8_t rice_modifier;
-    struct i_array predictor_coef_table;
-};
 
 typedef enum {OK, ERROR} status;
 
@@ -87,10 +82,6 @@ ALACDecoder_channel_mask(decoders_ALACDecoder *self, void *closure);
 static PyObject*
 ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args);
 
-/*the ALACDecoder.analyze_frame() method*/
-static PyObject*
-ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args);
-
 /*the ALACDecoder.close() method*/
 static PyObject*
 ALACDecoder_close(decoders_ALACDecoder* self, PyObject *args);
@@ -101,71 +92,57 @@ ALACDecoder_init(decoders_ALACDecoder *self,
                  PyObject *args, PyObject *kwds);
 
 int
-ALACDecoder_parse_decoding_parameters(decoders_ALACDecoder *self);
+alacdec_parse_decoding_parameters(decoders_ALACDecoder *self);
 
 /*walks through the open QuickTime stream looking for the 'mdat' atom
   or returns ERROR if one cannot be found*/
 status
-ALACDecoder_seek_mdat(BitstreamReader* alac_stream);
+alacdec_seek_mdat(BitstreamReader* alac_stream);
 
-/*reads "frame_header" from the current bitstream*/
-void
-ALACDecoder_read_frame_header(BitstreamReader *bs,
-                              struct alac_frame_header *frame_header,
-                              unsigned int max_samples_per_frame);
+/*appends 1 or 2 channels worth of data from the current bitstream
+  to the "samples" arrays*/
+status
+alacdec_read_frame(decoders_ALACDecoder *self,
+                   BitstreamReader *mdat,
+                   array_ia* frameset_channels,
+                   unsigned channel_count);
 
 /*reads "subframe header" from the current bitstream*/
 void
-ALACDecoder_read_subframe_header(BitstreamReader *bs,
-                                 struct alac_subframe_header *subframe_header);
-
-/*reads a block of "wasted_bits" samples from the current bitstream*/
-void
-ALACDecoder_read_wasted_bits(BitstreamReader *bs,
-                             struct ia_array *wasted_bits_samples,
-                             int sample_count,
-                             int channels,
-                             int wasted_bits_size);
+alacdec_read_subframe_header(BitstreamReader *bs,
+                             struct alac_subframe_header *subframe_header);
 
 /*reads a block of residuals from the current bitstream*/
 void
-ALACDecoder_read_residuals(BitstreamReader *bs,
-                           struct i_array *residuals,
-                           unsigned int residual_count,
-                           unsigned int sample_size,
-                           unsigned int initial_history,
-                           unsigned int history_multiplier,
-                           unsigned int maximum_k);
+alacdec_read_residuals(BitstreamReader *bs,
+                       array_i* residuals,
+                       unsigned int residual_count,
+                       unsigned int sample_size,
+                       unsigned int initial_history,
+                       unsigned int history_multiplier,
+                       unsigned int maximum_k);
 
 /*reads an unsigned residual from the current bitstream*/
-unsigned int
-ALACDecoder_read_residual(BitstreamReader *bs,
-                          unsigned int lsb_count,
-                          unsigned int sample_size);
+unsigned
+alacdec_read_residual(BitstreamReader *bs,
+                      unsigned int lsb_count,
+                      unsigned int sample_size);
 
-/*takes a set of residuals, coefficients and a predictor_quantitization value
-  returns a set of decoded samples*/
+/*decodes the given residuals, QLP coefficient values and shift needed
+  to the given samples*/
 void
-ALACDecoder_decode_subframe(struct i_array *samples,
-                            struct i_array *residuals,
-                            struct i_array *coefficients,
-                            int predictor_quantitization);
+alacdec_decode_subframe(array_i* samples,
+                        array_i* residuals,
+                        array_i* qlp_coeff,
+                        uint8_t qlp_shift_needed);
 
+/*decorrelates 2 channels, in-place*/
 void
-ALACDecoder_decorrelate_channels(struct ia_array *output,
-                                 struct ia_array *input,
-                                 int interlacing_shift,
-                                 int interlacing_leftweight);
+alacdec_decorrelate_channels(array_i* left,
+                             array_i* right,
+                             unsigned interlacing_shift,
+                             unsigned interlacing_leftweight);
 
-
-/*simple routines*/
-void
-ALACDecoder_print_frame_header(FILE *output,
-                               struct alac_frame_header *frame_header);
-
-void
-ALACDecoder_print_subframe_header(FILE *output,
-                                struct alac_subframe_header *subframe_header);
 
 PyGetSetDef ALACDecoder_getseters[] = {
     {"sample_rate",
@@ -183,8 +160,6 @@ PyMethodDef ALACDecoder_methods[] = {
     {"read", (PyCFunction)ALACDecoder_read,
      METH_VARARGS,
      "Reads the given number of bytes from the ALAC file, if possible"},
-    {"analyze_frame", (PyCFunction)ALACDecoder_analyze_frame,
-     METH_NOARGS, "Reads a single frame of analysis"},
     {"close", (PyCFunction)ALACDecoder_close,
      METH_NOARGS, "Closes the ALAC decoder stream"},
     {NULL}

@@ -68,7 +68,7 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     self->filename = strdup(filename);
 
     /*read the STREAMINFO block and setup the total number of samples to read*/
-    if (FlacDecoder_read_metadata(self->bitstream, &(self->streaminfo))) {
+    if (flacdec_read_metadata(self->bitstream, &(self->streaminfo))) {
         self->streaminfo.channels = 0;
         return -1;
     }
@@ -129,8 +129,8 @@ FlacDecoder_new(PyTypeObject *type,
 }
 
 int
-FlacDecoder_read_metadata(BitstreamReader *bitstream,
-                          struct flac_STREAMINFO *streaminfo)
+flacdec_read_metadata(BitstreamReader *bitstream,
+                      struct flac_STREAMINFO *streaminfo)
 {
     unsigned int last_block;
     unsigned int block_type;
@@ -256,9 +256,9 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
 
     if (!setjmp(*br_try(self->bitstream))) {
         /*read frame header*/
-        if ((error = FlacDecoder_read_frame_header(self->bitstream,
-                                                   &(self->streaminfo),
-                                                   &frame_header)) != OK) {
+        if ((error = flacdec_read_frame_header(self->bitstream,
+                                               &(self->streaminfo),
+                                               &frame_header)) != OK) {
             PyEval_RestoreThread(thread_state);
             PyErr_SetString(PyExc_ValueError, FlacDecoder_strerror(error));
             goto error;
@@ -267,14 +267,14 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
         /*read 1 subframe per channel*/
         for (channel = 0; channel < frame_header.channel_count; channel++)
             if ((error =
-                 FlacDecoder_read_subframe(
+                 flacdec_read_subframe(
                      self->bitstream,
                      self->qlp_coeffs,
                      self->residuals,
                      (unsigned int)MIN(frame_header.block_size,
                                        self->remaining_samples),
-                     FlacDecoder_subframe_bits_per_sample(&frame_header,
-                                                          channel),
+                     flacdec_subframe_bits_per_sample(&frame_header,
+                                                      channel),
                      self->subframe_data->append(self->subframe_data))) != OK) {
                 PyEval_RestoreThread(thread_state);
                 PyErr_SetString(PyExc_ValueError, FlacDecoder_strerror(error));
@@ -282,9 +282,9 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
             }
 
         /*handle difference channels, if any*/
-        FlacDecoder_decorrelate_channels(frame_header.channel_assignment,
-                                         self->subframe_data,
-                                         self->framelist_data);
+        flacdec_decorrelate_channels(frame_header.channel_assignment,
+                                     self->subframe_data,
+                                     self->framelist_data);
 
         /*check CRC-16*/
         self->bitstream->byte_align(self->bitstream);
@@ -341,9 +341,9 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
 
 
 flac_status
-FlacDecoder_read_frame_header(BitstreamReader *bitstream,
-                              struct flac_STREAMINFO *streaminfo,
-                              struct flac_frame_header *header)
+flacdec_read_frame_header(BitstreamReader *bitstream,
+                          struct flac_STREAMINFO *streaminfo,
+                          struct flac_frame_header *header)
 {
     uint32_t block_size_bits;
     uint32_t sample_rate_bits;
@@ -462,19 +462,19 @@ FlacDecoder_read_frame_header(BitstreamReader *bitstream,
 }
 
 flac_status
-FlacDecoder_read_subframe(BitstreamReader* bitstream,
-                          array_i* qlp_coeffs,
-                          array_i* residuals,
-                          unsigned int block_size,
-                          unsigned int bits_per_sample,
-                          array_i* samples)
+flacdec_read_subframe(BitstreamReader* bitstream,
+                      array_i* qlp_coeffs,
+                      array_i* residuals,
+                      unsigned int block_size,
+                      unsigned int bits_per_sample,
+                      array_i* samples)
 {
     struct flac_subframe_header subframe_header;
     uint32_t i;
     flac_status error = OK;
 
-    if (FlacDecoder_read_subframe_header(bitstream,
-                                         &subframe_header) == ERROR)
+    if (flacdec_read_subframe_header(bitstream,
+                                     &subframe_header) == ERROR)
         return ERROR;
 
     /*account for wasted bits-per-sample*/
@@ -483,33 +483,33 @@ FlacDecoder_read_subframe(BitstreamReader* bitstream,
 
     switch (subframe_header.type) {
     case FLAC_SUBFRAME_CONSTANT:
-        error = FlacDecoder_read_constant_subframe(bitstream,
-                                                   block_size,
-                                                   bits_per_sample,
-                                                   samples);
+        error = flacdec_read_constant_subframe(bitstream,
+                                               block_size,
+                                               bits_per_sample,
+                                               samples);
         break;
     case FLAC_SUBFRAME_VERBATIM:
-        error = FlacDecoder_read_verbatim_subframe(bitstream,
-                                                   block_size,
-                                                   bits_per_sample,
-                                                   samples);
+        error = flacdec_read_verbatim_subframe(bitstream,
+                                               block_size,
+                                               bits_per_sample,
+                                               samples);
         break;
     case FLAC_SUBFRAME_FIXED:
-        error = FlacDecoder_read_fixed_subframe(bitstream,
-                                                residuals,
-                                                subframe_header.order,
-                                                block_size,
-                                                bits_per_sample,
-                                                samples);
+        error = flacdec_read_fixed_subframe(bitstream,
+                                            residuals,
+                                            subframe_header.order,
+                                            block_size,
+                                            bits_per_sample,
+                                            samples);
         break;
     case FLAC_SUBFRAME_LPC:
-        error = FlacDecoder_read_lpc_subframe(bitstream,
-                                              qlp_coeffs,
-                                              residuals,
-                                              subframe_header.order,
-                                              block_size,
-                                              bits_per_sample,
-                                              samples);
+        error = flacdec_read_lpc_subframe(bitstream,
+                                          qlp_coeffs,
+                                          residuals,
+                                          subframe_header.order,
+                                          block_size,
+                                          bits_per_sample,
+                                          samples);
         break;
     }
 
@@ -525,8 +525,8 @@ FlacDecoder_read_subframe(BitstreamReader* bitstream,
 }
 
 flac_status
-FlacDecoder_read_subframe_header(BitstreamReader *bitstream,
-                                 struct flac_subframe_header *subframe_header)
+flacdec_read_subframe_header(BitstreamReader *bitstream,
+                             struct flac_subframe_header *subframe_header)
 {
     uint8_t subframe_type;
 
@@ -559,8 +559,8 @@ FlacDecoder_read_subframe_header(BitstreamReader *bitstream,
 }
 
 unsigned int
-FlacDecoder_subframe_bits_per_sample(struct flac_frame_header *frame_header,
-                                     unsigned int channel_number) {
+flacdec_subframe_bits_per_sample(struct flac_frame_header *frame_header,
+                                 unsigned int channel_number) {
     if (((frame_header->channel_assignment == 0x8) &&
          (channel_number == 1)) ||
         ((frame_header->channel_assignment == 0x9) &&
@@ -574,10 +574,10 @@ FlacDecoder_subframe_bits_per_sample(struct flac_frame_header *frame_header,
 }
 
 flac_status
-FlacDecoder_read_constant_subframe(BitstreamReader* bitstream,
-                                   uint32_t block_size,
-                                   uint8_t bits_per_sample,
-                                   array_i* samples)
+flacdec_read_constant_subframe(BitstreamReader* bitstream,
+                               uint32_t block_size,
+                               uint8_t bits_per_sample,
+                               array_i* samples)
 {
     int32_t value = bitstream->read_signed(bitstream, bits_per_sample);
     int32_t i;
@@ -592,10 +592,10 @@ FlacDecoder_read_constant_subframe(BitstreamReader* bitstream,
 }
 
 flac_status
-FlacDecoder_read_verbatim_subframe(BitstreamReader* bitstream,
-                                   uint32_t block_size,
-                                   uint8_t bits_per_sample,
-                                   array_i* samples)
+flacdec_read_verbatim_subframe(BitstreamReader* bitstream,
+                               uint32_t block_size,
+                               uint8_t bits_per_sample,
+                               array_i* samples)
 {
     int32_t i;
 
@@ -610,12 +610,12 @@ FlacDecoder_read_verbatim_subframe(BitstreamReader* bitstream,
 }
 
 flac_status
-FlacDecoder_read_fixed_subframe(BitstreamReader* bitstream,
-                                array_i* residuals,
-                                uint8_t order,
-                                uint32_t block_size,
-                                uint8_t bits_per_sample,
-                                array_i* samples)
+flacdec_read_fixed_subframe(BitstreamReader* bitstream,
+                            array_i* residuals,
+                            uint8_t order,
+                            uint32_t block_size,
+                            uint8_t bits_per_sample,
+                            array_i* samples)
 {
     unsigned i;
     flac_status error;
@@ -636,8 +636,8 @@ FlacDecoder_read_fixed_subframe(BitstreamReader* bitstream,
     }
 
     /*read the residual block*/
-    if ((error = FlacDecoder_read_residual(bitstream, order,
-                                           block_size, residuals)) != OK)
+    if ((error = flacdec_read_residual(bitstream, order,
+                                       block_size, residuals)) != OK)
         return error;
     else
         r_data = residuals->data;
@@ -684,13 +684,13 @@ FlacDecoder_read_fixed_subframe(BitstreamReader* bitstream,
 }
 
 flac_status
-FlacDecoder_read_lpc_subframe(BitstreamReader* bitstream,
-                              array_i* qlp_coeffs,
-                              array_i* residuals,
-                              uint8_t order,
-                              uint32_t block_size,
-                              uint8_t bits_per_sample,
-                              array_i* samples)
+flacdec_read_lpc_subframe(BitstreamReader* bitstream,
+                          array_i* qlp_coeffs,
+                          array_i* residuals,
+                          uint8_t order,
+                          uint32_t block_size,
+                          uint8_t bits_per_sample,
+                          array_i* samples)
 {
     unsigned i, j;
     uint32_t qlp_precision;
@@ -730,8 +730,8 @@ FlacDecoder_read_lpc_subframe(BitstreamReader* bitstream,
     qlp_data = qlp_coeffs->data;
 
     /*read the residual*/
-    if ((error = FlacDecoder_read_residual(bitstream, order,
-                                           block_size, residuals)) != OK)
+    if ((error = flacdec_read_residual(bitstream, order,
+                                       block_size, residuals)) != OK)
         return error;
     else
         r_data = residuals->data;
@@ -751,10 +751,10 @@ FlacDecoder_read_lpc_subframe(BitstreamReader* bitstream,
 }
 
 flac_status
-FlacDecoder_read_residual(BitstreamReader* bitstream,
-                          uint8_t order,
-                          uint32_t block_size,
-                          array_i* residuals)
+flacdec_read_residual(BitstreamReader* bitstream,
+                      uint8_t order,
+                      uint32_t block_size,
+                      array_i* residuals)
 {
     uint32_t coding_method = bitstream->read(bitstream, 2);
     uint32_t partition_order = bitstream->read(bitstream, 4);
@@ -830,9 +830,9 @@ FlacDecoder_read_residual(BitstreamReader* bitstream,
 
 
 void
-FlacDecoder_decorrelate_channels(uint8_t channel_assignment,
-                                 array_ia* subframes,
-                                 array_i* framelist) {
+flacdec_decorrelate_channels(uint8_t channel_assignment,
+                             array_ia* subframes,
+                             array_i* framelist) {
     int* framelist_data;
     unsigned i,j;
     unsigned channel_count = subframes->size;
@@ -886,7 +886,8 @@ FlacDecoder_decorrelate_channels(uint8_t channel_assignment,
 
 flac_status
 FlacDecoder_update_md5sum(decoders_FlacDecoder *self,
-                          PyObject *framelist) {
+                          PyObject *framelist)
+{
     PyObject *string = PyObject_CallMethod(framelist,
                                            "to_bytes","ii",
                                            0,
@@ -911,7 +912,8 @@ FlacDecoder_update_md5sum(decoders_FlacDecoder *self,
 }
 
 int
-FlacDecoder_verify_okay(decoders_FlacDecoder *self) {
+FlacDecoder_verify_okay(decoders_FlacDecoder *self)
+{
     unsigned char stream_md5sum[16];
     const static unsigned char blank_md5sum[16] = {0, 0, 0, 0, 0, 0, 0, 0,
                                                    0, 0, 0, 0, 0, 0, 0, 0};
@@ -923,7 +925,8 @@ FlacDecoder_verify_okay(decoders_FlacDecoder *self) {
 }
 
 const char*
-FlacDecoder_strerror(flac_status error) {
+FlacDecoder_strerror(flac_status error)
+{
     switch (error) {
     case OK:
         return "No Error";

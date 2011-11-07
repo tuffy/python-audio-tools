@@ -760,6 +760,7 @@ array_ia_new(void)
     a->resize = array_ia_resize;
     a->reset = array_ia_reset;
     a->append = array_ia_append;
+    a->extend = array_ia_extend;
     a->equals = array_ia_equals;
     a->print = array_ia_print;
 
@@ -818,6 +819,18 @@ ARRAY_A_RESET(array_fa_reset, array_fa)
     }
 ARRAY_A_APPEND(array_ia_append, array_ia, array_i)
 ARRAY_A_APPEND(array_fa_append, array_fa, array_f)
+
+#define ARRAY_A_EXTEND(FUNC_NAME, ARRAY_TYPE)                           \
+    void                                                                \
+    FUNC_NAME(ARRAY_TYPE *array, const ARRAY_TYPE *to_add)              \
+    {                                                                   \
+        unsigned i;                                                     \
+        for (i = 0; i < to_add->size; i++) {                            \
+            to_add->data[i]->copy(to_add->data[i], array->append(array)); \
+        }                                                               \
+    }
+ARRAY_A_EXTEND(array_ia_extend, array_ia)
+ARRAY_A_EXTEND(array_fa_extend, array_fa)
 
 #define ARRAY_A_EQUALS(FUNC_NAME, ARRAY_TYPE) \
     int                                               \
@@ -878,6 +891,7 @@ array_fa_new(void)
     a->resize = array_fa_resize;
     a->reset = array_fa_reset;
     a->append = array_fa_append;
+    a->extend = array_fa_extend;
     a->equals = array_fa_equals;
     a->print = array_fa_print;
 

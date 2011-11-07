@@ -161,6 +161,7 @@ byte-align file stream\;
 \clearpage
 
 \subsection{Decoding ALAC Frame}
+{\relsize{-1}
 \ALGORITHM{\texttt{mdat} atom data, channel count, decoding parameters from \texttt{alac} atom}{1 or 2 decoded channels of PCM data}
 \SKIP 16 bits\;
 $has~sample~count \leftarrow$ \READ 1 unsigned bit\;
@@ -187,12 +188,12 @@ $not~compressed \leftarrow$ \READ 1 unsigned bit\;
   \If{$uncompressed~LSBs > 0$}{
     \For{i = 0 \emph{\KwTo}sample count}{
       \For{c = 0 \emph{\KwTo}channel count}{
-        $\text{LSBs}_{i~c} \leftarrow$ \READ ($uncompressed~LSBs \times 8$) signed bits\;
+        $\text{LSBs}_{i~c} \leftarrow$ \READ ($uncompressed~LSBs \times 8$) unsigned bits\;
       }
     }
   }
   \For{c = 0 \emph{\KwTo}channel count}{
-    $\text{residual block}_c \leftarrow$ read residual block\;
+    $\text{residual block}_c \leftarrow$ read residual block where sample size is $\text{bits per sample} - (uncompressed~LSBs \times 8) + (\text{channel count} - 1)$\;
     decode $\text{subframe}_c$ from $\text{subframe header}_c$ and $\text{residual block}_c$\;
   }
   \eIf{$channel~count = 2$}{
@@ -208,6 +209,7 @@ $not~compressed \leftarrow$ \READ 1 unsigned bit\;
 }
 \Return channel data\;
 \EALGORITHM
+}
 
 \clearpage
 

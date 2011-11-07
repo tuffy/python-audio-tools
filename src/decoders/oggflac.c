@@ -164,7 +164,7 @@ OggFlacDecoder_read(decoders_OggFlacDecoder *self, PyObject *args) {
 
         if (!setjmp(*br_try(self->packet))) {
             /*read frame header*/
-            if ((flac_status = FlacDecoder_read_frame_header(
+            if ((flac_status = flacdec_read_frame_header(
                                                     self->packet,
                                                     &(self->streaminfo),
                                                     &frame_header)) != OK) {
@@ -177,13 +177,13 @@ OggFlacDecoder_read(decoders_OggFlacDecoder *self, PyObject *args) {
 
             /*read 1 subframe per channel*/
             for (channel = 0; channel < frame_header.channel_count; channel++)
-                if ((flac_status = FlacDecoder_read_subframe(
+                if ((flac_status = flacdec_read_subframe(
                         self->packet,
                         self->qlp_coeffs,
                         self->residuals,
                         frame_header.block_size,
-                        FlacDecoder_subframe_bits_per_sample(&frame_header,
-                                                             channel),
+                        flacdec_subframe_bits_per_sample(&frame_header,
+                                                         channel),
                         self->subframe_data->append(self->subframe_data))) !=
                     OK) {
                     PyEval_RestoreThread(thread_state);
@@ -196,9 +196,9 @@ OggFlacDecoder_read(decoders_OggFlacDecoder *self, PyObject *args) {
             br_etry(self->packet);
 
             /*handle difference channels, if any*/
-            FlacDecoder_decorrelate_channels(frame_header.channel_assignment,
-                                             self->subframe_data,
-                                             self->framelist_data);
+            flacdec_decorrelate_channels(frame_header.channel_assignment,
+                                         self->subframe_data,
+                                         self->framelist_data);
 
             /*check CRC-16*/
             self->packet->byte_align(self->packet);

@@ -501,6 +501,9 @@ struct array_ia_s {
       this array should *not* be deleted once it is done being used*/
     struct array_i_s* (*append)(struct array_ia_s *array);
 
+    /*appends all the items in "to_add" to this array*/
+    void (*extend)(struct array_ia_s *array, const struct array_ia_s *to_add);
+
     /*returns 1 if all items in array equal those in compare,
       returns 0 if not*/
     int (*equals)(const struct array_ia_s *array,
@@ -520,6 +523,7 @@ void array_ia_del(struct array_ia_s *array);
 void array_ia_resize(struct array_ia_s *array, unsigned minimum);
 void array_ia_reset(struct array_ia_s *array);
 struct array_i_s* array_ia_append(struct array_ia_s *array);
+void array_ia_extend(struct array_ia_s *array, const struct array_ia_s *to_add);
 int array_ia_equals(const struct array_ia_s *array,
                     const struct array_ia_s *compare);
 void array_ia_reverse(struct array_ia_s *array);
@@ -550,6 +554,9 @@ struct array_fa_s {
       this array should *not* be deleted once it is done being used*/
     struct array_f_s* (*append)(struct array_fa_s *array);
 
+    /*appends all the items in "to_add" to this array*/
+    void (*extend)(struct array_fa_s *array, const struct array_fa_s *to_add);
+
     /*returns 1 if all items in array equal those in compare,
       returns 0 if not*/
     int (*equals)(const struct array_fa_s *array,
@@ -569,6 +576,7 @@ void array_fa_del(struct array_fa_s *array);
 void array_fa_resize(struct array_fa_s *array, unsigned minimum);
 void array_fa_reset(struct array_fa_s *array);
 struct array_f_s* array_fa_append(struct array_fa_s *array);
+void array_fa_extend(struct array_fa_s *array, const struct array_fa_s *to_add);
 int array_fa_equals(const struct array_fa_s *array,
                     const struct array_fa_s *compare);
 void array_fa_reverse(struct array_fa_s *array);
