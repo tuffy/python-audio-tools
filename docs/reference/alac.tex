@@ -176,7 +176,7 @@ $not~compressed \leftarrow$ \READ 1 unsigned bit\;
   \For{i = 0 \emph{\KwTo}sample count}{
     \For{c = 0 \emph{\KwTo}channel count}{
       \tcc{bits per sample taken from alac atom}
-      $\text{channel}_{i~c} \leftarrow$ \READ (bits per sample) signed bits\;
+      $\text{channel}_{c~i} \leftarrow$ \READ (bits per sample) signed bits\;
     }
   }
 }(\tcc*[f]{compressed frame}){
@@ -188,7 +188,7 @@ $not~compressed \leftarrow$ \READ 1 unsigned bit\;
   \If{$uncompressed~LSBs > 0$}{
     \For{i = 0 \emph{\KwTo}sample count}{
       \For{c = 0 \emph{\KwTo}channel count}{
-        $\text{LSBs}_{i~c} \leftarrow$ \READ ($uncompressed~LSBs \times 8$) unsigned bits\;
+        $\text{LSBs}_{c~i} \leftarrow$ \READ ($uncompressed~LSBs \times 8$) unsigned bits\;
       }
     }
   }
@@ -204,12 +204,17 @@ $not~compressed \leftarrow$ \READ 1 unsigned bit\;
     }
   }
   \If{$uncompressed~LSBs > 0$}{
-    prepend each $\text{LSBs}_{i~c}$ to its corresponding $\text{channel}_{i~c}$ sample\;
+    \For{c = 0 \emph{\KwTo}channel count}{
+      \For{i = 0 \emph{\KwTo}sample count}{
+        $\text{channel}_{c~i} \leftarrow (\text{channel}_{c~i} \times 2 ^ {uncompressed~LSBs \times 8}) + \text{LSB}_{c~i}$\;
+      }
+    }
   }
 }
 \Return channel data\;
 \EALGORITHM
 }
+
 
 \clearpage
 
@@ -582,6 +587,70 @@ Where the \texttt{sign} function is defined as:
 
 \clearpage
 
+\subsubsection{Decoding Subframe Example}
+Given the residuals
+\texttt{32, 7, 4, 2, -1, -1, -1, -4, -1, -4, -2},
+the QLP coefficients
+\texttt{1446, -1725, 1072, -305}
+and a QLP shift needed value of \texttt{9},
+the subframe samples are calculated as follows:
+\begin{table}[h]
+{\relsize{-1}
+\begin{tabular}{r||r|r|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}}
+$i$ & $\text{Residual}_i$ & $\text{Base}_i$ & \text{LPC Sum}_i & \text{Sample}_i & \text{QLP Coeff.}_{(i + 1)~j} \\
+\hline
+0 & 32 & & & 32 \\
+1 & 7 & & & 7 + 32 = 39 \\
+2 & 4 & & & 4 + 39 = 43 \\
+3 & 2 & & & 2 + 43 = 45 \\
+4 & -1 & & & -1 + 45 = 44 \\
+%% 5 & -1 & 32 & 1446 \times (44 - 32) & \lfloor (4584 + 2 ^ 8) \div 2 ^ 9\rfloor - 1 + 32 = 40 & 1446 \\
+%%   &    &    & -1725 \times (45 - 32) & & -1725 \\
+%%   &    &    & 1072 \times (43 - 32) & & 1072 \\
+%%   &    &    & -305 \times (39 - 32) & & -305 + -1 = -306 \\
+\hline
+5 & -1 & 32 & 1446 \times (44 - 32) \texttt{ +} & \lfloor(4584 + 2 ^ 8) \div 2 ^ 9\rfloor - 1 + 32 = 40 & 1446 \\
+& & & -1725 \times (45 - 32) \texttt{ +}& & -1725 \\
+& & & 1072 \times (43 - 32) \texttt{ +} & & 1072 \\
+& & & -305 \times (39 - 32) \texttt{~~} & & -305 - 1 = -306 \\
+\hline
+6 & -1 & 39 & 1446 \times (40 - 39) \texttt{ +} & \lfloor(-1971 + 2 ^ 8) \div 2 ^ 9\rfloor - 1 + 39 = 34 & 1446 \\
+& & & -1725 \times (44 - 39) \texttt{ +} & & -1725 \\
+& & & 1072 \times (45 - 39) \texttt{ +} & & 1072 \\
+& & & -306 \times (43 - 39) \texttt{~~} & & -306 - 1 = -307 \\
+\hline
+7 & -4 & 43 & 1446 \times (34 - 43) \texttt{ +} & \lfloor(-7381 + 2 ^ 8) \div 2 ^ 9\rfloor - 4 + 43 = 25 & 1446 \\
+& & & -1725 \times (40 - 43) \texttt{ +} & & -1725 + 1 = -1724 \\
+& & & 1072 \times (44 - 43) \texttt{ +} & & 1072 - 1 = 1071 \\
+& & & -307 \times (45 - 43) \texttt{~~} & & -307 - 1 = -308 \\
+\hline
+8 & -1 & 45 & 1446 \times (25 - 45) \texttt{ +} & \lfloor(-15003 + 2 ^ 8) \div 2 ^ 9\rfloor - 1 + 45 = 15 & 1446 \\
+& & & -1724 \times (34 - 45) \texttt{ +} & & -1724 \\
+& & & 1071 \times (40 - 45) \texttt{ +} & & 1071 \\
+& & & -308 \times (44 - 45) \texttt{~~} & & -308 + 1 = -307 \\
+\hline
+9 & -4 & 44 & 1446 \times (15 - 44) \texttt{ +} & \lfloor(-18660 + 2 ^ 8) \div 2 ^ 9\rfloor - 4 + 44 = 4 & 1446 \\
+& & & -1724 \times (25 - 44) \texttt{ +} & & -1724 + 1 = -1723 \\
+& & & 1071 \times (34 - 44) \texttt{ +} & & 1071 + 1 = 1072 \\
+& & & -307 \times (40 - 44) \texttt{~~} & & -307 + 1 = -306 \\
+\hline
+10 & -2 & 40 & 1446 \times (4 - 40) \texttt{ +} & \lfloor(-23225 + 2 ^ 8) \div 2 ^ 9\rfloor - 2 + 40 = -7 & 1446 \\
+& & & -1723 \times (15 - 40) \texttt{ +} & & -1723 \\
+& & & 1072 \times (25 - 40) \texttt{ +} & & 1072 + 1 = 1073 \\
+& & & -306 \times (34 - 40) \texttt{~~} & & -306 + 1 = -305 \\
+\hline
+\end{tabular}
+}
+\end{table}
+
+Although some steps have been omitted for brevity,
+what's important to note is how the base sample
+is removed prior to $\text{LPC Sum}_i$ calculation,
+how it is re-added during $\text{Sample}_i$ calculation
+and how the next sample's QLP Coefficient values are shifted.
+
+\clearpage
+
 \subsection{Channel Decorrelation}
 \ALGORITHM{$\text{subframe samples}_0$, $\text{subframe samples}_1$, interlacing shift and interlacing leftweight from frame header}{left and right channels}
 \eIf{$\text{interlacing leftweight} > 0$}{
@@ -612,590 +681,6 @@ $i$ & \text{Subframe}_{0~i} & \text{Subframe}_{1~i} & \text{Right}_i & \text{Lef
 \hline
 \end{tabular}
 \end{table}
-
-%% \begin{figure}[h]
-
-%% \end{figure}
-
-%% This is the typical arrangements of ALAC atoms as encoded by iTunes.
-%% As you can see, it is almost identical to the layout of AAC audio.
-%% One of the key differences is that ALAC's \texttt{stsd} atom
-%% contains an \texttt{alac} description sub-atom rather than an
-%% \texttt{mp4a} description atom.
-
-%% Its layout is as follows:
-
-%% \begin{figure}[h]
-%% \includegraphics{figures/alac/alac_atom.pdf}
-%% \end{figure}
-
-%% \pagebreak
-
-%% \section{ALAC Decoding}
-
-%% An ALAC stream is made up of individual framesets within the \texttt{mdat}
-%% atom, as follows:
-
-%% \begin{figure}[h]
-%% \includegraphics{figures/alac/stream.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% Note that the \VAR{Channels} field is the total number of channels
-%% in the following frame, offset by 1;
-%% \texttt{0} is mono and \texttt{1} is stereo.
-%% The frames within a frameset continue until the value \texttt{0x7} is
-%% encountered in the \VAR{Channels} field.
-%% Each frameset will contain only a single frame in most cases.
-%% However, multichannel audio may contain more.
-%% For example, a 6 channel stream may have framesets with 4 frames
-%% each where $\text{Frame}_1$ has channels 1-2,
-%% $\text{Frame}_2$ has channel 3,
-%% $\text{Frame}_3$ has channel 4 and $\text{Frame}_4$ has channel 5-6.
-
-%% Note that all ALAC framesets have padding as needed such that each
-%% new frameset begins on an aligned byte boundary.
-
-%% If \VAR{Has Sample Count} is not set, the total number of PCM frames
-%% in the ALAC frame equals the \VAR{Samples per Frame} value in the
-%% \texttt{alac} atom.
-%% If not, the total number of samples is indicated by a 32-bit
-%% \VAR{Sample Count} value at the end of the frame header.
-
-%% ALAC frames come in two varieties: compressed and uncompressed,
-%% depending on the \VAR{Uncompressed} bit in the frame header.
-
-%% \clearpage
-
-%% \subsection{Uncompressed Frames}
-
-%% Uncompressed frames are a simple collection of signed sample values,
-%% each \VAR{Bits per Sample} bits long (as indicated in the \texttt{alac} atom).
-%% This is a trivial case for handling frames which do not compress,
-%% such as random noise.
-%% For 2 channel frames, uncompressed frames interleave samples
-%% between channels during decoding.
-%% For example, $\text{Sample}_1$ is on $\text{Channel}_1$,
-%% $\text{Sample}_2$ on $\text{Channel}_2$,
-%% $\text{Sample}_3$ on $\text{Channel}_1$,
-%% $\text{Sample}_4$ on $\text{Channel}_2$ and so on.
-
-%% \subsection{Compressed Frames}
-
-%% Compressed frames are prefixed by unsigned, 8-bit \VAR{Interlacing Shift}
-%% and \VAR{Interlacing Leftweight} values.
-%% For 2 channel frames, these values are used during channel
-%% reconstruction once the subframes have been decoded.
-%% These are followed by one subframe header per channel,
-%% which is laid out as follows:
-
-%% \begin{figure}[h]
-%% \includegraphics{figures/alac/subframe_header.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% \VAR{Prediction Type} is always 0.
-%% \VAR{QLP Shift Needed} is an unsigned value.
-%% \VAR{Rice Modifier} is typically 4.
-%% There are \VAR{Coefficient Count} number of signed,
-%% 16-bit \VAR{QLP Coefficient} values.
-%% \VAR{QLP Shift Needed} and the \VAR{QLP Coefficients}
-%% will be used to transform decoded residuals into sample values.
-
-%% \VAR{Uncompressed LSBs}, if nonzero, indicates the frame contains
-%% uncompressed least-significant-bit samples between
-%% the subframe headers and encoded residuals.
-%% Its value is the size of those samples, in bytes.
-%% The number of LSB samples equals the ALAC frame's PCM frame count
-%% times the frame's channel count,
-%% and those samples are interleaved between channels.
-%% These samples will be prepended to the channel's decoded
-%% samples in order to handle streams which are 24 bits-per-sample or more.
-
-%% \clearpage
-
-%% \subsubsection{Residual Block Decoding}
-%% Each residual block contains one residual value per PCM frame.
-%% Decoding these residuals requires the
-%% \VAR{Initial History}, \VAR{History Multiplier},
-%% \VAR{Maximum LSBs} and \VAR{Bits per Sample} values
-%% from the \texttt{alac} atom,
-%% as well as the \VAR{Channel Count} and \VAR{Uncompressed LSBs}
-%% values from the frame header.
-
-%% \begin{enumerate}[1)]
-%% \item $\text{sample size} = \text{\VAR{Bits per Sample}} - (\text{\VAR{Uncompressed LSBs}} \times 8) + \text{\VAR{Channel Count}} - 1$
-%% \item $h_0 = \text{\VAR{Initial History}}$
-%% \item $\text{sign modifier}_0 = 0$
-%% \item $i = 0$
-%% \item $\text{LSB Count}_i = \text{min}( \lfloor \log_2 ( h_i \div {2 ^ 9} + 3 ) \rfloor , \text{\VAR{Maximum LSBs}} ) $
-%% \item $u_i = \text{read\_residual}(\text{LSB Count}_i, \text{sample size}) + \text{sign modifier}_i$
-%% \item $\textbf{residual}_i = \begin{cases} \lfloor (u_i + 1) \div 2 \rfloor & \text{ if } u_i \mod 2 = 0 \\ -\lfloor (u_i + 1) \div 2 \rfloor & \text{ if } u_i \mod 2 = 1 \end{cases}$
-%% \item $h_{i + 1} = \begin{cases} h_i + (u_i \times \text{\VAR{History Multiplier}}) - \left\lfloor\frac{h_i \times \text{\VAR{History Multiplier}}}{2 ^ 9}\right\rfloor & \text{ if } u_i \leq 65535 \\ 65535 & \text{ if } u_i > 65535 \end{cases}$
-%% \item if $h_{i + 1} \geq 128$ or $i + 1 = \text{\VAR{PCM Frame Count}}$ then \newline
-%% $\text{sign modifier}_{i + 1} = 0$ and goto step 15
-%% \item $\text{Zeroes LSB Count}_i = \text{min}(7 - \lfloor \log_2 ( h_i ) \rfloor + \lfloor (h_i + 16) \div 64 \rfloor , \text{\VAR{Maximum LSBs}} )$
-%% \item $\text{Zero Residuals}_i = \text{read\_residual}(\text{Zeroes LSB Count}_i , 16)$
-%% \item if $\text{Zero Residuals}_i > 0$
-%% \begin{enumerate}[a)]
-%% \item $[ \textbf{residual}_{i + 1} , \textbf{residual}_{i + \text{Zero Residuals}_i} ] = 0$
-%% \item $i \leftarrow i + \text{Zero Residuals}_i$
-%% \end{enumerate}
-%% \item $\text{sign modifier}_{i + 1} = \begin{cases} 1 & \text{ if } \text{\VAR{PCM Frame Count}} \leq 65535 \\ 0 & \text{ if } \text{\VAR{PCM Frame Count}} > 65535 \end{cases}$
-%% \item $h_{i + 1} \leftarrow 0$
-%% \item $i \leftarrow i + 1$
-%% \item if $i < \text{\VAR{PCM Frame Count}}$ then goto step 5
-%% \item return \textbf{residual} values
-%% \end{enumerate}
-
-%% \clearpage
-
-%% \subsubsection{Individual Residual Decoding}
-%% The $\text{read\_residual}(\text{lsb\_count}, \text{sample\_size})$
-%% function is defined as follows:
-%% \begin{enumerate}[1)]
-%% \item read a unary value from the stream with a stop bit of \texttt{0}
-%% as our $\text{MSB}$ (most-significant bits) value,
-%% stopping if the number of \texttt{1} bits reaches 9
-%% \item if $\text{MSB} = 9$, return an unsigned value from the stream
-%% \VAR{sample\_size} bits large\footnote{This
-%% is an escape code for excessively large residuals}
-%% \item if $\text{\VAR{lsb\_count}} = 0$, return $\text{MSB}$
-%% \item read an unsigned value from the stream, $\text{\VAR{lsb\_count}}$
-%% bits large as our $\text{LSB}$ (least-significant bits value)
-%% \item if $\text{LSB} > 1$, return $\text{MSB} \times (2 ^ {\text{\VAR{lsb\_count}}} - 1) + (\text{LSB} - 1)$
-%% \item if $\text{LSB} = 1$, unread a single \texttt{1} bit and return $\text{MSB} \times (2 ^ {\text{\VAR{lsb\_count}}} - 1)$
-%% \item if $\text{LSB} = 1$, unread a single \texttt{0} bit and return $\text{MSB} \times (2 ^ {\text{\VAR{lsb\_count}}} - 1)$
-%% \end{enumerate}
-
-%% %% The process for reading each signed $\text{residual}_i$ is as follows:
-%% %% \begin{enumerate}[I.]
-%% %% \item if $\text{history}_i \geq 128$:
-%% %% \begin{enumerate}[1)]
-%% %% \item read a unary value from the stream with a stop bit of \texttt{0}
-%% %% as our $\text{MSB}_i$ (most-significant-bits) value,
-%% %% stopping if the number of \texttt{1} bits reaches 9\footnote{This
-%% %% is an escape code for excessively large residuals}
-%% %% \item if the number of \texttt{1} bits is 9,
-%% %% read $\text{unsigned}_i$ as
-%% %% \newline
-%% %% $\text{\VAR{Bits per Sample}} - (\text{\VAR{Uncompressed LSBs}} \times 2) + \text{\VAR{Channel Count}} - 1$
-%% %% \newline
-%% %% number of unsigned bits and goto step 9
-%% %% \item otherwise, $\text{LSB Count}_i = \lfloor\log_2 (\text{history}_i \div {2 ^ 9} + 3) \rfloor$
-%% %% \newline
-%% %% where $\text{LSB Count}_i$ cannot exceed \VAR{Maximum LSBs}
-%% %% \item if $\text{LSB Count}_i = 0$ then $\text{unsigned}_i = \text{MSB}_i$
-%% %% and goto step 9
-%% %% \item otherwise, read $\text{LSB}_i$ (least-significant bits) as $\text{LSB Count}_i$
-%% %% number of unsigned bits
-%% %% \item if $\text{LSB}_i > 1$ then $\text{unsigned}_i$ = $\text{MSB}_i \times (2 ^ {\text{LSB Count}_i} - 1) + (\text{LSB}_i - 1)$
-%% %% \item if $\text{LSB}_i = 1$ then $\text{unsigned}_i = \text{MSB}_i \times (2 ^ {\text{LSB Count}_i} - 1)$
-%% %% \newline
-%% %% and one must unread a single \texttt{1} bit to the stream
-%% %% \item if $\text{LSB}_i = 0$ then $\text{unsigned}_i = \text{MSB}_i \times (2 ^ {\text{LSB Count}_i} - 1)$
-%% %% \newline
-%% %% and one must unread a single \texttt{0} bit to the stream
-%% %% \item if $\text{unsigned}_i \leq 65535$ then
-%% %% \newline
-%% %% $\text{history}_{i + 1} = \text{history}_i + (\text{unsigned}_i \times \text{\VAR{History Multiplier}}) - \left\lfloor\frac{\text{history}_i \times \text{\VAR{History Multiplier}}}{2 ^ 9}\right\rfloor$
-%% %% \item if $\text{unsigned}_i > 65535$ then
-%% %% \newline
-%% %% $\text{history}_{i + 1} = 65535$
-%% %% \item if $\text{unsigned}_i \mod 2 = 0$ then
-%% %% $\text{residual}_i = \lfloor(\text{unsigned}_i + 1) \div 2\rfloor$
-%% %% \item if $\text{unsigned}_i \mod 2 = 1$ then
-%% %% $\text{residual}_i = -\lfloor(\text{unsigned}_i + 1) \div 2\rfloor$
-%% %% \end{enumerate}
-%% %% \clearpage
-%% %% \item if $\text{history}_i < 128$:
-
-%% %% \end{enumerate}
-
-%% %% An uncompressed frame is laid out as follows:
-%% %% \label{alac_uncompressed}
-%% %% \begin{figure}[h]
-%% %% \includegraphics{figures/alac/uncompressed_frame.pdf}
-%% %% \end{figure}
-%% %% \par
-%% %% \noindent
-%% %% The number of PCM frames in an ALAC frame depends on the \VAR{Has Sample Size}
-%% %% bit.
-%% %% If set, the number of PCM frames equals the 32-bit \VAR{Sample Size}
-%% %% value.
-%% %% If not set, the total number of PCM frames equals the \VAR{Max Coded Frame Size}
-%% %% value in the \texttt{alac} atom and the \VAR{Sample Size} value is omitted.
-%% %% ALAC streams typically use the same number of samples per frame
-%% %% until the end of the stream, at which point the leftover samples
-%% %% are placed in a different-sized frame.
-
-
-
-%% %% \pagebreak
-
-%% %% A compressed frame is laid out as follows:
-
-%% %% \begin{figure}[h]
-%% %% \includegraphics{figures/alac/compressed_frame.pdf}
-%% %% \end{figure}
-%% %% \par
-%% %% \noindent
-%% %% \VAR{Interlacing Shift} and \VAR{Interlacing Leftweight} are used
-%% %% for channel decorrelation after the subframes have been decoded.
-
-%% %% There is one subframe header and one residual block per
-%% %% channel.
-%% %% If \VAR{Wasted Bits} is greater than 0, there is also
-%% %% a block of wasted bits samples after the subframe headers but before
-%% %% the residuals.
-
-%% %% \VAR{Wasted Bits} is an attempt to store the least significant bits
-%% %% of each sample more efficiently at high bits-per-sample, where
-%% %% that data will often be indistinguishable from random noise.
-%% %% In effect, it's a block of interlaced uncompressed samples
-%% %% (similar to an uncompressed ALAC frame) each $8 \times \text{\VAR{Wasted Bits}}$
-%% %% bits large.
-%% %% Those wasted bits are then prepended to each sample after channel
-%% %% decorrelation.
-%% %% This process is explained in more detail on page \pageref{alac_wasted_bits}.
-
-%% %% Each subframe header is laid out as follows:
-
-
-
-%% %% \pagebreak
-
-%% %% \subsection{Residual Decoding}
-
-%% %% There are \VAR{Sample Size} number of residuals per residual block.
-%% %% Decoding a residual block requires knowing the \VAR{Initial History},
-%% %% \VAR{History Multiplier}, \VAR{Maximum K}, \VAR{Channels}, \VAR{Wasted Bits} and
-%% %% \VAR{Bits per Sample} values, from the \texttt{alac} atom and frame header.
-%% %% Fortunately, most of these values are rarely used;
-%% %% we'll mostly be concerned with the \VAR{History} and \VAR{History Multiplier}.
-
-%% %% For each residual block, \VAR{History} starts with the value of
-%% %% \VAR{Initial History} and will change during residual decoding.
-%% %% We use it to calculate $\kappa$ using the following formula:
-%% %% \begin{equation}
-%% %% \kappa = \left\lfloor\log_2 \left( \frac{\text{history}}{2 ^ 9} + 3 \right) \right\rfloor
-%% %% \end{equation}
-%% %% Note that if $\kappa$ exceeds the \VAR{Maximum K} value from the
-%% %% \texttt{alac} atom, \VAR{Maximum K} is used instead.
-
-%% %% We then need to know the \VAR{Bits per Sample} value of the residual
-%% %% block, which is equal to:
-%% %% \begin{equation}
-%% %% \text{Bits per Sample}_{Residual} = \text{Bits per Sample}_{ALAC} - (\text{Wasted Bits} \times 8) + \text{Channels} - 1
-%% %% \end{equation}
-%% %% For mono streams, this is typically equal to the stream's
-%% %% \VAR{Bits per Sample},
-%% %% while for stereo streams it's often the \VAR{Bits per Sample} plus 1.
-
-%% %% \begin{wrapfigure}[14]{r}{2.5in}
-%% %% \includegraphics{figures/alac/read_residual.pdf}
-%% %% \end{wrapfigure}
-%% %% The $\kappa$ and \VAR{Bits per Sample} values are used to read a
-%% %% single unsigned residual value in the following way:
-
-%% %% The initial bit reading portion of the process
-%% %% involves reading a unary value with a stop bit of `0'
-%% %% and a maximum value of 8.
-%% %% If the maximum value is exceeded, we read \VAR{Bits per Sample}
-%% %% number of bits as our final value
-%% %% (the only place \VAR{Bits per Sample} is used throughout the
-%% %% residual decoding process).
-
-%% %% Otherwise, we read $\kappa$ number of \VAR{extra} bits if $\kappa > 1$.
-%% %% If \VAR{extra} is greater than 1, we return
-%% %% $(\text{\VAR{unary}} \times (2^k - 1)) + (\text{\VAR{extra}} - 1)$.
-%% %% If not, we push a single \VAR{extra} bit back on the stream and return our
-%% %% $\text{\VAR{unary}} \times (2^k - 1)$ value.
-
-%% %% \clearpage
-
-%% %% We perform the following to convert unsigned residuals to signed residuals
-%% %% which are returned to the subframe decoder:
-%% %% \begin{equation}
-%% %% \text{signed} =
-%% %% \begin{cases}
-%% %% \lfloor (\text{unsigned} + 1) \div 2 \rfloor & \text{if unsigned is even} \\
-%% %% -\lfloor (\text{unsigned} + 1) \div 2 \rfloor & \text{if unsigned is odd}
-%% %% \end{cases}
-%% %% \end{equation}
-
-%% %% Finally, we use our unsigned value to update \VAR{history}
-%% %% before reading the next residual:
-%% %% {\relsize{-1}
-%% %% \begin{equation*}
-%% %% \text{history} =
-%% %% \begin{cases}
-%% %% \text{history} + (\text{unsigned} \times \text{history multiplier}) - \left\lfloor\frac{\text{history} \times \text{history multiplier}}{2^9}\right\rfloor & \text{if unsigned} \leq 65535 \\
-%% %% 65535 & \text{if unsigned} > 65535
-%% %% \end{cases}
-%% %% \end{equation*}
-%% %% }
-
-%% %% Thus far, residual decoding isn't overly complex.
-%% %% We simply calculate $\kappa$ from \VAR{history}, read a residual,
-%% %% update \VAR{history} from its unsigned value and repeat the process
-%% %% until we've read an entire subframe's worth of residuals.
-%% %% The bulk of an ALAC file's residuals will be read in this way.
-%% %% However, ALAC also features an ``escape code'' for large chunks
-%% %% of 0 residuals (which may happen during a long stretch of
-%% %% digital silence, for example).
-
-%% %% If \VAR{history} ever falls below 128, this special case is triggered.
-%% %% First, we read a special \VAR{block size} residual value
-%% %% with a \VAR{Bits per Sample} value of 16 and a $\kappa$\footnote{Again, $\kappa$ cannot exceed \VAR{Maximum K} as encoded in the \texttt{alac} atom.} value of:
-%% %% \begin{equation}
-%% %% \kappa_{\text{blocksize}} = 7 - \log_2(\text{history}) + \frac{\text{history} + 16}{64}
-%% %% \end{equation}
-%% %% This \VAR{block size} is how many 0 residuals to send outright -
-%% %% which may be 0, indicating no 0 residuals to send.
-%% %% Either way, if $\text{\VAR{block size}} \leq 65535$,
-%% %% we add 1 to the unsigned value of the next residual in the block (if any).
-%% %% Finally, \VAR{history} is automatically set to 0.
-
-%% \clearpage
-
-%% \subsubsection{Residual Decoding Example}
-%% {\relsize{-2}
-%% In this example, we'll decode a group of 4 residuals in which
-%% \VAR{Initial History} is 1130, \VAR{History Multiplier} is 40,
-%% \VAR{Maximum LSBs} is 14, \VAR{Bits per Sample} is 16,
-%% \VAR{Channel Count} is 2 and \VAR{Uncompressed LSBs} is 0.
-%% }
-%% \begin{figure}[h]
-%% \includegraphics[height=.75in]{figures/alac/residual.pdf}
-%% \end{figure}
-%% {\relsize{-1}
-%% \begin{itemize}
-%% \setlength{\itemsep}{0in}
-%% \setlength{\parskip}{0in}
-%% \item $h_0 = 1130$
-%% \item $\text{sign modifier}_0 = 0$
-%% \item $i = 0$
-%% \item $\text{LSB Count}_0 = \text{min}(\lfloor \log_2 ( 1130 \div {2 ^ 9} + 3 ) \rfloor, 14) = \text{min}(\lfloor \log_2 ( 5 ) \rfloor, 14) = 2$
-%% \item $u_0 = \text{read\_residual}(2, 17) + 0$
-%% \begin{itemize}
-%% \setlength{\itemsep}{0in}
-%% \setlength{\parskip}{0in}
-%% \item $\text{MSB}_0 = 0$
-%% \item $\text{LSB}_0 = 3$
-%% \item $u_0 = 0 \times (2 ^ 2 - 1) + (3 - 1) = 2$
-%% \end{itemize}
-%% \item $\textbf{residual}_0 = \lfloor (2 + 1) \div 2 \rfloor = \textbf{1}$
-%% \item $h_1 = 1130 + (2 \times 40) - \left\lfloor\frac{1130 \times 40}{2 ^ 9}\right\rfloor = 1130 + 80 - 88 = 1122$
-%% \item $i \leftarrow 1$
-%% \item $\text{LSB Count}_1 = \text{min}(\lfloor \log_2 ( 1122 \div {2 ^ 9} + 3 ) \rfloor, 14) = \text{min}(\lfloor \log_2 ( 5 ) \rfloor, 14) = 2$
-%% \item $u_1 = \text{read\_residual}(2, 17) + 0$
-%% \begin{itemize}
-%% \setlength{\itemsep}{0in}
-%% \setlength{\parskip}{0in}
-%% \item $\text{MSB}_1 = 2$
-%% \item $\text{LSB}_1 = 3$
-%% \item $u_1 = 2 \times (2 ^ 2 - 1) + (3 - 1) = 8$
-%% \end{itemize}
-%% \item $\textbf{residual}_1 = \lfloor (8 + 1) \div 2 \rfloor = \textbf{4}$
-%% \item $h_2 = 1122 + (8 \times 40) - \left\lfloor\frac{1122 \times 40}{2 ^ 9}\right\rfloor = 1122 + 320 - 87 = 1355$
-%% \item $i \leftarrow 2$
-%% \item $\text{LSB Count}_2 = \text{min}(\lfloor \log_2 ( 1355 \div {2 ^ 9} + 3 ) \rfloor, 14) = \text{min}(\lfloor \log_2 ( 5 ) \rfloor, 14) = 2$
-%% \item $u_2 = \text{read\_residual}(2, 17) + 0$
-%% \begin{itemize}
-%% \setlength{\itemsep}{0in}
-%% \setlength{\parskip}{0in}
-%% \item $\text{MSB}_2 = 1$
-%% \item $\text{LSB}_2 = 0$ (unread a single 0 bit here)
-%% \item $u_2 = 1 \times (2 ^ 2 - 1) = 3$
-%% \end{itemize}
-%% \item $\textbf{residual}_2 = -\lfloor (3 + 1) \div 2 \rfloor = \textbf{-2}$
-%% \item $h_3 = 1355 + (3 \times 40) - \left\lfloor\frac{1355 \times 40}{2 ^ 9}\right\rfloor = 1355 + 120 - 105 = 1370$
-%% \item $i \leftarrow 3$
-%% \item $\text{LSB Count}_3 = \text{min}( \lfloor \log_2 ( 1370 \div {2 ^ 9} + 3 ) \rfloor , 14 ) = \text{min}( \lfloor \log_2 ( 5 ) \rfloor , 14 ) = 2$
-%% \item $u_3 = \text{read\_residual}(2, 17) + 0$
-%% \begin{itemize}
-%% \setlength{\itemsep}{0in}
-%% \setlength{\parskip}{0in}
-%% \item $\text{MSB}_3 = 0$
-%% \item $\text{LSB}_3 = 3$
-%% \item $u_3 = 0 \times (2 ^ 2 - 1) + (3 - 1) = 2$
-%% \end{itemize}
-%% \item $\textbf{residual}_3 = \lfloor (2 + 1) \div 2 \rfloor = \textbf{1}$
-%% \item $h_4 = 1370 + (2 \times 40) - \left\lfloor\frac{1370 \times 40}{2 ^ 9}\right\rfloor = 1370 + 80 - 107 = 1343$
-%% \item $i \leftarrow 4$ and done
-%% \end{itemize}
-%% }
-
-%% Thus, our batch of signed residual values are 1, 4, -2 and 1.
-
-%% \clearpage
-
-%% \subsection{Subframe Calculation}
-
-%% % example:
-%% % decode residuals [16, 1, 9, -1, -1, 1, -4, 7, -7, -1]
-%% % with starting coeffs [1122, -766, 107, 122]
-%% % and prediction_quantitization 9
-%% % to samples [16, 17, 26, 25, 24, 23, 20, 24, 23, 20]
-
-%% Given our list of decoded residual values;
-%% along with a list of coefficients,
-%% a \VAR{Coefficient Count} and a \VAR{Prediction Quantitization} value
-%% (all from the subframe header),
-%% we can now generate a list of signed subframe samples for a
-%% given channel.
-
-%% The first residual is always the first output sample:
-%% \begin{align*}
-%% \text{Sample}_0 &= \text{Residual}_0 \\
-%% \intertext{Then, for the next \VAR{Coefficient Count} number of residuals:}
-%% \text{Sample}_i &= \text{Residual}_i + \text{Sample}_{i - 1}
-%% \end{align*}
-
-%% For example, given that we have a \VAR{Coefficient Count} of 4
-%% and our first five residuals are 16, 1, 9, -1 and -1;
-%% our first five sample values are:
-%% \begin{align*}
-%% \text{Sample}_0 &= \textbf{16} \\
-%% \text{Sample}_1 = 16 + 1 &= \textbf{17} \\
-%% \text{Sample}_2 = 17 + 9 &= \textbf{26} \\
-%% \text{Sample}_3 = 26 - 1 &= \textbf{25} \\
-%% \text{Sample}_4 = 25 - 1 &= \textbf{24}
-%% \end{align*}
-%% These are our ``starting point'' samples upon which the remainder
-%% of the subframe will be built.
-
-%% Subsequent samples are calculated in the following way:
-
-%% \begin{align*}
-%% \text{LPC Sum}_i &= \overset{coeffs - 1}{\underset{j = 0}{\sum}}
-%% \text{Coefficient}_j \times (\text{Sample}_{i - j - 1} - \text{Sample}_{i - coeffs - 1}) \\
-%% \text{Sample}_i &= \left\lfloor \frac{\text{LPC Sum}_i + 2^{\text{Predictor Quantitization - 1}}} {2 ^ \text{Predictor Quantitization}}\right\rfloor + \text{Residual}_i + \text{Sample}_{i - coeffs - 1} \\
-%% \intertext{For example, given $\text{Residual}_5$ = 1,
-%% \VAR{Predictor Quantitization} = 9
-%% and the coefficients 1122, -766, 107 and 122:}
-%% \text{LPC Sum}_5 &=
-%% (1122 \times (24 - 16)) + (-766 \times (25 - 16)) +
-%%  (107 \times (26 - 16)) + (122 \times (17 - 16)) \\
-%% &= (1122 \times 8) + (-766 \times 9) + (107 \times 10) + (122 \times 1) \\
-%% &= 8976 + -6894 + 1070 + 122 = \textbf{3274} \\
-%% \text{Sample}_5 &= \left\lfloor\frac{\textbf{3274} + 2^8}{2^9}\right\rfloor + 1 + 16
-%% = \left\lfloor\frac{3530}{512}\right\rfloor + 1 + 16 = \textbf{23}
-%% \end{align*}
-%% But before calculating $\text{Sample}_6$,
-%% we need to adjust our coefficient list.
-
-%% \clearpage
-%% \label{alac_coefficient_adjustment}
-%% Updating the coefficient list first requires the \VAR{sign} function:
-%% {\relsize{-2}
-%% \begin{equation}
-%% \text{sign}(x) =
-%% \begin{cases}
-%% 1 & \text{if } x > 0 \\
-%% 0 & \text{if } x = 0 \\
-%% -1 & \text{if } x < 0
-%% \end{cases}
-%% \end{equation}
-%% }
-%% We then take our \VAR{samples}, index $i$, \VAR{coefficients},
-%% coefficient \VAR{count}, \VAR{residual}, \VAR{predictor quantitization}
-%% values and go through the following routine if $\text{residual} \neq 0$:
-%% \par
-%% {\relsize{-1}
-%% \begin{tabular}{|l>{$}r<{$}c>{$}l<{$}|}
-%% \hline
-%% Step 1. & \text{original sign} &=& \text{sign}(residual) \\
-%% Step 2. & j &=& 0 \\
-%% Step 3. & v &=& \text{Sample}_{i - \text{count} - 1} - \text{Sample}_{i - \text{count} + j} \\
-%% Step 4. & sign &=& \begin{cases}\text{sign}(v) & \text{if original sign} > 0 \\
-%% -\text{sign}(v) & \text{if original sign} \leq 0\end{cases} \\
-%% Step 5. & \text{Coefficient}_{\text{count} - j - 1} &=& \text{Coefficient}_{\text{count} - j - 1} - sign \\
-%% Step 6. & residual &=& residual - \left( \left\lfloor\frac{v \times sign}{2 ^ \text{Predictor Quantitization}}\right\rfloor \times (j + 1) \right) \\
-%% Step 7. & j &=& j + 1 \\
-%% Step 8. & \multicolumn{3}{l|}{if ($j < count$) and ($\text{sign}(residual) = \text{original sign}$), goto step 3} \\
-%% \hline
-%% \end{tabular}
-%% }
-%% \par
-%% \noindent
-%% To continue our example:
-%% {\relsize{-2}
-%% \begin{align*}
-%% \text{original sign} &= \text{sign}(1) = \textbf{1} \\
-%% j &= 0 \\
-%% v &= \text{Sample}_0 - \text{Sample}_{1} = 16 - 17 = \textbf{-1} \\
-%% sign &= \text{sign}(-1) = \textbf{-1} \\
-%% \text{Coefficient}_3 &= \text{Coefficient}_3 - -1 = 122 + 1 = \textbf{123} \\
-%% residual &= residual - \left( \left\lfloor\frac{-1 \times -1}{2 ^ 9}\right\rfloor \times (0 + 1)\right) = 1 - (0 \times 1) = \textbf{1} \\
-%% j &= 1 \\
-%% v &= \text{Sample}_0 - \text{Sample}_{2} = 16 - 26 = \textbf{-10} \\
-%% sign &= \text{sign}(-10) = \textbf{-1} \\
-%% \text{Coefficient}_2 &= \text{Coefficient}_2 - -1 = 107 + 1 = \textbf{108} \\
-%% residual &= residual - \left( \left\lfloor\frac{-10 \times -1}{2 ^ 9}\right\rfloor \times (1 + 1)\right) = 1 - (0 \times 2) = \textbf{1} \\
-%% j &= 2 \\
-%% v &= \text{Sample}_0 - \text{Sample}_{3} = 16 - 25 = \textbf{-9} \\
-%% sign &= \text{sign}(-9) = \textbf{-1} \\
-%% \text{Coefficient}_1 &= \text{Coefficient}_1 - -1 = -766 + 1 = \textbf{-765} \\
-%% residual &= residual - \left( \left\lfloor\frac{-9 \times -1}{2 ^ 9}\right\rfloor \times (2 + 1)\right) = 1 - (0 \times 3) = \textbf{1} \\
-%% j &= 3 \\
-%% v &= \text{Sample}_0 - \text{Sample}_{4} = 16 - 25 = \textbf{-8} \\
-%% sign &= \text{sign}(-8) = \textbf{-1} \\
-%% \text{Coefficient}_0 &= \text{Coefficient}_0 - -1 = 1122 + 1 = \textbf{1123} \\
-%% residual &= residual - \left( \left\lfloor\frac{-8 \times -1}{2 ^ 9}\right\rfloor \times (3 + 1)\right) = 1 - (0 \times 4) = \textbf{1} \\
-%% j &= 4\text{ and stop, since 4 equals our coefficient count} \\
-%% \end{align*}
-%% }
-
-%% \clearpage
-
-%% Given that $\text{Residual}_6$ is -4, the calculation of $\text{Sample}_6$
-%% is as follows:
-%% \begin{align*}
-%% \text{LPC Sum}_6 &= (1123 \times (23 - 17)) + (-765 \times (24 - 17)) + (108 \times (25 - 17)) + (123 \times (26 - 17)) \\
-%% &= (1123 \times 6) + (-765 \times 7) + (108 \times 8) + (123 \times 9) \\
-%% &= 6738 + -5355 + 864 + 1107 = \textbf{3354} \\
-%% \text{Sample}_6 &= \left\lfloor\frac{\textbf{3354} + 2^8}{2^9}\right\rfloor + -4 + 17 = \left\lfloor\frac{3610}{512}\right\rfloor + -4 + 17 = \textbf{20} \\
-%% %% \end{align*}
-%% %% \begin{align*}
-%% \text{original sign} &= \text{sign}(-4) = -1 \\
-%% j &= 0 \\
-%% v &= \text{Sample}_1 - \text{Sample}_2 = 17 - 26 = \textbf{-9} \\
-%% sign &= -\text{sign}(-9) = \textbf{1} \\
-%% \text{Coefficient}_3 &= \text{Coefficient}_3 - 1 = 123 - 1 = \textbf{122} \\
-%% residual &= residual - \left( \left\lfloor\frac{-9 \times 1}{2 ^ 9}\right\rfloor \times (0 + 1)\right) = -4 - (-1 \times 1) = \textbf{-3} \\
-%% j &= 1 \\
-%% v &= \text{Sample}_1 - \text{Sample}_3 = 17 - 25 = \textbf{-8} \\
-%% sign &= -\text{sign}(-8) = \textbf{1} \\
-%% \text{Coefficient}_2 &= \text{Coefficient}_2 - 1 = 108 - 1 = \textbf{107} \\
-%% residual &= residual - \left( \left\lfloor\frac{-8 \times 1}{2 ^ 9}\right\rfloor \times (1 + 1)\right) = -3 - (-1 \times 2) = \textbf{-1} \\
-%% j &= 2 \\
-%% v &= \text{Sample}_1 - \text{Sample}_4 = 17 - 24 = \textbf{-7} \\
-%% sign &= -\text{sign}(-7) = \textbf{1} \\
-%% \text{Coefficient}_1 &= \text{Coefficient}_1 - 1 = -765 - 1 = \textbf{-766} \\
-%% residual &= residual - \left( \left\lfloor\frac{-7 \times 1}{2 ^ 9}\right\rfloor \times (2 + 1)\right) = -1 - (-1 \times 3) = \textbf{2} \\
-%% &\text{and stop, since sign}(2) \neq \text{sign}(-4) \text{ (our \VAR{original sign} value)}
-%% \end{align*}
-
-%% So, the coefficients for $\text{Sample}_7$ are 1123, -766, 107 and 122.
-
-%% \clearpage
-
-
-
-%% \subsection{Wasted Bits}
-%% \label{alac_wasted_bits}
-%% A compressed ALAC frame
-%% with \VAR{Wasted Bits} stores them interleaved between channels.
-%% Then, after channel decorrelation, these verbatim values are
-%% prepended to each sample.
-%% For example, given a 2 channel stream with 24 bits-per-sample and
-%% a \VAR{Wasted Bits} value of 1 (meaning our ``wasted'' samples
-%% are 8 bits large), our final output is as follows:
-%% \begin{figure}[h]
-%% \includegraphics{figures/alac/wasted.pdf}
-%% \end{figure}
 
 %% \clearpage
 

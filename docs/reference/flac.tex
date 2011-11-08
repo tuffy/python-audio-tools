@@ -599,43 +599,29 @@ Given the subframe bytes of a 16 bits per sample stream\footnote{Decoding the re
 \begin{figure}[h]
 \includegraphics{figures/flac/fixed-parse.pdf}
 \end{figure}
-\par
-\noindent
-\begin{tabular}{rcl|rcr|rcr}
-subframe type & $\leftarrow$ & FIXED &
-$\text{residual}_0$ & $\leftarrow$ & -2 &
-$\text{residual}_5$ & $\leftarrow$ & -5 \\
-subframe order & $\leftarrow$ & 1 &
-$\text{residual}_1$ & $\leftarrow$ & 3 &
-$\text{residual}_6$ & $\leftarrow$ & 4 \\
-wasted BPS & $\leftarrow$ & 0 &
-$\text{residual}_2$ & $\leftarrow$ & -1 &
-$\text{residual}_7$ & $\leftarrow$ & -2 \\
-$\text{sample}_0$ & $\leftarrow$ & 37 &
-$\text{residual}_3$ & $\leftarrow$ & -5 &
-$\text{residual}_8$ & $\leftarrow$ & -3 \\
-& & &
-$\text{residual}_4$ & $\leftarrow$ & 1 &
-$\text{residual}_9$ & $\leftarrow$ & 1 \\
+\begin{align*}
+\text{subframe type} &\leftarrow \text{FIXED} \\
+\text{subframe order} &\leftarrow 1 \\
+\text{wasted BPS} &\leftarrow 0 \\
+\text{warm-up sample}_0 &\leftarrow 37 \\
+\end{align*}
+\begin{center}
+\begin{tabular}{r||r|>{$}r<{$}}
+$i$ & $residual_{i - 1}$ & sample_i \\
+\hline
+0 & & 37 \\
+1 & -2 & 37 - 2 = 35 \\
+2 & 3 & 35 + 3 = 38 \\
+3 & -1 & 38 - 1 = 37 \\
+4 & -5 & 37 - 5 = 32 \\
+5 & 1 & 32 + 1 = 33 \\
+6 & -5 & 33 - 5 = 27 \\
+7 & 4 & 27 + 4 = 31 \\
+8 & -2 & 31 - 2 = 29 \\
+9 & -3 & 29 - 3 = 26 \\
+10 & 1 & 26 + 1 = 27 \\
 \end{tabular}
-\par
-\noindent
-our calculated subframe samples are:
-\par
-\noindent
-\begin{tabular}{rcr}
-$\text{sample}_0$ & $\leftarrow$ & \textbf{37} \\
-$\text{sample}_1$ & $\leftarrow$ & 37 - 2 = \textbf{35} \\
-$\text{sample}_2$ & $\leftarrow$ & 35 + 3 = \textbf{38} \\
-$\text{sample}_3$ & $\leftarrow$ & 38 - 1 = \textbf{37} \\
-$\text{sample}_4$ & $\leftarrow$ & 37 - 5 = \textbf{32} \\
-$\text{sample}_5$ & $\leftarrow$ & 32 + 1 = \textbf{33} \\
-$\text{sample}_6$ & $\leftarrow$ & 33 - 5 = \textbf{27} \\
-$\text{sample}_7$ & $\leftarrow$ & 27 + 4 = \textbf{31} \\
-$\text{sample}_8$ & $\leftarrow$ & 31 - 2 = \textbf{29} \\
-$\text{sample}_9$ & $\leftarrow$ & 29 - 3 = \textbf{26} \\
-$\text{sample}_{10}$ & $\leftarrow$ & 26 + 1 = \textbf{27} \\
-\end{tabular}
+\end{center}
 
 \clearpage
 
