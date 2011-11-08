@@ -762,6 +762,7 @@ array_ia_new(void)
     a->append = array_ia_append;
     a->extend = array_ia_extend;
     a->equals = array_ia_equals;
+    a->split = array_ia_split;
     a->print = array_ia_print;
 
     return a;
@@ -808,6 +809,11 @@ ARRAY_A_RESIZE(array_fa_resize, array_fa, array_f_new)
 ARRAY_A_RESET(array_ia_reset, array_ia)
 ARRAY_A_RESET(array_fa_reset, array_fa)
 
+/*note that this does *not* reset the appended sub-array
+  prior to returning it
+
+  the array_?a_resize, array_?a_reset and array_?a_split functions
+  should always ensure that newly added sub-arrays are reset*/
 #define ARRAY_A_APPEND(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE) \
     ARRAY_DATA_TYPE*                                           \
     FUNC_NAME(ARRAY_TYPE *array)                               \
@@ -872,6 +878,60 @@ ARRAY_A_EQUALS(array_fa_equals, array_fa)
 ARRAY_A_PRINT(array_ia_print, array_ia)
 ARRAY_A_PRINT(array_fa_print, array_fa)
 
+#define ARRAY_A_SPLIT(FUNC_NAME, ARRAY_TYPE, NEW_FUNC)           \
+    void                                                         \
+    FUNC_NAME(const ARRAY_TYPE *array, unsigned count,           \
+              ARRAY_TYPE *head, ARRAY_TYPE *tail)                \
+    {                                                            \
+        /*ensure we don't try to move too many items*/           \
+        unsigned to_head = MIN(count, array->size);              \
+        unsigned to_tail = array->size - to_head;                \
+        ARRAY_TYPE *temp;                                        \
+        unsigned i;                                              \
+                                                                 \
+        if ((head == array) && (tail == array)) {                \
+            /*do nothing*/                                       \
+            return;                                              \
+        } else if ((head != array) && (tail == array)) {            \
+            /*move "count" values to head and shift the rest down*/ \
+                                                                    \
+            head->reset(head);                                      \
+            for (i = 0; i < to_head; i++)                             \
+                array->data[i]->copy(array->data[i], head->append(head)); \
+                                                                        \
+            temp = NEW_FUNC();                                          \
+            for (; i < array->size; i++)                                \
+                array->data[i]->swap(array->data[i], temp->append(temp)); \
+                                                                        \
+            tail->reset(tail);                                          \
+            for (i = 0; i < to_tail; i++)                               \
+                temp->data[i]->swap(temp->data[i], tail->append(tail)); \
+                                                                        \
+            temp->del(temp);                                            \
+        } else if ((head == array) && (tail != array)) {                \
+            /*move "count" values from our end to tail and reduce our size*/ \
+                                                                        \
+            tail->reset(tail);                                          \
+            for (i = to_head; i < array->size; i++) {                   \
+                array->data[i]->swap(array->data[i], tail->append(tail)); \
+                array->data[i]->reset(array->data[i]);                  \
+            }                                                           \
+            head->size = to_head;                                       \
+        } else {                                                        \
+            /*copy "count" values to "head" and the remainder to "tail"*/ \
+                                                                        \
+            head->reset(head);                                          \
+            for (i = 0; i < to_head; i++)                               \
+                array->data[i]->copy(array->data[i], head->append(head)); \
+                                                                        \
+            tail->reset(tail);                                          \
+            for (; i < array->size; i++)                                \
+                array->data[i]->copy(array->data[i], tail->append(tail)); \
+        }                                                               \
+    }
+ARRAY_A_SPLIT(array_ia_split, array_ia, array_ia_new)
+ARRAY_A_SPLIT(array_fa_split, array_fa, array_fa_new)
+
 
 array_fa*
 array_fa_new(void)
@@ -893,6 +953,7 @@ array_fa_new(void)
     a->append = array_fa_append;
     a->extend = array_fa_extend;
     a->equals = array_fa_equals;
+    a->split = array_fa_split;
     a->print = array_fa_print;
 
     return a;

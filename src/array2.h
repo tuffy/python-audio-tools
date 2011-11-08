@@ -509,6 +509,12 @@ struct array_ia_s {
     int (*equals)(const struct array_ia_s *array,
                   const struct array_ia_s *compare);
 
+    /*splits the array into "head" and "tail" arrays
+      such that "head" contains a copy of up to "count" items
+      while "tail" contains the rest*/
+    void (*split)(const struct array_ia_s *array, unsigned count,
+                  struct array_ia_s *head, struct array_ia_s *tail);
+
     /*reverses the items in the array*/
     void (*reverse)(struct array_ia_s *array);
 
@@ -527,6 +533,8 @@ void array_ia_extend(struct array_ia_s *array, const struct array_ia_s *to_add);
 int array_ia_equals(const struct array_ia_s *array,
                     const struct array_ia_s *compare);
 void array_ia_reverse(struct array_ia_s *array);
+void array_ia_split(const struct array_ia_s *array, unsigned count,
+                    struct array_ia_s *head, struct array_ia_s *tail);
 void array_ia_print(const struct array_ia_s *array, FILE* output);
 
 
@@ -565,6 +573,12 @@ struct array_fa_s {
     /*reverses the items in the array*/
     void (*reverse)(struct array_fa_s *array);
 
+    /*splits the array into "head" and "tail" arrays
+      such that "head" contains a copy of up to "count" items
+      while "tail" contains the rest*/
+    void (*split)(const struct array_fa_s *array, unsigned count,
+                  struct array_fa_s *head, struct array_fa_s *tail);
+
     void (*print)(const struct array_fa_s *array, FILE* output);
 };
 
@@ -580,6 +594,8 @@ void array_fa_extend(struct array_fa_s *array, const struct array_fa_s *to_add);
 int array_fa_equals(const struct array_fa_s *array,
                     const struct array_fa_s *compare);
 void array_fa_reverse(struct array_fa_s *array);
+void array_fa_split(const struct array_fa_s *array, unsigned count,
+                    struct array_fa_s *head, struct array_fa_s *tail);
 void array_fa_print(const struct array_fa_s *array, FILE* output);
 
 #endif
