@@ -147,7 +147,8 @@ figures/alac/subframe-parse.pdf \
 figures/alac/subframe_header.pdf \
 figures/alac/uncompressed_frame.pdf \
 figures/alac/wasted.pdf \
-figures/alac/write_residual.pdf
+figures/alac/write_residual.pdf \
+figures/flac/tukey.pdf
 
 MLP = figures/mlp/channel_parameters.pdf \
 figures/mlp/codebook1.pdf \
