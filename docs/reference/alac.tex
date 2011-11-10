@@ -575,7 +575,7 @@ $\text{Sample}_0 \leftarrow \text{Residual}_0$\;
 }
 \Return signed sample values\;
 \EALGORITHM
-Where the \texttt{sign} function is defined as:
+where the \texttt{sign} function is defined as:
 \begin{equation*}
 \texttt{sign}(x) =
 \begin{cases}
@@ -1622,12 +1622,30 @@ tukey(n) =
 \noindent
 $N$ is the total number of input samples and $\alpha$ is $\nicefrac{1}{2}$.
 }
-
-\begin{figure}[h]
-\includegraphics{figures/flac/tukey.pdf}
-\end{figure}
-
-
+\par
+\noindent
+\subsubsection{Windowing Example}
+{\relsize{-2}
+\begin{tabular}{r|rcrcr}
+$i$ & $sample_i$ & & \texttt{tukey}($i$) & & $windowed_i$ \\
+\hline
+0 & \texttt{0} & $\times$ & \texttt{0.00} & = & \texttt{0.00} \\
+1 & \texttt{16} & $\times$ & \texttt{0.19} & = & \texttt{3.01} \\
+2 & \texttt{31} & $\times$ & \texttt{0.61} & = & \texttt{18.95} \\
+3 & \texttt{44} & $\times$ & \texttt{0.95} & = & \texttt{41.82} \\
+4 & \texttt{54} & $\times$ & \texttt{1.00} & = & \texttt{54.00} \\
+5 & \texttt{61} & $\times$ & \texttt{1.00} & = & \texttt{61.00} \\
+6 & \texttt{64} & $\times$ & \texttt{1.00} & = & \texttt{64.00} \\
+7 & \texttt{63} & $\times$ & \texttt{1.00} & = & \texttt{63.00} \\
+8 & \texttt{58} & $\times$ & \texttt{1.00} & = & \texttt{58.00} \\
+9 & \texttt{49} & $\times$ & \texttt{1.00} & = & \texttt{49.00} \\
+10 & \texttt{38} & $\times$ & \texttt{1.00} & = & \texttt{38.00} \\
+11 & \texttt{24} & $\times$ & \texttt{0.95} & = & \texttt{22.81} \\
+12 & \texttt{8} & $\times$ & \texttt{0.61} & = & \texttt{4.89} \\
+13 & \texttt{-8} & $\times$ & \texttt{0.19} & = & \texttt{-1.51} \\
+14 & \texttt{-24} & $\times$ & \texttt{0.00} & = & \texttt{0.00} \\
+\end{tabular}
+}
 
 \clearpage
 
@@ -1637,6 +1655,103 @@ $N$ is the total number of input samples and $\alpha$ is $\nicefrac{1}{2}$.
   $\text{autocorrelation}_{\text{lag}} = \overset{\text{total samples} - \text{lag} - 1}{\underset{i = 0}{\sum}}\text{windowed}_i \times \text{windowed}_{i + \text{lag}}$\;
 }
 \EALGORITHM
+
+\subsubsection{Autocorrelation Example}
+{\relsize{-1}
+\begin{multicols}{2}
+\begin{tabular}{rrrrr}
+  \texttt{0.00} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
+  \texttt{3.01} & $\times$ & \texttt{3.01} & $=$ & \texttt{9.07} \\
+  \texttt{18.95} & $\times$ & \texttt{18.95} & $=$ & \texttt{359.07} \\
+  \texttt{41.82} & $\times$ & \texttt{41.82} & $=$ & \texttt{1749.02} \\
+  \texttt{54.00} & $\times$ & \texttt{54.00} & $=$ & \texttt{2916.00} \\
+  \texttt{61.00} & $\times$ & \texttt{61.00} & $=$ & \texttt{3721.00} \\
+  \texttt{64.00} & $\times$ & \texttt{64.00} & $=$ & \texttt{4096.00} \\
+  \texttt{63.00} & $\times$ & \texttt{63.00} & $=$ & \texttt{3969.00} \\
+  \texttt{58.00} & $\times$ & \texttt{58.00} & $=$ & \texttt{3364.00} \\
+  \texttt{49.00} & $\times$ & \texttt{49.00} & $=$ & \texttt{2401.00} \\
+  \texttt{38.00} & $\times$ & \texttt{38.00} & $=$ & \texttt{1444.00} \\
+  \texttt{22.81} & $\times$ & \texttt{22.81} & $=$ & \texttt{520.37} \\
+  \texttt{4.89} & $\times$ & \texttt{4.89} & $=$ & \texttt{23.91} \\
+  \texttt{-1.51} & $\times$ & \texttt{-1.51} & $=$ & \texttt{2.27} \\
+  \texttt{0.00} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
+  \hline
+  \multicolumn{3}{r}{$\text{autocorrelation}_0$} & $=$ & \texttt{24574.71} \\
+\end{tabular}
+\par
+\begin{tabular}{rrrrr}
+  \texttt{0.00} & $\times$ & \texttt{3.01} & $=$ & \texttt{0.00} \\
+  \texttt{3.01} & $\times$ & \texttt{18.95} & $=$ & \texttt{57.08} \\
+  \texttt{18.95} & $\times$ & \texttt{41.82} & $=$ & \texttt{792.48} \\
+  \texttt{41.82} & $\times$ & \texttt{54.00} & $=$ & \texttt{2258.35} \\
+  \texttt{54.00} & $\times$ & \texttt{61.00} & $=$ & \texttt{3294.00} \\
+  \texttt{61.00} & $\times$ & \texttt{64.00} & $=$ & \texttt{3904.00} \\
+  \texttt{64.00} & $\times$ & \texttt{63.00} & $=$ & \texttt{4032.00} \\
+  \texttt{63.00} & $\times$ & \texttt{58.00} & $=$ & \texttt{3654.00} \\
+  \texttt{58.00} & $\times$ & \texttt{49.00} & $=$ & \texttt{2842.00} \\
+  \texttt{49.00} & $\times$ & \texttt{38.00} & $=$ & \texttt{1862.00} \\
+  \texttt{38.00} & $\times$ & \texttt{22.81} & $=$ & \texttt{866.84} \\
+  \texttt{22.81} & $\times$ & \texttt{4.89} & $=$ & \texttt{111.55} \\
+  \texttt{4.89} & $\times$ & \texttt{-1.51} & $=$ & \texttt{-7.36} \\
+  \texttt{-1.51} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
+  \hline
+  \multicolumn{3}{r}{$\text{autocorrelation}_1$} & $=$ & \texttt{23666.93} \\
+\end{tabular}
+\par
+\begin{tabular}{rrrrr}
+  \texttt{0.00} & $\times$ & \texttt{18.95} & $=$ & \texttt{0.00} \\
+  \texttt{3.01} & $\times$ & \texttt{41.82} & $=$ & \texttt{125.97} \\
+  \texttt{18.95} & $\times$ & \texttt{54.00} & $=$ & \texttt{1023.25} \\
+  \texttt{41.82} & $\times$ & \texttt{61.00} & $=$ & \texttt{2551.10} \\
+  \texttt{54.00} & $\times$ & \texttt{64.00} & $=$ & \texttt{3456.00} \\
+  \texttt{61.00} & $\times$ & \texttt{63.00} & $=$ & \texttt{3843.00} \\
+  \texttt{64.00} & $\times$ & \texttt{58.00} & $=$ & \texttt{3712.00} \\
+  \texttt{63.00} & $\times$ & \texttt{49.00} & $=$ & \texttt{3087.00} \\
+  \texttt{58.00} & $\times$ & \texttt{38.00} & $=$ & \texttt{2204.00} \\
+  \texttt{49.00} & $\times$ & \texttt{22.81} & $=$ & \texttt{1117.77} \\
+  \texttt{38.00} & $\times$ & \texttt{4.89} & $=$ & \texttt{185.82} \\
+  \texttt{22.81} & $\times$ & \texttt{-1.51} & $=$ & \texttt{-34.36} \\
+  \texttt{4.89} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
+  \hline
+  \multicolumn{3}{r}{$\text{autocorrelation}_2$} & $=$ & \texttt{21271.56} \\
+\end{tabular}
+\par
+\begin{tabular}{rrrrr}
+  \texttt{0.00} & $\times$ & \texttt{41.82} & $=$ & \texttt{0.00} \\
+  \texttt{3.01} & $\times$ & \texttt{54.00} & $=$ & \texttt{162.65} \\
+  \texttt{18.95} & $\times$ & \texttt{61.00} & $=$ & \texttt{1155.89} \\
+  \texttt{41.82} & $\times$ & \texttt{64.00} & $=$ & \texttt{2676.56} \\
+  \texttt{54.00} & $\times$ & \texttt{63.00} & $=$ & \texttt{3402.00} \\
+  \texttt{61.00} & $\times$ & \texttt{58.00} & $=$ & \texttt{3538.00} \\
+  \texttt{64.00} & $\times$ & \texttt{49.00} & $=$ & \texttt{3136.00} \\
+  \texttt{63.00} & $\times$ & \texttt{38.00} & $=$ & \texttt{2394.00} \\
+  \texttt{58.00} & $\times$ & \texttt{22.81} & $=$ & \texttt{1323.07} \\
+  \texttt{49.00} & $\times$ & \texttt{4.89} & $=$ & \texttt{239.61} \\
+  \texttt{38.00} & $\times$ & \texttt{-1.51} & $=$ & \texttt{-57.23} \\
+  \texttt{22.81} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
+  \hline
+  \multicolumn{3}{r}{$\text{autocorrelation}_3$} & $=$ & \texttt{17970.57} \\
+\end{tabular}
+\par
+\begin{tabular}{rrrrr}
+  \texttt{0.00} & $\times$ & \texttt{54.00} & $=$ & \texttt{0.00} \\
+  \texttt{3.01} & $\times$ & \texttt{61.00} & $=$ & \texttt{183.74} \\
+  \texttt{18.95} & $\times$ & \texttt{64.00} & $=$ & \texttt{1212.74} \\
+  \texttt{41.82} & $\times$ & \texttt{63.00} & $=$ & \texttt{2634.74} \\
+  \texttt{54.00} & $\times$ & \texttt{58.00} & $=$ & \texttt{3132.00} \\
+  \texttt{61.00} & $\times$ & \texttt{49.00} & $=$ & \texttt{2989.00} \\
+  \texttt{64.00} & $\times$ & \texttt{38.00} & $=$ & \texttt{2432.00} \\
+  \texttt{63.00} & $\times$ & \texttt{22.81} & $=$ & \texttt{1437.13} \\
+  \texttt{58.00} & $\times$ & \texttt{4.89} & $=$ & \texttt{283.62} \\
+  \texttt{49.00} & $\times$ & \texttt{-1.51} & $=$ & \texttt{-73.80} \\
+  \texttt{38.00} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
+  \hline
+  \multicolumn{3}{r}{$\text{autocorrelation}_4$} & $=$ & \texttt{14231.18} \\
+\end{tabular}
+\end{multicols}
+}
+
+\clearpage
 
 \subsubsection{LP Coefficient Calculation}
 
@@ -1681,172 +1796,225 @@ $\ERROR_0$ &$\leftarrow$ & $ \AUTOCORRELATION_0 \times (1 - {\kappa_0} ^ 2)$ \\
 \EALGORITHM
 }
 
-\clearpage
+\begin{landscape}
+
+\subsubsection{LP Coefficient Calculation Example}
+\begin{table}[h]
 {\relsize{-1}
-\begin{multicols}{2}
-\subsubsection{Windowing Signal Example}
-\begin{tabular}{r|rcrcr}
-$i$ & $sample_i$ & & \texttt{tukey}($i$) & & $windowed_i$ \\
+\begin{tabular}{r|r}
+$i$ & $\text{autocorrelation}_i$ \\
 \hline
-0 & \texttt{0} & $\times$ & \texttt{0.00} & = & \texttt{0.00} \\
-1 & \texttt{16} & $\times$ & \texttt{0.19} & = & \texttt{3.01} \\
-2 & \texttt{31} & $\times$ & \texttt{0.61} & = & \texttt{18.95} \\
-3 & \texttt{44} & $\times$ & \texttt{0.95} & = & \texttt{41.82} \\
-4 & \texttt{54} & $\times$ & \texttt{1.00} & = & \texttt{54.00} \\
-5 & \texttt{61} & $\times$ & \texttt{1.00} & = & \texttt{61.00} \\
-6 & \texttt{64} & $\times$ & \texttt{1.00} & = & \texttt{64.00} \\
-7 & \texttt{63} & $\times$ & \texttt{1.00} & = & \texttt{63.00} \\
-8 & \texttt{58} & $\times$ & \texttt{1.00} & = & \texttt{58.00} \\
-9 & \texttt{49} & $\times$ & \texttt{1.00} & = & \texttt{49.00} \\
-10 & \texttt{38} & $\times$ & \texttt{1.00} & = & \texttt{38.00} \\
-11 & \texttt{24} & $\times$ & \texttt{0.95} & = & \texttt{22.81} \\
-12 & \texttt{8} & $\times$ & \texttt{0.61} & = & \texttt{4.89} \\
-13 & \texttt{-8} & $\times$ & \texttt{0.19} & = & \texttt{-1.51} \\
-14 & \texttt{-24} & $\times$ & \texttt{0.00} & = & \texttt{0.00} \\
-\end{tabular}
-\par
-\vskip .1in
-\subsubsection{Autocorrelation Calculation Example}
-\begin{tabular}{rrrrr}
-  \texttt{0.00} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
-  \texttt{3.01} & $\times$ & \texttt{3.01} & $=$ & \texttt{9.07} \\
-  \texttt{18.95} & $\times$ & \texttt{18.95} & $=$ & \texttt{359.07} \\
-  \texttt{41.82} & $\times$ & \texttt{41.82} & $=$ & \texttt{1749.02} \\
-  \texttt{54.00} & $\times$ & \texttt{54.00} & $=$ & \texttt{2916.00} \\
-  \texttt{61.00} & $\times$ & \texttt{61.00} & $=$ & \texttt{3721.00} \\
-  \texttt{64.00} & $\times$ & \texttt{64.00} & $=$ & \texttt{4096.00} \\
-  \texttt{63.00} & $\times$ & \texttt{63.00} & $=$ & \texttt{3969.00} \\
-  \texttt{58.00} & $\times$ & \texttt{58.00} & $=$ & \texttt{3364.00} \\
-  \texttt{49.00} & $\times$ & \texttt{49.00} & $=$ & \texttt{2401.00} \\
-  \texttt{38.00} & $\times$ & \texttt{38.00} & $=$ & \texttt{1444.00} \\
-  \texttt{22.81} & $\times$ & \texttt{22.81} & $=$ & \texttt{520.37} \\
-  \texttt{4.89} & $\times$ & \texttt{4.89} & $=$ & \texttt{23.91} \\
-  \texttt{-1.51} & $\times$ & \texttt{-1.51} & $=$ & \texttt{2.27} \\
-  \texttt{0.00} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
-  \hline
-  \multicolumn{3}{r}{$\text{autocorrelation}_0$} & $=$ & \texttt{24574.71} \\
-  \hline
-  \hline
-  \texttt{0.00} & $\times$ & \texttt{3.01} & $=$ & \texttt{0.00} \\
-  \texttt{3.01} & $\times$ & \texttt{18.95} & $=$ & \texttt{57.08} \\
-  \texttt{18.95} & $\times$ & \texttt{41.82} & $=$ & \texttt{792.48} \\
-  \texttt{41.82} & $\times$ & \texttt{54.00} & $=$ & \texttt{2258.35} \\
-  \texttt{54.00} & $\times$ & \texttt{61.00} & $=$ & \texttt{3294.00} \\
-  \texttt{61.00} & $\times$ & \texttt{64.00} & $=$ & \texttt{3904.00} \\
-  \texttt{64.00} & $\times$ & \texttt{63.00} & $=$ & \texttt{4032.00} \\
-  \texttt{63.00} & $\times$ & \texttt{58.00} & $=$ & \texttt{3654.00} \\
-  \texttt{58.00} & $\times$ & \texttt{49.00} & $=$ & \texttt{2842.00} \\
-  \texttt{49.00} & $\times$ & \texttt{38.00} & $=$ & \texttt{1862.00} \\
-  \texttt{38.00} & $\times$ & \texttt{22.81} & $=$ & \texttt{866.84} \\
-  \texttt{22.81} & $\times$ & \texttt{4.89} & $=$ & \texttt{111.55} \\
-  \texttt{4.89} & $\times$ & \texttt{-1.51} & $=$ & \texttt{-7.36} \\
-  \texttt{-1.51} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
-  \hline
-  \multicolumn{3}{r}{$\text{autocorrelation}_1$} & $=$ & \texttt{23666.93} \\
-\end{tabular}
-
-\begin{tabular}{rrrrr}
-  \texttt{0.00} & $\times$ & \texttt{18.95} & $=$ & \texttt{0.00} \\
-  \texttt{3.01} & $\times$ & \texttt{41.82} & $=$ & \texttt{125.97} \\
-  \texttt{18.95} & $\times$ & \texttt{54.00} & $=$ & \texttt{1023.25} \\
-  \texttt{41.82} & $\times$ & \texttt{61.00} & $=$ & \texttt{2551.10} \\
-  \texttt{54.00} & $\times$ & \texttt{64.00} & $=$ & \texttt{3456.00} \\
-  \texttt{61.00} & $\times$ & \texttt{63.00} & $=$ & \texttt{3843.00} \\
-  \texttt{64.00} & $\times$ & \texttt{58.00} & $=$ & \texttt{3712.00} \\
-  \texttt{63.00} & $\times$ & \texttt{49.00} & $=$ & \texttt{3087.00} \\
-  \texttt{58.00} & $\times$ & \texttt{38.00} & $=$ & \texttt{2204.00} \\
-  \texttt{49.00} & $\times$ & \texttt{22.81} & $=$ & \texttt{1117.77} \\
-  \texttt{38.00} & $\times$ & \texttt{4.89} & $=$ & \texttt{185.82} \\
-  \texttt{22.81} & $\times$ & \texttt{-1.51} & $=$ & \texttt{-34.36} \\
-  \texttt{4.89} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
-  \hline
-  \multicolumn{3}{r}{$\text{autocorrelation}_2$} & $=$ & \texttt{21271.56} \\
-  \hline
-  \hline
-  \texttt{0.00} & $\times$ & \texttt{41.82} & $=$ & \texttt{0.00} \\
-  \texttt{3.01} & $\times$ & \texttt{54.00} & $=$ & \texttt{162.65} \\
-  \texttt{18.95} & $\times$ & \texttt{61.00} & $=$ & \texttt{1155.89} \\
-  \texttt{41.82} & $\times$ & \texttt{64.00} & $=$ & \texttt{2676.56} \\
-  \texttt{54.00} & $\times$ & \texttt{63.00} & $=$ & \texttt{3402.00} \\
-  \texttt{61.00} & $\times$ & \texttt{58.00} & $=$ & \texttt{3538.00} \\
-  \texttt{64.00} & $\times$ & \texttt{49.00} & $=$ & \texttt{3136.00} \\
-  \texttt{63.00} & $\times$ & \texttt{38.00} & $=$ & \texttt{2394.00} \\
-  \texttt{58.00} & $\times$ & \texttt{22.81} & $=$ & \texttt{1323.07} \\
-  \texttt{49.00} & $\times$ & \texttt{4.89} & $=$ & \texttt{239.61} \\
-  \texttt{38.00} & $\times$ & \texttt{-1.51} & $=$ & \texttt{-57.23} \\
-  \texttt{22.81} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
-  \hline
-  \multicolumn{3}{r}{$\text{autocorrelation}_3$} & $=$ & \texttt{17970.57} \\
-  \hline
-  \hline
-  \texttt{0.00} & $\times$ & \texttt{54.00} & $=$ & \texttt{0.00} \\
-  \texttt{3.01} & $\times$ & \texttt{61.00} & $=$ & \texttt{183.74} \\
-  \texttt{18.95} & $\times$ & \texttt{64.00} & $=$ & \texttt{1212.74} \\
-  \texttt{41.82} & $\times$ & \texttt{63.00} & $=$ & \texttt{2634.74} \\
-  \texttt{54.00} & $\times$ & \texttt{58.00} & $=$ & \texttt{3132.00} \\
-  \texttt{61.00} & $\times$ & \texttt{49.00} & $=$ & \texttt{2989.00} \\
-  \texttt{64.00} & $\times$ & \texttt{38.00} & $=$ & \texttt{2432.00} \\
-  \texttt{63.00} & $\times$ & \texttt{22.81} & $=$ & \texttt{1437.13} \\
-  \texttt{58.00} & $\times$ & \texttt{4.89} & $=$ & \texttt{283.62} \\
-  \texttt{49.00} & $\times$ & \texttt{-1.51} & $=$ & \texttt{-73.80} \\
-  \texttt{38.00} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
-  \hline
-  \multicolumn{3}{r}{$\text{autocorrelation}_4$} & $=$ & \texttt{14231.18} \\
-  \hline
-  \hline
-  \texttt{0.00} & $\times$ & \texttt{61.00} & $=$ & \texttt{0.00} \\
-  \texttt{3.01} & $\times$ & \texttt{64.00} & $=$ & \texttt{192.77} \\
-  \texttt{18.95} & $\times$ & \texttt{63.00} & $=$ & \texttt{1193.79} \\
-  \texttt{41.82} & $\times$ & \texttt{58.00} & $=$ & \texttt{2425.64} \\
-  \texttt{54.00} & $\times$ & \texttt{49.00} & $=$ & \texttt{2646.00} \\
-  \texttt{61.00} & $\times$ & \texttt{38.00} & $=$ & \texttt{2318.00} \\
-  \texttt{64.00} & $\times$ & \texttt{22.81} & $=$ & \texttt{1459.94} \\
-  \texttt{63.00} & $\times$ & \texttt{4.89} & $=$ & \texttt{308.08} \\
-  \texttt{58.00} & $\times$ & \texttt{-1.51} & $=$ & \texttt{-87.35} \\
-  \texttt{49.00} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
-  \hline
-  \multicolumn{3}{r}{$\text{autocorrelation}_5$} & $=$ & \texttt{10456.87}
-\end{tabular}
-\end{multicols}
-
-\begin{tabular}{rrrrr}
-  \texttt{0.00} & $\times$ & \texttt{64.00} & $=$ & \texttt{0.00} \\
-  \texttt{3.01} & $\times$ & \texttt{63.00} & $=$ & \texttt{189.76} \\
-  \texttt{18.95} & $\times$ & \texttt{58.00} & $=$ & \texttt{1099.05} \\
-  \texttt{41.82} & $\times$ & \texttt{49.00} & $=$ & \texttt{2049.24} \\
-  \texttt{54.00} & $\times$ & \texttt{38.00} & $=$ & \texttt{2052.00} \\
-  \texttt{61.00} & $\times$ & \texttt{22.81} & $=$ & \texttt{1391.51} \\
-  \texttt{64.00} & $\times$ & \texttt{4.89} & $=$ & \texttt{312.97} \\
-  \texttt{63.00} & $\times$ & \texttt{-1.51} & $=$ & \texttt{-94.88} \\
-  \texttt{58.00} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
-  \hline
-  \multicolumn{3}{r}{$\text{autocorrelation}_6$} & $=$ & \texttt{6999.65} \\
-  \hline
-  \hline
-  \texttt{0.00} & $\times$ & \texttt{63.00} & $=$ & \texttt{0.00} \\
-  \texttt{3.01} & $\times$ & \texttt{58.00} & $=$ & \texttt{174.70} \\
-  \texttt{18.95} & $\times$ & \texttt{49.00} & $=$ & \texttt{928.50} \\
-  \texttt{41.82} & $\times$ & \texttt{38.00} & $=$ & \texttt{1589.21} \\
-  \texttt{54.00} & $\times$ & \texttt{22.81} & $=$ & \texttt{1231.83} \\
-  \texttt{61.00} & $\times$ & \texttt{4.89} & $=$ & \texttt{298.30} \\
-  \texttt{64.00} & $\times$ & \texttt{-1.51} & $=$ & \texttt{-96.39} \\
-  \texttt{63.00} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
-  \hline
-  \multicolumn{3}{r}{$\text{autocorrelation}_7$} & $=$ & \texttt{4126.15} \\
-  \hline
-  \hline
-  \texttt{0.00} & $\times$ & \texttt{58.00} & $=$ & \texttt{0.00} \\
-  \texttt{3.01} & $\times$ & \texttt{49.00} & $=$ & \texttt{147.59} \\
-  \texttt{18.95} & $\times$ & \texttt{38.00} & $=$ & \texttt{720.06} \\
-  \texttt{41.82} & $\times$ & \texttt{22.81} & $=$ & \texttt{954.01} \\
-  \texttt{54.00} & $\times$ & \texttt{4.89} & $=$ & \texttt{264.06} \\
-  \texttt{61.00} & $\times$ & \texttt{-1.51} & $=$ & \texttt{-91.87} \\
-  \texttt{64.00} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
-  \hline
-  \multicolumn{3}{r}{$\text{autocorrelation}_8$} & $=$ & \texttt{1993.87}
+0 & \texttt{24598.25} \\
+1 & \texttt{23694.34} \\
+2 & \texttt{21304.57} \\
+3 & \texttt{18007.86} \\
+4 & \texttt{14270.30} \\
 \end{tabular}
 }
+\end{table}
+
+\begin{table}[h]
+{\relsize{-1}
+\renewcommand{\arraystretch}{1.45}
+\begin{tabular}{|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|}
+\hline
+k_0 &
+\multicolumn{4}{>{$}l<{$}|}{\texttt{23694.34} \div \texttt{24598.25} = \texttt{0.96}} \\
+\text{LP coefficient}_{0~0} & \texttt{\color{blue}0.96} & & & \\
+\text{error}_0 &
+\multicolumn{4}{>{$}l<{$}|}{\texttt{24598.25} \times (1 - \texttt{0.96} ^ 2) = \texttt{1774.62}} \\
+\hline
+q_1 & \multicolumn{4}{>{$}l<{$}|}{\texttt{21304.57} - (\texttt{0.96} \times \texttt{23694.34}) = \texttt{-1519.07}} \\
+k_1 & \multicolumn{4}{>{$}l<{$}|}{\texttt{-1519.07} \div \texttt{1774.62} = \texttt{-0.86}} \\
+\text{LP coefficient}_{1~i} &
+\texttt{0.96} -(\texttt{-0.86} \times \texttt{0.96}) = \texttt{\color{blue}1.79} &
+\texttt{\color{blue}-0.86} & & \\
+\text{error}_1 & \multicolumn{4}{>{$}l<{$}|}{\texttt{1774.62} \times (1 - \texttt{-0.86} ^ 2) = \texttt{474.30}} \\
+\hline
+q_2 & \multicolumn{4}{>{$}l<{$}|}{\texttt{18007.86} - (\texttt{1.79} \times \texttt{21304.57} + \texttt{-0.86} \times \texttt{23694.34}) = \texttt{201.96}} \\
+k_2 & \multicolumn{4}{>{$}l<{$}|}{\texttt{201.96} \div \texttt{474.30} = \texttt{0.43}} \\
+\text{LP coefficient}_{2~i} &
+\texttt{1.79} -(\texttt{0.43} \times \texttt{-0.86}) = \texttt{\color{blue}2.15} &
+\texttt{-0.86} -(\texttt{0.43} \times \texttt{1.79}) = \texttt{\color{blue}-1.62} &
+\texttt{\color{blue}0.43} & \\
+\text{error}_2 & \multicolumn{4}{>{$}l<{$}|}{\texttt{474.30} \times (1 - \texttt{0.43} ^ 2) = \texttt{388.31}} \\
+\hline
+q_3 & \multicolumn{4}{>{$}l<{$}|}{\texttt{14270.30} - (\texttt{2.15} \times \texttt{18007.86} + \texttt{-1.62} \times \texttt{21304.57} + \texttt{0.43} \times \texttt{23694.34}) = \texttt{-122.06}} \\
+k_3 & \multicolumn{4}{>{$}l<{$}|}{\texttt{-122.06} \div \texttt{388.31} = \texttt{-0.31}} \\
+\text{LP coefficient}_{3~i} &
+\texttt{2.15} -(\texttt{-0.31} \times \texttt{0.43}) = \texttt{\color{blue}2.29} &
+\texttt{-1.62} -(\texttt{-0.31} \times \texttt{-1.62}) = \texttt{\color{blue}-2.13} &
+\texttt{0.43} -(\texttt{-0.31} \times \texttt{2.15}) = \texttt{\color{blue}1.10} &
+\texttt{\color{blue}-0.31} \\
+\text{error}_3 & \multicolumn{4}{>{$}l<{$}|}{\texttt{388.31} \times (1 - \texttt{-0.31} ^ 2) = \texttt{349.94}} \\
+\hline
+\end{tabular}
+\renewcommand{\arraystretch}{1.0}
+}
+\end{table}
+
+\end{landscape}
+
+\subsubsection{Quantizing LP Coefficients}
+
+\ALGORITHM{LP coefficients, an order value of 4 or 8}{QLP coefficients as a list of signed integers}
+\SetKwFunction{MIN}{min}
+\SetKwFunction{MAX}{max}
+\SetKwFunction{ROUND}{round}
+\tcc{QLP min and max are the smallest and largest QLP coefficients that fit in a signed field that's 16 bits wide}
+QLP max $\leftarrow 2 ^ \text{15} - 1$\;
+QLP min $\leftarrow -(2 ^ \text{15})$\;
+$error \leftarrow 0.0$\;
+\For{i = 0 \emph{\KwTo}order}{
+  $error \leftarrow error + \text{LP Coefficients}_{order - 1~i} \times 2 ^ 9$\;
+  $\text{QLP coefficient}_i \leftarrow \MIN(\MAX(\ROUND(error), \text{QLP min}), \text{QLP max})$\;
+  $error \leftarrow error - \text{QLP coefficient}_i$\;
+}
+\Return QLP coefficients\;
+\EALGORITHM
+
 \clearpage
+
+\subsubsection{Quantizing Coefficients Example}
+\begin{align*}
+error &\leftarrow \texttt{0.00} + \texttt{2.29} \times 2 ^ 9 = \texttt{1170.49} \\
+\text{QLP Coefficient}_0 &\leftarrow \texttt{round}(\texttt{1170.49}) = \texttt{\color{blue}1170} \\
+error &\leftarrow \texttt{1170.49} - 1170 = \texttt{0.49} \\
+error &\leftarrow \texttt{0.49} + \texttt{-2.13} \times 2 ^ 9 = \texttt{-1087.81} \\
+\text{QLP Coefficient}_1 &\leftarrow \texttt{round}(\texttt{-1087.81}) = \texttt{\color{blue}-1088} \\
+error &\leftarrow \texttt{-1087.81} - -1088 = \texttt{0.19} \\
+error &\leftarrow \texttt{0.19} + \texttt{1.10} \times 2 ^ 9 = \texttt{564.59} \\
+\text{QLP Coefficient}_2 &\leftarrow\texttt{round}(\texttt{564.59}) = \texttt{\color{blue}565} \\
+error &\leftarrow \texttt{564.59} - 565 = \texttt{-0.41} \\
+error &\leftarrow \texttt{-0.41} + \texttt{-0.31} \times 2 ^ 9 = \texttt{-161.35} \\
+\text{QLP Coefficient}_3 &\leftarrow \texttt{round}(\texttt{-161.35}) = \texttt{\color{blue}-161} \\
+error &\leftarrow \texttt{-161.35} - -161 = \texttt{-0.35} \\
+\end{align*}
+
+\clearpage
+
+\subsubsection{Computing Residual Values}
+\ALGORITHM{a list of signed PCM samples, a list of 4 or 8 QLP coefficients}{a list of signed residual values}
+\SetKwFunction{SIGN}{sign}
+\SetKw{BREAK}{break}
+\SetKwData{ORIGSIGN}{original sign}
+$\text{Residual}_0 \leftarrow \text{Sample}_0$\;
+\For{i = 1 \emph{\KwTo}coefficient count + 1}{
+  $\text{Residual}_i \leftarrow \text{Sample}_i - \text{Sample}_{i - 1}$
+}
+\For{i = coefficient count + 1 \emph{\KwTo}sample count}{
+  $\text{Base Sample}_i \leftarrow \text{Sample}_{i - coeff.~count - 1}$\;
+  $\text{LPC Sum}_i \leftarrow \overset{coeff.~count - 1}{\underset{j = 0}{\sum}} \text{QLP Coefficient}_j \times (\text{Sample}_{i - j - 1} - \text{Base Sample}_i)$\;
+  $\text{Residual}_i \leftarrow \text{Sample}_i - \left(\left\lfloor\frac{\text{LPC Sum}_i + 2 ^ 8}{2 ^ 9}\right\rfloor + \text{Base Sample}_i\right)$\;
+  \BlankLine
+  \uIf(\tcc*[f]{modify QLP coefficients}){$\text{Residual}_i > 0$}{
+    \For{j = 0 \emph{\KwTo}$\text{coefficient count}$}{
+      $diff \leftarrow \text{Base Sample}_i - \text{Samples}_{i - coeff.~count + j}$\;
+      $sign \leftarrow \SIGN(diff)$\;
+      $\text{QLP Coefficient}_{coeff.~count - j - 1} \leftarrow \text{QLP Coefficient}_{coeff.~count - j - 1} - sign$\;
+      $\text{Residual}_i \leftarrow \text{Residual}_i - \left\lfloor\frac{diff \times sign}{2 ^ 9}\right\rfloor \times (j + 1)$\;
+      \If{$\text{Residual}_i \leq 0$}{
+        \BREAK\;
+      }
+    }
+  }
+  \ElseIf{$\text{Residual}_i < 0$}{
+    \For{j = 0 \emph{\KwTo}$\text{coefficient count}$}{
+      $diff \leftarrow \text{Base Sample}_i - \text{Samples}_{i - coeff.~count + j}$\;
+      $sign \leftarrow \SIGN(diff)$\;
+      $\text{QLP Coefficient}_{coeff.~count - j - 1} \leftarrow \text{QLP Coefficient}_{coeff.~count - j - 1} + sign$\;
+      $\text{Residual}_i \leftarrow \text{Residual}_i - \left\lfloor\frac{diff \times -sign}{2 ^ 9}\right\rfloor \times (j + 1)$\;
+      \If{$\text{Residual}_i \geq 0$}{
+        \BREAK\;
+      }
+    }
+  }
+}
+\Return signed residual values\;
+\EALGORITHM
+where the \texttt{sign} function is defined as:
+\begin{equation*}
+\texttt{sign}(x) =
+\begin{cases}
+\texttt{ 1} & \text{if } x > 0 \\
+\texttt{ 0} & \text{if } x = 0 \\
+\texttt{-1} & \text{if } x < 0
+\end{cases}
+\end{equation*}
+
+\clearpage
+
+\subsubsection{Computing Residuals Example}
+{\relsize{-2}
+Given the samples
+\texttt{0, 16, 32, 44, 54, 61, 64, 63, 58, 49, 38, 24, 8, -8, -24},
+and the QLP coefficients
+\texttt{1170, -1088, 565, -161},
+the subframe's residuals are calculate as follows:
+\par
+\vskip .15in
+\noindent
+\begin{tabular}{r||r|r|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}}
+$i$ & $\text{Sample}_i$ & $\text{Base}_i$ & \text{LPC Sum}_i & \text{Residual}_i & \text{QLP Coeff.}_{(i + 1)~j} \\
+\hline
+0 & 0 & & & 0 \\
+1 & 16 & & & 16 - 0 = 16 \\
+2 & 32 & & & 32 - 16 = 16 \\
+3 & 44 & & & 44 - 32 = 12 \\
+4 & 54 & & & 54 - 44 = 10 \\
+\hline
+5 & 61 & 0 & 1170 \times (54 - 0) \texttt{ +} & 61 - (\lfloor(30812 + 2 ^ 8) \div 2 ^ 9\rfloor + 0) = 1 & 1170 - -1 = 1171 \\
+& & & -1088 \times (44 - 0) \texttt{ +} & & -1088 - -1 = -1087 \\
+& & & 565 \times (32 - 0) \texttt{ +} & & 565 - -1 = 566 \\
+& & & -161 \times (16 - 0) \texttt{~~} & & -161 - -1 = -160 \\
+\hline
+6 & 64 & 16 & 1171 \times (61 - 16) \texttt{ +} & 64 - (\lfloor(24677 + 2 ^ 8) \div 2 ^ 9\rfloor + 16) = 0 & 1171 \\
+& & & -1087 \times (54 - 16) \texttt{ +} & & -1087 \\
+& & & 566 \times (44 - 16) \texttt{ +} & & 566 \\
+& & & -160 \times (32 - 16) \texttt{~~} & & -160 \\
+\hline
+7 & 63 & 32 & 1171 \times (64 - 32) \texttt{ +} & 63 - (\lfloor(16481 + 2 ^ 8) \div 2 ^ 9\rfloor + 32) = -1 & 1171 \\
+& & & -1087 \times (61 - 32) \texttt{ +} & & -1087 \\
+& & & 566 \times (54 - 32) \texttt{ +} & & 566 \\
+& & & -160 \times (44 - 32) \texttt{~~} & & -160 + -1 = -159 \\
+\hline
+8 & 58 & 44 & 1171 \times (63 - 44) \texttt{ +} & 58 - (\lfloor(8521 + 2 ^ 8) \div 2 ^ 9\rfloor + 44) = -3 & 1171 \\
+& & & -1087 \times (64 - 44) \texttt{ +} & & -1087 \\
+& & & 566 \times (61 - 44) \texttt{ +} & & 565 \\
+& & & -161 \times (54 - 44) \texttt{~~} & & -161 + -1 = -160 \\
+\hline
+9 & 49 & 54 & 1171 \times (58 - 54) \texttt{ +} & 49 - (\lfloor(-583 + 2 ^ 8) \div 2 ^ 9\rfloor + 54) = -4 & 1171 \\
+& & & -1087 \times (63 - 54) \texttt{ +} & & -1088 \\
+& & & 565 \times (64 - 54) \texttt{ +} & & -1087 + -1 = -1086 \\
+& & & -162 \times (61 - 54) \texttt{~~} & & -162 + -1 = -161 \\
+\hline
+10 & 38 & 61 & 1171 \times (49 - 61) \texttt{ +} & 38 - (\lfloor(-10149 + 2 ^ 8) \div 2 ^ 9\rfloor + 61) = -3 & 1171 \\
+& & & -1088 \times (58 - 61) \texttt{ +} & & -1088 \\
+& & & 564 \times (63 - 61) \texttt{ +} & & 563 \\
+& & & -163 \times (64 - 61) \texttt{~~} & & -163 + -1 = -162 \\
+\hline
+11 & 24 & 64 & 1171 \times (38 - 64) \texttt{ +} & 24 - (\lfloor(-17340 + 2 ^ 8) \div 2 ^ 9\rfloor + 64) = -6 & 1171 \\
+& & & -1088 \times (49 - 64) \texttt{ +} & & -1087 \\
+& & & 563 \times (58 - 64) \texttt{ +} & & -1088 + 1 = -1089 \\
+& & & -164 \times (63 - 64) \texttt{~~} & & -164 + 1 = -165 \\
+\hline
+12 & 8 & 63 & 1171 \times (24 - 63) \texttt{ +} & 8 - (\lfloor(-25575 + 2 ^ 8) \div 2 ^ 9\rfloor + 63) = -5 & 1171 \\
+& & & -1087 \times (38 - 63) \texttt{ +} & & -1086 \\
+& & & 564 \times (49 - 63) \texttt{ +} & & -1087 + 1 = -1088 \\
+& & & -163 \times (58 - 63) \texttt{~~} & & -163 + 1 = -164 \\
+\hline
+13 & -8 & 58 & 1171 \times (8 - 58) \texttt{ +} & -8 - (\lfloor(-31468 + 2 ^ 8) \div 2 ^ 9\rfloor + 58) = -5 & 1171 \\
+& & & -1086 \times (24 - 58) \texttt{ +} & & -1085 \\
+& & & 565 \times (38 - 58) \texttt{ +} & & -1086 + 1 = -1087 \\
+& & & -162 \times (49 - 58) \texttt{~~} & & -162 + 1 = -163 \\
+\hline
+14 & -24 & 49 & 1171 \times (-8 - 49) \texttt{ +} & -24 - (\lfloor(-34641 + 2 ^ 8) \div 2 ^ 9\rfloor + 49) = -5 & 1171 \\
+& & & -1085 \times (8 - 49) \texttt{ +} & & -1084 \\
+& & & 566 \times (24 - 49) \texttt{ +} & & -1085 + 1 = -1086 \\
+& & & -161 \times (38 - 49) \texttt{~~} & & -161 + 1 = -162 \\
+\hline
+\end{tabular}
+}
 
 %% \clearpage
 
