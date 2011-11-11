@@ -748,7 +748,7 @@ class Flac_SEEKTABLE:
         return linesep.decode('ascii').join(
             [u"  SEEKTABLE:",
              u"    first sample   file offset   frame samples"] +
-            [u"  %14.d %13.X %15.d" % seekpoint
+            [u"  %14.1d %13.1X %15.d" % seekpoint
              for seekpoint in self.seekpoints])
 
     @classmethod
@@ -1563,29 +1563,13 @@ class FlacAudio(WaveContainer, AiffContainer):
             metadata = flac.get_metadata()
 
             #generate SEEKTABLE from encoder offsets and add it to metadata
-            from bisect import bisect_right
-
-            metadata_length = flac.metadata_length()
+            metadata_length = flac.metadata_length() + 4
             seekpoint_interval = pcmreader.sample_rate * 10
-            total_samples = 0
-            all_frames = {}
-            sample_offsets = []
-            for (byte_offset, pcm_frames) in offsets:
-                all_frames[total_samples] = (byte_offset - metadata_length,
-                                             pcm_frames)
-                sample_offsets.append(total_samples)
-                total_samples += pcm_frames
 
-            seekpoints = []
-            for pcm_frame in xrange(0,
-                                    flac.total_frames(),
-                                    seekpoint_interval):
-                flac_frame = bisect_right(sample_offsets, pcm_frame) - 1
-                seekpoints.append((sample_offsets[flac_frame],
-                                   all_frames[sample_offsets[flac_frame]][0],
-                                   all_frames[sample_offsets[flac_frame]][1]))
-
-            metadata.add_block(Flac_SEEKTABLE(seekpoints))
+            metadata.add_block(flac.seektable(
+                    [(byte_offset - metadata_length,
+                      pcm_frames) for byte_offset,pcm_frames in offsets],
+                    seekpoint_interval))
 
             #if channels or bps is too high,
             #automatically generate and add channel mask
@@ -1605,6 +1589,37 @@ class FlacAudio(WaveContainer, AiffContainer):
         except Exception, err:
             cls.__unlink__(filename)
             raise err
+
+    def seektable(self, offsets=None, seekpoint_interval=None):
+        from bisect import bisect_right
+
+        if (offsets is None):
+            metadata_length = self.metadata_length() + 4
+            offsets = [(byte_offset - metadata_length,
+                        pcm_frames) for byte_offset,pcm_frames in
+                       self.to_pcm().offsets()]
+
+        if (seekpoint_interval is None):
+            seekpoint_interval = self.sample_rate() * 10
+
+        total_samples = 0
+        all_frames = {}
+        sample_offsets = []
+        for (byte_offset, pcm_frames) in offsets:
+            all_frames[total_samples] = (byte_offset, pcm_frames)
+            sample_offsets.append(total_samples)
+            total_samples += pcm_frames
+
+        seekpoints = []
+        for pcm_frame in xrange(0,
+                                self.total_frames(),
+                                seekpoint_interval):
+            flac_frame = bisect_right(sample_offsets, pcm_frame) - 1
+            seekpoints.append((sample_offsets[flac_frame],
+                               all_frames[sample_offsets[flac_frame]][0],
+                               all_frames[sample_offsets[flac_frame]][1]))
+
+        return Flac_SEEKTABLE(seekpoints)
 
     def has_foreign_riff_chunks(self):
         """Returns True if the audio file contains non-audio RIFF chunks.

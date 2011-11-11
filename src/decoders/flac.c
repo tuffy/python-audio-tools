@@ -244,7 +244,7 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
             } else {
                 return NULL;
             }
-        }else {
+        } else {
             PyErr_SetString(PyExc_ValueError,
                             "MD5 mismatch at end of stream");
             return NULL;
@@ -339,6 +339,78 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
     return NULL;
 }
 
+static PyObject*
+FlacDecoder_offsets(decoders_FlacDecoder* self, PyObject *args)
+{
+    int channel;
+    struct flac_frame_header frame_header;
+    flac_status error;
+    PyObject* offsets = PyList_New(0);
+    PyObject* offset_pair;
+    uint32_t samples;
+    long offset;
+
+    while (self->remaining_samples > 0) {
+        self->subframe_data->reset(self->subframe_data);
+        offset = br_ftell(self->bitstream);
+
+        if (!setjmp(*br_try(self->bitstream))) {
+            /*read frame header*/
+            if ((error = flacdec_read_frame_header(self->bitstream,
+                                                   &(self->streaminfo),
+                                                   &frame_header)) != OK) {
+                PyErr_SetString(PyExc_ValueError, FlacDecoder_strerror(error));
+                goto error;
+            }
+
+            samples = frame_header.block_size;
+
+            /*read 1 subframe per channel*/
+            for (channel = 0; channel < frame_header.channel_count; channel++)
+                if ((error =
+                     flacdec_read_subframe(
+                         self->bitstream,
+                         self->qlp_coeffs,
+                         self->residuals,
+                         (unsigned int)MIN(frame_header.block_size,
+                                           self->remaining_samples),
+                         flacdec_subframe_bits_per_sample(&frame_header,
+                                                          channel),
+                         self->subframe_data->append(self->subframe_data))) !=
+                    OK) {
+                    PyErr_SetString(PyExc_ValueError,
+                                    FlacDecoder_strerror(error));
+                    goto error;
+                }
+
+            /*read CRC-16*/
+            self->bitstream->byte_align(self->bitstream);
+            self->bitstream->read(self->bitstream, 16);
+
+            /*decrement remaining samples*/
+            self->remaining_samples -= frame_header.block_size;
+
+            /*add offset pair to our list*/
+            offset_pair = Py_BuildValue("(i, I)", offset, samples);
+            PyList_Append(offsets, offset_pair);
+            Py_DECREF(offset_pair);
+        } else {
+            /*handle I/O error during read*/
+            PyErr_SetString(PyExc_IOError, "EOF reading frame");
+            goto error;
+        }
+
+        br_etry(self->bitstream);
+    }
+
+    self->stream_finalized = 1;
+
+    return offsets;
+ error:
+    Py_XDECREF(offsets);
+    br_etry(self->bitstream);
+    return NULL;
+}
 
 flac_status
 flacdec_read_frame_header(BitstreamReader *bitstream,
