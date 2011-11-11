@@ -57,5 +57,5 @@
   <field size="1" value="0" border_e="blank">LSB₂₃</field>
   <field size="1" value="1" border_e="dotted" border_w="dotted">₂₃↔₂₄</field>
   <field size="1" value="0" border_w="blank">MSB₂₄</field>
-  <field size="2" value="3">LSB₂₄</field>
+  <field size="2" value="2">LSB₂₄</field>
 </struct>

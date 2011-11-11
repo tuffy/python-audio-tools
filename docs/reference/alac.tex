@@ -1963,10 +1963,10 @@ $i$ & $\text{Sample}_i$ & $\text{Base}_i$ & \text{LPC Sum}_i & \text{Residual}_i
 3 & 44 & & & 44 - 32 = 12 \\
 4 & 54 & & & 54 - 44 = 10 \\
 \hline
-5 & 61 & 0 & 1170 \times (54 - 0) \texttt{ +} & 61 - (\lfloor(30812 + 2 ^ 8) \div 2 ^ 9\rfloor + 0) = 1 & 1170 - -1 = 1171 \\
-& & & -1088 \times (44 - 0) \texttt{ +} & & -1088 - -1 = -1087 \\
-& & & 565 \times (32 - 0) \texttt{ +} & & 565 - -1 = 566 \\
-& & & -161 \times (16 - 0) \texttt{~~} & & -161 - -1 = -160 \\
+5 & 61 & 0 & 1170 \times (54 - 0) \texttt{ +} & 61 - (\lfloor(30812 + 2 ^ 8) \div 2 ^ 9\rfloor + 0) = 1 & 1170 + 1 = 1171 \\
+& & & -1088 \times (44 - 0) \texttt{ +} & & -1088 + 1 = -1087 \\
+& & & 565 \times (32 - 0) \texttt{ +} & & 565 + 1 = 566 \\
+& & & -161 \times (16 - 0) \texttt{~~} & & -161 + 1 = -160 \\
 \hline
 6 & 64 & 16 & 1171 \times (61 - 16) \texttt{ +} & 64 - (\lfloor(24677 + 2 ^ 8) \div 2 ^ 9\rfloor + 16) = 0 & 1171 \\
 & & & -1087 \times (54 - 16) \texttt{ +} & & -1087 \\
@@ -1976,22 +1976,22 @@ $i$ & $\text{Sample}_i$ & $\text{Base}_i$ & \text{LPC Sum}_i & \text{Residual}_i
 7 & 63 & 32 & 1171 \times (64 - 32) \texttt{ +} & 63 - (\lfloor(16481 + 2 ^ 8) \div 2 ^ 9\rfloor + 32) = -1 & 1171 \\
 & & & -1087 \times (61 - 32) \texttt{ +} & & -1087 \\
 & & & 566 \times (54 - 32) \texttt{ +} & & 566 \\
-& & & -160 \times (44 - 32) \texttt{~~} & & -160 + -1 = -159 \\
+& & & -160 \times (44 - 32) \texttt{~~} & & -160 - 1 = -159 \\
 \hline
 8 & 58 & 44 & 1171 \times (63 - 44) \texttt{ +} & 58 - (\lfloor(8521 + 2 ^ 8) \div 2 ^ 9\rfloor + 44) = -3 & 1171 \\
 & & & -1087 \times (64 - 44) \texttt{ +} & & -1087 \\
 & & & 566 \times (61 - 44) \texttt{ +} & & 565 \\
-& & & -161 \times (54 - 44) \texttt{~~} & & -161 + -1 = -160 \\
+& & & -161 \times (54 - 44) \texttt{~~} & & -161 - 1 = -160 \\
 \hline
 9 & 49 & 54 & 1171 \times (58 - 54) \texttt{ +} & 49 - (\lfloor(-583 + 2 ^ 8) \div 2 ^ 9\rfloor + 54) = -4 & 1171 \\
 & & & -1087 \times (63 - 54) \texttt{ +} & & -1088 \\
-& & & 565 \times (64 - 54) \texttt{ +} & & -1087 + -1 = -1086 \\
-& & & -162 \times (61 - 54) \texttt{~~} & & -162 + -1 = -161 \\
+& & & 565 \times (64 - 54) \texttt{ +} & & -1087 - 1 = -1086 \\
+& & & -162 \times (61 - 54) \texttt{~~} & & -162 - 1 = -161 \\
 \hline
 10 & 38 & 61 & 1171 \times (49 - 61) \texttt{ +} & 38 - (\lfloor(-10149 + 2 ^ 8) \div 2 ^ 9\rfloor + 61) = -3 & 1171 \\
 & & & -1088 \times (58 - 61) \texttt{ +} & & -1088 \\
 & & & 564 \times (63 - 61) \texttt{ +} & & 563 \\
-& & & -163 \times (64 - 61) \texttt{~~} & & -163 + -1 = -162 \\
+& & & -163 \times (64 - 61) \texttt{~~} & & -163 - 1 = -162 \\
 \hline
 11 & 24 & 64 & 1171 \times (38 - 64) \texttt{ +} & 24 - (\lfloor(-17340 + 2 ^ 8) \div 2 ^ 9\rfloor + 64) = -6 & 1171 \\
 & & & -1088 \times (49 - 64) \texttt{ +} & & -1087 \\
@@ -2016,616 +2016,220 @@ $i$ & $\text{Sample}_i$ & $\text{Base}_i$ & \text{LPC Sum}_i & \text{Residual}_i
 \end{tabular}
 }
 
-%% \clearpage
+\clearpage
 
-%% \subsection{Compressed and Uncompressed Frames}
+\subsubsection{Encoding Residual Block}
+\ALGORITHM{a list of signed residual values, sample size; initial history, history multiplier, maximum K from encoding options}{a block of residual data}
+\SetKwData{HISTORY}{history}
+\SetKwData{HISTORYMULT}{history multiplier}
+\SetKwData{MAXIMUMK}{maximum K}
+\SetKwData{SIGNMODIFIER}{sign modifier}
+\SetKwData{ZEROES}{zeroes}
+\SetKw{RAISE}{raise}
+\SetKwFunction{MIN}{min}
+\SetKwFunction{WRITERESIDUAL}{write residual}
+\SetKw{AND}{and}
+\HISTORY $\leftarrow$ initial history\;
+\SIGNMODIFIER $\leftarrow 0$\;
+$i \leftarrow 0$\;
+\While{$i < \text{residual count}$}{
+  \eIf(\tcc*[f]{add sign bit}){$\text{residual}_i \geq 0$}{
+    $\text{unsigned}_i \leftarrow \text{residual}_i \times 2 - \SIGNMODIFIER$\;
+  }{
+    $\text{unsigned}_i \leftarrow (-\text{residual}_i \times 2) - 1 - \SIGNMODIFIER$\;
+  }
+  $\SIGNMODIFIER \leftarrow 0$\;
+  \If{$\text{unsigned}_i \geq 2 ^ \text{sample size}$}{
+    \RAISE residual overflow exception\footnote{in this case, we should cease building a compressed frame and write an uncompressed frame instead}\;
+  }
+  $\kappa \leftarrow \MIN(\lfloor\log_2((\HISTORY \div 2 ^ 9) + 3)\rfloor~,~\MAXIMUMK)$\;
+  $\WRITERESIDUAL(\text{unsigned}_i~,~\kappa~,~\text{sample size})$\;
+  \BlankLine
+  \eIf(\tcc*[f]{update history}){$\text{unsigned}_i < 65535$}{
+    $\HISTORY \leftarrow \HISTORY + (\text{unsigned}_i \times \HISTORYMULT) - \left\lfloor\frac{\HISTORY \times \HISTORYMULT}{2 ^ 9}\right\rfloor$\;
+    $i \leftarrow i + 1$\;
+    \BlankLine
+    \If(\tcc*[f]{handle 0 residuals}){$\HISTORY < 128$ \AND $i < \text{residual count}$}{
+      $\kappa \leftarrow \MIN(7 - \lfloor\log_2(\HISTORY)\rfloor + \lfloor(\HISTORY + 16) \div 2 ^ 6\rfloor~,~\MAXIMUMK)$\;
+      $\ZEROES \leftarrow 0$\;
+      \While{$i < \text{residual count}$ \AND $\text{residual}_i = 0$}{
+        $\ZEROES \leftarrow \ZEROES + 1$\;
+        $i \leftarrow i + 1$\;
+      }
+      $\WRITERESIDUAL(\ZEROES~,~\kappa~,~16)$\;
+      \If{$\ZEROES < 65535$}{
+        $\SIGNMODIFIER \leftarrow 1$\;
+      }
+      $\HISTORY \leftarrow 0$\;
+    }
+  }{
+    $i \leftarrow i + 1$\;
+    $\HISTORY \leftarrow 65535$\;
+  }
+}
+\Return encoded residual block\;
+\EALGORITHM
 
-%% Now that we've built a set of non-audio ALAC atoms,
-%% the next step is to break our audio into a set of PCM frames
-%% of a certain block size - typically 4096.
-%% When encoding more than 2 channels, these PCM frames then need
-%% to be broken apart into 1-2 channel sets such that each set
-%% becomes an ALAC frame and all the frames become an ALAC frameset.
+\clearpage
 
-%% \begin{figure}[h]
-%% \includegraphics{figures/alac/stream.pdf}
-%% \end{figure}
+\subsubsection{Encoding Individual Residual}
 
-%% We then have to decide whether to turn a set of 1-2 channel PCM frames
-%% into a compressed or uncompressed ALAC frame.
-%% This is done by first attempting a compressed frame while keeping
-%% track of its size.
-%% If that compressed frame's size is greater than what an
-%% uncompressed frame would be
-%% ($(\text{block size} \times \text{channels} \times \text{bits per sample} \div 8) + 7$), use an uncompressed frame instead.\footnote{See page \pageref{alac_uncompressed}}
-%% For any audio data that isn't random noise, compressed frames
-%% will be the better choice.
+\ALGORITHM{an unsigned residual value, $\kappa$, sample size}{an individual encoded residual}
+\SetKwData{MSB}{MSB}
+\SetKwData{LSB}{LSB}
+$\MSB \leftarrow \text{unsigned} \div 2 ^ \kappa - 1$\;
+$\LSB \leftarrow \text{unsigned} \bmod~2 ^ \kappa - 1$\;
+\eIf{$\MSB > 8$}{
+  \WRITE \texttt{0x1FF} in 9 unsigned bits\;
+  \WRITE unsigned in (sample size) unsigned bits\;
+}{
+  \WUNARY \MSB with stop bit 0\;
+  \If{$\kappa > 1$}{
+    \eIf{$\LSB > 0$}{
+      \WRITE ($\LSB + 1$) in $\kappa$ unsigned bits\;
+    }{
+      \WRITE 0 in ($\kappa - 1$) unsigned bits\;
+    }
+  }
+}
+\EALGORITHM
 
-%% As you'll recall, a compressed frame is laid out as follows:
+\begin{landscape}
 
-%% \begin{figure}[h]
-%% \includegraphics{figures/alac/compressed_frame.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% \VAR{Has Sample Size} will be 0 so long as we have enough
-%% remaining samples to fill our consistent block size.
-%% But, at the end of the stream, this value will be 1 to cover any
-%% remaining samples whose size will be stored in the \VAR{Sample Size} field.
-%% Next, we use a \VAR{Wasted Bits} value of 1 if our stream's bits-per-sample
-%% is greater than 16.
+\subsubsection{Residual Encoding Example}
+\begin{table}[h]
+{\relsize{-1}
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{r||r|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}}
+$i$ & $\text{residual}_i$ & \text{unsigned}_i & \kappa & \text{MSB}_i & \text{LSB}_i & \text{history}_{i + 1} \\
+\hline
+0 & \texttt{0} &
+\texttt{0} \times 2 = \texttt{0} &
+\lfloor\log_2(\frac{\texttt{10}}{2 ^ 9} + 3)\rfloor = \texttt{1} &
+0 \div 2 ^ 1 - 1 = 0 &
+ &
+\texttt{10} + (\texttt{0} \times \texttt{40}) - \left\lfloor\frac{\texttt{10} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{10} \\
+& $zeroes = 0$ &
+\multicolumn{2}{>{$}r<{$}|}{7 - \lfloor\log_2(10)\rfloor + \lfloor\frac{10 + 16}{2 ^ 6}\rfloor = 4} &
+0 \div 2 ^ 4 - 1 = 0 &
+0 \bmod~2 ^ 4 - 1 = 0 &
+\texttt{0} \\
+1 & \texttt{16} &
+\texttt{16} \times 2 - 1 = \texttt{31} &
+\lfloor\log_2(\frac{\texttt{0}}{2 ^ 9} + 3)\rfloor = \texttt{1} &
+\multicolumn{2}{r|}{write \texttt{0x1FFF} in 9 unsigned bits} &
+\texttt{0} + (\texttt{31} \times \texttt{40}) - \left\lfloor\frac{\texttt{0} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{1240} \\
+& & & & \multicolumn{2}{r|}{write \texttt{31} in 16 unsigned bits} & \\
+2 & \texttt{16} &
+\texttt{16} \times 2 = \texttt{32} &
+\lfloor\log_2(\frac{\texttt{1240}}{2 ^ 9} + 3)\rfloor = \texttt{2} &
+\multicolumn{2}{r|}{write \texttt{0x1FFF} in 9 unsigned bits} &
+\texttt{1240} + (\texttt{32} \times \texttt{40}) - \left\lfloor\frac{\texttt{1240} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{2424} \\
+& & & & \multicolumn{2}{r|}{write \texttt{32} in 16 unsigned bits} & \\
+3 & \texttt{12} &
+\texttt{12} \times 2 = \texttt{24} &
+\lfloor\log_2(\frac{\texttt{2424}}{2 ^ 9} + 3)\rfloor = \texttt{2} &
+24 \div 2 ^ 2 - 1 = 8 &
+24 \bmod~2 ^ 2 - 1 = 0 &
+\texttt{2424} + (\texttt{24} \times \texttt{40}) - \left\lfloor\frac{\texttt{2424} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3195} \\
+4 & \texttt{10} &
+\texttt{10} \times 2 = \texttt{20} &
+\lfloor\log_2(\frac{\texttt{3195}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+20 \div 2 ^ 3 - 1 = 2 &
+20 \bmod~2 ^ 3 - 1 = 6 &
+\texttt{3195} + (\texttt{20} \times \texttt{40}) - \left\lfloor\frac{\texttt{3195} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3746} \\
+5 & \texttt{1} &
+\texttt{1} \times 2 = \texttt{2} &
+\lfloor\log_2(\frac{\texttt{3746}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+2 \div 2 ^ 3 - 1 = 0 &
+2 \bmod~2 ^ 3 - 1 = 2 &
+\texttt{3746} + (\texttt{2} \times \texttt{40}) - \left\lfloor\frac{\texttt{3746} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3534} \\
+6 & \texttt{0} &
+\texttt{0} \times 2 = \texttt{0} &
+\lfloor\log_2(\frac{\texttt{3534}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+0 \div 2 ^ 3 - 1 = 0 &
+0 \bmod~2 ^ 3 - 1 = 0 &
+\texttt{3534} + (\texttt{0} \times \texttt{40}) - \left\lfloor\frac{\texttt{3534} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3258} \\
+7 & \texttt{-1} &
+(\texttt{1} \times 2) - 1 = \texttt{1} &
+\lfloor\log_2(\frac{\texttt{3258}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+1 \div 2 ^ 3 - 1 = 0 &
+1 \bmod~2 ^ 3 - 1 = 1 &
+\texttt{3258} + (\texttt{1} \times \texttt{40}) - \left\lfloor\frac{\texttt{3258} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3044} \\
+8 & \texttt{-3} &
+(\texttt{3} \times 2) - 1 = \texttt{5} &
+\lfloor\log_2(\frac{\texttt{3044}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+5 \div 2 ^ 3 - 1 = 0 &
+5 \bmod~2 ^ 3 - 1 = 5 &
+\texttt{3044} + (\texttt{5} \times \texttt{40}) - \left\lfloor\frac{\texttt{3044} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3007} \\
+9 & \texttt{-4} &
+(\texttt{4} \times 2) - 1 = \texttt{7} &
+\lfloor\log_2(\frac{\texttt{3007}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+7 \div 2 ^ 3 - 1 = 1 &
+7 \bmod~2 ^ 3 - 1 = 0 &
+\texttt{3007} + (\texttt{7} \times \texttt{40}) - \left\lfloor\frac{\texttt{3007} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3053} \\
+10 & \texttt{-3} &
+(\texttt{3} \times 2) - 1 = \texttt{5} &
+\lfloor\log_2(\frac{\texttt{3053}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+5 \div 2 ^ 3 - 1 = 0 &
+5 \bmod~2 ^ 3 - 1 = 5 &
+\texttt{3053} + (\texttt{5} \times \texttt{40}) - \left\lfloor\frac{\texttt{3053} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3015} \\
+11 & \texttt{-6} &
+(\texttt{6} \times 2) - 1 = \texttt{11} &
+\lfloor\log_2(\frac{\texttt{3015}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+11 \div 2 ^ 3 - 1 = 1 &
+11 \bmod~2 ^ 3 - 1 = 4 &
+\texttt{3015} + (\texttt{11} \times \texttt{40}) - \left\lfloor\frac{\texttt{3015} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3220} \\
+12 & \texttt{-5} &
+(\texttt{5} \times 2) - 1 = \texttt{9} &
+\lfloor\log_2(\frac{\texttt{3220}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+9 \div 2 ^ 3 - 1 = 1 &
+9 \bmod~2 ^ 3 - 1 = 2 &
+\texttt{3220} + (\texttt{9} \times \texttt{40}) - \left\lfloor\frac{\texttt{3220} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3329} \\
+13 & \texttt{-5} &
+(\texttt{5} \times 2) - 1 = \texttt{9} &
+\lfloor\log_2(\frac{\texttt{3329}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+9 \div 2 ^ 3 - 1 = 1 &
+9 \bmod~2 ^ 3 - 1 = 2 &
+\texttt{3329} + (\texttt{9} \times \texttt{40}) - \left\lfloor\frac{\texttt{3329} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3429} \\
+14 & \texttt{-5} &
+(\texttt{5} \times 2) - 1 = \texttt{9} &
+\lfloor\log_2(\frac{\texttt{3429}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+9 \div 2 ^ 3 - 1 = 1 &
+9 \bmod~2 ^ 3 - 1 = 2 &
+\texttt{3429} + (\texttt{9} \times \texttt{40}) - \left\lfloor\frac{\texttt{3429} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3522} \\
 
-%% In the event we have wasted bits, we simply chop off the bottom 8 bits
-%% of each sample and store them as a block of wasted bits samples
-%% (whose values are typically random noise, which does not compress well)
-%% and then treat the stream as having 16 bits per sample
-%% throughout the remainder of compression.
+\end{tabular}
+\renewcommand{\arraystretch}{1.0}
+}
+\end{table}
 
-%% \subsection{Channel Correlation}
+\clearpage
 
-%% For stereo streams, we must determine good \VAR{Interlacing Shift}
-%% and \VAR{Interlacing Leftweight} values to exploit similarities
-%% between the left and right channels.
+\begin{figure}[h]
+\includegraphics{figures/alac/residual-build.pdf}
+\end{figure}
 
-%% In this case, we'll use an \VAR{Interlacing Shift} value of 2
-%% and try all all \VAR{Interlacing Leftweight} values between 0 and 4
-%% (inclusive), using the one that generates the smallest subframes.
+\end{landscape}
 
-%% Correlating our left and right channel samples using
-%% \VAR{Interlacing Shift} and \VAR{Interlacing Leftweight} is done
-%% using the inverse of decorrelation:
-%% \begin{align*}
-%% \text{Channel}_1 &= \text{Right}_i + \left\lfloor\frac{(\text{Left}_i - \text{Right}_i) \times \text{Interlacing Leftweight}}{2 ^ \text{Interlacing Shift}}\right\rfloor \\
-%% \text{Channel}_2 &= \text{Left}_i - \text{Right}_i
-%% \end{align*}
-%% \par
-%% For example, given the left channels 18, 20, 26, 24, 24;
-%% the right channels of 2, 3, 0, -1. 0; an \VAR{Interlacing Shift} value
-%% of 2 and an \VAR{Interlacing Leftweight} value of 3, we
-%% calculate ALAC channels as follows:
-%% \begin{table}[h]
-%% \begin{tabular}{|c||>{$}r<{$}|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|}
-%% \hline
-%% Sample & \text{Left}_i & \text{Right}_i & \text{Channel}_1 & \text{Channel}_2 \\
-%% \hline
-%% 0 & 18 & 2 & 2 + \left\lfloor\frac{(18 - 2) \times 3}{2 ^ 2}\right\rfloor = 2 + 12 = \textbf{14} & 18 - 2 = \textbf{16} \\
-%% 1 & 20 & 3 & 3 + \left\lfloor\frac{(20 - 3) \times 3}{2 ^ 2}\right\rfloor = 3 + 12 = \textbf{15} & 20 - 3 = \textbf{17} \\
-%% 2 & 26 & 0 & 0 + \left\lfloor\frac{(26 - 0) \times 3}{2 ^ 2}\right\rfloor = 0 + 19 = \textbf{19} & 26 - 0 = \textbf{26} \\
-%% 3 & 24 & -1 & -1 + \left\lfloor\frac{(24 + 1) \times 3}{2 ^ 2}\right\rfloor = -1 + 18 = \textbf{17} & 24 - -1 = \textbf{25} \\
-%% 4 & 24 & 0 & 0 + \left\lfloor\frac{(24 - 0) \times 3}{2 ^ 2}\right\rfloor = 0 + 18 = \textbf{18} & 24 - 0 = \textbf{24} \\
-%% \hline
-%% \end{tabular}
-%% \end{table}
-
-%% \subsection{Coefficient Calculation}
-%% %example samples: [14, 15, 19, 17, 18, 17, 16, 18, 17, 15,
-%% %                  13, 13, 12, 12, 15, 17, 16, 17, 16, 13]
-
-%% Given a list of correlated samples, we need to generate
-%% one subframe header per channel by performing coefficient calculation
-%% to generate \VAR{Prediction Quantitization},
-%% \VAR{Coefficient Count} and a set of \VAR{Coefficient} values.
-%% We'll set \VAR{Prediction Type} to 0 and \VAR{Rice Modifier} to 4.
-%% \begin{figure}[h]
-%% \includegraphics{figures/alac/subframe_header.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% %We'll adapt FLAC's LPC subframe calculation routine\footnote{See page \pageref{flac_lpc_encoding}} for this purpose.
-
-%% \clearpage
-
-%% \subsubsection{Windowing}
-%% %windowed to: [0.000000,2.196699,9.500000,14.510408,18.000000,
-%% %              17.000000,16.000000,18.000000,17.000000,15.000000,
-%% %              13.000000,13.000000,12.000000,12.000000,15.000000,
-%% %              17.000000,13.656854,8.500000,2.343146,0.000000]
-
-%% The first step in ALAC subframe encoding is `windowing' the input signal.
-%% Put simply, this is a process of multiplying each input sample by
-%% an equivalent value from the window, which are floats from 0.0 to 1.0.
-%% In this case, the default is a Tukey window with a ratio of 0.5.
-%% A Tukey window is a combination of the Hann and Rectangular windows.
-%% The ratio of 0.5 means there's 0.5 samples in the Hann window per
-%% sample in the Rectangular window.
-
-%% \begin{align}
-%% \text{hann}(n) &= \frac{1}{2} \left ( 1 - \cos \left ( \frac{2 \pi n}{\text{sample count} - 1} \right ) \right ) \\
-%% \text{rectangle}(n) &= 1.0
-%% \end{align}
-
-%% The Tukey window is defined by taking a Hann window, splitting it at
-%% the halfway point, and inserting a Rectangular window between the
-%% two.
-
-%% Let's run through a short example with 20 samples:
-
-%% {\relsize{-1}
-%% \begin{tabular}{|r|r >{$}c<{$} r >{$}c<{$} r|}
-%% \hline
-%% & input & & Tukey & & windowed \\
-%% index & sample & & window & & signal \\
-%% \hline
-%% 0 & 14 & \times & 0.0000 & = & 0.00 \\
-%% 1 & 15 & \times & 0.1464 & = & 2.20 \\
-%% 2 & 19 & \times & 0.5000 & = & 9.50 \\
-%% 3 & 17 & \times & 0.8536 & = & 14.51 \\
-%% 4 & 18 & \times & 1.0000 & = & 18.00 \\
-%% 5 & 17 & \times & 1.0000 & = & 17.00 \\
-%% 6 & 16 & \times & 1.0000 & = & 16.00 \\
-%% 7 & 18 & \times & 1.0000 & = & 18.00 \\
-%% 8 & 17 & \times & 1.0000 & = & 17.00 \\
-%% 9 & 15 & \times & 1.0000 & = & 15.00 \\
-%% 10 & 13 & \times & 1.0000 & = & 13.00 \\
-%% 11 & 13 & \times & 1.0000 & = & 13.00 \\
-%% 12 & 12 & \times & 1.0000 & = & 12.00 \\
-%% 13 & 12 & \times & 1.0000 & = & 12.00 \\
-%% 14 & 15 & \times & 1.0000 & = & 15.00 \\
-%% 15 & 17 & \times & 1.0000 & = & 17.00 \\
-%% 16 & 16 & \times & 0.8536 & = & 13.66 \\
-%% 17 & 17 & \times & 0.5000 & = & 8.50 \\
-%% 18 & 16 & \times & 0.1464 & = & 2.34 \\
-%% 19 & 13 & \times & 0.0000 & = & 0.00 \\
-%% \hline
-%% \end{tabular}
-%% }
-
-%% \subsubsection{Computing Autocorrelation}
-%% %autocorrelated to: [3416.877417,3314.071374,3078.904744,2807.422836,
-%% %                    2554.560660,2325.480970,2107.853553,1903.292893,
-%% %                    1701.213203]
-
-%% Once our input samples have been converted to a windowed signal,
-%% we then compute the autocorrelation values from that signal.
-%% Each autocorrelation value is determined by multiplying the signal's
-%% samples by the samples of a lagged version of that same signal,
-%% and then taking the sum.
-%% The lagged signal is simply the original signal with \VAR{lag} number of
-%% samples removed from the beginning.
-
-%% \begin{figure}[h]
-%% \includegraphics{figures/alac/lag.pdf}
-%% \end{figure}
-
-%% In this example are autocorrelation values are:
-%% 3416.9513, 3314.1450, 3078.9564, 2807.4600, 2554.6000,
-%% 2325.5300, 2107.9100, 1903.3500 and 1701.2700.
-
-%% \clearpage
-
-%% \subsubsection{LP Coefficient Calculation}
-
-%% Calculating the LP coefficients uses the Levinson-Durbin recursive method.\footnote{This algorithm is taken from \LINK{http://www.engineer.tamuk.edu/SPark/chap7.pdf} }
-%% Our inputs are $M$, the maximum coefficient count, and $r$ autocorrelation
-%% values, from $r(0)$ to $r(M - 1)$.
-%% Our outputs are $a$, a list of LP coefficient lists from
-%% $a_{11}$ to $a_{(M - 1)(M - 1)}$, and $E$, a list
-%% of error values from $E_0$ to $E_{(M - 1)}$.
-%% $q_m$ and $\kappa_m$ are temporary values.
-%% \par
-%% \noindent
-%% Initial values:
-%% \begin{align*}
-%% && E_0 &= r(0) \\
-%% && a_{11} &= \kappa_1 = \frac{r(1)}{E_0} \\
-%% && E_1 &= E_0 {(1 - {{\kappa_1} ^ 2})}
-%% \intertext{With $m \geq 2$, the following recursive algorithm is performed:}
-%% \text{Step 1. } && q_m &= r(m) - \overset{m - 1}{\underset{i = 1}{\sum}} a_{i(m - 1)}r(m - i) \\
-%% \text{Step 2. } && \kappa_m &= \frac{q_m}{E_{(m - 1)}} \\
-%% \text{Step 3. } && a_{mm} &= \kappa_m \\
-%% \text{Step 4. } && a_{im} &= a_{i(m - 1)} - \kappa_m a_{(m - i)(m - 1)} \text{ for $i = 1$, $i = 2$,...,$i = m - 1$} \\
-%% \text{Step 5. } && E_m &= E_{m - 1}(1 - {\kappa_m} ^ 2) \\
-%% \text{Step 6. } &&& \text{If $m < M$ then $m \leftarrow m + 1$ and goto step 1.  If $m = M$ then stop.}
-%% \end{align*}
-
-%% Let's run through an example in which $M = 9$,
-%% $r(0) = 3417$, $r(1) = 3314$, $r(2) = 3079$, $r(3) = 2807$,
-%% $r(4) = 2555$, $r(5) = 2326$, $r(6) = 2108$, $r(7) = 1903$
-%% and $r(8) = 1701$:
-%% \clearpage
-
-%% {\relsize{-2}
-%% \begin{align*}
-%% E_0 &= r(0) = 3417 \\
-%% a_{11} &= \kappa_1 = \frac{r(1)}{E_0} = \frac{3314}{3417} = 0.97 \\
-%% E_1 &= E_o(1 - {\kappa_1} ^ 2) = 3417(1 - .97 ^ 2) = 201.95 \\
-%% q_2 &= r(2) - \overset{1}{\underset{i = 1}{\sum}} a_{i1}r(2 - i) = 3079 - (0.97)(3314) = -135.58 \\
-%% \kappa_2 &= \frac{q_2}{E_1} = \frac{-135.58}{201.95} = -0.671 \\
-%% a_{22} &= \kappa_2 = -0.671 \\
-%% a_{12} &= a_{11} - \kappa_2 a_{11} = 0.97 - (-0.671)(0.97) = 1.621 \\
-%% E_2 &= E_1 (1 - {\kappa_2} ^ 2 ) = 201.95(1 - {-0.671 ^ 2}) = 111.024 \\
-%% q_3 &= r(3) - \overset{2}{\underset{i = 1}{\sum}} a_{i2} r(3 - i) = 2807 - ((1.621)(3079) + (-0.671)(3314)) = 39.635 \\
-%% \kappa_3 &= \frac{q_3}{E_2} = \frac{39.635}{111.024} = 0.357 \\
-%% a_{33} &= \kappa_3 = 0.357 \\
-%% a_{13} &= a_{12} - \kappa_3 a_{22} = 1.621 - (0.357)(-0.671) = 1.861 \\
-%% a_{23} &= a_{22} - \kappa_3 a_{12} = -0.671 - (0.357)(1.621) = -1.25 \\
-%% E_3 &= E_2 (1 - {\kappa_3} ^ 2 ) = 111.024(1 - {0.357 ^ 2}) = 96.874 \\
-%% q_4 &= r(4) - \overset{3}{\underset{i = 1}{\sum}} a_{i3} r(4 - i) = 2555 - ((1.861)(2807) + (-1.25)(3079) + (0.357)(3314)) = -3.175 \\
-%% \kappa_4 &= \frac{q_4}{E_3} = \frac{-3.175}{96.874} = -0.033 \\
-%% a_{44} &= \kappa_4 = -0.033 \\
-%% a_{14} &= a_{13} - \kappa_4 a_{33} = 1.861 - (-0.033)(0.357) = 1.873 \\
-%% a_{24} &= a_{23} - \kappa_4 a_{23} = -1.25 - (-0.033)(-1.25) = -1.291 \\
-%% a_{34} &= a_{33} - \kappa_4 a_{33} = 0.357 - (-0.033)(1.861) = 0.418 \\
-%% E_4 &= E_3 (1 - {\kappa_4} ^ 2) = 96.874(1 - {-0.033 ^ 2}) = 96.769
-%% \end{align*}
-%% }
-%% Calculating $E_5$ through $E_8$ and $a_{15}$ though $a_{88}$ will be
-%% left as an exercise for the reader.
-%% Our final values are:
-%% {\relsize{-2}
-%% \begin{align*}
-%% a_{11} &= 0.970 &&&&&&&&&&&&&& \\
-%% a_{12} &= 1.621 & a_{22} &= -0.67 &&&&&&&&&&&& \\
-%% a_{13} &= 1.861 & a_{23} &= -1.25 & a_{33} &= 0.357 &&&&&&&&&& \\
-%% a_{14} &= 1.873 & a_{24} &= -1.29 & a_{34} &= 0.418 & a_{44} &= -0.03 &&&&&&&& \\
-%% a_{15} &= 1.868 & a_{25} &= -1.28 & a_{35} &= 0.340 & a_{45} &= 0.122 & a_{55} &= -0.14 &&&&&& \\
-%% a_{16} &= 1.874 & a_{26} &= -1.28 & a_{36} &= 0.341 & a_{46} &= 0.119 & a_{56} &= -0.09 & a_{66} &= 0.00 &&&& \\
-%% a_{17} &= 1.875 & a_{27} &= -1.27 & a_{37} &= 0.332 & a_{47} &= 0.091 & a_{57} &= 0.011 & a_{67} &= -0.15 & a_{77} &= 0.078 & & \\
-%% a_{18} &= 1.892 & a_{28} &= -1.30 & a_{38} &= 0.338 & a_{48} &= 0.112 & a_{58} &= 0.082 & a_{68} &= -0.42 & a_{78} &= 0.479 & a_{88} &= -0.214 \\
-%% E_1 &= 202.0 & E_2 &= 111.0 & E_3 &= 96.9 & E_4 &= 96.8 & E_5 &= 96.1 & E_6 &= 96.1 & E_7 &= 95.6 & E_8 &= 91.2
-%% \end{align*}
-%% }
-%% \par
-%% \noindent
-%% These values have been rounded to the nearest significant digit
-%% and will not be an exact match to those generated by a computer.
-
-%% \clearpage
-
-%% \subsubsection{Best Order Estimation}
-
-%% At this point, we have an array of prospective LP coefficient lists,
-%% a list of error values and must decide which LPC order to use.
-%% Making an estimation requires the total number of samples
-%% in the subframe, the number of overhead bits per order (by default,
-%% this is the number of bits per sample in the subframe, plus 5),
-%% and an error scale constant in addition to the LPC error values:
-%% \begin{equation}
-%% \text{Error Scale} = \frac{\ln(2) ^ 2}{2 \times \text{Total Samples}}
-%% \end{equation}
-%% \noindent
-%% Once the error scale has been calculated, one can generate a
-%% \VAR{Bits per Residual} estimation function which, given an \VAR{LPC Error}
-%% value, returns what its name implies:
-%% \begin{equation}
-%% \text{Bits per Residual}(\text{LPC Error}) = \frac{\ln(\text{Error Scale} \times \text{LPC Error})}{2 \times \ln(2)}
-%% \end{equation}
-%% With this function, we can estimate how many bits the entire ALAC subframe
-%% will take for each \VAR{LPC Error} value and its associated \VAR{Order}:
-%% {\relsize{-2}
-%% \begin{equation*}
-%% \text{Total Bits}(\text{LPC Error},\text{Order}) = \text{Bits per Residual}(\text{LPC Error}) \times (\text{Total Samples} - \text{Order}) + (\text{Order} \times \text{Overhead bits})
-%% \end{equation*}
-%% }
-%% Continuing with our example, we have 20 samples which gives us an
-%% error scale of: $\frac{{\ln(2) ^ 2}}{2 \times 20} = \frac{.6931 ^ 2}{40} = .01201$
-
-%% Now, we'll estimate the bits used by order 4 and order 8,
-%% which use LPC Error values 96.8 and 91.2, respectively:
-
-%% \begin{align*}
-%% \intertext{At LPC order 4, our bits per residual are:}
-%% \frac{\ln(.01201 \times 96.8)}{2 \times \ln (2)} = \frac{\ln(1.163)}{1.386} &= 0.1089 \\
-%% \intertext{And our total bits are:}
-%% (0.1089 \times (20 - 1)) + (1 \times (16 + 5)) = 2.069 + 21 &= 23.069 \\
-%% \intertext{At LPC order 8, our bits per residual are:}
-%% \frac{\ln(.01201 \times 91.2)}{2 \times \ln(2)} = \frac{\ln(1.095)}{1.386} &= 0.065 \\
-%% \intertext{And our total bits are:}
-%% (0.065 \times (20 - 2)) + (2 \times (16 + 5)) = 1.17 + 42 &= 43.17 \\
-%% \end{align*}
-%% \par
-%% \noindent
-%% Therefore, since the total bits for order 4 are the smallest,
-%% the best order for this group of samples is 4.
-
-%% \subsubsection{Quantizing Coefficients}
-
-%% Quantizing coefficients is a process of taking a list of LP Coefficients
-%% along with a QLP Coefficients Precision value and
-%% returning a list of Coefficients and a Prediction Quantitization value.
-%% The first step is determining the upper and lower limits of the
-%% Coefficients, which well set to the upper and lower bounds that iTunes
-%% supports:
-%% \begin{align}
-%% \text{Coefficient Maximum} &= 2 ^ {12 - 1} - 1 = 2047\\
-%% \text{Coefficient Minimum} &= - 2 ^ {12 - 1} = -2048
-%% \end{align}
-%% \par
-%% \noindent
-%% Prediction Quantitization is always 9 in iTunes, so we'll use that value also:
-%% \begin{equation}
-%% \text{Prediction Quantitization} = 9
-%% \end{equation}
-%% \par
-%% \noindent
-%% We determine the Coefficient values themselves via a small
-%% recursive routine:
-%% \begin{align}
-%% X(i) &= E(i - 1) + (\text{LP Coefficient}_i \times 2 ^ {quantitization}) \\
-%% \text{Coefficient}_i &= \text{round}(X(i)) \\
-%% E(i) &= X(i) - \text{Coefficient}_i
-%% \end{align}
-%% \par
-%% \noindent
-%% where $E(0) = 0$ and each Coefficient is adjusted
-%% prior to calculating the next $E(i)$ value such that:
-%% \begin{equation}
-%% \text{Coefficient Minimum} \leq \text{Coefficient}_i \leq \text{Coefficient Maximum}
-%% \end{equation}
-%% \par
-%% So to finish our example in which we're quantizing the LP
-%% coefficients 1.873, -1.29, 0.418 and -0.03:
-%% \begin{align*}
-%% X(1) &= E(0) + (1.873 \times 2 ^ {9} ) = 0 + 958.976 = \textbf{958.976} \\
-%% \text{QLP Coefficient}_1 &= \text{round}(958.976) = \textbf{959} \\
-%% E(1) &= X(1) - \text{QLP Coefficient}_1 = 958.976 - 959 = \textbf{-0.024} \\
-%% X(2) &= E(1) + (-1.29 \times 2 ^ {9} ) = -0.024 + -660.48 = \textbf{-660.504} \\
-%% \text{QLP Coefficient}_2 &= \text{round}(-660.504) = \textbf{-661} \\
-%% E(2) &= X(2) - \text{QLP Coefficient}_2 = -660.504 - -661 = \textbf{0.496} \\
-%% X(3) &= E(2) + (0.418 \times 2 ^ {9} ) = 0.496 + 214.015 = \textbf{214.511} \\
-%% \text{QLP Coefficient}_3 &= \text{round}(214.511) = \textbf{215} \\
-%% E(3) &= X(3) - \text{QLP Coefficient}_3 = 214.511 - 215 = \textbf{-0.489} \\
-%% X(4) &= E(3) + (-0.03 \times 2 ^ {9} ) = -0.489 + -15.36 = \textbf{-15.849} \\
-%% \text{QLP Coefficient}_4 &= \text{round}(-15.849) = \textbf{-16} \\
-%% \end{align*}
-%% \par
-%% \noindent
-%% Therefore, the \VAR{Coefficient Count} is 4,
-%% the \VAR{Coefficient} values are 959, -661, 215, -16,
-%% and the \VAR{Prediction Quantitization} value is 9.
-
-
-%% \clearpage
-
-%% \subsection{Subframe Calculation}
-
-%% Given our list of correlated samples; along with a list of
-%% coefficients, a \VAR{Coefficient Count} and a \VAR{Prediction Quantitization}
-%% value, we can now generate a list of signed residuals values
-%% for a given channel.
-
-%% The first residual is always the first input sample:
-%% \begin{align*}
-%% \text{Residual}_0 &= \text{Sample}_0 \\
-%% \intertext{Then, for the next \VAR{Coefficient Count} number of samples:}
-%% \text{Residual}_i &= \text{Sample}_i - \text{Sample}_{i - 1}
-%% \end{align*}
-
-%% For example, given that we have a \VAR{Coefficient Count} of 4
-%% and our first five samples are 16, 17, 26, 25 and 24;
-%% our first five residual values are:
-%% \begin{align*}
-%% \text{Residual}_0 &= \textbf{16} \\
-%% \text{Residual}_1 = 17 - 16 &= \textbf{1} \\
-%% \text{Residual}_2 = 26 - 17 &= \textbf{9} \\
-%% \text{Residual}_3 = 25 - 26 &= \textbf{-1} \\
-%% \text{Residual}_4 = 24 - 25 &= \textbf{-1}
-%% \end{align*}
-
-%% These are our ``starting point'' residuals upon which the
-%% remainder of the residuals will be calculated from.
-
-%% Subsequent residuals are calculated in the following way:
-%% \begin{align*}
-%% \text{LPC Sum}_i &= \overset{coeffs - 1}{\underset{j = 0}{\sum}}
-%% \text{Coefficient}_j \times (\text{Sample}_{i - j - 1} - \text{Sample}_{i - coeffs - 1}) \\
-%% \text{Residual}_i &= \text{Sample}_i - \left( \left\lfloor \frac{\text{LPC Sum}_i + 2^{\text{Predictor Quantitization - 1}}} {2 ^ \text{Predictor Quantitization}}\right\rfloor + \text{Sample}_{i - coeffs - 1} \right) \\
-%% \intertext{For example, given $\text{Sample}_5$ = 23,
-%% \VAR{Predictor Quantitization} = 9 and the coefficients
-%% 1122, -766, 107 and 122:}
-%% \text{LPC Sum}_5 &=
-%% (1122 \times (24 - 16)) + (-766 \times (25 - 16)) +
-%%  (107 \times (26 - 16)) + (122 \times (17 - 16)) \\
-%% &= (1122 \times 8) + (-766 \times 9) + (107 \times 10) + (122 \times 1) \\
-%% &= 8976 + -6894 + 1070 + 122 = \textbf{3274} \\
-%% \text{Residual}_5 &= 23 - \left( \left\lfloor \frac{\textbf{3274} + 2^8}{2 ^ 9}\right\rfloor + 16 \right) =  23 - \left( \left\lfloor \frac{3530}{512} \right\rfloor + 16 \right) = 23 - (6 + 16) = \textbf{1}
-%% \end{align*}
-%% But before calculation $\text{Residual}_6$, we need to adjust
-%% our coefficient list in the same way as residual decoding.
-
-%% \clearpage
-
-%% As described on page \pageref{alac_coefficient_adjustment},
-%% we run through the following process:
-%% \par
-%% {\relsize{-1}
-%% \begin{tabular}{|l>{$}r<{$}c>{$}l<{$}|}
-%% \hline
-%% Step 1. & \text{original sign} &=& \text{sign}(residual) \\
-%% Step 2. & j &=& 0 \\
-%% Step 3. & v &=& \text{Sample}_{i - \text{count} - 1} - \text{Sample}_{i - \text{count} + j} \\
-%% Step 4. & sign &=& \begin{cases}\text{sign}(v) & \text{if original sign} > 0 \\
-%% -\text{sign}(v) & \text{if original sign} \leq 0\end{cases} \\
-%% Step 5. & \text{Coefficient}_{\text{count} - j - 1} &=& \text{Coefficient}_{\text{count} - j - 1} - sign \\
-%% Step 6. & residual &=& residual - \left( \left\lfloor\frac{v \times sign}{2 ^ \text{Predictor Quantitization}}\right\rfloor \times (j + 1) \right) \\
-%% Step 7. & j &=& j + 1 \\
-%% Step 8. & \multicolumn{3}{l|}{if ($j < count$) and ($\text{sign}(residual) = \text{original sign}$), goto step 3} \\
-%% \hline
-%% \end{tabular}
-%% }
-%% \par
-%% \noindent
-%% To continue our example:
-%% {\relsize{-1}
-%% \begin{align*}
-%% \text{original sign} &= \text{sign}(1) = \textbf{1} \\
-%% j &= 0 \\
-%% v &= \text{Sample}_0 - \text{Sample}_{1} = 16 - 17 = \textbf{-1} \\
-%% sign &= \text{sign}(-1) = \textbf{-1} \\
-%% \text{Coefficient}_3 &= \text{Coefficient}_3 - -1 = 122 + 1 = \textbf{123} \\
-%% residual &= residual - \left( \left\lfloor\frac{-1 \times -1}{2 ^ 9}\right\rfloor \times (0 + 1)\right) = 1 - (0 \times 1) = \textbf{1} \\
-%% j &= 1 \\
-%% v &= \text{Sample}_0 - \text{Sample}_{2} = 16 - 26 = \textbf{-10} \\
-%% sign &= \text{sign}(-10) = \textbf{-1} \\
-%% \text{Coefficient}_2 &= \text{Coefficient}_2 - -1 = 107 + 1 = \textbf{108} \\
-%% residual &= residual - \left( \left\lfloor\frac{-10 \times -1}{2 ^ 9}\right\rfloor \times (1 + 1)\right) = 1 - (0 \times 2) = \textbf{1} \\
-%% j &= 2 \\
-%% v &= \text{Sample}_0 - \text{Sample}_{3} = 16 - 25 = \textbf{-9} \\
-%% sign &= \text{sign}(-9) = \textbf{-1} \\
-%% \text{Coefficient}_1 &= \text{Coefficient}_1 - -1 = -766 + 1 = \textbf{-765} \\
-%% residual &= residual - \left( \left\lfloor\frac{-9 \times -1}{2 ^ 9}\right\rfloor \times (2 + 1)\right) = 1 - (0 \times 3) = \textbf{1} \\
-%% j &= 3 \\
-%% v &= \text{Sample}_0 - \text{Sample}_{4} = 16 - 25 = \textbf{-8} \\
-%% sign &= \text{sign}(-8) = \textbf{-1} \\
-%% \text{Coefficient}_0 &= \text{Coefficient}_0 - -1 = 1122 + 1 = \textbf{1123} \\
-%% residual &= residual - \left( \left\lfloor\frac{-8 \times -1}{2 ^ 9}\right\rfloor \times (3 + 1)\right) = 1 - (0 \times 4) = \textbf{1} \\
-%% j &= 4\text{ and stop, since 4 equals our coefficient count} \\
-%% \end{align*}
-%% }
-%% \par
-%% Which, you'll notice, is identical to the procedure used during
-%% residual decoding.
-
-%% \clearpage
-
-%% Given that $\text{Sample}_6$ is 20, the calculation of $\text{Residual}_6$
-%% is as follows:
-%% \begin{align*}
-%% \text{LPC Sum}_6 &= (1123 \times (23 - 17)) + (-765 \times (24 - 17)) + (108 \times (25 - 17)) + (123 \times (26 - 17)) \\
-%% &= (1123 \times 6) + (-765 \times 7) + (108 \times 8) + (123 \times 9) \\
-%% &= 6738 + -5355 + 864 + 1107 = \textbf{3354} \\
-%% \text{Residual}_6 &= 20 - \left( \left\lfloor \frac{\textbf{3354} + 2^8}{2 ^ 9}\right\rfloor + 17 \right) =  20 - \left( \left\lfloor \frac{3610}{512} \right\rfloor + 17 \right) = 20 - (7 + 17) = \textbf{-4} \\
-%% %% \end{align*}
-%% %% \begin{align*}
-%% \text{original sign} &= \text{sign}(-4) = -1 \\
-%% j &= 0 \\
-%% v &= \text{Sample}_1 - \text{Sample}_2 = 17 - 26 = \textbf{-9} \\
-%% sign &= -\text{sign}(-9) = \textbf{1} \\
-%% \text{Coefficient}_3 &= \text{Coefficient}_3 - 1 = 123 - 1 = \textbf{122} \\
-%% residual &= residual - \left( \left\lfloor\frac{-9 \times 1}{2 ^ 9}\right\rfloor \times (0 + 1)\right) = -4 - (-1 \times 1) = \textbf{-3} \\
-%% j &= 1 \\
-%% v &= \text{Sample}_1 - \text{Sample}_3 = 17 - 25 = \textbf{-8} \\
-%% sign &= -\text{sign}(-8) = \textbf{1} \\
-%% \text{Coefficient}_2 &= \text{Coefficient}_2 - 1 = 108 - 1 = \textbf{107} \\
-%% residual &= residual - \left( \left\lfloor\frac{-8 \times 1}{2 ^ 9}\right\rfloor \times (1 + 1)\right) = -3 - (-1 \times 2) = \textbf{-1} \\
-%% j &= 2 \\
-%% v &= \text{Sample}_1 - \text{Sample}_4 = 17 - 24 = \textbf{-7} \\
-%% sign &= -\text{sign}(-7) = \textbf{1} \\
-%% \text{Coefficient}_1 &= \text{Coefficient}_1 - 1 = -765 - 1 = \textbf{-766} \\
-%% residual &= residual - \left( \left\lfloor\frac{-7 \times 1}{2 ^ 9}\right\rfloor \times (2 + 1)\right) = -1 - (-1 \times 3) = \textbf{2} \\
-%% &\text{and stop, since sign}(2) \neq \text{sign}(-4) \text{ (our \VAR{original sign} value)}
-%% \end{align*}
-
-%% So, the coefficients for $\text{Residual}_7$ are 1123, -766, 107 and 122.
-
-%% \clearpage
-
-%% \subsection{Residual Encoding}
-
-%% The final step of frame encoding is writing our list of residual values.
-%% As with decoding, this also requires knowing several additional
-%% values whose defaults are as follows:
-%% \begin{table}[h]
-%% \begin{tabular}{|r|l|}
-%% \hline
-%% value & default \\
-%% \hline
-%% Initial History & 10 \\
-%% History Multiplier & 40 \\
-%% Maximum K & 14 \\
-%% Bits per Sample & $\text{Stream's BPS} - (\text{Wasted Bits} \times 8) + \text{Channels} - 1$ \\
-%% \hline
-%% \end{tabular}
-%% \end{table}
-%% \par
-%% For each residual block, \VAR{History} starts with the value of
-%% \VAR{Initial History} and will change during residual encoding.
-%% We use it to calculate $\kappa$ using the following formula:
-%% \begin{equation}
-%% \kappa = \left\lfloor\log_2 \left( \frac{\text{history}}{2 ^ 9} + 3 \right) \right\rfloor
-%% \end{equation}
-%% Note that if $\kappa$ exceeds the \VAR{Maximum K} value from the
-%% \texttt{alac} atom, \VAR{Maximum K} is used instead.
-
-%% \begin{wrapfigure}[22]{r}{2.5in}
-%% \includegraphics{figures/alac/write_residual.pdf}
-%% \end{wrapfigure}
-
-%% The $\kappa$ and \VAR{Bits per Sample} values are used to write
-%% a single unsigned residual value $r$ in the following way:
-
-%% First, we convert our signed residual to an unsigned value:
-%% \begin{equation*}
-%% \text{unsigned} =
-%% \begin{cases}
-%% \text{signed} \times 2 & \text{if signed} \geq 0 \\
-%% (-\text{signed} \times 2) - 1 & \text{if signed} < 0
-%% \end{cases}
-%% \end{equation*}
-
-%% We then divide our unsigned residual into quotient and remainder values:
-%% \begin{align*}
-%% q &= \lfloor r \div (2^k - 1) \rfloor \\
-%% %% e &= r - (q \times (2^k - 1))
-%% e &= r\mod{2^k - 1}
-%% \end{align*}
-
-%% If $q$ is greater than 8, we write a 9 bit value \texttt{0x1FF}
-%% (i.e. the bits `\texttt{1 1 1 1 1 1 1 1 1 1}')
-%% before writing the value $r$ verbatim using \VAR{Bits per Sample}
-%% number of bits.
-
-%% If $q$ is greater than 0, we write its value in unary.
-%% Otherwise, we write a single \texttt{0} bit.
-
-%% Finally, if $e$ is greater than 0, we write the value
-%% $e + 1$ using $\kappa$ of bits.
-%% Otherwise, we write the value 0 using $\kappa - 1$ number of bits.
-%% Assuming $\kappa$ is greater than 1, of course.
-
-%% \clearpage
-
-%% As with decoding, we then use our unsigned value to update \VAR{history}
-%% before encoding the next residual:
-%% {\relsize{-1}
-%% \begin{equation*}
-%% \text{history} =
-%% \begin{cases}
-%% \text{history} + (\text{unsigned} \times \text{history multiplier}) - \left\lfloor\frac{\text{history} \times \text{history multiplier}}{2^9}\right\rfloor & \text{if unsigned} \leq 65535 \\
-%% 65535 & \text{if unsigned} > 65535
-%% \end{cases}
-%% \end{equation*}
-%% }
-%% Should history ever fall below 128, we generate a special
-%% residual value.
-%% That residual's \VAR{Bits per Sample} value is 16, its
-%% $\kappa$ value is:
-%% \begin{equation}
-%% \kappa_{\text{blocksize}} = 7 - \log_2(\text{history}) + \frac{\text{history} + 16}{64}
-%% \end{equation}
-%% and its value is how many consecutive `0' residuals follow -
-%% which may be 0 if the next residual is not `0'.
-%% Either way, if $\text{\VAR{block size}} \leq 65535$, we
-%% subtract 1 to the next unsigned value of the next residual in the block
-%% (if any).  Finally, \VAR{history} is automatically set to 0.
-
-%% \subsubsection{Residual Encoding Example}
-
-%% In this example, we'll encode a group of residuals in which our
-%% \VAR{Initial History} is 1290, our \VAR{History Multiplier} is 40
-%% and our signed residual values are 1, 9 and -1:
-%% \begin{itemize}
-%% \setlength{\itemsep}{0in}
-%% \setlength{\parskip}{0in}
-%% \item Residual 1
-%% \begin{itemize}
-%% \item $\kappa = \lfloor\log_2((1290 \div 2^9) + 3)\rfloor = \lfloor\log_2(5)\rfloor = 2$
-%% \item $\text{unsigned}_1 = 2 \times 1 = \textbf{2}$
-%% \item $\text{history} = 1290 + (2 \times 40) - \lfloor (1290 \times 40) \div 2^9 \rfloor = 1370 - 100 = 1270$
-%% \end{itemize}
-%% \item Residual 2
-%% \begin{itemize}
-%% \item $\kappa = \lfloor\log_2((1270 \div 2^9) + 3)\rfloor = \lfloor\log_2(5)\rfloor = 2$
-%% \item $\text{unsigned}_2 = 2 \times 9 = \textbf{18}$
-%% \item $\text{history} = 1270 + (18 \times 40) - \lfloor (1270 \times 40) \div 2^9 \rfloor = 1990 - 99 = 1891$
-%% \end{itemize}
-%% \item Residual 3
-%% \begin{itemize}
-%% \item $\kappa = \lfloor\log_2((1891 \div 2^9) + 3)\rfloor = \lfloor\log_2(6)\rfloor = 2$
-%% \item $\text{unsigned}_3 = (1 \times 2) - 1 = \textbf{1}$
-%% \item $\text{history} = 1891 + (1 \times 40) - \lfloor (1891 \times 40) \div 2^9 \rfloor = 1931 - 147 = 1784$
-%% \end{itemize}
-%% \end{itemize}
-%% \begin{figure}[h]
-%% \includegraphics{figures/alac/residual_w.pdf}
-%% \end{figure}
+\subsection{Writing Subframe Header}
+\ALGORITHM{4 or 8 signed QLP coefficients}{a subframe header}
+\WRITE 0 in 4 unsigned bits\tcc*[r]{prediction type}
+\WRITE 9 in 4 unsigned bits\tcc*[r]{QLP shift needed}
+\WRITE 4 in 3 unsigned bits\tcc*[r]{Rice modifier}
+\WRITE coefficient count in 5 unsigned bits\;
+\ForEach{QLP coefficient \IN QLP coefficients}{
+  \WRITE QLP coefficient in 16 signed bits\;
+}
+\EALGORITHM
+\begin{figure}[h]
+\includegraphics{figures/alac/subframe_header.pdf}
+\end{figure}
+\par
+\noindent
+For example, given the QLP coefficients
+\texttt{1170, -1088, 565, -161},
+the subframe header is written as:
+\begin{figure}[h]
+\includegraphics{figures/alac/subframe-build.pdf}
+\end{figure}

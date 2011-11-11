@@ -5056,3 +5056,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 
   which always functions the same whether we're dealing with ints or
   floats or other arrays, yet is still type-checked at compile-time.
+* TODO Fix FLAC seektable generation
+  Ensure new seektables are aligned properly.
+** TODO Add .offsets() method to FlacDecoder
+   Instead of decoding the file, this walks through it
+   and returns a list of absolute file offsets of all frames.
+** TODO Add method to generate Flac_SEEKTABLE from offset list
+** TODO Add tracklint check/fix for mis-aligned seektables

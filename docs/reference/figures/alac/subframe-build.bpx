@@ -1,0 +1,11 @@
+<?xml version="1.0" ?>
+<struct endianness="big">
+  <field size="4" value="0">prediction type</field>
+  <field size="4" value="9">QLP shift needed</field>
+  <field size="3" value="4">Rice modifier</field>
+  <field size="5" value="4">coefficient count</field>
+  <field size="16" value="1170">QLP coefficient₀</field>
+  <field size="16" value="64448">QLP coefficient₁</field>
+  <field size="16" value="565">QLP coefficient₂</field>
+  <field size="16" value="65375">QLP coefficient₃</field>
+</struct>
