@@ -204,16 +204,16 @@ if (__name__ == '__main__'):
         ISRCs = cuesheet.ISRCs()
         for (i, indexes) in enumerate(cuesheet.indexes()):
             track_metadata = base_metadata.__class__.converted(base_metadata)
-            track_metadata.track_name = u""
             track_metadata.track_number = i + 1
             track_metadata.track_total = len(list(cuesheet.indexes()))
-            track_metadata.ISRC = ISRCs.get(i + 1, u"")
+            if ((i + 1) in ISRCs):
+                track_metadata.ISRC = ISRCs[i + 1]
 
             track_metadatas[i + 1] = track_metadata
     else:
         track_metadatas = audiotools.AlbumMetaData(
             [audiotools.MetaData(track_number=i + 1)
-                  for (i, indexes) in enumerate(cuesheet.indexes())])
+             for (i, indexes) in enumerate(cuesheet.indexes())])
 
     #if we're using an XMCD file,
     #have that take priority over the base
