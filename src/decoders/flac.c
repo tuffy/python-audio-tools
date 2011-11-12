@@ -349,6 +349,7 @@ FlacDecoder_offsets(decoders_FlacDecoder* self, PyObject *args)
     PyObject* offset_pair;
     uint32_t samples;
     long offset;
+    PyThreadState *thread_state = PyEval_SaveThread();
 
     while (self->remaining_samples > 0) {
         self->subframe_data->reset(self->subframe_data);
@@ -378,6 +379,7 @@ FlacDecoder_offsets(decoders_FlacDecoder* self, PyObject *args)
                                                           channel),
                          self->subframe_data->append(self->subframe_data))) !=
                     OK) {
+                    PyEval_RestoreThread(thread_state);
                     PyErr_SetString(PyExc_ValueError,
                                     FlacDecoder_strerror(error));
                     goto error;
@@ -391,11 +393,14 @@ FlacDecoder_offsets(decoders_FlacDecoder* self, PyObject *args)
             self->remaining_samples -= frame_header.block_size;
 
             /*add offset pair to our list*/
+            PyEval_RestoreThread(thread_state);
             offset_pair = Py_BuildValue("(i, I)", offset, samples);
             PyList_Append(offsets, offset_pair);
             Py_DECREF(offset_pair);
+            thread_state = PyEval_SaveThread();
         } else {
             /*handle I/O error during read*/
+            PyEval_RestoreThread(thread_state);
             PyErr_SetString(PyExc_IOError, "EOF reading frame");
             goto error;
         }
@@ -405,6 +410,7 @@ FlacDecoder_offsets(decoders_FlacDecoder* self, PyObject *args)
 
     self->stream_finalized = 1;
 
+    PyEval_RestoreThread(thread_state);
     return offsets;
  error:
     Py_XDECREF(offsets);

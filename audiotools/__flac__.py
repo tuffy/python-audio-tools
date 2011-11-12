@@ -734,6 +734,8 @@ class Flac_SEEKTABLE:
     BLOCK_ID = 3
 
     def __init__(self, seekpoints):
+        """seekpoints is a list of
+        (PCM frame offset, byte offset, PCM frame count) tuples"""
         self.seekpoints = seekpoints
 
     def copy(self):
@@ -2080,6 +2082,28 @@ class FlacAudio(WaveContainer, AiffContainer):
         Raises IOError if unable to write the file or its metadata
         """
 
+        def seektable_valid(seektable, metadata_offset, input_file):
+            from .bitstream import BitstreamReader
+            reader = BitstreamReader(input_file, 0)
+
+            for (pcm_frame_offset,
+                 seekpoint_offset,
+                 pcm_frame_count) in seektable.seekpoints:
+                input_file.seek(seekpoint_offset + metadata_offset)
+                try:
+                    (sync_code,
+                     reserved1,
+                     reserved2) = reader.parse(
+                        "14u 1u 1p 4p 4p 4p 3p 1u")
+                    if ((sync_code != 0x3FFE) or
+                        (reserved1 != 0) or
+                        (reserved2 != 0)):
+                        return False
+                except IOError:
+                    return False
+            else:
+                return True
+
         if (output_filename is None):
             #dry run only
 
@@ -2111,6 +2135,17 @@ class FlacAudio(WaveContainer, AiffContainer):
                     except IndexError:
                         fixes_performed.append(
                             _(u"added WAVEFORMATEXTENSIBLE_CHANNEL_MASK"))
+
+                #fix an invalid SEEKTABLE, if present
+                try:
+                    if (not seektable_valid(
+                            metadata.get_block(Flac_SEEKTABLE.BLOCK_ID),
+                            self.metadata_length() + 4,
+                            input_f)):
+                        fixes_performed.append(
+                            _(u"fixed invalid SEEKTABLE"))
+                except IndexError:
+                    pass
 
                 #fix any remaining metadata problems
                 metadata.clean(fixes_performed)
@@ -2183,6 +2218,20 @@ class FlacAudio(WaveContainer, AiffContainer):
 
                         metadata.replace_blocks(Flac_VORBISCOMMENT.BLOCK_ID,
                                                 [vorbis_comment])
+
+                #fix an invalid SEEKTABLE, if present
+                try:
+                    if (not seektable_valid(
+                            metadata.get_block(Flac_SEEKTABLE.BLOCK_ID),
+                            self.metadata_length() + 4,
+                            input_f)):
+                        fixes_performed.append(
+                            _(u"fixed invalid SEEKTABLE"))
+
+                        metadata.replace_blocks(Flac_SEEKTABLE.BLOCK_ID,
+                                                [self.seektable()])
+                except IndexError:
+                    pass
 
                 #fix remaining metadata problems
                 #which automatically shifts STREAMINFO to the right place
