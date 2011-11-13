@@ -24,10 +24,8 @@
 PyMODINIT_FUNC
 initverify(void)
 {
-    PyObject* m;
-
-    m = Py_InitModule3("verify", module_methods,
-                       "High speed audio format verifiers");
+    Py_InitModule3("verify", module_methods,
+                   "High speed audio format verifiers");
 }
 
 #include "verify/mpeg.c"

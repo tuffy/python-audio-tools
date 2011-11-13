@@ -379,7 +379,7 @@ alacdec_read_frame(decoders_ALACDecoder *self,
         unsigned interlacing_leftweight;
         unsigned channel;
         unsigned i;
-        array_i* LSBs;
+        array_i* LSBs = NULL;
         array_i* residuals = self->residuals;
         array_ia* frame_channels = self->frame_channels;
         array_i* channel_data;

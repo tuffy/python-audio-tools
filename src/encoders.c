@@ -24,8 +24,6 @@
 PyMODINIT_FUNC
 initencoders(void)
 {
-    PyObject* m;
-
-    m = Py_InitModule3("encoders", module_methods,
-                       "Low-level audio format encoders");
+    Py_InitModule3("encoders", module_methods,
+                   "Low-level audio format encoders");
 }

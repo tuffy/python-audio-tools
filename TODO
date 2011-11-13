@@ -5069,6 +5069,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 
   which always functions the same whether we're dealing with ints or
   floats or other arrays, yet is still type-checked at compile-time.
+** TODO Link FrameLists and new array objects
+*** TODO build function for converting array_ia* objects to FrameLists
+    for use by all the C-based decoders
+*** TODO build function for converting FrameLists to array_ia* objects
+    for use by all the C-based encoders
 ** TODO Replace old array.h with new one in all source files
    - [ ] common/misc.h
    - [ ] decoders/mlp.h
