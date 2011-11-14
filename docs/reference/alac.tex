@@ -1487,6 +1487,7 @@ channels & assignment \\
 \SetKwData{CHANCOUNT}{channel count}
 \SetKwData{BLOCKSIZE}{block size}
 \SetKwData{BPS}{bits per sample}
+\SetKwData{SAMPLESIZE}{sample size}
 \WRITE 0 in 16 unsigned bits\tcc*[r]{unusued}
 \eIf{$\text{\PCMCOUNT} \neq \text{encoding parameter's \BLOCKSIZE}$}{
   \WRITE 1 in 1 unsigned bit\;
@@ -1500,7 +1501,8 @@ channels & assignment \\
 }
 \WRITE 0 in 8 unsigned bits\tcc*[r]{interlacing shift}
 \WRITE 0 in 8 unsigned bits\tcc*[r]{interlacing leftweight}
-calculate best $\text{LPC coefficients}_0$ and $\text{Residual}_0$ for $\text{Channel}_0$\;
+\SAMPLESIZE $\leftarrow \text{\BPS} - (\text{uncompressed LSBs} \times 8)$\;
+compute $\text{LPC coefficients}_0$ and $\text{Residual}_0$ for $\text{Channel}_0$ with \SAMPLESIZE\;
 write subframe header with $\text{LPC coefficients}_0$\;
 \If{$\text{uncompressed LSBs} > 0$}{
   \For{i = 0 \emph{\KwTo}\PCMCOUNT}{
@@ -1522,6 +1524,7 @@ write residual block $\text{Residual}_0$\;
 \SetKwData{CHANCOUNT}{channel count}
 \SetKwData{BLOCKSIZE}{block size}
 \SetKwData{BPS}{bits per sample}
+\SetKwData{SAMPLESIZE}{sample size}
 \WRITE 0 in 16 unsigned bits\tcc*[r]{unusued}
 \eIf{$\text{\PCMCOUNT} \neq \text{encoding parameter's \BLOCKSIZE}$}{
   \WRITE 1 in 1 unsigned bit\;
@@ -1536,8 +1539,9 @@ write residual block $\text{Residual}_0$\;
 \WRITE interlacing shift in 8 unsigned bits\;
 \WRITE interlacing leftweight in 8 unsigned bits\;
 correlate $\text{Channel}_0$,$\text{Channel}_1$ to $\text{Correlated}_0$,$\text{Correlated}_1$ with interlacing shift and leftweight\;
-compute best $\text{LPC Coefficients}_0$ and $\text{Residual}_0$ for $\text{Correlated}_0$\;
-compute best $\text{LPC Coefficients}_1$ and $\text{Residual}_1$ for $\text{Correlated}_1$\;
+\SAMPLESIZE $\leftarrow \text{\BPS} - (\text{uncompressed LSBs} \times 8) + 1$\;
+compute $\text{LPC Coefficients}_0$ and $\text{Residual}_0$ for $\text{Correlated}_0$ with \SAMPLESIZE\;
+compute $\text{LPC Coefficients}_1$ and $\text{Residual}_1$ for $\text{Correlated}_1$ with \SAMPLESIZE\;
 write subframe header with $\text{LPC Coefficients}_0$\;
 write subframe header with $\text{LPC Coefficients}_1$\;
 \If{$\text{uncompressed LSBs} > 0$}{
@@ -1552,18 +1556,28 @@ write residual block $\text{Residual}_1$\;
 }
 
 \subsubsection{Correlating Channels}
+{\relsize{-1}
 \ALGORITHM{2 channels of PCM data, interlacing shift, interlacing leftweight}{2 correlated channels of PCM data}
 \SetKwData{PCMCOUNT}{PCM frame count}
-\For{i = 0 \emph{\KwTo}\PCMCOUNT}{
-  $\text{Correlated}_{0~i} \leftarrow \text{Channel}_{1~i} + \left\lfloor\frac{(\text{Channel}_{0~i} - \text{Channel}_{1~i}) \times \text{interlacing leftweight}}{2 ^ \text{interlacing shift}}\right\rfloor$\;
-  $\text{Correlated}_{1~i} \leftarrow \text{Channel}_{0~i} - \text{Channel}_{1~i}$\;
+\eIf{$\text{interlacing shift} > 0$}{
+  \For{i = 0 \emph{\KwTo}\PCMCOUNT}{
+    $\text{Correlated}_{0~i} \leftarrow \text{Channel}_{1~i} + \left\lfloor\frac{(\text{Channel}_{0~i} - \text{Channel}_{1~i}) \times \text{interlacing leftweight}}{2 ^ \text{interlacing shift}}\right\rfloor$\;
+    $\text{Correlated}_{1~i} \leftarrow \text{Channel}_{0~i} - \text{Channel}_{1~i}$\;
+  }
+}{
+  \For{i = 0 \emph{\KwTo}\PCMCOUNT}{
+    $\text{Correlated}_{0~i} \leftarrow \text{Channel}_{0~i}$\;
+    $\text{Correlated}_{1~i} \leftarrow \text{Channel}_{1~i}$\;
+  }
 }
 \EALGORITHM
 \par
 \noindent
 For example, given an \VAR{interlacing shift} value of 2 and an
 \VAR{interlacing leftweight} value of 3:
-\begin{table}[h]
+\par
+\noindent
+{\relsize{-1}
 \begin{tabular}{r||r|r||>{$}r<{$}|>{$}r<{$}|}
 $i$ & $\text{Channel}_{0~i}$ & $\text{Channel}_{1~i}$ & \text{Correlated}_{0~i} & \text{Correlated}_{1~i} \\
 \hline
@@ -1573,30 +1587,36 @@ $i$ & $\text{Channel}_{0~i}$ & $\text{Channel}_{1~i}$ & \text{Correlated}_{0~i} 
 3 & 24 & -1 & -1 + \lfloor((24 + 1) \times 3) \div 2 ^ 2\rfloor = 17 & 24 + 1 = 25 \\
 4 & 24 & 0 & 0 + \lfloor((24 - 0) \times 3) \div 2 ^ 2\rfloor = 18 & 24 - 0 = 24 \\
 \end{tabular}
-\end{table}
+}
+}
 
 \clearpage
 
 \subsection{Computing LPC Coefficients and Residual}
-\ALGORITHM{a list of signed PCM samples, encoding parameters}{a list of 4 or 8 signed LPC values, a block of residual data}
+{\relsize{-1}
+\ALGORITHM{a list of signed PCM samples, sample size, encoding parameters}{a list of 4 or 8 signed LPC values, a block of residual data}
 \SetKwData{SAMPLES}{subframe samples}
 \SetKwData{WINDOWED}{windowed samples}
 \SetKwData{AUTOCORRELATIONS}{autocorrelation values}
 \SetKwData{LPCOEFFS}{LP coefficients}
 \SetKwData{QLPCOEFFS}{QLP coefficients}
+\SetKwData{SAMPLESIZE}{sample size}
 window signed integer \SAMPLES to floating point \WINDOWED\;
 autocorrelate \WINDOWED to 9 floating point \AUTOCORRELATIONS\;
 compute 8 lists of floating point \LPCOEFFS from \AUTOCORRELATIONS\;
 quantize $\text{\LPCOEFFS}_3$ to a list of integer $\text{\QLPCOEFFS}_3$ at order 4\;
 quantize $\text{\LPCOEFFS}_7$ to a list of integer $\text{\QLPCOEFFS}_7$ at order 8\;
-encode $\text{Residual}_3$ from $\text{\QLPCOEFFS}_3$\;
-encode $\text{Residual}_7$ from $\text{\QLPCOEFFS}_7$\;
-\eIf{$\LEN(\text{Residual}_3) < \LEN(\text{Residual}_7)$}{
-  \Return ($\text{\QLPCOEFFS}_3~,~\text{Residual}_3$)\;
+calculate $\text{Residuals}_3$ from $\text{\QLPCOEFFS}_3$ and \SAMPLES\;
+calculate $\text{Residuals}_7$ from $\text{\QLPCOEFFS}_7$ and \SAMPLES\;
+encode $\text{Residual Block}_3$ from $\text{Residuals}_3$ with \SAMPLESIZE and encoding parameters\;
+encode $\text{Residual Block}_7$ from $\text{Residuals}_7$ with \SAMPLESIZE and encoding parameters\;
+\eIf{$\LEN(\text{Residual Block}_3) < \LEN(\text{Residual Block}_7)$}{
+  \Return ($\text{\QLPCOEFFS}_3~,~\text{Residual Block}_3$)\;
 }{
-  \Return ($\text{\QLPCOEFFS}_7~,~\text{Residual}_7$)\;
+  \Return ($\text{\QLPCOEFFS}_7~,~\text{Residual Block}_7$)\;
 }
 \EALGORITHM
+}
 
 \subsubsection{Windowing the Input Samples}
 {\relsize{-1}
@@ -2034,16 +2054,16 @@ $i$ & $\text{Sample}_i$ & $\text{Base}_i$ & \text{LPC Sum}_i & \text{Residual}_i
 $i \leftarrow 0$\;
 \While{$i < \text{residual count}$}{
   \eIf(\tcc*[f]{add sign bit}){$\text{residual}_i \geq 0$}{
-    $\text{unsigned}_i \leftarrow \text{residual}_i \times 2 - \SIGNMODIFIER$\;
+    $\text{unsigned}_i \leftarrow \text{residual}_i \times 2$\;
   }{
-    $\text{unsigned}_i \leftarrow (-\text{residual}_i \times 2) - 1 - \SIGNMODIFIER$\;
+    $\text{unsigned}_i \leftarrow (-\text{residual}_i \times 2) - 1$\;
   }
-  $\SIGNMODIFIER \leftarrow 0$\;
   \If{$\text{unsigned}_i \geq 2 ^ \text{sample size}$}{
     \RAISE residual overflow exception\footnote{in this case, we should cease building a compressed frame and write an uncompressed frame instead}\;
   }
   $\kappa \leftarrow \MIN(\lfloor\log_2((\HISTORY \div 2 ^ 9) + 3)\rfloor~,~\MAXIMUMK)$\;
-  $\WRITERESIDUAL(\text{unsigned}_i~,~\kappa~,~\text{sample size})$\;
+  $\WRITERESIDUAL(\text{unsigned}_i - \SIGNMODIFIER~,~\kappa~,~\text{sample size})$\;
+  $\SIGNMODIFIER \leftarrow 0$\;
   \BlankLine
   \eIf(\tcc*[f]{update history}){$\text{unsigned}_i < 65535$}{
     $\HISTORY \leftarrow \HISTORY + (\text{unsigned}_i \times \HISTORYMULT) - \left\lfloor\frac{\HISTORY \times \HISTORYMULT}{2 ^ 9}\right\rfloor$\;
