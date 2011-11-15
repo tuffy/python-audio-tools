@@ -64,6 +64,12 @@
 \BlankLine
 }
 \newcommand{\EALGORITHM}{\end{algorithm}}
+\long\def\symbolfootnote[#1]#2{\begingroup%
+\def\thefootnote{\fnsymbol{footnote}}\footnote[#1]{#2}\endgroup}
+\long\def\symbolfootnotemark[#1]{\begingroup%
+\def\thefootnote{\fnsymbol{footnote}}\footnotemark[#1]\endgroup}
+\long\def\symbolfootnotetext[#1]#2{\begingroup%
+\def\thefootnote{\fnsymbol{footnote}}\footnotetext[#1]{#2}\endgroup}
 \title{Audio Formats Reference}
 \author{Brian Langenberger}
 \begin{document}

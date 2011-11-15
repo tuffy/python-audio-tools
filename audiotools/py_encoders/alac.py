@@ -212,6 +212,9 @@ def encode_compressed_frame(writer, pcmreader, options, channels):
             if (interlaced_frames[i].bits() <
                 min([f.bits() for f in interlaced_frames[i + 1:]])):
                 interlaced_frames[i].copy(writer)
+                break
+        else:
+            interlaced_frames[0].copy(writer)
 
 
 def encode_non_interlaced_frame(writer, pcmreader, options,
@@ -316,26 +319,33 @@ def calculate_lpc_coefficients(pcmreader, options, sample_size, channel):
 
     assert(len(autocorrelated) == 9)
 
-    lp_coefficients = compute_lp_coefficients(autocorrelated)
+    if (autocorrelated[0] != 0.0):
+        lp_coefficients = compute_lp_coefficients(autocorrelated)
 
-    assert(len(lp_coefficients) == 8)
+        assert(len(lp_coefficients) == 8)
 
-    qlp_coefficients4 = quantize_coefficients(lp_coefficients, 4)
-    qlp_coefficients8 = quantize_coefficients(lp_coefficients, 8)
+        qlp_coefficients4 = quantize_coefficients(lp_coefficients, 4)
+        qlp_coefficients8 = quantize_coefficients(lp_coefficients, 8)
 
-    residuals4 = compute_residuals(qlp_coefficients4[:], channel)
-    residuals8 = compute_residuals(qlp_coefficients8[:], channel)
+        residuals4 = compute_residuals(qlp_coefficients4[:], channel)
+        residuals8 = compute_residuals(qlp_coefficients8[:], channel)
 
-    residual_block4 = BitstreamRecorder(0)
-    residual_block8 = BitstreamRecorder(0)
+        residual_block4 = BitstreamRecorder(0)
+        residual_block8 = BitstreamRecorder(0)
 
-    encode_residuals(residual_block4, options, sample_size, residuals4)
-    encode_residuals(residual_block8, options, sample_size, residuals8)
+        encode_residuals(residual_block4, options, sample_size, residuals4)
+        encode_residuals(residual_block8, options, sample_size, residuals8)
 
-    if (residual_block4.bits() < residual_block8.bits()):
-        return (qlp_coefficients4, residual_block4)
+        if (residual_block4.bits() < residual_block8.bits()):
+            return (qlp_coefficients4, residual_block4)
+        else:
+            return (qlp_coefficients8, residual_block8)
     else:
-        return (qlp_coefficients8, residual_block8)
+        qlp_coefficients = [0, 0, 0, 0]
+        residuals = compute_residuals(qlp_coefficients[:], channel)
+        residual_block = BitstreamRecorder(0)
+        encode_residuals(residual_block, options, sample_size, residuals)
+        return (qlp_coefficients, residual_block)
 
 
 def tukey_window(sample_count, alpha):

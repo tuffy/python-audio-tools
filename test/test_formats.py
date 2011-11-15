@@ -3108,7 +3108,7 @@ class FlacFileTest(TestForeignAiffChunks,
                         self.__test_reader__(g, **encode_opts)
 
     @FORMAT_FLAC
-    def test_noise(self):
+    def test_noise_silence(self):
         for opts in self.encode_opts:
             encode_opts = opts.copy()
             for disable in [[],
@@ -3137,8 +3137,18 @@ class FlacFileTest(TestForeignAiffChunks,
                                     encode_opts[e] = True
                                 if (blocksize is not None):
                                     encode_opts["block_size"] = blocksize
+
                                 self.__test_reader__(
                                     MD5_Reader(EXACT_RANDOM_PCM_Reader(
+                                            pcm_frames=65536,
+                                            sample_rate=44100,
+                                            channels=channels,
+                                            channel_mask=mask,
+                                            bits_per_sample=bps)),
+                                    **encode_opts)
+
+                                self.__test_reader__(
+                                    MD5_Reader(EXACT_SILENCE_PCM_Reader(
                                             pcm_frames=65536,
                                             sample_rate=44100,
                                             channels=channels,

@@ -1603,17 +1603,24 @@ $i$ & $\text{Channel}_{0~i}$ & $\text{Channel}_{1~i}$ & \text{Correlated}_{0~i} 
 \SetKwData{SAMPLESIZE}{sample size}
 window signed integer \SAMPLES to floating point \WINDOWED\;
 autocorrelate \WINDOWED to 9 floating point \AUTOCORRELATIONS\;
-compute 8 lists of floating point \LPCOEFFS from \AUTOCORRELATIONS\;
-quantize $\text{\LPCOEFFS}_3$ to a list of integer $\text{\QLPCOEFFS}_3$ at order 4\;
-quantize $\text{\LPCOEFFS}_7$ to a list of integer $\text{\QLPCOEFFS}_7$ at order 8\;
-calculate $\text{Residuals}_3$ from $\text{\QLPCOEFFS}_3$ and \SAMPLES\;
-calculate $\text{Residuals}_7$ from $\text{\QLPCOEFFS}_7$ and \SAMPLES\;
-encode $\text{Residual Block}_3$ from $\text{Residuals}_3$ with \SAMPLESIZE and encoding parameters\;
-encode $\text{Residual Block}_7$ from $\text{Residuals}_7$ with \SAMPLESIZE and encoding parameters\;
-\eIf{$\LEN(\text{Residual Block}_3) < \LEN(\text{Residual Block}_7)$}{
-  \Return ($\text{\QLPCOEFFS}_3~,~\text{Residual Block}_3$)\;
-}{
-  \Return ($\text{\QLPCOEFFS}_7~,~\text{Residual Block}_7$)\;
+\eIf{$\text{autocorrelation}_0 \neq 0.0$}{
+  compute 8 lists of floating point \LPCOEFFS from \AUTOCORRELATIONS\;
+  quantize $\text{\LPCOEFFS}_3$ to a list of integer $\text{\QLPCOEFFS}_3$ at order 4\;
+  quantize $\text{\LPCOEFFS}_7$ to a list of integer $\text{\QLPCOEFFS}_7$ at order 8\;
+  calculate $\text{Residuals}_3$ from $\text{\QLPCOEFFS}_3$ and \SAMPLES\;
+  calculate $\text{Residuals}_7$ from $\text{\QLPCOEFFS}_7$ and \SAMPLES\;
+  encode $\text{Residual Block}_3$ from $\text{Residuals}_3$ with \SAMPLESIZE and encoding parameters\;
+  encode $\text{Residual Block}_7$ from $\text{Residuals}_7$ with \SAMPLESIZE and encoding parameters\;
+  \eIf{$\LEN(\text{Residual Block}_3) < \LEN(\text{Residual Block}_7)$}{
+    \Return ($\text{\QLPCOEFFS}_3~,~\text{Residual Block}_3$)\;
+  }{
+    \Return ($\text{\QLPCOEFFS}_7~,~\text{Residual Block}_7$)\;
+  }
+}(\tcc*[f]{all samples are 0}){
+  \QLPCOEFFS $\leftarrow$ \texttt{[0, 0, 0, 0]}\;
+  calculate $\text{Residuals}$ from \QLPCOEFFS and \SAMPLES\;
+  encode $\text{Residual Block}$ from $\text{Residuals}$ with \SAMPLESIZE and encoding parameters\;
+  \Return ($\text{\QLPCOEFFS}~,~\text{Residual Block}$)\;
 }
 \EALGORITHM
 }
@@ -1641,10 +1648,8 @@ tukey(n) =
 \par
 \noindent
 $N$ is the total number of input samples and $\alpha$ is $\nicefrac{1}{2}$.
-}
 \par
 \noindent
-\subsubsection{Windowing Example}
 {\relsize{-2}
 \begin{tabular}{r|rcrcr}
 $i$ & $sample_i$ & & \texttt{tukey}($i$) & & $windowed_i$ \\
@@ -1665,6 +1670,7 @@ $i$ & $sample_i$ & & \texttt{tukey}($i$) & & $windowed_i$ \\
 13 & \texttt{-8} & $\times$ & \texttt{0.19} & = & \texttt{-1.51} \\
 14 & \texttt{-24} & $\times$ & \texttt{0.00} & = & \texttt{0.00} \\
 \end{tabular}
+}
 }
 
 \clearpage
@@ -2135,94 +2141,94 @@ $i$ & $\text{residual}_i$ & \text{unsigned}_i & \kappa & \text{MSB}_i & \text{LS
 0 \bmod~2 ^ 4 - 1 = 0 &
 \texttt{0} \\
 1 & \texttt{16} &
-\texttt{16} \times 2 - 1 = \texttt{31} &
+\texttt{16} \times 2 = \texttt{32}\text{\symbolfootnotemark[2]} &
 \lfloor\log_2(\frac{\texttt{0}}{2 ^ 9} + 3)\rfloor = \texttt{1} &
 \multicolumn{2}{r|}{write \texttt{0x1FFF} in 9 unsigned bits} &
-\texttt{0} + (\texttt{31} \times \texttt{40}) - \left\lfloor\frac{\texttt{0} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{1240} \\
+\texttt{0} + (\texttt{32} \times \texttt{40}) - \left\lfloor\frac{\texttt{0} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{1280} \\
 & & & & \multicolumn{2}{r|}{write \texttt{31} in 16 unsigned bits} & \\
 2 & \texttt{16} &
 \texttt{16} \times 2 = \texttt{32} &
-\lfloor\log_2(\frac{\texttt{1240}}{2 ^ 9} + 3)\rfloor = \texttt{2} &
+\lfloor\log_2(\frac{\texttt{1280}}{2 ^ 9} + 3)\rfloor = \texttt{2} &
 \multicolumn{2}{r|}{write \texttt{0x1FFF} in 9 unsigned bits} &
-\texttt{1240} + (\texttt{32} \times \texttt{40}) - \left\lfloor\frac{\texttt{1240} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{2424} \\
+\texttt{1280} + (\texttt{32} \times \texttt{40}) - \left\lfloor\frac{\texttt{1280} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{2460} \\
 & & & & \multicolumn{2}{r|}{write \texttt{32} in 16 unsigned bits} & \\
 3 & \texttt{12} &
 \texttt{12} \times 2 = \texttt{24} &
-\lfloor\log_2(\frac{\texttt{2424}}{2 ^ 9} + 3)\rfloor = \texttt{2} &
+\lfloor\log_2(\frac{\texttt{2460}}{2 ^ 9} + 3)\rfloor = \texttt{2} &
 24 \div 2 ^ 2 - 1 = 8 &
 24 \bmod~2 ^ 2 - 1 = 0 &
-\texttt{2424} + (\texttt{24} \times \texttt{40}) - \left\lfloor\frac{\texttt{2424} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3195} \\
+\texttt{2460} + (\texttt{24} \times \texttt{40}) - \left\lfloor\frac{\texttt{2460} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3228} \\
 4 & \texttt{10} &
 \texttt{10} \times 2 = \texttt{20} &
-\lfloor\log_2(\frac{\texttt{3195}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+\lfloor\log_2(\frac{\texttt{3228}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
 20 \div 2 ^ 3 - 1 = 2 &
 20 \bmod~2 ^ 3 - 1 = 6 &
-\texttt{3195} + (\texttt{20} \times \texttt{40}) - \left\lfloor\frac{\texttt{3195} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3746} \\
+\texttt{3228} + (\texttt{20} \times \texttt{40}) - \left\lfloor\frac{\texttt{3228} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3776} \\
 5 & \texttt{1} &
 \texttt{1} \times 2 = \texttt{2} &
-\lfloor\log_2(\frac{\texttt{3746}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+\lfloor\log_2(\frac{\texttt{3776}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
 2 \div 2 ^ 3 - 1 = 0 &
 2 \bmod~2 ^ 3 - 1 = 2 &
-\texttt{3746} + (\texttt{2} \times \texttt{40}) - \left\lfloor\frac{\texttt{3746} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3534} \\
+\texttt{3776} + (\texttt{2} \times \texttt{40}) - \left\lfloor\frac{\texttt{3776} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3561} \\
 6 & \texttt{0} &
 \texttt{0} \times 2 = \texttt{0} &
-\lfloor\log_2(\frac{\texttt{3534}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+\lfloor\log_2(\frac{\texttt{3561}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
 0 \div 2 ^ 3 - 1 = 0 &
 0 \bmod~2 ^ 3 - 1 = 0 &
-\texttt{3534} + (\texttt{0} \times \texttt{40}) - \left\lfloor\frac{\texttt{3534} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3258} \\
+\texttt{3561} + (\texttt{0} \times \texttt{40}) - \left\lfloor\frac{\texttt{3561} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3283} \\
 7 & \texttt{-1} &
 (\texttt{1} \times 2) - 1 = \texttt{1} &
-\lfloor\log_2(\frac{\texttt{3258}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+\lfloor\log_2(\frac{\texttt{3283}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
 1 \div 2 ^ 3 - 1 = 0 &
 1 \bmod~2 ^ 3 - 1 = 1 &
-\texttt{3258} + (\texttt{1} \times \texttt{40}) - \left\lfloor\frac{\texttt{3258} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3044} \\
+\texttt{3283} + (\texttt{1} \times \texttt{40}) - \left\lfloor\frac{\texttt{3283} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3067} \\
 8 & \texttt{-3} &
 (\texttt{3} \times 2) - 1 = \texttt{5} &
-\lfloor\log_2(\frac{\texttt{3044}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+\lfloor\log_2(\frac{\texttt{3067}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
 5 \div 2 ^ 3 - 1 = 0 &
 5 \bmod~2 ^ 3 - 1 = 5 &
-\texttt{3044} + (\texttt{5} \times \texttt{40}) - \left\lfloor\frac{\texttt{3044} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3007} \\
+\texttt{3067} + (\texttt{5} \times \texttt{40}) - \left\lfloor\frac{\texttt{3067} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3028} \\
 9 & \texttt{-4} &
 (\texttt{4} \times 2) - 1 = \texttt{7} &
-\lfloor\log_2(\frac{\texttt{3007}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+\lfloor\log_2(\frac{\texttt{3028}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
 7 \div 2 ^ 3 - 1 = 1 &
 7 \bmod~2 ^ 3 - 1 = 0 &
-\texttt{3007} + (\texttt{7} \times \texttt{40}) - \left\lfloor\frac{\texttt{3007} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3053} \\
+\texttt{3028} + (\texttt{7} \times \texttt{40}) - \left\lfloor\frac{\texttt{3028} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3072} \\
 10 & \texttt{-3} &
 (\texttt{3} \times 2) - 1 = \texttt{5} &
-\lfloor\log_2(\frac{\texttt{3053}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+\lfloor\log_2(\frac{\texttt{3072}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
 5 \div 2 ^ 3 - 1 = 0 &
 5 \bmod~2 ^ 3 - 1 = 5 &
-\texttt{3053} + (\texttt{5} \times \texttt{40}) - \left\lfloor\frac{\texttt{3053} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3015} \\
+\texttt{3072} + (\texttt{5} \times \texttt{40}) - \left\lfloor\frac{\texttt{3072} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3032} \\
 11 & \texttt{-6} &
 (\texttt{6} \times 2) - 1 = \texttt{11} &
-\lfloor\log_2(\frac{\texttt{3015}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+\lfloor\log_2(\frac{\texttt{3032}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
 11 \div 2 ^ 3 - 1 = 1 &
 11 \bmod~2 ^ 3 - 1 = 4 &
-\texttt{3015} + (\texttt{11} \times \texttt{40}) - \left\lfloor\frac{\texttt{3015} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3220} \\
+\texttt{3032} + (\texttt{11} \times \texttt{40}) - \left\lfloor\frac{\texttt{3032} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3236} \\
 12 & \texttt{-5} &
 (\texttt{5} \times 2) - 1 = \texttt{9} &
-\lfloor\log_2(\frac{\texttt{3220}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+\lfloor\log_2(\frac{\texttt{3236}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
 9 \div 2 ^ 3 - 1 = 1 &
 9 \bmod~2 ^ 3 - 1 = 2 &
-\texttt{3220} + (\texttt{9} \times \texttt{40}) - \left\lfloor\frac{\texttt{3220} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3329} \\
+\texttt{3236} + (\texttt{9} \times \texttt{40}) - \left\lfloor\frac{\texttt{3236} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3344} \\
 13 & \texttt{-5} &
 (\texttt{5} \times 2) - 1 = \texttt{9} &
-\lfloor\log_2(\frac{\texttt{3329}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+\lfloor\log_2(\frac{\texttt{3344}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
 9 \div 2 ^ 3 - 1 = 1 &
 9 \bmod~2 ^ 3 - 1 = 2 &
-\texttt{3329} + (\texttt{9} \times \texttt{40}) - \left\lfloor\frac{\texttt{3329} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3429} \\
+\texttt{3344} + (\texttt{9} \times \texttt{40}) - \left\lfloor\frac{\texttt{3344} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3443} \\
 14 & \texttt{-5} &
 (\texttt{5} \times 2) - 1 = \texttt{9} &
-\lfloor\log_2(\frac{\texttt{3429}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+\lfloor\log_2(\frac{\texttt{3443}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
 9 \div 2 ^ 3 - 1 = 1 &
 9 \bmod~2 ^ 3 - 1 = 2 &
-\texttt{3429} + (\texttt{9} \times \texttt{40}) - \left\lfloor\frac{\texttt{3429} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3522} \\
-
+\texttt{3443} + (\texttt{9} \times \texttt{40}) - \left\lfloor\frac{\texttt{3443} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3535} \\
 \end{tabular}
 \renewcommand{\arraystretch}{1.0}
 }
 \end{table}
+\symbolfootnotetext[2]{written as $\texttt{32} - 1 = \texttt{31}$ due to sign modifier}
 
 \clearpage
 
