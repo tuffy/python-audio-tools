@@ -1,0 +1,330 @@
+#include "pcmconv.h"
+
+/********************************************************
+ Audio Tools, a module and set of tools for manipulating audio data
+ Copyright (C) 2007-2011  Brian Langenberger
+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 2 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+*******************************************************/
+
+PyObject*
+open_audiotools_pcm(void)
+{
+    return PyImport_ImportModule("audiotools.pcm");
+}
+
+PyObject*
+array_i_to_FrameList(PyObject* audiotools_pcm,
+                     array_i* samples,
+                     unsigned int channels,
+                     unsigned int bits_per_sample)
+{
+    pcm_FrameList *framelist;
+
+    framelist = (pcm_FrameList*)PyObject_CallMethod(audiotools_pcm,
+                                                    "__blank__", NULL);
+
+    if ((samples->size % channels) == 0) {
+        framelist->frames = samples->size / channels;
+        framelist->channels = channels;
+        framelist->bits_per_sample = bits_per_sample;
+        framelist->samples_length = framelist->frames * framelist->channels;
+        framelist->samples = realloc(framelist->samples,
+                                     framelist->samples_length * sizeof(int));
+
+        memcpy(framelist->samples, samples->data,
+               framelist->samples_length * sizeof(int));
+
+        return (PyObject*)framelist;
+    } else {
+        Py_DECREF((PyObject*)framelist);
+        PyErr_SetString(PyExc_ValueError,
+                        "samples data not divisible by channel count");
+        return NULL;
+    }
+}
+
+PyObject*
+array_ia_to_FrameList(PyObject* audiotools_pcm,
+                      array_ia* channels,
+                      unsigned int bits_per_sample)
+{
+    unsigned c;
+    unsigned i;
+    pcm_FrameList *framelist;
+    array_i* channel;
+
+    framelist = (pcm_FrameList*)PyObject_CallMethod(audiotools_pcm,
+                                                    "__blank__", NULL);
+    if (framelist != NULL) {
+        if (channels->size > 0) {
+            framelist->frames = channels->data[0]->size;
+            framelist->channels = channels->size;
+            framelist->bits_per_sample = bits_per_sample;
+            framelist->samples_length = (framelist->frames *
+                                         framelist->channels);
+            framelist->samples = realloc(framelist->samples,
+                                         framelist->samples_length *
+                                         sizeof(int));
+
+            for (c = 0; c < channels->size; c++) {
+                channel = channels->data[i];
+                if (channel->size == framelist->frames) {
+                    for (i = 0; i < framelist->frames; i++) {
+                        framelist->samples[(i * channels->size) + c] =
+                            channel->data[i];
+                    }
+                } else {
+                    /*return an error if there's a channel length mismatch*/
+                    Py_DECREF((PyObject*)framelist);
+                    PyErr_SetString(PyExc_ValueError,
+                                    "channel length mismatch");
+                    return NULL;
+                }
+            }
+        }
+
+        return (PyObject*)framelist;
+    } else {
+        return NULL;
+    }
+}
+
+PyObject*
+empty_FrameList(PyObject* audiotools_pcm,
+                unsigned int channels,
+                unsigned int bits_per_sample)
+{
+    pcm_FrameList *framelist;
+
+    framelist = (pcm_FrameList*)PyObject_CallMethod(audiotools_pcm,
+                                                    "__blank__", NULL);
+
+    if (framelist != NULL) {
+        framelist->channels = channels;
+        framelist->bits_per_sample = bits_per_sample;
+
+        return (PyObject*)framelist;
+    } else {
+        return NULL;
+    }
+}
+
+struct pcmreader_s* open_pcmreader(PyObject* pcmreader_obj)
+{
+    struct pcmreader_s* pcmreader = malloc(sizeof(struct pcmreader_s));
+    PyObject* attr;
+    PyObject* audiotools_pcm;
+
+    /*setup some placeholder values*/
+    pcmreader->pcmreader_obj = NULL;
+    pcmreader->framelist_type = NULL;
+    pcmreader->sample_rate = 0;
+    pcmreader->channels = 0;
+    pcmreader->channel_mask = 0;
+    pcmreader->bits_per_sample = 0;
+    pcmreader->bytes_per_sample = 0;
+    pcmreader->callbacks = NULL;
+
+    pcmreader->read = pcmreader_read;
+    pcmreader->close = pcmreader_close;
+    pcmreader->add_callback = pcmreader_add_callback;
+    pcmreader->del = pcmreader_del;
+
+    /*attempt to extract proper values from the pcmreader_obj*/
+    if ((attr = PyObject_GetAttrString(pcmreader_obj,
+                                       "sample_rate")) == NULL)
+        goto error;
+    pcmreader->sample_rate = (unsigned int)PyInt_AsLong(attr);
+    Py_DECREF(attr);
+    if (PyErr_Occurred())
+        goto error;
+
+    if ((attr = PyObject_GetAttrString(pcmreader_obj,
+                                       "bits_per_sample")) == NULL)
+        goto error;
+    pcmreader->bits_per_sample = (unsigned int)PyInt_AsLong(attr);
+    Py_DECREF(attr);
+    if (PyErr_Occurred())
+        goto error;
+
+    if ((attr = PyObject_GetAttrString(pcmreader_obj,
+                                       "channels")) == NULL)
+        goto error;
+    pcmreader->channels = (unsigned int)PyInt_AsLong(attr);
+    Py_DECREF(attr);
+    if (PyErr_Occurred())
+        goto error;
+
+    if ((attr = PyObject_GetAttrString(pcmreader_obj,
+                                       "channel_mask")) == NULL)
+        goto error;
+    pcmreader->channel_mask = (unsigned int)PyInt_AsLong(attr);
+    Py_DECREF(attr);
+    if (PyErr_Occurred())
+        goto error;
+
+    pcmreader->bytes_per_sample = pcmreader->bits_per_sample / 8;
+
+    /*attach and incref the wrapped PCMReader object*/
+    pcmreader->pcmreader_obj = pcmreader_obj;
+    Py_INCREF(pcmreader_obj);
+
+    /*attach a pcm.FrameList type object for verification during reads*/
+    if ((audiotools_pcm = PyImport_ImportModule("audiotools.pcm")) == NULL) {
+        goto error;
+    }
+
+    pcmreader->framelist_type = PyObject_GetAttrString(audiotools_pcm,
+                                                       "FrameList");
+
+    Py_DECREF(audiotools_pcm);
+
+    return pcmreader;
+
+ error:
+    Py_XDECREF(pcmreader->pcmreader_obj);
+    Py_XDECREF(pcmreader->framelist_type);
+    free(pcmreader);
+    return NULL;
+}
+
+int pcmreader_read(struct pcmreader_s* reader,
+                    unsigned pcm_frames,
+                    array_ia* channels)
+{
+    PyObject* framelist_obj;
+    pcm_FrameList* framelist;
+    unsigned frame;
+    unsigned channel;
+    array_i* channel_a;
+
+    struct pcmreader_callback* callback;
+    PyObject* string_obj;
+    unsigned char* string;
+    Py_ssize_t string_length;
+
+    /*make a call to "pcmreader.read(bytes)"
+      where "bytes" is set to the proper PCM frame count*/
+    if (((framelist_obj =
+          PyObject_CallMethod(reader->pcmreader_obj, "read", "i",
+                              pcm_frames *
+                              reader->channels *
+                              reader->bytes_per_sample))) == NULL) {
+        /*ensure result isn't an exception*/
+        return 1;
+    }
+
+    /*ensure result is a pcm.FrameList object*/
+    if (framelist_obj->ob_type != (PyTypeObject*)reader->framelist_type) {
+        Py_DECREF(framelist_obj);
+        PyErr_SetString(PyExc_TypeError,
+                        "results from pcmreader.read() must be FrameLists");
+        return 1;
+    } else {
+        framelist = (pcm_FrameList*)framelist_obj;
+    }
+
+    /*split framelist's packed ints into a set of channels*/
+    channels->reset(channels);
+    for (channel = 0; channel < framelist->channels; channel++) {
+        channel_a = channels->append(channels);
+        for (frame = 0; frame < framelist->frames; frame++) {
+            channel_a->resize(channel_a, framelist->frames);
+            a_append(channel_a,
+                     framelist->samples[(frame * framelist->channels) +
+                                        channel]);
+        }
+    }
+
+    /*apply all callbacks to pcm.FrameList object*/
+    for (callback = reader->callbacks;
+         callback != NULL;
+         callback = callback->next) {
+        string_obj = PyObject_CallMethod(framelist_obj,
+                                         "to_bytes", "(ii)",
+                                         !callback->little_endian,
+                                         callback->is_signed);
+        if (string_obj == NULL) {
+            Py_DECREF(framelist_obj);
+            return 1;
+        }
+
+        if (PyString_AsStringAndSize(string_obj,
+                                     (char**)(&string),
+                                     &string_length) == -1) {
+            Py_DECREF(framelist_obj);
+            Py_DECREF(string_obj);
+            return 1;
+        }
+
+        callback->callback(callback->user_data,
+                           string,
+                           (unsigned long)string_length);
+
+        Py_DECREF(string_obj);
+    }
+
+    /*free any allocated buffers and Python objects*/
+    Py_DECREF(framelist_obj);
+
+    return 0;
+}
+
+void pcmreader_close(struct pcmreader_s* reader)
+{
+    /*FIXME*/
+}
+
+void pcmreader_add_callback(struct pcmreader_s* reader,
+                            void (*callback)(void*,
+                                             unsigned char*,
+                                             unsigned long),
+                            void *user_data,
+                            int is_signed,
+                            int little_endian)
+{
+    struct pcmreader_callback *callback_node =
+        malloc(sizeof(struct pcmreader_callback));
+
+    callback_node->callback = callback;
+    callback_node->is_signed = is_signed;
+    callback_node->little_endian = little_endian;
+    callback_node->user_data = user_data;
+    callback_node->next = reader->callbacks;
+
+    reader->callbacks = callback_node;
+}
+
+void pcmreader_del(struct pcmreader_s* reader)
+{
+    struct pcmreader_callback *callback;
+    struct pcmreader_callback *next;
+
+    /*free callback nodes*/
+    for (callback = reader->callbacks; callback != NULL; callback = next) {
+        next = callback->next;
+        free(callback);
+    }
+
+    /*decref wrapped PCMReader object*/
+    Py_XDECREF(reader->pcmreader_obj);
+
+    /*decref pcm.FrameList type*/
+    Py_XDECREF(reader->framelist_type);
+
+    /*free pcmreader struct*/
+    free(reader);
+}

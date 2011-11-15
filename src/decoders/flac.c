@@ -1,5 +1,5 @@
 #include "flac.h"
-#include "../pcm.h"
+#include "../pcmconv.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -83,8 +83,7 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     br_add_callback(self->bitstream, flac_crc16, &(self->crc16));
 
     /*setup a framelist generator function*/
-    if ((self->audiotools_pcm =
-         PyImport_ImportModule("audiotools.pcm")) == NULL)
+    if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
 
     return 0;
@@ -211,7 +210,7 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
 {
     int channel;
     struct flac_frame_header frame_header;
-    pcm_FrameList *framelist;
+    PyObject* framelist;
     PyThreadState *thread_state;
     flac_status error;
 
@@ -219,31 +218,18 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
 
     /*if all samples have been read, return an empty FrameList*/
     if (self->stream_finalized) {
-        framelist = (pcm_FrameList*)PyObject_CallMethod(self->audiotools_pcm,
-                                                        "__blank__", NULL);
-        if (framelist != NULL) {
-            framelist->channels = self->streaminfo.channels;
-            framelist->bits_per_sample = self->streaminfo.bits_per_sample;
-            return (PyObject*)framelist;
-        } else {
-            return NULL;
-        }
+        return empty_FrameList(self->audiotools_pcm,
+                               self->streaminfo.channels,
+                               self->streaminfo.bits_per_sample);
     }
 
     if (self->remaining_samples < 1) {
         self->stream_finalized = 1;
 
         if (FlacDecoder_verify_okay(self)) {
-            framelist =
-                (pcm_FrameList*)PyObject_CallMethod(self->audiotools_pcm,
-                                                    "__blank__", NULL);
-            if (framelist != NULL) {
-                framelist->channels = self->streaminfo.channels;
-                framelist->bits_per_sample = self->streaminfo.bits_per_sample;
-                return (PyObject*)framelist;
-            } else {
-                return NULL;
-            }
+        return empty_FrameList(self->audiotools_pcm,
+                               self->streaminfo.channels,
+                               self->streaminfo.bits_per_sample);
         } else {
             PyErr_SetString(PyExc_ValueError,
                             "MD5 mismatch at end of stream");
@@ -307,25 +293,15 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
     br_etry(self->bitstream);
     PyEval_RestoreThread(thread_state);
 
-    framelist = (pcm_FrameList*)PyObject_CallMethod(self->audiotools_pcm,
-                                                    "__blank__", NULL);
+    framelist = array_i_to_FrameList(self->audiotools_pcm,
+                                     self->framelist_data,
+                                     frame_header.channel_count,
+                                     frame_header.bits_per_sample);
     if (framelist != NULL) {
-        framelist->frames = frame_header.block_size;
-        framelist->channels = frame_header.channel_count;
-        framelist->bits_per_sample = frame_header.bits_per_sample;
-        framelist->samples_length = (frame_header.block_size *
-                                     frame_header.channel_count);
-        framelist->samples = realloc(framelist->samples,
-                                     framelist->samples_length * sizeof(int));
-
-        memcpy(framelist->samples,
-               self->framelist_data->data,
-               framelist->samples_length * sizeof(int));
-
         /*update MD5 sum*/
-        if (FlacDecoder_update_md5sum(self, (PyObject*)framelist) == OK)
+        if (FlacDecoder_update_md5sum(self, framelist) == OK)
             /*return pcm.FrameList Python object*/
-            return (PyObject*)framelist;
+            return framelist;
         else {
             Py_DECREF(framelist);
             return NULL;

@@ -1596,7 +1596,8 @@ class FlacAudio(WaveContainer, AiffContainer):
         from bisect import bisect_right
 
         if (offsets is None):
-            metadata_length = self.metadata_length() + 4
+            metadata_length = (self.__stream_offset__ +
+                               4 + self.metadata_length())
             offsets = [(byte_offset - metadata_length,
                         pcm_frames) for byte_offset,pcm_frames in
                        self.to_pcm().offsets()]
@@ -2140,7 +2141,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                 try:
                     if (not seektable_valid(
                             metadata.get_block(Flac_SEEKTABLE.BLOCK_ID),
-                            self.metadata_length() + 4,
+                            stream_offset + 4 + self.metadata_length(),
                             input_f)):
                         fixes_performed.append(
                             _(u"fixed invalid SEEKTABLE"))
@@ -2223,7 +2224,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                 try:
                     if (not seektable_valid(
                             metadata.get_block(Flac_SEEKTABLE.BLOCK_ID),
-                            self.metadata_length() + 4,
+                            stream_offset + 4 + self.metadata_length(),
                             input_f)):
                         fixes_performed.append(
                             _(u"fixed invalid SEEKTABLE"))

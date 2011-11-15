@@ -1320,7 +1320,6 @@ maximum interlacing leftweight & 4 \\
 \While{PCM frames remain}{
   take \BLOCKSIZE PCM frames from the input\;
   write PCM frames to frameset\;
-  deduct PCM frame length from \BLOCKSIZE\;
 }
 return to start of \texttt{mdat} atom and write actual length\;
 \EALGORITHM

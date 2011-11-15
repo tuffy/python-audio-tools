@@ -1,5 +1,5 @@
 #include "flac.h"
-#include "../pcmreader2.h"
+#include "../pcmconv.h"
 #include "../common/md5.h"
 #include <string.h>
 #include <limits.h>
@@ -48,7 +48,7 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
     BitstreamWriter* output_stream;
     struct flac_context encoder;
     PyObject *pcmreader_obj;
-    struct pcm_reader2* reader;
+    pcmreader* pcmreader;
     char version_string[0xFF];
     static char *kwlist[] = {"filename",
                              "pcmreader",
@@ -113,7 +113,7 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
     }
 
     /*transform the Python PCMReader-compatible object to a pcm_reader struct*/
-    if ((reader = pcmr_open2(pcmreader_obj)) == NULL) {
+    if ((pcmreader = open_pcmreader(pcmreader_obj)) == NULL) {
         fclose(output_file);
         return NULL;
     }
@@ -179,7 +179,7 @@ encoders_encode_flac(char *filename,
     else
         encoder.options.qlp_coeff_precision = 13;
 
-    if (reader->bits_per_sample <= 16) {
+    if (pcmreader->bits_per_sample <= 16) {
         encoder.options.max_rice_parameter = 0xE;
     } else {
         encoder.options.max_rice_parameter = 0x1E;
@@ -187,7 +187,7 @@ encoders_encode_flac(char *filename,
 
     sprintf(version_string, "Python Audio Tools %s", AUDIOTOOLS_VERSION);
     audiotools__MD5Init(&md5sum);
-    pcmr_add_callback2(reader, md5_update, &md5sum, 1, 1);
+    pcmreader->add_callback(pcmreader, md5_update, &md5sum, 1, 1);
 
     output_stream = bw_open(output_file, BS_BIG_ENDIAN);
 
@@ -196,9 +196,9 @@ encoders_encode_flac(char *filename,
     encoder.streaminfo.maximum_block_size = block_size;
     encoder.streaminfo.minimum_frame_size = 0xFFFFFF;
     encoder.streaminfo.maximum_frame_size = 0;
-    encoder.streaminfo.sample_rate = reader->sample_rate;
-    encoder.streaminfo.channels = reader->channels;
-    encoder.streaminfo.bits_per_sample = reader->bits_per_sample;
+    encoder.streaminfo.sample_rate = pcmreader->sample_rate;
+    encoder.streaminfo.channels = pcmreader->channels;
+    encoder.streaminfo.bits_per_sample = pcmreader->bits_per_sample;
     encoder.streaminfo.total_samples = 0;
     memcpy(encoder.streaminfo.md5sum,
            "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
@@ -243,7 +243,7 @@ encoders_encode_flac(char *filename,
       which updates STREAMINFO in the process*/
     samples = array_ia_new();
 
-    if (!pcmr_read2(reader, block_size, samples))
+    if (pcmreader->read(pcmreader, block_size, samples))
         goto error;
 
     while (samples->data[0]->size > 0) {
@@ -270,7 +270,7 @@ encoders_encode_flac(char *filename,
         Py_END_ALLOW_THREADS
 #endif
 
-        if (!pcmr_read2(reader, block_size, samples))
+        if (pcmreader->read(pcmreader, block_size, samples))
             goto error;
     }
 
@@ -280,8 +280,8 @@ encoders_encode_flac(char *filename,
     flacenc_write_streaminfo(output_stream, &encoder.streaminfo);
 
     samples->del(samples); /*deallocate the temporary samples block*/
-    pcmr_close2(reader); /*close the pcm_reader object
-                           which calls pcmreader.close() in the process*/
+    pcmreader->close(pcmreader);
+    pcmreader->del(pcmreader);
     flacenc_free_encoder(&encoder);
     output_stream->close(output_stream); /*close the output file*/
 #ifndef STANDALONE
@@ -291,7 +291,7 @@ encoders_encode_flac(char *filename,
       but returns NULL instead of Py_None*/
     Py_XDECREF(frame_offsets);
     samples->del(samples);
-    pcmr_close2(reader);
+    pcmreader->del(pcmreader);
     flacenc_free_encoder(&encoder);
     output_stream->close(output_stream); /*close the output file*/
     return NULL;
@@ -300,7 +300,7 @@ encoders_encode_flac(char *filename,
     return 1;
  error:
     samples->del(samples);
-    pcmr_close2(reader);
+    pcmreader->del(pcmreader);
     flacenc_free_encoder(&encoder);
     output_stream->close(output_stream); /*close the output file*/
     return 0;
