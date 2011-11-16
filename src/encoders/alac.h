@@ -50,6 +50,22 @@ struct alac_context {
     unsigned mdat_byte_size;
     array_ia* frame_log;
 
+    array_i* LSBs;
+    array_ia* channels_MSB;
+
+    array_i* LPC_coefficients0;
+    array_i* LPC_coefficients1;
+    BitstreamWriter *residual0;
+    BitstreamWriter *residual1;
+
+    array_f* tukey_window;
+    array_f* windowed_signal;
+    array_f* autocorrelation_values;
+    array_fa* lp_coefficients;
+    array_i* qlp_coefficients4;
+    array_i* qlp_coefficients8;
+
+    BitstreamWriter *compressed_frame;
     BitstreamWriter *best_frame;
     BitstreamWriter *current_frame;
 };
@@ -91,18 +107,53 @@ alac_write_uncompressed_frame(BitstreamWriter *bs,
                               struct alac_context* encoder,
                               const array_ia* channels);
 
+status
+alac_write_compressed_frame(BitstreamWriter *bs,
+                            struct alac_context* encoder,
+                            const array_ia* channels);
 
-/* status */
-/* alac_write_uncompressed_frame(BitstreamWriter *bs, */
-/*                               int block_size, */
-/*                               int bits_per_sample, */
-/*                               struct ia_array *samples); */
+status
+alac_write_non_interlaced_frame(BitstreamWriter *bs,
+                                struct alac_context* encoder,
+                                unsigned uncompressed_LSBs,
+                                const array_i* LSBs,
+                                const array_ia* channels);
 
-/* status */
-/* alac_write_compressed_frame(BitstreamWriter *bs, */
-/*                             struct alac_encoding_options *options, */
-/*                             int bits_per_sample, */
-/*                             struct ia_array *samples); */
+status
+alac_compute_coefficients(struct alac_context* encoder,
+                          const array_i* samples,
+                          array_i* LPC_coefficients,
+                          BitstreamWriter *residual);
+
+/*given a set of integer samples,
+  returns a windowed set of floating point samples*/
+void
+alac_window_signal(struct alac_context* encoder,
+                   const array_i* samples,
+                   array_f* windowed_signal);
+
+/*given a set of windowed samples and a maximum LPC order,
+  returns a set of autocorrelation values whose length is 9*/
+void
+alac_autocorrelate(const array_f* windowed_signal,
+                   array_f* autocorrelation_values);
+
+/*given a maximum LPC order of 8
+  and set of autocorrelation values whose length is 9
+  returns list of LP coefficient lists whose length is max_lpc_order*/
+void
+alac_compute_lp_coefficients(const array_f* autocorrelation_values,
+                             array_fa* lp_coefficients);
+
+void
+alac_quantize_coefficients(const array_fa* lp_coefficients,
+                           unsigned order,
+                           array_i* qlp_coefficients);
+
+void
+alac_write_subframe_header(BitstreamWriter *bs,
+                           const array_i* LPC_coefficients);
+
 
 /* status */
 /* alac_write_interlaced_frame(BitstreamWriter *bs, */

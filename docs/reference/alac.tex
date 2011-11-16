@@ -1593,7 +1593,7 @@ $i$ & $\text{Channel}_{0~i}$ & $\text{Channel}_{1~i}$ & \text{Correlated}_{0~i} 
 
 \subsection{Computing LPC Coefficients and Residual}
 {\relsize{-1}
-\ALGORITHM{a list of signed PCM samples, sample size, encoding parameters}{a list of 4 or 8 signed LPC values, a block of residual data}
+\ALGORITHM{a list of signed PCM samples, sample size, encoding parameters}{a list of 4 or 8 signed LPC values, a block of residual data; or a \textit{residual overflow} exception}
 \SetKwData{SAMPLES}{subframe samples}
 \SetKwData{WINDOWED}{windowed samples}
 \SetKwData{AUTOCORRELATIONS}{autocorrelation values}
@@ -1610,7 +1610,7 @@ autocorrelate \WINDOWED to 9 floating point \AUTOCORRELATIONS\;
   calculate $\text{Residuals}_7$ from $\text{\QLPCOEFFS}_7$ and \SAMPLES\;
   encode $\text{Residual Block}_3$ from $\text{Residuals}_3$ with \SAMPLESIZE and encoding parameters\;
   encode $\text{Residual Block}_7$ from $\text{Residuals}_7$ with \SAMPLESIZE and encoding parameters\;
-  \eIf{$\LEN(\text{Residual Block}_3) < \LEN(\text{Residual Block}_7)$}{
+  \eIf{$\LEN(\text{Residual Block}_3) < (\LEN(\text{Residual Block}_7) + 64~bits)$}{
     \Return ($\text{\QLPCOEFFS}_3~,~\text{Residual Block}_3$)\;
   }{
     \Return ($\text{\QLPCOEFFS}_7~,~\text{Residual Block}_7$)\;
@@ -2044,7 +2044,7 @@ $i$ & $\text{Sample}_i$ & $\text{Base}_i$ & \text{LPC Sum}_i & \text{Residual}_i
 \clearpage
 
 \subsubsection{Encoding Residual Block}
-\ALGORITHM{a list of signed residual values, sample size; initial history, history multiplier, maximum K from encoding options}{a block of residual data}
+\ALGORITHM{a list of signed residual values, sample size; initial history, history multiplier, maximum K from encoding options}{a block of residual data, or a \textit{residual overflow} exception}
 \SetKwData{HISTORY}{history}
 \SetKwData{HISTORYMULT}{history multiplier}
 \SetKwData{MAXIMUMK}{maximum K}
