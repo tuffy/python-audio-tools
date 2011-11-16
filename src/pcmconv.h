@@ -1,4 +1,6 @@
+#ifndef STANDALONE
 #include <Python.h>
+#endif
 #include "array2.h"
 #include "pcm.h"
 
@@ -21,14 +23,15 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-
+#ifndef STANDALONE
 /******************************************************
                array_* to FrameList utilities
 *******************************************************/
 
 
 /*returns an audiotools.pcm module object for generating blank FrameLists
-  this must be PyDECREF()ed once no longer needed*/
+  or NULL on error
+  this must be PyXDECREF()ed once no longer needed*/
 PyObject*
 open_audiotools_pcm(void);
 
@@ -116,6 +119,72 @@ typedef struct pcmreader_s {
       and decrefs any wrapped PCMReader objects*/
     void (*del)(struct pcmreader_s* reader);
 } pcmreader;
+
+#else
+
+struct pcmreader_callback;
+struct pcmreader_s;
+
+/*wraps a low-level pcmreader object
+  around the given file object of PCM data
+
+  the object should be deallocated with  reader->del(reader)  when finished*/
+struct pcmreader_s* open_pcmreader(FILE* file,
+                                   unsigned int sample_rate,
+                                   unsigned int channels,
+                                   unsigned int channel_mask,
+                                   unsigned int bits_per_sample,
+                                   unsigned int big_endian,
+                                   unsigned int is_signed);
+
+typedef struct pcmreader_s {
+    FILE* file;
+
+    unsigned int sample_rate;
+    unsigned int channels;
+    unsigned int channel_mask;
+    unsigned int bits_per_sample;
+    unsigned int bytes_per_sample;
+
+    unsigned int big_endian;
+    unsigned int is_signed;
+
+    unsigned buffer_size;
+    uint8_t* buffer;
+    FrameList_char_to_int_converter buffer_converter;
+
+    struct pcmreader_callback* callbacks;
+
+    /*reads up to the given number of PCM frames
+      to the given set of channel data
+      which is reset and appended to as needed
+
+      returns 0 on success, 1 if there's an exception during reading*/
+    int (*read)(struct pcmreader_s* reader,
+                 unsigned pcm_frames,
+                 array_ia* channels);
+
+    /*forwards a call to "close" to the wrapped PCMReader object*/
+    void (*close)(struct pcmreader_s* reader);
+
+    /*adds a callback function to be called on each successful read()
+      its first argument is user data
+      the second is the PCM data as a string
+      with the given signed/endianness values
+      the third is the length of that PCM data in bytes*/
+    void (*add_callback)(struct pcmreader_s* reader,
+                         void (*callback)(void*, unsigned char*, unsigned long),
+                         void *user_data,
+                         int is_signed,
+                         int little_endian);
+
+    /*deletes and decrefs any attached callbacks
+      clears any attached buffer
+      and decrefs any wrapped PCMReader objects*/
+    void (*del)(struct pcmreader_s* reader);
+} pcmreader;
+
+#endif
 
 int pcmreader_read(struct pcmreader_s* reader,
                    unsigned pcm_frames,

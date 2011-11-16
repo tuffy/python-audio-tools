@@ -1,5 +1,5 @@
 #include "alac.h"
-#include "../pcm.h"
+#include "../pcmconv.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -74,8 +74,7 @@ ALACDecoder_init(decoders_ALACDecoder *self,
     }
 
     /*setup a framelist generator function*/
-    if ((self->audiotools_pcm =
-         PyImport_ImportModule("audiotools.pcm")) == NULL)
+    if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
 
     return 0;
@@ -245,17 +244,12 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
     BitstreamReader* mdat = self->bitstream;
     array_ia* frameset_channels = self->frameset_channels;
     PyThreadState *thread_state;
-    pcm_FrameList *framelist;
 
     /*return an empty framelist if total samples are exhausted*/
     if (self->remaining_frames == 0) {
-        framelist = (pcm_FrameList*)PyObject_CallMethod(self->audiotools_pcm,
-                                                        "__blank__", NULL);
-        framelist->frames = 0;
-        framelist->channels = self->channels;
-        framelist->bits_per_sample = self->bits_per_sample;
-        framelist->samples_length = 0;
-        return (PyObject*)framelist;
+        return empty_FrameList(self->audiotools_pcm,
+                               self->channels,
+                               self->bits_per_sample);
     }
 
     thread_state = PyEval_SaveThread();
@@ -292,36 +286,13 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
         self->remaining_frames -= MIN(self->remaining_frames,
                                       frameset_channels->data[0]->size);
 
+        /*convert ALAC channel assignment to standard audiotools assignment*/
+        /*FIXME*/
+
         /*finally, build and return framelist object from the sample data*/
-        framelist = (pcm_FrameList*)PyObject_CallMethod(self->audiotools_pcm,
-                                                        "__blank__", NULL);
-        if (framelist != NULL) {
-            unsigned channel;
-            unsigned sample;
-            array_i* channel_data;
-
-            framelist->frames = frameset_channels->data[0]->size;
-            framelist->channels = frameset_channels->size;
-            framelist->bits_per_sample = self->bits_per_sample;
-            framelist->samples_length = (framelist->frames *
-                                         framelist->channels);
-            framelist->samples = realloc(framelist->samples,
-                                         framelist->samples_length *
-                                         sizeof(int));
-
-            for (channel = 0; channel < frameset_channels->size; channel++) {
-                channel_data = frameset_channels->data[channel];
-                for (sample = 0; sample < channel_data->size; sample++) {
-                    framelist->samples[(sample * frameset_channels->size) +
-                                       channel] =
-                        channel_data->data[sample];
-                }
-            }
-
-            return (PyObject*)framelist;
-        } else {
-            return NULL;
-        }
+        return array_ia_to_FrameList(self->audiotools_pcm,
+                                     frameset_channels,
+                                     self->bits_per_sample);
     } else {
         br_etry(mdat);
         PyEval_RestoreThread(thread_state);
@@ -371,7 +342,10 @@ alacdec_read_frame(decoders_ALACDecoder *self,
             }
         }
 
-        frameset_channels->extend(frameset_channels, frame_channels);
+        for (channel = 0; channel < channel_count; channel++)
+            frame_channels->data[channel]->swap(
+                 frame_channels->data[channel],
+                 frameset_channels->append(frameset_channels));
 
         return OK;
     } else {
@@ -450,7 +424,10 @@ alacdec_read_frame(decoders_ALACDecoder *self,
         }
 
         /*finally, return frame's channel data*/
-        frameset_channels->extend(frameset_channels, frame_channels);
+        for (channel = 0; channel < channel_count; channel++)
+            frame_channels->data[channel]->swap(
+                 frame_channels->data[channel],
+                 frameset_channels->append(frameset_channels));
 
         return OK;
     }

@@ -136,7 +136,7 @@ encoders_encode_flac(char *filename,
     FILE* output_file;
     BitstreamWriter* output_stream;
     struct flac_context encoder;
-    struct pcm_reader2* reader;
+    pcmreader* pcmreader;
     char version_string[0xFF];
     audiotools__MD5Context md5sum;
     array_ia* samples;
@@ -159,7 +159,7 @@ encoders_encode_flac(char *filename,
 
     output_file = fopen(filename, "wb");
     /*FIXME - assume CD quality for now*/
-    reader = pcmr_open2(input, 44100, 2, 0x3, 16, 0, 1);
+    pcmreader = open_pcmreader(input, 44100, 2, 0x3, 16, 0, 1);
 
 #endif
 

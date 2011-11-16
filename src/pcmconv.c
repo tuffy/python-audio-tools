@@ -1,4 +1,5 @@
 #include "pcmconv.h"
+#include <stdlib.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -18,6 +19,8 @@
  along with this program; if not, write to the Free Software
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
+
+#ifndef STANDALONE
 
 PyObject*
 open_audiotools_pcm(void)
@@ -80,7 +83,7 @@ array_ia_to_FrameList(PyObject* audiotools_pcm,
                                          sizeof(int));
 
             for (c = 0; c < channels->size; c++) {
-                channel = channels->data[i];
+                channel = channels->data[c];
                 if (channel->size == framelist->frames) {
                     for (i = 0; i < framelist->frames; i++) {
                         framelist->samples[(i * channels->size) + c] =
@@ -288,26 +291,6 @@ void pcmreader_close(struct pcmreader_s* reader)
     /*FIXME*/
 }
 
-void pcmreader_add_callback(struct pcmreader_s* reader,
-                            void (*callback)(void*,
-                                             unsigned char*,
-                                             unsigned long),
-                            void *user_data,
-                            int is_signed,
-                            int little_endian)
-{
-    struct pcmreader_callback *callback_node =
-        malloc(sizeof(struct pcmreader_callback));
-
-    callback_node->callback = callback;
-    callback_node->is_signed = is_signed;
-    callback_node->little_endian = little_endian;
-    callback_node->user_data = user_data;
-    callback_node->next = reader->callbacks;
-
-    reader->callbacks = callback_node;
-}
-
 void pcmreader_del(struct pcmreader_s* reader)
 {
     struct pcmreader_callback *callback;
@@ -327,4 +310,169 @@ void pcmreader_del(struct pcmreader_s* reader)
 
     /*free pcmreader struct*/
     free(reader);
+}
+
+#else
+
+struct pcmreader_s* open_pcmreader(FILE* file,
+                                   unsigned int sample_rate,
+                                   unsigned int channels,
+                                   unsigned int channel_mask,
+                                   unsigned int bits_per_sample,
+                                   unsigned int big_endian,
+                                   unsigned int is_signed)
+{
+    struct pcmreader_s* pcmreader = malloc(sizeof(struct pcmreader_s));
+
+    pcmreader->file = file;
+    pcmreader->sample_rate = sample_rate;
+    pcmreader->channels = channels;
+    pcmreader->channel_mask = channel_mask;
+    pcmreader->bits_per_sample = bits_per_sample;
+    pcmreader->bytes_per_sample = bits_per_sample / 8;
+
+    pcmreader->big_endian = big_endian;
+    pcmreader->is_signed = is_signed;
+
+    pcmreader->buffer_size = 1;
+    pcmreader->buffer = malloc(pcmreader->buffer_size);
+    pcmreader->buffer_converter =
+        FrameList_get_char_to_int_converter(pcmreader->bits_per_sample,
+                                            pcmreader->big_endian,
+                                            pcmreader->is_signed);;
+
+    pcmreader->callbacks = NULL;
+
+    pcmreader->read = pcmreader_read;
+    pcmreader->close = pcmreader_close;
+    pcmreader->add_callback = pcmreader_add_callback;
+    pcmreader->del = pcmreader_del;
+
+    return pcmreader;
+}
+
+int pcmreader_read(struct pcmreader_s* reader,
+                   unsigned pcm_frames,
+                   array_ia* channels)
+{
+    unsigned bytes_to_read = (pcm_frames *
+                              reader->channels *
+                              reader->bytes_per_sample);
+    size_t bytes_read;
+    unsigned frames_read;
+
+    array_i* channel_a;
+    unsigned int byte;
+    unsigned int sample;
+    unsigned int channel;
+    unsigned int frame;
+
+    struct pcmreader_callback *callback;
+    FrameList_int_to_char_converter callback_converter;
+
+    uint8_t* callback_buffer;
+
+    printf("reading %u frames\n", pcm_frames);
+
+    if (reader->buffer_size < bytes_to_read) {
+        reader->buffer_size = bytes_to_read;
+        reader->buffer = realloc(reader->buffer, bytes_to_read);
+    }
+
+    /*read data into "buffer" as plain bytes*/
+    bytes_read = fread(reader->buffer, sizeof(uint8_t), bytes_to_read,
+                       reader->file);
+
+    /*remove partial PCM frames, if any*/
+    while (bytes_read % (reader->channels * reader->bytes_per_sample))
+        bytes_read--;
+
+    frames_read = (unsigned)(bytes_read /
+                             (reader->channels * reader->bytes_per_sample));
+
+    /*place "buffer" into "channels", split up by channel*/
+    channels->reset(channels);
+    for (channel = 0; channel < reader->channels; channel++) {
+        channel_a = channels->append(channels);
+        channel_a->resize(channel_a, frames_read);
+        for (frame = 0; frame < frames_read; frame++) {
+            sample = channel + (frame * reader->channels);
+            a_append(channel_a,
+                     reader->buffer_converter(reader->buffer +
+                                              (sample *
+                                               reader->bytes_per_sample)));
+        }
+    }
+
+    /*apply all callbacks on that collection of samples*/
+    for (callback = reader->callbacks;
+         callback != NULL;
+         callback = callback->next) {
+        callback_converter =
+            FrameList_get_int_to_char_converter(reader->bits_per_sample,
+                                                !callback->little_endian,
+                                                callback->is_signed);
+
+        callback_buffer = malloc(bytes_read);
+
+        for (byte = 0; byte < bytes_read; byte += reader->bytes_per_sample) {
+            callback_converter(reader->buffer_converter(reader->buffer + byte),
+                               callback_buffer + byte);
+        }
+
+        callback->callback(callback->user_data,
+                           (unsigned char*)callback_buffer,
+                           (unsigned long)bytes_read);
+
+        free(callback_buffer);
+    }
+
+    return 0;
+}
+
+void pcmreader_close(struct pcmreader_s* reader)
+{
+    fclose(reader->file);
+}
+
+void pcmreader_del(struct pcmreader_s* reader)
+{
+    struct pcmreader_callback *callback;
+    struct pcmreader_callback *next;
+
+    /*free callback nodes*/
+    for (callback = reader->callbacks; callback != NULL; callback = next) {
+        next = callback->next;
+        free(callback);
+    }
+
+    /*free temporary buffer*/
+    free(reader->buffer);
+
+    /*free pcmreader struct*/
+    free(reader);
+}
+
+
+#endif
+
+
+void pcmreader_add_callback(struct pcmreader_s* reader,
+                            void (*callback)(void*,
+                                             unsigned char*,
+                                             unsigned long),
+                            void *user_data,
+                            int is_signed,
+                            int little_endian)
+{
+    struct pcmreader_callback *callback_node =
+        malloc(sizeof(struct pcmreader_callback));
+
+    callback_node->callback = callback;
+    callback_node->is_signed = is_signed;
+    callback_node->little_endian = little_endian;
+    callback_node->user_data = user_data;
+    callback_node->next = reader->callbacks;
+
+    reader->callbacks = callback_node;
 }

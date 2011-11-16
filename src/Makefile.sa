@@ -6,8 +6,8 @@ FLAGS = -Wall -g
 
 all: flacenc alacenc shnenc wvenc mlpdec huffman bitstream
 
-flacenc: $(OBJS) encoders/flac.c encoders/flac.h flac_crc.o md5.o pcmreader2.o array2.o
-	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o flacenc encoders/flac.c $(OBJS) array2.o md5.o flac_crc.o pcmreader2.o -DSTANDALONE -lm
+flacenc: $(OBJS) encoders/flac.c encoders/flac.h flac_crc.o md5.o pcmconv.o array2.o
+	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o flacenc encoders/flac.c $(OBJS) array2.o md5.o flac_crc.o pcmconv.o -DSTANDALONE -lm
 
 alacenc: $(OBJS) encoders/alac.c encoders/alac.h alac_lpc.o misc.o
 	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o alacenc encoders/alac.c misc.o $(OBJS) alac_lpc.o -DSTANDALONE -lm
@@ -35,6 +35,9 @@ array2.o: array2.c array2.h
 
 pcm.o: pcm.c pcm.h
 	$(CC) $(FLAGS) -c pcm.c -DSTANDALONE
+
+pcmconv.o: pcmconv.c pcmconv.h
+	$(CC) $(FLAGS) -c pcmconv.c -DSTANDALONE
 
 bitstream.o: bitstream.c bitstream.h
 	$(CC) $(FLAGS) -c bitstream.c -DSTANDALONE
