@@ -372,8 +372,6 @@ int pcmreader_read(struct pcmreader_s* reader,
 
     uint8_t* callback_buffer;
 
-    printf("reading %u frames\n", pcm_frames);
-
     if (reader->buffer_size < bytes_to_read) {
         reader->buffer_size = bytes_to_read;
         reader->buffer = realloc(reader->buffer, bytes_to_read);

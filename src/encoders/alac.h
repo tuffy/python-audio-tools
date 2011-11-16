@@ -6,8 +6,7 @@
 
 #include <stdint.h>
 #include "../bitstream.h"
-#include "../array.h"
-#include "../pcmreader.h"
+#include "../array2.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -30,42 +29,44 @@
 
 typedef enum {OK, ERROR, RESIDUAL_OVERFLOW} status;
 
-/*this output log is a set of things Python-based ALAC atom writers will need
-  in order to populate metadata*/
-struct alac_encode_log {
-    int frame_byte_size;
-    int mdat_byte_size;
-    struct ia_array frame_log;
+struct alac_encoding_options {
+    unsigned block_size;
+    unsigned initial_history;
+    unsigned history_multiplier;
+    unsigned maximum_k;
+    unsigned minimum_interlacing_leftweight;
+    unsigned maximum_interlacing_leftweight;
+    unsigned minimum_interlacing_shift;
+    unsigned maximum_interlacing_shift;
 };
 
-struct alac_encoding_options {
-    int block_size;
-    int initial_history;
-    int history_multiplier;
-    int maximum_k;
-    int minimum_interlacing_leftweight;
-    int maximum_interlacing_leftweight;
-    int minimum_interlacing_shift;
-    int maximum_interlacing_shift;
-    unsigned int channel_mask;
+/*this is a container for encoding options and reusable data buffers*/
+struct alac_context {
+    struct alac_encoding_options options;
 
-    /*a couple of temporary buffers
-      so we don't have to allocate them all the time*/
+    unsigned bits_per_sample;
+
+    unsigned frame_byte_size;
+    unsigned mdat_byte_size;
+    array_ia* frame_log;
+
     BitstreamWriter *best_frame;
     BitstreamWriter *current_frame;
 };
 
 enum {LOG_SAMPLE_SIZE, LOG_BYTE_SIZE, LOG_FILE_OFFSET};
 
+/*initializes all the temporary buffers in encoder*/
 void
-alac_log_init(struct alac_encode_log *log);
+alacenc_init_encoder(struct alac_context* encoder);
 
+/*deallocates all the temporary buffers in encoder*/
 void
-alac_log_free(struct alac_encode_log *log);
+alacenc_free_encoder(struct alac_context* encoder);
 
 #ifndef STANDALONE
 PyObject
-*alac_log_output(struct alac_encode_log *log);
+*alac_log_output(struct alac_context *encoder);
 #endif
 
 void
@@ -75,68 +76,71 @@ alac_byte_counter(uint8_t byte, void* counter);
   complete with trailing stop '111' bits and byte-aligned*/
 status
 alac_write_frameset(BitstreamWriter *bs,
-                    struct alac_encode_log *log,
-                    long starting_offset,
-                    struct alac_encoding_options *options,
-                    int bits_per_sample,
-                    struct ia_array *samples);
+                    struct alac_context* encoder,
+                    const array_ia* channels);
 
 /*write a single ALAC frame, compressed or uncompressed as necessary*/
 status
 alac_write_frame(BitstreamWriter *bs,
-                 struct alac_encoding_options *options,
-                 int bits_per_sample,
-                 struct ia_array *samples);
+                 struct alac_context* encoder,
+                 const array_ia* channels);
 
+/*writes a single uncompressed ALAC frame, not including the channel count*/
 status
 alac_write_uncompressed_frame(BitstreamWriter *bs,
-                              int block_size,
-                              int bits_per_sample,
-                              struct ia_array *samples);
+                              struct alac_context* encoder,
+                              const array_ia* channels);
 
-status
-alac_write_compressed_frame(BitstreamWriter *bs,
-                            struct alac_encoding_options *options,
-                            int bits_per_sample,
-                            struct ia_array *samples);
 
-status
-alac_write_interlaced_frame(BitstreamWriter *bs,
-                            struct alac_encoding_options *options,
-                            int interlacing_shift,
-                            int interlacing_leftweight,
-                            int bits_per_sample,
-                            struct ia_array *samples);
+/* status */
+/* alac_write_uncompressed_frame(BitstreamWriter *bs, */
+/*                               int block_size, */
+/*                               int bits_per_sample, */
+/*                               struct ia_array *samples); */
 
-status
-alac_correlate_channels(struct ia_array *output,
-                        struct ia_array *input,
-                        int interlacing_shift,
-                        int interlacing_leftweight);
+/* status */
+/* alac_write_compressed_frame(BitstreamWriter *bs, */
+/*                             struct alac_encoding_options *options, */
+/*                             int bits_per_sample, */
+/*                             struct ia_array *samples); */
 
-status
-alac_encode_subframe(struct i_array *residuals,
-                     struct i_array *samples,
-                     struct i_array *coefficients,
-                     int predictor_quantitization);
+/* status */
+/* alac_write_interlaced_frame(BitstreamWriter *bs, */
+/*                             struct alac_encoding_options *options, */
+/*                             int interlacing_shift, */
+/*                             int interlacing_leftweight, */
+/*                             int bits_per_sample, */
+/*                             struct ia_array *samples); */
 
-/*writes a single unsigned residal to the current bitstream*/
-void
-alac_write_residual(BitstreamWriter *bs,
-                    int residual,
-                    int k,
-                    int bits_per_sample);
+/* status */
+/* alac_correlate_channels(struct ia_array *output, */
+/*                         struct ia_array *input, */
+/*                         int interlacing_shift, */
+/*                         int interlacing_leftweight); */
 
-status
-alac_write_residuals(BitstreamWriter *bs,
-                     struct i_array *residuals,
-                     int bits_per_sample,
-                     struct alac_encoding_options *options);
+/* status */
+/* alac_encode_subframe(struct i_array *residuals, */
+/*                      struct i_array *samples, */
+/*                      struct i_array *coefficients, */
+/*                      int predictor_quantitization); */
 
-void
-alac_error(const char* message);
+/* /\*writes a single unsigned residal to the current bitstream*\/ */
+/* void */
+/* alac_write_residual(BitstreamWriter *bs, */
+/*                     int residual, */
+/*                     int k, */
+/*                     int bits_per_sample); */
 
-void
-alac_warning(const char* message);
+/* status */
+/* alac_write_residuals(BitstreamWriter *bs, */
+/*                      struct i_array *residuals, */
+/*                      int bits_per_sample, */
+/*                      struct alac_encoding_options *options); */
+
+/* void */
+/* alac_error(const char* message); */
+
+/* void */
+/* alac_warning(const char* message); */
 
 #endif

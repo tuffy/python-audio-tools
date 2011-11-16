@@ -89,7 +89,6 @@ encodersmodule = Extension('audiotools.encoders',
                                     'src/common/misc.c',
                                     'src/encoders/shn.c',
                                     'src/encoders/alac.c',
-                                    'src/encoders/alac_lpc.c',
                                     'src/encoders/wavpack.c',
                                     'src/encoders.c'],
                            define_macros=[("VERSION", VERSION)])
