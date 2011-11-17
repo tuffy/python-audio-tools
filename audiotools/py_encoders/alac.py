@@ -107,13 +107,50 @@ def encode_mdat(file, pcmreader,
 
 
 def encode_frameset(writer, pcmreader, options, frame):
+    #assume frameset is stored in Wave order
+    #which we'll convert to ALAC order
+
     if (pcmreader.channels == 1):
         encode_frame(writer, pcmreader, options, [frame.channel(0)])
     elif (pcmreader.channels == 2):
         encode_frame(writer, pcmreader, options, [frame.channel(0),
                                                   frame.channel(1)])
+    elif (pcmreader.channels == 3):
+        for pair in [[frame.channel(2)],
+                     [frame.channel(0), frame_channel(1)]]:
+            encode_frame(writer, pcmreader, options, pair)
+    elif (pcmreader.channels == 4):
+        for pair in [[frame.channel(2)],
+                     [frame.channel(0), frame_channel(1)],
+                     [frame.channel(3)]]:
+            encode_frame(writer, pcmreader, options, pair)
+    elif (pcmreader.channels == 5):
+        for pair in [[frame.channel(2)],
+                     [frame.channel(0), frame.channel(1)],
+                     [frame.channel(3), frame.channel(4)]]:
+            encode_frame(writer, pcmreader, options, pair)
+    elif (pcmreader.channels == 6):
+        for pair in [[frame.channel(2)],
+                     [frame.channel(0), frame.channel(1)],
+                     [frame.channel(4), frame.channel(5)],
+                     [frame.channel(3)]]:
+            encode_frame(writer, pcmreader, options, pair)
+    elif (pcmreader.channels == 7):
+        for pair in [[frame.channel(2)],
+                     [frame.channel(0), frame.channel(1)],
+                     [frame.channel(4), frame.channel(5)],
+                     [frame.channel(6)],
+                     [frame.channel(7)]]:
+            encode_frame(writer, pcmreader, options, pair)
+    elif (pcmreader.channels == 8):
+        for pair in [[frame.channel(2)],
+                     [frame.channel(6), frame.channel(7)],
+                     [frame.channel(0), frame.channel(1)],
+                     [frame.channel(4), frame.channel(5)],
+                     [frame.channel(3)]]:
+            encode_frame(writer, pcmreader, options, pair)
     else:
-        raise NotImplementedError()
+        raise ValueError("unsupported channel count")
 
     writer.write(3, 7)
     writer.byte_align()

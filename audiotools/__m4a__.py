@@ -875,12 +875,43 @@ class ALACAudio(M4ATaggedAudio,AudioFile):
     def channel_mask(self):
         """Returns a ChannelMask object of this track's channel layout."""
 
-        try:
-            #FIXME - see if it's possible to find an actual channel mask
-            #for multichannel ALAC audio
-            return ChannelMask.from_channels(self.channels())
-        except ValueError:
-            return ChannelMask(0)
+        return {1:ChannelMask.from_fields(front_center=True),
+                2:ChannelMask.from_fields(front_left=True,
+                                          front_right=True),
+                3:ChannelMask.from_fields(front_center=True,
+                                          front_left=True,
+                                          front_right=True),
+                4:ChannelMask.from_fields(front_center=True,
+                                          front_left=True,
+                                          front_right=True,
+                                          back_center=True),
+                5:ChannelMask.from_fields(front_center=True,
+                                          front_left=True,
+                                          front_right=True,
+                                          back_left=True,
+                                          back_right=True),
+                6:ChannelMask.from_fields(front_center=True,
+                                          front_left=True,
+                                          front_right=True,
+                                          back_left=True,
+                                          back_right=True,
+                                          low_frequency=True),
+                7:ChannelMask.from_fields(front_center=True,
+                                          front_left=True,
+                                          front_right=True,
+                                          back_left=True,
+                                          back_right=True,
+                                          back_center=True,
+                                          low_frequency=True),
+                8:ChannelMask.from_fields(front_center=True,
+                                          front_left_of_center=True,
+                                          front_right_of_center=True,
+                                          front_left=True,
+                                          front_right=True,
+                                          back_left=True,
+                                          back_right=True,
+                                          low_frequency=True)}.get(
+            self.channels(), ChannelMask(0))
 
     def cd_frames(self):
         """Returns the total length of the track in CD frames.
@@ -924,6 +955,22 @@ class ALACAudio(M4ATaggedAudio,AudioFile):
 
         if (pcmreader.bits_per_sample not in (16, 24)):
             raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
+
+        if (pcmreader.channels > 8):
+            raise UnsupportedChannelCount(filename, pcmreader.channels)
+
+        if (int(pcmreader.channel_mask) not in
+            (0x0001,   #1ch - mono
+             0x0004,   #1ch - mono
+             0x0003,   #2ch - left, right
+             0x0007,   #3ch - center, left, right
+             0x0107,   #4ch - center, left, right, back center
+             0x0037,   #5ch - center, left, right, back left, back right
+             0x003F,   #6ch - C, L, R, back left, back right, LFE
+             0x013F,   #7ch - C, L, R, bL, bR, back center, LFE
+             0x00FF)): #8ch - C, cL, cR, L, R, bL, bR, LFE
+            raise UnsupportedChannelMask(filename,
+                                         int(pcmreader.channel_mask))
 
         from . import encoders
         from .bitstream import BitstreamWriter

@@ -1550,7 +1550,7 @@ class FlacAudio(WaveContainer, AiffContainer):
              0x0037,    # 5ch - L, R, C, back left, back right
              0x0607,    # 5ch - L, R, C, side left, side right
              0x003F,    # 6ch - L, R, C, LFE, back left, back right
-             0x060F)):  # 6 ch - L, R, C, LFE, side left, side right
+             0x060F)):  # 6ch - L, R, C, LFE, side left, side right
             raise UnsupportedChannelMask(filename,
                                          int(pcmreader.channel_mask))
         else:

@@ -2,7 +2,7 @@
 
 from audiotools import iter_last
 from audiotools.bitstream import BitstreamReader
-from audiotools.pcm import from_list
+from audiotools.pcm import from_list,from_channels
 from operator import concat
 
 def log2(i):
@@ -50,6 +50,15 @@ class ALACDecoder:
                 "32p 4b 6P 16p 16p 16p 4P 16p 16p 16p 16p 4P" +
                 #and use the attributes in the "low" ALAC atom instead
                 "32p 4b 4P 32u 8p 8u 8u 8u 8u 8u 16p 32p 32p 32u")
+
+            self.channel_mask = {1:0x0004,
+                                 2:0x0003,
+                                 3:0x0007,
+                                 4:0x0107,
+                                 5:0x0037,
+                                 6:0x003F,
+                                 7:0x013F,
+                                 8:0x00FF}.get(self.channels, 0)
 
             if ((alac1 != 'alac') or (alac2 != 'alac')):
                 raise ValueError("Invalid alac atom")
@@ -107,17 +116,56 @@ class ALACDecoder:
             frame_channels = self.reader.read(3) + 1
         self.reader.byte_align()
 
-        #recombine the multiple frames into a single set of samples
-        i = 0
-        total_channels = len(frameset_data)
-        samples = [0] * sum(map(len, frameset_data))
-        while (len(frameset_data) > 0):
-            channel = frameset_data.pop(0)
-            samples[i::total_channels] = channel
-            i += 1
+        #reorder the frameset to Wave order, depending on channel count
+        if ((self.channels == 1) or (self.channels == 2)):
+            pass
+        elif (self.channels == 3):
+            frameset_data = [frameset_data[1],
+                             frameset_data[2],
+                             frameset_data[0]]
+        elif (self.channels == 4):
+            frameset_data = [frameset_data[1],
+                             frameset_data[2],
+                             frameset_data[0],
+                             frameset_data[3]]
+        elif (self.channels == 5):
+            frameset_data = [frameset_data[1],
+                             frameset_data[2],
+                             frameset_data[0],
+                             frameset_data[3],
+                             frameset_data[4]]
+        elif (self.channels == 6):
+            frameset_data = [frameset_data[1],
+                             frameset_data[2],
+                             frameset_data[0],
+                             frameset_data[5],
+                             frameset_data[3],
+                             frameset_data[4]]
+        elif (self.channels == 7):
+            frameset_data = [frameset_data[1],
+                             frameset_data[2],
+                             frameset_data[0],
+                             frameset_data[6],
+                             frameset_data[3],
+                             frameset_data[4],
+                             frameset_data[5]]
+        elif (self.channels == 8):
+            frameset_data = [frameset_data[3],
+                             frameset_data[4],
+                             frameset_data[0],
+                             frameset_data[7],
+                             frameset_data[5],
+                             frameset_data[6],
+                             frameset_data[1],
+                             frameset_data[2]]
+        else:
+            raise ValueError("unsupported channel count")
 
-        framelist = from_list(samples, total_channels,
-                              self.bits_per_sample, True)
+        framelist = from_channels([from_list(channel,
+                                             1,
+                                             self.bits_per_sample,
+                                             True)
+                                   for channel in frameset_data])
 
         #deduct PCM frames from remainder
         self.total_pcm_frames -= framelist.frames

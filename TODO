@@ -5089,12 +5089,14 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 * TODO Fix ALAC channel assignment
   Since the channel assignment is detailed in the specs,
   add proper support for them.
-** TODO Update ALACAudio.channel_mask() method
-** TODO Update py_decoders.ALACDecoder's .channel_mask attribute
-** TODO Update py_decoders.ALACDecoder's .read() method
+** DONE Update ALACAudio.channel_mask() method
+** DONE Update ALACAudio.from_pcm() method
+   Like FLAC, it should reject unsupported channel masks.
+** DONE Update py_decoders.ALACDecoder's .channel_mask attribute
+** DONE Update py_decoders.ALACDecoder's .read() method
    Convert ALAC channel order to Wave channel order internally
    rather than punt that task to a reordering wrapper.
-** TODO Update py_encoders.encode_mdat
+** DONE Update py_encoders.encode_mdat
    Convert Wave channel order to ALAC channel order internally
    rather than punt that task to a reordering wrapper.
 ** TODO Update decoders.ALACDecoder's .channel_mask attribute
@@ -5105,7 +5107,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    Convert Wave channel order to ALAC channel order internally
    rather than punt that task to a reordering wrapper.
 
-** TODO Add unit tests to ensure channels encode/decode correctly
+** TODO Add unit tests to ensure channel variants encode/decode correctly
    - [ ] 1 channel
    - [ ] 2 channels
    - [ ] 3 channels
@@ -5114,3 +5116,5 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] 6 channels
    - [ ] 7 channels
    - [ ] 8 channels
+*** TODO Add unit tests to ensure invalid channel counts aren't encoded
+*** TODO Add unit tests to ensure invalid channel masks aren't encoded
