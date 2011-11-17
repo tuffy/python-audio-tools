@@ -547,8 +547,8 @@ $\text{Sample}_0 \leftarrow \text{Residual}_0$\;
 \BlankLine
 \For{i = $\text{coefficient count} + 1$ \emph{\KwTo}$\text{sample count}$}{
   $\text{Base Sample}_i \leftarrow \text{Sample}_{i - coeff.~count - 1}$\;
-  $\text{LPC Sum}_i \leftarrow \overset{coeff.~count - 1}{\underset{j = 0}{\sum}} \text{QLP Coefficient}_j \times (\text{Sample}_{i - j - 1} - \text{Base Sample}_i)$\;
-  $\text{Sample}_i \leftarrow \left\lfloor\frac{\text{LPC Sum}_i + 2 ^ \text{QLP shift needed - 1}}{2 ^ \text{QLP shift needed}}\right\rfloor + \text{Residual}_i + \text{Base Sample}_i$\;
+  $\text{QLP Sum}_i \leftarrow \overset{coeff.~count - 1}{\underset{j = 0}{\sum}} \text{QLP Coefficient}_j \times (\text{Sample}_{i - j - 1} - \text{Base Sample}_i)$\;
+  $\text{Sample}_i \leftarrow \left\lfloor\frac{\text{QLP Sum}_i + 2 ^ \text{QLP shift needed - 1}}{2 ^ \text{QLP shift needed}}\right\rfloor + \text{Residual}_i + \text{Base Sample}_i$\;
   \BlankLine
   \uIf(\tcc*[f]{modify QLP coefficients}){$\text{Residual}_i > 0$}{
     \For{j = 0 \emph{\KwTo}$\text{coefficient count}$}{
@@ -597,7 +597,7 @@ the subframe samples are calculated as follows:
 \begin{table}[h]
 {\relsize{-1}
 \begin{tabular}{r||r|r|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}}
-$i$ & $\text{Residual}_i$ & $\text{Base}_i$ & \text{LPC Sum}_i & \text{Sample}_i & \text{QLP Coeff.}_{(i + 1)~j} \\
+$i$ & $\text{Residual}_i$ & $\text{Base}_i$ & \text{QLP Sum}_i & \text{Sample}_i & \text{QLP Coeff.}_{(i + 1)~j} \\
 \hline
 0 & 32 & & & 32 \\
 1 & 7 & & & 7 + 32 = 39 \\
@@ -641,7 +641,7 @@ $i$ & $\text{Residual}_i$ & $\text{Base}_i$ & \text{LPC Sum}_i & \text{Sample}_i
 
 Although some steps have been omitted for brevity,
 what's important to note is how the base sample
-is removed prior to $\text{LPC Sum}_i$ calculation,
+is removed prior to $\text{QLP Sum}_i$ calculation,
 how it is re-added during $\text{Sample}_i$ calculation
 and how the next sample's QLP Coefficient values are shifted.
 
@@ -1501,8 +1501,8 @@ channels & assignment \\
 \WRITE 0 in 8 unsigned bits\tcc*[r]{interlacing shift}
 \WRITE 0 in 8 unsigned bits\tcc*[r]{interlacing leftweight}
 \SAMPLESIZE $\leftarrow \text{\BPS} - (\text{uncompressed LSBs} \times 8)$\;
-compute $\text{LPC coefficients}_0$ and $\text{Residual}_0$ for $\text{Channel}_0$ with \SAMPLESIZE\;
-write subframe header with $\text{LPC coefficients}_0$\;
+compute $\text{QLP coefficients}_0$ and $\text{Residual}_0$ for $\text{Channel}_0$ with \SAMPLESIZE\;
+write subframe header with $\text{QLP coefficients}_0$\;
 \If{$\text{uncompressed LSBs} > 0$}{
   \For{i = 0 \emph{\KwTo}\PCMCOUNT}{
     \WRITE $\text{LSB}_i$ in $(\text{uncompressed LSBs} \times 8)$ unsigned bits\;
@@ -1539,10 +1539,10 @@ write residual block $\text{Residual}_0$\;
 \WRITE interlacing leftweight in 8 unsigned bits\;
 correlate $\text{Channel}_0$,$\text{Channel}_1$ to $\text{Correlated}_0$,$\text{Correlated}_1$ with interlacing shift and leftweight\;
 \SAMPLESIZE $\leftarrow \text{\BPS} - (\text{uncompressed LSBs} \times 8) + 1$\;
-compute $\text{LPC Coefficients}_0$ and $\text{Residual}_0$ for $\text{Correlated}_0$ with \SAMPLESIZE\;
-compute $\text{LPC Coefficients}_1$ and $\text{Residual}_1$ for $\text{Correlated}_1$ with \SAMPLESIZE\;
-write subframe header with $\text{LPC Coefficients}_0$\;
-write subframe header with $\text{LPC Coefficients}_1$\;
+compute $\text{QLP Coefficients}_0$ and $\text{Residual}_0$ for $\text{Correlated}_0$ with \SAMPLESIZE\;
+compute $\text{QLP Coefficients}_1$ and $\text{Residual}_1$ for $\text{Correlated}_1$ with \SAMPLESIZE\;
+write subframe header with $\text{QLP Coefficients}_0$\;
+write subframe header with $\text{QLP Coefficients}_1$\;
 \If{$\text{uncompressed LSBs} > 0$}{
   \For{i = 0 \emph{\KwTo}\PCMCOUNT}{
     \WRITE $\text{LSB}_i$ in $(\text{uncompressed LSBs} \times 8)$ unsigned bits\;
@@ -1558,7 +1558,7 @@ write residual block $\text{Residual}_1$\;
 {\relsize{-1}
 \ALGORITHM{2 channels of PCM data, interlacing shift, interlacing leftweight}{2 correlated channels of PCM data}
 \SetKwData{PCMCOUNT}{PCM frame count}
-\eIf{$\text{interlacing shift} > 0$}{
+\eIf{$\text{interlacing leftweight} > 0$}{
   \For{i = 0 \emph{\KwTo}\PCMCOUNT}{
     $\text{Correlated}_{0~i} \leftarrow \text{Channel}_{1~i} + \left\lfloor\frac{(\text{Channel}_{0~i} - \text{Channel}_{1~i}) \times \text{interlacing leftweight}}{2 ^ \text{interlacing shift}}\right\rfloor$\;
     $\text{Correlated}_{1~i} \leftarrow \text{Channel}_{0~i} - \text{Channel}_{1~i}$\;
@@ -1591,9 +1591,9 @@ $i$ & $\text{Channel}_{0~i}$ & $\text{Channel}_{1~i}$ & \text{Correlated}_{0~i} 
 
 \clearpage
 
-\subsection{Computing LPC Coefficients and Residual}
+\subsection{Computing QLP Coefficients and Residual}
 {\relsize{-1}
-\ALGORITHM{a list of signed PCM samples, sample size, encoding parameters}{a list of 4 or 8 signed LPC values, a block of residual data; or a \textit{residual overflow} exception}
+\ALGORITHM{a list of signed PCM samples, sample size, encoding parameters}{a list of 4 or 8 signed QLP coefficients, a block of residual data; or a \textit{residual overflow} exception}
 \SetKwData{SAMPLES}{subframe samples}
 \SetKwData{WINDOWED}{windowed samples}
 \SetKwData{AUTOCORRELATIONS}{autocorrelation values}
@@ -1922,34 +1922,35 @@ error &\leftarrow \texttt{-161.35} - -161 = \texttt{-0.35} \\
 \ALGORITHM{a list of signed PCM samples, a list of 4 or 8 QLP coefficients}{a list of signed residual values}
 \SetKwFunction{SIGN}{sign}
 \SetKw{BREAK}{break}
-\SetKwData{ORIGSIGN}{original sign}
+\SetKwData{ERROR}{Error}
 $\text{Residual}_0 \leftarrow \text{Sample}_0$\;
 \For{i = 1 \emph{\KwTo}coefficient count + 1}{
   $\text{Residual}_i \leftarrow \text{Sample}_i - \text{Sample}_{i - 1}$
 }
 \For{i = coefficient count + 1 \emph{\KwTo}sample count}{
   $\text{Base Sample}_i \leftarrow \text{Sample}_{i - coeff.~count - 1}$\;
-  $\text{LPC Sum}_i \leftarrow \overset{coeff.~count - 1}{\underset{j = 0}{\sum}} \text{QLP Coefficient}_j \times (\text{Sample}_{i - j - 1} - \text{Base Sample}_i)$\;
-  $\text{Residual}_i \leftarrow \text{Sample}_i - \left(\left\lfloor\frac{\text{LPC Sum}_i + 2 ^ 8}{2 ^ 9}\right\rfloor + \text{Base Sample}_i\right)$\;
+  $\text{QLP Sum}_i \leftarrow \overset{coeff.~count - 1}{\underset{j = 0}{\sum}} \text{QLP Coefficient}_j \times (\text{Sample}_{i - j - 1} - \text{Base Sample}_i)$\;
+  $\text{\ERROR} \leftarrow \text{Sample}_i - \left(\left\lfloor\frac{\text{QLP Sum}_i + 2 ^ 8}{2 ^ 9}\right\rfloor + \text{Base Sample}_i\right)$\;
+  $\text{Residual}_i \leftarrow \text{\ERROR}$\;
   \BlankLine
-  \uIf(\tcc*[f]{modify QLP coefficients}){$\text{Residual}_i > 0$}{
+  \uIf(\tcc*[f]{modify QLP coefficients}){$\text{\ERROR} > 0$}{
     \For{j = 0 \emph{\KwTo}$\text{coefficient count}$}{
       $diff \leftarrow \text{Base Sample}_i - \text{Samples}_{i - coeff.~count + j}$\;
       $sign \leftarrow \SIGN(diff)$\;
       $\text{QLP Coefficient}_{coeff.~count - j - 1} \leftarrow \text{QLP Coefficient}_{coeff.~count - j - 1} - sign$\;
-      $\text{Residual}_i \leftarrow \text{Residual}_i - \left\lfloor\frac{diff \times sign}{2 ^ 9}\right\rfloor \times (j + 1)$\;
-      \If{$\text{Residual}_i \leq 0$}{
+      $\text{\ERROR} \leftarrow \text{\ERROR} - \left\lfloor\frac{diff \times sign}{2 ^ 9}\right\rfloor \times (j + 1)$\;
+      \If{$\text{\ERROR} \leq 0$}{
         \BREAK\;
       }
     }
   }
-  \ElseIf{$\text{Residual}_i < 0$}{
+  \ElseIf{$\text{\ERROR} < 0$}{
     \For{j = 0 \emph{\KwTo}$\text{coefficient count}$}{
       $diff \leftarrow \text{Base Sample}_i - \text{Samples}_{i - coeff.~count + j}$\;
       $sign \leftarrow \SIGN(diff)$\;
       $\text{QLP Coefficient}_{coeff.~count - j - 1} \leftarrow \text{QLP Coefficient}_{coeff.~count - j - 1} + sign$\;
-      $\text{Residual}_i \leftarrow \text{Residual}_i - \left\lfloor\frac{diff \times -sign}{2 ^ 9}\right\rfloor \times (j + 1)$\;
-      \If{$\text{Residual}_i \geq 0$}{
+      $\text{\ERROR} \leftarrow \text{\ERROR} - \left\lfloor\frac{diff \times -sign}{2 ^ 9}\right\rfloor \times (j + 1)$\;
+      \If{$\text{\ERROR} \geq 0$}{
         \BREAK\;
       }
     }
@@ -1980,7 +1981,7 @@ the subframe's residuals are calculate as follows:
 \vskip .15in
 \noindent
 \begin{tabular}{r||r|r|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}}
-$i$ & $\text{Sample}_i$ & $\text{Base}_i$ & \text{LPC Sum}_i & \text{Residual}_i & \text{QLP Coeff.}_{(i + 1)~j} \\
+$i$ & $\text{Sample}_i$ & $\text{Base}_i$ & \text{QLP Sum}_i & \text{Residual}_i & \text{QLP Coeff.}_{(i + 1)~j} \\
 \hline
 0 & 0 & & & 0 \\
 1 & 16 & & & 16 - 0 = 16 \\

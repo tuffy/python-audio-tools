@@ -205,7 +205,7 @@ class ALACDecoder:
         qlp_shift_needed = self.reader.read(4)
         rice_modifier = self.reader.read(3)
         qlp_coefficients = [self.reader.read_signed(16)
-                        for i in xrange(self.reader.read(5))]
+                            for i in xrange(self.reader.read(5))]
 
         return (qlp_shift_needed, qlp_coefficients)
 

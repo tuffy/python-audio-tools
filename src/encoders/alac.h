@@ -5,6 +5,7 @@
 #endif
 
 #include <stdint.h>
+#include <setjmp.h>
 #include "../bitstream.h"
 #include "../array2.h"
 
@@ -27,8 +28,6 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-typedef enum {OK, ERROR, RESIDUAL_OVERFLOW} status;
-
 struct alac_encoding_options {
     unsigned block_size;
     unsigned initial_history;
@@ -36,8 +35,6 @@ struct alac_encoding_options {
     unsigned maximum_k;
     unsigned minimum_interlacing_leftweight;
     unsigned maximum_interlacing_leftweight;
-    unsigned minimum_interlacing_shift;
-    unsigned maximum_interlacing_shift;
 };
 
 /*this is a container for encoding options and reusable data buffers*/
@@ -53,8 +50,9 @@ struct alac_context {
     array_i* LSBs;
     array_ia* channels_MSB;
 
-    array_i* LPC_coefficients0;
-    array_i* LPC_coefficients1;
+    array_ia* correlated_channels;
+    array_i* qlp_coefficients0;
+    array_i* qlp_coefficients1;
     BitstreamWriter *residual0;
     BitstreamWriter *residual1;
 
@@ -64,10 +62,20 @@ struct alac_context {
     array_fa* lp_coefficients;
     array_i* qlp_coefficients4;
     array_i* qlp_coefficients8;
+    array_i* residual_values4;
+    array_i* residual_values8;
+    BitstreamWriter *residual_block4;
+    BitstreamWriter *residual_block8;
 
     BitstreamWriter *compressed_frame;
-    BitstreamWriter *best_frame;
-    BitstreamWriter *current_frame;
+    BitstreamWriter *interlaced_frame;
+    BitstreamWriter *best_interlaced_frame;
+
+    /*set during write_frame
+      in case a single residual value exceeds the maximum allowed
+      when writing a compressed frame
+      which means we need to write an uncompressed frame instead*/
+    jmp_buf residual_overflow;
 };
 
 enum {LOG_SAMPLE_SIZE, LOG_BYTE_SIZE, LOG_FILE_OFFSET};
@@ -90,39 +98,55 @@ alac_byte_counter(uint8_t byte, void* counter);
 
 /*writes a full set of ALAC frames,
   complete with trailing stop '111' bits and byte-aligned*/
-status
+void
 alac_write_frameset(BitstreamWriter *bs,
                     struct alac_context* encoder,
                     const array_ia* channels);
 
 /*write a single ALAC frame, compressed or uncompressed as necessary*/
-status
+void
 alac_write_frame(BitstreamWriter *bs,
                  struct alac_context* encoder,
                  const array_ia* channels);
 
 /*writes a single uncompressed ALAC frame, not including the channel count*/
-status
+void
 alac_write_uncompressed_frame(BitstreamWriter *bs,
                               struct alac_context* encoder,
                               const array_ia* channels);
 
-status
+void
 alac_write_compressed_frame(BitstreamWriter *bs,
                             struct alac_context* encoder,
                             const array_ia* channels);
 
-status
+void
 alac_write_non_interlaced_frame(BitstreamWriter *bs,
                                 struct alac_context* encoder,
                                 unsigned uncompressed_LSBs,
                                 const array_i* LSBs,
                                 const array_ia* channels);
 
-status
+void
+alac_correlate_channels(const array_ia* channels,
+                        unsigned interlacing_shift,
+                        unsigned interlacing_leftweight,
+                        array_ia* correlated_channels);
+
+void
+alac_write_interlaced_frame(BitstreamWriter *bs,
+                            struct alac_context* encoder,
+                            unsigned uncompressed_LSBs,
+                            const array_i* LSBs,
+                            unsigned interlacing_shift,
+                            unsigned interlacing_leftweight,
+                            const array_ia* channels);
+
+void
 alac_compute_coefficients(struct alac_context* encoder,
                           const array_i* samples,
-                          array_i* LPC_coefficients,
+                          unsigned sample_size,
+                          array_i* qlp_coefficients,
                           BitstreamWriter *residual);
 
 /*given a set of integer samples,
@@ -152,46 +176,21 @@ alac_quantize_coefficients(const array_fa* lp_coefficients,
 
 void
 alac_write_subframe_header(BitstreamWriter *bs,
-                           const array_i* LPC_coefficients);
+                           const array_i* qlp_coefficients);
 
+void
+alac_calculate_residuals(const array_i* samples,
+                         const array_i* qlp_coefficients,
+                         array_i* residuals);
 
-/* status */
-/* alac_write_interlaced_frame(BitstreamWriter *bs, */
-/*                             struct alac_encoding_options *options, */
-/*                             int interlacing_shift, */
-/*                             int interlacing_leftweight, */
-/*                             int bits_per_sample, */
-/*                             struct ia_array *samples); */
+void
+alac_encode_residuals(struct alac_context* encoder,
+                      unsigned sample_size,
+                      const array_i* residuals,
+                      BitstreamWriter *residual_block);
 
-/* status */
-/* alac_correlate_channels(struct ia_array *output, */
-/*                         struct ia_array *input, */
-/*                         int interlacing_shift, */
-/*                         int interlacing_leftweight); */
-
-/* status */
-/* alac_encode_subframe(struct i_array *residuals, */
-/*                      struct i_array *samples, */
-/*                      struct i_array *coefficients, */
-/*                      int predictor_quantitization); */
-
-/* /\*writes a single unsigned residal to the current bitstream*\/ */
-/* void */
-/* alac_write_residual(BitstreamWriter *bs, */
-/*                     int residual, */
-/*                     int k, */
-/*                     int bits_per_sample); */
-
-/* status */
-/* alac_write_residuals(BitstreamWriter *bs, */
-/*                      struct i_array *residuals, */
-/*                      int bits_per_sample, */
-/*                      struct alac_encoding_options *options); */
-
-/* void */
-/* alac_error(const char* message); */
-
-/* void */
-/* alac_warning(const char* message); */
+void
+alac_write_residual(unsigned value, unsigned k, unsigned sample_size,
+                    BitstreamWriter* residual);
 
 #endif
