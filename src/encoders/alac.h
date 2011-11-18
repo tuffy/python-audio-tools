@@ -101,7 +101,7 @@ alac_byte_counter(uint8_t byte, void* counter);
 void
 alac_write_frameset(BitstreamWriter *bs,
                     struct alac_context* encoder,
-                    const array_ia* channels);
+                    array_ia* channels);
 
 /*write a single ALAC frame, compressed or uncompressed as necessary*/
 void

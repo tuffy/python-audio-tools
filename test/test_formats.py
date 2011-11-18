@@ -1842,33 +1842,73 @@ class ALACFileTest(LosslessFileTest):
                 self.assertEqual(track.channels(), len(cm))
                 self.assertEqual(track.channel_mask(), cm)
 
-            for mask in [["front_left",
+            for mask in [["front_center",
+                          "front_left",
+                          "front_right"],
+                         ["front_center",
+                          "front_left",
                           "front_right",
-                          "front_center"],
-                         ["front_left",
+                          "back_center"],
+                         ["front_center",
+                          "front_left",
                           "front_right",
                           "back_left",
                           "back_right"],
-                         ["front_left",
+                         ["front_center",
+                          "front_left",
                           "front_right",
-                          "front_center",
                           "back_left",
-                          "back_right"],
-                         ["front_left",
+                          "back_right",
+                          "low_frequency"],
+                         ["front_center",
+                          "front_left",
                           "front_right",
-                          "front_center",
-                          "low_frequency",
                           "back_left",
-                          "back_right"]]:
+                          "back_right",
+                          "back_center",
+                          "low_frequency"],
+                         ["front_center",
+                          "front_left_of_center",
+                          "front_right_of_center",
+                          "front_left",
+                          "front_right",
+                          "back_left",
+                          "back_right",
+                          "low_frequency"]]:
                 cm = audiotools.ChannelMask.from_fields(**dict(
                         [(f,True) for f in mask]))
                 track = self.audio_class.from_pcm(temp.name, BLANK_PCM_Reader(
                         1, channels=len(cm), channel_mask=int(cm)))
                 self.assertEqual(track.channels(), len(cm))
-                self.assertEqual(track.channel_mask(), 0)
+                self.assertEqual(track.channel_mask(), cm)
                 track = audiotools.open(temp.name)
                 self.assertEqual(track.channels(), len(cm))
-                self.assertEqual(track.channel_mask(), 0)
+                self.assertEqual(track.channel_mask(), cm)
+
+            #ensure invalid channel counts raise an exception
+            self.assertRaises(audiotools.UnsupportedChannelCount,
+                              self.audio_class.from_pcm,
+                              temp.name,
+                              BLANK_PCM_Reader(1, channels=9, channel_mask=0))
+
+            self.assertRaises(audiotools.UnsupportedChannelCount,
+                              self.audio_class.from_pcm,
+                              temp.name,
+                              BLANK_PCM_Reader(1, channels=10, channel_mask=0))
+
+            #ensure valid channel counts with invalid channel masks
+            #raise an exception
+            self.assertRaises(audiotools.UnsupportedChannelMask,
+                              self.audio_class.from_pcm,
+                              temp.name,
+                              BLANK_PCM_Reader(1, channels=4,
+                                               channel_mask=0x0033))
+
+            self.assertRaises(audiotools.UnsupportedChannelMask,
+                              self.audio_class.from_pcm,
+                              temp.name,
+                              BLANK_PCM_Reader(1, channels=5,
+                                               channel_mask=0x003B))
         finally:
             temp.close()
 
@@ -2032,51 +2072,85 @@ class ALACFileTest(LosslessFileTest):
 
     def __multichannel_stream_variations__(self):
         for stream in [
-            test_streams.Simple_Sine(200000, 44100, 0x7, 16,
+            test_streams.Simple_Sine(200000, 44100, 0x0007, 16,
                                      (6400, 10000),
                                      (12800, 20000),
                                      (30720, 30000)),
-            test_streams.Simple_Sine(200000, 44100, 0x33, 16,
+            test_streams.Simple_Sine(200000, 44100, 0x0107, 16,
                                      (6400, 10000),
                                      (12800, 20000),
                                      (19200, 30000),
                                      (16640, 40000)),
-            test_streams.Simple_Sine(200000, 44100, 0x37, 16,
+            test_streams.Simple_Sine(200000, 44100, 0x0037, 16,
                                      (6400, 10000),
                                      (8960, 15000),
                                      (11520, 20000),
                                      (12800, 25000),
                                      (14080, 30000)),
-            test_streams.Simple_Sine(200000, 44100, 0x3F, 16,
+            test_streams.Simple_Sine(200000, 44100, 0x003F, 16,
                                      (6400, 10000),
                                      (11520, 15000),
                                      (16640, 20000),
                                      (21760, 25000),
                                      (26880, 30000),
                                      (30720, 35000)),
+            test_streams.Simple_Sine(200000, 44100, 0x013F, 16,
+                                     (6400, 10000),
+                                     (11520, 15000),
+                                     (16640, 20000),
+                                     (21760, 25000),
+                                     (26880, 30000),
+                                     (30720, 35000),
+                                     (29000, 40000)),
+            test_streams.Simple_Sine(200000, 44100, 0x00FF, 16,
+                                     (6400, 10000),
+                                     (11520, 15000),
+                                     (16640, 20000),
+                                     (21760, 25000),
+                                     (26880, 30000),
+                                     (30720, 35000),
+                                     (29000, 40000),
+                                     (28000, 45000)),
 
-            test_streams.Simple_Sine(200000, 44100, 0x7, 24,
+            test_streams.Simple_Sine(200000, 44100, 0x0007, 24,
                                      (1638400, 10000),
                                      (3276800, 20000),
                                      (7864320, 30000)),
-            test_streams.Simple_Sine(200000, 44100, 0x33, 24,
+            test_streams.Simple_Sine(200000, 44100, 0x0107, 24,
                                      (1638400, 10000),
                                      (3276800, 20000),
                                      (4915200, 30000),
                                      (4259840, 40000)),
-            test_streams.Simple_Sine(200000, 44100, 0x37, 24,
+            test_streams.Simple_Sine(200000, 44100, 0x0037, 24,
                                      (1638400, 10000),
                                      (2293760, 15000),
                                      (2949120, 20000),
                                      (3276800, 25000),
                                      (3604480, 30000)),
-            test_streams.Simple_Sine(200000, 44100, 0x3F, 24,
+            test_streams.Simple_Sine(200000, 44100, 0x003F, 24,
                                      (1638400, 10000),
                                      (2949120, 15000),
                                      (4259840, 20000),
                                      (5570560, 25000),
                                      (6881280, 30000),
-                                     (7864320, 35000))]:
+                                     (7864320, 35000)),
+            test_streams.Simple_Sine(200000, 44100, 0x013F, 24,
+                                     (1638400, 10000),
+                                     (2949120, 15000),
+                                     (4259840, 20000),
+                                     (5570560, 25000),
+                                     (6881280, 30000),
+                                     (7864320, 35000),
+                                     (7000000, 40000)),
+            test_streams.Simple_Sine(200000, 44100, 0x00FF, 24,
+                                     (1638400, 10000),
+                                     (2949120, 15000),
+                                     (4259840, 20000),
+                                     (5570560, 25000),
+                                     (6881280, 30000),
+                                     (7864320, 35000),
+                                     (7000000, 40000),
+                                     (6000000, 45000))]:
             yield stream
 
     @FORMAT_ALAC

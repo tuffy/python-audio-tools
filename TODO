@@ -5086,7 +5086,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Add tracklint check/fix for mis-aligned seektables
 ** TODO Add unit tests for seektable errors
 * DONE Don't populate empty track_name, ISRC values during tracksplit
-* TODO Fix ALAC channel assignment
+* DONE Fix ALAC channel assignment
   Since the channel assignment is detailed in the specs,
   add proper support for them.
 ** DONE Update ALACAudio.channel_mask() method
@@ -5099,22 +5099,21 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Update py_encoders.encode_mdat
    Convert Wave channel order to ALAC channel order internally
    rather than punt that task to a reordering wrapper.
-** TODO Update decoders.ALACDecoder's .channel_mask attribute
-** TODO Update decoders.ALACDecoder's .read() method
+** DONE Update decoders.ALACDecoder's .channel_mask attribute
+** DONE Update decoders.ALACDecoder's .read() method
    Convert ALAC channel order to Wave channel order internally
    rather than punt that task to a reordering wrapper.
-** TODO Update encoders.encode_alac
+** DONE Update encoders.encode_alac
    Convert Wave channel order to ALAC channel order internally
    rather than punt that task to a reordering wrapper.
-
-** TODO Add unit tests to ensure channel variants encode/decode correctly
-   - [ ] 1 channel
-   - [ ] 2 channels
-   - [ ] 3 channels
-   - [ ] 4 channels
-   - [ ] 5 channels
-   - [ ] 6 channels
-   - [ ] 7 channels
-   - [ ] 8 channels
-*** TODO Add unit tests to ensure invalid channel counts aren't encoded
-*** TODO Add unit tests to ensure invalid channel masks aren't encoded
+** DONE Add unit tests to ensure channel variants encode/decode correctly
+   - [X] 1 channel
+   - [X] 2 channels
+   - [X] 3 channels
+   - [X] 4 channels
+   - [X] 5 channels
+   - [X] 6 channels
+   - [X] 7 channels
+   - [X] 8 channels
+*** DONE Add unit tests to ensure invalid channel counts aren't encoded
+*** DONE Add unit tests to ensure invalid channel masks aren't encoded

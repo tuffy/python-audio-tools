@@ -228,11 +228,23 @@ ALACDecoder_channel_mask(decoders_ALACDecoder *self, void *closure)
 {
     switch (self->channels) {
     case 1:
-        return Py_BuildValue("I", 0x4);
+        return Py_BuildValue("I", 0x0004);
     case 2:
-        return Py_BuildValue("I", 0x3);
+        return Py_BuildValue("I", 0x0003);
+    case 3:
+        return Py_BuildValue("I", 0x0007);
+    case 4:
+        return Py_BuildValue("I", 0x0107);
+    case 5:
+        return Py_BuildValue("I", 0x0037);
+    case 6:
+        return Py_BuildValue("I", 0x003F);
+    case 7:
+        return Py_BuildValue("I", 0x013F);
+    case 8:
+        return Py_BuildValue("I", 0x00FF);
     default:
-        return Py_BuildValue("I", 0x0);
+        return Py_BuildValue("I", 0x0000);
     }
 }
 
@@ -287,7 +299,7 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
                                       frameset_channels->data[0]->size);
 
         /*convert ALAC channel assignment to standard audiotools assignment*/
-        /*FIXME*/
+        alacdec_alac_order_to_wave_order(frameset_channels);
 
         /*finally, build and return framelist object from the sample data*/
         return array_ia_to_FrameList(self->audiotools_pcm,
@@ -299,6 +311,115 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
         PyErr_SetString(PyExc_IOError, "EOF during frame reading");
         return NULL;
     }
+}
+
+void
+alacdec_alac_order_to_wave_order(array_ia* alac_ordered)
+{
+    array_ia* wave_ordered = array_ia_new();
+    array_i* wave_ch;
+    unsigned i;
+    wave_ordered->resize(wave_ordered, alac_ordered->size);
+
+    switch (alac_ordered->size) {
+    case 2:
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[0]); /*left*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[1]); /*right*/
+        break;
+    case 1:
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[0]); /*center*/
+        break;
+    case 3:
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[1]); /*left*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[2]); /*right*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[0]); /*center*/
+        break;
+    case 4:
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[1]); /*left*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[2]); /*right*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[0]); /*center*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[3]); /*back center*/
+        break;
+    case 5:
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[1]); /*left*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[2]); /*right*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[0]); /*center*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[3]); /*back left*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[4]); /*back right*/
+        break;
+    case 6:
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[1]); /*left*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[2]); /*right*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[0]); /*center*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[5]); /*LFE*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[3]); /*back left*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[4]); /*back right*/
+        break;
+    case 7:
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[1]); /*left*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[2]); /*right*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[0]); /*center*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[6]); /*LFE*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[3]); /*back left*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[4]); /*back right*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[5]); /*back center*/
+        break;
+    case 8:
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[3]); /*left*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[4]); /*right*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[0]); /*center*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[7]); /*LFE*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[5]); /*back left*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[6]); /*back right*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[1]); /*left of center*/
+        wave_ch = wave_ordered->append(wave_ordered);
+        wave_ch->swap(wave_ch, alac_ordered->data[2]); /*right of center*/
+        break;
+    default:
+        for (i = 0; i < alac_ordered->size; i++) {
+            wave_ch = wave_ordered->append(wave_ordered);
+            wave_ch->swap(wave_ch, alac_ordered->data[i]);
+        }
+        break;
+    }
+
+    wave_ordered->swap(wave_ordered, alac_ordered);
+    wave_ordered->del(wave_ordered);
 }
 
 status

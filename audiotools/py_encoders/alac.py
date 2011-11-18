@@ -140,7 +140,7 @@ def encode_frameset(writer, pcmreader, options, frame):
                      [frame.channel(0), frame.channel(1)],
                      [frame.channel(4), frame.channel(5)],
                      [frame.channel(6)],
-                     [frame.channel(7)]]:
+                     [frame.channel(3)]]:
             encode_frame(writer, pcmreader, options, pair)
     elif (pcmreader.channels == 8):
         for pair in [[frame.channel(2)],

@@ -86,7 +86,7 @@ struct array_i_s {
     /*returns the sum of all items in the array*/
     int (*sum)(const struct array_i_s *array);
 
-    /*returns a new array with all the items copied from this array*/
+    /*makes "copy" a duplicate of this array*/
     void (*copy)(const struct array_i_s *array, struct array_i_s *copy);
 
     /*links the contents of this array to a read-only array*/
@@ -304,7 +304,7 @@ struct array_f_s {
     /*returns the sum of all items in the array*/
     double (*sum)(const struct array_f_s *array);
 
-    /*returns a new array with all the items copied from this array*/
+    /*makes "copy" a duplicate of this array*/
     void (*copy)(const struct array_f_s *array, struct array_f_s *copy);
 
     /*links the contents of this array to a read-only array*/
@@ -509,6 +509,12 @@ struct array_ia_s {
     int (*equals)(const struct array_ia_s *array,
                   const struct array_ia_s *compare);
 
+    /*makes "copy" a duplicate of this array*/
+    void (*copy)(const struct array_ia_s *array, struct array_ia_s *copy);
+
+    /*swaps the contents of this array with another array*/
+    void (*swap)(struct array_ia_s *array, struct array_ia_s *swap);
+
     /*splits the array into "head" and "tail" arrays
       such that "head" contains a copy of up to "count" items
       while "tail" contains the rest*/
@@ -532,6 +538,8 @@ struct array_i_s* array_ia_append(struct array_ia_s *array);
 void array_ia_extend(struct array_ia_s *array, const struct array_ia_s *to_add);
 int array_ia_equals(const struct array_ia_s *array,
                     const struct array_ia_s *compare);
+void array_ia_copy(const struct array_ia_s *array, struct array_ia_s *copy);
+void array_ia_swap(struct array_ia_s *array, struct array_ia_s *swap);
 void array_ia_reverse(struct array_ia_s *array);
 void array_ia_split(const struct array_ia_s *array, unsigned count,
                     struct array_ia_s *head, struct array_ia_s *tail);
@@ -570,14 +578,20 @@ struct array_fa_s {
     int (*equals)(const struct array_fa_s *array,
                   const struct array_fa_s *compare);
 
-    /*reverses the items in the array*/
-    void (*reverse)(struct array_fa_s *array);
+    /*makes "copy" a duplicate of this array*/
+    void (*copy)(const struct array_fa_s *array, struct array_fa_s *copy);
+
+    /*swaps the contents of this array with another array*/
+    void (*swap)(struct array_fa_s *array, struct array_fa_s *swap);
 
     /*splits the array into "head" and "tail" arrays
       such that "head" contains a copy of up to "count" items
       while "tail" contains the rest*/
     void (*split)(const struct array_fa_s *array, unsigned count,
                   struct array_fa_s *head, struct array_fa_s *tail);
+
+    /*reverses the items in the array*/
+    void (*reverse)(struct array_fa_s *array);
 
     void (*print)(const struct array_fa_s *array, FILE* output);
 };
@@ -593,6 +607,8 @@ struct array_f_s* array_fa_append(struct array_fa_s *array);
 void array_fa_extend(struct array_fa_s *array, const struct array_fa_s *to_add);
 int array_fa_equals(const struct array_fa_s *array,
                     const struct array_fa_s *compare);
+void array_fa_copy(const struct array_fa_s *array, struct array_fa_s *copy);
+void array_fa_swap(struct array_fa_s *array, struct array_fa_s *swap);
 void array_fa_reverse(struct array_fa_s *array);
 void array_fa_split(const struct array_fa_s *array, unsigned count,
                     struct array_fa_s *head, struct array_fa_s *tail);

@@ -99,6 +99,11 @@ alacdec_parse_decoding_parameters(decoders_ALACDecoder *self);
 status
 alacdec_seek_mdat(BitstreamReader* alac_stream);
 
+/*swaps the ALAC-ordered set of channels to Wave order,
+  depending on the number of ALAC-ordered channels*/
+void
+alacdec_alac_order_to_wave_order(array_ia* alac_ordered);
+
 /*appends 1 or 2 channels worth of data from the current bitstream
   to the "samples" arrays*/
 status

@@ -294,24 +294,108 @@ alac_byte_counter(uint8_t byte, void* counter)
     *i_counter += 1;
 }
 
+static inline array_ia*
+extract_1ch(array_ia* frameset, unsigned channel, array_ia* pair)
+{
+    pair->reset(pair);
+    frameset->data[channel]->swap(frameset->data[channel],
+                                  pair->append(pair));
+    return pair;
+}
+
+static inline array_ia*
+extract_2ch(array_ia* frameset, unsigned channel0, unsigned channel1,
+            array_ia* pair)
+{
+    pair->reset(pair);
+    frameset->data[channel0]->swap(frameset->data[channel0],
+                                   pair->append(pair));
+    frameset->data[channel1]->swap(frameset->data[channel1],
+                                   pair->append(pair));
+    return pair;
+}
+
+
 void
 alac_write_frameset(BitstreamWriter *bs,
                     struct alac_context* encoder,
-                    const array_ia* channels)
+                    array_ia* channels)
 {
+    array_ia* channel_pair = array_ia_new();
+    unsigned i;
+
     switch (channels->size) {
     case 1:
     case 2:
         alac_write_frame(bs, encoder, channels);
-        bs->write(bs, 3, 7);  /*write the trailing '111' bits*/
-        bs->byte_align(bs);   /*and byte-align frameset*/
-        return;
+        break;
+    case 3:
+        alac_write_frame(bs, encoder,
+                         extract_1ch(channels, 2, channel_pair));
+        alac_write_frame(bs, encoder,
+                         extract_2ch(channels, 0, 1, channel_pair));
+        break;
+    case 4:
+        alac_write_frame(bs, encoder,
+                         extract_1ch(channels, 2, channel_pair));
+        alac_write_frame(bs, encoder,
+                         extract_2ch(channels, 0, 1, channel_pair));
+        alac_write_frame(bs, encoder,
+                         extract_1ch(channels, 3, channel_pair));
+        break;
+    case 5:
+        alac_write_frame(bs, encoder,
+                         extract_1ch(channels, 2, channel_pair));
+        alac_write_frame(bs, encoder,
+                         extract_2ch(channels, 0, 1, channel_pair));
+        alac_write_frame(bs, encoder,
+                         extract_2ch(channels, 3, 4, channel_pair));
+        break;
+    case 6:
+        alac_write_frame(bs, encoder,
+                         extract_1ch(channels, 2, channel_pair));
+        alac_write_frame(bs, encoder,
+                         extract_2ch(channels, 0, 1, channel_pair));
+        alac_write_frame(bs, encoder,
+                         extract_2ch(channels, 4, 5, channel_pair));
+        alac_write_frame(bs, encoder,
+                         extract_1ch(channels, 3, channel_pair));
+        break;
+    case 7:
+        alac_write_frame(bs, encoder,
+                         extract_1ch(channels, 2, channel_pair));
+        alac_write_frame(bs, encoder,
+                         extract_2ch(channels, 0, 1, channel_pair));
+        alac_write_frame(bs, encoder,
+                         extract_2ch(channels, 4, 5, channel_pair));
+        alac_write_frame(bs, encoder,
+                         extract_1ch(channels, 6, channel_pair));
+        alac_write_frame(bs, encoder,
+                         extract_1ch(channels, 3, channel_pair));
+        break;
+    case 8:
+        alac_write_frame(bs, encoder,
+                         extract_1ch(channels, 2, channel_pair));
+        alac_write_frame(bs, encoder,
+                         extract_2ch(channels, 6, 7, channel_pair));
+        alac_write_frame(bs, encoder,
+                         extract_2ch(channels, 0, 1, channel_pair));
+        alac_write_frame(bs, encoder,
+                         extract_2ch(channels, 4, 5, channel_pair));
+        alac_write_frame(bs, encoder,
+                         extract_1ch(channels, 3, channel_pair));
+        break;
     default:
-        /*FIXME*/
-        /*unsupported channel count*/
-        abort();
-        return;
+        for (i = 0; i < channels->size; i++) {
+            alac_write_frame(bs, encoder,
+                             extract_1ch(channels, i, channel_pair));
+        }
+        break;
     }
+
+    bs->write(bs, 3, 7);  /*write the trailing '111' bits*/
+    bs->byte_align(bs);   /*and byte-align frameset*/
+    channel_pair->del(channel_pair);
 }
 
 void

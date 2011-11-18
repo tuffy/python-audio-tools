@@ -253,6 +253,8 @@ ARRAY_LINK(array_f_link, array_f, array_lf)
     }
 ARRAY_SWAP(array_i_swap, array_i)
 ARRAY_SWAP(array_f_swap, array_f)
+ARRAY_SWAP(array_ia_swap, array_ia)
+ARRAY_SWAP(array_fa_swap, array_fa)
 
 #define ARRAY_HEAD(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE)     \
     void                                                            \
@@ -762,6 +764,8 @@ array_ia_new(void)
     a->append = array_ia_append;
     a->extend = array_ia_extend;
     a->equals = array_ia_equals;
+    a->copy = array_ia_copy;
+    a->swap = array_ia_swap;
     a->split = array_ia_split;
     a->print = array_ia_print;
 
@@ -837,6 +841,19 @@ ARRAY_A_APPEND(array_fa_append, array_fa, array_f)
     }
 ARRAY_A_EXTEND(array_ia_extend, array_ia)
 ARRAY_A_EXTEND(array_fa_extend, array_fa)
+
+#define ARRAY_A_COPY(FUNC_NAME, ARRAY_TYPE) \
+    void                                                        \
+    FUNC_NAME(const ARRAY_TYPE *array, ARRAY_TYPE *copy)        \
+    {                                                           \
+        unsigned i;                                             \
+                                                                \
+        copy->reset(copy);                                      \
+        for (i = 0; i < array->size; i++)                         \
+            array->data[i]->copy(array->data[i], copy->append(copy));   \
+    }
+ARRAY_A_COPY(array_ia_copy, array_ia)
+ARRAY_A_COPY(array_fa_copy, array_fa)
 
 #define ARRAY_A_EQUALS(FUNC_NAME, ARRAY_TYPE) \
     int                                               \
@@ -953,6 +970,8 @@ array_fa_new(void)
     a->append = array_fa_append;
     a->extend = array_fa_extend;
     a->equals = array_fa_equals;
+    a->copy = array_fa_copy;
+    a->swap = array_fa_swap;
     a->split = array_fa_split;
     a->print = array_fa_print;
 

@@ -26,6 +26,8 @@ from audiotools import (AudioFile, InvalidFile, PCMReader, PCMConverter,
                         open, open_files, EncodingError, DecodingError,
                         WaveAudio, TempWaveReader,
                         ChannelMask, UnsupportedBitsPerSample,
+                        UnsupportedChannelMask,
+                        UnsupportedChannelCount,
                         BufferedPCMReader, to_pcm_progress,
                         at_a_time, VERSION, PCMReaderError,
                         __default_quality__, iter_last)
