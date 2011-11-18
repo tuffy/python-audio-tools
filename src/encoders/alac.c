@@ -1074,7 +1074,7 @@ alac_encode_residuals(struct alac_context* encoder,
                             residual_block);
         sign_modifier = 0;
 
-        if (unsigned_i < 0xFFFF) {
+        if (unsigned_i <= 0xFFFF) {
             history += ((int)(unsigned_i * history_multiplier) -
                         ((history * (int)history_multiplier) >> 9));
             i++;

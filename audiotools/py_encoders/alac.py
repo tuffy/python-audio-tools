@@ -515,7 +515,7 @@ def encode_residuals(writer, options, sample_size, residuals):
 
         sign_modifier = 0
 
-        if (unsigned < 65535):
+        if (unsigned <= 0xFFFF):
             history += ((unsigned * options.history_multiplier) -
                         ((history * options.history_multiplier) / 2 ** 9))
             i += 1
@@ -532,7 +532,7 @@ def encode_residuals(writer, options, sample_size, residuals):
                 history = 0
         else:
             i += 1
-            history = 65535
+            history = 0xFFFF
 
 
 def encode_residual(writer, unsigned, k, sample_size):

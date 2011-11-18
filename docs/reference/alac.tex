@@ -2071,7 +2071,7 @@ $i \leftarrow 0$\;
   $\WRITERESIDUAL(\text{unsigned}_i - \SIGNMODIFIER~,~\kappa~,~\text{sample size})$\;
   $\SIGNMODIFIER \leftarrow 0$\;
   \BlankLine
-  \eIf(\tcc*[f]{update history}){$\text{unsigned}_i < 65535$}{
+  \eIf(\tcc*[f]{update history}){$\text{unsigned}_i \leq 65535$}{
     $\HISTORY \leftarrow \HISTORY + (\text{unsigned}_i \times \HISTORYMULT) - \left\lfloor\frac{\HISTORY \times \HISTORYMULT}{2 ^ 9}\right\rfloor$\;
     $i \leftarrow i + 1$\;
     \BlankLine

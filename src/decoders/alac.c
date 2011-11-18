@@ -277,6 +277,7 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
                                    frameset_channels, channel_count) != OK) {
                 br_etry(mdat);
                 PyEval_RestoreThread(thread_state);
+                PyErr_SetString(PyExc_ValueError, self->error_message);
                 return NULL;
             } else {
                 /*ensure all frames have the same sample count*/
@@ -434,7 +435,9 @@ alacdec_read_frame(decoders_ALACDecoder *self,
     unsigned sample_count;
 
     /*read frame header*/
-    mdat->skip(mdat, 16);                   /*unused*/
+    if (mdat->read(mdat, 16) != 0) {
+        return alacdec_ValueError(self, "invalid unused bits");
+    }
     has_sample_count = mdat->read(mdat, 1);
     uncompressed_LSBs = mdat->read(mdat, 2);
     not_compressed = mdat->read(mdat, 1);
@@ -442,7 +445,6 @@ alacdec_read_frame(decoders_ALACDecoder *self,
         sample_count = self->max_samples_per_frame;
     else
         sample_count = mdat->read(mdat, 32);
-
 
     if (not_compressed == 1) {
         unsigned channel;
@@ -830,6 +832,7 @@ alacdec_decorrelate_channels(array_i* left,
 {
     unsigned size = left->size;
     unsigned i;
+    int64_t leftweight;
     int ch0_s;
     int ch1_s;
     int left_s;
@@ -839,8 +842,9 @@ alacdec_decorrelate_channels(array_i* left,
         ch0_s = left->data[i];
         ch1_s = right->data[i];
 
-        right_s = ch0_s - ((ch1_s * (int)interlacing_leftweight) >>
-                           (int)interlacing_shift);
+        leftweight = ch1_s * (int)interlacing_leftweight;
+        leftweight >>= interlacing_shift;
+        right_s = ch0_s - (int)leftweight;
         left_s = ch1_s + right_s;
 
         left->data[i]  = left_s;
@@ -1000,4 +1004,11 @@ read_mdhd_atom(BitstreamReader* mdhd_atom,
         br_etry(mdhd_atom);
         return 1;
     }
+}
+
+status
+alacdec_ValueError(decoders_ALACDecoder *decoder, char* message)
+{
+    decoder->error_message = message;
+    return ERROR;
 }

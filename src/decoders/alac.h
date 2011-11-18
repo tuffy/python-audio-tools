@@ -58,6 +58,9 @@ typedef struct {
 
     /*a framelist generator*/
     PyObject* audiotools_pcm;
+
+    /*a place to store error messages to be bubbled-up to the interpreter*/
+    char* error_message;
 } decoders_ALACDecoder;
 
 typedef enum {OK, ERROR} status;
@@ -105,7 +108,9 @@ void
 alacdec_alac_order_to_wave_order(array_ia* alac_ordered);
 
 /*appends 1 or 2 channels worth of data from the current bitstream
-  to the "samples" arrays*/
+  to the "samples" arrays
+  returns OK on success
+  or returns ERROR and sets self->error_message if some problem occurs*/
 status
 alacdec_read_frame(decoders_ALACDecoder *self,
                    BitstreamReader *mdat,
@@ -258,3 +263,9 @@ read_alac_atom(BitstreamReader* stsd_atom,
 int
 read_mdhd_atom(BitstreamReader* mdhd_atom,
                unsigned int* total_frames);
+
+/*sets the decoder's error_message to message and returns ERROR status
+  this does not make calls to Python which makes it safe to use
+  while threading is allowed elsewhere*/
+status
+alacdec_ValueError(decoders_ALACDecoder *decoder, char* message);
