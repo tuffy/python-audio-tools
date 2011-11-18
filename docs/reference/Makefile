@@ -133,24 +133,14 @@ ALAC = figures/alac/alac_atom.pdf \
 figures/alac/alac-atom-parse.pdf \
 figures/alac/atom.pdf \
 figures/alac/atoms.pdf \
-figures/alac/compressed_frame.pdf \
-figures/alac/frame_header.pdf \
-figures/alac/lag.pdf \
 figures/alac/mdhd.pdf \
 figures/alac/mdhd-parse.pdf \
-figures/alac/read_residual.pdf \
-figures/alac/residual.pdf \
 figures/alac/residual-build.pdf \
 figures/alac/residual-parse.pdf \
-figures/alac/residual_w.pdf \
 figures/alac/stream.pdf \
 figures/alac/subframe-build.pdf \
 figures/alac/subframe-parse.pdf \
-figures/alac/subframe_header.pdf \
-figures/alac/uncompressed_frame.pdf \
-figures/alac/wasted.pdf \
-figures/alac/write_residual.pdf \
-figures/flac/tukey.pdf
+figures/alac/subframe_header.pdf
 
 MLP = figures/mlp/channel_parameters.pdf \
 figures/mlp/codebook1.pdf \
@@ -325,27 +315,6 @@ figures/m4a/meta_atoms.pdf: figures/m4a/meta_atoms.fig
 
 figures/alac/atoms.pdf: figures/alac/atoms.fig
 	fig2dev -Z 5 -L pdf $< $@
-
-# figures/alac_read_residual.pdf: figures/alac_read_residual.fig
-# 	fig2dev -Z 5 -L pdf $< $@
-
-# figures/alac_read_residual.pdf: figures/alac_read_residual.dot
-# 	dot -Tpdf $< -o $@
-
-# figures/alac_write_residual.pdf: figures/alac_write_residual.fig
-# 	fig2dev -Z 5 -L pdf $< $@
-
-# figures/alac_write_residual.pdf: figures/alac_write_residual.dot
-# 	dot -Tpdf $< -o $@
-
-figures/alac/residual.pdf: figures/alac/residual.fig
-	fig2dev -Z 5 -L pdf $< $@
-
-figures/alac/residual_w.pdf: figures/alac/residual_w.fig
-	fig2dev -Z 5 -L pdf $< $@
-
-figures/alac/lag.pdf: figures/alac/lag.fig
-	fig2dev -Z 6 -L pdf $< $@
 
 figures/bitstream_bigendian.pdf: figures/bitstream_bigendian.fig
 	fig2dev -Z 6 -L pdf $< $@
