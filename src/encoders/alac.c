@@ -1,5 +1,4 @@
 #include "alac.h"
-#include "../common/misc.h"
 #include "../pcmconv.h"
 #include <assert.h>
 #include <math.h>

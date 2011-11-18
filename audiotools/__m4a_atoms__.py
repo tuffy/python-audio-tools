@@ -1143,9 +1143,8 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
         ilst_atoms = [M4A_ILST_Leaf_Atom(
                 cls.UNICODE_ATTRIB_TO_ILST[attrib],
                 [M4A_ILST_Unicode_Data_Atom(
-                        0, 1, getattr(metadata,
-                                      attrib).encode('utf-8'))])
-                      for attrib in cls.FIELDS
+                        0, 1, value.encode('utf-8'))])
+                      for (attrib, value) in metadata.filled_fields()
                       if (attrib in cls.UNICODE_ATTRIB_TO_ILST)]
 
         if ((metadata.track_number != 0) or

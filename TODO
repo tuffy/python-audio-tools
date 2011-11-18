@@ -3353,6 +3353,48 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Add -L/--low-level option to trackinfo.1
 ** DONE Add consistent embedded cuesheet display
 ** DONE Update unit tests
+* DONE Make metadata fully round-trippable
+  For instance, the following should hold:
+
+  >>> track_data1 = open(track.filename).read()
+  >>> track.update_metadata(track.get_metadata())
+  >>> track_data2 = open(track.filename).read()
+  >>> track_data1 == track_data2
+  True
+
+  This requires metadata to not jumble fields around until required.
+* DONE Don't populate empty track_name, ISRC values during tracksplit
+* DONE Fix ALAC channel assignment
+  Since the channel assignment is detailed in the specs,
+  add proper support for them.
+** DONE Update ALACAudio.channel_mask() method
+** DONE Update ALACAudio.from_pcm() method
+   Like FLAC, it should reject unsupported channel masks.
+** DONE Update py_decoders.ALACDecoder's .channel_mask attribute
+** DONE Update py_decoders.ALACDecoder's .read() method
+   Convert ALAC channel order to Wave channel order internally
+   rather than punt that task to a reordering wrapper.
+** DONE Update py_encoders.encode_mdat
+   Convert Wave channel order to ALAC channel order internally
+   rather than punt that task to a reordering wrapper.
+** DONE Update decoders.ALACDecoder's .channel_mask attribute
+** DONE Update decoders.ALACDecoder's .read() method
+   Convert ALAC channel order to Wave channel order internally
+   rather than punt that task to a reordering wrapper.
+** DONE Update encoders.encode_alac
+   Convert Wave channel order to ALAC channel order internally
+   rather than punt that task to a reordering wrapper.
+** DONE Add unit tests to ensure channel variants encode/decode correctly
+   - [X] 1 channel
+   - [X] 2 channels
+   - [X] 3 channels
+   - [X] 4 channels
+   - [X] 5 channels
+   - [X] 6 channels
+   - [X] 7 channels
+   - [X] 8 channels
+*** DONE Add unit tests to ensure invalid channel counts aren't encoded
+*** DONE Add unit tests to ensure invalid channel masks aren't encoded
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -4471,16 +4513,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] OggFlacAudio
    - [ ] VorbisAudio
    - [ ] WavPackAudio
-* TODO Make metadata fully round-trippable
-  For instance, the following should hold:
-
-  >>> track_data1 = open(track.filename).read()
-  >>> track.set_metadata(track.get_metadata())
-  >>> track_data2 = open(track.filename).read()
-  >>> track_data1 == track_data2
-  True
-
-  This requires metadata to not jumble fields around until required.
 * TODO Verify metadata against reference implementations
   Where feasible, try to ensure our metadata
   matches what's read/written by known reference implementations.
@@ -5062,18 +5094,17 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 
   which always functions the same whether we're dealing with ints or
   floats or other arrays, yet is still type-checked at compile-time.
-** TODO Better unify FrameList <-> array_ia routines
+** DONE Better unify FrameList <-> array_ia routines
 ** TODO Replace old array.h with new one in all source files
    - [ ] common/misc.h
    - [ ] decoders/mlp.h
    - [ ] decoders/shn.h
    - [ ] decoders/sine.h
    - [ ] decoders/wavpack.h
-   - [ ] encoders/alac.h
+   - [X] encoders/alac.h
    - [ ] encoders/shn.h
    - [ ] encoders/wavpack.h
    - [ ] pcmreader.h
-   - [ ] encoders/alac_lpc.c
 ** TODO Remove old array.h
 ** TODO Replace array2.h with array.h in all source files
 * TODO Fix FLAC seektable generation
@@ -5085,35 +5116,3 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Add method to generate Flac_SEEKTABLE from offset list
 ** DONE Add tracklint check/fix for mis-aligned seektables
 ** TODO Add unit tests for seektable errors
-* DONE Don't populate empty track_name, ISRC values during tracksplit
-* DONE Fix ALAC channel assignment
-  Since the channel assignment is detailed in the specs,
-  add proper support for them.
-** DONE Update ALACAudio.channel_mask() method
-** DONE Update ALACAudio.from_pcm() method
-   Like FLAC, it should reject unsupported channel masks.
-** DONE Update py_decoders.ALACDecoder's .channel_mask attribute
-** DONE Update py_decoders.ALACDecoder's .read() method
-   Convert ALAC channel order to Wave channel order internally
-   rather than punt that task to a reordering wrapper.
-** DONE Update py_encoders.encode_mdat
-   Convert Wave channel order to ALAC channel order internally
-   rather than punt that task to a reordering wrapper.
-** DONE Update decoders.ALACDecoder's .channel_mask attribute
-** DONE Update decoders.ALACDecoder's .read() method
-   Convert ALAC channel order to Wave channel order internally
-   rather than punt that task to a reordering wrapper.
-** DONE Update encoders.encode_alac
-   Convert Wave channel order to ALAC channel order internally
-   rather than punt that task to a reordering wrapper.
-** DONE Add unit tests to ensure channel variants encode/decode correctly
-   - [X] 1 channel
-   - [X] 2 channels
-   - [X] 3 channels
-   - [X] 4 channels
-   - [X] 5 channels
-   - [X] 6 channels
-   - [X] 7 channels
-   - [X] 8 channels
-*** DONE Add unit tests to ensure invalid channel counts aren't encoded
-*** DONE Add unit tests to ensure invalid channel masks aren't encoded
