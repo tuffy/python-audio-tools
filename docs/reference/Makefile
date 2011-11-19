@@ -98,6 +98,7 @@ figures/m4a/trkn.pdf
 
 WAVPACK = figures/wavpack/bitstream.pdf \
 figures/wavpack/block_header.pdf \
+figures/wavpack/block_header_parse.pdf \
 figures/wavpack/channel_info.pdf \
 figures/wavpack/decorr_samples.pdf \
 figures/wavpack/decorr_samples2.pdf \
@@ -116,7 +117,9 @@ figures/wavpack/read_residual2.pdf \
 figures/wavpack/read_residual3.pdf \
 figures/wavpack/read_zeroes.pdf \
 figures/wavpack/stream.pdf \
+figures/wavpack/subblock.pdf \
 figures/wavpack/subblock_header.pdf \
+figures/wavpack/subblock_parse.pdf \
 figures/wavpack/wave_footer.pdf \
 figures/wavpack/wave_header.pdf \
 figures/wavpack/write_zeroes.pdf
@@ -259,6 +262,9 @@ flac-codec.pdf: flac-codec.tex flac.tex $(FLAC)
 alac-codec.pdf: alac-codec.tex alac.tex $(ALAC)
 	python pdflatexbuild.py -halt-on-error $<
 
+wavpack-codec.pdf: wavpack-codec.tex wavpack.tex $(WAVPACK)
+	python pdflatexbuild.py -halt-on-error $<
+
 audioformats-letter.tex: audioformats.m4
 	m4 -D PAPERSIZE=letterpaper $< > $@
 
@@ -377,6 +383,9 @@ figures/shorten/unsigned.pdf: figures/shorten/unsigned.fig
 
 figures/shorten/signed.pdf: figures/shorten/signed.fig
 	fig2dev -Z 2 -L pdf $< $@
+
+# figures/wavpack/block_header_parse.pdf: figures/wavpack/block_header_parse.bpx
+# 	./bitparse.py -w 480 -b 24 -i $< -o $@
 
 figures/wavpack/decorrelation1.fig: figures/wavpack/decorrelation1.plot
 	./figures/wavpack/decorrelation1.plot > $@

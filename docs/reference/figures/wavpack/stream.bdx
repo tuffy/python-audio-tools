@@ -1,23 +1,23 @@
 <?xml version="1.0" ?><diagram>
   <row>
-    <col width=".20">WavPack Block₁</col>
-    <col id="block" width=".20">WavPack Block₂</col>
+    <col id="block" width=".20">Block₀</col>
+    <col width=".20">Block₁</col>
+    <col width=".20">Block₂</col>
     <col style="dashed" width=".20">...</col>
-    <col width=".20">WavPack Blockₓ</col>
     <col style="dashed" width=".20">APEv2 Tag</col>
   </row>
   <row><blank/></row>
   <row>
     <col end="255" id="blockheader" start="0" width=".22">Block Header</col>
-    <col id="subblock" start="256" width=".22">Sub Block₁</col>
-    <col width=".22">Sub Block₂</col>
+    <col id="subblock" start="256" width=".22">Sub Block₀</col>
+    <col width=".22">Sub Block₁</col>
     <col id="blockend" style="dashed" width=".22">...</col>
   </row>
   <row><blank/></row>
   <row>
-    <col end="7" id="subblockheader" start="0" width=".25">Sub-Block Header</col>
-    <col end="15/31" start="8" width=".25">Sub-Block Length</col>
-    <col id="subblockdata" width=".30">Sub-Block Data</col>
+    <col end="7" id="subblockheader" start="0" width=".25">header</col>
+    <col end="15/31" start="8" width=".25">size</col>
+    <col id="subblockdata" width=".30">data</col>
   </row>
   <line style="dotted"><start corner="sw" id="block"/><end corner="nw" id="blockheader"/></line>
   <line style="dotted"><start corner="se" id="block"/><end corner="ne" id="blockend"/></line>
