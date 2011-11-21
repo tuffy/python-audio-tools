@@ -2,3 +2,4 @@
 
 from .flac import FlacDecoder
 from .alac import ALACDecoder
+from .wavpack import WavPackDecoder
