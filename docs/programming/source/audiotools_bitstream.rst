@@ -71,7 +71,7 @@ out of a larger binary file stream.
 .. method:: BitstreamReader.read_signed64(bits)
 
    Given a number of bits to read from the stream as a two's complement value,
-   returns a signed integer.
+   returns a signed long.
    Bits must be: ``1 <= bits <= 64`` .
    May raise :exc:`IOError` if an error occurs reading the stream.
 
@@ -97,7 +97,7 @@ out of a larger binary file stream.
    Reads the number of bits until the next ``stop_bit``,
    which must be ``0`` or ``1``, up to a maximum of ``maximum_bits``.
    Returns that count as an unsigned integer,
-   or returns ``-1`` if the maximum bits are exceeded before
+   or returns ``None`` if the maximum bits are exceeded before
    ``stop_bit`` is encountered.
    May raise :exc:`IOError` if an error occurs reading the stream.
 

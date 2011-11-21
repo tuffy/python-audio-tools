@@ -104,6 +104,7 @@ figures/wavpack/decorr_samples.pdf \
 figures/wavpack/decorr_samples2.pdf \
 figures/wavpack/decorr_terms.pdf \
 figures/wavpack/decorr_weights.pdf \
+figures/wavpack/decorr_weights_parse.pdf \
 figures/wavpack/decorrelation1.pdf \
 figures/wavpack/decorrelation2.pdf \
 figures/wavpack/decorrelation3.pdf \
@@ -120,6 +121,7 @@ figures/wavpack/stream.pdf \
 figures/wavpack/subblock.pdf \
 figures/wavpack/subblock_header.pdf \
 figures/wavpack/subblock_parse.pdf \
+figures/wavpack/terms_parse.pdf \
 figures/wavpack/wave_footer.pdf \
 figures/wavpack/wave_header.pdf \
 figures/wavpack/write_zeroes.pdf

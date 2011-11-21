@@ -171,15 +171,23 @@ metadata function & nondecoder data & contents \\
 \SetKwData{FINALBLOCK}{final block}
 \SetKwData{BLOCKHEADER}{block header}
 \SetKwData{SUBBLOCK}{sub block}
+\SetKwData{SUBBLOCKHEADER}{sub block header}
 \SetKwData{SUBBLOCKSIZE}{sub blocks size}
 \SetKwData{NONDECODER}{nondecoder data}
 \SetKwData{METADATAFUNC}{metadata function}
 \SetKwData{SUBBLOCKDATA}{sub block data}
+\SetKwData{ACTUALSIZEONELESS}{actual size 1 less}
 \Repeat{$\text{\BLOCKINDEX} + \text{\BLOCKSAMPLES} \geq \text{\TOTALSAMPLES}$}{
   \Repeat(\tcc*[f]{read blocks}){$\text{\FINALBLOCK} = 1$}{
     read \BLOCKHEADER\;
     \While{$\text{\SUBBLOCKSIZE} > 0$}{
-      read \SUBBLOCK\;
+      read \SUBBLOCKHEADER\;
+      \eIf{$\text{\ACTUALSIZEONELESS} = 0$}{
+        \SUBBLOCKDATA $\leftarrow$ \READ ($\textit{sub block size} \times 2$) bytes\;
+      }{
+        \SUBBLOCKDATA $\leftarrow$ \READ ($\textit{sub block size} \times 2 - 1$) bytes\;
+        \SKIP 8 bits\;
+      }
       \If{$\NONDECODER = 0$}{
         parse decoding parameters from \METADATAFUNC and \SUBBLOCKDATA\;
       }
@@ -343,39 +351,49 @@ most recent sub block.
 
 \clearpage
 
-\subsection{Reading Sub Block}
-\ALGORITHM{block data}{metadata function integer, nondecoder data flag, sub block data bytes}
+\subsection{Reading Sub Block Header}
+\ALGORITHM{block data}{metadata function integer, nondecoder data flag, \VAR{actual size 1 less} flag, sub block size}
 \SetKwData{METAFUNC}{metadata function}
 \SetKwData{NONDECODER}{nondecoder data}
-%% \SetKwData{SUBBLOCKSIZE}{sub block size}
-\SetKwData{SUBBLOCKDATA}{sub block data}
+\SetKwData{SUBBLOCKSIZE}{sub block size}
+\SetKwData{ACTUALSIZEONELESS}{actual size 1 less}
 \METAFUNC $\leftarrow$ \READ 5 unsigned bits\;
 \NONDECODER $\leftarrow$ \READ 1 unsigned bit\;
-\textit{actual size 1 less} $\leftarrow$ \READ 1 unsigned bit\;
+\ACTUALSIZEONELESS $\leftarrow$ \READ 1 unsigned bit\;
 \textit{large block} $\leftarrow$ \READ 1 unsigned bit\;
 \eIf{$\text{large block} = 0$}{
-  \textit{sub block size} $\leftarrow$ \READ 8 unsigned bits\;
+  \SUBBLOCKSIZE $\leftarrow$ (\READ 8 unsigned bits) $\times 2$\;
 }{
-  \textit{sub block size} $\leftarrow$ \READ 24 unsigned bits\;
+  \SUBBLOCKSIZE $\leftarrow$ (\READ 24 unsigned bits) $\times 2$\;
 }
-\eIf{$\text{actual size 1 less} = 0$}{
-  \SUBBLOCKDATA $\leftarrow$ \READ ($\textit{sub block size} \times 2$) bytes\;
-}{
-  \SUBBLOCKDATA $\leftarrow$ \READ ($\textit{sub block size} \times 2 - 1$) bytes\;
-  \SKIP 8 bits\;
-}
-\Return (\METAFUNC , \NONDECODER , \SUBBLOCKDATA)\;
+\Return (\METAFUNC , \NONDECODER , \ACTUALSIZEONELESS , \SUBBLOCKSIZE)\;
 \EALGORITHM
 
-\subsubsection{Reading Sub Block Example}
+\subsubsection{Reading Sub Block Header Example}
 \begin{figure}[h]
 \includegraphics{figures/wavpack/subblock_parse.pdf}
 \end{figure}
+\begin{table}[h]
+\begin{tabular}{r>{$}c<{$}l}
+metadata function & \leftarrow & 2 \\
+nondecoder data & \leftarrow & 0 \\
+actual size 1 less & \leftarrow & 1 \\
+large block & \leftarrow & 0 \\
+sub block size & \leftarrow & $3 \times 2 = 6$ bytes\;
+\end{tabular}
+\end{table}
+\par
+\noindent
+Note that although the total length of the sub block is
+8 bytes (2 bytes for the header plus the 6 bytes indicated by
+\VAR{sub block size}),
+\VAR{actual size 1 less} indicates that only the first 5 bytes
+contain actual data and the final byte is padding.
 
 \clearpage
 
 \subsection{Parsing Decoding Parameters}
-\ALGORITHM{block header fields, the sub block's metadata function and data}{parameters required for block decoding}
+\ALGORITHM{block header fields, the sub block's header fields and data}{parameters required for block decoding}
 \SetKwData{METAFUNC}{metadata function}
 \Switch{\METAFUNC}{
   \uCase{2}{
@@ -388,7 +406,7 @@ most recent sub block.
     parse decorrelation samples\;
   }
   \uCase{5}{
-    parse entroy variables\;
+    parse entropy variables\;
   }
   \uCase{10}{
     parse normal WavPack bitstream\;
@@ -398,6 +416,205 @@ most recent sub block.
   }
 }
 \EALGORITHM
+
+\clearpage
+
+\subsection{Parsing Decorrelation Terms}
+\ALGORITHM{\VAR{actual size 1 less} and \VAR{sub block size} values from sub block header, sub block data}{a list of signed decorrelation term integers, a list of unsigned decorrelation delta integers}
+\SetKwData{PASSES}{passes}
+\SetKwData{SUBBLOCKSIZE}{sub block size}
+\SetKwData{ACTUALSIZEONELESS}{actual size 1 less}
+\SetKwData{TERM}{term}
+\SetKwData{DELTA}{delta}
+\SetKw{OR}{or}
+\eIf{$\text{\ACTUALSIZEONELESS} = 0$}{
+  \PASSES $\leftarrow \text{\SUBBLOCKSIZE} \times 2$\;
+}{
+  \PASSES $\leftarrow \text{\SUBBLOCKSIZE} \times 2 - 1$\;
+}
+\ASSERT $\text{\PASSES} \leq 16$\;
+\BlankLine
+\For{i = 0 \emph{\KwTo}\PASSES}{
+  \tcc{populate terms and deltas in reverse order}
+  \BlankLine
+  $\text{\TERM}_{\text{\PASSES} - i - 1} \leftarrow$ (\READ 5 unsigned bits) - 5\;
+  \ASSERT $(1 \leq \text{\TERM}_{\text{\PASSES} - i - 1} \leq 18)$ \OR $(-3 \leq \text{\TERM}_{\text{\PASSES} - i - 1} \leq -1)$\;
+  \BlankLine
+  $\text{\DELTA}_{\text{\PASSES} - i - 1} \leftarrow$ \READ 3 unsigned bits\;
+}
+\Return decorrelation \TERM and decorrelation \DELTA lists\;
+\EALGORITHM
+
+\begin{figure}[h]
+\includegraphics{figures/wavpack/terms_parse.pdf}
+\end{figure}
+\begin{center}
+{\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{>{$}r<{$}>{$}c<{$}>{$}r<{$}|>{$}r<{$}>{$}r<{$}>{$}r<{$}}
+\text{decorrelation term}_4 & \leftarrow & 23 - 5 = 18 &
+\text{decorrelation delta}_4 & \leftarrow & 2 \\
+\text{decorrelation term}_3 & \leftarrow & 23 - 5 = 18 &
+\text{decorrelation delta}_3 & \leftarrow & 2 \\
+\text{decorrelation term}_2 & \leftarrow & 7 - 5 = 2 &
+\text{decorrelation delta}_2 & \leftarrow & 2 \\
+\text{decorrelation term}_1 & \leftarrow & 22 - 5 = 17 &
+\text{decorrelation delta}_1 & \leftarrow & 2 \\
+\text{decorrelation term}_0 & \leftarrow & 8 - 5 = 3 &
+\text{decorrelation delta}_0 & \leftarrow & 2 \\
+\end{tabular}
+\renewcommand{\arraystretch}{1.0}
+}
+\end{center}
+
+\clearpage
+
+\subsection{Parsing Decorrelation Weights}
+\ALGORITHM{\VAR{mono output} from block header, decorrelation terms count\footnote{from the decorrelation terms sub block, which must be read prior to this sub block}, \VAR{actual size 1 less} and \VAR{sub block size} values from sub block header, sub block data}{a list of signed weight integers per channel}
+\SetKwData{MONO}{mono output}
+\SetKwData{SUBBLOCKSIZE}{sub block size}
+\SetKwData{ACTUALSIZEONELESS}{actual size 1 less}
+\SetKwData{WEIGHTCOUNT}{weight count}
+\SetKwData{TERMCOUNT}{term count}
+\SetKwData{WEIGHT}{weight}
+\SetKwData{CHANNELAWEIGHT}{channel A weight}
+\SetKwData{CHANNELBWEIGHT}{channel B weight}
+\tcc{read as many 8 bit weight values as possible}
+\eIf{$\text{\ACTUALSIZEONELESS} = 0$}{
+  \WEIGHTCOUNT $\leftarrow \text{\SUBBLOCKSIZE} \times 2$\;
+}{
+ \WEIGHTCOUNT $\leftarrow \text{\SUBBLOCKSIZE} \times 2 - 1$\;
+}
+\For{i = 0 \emph{\KwTo}\WEIGHTCOUNT}{
+  $\text{value}_i \leftarrow$ \READ 8 signed bits\;
+  $\text{\WEIGHT}_i \leftarrow\begin{cases}
+\text{value}_i \times 2 ^ 3 + \left\lfloor\frac{\text{value}_i \times 2 ^ 3 + 2 ^ 6}{2 ^ 7}\right\rfloor & \text{if }\text{value}_i > 0 \\
+0 & \text{if }\text{value}_i = 0 \\
+\text{value}_i \times 2 ^ 3 & \text{if }\text{value}_i < 0
+\end{cases}$\;
+}
+\BlankLine
+\tcc{populate weight values by channel, in reverse order}
+\eIf{$\text{\MONO} = 0$}{
+  \ASSERT $\lfloor\WEIGHTCOUNT \div 2\rfloor \leq \TERMCOUNT$\;
+  \For{i = 0 \emph{\KwTo}$\lfloor\WEIGHTCOUNT \div 2\rfloor$}{
+    $\text{\CHANNELAWEIGHT}_{\TERMCOUNT - i - 1} \leftarrow \text{\WEIGHT}_{i \times 2}$\;
+    $\text{\CHANNELBWEIGHT}_{\TERMCOUNT - i - 1} \leftarrow \text{\WEIGHT}_{i \times 2 + 1}$\;
+  }
+  \For{i = $\lfloor\WEIGHTCOUNT \div 2\rfloor$ \emph{\KwTo}\TERMCOUNT}{
+    $\text{\CHANNELAWEIGHT}_{\TERMCOUNT - i - 1} \leftarrow 0$\;
+    $\text{\CHANNELBWEIGHT}_{\TERMCOUNT - i - 1} \leftarrow 0$\;
+  }
+  \Return (\CHANNELAWEIGHT values , \CHANNELBWEIGHT values)\;
+}{
+  \ASSERT $\WEIGHTCOUNT \leq \TERMCOUNT$\;
+  \For{i = 0 \emph{\KwTo}\WEIGHTCOUNT}{
+    $\text{\CHANNELAWEIGHT}_{\TERMCOUNT - i - 1} \leftarrow \text{\WEIGHT}_{i}$\;
+  }
+  \For{i = \WEIGHTCOUNT \emph{\KwTo}\TERMCOUNT}{
+    $\text{\CHANNELAWEIGHT}_{\TERMCOUNT - i - 1} \leftarrow 0$\;
+  }
+  \Return \CHANNELAWEIGHT values\;
+}
+\EALGORITHM
+
+\clearpage
+
+\subsubsection{Parsing Decorrelation Weights Example}
+Given a 2 channel block containing 5 decorrelation terms:
+\begin{figure}[h]
+\includegraphics{figures/wavpack/decorr_weights_parse.pdf}
+\end{figure}
+\begin{center}
+{\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{r|r|>{$}r<{$}}
+$i$ & $\text{value}_i$ & \text{weight}_i \\
+\hline
+0 & 6 & 6 \times 2 ^ 3 + \lfloor(6 \times 2 ^ 3 + 2 ^ 6) \div 2 ^ 7\rfloor = 48 \\
+1 & 6 & 6 \times 2 ^ 3 + \lfloor(6 \times 2 ^ 3 + 2 ^ 6) \div 2 ^ 7\rfloor = 48 \\
+2 & 6 & 6 \times 2 ^ 3 + \lfloor(6 \times 2 ^ 3 + 2 ^ 6) \div 2 ^ 7\rfloor = 48 \\
+3 & 6 & 6 \times 2 ^ 3 + \lfloor(6 \times 2 ^ 3 + 2 ^ 6) \div 2 ^ 7\rfloor = 48 \\
+4 & 4 & 4 \times 2 ^ 3 + \lfloor(4 \times 2 ^ 3 + 2 ^ 6) \div 2 ^ 7\rfloor = 32 \\
+5 & 4 & 4 \times 2 ^ 3 + \lfloor(4 \times 2 ^ 3 + 2 ^ 6) \div 2 ^ 7\rfloor = 32 \\
+6 & 6 & 6 \times 2 ^ 3 + \lfloor(6 \times 2 ^ 3 + 2 ^ 6) \div 2 ^ 7\rfloor = 48 \\
+7 & 6 & 6 \times 2 ^ 3 + \lfloor(6 \times 2 ^ 3 + 2 ^ 6) \div 2 ^ 7\rfloor = 48 \\
+8 & 2 & 2 \times 2 ^ 3 + \lfloor(2 \times 2 ^ 3 + 2 ^ 6) \div 2 ^ 7\rfloor = 16 \\
+9 & 3 & 3 \times 2 ^ 3 + \lfloor(3 \times 2 ^ 3 + 2 ^ 6) \div 2 ^ 7\rfloor = 24 \\
+\end{tabular}
+\renewcommand{\arraystretch}{1.0}
+}
+\end{center}
+\begin{center}
+\begin{tabular}{>{$}r<{$}||>{$}r<{$}}
+\text{channel A weight}_4 = \text{weight}_0 = 48 &
+\text{channel B weight}_4 = \text{weight}_1 = 48 \\
+\text{channel A weight}_3 = \text{weight}_2 = 48 &
+\text{channel B weight}_3 = \text{weight}_3 = 48 \\
+\text{channel A weight}_2 = \text{weight}_4 = 32 &
+\text{channel B weight}_2 = \text{weight}_5 = 32 \\
+\text{channel A weight}_1 = \text{weight}_6 = 48 &
+\text{channel B weight}_1 = \text{weight}_7 = 48 \\
+\text{channel A weight}_0 = \text{weight}_8 = 16 &
+\text{channel B weight}_0 = \text{weight}_9 = 24 \\
+\end{tabular}
+\end{center}
+
+\clearpage
+
+\subsection{Parsing Decorrelation Samples}
+\ALGORITHM{\VAR{mono output} from block header, decorrelation terms\footnote{from the decorrelation terms sub block, which must be read prior to this sub block}, \VAR{sub block size} from sub block header, sub block data}{a list of signed decorrelation samples per channel}
+Stuff\;
+\EALGORITHM
+
+\subsubsection{The wvexp2 Function}
+\label{wavpack_wvexp2}
+\ALGORITHM{a signed 16-bit value}{a signed value}
+\SetKwFunction{EXP}{exp}
+\uIf{$-32768 \leq value < -2304$}{
+  \Return $-(\EXP(-value \bmod{256}) \times 2 ^ {\lfloor -value \div 2 ^ 8 \rfloor - 9})$\;
+}
+\uElseIf{$-2304 \leq value < 0$}{
+  \Return $-\lfloor \EXP(-value \bmod{256}) \div 2 ^ {9 - \lfloor -value \div 2 ^ 8 \rfloor} \rfloor$\;
+}
+\uElseIf{$0 \leq value \leq 2304$}{
+  \Return $\lfloor \EXP(value \bmod{256}) \div 2 ^ {9 - \lfloor value \div 2 ^ 8 \rfloor} \rfloor$\;
+}
+\ElseIf{$2304 < value \leq 32767$}{
+  \Return $\EXP(value \bmod{256}) \times 2 ^ {\lfloor value \div 2 ^ 8 \rfloor - 9}$\;
+}
+\EALGORITHM
+\par
+\noindent
+where \texttt{exp}(\textit{x}) is defined from the following base-16 table:
+\par
+\noindent
+{\relsize{-3}\ttfamily
+\begin{tabular}{| c | c | c | c | c | c | c | c | c | c | c | c | c | c | c | c | c |}
+\hline
+& 0x?0 & 0x?1 & 0x?2 & 0x?3 & 0x?4 & 0x?5 & 0x?6 & 0x?7 & 0x?8 & 0x?9 & 0x?A & 0x?B & 0x?C & 0x?D & 0x?E & 0x?F \\
+\hline
+0x0? & 100 & 101 & 101 & 102 & 103 & 103 & 104 & 105 & 106 & 106 & 107 & 108 & 108 & 109 & 10A & 10B \\
+0x1? & 10B & 10C & 10D & 10E & 10E & 10F & 110 & 110 & 111 & 112 & 113 & 113 & 114 & 115 & 116 & 116 \\
+0x2? & 117 & 118 & 119 & 119 & 11A & 11B & 11C & 11D & 11D & 11E & 11F & 120 & 120 & 121 & 122 & 123 \\
+0x3? & 124 & 124 & 125 & 126 & 127 & 128 & 128 & 129 & 12A & 12B & 12C & 12C & 12D & 12E & 12F & 130 \\
+0x4? & 130 & 131 & 132 & 133 & 134 & 135 & 135 & 136 & 137 & 138 & 139 & 13A & 13A & 13B & 13C & 13D \\
+0x5? & 13E & 13F & 140 & 141 & 141 & 142 & 143 & 144 & 145 & 146 & 147 & 148 & 148 & 149 & 14A & 14B \\
+0x6? & 14C & 14D & 14E & 14F & 150 & 151 & 151 & 152 & 153 & 154 & 155 & 156 & 157 & 158 & 159 & 15A \\
+0x7? & 15B & 15C & 15D & 15E & 15E & 15F & 160 & 161 & 162 & 163 & 164 & 165 & 166 & 167 & 168 & 169 \\
+0x8? & 16A & 16B & 16C & 16D & 16E & 16F & 170 & 171 & 172 & 173 & 174 & 175 & 176 & 177 & 178 & 179 \\
+0x9? & 17A & 17B & 17C & 17D & 17E & 17F & 180 & 181 & 182 & 183 & 184 & 185 & 187 & 188 & 189 & 18A \\
+0xA? & 18B & 18C & 18D & 18E & 18F & 190 & 191 & 192 & 193 & 195 & 196 & 197 & 198 & 199 & 19A & 19B \\
+0xB? & 19C & 19D & 19F & 1A0 & 1A1 & 1A2 & 1A3 & 1A4 & 1A5 & 1A6 & 1A8 & 1A9 & 1AA & 1AB & 1AC & 1AD \\
+0xC? & 1AF & 1B0 & 1B1 & 1B2 & 1B3 & 1B4 & 1B6 & 1B7 & 1B8 & 1B9 & 1BA & 1BC & 1BD & 1BE & 1BF & 1C0 \\
+0xD? & 1C2 & 1C3 & 1C4 & 1C5 & 1C6 & 1C8 & 1C9 & 1CA & 1CB & 1CD & 1CE & 1CF & 1D0 & 1D2 & 1D3 & 1D4 \\
+0xE? & 1D6 & 1D7 & 1D8 & 1D9 & 1DB & 1DC & 1DD & 1DE & 1E0 & 1E1 & 1E2 & 1E4 & 1E5 & 1E6 & 1E8 & 1E9 \\
+0xF? & 1EA & 1EC & 1ED & 1EE & 1F0 & 1F1 & 1F2 & 1F4 & 1F5 & 1F6 & 1F8 & 1F9 & 1FA & 1FC & 1FD & 1FF \\
+\hline
+\end{tabular}
+}
+
+\clearpage
+
+
 
 %% \section{the WavPack Block Header}
 %% \begin{figure}[h]
@@ -629,33 +846,7 @@ most recent sub block.
 %% \end{equation*}
 %% \par
 %% \noindent
-%% where \VAR{wv\_exp2} is defined from the following base-16 table:
-%% \par
-%% \noindent
-%% {\relsize{-3}\ttfamily
-%% \begin{tabular}{| c | c | c | c | c | c | c | c | c | c | c | c | c | c | c | c | c |}
-%% \hline
-%% & 0x?0 & 0x?1 & 0x?2 & 0x?3 & 0x?4 & 0x?5 & 0x?6 & 0x?7 & 0x?8 & 0x?9 & 0x?A & 0x?B & 0x?C & 0x?D & 0x?E & 0x?F \\
-%% \hline
-%% 0x0? & 100 & 101 & 101 & 102 & 103 & 103 & 104 & 105 & 106 & 106 & 107 & 108 & 108 & 109 & 10A & 10B \\
-%% 0x1? & 10B & 10C & 10D & 10E & 10E & 10F & 110 & 110 & 111 & 112 & 113 & 113 & 114 & 115 & 116 & 116 \\
-%% 0x2? & 117 & 118 & 119 & 119 & 11A & 11B & 11C & 11D & 11D & 11E & 11F & 120 & 120 & 121 & 122 & 123 \\
-%% 0x3? & 124 & 124 & 125 & 126 & 127 & 128 & 128 & 129 & 12A & 12B & 12C & 12C & 12D & 12E & 12F & 130 \\
-%% 0x4? & 130 & 131 & 132 & 133 & 134 & 135 & 135 & 136 & 137 & 138 & 139 & 13A & 13A & 13B & 13C & 13D \\
-%% 0x5? & 13E & 13F & 140 & 141 & 141 & 142 & 143 & 144 & 145 & 146 & 147 & 148 & 148 & 149 & 14A & 14B \\
-%% 0x6? & 14C & 14D & 14E & 14F & 150 & 151 & 151 & 152 & 153 & 154 & 155 & 156 & 157 & 158 & 159 & 15A \\
-%% 0x7? & 15B & 15C & 15D & 15E & 15E & 15F & 160 & 161 & 162 & 163 & 164 & 165 & 166 & 167 & 168 & 169 \\
-%% 0x8? & 16A & 16B & 16C & 16D & 16E & 16F & 170 & 171 & 172 & 173 & 174 & 175 & 176 & 177 & 178 & 179 \\
-%% 0x9? & 17A & 17B & 17C & 17D & 17E & 17F & 180 & 181 & 182 & 183 & 184 & 185 & 187 & 188 & 189 & 18A \\
-%% 0xA? & 18B & 18C & 18D & 18E & 18F & 190 & 191 & 192 & 193 & 195 & 196 & 197 & 198 & 199 & 19A & 19B \\
-%% 0xB? & 19C & 19D & 19F & 1A0 & 1A1 & 1A2 & 1A3 & 1A4 & 1A5 & 1A6 & 1A8 & 1A9 & 1AA & 1AB & 1AC & 1AD \\
-%% 0xC? & 1AF & 1B0 & 1B1 & 1B2 & 1B3 & 1B4 & 1B6 & 1B7 & 1B8 & 1B9 & 1BA & 1BC & 1BD & 1BE & 1BF & 1C0 \\
-%% 0xD? & 1C2 & 1C3 & 1C4 & 1C5 & 1C6 & 1C8 & 1C9 & 1CA & 1CB & 1CD & 1CE & 1CF & 1D0 & 1D2 & 1D3 & 1D4 \\
-%% 0xE? & 1D6 & 1D7 & 1D8 & 1D9 & 1DB & 1DC & 1DD & 1DE & 1E0 & 1E1 & 1E2 & 1E4 & 1E5 & 1E6 & 1E8 & 1E9 \\
-%% 0xF? & 1EA & 1EC & 1ED & 1EE & 1F0 & 1F1 & 1F2 & 1F4 & 1F5 & 1F6 & 1F8 & 1F9 & 1FA & 1FC & 1FD & 1FF \\
-%% \hline
-%% \end{tabular}
-%% }
+
 %% \par
 %% \noindent
 %% For example, given the sub-frame bytes:

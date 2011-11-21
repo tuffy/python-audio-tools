@@ -1,9 +1,10 @@
 <?xml version="1.0" ?>
 <struct endianness="little">
-  <field size="5" value="1">metadata function</field>
-  <field size="1" value="1">n. d.</field>
-  <field size="1" value="0">1 less</field>
+  <field size="5" value="2">metadata function</field>
+  <field size="1" value="0">n. d.</field>
+  <field size="1" value="1">1 less</field>
   <field size="1" value="0">large</field>
-  <field size="8" value="22">sub block size</field>
-  <bytes value="524946468800000057415645666d7420100000000100020044ac000010b10200040010006461746164000000">sub block data</bytes>
+  <field size="8" value="3">sub block size (× 2)</field>
+  <bytes value="5757475648">sub block data</bytes>
+  <bytes value="00"> </bytes>
 </struct>
