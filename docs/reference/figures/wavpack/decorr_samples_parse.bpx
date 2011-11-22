@@ -1,0 +1,12 @@
+<?xml version="1.0" ?>
+<struct endianness="little">
+  <field size="5" value="4">metadata function</field>
+  <field size="1" value="0">n. d.</field>
+  <field size="1" value="0">1 less</field>
+  <field size="1" value="0">large</field>
+  <field size="8" value="4">sub block size (× 2)</field>
+  <field size="16" value="63695">exp2 value₀</field>
+  <field size="16" value="63671">exp2 value₁</field>
+  <field size="16" value="1487">exp2 value₂</field>
+  <field size="16" value="1459">exp2 value₃</field>
+</struct>

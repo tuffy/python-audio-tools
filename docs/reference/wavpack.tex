@@ -419,6 +419,12 @@ contain actual data and the final byte is padding.
 
 \clearpage
 
+%%FIXME - add proper content here
+
+Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor tellus. Donec pretium posuere tellus. Proin quam nisl, tincidunt et, mattis eget, convallis nec, purus. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Nulla posuere. Donec vitae dolor. Nullam tristique diam non turpis. Cras placerat accumsan nulla. Nullam rutrum. Nam vestibulum accumsan nisl.
+
+\clearpage
+
 \subsection{Parsing Decorrelation Terms}
 \ALGORITHM{\VAR{actual size 1 less} and \VAR{sub block size} values from sub block header, sub block data}{a list of signed decorrelation term integers, a list of unsigned decorrelation delta integers}
 \SetKwData{PASSES}{passes}
@@ -438,7 +444,7 @@ contain actual data and the final byte is padding.
   \tcc{populate terms and deltas in reverse order}
   \BlankLine
   $\text{\TERM}_{\text{\PASSES} - i - 1} \leftarrow$ (\READ 5 unsigned bits) - 5\;
-  \ASSERT $(1 \leq \text{\TERM}_{\text{\PASSES} - i - 1} \leq 18)$ \OR $(-3 \leq \text{\TERM}_{\text{\PASSES} - i - 1} \leq -1)$\;
+  \ASSERT $\text{\TERM}_{\text{\PASSES} - i - 1}$ \IN \texttt{[-3, -2, -1, 1, 2, 3, 4, 5, 6, 7, 8, 17, 18]}
   \BlankLine
   $\text{\DELTA}_{\text{\PASSES} - i - 1} \leftarrow$ \READ 3 unsigned bits\;
 }
@@ -561,14 +567,91 @@ $i$ & $\text{value}_i$ & \text{weight}_i \\
 \clearpage
 
 \subsection{Parsing Decorrelation Samples}
-\ALGORITHM{\VAR{mono output} from block header, decorrelation terms\footnote{from the decorrelation terms sub block, which must be read prior to this sub block}, \VAR{sub block size} from sub block header, sub block data}{a list of signed decorrelation samples per channel}
-Stuff\;
-\EALGORITHM
+{\relsize{-2}
+\ALGORITHM{\VAR{mono output} from block header, decorrelation terms\footnote{from the decorrelation terms sub block, which must be read prior to this sub block}, sub block size and data}{a list of signed decorrelation sample lists per channel}
+\SetKwData{MONO}{mono output}
+\SetKwData{DECORRA}{channel A sample}
+\SetKwData{DECORRB}{channel B sample}
+\SetKwData{SMPLE}{sample}
+\SetKwData{TOTALSAMPLES}{sample count}
+\SetKwData{TERMCOUNT}{term count}
+\SetKwData{TERM}{term}
+\SetKwFunction{EXP}{wv\_exp2}
+\SetKw{KwDownTo}{downto}
+\eIf{$\text{\MONO} = 0$}{
+  \For{i = \TERMCOUNT \emph{\KwDownTo}0}{
+    \uIf{$17 \leq \text{\TERM}_i \leq 18$}{
+      \eIf{$\text{sub block bytes remaining} \geq 8$}{
+        $\text{\DECORRA}_{i~0} \leftarrow \text{read \EXP value}$\;
+        $\text{\DECORRA}_{i~1} \leftarrow \text{read \EXP value}$\;
+        $\text{\DECORRB}_{i~0} \leftarrow \text{read \EXP value}$\;
+        $\text{\DECORRB}_{i~1} \leftarrow \text{read \EXP value}$\;
+      }{
+        $\text{\DECORRA}_{i~0} \leftarrow 0$\;
+        $\text{\DECORRA}_{i~1} \leftarrow 0$\;
+        $\text{\DECORRB}_{i~0} \leftarrow 0$\;
+        $\text{\DECORRB}_{i~1} \leftarrow 0$\;
+      }
+    }
+    \uElseIf{$1 \leq \text{\TERM}_i \leq 8$}{
+      \eIf{$\text{sub block bytes remaining} \geq (\text{\TERM}_i \times 4)$}{
+        \For{j = 0 \emph{\KwTo}$\text{\TERM}_i$}{
+          $\text{\DECORRA}_{i~j} \leftarrow \text{read \EXP value}$\;
+          $\text{\DECORRB}_{i~j} \leftarrow \text{read \EXP value}$\;
+        }
+      }{
+        \For{j = 0 \emph{\KwTo}$\text{\TERM}_i$}{
+          $\text{\DECORRA}_{i~j} \leftarrow 0$\;
+          $\text{\DECORRB}_{i~j} \leftarrow 0$\;
+        }
+      }
+    }
+    \ElseIf{$-3 \leq \text{\TERM}_i \leq -1$}{
+      \eIf{$\text{sub block bytes remaining} \geq 4$}{
+        $\text{\DECORRB}_{i~0} \leftarrow \text{read \EXP value}$\;
+        $\text{\DECORRA}_{i~1} \leftarrow \text{read \EXP value}$\;
+      }{
+        $\text{\DECORRB}_{i~0} \leftarrow 0$\;
+        $\text{\DECORRA}_{i~1} \leftarrow 0$\;
+      }
+    }
+  }
+}{
+  \For{i = \TERMCOUNT \emph{\KwDownTo}0}{
+    \uIf{$17 \leq \text{\TERM}_i \leq 18$}{
+      \eIf{$\text{sub block bytes remaining} \geq 4$}{
+        $\text{\DECORRA}_{i~0} \leftarrow \text{read \EXP value}$\;
+        $\text{\DECORRA}_{i~1} \leftarrow \text{read \EXP value}$\;
+      }{
+        $\text{\DECORRA}_{i~0} \leftarrow 0$\;
+        $\text{\DECORRA}_{i~1} \leftarrow 0$\;
+      }
 
-\subsubsection{The wvexp2 Function}
+    }
+    \ElseIf{$1 \leq \text{\TERM}_i \leq 8$}{
+      \eIf{$\text{sub block bytes remaining} \geq (\text{\TERM}_i \times 2)$}{
+        \For{j = 0 \emph{\KwTo}$\text{\TERM}_i$}{
+          $\text{\DECORRA}_{i~j} \leftarrow \text{read \EXP value}$\;
+        }
+      }{
+        \For{j = 0 \emph{\KwTo}$\text{\TERM}_i$}{
+          $\text{\DECORRA}_{i~j} \leftarrow 0$\;
+        }
+      }
+    }
+  }
+}
+\EALGORITHM
+}
+
+\clearpage
+
+\subsubsection{Reading wv\_exp2 Values}
 \label{wavpack_wvexp2}
-\ALGORITHM{a signed 16-bit value}{a signed value}
+\ALGORITHM{2 bytes of sub block data}{a signed value}
 \SetKwFunction{EXP}{exp}
+$value \leftarrow$ \READ 16 signed bits\;
+\BlankLine
 \uIf{$-32768 \leq value < -2304$}{
   \Return $-(\EXP(-value \bmod{256}) \times 2 ^ {\lfloor -value \div 2 ^ 8 \rfloor - 9})$\;
 }
@@ -584,7 +667,8 @@ Stuff\;
 \EALGORITHM
 \par
 \noindent
-where \texttt{exp}(\textit{x}) is defined from the following base-16 table:
+where \texttt{exp}(\textit{x}) is defined from the following table:
+\vskip .25in
 \par
 \noindent
 {\relsize{-3}\ttfamily
@@ -592,29 +676,65 @@ where \texttt{exp}(\textit{x}) is defined from the following base-16 table:
 \hline
 & 0x?0 & 0x?1 & 0x?2 & 0x?3 & 0x?4 & 0x?5 & 0x?6 & 0x?7 & 0x?8 & 0x?9 & 0x?A & 0x?B & 0x?C & 0x?D & 0x?E & 0x?F \\
 \hline
-0x0? & 100 & 101 & 101 & 102 & 103 & 103 & 104 & 105 & 106 & 106 & 107 & 108 & 108 & 109 & 10A & 10B \\
-0x1? & 10B & 10C & 10D & 10E & 10E & 10F & 110 & 110 & 111 & 112 & 113 & 113 & 114 & 115 & 116 & 116 \\
-0x2? & 117 & 118 & 119 & 119 & 11A & 11B & 11C & 11D & 11D & 11E & 11F & 120 & 120 & 121 & 122 & 123 \\
-0x3? & 124 & 124 & 125 & 126 & 127 & 128 & 128 & 129 & 12A & 12B & 12C & 12C & 12D & 12E & 12F & 130 \\
-0x4? & 130 & 131 & 132 & 133 & 134 & 135 & 135 & 136 & 137 & 138 & 139 & 13A & 13A & 13B & 13C & 13D \\
-0x5? & 13E & 13F & 140 & 141 & 141 & 142 & 143 & 144 & 145 & 146 & 147 & 148 & 148 & 149 & 14A & 14B \\
-0x6? & 14C & 14D & 14E & 14F & 150 & 151 & 151 & 152 & 153 & 154 & 155 & 156 & 157 & 158 & 159 & 15A \\
-0x7? & 15B & 15C & 15D & 15E & 15E & 15F & 160 & 161 & 162 & 163 & 164 & 165 & 166 & 167 & 168 & 169 \\
-0x8? & 16A & 16B & 16C & 16D & 16E & 16F & 170 & 171 & 172 & 173 & 174 & 175 & 176 & 177 & 178 & 179 \\
-0x9? & 17A & 17B & 17C & 17D & 17E & 17F & 180 & 181 & 182 & 183 & 184 & 185 & 187 & 188 & 189 & 18A \\
-0xA? & 18B & 18C & 18D & 18E & 18F & 190 & 191 & 192 & 193 & 195 & 196 & 197 & 198 & 199 & 19A & 19B \\
-0xB? & 19C & 19D & 19F & 1A0 & 1A1 & 1A2 & 1A3 & 1A4 & 1A5 & 1A6 & 1A8 & 1A9 & 1AA & 1AB & 1AC & 1AD \\
-0xC? & 1AF & 1B0 & 1B1 & 1B2 & 1B3 & 1B4 & 1B6 & 1B7 & 1B8 & 1B9 & 1BA & 1BC & 1BD & 1BE & 1BF & 1C0 \\
-0xD? & 1C2 & 1C3 & 1C4 & 1C5 & 1C6 & 1C8 & 1C9 & 1CA & 1CB & 1CD & 1CE & 1CF & 1D0 & 1D2 & 1D3 & 1D4 \\
-0xE? & 1D6 & 1D7 & 1D8 & 1D9 & 1DB & 1DC & 1DD & 1DE & 1E0 & 1E1 & 1E2 & 1E4 & 1E5 & 1E6 & 1E8 & 1E9 \\
-0xF? & 1EA & 1EC & 1ED & 1EE & 1F0 & 1F1 & 1F2 & 1F4 & 1F5 & 1F6 & 1F8 & 1F9 & 1FA & 1FC & 1FD & 1FF \\
+0x0? & 256 & 257 & 257 & 258 & 259 & 259 & 260 & 261 & 262 & 262 & 263 & 264 & 264 & 265 & 266 & 267 \\
+0x1? & 267 & 268 & 269 & 270 & 270 & 271 & 272 & 272 & 273 & 274 & 275 & 275 & 276 & 277 & 278 & 278 \\
+0x2? & 279 & 280 & 281 & 281 & 282 & 283 & 284 & 285 & 285 & 286 & 287 & 288 & 288 & 289 & 290 & 291 \\
+0x3? & 292 & 292 & 293 & 294 & 295 & 296 & 296 & 297 & 298 & 299 & 300 & 300 & 301 & 302 & 303 & 304 \\
+0x4? & 304 & 305 & 306 & 307 & 308 & 309 & 309 & 310 & 311 & 312 & 313 & 314 & 314 & 315 & 316 & 317 \\
+0x5? & 318 & 319 & 320 & 321 & 321 & 322 & 323 & 324 & 325 & 326 & 327 & 328 & 328 & 329 & 330 & 331 \\
+0x6? & 332 & 333 & 334 & 335 & 336 & 337 & 337 & 338 & 339 & 340 & 341 & 342 & 343 & 344 & 345 & 346 \\
+0x7? & 347 & 348 & 349 & 350 & 350 & 351 & 352 & 353 & 354 & 355 & 356 & 357 & 358 & 359 & 360 & 361 \\
+0x8? & 362 & 363 & 364 & 365 & 366 & 367 & 368 & 369 & 370 & 371 & 372 & 373 & 374 & 375 & 376 & 377 \\
+0x9? & 378 & 379 & 380 & 381 & 382 & 383 & 384 & 385 & 386 & 387 & 388 & 389 & 391 & 392 & 393 & 394 \\
+0xA? & 395 & 396 & 397 & 398 & 399 & 400 & 401 & 402 & 403 & 405 & 406 & 407 & 408 & 409 & 410 & 411 \\
+0xB? & 412 & 413 & 415 & 416 & 417 & 418 & 419 & 420 & 421 & 422 & 424 & 425 & 426 & 427 & 428 & 429 \\
+0xC? & 431 & 432 & 433 & 434 & 435 & 436 & 438 & 439 & 440 & 441 & 442 & 444 & 445 & 446 & 447 & 448 \\
+0xD? & 450 & 451 & 452 & 453 & 454 & 456 & 457 & 458 & 459 & 461 & 462 & 463 & 464 & 466 & 467 & 468 \\
+0xE? & 470 & 471 & 472 & 473 & 475 & 476 & 477 & 478 & 480 & 481 & 482 & 484 & 485 & 486 & 488 & 489 \\
+0xF? & 490 & 492 & 493 & 494 & 496 & 497 & 498 & 500 & 501 & 502 & 504 & 505 & 506 & 508 & 509 & 511 \\
 \hline
 \end{tabular}
 }
 
 \clearpage
 
-
+\subsubsection{Decorrelation Samples Parsing Example}
+Given a stereo block containing the sub-block:
+\begin{figure}[h]
+\includegraphics{figures/wavpack/decorr_samples_parse.pdf}
+\end{figure}
+\begin{center}
+{\relsize{-2}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{r|r|r|>{$}r<{$}|>{$}r<{$}}
+$i$ & $\text{term}_i$ & $j$ &
+\text{channel A sample}_{i~j} &
+\text{channel B sample}_{i~j} \\
+\hline
+4 & 18 & 0 &
+-\lfloor \texttt{exp}(1841 \bmod{256}) \div 2 ^ {9 - \lfloor 1841 \div 2 ^ 8 \rfloor} \rfloor = -73 &
+\lfloor \EXP(1487 \bmod{256}) \div 2 ^ {9 - \lfloor 1487 \div 2 ^ 8 \rfloor} \rfloor = 28 \\
+& & 1 &
+-\lfloor \EXP(1865 \bmod{256}) \div 2 ^ {9 - \lfloor 1865 \div 2 ^ 8 \rfloor} \rfloor = -78 &
+\lfloor \EXP(1459 \bmod{256}) \div 2 ^ {9 - \lfloor 1459 \div 2 ^ 8 \rfloor} \rfloor = 26 \\
+\hline
+3 & 18 & 0 & 0 & 0 \\
+& & 1 & 0 & 0 \\
+\hline
+2 & 2 & 0 & 0 & 0 \\
+& & 1 & 0 & 0 \\
+\hline
+1 & 17 & 0 & 0 & 0 \\
+& & 1 & 0 & 0 \\
+\hline
+0 & 3 & 0 & 0 & 0 \\
+& & 1 & 0 & 0 \\
+& & 2 & 0 & 0 \\
+\hline
+\end{tabular}
+\renewcommand{\arraystretch}{1.0}
+}
+\end{center}
 
 %% \section{the WavPack Block Header}
 %% \begin{figure}[h]

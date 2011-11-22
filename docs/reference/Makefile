@@ -102,6 +102,7 @@ figures/wavpack/block_header_parse.pdf \
 figures/wavpack/channel_info.pdf \
 figures/wavpack/decorr_samples.pdf \
 figures/wavpack/decorr_samples2.pdf \
+figures/wavpack/decorr_samples_parse.pdf \
 figures/wavpack/decorr_terms.pdf \
 figures/wavpack/decorr_weights.pdf \
 figures/wavpack/decorr_weights_parse.pdf \
