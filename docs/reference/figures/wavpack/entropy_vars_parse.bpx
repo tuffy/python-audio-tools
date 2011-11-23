@@ -1,0 +1,14 @@
+<?xml version="1.0" ?>
+<struct endianness="little">
+  <field size="5" value="5">metadata function</field>
+  <field size="1" value="0">n. d.</field>
+  <field size="1" value="0">1 less</field>
+  <field size="1" value="0">large</field>
+  <field size="8" value="6">sub block size (× 2)</field>
+  <field size="16" value="2018">median A₀</field>
+  <field size="16" value="2203">median A₁</field>
+  <field size="16" value="2389">median A₂</field>
+  <field size="16" value="2018">median B₀</field>
+  <field size="16" value="2166">median B₁</field>
+  <field size="16" value="2234">median B₂</field>
+</struct>

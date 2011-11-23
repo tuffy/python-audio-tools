@@ -109,7 +109,8 @@ figures/wavpack/decorr_weights_parse.pdf \
 figures/wavpack/decorrelation1.pdf \
 figures/wavpack/decorrelation2.pdf \
 figures/wavpack/decorrelation3.pdf \
-figures/wavpack/entropy_vars.pdf\
+figures/wavpack/entropy_vars.pdf \
+figures/wavpack/entropy_vars_parse.pdf \
 figures/wavpack/extended_integers.pdf \
 figures/wavpack/md5sum.pdf \
 figures/wavpack/pcm_sandwich.pdf \

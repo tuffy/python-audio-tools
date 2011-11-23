@@ -572,7 +572,6 @@ $i$ & $\text{value}_i$ & \text{weight}_i \\
 \SetKwData{MONO}{mono output}
 \SetKwData{DECORRA}{channel A sample}
 \SetKwData{DECORRB}{channel B sample}
-\SetKwData{SMPLE}{sample}
 \SetKwData{TOTALSAMPLES}{sample count}
 \SetKwData{TERMCOUNT}{term count}
 \SetKwData{TERM}{term}
@@ -608,11 +607,11 @@ $i$ & $\text{value}_i$ & \text{weight}_i \\
     }
     \ElseIf{$-3 \leq \text{\TERM}_i \leq -1$}{
       \eIf{$\text{sub block bytes remaining} \geq 4$}{
+        $\text{\DECORRA}_{i~0} \leftarrow \text{read \EXP value}$\;
         $\text{\DECORRB}_{i~0} \leftarrow \text{read \EXP value}$\;
-        $\text{\DECORRA}_{i~1} \leftarrow \text{read \EXP value}$\;
       }{
+        $\text{\DECORRA}_{i~0} \leftarrow 0$\;
         $\text{\DECORRB}_{i~0} \leftarrow 0$\;
-        $\text{\DECORRA}_{i~1} \leftarrow 0$\;
       }
     }
   }
@@ -648,6 +647,7 @@ $i$ & $\text{value}_i$ & \text{weight}_i \\
 
 \subsubsection{Reading wv\_exp2 Values}
 \label{wavpack_wvexp2}
+{\relsize{-1}
 \ALGORITHM{2 bytes of sub block data}{a signed value}
 \SetKwFunction{EXP}{exp}
 $value \leftarrow$ \READ 16 signed bits\;
@@ -665,10 +665,11 @@ $value \leftarrow$ \READ 16 signed bits\;
   \Return $\EXP(value \bmod{256}) \times 2 ^ {\lfloor value \div 2 ^ 8 \rfloor - 9}$\;
 }
 \EALGORITHM
+}
 \par
 \noindent
 where \texttt{exp}(\textit{x}) is defined from the following table:
-\vskip .25in
+\vskip .10in
 \par
 \noindent
 {\relsize{-3}\ttfamily
@@ -696,8 +697,6 @@ where \texttt{exp}(\textit{x}) is defined from the following table:
 \end{tabular}
 }
 
-\clearpage
-
 \subsubsection{Decorrelation Samples Parsing Example}
 Given a stereo block containing the sub-block:
 \begin{figure}[h]
@@ -705,7 +704,7 @@ Given a stereo block containing the sub-block:
 \end{figure}
 \begin{center}
 {\relsize{-2}
-\renewcommand{\arraystretch}{1.25}
+%% \renewcommand{\arraystretch}{1.25}
 \begin{tabular}{r|r|r|>{$}r<{$}|>{$}r<{$}}
 $i$ & $\text{term}_i$ & $j$ &
 \text{channel A sample}_{i~j} &
@@ -735,6 +734,218 @@ $i$ & $\text{term}_i$ & $j$ &
 \renewcommand{\arraystretch}{1.0}
 }
 \end{center}
+
+\clearpage
+
+\subsection{Parsing Entropy Variables}
+\ALGORITHM{\VAR{mono output} from block header}{3 signed median value integers per channel}
+\SetKwData{MEDIAN}{median}
+\SetKwFunction{EXP}{wv\_exp2}
+\SetKwData{MONO}{mono output}
+$\text{\MEDIAN}_{0~0} \leftarrow \text{read \EXP value}$\;
+$\text{\MEDIAN}_{0~1} \leftarrow \text{read \EXP value}$\;
+$\text{\MEDIAN}_{0~2} \leftarrow \text{read \EXP value}$\;
+\eIf{$\text{\MONO} = 0$}{
+  $\text{\MEDIAN}_{1~0} \leftarrow \text{read \EXP value}$\;
+  $\text{\MEDIAN}_{1~1} \leftarrow \text{read \EXP value}$\;
+  $\text{\MEDIAN}_{1~2} \leftarrow \text{read \EXP value}$\;
+}{
+  $\text{\MEDIAN}_{1~0} \leftarrow 0$\;
+  $\text{\MEDIAN}_{1~1} \leftarrow 0$\;
+  $\text{\MEDIAN}_{1~2} \leftarrow 0$\;
+}
+\EALGORITHM
+
+\subsubsection{Entropy Variable Parsing Example}
+Given a 2 channel block containing the subframe:
+\begin{figure}[h]
+\includegraphics{figures/wavpack/entropy_vars_parse.pdf}
+\end{figure}
+\begin{center}
+{\relsize{-1}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{r|>{$}r<{$}|>{$}r<{$}}
+$i$ & \text{median}_{0~i} & \text{median}_{1~i} \\
+\hline
+0 &
+\lfloor \EXP(2018 \bmod{256}) \div 2 ^ {9 - \lfloor 2018 \div 2 ^ 8 \rfloor} \rfloor = 118 &
+\lfloor \EXP(2018 \bmod{256}) \div 2 ^ {9 - \lfloor 2018 \div 2 ^ 8 \rfloor} \rfloor = 118 \\
+1 &
+\lfloor \EXP(2203 \bmod{256}) \div 2 ^ {9 - \lfloor 2203 \div 2 ^ 8 \rfloor} \rfloor = 194 &
+\lfloor \EXP(2166 \bmod{256}) \div 2 ^ {9 - \lfloor 2166 \div 2 ^ 8 \rfloor} \rfloor = 176 \\
+2 &
+\EXP(2389 \bmod{256}) \times 2 ^ {\lfloor 2389 \div 2 ^ 8 \rfloor - 9} = 322 &
+\lfloor \EXP(2234 \bmod{256}) \div 2 ^ {9 - \lfloor 2234 \div 2 ^ 8 \rfloor} \rfloor = 212 \\
+\end{tabular}
+\renewcommand{\arraystretch}{1.0}
+}
+\end{center}
+
+\clearpage
+
+\subsection{Parsing Bitstream}
+{\relsize{-1}
+\ALGORITHM{\VAR{mono output} and \VAR{block samples} from block header,
+median values\footnote{from the entropy variables sub block, which must be read prior to this sub block}}{a list of signed residual values per channel}
+\SetKwData{MEDIAN}{median}
+\SetKwData{MONO}{mono output}
+\SetKwData{BLOCKSAMPLES}{block samples}
+\SetKwData{CHANNELS}{channel count}
+\SetKwData{HZERO}{holding zero}
+\SetKwData{HONE}{holding one}
+\SetKwData{MEDIAN}{median}
+\SetKwData{RESIDUAL}{residual}
+\SetKwData{ZEROES}{zeroes}
+\SetKw{AND}{and}
+\eIf{$\text{\MONO} = 0$}{
+  \CHANNELS $\leftarrow 1$\;
+}{
+  \CHANNELS $\leftarrow 2$\;
+}
+\HZERO $\leftarrow$ 0\;
+\HONE $\leftarrow$ 0\;
+$i \leftarrow 0$\;
+\While{$i < (\BLOCKSAMPLES \times \CHANNELS)$}{
+  \eIf{$(\text{\HZERO} = 0)$ \AND
+    $(\text{\HONE} = 0)$ \AND
+    $(\text{\MEDIAN}_{0~0} < 2)$ \AND
+    $(\text{\MEDIAN}_{1~0} < 2)$}{
+    $\text{\ZEROES} \leftarrow$ read zeroes count\;
+    \If(\tcc*[f]{handle long run of 0 residuals}){$\text{\ZEROES} > 0$}{
+      \For{j = 0 \emph{\KwTo}\ZEROES}{
+        $\text{\RESIDUAL}_{(i \bmod \CHANNELS)~\lfloor i \div \CHANNELS \rfloor} \leftarrow $ 0\;
+        $i \leftarrow i + 1$\;
+      }
+      \BlankLine
+      $\text{\MEDIAN}_{0~0} \leftarrow 0$\;
+      $\text{\MEDIAN}_{0~1} \leftarrow 0$\;
+      $\text{\MEDIAN}_{0~2} \leftarrow 0$\;
+      $\text{\MEDIAN}_{1~0} \leftarrow 0$\;
+      $\text{\MEDIAN}_{1~1} \leftarrow 0$\;
+      $\text{\MEDIAN}_{1~2} \leftarrow 0$\;
+    }
+    \If{$i < (\BLOCKSAMPLES \times \CHANNELS)$}{
+      $\text{\RESIDUAL}_{(i \bmod \CHANNELS)~\lfloor i \div \CHANNELS \rfloor} \leftarrow $ read residual value\;
+      $i \leftarrow i + 1$\;
+    }
+  }{
+    $\text{\RESIDUAL}_{(i \bmod \CHANNELS)~\lfloor i \div \CHANNELS \rfloor} \leftarrow $ read residual value\;
+    $i \leftarrow i + 1$\;
+  }
+}
+\Return lists of signed \RESIDUAL values\;
+\EALGORITHM
+}
+
+\subsubsection{Reading Zeroes Count}
+{\relsize{-1}
+\ALGORITHM{the sub block bitstream}{an unsigned count of zero residuals}
+$t \leftarrow$ \UNARY with stop bit 0\;
+\eIf{$t > 1$}{
+  $p \leftarrow$ \READ $(t - 1)$ unsigned bits\;
+  \Return $2 ^ {(t - 1)} + p$\;
+}{
+  \Return $t$\;
+}
+\EALGORITHM
+}
+
+\clearpage
+
+\subsubsection{Reading Residual Value}
+{\relsize{-1}
+\ALGORITHM{the sub block bitstream, \VAR{holding zero}, \VAR{holding one}, \VAR{median} values for channel $c$}{a signed residual value; new \VAR{holding zero}, \VAR{holding one}, \VAR{median} values}
+\SetKwData{HZERO}{holding zero}
+\SetKwData{HONE}{holding one}
+\SetKwData{MEDIAN}{median}
+\SetKwData{RESIDUAL}{residual}
+\tcc{determine "t" and new holding values}
+\eIf{$\HZERO = 0$}{
+  $t \leftarrow$ \UNARY with stop bit 0\;
+  \If(\tcc*[f]{escape code for potentially large residuals}){$t = 16$}{
+    $u \leftarrow$ \UNARY with stop bit 0\;
+    \eIf{$u > 1$}{
+      $e \leftarrow$ \READ $(u - 1)$ unsigned bits\;
+      $t \leftarrow t + (2 ^ {u - 1} + e)$\;
+    }{
+      $t \leftarrow t + u$\;
+    }
+  }
+  \eIf{$\HONE = 0$}{
+    $\HONE \leftarrow t \bmod 2$\;
+    $\HZERO \leftarrow 1 - \HONE$\;
+    $t \leftarrow \lfloor t \div 2 \rfloor$\;
+  }{
+    $\HONE \leftarrow t \bmod 2$\;
+    $\HZERO \leftarrow 1 - \HONE$\;
+    $t \leftarrow \lfloor t \div 2 \rfloor + 1$\;
+  }
+}{
+  $t \leftarrow 0$\;
+  $\HZERO \leftarrow0 $\;
+}
+\BlankLine
+\tcc{determine "base", "add" and new median values}
+\Switch{t}{
+  \uCase{0}{
+    $base \leftarrow 0$\;
+    $add \leftarrow \text{\MEDIAN}_{c~0} \div 2 ^ 4$\;
+    $\text{\MEDIAN}_{c~0} \leftarrow \text{\MEDIAN}_{c~0} - \lfloor(\text{\MEDIAN}_{c~0} + 126) \div 2 ^ 7\rfloor \times 2$\;
+  }
+  \uCase{1}{
+    $base \leftarrow \lfloor\text{\MEDIAN}_{c~0} \div 2 ^ 4\rfloor + 1$\;
+    $add \leftarrow \lfloor\text{\MEDIAN}_{c~1} \div 2 ^ 4\rfloor$\;
+    $\text{\MEDIAN}_{c~0} \leftarrow \text{\MEDIAN}_{c~0} + \lfloor(\text{\MEDIAN}_{c~0} + 128) \div 2 ^ 7\rfloor \times 5$\;
+    $\text{\MEDIAN}_{c~1} \leftarrow \text{\MEDIAN}_{c~1} - \lfloor(\text{\MEDIAN}_{c~1} + 62) \div 2 ^ 6\rfloor \times 2$\;
+  }
+  \uCase{2}{
+    $base \leftarrow (\lfloor\text{\MEDIAN}_{c~0} \div 2 ^ 4\rfloor + 1) + (\lfloor\text{\MEDIAN}_{c~1} \div 2 ^ 4\rfloor + 1)$\;
+    $add \leftarrow \lfloor\text{\MEDIAN}_{c~2} \div 2 ^ 4\rfloor$\;
+    $\text{\MEDIAN}_{c~0} \leftarrow \text{\MEDIAN}_{c~0} + \lfloor(\text{\MEDIAN}_{c~0} + 128) \div 2 ^ 7\rfloor \times 5$\;
+    $\text{\MEDIAN}_{c~1} \leftarrow \text{\MEDIAN}_{c~1} + \lfloor(\text{\MEDIAN}_{c~1} + 64) \div 2 ^ 6\rfloor \times 5$\;
+    $\text{\MEDIAN}_{c~2} \leftarrow \text{\MEDIAN}_{c~2} - \lfloor(\text{\MEDIAN}_{c~2} + 30) \div 2 ^ 5\rfloor \times 2$\;
+  }
+  \Other{
+    $base \leftarrow (\lfloor\text{\MEDIAN}_{c~0} \div 2 ^ 4\rfloor + 1) + (\lfloor\text{\MEDIAN}_{c~1} \div 2 ^ 4\rfloor + 1) + ((\lfloor\text{\MEDIAN}_{c~2} \div 2 ^ 4\rfloor + 1) \times (t - 2))$\;
+    $add \leftarrow \lfloor\text{\MEDIAN}_{c~2} \div 2 ^ 4\rfloor$\;
+    $\text{\MEDIAN}_{c~0} \leftarrow \text{\MEDIAN}_{c~0} + \lfloor(\text{\MEDIAN}_{c~0} + 128) \div 2 ^ 7\rfloor \times 5$\;
+    $\text{\MEDIAN}_{c~1} \leftarrow \text{\MEDIAN}_{c~1} + \lfloor(\text{\MEDIAN}_{c~1} + 64) \div 2 ^ 6\rfloor \times 5$\;
+    $\text{\MEDIAN}_{c~2} \leftarrow \text{\MEDIAN}_{c~2} + \lfloor(\text{\MEDIAN}_{c~2} + 30) \div 2 ^ 5\rfloor \times 2$\;
+  }
+}
+\EALGORITHM
+}
+
+\clearpage
+
+\begin{algorithm}[H]
+\DontPrintSemicolon
+\SetKw{READ}{read}
+\tcc{determine final residual value}
+\eIf{$add \geq 1$}{
+  $p \leftarrow \lfloor\log_2(add)\rfloor$\;
+  \eIf{$p > 0$}{
+    $r \leftarrow$ \READ $p$ unsigned bits\;
+  }{
+    $r \leftarrow 0$\;
+  }
+  $e \leftarrow 2 ^ {p + 1} - add - 1$\;
+  \If{$r \geq e$}{
+    $b \leftarrow$ \READ 1 unsigned bit\;
+    $r \leftarrow (r \times 2) - e + b$\;
+  }
+  $unsigned \leftarrow base + r$\;
+}{
+  $unsigned \leftarrow base$\;
+}
+\BlankLine
+$sign \leftarrow$ \READ 1 unsigned bit\;
+\eIf{$sign = 1$}{
+  \Return $-unsigned - 1$\;
+}{
+  \Return $unsigned$\;
+}
+\end{algorithm}
 
 %% \section{the WavPack Block Header}
 %% \begin{figure}[h]
