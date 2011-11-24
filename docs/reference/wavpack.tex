@@ -810,7 +810,13 @@ $i \leftarrow 0$\;
     $(\text{\HONE} = 0)$ \AND
     $(\text{\MEDIAN}_{0~0} < 2)$ \AND
     $(\text{\MEDIAN}_{1~0} < 2)$}{
-    $\text{\ZEROES} \leftarrow$ read zeroes count\;
+    $t \leftarrow$ \UNARY with stop bit 0\;
+    \eIf{$t > 1$}{
+      $p \leftarrow$ \READ $(t - 1)$ unsigned bits\;
+      \ZEROES $\leftarrow 2 ^ {(t - 1)} + p$\;
+    }{
+      \ZEROES $\leftarrow t$\;
+    }
     \If(\tcc*[f]{handle long run of 0 residuals}){$\text{\ZEROES} > 0$}{
       \For{j = 0 \emph{\KwTo}\ZEROES}{
         $\text{\RESIDUAL}_{(i \bmod \CHANNELS)~\lfloor i \div \CHANNELS \rfloor} \leftarrow $ 0\;
@@ -834,19 +840,6 @@ $i \leftarrow 0$\;
   }
 }
 \Return lists of signed \RESIDUAL values\;
-\EALGORITHM
-}
-
-\subsubsection{Reading Zeroes Count}
-{\relsize{-1}
-\ALGORITHM{the sub block bitstream}{an unsigned count of zero residuals}
-$t \leftarrow$ \UNARY with stop bit 0\;
-\eIf{$t > 1$}{
-  $p \leftarrow$ \READ $(t - 1)$ unsigned bits\;
-  \Return $2 ^ {(t - 1)} + p$\;
-}{
-  \Return $t$\;
-}
 \EALGORITHM
 }
 
@@ -910,7 +903,7 @@ $t \leftarrow$ \UNARY with stop bit 0\;
     $add \leftarrow \lfloor\text{\MEDIAN}_{c~2} \div 2 ^ 4\rfloor$\;
     $\text{\MEDIAN}_{c~0} \leftarrow \text{\MEDIAN}_{c~0} + \lfloor(\text{\MEDIAN}_{c~0} + 128) \div 2 ^ 7\rfloor \times 5$\;
     $\text{\MEDIAN}_{c~1} \leftarrow \text{\MEDIAN}_{c~1} + \lfloor(\text{\MEDIAN}_{c~1} + 64) \div 2 ^ 6\rfloor \times 5$\;
-    $\text{\MEDIAN}_{c~2} \leftarrow \text{\MEDIAN}_{c~2} + \lfloor(\text{\MEDIAN}_{c~2} + 30) \div 2 ^ 5\rfloor \times 2$\;
+    $\text{\MEDIAN}_{c~2} \leftarrow \text{\MEDIAN}_{c~2} + \lfloor(\text{\MEDIAN}_{c~2} + 32) \div 2 ^ 5\rfloor \times 5$\;
   }
 }
 \EALGORITHM

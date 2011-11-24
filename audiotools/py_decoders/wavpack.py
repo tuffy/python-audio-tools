@@ -18,6 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools.bitstream import BitstreamReader
+from math import log
 
 class WavPackDecoder:
     def __init__(self, filename):
@@ -42,9 +43,11 @@ class WavPackDecoder:
                         self.parse_decorrelation_samples(header, sub_block)
                     elif (sub_block.metadata_function == 5):
                         self.parse_entropy_variables(header, sub_block)
+                    elif (sub_block.metadata_function == 10):
+                        self.parse_bitstream(header, sub_block)
                     else:
-                        #FIXME - parser decoding parameters from sub block
-                        print sub_block.metadata_function
+                        #FIXME - parse decoding parameters from sub block
+                        print repr(sub_block)
                 sub_blocks_size -= sub_block.total_size()
 
             #FIXME - decode to 1 or 2 channels of audio data
@@ -67,9 +70,11 @@ class WavPackDecoder:
         self.decorrelation_deltas = []
         self.channel_A_weights = []
         self.channel_B_weights = []
+        self.medians = []
 
         self.decorrelation_terms_read = False
         self.decorrelation_weights_read = False
+        self.entropy_variables_read = False
 
     def parse_decorrelation_terms(self, sub_block):
         if (sub_block.actual_size_1_less == 0):
@@ -213,7 +218,128 @@ class WavPackDecoder:
         else:
             median1 = [0 for i in xrange(3)]
 
-        return (median0, median1)
+        self.entropy_variables_read = True
+        self.medians = (median0, median1)
+
+    def parse_bitstream(self, header, sub_block):
+        assert(self.entropy_variables_read)
+
+        if (header.mono_output):
+            channel_count = 1
+            residuals = [[]]
+        else:
+            channel_count = 2
+            residuals = [[],[]]
+
+        holding_zero = 0
+        holding_one = 0
+        i = 0
+        while (i < (header.block_samples * channel_count)):
+            if ((holding_zero == 0) and (holding_one == 0) and
+                (self.medians[0][0] < 2) and (self.medians[1][0] < 2)):
+                #handle long run of 0 residuals
+                t = sub_block.data.unary(0)
+                if (t > 1):
+                    p = sub_block.data.read(t - 1)
+                    zeroes = (2 ** (t - 1)) + p
+                else:
+                    zeroes = t
+                if (zeroes > 0):
+                    for j in xrange(zeroes):
+                        residuals[i % channel_count].append(0)
+                        i += 1
+                    self.medians = ([0, 0, 0], [0, 0, 0])
+                if (i < (header.block_samples * channel_count)):
+                    (residual,
+                     holding_zero,
+                     holding_one) = self.read_residual(
+                        sub_block.data,
+                        holding_zero,
+                        holding_one,
+                        self.medians[i % channel_count])
+                    residuals[i % channel_count].append(residual)
+                    i += 1
+            else:
+                (residual,
+                 holding_zero,
+                 holding_one) = self.read_residual(
+                    sub_block.data,
+                    holding_zero,
+                    holding_one,
+                    self.medians[i % channel_count])
+                residuals[i % channel_count].append(residual)
+                i += 1
+
+        print repr(residuals)
+
+    def read_residual(self, reader, holding_zero, holding_one, medians):
+        if (holding_zero == 0):
+            t = reader.unary(0)
+            if (t == 16):
+                u = reader.unary(0)
+                if (u > 1):
+                    e = reader.read(u - 1)
+                    t += 2 ** (u - 1) + e
+                else:
+                    t += u
+
+            if (holding_one == 0):
+                holding_one = t % 2
+                holding_zero = 1 - holding_one
+                t = t >> 1
+            else:
+                holding_one = t % 2
+                holding_zero = 1 - holding_one
+                t = (t >> 1) + 1
+        else:
+            t = 0
+            holding_zero = 0
+
+        if (t == 0):
+            base = 0
+            add = medians[0] >> 4
+            medians[0] -= ((medians[0] + 126) >> 7) * 2
+        elif (t == 1):
+            base = (medians[0] >> 4) + 1
+            add = medians[1] >> 4
+            medians[0] += ((medians[0] + 128) >> 7) * 5
+            medians[1] -= ((medians[1] + 62) >> 6) * 2
+        elif (t == 2):
+            base = ((medians[0] >> 4) + 1) + ((medians[1] >> 4) + 1)
+            add = medians[2] >> 4
+            medians[0] += ((medians[0] + 128) >> 7) * 5
+            medians[1] += ((medians[1] + 64) >> 6) * 5
+            medians[2] -= ((medians[2] + 30) >> 5) * 2
+        else:
+            base = (((medians[0] >> 4) + 1) +
+                    ((medians[1] >> 4) + 1) +
+                    (((medians[2] >> 4) + 1) * (t - 2)))
+            add = medians[2] >> 4
+            medians[0] += ((medians[0] + 128) >> 7) * 5
+            medians[1] += ((medians[1] + 64) >> 6) * 5
+            medians[2] += ((medians[2] + 32) >> 5) * 5
+
+        if (add >= 1):
+            p = int(log(add) / log(2))
+            if (p > 0):
+                r = reader.read(p)
+            else:
+                r = 0
+            e = (1 << (p + 1)) - add - 1
+            if (r >= e):
+                r = (r << 1) - e + reader.read(1)
+
+            unsigned = base + r
+        else:
+            unsigned = base
+
+        sign = reader.read(1)
+        if (sign == 1):
+            return (-unsigned - 1, holding_zero, holding_one)
+        else:
+            return (unsigned, holding_zero, holding_one)
+
+
 
 EXP2 = [0x100, 0x101, 0x101, 0x102, 0x103, 0x103, 0x104, 0x105,
         0x106, 0x106, 0x107, 0x108, 0x108, 0x109, 0x10a, 0x10b,
@@ -337,7 +463,8 @@ class Sub_Block:
             ", ".join(["%s=%s" % (attr, getattr(self, attr))
                        for attr in
                        ["metadata_function", "nondecoder_data",
-                        "large_block", "sub_block_data", "data"]])
+                        "actual_size_1_less", "large_block",
+                        "sub_block_size", "data"]])
 
     def total_size(self):
         if (self.large_block):
