@@ -47,7 +47,7 @@ class WavPackDecoder:
                         self.parse_bitstream(header, sub_block)
                     else:
                         #FIXME - parse decoding parameters from sub block
-                        print repr(sub_block)
+                        pass
                 sub_blocks_size -= sub_block.total_size()
 
             #FIXME - decode to 1 or 2 channels of audio data
@@ -270,8 +270,6 @@ class WavPackDecoder:
                 residuals[i % channel_count].append(residual)
                 i += 1
 
-        print repr(residuals)
-
     def read_residual(self, reader, holding_zero, holding_one, medians):
         if (holding_zero == 0):
             t = reader.unary(0)
@@ -325,11 +323,14 @@ class WavPackDecoder:
                 r = reader.read(p)
             else:
                 r = 0
-            e = (1 << (p + 1)) - add - 1
-            if (r >= e):
-                r = (r << 1) - e + reader.read(1)
 
-            unsigned = base + r
+            e = (1 << (p + 1)) - add - 1
+
+            if (r >= e):
+                b = reader.read(1)
+                unsigned = base + (r * 2) - e + b
+            else:
+                unsigned = base + r
         else:
             unsigned = base
 
