@@ -1261,6 +1261,185 @@ i & \text{base} & \text{add} & p & r_i & e & b_i & unsigned & sign_i & residual_
 
 \end{landscape}
 
+\subsection{Channel Decorrelation}
+\ALGORITHM{a list of signed residuals per channel, a list of decorrelation terms and deltas, a decorrelation weight per term and channel, a list of decorrelation samples per term and channel}{a list of signed samples per channel}
+\SetKwData{TERMCOUNT}{term count}
+\SetKwData{PASS}{pass}
+\SetKwData{RESIDUALS}{residuals}
+\eIf{$\text{channel count} = 1$}{
+  $\text{\PASS}_{0~-1} \leftarrow \text{\RESIDUALS}_{0}$\;
+  \For{i = 0 \emph{\KwTo}\TERMCOUNT}{
+    decorrelate 1 channel $\text{\PASS}_{0~(i - 1)}$ to $\text{\PASS}_{0~i}$\;
+  }
+  \Return $\text{\PASS}_{0~\text{\TERMCOUNT} - 1}$\;
+}{
+  $\text{\PASS}_{0~-1} \leftarrow \text{\RESIDUALS}_{0}$\;
+  $\text{\PASS}_{1~-1} \leftarrow \text{\RESIDUALS}_{1}$\;
+  \For{i = 0 \emph{\KwTo}\TERMCOUNT}{
+    decorrelate 2 channel $(\text{\PASS}_{0~(i - 1)}~,~\text{\PASS}_{1~(i - 1)})$ to $(\text{\PASS}_{0~i}~,~\text{\PASS}_{1~i})$\;
+  }
+  \Return $(\text{\PASS}_{0~\text{\TERMCOUNT} - 1}~,~\text{\PASS}_{1~\text{\TERMCOUNT} - 1})$\;
+}
+\EALGORITHM
+
+\clearpage
+
+%%FIXME
+
+Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor tellus. Donec pretium posuere tellus. Proin quam nisl, tincidunt et, mattis eget, convallis nec, purus. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Nulla posuere. Donec vitae dolor. Nullam tristique diam non turpis. Cras placerat accumsan nulla. Nullam rutrum. Nam vestibulum accumsan nisl.
+
+\clearpage
+
+\subsubsection{1 Channel Decorrelation Pass}
+{\relsize{-1}
+\ALGORITHM{a list of signed correlated samples, decorrelation term and delta, decorrelation weight, list of decorrelation samples}{a list of signed decorrelated samples}
+\SetKwData{CORRELATED}{correlated}
+\SetKwData{DECORRELATED}{decorrelated}
+\SetKwData{DECORRSAMPLE}{decorrelation sample}
+\SetKwData{WEIGHT}{weight}
+\SetKwData{TEMP}{temp}
+\SetKw{OR}{or}
+\SetKw{XOR}{xor}
+\SetKwFunction{APPLYWEIGHT}{apply\_weight}
+\SetKwFunction{UPDATEWEIGHT}{update\_weight}
+$\text{\WEIGHT}_0 \leftarrow$ decorrelation weight\;
+\BlankLine
+\uIf{$term = 18$}{
+  $\text{\DECORRELATED}_0 \leftarrow \text{\DECORRSAMPLE}_1$\;
+  $\text{\DECORRELATED}_1 \leftarrow \text{\DECORRSAMPLE}_0$\;
+  \For{i = 0 \emph{\KwTo}correlated samples length}{
+    $\text{\TEMP}_{i} \leftarrow \lfloor(3 \times \text{\DECORRELATED}_{i + 1} - \text{\DECORRELATED}_{i}) \div 2 \rfloor$\;
+    $\text{\DECORRELATED}_{i + 2} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_i~,~\text{\TEMP}_{i}) + \text{\CORRELATED}_i$\;
+    $\text{\WEIGHT}_{i + 1} \leftarrow \text{\WEIGHT}_i + \UPDATEWEIGHT(\text{\TEMP}_{i}~,~\text{\CORRELATED}_i~,~delta)$\;
+  }
+  \Return \DECORRELATED samples starting from 2\;
+}
+\uElseIf{$term = 17$}{
+  $\text{\DECORRELATED}_0 \leftarrow \text{\DECORRSAMPLE}_1$\;
+  $\text{\DECORRELATED}_1 \leftarrow \text{\DECORRSAMPLE}_0$\;
+  \For{i = 0 \emph{\KwTo}correlated samples length}{
+    $\text{\TEMP}_{i} \leftarrow 2 \times \text{\DECORRELATED}_{i + 1} - \text{\DECORRELATED}_{i}$\;
+    $\text{\DECORRELATED}_{i + 2} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_i~,~\text{\TEMP}_{i}) + \text{\CORRELATED}_i$\;
+    $\text{\WEIGHT}_{i + 1} \leftarrow \text{\WEIGHT}_i + \UPDATEWEIGHT(\text{\TEMP}_{i}~,~\text{\CORRELATED}_i~,~delta)$\;
+  }
+  \Return \DECORRELATED samples starting from 2\;
+}
+\uElseIf{$1 \leq term \leq 8$}{
+  \For{i = 0 \emph{\KwTo}term}{
+    $\text{\DECORRELATED}_i \leftarrow \text{\DECORRSAMPLE}_{term - i - 1}$\;
+  }
+  \For{i = 0 \emph{\KwTo}correlated samples length}{
+    $\text{\DECORRELATED}_{i + term} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_i~,~\text{\DECORRELATED}_{i}) + \text{\CORRELATED}_i$\;
+    $\text{\WEIGHT}_{i + 1} \leftarrow \text{\WEIGHT}_i + \UPDATEWEIGHT(\text{\DECORRELATED}_{i}~,~\text{\CORRELATED}_i~,~delta)$\;
+  }
+  \BlankLine
+  \Return \DECORRELATED samples starting from $term$\;
+}
+\Else{
+  invalid decorrelation term\;
+}
+\EALGORITHM
+\par
+\noindent
+\begin{align*}
+\intertext{where \texttt{apply\_weight} is defined as:}
+\texttt{apply\_weight}(weight~,~sample) &= \left\lfloor\frac{weight \times sample + 2 ^ 9}{2 ^ {10}}\right\rfloor \\
+\intertext{and \texttt{update\_weight} is defined as:}
+\texttt{update\_weight}(source~,~result~,~delta) &=
+\begin{cases}
+0 & \text{ if } source = 0 \text{ or } result = 0 \\
+delta & \text{ if } (source \textbf{ xor } result ) \geq 0 \\
+-delta & \text{ if } (source \textbf{ xor } result) < 0
+\end{cases}
+\end{align*}
+
+}
+
+
+\clearpage
+
+\subsubsection{2 Channel Decorrelation Pass}
+{\relsize{-1}
+\ALGORITHM{2 lists of signed correlated samples, decorrelation term and delta, 2 decorrelation weights, 2 lists of decorrelation samples}{2 lists of signed decorrelated samples}
+\SetKwData{CORRELATEDA}{correlated A}
+\SetKwData{CORRELATEDB}{correlated B}
+\SetKwData{DECORRELATEDA}{decorrelated A}
+\SetKwData{DECORRELATEDB}{decorrelated B}
+\SetKwData{DECORRSAMPLEA}{decorrelation sample A}
+\SetKwData{DECORRSAMPLEB}{decorrelation sample B}
+\SetKwData{WEIGHTA}{weight A}
+\SetKwData{WEIGHTB}{weight B}
+\SetKw{OR}{or}
+\SetKw{XOR}{xor}
+\SetKwFunction{MIN}{min}
+\SetKwFunction{MAX}{max}
+\SetKwFunction{APPLYWEIGHT}{apply\_weight}
+\SetKwFunction{UPDATEWEIGHT}{update\_weight}
+\uIf{$17 \leq term \leq 18$ \OR $1 \leq term \leq 8$}{
+  \DECORRELATEDA $\leftarrow$ 1 channel decorrelation pass of \CORRELATEDA\;
+  \DECORRELATEDB $\leftarrow$ 1 channel decorrelation pass of \CORRELATEDB\;
+  \Return $(\DECORRELATEDA~,~\DECORRELATEDB)$\;
+}
+\uElseIf{$-3 \leq term \leq -1$}{
+  $\text{\WEIGHTA}_0 \leftarrow$ decorrelation weight A\;
+  $\text{\WEIGHTB}_0 \leftarrow$ decorrelation weight B\;
+  $\text{\DECORRELATEDA}_0 \leftarrow \DECORRSAMPLEA_0$\;
+  $\text{\DECORRELATEDB}_0 \leftarrow \DECORRSAMPLEB_0$\;
+  \uIf{$term = -1$}{
+    \For{i = 0 \emph{\KwTo}correlated samples length}{
+      $\text{\DECORRELATEDA}_{i + 1} \leftarrow \APPLYWEIGHT(\text{\WEIGHTA}_{i}~,~\text{\DECORRELATEDA}_{i}) + \text{\CORRELATEDA}_i$\;
+      $\text{\DECORRELATEDB}_{i + 1} \leftarrow \APPLYWEIGHT(\text{\WEIGHTB}_{i}~,~\text{\DECORRELATEDA}_{i + 1}) + \text{\CORRELATEDB}_i$\;
+      $\text{\WEIGHTA}_{i + 1} \leftarrow \text{\WEIGHTA}_i + \UPDATEWEIGHT(\text{\DECORRELATEDB}_i~,~\text{\CORRELATEDA}_i~,~delta)$\;
+      $\text{\WEIGHTB}_{i + 1} \leftarrow \text{\WEIGHTB}_i + \UPDATEWEIGHT(\text{\DECORRELATEDA}_{i + 1}~,~\text{\CORRELATEDB}_i~,~delta)$\;
+      $\text{\WEIGHTA}_{i + 1} \leftarrow \MAX(\MIN(\text{\WEIGHTA}_{i + 1}~,~1024)~,~-1024)$\;
+      $\text{\WEIGHTB}_{i + 1} \leftarrow \MAX(\MIN(\text{\WEIGHTB}_{i + 1}~,~1024)~,~-1024)$\;
+    }
+  }
+  \uElseIf{$term = -2$}{
+    \For{i = 0 \emph{\KwTo}correlated samples length}{
+      $\text{\DECORRELATEDB}_{i + 1} \leftarrow \APPLYWEIGHT(\text{\WEIGHTB}_{i}~,~\text{\DECORRELATEDA}_{i}) + \text{\CORRELATEDB}_i$\;
+      $\text{\DECORRELATEDA}_{i + 1} \leftarrow \APPLYWEIGHT(\text{\WEIGHTA}_{i}~,~\text{\DECORRELATEDB}_{i + 1}) + \text{\CORRELATEDA}_i$\;
+      $\text{\WEIGHTB}_{i + 1} \leftarrow \text{\WEIGHTB}_i + \UPDATEWEIGHT(\text{\DECORRELATEDA}_i~,~\text{\CORRELATEDB}_i~,~delta)$\;
+      $\text{\WEIGHTA}_{i + 1} \leftarrow \text{\WEIGHTA}_i + \UPDATEWEIGHT(\text{\DECORRELATEDB}_{i + 1},~\text{\CORRELATEDA}_i~,~delta)$\;
+      $\text{\WEIGHTB}_{i + 1} \leftarrow \MAX(\MIN(\text{\WEIGHTB}_{i + 1}~,~1024)~,~-1024)$\;
+      $\text{\WEIGHTA}_{i + 1} \leftarrow \MAX(\MIN(\text{\WEIGHTA}_{i + 1}~,~1024)~,~-1024)$\;
+    }
+  }
+  \ElseIf{$term = -3$}{
+    \For{i = 0 \emph{\KwTo}correlated samples length}{
+      $\text{\DECORRELATEDA}_{i + 1} \leftarrow \APPLYWEIGHT(\text{\WEIGHTA}_{i}~,~\text{\DECORRELATEDB}_i) + \text{\CORRELATEDA}_i$\;
+      $\text{\DECORRELATEDB}_{i + 1} \leftarrow \APPLYWEIGHT(\text{\WEIGHTB}_{i}~,~\text{\DECORRELATEDA}_i) + \text{\CORRELATEDB}_i$\;
+      $\text{\WEIGHTA}_{i + 1} \leftarrow \text{\WEIGHTA}_i + \UPDATEWEIGHT(\text{\DECORRELATEDB}_i~,~\text{\CORRELATEDA}_i~,~delta)$\;
+      $\text{\WEIGHTB}_{i + 1} \leftarrow \text{\WEIGHTB}_i + \UPDATEWEIGHT(\text{\DECORRELATEDA}_i~,~\text{\CORRELATEDB}_i~,~delta)$\;
+      $\text{\WEIGHTA}_{i + 1} \leftarrow \MAX(\MIN(\text{\WEIGHTA}_{i + 1}~,~1024)~,~-1024)$\;
+      $\text{\WEIGHTB}_{i + 1} \leftarrow \MAX(\MIN(\text{\WEIGHTB}_{i + 1}~,~1024)~,~-1024)$\;
+    }
+  }
+  \Return $(\DECORRELATEDA \text{ starting from 1}~,~\DECORRELATEDB \text{ starting from 1})$\;
+}
+\Else{
+  invalid decorrelation term\;
+}
+\EALGORITHM
+}
+
+%% \begin{table}[h]
+%% \begin{tabular}{r||rrrrrr}
+%% $i$ & $\text{term}_i$ & $\text{delta}_i$ & $\text{weight A}_i$ & $\text{weight B}_i$ & $\text{samples A}_i$ & $\text{Samples B}_i$ \\
+%% \hline
+%% 0 & \texttt{18} & \texttt{2} & \texttt{48} & \texttt{48} & \texttt{[-73, -78]} & \texttt{[28, 26]} \\
+%% \hline
+%% 1 & \texttt{18} & \texttt{2} & \texttt{48} & \texttt{48} & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+%% \hline
+%% 2 & \texttt{2} & \texttt{2} & \texttt{32} & \texttt{32} & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+%% \hline
+%% 3 & \texttt{17} & \texttt{2} & \texttt{48} & \texttt{48} & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+%% \hline
+%% 4 & \texttt{3} & \texttt{2} & \texttt{16} & \texttt{24} & \texttt{[0, 0, 0]} & \texttt{[0, 0, 0]} \\
+%% \hline
+%% \end{tabular}
+%% \end{table}
+
 %% \section{the WavPack Block Header}
 %% \begin{figure}[h]
 %% \includegraphics{figures/wavpack/block_header.pdf}

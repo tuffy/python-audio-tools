@@ -1635,7 +1635,7 @@ wavpack_perform_decorrelation_pass(struct i_array* channel_A,
                 output_A_1 = ia_getitem(&(output_A), -1);
 
                 /*apply weight*/
-                output_Ai = apply_weight(weight_A,output_B_1) +
+                output_Ai = apply_weight(weight_A, output_B_1) +
                     input_Ai;
                 output_Bi = apply_weight(weight_B, output_A_1) +
                     input_Bi;

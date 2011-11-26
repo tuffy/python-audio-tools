@@ -18,15 +18,54 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools.bitstream import BitstreamReader
+from audiotools.pcm import from_channels,from_list
 from math import log
+
+def sub_blocks(reader, sub_blocks_size):
+    while (sub_blocks_size > 0):
+        sub_block = Sub_Block.read(reader)
+        yield sub_block
+        sub_block_size -= sub_block.total_size()
 
 class WavPackDecoder:
     def __init__(self, filename):
         self.reader = BitstreamReader(open(filename, "rb"), 1)
+
+        #read initial block to populate
+        #sample_rate, bits_per_sample, channels, and channel_mask
+        self.reader.mark()
+        header = Block_Header.read(self.reader)
+        sub_blocks_size = header.block_size - 24
+        sub_blocks_data = self.reader.substream(sub_blocks_size)
+        if (header.sample_rate != 15):
+            self.sample_rate = [6000,  8000,  9600,  11025, 12000,
+                                16000, 22050, 24000, 32000, 44100,
+                                48000, 64000, 88200, 96000,
+                                192000][header.sample_rate]
+        else:
+            raise NotImplementedError()
+
+        self.bits_per_sample = [8, 16, 24, 32][header.bits_per_sample]
+
+        if (header.initial_block and header.final_block):
+            if (header.mono_output):
+                self.channels = 1
+                self.channel_mask = 0x4
+            else:
+                self.channels = 2
+                self.channel_mask = 0x3
+        else:
+            raise NotImplementedError()
+
+        self.reader.rewind()
+        self.reader.unmark()
+
         self.pcm_finished = False
         self.md5_checked = False
 
     def read(self):
+        channels = []
+
         while (True):  #in place of a do-while loop
             self.reset_decoding_parameters()
             header = Block_Header.read(self.reader)
@@ -46,21 +85,30 @@ class WavPackDecoder:
                     elif (sub_block.metadata_function == 10):
                         self.parse_bitstream(header, sub_block)
                     else:
-                        #FIXME - parse decoding parameters from sub block
                         pass
                 sub_blocks_size -= sub_block.total_size()
 
-            #FIXME - decode to 1 or 2 channels of audio data
+            if (header.channel_decorrelation):
+                samples = self.decorrelate_channels(header)
+            else:
+                samples = [r[:] for r in self.residuals]
+
+            if (header.joint_stereo and (header.mono_output == 0)):
+                samples = undo_joint_stereo(samples)
+
+            channels.extend(samples)
 
             if (header.final_block == 1):
                 break
 
-        #FIXME - combine channels of audio data into single block
+        #combine channels of audio data into single block
+        block = from_channels([from_list(ch, 1, self.bits_per_sample, True)
+                               for ch in channels])
 
         #FIXME - update MD5 sum
 
         #FIXME - return single block of audio data
-        return None
+        return block
 
     def close(self):
         self.reader.close()
@@ -68,13 +116,16 @@ class WavPackDecoder:
     def reset_decoding_parameters(self):
         self.decorrelation_terms = []
         self.decorrelation_deltas = []
-        self.channel_A_weights = []
-        self.channel_B_weights = []
+        self.decorrelation_weights = ([], [])
+        self.decorrelation_samples = ([], [])
         self.medians = []
 
         self.decorrelation_terms_read = False
         self.decorrelation_weights_read = False
+        self.decorrelation_samples_read = False
         self.entropy_variables_read = False
+        self.bitstream_read = False
+        self.residuals = []
 
     def parse_decorrelation_terms(self, sub_block):
         if (sub_block.actual_size_1_less == 0):
@@ -120,29 +171,30 @@ class WavPackDecoder:
             else:
                 weights.append(value_i * 2 ** 3)
 
-        self.channel_A_weights = []
-        self.channel_B_weights = []
+        channel_A_weights = []
+        channel_B_weights = []
         if (block_header.mono_output == 0):
             if ((weight_count / 2) > len(self.decorrelation_terms)):
                 raise ValueError("invalid number of decorrelation weights")
             for i in xrange(weight_count / 2):
-                self.channel_A_weights.append(weights[i * 2])
-                self.channel_B_weights.append(weights[i * 2 + 1])
+                channel_A_weights.append(weights[i * 2])
+                channel_B_weights.append(weights[i * 2 + 1])
             for i in xrange(weight_count / 2, len(self.decorrelation_terms)):
-                self.channel_A_weights.append(0)
-                self.channel_B_weights.append(0)
-            self.channel_A_weights.reverse()
-            self.channel_B_weights.reverse()
+                channel_A_weights.append(0)
+                channel_B_weights.append(0)
+            channel_A_weights.reverse()
+            channel_B_weights.reverse()
         else:
             if (weight_count > len(self.decorrelation_terms)):
                 raise ValueError("invalid number of decorrelation weights")
             for i in xrange(weight_count):
-                self.channel_A_weights.append(weights[i])
+                channel_A_weights.append(weights[i])
             for i in xrange(weight_count, len(self.decorrelation_terms)):
-                self.channel_B_weights.append(0)
-            self.channel_A_weights.reverse()
+                channel_B_weights.append(0)
+            channel_A_weights.reverse()
 
         self.decorrelation_weights_read = True
+        self.decorrelation_weights = (channel_A_weights, channel_B_weights)
 
     def parse_decorrelation_samples(self, header, sub_block):
         assert(self.decorrelation_terms_read)
@@ -209,7 +261,8 @@ class WavPackDecoder:
         channel_A_samples.reverse()
         channel_B_samples.reverse()
 
-        return (channel_A_samples, channel_B_samples)
+        self.decorrelation_samples_read = True
+        self.decorrelation_samples = (channel_A_samples, channel_B_samples)
 
     def parse_entropy_variables(self, header, sub_block):
         median0 = [read_exp2(sub_block.data) for i in xrange(3)]
@@ -269,6 +322,9 @@ class WavPackDecoder:
                     self.medians[i % channel_count])
                 residuals[i % channel_count].append(residual)
                 i += 1
+
+        self.bitstream_read = True
+        self.residuals = residuals
 
     def read_residual(self, reader, holding_zero, holding_one, medians):
         if (holding_zero == 0):
@@ -340,6 +396,47 @@ class WavPackDecoder:
         else:
             return (unsigned, holding_zero, holding_one)
 
+    def decorrelate_channels(self, header):
+        assert(self.decorrelation_terms_read)
+        assert(self.decorrelation_weights_read)
+        assert(self.decorrelation_samples_read)
+        assert(self.bitstream_read)
+
+        latest_pass = [r[:] for r in self.residuals]
+
+        for (term,
+             delta,
+             weights,
+             samples) in zip(self.decorrelation_terms,
+                             self.decorrelation_deltas,
+                             zip(*self.decorrelation_weights),
+                             zip(*self.decorrelation_samples)):
+             if (header.mono_output == 0):
+                 latest_pass = decorrelation_pass_2ch(latest_pass,
+                                                      term,
+                                                      delta,
+                                                      weights,
+                                                      samples)
+             else:
+                 latest_pass = decorrelation_pass_1ch(latest_pass,
+                                                      term,
+                                                      delta,
+                                                      weights[0],
+                                                      samples[0])
+        return latest_pass
+
+def undo_joint_stereo(samples):
+    assert(len(samples) == 2)
+    assert(len(samples[0]) == len(samples[1]))
+
+    stereo = [[], []]
+    for (mid, side) in zip(*samples):
+        side -= (mid >> 1)
+        mid += side
+        stereo[0].append(mid)
+        stereo[1].append(side)
+
+    return stereo
 
 
 EXP2 = [0x100, 0x101, 0x101, 0x102, 0x103, 0x103, 0x104, 0x105,
@@ -385,6 +482,127 @@ def read_exp2(reader):
         return EXP2[value & 0xFF] >> (9 - (value >> 8))
     elif ((2304 < value) and (value <= 32767)):
         return EXP2[value & 0xFF] << ((value >> 8) - 9)
+
+
+def decorrelation_pass_1ch(correlated_samples,
+                           term, delta, weight, decorrelation_samples):
+    if (term == 18):
+        assert(len(decorrelation_samples) == 2)
+        decorrelated = decorrelation_samples[:]
+        decorrelated.reverse()
+        for i in xrange(len(correlated_samples)):
+            temp = (3 * decorrelated[i + 1] - decorrelated[i]) / 2
+            decorrelated.append(apply_weight(weight, temp) +
+                                correlated_samples[i])
+            weight += update_weight(temp, correlated_samples[i], delta)
+        return decorrelated[2:]
+    elif (term == 17):
+        assert(len(decorrelation_samples) == 2)
+        decorrelated = decorrelation_samples[:]
+        decorrelated.reverse()
+        for i in xrange(len(correlated_samples)):
+            temp = 2 * decorrelated[i + 1] - decorrelated[i]
+            decorrelated.append(apply_weight(weight, temp) +
+                                correlated_samples[i])
+            weight += update_weight(temp, correlated_samples[i], delta)
+        return decorrelated[2:]
+    elif ((1 <= term) and (term <= 8)):
+        assert(len(decorrelation_samples) == term)
+        decorrelated = decorrelation_samples[:]
+        decorrelated.reverse()
+        for i in xrange(len(correlated_samples)):
+            decorrelated.append(apply_weight(weight, decorrelated[i]) +
+                                correlated_samples[i])
+            weight += update_weight(decorrelated[i],
+                                    correlated_samples[i],
+                                    delta)
+        return decorrelated[term:]
+    else:
+        raise ValueError("unsupported term")
+
+
+def decorrelation_pass_2ch(correlated_samples,
+                           term, delta, weights, decorrelation_samples):
+    assert(len(correlated_samples) == 2)
+    assert(len(correlated_samples[0]) == len(correlated_samples[1]))
+    assert(len(weights) == 2)
+    if (((17 <= term) and (term <= 18)) or ((1 <= term) and (term <= 8))):
+        return (decorrelation_pass_1ch(correlated_samples[0],
+                                       term, delta, weights[0],
+                                       decorrelation_samples[0]),
+                decorrelation_pass_1ch(correlated_samples[1],
+                                       term, delta, weights[1],
+                                       decorrelation_samples[1]))
+    elif ((-3 <= term) and (term <= -1)):
+        assert(len(decorrelation_samples[0]) == 1)
+        (correlated_A,
+         correlated_B) = correlated_samples
+        (decorrelated_A,
+         decorrelated_B) = decorrelation_samples
+        (weight_A,
+         weight_B) = weights
+        if (term == -1):
+            for i in xrange(len(correlated_A)):
+                decorrelated_A.append(
+                    apply_weight(weight_A, decorrelated_A[i]) +
+                    correlated_A[i])
+                decorrelated_B.append(
+                    apply_weight(weight_B, decorrelated_A[i + 1]) +
+                    correlated_B[i])
+                weight_A += update_weight(decorrelated_B[i],
+                                          correlated_A[i],
+                                          delta)
+                weight_B += update_weight(decorrelated_A[i + 1],
+                                          correlated_B[i],
+                                          delta)
+                weight_A = max(min(weight_A, 1024), -1024)
+                weight_B = max(min(weight_B, 1024), -1024)
+        elif (term == -2):
+            for i in xrange(len(correlated_A)):
+                decorrelated_B.append(
+                    apply_weight(weight_B, decorrelated_A[i]) +
+                    correlated_B[i])
+                decorrelated_A.append(
+                    apply_weight(weight_A, decorrelated_B[i + 1]) +
+                    correlated_A[i])
+                weight_B += update_weight(decorrelated_A[i],
+                                          correlated_B[i],
+                                          delta)
+                weight_A += update_weight(decorrelated_B[i + 1],
+                                          correlated_A[i],
+                                          delta)
+                weight_B = max(min(weight_B, 1024), -1024)
+                weight_A = max(min(weight_A, 1024), -1024)
+        elif (term == -3):
+            for i in xrange(len(correlated_A)):
+                decorrelated_A.append(
+                    apply_weight(weight_A, decorrelated_B[i]) +
+                    correlated_A[i])
+                decorrelated_B.append(
+                    apply_weight(weight_B, decorrelated_A[i]) +
+                    correlated_B[i])
+                weight_A += update_weight(decorrelated_B[i],
+                                          correlated_A[i],
+                                          delta)
+                weight_B += update_weight(decorrelated_A[i],
+                                          correlated_B[i],
+                                          delta)
+                weight_A = max(min(weight_A, 1024), -1024)
+                weight_B = max(min(weight_B, 1024), -1024)
+        return (decorrelated_A[1:], decorrelated_B[1:])
+    else:
+        raise ValueError("unsupported term")
+
+def apply_weight(weight, sample):
+    return ((weight * sample) + 512) >> 10
+
+def update_weight(source, result, delta):
+    if ((source == 0) or (result == 0)):
+        return 0
+    elif ((source ^ result) >= 0):
+        return delta
+    else:
+        return -delta
 
 
 class Block_Header:
