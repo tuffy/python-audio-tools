@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <struct endianness="little">
   <field size="32" value="0x6B707677">block ID</field>
-  <field size="32" value="0xB2">block size</field>
+  <field size="32" value="0xB2">block data size (+ 24)</field>
   <field size="16" value="0x0407">version</field>
   <field size="8" value="0">track number</field>
   <field size="8" value="0">index number</field>

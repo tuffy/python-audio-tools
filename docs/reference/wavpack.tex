@@ -109,7 +109,7 @@ flag & value & meaning \\
 \hline
 \textbf{use IIR} & & use IIR for negative hybrid noise shaping \\
 \hline
-\textbf{false stereo} & & both channels have identical data \\
+\textbf{false stereo} & & mono block which decodes to 2 identical channels \\
 \hline
 \textbf{reserved} & & always 0 \\
 \end{tabular}
@@ -125,7 +125,7 @@ flag & value & meaning \\
 \end{figure}
 \par
 \noindent
-If \VAR{large block} is 0, \VAR{sub block size} is an 8 bit field.
+If \VAR{large sub block} is 0, \VAR{sub block size} is an 8 bit field.
 Otherwise, it is 24 bits.
 If \VAR{actual size 1 less} is 1, the contents of
 \VAR{sub block data} are 1 byte shorter than its length;
@@ -164,39 +164,27 @@ metadata function & nondecoder data & contents \\
 \section{WavPack Decoding}
 
 \ALGORITHM{a WavPack encoded file}{PCM samples}
-\SetKwData{BLOCK}{block}
+\SetKwData{INDEX}{index}
+\SetKwData{SAMPLES}{samples}
 \SetKwData{TOTALSAMPLES}{total samples}
-\SetKwData{BLOCKINDEX}{block index}
-\SetKwData{BLOCKSAMPLES}{block samples}
 \SetKwData{FINALBLOCK}{final block}
-\SetKwData{BLOCKHEADER}{block header}
-\SetKwData{SUBBLOCK}{sub block}
-\SetKwData{SUBBLOCKHEADER}{sub block header}
-\SetKwData{SUBBLOCKSIZE}{sub blocks size}
-\SetKwData{NONDECODER}{nondecoder data}
-\SetKwData{METADATAFUNC}{metadata function}
-\SetKwData{SUBBLOCKDATA}{sub block data}
-\SetKwData{ACTUALSIZEONELESS}{actual size 1 less}
-\Repeat{$\text{\BLOCKINDEX} + \text{\BLOCKSAMPLES} \geq \text{\TOTALSAMPLES}$}{
-  \Repeat(\tcc*[f]{read blocks}){$\text{\FINALBLOCK} = 1$}{
-    read \BLOCKHEADER\;
-    \While{$\text{\SUBBLOCKSIZE} > 0$}{
-      read \SUBBLOCKHEADER\;
-      \eIf{$\text{\ACTUALSIZEONELESS} = 0$}{
-        \SUBBLOCKDATA $\leftarrow$ \READ ($\textit{sub block size} \times 2$) bytes\;
-      }{
-        \SUBBLOCKDATA $\leftarrow$ \READ ($\textit{sub block size} \times 2 - 1$) bytes\;
-        \SKIP 8 bits\;
-      }
-      \If{$\NONDECODER = 0$}{
-        parse decoding parameters from \METADATAFUNC and \SUBBLOCKDATA\;
-      }
-      deduct sub block's total size from \SUBBLOCKSIZE\;
+\SetKwData{OUTPUTCHANNEL}{output channel}
+\SetKwData{BLOCKCHANNEL}{block channel}
+\Repeat{header's $\text{\INDEX} + \text{\SAMPLES} >= \text{\TOTALSAMPLES}$}{
+  $c \leftarrow 0$\;
+  \Repeat{header's $\text{\FINALBLOCK} = 1$}{
+    decode block to 1 or 2 channels of PCM data\;
+    \eIf{2 channels}{
+      $\text{\OUTPUTCHANNEL}_c \leftarrow \text{\BLOCKCHANNEL}_0$\;
+      $\text{\OUTPUTCHANNEL}_{c + 1} \leftarrow \text{\BLOCKCHANNEL}_1$\;
+      $c \leftarrow c + 2$\;
+    }{
+      $\text{\OUTPUTCHANNEL}_c \leftarrow \text{\BLOCKCHANNEL}_0$\;
+      $c \leftarrow c + 1$\;
     }
-    decode to 1 or 2 channels based on block header and decoding parameters\;
   }
-  update stream MD5 sum with combined channel data\;
-  \Return combined channels as a single set of PCM samples\;
+  update stream MD5 sum with \OUTPUTCHANNEL data\;
+  \Return \OUTPUTCHANNEL data\;
 }
 \BlankLine
 attempt to read one additional block for MD5 sub block\;
@@ -206,12 +194,177 @@ attempt to read one additional block for MD5 sub block\;
 \EALGORITHM
 \par
 \noindent
-The \VAR{sub block size}, \VAR{final block}, \VAR{block index},
-\VAR{block samples} and \VAR{total samples} values
-are all taken from the most recent block header.
-The \VAR{nondecoder data}, \VAR{metadata function}
-and \VAR{sub block data} values are taken from the
-most recent sub block.
+For example, four blocks with the following attributes:
+\begin{table}[h]
+\begin{tabular}{rrr}
+channel count & initial block & final block \\
+\hline
+2 & 1 & 0 \\
+1 & 0 & 0 \\
+1 & 0 & 0 \\
+2 & 0 & 1 \\
+\end{tabular}
+\end{table}
+\par
+\noindent
+combine into 6 channels of PCM output as follows:
+\begin{figure}[h]
+\includegraphics{figures/wavpack/block_channels.pdf}
+\end{figure}
+
+\clearpage
+
+\subsection{Block Decoding}
+{\relsize{-1}
+\ALGORITHM{WavPack file data}{1 or 2 channels of PCM sample data}
+\SetKwData{BLOCKDATA}{block data size}
+\SetKwData{SUBBLOCKSIZE}{sub block size}
+\SetKwData{CHANNELDATA}{channel data}
+\SetKwData{JOINTSTEREO}{joint stereo}
+\SetKwData{MONOOUTPUT}{mono output}
+\SetKwData{EXTENDEDINTS}{extended integers}
+\SetKwData{FALSESTEREO}{false stereo}
+\SetKwData{RESIDUALCH}{residual channels}
+\SetKwData{DECORRELATEDCH}{decorrelated channels}
+\SetKwData{LEFTRIGHTCH}{left/(right) channels}
+\SetKwData{LEFTRRIGHTCH}{left/right channels}
+\SetKwData{UNSHIFTEDCH}{unshifted left/(right) channels}
+\SetKwData{CHANNELDECORR}{channel decorrelation}
+\SetKwFunction{DECORRELATE}{decorrelate}
+\SetKwFunction{UNDOJOINTSTEREO}{undo\_joint\_stereo}
+\SetKwFunction{UNDOEXTENDEDINTS}{undo\_extended\_integers}
+\SetKw{AND}{and}
+read block header\;
+\BlankLine
+\While(\tcc*[f]{read decoding parameters}){$\text{\BLOCKDATA} > 0$}{
+  read sub block header\;
+  read decoding parameters from sub block data\;
+  \eIf{$\text{large sub block} = 0$}{
+    $\BLOCKDATA \leftarrow \BLOCKDATA - (2 + 2 \times \text{\SUBBLOCKSIZE})$
+  }{
+    $\BLOCKDATA \leftarrow \BLOCKDATA - (4 + 2 \times \text{\SUBBLOCKSIZE})$
+  }
+}
+\ASSERT bitstream sub block has been parsed to 1 or 2 lists of residual channels\;
+\BlankLine
+\eIf(\tcc*[f]{2 channels of output}){$\text{\MONOOUTPUT} = 0$ \AND $\text{\FALSESTEREO} = 0$}{
+  \eIf{$\text{\CHANNELDECORR} = 1$}{
+    $\text{decorrelated}~\text{ch}_0/\text{ch}_1 \leftarrow \DECORRELATE(\text{residual}_0/\text{residual}_1)$\;
+  }{
+    $\text{decorrelated ch}_0/\text{decorrelated ch}_1 \leftarrow \text{residual}_0/\text{residual}_1$\;
+  }
+  \eIf{$\text{\JOINTSTEREO} = 1$}{
+    $\text{left ch}_0/\text{right ch}_1 \leftarrow \UNDOJOINTSTEREO(\text{decorrelated ch}_0/\text{decorrelated ch}_1)$\;
+  }{
+    $\text{left ch}_0/\text{right ch}_1 \leftarrow \text{decorrelated ch}_0/\text{decorrelated ch}_1$\;
+  }
+  verify CRC of $\text{left ch}_0/\text{right ch}_1$ against CRC in block header\;
+  \eIf{$\text{\EXTENDEDINTS} = 1$}{
+    $\text{unshifted left ch}_0/\text{unshifted right ch}_1 \leftarrow \UNDOEXTENDEDINTS(\text{left ch}_0/\text{right ch}_1)$\;
+  }{
+    $\text{unshifted left ch}_0/\text{unshifted right ch}_1 \leftarrow \text{left ch}_0/\text{right ch}_1$\;
+  }
+  \Return $(\text{unshifted left ch}_0~,~\text{unshifted right ch}_1)$\;
+}(\tcc*[f]{1 or 2 channels of output}){
+  \eIf{$\text{\CHANNELDECORR} = 1$}{
+    $\text{decorrelated}~\text{ch}_0 \leftarrow \DECORRELATE(\text{residual}_0)$\;
+  }{
+    $\text{decorrelated ch}_0 \leftarrow \text{residual}_0$\;
+  }
+  verify CRC of $\text{decorrelated ch}_0$ against CRC in block header\;
+  \eIf{$\text{\EXTENDEDINTS} = 1$}{
+    $\text{unshifted ch}_0 \leftarrow \UNDOEXTENDEDINTS(\text{decorrelated ch}_0)$\;
+  }{
+    $\text{unshifted left ch}_0 \leftarrow \text{decorrelated ch}_0$\;
+  }
+  \eIf{$\text{\FALSESTEREO} = 0$}{
+    \Return $\text{unshifted left ch}_0$\;
+  }{
+    \Return $(\text{unshifted left ch}_0~,~\text{unshifted left ch}_0)$\;
+  }
+}
+%% \eIf(\tcc*[f]{apply decoding parameters}){$\text{\CHANNELDECORR} = 1$}{
+%%   \ASSERT decorelation terms, weights and samples sub blocks have been parsed\;
+%%   $\text{\DECORRELATEDCH} \leftarrow \DECORRELATE(\text{\RESIDUALCH})$\;
+%% }{
+%%   $\text{\DECORRELATEDCH} \leftarrow \text{\RESIDUALCH}$\;
+%% }
+%% \eIf{$\text{\JOINTSTEREO} = 1$ \AND $\text{\MONOOUTPUT} = 0$ \AND $\text{\FALSESTEREO} = 0$}{
+%%   $\text{\LEFTRRIGHTCH} \leftarrow \UNDOJOINTSTEREO(\text{\DECORRELATEDCH})$\;
+%% }{
+%%   $\text{\LEFTRIGHTCH} \leftarrow \text{\DECORRELATEDCH}$\;
+%% }
+%% verify CRC of \LEFTRIGHTCH against CRC in block header\;
+%% \eIf{$\text{\EXTENDEDINTS} = 1$}{
+%%   $\text{\UNSHIFTEDCH} \leftarrow \UNDOEXTENDEDINTS(\text{\LEFTRIGHTCH})$\;
+%% }{
+%%   $\text{\UNSHIFTEDCH} \leftarrow \text{\LEFTRIGHTCH}$\;
+%% }
+%% \uIf{$\text{\MONOOUTPUT} = 0$ \AND $\text{\FALSESTEREO} = 0$}{
+%%   \Return left and right channels as 2 channels of PCM data\;
+%% }
+%% \uElseIf{$\text{\MONOOUTPUT} = 0$ \AND $\text{\FALSESTEREO} = 1$}{
+%%   \Return left channel twice as 2 channels of PCM data\;
+%% }
+%% \ElseIf{$\text{\MONOOUTPUT} = 1$}{
+%%   \Return left channel once as 1 channel of PCM data\;
+%% }
+\EALGORITHM
+}
+
+\clearpage
+
+%%FIXME - replace this with documentation
+Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor tellus. Donec pretium posuere tellus. Proin quam nisl, tincidunt et, mattis eget, convallis nec, purus. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Nulla posuere. Donec vitae dolor. Nullam tristique diam non turpis. Cras placerat accumsan nulla. Nullam rutrum. Nam vestibulum accumsan nisl.
+
+\clearpage
+
+
+%% \SetKwData{BLOCK}{block}
+%% \SetKwData{TOTALSAMPLES}{total samples}
+%% \SetKwData{BLOCKINDEX}{block index}
+%% \SetKwData{BLOCKSAMPLES}{block samples}
+%% \SetKwData{FINALBLOCK}{final block}
+%% \SetKwData{BLOCKHEADER}{block header}
+%% \SetKwData{SUBBLOCK}{sub block}
+%% \SetKwData{SUBBLOCKHEADER}{sub block header}
+
+%% \SetKwData{NONDECODER}{nondecoder data}
+%% \SetKwData{METADATAFUNC}{metadata function}
+%% \SetKwData{SUBBLOCKDATA}{sub block data}
+%% \SetKwData{ACTUALSIZEONELESS}{actual size 1 less}
+%% \Repeat{$\text{\BLOCKINDEX} + \text{\BLOCKSAMPLES} \geq \text{\TOTALSAMPLES}$}{
+%%   \Repeat(\tcc*[f]{read blocks}){$\text{\FINALBLOCK} = 1$}{
+%%     read \BLOCKHEADER\;
+%%     \While{$\text{\SUBBLOCKSIZE} > 0$}{
+%%       read \SUBBLOCKHEADER\;
+%%       \eIf{$\text{\ACTUALSIZEONELESS} = 0$}{
+%%         \SUBBLOCKDATA $\leftarrow$ \READ ($\textit{sub block size} \times 2$) bytes\;
+%%       }{
+%%         \SUBBLOCKDATA $\leftarrow$ \READ ($\textit{sub block size} \times 2 - 1$) bytes\;
+%%         \SKIP 8 bits\;
+%%       }
+%%       \If{$\NONDECODER = 0$}{
+%%         parse decoding parameters from \METADATAFUNC and \SUBBLOCKDATA\;
+%%       }
+%%       deduct sub block's total size from \SUBBLOCKSIZE\;
+%%     }
+%%     decode to 1 or 2 channels based on block header and decoding parameters\;
+%%   }
+%%   update stream MD5 sum with combined channel data\;
+%%   \Return combined channels as a single set of PCM samples\;
+%% }
+%% \BlankLine
+
+%% \EALGORITHM
+%% \par
+%% \noindent
+%% The \VAR{sub block size}, \VAR{final block}, \VAR{block index},
+%% \VAR{block samples} and \VAR{total samples} values
+%% are all taken from the most recent block header.
+%% The \VAR{nondecoder data}, \VAR{metadata function}
+%% and \VAR{sub block data} values are taken from the
+%% most recent sub block.
 
 \clearpage
 
@@ -219,7 +372,7 @@ most recent sub block.
 {\relsize{-1}
 \ALGORITHM{a WavPack file stream}{block header fields}
 \SetKwData{BLOCKID}{block ID}
-\SetKwData{BLOCKSIZE}{sub blocks size}
+\SetKwData{BLOCKSIZE}{block data size}
 \SetKwData{VERSION}{version}
 \SetKwData{TRACKNUMBER}{track number}
 \SetKwData{INDEXNUMBER}{index number}
@@ -360,8 +513,8 @@ most recent sub block.
 \METAFUNC $\leftarrow$ \READ 5 unsigned bits\;
 \NONDECODER $\leftarrow$ \READ 1 unsigned bit\;
 \ACTUALSIZEONELESS $\leftarrow$ \READ 1 unsigned bit\;
-\textit{large block} $\leftarrow$ \READ 1 unsigned bit\;
-\eIf{$\text{large block} = 0$}{
+\textit{large sub block} $\leftarrow$ \READ 1 unsigned bit\;
+\eIf{$\text{large sub block} = 0$}{
   \SUBBLOCKSIZE $\leftarrow$ (\READ 8 unsigned bits) $\times 2$\;
 }{
   \SUBBLOCKSIZE $\leftarrow$ (\READ 24 unsigned bits) $\times 2$\;
@@ -378,7 +531,7 @@ most recent sub block.
 metadata function & \leftarrow & 2 \\
 nondecoder data & \leftarrow & 0 \\
 actual size 1 less & \leftarrow & 1 \\
-large block & \leftarrow & 0 \\
+large sub block & \leftarrow & 0 \\
 sub block size & \leftarrow & $3 \times 2 = 6$ bytes\;
 \end{tabular}
 \end{table}
@@ -1884,6 +2037,87 @@ $i$ & $\text{mid}_i$ & $\text{side}_i$ & \text{right}_i & \text{left}_i \\
 \hline
 \end{tabular}
 \end{table}
+
+\begin{landscape}
+
+\subsection{Checksum Calculation}
+
+\ALGORITHM{one or two channels of signed audio samples}{an unsigned 32-bit CRC integer}
+\SetKwData{MONO}{mono output}
+\SetKwData{CRC}{CRC}
+\SetKwData{LCRC}{LCRC}
+\SetKwData{SCRC}{SCRC}
+\SetKwData{CHANNEL}{channel}
+$\text{\CRC}_{-1} \leftarrow \texttt{0xFFFFFFFF}$\;
+\For{i = 0 \emph{\KwTo}sample count}{
+  \eIf{$\text{\MONO} = 0$}{
+    $\text{\LCRC}_i \leftarrow (3 \times \text{\CRC}_{i - 1}) + \text{\CHANNEL}_{0~i}$\tcc*[r]{calculate signed CRC of left channel}
+    $\text{\SCRC}_i \leftarrow (3 \times \text{\LCRC}_{i - 1}) + \text{\CHANNEL}_{1~i}$\tcc*[r]{calculate signed CRC of right channel}
+  }{
+    $\text{\SCRC}_i \leftarrow (3 \times \text{\CRC}_{i - 1}) + \text{\CHANNEL}_{0~i}$\tcc*[r]{calculate signed CRC of channel}
+  }
+  \BlankLine
+  \eIf(\tcc*[f]{convert signed CRC to unsigned, 32-bit integer}){$\text{\SCRC}_i \geq 0$}{
+    $\text{\CRC}_i \leftarrow \text{\SCRC}_i \bmod \texttt{0x100000000}$\;
+  }{
+    $\text{\CRC}_i \leftarrow (2 ^ {32} - (-\text{\SCRC}_i)) \bmod \texttt{0x100000000}$\;
+  }
+}
+\Return $\text{\CRC}_{\text{sample count} - 1}$\;
+\EALGORITHM
+
+\subsubsection{Checksum Calculation Example}
+{\relsize{-1}
+\begin{tabular}{|r|r|r||>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|}
+$i$ & $\text{channel}_{0~i}$ & $\text{channel}_{1~i}$ & \text{LCRC}_i & \text{SCRC}_i & \text{CRC}_i \\
+\hline
+0 & 0 & 64 &
+(3 \times \texttt{0xFFFFFFFF}) + 0 = \texttt{0x2FFFFFFFD} &
+(3 \times \texttt{0x2FFFFFFFD}) + 64 = \texttt{0x900000037} &
+\texttt{0x00000037} \\
+1 & 16 & 62 &
+(3 \times \texttt{0x00000037}) + 16 = \texttt{0x000000B5} &
+(3 \times \texttt{0x000000B5}) + 62 = \texttt{0x0000025D} &
+\texttt{0x0000025D} \\
+2 & 31 & 56 &
+(3 \times \texttt{0x0000025D}) + 31 = \texttt{0x00000736} &
+(3 \times \texttt{0x00000736}) + 56 = \texttt{0x000015DA} &
+\texttt{0x000015DA} \\
+3 & 44 & 47 &
+(3 \times \texttt{0x000015DA}) + 44 = \texttt{0x000041BA} &
+(3 \times \texttt{0x000041BA}) + 47 = \texttt{0x0000C55D} &
+\texttt{0x0000C55D} \\
+4 & 54 & 34 &
+(3 \times \texttt{0x0000C55D}) + 54 = \texttt{0x0002504D} &
+(3 \times \texttt{0x0002504D}) + 34 = \texttt{0x0006F109} &
+\texttt{0x0006F109} \\
+5 & 61 & 20 &
+(3 \times \texttt{0x0006F109}) + 61 = \texttt{0x0014D358} &
+(3 \times \texttt{0x0014D358}) + 20 = \texttt{0x003E7A1C} &
+\texttt{0x003E7A1C} \\
+6 & 64 & 4 &
+(3 \times \texttt{0x003E7A1C}) + 64 = \texttt{0x00BB6E94} &
+(3 \times \texttt{0x00BB6E94}) + 4 = \texttt{0x02324BC0} &
+\texttt{0x02324BC0} \\
+7 & 63 & -12 &
+(3 \times \texttt{0x02324BC0}) + 63 = \texttt{0x0696E37F} &
+(3 \times \texttt{0x0696E37F}) - 12 = \texttt{0x13C4AA71} &
+\texttt{0x13C4AA71} \\
+8 & 58 & -27 &
+(3 \times \texttt{0x13C4AA71}) + 58 = \texttt{0x3B4DFF8D} &
+(3 \times \texttt{0x3B4DFF8D}) - 27 = \texttt{0xB1E9FE8C} &
+\texttt{0xB1E9FE8C} \\
+9 & 49 & -41 &
+(3 \times \texttt{0xB1E9FE8C}) + 49 = \texttt{0x215BDFBD5} &
+(3 \times \texttt{0x215BDFBD5}) - 41 = \texttt{0x64139F356} &
+\texttt{0x4139F356} \\
+\end{tabular}
+}
+\vskip 1em
+\par
+\noindent
+Resulting in a final CRC of \texttt{0x4139F356}
+\end{landscape}
 
 %% \begin{table}[h]
 %% \begin{tabular}{r||rrrrrr}
