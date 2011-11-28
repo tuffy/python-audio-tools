@@ -425,16 +425,17 @@ class WavPackDecoder:
                                                       samples[0])
         return latest_pass
 
+
 def undo_joint_stereo(samples):
     assert(len(samples) == 2)
     assert(len(samples[0]) == len(samples[1]))
 
     stereo = [[], []]
     for (mid, side) in zip(*samples):
-        side -= (mid >> 1)
-        mid += side
-        stereo[0].append(mid)
-        stereo[1].append(side)
+        right = side - (mid >> 1)
+        left = mid + right
+        stereo[0].append(left)
+        stereo[1].append(right)
 
     return stereo
 
