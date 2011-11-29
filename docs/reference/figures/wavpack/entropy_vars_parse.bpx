@@ -5,10 +5,10 @@
   <field size="1" value="0">1 less</field>
   <field size="1" value="0">large</field>
   <field size="8" value="6">sub block size (× 2)</field>
-  <field size="16" value="2018">median A₀</field>
-  <field size="16" value="2203">median A₁</field>
-  <field size="16" value="2389">median A₂</field>
-  <field size="16" value="2018">median B₀</field>
-  <field size="16" value="2166">median B₁</field>
-  <field size="16" value="2234">median B₂</field>
+  <field size="16" value="2018">median₀ ₀</field>
+  <field size="16" value="2203">median₀ ₁</field>
+  <field size="16" value="2389">median₀ ₂</field>
+  <field size="16" value="2018">median₁ ₀</field>
+  <field size="16" value="2166">median₁ ₁</field>
+  <field size="16" value="2234">median₁ ₂</field>
 </struct>

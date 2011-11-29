@@ -101,6 +101,7 @@ figures/wavpack/block_channels.pdf \
 figures/wavpack/block_header.pdf \
 figures/wavpack/block_header_parse.pdf \
 figures/wavpack/channel_info.pdf \
+figures/wavpack/decoding_params.pdf \
 figures/wavpack/decorr_samples.pdf \
 figures/wavpack/decorr_samples2.pdf \
 figures/wavpack/decorr_samples_parse.pdf \
@@ -351,10 +352,10 @@ figures/vorbis/ordered_entries.pdf: figures/vorbis/ordered_entries.dot
 .dot.pdf:
 	dot -Tpdf $< -o $@
 
-figures/m4a_ftyp.pdf: figures/m4a_ftyp.bdx
+figures/m4a/ftyp.pdf: figures/m4a/ftyp.bdx
 	./bitdiagram.py -w 270 -i $< -o $@
 
-figures/m4a_mvhd.pdf: figures/m4a_mvhd.bdx
+figures/m4a/mvhd.pdf: figures/m4a/mvhd.bdx
 	./bitdiagram.py -w 270 -i $< -o $@
 
 figures/m4a_meta.pdf: figures/m4a_meta.bdx

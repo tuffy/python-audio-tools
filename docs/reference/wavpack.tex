@@ -170,9 +170,9 @@ metadata function & nondecoder data & contents \\
 \SetKwData{FINALBLOCK}{final block}
 \SetKwData{OUTPUTCHANNEL}{output channel}
 \SetKwData{BLOCKCHANNEL}{block channel}
-\Repeat{header's $\text{\INDEX} + \text{\SAMPLES} >= \text{\TOTALSAMPLES}$}{
+\Repeat{block header's $\text{\INDEX} + \text{\SAMPLES} >= \text{\TOTALSAMPLES}$}{
   $c \leftarrow 0$\;
-  \Repeat{header's $\text{\FINALBLOCK} = 1$}{
+  \Repeat{block header's $\text{\FINALBLOCK} = 1$}{
     decode block to 1 or 2 channels of PCM data\;
     \eIf{2 channels}{
       $\text{\OUTPUTCHANNEL}_c \leftarrow \text{\BLOCKCHANNEL}_0$\;
@@ -238,7 +238,7 @@ read block header\;
 \BlankLine
 \While(\tcc*[f]{read decoding parameters}){$\text{\BLOCKDATA} > 0$}{
   read sub block header\;
-  read decoding parameters from sub block data\;
+  read decoding parameters from block header, sub block header and sub block data\;
   \eIf{$\text{large sub block} = 0$}{
     $\BLOCKDATA \leftarrow \BLOCKDATA - (2 + 2 \times \text{\SUBBLOCKSIZE})$
   }{
@@ -249,7 +249,7 @@ read block header\;
 \BlankLine
 \eIf(\tcc*[f]{2 channels of output}){$\text{\MONOOUTPUT} = 0$ \AND $\text{\FALSESTEREO} = 0$}{
   \eIf{$\text{\CHANNELDECORR} = 1$}{
-    $\text{decorrelated}~\text{ch}_0/\text{ch}_1 \leftarrow \DECORRELATE(\text{residual}_0/\text{residual}_1)$\;
+    $\text{decorrelated ch}_0/\text{decorrelated ch}_1 \leftarrow \DECORRELATE(\text{residual}_0/\text{residual}_1)$\;
   }{
     $\text{decorrelated ch}_0/\text{decorrelated ch}_1 \leftarrow \text{residual}_0/\text{residual}_1$\;
   }
@@ -283,88 +283,8 @@ read block header\;
     \Return $(\text{unshifted left ch}_0~,~\text{unshifted left ch}_0)$\;
   }
 }
-%% \eIf(\tcc*[f]{apply decoding parameters}){$\text{\CHANNELDECORR} = 1$}{
-%%   \ASSERT decorelation terms, weights and samples sub blocks have been parsed\;
-%%   $\text{\DECORRELATEDCH} \leftarrow \DECORRELATE(\text{\RESIDUALCH})$\;
-%% }{
-%%   $\text{\DECORRELATEDCH} \leftarrow \text{\RESIDUALCH}$\;
-%% }
-%% \eIf{$\text{\JOINTSTEREO} = 1$ \AND $\text{\MONOOUTPUT} = 0$ \AND $\text{\FALSESTEREO} = 0$}{
-%%   $\text{\LEFTRRIGHTCH} \leftarrow \UNDOJOINTSTEREO(\text{\DECORRELATEDCH})$\;
-%% }{
-%%   $\text{\LEFTRIGHTCH} \leftarrow \text{\DECORRELATEDCH}$\;
-%% }
-%% verify CRC of \LEFTRIGHTCH against CRC in block header\;
-%% \eIf{$\text{\EXTENDEDINTS} = 1$}{
-%%   $\text{\UNSHIFTEDCH} \leftarrow \UNDOEXTENDEDINTS(\text{\LEFTRIGHTCH})$\;
-%% }{
-%%   $\text{\UNSHIFTEDCH} \leftarrow \text{\LEFTRIGHTCH}$\;
-%% }
-%% \uIf{$\text{\MONOOUTPUT} = 0$ \AND $\text{\FALSESTEREO} = 0$}{
-%%   \Return left and right channels as 2 channels of PCM data\;
-%% }
-%% \uElseIf{$\text{\MONOOUTPUT} = 0$ \AND $\text{\FALSESTEREO} = 1$}{
-%%   \Return left channel twice as 2 channels of PCM data\;
-%% }
-%% \ElseIf{$\text{\MONOOUTPUT} = 1$}{
-%%   \Return left channel once as 1 channel of PCM data\;
-%% }
 \EALGORITHM
 }
-
-\clearpage
-
-%%FIXME - replace this with documentation
-Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor tellus. Donec pretium posuere tellus. Proin quam nisl, tincidunt et, mattis eget, convallis nec, purus. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Nulla posuere. Donec vitae dolor. Nullam tristique diam non turpis. Cras placerat accumsan nulla. Nullam rutrum. Nam vestibulum accumsan nisl.
-
-\clearpage
-
-
-%% \SetKwData{BLOCK}{block}
-%% \SetKwData{TOTALSAMPLES}{total samples}
-%% \SetKwData{BLOCKINDEX}{block index}
-%% \SetKwData{BLOCKSAMPLES}{block samples}
-%% \SetKwData{FINALBLOCK}{final block}
-%% \SetKwData{BLOCKHEADER}{block header}
-%% \SetKwData{SUBBLOCK}{sub block}
-%% \SetKwData{SUBBLOCKHEADER}{sub block header}
-
-%% \SetKwData{NONDECODER}{nondecoder data}
-%% \SetKwData{METADATAFUNC}{metadata function}
-%% \SetKwData{SUBBLOCKDATA}{sub block data}
-%% \SetKwData{ACTUALSIZEONELESS}{actual size 1 less}
-%% \Repeat{$\text{\BLOCKINDEX} + \text{\BLOCKSAMPLES} \geq \text{\TOTALSAMPLES}$}{
-%%   \Repeat(\tcc*[f]{read blocks}){$\text{\FINALBLOCK} = 1$}{
-%%     read \BLOCKHEADER\;
-%%     \While{$\text{\SUBBLOCKSIZE} > 0$}{
-%%       read \SUBBLOCKHEADER\;
-%%       \eIf{$\text{\ACTUALSIZEONELESS} = 0$}{
-%%         \SUBBLOCKDATA $\leftarrow$ \READ ($\textit{sub block size} \times 2$) bytes\;
-%%       }{
-%%         \SUBBLOCKDATA $\leftarrow$ \READ ($\textit{sub block size} \times 2 - 1$) bytes\;
-%%         \SKIP 8 bits\;
-%%       }
-%%       \If{$\NONDECODER = 0$}{
-%%         parse decoding parameters from \METADATAFUNC and \SUBBLOCKDATA\;
-%%       }
-%%       deduct sub block's total size from \SUBBLOCKSIZE\;
-%%     }
-%%     decode to 1 or 2 channels based on block header and decoding parameters\;
-%%   }
-%%   update stream MD5 sum with combined channel data\;
-%%   \Return combined channels as a single set of PCM samples\;
-%% }
-%% \BlankLine
-
-%% \EALGORITHM
-%% \par
-%% \noindent
-%% The \VAR{sub block size}, \VAR{final block}, \VAR{block index},
-%% \VAR{block samples} and \VAR{total samples} values
-%% are all taken from the most recent block header.
-%% The \VAR{nondecoder data}, \VAR{metadata function}
-%% and \VAR{sub block data} values are taken from the
-%% most recent sub block.
 
 \clearpage
 
@@ -465,42 +385,42 @@ Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor
 \subsubsection{Reading Block Header Example}
 \includegraphics{figures/wavpack/block_header_parse.pdf}
 
-%% \clearpage
+\clearpage
 
-%% {\relsize{-1}
-%% \begin{tabular}{rrl}
-%% field & value & meaning \\
-%% \hline
-%% \textbf{block ID} & \texttt{0x6B707677} & \texttt{"wvpk"} \\
-%% \textbf{block size} & \texttt{0x000000B2} & 178 bytes \\
-%% \textbf{version} & \texttt{0x0407} \\
-%% \textbf{track number} & \texttt{0} \\
-%% \textbf{index number} & \texttt{0} \\
-%% \textbf{total samples} & \texttt{0x00000019} & 25 PCM frames \\
-%% \textbf{block index} & \texttt{0x00000000} & 0 PCM frames \\
-%% \textbf{block samples} & \texttt{0x00000019} & 25 PCM frames \\
-%% \textbf{bits per sample} & \texttt{1} & 16 bits per sample \\
-%% \textbf{mono output} & \texttt{0} & 2 channel block \\
-%% \textbf{hybrid mode} & \texttt{0} & lossless data \\
-%% \textbf{joint stereo} & \texttt{1} & channels stored in joint stereo \\
-%% \textbf{channel decorrelation} & \texttt{1} & cross-channel decorrelation used \\
-%% \textbf{hybrid noise shaping} & \texttt{0} \\
-%% \textbf{floating point data} & \texttt{0} & samples stored as integers \\
-%% \textbf{extended size integers} & \texttt{0} \\
-%% \textbf{hybrid controls bitrate} & \texttt{0} \\
-%% \textbf{hybrid noise balanced} & \texttt{0} \\
-%% \textbf{initial block} & \texttt{1} & is initial block in sequence \\
-%% \textbf{final block} & \texttt{1} & is also final block in sequence \\
-%% \textbf{left shift data} & \texttt{0} & no left shift applied to samples \\
-%% \textbf{maximum magnitude} & \texttt{15} & 16 bits per sample output \\
-%% \textbf{sample rate} & \texttt{9} & 44100 Hz \\
-%% \textbf{reserved} & \texttt{0} \\
-%% \textbf{use IIR} & \texttt{0} \\
-%% \textbf{false stereo} & \texttt{0} & both channels are not identical \\
-%% \textbf{reserved} & \texttt{0} \\
-%% \textbf{CRC} & \texttt{0x22D25AD7} \\
-%% \end{tabular}
-%% }
+\begin{table}[h]
+\begin{tabular}{rrl}
+field & value & meaning \\
+\hline
+\textbf{block ID} & \texttt{0x6B707677} & \texttt{"wvpk"} \\
+\textbf{block data size} & \texttt{0x000000B2} & $178 - 24 = 154$ bytes \\
+\textbf{version} & \texttt{0x0407} \\
+\textbf{track number} & \texttt{0} \\
+\textbf{index number} & \texttt{0} \\
+\textbf{total samples} & \texttt{0x00000019} & 25 PCM frames \\
+\textbf{block index} & \texttt{0x00000000} & 0 PCM frames \\
+\textbf{block samples} & \texttt{0x00000019} & 25 PCM frames \\
+\textbf{bits per sample} & \texttt{1} & 16 bits per sample \\
+\textbf{mono output} & \texttt{0} & 2 channel block \\
+\textbf{hybrid mode} & \texttt{0} & lossless data \\
+\textbf{joint stereo} & \texttt{1} & channels stored in joint stereo \\
+\textbf{channel decorrelation} & \texttt{1} & cross-channel decorrelation used \\
+\textbf{hybrid noise shaping} & \texttt{0} \\
+\textbf{floating point data} & \texttt{0} & samples stored as integers \\
+\textbf{extended size integers} & \texttt{0} \\
+\textbf{hybrid controls bitrate} & \texttt{0} \\
+\textbf{hybrid noise balanced} & \texttt{0} \\
+\textbf{initial block} & \texttt{1} & is initial block in sequence \\
+\textbf{final block} & \texttt{1} & is final block in sequence \\
+\textbf{left shift data} & \texttt{0} \\
+\textbf{maximum magnitude} & \texttt{15} & 16 bits per sample output \\
+\textbf{sample rate} & \texttt{9} & 44100 Hz \\
+\textbf{reserved} & \texttt{0} \\
+\textbf{use IIR} & \texttt{0} \\
+\textbf{false stereo} & \texttt{0} & both channels are not identical \\
+\textbf{reserved} & \texttt{0} \\
+\textbf{CRC} & \texttt{0x22D25AD7} \\
+\end{tabular}
+\end{table}
 
 \clearpage
 
@@ -545,40 +465,83 @@ contain actual data and the final byte is padding.
 
 \clearpage
 
-\subsection{Parsing Decoding Parameters}
-\ALGORITHM{block header fields, the sub block's header fields and data}{parameters required for block decoding}
+\subsection{Reading Decoding Parameters}
+
+{\relsize{-1}
+\ALGORITHM{\VAR{metadata function}, \VAR{nondecoder data}, \VAR{actual size 1 less}, \VAR{sub block size} from sub block header; block header}{parameters required for block decoding}
 \SetKwData{METAFUNC}{metadata function}
-\Switch{\METAFUNC}{
-  \uCase{2}{
-    parse decorrelation terms\;
+\SetKwData{NONDECODER}{nondecoder data}
+\eIf{$\text{\NONDECODER} = 0$}{
+  \Switch{\METAFUNC}{
+    \uCase{2}{
+      read decorrelation terms and deltas from decorrelation terms sub block\;
+      \Return list of signed decorrelation terms and list of unsigned deltas\;
+    }
+    \uCase{3}{
+      read decorrelation weights from decorrelation weights sub block\;
+      \Return signed decorrelation weight per channel per decorrelation term\;
+    }
+    \uCase{4}{
+      read decorrelation samples from decorrelation samples sub block\;
+      \Return list of signed decorrelation samples per channel per decorrelation term\;
+    }
+    \uCase{5}{
+      read 2 lists of 3 signed entropy variables\;
+      \Return 2 lists of signed entropy variables\;
+    }
+    \uCase{10}{
+      read WavPack bitstream\;
+      \Return list of signed residual values per channel\;
+    }
+    \Other{
+      skip sub block\;
+    }
   }
-  \uCase{3}{
-    parse decorrelation weights\;
-  }
-  \uCase{4}{
-    parse decorrelation samples\;
-  }
-  \uCase{5}{
-    parse entropy variables\;
-  }
-  \uCase{10}{
-    parse normal WavPack bitstream\;
-  }
-  \Other{
-    skip sub block\;
-  }
+}{
+  skip sub block\;
 }
 \EALGORITHM
+}
+
+\subsubsection{The Decoding Parameters}
+These parameters will be populated by sub blocks during decoding.
+Once all the sub blocks have been read,
+they will be used to transform residual data
+into 1 or 2 channels of PCM data.
+\begin{description}
+\item[decorrelation terms] one signed integer from -3 to 18 per decorrelation pass
+\item[decorrelation deltas] one unsigned integer per decorrelation pass
+\item[decorrelation weights] one signed integer per decorrelation pass per channel
+\item[decorrelation samples] one list of signed integers per decorrelation pass per channel
+\item[entropy variables] two lists of three signed integers
+\item[residuals] one list of signed integers per channel
+\end{description}
 
 \clearpage
 
-%%FIXME - add proper content here
-
-Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor tellus. Donec pretium posuere tellus. Proin quam nisl, tincidunt et, mattis eget, convallis nec, purus. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Nulla posuere. Donec vitae dolor. Nullam tristique diam non turpis. Cras placerat accumsan nulla. Nullam rutrum. Nam vestibulum accumsan nisl.
+\subsubsection{Decorrelation Pass Parameters}
+The number of terms in the \VAR{decorrelation terms} sub block
+determines how many decorrelation passes will run over the
+block's residual data.
+Decorrelation weight and decorrelation samples parameters
+for those passes will be delivered in subsequent sub blocks.
+\par
+For example, given a 1 channel block
+containing a sub block with 5 decorrelation terms,
+decorrelation pass parameters may be laid out as follows:
+\begin{figure}[h]
+\includegraphics{figures/wavpack/decoding_params.pdf}
+\end{figure}
+\par
+\noindent
+Note that although the parameters are delivered in decrementing order
+($\text{term}_4$ to $\text{term}_0$),
+the decorrelation passes are applied in incrementing order
+($\text{term}_0$ to $\text{term}_4$).
 
 \clearpage
 
-\subsection{Parsing Decorrelation Terms}
+\subsection{Reading Decorrelation Terms}
 \ALGORITHM{\VAR{actual size 1 less} and \VAR{sub block size} values from sub block header, sub block data}{a list of signed decorrelation term integers, a list of unsigned decorrelation delta integers}
 \SetKwData{PASSES}{passes}
 \SetKwData{SUBBLOCKSIZE}{sub block size}
@@ -627,16 +590,17 @@ Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor
 
 \clearpage
 
-\subsection{Parsing Decorrelation Weights}
-\ALGORITHM{\VAR{mono output} from block header, decorrelation terms count\footnote{from the decorrelation terms sub block, which must be read prior to this sub block}, \VAR{actual size 1 less} and \VAR{sub block size} values from sub block header, sub block data}{a list of signed weight integers per channel}
+\subsection{Reading Decorrelation Weights}
+\ALGORITHM{\VAR{mono output} and \VAR{false stereo} from block header, decorrelation terms count\footnote{from the decorrelation terms sub block, which must be read prior to this sub block}, \VAR{actual size 1 less} and \VAR{sub block size} values from sub block header, sub block data}{a list of signed weight integers per channel}
 \SetKwData{MONO}{mono output}
+\SetKwData{FALSESTEREO}{false stereo}
 \SetKwData{SUBBLOCKSIZE}{sub block size}
 \SetKwData{ACTUALSIZEONELESS}{actual size 1 less}
 \SetKwData{WEIGHTCOUNT}{weight count}
 \SetKwData{TERMCOUNT}{term count}
+\SetKwData{WEIGHTVAL}{weight value}
 \SetKwData{WEIGHT}{weight}
-\SetKwData{CHANNELAWEIGHT}{channel A weight}
-\SetKwData{CHANNELBWEIGHT}{channel B weight}
+\SetKw{AND}{and}
 \tcc{read as many 8 bit weight values as possible}
 \eIf{$\text{\ACTUALSIZEONELESS} = 0$}{
   \WEIGHTCOUNT $\leftarrow \text{\SUBBLOCKSIZE} \times 2$\;
@@ -645,7 +609,7 @@ Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor
 }
 \For{i = 0 \emph{\KwTo}\WEIGHTCOUNT}{
   $\text{value}_i \leftarrow$ \READ 8 signed bits\;
-  $\text{\WEIGHT}_i \leftarrow\begin{cases}
+  $\text{\WEIGHTVAL}_i \leftarrow\begin{cases}
 \text{value}_i \times 2 ^ 3 + \left\lfloor\frac{\text{value}_i \times 2 ^ 3 + 2 ^ 6}{2 ^ 7}\right\rfloor & \text{if }\text{value}_i > 0 \\
 0 & \text{if }\text{value}_i = 0 \\
 \text{value}_i \times 2 ^ 3 & \text{if }\text{value}_i < 0
@@ -653,32 +617,32 @@ Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor
 }
 \BlankLine
 \tcc{populate weight values by channel, in reverse order}
-\eIf{$\text{\MONO} = 0$}{
+\eIf(\tcc*[f]{two channels}){$\text{\MONO} = 0$ \AND $\text{\FALSESTEREO} = 0$}{
   \ASSERT $\lfloor\WEIGHTCOUNT \div 2\rfloor \leq \TERMCOUNT$\;
   \For{i = 0 \emph{\KwTo}$\lfloor\WEIGHTCOUNT \div 2\rfloor$}{
-    $\text{\CHANNELAWEIGHT}_{\TERMCOUNT - i - 1} \leftarrow \text{\WEIGHT}_{i \times 2}$\;
-    $\text{\CHANNELBWEIGHT}_{\TERMCOUNT - i - 1} \leftarrow \text{\WEIGHT}_{i \times 2 + 1}$\;
+    $\text{\WEIGHT}_{0~(\TERMCOUNT - i - 1)} \leftarrow \text{\WEIGHTVAL}_{i \times 2}$\;
+    $\text{\WEIGHT}_{1~(\TERMCOUNT - i - 1)} \leftarrow \text{\WEIGHTVAL}_{i \times 2 + 1}$\;
   }
   \For{i = $\lfloor\WEIGHTCOUNT \div 2\rfloor$ \emph{\KwTo}\TERMCOUNT}{
-    $\text{\CHANNELAWEIGHT}_{\TERMCOUNT - i - 1} \leftarrow 0$\;
-    $\text{\CHANNELBWEIGHT}_{\TERMCOUNT - i - 1} \leftarrow 0$\;
+    $\text{\WEIGHT}_{0~(\TERMCOUNT - i - 1)} \leftarrow 0$\;
+    $\text{\WEIGHT}_{1~(\TERMCOUNT - i - 1)} \leftarrow 0$\;
   }
-  \Return (\CHANNELAWEIGHT values , \CHANNELBWEIGHT values)\;
-}{
+  \Return list of $\text{\WEIGHT}_0$ values and list of $\text{\WEIGHT}_1$ values\;
+}(\tcc*[f]{one channel}){
   \ASSERT $\WEIGHTCOUNT \leq \TERMCOUNT$\;
   \For{i = 0 \emph{\KwTo}\WEIGHTCOUNT}{
-    $\text{\CHANNELAWEIGHT}_{\TERMCOUNT - i - 1} \leftarrow \text{\WEIGHT}_{i}$\;
+    $\text{\WEIGHT}_{0~(\TERMCOUNT - i - 1)} \leftarrow \text{\WEIGHTVAL}_{i}$\;
   }
   \For{i = \WEIGHTCOUNT \emph{\KwTo}\TERMCOUNT}{
-    $\text{\CHANNELAWEIGHT}_{\TERMCOUNT - i - 1} \leftarrow 0$\;
+    $\text{\WEIGHT}_{0~(\TERMCOUNT - i - 1)} \leftarrow 0$\;
   }
-  \Return \CHANNELAWEIGHT values\;
+  \Return list of $\text{\WEIGHT}_0$ values\;
 }
 \EALGORITHM
 
 \clearpage
 
-\subsubsection{Parsing Decorrelation Weights Example}
+\subsubsection{Reading Decorrelation Weights Example}
 Given a 2 channel block containing 5 decorrelation terms:
 \begin{figure}[h]
 \includegraphics{figures/wavpack/decorr_weights_parse.pdf}
@@ -686,7 +650,7 @@ Given a 2 channel block containing 5 decorrelation terms:
 \begin{center}
 {\renewcommand{\arraystretch}{1.25}
 \begin{tabular}{r|r|>{$}r<{$}}
-$i$ & $\text{value}_i$ & \text{weight}_i \\
+$i$ & $\text{value}_i$ & \text{weight value}_i \\
 \hline
 0 & 6 & 6 \times 2 ^ 3 + \lfloor(6 \times 2 ^ 3 + 2 ^ 6) \div 2 ^ 7\rfloor = 48 \\
 1 & 6 & 6 \times 2 ^ 3 + \lfloor(6 \times 2 ^ 3 + 2 ^ 6) \div 2 ^ 7\rfloor = 48 \\
@@ -704,94 +668,96 @@ $i$ & $\text{value}_i$ & \text{weight}_i \\
 \end{center}
 \begin{center}
 \begin{tabular}{>{$}r<{$}||>{$}r<{$}}
-\text{channel A weight}_4 = \text{weight}_0 = 48 &
-\text{channel B weight}_4 = \text{weight}_1 = 48 \\
-\text{channel A weight}_3 = \text{weight}_2 = 48 &
-\text{channel B weight}_3 = \text{weight}_3 = 48 \\
-\text{channel A weight}_2 = \text{weight}_4 = 32 &
-\text{channel B weight}_2 = \text{weight}_5 = 32 \\
-\text{channel A weight}_1 = \text{weight}_6 = 48 &
-\text{channel B weight}_1 = \text{weight}_7 = 48 \\
-\text{channel A weight}_0 = \text{weight}_8 = 16 &
-\text{channel B weight}_0 = \text{weight}_9 = 24 \\
+\text{weight}_{0~4} = \text{weight value}_0 = 48 &
+\text{weight}_{1~4} = \text{weight value}_1 = 48 \\
+\text{weight}_{0~3} = \text{weight value}_2 = 48 &
+\text{weight}_{1~3} = \text{weight value}_3 = 48 \\
+\text{weight}_{0~2} = \text{weight value}_4 = 32 &
+\text{weight}_{1~2} = \text{weight value}_5 = 32 \\
+\text{weight}_{0~1} = \text{weight value}_6 = 48 &
+\text{weight}_{1~1} = \text{weight value}_7 = 48 \\
+\text{weight}_{0~0} = \text{weight value}_8 = 16 &
+\text{weight}_{1~0} = \text{weight value}_9 = 24 \\
 \end{tabular}
 \end{center}
 
 \clearpage
 
-\subsection{Parsing Decorrelation Samples}
+\subsection{Reading Decorrelation Samples}
 {\relsize{-2}
-\ALGORITHM{\VAR{mono output} from block header, decorrelation terms\footnote{from the decorrelation terms sub block, which must be read prior to this sub block}, sub block size and data}{a list of signed decorrelation sample lists per channel}
+\ALGORITHM{\VAR{mono output} and \VAR{false stereo} from block header, decorrelation terms, sub block size and data}{a list of signed decorrelation sample lists per channel per decorrelation term}
 \SetKwData{MONO}{mono output}
-\SetKwData{DECORRA}{channel A sample}
-\SetKwData{DECORRB}{channel B sample}
+\SetKwData{FALSESTEREO}{false stereo}
+\SetKwData{SAMPLE}{sample}
 \SetKwData{TOTALSAMPLES}{sample count}
 \SetKwData{TERMCOUNT}{term count}
 \SetKwData{TERM}{term}
 \SetKwFunction{EXP}{wv\_exp2}
 \SetKw{KwDownTo}{downto}
-\eIf{$\text{\MONO} = 0$}{
+\SetKw{AND}{and}
+\eIf(\tcc*[f]{2 channels of samples per term}){$\text{\MONO} = 0$ \AND $\text{\FALSESTEREO} = 0$}{
   \For{i = \TERMCOUNT \emph{\KwDownTo}0}{
     \uIf{$17 \leq \text{\TERM}_i \leq 18$}{
       \eIf{$\text{sub block bytes remaining} \geq 8$}{
-        $\text{\DECORRA}_{i~0} \leftarrow \text{read \EXP value}$\;
-        $\text{\DECORRA}_{i~1} \leftarrow \text{read \EXP value}$\;
-        $\text{\DECORRB}_{i~0} \leftarrow \text{read \EXP value}$\;
-        $\text{\DECORRB}_{i~1} \leftarrow \text{read \EXP value}$\;
+        $\text{\SAMPLE}_{0~i~0} \leftarrow \text{read \EXP value}$\;
+        $\text{\SAMPLE}_{0~i~1} \leftarrow \text{read \EXP value}$\;
+        $\text{\SAMPLE}_{1~i~0} \leftarrow \text{read \EXP value}$\;
+        $\text{\SAMPLE}_{1~i~1} \leftarrow \text{read \EXP value}$\;
       }{
-        $\text{\DECORRA}_{i~0} \leftarrow 0$\;
-        $\text{\DECORRA}_{i~1} \leftarrow 0$\;
-        $\text{\DECORRB}_{i~0} \leftarrow 0$\;
-        $\text{\DECORRB}_{i~1} \leftarrow 0$\;
+        $\text{\SAMPLE}_{0~i~0} \leftarrow 0$\;
+        $\text{\SAMPLE}_{0~i~1} \leftarrow 0$\;
+        $\text{\SAMPLE}_{1~i~0} \leftarrow 0$\;
+        $\text{\SAMPLE}_{1~i~1} \leftarrow 0$\;
       }
     }
     \uElseIf{$1 \leq \text{\TERM}_i \leq 8$}{
       \eIf{$\text{sub block bytes remaining} \geq (\text{\TERM}_i \times 4)$}{
         \For{j = 0 \emph{\KwTo}$\text{\TERM}_i$}{
-          $\text{\DECORRA}_{i~j} \leftarrow \text{read \EXP value}$\;
-          $\text{\DECORRB}_{i~j} \leftarrow \text{read \EXP value}$\;
+          $\text{\SAMPLE}_{0~i~j} \leftarrow \text{read \EXP value}$\;
+          $\text{\SAMPLE}_{1~i~j} \leftarrow \text{read \EXP value}$\;
         }
       }{
         \For{j = 0 \emph{\KwTo}$\text{\TERM}_i$}{
-          $\text{\DECORRA}_{i~j} \leftarrow 0$\;
-          $\text{\DECORRB}_{i~j} \leftarrow 0$\;
+          $\text{\SAMPLE}_{0~i~j} \leftarrow 0$\;
+          $\text{\SAMPLE}_{1~i~j} \leftarrow 0$\;
         }
       }
     }
     \ElseIf{$-3 \leq \text{\TERM}_i \leq -1$}{
       \eIf{$\text{sub block bytes remaining} \geq 4$}{
-        $\text{\DECORRA}_{i~0} \leftarrow \text{read \EXP value}$\;
-        $\text{\DECORRB}_{i~0} \leftarrow \text{read \EXP value}$\;
+        $\text{\SAMPLE}_{0~i~0} \leftarrow \text{read \EXP value}$\;
+        $\text{\SAMPLE}_{1~i~0} \leftarrow \text{read \EXP value}$\;
       }{
-        $\text{\DECORRA}_{i~0} \leftarrow 0$\;
-        $\text{\DECORRB}_{i~0} \leftarrow 0$\;
+        $\text{\SAMPLE}_{0~i~0} \leftarrow 0$\;
+        $\text{\SAMPLE}_{1~i~0} \leftarrow 0$\;
       }
     }
   }
-}{
+  \Return $\text{\SAMPLE}_0$ lists and $\text{\SAMPLE}_1$ lists\;
+}(\tcc*[f]{1 channel of samples per term}){
   \For{i = \TERMCOUNT \emph{\KwDownTo}0}{
     \uIf{$17 \leq \text{\TERM}_i \leq 18$}{
       \eIf{$\text{sub block bytes remaining} \geq 4$}{
-        $\text{\DECORRA}_{i~0} \leftarrow \text{read \EXP value}$\;
-        $\text{\DECORRA}_{i~1} \leftarrow \text{read \EXP value}$\;
+        $\text{\SAMPLE}_{0~i~0} \leftarrow \text{read \EXP value}$\;
+        $\text{\SAMPLE}_{0~i~1} \leftarrow \text{read \EXP value}$\;
       }{
-        $\text{\DECORRA}_{i~0} \leftarrow 0$\;
-        $\text{\DECORRA}_{i~1} \leftarrow 0$\;
+        $\text{\SAMPLE}_{0~i~0} \leftarrow 0$\;
+        $\text{\SAMPLE}_{0~i~1} \leftarrow 0$\;
       }
-
     }
     \ElseIf{$1 \leq \text{\TERM}_i \leq 8$}{
       \eIf{$\text{sub block bytes remaining} \geq (\text{\TERM}_i \times 2)$}{
         \For{j = 0 \emph{\KwTo}$\text{\TERM}_i$}{
-          $\text{\DECORRA}_{i~j} \leftarrow \text{read \EXP value}$\;
+          $\text{\SAMPLE}_{0~i~j} \leftarrow \text{read \EXP value}$\;
         }
       }{
         \For{j = 0 \emph{\KwTo}$\text{\TERM}_i$}{
-          $\text{\DECORRA}_{i~j} \leftarrow 0$\;
+          $\text{\SAMPLE}_{0~i~j} \leftarrow 0$\;
         }
       }
     }
   }
+  \Return $\text{\SAMPLE}_0$ lists\;
 }
 \EALGORITHM
 }
@@ -850,18 +816,17 @@ where \texttt{exp}(\textit{x}) is defined from the following table:
 \end{tabular}
 }
 
-\subsubsection{Decorrelation Samples Parsing Example}
+\subsubsection{Reading Decorrelation Samples Example}
 Given a stereo block containing the sub-block:
 \begin{figure}[h]
 \includegraphics{figures/wavpack/decorr_samples_parse.pdf}
 \end{figure}
 \begin{center}
 {\relsize{-2}
-%% \renewcommand{\arraystretch}{1.25}
 \begin{tabular}{r|r|r|>{$}r<{$}|>{$}r<{$}}
 $i$ & $\text{term}_i$ & $j$ &
-\text{channel A sample}_{i~j} &
-\text{channel B sample}_{i~j} \\
+\text{sample}_{0~i~j} &
+\text{sample}_{1~i~j} \\
 \hline
 4 & 18 & 0 &
 -\lfloor \texttt{exp}(1841 \bmod{256}) \div 2 ^ {9 - \lfloor 1841 \div 2 ^ 8 \rfloor} \rfloor = -73 &
@@ -890,26 +855,29 @@ $i$ & $\text{term}_i$ & $j$ &
 
 \clearpage
 
-\subsection{Parsing Entropy Variables}
-\ALGORITHM{\VAR{mono output} from block header}{3 signed median value integers per channel}
+\subsection{Reading Entropy Variables}
+\ALGORITHM{\VAR{mono output} and \VAR{false stereo} from block header, sub block data}{2 lists of 3 signed median value integers}
 \SetKwData{MEDIAN}{median}
 \SetKwFunction{EXP}{wv\_exp2}
 \SetKwData{MONO}{mono output}
+\SetKwData{FALSESTEREO}{false stereo}
+\SetKw{AND}{and}
 $\text{\MEDIAN}_{0~0} \leftarrow \text{read \EXP value}$\;
 $\text{\MEDIAN}_{0~1} \leftarrow \text{read \EXP value}$\;
 $\text{\MEDIAN}_{0~2} \leftarrow \text{read \EXP value}$\;
-\eIf{$\text{\MONO} = 0$}{
+\eIf(\tcc*[f]{2 channels}){$\text{\MONO} = 0$ \AND $\text{\FALSESTEREO} = 0$}{
   $\text{\MEDIAN}_{1~0} \leftarrow \text{read \EXP value}$\;
   $\text{\MEDIAN}_{1~1} \leftarrow \text{read \EXP value}$\;
   $\text{\MEDIAN}_{1~2} \leftarrow \text{read \EXP value}$\;
-}{
+}(\tcc*[f]{dummy medians for second channel}){
   $\text{\MEDIAN}_{1~0} \leftarrow 0$\;
   $\text{\MEDIAN}_{1~1} \leftarrow 0$\;
   $\text{\MEDIAN}_{1~2} \leftarrow 0$\;
 }
+\Return $\text{\MEDIAN}_0$ list and $\text{\MEDIAN}_1$ list\;
 \EALGORITHM
 
-\subsubsection{Entropy Variable Parsing Example}
+\subsubsection{Reading Entropy Variables Example}
 Given a 2 channel block containing the subframe:
 \begin{figure}[h]
 \includegraphics{figures/wavpack/entropy_vars_parse.pdf}
@@ -936,12 +904,13 @@ $i$ & \text{median}_{0~i} & \text{median}_{1~i} \\
 
 \clearpage
 
-\subsection{Parsing Bitstream}
+\subsection{Reading Bitstream}
 {\relsize{-1}
-\ALGORITHM{\VAR{mono output} and \VAR{block samples} from block header,
+\ALGORITHM{\VAR{mono output}, \VAR{false stereo} and \VAR{block samples} from block header,
 median values\footnote{from the entropy variables sub block, which must be read prior to this sub block}}{a list of signed residual values per channel}
 \SetKwData{MEDIAN}{median}
 \SetKwData{MONO}{mono output}
+\SetKwData{FALSESTEREO}{false stereo}
 \SetKwData{BLOCKSAMPLES}{block samples}
 \SetKwData{CHANNELS}{channel count}
 \SetKwData{HZERO}{holding zero}
@@ -950,7 +919,7 @@ median values\footnote{from the entropy variables sub block, which must be read 
 \SetKwData{RESIDUAL}{residual}
 \SetKwData{ZEROES}{zeroes}
 \SetKw{AND}{and}
-\eIf{$\text{\MONO} = 0$}{
+\eIf{$\text{\MONO} = 0$ \AND $\text{\FALSESTEREO} = 0$}{
   \CHANNELS $\leftarrow 1$\;
 }{
   \CHANNELS $\leftarrow 2$\;
@@ -992,7 +961,7 @@ $i \leftarrow 0$\;
     $i \leftarrow i + 1$\;
   }
 }
-\Return lists of signed \RESIDUAL values\;
+\Return a list of signed \RESIDUAL values per channel\;
 \EALGORITHM
 }
 
@@ -1020,19 +989,19 @@ $i \leftarrow 0$\;
   \eIf{$\HONE = 0$}{
     $\HONE \leftarrow t \bmod 2$\;
     $\HZERO \leftarrow 1 - \HONE$\;
-    $t \leftarrow \lfloor t \div 2 \rfloor$\;
+    $m \leftarrow \lfloor t \div 2 \rfloor$\;
   }{
     $\HONE \leftarrow t \bmod 2$\;
     $\HZERO \leftarrow 1 - \HONE$\;
-    $t \leftarrow \lfloor t \div 2 \rfloor + 1$\;
+    $m \leftarrow \lfloor t \div 2 \rfloor + 1$\;
   }
 }{
-  $t \leftarrow 0$\;
+  $m \leftarrow 0$\;
   $\HZERO \leftarrow0 $\;
 }
 \BlankLine
 \tcc{determine "base", "add" and new median values}
-\Switch{t}{
+\Switch{m}{
   \uCase{0}{
     $base \leftarrow 0$\;
     $add \leftarrow \lfloor\text{\MEDIAN}_{c~0} \div 2 ^ 4\rfloor$\;
@@ -1052,13 +1021,14 @@ $i \leftarrow 0$\;
     $\text{\MEDIAN}_{c~2} \leftarrow \text{\MEDIAN}_{c~2} - \lfloor(\text{\MEDIAN}_{c~2} + 30) \div 2 ^ 5\rfloor \times 2$\;
   }
   \Other{
-    $base \leftarrow (\lfloor\text{\MEDIAN}_{c~0} \div 2 ^ 4\rfloor + 1) + (\lfloor\text{\MEDIAN}_{c~1} \div 2 ^ 4\rfloor + 1) + ((\lfloor\text{\MEDIAN}_{c~2} \div 2 ^ 4\rfloor + 1) \times (t - 2))$\;
+    $base \leftarrow (\lfloor\text{\MEDIAN}_{c~0} \div 2 ^ 4\rfloor + 1) + (\lfloor\text{\MEDIAN}_{c~1} \div 2 ^ 4\rfloor + 1) + ((\lfloor\text{\MEDIAN}_{c~2} \div 2 ^ 4\rfloor + 1) \times (m - 2))$\;
     $add \leftarrow \lfloor\text{\MEDIAN}_{c~2} \div 2 ^ 4\rfloor$\;
     $\text{\MEDIAN}_{c~0} \leftarrow \text{\MEDIAN}_{c~0} + \lfloor(\text{\MEDIAN}_{c~0} + 128) \div 2 ^ 7\rfloor \times 5$\;
     $\text{\MEDIAN}_{c~1} \leftarrow \text{\MEDIAN}_{c~1} + \lfloor(\text{\MEDIAN}_{c~1} + 64) \div 2 ^ 6\rfloor \times 5$\;
     $\text{\MEDIAN}_{c~2} \leftarrow \text{\MEDIAN}_{c~2} + \lfloor(\text{\MEDIAN}_{c~2} + 32) \div 2 ^ 5\rfloor \times 5$\;
   }
 }
+
 \EALGORITHM
 }
 
@@ -1089,9 +1059,9 @@ $i \leftarrow 0$\;
 \BlankLine
 $sign \leftarrow$ \READ 1 unsigned bit\;
 \eIf{$sign = 1$}{
-  \Return $-unsigned - 1$\;
+  \Return $(-unsigned - 1)$ along with new holding zero, holding one and medians\;
 }{
-  \Return $unsigned$\;
+  \Return $unsigned$ along with new holding zero, holding one and medians\;
 }
 \end{algorithm}
 }
@@ -1112,7 +1082,7 @@ $\text{medians}_1 = \texttt{[118, 176, 212]}$:
 {\relsize{-2}
 \renewcommand{\arraystretch}{1.5}
 \begin{tabular}{|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|}
-i & t_i & \text{h. one} & \text{h. zero} & t' &
+i & t_i & \text{h. one} & \text{h. zero} & m_i &
 \text{base} & \text{add} & \text{median}_{c~0} & \text{median}_{c~1} & \text{median}_{c~2} \\
 \hline
 0 &
@@ -1426,18 +1396,28 @@ channel 1 residuals : & \texttt{[~31,~~32,~~36,~37,~35,~31,~25,~18,~10,~~0]}\\
 \ALGORITHM{a list of signed residuals per channel, a list of decorrelation terms and deltas, a decorrelation weight per term and channel, a list of decorrelation samples per term and channel}{a list of signed samples per channel}
 \SetKwData{TERMCOUNT}{term count}
 \SetKwData{PASS}{pass}
+\SetKwData{TERM}{term}
+\SetKwData{DELTA}{delta}
+\SetKwData{WEIGHT}{weight}
+\SetKwData{SAMPLES}{samples}
 \SetKwData{RESIDUALS}{residuals}
 \eIf{$\text{channel count} = 1$}{
   $\text{\PASS}_{0~-1} \leftarrow \text{\RESIDUALS}_{0}$\;
   \For{i = 0 \emph{\KwTo}\TERMCOUNT}{
-    decorrelate 1 channel $\text{\PASS}_{0~(i - 1)}$ to $\text{\PASS}_{0~i}$\;
+    decorrelate 1 channel $\text{\PASS}_{0~(i - 1)}$ to $\text{\PASS}_{0~i}$
+    \newline
+    using $\text{\TERM}_i$, $\text{\DELTA}_i$, $\text{\WEIGHT}_{i~0}$
+    and $\text{\SAMPLES}_{i~0}$\;
   }
   \Return $\text{\PASS}_{0~\text{\TERMCOUNT} - 1}$\;
 }{
   $\text{\PASS}_{0~-1} \leftarrow \text{\RESIDUALS}_{0}$\;
   $\text{\PASS}_{1~-1} \leftarrow \text{\RESIDUALS}_{1}$\;
   \For{i = 0 \emph{\KwTo}\TERMCOUNT}{
-    decorrelate 2 channel $(\text{\PASS}_{0~(i - 1)}~,~\text{\PASS}_{1~(i - 1)})$ to $(\text{\PASS}_{0~i}~,~\text{\PASS}_{1~i})$\;
+    decorrelate 2 channel $(\text{\PASS}_{0~(i - 1)}~,~\text{\PASS}_{1~(i - 1)})$ to $(\text{\PASS}_{0~i}~,~\text{\PASS}_{1~i})$
+    \newline
+    using $\text{\TERM}_i$, $\text{\DELTA}_i$, $\text{\WEIGHT}_{i~0}$,
+    $\text{\WEIGHT}_{i~1}$, $\text{\SAMPLES}_{i~0}$ and $\text{\SAMPLES}_{i~1}$\;
   }
   \Return $(\text{\PASS}_{0~\text{\TERMCOUNT} - 1}~,~\text{\PASS}_{1~\text{\TERMCOUNT} - 1})$\;
 }
@@ -1522,14 +1502,10 @@ delta & \text{ if } (source \textbf{ xor } result ) \geq 0 \\
 \subsubsection{2 Channel Decorrelation Pass}
 {\relsize{-1}
 \ALGORITHM{2 lists of signed correlated samples, decorrelation term and delta, 2 decorrelation weights, 2 lists of decorrelation samples}{2 lists of signed decorrelated samples}
-\SetKwData{CORRELATEDA}{correlated A}
-\SetKwData{CORRELATEDB}{correlated B}
-\SetKwData{DECORRELATEDA}{decorrelated A}
-\SetKwData{DECORRELATEDB}{decorrelated B}
-\SetKwData{DECORRSAMPLEA}{decorrelation sample A}
-\SetKwData{DECORRSAMPLEB}{decorrelation sample B}
-\SetKwData{WEIGHTA}{weight A}
-\SetKwData{WEIGHTB}{weight B}
+\SetKwData{CORRELATED}{correlated}
+\SetKwData{DECORRELATED}{decorrelated}
+\SetKwData{DECORRSAMPLE}{decorrelation sample}
+\SetKwData{WEIGHT}{weight}
 \SetKw{OR}{or}
 \SetKw{XOR}{xor}
 \SetKwFunction{MIN}{min}
@@ -1537,46 +1513,46 @@ delta & \text{ if } (source \textbf{ xor } result ) \geq 0 \\
 \SetKwFunction{APPLYWEIGHT}{apply\_weight}
 \SetKwFunction{UPDATEWEIGHT}{update\_weight}
 \uIf{$17 \leq term \leq 18$ \OR $1 \leq term \leq 8$}{
-  \DECORRELATEDA $\leftarrow$ 1 channel decorrelation pass of \CORRELATEDA\;
-  \DECORRELATEDB $\leftarrow$ 1 channel decorrelation pass of \CORRELATEDB\;
-  \Return $(\DECORRELATEDA~,~\DECORRELATEDB)$\;
+  $\text{\DECORRELATED}_0 \leftarrow$ 1 channel decorrelation pass of $\text{\CORRELATED}_0$\;
+  $\text{\DECORRELATED}_1 \leftarrow$ 1 channel decorrelation pass of $\text{\CORRELATED}_1$\;
+  \Return $\text{\DECORRELATED}_0$ and $\text{\DECORRELATED}_1$\;
 }
 \uElseIf{$-3 \leq term \leq -1$}{
-  $\text{\WEIGHTA}_0 \leftarrow$ decorrelation weight A\;
-  $\text{\WEIGHTB}_0 \leftarrow$ decorrelation weight B\;
-  $\text{\DECORRELATEDA}_0 \leftarrow \DECORRSAMPLEA_0$\;
-  $\text{\DECORRELATEDB}_0 \leftarrow \DECORRSAMPLEB_0$\;
+  $\text{\WEIGHT}_{0~0} \leftarrow$ decorrelation weight 0\;
+  $\text{\WEIGHT}_{1~0} \leftarrow$ decorrelation weight 1\;
+  $\text{\DECORRELATED}_0 \leftarrow \text{\DECORRSAMPLE}_{0~0}$\;
+  $\text{\DECORRELATED}_1 \leftarrow \text{\DECORRSAMPLE}_{1~0}$\;
   \uIf{$term = -1$}{
     \For{i = 0 \emph{\KwTo}correlated samples length}{
-      $\text{\DECORRELATEDA}_{i + 1} \leftarrow \APPLYWEIGHT(\text{\WEIGHTA}_{i}~,~\text{\DECORRELATEDA}_{i}) + \text{\CORRELATEDA}_i$\;
-      $\text{\DECORRELATEDB}_{i + 1} \leftarrow \APPLYWEIGHT(\text{\WEIGHTB}_{i}~,~\text{\DECORRELATEDA}_{i + 1}) + \text{\CORRELATEDB}_i$\;
-      $\text{\WEIGHTA}_{i + 1} \leftarrow \text{\WEIGHTA}_i + \UPDATEWEIGHT(\text{\DECORRELATEDB}_i~,~\text{\CORRELATEDA}_i~,~delta)$\;
-      $\text{\WEIGHTB}_{i + 1} \leftarrow \text{\WEIGHTB}_i + \UPDATEWEIGHT(\text{\DECORRELATEDA}_{i + 1}~,~\text{\CORRELATEDB}_i~,~delta)$\;
-      $\text{\WEIGHTA}_{i + 1} \leftarrow \MAX(\MIN(\text{\WEIGHTA}_{i + 1}~,~1024)~,~-1024)$\;
-      $\text{\WEIGHTB}_{i + 1} \leftarrow \MAX(\MIN(\text{\WEIGHTB}_{i + 1}~,~1024)~,~-1024)$\;
+      $\text{\DECORRELATED}_{0~(i + 1)} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_{0~i}~,~\text{\DECORRELATED}_{0~i}) + \text{\CORRELATED}_{0~i}$\;
+      $\text{\DECORRELATED}_{1~(i + 1)} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_{1~i}~,~\text{\DECORRELATED}_{0~(i + 1)}) + \text{\CORRELATED}_{1~i}$\;
+      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \text{\WEIGHT}_{0~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{1~i}~,~\text{\CORRELATED}_{0~i}~,~delta)$\;
+      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \text{\WEIGHT}_{1~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{0~(i + 1)}~,~\text{\CORRELATED}_{1~i}~,~delta)$\;
+      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{0~(i + 1)}~,~1024)~,~-1024)$\;
+      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{1~(i + 1)}~,~1024)~,~-1024)$\;
     }
   }
   \uElseIf{$term = -2$}{
     \For{i = 0 \emph{\KwTo}correlated samples length}{
-      $\text{\DECORRELATEDB}_{i + 1} \leftarrow \APPLYWEIGHT(\text{\WEIGHTB}_{i}~,~\text{\DECORRELATEDA}_{i}) + \text{\CORRELATEDB}_i$\;
-      $\text{\DECORRELATEDA}_{i + 1} \leftarrow \APPLYWEIGHT(\text{\WEIGHTA}_{i}~,~\text{\DECORRELATEDB}_{i + 1}) + \text{\CORRELATEDA}_i$\;
-      $\text{\WEIGHTB}_{i + 1} \leftarrow \text{\WEIGHTB}_i + \UPDATEWEIGHT(\text{\DECORRELATEDA}_i~,~\text{\CORRELATEDB}_i~,~delta)$\;
-      $\text{\WEIGHTA}_{i + 1} \leftarrow \text{\WEIGHTA}_i + \UPDATEWEIGHT(\text{\DECORRELATEDB}_{i + 1},~\text{\CORRELATEDA}_i~,~delta)$\;
-      $\text{\WEIGHTB}_{i + 1} \leftarrow \MAX(\MIN(\text{\WEIGHTB}_{i + 1}~,~1024)~,~-1024)$\;
-      $\text{\WEIGHTA}_{i + 1} \leftarrow \MAX(\MIN(\text{\WEIGHTA}_{i + 1}~,~1024)~,~-1024)$\;
+      $\text{\DECORRELATED}_{1~(i + 1)} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_{1~i}~,~\text{\DECORRELATED}_{0~i}) + \text{\CORRELATED}_{1~i}$\;
+      $\text{\DECORRELATED}_{0~(i + 1)} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_{0~i}~,~\text{\DECORRELATED}_{1~(i + 1)}) + \text{\CORRELATED}_{0~i}$\;
+      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \text{\WEIGHT}_{1~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{0~i}~,~\text{\CORRELATED}_{1~i}~,~delta)$\;
+      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \text{\WEIGHT}_{0~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{1~(i + 1)},~\text{\CORRELATED}_{0~i}~,~delta)$\;
+      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{1~(i + 1)}~,~1024)~,~-1024)$\;
+      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{0~(i + 1)}~,~1024)~,~-1024)$\;
     }
   }
   \ElseIf{$term = -3$}{
     \For{i = 0 \emph{\KwTo}correlated samples length}{
-      $\text{\DECORRELATEDA}_{i + 1} \leftarrow \APPLYWEIGHT(\text{\WEIGHTA}_{i}~,~\text{\DECORRELATEDB}_i) + \text{\CORRELATEDA}_i$\;
-      $\text{\DECORRELATEDB}_{i + 1} \leftarrow \APPLYWEIGHT(\text{\WEIGHTB}_{i}~,~\text{\DECORRELATEDA}_i) + \text{\CORRELATEDB}_i$\;
-      $\text{\WEIGHTA}_{i + 1} \leftarrow \text{\WEIGHTA}_i + \UPDATEWEIGHT(\text{\DECORRELATEDB}_i~,~\text{\CORRELATEDA}_i~,~delta)$\;
-      $\text{\WEIGHTB}_{i + 1} \leftarrow \text{\WEIGHTB}_i + \UPDATEWEIGHT(\text{\DECORRELATEDA}_i~,~\text{\CORRELATEDB}_i~,~delta)$\;
-      $\text{\WEIGHTA}_{i + 1} \leftarrow \MAX(\MIN(\text{\WEIGHTA}_{i + 1}~,~1024)~,~-1024)$\;
-      $\text{\WEIGHTB}_{i + 1} \leftarrow \MAX(\MIN(\text{\WEIGHTB}_{i + 1}~,~1024)~,~-1024)$\;
+      $\text{\DECORRELATED}_{0~(i + 1)} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_{0~i}~,~\text{\DECORRELATED}_{1~i}) + \text{\CORRELATED}_{0~i}$\;
+      $\text{\DECORRELATED}_{1~(i + 1)} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_{1~i}~,~\text{\DECORRELATED}_{0~i}) + \text{\CORRELATED}_{1~i}$\;
+      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \text{\WEIGHT}_{0~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{1~i}~,~\text{\CORRELATED}_{0~i}~,~delta)$\;
+      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \text{\WEIGHT}_{1~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{0~i}~,~\text{\CORRELATED}_{1~i}~,~delta)$\;
+      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{0~(i + 1)}~,~1024)~,~-1024)$\;
+      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{1~(i + 1)}~,~1024)~,~-1024)$\;
     }
   }
-  \Return $(\DECORRELATEDA \text{ starting from 1}~,~\DECORRELATEDB \text{ starting from 1})$\;
+  \Return $\text{\DECORRELATED}_0$ starting from 1 and $\text{\DECORRELATED}_1$ starting from 1\;
 }
 \Else{
   invalid decorrelation term\;
@@ -1610,7 +1586,7 @@ sub blocks:
     \begin{tabular}{|r|r|r|}
       \multicolumn{3}{c}{Decorrelation Weights} \\
       \hline
-      $i$ & $\text{channel A}_i$ & $\text{channel B}_i$ \\
+      $i$ & $\text{weight}_{0~i}$ & $\text{weight}_{1~i}$ \\
       \hline
       4 & 48 & 48 \\
       3 & 48 & 48 \\
@@ -1624,7 +1600,7 @@ sub blocks:
     \begin{tabular}{|r|r|r|}
       \multicolumn{3}{c}{Decorrelation Samples} \\
       \hline
-      $i$ & $\text{channel A}_i$ & $\text{channel B}_i$ \\
+      $i$ & $\text{sample}_{0~i~j}$ & $\text{sample}_{1~i~j}$ \\
       \hline
       4 & \texttt{[-73, -78]} & \texttt{[28, 26]} \\
       3 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
@@ -1648,11 +1624,11 @@ we combine them into a single set of arguments for each decorrelation pass:
     \hline
     term & 3 & 17 & 2 & 18 & 18 \\
     delta & 2 & 2 & 2 & 2 & 2 \\
-    channel A weight & 16 & 48 & 32 & 48 & 48 \\
-    channel B weight & 24 & 48 & 32 & 48 & 48 \\
-    channel A samples & \texttt{[0, 0, 0]} & \texttt{[0, 0]} &
+    $\text{weight}_0$ & 16 & 48 & 32 & 48 & 48 \\
+    $\text{samples}_{0}$ & \texttt{[0, 0, 0]} & \texttt{[0, 0]} &
     \texttt{[0, 0]} & \texttt{[0, 0]} & \texttt{[-73, -78]} \\
-    channel B samples & \texttt{[0, 0, 0]} & \texttt{[0, 0]} &
+    $\text{weight}_1$ & 24 & 48 & 32 & 48 & 48 \\
+    $\text{samples}_{1}$ & \texttt{[0, 0, 0]} & \texttt{[0, 0]} &
     \texttt{[0, 0]} & \texttt{[0, 0]} & \texttt{[28, 26]} \\
     \hline
   \end{tabular}
@@ -1980,7 +1956,7 @@ $\text{channel}_1$ : & \texttt{[~32,~~39,~~43,~45,~44,~40,~34,~25,~15,~~4]} \\
 \end{tabular}
 }
 \begin{center}
-channel A decorrelation passes
+$\text{channel}_0$ decorrelation passes
 \end{center}
 
 \clearpage
