@@ -489,6 +489,10 @@ contain actual data and the final byte is padding.
       read 2 lists of 3 signed entropy variables\;
       \Return 2 lists of signed entropy variables\;
     }
+    \uCase{9}{
+      read zero bits, one bits and duplicate bits from extended integers sub block\;
+      \Return zero bits, one bits, duplicate bits values\;
+    }
     \uCase{10}{
       read WavPack bitstream\;
       \Return list of signed residual values per channel\;
@@ -514,6 +518,7 @@ into 1 or 2 channels of PCM data.
 \item[decorrelation weights] one signed integer per decorrelation pass per channel
 \item[decorrelation samples] one list of signed integers per decorrelation pass per channel
 \item[entropy variables] two lists of three signed integers
+\item[zero bits/one bits/duplicate bits] three unsigned integers indicating extended integers
 \item[residuals] one list of signed integers per channel
 \end{description}
 
@@ -1425,9 +1430,39 @@ channel 1 residuals : & \texttt{[~31,~~32,~~36,~37,~35,~31,~25,~18,~10,~~0]}\\
 
 \clearpage
 
-%%FIXME
+\subsubsection{Visualizing Decorrelation Passes}
 
-Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor tellus. Donec pretium posuere tellus. Proin quam nisl, tincidunt et, mattis eget, convallis nec, purus. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Nulla posuere. Donec vitae dolor. Nullam tristique diam non turpis. Cras placerat accumsan nulla. Nullam rutrum. Nam vestibulum accumsan nisl.
+This is an example of a relatively small set of residuals
+being transformed back into a set of samples
+over the course of 5 decorrelation passes.
+What's important to note is that each pass
+adjusts the residual values' overall range.
+The number of these passes and their decorrelation terms
+are what separate high levels of WavPack compression from low levels.
+
+\begin{figure}[h]
+  \subfloat{
+    \includegraphics{figures/wavpack/decorrelation0.pdf}
+  }
+  \subfloat{
+    \includegraphics{figures/wavpack/decorrelation1.pdf}
+  }
+  \newline
+  \subfloat{
+    \includegraphics{figures/wavpack/decorrelation2.pdf}
+  }
+  \subfloat{
+    \includegraphics{figures/wavpack/decorrelation3.pdf}
+  }
+  \newline
+  \subfloat{
+    \includegraphics{figures/wavpack/decorrelation4.pdf}
+  }
+  \subfloat{
+    \includegraphics{figures/wavpack/decorrelation5.pdf}
+  }
+\end{figure}
+
 
 \clearpage
 
@@ -2094,6 +2129,78 @@ $i$ & $\text{channel}_{0~i}$ & $\text{channel}_{1~i}$ & \text{LCRC}_i & \text{SC
 \noindent
 Resulting in a final CRC of \texttt{0x4139F356}
 \end{landscape}
+
+\clearpage
+
+\subsection{Reading Extended Integers Sub Block}
+\ALGORITHM{sub block data}{\VAR{zero bits}, \VAR{one bits}, \VAR{duplicate bits} values as unsigned integers}
+\SetKwData{SENTS}{sent bits}
+\SetKwData{ZEROES}{zero bits}
+\SetKwData{ONES}{one bits}
+\SetKwData{DUPLICATES}{duplicate bits}
+\SENTS $\leftarrow$ \READ 8 unsigned bits\tcc*[r]{unused}
+\ZEROES $\leftarrow$ \READ 8 unsigned bits\;
+\ONES $\leftarrow$ \READ 8 unsigned bits\;
+\DUPLICATES $\leftarrow$ \READ 8 unsigned bits\;
+\Return \ZEROES, \ONES and \DUPLICATES\;
+\EALGORITHM
+
+\subsection{Undoing Extended Integers}
+\ALGORITHM{\VAR{zero bits}, \VAR{one bits}, \VAR{duplicate bits} values; 1 or 2 channels of shifted PCM data}{1 or 2 channels of un-shifted PCM data}
+\SetKwData{ZEROES}{zero bits}
+\SetKwData{ONES}{one bits}
+\SetKwData{DUPLICATES}{duplicate bits}
+\SetKwData{SHIFTED}{shifted channel}
+\SetKwData{UNSHIFTED}{un-shifted channel}
+\For{c = 0 \emph{\KwTo}channel count}{
+  \uIf{$\text{\ZEROES} > 0$}{
+    \For{i = 0 \emph{\KwTo}sample count}{
+      $\text{\UNSHIFTED}_{c~i} \leftarrow \text{\SHIFTED}_{c~i} \times 2 ^ {\text{\ZEROES}}$\;
+    }
+  }
+  \uElseIf{$\text{\ONES} > 0$}{
+    \For{i = 0 \emph{\KwTo}sample count}{
+      $\text{\UNSHIFTED}_{c~i} \leftarrow \text{\SHIFTED}_{c~i} \times 2 ^ {\text{\ONES}} + (2 ^ {\text{\ONES}} - 1)$\;
+    }
+  }
+  \uElseIf{$\text{\DUPLICATES} > 0$}{
+    \For{i = 0 \emph{\KwTo}sample count}{
+      \eIf{$\text{\SHIFTED}_{c~i} \bmod 2 = 0$}{
+        $\text{\UNSHIFTED}_{c~i} \leftarrow \text{\SHIFTED}_{c~i} \times 2 ^ {\text{\DUPLICATES}}$\;
+      }{
+        $\text{\UNSHIFTED}_{c~i} \leftarrow \text{\SHIFTED}_{c~i} \times 2 ^ {\text{\DUPLICATES}} + (2 ^ {\text{\DUPLICATES}} - 1)$\;
+      }
+    }
+  }
+  \Else{
+    $\text{\UNSHIFTED}_c \leftarrow \text{\SHIFTED}_c$\;
+  }
+}
+\Return \UNSHIFTED data\;
+\EALGORITHM
+
+\clearpage
+
+\subsection{MD5 Sum}
+
+The MD5 is the hash of all the PCM sampmes, on a PCM frame basis,
+in little-endian format and signed if the bits per sample is greater than 0.
+
+\begin{figure}[h]
+\includegraphics{figures/wavpack/md5sum.pdf}
+\end{figure}
+
+\subsection{RIFF WAVE Header and Footer}
+
+These sub-blocks are typically found in the first and last
+WavPack block, respectively.
+The header must always be present in the file while
+the footer is optional.
+
+\begin{figure}[h]
+\includegraphics{figures/wavpack/pcm_sandwich.pdf}
+\end{figure}
+
 
 %% \begin{table}[h]
 %% \begin{tabular}{r||rrrrrr}

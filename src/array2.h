@@ -41,6 +41,7 @@
 
 /***************************************************************
  *                        integer arrays                       *
+ *                     [1, 2, 3, 4, 5, ...]                    *
  ***************************************************************/
 
 struct array_li_s;
@@ -176,6 +177,8 @@ void array_i_print(const struct array_i_s *array, FILE* output);
 
 /***************************************************************
  *                     linked integer arrays                   *
+ * the actual integer data is stored in a regular integer array*
+ * which avoids needless copying in some read-only situations  *
  ***************************************************************/
 
 struct array_li_s {
@@ -259,6 +262,7 @@ void array_li_print(const struct array_li_s *array, FILE* output);
 
 /***************************************************************
  *                     floating point arrays                   *
+ *                 [1.0, 2.0, 3.0, 4.0, 5.0, ...]              *
  ***************************************************************/
 
 struct array_lf_s;
@@ -395,6 +399,8 @@ void array_f_print(const struct array_f_s *array, FILE* output);
 
 /***************************************************************
  *                  linked floating point arrays               *
+ * the actual integer data is stored in a regular integer array*
+ * which avoids needless copying in some read-only situations  *
  ***************************************************************/
 
 struct array_lf_s {
@@ -479,6 +485,7 @@ void array_lf_print(const struct array_lf_s *array, FILE* output);
 
 /***************************************************************
  *                    arrays of integer arrays                 *
+ *                   [[1, 2, 3], [4, 5, 6], ...]               *
  ***************************************************************/
 
 struct array_ia_s {
@@ -548,6 +555,7 @@ void array_ia_print(const struct array_ia_s *array, FILE* output);
 
 /***************************************************************
  *                     arrays of float arrays                  *
+ *             [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], ...]         *
  ***************************************************************/
 
 struct array_fa_s {
@@ -613,5 +621,148 @@ void array_fa_reverse(struct array_fa_s *array);
 void array_fa_split(const struct array_fa_s *array, unsigned count,
                     struct array_fa_s *head, struct array_fa_s *tail);
 void array_fa_print(const struct array_fa_s *array, FILE* output);
+
+
+/***************************************************************
+ *             arrays of arrays of integer arrays              *
+ *  [[[1, 2, 3], [4, 5, 6]], [[7, 8, 9], [10, 11, 12]], ...]   *
+ ***************************************************************/
+
+struct array_iaa_s {
+    struct array_ia_s **data;
+    unsigned size;
+    unsigned total_size;
+
+    /*deletes the array and any allocated data it contains*/
+    void (*del)(struct array_iaa_s *array);
+
+    /*resizes the array to fit at least "minimum" number of items,
+      if necessary*/
+    void (*resize)(struct array_iaa_s *array, unsigned minimum);
+
+    /*deletes any data in the array and resets its contents
+      so that it can be re-populated with new data*/
+    void (*reset)(struct array_iaa_s *array);
+
+    /*returns a freshly appended array_i which values can be added to
+      this array should *not* be deleted once it is done being used*/
+    struct array_ia_s* (*append)(struct array_iaa_s *array);
+
+    /*appends all the items in "to_add" to this array*/
+    void (*extend)(struct array_iaa_s *array, const struct array_iaa_s *to_add);
+
+    /*returns 1 if all items in array equal those in compare,
+      returns 0 if not*/
+    int (*equals)(const struct array_iaa_s *array,
+                  const struct array_iaa_s *compare);
+
+    /*makes "copy" a duplicate of this array*/
+    void (*copy)(const struct array_iaa_s *array, struct array_iaa_s *copy);
+
+    /*swaps the contents of this array with another array*/
+    void (*swap)(struct array_iaa_s *array, struct array_iaa_s *swap);
+
+    /*splits the array into "head" and "tail" arrays
+      such that "head" contains a copy of up to "count" items
+      while "tail" contains the rest*/
+    void (*split)(const struct array_iaa_s *array, unsigned count,
+                  struct array_iaa_s *head, struct array_iaa_s *tail);
+
+    /*reverses the items in the array*/
+    void (*reverse)(struct array_iaa_s *array);
+
+    void (*print)(const struct array_iaa_s *array, FILE* output);
+};
+
+typedef struct array_iaa_s array_iaa;
+
+struct array_iaa_s* array_iaa_new(void);
+
+void array_iaa_del(struct array_iaa_s *array);
+void array_iaa_resize(struct array_iaa_s *array, unsigned minimum);
+void array_iaa_reset(struct array_iaa_s *array);
+struct array_ia_s* array_iaa_append(struct array_iaa_s *array);
+void array_iaa_extend(struct array_iaa_s *array,
+                     const struct array_iaa_s *to_add);
+int array_iaa_equals(const struct array_iaa_s *array,
+                    const struct array_iaa_s *compare);
+void array_iaa_copy(const struct array_iaa_s *array, struct array_iaa_s *copy);
+void array_iaa_swap(struct array_iaa_s *array, struct array_iaa_s *swap);
+void array_iaa_reverse(struct array_iaa_s *array);
+void array_iaa_split(const struct array_iaa_s *array, unsigned count,
+                    struct array_iaa_s *head, struct array_iaa_s *tail);
+void array_iaa_print(const struct array_iaa_s *array, FILE* output);
+
+
+/***************************************************************
+ *              arrays of arrays of float arrays               *
+ *      [[[1.0, 2.0], [3.0]], [[7.0, 8.0], [9.0]], ...]        *
+ ***************************************************************/
+
+struct array_faa_s {
+    struct array_fa_s **data;
+    unsigned size;
+    unsigned total_size;
+
+    /*deletes the array and any allocated data it contains*/
+    void (*del)(struct array_faa_s *array);
+
+    /*resizes the array to fit at least "minimum" number of items,
+      if necessary*/
+    void (*resize)(struct array_faa_s *array, unsigned minimum);
+
+    /*deletes any data in the array and resets its contents
+      so that it can be re-populated with new data*/
+    void (*reset)(struct array_faa_s *array);
+
+    /*returns a freshly appended array_i which values can be added to
+      this array should *not* be deleted once it is done being used*/
+    struct array_fa_s* (*append)(struct array_faa_s *array);
+
+    /*appends all the items in "to_add" to this array*/
+    void (*extend)(struct array_faa_s *array, const struct array_faa_s *to_add);
+
+    /*returns 1 if all items in array equal those in compare,
+      returns 0 if not*/
+    int (*equals)(const struct array_faa_s *array,
+                  const struct array_faa_s *compare);
+
+    /*makes "copy" a duplicate of this array*/
+    void (*copy)(const struct array_faa_s *array, struct array_faa_s *copy);
+
+    /*swaps the contents of this array with another array*/
+    void (*swap)(struct array_faa_s *array, struct array_faa_s *swap);
+
+    /*splits the array into "head" and "tail" arrays
+      such that "head" contains a copy of up to "count" items
+      while "tail" contains the rest*/
+    void (*split)(const struct array_faa_s *array, unsigned count,
+                  struct array_faa_s *head, struct array_faa_s *tail);
+
+    /*reverses the items in the array*/
+    void (*reverse)(struct array_faa_s *array);
+
+    void (*print)(const struct array_faa_s *array, FILE* output);
+};
+
+typedef struct array_faa_s array_faa;
+
+struct array_faa_s* array_faa_new(void);
+
+void array_faa_del(struct array_faa_s *array);
+void array_faa_resize(struct array_faa_s *array, unsigned minimum);
+void array_faa_reset(struct array_faa_s *array);
+struct array_fa_s* array_faa_append(struct array_faa_s *array);
+void array_faa_extend(struct array_faa_s *array,
+                     const struct array_faa_s *to_add);
+int array_faa_equals(const struct array_faa_s *array,
+                    const struct array_faa_s *compare);
+void array_faa_copy(const struct array_faa_s *array, struct array_faa_s *copy);
+void array_faa_swap(struct array_faa_s *array, struct array_faa_s *swap);
+void array_faa_reverse(struct array_faa_s *array);
+void array_faa_split(const struct array_faa_s *array, unsigned count,
+                    struct array_faa_s *head, struct array_faa_s *tail);
+void array_faa_print(const struct array_faa_s *array, FILE* output);
+
 
 #endif

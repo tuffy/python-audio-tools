@@ -255,6 +255,9 @@ ARRAY_SWAP(array_i_swap, array_i)
 ARRAY_SWAP(array_f_swap, array_f)
 ARRAY_SWAP(array_ia_swap, array_ia)
 ARRAY_SWAP(array_fa_swap, array_fa)
+ARRAY_SWAP(array_iaa_swap, array_iaa)
+ARRAY_SWAP(array_faa_swap, array_faa)
+
 
 #define ARRAY_HEAD(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE)     \
     void                                                            \
@@ -786,20 +789,25 @@ array_ia_new(void)
     }
 ARRAY_A_DEL(array_ia_del, array_ia)
 ARRAY_A_DEL(array_fa_del, array_fa)
+ARRAY_A_DEL(array_iaa_del, array_iaa)
+ARRAY_A_DEL(array_faa_del, array_faa)
 
-#define ARRAY_A_RESIZE(FUNC_NAME, ARRAY_TYPE, NEW_FUNC)     \
+#define ARRAY_A_RESIZE(FUNC_NAME, ARRAY_TYPE, SUB_ARRAY_TYPE, NEW_FUNC)  \
     void                                                    \
     FUNC_NAME(ARRAY_TYPE *array, unsigned minimum)          \
     {                                                                   \
         if (minimum > array->total_size) {                              \
-            array->data = realloc(array->data, sizeof(array_i*) * minimum); \
+            array->data = realloc(array->data,                          \
+                                  sizeof(SUB_ARRAY_TYPE*) * minimum);   \
             while (array->total_size < minimum) {                       \
                 array->data[array->total_size++] = NEW_FUNC();          \
             }                                                           \
         }                                                               \
     }
-ARRAY_A_RESIZE(array_ia_resize, array_ia, array_i_new)
-ARRAY_A_RESIZE(array_fa_resize, array_fa, array_f_new)
+ARRAY_A_RESIZE(array_ia_resize, array_ia, array_i, array_i_new)
+ARRAY_A_RESIZE(array_fa_resize, array_fa, array_f, array_f_new)
+ARRAY_A_RESIZE(array_iaa_resize, array_iaa, array_ia, array_ia_new)
+ARRAY_A_RESIZE(array_faa_resize, array_faa, array_fa, array_fa_new)
 
 #define ARRAY_A_RESET(FUNC_NAME, ARRAY_TYPE) \
     void                                     \
@@ -812,6 +820,8 @@ ARRAY_A_RESIZE(array_fa_resize, array_fa, array_f_new)
     }
 ARRAY_A_RESET(array_ia_reset, array_ia)
 ARRAY_A_RESET(array_fa_reset, array_fa)
+ARRAY_A_RESET(array_iaa_reset, array_iaa)
+ARRAY_A_RESET(array_faa_reset, array_faa)
 
 /*note that this does *not* reset the appended sub-array
   prior to returning it
@@ -829,6 +839,8 @@ ARRAY_A_RESET(array_fa_reset, array_fa)
     }
 ARRAY_A_APPEND(array_ia_append, array_ia, array_i)
 ARRAY_A_APPEND(array_fa_append, array_fa, array_f)
+ARRAY_A_APPEND(array_iaa_append, array_iaa, array_ia)
+ARRAY_A_APPEND(array_faa_append, array_faa, array_fa)
 
 #define ARRAY_A_EXTEND(FUNC_NAME, ARRAY_TYPE)                           \
     void                                                                \
@@ -841,6 +853,8 @@ ARRAY_A_APPEND(array_fa_append, array_fa, array_f)
     }
 ARRAY_A_EXTEND(array_ia_extend, array_ia)
 ARRAY_A_EXTEND(array_fa_extend, array_fa)
+ARRAY_A_EXTEND(array_iaa_extend, array_iaa)
+ARRAY_A_EXTEND(array_faa_extend, array_faa)
 
 #define ARRAY_A_COPY(FUNC_NAME, ARRAY_TYPE) \
     void                                                        \
@@ -854,6 +868,8 @@ ARRAY_A_EXTEND(array_fa_extend, array_fa)
     }
 ARRAY_A_COPY(array_ia_copy, array_ia)
 ARRAY_A_COPY(array_fa_copy, array_fa)
+ARRAY_A_COPY(array_iaa_copy, array_iaa)
+ARRAY_A_COPY(array_faa_copy, array_faa)
 
 #define ARRAY_A_EQUALS(FUNC_NAME, ARRAY_TYPE) \
     int                                               \
@@ -862,7 +878,7 @@ ARRAY_A_COPY(array_fa_copy, array_fa)
         unsigned i;                                   \
                                                       \
         if (array->size == compare->size) {           \
-            for (i = 0; i < array->size; i++)                           \
+            for (i = 0; i < array->size; i++)               \
                 if (!array->data[i]->equals(array->data[i], \
                                             compare->data[i]))  \
                     return 0;                                   \
@@ -873,6 +889,8 @@ ARRAY_A_COPY(array_fa_copy, array_fa)
     }
 ARRAY_A_EQUALS(array_ia_equals, array_ia)
 ARRAY_A_EQUALS(array_fa_equals, array_fa)
+ARRAY_A_EQUALS(array_iaa_equals, array_iaa)
+ARRAY_A_EQUALS(array_faa_equals, array_faa)
 
 #define ARRAY_A_PRINT(FUNC_NAME, ARRAY_TYPE) \
     void                                      \
@@ -894,6 +912,8 @@ ARRAY_A_EQUALS(array_fa_equals, array_fa)
     }
 ARRAY_A_PRINT(array_ia_print, array_ia)
 ARRAY_A_PRINT(array_fa_print, array_fa)
+ARRAY_A_PRINT(array_iaa_print, array_iaa)
+ARRAY_A_PRINT(array_faa_print, array_faa)
 
 #define ARRAY_A_SPLIT(FUNC_NAME, ARRAY_TYPE, NEW_FUNC)           \
     void                                                         \
@@ -948,6 +968,8 @@ ARRAY_A_PRINT(array_fa_print, array_fa)
     }
 ARRAY_A_SPLIT(array_ia_split, array_ia, array_ia_new)
 ARRAY_A_SPLIT(array_fa_split, array_fa, array_fa_new)
+ARRAY_A_SPLIT(array_iaa_split, array_iaa, array_iaa_new)
+ARRAY_A_SPLIT(array_faa_split, array_faa, array_faa_new)
 
 
 array_fa*
@@ -974,6 +996,60 @@ array_fa_new(void)
     a->swap = array_fa_swap;
     a->split = array_fa_split;
     a->print = array_fa_print;
+
+    return a;
+}
+
+struct array_iaa_s* array_iaa_new(void)
+{
+    struct array_iaa_s* a = malloc(sizeof(struct array_iaa_s));
+    unsigned i;
+
+    a->data = malloc(sizeof(struct array_ia_s*) * 1);
+    a->size = 0;
+    a->total_size = 1;
+
+    for (i = 0; i < 1; i++) {
+        a->data[i] = array_ia_new();
+    }
+
+    a->del = array_iaa_del;
+    a->resize = array_iaa_resize;
+    a->reset = array_iaa_reset;
+    a->append = array_iaa_append;
+    a->extend = array_iaa_extend;
+    a->equals = array_iaa_equals;
+    a->copy = array_iaa_copy;
+    a->swap = array_iaa_swap;
+    a->split = array_iaa_split;
+    a->print = array_iaa_print;
+
+    return a;
+}
+
+struct array_faa_s* array_faa_new(void)
+{
+    struct array_faa_s* a = malloc(sizeof(struct array_faa_s));
+    unsigned i;
+
+    a->data = malloc(sizeof(struct array_fa_s*) * 1);
+    a->size = 0;
+    a->total_size = 1;
+
+    for (i = 0; i < 1; i++) {
+        a->data[i] = array_fa_new();
+    }
+
+    a->del = array_faa_del;
+    a->resize = array_faa_resize;
+    a->reset = array_faa_reset;
+    a->append = array_faa_append;
+    a->extend = array_faa_extend;
+    a->equals = array_faa_equals;
+    a->copy = array_faa_copy;
+    a->swap = array_faa_swap;
+    a->split = array_faa_split;
+    a->print = array_faa_print;
 
     return a;
 }

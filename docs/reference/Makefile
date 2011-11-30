@@ -108,9 +108,12 @@ figures/wavpack/decorr_samples_parse.pdf \
 figures/wavpack/decorr_terms.pdf \
 figures/wavpack/decorr_weights.pdf \
 figures/wavpack/decorr_weights_parse.pdf \
+figures/wavpack/decorrelation0.pdf \
 figures/wavpack/decorrelation1.pdf \
 figures/wavpack/decorrelation2.pdf \
 figures/wavpack/decorrelation3.pdf \
+figures/wavpack/decorrelation4.pdf \
+figures/wavpack/decorrelation5.pdf \
 figures/wavpack/entropy_vars.pdf \
 figures/wavpack/entropy_vars_parse.pdf \
 figures/wavpack/extended_integers.pdf \
@@ -394,23 +397,41 @@ figures/shorten/signed.pdf: figures/shorten/signed.fig
 # figures/wavpack/block_header_parse.pdf: figures/wavpack/block_header_parse.bpx
 # 	./bitparse.py -w 480 -b 24 -i $< -o $@
 
-figures/wavpack/decorrelation1.fig: figures/wavpack/decorrelation1.plot
+figures/wavpack/decorrelation0.fig: figures/wavpack/decorrelation1.plot figures/wavpack/decorr_pass0.dat
+	./figures/wavpack/decorrelation0.plot > $@
+
+figures/wavpack/decorrelation0.pdf: figures/wavpack/decorrelation0.fig
+	fig2dev -Z 3 -L pdf $< $@
+
+figures/wavpack/decorrelation1.fig: figures/wavpack/decorrelation1.plot figures/wavpack/decorr_pass1.dat
 	./figures/wavpack/decorrelation1.plot > $@
 
 figures/wavpack/decorrelation1.pdf: figures/wavpack/decorrelation1.fig
-	fig2dev -Z 2 -L pdf $< $@
+	fig2dev -Z 3 -L pdf $< $@
 
 figures/wavpack/decorrelation2.fig: figures/wavpack/decorrelation2.plot
 	./figures/wavpack/decorrelation2.plot > $@
 
 figures/wavpack/decorrelation2.pdf: figures/wavpack/decorrelation2.fig
-	fig2dev -Z 2 -L pdf $< $@
+	fig2dev -Z 3 -L pdf $< $@
 
 figures/wavpack/decorrelation3.fig: figures/wavpack/decorrelation3.plot
 	./figures/wavpack/decorrelation3.plot > $@
 
 figures/wavpack/decorrelation3.pdf: figures/wavpack/decorrelation3.fig
-	fig2dev -Z 2 -L pdf $< $@
+	fig2dev -Z 3 -L pdf $< $@
+
+figures/wavpack/decorrelation4.fig: figures/wavpack/decorrelation4.plot
+	./figures/wavpack/decorrelation4.plot > $@
+
+figures/wavpack/decorrelation4.pdf: figures/wavpack/decorrelation4.fig
+	fig2dev -Z 3 -L pdf $< $@
+
+figures/wavpack/decorrelation5.fig: figures/wavpack/decorrelation5.plot
+	./figures/wavpack/decorrelation5.plot > $@
+
+figures/wavpack/decorrelation5.pdf: figures/wavpack/decorrelation5.fig
+	fig2dev -Z 3 -L pdf $< $@
 
 figures/wavpack/residuals_parse.pdf: figures/wavpack/residuals_parse.bpx
 	./bitparse.py -i $< -o $@ -b 24 -w 480

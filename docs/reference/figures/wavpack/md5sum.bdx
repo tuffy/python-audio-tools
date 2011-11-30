@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="4" width=".28">Metadata Function (6)</col>
-    <col start="5" end="5" width=".25">Nondecoder Data (1)</col>
-    <col start="6" end="6" width=".25">Actual Size 1 Less (0)</col>
-    <col start="7" end="7" width=".22">Large Block (0)</col>
+    <col start="0" end="4" width=".28">metadata function (6)</col>
+    <col start="5" end="5" width=".25">nondecoder data (1)</col>
+    <col start="6" end="6" width=".25">actual size 1 less (0)</col>
+    <col start="7" end="7" width=".22">large block (0)</col>
   </row>
   <row>
-    <col start="8" end="15" width=".25">Block Size (16)</col>
+    <col start="8" end="15" width=".25">block size (16)</col>
     <col width=".75" start="16" end="271">MD5 sum</col>
   </row>
 </diagram>
