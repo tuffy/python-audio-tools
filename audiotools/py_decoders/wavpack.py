@@ -20,6 +20,7 @@
 from audiotools.bitstream import BitstreamReader
 from audiotools.pcm import from_channels,from_list
 from math import log
+from hashlib import md5
 
 def sub_blocks(reader, sub_blocks_size):
     while (sub_blocks_size > 0):
@@ -43,8 +44,19 @@ class WavPackDecoder:
                                 48000, 64000, 88200, 96000,
                                 192000][block_header.sample_rate]
         else:
-            #FIXME - look for sample rate sub block
-            raise NotImplementedError()
+            sub_blocks_data.mark()
+            try:
+                for sub_block in sub_blocks(sub_blocks_data, sub_blocks_size):
+                    if ((sub_block.metadata_function == 7) and
+                        (sub_block.nondecoder_data == 1)):
+                        self.sample_rate = sub_block.data.read(
+                            sub_block.data_size() * 8)
+                        break
+                else:
+                    raise ValueError("invalid sample rate")
+            finally:
+                sub_blocks_data.rewind()
+                sub_blocks_data.unmark()
 
         self.bits_per_sample = [8, 16, 24, 32][block_header.bits_per_sample]
 
@@ -77,49 +89,45 @@ class WavPackDecoder:
 
         self.pcm_finished = False
         self.md5_checked = False
+        self.md5sum = md5()
 
     def read(self, bytes):
         if (self.pcm_finished):
             if (not self.md5_checked):
-                #FIXME - try to read one additional block for MD5 sum
-                pass
+                self.reader.mark()
+                try:
+                    try:
+                        header = Block_Header.read(self.reader)
+                        sub_blocks_size = header.block_size - 24
+                        sub_blocks_data = self.reader.substream(sub_blocks_size)
+                        for sub_block in sub_blocks(sub_blocks_data,
+                                                    sub_blocks_size):
+                            if ((sub_block.metadata_function == 6) and
+                                (sub_block.nondecoder_data == 1)):
+                                if (sub_block.data.read_bytes(16) !=
+                                    self.md5sum.digest()):
+                                    raise ValueError("invalid stream MD5 sum")
+                    except (IOError, ValueError):
+                        #no error if a block isn't found
+                        pass
+                finally:
+                    self.reader.rewind()
+                    self.reader.unmark()
             return from_list([], self.channels, self.bits_per_sample, True)
 
         channels = []
 
         while (True):  #in place of a do-while loop
-            self.reset_decoding_parameters()
-            block_header = Block_Header.read(self.reader)
+            try:
+                block_header = Block_Header.read(self.reader)
+            except (ValueError, IOError):
+                self.pcm_finished = True
+                return from_list([], self.channels, self.bits_per_sample, True)
             sub_blocks_size = block_header.block_size - 24
             sub_blocks_data = self.reader.substream(sub_blocks_size)
-            while (sub_blocks_size > 0):
-                sub_block = Sub_Block.read(sub_blocks_data)
-                self.read_decoding_parameters(block_header, sub_block)
-                sub_blocks_size -= sub_block.total_size()
-
-            if (block_header.channel_decorrelation):
-                samples = self.decorrelate_channels(self.residuals)
-            else:
-                samples = [r[:] for r in self.residuals]
-
-            if (block_header.joint_stereo and
-                ((block_header.mono_output == 0) and
-                 (block_header.false_stereo == 0))):
-                samples = undo_joint_stereo(samples)
-
-            #FIXME - handle extended/shifted integers
-            if (block_header.extended_size_integers):
-                raise NotImplementedError()
-
-            #FIXME - handle false stereo
-            if (block_header.false_stereo):
-                raise NotImplementedError()
-
-            #check block CRC
-            if (calculate_crc(samples) != block_header.CRC):
-                raise ValueError("block CRC mismatch")
-
-            channels.extend(samples)
+            channels.extend(read_block(block_header,
+                                       sub_blocks_size,
+                                       sub_blocks_data))
 
             if (block_header.final_block == 1):
                 break
@@ -132,101 +140,14 @@ class WavPackDecoder:
         block = from_channels([from_list(ch, 1, self.bits_per_sample, True)
                                for ch in channels])
 
-        #FIXME - update MD5 sum
+        #update MD5 sum
+        self.md5sum.update(block.to_bytes(False, self.bits_per_sample > 8))
 
         #return single block of audio data
         return block
 
     def close(self):
         self.reader.close()
-
-    def reset_decoding_parameters(self):
-        #one int per decorrelation pass
-        self.decorrelation_terms = []
-
-        #one int per decorrelation pass
-        self.decorrelation_deltas = []
-
-        #one weight per channel per decorrelation pass
-        self.decorrelation_weights = ([], [])
-
-        #one list of samples per channel per decorrelation pass
-        self.decorrelation_samples = ([], [])
-
-        #three ints per channel
-        self.medians = ([], [])
-
-        #one list of ints per channel
-        self.residuals = ([], )
-
-        #flags indicating that their sub blocks have been read
-        self.decorrelation_terms_read = False
-        self.decorrelation_weights_read = False
-        self.decorrelation_samples_read = False
-        self.entropy_variables_read = False
-        self.bitstream_read = False
-
-    def read_decoding_parameters(self, block_header, sub_block):
-        if (sub_block.nondecoder_data == 0):
-            if (sub_block.metadata_function == 2):
-                (self.decorrelation_terms,
-                 self.decorrelation_deltas) = \
-                 parse_decorrelation_terms(sub_block)
-                self.decorrelation_terms_read = True
-            elif (sub_block.metadata_function == 3):
-                assert(self.decorrelation_terms_read)
-                self.decorrelation_weights = \
-                    parse_decorrelation_weights(block_header,
-                                                self.decorrelation_terms,
-                                                sub_block)
-                self.decorrelation_weights_read = True
-            elif (sub_block.metadata_function == 4):
-                assert(self.decorrelation_terms_read)
-                self.decorrelation_samples = \
-                    parse_decorrelation_samples(block_header,
-                                                self.decorrelation_terms,
-                                                sub_block)
-                self.decorrelation_samples_read = True
-            elif (sub_block.metadata_function == 5):
-                self.medians = parse_entropy_variables(block_header, sub_block)
-                self.entropy_variables_read = True
-            elif (sub_block.metadata_function == 10):
-                assert(self.entropy_variables_read)
-                self.residuals = parse_bitstream(block_header,
-                                                 self.medians,
-                                                 sub_block)
-                self.bitstream_read = True
-            else:
-                pass
-
-    def decorrelate_channels(self, residuals):
-        assert(self.decorrelation_terms_read)
-        assert(self.decorrelation_weights_read)
-        assert(self.decorrelation_samples_read)
-        assert(self.bitstream_read)
-
-        latest_pass = [r[:] for r in residuals]
-
-        for (term,
-             delta,
-             weights,
-             samples) in zip(self.decorrelation_terms,
-                             self.decorrelation_deltas,
-                             zip(*self.decorrelation_weights),
-                             zip(*self.decorrelation_samples)):
-             if (len(residuals) == 2):
-                 latest_pass = decorrelation_pass_2ch(latest_pass,
-                                                      term,
-                                                      delta,
-                                                      weights,
-                                                      samples)
-             else:
-                 latest_pass = decorrelation_pass_1ch(latest_pass,
-                                                      term,
-                                                      delta,
-                                                      weights[0],
-                                                      samples[0])
-        return latest_pass
 
 
 class Block_Header:
@@ -348,11 +269,140 @@ class Sub_Block:
                    data)
 
 
-def parse_decorrelation_terms(sub_block):
-    if (sub_block.actual_size_1_less == 0):
-        passes = sub_block.sub_block_size * 2
+def read_block(block_header, sub_blocks_size, sub_blocks_data):
+    """returns 1 or 2 channels of PCM data integers"""
+
+    decorrelation_terms_read = False
+    decorrelation_weights_read = False
+    decorrelation_samples_read = False
+    medians_read = False
+    residuals_read = False
+    extended_integers_read = False
+
+    while (sub_blocks_size > 0):
+        (metadata_function,
+         nondecoder_data,
+         actual_size_1_less,
+         large_sub_block) = sub_blocks_data.parse("5u 1u 1u 1u")
+        if (large_sub_block == 0):
+            sub_block_size = sub_blocks_data.read(8)
+        else:
+            sub_block_size = sub_blocks_data.read(24)
+        if (actual_size_1_less == 0):
+            sub_block_data = sub_blocks_data.substream(sub_block_size * 2)
+        else:
+            sub_block_data = sub_blocks_data.substream(sub_block_size * 2 - 1)
+            sub_blocks_data.skip(8)
+
+        if (nondecoder_data == 0):
+            if (metadata_function == 2):
+                (decorrelation_terms,
+                 decorrelation_deltas) = read_decorrelation_terms(
+                    sub_block_size, actual_size_1_less, sub_block_data)
+                decorrelation_terms_read = True
+            if (metadata_function == 3):
+                if (not decorrelation_terms_read):
+                    raise ValueError(
+                        "weights sub block found before terms sub block")
+                decorrelation_weights = read_decorrelation_weights(
+                    block_header, len(decorrelation_terms),
+                    sub_block_size, actual_size_1_less, sub_block_data)
+                decorrelation_weights_read = True
+            if (metadata_function == 4):
+                if (not decorrelation_terms_read):
+                    raise ValueError(
+                        "samples sub block found before terms sub block")
+                if (actual_size_1_less):
+                    raise ValueError(
+                        "decorrelation samples must have an even byte count")
+                decorrelation_samples = read_decorrelation_samples(
+                    block_header, decorrelation_terms,
+                    sub_block_size, sub_block_data)
+                decorrelation_samples_read = True
+            if (metadata_function == 5):
+                medians = read_entropy_variables(block_header, sub_block_data)
+                medians_read = True
+            if (metadata_function == 9):
+                (zero_bits,
+                 one_bits,
+                 duplicate_bits) = read_extended_integers(sub_block_data)
+                extended_integers_read = True
+            if (metadata_function == 10):
+                if (not medians_read):
+                    raise ValueError(
+                        "bitstream sub block before medians sub block")
+                residuals = read_bitstream(block_header, medians,
+                                           sub_block_data)
+                residuals_read = True
+
+        if (large_sub_block == 0):
+            sub_blocks_size -= (2 + 2 * sub_block_size)
+        else:
+            sub_blocks_size -= (4 + 2 * sub_block_size)
+
+    if (not decorrelation_terms_read):
+        raise ValueError("decorrelation terms sub block not found")
+    if (not decorrelation_weights_read):
+        raise ValueError("decorrelation weights sub block not found")
+    if (not decorrelation_samples_read):
+        raise ValueError("decorrelation samples sub block not found")
+    if (not medians_read):
+        raise ValueError("entropy variables sub block not found")
+    if (not residuals_read):
+        raise ValueError("bitstream sub block not found")
+
+    if ((block_header.mono_output == 0) and (block_header.false_stereo == 0)):
+        decorrelated = decorrelate_channels(residuals,
+                                            decorrelation_terms,
+                                            decorrelation_deltas,
+                                            decorrelation_weights,
+                                            decorrelation_samples)
+
+        if (block_header.joint_stereo == 1):
+            left_right = undo_joint_stereo(decorrelated)
+        else:
+            left_right = decorrelated
+
+        if (block_header.extended_size_integers == 1):
+            un_shifted = undo_extended_integers(zero_bits,
+                                                one_bits,
+                                                duplicate_bits,
+                                                left_right)
+        else:
+            un_shifted = left_right
+
+        return un_shifted
     else:
-        passes = sub_block.sub_block_size * 2 - 1
+        decorrelated = decorrelate_channels(residuals,
+                                            decorrelation_terms,
+                                            decorrelation_deltas,
+                                            decorrelation_weights,
+                                            decorrelation_samples)
+
+        if (block_header.extended_size_integers == 1):
+            un_shifted = undo_extended_integers(zero_bits,
+                                                one_bits,
+                                                duplicate_bits,
+                                                decorrelated)
+        else:
+            un_shifted = decorrelated
+
+        if (block_header.false_stereo == 0):
+            return un_shifted
+        else:
+            return (un_shifted[0], un_shifted[0])
+
+
+def read_decorrelation_terms(sub_block_size,
+                             actual_size_1_less,
+                             sub_block_data):
+    """returns a list of decorrelation terms
+    and a list of decorrelation weights"""
+
+    if (actual_size_1_less == 0):
+        passes = sub_block_size * 2
+    else:
+        passes = sub_block_size * 2 - 1
 
     if (passes > 16):
         raise ValueError("invalid decorrelation passes count")
@@ -360,13 +410,13 @@ def parse_decorrelation_terms(sub_block):
     decorrelation_terms = []
     decorrelation_deltas = []
     for i in xrange(passes):
-        decorrelation_terms.append(sub_block.data.read(5) - 5)
+        decorrelation_terms.append(sub_block_data.read(5) - 5)
         if (not (((1 <= decorrelation_terms[-1]) and
                   (decorrelation_terms[-1] <= 18)) or
                  ((-3 <= decorrelation_terms[-1]) and
                   (decorrelation_terms[-1] <= -1)))):
             raise ValueError("invalid decorrelation term")
-        decorrelation_deltas.append(sub_block.data.read(3))
+        decorrelation_deltas.append(sub_block_data.read(3))
 
     decorrelation_terms.reverse()
     decorrelation_deltas.reverse()
@@ -374,15 +424,20 @@ def parse_decorrelation_terms(sub_block):
     return (decorrelation_terms, decorrelation_deltas)
 
 
-def parse_decorrelation_weights(block_header, decorrelation_terms, sub_block):
-    if (sub_block.actual_size_1_less == 0):
-        weight_count = sub_block.sub_block_size * 2
+def read_decorrelation_weights(block_header, decorrelation_terms_count,
+                               sub_block_size, actual_size_1_less,
+                               sub_block_data):
+    """returns two lists of signed decorrelation weights
+    for one channel blocks, the second list will be empty"""
+
+    if (actual_size_1_less == 0):
+        weight_count = sub_block_size * 2
     else:
-        weight_count = sub_block.sub_block_size * 2 - 1
+        weight_count = sub_block_size * 2 - 1
 
     weight_values = []
     for i in xrange(weight_count):
-        value_i = sub_block.data.read_signed(8)
+        value_i = sub_block_data.read_signed(8)
         if (value_i > 0):
             weight_values.append((value_i * 2 ** 3) +
                                  ((value_i * 2 ** 3 + 2 ** 6) / 2 ** 7))
@@ -393,43 +448,47 @@ def parse_decorrelation_weights(block_header, decorrelation_terms, sub_block):
 
     weights = ([], [])
     if ((block_header.mono_output == 0) and (block_header.false_stereo == 0)):
-        if ((weight_count / 2) > len(decorrelation_terms)):
+        if ((weight_count / 2) > decorrelation_terms_count):
             raise ValueError("invalid number of decorrelation weights")
 
         for i in xrange(weight_count / 2):
             weights[0].append(weight_values[i * 2])
             weights[1].append(weight_values[i * 2 + 1])
-        for i in xrange(weight_count / 2, len(decorrelation_terms)):
+        for i in xrange(weight_count / 2, decorrelation_terms_count):
             weights[0].append(0)
             weights[1].append(0)
 
         weights[0].reverse()
         weights[1].reverse()
     else:
-        if (weight_count > len(decorrelation_terms)):
+        if (weight_count > decorrelation_terms_count):
             raise ValueError("invalid number of decorrelation weights")
 
         for i in xrange(weight_count):
             weights[0].append(weight_values[i])
-        for i in xrange(weight_count, len(decorrelation_terms)):
+        for i in xrange(weight_count, decorrelation_terms_count):
             weights[0].append(0)
         weights[0].reverse()
 
     return weights
 
 
-def parse_decorrelation_samples(block_header, decorrelation_terms, sub_block):
-    sub_block_bytes = sub_block.data_size()
+def read_decorrelation_samples(block_header, decorrelation_terms,
+                               sub_block_size, sub_block_data):
+    """returns two lists of signed decorrelation samples lists
+    for one channel blocks, the second list will be empty"""
+
+    sub_block_bytes = sub_block_size * 2
 
     samples = ([], [])
     if ((block_header.mono_output == 0) and (block_header.false_stereo == 0)):
         for term in reversed(decorrelation_terms):
             if ((17 <= term) and (term <= 18)):
                 if (sub_block_bytes >= 8):
-                    samples[0].append([read_exp2(sub_block.data),
-                                       read_exp2(sub_block.data)])
-                    samples[1].append([read_exp2(sub_block.data),
-                                       read_exp2(sub_block.data)])
+                    samples[0].append([read_exp2(sub_block_data),
+                                       read_exp2(sub_block_data)])
+                    samples[1].append([read_exp2(sub_block_data),
+                                       read_exp2(sub_block_data)])
                     sub_block_bytes -= 8
                 else:
                     samples[0].append([0, 0])
@@ -437,9 +496,9 @@ def parse_decorrelation_samples(block_header, decorrelation_terms, sub_block):
                     sub_block_bytes = 0
             elif ((1 <= term) and (term <= 8)):
                 if (sub_block_bytes >= (term * 4)):
-                    samples[0].append([read_exp2(sub_block.data)
+                    samples[0].append([read_exp2(sub_block_data)
                                        for i in xrange(term)])
-                    samples[1].append([read_exp2(sub_block.data)
+                    samples[1].append([read_exp2(sub_block_data)
                                        for i in xrange(term)])
                     sub_block_bytes -= (term * 4)
                 else:
@@ -448,8 +507,8 @@ def parse_decorrelation_samples(block_header, decorrelation_terms, sub_block):
                     sub_block_bytes = 0
             elif ((-3 <= term) and (term <= -1)):
                 if (sub_block_bytes >= 4):
-                    samples[0].append([read_exp2(sub_block.data)])
-                    samples[1].append([read_exp2(sub_block.data)])
+                    samples[0].append([read_exp2(sub_block_data)])
+                    samples[1].append([read_exp2(sub_block_data)])
                     sub_block_bytes -= 4
                 else:
                     samples[0].append([0])
@@ -465,15 +524,15 @@ def parse_decorrelation_samples(block_header, decorrelation_terms, sub_block):
         for term in reversed(decorrelation_terms):
             if ((17 <= term) and (term <= 18)):
                 if (sub_block_bytes >= 4):
-                    samples[0].append([read_exp2(sub_block.data),
-                                       read_exp2(sub_block.data)])
+                    samples[0].append([read_exp2(sub_block_data),
+                                       read_exp2(sub_block_data)])
                     sub_block_bytes -= 4
                 else:
                     samples[0].append([0, 0])
                     sub_block_bytes = 0
             elif ((1 <= term) and (term <= 8)):
                 if (sub_block_bytes >= (term * 2)):
-                    samples[0].append([read_exp2(sub_block.data)
+                    samples[0].append([read_exp2(sub_block_data)
                                        for i in xrange(term)])
                     sub_block_bytes -= (term * 2)
                 else:
@@ -486,21 +545,21 @@ def parse_decorrelation_samples(block_header, decorrelation_terms, sub_block):
         return samples
 
 
-def parse_entropy_variables(block_header, sub_block):
+def read_entropy_variables(block_header, sub_block_data):
     medians = ([], [])
     for i in xrange(3):
-        medians[0].append(read_exp2(sub_block.data))
+        medians[0].append(read_exp2(sub_block_data))
 
     if ((block_header.mono_output == 0) and (block_header.false_stereo == 0)):
         for i in xrange(3):
-            medians[1].append(read_exp2(sub_block.data))
+            medians[1].append(read_exp2(sub_block_data))
     else:
         medians[1].extend([0, 0, 0])
 
     return medians
 
 
-def parse_bitstream(block_header, medians, sub_block):
+def read_bitstream(block_header, medians, sub_block_data):
     if ((block_header.mono_output == 0) and (block_header.false_stereo == 0)):
         channel_count = 2
         residuals = ([], [])
@@ -515,9 +574,9 @@ def parse_bitstream(block_header, medians, sub_block):
         if ((holding_zero == 0) and (holding_one == 0) and
             (medians[0][0] < 2) and (medians[1][0] < 2)):
             #handle long run of 0 residuals
-            t = sub_block.data.unary(0)
+            t = sub_block_data.unary(0)
             if (t > 1):
-                p = sub_block.data.read(t - 1)
+                p = sub_block_data.read(t - 1)
                 zeroes = (2 ** (t - 1)) + p
             else:
                 zeroes = t
@@ -530,7 +589,7 @@ def parse_bitstream(block_header, medians, sub_block):
                 (residual,
                  holding_zero,
                  holding_one) = read_residual(
-                    sub_block.data,
+                    sub_block_data,
                     holding_zero,
                     holding_one,
                     medians[i % channel_count])
@@ -540,7 +599,7 @@ def parse_bitstream(block_header, medians, sub_block):
             (residual,
              holding_zero,
              holding_one) = read_residual(
-                sub_block.data,
+                sub_block_data,
                 holding_zero,
                 holding_one,
                 medians[i % channel_count])
@@ -621,7 +680,6 @@ def read_residual(reader, holding_zero, holding_one, medians):
         return (unsigned, holding_zero, holding_one)
 
 
-
 def undo_joint_stereo(samples):
     assert(len(samples) == 2)
     assert(len(samples[0]) == len(samples[1]))
@@ -634,6 +692,38 @@ def undo_joint_stereo(samples):
         stereo[1].append(right)
 
     return stereo
+
+
+def read_extended_integers(sub_block_data):
+    (sent_bits,
+     zero_bits,
+     one_bits,
+     duplicate_bits) = sub_block_data.parse("8u 8u 8u 8u")
+    return (zero_bits, one_bits, duplicate_bits)
+
+
+def undo_extended_integers(zero_bits, one_bits, duplicate_bits,
+                           channels):
+    un_shifted = []
+    for channel in channels:
+        if (zero_bits > 0):
+            un_shifted.append([s << zero_bits for s in channel])
+        elif (one_bits > 0):
+            ones = (1 << one_bits) - 1
+            un_shifted.append([(s << one_bits) + ones for s in channel])
+        elif (duplicate_bits > 0):
+            dupes = []
+            ones = (1 << duplicate_bits) - 1
+            for s in channel:
+                if ((s % 2) == 0):
+                    dupes.append(s << duplicate_bits)
+                else:
+                    dupes.append((s << duplicate_bits) + ones)
+            un_shifted.append(dupes)
+        else:
+            un_shifted.append(channel)
+
+    return tuple(un_shifted)
 
 
 EXP2 = [0x100, 0x101, 0x101, 0x102, 0x103, 0x103, 0x104, 0x105,
@@ -681,6 +771,43 @@ def read_exp2(reader):
         return EXP2[value & 0xFF] << ((value >> 8) - 9)
 
 
+def decorrelate_channels(residuals,
+                         decorrelation_terms, decorrelation_deltas,
+                         decorrelation_weights, decorrelation_samples):
+    """returns a tuple of 1 or 2 lists of decorrelated channel data"""
+
+    if (len(residuals) == 2):
+        latest_pass = [r[:] for r in residuals]
+        for (term,
+             delta,
+             weights,
+             samples) in zip(decorrelation_terms,
+                             decorrelation_deltas,
+                             zip(*decorrelation_weights),
+                             zip(*decorrelation_samples)):
+             latest_pass = decorrelation_pass_2ch(latest_pass,
+                                                  term,
+                                                  delta,
+                                                  weights,
+                                                  samples)
+        return latest_pass
+    else:
+        latest_pass = residuals[0][:]
+        for (term,
+             delta,
+             weight,
+             samples) in zip(decorrelation_terms,
+                             decorrelation_deltas,
+                             decorrelation_weights[0],
+                             decorrelation_samples[0]):
+             latest_pass = decorrelation_pass_1ch(latest_pass,
+                                                  term,
+                                                  delta,
+                                                  weight,
+                                                  samples)
+        return (latest_pass, )
+
+
 def decorrelation_pass_1ch(correlated_samples,
                            term, delta, weight, decorrelation_samples):
     if (term == 18):
@@ -718,75 +845,78 @@ def decorrelation_pass_1ch(correlated_samples,
         raise ValueError("unsupported term")
 
 
-def decorrelation_pass_2ch(correlated_samples,
+def decorrelation_pass_2ch(correlated,
                            term, delta, weights, decorrelation_samples):
-    assert(len(correlated_samples) == 2)
-    assert(len(correlated_samples[0]) == len(correlated_samples[1]))
+    assert(len(correlated) == 2)
+    assert(len(correlated[0]) == len(correlated[1]))
     assert(len(weights) == 2)
     if (((17 <= term) and (term <= 18)) or ((1 <= term) and (term <= 8))):
-        return (decorrelation_pass_1ch(correlated_samples[0],
+        return (decorrelation_pass_1ch(correlated[0],
                                        term, delta, weights[0],
                                        decorrelation_samples[0]),
-                decorrelation_pass_1ch(correlated_samples[1],
+                decorrelation_pass_1ch(correlated[1],
                                        term, delta, weights[1],
                                        decorrelation_samples[1]))
     elif ((-3 <= term) and (term <= -1)):
         assert(len(decorrelation_samples[0]) == 1)
-        (correlated_A,
-         correlated_B) = correlated_samples
-        (decorrelated_A,
-         decorrelated_B) = decorrelation_samples
-        (weight_A,
-         weight_B) = weights
+        decorrelated = ([decorrelation_samples[0][0]],
+                        [decorrelation_samples[1][0]])
+        weights = list(weights)
         if (term == -1):
-            for i in xrange(len(correlated_A)):
-                decorrelated_A.append(
-                    apply_weight(weight_A, decorrelated_A[i]) +
-                    correlated_A[i])
-                decorrelated_B.append(
-                    apply_weight(weight_B, decorrelated_A[i + 1]) +
-                    correlated_B[i])
-                weight_A += update_weight(decorrelated_B[i],
-                                          correlated_A[i],
-                                          delta)
-                weight_B += update_weight(decorrelated_A[i + 1],
-                                          correlated_B[i],
-                                          delta)
-                weight_A = max(min(weight_A, 1024), -1024)
-                weight_B = max(min(weight_B, 1024), -1024)
+            for i in xrange(len(correlated[0])):
+                decorrelated[0].append(apply_weight(weights[0],
+                                                    decorrelated[1][i]) +
+                                       correlated[0][i])
+                decorrelated[1].append(apply_weight(weights[1],
+                                                    decorrelated[0][i + 1]) +
+                                       correlated[1][i])
+
+                weights[0] += update_weight(decorrelated[1][i],
+                                            correlated[0][i],
+                                            delta)
+                weights[1] += update_weight(decorrelated[0][i + 1],
+                                            correlated[1][i],
+                                            delta)
+                weights[0] = max(min(weights[0], 1024), -1024)
+                weights[1] = max(min(weights[1], 1024), -1024)
         elif (term == -2):
-            for i in xrange(len(correlated_A)):
-                decorrelated_B.append(
-                    apply_weight(weight_B, decorrelated_A[i]) +
-                    correlated_B[i])
-                decorrelated_A.append(
-                    apply_weight(weight_A, decorrelated_B[i + 1]) +
-                    correlated_A[i])
-                weight_B += update_weight(decorrelated_A[i],
-                                          correlated_B[i],
-                                          delta)
-                weight_A += update_weight(decorrelated_B[i + 1],
-                                          correlated_A[i],
-                                          delta)
-                weight_B = max(min(weight_B, 1024), -1024)
-                weight_A = max(min(weight_A, 1024), -1024)
+            for i in xrange(len(correlated[0])):
+                decorrelated[1].append(apply_weight(weights[1],
+                                                    decorrelated[0][i]) +
+                                       correlated[1][i])
+                decorrelated[0].append(apply_weight(weights[0],
+                                                    decorrelated[1][i + 1]) +
+                                       correlated[0][i])
+
+                weights[1] += update_weight(decorrelated[0][i],
+                                            correlated[1][i],
+                                            delta)
+
+                weights[0] += update_weight(decorrelated[1][i + 1],
+                                            correlated[0][i],
+                                            delta)
+                weights[1] = max(min(weights[1], 1024), -1024)
+                weights[0] = max(min(weights[0], 1024), -1024)
         elif (term == -3):
-            for i in xrange(len(correlated_A)):
-                decorrelated_A.append(
-                    apply_weight(weight_A, decorrelated_B[i]) +
-                    correlated_A[i])
-                decorrelated_B.append(
-                    apply_weight(weight_B, decorrelated_A[i]) +
-                    correlated_B[i])
-                weight_A += update_weight(decorrelated_B[i],
-                                          correlated_A[i],
-                                          delta)
-                weight_B += update_weight(decorrelated_A[i],
-                                          correlated_B[i],
-                                          delta)
-                weight_A = max(min(weight_A, 1024), -1024)
-                weight_B = max(min(weight_B, 1024), -1024)
-        return (decorrelated_A[1:], decorrelated_B[1:])
+            for i in xrange(len(correlated[0])):
+                decorrelated[0].append(apply_weight(weight_A,
+                                                    decorrelated[1][i]) +
+                                       correlated[0][i])
+                decorrelated[1].append(apply_weight(weight_B,
+                                                    decorrelated[0][i]) +
+                                       correlated[1][i])
+
+                weights[0] += update_weight(decorrelated[1][i],
+                                            correlated[0][i],
+                                            delta)
+                weights[1] += update_weight(decorrelated[0][i],
+                                            correlated[1][i],
+                                            delta)
+                weights[0] = max(min(weights[0], 1024), -1024)
+                weights[1] = max(min(weights[1], 1024), -1024)
+
+        assert(len(decorrelated[0]) == len(decorrelated[1]))
+        return (decorrelated[0][1:], decorrelated[1][1:])
     else:
         raise ValueError("unsupported term")
 

@@ -1611,7 +1611,7 @@ delta & \text{ if } (source \textbf{ xor } result ) \geq 0 \\
   $\text{\DECORRELATED}_1 \leftarrow \text{\DECORRSAMPLE}_{1~0}$\;
   \uIf{$term = -1$}{
     \For{i = 0 \emph{\KwTo}correlated samples length}{
-      $\text{\DECORRELATED}_{0~(i + 1)} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_{0~i}~,~\text{\DECORRELATED}_{0~i}) + \text{\CORRELATED}_{0~i}$\;
+      $\text{\DECORRELATED}_{0~(i + 1)} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_{0~i}~,~\text{\DECORRELATED}_{1~i}) + \text{\CORRELATED}_{0~i}$\;
       $\text{\DECORRELATED}_{1~(i + 1)} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_{1~i}~,~\text{\DECORRELATED}_{0~(i + 1)}) + \text{\CORRELATED}_{1~i}$\;
       $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \text{\WEIGHT}_{0~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{1~i}~,~\text{\CORRELATED}_{0~i}~,~delta)$\;
       $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \text{\WEIGHT}_{1~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{0~(i + 1)}~,~\text{\CORRELATED}_{1~i}~,~delta)$\;
