@@ -182,7 +182,7 @@ void array_i_print(const struct array_i_s *array, FILE* output);
  ***************************************************************/
 
 struct array_li_s {
-    int *data;
+    const int *data;
     unsigned size;
 
     /*deletes the array and any allocated data it contains*/
@@ -404,7 +404,7 @@ void array_f_print(const struct array_f_s *array, FILE* output);
  ***************************************************************/
 
 struct array_lf_s {
-    double *data;
+    const double *data;
     unsigned size;
 
     /*deletes the array and any allocated data it contains*/

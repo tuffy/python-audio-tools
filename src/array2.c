@@ -199,7 +199,7 @@ ARRAY_I_MAX(array_li_max, array_li)
     FUNC_NAME(const ARRAY_TYPE *array)          \
     {                                           \
         int accumulator = 0;                    \
-        int *data = array->data;                \
+        const int *data = array->data;          \
         unsigned size = array->size;            \
         unsigned i;                             \
                                                 \
@@ -677,7 +677,7 @@ ARRAY_F_MAX(array_lf_max, array_lf)
     FUNC_NAME(const ARRAY_TYPE *array)          \
     {                                           \
         double accumulator = 0.0;               \
-        double *data = array->data;             \
+        const double *data = array->data;       \
         unsigned size = array->size;            \
         unsigned i;                             \
                                                 \

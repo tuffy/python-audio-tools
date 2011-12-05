@@ -286,9 +286,7 @@ typedef struct BitstreamReader_s {
     (*unmark)(struct BitstreamReader_s* bs);
 
     /*this appends the given length of bytes from the current stream
-      to the given substream
-
-      in all other respects, it works identically to the previous method*/
+      to the given substream*/
     void
     (*substream_append)(struct BitstreamReader_s* bs,
                         struct BitstreamReader_s* substream,
