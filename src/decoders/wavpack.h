@@ -25,7 +25,17 @@
 typedef enum {OK,
               IO_ERROR,
               INVALID_BLOCK_ID,
-              INVALID_RESERVED_BIT} status;
+              INVALID_RESERVED_BIT,
+              EXCESSIVE_DECORRELATION_PASSES,
+              INVALID_DECORRELATION_TERM,
+              DECORRELATION_TERMS_MISSING,
+              DECORRELATION_WEIGHTS_MISSING,
+              DECORRELATION_SAMPLES_MISSING,
+              ENTROPY_VARIABLES_MISSING,
+              RESIDUALS_MISSING,
+              EXCESSIVE_DECORRELATION_WEIGHTS,
+              INVALID_ENTROPY_VARIABLE_COUNT,
+              BLOCK_DATA_CRC_MISMATCH} status;
 
 typedef enum {WV_DECORR_TERMS      = 0x2,
               WV_DECORR_WEIGHTS    = 0x3,
@@ -57,6 +67,14 @@ typedef struct {
 
     /*reusable buffers*/
     array_ia* channels_data;
+    array_i* decorrelation_terms;
+    array_i* decorrelation_deltas;
+    array_ia* decorrelation_weights;
+    array_iaa* decorrelation_samples;
+    array_ia* medians;
+    array_ia* residuals;
+    array_ia* decorrelated;
+    array_ia* left_right;
 } decoders_WavPackDecoder;
 
 /*the WavPackDecoder.__init__() method*/
@@ -196,6 +214,15 @@ struct block_header {
     uint32_t CRC;                               /*32 bits*/
 };
 
+struct sub_block {
+    unsigned metadata_function;
+    unsigned nondecoder_data;
+    unsigned actual_size_1_less;
+    unsigned large_sub_block;
+    unsigned size;
+    BitstreamReader* data;
+};
+
 status
 wavpack_read_block_header(BitstreamReader* bs, struct block_header* header);
 
@@ -207,7 +234,76 @@ unencode_bits_per_sample(unsigned encoded_bits_per_sample);
 
 status
 wavpack_decode_block(decoders_WavPackDecoder* decoder,
-                     struct block_header* const block_header,
+                     const struct block_header* block_header,
                      BitstreamReader* block_data,
                      unsigned block_data_size,
                      array_ia* channels);
+
+status
+wavpack_read_decorrelation_terms(const struct sub_block* sub_block,
+                                 array_i* terms,
+                                 array_i* deltas);
+
+status
+wavpack_read_decorrelation_weights(const struct block_header* block_header,
+                                   const struct sub_block* sub_block,
+                                   unsigned term_count,
+                                   array_ia* weights);
+
+status
+wavpack_read_decorrelation_samples(const struct block_header* block_header,
+                                   const struct sub_block* sub_block,
+                                   const array_i* terms,
+                                   array_iaa* samples);
+
+status
+wavpack_read_entropy_variables(const struct block_header* block_header,
+                               const struct sub_block* sub_block,
+                               array_ia* medians);
+
+status
+wavpack_read_bitstream(const struct block_header* block_header,
+                       BitstreamReader* sub_block_data,
+                       array_ia* medians,
+                       array_ia* residuals);
+
+int
+wavpack_read_residual(BitstreamReader* bs,
+                      unsigned* holding_zero,
+                      unsigned* holding_one,
+                      array_i* medians);
+
+status
+wavpack_decorrelate_channels(const array_i* decorrelation_terms,
+                             const array_i* decorrelation_deltas,
+                             const array_ia* decorrelation_weights,
+                             const array_iaa* decorrelation_samples,
+                             const array_ia* residuals,
+                             array_ia* decorrelated);
+
+status
+wavpack_decorrelate_1ch_pass(int decorrelation_term,
+                             int decorrelation_delta,
+                             int decorrelation_weight,
+                             const array_i* decorrelation_samples,
+                             const array_i* correlated,
+                             array_i* decorrelated);
+
+status
+wavpack_decorrelate_2ch_pass(int decorrelation_term,
+                             int decorrelation_delta,
+                             int weight_0,
+                             int weight_1,
+                             const array_i* samples_0,
+                             const array_i* samples_1,
+                             const array_ia* correlated,
+                             array_ia* decorrelated);
+
+void
+undo_joint_stereo(const array_ia* mid_size, array_ia* left_right);
+
+uint32_t
+calculate_crc(const array_ia* channels);
+
+int
+read_wv_exp2(BitstreamReader* sub_block_data);

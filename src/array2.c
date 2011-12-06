@@ -445,6 +445,10 @@ ARRAY_SLICE(array_f_slice, array_f, double, array_f_new)
     }
 ARRAY_REVERSE(array_i_reverse, array_i, int)
 ARRAY_REVERSE(array_f_reverse, array_f, double)
+ARRAY_REVERSE(array_ia_reverse, array_ia, array_i*);
+ARRAY_REVERSE(array_fa_reverse, array_fa, array_f*);
+ARRAY_REVERSE(array_iaa_reverse, array_iaa, array_ia*);
+ARRAY_REVERSE(array_faa_reverse, array_faa, array_fa*);
 
 int array_int_cmp(const void *x, const void *y)
 {
@@ -770,6 +774,7 @@ array_ia_new(void)
     a->copy = array_ia_copy;
     a->swap = array_ia_swap;
     a->split = array_ia_split;
+    a->reverse = array_ia_reverse;
     a->print = array_ia_print;
 
     return a;
@@ -995,6 +1000,7 @@ array_fa_new(void)
     a->copy = array_fa_copy;
     a->swap = array_fa_swap;
     a->split = array_fa_split;
+    a->reverse = array_fa_reverse;
     a->print = array_fa_print;
 
     return a;
@@ -1022,6 +1028,7 @@ struct array_iaa_s* array_iaa_new(void)
     a->copy = array_iaa_copy;
     a->swap = array_iaa_swap;
     a->split = array_iaa_split;
+    a->reverse = array_iaa_reverse;
     a->print = array_iaa_print;
 
     return a;
@@ -1049,6 +1056,7 @@ struct array_faa_s* array_faa_new(void)
     a->copy = array_faa_copy;
     a->swap = array_faa_swap;
     a->split = array_faa_split;
+    a->reverse = array_faa_reverse;
     a->print = array_faa_print;
 
     return a;

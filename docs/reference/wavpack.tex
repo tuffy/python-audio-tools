@@ -913,26 +913,36 @@ $i$ & $\text{term}_i$ & $j$ &
 \clearpage
 
 \subsection{Reading Entropy Variables}
-\ALGORITHM{\VAR{mono output} and \VAR{false stereo} from block header, sub block data}{2 lists of 3 signed median value integers}
+{\relsize{-2}
+\ALGORITHM{\VAR{mono output} and \VAR{false stereo} from block header, \VAR{sub block size}, \VAR{actual size 1 less}, sub block data}{2 lists of 3 signed median value integers}
 \SetKwData{MEDIAN}{median}
 \SetKwFunction{EXP}{wv\_exp2}
 \SetKwData{MONO}{mono output}
 \SetKwData{FALSESTEREO}{false stereo}
+\SetKwData{ONELESS}{actual size 1 less}
+\SetKwData{SUBBLOCKSIZE}{sub block size}
 \SetKw{AND}{and}
-$\text{\MEDIAN}_{0~0} \leftarrow \text{read \EXP value}$\;
-$\text{\MEDIAN}_{0~1} \leftarrow \text{read \EXP value}$\;
-$\text{\MEDIAN}_{0~2} \leftarrow \text{read \EXP value}$\;
+\ASSERT $\text{\ONELESS} = 0$\;
 \eIf(\tcc*[f]{2 channels}){$\text{\MONO} = 0$ \AND $\text{\FALSESTEREO} = 0$}{
+  \ASSERT $\text{\SUBBLOCKSIZE} = 6$\;
+  $\text{\MEDIAN}_{0~0} \leftarrow \text{read \EXP value}$\;
+  $\text{\MEDIAN}_{0~1} \leftarrow \text{read \EXP value}$\;
+  $\text{\MEDIAN}_{0~2} \leftarrow \text{read \EXP value}$\;
   $\text{\MEDIAN}_{1~0} \leftarrow \text{read \EXP value}$\;
   $\text{\MEDIAN}_{1~1} \leftarrow \text{read \EXP value}$\;
   $\text{\MEDIAN}_{1~2} \leftarrow \text{read \EXP value}$\;
-}(\tcc*[f]{dummy medians for second channel}){
+}(\tcc*[f]{1 channel}){
+  \ASSERT $\text{\SUBBLOCKSIZE} = 3$\;
+  $\text{\MEDIAN}_{0~0} \leftarrow \text{read \EXP value}$\;
+  $\text{\MEDIAN}_{0~1} \leftarrow \text{read \EXP value}$\;
+  $\text{\MEDIAN}_{0~2} \leftarrow \text{read \EXP value}$\;
   $\text{\MEDIAN}_{1~0} \leftarrow 0$\;
   $\text{\MEDIAN}_{1~1} \leftarrow 0$\;
   $\text{\MEDIAN}_{1~2} \leftarrow 0$\;
 }
 \Return $\text{\MEDIAN}_0$ list and $\text{\MEDIAN}_1$ list\;
 \EALGORITHM
+}
 
 \subsubsection{Reading Entropy Variables Example}
 Given a 2 channel block containing the subframe:
@@ -964,7 +974,7 @@ $i$ & \text{median}_{0~i} & \text{median}_{1~i} \\
 \subsection{Reading Bitstream}
 {\relsize{-1}
 \ALGORITHM{\VAR{mono output}, \VAR{false stereo} and \VAR{block samples} from block header,
-median values\footnote{from the entropy variables sub block, which must be read prior to this sub block}}{a list of signed residual values per channel}
+median values\footnote{from the entropy variables sub block, which must be read prior to this sub block}, sub block data}{a list of signed residual values per channel}
 \SetKwData{MEDIAN}{median}
 \SetKwData{MONO}{mono output}
 \SetKwData{FALSESTEREO}{false stereo}
@@ -977,9 +987,9 @@ median values\footnote{from the entropy variables sub block, which must be read 
 \SetKwData{ZEROES}{zeroes}
 \SetKw{AND}{and}
 \eIf{$\text{\MONO} = 0$ \AND $\text{\FALSESTEREO} = 0$}{
-  \CHANNELS $\leftarrow 1$\;
-}{
   \CHANNELS $\leftarrow 2$\;
+}{
+  \CHANNELS $\leftarrow 1$\;
 }
 \HZERO $\leftarrow$ 0\;
 \HONE $\leftarrow$ 0\;
