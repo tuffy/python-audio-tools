@@ -363,6 +363,11 @@ def read_block(block_header, sub_blocks_size, sub_blocks_data):
         else:
             left_right = decorrelated
 
+        channels_crc = calculate_crc(left_right)
+        if (channels_crc != block_header.CRC):
+            raise ValueError("CRC mismatch (0x%8.8X != 0x%8.8X)" % \
+                                 (channels_crc, block_header.CRC))
+
         if (block_header.extended_size_integers == 1):
             un_shifted = undo_extended_integers(zero_bits,
                                                 one_bits,
@@ -378,6 +383,11 @@ def read_block(block_header, sub_blocks_size, sub_blocks_data):
                                             decorrelation_deltas,
                                             decorrelation_weights,
                                             decorrelation_samples)
+
+        channels_crc = calculate_crc(decorrelated)
+        if (channels_crc != block_header.CRC):
+            raise ValueError("CRC mismatch (0x%8.8X != 0x%8.8X)" % \
+                                 (channels_crc, block_header.CRC))
 
         if (block_header.extended_size_integers == 1):
             un_shifted = undo_extended_integers(zero_bits,
@@ -850,6 +860,7 @@ def decorrelation_pass_2ch(correlated,
     assert(len(correlated) == 2)
     assert(len(correlated[0]) == len(correlated[1]))
     assert(len(weights) == 2)
+
     if (((17 <= term) and (term <= 18)) or ((1 <= term) and (term <= 8))):
         return (decorrelation_pass_1ch(correlated[0],
                                        term, delta, weights[0],

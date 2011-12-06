@@ -41,6 +41,7 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     self->residuals = array_ia_new();
     self->decorrelated = array_ia_new();
     self->left_right = array_ia_new();
+    self->un_shifted = array_ia_new();
     self->block_data = br_substream_new(BS_LITTLE_ENDIAN);
     self->sub_block_data = br_substream_new(BS_LITTLE_ENDIAN);
 
@@ -69,7 +70,7 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
 
     /*read initial block to populate
       sample_rate, bits_per_sample, channels, and channel_mask*/
-    self->bitstream->mark(self->bitstream);
+    self->bitstream->mark(self->bitstream); /*beginning of stream*/
     if ((error = wavpack_read_block_header(self->bitstream, &header)) != OK) {
         PyErr_SetString(wavpack_exception(error), wavpack_strerror(error));
         self->bitstream->unmark(self->bitstream);
@@ -77,7 +78,28 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     }
 
     if ((self->sample_rate = unencode_sample_rate(header.sample_rate)) == 0) {
-        /*FIXME - look for sample rate sub block*/
+        /*in the event of an odd sample rate,
+          look for a sample rate sub block within the first block*/
+        self->bitstream->mark(self->bitstream); /*after block header*/
+        switch (error =
+                wavpack_read_sample_rate_sub_block(&header,
+                                                   self->bitstream,
+                                                   &(self->sample_rate))) {
+        case OK:
+            self->bitstream->rewind(self->bitstream);
+            self->bitstream->unmark(self->bitstream); /*after block header*/
+            break;
+        case SUB_BLOCK_NOT_FOUND:
+            PyErr_SetString(PyExc_ValueError, "sample rate undefined");
+            self->bitstream->unmark(self->bitstream); /*after block header*/
+            self->bitstream->unmark(self->bitstream); /*beginning of stream*/
+            return -1;
+        default:
+            PyErr_SetString(wavpack_exception(error), wavpack_strerror(error));
+            self->bitstream->unmark(self->bitstream); /*after block header*/
+            self->bitstream->unmark(self->bitstream); /*beginning of stream*/
+            return -1;
+        }
     }
 
     self->bits_per_sample = unencode_bits_per_sample(header.bits_per_sample);
@@ -90,13 +112,36 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
             self->channel_mask = 0x4;
         }
     } else {
-        /*FIXME - look for channel mask sub block*/
+        /*in the event of a stream with more than 2 channels,
+          look for a channel count/channel mask sub block
+          within the first block*/
+        self->bitstream->mark(self->bitstream);
+        switch (error =
+                wavpack_read_channel_count_sub_block(&header,
+                                                     self->bitstream,
+                                                     &(self->channels),
+                                                     &(self->channel_mask))) {
+        case OK:
+            self->bitstream->rewind(self->bitstream);
+            self->bitstream->unmark(self->bitstream); /*after block header*/
+            break;
+        case SUB_BLOCK_NOT_FOUND:
+            PyErr_SetString(PyExc_ValueError, "channel count/mask undefined");
+            self->bitstream->unmark(self->bitstream); /*after block header*/
+            self->bitstream->unmark(self->bitstream); /*beginning of stream*/
+            return -1;
+        default:
+            PyErr_SetString(wavpack_exception(error), wavpack_strerror(error));
+            self->bitstream->unmark(self->bitstream); /*after block header*/
+            self->bitstream->unmark(self->bitstream); /*beginning of stream*/
+            return -1;
+        }
     }
 
     self->remaining_pcm_samples = header.total_samples;
 
     self->bitstream->rewind(self->bitstream);
-    self->bitstream->unmark(self->bitstream);
+    self->bitstream->unmark(self->bitstream); /*beginning of stream*/
 
     return 0;
 }
@@ -112,6 +157,7 @@ WavPackDecoder_dealloc(decoders_WavPackDecoder *self) {
     self->residuals->del(self->residuals);
     self->decorrelated->del(self->decorrelated);
     self->left_right->del(self->left_right);
+    self->un_shifted->del(self->un_shifted);
     self->block_data->close(self->block_data);
     self->sub_block_data->close(self->sub_block_data);
 
@@ -176,6 +222,8 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
 
     if (self->remaining_pcm_samples > 0) {
         do {
+            /*FIXME - add thread-friendliness*/
+
             /*read block header*/
             if ((error = wavpack_read_block_header(bs, &block_header)) != OK) {
                 PyErr_SetString(wavpack_exception(error),
@@ -263,6 +311,8 @@ wavpack_strerror(status error)
         return "missing entropy variables sub block";
     case RESIDUALS_MISSING:
         return "missing bitstream sub block";
+    case EXTENDED_INTEGERS_MISSING:
+        return "missing extended integers sub block";
     case EXCESSIVE_DECORRELATION_WEIGHTS:
         return "excessive decorrelation weight values";
     case INVALID_ENTROPY_VARIABLE_COUNT:
@@ -293,6 +343,7 @@ wavpack_exception(status error)
     case EXCESSIVE_DECORRELATION_WEIGHTS:
     case INVALID_ENTROPY_VARIABLE_COUNT:
     case BLOCK_DATA_CRC_MISMATCH:
+    case EXTENDED_INTEGERS_MISSING:
     default:
         return PyExc_ValueError;
     }
@@ -358,13 +409,17 @@ wavpack_decode_block(decoders_WavPackDecoder* decoder,
                      array_ia* channels)
 {
     struct sub_block sub_block;
+    int sub_block_size;
     status status;
 
     int decorrelation_terms_read = 0;
     int decorrelation_weights_read = 0;
     int decorrelation_samples_read = 0;
     int entropy_variables_read = 0;
+    int extended_integers_read = 0;
     int bitstream_read = 0;
+
+    struct extended_integers extended_integers;
 
     array_i* decorrelation_terms = decoder->decorrelation_terms;
     array_i* decorrelation_deltas = decoder->decorrelation_deltas;
@@ -375,171 +430,169 @@ wavpack_decode_block(decoders_WavPackDecoder* decoder,
 
     sub_block.data = decoder->sub_block_data;
 
-    if (!setjmp(*br_try(block_data))) {
-        /*parse all decoding parameter sub blocks*/
-        while (block_data_size > 0) {
-            block_data->parse(block_data, "5u 1u 1u 1u",
-                              &(sub_block.metadata_function),
-                              &(sub_block.nondecoder_data),
-                              &(sub_block.actual_size_1_less),
-                              &(sub_block.large_sub_block));
-            if (!sub_block.large_sub_block) {
-                sub_block.size = block_data->read(block_data, 8);
-            } else {
-                sub_block.size = block_data->read(block_data, 24);
-            }
-
-            br_substream_reset(sub_block.data);
-
-            if (!sub_block.actual_size_1_less) {
-                block_data->substream_append(block_data,
-                                             sub_block.data,
-                                             sub_block.size * 2);
-            } else {
-                block_data->substream_append(block_data,
-                                             sub_block.data,
-                                             sub_block.size * 2 - 1);
-                block_data->skip(block_data, 8);
-            }
-
-            if (!sub_block.nondecoder_data) {
-                switch (sub_block.metadata_function) {
-                case 2:
-                    status = wavpack_read_decorrelation_terms(
-                                 &(sub_block),
-                                 decorrelation_terms,
-                                 decorrelation_deltas);
-                    decorrelation_terms_read = 1;
-                    break;
-                case 3:
-                    if (!decorrelation_terms_read) {
-                        br_etry(block_data);
-                        return DECORRELATION_TERMS_MISSING;
-                    }
-                    status = wavpack_read_decorrelation_weights(
-                                 block_header,
-                                 &(sub_block),
-                                 decorrelation_terms->size,
-                                 decorrelation_weights);
-                    decorrelation_weights_read = 1;
-                    break;
-                case 4:
-                    if (!decorrelation_terms_read) {
-                        br_etry(block_data);
-                        return DECORRELATION_TERMS_MISSING;
-                    }
-                    status = wavpack_read_decorrelation_samples(
-                                 block_header,
-                                 &(sub_block),
-                                 decorrelation_terms,
-                                 decorrelation_samples);
-                    decorrelation_samples_read = 1;
-                    break;
-                case 5:
-                    status = wavpack_read_entropy_variables(
-                                 block_header,
-                                 &(sub_block),
-                                 medians);
-                    entropy_variables_read = 1;
-                    break;
-                case 9:
-                    /*FIXME*/
-                    break;
-                case 10:
-                    if (!entropy_variables_read) {
-                        br_etry(block_data);
-                        return ENTROPY_VARIABLES_MISSING;
-                    }
-                    status = wavpack_read_bitstream(
-                                 block_header,
-                                 sub_block.data,
-                                 medians,
-                                 residuals);
-                    bitstream_read = 1;
-                    break;
-                }
-                if (status != OK) {
-                    br_etry(block_data);
-                    return status;
-                }
-            }
-
-            if (!sub_block.large_sub_block) {
-                block_data_size -= (2 + 2 * sub_block.size);
-            } else {
-                block_data_size -= (4 + 2 * sub_block.size);
-            }
-        }
-
-        br_etry(block_data);
-
-        /*ensure the required decoding parameters have been read*/
-        if (!decorrelation_terms_read)
-            return DECORRELATION_TERMS_MISSING;
-        if (!decorrelation_weights_read)
-            return DECORRELATION_WEIGHTS_MISSING;
-        if (!decorrelation_samples_read)
-            return DECORRELATION_SAMPLES_MISSING;
-        if (!bitstream_read)
-            return RESIDUALS_MISSING;
-
-        if ((block_header->mono_output == 0) &&
-            (block_header->false_stereo == 0)) {
-            array_ia* decorrelated = decoder->decorrelated;
-            array_ia* left_right = decoder->left_right;
-
-            /*perform decorrelation passes over residual data*/
-            wavpack_decorrelate_channels(decorrelation_terms,
-                                         decorrelation_deltas,
-                                         decorrelation_weights,
-                                         decorrelation_samples,
-                                         residuals,
-                                         decorrelated);
-
-            /*undo joint stereo*/
-            if (block_header->joint_stereo) {
-                undo_joint_stereo(decorrelated, left_right);
-            } else {
-                decorrelated->swap(decorrelated, left_right);
-            }
-
-            /*verify PCM data against block header's CRC*/
-            if (calculate_crc(left_right) != block_header->CRC) {
-                return BLOCK_DATA_CRC_MISMATCH;
-            }
-
-            /*undo extended integers*/
-            /*FIXME*/
-            left_right->swap(left_right, channels);
+    /*parse all decoding parameter sub blocks*/
+    while (block_data_size > 0) {
+        if ((sub_block_size = wavpack_read_sub_block(block_data,
+                                                     &sub_block)) == -1) {
+            return IO_ERROR;
         } else {
-            array_ia* decorrelated = decoder->decorrelated;
-
-            /*perform decorrelation passes over residual data*/
-            wavpack_decorrelate_channels(decorrelation_terms,
-                                         decorrelation_deltas,
-                                         decorrelation_weights,
-                                         decorrelation_samples,
-                                         residuals,
-                                         decorrelated);
-
-            /*verify PCM data against block header's CRC*/
-            if (calculate_crc(decorrelated) != block_header->CRC) {
-                return BLOCK_DATA_CRC_MISMATCH;
-            }
-
-            /*undo extended integers*/
-            /*FIXME*/
-
-            /*undo false stereo*/
-            /*FIXME*/
-            decorrelated->swap(decorrelated, channels);
+            block_data_size -= sub_block_size;
         }
 
-        return OK;
-    } else {
-        br_etry(block_data);
-        return IO_ERROR;
+        if (!sub_block.nondecoder_data) {
+            switch (sub_block.metadata_function) {
+            case 2:
+                status = wavpack_read_decorrelation_terms(
+                             &(sub_block),
+                             decorrelation_terms,
+                             decorrelation_deltas);
+                decorrelation_terms_read = 1;
+                break;
+            case 3:
+                if (!decorrelation_terms_read) {
+                    br_etry(block_data);
+                    return DECORRELATION_TERMS_MISSING;
+                }
+                status = wavpack_read_decorrelation_weights(
+                             block_header,
+                             &(sub_block),
+                             decorrelation_terms->size,
+                             decorrelation_weights);
+                decorrelation_weights_read = 1;
+                break;
+            case 4:
+                if (!decorrelation_terms_read) {
+                    br_etry(block_data);
+                    return DECORRELATION_TERMS_MISSING;
+                }
+                status = wavpack_read_decorrelation_samples(
+                             block_header,
+                             &(sub_block),
+                             decorrelation_terms,
+                             decorrelation_samples);
+                decorrelation_samples_read = 1;
+                break;
+            case 5:
+                status = wavpack_read_entropy_variables(block_header,
+                                                        &sub_block,
+                                                        medians);
+                entropy_variables_read = 1;
+                break;
+            case 9:
+                status = wavpack_read_extended_integers(&sub_block,
+                                                        &extended_integers);
+                extended_integers_read = 1;
+                break;
+            case 10:
+                if (!entropy_variables_read) {
+                    br_etry(block_data);
+                    return ENTROPY_VARIABLES_MISSING;
+                }
+                status = wavpack_read_bitstream(block_header,
+                                                sub_block.data,
+                                                medians,
+                                                residuals);
+                bitstream_read = 1;
+                break;
+            }
+            if (status != OK) {
+                return status;
+            }
+        }
     }
+
+    /*ensure the required decoding parameters have been read*/
+    if (!decorrelation_terms_read)
+        return DECORRELATION_TERMS_MISSING;
+    if (!decorrelation_weights_read)
+        return DECORRELATION_WEIGHTS_MISSING;
+    if (!decorrelation_samples_read)
+        return DECORRELATION_SAMPLES_MISSING;
+    if (!bitstream_read)
+        return RESIDUALS_MISSING;
+
+    if ((block_header->mono_output == 0) &&
+        (block_header->false_stereo == 0)) {
+        array_ia* decorrelated = decoder->decorrelated;
+        array_ia* left_right = decoder->left_right;
+        array_ia* un_shifted = decoder->un_shifted;
+
+        /*perform decorrelation passes over residual data*/
+        wavpack_decorrelate_channels(decorrelation_terms,
+                                     decorrelation_deltas,
+                                     decorrelation_weights,
+                                     decorrelation_samples,
+                                     residuals,
+                                     decorrelated);
+
+        /*undo joint stereo*/
+        if (block_header->joint_stereo) {
+            undo_joint_stereo(decorrelated, left_right);
+        } else {
+            decorrelated->swap(decorrelated, left_right);
+        }
+
+        /*verify PCM data against block header's CRC*/
+        if (calculate_crc(left_right) != block_header->CRC) {
+            return BLOCK_DATA_CRC_MISMATCH;
+        }
+
+        /*undo extended integers*/
+        if (block_header->extended_size_integers) {
+            if (extended_integers_read) {
+                wavpack_undo_extended_integers(&extended_integers,
+                                               left_right,
+                                               un_shifted);
+            } else {
+                return EXTENDED_INTEGERS_MISSING;
+            }
+        } else {
+            left_right->swap(left_right, un_shifted);
+        }
+
+        channels->extend(channels, un_shifted);
+    } else {
+        array_ia* decorrelated = decoder->decorrelated;
+        array_ia* un_shifted = decoder->un_shifted;
+
+        /*perform decorrelation passes over residual data*/
+        wavpack_decorrelate_channels(decorrelation_terms,
+                                     decorrelation_deltas,
+                                     decorrelation_weights,
+                                     decorrelation_samples,
+                                     residuals,
+                                     decorrelated);
+
+        /*verify PCM data against block header's CRC*/
+        if (calculate_crc(decorrelated) != block_header->CRC) {
+            return BLOCK_DATA_CRC_MISMATCH;
+        }
+
+        /*undo extended integers*/
+        if (block_header->extended_size_integers) {
+            if (extended_integers_read) {
+                wavpack_undo_extended_integers(&extended_integers,
+                                               decorrelated,
+                                               un_shifted);
+            } else {
+                return EXTENDED_INTEGERS_MISSING;
+            }
+        } else {
+            decorrelated->swap(decorrelated, un_shifted);
+        }
+
+        /*undo false stereo*/
+        if (block_header->false_stereo) {
+            un_shifted->data[0]->copy(un_shifted->data[0],
+                                      channels->append(channels));
+            un_shifted->data[0]->copy(un_shifted->data[0],
+                                      channels->append(channels));
+        } else {
+            channels->extend(channels, un_shifted);
+        }
+    }
+
+    return OK;
 }
 
 status
@@ -910,7 +963,7 @@ wavpack_read_bitstream(const struct block_header* block_header,
 
                 if (zeroes > 0) {
                     for (j = 0; j < zeroes; j++) {
-                        r = residuals->data[j % channel_count];
+                        r = residuals->data[i % channel_count];
                         r->append(r, 0);
                         i++;
                     }
@@ -923,7 +976,7 @@ wavpack_read_bitstream(const struct block_header* block_header,
                 }
 
                 if (i < (channel_count * block_header->block_samples)) {
-                    r = residuals->data[j % channel_count];
+                    r = residuals->data[i % channel_count];
                     r->append(r, wavpack_read_residual(
                                     sub_block_data,
                                     &holding_zero,
@@ -1068,12 +1121,14 @@ wavpack_decorrelate_channels(const array_i* decorrelation_terms,
     status status;
     unsigned pass;
     array_ia* correlated = array_ia_new();
-    residuals->copy(residuals, decorrelated);
 
-    for (pass = 0; pass < decorrelation_terms->size; pass++) {
-        correlated->swap(correlated, decorrelated);
+    if (residuals->size == 1) {
+        residuals->copy(residuals, decorrelated);
+        correlated->append(correlated);
 
-        if (residuals->size == 1) {
+        for (pass = 0; pass < decorrelation_terms->size; pass++) {
+            correlated->swap(correlated, decorrelated);
+
             if ((status = wavpack_decorrelate_1ch_pass(
                               decorrelation_terms->data[pass],
                               decorrelation_deltas->data[pass],
@@ -1084,7 +1139,14 @@ wavpack_decorrelate_channels(const array_i* decorrelation_terms,
                 correlated->del(correlated);
                 return status;
             }
-        } else {
+        }
+
+    } else if (residuals->size == 2) {
+        residuals->copy(residuals, decorrelated);
+
+        for (pass = 0; pass < decorrelation_terms->size; pass++) {
+            correlated->swap(correlated, decorrelated);
+
             if ((status = wavpack_decorrelate_2ch_pass(
                               decorrelation_terms->data[pass],
                               decorrelation_deltas->data[pass],
@@ -1098,6 +1160,9 @@ wavpack_decorrelate_channels(const array_i* decorrelation_terms,
                 return status;
             }
         }
+    } else {
+        fprintf(stderr, "channel count must be 1 or 2\n");
+        abort();
     }
 
     correlated->del(correlated);
@@ -1221,12 +1286,87 @@ wavpack_decorrelate_2ch_pass(int decorrelation_term,
             return status;
 
         return OK;
-    } else {
-        /*FIXME*/
-        abort();
-        return OK;
-    }
+    } else if ((-3 <= decorrelation_term) && (decorrelation_term <= -1)) {
+        array_i* corr_0;
+        array_i* corr_1;
+        array_i* decorr_0;
+        array_i* decorr_1;
+        unsigned i;
 
+        decorrelated->reset(decorrelated);
+        corr_0 = correlated->data[0];
+        corr_1 = correlated->data[1];
+        decorr_0 = decorrelated->append(decorrelated);
+        decorr_1 = decorrelated->append(decorrelated);
+        decorr_0->extend(decorr_0, samples_0);
+        decorr_1->extend(decorr_1, samples_1);
+
+        switch (decorrelation_term) {
+        case -1:
+            for (i = 0; i < corr_0->size; i++) {
+                decorr_0->append(decorr_0,
+                                 apply_weight(weight_0, decorr_1->data[i]) +
+                                 corr_0->data[i]);
+                decorr_1->append(decorr_1,
+                                 apply_weight(weight_1, decorr_0->data[i + 1]) +
+                                 corr_1->data[i]);
+                weight_0 += update_weight(decorr_1->data[i],
+                                          corr_0->data[i],
+                                          decorrelation_delta);
+                weight_1 += update_weight(decorr_0->data[i + 1],
+                                          corr_1->data[i],
+                                          decorrelation_delta);
+                weight_0 = MAX(MIN(weight_0, 1024), -1024);
+                weight_1 = MAX(MIN(weight_1, 1024), -1024);
+            }
+            break;
+        case -2:
+            for (i = 0; i < corr_0->size; i++) {
+                decorr_1->append(decorr_1,
+                                 apply_weight(weight_1, decorr_0->data[i]) +
+                                 corr_1->data[i]);
+                decorr_0->append(decorr_0,
+                                 apply_weight(weight_0, decorr_1->data[i + 1]) +
+                                 corr_0->data[i]);
+                weight_1 += update_weight(decorr_0->data[i],
+                                          corr_1->data[i],
+                                          decorrelation_delta);
+                weight_0 += update_weight(decorr_1->data[i + 1],
+                                          corr_0->data[i],
+                                          decorrelation_delta);
+                weight_1 = MAX(MIN(weight_1, 1024), -1024);
+                weight_0 = MAX(MIN(weight_0, 1024), -1024);
+            }
+            break;
+        case -3:
+            for (i = 0; i < corr_0->size; i++) {
+                decorr_0->append(decorr_0,
+                                 apply_weight(weight_0, decorr_1->data[i]) +
+                                 corr_0->data[i]);
+                decorr_1->append(decorr_1,
+                                 apply_weight(weight_1, decorr_0->data[i]) +
+                                 corr_1->data[i]);
+                weight_0 += update_weight(decorr_1->data[i],
+                                          corr_0->data[i],
+                                          decorrelation_delta);
+                weight_1 += update_weight(decorr_0->data[i],
+                                          corr_1->data[i],
+                                          decorrelation_delta);
+                weight_0 = MAX(MIN(weight_0, 1024), -1024);
+                weight_1 = MAX(MIN(weight_1, 1024), -1024);
+            }
+            break;
+        default:
+            /*can't get here*/
+            abort();
+        }
+
+        decorr_0->de_head(decorr_0, 1, decorr_0);
+        decorr_1->de_head(decorr_1, 1, decorr_1);
+        return OK;
+    } else {
+        return INVALID_DECORRELATION_TERM;
+    }
 }
 
 void
@@ -1322,5 +1462,211 @@ unencode_bits_per_sample(unsigned encoded_bits_per_sample)
         /*a 2 bit field, so we shouldn't get this far*/
         abort();
         return 0;
+    }
+}
+
+int
+wavpack_read_sub_block(BitstreamReader* bitstream,
+                       struct sub_block* sub_block) {
+    if (!setjmp(*br_try(bitstream))) {
+        bitstream->parse(bitstream, "5u 1u 1u 1u",
+                         &(sub_block->metadata_function),
+                         &(sub_block->nondecoder_data),
+                         &(sub_block->actual_size_1_less),
+                         &(sub_block->large_sub_block));
+
+        if (!sub_block->large_sub_block) {
+            sub_block->size = bitstream->read(bitstream, 8);
+        } else {
+            sub_block->size = bitstream->read(bitstream, 24);
+        }
+
+        br_substream_reset(sub_block->data);
+
+        if (!sub_block->actual_size_1_less) {
+            bitstream->substream_append(bitstream,
+                                        sub_block->data,
+                                        sub_block->size * 2);
+        } else {
+            bitstream->substream_append(bitstream,
+                                        sub_block->data,
+                                        sub_block->size * 2 - 1);
+            bitstream->skip(bitstream, 8);
+        }
+
+        br_etry(bitstream);
+        if (sub_block->large_sub_block) {
+            return 4 + sub_block->size * 2;
+        } else {
+            return 2 + sub_block->size * 2;
+        }
+    } else {
+        br_etry(bitstream);
+        return -1;
+    }
+}
+
+unsigned
+sub_block_data_size(const struct sub_block* sub_block)
+{
+    if (!sub_block->actual_size_1_less) {
+        return sub_block->size * 2;
+    } else {
+        return sub_block->size * 2 - 1;
+    }
+}
+
+status
+wavpack_find_sub_block(const struct block_header* block_header,
+                       BitstreamReader* bitstream,
+                       unsigned metadata_function,
+                       unsigned nondecoder_data,
+                       struct sub_block* sub_block)
+{
+    unsigned sub_blocks_size = block_header->block_size - 24;
+    int sub_block_size;
+    BitstreamReader* sub_blocks = br_substream_new(BS_LITTLE_ENDIAN);
+
+    if (!setjmp(*br_try(bitstream))) {
+        bitstream->substream_append(bitstream, sub_blocks, sub_blocks_size);
+        br_etry(bitstream);
+    } else {
+        br_etry(bitstream);
+        sub_blocks->close(sub_blocks);
+        return IO_ERROR;
+    }
+
+    while (sub_blocks_size > 0) {
+        if ((sub_block_size = wavpack_read_sub_block(sub_blocks,
+                                                     sub_block)) == -1) {
+            sub_blocks->close(sub_blocks);
+            return IO_ERROR;
+        } else {
+            sub_blocks_size -= sub_block_size;
+        }
+
+        if ((sub_block->metadata_function == metadata_function) &&
+            (sub_block->nondecoder_data == nondecoder_data)) {
+            sub_blocks->close(sub_blocks);
+            return OK;
+        }
+    }
+
+    sub_blocks->close(sub_blocks);
+    return SUB_BLOCK_NOT_FOUND;
+}
+
+status
+wavpack_read_sample_rate_sub_block(const struct block_header* block_header,
+                                   BitstreamReader* bitstream,
+                                   int* sample_rate)
+{
+    status status;
+    struct sub_block sub_block;
+    sub_block.data = br_substream_new(BS_LITTLE_ENDIAN);
+
+    switch (status = wavpack_find_sub_block(block_header,
+                                            bitstream,
+                                            7, 1,
+                                            &sub_block)) {
+    case OK:
+        *sample_rate = (int)(sub_block.data->read(
+                                 sub_block.data,
+                                 sub_block_data_size(&sub_block) * 8));
+        sub_block.data->close(sub_block.data);
+        return OK;
+    default:
+        sub_block.data->close(sub_block.data);
+        return status;
+    }
+}
+
+status
+wavpack_read_channel_count_sub_block(const struct block_header* block_header,
+                                     BitstreamReader* bitstream,
+                                     int* channel_count,
+                                     int* channel_mask)
+{
+    status status;
+    struct sub_block sub_block;
+    sub_block.data = br_substream_new(BS_LITTLE_ENDIAN);
+
+    switch (status = wavpack_find_sub_block(block_header,
+                                            bitstream,
+                                            13, 0,
+                                            &sub_block)) {
+    case OK:
+        if (sub_block_data_size(&sub_block) >= 2) {
+            *channel_count = sub_block.data->read(sub_block.data, 8);
+            *channel_mask =
+                sub_block.data->read(sub_block.data,
+                                     (sub_block_data_size(&sub_block) - 1) * 8);
+            sub_block.data->close(sub_block.data);
+            return OK;
+        } else {
+            sub_block.data->close(sub_block.data);
+            return IO_ERROR;
+        }
+    default:
+        sub_block.data->close(sub_block.data);
+        return status;
+    }
+}
+
+status
+wavpack_read_extended_integers(const struct sub_block* sub_block,
+                               struct extended_integers* extended_integers)
+{
+    if (sub_block_data_size(sub_block) == 4) {
+        sub_block->data->parse(sub_block->data, "8u 8u 8u 8u",
+                               &(extended_integers->sent_bits),
+                               &(extended_integers->zero_bits),
+                               &(extended_integers->one_bits),
+                               &(extended_integers->duplicate_bits));
+        return OK;
+    } else {
+        return IO_ERROR;
+    }
+}
+
+void
+wavpack_undo_extended_integers(const struct extended_integers* params,
+                               const array_ia* extended_integers,
+                               array_ia* un_extended_integers)
+{
+    unsigned c;
+    unsigned i;
+    const array_i* extended;
+    array_i* un_extended;
+
+    un_extended_integers->reset(un_extended_integers);
+
+    for (c = 0; c < extended_integers->size; c++) {
+        extended = extended_integers->data[c];
+        un_extended = un_extended_integers->append(un_extended_integers);
+        if (params->zero_bits > 0) {
+            for (i = 0; i < extended->size; i++)
+                un_extended->append(un_extended,
+                                    extended->data[i] << params->zero_bits);
+        } else if (params->one_bits > 0) {
+            for (i = 0; i < extended->size; i++)
+                un_extended->append(un_extended,
+                                    (extended->data[i] << params->one_bits) |
+                                    ((1 < params->one_bits) - 1));
+        } else if (params->duplicate_bits > 0) {
+            for (i = 0; i < extended->size; i++) {
+                int shifted = extended->data[i];
+                if ((shifted % 2) == 0) {
+                    un_extended->append(un_extended,
+                                        shifted << params->duplicate_bits);
+                } else {
+                    un_extended->append(un_extended,
+                                        (shifted << params->duplicate_bits) |
+                                        ((1 << params->duplicate_bits) - 1));
+                }
+            }
+        } else {
+            extended->copy(extended, un_extended);
+        }
     }
 }

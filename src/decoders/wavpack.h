@@ -24,6 +24,7 @@
 
 typedef enum {OK,
               IO_ERROR,
+              SUB_BLOCK_NOT_FOUND,
               INVALID_BLOCK_ID,
               INVALID_RESERVED_BIT,
               EXCESSIVE_DECORRELATION_PASSES,
@@ -33,6 +34,7 @@ typedef enum {OK,
               DECORRELATION_SAMPLES_MISSING,
               ENTROPY_VARIABLES_MISSING,
               RESIDUALS_MISSING,
+              EXTENDED_INTEGERS_MISSING,
               EXCESSIVE_DECORRELATION_WEIGHTS,
               INVALID_ENTROPY_VARIABLE_COUNT,
               BLOCK_DATA_CRC_MISMATCH} status;
@@ -75,6 +77,7 @@ typedef struct {
     array_ia* residuals;
     array_ia* decorrelated;
     array_ia* left_right;
+    array_ia* un_shifted;
 } decoders_WavPackDecoder;
 
 /*the WavPackDecoder.__init__() method*/
@@ -223,6 +226,13 @@ struct sub_block {
     BitstreamReader* data;
 };
 
+struct extended_integers {
+    unsigned sent_bits;
+    unsigned zero_bits;
+    unsigned one_bits;
+    unsigned duplicate_bits;
+};
+
 status
 wavpack_read_block_header(BitstreamReader* bs, struct block_header* header);
 
@@ -307,3 +317,42 @@ calculate_crc(const array_ia* channels);
 
 int
 read_wv_exp2(BitstreamReader* sub_block_data);
+
+/*read a sub block header and data to the given struct
+  which *must* have a valid bitstream recorder ->data field
+
+  returns the total sub block size on success
+  returns -1 if an IO error occurs reading the sub block*/
+int
+wavpack_read_sub_block(BitstreamReader* bitstream,
+                       struct sub_block* sub_block);
+
+unsigned
+sub_block_data_size(const struct sub_block* sub_block);
+
+status
+wavpack_find_sub_block(const struct block_header* block_header,
+                       BitstreamReader* bitstream,
+                       unsigned metadata_function,
+                       unsigned nondecoder_data,
+                       struct sub_block* sub_block);
+
+status
+wavpack_read_sample_rate_sub_block(const struct block_header* block_header,
+                                   BitstreamReader* bitstream,
+                                   int* sample_rate);
+
+status
+wavpack_read_channel_count_sub_block(const struct block_header* block_header,
+                                     BitstreamReader* bitstream,
+                                     int* channel_count,
+                                     int* channel_mask);
+
+status
+wavpack_read_extended_integers(const struct sub_block* sub_block,
+                               struct extended_integers* extended_integers);
+
+void
+wavpack_undo_extended_integers(const struct extended_integers* params,
+                               const array_ia* extended_integers,
+                               array_ia* un_extended_integers);
