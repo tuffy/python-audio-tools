@@ -47,7 +47,7 @@ array_i_to_FrameList(PyObject* audiotools_pcm,
         framelist->samples = realloc(framelist->samples,
                                      framelist->samples_length * sizeof(int));
 
-        memcpy(framelist->samples, samples->data,
+        memcpy(framelist->samples, samples->_,
                framelist->samples_length * sizeof(int));
 
         return (PyObject*)framelist;
@@ -73,7 +73,7 @@ array_ia_to_FrameList(PyObject* audiotools_pcm,
                                                     "__blank__", NULL);
     if (framelist != NULL) {
         if (channels->size > 0) {
-            framelist->frames = channels->data[0]->size;
+            framelist->frames = channels->_[0]->size;
             framelist->channels = channels->size;
             framelist->bits_per_sample = bits_per_sample;
             framelist->samples_length = (framelist->frames *
@@ -83,11 +83,11 @@ array_ia_to_FrameList(PyObject* audiotools_pcm,
                                          sizeof(int));
 
             for (c = 0; c < channels->size; c++) {
-                channel = channels->data[c];
+                channel = channels->_[c];
                 if (channel->size == framelist->frames) {
                     for (i = 0; i < framelist->frames; i++) {
                         framelist->samples[(i * channels->size) + c] =
-                            channel->data[i];
+                            channel->_[i];
                     }
                 } else {
                     /*return an error if there's a channel length mismatch*/

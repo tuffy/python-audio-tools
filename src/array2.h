@@ -36,7 +36,7 @@
 
   it works equally well for array_i and array_f
 */
-#define a_append(array, value)((array)->data[(array)->size++] = (value))
+#define a_append(array, value)((array)->_[(array)->size++] = (value))
 
 
 /***************************************************************
@@ -47,7 +47,7 @@
 struct array_li_s;
 
 struct array_i_s {
-    int *data;
+    int *_;
     unsigned size;
     unsigned total_size;
 
@@ -182,7 +182,7 @@ void array_i_print(const struct array_i_s *array, FILE* output);
  ***************************************************************/
 
 struct array_li_s {
-    const int *data;
+    const int *_;
     unsigned size;
 
     /*deletes the array and any allocated data it contains*/
@@ -268,7 +268,7 @@ void array_li_print(const struct array_li_s *array, FILE* output);
 struct array_lf_s;
 
 struct array_f_s {
-    double *data;
+    double *_;
     unsigned size;
     unsigned total_size;
 
@@ -404,7 +404,7 @@ void array_f_print(const struct array_f_s *array, FILE* output);
  ***************************************************************/
 
 struct array_lf_s {
-    const double *data;
+    const double *_;
     unsigned size;
 
     /*deletes the array and any allocated data it contains*/
@@ -489,7 +489,7 @@ void array_lf_print(const struct array_lf_s *array, FILE* output);
  ***************************************************************/
 
 struct array_ia_s {
-    struct array_i_s **data;
+    struct array_i_s **_;
     unsigned size;
     unsigned total_size;
 
@@ -559,7 +559,7 @@ void array_ia_print(const struct array_ia_s *array, FILE* output);
  ***************************************************************/
 
 struct array_fa_s {
-    struct array_f_s **data;
+    struct array_f_s **_;
     unsigned size;
     unsigned total_size;
 
@@ -629,7 +629,7 @@ void array_fa_print(const struct array_fa_s *array, FILE* output);
  ***************************************************************/
 
 struct array_iaa_s {
-    struct array_ia_s **data;
+    struct array_ia_s **_;
     unsigned size;
     unsigned total_size;
 
@@ -700,7 +700,7 @@ void array_iaa_print(const struct array_iaa_s *array, FILE* output);
  ***************************************************************/
 
 struct array_faa_s {
-    struct array_fa_s **data;
+    struct array_fa_s **_;
     unsigned size;
     unsigned total_size;
 

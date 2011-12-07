@@ -224,7 +224,7 @@ OggFlacDecoder_read(decoders_OggFlacDecoder *self, PyObject *args) {
                                              sizeof(int));
 
                 memcpy(framelist->samples,
-                       self->framelist_data->data,
+                       self->framelist_data->_,
                        framelist->samples_length * sizeof(int));
 
                 /*update MD5 sum*/

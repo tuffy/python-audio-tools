@@ -297,7 +297,7 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
 
         /*decrement the remaining sample count*/
         self->remaining_frames -= MIN(self->remaining_frames,
-                                      frameset_channels->data[0]->size);
+                                      frameset_channels->_[0]->size);
 
         /*convert ALAC channel assignment to standard audiotools assignment*/
         alacdec_alac_order_to_wave_order(frameset_channels);
@@ -325,96 +325,96 @@ alacdec_alac_order_to_wave_order(array_ia* alac_ordered)
     switch (alac_ordered->size) {
     case 2:
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[0]); /*left*/
+        wave_ch->swap(wave_ch, alac_ordered->_[0]); /*left*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[1]); /*right*/
+        wave_ch->swap(wave_ch, alac_ordered->_[1]); /*right*/
         break;
     case 1:
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[0]); /*center*/
+        wave_ch->swap(wave_ch, alac_ordered->_[0]); /*center*/
         break;
     case 3:
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[1]); /*left*/
+        wave_ch->swap(wave_ch, alac_ordered->_[1]); /*left*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[2]); /*right*/
+        wave_ch->swap(wave_ch, alac_ordered->_[2]); /*right*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[0]); /*center*/
+        wave_ch->swap(wave_ch, alac_ordered->_[0]); /*center*/
         break;
     case 4:
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[1]); /*left*/
+        wave_ch->swap(wave_ch, alac_ordered->_[1]); /*left*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[2]); /*right*/
+        wave_ch->swap(wave_ch, alac_ordered->_[2]); /*right*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[0]); /*center*/
+        wave_ch->swap(wave_ch, alac_ordered->_[0]); /*center*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[3]); /*back center*/
+        wave_ch->swap(wave_ch, alac_ordered->_[3]); /*back center*/
         break;
     case 5:
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[1]); /*left*/
+        wave_ch->swap(wave_ch, alac_ordered->_[1]); /*left*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[2]); /*right*/
+        wave_ch->swap(wave_ch, alac_ordered->_[2]); /*right*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[0]); /*center*/
+        wave_ch->swap(wave_ch, alac_ordered->_[0]); /*center*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[3]); /*back left*/
+        wave_ch->swap(wave_ch, alac_ordered->_[3]); /*back left*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[4]); /*back right*/
+        wave_ch->swap(wave_ch, alac_ordered->_[4]); /*back right*/
         break;
     case 6:
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[1]); /*left*/
+        wave_ch->swap(wave_ch, alac_ordered->_[1]); /*left*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[2]); /*right*/
+        wave_ch->swap(wave_ch, alac_ordered->_[2]); /*right*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[0]); /*center*/
+        wave_ch->swap(wave_ch, alac_ordered->_[0]); /*center*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[5]); /*LFE*/
+        wave_ch->swap(wave_ch, alac_ordered->_[5]); /*LFE*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[3]); /*back left*/
+        wave_ch->swap(wave_ch, alac_ordered->_[3]); /*back left*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[4]); /*back right*/
+        wave_ch->swap(wave_ch, alac_ordered->_[4]); /*back right*/
         break;
     case 7:
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[1]); /*left*/
+        wave_ch->swap(wave_ch, alac_ordered->_[1]); /*left*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[2]); /*right*/
+        wave_ch->swap(wave_ch, alac_ordered->_[2]); /*right*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[0]); /*center*/
+        wave_ch->swap(wave_ch, alac_ordered->_[0]); /*center*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[6]); /*LFE*/
+        wave_ch->swap(wave_ch, alac_ordered->_[6]); /*LFE*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[3]); /*back left*/
+        wave_ch->swap(wave_ch, alac_ordered->_[3]); /*back left*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[4]); /*back right*/
+        wave_ch->swap(wave_ch, alac_ordered->_[4]); /*back right*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[5]); /*back center*/
+        wave_ch->swap(wave_ch, alac_ordered->_[5]); /*back center*/
         break;
     case 8:
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[3]); /*left*/
+        wave_ch->swap(wave_ch, alac_ordered->_[3]); /*left*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[4]); /*right*/
+        wave_ch->swap(wave_ch, alac_ordered->_[4]); /*right*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[0]); /*center*/
+        wave_ch->swap(wave_ch, alac_ordered->_[0]); /*center*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[7]); /*LFE*/
+        wave_ch->swap(wave_ch, alac_ordered->_[7]); /*LFE*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[5]); /*back left*/
+        wave_ch->swap(wave_ch, alac_ordered->_[5]); /*back left*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[6]); /*back right*/
+        wave_ch->swap(wave_ch, alac_ordered->_[6]); /*back right*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[1]); /*left of center*/
+        wave_ch->swap(wave_ch, alac_ordered->_[1]); /*left of center*/
         wave_ch = wave_ordered->append(wave_ordered);
-        wave_ch->swap(wave_ch, alac_ordered->data[2]); /*right of center*/
+        wave_ch->swap(wave_ch, alac_ordered->_[2]); /*right of center*/
         break;
     default:
         for (i = 0; i < alac_ordered->size; i++) {
             wave_ch = wave_ordered->append(wave_ordered);
-            wave_ch->swap(wave_ch, alac_ordered->data[i]);
+            wave_ch->swap(wave_ch, alac_ordered->_[i]);
         }
         break;
     }
@@ -459,15 +459,15 @@ alacdec_read_frame(decoders_ALACDecoder *self,
 
         for (i = 0; i < sample_count; i++) {
             for (channel = 0; channel < channel_count; channel++) {
-                frame_channels->data[channel]->append(
-                    frame_channels->data[channel],
+                frame_channels->_[channel]->append(
+                    frame_channels->_[channel],
                     mdat->read_signed(mdat, self->bits_per_sample));
             }
         }
 
         for (channel = 0; channel < channel_count; channel++)
-            frame_channels->data[channel]->swap(
-                 frame_channels->data[channel],
+            frame_channels->_[channel]->swap(
+                 frame_channels->_[channel],
                  frameset_channels->append(frameset_channels));
 
         return OK;
@@ -527,8 +527,8 @@ alacdec_read_frame(decoders_ALACDecoder *self,
         /*if stereo, decorrelate channels
           according to interlacing shift and interlacing leftweight*/
         if ((channel_count == 2) && (interlacing_leftweight > 0)) {
-            alacdec_decorrelate_channels(frame_channels->data[0],
-                                         frame_channels->data[1],
+            alacdec_decorrelate_channels(frame_channels->_[0],
+                                         frame_channels->_[1],
                                          interlacing_shift,
                                          interlacing_leftweight);
         }
@@ -536,20 +536,20 @@ alacdec_read_frame(decoders_ALACDecoder *self,
         /*if uncompressed LSBs, prepend partial samples to output*/
         if (uncompressed_LSBs > 0) {
             for (channel = 0; channel < channel_count; channel++) {
-                channel_data = frame_channels->data[channel];
+                channel_data = frame_channels->_[channel];
                 for (i = 0; i < sample_count; i++) {
-                    channel_data->data[i] = ((channel_data->data[i] <<
-                                              uncompressed_LSBs * 8) |
-                                             LSBs->data[(i * channel_count) +
-                                                        channel]);
+                    channel_data->_[i] = ((channel_data->_[i] <<
+                                           uncompressed_LSBs * 8) |
+                                          LSBs->_[(i * channel_count) +
+                                                  channel]);
                 }
             }
         }
 
         /*finally, return frame's channel data*/
         for (channel = 0; channel < channel_count; channel++)
-            frame_channels->data[channel]->swap(
-                 frame_channels->data[channel],
+            frame_channels->_[channel]->swap(
+                 frame_channels->_[channel],
                  frameset_channels->append(frameset_channels));
 
         return OK;
@@ -748,7 +748,7 @@ alacdec_decode_subframe(array_i* samples,
                         array_i* qlp_coeff,
                         uint8_t qlp_shift_needed)
 {
-    int* residuals_data = residuals->data;
+    int* residuals_data = residuals->_;
     int base_sample;
     int residual;
     int64_t lpc_sum;
@@ -767,7 +767,7 @@ alacdec_decode_subframe(array_i* samples,
     for (j = 0; j < qlp_coeff->size; j++) {
         /*these are adjustments to the previous sample
           rather than copied verbatim*/
-        samples->append(samples, residuals_data[i] + samples->data[i - 1]);
+        samples->append(samples, residuals_data[i] + samples->_[i - 1]);
         i++;
     }
 
@@ -779,11 +779,11 @@ alacdec_decode_subframe(array_i* samples,
         /*Note that base_sample gets stripped from previously encoded samples
           then re-added prior to adding the next sample.
           It's a watermark sample, of sorts.*/
-        base_sample = samples->data[i - (qlp_coeff->size + 1)];
+        base_sample = samples->_[i - (qlp_coeff->size + 1)];
 
         for (j = 0; j < qlp_coeff->size; j++) {
-            lpc_sum += ((int64_t)qlp_coeff->data[j] *
-                        (int64_t)(samples->data[i - j - 1] - base_sample));
+            lpc_sum += ((int64_t)qlp_coeff->_[j] *
+                        (int64_t)(samples->_[i - j - 1] - base_sample));
         }
 
         /*sample = ((sum + 2 ^ (quant - 1)) / (2 ^ quant)) +
@@ -802,9 +802,9 @@ alacdec_decode_subframe(array_i* samples,
 
         if (residual > 0) {
             for (j = 0; j < qlp_coeff->size; j++) {
-                diff = base_sample - samples->data[i - qlp_coeff->size + j];
+                diff = base_sample - samples->_[i - qlp_coeff->size + j];
                 sign = SIGN_ONLY(diff);
-                qlp_coeff->data[qlp_coeff->size - j - 1] -= sign;
+                qlp_coeff->_[qlp_coeff->size - j - 1] -= sign;
                 residual -= (((diff * sign) >> qlp_shift_needed) *
                              (j + 1));
                 if (residual <= 0)
@@ -812,9 +812,9 @@ alacdec_decode_subframe(array_i* samples,
             }
         } else if (residual < 0) {
             for (j = 0; j < qlp_coeff->size; j++) {
-                diff = base_sample - samples->data[i - qlp_coeff->size + j];
+                diff = base_sample - samples->_[i - qlp_coeff->size + j];
                 sign = SIGN_ONLY(diff);
-                qlp_coeff->data[qlp_coeff->size - j - 1] += sign;
+                qlp_coeff->_[qlp_coeff->size - j - 1] += sign;
                 residual -= (((diff * -sign) >> qlp_shift_needed) *
                              (j + 1));
                 if (residual >= 0)
@@ -839,16 +839,16 @@ alacdec_decorrelate_channels(array_i* left,
     int right_s;
 
     for (i = 0; i < size; i++) {
-        ch0_s = left->data[i];
-        ch1_s = right->data[i];
+        ch0_s = left->_[i];
+        ch1_s = right->_[i];
 
         leftweight = ch1_s * (int)interlacing_leftweight;
         leftweight >>= interlacing_shift;
         right_s = ch0_s - (int)leftweight;
         left_s = ch1_s + right_s;
 
-        left->data[i]  = left_s;
-        right->data[i] = right_s;
+        left->_[i]  = left_s;
+        right->_[i] = right_s;
     }
 }
 

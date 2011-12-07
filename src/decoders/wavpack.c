@@ -267,7 +267,7 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
         /*deduct frame count from total remaining*/
         /*FIXME - check for 0 channels of output here*/
         if (channels_data->size != 0) {
-            self->remaining_pcm_samples -= MIN(channels_data->data[0]->size,
+            self->remaining_pcm_samples -= MIN(channels_data->_[0]->size,
                                                self->remaining_pcm_samples);
         } else {
             fprintf(stderr, "0 channel block found\n");
@@ -583,10 +583,10 @@ wavpack_decode_block(decoders_WavPackDecoder* decoder,
 
         /*undo false stereo*/
         if (block_header->false_stereo) {
-            un_shifted->data[0]->copy(un_shifted->data[0],
-                                      channels->append(channels));
-            un_shifted->data[0]->copy(un_shifted->data[0],
-                                      channels->append(channels));
+            un_shifted->_[0]->copy(un_shifted->_[0],
+                                   channels->append(channels));
+            un_shifted->_[0]->copy(un_shifted->_[0],
+                                   channels->append(channels));
         } else {
             channels->extend(channels, un_shifted);
         }
@@ -619,9 +619,9 @@ wavpack_read_decorrelation_terms(const struct sub_block* sub_block,
     for (i = 0; i < passes; i++) {
         terms->append(terms,
                       (int)(sub_block_data->read(sub_block_data, 5)) - 5);
-        if (!(((-3 <= terms->data[i]) && (terms->data[i] <= -1)) ||
-              ( (1 <= terms->data[i]) && (terms->data[i] <=  8)) ||
-              ((17 <= terms->data[i]) && (terms->data[i] <= 18))))
+        if (!(((-3 <= terms->_[i]) && (terms->_[i] <= -1)) ||
+              ( (1 <= terms->_[i]) && (terms->_[i] <=  8)) ||
+              ((17 <= terms->_[i]) && (terms->_[i] <= 18))))
             return INVALID_DECORRELATION_TERM;
         deltas->append(deltas, sub_block_data->read(sub_block_data, 3));
     }
@@ -672,8 +672,8 @@ wavpack_read_decorrelation_weights(const struct block_header* block_header,
             return EXCESSIVE_DECORRELATION_WEIGHTS;
         }
         for (i = 0; i < weight_count / 2; i++) {
-            weights_0->append(weights_0, weight_values->data[i * 2]);
-            weights_1->append(weights_1, weight_values->data[i * 2 + 1]);
+            weights_0->append(weights_0, weight_values->_[i * 2]);
+            weights_1->append(weights_1, weight_values->_[i * 2 + 1]);
         }
         for (; i < term_count; i++) {
             weights_0->append(weights_0, 0);
@@ -694,7 +694,7 @@ wavpack_read_decorrelation_weights(const struct block_header* block_header,
         }
 
         for (i = 0; i < weight_count; i++) {
-            weights_0->append(weights_0, weight_values->data[i]);
+            weights_0->append(weights_0, weight_values->_[i]);
         }
         for (; i < term_count; i++) {
             weights_0->append(weights_0, 0);
@@ -734,7 +734,7 @@ wavpack_read_decorrelation_samples(const struct block_header* block_header,
             array_i* samples_0_i = samples_0->append(samples_0);
             array_i* samples_1_i = samples_1->append(samples_1);
 
-            if ((17 <= terms->data[i]) && (terms->data[i] <= 18)) {
+            if ((17 <= terms->_[i]) && (terms->_[i] <= 18)) {
                 if (bytes_remaining >= 8) {
                     samples_0_i->append(samples_0_i,
                                         read_wv_exp2(sub_block->data));
@@ -751,9 +751,9 @@ wavpack_read_decorrelation_samples(const struct block_header* block_header,
                     samples_1_i->vappend(samples_1_i, 2, 0, 0);
                     bytes_remaining = 0;
                 }
-            } else if ((1 <= terms->data[i]) && (terms->data[i] <= 8)) {
-                if (bytes_remaining >= (terms->data[i] * 4)) {
-                    for (j = 0; j < terms->data[i]; j++) {
+            } else if ((1 <= terms->_[i]) && (terms->_[i] <= 8)) {
+                if (bytes_remaining >= (terms->_[i] * 4)) {
+                    for (j = 0; j < terms->_[i]; j++) {
                         samples_0_i->append(samples_0_i,
                                             read_wv_exp2(sub_block->data));
 
@@ -762,14 +762,14 @@ wavpack_read_decorrelation_samples(const struct block_header* block_header,
                         bytes_remaining -= 4;
                     }
                 } else {
-                    for (j = 0; j < terms->data[i]; j++) {
+                    for (j = 0; j < terms->_[i]; j++) {
                         samples_0_i->append(samples_0_i, 0);
 
                         samples_1_i->append(samples_1_i, 0);
                     }
                     bytes_remaining = 0;
                 }
-            } else if ((-3 <= terms->data[i]) && (terms->data[i] <= -1)) {
+            } else if ((-3 <= terms->_[i]) && (terms->_[i] <= -1)) {
                 if (bytes_remaining >= 4) {
                     samples_0_i->append(samples_0_i, 0);
 
@@ -794,7 +794,7 @@ wavpack_read_decorrelation_samples(const struct block_header* block_header,
         for (i = terms->size - 1; i >= 0 ; i--) {
             array_i* samples_0_i = samples_0->append(samples_0);
 
-            if ((17 <= terms->data[i]) && (terms->data[i] <= 18)) {
+            if ((17 <= terms->_[i]) && (terms->_[i] <= 18)) {
                 if (bytes_remaining >= 4) {
                     samples_0_i->append(samples_0_i,
                                         read_wv_exp2(sub_block->data));
@@ -805,15 +805,15 @@ wavpack_read_decorrelation_samples(const struct block_header* block_header,
                     samples_0_i->vappend(samples_0_i, 2, 0, 0);
                     bytes_remaining = 0;
                 }
-            } else if ((1 <= terms->data[i]) && (terms->data[i] <= 8)) {
-                if (bytes_remaining >= (terms->data[i] * 2)) {
-                    for (j = 0; j < terms->data[i]; j++) {
+            } else if ((1 <= terms->_[i]) && (terms->_[i] <= 8)) {
+                if (bytes_remaining >= (terms->_[i] * 2)) {
+                    for (j = 0; j < terms->_[i]; j++) {
                         samples_0_i->append(samples_0_i,
                                             read_wv_exp2(sub_block->data));
                         bytes_remaining -= 2;
                     }
                 } else {
-                    for (j = 0; j < terms->data[i]; j++) {
+                    for (j = 0; j < terms->_[i]; j++) {
                         samples_0_i->append(samples_0_i, 0);
                     }
                     bytes_remaining = 0;
@@ -946,8 +946,8 @@ wavpack_read_bitstream(const struct block_header* block_header,
     if (!setjmp(*br_try(sub_block_data))) {
         while (i < (channel_count * block_header->block_samples)) {
             if ((holding_zero == 0) && (holding_one == 0) &&
-                (medians->data[0]->data[0] < 2) &&
-                (medians->data[1]->data[0] < 2)) {
+                (medians->_[0]->_[0] < 2) &&
+                (medians->_[1]->_[0] < 2)) {
                 unsigned t;
                 unsigned p;
                 unsigned zeroes;
@@ -963,34 +963,34 @@ wavpack_read_bitstream(const struct block_header* block_header,
 
                 if (zeroes > 0) {
                     for (j = 0; j < zeroes; j++) {
-                        r = residuals->data[i % channel_count];
+                        r = residuals->_[i % channel_count];
                         r->append(r, 0);
                         i++;
                     }
-                    medians->data[0]->data[0] = 0;
-                    medians->data[0]->data[1] = 0;
-                    medians->data[0]->data[2] = 0;
-                    medians->data[1]->data[0] = 0;
-                    medians->data[1]->data[1] = 0;
-                    medians->data[1]->data[2] = 0;
+                    medians->_[0]->_[0] = 0;
+                    medians->_[0]->_[1] = 0;
+                    medians->_[0]->_[2] = 0;
+                    medians->_[1]->_[0] = 0;
+                    medians->_[1]->_[1] = 0;
+                    medians->_[1]->_[2] = 0;
                 }
 
                 if (i < (channel_count * block_header->block_samples)) {
-                    r = residuals->data[i % channel_count];
+                    r = residuals->_[i % channel_count];
                     r->append(r, wavpack_read_residual(
                                     sub_block_data,
                                     &holding_zero,
                                     &holding_one,
-                                    medians->data[i % channel_count]));
+                                    medians->_[i % channel_count]));
                     i++;
                 }
             } else {
-                r = residuals->data[i % channel_count];
+                r = residuals->_[i % channel_count];
                 r->append(r, wavpack_read_residual(
                                  sub_block_data,
                                  &holding_zero,
                                  &holding_one,
-                                 medians->data[i % channel_count]));
+                                 medians->_[i % channel_count]));
                 i++;
             }
         }
@@ -1056,30 +1056,30 @@ wavpack_read_residual(BitstreamReader* bs,
     switch (m) {
     case 0:
         base = 0;
-        add = medians->data[0] >> 4;
-        medians->data[0] -= ((medians->data[0] + 126) >> 7) * 2;
+        add = medians->_[0] >> 4;
+        medians->_[0] -= ((medians->_[0] + 126) >> 7) * 2;
         break;
     case 1:
-        base = (medians->data[0] >> 4) + 1;
-        add = medians->data[1] >> 4;
-        medians->data[0] += ((medians->data[0] + 128) >> 7) * 5;
-        medians->data[1] -= ((medians->data[1] + 62) >> 6) * 2;
+        base = (medians->_[0] >> 4) + 1;
+        add = medians->_[1] >> 4;
+        medians->_[0] += ((medians->_[0] + 128) >> 7) * 5;
+        medians->_[1] -= ((medians->_[1] + 62) >> 6) * 2;
         break;
     case 2:
-        base = ((medians->data[0] >> 4) + 1) + ((medians->data[1] >> 4) + 1);
-        add = medians->data[2] >> 4;
-        medians->data[0] += ((medians->data[0] + 128) >> 7) * 5;
-        medians->data[1] += ((medians->data[1] + 64) >> 6) * 5;
-        medians->data[2] -= ((medians->data[2] + 30) >> 5) * 2;
+        base = ((medians->_[0] >> 4) + 1) + ((medians->_[1] >> 4) + 1);
+        add = medians->_[2] >> 4;
+        medians->_[0] += ((medians->_[0] + 128) >> 7) * 5;
+        medians->_[1] += ((medians->_[1] + 64) >> 6) * 5;
+        medians->_[2] -= ((medians->_[2] + 30) >> 5) * 2;
         break;
     default:
-        base = (((medians->data[0] >> 4) + 1) +
-                ((medians->data[1] >> 4) + 1) +
-                (((medians->data[2] >> 4) + 1) * (m - 2)));
-        add = medians->data[2] >> 4;
-        medians->data[0] += ((medians->data[0] + 128) >> 7) * 5;
-        medians->data[1] += ((medians->data[1] + 64) >> 6) * 5;
-        medians->data[2] += ((medians->data[2] + 32) >> 5) * 5;
+        base = (((medians->_[0] >> 4) + 1) +
+                ((medians->_[1] >> 4) + 1) +
+                (((medians->_[2] >> 4) + 1) * (m - 2)));
+        add = medians->_[2] >> 4;
+        medians->_[0] += ((medians->_[0] + 128) >> 7) * 5;
+        medians->_[1] += ((medians->_[1] + 64) >> 6) * 5;
+        medians->_[2] += ((medians->_[2] + 32) >> 5) * 5;
         break;
     }
 
@@ -1130,12 +1130,12 @@ wavpack_decorrelate_channels(const array_i* decorrelation_terms,
             correlated->swap(correlated, decorrelated);
 
             if ((status = wavpack_decorrelate_1ch_pass(
-                              decorrelation_terms->data[pass],
-                              decorrelation_deltas->data[pass],
-                              decorrelation_weights->data[0]->data[pass],
-                              decorrelation_samples->data[0]->data[pass],
-                              correlated->data[0],
-                              decorrelated->data[0])) != OK) {
+                              decorrelation_terms->_[pass],
+                              decorrelation_deltas->_[pass],
+                              decorrelation_weights->_[0]->_[pass],
+                              decorrelation_samples->_[0]->_[pass],
+                              correlated->_[0],
+                              decorrelated->_[0])) != OK) {
                 correlated->del(correlated);
                 return status;
             }
@@ -1148,12 +1148,12 @@ wavpack_decorrelate_channels(const array_i* decorrelation_terms,
             correlated->swap(correlated, decorrelated);
 
             if ((status = wavpack_decorrelate_2ch_pass(
-                              decorrelation_terms->data[pass],
-                              decorrelation_deltas->data[pass],
-                              decorrelation_weights->data[0]->data[pass],
-                              decorrelation_weights->data[1]->data[pass],
-                              decorrelation_samples->data[0]->data[pass],
-                              decorrelation_samples->data[1]->data[pass],
+                              decorrelation_terms->_[pass],
+                              decorrelation_deltas->_[pass],
+                              decorrelation_weights->_[0]->_[pass],
+                              decorrelation_weights->_[1]->_[pass],
+                              decorrelation_samples->_[0]->_[pass],
+                              decorrelation_samples->_[1]->_[pass],
                               correlated,
                               decorrelated)) != OK) {
                 correlated->del(correlated);
@@ -1206,24 +1206,24 @@ wavpack_decorrelate_1ch_pass(int decorrelation_term,
     switch (decorrelation_term) {
     case 18:
         for (i = 0; i < correlated->size; i++) {
-            temp = (3 * decorrelated->data[i + 1] - decorrelated->data[i]) >> 1;
+            temp = (3 * decorrelated->_[i + 1] - decorrelated->_[i]) >> 1;
             decorrelated->append(decorrelated,
                                  apply_weight(decorrelation_weight, temp) +
-                                 correlated->data[i]);
+                                 correlated->_[i]);
             decorrelation_weight += update_weight(temp,
-                                                  correlated->data[i],
+                                                  correlated->_[i],
                                                   decorrelation_delta);
         }
         decorrelated->de_head(decorrelated, 2, decorrelated);
         return OK;
     case 17:
         for (i = 0; i < correlated->size; i++) {
-            temp = 2 * decorrelated->data[i + 1] - decorrelated->data[i];
+            temp = 2 * decorrelated->_[i + 1] - decorrelated->_[i];
             decorrelated->append(decorrelated,
                                  apply_weight(decorrelation_weight, temp) +
-                                 correlated->data[i]);
+                                 correlated->_[i]);
             decorrelation_weight += update_weight(temp,
-                                                  correlated->data[i],
+                                                  correlated->_[i],
                                                   decorrelation_delta);
         }
         decorrelated->de_head(decorrelated, 2, decorrelated);
@@ -1239,10 +1239,10 @@ wavpack_decorrelate_1ch_pass(int decorrelation_term,
         for (i = 0; i < correlated->size; i++) {
             decorrelated->append(decorrelated,
                                  apply_weight(decorrelation_weight,
-                                              decorrelated->data[i]) +
-                                 correlated->data[i]);
-            decorrelation_weight += update_weight(decorrelated->data[i],
-                                                  correlated->data[i],
+                                              decorrelated->_[i]) +
+                                 correlated->_[i]);
+            decorrelation_weight += update_weight(decorrelated->_[i],
+                                                  correlated->_[i],
                                                   decorrelation_delta);
         }
         decorrelated->de_head(decorrelated, decorrelation_term,
@@ -1273,7 +1273,7 @@ wavpack_decorrelate_2ch_pass(int decorrelation_term,
                           decorrelation_delta,
                           weight_0,
                           samples_0,
-                          correlated->data[0],
+                          correlated->_[0],
                           decorrelated->append(decorrelated))) != OK)
             return status;
         if ((status = wavpack_decorrelate_1ch_pass(
@@ -1281,7 +1281,7 @@ wavpack_decorrelate_2ch_pass(int decorrelation_term,
                           decorrelation_delta,
                           weight_1,
                           samples_1,
-                          correlated->data[1],
+                          correlated->_[1],
                           decorrelated->append(decorrelated))) != OK)
             return status;
 
@@ -1294,8 +1294,8 @@ wavpack_decorrelate_2ch_pass(int decorrelation_term,
         unsigned i;
 
         decorrelated->reset(decorrelated);
-        corr_0 = correlated->data[0];
-        corr_1 = correlated->data[1];
+        corr_0 = correlated->_[0];
+        corr_1 = correlated->_[1];
         decorr_0 = decorrelated->append(decorrelated);
         decorr_1 = decorrelated->append(decorrelated);
         decorr_0->extend(decorr_0, samples_0);
@@ -1305,16 +1305,16 @@ wavpack_decorrelate_2ch_pass(int decorrelation_term,
         case -1:
             for (i = 0; i < corr_0->size; i++) {
                 decorr_0->append(decorr_0,
-                                 apply_weight(weight_0, decorr_1->data[i]) +
-                                 corr_0->data[i]);
+                                 apply_weight(weight_0, decorr_1->_[i]) +
+                                 corr_0->_[i]);
                 decorr_1->append(decorr_1,
-                                 apply_weight(weight_1, decorr_0->data[i + 1]) +
-                                 corr_1->data[i]);
-                weight_0 += update_weight(decorr_1->data[i],
-                                          corr_0->data[i],
+                                 apply_weight(weight_1, decorr_0->_[i + 1]) +
+                                 corr_1->_[i]);
+                weight_0 += update_weight(decorr_1->_[i],
+                                          corr_0->_[i],
                                           decorrelation_delta);
-                weight_1 += update_weight(decorr_0->data[i + 1],
-                                          corr_1->data[i],
+                weight_1 += update_weight(decorr_0->_[i + 1],
+                                          corr_1->_[i],
                                           decorrelation_delta);
                 weight_0 = MAX(MIN(weight_0, 1024), -1024);
                 weight_1 = MAX(MIN(weight_1, 1024), -1024);
@@ -1323,16 +1323,16 @@ wavpack_decorrelate_2ch_pass(int decorrelation_term,
         case -2:
             for (i = 0; i < corr_0->size; i++) {
                 decorr_1->append(decorr_1,
-                                 apply_weight(weight_1, decorr_0->data[i]) +
-                                 corr_1->data[i]);
+                                 apply_weight(weight_1, decorr_0->_[i]) +
+                                 corr_1->_[i]);
                 decorr_0->append(decorr_0,
-                                 apply_weight(weight_0, decorr_1->data[i + 1]) +
-                                 corr_0->data[i]);
-                weight_1 += update_weight(decorr_0->data[i],
-                                          corr_1->data[i],
+                                 apply_weight(weight_0, decorr_1->_[i + 1]) +
+                                 corr_0->_[i]);
+                weight_1 += update_weight(decorr_0->_[i],
+                                          corr_1->_[i],
                                           decorrelation_delta);
-                weight_0 += update_weight(decorr_1->data[i + 1],
-                                          corr_0->data[i],
+                weight_0 += update_weight(decorr_1->_[i + 1],
+                                          corr_0->_[i],
                                           decorrelation_delta);
                 weight_1 = MAX(MIN(weight_1, 1024), -1024);
                 weight_0 = MAX(MIN(weight_0, 1024), -1024);
@@ -1341,16 +1341,16 @@ wavpack_decorrelate_2ch_pass(int decorrelation_term,
         case -3:
             for (i = 0; i < corr_0->size; i++) {
                 decorr_0->append(decorr_0,
-                                 apply_weight(weight_0, decorr_1->data[i]) +
-                                 corr_0->data[i]);
+                                 apply_weight(weight_0, decorr_1->_[i]) +
+                                 corr_0->_[i]);
                 decorr_1->append(decorr_1,
-                                 apply_weight(weight_1, decorr_0->data[i]) +
-                                 corr_1->data[i]);
-                weight_0 += update_weight(decorr_1->data[i],
-                                          corr_0->data[i],
+                                 apply_weight(weight_1, decorr_0->_[i]) +
+                                 corr_1->_[i]);
+                weight_0 += update_weight(decorr_1->_[i],
+                                          corr_0->_[i],
                                           decorrelation_delta);
-                weight_1 += update_weight(decorr_0->data[i],
-                                          corr_1->data[i],
+                weight_1 += update_weight(decorr_0->_[i],
+                                          corr_1->_[i],
                                           decorrelation_delta);
                 weight_0 = MAX(MIN(weight_0, 1024), -1024);
                 weight_1 = MAX(MIN(weight_1, 1024), -1024);
@@ -1372,8 +1372,8 @@ wavpack_decorrelate_2ch_pass(int decorrelation_term,
 void
 undo_joint_stereo(const array_ia* mid_side, array_ia* left_right)
 {
-    array_i* mid = mid_side->data[0];
-    array_i* side = mid_side->data[1];
+    array_i* mid = mid_side->_[0];
+    array_i* side = mid_side->_[1];
     array_i* left;
     array_i* right;
     unsigned i;
@@ -1383,8 +1383,8 @@ undo_joint_stereo(const array_ia* mid_side, array_ia* left_right)
     right = left_right->append(left_right);
 
     for (i = 0; i < mid->size; i++) {
-        right->append(right, side->data[i] - (mid->data[i] >> 1));
-        left->append(left, mid->data[i] + right->data[i]);
+        right->append(right, side->_[i] - (mid->_[i] >> 1));
+        left->append(left, mid->_[i] + right->_[i]);
     }
 }
 
@@ -1395,13 +1395,13 @@ calculate_crc(const array_ia* channels)
     uint32_t crc = 0xFFFFFFFF;
 
     if (channels->size == 2) {
-        for (i = 0; i < channels->data[0]->size; i++) {
-            crc = (3 * crc) + channels->data[0]->data[i];
-            crc = (3 * crc) + channels->data[1]->data[i];
+        for (i = 0; i < channels->_[0]->size; i++) {
+            crc = (3 * crc) + channels->_[0]->_[i];
+            crc = (3 * crc) + channels->_[1]->_[i];
         }
     } else {
-        for (i = 0; i < channels->data[0]->size; i++) {
-            crc = (3 * crc) + channels->data[0]->data[i];
+        for (i = 0; i < channels->_[0]->size; i++) {
+            crc = (3 * crc) + channels->_[0]->_[i];
         }
     }
     return crc;
@@ -1642,20 +1642,20 @@ wavpack_undo_extended_integers(const struct extended_integers* params,
     un_extended_integers->reset(un_extended_integers);
 
     for (c = 0; c < extended_integers->size; c++) {
-        extended = extended_integers->data[c];
+        extended = extended_integers->_[c];
         un_extended = un_extended_integers->append(un_extended_integers);
         if (params->zero_bits > 0) {
             for (i = 0; i < extended->size; i++)
                 un_extended->append(un_extended,
-                                    extended->data[i] << params->zero_bits);
+                                    extended->_[i] << params->zero_bits);
         } else if (params->one_bits > 0) {
             for (i = 0; i < extended->size; i++)
                 un_extended->append(un_extended,
-                                    (extended->data[i] << params->one_bits) |
+                                    (extended->_[i] << params->one_bits) |
                                     ((1 < params->one_bits) - 1));
         } else if (params->duplicate_bits > 0) {
             for (i = 0; i < extended->size; i++) {
-                int shifted = extended->data[i];
+                int shifted = extended->_[i];
                 if ((shifted % 2) == 0) {
                     un_extended->append(un_extended,
                                         shifted << params->duplicate_bits);

@@ -573,7 +573,7 @@ flacdec_read_subframe(BitstreamReader* bitstream,
     /*reinsert wasted bits-per-sample, if necessary*/
     if (subframe_header.wasted_bits_per_sample > 0)
         for (i = 0; i < block_size; i++)
-            samples->data[i] <<= subframe_header.wasted_bits_per_sample;
+            samples->_[i] <<= subframe_header.wasted_bits_per_sample;
 
     return OK;
 }
@@ -681,7 +681,7 @@ flacdec_read_fixed_subframe(BitstreamReader* bitstream,
 
     /*ensure that samples->data won't be realloc'ated*/
     samples->resize(samples, block_size);
-    s_data = samples->data;
+    s_data = samples->_;
 
     /*read "order" number of warm-up samples*/
     for (i = 0; i < order; i++) {
@@ -694,7 +694,7 @@ flacdec_read_fixed_subframe(BitstreamReader* bitstream,
                                        block_size, residuals)) != OK)
         return error;
     else
-        r_data = residuals->data;
+        r_data = residuals->_;
 
     /*calculate subframe samples from warm-up samples and residual*/
     switch (order) {
@@ -760,7 +760,7 @@ flacdec_read_lpc_subframe(BitstreamReader* bitstream,
     residuals->reset(residuals);
     samples->reset(samples);
     samples->resize(samples, block_size);
-    s_data = samples->data;
+    s_data = samples->_;
 
     /*read order number of warm-up samples*/
     for (i = 0; i < order; i++) {
@@ -781,14 +781,14 @@ flacdec_read_lpc_subframe(BitstreamReader* bitstream,
                            bitstream->read_signed(bitstream, qlp_precision));
     }
 
-    qlp_data = qlp_coeffs->data;
+    qlp_data = qlp_coeffs->_;
 
     /*read the residual*/
     if ((error = flacdec_read_residual(bitstream, order,
                                        block_size, residuals)) != OK)
         return error;
     else
-        r_data = residuals->data;
+        r_data = residuals->_;
 
     /*calculate subframe samples from warm-up samples and residual*/
     for (i = order; i < block_size; i++) {
@@ -890,37 +890,37 @@ flacdec_decorrelate_channels(uint8_t channel_assignment,
     int* framelist_data;
     unsigned i,j;
     unsigned channel_count = subframes->size;
-    unsigned block_size = subframes->data[0]->size;
+    unsigned block_size = subframes->_[0]->size;
     int64_t mid;
     int32_t side;
 
     framelist->reset(framelist);
     framelist->resize(framelist, channel_count * block_size);
-    framelist_data = framelist->data;
+    framelist_data = framelist->_;
     framelist->size = channel_count * block_size;
 
     switch (channel_assignment) {
     case 0x8:
         /*left-difference*/
         for (i = 0; i < block_size; i++) {
-            framelist_data[i * 2] = subframes->data[0]->data[i];
-            framelist_data[i * 2 + 1] = (subframes->data[0]->data[i] -
-                                         subframes->data[1]->data[i]);
+            framelist_data[i * 2] = subframes->_[0]->_[i];
+            framelist_data[i * 2 + 1] = (subframes->_[0]->_[i] -
+                                         subframes->_[1]->_[i]);
         }
         break;
     case 0x9:
         /*difference-right*/
         for (i = 0; i < block_size; i++) {
-            framelist_data[i * 2] = (subframes->data[0]->data[i] +
-                                     subframes->data[1]->data[i]);
-            framelist_data[i * 2 + 1] = subframes->data[1]->data[i];
+            framelist_data[i * 2] = (subframes->_[0]->_[i] +
+                                     subframes->_[1]->_[i]);
+            framelist_data[i * 2 + 1] = subframes->_[1]->_[i];
         }
         break;
     case 0xA:
         /*mid-side*/
         for (i = 0; i < block_size; i++) {
-            mid = subframes->data[0]->data[i];
-            side = subframes->data[1]->data[i];
+            mid = subframes->_[0]->_[i];
+            side = subframes->_[1]->_[i];
             mid = (mid << 1) | (side & 1);
             framelist_data[i * 2] = (int)((mid + side) >> 1);
             framelist_data[i * 2 + 1] = (int)((mid - side) >> 1);
@@ -931,7 +931,7 @@ flacdec_decorrelate_channels(uint8_t channel_assignment,
         for (i = 0; i < block_size; i++) {
             for (j = 0; j < channel_count; j++) {
                 framelist_data[i * channel_count + j] =
-                    subframes->data[j]->data[i];
+                    subframes->_[j]->_[i];
             }
         }
         break;
