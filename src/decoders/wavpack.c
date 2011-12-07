@@ -31,7 +31,9 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     self->bitstream = NULL;
     self->file = NULL;
 
+    audiotools__MD5Init(&(self->md5));
     self->md5sum_checked = 0;
+
     self->channels_data = array_ia_new();
     self->decorrelation_terms = array_i_new();
     self->decorrelation_deltas = array_i_new();
@@ -104,7 +106,7 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
 
     self->bits_per_sample = unencode_bits_per_sample(header.bits_per_sample);
     if (header.final_block) {
-        if ((header.mono_output == 0) && (header.false_stereo == 0)) {
+        if ((header.mono_output == 0) || (header.false_stereo == 1)) {
             self->channels = 2;
             self->channel_mask = 0x3;
         } else {
@@ -215,6 +217,7 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
     status error;
     struct block_header block_header;
     BitstreamReader* block_data = self->block_data;
+    PyThreadState *thread_state;
     PyObject* framelist;
 
     channels_data->reset(channels_data);
@@ -222,8 +225,6 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
 
     if (self->remaining_pcm_samples > 0) {
         do {
-            /*FIXME - add thread-friendliness*/
-
             /*read block header*/
             if ((error = wavpack_read_block_header(bs, &block_header)) != OK) {
                 PyErr_SetString(wavpack_exception(error),
@@ -246,37 +247,63 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
             }
 
             /*decode block to 1 or 2 channels of PCM data*/
+            thread_state = PyEval_SaveThread();
             if ((error = wavpack_decode_block(self,
                                               &block_header,
                                               block_data,
                                               block_header.block_size - 24,
                                               channels_data)) != OK) {
+                PyEval_RestoreThread(thread_state);
                 PyErr_SetString(wavpack_exception(error),
                                 wavpack_strerror(error));
                 return NULL;
+            } else {
+                PyEval_RestoreThread(thread_state);
             }
         } while (block_header.final_block == 0);
+
+        /*deduct frame count from total remaining*/
+        self->remaining_pcm_samples -= MIN(channels_data->_[0]->size,
+                                           self->remaining_pcm_samples);
 
         /*convert all channels to single PCM framelist*/
         framelist = array_ia_to_FrameList(self->audiotools_pcm,
                                           channels_data,
                                           self->bits_per_sample);
 
-        /*FIXME - update stream's MD5 sum with framelist data*/
-
-        /*deduct frame count from total remaining*/
-        /*FIXME - check for 0 channels of output here*/
-        if (channels_data->size != 0) {
-            self->remaining_pcm_samples -= MIN(channels_data->_[0]->size,
-                                               self->remaining_pcm_samples);
+        /*update stream's MD5 sum with framelist data*/
+        if (!WavPackDecoder_update_md5sum(self, framelist)) {
+            return framelist;
         } else {
-            fprintf(stderr, "0 channel block found\n");
+            return NULL;
         }
-
-        return framelist;
     } else {
         if (!self->md5sum_checked) {
-            /*FIXME - check MD5 sum here*/
+            struct sub_block md5_sub_block;
+            unsigned char sub_block_md5sum[16];
+            unsigned char stream_md5sum[16];
+
+            md5_sub_block.data = self->sub_block_data;
+
+            /*check for final MD5 block, which may not be present*/
+            if ((wavpack_read_block_header(bs, &block_header) == OK) &&
+                (wavpack_find_sub_block(&block_header,
+                                        bs,
+                                        6, 1, &md5_sub_block) == OK) &&
+                (sub_block_data_size(&md5_sub_block) == 16)) {
+                /*have valid MD5 block, so check it*/
+                md5_sub_block.data->read_bytes(md5_sub_block.data,
+                                               (uint8_t*)sub_block_md5sum,
+                                               16);
+                audiotools__MD5Final(stream_md5sum, &(self->md5));
+                self->md5sum_checked = 1;
+
+                if (memcmp(sub_block_md5sum, stream_md5sum, 16)) {
+                    PyErr_SetString(PyExc_ValueError,
+                                    "MD5 mismatch at end of stream");
+                    return NULL;
+                }
+            }
         }
 
         return empty_FrameList(self->audiotools_pcm,
@@ -502,12 +529,12 @@ wavpack_decode_block(decoders_WavPackDecoder* decoder,
     }
 
     /*ensure the required decoding parameters have been read*/
-    if (!decorrelation_terms_read)
-        return DECORRELATION_TERMS_MISSING;
-    if (!decorrelation_weights_read)
-        return DECORRELATION_WEIGHTS_MISSING;
-    if (!decorrelation_samples_read)
-        return DECORRELATION_SAMPLES_MISSING;
+    if (decorrelation_terms_read) {
+        if (!decorrelation_weights_read)
+            return DECORRELATION_WEIGHTS_MISSING;
+        if (!decorrelation_samples_read)
+            return DECORRELATION_SAMPLES_MISSING;
+    }
     if (!bitstream_read)
         return RESIDUALS_MISSING;
 
@@ -518,12 +545,17 @@ wavpack_decode_block(decoders_WavPackDecoder* decoder,
         array_ia* un_shifted = decoder->un_shifted;
 
         /*perform decorrelation passes over residual data*/
-        wavpack_decorrelate_channels(decorrelation_terms,
-                                     decorrelation_deltas,
-                                     decorrelation_weights,
-                                     decorrelation_samples,
-                                     residuals,
-                                     decorrelated);
+        if (decorrelation_terms_read &&
+            (decorrelation_terms->size > 0)) {
+            wavpack_decorrelate_channels(decorrelation_terms,
+                                         decorrelation_deltas,
+                                         decorrelation_weights,
+                                         decorrelation_samples,
+                                         residuals,
+                                         decorrelated);
+        } else {
+            residuals->swap(residuals, decorrelated);
+        }
 
         /*undo joint stereo*/
         if (block_header->joint_stereo) {
@@ -556,12 +588,17 @@ wavpack_decode_block(decoders_WavPackDecoder* decoder,
         array_ia* un_shifted = decoder->un_shifted;
 
         /*perform decorrelation passes over residual data*/
-        wavpack_decorrelate_channels(decorrelation_terms,
-                                     decorrelation_deltas,
-                                     decorrelation_weights,
-                                     decorrelation_samples,
-                                     residuals,
-                                     decorrelated);
+        if (decorrelation_terms_read &&
+            (decorrelation_terms->size > 0)) {
+            wavpack_decorrelate_channels(decorrelation_terms,
+                                         decorrelation_deltas,
+                                         decorrelation_weights,
+                                         decorrelation_samples,
+                                         residuals,
+                                         decorrelated);
+        } else {
+            residuals->swap(residuals, decorrelated);
+        }
 
         /*verify PCM data against block header's CRC*/
         if (calculate_crc(decorrelated) != block_header->CRC) {
@@ -771,9 +808,11 @@ wavpack_read_decorrelation_samples(const struct block_header* block_header,
                 }
             } else if ((-3 <= terms->_[i]) && (terms->_[i] <= -1)) {
                 if (bytes_remaining >= 4) {
-                    samples_0_i->append(samples_0_i, 0);
+                    samples_0_i->append(samples_0_i,
+                                        read_wv_exp2(sub_block->data));
 
-                    samples_1_i->append(samples_1_i, 0);
+                    samples_1_i->append(samples_1_i,
+                                        read_wv_exp2(sub_block->data));
                     bytes_remaining -= 4;
                 } else {
                     samples_0_i->append(samples_0_i, 0);
@@ -1200,11 +1239,12 @@ wavpack_decorrelate_1ch_pass(int decorrelation_term,
     unsigned i;
 
     decorrelated->reset(decorrelated);
-    decorrelation_samples->copy(decorrelation_samples, decorrelated);
-    decorrelated->reverse(decorrelated);
+
 
     switch (decorrelation_term) {
     case 18:
+        decorrelation_samples->copy(decorrelation_samples, decorrelated);
+        decorrelated->reverse(decorrelated);
         for (i = 0; i < correlated->size; i++) {
             temp = (3 * decorrelated->_[i + 1] - decorrelated->_[i]) >> 1;
             decorrelated->append(decorrelated,
@@ -1217,6 +1257,8 @@ wavpack_decorrelate_1ch_pass(int decorrelation_term,
         decorrelated->de_head(decorrelated, 2, decorrelated);
         return OK;
     case 17:
+        decorrelation_samples->copy(decorrelation_samples, decorrelated);
+        decorrelated->reverse(decorrelated);
         for (i = 0; i < correlated->size; i++) {
             temp = 2 * decorrelated->_[i + 1] - decorrelated->_[i];
             decorrelated->append(decorrelated,
@@ -1236,6 +1278,7 @@ wavpack_decorrelate_1ch_pass(int decorrelation_term,
     case 3:
     case 2:
     case 1:
+        decorrelation_samples->copy(decorrelation_samples, decorrelated);
         for (i = 0; i < correlated->size; i++) {
             decorrelated->append(decorrelated,
                                  apply_weight(decorrelation_weight,
@@ -1298,8 +1341,8 @@ wavpack_decorrelate_2ch_pass(int decorrelation_term,
         corr_1 = correlated->_[1];
         decorr_0 = decorrelated->append(decorrelated);
         decorr_1 = decorrelated->append(decorrelated);
-        decorr_0->extend(decorr_0, samples_0);
-        decorr_1->extend(decorr_1, samples_1);
+        decorr_0->extend(decorr_0, samples_1);
+        decorr_1->extend(decorr_1, samples_0);
 
         switch (decorrelation_term) {
         case -1:
@@ -1668,5 +1711,33 @@ wavpack_undo_extended_integers(const struct extended_integers* params,
         } else {
             extended->copy(extended, un_extended);
         }
+    }
+}
+
+int
+WavPackDecoder_update_md5sum(decoders_WavPackDecoder *self,
+                             PyObject *framelist)
+{
+    PyObject *string_obj;
+    char *string_buffer;
+    Py_ssize_t length;
+    int sign = self->bits_per_sample >= 16;
+
+    if ((string_obj =
+         PyObject_CallMethod(framelist, "to_bytes","ii", 0, sign)) != NULL) {
+        if (PyString_AsStringAndSize(string_obj,
+                                     &string_buffer,
+                                     &length) == 0) {
+            audiotools__MD5Update(&(self->md5),
+                                  (unsigned char *)string_buffer,
+                                  length);
+            Py_DECREF(string_obj);
+            return 0;
+        } else {
+            Py_DECREF(string_obj);
+            return 1;
+        }
+    } else {
+        return 1;
     }
 }

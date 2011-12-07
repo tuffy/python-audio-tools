@@ -463,8 +463,7 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
         from . import decoders
 
         try:
-            return decoders.WavPackDecoder(self.filename,
-                                           self.__samplerate__)
+            return decoders.WavPackDecoder(self.filename)
         except (IOError, ValueError), msg:
             return PCMReaderError(error_message=str(msg),
                                   sample_rate=self.__samplerate__,

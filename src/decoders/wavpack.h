@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include "../bitstream.h"
 #include "../array2.h"
+#include "../common/md5.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -59,6 +60,7 @@ typedef struct {
     BitstreamReader* block_data;
     BitstreamReader* sub_block_data;
 
+    audiotools__MD5Context md5;
     int md5sum_checked;
 
     int sample_rate;
@@ -356,3 +358,7 @@ void
 wavpack_undo_extended_integers(const struct extended_integers* params,
                                const array_ia* extended_integers,
                                array_ia* un_extended_integers);
+
+int
+WavPackDecoder_update_md5sum(decoders_WavPackDecoder *self,
+                             PyObject *framelist);

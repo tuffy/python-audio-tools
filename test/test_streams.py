@@ -317,13 +317,13 @@ class Simple_Sine:
             stream.close()
 
     def __repr__(self):
-        return "Simple_Sine(%s, %s, %s, %s, %s, %s)" % \
+        return "Simple_Sine(%s, %s, %s, %s, *%s)" % \
             (self.pcm_frames,
              self.sample_rate,
              self.channel_mask,
              self.bits_per_sample,
-             repr(self.channel_max_values),
-             repr(self.channel_counts))
+             repr([(m, c) for m,c in zip(self.channel_max_values,
+                                         self.channel_counts)]))
 
 
 class WastedBPS16:
