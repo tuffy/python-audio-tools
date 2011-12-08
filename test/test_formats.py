@@ -4650,7 +4650,7 @@ class WavPackFileTest(TestForeignWaveChunks,
     def __test_reader__(self, pcmreader, **encode_options):
         if (not audiotools.BIN.can_execute(audiotools.BIN["wvunpack"])):
             self.assert_(False,
-                         "reference WavPack binary wvunacp(1) required for this test")
+                         "reference WavPack binary wvunpack(1) required for this test")
 
         temp_file = tempfile.NamedTemporaryFile(suffix=".wv")
         self.encode(temp_file.name,
