@@ -1,6 +1,6 @@
 #include "oggflac.h"
-#include "../pcm.h"
 #include "../common/flac_crc.h"
+#include "../pcmconv.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -36,7 +36,7 @@ OggFlacDecoder_dealloc(decoders_OggFlacDecoder *self) {
     self->residuals->del(self->residuals);
     self->qlp_coeffs->del(self->qlp_coeffs);
     self->framelist_data->del(self->framelist_data);
-    Py_XDECREF(self->framelist_gen);
+    Py_XDECREF(self->audiotools_pcm);
 
     self->packet->close(self->packet);
     if (self->ogg_stream != NULL)
@@ -59,7 +59,7 @@ OggFlacDecoder_init(decoders_OggFlacDecoder *self,
     self->residuals = array_i_new();
     self->qlp_coeffs = array_i_new();
     self->framelist_data = array_i_new();
-    self->framelist_gen = NULL;
+    self->audiotools_pcm = NULL;
     self->packet = br_substream_new(BS_BIG_ENDIAN);
 
     if (!PyArg_ParseTuple(args, "si", &filename, &(self->channel_mask)))
@@ -106,17 +106,8 @@ OggFlacDecoder_init(decoders_OggFlacDecoder *self,
     br_add_callback(self->packet, flac_crc16, &(self->crc16));
 
     /*setup a framelist generator function*/
-    if ((audiotools_pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
+    if ((audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
-    else {
-        if ((self->framelist_gen =
-             PyObject_GetAttrString(audiotools_pcm, "__blank__")) == NULL) {
-            Py_DECREF(audiotools_pcm);
-            return -1;
-        } else {
-            Py_DECREF(audiotools_pcm);
-        }
-    }
 
     return 0;
 }
@@ -147,7 +138,7 @@ OggFlacDecoder_read(decoders_OggFlacDecoder *self, PyObject *args) {
     flac_status flac_status;
     struct flac_frame_header frame_header;
     int channel;
-    pcm_FrameList *framelist;
+    PyObject *framelist;
     PyThreadState *thread_state;
 
     self->subframe_data->reset(self->subframe_data);
@@ -211,27 +202,16 @@ OggFlacDecoder_read(decoders_OggFlacDecoder *self, PyObject *args) {
 
             PyEval_RestoreThread(thread_state);
 
-            framelist = (pcm_FrameList*)PyObject_Call(self->framelist_gen,
-                                                      NULL, NULL);
+            framelist = array_i_to_FrameList(self->audiotools_pcm,
+                                             self->framelist_data,
+                                             frame_header.channel_count,
+                                             frame_header.bits_per_sample);
+
             if (framelist != NULL) {
-                framelist->frames = frame_header.block_size;
-                framelist->channels = frame_header.channel_count;
-                framelist->bits_per_sample = frame_header.bits_per_sample;
-                framelist->samples_length = (frame_header.block_size *
-                                             frame_header.channel_count);
-                framelist->samples = realloc(framelist->samples,
-                                             framelist->samples_length *
-                                             sizeof(int));
-
-                memcpy(framelist->samples,
-                       self->framelist_data->_,
-                       framelist->samples_length * sizeof(int));
-
                 /*update MD5 sum*/
-                if (OggFlacDecoder_update_md5sum(self,
-                                                 (PyObject*)framelist) == OK)
+                if (OggFlacDecoder_update_md5sum(self, framelist) == OK)
                     /*return pcm.FrameList Python object*/
-                    return (PyObject*)framelist;
+                    return framelist;
                 else {
                     Py_DECREF(framelist);
                     return NULL;
@@ -251,15 +231,9 @@ OggFlacDecoder_read(decoders_OggFlacDecoder *self, PyObject *args) {
           then return an empty FrameList if it matches correctly*/
 
         if (OggFlacDecoder_verify_okay(self)) {
-            framelist = (pcm_FrameList*)PyObject_Call(self->framelist_gen,
-                                                      NULL, NULL);
-            if (framelist != NULL) {
-                framelist->channels = self->streaminfo.channels;
-                framelist->bits_per_sample = self->streaminfo.bits_per_sample;
-                return (PyObject*)framelist;
-            } else {
-                return NULL;
-            }
+            return empty_FrameList(self->audiotools_pcm,
+                                   self->streaminfo.channels,
+                                   self->streaminfo.bits_per_sample);
         } else {
             PyErr_SetString(PyExc_ValueError,
                             "MD5 mismatch at end of stream");

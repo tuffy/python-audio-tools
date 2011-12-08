@@ -68,6 +68,9 @@ struct array_i_s {
     /*appends several values to the array*/
     void (*vappend)(struct array_i_s *array, unsigned count, ...);
 
+    /*appends "value", "count" number of times*/
+    void (*mappend)(struct array_i_s *array, unsigned count, int value);
+
     /*appends all the items in "to_add" to this array*/
     void (*extend)(struct array_i_s *array, const struct array_i_s *to_add);
 
@@ -148,6 +151,7 @@ void array_i_resize(struct array_i_s *array, unsigned minimum);
 void array_i_reset(struct array_i_s *array);
 void array_i_append(struct array_i_s *array, int value);
 void array_i_vappend(struct array_i_s *array, unsigned count, ...);
+void array_i_mappend(struct array_i_s *array, unsigned count, int value);
 void array_i_extend(struct array_i_s *array, const struct array_i_s *to_add);
 int array_i_equals(const struct array_i_s *array,
                    const struct array_i_s *compare);
@@ -289,6 +293,9 @@ struct array_f_s {
     /*appends several values to the array*/
     void (*vappend)(struct array_f_s *array, unsigned count, ...);
 
+    /*appends "value", "count" number of times*/
+    void (*mappend)(struct array_f_s *array, unsigned count, double value);
+
     /*appends all the items in "to_add" to this array*/
     void (*extend)(struct array_f_s *array, const struct array_f_s *to_add);
 
@@ -370,6 +377,7 @@ void array_f_resize(struct array_f_s *array, unsigned minimum);
 void array_f_reset(struct array_f_s *array);
 void array_f_append(struct array_f_s *array, double value);
 void array_f_vappend(struct array_f_s *array, unsigned count, ...);
+void array_f_mappend(struct array_f_s *array, unsigned count, double value);
 void array_f_extend(struct array_f_s *array, const struct array_f_s *to_add);
 int array_f_equals(const struct array_f_s *array,
                    const struct array_f_s *compare);
@@ -528,6 +536,10 @@ struct array_ia_s {
     void (*split)(const struct array_ia_s *array, unsigned count,
                   struct array_ia_s *head, struct array_ia_s *tail);
 
+    /*transposes rows and columns from array to zipped:
+      [[1, 2, 3], [4, 5, 6] -> [[1, 4], [2, 5], [3, 6]]*/
+    void (*zip)(const struct array_ia_s *array, struct array_ia_s *zipped);
+
     /*reverses the items in the array*/
     void (*reverse)(struct array_ia_s *array);
 
@@ -547,6 +559,7 @@ int array_ia_equals(const struct array_ia_s *array,
                     const struct array_ia_s *compare);
 void array_ia_copy(const struct array_ia_s *array, struct array_ia_s *copy);
 void array_ia_swap(struct array_ia_s *array, struct array_ia_s *swap);
+void array_ia_zip(const struct array_ia_s *array, struct array_ia_s *zipped);
 void array_ia_reverse(struct array_ia_s *array);
 void array_ia_split(const struct array_ia_s *array, unsigned count,
                     struct array_ia_s *head, struct array_ia_s *tail);
@@ -598,6 +611,11 @@ struct array_fa_s {
     void (*split)(const struct array_fa_s *array, unsigned count,
                   struct array_fa_s *head, struct array_fa_s *tail);
 
+    /*transposes rows and columns from array to zipped:
+      [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0] ->
+      [[1.0, 4.0], [2.0, 5.0], [3.0, 6.0]]*/
+    void (*zip)(const struct array_fa_s *array, struct array_fa_s *zipped);
+
     /*reverses the items in the array*/
     void (*reverse)(struct array_fa_s *array);
 
@@ -620,6 +638,7 @@ void array_fa_swap(struct array_fa_s *array, struct array_fa_s *swap);
 void array_fa_reverse(struct array_fa_s *array);
 void array_fa_split(const struct array_fa_s *array, unsigned count,
                     struct array_fa_s *head, struct array_fa_s *tail);
+void array_fa_zip(const struct array_fa_s *array, struct array_fa_s *zipped);
 void array_fa_print(const struct array_fa_s *array, FILE* output);
 
 

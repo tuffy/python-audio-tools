@@ -634,13 +634,9 @@ flacdec_read_constant_subframe(BitstreamReader* bitstream,
                                array_i* samples)
 {
     int32_t value = bitstream->read_signed(bitstream, bits_per_sample);
-    int32_t i;
 
     samples->reset(samples);
-    samples->resize(samples, block_size);
-
-    for (i = 0; i < block_size; i++)
-        a_append(samples, value);
+    samples->mappend(samples, block_size, value);
 
     return OK;
 }

@@ -455,7 +455,7 @@ combine into 6 channels of PCM output as follows:
     $\LEFTRIGHT \leftarrow \text{\DECORRELATED}_0/\text{\DECORRELATED}_1$\;
   }
   verify CRC of $\LEFTRIGHT$ against CRC in block header\;
-  \eIf{$\text{\EXTENDEDINTS} = 1$}{
+  \eIf{extended integers have been read}{
     $\text{\UNSHIFTED}_0/\text{\UNSHIFTED}_1 \leftarrow$ undo \LEFTRIGHT channels extended integers\;
   }{
     $\text{\UNSHIFTED}_0/\text{\UNSHIFTED}_1 \leftarrow \LEFTRIGHT$
@@ -468,7 +468,7 @@ combine into 6 channels of PCM output as follows:
     $\text{\DECORRELATED}_0 \leftarrow \text{\RESIDUALS}_0$\;
   }
   verify CRC of $\text{\DECORRELATED}_0$ against CRC in block header\;
-  \eIf{$\text{\EXTENDEDINTS} = 1$}{
+  \eIf{extended integers have been read}{
     $\text{\UNSHIFTED}_0 \leftarrow$ undo $\text{\DECORRELATED}_0$ channel extended integers\;
   }{
     $\text{\UNSHIFTED}_0 \leftarrow \text{\DECORRELATED}_0$\;

@@ -50,6 +50,7 @@ struct array_i_s* array_i_wrap(int* data, unsigned size, unsigned total_size)
     a->reset = array_i_reset;
     a->append = array_i_append;
     a->vappend = array_i_vappend;
+    a->mappend = array_i_mappend;
     a->extend = array_i_extend;
     a->equals = array_i_equals;
     a->min = array_i_min;
@@ -128,6 +129,18 @@ ARRAY_APPEND(array_f_append, array_f, double)
     }
 ARRAY_VAPPEND(array_i_vappend, array_i, int)
 ARRAY_VAPPEND(array_f_vappend, array_f, double)
+
+#define ARRAY_MAPPEND(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE) \
+    void                                                      \
+    FUNC_NAME(ARRAY_TYPE *array, unsigned count, ARRAY_DATA_TYPE value) \
+    {                                                                   \
+    array->resize(array, array->size + count);                          \
+    for (; count > 0; count--) {                                        \
+        array->_[array->size++] = value;                                \
+    }                                                                   \
+    }
+ARRAY_MAPPEND(array_i_mappend, array_i, int)
+ARRAY_MAPPEND(array_f_mappend, array_f, double)
 
 #define ARRAY_EXTEND(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE) \
     void                                                          \
@@ -621,6 +634,7 @@ array_f* array_f_wrap(double* data, unsigned size, unsigned total_size)
     a->reset = array_f_reset;
     a->append = array_f_append;
     a->vappend = array_f_vappend;
+    a->mappend = array_f_mappend;
     a->extend = array_f_extend;
     a->equals = array_f_equals;
     a->min = array_f_min;
@@ -773,6 +787,7 @@ array_ia_new(void)
     a->equals = array_ia_equals;
     a->copy = array_ia_copy;
     a->swap = array_ia_swap;
+    a->zip = array_ia_zip;
     a->split = array_ia_split;
     a->reverse = array_ia_reverse;
     a->print = array_ia_print;
@@ -976,6 +991,45 @@ ARRAY_A_SPLIT(array_fa_split, array_fa, array_fa_new)
 ARRAY_A_SPLIT(array_iaa_split, array_iaa, array_iaa_new)
 ARRAY_A_SPLIT(array_faa_split, array_faa, array_faa_new)
 
+#define ARRAY_A_ZIP(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE, NEW_FUNC)   \
+    void                                                                \
+    FUNC_NAME(const ARRAY_TYPE *array, ARRAY_TYPE *zipped)              \
+    {                                                                   \
+        if (array != zipped) {                                          \
+            unsigned i;                                                 \
+            unsigned j;                                                 \
+            ARRAY_DATA_TYPE* zipped_row;                                \
+            unsigned min_row_length = UINT_MAX;                         \
+                                                                        \
+            zipped->reset(zipped);                                      \
+            if (array->size > 0) {                                      \
+                /*find the minimum row length of array's rows*/         \
+                for (i = 0; i < array->size; i++)                       \
+                    min_row_length = MIN(min_row_length, array->_[i]->size); \
+                                                                        \
+                /*add a row to "zipped" for each item in array's first row*/ \
+                for (i = 0; i < min_row_length; i++) {                  \
+                    zipped_row = zipped->append(zipped);                \
+                    zipped_row->append(zipped_row, array->_[0]->_[i]);  \
+                }                                                       \
+                                                                        \
+                /*then append new items for each subsequent row*/       \
+                for (j = 1; j < array->size; j++) {                     \
+                    for (i = 0; i < min_row_length; i++) {              \
+                        zipped_row = zipped->_[i];                      \
+                        zipped_row->append(zipped_row, array->_[j]->_[i]); \
+                    }                                                   \
+                }                                                       \
+            }                                                           \
+        } else {                                                        \
+            ARRAY_TYPE *temp = NEW_FUNC();                              \
+            FUNC_NAME(array, temp);                                     \
+            temp->swap(temp, zipped);                                   \
+            temp->del(temp);                                            \
+        }                                                               \
+    }
+ARRAY_A_ZIP(array_ia_zip, array_ia, array_i, array_ia_new)
+ARRAY_A_ZIP(array_fa_zip, array_fa, array_f, array_fa_new)
 
 array_fa*
 array_fa_new(void)
@@ -1000,6 +1054,7 @@ array_fa_new(void)
     a->copy = array_fa_copy;
     a->swap = array_fa_swap;
     a->split = array_fa_split;
+    a->zip = array_fa_zip;
     a->reverse = array_fa_reverse;
     a->print = array_fa_print;
 

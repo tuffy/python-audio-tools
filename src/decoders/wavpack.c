@@ -783,8 +783,8 @@ wavpack_read_decorrelation_samples(const struct block_header* block_header,
                                         read_wv_exp2(sub_block->data));
                     bytes_remaining -= 8;
                 } else {
-                    samples_0_i->vappend(samples_0_i, 2, 0, 0);
-                    samples_1_i->vappend(samples_1_i, 2, 0, 0);
+                    samples_0_i->mappend(samples_0_i, 2, 0);
+                    samples_1_i->mappend(samples_1_i, 2, 0);
                     bytes_remaining = 0;
                 }
             } else if ((1 <= terms->_[i]) && (terms->_[i] <= 8)) {
@@ -840,7 +840,7 @@ wavpack_read_decorrelation_samples(const struct block_header* block_header,
                                         read_wv_exp2(sub_block->data));
                     bytes_remaining -= 4;
                 } else {
-                    samples_0_i->vappend(samples_0_i, 2, 0, 0);
+                    samples_0_i->mappend(samples_0_i, 2, 0);
                     bytes_remaining = 0;
                 }
             } else if ((1 <= terms->_[i]) && (terms->_[i] <= 8)) {
@@ -899,7 +899,7 @@ wavpack_read_entropy_variables(const struct block_header* block_header,
         medians_0->append(medians_0, read_wv_exp2(sub_block->data));
         medians_0->append(medians_0, read_wv_exp2(sub_block->data));
         medians_0->append(medians_0, read_wv_exp2(sub_block->data));
-        medians_1->vappend(medians_1, 3, 0, 0, 0);
+        medians_1->mappend(medians_1, 3, 0);
     }
 
     return OK;

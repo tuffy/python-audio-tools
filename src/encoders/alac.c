@@ -798,7 +798,7 @@ alac_compute_coefficients(struct alac_context* encoder,
     } else {
         /*all samples are 0, so use a special case*/
         qlp_coefficients->reset(qlp_coefficients);
-        qlp_coefficients->vappend(qlp_coefficients, 4, 0, 0, 0, 0);
+        qlp_coefficients->mappend(qlp_coefficients, 4, 0);
 
         alac_calculate_residuals(samples, qlp_coefficients, residual_values4);
 
