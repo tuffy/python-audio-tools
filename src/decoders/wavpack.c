@@ -221,7 +221,7 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
     PyObject* framelist;
 
     channels_data->reset(channels_data);
-    br_substream_reset(block_data);
+
 
     if (self->remaining_pcm_samples > 0) {
         do {
@@ -234,6 +234,8 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
 
             /*FIXME - ensure block header is consistent
               with the starting block header*/
+
+            br_substream_reset(block_data);
 
             /*read block data*/
             if (!setjmp(*br_try(bs))) {
@@ -470,31 +472,29 @@ wavpack_decode_block(decoders_WavPackDecoder* decoder,
             switch (sub_block.metadata_function) {
             case 2:
                 status = wavpack_read_decorrelation_terms(
-                             &(sub_block),
+                             &sub_block,
                              decorrelation_terms,
                              decorrelation_deltas);
                 decorrelation_terms_read = 1;
                 break;
             case 3:
                 if (!decorrelation_terms_read) {
-                    br_etry(block_data);
                     return DECORRELATION_TERMS_MISSING;
                 }
                 status = wavpack_read_decorrelation_weights(
                              block_header,
-                             &(sub_block),
+                             &sub_block,
                              decorrelation_terms->size,
                              decorrelation_weights);
                 decorrelation_weights_read = 1;
                 break;
             case 4:
                 if (!decorrelation_terms_read) {
-                    br_etry(block_data);
                     return DECORRELATION_TERMS_MISSING;
                 }
                 status = wavpack_read_decorrelation_samples(
                              block_header,
-                             &(sub_block),
+                             &sub_block,
                              decorrelation_terms,
                              decorrelation_samples);
                 decorrelation_samples_read = 1;
@@ -512,7 +512,6 @@ wavpack_decode_block(decoders_WavPackDecoder* decoder,
                 break;
             case 10:
                 if (!entropy_variables_read) {
-                    br_etry(block_data);
                     return ENTROPY_VARIABLES_MISSING;
                 }
                 status = wavpack_read_bitstream(block_header,

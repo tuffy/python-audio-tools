@@ -61,8 +61,8 @@ class WavPackDecoder:
         self.bits_per_sample = [8, 16, 24, 32][block_header.bits_per_sample]
 
         if (block_header.initial_block and block_header.final_block):
-            if ((block_header.mono_output == 0) and
-                (block_header.false_stereo == 0)):
+            if ((block_header.mono_output == 0) or
+                (block_header.false_stereo == 1)):
                 self.channels = 2
                 self.channel_mask = 0x3
             else:
@@ -340,23 +340,25 @@ def read_block(block_header, sub_blocks_size, sub_blocks_data):
         else:
             sub_blocks_size -= (4 + 2 * sub_block_size)
 
-    if (not decorrelation_terms_read):
-        raise ValueError("decorrelation terms sub block not found")
-    if (not decorrelation_weights_read):
-        raise ValueError("decorrelation weights sub block not found")
-    if (not decorrelation_samples_read):
-        raise ValueError("decorrelation samples sub block not found")
-    if (not medians_read):
-        raise ValueError("entropy variables sub block not found")
+    if (decorrelation_terms_read):
+        if (not decorrelation_weights_read):
+            raise ValueError("decorrelation weights sub block not found")
+        if (not decorrelation_samples_read):
+            raise ValueError("decorrelation samples sub block not found")
+
     if (not residuals_read):
         raise ValueError("bitstream sub block not found")
 
     if ((block_header.mono_output == 0) and (block_header.false_stereo == 0)):
-        decorrelated = decorrelate_channels(residuals,
-                                            decorrelation_terms,
-                                            decorrelation_deltas,
-                                            decorrelation_weights,
-                                            decorrelation_samples)
+        if (decorrelation_terms_read and
+            len(decorrelation_terms) > 0):
+            decorrelated = decorrelate_channels(residuals,
+                                                decorrelation_terms,
+                                                decorrelation_deltas,
+                                                decorrelation_weights,
+                                                decorrelation_samples)
+        else:
+            decorrelated = residuals
 
         if (block_header.joint_stereo == 1):
             left_right = undo_joint_stereo(decorrelated)
@@ -378,11 +380,15 @@ def read_block(block_header, sub_blocks_size, sub_blocks_data):
 
         return un_shifted
     else:
-        decorrelated = decorrelate_channels(residuals,
-                                            decorrelation_terms,
-                                            decorrelation_deltas,
-                                            decorrelation_weights,
-                                            decorrelation_samples)
+        if (decorrelation_terms_read and
+            len(decorrelation_terms) > 0):
+            decorrelated = decorrelate_channels(residuals,
+                                                decorrelation_terms,
+                                                decorrelation_deltas,
+                                                decorrelation_weights,
+                                                decorrelation_samples)
+        else:
+            decorrelated = residuals
 
         channels_crc = calculate_crc(decorrelated)
         if (channels_crc != block_header.CRC):
@@ -843,7 +849,6 @@ def decorrelation_pass_1ch(correlated_samples,
     elif ((1 <= term) and (term <= 8)):
         assert(len(decorrelation_samples) == term)
         decorrelated = decorrelation_samples[:]
-        decorrelated.reverse()
         for i in xrange(len(correlated_samples)):
             decorrelated.append(apply_weight(weight, decorrelated[i]) +
                                 correlated_samples[i])
@@ -870,8 +875,8 @@ def decorrelation_pass_2ch(correlated,
                                        decorrelation_samples[1]))
     elif ((-3 <= term) and (term <= -1)):
         assert(len(decorrelation_samples[0]) == 1)
-        decorrelated = ([decorrelation_samples[0][0]],
-                        [decorrelation_samples[1][0]])
+        decorrelated = ([decorrelation_samples[1][0]],
+                        [decorrelation_samples[0][0]])
         weights = list(weights)
         if (term == -1):
             for i in xrange(len(correlated[0])):
