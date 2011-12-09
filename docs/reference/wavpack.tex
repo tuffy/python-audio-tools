@@ -2270,6 +2270,102 @@ the footer is optional.
 \includegraphics{figures/wavpack/pcm_sandwich.pdf}
 \end{figure}
 
+\clearpage
+
+\section{WavPack Encoding}
+
+\ALGORITHM{PCM frames, Wave header\footnote{Everything between the file's start and the start of the \texttt{data} chunk's contents.  If one is encoding a WavPack from raw PCM input, this header will need to be generated.}, optional Wave footer\footnote{Everything between the end of the \texttt{data} chunk's contents and the file's end, if anything.}, encoding parameters:
+\newline
+{\relsize{-1}
+\begin{tabular}{rll}
+parameter & possible values & typical values \\
+\hline
+block size & a positive number of PCM frames & 22050 \\
+decorrelation passes & 0, 2, 5, 10 or 16 & 5 \\
+\end{tabular}
+}
+}{an encoded WavPack file}
+\SetKwData{BLOCKSIZE}{block size}
+\While{PCM frames remain}{
+  take \BLOCKSIZE PCM frames from the input\;
+  update the stream's MD5 sum with that PCM data\;
+  write PCM frames to one or more block sets, depending on channel count\;
+}
+\BlankLine
+write final block containing optional Wave footer and MD5 sum sub blocks\;
+update Wave header's \texttt{data} chunk size, if generated from scratch\;
+update \VAR{total samples} field in all block headers\;
+\EALGORITHM
+
+\clearpage
+
+\subsection{Writing Block Set}
+\ALGORITHM{PCM frames and their channel assignment}{one or more WavPack blocks}
+\SetKwData{CHANNEL}{channel}
+\SetKwData{FIRST}{first}
+\SetKwData{LAST}{last}
+\Switch(\tcc*[f]{split channels by left/right pairs}){channel assignment}{
+  \uCase{mono}{
+    \begin{tabular}{lrr}
+      write $\text{\CHANNEL}_0$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 1$ \\
+    \end{tabular}\;
+  }
+  \uCase{front left, front right}{
+    \begin{tabular}{lrr}
+      write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 1$ \\
+    \end{tabular}\;
+  }
+  \uCase{front left, front right, front center}{
+    \begin{tabular}{lrr}
+      write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 0$ \\
+      write $\text{\CHANNEL}_2$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 1$ \\
+    \end{tabular}\;
+  }
+  \uCase{front left, front right, back left, back right}{
+    \begin{tabular}{lrr}
+      write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 0$ \\
+      write $\text{\CHANNEL}_2/\text{\CHANNEL}_3$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 1$ \\
+    \end{tabular}\;
+  }
+  \uCase{front left, front right, front center, back center}{
+    \begin{tabular}{lrr}
+      write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 0$ \\
+      write $\text{\CHANNEL}_2$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 0$ \\
+      write $\text{\CHANNEL}_3$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 1$ \\
+    \end{tabular}\;
+  }
+  \uCase{front left, front right, front center, back left, back right}{
+    \begin{tabular}{lrr}
+      write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 0$ \\
+      write $\text{\CHANNEL}_2$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 0$ \\
+      write $\text{\CHANNEL}_3/\text{\CHANNEL}_4$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 1$ \\
+    \end{tabular}\;
+  }
+  \uCase{front left, front right, front center, LFE, back left, back right}{
+    \begin{tabular}{lrr}
+      write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 0$ \\
+      write $\text{\CHANNEL}_2$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 0$ \\
+      write $\text{\CHANNEL}_3$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 0$ \\
+      write $\text{\CHANNEL}_4/\text{\CHANNEL}_5$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 1$ \\
+    \end{tabular}\;
+  }
+  \Other(\tcc*[f]{save them independently}){
+    \For{i = 0 \emph{\KwTo}channel count}{
+      \lIf{$i = 0$}{$\text{\FIRST} = 1$}
+      \lElse{$\text{\FIRST} = 0$}\;
+      \lIf{$i = \text{channel count} - 1$}{$\text{\LAST} = 1$}
+      \lElse{$\text{\LAST} = 0$}\;
+      write $\text{\CHANNEL}_i$ to block\;
+    }
+  }
+}
+\Return set of encoded WavPack blocks\;
+\EALGORITHM
+\par
+One could invent alternate channel splits for other obscure assignments.
+WavPack's only requirement is that all channels must be in
+Wave order\footnote{see page \pageref{wave_channel_assignment}}
+and each block must contain 1 or 2 channels.
 
 %% \begin{table}[h]
 %% \begin{tabular}{r||rrrrrr}

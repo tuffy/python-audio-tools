@@ -3222,6 +3222,12 @@ bs_format_size(char* format) {
     return total_size;
 }
 
+void
+byte_counter(uint8_t byte, void *total_bytes)
+{
+    unsigned int *u = total_bytes;
+    *u += 1;
+}
 
 /*****************************************************************
  BEGIN UNIT TESTS

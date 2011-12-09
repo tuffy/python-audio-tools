@@ -1313,4 +1313,13 @@ bs_parse_format(char** format, unsigned int* size, bs_instruction* type);
 unsigned int
 bs_format_size(char* format);
 
+
+/*******************************************************************
+ *                           miscellaneous                         *
+ *******************************************************************/
+
+/*a trivial callback which increments "total_bytes" as an unsigned int*/
+void
+byte_counter(uint8_t byte, void *total_bytes);
+
 #endif

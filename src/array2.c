@@ -230,7 +230,7 @@ ARRAY_I_SUM(array_li_sum, array_li)
     FUNC_NAME(const ARRAY_TYPE *array, ARRAY_TYPE *copy)        \
     {                                                           \
         if (array != copy) {                                        \
-            array->resize(copy, array->size);                       \
+            copy->resize(copy, array->size);                        \
             memcpy(copy->_, array->_,                               \
                    array->size * sizeof(ARRAY_DATA_TYPE));          \
             copy->size = array->size;                               \
@@ -238,6 +238,19 @@ ARRAY_I_SUM(array_li_sum, array_li)
     }
 ARRAY_COPY(array_i_copy, array_i, int)
 ARRAY_COPY(array_f_copy, array_f, double)
+
+#define ARRAY_L_COPY(FUNC_NAME, ARRAY_TYPE, TARGET_TYPE, ARRAY_DATA_TYPE) \
+    void                                                                \
+    FUNC_NAME(const ARRAY_TYPE *array, TARGET_TYPE *copy)               \
+    {                                                                   \
+        copy->resize(copy, array->size);                                \
+        memcpy(copy->_, array->_,                                       \
+               array->size * sizeof(ARRAY_DATA_TYPE));                  \
+        copy->size = array->size;                                       \
+    }
+ARRAY_L_COPY(array_li_copy, array_li, array_i, int)
+ARRAY_L_COPY(array_lf_copy, array_lf, array_f, double)
+
 
 #define ARRAY_LINK(FUNC_NAME, ARRAY_TYPE, ARRAY_LINK_TYPE) \
     void                                                   \
@@ -248,6 +261,9 @@ ARRAY_COPY(array_f_copy, array_f, double)
     }
 ARRAY_LINK(array_i_link, array_i, array_li)
 ARRAY_LINK(array_f_link, array_f, array_lf)
+ARRAY_LINK(array_li_link, array_li, array_li)
+ARRAY_LINK(array_lf_link, array_lf, array_lf)
+
 
 #define ARRAY_SWAP(FUNC_NAME, ARRAY_TYPE)                  \
     void                                                        \
@@ -364,6 +380,9 @@ ARRAY_DE_TAIL(array_f_de_tail, array_f, double)
         if ((head == array) && (tail == array)) {                      \
             /*do nothing*/                                             \
             return;                                                    \
+        } else if (head == tail) {                                     \
+            /*copy all data to head*/                                  \
+            array->copy(array, head);                                  \
         } else if ((head != array) && (tail == array)) {               \
             /*move "count" values to head and shift the rest down*/    \
             head->resize(head, to_head);                                \
@@ -503,6 +522,8 @@ struct array_li_s* array_li_new(void)
     array->min = array_li_min;
     array->max = array_li_max;
     array->sum = array_li_sum;
+    array->copy = array_li_copy;
+    array->link = array_li_link;
     array->swap = array_li_swap;
     array->head = array_li_head;
     array->tail = array_li_tail;
@@ -753,6 +774,8 @@ struct array_lf_s* array_lf_new(void)
     array->min = array_lf_min;
     array->max = array_lf_max;
     array->sum = array_lf_sum;
+    array->copy = array_lf_copy;
+    array->link = array_lf_link;
     array->swap = array_lf_swap;
     array->head = array_lf_head;
     array->tail = array_lf_tail;
@@ -942,7 +965,6 @@ ARRAY_A_PRINT(array_faa_print, array_faa)
     {                                                            \
         /*ensure we don't try to move too many items*/           \
         unsigned to_head = MIN(count, array->size);              \
-        unsigned to_tail = array->size - to_head;                \
         ARRAY_TYPE *temp;                                        \
         unsigned i;                                              \
                                                                  \
@@ -954,16 +976,13 @@ ARRAY_A_PRINT(array_faa_print, array_faa)
                                                                     \
             head->reset(head);                                        \
             for (i = 0; i < to_head; i++)                             \
-                array->_[i]->copy(array->_[i], head->append(head));     \
+                array->_[i]->swap(array->_[i], head->append(head));     \
                                                                         \
             temp = NEW_FUNC();                                          \
             for (; i < array->size; i++)                                \
                 array->_[i]->swap(array->_[i], temp->append(temp));     \
                                                                         \
-            tail->reset(tail);                                          \
-            for (i = 0; i < to_tail; i++)                               \
-                temp->_[i]->swap(temp->_[i], tail->append(tail));       \
-                                                                        \
+            temp->swap(temp, tail);                                     \
             temp->del(temp);                                            \
         } else if ((head == array) && (tail != array)) {                \
             /*move "count" values from our end to tail and reduce our size*/ \
@@ -978,10 +997,10 @@ ARRAY_A_PRINT(array_faa_print, array_faa)
             /*copy "count" values to "head" and the remainder to "tail"*/ \
                                                                         \
             head->reset(head);                                          \
+            tail->reset(tail);                                          \
             for (i = 0; i < to_head; i++)                               \
                 array->_[i]->copy(array->_[i], head->append(head));     \
                                                                         \
-            tail->reset(tail);                                          \
             for (; i < array->size; i++)                                \
                 array->_[i]->copy(array->_[i], tail->append(tail));     \
         }                                                               \

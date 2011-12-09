@@ -208,6 +208,12 @@ struct array_li_s {
     /*returns the sum of all items in the array*/
     int (*sum)(const struct array_li_s *array);
 
+    /*makes "copy" a duplicate of this array*/
+    void (*copy)(const struct array_li_s *array, struct array_i_s *copy);
+
+    /*links the contents of this array to a read-only array*/
+    void (*link)(const struct array_li_s *array, struct array_li_s *link);
+
     /*swaps the contents of this array with another array*/
     void (*swap)(struct array_li_s *array, struct array_li_s *swap);
 
@@ -250,6 +256,8 @@ int array_li_equals(const struct array_li_s *array,
 int array_li_min(const struct array_li_s *array);
 int array_li_max(const struct array_li_s *array);
 int array_li_sum(const struct array_li_s *array);
+void array_li_copy(const struct array_li_s *array, struct array_i_s *copy);
+void array_li_link(const struct array_li_s *array, struct array_li_s *link);
 void array_li_swap(struct array_li_s *array, struct array_li_s *swap);
 void array_li_head(const struct array_li_s *array, unsigned count,
                    struct array_li_s *head);
@@ -434,6 +442,12 @@ struct array_lf_s {
     /*returns the sum of all items in the array*/
     double (*sum)(const struct array_lf_s *array);
 
+    /*makes "copy" a duplicate of this array*/
+    void (*copy)(const struct array_lf_s *array, struct array_f_s *copy);
+
+    /*links the contents of this array to a read-only array*/
+    void (*link)(const struct array_lf_s *array, struct array_lf_s *link);
+
     /*swaps the contents of this array with another array*/
     void (*swap)(struct array_lf_s *array, struct array_lf_s *swap);
 
@@ -476,6 +490,8 @@ int array_lf_equals(const struct array_lf_s *array,
 double array_lf_min(const struct array_lf_s *array);
 double array_lf_max(const struct array_lf_s *array);
 double array_lf_sum(const struct array_lf_s *array);
+void array_lf_copy(const struct array_lf_s *array, struct array_f_s *copy);
+void array_lf_link(const struct array_lf_s *array, struct array_lf_s *link);
 void array_lf_swap(struct array_lf_s *array, struct array_lf_s *swap);
 void array_lf_head(const struct array_lf_s *array, unsigned count,
                    struct array_lf_s *head);

@@ -93,7 +93,7 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
     } else {
         output = bw_open(output_file, BS_BIG_ENDIAN);
         bw_add_callback(output,
-                        alac_byte_counter,
+                        byte_counter,
                         &(encoder.mdat_byte_size));
     }
 
@@ -132,7 +132,7 @@ ALACEncoder_encode_alac(char *filename,
     /*convert file object to bitstream writer*/
     output = bw_open(output_file, BS_BIG_ENDIAN);
     bw_add_callback(output,
-                    alac_byte_counter,
+                    byte_counter,
                     &(encoder.mdat_byte_size));
 #endif
 
@@ -284,13 +284,6 @@ alacenc_free_encoder(struct alac_context* encoder)
     encoder->compressed_frame->close(encoder->compressed_frame);
     encoder->interlaced_frame->close(encoder->interlaced_frame);
     encoder->best_interlaced_frame->close(encoder->best_interlaced_frame);
-}
-
-void
-alac_byte_counter(uint8_t byte, void* counter)
-{
-    int* i_counter = (int*)counter;
-    *i_counter += 1;
 }
 
 static inline array_ia*
