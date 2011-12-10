@@ -24,6 +24,29 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *******************************************************/
 
+/*arrays are thin wrappers around malloc'ed data
+  in order to provide a consistent interface for common array operations
+
+  all have a "_" attribute to access the array's raw data,
+  an unsigned "len" attribute for the array's current size
+  and various methods to perform array-wise operations
+
+  for example:
+
+  int total = 0;
+  array_i* a = array_i_new();    //initialize a new integer array
+  a->vappend(a, 3, 1, 2, 3);     //append three integer values
+  for (i = 0; i < a->len; i++) { //iterate over the array
+      total += a->_[i];          //sum the values in the array
+  }
+  a->print(a, stdout);           //display the array
+  a->del(a);                     //deallocate it once finished
+
+  by providing internal methods with consistent naming,
+  one doesn't have to remember different function names
+  to perform the same function on arrays of different types
+ */
+
 
 /*appends a single value to the given array
   "array" is evaluated twice, while "value" is evaluated only once
@@ -36,7 +59,7 @@
 
   it works equally well for array_i and array_f
 */
-#define a_append(array, value)((array)->_[(array)->size++] = (value))
+#define a_append(array, value)((array)->_[(array)->len++] = (value))
 
 
 /***************************************************************
@@ -48,7 +71,7 @@ struct array_li_s;
 
 struct array_i_s {
     int *_;
-    unsigned size;
+    unsigned len;
     unsigned total_size;
 
     /*deletes the array and any allocated data it contains*/
@@ -187,7 +210,7 @@ void array_i_print(const struct array_i_s *array, FILE* output);
 
 struct array_li_s {
     const int *_;
-    unsigned size;
+    unsigned len;
 
     /*deletes the array and any allocated data it contains*/
     void (*del)(struct array_li_s *array);
@@ -281,7 +304,7 @@ struct array_lf_s;
 
 struct array_f_s {
     double *_;
-    unsigned size;
+    unsigned len;
     unsigned total_size;
 
     /*deletes the array and any allocated data it contains*/
@@ -421,7 +444,7 @@ void array_f_print(const struct array_f_s *array, FILE* output);
 
 struct array_lf_s {
     const double *_;
-    unsigned size;
+    unsigned len;
 
     /*deletes the array and any allocated data it contains*/
     void (*del)(struct array_lf_s *array);
@@ -514,7 +537,7 @@ void array_lf_print(const struct array_lf_s *array, FILE* output);
 
 struct array_ia_s {
     struct array_i_s **_;
-    unsigned size;
+    unsigned len;
     unsigned total_size;
 
     /*deletes the array and any allocated data it contains*/
@@ -589,7 +612,7 @@ void array_ia_print(const struct array_ia_s *array, FILE* output);
 
 struct array_fa_s {
     struct array_f_s **_;
-    unsigned size;
+    unsigned len;
     unsigned total_size;
 
     /*deletes the array and any allocated data it contains*/
@@ -665,7 +688,7 @@ void array_fa_print(const struct array_fa_s *array, FILE* output);
 
 struct array_iaa_s {
     struct array_ia_s **_;
-    unsigned size;
+    unsigned len;
     unsigned total_size;
 
     /*deletes the array and any allocated data it contains*/
@@ -736,7 +759,7 @@ void array_iaa_print(const struct array_iaa_s *array, FILE* output);
 
 struct array_faa_s {
     struct array_fa_s **_;
-    unsigned size;
+    unsigned len;
     unsigned total_size;
 
     /*deletes the array and any allocated data it contains*/

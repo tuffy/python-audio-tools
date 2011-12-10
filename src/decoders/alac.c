@@ -297,7 +297,7 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
 
         /*decrement the remaining sample count*/
         self->remaining_frames -= MIN(self->remaining_frames,
-                                      frameset_channels->_[0]->size);
+                                      frameset_channels->_[0]->len);
 
         /*convert ALAC channel assignment to standard audiotools assignment*/
         alacdec_alac_order_to_wave_order(frameset_channels);
@@ -320,9 +320,9 @@ alacdec_alac_order_to_wave_order(array_ia* alac_ordered)
     array_ia* wave_ordered = array_ia_new();
     array_i* wave_ch;
     unsigned i;
-    wave_ordered->resize(wave_ordered, alac_ordered->size);
+    wave_ordered->resize(wave_ordered, alac_ordered->len);
 
-    switch (alac_ordered->size) {
+    switch (alac_ordered->len) {
     case 2:
         wave_ch = wave_ordered->append(wave_ordered);
         wave_ch->swap(wave_ch, alac_ordered->_[0]); /*left*/
@@ -412,7 +412,7 @@ alacdec_alac_order_to_wave_order(array_ia* alac_ordered)
         wave_ch->swap(wave_ch, alac_ordered->_[2]); /*right of center*/
         break;
     default:
-        for (i = 0; i < alac_ordered->size; i++) {
+        for (i = 0; i < alac_ordered->len; i++) {
             wave_ch = wave_ordered->append(wave_ordered);
             wave_ch->swap(wave_ch, alac_ordered->_[i]);
         }
@@ -764,7 +764,7 @@ alacdec_decode_subframe(array_i* samples,
     samples->append(samples, residuals_data[i++]);
 
     /*grab a number of warm-up samples equal to coefficients' length*/
-    for (j = 0; j < qlp_coeff->size; j++) {
+    for (j = 0; j < qlp_coeff->len; j++) {
         /*these are adjustments to the previous sample
           rather than copied verbatim*/
         samples->append(samples, residuals_data[i] + samples->_[i - 1]);
@@ -772,16 +772,16 @@ alacdec_decode_subframe(array_i* samples,
     }
 
     /*then calculate a new sample per remaining residual*/
-    for (; i < residuals->size; i++) {
+    for (; i < residuals->len; i++) {
         residual = residuals_data[i];
         lpc_sum = 1 << (qlp_shift_needed - 1);
 
         /*Note that base_sample gets stripped from previously encoded samples
           then re-added prior to adding the next sample.
           It's a watermark sample, of sorts.*/
-        base_sample = samples->_[i - (qlp_coeff->size + 1)];
+        base_sample = samples->_[i - (qlp_coeff->len + 1)];
 
-        for (j = 0; j < qlp_coeff->size; j++) {
+        for (j = 0; j < qlp_coeff->len; j++) {
             lpc_sum += ((int64_t)qlp_coeff->_[j] *
                         (int64_t)(samples->_[i - j - 1] - base_sample));
         }
@@ -801,20 +801,20 @@ alacdec_decode_subframe(array_i* samples,
           and the residual*/
 
         if (residual > 0) {
-            for (j = 0; j < qlp_coeff->size; j++) {
-                diff = base_sample - samples->_[i - qlp_coeff->size + j];
+            for (j = 0; j < qlp_coeff->len; j++) {
+                diff = base_sample - samples->_[i - qlp_coeff->len + j];
                 sign = SIGN_ONLY(diff);
-                qlp_coeff->_[qlp_coeff->size - j - 1] -= sign;
+                qlp_coeff->_[qlp_coeff->len - j - 1] -= sign;
                 residual -= (((diff * sign) >> qlp_shift_needed) *
                              (j + 1));
                 if (residual <= 0)
                     break;
             }
         } else if (residual < 0) {
-            for (j = 0; j < qlp_coeff->size; j++) {
-                diff = base_sample - samples->_[i - qlp_coeff->size + j];
+            for (j = 0; j < qlp_coeff->len; j++) {
+                diff = base_sample - samples->_[i - qlp_coeff->len + j];
                 sign = SIGN_ONLY(diff);
-                qlp_coeff->_[qlp_coeff->size - j - 1] += sign;
+                qlp_coeff->_[qlp_coeff->len - j - 1] += sign;
                 residual -= (((diff * -sign) >> qlp_shift_needed) *
                              (j + 1));
                 if (residual >= 0)
@@ -830,7 +830,7 @@ alacdec_decorrelate_channels(array_i* left,
                              unsigned interlacing_shift,
                              unsigned interlacing_leftweight)
 {
-    unsigned size = left->size;
+    unsigned size = left->len;
     unsigned i;
     int64_t leftweight;
     int ch0_s;

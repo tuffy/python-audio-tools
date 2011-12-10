@@ -265,7 +265,7 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
         } while (block_header.final_block == 0);
 
         /*deduct frame count from total remaining*/
-        self->remaining_pcm_samples -= MIN(channels_data->_[0]->size,
+        self->remaining_pcm_samples -= MIN(channels_data->_[0]->len,
                                            self->remaining_pcm_samples);
 
         /*convert all channels to single PCM framelist*/
@@ -484,7 +484,7 @@ wavpack_decode_block(decoders_WavPackDecoder* decoder,
                 status = wavpack_read_decorrelation_weights(
                              block_header,
                              &sub_block,
-                             decorrelation_terms->size,
+                             decorrelation_terms->len,
                              decorrelation_weights);
                 decorrelation_weights_read = 1;
                 break;
@@ -545,7 +545,7 @@ wavpack_decode_block(decoders_WavPackDecoder* decoder,
 
         /*perform decorrelation passes over residual data*/
         if (decorrelation_terms_read &&
-            (decorrelation_terms->size > 0)) {
+            (decorrelation_terms->len > 0)) {
             wavpack_decorrelate_channels(decorrelation_terms,
                                          decorrelation_deltas,
                                          decorrelation_weights,
@@ -588,7 +588,7 @@ wavpack_decode_block(decoders_WavPackDecoder* decoder,
 
         /*perform decorrelation passes over residual data*/
         if (decorrelation_terms_read &&
-            (decorrelation_terms->size > 0)) {
+            (decorrelation_terms->len > 0)) {
             wavpack_decorrelate_channels(decorrelation_terms,
                                          decorrelation_deltas,
                                          decorrelation_weights,
@@ -766,7 +766,7 @@ wavpack_read_decorrelation_samples(const struct block_header* block_header,
         array_ia* samples_1 = samples->append(samples);
 
         /*two channels of sample lists per term*/
-        for (i = terms->size - 1; i >= 0; i--) {
+        for (i = terms->len - 1; i >= 0; i--) {
             array_i* samples_0_i = samples_0->append(samples_0);
             array_i* samples_1_i = samples_1->append(samples_1);
 
@@ -829,7 +829,7 @@ wavpack_read_decorrelation_samples(const struct block_header* block_header,
         array_ia* samples_0 = samples->append(samples);
 
         /*one channel of sample lists per term*/
-        for (i = terms->size - 1; i >= 0 ; i--) {
+        for (i = terms->len - 1; i >= 0 ; i--) {
             array_i* samples_0_i = samples_0->append(samples_0);
 
             if ((17 <= terms->_[i]) && (terms->_[i] <= 18)) {
@@ -1160,11 +1160,11 @@ wavpack_decorrelate_channels(const array_i* decorrelation_terms,
     unsigned pass;
     array_ia* correlated = array_ia_new();
 
-    if (residuals->size == 1) {
+    if (residuals->len == 1) {
         residuals->copy(residuals, decorrelated);
         correlated->append(correlated);
 
-        for (pass = 0; pass < decorrelation_terms->size; pass++) {
+        for (pass = 0; pass < decorrelation_terms->len; pass++) {
             correlated->swap(correlated, decorrelated);
 
             if ((status = wavpack_decorrelate_1ch_pass(
@@ -1179,10 +1179,10 @@ wavpack_decorrelate_channels(const array_i* decorrelation_terms,
             }
         }
 
-    } else if (residuals->size == 2) {
+    } else if (residuals->len == 2) {
         residuals->copy(residuals, decorrelated);
 
-        for (pass = 0; pass < decorrelation_terms->size; pass++) {
+        for (pass = 0; pass < decorrelation_terms->len; pass++) {
             correlated->swap(correlated, decorrelated);
 
             if ((status = wavpack_decorrelate_2ch_pass(
@@ -1244,7 +1244,7 @@ wavpack_decorrelate_1ch_pass(int decorrelation_term,
     case 18:
         decorrelation_samples->copy(decorrelation_samples, decorrelated);
         decorrelated->reverse(decorrelated);
-        for (i = 0; i < correlated->size; i++) {
+        for (i = 0; i < correlated->len; i++) {
             temp = (3 * decorrelated->_[i + 1] - decorrelated->_[i]) >> 1;
             decorrelated->append(decorrelated,
                                  apply_weight(decorrelation_weight, temp) +
@@ -1258,7 +1258,7 @@ wavpack_decorrelate_1ch_pass(int decorrelation_term,
     case 17:
         decorrelation_samples->copy(decorrelation_samples, decorrelated);
         decorrelated->reverse(decorrelated);
-        for (i = 0; i < correlated->size; i++) {
+        for (i = 0; i < correlated->len; i++) {
             temp = 2 * decorrelated->_[i + 1] - decorrelated->_[i];
             decorrelated->append(decorrelated,
                                  apply_weight(decorrelation_weight, temp) +
@@ -1278,7 +1278,7 @@ wavpack_decorrelate_1ch_pass(int decorrelation_term,
     case 2:
     case 1:
         decorrelation_samples->copy(decorrelation_samples, decorrelated);
-        for (i = 0; i < correlated->size; i++) {
+        for (i = 0; i < correlated->len; i++) {
             decorrelated->append(decorrelated,
                                  apply_weight(decorrelation_weight,
                                               decorrelated->_[i]) +
@@ -1345,7 +1345,7 @@ wavpack_decorrelate_2ch_pass(int decorrelation_term,
 
         switch (decorrelation_term) {
         case -1:
-            for (i = 0; i < corr_0->size; i++) {
+            for (i = 0; i < corr_0->len; i++) {
                 decorr_0->append(decorr_0,
                                  apply_weight(weight_0, decorr_1->_[i]) +
                                  corr_0->_[i]);
@@ -1363,7 +1363,7 @@ wavpack_decorrelate_2ch_pass(int decorrelation_term,
             }
             break;
         case -2:
-            for (i = 0; i < corr_0->size; i++) {
+            for (i = 0; i < corr_0->len; i++) {
                 decorr_1->append(decorr_1,
                                  apply_weight(weight_1, decorr_0->_[i]) +
                                  corr_1->_[i]);
@@ -1381,7 +1381,7 @@ wavpack_decorrelate_2ch_pass(int decorrelation_term,
             }
             break;
         case -3:
-            for (i = 0; i < corr_0->size; i++) {
+            for (i = 0; i < corr_0->len; i++) {
                 decorr_0->append(decorr_0,
                                  apply_weight(weight_0, decorr_1->_[i]) +
                                  corr_0->_[i]);
@@ -1424,7 +1424,7 @@ undo_joint_stereo(const array_ia* mid_side, array_ia* left_right)
     left = left_right->append(left_right);
     right = left_right->append(left_right);
 
-    for (i = 0; i < mid->size; i++) {
+    for (i = 0; i < mid->len; i++) {
         right->append(right, side->_[i] - (mid->_[i] >> 1));
         left->append(left, mid->_[i] + right->_[i]);
     }
@@ -1436,13 +1436,13 @@ calculate_crc(const array_ia* channels)
     unsigned i;
     uint32_t crc = 0xFFFFFFFF;
 
-    if (channels->size == 2) {
-        for (i = 0; i < channels->_[0]->size; i++) {
+    if (channels->len == 2) {
+        for (i = 0; i < channels->_[0]->len; i++) {
             crc = (3 * crc) + channels->_[0]->_[i];
             crc = (3 * crc) + channels->_[1]->_[i];
         }
     } else {
-        for (i = 0; i < channels->_[0]->size; i++) {
+        for (i = 0; i < channels->_[0]->len; i++) {
             crc = (3 * crc) + channels->_[0]->_[i];
         }
     }
@@ -1683,20 +1683,20 @@ wavpack_undo_extended_integers(const struct extended_integers* params,
 
     un_extended_integers->reset(un_extended_integers);
 
-    for (c = 0; c < extended_integers->size; c++) {
+    for (c = 0; c < extended_integers->len; c++) {
         extended = extended_integers->_[c];
         un_extended = un_extended_integers->append(un_extended_integers);
         if (params->zero_bits > 0) {
-            for (i = 0; i < extended->size; i++)
+            for (i = 0; i < extended->len; i++)
                 un_extended->append(un_extended,
                                     extended->_[i] << params->zero_bits);
         } else if (params->one_bits > 0) {
-            for (i = 0; i < extended->size; i++)
+            for (i = 0; i < extended->len; i++)
                 un_extended->append(un_extended,
                                     (extended->_[i] << params->one_bits) |
                                     ((1 < params->one_bits) - 1));
         } else if (params->duplicate_bits > 0) {
-            for (i = 0; i < extended->size; i++) {
+            for (i = 0; i < extended->len; i++) {
                 int shifted = extended->_[i];
                 if ((shifted % 2) == 0) {
                     un_extended->append(un_extended,

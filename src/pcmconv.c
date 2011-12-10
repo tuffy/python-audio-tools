@@ -39,8 +39,8 @@ array_i_to_FrameList(PyObject* audiotools_pcm,
     framelist = (pcm_FrameList*)PyObject_CallMethod(audiotools_pcm,
                                                     "__blank__", NULL);
 
-    if ((samples->size % channels) == 0) {
-        framelist->frames = samples->size / channels;
+    if ((samples->len % channels) == 0) {
+        framelist->frames = samples->len / channels;
         framelist->channels = channels;
         framelist->bits_per_sample = bits_per_sample;
         framelist->samples_length = framelist->frames * framelist->channels;
@@ -72,9 +72,9 @@ array_ia_to_FrameList(PyObject* audiotools_pcm,
     framelist = (pcm_FrameList*)PyObject_CallMethod(audiotools_pcm,
                                                     "__blank__", NULL);
     if (framelist != NULL) {
-        if (channels->size > 0) {
-            framelist->frames = channels->_[0]->size;
-            framelist->channels = channels->size;
+        if (channels->len > 0) {
+            framelist->frames = channels->_[0]->len;
+            framelist->channels = channels->len;
             framelist->bits_per_sample = bits_per_sample;
             framelist->samples_length = (framelist->frames *
                                          framelist->channels);
@@ -82,11 +82,11 @@ array_ia_to_FrameList(PyObject* audiotools_pcm,
                                          framelist->samples_length *
                                          sizeof(int));
 
-            for (c = 0; c < channels->size; c++) {
+            for (c = 0; c < channels->len; c++) {
                 channel = channels->_[c];
-                if (channel->size == framelist->frames) {
+                if (channel->len == framelist->frames) {
                     for (i = 0; i < framelist->frames; i++) {
-                        framelist->samples[(i * channels->size) + c] =
+                        framelist->samples[(i * channels->len) + c] =
                             channel->_[i];
                     }
                 } else {

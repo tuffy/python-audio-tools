@@ -885,15 +885,15 @@ flacdec_decorrelate_channels(uint8_t channel_assignment,
                              array_i* framelist) {
     int* framelist_data;
     unsigned i,j;
-    unsigned channel_count = subframes->size;
-    unsigned block_size = subframes->_[0]->size;
+    unsigned channel_count = subframes->len;
+    unsigned block_size = subframes->_[0]->len;
     int64_t mid;
     int32_t side;
 
     framelist->reset(framelist);
     framelist->resize(framelist, channel_count * block_size);
     framelist_data = framelist->_;
-    framelist->size = channel_count * block_size;
+    framelist->len = channel_count * block_size;
 
     switch (channel_assignment) {
     case 0x8:
