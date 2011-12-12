@@ -5,73 +5,73 @@
   <field size="1" value="1">1 less</field>
   <field size="1" value="1">large</field>
   <field size="24" value="12">sub block size (× 2)</field>
-  <field size="8" value="01111111b">t₀</field>
+  <field size="8" value="01111111b">u₀</field>
   <field size="4" value="14">r₀</field>
   <field size="1" value="1">b₀</field>
   <field size="1" value="1">sign₀</field>
-  <field size="4" value="0111b">t₁</field>
+  <field size="4" value="0111b">u₁</field>
   <field size="3" value="6">r₁</field>
   <field size="1" value="1">b₁</field>
   <field size="1" value="0">sign₁</field>
-  <field size="4" value="0111b">t₂</field>
+  <field size="4" value="0111b">u₂</field>
   <field size="4" value="9">r₂</field>
   <field size="1" value="0">b₂</field>
   <field size="1" value="1">sign₂</field>
-  <field size="4" value="0111b">t₃</field>
+  <field size="4" value="0111b">u₃</field>
   <field size="3" value="7">r₃</field>
   <field size="1" value="1">b₃</field>
   <field size="1" value="0">sign₃</field>
-  <field size="2" value="01b">t₄</field>
+  <field size="2" value="01b">u₄</field>
   <field size="3" value="4">r₄</field>
   <field size="1" value="1">b₄</field>
   <field size="1" value="1">sign₄</field>
-  <field size="5" value="01111b">t₅</field>
+  <field size="5" value="01111b">u₅</field>
   <field size="3" value="2">r₅</field>
   <field size="1" value="0">sign₅</field>
   <field size="3" value="1">r₆</field>
   <field size="1" value="0">sign₆</field>
-  <field size="6" value="011111b">t₇</field>
+  <field size="6" value="011111b">u₇</field>
   <field size="3" value="7">r₇</field>
   <field size="1" value="1">b₇</field>
   <field size="1" value="0">sign₇</field>
-  <field size="2" value="01b">t₈</field>
+  <field size="2" value="01b">u₈</field>
   <field size="3" value="6">r₈</field>
   <field size="1" value="0">b₈</field>
   <field size="1" value="0">sign₈</field>
-  <field size="4" value="0111b">t₉</field>
+  <field size="4" value="0111b">u₉</field>
   <field size="3" value="6">r₉</field>
   <field size="1" value="0">b₉</field>
   <field size="1" value="0">sign₉</field>
-  <field size="4" value="0111b">t₁₀</field>
+  <field size="4" value="0111b">u₁₀</field>
   <field size="4" value="10">r₁₀</field>
   <field size="1" value="0">b₁₀</field>
   <field size="1" value="0">sign₁₀</field>
-  <field size="4" value="0111b">t₁₁</field>
+  <field size="4" value="0111b">u₁₁</field>
   <field size="3" value="4">r₁₁</field>
   <field size="1" value="0">b₁₁</field>
   <field size="1" value="0">sign₁₁</field>
-  <field size="6" value="011111b">t₁₂</field>
+  <field size="6" value="011111b">u₁₂</field>
   <field size="4" value="4">r₁₂</field>
   <field size="1" value="0">sign₁₂</field>
-  <field size="2" value="01b">t₁₃</field>
+  <field size="2" value="01b">u₁₃</field>
   <field size="4" value="13">r₁₃</field>
   <field size="1" value="1">b₁₃</field>
   <field size="1" value="0">sign₁₃</field>
-  <field size="6" value="011111b">t₁₄</field>
+  <field size="6" value="011111b">u₁₄</field>
   <field size="4" value="8">r₁₄</field>
   <field size="1" value="0">b₁₄</field>
   <field size="1" value="0">sign₁₄</field>
-  <field size="2" value="01b">t₁₅</field>
+  <field size="2" value="01b">u₁₅</field>
   <field size="4" value="6">r₁₅</field>
   <field size="1" value="0">sign₁₅</field>
-  <field size="5" value="01111b">t₁₆</field>
+  <field size="5" value="01111b">u₁₆</field>
   <field size="4" value="6">r₁₆</field>
   <field size="1" value="1">b₁₆</field>
   <field size="1" value="0">sign₁₆</field>
   <field size="3" value="7">r₁₇</field>
   <field size="1" value="0">b₁₇</field>
   <field size="1" value="0">sign₁₇</field>
-  <field size="7" value="0111111b">t₁₈</field>
+  <field size="7" value="0111111b">u₁₈</field>
   <field size="5" value="6">r₁₈</field>
   <field size="1" value="0">sign₁₈</field>
   <field size="3" value="0">r₁₉</field>

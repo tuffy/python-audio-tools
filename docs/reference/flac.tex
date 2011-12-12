@@ -1522,30 +1522,30 @@ The smallest subframe is the one written to disk.
 
 \subsubsection{Calculating Wasted Bits Per Sample}
 {\relsize{-1}
-\ALGORITHM{signed subframe samples}{the amount of wasted bits per sample as an unsigned integer}
-\SetKw{AND}{and}
+\ALGORITHM{a list of signed PCM samples}{an unsigned integer}
+\SetKwData{WASTEDBPS}{wasted bps}
+\SetKwData{SAMPLE}{sample}
 \SetKwFunction{MIN}{min}
-wasted BPS $\leftarrow$ maximum unsigned integer\;
-\ForEach{sample \IN subframe samples}{
-  \If{sample $\neq 0$}{
-    wasted $\leftarrow$ 0\;
-    \While{sample $\bmod~2 = 0$}{
-      wasted $\leftarrow$ wasted + 1\;
-      sample $\leftarrow \text{sample} \div 2$\;
-    }
-    \eIf{wasted $= 0$}{
-      \Return 0\tcc*[r]{stop once any sample has no wasted bits}
-    }{
-      wasted BPS $\leftarrow$ \MIN(wasted BPS, wasted)\;
-    }
-  }
+\SetKwFunction{WASTED}{wasted}
+$\text{\WASTEDBPS} \leftarrow \infty$\tcc*[r]{maximum unsigned integer}
+\For{i = 0 \emph{\KwTo}sample count}{
+  $\text{\WASTEDBPS} \leftarrow \MIN(\WASTED(\text{\SAMPLE}_i)~,~\text{\WASTEDBPS})$\;
 }
-\eIf{wasted BPS = maximum unsigned integer}{
+\eIf(\tcc*[f]{all samples are 0}){$\WASTEDBPS = \infty$}{
   \Return 0\;
 }{
-  \Return wasted BPS\;
+  \Return \WASTEDBPS\;
 }
 \EALGORITHM
+where the \texttt{wasted} function is defined as:
+\begin{equation*}
+\texttt{wasted}(x) =
+\begin{cases}
+\infty & \text{if } x = 0 \\
+0 & \text{if } x \bmod 2 = 1 \\
+1 + \texttt{wasted}(x \div 2) & \text{if } x \bmod 2 = 0 \\
+\end{cases}
+\end{equation*}
 }
 
 \subsection{Encoding a CONSTANT Subframe}

@@ -958,6 +958,8 @@ read_wv_exp2(BitstreamReader* sub_block_data)
     }
 }
 
+#define UNDEFINED -1
+
 status
 wavpack_read_bitstream(const struct block_header* block_header,
                        BitstreamReader* sub_block_data,
@@ -965,9 +967,9 @@ wavpack_read_bitstream(const struct block_header* block_header,
                        array_ia* residuals)
 {
     unsigned channel_count;
-    unsigned holding_zero = 0;
-    unsigned holding_one = 0;
+    int u = UNDEFINED;
     unsigned i = 0;
+    unsigned j;
     array_i* r;
 
     residuals->reset(residuals);
@@ -983,21 +985,10 @@ wavpack_read_bitstream(const struct block_header* block_header,
 
     if (!setjmp(*br_try(sub_block_data))) {
         while (i < (channel_count * block_header->block_samples)) {
-            if ((holding_zero == 0) && (holding_one == 0) &&
+            if ((u == UNDEFINED) &&
                 (medians->_[0]->_[0] < 2) &&
                 (medians->_[1]->_[0] < 2)) {
-                unsigned t;
-                unsigned p;
-                unsigned zeroes;
-                unsigned j;
-
-                t = sub_block_data->read_unary(sub_block_data, 0);
-                if (t > 1) {
-                    p = sub_block_data->read(sub_block_data, t - 1);
-                    zeroes = (1 << (t - 1)) + p;
-                } else {
-                    zeroes = t;
-                }
+                unsigned zeroes = wavpack_read_egc(sub_block_data);
 
                 if (zeroes > 0) {
                     for (j = 0; j < zeroes; j++) {
@@ -1017,8 +1008,7 @@ wavpack_read_bitstream(const struct block_header* block_header,
                     r = residuals->_[i % channel_count];
                     r->append(r, wavpack_read_residual(
                                     sub_block_data,
-                                    &holding_zero,
-                                    &holding_one,
+                                    &u,
                                     medians->_[i % channel_count]));
                     i++;
                 }
@@ -1026,8 +1016,7 @@ wavpack_read_bitstream(const struct block_header* block_header,
                 r = residuals->_[i % channel_count];
                 r->append(r, wavpack_read_residual(
                                  sub_block_data,
-                                 &holding_zero,
-                                 &holding_one,
+                                 &u,
                                  medians->_[i % channel_count]));
                 i++;
             }
@@ -1038,6 +1027,18 @@ wavpack_read_bitstream(const struct block_header* block_header,
     } else {
         br_etry(sub_block_data);
         return IO_ERROR;
+    }
+}
+
+unsigned
+wavpack_read_egc(BitstreamReader* bs)
+{
+    unsigned t = bs->read_unary(bs, 0);
+    if (t > 1) {
+        unsigned p = bs->read(bs, t - 1);
+        return (1 << (t - 1)) + p;
+    } else {
+        return t;
     }
 }
 
@@ -1055,40 +1056,29 @@ LOG2(unsigned value)
 
 int
 wavpack_read_residual(BitstreamReader* bs,
-                      unsigned* holding_zero,
-                      unsigned* holding_one,
+                      int* last_u,
                       array_i* medians)
 {
+    unsigned u;
     unsigned m;
     int base;
     int add;
-    int u;
 
-    if (*holding_zero == 0) {
-        unsigned t = bs->read_unary(bs, 0);
-
-        if (t == 16) {
-            unsigned u = bs->read_unary(bs, 0);
-            if (u > 1) {
-                unsigned e = bs->read(bs, u - 1);
-                t += (1 << (u - 1)) + e;
-            } else {
-                t += u;
-            }
-        }
-
-        if (*holding_one == 0) {
-            *holding_one = t % 2;
-            *holding_zero = 1 - *holding_one;
-            m = t >> 1;
-        } else {
-            *holding_one = t % 2;
-            *holding_zero = 1 - *holding_one;
-            m = (t >> 1) + 1;
-        }
+    if (*last_u == UNDEFINED) {
+        u = bs->read_unary(bs, 0);
+        if (u == 16)
+            u += wavpack_read_egc(bs);
+        *last_u = (int)u;
+        m = u / 2;
+    } else if (*last_u % 2) {
+        u = bs->read_unary(bs, 0);
+        if (u == 16)
+            u += wavpack_read_egc(bs);
+        *last_u = (int)u;
+        m = (u / 2) + 1;
     } else {
+        *last_u = UNDEFINED;
         m = 0;
-        *holding_zero = 0;
     }
 
     switch (m) {

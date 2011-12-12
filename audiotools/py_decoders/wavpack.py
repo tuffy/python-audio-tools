@@ -583,41 +583,28 @@ def read_bitstream(block_header, medians, sub_block_data):
         channel_count = 1
         residuals = ([], )
 
-    holding_zero = 0
-    holding_one = 0
+    u = None
     i = 0
     while (i < (block_header.block_samples * channel_count)):
-        if ((holding_zero == 0) and (holding_one == 0) and
-            (medians[0][0] < 2) and (medians[1][0] < 2)):
+        if ((u is None) and (medians[0][0] < 2) and (medians[1][0] < 2)):
             #handle long run of 0 residuals
-            t = sub_block_data.unary(0)
-            if (t > 1):
-                p = sub_block_data.read(t - 1)
-                zeroes = (2 ** (t - 1)) + p
-            else:
-                zeroes = t
+            zeroes = read_egc(sub_block_data)
             if (zeroes > 0):
                 for j in xrange(zeroes):
                     residuals[i % channel_count].append(0)
                     i += 1
                 medians = ([0, 0, 0], [0, 0, 0])
             if (i < (block_header.block_samples * channel_count)):
-                (residual,
-                 holding_zero,
-                 holding_one) = read_residual(
+                (residual, u) = read_residual(
                     sub_block_data,
-                    holding_zero,
-                    holding_one,
+                    u,
                     medians[i % channel_count])
                 residuals[i % channel_count].append(residual)
                 i += 1
         else:
-            (residual,
-             holding_zero,
-             holding_one) = read_residual(
+            (residual, u) = read_residual(
                 sub_block_data,
-                holding_zero,
-                holding_one,
+                u,
                 medians[i % channel_count])
             residuals[i % channel_count].append(residual)
             i += 1
@@ -625,39 +612,40 @@ def read_bitstream(block_header, medians, sub_block_data):
     return residuals
 
 
-def read_residual(reader, holding_zero, holding_one, medians):
-    if (holding_zero == 0):
-        t = reader.unary(0)
-        if (t == 16):
-            u = reader.unary(0)
-            if (u > 1):
-                e = reader.read(u - 1)
-                t += 2 ** (u - 1) + e
-            else:
-                t += u
-
-        if (holding_one == 0):
-            holding_one = t % 2
-            holding_zero = 1 - holding_one
-            t = t >> 1
-        else:
-            holding_one = t % 2
-            holding_zero = 1 - holding_one
-            t = (t >> 1) + 1
+def read_egc(reader):
+    t = reader.unary(0)
+    if (t > 0):
+        p = reader.read(t - 1)
+        return 2 ** (t - 1) + p
     else:
-        t = 0
-        holding_zero = 0
+        return t
 
-    if (t == 0):
+
+def read_residual(reader, last_u, medians):
+    if (last_u is None):
+        u = reader.unary(0)
+        if (u == 16):
+            u += read_egc(reader)
+        m = u / 2
+    elif ((last_u % 2) == 1):
+        u = reader.unary(0)
+        if (u == 16):
+            u += read_egc(reader)
+        m = (u / 2) + 1
+    else:
+        u = None
+        m = 0
+
+    if (m == 0):
         base = 0
         add = medians[0] >> 4
         medians[0] -= ((medians[0] + 126) >> 7) * 2
-    elif (t == 1):
+    elif (m == 1):
         base = (medians[0] >> 4) + 1
         add = medians[1] >> 4
         medians[0] += ((medians[0] + 128) >> 7) * 5
         medians[1] -= ((medians[1] + 62) >> 6) * 2
-    elif (t == 2):
+    elif (m == 2):
         base = ((medians[0] >> 4) + 1) + ((medians[1] >> 4) + 1)
         add = medians[2] >> 4
         medians[0] += ((medians[0] + 128) >> 7) * 5
@@ -666,7 +654,7 @@ def read_residual(reader, holding_zero, holding_one, medians):
     else:
         base = (((medians[0] >> 4) + 1) +
                 ((medians[1] >> 4) + 1) +
-                (((medians[2] >> 4) + 1) * (t - 2)))
+                (((medians[2] >> 4) + 1) * (m - 2)))
         add = medians[2] >> 4
         medians[0] += ((medians[0] + 128) >> 7) * 5
         medians[1] += ((medians[1] + 64) >> 6) * 5
@@ -691,9 +679,9 @@ def read_residual(reader, holding_zero, holding_one, medians):
 
     sign = reader.read(1)
     if (sign == 1):
-        return (-unsigned - 1, holding_zero, holding_one)
+        return (-unsigned - 1, u)
     else:
-        return (unsigned, holding_zero, holding_one)
+        return (unsigned, u)
 
 
 def undo_joint_stereo(samples):

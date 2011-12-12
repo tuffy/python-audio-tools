@@ -987,8 +987,7 @@ median values\footnote{from the entropy variables sub block, which must be read 
 \SetKwData{FALSESTEREO}{false stereo}
 \SetKwData{BLOCKSAMPLES}{block samples}
 \SetKwData{CHANNELS}{channel count}
-\SetKwData{HZERO}{holding zero}
-\SetKwData{HONE}{holding one}
+\SetKwData{UNDEFINED}{undefined}
 \SetKwData{MEDIAN}{median}
 \SetKwData{RESIDUAL}{residual}
 \SetKwData{ZEROES}{zeroes}
@@ -998,21 +997,13 @@ median values\footnote{from the entropy variables sub block, which must be read 
 }{
   \CHANNELS $\leftarrow 1$\;
 }
-\HZERO $\leftarrow$ 0\;
-\HONE $\leftarrow$ 0\;
+$u_{-1} \leftarrow \UNDEFINED$\;
 $i \leftarrow 0$\;
 \While{$i < (\BLOCKSAMPLES \times \CHANNELS)$}{
-  \eIf{$(\text{\HZERO} = 0)$ \AND
-    $(\text{\HONE} = 0)$ \AND
+  \eIf{$(u_{i - 1} = \UNDEFINED)$ \AND
     $(\text{\MEDIAN}_{0~0} < 2)$ \AND
     $(\text{\MEDIAN}_{1~0} < 2)$}{
-    $t \leftarrow$ \UNARY with stop bit 0\;
-    \eIf{$t > 1$}{
-      $p \leftarrow$ \READ $(t - 1)$ unsigned bits\;
-      \ZEROES $\leftarrow 2 ^ {(t - 1)} + p$\;
-    }{
-      \ZEROES $\leftarrow t$\;
-    }
+    $\ZEROES \leftarrow$ read modified Elias Gamma code\;
     \If(\tcc*[f]{handle long run of 0 residuals}){$\text{\ZEROES} > 0$}{
       \For{j = 0 \emph{\KwTo}\ZEROES}{
         $\text{\RESIDUAL}_{(i \bmod \CHANNELS)~\lfloor i \div \CHANNELS \rfloor} \leftarrow $ 0\;
@@ -1039,43 +1030,51 @@ $i \leftarrow 0$\;
 \EALGORITHM
 }
 
+\subsubsection{Reading Modified Elias Gamma Code}
+{\relsize{-1}
+\ALGORITHM{the sub block bitstream}{an unsigned integer}
+    $t \leftarrow$ \UNARY with stop bit 0\;
+    \eIf{$t > 1$}{
+      $p \leftarrow$ \READ $(t - 1)$ unsigned bits\;
+      \Return $2 ^ {(t - 1)} + p$\;
+    }{
+      \Return $t$\;
+    }
+\EALGORITHM
+}
+
 \clearpage
 
 \subsubsection{Reading Residual Value}
 {\relsize{-1}
-\ALGORITHM{the sub block bitstream, \VAR{holding zero}, \VAR{holding one}, \VAR{median} values for channel $c$}{a signed residual value; new \VAR{holding zero}, \VAR{holding one}, \VAR{median} values}
-\SetKwData{HZERO}{holding zero}
-\SetKwData{HONE}{holding one}
+\ALGORITHM{sub block bitstream, previous residual's unary value $u_{i - 1}$, \VAR{median} values for channel $c$}{a signed residual value; new unary value $u_i$, updated \VAR{median} values for channel $c$}
+\SetKwData{UNDEFINED}{undefined}
 \SetKwData{MEDIAN}{median}
 \SetKwData{RESIDUAL}{residual}
-\tcc{determine "t" and new holding values}
-\eIf{$\HZERO = 0$}{
-  $t \leftarrow$ \UNARY with stop bit 0\;
-  \If(\tcc*[f]{escape code for potentially large residuals}){$t = 16$}{
-    $u \leftarrow$ \UNARY with stop bit 0\;
-    \eIf{$u > 1$}{
-      $e \leftarrow$ \READ $(u - 1)$ unsigned bits\;
-      $t \leftarrow t + (2 ^ {u - 1} + e)$\;
-    }{
-      $t \leftarrow t + u$\;
-    }
+\tcc{determine new "u" and "m" values}
+\uIf{$u_{i - 1} = \UNDEFINED$}{
+  $u_i \leftarrow$ \UNARY with stop bit 0\;
+  \If{$u_i = 16$}{
+    $c_i \leftarrow$ read modified Elias Gamma code\;
+    $u_i \leftarrow u_i + c_i$\;
   }
-  \eIf{$\HONE = 0$}{
-    $\HONE \leftarrow t \bmod 2$\;
-    $\HZERO \leftarrow 1 - \HONE$\;
-    $m \leftarrow \lfloor t \div 2 \rfloor$\;
-  }{
-    $\HONE \leftarrow t \bmod 2$\;
-    $\HZERO \leftarrow 1 - \HONE$\;
-    $m \leftarrow \lfloor t \div 2 \rfloor + 1$\;
+  $m_i \leftarrow \lfloor u_i \div 2\rfloor$\;
+}
+\uElseIf{$u_{i - 1} \bmod 2 = 1$}{
+  $u_i \leftarrow$ \UNARY with stop bit 0\;
+  \If{$u_i = 16$}{
+    $c_i \leftarrow$ read modified Elias Gamma code\;
+    $u_i \leftarrow u_i + c_i$\;
   }
-}{
-  $m \leftarrow 0$\;
-  $\HZERO \leftarrow0 $\;
+  $m_i \leftarrow \lfloor u_i \div 2\rfloor + 1$\;
+}
+\ElseIf{$u_{i - 1} \bmod 2 = 0$}{
+  $u_i \leftarrow \UNDEFINED$\;
+  $m_i \leftarrow 0$\;
 }
 \BlankLine
 \tcc{determine "base", "add" and new median values}
-\Switch{m}{
+\Switch{$m_i$}{
   \uCase{0}{
     $base \leftarrow 0$\;
     $add \leftarrow \lfloor\text{\MEDIAN}_{c~0} \div 2 ^ 4\rfloor$\;
@@ -1095,7 +1094,7 @@ $i \leftarrow 0$\;
     $\text{\MEDIAN}_{c~2} \leftarrow \text{\MEDIAN}_{c~2} - \lfloor(\text{\MEDIAN}_{c~2} + 30) \div 2 ^ 5\rfloor \times 2$\;
   }
   \Other{
-    $base \leftarrow (\lfloor\text{\MEDIAN}_{c~0} \div 2 ^ 4\rfloor + 1) + (\lfloor\text{\MEDIAN}_{c~1} \div 2 ^ 4\rfloor + 1) + ((\lfloor\text{\MEDIAN}_{c~2} \div 2 ^ 4\rfloor + 1) \times (m - 2))$\;
+    $base \leftarrow (\lfloor\text{\MEDIAN}_{c~0} \div 2 ^ 4\rfloor + 1) + (\lfloor\text{\MEDIAN}_{c~1} \div 2 ^ 4\rfloor + 1) + ((\lfloor\text{\MEDIAN}_{c~2} \div 2 ^ 4\rfloor + 1) \times (m_i - 2))$\;
     $add \leftarrow \lfloor\text{\MEDIAN}_{c~2} \div 2 ^ 4\rfloor$\;
     $\text{\MEDIAN}_{c~0} \leftarrow \text{\MEDIAN}_{c~0} + \lfloor(\text{\MEDIAN}_{c~0} + 128) \div 2 ^ 7\rfloor \times 5$\;
     $\text{\MEDIAN}_{c~1} \leftarrow \text{\MEDIAN}_{c~1} + \lfloor(\text{\MEDIAN}_{c~1} + 64) \div 2 ^ 6\rfloor \times 5$\;
@@ -1133,9 +1132,9 @@ $i \leftarrow 0$\;
 \BlankLine
 $sign \leftarrow$ \READ 1 unsigned bit\;
 \eIf{$sign = 1$}{
-  \Return $(-unsigned - 1)$ along with new holding zero, holding one and medians\;
+  \Return $(-unsigned - 1)$ along with unary value $u_i$ and updated medians\;
 }{
-  \Return $unsigned$ along with new holding zero, holding one and medians\;
+  \Return $unsigned$ along with unary value $u_i$ and updated medians\;
 }
 \end{algorithm}
 }
@@ -1156,116 +1155,116 @@ $\text{medians}_1 = \texttt{[118, 176, 212]}$:
 {\relsize{-2}
 \renewcommand{\arraystretch}{1.5}
 \begin{tabular}{|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|}
-i & t_i & \text{h. one} & \text{h. zero} & m_i &
+i & u_i & m_i &
 \text{base} & \text{add} & \text{median}_{c~0} & \text{median}_{c~1} & \text{median}_{c~2} \\
 \hline
 0 &
 7 &
-1 & 0 & 3 &
+\lfloor 7 \div 2 \rfloor = 3 &
 2 + \left\lfloor\frac{118}{2 ^ 4}\right\rfloor + \left\lfloor\frac{194}{2 ^ 4}\right\rfloor + \left(\left\lfloor\frac{322}{2 ^ 4}\right\rfloor \times 1\right) = 42 & \left\lfloor\frac{322}{2 ^ 4}\right\rfloor = 20 & 118 + 5 = 123 & 194 + 20 = 214 & 322 + 55 = 377
 \\
 1 &
 3 &
-1 & 0 & 2 &
+\lfloor 3 \div 2 \rfloor + 1 = 2 &
 2 + \left\lfloor\frac{118}{2 ^ 4}\right\rfloor + \left\lfloor\frac{176}{2 ^ 4}\right\rfloor = 20 & \left\lfloor\frac{212}{2 ^ 4}\right\rfloor = 13 & 118 + 5 = 123 & 176 + 15 = 191 & 212 - 35 = 198
 \\
 \hline
 2 &
 3 &
-1 & 0 & 2 &
+\lfloor 3 \div 2 \rfloor + 1 = 2 &
 2 + \left\lfloor\frac{123}{2 ^ 4}\right\rfloor + \left\lfloor\frac{214}{2 ^ 4}\right\rfloor = 22 & \left\lfloor\frac{377}{2 ^ 4}\right\rfloor = 23 & 123 + 5 = 128 & 214 + 20 = 234 & 377 - 60 = 353
 \\
 3 &
 3 &
-1 & 0 & 2 &
+\lfloor 3 \div 2 \rfloor + 1 = 2 &
 2 + \left\lfloor\frac{123}{2 ^ 4}\right\rfloor + \left\lfloor\frac{191}{2 ^ 4}\right\rfloor = 20 & \left\lfloor\frac{198}{2 ^ 4}\right\rfloor = 12 & 123 + 5 = 128 & 191 + 15 = 206 & 198 - 35 = 184
 \\
 \hline
 4 &
 1 &
-1 & 0 & 1 &
+\lfloor 1 \div 2 \rfloor + 1 = 1 &
 1 + \left\lfloor\frac{128}{2 ^ 4}\right\rfloor = 9 & \left\lfloor\frac{234}{2 ^ 4}\right\rfloor = 14 & 128 + 10 = 138 & 234 - 8 = 226 & 353
 \\
 5 &
 4 &
-0 & 1 & 3 &
+\lfloor 4 \div 2 \rfloor + 1 = 3 &
 2 + \left\lfloor\frac{128}{2 ^ 4}\right\rfloor + \left\lfloor\frac{206}{2 ^ 4}\right\rfloor + \left(\left\lfloor\frac{184}{2 ^ 4}\right\rfloor \times 1\right) = 34 & \left\lfloor\frac{184}{2 ^ 4}\right\rfloor = 11 & 128 + 10 = 138 & 206 + 20 = 226 & 184 + 30 = 214
 \\
 \hline
 6 &
-&
-0 & 0 & 0 &
+\textit{undefined} &
+0 &
 0 & \left\lfloor\frac{138}{2 ^ 4}\right\rfloor = 8 & 138 - 4 = 134 & 226 & 353
 \\
 7 &
 5 &
-1 & 0 & 2 &
+\lfloor 5 \div 2 \rfloor = 2 &
 2 + \left\lfloor\frac{138}{2 ^ 4}\right\rfloor + \left\lfloor\frac{226}{2 ^ 4}\right\rfloor = 24 & \left\lfloor\frac{214}{2 ^ 4}\right\rfloor = 13 & 138 + 10 = 148 & 226 + 20 = 246 & 214 - 35 = 200
 \\
 \hline
 8 &
 1 &
-1 & 0 & 1 &
+\lfloor 1 \div 2 \rfloor + 1 = 1 &
 1 + \left\lfloor\frac{134}{2 ^ 4}\right\rfloor = 9 & \left\lfloor\frac{226}{2 ^ 4}\right\rfloor = 14 & 134 + 10 = 144 & 226 - 8 = 218 & 353
 \\
 9 &
 3 &
-1 & 0 & 2 &
+\lfloor 3 \div 2 \rfloor + 1 = 2 &
 2 + \left\lfloor\frac{148}{2 ^ 4}\right\rfloor + \left\lfloor\frac{246}{2 ^ 4}\right\rfloor = 26 & \left\lfloor\frac{200}{2 ^ 4}\right\rfloor = 12 & 148 + 10 = 158 & 246 + 20 = 266 & 200 - 35 = 186
 \\
 \hline
 10 &
 3 &
-1 & 0 & 2 &
+\lfloor 3 \div 2 \rfloor + 1 = 2 &
 2 + \left\lfloor\frac{144}{2 ^ 4}\right\rfloor + \left\lfloor\frac{218}{2 ^ 4}\right\rfloor = 24 & \left\lfloor\frac{353}{2 ^ 4}\right\rfloor = 22 & 144 + 10 = 154 & 218 + 20 = 238 & 353 - 55 = 331
 \\
 11 &
 3 &
-1 & 0 & 2 &
+\lfloor 3 \div 2 \rfloor + 1 = 2 &
 2 + \left\lfloor\frac{158}{2 ^ 4}\right\rfloor + \left\lfloor\frac{266}{2 ^ 4}\right\rfloor = 27 & \left\lfloor\frac{186}{2 ^ 4}\right\rfloor = 11 & 158 + 10 = 168 & 266 + 25 = 291 & 186 - 30 = 174
 \\
 \hline
 12 &
 5 &
-1 & 0 & 3 &
+\lfloor 5 \div 2 \rfloor + 1 = 3 &
 2 + \left\lfloor\frac{154}{2 ^ 4}\right\rfloor + \left\lfloor\frac{238}{2 ^ 4}\right\rfloor + \left(\left\lfloor\frac{331}{2 ^ 4}\right\rfloor \times 1\right) = 46 & \left\lfloor\frac{331}{2 ^ 4}\right\rfloor = 20 & 154 + 10 = 164 & 238 + 20 = 258 & 331 + 55 = 386
 \\
 13 &
 1 &
-1 & 0 & 1 &
+\lfloor 1 \div 2 \rfloor + 1 = 1 &
 1 + \left\lfloor\frac{168}{2 ^ 4}\right\rfloor = 11 & \left\lfloor\frac{291}{2 ^ 4}\right\rfloor = 18 & 168 + 10 = 178 & 291 - 10 = 281 & 174
 \\
 \hline
 14 &
 5 &
-1 & 0 & 3 &
+\lfloor 5 \div 2 \rfloor + 1 = 3 &
 2 + \left\lfloor\frac{164}{2 ^ 4}\right\rfloor + \left\lfloor\frac{258}{2 ^ 4}\right\rfloor + \left(\left\lfloor\frac{386}{2 ^ 4}\right\rfloor \times 1\right) = 53 & \left\lfloor\frac{386}{2 ^ 4}\right\rfloor = 24 & 164 + 10 = 174 & 258 + 25 = 283 & 386 + 65 = 451
 \\
 15 &
 1 &
-1 & 0 & 1 &
+\lfloor 1 \div 2 \rfloor + 1 = 1 &
 1 + \left\lfloor\frac{178}{2 ^ 4}\right\rfloor = 12 & \left\lfloor\frac{281}{2 ^ 4}\right\rfloor = 17 & 178 + 10 = 188 & 281 - 10 = 271 & 174
 \\
 \hline
 16 &
 4 &
-0 & 1 & 3 &
+\lfloor 4 \div 2 \rfloor + 1 = 3 &
 2 + \left\lfloor\frac{174}{2 ^ 4}\right\rfloor + \left\lfloor\frac{283}{2 ^ 4}\right\rfloor + \left(\left\lfloor\frac{451}{2 ^ 4}\right\rfloor \times 1\right) = 58 & \left\lfloor\frac{451}{2 ^ 4}\right\rfloor = 28 & 174 + 10 = 184 & 283 + 25 = 308 & 451 + 75 = 526
 \\
 17 &
-&
-0 & 0 & 0 &
+\textit{undefined} &
+0 &
 0 & \left\lfloor\frac{188}{2 ^ 4}\right\rfloor = 11 & 188 - 4 = 184 & 271 & 174
 \\
 \hline
 18 &
 6 &
-0 & 1 & 3 &
+\lfloor 6 \div 2 \rfloor = 3 &
 2 + \left\lfloor\frac{184}{2 ^ 4}\right\rfloor + \left\lfloor\frac{308}{2 ^ 4}\right\rfloor + \left(\left\lfloor\frac{526}{2 ^ 4}\right\rfloor \times 1\right) = 65 & \left\lfloor\frac{526}{2 ^ 4}\right\rfloor = 32 & 184 + 10 = 194 & 308 + 25 = 333 & 526 + 85 = 611
 \\
 19 &
-&
-0 & 0 & 0 &
+\textit{undefined} &
+0 &
 0 & \left\lfloor\frac{184}{2 ^ 4}\right\rfloor = 11 & 184 - 4 = 180 & 271 & 174
 \\
 \hline
@@ -2281,26 +2280,30 @@ the footer is optional.
 parameter & possible values & typical values \\
 \hline
 block size & a positive number of PCM frames & 22050 \\
-decorrelation passes & 0, 2, 5, 10 or 16 & 5 \\
+correlation passes & 0, 2, 5, 10 or 16 & 5 \\
 \end{tabular}
 }
 }{an encoded WavPack file}
 \SetKwData{BLOCKSIZE}{block size}
+\SetKwData{BLOCKINDEX}{block index}
+$\text{\BLOCKINDEX} \leftarrow 0$\;
 \While{PCM frames remain}{
-  take \BLOCKSIZE PCM frames from the input\;
+  take up to \BLOCKSIZE PCM frames from the input\;
   update the stream's MD5 sum with that PCM data\;
   write PCM frames to one or more block sets, depending on channel count\;
+  $\text{\BLOCKINDEX} \leftarrow \text{\BLOCKINDEX} + \text{PCM data's frame count}$\;
 }
 \BlankLine
 write final block containing optional Wave footer and MD5 sum sub blocks\;
 update Wave header's \texttt{data} chunk size, if generated from scratch\;
-update \VAR{total samples} field in all block headers\;
+update \VAR{total samples} field in all block headers with \BLOCKINDEX\;
 \EALGORITHM
 
 \clearpage
 
 \subsection{Writing Block Set}
-\ALGORITHM{PCM frames and their channel assignment}{one or more WavPack blocks}
+{\relsize{-1}
+\ALGORITHM{PCM frames and their channel assignment, block index, encoding parameters}{one or more WavPack blocks}
 \SetKwData{CHANNEL}{channel}
 \SetKwData{FIRST}{first}
 \SetKwData{LAST}{last}
@@ -2366,6 +2369,310 @@ One could invent alternate channel splits for other obscure assignments.
 WavPack's only requirement is that all channels must be in
 Wave order\footnote{see page \pageref{wave_channel_assignment}}
 and each block must contain 1 or 2 channels.
+}
+\begin{figure}[h]
+\includegraphics{figures/wavpack/block_channels.pdf}
+\end{figure}
+
+\clearpage
+
+\subsection{Writing Block}
+{\relsize{-1}
+\ALGORITHM{1 or 2 channels of PCM frames, block index, first block, last block, encoding parameters}{a single WavPack block}
+\SetKwData{CHANNEL}{channel}
+\SetKwData{MONO}{mono output}
+\SetKwData{FALSESTEREO}{false stereo}
+\SetKwData{MAGNITUDE}{magnitude}
+\SetKwData{WASTEDBPS}{wasted bps}
+\SetKwData{SHIFTED}{shifted}
+\SetKwData{CRC}{CRC}
+\SetKwData{CORRELATED}{correlated}
+\SetKwData{MID}{mid}
+\SetKwData{SIDE}{side}
+\SetKw{OR}{or}
+\SetKwFunction{MAX}{max}
+\SetKwFunction{MIN}{min}
+\eIf(\tcc*[f]{1 channel block}){$\text{channel count} = 1$ \OR $\text{\CHANNEL}_0 = \text{\CHANNEL}_1$}{
+  \eIf{$\text{channel count} = 1$}{
+    $\text{\MONO} \leftarrow 1$\;
+    $\text{\FALSESTEREO} \leftarrow 0$\;
+  }{
+    $\text{\MONO} \leftarrow 0$\;
+    $\text{\FALSESTEREO} \leftarrow 1$\;
+  }
+  $\text{\MAGNITUDE} \leftarrow$ maximum magnitude of $\text{\CHANNEL}_0$\;
+  $\text{\WASTEDBPS} \leftarrow$ wasted bps of $\text{\CHANNEL}_0$\;
+  \eIf{$\text{\WASTEDBPS} > 0$}{
+    \For{i = 0 \emph{\KwTo}block size}{
+      $\text{\SHIFTED}_{0~i} \leftarrow \lfloor\text{\CHANNEL}_{0~i} \div 2 ^ \text{\WASTEDBPS}\rfloor$\;
+    }
+  }{
+    $\text{\SHIFTED}_0 \leftarrow \text{\CHANNEL}_0$\;
+  }
+  $\text{\CRC} \leftarrow$ calculate CRC of $\text{\SHIFTED}_0$\;
+  $\text{\CORRELATED}_0 \leftarrow$ correlate $\text{\SHIFTED}_0$ with the given number of correlation passes\;
+}(\tcc*[f]{2 channel block}){
+  $\text{\MONO} \leftarrow 0$\;
+  $\text{\FALSESTEREO} \leftarrow 0$\;
+  $\text{\MAGNITUDE} \leftarrow \MAX(\text{maximum magnitude of \CHANNEL}_0~,~\text{maximum magnitude of \CHANNEL}_1)$\;
+  $\text{\WASTEDBPS} \leftarrow \MIN(\text{wasted bps of \CHANNEL}_0~,~\text{wasted bps of \CHANNEL}_1)$\;
+  \eIf{$\text{\WASTEDBPS} > 0$}{
+    \For{i = 0 \emph{\KwTo}block size}{
+      $\text{\SHIFTED}_{0~i} \leftarrow \lfloor\text{\CHANNEL}_{0~i} \div 2 ^ \text{\WASTEDBPS}\rfloor$\;
+      $\text{\SHIFTED}_{1~i} \leftarrow \lfloor\text{\CHANNEL}_{1~i} \div 2 ^ \text{\WASTEDBPS}\rfloor$\;
+    }
+  }{
+    $\text{\SHIFTED}_0/\text{\SHIFTED}_1 \leftarrow \text{\CHANNEL}_0/\text{\CHANNEL}_1$\;
+  }
+  $\text{\CRC} \leftarrow$ calculate CRC of $\text{\SHIFTED}_0/\text{\SHIFTED}_1$\;
+  $\text{\MID}/\text{\SIDE} \leftarrow$ convert $\text{\SHIFTED}_0/\text{\SHIFTED}_1$ to joint stereo\;
+  $\text{\CORRELATED}_0/\text{\CORRELATED}_1 \leftarrow$ correlate $\text{\MID}/\text{\SIDE}$ with the given number of correlation passes\;
+}
+\EALGORITHM
+}
+\par
+At this point we have enough information to build the block header
+and its sub blocks.
+However, because of prefixed length fields, we'll construct the sub blocks
+before the sub block headers and the full set of sub blocks
+before the block header.
+\begin{figure}[h]
+\includegraphics{figures/wavpack/stream2.pdf}
+\end{figure}
+
+\clearpage
+{\relsize{-1}
+\begin{algorithm}[H]
+\DontPrintSemicolon
+\SetKwData{SUBBLOCK}{sub block}
+\SetKwData{WASTEDBPS}{wasted bps}
+\SetKw{NOT}{not}
+\SetKw{IN}{in}
+$i \leftarrow 0$\;
+\If{first block in file}{
+  $\text{\SUBBLOCK}_i \leftarrow$ wave header\;
+  $i \leftarrow i + 1$\;
+}
+\If{$\text{decorrelation passes} > 0$}{
+  $\text{\SUBBLOCK}_i \leftarrow$ decorrelation terms\;
+  $\text{\SUBBLOCK}_{i + 1} \leftarrow$ decorrelation weights\;
+  $\text{\SUBBLOCK}_{i + 2} \leftarrow$ decorrelation samples\;
+  $i \leftarrow i + 3$\;
+}
+\If{$\text{\WASTEDBPS} > 0$}{
+  $\text{\SUBBLOCK}_i \leftarrow$ extended integers\;
+  $i \leftarrow i + 1$\;
+}
+\If{$\text{total channel count} > 2$}{
+  $\text{\SUBBLOCK}_i \leftarrow$ channel info\;
+  $i \leftarrow i + 1$\;
+}
+\If{sample rate not defined in block header}{
+  $\text{\SUBBLOCK}_i \leftarrow$ sample rate\;
+  $i \leftarrow i + 1$\;
+}
+$\text{\SUBBLOCK}_i \leftarrow$ entropy variables\;
+$\text{\SUBBLOCK}_{i + 1} \leftarrow$ bitstream\;
+\BlankLine
+write block header\;
+\For{j = 0 \emph{\KwTo}i}{
+  write $\text{\SUBBLOCK}_j$\;
+}
+\end{algorithm}
+}
+
+\clearpage
+
+\subsection{Calculating Maximum Magnitude}
+{\relsize{-1}
+\ALGORITHM{a list of signed PCM samples for a single channel}{an unsigned integer}
+\SetKwData{MAXMAGNITUDE}{maximum magnitude}
+\SetKwData{SAMPLE}{sample}
+\SetKwFunction{MAX}{max}
+\SetKwFunction{BITS}{bits}
+$\text{\MAXMAGNITUDE} \leftarrow 0$\;
+\For{i = 0 \emph{\KwTo}sample count}{
+  $\text{\MAXMAGNITUDE} \leftarrow \MAX(\BITS(|\text{\SAMPLE}_i|)~,~\text{\MAXMAGNITUDE})$\;
+}
+\Return \MAXMAGNITUDE\;
+\EALGORITHM
+where the \texttt{bits} function is defined as:
+\begin{equation*}
+\texttt{bits}(x) =
+\begin{cases}
+0 & \text{if } x = 0 \\
+1 + \texttt{bits}(\lfloor x \div 2 \rfloor) & \text{if } x > 0
+\end{cases}
+\end{equation*}
+}
+\subsubsection{Maximum Magnitude Example}
+\begin{table}[h]
+{\relsize{-1}
+\begin{tabular}{r|rrrrrrrrrr}
+$i$ & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 \\
+\hline
+$\text{sample}_i$ & 0 & 16 & 31 & 44 & 54 & 61 & 64 & 63 & 58 & 49 \\
+$\texttt{bits}(|\text{sample}_i|)$ & 0 & 5 & 5 & 6 & 6 & 6 & 7 & 6 & 6 & 6
+\end{tabular}
+}
+\end{table}
+\par
+\noindent
+for a maximum magnitude of 7.
+
+\subsection{Calculating Wasted Bits Per Sample}
+{\relsize{-1}
+\ALGORITHM{a list of signed PCM samples for a single channel}{an unsigned integer}
+\SetKwData{WASTEDBPS}{wasted bps}
+\SetKwData{SAMPLE}{sample}
+\SetKwFunction{MIN}{min}
+\SetKwFunction{WASTED}{wasted}
+$\text{\WASTEDBPS} \leftarrow \infty$\tcc*[r]{maximum unsigned integer}
+\For{i = 0 \emph{\KwTo}sample count}{
+  $\text{\WASTEDBPS} \leftarrow \MIN(\WASTED(\text{\SAMPLE}_i)~,~\text{\WASTEDBPS})$\;
+}
+\eIf(\tcc*[f]{all samples are 0}){$\WASTEDBPS = \infty$}{
+  \Return 0\;
+}{
+  \Return \WASTEDBPS\;
+}
+\EALGORITHM
+where the \texttt{wasted} function is defined as:
+\begin{equation*}
+\texttt{wasted}(x) =
+\begin{cases}
+\infty & \text{if } x = 0 \\
+0 & \text{if } x \bmod 2 = 1 \\
+1 + \texttt{wasted}(x \div 2) & \text{if } x \bmod 2 = 0 \\
+\end{cases}
+\end{equation*}
+}
+\subsubsection{Wasted Bits Example}
+\begin{table}[h]
+{\relsize{-1}
+\begin{tabular}{r|rrrrrrrrrr}
+$i$ & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 \\
+\hline
+$\text{sample}_i$ & 0 & 16 & 31 & 44 & 54 & 61 & 64 & 63 & 58 & 49 \\
+$\texttt{wasted}(\text{sample}_i)$ & $\infty$ & 4 & 0 & 2 & 1 & 0 & 6 & 0 & 1 & 0 \\
+\end{tabular}
+}
+\end{table}
+\par
+\noindent
+for a wasted bps of 0 (which is typical).
+
+\begin{landscape}
+
+\subsection{Calculating CRC}
+\ALGORITHM{one or two channels of signed audio samples}{an unsigned 32-bit CRC integer}
+\SetKwData{MONO}{mono output}
+\SetKwData{CRC}{CRC}
+\SetKwData{LCRC}{LCRC}
+\SetKwData{SCRC}{SCRC}
+\SetKwData{CHANNEL}{channel}
+$\text{\CRC}_{-1} \leftarrow \texttt{0xFFFFFFFF}$\;
+\For{i = 0 \emph{\KwTo}sample count}{
+  \eIf{$\text{\MONO} = 0$}{
+    $\text{\LCRC}_i \leftarrow (3 \times \text{\CRC}_{i - 1}) + \text{\CHANNEL}_{0~i}$\tcc*[r]{calculate signed CRC of left channel}
+    $\text{\SCRC}_i \leftarrow (3 \times \text{\LCRC}_{i - 1}) + \text{\CHANNEL}_{1~i}$\tcc*[r]{calculate signed CRC of right channel}
+  }{
+    $\text{\SCRC}_i \leftarrow (3 \times \text{\CRC}_{i - 1}) + \text{\CHANNEL}_{0~i}$\tcc*[r]{calculate signed CRC of channel}
+  }
+  \BlankLine
+  \eIf(\tcc*[f]{convert signed CRC to unsigned, 32-bit integer}){$\text{\SCRC}_i \geq 0$}{
+    $\text{\CRC}_i \leftarrow \text{\SCRC}_i \bmod \texttt{0x100000000}$\;
+  }{
+    $\text{\CRC}_i \leftarrow (2 ^ {32} - (-\text{\SCRC}_i)) \bmod \texttt{0x100000000}$\;
+  }
+}
+\Return $\text{\CRC}_{\text{sample count} - 1}$\;
+\EALGORITHM
+
+\subsubsection{Checksum Calculation Example}
+{\relsize{-1}
+\begin{tabular}{|r|r|r||>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|}
+$i$ & $\text{channel}_{0~i}$ & $\text{channel}_{1~i}$ & \text{LCRC}_i & \text{SCRC}_i & \text{CRC}_i \\
+\hline
+0 & 0 & 64 &
+(3 \times \texttt{0xFFFFFFFF}) + 0 = \texttt{0x2FFFFFFFD} &
+(3 \times \texttt{0x2FFFFFFFD}) + 64 = \texttt{0x900000037} &
+\texttt{0x00000037} \\
+1 & 16 & 62 &
+(3 \times \texttt{0x00000037}) + 16 = \texttt{0x000000B5} &
+(3 \times \texttt{0x000000B5}) + 62 = \texttt{0x0000025D} &
+\texttt{0x0000025D} \\
+2 & 31 & 56 &
+(3 \times \texttt{0x0000025D}) + 31 = \texttt{0x00000736} &
+(3 \times \texttt{0x00000736}) + 56 = \texttt{0x000015DA} &
+\texttt{0x000015DA} \\
+3 & 44 & 47 &
+(3 \times \texttt{0x000015DA}) + 44 = \texttt{0x000041BA} &
+(3 \times \texttt{0x000041BA}) + 47 = \texttt{0x0000C55D} &
+\texttt{0x0000C55D} \\
+4 & 54 & 34 &
+(3 \times \texttt{0x0000C55D}) + 54 = \texttt{0x0002504D} &
+(3 \times \texttt{0x0002504D}) + 34 = \texttt{0x0006F109} &
+\texttt{0x0006F109} \\
+5 & 61 & 20 &
+(3 \times \texttt{0x0006F109}) + 61 = \texttt{0x0014D358} &
+(3 \times \texttt{0x0014D358}) + 20 = \texttt{0x003E7A1C} &
+\texttt{0x003E7A1C} \\
+6 & 64 & 4 &
+(3 \times \texttt{0x003E7A1C}) + 64 = \texttt{0x00BB6E94} &
+(3 \times \texttt{0x00BB6E94}) + 4 = \texttt{0x02324BC0} &
+\texttt{0x02324BC0} \\
+7 & 63 & -12 &
+(3 \times \texttt{0x02324BC0}) + 63 = \texttt{0x0696E37F} &
+(3 \times \texttt{0x0696E37F}) - 12 = \texttt{0x13C4AA71} &
+\texttt{0x13C4AA71} \\
+8 & 58 & -27 &
+(3 \times \texttt{0x13C4AA71}) + 58 = \texttt{0x3B4DFF8D} &
+(3 \times \texttt{0x3B4DFF8D}) - 27 = \texttt{0xB1E9FE8C} &
+\texttt{0xB1E9FE8C} \\
+9 & 49 & -41 &
+(3 \times \texttt{0xB1E9FE8C}) + 49 = \texttt{0x215BDFBD5} &
+(3 \times \texttt{0x215BDFBD5}) - 41 = \texttt{0x64139F356} &
+\texttt{0x4139F356} \\
+\end{tabular}
+}
+\vskip 1em
+\par
+\noindent
+Resulting in a final CRC of \texttt{0x4139F356}
+
+\end{landscape}
+
+\subsection{Joint Stereo Conversion}
+\ALGORITHM{left and right channels of signed integers}{mid and side channels of signed integers}
+\SetKwData{LEFT}{left}
+\SetKwData{RIGHT}{right}
+\SetKwData{MID}{mid}
+\SetKwData{SIDE}{side}
+\For{i = 0 \emph{\KwTo}sample count}{
+  $\text{\MID}_i \leftarrow \text{\LEFT}_i - \text{\RIGHT}_i$\;
+  $\text{\SIDE}_i \leftarrow \lfloor(\text{\LEFT}_i + \text{\RIGHT}_i) \div 2\rfloor$\;
+}
+\Return \MID and \SIDE channels\;
+\EALGORITHM
+
+\subsubsection{Joint Stereo Example}
+\begin{table}[h]
+\begin{tabular}{|r|r|r||>{$}r<{$}|>{$}r<{$}|}
+$i$ & $\text{left}_i$ & $\text{right}_i$ & \text{mid}_i & \text{side}_i \\
+\hline
+0 & 0 & 64 & 0 - 64 = -64 & \lfloor(0 + 64) \div 2\rfloor = 32 \\
+1 & 16 & 62 & 16 - 62 = -46 & \lfloor(16 + 62) \div 2\rfloor = 39 \\
+2 & 31 & 56 & 31 - 56 = -25 & \lfloor(31 + 56) \div 2\rfloor = 43 \\
+3 & 44 & 47 & 44 - 47 = -3 & \lfloor(44 + 47) \div 2\rfloor = 45 \\
+4 & 54 & 34 & 54 - 34 = 20 & \lfloor(54 + 34) \div 2\rfloor = 44 \\
+5 & 61 & 20 & 61 - 20 = 41 & \lfloor(61 + 20) \div 2\rfloor = 40 \\
+6 & 64 & 4 & 64 - 4 = 60 & \lfloor(64 + 4) \div 2\rfloor = 34 \\
+7 & 63 & -12 & 63 - -12 = 75 & \lfloor(63 + -12) \div 2\rfloor = 25 \\
+8 & 58 & -27 & 58 - -27 = 85 & \lfloor(58 + -27) \div 2\rfloor = 15 \\
+9 & 49 & -41 & 49 - -41 = 90 & \lfloor(49 + -41) \div 2\rfloor = 4 \\
+\end{tabular}
+\end{table}
 
 %% \begin{table}[h]
 %% \begin{tabular}{r||rrrrrr}

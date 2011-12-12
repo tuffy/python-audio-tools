@@ -279,10 +279,12 @@ wavpack_read_bitstream(const struct block_header* block_header,
                        array_ia* medians,
                        array_ia* residuals);
 
+unsigned
+wavpack_read_egc(BitstreamReader* bs);
+
 int
 wavpack_read_residual(BitstreamReader* bs,
-                      unsigned* holding_zero,
-                      unsigned* holding_one,
+                      int* last_u,
                       array_i* medians);
 
 status
