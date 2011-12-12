@@ -660,22 +660,20 @@ def read_residual(reader, last_u, medians):
         medians[1] += ((medians[1] + 64) >> 6) * 5
         medians[2] += ((medians[2] + 32) >> 5) * 5
 
-    if (add >= 1):
+    if (add == 0):
+        unsigned = base
+    elif (add == 1):
+        b = reader.read(1)
+        unsigned = base + b
+    else:
         p = int(log(add) / log(2))
-        if (p > 0):
-            r = reader.read(p)
-        else:
-            r = 0
-
-        e = (1 << (p + 1)) - add - 1
-
+        r = reader.read(p)
+        e = 2 ** (p + 1) - add - 1
         if (r >= e):
             b = reader.read(1)
             unsigned = base + (r * 2) - e + b
         else:
             unsigned = base + r
-    else:
-        unsigned = base
 
     sign = reader.read(1)
     if (sign == 1):

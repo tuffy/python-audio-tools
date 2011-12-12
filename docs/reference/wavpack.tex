@@ -1003,7 +1003,7 @@ $i \leftarrow 0$\;
   \eIf{$(u_{i - 1} = \UNDEFINED)$ \AND
     $(\text{\MEDIAN}_{0~0} < 2)$ \AND
     $(\text{\MEDIAN}_{1~0} < 2)$}{
-    $\ZEROES \leftarrow$ read modified Elias Gamma code\;
+    $\ZEROES \leftarrow$ read modified Elias gamma code\;
     \If(\tcc*[f]{handle long run of 0 residuals}){$\text{\ZEROES} > 0$}{
       \For{j = 0 \emph{\KwTo}\ZEROES}{
         $\text{\RESIDUAL}_{(i \bmod \CHANNELS)~\lfloor i \div \CHANNELS \rfloor} \leftarrow $ 0\;
@@ -1055,7 +1055,7 @@ $i \leftarrow 0$\;
 \uIf{$u_{i - 1} = \UNDEFINED$}{
   $u_i \leftarrow$ \UNARY with stop bit 0\;
   \If{$u_i = 16$}{
-    $c_i \leftarrow$ read modified Elias Gamma code\;
+    $c_i \leftarrow$ read modified Elias gamma code\;
     $u_i \leftarrow u_i + c_i$\;
   }
   $m_i \leftarrow \lfloor u_i \div 2\rfloor$\;
@@ -1063,7 +1063,7 @@ $i \leftarrow 0$\;
 \uElseIf{$u_{i - 1} \bmod 2 = 1$}{
   $u_i \leftarrow$ \UNARY with stop bit 0\;
   \If{$u_i = 16$}{
-    $c_i \leftarrow$ read modified Elias Gamma code\;
+    $c_i \leftarrow$ read modified Elias gamma code\;
     $u_i \leftarrow u_i + c_i$\;
   }
   $m_i \leftarrow \lfloor u_i \div 2\rfloor + 1$\;
@@ -1112,22 +1112,22 @@ $i \leftarrow 0$\;
 \DontPrintSemicolon
 \SetKw{READ}{read}
 \tcc{determine final residual value}
-\eIf{$add \geq 1$}{
+\uIf{$add = 0$}{
+  $unsigned \leftarrow base$\;
+}\uElseIf{$add = 1$}{
+  $b_i \leftarrow$ \READ 1 unsigned bit\;
+  $unsigned \leftarrow base + b_i$\;
+}
+\Else{
   $p \leftarrow \lfloor\log_2(add)\rfloor$\;
-  \eIf{$p > 0$}{
-    $r \leftarrow$ \READ $p$ unsigned bits\;
-  }{
-    $r \leftarrow 0$\;
-  }
+  $r_i \leftarrow$ \READ $p$ unsigned bits\;
   $e \leftarrow 2 ^ {p + 1} - add - 1$\;
   \eIf{$r \geq e$}{
-    $b \leftarrow$ \READ 1 unsigned bit\;
-    $unsigned \leftarrow base + (r \times 2) - e + b$\;
+    $b_i \leftarrow$ \READ 1 unsigned bit\;
+    $unsigned \leftarrow base + (r_i \times 2) - e + b_i$\;
   }{
-    $unsigned \leftarrow base + r$\;
+    $unsigned \leftarrow base + r_i$\;
   }
-}{
-  $unsigned \leftarrow base$\;
 }
 \BlankLine
 $sign \leftarrow$ \READ 1 unsigned bit\;

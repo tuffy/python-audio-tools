@@ -1111,24 +1111,20 @@ wavpack_read_residual(BitstreamReader* bs,
         break;
     }
 
-    if (add >= 1) {
+    if (add == 0) {
+        u = base;
+    } else if (add == 1) {
+        unsigned b = bs->read(bs, 1);
+        u = base + b;
+    } else {
         unsigned p = LOG2(add);
-        unsigned r;
-        int e;
-        if (p > 0) {
-            r = bs->read(bs, p);
-        } else {
-            r = 0;
-        }
-        e = (1 << (p + 1)) - add - 1;
+        unsigned r = bs->read(bs, p);
+        int e = (1 << (p + 1)) - add - 1;
         if (r >= e) {
-            unsigned b = bs->read(bs, 1);
-            u = base + (r * 2) - e + b;
+            u = base + (r * 2) - e + bs->read(bs, 1);
         } else {
             u = base + r;
         }
-    } else {
-        u = base;
     }
 
     if (bs->read(bs, 1)) {

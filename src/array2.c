@@ -947,7 +947,7 @@ ARRAY_A_EQUALS(array_faa_equals, array_faa)
         } else if (array->len > 1) {                        \
             for (i = 0; i < array->len - 1; i++) {          \
                 array->_[i]->print(array->_[i], output);    \
-                printf(", ");                               \
+                fprintf(output, ", ");                      \
             }                                               \
             array->_[i]->print(array->_[i], output);        \
         }                                                   \
