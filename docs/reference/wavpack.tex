@@ -1599,7 +1599,6 @@ delta & \text{ if } (source \textbf{ xor } result ) \geq 0 \\
 
 }
 
-
 \clearpage
 
 \subsubsection{2 Channel Decorrelation Pass}
@@ -2658,6 +2657,7 @@ Resulting in a final CRC of \texttt{0x4139F356}
 
 \subsubsection{Joint Stereo Example}
 \begin{table}[h]
+{\relsize{-1}
 \begin{tabular}{|r|r|r||>{$}r<{$}|>{$}r<{$}|}
 $i$ & $\text{left}_i$ & $\text{right}_i$ & \text{mid}_i & \text{side}_i \\
 \hline
@@ -2672,7 +2672,116 @@ $i$ & $\text{left}_i$ & $\text{right}_i$ & \text{mid}_i & \text{side}_i \\
 8 & 58 & -27 & 58 - -27 = 85 & \lfloor(58 + -27) \div 2\rfloor = 15 \\
 9 & 49 & -41 & 49 - -41 = 90 & \lfloor(49 + -41) \div 2\rfloor = 4 \\
 \end{tabular}
+}
 \end{table}
+
+\subsection{Correlation Passes}
+\ALGORITHM{a list of signed samples per channel, the number of correlation passes; correlation weights and samples from the previous block (if any)}{a list of signed residuals per channel; correlation weights and samples for the next block}
+\SetKwData{PASS}{pass}
+\SetKwData{CHANNEL}{channel}
+\SetKwData{TERMCOUNT}{term count}
+\SetKwData{TERM}{term}
+\SetKwData{DELTA}{delta}
+\SetKwData{WEIGHT}{weight}
+\SetKwData{SAMPLES}{samples}
+\SetKw{KwDownTo}{downto}
+\eIf{$\text{channel count} = 1$}{
+  $\text{\PASS}_{0~\text{\TERMCOUNT}} \leftarrow \text{\CHANNEL}_0$\;
+  \For{i = \TERMCOUNT \emph{\KwDownTo}0}{
+    correlate 1 channel $\text{\PASS}_{0~(i + 1)}$ to $\text{\PASS}_{0~i}$\newline
+    using $\text{\TERM}_i$, $\text{\DELTA}_i$, $\text{\WEIGHT}_{0~i}$ and
+    $\text{\SAMPLES}_{0~i}$\;
+  }
+  \Return $\text{\PASS}_{0~0}$
+}{
+  $\text{\PASS}_{0~\text{\TERMCOUNT}} \leftarrow \text{\CHANNEL}_0$\;
+  $\text{\PASS}_{1~\text{\TERMCOUNT}} \leftarrow \text{\CHANNEL}_1$\;
+  \For{i = \TERMCOUNT \emph{\KwDownTo}0}{
+    correlate 2 channel $\text{\PASS}_{0~(i + 1)}~/~\text{\PASS}_{1~(i + 1)}$ to $\text{\PASS}_{0~i}~/~\text{\PASS}_{1~i}$\newline
+    using $\text{\TERM}_i$, $\text{\DELTA}_i$, $\text{\WEIGHT}_{0~i}$,  $\text{\WEIGHT}_{1~i}$, $\text{\SAMPLES}_{0~i}$ and $\text{\SAMPLES}_{1~i}$\;
+  }
+  \Return $\text{\PASS}_{0~0}~/~\text{\PASS}_{1~0}$
+}
+\EALGORITHM
+
+\clearpage
+
+\subsubsection{Correlation Terms, Deltas, Initial Weights and Initial Samples}
+{\relsize{-2}
+\ALGORITHM{correlation pass count, channel count}{term, delta, weights and samples}
+\Switch{correlation pass count}{
+\uCase{1}{
+\begin{tabular}{r|rrrrll}
+$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & ($\text{weight}_{1~i}$) & $\text{samples}_{0~i}$ & ($\text{samples}_{1~i}$) \\
+\hline
+0 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+\end{tabular}
+}
+\uCase{2}{
+\begin{tabular}{r|rrrrll}
+$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & ($\text{weight}_{1~i}$) & $\text{samples}_{0~i}$ & ($\text{samples}_{1~i}$) \\
+\hline
+1 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+0 & 17 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+\end{tabular}
+}
+\uCase{5}{
+\begin{tabular}{r|rrrrll}
+$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & ($\text{weight}_{1~i}$) & $\text{samples}_{0~i}$ & ($\text{samples}_{1~i}$) \\
+\hline
+4 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+3 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+2 & 2 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+1 & 17 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+0 & 3 & 2 & 0 & 0 & \texttt{[0, 0, 0]} & \texttt{[0, 0, 0]} \\
+\end{tabular}
+}
+\uCase{10}{
+\begin{tabular}{r|rrrrll}
+$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & $\text{weight}_{1~i}$ & $\text{samples}_{0~i}$ & $\text{samples}_{1~i}$ \\
+\hline
+9 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+8 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+7 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+6 & -2 & 2 & 0 & 0 & \texttt{[0]} & \texttt{[0]} \\
+5 & 2 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+4 & 3 & 2 & 0 & 0 & \texttt{[0, 0, 0]} & \texttt{[0, 0, 0]} \\
+3 & 5 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0, 0]} & \texttt{[0, 0, 0, 0, 0]} \\
+2 & -1 & 2 & 0 & 0 & \texttt{[0]} & \texttt{[0]} \\
+1 & 17 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+0 & 4 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0]} & \texttt{[0, 0, 0, 0]} \\
+\end{tabular}
+}
+\Case{16}{
+\begin{tabular}{r|rrrrll}
+$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & $\text{weight}_{1~i}$ & $\text{samples}_{0~i}$ & $\text{samples}_{1~i}$ \\
+\hline
+15 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+14 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+13 & 2 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+12 & 3 & 2 & 0 & 0 & \texttt{[0, 0, 0]} & \texttt{[0, 0, 0]} \\
+11 & -2 & 2 & 0 & 0 & \texttt{[0]} & \texttt{[0]} \\
+10 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+9 & 2 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+8 & 4 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0]} & \texttt{[0, 0, 0, 0]} \\
+7 & 7 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0, 0, 0, 0]} & \texttt{[0, 0, 0, 0, 0, 0, 0]} \\
+6 & 5 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0, 0]} & \texttt{[0, 0, 0, 0, 0]} \\
+5 & 3 & 2 & 0 & 0 & \texttt{[0, 0, 0]} & \texttt{[0, 0, 0]} \\
+4 & 6 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0, 0, 0]} & \texttt{[0, 0, 0, 0, 0, 0]} \\
+3 & 8 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0, 0, 0, 0, 0]} & \texttt{[0, 0, 0, 0, 0, 0, 0, 0]} \\
+2 & -1 & 2 & 0 & 0 & \texttt{[0]} & \texttt{[0]} \\
+1 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+0 & 2 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+\end{tabular}
+}
+}
+\EALGORITHM
+}
+\par
+One channel blocks may have a \VAR{correlation pass count} of 1, 2 or 5.
+In that event, $\text{weight}_{1~i}$ and $\text{samples}_{1~i}$ are omitted.
+The negative correlation terms of \VAR{correlation pass count} 10 and 16
+are only applicable to two channel blocks.
 
 %% \begin{table}[h]
 %% \begin{tabular}{r||rrrrrr}
