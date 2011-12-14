@@ -2279,17 +2279,49 @@ the footer is optional.
 parameter & possible values & typical values \\
 \hline
 block size & a positive number of PCM frames & 22050 \\
-correlation passes & 0, 2, 5, 10 or 16 & 5 \\
+correlation passes & 0, 1, 2, 5, 10 or 16 & 5 \\
 \end{tabular}
 }
 }{an encoded WavPack file}
 \SetKwData{BLOCKSIZE}{block size}
 \SetKwData{BLOCKINDEX}{block index}
+\SetKwData{BLOCKSETCOUNT}{block count}
+\SetKwData{BLOCKSETCHANNELS}{block channels}
+\SetKwData{PASSES}{correlation passes}
+\SetKwData{PARAMS}{block params}
+\SetKwData{FIRST}{first}
+\SetKwData{LAST}{last}
+\SetKwData{BLOCK}{block}
+\SetKwData{CHANNELS}{channels}
+\SetKwData{CHANNEL}{channel}
+$(\text{\BLOCKSETCOUNT}~,~\text{\BLOCKSETCHANNELS}) \leftarrow$ determine block split\;
+\For{b = 0 \emph{\KwTo}\BLOCKSETCOUNT}{
+  $\text{\PARAMS}_{0~b} \leftarrow$ determine initial correlation parameters and entropy variables from correlation passes and $\text{\BLOCKSETCHANNELS}_b$\;
+}
+\BlankLine
 $\text{\BLOCKINDEX} \leftarrow 0$\;
+$s \leftarrow 0$\tcc*[r]{the number of block sets written}
 \While{PCM frames remain}{
-  take up to \BLOCKSIZE PCM frames from the input\;
+  $\text{\CHANNELS} \leftarrow$ take up to \BLOCKSIZE PCM frames from the input\;
   update the stream's MD5 sum with that PCM data\;
-  write PCM frames to one or more block sets, depending on channel count\;
+  $c \leftarrow 0$\;
+  \For(\tcc*[f]{blocks in each set}){b = 0 \emph{\KwTo}\BLOCKSETCOUNT}{
+    \lIf{$b = 0$}{$\text{\FIRST} = 1$}
+    \lElse{$\text{\FIRST} = 0$}\;
+    \lIf{$b = \text{\BLOCKSETCOUNT} - 1$}{$\text{\LAST} = 1$}
+    \lElse{$\text{\LAST} = 0$}\;
+    \uIf{$\text{\BLOCKSETCHANNELS}_b = 1$}{
+      $(\text{\BLOCK}_{(s \times \text{\BLOCKSETCHANNELS}) + b}~,~\text{\PARAMS}_{(s + 1)~b}) \leftarrow$ write block\newline
+      using $\text{\CHANNEL}_c$, \BLOCKINDEX, \FIRST, \LAST and $\text{\PARAMS}_{s~b}$\;
+      $c \leftarrow c + 1$\;
+    }
+    \ElseIf{$\text{\BLOCKSETCHANNELS}_b = 2$}{
+      $(\text{\BLOCK}_{(s \times \text{\BLOCKSETCHANNELS}) + b}~,~\text{\PARAMS}_{(s + 1)~b}) \leftarrow$ write block\newline
+      using $\text{\CHANNEL}_c/\text{\CHANNEL}_{c + 1}$, \BLOCKINDEX, \FIRST, \LAST and $\text{\PARAMS}_{s~b}$\;
+      $c \leftarrow c + 2$\;
+    }
+  }
+  $s \leftarrow s + 1$\;
   $\text{\BLOCKINDEX} \leftarrow \text{\BLOCKINDEX} + \text{PCM data's frame count}$\;
 }
 \BlankLine
@@ -2300,84 +2332,248 @@ update \VAR{total samples} field in all block headers with \BLOCKINDEX\;
 
 \clearpage
 
-\subsection{Writing Block Set}
-{\relsize{-1}
-\ALGORITHM{PCM frames and their channel assignment, block index, encoding parameters}{one or more WavPack blocks}
-\SetKwData{CHANNEL}{channel}
-\SetKwData{FIRST}{first}
-\SetKwData{LAST}{last}
+\subsection{Determine Block Split}
+\ALGORITHM{input stream's channel assignment}{number of blocks per set, list of channel counts per block}
+\SetKwData{BLOCKCOUNT}{block count}
+\SetKwData{BLOCKCHANNELS}{block channels}
 \Switch(\tcc*[f]{split channels by left/right pairs}){channel assignment}{
   \uCase{mono}{
-    \begin{tabular}{lrr}
-      write $\text{\CHANNEL}_0$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 1$ \\
-    \end{tabular}\;
+    $\text{\BLOCKCOUNT} \leftarrow 1$\;
+    $\text{\BLOCKCHANNELS} \leftarrow \texttt{[1]}$\;
   }
   \uCase{front left, front right}{
-    \begin{tabular}{lrr}
-      write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 1$ \\
-    \end{tabular}\;
+    $\text{\BLOCKCOUNT} \leftarrow 1$\;
+    $\text{\BLOCKCHANNELS} \leftarrow \texttt{[2]}$\;
   }
   \uCase{front left, front right, front center}{
-    \begin{tabular}{lrr}
-      write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 0$ \\
-      write $\text{\CHANNEL}_2$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 1$ \\
-    \end{tabular}\;
+    $\text{\BLOCKCOUNT} \leftarrow 2$\;
+    $\text{\BLOCKCHANNELS} \leftarrow \texttt{[2, 1]}$\;
   }
   \uCase{front left, front right, back left, back right}{
-    \begin{tabular}{lrr}
-      write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 0$ \\
-      write $\text{\CHANNEL}_2/\text{\CHANNEL}_3$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 1$ \\
-    \end{tabular}\;
+    $\text{\BLOCKCOUNT} \leftarrow 2$\;
+    $\text{\BLOCKCHANNELS} \leftarrow \texttt{[2, 2]}$\;
   }
   \uCase{front left, front right, front center, back center}{
-    \begin{tabular}{lrr}
-      write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 0$ \\
-      write $\text{\CHANNEL}_2$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 0$ \\
-      write $\text{\CHANNEL}_3$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 1$ \\
-    \end{tabular}\;
+    $\text{\BLOCKCOUNT} \leftarrow 3$\;
+    $\text{\BLOCKCHANNELS} \leftarrow \texttt{[2, 1, 1]}$\;
   }
   \uCase{front left, front right, front center, back left, back right}{
-    \begin{tabular}{lrr}
-      write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 0$ \\
-      write $\text{\CHANNEL}_2$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 0$ \\
-      write $\text{\CHANNEL}_3/\text{\CHANNEL}_4$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 1$ \\
-    \end{tabular}\;
+    $\text{\BLOCKCOUNT} \leftarrow 3$\;
+    $\text{\BLOCKCHANNELS} \leftarrow \texttt{[2, 1, 2]}$\;
   }
   \uCase{front left, front right, front center, LFE, back left, back right}{
-    \begin{tabular}{lrr}
-      write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 0$ \\
-      write $\text{\CHANNEL}_2$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 0$ \\
-      write $\text{\CHANNEL}_3$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 0$ \\
-      write $\text{\CHANNEL}_4/\text{\CHANNEL}_5$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 1$ \\
-    \end{tabular}\;
+    $\text{\BLOCKCOUNT} \leftarrow 4$\;
+    $\text{\BLOCKCHANNELS} \leftarrow \texttt{[2, 1, 1, 2]}$\;
   }
   \Other(\tcc*[f]{save them independently}){
-    \For{i = 0 \emph{\KwTo}channel count}{
-      \lIf{$i = 0$}{$\text{\FIRST} = 1$}
-      \lElse{$\text{\FIRST} = 0$}\;
-      \lIf{$i = \text{channel count} - 1$}{$\text{\LAST} = 1$}
-      \lElse{$\text{\LAST} = 0$}\;
-      write $\text{\CHANNEL}_i$ to block\;
-    }
+    $\text{\BLOCKCOUNT} \leftarrow$ channel count\;
+    $\text{\BLOCKCHANNELS} \leftarrow$ 1 per channel\;
   }
 }
-\Return set of encoded WavPack blocks\;
+\Return \BLOCKCOUNT and \BLOCKCHANNELS
 \EALGORITHM
+\vskip 1ex
 \par
+\noindent
 One could invent alternate channel splits for other obscure assignments.
 WavPack's only requirement is that all channels must be in
 Wave order\footnote{see page \pageref{wave_channel_assignment}}
 and each block must contain 1 or 2 channels.
-}
+
 \begin{figure}[h]
 \includegraphics{figures/wavpack/block_channels.pdf}
 \end{figure}
 
+\begin{landscape}
+
+\subsection{Determine Correlation Parameters and Entropy Variables}
+These are the initial encoding parameters for a given block.
+Correlation terms, deltas, weights and samples are for performing
+correlation passes over a given set of samples.
+Entropy variables are for encoding correlated samples into a bitstream.
+Terms and deltas will remain static, while weights, samples
+and entropy variables will change from one block to the next for a
+given set of channels.
+\vskip .25in
+\ALGORITHM{correlation pass count, block's channel count of 1 or 2}{correlation term, delta, weights and samples for each pass; entropy variables}
+{\relsize{-2}
+$\text{entropy}_0 \leftarrow \texttt{[0, 0, 0]}$\;
+$\text{entropy}_1 \leftarrow \texttt{[0, 0, 0]}$\;
+\BlankLine
+\If{$\text{channel count} = 1$}{
+\Switch{correlation pass count}{
+\uCase{1}{
+\begin{tabular}{r|rrrl}
+$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & $\text{samples}_{0~i}$ \\
+\hline
+0 & 18 & 2 & 0 & \texttt{[0, 0]} \\
+\end{tabular}
+}
+\uCase{2}{
+\begin{tabular}{r|rrrl}
+$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & $\text{samples}_{0~i}$ \\
+\hline
+0 & 17 & 2 & 0 & \texttt{[0, 0]} \\
+1 & 18 & 2 & 0 & \texttt{[0, 0]} \\
+\end{tabular}
+}
+\uCase(\tcc*[f]{one channel blocks don't use negative terms}){5, 10, or 16}{
+\begin{tabular}{r|rrrl}
+$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & $\text{samples}_{0~i}$ \\
+\hline
+0 & 3 & 2 & 0 & \texttt{[0, 0, 0]} \\
+1 & 17 & 2 & 0 & \texttt{[0, 0]} \\
+2 & 2 & 2 & 0 & \texttt{[0, 0]} \\
+3 & 18 & 2 & 0 & \texttt{[0, 0]} \\
+4 & 18 & 2 & 0 & \texttt{[0, 0]} \\
+\end{tabular}
+}}}}
+\EALGORITHM
+
 \clearpage
+
+\begin{algorithm}
+{\relsize{-2}
+\ElseIf{$\text{channel count} = 2$}{
+\Switch{correlation pass count}{
+\uCase{1}{
+\begin{tabular}{r|rrrrll}
+$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & $\text{weight}_{1~i}$ & $\text{samples}_{0~i}$ & $\text{samples}_{1~i}$ \\
+\hline
+0 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+\end{tabular}
+}
+\uCase{2}{
+\begin{tabular}{r|rrrrll}
+$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & $\text{weight}_{1~i}$ & $\text{samples}_{0~i}$ & $\text{samples}_{1~i}$ \\
+\hline
+0 & 17 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+1 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+\end{tabular}
+}
+\uCase{5}{
+\begin{tabular}{r|rrrrll}
+$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & $\text{weight}_{1~i}$ & $\text{samples}_{0~i}$ & $\text{samples}_{1~i}$ \\
+\hline
+0 & 3 & 2 & 0 & 0 & \texttt{[0, 0, 0]} & \texttt{[0, 0, 0]} \\
+1 & 17 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+2 & 2 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+3 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+4 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+\end{tabular}
+}
+\uCase{10}{
+\begin{tabular}{r|rrrrll}
+$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & $\text{weight}_{1~i}$ & $\text{samples}_{0~i}$ & $\text{samples}_{1~i}$ \\
+\hline
+0 & 4 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0]} & \texttt{[0, 0, 0, 0]} \\
+1 & 17 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+2 & -1 & 2 & 0 & 0 & \texttt{[0]} & \texttt{[0]} \\
+3 & 5 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0, 0]} & \texttt{[0, 0, 0, 0, 0]} \\
+4 & 3 & 2 & 0 & 0 & \texttt{[0, 0, 0]} & \texttt{[0, 0, 0]} \\
+5 & 2 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+6 & -2 & 2 & 0 & 0 & \texttt{[0]} & \texttt{[0]} \\
+7 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+8 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+9 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+\end{tabular}
+}
+\Case{16}{
+\begin{tabular}{r|rrrrll}
+$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & $\text{weight}_{1~i}$ & $\text{samples}_{0~i}$ & $\text{samples}_{1~i}$ \\
+\hline
+0 & 2 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+1 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+2 & -1 & 2 & 0 & 0 & \texttt{[0]} & \texttt{[0]} \\
+3 & 8 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0, 0, 0, 0, 0]} & \texttt{[0, 0, 0, 0, 0, 0, 0, 0]} \\
+4 & 6 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0, 0, 0]} & \texttt{[0, 0, 0, 0, 0, 0]} \\
+5 & 3 & 2 & 0 & 0 & \texttt{[0, 0, 0]} & \texttt{[0, 0, 0]} \\
+6 & 5 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0, 0]} & \texttt{[0, 0, 0, 0, 0]} \\
+7 & 7 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0, 0, 0, 0]} & \texttt{[0, 0, 0, 0, 0, 0, 0]} \\
+8 & 4 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0]} & \texttt{[0, 0, 0, 0]} \\
+9 & 2 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+10 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+11 & -2 & 2 & 0 & 0 & \texttt{[0]} & \texttt{[0]} \\
+12 & 3 & 2 & 0 & 0 & \texttt{[0, 0, 0]} & \texttt{[0, 0, 0]} \\
+13 & 2 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+14 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+15 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+\end{tabular}
+}}}}
+\end{algorithm}
+
+\end{landscape}
+
+%% \subsection{Writing Block Set}
+%% {\relsize{-1}
+%% \ALGORITHM{PCM frames and their channel assignment, block index, encoding parameters}{one or more WavPack blocks}
+%% \SetKwData{CHANNEL}{channel}
+%% \SetKwData{FIRST}{first}
+%% \SetKwData{LAST}{last}
+%% \Switch(\tcc*[f]{split channels by left/right pairs}){channel assignment}{
+%%   \uCase{mono}{
+%%     \begin{tabular}{lrr}
+%%       write $\text{\CHANNEL}_0$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 1$ \\
+%%     \end{tabular}\;
+%%   }
+%%   \uCase{front left, front right}{
+%%     \begin{tabular}{lrr}
+%%       write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 1$ \\
+%%     \end{tabular}\;
+%%   }
+%%   \uCase{front left, front right, front center}{
+%%     \begin{tabular}{lrr}
+%%       write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 0$ \\
+%%       write $\text{\CHANNEL}_2$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 1$ \\
+%%     \end{tabular}\;
+%%   }
+%%   \uCase{front left, front right, back left, back right}{
+%%     \begin{tabular}{lrr}
+%%       write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 0$ \\
+%%       write $\text{\CHANNEL}_2/\text{\CHANNEL}_3$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 1$ \\
+%%     \end{tabular}\;
+%%   }
+%%   \uCase{front left, front right, front center, back center}{
+%%     \begin{tabular}{lrr}
+%%       write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 0$ \\
+%%       write $\text{\CHANNEL}_2$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 0$ \\
+%%       write $\text{\CHANNEL}_3$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 1$ \\
+%%     \end{tabular}\;
+%%   }
+%%   \uCase{front left, front right, front center, back left, back right}{
+%%     \begin{tabular}{lrr}
+%%       write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 0$ \\
+%%       write $\text{\CHANNEL}_2$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 0$ \\
+%%       write $\text{\CHANNEL}_3/\text{\CHANNEL}_4$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 1$ \\
+%%     \end{tabular}\;
+%%   }
+%%   \uCase{front left, front right, front center, LFE, back left, back right}{
+%%     \begin{tabular}{lrr}
+%%       write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 0$ \\
+%%       write $\text{\CHANNEL}_2$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 0$ \\
+%%       write $\text{\CHANNEL}_3$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 0$ \\
+%%       write $\text{\CHANNEL}_4/\text{\CHANNEL}_5$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 1$ \\
+%%     \end{tabular}\;
+%%   }
+%%   \Other(\tcc*[f]{save them independently}){
+%%     \For{i = 0 \emph{\KwTo}channel count}{
+%%       \lIf{$i = 0$}{$\text{\FIRST} = 1$}
+%%       \lElse{$\text{\FIRST} = 0$}\;
+%%       \lIf{$i = \text{channel count} - 1$}{$\text{\LAST} = 1$}
+%%       \lElse{$\text{\LAST} = 0$}\;
+%%       write $\text{\CHANNEL}_i$ to block\;
+%%     }
+%%   }
+%% }
+%% \Return set of encoded WavPack blocks\;
+%% \EALGORITHM
+
+
+%% \clearpage
 
 \subsection{Writing Block}
 {\relsize{-1}
-\ALGORITHM{1 or 2 channels of PCM frames, block index, first block, last block, encoding parameters}{a single WavPack block}
+\ALGORITHM{1 or 2 channels of PCM frames, block index, first block, last block, encoding parameters from previous block}{a WavPack block, encoding parameters for next block}
 \SetKwData{CHANNEL}{channel}
 \SetKwData{MONO}{mono output}
 \SetKwData{FALSESTEREO}{false stereo}
@@ -2388,6 +2584,12 @@ and each block must contain 1 or 2 channels.
 \SetKwData{CORRELATED}{correlated}
 \SetKwData{MID}{mid}
 \SetKwData{SIDE}{side}
+\SetKwData{TERMS}{terms}
+\SetKwData{DELTAS}{deltas}
+\SetKwData{WEIGHTS}{weights}
+\SetKwData{SAMPLES}{samples}
+\SetKwData{BITSTREAM}{bitstream}
+\SetKwData{ENTROPY}{entropy}
 \SetKw{OR}{or}
 \SetKwFunction{MAX}{max}
 \SetKwFunction{MIN}{min}
@@ -2409,7 +2611,10 @@ and each block must contain 1 or 2 channels.
     $\text{\SHIFTED}_0 \leftarrow \text{\CHANNEL}_0$\;
   }
   $\text{\CRC} \leftarrow$ calculate CRC of $\text{\SHIFTED}_0$\;
-  $\text{\CORRELATED}_0 \leftarrow$ correlate $\text{\SHIFTED}_0$ with the given number of correlation passes\;
+  $(\text{\CORRELATED}_0~,~\text{\TERMS}'~,~\text{\DELTAS}'~,~\text{\WEIGHTS}'~,~\text{\SAMPLES}') \leftarrow$ correlate $\text{\SHIFTED}_0$\newline
+  with \TERMS, \DELTAS, \WEIGHTS and \SAMPLES from encoding parameters\;
+  $(\text{\BITSTREAM}~,~\text{\ENTROPY}') \leftarrow$ calculate bitstream from $\text{\CORRELATED}_0$\newline
+  and $\text{\ENTROPY}$ from encoding parameters\;
 }(\tcc*[f]{2 channel block}){
   $\text{\MONO} \leftarrow 0$\;
   $\text{\FALSESTEREO} \leftarrow 0$\;
@@ -2425,19 +2630,13 @@ and each block must contain 1 or 2 channels.
   }
   $\text{\CRC} \leftarrow$ calculate CRC of $\text{\SHIFTED}_0/\text{\SHIFTED}_1$\;
   $\text{\MID}/\text{\SIDE} \leftarrow$ convert $\text{\SHIFTED}_0/\text{\SHIFTED}_1$ to joint stereo\;
-  $\text{\CORRELATED}_0/\text{\CORRELATED}_1 \leftarrow$ correlate $\text{\MID}/\text{\SIDE}$ with the given number of correlation passes\;
+  $(\text{\CORRELATED}_0/\text{\CORRELATED}_1~,~\text{\TERMS}'~,~\text{\DELTAS}'~,~\text{\WEIGHTS}'~,~\text{\SAMPLES}') \leftarrow$ correlate $\text{\MID}/\text{\SIDE}$\newline
+  with \TERMS, \DELTAS, \WEIGHTS and \SAMPLES from encoding parameters\;
+  $(\text{\BITSTREAM}~,~\text{\ENTROPY}') \leftarrow$ calculate bitstream from $\text{\CORRELATED}_0/\text{\CORRELATED}_0$\newline
+  and $\text{\ENTROPY}$ from encoding parameters\;
 }
 \EALGORITHM
 }
-\par
-At this point we have enough information to build the block header
-and its sub blocks.
-However, because of prefixed length fields, we'll construct the sub blocks
-before the sub block headers and the full set of sub blocks
-before the block header.
-\begin{figure}[h]
-\includegraphics{figures/wavpack/stream2.pdf}
-\end{figure}
 
 \clearpage
 {\relsize{-1}
@@ -2445,6 +2644,12 @@ before the block header.
 \DontPrintSemicolon
 \SetKwData{SUBBLOCK}{sub block}
 \SetKwData{WASTEDBPS}{wasted bps}
+\SetKwData{BITSTREAM}{bitstream}
+\SetKwData{TERMS}{terms}
+\SetKwData{DELTAS}{deltas}
+\SetKwData{WEIGHTS}{weights}
+\SetKwData{SAMPLES}{samples}
+\SetKwData{ENTROPY}{entropy}
 \SetKw{NOT}{not}
 \SetKw{IN}{in}
 $i \leftarrow 0$\;
@@ -2453,9 +2658,9 @@ $i \leftarrow 0$\;
   $i \leftarrow i + 1$\;
 }
 \If{$\text{decorrelation passes} > 0$}{
-  $\text{\SUBBLOCK}_i \leftarrow$ decorrelation terms\;
-  $\text{\SUBBLOCK}_{i + 1} \leftarrow$ decorrelation weights\;
-  $\text{\SUBBLOCK}_{i + 2} \leftarrow$ decorrelation samples\;
+  $\text{\SUBBLOCK}_i \leftarrow$ decorrelation terms sub block from \TERMS and \DELTAS\;
+  $\text{\SUBBLOCK}_{i + 1} \leftarrow$ decorrelation weights sub block  from \WEIGHTS\;
+  $\text{\SUBBLOCK}_{i + 2} \leftarrow$ decorrelation samples sub block  from \SAMPLES\;
   $i \leftarrow i + 3$\;
 }
 \If{$\text{\WASTEDBPS} > 0$}{
@@ -2470,13 +2675,14 @@ $i \leftarrow 0$\;
   $\text{\SUBBLOCK}_i \leftarrow$ sample rate\;
   $i \leftarrow i + 1$\;
 }
-$\text{\SUBBLOCK}_i \leftarrow$ entropy variables\;
-$\text{\SUBBLOCK}_{i + 1} \leftarrow$ bitstream\;
+$\text{\SUBBLOCK}_i \leftarrow$ entropy variables sub block from \ENTROPY\;
+$\text{\SUBBLOCK}_{i + 1} \leftarrow$ bitstream sub block from \BITSTREAM\;
 \BlankLine
 write block header\;
 \For{j = 0 \emph{\KwTo}i}{
   write $\text{\SUBBLOCK}_j$\;
 }
+\Return block data, $\text{\TERMS}'$, $\text{\DELTAS}'$, $\text{\WEIGHTS}'$, $\text{\SAMPLES}'$ and $\text{\ENTROPY}'$
 \end{algorithm}
 }
 
@@ -2704,84 +2910,7 @@ $i$ & $\text{left}_i$ & $\text{right}_i$ & \text{mid}_i & \text{side}_i \\
 }
 \EALGORITHM
 
-\clearpage
 
-\subsubsection{Correlation Terms, Deltas, Initial Weights and Initial Samples}
-{\relsize{-2}
-\ALGORITHM{correlation pass count, channel count}{term, delta, weights and samples}
-\Switch{correlation pass count}{
-\uCase{1}{
-\begin{tabular}{r|rrrrll}
-$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & ($\text{weight}_{1~i}$) & $\text{samples}_{0~i}$ & ($\text{samples}_{1~i}$) \\
-\hline
-0 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-\end{tabular}
-}
-\uCase{2}{
-\begin{tabular}{r|rrrrll}
-$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & ($\text{weight}_{1~i}$) & $\text{samples}_{0~i}$ & ($\text{samples}_{1~i}$) \\
-\hline
-1 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-0 & 17 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-\end{tabular}
-}
-\uCase{5}{
-\begin{tabular}{r|rrrrll}
-$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & ($\text{weight}_{1~i}$) & $\text{samples}_{0~i}$ & ($\text{samples}_{1~i}$) \\
-\hline
-4 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-3 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-2 & 2 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-1 & 17 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-0 & 3 & 2 & 0 & 0 & \texttt{[0, 0, 0]} & \texttt{[0, 0, 0]} \\
-\end{tabular}
-}
-\uCase{10}{
-\begin{tabular}{r|rrrrll}
-$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & $\text{weight}_{1~i}$ & $\text{samples}_{0~i}$ & $\text{samples}_{1~i}$ \\
-\hline
-9 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-8 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-7 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-6 & -2 & 2 & 0 & 0 & \texttt{[0]} & \texttt{[0]} \\
-5 & 2 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-4 & 3 & 2 & 0 & 0 & \texttt{[0, 0, 0]} & \texttt{[0, 0, 0]} \\
-3 & 5 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0, 0]} & \texttt{[0, 0, 0, 0, 0]} \\
-2 & -1 & 2 & 0 & 0 & \texttt{[0]} & \texttt{[0]} \\
-1 & 17 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-0 & 4 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0]} & \texttt{[0, 0, 0, 0]} \\
-\end{tabular}
-}
-\Case{16}{
-\begin{tabular}{r|rrrrll}
-$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & $\text{weight}_{1~i}$ & $\text{samples}_{0~i}$ & $\text{samples}_{1~i}$ \\
-\hline
-15 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-14 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-13 & 2 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-12 & 3 & 2 & 0 & 0 & \texttt{[0, 0, 0]} & \texttt{[0, 0, 0]} \\
-11 & -2 & 2 & 0 & 0 & \texttt{[0]} & \texttt{[0]} \\
-10 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-9 & 2 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-8 & 4 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0]} & \texttt{[0, 0, 0, 0]} \\
-7 & 7 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0, 0, 0, 0]} & \texttt{[0, 0, 0, 0, 0, 0, 0]} \\
-6 & 5 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0, 0]} & \texttt{[0, 0, 0, 0, 0]} \\
-5 & 3 & 2 & 0 & 0 & \texttt{[0, 0, 0]} & \texttt{[0, 0, 0]} \\
-4 & 6 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0, 0, 0]} & \texttt{[0, 0, 0, 0, 0, 0]} \\
-3 & 8 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0, 0, 0, 0, 0]} & \texttt{[0, 0, 0, 0, 0, 0, 0, 0]} \\
-2 & -1 & 2 & 0 & 0 & \texttt{[0]} & \texttt{[0]} \\
-1 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-0 & 2 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-\end{tabular}
-}
-}
-\EALGORITHM
-}
-\par
-One channel blocks may have a \VAR{correlation pass count} of 1, 2 or 5.
-In that event, $\text{weight}_{1~i}$ and $\text{samples}_{1~i}$ are omitted.
-The negative correlation terms of \VAR{correlation pass count} 10 and 16
-are only applicable to two channel blocks.
 
 %% \begin{table}[h]
 %% \begin{tabular}{r||rrrrrr}
