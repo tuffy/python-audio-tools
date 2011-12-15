@@ -2387,15 +2387,25 @@ and each block must contain 1 or 2 channels.
 \begin{landscape}
 
 \subsection{Determine Correlation Parameters and Entropy Variables}
-These are the initial encoding parameters for a given block.
-Correlation terms, deltas, weights and samples are for performing
-correlation passes over a given set of samples.
-Entropy variables are for encoding correlated samples into a bitstream.
-Terms and deltas will remain static, while weights, samples
-and entropy variables will change from one block to the next for a
-given set of channels.
-\vskip .25in
-\ALGORITHM{correlation pass count, block's channel count of 1 or 2}{correlation term, delta, weights and samples for each pass; entropy variables}
+{\relsize{-1}
+\begin{description}
+\item[$\text{term}_{b~p}$] correlation term for block $b$, correlation pass $p$
+\item[$\text{delta}_{b~p}$] correlation delta for block $b$, correlation pass $p$
+\item[$\text{weight}_{b~p~c}$] correlation weight for block $b$, correlation pass $p$, channel $c$
+\item[$\text{sample}_{b~p~c~s}$] correlation sample $s$ for block $b$, correlation pass $p$, channel $c$
+\item[$\text{entropy}_{b~c~m}$] median $m$ for block $b$, channel $c$
+\end{description}
+\par
+\noindent
+We'll omit the block $b$ parameter since it will be the same
+throughout the block encode, but one must keep it in mind
+when transferring parameters from the block of one set of channels
+to the next block of those same channels.
+}
+\vskip .10in
+\par
+\noindent
+\ALGORITHM{correlation pass count, block's channel count of 1 or 2}{correlation term, delta, weights and samples for each pass; 3 entropy variables for each channel}
 {\relsize{-2}
 $\text{entropy}_0 \leftarrow \texttt{[0, 0, 0]}$\;
 $\text{entropy}_1 \leftarrow \texttt{[0, 0, 0]}$\;
@@ -2404,14 +2414,14 @@ $\text{entropy}_1 \leftarrow \texttt{[0, 0, 0]}$\;
 \Switch{correlation pass count}{
 \uCase{1}{
 \begin{tabular}{r|rrrl}
-$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & $\text{samples}_{0~i}$ \\
+$\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $\text{samples}_{p~0}$ \\
 \hline
 0 & 18 & 2 & 0 & \texttt{[0, 0]} \\
 \end{tabular}
 }
 \uCase{2}{
 \begin{tabular}{r|rrrl}
-$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & $\text{samples}_{0~i}$ \\
+$\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $\text{samples}_{p~0}$ \\
 \hline
 0 & 17 & 2 & 0 & \texttt{[0, 0]} \\
 1 & 18 & 2 & 0 & \texttt{[0, 0]} \\
@@ -2419,7 +2429,7 @@ $\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ &
 }
 \uCase(\tcc*[f]{one channel blocks don't use negative terms}){5, 10, or 16}{
 \begin{tabular}{r|rrrl}
-$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & $\text{samples}_{0~i}$ \\
+$\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $\text{samples}_{p~0}$ \\
 \hline
 0 & 3 & 2 & 0 & \texttt{[0, 0, 0]} \\
 1 & 17 & 2 & 0 & \texttt{[0, 0]} \\
@@ -2438,14 +2448,14 @@ $\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ &
 \Switch{correlation pass count}{
 \uCase{1}{
 \begin{tabular}{r|rrrrll}
-$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & $\text{weight}_{1~i}$ & $\text{samples}_{0~i}$ & $\text{samples}_{1~i}$ \\
+$\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $\text{weight}_{p~0}$ & $\text{samples}_{p~0}$ & $\text{samples}_{p~0}$ \\
 \hline
 0 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
 \end{tabular}
 }
 \uCase{2}{
 \begin{tabular}{r|rrrrll}
-$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & $\text{weight}_{1~i}$ & $\text{samples}_{0~i}$ & $\text{samples}_{1~i}$ \\
+$\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $\text{weight}_{p~1}$ & $\text{samples}_{p~0}$ & $\text{samples}_{p~1}$ \\
 \hline
 0 & 17 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
 1 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
@@ -2453,7 +2463,7 @@ $\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ &
 }
 \uCase{5}{
 \begin{tabular}{r|rrrrll}
-$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & $\text{weight}_{1~i}$ & $\text{samples}_{0~i}$ & $\text{samples}_{1~i}$ \\
+$\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $\text{weight}_{p~1}$ & $\text{samples}_{p~0}$ & $\text{samples}_{p~1}$ \\
 \hline
 0 & 3 & 2 & 0 & 0 & \texttt{[0, 0, 0]} & \texttt{[0, 0, 0]} \\
 1 & 17 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
@@ -2464,7 +2474,7 @@ $\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ &
 }
 \uCase{10}{
 \begin{tabular}{r|rrrrll}
-$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & $\text{weight}_{1~i}$ & $\text{samples}_{0~i}$ & $\text{samples}_{1~i}$ \\
+$\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $\text{weight}_{p~1}$ & $\text{samples}_{p~0}$ & $\text{samples}_{p~1}$ \\
 \hline
 0 & 4 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0]} & \texttt{[0, 0, 0, 0]} \\
 1 & 17 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
@@ -2480,7 +2490,7 @@ $\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ &
 }
 \Case{16}{
 \begin{tabular}{r|rrrrll}
-$\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ & $\text{weight}_{1~i}$ & $\text{samples}_{0~i}$ & $\text{samples}_{1~i}$ \\
+$\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $\text{weight}_{p~1}$ & $\text{samples}_{p~0}$ & $\text{samples}_{p~1}$ \\
 \hline
 0 & 2 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
 1 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
@@ -2611,7 +2621,7 @@ $\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ &
     $\text{\SHIFTED}_0 \leftarrow \text{\CHANNEL}_0$\;
   }
   $\text{\CRC} \leftarrow$ calculate CRC of $\text{\SHIFTED}_0$\;
-  $(\text{\CORRELATED}_0~,~\text{\TERMS}'~,~\text{\DELTAS}'~,~\text{\WEIGHTS}'~,~\text{\SAMPLES}') \leftarrow$ correlate $\text{\SHIFTED}_0$\newline
+  $(\text{\CORRELATED}_0~,~\text{\WEIGHTS}'~,~\text{\SAMPLES}') \leftarrow$ correlate $\text{\SHIFTED}_0$\newline
   with \TERMS, \DELTAS, \WEIGHTS and \SAMPLES from encoding parameters\;
   $(\text{\BITSTREAM}~,~\text{\ENTROPY}') \leftarrow$ calculate bitstream from $\text{\CORRELATED}_0$\newline
   and $\text{\ENTROPY}$ from encoding parameters\;
@@ -2630,7 +2640,7 @@ $\text{pass}_i$ & $\text{term}_{i}$ & $\text{delta}_i$ & $\text{weight}_{0~i}$ &
   }
   $\text{\CRC} \leftarrow$ calculate CRC of $\text{\SHIFTED}_0/\text{\SHIFTED}_1$\;
   $\text{\MID}/\text{\SIDE} \leftarrow$ convert $\text{\SHIFTED}_0/\text{\SHIFTED}_1$ to joint stereo\;
-  $(\text{\CORRELATED}_0/\text{\CORRELATED}_1~,~\text{\TERMS}'~,~\text{\DELTAS}'~,~\text{\WEIGHTS}'~,~\text{\SAMPLES}') \leftarrow$ correlate $\text{\MID}/\text{\SIDE}$\newline
+  $(\text{\CORRELATED}_0/\text{\CORRELATED}_1~,~\text{\WEIGHTS}'~,~\text{\SAMPLES}') \leftarrow$ correlate $\text{\MID}/\text{\SIDE}$\newline
   with \TERMS, \DELTAS, \WEIGHTS and \SAMPLES from encoding parameters\;
   $(\text{\BITSTREAM}~,~\text{\ENTROPY}') \leftarrow$ calculate bitstream from $\text{\CORRELATED}_0/\text{\CORRELATED}_0$\newline
   and $\text{\ENTROPY}$ from encoding parameters\;
@@ -2682,7 +2692,7 @@ write block header\;
 \For{j = 0 \emph{\KwTo}i}{
   write $\text{\SUBBLOCK}_j$\;
 }
-\Return block data, $\text{\TERMS}'$, $\text{\DELTAS}'$, $\text{\WEIGHTS}'$, $\text{\SAMPLES}'$ and $\text{\ENTROPY}'$
+\Return block data, $\text{\WEIGHTS}'$, $\text{\SAMPLES}'$ and $\text{\ENTROPY}'$
 \end{algorithm}
 }
 
@@ -2882,7 +2892,8 @@ $i$ & $\text{left}_i$ & $\text{right}_i$ & \text{mid}_i & \text{side}_i \\
 \end{table}
 
 \subsection{Correlation Passes}
-\ALGORITHM{a list of signed samples per channel, the number of correlation passes; correlation weights and samples from the previous block (if any)}{a list of signed residuals per channel; correlation weights and samples for the next block}
+{\relsize{-1}
+\ALGORITHM{a list of signed samples per channel; correlation terms, deltas, weights and samples}{a list of signed residuals per channel; correlation weights and samples for the next block}
 \SetKwData{PASS}{pass}
 \SetKwData{CHANNEL}{channel}
 \SetKwData{TERMCOUNT}{term count}
@@ -2892,23 +2903,28 @@ $i$ & $\text{left}_i$ & $\text{right}_i$ & \text{mid}_i & \text{side}_i \\
 \SetKwData{SAMPLES}{samples}
 \SetKw{KwDownTo}{downto}
 \eIf{$\text{channel count} = 1$}{
-  $\text{\PASS}_{0~\text{\TERMCOUNT}} \leftarrow \text{\CHANNEL}_0$\;
-  \For{i = \TERMCOUNT \emph{\KwDownTo}0}{
-    correlate 1 channel $\text{\PASS}_{0~(i + 1)}$ to $\text{\PASS}_{0~i}$\newline
-    using $\text{\TERM}_i$, $\text{\DELTA}_i$, $\text{\WEIGHT}_{0~i}$ and
-    $\text{\SAMPLES}_{0~i}$\;
+  $\text{\PASS}_{0~-1} \leftarrow \text{\CHANNEL}_0$\;
+  \For(\tcc*[f]{perform passes in reverse order}){i = 0 \emph{\KwTo}\TERMCOUNT}{
+    $p \leftarrow \TERMCOUNT - i - 1$\;
+    $(\text{\PASS}_{0~i}~,~\text{\WEIGHT}'_{p~0}~,~\text{\SAMPLES}'_{p~0}) \leftarrow $correlate $\text{\PASS}_{0~(i - 1)}$\newline
+    using $\text{\TERM}_p$, $\text{\DELTA}_p$, $\text{\WEIGHT}_{p~0}$ and
+    $\text{\SAMPLES}_{p~0}$\;
   }
-  \Return $\text{\PASS}_{0~0}$
+  \Return $\text{\PASS}_{0~(\TERMCOUNT - 1)}$, $\text{\WEIGHT}'$ values, $\text{\SAMPLES}'$ values\;
 }{
-  $\text{\PASS}_{0~\text{\TERMCOUNT}} \leftarrow \text{\CHANNEL}_0$\;
-  $\text{\PASS}_{1~\text{\TERMCOUNT}} \leftarrow \text{\CHANNEL}_1$\;
-  \For{i = \TERMCOUNT \emph{\KwDownTo}0}{
-    correlate 2 channel $\text{\PASS}_{0~(i + 1)}~/~\text{\PASS}_{1~(i + 1)}$ to $\text{\PASS}_{0~i}~/~\text{\PASS}_{1~i}$\newline
-    using $\text{\TERM}_i$, $\text{\DELTA}_i$, $\text{\WEIGHT}_{0~i}$,  $\text{\WEIGHT}_{1~i}$, $\text{\SAMPLES}_{0~i}$ and $\text{\SAMPLES}_{1~i}$\;
+  $\text{\PASS}_{0~-1} \leftarrow \text{\CHANNEL}_0$\;
+  $\text{\PASS}_{1~-1} \leftarrow \text{\CHANNEL}_1$\;
+  \For(\tcc*[f]{perform passes in reverse order}){i = 0 \emph{\KwTo}\TERMCOUNT}{
+    $p \leftarrow \TERMCOUNT - i - 1$\;
+    $(\text{\PASS}_{0~i}~/~\text{\PASS}_{1~i}~,~\text{\WEIGHT}'_{p~0}~,~\text{\WEIGHT}'_{p~1}~,~\text{\SAMPLES}'_{p~0}~,~\text{\SAMPLES}'_{p~1}) \leftarrow$ correlate $\text{\PASS}_{0~(i - 1)}~/~\text{\PASS}_{1~(i - 1)}$\newline
+    using $\text{\TERM}_p$, $\text{\DELTA}_p$, $\text{\WEIGHT}_{p~0}$,  $\text{\WEIGHT}_{p~1}$, $\text{\SAMPLES}_{p~0}$ and $\text{\SAMPLES}_{p~1}$\;
   }
-  \Return $\text{\PASS}_{0~0}~/~\text{\PASS}_{1~0}$
+  \Return $\text{\PASS}_{0~(\TERMCOUNT - 1)}~/~\text{\PASS}_{1~(\TERMCOUNT - 1)}$, $\text{\WEIGHT}'$ values, $\text{\SAMPLES}'$ values\;
 }
 \EALGORITHM
+}
+
+\clearpage
 
 
 
