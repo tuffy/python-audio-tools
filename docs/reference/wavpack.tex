@@ -2891,8 +2891,9 @@ $i$ & $\text{left}_i$ & $\text{right}_i$ & \text{mid}_i & \text{side}_i \\
 }
 \end{table}
 
+\clearpage
+
 \subsection{Correlation Passes}
-{\relsize{-1}
 \ALGORITHM{a list of signed samples per channel; correlation terms, deltas, weights and samples}{a list of signed residuals per channel; correlation weights and samples for the next block}
 \SetKwData{PASS}{pass}
 \SetKwData{CHANNEL}{channel}
@@ -2903,30 +2904,154 @@ $i$ & $\text{left}_i$ & $\text{right}_i$ & \text{mid}_i & \text{side}_i \\
 \SetKwData{SAMPLES}{samples}
 \SetKw{KwDownTo}{downto}
 \eIf{$\text{channel count} = 1$}{
-  $\text{\PASS}_{0~-1} \leftarrow \text{\CHANNEL}_0$\;
+  $\text{\PASS}_{-1~0} \leftarrow \text{\CHANNEL}_0$\;
   \For(\tcc*[f]{perform passes in reverse order}){i = 0 \emph{\KwTo}\TERMCOUNT}{
     $p \leftarrow \TERMCOUNT - i - 1$\;
-    $(\text{\PASS}_{0~i}~,~\text{\WEIGHT}'_{p~0}~,~\text{\SAMPLES}'_{p~0}) \leftarrow $correlate $\text{\PASS}_{0~(i - 1)}$\newline
+    $(\text{\PASS}_{i~0}~,~\text{\WEIGHT}'_{p~0}~,~\text{\SAMPLES}'_{p~0}) \leftarrow $correlate $\text{\PASS}_{0~(i - 1)}$\newline
     using $\text{\TERM}_p$, $\text{\DELTA}_p$, $\text{\WEIGHT}_{p~0}$ and
     $\text{\SAMPLES}_{p~0}$\;
   }
-  \Return $\text{\PASS}_{0~(\TERMCOUNT - 1)}$, $\text{\WEIGHT}'$ values, $\text{\SAMPLES}'$ values\;
+  \Return $\text{\PASS}_{(\TERMCOUNT - 1)~0}$, $\text{\WEIGHT}'$ values, $\text{\SAMPLES}'$ values\;
 }{
-  $\text{\PASS}_{0~-1} \leftarrow \text{\CHANNEL}_0$\;
-  $\text{\PASS}_{1~-1} \leftarrow \text{\CHANNEL}_1$\;
+  $\text{\PASS}_{-1~0} \leftarrow \text{\CHANNEL}_0$\;
+  $\text{\PASS}_{-1~1} \leftarrow \text{\CHANNEL}_1$\;
   \For(\tcc*[f]{perform passes in reverse order}){i = 0 \emph{\KwTo}\TERMCOUNT}{
     $p \leftarrow \TERMCOUNT - i - 1$\;
-    $(\text{\PASS}_{0~i}~/~\text{\PASS}_{1~i}~,~\text{\WEIGHT}'_{p~0}~,~\text{\WEIGHT}'_{p~1}~,~\text{\SAMPLES}'_{p~0}~,~\text{\SAMPLES}'_{p~1}) \leftarrow$ correlate $\text{\PASS}_{0~(i - 1)}~/~\text{\PASS}_{1~(i - 1)}$\newline
+    $(\text{\PASS}_{i~0}~/~\text{\PASS}_{i~1}~,~\text{\WEIGHT}'_{p~0}~,~\text{\WEIGHT}'_{p~1}~,~\text{\SAMPLES}'_{p~0}~,~\text{\SAMPLES}'_{p~1}) \leftarrow$ correlate $\text{\PASS}_{(i - 1)~0}~/~\text{\PASS}_{(i - 1)~1}$\newline
     using $\text{\TERM}_p$, $\text{\DELTA}_p$, $\text{\WEIGHT}_{p~0}$,  $\text{\WEIGHT}_{p~1}$, $\text{\SAMPLES}_{p~0}$ and $\text{\SAMPLES}_{p~1}$\;
   }
-  \Return $\text{\PASS}_{0~(\TERMCOUNT - 1)}~/~\text{\PASS}_{1~(\TERMCOUNT - 1)}$, $\text{\WEIGHT}'$ values, $\text{\SAMPLES}'$ values\;
+  \Return $\text{\PASS}_{(\TERMCOUNT - 1)~0}~/~\text{\PASS}_{(\TERMCOUNT - 1)~1}$, $\text{\WEIGHT}'$ values, $\text{\SAMPLES}'$ values\;
 }
 \EALGORITHM
+
+\clearpage
+
+\subsection{1 Channel Correlation Pass}
+{\relsize{-1}
+\ALGORITHM{a list of signed uncorrelated samples; correlation term, delta, weight and samples}{a list of signed correlated samples}
+\SetKwData{CORRELATED}{correlated}
+\SetKwData{DECORRELATED}{uncorrelated}
+\SetKwData{DECORRSAMPLE}{correlation sample}
+\SetKwData{WEIGHT}{weight}
+\SetKwData{TEMP}{temp}
+\SetKw{OR}{or}
+\SetKw{XOR}{xor}
+\SetKwFunction{APPLYWEIGHT}{apply\_weight}
+\SetKwFunction{UPDATEWEIGHT}{update\_weight}
+$\text{\WEIGHT}_0 \leftarrow$ decorrelation weight\;
+\BlankLine
+\uIf{$term = 18$}{
+  $\text{\DECORRELATED}_{-2} \leftarrow \text{\DECORRSAMPLE}_0$\;
+  $\text{\DECORRELATED}_{-1} \leftarrow \text{\DECORRSAMPLE}_1$\;
+  \For{i = 0 \emph{\KwTo}uncorrelated samples length}{
+    $\text{\TEMP}_{i} \leftarrow \lfloor(3 \times \text{\DECORRELATED}_{i - 1} - \text{\DECORRELATED}_{i - 2}) \div 2 \rfloor$\;
+    $\text{\CORRELATED}_i \leftarrow \text{\DECORRELATED}_i - \APPLYWEIGHT(\text{\WEIGHT}_i~,~\text{\TEMP}_{i})$\;
+    $\text{\WEIGHT}_{i + 1} \leftarrow \text{\WEIGHT}_i + \UPDATEWEIGHT(\text{\TEMP}_{i}~,~\text{\CORRELATED}_i~,~delta)$\;
+  }
+  \Return \CORRELATED samples\;
+}
+\uElseIf{$term = 17$}{
+  $\text{\DECORRELATED}_{-2} \leftarrow \text{\DECORRSAMPLE}_0$\;
+  $\text{\DECORRELATED}_{-1} \leftarrow \text{\DECORRSAMPLE}_1$\;
+  \For{i = 0 \emph{\KwTo}uncorrelated samples length}{
+    $\text{\TEMP}_{i} \leftarrow 2 \times \text{\DECORRELATED}_{i - 1} - \text{\DECORRELATED}_{i - 2}$\;
+    $\text{\CORRELATED}_i \leftarrow  \text{\DECORRELATED}_i - \APPLYWEIGHT(\text{\WEIGHT}_i~,~\text{\TEMP}_{i})$\;
+    $\text{\WEIGHT}_{i + 1} \leftarrow \text{\WEIGHT}_i + \UPDATEWEIGHT(\text{\TEMP}_{i}~,~\text{\CORRELATED}_i~,~delta)$\;
+  }
+  \Return \CORRELATED samples\;
+}
+\uElseIf{$1 \leq term \leq 8$}{
+  \For{i = 0 \emph{\KwTo}term}{
+    $\text{\DECORRELATED}_{i - \text{term}} \leftarrow \text{\DECORRSAMPLE}_i$\;
+  }
+  \For{i = 0 \emph{\KwTo}correlated samples length}{
+    $\text{\CORRELATED}_i \leftarrow  \text{\DECORRELATED}_i - \APPLYWEIGHT(\text{\WEIGHT}_i~,~\text{\CORRELATED}_{i - \text{term}})$\;
+    $\text{\WEIGHT}_{i + 1} \leftarrow \text{\WEIGHT}_i + \UPDATEWEIGHT(\text{\CORRELATED}_{i - \text{term}}~,~\text{\CORRELATED}_i~,~delta)$\;
+  }
+  \BlankLine
+  \Return \DECORRELATED\;
+}
+\Else{
+  invalid decorrelation term\;
+}
+\EALGORITHM
+\par
+\noindent
+\begin{align*}
+\intertext{where \texttt{apply\_weight} is defined as:}
+\texttt{apply\_weight}(weight~,~sample) &= \left\lfloor\frac{weight \times sample + 2 ^ 9}{2 ^ {10}}\right\rfloor \\
+\intertext{and \texttt{update\_weight} is defined as:}
+\texttt{update\_weight}(source~,~result~,~delta) &=
+\begin{cases}
+0 & \text{ if } source = 0 \text{ or } result = 0 \\
+delta & \text{ if } (source \textbf{ xor } result ) \geq 0 \\
+-delta & \text{ if } (source \textbf{ xor } result) < 0
+\end{cases}
+\end{align*}
 }
 
 \clearpage
 
-
+\subsection{2 Channel Correlation Pass}
+{\relsize{-1}
+\ALGORITHM{2 lists of signed uncorrelated samples; correlation term and delta, 2 correlation weights, 2 lists of correlation samples}{2 lists of signed correlated samples}
+\SetKwData{CORRELATED}{correlated}
+\SetKwData{DECORRELATED}{decorrelated}
+\SetKwData{DECORRSAMPLE}{decorrelation sample}
+\SetKwData{WEIGHT}{weight}
+\SetKw{OR}{or}
+\SetKw{XOR}{xor}
+\SetKwFunction{MIN}{min}
+\SetKwFunction{MAX}{max}
+\SetKwFunction{APPLYWEIGHT}{apply\_weight}
+\SetKwFunction{UPDATEWEIGHT}{update\_weight}
+\uIf{$17 \leq term \leq 18$ \OR $1 \leq term \leq 8$}{
+  $\text{\CORRELATED}_0 \leftarrow$ 1 channel decorrelation pass of $\text{\DECORRELATED}_0$\;
+  $\text{\CORRELATED}_1 \leftarrow$ 1 channel decorrelation pass of $\text{\DECORRELATED}_1$\;
+  \Return $\text{\CORRELATED}_0$ and $\text{\CORRELATED}_1$\;
+}
+\uElseIf{$-3 \leq term \leq -1$}{
+  $\text{\WEIGHT}_{0~0} \leftarrow$ correlation weight 0\;
+  $\text{\WEIGHT}_{1~0} \leftarrow$ correlation weight 1\;
+  $\text{\DECORRELATED}_{-2} \leftarrow \text{\DECORRSAMPLE}_{1~0}$\;
+  $\text{\DECORRELATED}_{-1} \leftarrow \text{\DECORRSAMPLE}_{0~0}$\;
+  \uIf{$term = -1$}{
+    \For{i = 0 \emph{\KwTo}correlated samples length}{
+      $\text{\CORRELATED}_{0~i} \leftarrow  \text{\DECORRELATED}_{0~i} - \APPLYWEIGHT(\text{\WEIGHT}_{0~i}~,~\text{\DECORRELATED}_{1~(i - 2)})$\;
+      $\text{\CORRELATED}_{1~i} \leftarrow \text{\DECORRELATED}_{1~i} - \APPLYWEIGHT(\text{\WEIGHT}_{1~i}~,~\text{\DECORRELATED}_{0~(i - 1)})$\;
+      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \text{\WEIGHT}_{0~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{1~(i - 2)}~,~\text{\CORRELATED}_{0~i}~,~delta)$\;
+      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \text{\WEIGHT}_{1~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{0~(i - 1)}~,~\text{\CORRELATED}_{1~i}~,~delta)$\;
+      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{0~(i + 1)}~,~1024)~,~-1024)$\;
+      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{1~(i + 1)}~,~1024)~,~-1024)$\;
+    }
+  }
+  \uElseIf{$term = -2$}{
+    \For{i = 0 \emph{\KwTo}correlated samples length}{
+      $\text{\CORRELATED}_{1~i} \leftarrow \text{\DECORRELATED}_{1~i} - \APPLYWEIGHT(\text{\WEIGHT}_{1~i}~,~\text{\DECORRELATED}_{0~({i - 2})})$\;
+      $\text{\CORRELATED}_{0~i} \leftarrow  \text{\DECORRELATED}_{0~i} - \APPLYWEIGHT(\text{\WEIGHT}_{0~i}~,~\text{\DECORRELATED}_{1~(i - 1)})$\;
+      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \text{\WEIGHT}_{1~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{0~(i - 2)}~,~\text{\CORRELATED}_{1~i}~,~delta)$\;
+      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \text{\WEIGHT}_{0~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{1~(i - 1)}~,~\text{\CORRELATED}_{0~i}~,~delta)$\;
+      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{1~(i + 1)}~,~1024)~,~-1024)$\;
+      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{0~(i + 1)}~,~1024)~,~-1024)$\;
+    }
+  }
+  \ElseIf{$term = -3$}{
+    \For{i = 0 \emph{\KwTo}correlated samples length}{
+      $\text{\CORRELATED}_{0~i} \leftarrow \text{\DECORRELATED}_{0~i} - \APPLYWEIGHT(\text{\WEIGHT}_{0~i}~,~\text{\DECORRELATED}_{1~(i - 1)})$\;
+      $\text{\CORRELATED}_{1~i} \leftarrow \text{\DECORRELATED}_{1~i} - \APPLYWEIGHT(\text{\WEIGHT}_{1~i}~,~\text{\DECORRELATED}_{0~(i - 1)})$\;
+      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \text{\WEIGHT}_{0~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{1~(i - 1)}~,~\text{\CORRELATED}_{0~i}~,~delta)$\;
+      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \text{\WEIGHT}_{1~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{0~(i - 1)}~,~\text{\CORRELATED}_{1~i}~,~delta)$\;
+      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{0~(i + 1)}~,~1024)~,~-1024)$\;
+      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{1~(i + 1)}~,~1024)~,~-1024)$\;
+    }
+  }
+  \Return $\text{\CORRELATED}_0$ and $\text{\CORRELATED}_1$\;
+}
+\Else{
+  invalid decorrelation term\;
+}
+\EALGORITHM
+}
 
 %% \begin{table}[h]
 %% \begin{tabular}{r||rrrrrr}
