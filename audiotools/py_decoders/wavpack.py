@@ -901,10 +901,10 @@ def decorrelation_pass_2ch(correlated,
                 weights[0] = max(min(weights[0], 1024), -1024)
         elif (term == -3):
             for i in xrange(len(correlated[0])):
-                decorrelated[0].append(apply_weight(weight_A,
+                decorrelated[0].append(apply_weight(weights[0],
                                                     decorrelated[1][i]) +
                                        correlated[0][i])
-                decorrelated[1].append(apply_weight(weight_B,
+                decorrelated[1].append(apply_weight(weights[1],
                                                     decorrelated[0][i]) +
                                        correlated[1][i])
 
