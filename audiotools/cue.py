@@ -64,7 +64,7 @@ def tokens(cuedata):
     #between tokens aren't enforced.
     TOKENS = [(re.compile("^(%s)" % (s)), element) for (s, element) in
               [(r'[A-Z]{2}[A-Za-z0-9]{3}[0-9]{7}', ISRC),
-               (r'[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2}', TIMESTAMP),
+               (r'[0-9]{1,3}:[0-9]{1,2}:[0-9]{1,2}', TIMESTAMP),
                (r'[0-9]+', NUMBER),
                (r'[\r\n]+', EOL),
                (r'".+?"', STRING),
