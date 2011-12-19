@@ -413,7 +413,9 @@ def read_decorrelation_terms(sub_block_size,
                              actual_size_1_less,
                              sub_block_data):
     """returns a list of decorrelation terms
-    and a list of decorrelation weights"""
+    and a list of decorrelation deltas per decorrelation pass
+
+    term[pass] , delta[pass]"""
 
     if (actual_size_1_less == 0):
         passes = sub_block_size * 2
@@ -443,8 +445,11 @@ def read_decorrelation_terms(sub_block_size,
 def read_decorrelation_weights(block_header, decorrelation_terms_count,
                                sub_block_size, actual_size_1_less,
                                sub_block_data):
-    """returns two lists of signed decorrelation weights
-    for one channel blocks, the second list will be empty"""
+    """returns one tuple of decorrelation weights per decorrelation pass
+    the number of weights in each tuple equals the number of channels
+
+    weight[pass][channel]
+    """
 
     if (actual_size_1_less == 0):
         weight_count = sub_block_size * 2
@@ -462,104 +467,109 @@ def read_decorrelation_weights(block_header, decorrelation_terms_count,
         else:
             weight_values.append(value_i * 2 ** 3)
 
-    weights = ([], [])
+    weights = []
     if ((block_header.mono_output == 0) and (block_header.false_stereo == 0)):
+        #two channels
         if ((weight_count / 2) > decorrelation_terms_count):
             raise ValueError("invalid number of decorrelation weights")
 
         for i in xrange(weight_count / 2):
-            weights[0].append(weight_values[i * 2])
-            weights[1].append(weight_values[i * 2 + 1])
+            weights.append((weight_values[i * 2],
+                            weight_values[i * 2 + 1]))
         for i in xrange(weight_count / 2, decorrelation_terms_count):
-            weights[0].append(0)
-            weights[1].append(0)
+            weights.append((0, 0))
 
-        weights[0].reverse()
-        weights[1].reverse()
+        weights.reverse()
     else:
+        #one channel
         if (weight_count > decorrelation_terms_count):
             raise ValueError("invalid number of decorrelation weights")
 
         for i in xrange(weight_count):
-            weights[0].append(weight_values[i])
+            weights.append((weight_values[i], ))
         for i in xrange(weight_count, decorrelation_terms_count):
-            weights[0].append(0)
-        weights[0].reverse()
+            weights.append((0, 0))
+        weights.reverse()
 
     return weights
 
 
 def read_decorrelation_samples(block_header, decorrelation_terms,
                                sub_block_size, sub_block_data):
-    """returns two lists of signed decorrelation samples lists
-    for one channel blocks, the second list will be empty"""
+    """returns one tuple of decorrelation samples lists
+    per decorrelation pass
+
+    sample[pass][channel][s]"""
 
     sub_block_bytes = sub_block_size * 2
 
-    samples = ([], [])
+    samples = []
     if ((block_header.mono_output == 0) and (block_header.false_stereo == 0)):
+        #two channels
         for term in reversed(decorrelation_terms):
             if ((17 <= term) and (term <= 18)):
                 if (sub_block_bytes >= 8):
-                    samples[0].append([read_exp2(sub_block_data),
-                                       read_exp2(sub_block_data)])
-                    samples[1].append([read_exp2(sub_block_data),
-                                       read_exp2(sub_block_data)])
+                    samples.append(([read_exp2(sub_block_data),
+                                     read_exp2(sub_block_data)],
+                                    [read_exp2(sub_block_data),
+                                     read_exp2(sub_block_data)]))
                     sub_block_bytes -= 8
                 else:
-                    samples[0].append([0, 0])
-                    samples[1].append([0, 0])
+                    samples.append(([0, 0], [0, 0]))
                     sub_block_bytes = 0
             elif ((1 <= term) and (term <= 8)):
+                term_samples = ([], [])
                 if (sub_block_bytes >= (term * 4)):
-                    samples[0].append([read_exp2(sub_block_data)
-                                       for i in xrange(term)])
-                    samples[1].append([read_exp2(sub_block_data)
-                                       for i in xrange(term)])
+                    for s in xrange(term):
+                        term_samples[0].append(read_exp2(sub_block_data))
+                        term_samples[1].append(read_exp2(sub_block_data))
                     sub_block_bytes -= (term * 4)
                 else:
-                    samples[0].append([0 for i in xrange(term)])
-                    samples[1].append([0 for i in xrange(term)])
+                    for s in xrange(term):
+                        term_samples[0].append(0)
+                        term_samples[1].append(0)
                     sub_block_bytes = 0
+                samples.append(term_samples)
             elif ((-3 <= term) and (term <= -1)):
                 if (sub_block_bytes >= 4):
-                    samples[0].append([read_exp2(sub_block_data)])
-                    samples[1].append([read_exp2(sub_block_data)])
+                    samples.append(([read_exp2(sub_block_data)],
+                                    [read_exp2(sub_block_data)]))
                     sub_block_bytes -= 4
                 else:
-                    samples[0].append([0])
-                    samples[1].append([0])
+                    samples.append(([0], [0]))
                     sub_block_bytes = 0
             else:
                 raise ValueError("invalid decorrelation term")
 
-        samples[0].reverse()
-        samples[1].reverse()
+        samples.reverse()
         return samples
     else:
+        #one channel
         for term in reversed(decorrelation_terms):
             if ((17 <= term) and (term <= 18)):
                 if (sub_block_bytes >= 4):
-                    samples[0].append([read_exp2(sub_block_data),
-                                       read_exp2(sub_block_data)])
+                    samples.append(([read_exp2(sub_block_data),
+                                     read_exp2(sub_block_data)],))
                     sub_block_bytes -= 4
                 else:
-                    samples[0].append([0, 0])
+                    samples[0].append(([0, 0],))
                     sub_block_bytes = 0
             elif ((1 <= term) and (term <= 8)):
+                term_samples = ([],)
                 if (sub_block_bytes >= (term * 2)):
-                    samples[0].append([read_exp2(sub_block_data)
-                                       for i in xrange(term)])
+                    for s in xrange(term):
+                        term_samples[0].append(read_exp2(sub_block_data))
                     sub_block_bytes -= (term * 2)
                 else:
-                    samples[0].append([0 for i in xrange(term)])
+                    for s in xrange(term):
+                        term_samples[0].append(0)
                     sub_block_bytes = 0
+                samples.append(term_samples)
             else:
                 raise ValueError("invalid decorrelation term")
 
-        samples[0].reverse()
+        samples.reverse()
         return samples
-
 
 def read_entropy_variables(block_header, sub_block_data):
     medians = ([], [])
@@ -785,8 +795,8 @@ def decorrelate_channels(residuals,
              weights,
              samples) in zip(decorrelation_terms,
                              decorrelation_deltas,
-                             zip(*decorrelation_weights),
-                             zip(*decorrelation_samples)):
+                             decorrelation_weights,
+                             decorrelation_samples):
              latest_pass = decorrelation_pass_2ch(latest_pass,
                                                   term,
                                                   delta,
@@ -800,8 +810,8 @@ def decorrelate_channels(residuals,
              weight,
              samples) in zip(decorrelation_terms,
                              decorrelation_deltas,
-                             decorrelation_weights[0],
-                             decorrelation_samples[0]):
+                             decorrelation_weights,
+                             decorrelation_samples):
              latest_pass = decorrelation_pass_1ch(latest_pass,
                                                   term,
                                                   delta,

@@ -699,45 +699,41 @@ wavpack_read_decorrelation_weights(const struct block_header* block_header,
     weights->reset(weights);
 
     if ((block_header->mono_output == 0) && (block_header->false_stereo == 0)) {
-        array_i* weights_0 = weights->append(weights);
-        array_i* weights_1 = weights->append(weights);
-
-        /*two channels of weights*/
+        /*two channels*/
         if ((weight_count / 2) > term_count) {
             weight_values->del(weight_values);
             return EXCESSIVE_DECORRELATION_WEIGHTS;
         }
         for (i = 0; i < weight_count / 2; i++) {
-            weights_0->append(weights_0, weight_values->_[i * 2]);
-            weights_1->append(weights_1, weight_values->_[i * 2 + 1]);
+            array_i* weights_pass = weights->append(weights);
+            weights_pass->append(weights_pass, weight_values->_[i * 2]);
+            weights_pass->append(weights_pass, weight_values->_[i * 2 + 1]);
         }
         for (; i < term_count; i++) {
-            weights_0->append(weights_0, 0);
-            weights_1->append(weights_1, 0);
+            array_i* weights_pass = weights->append(weights);
+            weights_pass->mappend(weights_pass, 2, 0);
         }
-        weights_0->reverse(weights_0);
-        weights_1->reverse(weights_1);
 
+        weights->reverse(weights);
         weight_values->del(weight_values);
         return OK;
     } else {
-        array_i* weights_0 = weights->append(weights);
-
-        /*one channel of weights*/
+        /*one channel*/
         if (weight_count > term_count) {
             weight_values->del(weight_values);
             return EXCESSIVE_DECORRELATION_WEIGHTS;
         }
 
         for (i = 0; i < weight_count; i++) {
-            weights_0->append(weights_0, weight_values->_[i]);
+            array_i* weights_pass = weights->append(weights);
+            weights_pass->append(weights_pass, weight_values->_[i]);
         }
         for (; i < term_count; i++) {
-            weights_0->append(weights_0, 0);
+            array_i* weights_pass = weights->append(weights);
+            weights_pass->append(weights_pass, 0);
         }
 
-        weights_0->reverse(weights_0);
-
+        weights->reverse(weights);
         weight_values->del(weight_values);
         return OK;
     }
@@ -750,8 +746,8 @@ wavpack_read_decorrelation_samples(const struct block_header* block_header,
                                    array_iaa* samples)
 {
     unsigned bytes_remaining;
-    int i;
-    int j;
+    int p;
+    int s;
 
     if (sub_block->actual_size_1_less) {
         bytes_remaining = sub_block->size * 2 - 1;
@@ -762,60 +758,61 @@ wavpack_read_decorrelation_samples(const struct block_header* block_header,
     samples->reset(samples);
 
     if ((block_header->mono_output == 0) && (block_header->false_stereo == 0)) {
-        array_ia* samples_0 = samples->append(samples);
-        array_ia* samples_1 = samples->append(samples);
+        /*two channels*/
+        for (p = terms->len - 1; p >= 0; p--) {
+            array_ia* samples_p = samples->append(samples);
 
-        /*two channels of sample lists per term*/
-        for (i = terms->len - 1; i >= 0; i--) {
-            array_i* samples_0_i = samples_0->append(samples_0);
-            array_i* samples_1_i = samples_1->append(samples_1);
+            /*samples for pass "p", channel "0"*/
+            array_i* samples_p_0_s = samples_p->append(samples_p);
+            /*samples for pass "p", channel "1"*/
+            array_i* samples_p_1_s = samples_p->append(samples_p);
 
-            if ((17 <= terms->_[i]) && (terms->_[i] <= 18)) {
+            if ((17 <= terms->_[p]) && (terms->_[p] <= 18)) {
                 if (bytes_remaining >= 8) {
-                    samples_0_i->append(samples_0_i,
-                                        read_wv_exp2(sub_block->data));
-                    samples_0_i->append(samples_0_i,
-                                        read_wv_exp2(sub_block->data));
+                    samples_p_0_s->append(samples_p_0_s,
+                                          read_wv_exp2(sub_block->data));
+                    samples_p_0_s->append(samples_p_0_s,
+                                          read_wv_exp2(sub_block->data));
 
-                    samples_1_i->append(samples_1_i,
-                                        read_wv_exp2(sub_block->data));
-                    samples_1_i->append(samples_1_i,
-                                        read_wv_exp2(sub_block->data));
+                    samples_p_1_s->append(samples_p_1_s,
+                                          read_wv_exp2(sub_block->data));
+                    samples_p_1_s->append(samples_p_1_s,
+                                          read_wv_exp2(sub_block->data));
                     bytes_remaining -= 8;
                 } else {
-                    samples_0_i->mappend(samples_0_i, 2, 0);
-                    samples_1_i->mappend(samples_1_i, 2, 0);
+                    samples_p_0_s->mappend(samples_p_0_s, 2, 0);
+                    samples_p_1_s->mappend(samples_p_1_s, 2, 0);
                     bytes_remaining = 0;
                 }
-            } else if ((1 <= terms->_[i]) && (terms->_[i] <= 8)) {
-                if (bytes_remaining >= (terms->_[i] * 4)) {
-                    for (j = 0; j < terms->_[i]; j++) {
-                        samples_0_i->append(samples_0_i,
-                                            read_wv_exp2(sub_block->data));
+            } else if ((1 <= terms->_[p]) && (terms->_[p] <= 8)) {
+                if (bytes_remaining >= (terms->_[p] * 4)) {
+                    for (s = 0; s < terms->_[p]; s++) {
+                        samples_p_0_s->append(samples_p_0_s,
+                                              read_wv_exp2(sub_block->data));
 
-                        samples_1_i->append(samples_1_i,
-                                            read_wv_exp2(sub_block->data));
+                        samples_p_1_s->append(samples_p_1_s,
+                                              read_wv_exp2(sub_block->data));
                         bytes_remaining -= 4;
                     }
                 } else {
-                    for (j = 0; j < terms->_[i]; j++) {
-                        samples_0_i->append(samples_0_i, 0);
+                    for (s = 0; s < terms->_[p]; s++) {
+                        samples_p_0_s->append(samples_p_0_s, 0);
 
-                        samples_1_i->append(samples_1_i, 0);
+                        samples_p_1_s->append(samples_p_1_s, 0);
                     }
                     bytes_remaining = 0;
                 }
-            } else if ((-3 <= terms->_[i]) && (terms->_[i] <= -1)) {
+            } else if ((-3 <= terms->_[p]) && (terms->_[p] <= -1)) {
                 if (bytes_remaining >= 4) {
-                    samples_0_i->append(samples_0_i,
-                                        read_wv_exp2(sub_block->data));
+                    samples_p_0_s->append(samples_p_0_s,
+                                          read_wv_exp2(sub_block->data));
 
-                    samples_1_i->append(samples_1_i,
-                                        read_wv_exp2(sub_block->data));
+                    samples_p_1_s->append(samples_p_1_s,
+                                          read_wv_exp2(sub_block->data));
                     bytes_remaining -= 4;
                 } else {
-                    samples_0_i->append(samples_0_i, 0);
-                    samples_1_i->append(samples_1_i, 0);
+                    samples_p_0_s->append(samples_p_0_s, 0);
+                    samples_p_1_s->append(samples_p_1_s, 0);
                     bytes_remaining = 0;
                 }
             } else {
@@ -823,36 +820,36 @@ wavpack_read_decorrelation_samples(const struct block_header* block_header,
             }
         }
 
-        samples_0->reverse(samples_0);
-        samples_1->reverse(samples_1);
+        samples->reverse(samples);
     } else {
-        array_ia* samples_0 = samples->append(samples);
+        /*one channel*/
 
-        /*one channel of sample lists per term*/
-        for (i = terms->len - 1; i >= 0 ; i--) {
-            array_i* samples_0_i = samples_0->append(samples_0);
+        for (p = terms->len - 1; p >= 0 ; p--) {
+            array_ia* samples_p = samples->append(samples);
 
-            if ((17 <= terms->_[i]) && (terms->_[i] <= 18)) {
+            array_i* samples_p_0_s = samples_p->append(samples_p);
+
+            if ((17 <= terms->_[p]) && (terms->_[p] <= 18)) {
                 if (bytes_remaining >= 4) {
-                    samples_0_i->append(samples_0_i,
-                                        read_wv_exp2(sub_block->data));
-                    samples_0_i->append(samples_0_i,
-                                        read_wv_exp2(sub_block->data));
+                    samples_p_0_s->append(samples_p_0_s,
+                                          read_wv_exp2(sub_block->data));
+                    samples_p_0_s->append(samples_p_0_s,
+                                          read_wv_exp2(sub_block->data));
                     bytes_remaining -= 4;
                 } else {
-                    samples_0_i->mappend(samples_0_i, 2, 0);
+                    samples_p_0_s->mappend(samples_p_0_s, 2, 0);
                     bytes_remaining = 0;
                 }
-            } else if ((1 <= terms->_[i]) && (terms->_[i] <= 8)) {
-                if (bytes_remaining >= (terms->_[i] * 2)) {
-                    for (j = 0; j < terms->_[i]; j++) {
-                        samples_0_i->append(samples_0_i,
-                                            read_wv_exp2(sub_block->data));
+            } else if ((1 <= terms->_[p]) && (terms->_[p] <= 8)) {
+                if (bytes_remaining >= (terms->_[p] * 2)) {
+                    for (s = 0; s < terms->_[p]; s++) {
+                        samples_p_0_s->append(samples_p_0_s,
+                                              read_wv_exp2(sub_block->data));
                         bytes_remaining -= 2;
                     }
                 } else {
-                    for (j = 0; j < terms->_[i]; j++) {
-                        samples_0_i->append(samples_0_i, 0);
+                    for (s = 0; s < terms->_[p]; s++) {
+                        samples_p_0_s->append(samples_p_0_s, 0);
                     }
                     bytes_remaining = 0;
                 }
@@ -861,7 +858,7 @@ wavpack_read_decorrelation_samples(const struct block_header* block_header,
             }
         }
 
-        samples_0->reverse(samples_0);
+        samples->reverse(samples);
     }
 
     return OK;
@@ -1156,8 +1153,8 @@ wavpack_decorrelate_channels(const array_i* decorrelation_terms,
             if ((status = wavpack_decorrelate_1ch_pass(
                               decorrelation_terms->_[pass],
                               decorrelation_deltas->_[pass],
-                              decorrelation_weights->_[0]->_[pass],
-                              decorrelation_samples->_[0]->_[pass],
+                              decorrelation_weights->_[pass]->_[0],
+                              decorrelation_samples->_[pass]->_[0],
                               correlated->_[0],
                               decorrelated->_[0])) != OK) {
                 correlated->del(correlated);
@@ -1174,10 +1171,10 @@ wavpack_decorrelate_channels(const array_i* decorrelation_terms,
             if ((status = wavpack_decorrelate_2ch_pass(
                               decorrelation_terms->_[pass],
                               decorrelation_deltas->_[pass],
-                              decorrelation_weights->_[0]->_[pass],
-                              decorrelation_weights->_[1]->_[pass],
-                              decorrelation_samples->_[0]->_[pass],
-                              decorrelation_samples->_[1]->_[pass],
+                              decorrelation_weights->_[pass]->_[0],
+                              decorrelation_weights->_[pass]->_[1],
+                              decorrelation_samples->_[pass]->_[0],
+                              decorrelation_samples->_[pass]->_[1],
                               correlated,
                               decorrelated)) != OK) {
                 correlated->del(correlated);

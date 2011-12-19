@@ -251,28 +251,45 @@ wavpack_decode_block(decoders_WavPackDecoder* decoder,
                      unsigned block_data_size,
                      array_ia* channels);
 
+/*returns a list of decorrelation terms and decorrelation deltas
+  per decorrelation pass
+
+  terms->_[pass]  , deltas->_[pass]*/
 status
 wavpack_read_decorrelation_terms(const struct sub_block* sub_block,
                                  array_i* terms,
                                  array_i* deltas);
 
+/*returns a list of decorrelation weights per pass, per channel
+  where channel count is determined from block header
+
+ weights->_[pass]->_[channel]*/
 status
 wavpack_read_decorrelation_weights(const struct block_header* block_header,
                                    const struct sub_block* sub_block,
                                    unsigned term_count,
                                    array_ia* weights);
 
+/*returns a list of decorrelation samples list per pass, per channel
+
+  samples->_[pass]->_[channel]->_[s]*/
 status
 wavpack_read_decorrelation_samples(const struct block_header* block_header,
                                    const struct sub_block* sub_block,
                                    const array_i* terms,
                                    array_iaa* samples);
 
+/*returns two lists of 3 median values, one per channel
+
+ medians->_[channel]->_[m]*/
 status
 wavpack_read_entropy_variables(const struct block_header* block_header,
                                const struct sub_block* sub_block,
                                array_ia* medians);
 
+/*returns a list of residuals per channel
+
+ residuals->_[channel]->_[r]*/
 status
 wavpack_read_bitstream(const struct block_header* block_header,
                        BitstreamReader* sub_block_data,
