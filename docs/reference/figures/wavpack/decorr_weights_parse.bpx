@@ -5,14 +5,14 @@
   <field size="1" value="0">1 less</field>
   <field size="1" value="0">large</field>
   <field size="8" value="5">sub block size (× 2)</field>
-  <field size="8" value="6">value₀</field>
-  <field size="8" value="6">value₁</field>
-  <field size="8" value="6">value₂</field>
-  <field size="8" value="6">value₃</field>
-  <field size="8" value="4">value₄</field>
-  <field size="8" value="4">value₅</field>
-  <field size="8" value="6">value₆</field>
-  <field size="8" value="6">value₇</field>
-  <field size="8" value="2">value₈</field>
-  <field size="8" value="3">value₉</field>
+  <field size="8" value="6">weight₄ ₀</field>
+  <field size="8" value="6">weight₄ ₁</field>
+  <field size="8" value="6">weight₃ ₀</field>
+  <field size="8" value="6">weight₃ ₁</field>
+  <field size="8" value="4">weight₂ ₀</field>
+  <field size="8" value="4">weight₂ ₁</field>
+  <field size="8" value="6">weight₁ ₀</field>
+  <field size="8" value="6">weight₁ ₁</field>
+  <field size="8" value="2">weight₀ ₀</field>
+  <field size="8" value="3">weight₀ ₁</field>
 </struct>

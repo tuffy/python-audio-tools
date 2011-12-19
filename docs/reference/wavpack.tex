@@ -614,6 +614,7 @@ combine into 6 channels of PCM output as follows:
 \SetKwData{TERM}{term}
 \SetKwData{DELTA}{delta}
 \SetKw{OR}{or}
+\SetKw{KwDownTo}{downto}
 \eIf{$\text{\ACTUALSIZEONELESS} = 0$}{
   \PASSES $\leftarrow \text{\SUBBLOCKSIZE} \times 2$\;
 }{
@@ -621,13 +622,11 @@ combine into 6 channels of PCM output as follows:
 }
 \ASSERT $\text{\PASSES} \leq 16$\;
 \BlankLine
-\For{i = 0 \emph{\KwTo}\PASSES}{
-  \tcc{populate terms and deltas in reverse order}
+\For(\tcc*[f]{populate in reverse order}){p = \PASSES \emph{\KwDownTo}0}{
+  $\text{\TERM}_p \leftarrow$ (\READ 5 unsigned bits) - 5\;
+  \ASSERT $\text{\TERM}_p$ \IN \texttt{[-3, -2, -1, 1, 2, 3, 4, 5, 6, 7, 8, 17, 18]}
   \BlankLine
-  $\text{\TERM}_{\text{\PASSES} - i - 1} \leftarrow$ (\READ 5 unsigned bits) - 5\;
-  \ASSERT $\text{\TERM}_{\text{\PASSES} - i - 1}$ \IN \texttt{[-3, -2, -1, 1, 2, 3, 4, 5, 6, 7, 8, 17, 18]}
-  \BlankLine
-  $\text{\DELTA}_{\text{\PASSES} - i - 1} \leftarrow$ \READ 3 unsigned bits\;
+  $\text{\DELTA}_p \leftarrow$ \READ 3 unsigned bits\;
 }
 \Return decorrelation \TERM and decorrelation \DELTA lists\;
 \EALGORITHM
@@ -660,7 +659,7 @@ combine into 6 channels of PCM output as follows:
 \clearpage
 
 \subsection{Reading Decorrelation Weights}
-\ALGORITHM{\VAR{mono output} and \VAR{false stereo} from block header, decorrelation terms count\footnote{from the decorrelation terms sub block, which must be read prior to this sub block}, \VAR{actual size 1 less} and \VAR{sub block size} values from sub block header, sub block data}{a list of signed weight integers per channel\footnote{$\text{weight}_{c~p}$ indicates weight values for channel $c$ and decorrelation pass $p$}}
+\ALGORITHM{\VAR{mono output} and \VAR{false stereo} from block header, decorrelation terms count\footnote{from the decorrelation terms sub block, which must be read prior to this sub block}, \VAR{actual size 1 less} and \VAR{sub block size} values from sub block header, sub block data}{a list of signed weight integers per channel\footnote{$\text{weight}_{p~c}$ indicates weight value decorrelation pass $p$, channel $c$}}
 \SetKwData{MONO}{mono output}
 \SetKwData{FALSESTEREO}{false stereo}
 \SetKwData{SUBBLOCKSIZE}{sub block size}
@@ -689,23 +688,23 @@ combine into 6 channels of PCM output as follows:
 \eIf(\tcc*[f]{two channels}){$\text{\MONO} = 0$ \AND $\text{\FALSESTEREO} = 0$}{
   \ASSERT $\lfloor\WEIGHTCOUNT \div 2\rfloor \leq \TERMCOUNT$\;
   \For{i = 0 \emph{\KwTo}$\lfloor\WEIGHTCOUNT \div 2\rfloor$}{
-    $\text{\WEIGHT}_{0~(\TERMCOUNT - i - 1)} \leftarrow \text{\WEIGHTVAL}_{i \times 2}$\;
-    $\text{\WEIGHT}_{1~(\TERMCOUNT - i - 1)} \leftarrow \text{\WEIGHTVAL}_{i \times 2 + 1}$\;
+    $\text{\WEIGHT}_{(\TERMCOUNT - i - 1)~0} \leftarrow \text{\WEIGHTVAL}_{i \times 2}$\;
+    $\text{\WEIGHT}_{(\TERMCOUNT - i - 1)~1} \leftarrow \text{\WEIGHTVAL}_{i \times 2 + 1}$\;
   }
   \For{i = $\lfloor\WEIGHTCOUNT \div 2\rfloor$ \emph{\KwTo}\TERMCOUNT}{
-    $\text{\WEIGHT}_{0~(\TERMCOUNT - i - 1)} \leftarrow 0$\;
-    $\text{\WEIGHT}_{1~(\TERMCOUNT - i - 1)} \leftarrow 0$\;
+    $\text{\WEIGHT}_{(\TERMCOUNT - i - 1)~0} \leftarrow 0$\;
+    $\text{\WEIGHT}_{(\TERMCOUNT - i - 1)~1} \leftarrow 0$\;
   }
-  \Return list of $\text{\WEIGHT}_0$ values and list of $\text{\WEIGHT}_1$ values\;
+  \Return a \WEIGHT value per pass, per channel\;
 }(\tcc*[f]{one channel}){
   \ASSERT $\WEIGHTCOUNT \leq \TERMCOUNT$\;
   \For{i = 0 \emph{\KwTo}\WEIGHTCOUNT}{
-    $\text{\WEIGHT}_{0~(\TERMCOUNT - i - 1)} \leftarrow \text{\WEIGHTVAL}_{i}$\;
+    $\text{\WEIGHT}_{(\TERMCOUNT - i - 1)~0} \leftarrow \text{\WEIGHTVAL}_{i}$\;
   }
   \For{i = \WEIGHTCOUNT \emph{\KwTo}\TERMCOUNT}{
-    $\text{\WEIGHT}_{0~(\TERMCOUNT - i - 1)} \leftarrow 0$\;
+    $\text{\WEIGHT}_{(\TERMCOUNT - i - 1)~0} \leftarrow 0$\;
   }
-  \Return list of $\text{\WEIGHT}_0$ values\;
+  \Return a \WEIGHT value per pass\;
 }
 \EALGORITHM
 
@@ -737,16 +736,16 @@ $i$ & $\text{value}_i$ & \text{weight value}_i \\
 \end{center}
 \begin{center}
 \begin{tabular}{>{$}r<{$}||>{$}r<{$}}
-\text{weight}_{0~4} = \text{weight value}_0 = 48 &
-\text{weight}_{1~4} = \text{weight value}_1 = 48 \\
-\text{weight}_{0~3} = \text{weight value}_2 = 48 &
-\text{weight}_{1~3} = \text{weight value}_3 = 48 \\
-\text{weight}_{0~2} = \text{weight value}_4 = 32 &
-\text{weight}_{1~2} = \text{weight value}_5 = 32 \\
-\text{weight}_{0~1} = \text{weight value}_6 = 48 &
+\text{weight}_{4~0} = \text{weight value}_0 = 48 &
+\text{weight}_{4~1} = \text{weight value}_1 = 48 \\
+\text{weight}_{3~0} = \text{weight value}_2 = 48 &
+\text{weight}_{3~1} = \text{weight value}_3 = 48 \\
+\text{weight}_{2~0} = \text{weight value}_4 = 32 &
+\text{weight}_{2~1} = \text{weight value}_5 = 32 \\
+\text{weight}_{1~0} = \text{weight value}_6 = 48 &
 \text{weight}_{1~1} = \text{weight value}_7 = 48 \\
 \text{weight}_{0~0} = \text{weight value}_8 = 16 &
-\text{weight}_{1~0} = \text{weight value}_9 = 24 \\
+\text{weight}_{0~1} = \text{weight value}_9 = 24 \\
 \end{tabular}
 \end{center}
 
@@ -754,7 +753,7 @@ $i$ & $\text{value}_i$ & \text{weight value}_i \\
 
 \subsection{Reading Decorrelation Samples}
 {\relsize{-2}
-\ALGORITHM{\VAR{mono output} and \VAR{false stereo} from block header, decorrelation terms, sub block size and data}{a list of signed decorrelation sample lists per channel per decorrelation term\footnote{\relsize{-1}$\text{sample}_{c~p~i}$ indicates the $i$th sample of decorrelation pass $p$ for channel $c$}}
+\ALGORITHM{\VAR{mono output} and \VAR{false stereo} from block header, decorrelation terms, sub block size and data}{a list of signed decorrelation sample lists per channel per decorrelation term\footnote{\relsize{-1}$\text{sample}_{p~c~s}$ indicates the $s$th sample of decorrelation pass $p$ for channel $c$}}
 \SetKwData{MONO}{mono output}
 \SetKwData{FALSESTEREO}{false stereo}
 \SetKwData{SAMPLE}{sample}
@@ -765,65 +764,65 @@ $i$ & $\text{value}_i$ & \text{weight value}_i \\
 \SetKw{KwDownTo}{downto}
 \SetKw{AND}{and}
 \eIf(\tcc*[f]{2 channels}){$\text{\MONO} = 0$ \AND $\text{\FALSESTEREO} = 0$}{
-  \For{i = \TERMCOUNT \emph{\KwDownTo}0}{
-    \uIf(\tcc*[f]{2 samples per channel}){$17 \leq \text{\TERM}_i \leq 18$}{
+  \For{p = \TERMCOUNT \emph{\KwDownTo}0}{
+    \uIf(\tcc*[f]{2 samples per channel}){$17 \leq \text{\TERM}_p \leq 18$}{
       \eIf{$\text{sub block bytes remaining} \geq 8$}{
-        $\text{\SAMPLE}_{0~i~0} \leftarrow \text{read \EXP value}$\;
-        $\text{\SAMPLE}_{0~i~1} \leftarrow \text{read \EXP value}$\;
-        $\text{\SAMPLE}_{1~i~0} \leftarrow \text{read \EXP value}$\;
-        $\text{\SAMPLE}_{1~i~1} \leftarrow \text{read \EXP value}$\;
+        $\text{\SAMPLE}_{p~0~0} \leftarrow \text{read \EXP value}$\;
+        $\text{\SAMPLE}_{p~0~1} \leftarrow \text{read \EXP value}$\;
+        $\text{\SAMPLE}_{p~1~0} \leftarrow \text{read \EXP value}$\;
+        $\text{\SAMPLE}_{p~1~1} \leftarrow \text{read \EXP value}$\;
       }{
-        $\text{\SAMPLE}_{0~i} \leftarrow \texttt{[0, 0]}$\;
-        $\text{\SAMPLE}_{1~i} \leftarrow \texttt{[0, 0]}$\;
+        $\text{\SAMPLE}_{p~0} \leftarrow \texttt{[0, 0]}$\;
+        $\text{\SAMPLE}_{p~1} \leftarrow \texttt{[0, 0]}$\;
       }
     }
-    \uElseIf(\tcc*[f]{"term" samples per channel}){$1 \leq \text{\TERM}_i \leq 8$}{
-      \eIf{$\text{sub block bytes remaining} \geq (\text{\TERM}_i \times 4)$}{
-        \For{j = 0 \emph{\KwTo}$\text{\TERM}_i$}{
-          $\text{\SAMPLE}_{0~i~j} \leftarrow \text{read \EXP value}$\;
-          $\text{\SAMPLE}_{1~i~j} \leftarrow \text{read \EXP value}$\;
+    \uElseIf(\tcc*[f]{"term" samples per channel}){$1 \leq \text{\TERM}_p \leq 8$}{
+      \eIf{$\text{sub block bytes remaining} \geq (\text{\TERM}_p \times 4)$}{
+        \For{s = 0 \emph{\KwTo}$\text{\TERM}_p$}{
+          $\text{\SAMPLE}_{p~0~s} \leftarrow \text{read \EXP value}$\;
+          $\text{\SAMPLE}_{p~1~s} \leftarrow \text{read \EXP value}$\;
         }
       }{
-        \For{j = 0 \emph{\KwTo}$\text{\TERM}_i$}{
-          $\text{\SAMPLE}_{0~i~j} \leftarrow 0$\;
-          $\text{\SAMPLE}_{1~i~j} \leftarrow 0$\;
+        \For{s = 0 \emph{\KwTo}$\text{\TERM}_p$}{
+          $\text{\SAMPLE}_{p~0~s} \leftarrow 0$\;
+          $\text{\SAMPLE}_{p~1~s} \leftarrow 0$\;
         }
       }
     }
-    \ElseIf(\tcc*[f]{1 sample per channel}){$-3 \leq \text{\TERM}_i \leq -1$}{
+    \ElseIf(\tcc*[f]{1 sample per channel}){$-3 \leq \text{\TERM}_p \leq -1$}{
       \eIf{$\text{sub block bytes remaining} \geq 4$}{
-        $\text{\SAMPLE}_{0~i~0} \leftarrow \text{read \EXP value}$\;
-        $\text{\SAMPLE}_{1~i~0} \leftarrow \text{read \EXP value}$\;
+        $\text{\SAMPLE}_{p~0~0} \leftarrow \text{read \EXP value}$\;
+        $\text{\SAMPLE}_{p~1~0} \leftarrow \text{read \EXP value}$\;
       }{
-        $\text{\SAMPLE}_{0~i~0} \leftarrow 0$\;
-        $\text{\SAMPLE}_{1~i~0} \leftarrow 0$\;
+        $\text{\SAMPLE}_{p~0~0} \leftarrow 0$\;
+        $\text{\SAMPLE}_{p~1~0} \leftarrow 0$\;
       }
     }
   }
-  \Return $\text{\SAMPLE}_0$ lists and $\text{\SAMPLE}_1$ lists\;
+  \Return $\text{\SAMPLE}$ lists per pass, per channel
 }(\tcc*[f]{1 channel}){
-  \For{i = \TERMCOUNT \emph{\KwDownTo}0}{
-    \uIf(\tcc*[f]{2 samples per channel}){$17 \leq \text{\TERM}_i \leq 18$}{
+  \For{p = \TERMCOUNT \emph{\KwDownTo}0}{
+    \uIf(\tcc*[f]{2 samples per channel}){$17 \leq \text{\TERM}_p \leq 18$}{
       \eIf{$\text{sub block bytes remaining} \geq 4$}{
-        $\text{\SAMPLE}_{0~i~0} \leftarrow \text{read \EXP value}$\;
-        $\text{\SAMPLE}_{0~i~1} \leftarrow \text{read \EXP value}$\;
+        $\text{\SAMPLE}_{p~0~0} \leftarrow \text{read \EXP value}$\;
+        $\text{\SAMPLE}_{p~0~1} \leftarrow \text{read \EXP value}$\;
       }{
-        $\text{\SAMPLE}_{0~i} \leftarrow \texttt{[0, 0]}$\;
+        $\text{\SAMPLE}_{p~0} \leftarrow \texttt{[0, 0]}$\;
       }
     }
-    \ElseIf(\tcc*[f]{"term" samples per channel}){$1 \leq \text{\TERM}_i \leq 8$}{
-      \eIf{$\text{sub block bytes remaining} \geq (\text{\TERM}_i \times 2)$}{
-        \For{j = 0 \emph{\KwTo}$\text{\TERM}_i$}{
-          $\text{\SAMPLE}_{0~i~j} \leftarrow \text{read \EXP value}$\;
+    \ElseIf(\tcc*[f]{"term" samples per channel}){$1 \leq \text{\TERM}_p \leq 8$}{
+      \eIf{$\text{sub block bytes remaining} \geq (\text{\TERM}_p \times 2)$}{
+        \For{s = 0 \emph{\KwTo}$\text{\TERM}_p$}{
+          $\text{\SAMPLE}_{p~0~s} \leftarrow \text{read \EXP value}$\;
         }
       }{
-        \For{j = 0 \emph{\KwTo}$\text{\TERM}_i$}{
-          $\text{\SAMPLE}_{0~i~j} \leftarrow 0$\;
+        \For{s = 0 \emph{\KwTo}$\text{\TERM}_p$}{
+          $\text{\SAMPLE}_{p~0~s} \leftarrow 0$\;
         }
       }
     }
   }
-  \Return $\text{\SAMPLE}_0$ lists\;
+  \Return $\text{\SAMPLE}$ lists per pass\;
 }
 \EALGORITHM
 }
@@ -890,12 +889,12 @@ Given a stereo block containing the sub-block:
 \begin{center}
 {\relsize{-2}
 \begin{tabular}{r|r|r|>{$}r<{$}|>{$}r<{$}}
-$i$ & $\text{term}_i$ & $j$ &
-\text{sample}_{0~i~j} &
-\text{sample}_{1~i~j} \\
+$p$ & $\text{term}_p$ & $s$ &
+\text{sample}_{p~0~s} &
+\text{sample}_{p~1~s} \\
 \hline
 4 & 18 & 0 &
--\lfloor \texttt{exp}(1841 \bmod{256}) \div 2 ^ {9 - \lfloor 1841 \div 2 ^ 8 \rfloor} \rfloor = -73 &
+-\lfloor \texttt{wexp}(1841 \bmod{256}) \div 2 ^ {9 - \lfloor 1841 \div 2 ^ 8 \rfloor} \rfloor = -73 &
 \lfloor \EXP(1487 \bmod{256}) \div 2 ^ {9 - \lfloor 1487 \div 2 ^ 8 \rfloor} \rfloor = 28 \\
 & & 1 &
 -\lfloor \EXP(1865 \bmod{256}) \div 2 ^ {9 - \lfloor 1865 \div 2 ^ 8 \rfloor} \rfloor = -78 &
@@ -1475,24 +1474,24 @@ channel 1 residuals : & \texttt{[~31,~~32,~~36,~37,~35,~31,~25,~18,~10,~~0]}\\
 \SetKwData{SAMPLES}{samples}
 \SetKwData{RESIDUALS}{residuals}
 \eIf{$\text{channel count} = 1$}{
-  $\text{\PASS}_{0~(-1)} \leftarrow \text{\RESIDUALS}_{0}$\;
-  \For{i = 0 \emph{\KwTo}\TERMCOUNT}{
-    decorrelate 1 channel $\text{\PASS}_{0~(i - 1)}$ to $\text{\PASS}_{0~i}$
+  $\text{\PASS}_{(-1)~0} \leftarrow \text{\RESIDUALS}_{0}$\;
+  \For{p = 0 \emph{\KwTo}\TERMCOUNT}{
+    decorrelate 1 channel $\text{\PASS}_{(p - 1)~0}$ to $\text{\PASS}_{p~0}$
     \newline
-    using $\text{\TERM}_i$, $\text{\DELTA}_i$, $\text{\WEIGHT}_{0~i}$
-    and $\text{\SAMPLES}_{0~i}$\;
+    using $\text{\TERM}_p$, $\text{\DELTA}_p$, $\text{\WEIGHT}_{p~0}$
+    and $\text{\SAMPLES}_{p~0}$\;
   }
-  \Return $\text{\PASS}_{0~(\text{\TERMCOUNT} - 1)}$\;
+  \Return $\text{\PASS}_{(\text{\TERMCOUNT} - 1)~0}$\;
 }{
-  $\text{\PASS}_{0~-1} \leftarrow \text{\RESIDUALS}_{0}$\;
-  $\text{\PASS}_{1~-1} \leftarrow \text{\RESIDUALS}_{1}$\;
-  \For{i = 0 \emph{\KwTo}\TERMCOUNT}{
-    decorrelate 2 channel $\text{\PASS}_{0~(i - 1)}/\text{\PASS}_{1~(i - 1)}$ to $\text{\PASS}_{0~i}/\text{\PASS}_{1~i}$
+  $\text{\PASS}_{-1~0} \leftarrow \text{\RESIDUALS}_{0}$\;
+  $\text{\PASS}_{-1~1} \leftarrow \text{\RESIDUALS}_{1}$\;
+  \For{p = 0 \emph{\KwTo}\TERMCOUNT}{
+    decorrelate 2 channel $\text{\PASS}_{(p - 1)~0}/\text{\PASS}_{(p - 1)~1}$ to $\text{\PASS}_{p~0}/\text{\PASS}_{p~1}$
     \newline
-    using $\text{\TERM}_i$, $\text{\DELTA}_i$, $\text{\WEIGHT}_{0~i}$,
-    $\text{\WEIGHT}_{1~i}$, $\text{\SAMPLES}_{0~i}$ and $\text{\SAMPLES}_{1~i}$\;
+    using $\text{\TERM}_p$, $\text{\DELTA}_p$, $\text{\WEIGHT}_{p~0}$,
+    $\text{\WEIGHT}_{p~1}$, $\text{\SAMPLES}_{p~0}$ and $\text{\SAMPLES}_{p~1}$\;
   }
-  \Return $\text{\PASS}_{0~\text{\TERMCOUNT} - 1}$ and $\text{\PASS}_{1~\text{\TERMCOUNT} - 1}$\;
+  \Return $\text{\PASS}_{(\text{\TERMCOUNT} - 1)~0}$ and $\text{\PASS}_{(\text{\TERMCOUNT} - 1)~1}$\;
 }
 \EALGORITHM
 
@@ -1674,7 +1673,7 @@ sub blocks:
     \begin{tabular}{|r|r|r|}
       \multicolumn{3}{c}{Decorrelation Terms} \\
       \hline
-      $i$ & $\text{term}_i$ & $\text{delta}_i$ \\
+      $p$ & $\text{term}_p$ & $\text{delta}_p$ \\
       \hline
       4 & 18 & 2 \\
       3 & 18 & 2 \\
@@ -1688,7 +1687,7 @@ sub blocks:
     \begin{tabular}{|r|r|r|}
       \multicolumn{3}{c}{Decorrelation Weights} \\
       \hline
-      $i$ & $\text{weight}_{0~i}$ & $\text{weight}_{1~i}$ \\
+      $p$ & $\text{weight}_{p~0}$ & $\text{weight}_{p~1}$ \\
       \hline
       4 & 48 & 48 \\
       3 & 48 & 48 \\
@@ -1702,7 +1701,7 @@ sub blocks:
     \begin{tabular}{|r|r|r|}
       \multicolumn{3}{c}{Decorrelation Samples} \\
       \hline
-      $i$ & $\text{sample}_{0~i~j}$ & $\text{sample}_{1~i~j}$ \\
+      $p$ & $\text{sample}_{p~0~s}$ & $\text{sample}_{p~1~s}$ \\
       \hline
       4 & \texttt{[-73, -78]} & \texttt{[28, 26]} \\
       3 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
@@ -1724,13 +1723,13 @@ we combine them into a single set of arguments for each decorrelation pass:
     & $\textbf{pass}_0$ & $\textbf{pass}_1$ & $\textbf{pass}_2$ &
     $\textbf{pass}_3$ & $\textbf{pass}_4$ \\
     \hline
-    term & 3 & 17 & 2 & 18 & 18 \\
-    delta & 2 & 2 & 2 & 2 & 2 \\
-    $\text{weight}_0$ & 16 & 48 & 32 & 48 & 48 \\
-    $\text{samples}_{0}$ & \texttt{[0, 0, 0]} & \texttt{[0, 0]} &
+    $\text{term}_p$ & 3 & 17 & 2 & 18 & 18 \\
+    $\text{delta}_p$ & 2 & 2 & 2 & 2 & 2 \\
+    $\text{weight}_{p~0}$ & 16 & 48 & 32 & 48 & 48 \\
+    $\text{samples}_{p~0~s}$ & \texttt{[0, 0, 0]} & \texttt{[0, 0]} &
     \texttt{[0, 0]} & \texttt{[0, 0]} & \texttt{[-73, -78]} \\
-    $\text{weight}_1$ & 24 & 48 & 32 & 48 & 48 \\
-    $\text{samples}_{1}$ & \texttt{[0, 0, 0]} & \texttt{[0, 0]} &
+    $\text{weight}_{p~1}$ & 24 & 48 & 32 & 48 & 48 \\
+    $\text{samples}_{p~1~s}$ & \texttt{[0, 0, 0]} & \texttt{[0, 0]} &
     \texttt{[0, 0]} & \texttt{[0, 0]} & \texttt{[28, 26]} \\
     \hline
   \end{tabular}
@@ -3061,7 +3060,7 @@ delta & \text{ if } (source \textbf{ xor } result ) \geq 0 \\
     \begin{tabular}{|r|r|r|}
       \multicolumn{3}{c}{Correlation Terms} \\
       \hline
-      $i$ & $\text{term}_i$ & $\text{delta}_i$ \\
+      $p$ & $\text{term}_p$ & $\text{delta}_p$ \\
       \hline
       0 & 3 & 2 \\
       1 & 17 & 2 \\
@@ -3075,7 +3074,7 @@ delta & \text{ if } (source \textbf{ xor } result ) \geq 0 \\
     \begin{tabular}{|r|r|r|}
       \multicolumn{3}{c}{Correlation Weights} \\
       \hline
-      $i$ & $\text{weight}_{0~i}$ & $\text{weight}_{1~i}$ \\
+      $p$ & $\text{weight}_{p~0}$ & $\text{weight}_{p~1}$ \\
       \hline
       0 & 16 & 24 \\
       1 & 48 & 48 \\
@@ -3089,7 +3088,7 @@ delta & \text{ if } (source \textbf{ xor } result ) \geq 0 \\
     \begin{tabular}{|r|r|r|}
       \multicolumn{3}{c}{Correlation Samples} \\
       \hline
-      $i$ & $\text{sample}_{0~i~j}$ & $\text{sample}_{1~i~j}$ \\
+      $p$ & $\text{sample}_{p~0~s}$ & $\text{sample}_{p~1~s}$ \\
       \hline
       0 & \texttt{[0, 0, 0]} & \texttt{[0, 0, 0]} \\
       1 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
@@ -3111,13 +3110,13 @@ we combine them into a single set of arguments for each correlation pass:
     & $\textbf{pass}_0$ & $\textbf{pass}_1$ & $\textbf{pass}_2$ &
     $\textbf{pass}_3$ & $\textbf{pass}_3$ \\
     \hline
-    term & 18 & 18 & 2 & 17 & 3 \\
-    delta & 2 & 2 & 2 & 2 & 2 \\
-    $\text{weight}_0$ & 48 & 48 & 32 & 48 & 16 \\
-    $\text{samples}_{0}$ & \texttt{[-73, -78]} & \texttt{[0, 0]} &
+    $\text{term}_p$ & 18 & 18 & 2 & 17 & 3 \\
+    $\text{delta}_p$ & 2 & 2 & 2 & 2 & 2 \\
+    $\text{weight}_{p~0}$ & 48 & 48 & 32 & 48 & 16 \\
+    $\text{samples}_{p~0~s}$ & \texttt{[-73, -78]} & \texttt{[0, 0]} &
     \texttt{[0, 0]} & \texttt{[0, 0]} & \texttt{[0, 0, 0]} \\
-    $\text{weight}_1$ & 48 & 48 & 32 & 48 & 24 \\
-    $\text{samples}_{1}$ & \texttt{[28, 26]} & \texttt{[0, 0]} &
+    $\text{weight}_{p~1}$ & 48 & 48 & 32 & 48 & 24 \\
+    $\text{samples}_{p~1~s}$ & \texttt{[28, 26]} & \texttt{[0, 0]} &
     \texttt{[0, 0]} & \texttt{[0, 0]} & \texttt{[0, 0, 0]} \\
     \hline
   \end{tabular}
@@ -3438,26 +3437,115 @@ $\text{channel}_0$ correlation passes
 
 \clearpage
 
-\subsection{Round-Tripping Values}
+\subsection{Writing Decorrelation Terms}
 
-One cannot transfer the correlation weight and samples values
-from $\text{Block}_i$ to $\text{Block}_{i + 1}$ as-is
-because they are stored logarithmically.
-Instead, we ``round-trip'' the value through
-the $\log_2$ and $\exp_2$ functions as follows:
+\ALGORITHM{a list of decorrelation terms, a list of decorrelation deltas}{decorrelation terms sub block data}
+\SetKwData{TERM}{term}
+\SetKwData{DELTA}{delta}
+\SetKwData{KwDownTo}{downto}
+\For(\tcc*[f]{populate in reverse order}){p = decorrelation pass count \emph{\KwDownTo}0}{
+  \WRITE ($\text{\TERM}_p + 5$) in 5 unsigned bits\;
+  \WRITE $\text{\DELTA}_p$ in 3 unsigned bits\;
+}
+\Return decorrelation terms sub block data\;
+\EALGORITHM
+\par
+\noindent
+For example, given decorrelation terms \texttt{[3, 17, 2, 18, 18]}
+\newline
+and decorrelation deltas \texttt{[2, 2, 2, 2, 2]},
+\newline
+the decorrelation terms subframe is written as:
+\begin{figure}[h]
+\includegraphics{figures/wavpack/terms_parse.pdf}
+\end{figure}
+
+\clearpage
+
+\subsection{Writing Decorrelation Weights}
+\ALGORITHM{a list of decorrelation weights per channel}{decorrelation weights sub block data}
+\SetKwData{WEIGHT}{weight}
+\SetKwFunction{STOREWEIGHT}{store\_weight}
+\SetKwData{KwDownTo}{downto}
+\For(\tcc*[f]{populate in reverse order}){p = decorrelation pass count \emph{\KwDownTo}0}{
+  \WRITE $\texttt{\STOREWEIGHT}(\text{\WEIGHT}_{p~0})$ in 8 signed bits\;
+  \If{$\text{channel count} = 2$}{
+    \WRITE $\texttt{\STOREWEIGHT}(\text{\WEIGHT}_{p~1})$ in 8 signed bits\;
+  }
+}
+\Return decorrelation weights sub block data\;
+\EALGORITHM
+\par
+\noindent
+where \texttt{store\_weight} is defined as:
 \begin{equation*}
-\texttt{wv\_exp2}(\texttt{wv\_log2}(x))
+\texttt{store\_weight}(w) =
+\begin{cases}
+\left\lfloor\frac{\texttt{min}(w, 1024) - \lfloor(\texttt{min}(w,1024) + 2 ^ 6) \div 2 ^ 7\rfloor + 4}{2 ^ 3}\right\rfloor & \text{ if } w > 0 \\
+0 & \text{ if } w = 0 \\
+\left\lfloor \frac{\texttt{max}(w, -1024) + 4}{2 ^ 3} \right\rfloor & \text{ if } w < 0 \\
+\end{cases}
 \end{equation*}
+For example, given the channel 0 weight values: \texttt{[16, 48, 32, 48, 48]}
+\newline
+and channel 1 weight values: \texttt{[24, 48, 32, 48, 48]}
+\newline
+the decorrelation weights subframe is written as:
+\begin{figure}[h]
+\includegraphics{figures/wavpack/decorr_weights_parse.pdf}
+\end{figure}
+
+\clearpage
+
+\subsection{Writing Decorrelation Samples}
+{\relsize{-1}
+\ALGORITHM{a list of decorrelation sample values per pass, per channel}{decorrelation samples sub block data}
+\SetKwData{TERM}{term}
+\SetKwData{SAMPLE}{sample}
+\SetKwFunction{WVLOG}{wv\_log2}
+\SetKw{KwDownTo}{downto}
+\eIf{$\text{channel count} = 2$}{
+  \For{p = decorrelation pass count \emph{\KwDownTo}0}{
+    \uIf{$17 \leq \text{\TERM}_p \leq 18$}{
+      \WRITE $\WVLOG(\text{\SAMPLE}_{p~0~0})$ in 16 signed bits\;
+      \WRITE $\WVLOG(\text{\SAMPLE}_{p~0~1})$ in 16 signed bits\;
+      \WRITE $\WVLOG(\text{\SAMPLE}_{p~1~0})$ in 16 signed bits\;
+      \WRITE $\WVLOG(\text{\SAMPLE}_{p~1~1})$ in 16 signed bits\;
+    }
+    \uElseIf{$1 \leq \text{\TERM}_p \leq 8$}{
+      \For{s = 0 \emph{\KwTo}$\text{\TERM}_p$}{
+        \WRITE $\WVLOG(\text{\SAMPLE}_{p~0~s})$ in 16 signed bits\;
+        \WRITE $\WVLOG(\text{\SAMPLE}_{p~1~s})$ in 16 signed bits\;
+      }
+    }
+    \ElseIf{$-3 \leq \text{\TERM}_p \leq -1$}{
+      \WRITE $\WVLOG(\text{\SAMPLE}_{p~0~0})$ in 16 signed bits\;
+      \WRITE $\WVLOG(\text{\SAMPLE}_{p~1~0})$ in 16 signed bits\;
+    }
+  }
+}{
+  \For{p = decorrelation pass count \emph{\KwDownTo}0}{
+    \uIf{$17 \leq \text{\TERM}_p \leq 18$}{
+      \WRITE $\WVLOG(\text{\SAMPLE}_{p~0~0})$ in 16 signed bits\;
+      \WRITE $\WVLOG(\text{\SAMPLE}_{p~0~1})$ in 16 signed bits\;
+    }
+    \ElseIf{$1 \leq \text{\TERM}_p \leq 8$}{
+      \For{s = 0 \emph{\KwTo}$\text{\TERM}_p$}{
+        \WRITE $\WVLOG(\text{\SAMPLE}_{p~0~s})$ in 16 signed bits\;
+      }
+    }
+  }
+}
+\EALGORITHM
+}
+
 \subsubsection{The wv\_log2 Function}
 {\relsize{-1}
 \ALGORITHM{a signed value}{a signed 16 bit value}
 \SetKwFunction{LOG}{wlog}
 $a \leftarrow |value| + \lfloor |value| \div 2 ^ 9\rfloor$\;
-\eIf{$a \neq 0$}{
-  $c \leftarrow \lfloor\log_2(a)\rfloor + 1$\;
-}{
-  $c \leftarrow 0$\;
-}
+$c \leftarrow $\lIf{$a \neq 0$}{$\lfloor\log_2(a)\rfloor + 1$}
+\lElse{$0$}\;
 \eIf{$value \geq 0$}{
   \eIf{$0 \leq a < 256$}{
     \Return $c \times 2 ^ 8 + \LOG((a \times 2 ^ {9 - c}) \bmod 256)$\;
@@ -3473,56 +3561,45 @@ $a \leftarrow |value| + \lfloor |value| \div 2 ^ 9\rfloor$\;
 }
 \EALGORITHM
 }
+
+\clearpage
+
 where \texttt{wlog} is defined from the following table:
 \par
 \noindent
 {\relsize{-3}\ttfamily
-\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}
+\begin{tabular}{|r|r|r|r|r|r|r|r|r|r|r|r|r|r|r|r|r|}
 \hline
-& 0x?0 & 0x?1 & 0x?2 & 0x?3 & 0x?4 & 0x?5 & 0x?6 & 0x?7 & 0x?8 & 0x?9 & 0x?A & 0x?B & 0x?C & 0x?D & 0x?E & 0x?F \\
+& \texttt{0x?0} & \texttt{0x?1} & \texttt{0x?2} & \texttt{0x?3} & \texttt{0x?4} & \texttt{0x?5} & \texttt{0x?6} & \texttt{0x?7} & \texttt{0x?8} & \texttt{0x?9} & \texttt{0x?A} & \texttt{0x?B} & \texttt{0x?C} & \texttt{0x?D} & \texttt{0x?E} & \texttt{0x?F} \\
 \hline
-0x0? & 0x00 & 0x01 & 0x03 & 0x04 & 0x06 & 0x07 & 0x09 & 0x0a &
-0x0b & 0x0d & 0x0e & 0x10 & 0x11 & 0x12 & 0x14 & 0x15 \\
-0x1? & 0x16 & 0x18 & 0x19 & 0x1a & 0x1c & 0x1d & 0x1e & 0x20 &
-0x21 & 0x22 & 0x24 & 0x25 & 0x26 & 0x28 & 0x29 & 0x2a \\
-0x2? & 0x2c & 0x2d & 0x2e & 0x2f & 0x31 & 0x32 & 0x33 & 0x34 &
-0x36 & 0x37 & 0x38 & 0x39 & 0x3b & 0x3c & 0x3d & 0x3e \\
-0x3? & 0x3f & 0x41 & 0x42 & 0x43 & 0x44 & 0x45 & 0x47 & 0x48 &
-0x49 & 0x4a & 0x4b & 0x4d & 0x4e & 0x4f & 0x50 & 0x51 \\
-0x4? & 0x52 & 0x54 & 0x55 & 0x56 & 0x57 & 0x58 & 0x59 & 0x5a &
-0x5c & 0x5d & 0x5e & 0x5f & 0x60 & 0x61 & 0x62 & 0x63 \\
-0x5? & 0x64 & 0x66 & 0x67 & 0x68 & 0x69 & 0x6a & 0x6b & 0x6c &
-0x6d & 0x6e & 0x6f & 0x70 & 0x71 & 0x72 & 0x74 & 0x75 \\
-0x6? & 0x76 & 0x77 & 0x78 & 0x79 & 0x7a & 0x7b & 0x7c & 0x7d &
-0x7e & 0x7f & 0x80 & 0x81 & 0x82 & 0x83 & 0x84 & 0x85 \\
-0x7? & 0x86 & 0x87 & 0x88 & 0x89 & 0x8a & 0x8b & 0x8c & 0x8d &
-0x8e & 0x8f & 0x90 & 0x91 & 0x92 & 0x93 & 0x94 & 0x95 \\
-0x8? & 0x96 & 0x97 & 0x98 & 0x99 & 0x9a & 0x9b & 0x9b & 0x9c &
-0x9d & 0x9e & 0x9f & 0xa0 & 0xa1 & 0xa2 & 0xa3 & 0xa4 \\
-0x9? & 0xa5 & 0xa6 & 0xa7 & 0xa8 & 0xa9 & 0xa9 & 0xaa & 0xab &
-0xac & 0xad & 0xae & 0xaf & 0xb0 & 0xb1 & 0xb2 & 0xb2 \\
-0xA? & 0xb3 & 0xb4 & 0xb5 & 0xb6 & 0xb7 & 0xb8 & 0xb9 & 0xb9 &
-0xba & 0xbb & 0xbc & 0xbd & 0xbe & 0xbf & 0xc0 & 0xc0 \\
-0xB? & 0xc1 & 0xc2 & 0xc3 & 0xc4 & 0xc5 & 0xc6 & 0xc6 & 0xc7 &
-0xc8 & 0xc9 & 0xca & 0xcb & 0xcb & 0xcc & 0xcd & 0xce \\
-0xC? & 0xcf & 0xd0 & 0xd0 & 0xd1 & 0xd2 & 0xd3 & 0xd4 & 0xd4 &
-0xd5 & 0xd6 & 0xd7 & 0xd8 & 0xd8 & 0xd9 & 0xda & 0xdb \\
-0xD? & 0xdc & 0xdc & 0xdd & 0xde & 0xdf & 0xe0 & 0xe0 & 0xe1 &
-0xe2 & 0xe3 & 0xe4 & 0xe4 & 0xe5 & 0xe6 & 0xe7 & 0xe7 \\
-0xE? & 0xe8 & 0xe9 & 0xea & 0xea & 0xeb & 0xec & 0xed & 0xee &
-0xee & 0xef & 0xf0 & 0xf1 & 0xf1 & 0xf2 & 0xf3 & 0xf4 \\
-0xF? & 0xf4 & 0xf5 & 0xf6 & 0xf7 & 0xf7 & 0xf8 & 0xf9 & 0xf9 &
-0xfa & 0xfb & 0xfc & 0xfc & 0xfd & 0xfe & 0xff & 0xff \\
+\texttt{0x0?} & 0 & 1 & 3 & 4 & 6 & 7 & 9 & 10 & 11 & 13 & 14 & 16 & 17 & 18 & 20 & 21 \\
+\texttt{0x1?} & 22 & 24 & 25 & 26 & 28 & 29 & 30 & 32 & 33 & 34 & 36 & 37 & 38 & 40 & 41 & 42 \\
+\texttt{0x2?} & 44 & 45 & 46 & 47 & 49 & 50 & 51 & 52 & 54 & 55 & 56 & 57 & 59 & 60 & 61 & 62 \\
+\texttt{0x3?} & 63 & 65 & 66 & 67 & 68 & 69 & 71 & 72 & 73 & 74 & 75 & 77 & 78 & 79 & 80 & 81 \\
+\texttt{0x4?} & 82 & 84 & 85 & 86 & 87 & 88 & 89 & 90 & 92 & 93 & 94 & 95 & 96 & 97 & 98 & 99 \\
+\texttt{0x5?} & 100 & 102 & 103 & 104 & 105 & 106 & 107 & 108 & 109 & 110 & 111 & 112 & 113 & 114 & 116 & 117 \\
+\texttt{0x6?} & 118 & 119 & 120 & 121 & 122 & 123 & 124 & 125 & 126 & 127 & 128 & 129 & 130 & 131 & 132 & 133 \\
+\texttt{0x7?} & 134 & 135 & 136 & 137 & 138 & 139 & 140 & 141 & 142 & 143 & 144 & 145 & 146 & 147 & 148 & 149 \\
+\texttt{0x8?} & 150 & 151 & 152 & 153 & 154 & 155 & 155 & 156 & 157 & 158 & 159 & 160 & 161 & 162 & 163 & 164 \\
+\texttt{0x9?} & 165 & 166 & 167 & 168 & 169 & 169 & 170 & 171 & 172 & 173 & 174 & 175 & 176 & 177 & 178 & 178 \\
+\texttt{0xA?} & 179 & 180 & 181 & 182 & 183 & 184 & 185 & 185 & 186 & 187 & 188 & 189 & 190 & 191 & 192 & 192 \\
+\texttt{0xB?} & 193 & 194 & 195 & 196 & 197 & 198 & 198 & 199 & 200 & 201 & 202 & 203 & 203 & 204 & 205 & 206 \\
+\texttt{0xC?} & 207 & 208 & 208 & 209 & 210 & 211 & 212 & 212 & 213 & 214 & 215 & 216 & 216 & 217 & 218 & 219 \\
+\texttt{0xD?} & 220 & 220 & 221 & 222 & 223 & 224 & 224 & 225 & 226 & 227 & 228 & 228 & 229 & 230 & 231 & 231 \\
+\texttt{0xE?} & 232 & 233 & 234 & 234 & 235 & 236 & 237 & 238 & 238 & 239 & 240 & 241 & 241 & 242 & 243 & 244 \\
+\texttt{0xF?} & 244 & 245 & 246 & 247 & 247 & 248 & 249 & 249 & 250 & 251 & 252 & 252 & 253 & 254 & 255 & 255 \\
 \hline
 \end{tabular}
 }
 
-\clearpage
+\subsubsection{Writing Decorrelation Samples Example}
 
+Stuff
+
+\clearpage
 
 \subsubsection{The wv\_exp2 Function}
 
-{\relsize{-1}
 \ALGORITHM{a signed 16 bit value}{a signed value}
 \SetKwFunction{EXP}{wexp}
 \uIf{$-32768 \leq value < -2304$}{
@@ -3538,7 +3615,6 @@ where \texttt{wlog} is defined from the following table:
   \Return $\EXP(value \bmod{256}) \times 2 ^ {\lfloor value \div 2 ^ 8 \rfloor - 9}$\;
 }
 \EALGORITHM
-}
 \par
 \noindent
 where \texttt{wexp}(\textit{x}) is defined from the following table:
@@ -3546,29 +3622,30 @@ where \texttt{wexp}(\textit{x}) is defined from the following table:
 \par
 \noindent
 {\relsize{-3}\ttfamily
-\begin{tabular}{| c | c | c | c | c | c | c | c | c | c | c | c | c | c | c | c | c |}
+\begin{tabular}{|r|r|r|r|r|r|r|r|r|r|r|r|r|r|r|r|r|}
 \hline
-& 0x?0 & 0x?1 & 0x?2 & 0x?3 & 0x?4 & 0x?5 & 0x?6 & 0x?7 & 0x?8 & 0x?9 & 0x?A & 0x?B & 0x?C & 0x?D & 0x?E & 0x?F \\
+& \texttt{0x?0} & \texttt{0x?1} & \texttt{0x?2} & \texttt{0x?3} & \texttt{0x?4} & \texttt{0x?5} & \texttt{0x?6} & \texttt{0x?7} & \texttt{0x?8} & \texttt{0x?9} & \texttt{0x?A} & \texttt{0x?B} & \texttt{0x?C} & \texttt{0x?D} & \texttt{0x?E} & \texttt{0x?F} \\
 \hline
-0x0? & 256 & 257 & 257 & 258 & 259 & 259 & 260 & 261 & 262 & 262 & 263 & 264 & 264 & 265 & 266 & 267 \\
-0x1? & 267 & 268 & 269 & 270 & 270 & 271 & 272 & 272 & 273 & 274 & 275 & 275 & 276 & 277 & 278 & 278 \\
-0x2? & 279 & 280 & 281 & 281 & 282 & 283 & 284 & 285 & 285 & 286 & 287 & 288 & 288 & 289 & 290 & 291 \\
-0x3? & 292 & 292 & 293 & 294 & 295 & 296 & 296 & 297 & 298 & 299 & 300 & 300 & 301 & 302 & 303 & 304 \\
-0x4? & 304 & 305 & 306 & 307 & 308 & 309 & 309 & 310 & 311 & 312 & 313 & 314 & 314 & 315 & 316 & 317 \\
-0x5? & 318 & 319 & 320 & 321 & 321 & 322 & 323 & 324 & 325 & 326 & 327 & 328 & 328 & 329 & 330 & 331 \\
-0x6? & 332 & 333 & 334 & 335 & 336 & 337 & 337 & 338 & 339 & 340 & 341 & 342 & 343 & 344 & 345 & 346 \\
-0x7? & 347 & 348 & 349 & 350 & 350 & 351 & 352 & 353 & 354 & 355 & 356 & 357 & 358 & 359 & 360 & 361 \\
-0x8? & 362 & 363 & 364 & 365 & 366 & 367 & 368 & 369 & 370 & 371 & 372 & 373 & 374 & 375 & 376 & 377 \\
-0x9? & 378 & 379 & 380 & 381 & 382 & 383 & 384 & 385 & 386 & 387 & 388 & 389 & 391 & 392 & 393 & 394 \\
-0xA? & 395 & 396 & 397 & 398 & 399 & 400 & 401 & 402 & 403 & 405 & 406 & 407 & 408 & 409 & 410 & 411 \\
-0xB? & 412 & 413 & 415 & 416 & 417 & 418 & 419 & 420 & 421 & 422 & 424 & 425 & 426 & 427 & 428 & 429 \\
-0xC? & 431 & 432 & 433 & 434 & 435 & 436 & 438 & 439 & 440 & 441 & 442 & 444 & 445 & 446 & 447 & 448 \\
-0xD? & 450 & 451 & 452 & 453 & 454 & 456 & 457 & 458 & 459 & 461 & 462 & 463 & 464 & 466 & 467 & 468 \\
-0xE? & 470 & 471 & 472 & 473 & 475 & 476 & 477 & 478 & 480 & 481 & 482 & 484 & 485 & 486 & 488 & 489 \\
-0xF? & 490 & 492 & 493 & 494 & 496 & 497 & 498 & 500 & 501 & 502 & 504 & 505 & 506 & 508 & 509 & 511 \\
+\texttt{0x0?} & 256 & 257 & 257 & 258 & 259 & 259 & 260 & 261 & 262 & 262 & 263 & 264 & 264 & 265 & 266 & 267 \\
+\texttt{0x1?} & 267 & 268 & 269 & 270 & 270 & 271 & 272 & 272 & 273 & 274 & 275 & 275 & 276 & 277 & 278 & 278 \\
+\texttt{0x2?} & 279 & 280 & 281 & 281 & 282 & 283 & 284 & 285 & 285 & 286 & 287 & 288 & 288 & 289 & 290 & 291 \\
+\texttt{0x3?} & 292 & 292 & 293 & 294 & 295 & 296 & 296 & 297 & 298 & 299 & 300 & 300 & 301 & 302 & 303 & 304 \\
+\texttt{0x4?} & 304 & 305 & 306 & 307 & 308 & 309 & 309 & 310 & 311 & 312 & 313 & 314 & 314 & 315 & 316 & 317 \\
+\texttt{0x5?} & 318 & 319 & 320 & 321 & 321 & 322 & 323 & 324 & 325 & 326 & 327 & 328 & 328 & 329 & 330 & 331 \\
+\texttt{0x6?} & 332 & 333 & 334 & 335 & 336 & 337 & 337 & 338 & 339 & 340 & 341 & 342 & 343 & 344 & 345 & 346 \\
+\texttt{0x7?} & 347 & 348 & 349 & 350 & 350 & 351 & 352 & 353 & 354 & 355 & 356 & 357 & 358 & 359 & 360 & 361 \\
+\texttt{0x8?} & 362 & 363 & 364 & 365 & 366 & 367 & 368 & 369 & 370 & 371 & 372 & 373 & 374 & 375 & 376 & 377 \\
+\texttt{0x9?} & 378 & 379 & 380 & 381 & 382 & 383 & 384 & 385 & 386 & 387 & 388 & 389 & 391 & 392 & 393 & 394 \\
+\texttt{0xA?} & 395 & 396 & 397 & 398 & 399 & 400 & 401 & 402 & 403 & 405 & 406 & 407 & 408 & 409 & 410 & 411 \\
+\texttt{0xB?} & 412 & 413 & 415 & 416 & 417 & 418 & 419 & 420 & 421 & 422 & 424 & 425 & 426 & 427 & 428 & 429 \\
+\texttt{0xC?} & 431 & 432 & 433 & 434 & 435 & 436 & 438 & 439 & 440 & 441 & 442 & 444 & 445 & 446 & 447 & 448 \\
+\texttt{0xD?} & 450 & 451 & 452 & 453 & 454 & 456 & 457 & 458 & 459 & 461 & 462 & 463 & 464 & 466 & 467 & 468 \\
+\texttt{0xE?} & 470 & 471 & 472 & 473 & 475 & 476 & 477 & 478 & 480 & 481 & 482 & 484 & 485 & 486 & 488 & 489 \\
+\texttt{0xF?} & 490 & 492 & 493 & 494 & 496 & 497 & 498 & 500 & 501 & 502 & 504 & 505 & 506 & 508 & 509 & 511 \\
 \hline
 \end{tabular}
 }
+
 
 %% \begin{table}[h]
 %% \begin{tabular}{r||rrrrrr}
