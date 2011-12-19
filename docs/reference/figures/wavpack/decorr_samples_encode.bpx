@@ -1,0 +1,30 @@
+<?xml version="1.0" ?>
+<struct endianness="little">
+  <field size="5" value="4">metadata function</field>
+  <field size="1" value="0">n. d.</field>
+  <field size="1" value="0">1 less</field>
+  <field size="1" value="0">large</field>
+  <field size="8" value="22">sub block size (× 2)</field>
+  <bytes value="6407">s₄ ₀ ₀</bytes>
+  <bytes value="5207">s₄ ₀ ₁</bytes>
+  <bytes value="cf04">s₄ ₁ ₀</bytes>
+  <bytes value="9602">s₄ ₁ ₁</bytes>
+  <bytes value="4e07">s₃ ₀ ₀</bytes>
+  <bytes value="3b07">s₃ ₀ ₁</bytes>
+  <bytes value="b304">s₃ ₁ ₀</bytes>
+  <bytes value="0002">s₃ ₁ ₁</bytes>
+  <bytes value="3107">s₂ ₀ ₀</bytes>
+  <bytes value="0001">s₂ ₁ ₀</bytes>
+  <bytes value="4407">s₂ ₀ ₁</bytes>
+  <bytes value="9604">s₂ ₁ ₁</bytes>
+  <bytes value="2c07">s₁ ₀ ₀</bytes>
+  <bytes value="1607">s₁ ₀ ₁</bytes>
+  <bytes value="7604">s₁ ₁ ₀</bytes>
+  <bytes value="0001">s₁ ₁ ₁</bytes>
+  <bytes value="f406">s₀ ₀ ₀</bytes>
+  <bytes value="0000">s₀ ₁ ₀</bytes>
+  <bytes value="1607">s₀ ₀ ₁</bytes>
+  <bytes value="5204">s₀ ₁ ₁</bytes>
+  <bytes value="2607">s₀ ₀ ₂</bytes>
+  <bytes value="2c05">s₀ ₁ ₂</bytes>
+</struct>

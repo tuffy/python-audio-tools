@@ -104,6 +104,7 @@ figures/wavpack/channel_info.pdf \
 figures/wavpack/decoding_params.pdf \
 figures/wavpack/decorr_samples.pdf \
 figures/wavpack/decorr_samples2.pdf \
+figures/wavpack/decorr_samples_encode.pdf \
 figures/wavpack/decorr_samples_parse.pdf \
 figures/wavpack/decorr_terms.pdf \
 figures/wavpack/decorr_weights.pdf \

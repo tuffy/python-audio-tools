@@ -3593,8 +3593,34 @@ where \texttt{wlog} is defined from the following table:
 }
 
 \subsubsection{Writing Decorrelation Samples Example}
-
-Stuff
+Given a 2 channel subframe with 5 correlation passes containing
+the following correlation samples:
+\begin{table}[h]
+\begin{tabular}{rrrr}
+pass $p$ & $\text{term}_p$ & $\text{sample}_{p~0~s}$ & $\text{sample}_{p~1~s}$ \\
+\hline
+4 & 18 & \texttt{[84, 80]} & \texttt{[14, 3]} \\
+3 & 18 & \texttt{[79, 75]} & \texttt{[13, 2]} \\
+2 & 2 & \texttt{[73, 77]} & \texttt{[1, 12]} \\
+1 & 17 & \texttt{[72, 68]} & \texttt{[11, 1]} \\
+0 & 3 & \texttt{[62, 68, 71]} & \texttt{[0, 10, 18]} \\
+\end{tabular}
+\end{table}
+\par
+\noindent
+$\text{sample}_{4~0~0}$ (pass 4, channel 0, sample 0) is encoded as:
+\begin{align*}
+a &\leftarrow |84| + \lfloor|84| \div 2 ^ 9\rfloor = 84 \\
+c &\leftarrow \lfloor\log_2(84)\rfloor + 1 = 7 \\
+value &\leftarrow 7 \times 2 ^ 8 + \texttt{wlog}((84 \times 2 ^ 2) \bmod 256) \\
+&\leftarrow 1792 + \texttt{wlog}(\texttt{0x50}) = 1892 = \texttt{0x764}
+\end{align*}
+\par
+\noindent
+and the entire sub block is written as:
+\begin{figure}[h]
+\includegraphics{figures/wavpack/decorr_samples_encode.pdf}
+\end{figure}
 
 \clearpage
 
