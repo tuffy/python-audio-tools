@@ -1106,18 +1106,14 @@ $i \leftarrow 0$\;
 
 \clearpage
 
-{\relsize{-2}
+{\relsize{-1}
 \begin{algorithm}[H]
 \DontPrintSemicolon
 \SetKw{READ}{read}
 \tcc{determine final residual value}
-\uIf{$add = 0$}{
+\eIf{$add = 0$}{
   $unsigned \leftarrow base$\;
-}\uElseIf{$add = 1$}{
-  $b_i \leftarrow$ \READ 1 unsigned bit\;
-  $unsigned \leftarrow base + b_i$\;
-}
-\Else{
+}{
   $p \leftarrow \lfloor\log_2(add)\rfloor$\;
   $r_i \leftarrow$ \READ $p$ unsigned bits\;
   $e \leftarrow 2 ^ {p + 1} - add - 1$\;

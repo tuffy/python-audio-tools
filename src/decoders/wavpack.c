@@ -1110,9 +1110,6 @@ wavpack_read_residual(BitstreamReader* bs,
 
     if (add == 0) {
         u = base;
-    } else if (add == 1) {
-        unsigned b = bs->read(bs, 1);
-        u = base + b;
     } else {
         unsigned p = LOG2(add);
         unsigned r = bs->read(bs, p);

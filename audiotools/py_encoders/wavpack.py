@@ -250,3 +250,168 @@ def wv_exp2(value):
         return EXP2[value & 0xFF] << ((value >> 8) - 9)
     else:
         raise ValueError("%s not a signed 16-bit value" % (value))
+
+def write_bitstream(writer, channels, entropies):
+    from math import log
+
+    assert((len(channels) == 1) or (len(channels) == 2))
+    assert(len(set(map(len, channels))) == 1)
+
+    u = None
+    i = 0
+    total_samples = len(channels) * len(channels[0])
+    signs = []
+    ms = []
+    bases = []
+    adds = []
+    while (i < total_samples):
+        sample = channels[i % len(channels)][i / len(channels)]
+        if ((u is None) and (entropies[0][0] < 2) and (entropies[1][0] < 2)):
+            #handle long run of 0 residuals
+            raise NotImplementedError()
+        else:
+            if (sample >= 0):
+                unsigned = sample
+                signs.append(0)
+            else:
+                unsigned = -sample - 1
+                signs.append(1)
+
+            entropy = entropies[i % len(channels)]
+            medians = [e / 2 ** 4 + 1 for e in entropy]
+
+            if (unsigned < medians[0]):
+                m = 0
+                base = 0
+                add = entropy[0] >> 4
+                entropy[0] -= ((entropy[0] + 126) / 128) * 2
+            elif ((unsigned - medians[0]) < medians[1]):
+                m = 1
+                base = medians[0]
+                add = entropy[1] >> 4
+                entropy[0] += ((entropy[0] + 128) / 128) * 5
+                entropy[1] -= ((entropy[1] + 62) / 64) * 2
+            elif ((unsigned - (medians[0] + medians[1])) < medians[2]):
+                m = 2
+                base = medians[0] + medians[1]
+                add = entropy[2] >> 4
+                entropy[0] += ((entropy[0] + 128) / 128) * 5
+                entropy[1] += ((entropy[1] + 64) / 64) * 5
+                entropy[2] -= ((entropy[2] + 30) / 32) * 2
+            else:
+                m = ((unsigned - (medians[0] + medians[1])) / medians[2]) + 2
+                base = medians[0] + medians[1] + ((m - 2) * medians[2])
+                add = entropy[2] >> 4
+                entropy[0] += ((entropy[0] + 128) / 128) * 5
+                entropy[1] += ((entropy[1] + 64) / 64) * 5
+                entropy[2] += ((entropy[2] + 32) / 32) * 5
+
+            bases.append(base)
+            adds.append(add)
+
+            if (add == 0):
+                print "fixed size = 0"
+            else:
+                e = 2 ** (int(log(add) / log(2)) + 1) - add - 1
+                p = int(log(add) / log(2))
+                if ((unsigned - base) < e):
+                    r = unsigned - base
+                    b = None
+                else:
+                    r = (unsigned - base + e) / 2
+                    b = (unsigned - base + e) % 2
+                print "p %s  r %s  e %s  b %s" % (p, r, e, b)
+
+
+            i += 1
+    print bases
+    print entropies
+    print signs
+
+def write_residual(writer, unsigned, prev_u, m, next_m, base, add, sign):
+    """given u_(i - 1), m_(i) and m_(i + 1)
+    along with base_(i) and add_(i) values,
+    writes the given residual to the output stream
+    and returns u_(i)
+    """
+
+    from math import log
+
+    #determine u_(i)
+    if ((m > 0) and (next_m > 0)):
+        #positive m to positive m
+        if ((prev_u is not None) and (prev_u % 2 == 1)):
+            #passing 1 from previous u
+            u_i = (m * 2) - 1
+        else:
+            u_i = (m * 2) + 1
+    elif ((m == 0) and (next_m > 0)):
+        if ((prev_u is not None) and (prev_u % 2 == 0)):
+            #passing 0 from previous u
+            u_i = None
+        else:
+            u_i = 1
+    elif ((m > 0) and (next_m == 0)):
+        if ((prev_u is not None) and (prev_u % 2 == 1)):
+            #passing 1 from previous u
+            u_i = (m - 1) * 2
+        else:
+            u_i = m * 2
+    elif ((m == 0) and (next_m == 0)):
+        if ((prev_u is not None) and (prev_u % 2 == 0)):
+            #passing 0 from previous u
+            u_i = None
+        else:
+            u_i = 0
+    else:
+        raise ValueError("invalid m")
+
+    if (u_i is not None):
+        if (u_i < 16):
+            writer.unary(0, u_i)
+        else:
+            writer.unary(0, 16)
+            write_egc(writer, u_i - 16)
+
+    if (add > 0):
+        e = 2 ** (int(log(add) / log(2)) + 1) - add - 1
+        p = int(log(add) / log(2))
+        if ((unsigned - base) < e):
+            r = unsigned - base
+            b = None
+        else:
+            r = (unsigned - base + e) / 2
+            b = (unsigned - base + e) % 2
+        writer.write(p, r)
+        if (b is not None):
+            writer.write(1, b)
+
+    writer.write(1, sign)
+
+    return u_i
+
+def write_egc(writer, value):
+    raise NotImplementedError()
+
+if (__name__ == '__main__'):
+    from audiotools.bitstream import BitstreamWriter
+    import sys
+
+    w = BitstreamWriter(open(sys.argv[1], "wb"), 1)
+
+    prev_u = None
+    for (unsigned, m, next_m, base, add, sign) in zip(
+        [60, 31, 32, 32, 17, 36, 1, 37, 20, 35, 35, 31, 50, 25, 62, 18, 68, 10, 71, 0],
+        [3, 2, 2, 2, 1, 3, 0, 2, 1, 2, 2, 2, 3, 1, 3, 1, 3, 0, 3, 0],
+        [2, 2, 2, 1, 3, 0, 2, 1, 2, 2, 2, 3, 1, 3, 1, 3, 0, 3, 0, 0],
+        [42, 20, 22, 20, 9, 34, 0, 24, 9, 26, 24, 27, 46, 11, 53, 12, 58, 0, 65, 0],
+        [20, 13, 23, 12, 14, 11, 8, 13, 14, 12, 22, 11, 20, 18, 24, 17, 28, 11, 32, 11],
+        [1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]):
+        prev_u = write_residual(w, unsigned, prev_u, m, next_m, base, add, sign)
+
+    w.byte_align()
+    # medians = [[118, 194, 322], [118, 176, 212]]
+    # channels = [[-61, -33, -18, 1, 20, 35, 50, 62, 68, 71],
+    #             [31, 32, 36, 37, 35, 31, 25, 18, 10, 0]]
+
+    # write_bitstream(None, channels, medians)
