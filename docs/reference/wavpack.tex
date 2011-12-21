@@ -3668,6 +3668,190 @@ where \texttt{wexp}(\textit{x}) is defined from the following table:
 \end{tabular}
 }
 
+\clearpage
+
+\subsection{Encoding Bitstream}
+{\relsize{-1}
+\ALGORITHM{channel count, entropy values, a list of signed residual values per channel}{bitstream sub block data}
+\SetKwData{UNDEFINED}{undefined}
+\SetKwData{BLOCKSAMPLES}{block samples}
+\SetKwData{CHANNELCOUNT}{channel count}
+\SetKwData{ENTROPY}{entropy}
+\SetKwData{RESIDUAL}{residual}
+\SetKwData{ZEROES}{zeroes}
+\SetKwData{SAMPLE}{sample}
+\SetKw{AND}{and}
+$i \leftarrow 0$\;
+$u_{(-2) \leftarrow \text{\UNDEFINED}}$\;
+$u_{(-1) \leftarrow \text{\UNDEFINED}}$\;
+\While{$i < (\text{\BLOCKSAMPLES} \times \text{\CHANNELCOUNT})$}{
+  $\text{\SAMPLE} \leftarrow \text{\RESIDUAL}_{(i \bmod \text{\CHANNELCOUNT})~\lfloor i \div \text{\CHANNELCOUNT}\rfloor}$\;
+  \eIf{$(u_{i - 1} = \text{\UNDEFINED})$ \AND $(\text{\ENTROPY}_{0~0} < 2)$ \AND $(\text{\ENTROPY}_{1~0} < 2)$}{
+    flush residual ($\text{m}_{i - 1}$, $\text{base}_{i - 1}$, $\text{add}_{i - 1}$, $\text{sign}_{i - 1}$) using $u_{i - 2}$ and $m_i = 0$\;
+    $\text{\ZEROES} \leftarrow 0$\;
+    \While{$\text{\SAMPLE} = 0$ \AND $i < (\text{\BLOCKSAMPLES} \times \text{\CHANNELCOUNT})$}{
+      $\text{\ZEROES} \leftarrow \text{\ZEROES} + 1$\;
+      $i \leftarrow i + 1$\;
+      $\text{\SAMPLE} \leftarrow \text{\RESIDUAL}_{(i \bmod \text{\CHANNELCOUNT})~\lfloor i \div \text{\CHANNELCOUNT}\rfloor}$\;
+    }
+    write \ZEROES in modified Elias gamma code\;
+    $u_i \leftarrow$ write residual \text{\SAMPLE}\;
+  }{
+    $u_i \leftarrow$ write residual \text{\SAMPLE}\;
+    $i \leftarrow i + 1$\;
+  }
+}
+flush residual ($\text{m}_{i - 1}$, $\text{base}_{i - 1}$, $\text{add}_{i - 1}$, $\text{sign}_{i - 1}$) using $u_{i - 2}$ and $m_i = 0$\;
+\Return encoded bitstream sub block\;
+\EALGORITHM
+}
+
+\subsubsection{Writing Modified Elias Gamma Code}
+{\relsize{-1}
+\ALGORITHM{a non-negative integer value}{an encoded value}
+\eIf{$v \leq 1$}{
+  \WUNARY $v$ with stop bit 0\;
+}{
+  $t \leftarrow \lfloor(\log_2(v))\rfloor + 1$\;
+  \WUNARY $t$ with stop bit 0\;
+  \WRITE $v \bmod 2 ^ {t - 1}$ in ($t - 1$) unsigned bits\;
+}
+\Return encoded value\;
+\EALGORITHM
+}
+
+\clearpage
+
+\subsubsection{Writing Residual Value}
+{\relsize{-1}
+\ALGORITHM{signed sample value, $u_{i - 2}$, entropy variables for channel, previous residual's values}{$u_{i - 1}$, residual's values, updated entropy variables}
+\SetKwData{SAMPLE}{sample}
+\SetKwData{UNSIGNED}{unsigned}
+\SetKwData{SIGN}{sign}
+\SetKwData{ENTROPY}{entropy}
+\SetKwData{MEDIAN}{median}
+\SetKwData{MED}{m}
+\SetKwData{BASE}{base}
+\SetKwData{ADD}{add}
+\eIf{$\SAMPLE \geq 0$}{
+  $\UNSIGNED \leftarrow \SAMPLE$\;
+  $\text{\SIGN}_i \leftarrow 0$\;
+}{
+  $\UNSIGNED \leftarrow -\SAMPLE - 1$\;
+  $\text{\SIGN}_i \leftarrow 1$\;
+}
+$\text{\MEDIAN}_{c~0} \leftarrow \lfloor\text{\ENTROPY}_{c~0} \div 2 ^ 4\rfloor + 1$\;
+$\text{\MEDIAN}_{c~1} \leftarrow \lfloor\text{\ENTROPY}_{c~1} \div 2 ^ 4\rfloor + 1$\;
+$\text{\MEDIAN}_{c~2} \leftarrow \lfloor\text{\ENTROPY}_{c~2} \div 2 ^ 4\rfloor + 1$\;
+\uIf{$\UNSIGNED < \text{\MEDIAN}_{c~0}$}{
+  $\text{\MED}_i \leftarrow 0$\;
+  $\text{\BASE}_i \leftarrow 0$\;
+  $\text{\ADD}_i \leftarrow \lfloor\text{\ENTROPY}_{c~0} \div 2 ^ 4\rfloor$\;
+  $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} - \lfloor(\text{\ENTROPY}_{c~0} + 126) \div 128\rfloor \times 2$\;
+}
+\uElseIf{$(\UNSIGNED - \text{\MEDIAN}_{c~0}) < \text{\MEDIAN}_{c~1}$}{
+  $\text{\MED}_i \leftarrow 1$\;
+  $\text{\BASE}_i \leftarrow \text{\MEDIAN}_{c~0}$\;
+  $\text{\ADD}_i \leftarrow \lfloor\text{\ENTROPY}_{c~1} \div 2 ^ 4\rfloor$\;
+  $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} + \lfloor(\text{\ENTROPY}_{c~0} + 128) \div 128\rfloor \times 5$\;
+  $\text{\ENTROPY}_{c~1} \leftarrow \text{\ENTROPY}_{c~1} - \lfloor(\text{\ENTROPY}_{c~1} + 62) \div 64\rfloor \times 2$\;
+}
+\uElseIf{$(\UNSIGNED - (\text{\ENTROPY}_{c~0} + \text{\ENTROPY}_{c~1})) < \text{\ENTROPY}_{c~2}$}{
+  $\text{\MED}_i \leftarrow 2$\;
+  $\text{\BASE}_i \leftarrow \text{\MEDIAN}_{c~0} + \text{\ENTROPY}_{c~1}$\;
+  $\text{\ADD}_i \leftarrow \lfloor\text{\ENTROPY}_{c~2} \div 2 ^ 4\rfloor$\;
+  $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} + \lfloor(\text{\ENTROPY}_{c~0} + 128) \div 128\rfloor \times 5$\;
+  $\text{\ENTROPY}_{c~1} \leftarrow \text{\ENTROPY}_{c~1} + \lfloor(\text{\ENTROPY}_{c~1} + 64) \div 64\rfloor \times 5$\;
+  $\text{\ENTROPY}_{c~2} \leftarrow \text{\ENTROPY}_{c~2} - \lfloor(\text{\ENTROPY}_{c~2} + 30) \div 32\rfloor \times 2$\;
+}
+\Else{
+  $\text{\MED}_i \leftarrow \lfloor(\UNSIGNED - (\text{\MEDIAN}_{c~0} + \text{\MEDIAN}_{c~1})) \div \text{\MEDIAN}_{c~2}\rfloor + 2$\;
+  $\text{\BASE}_i \leftarrow \text{\MEDIAN}_{c~0} + \text{\MEDIAN}_{c~1} + ((\text{\MED}_i - 2) \times \text{\MEDIAN}_{c~2})$\;
+  $\text{\ADD}_i \leftarrow \lfloor\text{\ENTROPY}_{c~2} \div 2 ^ 4\rfloor$\;
+  $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} + \lfloor(\text{\ENTROPY}_{c~0} + 128) \div 128\rfloor \times 5$\;
+  $\text{\ENTROPY}_{c~1} \leftarrow \text{\ENTROPY}_{c~1} + \lfloor(\text{\ENTROPY}_{c~1} + 64) \div 64\rfloor \times 5$\;
+  $\text{\ENTROPY}_{c~2} \leftarrow \text{\ENTROPY}_{c~2} + \lfloor(\text{\ENTROPY}_{c~2} + 32) \div 32\rfloor \times 5$\;
+}
+$u_{i - 1} \leftarrow$ flush previous residual ($\text{\MED}_{i - 1}$, $\text{\BASE}_{i - 1}$, $\text{\ADD}_{i - 1}$, $\text{\SIGN}_{i - 1}$) using $u_{i - 2}$ and $\text{\MED}_i$\;
+\Return $u_{i - 1}$, $\text{\MED}_i$, $\text{\BASE}_i$, $\text{\ADD}_i$, $\text{\SIGN}_i$ and $\text{\ENTROPY}_c$\;
+\EALGORITHM
+}
+
+\clearpage
+
+\subsubsection{Flushing Residual Value}
+{\relsize{-1}
+Residual writing must be handled in this two-step fashion
+because building the unary ($u$) value for residual $i$,
+requires the residual's $m$ value,
+the previous residual's $u$ value
+and the \textit{next} residual's $m$ value.
+Therefore, one cannot generate $u_i$ without $m_i$, $u_{i - 1}$ and $m_{i + 1}$,
+so writing a residual value can't take place until the next residual
+is calculated.
+\par
+\noindent
+\vskip 1ex
+\ALGORITHM{unsigned value, $u_{i - 1}$, $m_i$, $m_{i + 1}$, $\text{base}_i$, $\text{add}_i$, $\text{sign}_i$}{$u_i$, residual data}
+\SetKw{AND}{and}
+\SetKw{IS}{is}
+\SetKwData{BASE}{base}
+\SetKwData{ADD}{add}
+\SetKwData{SIGN}{sign}
+\SetKwData{DEFINED}{defined}
+\SetKwData{UNDEFINED}{undefined}
+\SetKwData{UNSIGNED}{unsigned value}
+\tcc{determine $u_i$ from $m_i$, $m_{i + 1}$ and $u_{i - 1}$}
+\uIf{$m_i > 0$ \AND $m_{i + 1} > 0$}{
+  \eIf{$u_{i - 1}$ \IS \DEFINED \AND $u_{i - 1} \bmod 2 = 1$}{
+    $u_i \leftarrow (m_i \times 2) - 1$\;
+  }{
+    $u_i \leftarrow (m_i \times 2) + 1$\;
+  }
+}
+\uElseIf{$m_i = 0$ \AND $m_{i + 1} > 0$}{
+  \eIf{$u_{i - 1}$ \IS \DEFINED \AND $u_{i - 1} \bmod 2 = 0$}{
+    $u_i \leftarrow \UNDEFINED$\;
+  }{
+    $u_i \leftarrow 1$\;
+  }
+}
+\uElseIf{$m_i > 0$ \AND $m_{i + 1} = 0$}{
+  \eIf{$u_{i - 1}$ \IS \DEFINED \AND $u_{i - 1} \bmod 2 = 1$}{
+    $u_i \leftarrow (m_i - 1) \times 2$\;
+  }{
+    $u_i \leftarrow m_i \times 2$\;
+  }
+}
+\ElseIf{$m_i = 0$ \AND $m_{i + 1} = 0$}{
+  \eIf{$u_{i - 1}$ \IS \DEFINED \AND $u_{i - 1} \bmod 2 = 0$}{
+    $u_i \leftarrow \UNDEFINED$\;
+  }{
+    $u_i \leftarrow 0$\;
+  }
+}
+\If{$u_i$ \IS \DEFINED}{
+  \eIf{$u_i < 16$}{
+    \WUNARY $u_i$ with stop bit 0\;
+  }{
+    \WUNARY 16 with stop bit 0\;
+    write $(u_i - 16)$ in modified Elias gamma code\;
+  }
+}
+\If{$\text{\ADD}_i > 0$}{
+  $p \leftarrow \lfloor\log_2(\text{\ADD}_i)\rfloor$\;
+  $e \leftarrow 2 ^ {(p + 1)} - \text{\ADD}_i - 1$\;
+  \eIf{$(\text{\UNSIGNED} - \text{\BASE}_i) < e$}{
+    \WRITE $(\text{\UNSIGNED} - \text{\BASE}_i)$ in $p$ unsigned bits\;
+  }{
+    \WRITE $\lfloor(\text{\UNSIGNED} - \text{\BASE}_i + e) \div 2\rfloor$ in $p$ unsigned bits\;
+    \WRITE $((\text{\UNSIGNED} - \text{\BASE}_i + e) \bmod 2)$ in 1 unsigned bit\;
+  }
+}
+\WRITE $\text{\SIGN}_i$ in 1 unsigned bit\;
+\Return $u_i$, residual data\;
+\EALGORITHM
+}
 
 %% \begin{table}[h]
 %% \begin{tabular}{r||rrrrrr}
