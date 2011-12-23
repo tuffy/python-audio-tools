@@ -317,26 +317,26 @@ def write_residual(writer, sample, entropy, prev_u, prev_residual):
 
     if (unsigned < medians[0]):
         m = 0
-        base = 0
-        add = entropy[0] >> 4
+        offset = unsigned
+        add = medians[0] - 1
         entropy[0] -= ((entropy[0] + 126) / 128) * 2
     elif ((unsigned - medians[0]) < medians[1]):
         m = 1
-        base = medians[0]
-        add = entropy[1] >> 4
+        offset = unsigned - medians[0]
+        add = medians[1] - 1
         entropy[0] += ((entropy[0] + 128) / 128) * 5
         entropy[1] -= ((entropy[1] + 62) / 64) * 2
     elif ((unsigned - (medians[0] + medians[1])) < medians[2]):
         m = 2
-        base = medians[0] + medians[1]
-        add = entropy[2] >> 4
+        offset = unsigned - (medians[0] + medians[1])
+        add = medians[2] - 1
         entropy[0] += ((entropy[0] + 128) / 128) * 5
         entropy[1] += ((entropy[1] + 64) / 64) * 5
         entropy[2] -= ((entropy[2] + 30) / 32) * 2
     else:
         m = ((unsigned - (medians[0] + medians[1])) / medians[2]) + 2
-        base = medians[0] + medians[1] + ((m - 2) * medians[2])
-        add = entropy[2] >> 4
+        offset = unsigned - (medians[0] + medians[1] + ((m - 2) * medians[2]))
+        add = medians[2] - 1
         entropy[0] += ((entropy[0] + 128) / 128) * 5
         entropy[1] += ((entropy[1] + 64) / 64) * 5
         entropy[2] += ((entropy[2] + 32) / 32) * 5
@@ -346,23 +346,22 @@ def write_residual(writer, sample, entropy, prev_u, prev_residual):
     else:
         u = None
 
-    return (u, Residual(unsigned, m, base, add, sign))
+    return (u, Residual(m, offset, add, sign))
 
 class Residual:
-    def __init__(self, unsigned, m, base, add, sign):
-        self.unsigned = unsigned
+    def __init__(self, m, offset, add, sign):
         self.m = m
-        self.base = base
+        self.offset = offset
         self.add = add
         self.sign = sign
 
     def flush(self, writer, prev_u, next_m):
-        return encode_residual(writer, self.unsigned, prev_u,
-                               self.m, next_m, self.base, self.add, self.sign)
+        return flush_residual(writer, prev_u, self.m, next_m,
+                              self.offset, self.add, self.sign)
 
-def encode_residual(writer, unsigned, prev_u, m, next_m, base, add, sign):
+def flush_residual(writer, prev_u, m, next_m, offset, add, sign):
     """given u_(i - 1), m_(i) and m_(i + 1)
-    along with base_(i) and add_(i) values,
+    along with offset_(i), add_(i) and sign_(i) values,
     writes the given residual to the output stream
     and returns u_(i)
     """
@@ -372,32 +371,32 @@ def encode_residual(writer, unsigned, prev_u, m, next_m, base, add, sign):
     #determine u_(i)
     if ((m > 0) and (next_m > 0)):
         #positive m to positive m
-        if ((prev_u is not None) and (prev_u % 2 == 1)):
+        if ((prev_u is None) or (prev_u % 2 == 0)):
+            u_i = (m * 2) + 1
+        else:
             #passing 1 from previous u
             u_i = (m * 2) - 1
-        else:
-            u_i = (m * 2) + 1
     elif ((m == 0) and (next_m > 0)):
         #zero m to positive m
-        if ((prev_u is not None) and (prev_u % 2 == 0)):
+        if ((prev_u is None) or (prev_u % 2 == 1)):
+            u_i = 1
+        else:
             #passing 0 from previous u
             u_i = None
-        else:
-            u_i = 1
     elif ((m > 0) and (next_m == 0)):
         #positive m to zero m
-        if ((prev_u is not None) and (prev_u % 2 == 1)):
+        if ((prev_u is None) or (prev_u % 2 == 0)):
+            u_i = m * 2
+        else:
             #passing 1 from previous u
             u_i = (m - 1) * 2
-        else:
-            u_i = m * 2
     elif ((m == 0) and (next_m == 0)):
         #zero m to zero m
-        if ((prev_u is not None) and (prev_u % 2 == 0)):
+        if ((prev_u is None) or (prev_u % 2 == 1)):
+            u_i = 0
+        else:
             #passing 0 from previous u
             u_i = None
-        else:
-            u_i = 0
     else:
         raise ValueError("invalid m")
 
@@ -409,17 +408,13 @@ def encode_residual(writer, unsigned, prev_u, m, next_m, base, add, sign):
             write_egc(writer, u_i - 16)
 
     if (add > 0):
-        e = 2 ** (int(log(add) / log(2)) + 1) - add - 1
         p = int(log(add) / log(2))
-        if ((unsigned - base) < e):
-            r = unsigned - base
-            b = None
+        e = 2 ** (p + 1) - add - 1
+        if (offset < e):
+            writer.write(p, offset)
         else:
-            r = (unsigned - base + e) / 2
-            b = (unsigned - base + e) % 2
-        writer.write(p, r)
-        if (b is not None):
-            writer.write(1, b)
+            writer.write(p, (offset + e) / 2)
+            writer.write(1, (offset + e % 2))
 
     writer.write(1, sign)
 

@@ -674,8 +674,8 @@ def read_residual(reader, last_u, medians):
         unsigned = base
     else:
         p = int(log(add) / log(2))
-        r = reader.read(p)
         e = 2 ** (p + 1) - add - 1
+        r = reader.read(p)
         if (r >= e):
             b = reader.read(1)
             unsigned = base + (r * 2) - e + b

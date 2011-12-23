@@ -1115,8 +1115,8 @@ $i \leftarrow 0$\;
   $unsigned \leftarrow base$\;
 }{
   $p \leftarrow \lfloor\log_2(add)\rfloor$\;
-  $r_i \leftarrow$ \READ $p$ unsigned bits\;
   $e \leftarrow 2 ^ {p + 1} - add - 1$\;
+  $r_i \leftarrow$ \READ $p$ unsigned bits\;
   \eIf{$r \geq e$}{
     $b_i \leftarrow$ \READ 1 unsigned bit\;
     $unsigned \leftarrow base + (r_i \times 2) - e + b_i$\;
@@ -1273,21 +1273,21 @@ i & u_i & m_i &
 {\relsize{-2}
 \renewcommand{\arraystretch}{1.5}
 \begin{tabular}{|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|}
-i & \text{base} & \text{add} & p & r_i & e & b_i & unsigned & sign_i & residual_i \\
+i & \text{base} & \text{add} & p & e & r_i & b_i & unsigned & sign_i & residual_i \\
 \hline
 0 &
 42 & 20 &
 \lfloor\log_2(20)\rfloor = 4 &
-14 &
 2 ^ {4 + 1} - 20 - 1 = 11 &
+14 &
 1 & 42 + (14 \times 2) - 11 + 1 = 60 &
 1 & -60 - 1 = -61
 \\
 1 &
 20 & 13 &
 \lfloor\log_2(13)\rfloor = 3 &
-6 &
 2 ^ {3 + 1} - 13 - 1 = 2 &
+6 &
 1 & 20 + (6 \times 2) - 2 + 1 = 31 &
 0 & 31
 \\
@@ -1295,16 +1295,16 @@ i & \text{base} & \text{add} & p & r_i & e & b_i & unsigned & sign_i & residual_
 2 &
 22 & 23 &
 \lfloor\log_2(23)\rfloor = 4 &
-9 &
 2 ^ {4 + 1} - 23 - 1 = 8 &
+9 &
 0 & 22 + (9 \times 2) - 8 + 0 = 32 &
 1 & -32 - 1 = -33
 \\
 3 &
 20 & 12 &
 \lfloor\log_2(12)\rfloor = 3 &
-7 &
 2 ^ {3 + 1} - 12 - 1 = 3 &
+7 &
 1 & 20 + (7 \times 2) - 3 + 1 = 32 &
 0 & 32
 \\
@@ -1312,16 +1312,16 @@ i & \text{base} & \text{add} & p & r_i & e & b_i & unsigned & sign_i & residual_
 4 &
 9 & 14 &
 \lfloor\log_2(14)\rfloor = 3 &
-4 &
 2 ^ {3 + 1} - 14 - 1 = 1 &
+4 &
 1 & 9 + (4 \times 2) - 1 + 1 = 17 &
 1 & -17 - 1 = -18
 \\
 5 &
 34 & 11 &
 \lfloor\log_2(11)\rfloor = 3 &
-2 &
 2 ^ {3 + 1} - 11 - 1 = 4 &
+2 &
  & 34 + 2 = 36 &
 0 & 36
 \\
@@ -1329,16 +1329,16 @@ i & \text{base} & \text{add} & p & r_i & e & b_i & unsigned & sign_i & residual_
 6 &
 0 & 8 &
 \lfloor\log_2(8)\rfloor = 3 &
-1 &
 2 ^ {3 + 1} - 8 - 1 = 7 &
+1 &
  & 0 + 1 = 1 &
 0 & 1
 \\
 7 &
 24 & 13 &
 \lfloor\log_2(13)\rfloor = 3 &
-7 &
 2 ^ {3 + 1} - 13 - 1 = 2 &
+7 &
 1 & 24 + (7 \times 2) - 2 + 1 = 37 &
 0 & 37
 \\
@@ -1346,16 +1346,16 @@ i & \text{base} & \text{add} & p & r_i & e & b_i & unsigned & sign_i & residual_
 8 &
 9 & 14 &
 \lfloor\log_2(14)\rfloor = 3 &
-6 &
 2 ^ {3 + 1} - 14 - 1 = 1 &
+6 &
 0 & 9 + (6 \times 2) - 1 + 0 = 20 &
 0 & 20
 \\
 9 &
 26 & 12 &
 \lfloor\log_2(12)\rfloor = 3 &
-6 &
 2 ^ {3 + 1} - 12 - 1 = 3 &
+6 &
 0 & 26 + (6 \times 2) - 3 + 0 = 35 &
 0 & 35
 \\
@@ -1363,16 +1363,16 @@ i & \text{base} & \text{add} & p & r_i & e & b_i & unsigned & sign_i & residual_
 10 &
 24 & 22 &
 \lfloor\log_2(22)\rfloor = 4 &
-10 &
 2 ^ {4 + 1} - 22 - 1 = 9 &
+10 &
 0 & 24 + (10 \times 2) - 9 + 0 = 35 &
 0 & 35
 \\
 11 &
 27 & 11 &
 \lfloor\log_2(11)\rfloor = 3 &
-4 &
 2 ^ {3 + 1} - 11 - 1 = 4 &
+4 &
 0 & 27 + (4 \times 2) - 4 + 0 = 31 &
 0 & 31
 \\
@@ -1380,16 +1380,16 @@ i & \text{base} & \text{add} & p & r_i & e & b_i & unsigned & sign_i & residual_
 12 &
 46 & 20 &
 \lfloor\log_2(20)\rfloor = 4 &
-4 &
 2 ^ {4 + 1} - 20 - 1 = 11 &
+4 &
  & 46 + 4 = 50 &
 0 & 50
 \\
 13 &
 11 & 18 &
 \lfloor\log_2(18)\rfloor = 4 &
-13 &
 2 ^ {4 + 1} - 18 - 1 = 13 &
+13 &
 1 & 11 + (13 \times 2) - 13 + 1 = 25 &
 0 & 25
 \\
@@ -1397,16 +1397,16 @@ i & \text{base} & \text{add} & p & r_i & e & b_i & unsigned & sign_i & residual_
 14 &
 53 & 24 &
 \lfloor\log_2(24)\rfloor = 4 &
-8 &
 2 ^ {4 + 1} - 24 - 1 = 7 &
+8 &
 0 & 53 + (8 \times 2) - 7 + 0 = 62 &
 0 & 62
 \\
 15 &
 12 & 17 &
 \lfloor\log_2(17)\rfloor = 4 &
-6 &
 2 ^ {4 + 1} - 17 - 1 = 14 &
+6 &
  & 12 + 6 = 18 &
 0 & 18
 \\
@@ -1414,16 +1414,16 @@ i & \text{base} & \text{add} & p & r_i & e & b_i & unsigned & sign_i & residual_
 16 &
 58 & 28 &
 \lfloor\log_2(28)\rfloor = 4 &
-6 &
 2 ^ {4 + 1} - 28 - 1 = 3 &
+6 &
 1 & 58 + (6 \times 2) - 3 + 1 = 68 &
 0 & 68
 \\
 17 &
 0 & 11 &
 \lfloor\log_2(11)\rfloor = 3 &
-7 &
 2 ^ {3 + 1} - 11 - 1 = 4 &
+7 &
 0 & 0 + (7 \times 2) - 4 + 0 = 10 &
 0 & 10
 \\
@@ -1431,16 +1431,16 @@ i & \text{base} & \text{add} & p & r_i & e & b_i & unsigned & sign_i & residual_
 18 &
 65 & 32 &
 \lfloor\log_2(32)\rfloor = 5 &
-6 &
 2 ^ {5 + 1} - 32 - 1 = 31 &
+6 &
  & 65 + 6 = 71 &
 0 & 71
 \\
 19 &
 0 & 11 &
 \lfloor\log_2(11)\rfloor = 3 &
-0 &
 2 ^ {3 + 1} - 11 - 1 = 4 &
+0 &
  & 0 + 0 = 0 &
 0 & 0
 \\
@@ -3682,8 +3682,8 @@ where \texttt{wexp}(\textit{x}) is defined from the following table:
 \SetKwData{SAMPLE}{sample}
 \SetKw{AND}{and}
 $i \leftarrow 0$\;
-$u_{(-2) \leftarrow \text{\UNDEFINED}}$\;
-$u_{(-1) \leftarrow \text{\UNDEFINED}}$\;
+$u_{(-2)} \leftarrow \text{\UNDEFINED}$\;
+$u_{(-1)} \leftarrow \text{\UNDEFINED}$\;
 \While{$i < (\text{\BLOCKSAMPLES} \times \text{\CHANNELCOUNT})$}{
   $\text{\SAMPLE} \leftarrow \text{\RESIDUAL}_{(i \bmod \text{\CHANNELCOUNT})~\lfloor i \div \text{\CHANNELCOUNT}\rfloor}$\;
   \eIf{$(u_{i - 1} = \text{\UNDEFINED})$ \AND $(\text{\ENTROPY}_{0~0} < 2)$ \AND $(\text{\ENTROPY}_{1~0} < 2)$}{
@@ -3712,7 +3712,7 @@ flush residual ($\text{m}_{i - 1}$, $\text{base}_{i - 1}$, $\text{add}_{i - 1}$,
 \eIf{$v \leq 1$}{
   \WUNARY $v$ with stop bit 0\;
 }{
-  $t \leftarrow \lfloor(\log_2(v))\rfloor + 1$\;
+  $t \leftarrow \lfloor\log_2(v)\rfloor + 1$\;
   \WUNARY $t$ with stop bit 0\;
   \WRITE $v \bmod 2 ^ {t - 1}$ in ($t - 1$) unsigned bits\;
 }
@@ -3731,8 +3731,8 @@ flush residual ($\text{m}_{i - 1}$, $\text{base}_{i - 1}$, $\text{add}_{i - 1}$,
 \SetKwData{ENTROPY}{entropy}
 \SetKwData{MEDIAN}{median}
 \SetKwData{MED}{m}
-\SetKwData{BASE}{base}
 \SetKwData{ADD}{add}
+\SetKwData{OFFSET}{offset}
 \eIf{$\SAMPLE \geq 0$}{
   $\UNSIGNED \leftarrow \SAMPLE$\;
   $\text{\SIGN}_i \leftarrow 0$\;
@@ -3745,35 +3745,35 @@ $\text{\MEDIAN}_{c~1} \leftarrow \lfloor\text{\ENTROPY}_{c~1} \div 2 ^ 4\rfloor 
 $\text{\MEDIAN}_{c~2} \leftarrow \lfloor\text{\ENTROPY}_{c~2} \div 2 ^ 4\rfloor + 1$\;
 \uIf{$\UNSIGNED < \text{\MEDIAN}_{c~0}$}{
   $\text{\MED}_i \leftarrow 0$\;
-  $\text{\BASE}_i \leftarrow 0$\;
-  $\text{\ADD}_i \leftarrow \lfloor\text{\ENTROPY}_{c~0} \div 2 ^ 4\rfloor$\;
+  $\text{\OFFSET}_i \leftarrow \text{\UNSIGNED}$\tcc*[r]{offset is unsigned - base}
+  $\text{\ADD}_i \leftarrow \text{\MEDIAN}_{c~0} - 1$\;
   $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} - \lfloor(\text{\ENTROPY}_{c~0} + 126) \div 128\rfloor \times 2$\;
 }
 \uElseIf{$(\UNSIGNED - \text{\MEDIAN}_{c~0}) < \text{\MEDIAN}_{c~1}$}{
   $\text{\MED}_i \leftarrow 1$\;
-  $\text{\BASE}_i \leftarrow \text{\MEDIAN}_{c~0}$\;
-  $\text{\ADD}_i \leftarrow \lfloor\text{\ENTROPY}_{c~1} \div 2 ^ 4\rfloor$\;
+  $\text{\OFFSET}_i \leftarrow \text{\UNSIGNED} - \text{\MEDIAN}_{c~0}$\;
+  $\text{\ADD}_i \leftarrow \text{\MEDIAN}_{c~1} - 1$\;
   $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} + \lfloor(\text{\ENTROPY}_{c~0} + 128) \div 128\rfloor \times 5$\;
   $\text{\ENTROPY}_{c~1} \leftarrow \text{\ENTROPY}_{c~1} - \lfloor(\text{\ENTROPY}_{c~1} + 62) \div 64\rfloor \times 2$\;
 }
 \uElseIf{$(\UNSIGNED - (\text{\ENTROPY}_{c~0} + \text{\ENTROPY}_{c~1})) < \text{\ENTROPY}_{c~2}$}{
   $\text{\MED}_i \leftarrow 2$\;
-  $\text{\BASE}_i \leftarrow \text{\MEDIAN}_{c~0} + \text{\ENTROPY}_{c~1}$\;
-  $\text{\ADD}_i \leftarrow \lfloor\text{\ENTROPY}_{c~2} \div 2 ^ 4\rfloor$\;
+  $\text{\OFFSET}_i \leftarrow \text{\UNSIGNED} - (\text{\MEDIAN}_{c~0} + \text{\ENTROPY}_{c~1})$\;
+  $\text{\ADD}_i \leftarrow \text{\MEDIAN}_{c~2} - 1$\;
   $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} + \lfloor(\text{\ENTROPY}_{c~0} + 128) \div 128\rfloor \times 5$\;
   $\text{\ENTROPY}_{c~1} \leftarrow \text{\ENTROPY}_{c~1} + \lfloor(\text{\ENTROPY}_{c~1} + 64) \div 64\rfloor \times 5$\;
   $\text{\ENTROPY}_{c~2} \leftarrow \text{\ENTROPY}_{c~2} - \lfloor(\text{\ENTROPY}_{c~2} + 30) \div 32\rfloor \times 2$\;
 }
 \Else{
   $\text{\MED}_i \leftarrow \lfloor(\UNSIGNED - (\text{\MEDIAN}_{c~0} + \text{\MEDIAN}_{c~1})) \div \text{\MEDIAN}_{c~2}\rfloor + 2$\;
-  $\text{\BASE}_i \leftarrow \text{\MEDIAN}_{c~0} + \text{\MEDIAN}_{c~1} + ((\text{\MED}_i - 2) \times \text{\MEDIAN}_{c~2})$\;
-  $\text{\ADD}_i \leftarrow \lfloor\text{\ENTROPY}_{c~2} \div 2 ^ 4\rfloor$\;
+  $\text{\OFFSET}_i \leftarrow \text{\UNSIGNED} - (\text{\MEDIAN}_{c~0} + \text{\MEDIAN}_{c~1} + ((\text{\MED}_i - 2) \times \text{\MEDIAN}_{c~2}))$\;
+  $\text{\ADD}_i \leftarrow \text{\MEDIAN}_{c~2} - 1$\;
   $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} + \lfloor(\text{\ENTROPY}_{c~0} + 128) \div 128\rfloor \times 5$\;
   $\text{\ENTROPY}_{c~1} \leftarrow \text{\ENTROPY}_{c~1} + \lfloor(\text{\ENTROPY}_{c~1} + 64) \div 64\rfloor \times 5$\;
   $\text{\ENTROPY}_{c~2} \leftarrow \text{\ENTROPY}_{c~2} + \lfloor(\text{\ENTROPY}_{c~2} + 32) \div 32\rfloor \times 5$\;
 }
-$u_{i - 1} \leftarrow$ flush previous residual ($\text{\MED}_{i - 1}$, $\text{\BASE}_{i - 1}$, $\text{\ADD}_{i - 1}$, $\text{\SIGN}_{i - 1}$) using $u_{i - 2}$ and $\text{\MED}_i$\;
-\Return $u_{i - 1}$, $\text{\MED}_i$, $\text{\BASE}_i$, $\text{\ADD}_i$, $\text{\SIGN}_i$ and $\text{\ENTROPY}_c$\;
+$u_{i - 1} \leftarrow$ flush previous residual ($\text{\MED}_{i - 1}$, $\text{\OFFSET}_{i - 1}$, $\text{\ADD}_{i - 1}$, $\text{\SIGN}_{i - 1}$) using $u_{i - 2}$ and $\text{\MED}_i$\;
+\Return $u_{i - 1}$, $\text{\MED}_i$, $\text{\OFFSET}_i$, $\text{\ADD}_i$, $\text{\SIGN}_i$ and updated $\text{\ENTROPY}_c$\;
 \EALGORITHM
 }
 
@@ -3781,77 +3781,353 @@ $u_{i - 1} \leftarrow$ flush previous residual ($\text{\MED}_{i - 1}$, $\text{\B
 
 \subsubsection{Flushing Residual Value}
 {\relsize{-1}
-Residual writing must be handled in this two-step fashion
-because building the unary ($u$) value for residual $i$,
-requires the residual's $m$ value,
-the previous residual's $u$ value
-and the \textit{next} residual's $m$ value.
-Therefore, one cannot generate $u_i$ without $m_i$, $u_{i - 1}$ and $m_{i + 1}$,
-so writing a residual value can't take place until the next residual
-is calculated.
-\par
-\noindent
-\vskip 1ex
-\ALGORITHM{unsigned value, $u_{i - 1}$, $m_i$, $m_{i + 1}$, $\text{base}_i$, $\text{add}_i$, $\text{sign}_i$}{$u_i$, residual data}
+%% Residual writing must be handled in this two-step fashion
+%% because building the unary ($u$) value for residual $i$,
+%% requires the residual's $m$ value,
+%% the previous residual's $u$ value
+%% and the \textit{next} residual's $m$ value.
+%% Therefore, one cannot generate $u_j$ without $m_j$, $u_{j - 1}$ and $m_{j + 1}$,
+%% so writing a residual value can't take place until the next residual
+%% is calculated.
+%% \par
+%% \noindent
+%% \vskip 1ex
+\ALGORITHM{$u_{j - 1}$, $m_j$, $m_{j + 1}$, $\text{offset}_j$, $\text{add}_j$, $\text{sign}_j$}{$u_j$, residual data}
 \SetKw{AND}{and}
+\SetKw{OR}{or}
 \SetKw{IS}{is}
-\SetKwData{BASE}{base}
+\SetKw{NOT}{not}
+\SetKwData{OFFSET}{offset}
 \SetKwData{ADD}{add}
 \SetKwData{SIGN}{sign}
-\SetKwData{DEFINED}{defined}
 \SetKwData{UNDEFINED}{undefined}
-\SetKwData{UNSIGNED}{unsigned value}
-\tcc{determine $u_i$ from $m_i$, $m_{i + 1}$ and $u_{i - 1}$}
-\uIf{$m_i > 0$ \AND $m_{i + 1} > 0$}{
-  \eIf{$u_{i - 1}$ \IS \DEFINED \AND $u_{i - 1} \bmod 2 = 1$}{
-    $u_i \leftarrow (m_i \times 2) - 1$\;
+\tcc{determine $u_j$ from $m_j$, $m_{j + 1}$ and $u_{j - 1}$}
+\uIf{$m_j > 0$ \AND $m_{j + 1} > 0$}{
+  \eIf{$u_{j - 1}$ \IS \UNDEFINED \OR $u_{j - 1} \bmod 2 = 0$}{
+    $u_j \leftarrow (m_j \times 2) + 1$\;
   }{
-    $u_i \leftarrow (m_i \times 2) + 1$\;
+    $u_j \leftarrow (m_j \times 2) - 1$\;
   }
 }
-\uElseIf{$m_i = 0$ \AND $m_{i + 1} > 0$}{
-  \eIf{$u_{i - 1}$ \IS \DEFINED \AND $u_{i - 1} \bmod 2 = 0$}{
-    $u_i \leftarrow \UNDEFINED$\;
+\uElseIf{$m_j = 0$ \AND $m_{j + 1} > 0$}{
+  \eIf{$u_{j - 1}$ \IS \UNDEFINED \OR $u_{j - 1} \bmod 2 = 1$}{
+    $u_j \leftarrow 1$\;
   }{
-    $u_i \leftarrow 1$\;
+    $u_j \leftarrow \UNDEFINED$\;
   }
 }
-\uElseIf{$m_i > 0$ \AND $m_{i + 1} = 0$}{
-  \eIf{$u_{i - 1}$ \IS \DEFINED \AND $u_{i - 1} \bmod 2 = 1$}{
-    $u_i \leftarrow (m_i - 1) \times 2$\;
+\uElseIf{$m_j > 0$ \AND $m_{j + 1} = 0$}{
+  \eIf{$u_{j - 1}$ \IS \UNDEFINED \OR $u_{j - 1} \bmod 2 = 0$}{
+    $u_j \leftarrow m_j \times 2$\;
   }{
-    $u_i \leftarrow m_i \times 2$\;
+    $u_j \leftarrow (m_j - 1) \times 2$\;
   }
 }
-\ElseIf{$m_i = 0$ \AND $m_{i + 1} = 0$}{
-  \eIf{$u_{i - 1}$ \IS \DEFINED \AND $u_{i - 1} \bmod 2 = 0$}{
-    $u_i \leftarrow \UNDEFINED$\;
+\ElseIf{$m_j = 0$ \AND $m_{j + 1} = 0$}{
+  \eIf{$u_{j - 1}$ \IS \UNDEFINED \OR $u_{j - 1} \bmod 2 = 1$}{
+    $u_j \leftarrow 0$\;
   }{
-    $u_i \leftarrow 0$\;
+    $u_j \leftarrow \UNDEFINED$\;
   }
 }
-\If{$u_i$ \IS \DEFINED}{
-  \eIf{$u_i < 16$}{
-    \WUNARY $u_i$ with stop bit 0\;
+\BlankLine
+\tcc{write unary and fixed values to stream, if any}
+\If{$u_j$ \IS \NOT \UNDEFINED}{
+  \eIf{$u_j < 16$}{
+    \WUNARY $u_j$ with stop bit 0\;
   }{
     \WUNARY 16 with stop bit 0\;
-    write $(u_i - 16)$ in modified Elias gamma code\;
+    write $(u_j - 16)$ in modified Elias gamma code\;
   }
 }
-\If{$\text{\ADD}_i > 0$}{
-  $p \leftarrow \lfloor\log_2(\text{\ADD}_i)\rfloor$\;
-  $e \leftarrow 2 ^ {(p + 1)} - \text{\ADD}_i - 1$\;
-  \eIf{$(\text{\UNSIGNED} - \text{\BASE}_i) < e$}{
-    \WRITE $(\text{\UNSIGNED} - \text{\BASE}_i)$ in $p$ unsigned bits\;
+\If{$\text{\ADD}_j > 0$}{
+  $p \leftarrow \lfloor\log_2(\text{\ADD}_j)\rfloor$\;
+  $e \leftarrow 2 ^ {(p + 1)} - \text{\ADD}_j - 1$\;
+  \eIf{$\text{\OFFSET}_j < e$}{
+    $r \leftarrow \text{\OFFSET}$\;
+    \WRITE $r$ in $p$ unsigned bits\;
   }{
-    \WRITE $\lfloor(\text{\UNSIGNED} - \text{\BASE}_i + e) \div 2\rfloor$ in $p$ unsigned bits\;
-    \WRITE $((\text{\UNSIGNED} - \text{\BASE}_i + e) \bmod 2)$ in 1 unsigned bit\;
+    $r \leftarrow \lfloor(\text{\OFFSET}_j + e) \div 2\rfloor$\;
+    $b \leftarrow (\text{\OFFSET}_j + e) \bmod 2$\;
+    \WRITE $r$ in $p$ unsigned bits\;
+    \WRITE $b$ in 1 unsigned bit\;
   }
 }
-\WRITE $\text{\SIGN}_i$ in 1 unsigned bit\;
-\Return $u_i$, residual data\;
+\WRITE $\text{\SIGN}_j$ in 1 unsigned bit\;
+\Return $u_j$, residual data\;
 \EALGORITHM
 }
+
+\begin{landscape}
+
+\subsubsection{Residual Encoding Example}
+{\relsize{-2}
+\renewcommand{\arraystretch}{1.75}
+\begin{tabular}{|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|}
+i & \text{residual}_i & \text{unsigned}_i &\text{sign}_i & \text{median}_{c~0} & \text{median}_{c~1} & \text{median}_{c~2} & m_i & \text{offset}_i & \text{add}_i \\
+\hline
+0 & -61 &
+60 & 1 &
+\left\lfloor\frac{118}{2 ^ 4}\right\rfloor + 1 = 8 & \left\lfloor\frac{194}{2 ^ 4}\right\rfloor + 1 = 13 & \left\lfloor\frac{322}{2 ^ 4}\right\rfloor + 1 = 21 &
+3 & 60 - (8 + 13 + ((3 - 2) \times 21)) = 18 & 21 - 1 = 20
+\\
+1 & 31 &
+31 & 0 &
+\left\lfloor\frac{118}{2 ^ 4}\right\rfloor + 1 = 8 & \left\lfloor\frac{176}{2 ^ 4}\right\rfloor + 1 = 12 & \left\lfloor\frac{212}{2 ^ 4}\right\rfloor + 1 = 14 &
+2 & 31 - (8 + 12) = 11 & 14 - 1 = 13
+\\
+\hline
+2 & -33 &
+32 & 1 &
+\left\lfloor\frac{123}{2 ^ 4}\right\rfloor + 1 = 8 & \left\lfloor\frac{214}{2 ^ 4}\right\rfloor + 1 = 14 & \left\lfloor\frac{377}{2 ^ 4}\right\rfloor + 1 = 24 &
+2 & 32 - (8 + 14) = 10 & 24 - 1 = 23
+\\
+3 & 32 &
+32 & 0 &
+\left\lfloor\frac{123}{2 ^ 4}\right\rfloor + 1 = 8 & \left\lfloor\frac{191}{2 ^ 4}\right\rfloor + 1 = 12 & \left\lfloor\frac{198}{2 ^ 4}\right\rfloor + 1 = 13 &
+2 & 32 - (8 + 12) = 12 & 13 - 1 = 12
+\\
+\hline
+4 & -18 &
+17 & 1 &
+\left\lfloor\frac{128}{2 ^ 4}\right\rfloor + 1 = 9 & \left\lfloor\frac{234}{2 ^ 4}\right\rfloor + 1 = 15 & \left\lfloor\frac{353}{2 ^ 4}\right\rfloor + 1 = 23 &
+1 & 17 - 9 = 8 & 15 - 1 = 14
+\\
+5 & 36 &
+36 & 0 &
+\left\lfloor\frac{128}{2 ^ 4}\right\rfloor + 1 = 9 & \left\lfloor\frac{206}{2 ^ 4}\right\rfloor + 1 = 13 & \left\lfloor\frac{184}{2 ^ 4}\right\rfloor + 1 = 12 &
+3 & 36 - (9 + 13 + ((3 - 2) \times 12)) = 2 & 12 - 1 = 11
+\\
+\hline
+6 & 1 &
+1 & 0 &
+\left\lfloor\frac{138}{2 ^ 4}\right\rfloor + 1 = 9 & \left\lfloor\frac{226}{2 ^ 4}\right\rfloor + 1 = 15 & \left\lfloor\frac{353}{2 ^ 4}\right\rfloor + 1 = 23 &
+0 & 1 & 9 - 1 = 8
+\\
+7 & 37 &
+37 & 0 &
+\left\lfloor\frac{138}{2 ^ 4}\right\rfloor + 1 = 9 & \left\lfloor\frac{226}{2 ^ 4}\right\rfloor + 1 = 15 & \left\lfloor\frac{214}{2 ^ 4}\right\rfloor + 1 = 14 &
+2 & 37 - (9 + 15) = 13 & 14 - 1 = 13
+\\
+\hline
+8 & 20 &
+20 & 0 &
+\left\lfloor\frac{134}{2 ^ 4}\right\rfloor + 1 = 9 & \left\lfloor\frac{226}{2 ^ 4}\right\rfloor + 1 = 15 & \left\lfloor\frac{353}{2 ^ 4}\right\rfloor + 1 = 23 &
+1 & 20 - 9 = 11 & 15 - 1 = 14
+\\
+9 & 35 &
+35 & 0 &
+\left\lfloor\frac{148}{2 ^ 4}\right\rfloor + 1 = 10 & \left\lfloor\frac{246}{2 ^ 4}\right\rfloor + 1 = 16 & \left\lfloor\frac{200}{2 ^ 4}\right\rfloor + 1 = 13 &
+2 & 35 - (10 + 16) = 9 & 13 - 1 = 12
+\\
+\hline
+10 & 35 &
+35 & 0 &
+\left\lfloor\frac{144}{2 ^ 4}\right\rfloor + 1 = 10 & \left\lfloor\frac{218}{2 ^ 4}\right\rfloor + 1 = 14 & \left\lfloor\frac{353}{2 ^ 4}\right\rfloor + 1 = 23 &
+2 & 35 - (10 + 14) = 11 & 23 - 1 = 22
+\\
+11 & 31 &
+31 & 0 &
+\left\lfloor\frac{158}{2 ^ 4}\right\rfloor + 1 = 10 & \left\lfloor\frac{266}{2 ^ 4}\right\rfloor + 1 = 17 & \left\lfloor\frac{186}{2 ^ 4}\right\rfloor + 1 = 12 &
+2 & 31 - (10 + 17) = 4 & 12 - 1 = 11
+\\
+\hline
+12 & 50 &
+50 & 0 &
+\left\lfloor\frac{154}{2 ^ 4}\right\rfloor + 1 = 10 & \left\lfloor\frac{238}{2 ^ 4}\right\rfloor + 1 = 15 & \left\lfloor\frac{331}{2 ^ 4}\right\rfloor + 1 = 21 &
+3 & 50 - (10 + 15 + ((3 - 2) \times 21)) = 4 & 21 - 1 = 20
+\\
+13 & 25 &
+25 & 0 &
+\left\lfloor\frac{168}{2 ^ 4}\right\rfloor + 1 = 11 & \left\lfloor\frac{291}{2 ^ 4}\right\rfloor + 1 = 19 & \left\lfloor\frac{174}{2 ^ 4}\right\rfloor + 1 = 11 &
+1 & 25 - 11 = 14 & 19 - 1 = 18
+\\
+\hline
+14 & 62 &
+62 & 0 &
+\left\lfloor\frac{164}{2 ^ 4}\right\rfloor + 1 = 11 & \left\lfloor\frac{258}{2 ^ 4}\right\rfloor + 1 = 17 & \left\lfloor\frac{386}{2 ^ 4}\right\rfloor + 1 = 25 &
+3 & 62 - (11 + 17 + ((3 - 2) \times 25)) = 9 & 25 - 1 = 24
+\\
+15 & 18 &
+18 & 0 &
+\left\lfloor\frac{178}{2 ^ 4}\right\rfloor + 1 = 12 & \left\lfloor\frac{281}{2 ^ 4}\right\rfloor + 1 = 18 & \left\lfloor\frac{174}{2 ^ 4}\right\rfloor + 1 = 11 &
+1 & 18 - 12 = 6 & 18 - 1 = 17
+\\
+\hline
+16 & 68 &
+68 & 0 &
+\left\lfloor\frac{174}{2 ^ 4}\right\rfloor + 1 = 11 & \left\lfloor\frac{283}{2 ^ 4}\right\rfloor + 1 = 18 & \left\lfloor\frac{451}{2 ^ 4}\right\rfloor + 1 = 29 &
+3 & 68 - (11 + 18 + ((3 - 2) \times 29)) = 10 & 29 - 1 = 28
+\\
+17 & 10 &
+10 & 0 &
+\left\lfloor\frac{188}{2 ^ 4}\right\rfloor + 1 = 12 & \left\lfloor\frac{271}{2 ^ 4}\right\rfloor + 1 = 17 & \left\lfloor\frac{174}{2 ^ 4}\right\rfloor + 1 = 11 &
+0 & 10 & 12 - 1 = 11
+\\
+\hline
+18 & 71 &
+71 & 0 &
+\left\lfloor\frac{184}{2 ^ 4}\right\rfloor + 1 = 12 & \left\lfloor\frac{308}{2 ^ 4}\right\rfloor + 1 = 20 & \left\lfloor\frac{526}{2 ^ 4}\right\rfloor + 1 = 33 &
+3 & 71 - (12 + 20 + ((3 - 2) \times 33)) = 6 & 33 - 1 = 32
+\\
+19 & 0 &
+0 & 0 &
+\left\lfloor\frac{184}{2 ^ 4}\right\rfloor + 1 = 12 & \left\lfloor\frac{271}{2 ^ 4}\right\rfloor + 1 = 17 & \left\lfloor\frac{174}{2 ^ 4}\right\rfloor + 1 = 11 &
+0 & 0 & 12 - 1 = 11
+\\
+\hline
+\end{tabular}
+\renewcommand{\arraystretch}{1.0}
+}
+
+\clearpage
+
+{\relsize{-2}
+\renewcommand{\arraystretch}{1.75}
+\begin{tabular}{|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|}
+i & m_i & \text{offset}_i & \text{add}_i & u_i & p_i & e_i & r_i & b_i \\
+\hline
+%%START
+0 & 3 &
+18 & 20 &
+(3 \times 2) + 1 = 7 &
+\lfloor\log_2(20)\rfloor = 4 &
+2 ^ {(4 + 1)} - 20 - 1 = 11 &
+\lfloor(18 + 11) \div 2 \rfloor = 14 &
+\lfloor(18 + 11) \bmod 2 \rfloor = 1 \\
+1 & 2 &
+11 & 13 &
+(2 \times 2) - 1 = 3 &
+\lfloor\log_2(13)\rfloor = 3 &
+2 ^ {(3 + 1)} - 13 - 1 = 2 &
+\lfloor(11 + 2) \div 2 \rfloor = 6 &
+\lfloor(11 + 2) \bmod 2 \rfloor = 1 \\
+2 & 2 &
+10 & 23 &
+(2 \times 2) - 1 = 3 &
+\lfloor\log_2(23)\rfloor = 4 &
+2 ^ {(4 + 1)} - 23 - 1 = 8 &
+\lfloor(10 + 8) \div 2 \rfloor = 9 &
+\lfloor(10 + 8) \bmod 2 \rfloor = 0 \\
+3 & 2 &
+12 & 12 &
+(2 \times 2) - 1 = 3 &
+\lfloor\log_2(12)\rfloor = 3 &
+2 ^ {(3 + 1)} - 12 - 1 = 3 &
+\lfloor(12 + 3) \div 2 \rfloor = 7 &
+\lfloor(12 + 3) \bmod 2 \rfloor = 1 \\
+4 & 1 &
+8 & 14 &
+(1 \times 2) - 1 = 1 &
+\lfloor\log_2(14)\rfloor = 3 &
+2 ^ {(3 + 1)} - 14 - 1 = 1 &
+\lfloor(8 + 1) \div 2 \rfloor = 4 &
+\lfloor(8 + 1) \bmod 2 \rfloor = 1 \\
+5 & 3 &
+2 & 11 &
+(3 - 1) \times 2 = 4 &
+\lfloor\log_2(11)\rfloor = 3 &
+2 ^ {(3 + 1)} - 11 - 1 = 4 &
+2 & \\
+6 & 0 &
+1 & 8 &
+\textit{undefined} &
+\lfloor\log_2(8)\rfloor = 3 &
+2 ^ {(3 + 1)} - 8 - 1 = 7 &
+1 & \\
+7 & 2 &
+13 & 13 &
+(2 \times 2) + 1 = 5 &
+\lfloor\log_2(13)\rfloor = 3 &
+2 ^ {(3 + 1)} - 13 - 1 = 2 &
+\lfloor(13 + 2) \div 2 \rfloor = 7 &
+\lfloor(13 + 2) \bmod 2 \rfloor = 1 \\
+8 & 1 &
+11 & 14 &
+(1 \times 2) - 1 = 1 &
+\lfloor\log_2(14)\rfloor = 3 &
+2 ^ {(3 + 1)} - 14 - 1 = 1 &
+\lfloor(11 + 1) \div 2 \rfloor = 6 &
+\lfloor(11 + 1) \bmod 2 \rfloor = 0 \\
+9 & 2 &
+9 & 12 &
+(2 \times 2) - 1 = 3 &
+\lfloor\log_2(12)\rfloor = 3 &
+2 ^ {(3 + 1)} - 12 - 1 = 3 &
+\lfloor(9 + 3) \div 2 \rfloor = 6 &
+\lfloor(9 + 3) \bmod 2 \rfloor = 0 \\
+10 & 2 &
+11 & 22 &
+(2 \times 2) - 1 = 3 &
+\lfloor\log_2(22)\rfloor = 4 &
+2 ^ {(4 + 1)} - 22 - 1 = 9 &
+\lfloor(11 + 9) \div 2 \rfloor = 10 &
+\lfloor(11 + 9) \bmod 2 \rfloor = 0 \\
+11 & 2 &
+4 & 11 &
+(2 \times 2) - 1 = 3 &
+\lfloor\log_2(11)\rfloor = 3 &
+2 ^ {(3 + 1)} - 11 - 1 = 4 &
+\lfloor(4 + 4) \div 2 \rfloor = 4 &
+\lfloor(4 + 4) \bmod 2 \rfloor = 0 \\
+12 & 3 &
+4 & 20 &
+(3 \times 2) - 1 = 5 &
+\lfloor\log_2(20)\rfloor = 4 &
+2 ^ {(4 + 1)} - 20 - 1 = 11 &
+4 & \\
+13 & 1 &
+14 & 18 &
+(1 \times 2) - 1 = 1 &
+\lfloor\log_2(18)\rfloor = 4 &
+2 ^ {(4 + 1)} - 18 - 1 = 13 &
+\lfloor(14 + 13) \div 2 \rfloor = 13 &
+\lfloor(14 + 13) \bmod 2 \rfloor = 1 \\
+14 & 3 &
+9 & 24 &
+(3 \times 2) - 1 = 5 &
+\lfloor\log_2(24)\rfloor = 4 &
+2 ^ {(4 + 1)} - 24 - 1 = 7 &
+\lfloor(9 + 7) \div 2 \rfloor = 8 &
+\lfloor(9 + 7) \bmod 2 \rfloor = 0 \\
+15 & 1 &
+6 & 17 &
+(1 \times 2) - 1 = 1 &
+\lfloor\log_2(17)\rfloor = 4 &
+2 ^ {(4 + 1)} - 17 - 1 = 14 &
+6 & \\
+16 & 3 &
+10 & 28 &
+(3 - 1) \times 2 = 4 &
+\lfloor\log_2(28)\rfloor = 4 &
+2 ^ {(4 + 1)} - 28 - 1 = 3 &
+\lfloor(9 + 3) \div 2 \rfloor = 6 &
+\lfloor(9 + 3) \bmod 2 \rfloor = 0 \\
+17 & 0 &
+10 & 11 &
+\textit{undefined} &
+\lfloor\log_2(11)\rfloor = 3 &
+2 ^ {(3 + 1)} - 11 - 1 = 4 &
+\lfloor(10 + 4) \div 2 \rfloor = 7 &
+\lfloor(10 + 4) \bmod 2 \rfloor = 0 \\
+18 & 3 &
+6 & 32 &
+3 \times 2 = 6 &
+\lfloor\log_2(32)\rfloor = 5 &
+2 ^ {(5 + 1)} - 32 - 1 = 31 &
+6 & \\
+19 & 0 &
+0 & 11 &
+\textit{undefined} &
+\lfloor\log_2(11)\rfloor = 3 &
+2 ^ {(3 + 1)} - 11 - 1 = 4 &
+0 & \\
+%%END
+\end{tabular}
+\renewcommand{\arraystretch}{1.0}
+}
+
+\end{landscape}
 
 %% \begin{table}[h]
 %% \begin{tabular}{r||rrrrrr}
