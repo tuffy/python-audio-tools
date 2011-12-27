@@ -812,8 +812,8 @@ def decorrelate_channels(residuals,
              latest_pass = decorrelation_pass_1ch(latest_pass,
                                                   term,
                                                   delta,
-                                                  weight,
-                                                  samples)
+                                                  weight[0],
+                                                  samples[0])
         return (latest_pass, )
 
 

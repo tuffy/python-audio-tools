@@ -211,7 +211,8 @@ def encode_wavpack(filename, pcmreader, block_size,
                                pcmreader.channels)
 
     #FIXME - write final block containing Wave footer and MD5 sum
-    #FIXME - update Wave haeder's "data" chunk size, if generated
+
+    #FIXME - update Wave header's "data" chunk size, if generated
 
     #go back and populate block headers with total samples
     for block_offset in context.block_offsets:
@@ -236,10 +237,13 @@ def write_block(writer, context, channels, block_index,
 
         #determine wasted bits
         wasted = min(map(wasted_bps, channels[0]))
+        if (wasted == INFINITY):
+            #all samples are 0
+            wasted = 0
 
         #if wasted bits, remove them from channel_0
         if ((wasted > 0) and (wasted != INFINITY)):
-            shifted = [[s >> wasted] for s in channels[0]]
+            shifted = [[s >> wasted for s in channels[0]]]
         else:
             shifted = channels
 
@@ -256,6 +260,9 @@ def write_block(writer, context, channels, block_index,
         #determine wasted bits
         wasted = min(min(map(wasted_bps, channels[0])),
                      min(map(wasted_bps, channels[1])))
+        if (wasted == INFINITY):
+            #all samples are 0
+            wasted = 0
 
         #if wasted bits, remove them from channel_0/channel_1
         if ((wasted > 0) and (wasted != INFINITY)):
@@ -275,49 +282,81 @@ def write_block(writer, context, channels, block_index,
 
     #FIXME - if first block in file, write Wave header
 
-    #FIXME - if correlation passes, write three sub blocks of pass data
+    #if correlation passes, write three sub blocks of pass data
     if (len(encoding_parameters.correlation_parameters) > 0):
-        raise NotImplementedError()
+        sub_block.reset()
+        write_correlation_terms(sub_block,
+                                encoding_parameters.correlation_parameters)
+        write_sub_block(sub_blocks, 2, 0, sub_block)
 
-    #FIXME - if wasted bits, write extended integers sub block
+        sub_block.reset()
+        write_correlation_weights(sub_block,
+                                  encoding_parameters.correlation_parameters,
+                                  1 if ((len(channels) == 1) or false_stereo)
+                                  else 2)
+        write_sub_block(sub_blocks, 3, 0, sub_block)
+
+        sub_block.reset()
+        write_correlation_samples(sub_block,
+                                  encoding_parameters.correlation_parameters,
+                                  1 if ((len(channels) == 1) or false_stereo)
+                                  else 2)
+        write_sub_block(sub_blocks, 4, 0, sub_block)
+
+    #if wasted bits, write extended integers sub block
     if (wasted > 0):
-        raise NotImplementedError()
+        sub_block.reset()
+        write_extended_integers(sub_block, 0, wasted, 0, 0)
+        write_sub_block(sub_blocks, 9, 0, sub_block)
 
     #FIXME - if channel count > 2, write channel info sub block
+    if (context.pcmreader.channels > 2):
+        raise NotImplementedError()
 
     #FIXME - if nonstandard sample rate, write sample rate sub block
+    if (context.pcmreader.sample_rate not in
+        (6000, 8000, 9600, 11025, 12000, 16000, 22050, 24000,
+         32000, 44100, 48000, 64000, 88200, 96000, 192000)):
+        raise NotImplementedError()
 
-    if ((len(channels) == 1) or (channels[0] == channels[1])):
+    if ((len(channels) == 1) or (false_stereo)):
         #1 channel block
 
-        #FIXME - correlate shifted_0 with terms/deltas/weights/samples
+        #correlate shifted_0 with terms/deltas/weights/samples
+        correlated = correlate_channels(
+            shifted,
+            encoding_parameters.correlation_parameters,
+            1)
 
         #write entropy variables sub block
         sub_block.reset()
-        write_entropy_variables(sub_block, channels,
+        write_entropy_variables(sub_block, correlated,
                                 encoding_parameters.entropy_variables)
         write_sub_block(sub_blocks, 5, 0, sub_block)
 
-
         #write bitstream sub block
         sub_block.reset()
-        write_bitstream(sub_block, channels,
+        write_bitstream(sub_block, correlated,
                         encoding_parameters.entropy_variables)
         write_sub_block(sub_blocks, 10, 0, sub_block)
     else:
         #2 channel block
 
-        #FIXME - correlate shifted_0/shifted_1 with terms/deltas/weights/samples
+        #correlate shifted_0/shifted_1 with terms/deltas/weights/samples
+        correlated = correlate_channels(
+            mid_side,
+            encoding_parameters.correlation_parameters,
+            2)
 
         #write entropy variables sub block
         sub_block.reset()
-        write_entropy_variables(sub_block, shifted,
+        write_entropy_variables(sub_block, correlated,
                                 encoding_parameters.entropy_variables)
         write_sub_block(sub_blocks, 5, 0, sub_block)
 
-        #FIXME - write bitstream sub block
+        #write bitstream sub block
         sub_block.reset()
-        write_bitstream(sub_block, mid_side,
+        write_bitstream(sub_block, correlated,
                         encoding_parameters.entropy_variables)
         write_sub_block(sub_blocks, 10, 0, sub_block)
 
@@ -341,7 +380,11 @@ def write_block(writer, context, channels, block_index,
     #write sub block data to stream
     sub_blocks.copy(writer)
 
-    #FIXME - update correlation weights/samples and entropy variables
+    #FIXME - round-trip correlation weights
+
+    #FIXME - round-trip correlation samples
+
+    #FIXME - round-trip entropy variables
 
 
 def bits(sample):
@@ -471,8 +514,120 @@ def write_sub_block(writer, function, nondecoder_data, recorder):
         writer.write(8, (recorder.bytes() / 2) + actual_size_1_less)
 
     recorder.copy(writer)
-    if (recorder.bytes() % 2):
+
+    if (actual_size_1_less):
         writer.write(8, 0)
+
+
+def write_correlation_terms(writer, correlation_parameters):
+    """correlation_parameters is a list of CorrelationParameters objects
+    writes the terms and deltas to sub block data in the proper order/format"""
+
+    for parameter in reversed(correlation_parameters):
+        writer.write(5, parameter.term + 5)
+        writer.write(3, parameter.delta)
+
+
+def write_correlation_weights(writer, correlation_parameters, channel_count):
+    """correlation_parameters is a list of CorrelationParameters objects
+    writes the weights to sub block data in the proper order/format"""
+
+    def store_weight(w):
+        if (w > 0):
+            return (min(w, 1024) -
+                    ((min(w, 1024) + 2 ** 6) / 2 ** 7) + 4) / (2 ** 3)
+        elif (w == 0):
+            return 0
+        elif (w < 0):
+            return (max(w, 1024) + 4) / (2 ** 3)
+
+    for parameter in reversed(correlation_parameters):
+        writer.write(8, store_weight(parameter.weights[0]))
+        if (channel_count == 2):
+            writer.write(8, store_weight(parameter.weights[1]))
+
+
+def write_correlation_samples(writer, correlation_parameters, channel_count):
+    """correlation_parameters is a list of CorrelationParameters objects
+    writes the samples to sub block data in the proper order/format"""
+
+    if (channel_count == 2):
+        for p in reversed(correlation_parameters):
+            if ((17 <= p.term) and (p.term <= 18)):
+                writer.write_signed(16, wv_log2(p.samples[0][0]))
+                writer.write_signed(16, wv_log2(p.samples[0][1]))
+                writer.write_signed(16, wv_log2(p.samples[1][0]))
+                writer.write_signed(16, wv_log2(p.samples[1][1]))
+            elif ((1 <= p.term) and (p.term <= 8)):
+                for s in xrange(p.term):
+                    writer.write_signed(16, wv_log2(p.samples[0][s]))
+                    writer.write_signed(16, wv_log2(p.samples[1][s]))
+            elif ((-3 <= p.term) and (p.term <= -1)):
+                writer.write_signed(16, wv_log2(p.samples[0][0]))
+                writer.write_signed(16, wv_log2(p.samples[0][1]))
+            else:
+                raise ValueError("invalid correlation term")
+    else:
+        for p in reversed(correlation_parameters):
+            if ((17 <= p.term) and (p.term <= 18)):
+                writer.write_signed(16, wv_log2(p.samples[0][0]))
+                writer.write_signed(16, wv_log2(p.samples[0][1]))
+            elif ((1 <= p.term) and (p.term <= 8)):
+                for s in xrange(p.term):
+                    writer.write_signed(16, wv_log2(p.samples[0][s]))
+            else:
+                raise ValueError("invalid correlation term")
+
+
+def wv_log2(value):
+    from math import log
+
+    a = abs(value) + (abs(value) / 2 ** 9)
+    if (a != 0):
+        c = int(log(a) / log(2)) + 1
+    else:
+        c = 0
+    if (value > 0):
+        if ((0 <= a) and (a < 256)):
+            return (c * 2 ** 8) + WLOG[(a * 2 ** (9 - c)) % 256]
+        else:
+            return (c * 2 ** 8) + WLOG[(a / 2 ** (c - 9)) % 256]
+    else:
+        if ((0 <= a) and (a < 256)):
+            return -((c * 2 ** 8) + WLOG[(a * 2 ** (9 - c)) % 256])
+        else:
+            return -((c * 2 ** 8) + WLOG[(a / 2 ** (c - 9)) % 256])
+
+
+def correlate_channels(uncorrelated_samples,
+                       correlation_parameters,
+                       channel_count):
+    """uncorrelated_samples[c][s] is sample 's' for channel 'c'
+    correlation_parameters is a list of CorrelationParameters objects
+    which are updated by each pass
+    returns a list of correlated samples lists
+    """
+
+    if (len(correlation_parameters) > 0):
+        latest_pass = uncorrelated_samples
+        if (channel_count == 1):
+            for p in reversed(correlation_parameters):
+                latest_pass = [correlation_pass_1ch(latest_pass[0],
+                                                    p.term,
+                                                    p.delta,
+                                                    p.weights[0],
+                                                    p.samples[0])]
+            return latest_pass
+        else:
+            for p in reversed(correlation_parameters):
+                latest_pass = correlation_pass_2ch(latest_pass,
+                                                   p.term,
+                                                   p.delta,
+                                                   p.weights,
+                                                   p.samples)
+            return latest_pass
+    else:
+        return uncorrelated_samples
 
 
 def correlation_pass_1ch(uncorrelated_samples,
@@ -743,17 +898,19 @@ def write_bitstream(writer, channels, entropies):
                 residual.flush(writer, None, 0)
 
             zeroes = 0
-            while ((sample == 0) and (i < total_samples)):
+            while ((i < total_samples) and
+                   (channels[i % len(channels)][i / len(channels)] == 0)):
                 zeroes += 1
                 i += 1
-                sample = channels[i % len(channels)][i / len(channels)]
             write_egc(writer, zeroes)
             if (zeroes > 0):
                 entropies = [[0, 0, 0], [0, 0, 0]]
-            (u, residual) = write_residual(writer, sample,
-                                           entropies[i % (len(channels))],
-                                           u, residual)
-            i += 1
+            if (i < total_samples):
+                sample = channels[i % len(channels)][i / len(channels)]
+                (u, residual) = write_residual(writer, sample,
+                                               entropies[i % (len(channels))],
+                                               u, residual)
+                i += 1
         else:
             (u, residual) = write_residual(writer, sample,
                                            entropies[i % (len(channels))],
@@ -895,6 +1052,12 @@ def write_egc(writer, value):
         writer.write(t - 1, value % (2 ** (t - 1)))
     else:
         writer.unary(0, value)
+
+
+def write_extended_integers(writer,
+                            sent_bits, zero_bits, one_bits, duplicate_bits):
+    writer.build("8u 8u 8u 8u",
+                 (sent_bits, zero_bits, one_bits, duplicate_bits))
 
 
 if (__name__ == '__main__'):
