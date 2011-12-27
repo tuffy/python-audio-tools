@@ -257,7 +257,7 @@ combine into 6 channels of PCM output as follows:
 \TOTALSAMPLES & \leftarrow & \READ 32 unsigned bits\; \\
 \BLOCKINDEX & \leftarrow & \READ 32 unsigned bits\; \\
 \BLOCKSAMPLES & \leftarrow & \READ 32 unsigned bits\; \\
-\textit{encoded bits per sample} & \leftarrow & \READ 2 unsigned bits\; \\
+\BITSPERSAMPLE & \leftarrow & $(\text{\READ 2 unsigned bits} + 1) \times 8$\; \\
 \MONOOUTPUT & \leftarrow & \READ 1 unsigned bit\; \\
 \HYBRIDMODE & \leftarrow & \READ 1 unsigned bit\; \\
 \JOINTSTEREO & \leftarrow & \READ 1 unsigned bit\; \\
@@ -282,30 +282,25 @@ combine into 6 channels of PCM output as follows:
 \EALGORITHM
 }
 {\relsize{-1}
-\begin{tabular}{rr||rr}
-  \textit{encoded bits per sample} & bits per sample &
+\begin{tabular}{rr}
   \textit{encoded sample rate} & sample rate \\
   \hline
-  \texttt{0} & 8 &
   \texttt{0} & 6000 Hz \\
-  \texttt{1} & 16 &
   \texttt{1} & 8000 Hz \\
-  \texttt{2} & 24 &
   \texttt{2} & 9600 Hz \\
-  \texttt{3} & 32 &
   \texttt{3} & 11025 Hz \\
-  & & \texttt{4} & 12000 Hz \\
-  & & \texttt{5} & 16000 Hz \\
-  & & \texttt{6} & 22050 Hz \\
-  & & \texttt{7} & 24000 Hz \\
-  & & \texttt{8} & 32000 Hz \\
-  & & \texttt{9} & 44100 Hz \\
-  & & \texttt{10} & 48000 Hz \\
-  & & \texttt{11} & 64000 Hz \\
-  & & \texttt{12} & 88200 Hz \\
-  & & \texttt{13} & 96000 Hz \\
-  & & \texttt{14} & 192000 Hz \\
-  & & \texttt{15} & reserved \\
+  \texttt{4} & 12000 Hz \\
+  \texttt{5} & 16000 Hz \\
+  \texttt{6} & 22050 Hz \\
+  \texttt{7} & 24000 Hz \\
+  \texttt{8} & 32000 Hz \\
+  \texttt{9} & 44100 Hz \\
+  \texttt{10} & 48000 Hz \\
+  \texttt{11} & 64000 Hz \\
+  \texttt{12} & 88200 Hz \\
+  \texttt{13} & 96000 Hz \\
+  \texttt{14} & 192000 Hz \\
+  \texttt{15} & reserved \\
 \end{tabular}
 }
 
@@ -2615,10 +2610,6 @@ $\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $
     $\text{\SHIFTED}_0 \leftarrow \text{\CHANNEL}_0$\;
   }
   $\text{\CRC} \leftarrow$ calculate CRC of $\text{\SHIFTED}_0$\;
-  $(\text{\CORRELATED}_0~,~\text{\WEIGHTS}'~,~\text{\SAMPLES}') \leftarrow$ correlate $\text{\SHIFTED}_0$\newline
-  with \TERMS, \DELTAS, \WEIGHTS and \SAMPLES from encoding parameters\;
-  $(\text{\BITSTREAM}~,~\text{\ENTROPY}') \leftarrow$ calculate bitstream from $\text{\CORRELATED}_0$\newline
-  and $\text{\ENTROPY}$ from encoding parameters\;
 }(\tcc*[f]{2 channel block}){
   $\text{\MONO} \leftarrow 0$\;
   $\text{\FALSESTEREO} \leftarrow 0$\;
@@ -2634,10 +2625,6 @@ $\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $
   }
   $\text{\CRC} \leftarrow$ calculate CRC of $\text{\SHIFTED}_0/\text{\SHIFTED}_1$\;
   $\text{\MID}/\text{\SIDE} \leftarrow$ convert $\text{\SHIFTED}_0/\text{\SHIFTED}_1$ to joint stereo\;
-  $(\text{\CORRELATED}_0/\text{\CORRELATED}_1~,~\text{\WEIGHTS}'~,~\text{\SAMPLES}') \leftarrow$ correlate $\text{\MID}/\text{\SIDE}$\newline
-  with \TERMS, \DELTAS, \WEIGHTS and \SAMPLES from encoding parameters\;
-  $(\text{\BITSTREAM}~,~\text{\ENTROPY}') \leftarrow$ calculate bitstream from $\text{\CORRELATED}_0/\text{\CORRELATED}_0$\newline
-  and $\text{\ENTROPY}$ from encoding parameters\;
 }
 \EALGORITHM
 }
@@ -2646,6 +2633,11 @@ $\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $
 {\relsize{-1}
 \begin{algorithm}[H]
 \DontPrintSemicolon
+\SetKwData{CHANNEL}{channel}
+\SetKwData{CORRELATED}{correlated}
+\SetKwData{SHIFTED}{shifted}
+\SetKwData{MID}{mid}
+\SetKwData{SIDE}{side}
 \SetKwData{SUBBLOCK}{sub block}
 \SetKwData{WASTEDBPS}{wasted bps}
 \SetKwData{BITSTREAM}{bitstream}
@@ -2656,6 +2648,7 @@ $\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $
 \SetKwData{ENTROPY}{entropy}
 \SetKw{NOT}{not}
 \SetKw{IN}{in}
+\SetKw{OR}{or}
 $i \leftarrow 0$\;
 \If{first block in file}{
   $\text{\SUBBLOCK}_i \leftarrow$ wave header\;
@@ -2679,8 +2672,24 @@ $i \leftarrow 0$\;
   $\text{\SUBBLOCK}_i \leftarrow$ sample rate\;
   $i \leftarrow i + 1$\;
 }
-$\text{\SUBBLOCK}_i \leftarrow$ entropy variables sub block from \ENTROPY\;
-$\text{\SUBBLOCK}_{i + 1} \leftarrow$ bitstream sub block from \BITSTREAM\;
+\eIf(\tcc*[f]{1 channel block}){$\text{channel count} = 1$ \OR $\text{\CHANNEL}_0 = \text{\CHANNEL}_1$}{
+  $(\text{\CORRELATED}_0~,~\text{\WEIGHTS}'~,~\text{\SAMPLES}') \leftarrow$ correlate $\text{\SHIFTED}_0$\newline
+  with \TERMS, \DELTAS, \WEIGHTS and \SAMPLES from encoding parameters\;
+  $\text{\SUBBLOCK}_i \leftarrow$ entropy variables sub block from \ENTROPY\;
+  $(\text{\BITSTREAM}~,~\text{\ENTROPY}') \leftarrow$ calculate bitstream from $\text{\CORRELATED}_0$\newline
+  and $\text{\ENTROPY}$ from encoding parameters\;
+  \BlankLine
+  $\text{\SUBBLOCK}_{i + 1} \leftarrow$ bitstream sub block from \BITSTREAM\;
+}(\tcc*[f]{2 channel block}){
+  $(\text{\CORRELATED}_0/\text{\CORRELATED}_1~,~\text{\WEIGHTS}'~,~\text{\SAMPLES}') \leftarrow$ correlate $\text{\MID}/\text{\SIDE}$\newline
+  with \TERMS, \DELTAS, \WEIGHTS and \SAMPLES from encoding parameters\;
+  \BlankLine
+  $\text{\SUBBLOCK}_i \leftarrow$ entropy variables sub block from \ENTROPY\;
+  $(\text{\BITSTREAM}~,~\text{\ENTROPY}') \leftarrow$ calculate bitstream from $\text{\CORRELATED}_0/\text{\CORRELATED}_0$\newline
+  and $\text{\ENTROPY}$ from encoding parameters\;
+  $\text{\SUBBLOCK}_{i + 1} \leftarrow$ bitstream sub block from \BITSTREAM\;
+}
+$i \leftarrow i + 2$\;
 \BlankLine
 write block header\;
 \For{j = 0 \emph{\KwTo}i}{
@@ -3987,7 +3996,6 @@ i & \text{residual}_i & \text{unsigned}_i &\text{sign}_i & \text{median}_{c~0} &
 \begin{tabular}{|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|}
 i & m_i & \text{offset}_i & \text{add}_i & u_i & p_i & e_i & r_i & b_i \\
 \hline
-%%START
 0 & 3 &
 18 & 20 &
 (3 \times 2) + 1 = 7 &
@@ -4122,1747 +4130,116 @@ i & m_i & \text{offset}_i & \text{add}_i & u_i & p_i & e_i & r_i & b_i \\
 \lfloor\log_2(11)\rfloor = 3 &
 2 ^ {(3 + 1)} - 11 - 1 = 4 &
 0 & \\
-%%END
 \end{tabular}
 \renewcommand{\arraystretch}{1.0}
 }
 
 \end{landscape}
 
-%% \begin{table}[h]
-%% \begin{tabular}{r||rrrrrr}
-%% $i$ & $\text{term}_i$ & $\text{delta}_i$ & $\text{weight A}_i$ & $\text{weight B}_i$ & $\text{samples A}_i$ & $\text{Samples B}_i$ \\
-%% \hline
-%% 0 & \texttt{18} & \texttt{2} & \texttt{48} & \texttt{48} & \texttt{[-73, -78]} & \texttt{[28, 26]} \\
-%% \hline
-%% 1 & \texttt{18} & \texttt{2} & \texttt{48} & \texttt{48} & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-%% \hline
-%% 2 & \texttt{2} & \texttt{2} & \texttt{32} & \texttt{32} & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-%% \hline
-%% 3 & \texttt{17} & \texttt{2} & \texttt{48} & \texttt{48} & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-%% \hline
-%% 4 & \texttt{3} & \texttt{2} & \texttt{16} & \texttt{24} & \texttt{[0, 0, 0]} & \texttt{[0, 0, 0]} \\
-%% \hline
-%% \end{tabular}
-%% \end{table}
-
-%% \section{the WavPack Block Header}
-%% \begin{figure}[h]
-%% \includegraphics{figures/wavpack/block_header.pdf}
-%% \end{figure}
-%% \begin{wrapfigure}[10]{r}{1.5in}
-%% \begin{tabular}{|c|r|}
-%% \hline
-%% value & sample rate \\
-%% \hline
-%% \texttt{0000} & 6000 \\
-%% \texttt{0001} & 8000 \\
-%% \texttt{0010} & 9600 \\
-%% \texttt{0011} & 11025 \\
-%% \texttt{0100} & 12000 \\
-%% \texttt{0101} & 16000 \\
-%% \texttt{0110} & 22050 \\
-%% \texttt{0111} & 24000 \\
-%% \texttt{1000} & 32000 \\
-%% \texttt{1001} & 44100 \\
-%% \texttt{1010} & 48000 \\
-%% \texttt{1011} & 64000 \\
-%% \texttt{1100} & 88200 \\
-%% \texttt{1101} & 96000 \\
-%% \texttt{1110} & 192000 \\
-%% \texttt{1111} & reserved \\
-%% \hline
-%% \end{tabular}
-%% \end{wrapfigure}
-
-%% \VAR{Block Size} is the length of everything in the block past
-%% the \VAR{Block Size} field itself -
-%% or everything in the block past the CRC, minus 24 bytes.
-
-%% \VAR{Bits per Sample} is one of 4 values:
-
-%% \begin{inparaenum}
-%% \item[\texttt{00} = ] 8 bps,
-%% \item[\texttt{01} = ] 16 bps,
-%% \item[\texttt{10} = ] 24 bps,
-%% \item[\texttt{11} = ] 32 bps
-%% \end{inparaenum}
-%% .
-
-%% \VAR{Mono Output} bit indicates the channel count.
-%% If 1, this block has 1 channel.
-%% If 0, this block has 2 channels.
-%% For an audio stream with more than 2 channels,
-%% check the \VAR{Initial Block} and \VAR{Final Block} bits to indicate
-%% the start and end of the channels.  As an example:
-
-%% \begin{tabular}{c|c|c|c}
-%% Initial Block & Final Block & Mono Output & Channels \\
-%% \hline
-%% 1 & 0 & 0 & 2 \\
-%% 0 & 0 & 1 & 1 \\
-%% 0 & 0 & 1 & 1 \\
-%% 0 & 1 & 0 & 2 \\
-%% \hline
-%% \multicolumn{3}{r|}{Total} & 6
-%% \end{tabular}
-
-%% \clearpage
-
-%% \subsection{WavPack Sub-Block}
-%% \begin{figure}[h]
-%% \includegraphics{figures/wavpack/subblock_header.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% If the \VAR{Large Block} field is 0, the \VAR{Block Size} field is 8 bits long.
-%% If it is 1, the \VAR{Block Size} field is 24 bits long.
-%% The \VAR{Block Size} field is the length of \VAR{Block Data}, in 16-bit
-%% words rather than bytes.
-%% If \VAR{Actual Size 1 Less} is set, that means \VAR{Block Data} doesn't contain
-%% an even number of bytes; it is padded with a single null byte at the
-%% end in order to fit.
-%% If \VAR{Nondecoder Data} is set, that means the decoder does not have
-%% to understand the contents of this particular sub-block in
-%% order to decode the audio.
-
-%% \section{WavPack Decoding}
-%% Decoding each WavPack block requires reading its sub-blocks
-%% as `arguments' to the decoder.
-%% One can envision them like named arguments to a function call
-%% since many sub-blocks may be optional or appear in an arbitrary order.
-%% As a sort of hypothetical high-level example:
-%% \begin{Verbatim}[frame=single]
-%% decode_block(decorrelation_terms=sub_block[0],
-%%              decorrelation_weights=sub_block[1],
-%%              decorrelation_samples=sub_block[2],
-%%              entropy_variables=sub_block[3],
-%%              bitstream=sub_block[4])
-%% \end{Verbatim}
-%% Every block containing audio data requires
-%% \VAR{Entropy Variables} and \VAR{Bitstream} sub-blocks.
-%% The \VAR{Decorrelation Terms}, \VAR{Decorrelation Weights}
-%% and \VAR{Decorrelation Samples} sub-blocks are for performing
-%% one or more decorrelation passes over the bitstream's samples.
-
-%% Each block will decode to 1 or 2 channels of raw PCM output.
-%% Since files may have more than 2 channels, we may need to
-%% decode several blocks in order to retrieve all the channels
-%% of data so they can be properly combined.
-
-%% \clearpage
-
-%% \subsection{False Stereo}
-
-%% If the \VAR{False Stereo} bit is set in the block header,
-%% treat the block as mono for decoding purposes until
-%% just before the channel's data is output.
-
-%% \subsection{the Decorrelation Terms Sub-Block}
-%% This block contains the decorrelation terms and deltas values.
-%% The quantity of those values indicates how many decorrelation passes
-%% we'll be performing over the bitstream sub-block's samples.
-%% One can presume this sub-block will occur prior to the
-%% \VAR{Decorrelation Weights} and \VAR{Decorrelation Samples} sub-blocks.
-
-%% \label{wavpack_decorr_terms}
-%% \begin{figure}[h]
-%% \includegraphics{figures/wavpack/decorr_terms.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% The number of decorrelation terms and deltas
-%% equals the \VAR{Block Size} times 2, and minus 1 if
-%% \VAR{Actual Size 1 Less} is set.
-%% Each term and delta pair is 8 bits and stored in \textit{reverse} order.
-%% In addition, one must subtract 5 from the stored value of each
-%% unsigned term to get its actual value.
-
-%% For example, given the complete sub-block bytes:
-%% \begin{Verbatim}[frame=single]
-%% 42 03 57 57 47 56 48 00
-%% \end{Verbatim}
-%% we have a total of 5 term/delta pairs whose values are as follows:
-%% \begin{table}[h]
-%% \begin{tabular}{r r | r r}
-%% $\text{Decorrelation Term}_5$ & \texttt{0x17} - 5 = 18 & $\text{Decorrelation Delta}_5$ & \texttt{0x2} = 2 \\
-%% $\text{Decorrelation Term}_4$ & \texttt{0x17} - 5 = 18 & $\text{Decorrelation Delta}_4$ & \texttt{0x2} = 2 \\
-%% $\text{Decorrelation Term}_3$ & \texttt{0x07} - 5 = 2 & $\text{Decorrelation Delta}_3$ & \texttt{0x2} = 2 \\
-%% $\text{Decorrelation Term}_2$ & \texttt{0x16} - 5 = 17 & $\text{Decorrelation Delta}_2$ & \texttt{0x2} = 2 \\
-%% $\text{Decorrelation Term}_1$ & \texttt{0x08} - 5 = 3 & $\text{Decorrelation Delta}_1$ & \texttt{0x2} = 2 \\
-%% \end{tabular}
-%% \end{table}
-%% \par
-%% \noindent
-%% Remember that this is a little-endian stream and that the least-significant
-%% bits (the \VAR{Decorrelation Delta} value) are on the left side of each byte.
-
-%% \clearpage
-
-%% \subsection{the Decorrelation Weights Sub-Block}
-%% \begin{figure}[h]
-%% \includegraphics{figures/wavpack/decorr_weights.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% As with the decorrelations terms sub-block,
-%% the decorrelation weights are stored in reverse order.
-%% The number of weights stored can be determined from the sub-block's
-%% size.
-%% Each is stored in a signed, 8-bit field and interleaved between
-%% channels in the case of 2 channel blocks.
-%% For example, $\text{Decorrelation Weight}_1$ is for channel \VAR{B},
-%% $\text{Decorrelation Weight}_2$ is for channel
-%% \VAR{A}\footnote{Why \VAR{A} and \VAR{B}?
-%% Since a block may be only two channels out of many,
-%% it makes sense not to number them to avoid ambiguity.},
-%% $\text{Decorrelation Weight}_3$ is for channel \VAR{B} and so on
-%% such that the first weight value in the sub-block will be for the highest
-%% \VAR{Decorrelation Weight A}.
-%% Converting the 8-bit values to the actual decorrelation weights
-%% requires the following formula:
-%% \begin{equation*}
-%% \text{Decorrelation Weight} =
-%% \begin{cases}
-%% \text{value} \times 2 ^ 3 + \left\lfloor\frac{\text{value} \times 2 ^ 3 + 2 ^ 6}{2 ^ 7}\right\rfloor & \text{if value} > 0 \\
-%% 0 & \text{if value} = 0 \\
-%% \text{value} \times 2 ^ 3 & \text{if value} < 0
-%% \end{cases}
-%% \end{equation*}
-%% \par
-%% \noindent
-%% For example, given a 2 channel block with 5 decorrelation terms and the
-%% sub-block bytes:
-%% \begin{Verbatim}[frame=single]
-%% 03 05 06 06 06 06 04 04 06 06 02 03
-%% \end{Verbatim}
-%% our \VAR{Decorrelation Weights} are as follows:
-%% \begin{table}[h]
-%% \begin{tabular}{r r | r r}
-%% $\text{Weight A}_5$ & $6 \times 2 ^ 3 + \left\lfloor\frac{6 \times 2 ^ 3 + 2 ^ 6}{2 ^ 7}\right\rfloor$ = 48 & $\text{Weight B}_5$ & $6 \times 2 ^ 3 + \left\lfloor\frac{6 \times 2 ^ 3 + 2 ^ 6}{2 ^ 7}\right\rfloor$ = 48 \\
-%% $\text{Weight A}_4$ & $6 \times 2 ^ 3 + \left\lfloor\frac{6 \times 2 ^ 3 + 2 ^ 6}{2 ^ 7}\right\rfloor$ = 48 & $\text{Weight B}_4$ & $6 \times 2 ^ 3 + \left\lfloor\frac{6 \times 2 ^ 3 + 2 ^ 6}{2 ^ 7}\right\rfloor$ = 48 \\
-%% $\text{Weight A}_3$ & $4 \times 2 ^ 3 + \left\lfloor\frac{4 \times 2 ^ 3 + 2 ^ 6}{2 ^ 7}\right\rfloor$ = 32 & $\text{Weight B}_3$ & $4 \times 2 ^ 3 + \left\lfloor\frac{4 \times 2 ^ 3 + 2 ^ 6}{2 ^ 7}\right\rfloor$ = 32 \\
-%% $\text{Weight A}_2$ & $6 \times 2 ^ 3 + \left\lfloor\frac{6 \times 2 ^ 3 + 2 ^ 6}{2 ^ 7}\right\rfloor$ = 48 & $\text{Weight B}_2$ & $6 \times 2 ^ 3 + \left\lfloor\frac{6 \times 2 ^ 3 + 2 ^ 6}{2 ^ 7}\right\rfloor$ = 48 \\
-%% $\text{Weight A}_1$ & $2 \times 2 ^ 3 + \left\lfloor\frac{2 \times 2 ^ 3 + 2 ^ 6}{2 ^ 7}\right\rfloor$ = 16 & $\text{Weight B}_1$ & $3 \times 2 ^ 3 + \left\lfloor\frac{3 \times 2 ^ 3 + 2 ^ 6}{2 ^ 7}\right\rfloor$ = 24 \\
-%% \end{tabular}
-%% \end{table}
-%% \par
-%% \noindent
-%% Note that decoding a WavPack file requires having the same
-%% number of \VAR{Decorrelation Weight} values, per channel, as
-%% \VAR{Decorrelation Terms} values.
-%% However, this block may contain less.
-%% In that event, those low weight values are set to 0.
-
-%% \clearpage
-
-%% \subsection{the Decorrelation Samples Sub-Block}
-%% \label{wavpack_decorr_samples}
-%% \begin{figure}[h]
-%% \includegraphics{figures/wavpack/decorr_samples.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% The decorrelation samples values are stored as signed, 16-bit values.
-%% Converting them to sample values requires the following formula:
-%% \begin{equation*}
-%% \text{Sample} =
-%% \begin{cases}
-%% \lfloor \text{wv\_exp2}(value \bmod{256}) \div 2 ^ {9 - \lfloor value \div 2 ^ 8 \rfloor} \rfloor & \text{if } 0 \leq value \leq 2304 \\
-%% \text{wv\_exp2}(value \bmod{256}) \times 2 ^ {\lfloor value \div 2 ^ 8 \rfloor - 9} & \text{if } 2304 < value \leq 32767 \\
-%% -\lfloor \text{wv\_exp2}(-value \bmod{256}) \div 2 ^ {9 - \lfloor -value \div 2 ^ 8 \rfloor} \rfloor & \text{if } -2304 \leq value < 0 \\
-%% -(\text{wv\_exp2}(-value \bmod{256}) \times 2 ^ {\lfloor -value \div 2 ^ 8 \rfloor - 9}) & \text{if } -32768 \leq value < -2304
-%% \end{cases}
-%% \end{equation*}
-%% \par
-%% \noindent
-
-%% \par
-%% \noindent
-%% For example, given the sub-frame bytes:
-%% \begin{Verbatim}[frame=single]
-%% 04 04 CF F8 B7 F8 CF 05 B3 05
-%% \end{Verbatim}
-%% our \VAR{Decorrelation Sample} values are:
-%% \begin{align*}
-%% \text{Sample}_1 &= \texttt{0xF8CF} = -1841
-%%  = -\lfloor \text{wv\_exp2}(1841 \bmod{256}) \div 2 ^ {9 - \lfloor 1841 \div 2 ^ 8 \rfloor} \rfloor \\
-%% &= -\lfloor \text{wv\_exp2}(49) \div 2 ^ {9 - 7} \rfloor
-%%  = -\lfloor 292 \div 4 \rfloor = \textbf{-73} \\
-%% \text{Sample}_2 &= \texttt{0xF8B7} = -1865
-%%  = -\lfloor \text{wv\_exp2}(1865 \bmod{256}) \div 2 ^ {9 - \lfloor 1865 \div 2 ^ 8 \rfloor} \rfloor \\
-%% &= -\lfloor \text{wv\_exp2}(73) \div 2 ^ {9 - 7} \rfloor
-%%  =  -\lfloor 312 \div 4 \rfloor = \textbf{-78} \\
-%% \text{Sample}_3 &= \texttt{0x05CF} = 1487
-%%  = \lfloor \text{wv\_exp2}(1487 \bmod{256}) \div 2 ^ {9 - \lfloor 1487 \div 2 ^ 8 \rfloor} \rfloor \\
-%% &= \lfloor \text{wv\_exp2}(207) \div 2 ^ {9 - 5} \rfloor
-%%  = \lfloor 448 \div 16 \rfloor = \textbf{28} \\
-%% \text{Sample}_4 &= \texttt{0x05B3} = 1459
-%%  = \lfloor \text{wv\_exp2}(1459 \bmod{256}) \div 2 ^ {9 - \lfloor 1459 \div 2 ^ 8 \rfloor} \rfloor \\
-%% &= \lfloor \text{wv\_exp2}(179) \div 2 ^ {9 - 5} \rfloor
-%%  = \lfloor 416 \div 16 \rfloor = \textbf{26}
-%% \end{align*}
-
-%% \clearpage
-
-%% We're not done yet, however.
-%% The next step is to determine which set of \VAR{Decorrelation Sample}
-%% values correspond to which \VAR{Decorrelation Term}\footnote{As
-%% extracted on page \pageref{wavpack_decorr_terms}}.
-
-%% As with \VAR{Decorrelation Weights},
-%% \VAR{Decorrelation Sample} values are stored in reverse order,
-%% alternate between channels and depend on the corresponding
-%% \VAR{Decorrelation Term} values.
-%% \begin{figure}[h]
-%% \includegraphics{figures/wavpack/decorr_samples2.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% It's likely that the decorrelation sample assignment process will
-%% request more samples than this sub-block contains.
-%% In that event, treat those samples as 0.
-
-%% \clearpage
-
-%% \subsection{the Entropy Variables Sub-Block}
-%% Whereas the three preceding sub-blocks are for performing
-%% decorrelation passes, this sub-block is required for
-%% decoding the \VAR{Bitstream} sub-block's data.
-%% These entropy variables are median values which are stored
-%% as fractions of integers.
-%% \begin{figure}[h]
-%% \includegraphics{figures/wavpack/entropy_vars.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% If a block is mono, this sub-block contains 3 \VAR{Entropy Variables}.
-%% If a block is stereo, this sub-block contains 6.
-%% Each is stored as a signed, 16-bit value which is packed in
-%% the same fashion as \VAR{Decorrelation Samples}\footnote{As described
-%% on page \pageref{wavpack_decorr_samples}.}.
-%% For example, given a 2 channel block with the sub-block bytes:
-%% \begin{Verbatim}[frame=single]
-%% 05 06 e2 07 9b 08 55 09 e2 07 76 08 ba 08
-%% \end{Verbatim}
-%% our \VAR{Entropy Variables} are:
-%% \begin{align*}
-%% \text{Entropy Variable A}_1 &= \texttt{0x07E2} = 2018 = \lfloor \text{wv\_exp2}(2018 \bmod{256}) \div 2 ^ {9 - \lfloor 2018 \div 2 ^ 8 \rfloor} \rfloor \\
-%% &= \lfloor \text{wv\_exp2}(226) \div 2 ^ {9 - 7} \rfloor
-%%  = \lfloor 472 \div 4 \rfloor = \textbf{118} \\
-%% \text{Entropy Variable A}_2 &= \texttt{0x089B} = 2203 = \lfloor \text{wv\_exp2}(2203 \bmod{256}) \div 2 ^ {9 - \lfloor 2203 \div 2 ^ 8 \rfloor} \rfloor \\
-%% &= \lfloor \text{wv\_exp2}(155) \div 2 ^ {9 - 8} \rfloor
-%%  = \lfloor 389 \div 2 \rfloor = \textbf{194} \\
-%% \text{Entropy Variable A}_3 &= \texttt{0x0955} = 2389 = \text{wv\_exp2}(2389 \bmod{256}) \times 2 ^ {\lfloor 2389 \div 2 ^ 8 \rfloor - 9} \\
-%% &= \text{wv\_exp2}(85) \times 2 ^ {9 - 9} = 322 \times 1 = \textbf{322} \\
-%% \text{Entropy Variable B}_1 &= \texttt{0x07E2} = 2018 = \lfloor \text{wv\_exp2}(2018 \bmod{256}) \div 2 ^ {9 - \lfloor 2018 \div 2 ^ 8 \rfloor} \rfloor \\
-%% &= \lfloor \text{wv\_exp2}(226) \div 2 ^ {9 - 7} \rfloor
-%%  = \lfloor 472 \div 4 \rfloor = \textbf{118} \\
-%% \text{Entropy Variable B}_2 &= \texttt{0x0876} = 2166 = \lfloor \text{wv\_exp2}(2166 \bmod{256}) \div 2 ^ {9 - \lfloor 2166 \div 2 ^ 8 \rfloor} \rfloor \\
-%% &= \lfloor \text{wv\_exp2}(118) \div 2 ^ {9 - 8} \rfloor = \lfloor 352 \div 2 \rfloor = \textbf{176} \\
-%% \text{Entropy Variable B}_3 &= \texttt{0x08BA} = 2234 = \lfloor \text{wv\_exp2}(2234 \bmod{256}) \div 2 ^ {9 - \lfloor 2234 \div 2 ^ 8 \rfloor} \rfloor \\
-%% &= \lfloor \text{wv\_exp2}(186) \div 2 ^ {9 - 8} \rfloor
-%%  = \lfloor 424 \div 2 \rfloor = \textbf{212}
-%% \end{align*}
-
-%% \clearpage
-%% \subsection{the Bitstream Sub-Block}
-%% This sub-block contains the block's residual values.
-%% Once decoded, these will ultimately become our file's raw PCM values.
-%% \begin{figure}[h]
-%% \includegraphics{figures/wavpack/bitstream.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-
-%% Decoding the \VAR{Bitstream} sub-block requires the \VAR{Entropy Variables}
-%% data which it combines with this sub-block's bitstream to yield a set of signed
-%% values totaling \VAR{Block Samples} (times 2 if the block is stereo).
-
-%% Decoding each value is a complex process which I'll divide into
-%% three separate steps.
-
-%% As an example, we'll use a 1-channel block with the entropy variables:
-%% \begin{itemize}
-%% \item $\text{Entropy Variable A}_1$ = 111
-%% \item $\text{Entropy Variable A}_1$ = 159
-%% \item $\text{Entropy Variable A}_1$ = 299
-%% \end{itemize}
-%% and the partial bitstream sub-block bytes:
-%% \begin{Verbatim}[frame=single]
-%% 8a 0e 00 00 a1 77 e9
-%% \end{Verbatim}
-%% The first four bytes are the header and block size values.
-%% The remaining three are as follows as a little-endian stream:
-%% \begin{Verbatim}[frame=single]
-%% 1 0 0 0 0 1 0 1  1 1 1 0 1 1 1 0  1 0 0 1 0 1 1 1
-%% \end{Verbatim}
-
-%% \clearpage
-%% \subsubsection{Determining t}
-%% \begin{wrapfigure}[37]{r}{3in}
-%% \includegraphics{figures/wavpack/read_residual1.pdf}
-%% \caption{Step 1: determining t}
-%% \end{wrapfigure}
-%% The first step is taking two boolean values called
-%% \VAR{Holding One} and \VAR{Holding Zero} and determining \VAR{t}.
-%% These holding values can be thought of as registers in a sort of
-%% WavPack bitstream virtual machine whose values will
-%% change over the course of decoding.
-%% Their initial values are both false.
-
-%% \VAR{limited unary} means counting the number
-%% of \texttt{1} bits until the next \texttt{0} bit, to a maximum
-%% of 33, \texttt{1} bits in a row.
-
-%% In our example, to decode the first \VAR{t} value:
-%% \begin{description}
-%% \item[$\bullet$ is holding\_zero?] no
-%% \item[$\bullet$ t = limited\_unary] = `\texttt{1 0}' = 1
-%% \item[$\bullet$ is t = 16?] no
-%% \item[$\bullet$ is holding\_one?] no
-%% \item[$\bullet$ is t odd?] yes
-%% \item[$\bullet$ holding\_one = true]
-%% \item[$\bullet$ holding\_zero = false]
-%% \item[$\bullet$ t = $\lfloor$ t $\div$ 2 $\rfloor$] = $\lfloor 1 \div 2 \rfloor$ = 0
-%% \end{description}
-%% So our \VAR{t} value is 0, our \VAR{Holding One} value is true,
-%% our \VAR{Holding Zero} value is false and we've
-%% consumed 2 bits from the sub-block's bitstream.
-
-%% \clearpage
-
-%% \subsubsection{Calculating Base/Add}
-%% The next step is taking \VAR{t} and calculating \VAR{Base} and \VAR{Add}
-%% from our entropy variables, updating our entropy variables in the process.
-%% \begin{figure}[h]
-%% \includegraphics{figures/wavpack/read_residual2.pdf}
-%% \caption{Step 2: determining base/add}
-%% \end{figure}
-%% \par
-%% \noindent
-%% So to continue our example:
-%% \begin{description}
-%% \setlength{\itemsep}{0pt}
-%% \item[$\bullet$ is t = 0?] yes
-%% \item[$\bullet$ base] = 0
-%% \item[$\bullet$ add = $\lfloor \text{Entropy}_1 \div 16 \rfloor$] = $\lfloor 111 \div 16 \rfloor = 6$
-%% \item[$\bullet$ $\text{Entropy}_1$ = $\text{Entropy}_1 - \lfloor(\text{Entropy}_1 + 126) \div 128\rfloor \times 2$] = $111 - 2 = 109$
-%% \end{description}
-%% %% Note that $\text{Entropy}_2$ remains 159 and $\text{Entropy}_3$ remains 299.
-
-%% \clearpage
-
-%% \subsubsection{Determining Value}
-%% \begin{wrapfigure}[30]{r}{3in}
-%% \includegraphics{figures/wavpack/read_residual3.pdf}
-%% \caption{Step 3: determining value}
-%% \end{wrapfigure}
-%% Finally, given our \VAR{Base} and \VAR{Add} values, we
-%% determine the final residual value as follows:
-%% \begin{description}
-%% \item[$\bullet$ is $\text{add} < 1$?] no
-%% \item[$\bullet$ p = $\text{log}_2(\text{add})$] = $\text{log}_2(6)$ = 2
-%% \item[$\bullet$ e = $2 ^ {p + 1} - \text{add} - 1$] = $2 ^ 3 - 6 - 1 = 1$
-%% \item[$\bullet$ is $\text{p} > 0$?] yes
-%% \item[$\bullet$ result = read 2] = `\texttt{0 0}' = 0
-%% \item[$\bullet$ is $\text{result} > \text{e}$?] no
-%% \item[$\bullet$ sign = read 1] = `\texttt{0}' = 0
-%% \item[$\bullet$ is $\text{sign} = 1$?] no
-%% \item[$\bullet$ value = $\text{base} + \text{result}$] = 0 + 0 = 0
-%% \end{description}
-%% Thus, this stage consumes an additional 3 bits and our first residual
-%% value is 0.
-
-%% Determining the second residual value requires going through all
-%% three steps again, with our freshly updated \VAR{Holding One},
-%% \VAR{Holding Zero} and \VAR{Entropy} values.
-
-%% Note that in a 2 channel (non-mono) block,
-%% the \VAR{Entropy} values alternate between residuals.
-%% For example,
-%% $\text{Residual}_0$ uses $\text{Entropy A}$,
-%% $\text{Residual}_1$ uses $\text{Entropy B}$,
-%% $\text{Residual}_3$ uses $\text{Entropy A}$, and so forth.
-%% However, \VAR{Holding One} and \VAR{Holding Zero} are shared
-%% between channels.
-
-%% \clearpage
-
-%% Now, let's run through the next residual on our remaining bits:
-%% \begin{Verbatim}[frame=single]
-%% 1 0 1  1 1 1 0 1 1 1 0  1 0 0 1 0 1 1 1
-%% \end{Verbatim}
-%% \begin{description}
-%% \item[$\bullet$ is holding\_zero?] no
-%% \item[$\bullet$ t = limited\_unary] = `\texttt{1 0}' = 1
-%% \item[$\bullet$ is t = 16?] no
-%% \item[$\bullet$ is holding\_one?] yes
-%% \item[$\bullet$ is t odd?] yes
-%% \item[$\bullet$ holding\_one = true]
-%% \item[$\bullet$ holding\_zero = false]
-%% \item[$\bullet$ t = $\lfloor$ t $\div$ 2 $\rfloor$ + 1] = $\lfloor 1 \div 2 \rfloor$ + 1 = 1
-%% \item[$\bullet$ is t = 0?] no
-%% \item[$\bullet$ is t = 1?] yes
-%% \item[$\bullet$ base = $\lfloor\text{Entropy}_1 \div 16\rfloor + 1$] = $\lfloor 109 \div 16\rfloor + 1 = 7$
-%% \item[$\bullet$ add = $\lfloor\text{Entropy}_2 \div 16\rfloor$] = $\lfloor 159 \div 16\rfloor = 9$
-%% \item[$\bullet$ $\text{Entropy}_1 = \text{Entropy}_1 + \lfloor (\text{Entropy}_1 + 128) \div 128\rfloor \times 5$] = 114
-%% \item[$\bullet$ $\text{Entropy}_2 = \text{Entropy}_2 - \lfloor (\text{Entropy}_2 + 62) \div 64\rfloor \times 2$] = 153
-%% \item[$\bullet$ is $\text{add} < 1$?] no
-%% \item[$\bullet$ p = $\text{log}_2(\text{add})$] = $\text{log}_2(9)$ = 3
-%% \item[$\bullet$ e = $2 ^ {p + 1} - \text{add} - 1$] = $2 ^ 4 - 9 - 1 = 6$
-%% \item[$\bullet$ is $\text{p} > 0$?] yes
-%% \item[$\bullet$ result = read 3] = `\texttt{1 1 1}' = 7
-%% \item[$\bullet$ is $\text{result} > \text{e}$?] yes
-%% \item[$\bullet$ result = $(\text{result} \times 2) - \text{e} + $ read 1] = $(7 \times 2) - 6 + \texttt{1} = 9$
-%% \item[$\bullet$ sign = read 1] = 0
-%% \item[$\bullet$ is sign = 1?] no
-%% \item[$\bullet$ value = base + result] = 7 + 9 = 16
-%% \end{description}
-%% Which returns the value 16 and consumes 7 bits in total.
-%% %% \begin{sidewaysfigure}[h]
-%% %% \includegraphics{figures/wavpack_read_residual.pdf}
-%% %% \caption{the WavPack residual reading sequence}
-%% %% \end{sidewaysfigure}
-
-%% \clearpage
-
-%% \subsubsection{Zero Residuals}
-
-%% As with most other lossless codecs, WavPack features a special
-%% case to handle a large number of \texttt{0} samples in a row.
-%% This is triggered when $\text{Entropy A}_1$ is less than 2,
-%% $\text{Entropy B}_1$ is less than 2 (for non-mono blocks),
-%% and \VAR{Holding One} and \VAR{Holding Zero} are both false.
-
-%% \begin{wrapfigure}[14]{r}{3in}
-%% \includegraphics{figures/wavpack/read_zeroes.pdf}
-%% \end{wrapfigure}
-
-%% In that instance, we read a residual-like value to determine
-%% how many \texttt{0} values follow.
-%% If any, we set the block's six \VAR{Entropy} variables to 0
-%% and output the necessary number of \texttt{0} values just as
-%% regular residuals.
-
-%% Therefore, for non-mono blocks, these values alternative between channels
-%% just as regular residual values do.
-%% In addition, they also count against the block's total number of samples.
-
-%% Once all of the \texttt{0} values have been output, if any
-%% \VAR{Block Samples} remain, we return to the regular residual
-%% reading process.
-
-%% \clearpage
-
-%% \subsection{Sample Decorrelation}
-
-%% Once the bitstream sub-block has been decoded into a set of
-%% samples values (alternating between \VAR{Channel A} and \VAR{Channel B}
-%% if the block is not mono), we then apply decorrelation passes
-%% to those samples - one pass per decorrelation term value,\footnote{As
-%% decoded on page \pageref{wavpack_decorr_terms}.} per channel.
-
-%% Each decorrelation pass requires a \VAR{Decorrelation Term},
-%% a \VAR{Decorrelation Delta}, one \VAR{Decorrelation Weight} per channel,
-%% and one or more \VAR{Decorrelation Sample} values - in addition
-%% to our set of input samples we're running the pass over.
-%% These passes are applied in \textit{incrementing} order
-%% (i.e. $\text{Term}_1$ first, $\text{Term}_2$ next, and so on).
-%% The function for each pass depends on its \VAR{Decorrelation Term}:
-%% \begin{align*}
-%% \intertext{Decorrelation Term = 18:}
-%% \text{Temp}_i &= \lfloor ((3 \times \text{Output}_{i - 1}) - \text{Output}_{i - 2}) \div 2 \rfloor \\
-%% \text{Output}_i &= \lfloor ((\text{Weight}_{i - 1} \times \text{Temp}_i) + 512) \div 1024 \rfloor + \text{Input}_i \\
-%% \text{Weight}_i &=
-%% \begin{cases}
-%% \text{Weight}_{i - 1} & \text{if } \text{Temp}_i = 0 \text{ or } \text{Input}_i = 0 \\
-%% \text{Weight}_{i - 1} + \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Input}_i) \geq 0 \\
-%% \text{Weight}_{i - 1} - \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Input}_i) < 0
-%% \end{cases}
-%% \intertext{Decorrelation Term = 17:}
-%% \text{Temp}_i &= (2 \times \text{Output}_{i - 1}) - \text{Output}_{i - 2} \\
-%% \text{Output}_i &= \lfloor ((\text{Weight}_{i - 1} \times \text{Temp}_i) + 512) \div 1024 \rfloor + \text{Input}_i \\
-%% \text{Weight}_i &=
-%% \begin{cases}
-%% \text{Weight}_{i - 1} & \text{if } \text{Temp}_i = 0 \text{ or } \text{Input}_i = 0 \\
-%% \text{Weight}_{i - 1} + \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Input}_i) \geq 0 \\
-%% \text{Weight}_{i - 1} - \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Input}_i) < 0
-%% \end{cases}
-%% \intertext{1 $\leq$ Decorrelation Term $\leq 8$:}
-%% \text{Output}_i &= \lfloor ((\text{Weight}_{i - 1} \times \text{Output}_{i - \text{term}}) + 512) \div 1024 \rfloor + \text{Input}_i \\
-%% \text{Weight}_i &=
-%% \begin{cases}
-%% \text{Weight}_{i - 1} & \text{if } \text{Output}_{i - \text{term}} = 0 \text{ or } \text{Input}_i = 0 \\
-%% \text{Weight}_{i - 1} + \text{Delta} & \text{if } (\text{Output}_{i - \text{term}} \xor \text{Input}_i) \geq 0 \\
-%% \text{Weight}_{i - 1} - \text{Delta} & \text{if } (\text{Output}_{i - \text{term}} \xor \text{Input}_i) < 0
-%% \end{cases}
-%% \end{align*}
-%% Note that each function uses previously output samples for its calculation.
-%% This is where \VAR{Decorrelation Samples} are used;
-%% those are our $\text{Output}_{-1}$, $\text{Output}_{-2}$, etc.
-%% which are used for decorrelation but not actually output.
-
-%% For 1 or 2 channel blocks, positive decorrelation terms are applied
-%% on a per-channel basis with the weight A values being applied
-%% to channel A and the weight B values being applied to channel B
-%% (if present).
-%% However, the three negative correlation terms are only valid
-%% for 2 channel blocks.
-%% \begin{align*}
-%% \intertext{Decorrelation Term = -1:}
-%% \text{Output A}_i &= \lfloor ((\text{Weight A}_{i - 1} \times \text{Output B}_{i - 1}) + 512) \div 1024 \rfloor + \text{Input A}_i \\
-%% \text{Weight A}_i &=
-%% \begin{cases}
-%% \text{Weight A}_{i - 1} & \text{if } \text{Output B}_{i - 1} = 0 \text{ or } \text{Input A}_i = 0 \\
-%% \text{Weight A}_{i - 1} + \text{Delta} & \text{if } (\text{Output B}_{i - 1} \xor \text{Input A}_i) \geq 0 \\
-%% \text{ to a maximum of 1024} \\
-%% \text{Weight A}_{i - 1} - \text{Delta} & \text{if } (\text{Output B}_{i - 1} \xor \text{Input A}_i) < 0 \\
-%% \text{ to a minimum of -1024}
-%% \end{cases} \\
-%% \text{Output B}_i &= \lfloor ((\text{Weight B}_{i - 1} \times \text{Output A}_i) + 512) \div 1024 \rfloor + \text{Input B}_i \\
-%% \text{Weight B}_i &=
-%% \begin{cases}
-%% \text{Weight B}_{i - 1} & \text{if } \text{Output A}_i = 0 \text{ or } \text{Input B}_i = 0 \\
-%% \text{Weight B}_{i - 1} + \text{Delta} & \text{if } (\text{Output A}_i \xor \text{Input B}_i) \geq 0 \\
-%% \text{ to a maximum of 1024} \\
-%% \text{Weight B}_{i - 1} - \text{Delta} & \text{if } (\text{Output A}_i \xor \text{Input B}_i) < 0 \\
-%% \text{ to a minimum of -1024}
-%% \end{cases}
-%% \intertext{Decorrelation Term = -2:}
-%% \text{Output B}_i &= \lfloor ((\text{Weight B}_{i - 1} \times \text{Output A}_{i - 1}) + 512) \div 1024 \rfloor + \text{Input B}_i \\
-%% \text{Weight B}_i &=
-%% \begin{cases}
-%% \text{Weight B}_{i - 1} & \text{if } \text{Output A}_{i - 1} = 0 \text{ or } \text{Input B}_i = 0 \\
-%% \text{Weight B}_{i - 1} + \text{Delta} & \text{if } (\text{Output A}_{i - 1} \xor \text{Input B}_i) \geq 0 \\
-%% \text{ to a maximum of 1024} \\
-%% \text{Weight B}_{i - 1} - \text{Delta} & \text{if } (\text{Output A}_{i - 1} \xor \text{Input B}_i) < 0 \\
-%% \text{ to a minimum of -1024}
-%% \end{cases} \\
-%% \text{Output A}_i &= \lfloor ((\text{Weight A}_{i - 1} \times \text{Output B}_i) + 512) \div 1024 \rfloor + \text{Input A}_i \\
-%% \text{Weight A}_i &=
-%% \begin{cases}
-%% \text{Weight A}_{i - 1} & \text{if } \text{Output B}_i = 0 \text{ or } \text{Input A}_i = 0 \\
-%% \text{Weight A}_{i - 1} + \text{Delta} & \text{if } (\text{Output B}_i \xor \text{Input A}_i) \geq 0 \\
-%% \text{ to a maximum of 1024} \\
-%% \text{Weight A}_{i - 1} - \text{Delta} & \text{if } (\text{Output B}_i \xor \text{Input A}_i) < 0 \\
-%% \text{ to a minimum of -1024}
-%% \end{cases}
-%% \end{align*}
-
-%% \clearpage
-
-%% \begin{align*}
-%% \intertext{Decorrelation Term = -3:}
-%% \text{Output A}_i &= \lfloor ((\text{Weight A}_{i - 1} \times \text{Output B}_{i - 1}) + 512) \div 1024 \rfloor + \text{Input A}_i \\
-%% \text{Weight A}_i &=
-%% \begin{cases}
-%% \text{Weight A}_{i - 1} & \text{if } \text{Output B}_{i - 1} = 0 \text{ or } \text{Input A}_i = 0 \\
-%% \text{Weight A}_{i - 1} + \text{Delta} & \text{if } (\text{Output B}_{i - 1} \xor \text{Input A}_i) \geq 0 \\
-%% \text{ to a maximum of 1024} \\
-%% \text{Weight A}_{i - 1} - \text{Delta} & \text{if } (\text{Output B}_{i - 1} \xor \text{Input A}_i) < 0 \\
-%% \text{ to a minimum of -1024}
-%% \end{cases} \\
-%% \text{Output B}_i &= \lfloor ((\text{Weight B}_{i - 1} \times \text{Output A}_{i - 1}) + 512) \div 1024 \rfloor + \text{Input B}_i \\
-%% \text{Weight B}_i &=
-%% \begin{cases}
-%% \text{Weight B}_{i - 1} & \text{if } \text{Output A}_{i - 1} = 0 \text{ or } \text{Input B}_i = 0 \\
-%% \text{Weight B}_{i - 1} + \text{Delta} & \text{if } (\text{Output A}_{i - 1} \xor \text{Input B}_i) \geq 0 \\
-%% \text{ to a maximum of 1024} \\
-%% \text{Weight B}_{i - 1} - \text{Delta} & \text{if } (\text{Output A}_{i - 1} \xor \text{Input B}_i) < 0 \\
-%% \text{ to a minimum of -1024}
-%% \end{cases}
-%% \end{align*}
-
-%% The effect of applying these passes cumulatively is interesting when
-%% visualized on a 1 channel sine wave example stream:
-
-%% \begin{figure}[h]
-%% \subfloat{
-%% \includegraphics{figures/wavpack/decorrelation1.pdf}
-%% }
-%% \subfloat{
-%% \includegraphics{figures/wavpack/decorrelation2.pdf}
-%% }
-%% \subfloat{
-%% \includegraphics{figures/wavpack/decorrelation3.pdf}
-%% }
-%% \end{figure}
-
-%% \clearpage
-
-%% Now it's time to put all this together into an example.
-%% Given a 1 channel block with the sub-block decorrelation values:
-%% \begin{table}[h]
-%% \begin{tabular}{r r|r r|r r||r r | r r | r r}
-%% $\text{Term}_1$ & 3 & $\text{Delta}_1$ & 2 &
-%% $\text{Weight}_1$ & 16 &
-%% $\text{Sample}_{1~1}$ & 0 &
-%% $\text{Sample}_{1~2}$ & 0 &
-%% $\text{Sample}_{1~3}$ & 0 \\
-%% $\text{Term}_2$ & 17 & $\text{Delta}_2$ & 2 &
-%% $\text{Weight}_2$ & 48 &
-%% & & $\text{Sample}_{2~1}$ & 0 &
-%% $\text{Sample}_{2~2}$ & 0 \\
-%% $\text{Term}_3$ & 2 & $\text{Delta}_3$ & 2 &
-%% $\text{Weight}_3$ & 32 &
-%% & & $\text{Sample}_{3~1}$ & 0 &
-%% $\text{Sample}_{3~2}$ & 0 \\
-%% $\text{Term}_4$ & 18 & $\text{Delta}_4$ & 2 &
-%% $\text{Weight}_4$ & 48 &
-%% & & $\text{Sample}_{4~1}$ & 0 &
-%% $\text{Sample}_{4~2}$ & 0 \\
-%% $\text{Term}_5$ & 18 & $\text{Delta}_5$ & 2 &
-%% $\text{Weight}_5$ & 48 &
-%% & & $\text{Sample}_{5~1}$ & -78 &
-%% $\text{Sample}_{5~2}$ & -73 \\
-%% \end{tabular}
-%% \end{table}
-%% \par
-%% \noindent
-%% and the residual values:
-%% \begin{table}[h]
-%% \begin{tabular}{r r}
-%% $\text{Residual}_1$ = -61 \\
-%% $\text{Residual}_2$ = -33 \\
-%% \end{tabular}
-%% \end{table}
-%% \par
-%% \noindent
-%% then decorrelation pass 1 applies the $\text{Term}_1$
-%% formula 3, $\text{Delta}_1$ value of 2,
-%% $\text{Weight}_{1~0}$ value of 16 and initial sample values
-%% of 0 ($\text{Sample}_{1~1}$, $\text{Sample}_{1~2}$,
-%% $\text{Sample}_{1~3}$) to the residual input values of -61 and -33
-%% ($\text{Channel}_1$ and $\text{Channel}_2$).
-%% \begin{align*}
-%% \text{Output}_1 &= \lfloor ((\text{Weight}_{1~0} \times \text{Output}_{-2}) + 512) \div 1024 \rfloor + \text{Input}_1 \\
-%% &= \lfloor ((16 \times 0) + 512) \div 1024 \rfloor - 61 = \textbf{-61} \\
-%% \text{Weight}_{1~1} &= \text{Weight}_{1~0} = \textbf{16} \\
-%% \text{Output}_2 &= \lfloor ((\text{Weight}_{1~1} \times \text{Output}_{-1}) + 512) \div 1024 \rfloor + \text{Input}_2 \\
-%% &= \lfloor ((16 \times 0) + 512) \div 1024 \rfloor - 33 = \textbf{-33} \\
-%% \text{Weight}_{1~2} &= \text{Weight}_{1~1} = \textbf{16}
-%% \end{align*}
-%% Decorrelation pass 2 applies the $\text{Term}_2$ formula 17,
-%% $\text{Delta}_2$ value of 2, $\text{Weight}_{2~0}$ value of 48
-%% and the initial sample values of 0 ($\text{Sample}_{2~1}$,
-%% $\text{Sample}_{2~2}$).  Note that the inputs to pass 2 are the
-%% outputs from pass 1.
-%% \begin{align*}
-%% \text{Temp}_1 &= (2 \times \text{Output}_0) - \text{Output}_{-1} = (2 \times 0) - 0 = \textbf{0} \\
-%% \text{Output}_1 &= \lfloor ((\text{Weight}_{2~0} \times \text{Temp}_1) + 512) \div 1024 \rfloor + \text{Input}_1 \\
-%% &= \lfloor ((48 \times 0) + 512) \div 1024 \rfloor - 61 = \textbf{-61} \\
-%% \text{Weight}_{2~1} &= \text{Weight}_{2~0} = \textbf{48} \\
-%% \text{Temp}_2 &= (2 \times \text{Output}_1) - \text{Output}_{0} = (2 \times -61) - 0 = \textbf{-122} \\
-%% \text{Output}_2 &= \lfloor ((\text{Weight}_{2~1} \times \text{Temp}_2) + 512) \div 1024 \rfloor + \text{Input}_2 \\
-%% &= \lfloor ((48 \times -122) + 512) \div 1024 \rfloor - 33 = -6 - 33 = \textbf{-39} \\
-%% \text{Weight}_{2~2} &= \text{Weight}_{2~1} + \text{Delta}_2 = 48 + 2 = \textbf{50}
-%% \end{align*}
-%% Decorrelation pass 3 applies the $\text{Term}_3$ formula 2,
-%% $\text{Delta}_3$ value of 2, $\text{Weight}_{3~0}$ value of 32
-%% and initial samples of 0 ($\text{Sample}_{3~1}$, $\text{Sample}_{3~2}$).
-%% \begin{align*}
-%% \text{Output}_1 &= \lfloor ((\text{Weight}_{3~0} \times \text{Output}_{-1}) + 512) \div 1024 \rfloor + \text{Input}_1 \\
-%% &= \lfloor ((32 \times 0) + 512) \div 1024 \rfloor - 61 = \textbf{-61} \\
-%% \text{Weight}_{3~1} &= \text{Weight}_{3~0} = \textbf{32} \\
-%% \text{Output}_2 &= \lfloor ((\text{Weight}_{3~1} \times \text{Output}_0) + 512) \div 1024 \rfloor + \text{Input}_2 \\
-%% &= \lfloor ((32 \times 0) + 512) \div 1024 \rfloor - 39 = \textbf{-39} \\
-%% \text{Weight}_{3~2} &= \text{Weight}_{3~1} = \textbf{32}
-%% \end{align*}
-%% Decorrelation pass 4 applies the $\text{Term}_4$ formula 18,
-%% $\text{Delta}_4$ value of 2, $\text{Weight}_{4~0}$ value of 48
-%% and initial samples of 0 ($\text{Sample}_{4~1}$, $\text{Sample}_{4~2}$).
-%% \begin{align*}
-%% \text{Temp}_1 &= \lfloor ((3 \times \text{Output}_0) - \text{Output}_{-1}) \div 2 \rfloor = \lfloor ((3 \times 0) - 0) \div 2 \rfloor = \textbf{0} \\
-%% \text{Output}_1 &= \lfloor ((\text{Weight}_{4~0} \times \text{Temp}_1) + 512) \div 1024 \rfloor + \text{Input}_1 \\
-%% &= \lfloor ((48 \times 0) + 512) \div 1024 \rfloor - 61 = \textbf{-61} \\
-%% \text{Weight}_{4~1} &= \text{Weight}_{4~0} = \textbf{48} \\
-%% \text{Temp}_2 &= \lfloor ((3 \times \text{Output}_1) - \text{Output}_0) \div 2 \rfloor = \lfloor ((3 \times -61) - 0) \div 2 \rfloor = \textbf{-92} \\
-%% \text{Output}_2 &= \lfloor ((\text{Weight}_{4~1} \times \text{Temp}_2) + 512) \div 1024 \rfloor + \text{Input}_2 \\
-%% &= \lfloor ((48 \times -92) + 512) \div 1024 \rfloor - 39 = -4 - 39 = \textbf{-43} \\
-%% \text{Weight}_{4~2} &= \text{Weight}_{4~1} + \text{Delta}_4 = 48 + 2 = \textbf{50}
-%% \end{align*}
-%% Finally, decorrelation pass 5 applies the $\text{Term}_5$ formula 18,
-%% $\text{Delta}_5$ value of 2, $\text{Weight}_{5~0}$ value of 48
-%% and initial samples of -78, -73 ($\text{Sample}_{5~1}$,
-%% $\text{Sample}_{5~2}$).
-%% \begin{align*}
-%% \text{Temp}_1 &= \lfloor ((3 \times \text{Output}_0) - \text{Output}_{-1}) \div 2 \rfloor = \lfloor ((3 \times -73) + 78) \div 2 \rfloor = \textbf{-71} \\
-%% \text{Output}_1 &= \lfloor ((\text{Weight}_{5~0} \times \text{Temp}_1) + 512) \div 1024 \rfloor + \text{Input}_1 \\
-%% &= \lfloor ((48 \times -71) + 512) \div 1024 \rfloor - 61 = -3 - 61 = \textbf{-64} \\
-%% \text{Weight}_{5~1} &= \text{Weight}_{5~0} + \text{Delta}_5 = 48 + 2 = \textbf{50} \\
-%% \text{Temp}_2 &= \lfloor ((3 \times \text{Output}_1) - \text{Output}_0) \div 2 \rfloor = \lfloor ((3 \times -64) + 73) \div 2 \rfloor = \textbf{-60} \\
-%% \text{Output}_2 &= \lfloor ((\text{Weight}_{5~1} \times \text{Temp}_2) + 512) \div 1024 \rfloor + \text{Input}_2 \\
-%% &= \lfloor ((50 \times -60) + 512) \div 1024 \rfloor - 43 = \textbf{-46} \\
-%% \text{Weight}_{5~2} &= \text{Weight}_{5~1} + \text{Delta}_5 = 50 + 2 = \textbf{52}
-%% \end{align*}
-%% So, after running through all five passes, our samples are now
-%% -64 and -46.
-
-%% \clearpage
-
-%% \subsection{Joint Stereo}
-
-%% If the block is not mono and the \VAR{Joint Stereo} bit is set
-%% in the block header, our channels require one more stage of processing
-%% to transform their mid-side values back into left and right sample
-%% values.\footnote{In the case of multi-channel audio, these aren't
-%% necessarily \textit{front} left and right; they might be
-%% side left and right or rear left and right channels.}
-%% \begin{align*}
-%% \text{Left}_i &= \left\lceil\frac{\text{Channel A}_i + (\text{Channel B}_i \times 2)}{2}\right\rceil \\
-%% \text{Right}_i &= (\text{Channel B}_i \times 2) - \left\lfloor\frac{\text{Channel A}_i + (\text{Channel B}_i \times 2)}{2}\right\rfloor
-%% \end{align*}
-%% For example, given the \text{Channel A} samples of -64 and -46, and the
-%% \text{Channel B} samples of 32 and 39, we convert them to left
-%% and right samples as follows:
-%% \begin{align*}
-%% \text{Left}_1 &= \left\lceil\frac{\text{Channel A}_1 + (\text{Channel B}_1 \times 2)}{2}\right\rceil = \left\lceil\frac{-64 + (32 \times 2)}{2}\right\rceil = \textbf{0} \\
-%% \text{Right}_1 &= (\text{Channel B}_1 \times 2) - \left\lfloor\frac{\text{Channel A}_1 + (\text{Channel B}_1 \times 2)}{2}\right\rfloor \\
-%% &= (32 \times 2) - \left\lfloor\frac{-64 + (32 \times 2)}{2}\right\rfloor = 64 - 0 = \textbf{64} \\
-%% \text{Left}_2 &= \left\lceil\frac{-46 + (39 \times 2)}{2}\right\rceil = \textbf{16} \\
-%% \text{Right}_2 &= (\text{Channel B}_2 \times 2) - \left\lfloor\frac{\text{Channel A}_2 + (\text{Channel B}_2 \times 2)}{2}\right\rfloor \\
-%% &= (39 \times 2) - \left\lfloor\frac{-46 + (39 \times 2)}{2}\right\rfloor = 78 - 16 = \textbf{62}
-%% \end{align*}
-%% Thus, our left samples are 0 and 16, and our right samples are 64 and 62.
-
-%% \subsection{the CRC}
-
-%% Verifying the block's CRC is quite simple:
-%% \begin{equation*}
-%% \text{CRC}_i = (3 \times \text{CRC}_{i - 1}) + \text{Decoded Sample}_i
-%% \end{equation*}
-%% where $\text{Decoded Sample}_i$ alternates between channels if necessary,
-%% $\text{CRC}_{-1}$ begins with a value of \texttt{0xFFFFFFFF}
-%% and each $\text{CRC}_i$ value is truncated to 32 bits.
-
-%% The CRC is calculated \textit{after} the joint stereo transformation,
-%% but \textit{before} handling extended/shifted integers and false stereo.
-
-%% \clearpage
-
-%% \subsection{Extended/Shifted Integers}
-%% \label{wavpack_extended_integers}
-
-%% If \VAR{Extended Size Integers} is set in the block header,
-%% there should be an \VAR{Int32 Info} sub-block present whose layout
-%% is as follows:
-
-%% \begin{figure}[h]
-%% \includegraphics{figures/wavpack/extended_integers.pdf}
-%% \end{figure}
-
-%% Curiously, these values are exclusive; if \VAR{Zero Bits} is present,
-%% \VAR{One Bits} is ignored and so forth.
-%% If \VAR{Zero Bits} is non-zero, we pad each sample's least-significant
-%% bits with that many \texttt{0} bits.
-%% If \VAR{One Bits} is non-zero, we pad each sample's least-significant
-%% bits with that many \texttt{1} bits.
-%% If \VAR{Duplicate Bits} is non-zero, we pad each sample's least-significant
-%% bits with that sample's own least-significant bit,
-%% \VAR{Duplicate Bits} number of times.
-
-%% This can be summarized as follows:
-%% \begin{equation*}
-%% \text{Extended}_i =
-%% \begin{cases}
-%% \text{Original}_i \times 2 ^ {\text{Zero Bits}} & \text{if \VAR{Zero Bits} } > 0 \\
-%% \text{Original}_i \times 2 ^ {\text{One Bits}} + (2 ^ {\text{One Bits}} - 1) & \text{if \VAR{One Bits} } > 0 \\
-%% \text{Original}_i \times 2 ^ {\text{Duplicate Bits}} \\
-%% \text{ if \VAR{Duplicate Bits} } > 0 \text{ and }\text{Original}_i \bmod{2} = 0 \\
-%% \text{Original}_i \times 2 ^ {\text{Duplicate Bits}} + (2 ^ {\text{Duplicate Bits}} - 1) \\
-%% \text{ if \VAR{Duplicate Bits} } > 0 \text{ and }\text{Original}_i \bmod{2} = 1
-%% \end{cases}
-%% \end{equation*}
-
-%% \subsection{Channel Info}
-%% \label{wavpack_channel_info}
-
-%% A WavPack file with more than 2 channels should have a \VAR{Channel Info}
-%% sub-block to indicate its channel layout.
-%% \begin{figure}[h]
-%% \includegraphics{figures/wavpack/channel_info.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% \VAR{Channel Mask} is the same as used by Wave, as shown on
-%% page \pageref{wave_channel_assignment}.
-
-%% \subsection{False Stereo}
-
-%% If the \VAR{False Stereo} bit is set in the block header,
-%% we've been treating the block as being mono thus far.
-%% At this point, we duplicate Channel A's values to Channel B
-%% just prior to returning the from the block.
-
-%% \clearpage
-
-%% \subsection{RIFF WAVE Header/Footer}
-
-%% These sub-blocks are typically found in the first and last
-%% WavPack block, respectively.
-%% The header must always be present in the file while
-%% the footer is optional.
-
-%% \begin{figure}[h]
-%% \includegraphics{figures/wavpack/wave_header.pdf}
-%% \vskip .25in
-%% \includegraphics{figures/wavpack/wave_footer.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% One can think of them as halves of a `PCM sandwich'
-%% of which our decoded data comprises the `meat':
-%% \begin{figure}[h]
-%% \includegraphics{figures/wavpack/pcm_sandwich.pdf}
-%% \end{figure}
-
-%% \subsection{MD5}
-%% This optional sub-block is typically found in the final WavPack block.
-%% \begin{figure}[h]
-%% \includegraphics{figures/wavpack/md5sum.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% The MD5 is the hash of all the samples over the entire file.
-%% It is calculated by running the
-%% hashing algorithm\footnote{As described by RFC1321} over
-%% the raw input samples in little-endian format
-%% and signed if their bits-per-sample are greater than 8.
-
-%% \clearpage
-
-%% \section{WavPack Encoding}
-
-%% For WavPack encoding, one needs a stream of input PCM values
-%% along with the stream's sample rate, number of channels, bits per sample
-%% and channel mask.
-
-%% We first split our input samples into chunks containing
-%% \VAR{Block Size} number of PCM frames.
-%% Since WavPack's headers are relatively large and its
-%% adaptive algorithm is quite good over long stretches of samples,
-%% it makes sense to use a large block size.
-%% The reference encoder defaults to 44100 PCM frames.
-
-%% The next step is to split those chunks of PCM frames into WavPack
-%% blocks containing 1 or 2 channels each.
-%% For a one channel input stream, the blocks are sent as follows:
-%% \begin{table}[h]
-%% \begin{tabular}{| r | c | c | c | r | r |}
-%% Block & First Block Bit & Last Block Bit & Is Mono & Channel A & Channel B \\
-%% \hline
-%% $\text{Block}_1$ & 1 & 1 & 1 & Front Center &
-%% \end{tabular}
-%% \end{table}
-%% \par
-%% \noindent
-%% For a two channel input stream, the blocks are sent as follows:
-%% \begin{table}[h]
-%% \begin{tabular}{| r | c | c | c | r | r |}
-%% Block & First Block Bit & Last Block Bit & Is Mono & Channel A & Channel B \\
-%% \hline
-%% $\text{Block}_1$ & 1 & 1 & 0 & Front Left & Front Right
-%% \end{tabular}
-%% \end{table}
-
-%% However, for multi-channel input streams, we need to split its
-%% channels into a set of blocks with 1 or 2 channels per block.
-%% By using the channel mask\footnote{As explained on page
-%% \pageref{wave_channel_assignment}.} we can split the stream
-%% into 2 channel blocks with left-right channel pairs and
-%% 1 channel blocks for everything else.
-
-%% For example, given a 6-channel audio stream with the channel mask
-%% \texttt{0x3F}, we have the channels \VAR{Front Left}, \VAR{Front Right},
-%% \VAR{Front Center}, \VAR{LFE}, \VAR{Back Left} and \VAR{Back Right} -
-%% in that order.
-%% So, a good way to split our channels into blocks is as follows:
-%% \begin{table}[h]
-%% \begin{tabular}{| r | c | c | c | r | r |}
-%% Block & First Block Bit & Last Block Bit & Is Mono & Channel A & Channel B \\
-%% \hline
-%% $\text{Block}_1$ & 1 & 0 & 0 & Front Left & Front Right \\
-%% $\text{Block}_2$ & 0 & 0 & 1 & Front Center & \\
-%% $\text{Block}_3$ & 0 & 0 & 1 & LFE & \\
-%% $\text{Block}_4$ & 0 & 1 & 0 & Back Left & Back Right
-%% \end{tabular}
-%% \end{table}
-
-%% \subsection{Channel Info}
-%% If the stream has more than 2 channels, a \VAR{Channel Info}
-%% sub-block should be added to the first block,
-%% as illustrated on page \pageref{wavpack_channel_info}.
-
-%% \subsection{False Stereo}
-
-%% If the block is stereo and Channel A's samples are identical to
-%% Channel B's samples, one can set the \VAR{False Stereo} bit in
-%% the block header and treat the block as having only one channel
-%% for the rest of its encoding.
-%% Note that the block's \VAR{Is Mono} bit is still \texttt{false}
-%% in this case.
-
-%% \subsection{Extended/Shifted Integers}
-%% \label{wavpack_encode_extended_integers}
-%% If the following condition holds:
-%% \begin{equation*}
-%% 0 = \overset{\text{block size} - 1}{\underset{i = 0}{\sum}}{\text{Channel}_i \bmod{2 ^ {bits}}}
-%% \end{equation*}
-%% for Channel A and, if present, Channel B where $bits > 0$, then the
-%% highest value of $bits$ if what's used for the \VAR{Zero Bits}
-%% field in an \VAR{Extended Size Integers} sub-block, as described
-%% on page \pageref{wavpack_extended_integers}.
-%% Each channel's samples are then divided by $2 ^ {bits}$ for the
-%% remainder of encoding and the \VAR{Extended Size Integers} bit
-%% is set in the block header.
-
-%% \subsection{the CRC}
-
-%% After the audio samples have been processed for false stereo
-%% and wasted bits, it's best to perform the block header CRC calculation
-%% before starting to encode them, as follows:
-
-%% \begin{equation*}
-%% \text{CRC}_i = (3 \times \text{CRC}_{i - 1}) + \text{Sample}_i
-%% \end{equation*}
-%% where $\text{Sample}_i$ alternates between channels if necessary.
-%% $\text{CRC}_{-1}$ begins with a value of \texttt{0xFFFFFFFF}
-%% and each $\text{CRC}_i$ value is truncated to 32 bits.
-
-%% \subsection{Joint Stereo}
-
-%% Next, for two channel blocks, one typically converts both
-%% channels to joint stereo.
-%% This involves transforming independent left and right channels
-%% to mid and side channels.
-%% \begin{align*}
-%% \text{Mid}_i &= \text{Channel A}_i - \text{Channel B}_i \\
-%% \text{Side}_i &= \left\lfloor\frac{\text{Channel A}_i + \text{Channel B}_i}{2}\right\rfloor
-%% \end{align*}
-%% Where \VAR{Mid} is the new \VAR{Channel A} and \VAR{Side} is the new
-%% \VAR{Channel B}.
-%% For example, given the \VAR{Channel A} value of 16 and the
-%% \VAR{Channel B} value of 62, our conversion is as follows:
-%% \begin{align*}
-%% \text{Mid}_0 &= 16 - 62 = \textbf{-46} \\
-%% \text{Side}_0 &= \left\lfloor\frac{16 + 62}{2}\right\rfloor = \textbf{39}
-%% \end{align*}
-%% One must also set the \VAR{Joint Stereo} bit in the block header.
-
-%% \clearpage
-
-%% \subsection{Block Header}
-
-%% Once the \VAR{False Stereo}, \VAR{Extended Size Integers},
-%% \VAR{Joint Stereo} and \VAR{CRC} values are decided,
-%% we can finally write a block header based on our input:
-%% \begin{figure}[h]
-%% \includegraphics{figures/wavpack/block_header.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% \begin{wrapfigure}[10]{r}{1.75in}
-%% \begin{tabular}{|r|c|}
-%% \hline
-%% sample rate & value \\
-%% \hline
-%% 6000 & \texttt{0000} \\
-%% 8000 & \texttt{0001} \\
-%% 9600 & \texttt{0010} \\
-%% 11025 & \texttt{0011} \\
-%% 12000 & \texttt{0100} \\
-%% 16000 & \texttt{0101} \\
-%% 22050 & \texttt{0110} \\
-%% 24000 & \texttt{0111} \\
-%% 32000 & \texttt{1000} \\
-%% 44100 & \texttt{1001} \\
-%% 48000 & \texttt{1010} \\
-%% 64000 & \texttt{1011} \\
-%% 88200 & \texttt{1100} \\
-%% 96000 & \texttt{1101} \\
-%% 192000 & \texttt{1110} \\
-%% \hline
-%% \hline
-%% bits per sample & value \\
-%% \hline
-%% 8 & \texttt{00} \\
-%% 16 & \texttt{01} \\
-%% 24 & \texttt{10} \\
-%% 32 & \texttt{11} \\
-%% \hline
-%% \end{tabular}
-%% \end{wrapfigure}
-%% The remaining fields are as follows:
-%% \begin{description}
-%% \item[Block Size] 24 + byte length of sub blocks
-%% \item[Version] \texttt{0x407}
-%% \item[Track Number] \texttt{0}
-%% \item[Index Number] \texttt{0}
-%% \item[Block Index] total PCM frames written thus far
-%% \item[Block Samples] total PCM frames of block
-%% \item[Hybrid Mode] \texttt{0}
-%% \item[Channel Decorrelation] \texttt{1} if stereo, \texttt{0} if mono
-%% \item[Hybrid Noise Shaping] \texttt{0}
-%% \item[Floating Point Data] \texttt{0}
-%% \item[Hybrid Controls Bitrate] \texttt{0}
-%% \item[Hybrid Noise Balanced] \texttt{0}
-%% \item[Left Shift Data] \texttt{0}
-%% \item[Maximum Magnitude] maximum sample size, in bits
-%% \item[Use IIR] \texttt{0}
-%% \end{description}
-%% Note that the \VAR{Block Size} and \VAR{Total Samples}
-%% fields can't be known in advance;
-%% all the block's sub-blocks must be generated before we'll know
-%% the former, and the entire file must be written before we'll know
-%% the latter.
-
-%% \subsection{Decorrelation Terms/Deltas}
-
-%% These are typically defined by the number of decorrelation
-%% passes to use:
-%% \begin{table}[h]
-%% \begin{tabular}{| r | r | r | r | r | r || r | r | r | r | r | r |}
-%% \hline
-%% Terms & \multicolumn{5}{c||}{Decorrelation Passes} & Deltas &
-%% \multicolumn{5}{c|}{Decorrelation Passes} \\
-%% & 1 & 2 & 5 & 10 & 16 & & 1 & 2 & 5 & 10 & 16 \\
-%% \hline
-%% $\text{Term}_1$    & 18 & 17 & 3 & 4 & 2 &
-%% $\text{Delta}_1$   & 2  & 2  & 2 & 2 & 2 \\
-%% $\text{Term}_2$    & & 18 & 17 & 17 & 18 &
-%% $\text{Delta}_2$   & & 2 & 2 & 2 & 2 \\
-%% $\text{Term}_3$    & & & 2 & -1 & -1 &
-%% $\text{Delta}_3$   & & & 2 & 2 & 2 \\
-%% $\text{Term}_4$    & & & 18 & 5 & 8 &
-%% $\text{Delta}_4$   & & & 2 & 2 & 2 \\
-%% $\text{Term}_5$    & & & 18 & 3 & 6 &
-%% $\text{Delta}_5$   & & & 2 & 2 & 2 \\
-%% $\text{Term}_6$    & & & & 2 & 3 &
-%% $\text{Delta}_6$   & & & & 2 & 2 \\
-%% $\text{Term}_7$    & & & & -2 & 5 &
-%% $\text{Delta}_7$   & & & & 2 & 2 \\
-%% $\text{Term}_8$    & & & & 18 & 7 &
-%% $\text{Delta}_8$   & & & & 2 & 2 \\
-%% $\text{Term}_9$    & & & & 18 & 4 &
-%% $\text{Delta}_9$   & & & & 2 & 2 \\
-%% $\text{Term}_{10}$ & & & & 18 & 2 &
-%% $\text{Delta}_{10}$ & & & & 2 & 2 \\
-%% $\text{Term}_{11}$ & & & & & 18 &
-%% $\text{Delta}_{11}$ & & & & & 2 \\
-%% $\text{Term}_{12}$ & & & & & -2 &
-%% $\text{Delta}_{12}$ & & & & & 2 \\
-%% $\text{Term}_{13}$ & & & & & 3 &
-%% $\text{Delta}_{13}$ & & & & & 2 \\
-%% $\text{Term}_{14}$ & & & & & 2 &
-%% $\text{Delta}_{14}$ & & & & & 2 \\
-%% $\text{Term}_{15}$ & & & & & 18 &
-%% $\text{Delta}_{15}$ & & & & & 2 \\
-%% $\text{Term}_{16}$ & & & & & 18 &
-%% $\text{Delta}_{16}$ & & & & & 2 \\
-%% \hline
-%% \end{tabular}
-%% \end{table}
-%% \par
-%% \noindent
-%% They are placed in a sub-block as follows:
-%% \begin{figure}[h]
-%% \includegraphics{figures/wavpack/decorr_terms.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% Since each term/delta pair is 8 bits,
-%% \VAR{Actual Size 1 Less} is set when the number of terms is odd,
-%% \VAR{Large Block} is always going to be 0 and
-%% \VAR{Block Size} equals the number of terms, divided by 2.
-
-%% \clearpage
-
-%% \subsection{Decorrelation Passes}
-
-%% Once our number of decorrelation passes is decided,
-%% we must also generate decorrelation weights, decorrelation samples
-%% and entropy variables sub-blocks before moving on to the residuals sub-block.
-%% So where do we get those values?
-%% They actually come from the \textit{previous} block.\footnote{More
-%% precisely, the previous block covering the same set of channels -
-%% in the case of multi-channel audio.}
-%% Since encoding will modify decorrelation weights and entropy variables
-%% as it progresses, the final values for $\text{Block}_i$ become
-%% the initial values for $\text{Block}_{i + 1}$.
-%% As for the decorrelation values, the final few decorrelated
-%% samples (whose quantity depends on the decorrelation term)
-%% are `wrapped' from the previous decorrelation pass
-%% into our \VAR{Decorrelation Samples} sub-block as its starting point.
-
-%% However, we can't store the previous block's final values as-is.
-%% Remember that the values for decorrelation weights are
-%% multiplied by $2 ^ 3$ and the values for decorrelation samples
-%% and entropy variables are stored logarithmically.
-%% Therefore, we must `round-trip' the previous block's output samples
-%% before using them as input samples since they'll be
-%% parsed the same way during decoding.
-%% This process will be explained in the sub-block sections to follow.
-
-%% For $\text{Block}_0$, we'll set our initial decorrelation weights,
-%% decorrelation samples and entropy variables to 0.
-
-%% The application of each pass requires a \VAR{Decorrelation Term},
-%% a \VAR{Decorrelation Delta}, one \VAR{Decorrelation Weight} per
-%% channel and one or more \VAR{Decorrelation Sample} values -
-%% in addition to the set of processed input samples we're running the pass
-%% over.
-
-%% \begin{align*}
-%% \intertext{Decorrelation Term = 18:}
-%% \text{Temp}_i &= \lfloor((3 \times \text{Input}_{i - 1}) - \text{Input}_{i - 2}) \div 2\rfloor \\
-%% \text{Output}_i &= \text{Input}_i - \lfloor((\text{Weight}_{i - 1} \times \text{Temp}_i) + 512) \div 1024\rfloor \\
-%% \text{Weight}_i &=
-%% \begin{cases}
-%% \text{Weight}_{i - 1} & \text{if } \text{Temp}_i = 0 \text{ or } \text{Output}_i = 0 \\
-%% \text{Weight}_{i - 1} + \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Output}_i) \geq 0 \\
-%% \text{Weight}_{i - 1} - \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Output}_i) < 0
-%% \end{cases}
-%% \intertext{Decorrelation Term = 17:}
-%% \text{Temp}_i &= (2 \times \text{Input}_{i - 1}) - \text{Input}_{i - 2} \\
-%% \text{Output}_i &= \text{Input}_i - \lfloor((\text{Weight}_{i - 1} \times \text{Temp}_i) + 512) \div 1024\rfloor \\
-%% \text{Weight}_i &=
-%% \begin{cases}
-%% \text{Weight}_{i - 1} & \text{if } \text{Temp}_i = 0 \text{ or } \text{Output}_i = 0 \\
-%% \text{Weight}_{i - 1} + \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Output}_i) \geq 0 \\
-%% \text{Weight}_{i - 1} - \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Output}_i) < 0
-%% \end{cases}
-%% \intertext{$1 \leq \text{Decorrelation Term} \leq 8$:}
-%% \text{Output}_i &= \text{Input}_i - \lfloor((\text{Weight}_{i - 1} \times \text{Input}_{i - \text{term}}) + 512) \div 1024\rfloor \\
-%% \text{Weight}_i &=
-%% \begin{cases}
-%% \text{Weight}_{i - 1} & \text{if } \text{Input}_{i - \text{term}} = 0 \text{ or } \text{Output}_i = 0 \\
-%% \text{Weight}_{i - 1} + \text{Delta} & \text{if } (\text{Input}_{i - \text{term}} \xor \text{Output}_i) \geq 0 \\
-%% \text{Weight}_{i - 1} - \text{Delta} & \text{if } (\text{Input}_{i - \text{term}} \xor \text{Output}_i) < 0
-%% \end{cases}
-%% \end{align*}
-%% Similar to decoding, each function uses previous input samples
-%% for its calculation.
-%% This is where \VAR{Decorrelation Samples} are used;
-%% those are our $\text{Input}_{-1}$, $\text{Input}_{-2}$, etc. which
-%% are used for decorrelation but not actually output.
-
-%% For 1 or 2 channel blocks, positive decorrelation terms are applied
-%% on a per-channel basis with the weight A values being applied to
-%% channel A and the weight B values being applied to channel B (if present).
-%% However, the three negative correlation terms are only valid for
-%% 2 channel blocks:
-%% \begin{align*}
-%% \intertext{Decorrelation Term = -1:}
-%% \text{Temp A}_i &= \text{Input B}_{i - 1} \\
-%% \text{Temp B}_i &= \text{Input A}_i \\
-%% \text{Output A}_i &= \text{Input A}_i - \lfloor((\text{Weight A}_{i - 1} \times \text{Temp A}_i) + 512) \div 1024\rfloor \\
-%% \text{Weight A}_i &=
-%% \begin{cases}
-%% \text{Weight A}_{i - 1} & \text{if } \text{Temp A}_i \text{ or } \text{Output A}_i = 0 \\
-%% \text{Weight A}_{i - 1} + \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Output A}_i) \geq 0 \\
-%% \text{ to a maximum of 1024} \\
-%% \text{Weight A}_{i - 1} - \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Output A}_i) < 0 \\
-%% \text{ to a minimum of -1024}
-%% \end{cases} \\
-%% \text{Output B}_i &= \text{Input B}_i - \lfloor((\text{Weight B}_{i - 1} \times \text{Temp B}_i) + 512) \div 1024\rfloor \\
-%% \text{Weight B}_i &=
-%% \begin{cases}
-%% \text{Weight B}_{i - 1} & \text{if } \text{Temp B}_i \text{ or } \text{Output B}_i = 0 \\
-%% \text{Weight B}_{i - 1} + \text{Delta} & \text{if } (\text{Temp B}_i \xor \text{Output B}_i) \geq 0 \\
-%% \text{ to a maximum of 1024} \\
-%% \text{Weight B}_{i - 1} - \text{Delta} & \text{if } (\text{Temp B}_i \xor \text{Output B}_i) < 0 \\
-%% \text{ to a minimum of -1024}
-%% \end{cases}
-%% \intertext{Decorrelation Term = -2:}
-%% \text{Temp A}_i &= \text{Input B}_i \\
-%% \text{Temp B}_i &= \text{Input A}_{i - 1} \\
-%% \text{Output A}_i &= \text{Input A}_i - \lfloor((\text{Weight A}_{i - 1} \times \text{Temp A}_i) + 512) \div 1024\rfloor \\
-%% \text{Weight A}_i &=
-%% \begin{cases}
-%% \text{Weight A}_{i - 1} & \text{if } \text{Temp A}_i \text{ or } \text{Output A}_i = 0 \\
-%% \text{Weight A}_{i - 1} + \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Output A}_i) \geq 0 \\
-%% \text{ to a maximum of 1024} \\
-%% \text{Weight A}_{i - 1} - \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Output A}_i) < 0 \\
-%% \text{ to a minimum of -1024}
-%% \end{cases} \\
-%% \text{Output B}_i &= \text{Input B}_i - \lfloor((\text{Weight B}_{i - 1} \times \text{Temp B}_i) + 512) \div 1024\rfloor \\
-%% \text{Weight B}_i &=
-%% \begin{cases}
-%% \text{Weight B}_{i - 1} & \text{if } \text{Temp B}_i \text{ or } \text{Output B}_i = 0 \\
-%% \text{Weight B}_{i - 1} + \text{Delta} & \text{if } (\text{Temp B}_i \xor \text{Output B}_i) \geq 0 \\
-%% \text{ to a maximum of 1024} \\
-%% \text{Weight B}_{i - 1} - \text{Delta} & \text{if } (\text{Temp B}_i \xor \text{Output B}_i) < 0 \\
-%% \text{ to a minimum of -1024}
-%% \end{cases}
-%% \intertext{Decorrelation Term = -3:}
-%% \text{Temp A}_i &= \text{Input B}_{i - 1} \\
-%% \text{Temp B}_i &= \text{Input A}_{i - 1} \\
-%% \text{Output A}_i &= \text{Input A}_i - \lfloor((\text{Weight A}_{i - 1} \times \text{Temp A}_i) + 512) \div 1024\rfloor \\
-%% \text{Weight A}_i &=
-%% \begin{cases}
-%% \text{Weight A}_{i - 1} & \text{if } \text{Temp A}_i \text{ or } \text{Output A}_i = 0 \\
-%% \text{Weight A}_{i - 1} + \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Output A}_i) \geq 0 \\
-%% \text{ to a maximum of 1024} \\
-%% \text{Weight A}_{i - 1} - \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Output A}_i) < 0 \\
-%% \text{ to a minimum of -1024}
-%% \end{cases} \\
-%% \text{Output B}_i &= \text{Input B}_i - \lfloor((\text{Weight B}_{i - 1} \times \text{Temp B}_i) + 512) \div 1024\rfloor \\
-%% \text{Weight B}_i &=
-%% \begin{cases}
-%% \text{Weight B}_{i - 1} & \text{if } \text{Temp B}_i \text{ or } \text{Output B}_i = 0 \\
-%% \text{Weight B}_{i - 1} + \text{Delta} & \text{if } (\text{Temp B}_i \xor \text{Output B}_i) \geq 0 \\
-%% \text{ to a maximum of 1024} \\
-%% \text{Weight B}_{i - 1} - \text{Delta} & \text{if } (\text{Temp B}_i \xor \text{Output B}_i) < 0 \\
-%% \text{ to a minimum of -1024}
-%% \end{cases}
-%% \end{align*}
-
-%% \clearpage
-
-%% \subsection{Decorrelation Weights}
-
-%% Once the decorrelation passes for $\text{Block}_0$ have been completed
-%% (with its initial decorrelation weight values of 0),
-%% we should store its final updated weight values to be used as the initial
-%% decorrelation weights for $\text{Block}_1$, as so on through
-%% the rest of the file.
-
-%% There is one decorrelation weight value per decorrelation pass, per channel.
-%% Each has a minimum value of -1024 and a maximum value of 1024.
-%% Converting their values to 8 bits requires the following formula:
-%% \begin{equation*}
-%% \text{value} = \begin{cases}
-%% \lfloor(\text{Weight} - \left\lfloor\frac{\text{Weight} + 2 ^ 6}{7}\right\rfloor + 4) \div 2 ^ 3\rfloor & \text{ if Weight} > 0 \\
-%% 0 & \text{ if Weight} = 0 \\
-%% \lfloor(\text{Weight} + 4) \div 2 ^ 3\rfloor & \text{ if Weight} < 0
-%% \end{cases}
-%% \end{equation*}
-%% \par
-%% \noindent
-%% Weights are placed in a sub-block in reverse order as follows:
-
-%% \begin{figure}[h]
-%% \includegraphics{figures/wavpack/decorr_weights.pdf}
-%% \end{figure}
-
-%% Since each decorrelation weight value is stored in 8 bits,
-%% \VAR{Actual Size 1 Less} is set if the total number of weights is odd,
-%% \VAR{Large Block} is always going to be 0
-%% and \VAR{Block Size} is the total number of weights divided by 2.
-
-%% After the initial weights for $\text{Block}_i$ have been stored,
-%% the `round-trip' formula to retrieve those weight values
-%% for $\text{Block}_i$'s decorrelation passes is as follows:
-
-%% \begin{equation*}
-%% \text{Decorrelation Weight} =
-%% \begin{cases}
-%% \text{value} \times 2 ^ 3 + \left\lfloor\frac{\text{value} \times 2 ^ 3 + 2 ^ 6}{2 ^ 7}\right\rfloor & \text{if value} > 0 \\
-%% 0 & \text{if value} = 0 \\
-%% \text{value} \times 2 ^ 3 & \text{if value} < 0
-%% \end{cases}
-%% \end{equation*}
-
-%% \clearpage
-
-%% \subsection{Decorrelation Samples}
-%% \label{wavpack_encode_decorr_samples}
-%% We apply the following formulas to convert our 32-bit, signed
-%% decorrelation values to 16-bit signed sub-block values:
-%% \begin{align*}
-%% asample &= |sample| + \left\lfloor\frac{|sample|}{2^9}\right\rfloor \\
-%% bitcount &= \text{count\_bits}(asample) \\
-%% \text{Value} &=
-%% \begin{cases}
-%% (bitcount \times 2^8) + \text{wv\_log2}((asample \times 2^{9 - bitcount}) \bmod{256}) \\
-%% \text{ if } 0 \leq asample < 256 \text{ and } sample \geq 0 \\
-%% (bitcount \times 2^8) + \text{wv\_log2}(\left\lfloor asample \div 2 ^ {bitcount - 9} \right\rfloor \bmod{256}) \\
-%% \text{ if } 256 \leq asample \text{ and } sample \geq 0 \\
-%% -((bitcount \times 2^8) + \text{wv\_log2}((asample \times 2^{9 - bitcount}) \bmod{256})) \\
-%% \text{ if } 0 \leq asample < 256 \text{ and } sample < 0 \\
-%% -((bitcount \times 2^8) + \text{wv\_log2}(\left\lfloor asample \div 2 ^ {bitcount - 9} \right\rfloor \bmod{256})) \\
-%% \text{ if } 256 \leq asample \text{ and } sample < 0
-%% \end{cases}
-%% \intertext{where \VAR{count\_bits} is defined as follows:}
-%% \label{wavpackcountbits}
-%% \text{count\_bits(x)} &=
-%% \begin{cases}
-%% 0 & \text{if } x = 0 \\
-%% 1 + \text{count\_bits(}\lfloor x \div 2 \rfloor\text{)} & \text{if } x \neq 0
-%% \end{cases}
-%% \end{align*}
-%% \par
-%% \noindent
-%% and \VAR{wv\_log2} is defined from the following base-16 table:
-
-%% \par
-%% \noindent
-%% For example, given a sample value of 28:
-%% \begin{align*}
-%% asample &= |28| + \left\lfloor\frac{|28|}{2^9}\right\rfloor = 28 + 0 = \textbf{28} \\
-%% bitcount &= \textbf{5} \\
-%% value &= (5 \times 2^8) + \text{wv\_log2}((28 \times 2^{9 - 5}) \bmod{256}) \\
-%% &= 1280 + \text{wv\_log2}(448 \bmod{256}) \\
-%% &= 1280 + \text{wv\_log2}(192) = \textbf{1487}
-%% \end{align*}
-
-%% \clearpage
-
-%% These samples are then placed in a sub-block as follows:
-%% \begin{figure}[h]
-%% \includegraphics{figures/wavpack/decorr_samples.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% where \VAR{Actual Size 1 Less} and \VAR{Large Block} are 0,
-%% and \VAR{Block Size} is the total number of decorrelation samples.
-
-%% Writing the values themselves requires traversing the
-%% decorrelation samples lists in \textit{reverse} order,
-%% from $i = \text{\VAR{Decorrelation Passes}} - 1$ to 0.
-
-%% \subsubsection{For Stereo Block}
-%% \begin{itemize}
-%% \item If $17 \leq \text{Decorrelation Term}_i \leq 18$
-%% \begin{enumerate}
-%% \item Write $\text{Sample A}_{i~1}$
-%% \item Write $\text{Sample A}_{i~0}$
-%% \item Write $\text{Sample B}_{i~1}$
-%% \item Write $\text{Sample B}_{i~0}$
-%% \end{enumerate}
-%% \item If $1 \leq \text{Decorrelation Term}_i \leq 8$
-%% \begin{enumerate}
-%% \item For $j = 0$ to $\text{Decorrelation Term}_i - 1$
-%% \begin{enumerate}
-%% \item Write $\text{Sample A}_{i~j}$
-%% \item Write $\text{Sample B}_{i~j}$
-%% \end{enumerate}
-%% \end{enumerate}
-%% \item If $-3 \leq \text{Decorrelation Term}_i \leq -1$
-%% \begin{enumerate}
-%% \item Write $\text{Sample B}_{i~0}$
-%% \item Write $\text{Sample A}_{i~0}$
-%% \end{enumerate}
-%% \end{itemize}
-
-%% \subsubsection{For Mono Block}
-%% \begin{itemize}
-%% \item If $17 \leq \text{Decorrelation Term}_i \leq 18$
-%% \begin{enumerate}
-%% \item Write $\text{Sample A}_{i~1}$
-%% \item Write $\text{Sample A}_{i~0}$
-%% \end{enumerate}
-%% \item If $1 \leq \text{Decorrelation Term}_i \leq 8$
-%% \begin{enumerate}
-%% \item For $j = 0$ to $\text{Decorrelation Term}_i - 1$
-%% \begin{enumerate}
-%% \item Write $\text{Sample A}_{i~j}$
-%% \end{enumerate}
-%% \end{enumerate}
-%% \end{itemize}
-
-%% Round-tripping these values back to decorrelation samples
-%% for the next block requires applying the same formula
-%% as decoding:
-%% \begin{equation*}
-%% \text{Sample} =
-%% \begin{cases}
-%% \lfloor \text{wv\_exp2}(value \bmod{256}) \div 2 ^ {9 - \lfloor value \div 2 ^ 8 \rfloor} \rfloor & \text{if } 0 \leq value \leq 2304 \\
-%% \text{wv\_exp2}(value \bmod{256}) \times 2 ^ {\lfloor value \div 2 ^ 8 \rfloor - 9} & \text{if } 2304 < value \leq 32767 \\
-%% -\lfloor \text{wv\_exp2}(-value \bmod{256}) \div 2 ^ {9 - \lfloor -value \div 2 ^ 8 \rfloor} \rfloor & \text{if } -2304 \leq value < 0 \\
-%% -(\text{wv\_exp2}(-value \bmod{256}) \times 2 ^ {\lfloor -value \div 2 ^ 8 \rfloor - 9}) & \text{if } -32768 \leq value < -2304
-%% \end{cases}
-%% \end{equation*}
-%% \par
-%% \noindent
-%% where \VAR{wv\_exp2} is defined from the following base-16 table:
-%% \par
-%% \noindent
-%% {\relsize{-3}\ttfamily
-%% \begin{tabular}{| c | c | c | c | c | c | c | c | c | c | c | c | c | c | c | c | c |}
-%% \hline
-%% & 0x?0 & 0x?1 & 0x?2 & 0x?3 & 0x?4 & 0x?5 & 0x?6 & 0x?7 & 0x?8 & 0x?9 & 0x?A & 0x?B & 0x?C & 0x?D & 0x?E & 0x?F \\
-%% \hline
-%% 0x0? & 100 & 101 & 101 & 102 & 103 & 103 & 104 & 105 & 106 & 106 & 107 & 108 & 108 & 109 & 10A & 10B \\
-%% 0x1? & 10B & 10C & 10D & 10E & 10E & 10F & 110 & 110 & 111 & 112 & 113 & 113 & 114 & 115 & 116 & 116 \\
-%% 0x2? & 117 & 118 & 119 & 119 & 11A & 11B & 11C & 11D & 11D & 11E & 11F & 120 & 120 & 121 & 122 & 123 \\
-%% 0x3? & 124 & 124 & 125 & 126 & 127 & 128 & 128 & 129 & 12A & 12B & 12C & 12C & 12D & 12E & 12F & 130 \\
-%% 0x4? & 130 & 131 & 132 & 133 & 134 & 135 & 135 & 136 & 137 & 138 & 139 & 13A & 13A & 13B & 13C & 13D \\
-%% 0x5? & 13E & 13F & 140 & 141 & 141 & 142 & 143 & 144 & 145 & 146 & 147 & 148 & 148 & 149 & 14A & 14B \\
-%% 0x6? & 14C & 14D & 14E & 14F & 150 & 151 & 151 & 152 & 153 & 154 & 155 & 156 & 157 & 158 & 159 & 15A \\
-%% 0x7? & 15B & 15C & 15D & 15E & 15E & 15F & 160 & 161 & 162 & 163 & 164 & 165 & 166 & 167 & 168 & 169 \\
-%% 0x8? & 16A & 16B & 16C & 16D & 16E & 16F & 170 & 171 & 172 & 173 & 174 & 175 & 176 & 177 & 178 & 179 \\
-%% 0x9? & 17A & 17B & 17C & 17D & 17E & 17F & 180 & 181 & 182 & 183 & 184 & 185 & 187 & 188 & 189 & 18A \\
-%% 0xA? & 18B & 18C & 18D & 18E & 18F & 190 & 191 & 192 & 193 & 195 & 196 & 197 & 198 & 199 & 19A & 19B \\
-%% 0xB? & 19C & 19D & 19F & 1A0 & 1A1 & 1A2 & 1A3 & 1A4 & 1A5 & 1A6 & 1A8 & 1A9 & 1AA & 1AB & 1AC & 1AD \\
-%% 0xC? & 1AF & 1B0 & 1B1 & 1B2 & 1B3 & 1B4 & 1B6 & 1B7 & 1B8 & 1B9 & 1BA & 1BC & 1BD & 1BE & 1BF & 1C0 \\
-%% 0xD? & 1C2 & 1C3 & 1C4 & 1C5 & 1C6 & 1C8 & 1C9 & 1CA & 1CB & 1CD & 1CE & 1CF & 1D0 & 1D2 & 1D3 & 1D4 \\
-%% 0xE? & 1D6 & 1D7 & 1D8 & 1D9 & 1DB & 1DC & 1DD & 1DE & 1E0 & 1E1 & 1E2 & 1E4 & 1E5 & 1E6 & 1E8 & 1E9 \\
-%% 0xF? & 1EA & 1EC & 1ED & 1EE & 1F0 & 1F1 & 1F2 & 1F4 & 1F5 & 1F6 & 1F8 & 1F9 & 1FA & 1FC & 1FD & 1FF \\
-%% \hline
-%% \end{tabular}
-%% }
-
-%% \subsection{the Entropy Variables Sub-Block}
-
-%% \begin{figure}[h]
-%% \includegraphics{figures/wavpack/entropy_vars.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% \VAR{Actual Size 1 Less} and \VAR{Large Block} are 0.
-%% \VAR{Block Size} is 3 for mono blocks and 6 for stereo blocks.
-%% The samples themselves are converted and round-tripped
-%% the same way that \VAR{Decorrelation Sample} values are,
-%% as explained on pages \pageref{wavpack_encode_decorr_samples}
-%% and \pageref{wavpack_decorr_samples}.
-
-%% \clearpage
-
-%% \subsection{the Bitstream Sub-Block}
-
-%% Given a set of residual values and one set of 3 entropy variables per
-%% channel, the final encoding step for a WavPack block is generating
-%% the bitstream sub-block.
-%% Since the subframe header requires a size, we must either
-%% write it in advance with a size of 0 and rewrite it once
-%% the sub-block is finished, or first write the residuals to temporary space
-%% before writing the sub-block header.
-
-%% \begin{figure}[h]
-%% \includegraphics{figures/wavpack/bitstream.pdf}
-%% \end{figure}
-
-%% As with decoding, writing each residual value is a multi-stage
-%% process which involves calculating a unary value,
-%% referencing and updating the channel's set of entropy variables, and
-%% calculating a fixed collection of bits.
-
-%% However, this procedure is complicated by the \VAR{holding\_one}
-%% and \VAR{holding\_zero} boolean values.
-%% As you'll recall, when \VAR{holding\_zero} is false, the
-%% decoder skips reading a unary value entirely.
-%% This means that before we can output $\text{Residual}_{i - 1}$'s values,
-%% we must determine the values for $\text{Residual}_i$
-%% so that the \VAR{holding\_one} and \VAR{holding\_zero} boolean
-%% values can be set properly.
-%% Note that $\text{holding\_one}_{-1}$ and $\text{holding\_zero}_{-1}$
-%% are both \texttt{false}.
-
-%% In practice, we'll first need to handle the special case of many
-%% zero residuals in a row as discussed on page \pageref{wavpack_zero_residuals}.
-%% But for clarity, it's best to understand the general case first.
-
-%% \subsubsection{Calculate Unsigned Value and Sign Bit}
-%% %% We start by converting our signed residual to an unsigned value and sign bit:
-%% \begin{align*}
-%% \text{value}_i &=
-%% \begin{cases}
-%% \text{Residual}_i & \text{if } \text{Residual}_i \geq 0 \\
-%% -\text{Residual}_i - 1 & \text{if } \text{Residual}_i < 0
-%% \end{cases} \\
-%% \text{sign}_i &=
-%% \begin{cases}
-%% 0 & \text{if } \text{Residual}_i \geq 0 \\
-%% 1 & \text{if } \text{Residual}_i < 0
-%% \end{cases}
-%% \end{align*}
-%% \subsubsection{Calculate Unary Value, High, Low and Next Medians}
-%% %% We then convert our current channel's entropy variables to
-%% %% median values:
-%% \begin{align*}
-%% \text{Median}_{i~0} &= \lfloor\text{Entropy}_{i~0}\div2 ^ 4\rfloor + 1 \\
-%% \text{Median}_{i~1} &= \lfloor\text{Entropy}_{i~1}\div2 ^ 4\rfloor + 1 \\
-%% \text{Median}_{i~2} &= \lfloor\text{Entropy}_{i~2}\div2 ^ 4\rfloor + 1 \\
-%% \end{align*}
-%% %% which allows us to calculate the residual's \VAR{low}, \VAR{high}
-%% %% and unary values - along with the next residual's entropy values -
-%% %% by determining which set of medians our unsigned value falls between:
-%% \begin{align*}
-%% \intertext{If $\text{value}_i < \text{Median}_{i~0}$:}
-%% \text{unary}_i &= 0 \\
-%% \text{low}_i &= 0 \\
-%% \text{high}_i &= \text{Median}_{i~0} - 1 \\
-%% \text{Entropy}_{(i + 1)~0} &= \text{Entropy}_{i~0} - \left\lfloor\frac{\text{Entropy}_{i~0} + 126}{128}\right\rfloor \times 2 \\
-%% \text{Entropy}_{(i + 1)~1} &= \text{Entropy}_{i~1} \\
-%% \text{Entropy}_{(i + 1)~2} &= \text{Entropy}_{i~2}
-%% \intertext{If $(\text{value}_i - \text{Median}_{i~0}) < \text{Median}_{i~1}$:}
-%% \text{unary}_i &= 1 \\
-%% \text{low}_i &= \text{Median}_{i~0} \\
-%% \text{high}_i &= \text{Median}_{i~0} + \text{Median}_{i~1} - 1 \\
-%% \text{Entropy}_{(i + 1)~0} &= \text{Entropy}_{i~0} + \left\lfloor\frac{\text{Entropy}_{i~0} + 128}{128}\right\rfloor \times 5 \\
-%% \text{Entropy}_{(i + 1)~1} &= \text{Entropy}_{i~1} - \left\lfloor\frac{\text{Entropy}_{i~1} + 62}{64}\right\rfloor \times 2\\
-%% \text{Entropy}_{(i + 1)~2} &= \text{Entropy}_{i~2} \\
-%% \intertext{If $(\text{value}_i - (\text{Median}_{i~0} + \text{Median}_{i~1})) < \text{Median}_{i~2}$:}
-%% \text{unary}_i &= 2 \\
-%% \text{low}_i &= \text{Median}_{i~0} + \text{Median}_{i~1} \\
-%% \text{high}_i &= \text{Median}_{i~0} + \text{Median}_{i~1} + \text{Median}_{i~2} - 1 \\
-%% \text{Entropy}_{(i + 1)~0} &= \text{Entropy}_{i~0} + \left\lfloor\frac{\text{Entropy}_{i~0} + 128}{128}\right\rfloor \times 5 \\
-%% \text{Entropy}_{(i + 1)~1} &= \text{Entropy}_{i~1} + \left\lfloor\frac{\text{Entropy}_{i~1} + 64}{64}\right\rfloor \times 5 \\
-%% \text{Entropy}_{(i + 1)~2} &= \text{Entropy}_{i~2} - \left\lfloor\frac{\text{Entropy}_{i~2} + 30}{32}\right\rfloor \times 2 \\
-%% \intertext{Otherwise:}
-%% \text{unary}_i &= \left\lfloor\frac{\text{value}_i - (\text{Median}_{i~0} + \text{Median}_{i~1})}{\text{Median}_{i~2}}\right\rfloor + 2 \\
-%% \text{low}_i &= \text{Median}_{i~0} + \text{Median}_{i~1} + ((\text{unary}_i - 2) \times \text{Median}_{i~2}) \\
-%% \text{high}_i &= \text{low}_i + \text{Median}_{i~2} - 1 \\
-%% \text{Entropy}_{(i + 1)~0} &= \text{Entropy}_{i~0} + \left\lfloor\frac{\text{Entropy}_{i~0} + 128}{128}\right\rfloor \times 5 \\
-%% \text{Entropy}_{(i + 1)~1} &= \text{Entropy}_{i~1} + \left\lfloor\frac{\text{Entropy}_{i~1} + 64}{64}\right\rfloor \times 5 \\
-%% \text{Entropy}_{(i + 1)~2} &= \text{Entropy}_{i~2} + \left\lfloor\frac{\text{Entropy}_{i~2} + 32}{32}\right\rfloor \times 5
-%% \end{align*}
-
-%% \subsubsection{Calculate Fixed Size, Fixed Value and Optional Extra Bit}
-%% \begin{align*}
-%% \intertext{If $\text{low}_i = \text{high}_i$:}
-%% \text{fixed size}_i &= 0 \\
-%% \text{has extra}_i &= \texttt{false}
-%% \intertext{Otherwise:}
-%% \text{extras}_i &= 2 ^ {\text{count\_bits}(\text{high}_i - \text{low}_i)} - (\text{high}_i - \text{low}_i) - 1 \\
-%% \intertext{If $\text{low}_i \neq \text{high}_i$ and $(\text{value}_i - \text{low}_i) < \text{extras}_i$:}
-%% \text{fixed size}_i &= \text{value}_i - \text{low}_i \\
-%% \text{fixed value}_i &= \text{count\_bits}(\text{high}_i - \text{low}_i) - 1 \\
-%% \text{has extra}_i &= \texttt{false} \\
-%% \intertext{If $\text{low}_i \neq \text{high}_i$ and $(\text{value}_i - \text{low}_i) \geq \text{extras}_i$:}
-%% \text{fixed size}_i &= \lfloor(\text{value}_i - \text{low}_i + \text{extras}_i) \div 2\rfloor \\
-%% \text{fixed value}_i &= \text{count\_bits}(\text{high}_i - \text{low}_i) - 1 \\
-%% \text{has extra}_i &= \texttt{true} \\
-%% \text{extra bit}_i &= (\text{value}_i - \text{low}_i + \text{extras}_i) \bmod{2}
-%% \end{align*}
-
-%% \subsubsection{Update Previous Residual Based On Current Residual}
-%% \begin{align*}
-%% \intertext{If $\text{unary}_{i - 1} > 0$ and $\text{unary}_i > 0$:}
-%% \text{unary}_{i - 1} &\gets
-%% \begin{cases}
-%% (\text{unary}_{i - 1} \times 2) + 1 & \text{if $\text{holding one}_{i - 1} = \texttt{false}$} \\
-%% (\text{unary}_{i - 1} \times 2) - 1 & \text{if $\text{holding one}_{i - 1} = \texttt{true}$}
-%% \end{cases} \\
-%% \text{holding zero}_i &= \texttt{false} \\
-%% \text{holding one}_i &= \texttt{true}
-%% \intertext{If $\text{unary}_{i - 1} = 0$ and $\text{unary}_i > 0$:}
-%% \text{unary}_{i - 1} &\gets
-%% \begin{cases}
-%% 1 & \text{if $\text{holding zero}_{i - 1} = \texttt{false}$} \\
-%% \textit{not output} & \text{if $\text{holding zero}_{i - 1} = \texttt{true}$}
-%% \end{cases} \\
-%% \text{holding zero}_i &= \texttt{false} \\
-%% \text{holding one}_i &= \texttt{not}\text{ holding zero}_{i - 1} \\
-%% \intertext{If $\text{unary}_{i - 1} > 0$ and $\text{unary}_i = 0$:}
-%% \text{unary}_{i - 1} &\gets
-%% \begin{cases}
-%% \text{unary}_{i - 1} \times 2 & \text{if $\text{holding one}_{i - 1} = \texttt{false}$} \\
-%% (\text{unary}_{i - 1} - 1) \times 2 & \text{if $\text{holding one}_{i - 1} = \texttt{true}$}
-%% \end{cases} \\
-%% \text{holding zero}_i &= \texttt{true} \\
-%% \text{holding one}_i &= \texttt{false} \\
-%% \intertext{If $\text{unary}_{i - 1} = 0$ and $\text{unary}_i = 0$:}
-%% \text{unary}_{i - 1} &\gets
-%% \begin{cases}
-%% 0 & \text{if $\text{holding zero}_{i - 1} = \texttt{false}$} \\
-%% \textit{not output} & \text{if $\text{holding zero}_{i - 1} = \texttt{true}$}
-%% \end{cases} \\
-%% \text{holding zero}_i &= \texttt{not}\text{ holding zero}_{i - 1} \\
-%% \text{holding one}_i &= \texttt{false}
-%% \end{align*}
-
-%% \subsubsection{Output Previous Residual}
-
-%% Once the previous residual's unary value has been determined,
-%% its fields can now be output.
-%% \begin{itemize}
-%% \item If unary output, write $\text{unary}_{i - 1}$ number of \texttt{1} bits followed by a \texttt{0} bit (if $\text{unary}_{i - 1} < 16$)
-%% \item Write \VAR{$\text{fixed size}_{i - 1}$} number of bits with the value \VAR{$\text{fixed value}_{i - 1}$}
-%% \item If \VAR{$\text{has extra}_{i - 1}$}, write a single bit with the value \VAR{$\text{extra bit}_{i - 1}$}
-%% \item Write a single bit with the value \VAR{$\text{sign}_{i - 1}$}
-%% \end{itemize}
-%% Note that if $\text{unary}_{i - 1} \geq 16$, we write an escape code instead.
-%% \begin{itemize}
-%% \item If $\text{unary}_{i - 1} = 16$, write 18 bits with the value \texttt{0xFFFF} (unary 16 plus unary 0)
-%% \item If $\text{unary}_{i - 1} = 17$, write 19 bits with the value \texttt{0x2FFFF} (unary 16 plus unary 1)
-%% \item If $\text{unary}_{i - 1} \geq 18$, write 17 bits with the value \texttt{0xFFFF} (unary 16)
-%% \begin{itemize}
-%% \item Write $\text{count\_bits}(\text{unary}_{i - 1} - 16)$ number of
-%% \texttt{1} bits followed by a \texttt{0} bit
-%% \item Write $\text{count\_bits}(\text{unary}_{i - 1} - 16) - 1$ number of bits
-%% with the value
-%% \linebreak
-%% $((\text{unary}_{i - 1} - 16) \bmod{2 ^ {\text{count\_bits}(\text{unary}_{i - 1} - 16) - 1}})$
-%% \end{itemize}
-%% \end{itemize}
-
-%% \subsubsection{Handle Groups Of Zero Residuals}
-%% \label{wavpack_zero_residuals}
-%% \begin{wrapfigure}[12]{r}{1.5in}
-%% \includegraphics{figures/wavpack/write_zeroes.pdf}
-%% \end{wrapfigure}
-%% This is necessary when $\text{Entropy A}_{i~0} < 2$ and,
-%% for 2 channel blocks, $\text{Entropy B}_{i~0} < 2$,
-%% $\text{holding\_zero}_i = \texttt{false}$ and
-%% $\text{holding\_one}_i = \texttt{false}$.
-%% In that event, whether the current $\text{Residual}_i$ is 0 or not,
-%% we must generate a zeroes block after outputting $\text{Residual}_{i - 1}$
-%% but before outputting $\text{Residual}_i$.
-
-%% Once the number of zeroes has been determined, their output is
-%% quite similar to an escaped unary value.
-%% \begin{itemize}
-%% \item If $\text{zeroes} = 0$, write a single \texttt{0} bit.
-%% \item If $\text{zeroes} > 0$
-%% \begin{itemize}
-%% \item Write $\text{count\_bits}(\text{zeroes})$ number of \texttt{1} bits
-%% followed by a \texttt{0} bit
-%% \item Write $\text{count\_bits}(\text{zeroes}) - 1$ number of bits
-%% with the value $(\text{zeroes} \bmod{2 ^ {\text{count\_bits}(\text{zeroes}) - 1}})$
-%% \end{itemize}
-%% \end{itemize}
-
-%% \subsection{Extended Integers}
-
-%% In the rare case that a block has `wasted bits',
-%% as explained on page \pageref{wavpack_encode_extended_integers},
-%% we generate the following sub-block to store our
-%% \VAR{Zero Bits} value:
-%% \begin{figure}[h]
-%% \includegraphics{figures/wavpack/extended_integers.pdf}
-%% \end{figure}
-
-%% \clearpage
-
-%% \subsection{RIFF WAVE Header}
-
-%% WavPack expects to find a RIFF WAVE header sub-block in the
-%% first block within the file.
-%% This sub-block is laid out as follows:
-
-%% \begin{figure}[h]
-%% \includegraphics{figures/wavpack/wave_header.pdf}
-%% \end{figure}
-
-%% The RIFF WAVE header is everything from the start of a RIFF WAVE file
-%% to the end of its \texttt{data} chunk's header.
-%% For non WAVEFORMATEXTENSIBLE files, this is typically the first 36 bytes.
-%% For WAVEFORMATEXTENSIBLE files, this is typically the first 60 bytes.
-
-%% \subsection{the Footer Block}
-
-%% Though not required, WavPack files often contain a trailing
-%% block after the audio has been exhausted.
-%% This block contains only an MD5 sum sub-block and optional
-%% RIFF WAVE footer sub-block for wave files with additional chunks of
-%% data after the \texttt{data} chunk.
-
-%% \subsubsection{RIFF WAVE Footer}
-%% \begin{figure}[h]
-%% \includegraphics{figures/wavpack/wave_footer.pdf}
-%% \end{figure}
-
-%% \subsubsection{MD5 Sum}
-%% \begin{figure}[h]
-%% \includegraphics{figures/wavpack/md5sum.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% The MD5 is the hash of all the samples over the entire file.
-%% It is calculated by running the
-%% hashing algorithm\footnote{As described by RFC1321} over
-%% the raw input samples in little-endian format
-%% and signed if their bits-per-sample are greater than 8.
+\subsection{Writing Sub Block}
+{\relsize{-1}
+\ALGORITHM{metadata function, nondecoder data flag, sub block data}{sub block header data}
+\SetKwData{DATA}{sub block data}
+\SetKwFunction{LEN}{len}
+\WRITE metadata function in 5 unsigned bits\;
+\WRITE nondecoder data in 1 unsigned bit\;
+\WRITE $(\LEN(\text{\DATA}) \bmod 2)$ in 1 unsigned bit\tcc*[r]{actual size 1 less}
+\eIf(\tcc*[f]{large block}){$\LEN(\text{\DATA}) > 255 \times 2$}{
+  \WRITE 1 in 1 unsigned bit\;
+  \WRITE $\lceil\LEN(\text{\DATA}) \div 2\rceil$ in 24 unsigned bits\;
+}{
+  \WRITE 0 in 1 unsigned bit\;
+  \WRITE  $\lceil\LEN(\text{\DATA}) \div 2\rceil$ in 8 unsigned bits\;
+}
+write \DATA\;
+\If{$\LEN(\text{\DATA}) \bmod 2 = 1$}{
+  \WRITE 0 in 8 unsigned bits\;
+}
+\EALGORITHM
+}
+
+\begin{figure}[h]
+\includegraphics{figures/wavpack/block_header2.pdf}
+\end{figure}
+
+\clearpage
+
+\subsection{Writing Block Header}
+{\relsize{-1}
+\ALGORITHM{total sub blocks size, block index, block samples, bits per sample, channel count, joint stereo, correlation pass count, wasted BPS, initial block, final block, maximum magnitude, sample rate, false stereo, CRC}{block header data}
+\SetKwData{SUBBLOCKSSIZE}{sub blocks size}
+\SetKwData{BLOCKINDEX}{block index}
+\SetKwData{BLOCKSAMPLES}{block samples}
+\SetKwData{BITSPERSAMPLE}{bits per sample}
+\SetKwData{CHANNELCOUNT}{channel count}
+\SetKwData{PASSES}{correlation passes}
+\SetKwData{WASTEDBPS}{wasted BPS}
+\SetKwData{JOINTSTEREO}{joint stereo}
+\SetKwData{INITIALBLOCK}{initial block}
+\SetKwData{FINALBLOCK}{final block}
+\SetKwData{MAXMAGNITUDE}{maximum magnitude}
+\SetKwData{FALSESTEREO}{false stereo}
+\WRITE \texttt{"wvpk"} in 4 bytes\;
+\WRITE (\SUBBLOCKSSIZE + 24) in 32 unsigned bits\;
+\WRITE \texttt{0x0410} in 16 unsigned bits\tcc*[r]{version}
+\WRITE 0 in 8 unsigned bits\tcc*[r]{track number}
+\WRITE 0 in 8 unsigned bits\tcc*[r]{index number}
+\WRITE \texttt{0xFFFFFFFF} in 32 unsigned bits\tcc*[r]{total samples placeholder}
+\WRITE \BLOCKINDEX in 32 unsigned bits\;
+\WRITE \BLOCKSAMPLES in 32 unsigned bits\;
+\WRITE $(\text{\BITSPERSAMPLE} \div 8 - 1)$ in 2 unsigned bits\;
+\WRITE $(2 - \text{\CHANNELCOUNT})$ in 1 unsigned bit\;
+\WRITE 0 in 1 unsigned bit\tcc*[r]{hybrid mode}
+\eIf(\tcc*[f]{joint stereo}){$\text{\CHANNELCOUNT} = 2$}{
+  \WRITE 1 in 1 unsigned bit
+}{
+  \WRITE 0 in 1 unsigned bit
+}
+\eIf(\tcc*[f]{cross channel decorrelation}){$\text{\PASSES} > 5$}{
+  \WRITE 1 in 1 unsigned bit\;
+}{
+  \WRITE 0 in 1 unsigned bit\;
+}
+\WRITE 0 in 1 unsigned bit\tcc*[r]{hybrid noise shaping}
+\WRITE 0 in 1 unsigned bit\tcc*[r]{floating point data}
+\eIf(\tcc*[f]{extended size integers}){$\WASTEDBPS > 0$}{
+  \WRITE 1 in 1 unsigned bit\;
+}{
+  \WRITE 0 in 1 unsigned bit\;
+}
+\WRITE 0 in 1 unsigned bit\tcc*[r]{hybrid controls bitrate}
+\WRITE 0 in 1 unsigned bit\tcc*[r]{hybrid noise balanced}
+\WRITE \INITIALBLOCK in 1 unsigned bit\;
+\WRITE \FINALBLOCK in 1 unsigned bit\;
+\WRITE 0 in 5 unsigned bits\tcc*[r]{left shift data}
+\WRITE \MAXMAGNITUDE in 5 unsigned bits\;
+\WRITE \textit{encoded sample rate} in 4 unsigned bits\;
+\begin{tabular}{rr|rr|rr}
+  sample rate & \textit{encoded} &
+  sample rate & \textit{encoded} &
+  sample rate & \textit{encoded} \\
+  \hline
+  6000 Hz & \texttt{0} &
+  22050 Hz & \texttt{6} &
+  64000 Hz & \texttt{11} \\
+  8000 Hz & \texttt{1} &
+  24000 Hz & \texttt{7} &
+  88200 Hz & \texttt{12} \\
+  9600 Hz & \texttt{2} &
+  32000 Hz & \texttt{8} &
+  96000 Hz & \texttt{13} \\
+  11025 Hz & \texttt{3} &
+  44100 Hz & \texttt{9} &
+  192000 Hz & \texttt{14} \\
+  12000 Hz & \texttt{4} &
+  48000 Hz & \texttt{10} &
+  otherwise & \texttt{15} \\
+  16000 Hz & \texttt{5} \\
+\end{tabular} \\
+\WRITE 0 in 2 unsigned bits\tcc*[r]{reserved}
+\WRITE 0 in 1 unsigned bit\tcc*[r]{use IIR}
+\WRITE \FALSESTEREO in 1 unsigned bit\tcc*[r]{if $\text{channel}_0 = \text{channel}_1$}
+\WRITE 0 in 1 unsigned bit\tcc*[r]{reserved}
+\WRITE CRC in 32 unsigned bits\;
+\EALGORITHM
+}

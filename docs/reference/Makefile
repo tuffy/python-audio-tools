@@ -99,6 +99,7 @@ figures/m4a/trkn.pdf
 WAVPACK = figures/wavpack/bitstream.pdf \
 figures/wavpack/block_channels.pdf \
 figures/wavpack/block_header.pdf \
+figures/wavpack/block_header2.pdf \
 figures/wavpack/block_header_parse.pdf \
 figures/wavpack/channel_info.pdf \
 figures/wavpack/decoding_params.pdf \
