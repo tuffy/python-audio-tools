@@ -127,6 +127,7 @@ figures/wavpack/read_residual2.pdf \
 figures/wavpack/read_residual3.pdf \
 figures/wavpack/read_zeroes.pdf \
 figures/wavpack/residuals_parse.pdf \
+figures/wavpack/residuals_parse2.pdf \
 figures/wavpack/stream.pdf \
 figures/wavpack/stream2.pdf \
 figures/wavpack/subblock.pdf \

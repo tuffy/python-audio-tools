@@ -32,6 +32,8 @@ class EncoderContext:
 
 
 class CorrelationParameters:
+    """the parameters for a single correlation pass"""
+
     def __init__(self, term, delta, weights, samples):
         """term is a signed integer
         delta is an unsigned integer
@@ -50,174 +52,201 @@ class CorrelationParameters:
         return "CorrelationParameters(%s, %s, %s, %s)" % \
             (self.term, self.delta, self.weights, self.samples)
 
+    def update_weights(self, weights):
+        """given a weights[c] list of weight values per channel c
+        round-trips and sets this parameter's weights"""
+
+        assert(len(weights) == len(self.weights))
+        self.weights = [restore_weight(store_weight(w))
+                        for w in weights]
+
+    def update_samples(self, samples):
+        """given a samples[c][s] list of sample lists
+        round-trips and sets this parameter's samples"""
+
+        assert(len(samples) == len(samples))
+        self.samples = [[wv_exp2(wv_log2(s)) for s in c]
+                        for c in samples]
+
 
 class EncodingParameters:
-    def __init__(self, channel_count,
-                 correlation_parameters,
-                 entropy_variables):
+    """the encoding parameters for a single 1-2 channel block
+    multi-channel audio may have more than one set of these
+    """
+
+    def __init__(self, channel_count, correlation_passes):
         """channel_count is 1 or 2
-        correlation_parameters is a list CorrelationParameters objects
-        entropy_variables is a list of 3 ints per channel
+        correlation_passes is in [0,1,2,5,10,16]
         """
 
         assert((channel_count == 1) or (channel_count == 2))
-        assert(len(entropy_variables) == 2)
-        assert(len(entropy_variables[0]) == 3)
-        assert(len(entropy_variables[1]) == 3)
+        assert(correlation_passes in (0, 1, 2, 5, 10, 16))
 
         self.channel_count = channel_count
-        self.correlation_parameters = correlation_parameters
-        self.entropy_variables = entropy_variables
+        self.correlation_passes = correlation_passes
+        self.entropy_variables = [[0, 0, 0], [0, 0, 0]]
+
+        self.__parameters_channel_count__ = 0
+        self.__correlation_parameters__ = None
 
     def __repr__(self):
         return "EncodingParameters(%s, %s, %s)" % \
             (self.channel_count,
-             self.correlation_parameters,
+             self.correlation_passes,
              self.entropy_variables)
 
-    @classmethod
-    def new(cls, channel_count, correlation_passes):
-        assert((channel_count == 1) or (channel_count == 2))
+    def correlation_parameters(self, false_stereo):
+        """given a "false_stereo" boolean
+        yields a CorrelationParameters object per correlation pass to be run
 
-        if (channel_count == 1):
-            if (correlation_passes == 0):
-                correlation_parameters = []
-            elif (correlation_passes == 1):
-                correlation_parameters = [
-                    CorrelationParameters(18, 2, [0], [[0] * 2])]
-            elif (correlation_passes == 2):
-                correlation_parameters = [
-                    CorrelationParameters(17, 2, [0], [[0] * 2]),
-                    CorrelationParameters(18, 2, [0], [[0] * 2])]
-            elif (correlation_passes in (5, 10, 16)):
-                correlation_parameters = [
-                    CorrelationParameters(3, 2, [0], [[0] * 3]),
-                    CorrelationParameters(17, 2, [0], [[0] * 2]),
-                    CorrelationParameters(2, 2, [0], [[0] * 2]),
-                    CorrelationParameters(18, 2, [0], [[0] * 2]),
-                    CorrelationParameters(18, 2, [0], [[0] * 2])]
-            else:
-                raise ValueError("invalid correlation pass count")
-        elif (channel_count == 2):
-            if (correlation_passes == 0):
-                correlation_parameters = []
-            elif (correlation_passes == 1):
-                correlation_parameters = [
-                    CorrelationParameters(18, 2, [0, 0], [[0] * 2,
-                                                          [0] * 2])]
-            elif (correlation_passes == 2):
-                correlation_parameters = [
-                    CorrelationParameters(17, 2, [0, 0], [[0] * 2,
-                                                          [0] * 2]),
-                    CorrelationParameters(18, 2, [0, 0], [[0] * 2,
-                                                          [0] * 2])]
-            elif (correlation_passes == 5):
-                correlation_parameters = [
-                    CorrelationParameters(3, 2, [48, 48], [[0] * 3,
-                                                           [0] * 3]),
-                    CorrelationParameters(17, 2, [48, 48], [[0] * 2,
-                                                            [0] * 2]),
-                    CorrelationParameters(2, 2, [32, 32], [[0] * 2,
-                                                           [0] * 2]),
-                    CorrelationParameters(18, 2, [48, 48], [[0] * 2,
-                                                            [0] * 2]),
-                    CorrelationParameters(18, 2, [16, 24], [[0] * 2,
-                                                            [0] * 2])]
-            elif (correlation_passes == 10):
-                correlation_parameters = [
-                    CorrelationParameters(4, 2, [0, 0], [[0] * 4,
-                                                         [0] * 4]),
-                    CorrelationParameters(17, 2, [0, 0], [[0] * 2,
-                                                          [0] * 2]),
-                    CorrelationParameters(-1, 2, [0, 0], [[0] * 1,
-                                                          [0] * 1]),
-                    CorrelationParameters(5, 2, [0, 0], [[0] * 5,
-                                                         [0] * 5]),
-                    CorrelationParameters(3, 2, [0, 0], [[0] * 3,
-                                                         [0] * 3]),
-                    CorrelationParameters(2, 2, [0, 0], [[0] * 2,
-                                                         [0] * 2]),
-                    CorrelationParameters(-2, 2, [0, 0], [[0] * 1,
-                                                          [0] * 1]),
-                    CorrelationParameters(18, 2, [0, 0], [[0] * 2,
-                                                          [0] * 2]),
-                    CorrelationParameters(18, 2, [0, 0], [[0] * 2,
-                                                          [0] * 2]),
-                    CorrelationParameters(18, 2, [0, 0], [[0] * 2,
-                                                          [0] * 2])]
-            elif (correlation_passes == 16):
-                correlation_parameters = [
-                    CorrelationParameters(2, 2, [0, 0], [[0] * 2,
-                                                         [0] * 2]),
-                    CorrelationParameters(18, 2, [0, 0], [[0] * 2,
-                                                          [0] * 2]),
-                    CorrelationParameters(-1, 2, [0, 0], [[0] * 1,
-                                                          [0] * 1]),
-                    CorrelationParameters(8, 2, [0, 0], [[0] * 8,
-                                                         [0] * 8]),
-                    CorrelationParameters(6, 2, [0, 0], [[0] * 6,
-                                                         [0] * 6]),
-                    CorrelationParameters(3, 2, [0, 0], [[0] * 3,
-                                                         [0] * 3]),
-                    CorrelationParameters(5, 2, [0, 0], [[0] * 5,
-                                                         [0] * 5]),
-                    CorrelationParameters(7, 2, [0, 0], [[0] * 7,
-                                                         [0] * 7]),
-                    CorrelationParameters(4, 2, [0, 0], [[0] * 4,
-                                                         [0] * 4]),
-                    CorrelationParameters(2, 2, [0, 0], [[0] * 2,
-                                                         [0] * 2]),
-                    CorrelationParameters(18, 2, [0, 0], [[0] * 2,
-                                                          [0] * 2]),
-                    CorrelationParameters(-2, 2, [0, 0], [[0] * 1,
-                                                          [0] * 1]),
-                    CorrelationParameters(3, 2, [0, 0], [[0] * 3,
-                                                         [0] * 3]),
-                    CorrelationParameters(2, 2, [0, 0], [[0] * 2,
-                                                         [0] * 2]),
-                    CorrelationParameters(18, 2, [0, 0], [[0] * 2,
-                                                          [0] * 2]),
-                    CorrelationParameters(18, 2, [0, 0], [[0] * 2,
-                                                          [0] * 2])]
-            else:
-                raise ValueError("invalid correlation pass count")
+        this may be less than the object's "correlation_passes" count
+        if "channel_count" is 1 or "false_stereo" is True
+        """
 
-        entropy_variables = [[118, 194, 322], [118, 176, 212]]
+        if ((self.channel_count == 2) and (not false_stereo)):
+            channel_count = 2
+        else:
+            channel_count = 1
 
-        return cls(channel_count, correlation_parameters, entropy_variables)
+        if (channel_count != self.__parameters_channel_count__):
+            if (channel_count == 1):
+                if (self.correlation_passes == 0):
+                    self.__correlation_parameters__ = []
+                elif (self.correlation_passes == 1):
+                    self.__correlation_parameters__ = [
+                        CorrelationParameters(18, 2, [0], [[0] * 2])]
+                elif (self.correlation_passes == 2):
+                    self.__correlation_parameters__ = [
+                        CorrelationParameters(17, 2, [0], [[0] * 2]),
+                        CorrelationParameters(18, 2, [0], [[0] * 2])]
+                elif (self.correlation_passes in (5, 10, 16)):
+                    self.__correlation_parameters__ = [
+                        CorrelationParameters(3, 2, [0], [[0] * 3]),
+                        CorrelationParameters(17, 2, [0], [[0] * 2]),
+                        CorrelationParameters(2, 2, [0], [[0] * 2]),
+                        CorrelationParameters(18, 2, [0], [[0] * 2]),
+                        CorrelationParameters(18, 2, [0], [[0] * 2])]
+                else:
+                    raise ValueError("invalid correlation pass count")
+            elif (channel_count == 2):
+                if (self.correlation_passes == 0):
+                    self.__correlation_parameters__ = []
+                elif (self.correlation_passes == 1):
+                    self.__correlation_parameters__ = [
+                        CorrelationParameters(18, 2, [0, 0], [[0] * 2,
+                                                              [0] * 2])]
+                elif (self.correlation_passes == 2):
+                    self.__correlation_parameters__ = [
+                        CorrelationParameters(17, 2, [0, 0], [[0] * 2,
+                                                              [0] * 2]),
+                        CorrelationParameters(18, 2, [0, 0], [[0] * 2,
+                                                              [0] * 2])]
+                elif (self.correlation_passes == 5):
+                    self.__correlation_parameters__ = [
+                        CorrelationParameters(3, 2, [0, 0], [[0] * 3,
+                                                             [0] * 3]),
+                        CorrelationParameters(17, 2, [0, 0], [[0] * 2,
+                                                                [0] * 2]),
+                        CorrelationParameters(2, 2, [0, 0], [[0] * 2,
+                                                             [0] * 2]),
+                        CorrelationParameters(18, 2, [0, 0], [[0] * 2,
+                                                              [0] * 2]),
+                        CorrelationParameters(18, 2, [0, 0], [[0] * 2,
+                                                              [0] * 2])]
+                elif (self.correlation_passes == 10):
+                    self.__correlation_parameters__ = [
+                        CorrelationParameters(4, 2, [0, 0], [[0] * 4,
+                                                             [0] * 4]),
+                        CorrelationParameters(17, 2, [0, 0], [[0] * 2,
+                                                              [0] * 2]),
+                        CorrelationParameters(-1, 2, [0, 0], [[0] * 1,
+                                                              [0] * 1]),
+                        CorrelationParameters(5, 2, [0, 0], [[0] * 5,
+                                                             [0] * 5]),
+                        CorrelationParameters(3, 2, [0, 0], [[0] * 3,
+                                                             [0] * 3]),
+                        CorrelationParameters(2, 2, [0, 0], [[0] * 2,
+                                                             [0] * 2]),
+                        CorrelationParameters(-2, 2, [0, 0], [[0] * 1,
+                                                              [0] * 1]),
+                        CorrelationParameters(18, 2, [0, 0], [[0] * 2,
+                                                              [0] * 2]),
+                        CorrelationParameters(18, 2, [0, 0], [[0] * 2,
+                                                              [0] * 2]),
+                        CorrelationParameters(18, 2, [0, 0], [[0] * 2,
+                                                              [0] * 2])]
+                elif (self.correlation_passes == 16):
+                    self.__correlation_parameters__ = [
+                        CorrelationParameters(2, 2, [0, 0], [[0] * 2,
+                                                             [0] * 2]),
+                        CorrelationParameters(18, 2, [0, 0], [[0] * 2,
+                                                              [0] * 2]),
+                        CorrelationParameters(-1, 2, [0, 0], [[0] * 1,
+                                                              [0] * 1]),
+                        CorrelationParameters(8, 2, [0, 0], [[0] * 8,
+                                                             [0] * 8]),
+                        CorrelationParameters(6, 2, [0, 0], [[0] * 6,
+                                                             [0] * 6]),
+                        CorrelationParameters(3, 2, [0, 0], [[0] * 3,
+                                                             [0] * 3]),
+                        CorrelationParameters(5, 2, [0, 0], [[0] * 5,
+                                                             [0] * 5]),
+                        CorrelationParameters(7, 2, [0, 0], [[0] * 7,
+                                                             [0] * 7]),
+                        CorrelationParameters(4, 2, [0, 0], [[0] * 4,
+                                                             [0] * 4]),
+                        CorrelationParameters(2, 2, [0, 0], [[0] * 2,
+                                                             [0] * 2]),
+                        CorrelationParameters(18, 2, [0, 0], [[0] * 2,
+                                                              [0] * 2]),
+                        CorrelationParameters(-2, 2, [0, 0], [[0] * 1,
+                                                              [0] * 1]),
+                        CorrelationParameters(3, 2, [0, 0], [[0] * 3,
+                                                             [0] * 3]),
+                        CorrelationParameters(2, 2, [0, 0], [[0] * 2,
+                                                             [0] * 2]),
+                        CorrelationParameters(18, 2, [0, 0], [[0] * 2,
+                                                              [0] * 2]),
+                        CorrelationParameters(18, 2, [0, 0], [[0] * 2,
+                                                              [0] * 2])]
+                else:
+                    raise ValueError("invalid correlation pass count")
+
+        for parameters in self.__correlation_parameters__:
+            yield parameters
 
 
 def block_parameters(channel_count, channel_mask, correlation_passes):
     if (channel_count == 1):
-        return [EncodingParameters.new(1, correlation_passes)]
+        return [EncodingParameters(1, correlation_passes)]
     elif (channel_count == 2):
-        return [EncodingParameters.new(2, correlation_passes)]
+        return [EncodingParameters(2, correlation_passes)]
     elif ((channel_count == 3) and (channel_mask == 0x7)):
         #front left, front right, front center
-        return [EncodingParameters.new(2, correlation_passes),
-                EncodingParameters.new(1, correlation_passes)]
+        return [EncodingParameters(2, correlation_passes),
+                EncodingParameters(1, correlation_passes)]
     elif ((channel_count == 4) and (channel_mask == 0x33)):
         #front left, front right, back left, back right
-        return [EncodingParameters.new(2, correlation_passes),
-                EncodingParameters.new(2, correlation_passes)]
+        return [EncodingParameters(2, correlation_passes),
+                EncodingParameters(2, correlation_passes)]
     elif ((channel_count == 4) and (channel_mask == 0x107)):
         #front left, front right, front center, back center
-        return [EncodingParameters.new(2, correlation_passes),
-                EncodingParameters.new(1, correlation_passes),
-                EncodingParameters.new(1, correlation_passes)]
+        return [EncodingParameters(2, correlation_passes),
+                EncodingParameters(1, correlation_passes),
+                EncodingParameters(1, correlation_passes)]
     elif ((channel_count == 5) and (channel_mask == 0x37)):
         #front left, front right, front center, back left, back right
-        return [EncodingParameters.new(2, correlation_passes),
-                EncodingParameters.new(1, correlation_passes),
-                EncodingParameters.new(2, correlation_passes)]
+        return [EncodingParameters(2, correlation_passes),
+                EncodingParameters(1, correlation_passes),
+                EncodingParameters(2, correlation_passes)]
     elif ((channel_count == 6) and (channel_mask == 0x3F)):
         #front left, front right, front center, LFE, back left, back right
-        return [EncodingParameters.new(2, correlation_passes),
-                EncodingParameters.new(1, correlation_passes),
-                EncodingParameters.new(1, correlation_passes),
-                EncodingParameters.new(2, correlation_passes)]
+        return [EncodingParameters(2, correlation_passes),
+                EncodingParameters(1, correlation_passes),
+                EncodingParameters(1, correlation_passes),
+                EncodingParameters(2, correlation_passes)]
     else:
-        return [EncodingParameters.new(1, correlation_passes)
+        return [EncodingParameters(1, correlation_passes)
                 for c in xrange(channel_count)]
 
 
@@ -274,11 +303,19 @@ def encode_wavpack(filename, pcmreader, block_size,
 
 
 def write_block(writer, context, channels, block_index,
-                first_block, last_block, encoding_parameters):
+                first_block, last_block, parameters):
+    """writer is a BitstreamWriter-compatible object
+    context is an EncoderContext object
+    channels[c][s] is sample "s" in channel "c"
+    block_index is an integer of the block's offset in PCM frames
+    first_block and last_block are flags indicating the block's sequence
+    parameters is an EncodingParameters object
+    """
+
     assert((len(channels) == 1) or (len(channels) == 2))
 
     if ((len(channels) == 1) or (channels[0] == channels[1])):
-        #1 channel block
+        #1 channel block or equivalent
         if (len(channels) == 1):
             false_stereo = 0
         else:
@@ -297,7 +334,7 @@ def write_block(writer, context, channels, block_index,
         if ((wasted > 0) and (wasted != INFINITY)):
             shifted = [[s >> wasted for s in channels[0]]]
         else:
-            shifted = channels
+            shifted = [channels[0]]
 
         #calculate CRC of shifted_0
         crc = calculate_crc(shifted)
@@ -335,24 +372,31 @@ def write_block(writer, context, channels, block_index,
     #FIXME - if first block in file, write Wave header
 
     #if correlation passes, write three sub blocks of pass data
-    if (len(encoding_parameters.correlation_parameters) > 0):
+    if (parameters.correlation_passes > 0):
         sub_block.reset()
-        write_correlation_terms(sub_block,
-                                encoding_parameters.correlation_parameters)
+        write_correlation_terms(
+            sub_block,
+            [p.term for p in
+             parameters.correlation_parameters(false_stereo)],
+            [p.delta for p in
+             parameters.correlation_parameters(false_stereo)])
         write_sub_block(sub_blocks, 2, 0, sub_block)
 
         sub_block.reset()
-        write_correlation_weights(sub_block,
-                                  encoding_parameters.correlation_parameters,
-                                  1 if ((len(channels) == 1) or false_stereo)
-                                  else 2)
+        write_correlation_weights(
+            sub_block,
+            [p.weights for p in
+             parameters.correlation_parameters(false_stereo)])
         write_sub_block(sub_blocks, 3, 0, sub_block)
 
         sub_block.reset()
-        write_correlation_samples(sub_block,
-                                  encoding_parameters.correlation_parameters,
-                                  1 if ((len(channels) == 1) or false_stereo)
-                                  else 2)
+        write_correlation_samples(
+            sub_block,
+            [p.term for p in
+             parameters.correlation_parameters(false_stereo)],
+            [p.samples for p in
+             parameters.correlation_parameters(false_stereo)],
+            2 if ((len(channels) == 2) and (not false_stereo)) else 1)
         write_sub_block(sub_blocks, 4, 0, sub_block)
 
     #if wasted bits, write extended integers sub block
@@ -375,77 +419,66 @@ def write_block(writer, context, channels, block_index,
         #1 channel block
 
         #correlate shifted_0 with terms/deltas/weights/samples
-        correlated = correlate_channels(
-            shifted,
-            encoding_parameters.correlation_parameters,
-            1)
-
-        #write entropy variables sub block
-        sub_block.reset()
-        write_entropy_variables(sub_block, correlated,
-                                encoding_parameters.entropy_variables)
-        write_sub_block(sub_blocks, 5, 0, sub_block)
-
-        #write bitstream sub block
-        sub_block.reset()
-        write_bitstream(sub_block, correlated,
-                        encoding_parameters.entropy_variables)
-        write_sub_block(sub_blocks, 10, 0, sub_block)
+        if (parameters.correlation_passes > 0):
+            assert(len(shifted) == 1)
+            correlated = correlate_channels(
+                shifted,
+                parameters.correlation_parameters(false_stereo),
+                1)
+        else:
+            correlated = shifted
     else:
         #2 channel block
 
         #correlate shifted_0/shifted_1 with terms/deltas/weights/samples
-        correlated = correlate_channels(
-            mid_side,
-            encoding_parameters.correlation_parameters,
-            2)
+        if (parameters.correlation_passes > 0):
+            assert(len(mid_side) == 2)
+            correlated = correlate_channels(
+                mid_side,
+                parameters.correlation_parameters(false_stereo),
+                2)
+        else:
+            correlated = mid_side
 
-        #write entropy variables sub block
-        sub_block.reset()
-        write_entropy_variables(sub_block, correlated,
-                                encoding_parameters.entropy_variables)
-        write_sub_block(sub_blocks, 5, 0, sub_block)
+    #write entropy variables sub block
+    sub_block.reset()
+    write_entropy_variables(sub_block, correlated,
+                            parameters.entropy_variables)
+    write_sub_block(sub_blocks, 5, 0, sub_block)
 
-        #write bitstream sub block
-        sub_block.reset()
-        write_bitstream(sub_block, correlated,
-                        encoding_parameters.entropy_variables)
-        write_sub_block(sub_blocks, 10, 0, sub_block)
+    #write bitstream sub block
+    sub_block.reset()
+    write_bitstream(sub_block, correlated,
+                    parameters.entropy_variables)
+    write_sub_block(sub_blocks, 10, 0, sub_block)
 
     #write block header with size of all sub blocks
-    write_block_header(writer,
-                       sub_blocks.bytes(),
-                       block_index,
-                       len(channels[0]),
-                       context.pcmreader.bits_per_sample,
-                       len(channels),
-                       (len(channels) == 2) and (false_stereo == 0),
-                       len(encoding_parameters.correlation_parameters),
-                       wasted,
-                       first_block,
-                       last_block,
-                       magnitude,
-                       context.pcmreader.sample_rate,
-                       false_stereo,
-                       crc)
+    write_block_header(
+        writer,
+        sub_blocks.bytes(),
+        block_index,
+        len(channels[0]),
+        context.pcmreader.bits_per_sample,
+        len(channels),
+        (len(channels) == 2) and (false_stereo == 0),
+        len(set([-1,-2,-3]) &
+            set([p.term for p in
+                 parameters.correlation_parameters(false_stereo)])) > 0,
+        wasted,
+        first_block,
+        last_block,
+        magnitude,
+        context.pcmreader.sample_rate,
+        false_stereo,
+        crc)
 
     #write sub block data to stream
     sub_blocks.copy(writer)
 
-    #round-trip correlation weights and samples
-    encoding_parameters.correlation_parameters = [
-        CorrelationParameters(term=param.term,
-                              delta=param.delta,
-                              weights=[restore_weight(store_weight(c))
-                                       for c in param.weights],
-                              samples=[[wv_exp2(wv_log2(s)) for s in c]
-                                       for c in param.samples])
-        for param in encoding_parameters.correlation_parameters]
-
     #round-trip entropy variables
-    encoding_parameters.entropy_variables = [
-        [wv_exp2(wv_log2(p)) for p in encoding_parameters.entropy_variables[0]],
-        [wv_exp2(wv_log2(p)) for p in encoding_parameters.entropy_variables[1]]]
+    parameters.entropy_variables = [
+        [wv_exp2(wv_log2(p)) for p in parameters.entropy_variables[0]],
+        [wv_exp2(wv_log2(p)) for p in parameters.entropy_variables[1]]]
 
 
 def bits(sample):
@@ -502,7 +535,7 @@ def write_block_header(writer,
                        bits_per_sample,
                        channel_count,
                        joint_stereo,
-                       decorrelation_passes,
+                       cross_channel_decorrelation,
                        wasted_bps,
                        initial_block_in_sequence,
                        final_block_in_sequence,
@@ -522,10 +555,7 @@ def write_block_header(writer,
     writer.write(1, 2 - channel_count)
     writer.write(1, 0)                     #hybrid mode
     writer.write(1, joint_stereo)
-    if (decorrelation_passes > 5):         #cross-channel decorrelation
-        writer.write(1, 1)
-    else:
-        writer.write(1, 0)
+    writer.write(1, cross_channel_decorrelation)
     writer.write(1, 0)                     #hybrid noise shaping
     writer.write(1, 0)                     #floating point data
     if (wasted_bps > 0):                   #extended size integers
@@ -582,24 +612,27 @@ def write_sub_block(writer, function, nondecoder_data, recorder):
         writer.write(8, 0)
 
 
-def write_correlation_terms(writer, correlation_parameters):
-    """correlation_parameters is a list of CorrelationParameters objects
+def write_correlation_terms(writer, correlation_terms, correlation_deltas):
+    """correlation_terms[p] and correlation_deltas[p]
+    are ints for each correlation pass, in descending order
     writes the terms and deltas to sub block data in the proper order/format"""
 
-    for parameter in reversed(correlation_parameters):
-        writer.write(5, parameter.term + 5)
-        writer.write(3, parameter.delta)
+    assert(len(correlation_terms) == len(correlation_deltas))
+
+    for (term, delta) in zip(correlation_terms, correlation_deltas):
+        writer.write(5, term + 5)
+        writer.write(3, delta)
 
 
-def write_correlation_weights(writer, correlation_parameters, channel_count):
-    """correlation_parameters is a list of CorrelationParameters objects
+def write_correlation_weights(writer, correlation_weights):
+    """correlation_weights[p][c]
+    are lists of correlation weight ints for each pass and channel
+    in descending order
     writes the weights to sub block data in the proper order/format"""
 
-    for parameter in reversed(correlation_parameters):
-        writer.write(8, store_weight(parameter.weights[0]))
-        if (channel_count == 2):
-            writer.write(8, store_weight(parameter.weights[1]))
-
+    for weights in correlation_weights:
+        for weight in weights:
+            writer.write(8, store_weight(weight))
 
 def store_weight(w):
     w = min(max(w, -1024), 1024)
@@ -620,36 +653,45 @@ def restore_weight(v):
         return v * (2 ** 3)
 
 
-def write_correlation_samples(writer, correlation_parameters, channel_count):
-    """correlation_parameters is a list of CorrelationParameters objects
+def write_correlation_samples(writer, correlation_terms, correlation_samples,
+                              channel_count):
+    """correlation_terms[p] are correlation term ints for each pass
+
+    correlation_samples[p][c][s] are lists of correlation sample ints
+    for each pass and channel in descending order
+
     writes the samples to sub block data in the proper order/format"""
 
+    assert(len(correlation_terms) == len(correlation_samples))
+
     if (channel_count == 2):
-        for p in reversed(correlation_parameters):
-            if ((17 <= p.term) and (p.term <= 18)):
-                writer.write_signed(16, wv_log2(p.samples[0][0]))
-                writer.write_signed(16, wv_log2(p.samples[0][1]))
-                writer.write_signed(16, wv_log2(p.samples[1][0]))
-                writer.write_signed(16, wv_log2(p.samples[1][1]))
-            elif ((1 <= p.term) and (p.term <= 8)):
-                for s in xrange(p.term):
-                    writer.write_signed(16, wv_log2(p.samples[0][s]))
-                    writer.write_signed(16, wv_log2(p.samples[1][s]))
-            elif ((-3 <= p.term) and (p.term <= -1)):
-                writer.write_signed(16, wv_log2(p.samples[0][0]))
-                writer.write_signed(16, wv_log2(p.samples[1][0]))
+        for (term, samples) in zip(correlation_terms, correlation_samples):
+            if ((17 <= term) and (term <= 18)):
+                writer.write_signed(16, wv_log2(samples[0][0]))
+                writer.write_signed(16, wv_log2(samples[0][1]))
+                writer.write_signed(16, wv_log2(samples[1][0]))
+                writer.write_signed(16, wv_log2(samples[1][1]))
+            elif ((1 <= term) and (term <= 8)):
+                for s in xrange(term):
+                    writer.write_signed(16, wv_log2(samples[0][s]))
+                    writer.write_signed(16, wv_log2(samples[1][s]))
+            elif ((-3 <= term) and (term <= -1)):
+                writer.write_signed(16, wv_log2(samples[0][0]))
+                writer.write_signed(16, wv_log2(samples[1][0]))
+            else:
+                raise ValueError("invalid correlation term")
+    elif (channel_count == 1):
+        for (term, samples) in zip(correlation_terms, correlation_samples):
+            if ((17 <= term) and (term <= 18)):
+                writer.write_signed(16, wv_log2(samples[0][0]))
+                writer.write_signed(16, wv_log2(samples[0][1]))
+            elif ((1 <= term) and (term <= 8)):
+                for s in xrange(term):
+                    writer.write_signed(16, wv_log2(samples[0][s]))
             else:
                 raise ValueError("invalid correlation term")
     else:
-        for p in reversed(correlation_parameters):
-            if ((17 <= p.term) and (p.term <= 18)):
-                writer.write_signed(16, wv_log2(p.samples[0][0]))
-                writer.write_signed(16, wv_log2(p.samples[0][1]))
-            elif ((1 <= p.term) and (p.term <= 8)):
-                for s in xrange(p.term):
-                    writer.write_signed(16, wv_log2(p.samples[0][s]))
-            else:
-                raise ValueError("invalid correlation term")
+        print "invalid channel count"
 
 
 def wv_log2(value):
@@ -760,32 +802,32 @@ def correlate_channels(uncorrelated_samples,
     returns correlated_samples[c][s] with sample 's' for channel 'c'
     """
 
-    if (len(correlation_parameters) > 0):
-        latest_pass = uncorrelated_samples
-        if (channel_count == 1):
-            for p in reversed(correlation_parameters):
-                (latest_pass,
-                 weight,
-                 samples) = [correlation_pass_1ch(latest_pass[0],
-                                                  p.term,
-                                                  p.delta,
-                                                  p.weights[0],
-                                                  p.samples[0])]
-                p.weights = [weight]
-                p.samples = [samples]
-            return latest_pass
-        else:
-            for p in reversed(correlation_parameters):
-                (latest_pass,
-                 p.weights,
-                 p.samples) = correlation_pass_2ch(latest_pass,
-                                                   p.term,
-                                                   p.delta,
-                                                   p.weights,
-                                                   p.samples)
-            return latest_pass
+    if (channel_count == 1):
+        latest_pass = uncorrelated_samples[0]
+        for p in correlation_parameters:
+            (latest_pass,
+             weight,
+             samples) = correlation_pass_1ch(latest_pass,
+                                             p.term,
+                                             p.delta,
+                                             p.weights[0],
+                                             p.samples[0])
+            p.update_weights([weight])
+            p.update_samples([samples])
+        return [latest_pass]
     else:
-        return uncorrelated_samples
+        latest_pass = uncorrelated_samples
+        for p in correlation_parameters:
+            (latest_pass,
+             weights,
+             samples) = correlation_pass_2ch(latest_pass,
+                                             p.term,
+                                             p.delta,
+                                             p.weights,
+                                             p.samples)
+            p.update_weights(weights)
+            p.update_samples(samples)
+        return latest_pass
 
 
 def correlation_pass_1ch(uncorrelated_samples,
@@ -1137,11 +1179,28 @@ if (__name__ == '__main__'):
 
     w = BitstreamWriter(open(sys.argv[1], "wb"), 1)
 
-    medians = [[118, 194, 322], [118, 176, 212]]
-    # medians = [[0, 0, 0], [0, 0, 0]]
-    channels = [[-61, -33, -18, 1, 20, 35, 50, 62, 68, 71],
-                [31, 32, 36, 37, 35, 31, 25, 18, 10, 0]]
+    write_egc(w, 0)
+    flush_residual(w, None, 1, 2, 1 - 1, 0, 0) #i = 0
+    flush_residual(w, 3,    2, 3, 2 - 2, 0, 0) #i = 1
+    flush_residual(w, 3,    3, 2, 3 - 3, 0, 0) #i = 2
+    flush_residual(w, 5,    2, 0, 2 - 2, 0, 0) #i = 3
+    flush_residual(w, 2,    0, 0, 1 - 0, 1, 0) #i = 4
+    flush_residual(w, None, 0, 0, 0 - 0, 1, 0) #i = 5
+    flush_residual(w, 0,    0, 0, 0 - 0, 1, 0) #i = 6
+    flush_residual(w, None, 0, 0, 0 - 0, 0, 0) #i = 7
+    flush_residual(w, 0,    0, 0, 0 - 0, 0, 0) #i = 8
+    flush_residual(w, None, 0, 0, 0 - 0, 0, 0) #i = 9
+    flush_residual(w, 0,    0, 0, 0 - 0, 0, 0) #i = 10
+    flush_residual(w, None, 0, 0, 0 - 0, 0, 0) #i = 11
+    flush_residual(w, 0,    0, 0, 0 - 0, 0, 0) #i = 12
+    flush_residual(w, None, 0, 0, 0 - 0, 0, 0) #i = 13
+    flush_residual(w, 0,    0, 0, 0 - 0, 0, 0) #i = 14
+    write_egc(w, 10)
+    flush_residual(w, None, 0, 1, 0 - 0, 0, 1) #i = 25
+    flush_residual(w, 1,    1, 2, 1 - 1, 0, 1) #i = 26
+    flush_residual(w, 1,    2, 1, 2 - 2, 0, 1) #i = 27
+    flush_residual(w, 3,    1, 0, 1 - 1, 0, 1) #i = 28
+    flush_residual(w, 0,    0, 0, 0 - 0, 0, 1) #i = 29
 
-    write_bitstream(w, channels, medians)
     w.byte_align()
     w.close()

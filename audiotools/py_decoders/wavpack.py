@@ -603,7 +603,8 @@ def read_bitstream(block_header, medians, sub_block_data):
                 for j in xrange(zeroes):
                     residuals[i % channel_count].append(0)
                     i += 1
-                medians = ([0, 0, 0], [0, 0, 0])
+                medians[0][0] = medians[0][1] = medians[0][2] = 0
+                medians[1][0] = medians[1][1] = medians[1][2] = 0
             if (i < (block_header.block_samples * channel_count)):
                 (residual, u) = read_residual(
                     sub_block_data,
