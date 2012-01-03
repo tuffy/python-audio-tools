@@ -3956,7 +3956,6 @@ where \texttt{wexp}(\textit{x}) is defined from the following table:
 \SetKwFunction{ENCODERESIDUAL}{encode\_residual}
 \SetKwFunction{UNARY}{unary}
 \SetKwFunction{WRITERESIDUAL}{write\_residual}
-$u_{(-1)} \leftarrow \text{\UNDEFINED}$\tcc*[r]{previous $\text{unary}_{i - 2}$}
 $m_{(-1)} \leftarrow \text{\UNDEFINED}$\tcc*[r]{buffered $\text{residual}_{i - 1}$}
 $i \leftarrow 0$\;
 \While{$i < (\text{\BLOCKSAMPLES} \times \text{\CHANNELCOUNT})$}{
@@ -3966,12 +3965,12 @@ $((m_{i - 1} = \UNDEFINED)$ \OR $\UNARYUNDEFINED(u_{i - 2}~,~m_{i - 1}))$}{
     \tcc{handle long run of zero residuals}
     \If(\tcc*[f]{flush $\text{residual}_{i - 1}$, if any}){$m_{i - 1} \neq \UNDEFINED$}{
       $\text{\WRITERESIDUAL}(\UNDEFINED~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1})$\;
-      $u_{i - 1} \leftarrow \UNDEFINED$\;
-      $m_{i} \leftarrow \UNDEFINED$\;
     }
     $\text{\ZEROES} \leftarrow 0$\;
     \While{$(i < (\text{\BLOCKSAMPLES} \times \text{\CHANNELCOUNT}))$ \AND $(\text{\RESIDUAL}_{(i \bmod \text{\CHANNELCOUNT})~\lfloor i \div \text{\CHANNELCOUNT}\rfloor} = 0)$}{
       $\text{\ZEROES} \leftarrow \text{\ZEROES} + 1$\;
+      $u_{i - 1} \leftarrow \UNDEFINED$\;
+      $m_{i} \leftarrow \UNDEFINED$\;
       $i \leftarrow i + 1$\;
     }
     write \ZEROES in modified Elias gamma code\;
@@ -3981,7 +3980,7 @@ $((m_{i - 1} = \UNDEFINED)$ \OR $\UNARYUNDEFINED(u_{i - 2}~,~m_{i - 1}))$}{
     }
   }
   \If{$i < (\text{\BLOCKSAMPLES} \times \text{\CHANNELCOUNT})$}{
-    \tcc{encode residual and flush previous residual, if any}
+    \tcc{encode $\text{residual}_i$ and flush previous $\text{residual}_{i - 1}$, if any}
     $(m_i~,~\text{\OFFSET}_i~,~\text{\ADD}_i~,~\text{\SIGN}_i) \leftarrow \ENCODERESIDUAL(\text{\RESIDUAL}_{(i \bmod \text{\CHANNELCOUNT})~\lfloor i \div \text{\CHANNELCOUNT}\rfloor}~,~\text{\ENTROPY}_{(i \bmod \text{\CHANNELCOUNT})})$\;
     \If{$m_{i - 1} \neq \UNDEFINED$}{
       $u_{i - 1} \leftarrow \UNARY(u_{i - 2}~,~m_{i - 1}~,~m_{i})$\;
@@ -4024,7 +4023,7 @@ $((m_{i - 1} = \UNDEFINED)$ \OR $\UNARYUNDEFINED(u_{i - 2}~,~m_{i - 1}))$}{
 \SetKwData{SIGN}{sign}
 \SetKw{IS}{is}
 \SetKw{NOT}{not}
-\If{$u_j$ \IS \NOT \UNDEFINED}{
+\If{$u_j \neq \UNDEFINED$}{
   \eIf{$u_j < 16$}{
     \WUNARY $u_j$ with stop bit 0\;
   }{
@@ -4056,29 +4055,29 @@ $((m_{i - 1} = \UNDEFINED)$ \OR $\UNARYUNDEFINED(u_{i - 2}~,~m_{i - 1}))$}{
 \SetKw{IS}{is}
 \SetKw{NOT}{not}
 \SetKwData{UNDEFINED}{undefined}
-\uIf{$m_j > 0$ \AND $m_{j + 1} > 0$}{
-  \eIf{$u_{j - 1}$ \IS \UNDEFINED \OR $u_{j - 1} \bmod 2 = 0$}{
+\uIf{$(m_j > 0)$ \AND $(m_{j + 1} > 0)$}{
+  \eIf{$(u_{j - 1} = \UNDEFINED)$ \OR $(u_{j - 1} \bmod 2 = 0)$}{
     $u_j \leftarrow (m_j \times 2) + 1$\;
   }{
     $u_j \leftarrow (m_j \times 2) - 1$\;
   }
 }
-\uElseIf{$m_j = 0$ \AND $m_{j + 1} > 0$}{
-  \eIf{$u_{j - 1}$ \IS \UNDEFINED \OR $u_{j - 1} \bmod 2 = 1$}{
+\uElseIf{$(m_j = 0)$ \AND $(m_{j + 1} > 0)$}{
+  \eIf{$(u_{j - 1} = \UNDEFINED)$ \OR $(u_{j - 1} \bmod 2 = 1)$}{
     $u_j \leftarrow 1$\;
   }{
     $u_j \leftarrow \UNDEFINED$\;
   }
 }
-\uElseIf{$m_j > 0$ \AND $m_{j + 1} = 0$}{
-  \eIf{$u_{j - 1}$ \IS \UNDEFINED \OR $u_{j - 1} \bmod 2 = 0$}{
+\uElseIf{$(m_j > 0)$ \AND $(m_{j + 1} = 0)$}{
+  \eIf{$(u_{j - 1} = \UNDEFINED)$ \OR $(u_{j - 1} \bmod 2 = 0)$}{
     $u_j \leftarrow m_j \times 2$\;
   }{
     $u_j \leftarrow (m_j - 1) \times 2$\;
   }
 }
-\ElseIf{$m_j = 0$ \AND $m_{j + 1} = 0$}{
-  \eIf{$u_{j - 1}$ \IS \UNDEFINED \OR $u_{j - 1} \bmod 2 = 1$}{
+\ElseIf{$(m_j = 0)$ \AND $(m_{j + 1} = 0)$}{
+  \eIf{$(u_{j - 1} = \UNDEFINED)$ \OR $(u_{j - 1} \bmod 2 = 1)$}{
     $u_j \leftarrow 0$\;
   }{
     $u_j \leftarrow \UNDEFINED$\;
@@ -4514,7 +4513,7 @@ i & \text{residual}_i & \text{unsigned}_i &\text{sign}_i & \text{median}_{0~0} &
 \\
 14 &
 0 & 0 & 0 &
-\left\lfloor\frac{0}{2 ^ 4}\right\rfloor + 1 = 1 & \left\lfloor\frac{15}{2 ^ 4}\right\rfloor + 1 = 1 & \left\lfloor\frac{3}{2 ^ 4}\right\rfloor + 1 = 1 &
+\left\lfloor\frac{\color{red}0}{2 ^ 4}\right\rfloor + 1 = 1 & \left\lfloor\frac{15}{2 ^ 4}\right\rfloor + 1 = 1 & \left\lfloor\frac{3}{2 ^ 4}\right\rfloor + 1 = 1 &
 0 & 0 & 1 - 1 = 0
 \\
 15 & \multicolumn{9}{c|}{$\text{zeroes} \leftarrow 10$} \\
@@ -4648,6 +4647,18 @@ i & m_i & \text{offset}_i & \text{add}_i & u_i & p_i & e_i & r_i & b_i \\
 \hline
 \end{tabular}
 }
+
+\clearpage
+
+\begin{figure}[h]
+\includegraphics{figures/wavpack/residuals_parse.pdf}
+\caption{residual encoding example}
+\end{figure}
+\begin{figure}[h]
+\includegraphics{figures/wavpack/residuals_parse3.pdf}
+\caption{2nd residual encoding example}
+\end{figure}
+
 
 \end{landscape}
 

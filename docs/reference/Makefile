@@ -128,6 +128,7 @@ figures/wavpack/read_residual3.pdf \
 figures/wavpack/read_zeroes.pdf \
 figures/wavpack/residuals_parse.pdf \
 figures/wavpack/residuals_parse2.pdf \
+figures/wavpack/residuals_parse3.pdf \
 figures/wavpack/stream.pdf \
 figures/wavpack/stream2.pdf \
 figures/wavpack/subblock.pdf \
@@ -438,6 +439,9 @@ figures/wavpack/decorrelation5.pdf: figures/wavpack/decorrelation5.fig
 	fig2dev -Z 3 -L pdf $< $@
 
 figures/wavpack/residuals_parse.pdf: figures/wavpack/residuals_parse.bpx
+	./bitparse.py -i $< -o $@ -b 24 -w 480
+
+figures/wavpack/residuals_parse3.pdf: figures/wavpack/residuals_parse2.bpx
 	./bitparse.py -i $< -o $@ -b 24 -w 480
 
 figures/flac/utf8.pdf: figures/flac/utf8.bpx
