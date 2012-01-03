@@ -991,59 +991,179 @@ def write_entropy_variables(writer, channels, entropies):
 def write_bitstream(writer, channels, entropies):
     from math import log
 
+    def sample(channels, i):
+        return channels[i % len(channels)][i / len(channels)]
+
     assert((len(channels) == 1) or (len(channels) == 2))
     assert(len(set(map(len, channels))) == 1)
-
-    #residual_(i - 1)
-    residual = None
-
-    #u_(i - 2)
-    u = None
+    assert(len(entropies) == 2)
+    assert(len(entropies[0]) == len(entropies[1]) == 3)
 
     i = 0
     total_samples = len(channels) * len(channels[0])
-    while (i < total_samples):
-        sample = channels[i % len(channels)][i / len(channels)]
-        if ((u is None) and (entropies[0][0] < 2) and (entropies[1][0] < 2)):
-            #handle long run of 0 residuals
+    buffered_residual = None
+    u = None       #u_{-1} = undefined
 
-            if (residual is not None):
-                residual.flush(writer, None, 0)
+    #output remainder of samples
+    while (i < total_samples):
+        #handle run of zeroes
+        if ((entropies[0][0] < 2) and (entropies[1][0] < 2) and
+            ((buffered_residual is None) or
+             (not unary_defined(u, buffered_residual[0])))):
+            if (buffered_residual is not None):
+                #flush residual_{i - 1} to disk
+                write_residual(writer,
+                               u=None,
+                               offset=buffered_residual[1],
+                               add=buffered_residual[2],
+                               sign=buffered_residual[3])
+                u = None
+                buffered_residual = None
 
             zeroes = 0
-            while ((i < total_samples) and
-                   (channels[i % len(channels)][i / len(channels)] == 0)):
+            while ((i < total_samples) and (sample(channels, i) == 0)):
                 zeroes += 1
                 i += 1
-            write_egc(writer, zeroes)
             if (zeroes > 0):
-                entropies = [[0, 0, 0], [0, 0, 0]]
-            if (i < total_samples):
-                sample = channels[i % len(channels)][i / len(channels)]
-                (u, residual) = write_residual(writer, sample,
-                                               entropies[i % (len(channels))],
-                                               u, residual)
+                entropies[0] = [0, 0, 0]
+                entropies[1] = [0, 0, 0]
+            write_egc(writer, zeroes)
+
+        if (i < total_samples):
+            if (buffered_residual is None):
+                buffered_residual = encode_residual(
+                    sample(channels, i), entropies[i % len(channels)])
                 i += 1
+            else:
+                #next_residual is residual_{i}
+                next_residual = encode_residual(
+                    sample(channels, i), entropies[i % len(channels)])
+
+                #figure out u_{i - 1} from
+                #u_{i - 2}, residual_{i - 1} and residual_{i}
+                u = unary(u, buffered_residual[0], next_residual[0])
+
+                #flush residual_{i - 1} to disk
+                write_residual(writer,
+                               u=u,
+                               offset=buffered_residual[1],
+                               add=buffered_residual[2],
+                               sign=buffered_residual[3])
+
+                i += 1
+                buffered_residual = next_residual
+
+    #flush final buffered sample
+    if (buffered_residual is not None):
+        write_residual(writer,
+                       u=unary(u, buffered_residual[0], 0),
+                       offset=buffered_residual[1],
+                       add=buffered_residual[2],
+                       sign=buffered_residual[3])
+
+
+def write_egc(writer, value):
+    from math import log
+
+    assert(value >= 0)
+
+    if (value > 1):
+        t = int(log(value) / log(2)) + 1
+        writer.unary(0, t)
+        writer.write(t - 1, value % (2 ** (t - 1)))
+    else:
+        writer.unary(0, value)
+
+
+def unary_defined(prev_u, m):
+    """given u_{i - 1} and m_{i},
+    returns True if u_{i} is defined,
+    False if undefined"""
+
+    if ((m == 0) and (prev_u is not None) and (prev_u % 2 == 0)):
+        return False
+    else:
+        return True
+
+def unary(prev_u, m, next_m):
+    """given u_{i - 1}, m_{i} and m_{i + 1}, returns u_{i}
+    which may be an integer or None if undefined"""
+
+    if ((m > 0) and (next_m > 0)):
+        #positive m to positive m
+        if ((prev_u is None) or (prev_u % 2 == 0)):
+            return (m * 2) + 1
         else:
-            (u, residual) = write_residual(writer, sample,
-                                           entropies[i % (len(channels))],
-                                           u, residual)
-            i += 1
+            #passing 1 from previous u
+            return (m * 2) - 1
+    elif ((m == 0) and (next_m > 0)):
+        #zero m to positive m
+        if ((prev_u is None) or (prev_u % 2 == 1)):
+            return 1
+        else:
+            #passing 0 from previous u
+            return None
+    elif ((m > 0) and (next_m == 0)):
+        #positive m to zero m
+        if ((prev_u is None) or (prev_u % 2 == 0)):
+            return m * 2
+        else:
+            #passing 1 from previous u
+            return (m - 1) * 2
+    elif ((m == 0) and (next_m == 0)):
+        #zero m to zero m
+        if ((prev_u is None) or (prev_u % 2 == 1)):
+            return 0
+        else:
+            #passing 0 from previous u
+            return None
+    else:
+        raise ValueError("invalid m")
 
-    if (residual is not None):
-        residual.flush(writer, u, 0)
 
-    return entropies
+def write_residual(writer, u, offset, add, sign):
+    """given u_{i}, offset_{i}, add_{i} and sign_{i}
+    writes residual data to the given BitstreamWriter
+    u_{i} may be None, indicated an undefined unary value"""
+
+    from math import log
+
+    if (u is not None):
+        if (u < 16):
+            writer.unary(0, u)
+        else:
+            writer.unary(0, 16)
+            write_egc(writer, u - 16)
+
+    if (add > 0):
+        p = int(log(add) / log(2))
+        e = 2 ** (p + 1) - add - 1
+        if (offset < e):
+            writer.write(p, offset)
+        else:
+            writer.write(p, (offset + e) / 2)
+            writer.write(1, (offset + e) % 2)
+
+    writer.write(1, sign)
 
 
-def write_residual(writer, sample, entropy, prev_u, prev_residual):
-    if (sample >= 0):
-        unsigned = sample
+def encode_residual(residual, entropy):
+    """residual is the signed residual to be written
+    entropy is a list of entropy values for the given channels
+
+    returns (m_{i},  offset_{i}, add_{i}, sign_{i})
+    and updates entropy values
+    """
+
+    #figure out unsigned from signed
+    if (residual >= 0):
+        unsigned = residual
         sign = 0
     else:
-        unsigned = -sample - 1
+        unsigned = -residual - 1
         sign = 1
 
+    #figure out m and update channel's entropies
     medians = [e / 2 ** 4 + 1 for e in entropy]
 
     if (unsigned < medians[0]):
@@ -1065,106 +1185,14 @@ def write_residual(writer, sample, entropy, prev_u, prev_residual):
         entropy[1] += ((entropy[1] + 64) / 64) * 5
         entropy[2] -= ((entropy[2] + 30) / 32) * 2
     else:
-        m = ((unsigned - (medians[0] + medians[1])) / medians[2]) + 2
+        m = (((unsigned - (medians[0] + medians[1])) / medians[2]) + 2)
         offset = unsigned - (medians[0] + medians[1] + ((m - 2) * medians[2]))
         add = medians[2] - 1
         entropy[0] += ((entropy[0] + 128) / 128) * 5
         entropy[1] += ((entropy[1] + 64) / 64) * 5
         entropy[2] += ((entropy[2] + 32) / 32) * 5
 
-    if (prev_residual is not None):
-        u = prev_residual.flush(writer, prev_u, m)
-    else:
-        u = None
-
-    return (u, Residual(m, offset, add, sign))
-
-
-class Residual:
-    def __init__(self, m, offset, add, sign):
-        self.m = m
-        self.offset = offset
-        self.add = add
-        self.sign = sign
-
-    def flush(self, writer, prev_u, next_m):
-        return flush_residual(writer, prev_u, self.m, next_m,
-                              self.offset, self.add, self.sign)
-
-
-def flush_residual(writer, prev_u, m, next_m, offset, add, sign):
-    """given u_(i - 1), m_(i) and m_(i + 1)
-    along with offset_(i), add_(i) and sign_(i) values,
-    writes the given residual to the output stream
-    and returns u_(i)
-    """
-
-    from math import log
-
-    #determine u_(i)
-    if ((m > 0) and (next_m > 0)):
-        #positive m to positive m
-        if ((prev_u is None) or (prev_u % 2 == 0)):
-            u_i = (m * 2) + 1
-        else:
-            #passing 1 from previous u
-            u_i = (m * 2) - 1
-    elif ((m == 0) and (next_m > 0)):
-        #zero m to positive m
-        if ((prev_u is None) or (prev_u % 2 == 1)):
-            u_i = 1
-        else:
-            #passing 0 from previous u
-            u_i = None
-    elif ((m > 0) and (next_m == 0)):
-        #positive m to zero m
-        if ((prev_u is None) or (prev_u % 2 == 0)):
-            u_i = m * 2
-        else:
-            #passing 1 from previous u
-            u_i = (m - 1) * 2
-    elif ((m == 0) and (next_m == 0)):
-        #zero m to zero m
-        if ((prev_u is None) or (prev_u % 2 == 1)):
-            u_i = 0
-        else:
-            #passing 0 from previous u
-            u_i = None
-    else:
-        raise ValueError("invalid m")
-
-    if (u_i is not None):
-        if (u_i < 16):
-            writer.unary(0, u_i)
-        else:
-            writer.unary(0, 16)
-            write_egc(writer, u_i - 16)
-
-    if (add > 0):
-        p = int(log(add) / log(2))
-        e = 2 ** (p + 1) - add - 1
-        if (offset < e):
-            writer.write(p, offset)
-        else:
-            writer.write(p, (offset + e) / 2)
-            writer.write(1, (offset + e % 2))
-
-    writer.write(1, sign)
-
-    return u_i
-
-
-def write_egc(writer, value):
-    from math import log
-
-    assert(value >= 0)
-
-    if (value > 1):
-        t = int(log(value) / log(2)) + 1
-        writer.unary(0, t)
-        writer.write(t - 1, value % (2 ** (t - 1)))
-    else:
-        writer.unary(0, value)
+    return (m, offset, add, sign)
 
 
 def write_extended_integers(writer,
