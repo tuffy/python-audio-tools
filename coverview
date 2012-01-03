@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 #Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2011  Brian Langenberger
+#Copyright (C) 2008-2012  Brian Langenberger
 
 #This program is free software; you can redistribute it and/or modify
 #it under the terms of the GNU General Public License as published by
@@ -413,7 +413,7 @@ Consult "man python" for further details.
             Label(self,
                   text="Part of Python Audio Tools").pack(side=TOP)
             Label(self,
-                  text="Copyright 2007-2011 by Brian Langenberger",
+                  text="Copyright 2008-2012 by Brian Langenberger",
                   font=("Helvetica", 10)).pack(side=TOP)
 
             close = Button(self, text="Close")
