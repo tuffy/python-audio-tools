@@ -3963,11 +3963,11 @@ $i \leftarrow 0$\;
 \newline
 $((m_{i - 1} = \UNDEFINED)$ \OR $\UNARYUNDEFINED(u_{i - 2}~,~m_{i - 1}))$}{
     \tcc{handle long run of zero residuals}
-    \If(\tcc*[f]{flush $\text{residual}_{i - 1}$, if any}){$m_{i - 1} \neq \UNDEFINED$}{
-      $\text{\WRITERESIDUAL}(\UNDEFINED~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1})$\;
-    }
     $\text{\ZEROES} \leftarrow 0$\;
     \While{$(i < (\text{\BLOCKSAMPLES} \times \text{\CHANNELCOUNT}))$ \AND $(\text{\RESIDUAL}_{(i \bmod \text{\CHANNELCOUNT})~\lfloor i \div \text{\CHANNELCOUNT}\rfloor} = 0)$}{
+      \If(\tcc*[f]{flush $\text{residual}_{i - 1}$, if any}){$m_{i - 1} \neq \UNDEFINED$}{
+        $\text{\WRITERESIDUAL}(\UNDEFINED~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1})$\;
+      }
       $\text{\ZEROES} \leftarrow \text{\ZEROES} + 1$\;
       $u_{i - 1} \leftarrow \UNDEFINED$\;
       $m_{i} \leftarrow \UNDEFINED$\;

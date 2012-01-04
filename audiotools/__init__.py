@@ -4150,8 +4150,13 @@ class PCMReaderWindow:
                 (removed, framelist) = framelist.split(self.initial_offset)
                 self.initial_offset -= removed.frames
                 if (framelist.frames > 0):
-                    self.pcm_frames -= framelist.frames
-                    return framelist
+                    if (framelist.frames <= self.pcm_frames):
+                        self.pcm_frames -= framelist.frames
+                        return framelist
+                    else:
+                        (framelist, removed) = framelist.split(self.pcm_frames)
+                        self.pcm_frames = 0
+                        return framelist
                 else:
                     #if the entire framelist is cropped,
                     #return another one entirely

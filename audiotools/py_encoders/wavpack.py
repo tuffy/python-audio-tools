@@ -19,18 +19,86 @@
 
 from audiotools.bitstream import BitstreamWriter
 from audiotools.bitstream import BitstreamRecorder
+from audiotools.bitstream import format_size
 from audiotools import BufferedPCMReader
 from hashlib import md5
 
+#sub block IDs
+WV_WAVE_HEADER       = 0x1
+WV_WAVE_FOOTER       = 0x2
+WV_TERMS             = 0x2
+WV_WEIGHTS           = 0x3
+WV_SAMPLES           = 0x4
+WV_ENTROPY           = 0x5
+WV_SAMPLE_RATE       = 0x7
+WV_INT32_INFO        = 0x9
+WV_BITSTREAM         = 0xA
+WV_CHANNEL_INFO      = 0xD
+WV_MD5               = 0x6
+
 
 class EncoderContext:
-    def __init__(self, pcmreader, block_parameters):
+    def __init__(self, pcmreader, block_parameters,
+                 wave_header=None, wave_footer=None):
         self.pcmreader = pcmreader
         self.block_parameters = block_parameters
         self.first_block_written = False
+        self.total_frames = 0
+        self.wave_header = wave_header
+        self.wave_footer = wave_footer
         self.block_offsets = []
         self.md5sum = md5()
 
+def write_wave_header(writer, pcmreader, total_frames, wave_footer_len):
+    avg_bytes_per_second = (pcmreader.sample_rate *
+                            pcmreader.channels *
+                            (pcmreader.bits_per_sample / 8))
+    block_align = (pcmreader.channels *
+                   (pcmreader.bits_per_sample / 8))
+
+    total_size = 4 * 3  #'RIFF' + size + 'WAVE'
+
+    total_size += 4 * 2 #'fmt ' + size
+    if ((pcmreader.channels <= 2) and
+        (pcmreader.bits_per_sample <= 16)):
+        #classic fmt chunk
+        fmt = "16u 16u 32u 32u 16u 16u"
+        fmt_fields = (1,   #compression code
+                      pcmreader.channels,
+                      pcmreader.sample_rate,
+                      avg_bytes_per_second,
+                      block_align,
+                      pcmreader.bits_per_sample)
+
+    else:
+        #extended fmt chunk
+        fmt = "16u 16u 32u 32u 16u 16u" + "16u 16u 32u 16b"
+        fmt_fields = (0xFFFE,   #compression code
+                      pcmreader.channels,
+                      pcmreader.sample_rate,
+                      avg_bytes_per_second,
+                      block_align,
+                      pcmreader.bits_per_sample,
+                      22,       #CB size
+                      pcmreader.bits_per_sample,
+                      pcmreader.channel_mask,
+                      '\x01\x00\x00\x00\x00\x00\x10\x00' +
+                      '\x80\x00\x00\xaa\x00\x38\x9b\x71' #sub format
+                      )
+    total_size += format_size(fmt) / 8
+
+    total_size += 4 * 2 #'data' + size
+    data_size = (total_frames *
+                 pcmreader.channels *
+                 (pcmreader.bits_per_sample / 8))
+    total_size += data_size
+
+    total_size += wave_footer_len
+
+    writer.build("4b 32u 4b 4b 32u" + fmt + "4b 32u",
+                 (('RIFF', total_size - 8, 'WAVE',
+                   'fmt ', format_size(fmt) / 8) + fmt_fields +
+                  ('data', data_size)))
 
 class CorrelationParameters:
     """the parameters for a single correlation pass"""
@@ -252,13 +320,17 @@ def block_parameters(channel_count, channel_mask, correlation_passes):
 
 
 def encode_wavpack(filename, pcmreader, block_size,
-                   correlation_passes=0):
+                   correlation_passes=0,
+                   wave_header=None, wave_footer=None):
     pcmreader = BufferedPCMReader(pcmreader)
     output_file = open(filename, "wb")
     writer = BitstreamWriter(output_file, 1)
-    context = EncoderContext(pcmreader, block_parameters(pcmreader.channels,
-                                                         pcmreader.channel_mask,
-                                                         correlation_passes))
+    context = EncoderContext(pcmreader,
+                             block_parameters(pcmreader.channels,
+                                              pcmreader.channel_mask,
+                                              correlation_passes),
+                             wave_header,
+                             wave_footer)
 
     block_index = 0
 
@@ -267,6 +339,7 @@ def encode_wavpack(filename, pcmreader, block_size,
                            (pcmreader.bits_per_sample / 8) *
                            pcmreader.channels)
     while (len(frame) > 0):
+        context.total_frames += frame.frames
         context.md5sum.update(
             frame.to_bytes(False, pcmreader.bits_per_sample >= 16))
 
@@ -296,10 +369,15 @@ def encode_wavpack(filename, pcmreader, block_size,
     sub_blocks = BitstreamRecorder(1)
     sub_block = BitstreamRecorder(1)
 
+    sub_block.reset()
     sub_block.write_bytes(context.md5sum.digest())
-    write_sub_block(sub_blocks, 0x6, 1, sub_block)
+    write_sub_block(sub_blocks, WV_MD5, 1, sub_block)
 
-    #FIXME - write Wave footer in final block, if present
+    #write Wave footer in final block, if present
+    if (context.wave_footer is not None):
+        sub_block.reset()
+        sub_block.write_bytes(context.wave_footer)
+        write_sub_block(sub_blocks, WV_WAVE_FOOTER, 1, sub_block)
 
     write_block_header(
         writer,
@@ -319,7 +397,15 @@ def encode_wavpack(filename, pcmreader, block_size,
         0xFFFFFFFF)
     sub_blocks.copy(writer)
 
-    #FIXME - update Wave header's "data" chunk size, if generated
+    #update Wave header's "data" chunk size, if generated
+    if (context.wave_header is None):
+        output_file.seek(32 + 2)
+        if (context.wave_footer is None):
+            write_wave_header(writer, context.pcmreader,
+                              context.total_frames, 0)
+        else:
+            write_wave_header(writer, context.pcmreader,
+                              context.total_frames, len(context.wave_footer))
 
     #go back and populate block headers with total samples
     for block_offset in context.block_offsets:
@@ -396,7 +482,19 @@ def write_block(writer, context, channels, block_index,
     sub_blocks = BitstreamRecorder(1)
     sub_block = BitstreamRecorder(1)
 
-    #FIXME - if first block in file, write Wave header
+    #if first block in file, write Wave header
+    if (not context.first_block_written):
+        sub_block.reset()
+        if (context.wave_header is None):
+            if (context.wave_footer is None):
+                write_wave_header(sub_block, context.pcmreader, 0, 0)
+            else:
+                write_wave_header(sub_block, context.pcmreader, 0,
+                                  len(context.wave_footer))
+        else:
+            sub_block.write_bytes(context.wave_header)
+        write_sub_block(sub_blocks, WV_WAVE_HEADER, 1, sub_block)
+        context.first_block_written = True
 
     #if correlation passes, write three sub blocks of pass data
     if (parameters.correlation_passes > 0):
@@ -407,14 +505,14 @@ def write_block(writer, context, channels, block_index,
              parameters.correlation_parameters(false_stereo)],
             [p.delta for p in
              parameters.correlation_parameters(false_stereo)])
-        write_sub_block(sub_blocks, 2, 0, sub_block)
+        write_sub_block(sub_blocks, WV_TERMS, 0, sub_block)
 
         sub_block.reset()
         write_correlation_weights(
             sub_block,
             [p.weights for p in
              parameters.correlation_parameters(false_stereo)])
-        write_sub_block(sub_blocks, 3, 0, sub_block)
+        write_sub_block(sub_blocks, WV_WEIGHTS, 0, sub_block)
 
         sub_block.reset()
         write_correlation_samples(
@@ -424,23 +522,28 @@ def write_block(writer, context, channels, block_index,
             [p.samples for p in
              parameters.correlation_parameters(false_stereo)],
             2 if ((len(channels) == 2) and (not false_stereo)) else 1)
-        write_sub_block(sub_blocks, 4, 0, sub_block)
+        write_sub_block(sub_blocks, WV_SAMPLES, 0, sub_block)
 
     #if wasted bits, write extended integers sub block
     if (wasted > 0):
         sub_block.reset()
         write_extended_integers(sub_block, 0, wasted, 0, 0)
-        write_sub_block(sub_blocks, 9, 0, sub_block)
+        write_sub_block(sub_blocks, WV_INT32_INFO, 0, sub_block)
 
-    #FIXME - if channel count > 2, write channel info sub block
+    #if channel count > 2, write channel info sub block
     if (context.pcmreader.channels > 2):
-        raise NotImplementedError()
+        sub_block.reset()
+        sub_block.write(8, context.pcmreader.channels)
+        sub_block.write(32, context.pcmreader.channel_mask)
+        write_sub_block(sub_blocks, WV_CHANNEL_INFO, 0, sub_block)
 
-    #FIXME - if nonstandard sample rate, write sample rate sub block
+    #if nonstandard sample rate, write sample rate sub block
     if (context.pcmreader.sample_rate not in
         (6000, 8000, 9600, 11025, 12000, 16000, 22050, 24000,
          32000, 44100, 48000, 64000, 88200, 96000, 192000)):
-        raise NotImplementedError()
+        sub_block.reset()
+        sub_block.write(32, context.pcmreader.sample_rate)
+        write_sub_block(sub_blocks, WV_SAMPLE_RATE, 1, sub_block)
 
     if ((len(channels) == 1) or (false_stereo)):
         #1 channel block
@@ -471,13 +574,13 @@ def write_block(writer, context, channels, block_index,
     sub_block.reset()
     write_entropy_variables(sub_block, correlated,
                             parameters.entropy_variables)
-    write_sub_block(sub_blocks, 5, 0, sub_block)
+    write_sub_block(sub_blocks, WV_ENTROPY, 0, sub_block)
 
     #write bitstream sub block
     sub_block.reset()
     write_bitstream(sub_block, correlated,
                     parameters.entropy_variables)
-    write_sub_block(sub_blocks, 10, 0, sub_block)
+    write_sub_block(sub_blocks, WV_BITSTREAM, 0, sub_block)
 
     #write block header with size of all sub blocks
     write_block_header(
@@ -1053,16 +1156,17 @@ def write_bitstream(writer, channels, entropies):
         #handle long run of zero residuals
         if ((entropies[0][0] < 2) and (entropies[1][0] < 2) and
             ((m_i_1 is None) or (not unary_defined(u_i_2, m_i_1)))):
-            if (m_i_1 is not None):
-                #flush residual_{i - 1} to disk
-                write_residual(writer,
-                               u=None,
-                               offset=offset_i_1,
-                               add=add_i_1,
-                               sign=sign_i_1)
 
             zeroes = 0
             while ((i < total_samples) and (sample(channels, i) == 0)):
+                if (m_i_1 is not None):
+                    #flush residual_{i - 1} to disk
+                    write_residual(writer,
+                                   u=None,
+                                   offset=offset_i_1,
+                                   add=add_i_1,
+                                   sign=sign_i_1)
+                
                 zeroes += 1
                 u_i_1 = None
                 m_i = None

@@ -520,6 +520,8 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
             elif ((sub_block_id == 2) and nondecoder):
                 tail = data.read_bytes(data_size)
 
+        #FIXME - build dummy head if none found in file
+
         return (head, tail)
 
     def fmt_chunk(self, reader=None):
