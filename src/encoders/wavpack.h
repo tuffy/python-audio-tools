@@ -3,8 +3,8 @@
 #endif
 #include <stdint.h>
 #include "../bitstream.h"
-#include "../array.h"
-#include "../pcmreader.h"
+#include "../array2.h"
+#include "../pcmconv.h"
 #include "../common/md5.h"
 
 /********************************************************
@@ -41,38 +41,32 @@ typedef enum {WV_WAVE_HEADER       = 0x1,
               WV_CHANNEL_INFO      = 0xD,
               WV_MD5               = 0x6} wv_metadata_function;
 
-struct wavpack_decorrelation_pass {
-    int channel_count;
-    struct i_array decorrelation_terms;
-    struct i_array decorrelation_deltas;
-    struct i_array decorrelation_weights_A;
-    struct i_array decorrelation_weights_B;
-    struct ia_array decorrelation_samples_A;
-    struct ia_array decorrelation_samples_B;
-    struct i_array entropy_variables_A;
-    struct i_array entropy_variables_B;
-};
+struct block_offset;
+struct encoding_parameters;
 
 struct wavpack_encoder_context {
-    unsigned int bits_per_sample;
-    unsigned int sample_rate;
-    unsigned int total_channels;
-    unsigned int channel_mask;
+    /*one encoding_parameters entry per block in a set
+      for example, a 6 channel stream being split 2-1-1-2
+      will have 4 encoding_parameters entries*/
+    struct encoding_parameters* parameters;
+    unsigned blocks_per_set;
 
-    uint32_t block_index;
-    uint32_t byte_count;
-    struct i_array block_offsets;
+    /*total PCM frames written*/
+    uint32_t total_frames;
 
-    int channel_info_written;
-
+    /*running MD5 sum of PCM data*/
     audiotools__MD5Context md5;
-    uint32_t pcm_bytes;
 
+    /*a linked list of offsets to all blocks in the file
+      which we can seek to and repopulate once encoding is finished*/
+    struct block_offset* offsets;
+
+    /*RIFF WAVE header and footer data
+      which may be populated from an external file*/
     struct {
-        int header_written;
-        long header_offset;
-        uint8_t* header;
-        uint8_t* footer;
+        int header_written;   /*set to 1 once the header's been written*/
+        uint8_t* header_data; /*may be NULL, indicating no external header*/
+        uint8_t* footer_data; /*may be NULL, indicating no external footer*/
 #ifdef PY_SSIZE_T_CLEAN
         Py_ssize_t header_len;
         Py_ssize_t footer_len;
@@ -82,361 +76,91 @@ struct wavpack_encoder_context {
 #endif
     } wave;
 
+    /*cached stuff we don't want to reallocate every time*/
     struct {
-        struct wavpack_decorrelation_pass *passes;
-    } wrap;
-
-    struct {
+        array_ia* shifted;
+        array_ia* mid_side;
+        BitstreamWriter* sub_block;
         BitstreamWriter* sub_blocks;
-        BitstreamWriter* residual_data;
-        struct i_array input_A;
-        struct i_array input_B;
     } cache;
-
-    struct {
-        int joint_stereo;
-        int decorrelation_passes;
-        int false_stereo;
-        int wasted_bits;
-    } options;
 };
 
-struct wavpack_block_header {
-    /*block ID                                   32 bits*/
-    uint32_t block_size;                       /*32 bits*/
-    uint16_t version;                          /*16 bits*/
-    uint8_t track_number;                      /*8 bits*/
-    uint8_t index_number;                      /*8 bits*/
-    uint32_t total_samples;                    /*32 bits*/
-    uint32_t block_index;                      /*32 bits*/
-    uint32_t block_samples;                    /*32 bits*/
-
-    uint8_t bits_per_sample;                   /*2 bits*/
-    uint8_t mono_output;                       /*1 bit*/
-    uint8_t hybrid_mode;                       /*1 bit*/
-    uint8_t joint_stereo;                      /*1 bit*/
-    uint8_t cross_channel_decorrelation;       /*1 bit*/
-    uint8_t hybrid_noise_shaping;              /*1 bit*/
-    uint8_t floating_point_data;               /*1 bit*/
-    uint8_t extended_size_integers;            /*1 bit*/
-    uint8_t hybrid_parameters_control_bitrate; /*1 bit*/
-    uint8_t hybrid_noise_balanced;             /*1 bit*/
-    uint8_t initial_block_in_sequence;         /*1 bit*/
-    uint8_t final_block_in_sequence;           /*1 bit*/
-    uint8_t left_shift;                        /*5 bits*/
-    uint8_t maximum_data_magnitude;            /*5 bits*/
-    uint32_t sample_rate;                      /*4 bits*/
-    /*reserved                                   2 bits*/
-    uint8_t use_IIR;                           /*1 bit*/
-    uint8_t false_stereo;                      /*1 bit*/
-    /*reserved                                   1 bit*/
-
-    uint32_t crc;                              /*32 bits*/
+struct block_offset {
+    fpos_t offset;
+    struct block_offset* next;
 };
+
+/*initializes temporary space and encoding parameters
+  based on the input's channel count and mask
+  and user-defined tunables*/
+void
+wavpack_init_context(struct wavpack_encoder_context* context,
+                     unsigned channel_count, unsigned channel_mask,
+                     int try_false_stereo,
+                     int try_wasted_bits,
+                     int try_joint_stereo,
+                     unsigned correlation_passes);
+
+/*deallocates any temporary space from the context*/
+void
+wavpack_free_context(struct wavpack_encoder_context* context);
+
+/*these are the encoding parameters for a given block in a set*/
+struct encoding_parameters {
+    unsigned channel_count;       /*1 or 2*/
+
+    int try_false_stereo;  /*check a 2 channel block for false stereo*/
+    int try_wasted_bits;   /*check a block for wasted least-significant bits*/
+    int try_joint_stereo;  /*apply joint stereo to 2 channel blocks*/
+
+    /*desired number of correlation passes:  0, 1, 2, 5, 10 or 16
+      this may be less than the actual number of correlation passes
+      depending on if the block is determined to be false stereo*/
+    unsigned correlation_passes;
+
+    /*terms[p]  correlation term for pass p*/
+    array_i* terms;
+    /*deltas[p] correlation delta for pass p*/
+    array_i* deltas;
+    /*weights[p][c] correlation weights for pass p, channel c*/
+    array_ia* weights;
+    /*samples[p][c][s] correlation sample s for pass p, channel c*/
+    array_iaa* samples;
+
+    /*2 lists of 3 entropy variables, as entropy[c][s]*/
+    int entropy_variables[2][3];
+};
+
+void
+wavpack_init_block_parameters(struct encoding_parameters* parameters,
+                              unsigned channel_count,
+                              int try_false_stereo,
+                              int try_wasted_bits,
+                              int try_joint_stereo,
+                              unsigned correlation_passes);
+
+void
+wavpack_free_block_parameters(struct encoding_parameters* parameters);
+
+void
+wavpack_encode_block(struct wavpack_encoder_context* context,
+                     struct encoding_parameters* parameters,
+                     const array_ia* channels,
+                     uint32_t block_index, int first_block, int last_block);
+
+unsigned
+maximum_magnitude(const array_i* channel);
+
+unsigned
+wasted_bits(const array_i* channel);
+
+uint32_t
+calculate_crc(const array_ia* channels);
+
+void
+apply_joint_stereo(const array_ia* left_right, array_ia* mid_side);
 
 #define WV_UNARY_LIMIT 16
 #define MAXIMUM_TERM_COUNT 16
 #define WEIGHT_MAXIMUM 1024
 #define WEIGHT_MINIMUM -1024
-
-struct wavpack_residual {
-    struct {
-        int present;
-
-        int count;
-    } zeroes;
-    struct {
-        int present;
-
-        int value;
-
-        int unary;
-        int fixed_value;
-        int fixed_size;
-        int has_extra_bit;
-        int extra_bit;
-        int sign;
-    } golomb;
-
-    /*These are the holding_one, holding_zero pairs
-      that which have been output from the previous residual.*/
-    int input_holding_zero;
-    int input_holding_one;
-
-    /*These are the holding_one, holding_zero pairs
-      that outputting this residual will generate
-      such that the next residual can look at these values
-      to determine its own holding_one and holding_zero pairs.*/
-    int output_holding_zero;
-    int output_holding_one;
-};
-
-void
-wavpack_write_frame(BitstreamWriter *bs,
-                    struct wavpack_encoder_context *context,
-                    struct ia_array *samples,
-                    unsigned int channel_mask);
-
-void
-wavpack_write_footer_block(BitstreamWriter *bs,
-                           struct wavpack_encoder_context* context);
-
-/*given a channel count and channel mask (which may be 0),
-  build a list of 1 or 2 channel count values
-  for each left/right pair*/
-void
-wavpack_channel_splits(struct i_array *counts,
-                       int channel_count,
-                       long channel_mask);
-
-void
-wavpack_initialize_block_header(struct wavpack_block_header* header,
-                                struct wavpack_encoder_context* context,
-                                int channel_count,
-                                int pcm_frames,
-                                int first_block,
-                                int last_block);
-
-void
-wavpack_write_block(BitstreamWriter* bs,
-                    struct wavpack_encoder_context* context,
-                    struct i_array* channel_A,
-                    struct i_array* channel_B,
-                    int channel_number,
-                    int channel_count,
-                    int first_block,
-                    int last_block);
-
-ia_data_t
-wavpack_abs_maximum(ia_data_t sample, ia_data_t current_max);
-
-void
-wavpack_write_block_header(BitstreamWriter *bs,
-                           struct wavpack_block_header *header);
-
-/*nondecoder data should be 0 or 1.
-  block_size is in bytes.
-  This will convert to WavPack's size value and set
-  "actual size 1 less" as needed.*/
-void
-wavpack_write_subblock_header(BitstreamWriter *bs,
-                              wv_metadata_function metadata_function,
-                              uint8_t nondecoder_data,
-                              uint32_t block_size);
-
-/*Writes the given set of decorrelation terms and deltas
-  to the given bitstream in the proper order.*/
-void
-wavpack_write_decorr_terms(BitstreamWriter *bs,
-                           struct i_array* decorr_terms,
-                           struct i_array* decorr_deltas);
-
-void
-wavpack_write_decorr_weights(BitstreamWriter *bs,
-                             int channel_count,
-                             int term_count,
-                             struct i_array* weights_A,
-                             struct i_array* weights_B);
-
-void
-wavpack_write_decorr_samples(BitstreamWriter *bs,
-                             int channel_count,
-                             struct i_array* decorr_terms,
-                             struct ia_array* samples_A,
-                             struct ia_array* samples_B);
-
-void
-wavpack_write_int32_info(BitstreamWriter *bs,
-                         uint8_t sent_bits,
-                         uint8_t zeroes,
-                         uint8_t ones,
-                         uint8_t dupes);
-
-void
-wavpack_write_channel_info(BitstreamWriter *bs,
-                           int channel_count,
-                           int channel_mask);
-
-/*Writes an entropy variables sub-block to the bitstream.
-  The entropy variable list should be 3 elements long.
-  If channel_count is 2, both sets of entropy variables are written.
-  If it is 1, only channel A's entropy variables are written.*/
-void
-wavpack_write_entropy_variables(BitstreamWriter *bs,
-                                struct i_array *variables_A,
-                                struct i_array *variables_B,
-                                int channel_count);
-
-/*Writes a bitstream sub-block to the bitstream.*/
-void
-wavpack_write_residuals(BitstreamWriter *bs,
-                        struct i_array* channel_A,
-                        struct i_array* channel_B,
-                        struct i_array* medians_A,
-                        struct i_array* medians_B,
-                        int channel_count,
-                        struct wavpack_encoder_context* context);
-
-void
-wavpack_write_residual(BitstreamWriter* bs,
-                       struct wavpack_residual* residual_accumulator,
-                       struct i_array** medians_pair,
-                       int current_channel,
-                       ia_data_t value);
-
-/*Given a sample value and set of medians for the current channel,
-  calculate a raw residual value and assign it to the given struct.
-  The median values are also updated by this routine.
-  This doesn't handle the "holding_one" and "holding_zero" aspects;
-  those are figured out at final write-time.*/
-void
-wavpack_calculate_residual(struct wavpack_residual *residual,
-                           struct i_array *medians,
-                           int32_t value);
-
-/*Writes a block of zeroes to the given residual struct.
-  That block size may be 0, indiciating a "false alarm"
-  with no actual zeroes to generate at write-time.*/
-void
-wavpack_calculate_zeroes(struct wavpack_residual *residual,
-                         uint32_t zeroes);
-
-/*Sets all the given medians to 0.*/
-void
-wavpack_clear_medians(struct i_array *medians_A,
-                      struct i_array *medians_B,
-                      int channel_count);
-
-
-/*Computes and writes a modified Elias gamma code to the given bitstream.
-  It requires an input value greater than 0.
-
-  This is used by both the zeroes block and the unary escape code.
-*/
-void
-wavpack_write_egc(BitstreamWriter* bs, int value);
-
-/*Outputs an accumulated residual value to the bitstream.*/
-void
-wavpack_flush_residual(BitstreamWriter *bs,
-                       struct wavpack_residual *residual);
-
-void
-wavpack_print_residual(FILE* output,
-                       struct wavpack_residual* residual);
-
-void
-wavpack_print_medians(FILE *output,
-                      struct i_array* medians_A,
-                      struct i_array* medians_B,
-                      int channel_count);
-
-int32_t
-wavpack_log2(int32_t sample);
-
-int
-wavpack_exp2(int log);
-
-/*Performs a decorrelation pass over channel_A and (optionally) channel_B,
-  altering their values in the process.
-  decorrelation_weight_A and (optionally) decorrelation_weight_B are updated
-  in the process.
-  If "channel_count" is 1, only channel_A, weight_A and samples_A are used.
-  Otherwise, channel_B, weight_B and samples_B are also used.*/
-void
-wavpack_perform_decorrelation_pass(struct i_array* channel_A,
-                                   struct i_array* channel_B,
-                                   int term,
-                                   int delta,
-                                   int* weight_A,
-                                   int* weight_B,
-                                   struct i_array* samples_A,
-                                   struct i_array* samples_B,
-                                   int channel_count,
-                                   struct wavpack_encoder_context* context);
-
-void
-wavpack_perform_decorrelation_pass_1ch(
-                                   struct i_array* channel,
-                                   int term,
-                                   int delta,
-                                   int* weight,
-                                   struct i_array* decorrelation_samples,
-                                   struct wavpack_encoder_context* context);
-
-/*Returns OK if the given options are compatible.
-  Raises an error and returns ERROR if not.*/
-status
-wavpack_verify_tunables(struct wavpack_encoder_context* context);
-
-/*given a set of channel data and encoding context
-  (for compression options), calculates a block's tunable information*/
-void
-wavpack_calculate_tunables(struct wavpack_encoder_context* context,
-                           struct i_array* channel_A,
-                           struct i_array* channel_B,
-                           int channel_number,
-                           int channel_count,
-                           struct i_array* decorrelation_terms,
-                           struct i_array* decorrelation_deltas,
-                           struct i_array* decorrelation_weights_A,
-                           struct i_array* decorrelation_weights_B,
-                           struct ia_array* decorrelation_samples_A,
-                           struct ia_array* decorrelation_samples_B,
-                           struct i_array* entropy_variables_A,
-                           struct i_array* entropy_variables_B);
-
-void
-wavpack_store_tunables(struct wavpack_encoder_context* context,
-                       int channel_number,
-                       int channel_count,
-                       struct i_array* decorrelation_terms,
-                       struct i_array* decorrelation_deltas,
-                       struct i_array* decorrelation_weights_A,
-                       struct i_array* decorrelation_weights_B,
-                       struct ia_array* decorrelation_samples_A,
-                       struct ia_array* decorrelation_samples_B,
-                       struct i_array* entropy_variables_A,
-                       struct i_array* entropy_variables_B);
-
-void
-wavpack_wrap_decorrelation_samples(struct i_array* decorrelation_samples_A,
-                                   struct i_array* decorrelation_samples_B,
-                                   int decorrelation_term,
-                                   struct i_array* channel_A,
-                                   struct i_array* channel_B,
-                                   int channel_count);
-
-ia_data_t
-wavpack_log2_roundtrip(ia_data_t i);
-
-/*Updates the contents of channel_A and channel_B to be
-  joint stereo.*/
-void
-wavpack_perform_joint_stereo(struct i_array *channel_A,
-                             struct i_array *channel_B);
-
-void
-wavpack_count_bytes(uint8_t byte, void* value);
-
-void
-wavpack_md5_callback(void* md5, unsigned char* data, unsigned long data_len);
-
-void
-wavpack_count_pcm_bytes(void* data, unsigned char* buffer, unsigned long len);
-
-void
-wavpack_write_wave_header_sub_block(BitstreamWriter* stream,
-                                    struct wavpack_encoder_context* context,
-                                    uint32_t pcm_bytes);
-
-/*given a set of samples, returns the maximum amount of wasted bits*/
-int
-wavpack_max_wasted_bits_per_sample(struct i_array *samples);
-
-struct wavpack_decorrelation_pass*
-wavpack_init_decorrelation_passes(long channel_count);
-
-void
-wavpack_free_decorrelation_passes(struct wavpack_decorrelation_pass* passes,
-                                  int channel_count);

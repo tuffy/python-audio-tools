@@ -51,6 +51,8 @@ struct array_i_s* array_i_wrap(int* data, unsigned size, unsigned total_size)
     a->append = array_i_append;
     a->vappend = array_i_vappend;
     a->mappend = array_i_mappend;
+    a->vset = array_i_vset;
+    a->mset = array_i_mset;
     a->extend = array_i_extend;
     a->equals = array_i_equals;
     a->min = array_i_min;
@@ -116,16 +118,16 @@ ARRAY_APPEND(array_f_append, array_f, double)
     void                                                           \
     FUNC_NAME(ARRAY_TYPE *array, unsigned count, ...)              \
     {                                                              \
-    ARRAY_DATA_TYPE i;                                             \
-    va_list ap;                                                    \
+        ARRAY_DATA_TYPE i;                                         \
+        va_list ap;                                                \
                                                                    \
-    array->resize(array, array->len + count);                      \
-    va_start(ap, count);                                           \
-    for (; count > 0; count--) {                                   \
-        i = va_arg(ap, ARRAY_DATA_TYPE);                           \
-        array->_[array->len++] = i;                                \
-    }                                                              \
-    va_end(ap);                                                    \
+        array->resize(array, array->len + count);                  \
+        va_start(ap, count);                                       \
+        for (; count > 0; count--) {                               \
+            i = va_arg(ap, ARRAY_DATA_TYPE);                       \
+            array->_[array->len++] = i;                            \
+        }                                                          \
+        va_end(ap);                                                \
     }
 ARRAY_VAPPEND(array_i_vappend, array_i, int)
 ARRAY_VAPPEND(array_f_vappend, array_f, double)
@@ -141,6 +143,38 @@ ARRAY_VAPPEND(array_f_vappend, array_f, double)
     }
 ARRAY_MAPPEND(array_i_mappend, array_i, int)
 ARRAY_MAPPEND(array_f_mappend, array_f, double)
+
+#define ARRAY_VSET(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE) \
+    void                                                   \
+    FUNC_NAME(ARRAY_TYPE *array, unsigned count, ...)      \
+    {                                                               \
+        ARRAY_DATA_TYPE i;                                          \
+        va_list ap;                                                 \
+                                                                    \
+        array->resize(array, count);                                \
+        array->len = 0;                                             \
+        va_start(ap, count);                                        \
+        for (; count > 0; count--) {                                \
+            i = va_arg(ap, ARRAY_DATA_TYPE);                        \
+            array->_[array->len++] = i;                             \
+        }                                                           \
+        va_end(ap);                                                 \
+    }
+ARRAY_VSET(array_i_vset, array_i, int)
+ARRAY_VSET(array_f_vset, array_f, double)
+
+#define ARRAY_MSET(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE) \
+    void                                                                \
+    FUNC_NAME(ARRAY_TYPE *array, unsigned count, ARRAY_DATA_TYPE value) \
+    {                                                                   \
+        array->resize(array, count);                                    \
+        array->len = 0;                                                 \
+        for (; count > 0; count--) {                                    \
+            array->_[array->len++] = value;                             \
+        }                                                               \
+    }
+ARRAY_MSET(array_i_mset, array_i, int)
+ARRAY_MSET(array_f_mset, array_f, double)
 
 #define ARRAY_EXTEND(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE) \
     void                                                          \
@@ -656,6 +690,8 @@ array_f* array_f_wrap(double* data, unsigned size, unsigned total_size)
     a->append = array_f_append;
     a->vappend = array_f_vappend;
     a->mappend = array_f_mappend;
+    a->vset = array_f_vset;
+    a->mset = array_f_mset;
     a->extend = array_f_extend;
     a->equals = array_f_equals;
     a->min = array_f_min;

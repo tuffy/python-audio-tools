@@ -94,6 +94,12 @@ struct array_i_s {
     /*appends "value", "count" number of times*/
     void (*mappend)(struct array_i_s *array, unsigned count, int value);
 
+    /*sets the array to new values, removing any old ones*/
+    void (*vset)(struct array_i_s *array, unsigned count, ...);
+
+    /*sets the array to single values, removing any old ones*/
+    void (*mset)(struct array_i_s *array, unsigned count, int value);
+
     /*appends all the items in "to_add" to this array*/
     void (*extend)(struct array_i_s *array, const struct array_i_s *to_add);
 
@@ -175,6 +181,8 @@ void array_i_reset(struct array_i_s *array);
 void array_i_append(struct array_i_s *array, int value);
 void array_i_vappend(struct array_i_s *array, unsigned count, ...);
 void array_i_mappend(struct array_i_s *array, unsigned count, int value);
+void array_i_vset(struct array_i_s *array, unsigned count, ...);
+void array_i_mset(struct array_i_s *array, unsigned count, int value);
 void array_i_extend(struct array_i_s *array, const struct array_i_s *to_add);
 int array_i_equals(const struct array_i_s *array,
                    const struct array_i_s *compare);
@@ -327,6 +335,12 @@ struct array_f_s {
     /*appends "value", "count" number of times*/
     void (*mappend)(struct array_f_s *array, unsigned count, double value);
 
+    /*sets the array to new values, removing any old ones*/
+    void (*vset)(struct array_f_s *array, unsigned count, ...);
+
+    /*sets the array to single values, removing any old ones*/
+    void (*mset)(struct array_f_s *array, unsigned count, double value);
+
     /*appends all the items in "to_add" to this array*/
     void (*extend)(struct array_f_s *array, const struct array_f_s *to_add);
 
@@ -409,6 +423,8 @@ void array_f_reset(struct array_f_s *array);
 void array_f_append(struct array_f_s *array, double value);
 void array_f_vappend(struct array_f_s *array, unsigned count, ...);
 void array_f_mappend(struct array_f_s *array, unsigned count, double value);
+void array_f_vset(struct array_f_s *array, unsigned count, ...);
+void array_f_mset(struct array_f_s *array, unsigned count, double value);
 void array_f_extend(struct array_f_s *array, const struct array_f_s *to_add);
 int array_f_equals(const struct array_f_s *array,
                    const struct array_f_s *compare);

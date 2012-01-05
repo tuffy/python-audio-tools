@@ -15,8 +15,8 @@ alacenc: $(OBJS) encoders/alac.c encoders/alac.h misc.o array2.o pcmconv.o
 shnenc: $(OBJS) encoders/shn.c encoders/shn.h
 	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o shnenc encoders/shn.c $(OBJS) -DSTANDALONE -lm
 
-wvenc: $(OBJS) encoders/wavpack.c encoders/wavpack.h md5.o misc.o
-	$(CC) $(FLAGS) -o wvenc encoders/wavpack.c md5.o misc.o $(OBJS) -DSTANDALONE
+wvenc: $(OBJS) encoders/wavpack.c encoders/wavpack.h md5.o array2.o pcmconv.o
+	$(CC) $(FLAGS) -o wvenc encoders/wavpack.c md5.o array2.o pcmconv.o $(OBJS) -DSTANDALONE
 
 mlpdec: decoders/mlp.c decoders/mlp.h array.o bitstream.o
 	$(CC) $(FLAGS) -o mlpdec decoders/mlp.c array.o bitstream.o -DSTANDALONE

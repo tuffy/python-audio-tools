@@ -42,12 +42,13 @@ class EncoderContext:
                  wave_header=None, wave_footer=None):
         self.pcmreader = pcmreader
         self.block_parameters = block_parameters
-        self.first_block_written = False
         self.total_frames = 0
-        self.wave_header = wave_header
-        self.wave_footer = wave_footer
         self.block_offsets = []
         self.md5sum = md5()
+        self.first_block_written = False
+        self.wave_header = wave_header
+        self.wave_footer = wave_footer
+
 
 def write_wave_header(writer, pcmreader, total_frames, wave_footer_len):
     avg_bytes_per_second = (pcmreader.sample_rate *
