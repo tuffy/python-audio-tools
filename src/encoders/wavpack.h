@@ -32,10 +32,11 @@ typedef enum {OK, ERROR} status;
 
 typedef enum {WV_WAVE_HEADER       = 0x1,
               WV_WAVE_FOOTER       = 0x2,
-              WV_DECORR_TERMS      = 0x2,
-              WV_DECORR_WEIGHTS    = 0x3,
-              WV_DECORR_SAMPLES    = 0x4,
-              WV_ENTROPY_VARIABLES = 0x5,
+              WV_TERMS             = 0x2,
+              WV_WEIGHTS           = 0x3,
+              WV_SAMPLES           = 0x4,
+              WV_ENTROPY           = 0x5,
+              WV_SAMPLE_RATE       = 0x7,
               WV_INT32_INFO        = 0x9,
               WV_BITSTREAM         = 0xA,
               WV_CHANNEL_INFO      = 0xD,
@@ -55,7 +56,7 @@ struct wavpack_encoder_context {
     uint32_t total_frames;
 
     /*running MD5 sum of PCM data*/
-    audiotools__MD5Context md5;
+    audiotools__MD5Context md5sum;
 
     /*a linked list of offsets to all blocks in the file
       which we can seek to and repopulate once encoding is finished*/
@@ -80,6 +81,7 @@ struct wavpack_encoder_context {
     struct {
         array_ia* shifted;
         array_ia* mid_side;
+        array_ia* correlated;
         BitstreamWriter* sub_block;
         BitstreamWriter* sub_blocks;
     } cache;
@@ -128,11 +130,19 @@ struct encoding_parameters {
     array_iaa* samples;
 
     /*2 lists of 3 entropy variables, as entropy[c][s]*/
-    int entropy_variables[2][3];
+    array_ia* entropies;
+};
+
+struct wavpack_residual {
+    int zeroes;
+    int m;
+    unsigned offset;
+    unsigned add;
+    unsigned sign;
 };
 
 void
-wavpack_init_block_parameters(struct encoding_parameters* parameters,
+wavpack_init_block_parameters(struct encoding_parameters* params,
                               unsigned channel_count,
                               int try_false_stereo,
                               int try_wasted_bits,
@@ -140,13 +150,147 @@ wavpack_init_block_parameters(struct encoding_parameters* parameters,
                               unsigned correlation_passes);
 
 void
-wavpack_free_block_parameters(struct encoding_parameters* parameters);
+wavpack_reset_block_parameters(struct encoding_parameters* params,
+                               unsigned channel_count);
 
 void
-wavpack_encode_block(struct wavpack_encoder_context* context,
+init_correlation_samples(array_i* samples,
+                         int correlation_term);
+
+void
+wavpack_free_block_parameters(struct encoding_parameters* params);
+
+void
+add_block_offset(FILE* file, struct block_offset** offsets);
+
+void
+write_block_header(BitstreamWriter* bs,
+                   unsigned sub_blocks_size,
+                   uint32_t block_index,
+                   uint32_t block_samples,
+                   unsigned bits_per_sample,
+                   unsigned channel_count,
+                   int joint_stereo,
+                   unsigned correlation_pass_count,
+                   unsigned wasted_bps,
+                   int first_block,
+                   int last_block,
+                   unsigned maximum_magnitude,
+                   unsigned sample_rate,
+                   int false_stereo,
+                   uint32_t crc);
+
+/*given a sample rate in Hz,
+  returns its 4-bit encoded version
+  or 15 if the rate has no encoded version*/
+unsigned
+encoded_sample_rate(unsigned sample_rate);
+
+void
+wavpack_encode_block(BitstreamWriter* bs,
+                     struct wavpack_encoder_context* context,
+                     const pcmreader* pcmreader,
                      struct encoding_parameters* parameters,
                      const array_ia* channels,
                      uint32_t block_index, int first_block, int last_block);
+
+void
+wavpack_encode_footer_block(BitstreamWriter* bs,
+                            struct wavpack_encoder_context* context,
+                            const pcmreader* pcmreader);
+
+void
+write_sub_block(BitstreamWriter* block,
+                unsigned metadata_function,
+                unsigned nondecoder_data,
+                BitstreamWriter* sub_block);
+
+/*terms[p] and deltas[p] are the correlation term and deltas values
+  for pass "p"*/
+void
+write_correlation_terms(BitstreamWriter* bs,
+                        const array_i* terms,
+                        const array_i* deltas);
+
+int
+store_weight(int weight);
+
+/*weights[p][c] are the correlation weight values for channel "c", pass "p"*/
+void
+write_correlation_weights(BitstreamWriter* bs,
+                          const array_ia* weights,
+                          unsigned channel_count);
+
+/*terms[p] are the correlation terms for pass "p"
+  samples[p][c][s] are correlation samples for channel "c", pass "p"*/
+void
+write_correlation_samples(BitstreamWriter* bs,
+                          const array_i* terms,
+                          const array_iaa* samples,
+                          unsigned channel_count);
+
+void
+correlate_channels(array_ia* correlated_samples,
+                   array_ia* uncorrelated_samples,
+                   array_i* terms,
+                   array_i* deltas,
+                   array_ia* weights,
+                   array_iaa* samples,
+                   unsigned channel_count);
+
+int
+apply_weight(int weight, int sample);
+
+int
+update_weight(int source, int result, int delta);
+
+void
+correlate_1ch(array_i* correlated,
+              const array_i* uncorrelated,
+              int term,
+              int delta,
+              int* weight,
+              array_i* samples);
+
+void
+correlate_2ch(array_ia* correlated,
+              const array_ia* uncorrelated,
+              int term,
+              int delta,
+              array_i* weights,
+              array_ia* samples);
+
+void
+write_entropy_variables(BitstreamWriter* bs,
+                        unsigned channel_count,
+                        const array_ia* entropies);
+
+void
+write_bitstream(BitstreamWriter* bs,
+                array_ia* entropies,
+                const array_ia* residuals);
+
+int
+unary_undefined(int u_j_1, int m_j);
+
+void
+write_residual(BitstreamWriter* bs,
+               int u, unsigned offset, unsigned add, unsigned sign);
+
+int
+unary(int u_j_1, int m_j, int m_j_1);
+
+void
+encode_residual(int residual, array_i* entropy,
+                int* m, unsigned* offset, unsigned* add, unsigned* sign);
+
+int
+flush_residual(BitstreamWriter* bs,
+               int u_i_2, int m_i_1, unsigned offset_i_1, unsigned add_i_1,
+               unsigned sign_i_1, int zeroes_i_1, int m_i);
+
+void
+write_egc(BitstreamWriter* bs, unsigned v);
 
 unsigned
 maximum_magnitude(const array_i* channel);
@@ -159,6 +303,16 @@ calculate_crc(const array_ia* channels);
 
 void
 apply_joint_stereo(const array_ia* left_right, array_ia* mid_side);
+
+int
+wv_log2(int value);
+
+static void
+wavpack_md5_update(void *data, unsigned char *buffer, unsigned long len);
+
+static void
+write_wave_header(BitstreamWriter* bs, const pcmreader* pcmreader,
+                  uint32_t total_frames, unsigned wave_footer_len);
 
 #define WV_UNARY_LIMIT 16
 #define MAXIMUM_TERM_COUNT 16

@@ -36,6 +36,8 @@ encoders_encode_wavpack(PyObject *dummy,
     array_ia* block_frames;
     unsigned block;
     uint32_t block_index = 0;
+    struct block_offset* offset;
+    struct block_offset* next_offset;
 
     unsigned block_size;
     int try_false_stereo = 0;
@@ -54,6 +56,9 @@ encoders_encode_wavpack(PyObject *dummy,
                              "wave_header",
                              "wave_footer",
                              NULL};
+
+    context.wave.header_data = NULL;
+    context.wave.footer_data = NULL;
 
     /*set some default option values*/
 
@@ -105,6 +110,11 @@ encoders_encode_wavpack(char *filename,
     array_ia* block_frames;
     unsigned block;
     uint32_t block_index = 0;
+    struct block_offset* offset;
+    struct block_offset* next_offset;
+
+    context.wave.header_data = NULL;
+    context.wave.footer_data = NULL;
 
     file = fopen(filename, "wb");
     stream = bw_open(file, BS_LITTLE_ENDIAN);
@@ -126,20 +136,30 @@ encoders_encode_wavpack(char *filename,
                          try_joint_stereo,
                          correlation_passes);
 
+    pcmreader->add_callback(pcmreader, wavpack_md5_update, &(context.md5sum),
+                            pcmreader->bits_per_sample >= 16,
+                            1);
+
     /*read full list of PCM frames from pcmreader*/
     if (pcmreader->read(pcmreader, block_size, pcm_frames))
         goto error;
 
     while (pcm_frames->_[0]->len > 0) {
+        unsigned pcm_frame_count = pcm_frames->_[0]->len;
+
         /*split PCM frames into 1-2 channel blocks*/
-        printf("encoding block set\n");
         for (block = 0; block < context.blocks_per_set; block++) {
+            /*add a fresh block offset based on current file position*/
+            add_block_offset(file, &(context.offsets));
+
             pcm_frames->split(pcm_frames,
                               context.parameters[block].channel_count,
                               block_frames,
                               pcm_frames);
 
-            wavpack_encode_block(&context,
+            wavpack_encode_block(stream,
+                                 &context,
+                                 pcmreader,
                                  &(context.parameters[block]),
                                  block_frames,
                                  block_index,
@@ -147,16 +167,34 @@ encoders_encode_wavpack(char *filename,
                                  block == (context.blocks_per_set - 1));
         }
 
-        block_index += pcm_frames->_[0]->len;
+        block_index += pcm_frame_count;
         if (pcmreader->read(pcmreader, block_size, pcm_frames))
             goto error;
     }
 
     /*add wave footer/MD5 sub-blocks to end of stream*/
+    add_block_offset(file, &(context.offsets));
+    wavpack_encode_footer_block(stream, &context, pcmreader);
 
-    /*update wave header, if necessary*/
+    /*update generated wave header, if necessary*/
+    if (context.wave.header_data == NULL) {
+        fseek(file, 32 + 2, SEEK_SET);
+        if (context.wave.footer_data == NULL) {
+            write_wave_header(stream, pcmreader, block_index, 0);
+        } else {
+            write_wave_header(stream, pcmreader, block_index,
+                              context.wave.footer_len);
+        }
+    }
 
     /*go back and set block header data as necessary*/
+    for (offset = context.offsets; offset != NULL; offset = next_offset) {
+        next_offset = offset->next;
+        fsetpos(file, &(offset->offset));
+        fseek(file, 12, SEEK_CUR);
+        stream->write(stream, 32, block_index);
+        free(offset);
+    }
 
     /*close open file handles and deallocate temporary space*/
     wavpack_free_context(&context);
@@ -230,8 +268,10 @@ wavpack_init_context(struct wavpack_encoder_context* context,
         }
     }
 
+    /*initialized cache items*/
     context->cache.shifted = array_ia_new();
     context->cache.mid_side = array_ia_new();
+    context->cache.correlated = array_ia_new();
     context->cache.sub_block = bw_open_recorder(BS_LITTLE_ENDIAN);
     context->cache.sub_blocks = bw_open_recorder(BS_LITTLE_ENDIAN);
 
@@ -250,6 +290,10 @@ wavpack_init_context(struct wavpack_encoder_context* context,
     }
 
     block_channels->del(block_channels);
+
+    context->offsets = NULL;
+    context->wave.header_written = 0;
+    audiotools__MD5Init(&(context->md5sum));
 }
 
 void
@@ -259,6 +303,7 @@ wavpack_free_context(struct wavpack_encoder_context* context)
 
     context->cache.shifted->del(context->cache.shifted);
     context->cache.mid_side->del(context->cache.mid_side);
+    context->cache.correlated->del(context->cache.correlated);
     context->cache.sub_block->close(context->cache.sub_block);
     context->cache.sub_blocks->close(context->cache.sub_blocks);
 
@@ -269,52 +314,263 @@ wavpack_free_context(struct wavpack_encoder_context* context)
 }
 
 void
-wavpack_init_block_parameters(struct encoding_parameters* parameters,
+wavpack_init_block_parameters(struct encoding_parameters* params,
                               unsigned channel_count,
                               int try_false_stereo,
                               int try_wasted_bits,
                               int try_joint_stereo,
                               unsigned correlation_passes)
 {
-    parameters->channel_count = channel_count;
-    parameters->try_false_stereo = try_false_stereo;
-    parameters->try_wasted_bits = try_wasted_bits;
-    parameters->try_joint_stereo = try_joint_stereo;
-    parameters->correlation_passes = correlation_passes;
-    parameters->terms = array_i_new();
-    parameters->deltas = array_i_new();
-    parameters->weights = array_ia_new();
-    parameters->samples = array_iaa_new();
+    params->channel_count = channel_count;
+    params->try_false_stereo = try_false_stereo;
+    params->try_wasted_bits = try_wasted_bits;
+    params->try_joint_stereo = try_joint_stereo;
+    params->correlation_passes = correlation_passes;
+    params->terms = array_i_new();
+    params->deltas = array_i_new();
+    params->weights = array_ia_new();
+    params->samples = array_iaa_new();
+    params->entropies = array_ia_new();
+
+    wavpack_reset_block_parameters(params, channel_count);
 }
 
 void
-wavpack_free_block_parameters(struct encoding_parameters* parameters)
+wavpack_reset_block_parameters(struct encoding_parameters* params,
+                               unsigned channel_count)
 {
-    parameters->terms->del(parameters->terms);
-    parameters->deltas->del(parameters->deltas);
-    parameters->weights->del(parameters->weights);
-    parameters->samples->del(parameters->samples);
+    array_i* entropy;
+    unsigned pass;
+
+    params->terms->reset(params->terms);
+    params->deltas->reset(params->deltas);
+    params->weights->reset(params->weights);
+    params->samples->reset(params->samples);
+    params->entropies->reset(params->entropies);
+
+    /*setup some default correlation pass values*/
+    if (channel_count == 1) {
+        switch (params->correlation_passes) {
+        case 0:
+            break;
+        case 1:
+            params->terms->vset(params->terms, 1, 18);
+            break;
+        case 2:
+            params->terms->vset(params->terms, 2, 17, 18);
+            break;
+        case 5:
+        case 10:
+        case 16:
+            params->terms->vset(params->terms, 5, 3, 17, 2, 18, 18);
+            break;
+        default:
+            /*invalid correlation pass count*/
+            assert(0);
+        }
+        params->deltas->mset(params->deltas, params->terms->len, 2);
+        for (pass = 0; pass < params->terms->len; pass++) {
+            array_i* weights_p = params->weights->append(params->weights);
+            array_ia* samples_p = params->samples->append(params->samples);
+
+            weights_p->vappend(weights_p, 1, 0);
+            init_correlation_samples(samples_p->append(samples_p),
+                                     params->terms->_[pass]); /*channel 0*/
+        }
+    } else if (channel_count == 2) {
+        switch (params->correlation_passes) {
+        case 0:
+            break;
+        case 1:
+            params->terms->vset(params->terms, 1, 18);
+            break;
+        case 2:
+            params->terms->vset(params->terms, 2, 17, 18);
+            break;
+        case 5:
+            params->terms->vset(params->terms, 5, 3, 17, 2, 18, 18);
+            break;
+        case 10:
+            params->terms->vset(params->terms, 10,
+                                4, 17, -1, 5, 3, 2, -2, 18, 18, 18);
+            break;
+        case 16:
+            params->terms->vset(params->terms, 16,
+                                2, 18, -1, 8, 6, 3, 5, 7,
+                                4, 2, 18, -2, 3, 2, 18, 18);
+            break;
+        default:
+            /*invalid correlation pass count*/
+            assert(0);
+        }
+        params->deltas->mset(params->deltas, params->terms->len, 2);
+        for (pass = 0; pass < params->terms->len; pass++) {
+            array_i* weights_p = params->weights->append(params->weights);
+            array_ia* samples_p = params->samples->append(params->samples);
+
+            weights_p->vappend(weights_p, 2, 0, 0);
+            init_correlation_samples(samples_p->append(samples_p),
+                                     params->terms->_[pass]); /*channel 0*/
+            init_correlation_samples(samples_p->append(samples_p),
+                                     params->terms->_[pass]); /*channel 1*/
+        }
+    } else {
+        /*invalid channel count*/
+        assert(0);
+    }
+
+    entropy = params->entropies->append(params->entropies);
+    entropy->mset(entropy, 3, 0);
+    entropy = params->entropies->append(params->entropies);
+    entropy->mset(entropy, 3, 0);
 }
 
 void
-wavpack_encode_block(struct wavpack_encoder_context* context,
+init_correlation_samples(array_i* samples,
+                         int correlation_term)
+{
+    switch (correlation_term) {
+    case 18:
+    case 17:
+        samples->mset(samples, 2, 0);
+        break;
+    case 8:
+    case 7:
+    case 6:
+    case 5:
+    case 4:
+    case 3:
+    case 2:
+    case 1:
+        samples->mset(samples, correlation_term, 0);
+        break;
+    case -1:
+    case -2:
+    case -3:
+        samples->mset(samples, 1, 0);
+        break;
+    default:
+        /*invalid correlation term*/
+        assert(0);
+    }
+}
+
+void
+wavpack_free_block_parameters(struct encoding_parameters* params)
+{
+    params->terms->del(params->terms);
+    params->deltas->del(params->deltas);
+    params->weights->del(params->weights);
+    params->samples->del(params->samples);
+    params->entropies->del(params->entropies);
+}
+
+void
+add_block_offset(FILE* file, struct block_offset** offsets)
+{
+    struct block_offset* new_offset = malloc(sizeof(struct block_offset));
+    fgetpos(file, &(new_offset->offset));
+    new_offset->next = *offsets;
+    *offsets = new_offset;
+}
+
+void
+write_block_header(BitstreamWriter* bs,
+                   unsigned sub_blocks_size,
+                   uint32_t block_index,
+                   uint32_t block_samples,
+                   unsigned bits_per_sample,
+                   unsigned channel_count,
+                   int joint_stereo,
+                   unsigned correlation_pass_count,
+                   unsigned wasted_bps,
+                   int first_block,
+                   int last_block,
+                   unsigned maximum_magnitude,
+                   unsigned sample_rate,
+                   int false_stereo,
+                   uint32_t crc)
+{
+    bs->write_bytes(bs, (uint8_t*)"wvpk", 4);
+    bs->write(bs, 32, sub_blocks_size + 24);
+    bs->write(bs, 16, WAVPACK_VERSION);
+    bs->write(bs, 8, 0);              /*track number*/
+    bs->write(bs, 8, 0);              /*index number*/
+    bs->write(bs, 32, 0xFFFFFFFF);    /*total samples placeholder*/
+    bs->write(bs, 32, block_index);
+    bs->write(bs, 32, block_samples);
+    bs->write(bs, 2, bits_per_sample / 8 - 1);
+    bs->write(bs, 1, 2 - channel_count);
+    bs->write(bs, 1, 0);              /*hybrid mode*/
+    bs->write(bs, 1, joint_stereo);
+    bs->write(bs, 1, correlation_pass_count > 5);
+    bs->write(bs, 1, 0);              /*hybrid noise shaping*/
+    bs->write(bs, 1, 0);              /*floating point data*/
+    bs->write(bs, 1, wasted_bps > 0); /*has extended size integers*/
+    bs->write(bs, 1, 0);              /*hybrid controls bitrate*/
+    bs->write(bs, 1, 0);              /*hybrid noise balanced*/
+    bs->write(bs, 1, first_block);
+    bs->write(bs, 1, last_block);
+    bs->write(bs, 5, 0);              /*left shift data*/
+    bs->write(bs, 5, maximum_magnitude);
+    bs->write(bs, 4, encoded_sample_rate(sample_rate));
+    bs->write(bs, 2, 0);              /*reserved*/
+    bs->write(bs, 1, 0);              /*use IIR*/
+    bs->write(bs, 1, false_stereo);
+    bs->write(bs, 1, 0);              /*reserved*/
+    bs->write(bs, 32, crc);
+}
+
+unsigned
+encoded_sample_rate(unsigned sample_rate)
+{
+    switch (sample_rate) {
+    case 6000:   return 0;
+    case 8000:   return 1;
+    case 9600:   return 2;
+    case 11025:  return 3;
+    case 12000:  return 4;
+    case 16000:  return 5;
+    case 22050:  return 6;
+    case 24000:  return 7;
+    case 32000:  return 8;
+    case 44100:  return 9;
+    case 48000:  return 10;
+    case 64000:  return 11;
+    case 88200:  return 12;
+    case 96000:  return 13;
+    case 192000: return 14;
+    default:     return 15;
+    }
+}
+
+void
+wavpack_encode_block(BitstreamWriter* bs,
+                     struct wavpack_encoder_context* context,
+                     const pcmreader* pcmreader,
                      struct encoding_parameters* parameters,
                      const array_ia* channels,
                      uint32_t block_index, int first_block, int last_block)
 {
     int mono_output;
     int false_stereo;
+    unsigned effective_channel_count;
     unsigned magnitude;
     unsigned wasted_bps;
-    unsigned total_frames;
+    uint32_t total_frames;
     array_ia* shifted = context->cache.shifted;
     array_ia* mid_side = context->cache.mid_side;
+    array_ia* correlated = context->cache.correlated;
+    BitstreamWriter* sub_blocks = context->cache.sub_blocks;
+    BitstreamWriter* sub_block = context->cache.sub_block;
     uint32_t crc;
 
     assert((channels->len == 1) || (channels->len == 2));
 
     shifted->reset(shifted);
     mid_side->reset(mid_side);
+    correlated->reset(correlated);
+    bw_reset_recorder(sub_blocks);
 
     total_frames = channels->_[0]->len;
 
@@ -324,9 +580,11 @@ wavpack_encode_block(struct wavpack_encoder_context* context,
         if (channels->len == 1) {
             mono_output = 1;
             false_stereo = 0;
+            effective_channel_count = 1;
         } else {
             mono_output = 0;
             false_stereo = 1;
+            effective_channel_count = 1;
         }
 
         /*calculate the maximum magnitude of channel_0 and channel_1*/
@@ -353,6 +611,7 @@ wavpack_encode_block(struct wavpack_encoder_context* context,
     } else {
         mono_output = 0;
         false_stereo = 0;
+        effective_channel_count = 2;
 
         /*calculate the maximum magnitude of channel_0 and channel_1*/
         magnitude = MAX(maximum_magnitude(channels->_[0]),
@@ -380,7 +639,896 @@ wavpack_encode_block(struct wavpack_encoder_context* context,
 
         crc = calculate_crc(shifted);
 
-        apply_joint_stereo(shifted, mid_side);
+        /*apply joint stereo if requested*/
+        if (parameters->try_joint_stereo) {
+            apply_joint_stereo(shifted, mid_side);
+        } else {
+            shifted->copy(shifted, mid_side);
+        }
+    }
+
+    wavpack_reset_block_parameters(parameters, effective_channel_count);
+
+    /*if first block in file, write wave header*/
+    if (!context->wave.header_written) {
+        bw_reset_recorder(sub_block);
+        if (context->wave.header_data == NULL) {
+            /*no external header, so generate artificial one*/
+            if (context->wave.footer_data == NULL) {
+                write_wave_header(sub_block, pcmreader, 0,
+                                  0);
+            } else {
+                write_wave_header(sub_block, pcmreader, 0,
+                                  context->wave.footer_len);
+            }
+        } else {
+            /*external header given, so output as-is*/
+            sub_block->write_bytes(sub_block,
+                                   context->wave.header_data,
+                                   context->wave.header_len);
+        }
+        write_sub_block(sub_blocks, WV_WAVE_HEADER, 1, sub_block);
+        context->wave.header_written = 1;
+    }
+
+    /*if correlation passes, write three correlation sub blocks*/
+    if (parameters->terms->len > 0) {
+        bw_reset_recorder(sub_block);
+        write_correlation_terms(sub_block,
+                                parameters->terms,
+                                parameters->deltas);
+        write_sub_block(sub_blocks, WV_TERMS, 0, sub_block);
+
+        bw_reset_recorder(sub_block);
+        write_correlation_weights(sub_block,
+                                  parameters->weights,
+                                  effective_channel_count);
+        write_sub_block(sub_blocks, WV_WEIGHTS, 0, sub_block);
+
+        bw_reset_recorder(sub_block);
+        write_correlation_samples(sub_block,
+                                  parameters->terms,
+                                  parameters->samples,
+                                  effective_channel_count);
+        write_sub_block(sub_blocks, WV_SAMPLES, 0, sub_block);
+    }
+
+    /*if wasted BPS, write extended integers sub block*/
+    if (wasted_bps > 0) {
+        bw_reset_recorder(sub_block);
+        sub_block->build(sub_block, "8u 8u 8u 8u",
+                         0, wasted_bps, 0, 0);
+        write_sub_block(sub_blocks, WV_INT32_INFO, 0, sub_block);
+    }
+
+    /*if total channels > 2, write channel info sub block*/
+    if (pcmreader->channels > 2) {
+        bw_reset_recorder(sub_block);
+        sub_block->build(sub_block, "8u 32u",
+                         pcmreader->channels,
+                         pcmreader->channel_mask);
+        write_sub_block(sub_blocks, WV_CHANNEL_INFO, 0, sub_block);
+    }
+
+    /*if nonstandard sample rate, write sample rate sub block*/
+    if (encoded_sample_rate(pcmreader->sample_rate) == 15) {
+        bw_reset_recorder(sub_block);
+        sub_block->write(sub_block, 32, pcmreader->sample_rate);
+        write_sub_block(sub_blocks, WV_SAMPLE_RATE, 1, sub_block);
+    }
+
+    if (effective_channel_count == 1) {         /*1 channel block*/
+        if (parameters->terms->len > 0) {
+            correlate_channels(correlated,
+                               shifted,
+                               parameters->terms,
+                               parameters->deltas,
+                               parameters->weights,
+                               parameters->samples,
+                               1);
+        } else {
+            shifted->copy(shifted, correlated);
+        }
+    } else {                                    /*2 channel block*/
+        /*perform channel correlation*/
+        if (parameters->terms->len > 0) {
+            correlate_channels(correlated,
+                               mid_side,
+                               parameters->terms,
+                               parameters->deltas,
+                               parameters->weights,
+                               parameters->samples,
+                               2);
+        } else {
+            mid_side->copy(mid_side, correlated);
+        }
+    }
+
+    /*write entropy variables sub block*/
+    bw_reset_recorder(sub_block);
+    write_entropy_variables(sub_block,
+                            effective_channel_count,
+                            parameters->entropies);
+    write_sub_block(sub_blocks, WV_ENTROPY, 0, sub_block);
+
+    /*write bitstream sub block*/
+    bw_reset_recorder(sub_block);
+    write_bitstream(sub_block,
+                    parameters->entropies,
+                    correlated);
+    write_sub_block(sub_blocks, WV_BITSTREAM, 0, sub_block);
+
+    /*finally, write block header using size of all sub blocks*/
+    write_block_header(bs,
+                       sub_blocks->bytes_written(sub_blocks),
+                       block_index,
+                       total_frames,
+                       pcmreader->bits_per_sample,
+                       channels->len,
+                       (channels->len == 2) && parameters->try_joint_stereo,
+                       parameters->terms->len,
+                       wasted_bps,
+                       first_block,
+                       last_block,
+                       magnitude,
+                       pcmreader->sample_rate,
+                       false_stereo,
+                       crc);
+
+    /*write sub block data to stream*/
+    bw_rec_copy(bs, sub_blocks);
+
+    /*round-trip values for next block in set, if any*/
+    /*FIXME*/
+}
+
+void
+write_sub_block(BitstreamWriter* block,
+                unsigned metadata_function,
+                unsigned nondecoder_data,
+                BitstreamWriter* sub_block)
+{
+    unsigned actual_size_1_less;
+
+    sub_block->byte_align(sub_block);
+    actual_size_1_less = sub_block->bytes_written(sub_block) % 2;
+    block->write(block, 5, metadata_function);
+    block->write(block, 1, nondecoder_data);
+    block->write(block, 1, actual_size_1_less);
+    if (sub_block->bytes_written(sub_block) > (255 * 2)) {
+        block->write(block, 1, 1);
+        block->write(block, 24,
+                     (sub_block->bytes_written(sub_block) / 2) +
+                     actual_size_1_less);
+    } else {
+        block->write(block, 1, 0);
+        block->write(block, 8,
+                     (sub_block->bytes_written(sub_block) / 2) +
+                     actual_size_1_less);
+    }
+
+    bw_rec_copy(block, sub_block);
+
+    if (actual_size_1_less) {
+        block->write(block, 8, 0);
+    }
+}
+
+void
+write_correlation_terms(BitstreamWriter* bs,
+                        const array_i* terms,
+                        const array_i* deltas)
+{
+    unsigned total;
+    unsigned pass;
+
+    assert(terms->len == deltas->len);
+
+    for (total = terms->len, pass = terms->len - 1;
+         total > 0; total--,pass--) {
+        bs->write(bs, 5, terms->_[pass] + 5);
+        bs->write(bs, 3, deltas->_[pass]);
+    }
+}
+
+int
+store_weight(int weight)
+{
+    weight = MIN(MAX(weight, -1024), 1024);
+
+    if (weight > 0) {
+        return (weight - ((weight + (1 << 6)) >> 7) + 4) >> 3;
+    } else if (weight == 0) {
+        return 0;
+    } else {
+        return (weight + 4) >> 3;
+    }
+}
+
+void
+write_correlation_weights(BitstreamWriter* bs,
+                          const array_ia* weights,
+                          unsigned channel_count)
+{
+    unsigned total;
+    unsigned pass;
+
+    for (total = weights->len, pass = weights->len - 1;
+         total > 0; total--,pass--) {
+        bs->write(bs, 8, store_weight(weights->_[pass]->_[0]));
+        if (channel_count == 2)
+            bs->write(bs, 8, store_weight(weights->_[pass]->_[1]));
+    }
+}
+
+void
+write_correlation_samples(BitstreamWriter* bs,
+                          const array_i* terms,
+                          const array_iaa* samples,
+                          unsigned channel_count)
+{
+    unsigned total;
+    unsigned pass;
+
+    if (channel_count == 2) {
+        for (total = terms->len, pass = terms->len - 1;
+             total > 0; total--,pass--) {
+            if ((17 <= terms->_[pass]) && (terms->_[pass] <= 18)) {
+                bs->write_signed(bs, 16, wv_log2(samples->_[pass]->_[0]->_[0]));
+                bs->write_signed(bs, 16, wv_log2(samples->_[pass]->_[0]->_[1]));
+                bs->write_signed(bs, 16, wv_log2(samples->_[pass]->_[1]->_[0]));
+                bs->write_signed(bs, 16, wv_log2(samples->_[pass]->_[1]->_[1]));
+            } else if ((1 <= terms->_[pass]) && (terms->_[pass] <= 8)) {
+                unsigned s;
+                for (s = 0; s < terms->_[pass]; s++) {
+                    bs->write_signed(bs, 16,
+                                     wv_log2(samples->_[pass]->_[0]->_[s]));
+                    bs->write_signed(bs, 16,
+                                     wv_log2(samples->_[pass]->_[1]->_[s]));
+                }
+            } else if ((-3 <= terms->_[pass]) && (terms->_[pass] <= -1)) {
+                bs->write_signed(bs, 16, wv_log2(samples->_[pass]->_[0]->_[0]));
+                bs->write_signed(bs, 16, wv_log2(samples->_[pass]->_[1]->_[0]));
+            } else {
+                /*invalid correlation term*/
+                assert(0);
+            }
+        }
+    } else if (channel_count == 1) {
+        for (total = terms->len, pass = terms->len - 1;
+             total > 0; total--,pass--) {
+            if ((17 <= terms->_[pass]) && (terms->_[pass] <= 18)) {
+                bs->write_signed(bs, 16, wv_log2(samples->_[pass]->_[0]->_[0]));
+                bs->write_signed(bs, 16, wv_log2(samples->_[pass]->_[0]->_[1]));
+            } else if ((1 <= terms->_[pass]) && (terms->_[pass] <= 8)) {
+                unsigned s;
+                for (s = 0; s < terms->_[pass]; s++) {
+                    bs->write_signed(bs, 16,
+                                     wv_log2(samples->_[pass]->_[0]->_[s]));
+                }
+            } else {
+                /*invalid correlation term*/
+                assert(0);
+            }
+        }
+    } else {
+        /*channel count should be 1 or 2*/
+        assert(0);
+    }
+}
+
+void
+correlate_channels(array_ia* correlated_samples,
+                   array_ia* uncorrelated_samples,
+                   array_i* terms,
+                   array_i* deltas,
+                   array_ia* weights,
+                   array_iaa* samples,
+                   unsigned channel_count)
+{
+    unsigned pass;
+    unsigned total;
+
+    assert(terms->len == deltas->len);
+    assert(terms->len == weights->len);
+    assert(terms->len == samples->len);
+    assert(uncorrelated_samples->len == channel_count);
+
+    if (channel_count == 1) {
+        array_i* input_channel = array_i_new();
+        array_i* output_channel = array_i_new();
+        input_channel->swap(input_channel, uncorrelated_samples->_[0]);
+        for (pass = terms->len - 1,total = terms->len;
+             total > 0; pass--,total--) {
+            correlate_1ch(output_channel,
+                          input_channel,
+                          terms->_[pass],
+                          deltas->_[pass],
+                          &(weights->_[pass]->_[0]),
+                          samples->_[pass]->_[0]);
+
+            if (total > 1) {
+                input_channel->swap(input_channel, output_channel);
+            }
+        }
+
+        correlated_samples->reset(correlated_samples);
+        output_channel->swap(output_channel,
+                             correlated_samples->append(correlated_samples));
+        input_channel->del(input_channel);
+        output_channel->del(output_channel);
+    } else if (channel_count == 2) {
+        for (pass = terms->len - 1,total = terms->len;
+             total > 0; pass--,total--) {
+            correlate_2ch(correlated_samples,
+                          uncorrelated_samples,
+                          terms->_[pass],
+                          deltas->_[pass],
+                          weights->_[pass],
+                          samples->_[pass]);
+            if (total > 1) {
+                uncorrelated_samples->swap(uncorrelated_samples,
+                                           correlated_samples);
+            }
+        }
+    } else {
+        /*invalid channel count*/
+        assert(0);
+    }
+}
+
+int
+apply_weight(int weight, int sample)
+{
+    return ((weight * sample) + 512) >> 10;
+}
+
+int
+update_weight(int source, int result, int delta)
+{
+    if ((source == 0) || (result == 0)) {
+        return 0;
+    } else if ((source ^ result) >= 0) {
+        return delta;
+    } else {
+        return -delta;
+    }
+}
+
+void
+correlate_1ch(array_i* correlated,
+              const array_i* uncorrelated,
+              int term,
+              int delta,
+              int* weight,
+              array_i* samples)
+{
+    unsigned i;
+    correlated->reset(correlated);
+
+    if (term == 18) {
+        array_i* uncorr = array_i_new();
+
+        assert(samples->len == 2);
+        uncorr->vappend(uncorr, 2, samples->_[1], samples->_[0]);
+        uncorr->extend(uncorr, uncorrelated);
+
+        for (i = 2; i < uncorr->len; i++) {
+            int temp = (3 * uncorr->_[i - 1] - uncorr->_[i - 2]) >> 1;
+            correlated->append(correlated,
+                               uncorr->_[i] - apply_weight(*weight, temp));
+            *weight += update_weight(temp, correlated->_[i - 2], delta);
+        }
+
+        uncorr->del(uncorr);
+    } else if (term == 17) {
+        array_i* uncorr = array_i_new();
+
+        assert(samples->len == 2);
+        uncorr->vappend(uncorr, 2, samples->_[1], samples->_[0]);
+        uncorr->extend(uncorr, uncorrelated);
+
+        for (i = 2; i < uncorr->len; i++) {
+            int temp = 2 * uncorr->_[i - 1] - uncorr->_[i - 2];
+            correlated->append(correlated,
+                               uncorr->_[i] - apply_weight(*weight, temp));
+            *weight += update_weight(temp, correlated->_[i - 2], delta);
+        }
+
+        uncorr->del(uncorr);
+    } else if ((1 <= term) && (term <= 8)) {
+        array_i* uncorr = array_i_new();
+
+        assert(samples->len == term);
+        uncorr->extend(uncorr, samples);
+        uncorr->extend(uncorr, uncorrelated);
+
+        for (i = term; i < uncorr->len; i++) {
+            correlated->append(correlated, uncorr->_[i] -
+                               apply_weight(*weight, uncorr->_[i - term]));
+            *weight += update_weight(uncorr->_[i - term],
+                                     correlated->_[i - term], delta);
+        }
+
+        uncorr->del(uncorr);
+    } else {
+        /*invalid correlation term*/
+        assert(0);
+    }
+
+    assert(correlated->len == uncorrelated->len);
+}
+
+void
+correlate_2ch(array_ia* correlated,
+              const array_ia* uncorrelated,
+              int term,
+              int delta,
+              array_i* weights,
+              array_ia* samples)
+{
+    assert(uncorrelated->len == 2);
+    assert(uncorrelated->_[0]->len == uncorrelated->_[1]->len);
+    assert(weights->len == 2);
+    assert(samples->len == 2);
+
+    if (((17 <= term) && (term <= 18)) ||
+        ((1 <= term) && (term <= 8))) {
+        correlated->reset(correlated);
+        correlate_1ch(correlated->append(correlated),
+                      uncorrelated->_[0],
+                      term, delta, &(weights->_[0]), samples->_[0]);
+        correlate_1ch(correlated->append(correlated),
+                      uncorrelated->_[1],
+                      term, delta, &(weights->_[1]), samples->_[1]);
+    } else if ((-3 <= term) && (term <= -1)) {
+        array_ia* uncorr = array_ia_new();
+        array_i* uncorr_0;
+        array_i* uncorr_1;
+        unsigned i;
+
+        assert(samples->_[0]->len == 1);
+        assert(samples->_[1]->len == 1);
+        uncorr_0 = uncorr->append(uncorr);
+        uncorr_1 = uncorr->append(uncorr);
+        uncorr_0->extend(uncorr_0, samples->_[1]);
+        uncorr_0->extend(uncorr_0, uncorrelated->_[0]);
+        uncorr_1->extend(uncorr_1, samples->_[0]);
+        uncorr_1->extend(uncorr_1, uncorrelated->_[1]);
+
+        correlated->reset(correlated);
+        correlated->append(correlated);
+        correlated->append(correlated);
+
+        if (term == -1) {
+            for (i = 1; i < uncorr_0->len; i++) {
+                array_i_append(correlated->_[0],
+                               uncorr_0->_[i] -
+                               apply_weight(weights->_[0],
+                                            uncorr_1->_[i - 1]));
+                array_i_append(correlated->_[1],
+                               uncorr_1->_[i] -
+                               apply_weight(weights->_[1],
+                                            uncorr_0->_[i]));
+                weights->_[0] += update_weight(uncorr_1->_[i - 1],
+                                               correlated->_[0]->_[i - 1],
+                                               delta);
+                weights->_[1] += update_weight(uncorr_0->_[i],
+                                               correlated->_[1]->_[i - 1],
+                                               delta);
+                weights->_[0] = MAX(MIN(weights->_[0], 1024), -1024);
+                weights->_[1] = MAX(MIN(weights->_[1], 1024), -1024);
+            }
+        } else if (term == -2) {
+            for (i = 1; i < uncorr_0->len; i++) {
+                array_i_append(correlated->_[0],
+                               uncorr_0->_[i] -
+                               apply_weight(weights->_[0],
+                                            uncorr_1->_[i]));
+                array_i_append(correlated->_[1],
+                               uncorr_1->_[i] -
+                               apply_weight(weights->_[1],
+                                            uncorr_0->_[i - 1]));
+                weights->_[0] += update_weight(uncorr_1->_[i],
+                                               correlated->_[0]->_[i - 1],
+                                               delta);
+                weights->_[1] += update_weight(uncorr_0->_[i - 1],
+                                               correlated->_[1]->_[i - 1],
+                                               delta);
+                weights->_[0] = MAX(MIN(weights->_[0], 1024), -1024);
+                weights->_[1] = MAX(MIN(weights->_[1], 1024), -1024);
+            }
+        } else if (term == -3) {
+            for (i = 1; i < uncorr_0->len; i++) {
+                array_i_append(correlated->_[0],
+                               uncorr_0->_[i] -
+                               apply_weight(weights->_[0],
+                                            uncorr_1->_[i - 1]));
+                array_i_append(correlated->_[1],
+                               uncorr_1->_[i] -
+                               apply_weight(weights->_[1],
+                                            uncorr_0->_[i - 1]));
+                weights->_[0] += update_weight(uncorr_1->_[i - 1],
+                                               correlated->_[0]->_[i - 1],
+                                               delta);
+                weights->_[1] += update_weight(uncorr_0->_[i - 1],
+                                               correlated->_[1]->_[i - 1],
+                                               delta);
+                weights->_[0] = MAX(MIN(weights->_[0], 1024), -1024);
+                weights->_[1] = MAX(MIN(weights->_[1], 1024), -1024);
+            }
+        } else {
+            /*shouldn't get here*/
+            assert(0);
+        }
+
+        uncorr->del(uncorr);
+    } else {
+        /*invalid correlation term*/
+        assert(0);
+    }
+}
+
+void
+write_entropy_variables(BitstreamWriter* bs,
+                        unsigned channel_count,
+                        const array_ia* entropies)
+{
+    if (channel_count == 1) {
+        assert(entropies->_[0]->len == 3);
+        bs->write(bs, 16, wv_log2(entropies->_[0]->_[0]));
+        bs->write(bs, 16, wv_log2(entropies->_[0]->_[1]));
+        bs->write(bs, 16, wv_log2(entropies->_[0]->_[2]));
+    } else if (channel_count == 2) {
+        assert(entropies->_[0]->len == 3);
+        assert(entropies->_[1]->len == 3);
+        bs->write(bs, 16, wv_log2(entropies->_[0]->_[0]));
+        bs->write(bs, 16, wv_log2(entropies->_[0]->_[1]));
+        bs->write(bs, 16, wv_log2(entropies->_[0]->_[2]));
+        bs->write(bs, 16, wv_log2(entropies->_[1]->_[0]));
+        bs->write(bs, 16, wv_log2(entropies->_[1]->_[1]));
+        bs->write(bs, 16, wv_log2(entropies->_[1]->_[2]));
+    } else {
+        /*invalid channel count*/
+        assert(0);
+    }
+}
+
+static inline unsigned
+LOG2(unsigned value)
+{
+    unsigned bits = 0;
+    assert(value > 0);
+    while (value) {
+        bits++;
+        value >>= 1;
+    }
+    return bits - 1;
+}
+
+int
+wv_log2(int value)
+{
+    const static unsigned WLOG[] =
+        {0x00, 0x01, 0x03, 0x04, 0x06, 0x07, 0x09, 0x0a,
+         0x0b, 0x0d, 0x0e, 0x10, 0x11, 0x12, 0x14, 0x15,
+         0x16, 0x18, 0x19, 0x1a, 0x1c, 0x1d, 0x1e, 0x20,
+         0x21, 0x22, 0x24, 0x25, 0x26, 0x28, 0x29, 0x2a,
+         0x2c, 0x2d, 0x2e, 0x2f, 0x31, 0x32, 0x33, 0x34,
+         0x36, 0x37, 0x38, 0x39, 0x3b, 0x3c, 0x3d, 0x3e,
+         0x3f, 0x41, 0x42, 0x43, 0x44, 0x45, 0x47, 0x48,
+         0x49, 0x4a, 0x4b, 0x4d, 0x4e, 0x4f, 0x50, 0x51,
+         0x52, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59, 0x5a,
+         0x5c, 0x5d, 0x5e, 0x5f, 0x60, 0x61, 0x62, 0x63,
+         0x64, 0x66, 0x67, 0x68, 0x69, 0x6a, 0x6b, 0x6c,
+         0x6d, 0x6e, 0x6f, 0x70, 0x71, 0x72, 0x74, 0x75,
+         0x76, 0x77, 0x78, 0x79, 0x7a, 0x7b, 0x7c, 0x7d,
+         0x7e, 0x7f, 0x80, 0x81, 0x82, 0x83, 0x84, 0x85,
+         0x86, 0x87, 0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8d,
+         0x8e, 0x8f, 0x90, 0x91, 0x92, 0x93, 0x94, 0x95,
+         0x96, 0x97, 0x98, 0x99, 0x9a, 0x9b, 0x9b, 0x9c,
+         0x9d, 0x9e, 0x9f, 0xa0, 0xa1, 0xa2, 0xa3, 0xa4,
+         0xa5, 0xa6, 0xa7, 0xa8, 0xa9, 0xa9, 0xaa, 0xab,
+         0xac, 0xad, 0xae, 0xaf, 0xb0, 0xb1, 0xb2, 0xb2,
+         0xb3, 0xb4, 0xb5, 0xb6, 0xb7, 0xb8, 0xb9, 0xb9,
+         0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xbf, 0xc0, 0xc0,
+         0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc6, 0xc7,
+         0xc8, 0xc9, 0xca, 0xcb, 0xcb, 0xcc, 0xcd, 0xce,
+         0xcf, 0xd0, 0xd0, 0xd1, 0xd2, 0xd3, 0xd4, 0xd4,
+         0xd5, 0xd6, 0xd7, 0xd8, 0xd8, 0xd9, 0xda, 0xdb,
+         0xdc, 0xdc, 0xdd, 0xde, 0xdf, 0xe0, 0xe0, 0xe1,
+         0xe2, 0xe3, 0xe4, 0xe4, 0xe5, 0xe6, 0xe7, 0xe7,
+         0xe8, 0xe9, 0xea, 0xea, 0xeb, 0xec, 0xed, 0xee,
+         0xee, 0xef, 0xf0, 0xf1, 0xf1, 0xf2, 0xf3, 0xf4,
+         0xf4, 0xf5, 0xf6, 0xf7, 0xf7, 0xf8, 0xf9, 0xf9,
+         0xfa, 0xfb, 0xfc, 0xfc, 0xfd, 0xfe, 0xff, 0xff};
+
+    unsigned a = abs(value) + (abs(value) >> 9);
+    unsigned c = (a != 0) ? (LOG2(a) + 1) : 0;
+
+    if (value >= 0) {
+        if ((0 <= a) && (a < 256)) {
+            return (c << 8) + WLOG[(a << (9 - c)) % 256];
+        } else {
+            return (c << 8) + WLOG[(a >> (c - 9)) % 256];
+        }
+    } else {
+        if ((0 <= a) && (a < 256)) {
+            return -((c << 8) + WLOG[(a << (9 - c)) % 256]);
+        } else {
+            return -((c << 8) + WLOG[(a >> (c - 9)) % 256]);
+        }
+    }
+}
+
+#define UNDEFINED (-1)
+
+void
+write_bitstream(BitstreamWriter* bs,
+                array_ia* entropies,
+                const array_ia* residuals)
+{
+    const unsigned total_samples = (residuals->len * residuals->_[0]->len);
+    unsigned i = 0;
+    struct wavpack_residual res_i_1; /*residual (i - 1)*/
+    struct wavpack_residual res_i;   /*residual i*/
+    int u_i_2;                       /*unary (i - 2)*/
+
+    if ((entropies->_[0]->_[0] < 2) && (entropies->_[1]->_[0] < 2)) {
+        res_i_1.zeroes = 0;
+    } else {
+        res_i_1.zeroes = UNDEFINED;
+    }
+    u_i_2 = UNDEFINED;
+    res_i_1.m = UNDEFINED;
+    res_i_1.offset = res_i_1.add = res_i_1.sign = UINT_MAX; /*placeholders*/
+
+    while (i < total_samples) {
+        const int r = residuals->_[i % residuals->len]->_[i / residuals->len];
+
+        if ((entropies->_[0]->_[0] < 2) &&
+            (entropies->_[1]->_[0] < 2) &&
+            unary_undefined(u_i_2, res_i_1.m)) {
+
+            if (res_i_1.zeroes != UNDEFINED) { /*in a block of zeroes*/
+                if (r == 0) {                  /*continue block of zeroes*/
+                    /*shift residual_{i - 1}'s values to residual_{i}
+                      and increment its zeroes count
+                      befere moving on to the next i*/
+                    res_i_1.zeroes++;
+                    entropies->_[0]->mset(entropies->_[0], 3, 0);
+                    entropies->_[1]->mset(entropies->_[1], 3, 0);
+                    i++;
+                } else {                       /*end block of zeroes*/
+                    res_i.zeroes = UNDEFINED;
+                    encode_residual(r,
+                                    entropies->_[i % residuals->len],
+                                    &(res_i.m),
+                                    &(res_i.offset),
+                                    &(res_i.add),
+                                    &(res_i.sign));
+                    u_i_2 = flush_residual(bs,
+                                           u_i_2,
+                                           res_i_1.m,
+                                           res_i_1.offset,
+                                           res_i_1.add,
+                                           res_i_1.sign,
+                                           res_i_1.zeroes,
+                                           res_i.m);
+                    i++;
+                    res_i_1 = res_i;
+                }
+            } else {                           /*start block of zeroes*/
+                if (r == 0) {
+                    /*shift residual_{i - 1}'s values to residual_{i}
+                      and set its zeroes count to 1
+                      befere moving on to the next i*/
+                    res_i_1.zeroes = 1;
+                    entropies->_[0]->mset(entropies->_[0], 3, 0);
+                    entropies->_[1]->mset(entropies->_[1], 3, 0);
+                    i++;
+                } else {
+                    res_i.zeroes = 0;
+                    encode_residual(r,
+                                    entropies->_[i % residuals->len],
+                                    &(res_i.m),
+                                    &(res_i.offset),
+                                    &(res_i.add),
+                                    &(res_i.sign));
+                    u_i_2 = flush_residual(bs,
+                                           u_i_2,
+                                           res_i_1.m,
+                                           res_i_1.offset,
+                                           res_i_1.add,
+                                           res_i_1.sign,
+                                           res_i_1.zeroes,
+                                           res_i.m);
+                    i++;
+                    res_i_1 = res_i;
+                }
+            }
+        } else {                               /*encode regular residual*/
+            res_i.zeroes = UNDEFINED;
+            encode_residual(r,
+                            entropies->_[i % residuals->len],
+                            &(res_i.m),
+                            &(res_i.offset),
+                            &(res_i.add),
+                            &(res_i.sign));
+            u_i_2 = flush_residual(bs,
+                                   u_i_2,
+                                   res_i_1.m,
+                                   res_i_1.offset,
+                                   res_i_1.add,
+                                   res_i_1.sign,
+                                   res_i_1.zeroes,
+                                   res_i.m);
+            i++;
+            res_i_1 = res_i;
+        }
+    }
+
+    /*flush final residual*/
+    u_i_2 = flush_residual(bs,
+                           u_i_2,
+                           res_i_1.m,
+                           res_i_1.offset,
+                           res_i_1.add,
+                           res_i_1.sign,
+                           res_i_1.zeroes,
+                           0);
+}
+
+int
+unary_undefined(int u_j_1, int m_j)
+{
+    assert(m_j >= 0);
+    if (m_j == UNDEFINED) {
+        return 1; /*u_j is undefined*/
+    } else if ((m_j == 0) && (u_j_1 != UNDEFINED) && ((u_j_1 % 2) == 0)) {
+        return 1; /*u_j is undefined*/
+    } else {
+        return 0; /*u_j is not undefined*/
+    }
+}
+
+int
+flush_residual(BitstreamWriter* bs,
+               int u_i_2, int m_i_1, unsigned offset_i_1, unsigned add_i_1,
+               unsigned sign_i_1, int zeroes_i_1, int m_i)
+{
+    int u_i_1;
+
+    /* printf("flushing u: %d  m: %d  offset: %u  add: %u  sign: %u  zeroes: %d\n", */
+    /*        u_i_2, m_i_1, offset_i_1, add_i_1, sign_i_1, zeroes_i_1); */
+
+    if (zeroes_i_1 != UNDEFINED) {
+        write_egc(bs, zeroes_i_1);
+    }
+
+    if (m_i_1 != UNDEFINED) {
+        /*calculate unary_{i - 1} for residual_{i - 1} based on m_{i}*/
+        if ((m_i_1 > 0) && (m_i > 0)) {
+            if ((u_i_2 == UNDEFINED) || ((u_i_2 % 2) == 0)) {
+                u_i_1 = (m_i_1 * 2) + 1;
+            } else {
+                u_i_1 = (m_i_1 * 2) - 1;
+            }
+        } else if ((m_i_1 == 0) && (m_i > 0)) {
+            if ((u_i_2 == UNDEFINED) || ((u_i_2 % 2) == 1)) {
+                u_i_1 = 1;
+            } else {
+                u_i_1 = UNDEFINED;
+            }
+        } else if ((m_i_1 > 0) && (m_i == 0)) {
+            if ((u_i_2 == UNDEFINED) || ((u_i_2 % 2) == 0)) {
+                u_i_1 = m_i_1 * 2;
+            } else {
+                u_i_1 = (m_i_1 - 1) * 2;
+            }
+        } else if ((m_i_1 == 0) && (m_i == 0)) {
+            if ((u_i_2 == UNDEFINED) || ((u_i_2 % 2) == 1)) {
+                u_i_1 = 0;
+            } else {
+                u_i_1 = UNDEFINED;
+            }
+        } else {
+            /*shouldn't get here*/
+            assert(0);
+            u_i_1 = UNDEFINED;
+        }
+
+        /*write residual_{i - 1} to disk using unary_{i - 1}*/
+        if (u_i_1 != UNDEFINED) {
+            if (u_i_1 < 16) {
+                bs->write_unary(bs, 0, u_i_1);
+            } else {
+                bs->write_unary(bs, 0, 16);
+                write_egc(bs, u_i_1 - 16);
+            }
+        }
+
+        if (add_i_1 > 0) {
+            unsigned p = LOG2(add_i_1);
+            unsigned e = (1 << (p + 1)) - add_i_1 - 1;
+            if (offset_i_1 < e) {
+                unsigned r = offset_i_1;
+                bs->write(bs, p, r);
+            } else {
+                unsigned r = (offset_i_1 + e) / 2;
+                unsigned b = (offset_i_1 + e) % 2;
+                bs->write(bs, p, r);
+                bs->write(bs, 1, b);
+            }
+        }
+        bs->write(bs, 1, sign_i_1);
+    } else {
+        u_i_1 = UNDEFINED;
+    }
+
+    return u_i_1;
+}
+
+void
+encode_residual(int residual, array_i* entropy,
+                int* m, unsigned* offset, unsigned* add, unsigned* sign)
+{
+    unsigned _unsigned;
+    int median0;
+    int median1;
+    int median2;
+
+    assert(entropy->len == 3);
+
+    if (residual >= 0) {
+        _unsigned = residual;
+        *sign = 0;
+    } else {
+        _unsigned = -residual - 1;
+        *sign = 1;
+    }
+
+    median0 = (entropy->_[0] >> 4) + 1;
+    median1 = (entropy->_[1] >> 4) + 1;
+    median2 = (entropy->_[2] >> 4) + 1;
+
+    if (_unsigned < median0) {
+        *m = 0;
+        *offset = _unsigned;
+        *add = median0 - 1;
+        entropy->_[0] -= ((entropy->_[0] + 126) >> 7) * 2;
+    } else if ((_unsigned - median0) < median1) {
+        *m = 1;
+        *offset = _unsigned - median0;
+        *add = median1 - 1;
+        entropy->_[0] += ((entropy->_[0] + 128) >> 7) * 5;
+        entropy->_[1] -= ((entropy->_[1] + 62) >> 6) * 2;
+    } else if ((_unsigned - (median0 + median1)) < median2) {
+        *m = 2;
+        *offset = _unsigned - (median0 + median1);
+        *add = median2 - 1;
+        entropy->_[0] += ((entropy->_[0] + 128) >> 7) * 5;
+        entropy->_[1] += ((entropy->_[1] + 64) >> 6) * 5;
+        entropy->_[2] -= ((entropy->_[2] + 30) >> 5) * 2;
+    } else {
+        *m = ((_unsigned - (median0 + median1)) / median2) + 2;
+        *offset = _unsigned - (median0 + median1 + ((*m - 2) * median2));
+        *add = median2 - 1;
+        entropy->_[0] += ((entropy->_[0] + 128) >> 7) * 5;
+        entropy->_[1] += ((entropy->_[1] + 64) >> 6) * 5;
+        entropy->_[2] += ((entropy->_[2] + 32) >> 5) * 5;
+    }
+}
+
+void
+write_egc(BitstreamWriter* bs, unsigned v)
+{
+    if (v <= 1) {
+        bs->write_unary(bs, 0, v);
+    } else {
+        unsigned t = LOG2(v) + 1;
+        bs->write_unary(bs, 0, t);
+        bs->write(bs, t - 1, v % (1 << (t - 1)));
     }
 }
 
@@ -470,13 +1618,126 @@ apply_joint_stereo(const array_ia* left_right, array_ia* mid_side)
     side->resize(side, total_samples);
     for (i = 0; i < total_samples; i++) {
         a_append(mid, left->_[i] - right->_[i]);
-        a_append(side, (left->_[i] + right->_[i]) / 2);
+        a_append(side, (left->_[i] + right->_[i]) >> 1);
     }
+}
+
+void
+wavpack_encode_footer_block(BitstreamWriter* bs,
+                            struct wavpack_encoder_context* context,
+                            const pcmreader* pcmreader)
+{
+    BitstreamWriter* sub_blocks = context->cache.sub_blocks;
+    BitstreamWriter* sub_block = context->cache.sub_block;
+    unsigned char md5sum[16];
+
+    bw_reset_recorder(sub_blocks);
+
+    /*add MD5 sub block*/
+    audiotools__MD5Final(md5sum, &(context->md5sum));
+    bw_reset_recorder(sub_block);
+    sub_block->write_bytes(sub_block, md5sum, 16);
+    write_sub_block(sub_blocks, WV_MD5, 1, sub_block);
+
+    /*if present, add RIFF WAVE footer sub block*/
+    if (context->wave.footer_data != NULL) {
+        bw_reset_recorder(sub_block);
+        sub_block->write_bytes(sub_block,
+                               context->wave.footer_data,
+                               context->wave.footer_len);
+    }
+    write_sub_block(sub_blocks, WV_WAVE_FOOTER, 1, sub_block);
+
+    write_block_header(bs,
+                       sub_blocks->bytes_written(sub_blocks),
+                       0xFFFFFFFF,  /*block index*/
+                       0,           /*block samples*/
+                       pcmreader->bits_per_sample,
+                       1,           /*channel count*/
+                       0,           /*joint stereo*/
+                       0,           /*correlation passes*/
+                       0,           /*wasted bps*/
+                       1,           /*first block*/
+                       1,           /*last block*/
+                       0,           /*maximum magnitude*/
+                       pcmreader->sample_rate,
+                       0,           /*false stereo*/
+                       0xFFFFFFFF); /*CRC*/
+
+    bw_rec_copy(bs, sub_blocks);
+}
+
+static void
+wavpack_md5_update(void *data, unsigned char *buffer, unsigned long len)
+{
+    audiotools__MD5Update((audiotools__MD5Context*)data,
+                          (const void*)buffer,
+                          len);
+}
+
+static void
+write_wave_header(BitstreamWriter* bs, const pcmreader* pcmreader,
+                  uint32_t total_frames, unsigned wave_footer_len)
+{
+    const unsigned avg_bytes_per_second = (pcmreader->sample_rate *
+                                           pcmreader->channels *
+                                           (pcmreader->bits_per_sample / 8));
+    const unsigned block_align = (pcmreader->channels *
+                                  (pcmreader->bits_per_sample / 8));
+    unsigned total_size = 4 * 3;  /*'RIFF' + size + 'WAVE'*/
+    char* fmt;
+    unsigned data_size;
+
+    total_size += 4 * 2;          /*'fmt ' + size*/
+    if ((pcmreader->channels <= 2) &&
+        (pcmreader->bits_per_sample <= 16)) {
+        /*classic fmt chunk*/
+        fmt = "16u 16u 32u 32u 16u 16u";
+    } else {
+        /*extended fmt chunk*/
+        fmt = "16u 16u 32u 32u 16u 16u 16u 16u 32u 16b";
+    }
+    total_size += bs_format_size(fmt) / 8;
+
+    total_size += 4 * 2;         /*'data' + size*/
+    data_size = (total_frames *
+                 pcmreader->channels *
+                 (pcmreader->bits_per_sample / 8));
+    total_size += data_size;
+
+    total_size += wave_footer_len;
+    bs->build(bs, "4b 32u 4b 4b 32u",
+              "RIFF", total_size - 8, "WAVE",
+              "fmt ", bs_format_size(fmt) / 8);
+    if ((pcmreader->channels <= 2) &&
+        (pcmreader->bits_per_sample <= 16)) {
+        bs->build(bs, fmt,
+                  1,                                   /*compression code*/
+                  pcmreader->channels,
+                  pcmreader->sample_rate,
+                  avg_bytes_per_second,
+                  block_align,
+                  pcmreader->bits_per_sample);
+    } else {
+        bs->build(bs, fmt,
+                  0xFFFE,                              /*compression code*/
+                  pcmreader->channels,
+                  pcmreader->sample_rate,
+                  avg_bytes_per_second,
+                  block_align,
+                  pcmreader->bits_per_sample,
+                  22,                                  /*CB size*/
+                  pcmreader->bits_per_sample,
+                  pcmreader->channel_mask,
+                  "\x01\x00\x00\x00\x00\x00\x10\x00"
+                  "\x80\x00\x00\xaa\x00\x38\x9b\x71"); /*sub format*/
+    }
+    bs->build(bs, "4b 32u", "data", data_size);
 }
 
 #ifdef STANDALONE
 int main(int argc, char *argv[]) {
-    encoders_encode_wavpack(argv[1], stdin, 22050, 1, 1, 1, 0);
+    encoders_encode_wavpack(argv[1], stdin, 22050, 1, 1, 1, 10);
     return 0;
 }
 

@@ -1740,6 +1740,7 @@ bw_open(FILE *f, bs_endianness endianness)
     bs->build = bw_build;
     bs->byte_align = bw_byte_align_f_p_r;
     bs->bits_written = bw_bits_written_f_p_c;
+    bs->bytes_written = bw_bytes_written;
     bs->flush = bw_flush_f;
     bs->close_substream = bw_close_substream_f;
     bs->free = bw_free_f_a;
@@ -1787,6 +1788,7 @@ bw_open_python(PyObject *writer, bs_endianness endianness,
     bs->build = bw_build;
     bs->byte_align = bw_byte_align_f_p_r;
     bs->bits_written = bw_bits_written_f_p_c;
+    bs->bytes_written = bw_bytes_written;
     bs->flush = bw_flush_p;
     bs->close_substream = bw_close_substream_p;
     bs->free = bw_free_p;
@@ -1834,6 +1836,7 @@ bw_open_recorder(bs_endianness endianness)
     bs->build = bw_build;
     bs->byte_align = bw_byte_align_f_p_r;
     bs->bits_written = bw_bits_written_r;
+    bs->bytes_written = bw_bytes_written;
     bs->flush = bw_flush_r_a_c;
     bs->close_substream = bw_close_substream_r_a;
     bs->free = bw_free_r;
@@ -1867,6 +1870,7 @@ bw_open_accumulator(bs_endianness endianness)
     bs->byte_align = bw_byte_align_a;
     bs->set_endianness = bw_set_endianness_a;
     bs->bits_written = bw_bits_written_a;
+    bs->bytes_written = bw_bytes_written;
     bs->flush = bw_flush_r_a_c;
     bs->close_substream = bw_close_substream_r_a;
     bs->free = bw_free_f_a;
@@ -2404,21 +2408,30 @@ bw_build(struct BitstreamWriter_s* stream, char* format, ...)
 
 
 unsigned int
-bw_bits_written_f_p_c(BitstreamWriter* bs) {
+bw_bits_written_f_p_c(BitstreamWriter* bs)
+{
     /*actual file writing doesn't keep track of bits written
       since the total could be extremely large*/
     return 0;
 }
 
 unsigned int
-bw_bits_written_r(BitstreamWriter* bs) {
+bw_bits_written_r(BitstreamWriter* bs)
+{
     return ((bs->output.buffer->buffer_size -
              bs->output.buffer->buffer_position) * 8) + bs->buffer_size;
 }
 
 unsigned int
-bw_bits_written_a(BitstreamWriter* bs) {
+bw_bits_written_a(BitstreamWriter* bs)
+{
     return bs->output.accumulator;
+}
+
+unsigned int
+bw_bytes_written(BitstreamWriter* bs)
+{
+    return bs->bits_written(bs) / 8;
 }
 
 

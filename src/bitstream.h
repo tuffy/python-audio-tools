@@ -813,6 +813,14 @@ typedef struct BitstreamWriter_s {
     unsigned int
     (*bits_written)(struct BitstreamWriter_s* bs);
 
+    /*returns the total bytes written to the stream thus far
+
+      this applies only to recorder and accumulator streams -
+      file-based streams must use a callback to keep track of
+      that information*/
+    unsigned int
+    (*bytes_written)(struct BitstreamWriter_s* bs);
+
     /*flushes the current output stream's pending data*/
     void
     (*flush)(struct BitstreamWriter_s* bs);
@@ -1011,6 +1019,9 @@ bw_set_endianness_c(BitstreamWriter* bs, bs_endianness endianness);
 void
 bw_build(struct BitstreamWriter_s* stream, char* format, ...);
 
+/*bs->bytes_written(bs)  method*/
+unsigned int
+bw_bytes_written(BitstreamWriter* bs);
 
 /*bs->bits_written(bs)  methods*/
 unsigned int

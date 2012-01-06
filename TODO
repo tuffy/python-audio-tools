@@ -5108,7 +5108,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] decoders/wavpack.h
    - [X] encoders/alac.h
    - [ ] encoders/shn.h
-   - [ ] encoders/wavpack.h
+   - [X] encoders/wavpack.h
    - [ ] pcmreader.h
 ** TODO Remove old array.h
 ** TODO Replace array2.h with array.h in all source files
@@ -5127,3 +5127,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   if it's one of a series of discs.
 * TODO Fix FLAC embedded cuesheets
 * TODO Fix --number=0 argument to tracktag
+* TODO Make internal functions static
+  Encoders and decoders come with lots of helper functions.
+  These should be defined statically to avoid colliding with one another.

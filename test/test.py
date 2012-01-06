@@ -167,6 +167,11 @@ class MD5_Reader:
         self.bits_per_sample = pcmreader.bits_per_sample
         self.md5 = md5()
 
+    def __repr__(self):
+        return "MD5Reader(%s,%s,%s)" % (self.sample_rate,
+                                        self.channels,
+                                        self.bits_per_sample)
+
     def read(self, bytes):
         framelist = self.pcmreader.read(bytes)
         self.md5.update(framelist.to_bytes(False, True))

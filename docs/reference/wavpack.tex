@@ -3938,13 +3938,13 @@ where \texttt{wexp}(\textit{x}) is defined from the following table:
 \clearpage
 
 \subsection{Encoding Bitstream}
-{\relsize{-1}
-\ALGORITHM{channel count (C), entropy values, a list of signed residual values per channel}{bitstream sub block data}
+{\relsize{-2}
+\ALGORITHM{channel count, entropy values, a list of signed residual values per channel}{bitstream sub block data}
 \SetKwData{UNDEFINED}{undefined}
 \SetKwData{RESIDUAL}{residual}
 \SetKwData{ENTROPY}{entropy}
 \SetKwData{BLOCKSAMPLES}{block samples}
-\SetKwData{CHANNELCOUNT}{C}
+\SetKwData{CHANNELCOUNT}{channel count}
 \SetKwData{ZEROES}{zeroes}
 \SetKwData{OFFSET}{offset}
 \SetKwData{ADD}{add}
@@ -3952,47 +3952,58 @@ where \texttt{wexp}(\textit{x}) is defined from the following table:
 \SetKw{AND}{and}
 \SetKw{OR}{or}
 \SetKw{IS}{is}
+\SetKwFunction{FLUSH}{flush}
 \SetKwFunction{UNARYUNDEFINED}{unary\_undefined}
 \SetKwFunction{ENCODERESIDUAL}{encode\_residual}
 \SetKwFunction{UNARY}{unary}
 \SetKwFunction{WRITERESIDUAL}{write\_residual}
-$m_{(-1)} \leftarrow \text{\UNDEFINED}$\tcc*[r]{buffered $\text{residual}_{i - 1}$}
+\eIf{$(\text{\ENTROPY}_{0~0} < 2)$ \AND $(\text{\ENTROPY}_{1~0} < 2)$}{
+  $\text{\ZEROES}_{(-1)} \leftarrow 0$\;
+}{
+  $\text{\ZEROES}_{(-1)} \leftarrow \text{\UNDEFINED}$\;
+}
+$u_{(-2)} \leftarrow \text{\UNDEFINED}$\;
+$m_{(-1)} \leftarrow \text{\OFFSET}_{(-1)} \leftarrow \text{\ADD}_{(-1)} \leftarrow \text{\SIGN}_{(-1)} \leftarrow \text{\UNDEFINED}$\tcc*[r]{buffered $\text{residual}_{i - 1}$}
 $i \leftarrow 0$\;
 \While{$i < (\text{\BLOCKSAMPLES} \times \text{\CHANNELCOUNT})$}{
-  \If{$(\text{\ENTROPY}_{0~0} < 2)$ \AND $(\text{\ENTROPY}_{1~0} < 2)$ \AND
-\newline
-$((m_{i - 1} = \UNDEFINED)$ \OR $\UNARYUNDEFINED(u_{i - 2}~,~m_{i - 1}))$}{
-    \tcc{handle long run of zero residuals}
-    $\text{\ZEROES} \leftarrow 0$\;
-    \While{$(i < (\text{\BLOCKSAMPLES} \times \text{\CHANNELCOUNT}))$ \AND $(\text{\RESIDUAL}_{(i \bmod \text{\CHANNELCOUNT})~\lfloor i \div \text{\CHANNELCOUNT}\rfloor} = 0)$}{
-      \If(\tcc*[f]{flush $\text{residual}_{i - 1}$, if any}){$m_{i - 1} \neq \UNDEFINED$}{
-        $\text{\WRITERESIDUAL}(\UNDEFINED~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1})$\;
+  $r_i \leftarrow \text{\RESIDUAL}_{(i \bmod \text{\CHANNELCOUNT})~\lfloor i \div \text{\CHANNELCOUNT}\rfloor}$\;
+  \eIf{$(\text{\ENTROPY}_{0~0} < 2)$ \AND $(\text{\ENTROPY}_{1~0} < 2)$ \AND $\UNARYUNDEFINED(u_{i - 2}~,~m_{i - 1})$}{
+    \eIf(\tcc*[f]{in a block of zeroes}){$\text{\ZEROES}_{i - 1} \neq \text{\UNDEFINED}$}{
+      \eIf(\tcc*[f]{continue block of zeroes}){$r_i = 0$}{
+        $\text{\ZEROES}_i \leftarrow \text{\ZEROES}_{i - 1} + 1$\;
+        $(u_{i - 1}~,~m_i~,~\text{\OFFSET}_i~,~\text{\ADD}_i~,~\text{\SIGN}_i) \leftarrow (u_{i - 2}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1})$\;
+        $\text{\ENTROPY}_{0~0} \leftarrow \text{\ENTROPY}_{0~1} \leftarrow \text{\ENTROPY}_{0~2} \leftarrow \text{\ENTROPY}_{1~0} \leftarrow \text{\ENTROPY}_{1~1} \leftarrow \text{\ENTROPY}_{1~2} \leftarrow 0$\;
+        $i \leftarrow i + 1$\;
+      }(\tcc*[f]{end block of zeroes}){
+        $\text{\ZEROES}_i \leftarrow \text{\UNDEFINED}$\;
+        $(m_i~,~\text{\OFFSET}_i~,~\text{\ADD}_i~,~\text{\SIGN}_i) \leftarrow \ENCODERESIDUAL(r_i~,~\text{\ENTROPY}_{(i \bmod \text{\CHANNELCOUNT})})$\;
+        $u_{i - 1} \leftarrow \FLUSH(u_{i - 2}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1}~,~\text{\ZEROES}_{i - 1}~,~m_i)$\;
+        $i \leftarrow i + 1$\;
       }
-      $\text{\ZEROES} \leftarrow \text{\ZEROES} + 1$\;
-      $u_{i - 1} \leftarrow \UNDEFINED$\;
-      $m_{i} \leftarrow \UNDEFINED$\;
-      $i \leftarrow i + 1$\;
+    }(\tcc*[f]{start a new block of zeroes}){
+      \eIf{$r_i = 0$}{
+        $\text{\ZEROES}_i \leftarrow 1$\;
+        $(u_{i - 1}~,~m_i~,~\text{\OFFSET}_i~,~\text{\ADD}_i~,~\text{\SIGN}_i) \leftarrow (u_{i - 2}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1})$\;
+        $\text{\ENTROPY}_{0~0} \leftarrow \text{\ENTROPY}_{0~1} \leftarrow \text{\ENTROPY}_{0~2} \leftarrow \text{\ENTROPY}_{1~0} \leftarrow \text{\ENTROPY}_{1~1} \leftarrow \text{\ENTROPY}_{1~2} \leftarrow 0$\;
+        $i \leftarrow i + 1$\;
+      }{
+        $\text{\ZEROES}_i \leftarrow 0$\;
+        $(m_i~,~\text{\OFFSET}_i~,~\text{\ADD}_i~,~\text{\SIGN}_i) \leftarrow \ENCODERESIDUAL(r_i~,~\text{\ENTROPY}_{(i \bmod \text{\CHANNELCOUNT})})$\;
+        $u_{i - 1} \leftarrow \FLUSH(u_{i - 2}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1}~,~\text{\ZEROES}_{i - 1}~,~m_i)$\;
+        $i \leftarrow i + 1$\;
+      }
     }
-    write \ZEROES in modified Elias gamma code\;
-    \If{$\text{\ZEROES} > 0$}{
-      $\text{\ENTROPY}_{0~0} \leftarrow \text{\ENTROPY}_{0~1} \leftarrow \text{\ENTROPY}_{0~2} \leftarrow 0$\;
-      $\text{\ENTROPY}_{1~0} \leftarrow \text{\ENTROPY}_{1~1} \leftarrow \text{\ENTROPY}_{1~2} \leftarrow 0$\;
-    }
-  }
-  \If{$i < (\text{\BLOCKSAMPLES} \times \text{\CHANNELCOUNT})$}{
-    \tcc{encode $\text{residual}_i$ and flush previous $\text{residual}_{i - 1}$, if any}
-    $(m_i~,~\text{\OFFSET}_i~,~\text{\ADD}_i~,~\text{\SIGN}_i) \leftarrow \ENCODERESIDUAL(\text{\RESIDUAL}_{(i \bmod \text{\CHANNELCOUNT})~\lfloor i \div \text{\CHANNELCOUNT}\rfloor}~,~\text{\ENTROPY}_{(i \bmod \text{\CHANNELCOUNT})})$\;
-    \If{$m_{i - 1} \neq \UNDEFINED$}{
-      $u_{i - 1} \leftarrow \UNARY(u_{i - 2}~,~m_{i - 1}~,~m_{i})$\;
-      $\text{\WRITERESIDUAL}(u_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1})$\;
-    }
+  }(\tcc*[f]{encode regular residual}){
+    $\text{\ZEROES}_i \leftarrow \text{\UNDEFINED}$\;
+    $(m_i~,~\text{\OFFSET}_i~,~\text{\ADD}_i~,~\text{\SIGN}_i) \leftarrow \ENCODERESIDUAL(r_i~,~\text{\ENTROPY}_{(i \bmod \text{\CHANNELCOUNT})})$\;
+    $u_{i - 1} \leftarrow \FLUSH(u_{i - 2}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1}~,~\text{\ZEROES}_{i - 1}~,~m_i)$\;
     $i \leftarrow i + 1$\;
   }
 }
-\If(\tcc*[f]{flush final residual, if any}){$m_{i - 1} \neq \UNDEFINED$}{
-  $u_{i - 1} \leftarrow \UNARY(u_{i - 2}~,~m_{i - 1}~,~0)$\;
-  $\text{\WRITERESIDUAL}(u_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1})$\;
-}
+\BlankLine
+\tcc{flush final residual}
+$u_{i - 1} \leftarrow \FLUSH(u_{i - 2}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1}~,~\text{\ZEROES}_{i - 1}~,~0)$\;
+\BlankLine
 \Return encoded bitstream sub block\;
 \EALGORITHM
 
@@ -4015,76 +4026,79 @@ $((m_{i - 1} = \UNDEFINED)$ \OR $\UNARYUNDEFINED(u_{i - 2}~,~m_{i - 1}))$}{
 \clearpage
 
 {\relsize{-2}
-\subsubsection{\texttt{write\_residual} Function}
-\ALGORITHM{$u_j$, $\text{offset}_j$, $\text{add}_j$, $\text{sign}_j$}{residual data}
-\SetKwData{UNDEFINED}{undefined}
-\SetKwData{ADD}{add}
-\SetKwData{OFFSET}{offset}
-\SetKwData{SIGN}{sign}
-\SetKw{IS}{is}
-\SetKw{NOT}{not}
-\If{$u_j \neq \UNDEFINED$}{
-  \eIf{$u_j < 16$}{
-    \WUNARY $u_j$ with stop bit 0\;
+  \subsubsection{\texttt{flush} Function}
+  \ALGORITHM{$u_{i - 2}$, $m_{i - 1}$, $\text{offset}_{i - 1}$, $\text{add}_{i - 1}$, $\text{sign}_{i - 1}$, $\text{zeroes}_{i - 1}$, $m_i$}{$u_{i - 1}$}
+  \SetKwData{UNDEFINED}{undefined}
+  \SetKwData{ZEROES}{zeroes}
+  \SetKwData{OFFSET}{offset}
+  \SetKwData{ADD}{add}
+  \SetKwData{SIGN}{sign}
+  \SetKwFunction{UNARY}{unary}
+  \SetKwFunction{WRITERESIDUAL}{write\_residual}
+  \SetKw{AND}{and}
+  \SetKw{OR}{or}
+  \eIf{$m_{i - 1} \neq \text{\UNDEFINED}$}{
+    \tcc{calculate $\text{unary}_{i - 1}$ value for $m_{i - 1}$ based on $m_i$}
+    \uIf{$(m_{i - 1} > 0)$ \AND $(m_i > 0)$}{
+      \eIf{$(u_{i - 2} = \UNDEFINED)$ \OR $(u_{i - 2} \bmod 2 = 0)$}{
+        $u_{i - 1} \leftarrow (m_{i - 1} \times 2) + 1$\;
+      }{
+        $u_{i - 1} \leftarrow (m_{i - 1} \times 2) - 1$\;
+      }
+    }
+    \uElseIf{$(m_{i - 1} = 0)$ \AND $(m_i > 0)$}{
+      \eIf{$(u_{i - 2} = \UNDEFINED)$ \OR $(u_{i - 2} \bmod 2 = 1)$}{
+        $u_{i - 1} \leftarrow 1$\;
+      }{
+        $u_{i - 1} \leftarrow \UNDEFINED$\;
+      }
+    }
+    \uElseIf{$(m_{i - 1} > 0)$ \AND $(m_i = 0)$}{
+      \eIf{$(u_{i - 2} = \UNDEFINED)$ \OR $(u_{i - 2} \bmod 2 = 0)$}{
+        $u_{i - 1} \leftarrow m_{i - 1} \times 2$\;
+      }{
+        $u_{i - 1} \leftarrow (m_{i - 1} - 1) \times 2$\;
+      }
+    }
+    \ElseIf{$(m_{i - 1} = 0)$ \AND $(m_i = 0)$}{
+      \eIf{$(u_{i - 2} = \UNDEFINED)$ \OR $(u_{i - 2} \bmod 2 = 1)$}{
+        $u_{i - 1} \leftarrow 0$\;
+      }{
+        $u_{i - 1} \leftarrow \UNDEFINED$\;
+      }
+    }
+    \BlankLine
+    \tcc{write $\text{residual}_{i - 1}$ to disk using $\text{unary}_{i - 1}$}
+    \If{$u_{i - 1} \neq \UNDEFINED$}{
+      \eIf{$u_{i - 1} < 16$}{
+        \WUNARY $u_{i - 1}$ with stop bit 0\;
+      }{
+        \WUNARY 16 with stop bit 0\;
+        write $(u_{i - 1} - 16)$ in modified Elias gamma code\;
+      }
+    }
+    \If{$\text{\ADD}_{i - 1} > 0$}{
+      $p \leftarrow \lfloor\log_2(\text{\ADD}_{i - 1})\rfloor$\;
+      $e \leftarrow 2 ^ {p + 1} - \text{\ADD}_{i - 1} - 1$\;
+      \eIf{$\text{\OFFSET}_{i - 1} < e$}{
+        $r \leftarrow \text{\OFFSET}_{i - 1}$\;
+        \WRITE $r$ in $p$ unsigned bits\;
+      }{
+        $r \leftarrow \lfloor(\text{\OFFSET}_{i - 1} + e) \div 2\rfloor$\;
+        $b \leftarrow (\text{\OFFSET}_{i - 1} + e) \bmod 2$\;
+        \WRITE $r$ in $p$ unsigned bits\;
+        \WRITE $b$ in 1 unsigned bit\;
+      }
+    }
+    \WRITE $\text{\SIGN}_{i - 1}$ in 1 unsigned bit\;
   }{
-    \WUNARY 16 with stop bit 0\;
-    write $(u_j - 16)$ in modified Elias gamma code\;
+    $u_{i - 1} \leftarrow ?$\;
   }
-}
-\If{$\text{\ADD}_j > 0$}{
-  $p \leftarrow \lfloor\log_2(\text{\ADD}_j)\rfloor$\;
-  $e \leftarrow 2 ^ {p + 1} - \text{\ADD}_j - 1$\;
-  \eIf{$\text{\OFFSET}_j < e$}{
-    $r \leftarrow \text{\OFFSET}_j$\;
-    \WRITE $r$ in $p$ unsigned bits\;
-  }{
-    $r \leftarrow \lfloor(\text{\OFFSET}_j + e) \div 2\rfloor$\;
-    $b \leftarrow (\text{\OFFSET}_j + e) \bmod 2$\;
-    \WRITE $r$ in $p$ unsigned bits\;
-    \WRITE $b$ in 1 unsigned bit\;
+  \If{$\text{\ZEROES}_{i - 1} \neq \text{\UNDEFINED}$}{
+    write $\text{\ZEROES}_{i - 1}$ in modified Elias gamma code\;
   }
-}
-\WRITE $\text{\SIGN}_j$ in 1 unsigned bit\;
-\Return residual data\;
-\EALGORITHM
-
-\subsubsection{\texttt{unary} Function}
-\ALGORITHM{$u_{j - 1}$, $m_j$, $m_{j + 1}$}{$u_j$}
-\SetKw{AND}{and}
-\SetKw{OR}{or}
-\SetKw{IS}{is}
-\SetKw{NOT}{not}
-\SetKwData{UNDEFINED}{undefined}
-\uIf{$(m_j > 0)$ \AND $(m_{j + 1} > 0)$}{
-  \eIf{$(u_{j - 1} = \UNDEFINED)$ \OR $(u_{j - 1} \bmod 2 = 0)$}{
-    $u_j \leftarrow (m_j \times 2) + 1$\;
-  }{
-    $u_j \leftarrow (m_j \times 2) - 1$\;
-  }
-}
-\uElseIf{$(m_j = 0)$ \AND $(m_{j + 1} > 0)$}{
-  \eIf{$(u_{j - 1} = \UNDEFINED)$ \OR $(u_{j - 1} \bmod 2 = 1)$}{
-    $u_j \leftarrow 1$\;
-  }{
-    $u_j \leftarrow \UNDEFINED$\;
-  }
-}
-\uElseIf{$(m_j > 0)$ \AND $(m_{j + 1} = 0)$}{
-  \eIf{$(u_{j - 1} = \UNDEFINED)$ \OR $(u_{j - 1} \bmod 2 = 0)$}{
-    $u_j \leftarrow m_j \times 2$\;
-  }{
-    $u_j \leftarrow (m_j - 1) \times 2$\;
-  }
-}
-\ElseIf{$(m_j = 0)$ \AND $(m_{j + 1} = 0)$}{
-  \eIf{$(u_{j - 1} = \UNDEFINED)$ \OR $(u_{j - 1} \bmod 2 = 1)$}{
-    $u_j \leftarrow 0$\;
-  }{
-    $u_j \leftarrow \UNDEFINED$\;
-  }
-}
-\Return $u_j$\;
-\EALGORITHM
+  \Return $u_{i - 1}$\;
+  \EALGORITHM
 }
 
 \clearpage
@@ -4123,7 +4137,7 @@ $\text{\MEDIAN}_{c~2} \leftarrow \lfloor\text{\ENTROPY}_{c~2} \div 2 ^ 4\rfloor 
   $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} + \lfloor(\text{\ENTROPY}_{c~0} + 128) \div 128\rfloor \times 5$\;
   $\text{\ENTROPY}_{c~1} \leftarrow \text{\ENTROPY}_{c~1} - \lfloor(\text{\ENTROPY}_{c~1} + 62) \div 64\rfloor \times 2$\;
 }
-\uElseIf{$(\UNSIGNED - (\text{\ENTROPY}_{c~0} + \text{\ENTROPY}_{c~1})) < \text{\ENTROPY}_{c~2}$}{
+\uElseIf{$(\UNSIGNED - (\text{\MEDIAN}_{c~0} + \text{\MEDIAN}_{c~1})) < \text{\MEDIAN}_{c~2}$}{
   $\text{\MED}_i \leftarrow 2$\;
   $\text{\OFFSET}_i \leftarrow \text{\UNSIGNED} - (\text{\MEDIAN}_{c~0} + \text{\ENTROPY}_{c~1})$\;
   $\text{\ADD}_i \leftarrow \text{\MEDIAN}_{c~2} - 1$\;

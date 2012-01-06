@@ -439,7 +439,7 @@ wavpack_decode_block(decoders_WavPackDecoder* decoder,
 {
     struct sub_block sub_block;
     int sub_block_size;
-    status status;
+    status status = OK;
 
     int decorrelation_terms_read = 0;
     int decorrelation_weights_read = 0;
@@ -471,58 +471,68 @@ wavpack_decode_block(decoders_WavPackDecoder* decoder,
         if (!sub_block.nondecoder_data) {
             switch (sub_block.metadata_function) {
             case 2:
-                status = wavpack_read_decorrelation_terms(
-                             &sub_block,
-                             decorrelation_terms,
-                             decorrelation_deltas);
+                if ((status = wavpack_read_decorrelation_terms(
+                         &sub_block,
+                         decorrelation_terms,
+                         decorrelation_deltas)) != OK) {
+                    return status;
+                }
                 decorrelation_terms_read = 1;
                 break;
             case 3:
                 if (!decorrelation_terms_read) {
                     return DECORRELATION_TERMS_MISSING;
                 }
-                status = wavpack_read_decorrelation_weights(
-                             block_header,
-                             &sub_block,
-                             decorrelation_terms->len,
-                             decorrelation_weights);
+                if ((status = wavpack_read_decorrelation_weights(
+                         block_header,
+                         &sub_block,
+                         decorrelation_terms->len,
+                         decorrelation_weights)) != OK) {
+                    return status;
+                }
                 decorrelation_weights_read = 1;
                 break;
             case 4:
                 if (!decorrelation_terms_read) {
                     return DECORRELATION_TERMS_MISSING;
                 }
-                status = wavpack_read_decorrelation_samples(
-                             block_header,
-                             &sub_block,
-                             decorrelation_terms,
-                             decorrelation_samples);
+                if ((status = wavpack_read_decorrelation_samples(
+                         block_header,
+                         &sub_block,
+                         decorrelation_terms,
+                         decorrelation_samples)) != OK) {
+                    return status;
+                }
                 decorrelation_samples_read = 1;
                 break;
             case 5:
-                status = wavpack_read_entropy_variables(block_header,
-                                                        &sub_block,
-                                                        medians);
+                if ((status = wavpack_read_entropy_variables(block_header,
+                                                             &sub_block,
+                                                             medians)) != OK) {
+                    return status;
+                }
                 entropy_variables_read = 1;
                 break;
             case 9:
-                status = wavpack_read_extended_integers(&sub_block,
-                                                        &extended_integers);
+                if ((status = wavpack_read_extended_integers(
+                         &sub_block,
+                         &extended_integers)) != OK) {
+                    return status;
+                }
                 extended_integers_read = 1;
                 break;
             case 10:
                 if (!entropy_variables_read) {
                     return ENTROPY_VARIABLES_MISSING;
                 }
-                status = wavpack_read_bitstream(block_header,
-                                                sub_block.data,
-                                                medians,
-                                                residuals);
+                if ((status = wavpack_read_bitstream(block_header,
+                                                     sub_block.data,
+                                                     medians,
+                                                     residuals)) != OK) {
+                    return status;
+                }
                 bitstream_read = 1;
                 break;
-            }
-            if (status != OK) {
-                return status;
             }
         }
     }
