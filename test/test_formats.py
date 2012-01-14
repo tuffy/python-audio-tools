@@ -4484,24 +4484,6 @@ class WavPackFileTest(TestForeignWaveChunks,
         finally:
             temp.close()
 
-        #test a truncated WavPack file's to_pcm() routine
-        #generates DecodingErrors on close
-        temp = tempfile.NamedTemporaryFile(
-            suffix=".wv")
-        try:
-            temp.write(open("wavpack-combo.wv", "rb").read())
-            temp.flush()
-            wavpack = audiotools.open(temp.name)
-            f = open(temp.name, "wb")
-            f.write(open("wavpack-combo.wv", "rb").read()[0:-0x20B])
-            f.close()
-            reader = wavpack.to_pcm()
-            audiotools.transfer_framelist_data(reader, lambda x: x)
-            self.assertRaises(audiotools.DecodingError,
-                              reader.close)
-        finally:
-            temp.close()
-
         #test a truncated WavPack file's convert() method
         #generates EncodingErrors
         temp = tempfile.NamedTemporaryFile(

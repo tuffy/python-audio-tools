@@ -977,7 +977,6 @@ wavpack_read_bitstream(const struct block_header* block_header,
     int u = UNDEFINED;
     unsigned i = 0;
     unsigned j;
-    array_i* r;
 
     residuals->reset(residuals);
 
@@ -999,8 +998,8 @@ wavpack_read_bitstream(const struct block_header* block_header,
 
                 if (zeroes > 0) {
                     for (j = 0; j < zeroes; j++) {
-                        r = residuals->_[i % channel_count];
-                        r->append(r, 0);
+                        array_i* channel = residuals->_[i % channel_count];
+                        channel->append(channel, 0);
                         i++;
                     }
                     medians->_[0]->_[0] = 0;
@@ -1011,20 +1010,25 @@ wavpack_read_bitstream(const struct block_header* block_header,
                     medians->_[1]->_[2] = 0;
                 }
 
+
+
                 if (i < (channel_count * block_header->block_samples)) {
-                    r = residuals->_[i % channel_count];
-                    r->append(r, wavpack_read_residual(
-                                    sub_block_data,
-                                    &u,
-                                    medians->_[i % channel_count]));
+                    const int residual =
+                        wavpack_read_residual(sub_block_data,
+                                              &u,
+                                              medians->_[i % channel_count]);
+                    array_i* channel = residuals->_[i % channel_count];
+                    channel->append(channel, residual);
                     i++;
                 }
             } else {
-                r = residuals->_[i % channel_count];
-                r->append(r, wavpack_read_residual(
-                                 sub_block_data,
-                                 &u,
-                                 medians->_[i % channel_count]));
+                const int residual =
+                    wavpack_read_residual(
+                                          sub_block_data,
+                                          &u,
+                                          medians->_[i % channel_count]);
+                array_i* channel = residuals->_[i % channel_count];
+                channel->append(channel, residual);
                 i++;
             }
         }
@@ -1224,7 +1228,6 @@ wavpack_decorrelate_1ch_pass(int decorrelation_term,
                              const array_i* correlated,
                              array_i* decorrelated)
 {
-    int64_t temp;
     unsigned i;
 
     decorrelated->reset(decorrelated);
@@ -1235,7 +1238,8 @@ wavpack_decorrelate_1ch_pass(int decorrelation_term,
         decorrelation_samples->copy(decorrelation_samples, decorrelated);
         decorrelated->reverse(decorrelated);
         for (i = 0; i < correlated->len; i++) {
-            temp = (3 * decorrelated->_[i + 1] - decorrelated->_[i]) >> 1;
+            const int64_t temp =
+                (3 * decorrelated->_[i + 1] - decorrelated->_[i]) >> 1;
             decorrelated->append(decorrelated,
                                  apply_weight(decorrelation_weight, temp) +
                                  correlated->_[i]);
@@ -1249,7 +1253,8 @@ wavpack_decorrelate_1ch_pass(int decorrelation_term,
         decorrelation_samples->copy(decorrelation_samples, decorrelated);
         decorrelated->reverse(decorrelated);
         for (i = 0; i < correlated->len; i++) {
-            temp = 2 * decorrelated->_[i + 1] - decorrelated->_[i];
+            const int64_t temp =
+                2 * decorrelated->_[i + 1] - decorrelated->_[i];
             decorrelated->append(decorrelated,
                                  apply_weight(decorrelation_weight, temp) +
                                  correlated->_[i]);

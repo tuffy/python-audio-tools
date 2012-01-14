@@ -1463,8 +1463,8 @@ Given a 1 channel block with $\text{medians}_0 = \texttt{[0, 0, 0]}$:
 i & u_i & m_i &
 \text{base} & \text{add} & \text{median}_{0~0} & \text{median}_{0~1} & \text{median}_{0~2} \\
 \hline
-0 & \multicolumn{7}{c|}{read modified Elias gamma code: $t \leftarrow 0~,~\text{zeroes} \leftarrow 0$} \\
-&
+& \multicolumn{7}{c|}{read modified Elias gamma code: $t \leftarrow 0~,~\text{zeroes} \leftarrow 0$} \\
+0 &
 3 & \lfloor 3 \div 2\rfloor = 1 &
 1 + \left\lfloor\frac{0}{2 ^ 4}\right\rfloor = 1 &
 \left\lfloor\frac{0}{2 ^ 4}\right\rfloor = 0 &
@@ -1539,8 +1539,8 @@ i & u_i & m_i &
 2 - 2 = 0 & 15 & 3
 \\
 14 &
-\textit{undefined} & 0 &
-0 & \left\lfloor\frac{0}{2 ^ 4}\right\rfloor = 0 &
+\textit{\color{blue}undefined} & 0 &
+0 & \left\lfloor\frac{0}{2 ^ 4}\right\rfloor = {\color{blue}0} &
 0 - 0 = 0 & 15 & 3
 \\
 15 & \multicolumn{7}{c|}{read modified Elias gamma code: $t \leftarrow 4~,~p \leftarrow 2~,~\text{zeroes} \leftarrow 2 ^ {(4 - 1)} + 2 = 10$} \\
@@ -3957,48 +3957,40 @@ where \texttt{wexp}(\textit{x}) is defined from the following table:
 \SetKwFunction{ENCODERESIDUAL}{encode\_residual}
 \SetKwFunction{UNARY}{unary}
 \SetKwFunction{WRITERESIDUAL}{write\_residual}
-\eIf{$(\text{\ENTROPY}_{0~0} < 2)$ \AND $(\text{\ENTROPY}_{1~0} < 2)$}{
-  $\text{\ZEROES}_{(-1)} \leftarrow 0$\;
-}{
-  $\text{\ZEROES}_{(-1)} \leftarrow \text{\UNDEFINED}$\;
-}
+$\text{\ZEROES}_{(-1)} \leftarrow \text{\UNDEFINED}$\;
 $u_{(-2)} \leftarrow \text{\UNDEFINED}$\;
 $m_{(-1)} \leftarrow \text{\OFFSET}_{(-1)} \leftarrow \text{\ADD}_{(-1)} \leftarrow \text{\SIGN}_{(-1)} \leftarrow \text{\UNDEFINED}$\tcc*[r]{buffered $\text{residual}_{i - 1}$}
 $i \leftarrow 0$\;
+\BlankLine
 \While{$i < (\text{\BLOCKSAMPLES} \times \text{\CHANNELCOUNT})$}{
   $r_i \leftarrow \text{\RESIDUAL}_{(i \bmod \text{\CHANNELCOUNT})~\lfloor i \div \text{\CHANNELCOUNT}\rfloor}$\;
   \eIf{$(\text{\ENTROPY}_{0~0} < 2)$ \AND $(\text{\ENTROPY}_{1~0} < 2)$ \AND $\UNARYUNDEFINED(u_{i - 2}~,~m_{i - 1})$}{
-    \eIf(\tcc*[f]{in a block of zeroes}){$\text{\ZEROES}_{i - 1} \neq \text{\UNDEFINED}$}{
+    \eIf(\tcc*[f]{in a block of zeroes}){$(\text{\ZEROES}_{i - 1} \neq \text{\UNDEFINED})$ \AND $(m_{i - 1} = \text{\UNDEFINED})$}{
       \eIf(\tcc*[f]{continue block of zeroes}){$r_i = 0$}{
         $\text{\ZEROES}_i \leftarrow \text{\ZEROES}_{i - 1} + 1$\;
         $(u_{i - 1}~,~m_i~,~\text{\OFFSET}_i~,~\text{\ADD}_i~,~\text{\SIGN}_i) \leftarrow (u_{i - 2}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1})$\;
-        $\text{\ENTROPY}_{0~0} \leftarrow \text{\ENTROPY}_{0~1} \leftarrow \text{\ENTROPY}_{0~2} \leftarrow \text{\ENTROPY}_{1~0} \leftarrow \text{\ENTROPY}_{1~1} \leftarrow \text{\ENTROPY}_{1~2} \leftarrow 0$\;
-        $i \leftarrow i + 1$\;
       }(\tcc*[f]{end block of zeroes}){
-        $\text{\ZEROES}_i \leftarrow \text{\UNDEFINED}$\;
+        $\text{\ZEROES}_i \leftarrow \text{\ZEROES}_{i - 1}$\;
         $(m_i~,~\text{\OFFSET}_i~,~\text{\ADD}_i~,~\text{\SIGN}_i) \leftarrow \ENCODERESIDUAL(r_i~,~\text{\ENTROPY}_{(i \bmod \text{\CHANNELCOUNT})})$\;
-        $u_{i - 1} \leftarrow \FLUSH(u_{i - 2}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1}~,~\text{\ZEROES}_{i - 1}~,~m_i)$\;
-        $i \leftarrow i + 1$\;
       }
     }(\tcc*[f]{start a new block of zeroes}){
       \eIf{$r_i = 0$}{
         $\text{\ZEROES}_i \leftarrow 1$\;
-        $(u_{i - 1}~,~m_i~,~\text{\OFFSET}_i~,~\text{\ADD}_i~,~\text{\SIGN}_i) \leftarrow (u_{i - 2}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1})$\;
+        $m_i \leftarrow \text{\OFFSET}_i \leftarrow \text{\ADD}_i \leftarrow \text{\SIGN}_i \leftarrow \text{\UNDEFINED}$\;
+        $u_{i - 1} \leftarrow \FLUSH(u_{i - 2}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1}~,~\text{\ZEROES}_{i - 1}~,~0)$\;
         $\text{\ENTROPY}_{0~0} \leftarrow \text{\ENTROPY}_{0~1} \leftarrow \text{\ENTROPY}_{0~2} \leftarrow \text{\ENTROPY}_{1~0} \leftarrow \text{\ENTROPY}_{1~1} \leftarrow \text{\ENTROPY}_{1~2} \leftarrow 0$\;
-        $i \leftarrow i + 1$\;
-      }{
+      }(\tcc*[f]{false-alarm block of zeroes}){
         $\text{\ZEROES}_i \leftarrow 0$\;
         $(m_i~,~\text{\OFFSET}_i~,~\text{\ADD}_i~,~\text{\SIGN}_i) \leftarrow \ENCODERESIDUAL(r_i~,~\text{\ENTROPY}_{(i \bmod \text{\CHANNELCOUNT})})$\;
         $u_{i - 1} \leftarrow \FLUSH(u_{i - 2}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1}~,~\text{\ZEROES}_{i - 1}~,~m_i)$\;
-        $i \leftarrow i + 1$\;
       }
     }
   }(\tcc*[f]{encode regular residual}){
     $\text{\ZEROES}_i \leftarrow \text{\UNDEFINED}$\;
     $(m_i~,~\text{\OFFSET}_i~,~\text{\ADD}_i~,~\text{\SIGN}_i) \leftarrow \ENCODERESIDUAL(r_i~,~\text{\ENTROPY}_{(i \bmod \text{\CHANNELCOUNT})})$\;
     $u_{i - 1} \leftarrow \FLUSH(u_{i - 2}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1}~,~\text{\ZEROES}_{i - 1}~,~m_i)$\;
-    $i \leftarrow i + 1$\;
   }
+  $i \leftarrow i + 1$\;
 }
 \BlankLine
 \tcc{flush final residual}
@@ -4008,19 +4000,91 @@ $u_{i - 1} \leftarrow \FLUSH(u_{i - 2}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\t
 \EALGORITHM
 
 \subsubsection{\texttt{unary\_undefined} Function}
-\ALGORITHM{$u_{j - 1}$, $m_j$}{whether $u_j$ is defined}
+\ALGORITHM{$u_{i - 2}$, $m_{i - 1}$}{whether $u_{i - 1}$ is defined}
 \SetKw{AND}{and}
 \SetKw{IS}{is}
 \SetKw{NOT}{not}
 \SetKwData{TRUE}{true}
 \SetKwData{FALSE}{false}
 \SetKwData{UNDEFINED}{undefined}
-\eIf{$(m_j = 0)$ \AND $(u_{j - 1} \neq \UNDEFINED)$ \AND $(u_{j - 1} \bmod 2 = 0)$}{
-  \Return \TRUE\tcc*[r]{$u_j$ \IS \UNDEFINED}
-}{
-  \Return \FALSE\tcc*[r]{$u_j$ \IS \NOT \UNDEFINED}
+\uIf{$m_{i - 1} = \text{\UNDEFINED}$}{
+  \Return \TRUE\tcc*[r]{$u_{i - 1}$ \IS \UNDEFINED}
+}
+\uElseIf{$(m_{i - 1} = 0)$ \AND $(u_{i - 2} \neq \UNDEFINED)$ \AND $(u_{i - 2} \bmod 2 = 0)$}{
+  \Return \TRUE\tcc*[r]{$u_{i - 1}$ \IS \UNDEFINED}
+}
+\Else{
+  \Return \FALSE\tcc*[r]{$u_{i - 1}$ \IS \NOT \UNDEFINED}
 }
 \EALGORITHM
+}
+
+\clearpage
+
+{\relsize{-2}
+  \subsubsection{\texttt{encode\_residual} Function}
+  \ALGORITHM{signed residual value, entropy variables for channel}{$\text{m}_i$, $\text{offset}_i$, $\text{add}_i$, $\text{sign}_i$; updated entropy values}
+  \SetKwData{RESIDUAL}{residual}
+  \SetKwData{UNSIGNED}{unsigned}
+  \SetKwData{SIGN}{sign}
+  \SetKwData{ENTROPY}{entropy}
+  \SetKwData{MEDIAN}{median}
+  \SetKwData{MED}{m}
+  \SetKwData{ADD}{add}
+  \SetKwData{OFFSET}{offset}
+  \eIf{$\RESIDUAL \geq 0$}{
+    $\UNSIGNED \leftarrow \RESIDUAL$\;
+    $\text{\SIGN}_i \leftarrow 0$\;
+  }{
+    $\UNSIGNED \leftarrow -\RESIDUAL - 1$\;
+    $\text{\SIGN}_i \leftarrow 1$\;
+  }
+  $\text{\MEDIAN}_{c~0} \leftarrow \lfloor\text{\ENTROPY}_{c~0} \div 2 ^ 4\rfloor + 1$\;
+  $\text{\MEDIAN}_{c~1} \leftarrow \lfloor\text{\ENTROPY}_{c~1} \div 2 ^ 4\rfloor + 1$\;
+  $\text{\MEDIAN}_{c~2} \leftarrow \lfloor\text{\ENTROPY}_{c~2} \div 2 ^ 4\rfloor + 1$\;
+  \uIf{$\UNSIGNED < \text{\MEDIAN}_{c~0}$}{
+    $\text{\MED}_i \leftarrow 0$\;
+    $\text{\OFFSET}_i \leftarrow \text{\UNSIGNED}$\tcc*[r]{offset is unsigned - base}
+    $\text{\ADD}_i \leftarrow \text{\MEDIAN}_{c~0} - 1$\;
+    $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} - \lfloor(\text{\ENTROPY}_{c~0} + 126) \div 128\rfloor \times 2$\;
+  }
+  \uElseIf{$(\UNSIGNED - \text{\MEDIAN}_{c~0}) < \text{\MEDIAN}_{c~1}$}{
+    $\text{\MED}_i \leftarrow 1$\;
+    $\text{\OFFSET}_i \leftarrow \text{\UNSIGNED} - \text{\MEDIAN}_{c~0}$\;
+    $\text{\ADD}_i \leftarrow \text{\MEDIAN}_{c~1} - 1$\;
+    $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} + \lfloor(\text{\ENTROPY}_{c~0} + 128) \div 128\rfloor \times 5$\;
+    $\text{\ENTROPY}_{c~1} \leftarrow \text{\ENTROPY}_{c~1} - \lfloor(\text{\ENTROPY}_{c~1} + 62) \div 64\rfloor \times 2$\;
+  }
+  \uElseIf{$(\UNSIGNED - (\text{\MEDIAN}_{c~0} + \text{\MEDIAN}_{c~1})) < \text{\MEDIAN}_{c~2}$}{
+    $\text{\MED}_i \leftarrow 2$\;
+    $\text{\OFFSET}_i \leftarrow \text{\UNSIGNED} - (\text{\MEDIAN}_{c~0} + \text{\ENTROPY}_{c~1})$\;
+    $\text{\ADD}_i \leftarrow \text{\MEDIAN}_{c~2} - 1$\;
+    $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} + \lfloor(\text{\ENTROPY}_{c~0} + 128) \div 128\rfloor \times 5$\;
+    $\text{\ENTROPY}_{c~1} \leftarrow \text{\ENTROPY}_{c~1} + \lfloor(\text{\ENTROPY}_{c~1} + 64) \div 64\rfloor \times 5$\;
+    $\text{\ENTROPY}_{c~2} \leftarrow \text{\ENTROPY}_{c~2} - \lfloor(\text{\ENTROPY}_{c~2} + 30) \div 32\rfloor \times 2$\;
+  }
+  \Else{
+    $\text{\MED}_i \leftarrow \lfloor(\UNSIGNED - (\text{\MEDIAN}_{c~0} + \text{\MEDIAN}_{c~1})) \div \text{\MEDIAN}_{c~2}\rfloor + 2$\;
+    $\text{\OFFSET}_i \leftarrow \text{\UNSIGNED} - (\text{\MEDIAN}_{c~0} + \text{\MEDIAN}_{c~1} + ((\text{\MED}_i - 2) \times \text{\MEDIAN}_{c~2}))$\;
+    $\text{\ADD}_i \leftarrow \text{\MEDIAN}_{c~2} - 1$\;
+    $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} + \lfloor(\text{\ENTROPY}_{c~0} + 128) \div 128\rfloor \times 5$\;
+    $\text{\ENTROPY}_{c~1} \leftarrow \text{\ENTROPY}_{c~1} + \lfloor(\text{\ENTROPY}_{c~1} + 64) \div 64\rfloor \times 5$\;
+    $\text{\ENTROPY}_{c~2} \leftarrow \text{\ENTROPY}_{c~2} + \lfloor(\text{\ENTROPY}_{c~2} + 32) \div 32\rfloor \times 5$\;
+  }
+  \Return $\text{\MED}_i$, $\text{\OFFSET}_i$, $\text{\ADD}_i$, $\text{\SIGN}_i$; updated $\text{\ENTROPY}_c$ values\;
+  \EALGORITHM
+
+  \subsubsection{Writing Modified Elias Gamma Code}
+  \ALGORITHM{a non-negative integer value}{an encoded value}
+  \eIf{$v \leq 1$}{
+    \WUNARY $v$ with stop bit 0\;
+  }{
+    $t \leftarrow \lfloor\log_2(v)\rfloor + 1$\;
+    \WUNARY $t$ with stop bit 0\;
+    \WRITE $v \bmod 2 ^ {t - 1}$ in ($t - 1$) unsigned bits\;
+  }
+  \Return encoded value\;
+  \EALGORITHM
 }
 
 \clearpage
@@ -4037,6 +4101,9 @@ $u_{i - 1} \leftarrow \FLUSH(u_{i - 2}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\t
   \SetKwFunction{WRITERESIDUAL}{write\_residual}
   \SetKw{AND}{and}
   \SetKw{OR}{or}
+  \If{$\text{\ZEROES}_{i - 1} \neq \text{\UNDEFINED}$}{
+    write $\text{\ZEROES}_{i - 1}$ in modified Elias gamma code\;
+  }
   \eIf{$m_{i - 1} \neq \text{\UNDEFINED}$}{
     \tcc{calculate $\text{unary}_{i - 1}$ value for $m_{i - 1}$ based on $m_i$}
     \uIf{$(m_{i - 1} > 0)$ \AND $(m_i > 0)$}{
@@ -4092,81 +4159,10 @@ $u_{i - 1} \leftarrow \FLUSH(u_{i - 2}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\t
     }
     \WRITE $\text{\SIGN}_{i - 1}$ in 1 unsigned bit\;
   }{
-    $u_{i - 1} \leftarrow ?$\;
-  }
-  \If{$\text{\ZEROES}_{i - 1} \neq \text{\UNDEFINED}$}{
-    write $\text{\ZEROES}_{i - 1}$ in modified Elias gamma code\;
+    $u_{i - 1} \leftarrow \text{\UNDEFINED}$\;
   }
   \Return $u_{i - 1}$\;
   \EALGORITHM
-}
-
-\clearpage
-
-{\relsize{-2}
-\subsubsection{\texttt{encode\_residual} Function}
-\ALGORITHM{signed residual value, entropy variables for channel}{$\text{m}_i$, $\text{offset}_i$, $\text{add}_i$, $\text{sign}_i$; updated entropy values}
-\SetKwData{RESIDUAL}{residual}
-\SetKwData{UNSIGNED}{unsigned}
-\SetKwData{SIGN}{sign}
-\SetKwData{ENTROPY}{entropy}
-\SetKwData{MEDIAN}{median}
-\SetKwData{MED}{m}
-\SetKwData{ADD}{add}
-\SetKwData{OFFSET}{offset}
-\eIf{$\RESIDUAL \geq 0$}{
-  $\UNSIGNED \leftarrow \RESIDUAL$\;
-  $\text{\SIGN}_i \leftarrow 0$\;
-}{
-  $\UNSIGNED \leftarrow -\RESIDUAL - 1$\;
-  $\text{\SIGN}_i \leftarrow 1$\;
-}
-$\text{\MEDIAN}_{c~0} \leftarrow \lfloor\text{\ENTROPY}_{c~0} \div 2 ^ 4\rfloor + 1$\;
-$\text{\MEDIAN}_{c~1} \leftarrow \lfloor\text{\ENTROPY}_{c~1} \div 2 ^ 4\rfloor + 1$\;
-$\text{\MEDIAN}_{c~2} \leftarrow \lfloor\text{\ENTROPY}_{c~2} \div 2 ^ 4\rfloor + 1$\;
-\uIf{$\UNSIGNED < \text{\MEDIAN}_{c~0}$}{
-  $\text{\MED}_i \leftarrow 0$\;
-  $\text{\OFFSET}_i \leftarrow \text{\UNSIGNED}$\tcc*[r]{offset is unsigned - base}
-  $\text{\ADD}_i \leftarrow \text{\MEDIAN}_{c~0} - 1$\;
-  $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} - \lfloor(\text{\ENTROPY}_{c~0} + 126) \div 128\rfloor \times 2$\;
-}
-\uElseIf{$(\UNSIGNED - \text{\MEDIAN}_{c~0}) < \text{\MEDIAN}_{c~1}$}{
-  $\text{\MED}_i \leftarrow 1$\;
-  $\text{\OFFSET}_i \leftarrow \text{\UNSIGNED} - \text{\MEDIAN}_{c~0}$\;
-  $\text{\ADD}_i \leftarrow \text{\MEDIAN}_{c~1} - 1$\;
-  $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} + \lfloor(\text{\ENTROPY}_{c~0} + 128) \div 128\rfloor \times 5$\;
-  $\text{\ENTROPY}_{c~1} \leftarrow \text{\ENTROPY}_{c~1} - \lfloor(\text{\ENTROPY}_{c~1} + 62) \div 64\rfloor \times 2$\;
-}
-\uElseIf{$(\UNSIGNED - (\text{\MEDIAN}_{c~0} + \text{\MEDIAN}_{c~1})) < \text{\MEDIAN}_{c~2}$}{
-  $\text{\MED}_i \leftarrow 2$\;
-  $\text{\OFFSET}_i \leftarrow \text{\UNSIGNED} - (\text{\MEDIAN}_{c~0} + \text{\ENTROPY}_{c~1})$\;
-  $\text{\ADD}_i \leftarrow \text{\MEDIAN}_{c~2} - 1$\;
-  $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} + \lfloor(\text{\ENTROPY}_{c~0} + 128) \div 128\rfloor \times 5$\;
-  $\text{\ENTROPY}_{c~1} \leftarrow \text{\ENTROPY}_{c~1} + \lfloor(\text{\ENTROPY}_{c~1} + 64) \div 64\rfloor \times 5$\;
-  $\text{\ENTROPY}_{c~2} \leftarrow \text{\ENTROPY}_{c~2} - \lfloor(\text{\ENTROPY}_{c~2} + 30) \div 32\rfloor \times 2$\;
-}
-\Else{
-  $\text{\MED}_i \leftarrow \lfloor(\UNSIGNED - (\text{\MEDIAN}_{c~0} + \text{\MEDIAN}_{c~1})) \div \text{\MEDIAN}_{c~2}\rfloor + 2$\;
-  $\text{\OFFSET}_i \leftarrow \text{\UNSIGNED} - (\text{\MEDIAN}_{c~0} + \text{\MEDIAN}_{c~1} + ((\text{\MED}_i - 2) \times \text{\MEDIAN}_{c~2}))$\;
-  $\text{\ADD}_i \leftarrow \text{\MEDIAN}_{c~2} - 1$\;
-  $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} + \lfloor(\text{\ENTROPY}_{c~0} + 128) \div 128\rfloor \times 5$\;
-  $\text{\ENTROPY}_{c~1} \leftarrow \text{\ENTROPY}_{c~1} + \lfloor(\text{\ENTROPY}_{c~1} + 64) \div 64\rfloor \times 5$\;
-  $\text{\ENTROPY}_{c~2} \leftarrow \text{\ENTROPY}_{c~2} + \lfloor(\text{\ENTROPY}_{c~2} + 32) \div 32\rfloor \times 5$\;
-}
-\Return $\text{\MED}_i$, $\text{\OFFSET}_i$, $\text{\ADD}_i$, $\text{\SIGN}_i$; updated $\text{\ENTROPY}_c$ values\;
-\EALGORITHM
-
-\subsubsection{Writing Modified Elias Gamma Code}
-\ALGORITHM{a non-negative integer value}{an encoded value}
-\eIf{$v \leq 1$}{
-  \WUNARY $v$ with stop bit 0\;
-}{
-  $t \leftarrow \lfloor\log_2(v)\rfloor + 1$\;
-  \WUNARY $t$ with stop bit 0\;
-  \WRITE $v \bmod 2 ^ {t - 1}$ in ($t - 1$) unsigned bits\;
-}
-\Return encoded value\;
-\EALGORITHM
 }
 
 \begin{landscape}

@@ -239,10 +239,10 @@ correlate_channels(array_ia* correlated_samples,
                    unsigned channel_count);
 
 int
-apply_weight(int weight, int sample);
+apply_weight(int weight, int64_t sample);
 
 int
-update_weight(int source, int result, int delta);
+update_weight(int64_t source, int result, int delta);
 
 void
 correlate_1ch(array_i* correlated,

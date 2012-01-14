@@ -167,6 +167,11 @@ class MD5_Reader:
         self.bits_per_sample = pcmreader.bits_per_sample
         self.md5 = md5()
 
+    def reset(self):
+        if (hasattr(self.pcmreader, "reset")):
+            self.pcmreader.reset()
+        self.md5 = md5()
+
     def __repr__(self):
         return "MD5Reader(%s,%s,%s)" % (self.sample_rate,
                                         self.channels,

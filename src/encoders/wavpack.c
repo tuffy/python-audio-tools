@@ -595,6 +595,7 @@ wavpack_encode_block(BitstreamWriter* bs,
             wasted_bps = wasted_bits(channels->_[0]);
             if (wasted_bps > 0) {
                 unsigned i;
+                shifted->append(shifted);
                 shifted->_[0]->resize(shifted->_[0], total_frames);
                 for (i = 0; i < total_frames; i++) {
                     a_append(shifted->_[0], channels->_[0]->_[i] >> wasted_bps);
@@ -623,6 +624,8 @@ wavpack_encode_block(BitstreamWriter* bs,
                              wasted_bits(channels->_[1]));
             if (wasted_bps > 0) {
                 unsigned i;
+                shifted->append(shifted);
+                shifted->append(shifted);
                 shifted->_[0]->resize(shifted->_[0], total_frames);
                 shifted->_[1]->resize(shifted->_[1], total_frames);
                 for (i = 0; i < channels->_[0]->len; i++) {
@@ -978,13 +981,13 @@ correlate_channels(array_ia* correlated_samples,
 }
 
 int
-apply_weight(int weight, int sample)
+apply_weight(int weight, int64_t sample)
 {
     return ((weight * sample) + 512) >> 10;
 }
 
 int
-update_weight(int source, int result, int delta)
+update_weight(int64_t source, int result, int delta)
 {
     if ((source == 0) || (result == 0)) {
         return 0;
@@ -1014,7 +1017,7 @@ correlate_1ch(array_i* correlated,
         uncorr->extend(uncorr, uncorrelated);
 
         for (i = 2; i < uncorr->len; i++) {
-            int temp = (3 * uncorr->_[i - 1] - uncorr->_[i - 2]) >> 1;
+            const int64_t temp = (3 * uncorr->_[i - 1] - uncorr->_[i - 2]) >> 1;
             correlated->append(correlated,
                                uncorr->_[i] - apply_weight(*weight, temp));
             *weight += update_weight(temp, correlated->_[i - 2], delta);
@@ -1029,7 +1032,7 @@ correlate_1ch(array_i* correlated,
         uncorr->extend(uncorr, uncorrelated);
 
         for (i = 2; i < uncorr->len; i++) {
-            int temp = 2 * uncorr->_[i - 1] - uncorr->_[i - 2];
+            const int64_t temp = 2 * uncorr->_[i - 1] - uncorr->_[i - 2];
             correlated->append(correlated,
                                uncorr->_[i] - apply_weight(*weight, temp));
             *weight += update_weight(temp, correlated->_[i - 2], delta);
@@ -1274,11 +1277,7 @@ write_bitstream(BitstreamWriter* bs,
     struct wavpack_residual res_i;   /*residual i*/
     int u_i_2;                       /*unary (i - 2)*/
 
-    if ((entropies->_[0]->_[0] < 2) && (entropies->_[1]->_[0] < 2)) {
-        res_i_1.zeroes = 0;
-    } else {
-        res_i_1.zeroes = UNDEFINED;
-    }
+    res_i_1.zeroes = UNDEFINED;
     u_i_2 = UNDEFINED;
     res_i_1.m = UNDEFINED;
     res_i_1.offset = res_i_1.add = res_i_1.sign = UINT_MAX; /*placeholders*/
@@ -1290,23 +1289,28 @@ write_bitstream(BitstreamWriter* bs,
             (entropies->_[1]->_[0] < 2) &&
             unary_undefined(u_i_2, res_i_1.m)) {
 
-            if (res_i_1.zeroes != UNDEFINED) { /*in a block of zeroes*/
+            if ((res_i_1.zeroes != UNDEFINED) &&
+                (res_i_1.m == UNDEFINED)) { /*in a block of zeroes*/
                 if (r == 0) {                  /*continue block of zeroes*/
-                    /*shift residual_{i - 1}'s values to residual_{i}
-                      and increment its zeroes count
-                      befere moving on to the next i*/
                     res_i_1.zeroes++;
-                    entropies->_[0]->mset(entropies->_[0], 3, 0);
-                    entropies->_[1]->mset(entropies->_[1], 3, 0);
-                    i++;
                 } else {                       /*end block of zeroes*/
-                    res_i.zeroes = UNDEFINED;
+                    /*stick residual_{i} at end of zeroes*/
                     encode_residual(r,
                                     entropies->_[i % residuals->len],
-                                    &(res_i.m),
-                                    &(res_i.offset),
-                                    &(res_i.add),
-                                    &(res_i.sign));
+                                    &(res_i_1.m),
+                                    &(res_i_1.offset),
+                                    &(res_i_1.add),
+                                    &(res_i_1.sign));
+                }
+            } else {                           /*start block of zeroes*/
+                if (r == 0) {
+                    /*initialize zeroes*/
+                    res_i.zeroes = 1;
+
+                    /*clear residual_{i}*/
+                    res_i.m = UNDEFINED;
+
+                    /*flush previous residual_{i - 1}*/
                     u_i_2 = flush_residual(bs,
                                            u_i_2,
                                            res_i_1.m,
@@ -1314,20 +1318,13 @@ write_bitstream(BitstreamWriter* bs,
                                            res_i_1.add,
                                            res_i_1.sign,
                                            res_i_1.zeroes,
-                                           res_i.m);
-                    i++;
+                                           0); /*?*/
                     res_i_1 = res_i;
-                }
-            } else {                           /*start block of zeroes*/
-                if (r == 0) {
-                    /*shift residual_{i - 1}'s values to residual_{i}
-                      and set its zeroes count to 1
-                      befere moving on to the next i*/
-                    res_i_1.zeroes = 1;
+
+                    /*clear entropies*/
                     entropies->_[0]->mset(entropies->_[0], 3, 0);
                     entropies->_[1]->mset(entropies->_[1], 3, 0);
-                    i++;
-                } else {
+                } else {                      /*false-alarm block of zeroes*/
                     res_i.zeroes = 0;
                     encode_residual(r,
                                     entropies->_[i % residuals->len],
@@ -1343,7 +1340,6 @@ write_bitstream(BitstreamWriter* bs,
                                            res_i_1.sign,
                                            res_i_1.zeroes,
                                            res_i.m);
-                    i++;
                     res_i_1 = res_i;
                 }
             }
@@ -1363,9 +1359,10 @@ write_bitstream(BitstreamWriter* bs,
                                    res_i_1.sign,
                                    res_i_1.zeroes,
                                    res_i.m);
-            i++;
             res_i_1 = res_i;
         }
+
+        i++;
     }
 
     /*flush final residual*/
@@ -1398,9 +1395,6 @@ flush_residual(BitstreamWriter* bs,
                unsigned sign_i_1, int zeroes_i_1, int m_i)
 {
     int u_i_1;
-
-    /* printf("flushing u: %d  m: %d  offset: %u  add: %u  sign: %u  zeroes: %d\n", */
-    /*        u_i_2, m_i_1, offset_i_1, add_i_1, sign_i_1, zeroes_i_1); */
 
     if (zeroes_i_1 != UNDEFINED) {
         write_egc(bs, zeroes_i_1);
@@ -1561,7 +1555,7 @@ wasted(int x)
         return UINT_MAX;
     } else {
         unsigned total = 0;
-        while (x % 2) {
+        while ((x % 2) == 0) {
             x /= 2;
             total += 1;
         }
