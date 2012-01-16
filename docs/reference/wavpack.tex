@@ -360,7 +360,7 @@ combine into 6 channels of PCM output as follows:
 \SetKwData{DELTAS}{decorrelation deltas}
 \SetKwData{WEIGHTS}{decorrelation weights}
 \SetKwData{SAMPLES}{decorrelation samples}
-\SetKwData{MEDIANS}{medians}
+\SetKwData{ENTROPIES}{entropies}
 \SetKwData{RESIDUALS}{residuals}
 \SetKwData{ZEROES}{zero bits}
 \SetKwData{ONES}{one bits}
@@ -397,13 +397,13 @@ combine into 6 channels of PCM output as follows:
         $\SAMPLES \leftarrow$ read decorrelation samples sub block\;
       }
       \uCase{5}{
-        $\MEDIANS \leftarrow$ read entropy variables sub block\;
+        $\ENTROPIES \leftarrow$ read entropy variables sub block\;
       }
       \uCase{9}{
         $\ZEROES, \ONES, \DUPES \leftarrow$ read extended integers sub block\;
       }
       \Case{10}{
-        \ASSERT \MEDIANS have been read\;
+        \ASSERT \ENTROPIES have been read\;
         $\RESIDUALS \leftarrow$ read WavPack bitstream\;
       }
     }
@@ -917,8 +917,8 @@ $p$ & $\text{term}_p$ & $s$ &
 
 \subsection{Reading Entropy Variables}
 {\relsize{-2}
-\ALGORITHM{\VAR{mono output} and \VAR{false stereo} from block header, \VAR{sub block size}, \VAR{actual size 1 less}, sub block data}{2 lists of 3 signed median value integers\footnote{$\text{median}_{c~i}$ indicates the $i$th median of channel $c$}}
-\SetKwData{MEDIAN}{median}
+\ALGORITHM{\VAR{mono output} and \VAR{false stereo} from block header, \VAR{sub block size}, \VAR{actual size 1 less}, sub block data}{2 lists of 3 signed entropy value integers\footnote{$\text{entropy}_{c~i}$ indicates the $i$th entropy of channel $c$}}
+\SetKwData{ENTROPY}{entropy}
 \SetKwFunction{EXP}{wv\_exp2}
 \SetKwData{MONO}{mono output}
 \SetKwData{FALSESTEREO}{false stereo}
@@ -928,20 +928,20 @@ $p$ & $\text{term}_p$ & $s$ &
 \ASSERT $\text{\ONELESS} = 0$\;
 \eIf(\tcc*[f]{2 channels}){$\text{\MONO} = 0$ \AND $\text{\FALSESTEREO} = 0$}{
   \ASSERT $\text{\SUBBLOCKSIZE} = 6$\;
-  $\text{\MEDIAN}_{0~0} \leftarrow \text{read \EXP value}$\;
-  $\text{\MEDIAN}_{0~1} \leftarrow \text{read \EXP value}$\;
-  $\text{\MEDIAN}_{0~2} \leftarrow \text{read \EXP value}$\;
-  $\text{\MEDIAN}_{1~0} \leftarrow \text{read \EXP value}$\;
-  $\text{\MEDIAN}_{1~1} \leftarrow \text{read \EXP value}$\;
-  $\text{\MEDIAN}_{1~2} \leftarrow \text{read \EXP value}$\;
+  $\text{\ENTROPY}_{0~0} \leftarrow \text{read \EXP value}$\;
+  $\text{\ENTROPY}_{0~1} \leftarrow \text{read \EXP value}$\;
+  $\text{\ENTROPY}_{0~2} \leftarrow \text{read \EXP value}$\;
+  $\text{\ENTROPY}_{1~0} \leftarrow \text{read \EXP value}$\;
+  $\text{\ENTROPY}_{1~1} \leftarrow \text{read \EXP value}$\;
+  $\text{\ENTROPY}_{1~2} \leftarrow \text{read \EXP value}$\;
 }(\tcc*[f]{1 channel}){
   \ASSERT $\text{\SUBBLOCKSIZE} = 3$\;
-  $\text{\MEDIAN}_{0~0} \leftarrow \text{read \EXP value}$\;
-  $\text{\MEDIAN}_{0~1} \leftarrow \text{read \EXP value}$\;
-  $\text{\MEDIAN}_{0~2} \leftarrow \text{read \EXP value}$\;
-  $\text{\MEDIAN}_{1} \leftarrow \texttt{[0, 0, 0]}$\;
+  $\text{\ENTROPY}_{0~0} \leftarrow \text{read \EXP value}$\;
+  $\text{\ENTROPY}_{0~1} \leftarrow \text{read \EXP value}$\;
+  $\text{\ENTROPY}_{0~2} \leftarrow \text{read \EXP value}$\;
+  $\text{\ENTROPY}_{1} \leftarrow \texttt{[0, 0, 0]}$\;
 }
-\Return $\text{\MEDIAN}_0$ list and $\text{\MEDIAN}_1$ list\;
+\Return $\text{\ENTROPY}_0$ list and $\text{\ENTROPY}_1$ list\;
 \EALGORITHM
 }
 
@@ -954,7 +954,7 @@ Given a 2 channel block containing the subframe:
 {\relsize{-1}
 \renewcommand{\arraystretch}{1.25}
 \begin{tabular}{r|>{$}r<{$}|>{$}r<{$}}
-$i$ & \text{median}_{0~i} & \text{median}_{1~i} \\
+$i$ & \text{entropy}_{0~i} & \text{entropy}_{1~i} \\
 \hline
 0 &
 \lfloor \EXP(2018 \bmod{256}) \div 2 ^ {9 - \lfloor 2018 \div 2 ^ 8 \rfloor} \rfloor = 118 &
@@ -975,14 +975,13 @@ $i$ & \text{median}_{0~i} & \text{median}_{1~i} \\
 \subsection{Reading Bitstream}
 {\relsize{-1}
 \ALGORITHM{\VAR{mono output}, \VAR{false stereo} and \VAR{block samples} from block header,
-median values\footnote{from the entropy variables sub block, which must be read prior to this sub block}, sub block data}{a list of signed residual values per channel\footnote{$\text{residual}_{c~i}$ indicates the $i$th residual of channel $c$}}
-\SetKwData{MEDIAN}{median}
+entropy values\footnote{from the entropy variables sub block, which must be read prior to this sub block}, sub block data}{a list of signed residual values per channel\footnote{$\text{residual}_{c~i}$ indicates the $i$th residual of channel $c$}}
+\SetKwData{ENTROPY}{entropy}
 \SetKwData{MONO}{mono output}
 \SetKwData{FALSESTEREO}{false stereo}
 \SetKwData{BLOCKSAMPLES}{block samples}
 \SetKwData{CHANNELS}{channel count}
 \SetKwData{UNDEFINED}{undefined}
-\SetKwData{MEDIAN}{median}
 \SetKwData{RESIDUAL}{residual}
 \SetKwData{ZEROES}{zeroes}
 \SetKw{AND}{and}
@@ -995,21 +994,18 @@ $u_{-1} \leftarrow \UNDEFINED$\;
 $i \leftarrow 0$\;
 \While{$i < (\BLOCKSAMPLES \times \CHANNELS)$}{
   \eIf{$(u_{i - 1} = \UNDEFINED)$ \AND
-    $(\text{\MEDIAN}_{0~0} < 2)$ \AND
-    $(\text{\MEDIAN}_{1~0} < 2)$}{
+    $(\text{\ENTROPY}_{0~0} < 2)$ \AND
+    $(\text{\ENTROPY}_{1~0} < 2)$}{
+    \tcc{handle long run of 0 residuals}
     $\ZEROES \leftarrow$ read modified Elias gamma code\;
-    \If(\tcc*[f]{handle long run of 0 residuals}){$\text{\ZEROES} > 0$}{
+    \If{$\text{\ZEROES} > 0$}{
       \For{j = 0 \emph{\KwTo}\ZEROES}{
         $\text{\RESIDUAL}_{(i \bmod \CHANNELS)~\lfloor i \div \CHANNELS \rfloor} \leftarrow $ 0\;
         $i \leftarrow i + 1$\;
       }
       \BlankLine
-      $\text{\MEDIAN}_{0~0} \leftarrow 0$\;
-      $\text{\MEDIAN}_{0~1} \leftarrow 0$\;
-      $\text{\MEDIAN}_{0~2} \leftarrow 0$\;
-      $\text{\MEDIAN}_{1~0} \leftarrow 0$\;
-      $\text{\MEDIAN}_{1~1} \leftarrow 0$\;
-      $\text{\MEDIAN}_{1~2} \leftarrow 0$\;
+      $\text{\ENTROPY}_{0~0} \leftarrow \text{\ENTROPY}_{0~1} \leftarrow \text{\ENTROPY}_{0~2} \leftarrow 0$\;
+      $\text{\ENTROPY}_{1~0} \leftarrow \text{\ENTROPY}_{1~1} \leftarrow \text{\ENTROPY}_{1~2} \leftarrow 0$\;
     }
     \If{$i < (\BLOCKSAMPLES \times \CHANNELS)$}{
       $\text{\RESIDUAL}_{(i \bmod \CHANNELS)~\lfloor i \div \CHANNELS \rfloor} \leftarrow $ read residual value\;
@@ -1041,9 +1037,9 @@ $i \leftarrow 0$\;
 
 \subsubsection{Reading Residual Value}
 {\relsize{-1}
-\ALGORITHM{sub block bitstream, previous residual's unary value $u_{i - 1}$, \VAR{median} values for channel $c$}{a signed residual value; new unary value $u_i$, updated \VAR{median} values for channel $c$}
+\ALGORITHM{sub block bitstream, previous residual's unary value $u_{i - 1}$, \VAR{entropy} values for channel $c$}{a signed residual value; new unary value $u_i$, updated \VAR{entropy} values for channel $c$}
 \SetKwData{UNDEFINED}{undefined}
-\SetKwData{MEDIAN}{median}
+\SetKwData{ENTROPY}{entropy}
 \SetKwData{RESIDUAL}{residual}
 \tcc{determine new "u" and "m" values}
 \uIf{$u_{i - 1} = \UNDEFINED$}{
@@ -1067,32 +1063,32 @@ $i \leftarrow 0$\;
   $m_i \leftarrow 0$\;
 }
 \BlankLine
-\tcc{determine "base", "add" and new median values}
+\tcc{determine "base", "add" and new entropy values}
 \Switch{$m_i$}{
   \uCase{0}{
     $base \leftarrow 0$\;
-    $add \leftarrow \lfloor\text{\MEDIAN}_{c~0} \div 2 ^ 4\rfloor$\;
-    $\text{\MEDIAN}_{c~0} \leftarrow \text{\MEDIAN}_{c~0} - \lfloor(\text{\MEDIAN}_{c~0} + 126) \div 2 ^ 7\rfloor \times 2$\;
+    $add \leftarrow \lfloor\text{\ENTROPY}_{c~0} \div 2 ^ 4\rfloor$\;
+    $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} - \lfloor(\text{\ENTROPY}_{c~0} + 126) \div 2 ^ 7\rfloor \times 2$\;
   }
   \uCase{1}{
-    $base \leftarrow \lfloor\text{\MEDIAN}_{c~0} \div 2 ^ 4\rfloor + 1$\;
-    $add \leftarrow \lfloor\text{\MEDIAN}_{c~1} \div 2 ^ 4\rfloor$\;
-    $\text{\MEDIAN}_{c~0} \leftarrow \text{\MEDIAN}_{c~0} + \lfloor(\text{\MEDIAN}_{c~0} + 128) \div 2 ^ 7\rfloor \times 5$\;
-    $\text{\MEDIAN}_{c~1} \leftarrow \text{\MEDIAN}_{c~1} - \lfloor(\text{\MEDIAN}_{c~1} + 62) \div 2 ^ 6\rfloor \times 2$\;
+    $base \leftarrow \lfloor\text{\ENTROPY}_{c~0} \div 2 ^ 4\rfloor + 1$\;
+    $add \leftarrow \lfloor\text{\ENTROPY}_{c~1} \div 2 ^ 4\rfloor$\;
+    $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} + \lfloor(\text{\ENTROPY}_{c~0} + 128) \div 2 ^ 7\rfloor \times 5$\;
+    $\text{\ENTROPY}_{c~1} \leftarrow \text{\ENTROPY}_{c~1} - \lfloor(\text{\ENTROPY}_{c~1} + 62) \div 2 ^ 6\rfloor \times 2$\;
   }
   \uCase{2}{
-    $base \leftarrow (\lfloor\text{\MEDIAN}_{c~0} \div 2 ^ 4\rfloor + 1) + (\lfloor\text{\MEDIAN}_{c~1} \div 2 ^ 4\rfloor + 1)$\;
-    $add \leftarrow \lfloor\text{\MEDIAN}_{c~2} \div 2 ^ 4\rfloor$\;
-    $\text{\MEDIAN}_{c~0} \leftarrow \text{\MEDIAN}_{c~0} + \lfloor(\text{\MEDIAN}_{c~0} + 128) \div 2 ^ 7\rfloor \times 5$\;
-    $\text{\MEDIAN}_{c~1} \leftarrow \text{\MEDIAN}_{c~1} + \lfloor(\text{\MEDIAN}_{c~1} + 64) \div 2 ^ 6\rfloor \times 5$\;
-    $\text{\MEDIAN}_{c~2} \leftarrow \text{\MEDIAN}_{c~2} - \lfloor(\text{\MEDIAN}_{c~2} + 30) \div 2 ^ 5\rfloor \times 2$\;
+    $base \leftarrow (\lfloor\text{\ENTROPY}_{c~0} \div 2 ^ 4\rfloor + 1) + (\lfloor\text{\ENTROPY}_{c~1} \div 2 ^ 4\rfloor + 1)$\;
+    $add \leftarrow \lfloor\text{\ENTROPY}_{c~2} \div 2 ^ 4\rfloor$\;
+    $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} + \lfloor(\text{\ENTROPY}_{c~0} + 128) \div 2 ^ 7\rfloor \times 5$\;
+    $\text{\ENTROPY}_{c~1} \leftarrow \text{\ENTROPY}_{c~1} + \lfloor(\text{\ENTROPY}_{c~1} + 64) \div 2 ^ 6\rfloor \times 5$\;
+    $\text{\ENTROPY}_{c~2} \leftarrow \text{\ENTROPY}_{c~2} - \lfloor(\text{\ENTROPY}_{c~2} + 30) \div 2 ^ 5\rfloor \times 2$\;
   }
   \Other{
-    $base \leftarrow (\lfloor\text{\MEDIAN}_{c~0} \div 2 ^ 4\rfloor + 1) + (\lfloor\text{\MEDIAN}_{c~1} \div 2 ^ 4\rfloor + 1) + ((\lfloor\text{\MEDIAN}_{c~2} \div 2 ^ 4\rfloor + 1) \times (m_i - 2))$\;
-    $add \leftarrow \lfloor\text{\MEDIAN}_{c~2} \div 2 ^ 4\rfloor$\;
-    $\text{\MEDIAN}_{c~0} \leftarrow \text{\MEDIAN}_{c~0} + \lfloor(\text{\MEDIAN}_{c~0} + 128) \div 2 ^ 7\rfloor \times 5$\;
-    $\text{\MEDIAN}_{c~1} \leftarrow \text{\MEDIAN}_{c~1} + \lfloor(\text{\MEDIAN}_{c~1} + 64) \div 2 ^ 6\rfloor \times 5$\;
-    $\text{\MEDIAN}_{c~2} \leftarrow \text{\MEDIAN}_{c~2} + \lfloor(\text{\MEDIAN}_{c~2} + 32) \div 2 ^ 5\rfloor \times 5$\;
+    $base \leftarrow (\lfloor\text{\ENTROPY}_{c~0} \div 2 ^ 4\rfloor + 1) + (\lfloor\text{\ENTROPY}_{c~1} \div 2 ^ 4\rfloor + 1) + ((\lfloor\text{\ENTROPY}_{c~2} \div 2 ^ 4\rfloor + 1) \times (m_i - 2))$\;
+    $add \leftarrow \lfloor\text{\ENTROPY}_{c~2} \div 2 ^ 4\rfloor$\;
+    $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} + \lfloor(\text{\ENTROPY}_{c~0} + 128) \div 2 ^ 7\rfloor \times 5$\;
+    $\text{\ENTROPY}_{c~1} \leftarrow \text{\ENTROPY}_{c~1} + \lfloor(\text{\ENTROPY}_{c~1} + 64) \div 2 ^ 6\rfloor \times 5$\;
+    $\text{\ENTROPY}_{c~2} \leftarrow \text{\ENTROPY}_{c~2} + \lfloor(\text{\ENTROPY}_{c~2} + 32) \div 2 ^ 5\rfloor \times 5$\;
   }
 }
 
@@ -1122,9 +1118,9 @@ $i \leftarrow 0$\;
 \BlankLine
 $sign \leftarrow$ \READ 1 unsigned bit\;
 \eIf{$sign = 1$}{
-  \Return $(-unsigned - 1)$ along with unary value $u_i$ and updated medians\;
+  \Return $(-unsigned - 1)$ along with unary value $u_i$ and updated entropy values\;
 }{
-  \Return $unsigned$ along with unary value $u_i$ and updated medians\;
+  \Return $unsigned$ along with unary value $u_i$ and updated entropy values\;
 }
 \end{algorithm}
 }
@@ -1138,15 +1134,15 @@ $sign \leftarrow$ \READ 1 unsigned bit\;
 
 \begin{landscape}
 
-Given a 2 channel block with $\text{medians}_0 = \texttt{[118, 194, 322]}$ and
-$\text{medians}_1 = \texttt{[118, 176, 212]}$:
+Given a 2 channel block with $\text{entropies}_0 = \texttt{[118, 194, 322]}$ and
+$\text{entropies}_1 = \texttt{[118, 176, 212]}$:
 \vskip .10in
 
 {\relsize{-2}
 \renewcommand{\arraystretch}{1.5}
 \begin{tabular}{|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|}
 i & u_i & m_i &
-\text{base} & \text{add} & \text{median}_{c~0} & \text{median}_{c~1} & \text{median}_{c~2} \\
+\text{base} & \text{add} & \text{entropy}_{c~0} & \text{entropy}_{c~1} & \text{entropy}_{c~2} \\
 \hline
 0 &
 7 &
@@ -1455,13 +1451,13 @@ channel 1 residuals : & \texttt{[~31,~~32,~~36,~37,~35,~31,~25,~18,~10,~~0]}\\
 \clearpage
 
 \subsubsection{2nd Residual Parsing Example}
-Given a 1 channel block with $\text{medians}_0 = \texttt{[0, 0, 0]}$:
+Given a 1 channel block with $\text{entropies}_0 = \texttt{[0, 0, 0]}$:
 \vskip .10in
 {\relsize{-2}
 \renewcommand{\arraystretch}{1.5}
 \begin{tabular}{|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|}
 i & u_i & m_i &
-\text{base} & \text{add} & \text{median}_{0~0} & \text{median}_{0~1} & \text{median}_{0~2} \\
+\text{base} & \text{add} & \text{entropy}_{0~0} & \text{entropy}_{0~1} & \text{entropy}_{0~2} \\
 \hline
 & \multicolumn{7}{c|}{read modified Elias gamma code: $t \leftarrow 0~,~\text{zeroes} \leftarrow 0$} \\
 0 &

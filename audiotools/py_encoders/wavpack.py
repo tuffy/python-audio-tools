@@ -1119,153 +1119,197 @@ def write_entropy_variables(writer, channels, entropies):
             writer.write(16, wv_log2(e))
 
 
+class Residual:
+    def __init__(self, zeroes, m, offset, add, sign):
+        self.zeroes = zeroes
+        self.m = m
+        self.offset = offset
+        self.add = add
+        self.sign = sign
+
+    def __repr__(self):
+        return "Residual(%s, %s, %s, %s, %s)" % \
+            (repr(self.zeroes),
+             repr(self.m),
+             repr(self.offset),
+             repr(self.add),
+             repr(self.sign))
+
+    @classmethod
+    def encode(cls, residual, entropy):
+        """given a residual integer and list of three entropies
+        returns a Residual object and updates the entropies"""
+
+        #figure out unsigned from signed
+        if (residual >= 0):
+            unsigned = residual
+            sign = 0
+        else:
+            unsigned = -residual - 1
+            sign = 1
+
+        medians = [e / 2 ** 4 + 1 for e in entropy]
+
+        #figure out m, offset, add and update channel's entropies
+        if (unsigned < medians[0]):
+            m = 0
+            offset = unsigned
+            add = medians[0] - 1
+            entropy[0] -= ((entropy[0] + 126) / 128) * 2
+        elif ((unsigned - medians[0]) < medians[1]):
+            m = 1
+            offset = unsigned - medians[0]
+            add = medians[1] - 1
+            entropy[0] += ((entropy[0] + 128) / 128) * 5
+            entropy[1] -= ((entropy[1] + 62) / 64) * 2
+        elif ((unsigned - (medians[0] + medians[1])) < medians[2]):
+            m = 2
+            offset = unsigned - (medians[0] + medians[1])
+            add = medians[2] - 1
+            entropy[0] += ((entropy[0] + 128) / 128) * 5
+            entropy[1] += ((entropy[1] + 64) / 64) * 5
+            entropy[2] -= ((entropy[2] + 30) / 32) * 2
+        else:
+            m = (((unsigned - (medians[0] + medians[1])) / medians[2]) + 2)
+            offset = (unsigned -
+                      (medians[0] + medians[1] + ((m - 2) * medians[2])))
+            add = medians[2] - 1
+            entropy[0] += ((entropy[0] + 128) / 128) * 5
+            entropy[1] += ((entropy[1] + 64) / 64) * 5
+            entropy[2] += ((entropy[2] + 32) / 32) * 5
+
+        #zeroes will be populated later
+        return cls(zeroes=None, m=m, offset=offset, add=add, sign=sign)
+
+    def flush(self, writer, u_i_2, m_i):
+        """given a BitstreamWriter, u_{i - 2} and m_{i},
+        encodes residual_{i - 1}'s values to disk"""
+
+        from math import log
+
+        if (self.zeroes is not None):
+            write_egc(writer, self.zeroes)
+
+        if (self.m is not None):
+            #calculate unary_{i - 1} based on m_{i}
+            if ((self.m > 0) and (m_i > 0)):
+                #positive m to positive m
+                if ((u_i_2 is None) or (u_i_2 % 2 == 0)):
+                    u_i_1 = (self.m * 2) + 1
+                else:
+                    #passing 1 from previous u
+                    u_i_1 = (self.m * 2) - 1
+            elif ((self.m == 0) and (m_i > 0)):
+                #zero m to positive m
+                if ((u_i_2 is None) or (u_i_2 % 2 == 1)):
+                    u_i_1 = 1
+                else:
+                    #passing 0 from previous u
+                    u_i_1 = None
+            elif ((self.m > 0) and (m_i == 0)):
+                #positive m to zero m
+                if ((u_i_2 is None) or (u_i_2 % 2 == 0)):
+                    u_i_1 = self.m * 2
+                else:
+                    #passing 1 from previous u
+                    u_i_1 = (self.m - 1) * 2
+            elif ((self.m == 0) and (m_i == 0)):
+                #zero m to zero m
+                if ((u_i_2 is None) or (u_i_2 % 2 == 1)):
+                    u_i_1 = 0
+                else:
+                    #passing 0 from previous u
+                    u_i_1 = None
+            else:
+                raise ValueError("invalid m")
+
+            #write residual_{i - 1} to disk based on unary_{i - 1}
+            if (u_i_1 is not None):
+                if (u_i_1 < 16):
+                    writer.unary(0, u_i_1)
+                else:
+                    writer.unary(0, 16)
+                    write_egc(writer, u_i_1 - 16)
+
+            if (self.add > 0):
+                p = int(log(self.add) / log(2))
+                e = 2 ** (p + 1) - self.add - 1
+                if (self.offset < e):
+                    writer.write(p, self.offset)
+                else:
+                    writer.write(p, (self.offset + e) / 2)
+                    writer.write(1, (self.offset + e) % 2)
+
+            writer.write(1, self.sign)
+        else:
+            u_i_1 = None
+
+        return u_i_1
+
+
 def write_bitstream(writer, channels, entropies):
-    from math import log
+    #residual_{-1}
+    r_i_1 = Residual(zeroes=None, m=None, offset=None, add=None, sign=None)
 
-    def sample(channels, i):
-        return channels[i % len(channels)][i / len(channels)]
-
-    assert((len(channels) == 1) or (len(channels) == 2))
-    assert(len(set(map(len, channels))) == 1)
-    assert(len(entropies) == 2)
-    assert(len(entropies[0]) == len(entropies[1]) == 3)
-
-    #setup defaults for initial (-1) residual
-    if ((entropies[0][0] < 2) and (entropies[1][0] < 2)):
-        zeroes = [0]
-    else:
-        zeroes = [None]
-    u = [None]   #u_{-1} is undefined
-    m = [None]   #m_{-1} is undefined
-    offset = [None]
-    add = [None]
-    sign = [None]
+    #u_{-2}
+    u_i_2 = None
 
     i = 0
-    total_samples = len(channels) * len(channels[0])
 
-    #perform residual encoding
-    while (i < total_samples):
-        j = i + 1
-
-        #encode residual r
+    while (i < (len(channels) * len(channels[0]))):
         r = channels[i % len(channels)][i / len(channels)]
 
-        if ((entropies[0][0] < 2) and
-            (entropies[1][0] < 2) and
-            (not unary_defined(u[j - 2], m[j - 1]))):
-            if (zeroes[j - 1] is not None): #we're in a block of zeroes
+        if ((entropies[0][0] < 2) and (entropies[1][0] < 2) and
+            unary_undefined(u_i_2, r_i_1.m)):
+            if ((r_i_1.zeroes is not None) and (r_i_1.m is None)):
+                #in a block of zeroes
                 if (r == 0):
-                    #continue an existing block of zeroes
-                    entropies[0][0] = entropies[0][1] = entropies[0][2] = 0
-                    entropies[1][0] = entropies[1][1] = entropies[1][2] = 0
-
-                    zeroes.append(zeroes[j - 1] + 1)
-                    u.append(u[j - 2])
-                    m.append(m[j - 1])
-                    offset.append(offset[j - 1])
-                    add.append(add[j - 1])
-                    sign.append(sign[j - 1])
-                    i += 1
+                    #continue block of zeroes
+                    r_i_1.zeroes += 1
                 else:
-                    #end an existing block of zeroes
-                    #and encode regular residual
-
-                    (m_i,
-                     offset_i,
-                     add_i,
-                     sign_i) = encode_residual(r, entropies[i % len(channels)])
-
-                    zeroes.append(None)
-                    m.append(m_i)
-                    offset.append(offset_i)
-                    add.append(add_i)
-                    sign.append(sign_i)
-
-                    #flush previous residual and any blocks of zeroes
-                    if (m[j - 1] is not None):
-                        u_i_1 = unary(u[j - 2], m[j - 1], m[j])
-                        u.append(u_i_1)
-                        write_residual(writer, u[j - 1], offset[j - 1],
-                                       add[j - 1], sign[j - 1])
-                    if (zeroes[j - 1] is not None):
-                        write_egc(writer, zeroes[j - 1])
-
-
-                    i += 1
-            else:                           #we're not in a block of zeroes
+                    #end block of zeroes
+                    r_i = Residual.encode(r, entropies[i % len(channels)])
+                    r_i.zeroes = r_i_1.zeroes
+                    r_i_1 = r_i
+            else:
                 #start a new block of zeroes
                 if (r == 0):
-                    zeroes.append(1)
-                    u.append(u[j - 2])
-                    m.append(m[j - 1])
-                    offset.append(offset[j - 1])
-                    add.append(add[j - 1])
-                    sign.append(sign[j - 1])
-                    i += 1
+                    r_i = Residual(zeroes=1,
+                                   m=None, offset=None, add=None, sign=None)
+                    u_i_2 = r_i_1.flush(writer, u_i_2, 0)
+                    entropies[0][0] = entropies[0][1] = entropies[0][2] = 0
+                    entropies[1][0] = entropies[1][1] = entropies[1][2] = 0
+                    r_i_1 = r_i
                 else:
-                    zeroes.append(0)
-                    (m_i,
-                     offset_i,
-                     add_i,
-                     sign_i) = encode_residual(r, entropies[i % len(channels)])
-                    m.append(m_i)
-                    offset.append(offset_i)
-                    add.append(add_i)
-                    sign.append(sign_i)
-
-                    #flush previous residual and any leading zeroes
-                    if (m[j - 1] is not None):
-                        u_i_1 = unary(u[j - 2], m[j - 1], m[j])
-                        u.append(u_i_1)
-                        write_residual(writer, u[j - 1], offset[j - 1],
-                                       add[j - 1], sign[j - 1])
-                    if (zeroes[j - 1] is not None):
-                        write_egc(writer, zeroes[j - 1])
-                    i += 1
+                    #false alarm block of zeroes
+                    r_i = Residual.encode(r, entropies[i % len(channels)])
+                    r_i.zeroes = 0
+                    u_i_2 = r_i_1.flush(writer, u_i_2, r_i.m)
+                    r_i_1 = r_i
         else:
-            #encode a regular residual
-            (m_i,
-             offset_i,
-             add_i,
-             sign_i) = encode_residual(r, entropies[i % len(channels)])
+            #encode regular residual
+            r_i = Residual.encode(r, entropies[i % len(channels)])
+            r_i.zeroes = None
+            u_i_2 = r_i_1.flush(writer, u_i_2, r_i.m)
+            r_i_1 = r_i
 
-            zeroes.append(None)
-            m.append(m_i)
-            offset.append(offset_i)
-            add.append(add_i)
-            sign.append(sign_i)
+        i += 1
 
-            #flush previous residual and any blocks of zeroes
-            if (m[j - 1] is not None):
-                u_i_1 = unary(u[j - 2], m[j - 1], m[j])
-                u.append(u_i_1)
-                write_residual(writer, u[j - 1], offset[j - 1],
-                                       add[j - 1], sign[j - 1])
-            if (zeroes[j - 1] is not None):
-                write_egc(writer, zeroes[j - 1])
+    #flush final residual
+    u_i_2 = r_i_1.flush(writer, u_i_2, 0)
 
-            i += 1
 
-    #flush final residual and any blocks of zeroes
-    j = i + 1
-    if (m[j - 1] is not None):
-        u_i_1 = unary(u[j - 2], m[j - 1], 0)
-        u.append(u_i_1)
-        write_residual(writer, u[j - 1], offset[j - 1],
-                       add[j - 1], sign[j - 1])
-    if (zeroes[j - 1] is not None):
-        write_egc(writer, zeroes[j - 1])
+def unary_undefined(prev_u, m):
+    """given u_{i - 1} and m_{i},
+    returns True if u_{i} is undefined,
+    False if defined"""
 
-    assert(len(zeroes) == len(u))
-    assert(len(zeroes) == len(m))
-    assert(len(zeroes) == len(offset))
-    assert(len(zeroes) == len(add))
-    assert(len(zeroes) == len(sign))
-
-    # for (i, (z, u, m, o, s)) in enumerate(zip(zeroes, u, m, offset, sign)):
-    #     print "%d) z : %s  u : %s  m : %s  o : %s  s: %s" % \
-    #         (i - 1, z, u, m, o, s)
+    if (m is None):
+        return True
+    if ((m == 0) and (prev_u is not None) and (prev_u % 2 == 0)):
+        return True
+    else:
+        return False
 
 
 def write_egc(writer, value):
@@ -1281,124 +1325,13 @@ def write_egc(writer, value):
         writer.unary(0, value)
 
 
-def unary_defined(prev_u, m):
-    """given u_{i - 1} and m_{i},
-    returns True if u_{i} is defined,
-    False if undefined"""
-
-    if ((m == 0) and (prev_u is not None) and (prev_u % 2 == 0)):
-        return False
-    else:
-        return True
-
-def unary(prev_u, m, next_m):
-    """given u_{i - 1}, m_{i} and m_{i + 1}, returns u_{i}
-    which may be an integer or None if undefined"""
-
-    if ((m > 0) and (next_m > 0)):
-        #positive m to positive m
-        if ((prev_u is None) or (prev_u % 2 == 0)):
-            return (m * 2) + 1
-        else:
-            #passing 1 from previous u
-            return (m * 2) - 1
-    elif ((m == 0) and (next_m > 0)):
-        #zero m to positive m
-        if ((prev_u is None) or (prev_u % 2 == 1)):
-            return 1
-        else:
-            #passing 0 from previous u
-            return None
-    elif ((m > 0) and (next_m == 0)):
-        #positive m to zero m
-        if ((prev_u is None) or (prev_u % 2 == 0)):
-            return m * 2
-        else:
-            #passing 1 from previous u
-            return (m - 1) * 2
-    elif ((m == 0) and (next_m == 0)):
-        #zero m to zero m
-        if ((prev_u is None) or (prev_u % 2 == 1)):
-            return 0
-        else:
-            #passing 0 from previous u
-            return None
-    else:
-        raise ValueError("invalid m")
-
-
 def write_residual(writer, u, offset, add, sign):
     """given u_{i}, offset_{i}, add_{i} and sign_{i}
     writes residual data to the given BitstreamWriter
     u_{i} may be None, indicated an undefined unary value"""
 
-    from math import log
-
-    if (u is not None):
-        if (u < 16):
-            writer.unary(0, u)
-        else:
-            writer.unary(0, 16)
-            write_egc(writer, u - 16)
-
-    if (add > 0):
-        p = int(log(add) / log(2))
-        e = 2 ** (p + 1) - add - 1
-        if (offset < e):
-            writer.write(p, offset)
-        else:
-            writer.write(p, (offset + e) / 2)
-            writer.write(1, (offset + e) % 2)
-
-    writer.write(1, sign)
 
 
-def encode_residual(residual, entropy):
-    """residual is the signed residual to be written
-    entropy is a list of entropy values for the given channels
-
-    returns (m_{i},  offset_{i}, add_{i}, sign_{i})
-    and updates entropy values
-    """
-
-    #figure out unsigned from signed
-    if (residual >= 0):
-        unsigned = residual
-        sign = 0
-    else:
-        unsigned = -residual - 1
-        sign = 1
-
-    #figure out m and update channel's entropies
-    medians = [e / 2 ** 4 + 1 for e in entropy]
-
-    if (unsigned < medians[0]):
-        m = 0
-        offset = unsigned
-        add = medians[0] - 1
-        entropy[0] -= ((entropy[0] + 126) / 128) * 2
-    elif ((unsigned - medians[0]) < medians[1]):
-        m = 1
-        offset = unsigned - medians[0]
-        add = medians[1] - 1
-        entropy[0] += ((entropy[0] + 128) / 128) * 5
-        entropy[1] -= ((entropy[1] + 62) / 64) * 2
-    elif ((unsigned - (medians[0] + medians[1])) < medians[2]):
-        m = 2
-        offset = unsigned - (medians[0] + medians[1])
-        add = medians[2] - 1
-        entropy[0] += ((entropy[0] + 128) / 128) * 5
-        entropy[1] += ((entropy[1] + 64) / 64) * 5
-        entropy[2] -= ((entropy[2] + 30) / 32) * 2
-    else:
-        m = (((unsigned - (medians[0] + medians[1])) / medians[2]) + 2)
-        offset = unsigned - (medians[0] + medians[1] + ((m - 2) * medians[2]))
-        add = medians[2] - 1
-        entropy[0] += ((entropy[0] + 128) / 128) * 5
-        entropy[1] += ((entropy[1] + 64) / 64) * 5
-        entropy[2] += ((entropy[2] + 32) / 32) * 5
-
-    return (m, offset, add, sign)
 
 
 def write_extended_integers(writer,

@@ -275,7 +275,7 @@ def read_block(block_header, sub_blocks_size, sub_blocks_data):
     decorrelation_terms_read = False
     decorrelation_weights_read = False
     decorrelation_samples_read = False
-    medians_read = False
+    entropies_read = False
     residuals_read = False
     extended_integers_read = False
 
@@ -320,18 +320,18 @@ def read_block(block_header, sub_blocks_size, sub_blocks_data):
                     sub_block_size, sub_block_data)
                 decorrelation_samples_read = True
             if (metadata_function == 5):
-                medians = read_entropy_variables(block_header, sub_block_data)
-                medians_read = True
+                entropies = read_entropy_variables(block_header, sub_block_data)
+                entropies_read = True
             if (metadata_function == 9):
                 (zero_bits,
                  one_bits,
                  duplicate_bits) = read_extended_integers(sub_block_data)
                 extended_integers_read = True
             if (metadata_function == 10):
-                if (not medians_read):
+                if (not entropies_read):
                     raise ValueError(
-                        "bitstream sub block before medians sub block")
-                residuals = read_bitstream(block_header, medians,
+                      "bitstream sub block before entropy variables sub block")
+                residuals = read_bitstream(block_header, entropies,
                                            sub_block_data)
                 residuals_read = True
 
@@ -572,20 +572,20 @@ def read_decorrelation_samples(block_header, decorrelation_terms,
         return samples
 
 def read_entropy_variables(block_header, sub_block_data):
-    medians = ([], [])
+    entropies = ([], [])
     for i in xrange(3):
-        medians[0].append(read_exp2(sub_block_data))
+        entropies[0].append(read_exp2(sub_block_data))
 
     if ((block_header.mono_output == 0) and (block_header.false_stereo == 0)):
         for i in xrange(3):
-            medians[1].append(read_exp2(sub_block_data))
+            entropies[1].append(read_exp2(sub_block_data))
     else:
-        medians[1].extend([0, 0, 0])
+        entropies[1].extend([0, 0, 0])
 
-    return medians
+    return entropies
 
 
-def read_bitstream(block_header, medians, sub_block_data):
+def read_bitstream(block_header, entropies, sub_block_data):
     if ((block_header.mono_output == 0) and (block_header.false_stereo == 0)):
         channel_count = 2
         residuals = ([], [])
@@ -596,27 +596,27 @@ def read_bitstream(block_header, medians, sub_block_data):
     u = None
     i = 0
     while (i < (block_header.block_samples * channel_count)):
-        if ((u is None) and (medians[0][0] < 2) and (medians[1][0] < 2)):
+        if ((u is None) and (entropies[0][0] < 2) and (entropies[1][0] < 2)):
             #handle long run of 0 residuals
             zeroes = read_egc(sub_block_data)
             if (zeroes > 0):
                 for j in xrange(zeroes):
                     residuals[i % channel_count].append(0)
                     i += 1
-                medians[0][0] = medians[0][1] = medians[0][2] = 0
-                medians[1][0] = medians[1][1] = medians[1][2] = 0
+                entropies[0][0] = entropies[0][1] = entropies[0][2] = 0
+                entropies[1][0] = entropies[1][1] = entropies[1][2] = 0
             if (i < (block_header.block_samples * channel_count)):
                 (residual, u) = read_residual(
                     sub_block_data,
                     u,
-                    medians[i % channel_count])
+                    entropies[i % channel_count])
                 residuals[i % channel_count].append(residual)
                 i += 1
         else:
             (residual, u) = read_residual(
                 sub_block_data,
                 u,
-                medians[i % channel_count])
+                entropies[i % channel_count])
             residuals[i % channel_count].append(residual)
             i += 1
 
@@ -632,7 +632,7 @@ def read_egc(reader):
         return t
 
 
-def read_residual(reader, last_u, medians):
+def read_residual(reader, last_u, entropies):
     if (last_u is None):
         u = reader.unary(0)
         if (u == 16):
@@ -649,27 +649,27 @@ def read_residual(reader, last_u, medians):
 
     if (m == 0):
         base = 0
-        add = medians[0] >> 4
-        medians[0] -= ((medians[0] + 126) >> 7) * 2
+        add = entropies[0] >> 4
+        entropies[0] -= ((entropies[0] + 126) >> 7) * 2
     elif (m == 1):
-        base = (medians[0] >> 4) + 1
-        add = medians[1] >> 4
-        medians[0] += ((medians[0] + 128) >> 7) * 5
-        medians[1] -= ((medians[1] + 62) >> 6) * 2
+        base = (entropies[0] >> 4) + 1
+        add = entropies[1] >> 4
+        entropies[0] += ((entropies[0] + 128) >> 7) * 5
+        entropies[1] -= ((entropies[1] + 62) >> 6) * 2
     elif (m == 2):
-        base = ((medians[0] >> 4) + 1) + ((medians[1] >> 4) + 1)
-        add = medians[2] >> 4
-        medians[0] += ((medians[0] + 128) >> 7) * 5
-        medians[1] += ((medians[1] + 64) >> 6) * 5
-        medians[2] -= ((medians[2] + 30) >> 5) * 2
+        base = ((entropies[0] >> 4) + 1) + ((entropies[1] >> 4) + 1)
+        add = entropies[2] >> 4
+        entropies[0] += ((entropies[0] + 128) >> 7) * 5
+        entropies[1] += ((entropies[1] + 64) >> 6) * 5
+        entropies[2] -= ((entropies[2] + 30) >> 5) * 2
     else:
-        base = (((medians[0] >> 4) + 1) +
-                ((medians[1] >> 4) + 1) +
-                (((medians[2] >> 4) + 1) * (m - 2)))
-        add = medians[2] >> 4
-        medians[0] += ((medians[0] + 128) >> 7) * 5
-        medians[1] += ((medians[1] + 64) >> 6) * 5
-        medians[2] += ((medians[2] + 32) >> 5) * 5
+        base = (((entropies[0] >> 4) + 1) +
+                ((entropies[1] >> 4) + 1) +
+                (((entropies[2] >> 4) + 1) * (m - 2)))
+        add = entropies[2] >> 4
+        entropies[0] += ((entropies[0] + 128) >> 7) * 5
+        entropies[1] += ((entropies[1] + 64) >> 6) * 5
+        entropies[2] += ((entropies[2] + 32) >> 5) * 5
 
     if (add == 0):
         unsigned = base

@@ -5059,7 +5059,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE py_encoders/encode_flac
 ** TODO py_encoders/encode_shn
 ** DONE py_encoders/encode_alac
-** TODO py_encoders/encode_wavpack
+** DONE py_encoders/encode_wavpack
 * TODO Overhaul decoding/encoding documentation
   It needs to be cleaned up so one can better follow the entire
   decoding process, as well as the entire encoding process.

@@ -75,7 +75,7 @@ typedef struct {
     array_i* decorrelation_deltas;
     array_ia* decorrelation_weights;
     array_iaa* decorrelation_samples;
-    array_ia* medians;
+    array_ia* entropies;
     array_ia* residuals;
     array_ia* decorrelated;
     array_ia* left_right;
@@ -279,13 +279,13 @@ wavpack_read_decorrelation_samples(const struct block_header* block_header,
                                    const array_i* terms,
                                    array_iaa* samples);
 
-/*returns two lists of 3 median values, one per channel
+/*returns two lists of 3 entropy values, one per channel
 
- medians->_[channel]->_[m]*/
+ entropies->_[channel]->_[m]*/
 status
 wavpack_read_entropy_variables(const struct block_header* block_header,
                                const struct sub_block* sub_block,
-                               array_ia* medians);
+                               array_ia* entropies);
 
 /*returns a list of residuals per channel
 
@@ -293,7 +293,7 @@ wavpack_read_entropy_variables(const struct block_header* block_header,
 status
 wavpack_read_bitstream(const struct block_header* block_header,
                        BitstreamReader* sub_block_data,
-                       array_ia* medians,
+                       array_ia* entropies,
                        array_ia* residuals);
 
 unsigned
@@ -302,7 +302,7 @@ wavpack_read_egc(BitstreamReader* bs);
 int
 wavpack_read_residual(BitstreamReader* bs,
                       int* last_u,
-                      array_i* medians);
+                      array_i* entropies);
 
 status
 wavpack_decorrelate_channels(const array_i* decorrelation_terms,

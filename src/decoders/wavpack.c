@@ -39,7 +39,7 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     self->decorrelation_deltas = array_i_new();
     self->decorrelation_weights = array_ia_new();
     self->decorrelation_samples = array_iaa_new();
-    self->medians = array_ia_new();
+    self->entropies = array_ia_new();
     self->residuals = array_ia_new();
     self->decorrelated = array_ia_new();
     self->left_right = array_ia_new();
@@ -155,7 +155,7 @@ WavPackDecoder_dealloc(decoders_WavPackDecoder *self) {
     self->decorrelation_deltas->del(self->decorrelation_deltas);
     self->decorrelation_weights->del(self->decorrelation_weights);
     self->decorrelation_samples->del(self->decorrelation_samples);
-    self->medians->del(self->medians);
+    self->entropies->del(self->entropies);
     self->residuals->del(self->residuals);
     self->decorrelated->del(self->decorrelated);
     self->left_right->del(self->left_right);
@@ -454,7 +454,7 @@ wavpack_decode_block(decoders_WavPackDecoder* decoder,
     array_i* decorrelation_deltas = decoder->decorrelation_deltas;
     array_ia* decorrelation_weights = decoder->decorrelation_weights;
     array_iaa* decorrelation_samples = decoder->decorrelation_samples;
-    array_ia* medians = decoder->medians;
+    array_ia* entropies = decoder->entropies;
     array_ia* residuals = decoder->residuals;
 
     sub_block.data = decoder->sub_block_data;
@@ -506,9 +506,10 @@ wavpack_decode_block(decoders_WavPackDecoder* decoder,
                 decorrelation_samples_read = 1;
                 break;
             case 5:
-                if ((status = wavpack_read_entropy_variables(block_header,
-                                                             &sub_block,
-                                                             medians)) != OK) {
+                if ((status = wavpack_read_entropy_variables(
+                         block_header,
+                         &sub_block,
+                         entropies)) != OK) {
                     return status;
                 }
                 entropy_variables_read = 1;
@@ -527,7 +528,7 @@ wavpack_decode_block(decoders_WavPackDecoder* decoder,
                 }
                 if ((status = wavpack_read_bitstream(block_header,
                                                      sub_block.data,
-                                                     medians,
+                                                     entropies,
                                                      residuals)) != OK) {
                     return status;
                 }
@@ -877,36 +878,36 @@ wavpack_read_decorrelation_samples(const struct block_header* block_header,
 status
 wavpack_read_entropy_variables(const struct block_header* block_header,
                                const struct sub_block* sub_block,
-                               array_ia* medians)
+                               array_ia* entropies)
 {
-    array_i* medians_0;
-    array_i* medians_1;
+    array_i* entropies_0;
+    array_i* entropies_1;
 
     if (sub_block->actual_size_1_less)
         return INVALID_ENTROPY_VARIABLE_COUNT;
 
-    medians->reset(medians);
-    medians_0 = medians->append(medians);
-    medians_1 = medians->append(medians);
+    entropies->reset(entropies);
+    entropies_0 = entropies->append(entropies);
+    entropies_1 = entropies->append(entropies);
 
     if ((block_header->mono_output == 0) && (block_header->false_stereo == 0)) {
         if (sub_block->size != 6)
             return INVALID_ENTROPY_VARIABLE_COUNT;
 
-        medians_0->append(medians_0, read_wv_exp2(sub_block->data));
-        medians_0->append(medians_0, read_wv_exp2(sub_block->data));
-        medians_0->append(medians_0, read_wv_exp2(sub_block->data));
-        medians_1->append(medians_1, read_wv_exp2(sub_block->data));
-        medians_1->append(medians_1, read_wv_exp2(sub_block->data));
-        medians_1->append(medians_1, read_wv_exp2(sub_block->data));
+        entropies_0->append(entropies_0, read_wv_exp2(sub_block->data));
+        entropies_0->append(entropies_0, read_wv_exp2(sub_block->data));
+        entropies_0->append(entropies_0, read_wv_exp2(sub_block->data));
+        entropies_1->append(entropies_1, read_wv_exp2(sub_block->data));
+        entropies_1->append(entropies_1, read_wv_exp2(sub_block->data));
+        entropies_1->append(entropies_1, read_wv_exp2(sub_block->data));
     } else {
         if (sub_block->size != 3)
             return INVALID_ENTROPY_VARIABLE_COUNT;
 
-        medians_0->append(medians_0, read_wv_exp2(sub_block->data));
-        medians_0->append(medians_0, read_wv_exp2(sub_block->data));
-        medians_0->append(medians_0, read_wv_exp2(sub_block->data));
-        medians_1->mappend(medians_1, 3, 0);
+        entropies_0->append(entropies_0, read_wv_exp2(sub_block->data));
+        entropies_0->append(entropies_0, read_wv_exp2(sub_block->data));
+        entropies_0->append(entropies_0, read_wv_exp2(sub_block->data));
+        entropies_1->mappend(entropies_1, 3, 0);
     }
 
     return OK;
@@ -970,7 +971,7 @@ read_wv_exp2(BitstreamReader* sub_block_data)
 status
 wavpack_read_bitstream(const struct block_header* block_header,
                        BitstreamReader* sub_block_data,
-                       array_ia* medians,
+                       array_ia* entropies,
                        array_ia* residuals)
 {
     unsigned channel_count;
@@ -992,8 +993,8 @@ wavpack_read_bitstream(const struct block_header* block_header,
     if (!setjmp(*br_try(sub_block_data))) {
         while (i < (channel_count * block_header->block_samples)) {
             if ((u == UNDEFINED) &&
-                (medians->_[0]->_[0] < 2) &&
-                (medians->_[1]->_[0] < 2)) {
+                (entropies->_[0]->_[0] < 2) &&
+                (entropies->_[1]->_[0] < 2)) {
                 unsigned zeroes = wavpack_read_egc(sub_block_data);
 
                 if (zeroes > 0) {
@@ -1002,12 +1003,12 @@ wavpack_read_bitstream(const struct block_header* block_header,
                         channel->append(channel, 0);
                         i++;
                     }
-                    medians->_[0]->_[0] = 0;
-                    medians->_[0]->_[1] = 0;
-                    medians->_[0]->_[2] = 0;
-                    medians->_[1]->_[0] = 0;
-                    medians->_[1]->_[1] = 0;
-                    medians->_[1]->_[2] = 0;
+                    entropies->_[0]->_[0] = 0;
+                    entropies->_[0]->_[1] = 0;
+                    entropies->_[0]->_[2] = 0;
+                    entropies->_[1]->_[0] = 0;
+                    entropies->_[1]->_[1] = 0;
+                    entropies->_[1]->_[2] = 0;
                 }
 
 
@@ -1016,7 +1017,7 @@ wavpack_read_bitstream(const struct block_header* block_header,
                     const int residual =
                         wavpack_read_residual(sub_block_data,
                                               &u,
-                                              medians->_[i % channel_count]);
+                                              entropies->_[i % channel_count]);
                     array_i* channel = residuals->_[i % channel_count];
                     channel->append(channel, residual);
                     i++;
@@ -1026,7 +1027,7 @@ wavpack_read_bitstream(const struct block_header* block_header,
                     wavpack_read_residual(
                                           sub_block_data,
                                           &u,
-                                          medians->_[i % channel_count]);
+                                          entropies->_[i % channel_count]);
                 array_i* channel = residuals->_[i % channel_count];
                 channel->append(channel, residual);
                 i++;
@@ -1068,7 +1069,7 @@ LOG2(unsigned value)
 int
 wavpack_read_residual(BitstreamReader* bs,
                       int* last_u,
-                      array_i* medians)
+                      array_i* entropies)
 {
     unsigned u;
     unsigned m;
@@ -1095,30 +1096,30 @@ wavpack_read_residual(BitstreamReader* bs,
     switch (m) {
     case 0:
         base = 0;
-        add = medians->_[0] >> 4;
-        medians->_[0] -= ((medians->_[0] + 126) >> 7) * 2;
+        add = entropies->_[0] >> 4;
+        entropies->_[0] -= ((entropies->_[0] + 126) >> 7) * 2;
         break;
     case 1:
-        base = (medians->_[0] >> 4) + 1;
-        add = medians->_[1] >> 4;
-        medians->_[0] += ((medians->_[0] + 128) >> 7) * 5;
-        medians->_[1] -= ((medians->_[1] + 62) >> 6) * 2;
+        base = (entropies->_[0] >> 4) + 1;
+        add = entropies->_[1] >> 4;
+        entropies->_[0] += ((entropies->_[0] + 128) >> 7) * 5;
+        entropies->_[1] -= ((entropies->_[1] + 62) >> 6) * 2;
         break;
     case 2:
-        base = ((medians->_[0] >> 4) + 1) + ((medians->_[1] >> 4) + 1);
-        add = medians->_[2] >> 4;
-        medians->_[0] += ((medians->_[0] + 128) >> 7) * 5;
-        medians->_[1] += ((medians->_[1] + 64) >> 6) * 5;
-        medians->_[2] -= ((medians->_[2] + 30) >> 5) * 2;
+        base = ((entropies->_[0] >> 4) + 1) + ((entropies->_[1] >> 4) + 1);
+        add = entropies->_[2] >> 4;
+        entropies->_[0] += ((entropies->_[0] + 128) >> 7) * 5;
+        entropies->_[1] += ((entropies->_[1] + 64) >> 6) * 5;
+        entropies->_[2] -= ((entropies->_[2] + 30) >> 5) * 2;
         break;
     default:
-        base = (((medians->_[0] >> 4) + 1) +
-                ((medians->_[1] >> 4) + 1) +
-                (((medians->_[2] >> 4) + 1) * (m - 2)));
-        add = medians->_[2] >> 4;
-        medians->_[0] += ((medians->_[0] + 128) >> 7) * 5;
-        medians->_[1] += ((medians->_[1] + 64) >> 6) * 5;
-        medians->_[2] += ((medians->_[2] + 32) >> 5) * 5;
+        base = (((entropies->_[0] >> 4) + 1) +
+                ((entropies->_[1] >> 4) + 1) +
+                (((entropies->_[2] >> 4) + 1) * (m - 2)));
+        add = entropies->_[2] >> 4;
+        entropies->_[0] += ((entropies->_[0] + 128) >> 7) * 5;
+        entropies->_[1] += ((entropies->_[1] + 64) >> 6) * 5;
+        entropies->_[2] += ((entropies->_[2] + 32) >> 5) * 5;
         break;
     }
 
