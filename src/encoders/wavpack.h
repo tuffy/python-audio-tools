@@ -109,11 +109,15 @@ wavpack_free_context(struct wavpack_encoder_context* context);
 
 /*these are the encoding parameters for a given block in a set*/
 struct encoding_parameters {
-    unsigned channel_count;       /*1 or 2*/
+    /*the actual channel count for a given set's block, must be 1 or 2*/
+    unsigned channel_count;
 
     int try_false_stereo;  /*check a 2 channel block for false stereo*/
     int try_wasted_bits;   /*check a block for wasted least-significant bits*/
     int try_joint_stereo;  /*apply joint stereo to 2 channel blocks*/
+
+    /*the effective channel count for a given set's block, must be 1 or 2*/
+    unsigned effective_channel_count;
 
     /*desired number of correlation passes:  0, 1, 2, 5, 10 or 16
       this may be less than the actual number of correlation passes
@@ -149,6 +153,9 @@ wavpack_init_block_parameters(struct encoding_parameters* params,
                               int try_joint_stereo,
                               unsigned correlation_passes);
 
+/*channel count is the effective channel count for the block
+  which may be different from its actual channel count
+  depending on whether false stereo is indicated*/
 void
 wavpack_reset_block_parameters(struct encoding_parameters* params,
                                unsigned channel_count);
@@ -156,6 +163,13 @@ wavpack_reset_block_parameters(struct encoding_parameters* params,
 void
 init_correlation_samples(array_i* samples,
                          int correlation_term);
+
+/*round-trips the correlation weights, samples and the entropy variables
+  from the previous block
+  this presumes that the current block and previous block
+  have the same effective channel count*/
+void
+wavpack_roundtrip_block_parameters(struct encoding_parameters* params);
 
 void
 wavpack_free_block_parameters(struct encoding_parameters* params);
@@ -214,6 +228,9 @@ write_correlation_terms(BitstreamWriter* bs,
 
 int
 store_weight(int weight);
+
+int
+restore_weight(int value);
 
 /*weights[p][c] are the correlation weight values for channel "c", pass "p"*/
 void
@@ -306,6 +323,9 @@ apply_joint_stereo(const array_ia* left_right, array_ia* mid_side);
 
 int
 wv_log2(int value);
+
+int
+wv_exp2(int value);
 
 static void
 wavpack_md5_update(void *data, unsigned char *buffer, unsigned long len);

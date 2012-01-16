@@ -5130,3 +5130,19 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 * TODO Make internal functions static
   Encoders and decoders come with lots of helper functions.
   These should be defined statically to avoid colliding with one another.
+** TODO decoders
+   - [ ] src/decoders/alac.c
+   - [ ] src/decoders/aobpcm.c
+   - [ ] src/decoders/flac.c
+   - [ ] src/decoders/mlp.c
+   - [ ] src/decoders/ogg.c
+   - [ ] src/decoders/oggflac.c
+   - [ ] src/decoders/shn.c
+   - [ ] src/decoders/sine.c
+   - [ ] src/decoders/vorbis.c
+   - [ ] src/decoders/wavpack.c
+** TODO encoders
+   - [ ] src/encoders/alac.c
+   - [ ] src/encoders/flac.c
+   - [ ] src/encoders/shn.c
+   - [ ] src/encoders/wavpack.c
