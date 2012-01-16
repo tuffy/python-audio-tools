@@ -5071,9 +5071,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE ALAC
 *** DONE decoding
 *** DONE encoding
-** TODO WavPack
+** DONE WavPack
 *** DONE decoding
-*** TODO encoding
+*** DONE encoding
 ** TODO Shorten
 *** TODO decoding
 *** TODO encoding
