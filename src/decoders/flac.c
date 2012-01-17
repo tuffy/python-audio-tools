@@ -336,6 +336,7 @@ FlacDecoder_offsets(decoders_FlacDecoder* self, PyObject *args)
             if ((error = flacdec_read_frame_header(self->bitstream,
                                                    &(self->streaminfo),
                                                    &frame_header)) != OK) {
+                PyEval_RestoreThread(thread_state);
                 PyErr_SetString(PyExc_ValueError, FlacDecoder_strerror(error));
                 goto error;
             }

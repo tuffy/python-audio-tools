@@ -545,6 +545,7 @@ AudioFile Objects
    Note that this method never modifies the original file.
 
    Raises :exc:`IOError` if some error occurs when writing the new file.
+   Raises :exc:`ValueError` if the file itself is invalid.
 
 .. classmethod:: AudioFile.has_binaries(system_binaries)
 

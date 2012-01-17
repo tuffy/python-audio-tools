@@ -3557,6 +3557,7 @@ class AudioFile:
         otherwise, only a dry-run is performed and no new file is written
 
         Raises IOError if unable to write the file or its metadata
+        Raises ValueError if the file has errors of some sort
         """
 
         if (output_filename is None):

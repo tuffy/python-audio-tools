@@ -173,6 +173,9 @@ if (__name__ == '__main__'):
                         msg.error(_(u"Unable to write \"%s\"") % \
                                       (msg.filename(track.filename)))
                         sys.exit(1)
+                    except ValueError,err:
+                        msg.error(unicode(err))
+                        sys.exit(1)
             finally:
                 undo_db.close()
         else:
@@ -185,6 +188,9 @@ if (__name__ == '__main__'):
                 except IOError:
                     msg.error(_(u"Unable to write \"%s\"") % \
                                   (msg.filename(track.filename)))
+                    sys.exit(1)
+                except ValueError,err:
+                    msg.error(unicode(err))
                     sys.exit(1)
     elif (options.undo):
         try:
