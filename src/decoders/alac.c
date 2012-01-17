@@ -56,7 +56,7 @@ ALACDecoder_init(decoders_ALACDecoder *self,
 
     self->bitstream->mark(self->bitstream);
 
-    if (alacdec_parse_decoding_parameters(self)) {
+    if (parse_decoding_parameters(self)) {
         self->bitstream->unmark(self->bitstream);
         return -1;
     } else {
@@ -64,7 +64,7 @@ ALACDecoder_init(decoders_ALACDecoder *self,
     }
 
     /*seek to the 'mdat' atom, which contains the ALAC stream*/
-    if (alacdec_seek_mdat(self->bitstream) == ERROR) {
+    if (seek_mdat(self->bitstream) == ERROR) {
         self->bitstream->unmark(self->bitstream);
         PyErr_SetString(PyExc_ValueError,
                         "Unable to locate 'mdat' atom in stream");
@@ -106,8 +106,8 @@ ALACDecoder_dealloc(decoders_ALACDecoder *self)
     self->ob_type->tp_free((PyObject*)self);
 }
 
-int
-alacdec_parse_decoding_parameters(decoders_ALACDecoder *self)
+static int
+parse_decoding_parameters(decoders_ALACDecoder *self)
 {
     BitstreamReader* mdia_atom = br_substream_new(BS_BIG_ENDIAN);
     BitstreamReader* stsd_atom = br_substream_new(BS_BIG_ENDIAN);
@@ -273,8 +273,8 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
         channel_count = mdat->read(mdat, 3) + 1;
         while (channel_count != 8) {
             /*read a frame from the frameset into "channels"*/
-            if (alacdec_read_frame(self, mdat,
-                                   frameset_channels, channel_count) != OK) {
+            if (read_frame(self, mdat,
+                           frameset_channels, channel_count) != OK) {
                 br_etry(mdat);
                 PyEval_RestoreThread(thread_state);
                 PyErr_SetString(PyExc_ValueError, self->error_message);
@@ -300,7 +300,7 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
                                       frameset_channels->_[0]->len);
 
         /*convert ALAC channel assignment to standard audiotools assignment*/
-        alacdec_alac_order_to_wave_order(frameset_channels);
+        alac_order_to_wave_order(frameset_channels);
 
         /*finally, build and return framelist object from the sample data*/
         return array_ia_to_FrameList(self->audiotools_pcm,
@@ -314,8 +314,8 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
     }
 }
 
-void
-alacdec_alac_order_to_wave_order(array_ia* alac_ordered)
+static void
+alac_order_to_wave_order(array_ia* alac_ordered)
 {
     array_ia* wave_ordered = array_ia_new();
     array_i* wave_ch;
@@ -423,11 +423,11 @@ alacdec_alac_order_to_wave_order(array_ia* alac_ordered)
     wave_ordered->del(wave_ordered);
 }
 
-status
-alacdec_read_frame(decoders_ALACDecoder *self,
-                   BitstreamReader* mdat,
-                   array_ia* frameset_channels,
-                   unsigned channel_count)
+static status
+read_frame(decoders_ALACDecoder *self,
+           BitstreamReader* mdat,
+           array_ia* frameset_channels,
+           unsigned channel_count)
 {
     unsigned has_sample_count;
     unsigned uncompressed_LSBs;
@@ -489,8 +489,8 @@ alacdec_read_frame(decoders_ALACDecoder *self,
 
         /*read a subframe header per channel*/
         for (channel = 0; channel < channel_count; channel++) {
-            alacdec_read_subframe_header(mdat,
-                                         &(self->subframe_headers[channel]));
+            read_subframe_header(mdat,
+                                 &(self->subframe_headers[channel]));
         }
 
         /*if uncompressed LSBs, read a block of partial samples to prepend*/
@@ -506,18 +506,17 @@ alacdec_read_frame(decoders_ALACDecoder *self,
           and calculate the subframe's samples*/
         for (channel = 0; channel < channel_count; channel++) {
             residuals->reset(residuals);
-            alacdec_read_residuals(
-                mdat,
-                residuals,
-                sample_count,
-                self->bits_per_sample -
-                (uncompressed_LSBs * 8) +
-                (channel_count - 1),
-                self->initial_history,
-                self->history_multiplier,
-                self->maximum_k);
+            read_residuals(mdat,
+                           residuals,
+                           sample_count,
+                           self->bits_per_sample -
+                           (uncompressed_LSBs * 8) +
+                           (channel_count - 1),
+                           self->initial_history,
+                           self->history_multiplier,
+                           self->maximum_k);
 
-            alacdec_decode_subframe(
+            decode_subframe(
                 frame_channels->append(frame_channels),
                 residuals,
                 self->subframe_headers[channel].qlp_coeff,
@@ -527,10 +526,10 @@ alacdec_read_frame(decoders_ALACDecoder *self,
         /*if stereo, decorrelate channels
           according to interlacing shift and interlacing leftweight*/
         if ((channel_count == 2) && (interlacing_leftweight > 0)) {
-            alacdec_decorrelate_channels(frame_channels->_[0],
-                                         frame_channels->_[1],
-                                         interlacing_shift,
-                                         interlacing_leftweight);
+            decorrelate_channels(frame_channels->_[0],
+                                 frame_channels->_[1],
+                                 interlacing_shift,
+                                 interlacing_leftweight);
         }
 
         /*if uncompressed LSBs, prepend partial samples to output*/
@@ -563,8 +562,8 @@ ALACDecoder_close(decoders_ALACDecoder* self, PyObject *args)
     return Py_None;
 }
 
-status
-alacdec_seek_mdat(BitstreamReader* alac_stream)
+static status
+seek_mdat(BitstreamReader* alac_stream)
 {
     unsigned int atom_size;
     uint8_t atom_type[4];
@@ -583,9 +582,9 @@ alacdec_seek_mdat(BitstreamReader* alac_stream)
     }
 }
 
-void
-alacdec_read_subframe_header(BitstreamReader *bs,
-                             struct alac_subframe_header *subframe_header)
+static void
+read_subframe_header(BitstreamReader *bs,
+                     struct alac_subframe_header *subframe_header)
 {
     unsigned predictor_coef_num;
     unsigned i;
@@ -627,14 +626,14 @@ LOG2(int value)
     return bits;
 }
 
-void
-alacdec_read_residuals(BitstreamReader *bs,
-                       array_i* residuals,
-                       unsigned int residual_count,
-                       unsigned int sample_size,
-                       unsigned int initial_history,
-                       unsigned int history_multiplier,
-                       unsigned int maximum_k)
+static void
+read_residuals(BitstreamReader *bs,
+               array_i* residuals,
+               unsigned int residual_count,
+               unsigned int sample_size,
+               unsigned int initial_history,
+               unsigned int history_multiplier,
+               unsigned int maximum_k)
 {
     int history = initial_history;
     unsigned int sign_modifier = 0;
@@ -648,7 +647,7 @@ alacdec_read_residuals(BitstreamReader *bs,
     for (i = 0; i < residual_count; i++) {
         /*get an unsigned residual based on "history"
           and on "sample_size" as a last resort*/
-        unsigned_residual = alacdec_read_residual(
+        unsigned_residual = read_residual(
             bs,
             MIN(LOG2((history >> 9) + 3), maximum_k),
             sample_size) + sign_modifier;
@@ -674,7 +673,7 @@ alacdec_read_residuals(BitstreamReader *bs,
         /*if history gets too small, we may have a block of 0 samples
           which can be compressed more efficiently*/
         if ((history < 128) && ((i + 1) < residual_count)) {
-            zero_block_size = alacdec_read_residual(
+            zero_block_size = read_residual(
                 bs,
                 MIN(7 - LOG2(history) + ((history + 16) / 64), maximum_k),
                 16);
@@ -697,10 +696,10 @@ alacdec_read_residuals(BitstreamReader *bs,
 
 #define RICE_THRESHOLD 8
 
-unsigned
-alacdec_read_residual(BitstreamReader *bs,
-                      unsigned int k,
-                      unsigned int sample_size)
+static unsigned
+read_residual(BitstreamReader *bs,
+              unsigned int k,
+              unsigned int sample_size)
 {
     int msb;
     unsigned int lsb;
@@ -742,11 +741,11 @@ SIGN_ONLY(int value)
         return 0;
 }
 
-void
-alacdec_decode_subframe(array_i* samples,
-                        array_i* residuals,
-                        array_i* qlp_coeff,
-                        uint8_t qlp_shift_needed)
+static void
+decode_subframe(array_i* samples,
+                array_i* residuals,
+                array_i* qlp_coeff,
+                uint8_t qlp_shift_needed)
 {
     int* residuals_data = residuals->_;
     int base_sample;
@@ -825,10 +824,10 @@ alacdec_decode_subframe(array_i* samples,
 }
 
 void
-alacdec_decorrelate_channels(array_i* left,
-                             array_i* right,
-                             unsigned interlacing_shift,
-                             unsigned interlacing_leftweight)
+decorrelate_channels(array_i* left,
+                     array_i* right,
+                     unsigned interlacing_shift,
+                     unsigned interlacing_leftweight)
 {
     unsigned size = left->len;
     unsigned i;

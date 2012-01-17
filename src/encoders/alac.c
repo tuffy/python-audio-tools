@@ -52,7 +52,7 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
 
     PyObject *log_output;
 
-    alacenc_init_encoder(&encoder);
+    init_encoder(&encoder);
 
     encoder.options.minimum_interlacing_leftweight = 0;
     encoder.options.maximum_interlacing_leftweight = 4;
@@ -114,7 +114,7 @@ ALACEncoder_encode_alac(char *filename,
     array_ia* channels = array_ia_new();
     unsigned frame_file_offset;
 
-    alacenc_init_encoder(&encoder);
+    init_encoder(&encoder);
 
     encoder.options.block_size = block_size;
     encoder.options.initial_history = initial_history;
@@ -159,7 +159,7 @@ ALACEncoder_encode_alac(char *filename,
             encoder.frame_log->_[LOG_FILE_OFFSET],
             frame_file_offset);
 
-        alac_write_frameset(output, &encoder, channels);
+        write_frameset(output, &encoder, channels);
 
         /*log each frame's total size in bytes*/
         encoder.frame_log->_[LOG_BYTE_SIZE]->append(
@@ -188,7 +188,7 @@ ALACEncoder_encode_alac(char *filename,
 
     pcmreader->del(pcmreader);
     output->free(output);
-    alacenc_free_encoder(&encoder);
+    free_encoder(&encoder);
     channels->del(channels);
 
     return log_output;
@@ -197,7 +197,7 @@ ALACEncoder_encode_alac(char *filename,
 
     pcmreader->del(pcmreader);
     output->free(output);
-    alacenc_free_encoder(&encoder);
+    free_encoder(&encoder);
     channels->del(channels);
 
     return NULL;
@@ -206,22 +206,22 @@ ALACEncoder_encode_alac(char *filename,
 
     pcmreader->del(pcmreader);
     output->free(output);
-    alacenc_free_encoder(&encoder);
+    free_encoder(&encoder);
     channels->del(channels);
 
     return 0;
  error:
     pcmreader->del(pcmreader);
     output->free(output);
-    alacenc_free_encoder(&encoder);
+    free_encoder(&encoder);
     channels->del(channels);
 
     return 1;
 }
 #endif
 
-void
-alacenc_init_encoder(struct alac_context* encoder)
+static void
+init_encoder(struct alac_context* encoder)
 {
     encoder->frame_byte_size = 0;
     encoder->mdat_byte_size = 0;
@@ -256,8 +256,8 @@ alacenc_init_encoder(struct alac_context* encoder)
     encoder->best_interlaced_frame = bw_open_recorder(BS_BIG_ENDIAN);
 }
 
-void
-alacenc_free_encoder(struct alac_context* encoder)
+static void
+free_encoder(struct alac_context* encoder)
 {
     encoder->frame_log->del(encoder->frame_log);
 
@@ -308,10 +308,10 @@ extract_2ch(array_ia* frameset, unsigned channel0, unsigned channel1,
 }
 
 
-void
-alac_write_frameset(BitstreamWriter *bs,
-                    struct alac_context* encoder,
-                    array_ia* channels)
+static void
+write_frameset(BitstreamWriter *bs,
+               struct alac_context* encoder,
+               array_ia* channels)
 {
     array_ia* channel_pair = array_ia_new();
     unsigned i;
@@ -319,68 +319,68 @@ alac_write_frameset(BitstreamWriter *bs,
     switch (channels->len) {
     case 1:
     case 2:
-        alac_write_frame(bs, encoder, channels);
+        write_frame(bs, encoder, channels);
         break;
     case 3:
-        alac_write_frame(bs, encoder,
-                         extract_1ch(channels, 2, channel_pair));
-        alac_write_frame(bs, encoder,
-                         extract_2ch(channels, 0, 1, channel_pair));
+        write_frame(bs, encoder,
+                    extract_1ch(channels, 2, channel_pair));
+        write_frame(bs, encoder,
+                    extract_2ch(channels, 0, 1, channel_pair));
         break;
     case 4:
-        alac_write_frame(bs, encoder,
-                         extract_1ch(channels, 2, channel_pair));
-        alac_write_frame(bs, encoder,
-                         extract_2ch(channels, 0, 1, channel_pair));
-        alac_write_frame(bs, encoder,
-                         extract_1ch(channels, 3, channel_pair));
+        write_frame(bs, encoder,
+                    extract_1ch(channels, 2, channel_pair));
+        write_frame(bs, encoder,
+                    extract_2ch(channels, 0, 1, channel_pair));
+        write_frame(bs, encoder,
+                    extract_1ch(channels, 3, channel_pair));
         break;
     case 5:
-        alac_write_frame(bs, encoder,
-                         extract_1ch(channels, 2, channel_pair));
-        alac_write_frame(bs, encoder,
-                         extract_2ch(channels, 0, 1, channel_pair));
-        alac_write_frame(bs, encoder,
-                         extract_2ch(channels, 3, 4, channel_pair));
+        write_frame(bs, encoder,
+                    extract_1ch(channels, 2, channel_pair));
+        write_frame(bs, encoder,
+                    extract_2ch(channels, 0, 1, channel_pair));
+        write_frame(bs, encoder,
+                    extract_2ch(channels, 3, 4, channel_pair));
         break;
     case 6:
-        alac_write_frame(bs, encoder,
-                         extract_1ch(channels, 2, channel_pair));
-        alac_write_frame(bs, encoder,
-                         extract_2ch(channels, 0, 1, channel_pair));
-        alac_write_frame(bs, encoder,
-                         extract_2ch(channels, 4, 5, channel_pair));
-        alac_write_frame(bs, encoder,
-                         extract_1ch(channels, 3, channel_pair));
+        write_frame(bs, encoder,
+                    extract_1ch(channels, 2, channel_pair));
+        write_frame(bs, encoder,
+                    extract_2ch(channels, 0, 1, channel_pair));
+        write_frame(bs, encoder,
+                    extract_2ch(channels, 4, 5, channel_pair));
+        write_frame(bs, encoder,
+                    extract_1ch(channels, 3, channel_pair));
         break;
     case 7:
-        alac_write_frame(bs, encoder,
-                         extract_1ch(channels, 2, channel_pair));
-        alac_write_frame(bs, encoder,
-                         extract_2ch(channels, 0, 1, channel_pair));
-        alac_write_frame(bs, encoder,
-                         extract_2ch(channels, 4, 5, channel_pair));
-        alac_write_frame(bs, encoder,
-                         extract_1ch(channels, 6, channel_pair));
-        alac_write_frame(bs, encoder,
-                         extract_1ch(channels, 3, channel_pair));
+        write_frame(bs, encoder,
+                    extract_1ch(channels, 2, channel_pair));
+        write_frame(bs, encoder,
+                    extract_2ch(channels, 0, 1, channel_pair));
+        write_frame(bs, encoder,
+                    extract_2ch(channels, 4, 5, channel_pair));
+        write_frame(bs, encoder,
+                    extract_1ch(channels, 6, channel_pair));
+        write_frame(bs, encoder,
+                    extract_1ch(channels, 3, channel_pair));
         break;
     case 8:
-        alac_write_frame(bs, encoder,
-                         extract_1ch(channels, 2, channel_pair));
-        alac_write_frame(bs, encoder,
-                         extract_2ch(channels, 6, 7, channel_pair));
-        alac_write_frame(bs, encoder,
-                         extract_2ch(channels, 0, 1, channel_pair));
-        alac_write_frame(bs, encoder,
-                         extract_2ch(channels, 4, 5, channel_pair));
-        alac_write_frame(bs, encoder,
-                         extract_1ch(channels, 3, channel_pair));
+        write_frame(bs, encoder,
+                    extract_1ch(channels, 2, channel_pair));
+        write_frame(bs, encoder,
+                    extract_2ch(channels, 6, 7, channel_pair));
+        write_frame(bs, encoder,
+                    extract_2ch(channels, 0, 1, channel_pair));
+        write_frame(bs, encoder,
+                    extract_2ch(channels, 4, 5, channel_pair));
+        write_frame(bs, encoder,
+                    extract_1ch(channels, 3, channel_pair));
         break;
     default:
         for (i = 0; i < channels->len; i++) {
-            alac_write_frame(bs, encoder,
-                             extract_1ch(channels, i, channel_pair));
+            write_frame(bs, encoder,
+                        extract_1ch(channels, i, channel_pair));
         }
         break;
     }
@@ -390,10 +390,10 @@ alac_write_frameset(BitstreamWriter *bs,
     channel_pair->del(channel_pair);
 }
 
-void
-alac_write_frame(BitstreamWriter *bs,
-                 struct alac_context* encoder,
-                 const array_ia* channels)
+static void
+write_frame(BitstreamWriter *bs,
+            struct alac_context* encoder,
+            const array_ia* channels)
 {
     BitstreamWriter *compressed_frame;
 
@@ -405,24 +405,24 @@ alac_write_frame(BitstreamWriter *bs,
         compressed_frame = encoder->compressed_frame;
         bw_reset_recorder(compressed_frame);
         if (!setjmp(encoder->residual_overflow)) {
-            alac_write_compressed_frame(compressed_frame,
-                                        encoder,
-                                        channels);
+            write_compressed_frame(compressed_frame,
+                                   encoder,
+                                   channels);
             bw_rec_copy(bs, compressed_frame);
         } else {
             /*a residual overflow exception occurred,
               so write an uncompressed frame instead*/
-            alac_write_uncompressed_frame(bs, encoder, channels);
+            write_uncompressed_frame(bs, encoder, channels);
         }
     } else {
-        return alac_write_uncompressed_frame(bs, encoder, channels);
+        return write_uncompressed_frame(bs, encoder, channels);
     }
 }
 
-void
-alac_write_uncompressed_frame(BitstreamWriter *bs,
-                              struct alac_context* encoder,
-                              const array_ia* channels)
+static void
+write_uncompressed_frame(BitstreamWriter *bs,
+                         struct alac_context* encoder,
+                         const array_ia* channels)
 {
     unsigned i;
     unsigned c;
@@ -449,10 +449,10 @@ alac_write_uncompressed_frame(BitstreamWriter *bs,
     }
 }
 
-void
-alac_write_compressed_frame(BitstreamWriter *bs,
-                            struct alac_context* encoder,
-                            const array_ia* channels)
+static void
+write_compressed_frame(BitstreamWriter *bs,
+                       struct alac_context* encoder,
+                       const array_ia* channels)
 {
     unsigned uncompressed_LSBs;
     array_i* LSBs;
@@ -469,11 +469,11 @@ alac_write_compressed_frame(BitstreamWriter *bs,
         LSBs = NULL;
 
         if (channels->len == 1) {
-            alac_write_non_interlaced_frame(bs,
-                                            encoder,
-                                            uncompressed_LSBs,
-                                            LSBs,
-                                            channels);
+            write_non_interlaced_frame(bs,
+                                       encoder,
+                                       uncompressed_LSBs,
+                                       LSBs,
+                                       channels);
         } else {
             /*attempt all the interlacing leftweight combinations*/
             bw_maximize_recorder(best_interlaced_frame);
@@ -482,13 +482,13 @@ alac_write_compressed_frame(BitstreamWriter *bs,
                  leftweight <= encoder->options.maximum_interlacing_leftweight;
                  leftweight++) {
                 bw_reset_recorder(interlaced_frame);
-                alac_write_interlaced_frame(interlaced_frame,
-                                            encoder,
-                                            0,
-                                            LSBs,
-                                            INTERLACING_SHIFT,
-                                            leftweight,
-                                            channels);
+                write_interlaced_frame(interlaced_frame,
+                                       encoder,
+                                       0,
+                                       LSBs,
+                                       INTERLACING_SHIFT,
+                                       leftweight,
+                                       channels);
                 if (interlaced_frame->bits_written(
                         interlaced_frame) <
                     best_interlaced_frame->bits_written(
@@ -526,11 +526,11 @@ alac_write_compressed_frame(BitstreamWriter *bs,
         }
 
         if (channels->len == 1) {
-            alac_write_non_interlaced_frame(bs,
-                                            encoder,
-                                            uncompressed_LSBs,
-                                            LSBs,
-                                            channels_MSB);
+            write_non_interlaced_frame(bs,
+                                       encoder,
+                                       uncompressed_LSBs,
+                                       LSBs,
+                                       channels_MSB);
         } else {
             /*attempt all the interlacing leftweight combinations*/
             bw_maximize_recorder(best_interlaced_frame);
@@ -539,13 +539,13 @@ alac_write_compressed_frame(BitstreamWriter *bs,
                  leftweight <= encoder->options.maximum_interlacing_leftweight;
                  leftweight++) {
                 bw_reset_recorder(interlaced_frame);
-                alac_write_interlaced_frame(interlaced_frame,
-                                            encoder,
-                                            uncompressed_LSBs,
-                                            LSBs,
-                                            INTERLACING_SHIFT,
-                                            leftweight,
-                                            channels_MSB);
+                write_interlaced_frame(interlaced_frame,
+                                       encoder,
+                                       uncompressed_LSBs,
+                                       LSBs,
+                                       INTERLACING_SHIFT,
+                                       leftweight,
+                                       channels_MSB);
                 if (interlaced_frame->bits_written(
                         interlaced_frame) <
                     best_interlaced_frame->bits_written(
@@ -561,12 +561,12 @@ alac_write_compressed_frame(BitstreamWriter *bs,
     }
 }
 
-void
-alac_write_non_interlaced_frame(BitstreamWriter *bs,
-                                struct alac_context* encoder,
-                                unsigned uncompressed_LSBs,
-                                const array_i* LSBs,
-                                const array_ia* channels)
+static void
+write_non_interlaced_frame(BitstreamWriter *bs,
+                           struct alac_context* encoder,
+                           unsigned uncompressed_LSBs,
+                           const array_i* LSBs,
+                           const array_ia* channels)
 {
     unsigned i;
     array_i* qlp_coefficients = encoder->qlp_coefficients0;
@@ -591,14 +591,14 @@ alac_write_non_interlaced_frame(BitstreamWriter *bs,
     bs->write(bs, 8, 0);   /*no interlacing shift*/
     bs->write(bs, 8, 0);   /*no interlacing leftweight*/
 
-    alac_compute_coefficients(encoder,
-                              channels->_[0],
-                              (encoder->bits_per_sample -
-                               (uncompressed_LSBs * 8)),
-                              qlp_coefficients,
-                              residual);
+    compute_coefficients(encoder,
+                         channels->_[0],
+                         (encoder->bits_per_sample -
+                          (uncompressed_LSBs * 8)),
+                         qlp_coefficients,
+                         residual);
 
-    alac_write_subframe_header(bs, qlp_coefficients);
+    write_subframe_header(bs, qlp_coefficients);
 
     if (uncompressed_LSBs > 0) {
         for (i = 0; i < LSBs->len; i++) {
@@ -609,14 +609,14 @@ alac_write_non_interlaced_frame(BitstreamWriter *bs,
     bw_rec_copy(bs, residual);
 }
 
-void
-alac_write_interlaced_frame(BitstreamWriter *bs,
-                            struct alac_context* encoder,
-                            unsigned uncompressed_LSBs,
-                            const array_i* LSBs,
-                            unsigned interlacing_shift,
-                            unsigned interlacing_leftweight,
-                            const array_ia* channels)
+static void
+write_interlaced_frame(BitstreamWriter *bs,
+                       struct alac_context* encoder,
+                       unsigned uncompressed_LSBs,
+                       const array_i* LSBs,
+                       unsigned interlacing_shift,
+                       unsigned interlacing_leftweight,
+                       const array_ia* channels)
 {
     unsigned i;
     array_i* qlp_coefficients0 = encoder->qlp_coefficients0;
@@ -645,27 +645,27 @@ alac_write_interlaced_frame(BitstreamWriter *bs,
     bs->write(bs, 8, interlacing_shift);
     bs->write(bs, 8, interlacing_leftweight);
 
-    alac_correlate_channels(channels,
-                            interlacing_shift,
-                            interlacing_leftweight,
-                            correlated_channels);
+    correlate_channels(channels,
+                       interlacing_shift,
+                       interlacing_leftweight,
+                       correlated_channels);
 
-    alac_compute_coefficients(encoder,
-                              correlated_channels->_[0],
-                              (encoder->bits_per_sample -
-                               (uncompressed_LSBs * 8) + 1),
-                              qlp_coefficients0,
-                              residual0);
+    compute_coefficients(encoder,
+                         correlated_channels->_[0],
+                         (encoder->bits_per_sample -
+                          (uncompressed_LSBs * 8) + 1),
+                         qlp_coefficients0,
+                         residual0);
 
-    alac_compute_coefficients(encoder,
-                              correlated_channels->_[1],
-                              (encoder->bits_per_sample -
-                               (uncompressed_LSBs * 8) + 1),
-                              qlp_coefficients1,
-                              residual1);
+    compute_coefficients(encoder,
+                         correlated_channels->_[1],
+                         (encoder->bits_per_sample -
+                          (uncompressed_LSBs * 8) + 1),
+                         qlp_coefficients1,
+                         residual1);
 
-    alac_write_subframe_header(bs, qlp_coefficients0);
-    alac_write_subframe_header(bs, qlp_coefficients1);
+    write_subframe_header(bs, qlp_coefficients0);
+    write_subframe_header(bs, qlp_coefficients1);
 
     if (uncompressed_LSBs > 0) {
         for (i = 0; i < LSBs->len; i++) {
@@ -677,11 +677,11 @@ alac_write_interlaced_frame(BitstreamWriter *bs,
     bw_rec_copy(bs, residual1);
 }
 
-void
-alac_correlate_channels(const array_ia* channels,
-                        unsigned interlacing_shift,
-                        unsigned interlacing_leftweight,
-                        array_ia* correlated_channels)
+static void
+correlate_channels(const array_ia* channels,
+                   unsigned interlacing_shift,
+                   unsigned interlacing_leftweight,
+                   array_ia* correlated_channels)
 {
     array_i* channel0;
     array_i* channel1;
@@ -720,12 +720,12 @@ alac_correlate_channels(const array_ia* channels,
     }
 }
 
-void
-alac_compute_coefficients(struct alac_context* encoder,
-                          const array_i* samples,
-                          unsigned sample_size,
-                          array_i* qlp_coefficients,
-                          BitstreamWriter *residual)
+static void
+compute_coefficients(struct alac_context* encoder,
+                     const array_i* samples,
+                     unsigned sample_size,
+                     array_i* qlp_coefficients,
+                     BitstreamWriter *residual)
 {
     array_f* windowed_signal = encoder->windowed_signal;
     array_f* autocorrelation_values = encoder->autocorrelation_values;
@@ -738,42 +738,41 @@ alac_compute_coefficients(struct alac_context* encoder,
     BitstreamWriter *residual_block8 = encoder->residual_block8;
 
     /*window the input samples*/
-    alac_window_signal(encoder,
-                       samples,
-                       windowed_signal);
+    window_signal(encoder,
+                  samples,
+                  windowed_signal);
 
     /*compute autocorrelation values for samples*/
-    alac_autocorrelate(windowed_signal,
-                       autocorrelation_values);
+    autocorrelate(windowed_signal, autocorrelation_values);
 
     assert(autocorrelation_values->len == 9);
 
     if (autocorrelation_values->_[0] != 0.0) {
         /*transform autocorrelation values to lists of LP coefficients*/
-        alac_compute_lp_coefficients(autocorrelation_values,
-                                     lp_coefficients);
+        compute_lp_coefficients(autocorrelation_values,
+                                lp_coefficients);
 
         /*quantize LP coefficients at order 4*/
-        alac_quantize_coefficients(lp_coefficients, 4, qlp_coefficients4);
+        quantize_coefficients(lp_coefficients, 4, qlp_coefficients4);
 
         /*quantize LP coefficients at order 8*/
-        alac_quantize_coefficients(lp_coefficients, 8, qlp_coefficients8);
+        quantize_coefficients(lp_coefficients, 8, qlp_coefficients8);
 
         /*calculate residuals for QLP coefficients at order 4*/
-        alac_calculate_residuals(samples, qlp_coefficients4, residual_values4);
+        calculate_residuals(samples, qlp_coefficients4, residual_values4);
 
         /*calculate residuals for QLP coefficients at order 8*/
-        alac_calculate_residuals(samples, qlp_coefficients8, residual_values8);
+        calculate_residuals(samples, qlp_coefficients8, residual_values8);
 
         /*encode residual block for QLP coefficients at order 4*/
         bw_reset_recorder(residual_block4);
-        alac_encode_residuals(encoder, sample_size,
-                              residual_values4, residual_block4);
+        encode_residuals(encoder, sample_size,
+                         residual_values4, residual_block4);
 
         /*encode residual block for QLP coefficients at order 8*/
         bw_reset_recorder(residual_block8);
-        alac_encode_residuals(encoder, sample_size,
-                              residual_values8, residual_block8);
+        encode_residuals(encoder, sample_size,
+                         residual_values8, residual_block8);
 
         /*return the LPC coefficients/residual which is the smallest*/
         if (residual_block4->bits_written(residual_block4) <
@@ -793,17 +792,17 @@ alac_compute_coefficients(struct alac_context* encoder,
         qlp_coefficients->reset(qlp_coefficients);
         qlp_coefficients->mappend(qlp_coefficients, 4, 0);
 
-        alac_calculate_residuals(samples, qlp_coefficients, residual_values4);
+        calculate_residuals(samples, qlp_coefficients, residual_values4);
 
-        alac_encode_residuals(encoder, sample_size,
-                              residual_values4, residual);
+        encode_residuals(encoder, sample_size,
+                         residual_values4, residual);
     }
 }
 
-void
-alac_window_signal(struct alac_context* encoder,
-                   const array_i* samples,
-                   array_f* windowed_signal)
+static void
+window_signal(struct alac_context* encoder,
+              const array_i* samples,
+              array_f* windowed_signal)
 {
     array_f* tukey_window = encoder->tukey_window;
     unsigned N = samples->len;
@@ -844,9 +843,9 @@ alac_window_signal(struct alac_context* encoder,
     }
 }
 
-void
-alac_autocorrelate(const array_f* windowed_signal,
-                   array_f* autocorrelation_values)
+static void
+autocorrelate(const array_f* windowed_signal,
+              array_f* autocorrelation_values)
 {
     unsigned lag;
     unsigned i;
@@ -864,9 +863,9 @@ alac_autocorrelate(const array_f* windowed_signal,
     }
 }
 
-void
-alac_compute_lp_coefficients(const array_f* autocorrelation_values,
-                             array_fa* lp_coefficients)
+static void
+compute_lp_coefficients(const array_f* autocorrelation_values,
+                        array_fa* lp_coefficients)
 {
     unsigned i;
     unsigned j;
@@ -909,10 +908,10 @@ alac_compute_lp_coefficients(const array_f* autocorrelation_values,
     lp_error->del(lp_error);
 }
 
-void
-alac_quantize_coefficients(const array_fa* lp_coefficients,
-                           unsigned order,
-                           array_i* qlp_coefficients)
+static void
+quantize_coefficients(const array_fa* lp_coefficients,
+                      unsigned order,
+                      array_i* qlp_coefficients)
 {
     array_f* lp_coeffs = lp_coefficients->_[order - 1];
     int qlp_max;
@@ -950,8 +949,8 @@ SIGN(int value)
         return 0;
 }
 
-void
-alac_calculate_residuals(const array_i* samples,
+static void
+calculate_residuals(const array_i* samples,
                          const array_i* qlp_coefficients,
                          array_i* residuals)
 {
@@ -1028,11 +1027,11 @@ LOG2(unsigned value)
 }
 
 
-void
-alac_encode_residuals(struct alac_context* encoder,
-                      unsigned sample_size,
-                      const array_i* residuals,
-                      BitstreamWriter *residual_block)
+static void
+encode_residuals(struct alac_context* encoder,
+                 unsigned sample_size,
+                 const array_i* residuals,
+                 BitstreamWriter *residual_block)
 {
     int history = (int)encoder->options.initial_history;
     unsigned sign_modifier = 0;
@@ -1059,8 +1058,8 @@ alac_encode_residuals(struct alac_context* encoder,
 
         k = LOG2((history >> 9) + 3);
         k = MIN(k, maximum_k);
-        alac_write_residual(unsigned_i - sign_modifier, k, sample_size,
-                            residual_block);
+        write_residual(unsigned_i - sign_modifier, k, sample_size,
+                       residual_block);
         sign_modifier = 0;
 
         if (unsigned_i <= 0xFFFF) {
@@ -1077,7 +1076,7 @@ alac_encode_residuals(struct alac_context* encoder,
                     zeroes++;
                     i++;
                 }
-                alac_write_residual(zeroes, k, 16, residual_block);
+                write_residual(zeroes, k, 16, residual_block);
                 if (zeroes < 0xFFFF)
                     sign_modifier = 1;
                 history = 0;
@@ -1089,8 +1088,8 @@ alac_encode_residuals(struct alac_context* encoder,
     }
 }
 
-void
-alac_write_residual(unsigned value, unsigned k, unsigned sample_size,
+static void
+write_residual(unsigned value, unsigned k, unsigned sample_size,
                     BitstreamWriter* residual)
 {
     const unsigned MSB = value / ((1 << k) - 1);
@@ -1111,9 +1110,9 @@ alac_write_residual(unsigned value, unsigned k, unsigned sample_size,
 }
 
 
-void
-alac_write_subframe_header(BitstreamWriter *bs,
-                           const array_i* qlp_coefficients)
+static void
+write_subframe_header(BitstreamWriter *bs,
+                      const array_i* qlp_coefficients)
 {
     unsigned i;
 

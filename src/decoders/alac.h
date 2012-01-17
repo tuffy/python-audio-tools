@@ -94,64 +94,64 @@ int
 ALACDecoder_init(decoders_ALACDecoder *self,
                  PyObject *args, PyObject *kwds);
 
-int
-alacdec_parse_decoding_parameters(decoders_ALACDecoder *self);
+static int
+parse_decoding_parameters(decoders_ALACDecoder *self);
 
 /*walks through the open QuickTime stream looking for the 'mdat' atom
   or returns ERROR if one cannot be found*/
-status
-alacdec_seek_mdat(BitstreamReader* alac_stream);
+static status
+seek_mdat(BitstreamReader* alac_stream);
 
 /*swaps the ALAC-ordered set of channels to Wave order,
   depending on the number of ALAC-ordered channels*/
-void
-alacdec_alac_order_to_wave_order(array_ia* alac_ordered);
+static void
+alac_order_to_wave_order(array_ia* alac_ordered);
 
 /*appends 1 or 2 channels worth of data from the current bitstream
   to the "samples" arrays
   returns OK on success
   or returns ERROR and sets self->error_message if some problem occurs*/
-status
-alacdec_read_frame(decoders_ALACDecoder *self,
-                   BitstreamReader *mdat,
-                   array_ia* frameset_channels,
-                   unsigned channel_count);
+static status
+read_frame(decoders_ALACDecoder *self,
+           BitstreamReader *mdat,
+           array_ia* frameset_channels,
+           unsigned channel_count);
 
 /*reads "subframe header" from the current bitstream*/
-void
-alacdec_read_subframe_header(BitstreamReader *bs,
-                             struct alac_subframe_header *subframe_header);
+static void
+read_subframe_header(BitstreamReader *bs,
+                     struct alac_subframe_header *subframe_header);
 
 /*reads a block of residuals from the current bitstream*/
-void
-alacdec_read_residuals(BitstreamReader *bs,
-                       array_i* residuals,
-                       unsigned int residual_count,
-                       unsigned int sample_size,
-                       unsigned int initial_history,
-                       unsigned int history_multiplier,
-                       unsigned int maximum_k);
+static void
+read_residuals(BitstreamReader *bs,
+               array_i* residuals,
+               unsigned int residual_count,
+               unsigned int sample_size,
+               unsigned int initial_history,
+               unsigned int history_multiplier,
+               unsigned int maximum_k);
 
 /*reads an unsigned residual from the current bitstream*/
-unsigned
-alacdec_read_residual(BitstreamReader *bs,
-                      unsigned int lsb_count,
-                      unsigned int sample_size);
+static unsigned
+read_residual(BitstreamReader *bs,
+              unsigned int lsb_count,
+              unsigned int sample_size);
 
 /*decodes the given residuals, QLP coefficient values and shift needed
   to the given samples*/
-void
-alacdec_decode_subframe(array_i* samples,
-                        array_i* residuals,
-                        array_i* qlp_coeff,
-                        uint8_t qlp_shift_needed);
+static void
+decode_subframe(array_i* samples,
+                array_i* residuals,
+                array_i* qlp_coeff,
+                uint8_t qlp_shift_needed);
 
 /*decorrelates 2 channels, in-place*/
-void
-alacdec_decorrelate_channels(array_i* left,
-                             array_i* right,
-                             unsigned interlacing_shift,
-                             unsigned interlacing_leftweight);
+static void
+decorrelate_channels(array_i* left,
+                     array_i* right,
+                     unsigned interlacing_shift,
+                     unsigned interlacing_leftweight);
 
 
 PyGetSetDef ALACDecoder_getseters[] = {

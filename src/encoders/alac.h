@@ -81,12 +81,12 @@ struct alac_context {
 enum {LOG_SAMPLE_SIZE, LOG_BYTE_SIZE, LOG_FILE_OFFSET};
 
 /*initializes all the temporary buffers in encoder*/
-void
-alacenc_init_encoder(struct alac_context* encoder);
+static void
+init_encoder(struct alac_context* encoder);
 
 /*deallocates all the temporary buffers in encoder*/
-void
-alacenc_free_encoder(struct alac_context* encoder);
+static void
+free_encoder(struct alac_context* encoder);
 
 #ifndef STANDALONE
 PyObject
@@ -95,99 +95,99 @@ PyObject
 
 /*writes a full set of ALAC frames,
   complete with trailing stop '111' bits and byte-aligned*/
-void
-alac_write_frameset(BitstreamWriter *bs,
-                    struct alac_context* encoder,
-                    array_ia* channels);
+static void
+write_frameset(BitstreamWriter *bs,
+               struct alac_context* encoder,
+               array_ia* channels);
 
 /*write a single ALAC frame, compressed or uncompressed as necessary*/
-void
-alac_write_frame(BitstreamWriter *bs,
-                 struct alac_context* encoder,
-                 const array_ia* channels);
+static void
+write_frame(BitstreamWriter *bs,
+            struct alac_context* encoder,
+            const array_ia* channels);
 
 /*writes a single uncompressed ALAC frame, not including the channel count*/
-void
-alac_write_uncompressed_frame(BitstreamWriter *bs,
-                              struct alac_context* encoder,
-                              const array_ia* channels);
+static void
+write_uncompressed_frame(BitstreamWriter *bs,
+                         struct alac_context* encoder,
+                         const array_ia* channels);
 
-void
-alac_write_compressed_frame(BitstreamWriter *bs,
-                            struct alac_context* encoder,
-                            const array_ia* channels);
+static void
+write_compressed_frame(BitstreamWriter *bs,
+                       struct alac_context* encoder,
+                       const array_ia* channels);
 
-void
-alac_write_non_interlaced_frame(BitstreamWriter *bs,
-                                struct alac_context* encoder,
-                                unsigned uncompressed_LSBs,
-                                const array_i* LSBs,
-                                const array_ia* channels);
+static void
+write_non_interlaced_frame(BitstreamWriter *bs,
+                           struct alac_context* encoder,
+                           unsigned uncompressed_LSBs,
+                           const array_i* LSBs,
+                           const array_ia* channels);
 
-void
-alac_correlate_channels(const array_ia* channels,
-                        unsigned interlacing_shift,
-                        unsigned interlacing_leftweight,
-                        array_ia* correlated_channels);
+static void
+correlate_channels(const array_ia* channels,
+                   unsigned interlacing_shift,
+                   unsigned interlacing_leftweight,
+                   array_ia* correlated_channels);
 
-void
-alac_write_interlaced_frame(BitstreamWriter *bs,
-                            struct alac_context* encoder,
-                            unsigned uncompressed_LSBs,
-                            const array_i* LSBs,
-                            unsigned interlacing_shift,
-                            unsigned interlacing_leftweight,
-                            const array_ia* channels);
+static void
+write_interlaced_frame(BitstreamWriter *bs,
+                       struct alac_context* encoder,
+                       unsigned uncompressed_LSBs,
+                       const array_i* LSBs,
+                       unsigned interlacing_shift,
+                       unsigned interlacing_leftweight,
+                       const array_ia* channels);
 
-void
-alac_compute_coefficients(struct alac_context* encoder,
-                          const array_i* samples,
-                          unsigned sample_size,
-                          array_i* qlp_coefficients,
-                          BitstreamWriter *residual);
+static void
+compute_coefficients(struct alac_context* encoder,
+                     const array_i* samples,
+                     unsigned sample_size,
+                     array_i* qlp_coefficients,
+                     BitstreamWriter *residual);
 
 /*given a set of integer samples,
   returns a windowed set of floating point samples*/
-void
-alac_window_signal(struct alac_context* encoder,
-                   const array_i* samples,
-                   array_f* windowed_signal);
+static void
+window_signal(struct alac_context* encoder,
+              const array_i* samples,
+              array_f* windowed_signal);
 
 /*given a set of windowed samples and a maximum LPC order,
   returns a set of autocorrelation values whose length is 9*/
-void
-alac_autocorrelate(const array_f* windowed_signal,
-                   array_f* autocorrelation_values);
+static void
+autocorrelate(const array_f* windowed_signal,
+              array_f* autocorrelation_values);
 
 /*given a maximum LPC order of 8
   and set of autocorrelation values whose length is 9
   returns list of LP coefficient lists whose length is max_lpc_order*/
-void
-alac_compute_lp_coefficients(const array_f* autocorrelation_values,
-                             array_fa* lp_coefficients);
+static void
+compute_lp_coefficients(const array_f* autocorrelation_values,
+                        array_fa* lp_coefficients);
 
-void
-alac_quantize_coefficients(const array_fa* lp_coefficients,
-                           unsigned order,
-                           array_i* qlp_coefficients);
+static void
+quantize_coefficients(const array_fa* lp_coefficients,
+                      unsigned order,
+                      array_i* qlp_coefficients);
 
-void
-alac_write_subframe_header(BitstreamWriter *bs,
-                           const array_i* qlp_coefficients);
+static void
+write_subframe_header(BitstreamWriter *bs,
+                      const array_i* qlp_coefficients);
 
-void
-alac_calculate_residuals(const array_i* samples,
-                         const array_i* qlp_coefficients,
-                         array_i* residuals);
+static void
+calculate_residuals(const array_i* samples,
+                    const array_i* qlp_coefficients,
+                    array_i* residuals);
 
-void
-alac_encode_residuals(struct alac_context* encoder,
-                      unsigned sample_size,
-                      const array_i* residuals,
-                      BitstreamWriter *residual_block);
+static void
+encode_residuals(struct alac_context* encoder,
+                 unsigned sample_size,
+                 const array_i* residuals,
+                 BitstreamWriter *residual_block);
 
-void
-alac_write_residual(unsigned value, unsigned k, unsigned sample_size,
-                    BitstreamWriter* residual);
+static void
+write_residual(unsigned value, unsigned k, unsigned sample_size,
+               BitstreamWriter* residual);
 
 #endif

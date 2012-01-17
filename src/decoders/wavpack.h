@@ -235,108 +235,108 @@ struct extended_integers {
     unsigned duplicate_bits;
 };
 
-status
-wavpack_read_block_header(BitstreamReader* bs, struct block_header* header);
+static status
+read_block_header(BitstreamReader* bs, struct block_header* header);
 
-int
+static int
 unencode_sample_rate(unsigned encoded_sample_rate);
 
-int
+static int
 unencode_bits_per_sample(unsigned encoded_bits_per_sample);
 
-status
-wavpack_decode_block(decoders_WavPackDecoder* decoder,
-                     const struct block_header* block_header,
-                     BitstreamReader* block_data,
-                     unsigned block_data_size,
-                     array_ia* channels);
+static status
+decode_block(decoders_WavPackDecoder* decoder,
+             const struct block_header* block_header,
+             BitstreamReader* block_data,
+             unsigned block_data_size,
+             array_ia* channels);
 
 /*returns a list of decorrelation terms and decorrelation deltas
   per decorrelation pass
 
   terms->_[pass]  , deltas->_[pass]*/
-status
-wavpack_read_decorrelation_terms(const struct sub_block* sub_block,
-                                 array_i* terms,
-                                 array_i* deltas);
+static status
+read_decorrelation_terms(const struct sub_block* sub_block,
+                         array_i* terms,
+                         array_i* deltas);
 
 /*returns a list of decorrelation weights per pass, per channel
   where channel count is determined from block header
 
  weights->_[pass]->_[channel]*/
-status
-wavpack_read_decorrelation_weights(const struct block_header* block_header,
-                                   const struct sub_block* sub_block,
-                                   unsigned term_count,
-                                   array_ia* weights);
+static status
+read_decorrelation_weights(const struct block_header* block_header,
+                           const struct sub_block* sub_block,
+                           unsigned term_count,
+                           array_ia* weights);
 
 /*returns a list of decorrelation samples list per pass, per channel
 
   samples->_[pass]->_[channel]->_[s]*/
-status
-wavpack_read_decorrelation_samples(const struct block_header* block_header,
-                                   const struct sub_block* sub_block,
-                                   const array_i* terms,
-                                   array_iaa* samples);
+static status
+read_decorrelation_samples(const struct block_header* block_header,
+                           const struct sub_block* sub_block,
+                           const array_i* terms,
+                           array_iaa* samples);
 
 /*returns two lists of 3 entropy values, one per channel
 
  entropies->_[channel]->_[m]*/
-status
-wavpack_read_entropy_variables(const struct block_header* block_header,
-                               const struct sub_block* sub_block,
-                               array_ia* entropies);
+static status
+read_entropy_variables(const struct block_header* block_header,
+                       const struct sub_block* sub_block,
+                       array_ia* entropies);
 
 /*returns a list of residuals per channel
 
  residuals->_[channel]->_[r]*/
-status
-wavpack_read_bitstream(const struct block_header* block_header,
-                       BitstreamReader* sub_block_data,
-                       array_ia* entropies,
-                       array_ia* residuals);
+static status
+read_bitstream(const struct block_header* block_header,
+               BitstreamReader* sub_block_data,
+               array_ia* entropies,
+               array_ia* residuals);
 
-unsigned
-wavpack_read_egc(BitstreamReader* bs);
+static unsigned
+read_egc(BitstreamReader* bs);
 
-int
-wavpack_read_residual(BitstreamReader* bs,
-                      int* last_u,
-                      array_i* entropies);
+static int
+read_residual(BitstreamReader* bs,
+              int* last_u,
+              array_i* entropies);
 
-status
-wavpack_decorrelate_channels(const array_i* decorrelation_terms,
-                             const array_i* decorrelation_deltas,
-                             const array_ia* decorrelation_weights,
-                             const array_iaa* decorrelation_samples,
-                             const array_ia* residuals,
-                             array_ia* decorrelated);
+static status
+decorrelate_channels(const array_i* decorrelation_terms,
+                     const array_i* decorrelation_deltas,
+                     const array_ia* decorrelation_weights,
+                     const array_iaa* decorrelation_samples,
+                     const array_ia* residuals,
+                     array_ia* decorrelated);
 
-status
-wavpack_decorrelate_1ch_pass(int decorrelation_term,
-                             int decorrelation_delta,
-                             int decorrelation_weight,
-                             const array_i* decorrelation_samples,
-                             const array_i* correlated,
-                             array_i* decorrelated);
+static status
+decorrelate_1ch_pass(int decorrelation_term,
+                     int decorrelation_delta,
+                     int decorrelation_weight,
+                     const array_i* decorrelation_samples,
+                     const array_i* correlated,
+                     array_i* decorrelated);
 
-status
-wavpack_decorrelate_2ch_pass(int decorrelation_term,
-                             int decorrelation_delta,
-                             int weight_0,
-                             int weight_1,
-                             const array_i* samples_0,
-                             const array_i* samples_1,
-                             const array_ia* correlated,
-                             array_ia* decorrelated);
+static status
+decorrelate_2ch_pass(int decorrelation_term,
+                     int decorrelation_delta,
+                     int weight_0,
+                     int weight_1,
+                     const array_i* samples_0,
+                     const array_i* samples_1,
+                     const array_ia* correlated,
+                     array_ia* decorrelated);
 
-void
+static void
 undo_joint_stereo(const array_ia* mid_size, array_ia* left_right);
 
-uint32_t
+static uint32_t
 calculate_crc(const array_ia* channels);
 
-int
+static int
 read_wv_exp2(BitstreamReader* sub_block_data);
 
 /*read a sub block header and data to the given struct
@@ -344,39 +344,39 @@ read_wv_exp2(BitstreamReader* sub_block_data);
 
   returns the total sub block size on success
   returns -1 if an IO error occurs reading the sub block*/
-int
-wavpack_read_sub_block(BitstreamReader* bitstream,
-                       struct sub_block* sub_block);
+static int
+read_sub_block(BitstreamReader* bitstream,
+               struct sub_block* sub_block);
 
-unsigned
+static unsigned
 sub_block_data_size(const struct sub_block* sub_block);
 
-status
-wavpack_find_sub_block(const struct block_header* block_header,
-                       BitstreamReader* bitstream,
-                       unsigned metadata_function,
-                       unsigned nondecoder_data,
-                       struct sub_block* sub_block);
+static status
+find_sub_block(const struct block_header* block_header,
+               BitstreamReader* bitstream,
+               unsigned metadata_function,
+               unsigned nondecoder_data,
+               struct sub_block* sub_block);
 
-status
-wavpack_read_sample_rate_sub_block(const struct block_header* block_header,
-                                   BitstreamReader* bitstream,
-                                   int* sample_rate);
+static status
+read_sample_rate_sub_block(const struct block_header* block_header,
+                           BitstreamReader* bitstream,
+                           int* sample_rate);
 
-status
-wavpack_read_channel_count_sub_block(const struct block_header* block_header,
-                                     BitstreamReader* bitstream,
-                                     int* channel_count,
-                                     int* channel_mask);
+static status
+read_channel_count_sub_block(const struct block_header* block_header,
+                             BitstreamReader* bitstream,
+                             int* channel_count,
+                             int* channel_mask);
 
-status
-wavpack_read_extended_integers(const struct sub_block* sub_block,
-                               struct extended_integers* extended_integers);
+static status
+read_extended_integers(const struct sub_block* sub_block,
+                       struct extended_integers* extended_integers);
 
-void
-wavpack_undo_extended_integers(const struct extended_integers* params,
-                               const array_ia* extended_integers,
-                               array_ia* un_extended_integers);
+static void
+undo_extended_integers(const struct extended_integers* params,
+                       const array_ia* extended_integers,
+                       array_ia* un_extended_integers);
 
 int
 WavPackDecoder_update_md5sum(decoders_WavPackDecoder *self,

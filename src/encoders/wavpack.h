@@ -95,17 +95,17 @@ struct block_offset {
 /*initializes temporary space and encoding parameters
   based on the input's channel count and mask
   and user-defined tunables*/
-void
-wavpack_init_context(struct wavpack_encoder_context* context,
-                     unsigned channel_count, unsigned channel_mask,
-                     int try_false_stereo,
-                     int try_wasted_bits,
-                     int try_joint_stereo,
-                     unsigned correlation_passes);
+static void
+init_context(struct wavpack_encoder_context* context,
+             unsigned channel_count, unsigned channel_mask,
+             int try_false_stereo,
+             int try_wasted_bits,
+             int try_joint_stereo,
+             unsigned correlation_passes);
 
 /*deallocates any temporary space from the context*/
-void
-wavpack_free_context(struct wavpack_encoder_context* context);
+static void
+free_context(struct wavpack_encoder_context* context);
 
 /*these are the encoding parameters for a given block in a set*/
 struct encoding_parameters {
@@ -145,22 +145,22 @@ struct wavpack_residual {
     unsigned sign;
 };
 
-void
-wavpack_init_block_parameters(struct encoding_parameters* params,
-                              unsigned channel_count,
-                              int try_false_stereo,
-                              int try_wasted_bits,
-                              int try_joint_stereo,
-                              unsigned correlation_passes);
+static void
+init_block_parameters(struct encoding_parameters* params,
+                      unsigned channel_count,
+                      int try_false_stereo,
+                      int try_wasted_bits,
+                      int try_joint_stereo,
+                      unsigned correlation_passes);
 
 /*channel count is the effective channel count for the block
   which may be different from its actual channel count
   depending on whether false stereo is indicated*/
-void
-wavpack_reset_block_parameters(struct encoding_parameters* params,
-                               unsigned channel_count);
+static void
+reset_block_parameters(struct encoding_parameters* params,
+                       unsigned channel_count);
 
-void
+static void
 init_correlation_samples(array_i* samples,
                          int correlation_term);
 
@@ -168,16 +168,16 @@ init_correlation_samples(array_i* samples,
   from the previous block
   this presumes that the current block and previous block
   have the same effective channel count*/
-void
-wavpack_roundtrip_block_parameters(struct encoding_parameters* params);
+static void
+roundtrip_block_parameters(struct encoding_parameters* params);
 
-void
-wavpack_free_block_parameters(struct encoding_parameters* params);
+static void
+free_block_parameters(struct encoding_parameters* params);
 
-void
+static void
 add_block_offset(FILE* file, struct block_offset** offsets);
 
-void
+static void
 write_block_header(BitstreamWriter* bs,
                    unsigned sub_blocks_size,
                    uint32_t block_index,
@@ -197,23 +197,23 @@ write_block_header(BitstreamWriter* bs,
 /*given a sample rate in Hz,
   returns its 4-bit encoded version
   or 15 if the rate has no encoded version*/
-unsigned
+static unsigned
 encoded_sample_rate(unsigned sample_rate);
 
-void
-wavpack_encode_block(BitstreamWriter* bs,
-                     struct wavpack_encoder_context* context,
-                     const pcmreader* pcmreader,
-                     struct encoding_parameters* parameters,
-                     const array_ia* channels,
-                     uint32_t block_index, int first_block, int last_block);
+static void
+encode_block(BitstreamWriter* bs,
+             struct wavpack_encoder_context* context,
+             const pcmreader* pcmreader,
+             struct encoding_parameters* parameters,
+             const array_ia* channels,
+             uint32_t block_index, int first_block, int last_block);
 
-void
-wavpack_encode_footer_block(BitstreamWriter* bs,
-                            struct wavpack_encoder_context* context,
-                            const pcmreader* pcmreader);
+static void
+encode_footer_block(BitstreamWriter* bs,
+                    struct wavpack_encoder_context* context,
+                    const pcmreader* pcmreader);
 
-void
+static void
 write_sub_block(BitstreamWriter* block,
                 unsigned metadata_function,
                 unsigned nondecoder_data,
@@ -221,32 +221,32 @@ write_sub_block(BitstreamWriter* block,
 
 /*terms[p] and deltas[p] are the correlation term and deltas values
   for pass "p"*/
-void
+static void
 write_correlation_terms(BitstreamWriter* bs,
                         const array_i* terms,
                         const array_i* deltas);
 
-int
+static int
 store_weight(int weight);
 
-int
+static int
 restore_weight(int value);
 
 /*weights[p][c] are the correlation weight values for channel "c", pass "p"*/
-void
+static void
 write_correlation_weights(BitstreamWriter* bs,
                           const array_ia* weights,
                           unsigned channel_count);
 
 /*terms[p] are the correlation terms for pass "p"
   samples[p][c][s] are correlation samples for channel "c", pass "p"*/
-void
+static void
 write_correlation_samples(BitstreamWriter* bs,
                           const array_i* terms,
                           const array_iaa* samples,
                           unsigned channel_count);
 
-void
+static void
 correlate_channels(array_ia* correlated_samples,
                    array_ia* uncorrelated_samples,
                    array_i* terms,
@@ -255,13 +255,13 @@ correlate_channels(array_ia* correlated_samples,
                    array_iaa* samples,
                    unsigned channel_count);
 
-int
+static int
 apply_weight(int weight, int64_t sample);
 
-int
+static int
 update_weight(int64_t source, int result, int delta);
 
-void
+static void
 correlate_1ch(array_i* correlated,
               const array_i* uncorrelated,
               int term,
@@ -269,7 +269,7 @@ correlate_1ch(array_i* correlated,
               int* weight,
               array_i* samples);
 
-void
+static void
 correlate_2ch(array_ia* correlated,
               const array_ia* uncorrelated,
               int term,
@@ -277,54 +277,47 @@ correlate_2ch(array_ia* correlated,
               array_i* weights,
               array_ia* samples);
 
-void
+static void
 write_entropy_variables(BitstreamWriter* bs,
                         unsigned channel_count,
                         const array_ia* entropies);
 
-void
+static void
 write_bitstream(BitstreamWriter* bs,
                 array_ia* entropies,
                 const array_ia* residuals);
 
-int
+static int
 unary_undefined(int u_j_1, int m_j);
 
-void
-write_residual(BitstreamWriter* bs,
-               int u, unsigned offset, unsigned add, unsigned sign);
-
-int
-unary(int u_j_1, int m_j, int m_j_1);
-
-void
+static void
 encode_residual(int residual, array_i* entropy,
                 int* m, unsigned* offset, unsigned* add, unsigned* sign);
 
-int
+static int
 flush_residual(BitstreamWriter* bs,
                int u_i_2, int m_i_1, unsigned offset_i_1, unsigned add_i_1,
                unsigned sign_i_1, int zeroes_i_1, int m_i);
 
-void
+static void
 write_egc(BitstreamWriter* bs, unsigned v);
 
-unsigned
+static unsigned
 maximum_magnitude(const array_i* channel);
 
-unsigned
+static unsigned
 wasted_bits(const array_i* channel);
 
-uint32_t
+static uint32_t
 calculate_crc(const array_ia* channels);
 
-void
+static void
 apply_joint_stereo(const array_ia* left_right, array_ia* mid_side);
 
-int
+static int
 wv_log2(int value);
 
-int
+static int
 wv_exp2(int value);
 
 static void

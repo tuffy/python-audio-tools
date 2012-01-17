@@ -128,13 +128,13 @@ encoders_encode_wavpack(char *filename,
     pcm_frames = array_ia_new();
     block_frames = array_ia_new();
 
-    wavpack_init_context(&context,
-                         pcmreader->channels,
-                         pcmreader->channel_mask,
-                         try_false_stereo,
-                         try_wasted_bits,
-                         try_joint_stereo,
-                         correlation_passes);
+    init_context(&context,
+                 pcmreader->channels,
+                 pcmreader->channel_mask,
+                 try_false_stereo,
+                 try_wasted_bits,
+                 try_joint_stereo,
+                 correlation_passes);
 
     pcmreader->add_callback(pcmreader, wavpack_md5_update, &(context.md5sum),
                             pcmreader->bits_per_sample >= 16,
@@ -157,14 +157,14 @@ encoders_encode_wavpack(char *filename,
                               block_frames,
                               pcm_frames);
 
-            wavpack_encode_block(stream,
-                                 &context,
-                                 pcmreader,
-                                 &(context.parameters[block]),
-                                 block_frames,
-                                 block_index,
-                                 block == 0,
-                                 block == (context.blocks_per_set - 1));
+            encode_block(stream,
+                         &context,
+                         pcmreader,
+                         &(context.parameters[block]),
+                         block_frames,
+                         block_index,
+                         block == 0,
+                         block == (context.blocks_per_set - 1));
         }
 
         block_index += pcm_frame_count;
@@ -174,7 +174,7 @@ encoders_encode_wavpack(char *filename,
 
     /*add wave footer/MD5 sub-blocks to end of stream*/
     add_block_offset(file, &(context.offsets));
-    wavpack_encode_footer_block(stream, &context, pcmreader);
+    encode_footer_block(stream, &context, pcmreader);
 
     /*update generated wave header, if necessary*/
     if (context.wave.header_data == NULL) {
@@ -197,7 +197,7 @@ encoders_encode_wavpack(char *filename,
     }
 
     /*close open file handles and deallocate temporary space*/
-    wavpack_free_context(&context);
+    free_context(&context);
     pcmreader->close(pcmreader);
     pcmreader->del(pcmreader);
     stream->close(stream);
@@ -213,7 +213,7 @@ encoders_encode_wavpack(char *filename,
 
  error:
     /*close open file handles and deallocate temporary space*/
-    wavpack_free_context(&context);
+    free_context(&context);
     pcmreader->close(pcmreader);
     pcmreader->del(pcmreader);
     stream->close(stream);
@@ -228,13 +228,13 @@ encoders_encode_wavpack(char *filename,
 #endif
 }
 
-void
-wavpack_init_context(struct wavpack_encoder_context* context,
-                     unsigned channel_count, unsigned channel_mask,
-                     int try_false_stereo,
-                     int try_wasted_bits,
-                     int try_joint_stereo,
-                     unsigned correlation_passes) {
+static void
+init_context(struct wavpack_encoder_context* context,
+             unsigned channel_count, unsigned channel_mask,
+             int try_false_stereo,
+             int try_wasted_bits,
+             int try_joint_stereo,
+             unsigned correlation_passes) {
     array_i* block_channels = array_i_new();
     unsigned i;
 
@@ -281,12 +281,12 @@ wavpack_init_context(struct wavpack_encoder_context* context,
                                  context->blocks_per_set);
 
     for (i = 0; i < block_channels->len; i++) {
-        wavpack_init_block_parameters(&(context->parameters[i]),
-                                      block_channels->_[i],
-                                      try_false_stereo,
-                                      try_wasted_bits,
-                                      try_joint_stereo,
-                                      correlation_passes);
+        init_block_parameters(&(context->parameters[i]),
+                              block_channels->_[i],
+                              try_false_stereo,
+                              try_wasted_bits,
+                              try_joint_stereo,
+                              correlation_passes);
     }
 
     block_channels->del(block_channels);
@@ -296,8 +296,8 @@ wavpack_init_context(struct wavpack_encoder_context* context,
     audiotools__MD5Init(&(context->md5sum));
 }
 
-void
-wavpack_free_context(struct wavpack_encoder_context* context)
+static void
+free_context(struct wavpack_encoder_context* context)
 {
     unsigned i;
 
@@ -308,18 +308,18 @@ wavpack_free_context(struct wavpack_encoder_context* context)
     context->cache.sub_blocks->close(context->cache.sub_blocks);
 
     for (i = 0; i < context->blocks_per_set; i++) {
-        wavpack_free_block_parameters(&(context->parameters[i]));
+        free_block_parameters(&(context->parameters[i]));
     }
     free(context->parameters);
 }
 
-void
-wavpack_init_block_parameters(struct encoding_parameters* params,
-                              unsigned channel_count,
-                              int try_false_stereo,
-                              int try_wasted_bits,
-                              int try_joint_stereo,
-                              unsigned correlation_passes)
+static void
+init_block_parameters(struct encoding_parameters* params,
+                      unsigned channel_count,
+                      int try_false_stereo,
+                      int try_wasted_bits,
+                      int try_joint_stereo,
+                      unsigned correlation_passes)
 {
     params->channel_count = channel_count;
     params->try_false_stereo = try_false_stereo;
@@ -332,12 +332,12 @@ wavpack_init_block_parameters(struct encoding_parameters* params,
     params->samples = array_iaa_new();
     params->entropies = array_ia_new();
 
-    wavpack_reset_block_parameters(params, channel_count);
+    reset_block_parameters(params, channel_count);
 }
 
-void
-wavpack_reset_block_parameters(struct encoding_parameters* params,
-                               unsigned channel_count)
+static void
+reset_block_parameters(struct encoding_parameters* params,
+                       unsigned channel_count)
 {
     array_i* entropy;
     unsigned pass;
@@ -427,7 +427,7 @@ wavpack_reset_block_parameters(struct encoding_parameters* params,
     entropy->mset(entropy, 3, 0);
 }
 
-void
+static void
 init_correlation_samples(array_i* samples,
                          int correlation_term)
 {
@@ -457,8 +457,8 @@ init_correlation_samples(array_i* samples,
     }
 }
 
-void
-wavpack_roundtrip_block_parameters(struct encoding_parameters* params)
+static void
+roundtrip_block_parameters(struct encoding_parameters* params)
 {
     unsigned pass;
     unsigned channel;
@@ -496,8 +496,8 @@ wavpack_roundtrip_block_parameters(struct encoding_parameters* params)
     }
 }
 
-void
-wavpack_free_block_parameters(struct encoding_parameters* params)
+static void
+free_block_parameters(struct encoding_parameters* params)
 {
     params->terms->del(params->terms);
     params->deltas->del(params->deltas);
@@ -506,7 +506,7 @@ wavpack_free_block_parameters(struct encoding_parameters* params)
     params->entropies->del(params->entropies);
 }
 
-void
+static void
 add_block_offset(FILE* file, struct block_offset** offsets)
 {
     struct block_offset* new_offset = malloc(sizeof(struct block_offset));
@@ -515,7 +515,7 @@ add_block_offset(FILE* file, struct block_offset** offsets)
     *offsets = new_offset;
 }
 
-void
+static void
 write_block_header(BitstreamWriter* bs,
                    unsigned sub_blocks_size,
                    uint32_t block_index,
@@ -562,7 +562,7 @@ write_block_header(BitstreamWriter* bs,
     bs->write(bs, 32, crc);
 }
 
-unsigned
+static unsigned
 encoded_sample_rate(unsigned sample_rate)
 {
     switch (sample_rate) {
@@ -585,13 +585,13 @@ encoded_sample_rate(unsigned sample_rate)
     }
 }
 
-void
-wavpack_encode_block(BitstreamWriter* bs,
-                     struct wavpack_encoder_context* context,
-                     const pcmreader* pcmreader,
-                     struct encoding_parameters* parameters,
-                     const array_ia* channels,
-                     uint32_t block_index, int first_block, int last_block)
+static void
+encode_block(BitstreamWriter* bs,
+             struct wavpack_encoder_context* context,
+             const pcmreader* pcmreader,
+             struct encoding_parameters* parameters,
+             const array_ia* channels,
+             uint32_t block_index, int first_block, int last_block)
 {
     int mono_output;
     int false_stereo;
@@ -692,9 +692,9 @@ wavpack_encode_block(BitstreamWriter* bs,
     }
 
     if (effective_channel_count == parameters->effective_channel_count) {
-        wavpack_roundtrip_block_parameters(parameters);
+        roundtrip_block_parameters(parameters);
     } else {
-        wavpack_reset_block_parameters(parameters, effective_channel_count);
+        reset_block_parameters(parameters, effective_channel_count);
     }
 
 
@@ -828,7 +828,7 @@ wavpack_encode_block(BitstreamWriter* bs,
     bw_rec_copy(bs, sub_blocks);
 }
 
-void
+static void
 write_sub_block(BitstreamWriter* block,
                 unsigned metadata_function,
                 unsigned nondecoder_data,
@@ -860,7 +860,7 @@ write_sub_block(BitstreamWriter* block,
     }
 }
 
-void
+static void
 write_correlation_terms(BitstreamWriter* bs,
                         const array_i* terms,
                         const array_i* deltas)
@@ -877,7 +877,7 @@ write_correlation_terms(BitstreamWriter* bs,
     }
 }
 
-int
+static int
 store_weight(int weight)
 {
     weight = MIN(MAX(weight, -1024), 1024);
@@ -891,7 +891,7 @@ store_weight(int weight)
     }
 }
 
-int
+static int
 restore_weight(int value)
 {
     if (value > 0) {
@@ -903,7 +903,7 @@ restore_weight(int value)
     }
 }
 
-void
+static void
 write_correlation_weights(BitstreamWriter* bs,
                           const array_ia* weights,
                           unsigned channel_count)
@@ -919,7 +919,7 @@ write_correlation_weights(BitstreamWriter* bs,
     }
 }
 
-void
+static void
 write_correlation_samples(BitstreamWriter* bs,
                           const array_i* terms,
                           const array_iaa* samples,
@@ -975,7 +975,7 @@ write_correlation_samples(BitstreamWriter* bs,
     }
 }
 
-void
+static void
 correlate_channels(array_ia* correlated_samples,
                    array_ia* uncorrelated_samples,
                    array_i* terms,
@@ -1035,13 +1035,13 @@ correlate_channels(array_ia* correlated_samples,
     }
 }
 
-int
+static int
 apply_weight(int weight, int64_t sample)
 {
     return (int)(((weight * sample) + 512) >> 10);
 }
 
-int
+static int
 update_weight(int64_t source, int result, int delta)
 {
     if ((source == 0) || (result == 0)) {
@@ -1053,7 +1053,7 @@ update_weight(int64_t source, int result, int delta)
     }
 }
 
-void
+static void
 correlate_1ch(array_i* correlated,
               const array_i* uncorrelated,
               int term,
@@ -1128,7 +1128,7 @@ correlate_1ch(array_i* correlated,
     assert(correlated->len == uncorrelated->len);
 }
 
-void
+static void
 correlate_2ch(array_ia* correlated,
               const array_ia* uncorrelated,
               int term,
@@ -1242,7 +1242,7 @@ correlate_2ch(array_ia* correlated,
     }
 }
 
-void
+static void
 write_entropy_variables(BitstreamWriter* bs,
                         unsigned channel_count,
                         const array_ia* entropies)
@@ -1279,7 +1279,7 @@ LOG2(unsigned value)
     return bits - 1;
 }
 
-int
+static int
 wv_log2(int value)
 {
     const static unsigned WLOG[] =
@@ -1334,7 +1334,7 @@ wv_log2(int value)
     }
 }
 
-int
+static int
 wv_exp2(int value)
 {
     const static int EXP2[] =
@@ -1387,7 +1387,7 @@ wv_exp2(int value)
 
 #define UNDEFINED (-1)
 
-void
+static void
 write_bitstream(BitstreamWriter* bs,
                 array_ia* entropies,
                 const array_ia* residuals)
@@ -1497,7 +1497,7 @@ write_bitstream(BitstreamWriter* bs,
                            0);
 }
 
-int
+static int
 unary_undefined(int u_j_1, int m_j)
 {
     if (m_j == UNDEFINED) {
@@ -1509,7 +1509,7 @@ unary_undefined(int u_j_1, int m_j)
     }
 }
 
-int
+static int
 flush_residual(BitstreamWriter* bs,
                int u_i_2, int m_i_1, unsigned offset_i_1, unsigned add_i_1,
                unsigned sign_i_1, int zeroes_i_1, int m_i)
@@ -1583,7 +1583,7 @@ flush_residual(BitstreamWriter* bs,
     return u_i_1;
 }
 
-void
+static void
 encode_residual(int residual, array_i* entropy,
                 int* m, unsigned* offset, unsigned* add, unsigned* sign)
 {
@@ -1634,7 +1634,7 @@ encode_residual(int residual, array_i* entropy,
     }
 }
 
-void
+static void
 write_egc(BitstreamWriter* bs, unsigned v)
 {
     if (v <= 1) {
@@ -1657,7 +1657,7 @@ bits(int x)
     return total;
 }
 
-unsigned
+static unsigned
 maximum_magnitude(const array_i* channel)
 {
     unsigned magnitude = 0;
@@ -1683,7 +1683,7 @@ wasted(int x)
     }
 }
 
-unsigned
+static unsigned
 wasted_bits(const array_i* channel)
 {
     unsigned wasted_bps = UINT_MAX;
@@ -1698,7 +1698,7 @@ wasted_bits(const array_i* channel)
     }
 }
 
-uint32_t
+static uint32_t
 calculate_crc(const array_ia* channels)
 {
     const unsigned ch_count = channels->len;
@@ -1713,7 +1713,7 @@ calculate_crc(const array_ia* channels)
     return crc;
 }
 
-void
+static void
 apply_joint_stereo(const array_ia* left_right, array_ia* mid_side)
 {
     unsigned total_samples = left_right->_[0]->len;
@@ -1736,10 +1736,10 @@ apply_joint_stereo(const array_ia* left_right, array_ia* mid_side)
     }
 }
 
-void
-wavpack_encode_footer_block(BitstreamWriter* bs,
-                            struct wavpack_encoder_context* context,
-                            const pcmreader* pcmreader)
+static void
+encode_footer_block(BitstreamWriter* bs,
+                    struct wavpack_encoder_context* context,
+                    const pcmreader* pcmreader)
 {
     BitstreamWriter* sub_blocks = context->cache.sub_blocks;
     BitstreamWriter* sub_block = context->cache.sub_block;
