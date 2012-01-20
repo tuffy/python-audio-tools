@@ -5165,17 +5165,32 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   track metadata editor so that this data is very easy to populate.
 ** DONE Add multi-track interactive editing mode to tracktag
 *** DONE Update man page
+** TODO Add pre-extraction metadata lookup to cd2track
+** TODO Add pre-extraction metadata lookup to dvda2track
+** TODO Add pre-extraction metadata lookup to tracksplit
+** TODO Add post-extraction metadata lookup to tracktag
+   As a replacement for its -x/--xmcd option,
+   tracktag should have the ability to do direct MusicBrainz/FreeDB lookups.
+** TODO Add album-number/album-total options to tracksplit
+   Allow these values to be populated at split-time
+   if none can be found in metadata services
+*** TODO Update man page
 ** TODO Query MusicBrainz for album_number/album_total info
    Given a particular disc ID, there must be some way to pull
    the disc's album_number/album_total off MusicBrainz's servers
    if it's one of a series of discs.
+** TODO Add MusicBrainz/FreeDB lookup options to audiotools-config
+   It should be possible to decide whether to query either or both
+   as a config option.
 ** TODO Deprecate xmcd-specific tools
+   to be removed in version 2.19
    - [ ] cd2xmcd
    - [ ] dvda2xmcd
    - [ ] editxmcd
    - [ ] track2xmcd
 ** TODO Deprecate xmcd-specific options
    Automatic CD lookup should be folded into utilites as needed.
+   to be removed in version 2.19
    - [ ] cd2track
    - [ ] cdplay
    - [ ] dvda2track
@@ -5183,3 +5198,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] trackrename
    - [ ] tracksplit
    - [ ] tracktag
+
+** TODO Add a general-purpose metadata transfer tool?
+   If one's extracted a set of files and tagged them,
+   it should be easy to move those tags to a fresh extraction
+   without having to re-input those tags.
+   Going from an old MP3 rip to a new FLAC rip, for example.

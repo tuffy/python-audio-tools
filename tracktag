@@ -29,6 +29,14 @@ try:
     import urwid
     urwid_present = True
 
+    def get_focus(widget):
+        #something to smooth out the differences between Urwid versions
+
+        if (hasattr(widget, "get_focus") and callable(widget.get_focus)):
+            return widget.get_focus()
+        else:
+            return widget.focus_part
+
     class AlbumsWidget(urwid.Pile):
         def __init__(self, tracktag, albums):
             widgets = []
@@ -153,32 +161,34 @@ try:
             field_width = max([len(f) for (f, a) in Album.FIELDS]) + 2
 
             if ((self.number != 0) or (album_total != 0)):
-                self.widget = urwid.BoxAdapter(
-                    urwid.LineBox(
-                        urwid.ListBox(
-                            [urwid.Columns([
-                                        ("fixed", field_width,
-                                         urwid.Text(field + u": ",
-                                                    align="right")),
-                                        ("weight", 1, getattr(self, attr))])
-                             for (field, attr) in Album.FIELDS]),
-                        title=u"album fields"),
-                    15)
+                linebox = urwid.LineBox(
+                    urwid.ListBox(
+                        [urwid.Columns([
+                                    ("fixed", field_width,
+                                     urwid.Text(field + u": ",
+                                                align="right")),
+                                    ("weight", 1, getattr(self, attr))])
+                         for (field, attr) in Album.FIELDS]))
+                if (hasattr(linebox, "set_title") and
+                    callable(linebox.set_title)):
+                    linebox.set_title(u"album fields")
+                self.widget = urwid.BoxAdapter(linebox, 15)
             else:
                 #omit "Album Number" line if number and total are missing
                 #(a very common case)
-                self.widget = urwid.BoxAdapter(
-                    urwid.LineBox(
-                        urwid.ListBox(
-                            [urwid.Columns([
-                                        ("fixed", field_width,
-                                         urwid.Text(field + u": ",
-                                                    align="right")),
-                                        ("weight", 1, getattr(self, attr))])
-                             for (field, attr) in Album.FIELDS
-                             if (attr != "album_number")]),
-                        title=u"album fields"),
-                    14)
+                linebox = urwid.LineBox(
+                    urwid.ListBox(
+                        [urwid.Columns([
+                                    ("fixed", field_width,
+                                     urwid.Text(field + u": ",
+                                                align="right")),
+                                    ("weight", 1, getattr(self, attr))])
+                         for (field, attr) in Album.FIELDS
+                         if (attr != "album_number")]))
+                if (hasattr(linebox, "set_title") and
+                    callable(linebox.set_title)):
+                    linebox.set_title(u"album fields")
+                self.widget = urwid.BoxAdapter(linebox, 14)
 
             self.tracks = [Track(self, t, m) for (t, m) in tracks_metadatas]
 
@@ -236,17 +246,18 @@ try:
 
             field_width = max([len(f) for (f, a) in Track.FIELDS]) + 2
 
-            self.widget = urwid.BoxAdapter(
-                urwid.LineBox(
-                    urwid.ListBox(
-                        [urwid.Columns([
-                                    ("fixed", field_width,
-                                     urwid.Text(field + u": ",
-                                                align="right")),
-                                    ("weight", 1, getattr(self, attr))])
-                         for (field, attr) in Track.FIELDS]),
-                    title=u"track fields"),
-                14)
+            linebox = urwid.LineBox(
+                urwid.ListBox(
+                    [urwid.Columns([
+                                ("fixed", field_width,
+                                 urwid.Text(field + u": ",
+                                            align="right")),
+                                ("weight", 1, getattr(self, attr))])
+                     for (field, attr) in Track.FIELDS]))
+            if (hasattr(linebox, "set_title") and
+                callable(linebox.set_title)):
+                linebox.set_title(u"track fields")
+            self.widget = urwid.BoxAdapter(linebox, 14)
 
         def update(self):
             album_fields = ["album_name",
@@ -430,17 +441,17 @@ try:
                 self.has_selector):
                 #toggle between work area's body (the album/track listing)
                 #and its footer (the album/track extended info)
-                if (self.work_area.get_focus() == 'body'):
+                if (get_focus(self.work_area) == 'body'):
                     self.work_area.set_focus('footer')
                     self.set_keys([(u"esc", u"close fields"),
                                    (u"tab", u"return to list")])
-                elif (self.work_area.get_focus() == 'footer'):
+                elif (get_focus(self.work_area) == 'footer'):
                     self.work_area.set_focus('body')
                     self.set_keys([(u"esc", u"close fields"),
                                    (u"tab", u"return to fields")])
             elif (i == 'esc'):
                 if (self.has_selector):
-                    if (self.get_focus() == 'body'):
+                    if (get_focus(self) == 'body'):
                         if (self.work_area.get_footer() is not self.collapsed):
                             #if extended info being shown, hide extended info
                             #and return to track listing
@@ -454,7 +465,7 @@ try:
                             #otherwise, move to Apply/Quit footer
                             self.set_focus('footer')
                             self.set_keys([(u"esc", u"return to list")])
-                    elif (self.get_focus() == 'footer'):
+                    elif (get_focus(self) == 'footer'):
                         #return to album/track list
                         self.set_focus('body')
                         self.set_keys([(u"esc", u"go to Apply / Quit buttons")])
