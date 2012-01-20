@@ -2517,7 +2517,7 @@ class MetaData:
         ISRC           - the song's ISRC
         catalog        - the album's catalog number
         copyright      - the song's copyright information
-        publisher      - the song's publisher
+        publisher      - the album's publisher
         year           - the album's release year
         date           - the original recording date
         album_number   - the disc's volume number, if any
@@ -4362,18 +4362,28 @@ class CDTrackReaderAccurateRipCRC:
 
 
 #returns the value in item_list which occurs most often
-def __most_numerous__(item_list):
+def most_numerous(item_list, empty_list="", all_differ=""):
+    """returns the value in the item list which occurs most often
+    if list has no items, returns 'empty_list'
+    if all items differ, returns 'all_differ'"""
+
     counts = {}
 
     if (len(item_list) == 0):
-        return ""
+        return empty_list
 
     for item in item_list:
         counts.setdefault(item, []).append(item)
 
-    return sorted([(item, len(counts[item])) for item in counts.keys()],
-                  lambda x, y: cmp(x[1], y[1]))[-1][0]
+    (item,
+     max_count) = sorted([(item, len(counts[item])) for item in counts.keys()],
+                         lambda x, y: cmp(x[1], y[1]))[-1]
+    if ((max_count < len(item_list)) and (max_count == 1)):
+        return all_differ
+    else:
+        return item
 
+__most_numerous__ = most_numerous
 
 from __freedb__ import *
 from __musicbrainz__ import *

@@ -16,6 +16,10 @@
       The level of output to display.
       Choose between 'normal', 'quiet' and 'debug.
     </option>
+    <option short="I" long="interactive">
+      Once any other command-line arguments are processed,
+      edit the given tracks in interactive mode.
+    </option>
     <option short="r" long="replace">
       this options erases all existing metadata and replaces it
       with any specified values

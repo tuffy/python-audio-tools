@@ -25,6 +25,483 @@ import gettext
 
 gettext.install("audiotools", unicode=True)
 
+try:
+    import urwid
+    urwid_present = True
+
+    class AlbumsWidget(urwid.Pile):
+        def __init__(self, tracktag, albums):
+            widgets = []
+            self.radios = []
+            self.albums = albums
+
+            for album in albums:
+                digits = max([len(str(t.track.track_number()))
+                              for t in album.tracks])
+                checkbox = urwid.CheckBox(u"",
+                                          on_state_change=tracktag.select_item,
+                                          user_data=album)
+                self.radios.append(checkbox)
+                if (album.number != 0):
+                    album_digits = len(str(album.number))
+                    widgets.append(
+                        urwid.Columns(
+                            [("fixed", 4, checkbox),
+                             ("fixed", album_digits + 1,
+                              urwid.Text(u"%%%d.d " % (album_digits) % \
+                                             (album.number))),
+                             ("fixed", 2, urwid.Text(u": ")),
+                             ("weight", 1, album.album_name)]))
+                else:
+                    widgets.append(
+                        urwid.Columns([("fixed", 4, checkbox),
+                                       ("fixed", 2, urwid.Text(u": ")),
+                                       ("weight", 1, album.album_name)]))
+                for (last, track) in audiotools.iter_last(iter(album.tracks)):
+                    checkbox = urwid.CheckBox(
+                        u"",
+                        on_state_change=tracktag.select_item,
+                        user_data=track)
+                    if (last):
+                        prefix = u" \u2514\u2500"
+                    else:
+                        prefix = u" \u251c\u2500"
+                    widgets.append(
+                        urwid.Columns([
+                                ("fixed", len(prefix), urwid.Text(prefix)),
+                                ("fixed", 4, checkbox),
+                                ("fixed", digits + 1,
+                                 urwid.Text(u"%%%d.d " % (digits) % \
+                                                (track.track.track_number()))),
+                                ("fixed", 2, urwid.Text(u": ")),
+                                ("weight", 1, track.track_name)]))
+                    self.radios.append(checkbox)
+            urwid.Pile.__init__(self, widgets)
+
+
+    class Album:
+        FIELDS = [(u"Album Name", "album_name"),
+                  (u"Album Number", "album_number"),
+                  (u"Artist", "artist_name"),
+                  (u"Performer", "performer_name"),
+                  (u"Composer", "composer_name"),
+                  (u"Conductor", "conductor_name"),
+                  (u"Media", "media"),
+                  (u"Catalog #", "catalog"),
+                  (u"Copyright", "copyright"),
+                  (u"Publisher", "publisher"),
+                  (u"Release Year", "year"),
+                  (u"Recording Date", "date"),
+                  (u"Comment", "comment")]
+
+        LINKED_FIELDS = ["artist_name", "performer_name",
+                         "composer_name", "conductor_name",
+                         "copyright", "date", "comment"]
+
+        def __init__(self, tracks_metadatas):
+            """takes an iterable set of (track, metadata) tuples
+            all of which are assumed to belong to the same album
+            and have the same
+            track_total, album_name, album_number and album_total"""
+
+            tracks_metadatas.sort(lambda t1,t2: cmp(t1[0].track_number(),
+                                                    t2[0].track_number()))
+
+            self.album_name = urwid.Edit(
+                edit_text=set([m.album_name for (t, m) in
+                               tracks_metadatas]).pop())
+
+            self.number = set([t.album_number() for (t, m) in
+                               tracks_metadatas]).pop()
+            album_total = set([m.album_total for (t, m) in
+                               tracks_metadatas]).pop()
+            if ((self.number != 0) or (album_total != 0)):
+                if (album_total != 0):
+                    self.album_number = urwid.Text(u"%d of %d" %
+                                                   (self.number, album_total))
+                else:
+                    self.album_number = urwid.Text(u"%d" % (self.number))
+            else:
+                self.album_number = urwid.Text(u"")
+
+            for field in ["artist_name",
+                          "performer_name",
+                          "composer_name",
+                          "conductor_name",
+                          "media",
+                          "catalog",
+                          "copyright",
+                          "publisher",
+                          "year",
+                          "date",
+                          "comment"]:
+                setattr(self, field,
+                        urwid.Edit(edit_text=
+                                   audiotools.most_numerous(
+                            [getattr(m, field)
+                             for (t, m) in
+                             tracks_metadatas],
+                            empty_list=u"",
+                            all_differ=u"various")))
+
+            for attr in Album.LINKED_FIELDS:
+                urwid.connect_signal(getattr(self, attr),
+                                     'change',
+                                     self.field_changed,
+                                     attr)
+
+            field_width = max([len(f) for (f, a) in Album.FIELDS]) + 2
+
+            if ((self.number != 0) or (album_total != 0)):
+                self.widget = urwid.BoxAdapter(
+                    urwid.LineBox(
+                        urwid.ListBox(
+                            [urwid.Columns([
+                                        ("fixed", field_width,
+                                         urwid.Text(field + u": ",
+                                                    align="right")),
+                                        ("weight", 1, getattr(self, attr))])
+                             for (field, attr) in Album.FIELDS]),
+                        title=u"album fields"),
+                    15)
+            else:
+                #omit "Album Number" line if number and total are missing
+                #(a very common case)
+                self.widget = urwid.BoxAdapter(
+                    urwid.LineBox(
+                        urwid.ListBox(
+                            [urwid.Columns([
+                                        ("fixed", field_width,
+                                         urwid.Text(field + u": ",
+                                                    align="right")),
+                                        ("weight", 1, getattr(self, attr))])
+                             for (field, attr) in Album.FIELDS
+                             if (attr != "album_number")]),
+                        title=u"album fields"),
+                    14)
+
+            self.tracks = [Track(self, t, m) for (t, m) in tracks_metadatas]
+
+        def field_changed(self, widget, new_value, attr):
+            for track in self.tracks:
+                if (getattr(track, attr).edit_text == widget.edit_text):
+                    getattr(track, attr).set_edit_text(new_value)
+
+    class Track:
+        FIELDS = [(u"Path", "path"),
+                  (u"Track Name", "track_name"),
+                  (u"Track Number", "track_number"),
+                  (u"Album", "album_name"),
+                  (u"Artist", "artist_name"),
+                  (u"Performer", "performer_name"),
+                  (u"Composer", "composer_name"),
+                  (u"Conductor", "conductor_name"),
+                  (u"ISRC", "ISRC"),
+                  (u"Copyright", "copyright"),
+                  (u"Recording Date", "date"),
+                  (u"Comment", "comment")]
+
+        def __init__(self, album, track, metadata):
+            """takes an Album, AudioFile and MetaData class"""
+
+            self.album = album
+            self.track = track
+            self.metadata = metadata
+
+            if (self.metadata is None):
+                metadata = audiotools.MetaData()
+
+            self.path = urwid.Text(
+                audiotools.VerboseMessenger("").filename(self.track.filename))
+            self.track_name = urwid.Edit(edit_text=metadata.track_name)
+            if (metadata.track_total != 0):
+                self.track_number = urwid.Text("%d of %d" %
+                                               (track.track_number(),
+                                                metadata.track_total))
+            else:
+                self.track_number = urwid.Text("%d" %
+                                               (track.track_number()))
+            self.album_name = album.album_name
+            for field in ["artist_name",
+                          "performer_name",
+                          "composer_name",
+                          "conductor_name",
+                          "ISRC",
+                          "copyright",
+                          "date",
+                          "comment"]:
+                setattr(self, field,
+                        urwid.Edit(edit_text=getattr(metadata, field)))
+
+
+            field_width = max([len(f) for (f, a) in Track.FIELDS]) + 2
+
+            self.widget = urwid.BoxAdapter(
+                urwid.LineBox(
+                    urwid.ListBox(
+                        [urwid.Columns([
+                                    ("fixed", field_width,
+                                     urwid.Text(field + u": ",
+                                                align="right")),
+                                    ("weight", 1, getattr(self, attr))])
+                         for (field, attr) in Track.FIELDS]),
+                    title=u"track fields"),
+                14)
+
+        def update(self):
+            album_fields = ["album_name",
+                            "media",
+                            "catalog",
+                            "publisher",
+                            "year"]
+            #track fields take precedence over album fields
+            track_fields = ["track_name",
+                            "artist_name",
+                            "performer_name",
+                            "composer_name",
+                            "conductor_name",
+                            "ISRC",
+                            "copyright",
+                            "date",
+                            "comment"]
+
+            try:
+                metadata = self.track.get_metadata()
+            except IOError:
+                return 0
+            if (metadata is not None):
+                updated = False
+                for attr in album_fields:
+                    if (getattr(metadata, attr) !=
+                        getattr(self.album, attr).get_edit_text()):
+                        setattr(metadata, attr,
+                                getattr(self.album, attr).get_edit_text())
+                        updated = True
+                for attr in track_fields:
+                    if (getattr(metadata, attr) !=
+                        getattr(self, attr).get_edit_text()):
+                        setattr(metadata, attr,
+                                getattr(self, attr).get_edit_text())
+                        updated = True
+                if (updated):
+                    try:
+                        self.track.update_metadata(metadata)
+                        return 1
+                    except IOError:
+                        return 0
+                else:
+                    return 0
+            else:
+                metadata = audiotools.MetaData()
+                for attr in album_fields:
+                    setattr(metadata, attr, getattr(self.album, attr))
+                for attr in track_fields:
+                    setattr(metadata, attr, getattr(self, attr))
+                try:
+                    self.track.set_metadata(metadata)
+                    return 1
+                except IOError:
+                    return 0
+
+
+    class Tracktag(urwid.Frame):
+        def __init__(self, tracks):
+            def by_album(a1, a2):
+                c = cmp(a1[0][1], a2[0][1])
+                if (c == 0):
+                    return cmp(a1[0][2], a2[0][2])
+                else:
+                    return c
+
+            #group tracks by album
+            #(track_total, album_name, album_number, album_total) ->
+            # [(track, metadata), ...]
+            grouped_tracks = {}
+            for track in tracks:
+                try:
+                    metadata = track.get_metadata()
+                except IOError:
+                    continue
+
+                if (metadata is None):
+                    metadata = audiotools.MetaData()
+
+                grouped_tracks.setdefault((metadata.track_total,
+                                           metadata.album_name,
+                                           track.album_number(),
+                                           metadata.album_total),
+                                          []).append((track, metadata))
+
+
+            #build Albums from grouped tracks
+            #which are used to build AlbumsWidget
+            albums = [Album(tracks) for (album, tracks) in
+                      sorted(grouped_tracks.items(), by_album)]
+
+            #attach on-change callback to Albums and Tracks
+            for album in albums:
+                for field in ["album_name",
+                              "artist_name",
+                              "performer_name",
+                              "composer_name",
+                              "conductor_name",
+                              "media",
+                              "catalog",
+                              "copyright",
+                              "publisher",
+                              "year",
+                              "date",
+                              "comment"]:
+                    urwid.connect_signal(getattr(album, field),
+                                         'change',
+                                         self.modified)
+                for track in album.tracks:
+                    for field in ["track_name",
+                                  "artist_name",
+                                  "performer_name",
+                                  "composer_name",
+                                  "conductor_name",
+                                  "ISRC",
+                                  "copyright",
+                                  "date",
+                                  "comment"]:
+                        urwid.connect_signal(getattr(track, field),
+                                             'change',
+                                             self.modified)
+
+            self.cancel = urwid.Button("Quit", on_press=self.exit)
+            self.status = urwid.Text(u"", align='left')
+            self.collapsed = urwid.Divider(div_char=u'\u2500')
+            self.__modified__ = False
+
+            self.track_selector = AlbumsWidget(self, albums)
+            if (len(albums) > 0):
+                self.save = urwid.Button("Apply", on_press=self.save)
+                controls = urwid.BoxAdapter(
+                    urwid.ListBox([
+                            urwid.GridFlow([self.save, self.cancel],
+                                           10, 5, 1, 'center'),
+                            self.status]),
+                    2)
+                self.work_area = urwid.Frame(
+                    body=urwid.Filler(self.track_selector),
+                    footer=self.collapsed)
+                self.has_selector = True
+            else:
+                controls = urwid.BoxAdapter(
+                    urwid.ListBox([
+                            urwid.GridFlow([self.cancel],
+                                           10, 5, 1, 'center'),
+                            self.status]),
+                    2)
+
+                self.work_area = urwid.Frame(body=urwid.Filler(urwid.Text(
+                            u"please select 1 or more tracks " +
+                            u"from the command line", align='center')))
+                self.has_selector = False
+
+            urwid.Frame.__init__(self,
+                                 body=self.work_area,
+                                 footer=controls)
+
+            if (len(albums) > 0):
+                self.set_keys([(u"esc", u"go to Apply / Quit buttons")])
+            else:
+                self.set_focus('footer')
+
+        def select_item(self, checkbox, state_change, user_data=None):
+            if ((state_change == True) and (hasattr(user_data, "widget"))):
+                #select item
+                for other_box in self.track_selector.radios:
+                    if (other_box is not checkbox):
+                        other_box.set_state(False, do_callback=False)
+                self.work_area.set_footer(user_data.widget)
+                self.work_area.set_focus('footer')
+                self.set_keys([(u"esc", u"close fields"),
+                               (u"tab", u"return to list")])
+            elif (state_change == False):
+                #unselect item
+                self.work_area.set_footer(self.collapsed)
+                self.set_keys([(u"esc", u"go to Apply / Quit buttons")])
+
+        def handle_text(self, i):
+            if ((i == 'tab') and
+                (self.work_area.get_footer() is not self.collapsed) and
+                self.has_selector):
+                #toggle between work area's body (the album/track listing)
+                #and its footer (the album/track extended info)
+                if (self.work_area.get_focus() == 'body'):
+                    self.work_area.set_focus('footer')
+                    self.set_keys([(u"esc", u"close fields"),
+                                   (u"tab", u"return to list")])
+                elif (self.work_area.get_focus() == 'footer'):
+                    self.work_area.set_focus('body')
+                    self.set_keys([(u"esc", u"close fields"),
+                                   (u"tab", u"return to fields")])
+            elif (i == 'esc'):
+                if (self.has_selector):
+                    if (self.get_focus() == 'body'):
+                        if (self.work_area.get_footer() is not self.collapsed):
+                            #if extended info being shown, hide extended info
+                            #and return to track listing
+                            for checkbox in self.track_selector.radios:
+                                checkbox.set_state(False, do_callback=False)
+                            self.work_area.set_footer(self.collapsed)
+                            self.work_area.set_focus('body')
+                            self.set_keys([(u"esc",
+                                            u"go to Apply / Quit buttons")])
+                        else:
+                            #otherwise, move to Apply/Quit footer
+                            self.set_focus('footer')
+                            self.set_keys([(u"esc", u"return to list")])
+                    elif (self.get_focus() == 'footer'):
+                        #return to album/track list
+                        self.set_focus('body')
+                        self.set_keys([(u"esc", u"go to Apply / Quit buttons")])
+
+        def set_keys(self, keys):
+            """keys is a [(key, action), ...] list
+            where 'key' and 'action' are both strings"""
+
+            text = []
+            for (last, (key, action)) in audiotools.iter_last(iter(keys)):
+                text.append(('key', key))
+                text.append(u" - " + action)
+                if (not last):
+                    text.append(u"  ")
+
+            self.status.set_text(text)
+
+        def modified(self, widget, new_value):
+            if (not self.__modified__):
+                self.save.set_label(('modified', u'Apply'))
+                self.__modified__ = True
+
+        def save(self, button, arg=None):
+            if (self.__modified__):
+                self.status.set_text(u"updating tracks")
+                self.draw_screen()
+                total = 0
+                for album in self.track_selector.albums:
+                    for track in album.tracks:
+                        total += track.update()
+
+                if (total != 1):
+                    self.status.set_text(u"%d tracks updated" % (total))
+                else:
+                    self.status.set_text(u"%d track updated" % (total))
+                self.save.set_label(u"Apply")
+                self.__modified__ = False
+            else:
+                self.set_keys([(u"esc", u"return to list")])
+
+        def exit(self, button, arg=None):
+            raise urwid.ExitMainLoop()
+
+except ImportError:
+    urwid_present = False
+
+
 #tries to return a populated Image object of the appropriate type
 #raises InvalidImage if something goes wrong during opening or parsing
 def get_raw_image(filename, type):
@@ -78,6 +555,13 @@ if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
         usage=_(u"%prog [options] [-x XMCD file] <track 1> [track 2] ..."),
         version="Python Audio Tools %s" % (audiotools.VERSION))
+
+    parser.add_option(
+        '-I', '--interactive',
+        action='store_true',
+        default=False,
+        dest='interactive',
+        help=_(u'run in interactive mode'))
 
     text_group = audiotools.OptionGroup(parser, _(u"Text Options"))
 
@@ -311,6 +795,8 @@ if (__name__ == '__main__'):
         get_image = get_raw_image
 
     for file in audiofiles:
+        track_modified = False
+
         #determine which MetaData to use as our base
         #depending on whether we're performing a full replacement
         if (not options.replace):
@@ -332,26 +818,32 @@ if (__name__ == '__main__'):
                 if (options.remove_images):
                     for i in metadata.images():
                         metadata.delete_image(i)
+                        track_modified = True
 
                 if (options.front_cover is not None):
                     for path in options.front_cover:
                         metadata.add_image(get_image(path, 0))
+                        track_modified = True
 
                 if (options.leaflet is not None):
                     for path in options.leaflet:
                         metadata.add_image(get_image(path, 2))
+                        track_modified = True
 
                 if (options.back_cover is not None):
                     for path in options.back_cover:
                         metadata.add_image(get_image(path, 1))
+                        track_modified = True
 
                 if (options.media is not None):
                     for path in options.media:
                         metadata.add_image(get_image(path, 3))
+                        track_modified = True
 
                 if (options.other_image is not None):
                     for path in options.other_image:
                         metadata.add_image(get_image(path, 4))
+                        track_modified = True
         except audiotools.InvalidImage, err:
             msg.error(_(u"%(filename)s: %(message)s") % \
                           {"filename": msg.filename(file.filename),
@@ -379,6 +871,7 @@ if (__name__ == '__main__'):
                       'comment'):
             if (getattr(options, 'remove_' + field)):
                 delattr(metadata, field)
+                track_modified = True
 
         if (options.track_number is not None):
             track_number = options.track_number
@@ -388,6 +881,7 @@ if (__name__ == '__main__'):
         #handle cuesheet ISRC data
         if (track_number in isrcs):
             metadata.ISRC = isrcs[track_number]
+            track_modified = True
 
         #update fields from the XMCD file metadata
         if (xmcd is not None):
@@ -395,6 +889,7 @@ if (__name__ == '__main__'):
             if (xmcd_metadata is not None):
                 for (attr, value) in xmcd_metadata.filled_fields():
                     setattr(metadata, attr, value)
+                    track_modified = True
 
         #update fields from the command line
         for field in ('track_name',
@@ -420,25 +915,29 @@ if (__name__ == '__main__'):
                 if (isinstance(attr, str)):
                     attr = attr.decode(audiotools.IO_ENCODING, 'replace')
                 setattr(metadata, field, attr)
+                track_modified = True
 
         #add comment-file
         if (options.comment_file is not None):
             metadata.comment = read_comment(options.comment_file, msg)
+            track_modified = True
 
-        try:
-            #either set or update metadata
-            #depending on whether we're performing a full replacement
-            getattr(file, update_method)(metadata)
+        #check if there's been any modifications made
+        if (track_modified):
+            try:
+                #either set or update metadata
+                #depending on whether we're performing a full replacement
+                getattr(file, update_method)(metadata)
 
-            #insert embedded cuesheet file
-            if (import_cuesheet is not None):
-                file.set_cuesheet(import_cuesheet)
-        except IOError:
-            msg.error(_(u"Unable to modify \"%s\"") % \
-                          msg.filename(file.filename))
-            sys.exit(1)
+                #insert embedded cuesheet file
+                if (import_cuesheet is not None):
+                    file.set_cuesheet(import_cuesheet)
+            except IOError:
+                msg.error(_(u"Unable to modify \"%s\"") % \
+                              msg.filename(file.filename))
+                sys.exit(1)
 
-    #finally, add/apply replay_gain to tracks if indicated
+    #add/apply replay_gain to tracks if indicated
     if (options.add_replay_gain and
         (len(audiofiles) > 0) and
         (audiofiles[0].can_add_replay_gain())):
@@ -486,3 +985,21 @@ if (__name__ == '__main__'):
         except ValueError, err:
             msg.error(unicode(err))
             sys.exit(1)
+
+    #finally, after all the command-line arguments are processed
+    #run interactive mode if indicated
+    if (options.interactive):
+        if (not urwid_present):
+            msg.error(_(u"urwid is required for interactive mode"))
+            msg.output(_(u"Please download and install urwid " +
+                         u"from http://excess.org/urwid/"))
+            msg.output(_(u"or your system's package manager."))
+            sys.exit(1)
+
+        tracktag = Tracktag(audiofiles)
+        loop = urwid.MainLoop(tracktag,
+                              [('key', 'white', 'dark blue'),
+                               ('modified', 'default,bold', 'default', '')],
+                              unhandled_input=tracktag.handle_text)
+        tracktag.draw_screen = loop.draw_screen
+        loop.run()
