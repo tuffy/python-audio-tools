@@ -177,6 +177,9 @@ def parse_release(release, disc_id):
                 publisher = text(get_node(label_info, u"label", u"name"))
             except KeyError:
                 publisher = u""
+
+            #we'll use the first result found
+            break
     except KeyError:
         catalog = u""
         publisher = u""

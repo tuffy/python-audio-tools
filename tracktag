@@ -112,12 +112,19 @@ try:
             and have the same
             track_total, album_name, album_number and album_total"""
 
+            def update_name(widget, new_value):
+                widget._attrib = [("albumname", len(new_value))]
+
             tracks_metadatas.sort(lambda t1,t2: cmp(t1[0].track_number(),
                                                     t2[0].track_number()))
 
-            self.album_name = urwid.Edit(
-                edit_text=set([m.album_name for (t, m) in
-                               tracks_metadatas]).pop())
+            album_name = set([m.album_name for (t, m) in
+                              tracks_metadatas]).pop()
+            self.album_name = urwid.Edit(edit_text=album_name)
+            update_name(self.album_name, album_name)
+            urwid.connect_signal(self.album_name,
+                                 'change',
+                                 update_name)
 
             self.number = set([t.album_number() for (t, m) in
                                tracks_metadatas]).pop()
@@ -1010,6 +1017,7 @@ if (__name__ == '__main__'):
         tracktag = Tracktag(audiofiles)
         loop = urwid.MainLoop(tracktag,
                               [('key', 'white', 'dark blue'),
+                               ('albumname', 'default,underline', 'default'),
                                ('modified', 'default,bold', 'default', '')],
                               unhandled_input=tracktag.handle_text)
         tracktag.draw_screen = loop.draw_screen
