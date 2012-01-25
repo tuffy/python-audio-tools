@@ -66,10 +66,8 @@ def perform_lookup(first_track_number, last_track_number,
     first_track_number, last_track_number, lead_out_offset
     and a list of offset ints
 
-    iterates over a tuple of MetaData objects per track
-    where the first result are all the MetaData matches
-    for the first track, etc.  in the event there
-    are multiple results for a given disc
+    iterates over a list of MetaData objects per successful match, like:
+    [track1, track2, ...], [track1, track2, ...], ...
 
     may raise urllib2.HTTPError if an error occurs querying the server
     or ValueError if the server returns invalid data
@@ -95,17 +93,15 @@ def perform_lookup(first_track_number, last_track_number,
 
     xml = xml.dom.minidom.parse(m)
 
-    #for all the <release>s in <release-list>
-    #yield a tuple of MetaData objects
+    #for each <release>s in <release-list>
+    #yield a list of MetaData objects
     try:
         release_list = get_node(xml, u"metadata", u"disc", u"release-list")
-        for row in izip(*[parse_release(release, disc_id)
-                          for release in get_nodes(release_list, u"release")]):
-            yield row
+        for release in get_nodes(release_list, u"release"):
+            yield list(parse_release(release, disc_id))
     except KeyError:
-        #no releases found, so yield a group of empty tuples
-        for i in xrange(first_track_number, last_track_number + 1):
-            yield tuple()
+        #no releases found, so return nothing
+        return
 
 def get_node(parent, *nodes):
     if (len(nodes) == 0):

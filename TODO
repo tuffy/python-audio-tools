@@ -5165,7 +5165,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   track metadata editor so that this data is very easy to populate.
 ** DONE Add multi-track interactive editing mode to tracktag
 *** DONE Update man page
-** TODO Build unified metadata selection widget for interactive modes
+** DONE Build unified metadata selection widget for interactive modes
    This is something that can be run while a disc is being extracted
    or a track is being split which will drop the user back
    into a progress indicator once completed and then

@@ -352,6 +352,324 @@ try:
                 yield album.get_metadata()
 
 
+    def get_focus(widget):
+        #something to smooth out the differences between Urwid versions
+
+        if (hasattr(widget, "get_focus") and callable(widget.get_focus)):
+            return widget.get_focus()
+        else:
+            return widget.focus_part
+
+
+    class AlbumPreview(urwid.ListBox):
+        def __init__(self, metadatas):
+            rows = []
+            for (last, metadata) in audiotools.iter_last(iter(metadatas)):
+                if (last):
+                    prefix = u" \u2514\u2500"
+                else:
+                    prefix = u" \u251c\u2500"
+                rows.append(
+                    urwid.Columns(
+                        [("fixed", len(prefix),
+                          urwid.Text(prefix)),
+                         ("fixed", 6,
+                          urwid.Text(" %2.d : " % (metadata.track_number))),
+                         ("weight", 1,
+                          urwid.Text(metadata.track_name))]))
+
+            urwid.ListBox.__init__(self, rows)
+
+    #the MetaDataFiller UI states are:
+    #|          | selecting match | fields closed     | fields open           |
+    #|----------+-----------------+-------------------+-----------------------|
+    #| controls | SELECTING_MATCH | APPLY_LIST        | APPLY_LIST_W_FIELDS   |
+    #| list     | SELECTING_LIST  | EDITING_LIST_ONLY | EDITING_LIST_W_FIELDS |
+    #| fields   | N/A             | N/A               | EDITING_FIELDS        |
+    #|----------+-----------------+-------------------+-----------------------|
+
+    class MetaDataFiller(urwid.Frame):
+        """a class for selecting the MetaData to apply to tracks"""
+
+        (SELECTING_MATCH,
+         SELECTING_LIST,
+         APPLY_LIST_W_FIELDS,
+         APPLY_LIST,
+         EDITING_LIST_W_FIELDS,
+         EDITING_LIST_ONLY,
+         EDITING_FIELDS,
+         UNKNOWN_STATE) = range(8)
+
+        def __init__(self, metadata_choices):
+            """metadata_choices[c][t]
+            is a MetaData object for choice number "c" and track number "t"
+            this widget allows the user to populate a set of MetaData objects
+            which can be applied to tracks
+            """
+
+            assert(len(metadata_choices) > 0)
+
+            self.metadata_choices = metadata_choices
+
+            #a list of AlbumPreview objects, one for each possible choice
+            self.album_previews = map(AlbumPreview, metadata_choices)
+
+            #a list of AlbumList objects, one for each possible choice
+            self.album_lists = [audiotools.ui.AlbumList(
+                    [audiotools.ui.Album(map(audiotools.ui.Track,
+                                             metadata_choice))],
+                    self.select_album_or_track)
+                                for metadata_choice in metadata_choices]
+
+            #a list of radio buttons for each album choice
+            self.albums = []
+
+            #a simple widget for selecting one album choice from many
+            self.select_button = urwid.Button("Select",
+                                              on_press=self.select_best_match)
+            self.select_album = urwid.LineBox(
+                urwid.BoxAdapter(
+                    urwid.ListBox([
+                            urwid.RadioButton(
+                                self.albums,
+                                set([m.album_name for m in c]).pop(),
+                                on_state_change=self.preview_album,
+                                user_data=p)
+                            for (c,p) in zip(metadata_choices,
+                                             self.album_previews)] +
+                                  [urwid.GridFlow([self.select_button],
+                                                  10, 5, 1, 'center')]),
+                    len(self.album_previews) + 1))
+            if (hasattr(self.select_album, "set_title") and
+                callable(self.select_album.set_title)):
+                self.select_album.set_title(u"select best match")
+
+            #a simple widget for going back or applying selected album
+            if (len(metadata_choices) == 1):
+                #no back button for selecting choice if only 1 choice
+                self.back_apply = urwid.LineBox(
+                    urwid.GridFlow([
+                            urwid.Button("Apply",
+                                         on_press=self.apply_selection)],
+                                   10, 5, 1, 'center'))
+            else:
+                self.back_apply = urwid.LineBox(
+                    urwid.GridFlow([
+                            urwid.Button("Back",
+                                         on_press=self.back_to_select),
+                            urwid.Button("Apply",
+                                         on_press=self.apply_selection)],
+                                   10, 5, 1, 'center'))
+
+            self.collapsed = urwid.Divider(div_char=u'\u2500')
+
+            #header will be either an album selection box
+            #or a set of controls
+
+            #body will be either the album preview area
+            #or a place to edit an album's track list
+
+            #footer will either be a collapsed line
+            #or a place to edit album/track field data
+            if (len(metadata_choices) == 1):
+                #automatically shift to selected choice
+                #if only one available
+                self.work_area = audiotools.ui.FocusFrame(
+                    header=self.back_apply,
+                    body=urwid.Filler(self.album_lists[0], valign='top'),
+                    footer=self.collapsed,
+                    focus_part="header")
+            else:
+                self.work_area = audiotools.ui.FocusFrame(
+                    header=self.select_album,
+                    body=self.album_previews[0],
+                    footer=self.collapsed,
+                    focus_part="header")
+            self.work_area.set_focus_callback(self.update_focus)
+
+            self.status = urwid.Text(u"", align='left')
+
+            urwid.Frame.__init__(
+                self,
+                body=self.work_area,
+                footer=self.status,
+                focus_part="body")
+
+            if (len(metadata_choices) == 1):
+                self.set_state_message(self.APPLY_LIST)
+            else:
+                self.set_state_message(self.SELECTING_MATCH)
+
+        def preview_album(self, radio_button, new_state, user_data):
+            if (new_state):
+                self.work_area.set_body(user_data)
+
+        def select_best_match(self, button):
+            selected_index = [a.state for a in self.albums].index(True)
+
+            #update control box with <back>, <select> buttons
+            self.work_area.set_header(self.back_apply)
+
+            #update preview area with editable area
+            self.work_area.set_body(
+                urwid.Filler(self.album_lists[selected_index], valign='top'))
+
+            self.work_area.set_footer(self.collapsed)
+            self.set_state_message(self.get_state())
+
+        def select_album_or_track(self, checkbox, state_change, user_data=None):
+            if ((state_change == True) and (user_data is not None)):
+                #select item
+                self.work_area.set_footer(
+                    urwid.BoxAdapter(user_data, user_data.field_count()))
+                self.work_area.set_focus('footer')
+            elif (state_change == False):
+                #unselect item
+                self.work_area.set_footer(self.collapsed)
+                self.work_area.set_focus('body')
+
+        def back_to_select(self, button):
+            selected_index = [a.state for a in self.albums].index(True)
+
+            for album in self.album_lists:
+                for radio in album.radios:
+                    radio.set_state(False, do_callback=False)
+
+            self.work_area.set_header(self.select_album)
+            self.work_area.set_body(self.album_previews[selected_index])
+            self.work_area.set_footer(self.collapsed)
+            self.set_state_message(self.get_state())
+
+        def apply_selection(self, button):
+            raise urwid.ExitMainLoop()
+
+        def get_state(self):
+            if (self.work_area.get_header() is self.select_album):
+                #selecting match
+                if (get_focus(self.work_area) == 'header'):
+                    return self.SELECTING_MATCH
+                elif (get_focus(self.work_area) == 'body'):
+                    return self.SELECTING_LIST
+                else:
+                    return self.UNKNOWN_STATE
+            elif (self.work_area.get_header() is self.back_apply):
+                if (self.work_area.get_footer() is self.collapsed):
+                    #match selected, fields closed
+                    if (get_focus(self.work_area) == 'header'):
+                        return self.APPLY_LIST
+                    elif (get_focus(self.work_area) == 'body'):
+                        return self.EDITING_LIST_ONLY
+                    else:
+                        return self.UNKNOWN_STATE
+                else:
+                    #match selected, fields open
+                    if (get_focus(self.work_area) == 'header'):
+                        return self.APPLY_LIST_W_FIELDS
+                    elif (get_focus(self.work_area) == 'body'):
+                        return self.EDITING_LIST_W_FIELDS
+                    else:
+                        return self.EDITING_FIELDS
+            else:
+                return self.UNKNOWN_STATE
+
+        def handle_text(self, i):
+            state = self.get_state()
+            if (state == self.SELECTING_MATCH):
+                control = self.select_album.base_widget
+                if (i == 'tab'):
+                    if (control.get_focus()[1] == len(self.metadata_choices)):
+                        #focus on radio buttons
+                        selection = [a.state for a in self.albums].index(True)
+                        control.set_focus(selection, 'below')
+                    else:
+                        #focus on select button
+                        control.set_focus(len(self.metadata_choices), 'above')
+                elif (i == 'esc'):
+                    control.set_focus(len(self.metadata_choices), 'above')
+            elif (state == self.SELECTING_LIST):
+                if ((i == 'tab') or (i == 'esc')):
+                    self.work_area.set_focus('header')
+            elif (state == self.APPLY_LIST_W_FIELDS):
+                if (i == 'tab'):
+                    self.work_area.set_focus('body')
+            elif (state == self.APPLY_LIST):
+                if (i == 'tab'):
+                    self.work_area.set_focus('body')
+            elif (state == self.EDITING_LIST_W_FIELDS):
+                if (i == 'tab'):
+                    self.work_area.set_focus('footer')
+                elif (i == 'esc'):
+                    selected_index = [a.state for a in self.albums].index(True)
+                    for checkbox in self.album_lists[selected_index].radios:
+                        checkbox.set_state(False, do_callback=False)
+                    self.work_area.set_footer(self.collapsed)
+                    self.work_area.set_focus('body')
+            elif (state == self.EDITING_LIST_ONLY):
+                if ((i == 'tab') or (i == 'esc')):
+                    self.work_area.set_focus('header')
+            elif (state == self.EDITING_FIELDS):
+                if (i == 'tab'):
+                    self.work_area.set_focus('body')
+                elif (i == 'esc'):
+                    selected_index = [a.state for a in self.albums].index(True)
+                    for checkbox in self.album_lists[selected_index].radios:
+                        checkbox.set_state(False, do_callback=False)
+                    self.work_area.set_footer(self.collapsed)
+                    self.work_area.set_focus('body')
+
+        def set_keys(self, keys):
+            """keys is a [(key, action), ...] list
+            where 'key' and 'action' are both strings"""
+
+            text = []
+            for (last, (key, action)) in audiotools.iter_last(iter(keys)):
+                text.append(('key', key))
+                text.append(u" - " + action)
+                if (not last):
+                    text.append(u"  ")
+
+            self.status.set_text(text)
+
+        def update_focus(self, widget, focus_part):
+            self.set_state_message(self.get_state())
+
+        def set_state_message(self, state):
+            if (state != self.UNKNOWN_STATE):
+                self.set_keys([
+                        #SELECTING_MATCH
+                        [(u"esc", u"go to Select button"),
+                         (u"tab", u"toggle between radios and Select")],
+
+                        #SELECTING_LIST
+                        [(u"esc/tab", u"return to control buttons")],
+
+                        #APPLY_LIST_W_FIELDS
+                        [(u"tab", u"go to track list")],
+
+                        #APPLY_LIST
+                        [(u"tab", u"go to track list")],
+
+                        #EDITING_LIST_W_FIELDS
+                        [(u"esc", u"close fields"),
+                         (u"tab", u"return to fields")],
+
+                        #EDITING_LIST_ONLY
+                        [(u"esc/tab", u"return to control buttons")],
+
+                        #EDITING_FIELDS
+                        [(u"esc", u"close fields"),
+                         (u"tab", u"return to track list")]
+                        ][state])
+            else:
+                self.status.set_text(u"")
+
+        def populated_metadata(self):
+            """yields a fully populated MetaData object per track
+            to be called once Urwid's main loop has completed"""
+
+            selected_index = [a.state for a in self.albums].index(True)
+            return self.album_lists[selected_index].albums[0].get_metadata()
+
 except ImportError:
     AVAILABLE = False
 

@@ -29,15 +29,7 @@ gettext.install("audiotools", unicode=True)
 if (audiotools.ui.AVAILABLE):
     urwid_present = True
     urwid = audiotools.ui.urwid
-
-    def get_focus(widget):
-        #something to smooth out the differences between Urwid versions
-
-        if (hasattr(widget, "get_focus") and callable(widget.get_focus)):
-            return widget.get_focus()
-        else:
-            return widget.focus_part
-
+    from audiotools.ui import get_focus
 
     class PathAlbum(audiotools.ui.Album):
         def update_tracks(self):
@@ -99,15 +91,14 @@ if (audiotools.ui.AVAILABLE):
          APPLY_LIST_W_FIELDS,
          UNKNOWN_STATE) = range(6)
 
-        """the Tracktag UI states are:
+        #the Tracktag UI states are:
+        #|                  | fields closed     | fields open           |
+        #|------------------+-------------------+-----------------------|
+        #| cursor on list   | EDITING_LIST_ONLY | EDITING_LIST_W_FIELDS |
+        #| cursor on fields | N/A               | EDITING_FIELDS        |
+        #| cursor on apply  | APPLY_LIST        | APPLY_LIST_W_FIELDS   |
+        #|------------------+-------------------+-----------------------|
 
-           |                  | fields closed     | fields open           |
-           |------------------+-------------------+-----------------------|
-           | cursor on list   | EDITING_LIST_ONLY | EDITING_LIST_W_FIELDS |
-           | cursor on fields | N/A               | EDITING_FIELDS        |
-           | cursor on apply  | APPLY_LIST        | APPLY_LIST_W_FIELDS   |
-           |------------------+-------------------+-----------------------|
-        """
 
         def __init__(self, tracks):
             def by_album(a1, a2):
@@ -212,7 +203,6 @@ if (audiotools.ui.AVAILABLE):
 
             if (len(albums) > 0):
                 self.set_focus_callback(self.update_focus)
-                # self.set_keys([(u"esc", u"go to Apply / Quit buttons")])
             else:
                 self.set_focus('footer')
 

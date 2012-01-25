@@ -60,10 +60,8 @@ def perform_lookup(offsets, total_length, track_count,
     and track count
     on the given freedb_server string and freedb_int port
 
-    iterates over a tuple of MetaData objects per track
-    where the first result are all the MetaData matches
-    for the first track, etc.  in the event there
-    are multiple results for a given disc
+    iterates over a list of MetaData objects per successful match, like:
+    [track1, track2, ...], [track1, track2, ...], ...
 
     may raise urllib2.HTTPError if an error occurs querying the server
     or ValueError if the server returns invalid data
@@ -146,7 +144,6 @@ def perform_lookup(offsets, total_length, track_count,
     m.close()
 
     if (len(matches) > 0):
-        freedb_files = []
         #for each result, query FreeDB for XMCD file data
         for (category, disc_id, title) in matches:
             m = urlopen("http://%s:%d/~cddb/cddb.cgi" % (freedb_server,
@@ -175,18 +172,13 @@ def perform_lookup(offsets, total_length, track_count,
                             else:
                                 freedb[entry.group(1)] = entry.group(2)
                     line = m.readline()
-                freedb_files.append(freedb)
+                yield list(xmcd_metadata(freedb))
 
-        #zip the XMCD files together by track
-        #and yield a list of MetaData objects for each match per track
-        for row in izip(*map(xmcd_metadata, freedb_files)):
-            yield row
-    else:
-        #no matches found, so yield a group of empty tuples
-        for i in xrange(track_count):
-            yield tuple()
 
 def xmcd_metadata(freedb_file):
+    """given a dict of KEY->value unicode strings,
+    yields a MetaData object per track"""
+
     import re
 
     TTITLE = re.compile(r'TTITLE(\d+)')
