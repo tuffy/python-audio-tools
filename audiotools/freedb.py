@@ -182,7 +182,9 @@ def perform_lookup(offsets, total_length, track_count,
         for row in izip(*map(xmcd_metadata, freedb_files)):
             yield row
     else:
-        return
+        #no matches found, so yield a group of empty tuples
+        for i in xrange(track_count):
+            yield tuple()
 
 def xmcd_metadata(freedb_file):
     import re

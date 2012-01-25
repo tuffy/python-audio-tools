@@ -103,8 +103,9 @@ def perform_lookup(first_track_number, last_track_number,
                           for release in get_nodes(release_list, u"release")]):
             yield row
     except KeyError:
-        #no releases found
-        return
+        #no releases found, so yield a group of empty tuples
+        for i in xrange(first_track_number, last_track_number + 1):
+            yield tuple()
 
 def get_node(parent, *nodes):
     if (len(nodes) == 0):
