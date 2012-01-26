@@ -673,8 +673,27 @@ try:
 except ImportError:
     AVAILABLE = False
 
-    def not_available_message(msg):
-        msg.error(u"urwid is required for interactive mode")
-        msg.output(u"Please download and install urwid " +
-                   u"from http://excess.org/urwid/")
-        msg.output(u"or your system's package manager.")
+def select_metadata(metadata_choices, msg):
+    """queries the user for the best matching metadata to use"""
+
+    assert(len(metadata_choices) > 0)
+    if (len(metadata_choices) == 1):
+        return metadata_choices[0]
+    else:
+        choice = None
+        while (choice not in range(0, len(metadata_choices))):
+            for (i, choice) in enumerate(metadata_choices):
+                msg.output(u"%d) %s" % (i + 1, choice[0].album_name))
+            try:
+                choice = int(raw_input("please select best match (1-%d) : " %
+                                       (len(metadata_choices)))) - 1
+            except ValueError:
+                choice = None
+
+        return metadata_choices[choice]
+
+def not_available_message(msg):
+    msg.error(u"urwid is required for interactive mode")
+    msg.output(u"Please download and install urwid " +
+               u"from http://excess.org/urwid/")
+    msg.output(u"or your system's package manager.")

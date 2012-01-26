@@ -74,7 +74,7 @@ on disc from another.
 \VAR{Total Length} is the total length of all the tracks, not
 counting the initial 2 second lead-in.
 \VAR{Offset Seconds Digit Sum} is the sum of the digits of all
-the disc's track offsets, in seconds, and truncated to 8 bits.
+the disc's track offsets, in seconds, modulo 255.
 Remember to count the initial 2 second/150 frame lead-in when calculating
 offsets.
 \begin{table}[h]
@@ -102,8 +102,8 @@ fractions of seconds when calculating the total disc length.
 The \VAR{Offset Seconds Digit Sum} is calculated by looking at the
 \VAR{Offset in Seconds} column.
 Those values are 2, 219, 423 and 641.
-One must take all of those digits and add them, which works out to
-$2 + 2 + 1 + 9 + 4 + 2 + 3 + 6 + 4 + 1 = \textbf{34}$
+One must take all of those digits, add them, and mod 255 which works out to
+$(2 + 2 + 1 + 9 + 4 + 2 + 3 + 6 + 4 + 1) \bmod 255 = \textbf{34}$
 
 This means our three values are 34, 840 and 4.
 In hexadecimal, they are 0x22, 0x0348 and 0x04.

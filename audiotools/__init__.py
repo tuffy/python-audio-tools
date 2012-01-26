@@ -83,6 +83,17 @@ class RawConfigParser(ConfigParser.RawConfigParser):
         except ConfigParser.NoOptionError:
             return default
 
+    def getboolean_default(self, section, option, default):
+        """Returns a default boolean if option is not found in section"""
+
+        try:
+            return self.getboolean(section, option)
+        except ConfigParser.NoSectionError:
+            return default
+        except ConfigParser.NoOptionError:
+            return default
+
+
 config = RawConfigParser()
 config.read([os.path.join("/etc", "audiotools.cfg"),
              os.path.join(sys.prefix, "etc", "audiotools.cfg"),
@@ -116,8 +127,11 @@ BIN = __system_binaries__(config)
 
 DEFAULT_CDROM = config.get_default("System", "cdrom", "/dev/cdrom")
 
+FREEDB_SERVICE = config.getboolean_default("FreeDB", "service", True)
 FREEDB_SERVER = config.get_default("FreeDB", "server", "us.freedb.org")
 FREEDB_PORT = config.getint_default("FreeDB", "port", 80)
+
+MUSICBRAINZ_SERVICE = config.getboolean_default("MusicBrainz", "service", True)
 MUSICBRAINZ_SERVER = config.get_default("MusicBrainz", "server",
                                         "musicbrainz.org")
 MUSICBRAINZ_PORT = config.getint_default("MusicBrainz", "port", 80)
@@ -4415,6 +4429,78 @@ def read_metadata_file(filename):
 
     #otherwise, throw exception
     raise MetaDataFileException(filename)
+
+#######################
+#CD MetaData Lookup
+#######################
+
+
+def metadata_lookup(first_track_number, last_track_number,
+                    offsets, lead_out_offset, total_length,
+                    musicbrainz_server="musicbrainz.org",
+                    musicbrainz_port=80,
+                    freedb_server="us.freedb.org",
+                    freedb_port=80,
+                    use_musicbrainz=True,
+                    use_freedb=True):
+    """generates a set of MetaData objects from CD
+
+    first_track_number and last_track_number are positive ints
+    offsets is a list of track offsets, in CD frames
+    lead_out_offset is the offset of the "lead-out" track, in CD frames
+    total_length is the total length of the disc, in CD frames
+
+    returns a metadata[c][t] list of lists
+    where 'c' is a possible choice
+    and 't' is the MetaData for a given track (starting from 0)
+
+    this will always return at least one choice,
+    which may be a list of largely empty MetaData objects
+    if no match can be found for the CD
+    """
+
+    assert(last_track_number >= first_track_number)
+    track_count = (last_track_number + 1) - first_track_number
+    assert(track_count == len(offsets))
+
+    matches = []
+
+    #MusicBrainz takes precedence over FreeDB
+    if (use_musicbrainz):
+        from . import musicbrainz
+        from urllib2 import HTTPError
+        from xml.parsers.expat import ExpatError
+        try:
+            matches.extend(musicbrainz.perform_lookup(
+                    first_track_number=first_track_number,
+                    last_track_number=last_track_number,
+                    lead_out_offset=lead_out_offset,
+                    offsets=offsets,
+                    musicbrainz_server=musicbrainz_server,
+                    musicbrainz_port=musicbrainz_port))
+        except (HTTPError,ExpatError):
+            pass
+
+    if (use_freedb):
+        from . import freedb
+        from urllib2 import HTTPError
+        try:
+            matches.extend(freedb.perform_lookup(
+                    offsets=offsets,
+                    total_length=total_length,
+                    track_count=track_count,
+                    freedb_server=freedb_server,
+                    freedb_port=freedb_port))
+        except (HTTPError,ValueError),err:
+            pass
+
+    if (len(matches) == 0):
+        #no matches, so build a set of dummy metadata
+        return [[MetaData(track_number=i,
+                          track_total=track_count)
+                 for i in xrange(first_track_number, last_track_number + 1)]]
+    else:
+        return matches
 
 
 #######################

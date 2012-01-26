@@ -1400,6 +1400,27 @@ CDDA Objects
 
    The position of the last sector on the CD.
 
+CD Lookups
+^^^^^^^^^^
+
+.. function:: metadata_lookup(first_track_number, last_track_number, offsets, lead_out_offset, total_length, [musicbrainz_server], [musicbrainz_port], [freedb_server], [freedb_port], [use_musicbrainz], [use_freedb])
+
+   Generates a set of :class:`MetaData` objects from CD information.
+   ``first_track_number`` and ``last_track_number`` are positive ints.
+   ``offsets`` is a list of track offsets, in CD frames.
+   ``lead_out_offset`` is the offset of the "lead-out" track, in CD frames.
+   ``total_length`` is the total length of th disc, in CD frames.
+
+   Returns a ``metadata[c][t]`` list of lists
+   where ``c`` is a possible choice and ``t`` is the :class:`MetaData`
+   for a given track (starting from 0).
+
+   This will always return a list of :class:`MetaData` objects
+   for at least one choice.
+   In the event that no matches for the CD can be found,
+   those objects will only contain ``track_number`` and ``track_total``
+   fields.
+
 CDTrackReader Objects
 ^^^^^^^^^^^^^^^^^^^^^
 

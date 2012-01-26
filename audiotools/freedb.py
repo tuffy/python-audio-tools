@@ -26,6 +26,8 @@ class DiscID:
         track_count is the total number of tracks on the disc"""
 
         assert(len(offsets) == track_count)
+        for o in offsets:
+            assert(o >= 0)
 
         self.offsets = offsets
         self.total_length = total_length
@@ -38,19 +40,10 @@ class DiscID:
              repr(self.track_count))
 
     def __str__(self):
-        def offset_seconds(i):
-            assert(i >= 0)
-            i /= 75
-            seconds = 0
-            while (i > 0):
-                seconds += i % 10
-                i /= 10
-            return seconds
-
         return "%2.2X%4.4X%2.2X" % \
-            (sum(map(offset_seconds, self.offsets)),
-             self.total_length / 75,
-             self.track_count)
+            (sum(map(int, "".join([str(o / 75) for o in self.offsets]))) % 255,
+             (self.total_length / 75) & 0xFFFF,
+             self.track_count & 0xFF)
 
 def perform_lookup(offsets, total_length, track_count,
                    freedb_server, freedb_port):
@@ -72,21 +65,11 @@ def perform_lookup(offsets, total_length, track_count,
     from urllib2 import urlopen
     from urllib import urlencode
     from itertools import izip
+    from time import sleep
 
     RESPONSE = re.compile(r'(\d{3}) (.+?)[\r\n]+')
     QUERY_RESULT = re.compile(r'(\S+) ([0-9a-fA-F]{8}) (.+)')
     FREEDB_LINE = re.compile(r'(\S+?)=(.+?)[\r\n]+')
-
-    def parse_line(line):
-        print repr(line)
-        if (line.startswith(".")):
-            return (None, line.rstrip("\r\n"))
-        else:
-            match = LINE.match(line)
-            if (match is not None):
-                return (int(match.group(1)), match.group(2))
-            else:
-                raise ValueError("invalid line")
 
     disc_id = DiscID(offsets, total_length, track_count)
 
@@ -146,6 +129,7 @@ def perform_lookup(offsets, total_length, track_count,
     if (len(matches) > 0):
         #for each result, query FreeDB for XMCD file data
         for (category, disc_id, title) in matches:
+            sleep(1) #add a slight delay to keep the server happy
             m = urlopen("http://%s:%d/~cddb/cddb.cgi" % (freedb_server,
                                                          freedb_port),
                         urlencode({"hello":"user %s %s %s" % \
@@ -161,6 +145,7 @@ def perform_lookup(offsets, total_length, track_count,
             if (response is None):
                 raise ValueError("invalid response from server")
             else:
+                #FIXME - check response code here
                 freedb = {}
                 line = m.readline()
                 while (not line.startswith(".")):

@@ -69,6 +69,9 @@
     </option>
   </options>
   <options category="freedb">
+    <option long="use-freedb" arg="yes/no">
+      whether to use the FreeDB service for CD lookups by default
+    </option>
     <option long="freedb-server" arg="hostname">
       the default FreeDB server to use
     </option>
@@ -77,6 +80,9 @@
     </option>
   </options>
   <options category="musicbrainz">
+    <option long="use-musicbrainz" arg="yes/no">
+      whether to use the MusicBrainz service for CD lookups by default
+    </option>
     <option long="musicbrainz-server" arg="hostname">
       the default MusicBrainz server to use
     </option>

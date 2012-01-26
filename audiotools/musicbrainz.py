@@ -70,7 +70,7 @@ def perform_lookup(first_track_number, last_track_number,
     [track1, track2, ...], [track1, track2, ...], ...
 
     may raise urllib2.HTTPError if an error occurs querying the server
-    or ValueError if the server returns invalid data
+    or xml.parsers.expat.ExpatError if there's an error parsing the data
     """
 
     from urllib2 import urlopen
