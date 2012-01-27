@@ -21,6 +21,7 @@
 import sys
 import os
 import audiotools
+import audiotools.ui
 import gettext
 
 gettext.install("audiotools", unicode=True)
@@ -86,15 +87,56 @@ if (__name__ == '__main__'):
 
     parser.add_option_group(conversion)
 
-    metadata = audiotools.OptionGroup(parser, _(u"Metadata Options"))
+    lookup = audiotools.OptionGroup(parser, _(u"CD Lookup Options"))
 
-    metadata.add_option(
-        '-x', '--xmcd',
-        action='store',
-        type='string',
-        dest='xmcd',
-        metavar='FILENAME',
-        help=_(u'FreeDB XMCD file or MusicBrainz XML file'))
+    lookup.add_option(
+        '--musicbrainz-server', action='store',
+        type='string', dest='musicbrainz_server',
+        default=audiotools.MUSICBRAINZ_SERVER,
+        metavar='HOSTNAME')
+    lookup.add_option(
+        '--musicbrainz-port', action='store',
+        type='int', dest='musicbrainz_port',
+        default=audiotools.MUSICBRAINZ_PORT,
+        metavar='PORT')
+    lookup.add_option(
+        '--no-musicbrainz', action='store_false',
+        dest='use_musicbrainz',
+        default=audiotools.MUSICBRAINZ_SERVICE,
+        help='do not query MusicBrainz for metadata')
+
+    lookup.add_option(
+        '--freedb-server', action='store',
+        type='string', dest='freedb_server',
+        default=audiotools.FREEDB_SERVER,
+        metavar='HOSTNAME')
+    lookup.add_option(
+        '--freedb-port', action='store',
+        type='int', dest='freedb_port',
+        default=audiotools.FREEDB_PORT,
+        metavar='PORT')
+    lookup.add_option(
+        '--no-freedb', action='store_false',
+        dest='use_freedb',
+        default=audiotools.FREEDB_SERVICE,
+        help='do not query FreeDB for metadata')
+
+    lookup.add_option(
+        '-I', '--interactive',
+        action='store_true',
+        default=False,
+        dest='interactive',
+        help=_(u'edit metadata in interactive mode'))
+
+    lookup.add_option(
+        '-D', '--default',
+        dest='use_default', action='store_true', default=False,
+        help=_(u'when multiple choices are available, ' +
+               u'select the first one automatically'))
+
+    parser.add_option_group(lookup)
+
+    metadata = audiotools.OptionGroup(parser, _(u"Metadata Options"))
 
     metadata.add_option(
         '--album-number',
@@ -136,6 +178,11 @@ if (__name__ == '__main__'):
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("cd2track", options)
 
+    #ensure interactive mode is available, if selected
+    if (options.interactive and (not audiotools.ui.AVAILABLE)):
+        audiotools.ui.not_available_message(msg)
+        sys.exit(1)
+
     #get the AudioFile class we are converted to
     AudioType = audiotools.TYPE_MAP[options.type]
 
@@ -175,17 +222,6 @@ if (__name__ == '__main__'):
                          "type": AudioType.NAME})
         sys.exit(1)
 
-    #if we're using an XMCD file, use that file for MetaData
-    if (options.xmcd is not None):
-        try:
-            xmcd = audiotools.read_metadata_file(options.xmcd)
-        except audiotools.MetaDataFileException, err:
-            msg.error(unicode(err))
-            sys.exit(1)
-    else:
-        #if we're not using an XMCD file, no MetaData
-        xmcd = None
-
     quality = options.quality
     base_directory = options.dir
 
@@ -199,11 +235,37 @@ if (__name__ == '__main__'):
         msg.error(_(u"No CD in drive"))
         sys.exit(1)
 
-    #attempt to fetch AccurateRip information
-    #given the given CD if requested
-    # if (options.accuraterip):
-    #     db_entry = audiotools.AccurateRipEntry.from_disc_id(
-    #         audiotools.AccurateRipDiscID.from_cdda(cdda))
+    #use CDDA object to query metadata services for metadata choices
+    metadata_choices = cdda.metadata_lookup(
+        musicbrainz_server=options.musicbrainz_server,
+        musicbrainz_port=options.musicbrainz_port,
+        freedb_server=options.freedb_server,
+        freedb_port=options.freedb_port,
+        use_musicbrainz=options.use_musicbrainz,
+        use_freedb=options.use_freedb)
+
+    #decide which metadata to use to tag extracted tracks
+    if (options.interactive):
+        #pick choice using interactive widget
+        metadata_widget = audiotools.ui.MetaDataFiller(metadata_choices)
+        loop = audiotools.ui.urwid.MainLoop(
+            metadata_widget,
+            [('key', 'white', 'dark blue')],
+            unhandled_input=metadata_widget.handle_text)
+        loop.run()
+
+        track_metadatas = dict([(m.track_number, m) for m in
+                                metadata_widget.populated_metadata()])
+    else:
+        if ((len(metadata_choices) == 1) or options.use_default):
+            #use default choice
+            track_metadatas = dict([(m.track_number, m) for m in
+                                    metadata_choices[0]])
+        else:
+            #pick choice using raw stdin/stdout
+            track_metadatas = \
+                dict([(m.track_number, m) for m in
+                      audiotools.ui.select_metadata(metadata_choices, msg)])
 
     if (len(args) == 0):
         to_rip = [track for track in cdda]
@@ -225,19 +287,7 @@ if (__name__ == '__main__'):
                                       cd_track.track_number)
 
         try:
-            if (xmcd is not None):  # we have metadata
-                metadata = xmcd.get(cd_track.track_number, None)
-                if (metadata is not None):
-                    if (options.album_number != 0):
-                        metadata.album_number = options.album_number
-                    if (options.album_total != 0):
-                        metadata.album_total = options.album_total
-            else:                   # no metadata
-                metadata = audiotools.MetaData(
-                    track_number=cd_track.track_number,
-                    track_total=len(cdda),
-                    album_number=options.album_number,
-                    album_total=options.album_total)
+            metadata = track_metadatas.get(cd_track.track_number, None)
 
             filename = os.path.join(
                 base_directory,

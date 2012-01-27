@@ -177,6 +177,10 @@ def parse_release(release, disc_id):
 
             #we'll use the first result found
             break
+        else:
+            #<label-info-list> with no <label-info> tags
+            catalog = u""
+            publisher = u""
     except KeyError:
         catalog = u""
         publisher = u""

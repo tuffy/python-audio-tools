@@ -4101,6 +4101,36 @@ class CDDA:
 
         return self.cdda.last_sector()
 
+    def metadata_lookup(self, musicbrainz_server="musicbrainz.org",
+                        musicbrainz_port=80,
+                        freedb_server="us.freedb.org",
+                        freedb_port=80,
+                        use_musicbrainz=True,
+                        use_freedb=True):
+        """generates a set of MetaData objects from CD
+
+        returns a metadata[c][t] list of lists
+        where 'c' is a possible choice
+        and 't' is the MetaData for a given track (starting from 0)
+
+        this will always return at least one choice,
+        which may be a list of largely empty MetaData objects
+        if no match can be found for the CD
+        """
+
+        return metadata_lookup(first_track_number=1,
+                               last_track_number=len(self),
+                               offsets=[self.cdda.track_offsets(i)[0] + 150
+                                        for i in xrange(1, len(self) + 1)],
+                               lead_out_offset=self.length(),
+                               total_length=self.length(),
+                               musicbrainz_server=musicbrainz_server,
+                               musicbrainz_port=musicbrainz_port,
+                               freedb_server=freedb_server,
+                               freedb_port=freedb_port,
+                               use_musicbrainz=use_musicbrainz,
+                               use_freedb=use_freedb)
+
 
 class PCMReaderWindow:
     """A class for cropping a PCMReader to a specific window of frames"""
