@@ -5181,19 +5181,22 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE Update man page
 ** DONE Add pre-extraction metadata lookup to cd2track
 *** DONE Update man page with new options
+** DONE Add pre-extraction metadata lookup to dvda2track
+*** DONE Update man page with new options
+** DONE Update cdinfo to use new ID calculation routines
+   Ensure they handle the FreeDB test disc properly.
+** DONE Add pre-play metadata lookup to cdplay
+*** DONE Update man page
 ** TODO Add album-number/album-total options to tracksplit
    Allow these values to be populated at split-time
    if none can be found in metadata services
 *** TODO Update man page
 ** TODO Update album-number/album-total options in cd2track
-** TODO Add pre-extraction metadata lookup to dvda2track
-*** TODO Update man page with new options
-** TODO Add pre-play metadata lookup to cdplay
 ** TODO Add post-extraction metadata lookup to tracktag
    As a replacement for its -x/--xmcd option,
    tracktag should have the ability to do direct MusicBrainz/FreeDB lookups.
-** TODO Update cdinfo to use new ID calculation routines
-   Ensure they handle the FreeDB test disc properly.
+** TODO Add post-extraction metadata lookup to track2track
+   As a replacement for its -x/--xmcd option
 ** TODO Deprecate xmcd-specific tools
    to be removed in version 2.19
    - [ ] cd2xmcd
@@ -5204,8 +5207,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    Automatic CD lookup should be folded into utilites as needed.
    to be removed in version 2.19
    - [X] cd2track
-   - [ ] cdplay
-   - [ ] dvda2track
+   - [X] cdplay
+   - [X] dvda2track
    - [ ] track2track
    - [ ] trackrename
    - [X] tracksplit

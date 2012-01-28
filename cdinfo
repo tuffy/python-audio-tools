@@ -67,13 +67,13 @@ if (__name__ == '__main__'):
     msg.new_row()
     msg.output_column(_(u"FreeDB disc ID"), True)
     msg.output_column(_(u" : "))
-    msg.output_column(unicode(str(audiotools.DiscID.from_cdda(cdda))))
+    msg.output_column(str(cdda.freedb_disc_id()).decode('ascii'))
 
     msg.new_row()
     msg.output_column(_(u"MusicBrainz disc ID"), True)
     msg.output_column(_(u" : "))
 
-    msg.output_column(unicode(str(audiotools.MBDiscID.from_cdda(cdda))))
+    msg.output_column(str(cdda.musicbrainz_disc_id()).decode('ascii'))
 
     msg.blank_row()
     msg.output_rows()

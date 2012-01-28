@@ -47,7 +47,7 @@
       If this option is omitted, a default format string is used.
     </option>
   </options>
-    <options category="CD lookup">
+  <options category="CD lookup">
     <option long="musicbrainz-server" arg="hostname">
       the MusicBrainz server name to query for metadata
     </option>

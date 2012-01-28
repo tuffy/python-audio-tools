@@ -4101,6 +4101,21 @@ class CDDA:
 
         return self.cdda.last_sector()
 
+    def freedb_disc_id(self):
+        from .freedb import DiscID
+
+        return DiscID(offsets=[t.offset() for t in self],
+                      total_length=self.last_sector(),
+                      track_count=len(self))
+
+    def musicbrainz_disc_id(self):
+        from .musicbrainz import DiscID
+
+        return DiscID(first_track_number=1,
+                      last_track_number=len(self),
+                      lead_out_offset=self.last_sector() + 150 + 1,
+                      offsets=[t.offset() for t in self])
+
     def metadata_lookup(self, musicbrainz_server="musicbrainz.org",
                         musicbrainz_port=80,
                         freedb_server="us.freedb.org",
@@ -4120,10 +4135,9 @@ class CDDA:
 
         return metadata_lookup(first_track_number=1,
                                last_track_number=len(self),
-                               offsets=[self.cdda.track_offsets(i)[0] + 150
-                                        for i in xrange(1, len(self) + 1)],
-                               lead_out_offset=self.length(),
-                               total_length=self.length(),
+                               offsets=[t.offset() for t in self],
+                               lead_out_offset=self.last_sector() + 150 + 1,
+                               total_length=self.last_sector(),
                                musicbrainz_server=musicbrainz_server,
                                musicbrainz_port=musicbrainz_port,
                                freedb_server=freedb_server,
