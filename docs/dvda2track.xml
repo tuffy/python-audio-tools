@@ -120,11 +120,10 @@
     <example>
       <description>
         Extract all the tracks in title 1 from /dev/cdrom
-        which is mounted at /media/cdrom/AUDIO_TS as FLAC files
-        using metadata from album.xmcd
+        which is mounted at /media/cdrom/AUDIO_TS as FLAC files:
       </description>
       <command>
-        dvda2track -t flac -x album.xmcd -c /dev/cdrom -A /media/cdrom/AUDIO_TS
+        dvda2track -t flac -c /dev/cdrom -A /media/cdrom/AUDIO_TS
       </command>
     </example>
     <example>

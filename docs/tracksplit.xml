@@ -70,6 +70,14 @@
     </option>
   </options>
   <options category="metadata">
+    <option long="album-number" arg="number">
+      the album number of the tracks' CD,
+      if they are in one in a series of albums
+    </option>
+    <option long="album-total" arg="number">
+      the total number of albums in the tracks' CD set,
+      if it is one in a series of albums
+    </option>
     <option long="replay-gain">
       add ReplayGain metadata to newly created tracks
     </option>
@@ -80,20 +88,11 @@
   <examples>
     <example>
       <description>
-        Split CDImage.wav into several WAVE files using the cuesheet
+        Split CDImage.wav into several MP3 files using the cuesheet
         CDImage.cue:
       </description>
       <command>
-        tracksplit --cue=CDImage.cue CDImage.wav
-      </command>
-    </example>
-    <example>
-      <description>
-        Split album.flac into several FLAC files using
-        album.toc and metadata from album.xmcd:
-      </description>
-      <command>
-        tracksplit --cue=album.toc -x album.xmcd album.flac
+        tracksplit -t mp3 --cue=CDImage.cue CDImage.wav
       </command>
     </example>
     <example>

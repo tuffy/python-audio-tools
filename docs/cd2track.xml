@@ -94,10 +94,10 @@
     <example>
       <description>
         Extract all of the tracks from \fI/dev/cdrom\fR as FLAC files
-        at the default quality using metadata from album.xmcd:
+        at the default quality:
       </description>
       <command>
-        cd2track -t flac -x album.xmcd -c /dev/cdrom
+        cd2track -t flac -c /dev/cdrom
       </command>
     </example>
   </examples>

@@ -28,15 +28,8 @@ gettext.install("audiotools", unicode=True)
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        _(u"%prog [options] [-x XMCD file] <track 1> [track 2] ..."),
+        _(u"%prog [options] <track 1> [track 2] ..."),
         version="Python Audio Tools %s" % (audiotools.VERSION))
-
-    parser.add_option('-x', '--xmcd',
-                      action='store',
-                      type='string',
-                      dest='xmcd',
-                      metavar='FILENAME',
-                      help=_(u'FreeDB XMCD file or MusicBrainz XML file'))
 
     parser.add_option('--format',
                       action='store',
@@ -61,46 +54,9 @@ if (__name__ == '__main__'):
         msg.error(_(u"You must specify at least 1 supported audio file"))
         sys.exit(1)
 
-    if (options.xmcd is not None):
-        #try to set the metadata and track name from the XMCD metadata
-        try:
-            xmcd = audiotools.read_metadata_file(options.xmcd)
-        except audiotools.MetaDataFileException, err:
-            msg.error(unicode(err))
-            sys.exit(1)
-    else:
-        xmcd = None
-
     try:
         for track in audiofiles:
             track_metadata = track.get_metadata()
-
-            if (xmcd is not None):
-                #got an XMCD file
-
-                #try to get the track's entry in the file
-                xmcd_metadata = xmcd.get(track.track_number(), None)
-
-                if (xmcd_metadata is not None):
-                    #got the track's entry in the XMCD file
-
-                    if (track_metadata is not None):
-                        #update track's metadata
-                        #from the XMCD file metadata
-                        #for renamed track
-                        for (attr, value) in xmcd_metadata.filled_fields():
-                            setattr(track_metadata, attr, value)
-                    else:
-                        #use XMCD file metadata for renamed track
-                        track_metadata = xmcd_metadata
-                else:
-                    #no entry for track in XMCD file
-                    #so use old track's metadata for new track, if any
-                    pass
-            else:
-                #no XMCD file at all
-                #so use track's metadata for new name, if any
-                pass
 
             new_name = track.track_name(file_path=track.filename,
                                         track_metadata=track_metadata,

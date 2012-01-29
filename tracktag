@@ -406,7 +406,7 @@ if (__name__ == '__main__'):
     #add an enormous number of options to the parser
     #neatly categorized for convenience
     parser = audiotools.OptionParser(
-        usage=_(u"%prog [options] [-x XMCD file] <track 1> [track 2] ..."),
+        usage=_(u"%prog [options] <track 1> [track 2] ..."),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option(
@@ -471,14 +471,6 @@ if (__name__ == '__main__'):
         default=False,
         dest='replace',
         help=_(u'completely replace all metadata'))
-
-    parser.add_option(
-        '-x', '--xmcd',
-        action='store',
-        type='string',
-        dest='xmcd',
-        metavar='FILENAME',
-        help=_(u'FreeDB XMCD file or MusicBrainz XML file'))
 
     parser.add_option(
         '--cue',
@@ -591,16 +583,6 @@ if (__name__ == '__main__'):
 
     #open our set of input files for tagging
     audiofiles = audiotools.open_files(args, messenger=msg)
-
-    #along with the --xmcd file
-    if (options.xmcd is not None):
-        try:
-            xmcd = audiotools.read_metadata_file(options.xmcd)
-        except audiotools.MetaDataFileException, err:
-            msg.error(unicode(err))
-            sys.exit(1)
-    else:
-        xmcd = None
 
     #and the --cue file
     isrcs = {}
@@ -735,14 +717,6 @@ if (__name__ == '__main__'):
         if (track_number in isrcs):
             metadata.ISRC = isrcs[track_number]
             track_modified = True
-
-        #update fields from the XMCD file metadata
-        if (xmcd is not None):
-            xmcd_metadata = xmcd.get(track_number, None)
-            if (xmcd_metadata is not None):
-                for (attr, value) in xmcd_metadata.filled_fields():
-                    setattr(metadata, attr, value)
-                    track_modified = True
 
         #update fields from the command line
         for field in ('track_name',

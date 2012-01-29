@@ -138,6 +138,24 @@ if (__name__ == '__main__'):
 
     metadata = audiotools.OptionGroup(parser, _(u"Metadata Options"))
 
+    metadata.add_option(
+        '--album-number',
+        dest='album_number',
+        action='store',
+        type='int',
+        default=0,
+        help=_(u'the album number of this CD, ' +
+               u'if it is one of a series of albums'))
+
+    metadata.add_option(
+        '--album-total',
+        dest='album_total',
+        action='store',
+        type='int',
+        default=0,
+        help=_(u'the total albums of this CD\'s set, ' +
+               u'if it is one of a series of albums'))
+
     #if adding ReplayGain is a lossless process
     #(i.e. added as tags rather than modifying track data)
     #add_replay_gain should default to True
@@ -257,6 +275,17 @@ if (__name__ == '__main__'):
         freedb_port=options.freedb_port,
         use_musicbrainz=options.use_musicbrainz,
         use_freedb=options.use_freedb)
+
+    #update MetaData with command-line album-number/total, if given
+    if (options.album_number != 0):
+        for c in metadata_choices:
+            for m in c:
+                m.album_number = options.album_number
+
+    if (options.album_total != 0):
+        for c in metadata_choices:
+            for m in c:
+                m.album_total = options.album_total
 
     #decide which metadata to use to tag split tracks
     if (options.interactive):

@@ -24,11 +24,6 @@
       this options erases all existing metadata and replaces it
       with any specified values
     </option>
-    <option short="x" long="xmcd" arg="filename">
-      A MusicBrainz XML file or FreeDB XMCD file to use for track metadata.
-      XML and XMCD files can be obtained from the
-      track2xmcd(1), cd2xmcd(1), dvda2xmcd(1), and editxmcd(1) programs.
-    </option>
     <option long="cue" arg="filename">
       If given along with multiple audio tracks,
       this file's ISRC metadata will be added to those tracks;

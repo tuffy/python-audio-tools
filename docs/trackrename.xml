@@ -16,14 +16,6 @@
       The level of output to display.
       Choose between 'normal', 'quiet' and 'debug.
     </option>
-    <option short="x" long="xmcd" arg="filename">
-      A MusicBrainz XML file or FreeDB XMCD file to use for track renaming
-      metadata.
-      If no file is given, metadata will be taken from the source
-      tracks, if present.
-      XML and XMCD files can be obtained from the
-      track2xmcd(1), cd2xmcd(1), dvda2xmcd(1), and editxmcd(1) programs.
-    </option>
     <option long="format" arg="string">
       The format string to use for new filenames.
       Template fields are replaced with metadata values when
@@ -39,15 +31,6 @@
       </description>
       <command>
         track2rename *.flac
-      </command>
-    </example>
-    <example>
-      <description>
-        Rename all of the MP3s in targetdir based on
-        the contents of album.xmcd:
-      </description>
-      <command>
-        trackrename -x album.xmcd targetdir/*.mp3
       </command>
     </example>
     <example>

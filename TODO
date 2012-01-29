@@ -5187,37 +5187,57 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    Ensure they handle the FreeDB test disc properly.
 ** DONE Add pre-play metadata lookup to cdplay
 *** DONE Update man page
-** TODO Add album-number/album-total options to tracksplit
+** DONE Add album-number/album-total options to tracksplit
    Allow these values to be populated at split-time
    if none can be found in metadata services
-*** TODO Update man page
-** TODO Update album-number/album-total options in cd2track
-** TODO Add post-extraction metadata lookup to tracktag
-   As a replacement for its -x/--xmcd option,
-   tracktag should have the ability to do direct MusicBrainz/FreeDB lookups.
-** TODO Add post-extraction metadata lookup to track2track
-   As a replacement for its -x/--xmcd option
-** TODO Deprecate xmcd-specific tools
-   to be removed in version 2.19
+*** DONE Update man page
+** DONE Update album-number/album-total options in cd2track
+** DONE Remove xmcd-specific options
+   Automatic CD lookup should be folded into utilites as needed.
+   - [X] cd2track
+   - [X] cdplay
+   - [X] dvda2track
+   - [X] track2track
+   - [X] trackrename
+   - [X] tracksplit
+   - [X] tracktag
+** TODO Remove xmcd-specific tools
    - [ ] cd2xmcd
    - [ ] dvda2xmcd
    - [ ] editxmcd
    - [ ] track2xmcd
-** TODO Deprecate xmcd-specific options
-   Automatic CD lookup should be folded into utilites as needed.
-   to be removed in version 2.19
-   - [X] cd2track
-   - [X] cdplay
-   - [X] dvda2track
-   - [ ] track2track
-   - [ ] trackrename
-   - [X] tracksplit
-   - [ ] tracktag
-** TODO Add a general-purpose metadata transfer tool?
-   If one's extracted a set of files and tagged them,
-   it should be easy to move those tags to a fresh extraction
-   without having to re-input those tags.
-   Going from an old MP3 rip to a new FLAC rip, for example.
-* TODO Make MusicBrainz a configurable option
-  Even tag-based MusicBrainz should be something
+** TODO Update unit tests
+** TODO Deprecate xmcd-specific modules
+   Since metadata lookup handles files internally,
+   there's no need for metadata file handling classes/functions
+   at the Python level.
+*** TODO Update documentation to indicate deprecation
+* TODO Split off tracktag's functionality
+** TODO Move the image options into a specialized tool (covertag?)
+   Its interactive mode should use PyGTK/Tkinter
+   since it's helpful to see the images one is selecting to add/remove.
+   - [ ] --remove-images
+   - [ ] --front-cover
+   - [ ] --back-cover
+   - [ ] --leaflet
+   - [ ] --media
+   - [ ] --other-image
+   - [ ] -T, --thumbnail
+** TODO Move CD options into a specialized tool
+   Something for tagging a group of tracks as if they're an entire CD
+   - [ ] --cue
+   - [ ] -l, --lookup
+   - [ ] --musicbrainz-server
+   - [ ] --musicbrainz-port
+   - [ ] --no-musicbrainz
+   - [ ] --freedb-server
+   - [ ] --freedb-port
+   - [ ] --no-freedb
+* TODO Make ReplayGain a configurable option
+  Even tag-based ReplayGain should be something
   users can turn on or off globally via audiotools-config
+
+* TODO Add a dvdaplay utility
+** TODO Unify trackplay/cdplay/dvdaplay widgets into audiotools.ui
+** TODO Unify non-Urwid player into audiotools.ui
+** TODO Add man page
