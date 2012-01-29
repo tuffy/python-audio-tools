@@ -96,19 +96,14 @@ figures/m4a/stts.pdf \
 figures/m4a/tkhd.pdf \
 figures/m4a/trkn.pdf
 
-WAVPACK = figures/wavpack/bitstream.pdf \
-figures/wavpack/block_channels.pdf \
+WAVPACK = figures/wavpack/block_channels.pdf \
 figures/wavpack/block_header.pdf \
 figures/wavpack/block_header2.pdf \
 figures/wavpack/block_header_parse.pdf \
 figures/wavpack/channel_info.pdf \
 figures/wavpack/decoding_params.pdf \
-figures/wavpack/decorr_samples.pdf \
-figures/wavpack/decorr_samples2.pdf \
 figures/wavpack/decorr_samples_encode.pdf \
 figures/wavpack/decorr_samples_parse.pdf \
-figures/wavpack/decorr_terms.pdf \
-figures/wavpack/decorr_weights.pdf \
 figures/wavpack/decorr_weights_parse.pdf \
 figures/wavpack/decorrelation0.pdf \
 figures/wavpack/decorrelation1.pdf \
@@ -116,28 +111,17 @@ figures/wavpack/decorrelation2.pdf \
 figures/wavpack/decorrelation3.pdf \
 figures/wavpack/decorrelation4.pdf \
 figures/wavpack/decorrelation5.pdf \
-figures/wavpack/entropy_vars.pdf \
 figures/wavpack/entropy_vars_parse.pdf \
 figures/wavpack/extended_integers.pdf \
 figures/wavpack/md5sum.pdf \
 figures/wavpack/pcm_sandwich.pdf \
-figures/wavpack/read_residual.pdf \
-figures/wavpack/read_residual1.pdf \
-figures/wavpack/read_residual2.pdf \
-figures/wavpack/read_residual3.pdf \
-figures/wavpack/read_zeroes.pdf \
 figures/wavpack/residuals_parse.pdf \
 figures/wavpack/residuals_parse2.pdf \
-figures/wavpack/residuals_parse3.pdf \
 figures/wavpack/stream.pdf \
-figures/wavpack/stream2.pdf \
 figures/wavpack/subblock.pdf \
 figures/wavpack/subblock_header.pdf \
 figures/wavpack/subblock_parse.pdf \
 figures/wavpack/terms_parse.pdf \
-figures/wavpack/wave_footer.pdf \
-figures/wavpack/wave_header.pdf \
-figures/wavpack/write_zeroes.pdf
 
 SHORTEN = figures/shorten/diff.pdf \
 figures/shorten/qlpc.pdf \
@@ -439,9 +423,6 @@ figures/wavpack/decorrelation5.pdf: figures/wavpack/decorrelation5.fig
 	fig2dev -Z 3 -L pdf $< $@
 
 figures/wavpack/residuals_parse.pdf: figures/wavpack/residuals_parse.bpx
-	./bitparse.py -i $< -o $@ -b 24 -w 480
-
-figures/wavpack/residuals_parse3.pdf: figures/wavpack/residuals_parse2.bpx
 	./bitparse.py -i $< -o $@ -b 24 -w 480
 
 figures/flac/utf8.pdf: figures/flac/utf8.bpx
