@@ -5201,11 +5201,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] trackrename
    - [X] tracksplit
    - [X] tracktag
-** TODO Remove xmcd-specific tools
-   - [ ] cd2xmcd
-   - [ ] dvda2xmcd
-   - [ ] editxmcd
-   - [ ] track2xmcd
+** DONE Remove xmcd-specific tools
+   - [X] cd2xmcd
+   - [X] dvda2xmcd
+   - [X] editxmcd
+   - [X] track2xmcd
 ** TODO Update unit tests
 ** TODO Deprecate xmcd-specific modules
    Since metadata lookup handles files internally,
