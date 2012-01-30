@@ -124,6 +124,7 @@ figures/wavpack/subblock_parse.pdf \
 figures/wavpack/terms_parse.pdf \
 
 SHORTEN = figures/shorten/diff.pdf \
+figures/shorten/filetype.pdf \
 figures/shorten/header_parse.pdf \
 figures/shorten/qlpc.pdf \
 figures/shorten/sandwich.pdf \
@@ -434,3 +435,6 @@ figures/flac/utf8.pdf: figures/flac/utf8.bpx
 
 figures/flac/lpc-parse2.pdf: figures/flac/lpc-parse2.bpx
 	./bitparse.py -i $< -o $@ -b 24 -w 480
+
+figures/shorten/filetype.pdf: figures/shorten/filetype.bpx
+	./bitparse.py -w 140 -b 7 -i $< -o $@

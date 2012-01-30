@@ -174,6 +174,11 @@ typedef struct BitstreamReader_s {
     unsigned int
     (*read_unary)(struct BitstreamReader_s* bs, int stop_bit);
 
+    /*skips the number of non-stop bits before the next 0 or 1 stop bit
+      from the current stream in the current endian format*/
+    void
+    (*skip_unary)(struct BitstreamReader_s* bs, int stop_bit);
+
     /*returns the number of non-stop bits before the 0 or 1 stop bit
       from the current stream in the current endian format
       and limited to "maximum_bits"
@@ -429,6 +434,25 @@ br_read_unary_p_le(BitstreamReader* bs, int stop_bit);
 #endif
 unsigned int
 br_read_unary_c(BitstreamReader* bs, int stop_bit);
+
+
+/*bs->skip_unary(bs, stop_bit)  methods*/
+void
+br_skip_unary_f_be(BitstreamReader* bs, int stop_bit);
+void
+br_skip_unary_f_le(BitstreamReader* bs, int stop_bit);
+void
+br_skip_unary_s_be(BitstreamReader* bs, int stop_bit);
+void
+br_skip_unary_s_le(BitstreamReader* bs, int stop_bit);
+#ifndef STANDALONE
+void
+br_skip_unary_p_be(BitstreamReader* bs, int stop_bit);
+void
+br_skip_unary_p_le(BitstreamReader* bs, int stop_bit);
+#endif
+void
+br_skip_unary_c(BitstreamReader* bs, int stop_bit);
 
 
 /*bs->read_limited_unary(bs, stop_bit, maximum_bits)  methods*/

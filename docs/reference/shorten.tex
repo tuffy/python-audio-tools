@@ -48,6 +48,7 @@ data types which we'll call \texttt{unsigned}, \texttt{signed} and
 \SetKwData{MEANCOUNT}{number of means}
 \SetKwData{SKIPBYTES}{bytes to skip}
 \SetKwData{COMMAND}{command}
+\SetKwData{SAMPLES}{samples}
 $\MAGIC \leftarrow$ \READ 4 bytes\;
 \ASSERT $\MAGIC = \texttt{"ajkg"}$\;
 $\VERSION \leftarrow$ \READ 8 unsigned bits\;
@@ -63,28 +64,108 @@ $\VERSION \leftarrow$ \READ 8 unsigned bits\;
   \SKIPBYTES & \leftarrow & read \texttt{long}()\; \\
 \end{tabular}\;
 \SKIP $(\SKIPBYTES)$ bytes\;
-\BlankLine
-\Repeat(\tcc*[f]{process commands}){$\COMMAND = 4$}{
-  $\COMMAND \leftarrow$ read \texttt{unsigned}(2)\;
-  \Switch{\COMMAND}{
-    \uCase{0}{DIFF0}
-    \uCase{1}{DIFF1}
-    \uCase{2}{DIFF2}
-    \uCase{3}{DIFF3}
-    \uCase{4}{
-      \tcc{QUIT command, do nothing}
-    }
-    \uCase{5}{
-      $\BLOCKLENGTH \leftarrow$ read \texttt{long}()\;
-    }
-    \uCase{6}{BITSHIFT}
-    \uCase{7}{QLPC}
-    \uCase{8}{ZERO}
-    \uCase{9}{VERBATIM}
-    \Other{unknown command}
-  }
-}(\tcc*[f]{QUIT command})
 \EALGORITHM
+}
+
+\begin{table}[h]
+{\relsize{-1}
+\begin{tabular}{|r|l||r|l|}
+\hline
+file type & format & file type & format \\
+\hline
+0 & lossless \textmu-Law &
+7 & lossy \textmu-Law \\
+1 & signed 8 bit &
+8 & new \textmu-Law with zero mapping \\
+2 & unsigned 8 bit &
+9 & lossless a-Law \\
+3 & signed 16 bit, big-endian &
+10 & lossy a-Law \\
+4 & unsigned 16 bit, big-endian &
+11 & Microsoft .wav \\
+5 & signed 16 bit, little-endian &
+12 & Apple .aiff \\
+6 & unsigned 16 bit, little-endian &
+& \\
+\hline
+\end{tabular}
+}
+\end{table}
+\par
+\noindent
+\VAR{channels} is the total number of channels in the stream
+and \VAR{block length} is the number of PCM frames output
+from the next command, which is typically constant
+until the final set of commands in the stream.
+
+\clearpage
+
+{\relsize{-1}
+\begin{algorithm}[H]
+  \DontPrintSemicolon
+  \SetKwData{CHANNELS}{channels}
+  \SetKwData{BLOCKLENGTH}{block length}
+  \SetKwData{COMMAND}{command}
+  \SetKwData{SAMPLES}{samples}
+  \SetKwData{SHIFTED}{shifted}
+  \tcc{setup initial variables}
+  $c \leftarrow 0$\tcc*{current channel}
+  $o \leftarrow 0$\tcc*{offset}
+  $s \leftarrow 0$\tcc*{left shift}
+  \BlankLine
+  \tcc{process commands}
+  \Repeat{$\COMMAND = 4$}{
+    $\COMMAND \leftarrow$ read \texttt{unsigned}(2)\;
+    \Switch{\COMMAND}{
+      \uCase(\tcc*[f]{DIFF0}){0}{
+        $\text{\SAMPLES}_c \leftarrow$ read \texttt{DIFF0} with \BLOCKLENGTH,
+        and $o$\;
+        $c \leftarrow c + 1$\;
+      }
+      \uCase(\tcc*[f]{DIFF1}){1}{
+        $\text{\SAMPLES}_c \leftarrow$ read \texttt{DIFF1} with \BLOCKLENGTH and
+        previous $\text{\SAMPLES}_c$\;
+        $c \leftarrow c + 1$\;
+      }
+      \uCase(\tcc*[f]{DIFF2}){2}{
+        $\text{\SAMPLES}_c \leftarrow$ read \texttt{DIFF2} with \BLOCKLENGTH and
+        previous $\text{\SAMPLES}_c$\;
+        $c \leftarrow c + 1$\;
+      }
+      \uCase(\tcc*[f]{DIFF3}){3}{
+        $\text{\SAMPLES}_c \leftarrow$ read \texttt{DIFF3} with \BLOCKLENGTH and
+        previous $\text{\SAMPLES}_c$\;
+        $c \leftarrow c + 1$\;
+      }
+      \uCase(\tcc*[f]{QUIT}){4}{
+        \tcc{do nothing}
+      }
+      \uCase(\tcc*[f]{BLOCKSIZE}){5}{
+        $\BLOCKLENGTH \leftarrow$ read \texttt{long}()\;
+      }
+      \uCase(\tcc*[f]{BITSHIFT}){6}{
+        $s \leftarrow$ read \texttt{unsigned}(2)\;
+      }
+      \uCase{7}{QLPC} %%FIXME
+      \uCase(\tcc*[f]{ZERO}){8}{
+        \For{i = 0 \emph{\KwTo}\BLOCKLENGTH}{
+          $\text{\SAMPLES}_{c~i} \leftarrow 0$\;
+        }
+        $c \leftarrow c + 1$\;
+      }
+      \uCase(\tcc*[f]{VERBATIM}){9}{
+        handle verbatim block of non-audio data\;
+      }
+      \Other{unknown command}
+    }
+    \If{$c = \CHANNELS$}{
+      wrap samples for next set of channels\;
+      $\SHIFTED \leftarrow$ apply left shift $s$ to \SAMPLES\;
+      \Return \SHIFTED\;
+      $c \leftarrow 0$\;
+    }
+  }(\tcc*[f]{QUIT command})
+\end{algorithm}
 }
 
 \clearpage
@@ -94,32 +175,167 @@ $\VERSION \leftarrow$ \READ 8 unsigned bits\;
 \begin{figure}[h]
 \includegraphics{figures/shorten/header_parse.pdf}
 \end{figure}
+In this example, \VAR{magic number} is \texttt{"ajkg"} and
+\VAR{version} is 2.
+Since \VAR{file type} is a \texttt{long}\footnote{which is defined as
+\texttt{unsigned}(\texttt{unsigned}(2))}
+it breaks down as follows:
+\par
+\noindent
+\begin{wrapfigure}[3]{r}{140pt}
+\includegraphics{figures/shorten/filetype.pdf}
+\end{wrapfigure}
+{\relsize{-1}
+\begin{align*}
+\text{MSB}_0 &\leftarrow 0
+\text{ (number of \texttt{0} bits until next \texttt{1})} \\
+\text{LSB}_0 &\leftarrow 3
+\text{ (read 2 unsigned bits)} \\
+\texttt{unsigned}(2) &\leftarrow 0 \times 2 ^ 2 + 3 = 3 \\
+\text{MSB}_1 &\leftarrow 0
+\text{ (number of \texttt{0} bits until next \texttt{1})} \\
+\text{LSB}_1 &\leftarrow 5
+\text{ (read 3 unsigned bits)} \\
+\text{file type} &\leftarrow 0 \times 2 ^ 3 + 5 = 5 \\
+\end{align*}
+}
+\par
+\noindent
+meaning our file consists of signed, 16-bit, little-endian data.
+The remainding fields are determined as follows:
+\begin{table}[h]
+  \begin{tabular}{r>{$}c<{$}rr>{$}r<{$}rr>{$}r<{$}}
+    & & $\text{MSB}_0$ & $\text{LSB}_0$ & $\texttt{unsigned}(2)$ &
+    $\text{MSB}_1$ & $\text{LSB}_1$ & \texttt{long} \text{ value} \\
+    \hline
+    channels & \leftarrow & {\color{red} 0} & {\color{orange} 2} &
+    {\color{red} 0} \times 2 ^ 2 + {\color{orange} 2} = {\color{fuchsia} 2} &
+    {\color{blue} 0} & {\color{green} 2} &
+    {\color{blue} 0} \times 2 ^ {\color{fuchsia} 2} + {\color{green} 2} =
+    \textbf{2} \\
+    block length & \leftarrow & {\color{red} 2} & {\color{orange} 1} &
+    {\color{red} 2} \times 2 ^ 2 + {\color{orange} 1} = {\color{fuchsia} 9} &
+    {\color{blue} 0} & {\color{green} 256} &
+    {\color{blue} 0} \times 2 ^ {\color{fuchsia} 9} + {\color{green} 256} =
+    \textbf{256} \\
+    max LPC & \leftarrow & {\color{red} 0} & {\color{orange} 0} &
+    {\color{red} 0} \times 2 ^ 2 + {\color{orange} 0} = {\color{fuchsia} 0} &
+    {\color{blue} 0} & {\color{green} 0} &
+    {\color{blue} 0} \times 2 ^ {\color{fuchsia} 0} + {\color{green} 0} =
+    \textbf{0} \\
+    bytes to skip & \leftarrow & {\color{red} 0} & {\color{orange} 0} &
+    {\color{red} 0} \times 2 ^ 2 + {\color{orange} 0} = {\color{fuchsia} 0} &
+    {\color{blue} 0} & {\color{green} 0} &
+    {\color{blue} 0} \times 2 ^ {\color{fuchsia} 0} + {\color{green} 0} =
+    \textbf{0} \\
+\end{tabular}
+\end{table}
 
-%% \begin{table}[h]
-%% {\relsize{-1}
-%% \begin{tabular}{|r|l||r|l|}
-%% \hline
-%% file type & format & file type & format \\
-%% \hline
-%% 0 & lossless \textmu-Law &
-%% 7 & lossy \textmu-Law \\
-%% 1 & signed 8 bit &
-%% 8 & new \textmu-Law with zero mapping \\
-%% 2 & unsigned 8 bit &
-%% 9 & lossless a-Law \\
-%% 3 & signed 16 bit, big-endian &
-%% 10 & lossy a-Law \\
-%% 4 & unsigned 16 bit, big-endian &
-%% 11 & Microsoft .wav \\
-%% 5 & signed 16 bit, little-endian &
-%% 12 & Apple .aiff \\
-%% 6 & unsigned 16 bit, little-endian &
-%% & \\
-%% \hline
-%% \end{tabular}
-%% }
-%% \end{table}
+\clearpage
 
+\subsection{Handling Verbatim Data}
+
+These are non-audio blocks designed to hold Wave/AIFF headers or footers.
+They are expected to be in the Shorten file in the same order
+they would be output to disk.
+\par
+\noindent
+\ALGORITHM{Shorten stream}{1 or more bytes of non-audio file data}
+$size \leftarrow$ read \texttt{unsigned}(5)\;
+\For{i = 0 \emph{\KwTo}size}{
+  $\text{bytes}_i \leftarrow$ read \texttt{unsigned}(8)\;
+}
+\Return bytes\;
+\EALGORITHM
+\begin{figure}[h]
+\includegraphics{figures/shorten/verbatim.pdf}
+\end{figure}
+
+\clearpage
+
+\subsection{Reading \texttt{DIFF0}}
+{\relsize{-1}
+\ALGORITHM{block length, offset $o$}{decoded samples}
+\SetKwData{BLOCKLENGTH}{block length}
+\SetKwData{ENERGY}{energy}
+\SetKwData{RESIDUAL}{residual}
+\SetKwData{SAMPLES}{samples}
+$\ENERGY \leftarrow$ read \texttt{unsigned}(3)\;
+\BlankLine
+\For{i = 0 \emph{\KwTo}\BLOCKLENGTH}{
+  $\text{\RESIDUAL}_i \leftarrow$ read \texttt{signed}(\ENERGY)\;
+  $\text{\SAMPLES}_{c~i} \leftarrow \text{\RESIDUAL}_i + o$\;
+}
+\Return $\text{\SAMPLES}_c$\;
+\EALGORITHM
+}
+
+\subsection{Reading \texttt{DIFF1}}
+{\relsize{-1}
+\ALGORITHM{block length, previously decoded samples}{decoded samples}
+\SetKwData{BLOCKLENGTH}{block length}
+\SetKwData{ENERGY}{energy}
+\SetKwData{RESIDUAL}{residual}
+\SetKwData{SAMPLES}{samples}
+$\ENERGY \leftarrow$ read \texttt{unsigned}(3)\;
+\BlankLine
+\For{i = 0 \emph{\KwTo}\BLOCKLENGTH}{
+  $\text{\RESIDUAL}_i \leftarrow$ read \texttt{signed}(\ENERGY)\;
+  $\text{\SAMPLES}_{c~i} \leftarrow \text{\SAMPLES}_{c~(i - 1)} + \text{\RESIDUAL}_i$\;
+}
+\Return $\text{\SAMPLES}_c$\;
+\EALGORITHM
+\par
+\noindent
+$\text{samples}_{c~(-1)}$ is from the previously
+decoded samples on channel $c$,
+or 0 if there are none
+}
+
+\subsection{Reading \texttt{DIFF2}}
+{\relsize{-1}
+  \ALGORITHM{block length, previously decoded samples}{decoded samples}
+  \SetKwData{BLOCKLENGTH}{block length}
+  \SetKwData{ENERGY}{energy}
+  \SetKwData{RESIDUAL}{residual}
+  \SetKwData{SAMPLES}{samples}
+  $\ENERGY \leftarrow$ read \texttt{unsigned}(3)\;
+  \BlankLine
+  \For{i = 0 \emph{\KwTo}\BLOCKLENGTH}{
+    $\text{\RESIDUAL}_i \leftarrow$ read \texttt{signed}(\ENERGY)\;
+    $\text{\SAMPLES}_{c~i} \leftarrow (2 \times \text{\SAMPLES}_{c~(i - 1)}) - \text{\SAMPLES}_{c~(i - 2)} + \text{\RESIDUAL}_i$\;
+  }
+  \Return $\text{\SAMPLES}_c$\;
+  \EALGORITHM
+  \par
+  \noindent
+  $\text{samples}_{c~(-1)}$ and $\text{samples}_{c~(-2)}$ are from
+  the previously decoded samples on channel $c$,
+  or 0 if there are none
+}
+
+\subsection{Reading \texttt{DIFF3}}
+{\relsize{-1}
+  \ALGORITHM{block length, previously decoded samples}{decoded samples}
+  \SetKwData{BLOCKLENGTH}{block length}
+  \SetKwData{ENERGY}{energy}
+  \SetKwData{RESIDUAL}{residual}
+  \SetKwData{SAMPLES}{samples}
+  $\ENERGY \leftarrow$ read \texttt{unsigned}(3)\;
+  \BlankLine
+  \For{i = 0 \emph{\KwTo}\BLOCKLENGTH}{
+    $\text{\RESIDUAL}_i \leftarrow$ read \texttt{signed}(\ENERGY)\;
+    $\text{\SAMPLES}_{c~i} \leftarrow (3 \times (\text{\SAMPLES}_{c~(i - 1)} - \text{\SAMPLES}_{c~(i - 2)})) + \text{\SAMPLES}_{c~(i - 3)} + \text{\RESIDUAL}_i$\;
+  }
+  \Return $\text{\SAMPLES}_c$\;
+  \EALGORITHM
+  \par
+  \noindent
+  $\text{samples}_{c~(-1)}$, $\text{samples}_{c~(-2)}$ and
+  $\text{samples}_{c~(-3)}$ are from
+  the previously decoded samples on channel $c$,
+  or 0 if there are none
+}
 
 %% Shorten is one of the earliest lossless audio compression formats.
 %% Though superseded by FLAC and other formats, it remains interesting

@@ -77,6 +77,7 @@ br_open(FILE *f, bs_endianness endianness)
         bs->skip = br_skip_bits_f_be;
         bs->unread = br_unread_bit_be;
         bs->read_unary = br_read_unary_f_be;
+        bs->skip_unary = br_skip_unary_f_be;
         bs->read_limited_unary = br_read_limited_unary_f_be;
         bs->set_endianness = br_set_endianness_f_be;
         break;
@@ -88,6 +89,7 @@ br_open(FILE *f, bs_endianness endianness)
         bs->skip = br_skip_bits_f_le;
         bs->unread = br_unread_bit_le;
         bs->read_unary = br_read_unary_f_le;
+        bs->skip_unary = br_skip_unary_f_le;
         bs->read_limited_unary = br_read_limited_unary_f_le;
         bs->set_endianness = br_set_endianness_f_le;
         break;
@@ -134,6 +136,7 @@ br_open_python(PyObject *reader, bs_endianness endianness,
         bs->skip = br_skip_bits_p_be;
         bs->unread = br_unread_bit_be;
         bs->read_unary = br_read_unary_p_be;
+        bs->skip_unary = br_skip_unary_p_be;
         bs->read_limited_unary = br_read_limited_unary_p_be;
         bs->set_endianness = br_set_endianness_p_be;
         break;
@@ -145,6 +148,7 @@ br_open_python(PyObject *reader, bs_endianness endianness,
         bs->skip = br_skip_bits_p_le;
         bs->unread = br_unread_bit_le;
         bs->read_unary = br_read_unary_p_le;
+        bs->skip_unary = br_skip_unary_p_le;
         bs->read_limited_unary = br_read_limited_unary_p_le;
         bs->set_endianness = br_set_endianness_p_le;
         break;
@@ -190,6 +194,7 @@ br_substream_new(bs_endianness endianness)
         bs->skip = br_skip_bits_s_be;
         bs->unread = br_unread_bit_be;
         bs->read_unary = br_read_unary_s_be;
+        bs->skip_unary = br_skip_unary_s_be;
         bs->read_limited_unary = br_read_limited_unary_s_be;
         bs->set_endianness = br_set_endianness_s_be;
         break;
@@ -201,6 +206,7 @@ br_substream_new(bs_endianness endianness)
         bs->skip = br_skip_bits_s_le;
         bs->unread = br_unread_bit_le;
         bs->read_unary = br_read_unary_s_le;
+        bs->skip_unary = br_skip_unary_s_le;
         bs->read_limited_unary = br_read_limited_unary_s_le;
         bs->set_endianness = br_set_endianness_s_le;
         break;
@@ -765,6 +771,54 @@ br_read_unary_c(BitstreamReader* bs, int stop_bit)
     return 0;
 }
 
+#define FUNC_SKIP_UNARY(FUNC_NAME, BYTE_FUNC, BYTE_FUNC_ARG, UNARY_TABLE) \
+    void                                                                \
+    FUNC_NAME(BitstreamReader* bs, int stop_bit)                        \
+    {                                                                   \
+        int context = bs->state;                                        \
+        unsigned int result;                                            \
+        struct bs_callback* callback;                                   \
+        int byte;                                                       \
+                                                                        \
+        do {                                                            \
+            if (context == 0) {                                         \
+                if ((byte = BYTE_FUNC(BYTE_FUNC_ARG)) == EOF)           \
+                    br_abort(bs);                                       \
+                context = NEW_CONTEXT(byte);                            \
+                for (callback = bs->callbacks;                          \
+                     callback != NULL;                                  \
+                     callback = callback->next)                         \
+                    callback->callback((uint8_t)byte, callback->data);  \
+            }                                                           \
+                                                                        \
+            result = UNARY_TABLE[context][stop_bit];                    \
+            context = NEXT_CONTEXT(result);                             \
+        } while (READ_UNARY_CONTINUE(result));                          \
+                                                                        \
+        bs->state = context;                                            \
+    }
+FUNC_SKIP_UNARY(br_skip_unary_f_be,
+                fgetc, bs->input.file, read_unary_table)
+FUNC_SKIP_UNARY(br_skip_unary_f_le,
+                fgetc, bs->input.file, read_unary_table_le)
+FUNC_SKIP_UNARY(br_skip_unary_s_be,
+                buf_getc, bs->input.substream, read_unary_table)
+FUNC_SKIP_UNARY(br_skip_unary_s_le,
+                buf_getc, bs->input.substream, read_unary_table_le)
+#ifndef STANDALONE
+FUNC_SKIP_UNARY(br_skip_unary_p_be,
+                py_getc, bs->input.python, read_unary_table)
+FUNC_SKIP_UNARY(br_skip_unary_p_le,
+                py_getc, bs->input.python, read_unary_table_le)
+#endif
+
+void
+br_skip_unary_c(BitstreamReader* bs, int stop_bit)
+{
+    br_abort(bs);
+}
+
+
 
 #define FUNC_READ_LIMITED_UNARY(FUNC_NAME, BYTE_FUNC, BYTE_FUNC_ARG, UNARY_TABLE) \
     int                                                                 \
@@ -1159,6 +1213,7 @@ br_close_methods(BitstreamReader* bs)
     bs->skip = br_skip_bits_c;
     bs->unread = br_unread_bit_c;
     bs->read_unary = br_read_unary_c;
+    bs->skip_unary = br_skip_unary_c;
     bs->read_limited_unary = br_read_limited_unary_c;
     bs->read_huffman_code = br_read_huffman_code_c;
     bs->read_bytes = br_read_bytes_c;

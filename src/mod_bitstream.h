@@ -80,6 +80,9 @@ static PyObject*
 BitstreamReader_unary(bitstream_BitstreamReader *self, PyObject *args);
 
 static PyObject*
+BitstreamReader_skip_unary(bitstream_BitstreamReader *self, PyObject *args);
+
+static PyObject*
 BitstreamReader_limited_unary(bitstream_BitstreamReader *self, PyObject *args);
 
 static PyObject*
@@ -155,6 +158,9 @@ PyMethodDef BitstreamReader_methods[] = {
     {"unary", (PyCFunction)BitstreamReader_unary, METH_VARARGS,
      "unary(stop_bit) -> unsigned int\n"
      "counts the number of bits until the next stop bit"},
+    {"skip_unary", (PyCFunction)BitstreamReader_skip_unary, METH_VARARGS,
+     "skip_unary(stop_bit)\n"
+     "skips a number of bits until the next stop bit"},
     {"limited_unary", (PyCFunction)BitstreamReader_limited_unary, METH_VARARGS,
      "limited_unary(stop_bit, maximum_bits) -> signed int\n"
      "counts the number of bits until the next stop bit\n"

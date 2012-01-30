@@ -1,10 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col end="unsigned(5)" width=".20">Total Bytes</col>
-    <col end="unsigned(8)" width=".20">Byte₁</col>
-    <col end="unsigned(8)" width=".20">Byte₂</col>
-    <col style="dashed" width=".20">...</col>
-    <col end="unsigned(8)" width=".20">Byteₓ</col>
+    <col width=".20">Shorten Header</col>
+    <col width=".30" id="verbatim">VERBATIM Command₀</col>
+    <col width=".15" id="cmd1">Command₁</col>
+    <col width=".15">Command₂</col>
+    <col width=".15" style="dashed" id="cmd3">...</col>
   </row>
+  <spacer/>
+  <row>
+    <col end="unsigned(5)" width=".10" id="v_size">size</col>
+    <col end="unsigned(8)" width=".10" id="v_b0">byte₀</col>
+    <col end="unsigned(8)" width=".10" id="v_b1">byte₁</col>
+    <col style="dashed" width=".10" id="v_b2">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col width=".40" id="wave_header">Wave Header</col>
+    <col width=".60" id="pcm_data">PCM Data</col>
+  </row>
+  <line style="dotted">
+    <start id="verbatim" corner="sw"/>
+    <end id="v_size" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="verbatim" corner="se"/>
+    <end id="v_b2" corner="ne"/>
+  </line>
+  <line style="dotted">
+    <start id="cmd1" corner="sw"/>
+    <end id="pcm_data" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="cmd3" corner="se"/>
+    <end id="pcm_data" corner="ne"/>
+  </line>
+  <line style="dotted">
+    <start id="v_b0" corner="sw"/>
+    <end id="wave_header" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="v_b2" corner="se"/>
+    <end id="wave_header" corner="ne"/>
+  </line>
 </diagram>

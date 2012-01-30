@@ -92,6 +92,12 @@ out of a larger binary file stream.
    Returns that count as an unsigned integer.
    May raise :exc:`IOError` if an error occurs reading the stream.
 
+.. method:: BitstreamReader.skip_unary(stop_bit)
+
+   Skips a number of bits until the next ``stop_bit``,
+   which must be ``0`` or ``1``.
+   May raise :exc:`IOError` if an error occurs reading the stream.
+
 .. method:: BitstreamReader.limited_unary(stop_bit, maximum_bits)
 
    Reads the number of bits until the next ``stop_bit``,

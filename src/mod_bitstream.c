@@ -247,6 +247,31 @@ BitstreamReader_unary(bitstream_BitstreamReader *self, PyObject *args)
 }
 
 static PyObject*
+BitstreamReader_skip_unary(bitstream_BitstreamReader *self, PyObject *args)
+{
+    int stop_bit;
+
+    if (!PyArg_ParseTuple(args, "i", &stop_bit))
+        return NULL;
+
+    if ((stop_bit != 0) && (stop_bit != 1)) {
+        PyErr_SetString(PyExc_ValueError, "stop bit must be 0 or 1");
+        return NULL;
+    }
+
+    if (!setjmp(*br_try(self->bitstream))) {
+        self->bitstream->skip_unary(self->bitstream, stop_bit);
+        br_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        br_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+        return NULL;
+    }
+}
+
+static PyObject*
 BitstreamReader_limited_unary(bitstream_BitstreamReader *self, PyObject *args)
 {
     int stop_bit;

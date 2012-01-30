@@ -29,8 +29,11 @@
 \usepackage{units}
 \usepackage{color}
 \definecolor{gray}{rgb}{0.5,0.5,0.5}
-\definecolor{blue}{rgb}{0.0,0.0,1.0}
 \definecolor{red}{rgb}{1.0,0.0,0.0}
+\definecolor{orange}{rgb}{1.0,0.4,0.0}
+\definecolor{fuchsia}{rgb}{1.0,0.0,1.0}
+\definecolor{blue}{rgb}{0.0,0.0,1.0}
+\definecolor{green}{rgb}{0.0,1.0,0.0}
 \usepackage[vlined,lined,commentsnumbered]{algorithm2e}
 \usepackage{lscape}
 \newcommand{\xor}{\textbf{ xor }}
