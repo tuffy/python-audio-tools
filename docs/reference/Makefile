@@ -124,6 +124,7 @@ figures/wavpack/subblock_parse.pdf \
 figures/wavpack/terms_parse.pdf \
 
 SHORTEN = figures/shorten/diff.pdf \
+figures/shorten/header_parse.pdf \
 figures/shorten/qlpc.pdf \
 figures/shorten/sandwich.pdf \
 figures/shorten/signed.pdf \
@@ -262,6 +263,9 @@ alac-codec.pdf: alac-codec.tex alac.tex $(ALAC)
 	python pdflatexbuild.py -halt-on-error $<
 
 wavpack-codec.pdf: wavpack-codec.tex wavpack.tex $(WAVPACK)
+	python pdflatexbuild.py -halt-on-error $<
+
+shorten-codec.pdf: shorten-codec.tex shorten.tex $(SHORTEN)
 	python pdflatexbuild.py -halt-on-error $<
 
 audioformats-letter.tex: audioformats.m4

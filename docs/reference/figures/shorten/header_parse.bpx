@@ -1,0 +1,11 @@
+<?xml version="1.0" ?>
+<struct endianness="big">
+  <field size="32" value="0x616A6B67">magic number</field>
+  <field size="8" value="2">version</field>
+  <field size="7" value="1111101b">file type</field>
+  <field size="6" value="110110b">channels</field>
+  <field size="15" value="001011100000000b">block length</field>
+  <field size="4" value="1001b">max LPC</field>
+  <field size="7" value="1111100b">number of means</field>
+  <field size="4" value="1001b">bytes to skip</field>
+</struct>

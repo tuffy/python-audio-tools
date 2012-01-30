@@ -70,8 +70,6 @@ class RGB_Color:
                     raise ValueError("invalid color string %s" % (repr(s)))
 
 
-
-
 class Chunk:
     def __init__(self, text=None, start_size=None, end_size=None,
                  width=1.0, chunk_id=None, style=SOLID,
@@ -172,9 +170,9 @@ style is one of the style enumerations such as SOLID, DASHED, etc."""
                          fill=0)
             else:
                 pdf.setFillColorRGB(r=self.background_color.red,
-                                g=self.background_color.green,
-                                b=self.background_color.blue,
-                                alpha=self.background_color.alpha)
+                                    g=self.background_color.green,
+                                    b=self.background_color.blue,
+                                    alpha=self.background_color.alpha)
                 pdf.rect(x=self.sw[0],
                          y=self.sw[1],
                          width=self.pt_width(),

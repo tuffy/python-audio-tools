@@ -19,6 +19,59 @@ BIT_HEIGHT = 30
 
 (BORDER_NONE, BORDER_LINE, BORDER_DOTTED) = range(3)
 
+class RGB_Color:
+    RGB = re.compile(r'^#([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})$')
+    RGBA = re.compile(r'^#([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})' +
+                      r'([0-9A-Fa-f]{2})$')
+
+    COLOR_TABLE = {u"red":(1.0, 0.0, 0.0),
+                   u"orange":(1.0, 0.4, 0.0),
+                   u"yellow":(1.0, 1.0, 0.0),
+                   u"green":(0.0, 1.0, 0.0),
+                   u"blue":(0.0, 0.0, 1.0),
+                   u"aqua":(0.0, 1.0, 1.0),
+                   u"black":(0.0, 0.0, 0.0),
+                   u"fuchsia":(1.0, 0.0, 1.0),
+                   u"gray":(0.5, 0.5, 0.5),
+                   u"lime":(0.0, 1.0, 0.0),
+                   u"maroon":(0.5, 0.0, 0.0),
+                   u"navy":(0.0, 0.0, 0.5),
+                   u"olive":(0.5, 0.5, 0.0),
+                   u"purple":(0.5, 0.0, 0.5),
+                   u"silver":(0.75, 0.75, 0.75),
+                   u"teal":(0.0, 0.5, 0.5),
+                   u"white":(1.0, 1.0, 1.0)}
+
+    def __init__(self, red, green, blue, alpha=None):
+        """all should be floats between 0.0 and 1.0"""
+
+        self.red = red
+        self.green = green
+        self.blue = blue
+        self.alpha = alpha
+
+    @classmethod
+    def from_string(cls, s):
+        if (s in cls.COLOR_TABLE):
+            (r, g, b) = cls.COLOR_TABLE[s]
+            return cls(red=r, green=g, blue=b, alpha=1.0)
+        else:
+            rgb = cls.RGB.match(s)
+            if (rgb is not None):
+                return cls(red=int(rgb.group(1), 16) / 255.0,
+                           green=int(rgb.group(2), 16) / 255.0,
+                           blue=int(rgb.group(3), 16) / 255.0)
+            else:
+                rgba = cls.RGBA.match(s)
+                if (rgba is not None):
+                    return cls(red=int(rgba.group(1), 16) / 255.0,
+                               green=int(rgba.group(2), 16) / 255.0,
+                               blue=int(rgba.group(3), 16) / 255.0,
+                               alpha=int(rgba.group(4), 16) / 255.0)
+                else:
+                    raise ValueError("invalid color string %s" % (repr(s)))
+
+
 class Chunk:
     def __init__(self, bits, superscripts,
                  name=None,
@@ -84,11 +137,14 @@ class Chunk:
 
         #draw background color, if any
         if (self.background_color is not None):
-            pdf.setFillColorRGB(*self.background_color)
+            pdf.setFillColorRGB(r=self.background_color.red,
+                                g=self.background_color.green,
+                                b=self.background_color.blue,
+                                alpha=self.background_color.alpha)
             pdf.rect(self.sw[0], self.sw[1], self.pt_width(), self.pt_height(),
                      stroke=0, fill=1)
 
-        pdf.setFillColorRGB(0.0, 0.0, 0.0)
+        pdf.setFillColorRGB(0.0, 0.0, 0.0, 1.0)
         for (i, (bit, superscript)) in enumerate(zip(self.bits,
                                                      self.superscripts)):
             #draw bit
@@ -110,7 +166,7 @@ class Chunk:
                                    self.se[1] + 2,
                                   unicode(self.name))
 
-        pdf.setStrokeColorRGB(0.0,0.0,0.0)
+        pdf.setStrokeColorRGB(0.0, 0.0, 0.0, 1.0)
         #draw top and bottom borders
         pdf.setDash(1, 0)
         pdf.line(self.nw[0], self.nw[1],
@@ -268,17 +324,21 @@ class TextChunk(Chunk):
 
         #draw background color, if any
         if (self.background_color is not None):
-            pdf.setFillColorRGB(*self.background_color)
+            pdf.setFillColorRGB(r=self.background_color.red,
+                                g=self.background_color.green,
+                                b=self.background_color.blue,
+                                alpha=self.background_color.alpha)
             pdf.rect(self.sw[0], self.sw[1], self.pt_width(), self.pt_height(),
                      stroke=0, fill=1)
 
         #draw centered name, if any
+        pdf.setFillColorRGB(0.0, 0.0, 0.0, 1.0)
         pdf.setFont("DejaVu", 12)
         pdf.drawCentredString(self.nw[0] + (self.pt_width() / 2),
                               self.se[1] + 12,
                               unicode(self.name))
 
-        pdf.setStrokeColorRGB(0.0,0.0,0.0)
+        pdf.setStrokeColorRGB(0.0, 0.0, 0.0, 1.0)
         #drop top and bottom borders
         pdf.setDash(1, 0)
         pdf.line(self.nw[0], self.nw[1],
@@ -406,9 +466,11 @@ class BytesChunk(Chunk):
         pt_offset = self.nw[0] + (pts_per_bit / 2)
 
         #draw background color, if any
-        #FIXME
+        if (self.background_color is not None):
+            #FIXME
+            raise NotImplementedError()
 
-        pdf.setFillColorRGB(0.0, 0.0, 0.0)
+        pdf.setFillColorRGB(0.0, 0.0, 0.0, 1.0)
         #draw superscripts, if any
         for (i, superscript) in enumerate(self.superscripts):
             pdf.setFont("Courier", 5)
@@ -423,7 +485,7 @@ class BytesChunk(Chunk):
                                   self.se[1] + 12,
                                   unicode(self.name))
 
-        pdf.setStrokeColorRGB(0.0,0.0,0.0)
+        pdf.setStrokeColorRGB(0.0, 0.0, 0.0, 1.0)
         #draw top and bottom borders
         pdf.setDash(1, 0)
         pdf.line(self.nw[0], self.nw[1],
@@ -497,7 +559,7 @@ class ChunkTable:
 
 
 class Bits:
-    def __init__(self, name, bits, init, e_border, w_border):
+    def __init__(self, name, bits, init, e_border, w_border, background_color):
         """name is a unicode string
         bits is a list of individual bit values
         this generates chunks to be displayed"""
@@ -507,6 +569,7 @@ class Bits:
         self.init = init
         self.e_border = e_border
         self.w_border = w_border
+        self.background_color = background_color
 
     def __repr__(self):
         return "Bits(%s)" % \
@@ -533,22 +596,25 @@ class Bits:
         return Chunk(bits=self.bits,
                      superscripts=chunk_superscripts,
                      name=self.name,
+                     background_color=self.background_color,
                      e_border=self.e_border,
                      w_border=self.w_border)
 
 
 class Text:
-    def __init__(self, name, bit_count, e_border, w_border):
+    def __init__(self, name, bit_count, e_border, w_border, background_color):
         self.name = name
         self.bit_count = bit_count
         self.e_border = e_border
         self.w_border = w_border
+        self.background_color = background_color
 
     def __repr__(self):
         return "Text(%s)" % \
             ",".join(["%s=%s" % (attr, repr(getattr(self, attr)))
                       for attr in ["name", "bit_count",
-                                   "e_border", "w_border"]])
+                                   "e_border", "w_border",
+                                   "background_color"]])
 
     def chunk(self, superscript_bits, bits_lookup):
         for i in xrange(len(superscript_bits)):
@@ -556,11 +622,12 @@ class Text:
 
         return TextChunk(bit_width=self.bit_count,
                          name=self.name,
+                         background_color=self.background_color,
                          e_border=self.e_border,
                          w_border=self.w_border)
 
 class Bytes:
-    def __init__(self, name, bytes_list, e_border, w_border):
+    def __init__(self, name, bytes_list, e_border, w_border, background_color):
         self.name = name
         self.bytes = list(bytes_list)
         self.e_border = e_border
@@ -777,6 +844,13 @@ def xml_to_chunks(xml_filename):
 
     bits = []
     for part in struct.childNodes:
+        if ((part.nodeName in (u"field", u"text", u"bytes")) and
+            part.hasAttribute(u"background-color")):
+            background_color = RGB_Color.from_string(
+                part.getAttribute(u"background-color"))
+        else:
+            background_color = None
+
         if (part.nodeName == u'field'):
             bits.append(Bits(
                     name=part.childNodes[0].data.strip(),
@@ -784,20 +858,23 @@ def xml_to_chunks(xml_filename):
                                         part.getAttribute(u"value")),
                     init=init_converter(part),
                     e_border=get_border(part, u"border_e"),
-                    w_border=get_border(part, u"border_w")))
+                    w_border=get_border(part, u"border_w"),
+                    background_color=background_color))
         elif (part.nodeName == u'text'):
             bits.append(Text(
                     name=part.childNodes[0].data.strip(),
                     bit_count=int_converter(part.getAttribute(u"size")),
                     e_border=get_border(part, u"border_e"),
-                    w_border=get_border(part, u"border_w")))
+                    w_border=get_border(part, u"border_w"),
+                    background_color=background_color))
         elif (part.nodeName == u'bytes'):
             try:
                 bits.append(Bytes(
                         name=part.childNodes[0].data.strip(),
                         bytes_list=byte_converter(part.getAttribute(u"value")),
                         e_border=get_border(part, u"border_e"),
-                        w_border=get_border(part, u"border_w")))
+                        w_border=get_border(part, u"border_w"),
+                        background_color=background_color))
             except ValueError,msg:
                 print >>sys.stderr,str(msg)
                 sys.exit(1)
