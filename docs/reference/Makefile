@@ -123,7 +123,9 @@ figures/wavpack/subblock_header.pdf \
 figures/wavpack/subblock_parse.pdf \
 figures/wavpack/terms_parse.pdf \
 
-SHORTEN = figures/shorten/diff.pdf \
+SHORTEN = figures/shorten/block1.pdf \
+figures/shorten/block2.pdf \
+figures/shorten/diff.pdf \
 figures/shorten/filetype.pdf \
 figures/shorten/header_parse.pdf \
 figures/shorten/qlpc.pdf \
