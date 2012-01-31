@@ -20,6 +20,11 @@
 from audiotools.bitstream import BitstreamReader
 from audiotools.pcm import from_list,from_channels
 
+
+def shnmean(values):
+    return ((len(values) / 2) + sum(values)) / len(values)
+
+
 class SHNDecoder:
     def __init__(self, filename):
         self.reader = BitstreamReader(open(filename, "rb"), 0)
@@ -30,9 +35,9 @@ class SHNDecoder:
          self.max_LPC,
          self.number_of_means) = self.read_header()
 
-        self.offsets = 0
-        self.left_shift = 0
         self.wrapped_samples = [[0] * 3 for c in xrange(self.channels)]
+        self.means = [[0] * self.number_of_means for c in xrange(self.channels)]
+        self.left_shift = 0
         self.stream_finished = False
 
         #FIXME - determine sample rate from Wave/AIFF header
@@ -40,6 +45,10 @@ class SHNDecoder:
     def unsigned(self, c):
         MSB = self.reader.unary(1)
         LSB = self.reader.read(c)
+        # print r'<field size="%d" value="%s">MSB</field>' % \
+        #     (MSB + 1, "0" * MSB + "1b")
+        # print r'<field size="%d" value="%d">LSB</field>' % \
+        #     (c, LSB)
         return MSB * 2 ** c + LSB
 
     def signed(self, c):
@@ -82,55 +91,68 @@ class SHNDecoder:
 
         c = 0
         samples = []
-        while (c < self.channels):
+        unshifted = []
+        while (True):
             command = self.unsigned(2)
-            if (command == 0):   #DIFF0
-                raise NotImplementedError()
-            elif (command == 1): #DIFF1
-                samples.append(self.read_diff1(self.block_length,
-                                               self.wrapped_samples[c]))
+            if ((0 <= command) and (command <= 3) or
+                (7 <= command) and (command <= 8)):
+                #audio data commands
+                if (command == 0):   #DIFF0
+                    raise NotImplementedError()
+                elif (command == 1): #DIFF1
+                    samples.append(self.read_diff1(self.block_length,
+                                                   self.wrapped_samples[c]))
+                elif (command == 2): #DIFF2
+                    samples.append(self.read_diff2(self.block_length,
+                                                   self.wrapped_samples[c]))
+                elif (command == 3): #DIFF3
+                    samples.append(self.read_diff3(self.block_length,
+                                                   self.wrapped_samples[c]))
+                elif (command == 7): #QLPC
+                    samples.append(self.read_qlpc(self.block_length,
+                                                  self.means[c],
+                                                  self.wrapped_samples[c]))
+                elif (command == 8): #ZERO
+                    samples.append([0] * self.block_length)
+
+                #update means for channel
+                self.means[c].append(shnmean(samples[c]))
+                self.means[c] = self.means[c][1:]
+
+                #wrap samples for next command in channel
+                self.wrapped_samples[c] = samples[c][-(max(3, self.max_LPC)):]
+
+                #apply left shift to samples
+                if (self.left_shift > 0):
+                    unshifted.append([s << self.left_shift for s in samples[c]])
+                else:
+                    unshifted.append(samples[c])
+
                 c += 1
-            elif (command == 2): #DIFF2
-                samples.append(self.read_diff2(self.block_length,
-                                               self.wrapped_samples[c]))
-                c += 1
-            elif (command == 3): #DIFF3
-                samples.append(self.read_diff3(self.block_length,
-                                               self.wrapped_samples[c]))
-                c += 1
-            elif (command == 4): #QUIT
-                self.stream_finished = True
-                #FIXME - make bits-per-sample and sign dynamic
-                return from_channels([from_list([], 1, 16, True)
-                                      for channel in xrange(self.channels)])
-            elif (command == 5): #BLOCKSIZE
-                self.block_length = self.long()
-            elif (command == 6): #BITSHIFT
-                raise NotImplementedError()
-            elif (command == 7): #QLPC
-                raise NotImplementedError()
-            elif (command == 8): #ZERO
-                raise NotImplementedError()
-            elif (command == 9): #VERBATIM
-                #skip this command during reading
-                size = self.unsigned(5)
-                for i in xrange(size):
-                    self.skip_unsigned(8)
+                if (c == self.channels):
+                    #return a FrameList from shifted data
+                    #FIXME - make bits-per-sample and sign dynamic
+                    return from_channels([from_list(channel, 1, 16, True)
+                                          for channel in unshifted])
             else:
-                raise ValueError("unsupported Shorten command")
+                #non audio commands
+                if (command == 4): #QUIT
+                    self.stream_finished = True
+                    #FIXME - make bits-per-sample and sign dynamic
+                    return from_channels([from_list([], 1, 16, True)
+                                          for channel in xrange(self.channels)])
+                elif (command == 5): #BLOCKSIZE
+                    self.block_length = self.long()
+                elif (command == 6): #BITSHIFT
+                    self.left_shift = self.unsigned(2)
+                elif (command == 9): #VERBATIM
+                    #skip this command during reading
+                    size = self.unsigned(5)
+                    for i in xrange(size):
+                        self.skip_unsigned(8)
+                else:
+                    raise ValueError("unsupported Shorten command")
 
-        #all channels have been read
-        #so wrap trailing samples for the next set of channels
-        self.wrapped_samples = [channel[-3:] for channel in samples]
-
-        #apply any left shift
-        if (self.left_shift > 0):
-            raise NotImplementedError()
-
-        #and return a FrameList
-        #FIXME - make bits-per-sample and sign dynamic
-        return from_channels([from_list(channel, 1, 16, True)
-                              for channel in samples])
 
     def read_diff1(self, block_length, previous_samples):
         samples = previous_samples[-1:]
@@ -156,6 +178,26 @@ class SHNDecoder:
             samples.append((3 * (samples[i - 1] - samples[i - 2])) +
                            samples[i - 3] + residual)
         return samples[3:]
+
+    def read_qlpc(self, block_length, means, previous_samples):
+        offset = shnmean(means)
+        energy = self.unsigned(3)
+        LPC_count = self.unsigned(2)
+        LPC_coeff = [self.signed(5) for i in xrange(LPC_count)]
+        unoffset = []
+        samples = previous_samples[-LPC_count:]
+        for i in xrange(block_length):
+            residual = self.signed(energy)
+            LPC_sum = 2 ** 5
+            for j in xrange(LPC_count):
+                if ((i - j - 1) < 0):
+                    #apply offset to warm-up samples
+                    LPC_sum += (LPC_coeff[j] *
+                                (samples[LPC_count + (i - j - 1)] - offset))
+                else:
+                    LPC_sum += LPC_coeff[j] * unoffset[i - j - 1]
+            unoffset.append(LPC_sum / 2 ** 5 + residual)
+        return [u + offset for u in unoffset]
 
     def close(self):
         self.reader.close()

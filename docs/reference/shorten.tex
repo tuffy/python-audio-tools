@@ -45,7 +45,7 @@ data types which we'll call \texttt{unsigned}, \texttt{signed} and
 \SetKwData{CHANNELS}{channels}
 \SetKwData{BLOCKLENGTH}{block length}
 \SetKwData{MAXLPC}{max LPC}
-\SetKwData{MEANCOUNT}{number of means}
+\SetKwData{MEANCOUNT}{mean count}
 \SetKwData{SKIPBYTES}{bytes to skip}
 \SetKwData{COMMAND}{command}
 \SetKwData{SAMPLES}{samples}
@@ -97,72 +97,91 @@ file type & format & file type & format \\
 and \VAR{block length} is the number of PCM frames output
 from the next command, which is typically constant
 until the final set of commands in the stream.
+\par
+The \texttt{shnmean} function is defined as:
+\begin{equation*}
+  \texttt{shnmean}(values~,~count) =
+  \left\lfloor
+  \frac{\left\lfloor\frac{count}{2}\right\rfloor +
+    \overset{count - 1}{\underset{i = 0}{\sum}}{values}_i }{count}
+  \right\rfloor
+\end{equation*}
+where $values$ is a list and $count$ is the length of that list.
 
 \clearpage
 
 {\relsize{-1}
 \begin{algorithm}[H]
   \DontPrintSemicolon
+  \SetKw{OR}{or}
   \SetKwData{CHANNELS}{channels}
   \SetKwData{BLOCKLENGTH}{block length}
   \SetKwData{COMMAND}{command}
+  \SetKwData{LEFTSHIFT}{left shift}
   \SetKwData{SAMPLES}{samples}
-  \SetKwData{SHIFTED}{shifted}
+  \SetKwData{MEANCOUNT}{mean count}
+  \SetKwData{MEANS}{means}
+  \SetKwData{SHIFTED}{unshifted}
   \tcc{setup initial variables}
-  $c \leftarrow 0$\tcc*{current channel}
-  $o \leftarrow 0$\tcc*{offset}
-  $s \leftarrow 0$\tcc*{left shift}
+  $i \leftarrow 0$\;
+  $\LEFTSHIFT \leftarrow 0$\;
   \BlankLine
   \tcc{process commands}
   \Repeat{$\COMMAND = 4$}{
     $\COMMAND \leftarrow$ read \texttt{unsigned}(2)\;
-    \Switch{\COMMAND}{
-      \uCase(\tcc*[f]{DIFF0}){0}{
-        $\text{\SAMPLES}_c \leftarrow$ read \texttt{DIFF0} with \BLOCKLENGTH,
-        and $o$\;
-        $c \leftarrow c + 1$\;
-      }
-      \uCase(\tcc*[f]{DIFF1}){1}{
-        $\text{\SAMPLES}_c \leftarrow$ read \texttt{DIFF1} with \BLOCKLENGTH and
-        previous $\text{\SAMPLES}_c$\;
-        $c \leftarrow c + 1$\;
-      }
-      \uCase(\tcc*[f]{DIFF2}){2}{
-        $\text{\SAMPLES}_c \leftarrow$ read \texttt{DIFF2} with \BLOCKLENGTH and
-        previous $\text{\SAMPLES}_c$\;
-        $c \leftarrow c + 1$\;
-      }
-      \uCase(\tcc*[f]{DIFF3}){3}{
-        $\text{\SAMPLES}_c \leftarrow$ read \texttt{DIFF3} with \BLOCKLENGTH and
-        previous $\text{\SAMPLES}_c$\;
-        $c \leftarrow c + 1$\;
-      }
-      \uCase(\tcc*[f]{QUIT}){4}{
-        \tcc{do nothing}
-      }
-      \uCase(\tcc*[f]{BLOCKSIZE}){5}{
-        $\BLOCKLENGTH \leftarrow$ read \texttt{long}()\;
-      }
-      \uCase(\tcc*[f]{BITSHIFT}){6}{
-        $s \leftarrow$ read \texttt{unsigned}(2)\;
-      }
-      \uCase{7}{QLPC} %%FIXME
-      \uCase(\tcc*[f]{ZERO}){8}{
-        \For{i = 0 \emph{\KwTo}\BLOCKLENGTH}{
-          $\text{\SAMPLES}_{c~i} \leftarrow 0$\;
+    \eIf(\tcc*[f]{audio data commands}){$(0 \leq \COMMAND \leq 3)$ \OR $(7 \leq \COMMAND \leq 8)$}{
+      $c \leftarrow i \bmod \CHANNELS$\tcc*{current channel}
+      $m \leftarrow \lfloor i \div \CHANNELS\rfloor$\;
+      \Switch{\COMMAND}{
+        \uCase(\tcc*[f]{DIFF0}){0}{
+          $\text{\SAMPLES}_c \leftarrow$ read \texttt{DIFF0} with \BLOCKLENGTH,
+          and $\text{\MEANS}_{c~[m - \text{\MEANCOUNT} \IDOTS m - 1]}$\;
         }
-        $c \leftarrow c + 1$\;
+        \uCase(\tcc*[f]{DIFF1}){1}{
+          $\text{\SAMPLES}_c \leftarrow$ read \texttt{DIFF1} with \BLOCKLENGTH and
+          previous $\text{\SAMPLES}_c$\;
+        }
+        \uCase(\tcc*[f]{DIFF2}){2}{
+          $\text{\SAMPLES}_c \leftarrow$ read \texttt{DIFF2} with \BLOCKLENGTH and
+          previous $\text{\SAMPLES}_c$\;
+        }
+        \uCase(\tcc*[f]{DIFF3}){3}{
+          $\text{\SAMPLES}_c \leftarrow$ read \texttt{DIFF3} with \BLOCKLENGTH and
+          previous $\text{\SAMPLES}_c$\;
+        }
+        \uCase(\tcc*[f]{QLPC}){7}{
+          $\text{\SAMPLES}_c \leftarrow$ read \texttt{QLPC} with \BLOCKLENGTH,
+          $\text{\MEANS}_{c~[m - \text{\MEANCOUNT} \IDOTS m - 1]}$\newline and previous $\text{\SAMPLES}_c$\;
+        }
+        \Case(\tcc*[f]{ZERO}){8}{
+          \For{j = 0 \emph{\KwTo}\BLOCKLENGTH}{
+            $\text{\SAMPLES}_{c~j} \leftarrow 0$\;
+          }
+        }
       }
-      \uCase(\tcc*[f]{VERBATIM}){9}{
-        handle verbatim block of non-audio data\;
+      $\text{\MEANS}_{c~m} \leftarrow \texttt{shnmean}(\text{\SAMPLES}_c~,~\BLOCKLENGTH)$\;
+      wrap $\text{\SAMPLES}_c$ for next set of channels\;
+      $\text{\SHIFTED}_c \leftarrow$ apply \LEFTSHIFT to $\text{\SAMPLES}_c$\;
+      $i \leftarrow i + 1$\;
+      \If{$i \bmod \CHANNELS = 0$}{
+        \Return \SHIFTED as a complete set of PCM frames\;
       }
-      \Other{unknown command}
-    }
-    \If{$c = \CHANNELS$}{
-      wrap samples for next set of channels\;
-      $\SHIFTED \leftarrow$ apply left shift $s$ to \SAMPLES\;
-      \Return \SHIFTED\;
-      $c \leftarrow 0$\;
+    }(\tcc*[f]{non audio commands}){
+      \Switch{\COMMAND}{
+        \uCase(\tcc*[f]{QUIT}){4}{
+          \tcc{do nothing}
+        }
+        \uCase(\tcc*[f]{BLOCKSIZE}){5}{
+          $\BLOCKLENGTH \leftarrow$ read \texttt{long}()\;
+        }
+        \uCase(\tcc*[f]{BITSHIFT}){6}{
+          $\LEFTSHIFT \leftarrow$ read \texttt{unsigned}(2)\;
+        }
+        \uCase(\tcc*[f]{VERBATIM}){9}{
+          handle verbatim block of non-audio data\;
+        }
+        \Other{unknown command}
+      }
     }
   }(\tcc*[f]{QUIT command})
 \end{algorithm}
@@ -255,16 +274,19 @@ $size \leftarrow$ read \texttt{unsigned}(5)\;
 
 \subsection{Reading \texttt{DIFF0}}
 {\relsize{-1}
-\ALGORITHM{block length, offset $o$}{decoded samples}
+\ALGORITHM{block length, previous \VAR{mean count} means for channel $c$}{decoded samples}
 \SetKwData{BLOCKLENGTH}{block length}
+\SetKwData{OFFSET}{offset}
+\SetKwData{MEANS}{previous means}
 \SetKwData{ENERGY}{energy}
 \SetKwData{RESIDUAL}{residual}
 \SetKwData{SAMPLES}{samples}
+$\text{\OFFSET} \leftarrow \texttt{shnmean}(\text{\MEANS}_c~,~\text{mean count})$\;
 $\ENERGY \leftarrow$ read \texttt{unsigned}(3)\;
 \BlankLine
 \For{i = 0 \emph{\KwTo}\BLOCKLENGTH}{
   $\text{\RESIDUAL}_i \leftarrow$ read \texttt{signed}(\ENERGY)\;
-  $\text{\SAMPLES}_{c~i} \leftarrow \text{\RESIDUAL}_i + o$\;
+  $\text{\SAMPLES}_{c~i} \leftarrow \text{\RESIDUAL}_i + \OFFSET$\;
 }
 \Return $\text{\SAMPLES}_c$\;
 \EALGORITHM
@@ -513,6 +535,186 @@ as the previous \texttt{DIFF}:
 the samples have been ``wrapped around'' from one channel to the next.
 But again, those negative samples are not re-output by
 this \texttt{DIFF} command.
+
+\clearpage
+
+\subsection{Reading \texttt{QLPC}}
+{\relsize{-1}
+\ALGORITHM{block length, previous \VAR{mean count} means for channel $c$, previously decoded samples}{decoded samples}
+\SetKwData{BLOCKLENGTH}{block length}
+\SetKwData{OFFSET}{offset}
+\SetKwData{MEANS}{previous means}
+\SetKwData{ENERGY}{energy}
+\SetKwData{LPCCOUNT}{LPC count}
+\SetKwData{COEFF}{LPC coefficient}
+\SetKwData{RESIDUAL}{residual}
+\SetKwData{UNOFFSET}{unoffset}
+\SetKwData{SAMPLES}{samples}
+$\text{\OFFSET} \leftarrow \texttt{shnmean}(\text{\MEANS}_c~,~\text{mean count})$\;
+$\ENERGY \leftarrow$ read \texttt{unsigned}(3)\;
+$\LPCCOUNT \leftarrow$ read \texttt{unsigned}(2)\;
+\For{i = 0 \emph{\KwTo}\LPCCOUNT}{
+  $\text{\COEFF}_i \leftarrow$ read \texttt{signed}(5)\;
+}
+\For{i = 0 \emph{\KwTo}\BLOCKLENGTH}{
+  $\text{\RESIDUAL}_i \leftarrow$ read \texttt{signed}(\ENERGY)\;
+  $\text{sum} \leftarrow 2 ^ 5$\;
+  \For{j = 0 \emph{\KwTo}\LPCCOUNT}{
+    \eIf(\tcc*[f]{remove offset from warm-up samples}){$i - j - 1 < 0$}{
+      $\text{sum} \leftarrow \text{sum} + \text{\COEFF}_j \times (\text{\SAMPLES}_{c~(i - j - 1)} - \OFFSET)$\;
+    }{
+      $\text{sum} \leftarrow \text{sum} + \text{\COEFF}_j \times \text{\UNOFFSET}_{(i - j - 1)}$\;
+    }
+  }
+  $\text{\UNOFFSET}_{i} \leftarrow \left\lfloor\frac{\text{sum}}{2 ^ 5}\right\rfloor + \text{\RESIDUAL}_i$\;
+}
+\For(\tcc*[f]{add offset to output samples}){i = 0 \emph{\KwTo}\BLOCKLENGTH}{
+  $\text{\SAMPLES}_{c~i} \leftarrow \text{\UNOFFSET}_i + \OFFSET$
+}
+\Return $\text{\SAMPLES}_c$\;
+\EALGORITHM
+}
+\begin{figure}[h]
+\includegraphics{figures/shorten/qlpc.pdf}
+\end{figure}
+\par
+\noindent
+As with the \texttt{DIFF} commands, negative samples are from the
+previously decoded samples on channel $c$, or 0 if there are none.
+
+In practice, encoded Shorten files typically contain no
+\texttt{QLPC} commands at all.
+Because the reference implementation uses a 32-bit
+accumulator for the LPC sum,
+calculation will overflow when using a nontrivial number of
+coefficients.
+Instead, files usually contain only \texttt{DIFF1}, \texttt{DIFF2},
+\texttt{DIFF3}, and \texttt{ZERO} audio commands.
+
+\clearpage
+
+\subsection{Reading \texttt{QLPC} Example}
+\begin{figure}[h]
+\includegraphics{figures/shorten/qlpc1.pdf}
+\end{figure}
+
+In this example:
+\begin{table}[h]
+  \begin{tabular}{r>{$}c<{$}>{$}l<{$}}
+    offset & \leftarrow & 0 \\
+    $\text{LPC count}$ & \leftarrow & 1 \\
+    $\text{LPC coefficient}_0$ & \leftarrow & 29 \\
+  \end{tabular}
+\end{table}
+\begin{table}[h]
+{\relsize{-1}
+  \renewcommand{\arraystretch}{1.25}
+  \begin{tabular}{rr>{$}r<{$}>{$}r<{$}||>{$}r<{$}}
+    $i$ & $\text{residual}_i$ & \text{sum}_i & \text{unoffset}_i &
+    \text{sample}_{c~i} \\
+    \hline
+    0 & -1 &
+    2 ^ 5 + 29 \times (0 - 0) = 32 &
+    \left\lfloor\frac{32}{2 ^ 5}\right\rfloor - 1 = 0 &
+    0 + 0 = 0 \\
+    1 & 15 &
+    2 ^ 5 + 29 \times 0 = 32 &
+    \left\lfloor\frac{32}{2 ^ 5}\right\rfloor + 15 = 16 &
+    16 + 0 = 16 \\
+    2 & 16 &
+    2 ^ 5 + 29 \times 16 = 496 &
+    \left\lfloor\frac{496}{2 ^ 5}\right\rfloor + 16 = 31 &
+    31 + 0 = 31 \\
+    3 & 15 &
+    2 ^ 5 + 29 \times 31 = 931 &
+    \left\lfloor\frac{931}{2 ^ 5}\right\rfloor + 15 = 44 &
+    44 + 0 = 44 \\
+    4 & 14 &
+    2 ^ 5 + 29 \times 44 = 1308 &
+    \left\lfloor\frac{1308}{2 ^ 5}\right\rfloor + 14 = 54 &
+    54 + 0 = 54 \\
+    5 & 12 &
+    2 ^ 5 + 29 \times 54 = 1598 &
+    \left\lfloor\frac{1598}{2 ^ 5}\right\rfloor + 12 = 61 &
+    61 + 0 = 61 \\
+    6 & 8 &
+    2 ^ 5 + 29 \times 61 = 1801 &
+    \left\lfloor\frac{1801}{2 ^ 5}\right\rfloor + 8 = 64 &
+    64 + 0 = 64 \\
+    7 & 4 &
+    2 ^ 5 + 29 \times 64 = 1888 &
+    \left\lfloor\frac{1888}{2 ^ 5}\right\rfloor + 4 = 63 &
+    63 + 0 = 63 \\
+    8 & 0 &
+    2 ^ 5 + 29 \times 63 = 1859 &
+    \left\lfloor\frac{1859}{2 ^ 5}\right\rfloor + 0 = 58 &
+    58 + 0 = 58 \\
+    9 & -4 &
+    2 ^ 5 + 29 \times 58 = 1714 &
+    \left\lfloor\frac{1714}{2 ^ 5}\right\rfloor - 4 = 49 &
+    49 + 0 = 49 \\
+    %% 10 & -7 &
+    %% 2 ^ 5 + 29 \times 49 = 1453 &
+    %% \left\lfloor\frac{1453}{2 ^ 5}\right\rfloor - 7 = 38 &
+    %% 38 + 0 = 38 \\
+    %% 11 & -11 &
+    %% 2 ^ 5 + 29 \times 38 = 1134 &
+    %% \left\lfloor\frac{1134}{2 ^ 5}\right\rfloor - 11 = 24 &
+    %% 24 + 0 = 24 \\
+    %% 12 & -14 &
+    %% 2 ^ 5 + 29 \times 24 = 728 &
+    %% \left\lfloor\frac{728}{2 ^ 5}\right\rfloor - 14 = 8 &
+    %% 8 + 0 = 8 \\
+    %% 13 & -16 &
+    %% 2 ^ 5 + 29 \times 8 = 264 &
+    %% \left\lfloor\frac{264}{2 ^ 5}\right\rfloor - 16 = -8 &
+    %% -8 + 0 = -8 \\
+    %% 14 & -17 &
+    %% 2 ^ 5 + 29 \times -8 = -200 &
+    %% \left\lfloor\frac{-200}{2 ^ 5}\right\rfloor - 17 = -24 &
+    %% -24 + 0 = -24 \\
+    %% 15 & -17 &
+    %% 2 ^ 5 + 29 \times -24 = -664 &
+    %% \left\lfloor\frac{-664}{2 ^ 5}\right\rfloor - 17 = -38 &
+    %% -38 + 0 = -38 \\
+    %% 16 & -15 &
+    %% 2 ^ 5 + 29 \times -38 = -1070 &
+    %% \left\lfloor\frac{-1070}{2 ^ 5}\right\rfloor - 15 = -49 &
+    %% -49 + 0 = -49 \\
+    %% 17 & -14 &
+    %% 2 ^ 5 + 29 \times -49 = -1389 &
+    %% \left\lfloor\frac{-1389}{2 ^ 5}\right\rfloor - 14 = -58 &
+    %% -58 + 0 = -58 \\
+    %% 18 & -11 &
+    %% 2 ^ 5 + 29 \times -58 = -1650 &
+    %% \left\lfloor\frac{-1650}{2 ^ 5}\right\rfloor - 11 = -63 &
+    %% -63 + 0 = -63 \\
+    %% 19 & -7 &
+    %% 2 ^ 5 + 29 \times -63 = -1795 &
+    %% \left\lfloor\frac{-1795}{2 ^ 5}\right\rfloor - 7 = -64 &
+    %% -64 + 0 = -64 \\
+  \end{tabular}
+  \renewcommand{\arraystretch}{1.0}
+}
+\end{table}
+
+\clearpage
+
+\subsection{Applying Left Shift to Samples}
+\ALGORITHM{a list of samples for a given channel $c$, a left shift value}{a list of unshifted samples}
+\SetKwData{LEFTSHIFT}{left shift}
+\SetKwData{SAMPLES}{samples}
+\SetKwData{BLOCKLENGTH}{block length}
+\SetKwData{UNSHIFTED}{unshifted}
+\eIf{$\LEFTSHIFT = 0$}{
+  \Return $\text{\SAMPLES}_c$\tcc*{no change}
+}{
+  \For{i = 0 \emph{\KwTo}\BLOCKLENGTH}{
+    $\text{\UNSHIFTED}_{c~i} \leftarrow \text{\SAMPLES}_{c~i} \times 2 ^ {\LEFTSHIFT}$\;
+  }
+  \Return $\text{\UNSHIFTED}_{c}$\;
+}
+\EALGORITHM
 
 %% Shorten is one of the earliest lossless audio compression formats.
 %% Though superseded by FLAC and other formats, it remains interesting

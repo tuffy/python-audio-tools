@@ -129,6 +129,7 @@ figures/shorten/diff.pdf \
 figures/shorten/filetype.pdf \
 figures/shorten/header_parse.pdf \
 figures/shorten/qlpc.pdf \
+figures/shorten/qlpc1.pdf \
 figures/shorten/sandwich.pdf \
 figures/shorten/signed.pdf \
 figures/shorten/stream.pdf \

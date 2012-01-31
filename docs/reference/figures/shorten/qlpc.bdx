@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col end="unsigned(2)" width=".20">Energy Size</col>
-    <col end="unsigned(2)" width=".20">LPC Count</col>
-    <col end="signed(5)" width=".20">LPC Coeff₁</col>
+    <col end="unsigned(2)" width=".20">energy size</col>
+    <col end="unsigned(2)" width=".20">LPC count</col>
+    <col end="signed(5)" width=".20">LPC coeff₀</col>
+    <col end="signed(5)" width=".20">LPC coeff₁</col>
     <col width=".20" style="dashed">...</col>
-    <col end="signed(5)" width=".20">LPC Coeffₓ</col>
   </row>
   <row>
-    <col end="signed(energy)" width=".20">Residual₁</col>
-    <col end="signed(energy)" width=".20">Residual₂</col>
-    <col end="signed(energy)" width=".20">Residual₃</col>
+    <col end="signed(energy)" width=".20">residual₀</col>
+    <col end="signed(energy)" width=".20">residual₁</col>
+    <col end="signed(energy)" width=".20">residual₂</col>
+    <col end="signed(energy)" width=".20">residual₃</col>
     <col style="dashed" width=".20">...</col>
-    <col end="signed(energy)" width=".20">Residualₓ</col>
   </row>
 </diagram>

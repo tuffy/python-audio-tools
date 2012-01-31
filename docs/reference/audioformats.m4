@@ -48,6 +48,7 @@
 \newcommand{\REFERENCE}[2]{\item #1 \\ \LINK{#2}}
 \newcommand{\VAR}[1]{``{#1}''}
 \newcommand{\ATOM}[1]{\texttt{#1}}
+\newcommand{\IDOTS}{\mathrel{\ldotp\ldotp}}
 \newcommand{\ALGORITHM}[2]{\begin{algorithm}[H]
 \DontPrintSemicolon
 \SetKw{READ}{read}
