@@ -1,6 +1,5 @@
 #include "shn.h"
-#include "../pcm.h"
-#include "pcm.h"
+#include "../pcmconv.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -21,18 +20,27 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+PyObject*
+SHNDecoder_new(PyTypeObject *type,
+               PyObject *args, PyObject *kwds)
+{
+    decoders_SHNDecoder *self;
+
+    self = (decoders_SHNDecoder *)type->tp_alloc(type, 0);
+
+    return (PyObject *)self;
+}
+
+/*FIXME*/
 int
 SHNDecoder_init(decoders_SHNDecoder *self,
                 PyObject *args, PyObject *kwds)
 {
     char* filename;
     FILE* fp;
-    int i, j;
 
     self->filename = NULL;
-    self->bitshift = 0;
-    self->verbatim = NULL;
-    self->bits_per_sample = 0;
+    self->bitstream = NULL;
 
     if (!PyArg_ParseTuple(args, "s", &filename))
         return -1;
@@ -48,56 +56,74 @@ SHNDecoder_init(decoders_SHNDecoder *self,
         self->bitstream = br_open(fp, BS_BIG_ENDIAN);
     }
 
-    self->bitstream->mark(self->bitstream);
+    /*read Shorten header for basic info*/
+    if (!setjmp(*br_try(self->bitstream))) {
+        uint8_t magic_number[4];
+        unsigned version;
 
-    if (SHNDecoder_read_header(self) == ERROR) {
-        PyErr_SetString(PyExc_ValueError, "not a SHN file");
+        self->bitstream->parse(self->bitstream, "4b 8u", magic_number, version);
+        if (memcmp(magic_number, "ajkg", 4)) {
+            PyErr_SetString(PyExc_IOError, "invalid magic number");
+            br_etry(self->bitstream);
+            return -1;
+        }
+        if (version != 2) {
+            PyErr_SetString(PyExc_IOError, "invalid Shorten version");
+            br_etry(self->bitstream);
+            return -1;
+        }
+
+        self->header.file_type = read_long(self->bitstream);
+        self->header.channels = read_long(self->bitstream);
+        self->block_length = read_long(self->bitstream);
+        self->header.max_LPC = read_long(self->bitstream);
+        self->header.mean_count = read_long(self->bitstream);
+        self->bitstream->skip_bytes(self->bitstream,
+                                    read_long(self->bitstream));
+
+        if ((1 <= self->header.file_type) && (self->header.file_type <= 2)) {
+            self->bits_per_sample = 8;
+            self->signed_samples = (self->header.file_type == 1);
+        } else if ((3 <= self->header.file_type) &&
+                   (self->header.file_type <= 6)) {
+            self->bits_per_sample = 16;
+            self->signed_samples = ((self->header.file_type == 3) ||
+                                    (self->header.file_type == 5));
+        } else {
+            PyErr_SetString(PyExc_IOError, "unsupported Shorten file type");
+            br_etry(self->bitstream);
+            return -1;
+        }
+
+        /*process first instruction for wave/aiff header, if present*/
+        if (process_header(self->bitstream,
+                           &(self->sample_rate), &(self->channel_mask))) {
+            br_etry(self->bitstream);
+            return -1;
+        }
+
+
+        br_etry(self->bitstream);
+        return 0;
+    } else {
+        /*read error in Shorten header*/
+        br_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error reading Shorten header");
         return -1;
     }
+}
 
-    switch (self->file_type) {
-    case 1:
-    case 2:
-        self->bits_per_sample = 8;
-        break;
-    case 3:
-    case 4:
-    case 5:
-    case 6:
-        self->bits_per_sample = 16;
-        break;
-        /*not sure if file types 11/12 for wav and aiff are used*/
-    default:
-        PyErr_SetString(PyExc_ValueError, "unsupported SHN file type");
-        return -1;
+void
+SHNDecoder_dealloc(decoders_SHNDecoder *self)
+{
+    if (self->bitstream != NULL) {
+        self->bitstream->close(self->bitstream);
     }
 
-    iaa_init(&(self->buffer), self->channels, self->block_size + self->wrap);
-    iaa_init(&(self->offset), self->channels, 1);
-    ia_init(&(self->lpc_coeffs), 1);
-    for (i = 0; i < self->channels; i++) {
-        for (j = 0; j < self->wrap; j++) {
-            ia_append(iaa_getitem(&(self->buffer), i), 0);
-        }
-        for (j = 0; j < self->nmean; j++) {
-            ia_append(iaa_getitem(&(self->offset), i), 0);
-        }
-    }
+    if (self->filename != NULL)
+        free(self->filename);
 
-    /*These are set to sensible defaults at init-time.
-
-      But due to the grubby nature of Shorten,
-      the decoder is expected to make one pass through the file
-      parse any wav/aiff headers found (there should be one)
-      and use that data to set these two fields
-      so that this works like a proper PCMReader.
-
-      Shorten simply wasn't designed for any sort of non-batch
-      file compression/decompression whatsoever.*/
-    self->sample_rate = 44100;
-    self->channel_mask = 0x3;
-
-    return 0;
+    self->ob_type->tp_free((PyObject*)self);
 }
 
 PyObject*
@@ -107,56 +133,10 @@ SHNDecoder_close(decoders_SHNDecoder* self, PyObject *args)
     return Py_None;
 }
 
-void
-SHNDecoder_dealloc(decoders_SHNDecoder *self)
-{
-    if (self->filename != NULL)
-        free(self->filename);
-
-    if (self->bits_per_sample != 0) {
-        iaa_free(&(self->buffer));
-        iaa_free(&(self->offset));
-        ia_free(&(self->lpc_coeffs));
-    }
-    if (self->verbatim != NULL)
-        free(self->verbatim);
-
-    if (self->bitstream != NULL) {
-        self->bitstream->unmark(self->bitstream);
-        self->bitstream->close(self->bitstream);
-    }
-
-    self->ob_type->tp_free((PyObject*)self);
-}
-
-
-PyObject*
-SHNDecoder_new(PyTypeObject *type,
-               PyObject *args, PyObject *kwds)
-{
-    decoders_SHNDecoder *self;
-
-    self = (decoders_SHNDecoder *)type->tp_alloc(type, 0);
-
-    return (PyObject *)self;
-}
-
 static PyObject*
-SHNDecoder_version(decoders_SHNDecoder *self, void *closure)
+SHNDecoder_sample_rate(decoders_SHNDecoder *self, void *closure)
 {
-    return Py_BuildValue("I", self->version);
-}
-
-static PyObject*
-SHNDecoder_file_type(decoders_SHNDecoder *self, void *closure)
-{
-    return Py_BuildValue("I", self->file_type);
-}
-
-static PyObject*
-SHNDecoder_channels(decoders_SHNDecoder *self, void *closure)
-{
-    return Py_BuildValue("I", self->channels);
+    return Py_BuildValue("I", self->sample_rate);
 }
 
 static PyObject*
@@ -166,32 +146,10 @@ SHNDecoder_bits_per_sample(decoders_SHNDecoder *self,
     return Py_BuildValue("I", self->bits_per_sample);
 }
 
-static int
-SHNDecoder_set_sample_rate(decoders_SHNDecoder *self,
-                           PyObject *value,
-                           void *closure)
-{
-    unsigned int long_value;
-
-    if (value == NULL) {
-        PyErr_SetString(PyExc_TypeError,
-                        "cannot delete the sample_rate attribute");
-        return -1;
-    }
-
-    long_value = (unsigned int)PyInt_AsUnsignedLongMask(value);
-    if (PyErr_Occurred())
-        return -1;
-
-    self->sample_rate = long_value;
-
-    return 0;
-}
-
 static PyObject*
-SHNDecoder_sample_rate(decoders_SHNDecoder *self, void *closure)
+SHNDecoder_channels(decoders_SHNDecoder *self, void *closure)
 {
-    return Py_BuildValue("I", self->sample_rate);
+    return Py_BuildValue("I", self->header.channels);
 }
 
 static PyObject*
@@ -200,688 +158,350 @@ SHNDecoder_channel_mask(decoders_SHNDecoder *self, void *closure)
     return Py_BuildValue("I", self->channel_mask);
 }
 
-static int
-SHNDecoder_set_channel_mask(decoders_SHNDecoder *self,
-                            PyObject *value,
-                            void *closure)
-{
-    unsigned int long_value;
-
-    if (value == NULL) {
-        PyErr_SetString(PyExc_TypeError,
-                        "cannot delete the channel_mask attribute");
-        return -1;
-    }
-
-    long_value = (unsigned int)PyInt_AsUnsignedLongMask(value);
-    if (PyErr_Occurred())
-        return -1;
-    else
-        self->channel_mask = long_value;
-
-    return 0;
-}
-
-static PyObject*
-SHNDecoder_block_size(decoders_SHNDecoder *self, void *closure)
-{
-    return Py_BuildValue("I", self->block_size);
-}
-
-
 PyObject*
 SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
 {
-    int channel = 0;
-    int i;
-    unsigned int cmd;
-    unsigned int verbatim_length;
-
-    PyObject *framelist;
-    struct i_array* channel_data;
-    struct i_array* offset_data;
-    ia_data_t sum;
-
-    int coffset;
-    PyThreadState *thread_state;
-
-    if (self->read_finished) {
-        iaa_reset(&(self->buffer));
-        goto finished;
-    }
-
-    if (!self->read_started) {
-        self->bitstream->rewind(self->bitstream);
-
-        if (SHNDecoder_read_header(self) == ERROR)
-            return NULL;
-    }
-
-    thread_state = PyEval_SaveThread();
-    if (!setjmp(*br_try(self->bitstream))) {
-        /*read the next instructions to fill all buffers,
-          until FN_QUIT reached*/
-        while (channel < self->channels) {
-            cmd = shn_read_uvar(self->bitstream, 2);
-
-            switch (cmd) {
-            case FN_DIFF0:
-            case FN_DIFF1:
-            case FN_DIFF2:
-            case FN_DIFF3:
-            case FN_ZERO:
-            case FN_QLPC:
-                /*calculate current coffset as adjusted average of offsets*/
-                channel_data = iaa_getitem(&(self->buffer), channel);
-                offset_data = iaa_getitem(&(self->offset), channel);
-
-                if (self->nmean > 0)
-                    coffset = ((((ia_data_t)self->nmean / 2) + ia_sum(offset_data))
-                               / (ia_data_t)self->nmean) >> MIN(1, self->bitshift);
-                else
-                    coffset = 0;
-
-                switch (cmd) {  /*audio commands handled here*/
-                case FN_DIFF0:
-                    SHNDecoder_read_diff(channel_data,
-                                         self->bitstream,
-                                         self->block_size,
-                                         SHNDecoder_diff0);
-
-                    /*DIFF0, and only DIFF0, also applies coffset*/
-                    for (i = 0; i < channel_data->size; i++) {
-                        ia_setitem(channel_data, i,
-                                   ia_getitem(channel_data, i) + coffset);
-                    }
-                    break;
-                case FN_DIFF1:
-                    SHNDecoder_read_diff(channel_data,
-                                         self->bitstream,
-                                         self->block_size,
-                                         SHNDecoder_diff1);
-                    break;
-                case FN_DIFF2:
-                    SHNDecoder_read_diff(channel_data,
-                                         self->bitstream,
-                                         self->block_size,
-                                         SHNDecoder_diff2);
-                    break;
-                case FN_DIFF3:
-                    SHNDecoder_read_diff(channel_data,
-                                         self->bitstream,
-                                         self->block_size,
-                                         SHNDecoder_diff3);
-                    break;
-                case FN_ZERO:
-                    SHNDecoder_read_zero(channel_data,
-                                         self->block_size);
-                    break;
-                case FN_QLPC:
-                    SHNDecoder_read_lpc(self, channel_data, coffset);
-                    break;
-                }
-
-                /*add new value to offset queue*/
-                if (self->nmean > 0) {
-                    /*calculate a fresh sum of samples*/
-                    sum = (ia_data_t)self->block_size / 2;
-                    for (i = 0; i < self->block_size; i++) {
-                        sum += ia_getitem(channel_data, i + self->wrap);
-                    }
-
-                    /*shift the old offsets down a notch*/
-                    for (i = 1; i < self->nmean; i++)
-                        ia_setitem(offset_data, i - 1, ia_getitem(offset_data, i));
-
-                    /*and append our new sum*/
-                    ia_setitem(offset_data, self->nmean - 1,
-                               (sum / (ia_data_t)self->block_size) <<
-                               self->bitshift);
-                }
-
-                /*perform sample wrapping from the end of channel_data
-                  to the beginning*/
-                for (i = -self->wrap; i < 0; i++) {
-                    ia_setitem(channel_data, self->wrap + i,
-                               ia_getitem(channel_data, i));
-                }
-
-                /*if bitshift is set, shift all samples in the framelist
-                  to the left
-                  (analagous to FLAC's wasted-bits-per-sample)*/
-                if (self->bitshift > 0) {
-                    for (i = self->wrap; i < channel_data->size; i++) {
-                        ia_setitem(channel_data, i,
-                                   ia_getitem(channel_data, i) << self->bitshift);
-                    }
-                }
-
-                channel++;
-                break;
-            case FN_VERBATIM:
-                /*skip VERBATIM chunks*/
-                verbatim_length = shn_read_uvar(self->bitstream,
-                                                VERBATIM_CHUNK_SIZE);
-                for (i = 0; i < verbatim_length; i++) {
-                    shn_read_uvar(self->bitstream, VERBATIM_BYTE_SIZE);
-                }
-                break;
-            case FN_BLOCKSIZE:
-                self->block_size = shn_read_long(self->bitstream);
-                break;
-            case FN_BITSHIFT:
-                self->bitshift = shn_read_uvar(self->bitstream, 2);
-                break;
-            case FN_QUIT:
-                PyEval_RestoreThread(thread_state);
-                self->read_finished = 1;
-                br_etry(self->bitstream);
-                iaa_reset(&(self->buffer));
-                goto finished;
-            default:
-                PyEval_RestoreThread(thread_state);
-                PyErr_SetString(PyExc_ValueError,
-                                "unknown command encountered"
-                                "in Shorten stream");
-                goto error;
-            }
-        }
-    } else {
-        PyEval_RestoreThread(thread_state);
-        PyErr_SetString(PyExc_IOError, "EOF reading Shorten stream");
-        goto error;
-    }
-
-    br_etry(self->bitstream);
-    PyEval_RestoreThread(thread_state);
-
-    /*once self->buffer is full of PCM data on each channel,
-      convert the integer values to a pcm.FrameList object*/
-    framelist = ia_array_slice_to_framelist(&(self->buffer),
-                                            self->bits_per_sample,
-                                            self->wrap,
-                                            self->block_size + self->wrap);
-
-    /*reset channels for next run*/
-    for (channel = 0; channel < self->channels; channel++) {
-        iaa_getitem(&(self->buffer), channel)->size = self->wrap;
-    }
-
-    /*then return the pcm.FrameList*/
-    return framelist;
-
- finished:
-    return ia_array_to_framelist(&(self->buffer),
-                                 self->bits_per_sample);
- error:
-    br_etry(self->bitstream);
-    return NULL;
-}
-
-static PyObject*
-SHNDecoder_metadata(decoders_SHNDecoder* self, PyObject *args)
-{
-    unsigned int cmd;
-
-    unsigned int verbatim_length;
-    unsigned int lpc_count;
-
-    int i;
-    unsigned int residual_size;
-    PyObject* list = NULL;
-
-    int previous_is_none = 0;
-
-    int total_samples = 0;
-
-    if ((list = PyList_New(0)) == NULL)
-        return NULL;
-
-    /*rewind the stream and re-read the header*/
-    self->bitstream->rewind(self->bitstream);
-
-    if (SHNDecoder_read_header(self) == ERROR) {
-        PyErr_SetString(PyExc_ValueError,
-                        "error reading SHN header");
-        Py_XDECREF(list);
-        return NULL;
-    }
-
-    /*walk through the Shorten file,
-      storing FN_VERBATIM instructions as strings,
-      storing blocks of non-FM_VERBATIM instructions as None,
-      and counting the length of all audio data commands*/
-
-    if (!setjmp(*br_try(self->bitstream))) {
-        for (cmd = shn_read_uvar(self->bitstream, 2);
-             cmd != FN_QUIT;
-             cmd = shn_read_uvar(self->bitstream, 2)) {
-            switch (cmd) {
-            case FN_VERBATIM:
-                verbatim_length = shn_read_uvar(self->bitstream,
-                                                VERBATIM_CHUNK_SIZE);
-                self->verbatim = realloc(self->verbatim, verbatim_length);
-                for (i = 0; i < verbatim_length; i++) {
-                    self->verbatim[i] = (shn_read_uvar(
-                                self->bitstream,
-                                VERBATIM_BYTE_SIZE) & 0xFF);
-                }
-                if (PyList_Append(
-                        list,
-                        PyString_FromStringAndSize((char *)self->verbatim,
-                                                   verbatim_length)) == -1) {
-                    goto error;
-                } else {
-                    previous_is_none = 0;
-                }
-                break;
-            case FN_DIFF0:
-            case FN_DIFF1:
-            case FN_DIFF2:
-            case FN_DIFF3:
-                total_samples += self->block_size;
-                residual_size = shn_read_uvar(self->bitstream, ENERGY_SIZE);
-                for (i = 0; i < self->block_size; i++) {
-                    shn_skip_var(self->bitstream, residual_size);
-                }
-                if (!previous_is_none) {
-                    Py_INCREF(Py_None);
-                    if (PyList_Append(list, Py_None) == -1) {
-                        goto error;
-                    }
-                }
-                previous_is_none = 1;
-                break;
-            case FN_ZERO:
-                total_samples += self->block_size;
-                if (!previous_is_none) {
-                    Py_INCREF(Py_None);
-                    if (PyList_Append(list, Py_None) == -1) {
-                        goto error;
-                    }
-                }
-                previous_is_none = 1;
-                break;
-            case FN_QLPC:
-                total_samples += self->block_size;
-                residual_size = shn_read_uvar(self->bitstream, ENERGY_SIZE);
-                lpc_count = shn_read_uvar(self->bitstream, QLPC_SIZE);
-                for (i = 0; i < lpc_count; i++) {
-                    shn_skip_var(self->bitstream, QLPC_QUANT);
-                }
-                for (i = 0; i < self->block_size; i++) {
-                    shn_skip_var(self->bitstream, residual_size);
-                }
-                if (!previous_is_none) {
-                    Py_INCREF(Py_None);
-                    if (PyList_Append(list, Py_None) == -1) {
-                        goto error;
-                    }
-                }
-                previous_is_none = 1;
-                break;
-            case FN_BITSHIFT:
-                shn_skip_uvar(self->bitstream, 2);
-                break;
-            case FN_BLOCKSIZE:
-                self->block_size = shn_read_long(self->bitstream);
-                break;
-            default:
-                PyErr_SetString(PyExc_ValueError,
-                        "unknown command encountered in Shorten stream");
-                goto error;
-            }
-        }
-    } else {
-        PyErr_SetString(PyExc_IOError, "EOF while reading Shorten stream");
-        goto error;
-    }
-
-    self->read_started = 0;
-
-    br_etry(self->bitstream);
-    return Py_BuildValue("(i,O)", total_samples / self->channels, list);
-
- error:
-    br_etry(self->bitstream);
-    Py_XDECREF(list);
-    return NULL;
-}
-
-static PyObject*
-i_array_to_list(struct i_array *list)
-{
-    PyObject* toreturn;
-    PyObject* item;
-    ia_size_t i;
-
-    if ((toreturn = PyList_New(0)) == NULL)
-        return NULL;
-    else {
-        for (i = 0; i < list->size; i++) {
-            item = PyInt_FromLong(list->data[i]);
-            PyList_Append(toreturn, item);
-            Py_DECREF(item);
-        }
-        return toreturn;
-    }
-}
-
-PyObject*
-SHNDecoder_analyze_frame(decoders_SHNDecoder* self, PyObject *args)
-{
-    unsigned int cmd;
-    PyObject *toreturn = NULL;
-    unsigned int residual_size;
-    unsigned int verbatim_length;
-    unsigned int lpc_count;
-    struct i_array *buffer = &(self->buffer.arrays[0]);
-    struct i_array coefficients = self->lpc_coeffs;
-    long byte_offset;
-    int i;
-
-    if (!self->read_started) {
-        self->bitstream->rewind(self->bitstream);
-
-        if (SHNDecoder_read_header(self) == ERROR) {
-            PyErr_SetString(PyExc_ValueError, "error reading SHN header");
-            return NULL;
-        }
-    }
-
-    if (self->read_finished) {
-        goto stream_finished;
-    }
-
-    byte_offset = br_ftell(self->bitstream);
-
-    if (!setjmp(*br_try(self->bitstream))) {
-        switch (cmd = shn_read_uvar(self->bitstream, 2)) {
-        case FN_DIFF0:
-        case FN_DIFF1:
-        case FN_DIFF2:
-        case FN_DIFF3:
-            residual_size = shn_read_uvar(self->bitstream, ENERGY_SIZE);
-            ia_reset(buffer);
-            for (i = 0; i < self->block_size; i++) {
-                ia_append(buffer, shn_read_var(self->bitstream, residual_size));
-            }
-            toreturn = Py_BuildValue("{sI si sI sN}",
-                                     "command", cmd,
-                                     "offset", byte_offset,
-                                     "residual_size", residual_size,
-                                     "residual", i_array_to_list(buffer));
-            break;
-        case FN_QUIT:
-            self->read_finished = 1;
-            toreturn = Py_BuildValue("{sI si}",
-                                     "command", cmd,
-                                     "offset", byte_offset);
-            break;
-        case FN_BLOCKSIZE:
-            self->block_size = shn_read_long(self->bitstream);
-            toreturn = Py_BuildValue("{sI si sI}",
-                                     "command", cmd,
-                                     "offset", byte_offset,
-                                     "block_size", self->block_size);
-            break;
-        case FN_BITSHIFT:
-            self->bitshift = shn_read_uvar(self->bitstream, 2);
-            toreturn = Py_BuildValue("{sI si sI}",
-                                     "command", cmd,
-                                     "offset", byte_offset,
-                                     "bit_shift", self->bitshift);
-            break;
-        case FN_QLPC:
-            residual_size = shn_read_uvar(self->bitstream, ENERGY_SIZE);
-            lpc_count = shn_read_uvar(self->bitstream, QLPC_SIZE);
-            ia_reset(&coefficients);
-            for (i = 0; i < lpc_count; i++) {
-                ia_append(&coefficients,
-                          shn_read_var(self->bitstream, QLPC_QUANT));
-            }
-            ia_reset(buffer);
-            for (i = 0; i < self->block_size; i++) {
-                ia_append(buffer, shn_read_var(self->bitstream,
-                                                residual_size));
-            }
-            toreturn = Py_BuildValue("{sI si sN sI sN}",
-                                     "command", cmd,
-                                     "offset", byte_offset,
-                                     "coefficients",
-                                     i_array_to_list(&coefficients),
-                                     "residual_size", residual_size,
-                                     "residual", i_array_to_list(buffer));
-            break;
-        case FN_ZERO:
-            toreturn = Py_BuildValue("{sI si}",
-                                     "command", cmd,
-                                     "offset", byte_offset);
-            break;
-        case FN_VERBATIM:
-            verbatim_length = shn_read_uvar(self->bitstream,
-                                            VERBATIM_CHUNK_SIZE);
-            ia_reset(buffer);
-            for (i = 0; i < verbatim_length; i++) {
-                ia_append(buffer, shn_read_uvar(self->bitstream,
-                                                 VERBATIM_BYTE_SIZE));
-            }
-            toreturn = Py_BuildValue("{sI si sN}",
-                                     "command", cmd,
-                                     "offset", byte_offset,
-                                     "data", i_array_to_list(buffer));
-            break;
-        default:
-            PyErr_SetString(PyExc_ValueError,
-                            "unknown command encountered in Shorten stream");
-            goto error;
-        }
-    } else {
-        PyErr_SetString(PyExc_IOError, "EOF while reading Shorten stream");
-        goto error;
-    }
-
-    br_etry(self->bitstream);
-    return toreturn;
-
- error:
-    br_etry(self->bitstream);
-    return NULL;
-
- stream_finished:
     Py_INCREF(Py_None);
     return Py_None;
 }
 
-status
-SHNDecoder_read_header(decoders_SHNDecoder* self)
+static unsigned
+read_unsigned(BitstreamReader* bs, unsigned count)
 {
-    BitstreamReader* bs = self->bitstream;
+    const unsigned MSB = bs->read_unary(bs, 1);
+    const unsigned LSB = bs->read(bs, count);
 
-    if (!setjmp(*br_try(bs))) {
-        if (bs->read(bs, 32) != 0x616A6B67) {
-            br_etry(bs);
-            return ERROR;
-        }
-
-        self->version = bs->read(bs, 8);
-        self->file_type = shn_read_long(bs);
-        self->channels = shn_read_long(bs);
-        self->block_size = shn_read_long(bs);
-        self->maxnlpc = shn_read_long(bs);
-        self->nmean = shn_read_long(bs);
-        self->nskip = shn_read_long(bs);
-        /*FIXME - perform writing if bytes skipped*/
-        self->wrap = self->maxnlpc > 3 ? self->maxnlpc : 3;
-
-        self->read_started = 1;
-        self->read_finished = 0;
-
-        br_etry(bs);
-        return OK;
-    } else {
-        br_etry(bs);
-        return ERROR;
-    }
+    return (MSB << count) | LSB;
 }
 
-void
-SHNDecoder_read_diff(struct i_array *buffer,
-                     BitstreamReader* bs,
-                     unsigned int block_size,
-                     int (*calculation)(int residual,
-                                        struct i_array *buffer))
+static int
+read_signed(BitstreamReader* bs, unsigned count)
 {
-    unsigned int i;
-    unsigned int residual_size = shn_read_uvar(bs, ENERGY_SIZE);
-
-    for (i = 0; i < block_size; i++) {
-        ia_append(buffer, calculation(shn_read_var(bs, residual_size),
-                                      buffer));
-    }
-}
-
-int
-SHNDecoder_diff0(int residual, struct i_array *buffer)
-{
-    return residual;
-}
-
-int
-SHNDecoder_diff1(int residual, struct i_array *buffer)
-{
-    return residual + ia_getitem(buffer, -1);
-}
-
-int
-SHNDecoder_diff2(int residual, struct i_array *buffer)
-{
-    return residual + ((2 * ia_getitem(buffer, -1)) - ia_getitem(buffer, -2));
-}
-
-int
-SHNDecoder_diff3(int residual, struct i_array *buffer)
-{
-    return residual + (3 * (ia_getitem(buffer, -1) -
-                            ia_getitem(buffer, -2))) + ia_getitem(buffer, -3);
-}
-
-void
-SHNDecoder_read_zero(struct i_array *buffer,
-                     unsigned int block_size)
-{
-    int i;
-
-    for (i = 0; i < block_size; i++) {
-        ia_append(buffer, 0);
-    }
-}
-
-void
-SHNDecoder_read_lpc(decoders_SHNDecoder *decoder,
-                    struct i_array *buffer,
-                    int coffset)
-{
-    BitstreamReader *bs = decoder->bitstream;
-    unsigned int residual_size = shn_read_uvar(bs, ENERGY_SIZE);
-    unsigned int i, j;
-    unsigned int lpc_count;
-    struct i_array *lpc_coeffs = &(decoder->lpc_coeffs);
-    struct i_array tail;
-    int32_t sum;
-
-    lpc_count = shn_read_uvar(bs, QLPC_SIZE);
-    ia_reset(lpc_coeffs);
-    for (i = 0; i < lpc_count; i++) {
-        ia_append(lpc_coeffs, shn_read_var(bs, QLPC_QUANT));
-    }
-    ia_reverse(lpc_coeffs);
-
-    if (coffset != 0) {
-        for (i = 0; i < decoder->wrap; i++)
-            ia_setitem(buffer, i, ia_getitem(buffer, i) - coffset);
-    }
-
-    for (i = 0; i < decoder->block_size; i++) {
-        sum = QLPC_OFFSET;
-        ia_tail(&tail, buffer, lpc_count);
-        for (j = 0; j < lpc_count; j++) {
-            sum += (int32_t)ia_getitem(&tail, j) *
-                (int32_t)ia_getitem(lpc_coeffs, j);
-        }
-        ia_append(buffer,
-                  shn_read_var(bs, residual_size) + (sum >> QLPC_QUANT));
-    }
-
-    if (coffset != 0)
-        for (i = 0; i < buffer->size; i++)
-            ia_setitem(buffer, i, ia_getitem(buffer, i) + coffset);
-}
-
-unsigned int
-shn_read_uvar(BitstreamReader* bs, unsigned int count)
-{
-    unsigned int high_bits = bs->read_unary(bs, 1);
-    unsigned int low_bits = bs->read(bs, count);
-
-    return (high_bits << count) | low_bits;
-}
-
-int
-shn_read_var(BitstreamReader* bs, unsigned int count)
-{
-    unsigned int uvar = shn_read_uvar(bs, count + 1); /*1 additional sign bit*/
-    if (uvar & 1)
-        return ~(uvar >> 1);
+    /*1 additional sign bit*/
+    const unsigned u = read_unsigned(bs, count + 1);
+    if (u % 2)
+        return -(u >> 1) - 1;
     else
-        return uvar >> 1;
+        return u >> 1;
 }
 
 unsigned int
-shn_read_long(BitstreamReader* bs)
+read_long(BitstreamReader* bs)
 {
-    return shn_read_uvar(bs, shn_read_uvar(bs, 2));
+    return read_unsigned(bs, read_unsigned(bs, 2));
 }
 
 void
-shn_skip_uvar(BitstreamReader* bs, unsigned int count)
+skip_unsigned(BitstreamReader* bs, unsigned int count)
 {
-    bs->read_unary(bs, 1);
-    bs->read(bs, count);
+    bs->skip_unary(bs, 1);
+    bs->skip(bs, count);
 }
 
 void
-shn_skip_var(BitstreamReader* bs, unsigned int count)
+skip_signed(BitstreamReader* bs, unsigned int count)
 {
-    bs->read_unary(bs, 1);
-    bs->read(bs, count + 1);
+    bs->skip_unary(bs, 1);
+    bs->skip(bs, count + 1);
 }
 
-char*
-SHNDecoder_cmd_string(int cmd)
+static int
+process_header(BitstreamReader* bs,
+               unsigned* sample_rate, unsigned* channel_mask)
 {
-    switch (cmd) {
-    case FN_DIFF0:
-        return "DIFF0";
-    case FN_DIFF1:
-        return "DIFF1";
-    case FN_DIFF2:
-        return "DIFF2";
-    case FN_DIFF3:
-        return "DIFF3";
-    case FN_QUIT:
-        return "QUIT";
-    case FN_BLOCKSIZE:
-        return "BLOCKSIZE";
-    case FN_QLPC:
-        return "QLPC";
-    case FN_ZERO:
-        return "ZERO";
-    case FN_VERBATIM:
-        return "VERBATIM";
-    default:
-        return "UNKNOWN";
+    unsigned command;
+
+    bs->mark(bs);
+    read_unsigned(bs, COMMAND_SIZE);
+    if (command == FN_VERBATIM) {
+        BitstreamReader* verbatim;
+        unsigned verbatim_size;
+
+        bs->unmark(bs);
+
+        verbatim = read_verbatim(bs, &verbatim_size);
+
+        verbatim->mark(verbatim);
+        if (!read_wave_header(verbatim, verbatim_size,
+                              sample_rate, channel_mask)) {
+            verbatim->unmark(verbatim);
+            verbatim->close(verbatim);
+            return 0;
+        } else {
+            verbatim->rewind(verbatim);
+        }
+
+        if (!read_aiff_header(verbatim, verbatim_size,
+                              sample_rate, channel_mask)) {
+            verbatim->unmark(verbatim);
+            verbatim->close(verbatim);
+            return 0;
+        } else {
+            verbatim->rewind(verbatim);
+        }
+
+        /*neither wave header or aiff header found,
+          so use dummy values again*/
+        verbatim->close(verbatim);
+        verbatim->unmark(verbatim);
+        *sample_rate = 44100;
+        *channel_mask = 0;
+        return 0;
+    } else {
+        /*VERBATIM isn't the first command
+          so rewind and set some dummy values*/
+        bs->rewind(bs);
+        bs->unmark(bs);
+        *sample_rate = 44100;
+        *channel_mask = 0;
+        return 0;
     }
 }
 
-#include "pcm.c"
+static BitstreamReader*
+read_verbatim(BitstreamReader* bs, unsigned* verbatim_size)
+{
+    BitstreamReader* verbatim = br_substream_new(BS_BIG_ENDIAN);
+    if (!setjmp(*br_try(bs))) {
+        *verbatim_size = read_unsigned(bs, VERBATIM_CHUNK_SIZE);
+        unsigned i;
+        for (i = 0; i < *verbatim_size; i++) {
+            const unsigned byte = read_unsigned(bs, VERBATIM_BYTE_SIZE) & 0xFF;
+            buf_putc((int)byte, verbatim->input.substream);
+        }
+        br_etry(bs);
+        return verbatim;
+    } else {
+        /*I/O error reading from main bitstream*/
+        verbatim->close(verbatim);
+        br_etry(bs);
+        br_abort(bs);
+        return NULL; /*shouldn't get here*/
+    }
+}
+
+int
+read_wave_header(BitstreamReader* bs, unsigned verbatim_size,
+                 unsigned* sample_rate, unsigned* channel_mask)
+{
+    if (!setjmp(*br_try(bs))) {
+        uint8_t RIFF[4];
+        unsigned SIZE;
+        uint8_t WAVE[4];
+
+        bs->set_endianness(bs, BS_LITTLE_ENDIAN);
+        bs->parse(bs, "4b 32u 4b", RIFF, &SIZE, WAVE);
+
+        if (memcmp(RIFF, "RIFF", 4) || memcmp(WAVE, "WAVE", 4)) {
+            br_etry(bs);
+            return 1;
+        } else {
+            verbatim_size -= bs_format_byte_size("4b 32u 4b");
+        }
+
+        while (verbatim_size > 0) {
+            uint8_t chunk_id[4];
+            unsigned chunk_size;
+            bs->parse(bs, "4b 32u", chunk_id, &chunk_size);
+            verbatim_size -= bs_format_byte_size("4b 32u");
+            if (!memcmp(chunk_id, "fmt ", 4)) {
+                /*parse fmt chunk*/
+                unsigned compression;
+                unsigned channels;
+                unsigned bytes_per_second;
+                unsigned block_align;
+                unsigned bits_per_sample;
+
+                bs->parse(bs, "16u 16u 32u 32u 16u 16u",
+                          &compression,
+                          &channels,
+                          sample_rate,
+                          &bytes_per_second,
+                          &block_align,
+                          &bits_per_sample);
+                if (compression == 1) {
+                    /*if we have a multi-channel WAVE file
+                      that's not WAVEFORMATEXTENSIBLE,
+                      assume the channels follow
+                      SMPTE/ITU-R recommendations
+                      and hope for the best*/
+                    switch (channels) {
+                    case 1:
+                        *channel_mask = 0x4;
+                        break;
+                    case 2:
+                        *channel_mask = 0x3;
+                        break;
+                    case 3:
+                        *channel_mask = 0x7;
+                        break;
+                    case 4:
+                        *channel_mask = 0x33;
+                        break;
+                    case 5:
+                        *channel_mask = 0x37;
+                        break;
+                    case 6:
+                        *channel_mask = 0x3F;
+                        break;
+                    default:
+                        *channel_mask = 0;
+                        break;
+                    }
+                    br_etry(bs);
+                    return 0;
+                } else if (compression == 0xFFFE) {
+                    unsigned cb_size;
+                    unsigned valid_bits_per_sample;
+                    uint8_t sub_format[16];
+                    bs->parse(bs, "16u 16u 32u 16b",
+                              &cb_size,
+                              &valid_bits_per_sample,
+                              channel_mask,
+                              sub_format);
+                    if (!memcmp(sub_format,
+                                "\x01\x00\x00\x00\x00\x00\x10\x00"
+                                "\x80\x00\x00\xaa\x00\x38\x9b\x71", 16)) {
+                        br_etry(bs);
+                        return 0;
+                    } else {
+                        /*invalid sub format*/
+                        br_etry(bs);
+                        return 1;
+                    }
+                } else {
+                    /*unsupported wave compression*/
+                    br_etry(bs);
+                    return 1;
+                }
+            } else {
+                if (chunk_size % 2) {
+                    /*handle odd-sized chunks*/
+                    bs->skip_bytes(bs, chunk_size + 1);
+                    verbatim_size -= (chunk_size + 1);
+                } else {
+                    bs->skip_bytes(bs, chunk_size);
+                    verbatim_size -= chunk_size;
+                }
+            }
+        }
+
+        /*no fmt chunk found in wave header*/
+        br_etry(bs);
+        return 1;
+    } else {
+        /*I/O error bouncing through wave chunks*/
+        br_etry(bs);
+        return 1;
+    }
+}
+
+int
+read_aiff_header(BitstreamReader* bs, unsigned verbatim_size,
+                 unsigned* sample_rate, unsigned* channel_mask)
+{
+    if (!setjmp(*br_try(bs))) {
+        uint8_t FORM[4];
+        unsigned SIZE;
+        uint8_t AIFF[4];
+
+        bs->set_endianness(bs, BS_BIG_ENDIAN);
+        bs->parse(bs, "4b 32u 4b", FORM, &SIZE, AIFF);
+
+        if (memcmp(FORM, "FORM", 4) || memcmp(AIFF, "AIFF", 4)) {
+            br_etry(bs);
+            return 1;
+        } else {
+            verbatim_size -= bs_format_byte_size("4b 32u 4b");
+        }
+
+        while (verbatim_size > 0) {
+            uint8_t chunk_id[4];
+            unsigned chunk_size;
+            bs->parse(bs, "4b 32u", chunk_id, &chunk_size);
+
+            verbatim_size -= bs_format_byte_size("4b 32u");
+            if (!memcmp(chunk_id, "COMM", 4)) {
+                /*parse COMM chunk*/
+
+                unsigned channels;
+                unsigned total_sample_frames;
+                unsigned bits_per_sample;
+
+                bs->parse(bs, "16u 32u 16u",
+                          &channels,
+                          &total_sample_frames,
+                          &bits_per_sample);
+
+                *sample_rate = read_ieee_extended(bs);
+
+                switch (channels) {
+                case 1:
+                    *channel_mask = 0x4;
+                    break;
+                case 2:
+                    *channel_mask = 0x3;
+                    break;
+                case 3:
+                    *channel_mask = 0x7;
+                    break;
+                case 4:
+                    *channel_mask = 0x33;
+                    break;
+                case 5:
+                    /*5 channels is undefined*/
+                    *channel_mask = 0;
+                    break;
+                case 6:
+                    *channel_mask = 0x707;
+                    break;
+                default:
+                    *channel_mask = 0;
+                    break;
+                }
+
+                br_etry(bs);
+                return 0;
+            } else {
+                if (chunk_size % 2) {
+                    /*handle odd-sized chunks*/
+                    bs->skip_bytes(bs, chunk_size + 1);
+                    verbatim_size -= (chunk_size + 1);
+                } else {
+                    bs->skip_bytes(bs, chunk_size);
+                    verbatim_size -= chunk_size;
+                }
+            }
+        }
+
+        /*no COMM chunk found in aiff header*/
+        br_etry(bs);
+        return 1;
+    } else {
+        /*I/O error bouncing through aiff chunks*/
+        br_etry(bs);
+        return 1;
+    }
+}
+
+int
+read_ieee_extended(BitstreamReader* bs)
+{
+    unsigned sign;
+    unsigned exponent;
+    uint64_t mantissa;
+
+    bs->parse(bs, "1u 15u 64U", &sign, &exponent, &mantissa);
+    if ((exponent == 0) && (mantissa == 0)) {
+        return 0;
+    } else if (exponent == 0x7FFF) {
+        return INT_MAX;
+    } else {
+        const int f = (int)((long double)mantissa *
+                            powl(2.0, (long double )exponent - 16383 - 63));
+        if (sign)
+            return -f;
+        else
+            return f;
+    }
+}

@@ -3290,6 +3290,12 @@ bs_format_size(char* format) {
     return total_size;
 }
 
+unsigned int
+bs_format_byte_size(char* format)
+{
+    return bs_format_size(format) / 8;
+}
+
 void
 byte_counter(uint8_t byte, void *total_bytes)
 {

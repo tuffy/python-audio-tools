@@ -1348,6 +1348,9 @@ bs_parse_format(char** format, unsigned int* size, bs_instruction* type);
 unsigned int
 bs_format_size(char* format);
 
+/*returns the size of the given format string in bytes*/
+unsigned int
+bs_format_byte_size(char* format);
 
 /*******************************************************************
  *                           miscellaneous                         *
