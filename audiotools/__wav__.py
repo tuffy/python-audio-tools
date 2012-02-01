@@ -36,6 +36,71 @@ gettext.install("audiotools", unicode=True)
 #######################
 
 
+def parse_fmt(fmt):
+    """given a fmt block BitstreamReader (without the 8 byte header)
+    returns (channels, sample_rate, bits_per_sample, channel_mask)
+    where channel_mask is a ChannelMask object and the rest are ints
+    may raise ValueError if the fmt chunk is invalid
+    or IOError if an error occurs parsing the chunk"""
+
+    (compression,
+     channels,
+     sample_rate,
+     bytes_per_second,
+     block_align,
+     bits_per_sample) = fmt.parse("16u 16u 32u 32u 16u 16u")
+
+    if (compression == 1):
+        #if we have a multi-channel WAVE file
+        #that's not WAVEFORMATEXTENSIBLE,
+        #assume the channels follow
+        #SMPTE/ITU-R recommendations
+        #and hope for the best
+        if (channels == 1):
+            channel_mask = ChannelMask.from_fields(
+                front_center=True)
+        elif (channels == 2):
+            channel_mask = ChannelMask.from_fields(
+                front_left=True, front_right=True)
+        elif (channels == 3):
+            channel_mask = ChannelMask.from_fields(
+                front_left=True, front_right=True,
+                front_center=True)
+        elif (channels == 4):
+            channel_mask = ChannelMask.from_fields(
+                front_left=True, front_right=True,
+                back_left=True, back_right=True)
+        elif (channels == 5):
+            channel_mask = ChannelMask.from_fields(
+                front_left=True, front_right=True,
+                back_left=True, back_right=True,
+                front_center=True)
+        elif (channels == 6):
+            channel_mask = ChannelMask.from_fields(
+                front_left=True, front_right=True,
+                back_left=True, back_right=True,
+                front_center=True, low_frequency=True)
+        else:
+            channel_mask = ChannelMask(0)
+
+        return (channels, sample_rate, bits_per_sample, channel_mask)
+    elif (compression == 0xFFFE):
+        (cb_size,
+         valid_bits_per_sample,
+         channel_mask,
+         sub_format) = fmt.parse("16u 16u 32u 16b")
+        if (sub_format !=
+            ('\x01\x00\x00\x00\x00\x00\x10\x00' +
+             '\x80\x00\x00\xaa\x00\x38\x9b\x71')):
+            raise ValueError("invalid WAVE sub-format")
+        else:
+            channel_mask = ChannelMask(channel_mask)
+
+            return (channels, sample_rate, bits_per_sample, channel_mask)
+    else:
+        raise ValueError("unsupported WAVE compression")
+
+
 class WaveReader(PCMReader):
     """A subclass of PCMReader for reading wave file contents."""
 
@@ -159,10 +224,8 @@ class WaveAudio(WaveContainer):
 
         self.__wavtype__ = 0
         self.__channels__ = 0
-        self.__samplespersec__ = 0
-        self.__bytespersec__ = 0
-        self.__blockalign__ = 0
-        self.__bitspersample__ = 0
+        self.__sample_rate__ = 0
+        self.__bits_per_sample__ = 0
         self.__data_size__ = 0
         self.__channel_mask__ = ChannelMask(0)
 
@@ -195,61 +258,11 @@ class WaveAudio(WaveContainer):
                         total_size -= 8
 
                     if (chunk_id == 'fmt '):
-                        (compression,
-                         self.__channels__,
-                         self.__samplespersec__,
-                         self.__bytespersec__,
-                         self.__blockalign__,
-                         self.__bitspersample__) = wave_file.parse(
-                            "16u 16u 32u 32u 16u 16u")
-                        if (compression == 1):
-                            #if we have a multi-channel WAVE file
-                            #that's not WAVEFORMATEXTENSIBLE,
-                            #assume the channels follow
-                            #SMPTE/ITU-R recommendations
-                            #and hope for the best
-                            if (self.__channels__ == 1):
-                                self.__channel_mask__ = ChannelMask.from_fields(
-                                    front_center=True)
-                            elif (self.__channels__ == 2):
-                                self.__channel_mask__ = ChannelMask.from_fields(
-                                    front_left=True, front_right=True)
-                            elif (self.__channels__ == 3):
-                                self.__channel_mask__ = ChannelMask.from_fields(
-                                    front_left=True, front_right=True,
-                                    front_center=True)
-                            elif (self.__channels__ == 4):
-                                self.__channel_mask__ = ChannelMask.from_fields(
-                                    front_left=True, front_right=True,
-                                    back_left=True, back_right=True)
-                            elif (self.__channels__ == 5):
-                                self.__channel_mask__ = ChannelMask.from_fields(
-                                    front_left=True, front_right=True,
-                                    back_left=True, back_right=True,
-                                    front_center=True)
-                            elif (self.__channels__ == 6):
-                                self.__channel_mask__ = ChannelMask.from_fields(
-                                    front_left=True, front_right=True,
-                                    back_left=True, back_right=True,
-                                    front_center=True, low_frequency=True)
-                            else:
-                                self.__channel_mask__ = ChannelMask(0)
-
-                        elif (compression == 0xFFFE):
-                            (cb_size,
-                             valid_bits_per_sample,
-                             channel_mask,
-                             sub_format) = wave_file.parse("16u 16u 32u 16b")
-                            if (sub_format !=
-                                ('\x01\x00\x00\x00\x00\x00\x10\x00' +
-                                 '\x80\x00\x00\xaa\x00\x38\x9b\x71')):
-                                raise InvalidWave(_(u"Invalid WAVE sub-format"))
-                            else:
-                                self.__channel_mask__ = \
-                                    ChannelMask(channel_mask)
-                        else:
-                            raise InvalidWave(
-                                _(u"Unsupported WAVE compression"))
+                        (self.__channels__,
+                         self.__sample_rate__,
+                         self.__bits_per_sample__,
+                         self.__channel_mask__) = parse_fmt(
+                            wave_file.substream(chunk_size))
                     elif (chunk_id == 'data'):
                         self.__data_size__ = chunk_size
                         wave_file.skip_bytes(chunk_size)
@@ -508,13 +521,13 @@ class WaveAudio(WaveContainer):
     def total_frames(self):
         """Returns the total PCM frames of the track as an integer."""
 
-        return self.__data_size__ / (self.__bitspersample__ / 8) / \
+        return self.__data_size__ / (self.__bits_per_sample__ / 8) / \
                self.__channels__
 
     def sample_rate(self):
         """Returns the rate of the track's audio as an integer number of Hz."""
 
-        return self.__samplespersec__
+        return self.__sample_rate__
 
     def channels(self):
         """Returns an integer number of channels this track contains."""
@@ -524,7 +537,7 @@ class WaveAudio(WaveContainer):
     def bits_per_sample(self):
         """Returns an integer number of bits-per-sample this track contains."""
 
-        return self.__bitspersample__
+        return self.__bits_per_sample__
 
     @classmethod
     def can_add_replay_gain(cls):

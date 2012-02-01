@@ -19,7 +19,8 @@
 
 from audiotools.bitstream import BitstreamReader
 from audiotools.pcm import from_list,from_channels
-
+from audiotools import parse_fmt,parse_comm
+import cStringIO
 
 def shnmean(values):
     return ((len(values) / 2) + sum(values)) / len(values)
@@ -35,20 +36,106 @@ class SHNDecoder:
          self.max_LPC,
          self.number_of_means) = self.read_header()
 
+        if ((1 <= self.file_type) and (self.file_type <= 2)):
+            self.bits_per_sample = 8
+            self.signed_samples = (self.file_type == 1)
+        elif ((3 <= self.file_type) and (self.file_type <= 6)):
+            self.bits_per_sample = 16
+            self.signed_samples = (self.file_type in (3, 5))
+        else:
+            raise ValueError("unsupported Shorten file type")
+
         self.wrapped_samples = [[0] * 3 for c in xrange(self.channels)]
         self.means = [[0] * self.number_of_means for c in xrange(self.channels)]
         self.left_shift = 0
         self.stream_finished = False
 
-        #FIXME - determine sample rate from Wave/AIFF header
+        #try to read the first command for a wave/aiff header
+        self.reader.mark()
+        self.read_metadata()
+        self.reader.rewind()
+        self.reader.unmark()
+
+    def read_metadata(self):
+        command = self.unsigned(2)
+        if (command == 9):
+            #got verbatim, so read data
+            verbatim_bytes = "".join([chr(self.unsigned(8) & 0xFF)
+                                      for i in xrange(self.unsigned(5))])
+
+            try:
+                wave = BitstreamReader(cStringIO.StringIO(verbatim_bytes), 1)
+                header = wave.read_bytes(12)
+                if (header.startswith("RIFF") and header.endswith("WAVE")):
+                    #got RIFF/WAVE header, so parse wave blocks as needed
+                    total_size = len(verbatim_bytes) - 12
+                    while (total_size > 0):
+                        (chunk_id, chunk_size) = wave.parse("4b 32u")
+                        total_size -= 8
+                        if (chunk_id == 'fmt '):
+                            (channels,
+                             self.sample_rate,
+                             bits_per_sample,
+                             channel_mask) = parse_fmt(
+                                wave.substream(chunk_size))
+                            self.channel_mask = int(channel_mask)
+                            return
+                        else:
+                            if (chunk_size % 2):
+                                wave.read_bytes(chunk_size + 1)
+                                total_size -= (chunk_size + 1)
+                            else:
+                                wave.read_bytes(chunk_size)
+                                total_size -= chunk_size
+                    else:
+                        #no fmt chunk, so use default metadata
+                        pass
+            except (IOError,ValueError):
+                pass
+
+            try:
+                aiff = BitstreamReader(cStringIO.StringIO(verbatim_bytes), 0)
+                header = aiff.read_bytes(12)
+                if (header.startswith("FORM") and header.endswith("AIFF")):
+                    #got FORM/AIFF header, so parse aiff blocks as needed
+                    total_size = len(verbatim_bytes) - 12
+                    while (total_size > 0):
+                        (chunk_id, chunk_size) = aiff.parse("4b 32u")
+                        total_size -= 8
+                        if (chunk_id == 'COMM'):
+                            (channels,
+                             total_sample_frames,
+                             bits_per_sample,
+                             self.sample_rate,
+                             channel_mask) = parse_comm(
+                                aiff.substream(chunk_size))
+                            self.channel_mask = int(channel_mask)
+                            return
+                        else:
+                            if (chunk_size % 2):
+                                aiff.read_bytes(chunk_size + 1)
+                                total_size -= (chunk_size + 1)
+                            else:
+                                aiff.read_bytes(chunk_size)
+                                total_size -= chunk_size
+                    else:
+                        #no COMM chunk, so use default metadata
+                        pass
+            except IOError:
+                pass
+
+        #got something else, so invent some PCM parameters
+        self.sample_rate = 44100
+        if (self.channels == 1):
+            self.channel_mask = 0x4
+        elif (self.channels == 2):
+            self.channel_mask = 0x3
+        else:
+            self.channel_mask = 0
 
     def unsigned(self, c):
         MSB = self.reader.unary(1)
         LSB = self.reader.read(c)
-        # print r'<field size="%d" value="%s">MSB</field>' % \
-        #     (MSB + 1, "0" * MSB + "1b")
-        # print r'<field size="%d" value="%d">LSB</field>' % \
-        #     (c, LSB)
         return MSB * 2 ** c + LSB
 
     def signed(self, c):
@@ -85,8 +172,9 @@ class SHNDecoder:
 
     def read(self, bytes):
         if (self.stream_finished):
-            #FIXME - make bits-per-sample and sign dynamic
-            return from_channels([from_list([], 1, 16, True)
+            return from_channels([from_list([], 1,
+                                            self.bits_per_sample,
+                                            self.signed_samples)
                                   for channel in xrange(self.channels)])
 
         c = 0
@@ -94,11 +182,13 @@ class SHNDecoder:
         unshifted = []
         while (True):
             command = self.unsigned(2)
+            print "command : %s" % (command)
             if ((0 <= command) and (command <= 3) or
                 (7 <= command) and (command <= 8)):
                 #audio data commands
                 if (command == 0):   #DIFF0
-                    raise NotImplementedError()
+                    samples.append(self.read_diff0(self.block_length,
+                                                   self.means[c]))
                 elif (command == 1): #DIFF1
                     samples.append(self.read_diff1(self.block_length,
                                                    self.wrapped_samples[c]))
@@ -131,15 +221,17 @@ class SHNDecoder:
                 c += 1
                 if (c == self.channels):
                     #return a FrameList from shifted data
-                    #FIXME - make bits-per-sample and sign dynamic
-                    return from_channels([from_list(channel, 1, 16, True)
+                    return from_channels([from_list(channel, 1,
+                                                    self.bits_per_sample,
+                                                    self.signed_samples)
                                           for channel in unshifted])
             else:
                 #non audio commands
                 if (command == 4): #QUIT
                     self.stream_finished = True
-                    #FIXME - make bits-per-sample and sign dynamic
-                    return from_channels([from_list([], 1, 16, True)
+                    return from_channels([from_list([], 1,
+                                                    self.bits_per_sample,
+                                                    self.signed_samples)
                                           for channel in xrange(self.channels)])
                 elif (command == 5): #BLOCKSIZE
                     self.block_length = self.long()
@@ -153,6 +245,14 @@ class SHNDecoder:
                 else:
                     raise ValueError("unsupported Shorten command")
 
+    def read_diff0(self, block_length, means):
+        offset = shnmean(means)
+        energy = self.unsigned(3)
+        samples = []
+        for i in xrange(block_length):
+            residual = self.signed(energy)
+            samples.append(residual + offset)
+        return samples
 
     def read_diff1(self, block_length, previous_samples):
         samples = previous_samples[-1:]

@@ -22,7 +22,8 @@ from audiotools import (AudioFile, ChannelMask, PCMReader,
                         AiffAudio, cStringIO, EncodingError,
                         UnsupportedBitsPerSample, InvalidFile,
                         PCMReaderError,
-                        WaveContainer, AiffContainer, to_pcm_progress)
+                        WaveContainer, AiffContainer, to_pcm_progress,
+                        parse_fmt, parse_comm)
 
 import audiotools.decoders
 import os.path
@@ -105,17 +106,25 @@ class ShortenAudio(WaveContainer, AiffContainer):
             if (self.__format__ is WaveAudio):
                 for (chunk_id, chunk_data) in self.__wave_chunks__():
                     if (chunk_id == 'fmt '):
-                        (compression,
-                         self.__sample_rate__) = chunk_data.parse(
-                            "16u 16p 32u 32p 16p 16p")
-                        if (compression == 0xFFFE):
-                            self.__channel_mask__ = ChannelMask(
-                                chunk_data.parse("16p 16p 32u 16P")[0])
+                        try:
+                            (channels,
+                             self.__sample_rate__,
+                             bits_per_sample,
+                             self.__chanel_mask__) = parse_fmt(chunk_data)
+                        except (IOError,ValueError):
+                            pass
             elif (self.__format__ is AiffAudio):
+                #FIXME
                 for (chunk_id, chunk_data) in self.__aiff_chunks__():
                     if (chunk_id == 'COMM'):
-                        comm_chunk = AiffAudio.COMM_CHUNK.parse(chunk_data)
-                        self.__sample_rate__ = comm_chunk.sample_rate
+                        try:
+                            (channels,
+                             total_sample_frames,
+                             bits_per_sample,
+                             self.__sample_rate__,
+                             self.__channel_mask__) = parse_comm(chunk_data)
+                        except IOError:
+                            pass
 
     def __wave_chunks__(self):
         from .bitstream import BitstreamReader
@@ -132,7 +141,10 @@ class ShortenAudio(WaveContainer, AiffContainer):
 
         #iterate over all the non-data chunks
         while (total_size > 0):
-            (chunk_id, chunk_size) = wave_data.parse("4b 32u")
+            try:
+                (chunk_id, chunk_size) = wave_data.parse("4b 32u")
+            except IOError:
+                break
             total_size -= 8
             if (chunk_id != 'data'):
                 yield (chunk_id, wave_data.substream(chunk_size))
@@ -144,30 +156,34 @@ class ShortenAudio(WaveContainer, AiffContainer):
                 continue
 
     def __aiff_chunks__(self):
+        from .bitstream import BitstreamReader
         #FIXME - convert this to BitstreamReader
 
         total_size = sum([len(block) for block in self.__blocks__
                           if block is not None])
-        aiff_data = cStringIO.StringIO("".join([block for block in
-                                                self.__blocks__
-                                                if block is not None]))
+        aiff_data = BitstreamReader(
+            cStringIO.StringIO("".join([block for block in
+                                        self.__blocks__
+                                        if block is not None])), 0)
 
-        aiff_data.read(12)  # skip the FORMxxxxAIFF header data
+        aiff_data.skip_bytes(12)  # skip the FORMxxxxAIFF header data
         total_size -= 12
 
         #iterate over all the chunks
         while (total_size > 0):
-            header = AiffAudio.CHUNK_HEADER.parse_stream(aiff_data)
+            (chunk_id, chunk_size) = aiff_data.parse("4b 32u")
             total_size -= 8
-            if (header.chunk_id != 'SSND'):
-                yield (header.chunk_id, aiff_data.read(header.chunk_length))
-                total_size -= header.chunk_length
+            if (chunk_id != 'SSND'):
+                yield (chunk_id, aiff_data.substream(chunk_size))
+                total_size -= chunk_size
+                if (chunk_size % 2):
+                    aiff_data.skip(8)
+                    total_size -= 1
             else:
                 #This presumes that audiotools encoded
                 #the Shorten file from an AIFF source.
                 #The reference encoder places the 8 alignment
                 #bytes in the PCM stream itself, which is wrong.
-                yield (header.chunk_id, aiff_data.read(8))
                 total_size -= 8
 
     @classmethod

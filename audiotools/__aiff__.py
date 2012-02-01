@@ -62,6 +62,42 @@ def build_ieee_extended(bitstream, value):
 #######################
 
 
+def parse_comm(comm):
+    """given a COMM chunk (without the 8 byte name/size header)
+    returns (channels, total_sample_frames, bits_per_sample,
+             sample_rate, channel_mask)
+    where channel_mask is a ChannelMask object and the rest are ints
+    may raise IOError if an error occurs reading the chunk"""
+
+    (channels,
+     total_sample_frames,
+     bits_per_sample) = comm.parse("16u 32u 16u")
+    sample_rate = int(parse_ieee_extended(comm))
+
+    #this unusual arrangement is taken from
+    #the AIFF-C specification
+    if (channels <= 2):
+        channel_mask = ChannelMask.from_channels(channels)
+    elif (channels == 3):
+        channel_mask = ChannelMask.from_fields(
+            front_left=True, front_right=True,
+            front_center=True)
+    elif (channels == 4):
+        channel_mask = ChannelMask.from_fields(
+            front_left=True, front_right=True,
+            back_left=True, back_right=True)
+    elif (channels == 6):
+        channel_mask = ChannelMask.from_fields(
+            front_left=True, side_left=True,
+            front_center=True, front_right=True,
+            side_right=True, back_center=True)
+    else:
+        channel_mask = ChannelMask(0)
+
+    return (channels, total_sample_frames, bits_per_sample,
+            sample_rate, channel_mask)
+
+
 class AiffReader(PCMReader):
     """A subclass of PCMReader for reading AIFF file contents."""
 
@@ -199,34 +235,16 @@ class AiffAudio(AiffContainer):
                     (chunk_id, chunk_size) = aiff_file.parse("4b 32u")
                     total_size -= 8
                     if (chunk_id == 'COMM'):
-                        (self.__channels__,
-                         self.__total_sample_frames__,
-                         self.__bits_per_sample__) = aiff_file.parse(
-                            "16u 32u 16u")
-                        self.__sample_rate__ = int(
-                            parse_ieee_extended(aiff_file))
-
-                        #this unusual arrangement is taken from
-                        #the AIFF-C specification
-                        if (self.__channels__ <= 2):
-                            self.__channel_mask__ = ChannelMask.from_channels(
-                                self.__channels__)
-                        elif (self.__channels__ == 3):
-                            self.__channel_mask__ = ChannelMask.from_fields(
-                                front_left=True, front_right=True,
-                                front_center=True)
-                        elif (self.__channels__ == 4):
-                            self.__channel_mask__ = ChannelMask.from_fields(
-                                front_left=True, front_right=True,
-                                back_left=True, back_right=True)
-                        elif (self.__channels__ == 6):
-                            self.__channel_mask__ = ChannelMask.from_fields(
-                                front_left=True, side_left=True,
-                                front_center=True, front_right=True,
-                                side_right=True, back_center=True)
-                        else:
-                            self.__channel_mask__ = ChannelMask(0)
-                        break
+                        try:
+                            (self.__channels__,
+                             self.__total_sample_frames__,
+                             self.__bits_per_sample__,
+                             self.__sample_rate__,
+                             self.__channel_mask__) = parse_comm(
+                                aiff_file.substream(chunk_size))
+                            break
+                        except IOError:
+                            continue
                     elif (not frozenset(chunk_id).issubset(
                             self.PRINTABLE_ASCII)):
                         raise InvalidWave(_(u"Invalid AIFF chunk ID"))
