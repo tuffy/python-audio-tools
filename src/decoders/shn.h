@@ -26,8 +26,11 @@ typedef enum {OK, ERROR} status;
 
 #define COMMAND_SIZE 2
 #define ENERGY_SIZE 3
+#define LPC_COUNT_SIZE 2
+#define LPC_COEFF_SIZE 5
 #define VERBATIM_CHUNK_SIZE 5
 #define VERBATIM_BYTE_SIZE 8
+#define SHIFT_SIZE 2
 
 #define QLPC_SIZE 2
 #define QLPC_QUANT 5
@@ -67,8 +70,17 @@ typedef struct {
     unsigned signed_samples;
     unsigned sample_rate;
     unsigned channel_mask;
+    int stream_finished;
+
+    /*values that persist between commands*/
+    array_ia* means;
+    array_ia* previous_samples;
 
     /*temporary buffers we don't want to allocate all the time*/
+    array_ia* unshifted;
+    array_ia* samples;
+    array_i* pcm_header;
+    array_i* pcm_footer;
 
     /*a framelist generator*/
     PyObject* audiotools_pcm;
@@ -107,6 +119,10 @@ SHNDecoder_channel_mask(decoders_SHNDecoder *self, void *closure);
 static PyObject*
 SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args);
 
+/*returns a pair of strings before and after PCM data*/
+static PyObject*
+SHNDecoder_pcm_split(decoders_SHNDecoder* self, PyObject *args);
+
 PyGetSetDef SHNDecoder_getseters[] = {
     {"channels",
      (getter)SHNDecoder_channels, NULL, "channels", NULL},
@@ -124,6 +140,8 @@ PyMethodDef SHNDecoder_methods[] = {
      METH_VARARGS, "Reads a frame of data from the SHN file"},
     {"close", (PyCFunction)SHNDecoder_close,
      METH_NOARGS, "Closes the SHN decoder stream"},
+    {"pcm_split", (PyCFunction)SHNDecoder_pcm_split,
+     METH_NOARGS, "Returns a pair of strings before and after PCM data"},
     {NULL}
 };
 
@@ -168,6 +186,40 @@ PyTypeObject decoders_SHNDecoderType = {
     0,                         /* tp_alloc */
     SHNDecoder_new,            /* tp_new */
 };
+
+/*given a list of samples and a set of means for the given channel,
+  reads a DIFF0 command and sets samples to "block_length" values*/
+static void
+read_diff0(BitstreamReader* bs, unsigned block_length,
+           const array_i* means, array_i* samples);
+
+/*given a list of previous samples (which may be empty)
+  reads a DIFF1 command with the given block length
+  and sets samples to "block_length" values*/
+static void
+read_diff1(BitstreamReader* bs, unsigned block_length,
+           array_i* previous_samples, array_i* samples);
+
+/*given a list of previous samples (which may be empty)
+  reads a DIFF2 command with the given block length
+  and sets samples to "block_length" values*/
+static void
+read_diff2(BitstreamReader* bs, unsigned block_length,
+           array_i* previous_samples, array_i* samples);
+
+/*given a list of previous samples (which may be empty)
+  reads a DIFF3 command with the given block length
+  and sets samples to "block_length" values*/
+static void
+read_diff3(BitstreamReader* bs, unsigned block_length,
+           array_i* previous_samples, array_i* samples);
+
+static void
+read_qlpc(BitstreamReader* bs, unsigned block_length,
+          array_i* previous_samples, array_i* means, array_i* samples);
+
+static int
+shnmean(const array_i* values);
 
 static int
 process_header(BitstreamReader* bs,

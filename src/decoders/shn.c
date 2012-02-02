@@ -31,7 +31,6 @@ SHNDecoder_new(PyTypeObject *type,
     return (PyObject *)self;
 }
 
-/*FIXME*/
 int
 SHNDecoder_init(decoders_SHNDecoder *self,
                 PyObject *args, PyObject *kwds)
@@ -41,6 +40,19 @@ SHNDecoder_init(decoders_SHNDecoder *self,
 
     self->filename = NULL;
     self->bitstream = NULL;
+    self->stream_finished = 0;
+
+    self->means = array_ia_new();
+    self->previous_samples = array_ia_new();
+
+    /*setup temporary buffers*/
+    self->samples = array_ia_new();
+    self->unshifted = array_ia_new();
+    self->pcm_header = array_i_new();
+    self->pcm_footer = array_i_new();
+
+    if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
+        return -1;
 
     if (!PyArg_ParseTuple(args, "s", &filename))
         return -1;
@@ -60,15 +72,16 @@ SHNDecoder_init(decoders_SHNDecoder *self,
     if (!setjmp(*br_try(self->bitstream))) {
         uint8_t magic_number[4];
         unsigned version;
+        unsigned i;
 
         self->bitstream->parse(self->bitstream, "4b 8u", magic_number, version);
         if (memcmp(magic_number, "ajkg", 4)) {
-            PyErr_SetString(PyExc_IOError, "invalid magic number");
+            PyErr_SetString(PyExc_ValueError, "invalid magic number");
             br_etry(self->bitstream);
             return -1;
         }
         if (version != 2) {
-            PyErr_SetString(PyExc_IOError, "invalid Shorten version");
+            PyErr_SetString(PyExc_ValueError, "invalid Shorten version");
             br_etry(self->bitstream);
             return -1;
         }
@@ -90,9 +103,15 @@ SHNDecoder_init(decoders_SHNDecoder *self,
             self->signed_samples = ((self->header.file_type == 3) ||
                                     (self->header.file_type == 5));
         } else {
-            PyErr_SetString(PyExc_IOError, "unsupported Shorten file type");
+            PyErr_SetString(PyExc_ValueError, "unsupported Shorten file type");
             br_etry(self->bitstream);
             return -1;
+        }
+
+        for (i = 0; i < self->header.channels; i++) {
+            array_i* means = self->means->append(self->means);
+            means->mset(means, self->header.mean_count, 0);
+            self->previous_samples->append(self->previous_samples);
         }
 
         /*process first instruction for wave/aiff header, if present*/
@@ -102,8 +121,8 @@ SHNDecoder_init(decoders_SHNDecoder *self,
             return -1;
         }
 
-
         br_etry(self->bitstream);
+
         return 0;
     } else {
         /*read error in Shorten header*/
@@ -116,6 +135,15 @@ SHNDecoder_init(decoders_SHNDecoder *self,
 void
 SHNDecoder_dealloc(decoders_SHNDecoder *self)
 {
+    self->means->del(self->means);
+    self->previous_samples->del(self->previous_samples);
+    self->samples->del(self->samples);
+    self->unshifted->del(self->unshifted);
+    self->pcm_header->del(self->pcm_header);
+    self->pcm_footer->del(self->pcm_footer);
+
+    Py_XDECREF(self->audiotools_pcm);
+
     if (self->bitstream != NULL) {
         self->bitstream->close(self->bitstream);
     }
@@ -161,8 +189,416 @@ SHNDecoder_channel_mask(decoders_SHNDecoder *self, void *closure)
 PyObject*
 SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
 {
-    Py_INCREF(Py_None);
-    return Py_None;
+    unsigned c = 0;
+
+    self->samples->reset(self->samples);
+    self->unshifted->reset(self->unshifted);
+
+    if (self->stream_finished) {
+        return empty_FrameList(self->audiotools_pcm,
+                               self->header.channels,
+                               self->bits_per_sample);
+    }
+
+    /*FIXME - handle disabling the interpreter here*/
+
+    if (!setjmp(*br_try(self->bitstream))) {
+        while (1) {
+            const unsigned command = read_unsigned(self->bitstream,
+                                                   COMMAND_SIZE);
+
+            if (((FN_DIFF0 <= command) && (command <= FN_DIFF3)) ||
+                ((FN_QLPC <= command) && (command <= FN_ZERO))) {
+                /*audio data commands*/
+                array_i* means = self->means->_[c];
+                array_i* previous_samples = self->previous_samples->_[c];
+                array_i* samples = self->samples->append(self->samples);
+                array_i* unshifted = self->unshifted->append(self->unshifted);
+
+                switch (command) {
+                case FN_DIFF0:
+                    read_diff0(self->bitstream, self->block_length, means,
+                               samples);
+                    break;
+                case FN_DIFF1:
+                    read_diff1(self->bitstream, self->block_length,
+                               previous_samples, samples);
+                    break;
+                case FN_DIFF2:
+                    read_diff2(self->bitstream, self->block_length,
+                               previous_samples, samples);
+                    break;
+                case FN_DIFF3:
+                    read_diff3(self->bitstream, self->block_length,
+                               previous_samples, samples);
+                    break;
+                case FN_QLPC:
+                    read_qlpc(self->bitstream, self->block_length,
+                              previous_samples, means, samples);
+                    break;
+                case FN_ZERO:
+                    samples->mset(samples, self->block_length, 0);
+                    break;
+                default:
+                    break; /*can't get here*/
+                }
+
+                /*calculate next mean for given channel*/
+                means->append(means, shnmean(samples));
+                means->tail(means, self->header.mean_count, means);
+
+                /*wrap samples for next set of channels*/
+                samples->tail(samples, MAX(3, self->header.max_LPC),
+                              previous_samples);
+
+                /*apply any left shift to channel*/
+                if (self->left_shift) {
+                    unsigned i;
+                    for (i = 0; i < samples->len; i++)
+                        unshifted->append(unshifted,
+                                          samples->_[i] << self->left_shift);
+                } else {
+                    samples->copy(samples, unshifted);
+                }
+
+                /*if stream is unsigned, convert unshifted samples to signed*/
+                if (!self->signed_samples) {
+                    const int adjustment = 1 << (self->bits_per_sample - 1);
+                    unsigned i;
+                    for (i = 0; i < unshifted->len; i++)
+                        unshifted->_[i] -= adjustment;
+                }
+
+                /*move on to next channel*/
+                c++;
+
+                /*once all channels are constructed,
+                  return a complete set of PCM frames*/
+                if (c == self->header.channels) {
+                    br_etry(self->bitstream);
+                    return array_ia_to_FrameList(self->audiotools_pcm,
+                                                 self->unshifted,
+                                                 self->bits_per_sample);
+                }
+            } else if (((FN_QUIT <= command) && (command <= FN_BITSHIFT)) ||
+                       (command == FN_VERBATIM)) {
+                unsigned verbatim_size;
+                unsigned i;
+
+                /*non audio commands*/
+                switch (command) {
+                case FN_QUIT:
+                    self->stream_finished = 1;
+                    br_etry(self->bitstream);
+                    return empty_FrameList(self->audiotools_pcm,
+                                           self->header.channels,
+                                           self->bits_per_sample);
+                    break;
+                case FN_BLOCKSIZE:
+                    self->block_length = read_long(self->bitstream);
+                    break;
+                case FN_BITSHIFT:
+                    self->left_shift = read_unsigned(self->bitstream,
+                                                     SHIFT_SIZE);
+                    break;
+                case FN_VERBATIM:
+                    verbatim_size = read_unsigned(self->bitstream,
+                                                  VERBATIM_CHUNK_SIZE);
+                    for (i = 0; i < verbatim_size; i++)
+                        skip_unsigned(self->bitstream, VERBATIM_BYTE_SIZE);
+                    break;
+                default:
+                    break; /*can't get here*/
+                }
+            } else {
+                /*unknown command*/
+                br_etry(self->bitstream);
+                PyErr_SetString(PyExc_ValueError,
+                                "unknown command in Shorten stream");
+                return NULL;
+            }
+        }
+    } else {
+        br_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error reading Shorten file");
+        return NULL;
+    }
+}
+
+static void
+read_diff0(BitstreamReader* bs, unsigned block_length,
+           const array_i* means, array_i* samples)
+{
+    const int offset = shnmean(means);
+    const unsigned energy = read_unsigned(bs, ENERGY_SIZE);
+    unsigned i;
+
+    samples->reset(samples);
+
+    for (i = 0; i < block_length; i++) {
+        const int residual = read_signed(bs, energy);
+        samples->append(samples, residual + offset);
+    }
+}
+
+static void
+read_diff1(BitstreamReader* bs, unsigned block_length,
+           array_i* previous_samples, array_i* samples)
+{
+    unsigned i;
+    unsigned energy;
+
+    /*ensure "previous_samples" contains at least 1 value*/
+    if (previous_samples->len < 1) {
+        samples->mset(samples, 1 - previous_samples->len, 0);
+        samples->extend(samples, previous_samples);
+    } else {
+        previous_samples->tail(previous_samples, 1, samples);
+    }
+
+    energy = read_unsigned(bs, ENERGY_SIZE);
+
+    /*process the residuals to samples*/
+    for (i = 1; i < (block_length + 1); i++) {
+        const int residual = read_signed(bs, energy);
+        samples->append(samples, samples->_[i - 1] + residual);
+    }
+
+    /*truncate samples to block length*/
+    samples->tail(samples, block_length, samples);
+}
+
+static void
+read_diff2(BitstreamReader* bs, unsigned block_length,
+           array_i* previous_samples, array_i* samples)
+{
+    unsigned i;
+    unsigned energy;
+
+    /*ensure "previous_samples" contains at least 2 values*/
+    if (previous_samples->len < 2) {
+        samples->mset(samples, 2 - previous_samples->len, 0);
+        samples->extend(samples, previous_samples);
+    } else {
+        previous_samples->tail(previous_samples, 2, samples);
+    }
+
+    energy = read_unsigned(bs, ENERGY_SIZE);
+
+    /*process the residuals to samples*/
+    for (i = 2; i < (block_length + 2); i++) {
+        const int residual = read_signed(bs, energy);
+        samples->append(samples,
+                        (2 * samples->_[i - 1]) - samples->_[i - 2] + residual);
+    }
+
+    /*truncate samples to block length*/
+    samples->tail(samples, block_length, samples);
+}
+
+static void
+read_diff3(BitstreamReader* bs, unsigned block_length,
+           array_i* previous_samples, array_i* samples)
+{
+    unsigned i;
+    unsigned energy;
+
+    /*ensure "previous_samples" contains at least 3 values*/
+    if (previous_samples->len < 3) {
+        samples->mset(samples, 3 - previous_samples->len, 0);
+        samples->extend(samples, previous_samples);
+    } else {
+        previous_samples->tail(previous_samples, 3, samples);
+    }
+
+    energy = read_unsigned(bs, ENERGY_SIZE);
+
+    /*process the residuals to samples*/
+    for (i = 3; i < (block_length + 3); i++) {
+        const int residual = read_signed(bs, energy);
+        samples->append(samples,
+                        (3 * (samples->_[i - 1] - samples->_[i - 2])) +
+                        samples->_[i - 3] + residual);
+    }
+
+    /*truncate samples to block length*/
+    samples->tail(samples, block_length, samples);
+}
+
+static void
+read_qlpc(BitstreamReader* bs, unsigned block_length,
+          array_i* previous_samples, array_i* means, array_i* samples)
+{
+    /*read some QLPC setup values*/
+    const int offset = shnmean(means);
+    const unsigned energy = read_unsigned(bs, ENERGY_SIZE);
+    const unsigned LPC_count = read_unsigned(bs, LPC_COUNT_SIZE);
+    array_i* LPC_coeff = array_i_new();
+    array_i* offset_samples = array_i_new();
+    array_i* unoffset_samples = array_i_new();
+
+    if (!setjmp(*br_try(bs))) {
+        int i;
+
+        for (i = 0; i < LPC_count; i++)
+            LPC_coeff->append(LPC_coeff, read_signed(bs, LPC_COEFF_SIZE));
+
+        /*ensure "previous_samples" contains at least "LPC count" values*/
+        if (previous_samples->len < LPC_count) {
+            offset_samples->mset(offset_samples,
+                                 LPC_count - previous_samples->len, 0);
+            offset_samples->extend(offset_samples, previous_samples);
+        } else {
+            previous_samples->tail(previous_samples, LPC_count, offset_samples);
+        }
+
+        /*process the residuals to unoffset samples*/
+        for (i = 0; i < block_length; i++) {
+            const int residual = read_signed(bs, energy);
+            int sum = 1 << 5;
+            int j;
+            for (j = 0; j < LPC_count; j++) {
+                if ((i - j - 1) < 0) {
+                    sum += LPC_coeff->_[j] *
+                        (offset_samples->_[LPC_count + (i - j - 1)] -
+                         offset);
+                } else {
+                    sum += LPC_coeff->_[j] * unoffset_samples->_[i - j - 1];
+                }
+            }
+            unoffset_samples->append(unoffset_samples, (sum >> 5) + residual);
+        }
+
+        /*reapply offset to unoffset samples*/
+        samples->reset(samples);
+        for (i = 0; i < unoffset_samples->len; i++) {
+            samples->append(samples, unoffset_samples->_[i] + offset);
+        }
+
+        /*deallocate temporary arrays before returning successfully*/
+        LPC_coeff->del(LPC_coeff);
+        offset_samples->del(offset_samples);
+        unoffset_samples->del(unoffset_samples);
+        br_etry(bs);
+    } else {
+        /*error reading QLPC, so deallocate temporary arrays*/
+        LPC_coeff->del(LPC_coeff);
+        offset_samples->del(offset_samples);
+        unoffset_samples->del(unoffset_samples);
+        br_etry(bs);
+
+        /*before aborting to the next spot on the abort stack*/
+        br_abort(bs);
+    }
+}
+
+static int
+shnmean(const array_i* values)
+{
+    return ((int)(values->len / 2) + values->sum(values)) / (int)(values->len);
+}
+
+static PyObject*
+SHNDecoder_pcm_split(decoders_SHNDecoder* self, PyObject *args)
+{
+    if (!setjmp(*br_try(self->bitstream))) {
+        array_i* header = self->pcm_header;
+        array_i* footer = self->pcm_footer;
+        array_i* current = header;
+        uint8_t* header_s;
+        uint8_t* footer_s;
+        PyObject* tuple;
+
+        unsigned command;
+        unsigned i;
+
+        header->reset(header);
+        footer->reset(footer);
+
+        /*walk through file, processing all commands*/
+        do {
+            unsigned energy;
+            unsigned LPC_count;
+            unsigned verbatim_size;
+
+            command = read_unsigned(self->bitstream, COMMAND_SIZE);
+
+            switch (command) {
+            case FN_DIFF0:
+            case FN_DIFF1:
+            case FN_DIFF2:
+            case FN_DIFF3:
+                /*all the DIFF commands have the same structure*/
+                energy = read_unsigned(self->bitstream, ENERGY_SIZE);
+                for (i = 0; i < self->block_length; i++) {
+                    skip_signed(self->bitstream, energy);
+                }
+                current = footer;
+                break;
+            case FN_QUIT:
+                self->stream_finished = 1;
+                break;
+            case FN_BLOCKSIZE:
+                self->block_length = read_long(self->bitstream);
+                break;
+            case FN_BITSHIFT:
+                skip_unsigned(self->bitstream, SHIFT_SIZE);
+                break;
+            case FN_QLPC:
+                energy = read_unsigned(self->bitstream, ENERGY_SIZE);
+                LPC_count = read_unsigned(self->bitstream, LPC_COUNT_SIZE);
+                for (i = 0; i < LPC_count; i++) {
+                    skip_signed(self->bitstream, LPC_COEFF_SIZE);
+                }
+                for (i = 0; i < self->block_length; i++) {
+                    skip_signed(self->bitstream, energy);
+                }
+                current = footer;
+                break;
+            case FN_ZERO:
+                current = footer;
+                break;
+            case FN_VERBATIM:
+                /*any VERBATIM commands have their data appended
+                  to header or footer*/
+                verbatim_size = read_unsigned(self->bitstream,
+                                              VERBATIM_CHUNK_SIZE);
+                for (i = 0; i < verbatim_size; i++) {
+                    current->append(current,
+                                    read_unsigned(self->bitstream,
+                                                  VERBATIM_BYTE_SIZE));
+                }
+                break;
+            }
+        } while (command != FN_QUIT);
+
+        br_etry(self->bitstream);
+
+        /*once all commands have been processed,
+          transform the bytes in header and footer to strings*/
+        header_s = malloc(sizeof(uint8_t) * header->len);
+        for (i = 0; i < header->len; i++)
+            header_s[i] = (uint8_t)(header->_[i] & 0xFF);
+
+        footer_s = malloc(sizeof(uint8_t) * footer->len);
+        for (i = 0; i < footer->len; i++)
+            footer_s[i] = (uint8_t)(footer->_[i] & 0xFF);
+
+        /*generate a tuple from the strings*/
+        tuple = Py_BuildValue("(s#s#)",
+                              header_s, header->len,
+                              footer_s, footer->len);
+
+        /*deallocate temporary space before returning tuple*/
+        free(header_s);
+        free(footer_s);
+
+        return tuple;
+    } else {
+        br_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error reading Shorten file");
+        return NULL;
+    }
 }
 
 static unsigned
@@ -217,15 +653,15 @@ process_header(BitstreamReader* bs,
         BitstreamReader* verbatim;
         unsigned verbatim_size;
 
-        bs->unmark(bs);
-
         verbatim = read_verbatim(bs, &verbatim_size);
-
         verbatim->mark(verbatim);
+
         if (!read_wave_header(verbatim, verbatim_size,
                               sample_rate, channel_mask)) {
             verbatim->unmark(verbatim);
             verbatim->close(verbatim);
+            bs->rewind(bs);
+            bs->unmark(bs);
             return 0;
         } else {
             verbatim->rewind(verbatim);
@@ -235,6 +671,8 @@ process_header(BitstreamReader* bs,
                               sample_rate, channel_mask)) {
             verbatim->unmark(verbatim);
             verbatim->close(verbatim);
+            bs->rewind(bs);
+            bs->unmark(bs);
             return 0;
         } else {
             verbatim->rewind(verbatim);
@@ -244,6 +682,8 @@ process_header(BitstreamReader* bs,
           so use dummy values again*/
         verbatim->close(verbatim);
         verbatim->unmark(verbatim);
+        bs->rewind(bs);
+        bs->unmark(bs);
         *sample_rate = 44100;
         *channel_mask = 0;
         return 0;

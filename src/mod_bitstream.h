@@ -33,11 +33,16 @@ BitstreamReader_Substream(PyObject *dummy, PyObject *args);
 PyObject*
 bitstream_format_size(PyObject *dummy, PyObject *args);
 
+PyObject*
+bitstream_format_byte_size(PyObject *dummy, PyObject *args);
+
 PyMethodDef module_methods[] = {
     {"Substream", (PyCFunction)BitstreamReader_Substream,
      METH_VARARGS, "build a fresh Substream BitstreamReader"}, /*FIXME*/
     {"format_size", (PyCFunction)bitstream_format_size,
-     METH_VARARGS, "Calculate size of format string"}, /*FIXME*/
+     METH_VARARGS, "Calculate size of format string in bits"}, /*FIXME*/
+    {"format_byte_size", (PyCFunction)bitstream_format_byte_size,
+     METH_VARARGS, "Calculate size of format string in bytes"},
     {NULL}
 };
 
@@ -336,13 +341,25 @@ PyTypeObject bitstream_HuffmanTreeType = {
 };
 
 PyObject*
-bitstream_format_size(PyObject *dummy, PyObject *args) {
+bitstream_format_size(PyObject *dummy, PyObject *args)
+{
     char* format_string;
 
     if (!PyArg_ParseTuple(args, "s", &format_string))
         return NULL;
 
     return Py_BuildValue("I", bs_format_size(format_string));
+}
+
+PyObject*
+bitstream_format_byte_size(PyObject *dummy, PyObject *args)
+{
+    char* format_string;
+
+    if (!PyArg_ParseTuple(args, "s", &format_string))
+        return NULL;
+
+    return Py_BuildValue("I", bs_format_byte_size(format_string));
 }
 
 typedef struct {

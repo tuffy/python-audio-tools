@@ -182,7 +182,6 @@ class SHNDecoder:
         unshifted = []
         while (True):
             command = self.unsigned(2)
-            print "command : %s" % (command)
             if ((0 <= command) and (command <= 3) or
                 (7 <= command) and (command <= 8)):
                 #audio data commands
