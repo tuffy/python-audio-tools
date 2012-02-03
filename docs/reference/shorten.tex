@@ -716,566 +716,118 @@ In this example:
 }
 \EALGORITHM
 
-%% Shorten is one of the earliest lossless audio compression formats.
-%% Though superseded by FLAC and other formats, it remains interesting
-%% from a historical perspective.
+\section{Shorten Encoding}
+As with decoding, one needs \texttt{unsigned}, \texttt{signed} and \texttt{long}
+functions:
 
-%% \section{Shorten Data Types}
-%% Notably, almost nothing in the Shorten file format is byte-aligned.
-%% Instead, it uses its own set of variable-length types which I'll
-%% refer to as \texttt{unsigned}, \texttt{signed} and \texttt{long}.
+\subsubsection{Writing \texttt{unsigned}}
+{\relsize{-1}
+  \ALGORITHM{a bit count $c$, an unsigned value}{a written \texttt{unsigned} value}
+  \SetKwData{VALUE}{value}
+  \SetKwData{MSB}{MSB}
+  \SetKwData{LSB}{LSB}
+  $\text{\MSB} \leftarrow \lfloor\text{\VALUE} \div 2 ^ c\rfloor$\;
+  $\text{\LSB} \leftarrow \text{\VALUE} - \text{\MSB} \times 2 ^ c$\;
+  \WUNARY \MSB with stop bit 1\;
+  \WRITE \LSB in $c$ unsigned bits\;
+  \EALGORITHM
+}
 
-%% \begin{wrapfigure}[16]{r}{2in}
-%% \includegraphics{figures/shorten/unsigned.pdf}
-%% \caption{Unsigned}
-%% \includegraphics{figures/shorten/signed.pdf}
-%% \caption{Signed}
-%% \end{wrapfigure}
-%% An \texttt{unsigned} field of a certain \VAR{size} means we first
-%% take a unary-encoded\footnote{In this instance, unary-encoding is a simple
-%% matter of counting the number of 0 bits before the next 1 bit.
-%% The resulting sum is the value.}, number of high bits and combine
-%% the resulting value with \VAR{size} number of low bits.
-%% For example, given a \VAR{size} of 2 and the bits `\texttt{0 0 1 1 1}',
-%% the high unary value of `\texttt{0 0 1}' combines with the low
-%% raw value of `\texttt{1 1}' resulting in a decimal value of 11.
+\subsubsection{Writing \texttt{signed}}
+{\relsize{-1}
+  \ALGORITHM{a bit count $c$, a signed value}{a written \texttt{signed} value}
+  \SetKwData{VALUE}{value}
+  \eIf{$\text{\VALUE} \geq 0$}{
+    write $\texttt{unsigned}(c + 1~,~\text{\VALUE} \times 2)$\;
+  }{
+    write $\texttt{unsigned}(c + 1~,~(-\text{\VALUE} - 1) \times 2 + 1)$\;
+  }
 
-%% A \texttt{signed} field is similar, but its low value contains
-%% one additional trailing bit for the sign value.
-%% {\relsize{-2}
-%% \begin{equation*}
-%% \text{signed value} =
-%% \begin{cases}
-%% \text{unsigned value} & \text{if sign bit} = 0 \\
-%% -\text{unsigned value} - 1 & \text{if sign bit} = 1
-%% \end{cases}
-%% \end{equation*}
-%% }
-%% For example, given a \VAR{size} of 3 and the bits `\texttt{0 1 1 0 1 1}',
-%% the high unary value of `\texttt{0 1}' combines with the low
-%% raw value of `\texttt{1 0 1}' and the sign bit `\texttt{1}'
-%% resulting in a decimal value of -14.
-%% Note that the sign bit is counted separately, so we're
-%% actually reading 4 additional bits after the unary value in this case.
+  \EALGORITHM
+}
 
-%% Lastly, and most confusingly, a \texttt{long} field is the combination
-%% of two separate \texttt{unsigned} fields.
-%% The first, of size 2, determines the size value of the second.
-%% For example, given the bits `\texttt{1 1 1 1 1 0 1}',
-%% the first \texttt{unsigned} field of `\texttt{1 1 1}' has the value
-%% of 3 (unary 0 combined with a raw value of 3) - which is the size
-%% of the next \texttt{unsigned} field.
-%% That field, in turn, consists of the bits `\texttt{1 1 0 1}'
-%% which is 5 (unary 0 combined with a raw value of 5).
-%% So, the value of the entire \texttt{long} field is 5.
 
-%% A Shorten file consists almost entirely of these three types
-%% in various sizes.
-%% Therefore, when one reads ``\texttt{unsigned(3)}'' in a Shorten field
-%% description, it means an \texttt{unsigned} field of size 3.
+\subsubsection{Writing \texttt{long}}
+{\relsize{-1}
+  \ALGORITHM{an unsigned value}{a written \texttt{long} value}
+  \SetKwData{VALUE}{value}
+  \eIf{$\text{\VALUE} = 0$}{
+    write $\texttt{unsigned}(2~,~0)$\;
+    write $\texttt{unsigned}(0~,~0)$\;
+  }{
+    $\text{LSBs} \leftarrow \lfloor\log_2(\text{\VALUE})\rfloor + 1$\;
+    write $\texttt{unsigned}(2~,~\text{LSBs})$\;
+    write $\texttt{unsigned}(\text{LSBs}~,~\text{\VALUE})$\;
+  }
+  \EALGORITHM
+}
 
-%% \pagebreak
+\clearpage
 
-%% \section{the Shorten File Stream}
-%% \label{shorten_stream}
+{\relsize{-1}
+  \ALGORITHM{PCM frames, a block size parameter, a wave or aiff header and footer}{an encoded Shorten file}
+  \SetKwData{BITSPERSAMPLE}{bits per sample}
+  \SetKwData{CHANNELS}{channel count}
+  \SetKwData{BLOCKSIZE}{block size}
+  \WRITE \texttt{"ajkg"} in 4 bytes\;
+  \WRITE 2 in 8 unsigned bits\;
+  \uIf{$\BITSPERSAMPLE = 8$}{
+    write \texttt{long}(2)\tcc*[r]{unsigned 8 bit}
+  }
+  \uElseIf{$\BITSPERSAMPLE = 16$}{
+    write \texttt{long}(5)\tcc*[r]{signed 16 bit}
+  }
+  \Else{
+    unsupported number of bits per sample\;
+  }
+  write \texttt{long}(\CHANNELS)\;
+  write \texttt{long}(\BLOCKSIZE)\;
+  write \texttt{long}(0)\tcc*[r]{maximum LPC}
+  write \texttt{long}(0)\tcc*[r]{mean count}
+  write \texttt{long}(0)\tcc*[r]{bytes to skip}
+  \BlankLine
+  write \texttt{unsigned}(2~,~9)\tcc*[r]{VERBATIM command}
+  write \texttt{unsigned}(5~,~header byte count)\;
+  \ForEach{byte \IN header}{
+    write \texttt{unsigned}(8~,~\textit{byte})\;
+  }
+  encode PCM data to 1 or more audio commands\;
+  \BlankLine
+  \If{$\text{footer byte count} > 0$}{
+    write \texttt{unsigned}(2~,~9)\tcc*[r]{VERBATIM command}
+    write \texttt{unsigned}(5~,~footer byte count)\;
+    \ForEach{byte \IN footer}{
+      write \texttt{unsigned}(8~,~\textit{byte})\;
+    }
+  }
+  \BlankLine
+  write \texttt{unsigned}(2~,~5)\tcc*[r]{QUIT command}
+  \BlankLine
+  \tcc{Shorten output (not including 5 bytes of magic + version)
+  must be a multiple of 4 bytes, or the reference decoder's
+  bit stream reader will fail}
+  byte align the stream\;
+  \While{$(\text{total file size} - 5) \bmod 4 = 0$}{
+    \WRITE 0 in 8 unsigned bits\;
+  }
+\EALGORITHM
+}
 
-%% \par
-%% \noindent
-%% \VAR{Channels} is the number of channels in the audio stream.
-%% \VAR{Block Length} is the length of each command block, in samples.
-%% \VAR{Max LPC} is the maximum LPC value a block may have.
-%% \VAR{Samples to Wrap} is the number of samples to be wrapped around
-%% from the top of an output block to the bottom.
-%% This will be explained in more detail in the decoding section.
+\clearpage
 
-%% \pagebreak
-
-%% \section{Shorten Decoding}
-%% \begin{wrapfigure}[4]{r}{2.75in}
-%% \begin{tabular}{|r|l||r|l|}
-%% \hline
-%% value & command & value & command \\
-%% \hline
-%% 0 & \texttt{DIFF0} & 5 & \texttt{BLOCKSIZE} \\
-%% 1 & \texttt{DIFF1} & 6 & \texttt{BITSHIFT} \\
-%% 2 & \texttt{DIFF2} & 7 & \texttt{QLPC} \\
-%% 3 & \texttt{DIFF3} & 8 & \texttt{ZERO} \\
-%% 4 & \texttt{QUIT} & 9 & \texttt{VERBATIM} \\
-%% \hline
-%% \end{tabular}
-%% \end{wrapfigure}
-%% Internally,
-%% a Shorten file acts as a list of commands to be executed by a tiny
-%% virtual machine.\footnote{Interestingly, although
-%% Shorten's successor, FLAC, presents its input as frames and subframes,
-%% references to a FLAC virtual machine are still present in its source code.}
-%% Each command is a \texttt{unsigned(2)} field followed by zero or more
-%% arguments.
-
-%% \subsection{the DIFF Command}
-%% All four \texttt{DIFF} commands are structured the same:
-%% \begin{figure}[h]
-%% \includegraphics{figures/shorten/diff.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% There are \VAR{Block Size} number of residuals per \texttt{DIFF}
-%% (whose initial value is determined by the Shorten header)
-%% and each one's size is determined by \VAR{Energy Size}.
-%% The process of transforming these residuals into samples
-%% depends on the \texttt{DIFF} command and the values of
-%% previously decoded samples.
-
-%% \begin{minipage}{\linewidth}
-%% \renewcommand\thefootnote{\thempfootnote}
-%% \begin{tabular}{|c| >{$}l<{$} |}
-%% \hline
-%% Command & \text{Calculation} \\
-%% \hline
-%% \texttt{DIFF0} & Sample_i = Residual_i + Coffset\footnote{See page \pageref{shorten_coffset}} \\
-%% \texttt{DIFF1} & Sample_i = Sample_{i - 1} + Residual_i  \\
-%% \texttt{DIFF2} & Sample_i = (2 \times Sample_{i - 1}) - Sample_{i - 2} + Residual_i \\
-%% \texttt{DIFF3} & Sample_i = (3 \times (Sample_{i - 1} - Sample_{i - 2})) + Sample_{i - 3} + Residual_i \\
-%% \hline
-%% \end{tabular}
-%% \end{minipage}
-%% \par
-%% \noindent
-%% For example, given a \texttt{DIFF1} command at the stream's beginning
-%% and the residual values 10, 1, 2, -2, 1 and -1, samples are
-%% calculated as follows:
-%% \begin{table}[h]
-%% \begin{tabular}{|c|r|>{$}r<{$}|}
-%% \hline
-%% Index & Residual & \text{Sample} \\
-%% \hline
-%% -1 & (before stream) & \text{(not output) } \bf0 \\
-%% \hline
-%% 0 & 10 & 0 + 10 = \bf10 \\
-%% 1 & 1 & 10 + 1 = \bf11 \\
-%% 2 & 2 & 11 + 2 = \bf13 \\
-%% 3 & -2 & 13 - 2 = \bf11 \\
-%% 4 & 1 & 11 + 1 = \bf12 \\
-%% 5 & -1 & 12 - 1 = \bf11 \\
-%% \hline
-%% \end{tabular}
-%% \end{table}
-
-%% \pagebreak
-
-%% \subsection{Channels and Wrapping}
-%% The audio commands \texttt{DIFF}, \texttt{QLPC} and \texttt{ZERO} send
-%% their samples to channels in order.
-%% For example, a stream of \texttt{DIFF} commands in a 2 channel stereo
-%% stream (a very typical configuration) sends $\texttt{DIFF}_1$ to
-%% the left channel, $\texttt{DIFF}_2$ to the right channel,
-%% $\texttt{DIFF}_3$ to left channel, $\texttt{DIFF}_4$ to the right channel
-%% and so on.
-
-%% However, recall that most of the \texttt{DIFF} commands require
-%% previously decoded samples as part of their calculation.
-%% What this means is that $\texttt{DIFF}_3$ takes the last
-%% few samples from $\texttt{DIFF}_1$ in order to apply its residuals
-%% (since both are on the left channel) and $\texttt{DIFF}_4$
-%% takes the last few samples from $\texttt{DIFF}_2$.
-
-%% This is where the header's \VAR{Samples to Wrap} field comes into play.
-%% Its value is the number of samples to be wrapped from the top of the buffer
-%% to its pre-zero values.
-%% For example, if \VAR{Sample Count} is 256 and \VAR{Samples to Wrap} is 3
-%% (another typical configuration),
-%% $\text{Buffer}_{-1}$ takes the value of $\text{Buffer}_{255}$,
-%% $\text{Buffer}_{-2}$ takes the value of $\text{Buffer}_{254}$, and
-%% $\text{Buffer}_{-3}$ takes the value of $\text{Buffer}_{253}$.
-%% However, these pre-zero starting-point values are obviously not
-%% re-output when the buffer is finally completed and returned.
-
-%% \subsection{the QUIT Command}
-
-%% This command takes no arguments.
-%% It indicates the Shorten stream is finished and decoding is completed.
-
-%% \subsection{the BLOCKSIZE Command}
-
-%% This command takes a single \texttt{long} argument
-%% whose value is the new \VAR{Block Size}.
-%% In effect, it modifies that variable in the Shorten virtual machine.
-
-%% \subsection{the ZERO Command}
-
-%% This command takes no arguments.
-%% It simply generates \VAR{Block Size} number of zero samples
-%% into the current channel's output buffer.
-
-%% \subsection{the BITSHIFT Command}
-
-%% This commands takes a single \texttt{unsigned(2)} value
-%% and modifies the \VAR{bitshift} variable in the Shorten virtual machine.
-%% This value is how many bits to left-shift all output samples
-%% prior to returning them.
-
-%% For example, imagine a scenario in which all the samples in a set of
-%% blocks have 0 for their rightmost (least significant) bit.
-%% Setting a bitshift of 1 allows us to ignore that bit during
-%% calculation which, in turn, allows us to store those samples more
-%% efficiently.
-
-%% Note that bit shifting is applied \textit{after} channel wrapping
-%% and \VAR{coffset} calculation\footnote{See page \pageref{shorten_coffset}}.
-
-%% \pagebreak
-
-%% \subsection{the QLPC Command}
-
-%% The \texttt{QLPC} command is structured as follows:
-
-%% \begin{figure}[h]
-%% \includegraphics{figures/shorten/qlpc.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% So, given a set of LPC coefficients and a set of residuals,
-%% samples are calculated using the following formula:
-%% \begin{equation}
-%% \text{Sample}_i = \left\lfloor \frac{2 ^ 5 + \overset{Count - 1}{\underset{j = 0}{\sum}}
-%%   \text{LPC Coefficient}_j \times \text{Sample}_{i - j - 1} } {2 ^ 5}\right\rfloor + \text{Residual}_i
-%% \end{equation}
-%% This simply means we're taking the sum of the calculated values from
-%% 0 to LPC Count - 1, bit-shifting that sum down and added the residual
-%% when determining the current sample.
-%% As with the \texttt{DIFF} commands, previously encoded samples
-%% (possibly from previous commands) are used to calculate the current
-%% sample.
-
-%% For example, given the LPC Coefficients and previously encoded samples:
-%% \begin{table}[h]
-%% \begin{tabular}{>{$}r<{$} r || >{$}r<{$} r}
-%% \text{LPC Coefficient}_0 & 21 & \text{Sample}_1 & -2 \\
-%% \text{LPC Coefficient}_1 & 2 & \text{Sample}_2 & -3 \\
-%% \text{LPC Coefficient}_2 & 7 & \text{Sample}_3 & -2
-%% \end{tabular}
-%% \end{table}
-%% \begin{figure}[h]
-%% \begin{tabular}{|c|r|>{$}r<{$}|}
-%% \hline
-%% Index & Residual & \text{Sample} \\
-%% \hline
-%% 1 & & \bf-2 \\
-%% 2 & & \bf-3 \\
-%% 3 & & \bf-2 \\
-%% \hline
-%% 4 & 1 & \left \lfloor \frac{2 ^ 5 + (21 \times -2) + (2 \times -3) + (7 \times -2)}{2 ^ 5} \right \rfloor + 1 = \left \lfloor \frac{32 - 62}{32} \right \rfloor + 1 = -1 + 1 = \bf0 \\
-%% 5 & -2 & \left \lfloor \frac{2 ^ 5 + (21 \times \textbf{0}) + (2 \times -2) + (7 \times -3)}{2 ^ 5} \right \rfloor - 2 = \left \lfloor \frac{32 - 25}{32} \right \rfloor - 2 = 0 - 2 = \bf-2 \\
-%% 6 & -1 & \left \lfloor \frac{2 ^ 5 + (21 \times \textbf{-2}) + (2 \times \textbf{0}) + (7 \times -2)}{2 ^ 5} \right \rfloor - 1 = \left \lfloor \frac{32 - 56}{32} \right \rfloor - 1 = -1 - 1 = \bf-2 \\
-%% \hline
-%% \end{tabular}
-%% \end{figure}
-%% \par
-%% Unfortunately, there's one more wrinkle to consider for proper
-%% \texttt{QLPC} command decoding: the \VAR{coffset}.
-%% How to calculate this value will be covered in the next section.
-%% But when a \texttt{QLPC} command is encountered, the coffset value
-%% is subtracted from the \texttt{QLPC}'s warm-up samples
-%% (taken from the top of the previous command, for the current channel).
-%% Then that coffset value is re-added to our output samples after
-%% calculation.
-
-%% For example, given a \VAR{coffset} value of 5, one would subtract 5 from
-%% $\text{Sample}_{-3}$, $\text{Sample}_{-2}$ and $\text{Sample}_{-1}$,
-%% perform the QLPC calculation and then add 5 to our
-%% $\text{Sample}_{0}$, $\text{Sample}_{1}$, $\text{Sample}_{2}$, ... ,
-%% $\text{Sample}_{255}$
-%% before returning those values.
-
-%% \pagebreak
-
-%% \label{shorten_coffset}
-%% \subsection{the Coffset}
-
-%% Calculating the \VAR{coffset} value for a given command on a given channel
-%% requires a set of \VAR{offset} values
-%% (whose count equals the \VAR{Number of Means}, from the Shorten header)
-%% and the \VAR{Number of Means} value itself.
-%% \begin{equation}
-%% \text{coffset} = \frac{\frac{\text{nmeans}}{2} +
-%% \overset{\text{nmeans} - 1}{\underset{i = 0}{\sum}} \text{offset}_i }{\text{nmeans}}
-%% \end{equation}
-%% For example, given a \VAR{Number of Means} value of 4 and offsets of:
-%% \begin{table}[h]
-%% \begin{tabular}{>{$}r<{$} r}
-%% \text{offset}_0 & 32 \\
-%% \text{offset}_1 & 28 \\
-%% \text{offset}_2 & 17 \\
-%% \text{offset}_3 & 14 \\
-%% \end{tabular}
-%% \end{table}
-%% \par
-%% \noindent
-%% \begin{equation}
-%% \text{coffset} = \frac{\frac{4}{2} + (32 + 28 + 17 + 14)}{4} = \frac{93}{4} = \bf23
-%% \end{equation}
-%% \par
-%% The next obvious question is where to those \VAR{offset} values come from?
-%% They're actually a queue of (mostly) sample value averages on the
-%% given channel.
-%% So once we've decoded offset for $\text{command}_5$ on channel 0,
-%% $\text{offset}_0$ takes the value of $\text{offset}_1$,
-%% $\text{offset}_1$ takes the value of $\text{offset}_2$,
-%% $\text{offset}_2$ takes the value of $\text{offset}_3$,
-%% and $\text{command}_5$'s offset becomes the new $\text{offset}_3$.
-
-%% However, the offset is not entirely a sample average.
-%% Its actual formula is as follows:
-%% \begin{equation}
-%% \text{offset} = \frac{\frac{\text{block size}}{2} +
-%% \overset{\text{block size} - 1}{\underset{i = 0}{\sum}} \text{sample}_i }{\text{block size}}
-%% \end{equation}
-%% \par
-%% \noindent
-%% For example, if a command with a \VAR{block size} of 256 has samples
-%% that total 1056, its offset value is:
-%% \begin{equation}
-%% \text{offset} = \frac{\frac{\text{256}}{2} + 1056}{\text{256}} = \frac{1184}{256} = \bf4
-%% \end{equation}
-
-%% \subsection{the VERBATIM Command}
-
-%% This command is for generating raw, non-audio data such
-%% as .wav or .aiff chunks and is structured as follows:
-%% \begin{figure}[h]
-%% \includegraphics{figures/shorten/verbatim.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% These chunks of raw data are expected to be written in the order
-%% they appear in the Shorten file.
-
-%% \pagebreak
-
-%% \section{Shorten Encoding}
-
-%% For the purposes of Shorten encoding,
-%% one needs an entire PCM container file and its
-%% PCM values, number of channels and bits per sample.
-%% Recall that nearly the entire Shorten file format is made up
-%% of three variable-length data types with no byte-alignment of any sort.
-%% Because of that, there's no way to ``rewind'' the Shorten stream
-%% and replace values.
-%% Therefore, everything encoded to Shorten must be written in order.
-
-%% \begin{figure}[h]
-%% \includegraphics{figures/shorten/stream.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% Remember that \texttt{long} variables contain a size \texttt{unsigned(2)}
-%% field followed by its value.
-%% So what's the best size to use for a given value?
-%% Quite frankly, in my opinion, any small size will do.
-%% Most of a Shorten file is encoded residuals, so wasting a handful
-%% of bytes in the header won't make any difference.
-
-%% A good set of header values to use are as follows:
-%% \begin{table}[h]
-%% \begin{tabular}{|r|l|}
-%% \hline
-%% field & value \\
-%% \hline
-%% & \textbf{2} for unsigned 8 bit input \\
-%% Field Type & \textbf{5} for signed, little-endian, 16 bit input \\
-%% & \textbf{3} for signed, big-endian, 16 bit input \\
-%% Channels & from input \\
-%% Block Length & \textbf{256} \\
-%% Max LPC & \textbf{0} \\
-%% Number of Means & \textbf{0} \\
-%% Bytes to Skip & \textbf{0} \\
-%% Samples to Wrap & \textbf{3} \\
-%% \hline
-%% \end{tabular}
-%% \end{table}
-%% \par
-%% \noindent
-%% The remainder of the stream is various Shorten commands.
-%% I'll be limiting this encoding documentation to the \texttt{DIFF1},
-%% \texttt{DIFF2}, \texttt{DIFF3}, \texttt{QUIT}, \texttt{BLOCKSIZE},
-%% \texttt{ZERO} and \texttt{VERBATIM} commands.
-%% \texttt{QLPC}'s implementation is actually broken in the reference
-%% decoder\footnote{By limiting its accumulator to a 32-bit integer,
-%% it's prone to overflow at high LPC counts.} and tends not to
-%% produce smaller files.
-%% And, by omitting \texttt{DIFF0} which is rarely used,
-%% we can avoid \VAR{coffset} calculation during encoding.
-
-%% \pagebreak
-
-%% \subsection{the VERBATIM Command}
-
-%% PCM containers such as Wave and AIFF consist of
-%% several blocks of data, one of which contains a large chunk of
-%% PCM data.
-%% Shorten encodes these files by turning non-audio data at
-%% the beginning and end of the container into \texttt{VERBATIM} commands,
-%% often in the following format:
-%% \begin{figure}[h]
-%% \includegraphics{figures/shorten/sandwich.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% These \texttt{VERBATIM} commands \textit{must} appear in
-%% the Shorten stream in the same order as they appear in the
-%% PCM container itself.
-
-%% \subsection{the BLOCKSIZE Command}
-
-%% Most \texttt{DIFF} and \texttt{ZERO} commands should contain
-%% \VAR{Block Length} number of samples, as indicated in the header.
-%% But when the end of the input stream is reached and a different
-%% number of samples are all that remain, a \texttt{BLOCKSIZE}
-%% is required.
-%% This is simply an \texttt{unsigned(2)} variable with a value of 5
-%% (indicating the \texttt{BLOCKSIZE} command)
-%% followed by a \texttt{long} variable containing the new \VAR{Block Length}.
-
-%% \subsection{the QUIT Command}
-
-%% When no more samples remain and all \texttt{VERBATIM} commands have
-%% been delivered (a Wave file may contain additional chunks after
-%% the `data' chunk, for example), the \texttt{QUIT} command indicates
-%% the end of the Shorten stream.
-%% This is an \texttt{unsigned(2)} variable with the value 4.
-
-%% However, the stream \textit{must} be padded such that the total
-%% stream length, minus 5 bytes for the magic number and version,
-%% is a multiple of 4 bytes.
-%% If this padding is not performed, the reference decoder's bit stream
-%% implementation will exit with an error.
-
-%% \subsection{the ZERO Command}
-
-%% When a block's entire set of samples are 0, we can generate
-%% a \texttt{ZERO} command to represent them, which is
-%% simply the \texttt{unsigned(2)} command variable of 8.
-
-%% \pagebreak
-
-%% \subsection{the DIFF Commands}
-
-%% The bulk of a Shorten file is \texttt{DIFF} commands,
-%% which are \texttt{unsigned(2)} command variables 1, 2, and 3
-%% for \texttt{DIFF1}, \texttt{DIFF2} and \texttt{DIFF3}, respectively,
-%% followed by the same argument syntax:
-%% \begin{figure}[h]
-%% \includegraphics{figures/shorten/diff.pdf}
-%% \end{figure}
-%% \par
-%% Given a set of input samples, we decide which \texttt{DIFF} command
-%% to use by calculating their minimum delta sum, which is best
-%% explained by example:
-%% \par
-%% \begin{table}[h]
-%% {\relsize{-2}
-%% \begin{tabular}{|c|r|r|r|r|}
-%% \hline
-%% index & sample & $\Delta^1$ & $\Delta^2$ & $\Delta^3$ \\
-%% \hline
-%% -1 & 0 & & & \\
-%% 0 & 18 & -18 & & \\
-%% 1 & 20 & -2 & -16 & \\
-%% 2 & 26 & -6 & 4 & -20 \\
-%% 3 & 24 & 2 & -8 & 12 \\
-%% 4 & 24 & 0 & 2 & -10 \\
-%% 5 & 23 & 1 & -1 & 3 \\
-%% 6 & 21 & 2 & -1 & 0 \\
-%% 7 & 24 & -3 & 5 & -6 \\
-%% 8 & 23 & 1 & -4 & 9 \\
-%% 9 & 20 & 3 & -2 & -2 \\
-%% 10 & 18 & 2 & 1 & -3 \\
-%% 11 & 18 & 0 & 2 & -1 \\
-%% 12 & 17 & 1 & -1 & 3 \\
-%% 13 & 17 & 0 & 1 & -2 \\
-%% 14 & 20 & -3 & 3 & -2 \\
-%% 15 & 23 & -3 & 0 & 3 \\
-%% 16 & 21 & 2 & -5 & 5 \\
-%% 17 & 23 & -2 & 4 & -9 \\
-%% 18 & 22 & 1 & -3 & 7 \\
-%% 19 & 18 & 4 & -3 & 0 \\
-%% \hline
-%% \multicolumn{2}{|r|}{$| sum |$} & 56 & 66 & 97 \\
-%% \hline
-%% \end{tabular}
-%% }
-%% \end{table}
-%% \par
-%% \noindent
-%% In this example, the $|sum|$ of $\Delta^1$ is the smallest value.
-%% Therefore, the best command to use for this set of samples is \texttt{DIFF1}.
-%% Once we know which \texttt{DIFF} command to use for a given set of
-%% input samples, calculating the command's set of residual values
-%% can be done automatically:
-%% \par
-%% \noindent
-%% \begin{table}[h]
-%% \begin{tabular}{|c|>{$}l<{$}|}
-%% \hline
-%% command & \text{calculation} \\
-%% \hline
-%% \texttt{DIFF1} & \text{Residual}_i = \text{Sample}_i - \text{Sample}_{i - 1} \\
-%% \texttt{DIFF2} & \text{Residual}_i = \text{Sample}_i - ((2 * \text{Sample}_{i - 1}) - \text{Sample}_{i - 2}) \\
-%% \texttt{DIFF3} & \text{Residual}_i = \text{Sample}_i - ((3 \times (Sample_{i - 1} - Sample_{i - 2})) + Sample_{i - 3}) \\
-%% \hline
-%% \end{tabular}
-%% \end{table}
-%% \par
-%% \noindent
-%% In this example, our residuals for \texttt{DIFF1} are:
-%% 18, 2, 6, -2, 0, -1, -2, 3, -1, -3, -2, 0, -1, 0, 3, 3, -2, 2, -1, -4.
-
-%% \pagebreak
-
-%% Finally, given a set of residual values, we need to determine
-%% their \VAR{Energy Size}.
-%% This is done by selecting the smallest value of `x' such that:
-%% \begin{equation}
-%% \text{sample count} \times 2 ^ x > \overset{\text{residual count} - 1}{\underset{i = 0}{\sum}} |\text{residual}_i|
-%% \end{equation}
-%% \par
-%% \noindent
-%% To finish our example, given we have 20 residuals:
-%% \begin{table}[h]
-%% \begin{tabular}{|c|>{$}r<{$}|>{$}r<{$}|}
-%% \hline
-%% index & \text{residual}_i & | \text{residual}_i | \\
-%% \hline
-%% 0 & 18 & 18 \\
-%% 1 & 2 & 2 \\
-%% 2 & 6 & 6 \\
-%% 3 & -2 & 2 \\
-%% 4 & 0 & 0 \\
-%% 5 & -1 & 1 \\
-%% 6 & -2 & 2 \\
-%% 7 & 3 & 3 \\
-%% 8 & -1 & 1 \\
-%% 9 & -3 & 3 \\
-%% 10 & -2 & 2 \\
-%% 11 & 0 & 0 \\
-%% 12 & -1 & 1 \\
-%% 13 & 0 & 0 \\
-%% 14 & 3 & 3 \\
-%% 15 & 3 & 3 \\
-%% 16 & -2 & 2 \\
-%% 17 & 2 & 2 \\
-%% 18 & -1 & 1 \\
-%% 19 & -4 & 4 \\
-%% \hline
-%% \multicolumn{2}{|r|}{$|sum|$} & 56 \\
-%% \hline
-%% \end{tabular}
-%% \end{table}
-%% \par
-%% \noindent
-%% \begin{align*}
-%% 20 \times 2^0 & \leq 56 \\
-%% 20 \times 2^1 & \leq 56 \\
-%% 20 \times 2^2 & > 56
-%% \end{align*}
-%% Therefore, the best \VAR{Energy Size} for this set of residuals is 2.
+\subsection{Encoding Audio Data to Commands}
+{\relsize{-1}
+  \begin{algorithm}[H]
+    \SetKwData{SAMPLES}{samples}
+    \SetKwData{BLOCKSIZE}{block size}
+    \DontPrintSemicolon
+    \While{PCM frames remain}{
+      $\text{\SAMPLES} \leftarrow$ take \BLOCKSIZE PCM frames from input stream\;
+      \If{$\text{\SAMPLES PCM frame count} \neq \BLOCKSIZE$}{
+        $\text{\BLOCKSIZE} \leftarrow \textit{\SAMPLES PCM frame count}$\;
+        write \texttt{unsigned}(2~,~5)\tcc*[r]{BLOCKSIZE command}
+        write \texttt{long}(\BLOCKSIZE)\;
+      }
+    }
+  \end{algorithm}
+}
