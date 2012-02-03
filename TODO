@@ -5043,18 +5043,18 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   They would also provide reference implementations.
 ** DONE py_decoders/FlacDecoder
 ** TODO py_decoders/OggFlacDecoder
-** TODO py_decoders/SHNDecoder
+** DONE py_decoders/SHNDecoder
 ** DONE py_decoders/ALACDecoder
 ** DONE py_decoders/WavPackDecoder
 ** TODO Add .analyze_frame() option to Python-based decoders
 ** TODO Remove .analyze_frame() option from C-based decoders
    These add significant code clutter to code that needs to be kept simple
-* TODO Add Python-based file encoders
+* DONE Add Python-based file encoders
   Like the Python-based decoders,
   these provide simple reference implementations
   one can easily pull apart to see how the encoders work.
 ** DONE py_encoders/encode_flac
-** TODO py_encoders/encode_shn
+** DONE py_encoders/encode_shn
 ** DONE py_encoders/encode_alac
 ** DONE py_encoders/encode_wavpack
 * TODO Overhaul decoding/encoding documentation
@@ -5072,7 +5072,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE decoding
 *** DONE encoding
 ** TODO Shorten
-*** TODO decoding
+*** DONE decoding
 *** TODO encoding
 ** TODO DVD-A
 *** TODO decoding
