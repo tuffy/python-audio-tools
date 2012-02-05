@@ -248,8 +248,8 @@ class ShortenAudio(WaveContainer, AiffContainer):
 
         try:
             (head, tail) = decoders.SHNDecoder(self.filename).pcm_split()
-        except IOError:
-            raise EncodingError(str(msg))
+        except IOError,err:
+            raise EncodingError(str(err))
 
         if ((head[0:4] == 'RIFF') and (head[8:12] == 'WAVE')):
             try:
@@ -333,21 +333,21 @@ class ShortenAudio(WaveContainer, AiffContainer):
             raise UnsupportedBitsPerSample(filename, wave.bits_per_sample())
 
         (head, tail) = wave.pcm_split()
-        if (len(tail) > 0):
-            blocks = [head, None, tail]
-        else:
-            blocks = [head, None]
 
-        import audiotools.encoders
+        from .encoders import encode_shn
 
         try:
-            audiotools.encoders.encode_shn(
-                filename=filename,
-                pcmreader=to_pcm_progress(wave, progress),
-                block_size=block_size,
-                file_type={8: 2,
-                           16: 5}[wave.bits_per_sample()],
-                verbatim_chunks=blocks)
+            if (len(tail) == 0):
+                encode_shn(filename=filename,
+                           pcmreader=to_pcm_progress(wave, progress),
+                           header_data=head,
+                           block_size=block_size)
+            else:
+                encode_shn(filename=filename,
+                           pcmreader=to_pcm_progress(wave, progress),
+                           header_data=head,
+                           footer_data=tail,
+                           block_size=block_size)
 
             return cls(filename)
         except IOError, err:

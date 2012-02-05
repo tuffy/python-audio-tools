@@ -7,8 +7,8 @@
 
 #include <stdint.h>
 #include "../bitstream.h"
-#include "../array.h"
-#include "../pcmreader.h"
+#include "../array2.h"
+#include "../pcmconv.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -29,9 +29,13 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+#define COMMAND_SIZE 2
 #define ENERGY_SIZE 3
-#define VERBATIM_CHUNK_SIZE 5
+#define VERBATIM_SIZE 5
 #define VERBATIM_BYTE_SIZE 8
+#define BITSHIFT_SIZE 2
+
+#define SAMPLES_TO_WRAP 3
 
 enum {FN_DIFF0     = 0,
       FN_DIFF1     = 1,
@@ -39,79 +43,44 @@ enum {FN_DIFF0     = 0,
       FN_DIFF3     = 3,
       FN_QUIT      = 4,
       FN_BLOCKSIZE = 5,
+      FN_BITSHIFT  = 6,
       FN_QLPC      = 7,
       FN_ZERO      = 8,
       FN_VERBATIM  = 9};
 
-typedef enum {OK, ERROR} status;
+static void
+write_unsigned(BitstreamWriter* bs, unsigned c, unsigned value);
 
-void
-ShortenEncoder_put_uvar(BitstreamWriter* bs,
-                        unsigned int size,
-                        unsigned int value);
+static void
+write_signed(BitstreamWriter* bs, unsigned c, int value);
 
-void
-ShortenEncoder_put_var(BitstreamWriter* bs,
-                       unsigned int size,
-                       int value);
+static void
+write_long(BitstreamWriter* bs, unsigned value);
 
-void
-ShortenEncoder_put_long(BitstreamWriter* bs, unsigned int value);
+static void
+write_header(BitstreamWriter* bs,
+             unsigned bits_per_sample,
+             unsigned channels,
+             unsigned block_size);
 
-int
-ShortenEncoder_encode_stream(BitstreamWriter* bs,
-                             struct pcm_reader* reader,
-                             int block_size,
-                             struct ia_array* wrapped_samples);
+/*returns 0 on success, 1 if an exception occurs during encoding*/
+static int
+encode_audio(BitstreamWriter* bs,
+             pcmreader* pcmreader,
+             unsigned block_size);
 
-int
-ShortenEncoder_encode_channel(BitstreamWriter* bs,
-                              struct i_array* samples,
-                              struct i_array* wrapped_samples);
+static int
+all_zero(const array_i* samples);
 
-int
-ShortenEncoder_compute_best_diff(struct i_array* buffer, int wrap);
+static int
+wasted_bits(const array_i* samples);
 
-int
-ShortenEncoder_encode_zero(struct i_array* buffer,
-                           struct i_array* wrapped_samples);
-
-int
-ShortenEncoder_encode_diff(BitstreamWriter* bs,
-                           struct i_array* buffer,
-                           struct i_array* wrapped_samples,
-                           ia_data_t (*calculator)(struct i_array* samples,
-                                                   ia_size_t i));
-
-ia_data_t
-ShortenEncoder_encode_diff1(struct i_array* samples, ia_size_t i);
-
-ia_data_t
-ShortenEncoder_encode_diff2(struct i_array* samples, ia_size_t i);
-
-ia_data_t
-ShortenEncoder_encode_diff3(struct i_array* samples, ia_size_t i);
-
-int
-ShortenEncoder_encode_residuals(BitstreamWriter* bs, struct i_array* residuals);
-
-int
-ShortenEncoder_compute_best_energysize(struct i_array *resuduals);
-
-void
-ShortenEncoder_byte_counter(uint8_t byte, void* counter);
-
-static inline uint64_t
-abs_sum(struct i_array *a) {
-    register uint64_t sum = 0;
-    ia_size_t a_size = a->size;
-    ia_data_t *a_data = a->data;
-    ia_size_t i;
-
-    for (i = 0; i < a_size; i++)
-        sum += abs(a_data[i]);
-
-    return sum;
-}
+static void
+calculate_best_diff(const array_i* samples,
+                    const array_i* prev_samples,
+                    array_ia* deltas,
+                    unsigned* diff,
+                    unsigned* energy,
+                    array_i* residuals);
 
 #endif

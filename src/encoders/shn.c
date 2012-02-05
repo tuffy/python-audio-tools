@@ -19,520 +19,436 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-#ifndef STANDALONE
 PyObject*
 encoders_encode_shn(PyObject *dummy,
                     PyObject *args, PyObject *keywds)
 {
     static char *kwlist[] = {"filename",
                              "pcmreader",
+                             "header_data",
+                             "footer_data",
                              "block_size",
-                             "file_type",
-                             "verbatim_chunks",
                              NULL};
     char *filename;
-    FILE *file;
-    BitstreamWriter *stream;
+    FILE *output_file;
+    BitstreamWriter* writer;
     PyObject *pcmreader_obj;
-    struct pcm_reader *reader;
+    pcmreader* pcmreader;
+    char* header_data;
+#ifdef PY_SSIZE_T_CLEAN
+    Py_ssize_t header_size;
+#else
+    int header_size;
+#endif
+    char* footer_data = NULL;
+#ifdef PY_SSIZE_T_CLEAN
+    Py_ssize_t footer_size = 0;
+#else
+    int footer_size = 0;
+#endif
+    unsigned block_size = 256;
+    unsigned bytes_written = 0;
+    unsigned i;
 
-    int block_size;
-    int file_type;
-    int wrap = 3;
-
-    struct ia_array wrapped_samples;
-
-    /*verbatim chunk variables*/
-    PyObject *verbatim_chunks;
-    Py_ssize_t verbatim_chunks_len;
-    PyObject *verbatim_chunk;
-    char *string;
-    Py_ssize_t string_len;
-
-    /*whether we've hit "None" and performed encoding or not*/
-    int encoding_performed = 0;
-
-    Py_ssize_t i, j;
-
-    int bytes_written = 0;
-
-    /*extract a filename, PCMReader-compatible object and encoding options*/
-    if (!PyArg_ParseTupleAndKeywords(args, keywds, "sOiiO",
+    /*fetch arguments*/
+    if (!PyArg_ParseTupleAndKeywords(args, keywds, "sOs#|s#I",
                                      kwlist,
                                      &filename,
                                      &pcmreader_obj,
-                                     &block_size,
-                                     &file_type,
-                                     &verbatim_chunks))
+                                     &header_data,
+                                     &header_size,
+
+                                     &footer_data,
+                                     &footer_size,
+                                     &block_size))
         return NULL;
 
-    /*check for negative block_size*/
-    if (block_size <= 0) {
-        PyErr_SetString(PyExc_ValueError, "block_size must be positive");
-        return NULL;
-    }
-
-    /*determine if verbatim_chunks is a valid sequence*/
-    if ((verbatim_chunks_len = PySequence_Length(verbatim_chunks)) == -1) {
+    /*convert PCMReader object*/
+    if ((pcmreader = open_pcmreader(pcmreader_obj)) == NULL) {
         return NULL;
     }
 
-    /*transform the Python PCMReader-compatible object to a pcm_reader struct*/
-    if ((reader = pcmr_open(pcmreader_obj)) == NULL) {
+    /*ensure PCMReader is compatible with Shorten*/
+    if ((pcmreader->bits_per_sample != 8) &&
+        (pcmreader->bits_per_sample != 16)) {
+        pcmreader->del(pcmreader);
+        PyErr_SetString(PyExc_ValueError, "unsupported bits per sample");
         return NULL;
     }
 
-    /*determine if the PCMReader is compatible with Shorten*/
-    if ((reader->bits_per_sample != 8) && (reader->bits_per_sample != 16)) {
-        PyErr_SetString(PyExc_ValueError, "bits_per_sample must be 8 or 16");
-        return NULL;
-    }
-
-    /*open the given filename for writing*/
-    if ((file = fopen(filename, "wb")) == NULL) {
-        PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
-        return NULL;
-    } else {
-        stream = bw_open(file, BS_BIG_ENDIAN);
-    }
-
-    /*initialize wrapped samples with 0s*/
-    iaa_init(&wrapped_samples, reader->channels, wrap);
-    for (i = 0; i < reader->channels; i++) {
-        for (j = 0; j < wrap; j++) {
-            ia_append(iaa_getitem(&wrapped_samples, (ia_size_t)i), 0);
-        }
-    }
-
-    /*write header*/
-    stream->write(stream, 32, 0x616A6B67); /*the magic number 'ajkg'*/
-    stream->write(stream, 8, 2);           /*the version number 2*/
-
-    /*start counting written bytes *after* writing the 5 byte header*/
-    bw_add_callback(stream, ShortenEncoder_byte_counter, &bytes_written);
-
-    ShortenEncoder_put_long(stream, file_type);
-
-    ShortenEncoder_put_long(stream, reader->channels);
-    ShortenEncoder_put_long(stream, block_size);
-    ShortenEncoder_put_long(stream, 0);                /*max LPC = 0*/
-    ShortenEncoder_put_long(stream, 0);                /*number of means = 0*/
-    ShortenEncoder_put_long(stream, 0);                /*bytes to skip = 0*/
-
-    /*iterate through verbatim_chunks*/
-    for (i = 0; i < verbatim_chunks_len; i++) {
-        if ((verbatim_chunk = PySequence_GetItem(verbatim_chunks, i)) == NULL)
-            goto error;
-
-        if (verbatim_chunk != Py_None) {
-            /*any non-None values are turned into FN_VERBATIM commands*/
-            if (PyString_AsStringAndSize(verbatim_chunk, &string,
-                                         &string_len) == -1) {
-                Py_DECREF(verbatim_chunk);
-                goto error;
-            }
-
-            ShortenEncoder_put_uvar(stream, 2, FN_VERBATIM);
-            ShortenEncoder_put_uvar(stream, VERBATIM_CHUNK_SIZE,
-                                    (unsigned int)string_len);
-            for (j = 0; j < string_len; j++) {
-                ShortenEncoder_put_uvar(stream, VERBATIM_BYTE_SIZE,
-                                        (unsigned char)string[j]);
-            }
-
-        } else if (!encoding_performed) {
-            /*once None is hit, perform full encoding of reader,
-              if it hasn't already*/
-            if (!ShortenEncoder_encode_stream(stream, reader, block_size,
-                                              &wrapped_samples))
-                goto error;
-            encoding_performed = 1;
-        }
-
-        Py_DECREF(verbatim_chunk);
-    }
-
-    /*send the FN_QUIT command*/
-    ShortenEncoder_put_uvar(stream, 2, FN_QUIT);
-
-    /*byte-align output*/
-    stream->byte_align(stream);
-
-    /*then, due to Shorten's silly way of using bit buffers,
-      output (not counting the 5 bytes of magic + version)
-      must be padded to a multiple of 4 bytes
-      or its reference decoder explodes*/
-    stream->write(stream, (4 - (bytes_written % 4)) * 8, 0);
-
-    iaa_free(&wrapped_samples);
-    pcmr_close(reader);
-    stream->close(stream);
-    Py_INCREF(Py_None);
-    return Py_None;
-
- error:
-    pcmr_close(reader);
-    stream->close(stream);
-    return NULL;
-}
-#else
-
-status
-encoders_encode_shn(char *filename,
-                    FILE *input,
-                    int block_size)
-{
-    FILE *output_file;        /*the FILE representation of our putput file*/
-    BitstreamWriter *stream = NULL; /*the BitstreamWriter representation of our output file*/
-    struct pcm_reader *reader; /*the pcm_reader struct of our input pcmreader*/
-    struct ia_array wrapped_samples;
-    int encode_ok;
-    int i, j;
-    int wrap = 3;
-
-    /*assume CD quality input*/
-    reader = pcmr_open(input, 44100, 2, 0x3, 16, 0, 1);
-
-    /*open the given filename for writing*/
+    /*open given filename for writing*/
     if ((output_file = fopen(filename, "wb")) == NULL) {
-        return ERROR;
+        PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
+        pcmreader->del(pcmreader);
+        return NULL;
     } else {
-        stream = bw_open(output_file, BS_BIG_ENDIAN);
+        writer = bw_open(output_file, BS_BIG_ENDIAN);
     }
 
-    /*initialize wrapped samples with 0s*/
-    iaa_init(&wrapped_samples, reader->channels, wrap);
-    for (i = 0; i < reader->channels; i++) {
-        for (j = 0; j < wrap; j++) {
-            ia_append(iaa_getitem(&wrapped_samples, i), 0);
-        }
-    }
+    /*write magic number and version*/
+    writer->build(writer, "4b 8u", "ajkg", 2);
 
-    encode_ok = ShortenEncoder_encode_stream(stream,
-                                             reader,
-                                             block_size,
-                                             &wrapped_samples);
+    bw_add_callback(writer, byte_counter, &bytes_written);
 
-    iaa_free(&wrapped_samples);
-    pcmr_close(reader);
-    stream->close(stream);
+    /*write Shorten header*/
+    write_header(writer,
+                 pcmreader->bits_per_sample, pcmreader->channels, block_size);
 
-    if (encode_ok)
-        return OK;
-    else
-        return ERROR;
-}
+    /*issue initial VERBATIM command with header data*/
+    write_unsigned(writer, COMMAND_SIZE, FN_VERBATIM);
+    write_unsigned(writer, VERBATIM_SIZE, header_size);
+    for (i = 0; i < header_size; i++)
+        write_unsigned(writer, VERBATIM_BYTE_SIZE, (uint8_t)header_data[i]);
 
-int main(int argc, char *argv[]) {
-    encoders_encode_shn(argv[1], stdin, 256);
-
-    return 0;
-}
-
-#endif
-
-
-int
-ShortenEncoder_encode_stream(BitstreamWriter* bs,
-                             struct pcm_reader *reader,
-                             int block_size,
-                             struct ia_array* wrapped_samples)
-{
-    struct ia_array samples;
-    ia_size_t i;
-#ifndef STANDALONE
-    PyThreadState *thread_state = NULL;
-#endif
-
-    iaa_init(&samples, reader->channels, block_size);
-
-    if (!pcmr_read(reader, block_size, &samples))
+    /*process PCM frames */
+    if (encode_audio(writer, pcmreader, block_size))
         goto error;
 
-    /*iterate through all the integer arrays returned by "reader"*/
-    while (samples.arrays[0].size > 0) {
-#ifndef STANDALONE
-    thread_state = PyEval_SaveThread();
-#endif
-        if (samples.arrays[0].size != block_size) {
-            /*send a FN_BLOCKSIZE command if our returned block size changes
-              (which should only happen at the end of the stream)*/
-            block_size = samples.arrays[0].size;
-            ShortenEncoder_put_uvar(bs, 2, FN_BLOCKSIZE);
-            ShortenEncoder_put_long(bs, block_size);
-        }
-
-        /*then send a separate command for each channel*/
-        for (i = 0; i < samples.size; i++) {
-            if (!ShortenEncoder_encode_channel(
-                                        bs,
-                                        iaa_getitem(&samples, i),
-                                        iaa_getitem(wrapped_samples, i))) {
-#ifndef STANDALONE
-                PyEval_RestoreThread(thread_state);
-#endif
-                goto error;
-            }
-
-
-        }
-
-#ifndef STANDALONE
-    PyEval_RestoreThread(thread_state);
-#endif
-        if (!pcmr_read(reader, block_size, &samples))
-            goto error;
+    /*if there's footer data, issue a VERBATIM command for it*/
+    if ((footer_data != NULL) && (footer_size > 0)) {
+        write_unsigned(writer, COMMAND_SIZE, FN_VERBATIM);
+        write_unsigned(writer, VERBATIM_SIZE, footer_size);
+        for (i = 0; i < footer_size; i++)
+            write_unsigned(writer, VERBATIM_BYTE_SIZE, (uint8_t)footer_data[i]);
     }
 
-    iaa_free(&samples);
-    return 1;
+    /*issue QUIT command*/
+    write_unsigned(writer, COMMAND_SIZE, FN_QUIT);
+
+    /*pad output (non including header) to a multiple of 4 bytes*/
+    writer->byte_align(writer);
+    while ((bytes_written % 4) != 0) {
+        writer->write(writer, 8, 0);
+    }
+
+    /*deallocate temporary buffers and close files*/
+    pcmreader->del(pcmreader);
+    writer->close(writer);
+
+    Py_INCREF(Py_None);
+    return Py_None;
  error:
-    iaa_free(&samples);
+    pcmreader->del(pcmreader);
+    writer->close(writer);
+
     return 0;
 }
 
-int
-ShortenEncoder_encode_channel(BitstreamWriter* bs,
-                              struct i_array* samples,
-                              struct i_array* wrapped_samples)
+static void
+write_header(BitstreamWriter* bs,
+             unsigned bits_per_sample,
+             unsigned channels,
+             unsigned block_size)
 {
-    struct i_array buffer;
+    write_long(bs, bits_per_sample == 8 ? 2 : 5);
+    write_long(bs, channels);
+    write_long(bs, block_size);
+    write_long(bs, 0); /*maximum LPC*/
+    write_long(bs, 0); /*mean count*/
+    write_long(bs, 0); /*bytes to skip*/
+}
 
-    /*combine "samples" and "wrapped_samples" into a unified sample buffer*/
-    ia_init(&buffer, wrapped_samples->size + samples->size);
-    ia_copy(&buffer, wrapped_samples);
-    ia_extend(&buffer, samples);
+static int
+encode_audio(BitstreamWriter* bs,
+             pcmreader* pcmreader,
+             unsigned block_size)
+{
+    unsigned left_shift = 0;
+    int sign_adjustment;
+    int is_unsigned;
 
-    switch (ShortenEncoder_compute_best_diff(&buffer, wrapped_samples->size)) {
-    case FN_ZERO:
-        ShortenEncoder_put_uvar(bs, 2, FN_ZERO);
-        ShortenEncoder_encode_zero(&buffer, wrapped_samples);
-        break;
-    case FN_DIFF1:
-        ShortenEncoder_put_uvar(bs, 2, FN_DIFF1);
-        ShortenEncoder_encode_diff(bs, &buffer, wrapped_samples,
-                                   ShortenEncoder_encode_diff1);
-        break;
-    case FN_DIFF2:
-        ShortenEncoder_put_uvar(bs, 2, FN_DIFF2);
-        ShortenEncoder_encode_diff(bs, &buffer, wrapped_samples,
-                                   ShortenEncoder_encode_diff2);
-        break;
-    case FN_DIFF3:
-        ShortenEncoder_put_uvar(bs, 2, FN_DIFF3);
-        ShortenEncoder_encode_diff(bs, &buffer, wrapped_samples,
-                                   ShortenEncoder_encode_diff3);
-        break;
+    /*allocate some temporary buffers*/
+    array_ia* frame = array_ia_new();
+    array_ia* wrapped_samples = array_ia_new();
+    array_i* shifted = array_i_new();
+    array_ia* deltas = array_ia_new();
+    array_i* residuals = array_i_new();
+    unsigned c;
+    unsigned i;
+
+    for (i = 0; i < pcmreader->channels; i++)
+        wrapped_samples->append(wrapped_samples);
+
+    if (pcmreader->bits_per_sample == 8) {
+        sign_adjustment = 1 << (pcmreader->bits_per_sample - 1);
+        is_unsigned = 1;
+    } else {
+        sign_adjustment = 0;
+        is_unsigned = 0;
     }
 
-    /*free allocated buffer*/
-    ia_free(&buffer);
+    if (pcmreader->read(pcmreader, block_size, frame))
+        goto error;
 
+    while (frame->_[0]->len > 0) {
+        if (frame->_[0]->len != block_size) {
+            /*PCM frame count has changed, so issue BLOCKSIZE command*/
+            block_size = frame->_[0]->len;
+            write_unsigned(bs, COMMAND_SIZE, FN_BLOCKSIZE);
+            write_long(bs, block_size);
+        }
+
+        for (c = 0; c < frame->len; c++) {
+            array_i* channel = frame->_[c];
+            array_i* wrapped = wrapped_samples->_[c];
+
+            /*convert signed samples to unsigned, if necessary*/
+            if (is_unsigned)
+                for (i = 0; i < channel->len; i++)
+                    channel->_[i] += sign_adjustment;
+
+            if (all_zero(channel)) {
+                /*write ZERO command and wrap channel for next set*/
+                write_unsigned(bs, COMMAND_SIZE, FN_ZERO);
+                wrapped->extend(wrapped, channel);
+                wrapped->tail(wrapped, SAMPLES_TO_WRAP, wrapped);
+            } else {
+                unsigned diff = 1;
+                unsigned energy = 0;
+
+                unsigned wasted_BPS = wasted_bits(channel);
+                if (wasted_BPS != left_shift) {
+                    /*issue BITSHIFT comand*/
+                    left_shift = wasted_BPS;
+                    write_unsigned(bs, COMMAND_SIZE, FN_BITSHIFT);
+                    write_unsigned(bs, BITSHIFT_SIZE, left_shift);
+                }
+
+                /*apply left shift to channel data*/
+                if (left_shift > 0) {
+                    shifted->reset(shifted);
+                    shifted->resize(shifted, channel->len);
+                    for (i = 0; i < channel->len; i++)
+                        a_append(shifted, channel->_[i] >> left_shift);
+                } else {
+                    channel->copy(channel, shifted);
+                }
+
+                /*calculate best DIFF, energy and residuals for shifted data*/
+                calculate_best_diff(shifted, wrapped, deltas,
+                                    &diff, &energy, residuals);
+
+                /*issue DIFF command*/
+                write_unsigned(bs, COMMAND_SIZE, diff);
+                write_unsigned(bs, ENERGY_SIZE, energy);
+                for (i = 0; i < residuals->len; i++)
+                    write_signed(bs, energy, residuals->_[i]);
+
+                /*wrap shifted channel data for next set*/
+                wrapped->extend(wrapped, shifted);
+                wrapped->tail(wrapped, SAMPLES_TO_WRAP, wrapped);
+            }
+        }
+
+        if (pcmreader->read(pcmreader, block_size, frame))
+            goto error;
+    }
+
+    /*deallocate temporary buffers and return result*/
+    frame->del(frame);
+    wrapped_samples->del(wrapped_samples);
+    shifted->del(shifted);
+    deltas->del(deltas);
+    residuals->del(residuals);
+    return 0;
+
+ error:
+    frame->del(frame);
+    wrapped_samples->del(wrapped_samples);
+    shifted->del(shifted);
+    deltas->del(deltas);
+    residuals->del(residuals);
     return 1;
 }
 
-int
-ShortenEncoder_compute_best_diff(struct i_array* buffer, int wrap)
+static int
+all_zero(const array_i* samples)
 {
-    /*I'm not using DIFF0 commands at all, so no delta0_sum*/
-    uint64_t delta1_sum;
-    uint64_t delta2_sum;
-    uint64_t delta3_sum;
-
-    struct i_array delta0;
-    struct i_array delta1;
-    struct i_array delta2;
-    struct i_array delta3;
-    struct i_array subtract;
-
-    ia_size_t i;
-
-    if (buffer->size <= 3)
-        return FN_DIFF1;
-
-    /*if buffer's non-wrapped samples are all 0,
-      return FN_ZERO instead*/
-    for (i = wrap; i < buffer->size; i++) {
-        if (ia_getitem(buffer, i) != 0)
-            break;
-    }
-    if (i == buffer->size) {
-        return FN_ZERO;
-    }
-
-    delta0.data = subtract.data = NULL;
-
-    ia_tail(&delta0, buffer, buffer->size - wrap + 1);
-    ia_tail(&subtract, &delta0, delta0.size - 1);
-    ia_init(&delta1, buffer->size);
-    ia_sub(&delta1, &delta0, &subtract);
-    for (delta1_sum = 0, i = 0; i < delta1.size; i++)
-        delta1_sum += abs(ia_getitem(&delta1, i));
-
-    ia_tail(&subtract, &delta1, delta1.size - 1);
-    ia_init(&delta2, buffer->size);
-    ia_sub(&delta2, &delta1, &subtract);
-    for (delta2_sum = 0, i = 0; i < delta2.size; i++)
-        delta2_sum += abs(ia_getitem(&delta2, i));
-
-    ia_tail(&subtract, &delta2, delta2.size - 1);
-    ia_init(&delta3, buffer->size);
-    ia_sub(&delta3, &delta2, &subtract);
-    /*not quite right
-      Shorten's delta3 offset is last1 - (buf[-2] - buf[-3])
-      but using this simpler scheme seems to have little impact*/
-    for (delta3_sum = 0, i = 0; i < delta3.size; i++)
-        delta3_sum += abs(ia_getitem(&delta3, i));
-
-    ia_free(&delta1);
-    ia_free(&delta2);
-    ia_free(&delta3);
-
-    if (delta1_sum < MIN(delta2_sum, delta3_sum))
-        return FN_DIFF1;
-    else if (delta2_sum < delta3_sum)
-        return FN_DIFF2;
-    else
-        return FN_DIFF3;
-}
-
-int
-ShortenEncoder_encode_zero(struct i_array* buffer,
-                           struct i_array* wrapped_samples)
-{
-    struct i_array samples_tail;
-    samples_tail.data = NULL;
-
-    /*set new wrapped samples values*/
-    ia_tail(&samples_tail, buffer, wrapped_samples->size);
-    ia_copy(wrapped_samples, &samples_tail);
-
+    unsigned i;
+    for (i = 0; i < samples->len; i++)
+        if (samples->_[i] != 0)
+            return 0;
     return 1;
 }
 
-int
-ShortenEncoder_encode_diff(BitstreamWriter* bs,
-                           struct i_array* buffer,
-                           struct i_array* wrapped_samples,
-                           ia_data_t (*calculator)(struct i_array* samples,
-                                                   ia_size_t i))
+static int
+wasted_bits(const array_i* samples)
 {
-    struct i_array residuals;
-    struct i_array samples_tail;
-    ia_size_t i;
+    unsigned i;
+    unsigned wasted_bits_per_sample = INT_MAX;
 
-    /*initialize space for residuals*/
-    ia_init(&residuals, wrapped_samples->size);
-
-    /*transform samples into residuals*/
-    for (i = wrapped_samples->size; i < buffer->size; i++) {
-        ia_append(&residuals, calculator(buffer, i));
+    for (i = 0; i < samples->len; i++) {
+        int sample = samples->_[i];
+        if (sample != 0) {
+            unsigned wasted_bits;
+            for (wasted_bits = 0;
+                 ((sample & 1) == 0) && (sample != 0);
+                 sample >>= 1)
+                wasted_bits++;
+            wasted_bits_per_sample = MIN(wasted_bits_per_sample,
+                                         wasted_bits);
+            if (wasted_bits_per_sample == 0)
+                return 0;
+        }
     }
 
-    /*write encoded residuals*/
-    ShortenEncoder_encode_residuals(bs, &residuals);
-
-    /*set new wrapped samples values*/
-    ia_tail(&samples_tail, buffer, wrapped_samples->size);
-    ia_copy(wrapped_samples, &samples_tail);
-
-    /*free allocated space*/
-    ia_free(&residuals);
-
-    return 1;
-}
-
-ia_data_t
-ShortenEncoder_encode_diff1(struct i_array* samples, ia_size_t i)
-{
-    return ia_getitem(samples, i) - ia_getitem(samples, i - 1);
-}
-
-ia_data_t
-ShortenEncoder_encode_diff2(struct i_array* samples, ia_size_t i)
-{
-    return ia_getitem(samples, i) - ((2 * ia_getitem(samples, i - 1)) -
-                                     ia_getitem(samples, i - 2));
-}
-
-ia_data_t
-ShortenEncoder_encode_diff3(struct i_array* samples, ia_size_t i)
-{
-    return ia_getitem(samples, i) - ((3 * ia_getitem(samples, i - 1)) -
-                                     (3 * ia_getitem(samples, i - 2)) +
-                                     ia_getitem(samples, i - 3));
-}
-
-int
-ShortenEncoder_encode_residuals(BitstreamWriter* bs, struct i_array* residuals)
-{
-    int energy_size = ShortenEncoder_compute_best_energysize(residuals);
-    ia_size_t i;
-
-    ShortenEncoder_put_uvar(bs, ENERGY_SIZE, energy_size);
-    for (i = 0; i < residuals->size; i++) {
-        ShortenEncoder_put_var(bs, energy_size, ia_getitem(residuals, i));
+    if (wasted_bits_per_sample == INT_MAX) {
+        return 0;
+    } else {
+        return wasted_bits_per_sample;
     }
-
-    return 1;
 }
 
-void
-ShortenEncoder_put_uvar(BitstreamWriter* bs,
-                        unsigned int size,
-                        unsigned int value)
+static void
+calculate_best_diff(const array_i* samples,
+                    const array_i* prev_samples,
+                    array_ia* deltas,
+                    unsigned* diff,
+                    unsigned* energy,
+                    array_i* residuals)
 {
-    register unsigned int msb; /*most significant bits*/
-    register unsigned int lsb; /*least significant bits*/
+    array_i* delta1;
+    array_i* delta2;
+    array_i* delta3;
+    unsigned sum1 = 0;
+    unsigned sum2 = 0;
+    unsigned sum3 = 0;
+    unsigned i;
 
-    msb = value >> size;
-    lsb = value - (msb << size);
-    bs->write_unary(bs, 1, msb);
-    bs->write(bs, size, lsb);
+    assert(samples->len > 0);
+
+    deltas->reset(deltas);
+
+    /*determine delta1 from samples and previous samples*/
+    delta1 = deltas->append(deltas);
+    switch (prev_samples->len) {
+    case 0:
+        delta1->vset(delta1, 3,
+                     0 - 0,
+                     0 - 0,
+                     samples->_[0] - 0);
+        break;
+    case 1:
+        delta1->vset(delta1, 3,
+                     0 - 0,
+                     prev_samples->_[0] - 0,
+                     samples->_[0] - prev_samples->_[0]);
+        break;
+    case 2:
+        delta1->vset(delta1, 3,
+                     prev_samples->_[0] - 0,
+                     prev_samples->_[1] - prev_samples->_[0],
+                     samples->_[0] - prev_samples->_[1]);
+        break;
+    default:
+        delta1->vset(delta1, 3,
+                     prev_samples->_[prev_samples->len - 2] -
+                     prev_samples->_[prev_samples->len - 3],
+                     prev_samples->_[prev_samples->len - 1] -
+                     prev_samples->_[prev_samples->len - 2],
+                     samples->_[0] - prev_samples->_[prev_samples->len - 1]);
+        break;
+    }
+    for (i = 1; i < samples->len; i++)
+        delta1->append(delta1, samples->_[i] - samples->_[i - 1]);
+    assert(delta1->len == (samples->len + 2));
+
+    /*determine delta2 from delta1*/
+    delta2 = deltas->append(deltas);
+    for (i = 1; i < delta1->len; i++)
+        delta2->append(delta2, delta1->_[i] - delta1->_[i - 1]);
+    assert(delta2->len == (samples->len + 1));
+
+    /*determine delta3 from delta2*/
+    delta3 = deltas->append(deltas);
+    for (i = 1; i < delta2->len; i++)
+        delta3->append(delta3, delta2->_[i] - delta2->_[i - 1]);
+    assert(delta3->len == samples->len);
+
+    /*determine delta sums from non-negative deltas*/
+    for (i = 2; i < delta1->len; i++)
+        sum1 += abs(delta1->_[i]);
+    for (i = 1; i < delta2->len; i++)
+        sum2 += abs(delta2->_[i]);
+    for (i = 0; i < delta3->len; i++)
+        sum3 += abs(delta3->_[i]);
+
+    *energy = 0;
+
+    /*determine DIFF command from minimum sum*/
+    if (sum1 < MIN(sum2, sum3)) {
+        /*use DIFF1 command*/
+        *diff = 1;
+
+        /*calculate energy from minimum sum*/
+        while ((samples->len << *energy) < sum1)
+            *energy += 1;
+
+        /*residuals are determined from delta values*/
+        delta1->de_head(delta1, 2, residuals);
+    } else if (sum2 < sum3) {
+        /*use DIFF2 command*/
+        *diff = 2;
+
+        /*calculate energy from minimum sum*/
+        while ((samples->len << *energy) < sum2)
+            *energy += 1;
+
+        /*residuals are determined from delta values*/
+        delta2->de_head(delta2, 1, residuals);
+    } else {
+        /*use DIFF3 command*/
+        *diff = 3;
+
+        /*calculate energy from minimum sum*/
+        while ((samples->len << *energy) < sum3)
+            *energy += 1;
+
+        /*residuals are determined from delta values*/
+        delta3->copy(delta3, residuals);
+    }
 }
 
-void
-ShortenEncoder_put_var(BitstreamWriter* bs,
-                       unsigned int size,
-                       int value)
+static void
+write_unsigned(BitstreamWriter* bs, unsigned c, unsigned value)
+{
+    const unsigned MSB = value >> c;
+    const unsigned LSB = value - (MSB << c);
+    bs->write_unary(bs, 1, MSB);
+    bs->write(bs, c, LSB);
+}
+
+static void
+write_signed(BitstreamWriter* bs, unsigned c, int value)
 {
     if (value >= 0) {
-        ShortenEncoder_put_uvar(bs, size + 1, value << 1);
+        write_unsigned(bs, c + 1, value << 1);
     } else {
-        ShortenEncoder_put_uvar(bs, size + 1, ((-value - 1) << 1) | 1);
+        write_unsigned(bs, c + 1, ((-value - 1) << 1) + 1);
     }
 }
 
-void
-ShortenEncoder_put_long(BitstreamWriter* bs, unsigned int value)
+static inline unsigned
+LOG2(unsigned value)
 {
-    unsigned int long_size = 3; /*this is supposed to be computed dynamically
-                                  but I'm not convinced it really matters
-                                  considering how little longs are used
-                                  in the Shorten stream*/
-
-    ShortenEncoder_put_uvar(bs, 2, long_size);
-    ShortenEncoder_put_uvar(bs, long_size, value);
+    unsigned bits = 0;
+    assert(value > 0);
+    while (value) {
+        bits++;
+        value >>= 1;
+    }
+    return bits - 1;
 }
 
-void
-ShortenEncoder_byte_counter(uint8_t byte, void* counter)
+static void
+write_long(BitstreamWriter* bs, unsigned value)
 {
-    int* i_counter = (int*)counter;
-    *i_counter += 1;
-}
-
-int
-ShortenEncoder_compute_best_energysize(struct i_array *residuals)
-{
-    uint64_t abs_residual_partition_sum = abs_sum(residuals);
-    int i;
-
-    for (i = 0;
-         ((uint64_t)residuals->size * (uint64_t)(1 << i)) <
-             abs_residual_partition_sum;
-         i++)
-        /*do nothing*/;
-
-    return MAX(i - 1, 0);
+    if (value == 0) {
+        write_unsigned(bs, 2, 0);
+        write_unsigned(bs, 0, 0);
+    } else {
+        const unsigned LSBs = LOG2(value) + 1;
+        write_unsigned(bs, 2, LSBs);
+        write_unsigned(bs, LSBs, value);
+    }
 }

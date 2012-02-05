@@ -3858,18 +3858,6 @@ class ShortenFileTest(TestForeignWaveChunks,
 
     @FORMAT_SHORTEN
     def test_verify(self):
-        def first_non_header(filename):
-            d = audiotools.open(filename).to_pcm()
-            return d.analyze_frame()['offset']
-
-        def last_byte(filename):
-            d = audiotools.open(filename).to_pcm()
-            frame = d.analyze_frame()
-            while (frame['command'] != 4):
-                frame = d.analyze_frame()
-            else:
-                return frame['offset']
-
         #test changing the file underfoot
         temp = tempfile.NamedTemporaryFile(suffix=".shn")
         try:
@@ -3893,9 +3881,8 @@ class ShortenFileTest(TestForeignWaveChunks,
             temp.close()
 
         #testing truncating various Shorten files
-        for filename in ["shorten-frames.shn", "shorten-lpc.shn"]:
-            first = first_non_header(filename)
-            last = last_byte(filename) + 1
+        for (first, last, filename) in [(62, 89, "shorten-frames.shn"),
+                                        (61, 116, "shorten-lpc.shn")]:
 
             f = open(filename, "rb")
             shn_data = f.read()
@@ -3908,7 +3895,7 @@ class ShortenFileTest(TestForeignWaveChunks,
                     temp.write(shn_data[0:i])
                     temp.flush()
                     self.assertEqual(os.path.getsize(temp.name), i)
-                    self.assertRaises(ValueError,
+                    self.assertRaises(IOError,
                                       audiotools.decoders.SHNDecoder,
                                       temp.name)
 
@@ -3920,12 +3907,10 @@ class ShortenFileTest(TestForeignWaveChunks,
                     decoder = audiotools.decoders.SHNDecoder(temp.name)
                     self.assertNotEqual(decoder, None)
                     self.assertRaises(IOError,
-                                      decoder.metadata)
+                                      decoder.pcm_split)
 
                     decoder = audiotools.decoders.SHNDecoder(temp.name)
                     self.assertNotEqual(decoder, None)
-                    decoder.sample_rate = 44100
-                    decoder.channel_mask = 1
                     self.assertRaises(IOError,
                                       audiotools.transfer_framelist_data,
                                       decoder, lambda x: x)
@@ -4058,15 +4043,9 @@ class ShortenFileTest(TestForeignWaveChunks,
 
         options = encode_options.copy()
         (head, tail) = temp_input_wave.pcm_split()
+        options["header_data"] = head
         if (len(tail) > 0):
-            options["verbatim_chunks"] = [head, None, tail]
-        else:
-            options["verbatim_chunks"] = [head, None]
-
-        if (pcmreader.bits_per_sample == 8):
-            options["file_type"] = 2
-        elif (pcmreader.bits_per_sample == 16):
-            options["file_type"] = 5
+            options["footer_data"] = tail
 
         self.encode(temp_file.name,
                     temp_input_wave.to_pcm(),
@@ -4132,7 +4111,7 @@ class ShortenFileTest(TestForeignWaveChunks,
                             test_streams.PATTERN07]:
                 stream = test_streams.MD5Reader(fsd(pattern, 100))
                 self.__test_reader__(
-                    stream, file_type={8:2, 16:5}[bps], block_size=256)
+                    stream, block_size=256)
 
     @FORMAT_SHORTEN
     def test_sines(self):

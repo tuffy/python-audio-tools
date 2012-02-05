@@ -74,7 +74,9 @@ SHNDecoder_init(decoders_SHNDecoder *self,
         unsigned version;
         unsigned i;
 
-        self->bitstream->parse(self->bitstream, "4b 8u", magic_number, version);
+        self->bitstream->parse(self->bitstream, "4b 8u",
+                               magic_number,
+                               &version);
         if (memcmp(magic_number, "ajkg", 4)) {
             PyErr_SetString(PyExc_ValueError, "invalid magic number");
             br_etry(self->bitstream);
@@ -648,53 +650,64 @@ process_header(BitstreamReader* bs,
     unsigned command;
 
     bs->mark(bs);
-    read_unsigned(bs, COMMAND_SIZE);
-    if (command == FN_VERBATIM) {
-        BitstreamReader* verbatim;
-        unsigned verbatim_size;
+    if (!setjmp(*br_try(bs))) {
+        command = read_unsigned(bs, COMMAND_SIZE);
 
-        verbatim = read_verbatim(bs, &verbatim_size);
-        verbatim->mark(verbatim);
+        if (command == FN_VERBATIM) {
+            BitstreamReader* verbatim;
+            unsigned verbatim_size;
 
-        if (!read_wave_header(verbatim, verbatim_size,
-                              sample_rate, channel_mask)) {
+            verbatim = read_verbatim(bs, &verbatim_size);
+            verbatim->mark(verbatim);
+
+            if (!read_wave_header(verbatim, verbatim_size,
+                                  sample_rate, channel_mask)) {
+                verbatim->unmark(verbatim);
+                verbatim->close(verbatim);
+                bs->rewind(bs);
+                bs->unmark(bs);
+                br_etry(bs);
+                return 0;
+            } else {
+                verbatim->rewind(verbatim);
+            }
+
+            if (!read_aiff_header(verbatim, verbatim_size,
+                                  sample_rate, channel_mask)) {
+                verbatim->unmark(verbatim);
+                verbatim->close(verbatim);
+                bs->rewind(bs);
+                bs->unmark(bs);
+                br_etry(bs);
+                return 0;
+            } else {
+                verbatim->rewind(verbatim);
+            }
+
+            /*neither wave header or aiff header found,
+              so use dummy values again*/
             verbatim->unmark(verbatim);
             verbatim->close(verbatim);
             bs->rewind(bs);
             bs->unmark(bs);
+            *sample_rate = 44100;
+            *channel_mask = 0;
+            br_etry(bs);
             return 0;
         } else {
-            verbatim->rewind(verbatim);
-        }
-
-        if (!read_aiff_header(verbatim, verbatim_size,
-                              sample_rate, channel_mask)) {
-            verbatim->unmark(verbatim);
-            verbatim->close(verbatim);
+            /*VERBATIM isn't the first command
+              so rewind and set some dummy values*/
             bs->rewind(bs);
             bs->unmark(bs);
+            *sample_rate = 44100;
+            *channel_mask = 0;
+            br_etry(bs);
             return 0;
-        } else {
-            verbatim->rewind(verbatim);
         }
-
-        /*neither wave header or aiff header found,
-          so use dummy values again*/
-        verbatim->close(verbatim);
-        verbatim->unmark(verbatim);
-        bs->rewind(bs);
-        bs->unmark(bs);
-        *sample_rate = 44100;
-        *channel_mask = 0;
-        return 0;
     } else {
-        /*VERBATIM isn't the first command
-          so rewind and set some dummy values*/
-        bs->rewind(bs);
         bs->unmark(bs);
-        *sample_rate = 44100;
-        *channel_mask = 0;
-        return 0;
+        br_etry(bs);
+        br_abort(bs);
     }
 }
 
