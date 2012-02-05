@@ -5241,3 +5241,14 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Unify trackplay/cdplay/dvdaplay widgets into audiotools.ui
 ** TODO Unify non-Urwid player into audiotools.ui
 ** TODO Add man page
+* TODO Cleanup Shorten for better accuracy
+** TODO Handle 8-bit files correctly
+   waves are unsigned, aiffs are signed, Sun AU is ?
+   - [X] update py_decoders.SHNDecoder
+   - [X] update decoders.SHNDecoder
+   - [X] update py_encoders.encode_shn
+   - [X] update encoders.encode_shn
+   - [X] update __shn__.py
+   - [ ] update documentation
+** TODO Handle Sun AU conversion properly
+   Its header should be added rather than converting through wave

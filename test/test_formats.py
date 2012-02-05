@@ -4043,6 +4043,8 @@ class ShortenFileTest(TestForeignWaveChunks,
 
         options = encode_options.copy()
         (head, tail) = temp_input_wave.pcm_split()
+        options["is_big_endian"] = False
+        options["signed_samples"] = (pcmreader.bits_per_sample == 16)
         options["header_data"] = head
         if (len(tail) > 0):
             options["footer_data"] = tail
@@ -4085,9 +4087,68 @@ class ShortenFileTest(TestForeignWaveChunks,
                          None)
 
         temp_file.close()
-        temp_input_wave_file.close()
         temp_wav_file1.close()
         temp_wav_file2.close()
+
+        #then perform PCM -> aiff -> Shorten -> PCM testing
+
+        #construct a temporary wave file from pcmreader
+        temp_input_aiff_file = tempfile.NamedTemporaryFile(suffix=".aiff")
+        temp_input_aiff = temp_input_wave.convert(temp_input_aiff_file.name,
+                                                  audiotools.AiffAudio)
+        temp_input_aiff.verify()
+
+        options = encode_options.copy()
+        options["is_big_endian"] = True
+        options["signed_samples"] = True
+        (head, tail) = temp_input_aiff.pcm_split()
+        options["header_data"] = head
+        if (len(tail) > 0):
+            options["footer_data"] = tail
+
+        self.encode(temp_file.name,
+                    temp_input_aiff.to_pcm(),
+                    **options)
+
+        shn = audiotools.open(temp_file.name)
+        self.assert_(shn.total_frames() > 0)
+
+        temp_aiff_file1 = tempfile.NamedTemporaryFile(suffix=".aiff")
+        temp_aiff_file2 = tempfile.NamedTemporaryFile(suffix=".aiff")
+
+        #first, ensure the Shorten-encoded file
+        #has the same MD5 signature as pcmreader once decoded
+        md5sum = md5()
+        d = self.decoder(temp_file.name)
+        f = d.read(audiotools.BUFFER_SIZE)
+        while (len(f) > 0):
+            md5sum.update(f.to_bytes(False, True))
+            f = d.read(audiotools.BUFFER_SIZE)
+        d.close()
+        self.assertEqual(md5sum.digest(), pcmreader.digest())
+
+        #then compare our .to_aiff() output
+        #with that of the Shorten reference decoder
+        shn.convert(temp_aiff_file1.name, audiotools.AiffAudio)
+
+        subprocess.call([audiotools.BIN["shorten"],
+                         "-x", shn.filename, temp_aiff_file2.name])
+
+        aiff = audiotools.AiffAudio(temp_aiff_file1.name)
+        aiff.verify()
+        aiff = audiotools.AiffAudio(temp_aiff_file2.name)
+        aiff.verify()
+
+        self.assertEqual(audiotools.pcm_frame_cmp(
+                audiotools.AiffAudio(temp_aiff_file1.name).to_pcm(),
+                audiotools.AiffAudio(temp_aiff_file2.name).to_pcm()),
+                         None)
+
+        temp_file.close()
+        temp_input_aiff_file.close()
+        temp_input_wave_file.close()
+        temp_aiff_file1.close()
+        temp_aiff_file2.close()
 
     @FORMAT_SHORTEN
     def test_small_files(self):
