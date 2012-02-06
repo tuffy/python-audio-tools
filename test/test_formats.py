@@ -1661,43 +1661,6 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
                     BitstreamReader(s, 0)))
 
     @FORMAT_AIFF
-    def test_channel_mask(self):
-        if (self.audio_class is audiotools.AudioFile):
-            return
-
-        #AIFF's support channels are a little odd
-
-        temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
-        try:
-            for mask in [["front_center"],
-                         ["front_left",
-                          "front_right"],
-                         ["front_left",
-                          "front_right",
-                          "front_center"],
-                         ["front_left",
-                          "front_right",
-                          "back_left",
-                          "back_right"],
-                         ["front_left",
-                          "front_right",
-                          "front_center",
-                          "back_center",
-                          "side_left",
-                          "side_right"]]:
-                cm = audiotools.ChannelMask.from_fields(**dict(
-                        [(f,True) for f in mask]))
-                track = self.audio_class.from_pcm(temp.name, BLANK_PCM_Reader(
-                        1, channels=len(cm), channel_mask=int(cm)))
-                self.assertEqual(track.channels(), len(cm))
-                self.assertEqual(track.channel_mask(), cm)
-                track = audiotools.open(temp.name)
-                self.assertEqual(track.channels(), len(cm))
-                self.assertEqual(track.channel_mask(), cm)
-        finally:
-            temp.close()
-
-    @FORMAT_AIFF
     def test_verify(self):
         #test truncated file
         for aiff_file in ["aiff-8bit.aiff",

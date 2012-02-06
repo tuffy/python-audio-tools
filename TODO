@@ -3395,6 +3395,32 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] 8 channels
 *** DONE Add unit tests to ensure invalid channel counts aren't encoded
 *** DONE Add unit tests to ensure invalid channel masks aren't encoded
+* DONE Add Python-based file encoders
+  Like the Python-based decoders,
+  these provide simple reference implementations
+  one can easily pull apart to see how the encoders work.
+** DONE py_encoders/encode_flac
+** DONE py_encoders/encode_shn
+** DONE py_encoders/encode_alac
+** DONE py_encoders/encode_wavpack
+* DONE Cleanup Shorten for better accuracy
+** DONE Handle 8-bit files correctly
+   waves are unsigned, aiffs are signed, Sun AU is ?
+   - [X] update py_decoders.SHNDecoder
+   - [X] update decoders.SHNDecoder
+   - [X] update py_encoders.encode_shn
+   - [X] update encoders.encode_shn
+   - [X] update __shn__.py
+   - [X] update documentation
+** DONE Handle multichannel Shn/AIFF files correctly
+*** DONE Ensure multichannel files converted from AIFF work
+    Their channels should be kept in whatever order AIFF happens to use
+    rather than have them remapped to wave order.
+*** DONE Ensure multichannel Shn/AIFF to PCM works
+    Output channels should be rearranged to PCMReader order.
+** DONE Improve thread friendliness in decoder/encoder
+   - [X] decoders/shn.c
+   - [X] encoders/shn.h
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -5049,14 +5075,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Add .analyze_frame() option to Python-based decoders
 ** TODO Remove .analyze_frame() option from C-based decoders
    These add significant code clutter to code that needs to be kept simple
-* DONE Add Python-based file encoders
-  Like the Python-based decoders,
-  these provide simple reference implementations
-  one can easily pull apart to see how the encoders work.
-** DONE py_encoders/encode_flac
-** DONE py_encoders/encode_shn
-** DONE py_encoders/encode_alac
-** DONE py_encoders/encode_wavpack
 * TODO Overhaul decoding/encoding documentation
   It needs to be cleaned up so one can better follow the entire
   decoding process, as well as the entire encoding process.
@@ -5241,14 +5259,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Unify trackplay/cdplay/dvdaplay widgets into audiotools.ui
 ** TODO Unify non-Urwid player into audiotools.ui
 ** TODO Add man page
-* TODO Cleanup Shorten for better accuracy
-** TODO Handle 8-bit files correctly
-   waves are unsigned, aiffs are signed, Sun AU is ?
-   - [X] update py_decoders.SHNDecoder
-   - [X] update decoders.SHNDecoder
-   - [X] update py_encoders.encode_shn
-   - [X] update encoders.encode_shn
-   - [X] update __shn__.py
-   - [ ] update documentation
-** TODO Handle Sun AU conversion properly
-   Its header should be added rather than converting through wave
+* TODO Update PCMReader.read() to take a PCM frame count instead of bytes
+  Taking a byte count as an argument is a relic from the days
+  when most conversion happened through external programs.
+  It's time to update this function to work on PCM frames instead
+  which is much more natural fit and makes many calculations much easier.

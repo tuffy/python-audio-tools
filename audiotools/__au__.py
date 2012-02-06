@@ -165,6 +165,22 @@ class AuAudio(AudioFile):
                         channel_mask=int(self.channel_mask()),
                         bits_per_sample=self.bits_per_sample())
 
+    def pcm_split(self):
+        """Returns a pair of data strings before and after PCM data.
+
+        The first contains all data before the PCM content of the data chunk.
+        The second containing all data after the data chunk."""
+
+        import struct
+
+        f = file(self.filename, 'rb')
+        (magic_number, data_offset) = struct.unpack(">4sI", f.read(8))
+        header = f.read(data_offset - struct.calcsize(">4sI"))
+        return (struct.pack(">4sI%ds" % (len(header)),
+                            magic_number, data_offset, header),
+                "")
+
+
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
         """Encodes a new file from PCM data.
@@ -191,13 +207,12 @@ class AuAudio(AudioFile):
         except IOError, err:
             raise EncodingError(str(err))
         try:
-            #send out a dummy header
+            #write a dummy header
             au.build("4b 32u 32u 32u 32u 32u",
                      (".snd", 24, data_size, encoding_format,
                       pcmreader.sample_rate, pcmreader.channels))
 
-            #send our big-endian PCM data
-            #d will be a list of ints, so we can't use transfer_data
+            #write our big-endian PCM data
             try:
                 framelist = pcmreader.read(BUFFER_SIZE)
                 while (len(framelist) > 0):
@@ -212,7 +227,7 @@ class AuAudio(AudioFile):
                 cls.__unlink__(filename)
                 raise err
 
-            #send out a complete header
+            #rewind and write a complete header
             f.seek(0, 0)
             au.build("4b 32u 32u 32u 32u 32u",
                      (".snd", 24, data_size, encoding_format,

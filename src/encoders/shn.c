@@ -206,6 +206,10 @@ encode_audio(BitstreamWriter* bs,
         goto error;
 
     while (frame->_[0]->len > 0) {
+#ifndef STANDALONE
+        Py_BEGIN_ALLOW_THREADS
+#endif
+
         if (frame->_[0]->len != block_size) {
             /*PCM frame count has changed, so issue BLOCKSIZE command*/
             block_size = frame->_[0]->len;
@@ -264,6 +268,10 @@ encode_audio(BitstreamWriter* bs,
                 wrapped->tail(wrapped, SAMPLES_TO_WRAP, wrapped);
             }
         }
+
+#ifndef STANDALONE
+        Py_END_ALLOW_THREADS
+#endif
 
         if (pcmreader->read(pcmreader, block_size, frame))
             goto error;
