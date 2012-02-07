@@ -2116,6 +2116,58 @@ bw_open(FILE *f, bs_endianness endianness)
     return bs;
 }
 
+BitstreamWriter*
+bw_open_external(void* user_data, bs_endianness endianness,
+                 int (*write)(void* user_data,
+                              const uint8_t* buffer,
+                              buffer_size_t size),
+                 void (*flush)(void* user_data),
+                 void (*close)(void* user_data),
+                 void (*free)(void* user_data))
+{
+    BitstreamWriter *bs = malloc(sizeof(BitstreamWriter));
+    bs->type = BW_EXTERNAL;
+
+    bs->output.external = ext_open_w(user_data, write, flush, close, free);
+    bs->buffer_size = 0;
+    bs->buffer = 0;
+
+    bs->callbacks = NULL;
+    bs->exceptions = NULL;
+    bs->callbacks_used = NULL;
+    bs->exceptions_used = NULL;
+
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        bs->write = bw_write_bits_e_be;
+        bs->write_64 = bw_write_bits64_e_be;
+        bs->write_signed = bw_write_signed_bits_f_p_r_be;
+        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_be;
+        bs->set_endianness = bw_set_endianness_e_be;
+        break;
+    case BS_LITTLE_ENDIAN:
+        bs->write = bw_write_bits_e_le;
+        bs->write_64 = bw_write_bits64_e_le;
+        bs->write_signed = bw_write_signed_bits_f_p_r_le;
+        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_le;
+        bs->set_endianness = bw_set_endianness_e_le;
+        break;
+    }
+
+    bs->write_bytes = bw_write_bytes_e;
+    bs->write_unary = bw_write_unary_f_p_r;
+    bs->build = bw_build;
+    bs->byte_align = bw_byte_align_f_p_r;
+    bs->bits_written = bw_bits_written_f_p_c;
+    bs->bytes_written = bw_bytes_written;
+    bs->flush = bw_flush_e;
+    bs->close_substream = bw_close_substream_e;
+    bs->free = bw_free_e;
+    bs->close = bw_close;
+
+    return bs;
+}
+
 #ifndef STANDALONE
 BitstreamWriter*
 bw_open_python(PyObject *writer, bs_endianness endianness,
@@ -2335,6 +2387,10 @@ FUNC_WRITE_BITS_BE(bw_write_bits_f_be,
                    unsigned int, putc, bs->output.file)
 FUNC_WRITE_BITS_LE(bw_write_bits_f_le,
                    unsigned int, putc, bs->output.file)
+FUNC_WRITE_BITS_BE(bw_write_bits_e_be,
+                   unsigned int, ext_putc, bs->output.external)
+FUNC_WRITE_BITS_LE(bw_write_bits_e_le,
+                   unsigned int, ext_putc, bs->output.external)
 #ifndef STANDALONE
 FUNC_WRITE_BITS_BE(bw_write_bits_p_be,
                    unsigned int, py_putc, bs->output.python)
@@ -2412,6 +2468,10 @@ FUNC_WRITE_BITS_BE(bw_write_bits64_f_be,
                    uint64_t, putc, bs->output.file)
 FUNC_WRITE_BITS_LE(bw_write_bits64_f_le,
                    uint64_t, putc, bs->output.file)
+FUNC_WRITE_BITS_BE(bw_write_bits64_e_be,
+                   uint64_t, ext_putc, bs->output.external)
+FUNC_WRITE_BITS_LE(bw_write_bits64_e_le,
+                   uint64_t, ext_putc, bs->output.external)
 #ifndef STANDALONE
 FUNC_WRITE_BITS_BE(bw_write_bits64_p_be,
                    uint64_t, py_putc, bs->output.python)
@@ -2508,6 +2568,16 @@ bw_write_bytes_f(BitstreamWriter* bs, const uint8_t* bytes,
         for (i = 0; i < count; i++)
             bs->write(bs, 8, bytes[i]);
     }
+}
+
+void
+bw_write_bytes_e(BitstreamWriter* bs, const uint8_t* bytes,
+                 unsigned int count)
+{
+    unsigned int i;
+
+    for (i = 0; i < count; i++)
+        bs->write(bs, 8, bytes[i]);
 }
 
 #ifndef STANDALONE
@@ -2667,6 +2737,34 @@ bw_set_endianness_r_le(BitstreamWriter* bs, bs_endianness endianness)
     }
 }
 
+void
+bw_set_endianness_e_be(BitstreamWriter* bs, bs_endianness endianness)
+{
+    bs->buffer = 0;
+    bs->buffer_size = 0;
+    if (endianness == BS_LITTLE_ENDIAN) {
+        bs->write = bw_write_bits_e_le;
+        bs->write_64 = bw_write_bits64_e_le;
+        bs->write_signed = bw_write_signed_bits_f_p_r_le;
+        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_le;
+        bs->set_endianness = bw_set_endianness_e_le;
+    }
+}
+
+void
+bw_set_endianness_e_le(BitstreamWriter* bs, bs_endianness endianness)
+{
+    bs->buffer = 0;
+    bs->buffer_size = 0;
+    if (endianness == BS_BIG_ENDIAN) {
+        bs->write = bw_write_bits_e_be;
+        bs->write_64 = bw_write_bits64_e_be;
+        bs->write_signed = bw_write_signed_bits_f_p_r_be;
+        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_be;
+        bs->set_endianness = bw_set_endianness_e_be;
+    }
+}
+
 #ifndef STANDALONE
 
 void
@@ -2814,6 +2912,15 @@ bw_flush_r_a_c(BitstreamWriter* bs)
     return;
 }
 
+void
+bw_flush_e(BitstreamWriter* bs)
+{
+    bs->output.external->write(bs->output.external->user_data,
+                               bs->output.external->buffer.data,
+                               bs->output.external->buffer.size);
+    bs->output.external->buffer.size = 0;
+    bs->output.external->flush(bs->output.external->user_data);
+}
 
 #ifndef STANDALONE
 void
@@ -2854,6 +2961,19 @@ bw_close_substream_f(BitstreamWriter* bs)
 void
 bw_close_substream_r_a(BitstreamWriter* bs)
 {
+    bw_close_methods(bs);
+}
+
+void
+bw_close_substream_e(BitstreamWriter* bs)
+{
+    /*flush pending data*/
+    bw_flush_e(bs);
+
+    /*call .close() method*/
+    ext_close_w(bs->output.external);
+
+    /*swap read methods with closed methods*/
     bw_close_methods(bs);
 }
 
@@ -2936,6 +3056,24 @@ bw_free_r(BitstreamWriter* bs)
 {
     /*deallocate buffer*/
     buf_close(bs->output.buffer);
+
+    /*perform additional deallocations on rest of struct*/
+    bw_free_f_a(bs);
+}
+
+void
+bw_free_e(BitstreamWriter* bs)
+{
+    /*flush pending data if necessary*/
+    if (!bw_closed(bs)) {
+        bs->output.external->write(bs->output.external->user_data,
+                                   bs->output.external->buffer.data,
+                                   bs->output.external->buffer.size);
+        bs->output.external->buffer.size = 0;
+        bs->output.external->flush(bs->output.external->user_data);
+    }
+
+    ext_free_w(bs->output.external);
 
     /*perform additional deallocations on rest of struct*/
     bw_free_f_a(bs);
@@ -3082,6 +3220,10 @@ bw_dump_bytes(BitstreamWriter* target, uint8_t* buffer, unsigned int total) {
             if (fwrite(buffer, sizeof(uint8_t),
                        total, target->output.file) != total)
                 bw_abort(target);
+            break;
+        case BW_EXTERNAL:
+            for (i = 0; i < total; i++)
+                target->write(target, 8, buffer[i]);
             break;
         case BW_PYTHON:
 #ifndef STANDALONE
@@ -3598,6 +3740,59 @@ ext_free(struct br_external_input* stream)
     free(stream);
 }
 
+struct bw_external_output*
+ext_open_w(void* user_data,
+           int (*write)(void* user_data,
+                        const uint8_t* buffer,
+                        buffer_size_t size),
+           void (*flush)(void* user_data),
+           void (*close)(void* user_data),
+           void (*free)(void* user_data))
+{
+    struct bw_external_output* output =
+        malloc(sizeof(struct bw_external_output));
+    const static buffer_size_t buffer_size = 4096;
+    output->user_data = user_data;
+    output->write = write;
+    output->flush = flush;
+    output->close = close;
+    output->free = free;
+
+    output->buffer.data = malloc(buffer_size * sizeof(uint8_t));
+    output->buffer.total_size = buffer_size;
+    output->buffer.size = 0;
+
+    return output;
+}
+
+int
+ext_putc(int i, struct bw_external_output* stream)
+{
+    if (stream->buffer.size == stream->buffer.total_size) {
+        stream->write(stream->user_data,
+                      stream->buffer.data,
+                      stream->buffer.size);
+        stream->buffer.size = 0;
+    }
+
+    stream->buffer.data[stream->buffer.size++] = (uint8_t)i;
+    return 0;
+}
+
+void
+ext_close_w(struct bw_external_output* stream)
+{
+    stream->close(stream->user_data);
+}
+
+void
+ext_free_w(struct bw_external_output* stream)
+{
+    free(stream->buffer.data);
+    free(stream);
+}
+
+
 int
 bs_parse_format(char** format, unsigned int* size, bs_instruction* type) {
     *size = 0;
@@ -3842,6 +4037,12 @@ int ext_fread(void* user_data,
 void ext_fclose(void* user_data);
 
 void ext_ffree(void* user_data);
+
+int ext_fwrite(void* user_data,
+               const uint8_t* buffer,
+               buffer_size_t size);
+
+void ext_fflush(void* user_data);
 
 
 int main(int argc, char* argv[]) {
@@ -4789,6 +4990,36 @@ test_writer(bs_endianness endianness) {
     test_writer_close_errors(writer);
     writer->free(writer);
 
+    /*perform external function-based checks*/
+    for (i = 0; i < total_checks; i++) {
+        output_file = fopen(temp_filename, "wb");
+        assert(output_file != NULL);
+        writer = bw_open_external(output_file,
+                                  endianness,
+                                  ext_fwrite,
+                                  ext_fflush,
+                                  ext_fclose,
+                                  ext_ffree);
+        checks[i](writer, endianness);
+        writer->flush(writer);
+        check_output_file();
+        writer->free(writer);
+        fclose(output_file);
+    }
+
+    output_file = fopen(temp_filename, "wb");
+    writer = bw_open_external(output_file,
+                              endianness,
+                              ext_fwrite,
+                              ext_fflush,
+                              ext_fclose,
+                              ext_ffree);
+    test_writer_close_errors(writer);
+    writer->set_endianness(writer, endianness == BS_BIG_ENDIAN ?
+                           BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
+    test_writer_close_errors(writer);
+    writer->free(writer);
+
     /*perform recorder-based checks*/
     for (i = 0; i < total_checks; i++) {
         output_file = fopen(temp_filename, "wb");
@@ -5638,6 +5869,20 @@ void ext_fclose(void* user_data)
 void ext_ffree(void* user_data)
 {
     return;
+}
+
+int ext_fwrite(void* user_data,
+               const uint8_t* buffer,
+               buffer_size_t size)
+{
+    fwrite(buffer, sizeof(uint8_t), size, (FILE*)user_data);
+
+    return 0;
+}
+
+void ext_fflush(void* user_data)
+{
+    fflush((FILE*)user_data);
 }
 
 
