@@ -227,9 +227,9 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
         self->stream_finalized = 1;
 
         if (FlacDecoder_verify_okay(self)) {
-        return empty_FrameList(self->audiotools_pcm,
-                               self->streaminfo.channels,
-                               self->streaminfo.bits_per_sample);
+            return empty_FrameList(self->audiotools_pcm,
+                                   self->streaminfo.channels,
+                                   self->streaminfo.bits_per_sample);
         } else {
             PyErr_SetString(PyExc_ValueError,
                             "MD5 mismatch at end of stream");

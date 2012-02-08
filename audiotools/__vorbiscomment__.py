@@ -196,6 +196,7 @@ class VorbisComment(MetaData):
             #in our high level implementation
             if (value == 0):
                 self.__delattr__(attr)
+                return
 
             #handle rare u'TRACKNUMBER=1/2' cases
             #which must always be numerical fields
@@ -251,10 +252,13 @@ class VorbisComment(MetaData):
             #which must always be numerical fields
             (slashed_field, slash_side) = self.SLASHED_FIELDS[attr]
 
-            slashed_matches = [match for match in
-                               [self.SLASHED_FIELD.search(field)
-                                for field in self[slashed_field]]
-                               if (match is not None)]
+            try:
+                slashed_matches = [match for match in
+                                   [self.SLASHED_FIELD.search(field)
+                                    for field in self[slashed_field]]
+                                   if (match is not None)]
+            except KeyError:
+                slashed_matches = []
 
             if (len(slashed_matches) > 0):
                 if (slash_side == 0):

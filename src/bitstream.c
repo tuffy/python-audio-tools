@@ -111,66 +111,6 @@ br_open(FILE *f, bs_endianness endianness)
     return bs;
 }
 
-#ifndef STANDALONE
-BitstreamReader*
-br_open_python(PyObject *reader, bs_endianness endianness,
-               unsigned int buffer_size)
-{
-    BitstreamReader *bs = malloc(sizeof(BitstreamReader));
-    bs->type = BR_PYTHON;
-    bs->input.python = py_open_r(reader, buffer_size);
-    bs->state = 0;
-    bs->callbacks = NULL;
-    bs->exceptions = NULL;
-    bs->marks = NULL;
-    bs->callbacks_used = NULL;
-    bs->exceptions_used = NULL;
-    bs->marks_used = NULL;
-
-    switch (endianness) {
-    case BS_BIG_ENDIAN:
-        bs->read = br_read_bits_p_be;
-        bs->read_signed = br_read_signed_bits_be;
-        bs->read_64 = br_read_bits64_p_be;
-        bs->read_signed_64 = br_read_signed_bits64_be;
-        bs->skip = br_skip_bits_p_be;
-        bs->unread = br_unread_bit_be;
-        bs->read_unary = br_read_unary_p_be;
-        bs->skip_unary = br_skip_unary_p_be;
-        bs->read_limited_unary = br_read_limited_unary_p_be;
-        bs->set_endianness = br_set_endianness_p_be;
-        break;
-    case BS_LITTLE_ENDIAN:
-        bs->read = br_read_bits_p_le;
-        bs->read_signed = br_read_signed_bits_le;
-        bs->read_64 = br_read_bits64_p_le;
-        bs->read_signed_64 = br_read_signed_bits64_le;
-        bs->skip = br_skip_bits_p_le;
-        bs->unread = br_unread_bit_le;
-        bs->read_unary = br_read_unary_p_le;
-        bs->skip_unary = br_skip_unary_p_le;
-        bs->read_limited_unary = br_read_limited_unary_p_le;
-        bs->set_endianness = br_set_endianness_p_le;
-        break;
-    }
-
-    bs->skip_bytes = br_skip_bytes;
-    bs->byte_align = br_byte_align;
-    bs->read_huffman_code = br_read_huffman_code_p;
-    bs->read_bytes = br_read_bytes_p;
-    bs->parse = br_parse;
-    bs->substream_append = br_substream_append_p;
-    bs->close_substream = br_close_substream_p;
-    bs->free = br_free_p;
-    bs->close = br_close;
-    bs->mark = br_mark_p;
-    bs->rewind = br_rewind_p;
-    bs->unmark = br_unmark_p;
-
-    return bs;
-}
-#endif
-
 BitstreamReader*
 br_substream_new(bs_endianness endianness)
 {
@@ -229,7 +169,8 @@ br_substream_new(bs_endianness endianness)
 }
 
 BitstreamReader*
-br_open_external(void* user_data, bs_endianness endianness,
+br_open_external(void* user_data,
+                 bs_endianness endianness,
                  int (*read)(void* user_data,
                              struct bs_buffer* buffer),
                  void (*close)(void* user_data),
@@ -398,12 +339,6 @@ FUNC_READ_BITS_BE(br_read_bits_e_be,
                   unsigned int, ext_getc, bs->input.external)
 FUNC_READ_BITS_LE(br_read_bits_e_le,
                   unsigned int, ext_getc, bs->input.external)
-#ifndef STANDALONE
-FUNC_READ_BITS_BE(br_read_bits_p_be,
-                  unsigned int, py_getc, bs->input.python)
-FUNC_READ_BITS_LE(br_read_bits_p_le,
-                  unsigned int, py_getc, bs->input.python)
-#endif
 unsigned int
 br_read_bits_c(BitstreamReader* bs, unsigned int count)
 {
@@ -447,12 +382,6 @@ FUNC_READ_BITS_BE(br_read_bits64_e_be,
                   uint64_t, ext_getc, bs->input.external)
 FUNC_READ_BITS_LE(br_read_bits64_e_le,
                   uint64_t, ext_getc, bs->input.external)
-#ifndef STANDALONE
-FUNC_READ_BITS_BE(br_read_bits64_p_be,
-                  uint64_t, py_getc, bs->input.python)
-FUNC_READ_BITS_LE(br_read_bits64_p_le,
-                  uint64_t, py_getc, bs->input.python)
-#endif
 uint64_t
 br_read_bits64_c(BitstreamReader* bs, unsigned int count)
 {
@@ -741,75 +670,6 @@ br_skip_bits_e_le(BitstreamReader* bs, unsigned int count)
     bs->state = context;
 }
 
-#ifndef STANDALONE
-void
-br_skip_bits_p_be(BitstreamReader* bs, unsigned int count)
-{
-    int context = bs->state;
-    unsigned int result;
-    int byte;
-    struct bs_callback* callback;
-    int output_size;
-
-    while (count > 0) {
-        if (context == 0) {
-            if ((byte = py_getc(bs->input.python)) == EOF)
-                br_abort(bs);
-            context = NEW_CONTEXT(byte);
-            for (callback = bs->callbacks;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback((uint8_t)byte, callback->data);
-        }
-
-        result = read_bits_table[context][MIN(count, 8) - 1];
-
-        output_size = READ_BITS_OUTPUT_SIZE(result);
-
-        context = NEXT_CONTEXT(result);
-
-        count -= output_size;
-    }
-
-    bs->state = context;
-}
-
-void
-br_skip_bits_p_le(BitstreamReader* bs, unsigned int count)
-{
-    int context = bs->state;
-    unsigned int result;
-    int byte;
-    struct bs_callback* callback;
-    int output_size;
-    int bit_offset = 0;
-
-    while (count > 0) {
-        if (context == 0) {
-            if ((byte = py_getc(bs->input.python)) == EOF)
-                br_abort(bs);
-            context = NEW_CONTEXT(byte);
-            for (callback = bs->callbacks;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback((uint8_t)byte, callback->data);
-        }
-
-        result = read_bits_table_le[context][MIN(count, 8) - 1];
-
-        output_size = READ_BITS_OUTPUT_SIZE(result);
-
-        context = NEXT_CONTEXT(result);
-
-        count -= output_size;
-
-        bit_offset += output_size;
-    }
-
-    bs->state = context;
-}
-#endif
-
 void
 br_skip_bits_c(BitstreamReader* bs, unsigned int count)
 {
@@ -898,12 +758,6 @@ FUNC_READ_UNARY(br_read_unary_e_be,
                 ext_getc, bs->input.external, read_unary_table)
 FUNC_READ_UNARY(br_read_unary_e_le,
                 ext_getc, bs->input.external, read_unary_table_le)
-#ifndef STANDALONE
-FUNC_READ_UNARY(br_read_unary_p_be,
-                py_getc, bs->input.python, read_unary_table)
-FUNC_READ_UNARY(br_read_unary_p_le,
-                py_getc, bs->input.python, read_unary_table_le)
-#endif
 unsigned int
 br_read_unary_c(BitstreamReader* bs, int stop_bit)
 {
@@ -949,12 +803,6 @@ FUNC_SKIP_UNARY(br_skip_unary_e_be,
                 ext_getc, bs->input.external, read_unary_table)
 FUNC_SKIP_UNARY(br_skip_unary_e_le,
                 ext_getc, bs->input.external, read_unary_table_le)
-#ifndef STANDALONE
-FUNC_SKIP_UNARY(br_skip_unary_p_be,
-                py_getc, bs->input.python, read_unary_table)
-FUNC_SKIP_UNARY(br_skip_unary_p_le,
-                py_getc, bs->input.python, read_unary_table_le)
-#endif
 
 void
 br_skip_unary_c(BitstreamReader* bs, int stop_bit)
@@ -1027,14 +875,7 @@ FUNC_READ_LIMITED_UNARY(br_read_limited_unary_e_be,
 FUNC_READ_LIMITED_UNARY(br_read_limited_unary_e_le,
                         ext_getc, bs->input.external,
                         read_limited_unary_table_le)
-#ifndef STANDALONE
-FUNC_READ_LIMITED_UNARY(br_read_limited_unary_p_be,
-                        py_getc, bs->input.python,
-                        read_limited_unary_table)
-FUNC_READ_LIMITED_UNARY(br_read_limited_unary_p_le,
-                        py_getc, bs->input.python,
-                        read_limited_unary_table_le)
-#endif
+
 int
 br_read_limited_unary_c(BitstreamReader* bs, int stop_bit, int maximum_bits)
 {
@@ -1075,9 +916,6 @@ br_read_limited_unary_c(BitstreamReader* bs, int stop_bit, int maximum_bits)
 FUNC_READ_HUFFMAN_CODE(br_read_huffman_code_f, fgetc, bs->input.file)
 FUNC_READ_HUFFMAN_CODE(br_read_huffman_code_s, buf_getc, bs->input.substream)
 FUNC_READ_HUFFMAN_CODE(br_read_huffman_code_e, ext_getc, bs->input.external)
-#ifndef STANDALONE
-FUNC_READ_HUFFMAN_CODE(br_read_huffman_code_p, py_getc, bs->input.python)
-#endif
 int
 br_read_huffman_code_c(BitstreamReader *bs,
                        struct br_huffman_table table[][0x200])
@@ -1182,21 +1020,6 @@ br_read_bytes_e(struct BitstreamReader_s* bs,
         bytes[i] = bs->read(bs, 8);
 }
 
-#ifndef STANDALONE
-void
-br_read_bytes_p(struct BitstreamReader_s* bs,
-                uint8_t* bytes,
-                unsigned int byte_count)
-{
-    unsigned int i;
-
-    /*this is the unoptimized version
-      because it's easier than pulling bytes
-      out of py_getc's buffer directly*/
-    for (i = 0; i < byte_count; i++)
-        bytes[i] = bs->read(bs, 8);
-}
-#endif
 
 void
 br_read_bytes_c(struct BitstreamReader_s* bs,
@@ -1366,43 +1189,6 @@ br_set_endianness_e_le(BitstreamReader *bs, bs_endianness endianness)
     }
 }
 
-#ifndef STANDALONE
-void
-br_set_endianness_p_be(BitstreamReader *bs, bs_endianness endianness)
-{
-    bs->state = 0;
-    if (endianness == BS_LITTLE_ENDIAN) {
-        bs->read = br_read_bits_p_le;
-        bs->read_signed = br_read_signed_bits_le;
-        bs->read_64 = br_read_bits64_p_le;
-        bs->read_signed_64 = br_read_signed_bits64_le;
-        bs->skip = br_skip_bits_p_le;
-        bs->unread = br_unread_bit_le;
-        bs->read_unary = br_read_unary_p_le;
-        bs->skip_unary = br_skip_unary_p_le;
-        bs->read_limited_unary = br_read_limited_unary_p_le;
-        bs->set_endianness = br_set_endianness_p_le;
-    }
-}
-
-void
-br_set_endianness_p_le(BitstreamReader *bs, bs_endianness endianness)
-{
-    bs->state = 0;
-    if (endianness == BS_BIG_ENDIAN) {
-        bs->read = br_read_bits_p_be;
-        bs->read_signed = br_read_signed_bits_be;
-        bs->read_64 = br_read_bits64_p_be;
-        bs->read_signed_64 = br_read_signed_bits64_be;
-        bs->skip = br_skip_bits_p_be;
-        bs->unread = br_unread_bit_be;
-        bs->read_unary = br_read_unary_p_be;
-        bs->skip_unary = br_read_unary_p_be;
-        bs->read_limited_unary = br_read_limited_unary_p_be;
-        bs->set_endianness = br_set_endianness_p_be;
-    }
-}
-#endif
 
 void
 br_set_endianness_c(BitstreamReader *bs, bs_endianness endianness)
@@ -1459,28 +1245,6 @@ br_close_substream_e(BitstreamReader* bs)
     br_close_methods(bs);
 }
 
-#ifndef STANDALONE
-void
-br_close_substream_p(BitstreamReader* bs) {
-    PyObject* close_result;
-
-    /*call .close() method on Python object*/
-    close_result = PyObject_CallMethod(bs->input.python->reader_obj,
-                                       "close",
-                                       NULL);
-    if (close_result != NULL)
-        Py_DECREF(close_result);
-    else {
-        /*some exception occurred when calling close()
-          so simply print it out and continue on
-          since there's little we can do about it*/
-        PyErr_PrintEx(1);
-    }
-
-    /*swap read methods with closed methods*/
-    br_close_methods(bs);
-}
-#endif
 
 void
 br_close_substream_c(BitstreamReader* bs)
@@ -1565,19 +1329,6 @@ br_free_e(BitstreamReader* bs)
     br_free_f(bs);
 }
 
-#ifndef STANDALONE
-void
-br_free_p(BitstreamReader* bs)
-{
-    /*decref Python object and remove buffer*/
-    py_close_r(bs->input.python);
-
-    /*perform additional deallocations on rest of struct*/
-    br_free_f(bs);
-}
-#endif
-
-
 
 void
 br_close(BitstreamReader* bs)
@@ -1644,27 +1395,6 @@ br_mark_e(BitstreamReader* bs)
     bs->input.external->buffer->mark_in_progress = 1;
 }
 
-#ifndef STANDALONE
-void
-br_mark_p(BitstreamReader* bs)
-{
-    struct br_mark* mark;
-
-    if (bs->marks_used == NULL)
-        mark = malloc(sizeof(struct br_mark));
-    else {
-        mark = bs->marks_used;
-        bs->marks_used = bs->marks_used->next;
-    }
-
-    mark->position.python = bs->input.python->buffer_position;
-    mark->state = bs->state;
-    mark->next = bs->marks;
-    bs->marks = mark;
-    bs->input.python->mark_in_progress = 1;
-}
-#endif
-
 void
 br_mark_c(BitstreamReader* bs)
 {
@@ -1705,18 +1435,6 @@ br_rewind_e(BitstreamReader* bs)
     }
 }
 
-#ifndef STANDALONE
-void
-br_rewind_p(BitstreamReader* bs)
-{
-    if (bs->marks != NULL) {
-        bs->input.python->buffer.position = bs->marks->position.python;
-        bs->state = bs->marks->state;
-    } else {
-        fprintf(stderr, "No marks on stack to rewind!\n");
-    }
-}
-#endif
 
 void
 br_rewind_c(BitstreamReader* bs)
@@ -1752,18 +1470,6 @@ br_unmark_e(BitstreamReader* bs)
     bs->marks_used = mark;
     bs->input.external->buffer->mark_in_progress = (bs->marks != NULL);
 }
-
-#ifndef STANDALONE
-void
-br_unmark_p(BitstreamReader* bs)
-{
-    struct br_mark* mark = bs->marks;
-    bs->marks = mark->next;
-    mark->next = bs->marks_used;
-    bs->marks_used = mark;
-    bs->input.python->mark_in_progress = (bs->marks != NULL);
-}
-#endif
 
 void
 br_unmark_c(BitstreamReader* bs)
@@ -1888,51 +1594,6 @@ br_substream_append_e(struct BitstreamReader_s *stream,
     /*complete buffer extension*/
     substream->input.substream->buffer_size += bytes;
 }
-
-#ifndef STANDALONE
-void
-br_substream_append_p(struct BitstreamReader_s *stream,
-                      struct BitstreamReader_s *substream,
-                      uint32_t bytes)
-{
-    uint8_t* extended_buffer;
-    struct bs_callback *callback;
-    int byte;
-    uint32_t i;
-
-    /*byte align the input stream*/
-    stream->state = 0;
-
-    /*extend the output stream's current buffer to fit additional bytes*/
-    extended_buffer = buf_extend(substream->input.substream, bytes);
-
-    /*read input stream to extended buffer
-
-      (it would be faster to incorperate py_getc's
-       Python buffer handling in this routine
-       instead of reading one byte at a time,
-       but I'd like to separate those parts out beforehand*/
-    for (i = 0; i < bytes; i++) {
-        byte = py_getc(stream->input.python);
-        if (byte != EOF)
-            extended_buffer[i] = byte;
-        else
-            /*abort if EOF encountered during read*/
-            br_abort(stream);
-    }
-
-    /*perform callbacks on bytes in extended buffer*/
-    for (callback = stream->callbacks;
-         callback != NULL;
-         callback = callback->next) {
-        for (i = 0; i < bytes; i++)
-            callback->callback(extended_buffer[i], callback->data);
-    }
-
-    /*complete buffer extension*/
-    substream->input.substream->buffer_size += bytes;
-}
-#endif
 
 void
 br_substream_append_c(struct BitstreamReader_s *stream,
@@ -3466,112 +3127,6 @@ buf_close(struct bs_buffer *stream)
 }
 
 #ifndef STANDALONE
-
-struct br_python_input*
-py_open_r(PyObject* reader, unsigned int buffer_size)
-{
-    struct br_python_input* input = malloc(sizeof(struct br_python_input));
-    Py_INCREF(reader);
-    input->reader_obj = reader;
-    input->buffer = malloc(buffer_size * sizeof(uint8_t));
-    input->buffer_total_size = buffer_size;
-    input->buffer_size = 0;
-    input->buffer_position = 0;
-    input->mark_in_progress = 0;
-
-    return input;
-}
-
-int
-py_close_r(struct br_python_input *stream)
-{
-    Py_DECREF(stream->reader_obj);
-    free(stream->buffer);
-    free(stream);
-
-    return 0;
-}
-
-int
-py_getc(struct br_python_input *stream)
-{
-    PyObject *buffer_obj;
-    char *buffer_str;
-    Py_ssize_t buffer_len;
-
-    if (stream->buffer_position < stream->buffer_size) {
-        /*if there's enough bytes in the buffer,
-          simply return the next byte in the buffer*/
-        return stream->buffer[stream->buffer_position++];
-    } else {
-        /*otherwise, call the read() method on our reader object
-          to get more bytes for our buffer*/
-        buffer_obj = PyObject_CallMethod(stream->reader_obj,
-                                         "read",
-                                         "i",
-                                         stream->buffer_total_size);
-
-        if (buffer_obj != NULL) {
-            /*if calling read() succeeded, convert our new buffer into bytes*/
-            if (!PyString_AsStringAndSize(buffer_obj,
-                                          &buffer_str,
-                                          &buffer_len)) {
-                if (buffer_len > 0) {
-                    /*if the size of the new string is greater than 0*/
-                    if (!stream->mark_in_progress) {
-                        /*and the stream has no mark,
-                          overwrite the existing buffer*/
-                        if (buffer_len > stream->buffer_total_size) {
-
-                            stream->buffer = realloc(stream->buffer,
-                                                     buffer_len);
-                            stream->buffer_total_size = buffer_len;
-                        }
-
-                        memcpy(stream->buffer,
-                               buffer_str,
-                               buffer_len);
-                        stream->buffer_size = buffer_len;
-                        stream->buffer_position = 0;
-                    } else {
-                        /*and the stream has a mark,
-                          extend the existing buffer*/
-                        if (buffer_len > (stream->buffer_total_size -
-                                          stream->buffer_position)) {
-
-                            stream->buffer_total_size += buffer_len;
-                            stream->buffer = realloc(
-                                                stream->buffer,
-                                                stream->buffer_total_size);
-                        }
-
-                        memcpy(stream->buffer + stream->buffer_position,
-                               buffer_str,
-                               buffer_len);
-                        stream->buffer_size += buffer_len;
-                    }
-
-                    /*then, return the next byte in the buffer*/
-                    Py_DECREF(buffer_obj);
-                    return stream->buffer[stream->buffer_position++];
-                } else {
-                    /*if the size of the new string is 0, return EOF*/
-                    Py_DECREF(buffer_obj);
-                    return EOF;
-                }
-            } else {
-                /*byte conversion failed, so print error and return EOF*/
-                PyErr_PrintEx(1);
-                Py_DECREF(buffer_obj);
-                return EOF;
-            }
-        } else {
-            /*calling read() failed, so print error and return EOF*/
-            PyErr_PrintEx(1);
-            return EOF;
-        }
-    }
-}
 
 struct bw_python_output*
 py_open_w(PyObject* writer, unsigned int buffer_size)

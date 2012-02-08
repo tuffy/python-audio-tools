@@ -951,3 +951,10 @@ br_close_substream_python_file(BitstreamReader* bs);
 
 void
 bw_close_substream_python_file(BitstreamWriter* bs);
+
+int br_read_python(void* user_data,
+                   struct bs_buffer* buffer);
+
+void br_close_python(void* user_data);
+
+void br_free_python(void* user_data);

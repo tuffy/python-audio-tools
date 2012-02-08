@@ -297,6 +297,17 @@ PyTypeObject decoders_MLPDecoderType = {
     0,                         /* tp_alloc */
     MLPDecoder_new,            /* tp_new */
 };
+
+static
+int br_read_python(void* user_data,
+                   struct bs_buffer* buffer);
+
+static
+void br_close_python(void* user_data);
+
+static
+void br_free_python(void* user_data);
+
 #endif
 
 /*Returns the total size of the next MLP frame

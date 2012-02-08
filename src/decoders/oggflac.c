@@ -48,7 +48,6 @@ OggFlacDecoder_dealloc(decoders_OggFlacDecoder *self) {
 int
 OggFlacDecoder_init(decoders_OggFlacDecoder *self,
                     PyObject *args, PyObject *kwds) {
-    PyObject* audiotools_pcm = NULL;
     char* filename;
     ogg_status result;
     uint16_t header_packets;
@@ -106,7 +105,7 @@ OggFlacDecoder_init(decoders_OggFlacDecoder *self,
     br_add_callback(self->packet, flac_crc16, &(self->crc16));
 
     /*setup a framelist generator function*/
-    if ((audiotools_pcm = open_audiotools_pcm()) == NULL)
+    if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
 
     return 0;
@@ -155,10 +154,10 @@ OggFlacDecoder_read(decoders_OggFlacDecoder *self, PyObject *args) {
 
         if (!setjmp(*br_try(self->packet))) {
             /*read frame header*/
-            if ((flac_status = flacdec_read_frame_header(
-                                                    self->packet,
-                                                    &(self->streaminfo),
-                                                    &frame_header)) != OK) {
+            if ((flac_status =
+                 flacdec_read_frame_header(self->packet,
+                                           &(self->streaminfo),
+                                           &frame_header)) != OK) {
                 PyEval_RestoreThread(thread_state);
                 PyErr_SetString(PyExc_ValueError,
                                 FlacDecoder_strerror(flac_status));
@@ -209,7 +208,7 @@ OggFlacDecoder_read(decoders_OggFlacDecoder *self, PyObject *args) {
 
             if (framelist != NULL) {
                 /*update MD5 sum*/
-                if (OggFlacDecoder_update_md5sum(self, framelist) == OK)
+                if (OggFlacDecoder_update_md5sum(self, framelist) == 1)
                     /*return pcm.FrameList Python object*/
                     return framelist;
                 else {

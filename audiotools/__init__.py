@@ -3061,11 +3061,13 @@ class Image:
 
     def __eq__(self, image):
         if (image is not None):
-            return set([(getattr(self, attr) == getattr(image, attr))
-                        for attr in
-                        ("data", "mime_type", "width", "height",
+            for attr in ["data", "mime_type", "width", "height",
                          "color_depth", "color_count", "description",
-                         "type")]) == set([True])
+                         "type"]:
+                if (getattr(self, attr) != getattr(image, attr)):
+                    return False
+            else:
+                return True
         else:
             return False
 

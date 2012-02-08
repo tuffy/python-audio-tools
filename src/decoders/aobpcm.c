@@ -1,5 +1,4 @@
 #include "aobpcm.h"
-#include "../bitstream.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -58,7 +57,13 @@ AOBPCMDecoder_init(decoders_AOBPCMDecoder *self,
         return -1;
     }
 
-    self->reader = py_open_r(reader, 4096);
+    Py_INCREF(reader);
+
+    self->reader = br_open_external(reader,
+                                    BS_BIG_ENDIAN,
+                                    br_read_python,
+                                    br_close_python,
+                                    br_free_python);
 
     self->chunk_size = (self->bits_per_sample / 8) * self->channels * 2;
     self->buffer_size = DEFAULT_BUFFER_SIZE;
@@ -67,7 +72,8 @@ AOBPCMDecoder_init(decoders_AOBPCMDecoder *self,
                           self->chunk_size);
 
     for (i = 0; i < self->chunk_size; i++) {
-        self->swap[i] = AOB_BYTE_SWAP[self->bits_per_sample == 24][self->channels - 1][i];
+        self->swap[i] =
+            AOB_BYTE_SWAP[self->bits_per_sample == 24][self->channels - 1][i];
     }
 
     return 0;
@@ -85,8 +91,7 @@ AOBPCMDecoder_new(PyTypeObject *type,
 
 void
 AOBPCMDecoder_dealloc(decoders_AOBPCMDecoder *self) {
-    if (self->reader != NULL)
-        py_close_r(self->reader);
+    self->reader->close(self->reader);
     if (self->buffer != NULL)
         free(self->buffer);
 
@@ -147,13 +152,13 @@ int
 aobpcm_read_chunk(uint8_t* buffer,
                   int chunk_size,
                   uint8_t* swap,
-                  struct br_python_input* reader) {
+                  BitstreamReader* reader) {
     int i;
     int byte;
     uint8_t unswapped[36];
 
     for (i = 0; i < chunk_size; i++) {
-        if ((byte = py_getc(reader)) != EOF) {
+        if ((byte = ext_getc(reader->input.external)) != EOF) {
             unswapped[i] = (uint8_t)byte;
         } else {
             if (i == 0)
@@ -197,4 +202,54 @@ bytes_to_framelist(uint8_t *bytes,
                                     is_signed);
     Py_DECREF(pcm);
     return framelist;
+}
+
+static
+int br_read_python(void* user_data,
+                   struct bs_buffer* buffer)
+{
+    PyObject* pcmreader = (PyObject*)user_data;
+    PyObject* read_result;
+
+    /*call read() method on pcmreader*/
+    if ((read_result =
+         PyObject_CallMethod(pcmreader, "read", "i", 4096)) != NULL) {
+        uint8_t *string;
+        Py_ssize_t string_size;
+
+        /*convert returned object to string of bytes*/
+        if (PyString_AsStringAndSize(read_result,
+                                     (char**)&string,
+                                     &string_size) != -1) {
+            /*then append bytes to buffer and return success*/
+            uint8_t* appended = buf_extend(buffer, (uint32_t)string_size);
+            memcpy(appended, string, string_size);
+            buffer->buffer_size += (uint32_t)string_size;
+
+            return 0;
+        } else {
+            /*string conversion failed so print/clear error and return an EOF*/
+            PyErr_Print();
+            return 1;
+        }
+    } else {
+        /*read() method call failed
+          so print/clear error and return an EOF
+          (which will likely generate an IOError exception if its own)*/
+        PyErr_Print();
+        return 1;
+    }
+
+}
+
+static
+void br_close_python(void* user_data)
+{
+    /*FIXME*/
+}
+
+static
+void br_free_python(void* user_data)
+{
+    Py_XDECREF((PyObject*)user_data);
 }
