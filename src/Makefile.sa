@@ -40,7 +40,7 @@ pcmconv.o: pcmconv.c pcmconv.h
 	$(CC) $(FLAGS) -c pcmconv.c -DSTANDALONE
 
 bitstream.o: bitstream.c bitstream.h
-	$(CC) $(FLAGS) -c bitstream.c -DSTANDALONE
+	$(CC) $(FLAGS) -c bitstream.c
 
 pcmreader.o: pcmreader.c pcmreader.h
 	$(CC) $(FLAGS) -c pcmreader.c -DSTANDALONE
@@ -67,4 +67,4 @@ huffman.o: huffman.c huffman.h
 	$(CC) $(FLAGS) -c huffman.c -DSTANDALONE
 
 bitstream: bitstream.c bitstream.h huffman.o
-	$(CC) $(FLAGS) bitstream.c huffman.o -DEXECUTABLE -DSTANDALONE -o $@
+	$(CC) $(FLAGS) bitstream.c huffman.o -DEXECUTABLE -o $@

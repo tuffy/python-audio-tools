@@ -958,3 +958,12 @@ int br_read_python(void* user_data,
 void br_close_python(void* user_data);
 
 void br_free_python(void* user_data);
+
+int bw_write_python(void* user_data,
+                    const struct bs_buffer* buffer);
+
+void bw_flush_python(void* user_data);
+
+void bw_close_python(void* user_data);
+
+void bw_free_python(void* user_data);

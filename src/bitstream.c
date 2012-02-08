@@ -1830,55 +1830,6 @@ bw_open_external(void* user_data,
     return bs;
 }
 
-#ifndef STANDALONE
-BitstreamWriter*
-bw_open_python(PyObject *writer, bs_endianness endianness,
-               unsigned int buffer_size)
-{
-    BitstreamWriter *bs = malloc(sizeof(BitstreamWriter));
-    bs->type = BW_PYTHON;
-
-    bs->output.python = py_open_w(writer, buffer_size);
-    bs->buffer_size = 0;
-    bs->buffer = 0;
-
-    bs->callbacks = NULL;
-    bs->exceptions = NULL;
-    bs->callbacks_used = NULL;
-    bs->exceptions_used = NULL;
-
-    switch (endianness) {
-    case BS_BIG_ENDIAN:
-        bs->write = bw_write_bits_p_be;
-        bs->write_64 = bw_write_bits64_p_be;
-        bs->write_signed = bw_write_signed_bits_f_p_r_be;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_be;
-        bs->set_endianness = bw_set_endianness_p_be;
-        break;
-    case BS_LITTLE_ENDIAN:
-        bs->write = bw_write_bits_p_le;
-        bs->write_64 = bw_write_bits64_p_le;
-        bs->write_signed = bw_write_signed_bits_f_p_r_le;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_le;
-        bs->set_endianness = bw_set_endianness_p_le;
-        break;
-    }
-
-    bs->write_bytes = bw_write_bytes_p;
-    bs->write_unary = bw_write_unary_f_p_r;
-    bs->build = bw_build;
-    bs->byte_align = bw_byte_align_f_p_r;
-    bs->bits_written = bw_bits_written_f_p_c;
-    bs->bytes_written = bw_bytes_written;
-    bs->flush = bw_flush_p;
-    bs->close_substream = bw_close_substream_p;
-    bs->free = bw_free_p;
-    bs->close = bw_close;
-
-    return bs;
-}
-
-#endif
 
 BitstreamWriter*
 bw_open_recorder(bs_endianness endianness)
@@ -2053,12 +2004,6 @@ FUNC_WRITE_BITS_BE(bw_write_bits_e_be,
                    unsigned int, ext_putc, bs->output.external)
 FUNC_WRITE_BITS_LE(bw_write_bits_e_le,
                    unsigned int, ext_putc, bs->output.external)
-#ifndef STANDALONE
-FUNC_WRITE_BITS_BE(bw_write_bits_p_be,
-                   unsigned int, py_putc, bs->output.python)
-FUNC_WRITE_BITS_LE(bw_write_bits_p_le,
-                   unsigned int, py_putc, bs->output.python)
-#endif
 FUNC_WRITE_BITS_BE(bw_write_bits_r_be,
                    unsigned int, buf_putc, bs->output.buffer)
 FUNC_WRITE_BITS_LE(bw_write_bits_r_le,
@@ -2134,12 +2079,6 @@ FUNC_WRITE_BITS_BE(bw_write_bits64_e_be,
                    uint64_t, ext_putc, bs->output.external)
 FUNC_WRITE_BITS_LE(bw_write_bits64_e_le,
                    uint64_t, ext_putc, bs->output.external)
-#ifndef STANDALONE
-FUNC_WRITE_BITS_BE(bw_write_bits64_p_be,
-                   uint64_t, py_putc, bs->output.python)
-FUNC_WRITE_BITS_LE(bw_write_bits64_p_le,
-                   uint64_t, py_putc, bs->output.python)
-#endif
 FUNC_WRITE_BITS_BE(bw_write_bits64_r_be,
                    uint64_t, buf_putc, bs->output.buffer)
 FUNC_WRITE_BITS_LE(bw_write_bits64_r_le,
@@ -2242,19 +2181,6 @@ bw_write_bytes_e(BitstreamWriter* bs, const uint8_t* bytes,
         bs->write(bs, 8, bytes[i]);
 }
 
-#ifndef STANDALONE
-
-void
-bw_write_bytes_p(BitstreamWriter* bs, const uint8_t* bytes,
-                 unsigned int count)
-{
-    unsigned int i;
-
-    for (i = 0; i < count; i++)
-        bs->write(bs, 8, bytes[i]);
-}
-
-#endif
 
 void
 bw_write_bytes_r(BitstreamWriter* bs, const uint8_t* bytes,
@@ -2427,37 +2353,6 @@ bw_set_endianness_e_le(BitstreamWriter* bs, bs_endianness endianness)
     }
 }
 
-#ifndef STANDALONE
-
-void
-bw_set_endianness_p_be(BitstreamWriter* bs, bs_endianness endianness)
-{
-    bs->buffer = 0;
-    bs->buffer_size = 0;
-    if (endianness == BS_LITTLE_ENDIAN) {
-        bs->write = bw_write_bits_p_le;
-        bs->write_64 = bw_write_bits64_p_le;
-        bs->write_signed = bw_write_signed_bits_f_p_r_le;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_le;
-        bs->set_endianness = bw_set_endianness_p_le;
-    }
-}
-
-void
-bw_set_endianness_p_le(BitstreamWriter* bs, bs_endianness endianness)
-{
-    bs->buffer = 0;
-    bs->buffer_size = 0;
-    if (endianness == BS_BIG_ENDIAN) {
-        bs->write = bw_write_bits_p_be;
-        bs->write_64 = bw_write_bits64_p_be;
-        bs->write_signed = bw_write_signed_bits_f_p_r_be;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_be;
-        bs->set_endianness = bw_set_endianness_p_be;
-    }
-}
-
-#endif
 
 void
 bw_set_endianness_a(BitstreamWriter* bs, bs_endianness endianness)
@@ -2583,14 +2478,6 @@ bw_flush_e(BitstreamWriter* bs)
     bs->output.external->flush(bs->output.external->user_data);
 }
 
-#ifndef STANDALONE
-void
-bw_flush_p(BitstreamWriter* bs)
-{
-    py_flush_w(bs->output.python);
-}
-#endif
-
 
 void
 bw_close_methods(BitstreamWriter* bs)
@@ -2638,33 +2525,6 @@ bw_close_substream_e(BitstreamWriter* bs)
     bw_close_methods(bs);
 }
 
-#ifndef STANDALONE
-void
-bw_close_substream_p(BitstreamWriter* bs)
-{
-    PyObject* close_result;
-
-    /*flush pending data to Python object*/
-    py_flush_w(bs->output.python);
-
-    /*call .close() method on Python object*/
-    close_result = PyObject_CallMethod(bs->output.python->writer_obj,
-                                       "close",
-                                       NULL);
-    if (close_result != NULL)
-        Py_DECREF(close_result);
-    else {
-        /*some exception occurred when calling close()
-          so simply print it out and continue on
-          since there's little we can do about it*/
-        PyErr_PrintEx(1);
-    }
-
-    /*swap read methods with closed methods*/
-    bw_close_methods(bs);
-}
-
-#endif
 
 void
 bw_close_substream_c(BitstreamWriter* bs)
@@ -2736,22 +2596,6 @@ bw_free_e(BitstreamWriter* bs)
     bw_free_f_a(bs);
 }
 
-#ifndef STANDALONE
-void
-bw_free_p(BitstreamWriter* bs)
-{
-    /*flush pending data if necessary*/
-    if (!bw_closed(bs))
-        py_flush_w(bs->output.python);
-
-    /*decref Python object and remove buffer*/
-    py_close_w(bs->output.python);
-
-    /*perform additional deallocations on rest of struct*/
-    bw_free_f_a(bs);
-}
-
-#endif
 
 void
 bw_close(BitstreamWriter* bs)
@@ -2881,12 +2725,6 @@ bw_dump_bytes(BitstreamWriter* target, uint8_t* buffer, unsigned int total) {
         case BW_EXTERNAL:
             for (i = 0; i < total; i++)
                 target->write(target, 8, buffer[i]);
-            break;
-        case BW_PYTHON:
-#ifndef STANDALONE
-            for (i = 0; i < total; i++)
-                target->write(target, 8, buffer[i]);
-#endif
             break;
         case BW_RECORDER:
             target_buffer = buf_extend(target->output.buffer, total);
@@ -3126,68 +2964,6 @@ buf_close(struct bs_buffer *stream)
     free(stream);
 }
 
-#ifndef STANDALONE
-
-struct bw_python_output*
-py_open_w(PyObject* writer, unsigned int buffer_size)
-{
-    struct bw_python_output* output = malloc(sizeof(struct bw_python_output));
-    Py_INCREF(writer);
-    output->writer_obj = writer;
-    output->buffer = malloc(buffer_size * sizeof(uint8_t));
-    output->buffer_total_size = buffer_size;
-    output->buffer_size = 0;
-
-    return output;
-}
-
-int
-py_close_w(struct bw_python_output *stream)
-{
-    Py_DECREF(stream->writer_obj);
-    free(stream->buffer);
-    free(stream);
-
-    return 0;
-}
-
-int
-py_putc(int c, struct bw_python_output *stream)
-{
-    if (stream->buffer_size == stream->buffer_total_size) {
-        if (py_flush_w(stream))
-            return EOF;
-    }
-
-    stream->buffer[stream->buffer_size++] = (uint8_t)c;
-    return 0;
-}
-
-int
-py_flush_w(struct bw_python_output *stream)
-{
-    PyObject *result;
-
-    if (stream->buffer_size > 0) {
-        if ((result = PyObject_CallMethod(stream->writer_obj,
-                                          "write",
-                                          "s#",
-                                          (char *)stream->buffer,
-                                          stream->buffer_size)) == NULL) {
-            PyErr_PrintEx(1);
-            return EOF;
-        } else {
-            Py_DECREF(result);
-        }
-
-        stream->buffer_size = 0;
-    }
-
-    return 0;
-}
-
-
-#endif
 
 struct br_external_input*
 ext_open(void* user_data,

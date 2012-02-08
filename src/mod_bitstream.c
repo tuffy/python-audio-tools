@@ -937,10 +937,14 @@ BitstreamWriter_init(bitstream_BitstreamWriter *self, PyObject *args)
           to the file object itself*/
         self->bitstream->close_substream = bw_close_substream_python_file;
     } else {
-        self->bitstream = bw_open_python(self->file_obj,
-                                         little_endian ?
-                                         BS_LITTLE_ENDIAN : BS_BIG_ENDIAN,
-                                         buffer_size);
+        self->bitstream = bw_open_external(self->file_obj,
+                                           little_endian ?
+                                           BS_LITTLE_ENDIAN : BS_BIG_ENDIAN,
+                                           4096,
+                                           bw_write_python,
+                                           bw_flush_python,
+                                           bw_close_python,
+                                           bw_free_python);
     }
 
     return 0;
@@ -2115,12 +2119,12 @@ BitstreamWriter_callback(uint8_t byte, PyObject *callback)
 int br_read_python(void* user_data,
                    struct bs_buffer* buffer)
 {
-    PyObject* pcmreader = (PyObject*)user_data;
+    PyObject* reader = (PyObject*)user_data;
     PyObject* read_result;
 
-    /*call read() method on pcmreader*/
+    /*call read() method on reader*/
     if ((read_result =
-         PyObject_CallMethod(pcmreader, "read", "i", 4096)) != NULL) {
+         PyObject_CallMethod(reader, "read", "i", 4096)) != NULL) {
         uint8_t *string;
         Py_ssize_t string_size;
 
@@ -2155,6 +2159,38 @@ void br_close_python(void* user_data)
 }
 
 void br_free_python(void* user_data)
+{
+    /*FIXME*/
+}
+
+int bw_write_python(void* user_data,
+                    const struct bs_buffer* buffer)
+{
+    PyObject* writer = (PyObject*)user_data;
+    PyObject* write_result;
+
+    if ((write_result = PyObject_CallMethod(writer, "write", "s#",
+                                            buffer->buffer,
+                                            buffer->buffer_size)) != NULL) {
+        Py_DECREF(write_result);
+        return 0;
+    } else {
+        PyErr_Print();
+        return 1;
+    }
+}
+
+void bw_flush_python(void* user_data)
+{
+    /*FIXME*/
+}
+
+void bw_close_python(void* user_data)
+{
+    /*FIXME*/
+}
+
+void bw_free_python(void* user_data)
 {
     /*FIXME*/
 }

@@ -1,9 +1,6 @@
 #ifndef BITSTREAM_H
 #define BITSTREAM_H
 
-#ifndef STANDALONE
-#include <Python.h>
-#endif
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -41,8 +38,7 @@
 
 typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 typedef enum {BR_FILE, BR_SUBSTREAM, BR_EXTERNAL} br_type;
-typedef enum {BW_FILE, BW_EXTERNAL, BW_PYTHON,
-              BW_RECORDER, BW_ACCUMULATOR} bw_type;
+typedef enum {BW_FILE, BW_EXTERNAL, BW_RECORDER, BW_ACCUMULATOR} bw_type;
 typedef enum {BS_INST_UNSIGNED, BS_INST_SIGNED, BS_INST_UNSIGNED64,
               BS_INST_SIGNED64, BS_INST_SKIP, BS_INST_SKIP_BYTES,
               BS_INST_BYTES, BS_INST_ALIGN} bs_instruction;
@@ -683,15 +679,6 @@ br_substream_reset(struct BitstreamReader_s *substream);
  *                          BitstreamWriter                        *
  *******************************************************************/
 
-#ifndef STANDALONE
-struct bw_python_output {
-    PyObject* writer_obj;
-    uint8_t* buffer;
-    Py_ssize_t buffer_total_size;
-    Py_ssize_t buffer_size;
-};
-#endif
-
 struct bw_external_output {
     void* user_data;
     int (*write)(void* user_data,
@@ -714,9 +701,6 @@ typedef struct BitstreamWriter_s {
         struct bs_buffer* buffer;
         unsigned int accumulator;
         struct bw_external_output* external;
-#ifndef STANDALONE
-        struct bw_python_output* python;
-#endif
     } output;
 
     unsigned int buffer_size;
@@ -899,12 +883,6 @@ bw_open_external(void* user_data,
                  void (*close)(void* user_data),
                  void (*free)(void* user_data));
 
-#ifndef STANDALONE
-BitstreamWriter*
-bw_open_python(PyObject *writer, bs_endianness endianness,
-               unsigned int buffer_size);
-#endif
-
 BitstreamWriter*
 bw_open_recorder(bs_endianness endianness);
 
@@ -922,12 +900,6 @@ void
 bw_write_bits_e_be(BitstreamWriter* bs, unsigned int count, unsigned int value);
 void
 bw_write_bits_e_le(BitstreamWriter* bs, unsigned int count, unsigned int value);
-#ifndef STANDALONE
-void
-bw_write_bits_p_be(BitstreamWriter* bs, unsigned int count, unsigned int value);
-void
-bw_write_bits_p_le(BitstreamWriter* bs, unsigned int count, unsigned int value);
-#endif
 void
 bw_write_bits_r_be(BitstreamWriter* bs, unsigned int count, unsigned int value);
 void
@@ -959,12 +931,6 @@ void
 bw_write_bits64_e_be(BitstreamWriter* bs, unsigned int count, uint64_t value);
 void
 bw_write_bits64_e_le(BitstreamWriter* bs, unsigned int count, uint64_t value);
-#ifndef STANDALONE
-void
-bw_write_bits64_p_be(BitstreamWriter* bs, unsigned int count, uint64_t value);
-void
-bw_write_bits64_p_le(BitstreamWriter* bs, unsigned int count, uint64_t value);
-#endif
 void
 bw_write_bits64_r_be(BitstreamWriter* bs, unsigned int count, uint64_t value);
 void
@@ -995,10 +961,6 @@ void
 bw_write_bytes_f(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
 void
 bw_write_bytes_e(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
-#ifndef STANDALONE
-void
-bw_write_bytes_p(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
-#endif
 void
 bw_write_bytes_r(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
 void
@@ -1034,12 +996,6 @@ void
 bw_set_endianness_e_be(BitstreamWriter* bs, bs_endianness endianness);
 void
 bw_set_endianness_e_le(BitstreamWriter* bs, bs_endianness endianness);
-#ifndef STANDALONE
-void
-bw_set_endianness_p_be(BitstreamWriter* bs, bs_endianness endianness);
-void
-bw_set_endianness_p_le(BitstreamWriter* bs, bs_endianness endianness);
-#endif
 void
 bw_set_endianness_r_be(BitstreamWriter* bs, bs_endianness endianness);
 void
@@ -1074,10 +1030,6 @@ void
 bw_flush_r_a_c(BitstreamWriter* bs);
 void
 bw_flush_e(BitstreamWriter* bs);
-#ifndef STANDALONE
-void
-bw_flush_p(BitstreamWriter* bs);
-#endif
 
 
 /*bs->close_substream(bs)  methods*/
@@ -1090,10 +1042,6 @@ void
 bw_close_substream_r_a(BitstreamWriter* bs);
 void
 bw_close_substream_e(BitstreamWriter* bs);
-#ifndef STANDALONE
-void
-bw_close_substream_p(BitstreamWriter* bs);
-#endif
 void
 bw_close_substream_c(BitstreamWriter* bs);
 
@@ -1105,10 +1053,6 @@ void
 bw_free_r(BitstreamWriter* bs);
 void
 bw_free_e(BitstreamWriter* bs);
-#ifndef STANDALONE
-void
-bw_free_p(BitstreamWriter* bs);
-#endif
 
 
 /*bs->close(bs)  method*/
@@ -1312,27 +1256,6 @@ void
 buf_close(struct bs_buffer *stream);
 
 
-#ifndef STANDALONE
-
-/*******************************************************************
- *                           Python writer                         *
- *******************************************************************/
-
-struct bw_python_output*
-py_open_w(PyObject* writer, unsigned int buffer_size);
-
-int
-py_close_w(struct bw_python_output *stream);
-
-int
-py_putc(int c, struct bw_python_output *stream);
-
-int
-py_flush_w(struct bw_python_output *stream);
-
-
-#endif
-
 /*******************************************************************
  *                     External function reader                    *
  *******************************************************************/
@@ -1387,8 +1310,9 @@ ext_free(struct br_external_input* stream);
   and returns a FILE-like struct which be written on a byte-by-byte basis
   that will call C functions to flush its internal buffer as needed
 
-  int write(void* user_data, const uint8_t* buffer, buffer_size_t size)
-  where "buffer" is the data to be written and "size" is the length
+  int write(void* user_data, const struct bs_buffer* buffer)
+  where "buffer" is the data to be written
+  whose maximum size is indicated at ext_open_w init time
 
   returns 0 on a successful write, 0 on a write error
 
