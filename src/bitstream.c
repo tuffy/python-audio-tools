@@ -231,9 +231,7 @@ br_substream_new(bs_endianness endianness)
 BitstreamReader*
 br_open_external(void* user_data, bs_endianness endianness,
                  int (*read)(void* user_data,
-                             uint8_t** buffer,
-                             buffer_size_t* total_size,
-                             buffer_size_t* size),
+                             struct bs_buffer* buffer),
                  void (*close)(void* user_data),
                  void (*free)(void* user_data))
 {
@@ -1639,11 +1637,11 @@ br_mark_e(BitstreamReader* bs)
         bs->marks_used = bs->marks_used->next;
     }
 
-    mark->position.external = bs->input.external->buffer.position;
+    mark->position.external = bs->input.external->buffer->buffer_position;
     mark->state = bs->state;
     mark->next = bs->marks;
     bs->marks = mark;
-    bs->input.external->mark_in_progress = 1;
+    bs->input.external->buffer->mark_in_progress = 1;
 }
 
 #ifndef STANDALONE
@@ -1699,7 +1697,8 @@ void
 br_rewind_e(BitstreamReader* bs)
 {
     if (bs->marks != NULL) {
-        bs->input.external->buffer.position = bs->marks->position.external;
+        bs->input.external->buffer->buffer_position =
+            bs->marks->position.external;
         bs->state = bs->marks->state;
     } else {
         fprintf(stderr, "No marks on stack to rewind!\n");
@@ -1751,7 +1750,7 @@ br_unmark_e(BitstreamReader* bs)
     bs->marks = mark->next;
     mark->next = bs->marks_used;
     bs->marks_used = mark;
-    bs->input.external->mark_in_progress = (bs->marks != NULL);
+    bs->input.external->buffer->mark_in_progress = (bs->marks != NULL);
 }
 
 #ifndef STANDALONE
@@ -2117,10 +2116,11 @@ bw_open(FILE *f, bs_endianness endianness)
 }
 
 BitstreamWriter*
-bw_open_external(void* user_data, bs_endianness endianness,
+bw_open_external(void* user_data,
+                 bs_endianness endianness,
+                 uint32_t buffer_size,
                  int (*write)(void* user_data,
-                              const uint8_t* buffer,
-                              buffer_size_t size),
+                              const struct bs_buffer* buffer),
                  void (*flush)(void* user_data),
                  void (*close)(void* user_data),
                  void (*free)(void* user_data))
@@ -2128,7 +2128,8 @@ bw_open_external(void* user_data, bs_endianness endianness,
     BitstreamWriter *bs = malloc(sizeof(BitstreamWriter));
     bs->type = BW_EXTERNAL;
 
-    bs->output.external = ext_open_w(user_data, write, flush, close, free);
+    bs->output.external = ext_open_w(user_data, buffer_size,
+                                     write, flush, close, free);
     bs->buffer_size = 0;
     bs->buffer = 0;
 
@@ -2916,9 +2917,8 @@ void
 bw_flush_e(BitstreamWriter* bs)
 {
     bs->output.external->write(bs->output.external->user_data,
-                               bs->output.external->buffer.data,
-                               bs->output.external->buffer.size);
-    bs->output.external->buffer.size = 0;
+                               bs->output.external->buffer);
+    bs->output.external->buffer->buffer_size = 0;
     bs->output.external->flush(bs->output.external->user_data);
 }
 
@@ -3066,11 +3066,7 @@ bw_free_e(BitstreamWriter* bs)
 {
     /*flush pending data if necessary*/
     if (!bw_closed(bs)) {
-        bs->output.external->write(bs->output.external->user_data,
-                                   bs->output.external->buffer.data,
-                                   bs->output.external->buffer.size);
-        bs->output.external->buffer.size = 0;
-        bs->output.external->flush(bs->output.external->user_data);
+        ext_flush_w(bs->output.external);
     }
 
     ext_free_w(bs->output.external);
@@ -3416,6 +3412,22 @@ buf_extend(struct bs_buffer *stream, uint32_t data_size)
 }
 
 void
+buf_copy(const struct bs_buffer *source, struct bs_buffer *target)
+{
+    assert(target->mark_in_progress == 0);
+
+    if (target->buffer_total_size < source->buffer_size) {
+        target->buffer_total_size = source->buffer_size;
+        target->buffer = realloc(target->buffer,
+                                 target->buffer_total_size * sizeof(uint8_t));
+    }
+
+    memcpy(target->buffer, source->buffer, source->buffer_size);
+    target->buffer_size = source->buffer_size;
+    target->buffer_position = source->buffer_position;
+}
+
+void
 buf_reset(struct bs_buffer *stream)
 {
     stream->buffer_size = 0;
@@ -3434,15 +3446,13 @@ buf_getc(struct bs_buffer *stream)
 
 int
 buf_putc(int i, struct bs_buffer *stream) {
-    uint8_t value = i;
-
     if (stream->buffer_size >= stream->buffer_total_size) {
         stream->buffer_total_size *= 2;
         stream->buffer = realloc(stream->buffer,
                                  sizeof(uint8_t) * stream->buffer_total_size);
     }
 
-    stream->buffer[stream->buffer_size++] = value;
+    stream->buffer[stream->buffer_size++] = (uint8_t)i;
 
     return i;
 }
@@ -3627,30 +3637,18 @@ py_flush_w(struct bw_python_output *stream)
 struct br_external_input*
 ext_open(void* user_data,
          int (*read)(void* user_data,
-                     uint8_t** buffer,
-                     buffer_size_t* total_size,
-                     buffer_size_t* size),
+                     struct bs_buffer* buffer),
          void (*close)(void* user_data),
          void (*free)(void* user_data))
 {
     struct br_external_input* input = malloc(sizeof(struct br_external_input));
-    const unsigned buffer_size = 1;
 
     input->user_data = user_data;
     input->read = read;
     input->close = close;
     input->free = free;
 
-    input->buffer.data = malloc(buffer_size * sizeof(uint8_t));
-    input->buffer.total_size = buffer_size;
-    input->buffer.size = 0;
-    input->buffer.position = 0;
-
-    input->temp.data = malloc(buffer_size * sizeof(uint8_t));
-    input->temp.total_size = buffer_size;
-    input->temp.size = 0;
-
-    input->mark_in_progress = 0;
+    input->buffer = buf_new();
 
     return input;
 }
@@ -3658,69 +3656,35 @@ ext_open(void* user_data,
 int
 ext_getc(struct br_external_input* stream)
 {
-    if (stream->buffer.position < stream->buffer.size) {
+    struct bs_buffer* buffer = stream->buffer;
+
+    if (buffer->buffer_position < buffer->buffer_size) {
         /*if there's enough bytes in the buffer,
           simply return the next byte in the buffer*/
-        return stream->buffer.data[stream->buffer.position++];
+        return buffer->buffer[buffer->buffer_position++];
     } else {
         /*otherwise, call the read() method on our reader object
           to get more bytes for our buffer*/
 
-        if (!stream->mark_in_progress) {
+        if (!buffer->mark_in_progress) {
             /*if the stream has no mark,
-              overwrite the main buffer and reset position to 0*/
+              reset the buffer prior to reading new data*/
 
-            if (!stream->read(stream->user_data,
-                              &(stream->buffer.data),
-                              &(stream->buffer.total_size),
-                              &(stream->buffer.size))) {
-                stream->buffer.position = 0;
+            buffer->buffer_size = 0;
+            buffer->buffer_position = 0;
+        }
 
-                /*read successful,
-                  so return next byte in new buffer - if any*/
-                if (stream->buffer.position < stream->buffer.size) {
-                    return stream->buffer.data[stream->buffer.position++];
-                } else {
-                    return EOF;
-                }
+        if (!stream->read(stream->user_data, buffer)) {
+            /*read successful,
+              so return next byte in new buffer - if any*/
+            if (buffer->buffer_position < buffer->buffer_size) {
+                return buffer->buffer[buffer->buffer_position++];
             } else {
-                /*read unsuccessful, so return EOF*/
                 return EOF;
             }
         } else {
-            /*otherwise, read to a secondary buffer
-              and extend the main buffer
-              so that an old position can be rewound to*/
-            if (!stream->read(stream->user_data,
-                              &(stream->temp.data),
-                              &(stream->temp.total_size),
-                              &(stream->temp.size))) {
-                /*read successful, so extend main buffer with read buffer*/
-
-                if (stream->temp.size > (stream->buffer.total_size -
-                                         stream->buffer.position)) {
-                    /*not enough room in original buffer,
-                      so extend it to fit more data*/
-                    stream->buffer.total_size += stream->temp.size;
-                    stream->buffer.data = realloc(stream->buffer.data,
-                                                  stream->buffer.total_size);
-                }
-
-                stream->buffer.size += stream->temp.size;
-                memcpy(stream->buffer.data + stream->buffer.position,
-                       stream->temp.data,
-                       stream->temp.size);
-
-                /*and return next byte in buffer - if any*/
-                if (stream->buffer.position < stream->buffer.size) {
-                    return stream->buffer.data[stream->buffer.position++];
-                } else {
-                    return EOF;
-                }
-            } else {
-                /*read unsuccessful, so return EOF*/
-                return EOF;
-            }
+            /*read unsuccessful, so return EOF*/
+            return EOF;
         }
     }
 }
@@ -3735,32 +3699,29 @@ void
 ext_free(struct br_external_input* stream)
 {
     stream->free(stream->user_data);
-    free(stream->buffer.data);
-    free(stream->temp.data);
+    buf_close(stream->buffer);
     free(stream);
 }
 
 struct bw_external_output*
 ext_open_w(void* user_data,
+           uint32_t buffer_size,
            int (*write)(void* user_data,
-                        const uint8_t* buffer,
-                        buffer_size_t size),
+                        const struct bs_buffer* buffer),
            void (*flush)(void* user_data),
            void (*close)(void* user_data),
            void (*free)(void* user_data))
 {
     struct bw_external_output* output =
         malloc(sizeof(struct bw_external_output));
-    const static buffer_size_t buffer_size = 4096;
     output->user_data = user_data;
     output->write = write;
     output->flush = flush;
     output->close = close;
     output->free = free;
 
-    output->buffer.data = malloc(buffer_size * sizeof(uint8_t));
-    output->buffer.total_size = buffer_size;
-    output->buffer.size = 0;
+    output->buffer = buf_new();
+    output->buffer_size = buffer_size;
 
     return output;
 }
@@ -3768,15 +3729,24 @@ ext_open_w(void* user_data,
 int
 ext_putc(int i, struct bw_external_output* stream)
 {
-    if (stream->buffer.size == stream->buffer.total_size) {
-        stream->write(stream->user_data,
-                      stream->buffer.data,
-                      stream->buffer.size);
-        stream->buffer.size = 0;
+    struct bs_buffer* buffer = stream->buffer;
+
+    if (buffer->buffer_size == stream->buffer_size) {
+        stream->write(stream->user_data, buffer);
+        buffer->buffer_size = 0;
     }
 
-    stream->buffer.data[stream->buffer.size++] = (uint8_t)i;
+    buffer->buffer[buffer->buffer_size++] = (uint8_t)i;
     return 0;
+}
+
+void
+ext_flush_w(struct bw_external_output* stream)
+{
+    struct bs_buffer* buffer = stream->buffer;
+    stream->write(stream->user_data, buffer);
+    buffer->buffer_size = 0;
+    stream->flush(stream->user_data);
 }
 
 void
@@ -3788,7 +3758,7 @@ ext_close_w(struct bw_external_output* stream)
 void
 ext_free_w(struct bw_external_output* stream)
 {
-    free(stream->buffer.data);
+    buf_close(stream->buffer);
     free(stream);
 }
 
@@ -3925,6 +3895,7 @@ byte_counter(uint8_t byte, void *total_bytes)
     *u += 1;
 }
 
+
 /*****************************************************************
  BEGIN UNIT TESTS
  *****************************************************************/
@@ -4030,17 +4001,14 @@ void
 check_output_file(void);
 
 int ext_fread(void* user_data,
-              uint8_t** buffer,
-              buffer_size_t* total_size,
-              buffer_size_t* size);
+              struct bs_buffer* buffer);
 
 void ext_fclose(void* user_data);
 
 void ext_ffree(void* user_data);
 
 int ext_fwrite(void* user_data,
-               const uint8_t* buffer,
-               buffer_size_t size);
+               const struct bs_buffer* buffer);
 
 void ext_fflush(void* user_data);
 
@@ -4996,6 +4964,7 @@ test_writer(bs_endianness endianness) {
         assert(output_file != NULL);
         writer = bw_open_external(output_file,
                                   endianness,
+                                  2,
                                   ext_fwrite,
                                   ext_fflush,
                                   ext_fclose,
@@ -5010,6 +4979,7 @@ test_writer(bs_endianness endianness) {
     output_file = fopen(temp_filename, "wb");
     writer = bw_open_external(output_file,
                               endianness,
+                              2,
                               ext_fwrite,
                               ext_fflush,
                               ext_fclose,
@@ -5845,20 +5815,21 @@ validate_edge_recorder_le(BitstreamWriter* recorder)
 }
 
 int ext_fread(void* user_data,
-              uint8_t** buffer,
-              buffer_size_t* total_size,
-              buffer_size_t* size)
+              struct bs_buffer* buffer)
 {
-    const static buffer_size_t desired_size = 2;
+    const static uint32_t desired_size = 2;
+    const uint32_t bytes_read = (uint32_t)fread(buf_extend(buffer,
+                                                           desired_size),
+                                                sizeof(uint8_t),
+                                                desired_size,
+                                                (FILE*)user_data);
 
-    if (*total_size < desired_size) {
-        *total_size = desired_size;
-        *buffer = realloc(*buffer, desired_size);
+    if (bytes_read > 0) {
+        buffer->buffer_size += bytes_read;
+        return 0;
+    } else {
+        return 1;
     }
-
-    *size = fread(*buffer, sizeof(uint8_t), desired_size, (FILE*)user_data);
-
-    return 0;
 }
 
 void ext_fclose(void* user_data)
@@ -5872,10 +5843,10 @@ void ext_ffree(void* user_data)
 }
 
 int ext_fwrite(void* user_data,
-               const uint8_t* buffer,
-               buffer_size_t size)
+               const struct bs_buffer* buffer)
 {
-    fwrite(buffer, sizeof(uint8_t), size, (FILE*)user_data);
+    fwrite(buffer->buffer, sizeof(uint8_t), buffer->buffer_size,
+           (FILE*)user_data);
 
     return 0;
 }

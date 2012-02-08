@@ -74,8 +74,6 @@ struct bs_buffer {
     int mark_in_progress;
 };
 
-typedef uint64_t buffer_size_t;
-
 /*a mark on the BitstreamReader's stream which can be rewound to*/
 struct br_mark {
     union {
@@ -84,7 +82,7 @@ struct br_mark {
 #ifndef STANDALONE
         Py_ssize_t python;
 #endif
-        buffer_size_t external;
+        uint32_t external;
     } position;
     int state;
     struct br_mark *next;
@@ -113,26 +111,11 @@ struct br_python_input {
 struct br_external_input {
     void* user_data;
     int (*read)(void* user_data,
-                uint8_t** buffer,
-                buffer_size_t* total_size,
-                buffer_size_t* size);
+                struct bs_buffer* buffer);
     void (*close)(void* user_data);
     void (*free)(void* user_data);
 
-    struct {
-        uint8_t* data;
-        buffer_size_t total_size;
-        buffer_size_t size;
-        buffer_size_t position;
-    } buffer;
-
-    struct {
-        uint8_t* data;
-        buffer_size_t total_size;
-        buffer_size_t size;
-    } temp;
-
-    int mark_in_progress;
+    struct bs_buffer* buffer;
 };
 
 /*******************************************************************
@@ -369,9 +352,7 @@ br_substream_new(bs_endianness endianness);
 BitstreamReader*
 br_open_external(void* user_data, bs_endianness endianness,
                  int (*read)(void* user_data,
-                             uint8_t** buffer,
-                             buffer_size_t* total_size,
-                             buffer_size_t* size),
+                             struct bs_buffer* buffer),
                  void (*close)(void* user_data),
                  void (*free)(void* user_data));
 
@@ -816,17 +797,15 @@ struct bw_python_output {
 struct bw_external_output {
     void* user_data;
     int (*write)(void* user_data,
-                 const uint8_t* buffer,
-                 buffer_size_t size);
+                 const struct bs_buffer* buffer);
     void (*flush)(void* user_data);
     void (*close)(void* user_data);
     void (*free)(void* user_data);
 
-    struct {
-        uint8_t* data;
-        buffer_size_t total_size;
-        buffer_size_t size;
-    } buffer;
+    struct bs_buffer* buffer; /*where ext_putc places its data*/
+    uint32_t buffer_size;     /*when buffer_size is reached,
+                                write() is called to dump data
+                                and the buffer is reset*/
 };
 
 typedef struct BitstreamWriter_s {
@@ -1013,10 +992,11 @@ BitstreamWriter*
 bw_open(FILE *f, bs_endianness endianness);
 
 BitstreamWriter*
-bw_open_external(void* user_data, bs_endianness endianness,
+bw_open_external(void* user_data,
+                 bs_endianness endianness,
+                 uint32_t buffer_size,
                  int (*write)(void* user_data,
-                              const uint8_t* buffer,
-                              buffer_size_t size),
+                              const struct bs_buffer* buffer),
                  void (*flush)(void* user_data),
                  void (*close)(void* user_data),
                  void (*free)(void* user_data));
@@ -1409,6 +1389,12 @@ buf_new(void);
 uint8_t*
 buf_extend(struct bs_buffer *stream, uint32_t data_size);
 
+/*makes target's data a duplicate of source's data
+  target should have no marks in progress
+  since they would no longer be valid*/
+void
+buf_copy(const struct bs_buffer *source, struct bs_buffer *target);
+
 /*clears out the buffer for possible reuse
 
   resets the position, size and resets any marks in progress*/
@@ -1479,14 +1465,14 @@ py_flush_w(struct bw_python_output *stream);
   and returns a FILE-like struct which can be read on a byte-by-byte basis
   that will call C functions to fetch additional data as needed
 
-  int read(void* user_data, uint8_t** buffer,
-           buffer_size_t* total_size, buffer_size_t* size)
+  int read(void* user_data, struct bs_buffer* buffer)
   where "buffer" is where read output will be placed
-  "total_size" is the current, maximum size of the buffer
-  "size" is the amount of buffer containing actual data
+  using buf_putc, buf_extend, etc.
 
-  the read() function is free to resize "buffer" if necessary
-  but is expected to update "total_size" in that case
+  note that "buffer" may already be holding data
+  (especially if a mark is in place)
+  so new data read to the buffer should be appended
+  rather than replacing what's already there
 
   returns 0 on a successful read, 1 on a read error
   "size" will be set to 0 once EOF is reached
@@ -1502,9 +1488,7 @@ py_flush_w(struct bw_python_output *stream);
 struct br_external_input*
 ext_open(void* user_data,
          int (*read)(void* user_data,
-                     uint8_t** buffer,
-                     buffer_size_t* total_size,
-                     buffer_size_t* size),
+                     struct bs_buffer* buffer),
          void (*close)(void* user_data),
          void (*free)(void* user_data));
 
@@ -1550,15 +1534,18 @@ ext_free(struct br_external_input* stream);
 
 struct bw_external_output*
 ext_open_w(void* user_data,
+           uint32_t buffer_size,
            int (*write)(void* user_data,
-                        const uint8_t* buffer,
-                        buffer_size_t size),
+                        const struct bs_buffer* buffer),
            void (*flush)(void* user_data),
            void (*close)(void* user_data),
            void (*free)(void* user_data));
 
 int
 ext_putc(int i, struct bw_external_output* stream);
+
+void
+ext_flush_w(struct bw_external_output* stream);
 
 void
 ext_close_w(struct bw_external_output* stream);
