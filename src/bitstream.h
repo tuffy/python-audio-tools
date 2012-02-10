@@ -1291,6 +1291,10 @@ ext_open(void* user_data,
          void (*close)(void* user_data),
          void (*free)(void* user_data));
 
+typedef int (*EXT_READ)(void* user_data, struct bs_buffer* buffer);
+typedef void (*EXT_CLOSE)(void* user_data);
+typedef void (*EXT_FREE)(void* user_data);
+
 /*analagous to fgetc, returns EOF at the end of stream
   or if some exception occurs when fetching from the reader object*/
 int

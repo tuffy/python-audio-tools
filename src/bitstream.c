@@ -230,7 +230,9 @@ br_open_external(void* user_data,
     return bs;
 }
 
-#define BUF_REMAINING_BYTES(b) ((b)->buffer_total_size - (b)->buffer_position)
+/*the number of bytes remaining to be read
+  b is evaluated twice*/
+#define BUF_REMAINING_BYTES(b) ((b)->buffer_size - (b)->buffer_position)
 
 /*These are helper macros for unpacking the results
   of the various jump tables in a less error-prone fashion.*/
@@ -1013,11 +1015,62 @@ br_read_bytes_e(struct BitstreamReader_s* bs,
 {
     unsigned int i;
 
-    /*this is an unoptimized version
-      because it's easier than pulling bytes
-      out of the internal buffer directly*/
-    for (i = 0; i < byte_count; i++)
-        bytes[i] = bs->read(bs, 8);
+
+    if (bs->state == 0) {
+        /*stream is byte-aligned, so perform optimized read*/
+
+        struct bs_buffer* buffer = bs->input.external->buffer;
+
+        /*read as many bytes as possible from the buffer*/
+        while (byte_count) {
+            const unsigned int to_read = MIN(BUF_REMAINING_BYTES(buffer),
+                                             byte_count);
+            struct bs_callback* callback;
+
+            /*so copy bytes from buffer to output*/
+            memcpy(bytes, buffer->buffer + buffer->buffer_position, to_read);
+
+            /*perform callbacks on the read bytes*/
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next) {
+                unsigned int i;
+
+                for (i = 0; i < to_read; i++)
+                    callback->callback(bytes[i], callback->data);
+            }
+
+            /*and increment buffer position and output position*/
+            buffer->buffer_position += to_read;
+            bytes += to_read;
+
+            byte_count -= to_read;
+            if (byte_count) {
+                /*if there's more bytes to read,
+                  populate buffer with additional data*/
+                if (!buffer->mark_in_progress) {
+                    /*if the stream has no mark,
+                      reset the buffer prior to reading new data*/
+
+                    buffer->buffer_size = 0;
+                    buffer->buffer_position = 0;
+                }
+
+                if (bs->input.external->read(bs->input.external->user_data,
+                                             buffer) ||
+                    (BUF_REMAINING_BYTES(buffer) == 0)) {
+                    /*if a read error occurs
+                      or the read adds no data to the buffer,
+                      trigger an abort*/
+                    br_abort(bs);
+                }
+            }
+        }
+    } else {
+        /*stream is not byte-aligned, so perform multiple reads*/
+        for (i = 0; i < byte_count; i++)
+            bytes[i] = bs->read(bs, 8);
+    }
 }
 
 
@@ -1523,7 +1576,7 @@ br_substream_append_s(struct BitstreamReader_s *stream,
     /*byte align the input stream*/
     stream->state = 0;
 
-    /*abort if there's sufficient bytes remaining
+    /*abort if there's insufficient bytes remaining
       in the input stream to pass to the output stream*/
     if (BUF_REMAINING_BYTES(stream->input.substream) < bytes)
         br_abort(stream);
@@ -3065,6 +3118,11 @@ ext_putc(int i, struct bw_external_output* stream)
     if (buffer->buffer_size == stream->buffer_size) {
         stream->write(stream->user_data, buffer);
         buffer->buffer_size = 0;
+    }
+    if (buffer->buffer_size >= buffer->buffer_total_size) {
+        buffer->buffer_total_size *= 2;
+        buffer->buffer = realloc(buffer->buffer,
+                                 sizeof(uint8_t) * buffer->buffer_total_size);
     }
 
     buffer->buffer[buffer->buffer_size++] = (uint8_t)i;
