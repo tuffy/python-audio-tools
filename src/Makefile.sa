@@ -1,7 +1,7 @@
 #This makefile is for generating debug standalone executables
 
 VERSION = "2.18alpha4"
-OBJS = array.o pcm.o bitstream.o pcmreader.o
+OBJS = array.o pcm.o bitstream.o
 FLAGS = -Wall -g
 
 all: flacenc alacenc wvenc mlpdec huffman bitstream
@@ -9,8 +9,8 @@ all: flacenc alacenc wvenc mlpdec huffman bitstream
 flacenc: $(OBJS) encoders/flac.c encoders/flac.h flac_crc.o md5.o pcmconv.o array2.o
 	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o flacenc encoders/flac.c $(OBJS) array2.o md5.o flac_crc.o pcmconv.o -DSTANDALONE -lm
 
-alacenc: $(OBJS) encoders/alac.c encoders/alac.h misc.o array2.o pcmconv.o
-	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o alacenc encoders/alac.c misc.o array2.o pcmconv.o $(OBJS) -DSTANDALONE -lm
+alacenc: $(OBJS) encoders/alac.c encoders/alac.h array2.o pcmconv.o
+	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o alacenc encoders/alac.c array2.o pcmconv.o $(OBJS) -DSTANDALONE -lm
 
 shnenc: $(OBJS) encoders/shn.c encoders/shn.h
 	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o shnenc encoders/shn.c $(OBJS) -DSTANDALONE -lm
@@ -20,6 +20,9 @@ wvenc: $(OBJS) encoders/wavpack.c encoders/wavpack.h md5.o array2.o pcmconv.o
 
 mlpdec: decoders/mlp.c decoders/mlp.h array.o bitstream.o
 	$(CC) $(FLAGS) -o mlpdec decoders/mlp.c array.o bitstream.o -DSTANDALONE
+
+dvdadec: dvda/dvda.c dvda/dvda.h bitstream.o array2.o
+	$(CC) $(FLAGS) -o dvdadec dvda/dvda.c bitstream.o array2.o -DSTANDALONE
 
 huffman: huffman.c huffman.h
 	$(CC) $(FLAGS) -o huffman huffman.c -DSTANDALONE -DEXECUTABLE -ljansson
@@ -42,26 +45,11 @@ pcmconv.o: pcmconv.c pcmconv.h
 bitstream.o: bitstream.c bitstream.h
 	$(CC) $(FLAGS) -c bitstream.c
 
-pcmreader.o: pcmreader.c pcmreader.h
-	$(CC) $(FLAGS) -c pcmreader.c -DSTANDALONE
-
-pcmreader2.o: pcmreader2.c pcmreader2.h
-	$(CC) $(FLAGS) -c pcmreader2.c -DSTANDALONE
-
 md5.o: common/md5.c common/md5.h
 	$(CC) $(FLAGS) -c common/md5.c -DSTANDALONE
 
-flac_lpc.o: encoders/flac_lpc.c encoders/flac_lpc.h
-	$(CC) $(FLAGS) -c encoders/flac_lpc.c -DSTANDALONE
-
 flac_crc.o: common/flac_crc.c common/flac_crc.h
 	$(CC) $(FLAGS) -c common/flac_crc.c -DSTANDALONE
-
-misc.o: common/misc.c common/misc.h
-	$(CC) $(FLAGS) -c common/misc.c -DSTANDALONE
-
-alac_lpc.o: encoders/alac_lpc.c encoders/alac_lpc.h
-	$(CC) $(FLAGS) -c encoders/alac_lpc.c -DSTANDALONE
 
 huffman.o: huffman.c huffman.h
 	$(CC) $(FLAGS) -c huffman.c -DSTANDALONE

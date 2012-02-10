@@ -849,9 +849,7 @@ struct array_o_s {
     unsigned len;
     unsigned total_size;
 
-    /*called when an object is duplicated between arrays
-      if NULL, copy/head/tail/de_head/de_tail/split/slice methods
-      will trigger an error*/
+    /*called when an object is duplicated between arrays*/
     void* (*copy_obj)(void* obj);
 
     /*called when an object is removed from the array
@@ -927,6 +925,10 @@ struct array_o_s {
 };
 
 typedef struct array_o_s array_o;
+
+typedef void* (*ARRAY_COPY_FUNC)(void* obj);
+typedef void (*ARRAY_FREE_FUNC)(void* obj);
+typedef void (*ARRAY_PRINT_FUNC)(void* obj, FILE* output);
 
 /*copy, free and print functions may be NULL,
   indicating no free or print is necessary for object*/
