@@ -23,7 +23,17 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-typedef enum {OK, IO_ERROR, INVALID_AUDIO_TS, INVALID_ATS_XX_0} status;
+typedef enum {OK, IO_ERROR, INVALID_AUDIO_TS, INVALID_ATS_XX_0,
+              NO_AOBS_FOUND} status;
+
+/*given a path to the AUDIO_TS directory
+  and a filename to search for, in upper case,
+  returns the full path to the file
+  or NULL if the file is not found
+  the path must be freed later once no longer needed*/
+char*
+find_audio_ts_file(const char* audio_ts_path,
+                   const char* uppercase_file);
 
 /*given a path to the AUDIO_TS directory
   and a filename to search for, in upper case,
@@ -65,12 +75,36 @@ typedef struct {
     array_o* titles;
 } DVDA_Titleset;
 
+#define SECTOR_SIZE 2048
+
+typedef struct {
+    char* path;             /*the full path to the AOB file*/
+    FILE* file;             /*opened FILE object to AOB file*/
+    unsigned total_sectors; /*the total number of 2048 byte sectors*/
+    unsigned start_sector;  /*the first sector in the AOB file*/
+    unsigned end_sector;    /*the last sector in the AOB file, inclusive
+                              for example:
+                              AOB1->first_sector=0, last_sector=99
+                              AOB2->first_sector=100, last_sector=199
+                              etc.*/
+} DVDA_AOB;
+
+typedef struct {
+    array_o* aobs;          /*all the AOB files on the disc, in order*/
+    struct {
+        unsigned sector;
+        DVDA_AOB* aob;
+    } current;
+    unsigned end_sector;    /*the final sector on the entire disc*/
+} DVDA_Sector_Reader;
+
 typedef struct {
     array_o* titlesets;
+    DVDA_Sector_Reader* reader;
 } DVDA_Disc;
 
 /*open the DVD-A disc at the given "AUDIO_TS" path
-  returns OK on success*/
+  returns a DVDA_Disc object and sets status to OK on success*/
 DVDA_Disc*
 open_dvda_disc(const char* audio_ts_path, status* status);
 
@@ -79,7 +113,9 @@ void
 close_dvda_disc(DVDA_Disc* dvda);
 
 DVDA_Titleset*
-open_titleset(const char* audio_ts_path, unsigned number, status* status);
+open_titleset(const char* audio_ts_path,
+              unsigned titleset_number,
+              status* status);
 
 void
 close_titleset(DVDA_Titleset* titleset);
@@ -89,3 +125,22 @@ open_title(BitstreamReader* bs, unsigned table_offset, status* status);
 
 void
 close_title(DVDA_Title* title);
+
+DVDA_Sector_Reader*
+open_sector_reader(const char* audio_ts_path,
+                   unsigned titleset_number,
+                   status* status);
+
+void
+close_sector_reader(DVDA_Sector_Reader* reader);
+
+int
+read_sector(DVDA_Sector_Reader* reader,
+            struct bs_buffer* sector);
+
+void
+seek_sector(DVDA_Sector_Reader* reader,
+            unsigned sector);
+
+void
+free_aob(DVDA_AOB* aob);
