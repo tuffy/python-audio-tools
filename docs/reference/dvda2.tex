@@ -1,0 +1,137 @@
+%This work is licensed under the
+%Creative Commons Attribution-Share Alike 3.0 United States License.
+%To view a copy of this license, visit
+%http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+%Creative Commons,
+%171 Second Street, Suite 300,
+%San Francisco, California, 94105, USA.
+
+\chapter{DVD-Audio}
+DVD-Audio is a format for delivering hi-fidelity, multichannel
+audio on DVD media.
+A DVD-Audio's \texttt{AUDIO\_TS} directory contains the
+relevent data needed for decoding, spread into a lot of files
+whose names are more than a little cryptic at first glance.
+
+Unlike CD audio, which is simply a set of 1 to 99 identically-formatted
+audio tracks (in terms of channel count, sample rate and bits per sample),
+a DVD-Audio disc contains one or more titlesets.
+Each titleset contains one or more titles, and each
+title contains one or more tracks.
+\begin{figure}[h]
+  \includegraphics{figures/dvda/layout.pdf}
+\end{figure}
+\par
+\noindent
+Typically, a DVD-Audio disc will contain two titlesets,
+one for audio and the other for video - which we can ignore.
+The first titleset will often contain two titles,
+one for 2 channel audio and the other for 5.1 channel audio.
+Each title will usually contain a consistent number of tracks
+as MLP or PCM encoded audio.
+\par
+With this in mind, we can now make some sense of
+the \texttt{AUDIO\_TS} directory's contents:
+\vskip .25in
+$\texttt{\huge{AUDIO\_TS.IFO}}$
+\hfill
+information about the disc, including the number of titlesets
+\vskip .25in
+$\texttt{\huge{ATS\_}}\underbrace{\texttt{\huge{01}}}_{Titleset}\texttt{\huge{\_0.IFO}}$
+\hfill
+information about all the titles in a given titleset
+\vskip .25in
+$\texttt{\huge{ATS\_}}\underbrace{\texttt{\huge{01}}}_{Titleset}\texttt{\huge{\_}}\underbrace{\texttt{\huge{1}}}_{AOB~\#}\texttt{\huge{.AOB}}$
+\hfill
+audio data for one or more tracks in a given titleset
+\vskip .25in
+\par
+All are binary files containing one or more, 2048 byte sectors.
+
+\section{AUDIO\_TS.IFO}
+Known as the ``Audio Manager'' or ``AMG'',
+this is primarily a container of pointers to
+other files on disc.
+However, for our purposes, we're only interested
+in the \VAR{Audio Titleset Count} value.
+\begin{figure}[h]
+  \includegraphics{figures/dvda/audio_ts_ifo.pdf}
+\end{figure}
+
+\clearpage
+
+\section{ATS\_XX\_0.IFO}
+
+\ALGORITHM{an \texttt{ATS\_XX\_0.IFO} file, a titleset number}{timestamps for each track in each title in the titleset, a list of sector pointers}
+\SetKw{SEEK}{seek}
+\SetKwData{IDENTIFIER}{identifier}
+\SetKwData{TITLECOUNT}{title count}
+\SetKwData{LASTADDRESS}{last byte address}
+\SetKwData{TITLENUMBER}{title number}
+\SetKwData{TITLEOFFSET}{title table offset}
+\SetKwData{TRACKCOUNT}{track count}
+\SetKwData{INDEXCOUNT}{index count}
+\SetKwData{TITLELENGTH}{title PTS length}
+\SetKwData{POINTERSOFFSET}{sector pointers offset}
+\SetKwData{TRACKINDEX}{track index number}
+\SetKwData{TRACKPTSINDEX}{track PTS index}
+\SetKwData{TRACKPTSLENGTH}{track PTS length}
+\SetKwData{INDEXID}{index ID}
+\SetKwData{FIRSTSECTOR}{first sector}
+\SetKwData{LASTSECTOR}{last sector}
+$\IDENTIFIER \leftarrow$ \READ 12 bytes\;
+\ASSERT $\IDENTIFIER = \texttt{"DVDAUDIO-ATS"}$\;
+\SEEK to file position \texttt{0x800}\tcc*[r]{seek to the second sector in the file}
+$\TITLECOUNT \leftarrow$ \READ 16 unsigned bits\;
+\SKIP 16 bits\;
+$\LASTADDRESS \leftarrow$ \READ 32 unsigned bits\;
+\For{i = 0 \emph{\KwTo}\TITLECOUNT}{
+  $\text{\TITLENUMBER}_i \leftarrow$ \READ 8 unsigned bits\;
+  \SKIP 24 bits\;
+  $\text{\TITLEOFFSET}_i \leftarrow$ \READ 32 unsigned bits\;
+}
+\For(\tcc*[f]{read title information}){i = 0 \emph{\KwTo}\TITLECOUNT}{
+  \SEEK to file position $(\texttt{0x800} + \text{\TITLEOFFSET}_i)$\;
+  \SKIP 16 bits\;
+  $\text{\TRACKCOUNT}_i \leftarrow$ \READ 8 unsigned bits\;
+  $\text{\INDEXCOUNT}_i \leftarrow$ \READ 8 unsigned bits\;
+  $\text{\TITLELENGTH}_i \leftarrow$ \READ 32 unsigned bits\;
+  \SKIP 32 bits\;
+  $\text{\POINTERSOFFSET}_i \leftarrow$ \READ 16 unsigned bits\;
+  \SKIP 16 bits\;
+  \For(\tcc*[f]{read track information}){j = 0 \emph{\KwTo}$\text{\TRACKCOUNT}_i$}{
+    \SKIP 32 bits\;
+    $\text{\TRACKINDEX}_{i~j} \leftarrow$ \READ 8 unsigned bits\;
+    \SKIP 8 bits\;
+    $\text{\TRACKPTSINDEX}_{i~j} \leftarrow$ \READ 32 unsigned bits\;
+    $\text{\TRACKPTSLENGTH}_{i~j} \leftarrow$ \READ 32 unsigned bits\;
+    \SKIP 48 bits\;
+  }
+  \SEEK to file position $(\texttt{0x800} + \text{\TITLEOFFSET}_i + \text{\POINTERSOFFSET}_i)$\;
+  \For(\tcc*[f]{read index information}){j = 0 \emph{\KwTo}$\text{\INDEXCOUNT}_i$}{
+    $\text{\INDEXID}_{i~j} \leftarrow$ \READ 32 unsigned bits\;
+    \ASSERT $\text{\INDEXID}_{i~j} = \texttt{0x01000000}$\;
+    $\text{\FIRSTSECTOR}_{i~j} \leftarrow$ \READ 32 unsigned bits\;
+    $\text{\LASTSECTOR}_{i~j} \leftarrow$ \READ 32 unsigned bits\;
+  }
+}
+\Return \TITLECOUNT, \TRACKCOUNT, \INDEXCOUNT, \TITLELENGTH, \TRACKINDEX,
+\TRACKPTSINDEX, \TRACKPTSLENGTH, \FIRSTSECTOR, \LASTSECTOR\;
+\EALGORITHM
+
+\clearpage
+
+\subsubsection{ATS\_XX\_0.IFO Second Sector}
+\begin{figure}[h]
+\includegraphics{figures/dvda/ats_xx_0.pdf}
+\end{figure}
+
+\subsubsection{Title Table}
+\begin{figure}[h]
+  \includegraphics{figures/dvda/ats_title.pdf}
+\end{figure}
+
+\subsubsection{Sector Pointers Table}
+\begin{figure}[h]
+  \includegraphics{figures/dvda/ats_sectors.pdf}
+\end{figure}

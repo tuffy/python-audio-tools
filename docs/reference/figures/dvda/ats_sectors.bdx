@@ -1,15 +1,15 @@
 <?xml version="1.0" ?><diagram>
   <row>
-    <col end="95" id="track" start="0" width=".25">Index₁</col>
-    <col end="191" start="96" width=".25">Index₂</col>
-    <col end="287" start="192" width=".25">Index₃</col>
+    <col end="95" id="track" start="0" width=".25">Index₀</col>
+    <col end="191" start="96" width=".25">Index₁</col>
+    <col end="287" start="192" width=".25">Index₂</col>
     <col style="dashed" width=".25">...</col>
   </row>
   <spacer/>
   <row>
     <col end="31" id="track_s" start="0" width=".333333">ID (0x01000000)</col>
-    <col end="63" start="32" width=".333333">First Sector</col>
-    <col end="95" id="track_e" start="64" width=".333333">Last Sector</col>
+    <col end="63" start="32" width=".333333">first sector</col>
+    <col end="95" id="track_e" start="64" width=".333333">last sector</col>
   </row>
   <line style="dotted"><start corner="sw" id="track"/><end corner="nw" id="track_s"/></line>  <line style="dotted"><start corner="se" id="track"/><end corner="ne" id="track_e"/></line>
 </diagram>

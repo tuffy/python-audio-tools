@@ -268,6 +268,9 @@ wavpack-codec.pdf: wavpack-codec.tex wavpack.tex $(WAVPACK)
 shorten-codec.pdf: shorten-codec.tex shorten.tex $(SHORTEN)
 	python pdflatexbuild.py -halt-on-error $<
 
+dvda-codec.pdf: dvda-codec.tex dvda2.tex $(DVDA)
+	python pdflatexbuild.py -halt-on-error $<
+
 audioformats-letter.tex: audioformats.m4
 	m4 -D PAPERSIZE=letterpaper $< > $@
 

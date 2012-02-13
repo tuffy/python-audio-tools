@@ -1,23 +1,19 @@
 <?xml version="1.0" ?><diagram>
   <row>
-    <col end="95" start="0" width=".50">Identifier (`DVDAUDIO-ATS')</col>
-    <col end="16383" start="96" width=".50">...</col>
+    <col end="0" start="15" width=".25">title count</col>
+    <col end="16" start="31" width=".25">padding</col>
+    <col end="32" start="63" width=".50">last byte address</col>
   </row>
   <row>
-    <col end="16399" start="16384" width=".25">Title Count</col>
-    <col end="16415" start="16400" width=".25">Padding</col>
-    <col end="16447" start="16416" width=".50">Last Byte Address</col>
-  </row>
-  <row>
-    <col end="63" id="title" start="0" width=".333333">Title Offset₁</col>
-    <col end="127" start="64" width=".333333">Title Offset₂</col>
+    <col end="127" id="title" start="64" width=".333333">offset₀</col>
+    <col end="191" start="128" width=".333333">offset₁</col>
     <col style="dashed" width=".333333">...</col>
   </row>
   <spacer/>
   <row>
-    <col end="7" id="title_s" start="0" width=".25">Title Number</col>
-    <col end="31" start="8" width=".25">Padding</col>
-    <col end="63" id="title_e" start="32" width=".50">Title Table Offset</col>
+    <col end="7" id="title_s" start="0" width=".25">title number</col>
+    <col end="31" start="8" width=".25">padding</col>
+    <col end="63" id="title_e" start="32" width=".50">title table offset</col>
   </row>
   <line style="dotted"><start corner="sw" id="title"/><end corner="nw" id="title_s"/></line>  <line style="dotted"><start corner="se" id="title"/><end corner="ne" id="title_e"/></line>
 </diagram>
