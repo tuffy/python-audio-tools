@@ -1,6 +1,6 @@
 <?xml version="1.0" ?><diagram>
   <row>
-    <col end="0" start="15" width=".25">title count</col>
+    <col end="15" start="0" width=".25">title count</col>
     <col end="16" start="31" width=".25">padding</col>
     <col end="32" start="63" width=".50">last byte address</col>
   </row>

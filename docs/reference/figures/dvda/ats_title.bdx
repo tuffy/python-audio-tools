@@ -18,9 +18,10 @@
   </row>
   <spacer/>
   <row>
-    <col end="31" id="timestamp_s" start="0" width=".333333">padding</col>
-    <col end="39" start="32" width=".333333">index number</col>
-    <col end="47" id="timestamp_e" start="40" width=".333333">padding</col>
+    <col start="0" end="15" id="timestamp_s"  width=".35">track number</col>
+    <col start="16" end="31" width=".15">padding</col>
+    <col end="39" start="32" width=".35">index number</col>
+    <col end="47" id="timestamp_e" start="40" width=".15">padding</col>
   </row>
   <row>
     <col end="79" start="48" width=".333333">initial PTS index</col>

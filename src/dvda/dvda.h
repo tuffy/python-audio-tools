@@ -103,6 +103,12 @@ typedef struct {
     DVDA_Sector_Reader* reader;
 } DVDA_Disc;
 
+typedef struct {
+    DVDA_Sector_Reader* sectors;
+    BitstreamReader* reader;
+    unsigned total_sectors;
+} DVDA_Packet_Reader;
+
 /*open the DVD-A disc at the given "AUDIO_TS" path
   returns a DVDA_Disc object and sets status to OK on success*/
 DVDA_Disc*
@@ -144,3 +150,14 @@ seek_sector(DVDA_Sector_Reader* reader,
 
 void
 free_aob(DVDA_AOB* aob);
+
+DVDA_Packet_Reader*
+open_packet_reader(DVDA_Sector_Reader* sectors,
+                   unsigned start_sector,
+                   unsigned last_sector);
+
+int
+next_audio_packet(DVDA_Packet_Reader* packets, struct bs_buffer* packet);
+
+void
+close_packet_reader(DVDA_Packet_Reader* packets);

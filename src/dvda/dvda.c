@@ -411,6 +411,128 @@ free_aob(DVDA_AOB* aob)
     free(aob);
 }
 
+DVDA_Packet_Reader*
+open_packet_reader(DVDA_Sector_Reader* sectors,
+                   unsigned start_sector,
+                   unsigned last_sector)
+{
+    DVDA_Packet_Reader* packets = malloc(sizeof(DVDA_Packet_Reader));
+    assert(last_sector >= start_sector);
+
+    packets->sectors = sectors;
+    packets->reader = br_substream_new(BS_BIG_ENDIAN);
+
+    packets->total_sectors = last_sector - start_sector;
+    seek_sector(sectors, start_sector);
+    return packets;
+}
+
+int
+next_audio_packet(DVDA_Packet_Reader* packets, struct bs_buffer* packet)
+{
+    if (packets->total_sectors) {
+        BitstreamReader* reader = packets->reader;
+        struct bs_buffer* buffer = reader->input.substream;
+        buf_reset(buffer);
+        if (!read_sector(packets->sectors, buffer)) {
+            if (buffer->buffer_size == 0) {
+                return 0;
+            }
+
+            if (!setjmp(*br_try(reader))) {
+                unsigned sync_bytes;
+                unsigned pad[6];
+                unsigned PTS_high;
+                unsigned PTS_mid;
+                unsigned PTS_low;
+                unsigned SCR_extension;
+                unsigned bitrate;
+                unsigned stuffing_count;
+                int audio_packet_found = 0;
+
+                /*read pack header*/
+                reader->parse(reader,
+                              "32u 2u 3u 1u 15u 1u 15u 1u 9u 1u 22u 2u 5p 3u",
+                              &sync_bytes, &(pad[0]), &PTS_high,
+                              &(pad[1]), &PTS_mid, &(pad[2]),
+                              &PTS_low, &(pad[3]), &SCR_extension,
+                              &(pad[4]), &bitrate, &(pad[5]),
+                              &stuffing_count);
+                if (sync_bytes != 0x000001BA) {
+                    fprintf(stderr, "invalid packet sync bytes\n");
+                    return 1;
+                }
+
+                if ((pad[0] != 1) || (pad[1] != 1) || (pad[2] != 1) ||
+                    (pad[3] != 1) || (pad[4] != 1) || (pad[5] != 3)) {
+                    fprintf(stderr, "invalid packet padding bits\n");
+                    return 1;
+                }
+
+                for (; stuffing_count; stuffing_count--) {
+                    reader->skip(reader, 8);
+                }
+
+                /*read packets from sector until sector is empty*/
+                while (buffer->buffer_position < buffer->buffer_size) {
+                    unsigned start_code;
+                    unsigned stream_id;
+                    unsigned packet_length;
+
+                    reader->parse(reader, "24u 8u 16u",
+                                  &start_code, &stream_id, &packet_length);
+
+                    if (start_code != 0x000001) {
+                        fprintf(stderr, "invalid packet start code\n");
+                        return 1;
+                    }
+
+                    if (stream_id == 0xBD) {
+                        /*audio packets are forwarded to packet*/
+                        reader->read_bytes(reader,
+                                           buf_extend(packet, packet_length),
+                                           packet_length);
+                        packet->buffer_size += packet_length;
+                        audio_packet_found = 1;
+                    } else {
+                        /*other packets are ignored*/
+                        reader->skip_bytes(reader, packet_length);
+                    }
+                }
+
+                /*return success if an audio packet was read*/
+                br_etry(reader);
+                if (audio_packet_found) {
+                    return 0;
+                } else {
+                    fprintf(stderr, "no audio packet found in sector\n");
+                    return 1;
+                }
+            } else {
+                /*error reading sector*/
+                br_etry(reader);
+                fprintf(stderr, "I/O error reading sector\n");
+                return 1;
+            }
+        } else {
+            /*error reading sector*/
+            fprintf(stderr, "error reading sector\n");
+            return 1;
+        }
+    } else {
+        /*no more sectors, so return EOF*/
+        return 0;
+    }
+}
+
+void
+close_packet_reader(DVDA_Packet_Reader* packets)
+{
+    packets->reader->close(packets->reader);
+    free(packets);
+}
+
+
 char*
 find_audio_ts_file(const char* audio_ts_path,
                    const char* uppercase_file)
@@ -486,37 +608,40 @@ open_audio_ts_file(const char* audio_ts_path,
 #ifdef STANDALONE
 int main(int argc, char* argv[])
 {
-    DVDA_Disc* dvda;
-    FILE* output = fopen(argv[2], "wb");
-    struct bs_buffer* buffer = buf_new();
+    DVDA_Sector_Reader* sectors;
     status status;
 
-    if ((dvda = open_dvda_disc(argv[1], &status)) != NULL) {
-        buf_reset(buffer);
-        while (!read_sector(dvda->reader, buffer)) {
+    if ((sectors = open_sector_reader(argv[1], 1, &status)) != NULL) {
+        DVDA_Packet_Reader* packets = open_packet_reader(sectors,
+                                                         atoi(argv[3]),
+                                                         atoi(argv[4]));
+        struct bs_buffer* buffer = buf_new();
+        FILE* output = fopen(argv[2], "wb");
 
-            assert((buffer->buffer_size == SECTOR_SIZE) ||
-                   (buffer->buffer_size == 0));
-
-            if (buffer->buffer_size) {
-                fwrite(buffer->buffer,
-                       sizeof(uint8_t),
-                       buffer->buffer_size,
-                       output);
-            } else {
-                /*EOF*/
-                break;
-            }
+        while (1) {
             buf_reset(buffer);
+            if (!next_audio_packet(packets, buffer)) {
+                if (buffer->buffer_size) {
+                    fwrite(buffer->buffer, sizeof(uint8_t),
+                           buffer->buffer_size, output);
+                } else {
+                    fclose(output);
+                    buf_close(buffer);
+                    close_packet_reader(packets);
+                    close_sector_reader(sectors);
+                    return 0;
+                }
+            } else {
+                fprintf(stderr, "error reading packet\n");
+                fclose(output);
+                buf_close(buffer);
+                close_packet_reader(packets);
+                close_sector_reader(sectors);
+                return 1;
+            }
         }
-        fclose(output);
-        buf_close(buffer);
-        close_dvda_disc(dvda);
-        return 0;
     } else {
-        fclose(output);
-        buf_close(buffer);
-        fprintf(stderr, "error opening DVD-A\n");
+        fprintf(stderr, "error opening sector reader\n");
         return 1;
     }
 }

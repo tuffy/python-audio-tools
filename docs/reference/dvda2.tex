@@ -135,3 +135,33 @@ $\LASTADDRESS \leftarrow$ \READ 32 unsigned bits\;
 \begin{figure}[h]
   \includegraphics{figures/dvda/ats_sectors.pdf}
 \end{figure}
+
+\clearpage
+
+\section{ATS\_XX\_X.AOB}
+
+All of a titleset's AOB files can be considered part of a
+single, contiguous collection of sectors, each 2048 bytes long.
+Thus, it's possible for the start and end sectors for a given track
+(as indicated in the sector pointers table) to span two or more
+AOB files.
+Each sector contains one or more packets as part of a
+``Packetized Elementary Stream''.
+
+\begin{figure}[h]
+  \includegraphics{figures/dvda/ats_xx_x.pdf}
+\end{figure}
+\par
+\noindent
+Each sector within an AOB file is prefixed by a \VAR{Pack Header},
+as follows:
+\begin{figure}[h]
+  \includegraphics{figures/dvda/aob_pack_header.pdf}
+\end{figure}
+\par
+\noindent
+The three \VAR{Current PTS} values (3 bits, 15 bits and 15 bits, respectively)
+combine to indicate the current position within the stream, in PTS ticks.
+\par
+Each sector then contains one or more packets.
+Packets with a \VAR{Stream ID} of \texttt{0xBD} contain encoded audio data.
