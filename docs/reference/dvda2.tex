@@ -153,6 +153,11 @@ Each sector contains one or more packets as part of a
 \end{figure}
 \par
 \noindent
+Packets with a \VAR{stream ID} of \texttt{0xBD} contain encoded audio data.
+\VAR{Packet data length} is the length of all data after
+the \VAR{packet data length} field to the end of the packet.
+\par
+\noindent
 Each sector within an AOB file is prefixed by a \VAR{Pack Header},
 as follows:
 \begin{figure}[h]
@@ -162,6 +167,12 @@ as follows:
 \noindent
 The three \VAR{Current PTS} values (3 bits, 15 bits and 15 bits, respectively)
 combine to indicate the current position within the stream, in PTS ticks.
-\par
-Each sector then contains one or more packets.
-Packets with a \VAR{Stream ID} of \texttt{0xBD} contain encoded audio data.
+There are 90,000 PTS ticks per second.
+
+\clearpage
+
+\subsection{Packet Payload Extraction}
+
+\begin{figure}[h]
+  \includegraphics{figures/dvda/audio_packet.pdf}
+\end{figure}

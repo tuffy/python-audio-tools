@@ -170,6 +170,7 @@ figures/dvda/ats_sectors.pdf \
 figures/dvda/ats_title.pdf \
 figures/dvda/ats_xx_0.pdf \
 figures/dvda/ats_xx_x.pdf \
+figures/dvda/audio_packet.pdf \
 figures/dvda/audio_ts_ifo.pdf \
 figures/dvda/layout.pdf
 

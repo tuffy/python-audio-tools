@@ -30,7 +30,6 @@ definition.
 While ``PyMethodDef`` functions include:
 
 * ``static PyObject* FooDecoder_read(decoders_FooDecoder *self, PyObject *args)``
-* ``static PyObject* FooDecoder_analyze_frame(decoders_FooDecoder *self, PyObject *args)``
 * ``static PyObject* FooDecoder_close(decoders_FooDecoder *self, PyObject *args)``
 
 In addition, in order to allocate/deallocate objects correctly,
@@ -55,7 +54,6 @@ This typically looks like:
 
   PyMethodDef FooDecoder_methods[] = {
     {"read", (PyCFunction)FooDecoder_read, METH_VARARGS, ""},
-    {"analyze_frame", (PyCFunction)FooDecoder_analyze_frame, METH_NOARGS, ""},
     {"close", (PyCFunction)FooDecoder_close, METH_NOARGS, ""},
     {NULL}
   };

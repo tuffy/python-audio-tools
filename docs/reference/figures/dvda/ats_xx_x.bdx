@@ -20,12 +20,12 @@
   </row>
   <spacer/>
   <row>
-    <col end="23" id="packet_s" start="0" width=".60">start code (0x000001)</col>
-    <col end="31" start="24" width=".20">stream ID</col>
-    <col end="47" id="packet_e" start="32" width=".20">packet length</col>
+    <col end="23" id="packet_s" start="0" width=".40">start code (0x000001)</col>
+    <col end="31" start="24" width=".30">stream ID</col>
+    <col end="47" id="packet_e" start="32" width=".30">packet data length</col>
   </row>
   <row>
-    <col start="48">packet data</col>
+    <col>packet data</col>
   </row>
   <line style="dotted"><start corner="sw" id="aob_1"/><end corner="nw" id="sector_1_s"/></line>
   <line style="dotted"><start corner="se" id="aob_1"/><end corner="ne" id="sector_1_e"/></line>
