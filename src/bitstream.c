@@ -169,6 +169,63 @@ br_substream_new(bs_endianness endianness)
 }
 
 BitstreamReader*
+br_open_buffer(struct bs_buffer* buffer, bs_endianness endianness)
+{
+    BitstreamReader *bs = malloc(sizeof(BitstreamReader));
+    bs->type = BR_SUBSTREAM;
+    bs->input.substream = buffer;
+    bs->state = 0;
+    bs->callbacks = NULL;
+    bs->exceptions = NULL;
+    bs->marks = NULL;
+    bs->callbacks_used = NULL;
+    bs->exceptions_used = NULL;
+    bs->marks_used = NULL;
+
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        bs->read = br_read_bits_s_be;
+        bs->read_signed = br_read_signed_bits_be;
+        bs->read_64 = br_read_bits64_s_be;
+        bs->read_signed_64 = br_read_signed_bits64_be;
+        bs->skip = br_skip_bits_s_be;
+        bs->unread = br_unread_bit_be;
+        bs->read_unary = br_read_unary_s_be;
+        bs->skip_unary = br_skip_unary_s_be;
+        bs->read_limited_unary = br_read_limited_unary_s_be;
+        bs->set_endianness = br_set_endianness_s_be;
+        break;
+    case BS_LITTLE_ENDIAN:
+        bs->read = br_read_bits_s_le;
+        bs->read_signed = br_read_signed_bits_le;
+        bs->read_64 = br_read_bits64_s_le;
+        bs->read_signed_64 = br_read_signed_bits64_le;
+        bs->skip = br_skip_bits_s_le;
+        bs->unread = br_unread_bit_le;
+        bs->read_unary = br_read_unary_s_le;
+        bs->skip_unary = br_skip_unary_s_le;
+        bs->read_limited_unary = br_read_limited_unary_s_le;
+        bs->set_endianness = br_set_endianness_s_le;
+        break;
+    }
+
+    bs->skip_bytes = br_skip_bytes;
+    bs->byte_align = br_byte_align;
+    bs->read_huffman_code = br_read_huffman_code_s;
+    bs->read_bytes = br_read_bytes_s;
+    bs->parse = br_parse;
+    bs->substream_append = br_substream_append_s;
+    bs->close_substream = br_close_substream_s;
+    bs->free = br_free_f;
+    bs->close = br_close;
+    bs->mark = br_mark_s;
+    bs->rewind = br_rewind_s;
+    bs->unmark = br_unmark_s;
+
+    return bs;
+}
+
+BitstreamReader*
 br_open_external(void* user_data,
                  bs_endianness endianness,
                  int (*read)(void* user_data,

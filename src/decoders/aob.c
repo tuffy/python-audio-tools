@@ -25,6 +25,7 @@
 *******************************************************/
 
 #define SECTOR_SIZE 2048
+#define PTS_PER_SECOND 90000
 
 PyObject*
 DVDA_Title_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
@@ -52,6 +53,13 @@ DVDA_Title_init(decoders_DVDA_Title *self, PyObject *args, PyObject *kwds) {
 
     self->sector_reader = NULL;
     self->packet_reader = NULL;
+    self->pcm_frames_remaining = 0;
+    self->packet = buf_new();
+
+    self->bits_per_sample = 0;
+    self->sample_rate = 0;
+    self->channel_count = 0;
+    self->channel_mask = 0;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "sIII|s",
                                      kwlist,
@@ -74,6 +82,7 @@ DVDA_Title_init(decoders_DVDA_Title *self, PyObject *args, PyObject *kwds) {
     self->packet_reader = open_packet_reader(self->sector_reader,
                                              start_sector, end_sector);
 
+
     return 0;
 }
 
@@ -91,88 +100,147 @@ DVDA_Title_dealloc(decoders_DVDA_Title *self) {
 }
 
 static PyObject*
-DVDA_Title_track(decoders_DVDA_Title *self, PyObject *args)
+DVDA_Title_sample_rate(decoders_DVDA_Title *self, void *closure)
 {
-    Py_INCREF(Py_None);
-    return Py_None;
+    return Py_BuildValue("I", self->sample_rate);
 }
 
 static PyObject*
-DVDA_Title_next(decoders_DVDA_Title *self, PyObject *args)
+DVDA_Title_bits_per_sample(decoders_DVDA_Title *self, void *closure)
 {
-    /*FIXME - delete this method once no longer needed*/
-    struct bs_buffer* packet = buf_new();
+    return Py_BuildValue("I", self->bits_per_sample);
+}
 
-    if (!next_audio_packet(self->packet_reader, packet)) {
-        PyObject* to_return = PyString_FromStringAndSize((char *)packet->buffer,
-                                                         packet->buffer_size);
-        buf_close(packet);
-        return to_return;
+static PyObject*
+DVDA_Title_channels(decoders_DVDA_Title *self, void *closure)
+{
+    return Py_BuildValue("I", self->channel_count);
+}
+
+static PyObject*
+DVDA_Title_channel_mask(decoders_DVDA_Title *self, void *closure)
+{
+    return Py_BuildValue("I", self->channel_mask);
+}
+
+static PyObject*
+DVDA_Title_next_track(decoders_DVDA_Title *self, PyObject *args)
+{
+    unsigned PTS_ticks;
+    BitstreamReader* r;
+
+    if (!PyArg_ParseTuple(args, "I", &PTS_ticks))
+        return NULL;
+
+    /*ensure previous track has been exhausted, if any*/
+    if (self->pcm_frames_remaining) {
+        PyErr_SetString(PyExc_ValueError,
+                        "current track has not been exhausted");
+        return NULL;
+    }
+
+    /*initialize Title's stream attributes
+      (bits-per-sample, sample rate, channel assignment/mask)
+      with values taken from the first packet*/
+    if (next_audio_packet(self->packet_reader, self->packet)) {
+        PyErr_SetString(PyExc_IOError,
+                        "I/O error reading initialization packet");
+        return NULL;
+    }
+
+    r = br_open_buffer(self->packet, BS_BIG_ENDIAN);
+    r->mark(r);
+    if (!setjmp(*br_try(r))) {
+        unsigned pad1_size;
+        unsigned codec_id;
+        unsigned crc;
+        unsigned pad2_size;
+
+        unsigned group1_bps;
+        unsigned group2_bps;
+        unsigned group1_rate;
+        unsigned group2_rate;
+        unsigned channel_assignment;
+
+        r->parse(r, "16p 8u", &pad1_size);
+        r->skip_bytes(r, pad1_size);
+        r->parse(r, "8u 8u 8p 8u", &codec_id, &crc, &pad2_size);
+
+        if (codec_id == 0xA0) {         /*PCM*/
+            unsigned first_audio_frame;
+            unsigned crc;
+
+            r->parse(r, "16u 8p 4u 4u 4u 4u 8p 8u 8p 8u",
+                     &first_audio_frame,
+                     &group1_bps, &group2_bps, &group1_rate, &group2_rate,
+                     &channel_assignment, &crc);
+        } else if (codec_id == 0xA1) {  /*MLP*/
+            unsigned sync_words;
+            unsigned stream_type;
+
+            r->skip_bytes(r, pad2_size);
+            r->parse(r, "32p 24u 8u 4u 4u 4u 4u 11p 5u 48p",
+                     &sync_words, &stream_type,
+                     &group1_bps, &group2_bps, &group1_rate, &group2_rate,
+                     &channel_assignment);
+        } else {
+            PyErr_SetString(PyExc_IOError, "unknown codec ID");
+            r->unmark(r);
+            br_etry(r);
+            r->close(r);
+            return NULL;
+        }
+
+        self->bits_per_sample = bits_per_sample(group1_bps);
+        self->sample_rate = sample_rate(group1_rate);
+        self->channel_count = channel_count(channel_assignment);
+        self->channel_mask = channel_mask(channel_assignment);
+
+        r->rewind(r);
+        r->unmark(r);
+        br_etry(r);
+        r->close(r);
+
+        /*convert PTS ticks to PCM frames based on sample rate*/
+        self->pcm_frames_remaining = (unsigned)ceil((double)PTS_ticks *
+                                                    (double)self->sample_rate /
+                                                    (double)PTS_PER_SECOND);
+
+        /*initialize packet reader based on PCM or MLP stream type*/
+        /*FIXME*/
+
+        Py_INCREF(Py_None);
+        return Py_None;
     } else {
-        buf_close(packet);
-        PyErr_SetString(PyExc_IOError, "I/O error reading packet");
+        r->unmark(r);
+        br_etry(r);
+        r->close(r);
+        PyErr_SetString(PyExc_IOError,
+                        "I/O error reading initialization packet");
         return NULL;
     }
 }
 
-PyObject*
-DVDA_Track_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
-    decoders_DVDA_Track *self;
-
-    self = (decoders_DVDA_Track *)type->tp_alloc(type, 0);
-
-    return (PyObject *)self;
-}
-
-void
-DVDA_Track_dealloc(decoders_DVDA_Track *self) {
-    /*additional memory deallocation here*/
-
-    self->ob_type->tp_free((PyObject*)self);
-}
-
-int
-DVDA_Track_init(decoders_DVDA_Track *self, PyObject *args, PyObject *kwds) {
-    return 0;
-}
-
 static PyObject*
-DVDA_Track_sample_rate(decoders_DVDA_Track *self, void *closure)
+DVDA_Title_read(decoders_DVDA_Title *self, PyObject *args)
 {
+    /*if track has been exhausted, return empty FrameList*/
+    /*FIXME*/
+
+    /*otherwise, build FrameList from PCM or MLP packet reader*/
+    /*FIXME*/
+
+    /*deduct FrameList's PCM frames from remaining count*/
+    /*FIXME*/
+
+    /*and return FrameList*/
+    /*FIXME*/
     Py_INCREF(Py_None);
     return Py_None;
 }
 
 static PyObject*
-DVDA_Track_bits_per_sample(decoders_DVDA_Track *self, void *closure)
-{
-    Py_INCREF(Py_None);
-    return Py_None;
-}
-
-static PyObject*
-DVDA_Track_channels(decoders_DVDA_Track *self, void *closure)
-{
-    Py_INCREF(Py_None);
-    return Py_None;
-}
-
-static PyObject*
-DVDA_Track_channel_mask(decoders_DVDA_Track *self, void *closure)
-{
-    Py_INCREF(Py_None);
-    return Py_None;
-}
-
-static PyObject*
-DVDA_Track_read(decoders_DVDA_Track *self, PyObject *args)
-{
-    Py_INCREF(Py_None);
-    return Py_None;
-}
-
-static PyObject*
-DVDA_Track_close(decoders_DVDA_Track *self, PyObject *args)
+DVDA_Title_close(decoders_DVDA_Title *self, PyObject *args)
 {
     Py_INCREF(Py_None);
     return Py_None;
@@ -417,12 +485,14 @@ next_audio_packet(DVDA_Packet_Reader* packets, struct bs_buffer* packet)
                               &(pad[4]), &bitrate, &(pad[5]),
                               &stuffing_count);
                 if (sync_bytes != 0x000001BA) {
+                    /*FIXME - remove warnings*/
                     fprintf(stderr, "invalid packet sync bytes\n");
                     return 1;
                 }
 
                 if ((pad[0] != 1) || (pad[1] != 1) || (pad[2] != 1) ||
                     (pad[3] != 1) || (pad[4] != 1) || (pad[5] != 3)) {
+                    /*FIXME - remove warnings*/
                     fprintf(stderr, "invalid packet padding bits\n");
                     return 1;
                 }
@@ -441,6 +511,7 @@ next_audio_packet(DVDA_Packet_Reader* packets, struct bs_buffer* packet)
                                   &start_code, &stream_id, &packet_length);
 
                     if (start_code != 0x000001) {
+                        /*FIXME - remove warnings*/
                         fprintf(stderr, "invalid packet start code\n");
                         return 1;
                     }
@@ -463,17 +534,20 @@ next_audio_packet(DVDA_Packet_Reader* packets, struct bs_buffer* packet)
                 if (audio_packet_found) {
                     return 0;
                 } else {
+                    /*FIXME - remove warnings*/
                     fprintf(stderr, "no audio packet found in sector\n");
                     return 1;
                 }
             } else {
                 /*error reading sector*/
                 br_etry(reader);
+                /*FIXME - remove warnings*/
                 fprintf(stderr, "I/O error reading sector\n");
                 return 1;
             }
         } else {
             /*error reading sector*/
+            /*FIXME - remove warnings*/
             fprintf(stderr, "error reading sector\n");
             return 1;
         }
@@ -488,4 +562,98 @@ close_packet_reader(DVDA_Packet_Reader* packets)
 {
     packets->reader->close(packets->reader);
     free(packets);
+}
+
+static unsigned
+bits_per_sample(unsigned encoded)
+{
+    switch (encoded) {
+    case 0:
+        return 16;
+    case 1:
+        return 20;
+    case 2:
+        return 24;
+    default:
+        return 0;
+    }
+}
+
+static unsigned
+sample_rate(unsigned encoded)
+{
+    switch (encoded) {
+    case 0:
+        return 48000;
+    case 1:
+        return 96000;
+    case 2:
+        return 192000;
+    case 8:
+        return 44100;
+    case 9:
+        return 88200;
+    case 10:
+        return 176400;
+    default:
+        return 0;
+    }
+}
+
+static unsigned
+channel_count(unsigned encoded)
+{
+    switch (encoded) {
+    case 0:  return 1;
+    case 1:  return 2;
+    case 2:  return 3;
+    case 3:  return 4;
+    case 4:  return 3;
+    case 5:  return 4;
+    case 6:  return 5;
+    case 7:  return 3;
+    case 8:  return 4;
+    case 9:  return 5;
+    case 10: return 4;
+    case 11: return 5;
+    case 12: return 6;
+    case 13: return 4;
+    case 14: return 5;
+    case 15: return 4;
+    case 16: return 5;
+    case 17: return 6;
+    case 18: return 5;
+    case 19: return 5;
+    case 20: return 6;
+    default: return 0;
+    }
+}
+
+static unsigned
+channel_mask(unsigned encoded)
+{
+    switch (encoded) {
+    case 0:  return 0x4;
+    case 1:  return 0x3;
+    case 2:  return 0x103;
+    case 3:  return 0x33;
+    case 4:  return 0xB;
+    case 5:  return 0x10B;
+    case 6:  return 0x3B;
+    case 7:  return 0x7;
+    case 8:  return 0x107;
+    case 9:  return 0x37;
+    case 10: return 0xF;
+    case 11: return 0x10F;
+    case 12: return 0x3F;
+    case 13: return 0x107;
+    case 14: return 0x37;
+    case 15: return 0xF;
+    case 16: return 0x10F;
+    case 17: return 0x3F;
+    case 18: return 0x3B;
+    case 19: return 0x37;
+    case 20: return 0x3F;
+    default: return 0;
+    }
 }

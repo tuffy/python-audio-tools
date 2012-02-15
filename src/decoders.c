@@ -29,7 +29,6 @@ extern PyTypeObject decoders_VorbisDecoderType;
 extern PyTypeObject decoders_MLPDecoderType;
 extern PyTypeObject decoders_AOBPCMDecoderType;
 extern PyTypeObject decoders_DVDA_Title_Type;
-extern PyTypeObject decoders_DVDA_Track_Type;
 extern PyTypeObject decoders_Sine_Mono_Type;
 extern PyTypeObject decoders_Sine_Stereo_Type;
 extern PyTypeObject decoders_Sine_Simple_Type;
@@ -73,10 +72,6 @@ initdecoders(void)
 
     decoders_DVDA_Title_Type.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_DVDA_Title_Type) < 0)
-        return;
-
-    decoders_DVDA_Track_Type.tp_new = PyType_GenericNew;
-    if (PyType_Ready(&decoders_DVDA_Track_Type) < 0)
         return;
 
     decoders_Sine_Mono_Type.tp_new = PyType_GenericNew;
@@ -129,10 +124,6 @@ initdecoders(void)
     Py_INCREF(&decoders_DVDA_Title_Type);
     PyModule_AddObject(m, "DVDA_Title",
                        (PyObject *)&decoders_DVDA_Title_Type);
-
-    Py_INCREF(&decoders_DVDA_Track_Type);
-    PyModule_AddObject(m, "DVDA_Track",
-                       (PyObject *)&decoders_DVDA_Track_Type);
 
     Py_INCREF(&decoders_Sine_Mono_Type);
     PyModule_AddObject(m, "Sine_Mono",

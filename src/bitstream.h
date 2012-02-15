@@ -329,6 +329,12 @@ br_open_external(void* user_data,
                  void (*close)(void* user_data),
                  void (*free)(void* user_data));
 
+/*this is much like br_substream_new
+  except that the buffer is passed in externally
+  and *not* freed when the stream is*/
+BitstreamReader*
+br_open_buffer(struct bs_buffer* buffer, bs_endianness endianness);
+
 
 /*bs->read(bs, count)  methods*/
 unsigned int
