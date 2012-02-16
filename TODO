@@ -5269,3 +5269,5 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   to the DVDATrack object - analagous to audiotools.cdda.CDDA.
 ** TODO Rebuild DVD-A decoding documentation
    needs to include more pseudocode, parsing diagrams and examples
+* TODO Tweak track labeling interactive mode for better usability
+  make return key move to the next line

@@ -853,6 +853,7 @@ array_ia_new(void)
     a->swap = array_ia_swap;
     a->zip = array_ia_zip;
     a->split = array_ia_split;
+    a->cross_split = array_ia_cross_split;
     a->reverse = array_ia_reverse;
     a->print = array_ia_print;
 
@@ -1051,6 +1052,49 @@ ARRAY_A_SPLIT(array_fa_split, array_fa, array_fa_new)
 ARRAY_A_SPLIT(array_iaa_split, array_iaa, array_iaa_new)
 ARRAY_A_SPLIT(array_faa_split, array_faa, array_faa_new)
 
+
+#define ARRAY_A_CROSS_SPLIT(FUNC_NAME, ARRAY_TYPE)      \
+    void                                                \
+    FUNC_NAME(const ARRAY_TYPE *array, unsigned count,  \
+              ARRAY_TYPE *head, ARRAY_TYPE *tail)       \
+    {                                                   \
+        unsigned i;                                     \
+                                                        \
+        if ((head == array) && (tail == array)) {           \
+            /*do nothing*/                                  \
+        } else if (head == tail) {                          \
+            array->copy(array, head);                       \
+        } else if ((head != array) && (tail == array)) {    \
+            head->reset(head);                              \
+            for (i = 0; i < array->len; i++) {              \
+                array->_[i]->split(array->_[i],             \
+                                   count,                   \
+                                   head->append(head),      \
+                                   tail->_[i]);             \
+            }                                               \
+        } else if ((head == array) && (tail != array)) {    \
+            tail->reset(tail);                              \
+            for (i = 0; i < array->len; i++) {                  \
+                array->_[i]->split(array->_[i],                 \
+                                   count,                       \
+                                   head->_[i],                  \
+                                   tail->append(tail));             \
+            }                                                       \
+        } else {                                                    \
+            head->reset(head);                                      \
+            tail->reset(tail);                                      \
+            for (i = 0; i < array->len; i++) {                      \
+                array->_[i]->split(array->_[i],                     \
+                                   count,                           \
+                                   head->append(head),              \
+                                   tail->append(tail));             \
+            }                                                       \
+        }                                                           \
+    }
+ARRAY_A_CROSS_SPLIT(array_ia_cross_split, array_ia)
+ARRAY_A_CROSS_SPLIT(array_fa_cross_split, array_fa)
+
+
 #define ARRAY_A_ZIP(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE, NEW_FUNC)   \
     void                                                                \
     FUNC_NAME(const ARRAY_TYPE *array, ARRAY_TYPE *zipped)              \
@@ -1114,6 +1158,7 @@ array_fa_new(void)
     a->copy = array_fa_copy;
     a->swap = array_fa_swap;
     a->split = array_fa_split;
+    a->cross_split = array_fa_cross_split;
     a->zip = array_fa_zip;
     a->reverse = array_fa_reverse;
     a->print = array_fa_print;

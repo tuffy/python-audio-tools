@@ -591,6 +591,12 @@ struct array_ia_s {
     void (*split)(const struct array_ia_s *array, unsigned count,
                   struct array_ia_s *head, struct array_ia_s *tail);
 
+    /*splits each sub-array into "head" and "tail" arrays
+      such that each "head" contains a copy of up to "count" items
+      while each "tail" contains the rest*/
+    void (*cross_split)(const struct array_ia_s *array, unsigned count,
+                        struct array_ia_s *head, struct array_ia_s *tail);
+
     /*transposes rows and columns from array to zipped:
       [[1, 2, 3], [4, 5, 6] -> [[1, 4], [2, 5], [3, 6]]*/
     void (*zip)(const struct array_ia_s *array, struct array_ia_s *zipped);
@@ -618,6 +624,8 @@ void array_ia_zip(const struct array_ia_s *array, struct array_ia_s *zipped);
 void array_ia_reverse(struct array_ia_s *array);
 void array_ia_split(const struct array_ia_s *array, unsigned count,
                     struct array_ia_s *head, struct array_ia_s *tail);
+void array_ia_cross_split(const struct array_ia_s *array, unsigned count,
+                          struct array_ia_s *head, struct array_ia_s *tail);
 void array_ia_print(const struct array_ia_s *array, FILE* output);
 
 
@@ -666,6 +674,12 @@ struct array_fa_s {
     void (*split)(const struct array_fa_s *array, unsigned count,
                   struct array_fa_s *head, struct array_fa_s *tail);
 
+    /*splits each sub-array into "head" and "tail" arrays
+      such that each "head" contains a copy of up to "count" items
+      while each "tail" contains the rest*/
+    void (*cross_split)(const struct array_fa_s *array, unsigned count,
+                        struct array_fa_s *head, struct array_fa_s *tail);
+
     /*transposes rows and columns from array to zipped:
       [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0] ->
       [[1.0, 4.0], [2.0, 5.0], [3.0, 6.0]]*/
@@ -693,6 +707,8 @@ void array_fa_swap(struct array_fa_s *array, struct array_fa_s *swap);
 void array_fa_reverse(struct array_fa_s *array);
 void array_fa_split(const struct array_fa_s *array, unsigned count,
                     struct array_fa_s *head, struct array_fa_s *tail);
+void array_fa_cross_split(const struct array_fa_s *array, unsigned count,
+                          struct array_fa_s *head, struct array_fa_s *tail);
 void array_fa_zip(const struct array_fa_s *array, struct array_fa_s *zipped);
 void array_fa_print(const struct array_fa_s *array, FILE* output);
 

@@ -1,6 +1,7 @@
 #include <Python.h>
 #include "../array2.h"
 #include "../bitstream.h"
+#include "aobpcm2.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -23,22 +24,46 @@
 
 struct DVDA_Sector_Reader_s;
 struct DVDA_Packet_Reader_s;
+struct DVDA_Packet_s;
+
+typedef enum {PCM, MLP} DVDA_Codec;
 
 /*a title in a given titleset
   this generates DVDA_Track objects which are actual decoders*/
 typedef struct {
     PyObject_HEAD
 
+    /*an AOB sector reader*/
     struct DVDA_Sector_Reader_s* sector_reader;
-    struct DVDA_Packet_Reader_s* packet_reader;
-    unsigned pcm_frames_remaining;
-    struct bs_buffer* packet;
 
+    /*a reader which extracts packets from sectors*/
+    struct DVDA_Packet_Reader_s* packet_reader;
+
+    struct DVDA_Packet_s* packet;
+
+    /*PCM or MLP frame data, aligned on a frame start*/
+    DVDA_Codec frame_codec;
+    struct bs_buffer* frames;
+
+    /*total PCM frames remaining in the current track*/
+    unsigned pcm_frames_remaining;
+
+    /*PCMReader attributes for the current track*/
     unsigned bits_per_sample;
     unsigned sample_rate;
     unsigned channel_count;
     unsigned channel_mask;
 
+    AOBPCMDecoder pcm_decoder;
+
+    /*a FrameList to be appended to by the PCM or MLP decoder*/
+    array_ia* codec_framelist;
+
+    /*a FrameList to be returned by calls to read()*/
+    array_ia* output_framelist;
+
+    /*a FrameList generator*/
+    PyObject* audiotools_pcm;
 } decoders_DVDA_Title;
 
 static PyObject*
@@ -200,12 +225,30 @@ seek_sector(DVDA_Sector_Reader* reader,
             unsigned sector);
 
 
+typedef struct DVDA_Packet_s {
+    unsigned codec_ID;
+    unsigned CRC;
+    struct {
+        unsigned first_audio_frame;
+        unsigned group_1_bps;
+        unsigned group_2_bps;
+        unsigned group_1_rate;
+        unsigned group_2_rate;
+        unsigned channel_assignment;
+        unsigned CRC;
+    } PCM;
+    struct bs_buffer* data;
+} DVDA_Packet;
+
 /*DVDA_Packet_Reader is a file-like object
   which abstracts away the packet layout in AOB sectors
   that is, one can perform reads on the audio packets
   as a single, continuous stream of data
   (which may be a subset of the sector reader's total stream)*/
 typedef struct DVDA_Packet_Reader_s {
+    unsigned start_sector;
+    unsigned end_sector;
+
     DVDA_Sector_Reader* sectors;
     BitstreamReader* reader;
     unsigned total_sectors;
@@ -217,18 +260,19 @@ typedef struct DVDA_Packet_Reader_s {
 static DVDA_Packet_Reader*
 open_packet_reader(DVDA_Sector_Reader* sectors,
                    unsigned start_sector,
-                   unsigned last_sector);
+                   unsigned end_sector);
 
-/*appends the next audio packet in the list to "packet"
+/*writes the next audio packet in the list to "packet"
   returns 0 on success, or 1 if a read error occurs
-  an EOF condition appends no data to "packet" but returns 0*/
+  an EOF condition writes no data to "packet" but returns 0*/
 static int
-next_audio_packet(DVDA_Packet_Reader* packets, struct bs_buffer* packet);
+read_audio_packet(DVDA_Packet_Reader* packets, DVDA_Packet* packet);
 
 /*closes the DVDA_Packet_Reader
   but does *not* close the enclosed DVDA_Sector_Reader object*/
 static void
 close_packet_reader(DVDA_Packet_Reader* packets);
+
 
 /*given a 4-bit encoded bits-per-sample value
   returns the stream's bits-per-sample as 16/20/24 or 0 if not found*/

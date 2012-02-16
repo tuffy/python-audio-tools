@@ -3037,6 +3037,15 @@ buf_copy(const struct bs_buffer *source, struct bs_buffer *target)
 }
 
 void
+buf_append(const struct bs_buffer *source, struct bs_buffer* target)
+{
+    const uint32_t to_write = source->buffer_size - source->buffer_position;
+    uint8_t* appended = buf_extend(target, to_write);
+    memcpy(appended, source->buffer + source->buffer_position, to_write);
+    target->buffer_size += to_write;
+}
+
+void
 buf_reset(struct bs_buffer *stream)
 {
     stream->buffer_size = 0;

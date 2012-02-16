@@ -60,8 +60,18 @@ struct bs_exception {
     struct bs_exception *next;
 };
 
-/*a readable/writable buffer,
-  used by BitstreamReader's substream and BitstreamWriter's recorder*/
+/*bs_buffer can be thought of as a FIFO queue of byte data
+
+  buf_putc and other data writers append data to buffer
+  starting from "size", incrementing "total_size" as necessary to fit
+
+  buf_getc and other data readers pull data off buffer
+  starting from "position" and incrementing it to "size"
+
+  "mark_in_progress" indicates whether "position" can go backwards
+  to point at previously read data
+  if false, data writers may slide the window down and reuse the buffer
+  if true, data writers may only append new data to the buffer*/
 struct bs_buffer {
     uint8_t* buffer;
     uint32_t buffer_size;
@@ -1242,6 +1252,10 @@ buf_extend(struct bs_buffer *stream, uint32_t data_size);
   since they would no longer be valid*/
 void
 buf_copy(const struct bs_buffer *source, struct bs_buffer *target);
+
+/*appends unconsumed data in "source" to "target"*/
+void
+buf_append(const struct bs_buffer *source, struct bs_buffer* target);
 
 /*clears out the buffer for possible reuse
 
