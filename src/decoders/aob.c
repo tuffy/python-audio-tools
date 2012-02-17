@@ -67,6 +67,8 @@ DVDA_Title_init(decoders_DVDA_Title *self, PyObject *args, PyObject *kwds) {
     self->channel_count = 0;
     self->channel_mask = 0;
 
+    self->mlp_decoder = open_mlp_decoder(self->frames);
+
     self->codec_framelist = array_ia_new();
     self->output_framelist = array_ia_new();
 
@@ -102,6 +104,8 @@ DVDA_Title_init(decoders_DVDA_Title *self, PyObject *args, PyObject *kwds) {
 void
 DVDA_Title_dealloc(decoders_DVDA_Title *self) {
     /*additional memory deallocation here*/
+
+    close_mlp_decoder(self->mlp_decoder);
 
     if (self->packet_reader != NULL)
         close_packet_reader(self->packet_reader);
@@ -174,10 +178,14 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, PyObject *args)
 
     if (packet->codec_ID == 0xA0) {         /*PCM*/
         /*PCM stores stream attributes in the second padding block*/
-        self->bits_per_sample = bits_per_sample(packet->PCM.group_1_bps);
-        self->sample_rate = sample_rate(packet->PCM.group_1_rate);
-        self->channel_count = channel_count(packet->PCM.channel_assignment);
-        self->channel_mask = channel_mask(packet->PCM.channel_assignment);
+        self->bits_per_sample =
+            dvda_bits_per_sample(packet->PCM.group_1_bps);
+        self->sample_rate =
+            dvda_sample_rate(packet->PCM.group_1_rate);
+        self->channel_count =
+            dvda_channel_count(packet->PCM.channel_assignment);
+        self->channel_mask =
+            dvda_channel_mask(packet->PCM.channel_assignment);
         self->frame_codec = PCM;
 
         init_aobpcm_decoder(&(self->pcm_decoder),
@@ -203,10 +211,14 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, PyObject *args)
                      &channel_assignment);
 
             if ((sync_words == 0xF8726F) && (stream_type == 0xBB)) {
-                self->bits_per_sample = bits_per_sample(group_1_bps);
-                self->sample_rate = sample_rate(group_1_rate);
-                self->channel_count = channel_count(channel_assignment);
-                self->channel_mask = channel_mask(channel_assignment);
+                self->bits_per_sample =
+                    dvda_bits_per_sample(group_1_bps);
+                self->sample_rate =
+                    dvda_sample_rate(group_1_rate);
+                self->channel_count =
+                    dvda_channel_count(channel_assignment);
+                self->channel_mask =
+                    dvda_channel_mask(channel_assignment);
                 self->frame_codec = MLP;
 
                 r->rewind(r);
@@ -278,10 +290,22 @@ DVDA_Title_read(decoders_DVDA_Title *self, PyObject *args)
         read_aobpcm(&(self->pcm_decoder), self->frames, self->codec_framelist);
         break;
     case MLP:
-        /*FIXME*/
-        PyErr_SetString(PyExc_NotImplementedError,
-                        "MLP not yet implemented");
-        return NULL;
+        /*if not enough bytes in buffer, read another packet*/
+        while (mlp_packet_empty(self->mlp_decoder)) {
+            fprintf(stderr, "reading audio packet\n");
+            if (read_audio_packet(self->packet_reader, self->packet)) {
+                PyErr_SetString(PyExc_IOError, "I/O reading MLP packet");
+                return NULL;
+            }
+
+            /*FIXME - ensure packet has same format as MLP*/
+
+            buf_append(self->packet->data, self->frames);
+        }
+
+        /*FIXME - check error code here*/
+        fprintf(stderr, "MLP decode result : %d\n",
+                read_mlp_frames(self->mlp_decoder, self->codec_framelist));
     }
 
     /*account for framelists larger than frames remaining*/
@@ -658,8 +682,8 @@ close_packet_reader(DVDA_Packet_Reader* packets)
     free(packets);
 }
 
-static unsigned
-bits_per_sample(unsigned encoded)
+unsigned
+dvda_bits_per_sample(unsigned encoded)
 {
     switch (encoded) {
     case 0:  return 16;
@@ -669,8 +693,8 @@ bits_per_sample(unsigned encoded)
     }
 }
 
-static unsigned
-sample_rate(unsigned encoded)
+unsigned
+dvda_sample_rate(unsigned encoded)
 {
     switch (encoded) {
     case 0:  return 48000;
@@ -683,8 +707,8 @@ sample_rate(unsigned encoded)
     }
 }
 
-static unsigned
-channel_count(unsigned encoded)
+unsigned
+dvda_channel_count(unsigned encoded)
 {
     switch (encoded) {
     case 0:  return 1;
@@ -712,8 +736,8 @@ channel_count(unsigned encoded)
     }
 }
 
-static unsigned
-channel_mask(unsigned encoded)
+unsigned
+dvda_channel_mask(unsigned encoded)
 {
     switch (encoded) {
     case 0:  return 0x4;

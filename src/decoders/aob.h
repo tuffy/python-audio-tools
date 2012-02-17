@@ -2,6 +2,7 @@
 #include "../array2.h"
 #include "../bitstream.h"
 #include "aobpcm2.h"
+#include "mlp2.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -55,6 +56,7 @@ typedef struct {
     unsigned channel_mask;
 
     AOBPCMDecoder pcm_decoder;
+    MLPDecoder* mlp_decoder;
 
     /*a FrameList to be appended to by the PCM or MLP decoder*/
     array_ia* codec_framelist;
@@ -276,20 +278,20 @@ close_packet_reader(DVDA_Packet_Reader* packets);
 
 /*given a 4-bit encoded bits-per-sample value
   returns the stream's bits-per-sample as 16/20/24 or 0 if not found*/
-static unsigned
-bits_per_sample(unsigned encoded);
+unsigned
+dvda_bits_per_sample(unsigned encoded);
 
 /*given a 4-bit encoded sample rate value
   returns the stream's sample rate in Hz or 0 if not found*/
-static unsigned
-sample_rate(unsigned encoded);
+unsigned
+dvda_sample_rate(unsigned encoded);
 
 /*given a 5-bit encoded channel assignment value
   returns the stream's channel count*/
-static unsigned
-channel_count(unsigned encoded);
+unsigned
+dvda_channel_count(unsigned encoded);
 
 /*given a 5-bit encoded channel assignment value
   returns the stream's channel mask*/
-static unsigned
-channel_mask(unsigned encoded);
+unsigned
+dvda_channel_mask(unsigned encoded);

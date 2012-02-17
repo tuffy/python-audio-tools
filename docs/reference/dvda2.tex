@@ -176,3 +176,127 @@ There are 90,000 PTS ticks per second.
 \begin{figure}[h]
   \includegraphics{figures/dvda/audio_packet.pdf}
 \end{figure}
+
+\clearpage
+
+\section{MLP Decoding}
+{\relsize{-1}
+\ALGORITHM{packet data containing 1 or more MLP frames}{1 or more PCM frames}
+\SetKwData{TOTALSIZE}{total frame size}
+\While{MLP frames remain}{
+  \SKIP 4 bits\;
+  $\TOTALSIZE \leftarrow (\text{\READ 12 unsigned bits}) \times 2$\;
+  \SKIP 16 bits\;
+  decode next $(\TOTALSIZE - 4)$ bytes as MLP frame\;
+}
+\Return PCM frames\;
+\EALGORITHM
+}
+
+\begin{figure}[h]
+  \includegraphics{figures/dvda/mlp_stream.pdf}
+\end{figure}
+
+\clearpage
+
+\subsection{MLP Frame Decoding}
+{\relsize{-1}
+\ALGORITHM{MLP frame}{1 or more PCM frames}
+\SetKw{AND}{and}
+\SetKw{OR}{or}
+\SetKw{REWIND}{rewind stream}
+\SetKwData{SYNCWORDS}{sync words}
+\SetKwData{STREAMTYPE}{stream type}
+\SetKwData{BPS}{bits per sample}
+\SetKwFunction{BPSFUNC}{bps}
+\SetKwData{RATE}{sample rate}
+\SetKwFunction{RATEFUNC}{rate}
+\SetKwData{CHANNELCOUNT}{channel count}
+\SetKwData{CHANNELASSIGNMENT}{channel assignment}
+\SetKwFunction{CHANNELFUNC}{channels}
+\SetKwData{SUBSTREAMCOUNT}{substream count}
+\SetKwData{EXTRAWORD}{extra word present}
+\SetKwData{NONRESTART}{nonrestart substream}
+\SetKwData{CHECKDATA}{checkdata present}
+\SetKwData{SUBSTREAMEND}{substream end}
+\SetKwData{SUBSTREAM}{substream}
+\SetKwData{PARITY}{parity}
+\SetKwData{CRC}{CRC-8}
+$\SYNCWORDS \leftarrow$ \READ 24 unsigned bits\;
+$\STREAMTYPE \leftarrow$ \READ 8 unsigned bits\;
+\eIf(\tcc*[f]{major sync found}){$(\SYNCWORDS = 16282223)$ \AND $(\STREAMTYPE = 187)$}{
+  $\text{\BPS}_0 \leftarrow \BPSFUNC(\text{\READ 4 unsigned bits})$\;
+  $\text{\BPS}_1 \leftarrow \BPSFUNC(\text{\READ 4 unsigned bits})$\;
+  $\text{\RATE}_0 \leftarrow \RATEFUNC(\text{\READ 4 unsigned bits})$\;
+  $\text{\RATE}_1 \leftarrow \RATEFUNC(\text{\READ 4 unsigned bits})$\;
+  \SKIP 11 bits\;
+  $(\text{\CHANNELCOUNT}~,~\text{\CHANNELASSIGNMENT}) \leftarrow \CHANNELFUNC(\text{\READ 5 unsigned bits})$\;
+  \SKIP 64 bits\;
+  $\text{\SUBSTREAMCOUNT} \leftarrow$ \READ 4 unsigned bits\;
+  \ASSERT $(\text{\SUBSTREAMCOUNT} = 1)$ \OR $(\text{\SUBSTREAMCOUNT} = 2)$\;
+  \SKIP 92 bits\;
+}(\tcc*[f]{major sync not found}){
+  \REWIND 32 bits\;
+}
+\For{i = 0 \emph{\KwTo}\SUBSTREAMCOUNT}{
+  $\text{\EXTRAWORD}_i \leftarrow$ \READ 1 unsigned bit\;
+  \ASSERT $\text{\EXTRAWORD}_i = 0$\;
+  $\text{\NONRESTART}_i \leftarrow$ \READ 1 unsigned bit\;
+  $\text{\CHECKDATA}_i \leftarrow$ \READ 1 unsigned bit\;
+  \SKIP 1 bit\;
+  $\text{\SUBSTREAMEND}_i \leftarrow (\text{\READ 12 unsigned bits}) \times 2$\;
+}
+\For{i = 0 \emph{\KwTo}\SUBSTREAMCOUNT}{
+  \eIf{$\text{\CHECKDATA}_i = 1$}{
+    \eIf{$i = 0$}{
+      decode next $(\text{\SUBSTREAMEND}_0 - 2)$ bytes as $\text{\SUBSTREAM}_0$\;
+    }{
+      decode next $(\text{\SUBSTREAMEND}_i - \text{\SUBSTREAMEND}_{i - 1} - 2)$ bytes as $\text{\SUBSTREAM}_i$\;
+    }
+    $\PARITY \leftarrow$ \READ 8 unsigned bits\;
+    $\CRC \leftarrow$ \READ 8 unsigned bits\;
+    verify \PARITY, \CRC of $\text{\SUBSTREAM}_i$\;
+  }{
+    \eIf{$i = 0$}{
+      decode next $(\text{\SUBSTREAMEND}_0)$ bytes as $\text{\SUBSTREAM}_0$\;
+    }{
+      decode next $(\text{\SUBSTREAMEND}_i - \text{\SUBSTREAMEND}_{i - 1})$ bytes as $\text{\SUBSTREAM}_i$\;
+    }
+
+  }
+}
+\Return substream channels as PCM frames\;
+\EALGORITHM
+}
+
+\clearpage
+
+\begin{tiny}
+  \begin{tabular}{|c|r|r|r|l|}
+    \hline
+    value & \texttt{bps} & \texttt{rate} & channels & channel assignment \\
+    \hline
+    \texttt{00000} & 16 & 48000 & 1 & front center \\
+    \texttt{00001} & 20 & 96000 & 2 & front left, front right\\
+    \texttt{00010} & 24 & 192000 & 3 & front left, front right, back center \\
+    \texttt{00011} & & & 4 & front left, front right, back left, back right\\
+    \texttt{00100} & & & 3 & front left, front right, LFE \\
+    \texttt{00101} & & & 4 & front left, front right, LFE, back center \\
+    \texttt{00110} & & & 5 & front left, front right, LFE, back left, back right \\
+    \texttt{00111} & & & 3 & front left, front right, front center \\
+    \texttt{01000} & & 44100 & 4 & front left, front right, front center, back center \\
+    \texttt{01001} & & 88200 & 5 & front left, front right, front center, back left, back right \\
+    \texttt{01010} & & 176400 & 4 & front left, front right, front center, LFE\\
+    \texttt{01011} & & & 5 & front left, front right, front center, LFE, back center \\
+    \texttt{01100} & & & 6 & front left, front right, front center, LFE back left, back right \\
+    \texttt{01101} & & & 4 & front left, front right, front center, back center \\
+    \texttt{01110} & & & 5 & front left, front right, front center, back left, back right \\
+    \texttt{01111} & & & 4 & front left, front right, front center, LFE \\
+    \texttt{10000} & & & 5 & front left, front right, front center, LFE, back center \\
+    \texttt{10001} & & & 6 & front left, front right, front center, LFE, back left, back right \\
+    \texttt{10010} & & & 5 & front left, front right, back left, back right, LFE \\
+    \texttt{10011} & & & 5 & front left, front right, back left, back right, front center \\
+    \texttt{10100} & & & 6 & front left, front right, back left, back right, front center, LFE \\
+    \hline
+  \end{tabular}
+\end{tiny}

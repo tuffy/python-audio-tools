@@ -172,7 +172,8 @@ figures/dvda/ats_xx_0.pdf \
 figures/dvda/ats_xx_x.pdf \
 figures/dvda/audio_packet.pdf \
 figures/dvda/audio_ts_ifo.pdf \
-figures/dvda/layout.pdf
+figures/dvda/layout.pdf \
+figures/dvda/mlp_stream.pdf
 
 AOBPCM = figures/aobpcm/24bps_1ch.pdf \
 figures/aobpcm/24bps_2ch.pdf \

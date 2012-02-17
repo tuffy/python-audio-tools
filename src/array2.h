@@ -947,7 +947,7 @@ typedef void (*ARRAY_FREE_FUNC)(void* obj);
 typedef void (*ARRAY_PRINT_FUNC)(void* obj, FILE* output);
 
 /*copy, free and print functions may be NULL,
-  indicating no free or print is necessary for object*/
+  indicating no copy, free or print operations are necessary for object*/
 struct array_o_s* array_o_new(void* (*copy)(void* obj),
                               void (*free)(void* obj),
                               void (*print)(void* obj, FILE* output));

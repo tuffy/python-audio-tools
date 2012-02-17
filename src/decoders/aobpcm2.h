@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include "../bitstream.h"
 #include "../array2.h"
-#include "../pcm.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -30,7 +29,7 @@ typedef struct {
     unsigned channels;
     unsigned bytes_per_sample; /* bits per sample / 8 */
     unsigned chunk_size; /* (bits per sample / 8) * channel count * 2 */
-    FrameList_char_to_int_converter converter;
+    int (*converter)(unsigned char *s);
 } AOBPCMDecoder;
 
 /*initializes the AOBPCMDecoder with the given bps and channel count*/

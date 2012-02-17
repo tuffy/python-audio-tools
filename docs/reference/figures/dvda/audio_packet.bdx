@@ -31,10 +31,10 @@
   </row>
   <row>
     <col width=".20" style="blank">Raw PCM</col>
-    <col width=".20" start="56" end="59">group₁ bps</col>
-    <col width=".20" start="60" end="63">group₂ bps</col>
-    <col width=".20" start="64" end="67">group₁ rate</col>
-    <col width=".20" start="68" end="71">group₂ rate</col>
+    <col width=".20" start="56" end="59">group₀ bps</col>
+    <col width=".20" start="60" end="63">group₁ bps</col>
+    <col width=".20" start="64" end="67">group₀ rate</col>
+    <col width=".20" start="68" end="71">group₁ rate</col>
   </row>
   <row>
     <col width=".20" style="blank"/>
@@ -75,10 +75,10 @@
   </row>
   <row>
     <col width=".20" style="blank"/>
-    <col start="64" end="67" width=".2">group₁ bps</col>
-    <col start="68" end="71" width=".2">group₂ bps</col>
-    <col start="72" end="75" width=".2">group₁ rate</col>
-    <col start="76" end="79" width=".2">group₂ rate</col>
+    <col start="64" end="67" width=".2">group₀ bps</col>
+    <col start="68" end="71" width=".2">group₁ bps</col>
+    <col start="72" end="75" width=".2">group₀ rate</col>
+    <col start="76" end="79" width=".2">group₁ rate</col>
   </row>
   <row>
     <col width=".20" style="blank"/>
@@ -95,10 +95,10 @@
   </row>
   <row>
     <col width=".20" style="blank"/>
-    <col end="15" start="0" width=".20">Substream Info₁</col>
-    <col end="31" start="16" style="dashed" width=".20">Substream Info₂</col>
-    <col id="substream" width=".20">Substream Data₁</col>
-    <col style="dashed" width=".20" end="end of frame">Substream Data₂</col>
+    <col end="15" start="0" width=".20">Substream Info₀</col>
+    <col end="31" start="16" style="dashed" width=".20">Substream Info₁</col>
+    <col id="substream" width=".20">Substream Data₀</col>
+    <col style="dashed" width=".20" end="end of frame">Substream Data₁</col>
   </row>
   <line style="dotted">
     <start corner="sw" id="packet"/>

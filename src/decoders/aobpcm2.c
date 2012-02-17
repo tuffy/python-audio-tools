@@ -19,6 +19,12 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+static int
+SL16_char_to_int(unsigned char *s);
+
+static int
+SL24_char_to_int(unsigned char *s);
+
 void
 init_aobpcm_decoder(AOBPCMDecoder* decoder,
                     unsigned bits_per_sample,
@@ -29,8 +35,10 @@ init_aobpcm_decoder(AOBPCMDecoder* decoder,
 
     if (bits_per_sample == 16) {
         decoder->bps = 0;
+        decoder->converter = SL16_char_to_int;
     } else {
         decoder->bps = 1;
+        decoder->converter = SL24_char_to_int;
     }
 
     decoder->channels = channel_count;
@@ -38,9 +46,6 @@ init_aobpcm_decoder(AOBPCMDecoder* decoder,
     decoder->bytes_per_sample = bits_per_sample / 8;
 
     decoder->chunk_size = decoder->bytes_per_sample * channel_count * 2;
-
-    decoder->converter = FrameList_get_char_to_int_converter(bits_per_sample,
-                                                             0, 1);
 }
 
 int
@@ -96,7 +101,6 @@ read_aobpcm(AOBPCMDecoder* decoder,
     const unsigned channels = decoder->channels;
     const unsigned chunk_size = decoder->chunk_size;
     const unsigned bytes_per_sample = decoder->bytes_per_sample;
-    const FrameList_char_to_int_converter converter = decoder->converter;
     unsigned pcm_frames_decoded = 0;
     unsigned i;
 
@@ -114,7 +118,7 @@ read_aobpcm(AOBPCMDecoder* decoder,
         /*decode bytes to PCM ints and place them in proper channels*/
         for (i = 0; i < (channels * 2); i++) {
             array_i* channel = framelist->_[i % channels];
-            channel->append(channel, converter(unswapped_ptr));
+            channel->append(channel, decoder->converter(unswapped_ptr));
             unswapped_ptr += bytes_per_sample;
         }
 
@@ -122,4 +126,28 @@ read_aobpcm(AOBPCMDecoder* decoder,
     }
 
     return pcm_frames_decoded;
+}
+
+static int
+SL16_char_to_int(unsigned char *s)
+{
+    if (s[1] & 0x80) {
+        /*negative*/
+        return -(int)(0x10000 - ((s[1] << 8) | s[0]));
+    } else {
+        /*positive*/
+        return (int)(s[1] << 8) | s[0];
+    }
+}
+
+static int
+SL24_char_to_int(unsigned char *s)
+{
+    if (s[2] & 0x80) {
+        /*negative*/
+        return -(int)(0x1000000 - ((s[2] << 16) | (s[1] << 8) | s[0]));
+    } else {
+        /*positive*/
+        return (int)((s[2] << 16) | (s[1] << 8) | s[0]);
+    }
 }
