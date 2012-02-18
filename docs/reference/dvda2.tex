@@ -202,51 +202,20 @@ There are 90,000 PTS ticks per second.
 \subsection{MLP Frame Decoding}
 {\relsize{-1}
 \ALGORITHM{MLP frame}{1 or more PCM frames}
-\SetKw{AND}{and}
-\SetKw{OR}{or}
-\SetKw{REWIND}{rewind stream}
-\SetKwData{SYNCWORDS}{sync words}
-\SetKwData{STREAMTYPE}{stream type}
 \SetKwData{BPS}{bits per sample}
-\SetKwFunction{BPSFUNC}{bps}
 \SetKwData{RATE}{sample rate}
-\SetKwFunction{RATEFUNC}{rate}
 \SetKwData{CHANNELCOUNT}{channel count}
-\SetKwData{CHANNELASSIGNMENT}{channel assignment}
-\SetKwFunction{CHANNELFUNC}{channels}
 \SetKwData{SUBSTREAMCOUNT}{substream count}
-\SetKwData{EXTRAWORD}{extra word present}
-\SetKwData{NONRESTART}{nonrestart substream}
 \SetKwData{CHECKDATA}{checkdata present}
 \SetKwData{SUBSTREAMEND}{substream end}
 \SetKwData{SUBSTREAM}{substream}
 \SetKwData{PARITY}{parity}
 \SetKwData{CRC}{CRC-8}
-$\SYNCWORDS \leftarrow$ \READ 24 unsigned bits\;
-$\STREAMTYPE \leftarrow$ \READ 8 unsigned bits\;
-\eIf(\tcc*[f]{major sync found}){$(\SYNCWORDS = 16282223)$ \AND $(\STREAMTYPE = 187)$}{
-  $\text{\BPS}_0 \leftarrow \BPSFUNC(\text{\READ 4 unsigned bits})$\;
-  $\text{\BPS}_1 \leftarrow \BPSFUNC(\text{\READ 4 unsigned bits})$\;
-  $\text{\RATE}_0 \leftarrow \RATEFUNC(\text{\READ 4 unsigned bits})$\;
-  $\text{\RATE}_1 \leftarrow \RATEFUNC(\text{\READ 4 unsigned bits})$\;
-  \SKIP 11 bits\;
-  $(\text{\CHANNELCOUNT}~,~\text{\CHANNELASSIGNMENT}) \leftarrow \CHANNELFUNC(\text{\READ 5 unsigned bits})$\;
-  \SKIP 64 bits\;
-  $\text{\SUBSTREAMCOUNT} \leftarrow$ \READ 4 unsigned bits\;
-  \ASSERT $(\text{\SUBSTREAMCOUNT} = 1)$ \OR $(\text{\SUBSTREAMCOUNT} = 2)$\;
-  \SKIP 92 bits\;
-}(\tcc*[f]{major sync not found}){
-  \REWIND 32 bits\;
-}
+$(\text{\BPS}~,~\text{\RATE}~,~\text{\CHANNELCOUNT}~,~\text{\SUBSTREAMCOUNT}) \leftarrow$ read major sync\;
 \For{i = 0 \emph{\KwTo}\SUBSTREAMCOUNT}{
-  $\text{\EXTRAWORD}_i \leftarrow$ \READ 1 unsigned bit\;
-  \ASSERT $\text{\EXTRAWORD}_i = 0$\;
-  $\text{\NONRESTART}_i \leftarrow$ \READ 1 unsigned bit\;
-  $\text{\CHECKDATA}_i \leftarrow$ \READ 1 unsigned bit\;
-  \SKIP 1 bit\;
-  $\text{\SUBSTREAMEND}_i \leftarrow (\text{\READ 12 unsigned bits}) \times 2$\;
+  $(\text{\CHECKDATA}_i~,~\text{\SUBSTREAMEND}_i) \leftarrow$ read substream info\;
 }
-\For{i = 0 \emph{\KwTo}\SUBSTREAMCOUNT}{
+\For(\tcc*[f]{read substream data}){i = 0 \emph{\KwTo}\SUBSTREAMCOUNT}{
   \eIf{$\text{\CHECKDATA}_i = 1$}{
     \eIf{$i = 0$}{
       decode next $(\text{\SUBSTREAMEND}_0 - 2)$ bytes as $\text{\SUBSTREAM}_0$\;
@@ -262,7 +231,6 @@ $\STREAMTYPE \leftarrow$ \READ 8 unsigned bits\;
     }{
       decode next $(\text{\SUBSTREAMEND}_i - \text{\SUBSTREAMEND}_{i - 1})$ bytes as $\text{\SUBSTREAM}_i$\;
     }
-
   }
 }
 \Return substream channels as PCM frames\;
@@ -271,7 +239,56 @@ $\STREAMTYPE \leftarrow$ \READ 8 unsigned bits\;
 
 \clearpage
 
-\begin{tiny}
+Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor tellus. Donec pretium posuere tellus. Proin quam nisl, tincidunt et, mattis eget, convallis nec, purus. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Nulla posuere. Donec vitae dolor. Nullam tristique diam non turpis. Cras placerat accumsan nulla. Nullam rutrum. Nam vestibulum accumsan nisl.
+
+
+
+\clearpage
+
+\subsubsection{The Major Sync}
+This is a collection of information about the MLP stream
+which occurs occasionally at the start of MLP frames.
+Its values are consistent throughout the stream for any given track.
+{\relsize{-1}
+\ALGORITHM{MLP frame data}{bits-per-sample, sample rate, channel count, substream count values}
+\SetKw{AND}{and}
+\SetKw{OR}{or}
+\SetKw{REWIND}{rewind stream}
+\SetKwData{SYNCWORDS}{sync words}
+\SetKwData{STREAMTYPE}{stream type}
+\SetKwData{BPS}{bits per sample}
+\SetKwFunction{BPSFUNC}{bps}
+\SetKwData{RATE}{sample rate}
+\SetKwFunction{RATEFUNC}{rate}
+\SetKwData{CHANNELCOUNT}{channel count}
+\SetKwData{CHANNELASSIGNMENT}{channel assignment}
+\SetKwFunction{CHANNELFUNC}{channels}
+\SetKwData{ISVBR}{is VBR}
+\SetKwData{PEAKBITRATE}{peak bitrate}
+\SetKwData{SUBSTREAMCOUNT}{substream count}
+$\SYNCWORDS \leftarrow$ \READ 24 unsigned bits\;
+$\STREAMTYPE \leftarrow$ \READ 8 unsigned bits\;
+\eIf(\tcc*[f]{major sync found}){$(\SYNCWORDS = 16282223)$ \AND $(\STREAMTYPE = 187)$}{
+  $\text{\BPS}_0 \leftarrow \BPSFUNC(\text{\READ 4 unsigned bits})$\;
+  $\text{\BPS}_1 \leftarrow \BPSFUNC(\text{\READ 4 unsigned bits})$\;
+  $\text{\RATE}_0 \leftarrow \RATEFUNC(\text{\READ 4 unsigned bits})$\;
+  $\text{\RATE}_1 \leftarrow \RATEFUNC(\text{\READ 4 unsigned bits})$\;
+  \SKIP 11 bits\;
+  $(\text{\CHANNELCOUNT}~,~\text{\CHANNELASSIGNMENT}) \leftarrow \CHANNELFUNC(\text{\READ 5 unsigned bits})$\;
+  \SKIP 48 bits\;
+  $\text{\ISVBR} \leftarrow$ \READ 1 unsigned bit\;
+  $\text{\PEAKBITRATE} \leftarrow$ \READ 15 unsigned bits\;
+  $\text{\SUBSTREAMCOUNT} \leftarrow$ \READ 4 unsigned bits\;
+  \ASSERT $(\text{\SUBSTREAMCOUNT} = 1)$ \OR $(\text{\SUBSTREAMCOUNT} = 2)$\;
+  \SKIP 92 bits\;
+  \Return $(\text{\BPS}_0~,~\text{\RATE}_0~,~\text{\CHANNELCOUNT}~,~\text{\SUBSTREAMCOUNT})$\;
+}(\tcc*[f]{major sync not found}){
+  \REWIND 32 bits\;
+  \Return values from previous major sync\;
+}
+\EALGORITHM
+}
+\begin{small}
   \begin{tabular}{|c|r|r|r|l|}
     \hline
     value & \texttt{bps} & \texttt{rate} & channels & channel assignment \\
@@ -299,4 +316,74 @@ $\STREAMTYPE \leftarrow$ \READ 8 unsigned bits\;
     \texttt{10100} & & & 6 & front left, front right, back left, back right, front center, LFE \\
     \hline
   \end{tabular}
-\end{tiny}
+\end{small}
+
+\clearpage
+
+\begin{figure}[h]
+  \includegraphics{figures/dvda/mlp_major_sync.pdf}
+\end{figure}
+\begin{figure}[h]
+  \includegraphics{figures/dvda/mlp_major_sync_parse.pdf}
+\end{figure}
+{\relsize{-1}
+\begin{tabular}{rl}
+  $\text{group}_0$ bits-per-sample & 24 \\
+  $\text{group}_1$ bits-per-sample & 24 \\
+  $\text{group}_0$ sample rate & 96000 Hz \\
+  $\text{group}_1$ sample rate & 96000 Hz \\
+  channel count & 5 \\
+  channel assignment & front left, front right, LFE, back left, back right \\
+  is VBR & yes \\
+  peak bitrate & 1600 \\
+  substream count & 2 \\
+\end{tabular}
+}
+
+\clearpage
+
+\subsubsection{Substream Info}
+{\relsize{-1}
+\ALGORITHM{MLP frame data}{checkdata present, substream end}
+\SetKwData{EXTRAWORD}{extra word present}
+\SetKwData{NONRESTART}{nonrestart substream}
+\SetKwData{CHECKDATA}{checkdata present}
+\SetKwData{SUBSTREAMEND}{substream end}
+$\text{\EXTRAWORD} \leftarrow$ \READ 1 unsigned bit\;
+\ASSERT $\text{\EXTRAWORD} = 0$\;
+$\text{\NONRESTART} \leftarrow$ \READ 1 unsigned bit\;
+$\text{\CHECKDATA} \leftarrow$ \READ 1 unsigned bit\;
+\SKIP 1 bit\;
+$\text{\SUBSTREAMEND} \leftarrow (\text{\READ 12 unsigned bits}) \times 2$\;
+\Return $(\text{\CHECKDATA}~,~\text{\SUBSTREAMEND})$\;
+\EALGORITHM
+}
+\begin{figure}[h]
+  \includegraphics{figures/dvda/mlp_substream_info.pdf}
+\end{figure}
+\par
+\noindent
+For example, given a frame with 2 substreams
+and 2 substream info fields:
+\begin{figure}[h]
+  \includegraphics{figures/dvda/mlp_substream_info_parse.pdf}
+\end{figure}
+\begin{table}[h]
+\begin{tabular}{rrr}
+& $\text{substream}_0$ & $\text{substream}_1$ \\
+\hline
+extra word present & 0 & 0 \\
+nonrestart substream & 0 & 0 \\
+checkdata present & 1 & 1 \\
+pad & 1 & 0 \\
+substream end & $72 \times 2 = 148$ & $159 \times 2 = 318$ \\
+\end{tabular}
+\end{table}
+\par
+\noindent
+$\text{Substream Data}_0$ contains
+the next 148 bytes following the $\text{Substream Info}_1$ field,
+and $\text{Substream Data}_1$ contains 170 bytes
+following $\text{Substream Data}_0$.
+In addition, \VAR{checkdata present} values of 1
+means both substreams will be followed by 8 bit parity and CRC-8 values.

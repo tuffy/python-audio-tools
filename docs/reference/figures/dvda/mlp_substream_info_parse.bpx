@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<struct endianness="big">
+  <field size="1" value="0">e.w.</field>
+  <field size="1" value="0">n.r.</field>
+  <field size="1" value="1">c.d.</field>
+  <field size="1" value="1">pad</field>
+  <field size="12" value="74">substream end₀</field>
+  <field size="1" value="0">e.w.</field>
+  <field size="1" value="0">n.r.</field>
+  <field size="1" value="1">c.d.</field>
+  <field size="1" value="0">pad</field>
+  <field size="12" value="159">substream end₁</field>
+</struct>
