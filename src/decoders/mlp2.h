@@ -27,30 +27,35 @@
 
 typedef enum {OK,
               IO_ERROR,
-              INVALID_SUBSTREAM_COUNT,
+              INVALID_MAJOR_SYNC,
               INVALID_EXTRAWORD_PRESENT} mlp_status;
+
+struct major_sync {
+    unsigned bits_per_sample_0;
+    unsigned bits_per_sample_1;
+    unsigned sample_rate_0;
+    unsigned sample_rate_1;
+    unsigned channel_count;
+    unsigned channel_mask;
+    unsigned is_VBR;
+    unsigned peak_bitrate;
+    unsigned substream_count;
+};
+
+struct substream_info {
+    unsigned extraword_present;
+    unsigned nonrestart_substream;
+    unsigned checkdata_present;
+    unsigned substream_end;
+};
 
 typedef struct {
     BitstreamReader* reader;
     BitstreamReader* frame_reader;
     BitstreamReader* substream_reader;
 
-    struct {
-        unsigned bits_per_sample0;
-        unsigned bits_per_sample1;
-        unsigned sample_rate0;
-        unsigned sample_rate1;
-        unsigned channel_count;
-        unsigned channel_mask;
-        unsigned substream_count;
-    } major_sync;
-
-    struct {
-        unsigned extraword_present;
-        unsigned nonrestart_substream;
-        unsigned checkdata_present;
-        unsigned substream_end;
-    } substream_info[2];
+    struct major_sync major_sync;
+    struct substream_info substream_info[2];
 
 } MLPDecoder;
 
@@ -77,6 +82,14 @@ mlp_status
 read_mlp_frame(MLPDecoder* decoder,
                BitstreamReader* bs,
                array_ia* framelist);
+
+mlp_status
+read_mlp_major_sync(BitstreamReader* bs,
+                    struct major_sync* major_sync);
+
+mlp_status
+read_mlp_substream_info(BitstreamReader* bs,
+                        struct substream_info* substream_info);
 
 mlp_status
 read_mlp_substream(MLPDecoder* decoder,

@@ -117,79 +117,24 @@ read_mlp_frame(MLPDecoder* decoder,
                BitstreamReader* bs,
                array_ia* framelist)
 {
+    mlp_status status;
+
     /*check for major sync*/
-    bs->mark(bs);
-    if (!setjmp(*br_try(bs))) {
-        unsigned sync_words = bs->read(bs, 24);
-        unsigned stream_type = bs->read(bs, 8);
-
-        if ((sync_words == 0xF8726F) && (stream_type == 0xBB)) {
-            unsigned channel_assignment;
-
-            /*major sync found*/
-            decoder->major_sync.bits_per_sample0 =
-                dvda_bits_per_sample(bs->read(bs, 4));
-            decoder->major_sync.bits_per_sample1 =
-                dvda_bits_per_sample(bs->read(bs, 4));
-            decoder->major_sync.sample_rate0 =
-                dvda_sample_rate(bs->read(bs, 4));
-            decoder->major_sync.sample_rate1 =
-                dvda_sample_rate(bs->read(bs, 4));
-            bs->skip(bs, 11);
-            channel_assignment = bs->read(bs, 5);
-            decoder->major_sync.channel_count =
-                dvda_channel_count(channel_assignment);
-            decoder->major_sync.channel_mask =
-                dvda_channel_mask(channel_assignment);
-            bs->skip(bs, 64);
-            decoder->major_sync.substream_count = bs->read(bs, 4);
-            if ((decoder->major_sync.substream_count != 1) &&
-                (decoder->major_sync.substream_count != 2))
-                return INVALID_SUBSTREAM_COUNT;
-            bs->skip(bs, 92);
-
-            printf("major sync %u %u %u %u %u 0x%X %u\n",
-                   decoder->major_sync.bits_per_sample0,
-                   decoder->major_sync.bits_per_sample1,
-                   decoder->major_sync.sample_rate0,
-                   decoder->major_sync.sample_rate1,
-                   decoder->major_sync.channel_count,
-                   decoder->major_sync.channel_mask,
-                   decoder->major_sync.substream_count);
-
-            br_etry(bs);
-            bs->unmark(bs);
-        } else {
-            /*major sync not found*/
-            br_etry(bs);
-            bs->rewind(bs);
-            bs->unmark(bs);
-        }
-    } else {
-        /*EOF looking for major sync, so not found*/
-        br_etry(bs);
-        bs->rewind(bs);
-        bs->unmark(bs);
-    }
+    if ((status = read_mlp_major_sync(bs, &(decoder->major_sync))) != OK)
+        return status;
 
     if (!setjmp(*br_try(bs))) {
         unsigned i;
-        mlp_status status;
 
         /*read 1 or 2 substream info blocks, depending on substream count*/
         /*FIXME - ensure at least one major sync has been read*/
         for (i = 0; i < decoder->major_sync.substream_count; i++) {
-            bs->parse(bs, "1u 1u 1u 1p 12u",
-                      &(decoder->substream_info[i].extraword_present),
-                      &(decoder->substream_info[i].nonrestart_substream),
-                      &(decoder->substream_info[i].checkdata_present),
-                      &(decoder->substream_info[i].substream_end));
-            if (decoder->substream_info[i].extraword_present) {
+            if ((status =
+                 read_mlp_substream_info(bs,
+                                   &(decoder->substream_info[i]))) != OK) {
                 br_etry(bs);
-                return INVALID_EXTRAWORD_PRESENT;
+                return status;
             }
-
-            decoder->substream_info[i].substream_end *= 2;
 
             printf("substream info %u %u %u %u\n",
                    decoder->substream_info[i].extraword_present,
@@ -251,6 +196,82 @@ read_mlp_frame(MLPDecoder* decoder,
         br_etry(bs);
         return IO_ERROR;
     }
+}
+
+mlp_status
+read_mlp_major_sync(BitstreamReader* bs,
+                    struct major_sync* major_sync)
+{
+    bs->mark(bs);
+    if (!setjmp(*br_try(bs))) {
+        unsigned sync_words = bs->read(bs, 24);
+        unsigned stream_type = bs->read(bs, 8);
+
+        if ((sync_words == 0xF8726F) && (stream_type == 0xBB)) {
+            unsigned channel_assignment;
+
+            /*major sync found*/
+            bs->parse(bs,
+                      "4u 4u 4u 4u 11p 5u 48p 1u 15u 4u 92p",
+                      &(major_sync->bits_per_sample_0),
+                      &(major_sync->bits_per_sample_1),
+                      &(major_sync->sample_rate_0),
+                      &(major_sync->sample_rate_1),
+                      &channel_assignment,
+                      &(major_sync->is_VBR),
+                      &(major_sync->peak_bitrate),
+                      &(major_sync->substream_count));
+
+            if ((major_sync->substream_count != 1) &&
+                (major_sync->substream_count != 2))
+                return INVALID_MAJOR_SYNC;
+
+            major_sync->channel_count = dvda_channel_count(channel_assignment);
+            major_sync->channel_mask = dvda_channel_mask(channel_assignment);
+
+            printf("major sync : %u %u %u %u %u %u %u\n",
+                   major_sync->bits_per_sample_0,
+                   major_sync->bits_per_sample_1,
+                   major_sync->sample_rate_0,
+                   major_sync->sample_rate_1,
+                   channel_assignment,
+                   major_sync->is_VBR,
+                   major_sync->peak_bitrate);
+
+            bs->unmark(bs);
+            br_etry(bs);
+            return OK;
+        } else {
+            bs->rewind(bs);
+            bs->unmark(bs);
+            br_etry(bs);
+            return OK;
+        }
+    } else {
+        bs->rewind(bs);
+        bs->unmark(bs);
+        br_etry(bs);
+        return OK;
+    }
+}
+
+mlp_status
+read_mlp_substream_info(BitstreamReader* bs,
+                        struct substream_info* substream_info)
+{
+    bs->parse(bs, "1u 1u 1u 1p 12u",
+              &(substream_info->extraword_present),
+              &(substream_info->nonrestart_substream),
+              &(substream_info->checkdata_present),
+              &(substream_info->substream_end));
+
+    if (substream_info->extraword_present) {
+        return INVALID_EXTRAWORD_PRESENT;
+    }
+
+    substream_info->substream_end *= 2;
+
+    return OK;
 }
 
 mlp_status

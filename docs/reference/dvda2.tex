@@ -212,24 +212,24 @@ There are 90,000 PTS ticks per second.
 \SetKwData{PARITY}{parity}
 \SetKwData{CRC}{CRC-8}
 $(\text{\BPS}~,~\text{\RATE}~,~\text{\CHANNELCOUNT}~,~\text{\SUBSTREAMCOUNT}) \leftarrow$ read major sync\;
-\For{i = 0 \emph{\KwTo}\SUBSTREAMCOUNT}{
-  $(\text{\CHECKDATA}_i~,~\text{\SUBSTREAMEND}_i) \leftarrow$ read substream info\;
+\For{s = 0 \emph{\KwTo}\SUBSTREAMCOUNT}{
+  $(\text{\CHECKDATA}_s~,~\text{\SUBSTREAMEND}_s) \leftarrow$ read substream info\;
 }
-\For(\tcc*[f]{read substream data}){i = 0 \emph{\KwTo}\SUBSTREAMCOUNT}{
-  \eIf{$\text{\CHECKDATA}_i = 1$}{
-    \eIf{$i = 0$}{
+\For(\tcc*[f]{read substream data}){s = 0 \emph{\KwTo}\SUBSTREAMCOUNT}{
+  \eIf{$\text{\CHECKDATA}_s = 1$}{
+    \eIf{$s = 0$}{
       decode next $(\text{\SUBSTREAMEND}_0 - 2)$ bytes as $\text{\SUBSTREAM}_0$\;
     }{
-      decode next $(\text{\SUBSTREAMEND}_i - \text{\SUBSTREAMEND}_{i - 1} - 2)$ bytes as $\text{\SUBSTREAM}_i$\;
+      decode next $(\text{\SUBSTREAMEND}_s - \text{\SUBSTREAMEND}_{s - 1} - 2)$ bytes as $\text{\SUBSTREAM}_i$\;
     }
     $\PARITY \leftarrow$ \READ 8 unsigned bits\;
     $\CRC \leftarrow$ \READ 8 unsigned bits\;
-    verify \PARITY, \CRC of $\text{\SUBSTREAM}_i$\;
+    verify \PARITY, \CRC of $\text{\SUBSTREAM}_s$\;
   }{
-    \eIf{$i = 0$}{
+    \eIf{$s = 0$}{
       decode next $(\text{\SUBSTREAMEND}_0)$ bytes as $\text{\SUBSTREAM}_0$\;
     }{
-      decode next $(\text{\SUBSTREAMEND}_i - \text{\SUBSTREAMEND}_{i - 1})$ bytes as $\text{\SUBSTREAM}_i$\;
+      decode next $(\text{\SUBSTREAMEND}_s - \text{\SUBSTREAMEND}_{s - 1})$ bytes as $\text{\SUBSTREAM}_s$\;
     }
   }
 }
