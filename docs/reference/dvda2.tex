@@ -387,3 +387,383 @@ and $\text{Substream Data}_1$ contains 170 bytes
 following $\text{Substream Data}_0$.
 In addition, \VAR{checkdata present} values of 1
 means both substreams will be followed by 8 bit parity and CRC-8 values.
+
+\clearpage
+
+\subsection{Decoding Substream}
+{\relsize{-1}
+\ALGORITHM{MLP substream data}{1 or more channels of PCM data}
+\SetKwData{PARAMSPRESENT}{parameters present}
+\SetKwData{HEADERPRESENT}{restart header present}
+\SetKwData{MINCHANNEL}{min channel}
+\SetKwData{MAXCHANNEL}{max channel}
+\SetKwData{MAXMATRIXCHANNEL}{max matrix channel}
+\SetKwData{NOISESHIFT}{noise shift}
+\SetKwData{NOISEGENSEED}{noise gen seed}
+\SetKwData{CHANNELASSIGNMENT}{channel assignment}
+\SetKwData{LAST}{last block}
+\Repeat{$\text{\LAST}_s = 1$}{
+  $\text{\PARAMSPRESENT}_s \leftarrow$ \READ 1 unsigned bit\;
+  \eIf{$\text{\PARAMSPRESENT}_s = 1$}{
+    $\text{\HEADERPRESENT}_s \leftarrow$ \READ 1 unsigned bit\;
+    \eIf{$\text{\HEADERPRESENT}_s = 1$}{
+      $(\text{\MINCHANNEL}_s~,~\text{\MAXCHANNEL}_s~,~\text{\MAXMATRIXCHANNEL}_s~,~\text{\NOISESHIFT}_s~,~\text{\NOISEGENSEED}_s~,\newline~\text{\CHANNELASSIGNMENT}_s) \leftarrow$ read restart header\;
+      read decoding parameters with defaults\; %%FIXME
+    }{
+      $(\text{\MINCHANNEL}_s~,~\text{\MAXCHANNEL}_s~,~\text{\MAXMATRIXCHANNEL}_s~,~\text{\NOISESHIFT}_s~,~\text{\NOISEGENSEED}_s~,\newline~\text{\CHANNELASSIGNMENT}_s) \leftarrow$ from previous block's restart header in substream\;
+      read decoding parameters without defaults\; %%FIXME
+    }
+  }{
+    use substream's decoding parameters from previous block\; %%FIXME
+  }
+  decode block data based on restart header / decoding parameters\;
+  $\text{\LAST}_s \leftarrow$ \READ 1 unsigned bit\;
+}
+\EALGORITHM
+}
+
+\clearpage
+
+\subsection{Reading Restart Header}
+{\relsize{-1}
+\ALGORITHM{MLP substream data}{min channel, max channel, max matrix channel, noise shift, noise gen seed, channel assignments}
+\SetKwData{HEADERSYNC}{header sync}
+\SetKwData{NOISETYPE}{noise type}
+\SetKwData{TIMESTAMP}{output timestamp}
+\SetKwData{MINCHANNEL}{min channel}
+\SetKwData{MAXCHANNEL}{max channel}
+\SetKwData{MAXMATRIXCHANNEL}{max matrix channel}
+\SetKwData{NOISESHIFT}{noise shift}
+\SetKwData{NOISEGENSEED}{noise gen seed}
+\SetKwData{CHECKDATAPRESENT}{check data present}
+\SetKwData{LOSSLESSCHECK}{lossless check}
+\SetKwData{CHANNELASSIGNMENT}{channel assignment}
+\SetKwData{CHECKSUM}{checksum}
+$\text{\HEADERSYNC} \leftarrow$ \READ 13 unsigned bits\;
+\ASSERT $\text{\HEADERSYNC} = \texttt{0x18F5}$\;
+$\text{\NOISETYPE} \leftarrow$ \READ 1 unsigned bit\;
+\ASSERT $\text{\NOISETYPE} = 0$\;
+$\text{\TIMESTAMP} \leftarrow$ \READ 16 unsigned bits\;
+$\text{\MINCHANNEL} \leftarrow$ \READ 4 unsigned bits\;
+$\text{\MAXCHANNEL} \leftarrow$ \READ 4 unsigned bits\;
+\ASSERT $\text{\MAXCHANNEL} \geq \text{\MINCHANNEL}$\;
+$\text{\MAXMATRIXCHANNEL} \leftarrow$ \READ 4 unsigned bits\;
+\ASSERT $\text{\MAXMATRIXCHANNEL} \geq \text{\MAXCHANNEL}$\;
+$\text{\NOISESHIFT} \leftarrow$ \READ 4 unsigned bits\;
+$\text{\NOISEGENSEED} \leftarrow$ \READ 23 unsigned bits\;
+\SKIP 19 bits\;
+$\text{\CHECKDATAPRESENT} \leftarrow$ \READ 1 unsigned bit\;
+$\text{\LOSSLESSCHECK} \leftarrow$ \READ 8 unsigned bits\;
+\SKIP 16 bits\;
+\For{c = 0 \emph{\KwTo}$(\text{\MAXMATRIXCHANNEL} + 1)$}{
+  $\text{\CHANNELASSIGNMENT}_{c} \leftarrow$ \READ 6 unsigned bits\;
+  \ASSERT $\text{\CHANNELASSIGNMENT}_{c} \leq \text{\MAXMATRIXCHANNEL}$\;
+}
+$\text{\CHECKSUM} \leftarrow$ \READ 8 unsigned bits\;
+\Return $(\text{\MINCHANNEL}~,~\text{\MAXCHANNEL}~,~\text{\MAXMATRIXCHANNEL}~,~\text{\NOISESHIFT}~,~\text{\NOISEGENSEED}~,\newline~\text{\CHANNELASSIGNMENT})$\;
+\EALGORITHM
+}
+
+\begin{figure}[h]
+  \includegraphics{figures/dvda/mlp_restart_header.pdf}
+\end{figure}
+
+\clearpage
+
+\subsubsection{Reading Restart Header Example}
+
+\begin{figure}[h]
+  \includegraphics{figures/dvda/mlp_restart_header_parse1.pdf}
+\end{figure}
+\begin{table}[h]
+{\relsize{-1}
+  \begin{tabular}{rl}
+    header sync & \texttt{0x18F5} \\
+    noise type & 0 \\
+    output timestamp & 0 \\
+    min channel & 0 \\
+    max channel & 1 \\
+    max matrix channel & 1 \\
+    noise shift & 0 \\
+    noise gen seed & 1 \\
+    check data present & 0 \\
+    lossless check & 0 \\
+    $\text{channel assignment}_0$ & 0 \\
+    $\text{channel assignment}_1$ & 1 \\
+  \end{tabular}
+}
+\end{table}
+
+\clearpage
+
+\subsection{Reading Decoding Parameters}
+{\relsize{-1}
+\ALGORITHM{MLP substream data, restart header present flag, min channel, max channel, max matrix channel}{parameters}
+\SetKw{OR}{or}
+\SetKw{AND}{and}
+\SetKwData{HEADERPRESENT}{restart header present}
+\SetKwData{MINCHANNEL}{min channel}
+\SetKwData{MAXCHANNEL}{max channel}
+\SetKwData{MAXMATRIXCHANNEL}{max matrix channel}
+\SetKwData{PARAMSPRESENT}{parameters present}
+\SetKwData{BLOCKSIZE}{block size}
+\SetKwData{MATRIXCOUNT}{matrix count}
+\SetKwData{MATRIXOUTCH}{matrix out channel}
+\SetKwData{FRACTIONALBITS}{fractional bits}
+\SetKwData{LSBBYPASS}{LSB bypass}
+\SetKwData{MATRIXCOEFF}{matrix coeff}
+\SetKwData{OUTPUTSHIFT}{output shift}
+\SetKwData{QUANTSTEP}{quant step size}
+\SetKwData{FLAGS}{flags}
+\eIf(\tcc*[f]{parameter presence flags}){$(\text{\HEADERPRESENT}_s = 1)$ \OR $(\text{\FLAGS}_{s~0} = 1)$}{
+  $\text{\PARAMSPRESENT} \leftarrow$ \READ 1 unsigned bit\;
+  \eIf{$\text{\PARAMSPRESENT} = 1$}{
+    \For{f = 0 \emph{\KwTo}8}{
+      $\text{\FLAGS}_{s~f} \leftarrow$ \READ 1 unsigned bit\;
+    }
+  }{
+    $\text{\FLAGS}_s \leftarrow \texttt{[1, 1, 1, 1, 1, 1, 1, 1]}$\;
+  }
+}{
+  $\text{\FLAGS}_s \leftarrow$ from previous block in substream\;
+}
+\uIf(\tcc*[f]{block size}){$(\text{\FLAGS}_{s~7} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
+  $\text{\BLOCKSIZE}_s \leftarrow$ \READ 9 unsigned bits\;
+  \ASSERT $\text{\BLOCKSIZE}_s \geq 8$\;
+}
+\uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
+  $\text{\BLOCKSIZE}_s \leftarrow 8$\;
+}
+\Else{
+  $\text{\BLOCKSIZE}_s \leftarrow$ from previous block in substream\;
+}
+\uIf(\tcc*[f]{matrix parameters}){$(\text{\FLAGS}_{s~6} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
+  $(\text{\MATRIXCOUNT}_s~,~\text{\MATRIXOUTCH}_s~,~\text{\LSBBYPASS}_s~,~\text{\MATRIXCOEFF}_s) \leftarrow$ read matrix parameters\;
+}
+\uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
+  $\text{\MATRIXCOUNT}_s \leftarrow 0$\; %%FIXME
+}
+\Else{
+  $(\text{\MATRIXCOUNT}_s~,~\text{\MATRIXOUTCH}_s~,~\text{\LSBBYPASS}_s~,~\text{\MATRIXCOEFF}_s) \leftarrow$ from previous block in substream\;
+}
+\uIf(\tcc*[f]{output shifts}){$(\text{\FLAGS}_{s~5} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
+  \For{c = 0 \emph{\KwTo}$(\text{\MAXMATRIXCHANNEL}_s + 1)$}{
+    $\text{\OUTPUTSHIFT}_{s~c} \leftarrow$ \READ 4 signed bits\;
+  }
+}
+\uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
+  \For{c = 0 \emph{\KwTo}$(\text{\MAXMATRIXCHANNEL}_s + 1)$}{
+    $\text{\OUTPUTSHIFT}_{s~c} \leftarrow 0$\;
+  }
+}
+\Else{
+  $\text{\OUTPUTSHIFT}_{s} \leftarrow$ from previous block in substream\;
+}
+\uIf(\tcc*[f]{quant step sizes}){$(\text{\FLAGS}_{s~4} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
+  \For{c = $\text{\MINCHANNEL}_s$ \emph{\KwTo}$(\text{\MAXCHANNEL}_s + 1)$}{
+    $\text{\QUANTSTEP}_{s~c} \leftarrow$ \READ 4 unsigned bits\;
+  }
+}
+\uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
+  \For{c = $\text{\MINCHANNEL}_s$ \emph{\KwTo}$(\text{\MAXCHANNEL}_s + 1)$}{
+    $\text{\QUANTSTEP}_{s~c} \leftarrow 0$\;
+  }
+}
+\Else{
+  $\text{\QUANTSTEP}_s \leftarrow$ from previous block in substream\;
+}
+\EALGORITHM
+}
+
+\clearpage
+
+{\relsize{-1}
+  \begin{algorithm}[H]
+    \DontPrintSemicolon
+    \SetKw{AND}{and}
+    \SetKw{READ}{read}
+    \SetKw{ASSERT}{assert}
+    \SetKwData{BLOCKSIZE}{block size}
+    \SetKwData{HEADERPRESENT}{restart header present}
+    \SetKwData{MINCHANNEL}{min channel}
+    \SetKwData{MAXCHANNEL}{max channel}
+    \SetKwData{MATRIXCOUNT}{matrix count}
+    \SetKwData{MATRIXOUTCH}{matrix out channel}
+    \SetKwData{LSBBYPASS}{LSB bypass}
+    \SetKwData{MATRIXCOEFF}{matrix coeff}
+    \SetKwData{MAXMATRIXCHANNEL}{max matrix channel}
+    \SetKwData{OUTPUTSHIFT}{output shift}
+    \SetKwData{QUANTSTEP}{quant step size}
+    \SetKwData{FLAGS}{flags}
+    \SetKwData{FIRORDER}{FIR order}
+    \SetKwData{FIRSHIFT}{FIR shift}
+    \SetKwData{FIRCOEFF}{FIR coeff}
+    \SetKwData{IIRORDER}{IIR order}
+    \SetKwData{IIRSHIFT}{IIR shift}
+    \SetKwData{IIRCOEFF}{IIR coeff}
+    \SetKwData{IIRSTATE}{IIR state}
+    \SetKwData{CODEBOOK}{codebook}
+    \SetKwData{HUFFMANOFFSET}{Huffman offset}
+    \SetKwData{HUFFMANLSBS}{Huffman LSBs}
+    \For(\tcc*[f]{channel parameters}){c = $\text{\MINCHANNEL}_s$ \emph{\KwTo}$(\text{\MAXCHANNEL}_s + 1)$}{
+      \uIf{$((\READ~\textnormal{1 unsigned bit}) = 1)$}{
+        \uIf(\tcc*[f]{FIR filter parameters}){$(\text{\FLAGS}_{s~3} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
+          $(\text{\FIRORDER}_{s~c}~,~\text{\FIRSHIFT}_{s~c}~,~\text{\FIRCOEFF}_{s~c}) \leftarrow$ read FIR filter parameters\;
+        }
+        \uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
+          $(\text{\FIRORDER}_{s~c}~,~\text{\FIRSHIFT}_{s~c}~,~\text{\FIRCOEFF}_{s~c}) \leftarrow (0~,~0~,~\texttt{[]})$\;
+        }
+        \Else{
+          $(\text{\FIRORDER}_{s~c}~,~\text{\FIRSHIFT}_{s~c}~,~\text{\FIRCOEFF}_{s~c}) \leftarrow$ from previous block's corresponding channel in substream\;
+        }
+        \uIf(\tcc*[f]{IIR filter paramters}){$(\text{\FLAGS}_{s~2} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
+          $(\text{\IIRORDER}_{s~c}~,~\text{\IIRSHIFT}_{s~c}~,~\text{\IIRCOEFF}_{s~c}~,~\text{\IIRSTATE}_{s~c}) \leftarrow$ read IIR filter parameters\;
+        }
+        \uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
+          $(\text{\IIRORDER}_{s~c}~,~\text{\IIRSHIFT}_{s~c}~,~\text{\IIRCOEFF}_{s~c}~,~\text{\IIRSTATE}_{s~c}) \leftarrow (0~,~0~,~\texttt{[]}~,~\texttt{[]})$\;
+        }
+        \Else{
+          $(\text{\IIRORDER}_{s~c}~,~\text{\IIRSHIFT}_{s~c}~,~\text{\IIRCOEFF}_{s~c}~,~\text{\IIRSTATE}_{s~c}) \leftarrow$ from previous block's corresponding channel in substream\;
+        }
+        \uIf(\tcc*[f]{Huffman offset}){$(\text{\FLAGS}_{s~1} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
+          $\text{\HUFFMANOFFSET}_{s~c} \leftarrow$ \READ 15 signed bits\;
+        }
+        \uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
+          $\text{\HUFFMANOFFSET}_{s~c} \leftarrow 0$\;
+        }
+        \Else{
+          $\text{\HUFFMANOFFSET}_{s~c} \leftarrow$ from previous block's corresponding channel in substream\;
+        }
+        $\text{\CODEBOOK}_{s~c} \leftarrow$ \READ 2 unsigned bits\;
+        $\text{\HUFFMANLSBS}_{s~c} \leftarrow$ \READ 5 unsigned bits\;
+        \ASSERT $\text{\HUFFMANLSBS}_{s~c} \leq 24$\;
+      }
+      \uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
+        $(\text{\FIRORDER}_{s~c}~,~\text{\FIRSHIFT}_{s~c}~,~\text{\FIRCOEFF}_{s~c}) \leftarrow (0~,~0~,~\texttt{[]})$\;
+        $(\text{\IIRORDER}_{s~c}~,~\text{\IIRSHIFT}_{s~c}~,~\text{\IIRCOEFF}_{s~c}~,~\text{\IIRSTATE}_{s~c}) \leftarrow (0~,~0~,~\texttt{[]}~,~\texttt{[]})$\;
+        $\text{\HUFFMANOFFSET}_{s~c} \leftarrow 0$\;
+        $\text{\CODEBOOK}_{s~c} \leftarrow 0$\;
+        $\text{\HUFFMANLSBS}_{s~c} \leftarrow 23$\;
+      }
+      \Else{
+        $(\text{\FIRORDER}_{s~c}~,~\text{\FIRSHIFT}_{s~c}~,~\text{\FIRCOEFF}_{s~c}) \leftarrow$ from previous block's corresponding channel in substream\;
+        $(\text{\IIRORDER}_{s~c}~,~\text{\IIRSHIFT}_{s~c}~,~\text{\IIRCOEFF}_{s~c}~,~\text{\IIRSTATE}_{s~c}) \leftarrow$ from previous block's corresponding channel in substream\;
+        $\text{\HUFFMANOFFSET}_{s~c} \leftarrow$ from previous block's corresponding channel in substream\;
+        $\text{\CODEBOOK}_{s~c} \leftarrow$ from previous block's corresponding channel in substream\;
+        $\text{\HUFFMANLSBS}_{s~c} \leftarrow$ from previous block's corresponding channel in substream\;
+      }
+    }
+    \Return
+    \begin{tabular}{>{$}r<{$}>{$}r<{$}>{$}r<{$}>{$}r<{$}}
+      \text{\FLAGS}_s & \text{\BLOCKSIZE}_s \\
+      \text{\MATRIXCOUNT}_s & \text{\MATRIXOUTCH}_s & \text{\LSBBYPASS}_s & \text{\MATRIXCOEFF}_s \\
+      \text{\OUTPUTSHIFT}_{s} & \text{\QUANTSTEP}_{s} \\
+      \text{\FIRORDER}_{s} & \text{\FIRSHIFT}_{s} & \text{\FIRCOEFF}_{s} \\
+      \text{\IIRORDER}_{s} & \text{\IIRSHIFT}_{s} & \text{\IIRCOEFF}_{s} & \text{\IIRSTATE}_{s} \\
+      \text{\HUFFMANOFFSET}_{s} & \text{\CODEBOOK}_{s} & \text{\HUFFMANLSBS}_{s} \\
+    \end{tabular}
+  \end{algorithm}
+}
+
+\clearpage
+
+\subsubsection{Reading Matrix Parameters}
+{\relsize{-1}
+  \ALGORITHM{MLP substream data, max matrix channel}{matrix count, matrix out channels, LSB bypass values, matrix coefficients}
+  \SetKwData{MAXMATRIXCHANNEL}{max matrix channel}
+  \SetKwData{MATRIXCOUNT}{matrix count}
+  \SetKwData{MATRIXOUTCH}{matrix out channel}
+  \SetKwData{FRACTIONALBITS}{fractional bits}
+  \SetKwData{LSBBYPASS}{LSB bypass}
+  \SetKwData{MATRIXCOEFF}{matrix coeff}
+  $\text{\MATRIXCOUNT} \leftarrow$ \READ 4 unsigned bits\;
+  \For{m = 0 \emph{\KwTo}$\text{\MATRIXCOUNT}$}{
+    $\text{\MATRIXOUTCH}_{m} \leftarrow$ \READ 4 unsigned bits\;
+    \ASSERT $\text{\MATRIXOUTCH}_{m} \leq \text{\MAXMATRIXCHANNEL}_s$\;
+    $\text{\FRACTIONALBITS}_{m} \leftarrow$ \READ 4 unsigned bits\;
+    \ASSERT $\text{\FRACTIONALBITS}_{m} \leq 14$\;
+    $\text{\LSBBYPASS}_{m} \leftarrow$ \READ 1 unsigned bit\;
+    \For{c = 0 \emph{\KwTo}$(\text{\MAXMATRIXCHANNEL}_s + 3)$}{
+      \eIf{$((\READ~\textnormal{1 unsigned bit}) = 1)$}{
+        $v_{m~c} \leftarrow $ \READ $(\text{\FRACTIONALBITS}_{m} + 2)$ signed bits\;
+        $\text{\MATRIXCOEFF}_{m~c} \leftarrow v_{m~c} \times 2 ^ {14 - \text{\FRACTIONALBITS}_m}$\;
+      }{
+        $\text{\MATRIXCOEFF}_{m~c} \leftarrow 0$\;
+      }
+    }
+  }
+  \Return $(\text{\MATRIXCOUNT}~,~\text{\MATRIXOUTCH}~,~\text{\LSBBYPASS}~,~\text{\MATRIXCOEFF})$\;
+  \EALGORITHM
+}
+
+\subsubsection{Reading FIR Filter Parameters}
+{\relsize{-1}
+  \ALGORITHM{MLP substream data}{FIR order, FIR shift, FIR coefficients}
+  \SetKwData{FIRORDER}{FIR order}
+  \SetKwData{FIRSHIFT}{FIR shift}
+  \SetKwData{FIRCOEFFBITS}{FIR coeff bits}
+  \SetKwData{FIRCOEFFSHIFT}{FIR coeff shift}
+  \SetKwData{FIRCOEFF}{FIR coeff}
+  $\text{\FIRORDER} \leftarrow$ \READ 4 unsigned bits\;
+  \ASSERT $\text{\FIRORDER} \leq 8$\;
+  \eIf{$\text{\FIRORDER} > 0$}{
+    $\text{\FIRSHIFT} \leftarrow$ \READ 4 unsigned bits\;
+    $\text{\FIRCOEFFBITS} \leftarrow$ \READ 5 unsigned bits\;
+    \ASSERT $1 < \text{\FIRCOEFFBITS} < 16$\;
+    $\text{\FIRCOEFFSHIFT} \leftarrow$ \READ 3 unsigned bits\;
+    \ASSERT $(\text{\FIRCOEFFBITS} + \text{\FIRCOEFFSHIFT}) \leq 16$\;
+    \For{f = 0 \emph{\KwTo}$\text{\FIRORDER}$}{
+      $v_{f} \leftarrow$ \READ $(\text{\FIRCOEFFBITS})$ signed bits\;
+      $\text{\FIRCOEFF}_{f} \leftarrow v_{f} \times 2 ^ {\text{\FIRCOEFFSHIFT}}$\;
+    }
+  }{
+    $\text{\FIRSHIFT} \leftarrow 0$\;
+    $\text{\FIRCOEFF} \leftarrow \texttt{[]}$\;
+  }
+  \Return $(\text{\FIRORDER}~,~\text{\FIRSHIFT}~,~\text{\FIRCOEFF})$\;
+  \EALGORITHM
+}
+
+\clearpage
+
+\subsubsection{Reading IIR Filter Parameters}
+{\relsize{-1}
+  \ALGORITHM{MLP substream data}{IIR order, IIR shift, IIR coefficients, IIR states}
+  \SetKwData{IIRORDER}{IIR order}
+  \SetKwData{IIRSHIFT}{IIR shift}
+  \SetKwData{IIRCOEFFBITS}{IIR coeff bits}
+  \SetKwData{IIRCOEFFSHIFT}{IIR coeff shift}
+  \SetKwData{IIRCOEFF}{IIR coeff}
+  \SetKwData{STATEBITS}{state bits}
+  \SetKwData{STATESHIFT}{state shift}
+  \SetKwData{IIRSTATE}{IIR state}
+  $\text{\IIRORDER} \leftarrow$ \READ 4 unsigned bits\;
+  \ASSERT $\text{\IIRORDER} \leq 4$\;
+  \eIf{$\text{\IIRORDER} > 0$}{
+    $\text{\IIRSHIFT} \leftarrow$ \READ 4 unsigned bits\;
+    $\text{\IIRCOEFFBITS} \leftarrow$ \READ 5 unsigned bits\;
+    \ASSERT $1 < \text{\IIRCOEFFBITS} < 16$\;
+    $\text{\IIRCOEFFSHIFT} \leftarrow$ \READ 3 unsigned bits\;
+    \ASSERT $(\text{\IIRCOEFFBITS} + \text{\IIRCOEFFSHIFT}) \leq 16$\;
+    \For{i = 0 \emph{\KwTo}$\text{\IIRORDER}$}{
+      $v_{i} \leftarrow$ \READ $(\text{\IIRCOEFFBITS})$ signed bits\;
+      $\text{\IIRCOEFF}_{i} \leftarrow v_{i} \times 2 ^ {\text{\IIRCOEFFSHIFT}}$\;
+    }
+    \eIf{$((\READ~\textnormal{1 unsigned bit}) = 1)$}{
+      $\text{\STATEBITS} \leftarrow$ \READ 4 unsigned bits\;
+      $\text{\STATESHIFT} \leftarrow$ \READ 4 unsigned bits\;
+      \For{i = 0 \emph{\KwTo}$\text{\IIRORDER}$}{
+        $s_{i} \leftarrow$ \READ $(\text{\STATEBITS})$ signed bits\;
+        $\text{\IIRSTATE}_{\text{\IIRORDER} - i - 1} \leftarrow s_{i} \times 2 ^ {\text{\STATESHIFT}}$\;
+      }
+    }{
+      $\text{\IIRSTATE} \leftarrow \texttt{[]}$\;
+    }
+  }{
+    $\text{\IIRSHIFT} \leftarrow 0$\;
+    $\text{\IIRCOEFF} \leftarrow \texttt{[]}$\;
+    $\text{\IIRSTATE} \leftarrow \texttt{[]}$\;
+  }
+  \Return $(\text{\IIRORDER}~,~\text{\IIRSHIFT}~,~\text{\IIRCOEFF}~,~\text{\IIRSTATE})$\;
+  \EALGORITHM
+}

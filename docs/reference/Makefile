@@ -175,7 +175,11 @@ figures/dvda/audio_ts_ifo.pdf \
 figures/dvda/layout.pdf \
 figures/dvda/mlp_major_sync.pdf \
 figures/dvda/mlp_major_sync_parse.pdf \
+figures/dvda/mlp_restart_header.pdf \
+figures/dvda/mlp_restart_header_parse1.pdf \
+figures/dvda/mlp_restart_header_parse2.pdf \
 figures/dvda/mlp_stream.pdf \
+figures/dvda/mlp_substream.pdf \
 figures/dvda/mlp_substream_info.pdf \
 figures/dvda/mlp_substream_info_parse.pdf
 

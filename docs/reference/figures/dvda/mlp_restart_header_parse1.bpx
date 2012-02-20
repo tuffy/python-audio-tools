@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<struct endianness="big">
+  <field size="1" value="1">p.p.</field>
+  <field size="1" value="1">h.p.</field>
+  <field size="13" value="0x18F5">header sync</field>
+  <field size="1" value="0">n.t.</field>
+  <field size="16" value="0">output timestamp</field>
+  <field size="4" value="0">min channel</field>
+  <field size="4" value="1">max channel</field>
+  <field size="4" value="1">max matrix channel</field>
+  <field size="4" value="0">noise shift</field>
+  <field size="23" value="1">noise gen seed</field>
+  <field size="19" value="36137">unknown</field>
+  <field size="1" value="0">c.d.</field>
+  <field size="8" value="0">lossless check</field>
+  <field size="16" value="0">unknown</field>
+  <field size="6" value="0">channel assignment₀</field>
+  <field size="6" value="1">channel assignment₁</field>
+</struct>

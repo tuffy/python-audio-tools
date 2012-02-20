@@ -25,10 +25,13 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+#define MAXIMUM_SUBSTREAMS 2
+
 typedef enum {OK,
               IO_ERROR,
               INVALID_MAJOR_SYNC,
-              INVALID_EXTRAWORD_PRESENT} mlp_status;
+              INVALID_EXTRAWORD_PRESENT,
+              INVALID_RESTART_HEADER} mlp_status;
 
 struct major_sync {
     unsigned bits_per_sample_0;
@@ -49,13 +52,27 @@ struct substream_info {
     unsigned substream_end;
 };
 
+struct restart_header {
+    unsigned min_channel;
+    unsigned max_channel;
+    unsigned max_matrix_channel;
+    unsigned noise_shift;
+    unsigned noise_gen_seed;
+    array_i* channel_assignment;
+};
+
+struct substream {
+    struct substream_info info;
+    struct restart_header header;
+};
+
 typedef struct {
     BitstreamReader* reader;
     BitstreamReader* frame_reader;
     BitstreamReader* substream_reader;
 
     struct major_sync major_sync;
-    struct substream_info substream_info[2];
+    struct substream substream[MAXIMUM_SUBSTREAMS];
 
 } MLPDecoder;
 
@@ -93,6 +110,11 @@ read_mlp_substream_info(BitstreamReader* bs,
 
 mlp_status
 read_mlp_substream(MLPDecoder* decoder,
+                   struct substream* substream,
                    BitstreamReader* bs,
                    array_ia* framelist);
+
+mlp_status
+read_mlp_restart_header(BitstreamReader* bs,
+                        struct restart_header* restart_header);
 #endif

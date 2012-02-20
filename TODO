@@ -5282,3 +5282,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] flac.tex
    - [ ] shorten.tex
    - [ ] wavpack.tex
+** TODO Convert for loops to a consistent assignment syntax
+   for i <- 0 to x do
+      <code block>
+   - [ ] alac.tex
+   - [ ] dvda2.tex
+   - [ ] flac.tex
+   - [ ] shorten.tex
+   - [ ] wavpack.tex

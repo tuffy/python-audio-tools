@@ -35,18 +35,32 @@ MLPDecoder*
 open_mlp_decoder(struct bs_buffer* frame_data)
 {
     MLPDecoder* decoder = malloc(sizeof(MLPDecoder));
+    unsigned s;
+
     decoder->reader = br_open_buffer(frame_data, BS_BIG_ENDIAN);
     decoder->frame_reader = br_substream_new(BS_BIG_ENDIAN);
     decoder->substream_reader = br_substream_new(BS_BIG_ENDIAN);
+
+    for (s = 0; s < MAXIMUM_SUBSTREAMS; s++) {
+        decoder->substream[s].header.channel_assignment = array_i_new();
+    }
+
     return decoder;
 }
 
 void
 close_mlp_decoder(MLPDecoder* decoder)
 {
+    unsigned s;
+
     decoder->reader->close(decoder->reader);
     decoder->frame_reader->close(decoder->frame_reader);
     decoder->substream_reader->close(decoder->substream_reader);
+
+    for (s = 0; s < MAXIMUM_SUBSTREAMS; s++) {
+        array_i_del(decoder->substream[s].header.channel_assignment);
+    }
+
     free(decoder);
 }
 
@@ -124,43 +138,44 @@ read_mlp_frame(MLPDecoder* decoder,
         return status;
 
     if (!setjmp(*br_try(bs))) {
-        unsigned i;
+        unsigned s;
 
         /*read 1 or 2 substream info blocks, depending on substream count*/
         /*FIXME - ensure at least one major sync has been read*/
-        for (i = 0; i < decoder->major_sync.substream_count; i++) {
+        for (s = 0; s < decoder->major_sync.substream_count; s++) {
             if ((status =
                  read_mlp_substream_info(bs,
-                                   &(decoder->substream_info[i]))) != OK) {
+                                    &(decoder->substream[s].info))) != OK) {
                 br_etry(bs);
                 return status;
             }
 
             printf("substream info %u %u %u %u\n",
-                   decoder->substream_info[i].extraword_present,
-                   decoder->substream_info[i].nonrestart_substream,
-                   decoder->substream_info[i].checkdata_present,
-                   decoder->substream_info[i].substream_end);
+                   decoder->substream[s].info.extraword_present,
+                   decoder->substream[s].info.nonrestart_substream,
+                   decoder->substream[s].info.checkdata_present,
+                   decoder->substream[s].info.substream_end);
         }
 
         /*decode 1 or 2 substreams to framelist, depending on substream count*/
-        for (i = 0; i < decoder->major_sync.substream_count; i++) {
+        for (s = 0; s < decoder->major_sync.substream_count; s++) {
             br_substream_reset(decoder->substream_reader);
-            if (decoder->substream_info[i].checkdata_present == 1){
+            if (decoder->substream[s].info.checkdata_present == 1){
                 /*checkdata present, so last 2 bytes are CRC-8/parity*/
                 unsigned CRC8;
                 unsigned parity;
 
-                if (i == 0) {
+                if (s == 0) {
                     bs->substream_append(bs, decoder->substream_reader,
-                         decoder->substream_info[i].substream_end - 2);
+                         decoder->substream[s].info.substream_end - 2);
                 } else {
                     bs->substream_append(bs, decoder->substream_reader,
-                         decoder->substream_info[i].substream_end -
-                         decoder->substream_info[i - 1].substream_end - 2);
+                         decoder->substream[s].info.substream_end -
+                         decoder->substream[s- 1].info.substream_end - 2);
                 }
 
                 if ((status = read_mlp_substream(decoder,
+                                                 &(decoder->substream[s]),
                                                  decoder->substream_reader,
                                                  framelist)) != OK) {
                     br_etry(bs);
@@ -172,16 +187,17 @@ read_mlp_frame(MLPDecoder* decoder,
 
                 /*FIXME - verify CRC8 and parity*/
             } else {
-                if (i == 0) {
+                if (s == 0) {
                     bs->substream_append(bs, decoder->substream_reader,
-                         decoder->substream_info[i].substream_end);
+                         decoder->substream[s].info.substream_end);
                 } else {
                     bs->substream_append(bs, decoder->substream_reader,
-                         decoder->substream_info[i].substream_end -
-                         decoder->substream_info[i - 1].substream_end);
+                         decoder->substream[s].info.substream_end -
+                         decoder->substream[s - 1].info.substream_end);
                 }
 
                 if ((status = read_mlp_substream(decoder,
+                                                 &(decoder->substream[s]),
                                                  decoder->substream_reader,
                                                  framelist)) != OK) {
                     br_etry(bs);
@@ -276,9 +292,77 @@ read_mlp_substream_info(BitstreamReader* bs,
 
 mlp_status
 read_mlp_substream(MLPDecoder* decoder,
+                   struct substream* substream,
                    BitstreamReader* bs,
                    array_ia* framelist)
 {
-    /*FIXME*/
+    mlp_status status;
+
+    if (bs->read(bs, 1)) {      /*decoding parmaters present*/
+        if (bs->read(bs, 1)) {  /*restart header present*/
+            if ((status = read_mlp_restart_header(bs,
+                                                  &(substream->header))) != OK)
+                return status;
+        }
+    }
+
+    return OK;
+}
+
+mlp_status
+read_mlp_restart_header(BitstreamReader* bs,
+                        struct restart_header* restart_header)
+{
+    unsigned header_sync;
+    unsigned noise_type;
+    unsigned output_timestamp;
+    unsigned check_data_present;
+    unsigned lossless_check;
+    array_i* channel_assignment = restart_header->channel_assignment;
+    unsigned c;
+    unsigned unknown1;
+    unsigned unknown2;
+
+    bs->parse(bs, "13u 1u 16u 4u 4u 4u 4u 23u 19u 1u 8u 16u",
+              &header_sync, &noise_type, &output_timestamp,
+              &(restart_header->min_channel),
+              &(restart_header->max_channel),
+              &(restart_header->max_matrix_channel),
+              &(restart_header->noise_shift),
+              &(restart_header->noise_gen_seed),
+              &unknown1,
+              &check_data_present,
+              &lossless_check,
+              &unknown2);
+
+    if (header_sync != 0x18F5)
+        return INVALID_RESTART_HEADER;
+    if (noise_type != 0)
+        return INVALID_RESTART_HEADER;
+    if (restart_header->max_channel < restart_header->min_channel)
+        return INVALID_RESTART_HEADER;
+    if (restart_header->max_matrix_channel < restart_header->max_channel)
+        return INVALID_RESTART_HEADER;
+
+    channel_assignment->reset(channel_assignment);
+    for (c = 0; c <= restart_header->max_matrix_channel; c++) {
+        const unsigned assignment = bs->read(bs, 6);
+        if (assignment > restart_header->max_matrix_channel) {
+            return INVALID_RESTART_HEADER;
+        }
+        channel_assignment->append(channel_assignment, assignment);
+    }
+
+    printf("restart header %u %u %u %u %u %u %u %u %u %u %u %u - ",
+           header_sync, noise_type, output_timestamp,
+           restart_header->min_channel, restart_header->max_channel,
+           restart_header->max_matrix_channel, restart_header->noise_shift,
+           restart_header->noise_gen_seed,
+           unknown1,
+           check_data_present, lossless_check,
+           unknown2);
+    channel_assignment->print(channel_assignment, stdout);
+    printf("\n");
+
     return OK;
 }
