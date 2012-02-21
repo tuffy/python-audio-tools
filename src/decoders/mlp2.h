@@ -25,13 +25,22 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-#define MAXIMUM_SUBSTREAMS 2
+/*streams can have only 1 or 2 substreams*/
+#define MAX_MLP_SUBSTREAMS 2
+
+#define MAX_MLP_MATRICES 6
+
+/*6 channels + 2 matrix channels*/
+#define MAX_MLP_CHANNELS 8
 
 typedef enum {OK,
               IO_ERROR,
               INVALID_MAJOR_SYNC,
               INVALID_EXTRAWORD_PRESENT,
-              INVALID_RESTART_HEADER} mlp_status;
+              INVALID_RESTART_HEADER,
+              INVALID_DECODING_PARAMETERS,
+              INVALID_MATRIX_PARAMETERS,
+              INVALID_CHANNEL_PARAMETERS} mlp_status;
 
 struct major_sync {
     unsigned bits_per_sample_0;
@@ -58,12 +67,55 @@ struct restart_header {
     unsigned max_matrix_channel;
     unsigned noise_shift;
     unsigned noise_gen_seed;
-    array_i* channel_assignment;
+    unsigned channel_assignment[MAX_MLP_CHANNELS];
+    unsigned checksum;
+};
+
+struct matrix_parameters {
+    unsigned out_channel;
+    unsigned factional_bits;
+    unsigned LSB_bypass;
+    int coeff[MAX_MLP_CHANNELS];
+};
+
+struct channel_parameters {
+    struct {
+        unsigned shift;
+        array_i* coeff;
+    } FIR;
+
+    struct {
+        unsigned shift;
+        array_i* coeff;
+        array_i* state;
+    } IIR;
+
+    int huffman_offset;
+    unsigned codebook;
+    unsigned huffman_lsbs;
+};
+
+struct decoding_parameters {
+    unsigned flags[8];
+
+    unsigned block_size;
+
+    /*matrix parameters*/
+    unsigned matrix_len;
+    struct matrix_parameters matrix[MAX_MLP_MATRICES];
+
+    unsigned output_shift[MAX_MLP_CHANNELS];
+
+    unsigned quant_step_size[MAX_MLP_CHANNELS];
+
+    /*channel parameters*/
+    struct channel_parameters channel[MAX_MLP_CHANNELS];
 };
 
 struct substream {
     struct substream_info info;
     struct restart_header header;
+    struct decoding_parameters parameters;
 };
 
 typedef struct {
@@ -72,7 +124,7 @@ typedef struct {
     BitstreamReader* substream_reader;
 
     struct major_sync major_sync;
-    struct substream substream[MAXIMUM_SUBSTREAMS];
+    struct substream substream[MAX_MLP_SUBSTREAMS];
 
 } MLPDecoder;
 
@@ -117,4 +169,30 @@ read_mlp_substream(MLPDecoder* decoder,
 mlp_status
 read_mlp_restart_header(BitstreamReader* bs,
                         struct restart_header* restart_header);
+
+mlp_status
+read_mlp_decoding_parameters(BitstreamReader* bs,
+                             unsigned header_present,
+                             unsigned min_channel,
+                             unsigned max_channel,
+                             unsigned max_matrix_channel,
+                             struct decoding_parameters* p);
+
+mlp_status
+read_mlp_matrix_params(BitstreamReader* bs,
+                       unsigned max_matrix_channel,
+                       unsigned* matrix_len,
+                       struct matrix_parameters* mp);
+
+mlp_status
+read_mlp_fir_params(BitstreamReader* bs,
+                    unsigned* shift,
+                    array_i* coeffs);
+
+mlp_status
+read_mlp_iir_params(BitstreamReader* bs,
+                    unsigned* shift,
+                    array_i* coeffs,
+                    array_i* state);
+
 #endif

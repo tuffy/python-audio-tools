@@ -1242,6 +1242,7 @@ struct array_o_s* array_o_new(void* (*copy)(void* obj),
     a->append = array_o_append;
     a->vappend = array_o_vappend;
     a->mappend = array_o_mappend;
+    a->set = array_o_set;
     a->vset = array_o_vset;
     a->mset = array_o_mset;
     a->extend = array_o_extend;
@@ -1297,6 +1298,14 @@ void array_o_mappend(struct array_o_s *array, unsigned count, void* value)
             array->_[array->len++] = value;
         }
     }
+}
+
+void array_o_set(struct array_o_s *array, unsigned index, void* value)
+{
+    assert(index < array->len);
+    if (array->free_obj != NULL)
+        array->free_obj(array->_[index]);
+    array->_[index] = value;
 }
 
 void array_o_mset(struct array_o_s *array, unsigned count, void* value)

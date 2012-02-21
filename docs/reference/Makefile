@@ -173,6 +173,11 @@ figures/dvda/ats_xx_x.pdf \
 figures/dvda/audio_packet.pdf \
 figures/dvda/audio_ts_ifo.pdf \
 figures/dvda/layout.pdf \
+figures/dvda/mlp_decoding_params.pdf \
+figures/dvda/mlp_decoding_params_parse.pdf \
+figures/dvda/mlp_fir_params.pdf \
+figures/dvda/mlp_iir_params.pdf \
+figures/dvda/mlp_matrix_params.pdf \
 figures/dvda/mlp_major_sync.pdf \
 figures/dvda/mlp_major_sync_parse.pdf \
 figures/dvda/mlp_restart_header.pdf \

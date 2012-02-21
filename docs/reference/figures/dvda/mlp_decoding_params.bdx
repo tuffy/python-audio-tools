@@ -1,0 +1,98 @@
+<?xml version="1.0" ?>
+<diagram>
+  <row>
+    <col width=".15" style="blank">if flag₀ = 1</col>
+    <col width=".15" start="0" end="0">present</col>
+    <col width=".087" start="1" end="1" style="dashed">flag₀</col>
+    <col width=".087" start="2" end="2" style="dashed">flag₁</col>
+    <col width=".087" start="3" end="3" style="dashed">flag₂</col>
+    <col width=".087" start="4" end="4" style="dashed">flag₃</col>
+    <col width=".087" start="5" end="5" style="dashed">flag₄</col>
+    <col width=".087" start="6" end="6" style="dashed">flag₅</col>
+    <col width=".087" start="7" end="7" style="dashed">flag₆</col>
+    <col width=".087" start="8" end="8" style="dashed">flag₇</col>
+  </row>
+  <spacer height=".50"/>
+  <row>
+    <col width=".15" style="blank">if flag₇ = 1</col>
+    <col width=".15" start="0" end="0">present</col>
+    <col width=".70" style="dashed"
+         start="1" end="9">block size</col>
+  </row>
+  <spacer height=".50"/>
+  <row>
+    <col width=".15" style="blank">if flag₆ = 1</col>
+    <col width=".15" start="0" end="0">present</col>
+    <col width=".20" start="0" end="3" style="dashed">matrix count</col>
+    <col width=".167" style="dashed">Matrix₀</col>
+    <col width=".167" style="dashed">Matrix₁</col>
+    <col width=".165" style="dashed">...</col>
+  </row>
+  <spacer height=".50"/>
+  <row>
+    <col width=".15" style="blank">if flag₅ = 1</col>
+    <col width=".15" start="0" end="0">present</col>
+    <col width=".233" style="dashed" start="1" end="4">output shift₀</col>
+    <col width=".233" style="dashed" start="5" end="8">output shift₁</col>
+    <col width=".233" style="dashed">...</col>
+  </row>
+  <spacer height=".50"/>
+  <row>
+    <col width=".15" style="blank">if flag₄ = 1</col>
+    <col width=".15" start="0" end="0">present</col>
+    <col width=".233" style="dashed" start="1" end="4">quant step size₀</col>
+    <col width=".233" style="dashed" start="5" end="8">quant step size₁</col>
+    <col width=".233" style="dashed">...</col>
+  </row>
+  <spacer height=".50"/>
+  <row>
+    <col width=".15" start="0" end="0">present</col>
+    <col width=".30" style="dashed" id="channelparams">Channel Parameters₀</col>
+    <col width=".025" style="blank"/>
+    <col width=".15" start="0" end="0">present</col>
+    <col width=".30" style="dashed">Channel Parameters₁</col>
+    <col width=".025" style="blank"/>
+    <col width=".05" style="blank">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col width=".10" style="blank"/>
+    <col width=".15" style="blank"
+         id="channelparams_s">if flag₃ = 1</col>
+    <col width=".15" start="0" end="0">present</col>
+    <col width=".60" style="dashed"
+         id="channelparams_e">FIR Filter Parameters</col>
+  </row>
+  <spacer height=".50"/>
+  <row>
+    <col width=".10" style="blank"/>
+    <col width=".15" style="blank">if flag₂ = 1</col>
+    <col width=".15" start="0" end="0">present</col>
+    <col width=".60" style="dashed">IIR Filter Parameters</col>
+  </row>
+  <spacer height=".50"/>
+  <row>
+    <col width=".10" style="blank"/>
+    <col width=".15" style="blank">if flag₁ = 1</col>
+    <col width=".15" start="0" end="0">present</col>
+    <col width=".60" style="dashed" start="1" end="15">Huffman offset</col>
+  </row>
+  <spacer height=".50"/>
+  <row>
+    <col width=".10" style="blank"/>
+    <col width=".30" start="0" end="1" id="codebook">codebook</col>
+    <col width=".60" start="2" end="6">Huffman LSBs</col>
+  </row>
+  <line style="dotted">
+    <start id="channelparams" corner="sw"/>
+    <end id="channelparams_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="channelparams" corner="se"/>
+    <end id="channelparams_e" corner="ne"/>
+  </line>
+  <line style="dotted">
+    <start id="channelparams_s" corner="nw"/>
+    <end id="codebook" corner="nw"/>
+  </line>
+</diagram>

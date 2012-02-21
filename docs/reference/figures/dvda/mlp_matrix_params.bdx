@@ -1,0 +1,47 @@
+<?xml version="1.0" ?>
+<diagram>
+  <row>
+    <col width=".15" style="blank">if flag₆ = 1</col>
+    <col width=".15" start="0" end="0">present</col>
+    <col width=".20" start="0" end="3" style="dashed">matrix count</col>
+    <col width=".167" style="dashed" id="matrix">Matrix₀</col>
+    <col width=".167" style="dashed">Matrix₁</col>
+    <col width=".165" style="dashed">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col width=".10" style="blank"/>
+    <col width=".35" start="0" end="3" id="matrix_s">matrix out channel</col>
+    <col width=".35" start="4" end="7">fractional bits</col>
+    <col width=".20" start="8" end="8" id="matrix_e">LSB bypass</col>
+  </row>
+  <row>
+    <col width=".10" style="blank"/>
+    <col width=".30" style="dashed" id="coefficient">coefficient₀</col>
+    <col width=".30" style="dashed">coefficient₁</col>
+    <col width=".30" style="dashed">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col width=".10" style="blank"/>
+    <col width=".15" start="0" end="0" id="coefficient_s">present</col>
+    <col width=".75" start="1" style="dashed" id="coefficient_e"
+         end="fractional bits + 2">matrix coefficient</col>
+  </row>
+  <line style="dotted">
+    <start id="matrix" corner="sw"/>
+    <end id="matrix_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="matrix" corner="se"/>
+    <end id="matrix_e" corner="ne"/>
+  </line>
+  <line style="dotted">
+    <start id="coefficient" corner="sw"/>
+    <end id="coefficient_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="coefficient" corner="se"/>
+    <end id="coefficient_e" corner="ne"/>
+  </line>
+</diagram>

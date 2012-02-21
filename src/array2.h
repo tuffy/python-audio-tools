@@ -896,6 +896,10 @@ struct array_o_s {
     /*appends "value", "count" number of times*/
     void (*mappend)(struct array_o_s *array, unsigned count, void* value);
 
+    /*deletes the item at the given index
+      and sets it to the new value*/
+    void (*set)(struct array_o_s *array, unsigned index, void* value);
+
     /*sets the array to new values, removing any old ones*/
     void (*vset)(struct array_o_s *array, unsigned count, ...);
 
@@ -957,6 +961,7 @@ void array_o_reset(struct array_o_s *array);
 void array_o_append(struct array_o_s *array, void* value);
 void array_o_vappend(struct array_o_s *array, unsigned count, ...);
 void array_o_mappend(struct array_o_s *array, unsigned count, void* value);
+void array_o_set(struct array_o_s *array, unsigned index, void* value);
 void array_o_vset(struct array_o_s *array, unsigned count, ...);
 void array_o_mset(struct array_o_s *array, unsigned count, void* value);
 void array_o_extend(struct array_o_s *array, const struct array_o_s *to_add);

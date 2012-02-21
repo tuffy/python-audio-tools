@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<struct endianness="big" init="0,0,1,0,0,0,1">
+  <field size="1" value="0">flags</field>
+  <field size="1" value="0">b.s.</field>
+  <field size="1" value="1">m.p.</field>
+  <field size="4" value="2">matrix count</field>
+  <field size="4" value="1">out channel₀</field>
+  <field size="4" value="13">fractional bits₀</field>
+  <field size="1" value="0">L.b.₀</field>
+  <field size="1" value="0">c₀ ₀</field>
+  <field size="1" value="1">c₀ ₁</field>
+  <field size="15" value="30715">v₀ ₁</field>
+  <field size="1" value="1">c₀ ₂</field>
+  <field size="15" value="32736">v₀ ₂</field>
+  <field size="1" value="1">c₀ ₃</field>
+  <field size="15" value="32">v₀ ₃</field>
+  <field size="4" value="0">out channel₁</field>
+  <field size="4" value="13">fractional bits₁</field>
+  <field size="1" value="0">L.b.₁</field>
+  <field size="1" value="1">c₁ ₀</field>
+  <field size="15" value="30715">v₁ ₀</field>
+  <field size="1" value="0">c₁ ₁</field>
+  <field size="1" value="1">c₁ ₂</field>
+  <field size="15" value="32">v₁ ₂</field>
+  <field size="1" value="1">c₁ ₃</field>
+  <field size="15" value="32">v₁ ₃</field>
+  <field size="1" value="1">o.s.</field>
+  <field size="4" value="1">output shift₀</field>
+  <field size="4" value="1">output shift₁</field>
+  <field size="1" value="0">q.s.s.</field>
+  <field size="1" value="1">c.p.₀</field>
+  <field size="1" value="0">FIR₀</field>
+  <field size="1" value="0">IIR₀</field>
+  <field size="1" value="0">H.o.₀</field>
+  <field size="2" value="0">codebook₀</field>
+  <field size="5" value="1">Huffman LSBs₀</field>
+  <field size="1" value="1">c.p.₁</field>
+  <field size="1" value="0">FIR₁</field>
+  <field size="1" value="0">IIR₁</field>
+  <field size="1" value="0">H.o.₁</field>
+  <field size="2" value="0">codebook₁</field>
+  <field size="5" value="1">Huffman LSBs₁</field>
+</struct>

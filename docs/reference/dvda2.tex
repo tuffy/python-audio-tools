@@ -490,6 +490,7 @@ $\text{\CHECKSUM} \leftarrow$ \READ 8 unsigned bits\;
     lossless check & 0 \\
     $\text{channel assignment}_0$ & 0 \\
     $\text{channel assignment}_1$ & 1 \\
+    checksum & \texttt{0x11} \\
   \end{tabular}
 }
 \end{table}
@@ -541,7 +542,7 @@ $\text{\CHECKSUM} \leftarrow$ \READ 8 unsigned bits\;
   $(\text{\MATRIXCOUNT}_s~,~\text{\MATRIXOUTCH}_s~,~\text{\LSBBYPASS}_s~,~\text{\MATRIXCOEFF}_s) \leftarrow$ read matrix parameters\;
 }
 \uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
-  $\text{\MATRIXCOUNT}_s \leftarrow 0$\; %%FIXME
+  $(\text{\MATRIXCOUNT}_s~,~\text{\MATRIXOUTCH}_s~,~\text{\LSBBYPASS}_s~,~\text{\MATRIXCOEFF}_s) \leftarrow (0~,~\texttt{[]}~,~\texttt{[]}~,~\texttt{[]})$\;
 }
 \Else{
   $(\text{\MATRIXCOUNT}_s~,~\text{\MATRIXOUTCH}_s~,~\text{\LSBBYPASS}_s~,~\text{\MATRIXCOEFF}_s) \leftarrow$ from previous block in substream\;
@@ -667,6 +668,12 @@ $\text{\CHECKSUM} \leftarrow$ \READ 8 unsigned bits\;
 
 \clearpage
 
+\begin{figure}[h]
+  \includegraphics{figures/dvda/mlp_decoding_params.pdf}
+\end{figure}
+
+\clearpage
+
 \subsubsection{Reading Matrix Parameters}
 {\relsize{-1}
   \ALGORITHM{MLP substream data, max matrix channel}{matrix count, matrix out channels, LSB bypass values, matrix coefficients}
@@ -696,6 +703,12 @@ $\text{\CHECKSUM} \leftarrow$ \READ 8 unsigned bits\;
   \EALGORITHM
 }
 
+\begin{figure}[h]
+  \includegraphics{figures/dvda/mlp_matrix_params.pdf}
+\end{figure}
+
+\clearpage
+
 \subsubsection{Reading FIR Filter Parameters}
 {\relsize{-1}
   \ALGORITHM{MLP substream data}{FIR order, FIR shift, FIR coefficients}
@@ -704,6 +717,7 @@ $\text{\CHECKSUM} \leftarrow$ \READ 8 unsigned bits\;
   \SetKwData{FIRCOEFFBITS}{FIR coeff bits}
   \SetKwData{FIRCOEFFSHIFT}{FIR coeff shift}
   \SetKwData{FIRCOEFF}{FIR coeff}
+  \SetKwData{FIRSTATE}{FIR state}
   $\text{\FIRORDER} \leftarrow$ \READ 4 unsigned bits\;
   \ASSERT $\text{\FIRORDER} \leq 8$\;
   \eIf{$\text{\FIRORDER} > 0$}{
@@ -716,6 +730,8 @@ $\text{\CHECKSUM} \leftarrow$ \READ 8 unsigned bits\;
       $v_{f} \leftarrow$ \READ $(\text{\FIRCOEFFBITS})$ signed bits\;
       $\text{\FIRCOEFF}_{f} \leftarrow v_{f} \times 2 ^ {\text{\FIRCOEFFSHIFT}}$\;
     }
+    $\text{\FIRSTATE} \leftarrow$ \READ 1 unsigned bit\;
+    \ASSERT $\text{\FIRSTATE} = 0$\;
   }{
     $\text{\FIRSHIFT} \leftarrow 0$\;
     $\text{\FIRCOEFF} \leftarrow \texttt{[]}$\;
@@ -723,6 +739,10 @@ $\text{\CHECKSUM} \leftarrow$ \READ 8 unsigned bits\;
   \Return $(\text{\FIRORDER}~,~\text{\FIRSHIFT}~,~\text{\FIRCOEFF})$\;
   \EALGORITHM
 }
+
+\begin{figure}[h]
+  \includegraphics{figures/dvda/mlp_fir_params.pdf}
+\end{figure}
 
 \clearpage
 
@@ -767,3 +787,15 @@ $\text{\CHECKSUM} \leftarrow$ \READ 8 unsigned bits\;
   \Return $(\text{\IIRORDER}~,~\text{\IIRSHIFT}~,~\text{\IIRCOEFF}~,~\text{\IIRSTATE})$\;
   \EALGORITHM
 }
+
+\begin{figure}[h]
+  \includegraphics{figures/dvda/mlp_iir_params.pdf}
+\end{figure}
+
+\clearpage
+
+\subsubsection{Reading Decoding Parameters Example}
+
+\begin{figure}[h]
+  \includegraphics{figures/dvda/mlp_decoding_params_parse.pdf}
+\end{figure}

@@ -16,4 +16,5 @@
   <field size="16" value="0">unknown</field>
   <field size="6" value="0">channel assignment₀</field>
   <field size="6" value="1">channel assignment₁</field>
+  <field size="8" value="00010001b">checksum</field>
 </struct>
