@@ -44,6 +44,9 @@ open_mlp_decoder(struct bs_buffer* frame_data)
     for (s = 0; s < MAX_MLP_SUBSTREAMS; s++) {
         unsigned c;
 
+        decoder->substream[s].bypassed_LSBs = array_ia_new();
+        decoder->substream[s].residuals = array_ia_new();
+
         /*init channel parameters*/
         for (c = 0; c < MAX_MLP_CHANNELS; c++) {
             decoder->substream[s].parameters.channel[c].FIR.coeff =
@@ -69,6 +72,9 @@ close_mlp_decoder(MLPDecoder* decoder)
 
     for (s = 0; s < MAX_MLP_SUBSTREAMS; s++) {
         unsigned c;
+
+        array_ia_del(decoder->substream[s].bypassed_LSBs);
+        array_ia_del(decoder->substream[s].residuals);
 
         /*free channel parameters*/
         for (c = 0; c < MAX_MLP_CHANNELS; c++) {
@@ -321,7 +327,30 @@ read_mlp_substream(MLPDecoder* decoder,
             return status;
     }
 
-    /*FIXME - perform substream decoding*/
+    /*perform substream decoding*/
+    if ((status = read_mlp_block_data(bs,
+                                      substream->parameters.block_size,
+                                      substream->header.min_channel,
+                                      substream->header.max_channel,
+                                      substream->parameters.matrix_len,
+                                      substream->parameters.quant_step_size,
+                                      substream->parameters.matrix,
+                                      substream->parameters.channel,
+                                      substream->bypassed_LSBs,
+                                      substream->residuals)) != OK)
+        return status;
+
+    printf("bypassed LSBs : ");
+    substream->bypassed_LSBs->print(substream->bypassed_LSBs, stdout);
+    printf("\n");
+
+    printf("residuals : ");
+    substream->residuals->print(substream->residuals, stdout);
+    printf("\n");
+
+    /*FIXME - filter residuals*/
+
+    /*FIXME - rematrix residuals*/
 
     return OK;
 }
@@ -384,14 +413,21 @@ read_mlp_decoding_parameters(BitstreamReader* bs,
     unsigned c;
 
     /*parameter presence flags*/
-    if (p->flags[0] && bs->read(bs, 1)) {
+    if (header_present) {
+        if (bs->read(bs, 1)) {
+            bs->parse(bs, "1u 1u 1u 1u 1u 1u 1u 1u",
+                      &(p->flags[0]), &(p->flags[1]), &(p->flags[2]),
+                      &(p->flags[3]), &(p->flags[4]), &(p->flags[5]),
+                      &(p->flags[6]), &(p->flags[7]));
+        } else {
+            p->flags[0] = p->flags[1] = p->flags[2] = p->flags[3] =
+                p->flags[4] = p->flags[5] = p->flags[6] = p->flags[7] = 1;
+        }
+    } else if (p->flags[0] && bs->read(bs, 1)) {
         bs->parse(bs, "1u 1u 1u 1u 1u 1u 1u 1u",
                   &(p->flags[0]), &(p->flags[1]), &(p->flags[2]),
                   &(p->flags[3]), &(p->flags[4]), &(p->flags[5]),
                   &(p->flags[6]), &(p->flags[7]));
-    } else if (header_present) {
-        p->flags[0] = p->flags[1] = p->flags[2] = p->flags[3] =
-            p->flags[4] = p->flags[5] = p->flags[6] = p->flags[7] = 1;
     }
 
     /*block size*/
@@ -611,4 +647,119 @@ read_mlp_iir_params(BitstreamReader* bs,
         state->reset(state);
         return OK;
     }
+}
+
+mlp_status
+read_mlp_block_data(BitstreamReader* bs,
+                    unsigned block_size,
+                    unsigned min_channel,
+                    unsigned max_channel,
+                    unsigned matrix_len,
+                    const unsigned* quant_step_size,
+                    const struct matrix_parameters* matrix,
+                    const struct channel_parameters* channel,
+                    array_ia* bypassed_LSBs,
+                    array_ia* residuals)
+{
+    int signed_huffman_offset[MAX_MLP_CHANNELS];
+    unsigned LSB_bits[MAX_MLP_CHANNELS];
+    static struct br_huffman_table mlp_codebook1[][0x200] =
+#include "mlp_codebook1.h"
+        ;
+    static struct br_huffman_table mlp_codebook2[][0x200] =
+#include "mlp_codebook2.h"
+        ;
+    static struct br_huffman_table mlp_codebook3[][0x200] =
+#include "mlp_codebook3.h"
+        ;
+
+    unsigned c;
+    unsigned i;
+
+    /*calculate signed Huffman offset for each channel*/
+    for (c = min_channel; c <= max_channel; c++) {
+        LSB_bits[c] = channel[c].huffman_lsbs - quant_step_size[c];
+        if (channel[c].codebook) {
+            const int sign_shift = LSB_bits[c] + 2 - channel[c].codebook;
+            if (sign_shift >= 0) {
+                signed_huffman_offset[c] =
+                    channel[c].huffman_offset -
+                    (7 * (1 << LSB_bits[c])) -
+                    (1 << sign_shift);
+            } else {
+                signed_huffman_offset[c] =
+                    channel[c].huffman_offset -
+                    (7 * (1 << LSB_bits[c]));
+            }
+        } else {
+            const int sign_shift = LSB_bits[c] - 1;
+            if (sign_shift >= 0) {
+                signed_huffman_offset[c] =
+                    channel[c].huffman_offset -
+                    (1 << sign_shift);
+            } else {
+                signed_huffman_offset[c] = channel[c].huffman_offset;
+            }
+        }
+    }
+
+    /*reset bypassed_LSB and residuals arrays*/
+    bypassed_LSBs->reset(bypassed_LSBs);
+    for (i = 0; i < matrix_len; i++)
+        bypassed_LSBs->append(bypassed_LSBs);
+    residuals->reset(residuals);
+    for (i = 0; i <= max_channel; i++)
+        /*residual channels 0 to "min_channel"
+          will be initialized but not actually used*/
+        residuals->append(residuals);
+
+    for (i = 0; i < block_size; i++) {
+        unsigned m;
+
+        /*read bypassed LSBs for each matrix*/
+        for (m = 0; m < matrix_len; m++) {
+            array_i* bypassed_LSB = bypassed_LSBs->_[m];
+            if (matrix[m].LSB_bypass) {
+                bypassed_LSB->append(bypassed_LSB, bs->read(bs, 1));
+            } else {
+                bypassed_LSB->append(bypassed_LSB, 0);
+            }
+        }
+
+        /*read residuals for each channel*/
+        for (c = min_channel; c <= max_channel; c++) {
+            array_i* residual = residuals->_[c];
+            int MSB;
+            unsigned LSB;
+
+            switch (channel[c].codebook) {
+            case 0:
+                MSB = 0;
+                break;
+            case 1:
+                MSB = bs->read_huffman_code(bs, mlp_codebook1);
+                break;
+            case 2:
+                MSB = bs->read_huffman_code(bs, mlp_codebook2);
+                break;
+            case 3:
+                MSB = bs->read_huffman_code(bs, mlp_codebook3);
+                break;
+            default:
+                MSB = -1;
+                break;
+            }
+            if (MSB == -1)
+                return INVALID_BLOCK_DATA;
+
+            LSB = bs->read(bs, LSB_bits[c]);
+
+            residual->append(residual,
+                             ((MSB << LSB_bits[c]) +
+                              LSB +
+                              signed_huffman_offset[c]) << quant_step_size[c]);
+        }
+    }
+
+    return OK;
 }

@@ -40,7 +40,8 @@ typedef enum {OK,
               INVALID_RESTART_HEADER,
               INVALID_DECODING_PARAMETERS,
               INVALID_MATRIX_PARAMETERS,
-              INVALID_CHANNEL_PARAMETERS} mlp_status;
+              INVALID_CHANNEL_PARAMETERS,
+              INVALID_BLOCK_DATA} mlp_status;
 
 struct major_sync {
     unsigned bits_per_sample_0;
@@ -116,6 +117,9 @@ struct substream {
     struct substream_info info;
     struct restart_header header;
     struct decoding_parameters parameters;
+
+    array_ia* bypassed_LSBs;
+    array_ia* residuals;
 };
 
 typedef struct {
@@ -194,5 +198,17 @@ read_mlp_iir_params(BitstreamReader* bs,
                     unsigned* shift,
                     array_i* coeffs,
                     array_i* state);
+
+mlp_status
+read_mlp_block_data(BitstreamReader* bs,
+                    unsigned block_size,
+                    unsigned min_channel,
+                    unsigned max_channel,
+                    unsigned matrix_len,
+                    const unsigned* quant_step_size,
+                    const struct matrix_parameters* matrix,
+                    const struct channel_parameters* channel,
+                    array_ia* bypassed_LSBs,
+                    array_ia* residuals);
 
 #endif

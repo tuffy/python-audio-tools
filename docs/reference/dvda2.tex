@@ -402,21 +402,26 @@ means both substreams will be followed by 8 bit parity and CRC-8 values.
 \SetKwData{NOISEGENSEED}{noise gen seed}
 \SetKwData{CHANNELASSIGNMENT}{channel assignment}
 \SetKwData{LAST}{last block}
+\SetKwData{BYPASSEDLSB}{bypassed LSB}
+\SetKwData{RESIDUAL}{residual}
 \Repeat{$\text{\LAST}_s = 1$}{
   $\text{\PARAMSPRESENT}_s \leftarrow$ \READ 1 unsigned bit\;
   \eIf{$\text{\PARAMSPRESENT}_s = 1$}{
     $\text{\HEADERPRESENT}_s \leftarrow$ \READ 1 unsigned bit\;
     \eIf{$\text{\HEADERPRESENT}_s = 1$}{
       $(\text{\MINCHANNEL}_s~,~\text{\MAXCHANNEL}_s~,~\text{\MAXMATRIXCHANNEL}_s~,~\text{\NOISESHIFT}_s~,~\text{\NOISEGENSEED}_s~,\newline~\text{\CHANNELASSIGNMENT}_s) \leftarrow$ read restart header\;
-      read decoding parameters with defaults\; %%FIXME
     }{
       $(\text{\MINCHANNEL}_s~,~\text{\MAXCHANNEL}_s~,~\text{\MAXMATRIXCHANNEL}_s~,~\text{\NOISESHIFT}_s~,~\text{\NOISEGENSEED}_s~,\newline~\text{\CHANNELASSIGNMENT}_s) \leftarrow$ from previous block's restart header in substream\;
-      read decoding parameters without defaults\; %%FIXME
     }
+    read decoding parameters with $\text{\HEADERPRESENT}_s$\;
   }{
     use substream's decoding parameters from previous block\; %%FIXME
   }
+  \BlankLine
+  $(\text{\BYPASSEDLSB}_{s}~,~\text{\RESIDUAL}_s) \leftarrow$ read block data based on decoding parameters\;
+  \BlankLine
   decode block data based on restart header / decoding parameters\;
+  \BlankLine
   $\text{\LAST}_s \leftarrow$ \READ 1 unsigned bit\;
 }
 \EALGORITHM
@@ -516,16 +521,21 @@ $\text{\CHECKSUM} \leftarrow$ \READ 8 unsigned bits\;
 \SetKwData{OUTPUTSHIFT}{output shift}
 \SetKwData{QUANTSTEP}{quant step size}
 \SetKwData{FLAGS}{flags}
-\eIf(\tcc*[f]{parameter presence flags}){$(\text{\HEADERPRESENT}_s = 1)$ \OR $(\text{\FLAGS}_{s~0} = 1)$}{
-  $\text{\PARAMSPRESENT} \leftarrow$ \READ 1 unsigned bit\;
-  \eIf{$\text{\PARAMSPRESENT} = 1$}{
+\uIf(\tcc*[f]{parameter presence flags}){$\text{\HEADERPRESENT}_s = 1$}{
+  \eIf{$((\READ~\textnormal{1 unsigned bit}) = 1)$}{
     \For{f = 0 \emph{\KwTo}8}{
       $\text{\FLAGS}_{s~f} \leftarrow$ \READ 1 unsigned bit\;
     }
   }{
     $\text{\FLAGS}_s \leftarrow \texttt{[1, 1, 1, 1, 1, 1, 1, 1]}$\;
   }
-}{
+}
+\uElseIf{$(\text{\FLAGS}_{s~0} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
+  \For{f = 0 \emph{\KwTo}8}{
+    $\text{\FLAGS}_{s~f} \leftarrow$ \READ 1 unsigned bit\;
+  }
+}
+\Else{
   $\text{\FLAGS}_s \leftarrow$ from previous block in substream\;
 }
 \uIf(\tcc*[f]{block size}){$(\text{\FLAGS}_{s~7} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
@@ -799,3 +809,208 @@ $\text{\CHECKSUM} \leftarrow$ \READ 8 unsigned bits\;
 \begin{figure}[h]
   \includegraphics{figures/dvda/mlp_decoding_params_parse.pdf}
 \end{figure}
+
+\clearpage
+
+For example, given that a restart header is present with the values:
+\begin{table}[h]
+  {\relsize{-1}
+    \begin{tabular}{rl}
+      min channel & 0 \\
+      max channel & 1 \\
+      max matrix channel & 1 \\
+    \end{tabular}
+  }
+\end{table}
+\par
+\noindent
+our decoding parameters for a given substream are:
+\begin{table}[h]
+{\relsize{-1}
+  \begin{tabular}{rlrl}
+    \hline
+    flags present & 0 \\
+    flags & \texttt{[1, 1, 1, 1, 1, 1, 1, 1]} \\
+    \hline
+    block size present & 0 \\
+    block size & 8 PCM frames \\
+    \hline
+    matrix parameters present & 1 \\
+    matrix count & 2 \\
+    $\text{matrix out channel}_0$ & 1 &
+    $\text{matrix out channel}_1$ & 0 \\
+    $\text{fractional bits}_0$ & 13 &
+    $\text{fractional bits}_1$ & 13 \\
+    $\text{LSB bypass}_0$ & 0 &
+    $\text{LSB bypass}_1$ & 0 \\
+    $\text{matrix coeff. present}_{0~0}$ & 0 &
+    $\text{matrix coeff. present}_{1~0}$ & 1 \\
+    $\text{matrix coeff.}_{0~0}$ & 0 &
+    $\text{matrix coeff.}_{1~0}$ & -2053 \\
+    $\text{matrix coeff. present}_{0~1}$ & 1 &
+    $\text{matrix coeff. present}_{1~1}$ & 0 \\
+    $\text{matrix coeff.}_{0~1}$ & -2053 &
+    $\text{matrix coeff.}_{1~1}$ & 0 \\
+    $\text{matrix coeff. present}_{0~2}$ & 1 &
+    $\text{matrix coeff. present}_{1~2}$ & 1 \\
+    $\text{matrix coeff.}_{0~2}$ & -32 &
+    $\text{matrix coeff.}_{1~2}$ & 32 \\
+    $\text{matrix coeff. present}_{0~3}$ & 1 &
+    $\text{matrix coeff. present}_{1~3}$ & 1 \\
+    $\text{matrix coeff.}_{0~3}$ & 32 &
+    $\text{matrix coeff.}_{1~3}$ & 32 \\
+    \hline
+    output shift present & 1 \\
+    $\text{output shift}_0$ & 1 &
+    $\text{output shift}_1$ & 1 \\
+    \hline
+    quantum step size present & 0 \\
+    \hline
+    $\text{channel parameters present}_0$ & 1 &
+    $\text{channel parameters present}_1$ & 1 \\
+    $\text{FIR parameters present}_0$ & 0 &
+    $\text{FIR parameters present}_1$ & 0 \\
+    $\text{IIR parameters present}_0$ & 0 &
+    $\text{IIR parameters present}_1$ & 0 \\
+    $\text{Huffman offset present}_0$ & 0 &
+    $\text{Huffman offset present}_1$ & 0 \\
+    $\text{codebook}_0$ & 0 &
+    $\text{codebook}_1$ & 0 \\
+    $\text{Huffman LSB}_0$ & 1 &
+    $\text{Huffman LSB}_1$ & 1 \\
+    \hline
+  \end{tabular}
+}
+\end{table}
+
+\clearpage
+
+\subsection{Reading Block Data}
+{\relsize{-1}
+\ALGORITHM{block size, min channel, max channel, matrix count; LSB bypass for each matrix;\newline quant step size, Huffman LSB, codebook, Huffman offset for each channel}{bypassed LSBs for each matrix, residuals for each channel}
+\SetKwData{MINCHANNEL}{min channel}
+\SetKwData{MAXCHANNEL}{max channel}
+\SetKwData{CODEBOOK}{codebook}
+\SetKwData{LSBBITS}{LSB bits}
+\SetKwData{HUFFMANLSBS}{Huffman LSBs}
+\SetKwData{QUANTSTEP}{quant step size}
+\SetKwData{SIGNSHIFT}{sign shift}
+\SetKwData{HUFFMANOFFSET}{Huffman offset}
+\SetKwData{SIGNEDHUFFMANOFFSET}{signed Huffman offset}
+\SetKwData{BLOCKSIZE}{block size}
+\SetKwData{MATRIXCOUNT}{matrix count}
+\SetKwData{LSBBYPASS}{LSB bypass}
+\SetKwData{BYPASSEDLSB}{bypassed LSB}
+\SetKwData{MSB}{MSB}
+\SetKwData{LSB}{LSB}
+\SetKwData{RESIDUAL}{residual}
+\For(\tcc*[f]{calculate signed Huffman offset}){c = $\text{\MINCHANNEL}_s$ \emph{\KwTo}$(\text{\MAXCHANNEL}_s + 1)$}{
+  $\text{\LSBBITS}_{s~c} \leftarrow \text{\HUFFMANLSBS}_{s~c} - \text{\QUANTSTEP}_{s~c}$\;
+  \eIf{$\text{\CODEBOOK}_{s~c} > 0$}{
+    $\text{\SIGNSHIFT}_{s~c} \leftarrow \text{\LSBBITS}_{s~c} + 2 - \text{\CODEBOOK}_{s~c}$\;
+    \eIf{$\text{\SIGNSHIFT}_{s~c} \geq 0$}{
+      $\text{\SIGNEDHUFFMANOFFSET}_{s~c} \leftarrow \text{\HUFFMANOFFSET}_{s~c} - 7 \times 2 ^ {\text{\LSBBITS}_{s~c}} - 2 ^ {\text{\SIGNSHIFT}_{s~c}}$\;
+    }{
+      $\text{\SIGNEDHUFFMANOFFSET}_{s~c} \leftarrow \text{\HUFFMANOFFSET}_{s~c} - 7 \times 2 ^ {\text{\LSBBITS}_{s~c}}$\;
+    }
+  }{
+    $\text{\SIGNSHIFT}_{s~c} \leftarrow \text{\LSBBITS}_{s~c} - 1$\;
+    \eIf{$\text{\SIGNSHIFT}_{s~c} \geq 0$}{
+      $\text{\SIGNEDHUFFMANOFFSET}_{s~c} \leftarrow \text{\HUFFMANOFFSET}_{s~c} - 2 ^ {\text{\SIGNSHIFT}_{s~c}}$\;
+    }{
+      $\text{\SIGNEDHUFFMANOFFSET}_{s~c} \leftarrow \text{\HUFFMANOFFSET}_{s~c}$\;
+    }
+  }
+}
+\BlankLine
+\For{i = 0 \emph{\KwTo}$\text{\BLOCKSIZE}_s$}{
+  \For(\tcc*[f]{read bypassed LSBs for each matrix}){m = 0 \emph{\KwTo}$\text{\MATRIXCOUNT}_s$}{
+    \eIf{$\text{\LSBBYPASS}_{s~m} = 1$}{
+      $\text{\BYPASSEDLSB}_{s~m~i} \leftarrow$ \READ 1 unsigned bit\;
+    }{
+      $\text{\BYPASSEDLSB}_{s~m~i} \leftarrow 0$\;
+    }
+  }
+  \For(\tcc*[f]{read residuals for each channel}){c = $\text{\MINCHANNEL}_s$ \emph{\KwTo}$(\text{\MAXCHANNEL}_s + 1)$}{
+    \uIf{$\text{\CODEBOOK}_{s~c} = 0$}{
+      $\text{\MSB}_{s~c~i} \leftarrow 0$\;
+    }
+    \uElseIf{$1 \leq \text{\CODEBOOK}_{s~c} \leq 3$}{
+      $\text{\MSB}_{s~c~i} \leftarrow$ read Huffman value from $\text{\CODEBOOK}_{s~c}$\;
+    }
+    \Else{$\text{\MSB}_{s~c~i} \leftarrow -1$}
+    \ASSERT $\text{\MSB}_{s~c~i} \geq 0$\;
+    \BlankLine
+    $\text{\LSB}_{s~c~i} \leftarrow$ \READ $(\text{\LSBBITS}_{s~c})$ unsigned bits\;
+    $\text{\RESIDUAL}_{s~c~i} \leftarrow ((\text{\MSB}_{s~c~i} \times 2 ^ {\text{\LSBBITS}_{s~c}}) + \text{\LSB}_{s~c~i} + \text{\SIGNEDHUFFMANOFFSET}_{s~c}) \times 2 ^ {\text{\QUANTSTEP}_{s~c}}$\;
+  }
+}
+\BlankLine
+\Return $(\text{\BYPASSEDLSB}_{s}~,~\text{\RESIDUAL}_s)$\;
+\EALGORITHM
+}
+
+\clearpage
+
+\begin{figure}[h]
+  \label{mlp_codebooks}
+  \includegraphics{figures/dvda/mlp_codebook1.pdf}
+  \caption{Codebook 1}
+  \vskip 2em
+  \includegraphics{figures/dvda/mlp_codebook2.pdf}
+  \caption{Codebook 2}
+  \vskip 2em
+  \includegraphics{figures/dvda/mlp_codebook3.pdf}
+  \caption{Codebook 3}
+\end{figure}
+
+\clearpage
+
+\subsubsection{Reading Block Data Example}
+Given the channel parameters:
+\begin{table}[h]
+{\relsize{-1}
+\begin{tabular}{rrr}
+& channel 0 & channel 1 \\
+\hline
+$\text{Huffman offset}_c$ & 0 & 0 \\
+$\text{codebook}_c$ & 1 & 2 \\
+$\text{Huffman LSBs}_c$ & 2 & 2 \\
+\hline
+$\text{LSB bits}_c$ & 2 & 2 \\
+$\text{sign shift}_c$ & $3$ & $2$ \\
+$\text{signed Huffman offset}_c$ & $0 - 7 \times 2 ^ 2 - 2 ^ 3 = -36$ & $0 - 7 \times 2 ^ 2 - 2 ^ 2 = -32$ \\
+\end{tabular}
+}
+\end{table}
+
+\begin{figure}[h]
+  \includegraphics{figures/dvda/mlp_block_parse.pdf}
+\end{figure}
+{\relsize{-1}
+  \begin{tabular}{r||rr>{$}r<{$}|rr>{$}r<{$}}
+    $i$ & $\text{MSB}_{0~i}$ & $\text{LSB}_{0~i}$ & \text{residual}_{0~i} &
+    $\text{MSB}_{1~i}$ & $\text{LSB}_{1~i}$ & \text{residual}_{1~i} \\
+    \hline
+    0 & 9 & 3 & 9 \times 2 ^ 2 + 3 - 36 = 3 &
+    7 & 1 & 7 \times 2 ^ 2 + 1 - 32 = -3 \\
+    1 & 11 & 2 & 11 \times 2 ^ 2 + 2 - 36 = 10 &
+    7 & 2 & 7 \times 2 ^ 2 + 2 - 32 = -2 \\
+    2 & 11 & 0 & 11 \times 2 ^ 2 + 0 - 36 = 8 &
+    8 & 0 & 8 \times 2 ^ 2 + 0 - 32 = 0 \\
+    3 & 8 & 3 & 8 \times 2 ^ 2 + 3 - 36 = -1 &
+    9 & 3 & 9 \times 2 ^ 2 + 3 - 32 = 7 \\
+    4 & 8 & 3 & 8 \times 2 ^ 2 + 3 - 36 = -1 &
+    3 & 3 & 3 \times 2 ^ 2 + 3 - 32 = -17 \\
+    5 & 11 & 0 & 11 \times 2 ^ 2 + 0 - 36 = 8 &
+    4 & 1 & 4 \times 2 ^ 2 + 1 - 32 = -15 \\
+    6 & 12 & 3 & 12 \times 2 ^ 2 + 3 - 36 = 15 &
+    6 & 0 & 6 \times 2 ^ 2 + 0 - 32 = -8 \\
+    7 & 11 & 1 & 11 \times 2 ^ 2 + 1 - 36 = 9 &
+    6 & 3 & 6 \times 2 ^ 2 + 3 - 32 = -5 \\
+    8 & 5 & 0 & 5 \times 2 ^ 2 + 0 - 36 = -16 &
+    8 & 0 & 8 \times 2 ^ 2 + 0 - 32 = 0 \\
+    9 & 7 & 0 & 7 \times 2 ^ 2 + 0 - 36 = -8 &
+    8 & 3 & 8 \times 2 ^ 2 + 3 - 32 = 3 \\
+  \end{tabular}
+}
