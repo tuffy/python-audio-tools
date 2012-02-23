@@ -37,7 +37,7 @@ BITSHIFT_SIZE = 2
  FN_ZERO,
  FN_VERBATIM) = range(10)
 
-def encode_shn(filename, pcmreader,
+def encode_shn(filename, pcmreader, is_big_endian, signed_samples,
                header_data, footer_data="", block_size=256):
     """filename is a string to the output file's path
     pcmreader is a PCMReader object
@@ -60,13 +60,26 @@ def encode_shn(filename, pcmreader,
 
     #write header from PCMReader info and encoding options
     if (pcmreader.bits_per_sample == 8):
-        write_long(writer, 2) #unsigned, 8-bit
-        unsigned = True
-        sign_adjustment = 1 << (pcmreader.bits_per_sample - 1)
+        if (signed_samples):
+            write_long(writer, 1) #signed, 8-bit
+            sign_adjustment = 0
+        else:
+            write_long(writer, 2) #unsigned, 8-bit
+            sign_adjustment = 1 << (pcmreader.bits_per_sample - 1)
+        #8-bit samples have no endianness
     elif (pcmreader.bits_per_sample == 16):
-        write_long(writer, 5) #signed, 16-bit
-        unsigned = False
-        sign_adjustment = 0
+        if (signed_samples):
+            if (is_big_endian):
+                write_long(writer, 3) #signed, 16-bit, big-endian
+            else:
+                write_long(writer, 5) #signed, 16-bit, little-endian
+            sign_adjustment = 0
+        else:
+            if (is_big_endian):
+                write_long(writer, 4) #unsigned, 16-bit, big-endian
+            else:
+                write_long(writer, 6) #unsigned, 16-bit, little-endian
+            sign_adjustment = 1 << (pcmreader.bits_per_sample - 1)
     else:
         raise ValueError("unsupported bits_per_sample")
 
@@ -98,10 +111,10 @@ def encode_shn(filename, pcmreader,
         #split chunk into individual channels
         for c in xrange(pcmreader.channels):
             #convert PCM data to unsigned, if necessary
-            if (unsigned):
-                channel = [s + sign_adjustment for s in frame.channel(c)]
-            else:
+            if (signed_samples):
                 channel = list(frame.channel(c))
+            else:
+                channel = [s + sign_adjustment for s in frame.channel(c)]
 
             #if all samples are 0, issue a ZERO command
             if (all_zeroes(channel)):
@@ -115,6 +128,7 @@ def encode_shn(filename, pcmreader,
                 #issue a new BITSHIFT command
                 wasted_bits = wasted_bps(channel)
                 if (wasted_bits != left_shift):
+                    print "writing wasted bits : %s" % (wasted_bits)
                     write_unsigned(writer, COMMAND_SIZE, FN_BITSHIFT)
                     write_unsigned(writer, BITSHIFT_SIZE, wasted_bits)
                     left_shift = wasted_bits

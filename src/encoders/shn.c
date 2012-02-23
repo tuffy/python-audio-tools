@@ -25,6 +25,8 @@ encoders_encode_shn(PyObject *dummy,
 {
     static char *kwlist[] = {"filename",
                              "pcmreader",
+                             "is_big_endian",
+                             "signed_samples",
                              "header_data",
                              "footer_data",
                              "block_size",
@@ -34,6 +36,8 @@ encoders_encode_shn(PyObject *dummy,
     BitstreamWriter* writer;
     PyObject *pcmreader_obj;
     pcmreader* pcmreader;
+    int is_big_endian = 0;
+    int signed_samples = 0;
     char* header_data;
 #ifdef PY_SSIZE_T_CLEAN
     Py_ssize_t header_size;
@@ -51,10 +55,12 @@ encoders_encode_shn(PyObject *dummy,
     unsigned i;
 
     /*fetch arguments*/
-    if (!PyArg_ParseTupleAndKeywords(args, keywds, "sOs#|s#I",
+    if (!PyArg_ParseTupleAndKeywords(args, keywds, "sOiis#|s#I",
                                      kwlist,
                                      &filename,
                                      &pcmreader_obj,
+                                     &is_big_endian,
+                                     &signed_samples,
                                      &header_data,
                                      &header_size,
 
@@ -92,7 +98,11 @@ encoders_encode_shn(PyObject *dummy,
 
     /*write Shorten header*/
     write_header(writer,
-                 pcmreader->bits_per_sample, pcmreader->channels, block_size);
+                 pcmreader->bits_per_sample,
+                 is_big_endian,
+                 signed_samples,
+                 pcmreader->channels,
+                 block_size);
 
     /*issue initial VERBATIM command with header data*/
     write_unsigned(writer, COMMAND_SIZE, FN_VERBATIM);
@@ -101,7 +111,7 @@ encoders_encode_shn(PyObject *dummy,
         write_unsigned(writer, VERBATIM_BYTE_SIZE, (uint8_t)header_data[i]);
 
     /*process PCM frames */
-    if (encode_audio(writer, pcmreader, block_size))
+    if (encode_audio(writer, pcmreader, signed_samples, block_size))
         goto error;
 
     /*if there's footer data, issue a VERBATIM command for it*/
@@ -137,10 +147,27 @@ encoders_encode_shn(PyObject *dummy,
 static void
 write_header(BitstreamWriter* bs,
              unsigned bits_per_sample,
+             int is_big_endian,
+             int signed_samples,
              unsigned channels,
              unsigned block_size)
 {
-    write_long(bs, bits_per_sample == 8 ? 2 : 5);
+    if (bits_per_sample == 8)
+        if (signed_samples)
+            write_long(bs, 1); /*signed, 8-bit*/
+        else
+            write_long(bs, 2); /*unsigned, 8-bit*/
+    else
+        if (signed_samples)
+            if (is_big_endian)
+                write_long(bs, 3); /*signed, 16-bit, big-endian*/
+            else
+                write_long(bs, 5); /*signed, 16-bit, little-endian*/
+        else
+            if (is_big_endian)
+                write_long(bs, 4); /*unsigned, 16-bit, big-endian*/
+            else
+                write_long(bs, 6); /*unsigned, 16-bit, little-endian*/
     write_long(bs, channels);
     write_long(bs, block_size);
     write_long(bs, 0); /*maximum LPC*/
@@ -151,11 +178,11 @@ write_header(BitstreamWriter* bs,
 static int
 encode_audio(BitstreamWriter* bs,
              pcmreader* pcmreader,
+             int signed_samples,
              unsigned block_size)
 {
     unsigned left_shift = 0;
     int sign_adjustment;
-    int is_unsigned;
 
     /*allocate some temporary buffers*/
     array_ia* frame = array_ia_new();
@@ -169,18 +196,20 @@ encode_audio(BitstreamWriter* bs,
     for (i = 0; i < pcmreader->channels; i++)
         wrapped_samples->append(wrapped_samples);
 
-    if (pcmreader->bits_per_sample == 8) {
+    if (!signed_samples) {
         sign_adjustment = 1 << (pcmreader->bits_per_sample - 1);
-        is_unsigned = 1;
     } else {
         sign_adjustment = 0;
-        is_unsigned = 0;
     }
 
     if (pcmreader->read(pcmreader, block_size, frame))
         goto error;
 
     while (frame->_[0]->len > 0) {
+#ifndef STANDALONE
+        Py_BEGIN_ALLOW_THREADS
+#endif
+
         if (frame->_[0]->len != block_size) {
             /*PCM frame count has changed, so issue BLOCKSIZE command*/
             block_size = frame->_[0]->len;
@@ -193,7 +222,7 @@ encode_audio(BitstreamWriter* bs,
             array_i* wrapped = wrapped_samples->_[c];
 
             /*convert signed samples to unsigned, if necessary*/
-            if (is_unsigned)
+            if (sign_adjustment != 0)
                 for (i = 0; i < channel->len; i++)
                     channel->_[i] += sign_adjustment;
 
@@ -239,6 +268,10 @@ encode_audio(BitstreamWriter* bs,
                 wrapped->tail(wrapped, SAMPLES_TO_WRAP, wrapped);
             }
         }
+
+#ifndef STANDALONE
+        Py_END_ALLOW_THREADS
+#endif
 
         if (pcmreader->read(pcmreader, block_size, frame))
             goto error;

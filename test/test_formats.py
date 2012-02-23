@@ -1661,43 +1661,6 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
                     BitstreamReader(s, 0)))
 
     @FORMAT_AIFF
-    def test_channel_mask(self):
-        if (self.audio_class is audiotools.AudioFile):
-            return
-
-        #AIFF's support channels are a little odd
-
-        temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
-        try:
-            for mask in [["front_center"],
-                         ["front_left",
-                          "front_right"],
-                         ["front_left",
-                          "front_right",
-                          "front_center"],
-                         ["front_left",
-                          "front_right",
-                          "back_left",
-                          "back_right"],
-                         ["front_left",
-                          "front_right",
-                          "front_center",
-                          "back_center",
-                          "side_left",
-                          "side_right"]]:
-                cm = audiotools.ChannelMask.from_fields(**dict(
-                        [(f,True) for f in mask]))
-                track = self.audio_class.from_pcm(temp.name, BLANK_PCM_Reader(
-                        1, channels=len(cm), channel_mask=int(cm)))
-                self.assertEqual(track.channels(), len(cm))
-                self.assertEqual(track.channel_mask(), cm)
-                track = audiotools.open(temp.name)
-                self.assertEqual(track.channels(), len(cm))
-                self.assertEqual(track.channel_mask(), cm)
-        finally:
-            temp.close()
-
-    @FORMAT_AIFF
     def test_verify(self):
         #test truncated file
         for aiff_file in ["aiff-8bit.aiff",
@@ -4043,6 +4006,8 @@ class ShortenFileTest(TestForeignWaveChunks,
 
         options = encode_options.copy()
         (head, tail) = temp_input_wave.pcm_split()
+        options["is_big_endian"] = False
+        options["signed_samples"] = (pcmreader.bits_per_sample == 16)
         options["header_data"] = head
         if (len(tail) > 0):
             options["footer_data"] = tail
@@ -4085,9 +4050,68 @@ class ShortenFileTest(TestForeignWaveChunks,
                          None)
 
         temp_file.close()
-        temp_input_wave_file.close()
         temp_wav_file1.close()
         temp_wav_file2.close()
+
+        #then perform PCM -> aiff -> Shorten -> PCM testing
+
+        #construct a temporary wave file from pcmreader
+        temp_input_aiff_file = tempfile.NamedTemporaryFile(suffix=".aiff")
+        temp_input_aiff = temp_input_wave.convert(temp_input_aiff_file.name,
+                                                  audiotools.AiffAudio)
+        temp_input_aiff.verify()
+
+        options = encode_options.copy()
+        options["is_big_endian"] = True
+        options["signed_samples"] = True
+        (head, tail) = temp_input_aiff.pcm_split()
+        options["header_data"] = head
+        if (len(tail) > 0):
+            options["footer_data"] = tail
+
+        self.encode(temp_file.name,
+                    temp_input_aiff.to_pcm(),
+                    **options)
+
+        shn = audiotools.open(temp_file.name)
+        self.assert_(shn.total_frames() > 0)
+
+        temp_aiff_file1 = tempfile.NamedTemporaryFile(suffix=".aiff")
+        temp_aiff_file2 = tempfile.NamedTemporaryFile(suffix=".aiff")
+
+        #first, ensure the Shorten-encoded file
+        #has the same MD5 signature as pcmreader once decoded
+        md5sum = md5()
+        d = self.decoder(temp_file.name)
+        f = d.read(audiotools.BUFFER_SIZE)
+        while (len(f) > 0):
+            md5sum.update(f.to_bytes(False, True))
+            f = d.read(audiotools.BUFFER_SIZE)
+        d.close()
+        self.assertEqual(md5sum.digest(), pcmreader.digest())
+
+        #then compare our .to_aiff() output
+        #with that of the Shorten reference decoder
+        shn.convert(temp_aiff_file1.name, audiotools.AiffAudio)
+
+        subprocess.call([audiotools.BIN["shorten"],
+                         "-x", shn.filename, temp_aiff_file2.name])
+
+        aiff = audiotools.AiffAudio(temp_aiff_file1.name)
+        aiff.verify()
+        aiff = audiotools.AiffAudio(temp_aiff_file2.name)
+        aiff.verify()
+
+        self.assertEqual(audiotools.pcm_frame_cmp(
+                audiotools.AiffAudio(temp_aiff_file1.name).to_pcm(),
+                audiotools.AiffAudio(temp_aiff_file2.name).to_pcm()),
+                         None)
+
+        temp_file.close()
+        temp_input_aiff_file.close()
+        temp_input_wave_file.close()
+        temp_aiff_file1.close()
+        temp_aiff_file2.close()
 
     @FORMAT_SHORTEN
     def test_small_files(self):

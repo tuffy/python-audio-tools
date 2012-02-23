@@ -289,7 +289,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
         except IOError:
             raise EncodingError(str(msg))
 
-        if ((header[0:4] == 'FORM') and (head[8:12] == 'AIFF')):
+        if ((head[0:4] == 'FORM') and (head[8:12] == 'AIFF')):
             try:
                 f = open(aiff_filename, 'wb')
             except IOError, msg:
@@ -302,7 +302,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
                 decoder = decoders.SHNDecoder(self.filename)
                 frame = decoder.read(4096)
                 while (len(frame) > 0):
-                    f.write(frame.to_bytes(False, self.bits_per_sample() > 8))
+                    f.write(frame.to_bytes(True, True))
                     current_frames += frame.frames
                     if (progress is not None):
                         progress(current_frames, total_frames)
@@ -340,11 +340,15 @@ class ShortenAudio(WaveContainer, AiffContainer):
             if (len(tail) == 0):
                 encode_shn(filename=filename,
                            pcmreader=to_pcm_progress(wave, progress),
+                           is_big_endian=False,
+                           signed_samples=wave.bits_per_sample() == 16,
                            header_data=head,
                            block_size=block_size)
             else:
                 encode_shn(filename=filename,
                            pcmreader=to_pcm_progress(wave, progress),
+                           is_big_endian=False,
+                           signed_samples=wave.bits_per_sample() == 16,
                            header_data=head,
                            footer_data=tail,
                            block_size=block_size)
@@ -375,21 +379,25 @@ class ShortenAudio(WaveContainer, AiffContainer):
             raise UnsupportedBitsPerSample(filename, aiff.bits_per_sample())
 
         (head, tail) = aiff.pcm_split()
-        if (len(tail) > 0):
-            blocks = [head, None, tail]
-        else:
-            blocks = [head, None]
 
-        import audiotools.encoders
+        from .encoders import encode_shn
 
         try:
-            audiotools.encoders.encode_shn(
-                filename=filename,
-                pcmreader=to_pcm_progress(aiff, progress),
-                block_size=block_size,
-                file_type={8: 1,  # 8-bit AIFF seems to be signed
-                           16: 3}[aiff.bits_per_sample()],
-                verbatim_chunks=blocks)
+            if (len(tail) == 0):
+                encode_shn(filename=filename,
+                           pcmreader=to_pcm_progress(aiff, progress),
+                           is_big_endian=True,
+                           signed_samples=True,
+                           header_data=head,
+                           block_size=block_size)
+            else:
+                encode_shn(filename=filename,
+                           pcmreader=to_pcm_progress(aiff, progress),
+                           is_big_endian=True,
+                           signed_samples=True,
+                           header_data=head,
+                           footer_data=tail,
+                           block_size=block_size)
 
             return cls(filename)
         except IOError, err:

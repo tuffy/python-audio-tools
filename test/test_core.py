@@ -2011,7 +2011,7 @@ class Bitstream(unittest.TestCase):
         reader.unmark()
 
 
-    @LIB_CORE
+    @LIB_BITSTREAM
     def test_init_error(self):
         from audiotools.bitstream import BitstreamAccumulator
         from audiotools.bitstream import BitstreamReader
@@ -2025,7 +2025,7 @@ class Bitstream(unittest.TestCase):
         self.assertRaises(TypeError, BitstreamWriter)
         self.assertRaises(TypeError, BitstreamReader)
 
-    @LIB_CORE
+    @LIB_BITSTREAM
     def test_simple_reader(self):
         from audiotools.bitstream import BitstreamReader,HuffmanTree
 
@@ -2682,7 +2682,7 @@ class Bitstream(unittest.TestCase):
     def __check_output_file__(self, temp_file):
         self.assertEqual(open(temp_file.name, "rb").read(), "\xB1\xED\x3B\xC1")
 
-    @LIB_CORE
+    @LIB_BITSTREAM
     def test_edge_cases(self):
         from audiotools.bitstream import BitstreamReader
 
@@ -2758,7 +2758,7 @@ class Bitstream(unittest.TestCase):
         self.__test_edge_writer__(self.__get_edge_accumulator_le__,
                                   self.__validate_edge_accumulator_le__)
 
-    @LIB_CORE
+    @LIB_BITSTREAM
     def test_python_reader(self):
         from audiotools.bitstream import BitstreamReader
 
@@ -2966,7 +2966,7 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.read(12), 0x3BE)
             bitstream.unmark()
 
-    @LIB_CORE
+    @LIB_BITSTREAM
     def test_simple_writer(self):
         from audiotools.bitstream import BitstreamWriter
 
@@ -3159,7 +3159,7 @@ class Bitstream(unittest.TestCase):
 
     #and have the bitstream reader check those values are accurate
 
-    @LIB_CORE
+    @LIB_BITSTREAM
     def test_reader_close(self):
         from audiotools.bitstream import BitstreamReader,HuffmanTree
 
@@ -3221,7 +3221,7 @@ class Bitstream(unittest.TestCase):
         reader.set_endianness(0)
         test_reader(reader)
 
-    @LIB_CORE
+    @LIB_BITSTREAM
     def test_writer_close(self):
         from audiotools.bitstream import BitstreamWriter
         from audiotools.bitstream import BitstreamRecorder

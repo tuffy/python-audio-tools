@@ -1,5 +1,6 @@
 #include <Python.h>
 #include <stdint.h>
+#include "../bitstream.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -63,7 +64,7 @@ const uint8_t AOB_BYTE_SWAP[2][6][36] = {
 typedef struct {
     PyObject_HEAD
 
-    struct br_python_input* reader;
+    BitstreamReader* reader;
     int sample_rate;
     int channels;
     int channel_mask;
@@ -112,7 +113,7 @@ int
 aobpcm_read_chunk(uint8_t* buffer,
                   int chunk_size,
                   uint8_t* swap,
-                  struct br_python_input* reader);
+                  BitstreamReader* reader);
 
 /*the MLPDecoder.close() method*/
 static PyObject*
@@ -192,3 +193,13 @@ PyTypeObject decoders_AOBPCMDecoderType = {
     0,                         /* tp_alloc */
     AOBPCMDecoder_new,            /* tp_new */
 };
+
+static
+int br_read_python(void* user_data,
+                   struct bs_buffer* buffer);
+
+static
+void br_close_python(void* user_data);
+
+static
+void br_free_python(void* user_data);

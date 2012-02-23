@@ -210,15 +210,19 @@ ReplayGain_update(replaygain_ReplayGain *self, PyObject *args)
     /*call framelist.channel(0) and framelist.channel(1)*/
     switch (channel_count) {
     case 1:
-        if ((channel_l_obj = PyObject_CallMethod(framelist_obj,"channel","(i)",0)) == NULL)
+        if ((channel_l_obj = PyObject_CallMethod(framelist_obj,
+                                                 "channel","(i)",0)) == NULL)
             goto error;
-        if ((channel_r_obj = PyObject_CallMethod(framelist_obj,"channel","(i)",0)) == NULL)
+        if ((channel_r_obj = PyObject_CallMethod(framelist_obj,
+                                                 "channel","(i)",0)) == NULL)
             goto error;
         break;
     case 2:
-        if ((channel_l_obj = PyObject_CallMethod(framelist_obj,"channel","(i)",0)) == NULL)
+        if ((channel_l_obj = PyObject_CallMethod(framelist_obj,
+                                                 "channel","(i)",0)) == NULL)
             goto error;
-        if ((channel_r_obj = PyObject_CallMethod(framelist_obj,"channel","(i)",1)) == NULL)
+        if ((channel_r_obj = PyObject_CallMethod(framelist_obj,
+                                                 "channel","(i)",1)) == NULL)
             goto error;
         break;
     default:
@@ -227,7 +231,8 @@ ReplayGain_update(replaygain_ReplayGain *self, PyObject *args)
     }
 
     /*ensure channel_l_obj and channel_r_obj are FrameLists*/
-    if ((framelist_type_obj = PyObject_GetAttrString(self->pcm_module,"FrameList")) == NULL)
+    if ((framelist_type_obj = PyObject_GetAttrString(self->pcm_module,
+                                                     "FrameList")) == NULL)
         goto error;
     if (channel_l_obj->ob_type != (PyTypeObject*)framelist_type_obj) {
         PyErr_SetString(PyExc_TypeError,"channel 0 must be a FrameList");
@@ -329,7 +334,8 @@ ReplayGain_title_gain(replaygain_ReplayGain *self)
         self->title_peak = 0.0;
         return Py_BuildValue("(d,d)",gain_value,peak_value);
     } else {
-        PyErr_SetString(PyExc_ValueError,"Not enough samples to perform calculation");
+        PyErr_SetString(PyExc_ValueError,
+                        "Not enough samples to perform calculation");
         return NULL;
     }
 }
@@ -341,7 +347,8 @@ ReplayGain_album_gain(replaygain_ReplayGain *self)
     if (gain_value != GAIN_NOT_ENOUGH_SAMPLES) {
         return Py_BuildValue("(d,d)",gain_value,self->album_peak);
     } else {
-        PyErr_SetString(PyExc_ValueError,"Not enough samples to perform calculation");
+        PyErr_SetString(PyExc_ValueError,
+                        "Not enough samples to perform calculation");
         return NULL;
     }
 }

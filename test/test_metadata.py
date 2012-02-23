@@ -77,7 +77,7 @@ class MetaDataTest(unittest.TestCase):
                 setattr(metadata, self.supported_fields[0], u"Foo")
                 track.set_metadata(metadata)
                 metadata2 = track.get_metadata()
-                self.assertEqual(self.metadata_class, metadata2.__class__)
+                self.assert_(isinstance(metadata2, self.metadata_class))
 
                 #also ensure that the new track is playable
                 audiotools.transfer_framelist_data(track.to_pcm(), lambda f: f)
@@ -273,41 +273,49 @@ class MetaDataTest(unittest.TestCase):
                     metadata.add_image(image1)
                     track.set_metadata(metadata)
                     metadata = track.get_metadata()
-                    self.assertEqual(metadata.images(), [image1])
+                    self.assert_(image1 in metadata.images())
+                    self.assert_(image2 not in metadata.images())
+                    self.assert_(image3 not in metadata.images())
 
                     #ensure that adding a second image works
                     metadata.add_image(image2)
                     track.set_metadata(metadata)
                     metadata = track.get_metadata()
-                    self.assertEqual(metadata.images(), [image1,
-                                                         image2])
+                    self.assert_(image1 in metadata.images())
+                    self.assert_(image2 in metadata.images())
+                    self.assert_(image3 not in metadata.images())
 
                     #ensure that adding a third image works
                     metadata.add_image(image3)
                     track.set_metadata(metadata)
                     metadata = track.get_metadata()
-                    self.assertEqual(metadata.images(), [image1,
-                                                         image2,
-                                                         image3])
+                    self.assert_(image1 in metadata.images())
+                    self.assert_(image2 in metadata.images())
+                    self.assert_(image3 in metadata.images())
 
                     #ensure that deleting the first image works
                     metadata.delete_image(image1)
                     track.set_metadata(metadata)
                     metadata = track.get_metadata()
-                    self.assertEqual(metadata.images(), [image2,
-                                                         image3])
+                    self.assert_(image1 not in metadata.images())
+                    self.assert_(image2 in metadata.images())
+                    self.assert_(image3 in metadata.images())
 
                     #ensure that deleting the second image works
                     metadata.delete_image(image2)
                     track.set_metadata(metadata)
                     metadata = track.get_metadata()
-                    self.assertEqual(metadata.images(), [image3])
+                    self.assert_(image1 not in metadata.images())
+                    self.assert_(image2 not in metadata.images())
+                    self.assert_(image3 in metadata.images())
 
                     #ensure that deleting the third image works
                     metadata.delete_image(image3)
                     track.set_metadata(metadata)
                     metadata = track.get_metadata()
-                    self.assertEqual(metadata.images(), [])
+                    self.assert_(image1 not in metadata.images())
+                    self.assert_(image2 not in metadata.images())
+                    self.assert_(image3 not in metadata.images())
 
                 finally:
                     temp_file.close()
@@ -2301,7 +2309,7 @@ class M4AMetaDataTest(MetaDataTest):
                 self.assertEqual(metadata.__class__, metadata2.__class__)
                 self.assertEqual(
                     track.get_metadata().ilst_atom()["\xa9foo"].data,
-                    "Bar")
+                    "\x00\x00\x00\x13data\x00\x00\x00\x01\x00\x00\x00\x00Bar")
             finally:
                 temp_file.close()
 
@@ -2342,7 +2350,7 @@ class M4AMetaDataTest(MetaDataTest):
                 for (field, key, value) in mapping:
                     track.delete_metadata()
                     metadata = self.empty_metadata()
-                    metadata['ilst'].replace_child(
+                    metadata['ilst'].add_child(
                         audiotools.M4A_ILST_Leaf_Atom(
                             key,
                             [audiotools.M4A_ILST_Unicode_Data_Atom(

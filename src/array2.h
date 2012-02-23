@@ -839,4 +839,121 @@ void array_faa_split(const struct array_faa_s *array, unsigned count,
 void array_faa_print(const struct array_faa_s *array, FILE* output);
 
 
+/***************************************************************
+ *                        object arrays                        *
+ *                  [ptr1*, ptr2*, ptr3*, ...]                 *
+ ***************************************************************/
+
+struct array_o_s {
+    void **_;
+    unsigned len;
+    unsigned total_size;
+
+    /*called when an object is duplicated between arrays
+      if NULL, copy/head/tail/de_head/de_tail/split/slice methods
+      will trigger an error*/
+    void* (*copy_obj)(void* obj);
+
+    /*called when an object is removed from the array
+      may be NULL, meaning no free is performed*/
+    void (*free_obj)(void* obj);
+
+    /*called by the a->print(a, FILE) method to display an object
+      may be NULL, meaning some default is printed*/
+    void (*print_obj)(void* obj, FILE* output);
+
+    /*deletes the array and any allocated data it contains*/
+    void (*del)(struct array_o_s *array);
+
+    /*resizes the array to fit at least "minimum" number of items,
+      if necessary*/
+    void (*resize)(struct array_o_s *array, unsigned minimum);
+
+    /*deletes any data in the array and resets its contents
+      so that it can be re-populated with new data*/
+    void (*reset)(struct array_o_s *array);
+
+    /*appends a single value to the array*/
+    void (*append)(struct array_o_s *array, void* value);
+
+    /*appends several values to the array*/
+    void (*vappend)(struct array_o_s *array, unsigned count, ...);
+
+    /*appends "value", "count" number of times*/
+    void (*mappend)(struct array_o_s *array, unsigned count, void* value);
+
+    /*sets the array to new values, removing any old ones*/
+    void (*vset)(struct array_o_s *array, unsigned count, ...);
+
+    /*sets the array to single values, removing any old ones*/
+    void (*mset)(struct array_o_s *array, unsigned count, void* value);
+
+    /*appends all the items in "to_add" to this array*/
+    void (*extend)(struct array_o_s *array, const struct array_o_s *to_add);
+
+    /*makes "copy" a duplicate of this array*/
+    void (*copy)(const struct array_o_s *array, struct array_o_s *copy);
+
+    /*swaps the contents of this array with another array*/
+    void (*swap)(struct array_o_s *array, struct array_o_s *swap);
+
+    /*moves "count" number of items from the start of this array
+      to "head", or as many as possible*/
+    void (*head)(const struct array_o_s *array, unsigned count,
+                 struct array_o_s *head);
+
+    /*moves "count" number of items from the end of this array
+      to "tail", or as many as possible*/
+    void (*tail)(const struct array_o_s *array, unsigned count,
+                 struct array_o_s *tail);
+
+    /*moves all except the first "count" number of items
+      from this array to "tail", or as many as possible*/
+    void (*de_head)(const struct array_o_s *array, unsigned count,
+                    struct array_o_s *tail);
+
+    /*moves all except the last "count" number of items
+      from this array to "head", or as many as possible*/
+    void (*de_tail)(const struct array_o_s *array, unsigned count,
+                    struct array_o_s *head);
+
+    /*splits the array into "head" and "tail" arrays
+      such that "head" contains a copy of up to "count" items
+      while "tail" contains the rest*/
+    void (*split)(const struct array_o_s *array, unsigned count,
+                  struct array_o_s *head, struct array_o_s *tail);
+
+    void (*print)(const struct array_o_s *array, FILE* output);
+};
+
+typedef struct array_o_s array_o;
+
+/*copy, free and print functions may be NULL,
+  indicating no free or print is necessary for object*/
+struct array_o_s* array_o_new(void* (*copy)(void* obj),
+                              void (*free)(void* obj),
+                              void (*print)(void* obj, FILE* output));
+void array_o_del(struct array_o_s *array);
+void array_o_resize(struct array_o_s *array, unsigned minimum);
+void array_o_reset(struct array_o_s *array);
+void array_o_append(struct array_o_s *array, void* value);
+void array_o_vappend(struct array_o_s *array, unsigned count, ...);
+void array_o_mappend(struct array_o_s *array, unsigned count, void* value);
+void array_o_vset(struct array_o_s *array, unsigned count, ...);
+void array_o_mset(struct array_o_s *array, unsigned count, void* value);
+void array_o_extend(struct array_o_s *array, const struct array_o_s *to_add);
+void array_o_copy(const struct array_o_s *array, struct array_o_s *copy);
+void array_o_swap(struct array_o_s *array, struct array_o_s *swap);
+void array_o_head(const struct array_o_s *array, unsigned count,
+                  struct array_o_s *head);
+void array_o_tail(const struct array_o_s *array, unsigned count,
+                  struct array_o_s *tail);
+void array_o_de_head(const struct array_o_s *array, unsigned count,
+                     struct array_o_s *tail);
+void array_o_de_tail(const struct array_o_s *array, unsigned count,
+                     struct array_o_s *head);
+void array_o_split(const struct array_o_s *array, unsigned count,
+                   struct array_o_s *head, struct array_o_s *tail);
+void array_o_print(const struct array_o_s *array, FILE* output);
+
 #endif

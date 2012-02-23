@@ -705,10 +705,12 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
           to the file object itself*/
         self->bitstream->close_substream = br_close_substream_python_file;
     } else {
-        self->bitstream = br_open_python(self->file_obj,
-                                         self->little_endian ?
-                                         BS_LITTLE_ENDIAN : BS_BIG_ENDIAN,
-                                         buffer_size);
+        self->bitstream = br_open_external(self->file_obj,
+                                           self->little_endian ?
+                                           BS_LITTLE_ENDIAN : BS_BIG_ENDIAN,
+                                           br_read_python,
+                                           br_close_python,
+                                           br_free_python);
     }
 
     return 0;
@@ -935,10 +937,14 @@ BitstreamWriter_init(bitstream_BitstreamWriter *self, PyObject *args)
           to the file object itself*/
         self->bitstream->close_substream = bw_close_substream_python_file;
     } else {
-        self->bitstream = bw_open_python(self->file_obj,
-                                         little_endian ?
-                                         BS_LITTLE_ENDIAN : BS_BIG_ENDIAN,
-                                         buffer_size);
+        self->bitstream = bw_open_external(self->file_obj,
+                                           little_endian ?
+                                           BS_LITTLE_ENDIAN : BS_BIG_ENDIAN,
+                                           4096,
+                                           bw_write_python,
+                                           bw_flush_python,
+                                           bw_close_python,
+                                           bw_free_python);
     }
 
     return 0;
@@ -2108,4 +2114,83 @@ BitstreamWriter_callback(uint8_t byte, PyObject *callback)
     } else {
         PyErr_PrintEx(0);
     }
+}
+
+int br_read_python(void* user_data,
+                   struct bs_buffer* buffer)
+{
+    PyObject* reader = (PyObject*)user_data;
+    PyObject* read_result;
+
+    /*call read() method on reader*/
+    if ((read_result =
+         PyObject_CallMethod(reader, "read", "i", 4096)) != NULL) {
+        uint8_t *string;
+        Py_ssize_t string_size;
+
+        /*convert returned object to string of bytes*/
+        if (PyString_AsStringAndSize(read_result,
+                                     (char**)&string,
+                                     &string_size) != -1) {
+            /*then append bytes to buffer and return success*/
+            uint8_t* appended = buf_extend(buffer, (uint32_t)string_size);
+            memcpy(appended, string, string_size);
+            buffer->buffer_size += (uint32_t)string_size;
+
+            return 0;
+        } else {
+            /*string conversion failed so print/clear error and return an EOF*/
+            PyErr_Print();
+            return 1;
+        }
+    } else {
+        /*read() method call failed
+          so print/clear error and return an EOF
+          (which will likely generate an IOError exception if its own)*/
+        PyErr_Print();
+        return 1;
+    }
+
+}
+
+void br_close_python(void* user_data)
+{
+    /*FIXME*/
+}
+
+void br_free_python(void* user_data)
+{
+    /*FIXME*/
+}
+
+int bw_write_python(void* user_data,
+                    const struct bs_buffer* buffer)
+{
+    PyObject* writer = (PyObject*)user_data;
+    PyObject* write_result;
+
+    if ((write_result = PyObject_CallMethod(writer, "write", "s#",
+                                            buffer->buffer,
+                                            buffer->buffer_size)) != NULL) {
+        Py_DECREF(write_result);
+        return 0;
+    } else {
+        PyErr_Print();
+        return 1;
+    }
+}
+
+void bw_flush_python(void* user_data)
+{
+    /*FIXME*/
+}
+
+void bw_close_python(void* user_data)
+{
+    /*FIXME*/
+}
+
+void bw_free_python(void* user_data)
+{
+    /*FIXME*/
 }

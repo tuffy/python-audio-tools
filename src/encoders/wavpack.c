@@ -1,5 +1,4 @@
 #include "wavpack.h"
-#include "../common/misc.h"
 #include <assert.h>
 #include <limits.h>
 

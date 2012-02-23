@@ -192,6 +192,7 @@ PyObject*
 SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
 {
     unsigned c = 0;
+    PyThreadState *thread_state = NULL;
 
     self->samples->reset(self->samples);
     self->unshifted->reset(self->unshifted);
@@ -202,7 +203,7 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
                                self->bits_per_sample);
     }
 
-    /*FIXME - handle disabling the interpreter here*/
+    thread_state = PyEval_SaveThread();
 
     if (!setjmp(*br_try(self->bitstream))) {
         while (1) {
@@ -278,6 +279,7 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
                   return a complete set of PCM frames*/
                 if (c == self->header.channels) {
                     br_etry(self->bitstream);
+                    PyEval_RestoreThread(thread_state);
                     return array_ia_to_FrameList(self->audiotools_pcm,
                                                  self->unshifted,
                                                  self->bits_per_sample);
@@ -292,6 +294,7 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
                 case FN_QUIT:
                     self->stream_finished = 1;
                     br_etry(self->bitstream);
+                    PyEval_RestoreThread(thread_state);
                     return empty_FrameList(self->audiotools_pcm,
                                            self->header.channels,
                                            self->bits_per_sample);
@@ -315,6 +318,7 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
             } else {
                 /*unknown command*/
                 br_etry(self->bitstream);
+                PyEval_RestoreThread(thread_state);
                 PyErr_SetString(PyExc_ValueError,
                                 "unknown command in Shorten stream");
                 return NULL;
@@ -322,6 +326,7 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
         }
     } else {
         br_etry(self->bitstream);
+        PyEval_RestoreThread(thread_state);
         PyErr_SetString(PyExc_IOError, "I/O error reading Shorten file");
         return NULL;
     }
@@ -708,7 +713,7 @@ process_header(BitstreamReader* bs,
         bs->unmark(bs);
         br_etry(bs);
         br_abort(bs);
-        return 1;
+        return 0; /*won't get here*/
     }
 }
 
@@ -895,19 +900,6 @@ read_aiff_header(BitstreamReader* bs, unsigned verbatim_size,
                     break;
                 case 2:
                     *channel_mask = 0x3;
-                    break;
-                case 3:
-                    *channel_mask = 0x7;
-                    break;
-                case 4:
-                    *channel_mask = 0x33;
-                    break;
-                case 5:
-                    /*5 channels is undefined*/
-                    *channel_mask = 0;
-                    break;
-                case 6:
-                    *channel_mask = 0x707;
                     break;
                 default:
                     *channel_mask = 0;

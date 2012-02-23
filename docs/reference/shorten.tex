@@ -836,17 +836,36 @@ $\text{\LSB} \leftarrow \text{\VALUE} - \text{\MSB} \times 2 ^ c$\;
 
 \subsection{Writing Shorten Header}
 {\relsize{-1}
-  \ALGORITHM{the input stream's bits-per-sample, channel count and initial block size}{a Shorten header}
+  \ALGORITHM{the input stream's bits-per-sample, sample signedness and endianness;\newline channel count and initial block size}{a Shorten header}
   \SetKwData{BITSPERSAMPLE}{bits per sample}
+  \SetKwData{ENDIANNESS}{endianness}
+  \SetKwData{SIGNEDNESS}{signedness}
   \SetKwData{CHANNELS}{channel count}
   \SetKwData{BLOCKSIZE}{block size}
   \WRITE \texttt{"ajkg"} in 4 bytes\;
   \WRITE 2 in 8 unsigned bits\;
   \uIf{$\BITSPERSAMPLE = 8$}{
-    write \texttt{long}(2)\tcc*[r]{unsigned 8 bit}
+    \eIf{$\SIGNEDNESS = signed$}{
+      write \texttt{long}(1)\tcc*[r]{signed, 8 bit}
+    }{
+      write \texttt{long}(2)\tcc*[r]{unsigned, 8 bit}
+    }
   }
   \uElseIf{$\BITSPERSAMPLE = 16$}{
-    write \texttt{long}(5)\tcc*[r]{signed 16 bit}
+    \eIf{$\SIGNEDNESS = signed$}{
+      \eIf{$\ENDIANNESS = big$}{
+        write \texttt{long}(3)\tcc*[r]{signed, 16 bit, big-endian}
+      }{
+        write \texttt{long}(5)\tcc*[r]{signed, 16 bit, little-endian}
+      }
+    }{
+      \eIf{$\ENDIANNESS = big$}{
+        write \texttt{long}(4)\tcc*[r]{unsigned, 16 bit, big-endian}
+      }{
+        write \texttt{long}(6)\tcc*[r]{unsigned, 16 bit, little-endian}
+      }
+    }
+
   }
   \Else{
     unsupported number of bits per sample\;

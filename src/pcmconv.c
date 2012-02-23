@@ -39,22 +39,27 @@ array_i_to_FrameList(PyObject* audiotools_pcm,
     framelist = (pcm_FrameList*)PyObject_CallMethod(audiotools_pcm,
                                                     "__blank__", NULL);
 
-    if ((samples->len % channels) == 0) {
-        framelist->frames = samples->len / channels;
-        framelist->channels = channels;
-        framelist->bits_per_sample = bits_per_sample;
-        framelist->samples_length = framelist->frames * framelist->channels;
-        framelist->samples = realloc(framelist->samples,
-                                     framelist->samples_length * sizeof(int));
+    if (framelist != NULL) {
+        if ((samples->len % channels) == 0) {
+            framelist->frames = samples->len / channels;
+            framelist->channels = channels;
+            framelist->bits_per_sample = bits_per_sample;
+            framelist->samples_length = framelist->frames * framelist->channels;
+            framelist->samples = realloc(framelist->samples,
+                                         framelist->samples_length *
+                                         sizeof(int));
 
-        memcpy(framelist->samples, samples->_,
-               framelist->samples_length * sizeof(int));
+            memcpy(framelist->samples, samples->_,
+                   framelist->samples_length * sizeof(int));
 
-        return (PyObject*)framelist;
+            return (PyObject*)framelist;
+        } else {
+            Py_DECREF((PyObject*)framelist);
+            PyErr_SetString(PyExc_ValueError,
+                            "samples data not divisible by channel count");
+            return NULL;
+        }
     } else {
-        Py_DECREF((PyObject*)framelist);
-        PyErr_SetString(PyExc_ValueError,
-                        "samples data not divisible by channel count");
         return NULL;
     }
 }

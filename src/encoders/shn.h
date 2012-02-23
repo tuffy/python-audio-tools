@@ -60,6 +60,8 @@ write_long(BitstreamWriter* bs, unsigned value);
 static void
 write_header(BitstreamWriter* bs,
              unsigned bits_per_sample,
+             int is_big_endian,
+             int signed_samples,
              unsigned channels,
              unsigned block_size);
 
@@ -67,6 +69,7 @@ write_header(BitstreamWriter* bs,
 static int
 encode_audio(BitstreamWriter* bs,
              pcmreader* pcmreader,
+             int signed_samples,
              unsigned block_size);
 
 static int

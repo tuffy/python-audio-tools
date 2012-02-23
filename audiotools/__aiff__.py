@@ -74,23 +74,8 @@ def parse_comm(comm):
      bits_per_sample) = comm.parse("16u 32u 16u")
     sample_rate = int(parse_ieee_extended(comm))
 
-    #this unusual arrangement is taken from
-    #the AIFF-C specification
     if (channels <= 2):
         channel_mask = ChannelMask.from_channels(channels)
-    elif (channels == 3):
-        channel_mask = ChannelMask.from_fields(
-            front_left=True, front_right=True,
-            front_center=True)
-    elif (channels == 4):
-        channel_mask = ChannelMask.from_fields(
-            front_left=True, front_right=True,
-            back_left=True, back_right=True)
-    elif (channels == 6):
-        channel_mask = ChannelMask.from_fields(
-            front_left=True, side_left=True,
-            front_center=True, front_right=True,
-            side_right=True, back_center=True)
     else:
         channel_mask = ChannelMask(0)
 
@@ -142,16 +127,6 @@ class AiffReader(PCMReader):
         except IOError:
             self.read = self.read_error
 
-        #handle AIFF unusual channel order
-        standard_channel_mask = ChannelMask(self.channel_mask)
-        aiff_channel_mask = AIFFChannelMask(standard_channel_mask)
-        if (channels in (3, 4, 6)):
-            self.channel_order = [aiff_channel_mask.channels().index(channel)
-                                  for channel in
-                                  standard_channel_mask.channels()]
-        else:
-            self.channel_order = None
-
     def read(self, bytes):
         """Try to read a pcm.FrameList of size "bytes"."""
 
@@ -169,12 +144,7 @@ class AiffReader(PCMReader):
                                           self.bits_per_sample,
                                           True, True)
                 self.remaining_frames -= framelist.frames
-                if (self.channel_order is not None):
-                    return pcm.from_channels(
-                        [framelist.channel(channel) for channel
-                         in self.channel_order])
-                else:
-                    return framelist
+                return framelist
 
         else:
             return pcm.FrameList("",
@@ -196,10 +166,6 @@ class AiffAudio(AiffContainer):
 
     SUFFIX = "aiff"
     NAME = SUFFIX
-
-    # SSND_ALIGN = Con.Struct("ssnd",
-    #                         Con.UBInt32("offset"),
-    #                         Con.UBInt32("blocksize"))
 
     PRINTABLE_ASCII = frozenset([chr(i) for i in xrange(0x20, 0x7E + 1)])
 
@@ -522,20 +488,6 @@ class AiffAudio(AiffContainer):
             data_size = 0
             total_pcm_frames = 0
 
-            #switch pcmreader channel masks to AIFF's unusual configuration
-            if (int(pcmreader.channel_mask) in
-                (0x4,      # FC
-                 0x3,      # FL, FR
-                 0x7,      # FL, FR, FC
-                 0x33,     # FL, FR, BL, BR
-                 0x707)):  # FL, SL, FC, FR, SR, BC
-                standard_channel_mask = ChannelMask(pcmreader.channel_mask)
-                aiff_channel_mask = AIFFChannelMask(standard_channel_mask)
-                pcmreader = ReorderedPCMReader(
-                    pcmreader,
-                    [standard_channel_mask.channels().index(channel)
-                     for channel in aiff_channel_mask.channels()])
-
             #write out the basic headers first
             #we'll be back later to clean up the sizes
             aiff.build("4b 32u 4b", ("FORM", total_size, "AIFF"))
@@ -771,36 +723,3 @@ class AiffAudio(AiffContainer):
                     raise InvalidAIFF(_(u"SSND chunk not found"))
         except IOError:
             raise InvalidAIFF(_(u"I/O error reading AIFF chunks"))
-
-
-class AIFFChannelMask(ChannelMask):
-    """The AIFF-specific channel mapping."""
-
-    def __repr__(self):
-        return "AIFFChannelMask(%s)" % \
-            ",".join(["%s=%s" % (field, getattr(self, field))
-                      for field in self.SPEAKER_TO_MASK.keys()
-                      if (getattr(self, field))])
-
-    def channels(self):
-        """Returns a list of speaker strings this mask contains.
-
-        Returned in the order in which they should appear
-        in the PCM stream.
-        """
-
-        count = len(self)
-        if (count == 1):
-            return ["front_center"]
-        elif (count == 2):
-            return ["front_left", "front_right"]
-        elif (count == 3):
-            return ["front_left", "front_right", "front_center"]
-        elif (count == 4):
-            return ["front_left", "front_right",
-                    "back_left", "back_right"]
-        elif (count == 6):
-            return ["front_left", "side_left", "front_center",
-                    "front_right", "side_right", "back_center"]
-        else:
-            return []

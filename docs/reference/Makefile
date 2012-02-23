@@ -125,15 +125,11 @@ figures/wavpack/terms_parse.pdf \
 
 SHORTEN = figures/shorten/block1.pdf \
 figures/shorten/block2.pdf \
-figures/shorten/diff.pdf \
 figures/shorten/filetype.pdf \
 figures/shorten/header_parse.pdf \
 figures/shorten/qlpc.pdf \
 figures/shorten/qlpc1.pdf \
-figures/shorten/sandwich.pdf \
-figures/shorten/signed.pdf \
 figures/shorten/stream.pdf \
-figures/shorten/unsigned.pdf \
 figures/shorten/verbatim.pdf
 
 ALAC = figures/alac/alac_atom.pdf \
@@ -384,12 +380,6 @@ figures/alac/residual-parse.pdf: figures/alac/residual-parse.bpx
 
 figures/alac/residual-build.pdf: figures/alac/residual-build.bpx
 	./bitparse.py -w 490 -b 24 -i $< -o $@
-
-figures/shorten/unsigned.pdf: figures/shorten/unsigned.fig
-	fig2dev -Z 2 -L pdf $< $@
-
-figures/shorten/signed.pdf: figures/shorten/signed.fig
-	fig2dev -Z 2 -L pdf $< $@
 
 # figures/wavpack/block_header_parse.pdf: figures/wavpack/block_header_parse.bpx
 # 	./bitparse.py -w 480 -b 24 -i $< -o $@

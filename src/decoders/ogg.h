@@ -1,3 +1,6 @@
+#ifndef STANDALONE
+#include <Python.h>
+#endif
 #include "../bitstream.h"
 
 /********************************************************
