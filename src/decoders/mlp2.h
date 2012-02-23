@@ -79,17 +79,20 @@ struct matrix_parameters {
     int coeff[MAX_MLP_CHANNELS];
 };
 
-struct channel_parameters {
-    struct {
-        unsigned shift;
-        array_i* coeff;
-    } FIR;
+struct FIR_filter_parameters {
+    unsigned shift;
+    array_i* coeff;
+};
 
-    struct {
-        unsigned shift;
-        array_i* coeff;
-        array_i* state;
-    } IIR;
+struct IIR_filter_parameters {
+    unsigned shift;
+    array_i* coeff;
+    array_i* state;
+};
+
+struct channel_parameters {
+    struct FIR_filter_parameters FIR;
+    struct IIR_filter_parameters IIR;
 
     int huffman_offset;
     unsigned codebook;
@@ -120,6 +123,7 @@ struct substream {
 
     array_ia* bypassed_LSBs;
     array_ia* residuals;
+    array_ia* filtered;
 };
 
 typedef struct {
@@ -171,6 +175,12 @@ read_mlp_substream(MLPDecoder* decoder,
                    array_ia* framelist);
 
 mlp_status
+read_mlp_block(MLPDecoder* decoder,
+               struct substream* substream,
+               BitstreamReader* bs,
+               array_ia* framelist);
+
+mlp_status
 read_mlp_restart_header(BitstreamReader* bs,
                         struct restart_header* restart_header);
 
@@ -210,5 +220,11 @@ read_mlp_block_data(BitstreamReader* bs,
                     const struct channel_parameters* channel,
                     array_ia* bypassed_LSBs,
                     array_ia* residuals);
+
+mlp_status
+filter_mlp_channel(const array_i* residuals,
+                   struct FIR_filter_parameters* FIR,
+                   struct IIR_filter_parameters* IIR,
+                   array_i* filtered);
 
 #endif

@@ -46,6 +46,7 @@ open_mlp_decoder(struct bs_buffer* frame_data)
 
         decoder->substream[s].bypassed_LSBs = array_ia_new();
         decoder->substream[s].residuals = array_ia_new();
+        decoder->substream[s].filtered = array_ia_new();
 
         /*init channel parameters*/
         for (c = 0; c < MAX_MLP_CHANNELS; c++) {
@@ -75,6 +76,7 @@ close_mlp_decoder(MLPDecoder* decoder)
 
         array_ia_del(decoder->substream[s].bypassed_LSBs);
         array_ia_del(decoder->substream[s].residuals);
+        array_ia_del(decoder->substream[s].filtered);
 
         /*free channel parameters*/
         for (c = 0; c < MAX_MLP_CHANNELS; c++) {
@@ -188,7 +190,7 @@ read_mlp_frame(MLPDecoder* decoder,
                 } else {
                     bs->substream_append(bs, decoder->substream_reader,
                          decoder->substream[s].info.substream_end -
-                         decoder->substream[s- 1].info.substream_end - 2);
+                         decoder->substream[s - 1].info.substream_end - 2);
                 }
 
                 if ((status = read_mlp_substream(decoder,
@@ -304,30 +306,65 @@ read_mlp_substream(MLPDecoder* decoder,
                    BitstreamReader* bs,
                    array_ia* framelist)
 {
-    mlp_status status;
+    if (!setjmp(*br_try(bs))) {
+        unsigned last_block;
 
-    if (bs->read(bs, 1)) {      /*decoding parmaters present*/
-        unsigned restart_header;
+        do {
+            mlp_status status;
 
-        if ((restart_header = bs->read(bs, 1)) == 1) {
-            /*restart header present*/
-            if ((status =
-                 read_mlp_restart_header(bs,
-                                         &(substream->header))) != OK)
+            if ((status = read_mlp_block(decoder,
+                                         substream,
+                                         bs,
+                                         framelist)) != OK) {
+                br_etry(bs);
                 return status;
-        }
+            }
 
-        if ((status = read_mlp_decoding_parameters(
-                           bs,
-                           restart_header,
-                           substream->header.min_channel,
-                           substream->header.max_channel,
-                           substream->header.max_matrix_channel,
-                           &(substream->parameters))) != OK)
-            return status;
+            last_block = bs->read(bs, 1);
+        } while (last_block == 0);
+
+        br_etry(bs);
+        return OK;
+    } else {
+        br_etry(bs);
+        return IO_ERROR;
     }
 
-    /*perform substream decoding*/
+}
+
+mlp_status
+read_mlp_block(MLPDecoder* decoder,
+               struct substream* substream,
+               BitstreamReader* bs,
+               array_ia* framelist)
+{
+    mlp_status status;
+    unsigned c;
+
+    /*decoding parameters present*/
+    if (bs->read(bs, 1)) {
+        unsigned restart_header;
+
+        /*restart header present*/
+        if ((restart_header = bs->read(bs, 1)) == 1) {
+            if ((status =
+                 read_mlp_restart_header(bs, &(substream->header))) != OK) {
+                return status;
+            }
+        }
+
+        if ((status =
+             read_mlp_decoding_parameters(bs,
+                                          restart_header,
+                                          substream->header.min_channel,
+                                          substream->header.max_channel,
+                                          substream->header.max_matrix_channel,
+                                          &(substream->parameters))) != OK) {
+            return status;
+        }
+    }
+
+    /*perform residuals decoding*/
     if ((status = read_mlp_block_data(bs,
                                       substream->parameters.block_size,
                                       substream->header.min_channel,
@@ -337,20 +374,29 @@ read_mlp_substream(MLPDecoder* decoder,
                                       substream->parameters.matrix,
                                       substream->parameters.channel,
                                       substream->bypassed_LSBs,
-                                      substream->residuals)) != OK)
+                                      substream->residuals)) != OK) {
         return status;
+    }
 
-    printf("bypassed LSBs : ");
-    substream->bypassed_LSBs->print(substream->bypassed_LSBs, stdout);
-    printf("\n");
 
-    printf("residuals : ");
-    substream->residuals->print(substream->residuals, stdout);
-    printf("\n");
-
-    /*FIXME - filter residuals*/
-
-    /*FIXME - rematrix residuals*/
+    /*filter residuals based on FIR/IIR parameters*/
+    substream->filtered->reset(substream->filtered);
+    for (c = 0; c < substream->header.min_channel; c++) {
+        /*initalize unused filter channels, if any*/
+        substream->filtered->append(substream->filtered);
+    }
+    for (c = substream->header.min_channel;
+         c <= substream->header.max_channel;
+         c++) {
+        array_i* filtered = substream->filtered->append(substream->filtered);
+        if ((status =
+             filter_mlp_channel(substream->residuals->_[c],
+                                &(substream->parameters.channel[c].FIR),
+                                &(substream->parameters.channel[c].IIR),
+                                filtered)) != OK) {
+            return status;
+        }
+    }
 
     return OK;
 }
@@ -584,6 +630,7 @@ read_mlp_fir_params(BitstreamReader* bs,
                 const int v = bs->read_signed(bs, coeff_bits);
                 coeffs->append(coeffs, v << coeff_shift);
             }
+
             if (bs->read(bs, 1))
                 /*FIR params can't have state*/
                 return INVALID_CHANNEL_PARAMETERS;
@@ -637,6 +684,7 @@ read_mlp_iir_params(BitstreamReader* bs,
                 }
                 state->reverse(state);
             }
+
             return OK;
         } else {
             return INVALID_CHANNEL_PARAMETERS;
@@ -760,6 +808,28 @@ read_mlp_block_data(BitstreamReader* bs,
                               signed_huffman_offset[c]) << quant_step_size[c]);
         }
     }
+
+    return OK;
+}
+
+mlp_status
+filter_mlp_channel(const array_i* residuals,
+                   struct FIR_filter_parameters* FIR,
+                   struct IIR_filter_parameters* IIR,
+                   array_i* filtered)
+{
+    printf("filtering : ");
+    residuals->print(residuals, stdout);
+    printf("\n");
+    printf("FIR shift : %u  coeff : ", FIR->shift);
+    FIR->coeff->print(FIR->coeff, stdout);
+    printf("\n");
+    printf("IIR shift : %u  coeff : ", IIR->shift);
+    IIR->coeff->print(IIR->coeff, stdout);
+    printf("  state : ");
+    IIR->state->print(IIR->state, stdout);
+    printf("\n");
+
 
     return OK;
 }

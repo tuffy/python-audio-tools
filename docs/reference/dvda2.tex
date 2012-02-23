@@ -404,6 +404,7 @@ means both substreams will be followed by 8 bit parity and CRC-8 values.
 \SetKwData{LAST}{last block}
 \SetKwData{BYPASSEDLSB}{bypassed LSB}
 \SetKwData{RESIDUAL}{residual}
+\SetKwData{FILTERED}{filtered}
 \Repeat{$\text{\LAST}_s = 1$}{
   $\text{\PARAMSPRESENT}_s \leftarrow$ \READ 1 unsigned bit\;
   \eIf{$\text{\PARAMSPRESENT}_s = 1$}{
@@ -420,7 +421,9 @@ means both substreams will be followed by 8 bit parity and CRC-8 values.
   \BlankLine
   $(\text{\BYPASSEDLSB}_{s}~,~\text{\RESIDUAL}_s) \leftarrow$ read block data based on decoding parameters\;
   \BlankLine
-  decode block data based on restart header / decoding parameters\;
+  \For{c = $\text{\MINCHANNEL}_s$ \emph{\KwTo}$\text{\MAXCHANNEL}_c$}{
+    $\text{\FILTERED}_{s~c} \leftarrow$ filter $\text{\RESIDUAL}_s$ using FIR and IIR channel parameters\;
+  }
   \BlankLine
   $\text{\LAST}_s \leftarrow$ \READ 1 unsigned bit\;
 }
@@ -740,8 +743,11 @@ $\text{\CHECKSUM} \leftarrow$ \READ 8 unsigned bits\;
       $v_{f} \leftarrow$ \READ $(\text{\FIRCOEFFBITS})$ signed bits\;
       $\text{\FIRCOEFF}_{f} \leftarrow v_{f} \times 2 ^ {\text{\FIRCOEFFSHIFT}}$\;
     }
-    $\text{\FIRSTATE} \leftarrow$ \READ 1 unsigned bit\;
-    \ASSERT $\text{\FIRSTATE} = 0$\;
+    \eIf{$((\READ~\textnormal{1 unsigned bit}) = 0)$}{
+      $\text{\FIRSTATE} \leftarrow \texttt{[]}$\;
+    }{
+      error, FIR parameters cannot include state\;
+    }
   }{
     $\text{\FIRSHIFT} \leftarrow 0$\;
     $\text{\FIRCOEFF} \leftarrow \texttt{[]}$\;
@@ -1014,3 +1020,71 @@ $\text{signed Huffman offset}_c$ & $0 - 7 \times 2 ^ 2 - 2 ^ 3 = -36$ & $0 - 7 \
     8 & 3 & 8 \times 2 ^ 2 + 3 - 32 = 3 \\
   \end{tabular}
 }
+
+\clearpage
+
+\subsection{Residual Filtering}
+{\relsize{-1}
+\ALGORITHM{block size, signed residual values, channel's quant step size,\newline FIR order, FIR shift, FIR coefficients, FIR state,\newline IIR order, IIR shift, IIR coefficients, IIR state}{filtered residual values, new FIR state, new IIR state}
+\SetKw{AND}{and}
+\SetKwData{BLOCKSIZE}{block size}
+\SetKwData{SHIFT}{shift}
+\SetKwData{FIRORDER}{FIR order}
+\SetKwData{FIRSHIFT}{FIR shift}
+\SetKwData{FIRCOEFF}{FIR coeff}
+\SetKwData{FIRSTATE}{FIR state}
+\SetKwData{IIRORDER}{IIR order}
+\SetKwData{IIRSHIFT}{IIR shift}
+\SetKwData{IIRCOEFF}{IIR coeff}
+\SetKwData{IIRSTATE}{IIR state}
+\SetKwData{RESIDUAL}{residual}
+\SetKwData{SUM}{sum}
+\SetKwData{SHIFTEDSUM}{shifted sum}
+\SetKwData{FILTERED}{filtered}
+\SetKwFunction{MASK}{mask}
+\SetKwData{QUANTSIZE}{quant step size}
+\ASSERT $(\text{\FIRORDER} + \text{\IIRORDER}) \leq 8$\;
+\uIf{$(\text{\FIRORDER} > 0)$ \AND $(\text{\IIRORDER} > 0)$}{
+  \ASSERT $\text{\FIRSHIFT} = \text{\IIRSHIFT}$\;
+  $\text{\SHIFT} \leftarrow \text{\FIRSHIFT}$\;
+}
+\uElseIf{$\text{\FIRORDER} > 0$}{
+  $\text{\SHIFT} \leftarrow \text{\FIRSHIFT}$\;
+}
+\uElseIf{$\text{\IIRORDER} > 0$}{
+  $\text{\SHIFT} \leftarrow \text{\IIRSHIFT}$\;
+}
+\Else{
+  $\text{\SHIFT} \leftarrow 0$\;
+}
+\For{i = 0 \emph{\KwTo}$\text{\BLOCKSIZE}_s$}{
+  $\text{\SUM}_i \leftarrow 0$\;
+  \For(\tcc*[f]{calculate FIR sum}){j = 0 \emph{\KwTo}$\text{\FIRORDER}$}{
+    \eIf{$i - j - 1 < 0$}{
+      $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\FIRCOEFF}_j \times \text{\FIRSTATE}_{\FIRORDER + (i - j - 1)}$\;
+    }{
+      $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\FIRCOEFF}_j \times \text{\FILTERED}_{i - j - 1}$\;
+    }
+  }
+  \For(\tcc*[f]{calculate IIR sum}){k = 0 \emph{\KwTo}$\text{\IIRORDER}$}{
+    $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\IIRCOEFF}_k \times \text{\IIRSTATE}_{\IIRORDER + (i - k - 1)}$\;
+  }
+  \BlankLine
+  $\text{\SHIFTEDSUM}_i \leftarrow \lfloor\text{\SUM}_i \div 2 ^ {\SHIFT}\rfloor$\;
+  \BlankLine
+  $\text{\FILTERED}_i \leftarrow \MASK(\text{\SHIFTEDSUM}_i + \text{\RESIDUAL}_i~,~\text{\QUANTSIZE})$\;
+  \BlankLine
+  $\text{\IIRSTATE}_{i + \text{\IIRORDER}} \leftarrow \text{\FILTERED}_i - \text{\SHIFTEDSUM}_i$\;
+}
+\Return $(\text{\FILTERED}~,~\text{\FILTERED}_{[(\text{\BLOCKSIZE} - 8)\IDOTS\text{\BLOCKSIZE}]}~,~\text{\IIRSTATE}_{[(\text{\BLOCKSIZE} - 8)\IDOTS\text{\BLOCKSIZE}]})$\;
+\EALGORITHM
+}
+\vskip .25in
+\par
+\noindent
+where \texttt{mask} is defined as:
+\begin{equation*}
+\texttt{mask}(x~,~q) =\begin{cases}x & \text{ if } q = 0 \\
+x - (x \bmod 2 ^ q) & \text{ if } q > 0
+\end{cases}
+\end{equation*}
