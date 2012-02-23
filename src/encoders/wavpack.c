@@ -593,7 +593,6 @@ encode_block(BitstreamWriter* bs,
              const array_ia* channels,
              uint32_t block_index, int first_block, int last_block)
 {
-    int mono_output;
     int false_stereo;
     unsigned effective_channel_count;
     unsigned magnitude;
@@ -619,11 +618,9 @@ encode_block(BitstreamWriter* bs,
         (parameters->try_false_stereo &&
          (channels->_[0]->equals(channels->_[0], channels->_[1])))) {
         if (channels->len == 1) {
-            mono_output = 1;
             false_stereo = 0;
             effective_channel_count = 1;
         } else {
-            mono_output = 0;
             false_stereo = 1;
             effective_channel_count = 1;
         }
@@ -651,7 +648,6 @@ encode_block(BitstreamWriter* bs,
 
         crc = calculate_crc(shifted);
     } else {
-        mono_output = 0;
         false_stereo = 0;
         effective_channel_count = 2;
 

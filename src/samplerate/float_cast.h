@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001-2008 Erik de Castro Lopo <erikd@mega-nerd.com>
+** Copyright (C) 2001-2011 Erik de Castro Lopo <erikd@mega-nerd.com>
 ** Portions modified April 2008 by Brian Langenberger
 ** for use in Python Audio Tools
 **
@@ -18,7 +18,7 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* Version 1.4 */
+/* Version 1.5 */
 
 #ifndef FLOAT_CAST_HEADER
 #define FLOAT_CAST_HEADER

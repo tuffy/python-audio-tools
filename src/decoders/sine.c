@@ -203,7 +203,7 @@ Sine_Stereo_init(decoders_Sine_Stereo* self, PyObject *args, PyObject *kwds) {
     self->remaining_pcm_frames = self->total_pcm_frames;
     self->delta1 = 2 * M_PI / (self->sample_rate / f1);
     self->delta2 = 2 * M_PI / (self->sample_rate / f2);
-    self->theta1 = self->theta1 = 0.0l;
+    self->theta1 = self->theta2 = 0.0l;
 
     return 0;
 }

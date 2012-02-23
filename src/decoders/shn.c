@@ -708,6 +708,7 @@ process_header(BitstreamReader* bs,
         bs->unmark(bs);
         br_etry(bs);
         br_abort(bs);
+        return 1;
     }
 }
 
