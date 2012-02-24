@@ -100,7 +100,6 @@ struct decoding_parameters {
 
     unsigned block_size;
 
-    /*matrix parameters*/
     unsigned matrix_len;
     struct matrix_parameters matrix[MAX_MLP_MATRICES];
 
@@ -108,18 +107,24 @@ struct decoding_parameters {
 
     unsigned quant_step_size[MAX_MLP_CHANNELS];
 
-    /*channel parameters*/
     struct channel_parameters channel[MAX_MLP_CHANNELS];
 };
 
 struct substream {
     struct substream_info info;
+
     struct restart_header header;
+
     struct decoding_parameters parameters;
 
-    array_ia* bypassed_LSBs;
+    /*bypassed_LSB[m][i] where m is matrix and i is PCM frame*/
+    array_ia* bypassed_LSB;
+
+    /*residuals[c][i] where c is channel and i is PCM frame*/
     array_ia* residuals;
-    array_ia* filtered;
+
+    /*a temporary buffer of filtered residual data*/
+    array_i* filtered;
 };
 
 typedef struct {
@@ -151,35 +156,50 @@ mlp_status
 read_mlp_frames(MLPDecoder* decoder,
                 array_ia* framelist);
 
+/*given MLPDecoder context and a buffer of single frame data
+  (including major sync, but not including frame size header)
+  returns 1 or more channels of PCM data in MLP channel order*/
 mlp_status
 read_mlp_frame(MLPDecoder* decoder,
                BitstreamReader* bs,
                array_ia* framelist);
 
+/*given a buffer of frame data, returns 28 byte major sync, if present*/
 mlp_status
 read_mlp_major_sync(BitstreamReader* bs,
                     struct major_sync* major_sync);
 
+/*given a buffer of frame data, returns 2 byte substream info*/
 mlp_status
 read_mlp_substream_info(BitstreamReader* bs,
                         struct substream_info* substream_info);
 
+/*given a substream context and buffer of substream data,
+  returns 1 or more channels of PCM data
+  which may be offset depending on substream's min/max channel
+
+  e.g. substream0 may have framelist->_[0] / framelist->_[1]
+  and substream1 may have framelist->_[2] / framelist->_[3] / framelist->_[4]
+  which should be combined into a single 5 channel stream*/
 mlp_status
-read_mlp_substream(MLPDecoder* decoder,
-                   struct substream* substream,
+read_mlp_substream(struct substream* substream,
                    BitstreamReader* bs,
                    array_ia* framelist);
 
+/*given a substream context and buffer of substream data,
+  appends block's data to framelist as 1 or more channels of PCM data*/
 mlp_status
-read_mlp_block(MLPDecoder* decoder,
-               struct substream* substream,
+read_mlp_block(struct substream* substream,
                BitstreamReader* bs,
                array_ia* framelist);
 
+/*reads a restart header from a block*/
 mlp_status
 read_mlp_restart_header(BitstreamReader* bs,
                         struct restart_header* restart_header);
 
+/*reads decoding parameters from a block
+  depending on values from the most recent restart header*/
 mlp_status
 read_mlp_decoding_parameters(BitstreamReader* bs,
                              unsigned header_present,
@@ -188,33 +208,65 @@ read_mlp_decoding_parameters(BitstreamReader* bs,
                              unsigned max_matrix_channel,
                              struct decoding_parameters* p);
 
+/*reads matrix parameters from decoding parameters
+  depending on max_matrix_channel from the most recent restart header*/
 mlp_status
 read_mlp_matrix_params(BitstreamReader* bs,
                        unsigned max_matrix_channel,
                        unsigned* matrix_len,
                        struct matrix_parameters* mp);
 
+/*reads FIR or IIR filter parameters from channel parameters*/
 mlp_status
 read_mlp_filter_parameters(BitstreamReader* bs,
                            struct filter_parameters* params);
 
+/*given a block's residual data
+  min_channel/max_channel from the restart header
+  along with block_size in PCM frames, matrix_len, matrix parameters,
+  quant_step_size and channel parameters from decoding parameters
+  returns a list of bypassed_LSB values per matrix (which may be 0s)
+  and a list of residual values per channel*/
 mlp_status
-read_mlp_block_data(BitstreamReader* bs,
-                    unsigned block_size,
-                    unsigned min_channel,
-                    unsigned max_channel,
-                    unsigned matrix_len,
-                    const unsigned* quant_step_size,
-                    const struct matrix_parameters* matrix,
-                    const struct channel_parameters* channel,
-                    array_ia* bypassed_LSBs,
-                    array_ia* residuals);
+read_mlp_residual_data(BitstreamReader* bs,
+                       unsigned min_channel,
+                       unsigned max_channel,
+                       unsigned block_size,
+                       unsigned matrix_len,
+                       const struct matrix_parameters* matrix,
+                       const unsigned* quant_step_size,
+                       const struct channel_parameters* channel,
+                       array_ia* bypassed_LSBs,
+                       array_ia* residuals);
 
+/*given a list of residuals for a given channel,
+  the FIR/IIR filter parameters and a quant_step_size
+  returns a list of filtered residuals
+  along with updated FIR/IIR filter parameter state*/
 mlp_status
 filter_mlp_channel(const array_i* residuals,
                    struct filter_parameters* FIR,
                    struct filter_parameters* IIR,
                    unsigned quant_step_size,
                    array_i* filtered);
+
+/*given a list of filtered residuals across all substreams
+  max_matrix_channel, noise_shift, noise_gen_seed from the restart header
+  matrix parameters, quant_step_size from the decoding parameters
+  and bypassed_LSBs from the residual block
+  returns a set of rematrixed channel data
+
+  when 2 substreams are present in an MLP stream,
+  one typically uses the parameters from the second substream*/
+void
+rematrix_mlp_channels(const array_ia* filtered,
+                      unsigned max_matrix_channel,
+                      unsigned noise_shift,
+                      unsigned* noise_gen_seed,
+                      unsigned matrix_count,
+                      const struct matrix_parameters* matrix,
+                      const unsigned* quant_step_size,
+                      const array_ia* bypassed_LSBs,
+                      array_ia* rematrixed);
 
 #endif

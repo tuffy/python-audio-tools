@@ -202,6 +202,7 @@ There are 90,000 PTS ticks per second.
 \subsection{MLP Frame Decoding}
 {\relsize{-1}
 \ALGORITHM{MLP frame}{1 or more PCM frames}
+\SetKw{OR}{or}
 \SetKwData{BPS}{bits per sample}
 \SetKwData{RATE}{sample rate}
 \SetKwData{CHANNELCOUNT}{channel count}
@@ -211,27 +212,33 @@ There are 90,000 PTS ticks per second.
 \SetKwData{SUBSTREAM}{substream}
 \SetKwData{PARITY}{parity}
 \SetKwData{CRC}{CRC-8}
-$(\text{\BPS}~,~\text{\RATE}~,~\text{\CHANNELCOUNT}~,~\text{\SUBSTREAMCOUNT}) \leftarrow$ read major sync\;
+$\text{\SUBSTREAMCOUNT} \leftarrow$ read major sync\;
+\ASSERT $(\SUBSTREAMCOUNT = 1)$ \OR $(\SUBSTREAMCOUNT = 2)$\;
 \For{s = 0 \emph{\KwTo}\SUBSTREAMCOUNT}{
   $(\text{\CHECKDATA}_s~,~\text{\SUBSTREAMEND}_s) \leftarrow$ read substream info\;
 }
-\For(\tcc*[f]{read substream data}){s = 0 \emph{\KwTo}\SUBSTREAMCOUNT}{
-  \eIf{$\text{\CHECKDATA}_s = 1$}{
-    \eIf{$s = 0$}{
-      decode next $(\text{\SUBSTREAMEND}_0 - 2)$ bytes as $\text{\SUBSTREAM}_0$\;
-    }{
-      decode next $(\text{\SUBSTREAMEND}_s - \text{\SUBSTREAMEND}_{s - 1} - 2)$ bytes as $\text{\SUBSTREAM}_i$\;
-    }
-    $\PARITY \leftarrow$ \READ 8 unsigned bits\;
-    $\CRC \leftarrow$ \READ 8 unsigned bits\;
-    verify \PARITY, \CRC of $\text{\SUBSTREAM}_s$\;
+\eIf{$\text{\CHECKDATA}_0 = 1$}{
+  decode next $(\text{\SUBSTREAMEND}_0 - 2)$ bytes as $\text{\SUBSTREAM}_0$\;
+  $\text{\PARITY}_0 \leftarrow$ \READ 8 unsigned bits\;
+  $\text{\CRC}_0 \leftarrow$ \READ 8 unsigned bits\;
+  verify $\text{\PARITY}_0$, $\text{\CRC}_0$ of $\text{\SUBSTREAM}_0$\;
+}{
+  decode next $\text{\SUBSTREAMEND}_0$ bytes as $\text{\SUBSTREAM}_0$\;
+}
+\uIf{$\SUBSTREAMCOUNT = 1$}{
+  rematrix channels\;
+}
+\ElseIf{$\SUBSTREAMCOUNT = 2$}{
+  \eIf{$\text{\CHECKDATA}_1 = 1$}{
+    decode next $(\text{\SUBSTREAMEND}_1 - \text{\SUBSTREAMEND}_0 - 2)$ bytes as $\text{\SUBSTREAM}_1$\;
+    $\text{\PARITY}_1 \leftarrow$ \READ 8 unsigned bits\;
+    $\text{\CRC}_1 \leftarrow$ \READ 8 unsigned bits\;
+    verify $\text{\PARITY}_1$, $\text{\CRC}_1$ of $\text{\SUBSTREAM}_1$\;
   }{
-    \eIf{$s = 0$}{
-      decode next $(\text{\SUBSTREAMEND}_0)$ bytes as $\text{\SUBSTREAM}_0$\;
-    }{
-      decode next $(\text{\SUBSTREAMEND}_s - \text{\SUBSTREAMEND}_{s - 1})$ bytes as $\text{\SUBSTREAM}_s$\;
-    }
+    decode next $(\text{\SUBSTREAMEND}_1 - \text{\SUBSTREAMEND}_0)$ bytes as $\text{\SUBSTREAM}_1$\;
   }
+  combine substreams into single set of channels\;
+  rematrix channels\;
 }
 \Return substream channels as PCM frames\;
 \EALGORITHM
@@ -245,12 +252,12 @@ Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor
 
 \clearpage
 
-\subsubsection{The Major Sync}
+\subsubsection{Reading Major Sync}
 This is a collection of information about the MLP stream
 which occurs occasionally at the start of MLP frames.
 Its values are consistent throughout the stream for any given track.
 {\relsize{-1}
-\ALGORITHM{MLP frame data}{bits-per-sample, sample rate, channel count, substream count values}
+\ALGORITHM{MLP frame data}{substream count}
 \SetKw{AND}{and}
 \SetKw{OR}{or}
 \SetKw{REWIND}{rewind stream}
@@ -281,10 +288,10 @@ $\STREAMTYPE \leftarrow$ \READ 8 unsigned bits\;
   $\text{\SUBSTREAMCOUNT} \leftarrow$ \READ 4 unsigned bits\;
   \ASSERT $(\text{\SUBSTREAMCOUNT} = 1)$ \OR $(\text{\SUBSTREAMCOUNT} = 2)$\;
   \SKIP 92 bits\;
-  \Return $(\text{\BPS}_0~,~\text{\RATE}_0~,~\text{\CHANNELCOUNT}~,~\text{\SUBSTREAMCOUNT})$\;
+  \Return $\text{\SUBSTREAMCOUNT}$\;
 }(\tcc*[f]{major sync not found}){
   \REWIND 32 bits\;
-  \Return values from previous major sync\;
+  \Return substream count from previous major sync\;
 }
 \EALGORITHM
 }
@@ -392,7 +399,7 @@ means both substreams will be followed by 8 bit parity and CRC-8 values.
 
 \subsection{Decoding Substream}
 {\relsize{-1}
-\ALGORITHM{MLP substream data}{1 or more channels of PCM data}
+\ALGORITHM{MLP substream data}{1 or more channels of PCM data, matrix parameters}
 \SetKwData{PARAMSPRESENT}{parameters present}
 \SetKwData{HEADERPRESENT}{restart header present}
 \SetKwData{MINCHANNEL}{min channel}
@@ -427,6 +434,8 @@ means both substreams will be followed by 8 bit parity and CRC-8 values.
   \BlankLine
   $\text{\LAST}_s \leftarrow$ \READ 1 unsigned bit\;
 }
+\BlankLine
+\Return $(\text{\FILTERED}_{s}~,~\text{\MINCHANNEL}_s~,~\text{\MAXCHANNEL}_s~,~\text{\MAXMATRIXCHANNEL}_s~,~\text{\NOISESHIFT}_s~,~\text{\NOISEGENSEED}_s)$\;
 \EALGORITHM
 }
 
@@ -505,9 +514,23 @@ $\text{\CHECKSUM} \leftarrow$ \READ 8 unsigned bits\;
 
 \clearpage
 
+\subsection{Decoding Parameters}
+
+%%FIXME - offer breakdown of what parameters are for
+
+Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor tellus. Donec pretium posuere tellus. Proin quam nisl, tincidunt et, mattis eget, convallis nec, purus. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Nulla posuere. Donec vitae dolor. Nullam tristique diam non turpis. Cras placerat accumsan nulla. Nullam rutrum. Nam vestibulum accumsan nisl.
+
+\clearpage
+
+\begin{figure}[h]
+  \includegraphics{figures/dvda/mlp_decoding_params.pdf}
+\end{figure}
+
+\clearpage
+
 \subsection{Reading Decoding Parameters}
 {\relsize{-1}
-\ALGORITHM{MLP substream data, restart header present flag, min channel, max channel, max matrix channel}{parameters}
+\ALGORITHM{MLP substream data, restart header present flag, min channel, max channel, max matrix channel}{flags, block size, matrix parameters, output shifts, quant step sizes; FIR filter parameters, IIR filter parameters, Huffman parameters per channel}
 \SetKw{OR}{or}
 \SetKw{AND}{and}
 \SetKwData{HEADERPRESENT}{restart header present}
@@ -558,7 +581,7 @@ $\text{\CHECKSUM} \leftarrow$ \READ 8 unsigned bits\;
   $(\text{\MATRIXCOUNT}_s~,~\text{\MATRIXOUTCH}_s~,~\text{\LSBBYPASS}_s~,~\text{\MATRIXCOEFF}_s) \leftarrow (0~,~\texttt{[]}~,~\texttt{[]}~,~\texttt{[]})$\;
 }
 \Else{
-  $(\text{\MATRIXCOUNT}_s~,~\text{\MATRIXOUTCH}_s~,~\text{\LSBBYPASS}_s~,~\text{\MATRIXCOEFF}_s) \leftarrow$ from previous block in substream\;
+  $(\text{\MATRIXCOUNT}_s~,~\text{\MATRIXOUTCH}_s~,~\text{\LSBBYPASS}_s~,~\text{\MATRIXCOEFF}_s) \leftarrow$ from previous block\;
 }
 \uIf(\tcc*[f]{output shifts}){$(\text{\FLAGS}_{s~5} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
   \For{c = 0 \emph{\KwTo}$(\text{\MAXMATRIXCHANNEL}_s + 1)$}{
@@ -692,7 +715,7 @@ $\text{\CHECKSUM} \leftarrow$ \READ 8 unsigned bits\;
   \SetKwData{MATRIXOUTCH}{matrix out channel}
   \SetKwData{FRACTIONALBITS}{fractional bits}
   \SetKwData{LSBBYPASS}{LSB bypass}
-  \SetKwData{MATRIXCOEFF}{matrix coeff}
+  \SetKwData{MATRIXCOEFF}{matrix coefficient}
   $\text{\MATRIXCOUNT} \leftarrow$ \READ 4 unsigned bits\;
   \For{m = 0 \emph{\KwTo}$\text{\MATRIXCOUNT}$}{
     $\text{\MATRIXOUTCH}_{m} \leftarrow$ \READ 4 unsigned bits\;
@@ -1042,3 +1065,64 @@ where \texttt{mask} is defined as:
 x - (x \bmod 2 ^ q) & \text{ if } q > 0
 \end{cases}
 \end{equation*}
+
+%%FIXME - add residual filtering example
+
+\clearpage
+
+\subsection{Rematrixing Channels}
+\ALGORITHM{block size, filtered residuals, noise shift, noise gen seed,\newline matrix count, max matrix channel, matrix out channels, matrix coefficients\newline quant step sizes, bypassed LSBs}{rematrixed channels, updated noise gen seed}
+\SetKwData{BLOCKSIZE}{block size}
+\SetKwData{NOISE}{noise}
+\SetKwData{NOISESHIFT}{noise shift}
+\SetKwData{SHIFTED}{shifted}
+\SetKwData{NOISEGENSEED}{noise gen seed}
+\SetKwData{MATRIXCOUNT}{matrix count}
+\SetKwData{SUM}{sum}
+\SetKwData{MAXMATRIXCHANNEL}{max matrix channel}
+\SetKwData{FILTERED}{filtered}
+\SetKwData{MATRIXCOEFF}{matrix coefficient}
+\SetKwData{REMATRIXED}{rematrixed}
+\SetKwData{MATRIXOUTCHANNEL}{matrix out channel}
+\SetKwData{QUANTSTEPSIZE}{quant step size}
+\SetKwData{BYPASSEDLSB}{bypassed LSB}
+\SetKwFunction{MASK}{mask}
+\SetKwFunction{CROP}{crop}
+\For(\tcc*[f]{generate noise channels}){i = 0 \emph{\KwTo}\BLOCKSIZE}{
+  $\text{\SHIFTED}_i \leftarrow \lfloor\text{\NOISEGENSEED} \div 2 ^ 7\rfloor \bmod{2 ^ {16}}$\;
+  $\text{\NOISE}_{0~i} \leftarrow \CROP(\lfloor\text{\NOISEGENSEED} \div 2 ^ {15}\rfloor) \times 2 ^ {\text{\NOISESHIFT}}$\;
+  $\text{\NOISE}_{1~i} \leftarrow \CROP(\text{\SHIFTED}_i) \times 2 ^ {\text{\NOISESHIFT}}$\;
+  $\text{\NOISEGENSEED} \leftarrow ((\text{\NOISEGENSEED} \times 2 ^ {16}) \bmod{2 ^ {32}}) \xor \text{\SHIFTED}_i \xor (\text{\SHIFTED}_i \times 2 ^ 5)$\;
+}
+\BlankLine
+\For(\tcc*[f]{perform channel rematrixing}){m = 0 \emph{\KwTo}\MATRIXCOUNT}{
+  $o \leftarrow \text{\MATRIXOUTCHANNEL}_m$\;
+  \For{i = 0 \emph{\KwTo}\BLOCKSIZE}{
+    $\text{\SUM}_i \leftarrow 0$\;
+    \For{c = 0 \emph{\KwTo}$\MAXMATRIXCHANNEL + 1$}{
+      $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\FILTERED}_{c~i} \times \text{\MATRIXCOEFF}_{m~c}$\;
+    }
+    $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\NOISE}_{0~i} \times \text{\MATRIXCOEFF}_{m~(\MAXMATRIXCHANNEL + 1)}$\;
+    $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\NOISE}_{1~i} \times \text{\MATRIXCOEFF}_{m~(\MAXMATRIXCHANNEL + 2)}$\;
+    $\text{\REMATRIXED}_{o~i} \leftarrow \MASK(\lfloor\text{\SUM}_i \div 2 ^ {14}\rfloor~,~\text{\QUANTSTEPSIZE}_{o}) + \text{\BYPASSEDLSB}_{m~i}$\;
+  }
+}
+\Return $(\REMATRIXED~,~\NOISEGENSEED)$\;
+\EALGORITHM
+\vskip .25in
+\par
+\noindent
+where \texttt{crop} is defined as:
+\begin{align*}
+  \texttt{crop}(x) &=
+  \begin{cases}
+    x \bmod{2 ^ 8} & \text{if } \lfloor (x \bmod{2 ^ 8}) \div 2 ^ 7\rfloor = 0 \\
+    (x \bmod{2 ^ 7}) - 2 ^ 7 & \text{if } \lfloor (x \bmod{2 ^ 8}) \div 2 ^ 7\rfloor \neq 0
+  \end{cases}
+  \intertext{and \texttt{mask} is defined as:}
+  \texttt{mask}(x~,~q) &=\begin{cases}x & \text{ if } q = 0 \\
+  x - (x \bmod 2 ^ q) & \text{ if } q > 0
+  \end{cases}
+\end{align*}
+
+%%FIXME - add rematrixing example

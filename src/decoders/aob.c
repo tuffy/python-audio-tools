@@ -308,6 +308,8 @@ DVDA_Title_read(decoders_DVDA_Title *self, PyObject *args)
                 read_mlp_frames(self->mlp_decoder, self->codec_framelist));
     }
 
+    /*FIXME - reorder channels from PCM/MLP order to WAVE order*/
+
     /*account for framelists larger than frames remaining*/
     self->codec_framelist->cross_split(self->codec_framelist,
                                        MIN(self->pcm_frames_remaining,

@@ -44,9 +44,9 @@ open_mlp_decoder(struct bs_buffer* frame_data)
     for (s = 0; s < MAX_MLP_SUBSTREAMS; s++) {
         unsigned c;
 
-        decoder->substream[s].bypassed_LSBs = array_ia_new();
+        decoder->substream[s].bypassed_LSB = array_ia_new();
         decoder->substream[s].residuals = array_ia_new();
-        decoder->substream[s].filtered = array_ia_new();
+        decoder->substream[s].filtered = array_i_new();
 
         /*init channel parameters*/
         for (c = 0; c < MAX_MLP_CHANNELS; c++) {
@@ -76,9 +76,9 @@ close_mlp_decoder(MLPDecoder* decoder)
     for (s = 0; s < MAX_MLP_SUBSTREAMS; s++) {
         unsigned c;
 
-        array_ia_del(decoder->substream[s].bypassed_LSBs);
+        array_ia_del(decoder->substream[s].bypassed_LSB);
         array_ia_del(decoder->substream[s].residuals);
-        array_ia_del(decoder->substream[s].filtered);
+        array_i_del(decoder->substream[s].filtered);
 
         /*free channel parameters*/
         for (c = 0; c < MAX_MLP_CHANNELS; c++) {
@@ -167,65 +167,83 @@ read_mlp_frame(MLPDecoder* decoder,
 
     if (!setjmp(*br_try(bs))) {
         unsigned s;
+        struct substream* substream0 = &(decoder->substream[0]);
+        struct substream* substream1 = &(decoder->substream[1]);
 
         /*read 1 or 2 substream info blocks, depending on substream count*/
         /*FIXME - ensure at least one major sync has been read*/
         for (s = 0; s < decoder->major_sync.substream_count; s++) {
-            if ((status =
-                 read_mlp_substream_info(bs,
-                                    &(decoder->substream[s].info))) != OK) {
+            if ((status = read_mlp_substream_info(
+                     bs,
+                     &(decoder->substream[s].info))) != OK) {
                 br_etry(bs);
                 return status;
             }
         }
 
-        /*decode 1 or 2 substreams to framelist, depending on substream count*/
-        for (s = 0; s < decoder->major_sync.substream_count; s++) {
-            br_substream_reset(decoder->substream_reader);
-            if (decoder->substream[s].info.checkdata_present == 1){
+        br_substream_reset(decoder->substream_reader);
+        if (decoder->substream[0].info.checkdata_present) {
+            /*checkdata present, so last 2 bytes are CRC-8/parity*/
+            unsigned CRC8;
+            unsigned parity;
+
+            bs->substream_append(bs, decoder->substream_reader,
+                                 substream0->info.substream_end - 2);
+
+            CRC8 = bs->read(bs, 8);
+            parity = bs->read(bs, 8);
+
+            /*FIXME - verify CRC8 and parity*/
+        } else {
+            bs->substream_append(bs, decoder->substream_reader,
+                                 decoder->substream[0].info.substream_end);
+        }
+
+        /*decode substream 0 bytes to channel data*/
+        /* if ((status = read_mlp_substream(decoder, */
+        /*                                  substream0, */
+        /*                                  decoder->substream_reader, */
+        /*                                  substream0_framelist)) != OK) { */
+        /*     br_etry(bs); */
+        /*     return status; */
+        /* } */
+
+        if (decoder->major_sync.substream_count == 1) {
+            /*FIXME - rematrix substream 0 to framelist*/
+        } else {
+            if (decoder->substream[0].info.checkdata_present) {
                 /*checkdata present, so last 2 bytes are CRC-8/parity*/
                 unsigned CRC8;
                 unsigned parity;
 
-                if (s == 0) {
-                    bs->substream_append(bs, decoder->substream_reader,
-                         decoder->substream[s].info.substream_end - 2);
-                } else {
-                    bs->substream_append(bs, decoder->substream_reader,
-                         decoder->substream[s].info.substream_end -
-                         decoder->substream[s - 1].info.substream_end - 2);
-                }
-
-                if ((status = read_mlp_substream(decoder,
-                                                 &(decoder->substream[s]),
-                                                 decoder->substream_reader,
-                                                 framelist)) != OK) {
-                    br_etry(bs);
-                    return status;
-                }
+                bs->substream_append(bs, decoder->substream_reader,
+                                     substream1->info.substream_end -
+                                     substream0->info.substream_end -
+                                     2);
 
                 CRC8 = bs->read(bs, 8);
                 parity = bs->read(bs, 8);
 
                 /*FIXME - verify CRC8 and parity*/
             } else {
-                if (s == 0) {
-                    bs->substream_append(bs, decoder->substream_reader,
-                         decoder->substream[s].info.substream_end);
-                } else {
-                    bs->substream_append(bs, decoder->substream_reader,
-                         decoder->substream[s].info.substream_end -
-                         decoder->substream[s - 1].info.substream_end);
-                }
-
-                if ((status = read_mlp_substream(decoder,
-                                                 &(decoder->substream[s]),
-                                                 decoder->substream_reader,
-                                                 framelist)) != OK) {
-                    br_etry(bs);
-                    return status;
-                }
+                bs->substream_append(bs, decoder->substream_reader,
+                                     substream1->info.substream_end -
+                                     substream0->info.substream_end);
             }
+
+            /*FIXME - decode substream 1 bytes to channel data*/
+            /* if ((status = read_mlp_substream(decoder, */
+            /*                                  substream1, */
+            /*                                  decoder->substream_reader, */
+            /*                                  substream1_framelist)) != OK) { */
+            /*     br_etry(bs); */
+            /*     return status; */
+            /* } */
+
+            /*FIXME - combine substream 0 and substream 1
+              into single collection of channel data*/
+
+            /*FIXME - rematrix substreams 0 and 1 to framelist*/
         }
 
         br_etry(bs);
@@ -304,19 +322,19 @@ read_mlp_substream_info(BitstreamReader* bs,
 }
 
 mlp_status
-read_mlp_substream(MLPDecoder* decoder,
-                   struct substream* substream,
+read_mlp_substream(struct substream* substream,
                    BitstreamReader* bs,
                    array_ia* framelist)
 {
     if (!setjmp(*br_try(bs))) {
         unsigned last_block;
 
+        /*FIXME - initialize framelist with proper number of channels*/
+
         do {
             mlp_status status;
 
-            if ((status = read_mlp_block(decoder,
-                                         substream,
+            if ((status = read_mlp_block(substream,
                                          bs,
                                          framelist)) != OK) {
                 br_etry(bs);
@@ -332,12 +350,10 @@ read_mlp_substream(MLPDecoder* decoder,
         br_etry(bs);
         return IO_ERROR;
     }
-
 }
 
 mlp_status
-read_mlp_block(MLPDecoder* decoder,
-               struct substream* substream,
+read_mlp_block(struct substream* substream,
                BitstreamReader* bs,
                array_ia* framelist)
 {
@@ -368,39 +384,35 @@ read_mlp_block(MLPDecoder* decoder,
     }
 
     /*perform residuals decoding*/
-    if ((status = read_mlp_block_data(bs,
-                                      substream->parameters.block_size,
-                                      substream->header.min_channel,
-                                      substream->header.max_channel,
-                                      substream->parameters.matrix_len,
-                                      substream->parameters.quant_step_size,
-                                      substream->parameters.matrix,
-                                      substream->parameters.channel,
-                                      substream->bypassed_LSBs,
-                                      substream->residuals)) != OK) {
+    if ((status = read_mlp_residual_data(bs,
+                                         substream->header.min_channel,
+                                         substream->header.max_channel,
+                                         substream->parameters.block_size,
+                                         substream->parameters.matrix_len,
+                                         substream->parameters.matrix,
+                                         substream->parameters.quant_step_size,
+                                         substream->parameters.channel,
+                                         substream->bypassed_LSB,
+                                         substream->residuals)) != OK) {
         return status;
     }
 
 
     /*filter residuals based on FIR/IIR parameters*/
-    substream->filtered->reset(substream->filtered);
-    for (c = 0; c < substream->header.min_channel; c++) {
-        /*initalize unused filter channels, if any*/
-        substream->filtered->append(substream->filtered);
-    }
-
     for (c = substream->header.min_channel;
          c <= substream->header.max_channel;
          c++) {
-        array_i* filtered = substream->filtered->append(substream->filtered);
         if ((status =
              filter_mlp_channel(substream->residuals->_[c],
                                 &(substream->parameters.channel[c].FIR),
                                 &(substream->parameters.channel[c].IIR),
                                 substream->parameters.quant_step_size[c],
-                                filtered)) != OK) {
+                                substream->filtered)) != OK) {
             return status;
         }
+
+        /*append filtered data to framelist*/
+        framelist->_[c]->extend(framelist->_[c], substream->filtered);
     }
 
     return OK;
@@ -661,16 +673,16 @@ read_mlp_filter_parameters(BitstreamReader* bs,
 }
 
 mlp_status
-read_mlp_block_data(BitstreamReader* bs,
-                    unsigned block_size,
-                    unsigned min_channel,
-                    unsigned max_channel,
-                    unsigned matrix_len,
-                    const unsigned* quant_step_size,
-                    const struct matrix_parameters* matrix,
-                    const struct channel_parameters* channel,
-                    array_ia* bypassed_LSBs,
-                    array_ia* residuals)
+read_mlp_residual_data(BitstreamReader* bs,
+                       unsigned min_channel,
+                       unsigned max_channel,
+                       unsigned block_size,
+                       unsigned matrix_len,
+                       const struct matrix_parameters* matrix,
+                       const unsigned* quant_step_size,
+                       const struct channel_parameters* channel,
+                       array_ia* bypassed_LSBs,
+                       array_ia* residuals)
 {
     int signed_huffman_offset[MAX_MLP_CHANNELS];
     unsigned LSB_bits[MAX_MLP_CHANNELS];
@@ -843,4 +855,62 @@ filter_mlp_channel(const array_i* residuals,
     IIR->state->tail(IIR->state, 8, IIR->state);
 
     return OK;
+}
+
+void
+rematrix_mlp_channels(const array_ia* filtered,
+                      unsigned max_matrix_channel,
+                      unsigned noise_shift,
+                      unsigned* noise_gen_seed,
+                      unsigned matrix_count,
+                      const struct matrix_parameters* matrix,
+                      const unsigned* quant_step_size,
+                      const array_ia* bypassed_LSBs,
+                      array_ia* rematrixed)
+{
+    const unsigned block_size = filtered->_[0]->len;
+    array_ia* noise = array_ia_new();
+    unsigned i;
+    unsigned m;
+
+    /*generate noise channels*/
+    for (i = 0; i < 2; i++)
+        noise->append(noise);
+    for (i = 0; i < block_size; i++) {
+        const unsigned shifted = (*noise_gen_seed >> 7) & 0xFFFF;
+        noise->_[0]->append(noise->_[0],
+                            ((int8_t)(*noise_gen_seed >> 15)) << noise_shift);
+        noise->_[1]->append(noise->_[1],
+                            ((int8_t)(shifted)) << noise_shift);
+        *noise_gen_seed = (((*noise_gen_seed << 16) & 0xFFFFFFFF) ^
+                           shifted ^ (shifted << 5));
+    }
+
+    /*ensure rematrixed array has proper number of channels*/
+    rematrixed->reset(rematrixed);
+    for (i = 0; i < filtered->len; i++)
+        rematrixed->append(rematrixed);
+
+    /*perform channel rematrixing*/
+    for (m = 0; m < matrix_count; m++) {
+        array_i* o = rematrixed->_[matrix[m].out_channel];
+
+        for (i = 0; i < block_size; i++) {
+            int64_t sum = 0;
+            unsigned c;
+            for (c = 0; c <= max_matrix_channel; c++)
+                sum += ((int64_t)filtered->_[c]->_[i] *
+                        (int64_t)matrix[m].coeff[c]);
+            sum += ((int64_t)noise->_[0]->_[i] *
+                    (int64_t)matrix[m].coeff[max_matrix_channel + 1]);
+            sum += ((int64_t)noise->_[1]->_[i] *
+                    (int64_t)matrix[m].coeff[max_matrix_channel + 2]);
+            o->append(o,
+                      mask((int)(sum >> 14),
+                           quant_step_size[matrix[m].out_channel]) +
+                      bypassed_LSBs->_[m]->_[i]);
+        }
+    }
+
+    noise->del(noise);
 }
