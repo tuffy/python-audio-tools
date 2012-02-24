@@ -41,7 +41,8 @@ typedef enum {OK,
               INVALID_DECODING_PARAMETERS,
               INVALID_MATRIX_PARAMETERS,
               INVALID_CHANNEL_PARAMETERS,
-              INVALID_BLOCK_DATA} mlp_status;
+              INVALID_BLOCK_DATA,
+              INVALID_FILTER_PARAMETERS} mlp_status;
 
 struct major_sync {
     unsigned bits_per_sample_0;
@@ -79,20 +80,15 @@ struct matrix_parameters {
     int coeff[MAX_MLP_CHANNELS];
 };
 
-struct FIR_filter_parameters {
-    unsigned shift;
-    array_i* coeff;
-};
-
-struct IIR_filter_parameters {
+struct filter_parameters {
     unsigned shift;
     array_i* coeff;
     array_i* state;
 };
 
 struct channel_parameters {
-    struct FIR_filter_parameters FIR;
-    struct IIR_filter_parameters IIR;
+    struct filter_parameters FIR;
+    struct filter_parameters IIR;
 
     int huffman_offset;
     unsigned codebook;
@@ -199,15 +195,8 @@ read_mlp_matrix_params(BitstreamReader* bs,
                        struct matrix_parameters* mp);
 
 mlp_status
-read_mlp_fir_params(BitstreamReader* bs,
-                    unsigned* shift,
-                    array_i* coeffs);
-
-mlp_status
-read_mlp_iir_params(BitstreamReader* bs,
-                    unsigned* shift,
-                    array_i* coeffs,
-                    array_i* state);
+read_mlp_filter_parameters(BitstreamReader* bs,
+                           struct filter_parameters* params);
 
 mlp_status
 read_mlp_block_data(BitstreamReader* bs,
@@ -223,8 +212,9 @@ read_mlp_block_data(BitstreamReader* bs,
 
 mlp_status
 filter_mlp_channel(const array_i* residuals,
-                   struct FIR_filter_parameters* FIR,
-                   struct IIR_filter_parameters* IIR,
+                   struct filter_parameters* FIR,
+                   struct filter_parameters* IIR,
+                   unsigned quant_step_size,
                    array_i* filtered);
 
 #endif

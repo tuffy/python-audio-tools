@@ -612,6 +612,7 @@ $\text{\CHECKSUM} \leftarrow$ \READ 8 unsigned bits\;
     \SetKwData{FIRORDER}{FIR order}
     \SetKwData{FIRSHIFT}{FIR shift}
     \SetKwData{FIRCOEFF}{FIR coeff}
+    \SetKwData{FIRSTATE}{FIR state}
     \SetKwData{IIRORDER}{IIR order}
     \SetKwData{IIRSHIFT}{IIR shift}
     \SetKwData{IIRCOEFF}{IIR coeff}
@@ -619,19 +620,21 @@ $\text{\CHECKSUM} \leftarrow$ \READ 8 unsigned bits\;
     \SetKwData{CODEBOOK}{codebook}
     \SetKwData{HUFFMANOFFSET}{Huffman offset}
     \SetKwData{HUFFMANLSBS}{Huffman LSBs}
+    \SetKwFunction{LEN}{len}
     \For(\tcc*[f]{channel parameters}){c = $\text{\MINCHANNEL}_s$ \emph{\KwTo}$(\text{\MAXCHANNEL}_s + 1)$}{
       \uIf{$((\READ~\textnormal{1 unsigned bit}) = 1)$}{
         \uIf(\tcc*[f]{FIR filter parameters}){$(\text{\FLAGS}_{s~3} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-          $(\text{\FIRORDER}_{s~c}~,~\text{\FIRSHIFT}_{s~c}~,~\text{\FIRCOEFF}_{s~c}) \leftarrow$ read FIR filter parameters\;
+          $(\text{\FIRORDER}_{s~c}~,~\text{\FIRSHIFT}_{s~c}~,~\text{\FIRCOEFF}_{s~c}~,~\text{\FIRSTATE}) \leftarrow$ read filter parameters\;
+          \ASSERT $\LEN(\FIRSTATE) = 0$\tcc*[r]{FIR filter has no initial state}
         }
         \uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
-          $(\text{\FIRORDER}_{s~c}~,~\text{\FIRSHIFT}_{s~c}~,~\text{\FIRCOEFF}_{s~c}) \leftarrow (0~,~0~,~\texttt{[]})$\;
+          $(\text{\FIRORDER}_{s~c}~,~\text{\FIRSHIFT}_{s~c}~,~\text{\FIRCOEFF}_{s~c}~,~\text{\FIRSTATE}_{s~c}) \leftarrow (0~,~0~,~\texttt{[]}~,~\texttt{[]})$\;
         }
         \Else{
-          $(\text{\FIRORDER}_{s~c}~,~\text{\FIRSHIFT}_{s~c}~,~\text{\FIRCOEFF}_{s~c}) \leftarrow$ from previous block's corresponding channel in substream\;
+          $(\text{\FIRORDER}_{s~c}~,~\text{\FIRSHIFT}_{s~c}~,~\text{\FIRCOEFF}_{s~c}~,~\text{\FIRSTATE}_{s~c}) \leftarrow$ from previous block's corresponding channel in substream\;
         }
         \uIf(\tcc*[f]{IIR filter paramters}){$(\text{\FLAGS}_{s~2} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-          $(\text{\IIRORDER}_{s~c}~,~\text{\IIRSHIFT}_{s~c}~,~\text{\IIRCOEFF}_{s~c}~,~\text{\IIRSTATE}_{s~c}) \leftarrow$ read IIR filter parameters\;
+          $(\text{\IIRORDER}_{s~c}~,~\text{\IIRSHIFT}_{s~c}~,~\text{\IIRCOEFF}_{s~c}~,~\text{\IIRSTATE}_{s~c}) \leftarrow$ read filter parameters\;
         }
         \uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
           $(\text{\IIRORDER}_{s~c}~,~\text{\IIRSHIFT}_{s~c}~,~\text{\IIRCOEFF}_{s~c}~,~\text{\IIRSTATE}_{s~c}) \leftarrow (0~,~0~,~\texttt{[]}~,~\texttt{[]})$\;
@@ -653,14 +656,14 @@ $\text{\CHECKSUM} \leftarrow$ \READ 8 unsigned bits\;
         \ASSERT $\text{\HUFFMANLSBS}_{s~c} \leq 24$\;
       }
       \uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
-        $(\text{\FIRORDER}_{s~c}~,~\text{\FIRSHIFT}_{s~c}~,~\text{\FIRCOEFF}_{s~c}) \leftarrow (0~,~0~,~\texttt{[]})$\;
+        $(\text{\FIRORDER}_{s~c}~,~\text{\FIRSHIFT}_{s~c}~,~\text{\FIRCOEFF}_{s~c}~,~\text{\FIRSTATE}_{s~c}) \leftarrow (0~,~0~,~\texttt{[]}~,~\texttt{[]})$\;
         $(\text{\IIRORDER}_{s~c}~,~\text{\IIRSHIFT}_{s~c}~,~\text{\IIRCOEFF}_{s~c}~,~\text{\IIRSTATE}_{s~c}) \leftarrow (0~,~0~,~\texttt{[]}~,~\texttt{[]})$\;
         $\text{\HUFFMANOFFSET}_{s~c} \leftarrow 0$\;
         $\text{\CODEBOOK}_{s~c} \leftarrow 0$\;
         $\text{\HUFFMANLSBS}_{s~c} \leftarrow 23$\;
       }
       \Else{
-        $(\text{\FIRORDER}_{s~c}~,~\text{\FIRSHIFT}_{s~c}~,~\text{\FIRCOEFF}_{s~c}) \leftarrow$ from previous block's corresponding channel in substream\;
+        $(\text{\FIRORDER}_{s~c}~,~\text{\FIRSHIFT}_{s~c}~,~\text{\FIRCOEFF}_{s~c}~,~\text{\FIRSTATE}_{s~c}) \leftarrow$ from previous block's corresponding channel in substream\;
         $(\text{\IIRORDER}_{s~c}~,~\text{\IIRSHIFT}_{s~c}~,~\text{\IIRCOEFF}_{s~c}~,~\text{\IIRSTATE}_{s~c}) \leftarrow$ from previous block's corresponding channel in substream\;
         $\text{\HUFFMANOFFSET}_{s~c} \leftarrow$ from previous block's corresponding channel in substream\;
         $\text{\CODEBOOK}_{s~c} \leftarrow$ from previous block's corresponding channel in substream\;
@@ -672,18 +675,12 @@ $\text{\CHECKSUM} \leftarrow$ \READ 8 unsigned bits\;
       \text{\FLAGS}_s & \text{\BLOCKSIZE}_s \\
       \text{\MATRIXCOUNT}_s & \text{\MATRIXOUTCH}_s & \text{\LSBBYPASS}_s & \text{\MATRIXCOEFF}_s \\
       \text{\OUTPUTSHIFT}_{s} & \text{\QUANTSTEP}_{s} \\
-      \text{\FIRORDER}_{s} & \text{\FIRSHIFT}_{s} & \text{\FIRCOEFF}_{s} \\
+      \text{\FIRORDER}_{s} & \text{\FIRSHIFT}_{s} & \text{\FIRCOEFF}_{s} & \text{\FIRSTATE}_{s} \\
       \text{\IIRORDER}_{s} & \text{\IIRSHIFT}_{s} & \text{\IIRCOEFF}_{s} & \text{\IIRSTATE}_{s} \\
       \text{\HUFFMANOFFSET}_{s} & \text{\CODEBOOK}_{s} & \text{\HUFFMANLSBS}_{s} \\
     \end{tabular}
   \end{algorithm}
 }
-
-\clearpage
-
-\begin{figure}[h]
-  \includegraphics{figures/dvda/mlp_decoding_params.pdf}
-\end{figure}
 
 \clearpage
 
@@ -722,90 +719,50 @@ $\text{\CHECKSUM} \leftarrow$ \READ 8 unsigned bits\;
 
 \clearpage
 
-\subsubsection{Reading FIR Filter Parameters}
+\subsubsection{Reading Filter Parameters}
 {\relsize{-1}
-  \ALGORITHM{MLP substream data}{FIR order, FIR shift, FIR coefficients}
-  \SetKwData{FIRORDER}{FIR order}
-  \SetKwData{FIRSHIFT}{FIR shift}
-  \SetKwData{FIRCOEFFBITS}{FIR coeff bits}
-  \SetKwData{FIRCOEFFSHIFT}{FIR coeff shift}
-  \SetKwData{FIRCOEFF}{FIR coeff}
-  \SetKwData{FIRSTATE}{FIR state}
-  $\text{\FIRORDER} \leftarrow$ \READ 4 unsigned bits\;
-  \ASSERT $\text{\FIRORDER} \leq 8$\;
-  \eIf{$\text{\FIRORDER} > 0$}{
-    $\text{\FIRSHIFT} \leftarrow$ \READ 4 unsigned bits\;
-    $\text{\FIRCOEFFBITS} \leftarrow$ \READ 5 unsigned bits\;
-    \ASSERT $1 < \text{\FIRCOEFFBITS} < 16$\;
-    $\text{\FIRCOEFFSHIFT} \leftarrow$ \READ 3 unsigned bits\;
-    \ASSERT $(\text{\FIRCOEFFBITS} + \text{\FIRCOEFFSHIFT}) \leq 16$\;
-    \For{f = 0 \emph{\KwTo}$\text{\FIRORDER}$}{
-      $v_{f} \leftarrow$ \READ $(\text{\FIRCOEFFBITS})$ signed bits\;
-      $\text{\FIRCOEFF}_{f} \leftarrow v_{f} \times 2 ^ {\text{\FIRCOEFFSHIFT}}$\;
-    }
-    \eIf{$((\READ~\textnormal{1 unsigned bit}) = 0)$}{
-      $\text{\FIRSTATE} \leftarrow \texttt{[]}$\;
-    }{
-      error, FIR parameters cannot include state\;
-    }
-  }{
-    $\text{\FIRSHIFT} \leftarrow 0$\;
-    $\text{\FIRCOEFF} \leftarrow \texttt{[]}$\;
-  }
-  \Return $(\text{\FIRORDER}~,~\text{\FIRSHIFT}~,~\text{\FIRCOEFF})$\;
-  \EALGORITHM
-}
-
-\begin{figure}[h]
-  \includegraphics{figures/dvda/mlp_fir_params.pdf}
-\end{figure}
-
-\clearpage
-
-\subsubsection{Reading IIR Filter Parameters}
-{\relsize{-1}
-  \ALGORITHM{MLP substream data}{IIR order, IIR shift, IIR coefficients, IIR states}
-  \SetKwData{IIRORDER}{IIR order}
-  \SetKwData{IIRSHIFT}{IIR shift}
-  \SetKwData{IIRCOEFFBITS}{IIR coeff bits}
-  \SetKwData{IIRCOEFFSHIFT}{IIR coeff shift}
-  \SetKwData{IIRCOEFF}{IIR coeff}
+  \ALGORITHM{MLP substream data}{order, shift, coefficients, state values}
+  \SetKwData{ORDER}{order}
+  \SetKwData{SHIFT}{shift}
+  \SetKwData{COEFFBITS}{coeff bits}
+  \SetKwData{COEFFSHIFT}{coeff shift}
+  \SetKwData{COEFF}{coefficient}
   \SetKwData{STATEBITS}{state bits}
   \SetKwData{STATESHIFT}{state shift}
-  \SetKwData{IIRSTATE}{IIR state}
-  $\text{\IIRORDER} \leftarrow$ \READ 4 unsigned bits\;
-  \ASSERT $\text{\IIRORDER} \leq 4$\;
-  \eIf{$\text{\IIRORDER} > 0$}{
-    $\text{\IIRSHIFT} \leftarrow$ \READ 4 unsigned bits\;
-    $\text{\IIRCOEFFBITS} \leftarrow$ \READ 5 unsigned bits\;
-    \ASSERT $1 < \text{\IIRCOEFFBITS} < 16$\;
-    $\text{\IIRCOEFFSHIFT} \leftarrow$ \READ 3 unsigned bits\;
-    \ASSERT $(\text{\IIRCOEFFBITS} + \text{\IIRCOEFFSHIFT}) \leq 16$\;
-    \For{i = 0 \emph{\KwTo}$\text{\IIRORDER}$}{
-      $v_{i} \leftarrow$ \READ $(\text{\IIRCOEFFBITS})$ signed bits\;
-      $\text{\IIRCOEFF}_{i} \leftarrow v_{i} \times 2 ^ {\text{\IIRCOEFFSHIFT}}$\;
+  \SetKwData{STATE}{state}
+  $\text{\ORDER} \leftarrow$ \READ 4 unsigned bits\;
+  \ASSERT $\text{\ORDER} \leq 4$\;
+  \eIf{$\text{\ORDER} > 0$}{
+    $\text{\SHIFT} \leftarrow$ \READ 4 unsigned bits\;
+    $\text{\COEFFBITS} \leftarrow$ \READ 5 unsigned bits\;
+    \ASSERT $1 < \text{\COEFFBITS} < 16$\;
+    $\text{\COEFFSHIFT} \leftarrow$ \READ 3 unsigned bits\;
+    \ASSERT $(\text{\COEFFBITS} + \text{\COEFFSHIFT}) \leq 16$\;
+    \For{i = 0 \emph{\KwTo}$\text{\ORDER}$}{
+      $v_{i} \leftarrow$ \READ $(\text{\COEFFBITS})$ signed bits\;
+      $\text{\COEFF}_{i} \leftarrow v_{i} \times 2 ^ {\text{\COEFFSHIFT}}$\;
     }
     \eIf{$((\READ~\textnormal{1 unsigned bit}) = 1)$}{
       $\text{\STATEBITS} \leftarrow$ \READ 4 unsigned bits\;
       $\text{\STATESHIFT} \leftarrow$ \READ 4 unsigned bits\;
-      \For{i = 0 \emph{\KwTo}$\text{\IIRORDER}$}{
+      \For{i = 0 \emph{\KwTo}$\text{\ORDER}$}{
         $s_{i} \leftarrow$ \READ $(\text{\STATEBITS})$ signed bits\;
-        $\text{\IIRSTATE}_{\text{\IIRORDER} - i - 1} \leftarrow s_{i} \times 2 ^ {\text{\STATESHIFT}}$\;
+        $\text{\STATE}_{\text{\ORDER} - i - 1} \leftarrow s_{i} \times 2 ^ {\text{\STATESHIFT}}$\;
       }
     }{
-      $\text{\IIRSTATE} \leftarrow \texttt{[]}$\;
+      $\text{\STATE} \leftarrow \texttt{[]}$\;
     }
   }{
-    $\text{\IIRSHIFT} \leftarrow 0$\;
-    $\text{\IIRCOEFF} \leftarrow \texttt{[]}$\;
-    $\text{\IIRSTATE} \leftarrow \texttt{[]}$\;
+    $\text{\SHIFT} \leftarrow 0$\;
+    $\text{\COEFF} \leftarrow \texttt{[]}$\;
+    $\text{\STATE} \leftarrow \texttt{[]}$\;
   }
-  \Return $(\text{\IIRORDER}~,~\text{\IIRSHIFT}~,~\text{\IIRCOEFF}~,~\text{\IIRSTATE})$\;
+  \Return $(\text{\ORDER}~,~\text{\SHIFT}~,~\text{\COEFF}~,~\text{\STATE})$\;
   \EALGORITHM
 }
 
 \begin{figure}[h]
-  \includegraphics{figures/dvda/mlp_iir_params.pdf}
+  \includegraphics{figures/dvda/mlp_filter_params.pdf}
 \end{figure}
 
 \clearpage
@@ -1051,16 +1008,13 @@ $\text{signed Huffman offset}_c$ & $0 - 7 \times 2 ^ 2 - 2 ^ 3 = -36$ & $0 - 7 \
 \uElseIf{$\text{\FIRORDER} > 0$}{
   $\text{\SHIFT} \leftarrow \text{\FIRSHIFT}$\;
 }
-\uElseIf{$\text{\IIRORDER} > 0$}{
-  $\text{\SHIFT} \leftarrow \text{\IIRSHIFT}$\;
-}
 \Else{
-  $\text{\SHIFT} \leftarrow 0$\;
+  $\text{\SHIFT} \leftarrow \text{\IIRSHIFT}$\;
 }
 \For{i = 0 \emph{\KwTo}$\text{\BLOCKSIZE}_s$}{
   $\text{\SUM}_i \leftarrow 0$\;
   \For(\tcc*[f]{calculate FIR sum}){j = 0 \emph{\KwTo}$\text{\FIRORDER}$}{
-    \eIf{$i - j - 1 < 0$}{
+    \eIf{$(i - j - 1) < 0$}{
       $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\FIRCOEFF}_j \times \text{\FIRSTATE}_{\FIRORDER + (i - j - 1)}$\;
     }{
       $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\FIRCOEFF}_j \times \text{\FILTERED}_{i - j - 1}$\;

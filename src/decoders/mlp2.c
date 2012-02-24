@@ -52,6 +52,8 @@ open_mlp_decoder(struct bs_buffer* frame_data)
         for (c = 0; c < MAX_MLP_CHANNELS; c++) {
             decoder->substream[s].parameters.channel[c].FIR.coeff =
                 array_i_new();
+            decoder->substream[s].parameters.channel[c].FIR.state =
+                array_i_new();
             decoder->substream[s].parameters.channel[c].IIR.coeff =
                 array_i_new();
             decoder->substream[s].parameters.channel[c].IIR.state =
@@ -81,6 +83,7 @@ close_mlp_decoder(MLPDecoder* decoder)
         /*free channel parameters*/
         for (c = 0; c < MAX_MLP_CHANNELS; c++) {
             array_i_del(decoder->substream[s].parameters.channel[c].FIR.coeff);
+            array_i_del(decoder->substream[s].parameters.channel[c].FIR.state);
             array_i_del(decoder->substream[s].parameters.channel[c].IIR.coeff);
             array_i_del(decoder->substream[s].parameters.channel[c].IIR.state);
         }
@@ -385,6 +388,7 @@ read_mlp_block(MLPDecoder* decoder,
         /*initalize unused filter channels, if any*/
         substream->filtered->append(substream->filtered);
     }
+
     for (c = substream->header.min_channel;
          c <= substream->header.max_channel;
          c++) {
@@ -393,6 +397,7 @@ read_mlp_block(MLPDecoder* decoder,
              filter_mlp_channel(substream->residuals->_[c],
                                 &(substream->parameters.channel[c].FIR),
                                 &(substream->parameters.channel[c].IIR),
+                                substream->parameters.quant_step_size[c],
                                 filtered)) != OK) {
             return status;
         }
@@ -521,23 +526,24 @@ read_mlp_decoding_parameters(BitstreamReader* bs,
             if (p->flags[3] && bs->read(bs, 1)) {
                 /*read FIR filter parameters*/
                 if ((status =
-                     read_mlp_fir_params(bs,
-                                         &(p->channel[c].FIR.shift),
-                                         p->channel[c].FIR.coeff)) != OK)
+                     read_mlp_filter_parameters(bs,
+                                                &(p->channel[c].FIR))) != OK)
                     return status;
+                if (p->channel[c].FIR.state->len > 0)
+                    /*FIR filters cannot have initial state*/
+                    return INVALID_CHANNEL_PARAMETERS;
             } else if (header_present) {
                 /*default FIR filter parameters*/
                 p->channel[c].FIR.shift = 0;
                 array_i_reset(p->channel[c].FIR.coeff);
+                array_i_reset(p->channel[c].FIR.state);
             }
 
             if (p->flags[2] && bs->read(bs, 1)) {
                 /*read IIR filter parameters*/
                 if ((status =
-                     read_mlp_iir_params(bs,
-                                         &(p->channel[c].IIR.shift),
-                                         p->channel[c].IIR.coeff,
-                                         p->channel[c].IIR.state)) != OK)
+                     read_mlp_filter_parameters(bs,
+                                                &(p->channel[c].IIR))) != OK)
                     return status;
             } else if (header_present) {
                 /*default IIR filter parameters*/
@@ -561,6 +567,7 @@ read_mlp_decoding_parameters(BitstreamReader* bs,
             /*default channel parameters*/
             p->channel[c].FIR.shift = 0;
             array_i_reset(p->channel[c].FIR.coeff);
+            array_i_reset(p->channel[c].FIR.state);
             p->channel[c].IIR.shift = 0;
             array_i_reset(p->channel[c].IIR.coeff);
             array_i_reset(p->channel[c].IIR.state);
@@ -605,9 +612,8 @@ read_mlp_matrix_params(BitstreamReader* bs,
 }
 
 mlp_status
-read_mlp_fir_params(BitstreamReader* bs,
-                    unsigned* shift,
-                    array_i* coeffs)
+read_mlp_filter_parameters(BitstreamReader* bs,
+                           struct filter_parameters* params)
 {
     const unsigned order = bs->read(bs, 4);
 
@@ -616,50 +622,7 @@ read_mlp_fir_params(BitstreamReader* bs,
     } else if (order > 0) {
         unsigned coeff_bits;
 
-        *shift = bs->read(bs, 4);
-        coeff_bits = bs->read(bs, 5);
-
-        if ((1 < coeff_bits) && (coeff_bits < 16)) {
-            const unsigned coeff_shift = bs->read(bs, 3);
-            unsigned f;
-
-            if ((coeff_bits + coeff_shift) > 16)
-                return INVALID_CHANNEL_PARAMETERS;
-            coeffs->reset(coeffs);
-            for (f = 0; f < order; f++) {
-                const int v = bs->read_signed(bs, coeff_bits);
-                coeffs->append(coeffs, v << coeff_shift);
-            }
-
-            if (bs->read(bs, 1))
-                /*FIR params can't have state*/
-                return INVALID_CHANNEL_PARAMETERS;
-            else
-                return OK;
-        } else {
-            return INVALID_CHANNEL_PARAMETERS;
-        }
-    } else {
-        *shift = 0;
-        coeffs->reset(coeffs);
-        return OK;
-    }
-}
-
-mlp_status
-read_mlp_iir_params(BitstreamReader* bs,
-                    unsigned* shift,
-                    array_i* coeffs,
-                    array_i* state)
-{
-    const unsigned order = bs->read(bs, 4);
-
-    if (order > 8) {
-        return INVALID_CHANNEL_PARAMETERS;
-    } else if (order > 0) {
-        unsigned coeff_bits;
-
-        *shift = bs->read(bs, 4);
+        params->shift = bs->read(bs, 4);
         coeff_bits = bs->read(bs, 5);
 
         if ((1 < coeff_bits) && (coeff_bits < 16)) {
@@ -668,21 +631,21 @@ read_mlp_iir_params(BitstreamReader* bs,
 
             if ((coeff_bits + coeff_shift) > 16)
                 return INVALID_CHANNEL_PARAMETERS;
-            coeffs->reset(coeffs);
+            params->coeff->reset(params->coeff);
             for (i = 0; i < order; i++) {
                 const int v = bs->read_signed(bs, coeff_bits);
-                coeffs->append(coeffs, v << coeff_shift);
+                params->coeff->append(params->coeff, v << coeff_shift);
             }
-            state->reset(state);
+            params->state->reset(params->state);
             if (bs->read(bs, 1)) {
                 const unsigned state_bits = bs->read(bs, 4);
                 const unsigned state_shift = bs->read(bs, 4);
 
                 for (i = 0; i < order; i++) {
                     const int v = bs->read_signed(bs, state_bits);
-                    state->append(state, v << state_shift);
+                    params->state->append(params->state, v << state_shift);
                 }
-                state->reverse(state);
+                params->state->reverse(params->state);
             }
 
             return OK;
@@ -690,9 +653,9 @@ read_mlp_iir_params(BitstreamReader* bs,
             return INVALID_CHANNEL_PARAMETERS;
         }
     } else {
-        *shift = 0;
-        coeffs->reset(coeffs);
-        state->reset(state);
+        params->shift = 0;
+        params->coeff->reset(params->coeff);
+        params->state->reset(params->state);
         return OK;
     }
 }
@@ -812,24 +775,72 @@ read_mlp_block_data(BitstreamReader* bs,
     return OK;
 }
 
+static inline int
+mask(int x, unsigned q)
+{
+    if (q == 0)
+        return x;
+    else
+        return x - (x % (1 << q));
+}
+
 mlp_status
 filter_mlp_channel(const array_i* residuals,
-                   struct FIR_filter_parameters* FIR,
-                   struct IIR_filter_parameters* IIR,
+                   struct filter_parameters* FIR,
+                   struct filter_parameters* IIR,
+                   unsigned quant_step_size,
                    array_i* filtered)
 {
-    printf("filtering : ");
-    residuals->print(residuals, stdout);
-    printf("\n");
-    printf("FIR shift : %u  coeff : ", FIR->shift);
-    FIR->coeff->print(FIR->coeff, stdout);
-    printf("\n");
-    printf("IIR shift : %u  coeff : ", IIR->shift);
-    IIR->coeff->print(IIR->coeff, stdout);
-    printf("  state : ");
-    IIR->state->print(IIR->state, stdout);
-    printf("\n");
+    const unsigned block_size = residuals->len;
+    const int FIR_order = FIR->coeff->len;
+    const int IIR_order = IIR->coeff->len;
+    unsigned shift;
+    int i;
 
+    if ((FIR_order + IIR_order) > 8)
+        return INVALID_FILTER_PARAMETERS;
+    if ((FIR->shift > 0) && (IIR->shift > 0)) {
+        if (FIR->shift != IIR->shift)
+            return INVALID_FILTER_PARAMETERS;
+        shift = FIR->shift;
+    } else if (FIR_order > 0) {
+        shift = FIR->shift;
+    } else {
+        shift = IIR->shift;
+    }
+
+    filtered->reset(filtered);
+    for (i = 0; i < block_size; i++) {
+        int64_t sum = 0;
+        int shifted_sum;
+        int j;
+        int k;
+
+        for (j = 0; j < FIR_order; j++) {
+            if ((i - j - 1) < 0) {
+                sum += ((int64_t)FIR->coeff->_[j] *
+                        (int64_t)FIR->state->_[FIR_order + (i - j - 1)]);
+            } else {
+                sum += ((int64_t)FIR->coeff->_[j] *
+                        (int64_t)filtered->_[i - j - 1]);
+            }
+        }
+
+        for (k = 0; k < IIR_order; k++) {
+            sum += ((int64_t)IIR->coeff->_[k] *
+                    (int64_t)IIR->state->_[IIR_order + (i - k - 1)]);
+        }
+
+        shifted_sum = (int)(sum >> shift);
+
+        filtered->append(filtered,
+                         mask(shifted_sum + residuals->_[i], quant_step_size));
+
+        IIR->state->append(IIR->state, filtered->_[i] - shifted_sum);
+    }
+
+    filtered->tail(filtered, 8, FIR->state);
+    IIR->state->tail(IIR->state, 8, IIR->state);
 
     return OK;
 }
