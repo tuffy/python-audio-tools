@@ -58,6 +58,8 @@ DVDA_Title_init(decoders_DVDA_Title *self, PyObject *args, PyObject *kwds) {
     self->packet = malloc(sizeof(DVDA_Packet));
     self->packet->data = buf_new();
 
+    self->mlp_frame_sync_read = 0;
+
     self->frames = buf_new();
 
     self->pcm_frames_remaining = 0;
@@ -167,84 +169,99 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, PyObject *args)
         return NULL;
     }
 
-    /*initialize Title's stream attributes
-      (bits-per-sample, sample rate, channel assignment/mask)
-      with values taken from the first packet*/
-    if (read_audio_packet(self->packet_reader, packet)) {
-        PyErr_SetString(PyExc_IOError,
-                        "I/O error reading initialization packet");
-        return NULL;
-    }
+    if ((packet->data->buffer_size - packet->data->buffer_position) == 0) {
+        /*initialize Title's stream attributes
+          (bits-per-sample, sample rate, channel assignment/mask)
+          with values taken from the first packet*/
+        if (read_audio_packet(self->packet_reader, packet)) {
+            PyErr_SetString(PyExc_IOError,
+                            "I/O error reading initialization packet");
+            return NULL;
+        }
 
-    if (packet->codec_ID == 0xA0) {         /*PCM*/
-        /*PCM stores stream attributes in the second padding block*/
-        self->bits_per_sample =
-            dvda_bits_per_sample(packet->PCM.group_1_bps);
-        self->sample_rate =
-            dvda_sample_rate(packet->PCM.group_1_rate);
-        self->channel_count =
-            dvda_channel_count(packet->PCM.channel_assignment);
-        self->channel_mask =
-            dvda_channel_mask(packet->PCM.channel_assignment);
-        self->frame_codec = PCM;
+        if (packet->codec_ID == 0xA0) {         /*PCM*/
+            /*PCM stores stream attributes in the second padding block*/
+            self->bits_per_sample =
+                dvda_bits_per_sample(packet->PCM.group_1_bps);
+            self->sample_rate =
+                dvda_sample_rate(packet->PCM.group_1_rate);
+            self->channel_count =
+                dvda_channel_count(packet->PCM.channel_assignment);
+            self->channel_mask =
+                dvda_channel_mask(packet->PCM.channel_assignment);
+            self->frame_codec = PCM;
+            self->mlp_frame_sync_read = 0;
 
-        init_aobpcm_decoder(&(self->pcm_decoder),
-                            self->bits_per_sample,
-                            self->channel_count);
+            init_aobpcm_decoder(&(self->pcm_decoder),
+                                self->bits_per_sample,
+                                self->channel_count);
 
-    } else if (packet->codec_ID == 0xA1) {  /*MLP*/
-        /*MLP stores stream attributes in its first frame*/
-        BitstreamReader* r = br_open_buffer(packet->data, BS_BIG_ENDIAN);
-        r->mark(r);
-        if (!setjmp(*br_try(r))) {
-            unsigned sync_words;
-            unsigned stream_type;
-            unsigned group_1_bps;
-            unsigned group_2_bps;
-            unsigned group_1_rate;
-            unsigned group_2_rate;
-            unsigned channel_assignment;
+        } else if (packet->codec_ID == 0xA1) {  /*MLP*/
+            /*MLP stores stream attributes in its first frame*/
+            BitstreamReader* r = br_open_buffer(packet->data, BS_BIG_ENDIAN);
+            r->mark(r);
+            if (!setjmp(*br_try(r))) {
+                unsigned sync_words;
+                unsigned stream_type;
+                unsigned group_1_bps;
+                unsigned group_2_bps;
+                unsigned group_1_rate;
+                unsigned group_2_rate;
+                unsigned channel_assignment;
 
-            r->parse(r, "32p 24u 8u 4u 4u 4u 4u 11p 5u 48p",
-                     &sync_words, &stream_type,
-                     &group_1_bps, &group_2_bps, &group_1_rate, &group_2_rate,
-                     &channel_assignment);
+                r->parse(r, "32p 24u 8u 4u 4u 4u 4u 11p 5u 48p",
+                         &sync_words, &stream_type,
+                         &group_1_bps, &group_2_bps,
+                         &group_1_rate, &group_2_rate,
+                         &channel_assignment);
 
-            if ((sync_words == 0xF8726F) && (stream_type == 0xBB)) {
-                self->bits_per_sample =
-                    dvda_bits_per_sample(group_1_bps);
-                self->sample_rate =
-                    dvda_sample_rate(group_1_rate);
-                self->channel_count =
-                    dvda_channel_count(channel_assignment);
-                self->channel_mask =
-                    dvda_channel_mask(channel_assignment);
-                self->frame_codec = MLP;
+                if ((sync_words == 0xF8726F) && (stream_type == 0xBB)) {
+                    self->bits_per_sample =
+                        dvda_bits_per_sample(group_1_bps);
+                    self->sample_rate =
+                        dvda_sample_rate(group_1_rate);
+                    self->channel_count =
+                        dvda_channel_count(channel_assignment);
+                    self->channel_mask =
+                        dvda_channel_mask(channel_assignment);
+                    self->frame_codec = MLP;
+                    self->mlp_frame_sync_read = 1;
 
-                r->rewind(r);
-                br_etry(r);
+                    r->rewind(r);
+                    r->unmark(r);
+                    br_etry(r);
+                    r->close(r);
+                } else {
+                    r->rewind(r);
+                    br_etry(r);
+                    r->unmark(r);
+                    r->close(r);
+
+                    if (!self->mlp_frame_sync_read) {
+                        PyErr_SetString(PyExc_IOError,
+                                        "Invalid MLP sync frame");
+                        return NULL;
+                    }
+                }
             } else {
+                /*I/O error reading MLP frame*/
+                r->rewind(r);
                 r->unmark(r);
                 br_etry(r);
-                PyErr_SetString(PyExc_IOError, "Invalid MLP sync frame");
+                r->close(r);
+                PyErr_SetString(PyExc_IOError, "I/O error reading MLP frame");
                 return NULL;
             }
         } else {
-            /*I/O error reading MLP frame*/
-            r->unmark(r);
-            br_etry(r);
-            PyErr_SetString(PyExc_IOError, "I/O error reading MLP frame");
+            PyErr_SetString(PyExc_ValueError, "unknown codec ID");
             return NULL;
         }
-    } else {
-        PyErr_SetString(PyExc_ValueError, "unknown codec ID");
-        return NULL;
-    }
 
-    /*once first packet is read for stream attributes,
-      copy its payload to our frame store for later parsing*/
-    buf_reset(self->frames);
-    buf_append(packet->data, self->frames);
+        /*once first packet is read for stream attributes,
+          copy its payload to our frame store for later parsing*/
+        buf_reset(self->frames);
+        buf_append(packet->data, self->frames);
+    }
 
     /*convert PTS ticks to PCM frames based on sample rate*/
     self->pcm_frames_remaining = (unsigned)ceil((double)PTS_ticks *
@@ -258,7 +275,6 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, PyObject *args)
             self->codec_framelist->append(self->codec_framelist);
     }
 
-
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -266,6 +282,8 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, PyObject *args)
 static PyObject*
 DVDA_Title_read(decoders_DVDA_Title *self, PyObject *args)
 {
+    mlp_status mlp_status;
+
     /*if track has been exhausted, return empty FrameList*/
     if (!self->pcm_frames_remaining) {
         return empty_FrameList(self->audiotools_pcm,
@@ -292,7 +310,6 @@ DVDA_Title_read(decoders_DVDA_Title *self, PyObject *args)
     case MLP:
         /*if not enough bytes in buffer, read another packet*/
         while (mlp_packet_empty(self->mlp_decoder)) {
-            fprintf(stderr, "reading audio packet\n");
             if (read_audio_packet(self->packet_reader, self->packet)) {
                 PyErr_SetString(PyExc_IOError, "I/O reading MLP packet");
                 return NULL;
@@ -303,9 +320,17 @@ DVDA_Title_read(decoders_DVDA_Title *self, PyObject *args)
             buf_append(self->packet->data, self->frames);
         }
 
-        /*FIXME - check error code here*/
-        fprintf(stderr, "MLP decode result : %d\n",
-                read_mlp_frames(self->mlp_decoder, self->codec_framelist));
+        if ((mlp_status = read_mlp_frames(self->mlp_decoder,
+                                          self->codec_framelist)) != OK) {
+            fprintf(stderr, "MLP read error %d\n", mlp_status);
+            PyErr_SetString(PyExc_ValueError, "Error reading MLP data");
+            return NULL;
+        }
+    }
+
+    if (self->codec_framelist->_[0]->len == 0) {
+        fprintf(stderr, "warning: got empty framelist from codec %d\n",
+                self->frame_codec);
     }
 
     /*FIXME - reorder channels from PCM/MLP order to WAVE order*/
@@ -316,7 +341,6 @@ DVDA_Title_read(decoders_DVDA_Title *self, PyObject *args)
                                            self->codec_framelist->_[0]->len),
                                        self->output_framelist,
                                        self->codec_framelist);
-
 
     /*deduct output FrameList's PCM frames from remaining count*/
     self->pcm_frames_remaining -= self->output_framelist->_[0]->len;

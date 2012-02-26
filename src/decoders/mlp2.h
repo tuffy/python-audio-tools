@@ -78,6 +78,7 @@ struct matrix_parameters {
     unsigned factional_bits;
     unsigned LSB_bypass;
     int coeff[MAX_MLP_CHANNELS];
+    array_i* bypassed_LSB;
 };
 
 struct filter_parameters {
@@ -117,9 +118,6 @@ struct substream {
 
     struct decoding_parameters parameters;
 
-    /*bypassed_LSB[m][i] where m is matrix and i is PCM frame*/
-    array_ia* bypassed_LSB;
-
     /*residuals[c][i] where c is channel and i is PCM frame*/
     array_ia* residuals;
 
@@ -134,6 +132,8 @@ typedef struct {
 
     struct major_sync major_sync;
     struct substream substream[MAX_MLP_SUBSTREAMS];
+
+    array_ia* framelist;
 
 } MLPDecoder;
 
@@ -216,10 +216,13 @@ read_mlp_matrix_params(BitstreamReader* bs,
                        unsigned* matrix_len,
                        struct matrix_parameters* mp);
 
-/*reads FIR or IIR filter parameters from channel parameters*/
 mlp_status
-read_mlp_filter_parameters(BitstreamReader* bs,
-                           struct filter_parameters* params);
+read_mlp_FIR_parameters(BitstreamReader* bs,
+                        struct filter_parameters* FIR);
+
+mlp_status
+read_mlp_IIR_parameters(BitstreamReader* bs,
+                        struct filter_parameters* IIR);
 
 /*given a block's residual data
   min_channel/max_channel from the restart header
@@ -236,7 +239,6 @@ read_mlp_residual_data(BitstreamReader* bs,
                        const struct matrix_parameters* matrix,
                        const unsigned* quant_step_size,
                        const struct channel_parameters* channel,
-                       array_ia* bypassed_LSBs,
                        array_ia* residuals);
 
 /*given a list of residuals for a given channel,
@@ -259,14 +261,12 @@ filter_mlp_channel(const array_i* residuals,
   when 2 substreams are present in an MLP stream,
   one typically uses the parameters from the second substream*/
 void
-rematrix_mlp_channels(const array_ia* filtered,
+rematrix_mlp_channels(array_ia* channels,
                       unsigned max_matrix_channel,
                       unsigned noise_shift,
                       unsigned* noise_gen_seed,
                       unsigned matrix_count,
                       const struct matrix_parameters* matrix,
-                      const unsigned* quant_step_size,
-                      const array_ia* bypassed_LSBs,
-                      array_ia* rematrixed);
+                      const unsigned* quant_step_size);
 
 #endif

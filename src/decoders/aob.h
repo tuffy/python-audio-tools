@@ -44,6 +44,7 @@ typedef struct {
 
     /*PCM or MLP frame data, aligned on a frame start*/
     DVDA_Codec frame_codec;
+    int mlp_frame_sync_read;
     struct bs_buffer* frames;
 
     /*total PCM frames remaining in the current track*/
