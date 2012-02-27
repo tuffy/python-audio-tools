@@ -54,6 +54,13 @@ pcmmodule = Extension('audiotools.pcm',
 replaygainmodule = Extension('audiotools.replaygain',
                              sources=['src/replaygain.c'])
 
+decoders_defines = [("VERSION", VERSION)]
+if (sys.platform == 'linux2'):
+    decoders_defines.extend([('DVD_STRUCT_IN_LINUX_CDROM_H', None),
+                           ('HAVE_LINUX_DVD_STRUCT', None)])
+elif (sys.platform == 'darwin'):
+    decoders_defines.extend([('DARWIN_DVD_IOCTL', None)])
+
 decodersmodule = Extension('audiotools.decoders',
                            sources=['src/array.c',
                                     'src/array2.c',
@@ -76,8 +83,11 @@ decodersmodule = Extension('audiotools.decoders',
                                     'src/decoders/aob.c',
                                     'src/decoders/sine.c',
                                     'src/decoders/ogg.c',
+                                    'src/decoders/cppm.c',
+                                    'src/decoders/ioctl.c',
+                                    'src/decoders/dvd_css.c',
                                     'src/decoders.c'],
-                           define_macros=[("VERSION", VERSION)])
+                           define_macros=decoders_defines)
 
 encodersmodule = Extension('audiotools.encoders',
                            sources=['src/array.c',
@@ -103,38 +113,6 @@ verifymodule = Extension('audiotools.verify',
                                   'src/common/ogg_crc.c',
                                   'src/bitstream.c'])
 
-extensions = [cdiomodule,
-              resamplemodule,
-              pcmmodule,
-              replaygainmodule,
-              decodersmodule,
-              encodersmodule,
-              bitstreammodule,
-              verifymodule]
-
-if (sys.platform == 'linux2'):
-    extensions.append(Extension(
-            'audiotools.prot',
-            sources=['src/prot.c',
-                     'src/prot/cppm.c',
-                     'src/prot/ioctl.c',
-                     'src/prot/dvd_css.c'],
-            define_macros=[('DVD_STRUCT_IN_LINUX_CDROM_H', None),
-                           ('HAVE_LINUX_DVD_STRUCT', None)]))
-elif (sys.platform == 'darwin'):
-    extensions.append(Extension(
-            'audiotools.prot',
-            sources=['src/prot.c',
-                     'src/prot/cppm.c',
-                     'src/prot/ioctl.c',
-                     'src/prot/dvd_css.c'],
-            define_macros=[('DARWIN_DVD_IOCTL', None)]))
-else:
-    #don't install the protection module on
-    #unsupported platformats
-    pass
-
-
 setup(name='Python Audio Tools',
       version=VERSION,
       description='A collection of audio handling utilities',
@@ -143,7 +121,14 @@ setup(name='Python Audio Tools',
       url='http://audiotools.sourceforge.net',
       packages=["audiotools",
                 "audiotools.py_decoders", "audiotools.py_encoders"],
-      ext_modules=extensions,
+      ext_modules=[cdiomodule,
+                   resamplemodule,
+                   pcmmodule,
+                   replaygainmodule,
+                   decodersmodule,
+                   encodersmodule,
+                   bitstreammodule,
+                   verifymodule],
       data_files=[("/etc", ["audiotools.cfg"])],
       scripts=["cd2track", "cdinfo", "cdplay",
                "track2track", "trackrename", "trackinfo",

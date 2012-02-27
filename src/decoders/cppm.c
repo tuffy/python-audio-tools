@@ -25,21 +25,21 @@
 #define DVDCPXM_BLOCK_SIZE     2048
 
 int
-CPPMDecoder_init(prot_CPPMDecoder *self,
+CPPMDecoder_init(decoders_CPPMDecoder *self,
                  PyObject *args, PyObject *kwds)
 {
     char *mkb_file;
     char *dvda_device;
 
-    self->media_type = 0;
-    self->media_key = 0;
-    self->id_album_media = 0;
+    self->decoder.media_type = 0;
+    self->decoder.media_key = 0;
+    self->decoder.id_album_media = 0;
 
     if (!PyArg_ParseTuple(args, "ss", &dvda_device, &mkb_file))
         return -1;
 
     /*initialize the decoder from the device path and mkb_file path*/
-    switch (cppm_init(self, dvda_device, mkb_file)) {
+    switch (cppm_init(&(self->decoder), dvda_device, mkb_file)) {
     case -1: /*I/O error*/
         PyErr_SetFromErrno(PyExc_IOError);
         return -1;
@@ -54,7 +54,7 @@ CPPMDecoder_init(prot_CPPMDecoder *self,
 }
 
 void
-CPPMDecoder_dealloc(prot_CPPMDecoder *self)
+CPPMDecoder_dealloc(decoders_CPPMDecoder *self)
 {
     self->ob_type->tp_free((PyObject*)self);
 }
@@ -63,30 +63,30 @@ PyObject*
 CPPMDecoder_new(PyTypeObject *type,
                 PyObject *args, PyObject *kwds)
 {
-    prot_CPPMDecoder *self;
+    decoders_CPPMDecoder *self;
 
-    self = (prot_CPPMDecoder *)type->tp_alloc(type, 0);
+    self = (decoders_CPPMDecoder *)type->tp_alloc(type, 0);
 
     return (PyObject *)self;
 }
 
 static PyObject*
-CPPMDecoder_media_type(prot_CPPMDecoder *self, void *closure) {
-    return Py_BuildValue("i", self->media_type);
+CPPMDecoder_media_type(decoders_CPPMDecoder *self, void *closure) {
+    return Py_BuildValue("i", self->decoder.media_type);
 }
 
 static PyObject*
-CPPMDecoder_media_key(prot_CPPMDecoder *self, void *closure) {
-    return Py_BuildValue("K", self->media_key);
+CPPMDecoder_media_key(decoders_CPPMDecoder *self, void *closure) {
+    return Py_BuildValue("K", self->decoder.media_key);
 }
 
 static PyObject*
-CPPMDecoder_id_album_media(prot_CPPMDecoder *self, void *closure) {
-    return Py_BuildValue("K", self->id_album_media);
+CPPMDecoder_id_album_media(decoders_CPPMDecoder *self, void *closure) {
+    return Py_BuildValue("K", self->decoder.id_album_media);
 }
 
 static PyObject*
-CPPMDecoder_decode(prot_CPPMDecoder *self, PyObject *args) {
+CPPMDecoder_decode(decoders_CPPMDecoder *self, PyObject *args) {
     char* input_buffer;
 #ifdef PY_SSIZE_T_CLEAN
     Py_ssize_t input_len;
@@ -110,7 +110,7 @@ CPPMDecoder_decode(prot_CPPMDecoder *self, PyObject *args) {
     output_buffer = malloc(sizeof(uint8_t) * output_len);
     memcpy(output_buffer, input_buffer, input_len);
 
-    cppm_decrypt(self,
+    cppm_decrypt(&(self->decoder),
                  output_buffer,
                  output_len / DVDCPXM_BLOCK_SIZE,
                  1);
@@ -289,7 +289,7 @@ static device_key_t cppm_device_keys[] =
 #define CCI_BYTE 0x00;
 
 int
-cppm_init(prot_CPPMDecoder *p_ctx,
+cppm_init(struct cppm_decoder *p_ctx,
           char *dvd_dev,
           char *psz_file) {
     int copyright;
@@ -337,7 +337,7 @@ cppm_init(prot_CPPMDecoder *p_ctx,
 }
 
 int
-cppm_set_id_album(prot_CPPMDecoder *p_ctx,
+cppm_set_id_album(struct cppm_decoder *p_ctx,
                   int i_fd) {
     uint8_t p_buffer[DVD_DISCKEY_SIZE];
     int i;
@@ -514,7 +514,7 @@ cppm_process_mkb(uint8_t *p_mkb,
 }
 
 int
-cppm_decrypt(prot_CPPMDecoder *p_ctx,
+cppm_decrypt(struct cppm_decoder *p_ctx,
              uint8_t *p_buffer,
              int nr_blocks,
              int preserve_cci) {
@@ -613,7 +613,7 @@ c2_dcbc(uint64_t *p_buffer, uint64_t key, int length) {
 }
 
 int
-cppm_decrypt_block(prot_CPPMDecoder *p_ctx,
+cppm_decrypt_block(struct cppm_decoder *p_ctx,
                    uint8_t *p_buffer,
                    int preserve_cci) {
     uint64_t d_kc_i, k_au, k_i, k_c;

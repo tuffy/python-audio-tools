@@ -32,6 +32,7 @@ extern PyTypeObject decoders_DVDA_Title_Type;
 extern PyTypeObject decoders_Sine_Mono_Type;
 extern PyTypeObject decoders_Sine_Stereo_Type;
 extern PyTypeObject decoders_Sine_Simple_Type;
+extern PyTypeObject decoders_CPPMDecoderType;
 
 PyMODINIT_FUNC
 initdecoders(void)
@@ -68,6 +69,10 @@ initdecoders(void)
 
     decoders_AOBPCMDecoderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_AOBPCMDecoderType) < 0)
+        return;
+
+    decoders_CPPMDecoderType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&decoders_CPPMDecoderType) < 0)
         return;
 
     decoders_DVDA_Title_Type.tp_new = PyType_GenericNew;
@@ -120,6 +125,10 @@ initdecoders(void)
     Py_INCREF(&decoders_AOBPCMDecoderType);
     PyModule_AddObject(m, "AOBPCMDecoder",
                        (PyObject *)&decoders_AOBPCMDecoderType);
+
+    Py_INCREF(&decoders_CPPMDecoderType);
+    PyModule_AddObject(m, "CPPMDecoder",
+                       (PyObject *)&decoders_CPPMDecoderType);
 
     Py_INCREF(&decoders_DVDA_Title_Type);
     PyModule_AddObject(m, "DVDA_Title",

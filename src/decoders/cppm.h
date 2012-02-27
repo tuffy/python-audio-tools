@@ -1,3 +1,5 @@
+#ifndef INC_CPPM
+#define INC_CPPM
 #include <Python.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -26,17 +28,21 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-typedef struct {
-    PyObject_HEAD
-
+struct cppm_decoder {
     int        media_type;     /*read from DVD side data*/
     uint64_t   media_key;      /*read from AUDIO_TS/DVDAUDIO.MKB file*/
     uint64_t   id_album_media; /*pulled from DVD side data*/
-} prot_CPPMDecoder;
+};
+
+typedef struct {
+    PyObject_HEAD
+
+    struct cppm_decoder decoder;
+} decoders_CPPMDecoder;
 
 /*the CPPMDecoder.__init__() method*/
 int
-CPPMDecoder_init(prot_CPPMDecoder *self,
+CPPMDecoder_init(decoders_CPPMDecoder *self,
                  PyObject *args, PyObject *kwds);
 
 static PyObject*
@@ -44,16 +50,16 @@ CPPMDecoder_new(PyTypeObject *type,
                 PyObject *args, PyObject *kwds);
 
 void
-CPPMDecoder_dealloc(prot_CPPMDecoder *self);
+CPPMDecoder_dealloc(decoders_CPPMDecoder *self);
 
 static PyObject*
-CPPMDecoder_media_type(prot_CPPMDecoder *self, void *closure);
+CPPMDecoder_media_type(decoders_CPPMDecoder *self, void *closure);
 
 static PyObject*
-CPPMDecoder_media_key(prot_CPPMDecoder *self, void *closure);
+CPPMDecoder_media_key(decoders_CPPMDecoder *self, void *closure);
 
 static PyObject*
-CPPMDecoder_id_album_media(prot_CPPMDecoder *self, void *closure);
+CPPMDecoder_id_album_media(decoders_CPPMDecoder *self, void *closure);
 
 PyGetSetDef CPPMDecoder_getseters[] = {
     {"media_type",
@@ -66,7 +72,7 @@ PyGetSetDef CPPMDecoder_getseters[] = {
 };
 
 static PyObject*
-CPPMDecoder_decode(prot_CPPMDecoder *self, PyObject *args);
+CPPMDecoder_decode(decoders_CPPMDecoder *self, PyObject *args);
 
 PyMethodDef CPPMDecoder_methods[] = {
     {"decode", (PyCFunction)CPPMDecoder_decode,
@@ -74,11 +80,11 @@ PyMethodDef CPPMDecoder_methods[] = {
     {NULL}
 };
 
-PyTypeObject prot_CPPMDecoderType = {
+PyTypeObject decoders_CPPMDecoderType = {
     PyObject_HEAD_INIT(NULL)
     0,                         /*ob_size*/
-    "prot.CPPMDecoder",    /*tp_name*/
-    sizeof(prot_CPPMDecoder), /*tp_basicsize*/
+    "decoders.CPPMDecoder",    /*tp_name*/
+    sizeof(decoders_CPPMDecoder), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
     (destructor)CPPMDecoder_dealloc, /*tp_dealloc*/
     0,                         /*tp_print*/
@@ -126,12 +132,12 @@ typedef struct {
 } device_key_t;
 
 int
-cppm_init(prot_CPPMDecoder *p_ctx,
+cppm_init(struct cppm_decoder *p_ctx,
           char *dvd_dev,
           char *psz_file);
 
 int
-cppm_set_id_album(prot_CPPMDecoder *p_ctx,
+cppm_set_id_album(struct cppm_decoder *p_ctx,
                   int i_fd);
 
 uint8_t*
@@ -144,13 +150,13 @@ cppm_process_mkb(uint8_t *p_mkb,
                  uint64_t *p_media_key);
 
 int
-cppm_decrypt(prot_CPPMDecoder *p_ctx,
+cppm_decrypt(struct cppm_decoder *p_ctx,
              uint8_t *p_buffer,
              int nr_blocks,
              int preserve_cci);
 
 int
-cppm_decrypt_block(prot_CPPMDecoder *p_ctx,
+cppm_decrypt_block(struct cppm_decoder *p_ctx,
                    uint8_t *p_buffer,
                    int preserve_cci);
 
@@ -165,3 +171,4 @@ mpeg2_reset_pes_scrambling_control(uint8_t *p_block);
 /*locates a block's CCI bit and sets it to 0*/
 void
 mpeg2_reset_cci(uint8_t *p_block);
+#endif
