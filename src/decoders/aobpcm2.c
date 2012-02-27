@@ -56,7 +56,7 @@ aobpcm_packet_empty(AOBPCMDecoder* decoder,
             packet->buffer_position) < decoder->chunk_size;
 }
 
-unsigned
+void
 read_aobpcm(AOBPCMDecoder* decoder,
             struct bs_buffer* packet,
             array_ia* framelist)
@@ -101,7 +101,6 @@ read_aobpcm(AOBPCMDecoder* decoder,
     const unsigned channels = decoder->channels;
     const unsigned chunk_size = decoder->chunk_size;
     const unsigned bytes_per_sample = decoder->bytes_per_sample;
-    unsigned pcm_frames_decoded = 0;
     unsigned i;
 
     assert(framelist->len == channels);
@@ -121,11 +120,7 @@ read_aobpcm(AOBPCMDecoder* decoder,
             channel->append(channel, decoder->converter(unswapped_ptr));
             unswapped_ptr += bytes_per_sample;
         }
-
-        pcm_frames_decoded += 2;
     }
-
-    return pcm_frames_decoded;
 }
 
 static int

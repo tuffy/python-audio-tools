@@ -1062,7 +1062,7 @@ $\text{signed Huffman offset}_c$ & $0 - 7 \times 2 ^ 2 - 2 ^ 3 = -36$ & $0 - 7 \
 where \texttt{mask} is defined as:
 \begin{equation*}
 \texttt{mask}(x~,~q) =\begin{cases}x & \text{ if } q = 0 \\
-x - (x \bmod 2 ^ q) & \text{ if } q > 0
+\lfloor x \div 2 ^ q \rfloor \times 2 ^ q & \text{ if } q > 0
 \end{cases}
 \end{equation*}
 
@@ -1120,8 +1120,8 @@ where \texttt{crop} is defined as:
     (x \bmod{2 ^ 7}) - 2 ^ 7 & \text{if } \lfloor (x \bmod{2 ^ 8}) \div 2 ^ 7\rfloor \neq 0
   \end{cases}
   \intertext{and \texttt{mask} is defined as:}
-  \texttt{mask}(x~,~q) &=\begin{cases}x & \text{ if } q = 0 \\
-  x - (x \bmod 2 ^ q) & \text{ if } q > 0
+  \texttt{mask}(x~,~q) =\begin{cases}x & \text{ if } q = 0 \\
+  \lfloor x \div 2 ^ q \rfloor \times 2 ^ q & \text{ if } q > 0
   \end{cases}
 \end{align*}
 

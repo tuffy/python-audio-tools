@@ -42,7 +42,9 @@ typedef enum {OK,
               INVALID_MATRIX_PARAMETERS,
               INVALID_CHANNEL_PARAMETERS,
               INVALID_BLOCK_DATA,
-              INVALID_FILTER_PARAMETERS} mlp_status;
+              INVALID_FILTER_PARAMETERS,
+              PARITY_MISMATCH,
+              CRC8_MISMATCH} mlp_status;
 
 struct major_sync {
     unsigned bits_per_sample_0;
@@ -136,6 +138,12 @@ typedef struct {
     array_ia* framelist;
 
 } MLPDecoder;
+
+struct checkdata {
+    uint8_t parity;
+    uint8_t crc;
+    uint8_t final_crc;
+};
 
 MLPDecoder*
 open_mlp_decoder(struct bs_buffer* frame_data);
@@ -268,5 +276,14 @@ rematrix_mlp_channels(array_ia* channels,
                       unsigned matrix_count,
                       const struct matrix_parameters* matrix,
                       const unsigned* quant_step_size);
+
+void
+mlp_checkdata_callback(uint8_t byte, void* checkdata);
+
+PyObject*
+mlp_python_exception(mlp_status mlp_status);
+
+const char*
+mlp_python_exception_msg(mlp_status mlp_status);
 
 #endif

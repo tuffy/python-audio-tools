@@ -45,7 +45,7 @@ aobpcm_packet_empty(AOBPCMDecoder* decoder,
 /*given an initialized AOBPCMDecoder
   along with packet data
   generates as many PCM frames as possible to framelist*/
-unsigned
+void
 read_aobpcm(AOBPCMDecoder* decoder,
             struct bs_buffer* packet,
             array_ia* framelist);

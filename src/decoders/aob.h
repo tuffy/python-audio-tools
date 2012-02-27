@@ -49,6 +49,7 @@ typedef struct {
 
     /*total PCM frames remaining in the current track*/
     unsigned pcm_frames_remaining;
+    unsigned channel_assignment;
 
     /*PCMReader attributes for the current track*/
     unsigned bits_per_sample;
@@ -64,6 +65,9 @@ typedef struct {
 
     /*a FrameList to be returned by calls to read()*/
     array_ia* output_framelist;
+
+    /*an output FrameList in Wave order*/
+    array_ia* wave_framelist;
 
     /*a FrameList generator*/
     PyObject* audiotools_pcm;

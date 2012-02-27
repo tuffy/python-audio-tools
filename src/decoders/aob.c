@@ -73,6 +73,7 @@ DVDA_Title_init(decoders_DVDA_Title *self, PyObject *args, PyObject *kwds) {
 
     self->codec_framelist = array_ia_new();
     self->output_framelist = array_ia_new();
+    self->wave_framelist = array_ia_new();
 
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
@@ -122,6 +123,7 @@ DVDA_Title_dealloc(decoders_DVDA_Title *self) {
 
     self->codec_framelist->del(self->codec_framelist);
     self->output_framelist->del(self->output_framelist);
+    self->wave_framelist->del(self->wave_framelist);
 
     Py_XDECREF(self->audiotools_pcm);
 
@@ -179,6 +181,8 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, PyObject *args)
             return NULL;
         }
 
+        self->channel_assignment = packet->PCM.channel_assignment;
+
         if (packet->codec_ID == 0xA0) {         /*PCM*/
             /*PCM stores stream attributes in the second padding block*/
             self->bits_per_sample =
@@ -207,13 +211,12 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, PyObject *args)
                 unsigned group_2_bps;
                 unsigned group_1_rate;
                 unsigned group_2_rate;
-                unsigned channel_assignment;
 
                 r->parse(r, "32p 24u 8u 4u 4u 4u 4u 11p 5u 48p",
                          &sync_words, &stream_type,
                          &group_1_bps, &group_2_bps,
                          &group_1_rate, &group_2_rate,
-                         &channel_assignment);
+                         &(self->channel_assignment));
 
                 if ((sync_words == 0xF8726F) && (stream_type == 0xBB)) {
                     self->bits_per_sample =
@@ -221,9 +224,9 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, PyObject *args)
                     self->sample_rate =
                         dvda_sample_rate(group_1_rate);
                     self->channel_count =
-                        dvda_channel_count(channel_assignment);
+                        dvda_channel_count(self->channel_assignment);
                     self->channel_mask =
-                        dvda_channel_mask(channel_assignment);
+                        dvda_channel_mask(self->channel_assignment);
                     self->frame_codec = MLP;
                     self->mlp_frame_sync_read = 1;
 
@@ -282,7 +285,32 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, PyObject *args)
 static PyObject*
 DVDA_Title_read(decoders_DVDA_Title *self, PyObject *args)
 {
+    const static int CHANNEL_MAP[][6] = {
+        /* 0x00 */ {  0, -1, -1, -1, -1, -1},
+        /* 0x01 */ {  0,  1, -1, -1, -1, -1},
+        /* 0x02 */ {  0,  1,  2, -1, -1, -1},
+        /* 0x03 */ {  0,  1,  2,  3, -1, -1},
+        /* 0x04 */ {  0,  1,  2, -1, -1, -1},
+        /* 0x05 */ {  0,  1,  2,  3, -1, -1},
+        /* 0x06 */ {  0,  1,  2,  3,  4, -1},
+        /* 0x07 */ {  0,  1,  2, -1, -1, -1},
+        /* 0x08 */ {  0,  1,  2,  3, -1, -1},
+        /* 0x09 */ {  0,  1,  2,  3,  4, -1},
+        /* 0x0A */ {  0,  1,  2,  3, -1, -1},
+        /* 0x0B */ {  0,  1,  2,  3,  4, -1},
+        /* 0x0C */ {  0,  1,  2,  3,  4,  5},
+        /* 0x0D */ {  0,  1,  2,  3, -1, -1},
+        /* 0x0E */ {  0,  1,  2,  3,  4, -1},
+        /* 0x0F */ {  0,  1,  2,  3, -1, -1},
+        /* 0x10 */ {  0,  1,  2,  3,  4, -1},
+        /* 0x11 */ {  0,  1,  2,  3,  4,  5},
+        /* 0x12 */ {  0,  1,  3,  4,  2, -1},
+        /* 0x13 */ {  0,  1,  3,  4,  2, -1},
+        /* 0x14 */ {  0,  1,  4,  5,  2,  3}
+    };
+
     mlp_status mlp_status;
+    unsigned c;
 
     /*if track has been exhausted, return empty FrameList*/
     if (!self->pcm_frames_remaining) {
@@ -305,6 +333,8 @@ DVDA_Title_read(decoders_DVDA_Title *self, PyObject *args)
 
             buf_append(self->packet->data, self->frames);
         }
+
+        /*FIXME - make this thread friendly*/
         read_aobpcm(&(self->pcm_decoder), self->frames, self->codec_framelist);
         break;
     case MLP:
@@ -320,10 +350,11 @@ DVDA_Title_read(decoders_DVDA_Title *self, PyObject *args)
             buf_append(self->packet->data, self->frames);
         }
 
+        /*FIXME - make this thread friendly*/
         if ((mlp_status = read_mlp_frames(self->mlp_decoder,
                                           self->codec_framelist)) != OK) {
-            fprintf(stderr, "MLP read error %d\n", mlp_status);
-            PyErr_SetString(PyExc_ValueError, "Error reading MLP data");
+            PyErr_SetString(mlp_python_exception(mlp_status),
+                            mlp_python_exception_msg(mlp_status));
             return NULL;
         }
     }
@@ -332,8 +363,6 @@ DVDA_Title_read(decoders_DVDA_Title *self, PyObject *args)
         fprintf(stderr, "warning: got empty framelist from codec %d\n",
                 self->frame_codec);
     }
-
-    /*FIXME - reorder channels from PCM/MLP order to WAVE order*/
 
     /*account for framelists larger than frames remaining*/
     self->codec_framelist->cross_split(self->codec_framelist,
@@ -345,9 +374,22 @@ DVDA_Title_read(decoders_DVDA_Title *self, PyObject *args)
     /*deduct output FrameList's PCM frames from remaining count*/
     self->pcm_frames_remaining -= self->output_framelist->_[0]->len;
 
+    /*reorder channels from PCM/MLP order to WAVE order*/
+    self->wave_framelist->reset(self->wave_framelist);
+    for (c = 0; c < self->output_framelist->len; c++) {
+        self->wave_framelist->append(self->wave_framelist);
+    }
+    for (c = 0; c < self->output_framelist->len; c++) {
+        array_i* mlp_channel =
+            self->output_framelist->_[c];
+        array_i* wav_channel =
+            self->wave_framelist->_[CHANNEL_MAP[self->channel_assignment][c]];
+        mlp_channel->swap(mlp_channel, wav_channel);
+    }
+
     /*and return output FrameList*/
     return array_ia_to_FrameList(self->audiotools_pcm,
-                                 self->output_framelist,
+                                 self->wave_framelist,
                                  self->bits_per_sample);
 }
 
@@ -536,7 +578,7 @@ seek_sector(DVDA_Sector_Reader* reader,
             if ((reader->current.aob->start_sector <= sector) &&
                 (sector <= reader->current.aob->end_sector)) {
                 fseek(reader->current.aob->file,
-                      (sector - reader->current.aob->start_sector) /
+                      (sector - reader->current.aob->start_sector) *
                       SECTOR_SIZE, SEEK_SET);
                 break;
             }
@@ -602,6 +644,7 @@ read_audio_packet(DVDA_Packet_Reader* packets, DVDA_Packet* packet)
                 if (sync_bytes != 0x000001BA) {
                     /*FIXME - remove warnings*/
                     fprintf(stderr, "invalid packet sync bytes\n");
+                    br_etry(reader);
                     return 1;
                 }
 
@@ -609,6 +652,7 @@ read_audio_packet(DVDA_Packet_Reader* packets, DVDA_Packet* packet)
                     (pad[3] != 1) || (pad[4] != 1) || (pad[5] != 3)) {
                     /*FIXME - remove warnings*/
                     fprintf(stderr, "invalid packet padding bits\n");
+                    br_etry(reader);
                     return 1;
                 }
 
@@ -629,6 +673,7 @@ read_audio_packet(DVDA_Packet_Reader* packets, DVDA_Packet* packet)
                     if (start_code != 0x000001) {
                         /*FIXME - remove warnings*/
                         fprintf(stderr, "invalid packet start code\n");
+                        br_etry(reader);
                         return 1;
                     }
 
