@@ -180,18 +180,18 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, PyObject *args)
             return NULL;
         }
 
-        self->channel_assignment = packet->PCM.channel_assignment;
-
         if (packet->codec_ID == 0xA0) {         /*PCM*/
             /*PCM stores stream attributes in the second padding block*/
             self->bits_per_sample =
                 dvda_bits_per_sample(packet->PCM.group_1_bps);
             self->sample_rate =
                 dvda_sample_rate(packet->PCM.group_1_rate);
+            self->channel_assignment = packet->PCM.channel_assignment;
             self->channel_count =
                 dvda_channel_count(packet->PCM.channel_assignment);
             self->channel_mask =
                 dvda_channel_mask(packet->PCM.channel_assignment);
+
             self->frame_codec = PCM;
             self->mlp_frame_sync_read = 0;
 

@@ -41,6 +41,7 @@ open_mlp_decoder(struct bs_buffer* frame_data)
     decoder->reader = br_open_buffer(frame_data, BS_BIG_ENDIAN);
     decoder->frame_reader = br_substream_new(BS_BIG_ENDIAN);
     decoder->substream_reader = br_substream_new(BS_BIG_ENDIAN);
+    decoder->major_sync_read = 0;
 
     decoder->framelist = array_ia_new();
     for (c = 0; c < MAX_MLP_CHANNELS; c++)
@@ -178,12 +179,46 @@ read_mlp_frame(MLPDecoder* decoder,
     mlp_status status;
 
     /*check for major sync*/
-    if ((status = read_mlp_major_sync(bs, &(decoder->major_sync))) != OK)
-        return status;
+    if (decoder->major_sync_read) {
+        struct major_sync major_sync;
 
-    /*FIXME - ensure at least one major sync has been read*/
-
-    /*FIXME - if major sync changes, end track and start a new one*/
+        switch (status = read_mlp_major_sync(bs, &major_sync)) {
+        case OK:
+            /*if major sync changes mid-stream, raise an exception*/
+            if ((major_sync.bits_per_sample_0 !=
+                 decoder->major_sync.bits_per_sample_0) ||
+                (major_sync.bits_per_sample_1 !=
+                 decoder->major_sync.bits_per_sample_1) ||
+                (major_sync.sample_rate_0 !=
+                 decoder->major_sync.sample_rate_0) ||
+                (major_sync.sample_rate_1 !=
+                 decoder->major_sync.sample_rate_1) ||
+                (major_sync.channel_count !=
+                 decoder->major_sync.channel_count) ||
+                (major_sync.channel_mask !=
+                 decoder->major_sync.channel_mask) ||
+                (major_sync.substream_count !=
+                 decoder->major_sync.substream_count)) {
+                return INVALID_MAJOR_SYNC;
+            }
+            break;
+        case NO_MAJOR_SYNC:
+            break;
+        default:
+            return status;
+        }
+    } else {
+        switch (status = read_mlp_major_sync(bs, &(decoder->major_sync))) {
+        case OK:
+            decoder->major_sync_read = 1;
+            break;
+        case NO_MAJOR_SYNC:
+            /*FIXME - ensure at least one major sync has been read*/
+            break;
+        default:
+            return status;
+        }
+    }
 
     if (!setjmp(*br_try(bs))) {
         unsigned s;
@@ -370,8 +405,8 @@ read_mlp_major_sync(BitstreamReader* bs,
 {
     bs->mark(bs);
     if (!setjmp(*br_try(bs))) {
-        unsigned sync_words = bs->read(bs, 24);
-        unsigned stream_type = bs->read(bs, 8);
+        const unsigned sync_words = bs->read(bs, 24);
+        const unsigned stream_type = bs->read(bs, 8);
 
         if ((sync_words == 0xF8726F) && (stream_type == 0xBB)) {
             unsigned channel_assignment;
@@ -402,13 +437,13 @@ read_mlp_major_sync(BitstreamReader* bs,
             bs->rewind(bs);
             bs->unmark(bs);
             br_etry(bs);
-            return OK;
+            return NO_MAJOR_SYNC;
         }
     } else {
         bs->rewind(bs);
         bs->unmark(bs);
         br_etry(bs);
-        return OK;
+        return NO_MAJOR_SYNC;
     }
 }
 
@@ -1101,6 +1136,7 @@ mlp_python_exception(mlp_status mlp_status)
     case IO_ERROR:
         return PyExc_IOError;
     case OK:
+    case NO_MAJOR_SYNC:
     case INVALID_MAJOR_SYNC:
     case INVALID_EXTRAWORD_PRESENT:
     case INVALID_RESTART_HEADER:
@@ -1121,6 +1157,7 @@ mlp_python_exception_msg(mlp_status mlp_status)
 {
     switch (mlp_status) {
     case OK:
+    case NO_MAJOR_SYNC:
         return "no error";
     case IO_ERROR:
         return "I/O error reading MLP stream";

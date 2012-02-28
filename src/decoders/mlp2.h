@@ -35,6 +35,7 @@
 
 typedef enum {OK,
               IO_ERROR,
+              NO_MAJOR_SYNC,
               INVALID_MAJOR_SYNC,
               INVALID_EXTRAWORD_PRESENT,
               INVALID_RESTART_HEADER,
@@ -133,6 +134,7 @@ typedef struct {
     BitstreamReader* substream_reader;
 
     struct major_sync major_sync;
+    int major_sync_read;
     struct substream substream[MAX_MLP_SUBSTREAMS];
 
     array_ia* framelist;
