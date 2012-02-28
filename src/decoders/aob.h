@@ -3,6 +3,7 @@
 #include "../bitstream.h"
 #include "aobpcm2.h"
 #include "mlp2.h"
+#include "cppm.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -207,6 +208,10 @@ typedef struct DVDA_Sector_Reader_s {
         DVDA_AOB* aob;
     } current;
     unsigned end_sector;    /*the final sector on the entire disc*/
+
+    /*if not NULL, indicates a CPPM decoder to call
+      prior to returning sectors*/
+    struct cppm_decoder* cppm_decoder;
 } DVDA_Sector_Reader;
 
 /*returns a DVDA_Sector_Reader which must be closed later
@@ -215,7 +220,8 @@ typedef struct DVDA_Sector_Reader_s {
   or there are no AOBs at all*/
 static DVDA_Sector_Reader*
 open_sector_reader(const char* audio_ts_path,
-                   unsigned titleset_number);
+                   unsigned titleset_number,
+                   const char* cdrom_device);
 
 static void
 close_sector_reader(DVDA_Sector_Reader* reader);

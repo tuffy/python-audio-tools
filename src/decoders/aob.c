@@ -50,7 +50,7 @@ DVDA_Title_init(decoders_DVDA_Title *self, PyObject *args, PyObject *kwds) {
     unsigned titleset;
     unsigned start_sector;
     unsigned end_sector;
-    char* cdrom;
+    char* cdrom = NULL;
 
     self->sector_reader = NULL;
     self->packet_reader = NULL;
@@ -89,12 +89,11 @@ DVDA_Title_init(decoders_DVDA_Title *self, PyObject *args, PyObject *kwds) {
 
     /*setup a sector reader according to AUDIO_TS and cdrom device*/
     if ((self->sector_reader = open_sector_reader(audio_ts,
-                                                  titleset)) == NULL) {
+                                                  titleset,
+                                                  cdrom)) == NULL) {
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, audio_ts);
         return -1;
     }
-
-    /*FIXME - attach unprotection routine to sector reader*/
 
     /*setup a packet reader according to start and end sector
       this packet reader will be shared by all returned DVDA_Tracks*/
@@ -463,12 +462,14 @@ free_aob(DVDA_AOB* aob)
 
 static DVDA_Sector_Reader*
 open_sector_reader(const char* audio_ts_path,
-                   unsigned titleset_number)
+                   unsigned titleset_number,
+                   const char* cdrom_device)
 {
     DVDA_Sector_Reader* reader = malloc(sizeof(DVDA_Sector_Reader));
     unsigned i;
 
     reader->aobs = array_o_new(NULL, (ARRAY_FREE_FUNC)free_aob, NULL);
+    reader->cppm_decoder = NULL;
 
     for (i = 1; i <= 9; i++) {
         char aob[13];
@@ -515,11 +516,42 @@ open_sector_reader(const char* audio_ts_path,
 
     if (reader->aobs->len) {
         /*ran out of AOBs,
-          set initial position to start of 0th sector
-          and return success if any AOBs are found*/
+          set initial position to start of 0th sector*/
 
         reader->current.sector = 0;
         reader->current.aob = reader->aobs->_[0];
+
+        /*if cdrom device given, initialize CPPM decoder if possible*/
+        if (cdrom_device != NULL) {
+            char* dvdaudio_mkb = find_audio_ts_file(audio_ts_path,
+                                                    "DVDAUDIO.MKB");
+            if (dvdaudio_mkb != NULL) {
+                reader->cppm_decoder =
+                    malloc(sizeof(struct cppm_decoder));
+                reader->cppm_decoder->media_type = 0;
+                reader->cppm_decoder->media_key = 0;
+                reader->cppm_decoder->id_album_media = 0;
+
+                switch (cppm_init(reader->cppm_decoder,
+                                  cdrom_device,
+                                  dvdaudio_mkb)) {
+                case -1: /* I/O error */
+                    free(dvdaudio_mkb);
+                    close_sector_reader(reader);
+                    return NULL;
+                case -2: /* unsupported protection type */
+                    free(dvdaudio_mkb);
+                    close_sector_reader(reader);
+                    fprintf(stderr, "unsupported protection type\n");
+                    errno = ENOENT;
+                    return NULL;
+                default: /* all okay */
+                    free(dvdaudio_mkb);
+                    break;
+                }
+            }
+        }
+
         return reader;
     } else {
         /*couldn't find any matching AOB files for titleset*/
@@ -532,6 +564,9 @@ open_sector_reader(const char* audio_ts_path,
 static void
 close_sector_reader(DVDA_Sector_Reader* reader)
 {
+    if (reader->cppm_decoder != NULL) {
+        free(reader->cppm_decoder);
+    }
     reader->aobs->del(reader->aobs);
     free(reader);
 }
@@ -542,11 +577,20 @@ read_sector(DVDA_Sector_Reader* reader,
 {
     if (reader->current.sector <= reader->end_sector) {
         DVDA_AOB* aob = reader->current.aob;
-        size_t bytes_read = fread(buf_extend(sector, SECTOR_SIZE),
-                                  sizeof(uint8_t), SECTOR_SIZE,
+        uint8_t* sector_data = buf_extend(sector, SECTOR_SIZE);
+        size_t bytes_read = fread(sector_data, sizeof(uint8_t), SECTOR_SIZE,
                                   aob->file);
+
         if (bytes_read == SECTOR_SIZE) {
-            /*sector read successfully, so move on to next sector*/
+            /*sector read successfully*/
+
+            /*unprotect if necessary*/
+            if (reader->cppm_decoder != NULL) {
+                cppm_decrypt(reader->cppm_decoder,
+                             sector_data, 1, 1);
+            }
+
+            /*then move on to next sector*/
 
             sector->buffer_size += SECTOR_SIZE;
             reader->current.sector++;

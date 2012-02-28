@@ -190,8 +190,8 @@ static device_key_t cppm_device_keys[] =
 
 int
 cppm_init(struct cppm_decoder *p_ctx,
-          char *dvd_dev,
-          char *psz_file) {
+          const char *dvd_dev,
+          const char *psz_file) {
     int copyright;
     int dvd_fd;
     int ret;
@@ -261,7 +261,7 @@ cppm_set_id_album(struct cppm_decoder *p_ctx,
 }
 
 uint8_t*
-cppm_get_mkb(char *psz_mkb) {
+cppm_get_mkb(const char *psz_mkb) {
     FILE    *f_mkb;
     uint8_t *p_mkb = NULL;
     char    mkb_signature[12];
