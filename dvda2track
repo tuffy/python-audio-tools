@@ -376,16 +376,12 @@ if (__name__ == '__main__'):
 
     encoded = []
 
-    if (sum([track.pts_length for track in title]) != title.pts_length):
-        msg.error(_(u"total track PTS ticks doesn't equal title's PTS ticks"))
-        sys.exit(1)
 
-    pcm_lengths = [track.total_frames() for track in title]
+    pcmreader = title.to_pcm()
+    for (i, pts_ticks) in enumerate([t.pts_length for t in title]):
+        pcmreader.next_track(pts_ticks)
+        pcm_frames = pcmreader.pcm_frames
 
-    for (i, (pcmreader,
-             pcm_frames)) in enumerate(izip(pcm_split(title.to_pcm(),
-                                                      pcm_lengths),
-                                            pcm_lengths)):
         title_track_number = i + 1
         logical_track_number = i + options.track_start
         if (options.track_total is None):

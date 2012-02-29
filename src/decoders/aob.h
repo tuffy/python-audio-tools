@@ -95,6 +95,9 @@ DVDA_Title_channels(decoders_DVDA_Title *self, void *closure);
 static PyObject*
 DVDA_Title_channel_mask(decoders_DVDA_Title *self, void *closure);
 
+static PyObject*
+DVDA_Title_pcm_frames(decoders_DVDA_Title *self, void *closure);
+
 PyGetSetDef DVDA_Title_getseters[] = {
     {"channels",
      (getter)DVDA_Title_channels, NULL, "channels", NULL},
@@ -104,6 +107,8 @@ PyGetSetDef DVDA_Title_getseters[] = {
      (getter)DVDA_Title_sample_rate, NULL, "sample_rate", NULL},
     {"channel_mask",
      (getter)DVDA_Title_channel_mask, NULL, "channel_mask", NULL},
+    {"pcm_frames",
+     (getter)DVDA_Title_pcm_frames, NULL, "pcm_frames", NULL},
     {NULL}
 };
 

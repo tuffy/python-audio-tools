@@ -37,6 +37,9 @@ class DVDAudio:
     def __init__(self, audio_ts_path, cdrom_device=None):
         """A DVD-A which contains PCMReader-compatible track objects."""
 
+        self.audio_ts_path = audio_ts_path
+        self.cdrom_device = cdrom_device
+
         #an inventory of AUDIO_TS files converted to uppercase keys
         self.files = dict([(name.upper(),
                             os.path.join(audio_ts_path, name))
@@ -68,19 +71,6 @@ class DVDAudio:
                     self.aob_sectors.append(
                         (self.aob_sectors[-1][1],
                          self.aob_sectors[-1][1] + aob_length))
-
-        try:
-            if ((cdrom_device is not None) and
-                ('DVDAUDIO.MKB' in self.files.keys())):
-
-                from audiotools.prot import CPPMDecoder
-
-                self.unprotector = CPPMDecoder(
-                    cdrom_device, self.files['DVDAUDIO.MKB']).decode
-            else:
-                self.unprotector = lambda sector: sector
-        except ImportError:
-            self.unprotector = lambda sector: sector
 
     def __getitem__(self, key):
         return self.titlesets[key]
@@ -231,13 +221,6 @@ class DVDAudio:
             return titles
         finally:
             f.close()
-
-    def sector_reader(self, aob_filename):
-        if (self.unprotector is None):
-            return SectorReader(aob_filename)
-        else:
-            return UnprotectionSectorReader(aob_filename,
-                                            self.unprotector)
 
 
 class InvalidDVDA(Exception):
@@ -401,39 +384,14 @@ class DVDATitle:
                 self.bits_per_sample,
                 self.stream_id)
 
-    def stream(self):
-        titleset = re.compile("ATS_%2.2d_\\d\\.AOB" % (self.titleset))
-
-        return AOBStream(
-            aob_files=sorted([self.dvdaudio.files[key]
-                              for key in self.dvdaudio.files.keys()
-                              if (titleset.match(key))]),
-            first_sector=self[0].first_sector,
-            last_sector=self[-1].last_sector,
-            unprotector=self.dvdaudio.unprotector)
-
     def to_pcm(self):
-        (sample_rate,
-         channels,
-         channel_mask,
-         bits_per_sample,
-         stream_type) = self.info()
+        from audiotools.decoders import DVDA_Title
 
-        if (stream_type == 0xA1):
-            from audiotools.decoders import MLPDecoder
-
-            return MLPDecoder(IterReader(self.stream().packet_payloads()),
-                              self.total_frames())
-        elif (stream_type == 0xA0):
-            from audiotools.decoders import AOBPCMDecoder
-
-            return AOBPCMDecoder(IterReader(self.stream().packet_payloads()),
-                                 sample_rate,
-                                 channels,
-                                 channel_mask,
-                                 bits_per_sample)
-        else:
-            raise ValueError(_(u"unsupported DVD-Audio stream type"))
+        return DVDA_Title(audio_ts=self.dvdaudio.audio_ts_path,
+                          titleset=1,
+                          start_sector=self.tracks[0].first_sector,
+                          end_sector=self.tracks[-1].last_sector,
+                          cdrom=self.dvdaudio.cdrom_device)
 
     def total_frames(self):
         """Returns the title's total PCM frames as an integer."""
@@ -518,25 +476,6 @@ class DVDATrack:
                                      "first_sector",
                                      "last_sector"]]))
 
-    def sectors(self):
-        """iterates (aob_file, start_sector, end_sector)
-
-        for each AOB file necessary to extract the track's data
-        in the order in which they should be read."""
-
-        track_sectors = Rangeset(self.first_sector,
-                                 self.last_sector + 1)
-
-        for (i, (start_sector,
-                 end_sector)) in enumerate(self.dvdaudio.aob_sectors):
-            aob_sectors = Rangeset(start_sector, end_sector)
-            intersection = aob_sectors & track_sectors
-            if (len(intersection)):
-                yield (self.dvdaudio.files["ATS_%2.2d_%d.AOB" % \
-                                               (self.titleset, i + 1)],
-                       intersection.start - start_sector,
-                       intersection.end - start_sector)
-
     def total_frames(self):
         """Returns the track's total PCM frames as an integer.
 
@@ -599,113 +538,3 @@ class Rangeset:
             return Rangeset(min_point, max_point)
         else:
             return Rangeset(0, 0)
-
-
-class AOBSectorReader:
-    def __init__(self, aob_files):
-        self.aob_files = list(aob_files)
-        self.aob_files.sort()
-
-        self.current_file_index = 0
-        self.current_file = open(self.aob_files[self.current_file_index], 'rb')
-
-    def read(self, *args):
-        s = self.current_file.read(DVDAudio.SECTOR_SIZE)
-        if (len(s) == DVDAudio.SECTOR_SIZE):
-            return s
-        else:
-            try:
-                #if we can increment to the next file,
-                #close the current one and do so
-                self.current_file.close()
-                self.current_file_index += 1
-                self.current_file = open(
-                    self.aob_files[self.current_file_index], 'rb')
-                return self.read()
-            except IndexError:
-                #otherwise, we've reached the end of all the files
-                return ""
-
-    def seek(self, sector):
-        for self.current_file_index in xrange(len(self.aob_files)):
-            aob_size = os.path.getsize(
-                self.aob_files[self.current_file_index]) / DVDAudio.SECTOR_SIZE
-            if (sector <= aob_size):
-                self.current_file = open(
-                    self.aob_files[self.current_file_index], 'rb')
-                if (sector > 0):
-                    self.current_file.seek(sector * DVDAudio.SECTOR_SIZE)
-                return
-            else:
-                sector -= aob_size
-
-    def close(self):
-        self.current_file.close()
-        del(self.aob_files)
-        del(self.current_file_index)
-        del(self.current_file)
-
-
-class AOBStream:
-    def __init__(self, aob_files, first_sector, last_sector,
-                 unprotector=lambda sector: sector):
-        self.aob_files = aob_files
-        self.first_sector = first_sector
-        self.last_sector = last_sector
-        self.unprotector = unprotector
-
-    def sectors(self):
-        first_sector = self.first_sector
-        last_sector = self.last_sector
-
-        reader = AOBSectorReader(self.aob_files)
-        reader.seek(first_sector)
-        last_sector -= first_sector
-        for i in xrange(last_sector + 1):
-            yield self.unprotector(reader.read())
-        reader.close()
-
-    def packets(self):
-        packet_header_size = struct.calcsize(">3sBH")
-
-        for sector in self.sectors():
-            assert(sector[0:4] == '\x00\x00\x01\xBA')
-            stuffing_count = ord(sector[13]) & 0x7
-            sector_bytes = 2048 - (14 + stuffing_count)
-            sector = cStringIO.StringIO(sector[-sector_bytes:])
-            while (sector_bytes > 0):
-                (start_code,
-                 stream_id,
-                 packet_length) = struct.unpack(
-                    ">3sBH", sector.read(packet_header_size))
-                sector_bytes -= packet_header_size
-
-                assert(start_code == '\x00\x00\x01')
-                if (stream_id == 0xBD):
-                    yield sector.read(packet_length)
-                else:
-                    sector.read(packet_length)
-                sector_bytes -= packet_length
-
-    def packet_payloads(self):
-        def payload(packet):
-            pad1_len = ord(packet[2])
-            pad2_len = ord(packet[3 + pad1_len + 3])
-            return packet[3 + pad1_len + 4 + pad2_len:]
-
-        for packet in self.packets():
-            yield payload(packet)
-
-
-class IterReader:
-    def __init__(self, iterator):
-        self.iterator = iterator
-
-    def read(self, bytes):
-        try:
-            return self.iterator.next()
-        except StopIteration:
-            return ""
-
-    def close(self):
-        pass

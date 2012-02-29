@@ -152,6 +152,12 @@ DVDA_Title_channel_mask(decoders_DVDA_Title *self, void *closure)
 }
 
 static PyObject*
+DVDA_Title_pcm_frames(decoders_DVDA_Title *self, void *closure)
+{
+    return Py_BuildValue("I", self->pcm_frames_remaining);
+}
+
+static PyObject*
 DVDA_Title_next_track(decoders_DVDA_Title *self, PyObject *args)
 {
     unsigned PTS_ticks;
