@@ -3277,12 +3277,6 @@ class AudioFile:
         If an error occurs initializing a decoder, this should
         return a PCMReaderError with an appropriate error message."""
 
-        #if a subclass implements to_wave(),
-        #this doesn't need to be implemented
-        #if a subclass implements to_pcm(),
-        #to_wave() doesn't need to be implemented
-        #or, one can implement both
-
         raise NotImplementedError()
 
     @classmethod

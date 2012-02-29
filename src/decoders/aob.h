@@ -42,10 +42,10 @@ typedef struct {
     struct DVDA_Packet_Reader_s* packet_reader;
 
     struct DVDA_Packet_s* packet;
+    struct bs_buffer* packet_data;
 
     /*PCM or MLP frame data, aligned on a frame start*/
     DVDA_Codec frame_codec;
-    int mlp_frame_sync_read;
     struct bs_buffer* frames;
 
     /*total PCM frames remaining in the current track*/
@@ -250,7 +250,6 @@ typedef struct DVDA_Packet_s {
         unsigned channel_assignment;
         unsigned CRC;
     } PCM;
-    struct bs_buffer* data;
 } DVDA_Packet;
 
 /*DVDA_Packet_Reader is a file-like object
@@ -279,7 +278,8 @@ open_packet_reader(DVDA_Sector_Reader* sectors,
   returns 0 on success, or 1 if a read error occurs
   an EOF condition writes no data to "packet" but returns 0*/
 static int
-read_audio_packet(DVDA_Packet_Reader* packets, DVDA_Packet* packet);
+read_audio_packet(DVDA_Packet_Reader* packets,
+                  DVDA_Packet* packet, struct bs_buffer* packet_data);
 
 /*closes the DVDA_Packet_Reader
   but does *not* close the enclosed DVDA_Sector_Reader object*/
