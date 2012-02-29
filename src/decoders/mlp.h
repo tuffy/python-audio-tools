@@ -1,10 +1,10 @@
-#ifndef STANDALONE
+#ifndef MLPDEC2
+#define MLPDEC2
 #include <Python.h>
-#endif
-
 #include <stdint.h>
 #include "../bitstream.h"
-#include "../array.h"
+#include "../array2.h"
+#include "../pcm.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -25,433 +25,267 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-#define MAX_MLP_CHANNELS 8
-#define MAX_MLP_MATRICES 6
+/*streams can have only 1 or 2 substreams*/
 #define MAX_MLP_SUBSTREAMS 2
 
-#define MLP_FRAMES_AT_A_TIME 1000
+#define MAX_MLP_MATRICES 6
 
-struct mlp_MajorSync {
-    /* sync words (0xF8726F)     24 bits*/
-    /* stream type (0xBB)         8 bits*/
-    uint8_t group1_bits;        /*4 bits*/
-    uint8_t group2_bits;        /*4 bits*/
-    uint8_t group1_sample_rate; /*4 bits*/
-    uint8_t group2_sample_rate; /*4 bits*/
-    /* unknown                   11 bits*/
-    uint8_t channel_assignment; /*5 bits*/
-    /* unknown                   48 bits*/
-    /* is VBR                     1 bit*/
-    /* peak bitrate              15 bits*/
-    uint8_t substream_count;   /* 4 bits*/
-    /* unknown                   92 bits*/
+/*6 channels + 2 matrix channels*/
+#define MAX_MLP_CHANNELS 8
+
+typedef enum {OK,
+              IO_ERROR,
+              NO_MAJOR_SYNC,
+              INVALID_MAJOR_SYNC,
+              INVALID_EXTRAWORD_PRESENT,
+              INVALID_RESTART_HEADER,
+              INVALID_DECODING_PARAMETERS,
+              INVALID_MATRIX_PARAMETERS,
+              INVALID_CHANNEL_PARAMETERS,
+              INVALID_BLOCK_DATA,
+              INVALID_FILTER_PARAMETERS,
+              PARITY_MISMATCH,
+              CRC8_MISMATCH} mlp_status;
+
+struct major_sync {
+    unsigned bits_per_sample_0;
+    unsigned bits_per_sample_1;
+    unsigned sample_rate_0;
+    unsigned sample_rate_1;
+    unsigned channel_count;
+    unsigned channel_mask;
+    unsigned is_VBR;
+    unsigned peak_bitrate;
+    unsigned substream_count;
 };
 
-struct mlp_SubstreamSize {
-    /* extraword present            1 bit*/
-    uint8_t nonrestart_substream; /*1 bit*/
-    uint8_t checkdata_present;    /*1 bit*/
-    /* skip                         1 bit*/
-    uint16_t substream_size; /*    12 bits*/
+struct substream_info {
+    unsigned extraword_present;
+    unsigned nonrestart_substream;
+    unsigned checkdata_present;
+    unsigned substream_end;
 };
 
-struct mlp_RestartHeader {
-    /* sync word (0x18F5)                           13 bits*/
-    uint8_t noise_type;                            /*1 bit*/
-    uint16_t output_timestamp;                    /*16 bits*/
-    uint8_t min_channel;                           /*4 bits*/
-    uint8_t max_channel;                           /*4 bits*/
-    uint8_t max_matrix_channel;                    /*4 bits*/
-    uint8_t noise_shift;                           /*4 bits*/
-    uint32_t noise_gen_seed;                      /*23 bits*/
-    /* unknown                                      19 bits*/
-    uint8_t data_check_present;                    /*1 bit*/
-    uint8_t lossless_check;                        /*8 bits*/
-    /* unknown                                      16 bits*/
-    uint8_t channel_assignments[MAX_MLP_CHANNELS]; /*6 bits each*/
-    uint8_t checksum;                              /*8 bits*/
+struct restart_header {
+    unsigned min_channel;
+    unsigned max_channel;
+    unsigned max_matrix_channel;
+    unsigned noise_shift;
+    unsigned noise_gen_seed;
+    unsigned channel_assignment[MAX_MLP_CHANNELS];
+    unsigned checksum;
 };
 
-struct mlp_ParameterPresentFlags {
-    uint8_t parameter_present_flags;  /*1 bit*/
-    uint8_t huffman_offset;           /*1 bit*/
-    uint8_t iir_filter_parameters;    /*1 bit*/
-    uint8_t fir_filter_parameters;    /*1 bit*/
-    uint8_t quant_step_sizes;         /*1 bit*/
-    uint8_t output_shifts;            /*1 bit*/
-    uint8_t matrix_parameters;        /*1 bit*/
-    uint8_t block_size;               /*1 bit*/
+struct matrix_parameters {
+    unsigned out_channel;
+    unsigned factional_bits;
+    unsigned LSB_bypass;
+    int coeff[MAX_MLP_CHANNELS];
+    array_i* bypassed_LSB;
 };
 
-struct mlp_Matrix {
-    uint8_t out_channel;                    /*4 bits*/
-    uint8_t fractional_bits;                /*4 bits*/
-    uint8_t lsb_bypass;                     /*1 bit*/
-    int32_t coefficients[MAX_MLP_CHANNELS]; /*each 'fractional_bits' + 2*/
-    struct i_array bypassed_lsbs;           /*1 bit per PCM frame*/
+struct filter_parameters {
+    unsigned shift;
+    array_i* coeff;
+    array_i* state;
 };
 
-struct mlp_MatrixParameters {
-    uint8_t count;                 /*4 bits*/
-    struct mlp_Matrix matrices[MAX_MLP_MATRICES];
+struct channel_parameters {
+    struct filter_parameters FIR;
+    struct filter_parameters IIR;
+
+    int huffman_offset;
+    unsigned codebook;
+    unsigned huffman_lsbs;
 };
 
-struct mlp_FilterParameters {
-    struct i_array coefficients;  /*1 per "order"*/
-    uint32_t shift;               /*4 bits*/
-    uint8_t has_state;            /*1 bit*/
-    struct i_array state;         /*1 per "order", if "has_state"*/
+struct decoding_parameters {
+    unsigned flags[8];
+
+    unsigned block_size;
+
+    unsigned matrix_len;
+    struct matrix_parameters matrix[MAX_MLP_MATRICES];
+
+    unsigned output_shift[MAX_MLP_CHANNELS];
+
+    unsigned quant_step_size[MAX_MLP_CHANNELS];
+
+    struct channel_parameters channel[MAX_MLP_CHANNELS];
 };
 
-struct mlp_ChannelParameters {
-    struct mlp_FilterParameters fir_filter_parameters;
-    struct mlp_FilterParameters iir_filter_parameters;
-    int16_t huffman_offset;         /*15 bits*/
-    /* int32_t signed_huffman_offset; */
-    uint8_t codebook;                /*2 bits*/
-    uint8_t huffman_lsbs;            /*5 bits*/
-};
+struct substream {
+    struct substream_info info;
 
-struct mlp_DecodingParameters {
-    struct mlp_ParameterPresentFlags parameters_present_flags; /*8 bits*/
-    uint16_t block_size;                              /*9 bits*/
-    struct mlp_MatrixParameters matrix_parameters;
-    int8_t output_shifts[MAX_MLP_CHANNELS];           /*4 bits each*/
-    uint8_t quant_step_sizes[MAX_MLP_CHANNELS];       /*4 bits each*/
+    struct restart_header header;
 
-    /*1 per substream channel*/
-    struct mlp_ChannelParameters channel_parameters[MAX_MLP_CHANNELS];
+    struct decoding_parameters parameters;
+
+    /*residuals[c][i] where c is channel and i is PCM frame*/
+    array_ia* residuals;
+
+    /*a temporary buffer of filtered residual data*/
+    array_i* filtered;
 };
 
 typedef struct {
-#ifndef STANDALONE
-    PyObject_HEAD
-#endif
+    BitstreamReader* reader;
+    BitstreamReader* frame_reader;
+    BitstreamReader* substream_reader;
 
-    BitstreamReader* bitstream;
+    struct major_sync major_sync;
+    int major_sync_read;
+    struct substream substream[MAX_MLP_SUBSTREAMS];
 
-    int init_ok;
-    int stream_closed;
-    int64_t remaining_samples;
+    array_ia* framelist;
 
-    uint64_t bytes_read;
+} MLPDecoder;
+
+struct checkdata {
     uint8_t parity;
     uint8_t crc;
     uint8_t final_crc;
-
-    /*the stream's initial major sync*/
-    struct mlp_MajorSync major_sync;
-
-    /*the latest size for a given substream*/
-    struct mlp_SubstreamSize* substream_sizes;
-
-    /*the latest restart header for a given substream*/
-    struct mlp_RestartHeader* restart_headers;
-
-    /*the latest decoding parameters for a given substream*/
-    struct mlp_DecodingParameters* decoding_parameters;
-
-    /*raw, unfiltered residuals from a given block*/
-    struct ia_array unfiltered_residuals;
-
-    /*filtered data from a given block*/
-    struct ia_array filtered_residuals;
-
-    /*decoded and filtered samples for all substreams*/
-    struct ia_array substream_samples;
-
-    /*combined array of all substreams*/
-    struct ia_array frame_samples;
-
-    /*combined array of several frame_samples*/
-    struct ia_array multi_frame_samples;
-} decoders_MLPDecoder;
-
-typedef enum {MLP_MAJOR_SYNC_OK,
-              MLP_MAJOR_SYNC_NOT_FOUND,
-              MLP_MAJOR_SYNC_INVALID,
-              MLP_MAJOR_SYNC_ERROR} mlp_major_sync_status;
-
-typedef enum {OK, ERROR} mlp_status;
-
-/*called on each byte read from the stream
-  and used to calculcate parity, checksums and frame sizes*/
-void mlp_byte_callback(uint8_t byte, void* ptr);
-
-int mlp_sample_rate(struct mlp_MajorSync* major_sync);
-
-int mlp_bits_per_sample(struct mlp_MajorSync* major_sync);
-
-int mlp_channel_count(struct mlp_MajorSync* major_sync);
-
-int
-mlp_channel_mask(struct mlp_MajorSync* major_sync);
-
-#ifndef STANDALONE
-/*the MLPDecoder.sample_rate attribute getter*/
-static PyObject*
-MLPDecoder_sample_rate(decoders_MLPDecoder *self, void *closure);
-
-/*the MLPDecoder.bits_per_sample attribute getter*/
-static PyObject*
-MLPDecoder_bits_per_sample(decoders_MLPDecoder *self, void *closure);
-
-/*the MLPDecoder.channels attribute getter*/
-static PyObject*
-MLPDecoder_channels(decoders_MLPDecoder *self, void *closure);
-
-/*the MLPDecoder.channel_mask attribute getter*/
-static PyObject*
-MLPDecoder_channel_mask(decoders_MLPDecoder *self, void *closure);
-
-/*the MLPDecoder.read() method*/
-static PyObject*
-MLPDecoder_read(decoders_MLPDecoder* self, PyObject *args);
-
-/*the MLPDecoder.analyze_frame() method*/
-static PyObject*
-MLPDecoder_analyze_frame(decoders_MLPDecoder* self, PyObject *args);
-
-/*Reads a substream and returns a Python object of its values*/
-PyObject*
-mlp_analyze_substream(decoders_MLPDecoder* decoder,
-                      int substream);
-
-/*the MLPDecoder.close() method*/
-static PyObject*
-MLPDecoder_close(decoders_MLPDecoder* self, PyObject *args);
-
-/*the MLPDecoder.__init__() method*/
-int
-MLPDecoder_init(decoders_MLPDecoder *self,
-                PyObject *args, PyObject *kwds);
-
-PyGetSetDef MLPDecoder_getseters[] = {
-    {"sample_rate",
-     (getter)MLPDecoder_sample_rate, NULL, "sample rate", NULL},
-    {"bits_per_sample",
-     (getter)MLPDecoder_bits_per_sample, NULL, "bits per sample", NULL},
-    {"channels",
-     (getter)MLPDecoder_channels, NULL, "channels", NULL},
-    {"channel_mask",
-     (getter)MLPDecoder_channel_mask, NULL, "channel_mask", NULL},
-    {NULL}
 };
 
-PyMethodDef MLPDecoder_methods[] = {
-    {"read", (PyCFunction)MLPDecoder_read,
-     METH_VARARGS,
-     "Reads the given number of bytes from the MLP file, if possible"},
-    {"analyze_frame", (PyCFunction)MLPDecoder_analyze_frame,
-     METH_NOARGS, "Returns the analysis of the next frame"},
-    {"close", (PyCFunction)MLPDecoder_close,
-     METH_NOARGS, "Closes the MLP decoder stream"},
-    {NULL}
-};
+MLPDecoder*
+open_mlp_decoder(struct bs_buffer* frame_data);
 
 void
-MLPDecoder_dealloc(decoders_MLPDecoder *self);
+close_mlp_decoder(MLPDecoder* decoder);
 
-static PyObject*
-MLPDecoder_new(PyTypeObject *type,
-               PyObject *args, PyObject *kwds);
+/*returns 1 if there isn't enough data in the current packet
+  to decode at least 1 MLP frame
+  returns 0 otherwise*/
+int
+mlp_packet_empty(MLPDecoder* decoder);
 
-PyTypeObject decoders_MLPDecoderType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
-    "decoders.MLPDecoder",    /*tp_name*/
-    sizeof(decoders_MLPDecoder), /*tp_basicsize*/
-    0,                         /*tp_itemsize*/
-    (destructor)MLPDecoder_dealloc, /*tp_dealloc*/
-    0,                         /*tp_print*/
-    0,                         /*tp_getattr*/
-    0,                         /*tp_setattr*/
-    0,                         /*tp_compare*/
-    0,                         /*tp_repr*/
-    0,                         /*tp_as_number*/
-    0,                         /*tp_as_sequence*/
-    0,                         /*tp_as_mapping*/
-    0,                         /*tp_hash */
-    0,                         /*tp_call*/
-    0,                         /*tp_str*/
-    0,                         /*tp_getattro*/
-    0,                         /*tp_setattro*/
-    0,                         /*tp_as_buffer*/
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-    "MLPDecoder objects",      /* tp_doc */
-    0,                         /* tp_traverse */
-    0,                         /* tp_clear */
-    0,                         /* tp_richcompare */
-    0,                         /* tp_weaklistoffset */
-    0,                         /* tp_iter */
-    0,                         /* tp_iternext */
-    MLPDecoder_methods,        /* tp_methods */
-    0,                         /* tp_members */
-    MLPDecoder_getseters,      /* tp_getset */
-    0,                         /* tp_base */
-    0,                         /* tp_dict */
-    0,                         /* tp_descr_get */
-    0,                         /* tp_descr_set */
-    0,                         /* tp_dictoffset */
-    (initproc)MLPDecoder_init, /* tp_init */
-    0,                         /* tp_alloc */
-    MLPDecoder_new,            /* tp_new */
-};
+/*given an MLPDecoder pointing to a buffer of frame data
+  (including length headers), decode as many frames as possible to framelist
+  returns OK on success, or something else if an error occurs*/
+mlp_status
+read_mlp_frames(MLPDecoder* decoder,
+                array_ia* framelist);
 
-static
-int br_read_python(void* user_data,
-                   struct bs_buffer* buffer);
+/*given MLPDecoder context and a buffer of single frame data
+  (including major sync, but not including frame size header)
+  returns 1 or more channels of PCM data in MLP channel order*/
+mlp_status
+read_mlp_frame(MLPDecoder* decoder,
+               BitstreamReader* bs,
+               array_ia* framelist);
 
-static
-void br_close_python(void* user_data);
+/*given a buffer of frame data, returns 28 byte major sync, if present*/
+mlp_status
+read_mlp_major_sync(BitstreamReader* bs,
+                    struct major_sync* major_sync);
 
-static
-void br_free_python(void* user_data);
+/*given a buffer of frame data, returns 2 byte substream info*/
+mlp_status
+read_mlp_substream_info(BitstreamReader* bs,
+                        struct substream_info* substream_info);
+
+/*given a substream context and buffer of substream data,
+  returns 1 or more channels of PCM data
+  which may be offset depending on substream's min/max channel
+
+  e.g. substream0 may have framelist->_[0] / framelist->_[1]
+  and substream1 may have framelist->_[2] / framelist->_[3] / framelist->_[4]
+  which should be combined into a single 5 channel stream*/
+mlp_status
+read_mlp_substream(struct substream* substream,
+                   BitstreamReader* bs,
+                   array_ia* framelist);
+
+/*given a substream context and buffer of substream data,
+  appends block's data to framelist as 1 or more channels of PCM data*/
+mlp_status
+read_mlp_block(struct substream* substream,
+               BitstreamReader* bs,
+               array_ia* framelist);
+
+/*reads a restart header from a block*/
+mlp_status
+read_mlp_restart_header(BitstreamReader* bs,
+                        struct restart_header* restart_header);
+
+/*reads decoding parameters from a block
+  depending on values from the most recent restart header*/
+mlp_status
+read_mlp_decoding_parameters(BitstreamReader* bs,
+                             unsigned header_present,
+                             unsigned min_channel,
+                             unsigned max_channel,
+                             unsigned max_matrix_channel,
+                             struct decoding_parameters* p);
+
+/*reads matrix parameters from decoding parameters
+  depending on max_matrix_channel from the most recent restart header*/
+mlp_status
+read_mlp_matrix_params(BitstreamReader* bs,
+                       unsigned max_matrix_channel,
+                       unsigned* matrix_len,
+                       struct matrix_parameters* mp);
+
+mlp_status
+read_mlp_FIR_parameters(BitstreamReader* bs,
+                        struct filter_parameters* FIR);
+
+mlp_status
+read_mlp_IIR_parameters(BitstreamReader* bs,
+                        struct filter_parameters* IIR);
+
+/*given a block's residual data
+  min_channel/max_channel from the restart header
+  along with block_size in PCM frames, matrix_len, matrix parameters,
+  quant_step_size and channel parameters from decoding parameters
+  returns a list of bypassed_LSB values per matrix (which may be 0s)
+  and a list of residual values per channel*/
+mlp_status
+read_mlp_residual_data(BitstreamReader* bs,
+                       unsigned min_channel,
+                       unsigned max_channel,
+                       unsigned block_size,
+                       unsigned matrix_len,
+                       const struct matrix_parameters* matrix,
+                       const unsigned* quant_step_size,
+                       const struct channel_parameters* channel,
+                       array_ia* residuals);
+
+/*given a list of residuals for a given channel,
+  the FIR/IIR filter parameters and a quant_step_size
+  returns a list of filtered residuals
+  along with updated FIR/IIR filter parameter state*/
+mlp_status
+filter_mlp_channel(const array_i* residuals,
+                   struct filter_parameters* FIR,
+                   struct filter_parameters* IIR,
+                   unsigned quant_step_size,
+                   array_i* filtered);
+
+/*given a list of filtered residuals across all substreams
+  max_matrix_channel, noise_shift, noise_gen_seed from the restart header
+  matrix parameters, quant_step_size from the decoding parameters
+  and bypassed_LSBs from the residual block
+  returns a set of rematrixed channel data
+
+  when 2 substreams are present in an MLP stream,
+  one typically uses the parameters from the second substream*/
+void
+rematrix_mlp_channels(array_ia* channels,
+                      unsigned max_matrix_channel,
+                      unsigned noise_shift,
+                      unsigned* noise_gen_seed,
+                      unsigned matrix_count,
+                      const struct matrix_parameters* matrix,
+                      const unsigned* quant_step_size);
+
+void
+mlp_checkdata_callback(uint8_t byte, void* checkdata);
+
+PyObject*
+mlp_python_exception(mlp_status mlp_status);
+
+const char*
+mlp_python_exception_msg(mlp_status mlp_status);
 
 #endif
-
-/*Returns the total size of the next MLP frame
-  or -1 if the end of the stream has been reached.*/
-int
-mlp_total_frame_size(BitstreamReader* bitstream);
-
-/*Tries to read the next major sync from the bitstream.
-  Returns MLP_MAJOR_SYNC_OK if successful,
-  MLP_MAJOR_SYNC_NOT_FOUND if a major sync is not found,
-  MLP_MAJOR_SYNC_ERROR if an error occurs when reading the bitstream.
-  If a sync is not found, the stream is rewound to the starting position.*/
-mlp_major_sync_status
-mlp_read_major_sync(decoders_MLPDecoder* decoder,
-                    struct mlp_MajorSync* major_sync);
-
-/*Reads an entire MLP frame and combines its
-  substream samples into a single block of channels/samples.
-  Returns the frame's total size upon success,
-  0 on EOF or -1 if an error occurs.*/
-int
-mlp_read_frame(decoders_MLPDecoder* decoder,
-               struct ia_array* frame_samples);
-
-/*Reads a 16-bit substream size value.*/
-mlp_status
-mlp_read_substream_size(BitstreamReader* bitstream,
-                        struct mlp_SubstreamSize* size);
-
-/*Reads a substream and its optional parity/checksum*/
-mlp_status
-mlp_read_substream(decoders_MLPDecoder* decoder,
-                   int substream,
-                   struct ia_array* samples);
-
-unsigned int
-mlp_substream_channel_count(decoders_MLPDecoder* decoder,
-                            int substream);
-
-/*Reads a block along with optional restart header and decoding parameters
-  and performs FIR/IIR filtering on it before placing the results in
-  "block_data".*/
-mlp_status
-mlp_read_block(decoders_MLPDecoder* decoder,
-               int substream,
-               struct ia_array* block_data,
-               int* last_block);
-
-/*Reads a block along with optional restart header and decoding parameters
-  and places the result in "block_data".
-  Unlike mlp_read_block, this does not perform FIR/IIR filtering on the
-  results so that unfiltered residuals can be fed to analyze_substream*/
-mlp_status
-mlp_analyze_block(decoders_MLPDecoder* decoder,
-                  int substream,
-                  struct ia_array* block_data,
-                  int* last_block);
-
-
-mlp_status
-mlp_read_restart_header(BitstreamReader* bs,
-                        struct mlp_DecodingParameters* parameters,
-                        struct mlp_RestartHeader* header);
-
-mlp_status
-mlp_read_decoding_parameters(BitstreamReader* bs,
-                             int min_channel,
-                             int max_channel,
-                             int max_matrix_channel,
-                             struct mlp_DecodingParameters* parameters);
-
-mlp_status
-mlp_read_channel_parameters(BitstreamReader* bs,
-                            struct mlp_ParameterPresentFlags* flags,
-                            uint8_t quant_step_size,
-                            struct mlp_ChannelParameters* parameters);
-
-mlp_status
-mlp_read_matrix_parameters(BitstreamReader* bs,
-                           int substream_channel_count,
-                           struct mlp_MatrixParameters* parameters);
-
-mlp_status
-mlp_read_fir_filter_parameters(BitstreamReader* bs,
-                               struct mlp_FilterParameters* fir);
-
-mlp_status
-mlp_read_iir_filter_parameters(BitstreamReader* bs,
-                               struct mlp_FilterParameters* iir);
-
-int32_t
-mlp_calculate_signed_offset(uint8_t codebook,
-                            uint8_t huffman_lsbs,
-                            int16_t huffman_offset,
-                            uint8_t quant_step_size);
-
-mlp_status
-mlp_read_residuals(BitstreamReader* bs,
-                   struct mlp_DecodingParameters* parameters,
-                   int min_channel,
-                   int max_channel,
-                   struct ia_array* residuals);
-
-mlp_status
-mlp_filter_channels(struct ia_array* unfiltered,
-                    int min_channel,
-                    int max_channel,
-                    struct mlp_DecodingParameters* parameters,
-                    struct ia_array* filtered);
-
-mlp_status
-mlp_filter_channel(struct i_array* unfiltered,
-                   struct mlp_FilterParameters* fir_filter,
-                   struct mlp_FilterParameters* iir_filter,
-                   uint8_t quant_step_size,
-                   struct i_array* filtered);
-
-
-/*generates a pair of noise channels based on
-  the number of PCM frames, noise seed and noise shift*/
-void
-mlp_noise_channels(unsigned int pcm_frames,
-                   uint32_t* noise_gen_seed,
-                   uint8_t noise_shift,
-                   struct i_array* noise_channel1,
-                   struct i_array* noise_channel2);
-
-
-/*modifies the values of "channels" to be rematrixed
-  for each matrix in the list of matrices*/
-void
-mlp_rematrix_channels(struct ia_array* channels,
-                      int max_matrix_channel,
-                      uint32_t* noise_gen_seed,
-                      uint8_t noise_shift,
-                      struct mlp_MatrixParameters* matrices,
-                      uint8_t* quant_step_sizes);
-
-/*modifies the values of "channels" to be rematrixed
-  for a single set of matrix values*/
-void
-mlp_rematrix_channel(struct ia_array* channels,
-                     int max_matrix_channel,
-                     struct i_array* noise_channel1,
-                     struct i_array* noise_channel2,
-                     struct mlp_Matrix* matrix,
-                     uint8_t* quant_step_sizes);

@@ -1,8 +1,8 @@
 #include <Python.h>
 #include "../array2.h"
 #include "../bitstream.h"
-#include "aobpcm2.h"
-#include "mlp2.h"
+#include "aobpcm.h"
+#include "mlp.h"
 #include "cppm.h"
 
 /********************************************************

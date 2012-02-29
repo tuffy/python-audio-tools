@@ -19,237 +19,130 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-int
-AOBPCMDecoder_init(decoders_AOBPCMDecoder *self,
-                   PyObject *args, PyObject *kwds) {
-    PyObject *reader;
-    int i;
+static int
+SL16_char_to_int(unsigned char *s);
 
-    self->reader = NULL;
-    self->buffer = NULL;
+static int
+SL24_char_to_int(unsigned char *s);
 
-    if (!PyArg_ParseTuple(args, "Oiiii",
-                          &reader,
-                          &(self->sample_rate),
-                          &(self->channels),
-                          &(self->channel_mask),
-                          &(self->bits_per_sample)))
-        return -1;
+void
+init_aobpcm_decoder(AOBPCMDecoder* decoder,
+                    unsigned bits_per_sample,
+                    unsigned channel_count)
+{
+    assert((bits_per_sample == 16) || (bits_per_sample == 24));
+    assert((1 <= channel_count) && (channel_count <= 6));
 
-    if (self->sample_rate < 1) {
-        PyErr_SetString(PyExc_ValueError, "sample_rate must be > 0");
-        return -1;
+    if (bits_per_sample == 16) {
+        decoder->bps = 0;
+        decoder->converter = SL16_char_to_int;
+    } else {
+        decoder->bps = 1;
+        decoder->converter = SL24_char_to_int;
     }
 
-    if (self->channels < 1) {
-        PyErr_SetString(PyExc_ValueError, "channels must be > 0");
-        return -1;
-    }
+    decoder->channels = channel_count;
 
-    if (self->channel_mask < 0) {
-        PyErr_SetString(PyExc_ValueError, "channel_mask must be >= 0");
-        return -1;
-    }
+    decoder->bytes_per_sample = bits_per_sample / 8;
 
-    if ((self->bits_per_sample != 16) &&
-        (self->bits_per_sample != 24)) {
-        PyErr_SetString(PyExc_ValueError, "bits_per_sample must be 16,24");
-        return -1;
-    }
-
-    Py_INCREF(reader);
-
-    self->reader = br_open_external(reader,
-                                    BS_BIG_ENDIAN,
-                                    br_read_python,
-                                    br_close_python,
-                                    br_free_python);
-
-    self->chunk_size = (self->bits_per_sample / 8) * self->channels * 2;
-    self->buffer_size = DEFAULT_BUFFER_SIZE;
-    self->buffer = malloc(sizeof(uint8_t) *
-                          self->buffer_size *
-                          self->chunk_size);
-
-    for (i = 0; i < self->chunk_size; i++) {
-        self->swap[i] =
-            AOB_BYTE_SWAP[self->bits_per_sample == 24][self->channels - 1][i];
-    }
-
-    return 0;
+    decoder->chunk_size = decoder->bytes_per_sample * channel_count * 2;
 }
 
-static PyObject*
-AOBPCMDecoder_new(PyTypeObject *type,
-                  PyObject *args, PyObject *kwds) {
-    decoders_AOBPCMDecoder *self;
-
-    self = (decoders_AOBPCMDecoder *)type->tp_alloc(type, 0);
-
-    return (PyObject *)self;
+int
+aobpcm_packet_empty(AOBPCMDecoder* decoder,
+                    struct bs_buffer* packet)
+{
+    return (packet->buffer_size -
+            packet->buffer_position) < decoder->chunk_size;
 }
 
 void
-AOBPCMDecoder_dealloc(decoders_AOBPCMDecoder *self) {
-    self->reader->close(self->reader);
-    if (self->buffer != NULL)
-        free(self->buffer);
-
-    self->ob_type->tp_free((PyObject*)self);
-}
-
-static PyObject*
-AOBPCMDecoder_sample_rate(decoders_AOBPCMDecoder *self, void *closure) {
-    return Py_BuildValue("i", self->sample_rate);
-}
-
-static PyObject*
-AOBPCMDecoder_bits_per_sample(decoders_AOBPCMDecoder *self, void *closure) {
-    return Py_BuildValue("i", self->bits_per_sample);
-}
-
-static PyObject*
-AOBPCMDecoder_channels(decoders_AOBPCMDecoder *self, void *closure) {
-    return Py_BuildValue("i", self->channels);
-}
-
-static PyObject*
-AOBPCMDecoder_channel_mask(decoders_AOBPCMDecoder *self, void *closure) {
-    return Py_BuildValue("i", self->channel_mask);
-}
-
-static PyObject*
-AOBPCMDecoder_read(decoders_AOBPCMDecoder* self, PyObject *args) {
-    unsigned int i;
-
-    for (i = 0; i < self->buffer_size; i++) {
-        switch (aobpcm_read_chunk(self->buffer + (i * self->chunk_size),
-                                  self->chunk_size,
-                                  self->swap,
-                                  self->reader)) {
-        case 1:        /*read OK*/
-            break;
-        case 0:        /*EOF at start of read, which is OK*/
-            goto done;
-        case -1:       /*EOF in middle of read, which is an error*/
-            PyErr_SetString(PyExc_IOError, "EOF reading PCM chunk");
-            return NULL;
-        }
-    }
-
- done:
-    /*generate pcm.FrameList object from little-endian string*/
-
-    return bytes_to_framelist(self->buffer,
-                              i * self->chunk_size,
-                              self->channels,
-                              self->bits_per_sample,
-                              0,
-                              1);
-}
-
-int
-aobpcm_read_chunk(uint8_t* buffer,
-                  int chunk_size,
-                  uint8_t* swap,
-                  BitstreamReader* reader) {
-    int i;
-    int byte;
-    uint8_t unswapped[36];
-
-    for (i = 0; i < chunk_size; i++) {
-        if ((byte = ext_getc(reader->input.external)) != EOF) {
-            unswapped[i] = (uint8_t)byte;
-        } else {
-            if (i == 0)
-                return 0;  /*EOF at start of chunk*/
-            else
-                return -1; /*EOF in middle of chunk*/
-        }
-    }
-
-    for (i = 0; i < chunk_size; i++) {
-        buffer[swap[i]] = unswapped[i];
-    }
-
-    return 1; /*no errors reading chunk*/
-}
-
-static PyObject*
-AOBPCMDecoder_close(decoders_AOBPCMDecoder* self, PyObject *args) {
-    Py_INCREF(Py_None);
-    return Py_None;
-}
-
-static PyObject*
-bytes_to_framelist(uint8_t *bytes,
-                   int bytes_length,
-                   int channels,
-                   int bits_per_sample,
-                   int is_big_endian,
-                   int is_signed) {
-    PyObject *pcm = NULL;
-    PyObject *framelist;
-
-    if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
-        return NULL;
-    framelist = PyObject_CallMethod(pcm, "FrameList",
-                                    "(s#iiii)",
-                                    bytes, bytes_length,
-                                    channels,
-                                    bits_per_sample,
-                                    is_big_endian,
-                                    is_signed);
-    Py_DECREF(pcm);
-    return framelist;
-}
-
-static
-int br_read_python(void* user_data,
-                   struct bs_buffer* buffer)
+read_aobpcm(AOBPCMDecoder* decoder,
+            struct bs_buffer* packet,
+            array_ia* framelist)
 {
-    PyObject* pcmreader = (PyObject*)user_data;
-    PyObject* read_result;
-
-    /*call read() method on pcmreader*/
-    if ((read_result =
-         PyObject_CallMethod(pcmreader, "read", "i", 4096)) != NULL) {
-        uint8_t *string;
-        Py_ssize_t string_size;
-
-        /*convert returned object to string of bytes*/
-        if (PyString_AsStringAndSize(read_result,
-                                     (char**)&string,
-                                     &string_size) != -1) {
-            /*then append bytes to buffer and return success*/
-            uint8_t* appended = buf_extend(buffer, (uint32_t)string_size);
-            memcpy(appended, string, string_size);
-            buffer->buffer_size += (uint32_t)string_size;
-
-            return 0;
-        } else {
-            /*string conversion failed so print/clear error and return an EOF*/
-            PyErr_Print();
-            return 1;
+    const static uint8_t AOB_BYTE_SWAP[2][6][36] = {
+        { /*16 bps*/
+            {1, 0, 3, 2},                                    /*1 ch*/
+            {1, 0, 3, 2, 5, 4, 7, 6},                        /*2 ch*/
+            {1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10},          /*3 ch*/
+            {1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10,
+             13, 12, 15, 14},                                /*4 ch*/
+            {1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10,
+             13, 12, 15, 14, 17, 16, 19, 18},                /*5 ch*/
+            {1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10,
+             13, 12, 15, 14, 17, 16, 19, 18, 21, 20, 23, 22} /*6 ch*/
+        },
+        { /*24 bps*/
+            {  2,  1,  5,  4,  0,  3},  /*1 ch*/
+            {  2,  1,  5,  4,  8,  7,
+               11, 10,  0,  3,  6,  9},  /*2 ch*/
+            {  8,  7, 17, 16,  6, 15,
+               2,  1,  5,  4, 11, 10,
+               14, 13,  0,  3,  9, 12},  /*3 ch*/
+            {  8,  7, 11, 10, 20, 19,
+               23, 22,  6,  9, 18, 21,
+               2,  1,  5,  4, 14, 13,
+               17, 16,  0,  3, 12, 15},  /*4 ch*/
+            {  8,  7, 11, 10, 14, 13,
+               23, 22, 26, 25, 29, 28,
+               6,  9, 12, 21, 24, 27,
+               2,  1,  5,  4, 17, 16,
+               20, 19,  0,  3, 15, 18},  /*5 ch*/
+            {  8,  7, 11, 10, 26, 25,
+               29, 28,  6,  9, 24, 27,
+               2,  1,  5,  4, 14, 13,
+               17, 16, 20, 19, 23, 22,
+               32, 31, 35, 34,  0,  3,
+               12, 15, 18, 21, 30, 33}  /*6 ch*/
         }
+    };
+    const unsigned bps = decoder->bps;
+    const unsigned channels = decoder->channels;
+    const unsigned chunk_size = decoder->chunk_size;
+    const unsigned bytes_per_sample = decoder->bytes_per_sample;
+    unsigned i;
+
+    assert(framelist->len == channels);
+
+    while ((packet->buffer_size - packet->buffer_position) >= chunk_size) {
+        uint8_t unswapped[36];
+        uint8_t* unswapped_ptr = unswapped;
+        /*swap read bytes to proper order*/
+        for (i = 0; i < chunk_size; i++) {
+            unswapped[AOB_BYTE_SWAP[bps][channels - 1][i]] =
+                (uint8_t)buf_getc(packet);
+        }
+
+        /*decode bytes to PCM ints and place them in proper channels*/
+        for (i = 0; i < (channels * 2); i++) {
+            array_i* channel = framelist->_[i % channels];
+            channel->append(channel, decoder->converter(unswapped_ptr));
+            unswapped_ptr += bytes_per_sample;
+        }
+    }
+}
+
+static int
+SL16_char_to_int(unsigned char *s)
+{
+    if (s[1] & 0x80) {
+        /*negative*/
+        return -(int)(0x10000 - ((s[1] << 8) | s[0]));
     } else {
-        /*read() method call failed
-          so print/clear error and return an EOF
-          (which will likely generate an IOError exception if its own)*/
-        PyErr_Print();
-        return 1;
+        /*positive*/
+        return (int)(s[1] << 8) | s[0];
     }
-
 }
 
-static
-void br_close_python(void* user_data)
+static int
+SL24_char_to_int(unsigned char *s)
 {
-    /*FIXME*/
-}
-
-static
-void br_free_python(void* user_data)
-{
-    Py_XDECREF((PyObject*)user_data);
+    if (s[2] & 0x80) {
+        /*negative*/
+        return -(int)(0x1000000 - ((s[2] << 16) | (s[1] << 8) | s[0]));
+    } else {
+        /*positive*/
+        return (int)((s[2] << 16) | (s[1] << 8) | s[0]);
+    }
 }

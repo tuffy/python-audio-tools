@@ -1,8 +1,4 @@
 #include "mlp.h"
-#include "../pcm.h"
-#ifndef STANDALONE
-#include "pcm.h"
-#endif
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -23,739 +19,1078 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-const static int mlp_channel_map[][6] = {
-    /* 0x00 */ {  0, -1, -1, -1, -1, -1},
-    /* 0x01 */ {  0,  1, -1, -1, -1, -1},
-    /* 0x02 */ {  0,  1,  2, -1, -1, -1},
-    /* 0x03 */ {  0,  1,  2,  3, -1, -1},
-    /* 0x04 */ {  0,  1,  2, -1, -1, -1},
-    /* 0x05 */ {  0,  1,  2,  3, -1, -1},
-    /* 0x06 */ {  0,  1,  2,  3,  4, -1},
-    /* 0x07 */ {  0,  1,  2, -1, -1, -1},
-    /* 0x08 */ {  0,  1,  2,  3, -1, -1},
-    /* 0x09 */ {  0,  1,  2,  3,  4, -1},
-    /* 0x0A */ {  0,  1,  2,  3, -1, -1},
-    /* 0x0B */ {  0,  1,  2,  3,  4, -1},
-    /* 0x0C */ {  0,  1,  2,  3,  4,  5},
-    /* 0x0D */ {  0,  1,  2,  3, -1, -1},
-    /* 0x0E */ {  0,  1,  2,  3,  4, -1},
-    /* 0x0F */ {  0,  1,  2,  3, -1, -1},
-    /* 0x10 */ {  0,  1,  2,  3,  4, -1},
-    /* 0x11 */ {  0,  1,  2,  3,  4,  5},
-    /* 0x12 */ {  0,  1,  3,  4,  2, -1},
-    /* 0x13 */ {  0,  1,  3,  4,  2, -1},
-    /* 0x14 */ {  0,  1,  4,  5,  2,  3}
-};
+extern unsigned
+dvda_bits_per_sample(unsigned encoded);
 
-static struct br_huffman_table mlp_codebook1[][0x200] =
-#include "mlp_codebook1.h"
-    ;
+extern unsigned
+dvda_sample_rate(unsigned encoded);
 
-static struct br_huffman_table mlp_codebook2[][0x200] =
-#include "mlp_codebook2.h"
-    ;
+extern unsigned
+dvda_channel_count(unsigned encoded);
 
-static struct br_huffman_table mlp_codebook3[][0x200] =
-#include "mlp_codebook3.h"
-    ;
+extern unsigned
+dvda_channel_mask(unsigned encoded);
 
-
-#ifdef STANDALONE
-typedef enum {PyExc_ValueError, PyExc_IOError}  python_error;
-
-void
-PyErr_SetString(python_error error, char* error_msg) {
-    fprintf(stderr, "Error: %s\n", error_msg);
-    exit(1);
-}
-
-struct ia_array*
-ia_array_to_framelist(struct ia_array* framelist,
-                      int bits_per_sample) {
-    return framelist;
-}
-
-#endif
-
-#ifndef STANDALONE
-int
-MLPDecoder_init(decoders_MLPDecoder *self,
-                PyObject *args, PyObject *kwds) {
-    PyObject *reader;
-    int substream;
-    int matrix;
-    int channel;
-
-    self->init_ok = 0;
-    self->stream_closed = 0;
-    self->bitstream = NULL;
-    self->parity = 0;
-    self->crc = 0x3C;
-
-    if (!PyArg_ParseTuple(args, "OL", &reader, &(self->remaining_samples)))
-        return -1;
-
-    Py_INCREF(reader);
-
-    /*open the MLP file*/
-    self->bitstream = br_open_external(reader,
-                                       BS_BIG_ENDIAN,
-                                       br_read_python,
-                                       br_close_python,
-                                       br_free_python);
-#else
-int
-MLPDecoder_init(decoders_MLPDecoder* self,
-                char* path, int remaining_samples) {
-    int substream;
-    int matrix;
-    int channel;
-
-    self->init_ok = 0;
-    self->stream_closed = 0;
-    self->bitstream = NULL;
-    self->parity = 0;
-    self->crc = 0x3C;
-
-    /*open the MLP file*/
-    self->bitstream = br_open(fopen(path, "rb"), BS_BIG_ENDIAN);
-
-    self->remaining_samples = remaining_samples;
-#endif
-
-    /*store initial position in stream*/
-    self->bitstream->mark(self->bitstream);
-
-    /*skip initial frame size, if possible*/
-    if (mlp_total_frame_size(self->bitstream) == -1) {
-        PyErr_SetString(PyExc_IOError, "unable to read initial major sync");
-        return -1;
-    }
-
-    /*attempt to read initial major sync*/
-    switch (mlp_read_major_sync(self, &(self->major_sync))) {
-    case MLP_MAJOR_SYNC_OK:
-        break;
-    case MLP_MAJOR_SYNC_NOT_FOUND:
-        PyErr_SetString(PyExc_ValueError, "initial major sync not found");
-        return -1;
-    case MLP_MAJOR_SYNC_INVALID:
-    case MLP_MAJOR_SYNC_ERROR:
-        return -1;
-    }
-    if (self->major_sync.substream_count > 2) {
-        PyErr_SetString(PyExc_ValueError,
-                        "substream count cannot be greater than 2");
-        return -1;
-    }
-
-    /*restore initial stream position*/
-    self->bitstream->rewind(self->bitstream);
-    self->bitstream->unmark(self->bitstream);
-
-    /*at this point, all the errors that can occur have been checked*/
-    self->init_ok = 1;
-
-    /*allocate space for decoding variables*/
-    self->substream_sizes = malloc(sizeof(struct mlp_SubstreamSize) *
-                                   MAX_MLP_SUBSTREAMS);
-
-    self->restart_headers = malloc(sizeof(struct mlp_RestartHeader) *
-                                   MAX_MLP_SUBSTREAMS);
-
-    self->decoding_parameters = malloc(sizeof(struct mlp_DecodingParameters) *
-                                       MAX_MLP_SUBSTREAMS);
-
-    iaa_init(&(self->unfiltered_residuals), MAX_MLP_CHANNELS, 8);
-    iaa_init(&(self->filtered_residuals), MAX_MLP_CHANNELS, 8);
-
-    iaa_init(&(self->substream_samples), MAX_MLP_CHANNELS, 8);
-
-    iaa_init(&(self->frame_samples), MAX_MLP_CHANNELS, 8);
-
-    iaa_init(&(self->multi_frame_samples), MAX_MLP_CHANNELS, 8);
-
-    for (substream = 0; substream < MAX_MLP_SUBSTREAMS; substream++) {
-        for (channel = 0; channel < MAX_MLP_CHANNELS; channel++) {
-            ia_init(&(self->decoding_parameters[substream].channel_parameters[channel].fir_filter_parameters.coefficients), 2);
-            ia_init(&(self->decoding_parameters[substream].channel_parameters[channel].fir_filter_parameters.state), 2);
-            ia_init(&(self->decoding_parameters[substream].channel_parameters[channel].iir_filter_parameters.coefficients), 2);
-            ia_init(&(self->decoding_parameters[substream].channel_parameters[channel].iir_filter_parameters.state), 2);
-        }
-
-        for (matrix = 0; matrix < MAX_MLP_MATRICES; matrix++) {
-            ia_init(&(self->decoding_parameters[substream].matrix_parameters.matrices[matrix].bypassed_lsbs), 8);
-        }
-    }
-
-    /*initalize stream position callback*/
-    self->bytes_read = 0;
-    br_add_callback(self->bitstream, mlp_byte_callback, self);
-
-    return 0;
-}
-
-void
-MLPDecoder_dealloc(decoders_MLPDecoder *self)
+MLPDecoder*
+open_mlp_decoder(struct bs_buffer* frame_data)
 {
-    int substream;
-    int matrix;
-    int channel;
+    MLPDecoder* decoder = malloc(sizeof(MLPDecoder));
+    unsigned c;
+    unsigned s;
 
-    if (self->bitstream != NULL)
-        self->bitstream->close(self->bitstream);
+    decoder->reader = br_open_buffer(frame_data, BS_BIG_ENDIAN);
+    decoder->frame_reader = br_substream_new(BS_BIG_ENDIAN);
+    decoder->substream_reader = br_substream_new(BS_BIG_ENDIAN);
+    decoder->major_sync_read = 0;
 
-    if (self->init_ok) {
-        for (substream = 0; substream < MAX_MLP_SUBSTREAMS; substream++) {
-            for (channel = 0; channel < MAX_MLP_CHANNELS; channel++) {
-                ia_free(&(self->decoding_parameters[substream].channel_parameters[channel].fir_filter_parameters.coefficients));
-                ia_free(&(self->decoding_parameters[substream].channel_parameters[channel].fir_filter_parameters.state));
-                ia_free(&(self->decoding_parameters[substream].channel_parameters[channel].iir_filter_parameters.coefficients));
-                ia_free(&(self->decoding_parameters[substream].channel_parameters[channel].iir_filter_parameters.state));
+    decoder->framelist = array_ia_new();
+    for (c = 0; c < MAX_MLP_CHANNELS; c++)
+        decoder->framelist->append(decoder->framelist);
+
+    for (s = 0; s < MAX_MLP_SUBSTREAMS; s++) {
+        unsigned c;
+        unsigned m;
+
+        decoder->substream[s].residuals = array_ia_new();
+        decoder->substream[s].filtered = array_i_new();
+
+        /*init matrix parameters*/
+        for (m = 0; m < MAX_MLP_MATRICES; m++) {
+            decoder->substream[s].parameters.matrix[m].bypassed_LSB =
+                array_i_new();
+        }
+
+        /*init channel parameters*/
+        for (c = 0; c < MAX_MLP_CHANNELS; c++) {
+            decoder->substream[s].parameters.channel[c].FIR.coeff =
+                array_i_new();
+            decoder->substream[s].parameters.channel[c].FIR.state =
+                array_i_new();
+            decoder->substream[s].parameters.channel[c].IIR.coeff =
+                array_i_new();
+            decoder->substream[s].parameters.channel[c].IIR.state =
+                array_i_new();
+        }
+    }
+
+    return decoder;
+}
+
+void
+close_mlp_decoder(MLPDecoder* decoder)
+{
+    unsigned s;
+
+    decoder->reader->close(decoder->reader);
+    decoder->frame_reader->close(decoder->frame_reader);
+    decoder->substream_reader->close(decoder->substream_reader);
+    array_ia_del(decoder->framelist);
+
+    for (s = 0; s < MAX_MLP_SUBSTREAMS; s++) {
+        unsigned c;
+        unsigned m;
+
+        array_ia_del(decoder->substream[s].residuals);
+        array_i_del(decoder->substream[s].filtered);
+
+        /*free matrix parameters*/
+        for (m = 0; m < MAX_MLP_MATRICES; m++) {
+            array_i_del(
+                decoder->substream[s].parameters.matrix[m].bypassed_LSB);
+        }
+
+        /*free channel parameters*/
+        for (c = 0; c < MAX_MLP_CHANNELS; c++) {
+            array_i_del(decoder->substream[s].parameters.channel[c].FIR.coeff);
+            array_i_del(decoder->substream[s].parameters.channel[c].FIR.state);
+            array_i_del(decoder->substream[s].parameters.channel[c].IIR.coeff);
+            array_i_del(decoder->substream[s].parameters.channel[c].IIR.state);
+        }
+    }
+
+    free(decoder);
+}
+
+int
+mlp_packet_empty(MLPDecoder* decoder)
+{
+    BitstreamReader* reader = decoder->reader;
+    struct bs_buffer* packet = reader->input.substream;
+    const unsigned remaining_bytes =
+        packet->buffer_size - packet->buffer_position;
+
+    if (remaining_bytes >= 4) {
+        unsigned total_frame_size;
+
+        reader->mark(reader);
+        reader->parse(reader, "4p 12u 16p", &total_frame_size);
+        reader->rewind(reader);
+        reader->unmark(reader);
+
+        return (remaining_bytes < (total_frame_size * 2));
+    } else {
+        /*not enough bytes for an MLP frame header*/
+        return 1;
+    }
+}
+
+mlp_status
+read_mlp_frames(MLPDecoder* decoder,
+                array_ia* framelist)
+{
+    BitstreamReader* reader = decoder->reader;
+    struct bs_buffer* packet = reader->input.substream;
+
+    while ((packet->buffer_size - packet->buffer_position) >= 4) {
+        unsigned total_frame_size;
+        unsigned frame_bytes;
+
+        reader->mark(reader);
+        reader->parse(reader, "4p 12u 16p", &total_frame_size);
+        frame_bytes = (total_frame_size * 2) - 4;
+        if ((packet->buffer_size - packet->buffer_position) >= frame_bytes) {
+            BitstreamReader* frame_reader = decoder->frame_reader;
+            mlp_status status;
+
+            reader->unmark(reader);
+            br_substream_reset(frame_reader);
+            reader->substream_append(reader, frame_reader, frame_bytes);
+
+            if ((status =
+                 read_mlp_frame(decoder, frame_reader, framelist)) != OK)
+                return status;
+        } else {
+            /*not enough of a frame left to read*/
+            reader->rewind(reader);
+            reader->unmark(reader);
+            return OK;
+        }
+    }
+
+    /*not enough of a frame left to read*/
+    return OK;
+}
+
+mlp_status
+read_mlp_frame(MLPDecoder* decoder,
+               BitstreamReader* bs,
+               array_ia* framelist)
+{
+    mlp_status status;
+
+    /*check for major sync*/
+    if (decoder->major_sync_read) {
+        struct major_sync major_sync;
+
+        switch (status = read_mlp_major_sync(bs, &major_sync)) {
+        case OK:
+            /*if major sync changes mid-stream, raise an exception*/
+            if ((major_sync.bits_per_sample_0 !=
+                 decoder->major_sync.bits_per_sample_0) ||
+                (major_sync.bits_per_sample_1 !=
+                 decoder->major_sync.bits_per_sample_1) ||
+                (major_sync.sample_rate_0 !=
+                 decoder->major_sync.sample_rate_0) ||
+                (major_sync.sample_rate_1 !=
+                 decoder->major_sync.sample_rate_1) ||
+                (major_sync.channel_count !=
+                 decoder->major_sync.channel_count) ||
+                (major_sync.channel_mask !=
+                 decoder->major_sync.channel_mask) ||
+                (major_sync.substream_count !=
+                 decoder->major_sync.substream_count)) {
+                return INVALID_MAJOR_SYNC;
             }
+            break;
+        case NO_MAJOR_SYNC:
+            break;
+        default:
+            return status;
+        }
+    } else {
+        switch (status = read_mlp_major_sync(bs, &(decoder->major_sync))) {
+        case OK:
+            decoder->major_sync_read = 1;
+            break;
+        case NO_MAJOR_SYNC:
+            /*FIXME - ensure at least one major sync has been read*/
+            break;
+        default:
+            return status;
+        }
+    }
 
-            for (matrix = 0; matrix < MAX_MLP_MATRICES; matrix++) {
-                ia_free(&(self->decoding_parameters[substream].matrix_parameters.matrices[matrix].bypassed_lsbs));
+    if (!setjmp(*br_try(bs))) {
+        unsigned s;
+        unsigned c;
+        unsigned m;
+        struct substream* substream0 = &(decoder->substream[0]);
+        struct substream* substream1 = &(decoder->substream[1]);
+
+        /*read 1 or 2 substream info blocks, depending on substream count*/
+
+        for (s = 0; s < decoder->major_sync.substream_count; s++) {
+            if ((status = read_mlp_substream_info(
+                     bs,
+                     &(decoder->substream[s].info))) != OK) {
+                br_etry(bs);
+                return status;
             }
         }
 
-        iaa_free(&(self->substream_samples));
-        iaa_free(&(self->unfiltered_residuals));
-        iaa_free(&(self->filtered_residuals));
-        iaa_free(&(self->frame_samples));
-        iaa_free(&(self->multi_frame_samples));
+        br_substream_reset(decoder->substream_reader);
+        if (decoder->substream[0].info.checkdata_present) {
+            /*checkdata present, so last 2 bytes are CRC-8/parity*/
+            struct checkdata checkdata = {0, 0x3C, 0};
+            uint8_t parity;
+            uint8_t CRC8;
 
-        free(self->substream_sizes);
-        free(self->restart_headers);
-        free(self->decoding_parameters);
-    }
+            br_add_callback(bs, mlp_checkdata_callback, &checkdata);
+            bs->substream_append(bs, decoder->substream_reader,
+                                 substream0->info.substream_end - 2);
+            br_pop_callback(bs, NULL);
 
-#ifndef STANDALONE
-    self->ob_type->tp_free((PyObject*)self);
-#endif
-}
+            parity = (uint8_t)bs->read(bs, 8);
+            if ((parity ^ checkdata.parity) != 0xA9) {
+                br_etry(bs);
+                return PARITY_MISMATCH;
+            }
 
-#ifndef STANDALONE
-static PyObject*
-MLPDecoder_close(decoders_MLPDecoder* self, PyObject *args) {
-    self->stream_closed = 1;
+            CRC8 = (uint8_t)bs->read(bs, 8);
+            if (checkdata.final_crc != CRC8) {
+                br_etry(bs);
+                return CRC8_MISMATCH;
+            }
+        } else {
+            bs->substream_append(bs, decoder->substream_reader,
+                                 decoder->substream[0].info.substream_end);
+        }
 
-    Py_INCREF(Py_None);
-    return Py_None;
-}
+        /*clear the bypassed LSB values in substream 0's matrix data*/
+        for (m = 0; m < MAX_MLP_MATRICES; m++)
+            array_i_reset(
+               decoder->substream[0].parameters.matrix[m].bypassed_LSB);
 
-static PyObject*
-MLPDecoder_sample_rate(decoders_MLPDecoder *self, void *closure) {
-    int rate = mlp_sample_rate(&(self->major_sync));
-    if (rate > 0) {
-        return Py_BuildValue("i", rate);
-    } else {
-        PyErr_SetString(PyExc_ValueError, "unsupported sample rate");
-        return NULL;
-    }
+        /*decode substream 0 bytes to channel data*/
+        if ((status = read_mlp_substream(substream0,
+                                         decoder->substream_reader,
+                                         decoder->framelist)) != OK) {
+            br_etry(bs);
+            return status;
+        }
 
-}
+        if (decoder->major_sync.substream_count == 1) {
+            /*rematrix substream 0*/
+            rematrix_mlp_channels(decoder->framelist,
+                                  substream0->header.max_matrix_channel,
+                                  substream0->header.noise_shift,
+                                  &(substream0->header.noise_gen_seed),
+                                  substream0->parameters.matrix_len,
+                                  substream0->parameters.matrix,
+                                  substream0->parameters.quant_step_size);
 
-static PyObject*
-MLPDecoder_bits_per_sample(decoders_MLPDecoder *self, void *closure) {
-    int bits_per_sample = mlp_bits_per_sample(&(self->major_sync));
-    if (bits_per_sample > 0) {
-        return Py_BuildValue("i", bits_per_sample);
-    } else {
-        PyErr_SetString(PyExc_ValueError, "unsupported bits-per-sample");
-        return NULL;
-    }
-}
+            /*apply output shifts to substream 0*/
+            for (c = 0; c <= substream0->header.max_matrix_channel; c++) {
+                const unsigned output_shift =
+                    substream0->parameters.output_shift[c];
+                if (output_shift) {
+                    const unsigned block_size = decoder->framelist->_[c]->len;
+                    unsigned i;
+                    for (i = 0; i < block_size; i++) {
+                        decoder->framelist->_[c]->_[i] <<= output_shift;
+                    }
+                }
+            }
 
-static PyObject*
-MLPDecoder_channels(decoders_MLPDecoder *self, void *closure) {
-    int channels = mlp_channel_count(&(self->major_sync));
-    if (channels > 0) {
-        return Py_BuildValue("i", channels);
-    } else {
-        PyErr_SetString(PyExc_ValueError, "unsupported channel assignment");
-        return NULL;
-    }
-}
+            /*append rematrixed data to final framelist*/
+            for (c = 0; c < framelist->len; c++) {
+                framelist->_[c]->extend(framelist->_[c],
+                                        decoder->framelist->_[c]);
+            }
 
-static PyObject*
-MLPDecoder_channel_mask(decoders_MLPDecoder *self, void *closure) {
-    int mask = mlp_channel_mask(&(self->major_sync));
-    if (mask > 0) {
-        return Py_BuildValue("i", mask);
-    } else {
-        PyErr_SetString(PyExc_ValueError, "unsupported channel assignment");
-        return NULL;
-    }
-}
-#endif
-#ifndef STANDALONE
-static PyObject*
-MLPDecoder_read(decoders_MLPDecoder* self, PyObject *args) {
-    PyObject* frame;
-#else
-struct ia_array*
-MLPDecoder_read(decoders_MLPDecoder* self) {
-    struct ia_array* frame;
-#endif
-    int channel_count = mlp_channel_count(&(self->major_sync));
-    int channel;
+            /*clear out framelist for next run*/
+            for (c = 0; c < decoder->framelist->len; c++) {
+                decoder->framelist->_[c]->reset(decoder->framelist->_[c]);
+            }
+        } else {
+            br_substream_reset(decoder->substream_reader);
+            if (decoder->substream[0].info.checkdata_present) {
+                /*checkdata present, so last 2 bytes are CRC-8/parity*/
+                struct checkdata checkdata  = {0, 0x3C, 0};
+                unsigned CRC8;
+                unsigned parity;
 
-    struct ia_array wave_order;
-    int i;
-    int frame_size;
+                br_add_callback(bs, mlp_checkdata_callback, &checkdata);
+                bs->substream_append(bs, decoder->substream_reader,
+                                     substream1->info.substream_end -
+                                     substream0->info.substream_end -
+                                     2);
+                br_pop_callback(bs, NULL);
 
-    if (self->remaining_samples <= 0) {
-        /*return empty FrameList object*/
-        iaa_init(&wave_order, channel_count, 1);
-        frame = ia_array_to_framelist(
-                    &wave_order,
-                    mlp_bits_per_sample(&(self->major_sync)));
-        iaa_free(&wave_order);
-        return frame;
-    }
+                parity = (uint8_t)bs->read(bs, 8);
+                if ((parity ^ checkdata.parity) != 0xA9) {
+                    br_etry(bs);
+                    return PARITY_MISMATCH;
+                }
 
-    if (!setjmp(*br_try(self->bitstream))) {
-        iaa_reset(&(self->multi_frame_samples));
-
-        for (i = 0; i < MLP_FRAMES_AT_A_TIME; i++) {
-            if ((self->remaining_samples > 0) &&
-                ((frame_size = mlp_read_frame(self,
-                                              &(self->frame_samples))) > 0)) {
-                self->remaining_samples -= self->frame_samples.arrays[0].size;
-                for (channel = 0; channel < channel_count; channel++) {
-                    ia_extend(&(self->multi_frame_samples.arrays[channel]),
-                              &(self->frame_samples.arrays[channel]));
+                CRC8 = (uint8_t)bs->read(bs, 8);
+                if (checkdata.final_crc != CRC8) {
+                    br_etry(bs);
+                    return CRC8_MISMATCH;
                 }
             } else {
+                bs->substream_append(bs, decoder->substream_reader,
+                                     substream1->info.substream_end -
+                                     substream0->info.substream_end);
+            }
+
+            /*clear the bypassed LSB values in substream 1's matrix data*/
+            for (m = 0; m < MAX_MLP_MATRICES; m++)
+                array_i_reset(
+                    decoder->substream[1].parameters.matrix[m].bypassed_LSB);
+
+            /*decode substream 1 bytes to channel data*/
+            if ((status = read_mlp_substream(substream1,
+                                             decoder->substream_reader,
+                                             decoder->framelist)) != OK) {
+                br_etry(bs);
+                return status;
+            }
+
+            /*rematrix substreams 0 and 1*/
+            rematrix_mlp_channels(decoder->framelist,
+                                  substream1->header.max_matrix_channel,
+                                  substream1->header.noise_shift,
+                                  &(substream1->header.noise_gen_seed),
+                                  substream1->parameters.matrix_len,
+                                  substream1->parameters.matrix,
+                                  substream1->parameters.quant_step_size);
+
+            /*apply output shifts to substreams 0 and 1*/
+            for (c = 0; c <= substream1->header.max_matrix_channel; c++) {
+                const unsigned output_shift =
+                    substream1->parameters.output_shift[c];
+                if (output_shift) {
+                    const unsigned block_size = decoder->framelist->_[c]->len;
+                    unsigned i;
+                    for (i = 0; i < block_size; i++) {
+                        decoder->framelist->_[c]->_[i] <<= output_shift;
+                    }
+                }
+            }
+
+            /*append rematrixed data to final framelist*/
+            for (c = 0; c < framelist->len; c++) {
+                framelist->_[c]->extend(framelist->_[c],
+                                        decoder->framelist->_[c]);
+            }
+
+            /*clear out framelist for next run*/
+            for (c = 0; c < decoder->framelist->len; c++) {
+                decoder->framelist->_[c]->reset(decoder->framelist->_[c]);
+            }
+        }
+
+        br_etry(bs);
+        return OK;
+    } else {
+        br_etry(bs);
+        return IO_ERROR;
+    }
+}
+
+mlp_status
+read_mlp_major_sync(BitstreamReader* bs,
+                    struct major_sync* major_sync)
+{
+    bs->mark(bs);
+    if (!setjmp(*br_try(bs))) {
+        const unsigned sync_words = bs->read(bs, 24);
+        const unsigned stream_type = bs->read(bs, 8);
+
+        if ((sync_words == 0xF8726F) && (stream_type == 0xBB)) {
+            unsigned channel_assignment;
+
+            /*major sync found*/
+            bs->parse(bs,
+                      "4u 4u 4u 4u 11p 5u 48p 1u 15u 4u 92p",
+                      &(major_sync->bits_per_sample_0),
+                      &(major_sync->bits_per_sample_1),
+                      &(major_sync->sample_rate_0),
+                      &(major_sync->sample_rate_1),
+                      &channel_assignment,
+                      &(major_sync->is_VBR),
+                      &(major_sync->peak_bitrate),
+                      &(major_sync->substream_count));
+
+            if ((major_sync->substream_count != 1) &&
+                (major_sync->substream_count != 2))
+                return INVALID_MAJOR_SYNC;
+
+            major_sync->channel_count = dvda_channel_count(channel_assignment);
+            major_sync->channel_mask = dvda_channel_mask(channel_assignment);
+
+            bs->unmark(bs);
+            br_etry(bs);
+            return OK;
+        } else {
+            bs->rewind(bs);
+            bs->unmark(bs);
+            br_etry(bs);
+            return NO_MAJOR_SYNC;
+        }
+    } else {
+        bs->rewind(bs);
+        bs->unmark(bs);
+        br_etry(bs);
+        return NO_MAJOR_SYNC;
+    }
+}
+
+mlp_status
+read_mlp_substream_info(BitstreamReader* bs,
+                        struct substream_info* substream_info)
+{
+    bs->parse(bs, "1u 1u 1u 1p 12u",
+              &(substream_info->extraword_present),
+              &(substream_info->nonrestart_substream),
+              &(substream_info->checkdata_present),
+              &(substream_info->substream_end));
+
+    if (substream_info->extraword_present) {
+        return INVALID_EXTRAWORD_PRESENT;
+    }
+
+    substream_info->substream_end *= 2;
+
+    return OK;
+}
+
+mlp_status
+read_mlp_substream(struct substream* substream,
+                   BitstreamReader* bs,
+                   array_ia* framelist)
+{
+    if (!setjmp(*br_try(bs))) {
+        unsigned last_block;
+
+        do {
+            mlp_status status;
+
+            if ((status = read_mlp_block(substream,
+                                         bs,
+                                         framelist)) != OK) {
+                br_etry(bs);
+                return status;
+            }
+
+            last_block = bs->read(bs, 1);
+        } while (last_block == 0);
+
+        br_etry(bs);
+        return OK;
+    } else {
+        br_etry(bs);
+        return IO_ERROR;
+    }
+}
+
+mlp_status
+read_mlp_block(struct substream* substream,
+               BitstreamReader* bs,
+               array_ia* framelist)
+{
+    mlp_status status;
+    unsigned c;
+
+    /*decoding parameters present*/
+    if (bs->read(bs, 1)) {
+        unsigned restart_header;
+
+        /*restart header present*/
+        if ((restart_header = bs->read(bs, 1)) == 1) {
+            if ((status =
+                 read_mlp_restart_header(bs, &(substream->header))) != OK) {
+                return status;
+            }
+        }
+
+        if ((status =
+             read_mlp_decoding_parameters(bs,
+                                          restart_header,
+                                          substream->header.min_channel,
+                                          substream->header.max_channel,
+                                          substream->header.max_matrix_channel,
+                                          &(substream->parameters))) != OK) {
+            return status;
+        }
+    }
+
+    /*perform residuals decoding*/
+    if ((status = read_mlp_residual_data(bs,
+                                         substream->header.min_channel,
+                                         substream->header.max_channel,
+                                         substream->parameters.block_size,
+                                         substream->parameters.matrix_len,
+                                         substream->parameters.matrix,
+                                         substream->parameters.quant_step_size,
+                                         substream->parameters.channel,
+                                         substream->residuals)) != OK) {
+        return status;
+    }
+
+
+    /*filter residuals based on FIR/IIR parameters*/
+    for (c = substream->header.min_channel;
+         c <= substream->header.max_channel;
+         c++) {
+        if ((status =
+             filter_mlp_channel(substream->residuals->_[c],
+                                &(substream->parameters.channel[c].FIR),
+                                &(substream->parameters.channel[c].IIR),
+                                substream->parameters.quant_step_size[c],
+                                substream->filtered)) != OK) {
+            return status;
+        }
+
+        /*append filtered data to framelist*/
+        framelist->_[c]->extend(framelist->_[c], substream->filtered);
+    }
+
+    return OK;
+}
+
+mlp_status
+read_mlp_restart_header(BitstreamReader* bs,
+                        struct restart_header* restart_header)
+{
+    unsigned header_sync;
+    unsigned noise_type;
+    unsigned output_timestamp;
+    unsigned check_data_present;
+    unsigned lossless_check;
+    unsigned c;
+    unsigned unknown1;
+    unsigned unknown2;
+
+    bs->parse(bs, "13u 1u 16u 4u 4u 4u 4u 23u 19u 1u 8u 16u",
+              &header_sync, &noise_type, &output_timestamp,
+              &(restart_header->min_channel),
+              &(restart_header->max_channel),
+              &(restart_header->max_matrix_channel),
+              &(restart_header->noise_shift),
+              &(restart_header->noise_gen_seed),
+              &unknown1,
+              &check_data_present,
+              &lossless_check,
+              &unknown2);
+
+    if (header_sync != 0x18F5)
+        return INVALID_RESTART_HEADER;
+    if (noise_type != 0)
+        return INVALID_RESTART_HEADER;
+    if (restart_header->max_channel < restart_header->min_channel)
+        return INVALID_RESTART_HEADER;
+    if (restart_header->max_matrix_channel < restart_header->max_channel)
+        return INVALID_RESTART_HEADER;
+
+    for (c = 0; c <= restart_header->max_matrix_channel; c++) {
+        if ((restart_header->channel_assignment[c] = bs->read(bs, 6)) >
+            restart_header->max_matrix_channel) {
+            return INVALID_RESTART_HEADER;
+        }
+    }
+
+    restart_header->checksum = bs->read(bs, 8);
+
+    return OK;
+}
+
+mlp_status
+read_mlp_decoding_parameters(BitstreamReader* bs,
+                             unsigned header_present,
+                             unsigned min_channel,
+                             unsigned max_channel,
+                             unsigned max_matrix_channel,
+                             struct decoding_parameters* p)
+{
+    mlp_status status;
+    unsigned c;
+
+    /*parameter presence flags*/
+    if (header_present) {
+        if (bs->read(bs, 1)) {
+            bs->parse(bs, "1u 1u 1u 1u 1u 1u 1u 1u",
+                      &(p->flags[0]), &(p->flags[1]), &(p->flags[2]),
+                      &(p->flags[3]), &(p->flags[4]), &(p->flags[5]),
+                      &(p->flags[6]), &(p->flags[7]));
+        } else {
+            p->flags[0] = p->flags[1] = p->flags[2] = p->flags[3] =
+                p->flags[4] = p->flags[5] = p->flags[6] = p->flags[7] = 1;
+        }
+    } else if (p->flags[0] && bs->read(bs, 1)) {
+        bs->parse(bs, "1u 1u 1u 1u 1u 1u 1u 1u",
+                  &(p->flags[0]), &(p->flags[1]), &(p->flags[2]),
+                  &(p->flags[3]), &(p->flags[4]), &(p->flags[5]),
+                  &(p->flags[6]), &(p->flags[7]));
+    }
+
+    /*block size*/
+    if (p->flags[7] && bs->read(bs, 1)) {
+        if ((p->block_size = bs->read(bs, 9)) < 8)
+            return INVALID_DECODING_PARAMETERS;
+    } else if (header_present) {
+        p->block_size = 8;
+    }
+
+    /*matrix parameters*/
+    if (p->flags[6] && bs->read(bs, 1)) {
+        if ((status = read_mlp_matrix_params(bs,
+                                             max_matrix_channel,
+                                             &(p->matrix_len),
+                                             p->matrix)) != OK)
+            return status;
+    } else if (header_present) {
+        p->matrix_len = 0;
+    }
+
+    /*output shifts*/
+    if (p->flags[5] && bs->read(bs, 1)) {
+        for (c = 0; c <= max_matrix_channel; c++)
+            p->output_shift[c] = bs->read_signed(bs, 4);
+    } else if (header_present) {
+        for (c = 0; c < MAX_MLP_CHANNELS; c++)
+            p->output_shift[c] = 0;
+    }
+
+    /*quant step sizes*/
+    if (p->flags[4] && bs->read(bs, 1)) {
+        for (c = 0; c <= max_channel; c++) {
+            p->quant_step_size[c] = bs->read(bs, 4);
+        }
+    } else if (header_present) {
+        for (c = 0; c < MAX_MLP_CHANNELS; c++) {
+            p->quant_step_size[c] = 0;
+        }
+    }
+
+    /*channel parameters*/
+    for (c = min_channel; c <= max_channel; c++) {
+        if (bs->read(bs, 1)) {
+            if (p->flags[3] && bs->read(bs, 1)) {
+                /*read FIR filter parameters*/
+                if ((status =
+                     read_mlp_FIR_parameters(bs,
+                                             &(p->channel[c].FIR))) != OK)
+                    return status;
+            } else if (header_present) {
+                /*default FIR filter parameters*/
+                p->channel[c].FIR.shift = 0;
+                array_i_reset(p->channel[c].FIR.coeff);
+            }
+
+            if (p->flags[2] && bs->read(bs, 1)) {
+                /*read IIR filter parameters*/
+                if ((status =
+                     read_mlp_IIR_parameters(bs,
+                                             &(p->channel[c].IIR))) != OK)
+                    return status;
+            } else if (header_present) {
+                /*default IIR filter parameters*/
+                p->channel[c].IIR.shift = 0;
+                array_i_reset(p->channel[c].IIR.coeff);
+                array_i_reset(p->channel[c].IIR.state);
+            }
+
+            if (p->flags[1] && bs->read(bs, 1)) {
+                p->channel[c].huffman_offset = bs->read_signed(bs, 15);
+            } else if (header_present) {
+                p->channel[c].huffman_offset = 0;
+            }
+
+            p->channel[c].codebook = bs->read(bs, 2);
+
+            if ((p->channel[c].huffman_lsbs = bs->read(bs, 5)) > 24) {
+                return INVALID_CHANNEL_PARAMETERS;
+            }
+
+        } else if (header_present) {
+            /*default channel parameters*/
+            p->channel[c].FIR.shift = 0;
+            array_i_reset(p->channel[c].FIR.coeff);
+            p->channel[c].IIR.shift = 0;
+            array_i_reset(p->channel[c].IIR.coeff);
+            array_i_reset(p->channel[c].IIR.state);
+            p->channel[c].huffman_offset = 0;
+            p->channel[c].codebook = 0;
+            p->channel[c].huffman_lsbs = 24;
+        }
+    }
+
+    return OK;
+}
+
+mlp_status
+read_mlp_matrix_params(BitstreamReader* bs,
+                       unsigned max_matrix_channel,
+                       unsigned* matrix_len,
+                       struct matrix_parameters* mp)
+{
+    unsigned m;
+
+    *matrix_len = bs->read(bs, 4);
+    for (m = 0; m < *matrix_len; m++) {
+        unsigned c;
+        unsigned fractional_bits;
+
+        if ((mp[m].out_channel = bs->read(bs, 4)) > max_matrix_channel)
+            return INVALID_MATRIX_PARAMETERS;
+        if ((fractional_bits = bs->read(bs, 4)) > 14)
+            return INVALID_MATRIX_PARAMETERS;
+        mp[m].LSB_bypass = bs->read(bs, 1);
+        for (c = 0; c < max_matrix_channel + 3; c++) {
+            if (bs->read(bs, 1)) {
+                const int v = bs->read_signed(bs, fractional_bits + 2);
+                mp[m].coeff[c] = v << (14 - fractional_bits);
+            } else {
+                mp[m].coeff[c] = 0;
+            }
+        }
+    }
+
+    return OK;
+}
+
+mlp_status
+read_mlp_FIR_parameters(BitstreamReader* bs,
+                        struct filter_parameters* FIR)
+{
+    const unsigned order = bs->read(bs, 4);
+
+    if (order > 8) {
+        return INVALID_CHANNEL_PARAMETERS;
+    } else if (order > 0) {
+        unsigned coeff_bits;
+
+        FIR->shift = bs->read(bs, 4);
+        coeff_bits = bs->read(bs, 5);
+
+        if ((1 <= coeff_bits) && (coeff_bits <= 16)) {
+            const unsigned coeff_shift = bs->read(bs, 3);
+            unsigned i;
+
+            if ((coeff_bits + coeff_shift) > 16) {
+                return INVALID_CHANNEL_PARAMETERS;
+            }
+
+            FIR->coeff->reset(FIR->coeff);
+            for (i = 0; i < order; i++) {
+                const int v = bs->read_signed(bs, coeff_bits);
+                FIR->coeff->append(FIR->coeff, v << coeff_shift);
+            }
+            if (bs->read(bs, 1)) {
+                return INVALID_CHANNEL_PARAMETERS;
+            }
+
+
+            return OK;
+        } else {
+            return INVALID_CHANNEL_PARAMETERS;
+        }
+    } else {
+        FIR->shift = 0;
+        FIR->coeff->reset(FIR->coeff);
+        return OK;
+    }
+}
+
+mlp_status
+read_mlp_IIR_parameters(BitstreamReader* bs,
+                        struct filter_parameters* IIR)
+{
+    const unsigned order = bs->read(bs, 4);
+
+    if (order > 8) {
+        return INVALID_CHANNEL_PARAMETERS;
+    } else if (order > 0) {
+        unsigned coeff_bits;
+
+        IIR->shift = bs->read(bs, 4);
+        coeff_bits = bs->read(bs, 5);
+
+        if ((1 <= coeff_bits) && (coeff_bits <= 16)) {
+            const unsigned coeff_shift = bs->read(bs, 3);
+            unsigned i;
+
+            if ((coeff_bits + coeff_shift) > 16) {
+                return INVALID_CHANNEL_PARAMETERS;
+            }
+
+            IIR->coeff->reset(IIR->coeff);
+            for (i = 0; i < order; i++) {
+                const int v = bs->read_signed(bs, coeff_bits);
+                IIR->coeff->append(IIR->coeff, v << coeff_shift);
+            }
+            IIR->state->reset(IIR->state);
+            if (bs->read(bs, 1)) {
+                const unsigned state_bits = bs->read(bs, 4);
+                const unsigned state_shift = bs->read(bs, 4);
+
+                for (i = 0; i < order; i++) {
+                    const int v = bs->read_signed(bs, state_bits);
+                    IIR->state->append(IIR->state, v << state_shift);
+                }
+                IIR->state->reverse(IIR->state);
+            }
+
+            return OK;
+        } else {
+            return INVALID_CHANNEL_PARAMETERS;
+        }
+    } else {
+        IIR->shift = 0;
+        IIR->coeff->reset(IIR->coeff);
+        IIR->state->reset(IIR->state);
+        return OK;
+    }
+}
+
+mlp_status
+read_mlp_residual_data(BitstreamReader* bs,
+                       unsigned min_channel,
+                       unsigned max_channel,
+                       unsigned block_size,
+                       unsigned matrix_len,
+                       const struct matrix_parameters* matrix,
+                       const unsigned* quant_step_size,
+                       const struct channel_parameters* channel,
+                       array_ia* residuals)
+{
+    int signed_huffman_offset[MAX_MLP_CHANNELS];
+    unsigned LSB_bits[MAX_MLP_CHANNELS];
+    static struct br_huffman_table mlp_codebook1[][0x200] =
+#include "mlp_codebook1.h"
+        ;
+    static struct br_huffman_table mlp_codebook2[][0x200] =
+#include "mlp_codebook2.h"
+        ;
+    static struct br_huffman_table mlp_codebook3[][0x200] =
+#include "mlp_codebook3.h"
+        ;
+
+    unsigned c;
+    unsigned i;
+
+    /*calculate signed Huffman offset for each channel*/
+    for (c = min_channel; c <= max_channel; c++) {
+        LSB_bits[c] = channel[c].huffman_lsbs - quant_step_size[c];
+        if (channel[c].codebook) {
+            const int sign_shift = LSB_bits[c] + 2 - channel[c].codebook;
+            if (sign_shift >= 0) {
+                signed_huffman_offset[c] =
+                    channel[c].huffman_offset -
+                    (7 * (1 << LSB_bits[c])) -
+                    (1 << sign_shift);
+            } else {
+                signed_huffman_offset[c] =
+                    channel[c].huffman_offset -
+                    (7 * (1 << LSB_bits[c]));
+            }
+        } else {
+            const int sign_shift = LSB_bits[c] - 1;
+            if (sign_shift >= 0) {
+                signed_huffman_offset[c] =
+                    channel[c].huffman_offset -
+                    (1 << sign_shift);
+            } else {
+                signed_huffman_offset[c] = channel[c].huffman_offset;
+            }
+        }
+    }
+
+    /*reset residuals arrays*/
+    residuals->reset(residuals);
+
+    for (i = 0; i <= max_channel; i++)
+        /*residual channels 0 to "min_channel"
+          will be initialized but not actually used*/
+        residuals->append(residuals);
+
+    for (i = 0; i < block_size; i++) {
+        unsigned m;
+
+        /*read bypassed LSBs for each matrix*/
+        for (m = 0; m < matrix_len; m++) {
+            array_i* bypassed_LSB = matrix[m].bypassed_LSB;
+            if (matrix[m].LSB_bypass) {
+                bypassed_LSB->append(bypassed_LSB, bs->read(bs, 1));
+            } else {
+                bypassed_LSB->append(bypassed_LSB, 0);
+            }
+        }
+
+        /*read residuals for each channel*/
+        for (c = min_channel; c <= max_channel; c++) {
+            array_i* residual = residuals->_[c];
+            int MSB;
+            unsigned LSB;
+
+            switch (channel[c].codebook) {
+            case 0:
+                MSB = 0;
+                break;
+            case 1:
+                MSB = bs->read_huffman_code(bs, mlp_codebook1);
+                break;
+            case 2:
+                MSB = bs->read_huffman_code(bs, mlp_codebook2);
+                break;
+            case 3:
+                MSB = bs->read_huffman_code(bs, mlp_codebook3);
+                break;
+            default:
+                MSB = -1;
                 break;
             }
+            if (MSB == -1)
+                return INVALID_BLOCK_DATA;
+
+            LSB = bs->read(bs, LSB_bits[c]);
+
+            residual->append(residual,
+                             ((MSB << LSB_bits[c]) +
+                              LSB +
+                              signed_huffman_offset[c]) << quant_step_size[c]);
         }
-        br_etry(self->bitstream);
-    } else {
-        br_etry(self->bitstream);
-        PyErr_SetString(PyExc_IOError, "I/O error reading MLP stream");
-        return NULL;
     }
 
-    if (self->multi_frame_samples.arrays[0].size > 0) {
-        wave_order.size = channel_count;
-        wave_order.arrays = malloc(sizeof(struct ia_array) * wave_order.size);
-
-        /*reorder MLP channels into wave order*/
-        for (channel = 0; channel < channel_count; channel++) {
-            ia_link(&(wave_order.arrays[
-                          mlp_channel_map[
-                              self->major_sync.channel_assignment][channel]]),
-                    &(self->multi_frame_samples.arrays[channel]));
-        }
-
-        frame = ia_array_to_framelist(
-                    &wave_order,
-                    mlp_bits_per_sample(&(self->major_sync)));
-
-        free(wave_order.arrays);
-
-        return frame;
-    } else if (self->multi_frame_samples.arrays[0].size == 0) {
-        /*return empty FrameList object*/
-
-        iaa_init(&wave_order, channel_count, 1);
-        frame = ia_array_to_framelist(
-                    &wave_order,
-                    mlp_bits_per_sample(&(self->major_sync)));
-        iaa_free(&wave_order);
-
-        return frame;
-    } else {
-        return NULL;
-    }
+    return OK;
 }
 
-#ifndef STANDALONE
-static PyObject*
-MLPDecoder_analyze_frame(decoders_MLPDecoder* self, PyObject *args) {
-    PyObject* substream_sizes = NULL;
-    PyObject* substreams = NULL;
-    PyObject* obj;
-
-    int substream;
-    int total_frame_size;
-    uint64_t target_read = self->bytes_read;
-    uint64_t offset;
-
-    if (self->stream_closed) {
-        Py_INCREF(Py_None);
-        return Py_None;
-    }
-
-    offset = self->bytes_read;
-
-    /*read the 32-bit total size value*/
-    if ((total_frame_size =
-         mlp_total_frame_size(self->bitstream)) == -1) {
-        Py_INCREF(Py_None);
-        return Py_None;
-    }
-
-    target_read += total_frame_size;
-
-    /*allocate space for Python objects*/
-    substream_sizes = PyList_New(0);
-    substreams = PyList_New(0);
-
-    /*read a major sync, if present*/
-    switch (mlp_read_major_sync(self, &(self->major_sync))) {
-    case MLP_MAJOR_SYNC_INVALID:
-    case MLP_MAJOR_SYNC_ERROR:
-        goto error;
-    default:
-        /*do nothing*/;
-    }
-
-    if (!setjmp(*br_try(self->bitstream))) {
-        /*read one SubstreamSize per substream*/
-        for (substream = 0;
-             substream < self->major_sync.substream_count;
-             substream++) {
-            if (mlp_read_substream_size(
-                     self->bitstream,
-                     &(self->substream_sizes[substream])) == OK) {
-                obj = Py_BuildValue(
-                        "{si si si}",
-                        "nonrestart_substream",
-                        self->substream_sizes[substream].nonrestart_substream,
-                        "checkdata_present",
-                        self->substream_sizes[substream].checkdata_present,
-                        "substream_size",
-                        self->substream_sizes[substream].substream_size);
-                PyList_Append(substream_sizes, obj);
-                Py_DECREF(obj);
-            } else {
-                goto error;
-            }
-        }
-
-        /*read one Substream per substream*/
-        for (substream = 0;
-             substream < self->major_sync.substream_count;
-             substream++) {
-            if ((obj = mlp_analyze_substream(self, substream)) != NULL) {
-                PyList_Append(substreams, obj);
-                Py_DECREF(obj);
-            } else {
-                br_etry(self->bitstream);
-                goto error;
-            }
-        }
-        br_etry(self->bitstream);
-    } else {
-        br_etry(self->bitstream);
-        PyErr_SetString(PyExc_IOError, "I/O error reading MLP stream");
-        goto error;
-    }
-
-    if (self->bytes_read != target_read) {
-        PyErr_SetString(PyExc_ValueError,
-                        "incorrect bytes read in frame\n");
-        goto error;
-    }
-
-    return Py_BuildValue("{si sN sN sK}",
-                         "total_frame_size", total_frame_size,
-                         "substream_sizes", substream_sizes,
-                         "substreams", substreams,
-                         "offset", offset);
- error:
-    Py_XDECREF(substream_sizes);
-    Py_XDECREF(substreams);
-    return NULL;
-}
-
-PyObject*
-mlp_analyze_substream(decoders_MLPDecoder* decoder,
-                      int substream) {
-    PyObject* blocks = PyList_New(0);
-    PyObject* block;
-    PyObject* restart_header;
-    PyObject* decoding_parameters;
-    PyObject* matrix_parameters;
-    PyObject* output_shifts;
-    PyObject* quant_step_sizes;
-    PyObject* channel_parameters;
-    PyObject* cp;
-    PyObject* fir_coeffs;
-    PyObject* iir_coeffs;
-    PyObject* residuals;
-
-    PyObject* list1;
-    PyObject* list2;
-    PyObject* obj;
-    PyObject* obj2;
-
-    int i;
-    int j;
-    int coeff_count;
-
-    struct mlp_RestartHeader* header_s;
-    struct mlp_DecodingParameters* parameter_s;
-    struct mlp_MatrixParameters* matrix_s;
-    struct mlp_Matrix* m_s;
-    struct mlp_ChannelParameters* cp_s;
-    struct mlp_FilterParameters* fir_s;
-    struct mlp_FilterParameters* iir_s;
-    struct i_array* channel;
-
-    BitstreamReader* bs = decoder->bitstream;
-    int last_block = 0;
-    int substream_channel_count;
-    uint8_t final_crc;
-
-    /*initialize the parity byte and CRC-8*/
-    decoder->parity = 0;
-    decoder->crc = 0x3C;
-
-    /*read blocks until "last" is indicated*/
-    while (!last_block) {
-        /*initialize samples for next block*/
-        iaa_reset(&(decoder->unfiltered_residuals));
-
-        if (mlp_analyze_block(decoder, substream,
-                              &(decoder->unfiltered_residuals),
-                              &last_block) != ERROR) {
-            substream_channel_count = mlp_substream_channel_count(decoder,
-                                                                  substream);
-
-            header_s = &(decoder->restart_headers[substream]);
-            parameter_s = &(decoder->decoding_parameters[substream]);
-
-            list1 = PyList_New(0);
-            for (i = 0; i < substream_channel_count; i++) {
-                obj = PyInt_FromLong(header_s->channel_assignments[i]);
-                PyList_Append(list1, obj);
-                Py_DECREF(obj);
-            }
-
-            restart_header = Py_BuildValue(
-                "{si si si si si si si si si si sN}",
-                "noise_type",
-                header_s->noise_type,
-                "output_timestamp",
-                header_s->output_timestamp,
-                "min_channel",
-                header_s->min_channel,
-                "max_channel",
-                header_s->max_channel,
-                "max_matrix_channel",
-                header_s->max_matrix_channel,
-                "noise_shift",
-                header_s->noise_shift,
-                "noise_gen_seed",
-                header_s->noise_gen_seed,
-                "data_check_present",
-                header_s->data_check_present,
-                "lossless_check",
-                header_s->lossless_check,
-                "checksum",
-                header_s->checksum,
-                "channel_assignments",
-                list1);
-
-            matrix_parameters = PyList_New(0);
-            matrix_s = &(parameter_s->matrix_parameters);
-            for (i = 0; i < matrix_s->count; i++) {
-                m_s = &(matrix_s->matrices[i]);
-
-                coeff_count = header_s->max_matrix_channel + 1 + 2;
-
-                list1 = PyList_New(0);
-                for (j = 0; j < coeff_count; j++) {
-                    obj2 = PyInt_FromLong(m_s->coefficients[j]);
-                    PyList_Append(list1, obj2);
-                    Py_DECREF(obj2);
-                }
-                list2 = PyList_New(0);
-                for (j = 0; j < m_s->bypassed_lsbs.size; j++) {
-                    obj2 = PyInt_FromLong(m_s->bypassed_lsbs.data[j]);
-                    PyList_Append(list2, obj2);
-                    Py_DECREF(obj2);
-                }
-                obj = Py_BuildValue("{si si si sN sN}",
-                                    "out_channel",
-                                    m_s->out_channel,
-                                    "fractional_bits",
-                                    m_s->fractional_bits,
-                                    "lsb_bypass",
-                                    m_s->lsb_bypass,
-                                    "coefficients",
-                                    list1,
-                                    "bypassed_lsbs",
-                                    list2);
-                PyList_Append(matrix_parameters, obj);
-                Py_DECREF(obj);
-            }
-
-            output_shifts = PyList_New(0);
-            for (i = 0; i <= header_s->max_matrix_channel; i++) {
-                obj = PyInt_FromLong(parameter_s->output_shifts[i]);
-                PyList_Append(output_shifts, obj);
-                Py_DECREF(obj);
-            }
-
-            quant_step_sizes = PyList_New(0);
-            for (i = 0; i < substream_channel_count; i++) {
-                obj = PyInt_FromLong(parameter_s->quant_step_sizes[i]);
-                PyList_Append(quant_step_sizes, obj);
-                Py_DECREF(obj);
-            }
-
-            channel_parameters = PyList_New(0);
-            for (i = 0; i < substream_channel_count; i++) {
-                cp_s = &(parameter_s->channel_parameters[i]);
-
-                fir_s = &(cp_s->fir_filter_parameters);
-                list1 = PyList_New(0);
-                for (j = 0; j < fir_s->coefficients.size; j++) {
-                    obj = PyInt_FromLong(fir_s->coefficients.data[j]);
-                    PyList_Append(list1, obj);
-                    Py_DECREF(obj);
-                }
-
-                fir_coeffs = Py_BuildValue("{si sN}",
-                                           "shift",
-                                           fir_s->shift,
-                                           "coefficients",
-                                           list1);
-
-                iir_s = &(cp_s->iir_filter_parameters);
-                list1 = PyList_New(0);
-                for (j = 0; j < iir_s->coefficients.size; j++) {
-                    obj = PyInt_FromLong(iir_s->coefficients.data[j]);
-                    PyList_Append(list1, obj);
-                    Py_DECREF(obj);
-                }
-                list2 = PyList_New(0);
-                for (j = 0; j < iir_s->state.size; j++) {
-                    obj = PyInt_FromLong(iir_s->state.data[j]);
-                    PyList_Append(list2, obj);
-                    Py_DECREF(obj);
-                }
-
-                iir_coeffs = Py_BuildValue("{si sN sN}",
-                                           "shift",
-                                           iir_s->shift,
-                                           "coefficients",
-                                           list1,
-                                           "state",
-                                           list2);
-
-                cp = Py_BuildValue(
-                         "{si si si si sN sN}",
-                         "huffman_offset",
-                         cp_s->huffman_offset,
-                         "signed_huffman_offset",
-                         mlp_calculate_signed_offset(
-                             cp_s->codebook,
-                             cp_s->huffman_lsbs,
-                             cp_s->huffman_offset,
-                             parameter_s->quant_step_sizes[i]),
-                         "codebook",
-                         cp_s->codebook,
-                         "huffman_lsbs",
-                         cp_s->huffman_lsbs,
-                         "fir_filter_parameters",
-                         fir_coeffs,
-                         "iir_filter_parameters",
-                         iir_coeffs);
-                PyList_Append(channel_parameters, cp);
-                Py_DECREF(cp);
-            }
-
-            decoding_parameters = Py_BuildValue(
-                "{si sN sN sN sN}",
-                "block_size",
-                parameter_s->block_size,
-                "output_shifts",
-                output_shifts,
-                "quant_step_sizes",
-                quant_step_sizes,
-                "channel_parameters",
-                channel_parameters,
-                "matrix_parameters",
-                matrix_parameters);
-
-            residuals = PyList_New(0);
-            for (i = 0; i < substream_channel_count; i++) {
-                channel = &(decoder->unfiltered_residuals.arrays[i]);
-                list1 = PyList_New(0);
-                for (j = 0; j < channel->size; j++) {
-                    obj = PyInt_FromLong(channel->data[j]);
-                    PyList_Append(list1, obj);
-                    Py_DECREF(obj);
-                }
-                PyList_Append(residuals, list1);
-                Py_DECREF(list1);
-            }
-
-            block = Py_BuildValue("{sN sN sN}",
-                                  "restart_header",
-                                  restart_header,
-                                  "decoding_parameters",
-                                  decoding_parameters,
-                                  "residuals",
-                                  residuals);
-
-            PyList_Append(blocks, block);
-            Py_DECREF(block);
-        } else {
-            goto error;
-        }
-    }
-
-    /*align stream to 16-bit boundary*/
-    bs->byte_align(bs);
-    if (decoder->bytes_read % 2)
-        bs->skip(bs, 8);
-
-    /*read checksum if indicated by the substream size field*/
-    if (decoder->substream_sizes[substream].checkdata_present) {
-        final_crc = decoder->final_crc;
-
-        /*verify 8-bit parity*/
-        bs->read(bs, 8);
-        if (decoder->parity != 0xA9) {
-            PyErr_SetString(PyExc_ValueError, "parity mismatch in substream");
-            return NULL;
-        }
-
-        /*verify 8-bit CRC-8*/
-        if (final_crc != bs->read(bs, 8)) {
-            PyErr_SetString(PyExc_ValueError, "CRC-8 error in substream");
-            return NULL;
-        }
-    }
-
-    return blocks;
- error:
-    Py_DECREF(blocks);
-    return NULL;
-}
-
-PyObject*
-MLPDecoder_new(PyTypeObject *type,
-                PyObject *args, PyObject *kwds)
+static inline int
+mask(int x, unsigned q)
 {
-    decoders_MLPDecoder *self;
-
-    self = (decoders_MLPDecoder *)type->tp_alloc(type, 0);
-
-    return (PyObject *)self;
+    if (q == 0)
+        return x;
+    else
+        return (x >> q) << q;
 }
 
-#endif
+mlp_status
+filter_mlp_channel(const array_i* residuals,
+                   struct filter_parameters* FIR,
+                   struct filter_parameters* IIR,
+                   unsigned quant_step_size,
+                   array_i* filtered)
+{
+    const unsigned block_size = residuals->len;
+    const int FIR_order = FIR->coeff->len;
+    const int IIR_order = IIR->coeff->len;
+    unsigned shift;
+    int i;
 
-void mlp_byte_callback(uint8_t byte, void* ptr) {
-    decoders_MLPDecoder* decoder = ptr;
+    if ((FIR_order + IIR_order) > 8)
+        return INVALID_FILTER_PARAMETERS;
+    if ((FIR->shift > 0) && (IIR->shift > 0)) {
+        if (FIR->shift != IIR->shift)
+            return INVALID_FILTER_PARAMETERS;
+        shift = FIR->shift;
+    } else if (FIR_order > 0) {
+        shift = FIR->shift;
+    } else {
+        shift = IIR->shift;
+    }
+
+    filtered->reset(filtered);
+    for (i = 0; i < block_size; i++) {
+        int64_t sum = 0;
+        int shifted_sum;
+        int j;
+        int k;
+
+        for (j = 0; j < FIR_order; j++) {
+            if ((i - j - 1) < 0) {
+                sum += ((int64_t)FIR->coeff->_[j] *
+                        (int64_t)FIR->state->_[8 + (i - j - 1)]);
+            } else {
+                sum += ((int64_t)FIR->coeff->_[j] *
+                        (int64_t)filtered->_[i - j - 1]);
+            }
+        }
+
+        for (k = 0; k < IIR_order; k++) {
+            sum += ((int64_t)IIR->coeff->_[k] *
+                    (int64_t)IIR->state->_[IIR->state->len - k - 1]);
+        }
+
+        shifted_sum = (int)(sum >> shift);
+
+        filtered->append(filtered,
+                         mask(shifted_sum + residuals->_[i], quant_step_size));
+
+        IIR->state->append(IIR->state, filtered->_[i] - shifted_sum);
+    }
+
+    filtered->tail(filtered, 8, FIR->state);
+    IIR->state->tail(IIR->state, 8, IIR->state);
+
+    return OK;
+}
+
+void
+rematrix_mlp_channels(array_ia* channels,
+                      unsigned max_matrix_channel,
+                      unsigned noise_shift,
+                      unsigned* noise_gen_seed,
+                      unsigned matrix_count,
+                      const struct matrix_parameters* matrix,
+                      const unsigned* quant_step_size)
+{
+    const unsigned block_size = channels->_[0]->len;
+    array_ia* noise = array_ia_new();
+    unsigned i;
+    unsigned m;
+
+    /*generate noise channels*/
+    for (i = 0; i < 2; i++)
+        noise->append(noise);
+    for (i = 0; i < block_size; i++) {
+        const unsigned shifted = (*noise_gen_seed >> 7) & 0xFFFF;
+        noise->_[0]->append(noise->_[0],
+                            ((int8_t)(*noise_gen_seed >> 15)) << noise_shift);
+        noise->_[1]->append(noise->_[1],
+                            ((int8_t)(shifted)) << noise_shift);
+        *noise_gen_seed = (((*noise_gen_seed << 16) & 0xFFFFFFFF) ^
+                           shifted ^ (shifted << 5));
+    }
+
+    /*perform channel rematrixing*/
+    for (m = 0; m < matrix_count; m++) {
+        for (i = 0; i < block_size; i++) {
+            int64_t sum = 0;
+            unsigned c;
+            for (c = 0; c <= max_matrix_channel; c++)
+                sum += ((int64_t)channels->_[c]->_[i] *
+                        (int64_t)matrix[m].coeff[c]);
+            sum += ((int64_t)noise->_[0]->_[i] *
+                    (int64_t)matrix[m].coeff[max_matrix_channel + 1]);
+            sum += ((int64_t)noise->_[1]->_[i] *
+                    (int64_t)matrix[m].coeff[max_matrix_channel + 2]);
+
+            channels->_[matrix[m].out_channel]->_[i] =
+                mask((int)(sum >> 14),
+                     quant_step_size[matrix[m].out_channel]) +
+                matrix[m].bypassed_LSB->_[i];
+        }
+    }
+
+    noise->del(noise);
+}
+
+void
+mlp_checkdata_callback(uint8_t byte, void* checkdata)
+{
+    struct checkdata* cd = checkdata;
     const static uint8_t CRC8[] =
         {0x00, 0x63, 0xC6, 0xA5, 0xEF, 0x8C, 0x29, 0x4A,
          0xBD, 0xDE, 0x7B, 0x18, 0x52, 0x31, 0x94, 0xF7,
@@ -790,1265 +1125,63 @@ void mlp_byte_callback(uint8_t byte, void* ptr) {
          0x87, 0xE4, 0x41, 0x22, 0x68, 0x0B, 0xAE, 0xCD,
          0x3A, 0x59, 0xFC, 0x9F, 0xD5, 0xB6, 0x13, 0x70};
 
-    decoder->bytes_read += 1;
-    decoder->parity ^= byte;
-    decoder->final_crc = decoder->crc ^ byte;
-    decoder->crc = CRC8[decoder->crc ^ byte];
+    cd->parity ^= byte;
+    cd->crc = CRC8[(cd->final_crc = cd->crc ^ byte)];
 }
 
-int mlp_sample_rate(struct mlp_MajorSync* major_sync) {
-    switch (major_sync->group1_sample_rate) {
-    case 0x0:
-        return 48000;
-    case 0x1:
-        return 96000;
-    case 0x2:
-        return 192000;
-    case 0x3:
-        return 394000;
-    case 0x4:
-        return 768000;
-    case 0x5:
-        return 1536000;
-    case 0x6:
-        return 3072000;
-    case 0x8:
-        return 44100;
-    case 0x9:
-        return 88200;
-    case 0xA:
-        return 176400;
-    case 0xB:
-        return 352800;
-    case 0xC:
-        return 705600;
-    case 0xD:
-        return 1411200;
-    case 0xE:
-        return 2822400;
+PyObject*
+mlp_python_exception(mlp_status mlp_status)
+{
+    switch (mlp_status) {
+    case IO_ERROR:
+        return PyExc_IOError;
+    case OK:
+    case NO_MAJOR_SYNC:
+    case INVALID_MAJOR_SYNC:
+    case INVALID_EXTRAWORD_PRESENT:
+    case INVALID_RESTART_HEADER:
+    case INVALID_DECODING_PARAMETERS:
+    case INVALID_MATRIX_PARAMETERS:
+    case INVALID_CHANNEL_PARAMETERS:
+    case INVALID_BLOCK_DATA:
+    case INVALID_FILTER_PARAMETERS:
+    case PARITY_MISMATCH:
+    case CRC8_MISMATCH:
     default:
-        return -1;
+        return PyExc_ValueError;
     }
 }
 
-int mlp_bits_per_sample(struct mlp_MajorSync* major_sync) {
-    switch (major_sync->group1_bits) {
-    case 0:
-        return 16;
-    case 1:
-        return 20;
-    case 2:
-        return 24;
+const char*
+mlp_python_exception_msg(mlp_status mlp_status)
+{
+    switch (mlp_status) {
+    case OK:
+    case NO_MAJOR_SYNC:
+        return "no error";
+    case IO_ERROR:
+        return "I/O error reading MLP stream";
+    case INVALID_MAJOR_SYNC:
+        return "invalid MLP major sync";
+    case INVALID_EXTRAWORD_PRESENT:
+        return "invalid extraword present value in substream info";
+    case INVALID_RESTART_HEADER:
+        return "invalid MLP restart header";
+    case INVALID_DECODING_PARAMETERS:
+        return "invalid MLP decoding parameters";
+    case INVALID_MATRIX_PARAMETERS:
+        return "invalid MLP matrix parameters";
+    case INVALID_CHANNEL_PARAMETERS:
+        return "invalid MLP channel parameters";
+    case INVALID_BLOCK_DATA:
+        return "invalid MLP block data";
+    case INVALID_FILTER_PARAMETERS:
+        return "invalid MLP filter parameters";
+    case PARITY_MISMATCH:
+        return "parity mismatch decoding MLP substream";
+    case CRC8_MISMATCH:
+        return "CRC8 mismatch decoding MLP substream";
     default:
-        return -1;
+        return "unknown error";
     }
 }
-
-int mlp_channel_count(struct mlp_MajorSync* major_sync) {
-    switch (major_sync->channel_assignment) {
-    case 0x0:
-        return 1;
-    case 0x1:
-        return 2;
-    case 0x2:
-    case 0x4:
-    case 0x7:
-        return 3;
-    case 0x3:
-    case 0x5:
-    case 0x8:
-    case 0xA:
-    case 0xD:
-    case 0xF:
-        return 4;
-    case 0x6:
-    case 0x9:
-    case 0xB:
-    case 0xE:
-    case 0x10:
-    case 0x12:
-    case 0x13:
-        return 5;
-    case 0xC:
-    case 0x11:
-    case 0x14:
-        return 6;
-    default:
-        return -1;
-    }
-}
-
-#define fL 0x1
-#define fR 0x2
-#define fC 0x4
-#define LFE 0x8
-#define bL 0x10
-#define bR 0x20
-#define bC 0x100
-
-int
-mlp_channel_mask(struct mlp_MajorSync* major_sync) {
-    switch (major_sync->channel_assignment) {
-    case 0x0:
-        return fC;
-    case 0x1:
-        return fL | fR;
-    case 0x2:
-        return fL | fR | bC;
-    case 0x3:
-        return fL | fR | bL | bR;
-    case 0x4:
-        return fL | fR | LFE;
-    case 0x5:
-        return fL | fR | LFE | bC;
-    case 0x6:
-        return fL | fR | LFE | bL | bR;
-    case 0x7:
-        return fL | fR | fC;
-    case 0x8:
-        return fL | fR | fC | bC;
-    case 0x9:
-        return fL | fR | fC | bL | bR;
-    case 0xA:
-        return fL | fR | fC | LFE;
-    case 0xB:
-        return fL | fR | fC | LFE | bC;
-    case 0xC:
-        return fL | fR | fC | LFE | bL | bR;
-    case 0xD:
-        return fL | fR | fC | bC;
-    case 0xE:
-        return fL | fR | fC | bL | bR;
-    case 0xF:
-        return fL | fR | fC | LFE;
-    case 0x10:
-        return fL | fR | fC | LFE | bC;
-    case 0x11:
-        return fL | fR | fC | LFE | bL | bR;
-    case 0x12:
-        return fL | fR | bL | bR | LFE;
-    case 0x13:
-        return fL | fR | bL | bR | fC;
-    case 0x14:
-        return fL | fR | bL | bR | fC | LFE;
-    default:
-        return -1;
-    }
-
-}
-
-int
-mlp_total_frame_size(BitstreamReader* bitstream) {
-    int total_size;
-
-    if (!setjmp(*br_try(bitstream))) {
-        bitstream->skip(bitstream, 4);
-        total_size = bitstream->read(bitstream, 12) * 2;
-        bitstream->skip(bitstream, 16);
-        br_etry(bitstream);
-
-        return total_size;
-    } else {
-        br_etry(bitstream);
-        return -1;
-    }
-}
-
-mlp_major_sync_status
-mlp_read_major_sync(decoders_MLPDecoder* decoder,
-                    struct mlp_MajorSync* major_sync) {
-    BitstreamReader* bitstream = decoder->bitstream;
-    const static uint8_t bits_per_sample[] =
-        {16, 20, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
-    if (!setjmp(*br_try(bitstream))) {
-        bitstream->mark(bitstream);
-
-        if (bitstream->read(bitstream, 24) != 0xF8726F) {
-            /*sync words not found*/
-            br_etry(bitstream);
-            bitstream->rewind(bitstream);
-            bitstream->unmark(bitstream);
-            decoder->bytes_read -= 3;
-            return MLP_MAJOR_SYNC_NOT_FOUND;
-        }
-        if (bitstream->read(bitstream, 8) != 0xBB) {
-            /*stream type not 0xBB*/
-            br_etry(bitstream);
-            bitstream->rewind(bitstream);
-            bitstream->unmark(bitstream);
-            decoder->bytes_read -= 4;
-            return MLP_MAJOR_SYNC_NOT_FOUND;
-        }
-
-        bitstream->unmark(bitstream);
-
-        major_sync->group1_bits = bitstream->read(bitstream, 4);
-        major_sync->group2_bits = bitstream->read(bitstream, 4);
-        major_sync->group1_sample_rate = bitstream->read(bitstream, 4);
-        major_sync->group2_sample_rate = bitstream->read(bitstream, 4);
-        bitstream->skip(bitstream, 11); /*unknown 1*/
-        major_sync->channel_assignment = bitstream->read(bitstream, 5);
-        bitstream->skip(bitstream, 48); /*unknown 2*/
-        bitstream->skip(bitstream, 1);  /*is VBR*/
-        bitstream->skip(bitstream, 15); /*peak bitrate*/
-        major_sync->substream_count = bitstream->read(bitstream, 4);
-        bitstream->skip(bitstream, 92); /*unknown 3*/
-
-        br_etry(bitstream);
-
-        /*various sanity checks*/
-        if (major_sync->group1_bits == 0) {
-            PyErr_SetString(PyExc_ValueError, "invalid bits-per-sample");
-            return MLP_MAJOR_SYNC_INVALID;
-        }
-
-        if (bits_per_sample[major_sync->group2_bits] >
-            bits_per_sample[major_sync->group1_bits]) {
-            PyErr_SetString(PyExc_ValueError,
-                            "group 2 bps cannot be greater than group 1 bps");
-            return MLP_MAJOR_SYNC_INVALID;
-        }
-
-        if ((major_sync->group2_sample_rate != 0xF) &&
-            (major_sync->group1_sample_rate !=
-             major_sync->group2_sample_rate)) {
-            PyErr_SetString(PyExc_ValueError,
-                            "differing group sample rates unsupported");
-            return MLP_MAJOR_SYNC_INVALID;
-        }
-
-        if ((major_sync->substream_count < 1) ||
-            (major_sync->substream_count > 2)) {
-            PyErr_SetString(PyExc_ValueError,
-                            "MLP only supports 1 or 2 substreams");
-            return MLP_MAJOR_SYNC_INVALID;
-        }
-
-        return MLP_MAJOR_SYNC_OK;
-    } else {
-        br_etry(bitstream);
-        PyErr_SetString(PyExc_IOError, "I/O error reading major sync");
-        return MLP_MAJOR_SYNC_ERROR;
-    }
-}
-
-int
-mlp_read_frame(decoders_MLPDecoder* decoder,
-               struct ia_array* frame_samples) {
-    int substream;
-    int channel;
-
-    int total_frame_size;
-    uint64_t target_read = decoder->bytes_read;
-    struct mlp_RestartHeader* restart_header;
-    int8_t output_shift;
-    ia_size_t i;
-
-    if (decoder->stream_closed)
-        return 0;
-
-    /*read the 32-bit total size value*/
-    if ((total_frame_size =
-         mlp_total_frame_size(decoder->bitstream)) == -1) {
-        return 0;
-    }
-
-    target_read += total_frame_size;
-
-    /*read a major sync, if present*/
-    switch (mlp_read_major_sync(decoder, &(decoder->major_sync))) {
-    case MLP_MAJOR_SYNC_INVALID:
-    case MLP_MAJOR_SYNC_ERROR:
-        return -1;
-    default:
-        /*do nothing*/;
-    }
-
-    /*read one SubstreamSize per substream*/
-    for (substream = 0;
-         substream < decoder->major_sync.substream_count;
-         substream++) {
-        if (mlp_read_substream_size(
-                decoder->bitstream,
-                &(decoder->substream_sizes[substream])) == ERROR)
-            return -1;
-    }
-
-    /*read one Substream per substream*/
-    iaa_reset(&(decoder->substream_samples));
-    for (substream = 0;
-         substream < decoder->major_sync.substream_count;
-         substream++) {
-        if (mlp_read_substream(decoder,
-                               substream,
-                               &(decoder->substream_samples)) == ERROR)
-            return -1;
-    }
-
-    if (decoder->bytes_read != target_read) {
-        PyErr_SetString(PyExc_ValueError,
-                        "incorrect bytes read in frame\n");
-        return -1;
-    }
-
-    /*convert 1-2 substreams into a single block of data*/
-    for (substream = 0;
-         substream < decoder->major_sync.substream_count;
-         substream++) {
-        restart_header = &(decoder->restart_headers[substream]);
-        for (channel = restart_header->min_channel;
-             channel <= restart_header->max_channel;
-             channel++) {
-            ia_copy(&(frame_samples->arrays[channel]),
-                    &(decoder->substream_samples.arrays[
-                                restart_header->min_channel +
-                                restart_header->channel_assignments[
-                                  channel - restart_header->min_channel]]));
-        }
-    }
-
-    /*the final substream in our list of substreams*/
-    substream = decoder->major_sync.substream_count - 1;
-
-    /*rematrix all substream samples based on final substream's matrices*/
-    mlp_rematrix_channels(
-        frame_samples,
-        decoder->restart_headers[substream].max_matrix_channel,
-        &(decoder->restart_headers[substream].noise_gen_seed),
-        decoder->restart_headers[substream].noise_shift,
-        &(decoder->decoding_parameters[substream].matrix_parameters),
-        decoder->decoding_parameters[substream].quant_step_sizes);
-
-    /*apply output shifts based on our final substream's output shifts*/
-    for (channel = 0;
-         channel <= decoder->restart_headers[substream].max_matrix_channel;
-         channel++) {
-        output_shift =
-            decoder->decoding_parameters[substream].output_shifts[channel];
-        if (output_shift > 0)
-            for (i = 0 ; i < frame_samples->arrays[channel].size; i++)
-                frame_samples->arrays[channel].data[i] <<= output_shift;
-    }
-
-    return total_frame_size;
-}
-
-mlp_status
-mlp_read_substream_size(BitstreamReader* bitstream,
-                        struct mlp_SubstreamSize* size) {
-    if (bitstream->read(bitstream, 1) == 1) {
-        PyErr_SetString(PyExc_ValueError,
-                        "extraword cannot be present in substream size");
-        return ERROR;
-    }
-    size->nonrestart_substream = bitstream->read(bitstream, 1);
-    size->checkdata_present = bitstream->read(bitstream, 1);
-    bitstream->skip(bitstream, 1);
-    size->substream_size = bitstream->read(bitstream, 12) * 2;
-
-    return OK;
-}
-
-mlp_status
-mlp_read_substream(decoders_MLPDecoder* decoder,
-                   int substream,
-                   struct ia_array* samples) {
-    BitstreamReader* bs = decoder->bitstream;
-    uint8_t final_crc;
-    int last_block = 0;
-    int matrix;
-    struct bs_callback callback;
-
-    /*initialize the parity byte and CRC-8*/
-    decoder->parity = 0;
-    decoder->crc = 0x3C;
-
-    /*clear out the bypassed_lsbs values for each matrix*/
-    for (matrix = 0; matrix < MAX_MLP_MATRICES; matrix++) {
-        ia_reset(&(decoder->decoding_parameters[substream].matrix_parameters.matrices[matrix].bypassed_lsbs));
-    }
-
-    /*read blocks until "last" is indicated*/
-    while (!last_block) {
-        if (mlp_read_block(decoder,
-                           substream,
-                           samples,
-                           &last_block) == ERROR)
-            return ERROR;
-    }
-
-    /*align stream to 16-bit boundary*/
-    bs->byte_align(bs);
-    if (decoder->bytes_read % 2)
-        bs->skip(bs, 8);
-
-    /* check for end of stream marker */
-    if (decoder->remaining_samples <= samples->arrays[0].size) {
-        br_pop_callback(bs, &callback);
-        bs->mark(bs);
-        if (bs->read(bs, 16) == 0xD234) {
-            if (bs->read(bs, 16) == 0xD234) {
-                decoder->stream_closed = 1;
-                bs->unmark(bs);
-                br_push_callback(bs, &callback);
-                br_call_callbacks(bs, 0xD2);
-                br_call_callbacks(bs, 0x34);
-                br_call_callbacks(bs, 0xD2);
-                br_call_callbacks(bs, 0x34);
-            } else {
-                bs->rewind(bs);
-                bs->unmark(bs);
-                br_push_callback(bs, &callback);
-            }
-        } else {
-            bs->rewind(bs);
-            bs->unmark(bs);
-            br_push_callback(bs, &callback);
-        }
-    }
-
-    if (decoder->substream_sizes[substream].checkdata_present) {
-        final_crc = decoder->final_crc;
-
-        /*verify 8-bit parity*/
-        bs->read(bs, 8);
-        if (decoder->parity != 0xA9) {
-            PyErr_SetString(PyExc_ValueError, "parity mismatch in substream");
-            return ERROR;
-        }
-
-        /*verify 8-bit CRC-8*/
-        if (final_crc != bs->read(bs, 8)) {
-            PyErr_SetString(PyExc_ValueError, "CRC-8 error in substream");
-            return ERROR;
-        }
-    }
-
-    return OK;
-}
-
-unsigned int
-mlp_substream_channel_count(decoders_MLPDecoder* decoder,
-                            int substream) {
-    return ((decoder->restart_headers[substream].max_channel) -
-            (decoder->restart_headers[substream].min_channel)) + 1;
-}
-
-mlp_status
-mlp_read_block(decoders_MLPDecoder* decoder,
-               int substream,
-               struct ia_array* block_data,
-               int* last_block) {
-    BitstreamReader* bitstream = decoder->bitstream;
-
-    if (bitstream->read(bitstream, 1)) { /*check "params present" bit*/
-
-        if (bitstream->read(bitstream, 1)) { /*check "header present" bit*/
-
-            /*update substream's restart header*/
-            if (mlp_read_restart_header(
-                    bitstream,
-                    &(decoder->decoding_parameters[substream]),
-                    &(decoder->restart_headers[substream])) == ERROR)
-                return ERROR;
-        }
-
-        /*update substream's decoding parameters*/
-        if (mlp_read_decoding_parameters(
-                bitstream,
-                decoder->restart_headers[substream].min_channel,
-                decoder->restart_headers[substream].max_channel,
-                decoder->restart_headers[substream].max_matrix_channel,
-                &(decoder->decoding_parameters[substream])) == ERROR)
-            return ERROR;
-    }
-
-    /*read block data based on decoding parameters*/
-    iaa_reset(&(decoder->unfiltered_residuals));
-    if (mlp_read_residuals(
-            bitstream,
-            &(decoder->decoding_parameters[substream]),
-            decoder->restart_headers[substream].min_channel,
-            decoder->restart_headers[substream].max_channel,
-            &(decoder->unfiltered_residuals)) == ERROR)
-        return ERROR;
-
-    /*filter block's channels based on FIR/IIR filter parameters, if any*/
-    if (mlp_filter_channels(&(decoder->unfiltered_residuals),
-                            decoder->restart_headers[substream].min_channel,
-                            decoder->restart_headers[substream].max_channel,
-                            &(decoder->decoding_parameters[substream]),
-                            block_data) == ERROR)
-            return ERROR;
-
-    /*update "last block" bit*/
-    *last_block = bitstream->read(bitstream, 1);
-
-    return OK;
-}
-
-mlp_status
-mlp_analyze_block(decoders_MLPDecoder* decoder,
-                  int substream,
-                  struct ia_array* block_data,
-                  int* last_block) {
-    BitstreamReader* bitstream = decoder->bitstream;
-
-    if (bitstream->read(bitstream, 1)) { /*check "params present" bit*/
-
-        if (bitstream->read(bitstream, 1)) { /*check "header present" bit*/
-
-            /*update substream's restart header*/
-            if (mlp_read_restart_header(
-                    decoder->bitstream,
-                    &(decoder->decoding_parameters[substream]),
-                    &(decoder->restart_headers[substream])) == ERROR)
-                return ERROR;
-        }
-
-        /*update substream's decoding parameters*/
-        if (mlp_read_decoding_parameters(
-                decoder->bitstream,
-                decoder->restart_headers[substream].min_channel,
-                decoder->restart_headers[substream].max_channel,
-                decoder->restart_headers[substream].max_matrix_channel,
-                &(decoder->decoding_parameters[substream])) == ERROR)
-            return ERROR;
-    }
-
-    /*read block data based on decoding parameters*/
-    if (mlp_read_residuals(
-            decoder->bitstream,
-            &(decoder->decoding_parameters[substream]),
-            decoder->restart_headers[substream].min_channel,
-            decoder->restart_headers[substream].max_channel,
-            &(decoder->unfiltered_residuals)) == ERROR)
-        return ERROR;
-
-    /*update "last block" bit*/
-    *last_block = bitstream->read(bitstream, 1);
-
-    return OK;
-}
-
-mlp_status
-mlp_read_restart_header(BitstreamReader* bs,
-                        struct mlp_DecodingParameters* parameters,
-                        struct mlp_RestartHeader* header) {
-    struct mlp_ChannelParameters* channel_params;
-    struct mlp_ParameterPresentFlags* flags =
-        &(parameters->parameters_present_flags);
-    int channel;
-
-    /*read restart header values*/
-    if (bs->read(bs, 13) != 0x18F5) {
-        PyErr_SetString(PyExc_ValueError, "invalid restart header sync");
-        return ERROR;
-    }
-
-    header->noise_type = bs->read(bs, 1);
-    header->output_timestamp = bs->read(bs, 16);
-    header->min_channel = bs->read(bs, 4);
-    header->max_channel = bs->read(bs, 4);
-    header->max_matrix_channel = bs->read(bs, 4);
-    header->noise_shift = bs->read(bs, 4);
-    header->noise_gen_seed = bs->read(bs, 23);
-    bs->skip(bs, 19);
-    header->data_check_present = bs->read(bs, 1);
-    header->lossless_check = bs->read(bs, 8);
-    bs->skip(bs, 16);
-    for (channel = 0; channel <= header->max_matrix_channel; channel++) {
-        header->channel_assignments[channel] = bs->read(bs, 6);
-        if (header->channel_assignments[channel] >
-            header->max_matrix_channel) {
-            PyErr_SetString(PyExc_ValueError,
-                            "invalid channel assignment output");
-            return ERROR;
-        }
-    }
-    header->checksum = bs->read(bs, 8);
-
-    /*perform sanity checks*/
-    if (header->noise_type != 0) {
-        PyErr_SetString(PyExc_ValueError, "MLP noise type must be 0");
-        return ERROR;
-    }
-
-    if (header->max_matrix_channel > MAX_MLP_CHANNELS) {
-        PyErr_SetString(PyExc_ValueError, "max matrix channel too high");
-        return ERROR;
-    }
-
-    if (header->max_channel > header->max_matrix_channel) {
-        PyErr_SetString(PyExc_ValueError,
-                        "max channel must equal max matrix channel");
-        return ERROR;
-    }
-
-    if (header->min_channel > header->max_channel) {
-        PyErr_SetString(PyExc_ValueError,
-                        "min channel cannot be greater than max channel");
-        return ERROR;
-    }
-
-    /*reset decoding parameters to default values*/
-    flags->parameter_present_flags =
-        flags->huffman_offset =
-        flags->iir_filter_parameters =
-        flags->fir_filter_parameters =
-        flags->quant_step_sizes =
-        flags->output_shifts =
-        flags->matrix_parameters =
-        flags->block_size = 1;
-
-    parameters->block_size = 8;
-
-    parameters->matrix_parameters.count = 0;
-
-    for (channel = 0; channel < MAX_MLP_CHANNELS; channel++) {
-        parameters->output_shifts[channel] = 0;
-        parameters->quant_step_sizes[channel] = 0;
-    }
-
-    for (channel = header->min_channel;
-         channel <= header->max_channel;
-         channel++) {
-        channel_params = &(parameters->channel_parameters[channel]);
-
-        ia_reset(&(channel_params->fir_filter_parameters.coefficients));
-        channel_params->fir_filter_parameters.shift = 0;
-        channel_params->fir_filter_parameters.has_state = 0;
-
-        ia_reset(&(channel_params->iir_filter_parameters.coefficients));
-        channel_params->iir_filter_parameters.shift = 0;
-        channel_params->iir_filter_parameters.has_state = 0;
-        ia_reset(&(channel_params->iir_filter_parameters.state));
-
-
-        channel_params->huffman_offset = 0;
-        channel_params->codebook = 0;
-        channel_params->huffman_lsbs = 24;
-    }
-
-    return OK;
-}
-
-mlp_status
-mlp_read_decoding_parameters(BitstreamReader* bs,
-                             int min_channel,
-                             int max_channel,
-                             int max_matrix_channel,
-                             struct mlp_DecodingParameters* parameters) {
-    int channel;
-    struct mlp_ParameterPresentFlags* flags =
-        &(parameters->parameters_present_flags);
-
-    /* parameters present flags */
-    if (flags->parameter_present_flags && bs->read(bs, 1)) {
-        flags->parameter_present_flags = bs->read(bs, 1);
-        flags->huffman_offset = bs->read(bs, 1);
-        flags->iir_filter_parameters = bs->read(bs, 1);
-        flags->fir_filter_parameters = bs->read(bs, 1);
-        flags->quant_step_sizes = bs->read(bs, 1);
-        flags->output_shifts = bs->read(bs, 1);
-        flags->matrix_parameters = bs->read(bs, 1);
-        flags->block_size = bs->read(bs, 1);
-    }
-
-    /* block size */
-    if (flags->block_size && bs->read(bs, 1)) {
-        parameters->block_size = bs->read(bs, 9);
-        if (parameters->block_size < 8) {
-            PyErr_SetString(PyExc_ValueError, "invalid block size");
-            return ERROR;
-        }
-    }
-
-    /* matrix parameters */
-    if (flags->matrix_parameters && bs->read(bs, 1))
-        if (mlp_read_matrix_parameters(
-                bs,
-                max_matrix_channel,
-                &(parameters->matrix_parameters)) == ERROR)
-            return ERROR;
-
-    /* output shifts */
-    if (flags->output_shifts && bs->read(bs, 1))
-        for (channel = 0;
-             channel <= max_matrix_channel;
-             channel++)
-            parameters->output_shifts[channel] = bs->read_signed(bs, 4);
-
-    /* quant step sizes */
-    if (flags->quant_step_sizes && bs->read(bs, 1))
-        for (channel = 0; channel <= max_channel; channel++)
-            parameters->quant_step_sizes[channel] = bs->read(bs, 4);
-
-    /* one channel parameters per channel */
-    for (channel = min_channel; channel <= max_channel; channel++)
-        if (bs->read(bs, 1))
-            if (mlp_read_channel_parameters(
-                    bs,
-                    flags,
-                    parameters->quant_step_sizes[channel],
-                    &(parameters->channel_parameters[channel])) == ERROR)
-                return ERROR;
-
-    return OK;
-}
-
-mlp_status
-mlp_read_channel_parameters(BitstreamReader* bs,
-                            struct mlp_ParameterPresentFlags* flags,
-                            uint8_t quant_step_size,
-                            struct mlp_ChannelParameters* parameters) {
-    if (flags->fir_filter_parameters && bs->read(bs, 1)) {
-        if (mlp_read_fir_filter_parameters(
-                bs,
-                &(parameters->fir_filter_parameters)) == ERROR)
-            return ERROR;
-    }
-
-    if (flags->iir_filter_parameters && bs->read(bs, 1)) {
-        if (mlp_read_iir_filter_parameters(
-                bs,
-                &(parameters->iir_filter_parameters)) == ERROR)
-            return ERROR;
-    }
-
-    if (flags->huffman_offset && bs->read(bs, 1)) {
-        parameters->huffman_offset = bs->read_signed(bs, 15);
-    }
-
-    parameters->codebook = bs->read(bs, 2);
-    parameters->huffman_lsbs = bs->read(bs, 5);
-    if (parameters->huffman_lsbs > 24) {
-        PyErr_SetString(PyExc_ValueError, "Huffman LSBs cannot exceed 24");
-        return ERROR;
-    }
-
-    return OK;
-}
-
-mlp_status
-mlp_read_fir_filter_parameters(BitstreamReader* bs,
-                               struct mlp_FilterParameters* fir) {
-    uint8_t order;
-    uint8_t coefficient_bits;
-    uint8_t coefficient_shift;
-    int i;
-
-    order = bs->read(bs, 4);
-
-    if (order > 8) {
-        PyErr_SetString(PyExc_ValueError,
-                        "FIR filter order cannot exceed 8");
-        return ERROR;
-    } else if (order > 0) {
-        ia_reset(&(fir->coefficients));
-
-        fir->shift = bs->read(bs, 4);
-        coefficient_bits = bs->read(bs, 5);
-        coefficient_shift = bs->read(bs, 3);
-
-        if ((coefficient_bits < 1) || (coefficient_bits > 16)) {
-            PyErr_SetString(PyExc_ValueError,
-                            "coefficient bits must be between 1 and 16");
-            return ERROR;
-        }
-
-        if ((coefficient_bits + coefficient_shift) > 16) {
-            PyErr_SetString(PyExc_ValueError,
-                            "coefficient bits + shift must be <= 16");
-            return ERROR;
-        }
-
-        for (i = 0; i < order; i++)
-            ia_append(&(fir->coefficients),
-                      bs->read_signed(bs, coefficient_bits) <<
-                      coefficient_shift);
-        if (bs->read(bs, 1)) {
-            PyErr_SetString(PyExc_ValueError,
-                            "FIR coefficients cannot have state");
-            return ERROR;
-        }
-    }
-
-    return OK;
-}
-
-mlp_status
-mlp_read_iir_filter_parameters(BitstreamReader* bs,
-                               struct mlp_FilterParameters* iir) {
-    uint8_t order;
-    uint8_t coefficient_bits;
-    uint8_t coefficient_shift;
-    uint8_t state_bits;
-    uint8_t state_shift;
-    int i;
-
-    order = bs->read(bs, 4);
-
-    if (order > 4) {
-        PyErr_SetString(PyExc_ValueError,
-                        "IIR filter order cannot exceed 4");
-        return ERROR;
-    } else if (order > 0) {
-        ia_reset(&(iir->coefficients));
-        ia_reset(&(iir->state));
-
-        iir->shift = bs->read(bs, 4);
-        coefficient_bits = bs->read(bs, 5);
-        coefficient_shift = bs->read(bs, 3);
-
-        if ((coefficient_bits < 1) || (coefficient_bits > 16)) {
-            PyErr_SetString(PyExc_ValueError,
-                            "coefficient bits must be between 1 and 16");
-            return ERROR;
-        }
-
-        if ((coefficient_bits + coefficient_shift) > 16) {
-            PyErr_SetString(PyExc_ValueError,
-                            "coefficient bits + shift must be <= 16");
-            return ERROR;
-        }
-
-        for (i = 0; i < order; i++)
-            ia_append(&(iir->coefficients),
-                      bs->read_signed(bs, coefficient_bits) <<
-                      coefficient_shift);
-        if ((iir->has_state = bs->read(bs, 1)) == 1) {
-            state_bits = bs->read(bs, 4);
-            state_shift = bs->read(bs, 4);
-
-            for (i = 0; i < order; i++)
-                ia_append(&(iir->state),
-                          bs->read_signed(bs, state_bits) << state_shift);
-            ia_reverse(&(iir->state));
-        }
-    }
-
-    return OK;
-}
-
-mlp_status
-mlp_read_matrix_parameters(BitstreamReader* bs,
-                           int max_matrix_channel,
-                           struct mlp_MatrixParameters* parameters) {
-    struct mlp_Matrix* matrix;
-    int i;
-    int coeff_count;
-    int coeff;
-    uint8_t fractional_bits;
-
-    coeff_count = max_matrix_channel + 1 + 2;
-
-    parameters->count = bs->read(bs, 4);
-    if (parameters->count > MAX_MLP_MATRICES) {
-        PyErr_SetString(PyExc_ValueError,
-                        "too many matrices specified");
-        return ERROR;
-    }
-
-    for (i = 0; i < parameters->count; i++) {
-        matrix = &(parameters->matrices[i]);
-
-        matrix->out_channel = bs->read(bs, 4);
-        if (matrix->out_channel > MAX_MLP_CHANNELS) {
-            PyErr_SetString(PyExc_ValueError,
-                            "invalid matrix output channel");
-            return ERROR;
-        }
-
-        matrix->fractional_bits = fractional_bits = bs->read(bs, 4);
-        if (matrix->fractional_bits > 14) {
-            PyErr_SetString(PyExc_ValueError,
-                            "number of fractional bits cannot exceed 14");
-            return ERROR;
-        }
-
-        matrix->lsb_bypass = bs->read(bs, 1);
-
-        for (coeff = 0; coeff < coeff_count; coeff++) {
-            if (bs->read(bs, 1))
-                matrix->coefficients[coeff] =
-                    (bs->read_signed(bs, fractional_bits + 2) <<
-                     (14 - fractional_bits));
-            else
-                matrix->coefficients[coeff] = 0;
-        }
-    }
-
-    return OK;
-}
-
-int32_t
-mlp_calculate_signed_offset(uint8_t codebook,
-                            uint8_t huffman_lsbs,
-                            int16_t huffman_offset,
-                            uint8_t quant_step_size) {
-    int32_t lsb_bits;
-    int32_t sign_shift;
-
-    if (codebook > 0) {
-        lsb_bits = huffman_lsbs - quant_step_size;
-        sign_shift = lsb_bits + 2 - codebook;
-        if (sign_shift >= 0)
-            return huffman_offset - (7 << lsb_bits) - (1 << sign_shift);
-        else
-            return huffman_offset - (7 << lsb_bits);
-    } else {
-        lsb_bits = huffman_lsbs - quant_step_size;
-        sign_shift = lsb_bits - 1;
-        if (sign_shift >= 0)
-            return huffman_offset - (1 << sign_shift);
-        else
-            return huffman_offset;
-    }
-}
-
-/*returns the next residual code from the given codebook
-  or -1 if the code is invalid*/
-static inline int
-mlp_read_code(BitstreamReader* bs, int codebook) {
-    switch (codebook) {
-    case 0:
-        return 0;
-    case 1:
-        return bs->read_huffman_code(bs, mlp_codebook1);
-    case 2:
-        return bs->read_huffman_code(bs, mlp_codebook2);
-    case 3:
-        return bs->read_huffman_code(bs, mlp_codebook3);
-    default:
-        return -1;
-    }
-
-}
-
-mlp_status
-mlp_read_residuals(BitstreamReader* bs,
-                   struct mlp_DecodingParameters* parameters,
-                   int min_channel,
-                   int max_channel,
-                   struct ia_array* residuals) {
-    struct mlp_ChannelParameters* channel_params;
-    struct mlp_Matrix* matrix_params;
-    int msb;
-    uint32_t lsb_count;
-    int32_t signed_huffman_offset[MAX_MLP_CHANNELS];
-
-    uint32_t pcm_frame;
-    int channel;
-    int32_t residual;
-
-    int matrix;
-
-    /*calculate all the signed huffman offsets
-      based on the current huffman offsets/quant_step_sizes*/
-    for (channel = min_channel; channel <= max_channel; channel++) {
-        channel_params = &(parameters->channel_parameters[channel]);
-        signed_huffman_offset[channel] =
-            mlp_calculate_signed_offset(channel_params->codebook,
-                                        channel_params->huffman_lsbs,
-                                        channel_params->huffman_offset,
-                                        parameters->quant_step_sizes[channel]);
-    }
-
-    for (pcm_frame = 0; pcm_frame < parameters->block_size; pcm_frame++) {
-        for (matrix = 0;
-             matrix < parameters->matrix_parameters.count;
-             matrix++) {
-            matrix_params = &(parameters->matrix_parameters.matrices[matrix]);
-            if (matrix_params->lsb_bypass)
-                ia_append(&(matrix_params->bypassed_lsbs), bs->read(bs, 1));
-            else
-                ia_append(&(matrix_params->bypassed_lsbs), 0);
-        }
-
-        for (channel = min_channel; channel <= max_channel; channel++) {
-            channel_params = &(parameters->channel_parameters[channel]);
-            lsb_count = (channel_params->huffman_lsbs -
-                         parameters->quant_step_sizes[channel]);
-            msb = mlp_read_code(bs, channel_params->codebook);
-            if (msb < 0) {
-                PyErr_SetString(PyExc_ValueError, "invalid MLP code");
-                return ERROR;
-            }
-            residual = ((((msb << lsb_count) +
-                          bs->read(bs, lsb_count)) +
-                         signed_huffman_offset[channel]) <<
-                        parameters->quant_step_sizes[channel]);
-            ia_append(&(residuals->arrays[channel]), residual);
-        }
-    }
-
-    return OK;
-}
-
-mlp_status
-mlp_filter_channels(struct ia_array* unfiltered,
-                    int min_channel,
-                    int max_channel,
-                    struct mlp_DecodingParameters* parameters,
-                    struct ia_array* filtered) {
-    unsigned int channel;
-    struct mlp_FilterParameters* fir_filter;
-    struct mlp_FilterParameters* iir_filter;
-
-    for (channel = min_channel; channel <= max_channel; channel++) {
-        fir_filter =
-            &(parameters->channel_parameters[channel].fir_filter_parameters);
-        iir_filter =
-            &(parameters->channel_parameters[channel].iir_filter_parameters);
-        if (mlp_filter_channel(&(unfiltered->arrays[channel]),
-                               fir_filter,
-                               iir_filter,
-                               parameters->quant_step_sizes[channel],
-                               &(filtered->arrays[channel])) == ERROR)
-            return ERROR;
-    }
-
-    return OK;
-}
-
-mlp_status
-mlp_filter_channel(struct i_array* unfiltered,
-                   struct mlp_FilterParameters* fir_filter,
-                   struct mlp_FilterParameters* iir_filter,
-                   uint8_t quant_step_size,
-                   struct i_array* filtered) {
-    struct i_array fir_coefficients;
-    struct i_array* fir_state;
-    struct i_array iir_coefficients;
-    struct i_array* iir_state;
-    struct i_array fir_tail;
-    struct i_array iir_tail;
-    uint32_t shift;
-    ia_data_t residual;
-    ia_size_t i;
-    ia_size_t j;
-    int64_t accumulator;
-    int32_t result;
-
-    /*the number of bits to set to 0 at the beginning of each result*/
-    int32_t mask = -1u << quant_step_size;
-
-    ia_init(&fir_coefficients, 8);
-    fir_state = &(fir_filter->state);
-    ia_init(&iir_coefficients, 8);
-    iir_state = &(iir_filter->state);
-
-    if ((fir_filter->coefficients.size +
-         iir_filter->coefficients.size) > 8) {
-        PyErr_SetString(PyExc_ValueError,
-                        "FIR and IIR filter orders cannot exceed 8");
-        return ERROR;
-    }
-
-    if ((fir_filter->coefficients.size != 0) &&
-        (iir_filter->coefficients.size != 0) &&
-        (fir_filter->shift != iir_filter->shift)) {
-        PyErr_SetString(PyExc_ValueError, "filter shifts must be identical");
-        goto error;
-    } else if (fir_filter->shift != 0) {
-        shift = fir_filter->shift;
-    } else {
-        shift = iir_filter->shift;
-    }
-
-    ia_copy(&fir_coefficients, &(fir_filter->coefficients));
-    ia_copy(&iir_coefficients, &(iir_filter->coefficients));
-
-    ia_reverse(&fir_coefficients);
-    ia_reverse(&iir_coefficients);
-
-    for (i = 0; i < unfiltered->size; i++) {
-        residual = unfiltered->data[i];
-        accumulator = 0;
-        ia_tail(&fir_tail, fir_state, fir_coefficients.size);
-        ia_tail(&iir_tail, iir_state, iir_coefficients.size);
-        for (j = 0; j < fir_coefficients.size; j++)
-            accumulator += ((int64_t)fir_tail.data[j] *
-                            (int64_t)fir_coefficients.data[j]);
-        for (j = 0; j < iir_coefficients.size; j++)
-            accumulator += ((int64_t)iir_tail.data[j] *
-                            (int64_t)iir_coefficients.data[j]);
-
-        accumulator >>= shift;
-        result = (int32_t)(accumulator + residual) & mask;
-        ia_append(filtered, result);
-        ia_append(fir_state, result);
-        ia_append(iir_state, (ia_data_t)(result - accumulator));
-    }
-
-    ia_free(&fir_coefficients);
-    ia_free(&iir_coefficients);
-    ia_tail(iir_state, iir_state, 8);
-    ia_tail(fir_state, fir_state, 8);
-
-    return OK;
- error:
-    ia_free(&fir_coefficients);
-    ia_free(&iir_coefficients);
-    return ERROR;
-}
-
-static inline int8_t
-crop(int x) {
-    if ((x % 256) / 128)
-        return (x % 256) - 128;
-    else
-        return x % 256;
-}
-
-void
-mlp_noise_channels(unsigned int pcm_frames,
-                   uint32_t* noise_gen_seed,
-                   uint8_t noise_shift,
-                   struct i_array* noise_channel1,
-                   struct i_array* noise_channel2) {
-    unsigned int i;
-    uint32_t seed = *noise_gen_seed;
-    uint32_t shifted;
-
-    for (i = 0; i < pcm_frames; i++) {
-        shifted = (seed >> 7) & 0xFFFF;
-        ia_append(noise_channel1, ((int8_t)(seed >> 15)) << noise_shift);
-        ia_append(noise_channel2, ((int8_t)(shifted)) << noise_shift);
-        seed = (((seed << 16) & 0xFFFFFFFF) ^ shifted ^ (shifted << 5));
-    }
-
-    *noise_gen_seed = seed;
-}
-
-void
-mlp_rematrix_channels(struct ia_array* channels,
-                      int max_matrix_channel,
-                      uint32_t* noise_gen_seed,
-                      uint8_t noise_shift,
-                      struct mlp_MatrixParameters* matrices,
-                      uint8_t* quant_step_sizes) {
-    uint8_t i;
-    unsigned int pcm_frames = channels->arrays[0].size;
-    struct i_array noise_channel1;
-    struct i_array noise_channel2;
-
-    ia_init(&noise_channel1, pcm_frames);
-    ia_init(&noise_channel2, pcm_frames);
-
-    mlp_noise_channels(pcm_frames, noise_gen_seed, noise_shift,
-                       &noise_channel1, &noise_channel2);
-
-    for (i = 0; i < matrices->count; i++)
-        mlp_rematrix_channel(channels,
-                             max_matrix_channel,
-                             &noise_channel1,
-                             &noise_channel2,
-                             &(matrices->matrices[i]),
-                             quant_step_sizes);
-
-    ia_free(&noise_channel1);
-    ia_free(&noise_channel2);
-}
-
-void
-mlp_rematrix_channel(struct ia_array* channels,
-                     int max_matrix_channel,
-                     struct i_array* noise_channel1,
-                     struct i_array* noise_channel2,
-                     struct mlp_Matrix* matrix,
-                     uint8_t* quant_step_sizes) {
-    unsigned int pcm_frames = channels->arrays[0].size;
-    unsigned int i;
-    unsigned int j;
-    int64_t accumulator;
-    int32_t mask = -1u << quant_step_sizes[matrix->out_channel];
-
-    for (i = 0; i < pcm_frames; i++) {
-        accumulator = 0;
-        for (j = 0; j <= max_matrix_channel; j++)
-            accumulator += ((int64_t)channels->arrays[j].data[i] *
-                            (int64_t)matrix->coefficients[j]);
-        accumulator += ((int64_t)noise_channel1->data[i] *
-                        (int64_t)matrix->coefficients[j++]);
-        accumulator += ((int64_t)noise_channel2->data[i] *
-                        (int64_t)matrix->coefficients[j++]);
-        accumulator = (((accumulator >> 14) & mask) +
-                       matrix->bypassed_lsbs.data[i]);
-        channels->arrays[matrix->out_channel].data[i] = (ia_data_t)accumulator;
-    }
-}
-
-#ifndef STANDALONE
-
- static
- int br_read_python(void* user_data,
-                    struct bs_buffer* buffer)
- {
-     PyObject* pcmreader = (PyObject*)user_data;
-     PyObject* read_result;
-
-     /*call read() method on pcmreader*/
-     if ((read_result =
-          PyObject_CallMethod(pcmreader, "read", "i", 4096)) != NULL) {
-         uint8_t *string;
-         Py_ssize_t string_size;
-
-         /*convert returned object to string of bytes*/
-         if (PyString_AsStringAndSize(read_result,
-                                      (char**)&string,
-                                      &string_size) != -1) {
-             /*then append bytes to buffer and return success*/
-             uint8_t* appended = buf_extend(buffer, (uint32_t)string_size);
-             memcpy(appended, string, string_size);
-             buffer->buffer_size += (uint32_t)string_size;
-
-             return 0;
-         } else {
-             /*string conversion failed so print/clear error and return an EOF*/
-             PyErr_Print();
-             return 1;
-         }
-     } else {
-         /*read() method call failed
-           so print/clear error and return an EOF
-           (which will likely generate an IOError exception if its own)*/
-         PyErr_Print();
-         return 1;
-     }
-
- }
-
- static
- void br_close_python(void* user_data)
- {
-     /*FIXME*/
- }
-
- static
- void br_free_python(void* user_data)
- {
-     Py_DECREF((PyObject*)user_data);
- }
-
-
-#include "pcm.c"
-#endif
-
-#ifdef STANDALONE
-int main(int argc, char* argv[]) {
-    decoders_MLPDecoder decoder;
-
-    MLPDecoder_init(&decoder, argv[1], atoi(argv[2]));
-
-    while (decoder.remaining_samples > 0) {
-        MLPDecoder_read(&decoder);
-    }
-
-    MLPDecoder_dealloc(&decoder);
-
-    return 0;
-}
-#endif

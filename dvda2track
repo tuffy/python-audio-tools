@@ -25,7 +25,6 @@ import audiotools.ui
 import gettext
 import tempfile
 from itertools import izip
-from audiotools.decoders import MLPDecoder
 
 gettext.install("audiotools", unicode=True)
 
@@ -48,35 +47,6 @@ class DummyTrack:
 
     def bits_per_sample(self):
         return self.__bits_per_sample__
-
-
-class AOBExtractor:
-    def __init__(self, title):
-        self.payloads = title.stream().packet_payloads()
-
-    def read(self, bytes):
-        try:
-            return self.payloads.next()
-        except StopIteration:
-            return ""
-
-    def close(self):
-        del(self.payloads)
-
-
-def pcm_split(reader, pcm_lengths):
-    """Yields a PCMReader object from reader for each pcm_length (in frames).
-
-    Each sub-reader is pcm_length PCM frames long with the same
-    channels, bits_per_sample, sample_rate and channel_mask
-    as the full stream.  reader is closed upon completion.
-    """
-
-    full_data = audiotools.BufferedPCMReader(reader)
-    for pcm_length in pcm_lengths:
-        yield audiotools.LimitedPCMReader(full_data, pcm_length)
-
-    full_data.close()
 
 
 if (__name__ == '__main__'):
