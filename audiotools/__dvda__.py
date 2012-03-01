@@ -387,11 +387,13 @@ class DVDATitle:
     def to_pcm(self):
         from audiotools.decoders import DVDA_Title
 
-        return DVDA_Title(audio_ts=self.dvdaudio.audio_ts_path,
-                          titleset=1,
-                          start_sector=self.tracks[0].first_sector,
-                          end_sector=self.tracks[-1].last_sector,
-                          cdrom=self.dvdaudio.cdrom_device)
+        args = {"audio_ts":self.dvdaudio.audio_ts_path,
+                "titleset":1,
+                "start_sector":self.tracks[0].first_sector,
+                "end_sector":self.tracks[-1].last_sector}
+        if (self.dvdaudio.cdrom_device is not None):
+            args["cdrom"] = self.dvdaudio.cdrom_device
+        return DVDA_Title(**args)
 
     def total_frames(self):
         """Returns the title's total PCM frames as an integer."""
@@ -488,6 +490,25 @@ class DVDATrack:
                     self.title.sample_rate).quantize(
                 decimal.Decimal(1),
                 rounding=decimal.ROUND_UP))
+
+    def sectors(self):
+        """iterates (aob_file, start_sector, end_sector)
+
+        for each AOB file necessary to extract the track's data
+        in the order in which they should be read."""
+
+        track_sectors = Rangeset(self.first_sector,
+                                 self.last_sector + 1)
+
+        for (i, (start_sector,
+                 end_sector)) in enumerate(self.dvdaudio.aob_sectors):
+            aob_sectors = Rangeset(start_sector, end_sector)
+            intersection = aob_sectors & track_sectors
+            if (len(intersection)):
+                yield (self.dvdaudio.files["ATS_%2.2d_%d.AOB" % \
+                                               (self.titleset, i + 1)],
+                       intersection.start - start_sector,
+                       intersection.end - start_sector)
 
 
 class Rangeset:

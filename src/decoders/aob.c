@@ -72,7 +72,6 @@ DVDA_Title_init(decoders_DVDA_Title *self, PyObject *args, PyObject *kwds) {
 
     self->codec_framelist = array_ia_new();
     self->output_framelist = array_ia_new();
-    self->wave_framelist = array_ia_new();
 
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
@@ -120,7 +119,6 @@ DVDA_Title_dealloc(decoders_DVDA_Title *self) {
 
     self->codec_framelist->del(self->codec_framelist);
     self->output_framelist->del(self->output_framelist);
-    self->wave_framelist->del(self->wave_framelist);
 
     Py_XDECREF(self->audiotools_pcm);
 
@@ -205,6 +203,8 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, PyObject *args)
                             self->bits_per_sample,
                             self->channel_count);
 
+        buf_append(packet_data, self->frames);
+
     } else if (next_packet.codec_ID == MLP_CODEC_ID) {
         /*if the packet is MLP,
           check if the first frame starts with a major sync*/
@@ -278,9 +278,9 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, PyObject *args)
     }
 
     /*convert PTS ticks to PCM frames based on sample rate*/
-    self->pcm_frames_remaining = (unsigned)ceil((double)PTS_ticks *
-                                                (double)self->sample_rate /
-                                                (double)PTS_PER_SECOND);
+    self->pcm_frames_remaining = (unsigned)round((double)PTS_ticks *
+                                                 (double)self->sample_rate /
+                                                 (double)PTS_PER_SECOND);
 
     /*initalize codec's framelist with the proper number of channels*/
     if (self->codec_framelist->len != self->channel_count) {
@@ -296,34 +296,9 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, PyObject *args)
 static PyObject*
 DVDA_Title_read(decoders_DVDA_Title *self, PyObject *args)
 {
-    const static int CHANNEL_MAP[][6] = {
-        /* 0x00 */ {  0, -1, -1, -1, -1, -1},
-        /* 0x01 */ {  0,  1, -1, -1, -1, -1},
-        /* 0x02 */ {  0,  1,  2, -1, -1, -1},
-        /* 0x03 */ {  0,  1,  2,  3, -1, -1},
-        /* 0x04 */ {  0,  1,  2, -1, -1, -1},
-        /* 0x05 */ {  0,  1,  2,  3, -1, -1},
-        /* 0x06 */ {  0,  1,  2,  3,  4, -1},
-        /* 0x07 */ {  0,  1,  2, -1, -1, -1},
-        /* 0x08 */ {  0,  1,  2,  3, -1, -1},
-        /* 0x09 */ {  0,  1,  2,  3,  4, -1},
-        /* 0x0A */ {  0,  1,  2,  3, -1, -1},
-        /* 0x0B */ {  0,  1,  2,  3,  4, -1},
-        /* 0x0C */ {  0,  1,  2,  3,  4,  5},
-        /* 0x0D */ {  0,  1,  2,  3, -1, -1},
-        /* 0x0E */ {  0,  1,  2,  3,  4, -1},
-        /* 0x0F */ {  0,  1,  2,  3, -1, -1},
-        /* 0x10 */ {  0,  1,  2,  3,  4, -1},
-        /* 0x11 */ {  0,  1,  2,  3,  4,  5},
-        /* 0x12 */ {  0,  1,  3,  4,  2, -1},
-        /* 0x13 */ {  0,  1,  3,  4,  2, -1},
-        /* 0x14 */ {  0,  1,  4,  5,  2,  3}
-    };
-
     DVDA_Packet next_packet;
     struct bs_buffer* packet_data = self->packet_data;
     mlp_status mlp_status;
-    unsigned c;
 
     /*if track has been exhausted, return empty FrameList*/
     if (!self->pcm_frames_remaining) {
@@ -374,11 +349,6 @@ DVDA_Title_read(decoders_DVDA_Title *self, PyObject *args)
         }
     }
 
-    if (self->codec_framelist->_[0]->len == 0) {
-        fprintf(stderr, "warning: got empty framelist from codec %d\n",
-                self->frame_codec);
-    }
-
     /*account for framelists larger than frames remaining*/
     self->codec_framelist->cross_split(self->codec_framelist,
                                        MIN(self->pcm_frames_remaining,
@@ -389,22 +359,9 @@ DVDA_Title_read(decoders_DVDA_Title *self, PyObject *args)
     /*deduct output FrameList's PCM frames from remaining count*/
     self->pcm_frames_remaining -= self->output_framelist->_[0]->len;
 
-    /*reorder channels from PCM/MLP order to WAVE order*/
-    self->wave_framelist->reset(self->wave_framelist);
-    for (c = 0; c < self->output_framelist->len; c++) {
-        self->wave_framelist->append(self->wave_framelist);
-    }
-    for (c = 0; c < self->output_framelist->len; c++) {
-        array_i* mlp_channel =
-            self->output_framelist->_[c];
-        array_i* wav_channel =
-            self->wave_framelist->_[CHANNEL_MAP[self->channel_assignment][c]];
-        mlp_channel->swap(mlp_channel, wav_channel);
-    }
-
     /*and return output FrameList*/
     return array_ia_to_FrameList(self->audiotools_pcm,
-                                 self->wave_framelist,
+                                 self->output_framelist,
                                  self->bits_per_sample);
 }
 

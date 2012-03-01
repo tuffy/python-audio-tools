@@ -51,8 +51,7 @@ struct major_sync {
     unsigned bits_per_sample_1;
     unsigned sample_rate_0;
     unsigned sample_rate_1;
-    unsigned channel_count;
-    unsigned channel_mask;
+    unsigned channel_assignment;
     unsigned is_VBR;
     unsigned peak_bitrate;
     unsigned substream_count;

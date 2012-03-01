@@ -67,9 +67,6 @@ typedef struct {
     /*a FrameList to be returned by calls to read()*/
     array_ia* output_framelist;
 
-    /*an output FrameList in Wave order*/
-    array_ia* wave_framelist;
-
     /*a FrameList generator*/
     PyObject* audiotools_pcm;
 } decoders_DVDA_Title;

@@ -19,18 +19,6 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-extern unsigned
-dvda_bits_per_sample(unsigned encoded);
-
-extern unsigned
-dvda_sample_rate(unsigned encoded);
-
-extern unsigned
-dvda_channel_count(unsigned encoded);
-
-extern unsigned
-dvda_channel_mask(unsigned encoded);
-
 MLPDecoder*
 open_mlp_decoder(struct bs_buffer* frame_data)
 {
@@ -176,6 +164,32 @@ read_mlp_frame(MLPDecoder* decoder,
                BitstreamReader* bs,
                array_ia* framelist)
 {
+    /*CHANNEL_MAP[a][c] where a is 5 bit channel assignment field
+      and c is the MLP channel index
+      yields the RIFF WAVE channel index*/
+    const static int WAVE_CHANNEL[][6] = {
+        /* 0x00 */ {  0, -1, -1, -1, -1, -1},
+        /* 0x01 */ {  0,  1, -1, -1, -1, -1},
+        /* 0x02 */ {  0,  1,  2, -1, -1, -1},
+        /* 0x03 */ {  0,  1,  2,  3, -1, -1},
+        /* 0x04 */ {  0,  1,  2, -1, -1, -1},
+        /* 0x05 */ {  0,  1,  2,  3, -1, -1},
+        /* 0x06 */ {  0,  1,  2,  3,  4, -1},
+        /* 0x07 */ {  0,  1,  2, -1, -1, -1},
+        /* 0x08 */ {  0,  1,  2,  3, -1, -1},
+        /* 0x09 */ {  0,  1,  2,  3,  4, -1},
+        /* 0x0A */ {  0,  1,  2,  3, -1, -1},
+        /* 0x0B */ {  0,  1,  2,  3,  4, -1},
+        /* 0x0C */ {  0,  1,  2,  3,  4,  5},
+        /* 0x0D */ {  0,  1,  2,  3, -1, -1},
+        /* 0x0E */ {  0,  1,  2,  3,  4, -1},
+        /* 0x0F */ {  0,  1,  2,  3, -1, -1},
+        /* 0x10 */ {  0,  1,  2,  3,  4, -1},
+        /* 0x11 */ {  0,  1,  2,  3,  4,  5},
+        /* 0x12 */ {  0,  1,  3,  4,  2, -1},
+        /* 0x13 */ {  0,  1,  3,  4,  2, -1},
+        /* 0x14 */ {  0,  1,  4,  5,  2,  3}
+    };
     mlp_status status;
 
     /*check for major sync*/
@@ -193,10 +207,8 @@ read_mlp_frame(MLPDecoder* decoder,
                  decoder->major_sync.sample_rate_0) ||
                 (major_sync.sample_rate_1 !=
                  decoder->major_sync.sample_rate_1) ||
-                (major_sync.channel_count !=
-                 decoder->major_sync.channel_count) ||
-                (major_sync.channel_mask !=
-                 decoder->major_sync.channel_mask) ||
+                (major_sync.channel_assignment !=
+                 decoder->major_sync.channel_assignment) ||
                 (major_sync.substream_count !=
                  decoder->major_sync.substream_count)) {
                 return INVALID_MAJOR_SYNC;
@@ -302,10 +314,11 @@ read_mlp_frame(MLPDecoder* decoder,
                 }
             }
 
-            /*append rematrixed data to final framelist*/
+            /*append rematrixed data to final framelist in Wave order*/
             for (c = 0; c < framelist->len; c++) {
-                framelist->_[c]->extend(framelist->_[c],
-                                        decoder->framelist->_[c]);
+                array_i* out_channel = framelist->_[
+                    WAVE_CHANNEL[decoder->major_sync.channel_assignment][c]];
+                out_channel->extend(out_channel, decoder->framelist->_[c]);
             }
 
             /*clear out framelist for next run*/
@@ -379,10 +392,11 @@ read_mlp_frame(MLPDecoder* decoder,
                 }
             }
 
-            /*append rematrixed data to final framelist*/
+            /*append rematrixed data to final framelist in Wave order*/
             for (c = 0; c < framelist->len; c++) {
-                framelist->_[c]->extend(framelist->_[c],
-                                        decoder->framelist->_[c]);
+                array_i* out_channel = framelist->_[
+                    WAVE_CHANNEL[decoder->major_sync.channel_assignment][c]];
+                out_channel->extend(out_channel, decoder->framelist->_[c]);
             }
 
             /*clear out framelist for next run*/
@@ -409,8 +423,6 @@ read_mlp_major_sync(BitstreamReader* bs,
         const unsigned stream_type = bs->read(bs, 8);
 
         if ((sync_words == 0xF8726F) && (stream_type == 0xBB)) {
-            unsigned channel_assignment;
-
             /*major sync found*/
             bs->parse(bs,
                       "4u 4u 4u 4u 11p 5u 48p 1u 15u 4u 92p",
@@ -418,7 +430,7 @@ read_mlp_major_sync(BitstreamReader* bs,
                       &(major_sync->bits_per_sample_1),
                       &(major_sync->sample_rate_0),
                       &(major_sync->sample_rate_1),
-                      &channel_assignment,
+                      &(major_sync->channel_assignment),
                       &(major_sync->is_VBR),
                       &(major_sync->peak_bitrate),
                       &(major_sync->substream_count));
@@ -426,9 +438,6 @@ read_mlp_major_sync(BitstreamReader* bs,
             if ((major_sync->substream_count != 1) &&
                 (major_sync->substream_count != 2))
                 return INVALID_MAJOR_SYNC;
-
-            major_sync->channel_count = dvda_channel_count(channel_assignment);
-            major_sync->channel_mask = dvda_channel_mask(channel_assignment);
 
             bs->unmark(bs);
             br_etry(bs);
