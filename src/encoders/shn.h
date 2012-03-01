@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 #include "../bitstream.h"
-#include "../array2.h"
+#include "../array.h"
 #include "../pcmconv.h"
 
 /********************************************************

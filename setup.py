@@ -63,7 +63,6 @@ elif (sys.platform == 'darwin'):
 
 decodersmodule = Extension('audiotools.decoders',
                            sources=['src/array.c',
-                                    'src/array2.c',
                                     'src/pcmconv.c',
                                     'src/common/md5.c',
                                     'src/bitstream.c',
@@ -90,7 +89,6 @@ decodersmodule = Extension('audiotools.decoders',
 
 encodersmodule = Extension('audiotools.encoders',
                            sources=['src/array.c',
-                                    'src/array2.c',
                                     'src/pcmconv.c',
                                     'src/bitstream.c',
                                     'src/common/md5.c',

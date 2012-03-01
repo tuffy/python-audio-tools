@@ -1,6 +1,6 @@
 #include <Python.h>
 #include <stdint.h>
-#include "../array2.h"
+#include "../array.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data

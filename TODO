@@ -3421,6 +3421,37 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Improve thread friendliness in decoder/encoder
    - [X] decoders/shn.c
    - [X] encoders/shn.h
+* DONE Overhaul array.h
+  Just as the bitstream module benefits from having a good design,
+  the array module would also be better served by having
+  a more elegant API.
+
+  The main goal is to have less function variants and
+  data allocation/deallocation routines to remember.
+  Something like:
+
+  array = new_int_array();
+  array->append(array, value);
+  array->del(array);
+
+  which always functions the same whether we're dealing with ints or
+  floats or other arrays, yet is still type-checked at compile-time.
+** DONE Better unify FrameList <-> array_ia routines
+** DONE Remove old src/decoders/pcm.h src/decoders/pcm.c module
+   Use the unified pcmconv.h module instead
+   - [X] mlp.c
+   - [X] shn.c
+   - [X] sine.c
+** DONE Replace old array.h with new one in all source files
+   - [X] decoders/mlp.h
+   - [X] decoders/shn.h
+   - [X] decoders/sine.h
+   - [X] decoders/wavpack.h
+   - [X] encoders/alac.h
+   - [X] encoders/shn.h
+   - [X] encoders/wavpack.h
+** DONE Remove old array.h
+** DONE Replace array2.h with array.h in all source files
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -5072,9 +5103,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE py_decoders/SHNDecoder
 ** DONE py_decoders/ALACDecoder
 ** DONE py_decoders/WavPackDecoder
-** TODO Add .analyze_frame() option to Python-based decoders
-** TODO Remove .analyze_frame() option from C-based decoders
-   These add significant code clutter to code that needs to be kept simple
 * TODO Overhaul decoding/encoding documentation
   It needs to be cleaned up so one can better follow the entire
   decoding process, as well as the entire encoding process.
@@ -5094,37 +5122,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE encoding
 ** TODO DVD-A
 *** TODO decoding
-* TODO Overhaul array.h
-  Just as the bitstream module benefits from having a good design,
-  the array module would also be better served by having
-  a more elegant API.
-
-  The main goal is to have less function variants and
-  data allocation/deallocation routines to remember.
-  Something like:
-
-  array = new_int_array();
-  array->append(array, value);
-  array->del(array);
-
-  which always functions the same whether we're dealing with ints or
-  floats or other arrays, yet is still type-checked at compile-time.
-** DONE Better unify FrameList <-> array_ia routines
-** TODO Remove old src/decoders/pcm.h src/decoders/pcm.c module
-   Use the unified pcmconv.h module instead
-   - [ ] mlp.c
-   - [X] shn.c
-   - [X] sine.c
-** TODO Replace old array.h with new one in all source files
-   - [ ] decoders/mlp.h
-   - [X] decoders/shn.h
-   - [X] decoders/sine.h
-   - [X] decoders/wavpack.h
-   - [X] encoders/alac.h
-   - [X] encoders/shn.h
-   - [X] encoders/wavpack.h
-** TODO Remove old array.h
-** TODO Replace array2.h with array.h in all source files
 * TODO Fix FLAC seektable generation
   Ensure new seektables are aligned properly.
 ** DONE Ensure proper seektable written on from_pcm

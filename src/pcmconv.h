@@ -1,7 +1,7 @@
 #ifndef STANDALONE
 #include <Python.h>
 #endif
-#include "array2.h"
+#include "array.h"
 #include "pcm.h"
 
 /********************************************************

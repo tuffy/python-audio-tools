@@ -6,23 +6,23 @@ FLAGS = -Wall -g
 
 all: flacenc alacenc wvenc mlpdec huffman bitstream
 
-flacenc: $(OBJS) encoders/flac.c encoders/flac.h flac_crc.o md5.o pcmconv.o array2.o
-	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o flacenc encoders/flac.c $(OBJS) array2.o md5.o flac_crc.o pcmconv.o -DSTANDALONE -lm
+flacenc: $(OBJS) encoders/flac.c encoders/flac.h flac_crc.o md5.o pcmconv.o
+	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o flacenc encoders/flac.c $(OBJS) md5.o flac_crc.o pcmconv.o -DSTANDALONE -lm
 
-alacenc: $(OBJS) encoders/alac.c encoders/alac.h array2.o pcmconv.o
-	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o alacenc encoders/alac.c array2.o pcmconv.o $(OBJS) -DSTANDALONE -lm
+alacenc: $(OBJS) encoders/alac.c encoders/alac.h pcmconv.o
+	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o alacenc encoders/alac.c pcmconv.o $(OBJS) -DSTANDALONE -lm
 
 shnenc: $(OBJS) encoders/shn.c encoders/shn.h
 	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o shnenc encoders/shn.c $(OBJS) -DSTANDALONE -lm
 
-wvenc: $(OBJS) encoders/wavpack.c encoders/wavpack.h md5.o array2.o pcmconv.o
-	$(CC) $(FLAGS) -o wvenc encoders/wavpack.c md5.o array2.o pcmconv.o $(OBJS) -DSTANDALONE
+wvenc: $(OBJS) encoders/wavpack.c encoders/wavpack.h md5.o pcmconv.o
+	$(CC) $(FLAGS) -o wvenc encoders/wavpack.c md5.o pcmconv.o $(OBJS) -DSTANDALONE
 
 mlpdec: decoders/mlp.c decoders/mlp.h array.o bitstream.o
 	$(CC) $(FLAGS) -o mlpdec decoders/mlp.c array.o bitstream.o -DSTANDALONE
 
-dvdadec: dvda/dvda.c dvda/dvda.h bitstream.o array2.o
-	$(CC) $(FLAGS) -o dvdadec dvda/dvda.c bitstream.o array2.o -DSTANDALONE
+dvdadec: dvda/dvda.c dvda/dvda.h bitstream.o
+	$(CC) $(FLAGS) -o dvdadec dvda/dvda.c bitstream.o -DSTANDALONE
 
 huffman: huffman.c huffman.h
 	$(CC) $(FLAGS) -o huffman huffman.c -DSTANDALONE -DEXECUTABLE -ljansson
@@ -32,9 +32,6 @@ clean:
 
 array.o: array.c array.h
 	$(CC) $(FLAGS) -c array.c -DSTANDALONE
-
-array2.o: array2.c array2.h
-	$(CC) $(FLAGS) -c array2.c -DSTANDALONE
 
 pcm.o: pcm.c pcm.h
 	$(CC) $(FLAGS) -c pcm.c -DSTANDALONE

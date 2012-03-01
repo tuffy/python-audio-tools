@@ -3,8 +3,7 @@
 #include <Python.h>
 #include <stdint.h>
 #include "../bitstream.h"
-#include "../array2.h"
-#include "../pcm.h"
+#include "../array.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data

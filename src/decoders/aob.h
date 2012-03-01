@@ -1,5 +1,5 @@
 #include <Python.h>
-#include "../array2.h"
+#include "../array.h"
 #include "../bitstream.h"
 #include "aobpcm.h"
 #include "mlp.h"
