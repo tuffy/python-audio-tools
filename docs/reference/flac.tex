@@ -1018,7 +1018,7 @@ exhaustive model search & true or false & \\
 }
 }{an encoded FLAC file}
 \SetKwData{BLOCKSIZE}{block size}
-\WRITE \texttt{"fLaC"} in 4 bytes\;
+$\texttt{"fLaC"} \rightarrow$ \WRITE 4 bytes\;
 write placeholder STREAMINFO metadata block\;
 write PADDING metadata block\;
 initialize stream's MD5 sum\;
@@ -1041,24 +1041,24 @@ All of the fields in the FLAC stream are big-endian.
 
 \subsection{Writing Placeholder Metadata Blocks}
 \ALGORITHM{input stream's attributes, a default block size}{1 or more metadata blocks to the FLAC file stream}
-\WRITE 0 as 1 unsigned bit\tcc*[r]{is last block}
-\WRITE 0 as 7 unsigned bits\tcc*[r]{STREAMINFO type}
-\WRITE 34 as 24 unsigned bits\tcc*[r]{STREAMINFO size}
-\WRITE default block size as 16 unsigned bits\tcc*[r]{minimum block size}
-\WRITE default block size as 16 unsigned bits\tcc*[r]{maximum block size}
-\WRITE 0 as 24 unsigned bits\tcc*[r]{minimum frame size}
-\WRITE 0 as 24 unsigned bits\tcc*[r]{maximum frame size}
-\WRITE stream's sample rate as 20 unsigned bits\;
-\WRITE (stream's channels - 1) as 3 unsigned bits\;
-\WRITE (streams bits per sample - 1) as 5 unsigned bits\;
-\WRITE 0 as 36 unsigned bits\tcc*[r]{total PCM frames}
-\WRITE 0 as 16 bytes\tcc*[r]{stream's MD5 sum}
+$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{is last block}
+$0 \rightarrow$ \WRITE 7 unsigned bits\tcc*[r]{STREAMINFO type}
+$34 \rightarrow$ \WRITE 24 unsigned bits\tcc*[r]{STREAMINFO size}
+$\text{default block size} \rightarrow$ \WRITE 16 unsigned bits\tcc*[r]{minimum block size}
+$\text{default block size} \rightarrow$ \WRITE 16 unsigned bits\tcc*[r]{maximum block size}
+$0 \rightarrow$ \WRITE 24 unsigned bits\tcc*[r]{minimum frame size}
+$0 \rightarrow$ \WRITE 24 unsigned bits\tcc*[r]{maximum frame size}
+$\text{stream's sample rate} \rightarrow$ \WRITE 20 unsigned bits\;
+$\text{stream's channels} - 1 \rightarrow$ \WRITE 3 unsigned bits\;
+$\text{stream's bits per sample} - 1 \rightarrow$ \WRITE 5 unsigned bits\;
+$0 \rightarrow$ \WRITE 36 unsigned bits\tcc*[r]{total PCM frames}
+$0 \rightarrow$ \WRITE 16 bytes\tcc*[r]{stream's MD5 sum}
 \BlankLine
 \BlankLine
-\WRITE 1 as 1 unsigned bit\tcc*[r]{is last block}
-\WRITE 1 as 7 unsigned bits\tcc*[r]{PADDING type}
-\WRITE 4096 as 24 unsigned bits\tcc*[r]{PADDING size}
-\WRITE 0 as 4096 bytes\tcc*[r]{PADDING's data}
+$1 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{is last block}
+$1 \rightarrow$ \WRITE 7 unsigned bits\tcc*[r]{PADDING type}
+$4096 \rightarrow$ \WRITE 24 unsigned bits\tcc*[r]{PADDING size}
+$0 \rightarrow$ \WRITE 4096 bytes\tcc*[r]{PADDING's data}
 \EALGORITHM
 \par
 \noindent
@@ -1225,31 +1225,31 @@ sample_1 &\leftarrow \lfloor(((12 \times 2) + (-5 \bmod 2)) - -5) \div 2\rfloor 
 \subsubsection{Writing Frame Header}
 \ALGORITHM{the frame's channel assignment, the input stream's parameters}{a FLAC frame header}
 \SetKw{OR}{or}
-\WRITE \texttt{0x3FFE} in 14 unsigned bits\tcc*[r]{sync code}
-\WRITE 0 in 1 unsigned bit\;
-\WRITE 0 in 1 unsigned bit\tcc*[r]{blocking strategy}
-\WRITE $encoded~block~size$ in 4 unsigned bits\;
-\WRITE $encoded~sample~rate$ in 4 unsigned bits\;
-\WRITE frame's channel assignment in 4 unsigned bits\;
-\WRITE $encoded~bps$ in 3 unsigned bits\;
-\WRITE 0 in 1 unsigned bit\;
-\WRITE frame number as a UTF-8 encoded value\;
+$\texttt{0x3FFE} \rightarrow$ \WRITE 14 unsigned bits\tcc*[r]{sync code}
+$0 \rightarrow$ \WRITE 1 unsigned bit\;
+$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{blocking strategy}
+$\text{encoded~block~size} \rightarrow$ \WRITE 4 unsigned bits\;
+$\text{encoded~sample~rate} \rightarrow$ \WRITE 4 unsigned bits\;
+$\text{frame's channel assignment} \rightarrow$ \WRITE 4 unsigned bits\;
+$encoded~bps \rightarrow$ \WRITE 3 unsigned bits\;
+$0 \rightarrow$ \WRITE 1 unsigned bit\;
+$\text{frame number} \rightarrow$ \WRITE as UTF-8 encoded value\;
 \uIf{encoded block size = 6}{
-  \WRITE (block size - 1) in 8 unsigned bits\;
+  $(\text{block size} - 1) \rightarrow$ \WRITE 8 unsigned bits\;
 }
 \ElseIf{encoded block size = 7}{
-  \WRITE (block size - 1) in 16 unsigned bits\;
+  $\text{block size} - 1 \rightarrow$ \WRITE 16 unsigned bits\;
 }
 \uIf{encoded sample rate = 12}{
-  \WRITE ($\text{sample rate} \div 1000$) in 8 unsigned bits\;
+  $\text{sample rate} \div 1000 \rightarrow$ \WRITE 8 unsigned bits\;
 }
 \uElseIf{encoded sample rate = 13}{
-  \WRITE sample rate in 16 unsigned bits\;
+  $\text{sample rate} \rightarrow$ \WRITE 16 unsigned bits\;
 }
 \ElseIf{encoded sample rate = 14}{
-  \WRITE ($\text{sample rate} \div 10$) in 16 unsigned bits\;
+  $\text{sample rate} \div 10 \rightarrow$ \WRITE 16 unsigned bits\;
 }
-\WRITE header CRC8 in 8 unsigned bits\;
+$\text{header CRC8} \rightarrow$ \WRITE 8 unsigned bits\;
 \EALGORITHM
 
 \subsubsection{Encoding Block Size}
@@ -1349,7 +1349,7 @@ sample_1 &\leftarrow \lfloor(((12 \times 2) + (-5 \bmod 2)) - -5) \div 2\rfloor 
 {\relsize{-1}
 \ALGORITHM{value as unsigned integer}{1 or more UTF-8 bytes}
 \eIf{value $\leq 127$}{
-  \WRITE value in 8 unsigned bits\;
+  $\text{value} \rightarrow$ \WRITE 8 unsigned bits\;
 }{
   \uIf{value $\leq 2047$}{
     total bytes $\leftarrow 2$\;
@@ -1367,12 +1367,12 @@ sample_1 &\leftarrow \lfloor(((12 \times 2) + (-5 \bmod 2)) - -5) \div 2\rfloor 
     total bytes $\leftarrow 6$\;
   }
   shift $\leftarrow (total~bytes - 1) \times 6$\;
-  \WUNARY total bytes with stop bit 0\;
-  \WRITE $\lfloor \text{value} \div 2 ^ \text{shift} \rfloor$ in (7 - total bytes) unsigned bits\tcc*[r]{initial value}
+  $\text{total bytes} \rightarrow$ \WUNARY with stop bit 0\;
+  $\lfloor \text{value} \div 2 ^ \text{shift} \rfloor \rightarrow$ \WRITE (7 - total bytes) unsigned bits\tcc*[r]{initial value}
   shift $\leftarrow$ shift - 6\;
   \While{$shift \geq 0$}{
-    \WRITE 2 in 2 unsigned bits\tcc*[r]{continuation header}
-    \WRITE $(\lfloor \text{value} \div 2 ^ \text{shift} \rfloor \bmod 64)$ in 6 unsigned bits\tcc*[r]{continuation bits}
+    $2 \rightarrow$ \WRITE 2 unsigned bits\tcc*[r]{continuation header}
+    $\lfloor \text{value} \div 2 ^ \text{shift} \rfloor \bmod 64 \rightarrow$ \WRITE 6 unsigned bits\tcc*[r]{continuation bits}
     shift $\leftarrow$ shift - 6\;
   }
 }
@@ -1389,14 +1389,14 @@ For example, encoding the frame number 4228 in UTF-8:
 \begin{align*}
 \text{total bytes} &\leftarrow 3 \\
 \text{shift} &\leftarrow 12 \\
-& \textbf{write unary } 3 \text{ with stop bit 1} \\
-& \textbf{write } 1 \text{ in 4 unsigned bits} \\
+& 3 \rightarrow \textbf{write unary} \text{ with stop bit 1} \\
+& 1 \rightarrow \textbf{write} \text{ in 4 unsigned bits} \\
 \text{shift} &\leftarrow 12 - 6 = 6 \\
-& \textbf{write } 2 \text{ in 2 unsigned bits} \\
-& \textbf{write } 2 \text{ in 6 unsigned bits} \\
+& 2 \rightarrow \textbf{write} \text{ in 2 unsigned bits} \\
+& 2 \rightarrow \textbf{write} \text{ in 6 unsigned bits} \\
 \text{shift} &\leftarrow 6 - 6 = 0 \\
-& \textbf{write } 2 \text{ in 2 unsigned bits} \\
-& \textbf{write } 4 \text{ in 6 unsigned bits}
+& 2 \rightarrow \textbf{write} \text{ in 2 unsigned bits} \\
+& 4 \rightarrow \textbf{write} \text{ in 6 unsigned bits}
 \end{align*}
 
 \clearpage
@@ -1550,20 +1550,20 @@ where the \texttt{wasted} function is defined as:
 
 \subsection{Encoding a CONSTANT Subframe}
 \ALGORITHM{signed subframe sample, subframe's bits per sample}{a CONSTANT subframe}
-\WRITE 0 in 1 unsigned bit\tcc*[r]{pad}
-\WRITE 0 in 6 unsigned bits\tcc*[r]{subframe type}
-\WRITE 0 in 1 unsigned bit\tcc*[r]{no wasted BPS}
-\WRITE sample in (bits per sample) signed bits\;
+$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{pad}
+$0 \rightarrow$ \WRITE 6 unsigned bits\tcc*[r]{subframe type}
+$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{no wasted BPS}
+$\text{sample} \rightarrow$ \WRITE (bits per sample) signed bits\;
 \Return a CONSTANT subframe\;
 \EALGORITHM
 
 \subsection{Encoding a VERBATIM Subframe}
 \ALGORITHM{signed subframe samples, subframe's bits per sample}{a VERBATIM subframe}
-\WRITE 0 in 1 unsigned bit\tcc*[r]{pad}
-\WRITE 1 in 6 unsigned bits\tcc*[r]{subframe type}
-\WRITE 0 in 1 unsigned bit\tcc*[r]{no wasted BPS}
+$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{pad}
+$1 \rightarrow$ \WRITE 6 unsigned bits\tcc*[r]{subframe type}
+$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{no wasted BPS}
 \ForEach{sample \IN subframe samples}{
-  \WRITE sample in (bits per sample) signed bits\;
+  $\text{sample} \rightarrow$ \WRITE (bits per sample) signed bits\;
 }
 \Return a VERBATIM subframe\;
 \EALGORITHM
@@ -1592,17 +1592,17 @@ use subframe order 0\;
 }
 \BlankLine
 \tcc{then return a FIXED subframe with that order}
-\WRITE 0 in 1 unsigned bit\tcc*[r]{pad}
-\WRITE 1 in 3 unsigned bits\tcc*[r]{subframe type}
-\WRITE subframe order in 3 unsigned bits\;
+$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{pad}
+$1 \rightarrow$ \WRITE 3 unsigned bits\tcc*[r]{subframe type}
+$\text{subframe order} \rightarrow$ \WRITE 3 unsigned bits\;
 \eIf{$wasted~BPS > 0$}{
-  \WRITE 1 in 1 unsigned bit\;
-  \WUNARY (wasted BPS - 1) with stop bit 1\;
+  $1 \rightarrow$ \WRITE 1 unsigned bit\;
+  $\text{wasted BPS} - 1 \rightarrow$ \WUNARY with stop bit 1\;
 }{
-  \WRITE 0 in 1 unsigned bit\;
+  $0 \rightarrow$ \WRITE 1 unsigned bit\;
 }
 \For(\tcc*[f]{warm-up samples}){i = 0 \emph{\KwTo}subframe order}{
-  \WRITE $sample_i$ in (bits per sample) signed bits\;
+  $sample_i \rightarrow$ \WRITE (bits per sample) signed bits\;
 }
 write encoded residual block based on $residual_{order}$'s signed values\;
 \EALGORITHM
@@ -1658,6 +1658,7 @@ used when calculating the best FIXED subframe order.
 \SetKwData{BSIZE}{best size}
 \SetKwData{PARTITION}{partition}
 \SetKwFunction{LEN}{len}
+\SetKwData{RICE}{rice}
 \tcc{calculate best partition order and Rice parameters for that order}
 \BPORDER $\leftarrow 0$\tcc*[r]{best partition order}
 \BSIZE $\leftarrow$ maximum integer\tcc*[r]{total size of best partition order}
@@ -1685,20 +1686,20 @@ used when calculating the best FIXED subframe order.
 }
 \BlankLine
 \tcc{write best residual partition(s) to residual block}
-\eIf{any $Rice_{\BPORDER} > 14$}{
+\eIf{any $\text{\RICE}_{\BPORDER} > 14$}{
   coding method $\leftarrow 1$\;
 }{
   coding method $\leftarrow 0$\;
 }
-\WRITE coding method in 2 unsigned bits\;
-\WRITE \BPORDER in 4 unsigned bits\;
+$\text{coding method} \rightarrow$ \WRITE 2 unsigned bits\;
+$\BPORDER \rightarrow$ \WRITE 4 unsigned bits\;
 \For{p = 0 \emph{\KwTo}$2 ^ {\BPORDER}$} {
   \eIf{coding method = 0}{
-    \WRITE $Rice_{\BPORDER~p}$ in 4 unsigned bits\;
+    $\text{\RICE}_{(\BPORDER)~p} \rightarrow$ \WRITE 4 unsigned bits\;
   }{
-    \WRITE $Rice_{\BPORDER~p}$ in 5 unsigned bits\;
+    $\text{\RICE}_{(\BPORDER)~p} \rightarrow$ \WRITE 5 unsigned bits\;
   }
-  encode residuals from $partition_{\BPORDER~p}$ with $Rice_{\BPORDER~p}$\;
+  encode residuals from $partition_{\BPORDER~p}$ with $\text{\RICE}_{(\BPORDER)~p}$\;
 }
 \Return encoded residual block\;
 \EALGORITHM
@@ -1754,8 +1755,8 @@ $\PARAMETER \leftarrow 0$\;
   }
   MSB $\leftarrow \lfloor unsigned \div 2 ^ \text{Rice parameter} \rfloor$\;
   LSB $\leftarrow unsigned - (\text{MSB} \times 2 ^ \text{Rice parameter})$\;
-  \WUNARY MSB with stop bit 1\;
-  \WRITE LSB in (Rice parameter) unsigned bits\;
+  $\text{MSB} \rightarrow$ \WUNARY with stop bit 1\;
+  $\text{LSB} \rightarrow$ \WRITE (Rice parameter) unsigned bits\;
 }
 \Return encoded partition\;
 \EALGORITHM
@@ -2231,22 +2232,22 @@ and are also used to calculate its residuals.
 
 \subsection{Encoding an LPC Subframe}
 \ALGORITHM{signed subframe samples, subframe order, QLP coefficients, QLP precision, QLP shift needed, subframe's bits per sample, wasted BPS}{an LPC subframe}
-\WRITE 0 in 1 unsigned bit\tcc*[r]{pad}
-\WRITE 1 in 1 unsigned bit\tcc*[r]{subframe type}
-\WRITE (subframe order - 1) in 5 unsigned bits\;
+$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{pad}
+$1 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{subframe type}
+$(\text{subframe order} - 1) \rightarrow$ \WRITE 5 unsigned bits\;
 \eIf{$wasted~BPS > 0$}{
-  \WRITE 1 in 1 unsigned bit\;
-  \WUNARY (wasted BPS - 1) with stop bit 1\;
+  $1 \rightarrow$ \WRITE 1 unsigned bit\;
+  $\text{wasted BPS} - 1 \rightarrow$ \WUNARY with stop bit 1\;
 }{
-  \WRITE 0 in 1 unsigned bit\;
+  $0 \rightarrow$ \WRITE 1 unsigned bit\;
 }
 \For(\tcc*[f]{warm-up samples}){i = 0 \emph{\KwTo}subframe order}{
-  \WRITE $sample_i$ in (bits per sample) signed bits\;
+  $sample_i \rightarrow$ \WRITE (bits per sample) signed bits\;
 }
-\WRITE (QLP precision - 1) in 4 unsigned bits\;
-\WRITE QLP shift needed in 5 signed bits\;
+$\text{QLP precision} - 1 \rightarrow$ \WRITE 4 unsigned bits\;
+$\text{QLP shift needed} \rightarrow$ \WRITE 5 signed bits\;
 \For(\tcc*[f]{QLP coefficients}){i = 0 \emph{\KwTo}subframe order}{
-  \WRITE $\text{QLP coefficient}_i$ in (QLP precision) signed bits\;
+  $\text{QLP coefficient}_i \rightarrow$ \WRITE (QLP precision) signed bits\;
 }
 \BlankLine
 \For(\tcc*[f]{calculate signed residuals}){i = 0 \emph{\KwTo}sample count - order}{

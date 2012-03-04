@@ -729,8 +729,8 @@ functions:
 \SetKwData{LSB}{LSB}
 $\text{\MSB} \leftarrow \lfloor\text{\VALUE} \div 2 ^ c\rfloor$\;
 $\text{\LSB} \leftarrow \text{\VALUE} - \text{\MSB} \times 2 ^ c$\;
-\WUNARY \MSB with stop bit 1\;
-\WRITE \LSB in $c$ unsigned bits\;
+$\MSB \rightarrow$ \WUNARY with stop bit 1\;
+$\LSB \rightarrow$ \WRITE $c$ unsigned bits\;
 \EALGORITHM
 
 \subsubsection{Writing \texttt{signed}}
@@ -842,8 +842,8 @@ $\text{\LSB} \leftarrow \text{\VALUE} - \text{\MSB} \times 2 ^ c$\;
   \SetKwData{SIGNEDNESS}{signedness}
   \SetKwData{CHANNELS}{channel count}
   \SetKwData{BLOCKSIZE}{block size}
-  \WRITE \texttt{"ajkg"} in 4 bytes\;
-  \WRITE 2 in 8 unsigned bits\;
+  $\texttt{"ajkg"} \rightarrow$ \WRITE 4 bytes\;
+  $2 \rightarrow$ \WRITE 8 unsigned bits\;
   \uIf{$\BITSPERSAMPLE = 8$}{
     \eIf{$\SIGNEDNESS = signed$}{
       write \texttt{long}(1)\tcc*[r]{signed, 8 bit}

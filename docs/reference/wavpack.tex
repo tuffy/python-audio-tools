@@ -3703,8 +3703,8 @@ $\text{channel}_0$ correlation passes
 \SetKwData{DELTA}{delta}
 \SetKwData{KwDownTo}{downto}
 \For(\tcc*[f]{populate in reverse order}){p = decorrelation pass count \emph{\KwDownTo}0}{
-  \WRITE ($\text{\TERM}_p + 5$) in 5 unsigned bits\;
-  \WRITE $\text{\DELTA}_p$ in 3 unsigned bits\;
+  $\text{\TERM}_p + 5 \rightarrow$ \WRITE 5 unsigned bits\;
+  $\text{\DELTA}_p \rightarrow$ \WRITE 3 unsigned bits\;
 }
 \Return decorrelation terms sub block data\;
 \EALGORITHM
@@ -3727,9 +3727,9 @@ the decorrelation terms subframe is written as:
 \SetKwFunction{STOREWEIGHT}{store\_weight}
 \SetKwData{KwDownTo}{downto}
 \For(\tcc*[f]{populate in reverse order}){p = decorrelation pass count \emph{\KwDownTo}0}{
-  \WRITE $\texttt{\STOREWEIGHT}(\text{\WEIGHT}_{p~0})$ in 8 signed bits\;
+  $\texttt{\STOREWEIGHT}(\text{\WEIGHT}_{p~0}) \rightarrow$ \WRITE 8 signed bits\;
   \If{$\text{channel count} = 2$}{
-    \WRITE $\texttt{\STOREWEIGHT}(\text{\WEIGHT}_{p~1})$ in 8 signed bits\;
+    $\texttt{\STOREWEIGHT}(\text{\WEIGHT}_{p~1}) \rightarrow$ \WRITE 8 signed bits\;
   }
 }
 \Return decorrelation weights sub block data\;
@@ -3766,31 +3766,31 @@ the decorrelation weights subframe is written as:
 \eIf{$\text{channel count} = 2$}{
   \For{p = decorrelation pass count \emph{\KwDownTo}0}{
     \uIf{$17 \leq \text{\TERM}_p \leq 18$}{
-      \WRITE $\WVLOG(\text{\SAMPLE}_{p~0~0})$ in 16 signed bits\;
-      \WRITE $\WVLOG(\text{\SAMPLE}_{p~0~1})$ in 16 signed bits\;
-      \WRITE $\WVLOG(\text{\SAMPLE}_{p~1~0})$ in 16 signed bits\;
-      \WRITE $\WVLOG(\text{\SAMPLE}_{p~1~1})$ in 16 signed bits\;
+      $\WVLOG(\text{\SAMPLE}_{p~0~0}) \rightarrow$ \WRITE 16 signed bits\;
+      $\WVLOG(\text{\SAMPLE}_{p~0~1}) \rightarrow$ \WRITE 16 signed bits\;
+      $\WVLOG(\text{\SAMPLE}_{p~1~0}) \rightarrow$ \WRITE 16 signed bits\;
+      $\WVLOG(\text{\SAMPLE}_{p~1~1}) \rightarrow$ \WRITE 16 signed bits\;
     }
     \uElseIf{$1 \leq \text{\TERM}_p \leq 8$}{
       \For{s = 0 \emph{\KwTo}$\text{\TERM}_p$}{
-        \WRITE $\WVLOG(\text{\SAMPLE}_{p~0~s})$ in 16 signed bits\;
-        \WRITE $\WVLOG(\text{\SAMPLE}_{p~1~s})$ in 16 signed bits\;
+        $\WVLOG(\text{\SAMPLE}_{p~0~s}) \rightarrow$ \WRITE 16 signed bits\;
+        $\WVLOG(\text{\SAMPLE}_{p~1~s}) \rightarrow$ \WRITE 16 signed bits\;
       }
     }
     \ElseIf{$-3 \leq \text{\TERM}_p \leq -1$}{
-      \WRITE $\WVLOG(\text{\SAMPLE}_{p~0~0})$ in 16 signed bits\;
-      \WRITE $\WVLOG(\text{\SAMPLE}_{p~1~0})$ in 16 signed bits\;
+      $\WVLOG(\text{\SAMPLE}_{p~0~0}) \rightarrow$ \WRITE 16 signed bits\;
+      $\WVLOG(\text{\SAMPLE}_{p~1~0}) \rightarrow$ \WRITE 16 signed bits\;
     }
   }
 }{
   \For{p = decorrelation pass count \emph{\KwDownTo}0}{
     \uIf{$17 \leq \text{\TERM}_p \leq 18$}{
-      \WRITE $\WVLOG(\text{\SAMPLE}_{p~0~0})$ in 16 signed bits\;
-      \WRITE $\WVLOG(\text{\SAMPLE}_{p~0~1})$ in 16 signed bits\;
+      $\WVLOG(\text{\SAMPLE}_{p~0~0}) \rightarrow$ \WRITE 16 signed bits\;
+      $\WVLOG(\text{\SAMPLE}_{p~0~1}) \rightarrow$ \WRITE 16 signed bits\;
     }
     \ElseIf{$1 \leq \text{\TERM}_p \leq 8$}{
       \For{s = 0 \emph{\KwTo}$\text{\TERM}_p$}{
-        \WRITE $\WVLOG(\text{\SAMPLE}_{p~0~s})$ in 16 signed bits\;
+        $\WVLOG(\text{\SAMPLE}_{p~0~s}) \rightarrow$ \WRITE 16 signed bits\;
       }
     }
   }
@@ -4072,11 +4072,11 @@ $u_{i - 1} \leftarrow \FLUSH(u_{i - 2}~,~\text{\ZEROES}_{i - 1}~,~m_{i - 1}~,~\t
   \subsubsection{Writing Modified Elias Gamma Code}
   \ALGORITHM{a non-negative integer value}{an encoded value}
   \eIf{$v \leq 1$}{
-    \WUNARY $v$ with stop bit 0\;
+    $v \rightarrow$ \WUNARY with stop bit 0\;
   }{
     $t \leftarrow \lfloor\log_2(v)\rfloor + 1$\;
-    \WUNARY $t$ with stop bit 0\;
-    \WRITE $v \bmod 2 ^ {t - 1}$ in ($t - 1$) unsigned bits\;
+    $t \rightarrow$ \WUNARY with stop bit 0\;
+    $v \bmod 2 ^ {t - 1} \rightarrow$ \WRITE $(t - 1)$ unsigned bits\;
   }
   \Return encoded value\;
   \EALGORITHM
@@ -4133,10 +4133,10 @@ $u_{i - 1} \leftarrow \FLUSH(u_{i - 2}~,~\text{\ZEROES}_{i - 1}~,~m_{i - 1}~,~\t
     \tcc{write $\text{residual}_{i - 1}$ to disk using $\text{unary}_{i - 1}$}
     \If{$u_{i - 1} \neq \UNDEFINED$}{
       \eIf{$u_{i - 1} < 16$}{
-        \WUNARY $u_{i - 1}$ with stop bit 0\;
+        $u_{i - 1} \rightarrow$ \WUNARY with stop bit 0\;
       }{
-        \WUNARY 16 with stop bit 0\;
-        write $(u_{i - 1} - 16)$ in modified Elias gamma code\;
+        $16 \rightarrow$ \WUNARY with stop bit 0\;
+        $u_{i - 1} - 16 \rightarrow$ write in modified Elias gamma code\;
       }
     }
     \If{$\text{\ADD}_{i - 1} > 0$}{
@@ -4144,15 +4144,15 @@ $u_{i - 1} \leftarrow \FLUSH(u_{i - 2}~,~\text{\ZEROES}_{i - 1}~,~m_{i - 1}~,~\t
       $e \leftarrow 2 ^ {p + 1} - \text{\ADD}_{i - 1} - 1$\;
       \eIf{$\text{\OFFSET}_{i - 1} < e$}{
         $r \leftarrow \text{\OFFSET}_{i - 1}$\;
-        \WRITE $r$ in $p$ unsigned bits\;
+        $r \rightarrow$ \WRITE $p$ unsigned bits\;
       }{
         $r \leftarrow \lfloor(\text{\OFFSET}_{i - 1} + e) \div 2\rfloor$\;
         $b \leftarrow (\text{\OFFSET}_{i - 1} + e) \bmod 2$\;
-        \WRITE $r$ in $p$ unsigned bits\;
-        \WRITE $b$ in 1 unsigned bit\;
+        $r \rightarrow$ \WRITE $p$ unsigned bits\;
+        $b \rightarrow$ \WRITE 1 unsigned bit\;
       }
     }
-    \WRITE $\text{\SIGN}_{i - 1}$ in 1 unsigned bit\;
+    $\text{\SIGN}_{i - 1} \rightarrow$ \WRITE 1 unsigned bit\;
   }{
     $u_{i - 1} \leftarrow \text{\UNDEFINED}$\;
   }
@@ -4514,19 +4514,19 @@ and $u_{25}$ can be calculated from $u_{24}$ and $m_{26}$.
 \ALGORITHM{metadata function, nondecoder data flag, sub block data}{sub block header data}
 \SetKwData{DATA}{sub block data}
 \SetKwFunction{LEN}{len}
-\WRITE metadata function in 5 unsigned bits\;
-\WRITE nondecoder data in 1 unsigned bit\;
-\WRITE $(\LEN(\text{\DATA}) \bmod 2)$ in 1 unsigned bit\tcc*[r]{actual size 1 less}
+$\text{metadata function} \rightarrow$ \WRITE 5 unsigned bits\;
+$\text{nondecoder data} \rightarrow$ \WRITE 1 unsigned bit\;
+$\LEN(\text{\DATA}) \bmod 2 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{actual size 1 less}
 \eIf(\tcc*[f]{large block}){$\LEN(\text{\DATA}) > 255 \times 2$}{
-  \WRITE 1 in 1 unsigned bit\;
-  \WRITE $\lceil\LEN(\text{\DATA}) \div 2\rceil$ in 24 unsigned bits\;
+  $1 \rightarrow$ \WRITE 1 unsigned bit\;
+  $\lceil\LEN(\text{\DATA}) \div 2\rceil \rightarrow$ \WRITE 24 unsigned bits\;
 }{
-  \WRITE 0 in 1 unsigned bit\;
-  \WRITE  $\lceil\LEN(\text{\DATA}) \div 2\rceil$ in 8 unsigned bits\;
+  $0 \rightarrow$ \WRITE 1 unsigned bit\;
+  $\lceil\LEN(\text{\DATA}) \div 2\rceil \rightarrow$ \WRITE 8 unsigned bits\;
 }
 write \DATA\;
 \If{$\LEN(\text{\DATA}) \bmod 2 = 1$}{
-  \WRITE 0 in 8 unsigned bits\;
+  $0 \rightarrow$ \WRITE 8 unsigned bits\;
 }
 \EALGORITHM
 }
@@ -4552,41 +4552,41 @@ write \DATA\;
 \SetKwData{FINALBLOCK}{final block}
 \SetKwData{MAXMAGNITUDE}{maximum magnitude}
 \SetKwData{FALSESTEREO}{false stereo}
-\WRITE \texttt{"wvpk"} in 4 bytes\;
-\WRITE (\SUBBLOCKSSIZE + 24) in 32 unsigned bits\;
-\WRITE \texttt{0x0410} in 16 unsigned bits\tcc*[r]{version}
-\WRITE 0 in 8 unsigned bits\tcc*[r]{track number}
-\WRITE 0 in 8 unsigned bits\tcc*[r]{index number}
-\WRITE \texttt{0xFFFFFFFF} in 32 unsigned bits\tcc*[r]{total samples placeholder}
-\WRITE \BLOCKINDEX in 32 unsigned bits\;
-\WRITE \BLOCKSAMPLES in 32 unsigned bits\;
-\WRITE $(\text{\BITSPERSAMPLE} \div 8 - 1)$ in 2 unsigned bits\;
-\WRITE $(2 - \text{\CHANNELCOUNT})$ in 1 unsigned bit\;
-\WRITE 0 in 1 unsigned bit\tcc*[r]{hybrid mode}
+$\texttt{"wvpk"} \rightarrow$ \WRITE 4 bytes\;
+$\SUBBLOCKSSIZE + 24 \rightarrow$ \WRITE 32 unsigned bits\;
+$\texttt{0x0410} \rightarrow$ \WRITE 16 unsigned bits\tcc*[r]{version}
+$0 \rightarrow$ \WRITE 8 unsigned bits\tcc*[r]{track number}
+$0 \rightarrow$ \WRITE 8 unsigned bits\tcc*[r]{index number}
+$\texttt{0xFFFFFFFF} \rightarrow$ \WRITE 32 unsigned bits\tcc*[r]{total samples placeholder}
+$\BLOCKINDEX \rightarrow$ \WRITE 32 unsigned bits\;
+$\BLOCKSAMPLES \rightarrow$ \WRITE 32 unsigned bits\;
+$\text{\BITSPERSAMPLE} \div 8 - 1 \rightarrow$ \WRITE 2 unsigned bits\;
+$2 - \text{\CHANNELCOUNT} \rightarrow$ \WRITE 1 unsigned bit\;
+$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{hybrid mode}
 \eIf(\tcc*[f]{joint stereo}){$\text{\CHANNELCOUNT} = 2$}{
-  \WRITE 1 in 1 unsigned bit
+  $1 \rightarrow$ \WRITE 1 unsigned bit
 }{
-  \WRITE 0 in 1 unsigned bit
+  $0 \rightarrow$ \WRITE 1 unsigned bit
 }
 \eIf(\tcc*[f]{cross channel decorrelation}){$\text{\PASSES} > 5$}{
-  \WRITE 1 in 1 unsigned bit\;
+  $1 \rightarrow$ \WRITE 1 unsigned bit\;
 }{
-  \WRITE 0 in 1 unsigned bit\;
+  $0 \rightarrow$ \WRITE 1 unsigned bit\;
 }
-\WRITE 0 in 1 unsigned bit\tcc*[r]{hybrid noise shaping}
-\WRITE 0 in 1 unsigned bit\tcc*[r]{floating point data}
+$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{hybrid noise shaping}
+$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{floating point data}
 \eIf(\tcc*[f]{extended size integers}){$\WASTEDBPS > 0$}{
-  \WRITE 1 in 1 unsigned bit\;
+  $1 \rightarrow$ \WRITE 1 unsigned bit\;
 }{
-  \WRITE 0 in 1 unsigned bit\;
+  $0 \rightarrow$ \WRITE 1 unsigned bit\;
 }
-\WRITE 0 in 1 unsigned bit\tcc*[r]{hybrid controls bitrate}
-\WRITE 0 in 1 unsigned bit\tcc*[r]{hybrid noise balanced}
-\WRITE \INITIALBLOCK in 1 unsigned bit\;
-\WRITE \FINALBLOCK in 1 unsigned bit\;
-\WRITE 0 in 5 unsigned bits\tcc*[r]{left shift data}
-\WRITE \MAXMAGNITUDE in 5 unsigned bits\;
-\WRITE \textit{encoded sample rate} in 4 unsigned bits\;
+$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{hybrid controls bitrate}
+$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{hybrid noise balanced}
+$\INITIALBLOCK \rightarrow$ \WRITE 1 unsigned bit\;
+$\FINALBLOCK \rightarrow$ \WRITE 1 unsigned bit\;
+$0 \rightarrow$ \WRITE 5 unsigned bits\tcc*[r]{left shift data}
+$\MAXMAGNITUDE \rightarrow$ \WRITE 5 unsigned bits\;
+$\textit{encoded sample rate} \rightarrow$ \WRITE 4 unsigned bits\;
 \begin{tabular}{rr|rr|rr}
   sample rate & \textit{encoded} &
   sample rate & \textit{encoded} &
@@ -4609,10 +4609,10 @@ write \DATA\;
   otherwise & \texttt{15} \\
   16000 Hz & \texttt{5} \\
 \end{tabular} \\
-\WRITE 0 in 2 unsigned bits\tcc*[r]{reserved}
-\WRITE 0 in 1 unsigned bit\tcc*[r]{use IIR}
-\WRITE \FALSESTEREO in 1 unsigned bit\tcc*[r]{if $\text{channel}_0 = \text{channel}_1$}
-\WRITE 0 in 1 unsigned bit\tcc*[r]{reserved}
-\WRITE CRC in 32 unsigned bits\;
+$0 \rightarrow$ \WRITE 2 unsigned bits\tcc*[r]{reserved}
+$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{use IIR}
+$\FALSESTEREO \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{if $\text{channel}_0 = \text{channel}_1$}
+$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{reserved}
+$CRC \rightarrow$ \WRITE 32 unsigned bits\;
 \EALGORITHM
 }

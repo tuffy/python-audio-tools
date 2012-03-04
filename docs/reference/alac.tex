@@ -1315,8 +1315,8 @@ maximum interlacing leftweight & 4 \\
 \end{tabular}
 }{an encoded \texttt{mdat} atom}
 \SetKwData{BLOCKSIZE}{block size}
-\WRITE 0 in 32 unsigned bits\tcc*[r]{placeholder length}
-\WRITE \texttt{"mdat"} in 4 bytes\;
+$0 \rightarrow$ \WRITE 32 unsigned bits\tcc*[r]{placeholder length}
+$\texttt{"mdat"} \rightarrow$ \WRITE 4 bytes\;
 \While{PCM frames remain}{
   take \BLOCKSIZE PCM frames from the input\;
   write PCM frames to frameset\;
@@ -1375,7 +1375,7 @@ return to start of \texttt{mdat} atom and write actual length\;
     encode left surround,right surround as 1 channel frame\;
     encode LFE as 1 channel frame\;
   }
-  \WRITE 7 in 3 unsigned bits\;
+  $7 \rightarrow$ \WRITE 3 unsigned bits\;
   byte align output stream\;
 }
 \Return encoded frameset\;
@@ -1406,7 +1406,7 @@ channels & assignment \\
 \SetKwData{UNCOMPRESSED}{uncompressed frame}
 \SetKwData{BPS}{bits per sample}
 \SetKwFunction{LEN}{len}
-\WRITE ($\CHANCOUNT - 1$) in 3 unsigned bits\;
+$\CHANCOUNT - 1 \rightarrow$ \WRITE 3 unsigned bits\;
 \eIf{$\text{\PCMCOUNT} \geq 10$}{
   \COMPRESSED $\leftarrow $ encode channels as compressed frame\;
   \uIf{residual overflow occured}{
@@ -1429,20 +1429,20 @@ channels & assignment \\
 \SetKwData{CHANCOUNT}{channel count}
 \SetKwData{BLOCKSIZE}{block size}
 \SetKwData{BPS}{bits per sample}
-\WRITE 0 in 16 unsigned bits\tcc*[r]{unused}
+$0 \rightarrow$ \WRITE 16 unsigned bits\tcc*[r]{unused}
 \eIf{$\text{\PCMCOUNT} = \text{encoding parameter's \BLOCKSIZE}$}{
-  \WRITE 0 in 1 unsigned bit\;
+  $0 \rightarrow$ \WRITE 1 unsigned bit\;
 }{
-  \WRITE 1 in 1 unsigned bit\;
+  $1 \rightarrow$ \WRITE 1 unsigned bit\;
 }
-\WRITE 0 in 2 unsigned bits\tcc*[r]{uncompressed LSBs}
-\WRITE 1 in 1 unsigned bit\tcc*[r]{not compressed}
+$0 \rightarrow$ \WRITE 2 unsigned bits\tcc*[r]{uncompressed LSBs}
+$1 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{not compressed}
 \If{$\text{\PCMCOUNT} \neq \text{encoding parameter's \BLOCKSIZE}$}{
-  \WRITE (\PCMCOUNT) in 32 unsigned bits\;
+  $\PCMCOUNT \rightarrow$ \WRITE 32 unsigned bits\;
 }
 \For{i = 0 \emph{\KwTo}\PCMCOUNT}{
   \For{c = 0 \emph{\KwTo}\CHANCOUNT}{
-      \WRITE $\text{Channel}_{c~i}$ in \BPS signed bits\;
+    $\text{Channel}_{c~i} \rightarrow$ \WRITE (\BPS) signed bits\;
   }
 }
 \Return uncompressed frame\;
@@ -1487,25 +1487,25 @@ channels & assignment \\
 \SetKwData{BLOCKSIZE}{block size}
 \SetKwData{BPS}{bits per sample}
 \SetKwData{SAMPLESIZE}{sample size}
-\WRITE 0 in 16 unsigned bits\tcc*[r]{unusued}
+$0 \rightarrow$ \WRITE 16 unsigned bits\tcc*[r]{unusued}
 \eIf{$\text{\PCMCOUNT} \neq \text{encoding parameter's \BLOCKSIZE}$}{
-  \WRITE 1 in 1 unsigned bit\;
+  $1 \rightarrow$ \WRITE 1 unsigned bit\;
 }{
-  \WRITE 0 in 1 unsigned bit\;
+  $0 \rightarrow$ \WRITE 1 unsigned bit\;
 }
-\WRITE uncompressed LSBs in 2 unsigned bits\;
-\WRITE 0 in 1 unsigned bit\tcc*[r]{is compressed}
+$\text{uncompressed LSBs} \rightarrow$ \WRITE 2 unsigned bits\;
+$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{is compressed}
 \If{$\text{\PCMCOUNT} \neq \text{encoding parameter's \BLOCKSIZE}$}{
-  \WRITE (\PCMCOUNT) in 32 unsigned bits\;
+  $\PCMCOUNT \rightarrow$ \WRITE 32 unsigned bits\;
 }
-\WRITE 0 in 8 unsigned bits\tcc*[r]{interlacing shift}
-\WRITE 0 in 8 unsigned bits\tcc*[r]{interlacing leftweight}
+$0 \rightarrow$ \WRITE 8 unsigned bits\tcc*[r]{interlacing shift}
+$0 \rightarrow$ \WRITE 8 unsigned bits\tcc*[r]{interlacing leftweight}
 \SAMPLESIZE $\leftarrow \text{\BPS} - (\text{uncompressed LSBs} \times 8)$\;
 compute $\text{QLP coefficients}_0$ and $\text{Residual}_0$ for $\text{Channel}_0$ with \SAMPLESIZE\;
 write subframe header with $\text{QLP coefficients}_0$\;
 \If{$\text{uncompressed LSBs} > 0$}{
   \For{i = 0 \emph{\KwTo}\PCMCOUNT}{
-    \WRITE $\text{LSB}_i$ in $(\text{uncompressed LSBs} \times 8)$ unsigned bits\;
+    $\text{LSB}_i \rightarrow$ \WRITE $(\text{uncompressed LSBs} \times 8)$ unsigned bits\;
   }
 }
 write residual block $\text{Residual}_0$\;
@@ -1524,19 +1524,19 @@ write residual block $\text{Residual}_0$\;
 \SetKwData{BLOCKSIZE}{block size}
 \SetKwData{BPS}{bits per sample}
 \SetKwData{SAMPLESIZE}{sample size}
-\WRITE 0 in 16 unsigned bits\tcc*[r]{unusued}
+$0 \rightarrow$ \WRITE 16 unsigned bits\tcc*[r]{unusued}
 \eIf{$\text{\PCMCOUNT} \neq \text{encoding parameter's \BLOCKSIZE}$}{
-  \WRITE 1 in 1 unsigned bit\;
+  $1 \rightarrow$ \WRITE 1 unsigned bit\;
 }{
-  \WRITE 0 in 1 unsigned bit\;
+  $0 \rightarrow$ \WRITE 1 unsigned bit\;
 }
-\WRITE uncompressed LSBs in 2 unsigned bits\;
-\WRITE 0 in 1 unsigned bit\tcc*[r]{is compressed}
+$\text{uncompressed LSBs} \rightarrow$ \WRITE 2 unsigned bits\;
+$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{is compressed}
 \If{$\text{\PCMCOUNT} \neq \text{encoding parameter's \BLOCKSIZE}$}{
-  \WRITE (\PCMCOUNT) in 32 unsigned bits\;
+  $\text{\PCMCOUNT} \rightarrow$ \WRITE 32 unsigned bits\;
 }
-\WRITE interlacing shift in 8 unsigned bits\;
-\WRITE interlacing leftweight in 8 unsigned bits\;
+$\text{interlacing shift} \rightarrow$ \WRITE 8 unsigned bits\;
+$\text{interlacing leftweight} \rightarrow$ \WRITE 8 unsigned bits\;
 correlate $\text{Channel}_0$,$\text{Channel}_1$ to $\text{Correlated}_0$,$\text{Correlated}_1$ with interlacing shift and leftweight\;
 \SAMPLESIZE $\leftarrow \text{\BPS} - (\text{uncompressed LSBs} \times 8) + 1$\;
 compute $\text{QLP Coefficients}_0$ and $\text{Residual}_0$ for $\text{Correlated}_0$ with \SAMPLESIZE\;
@@ -1545,7 +1545,7 @@ write subframe header with $\text{QLP Coefficients}_0$\;
 write subframe header with $\text{QLP Coefficients}_1$\;
 \If{$\text{uncompressed LSBs} > 0$}{
   \For{i = 0 \emph{\KwTo}\PCMCOUNT}{
-    \WRITE $\text{LSB}_i$ in $(\text{uncompressed LSBs} \times 8)$ unsigned bits\;
+    $\text{LSB}_i \rightarrow$ \WRITE $(\text{uncompressed LSBs} \times 8)$ unsigned bits\;
   }
 }
 write residual block $\text{Residual}_0$\;
@@ -2106,15 +2106,15 @@ $i \leftarrow 0$\;
 $\MSB \leftarrow \text{unsigned} \div 2 ^ \kappa - 1$\;
 $\LSB \leftarrow \text{unsigned} \bmod~2 ^ \kappa - 1$\;
 \eIf{$\MSB > 8$}{
-  \WRITE \texttt{0x1FF} in 9 unsigned bits\;
-  \WRITE unsigned in (sample size) unsigned bits\;
+  $\texttt{0x1FF} \rightarrow$ \WRITE 9 unsigned bits\;
+  $\text{unsigned} \rightarrow$ \WRITE (sample size) unsigned bits\;
 }{
-  \WUNARY \MSB with stop bit 0\;
+  $\MSB \rightarrow$ \WUNARY with stop bit 0\;
   \If{$\kappa > 1$}{
     \eIf{$\LSB > 0$}{
-      \WRITE ($\LSB + 1$) in $\kappa$ unsigned bits\;
+      $\LSB + 1 \rightarrow$ \WRITE $\kappa$ unsigned bits\;
     }{
-      \WRITE 0 in ($\kappa - 1$) unsigned bits\;
+      $0 \rightarrow$ \WRITE $(\kappa - 1)$ unsigned bits\;
     }
   }
 }
@@ -2240,12 +2240,12 @@ $i$ & $\text{residual}_i$ & \text{unsigned}_i & \kappa & \text{MSB}_i & \text{LS
 
 \subsection{Writing Subframe Header}
 \ALGORITHM{4 or 8 signed QLP coefficients}{a subframe header}
-\WRITE 0 in 4 unsigned bits\tcc*[r]{prediction type}
-\WRITE 9 in 4 unsigned bits\tcc*[r]{QLP shift needed}
-\WRITE 4 in 3 unsigned bits\tcc*[r]{Rice modifier}
-\WRITE coefficient count in 5 unsigned bits\;
+$0 \rightarrow$ \WRITE 4 unsigned bits\tcc*[r]{prediction type}
+$9 \rightarrow$ \WRITE 4 unsigned bits\tcc*[r]{QLP shift needed}
+$4 \rightarrow$ \WRITE 3 unsigned bits\tcc*[r]{Rice modifier}
+$\text{coefficient count} \rightarrow$ \WRITE 5 unsigned bits\;
 \ForEach{QLP coefficient \IN QLP coefficients}{
-  \WRITE QLP coefficient in 16 signed bits\;
+  $\text{QLP coefficient} \rightarrow$ \WRITE 16 signed bits\;
 }
 \EALGORITHM
 \begin{figure}[h]
