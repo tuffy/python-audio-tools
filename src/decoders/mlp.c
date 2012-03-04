@@ -888,6 +888,7 @@ read_mlp_residual_data(BitstreamReader* bs,
         ;
 
     unsigned c;
+    unsigned m;
     unsigned i;
 
     /*calculate signed Huffman offset for each channel*/
@@ -920,29 +921,35 @@ read_mlp_residual_data(BitstreamReader* bs,
     /*reset residuals arrays*/
     residuals->reset(residuals);
 
-    for (i = 0; i <= max_channel; i++)
+    for (i = 0; i <= max_channel; i++) {
         /*residual channels 0 to "min_channel"
           will be initialized but not actually used*/
-        residuals->append(residuals);
+        array_i* channel = residuals->append(residuals);
+        channel->resize(channel, block_size);
+    }
+
+    /*resize bypassed_LSB arrays for additional values*/
+    for (m = 0; m < matrix_len; m++) {
+        array_i* bypassed_LSB = matrix[m].bypassed_LSB;
+        bypassed_LSB->resize(bypassed_LSB, bypassed_LSB->len + block_size);
+    }
 
     for (i = 0; i < block_size; i++) {
-        unsigned m;
-
         /*read bypassed LSBs for each matrix*/
         for (m = 0; m < matrix_len; m++) {
             array_i* bypassed_LSB = matrix[m].bypassed_LSB;
             if (matrix[m].LSB_bypass) {
-                bypassed_LSB->append(bypassed_LSB, bs->read(bs, 1));
+                a_append(bypassed_LSB, bs->read(bs, 1));
             } else {
-                bypassed_LSB->append(bypassed_LSB, 0);
+                a_append(bypassed_LSB, 0);
             }
         }
 
         /*read residuals for each channel*/
         for (c = min_channel; c <= max_channel; c++) {
             array_i* residual = residuals->_[c];
-            int MSB;
-            unsigned LSB;
+            register int MSB;
+            register unsigned LSB;
 
             switch (channel[c].codebook) {
             case 0:
@@ -966,10 +973,10 @@ read_mlp_residual_data(BitstreamReader* bs,
 
             LSB = bs->read(bs, LSB_bits[c]);
 
-            residual->append(residual,
-                             ((MSB << LSB_bits[c]) +
-                              LSB +
-                              signed_huffman_offset[c]) << quant_step_size[c]);
+            a_append(residual,
+                     ((MSB << LSB_bits[c]) +
+                      LSB +
+                      signed_huffman_offset[c]) << quant_step_size[c]);
         }
     }
 
@@ -993,6 +1000,10 @@ filter_mlp_channel(const array_i* residuals,
                    array_i* filtered)
 {
     const unsigned block_size = residuals->len;
+    array_i* FIR_state = FIR->state;
+    array_i* IIR_state = IIR->state;
+    array_i* FIR_coeff = FIR->coeff;
+    array_i* IIR_coeff = IIR->coeff;
     const int FIR_order = FIR->coeff->len;
     const int IIR_order = IIR->coeff->len;
     unsigned shift;
@@ -1010,38 +1021,38 @@ filter_mlp_channel(const array_i* residuals,
         shift = IIR->shift;
     }
 
+    /*ensure arrays have enough space so we can use a_append*/
+    FIR_state->resize(FIR_state, FIR_state->len + block_size);
+    IIR_state->resize(IIR_state, IIR_state->len + block_size);
     filtered->reset(filtered);
+    filtered->resize(filtered, block_size);
+
     for (i = 0; i < block_size; i++) {
-        int64_t sum = 0;
+        register int64_t sum = 0;
         int shifted_sum;
+        int value;
         int j;
         int k;
 
-        for (j = 0; j < FIR_order; j++) {
-            if ((i - j - 1) < 0) {
-                sum += ((int64_t)FIR->coeff->_[j] *
-                        (int64_t)FIR->state->_[8 + (i - j - 1)]);
-            } else {
-                sum += ((int64_t)FIR->coeff->_[j] *
-                        (int64_t)filtered->_[i - j - 1]);
-            }
-        }
+        for (j = 0; j < FIR_order; j++)
+            sum += (((int64_t)FIR_coeff->_[j] *
+                     (int64_t)FIR_state->_[FIR_state->len - j  - 1]));
 
-        for (k = 0; k < IIR_order; k++) {
-            sum += ((int64_t)IIR->coeff->_[k] *
-                    (int64_t)IIR->state->_[IIR->state->len - k - 1]);
-        }
+        for (k = 0; k < IIR_order; k++)
+            sum += ((int64_t)IIR_coeff->_[k] *
+                    (int64_t)IIR_state->_[IIR_state->len - k - 1]);
 
         shifted_sum = (int)(sum >> shift);
 
-        filtered->append(filtered,
-                         mask(shifted_sum + residuals->_[i], quant_step_size));
+        value = mask(shifted_sum + residuals->_[i], quant_step_size);
 
-        IIR->state->append(IIR->state, filtered->_[i] - shifted_sum);
+        a_append(filtered, value);
+        a_append(FIR_state, value);
+        a_append(IIR_state, filtered->_[i] - shifted_sum);
     }
 
-    filtered->tail(filtered, 8, FIR->state);
-    IIR->state->tail(IIR->state, 8, IIR->state);
+    FIR_state->tail(FIR_state, 8, FIR_state);
+    IIR_state->tail(IIR_state, 8, IIR_state);
 
     return OK;
 }
@@ -1061,14 +1072,16 @@ rematrix_mlp_channels(array_ia* channels,
     unsigned m;
 
     /*generate noise channels*/
-    for (i = 0; i < 2; i++)
-        noise->append(noise);
+    for (i = 0; i < 2; i++) {
+        array_i* channel = noise->append(noise);
+        channel->resize(channel, block_size);
+    }
     for (i = 0; i < block_size; i++) {
         const unsigned shifted = (*noise_gen_seed >> 7) & 0xFFFF;
-        noise->_[0]->append(noise->_[0],
-                            ((int8_t)(*noise_gen_seed >> 15)) << noise_shift);
-        noise->_[1]->append(noise->_[1],
-                            ((int8_t)(shifted)) << noise_shift);
+        a_append(noise->_[0],
+                 ((int8_t)(*noise_gen_seed >> 15)) << noise_shift);
+        a_append(noise->_[1],
+                 ((int8_t)(shifted)) << noise_shift);
         *noise_gen_seed = (((*noise_gen_seed << 16) & 0xFFFFFFFF) ^
                            shifted ^ (shifted << 5));
     }
@@ -1076,7 +1089,7 @@ rematrix_mlp_channels(array_ia* channels,
     /*perform channel rematrixing*/
     for (m = 0; m < matrix_count; m++) {
         for (i = 0; i < block_size; i++) {
-            int64_t sum = 0;
+            register int64_t sum = 0;
             unsigned c;
             for (c = 0; c <= max_matrix_channel; c++)
                 sum += ((int64_t)channels->_[c]->_[i] *

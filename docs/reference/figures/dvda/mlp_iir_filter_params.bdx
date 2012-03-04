@@ -1,12 +1,6 @@
 <?xml version="1.0" ?>
 <diagram>
   <row>
-    <col width=".25" style="blank"/>
-    <col width=".15" start="0" end="0">present</col>
-    <col width=".60" style="dashed" id="filter_params">Filter Parameters</col>
-  </row>
-  <spacer/>
-  <row>
     <col start="0" end="3" id="filter_params_s" width=".20">order</col>
   </row>
   <spacer height=".50"/>
@@ -41,12 +35,4 @@
     <col width=".2" start="0" end="state bits - 1">state₁</col>
     <col width=".2" start="0" end="state bits - 1">state₀</col>
   </row>
-  <line style="dotted">
-    <start id="filter_params" corner="sw"/>
-    <end id="filter_params_s" corner="nw"/>
-  </line>
-  <line style="dotted">
-    <start id="filter_params" corner="se"/>
-    <end id="filter_params_e" corner="ne"/>
-  </line>
 </diagram>

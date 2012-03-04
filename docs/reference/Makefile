@@ -179,7 +179,8 @@ figures/dvda/mlp_codebook3.pdf \
 figures/dvda/mlp_block_parse.pdf \
 figures/dvda/mlp_decoding_params.pdf \
 figures/dvda/mlp_decoding_params_parse.pdf \
-figures/dvda/mlp_filter_params.pdf \
+figures/dvda/mlp_iir_filter_params.pdf \
+figures/dvda/mlp_fir_filter_params.pdf \
 figures/dvda/mlp_matrix_params.pdf \
 figures/dvda/mlp_major_sync.pdf \
 figures/dvda/mlp_major_sync_parse.pdf \

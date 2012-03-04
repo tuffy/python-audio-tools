@@ -254,8 +254,8 @@ That is, a single MLP frame may span 2 or more AOB packets.
 & channel rematrixing \\
 \hline
 \hyperref[mlp:readchannelparams]{$\textbf{channel parameters}_{s~c}$}
-& \hyperref[mlp:readfilterparams]{$\textbf{FIR filter parameters}_{s~c}$} \\
-& \hyperref[mlp:readfilterparams]{$\textbf{IIR filter parameters}_{s~c}$} \\
+& \hyperref[mlp:readfirfilterparams]{$\textbf{FIR filter parameters}_{s~c}$} \\
+& \hyperref[mlp:readiirfilterparams]{$\textbf{IIR filter parameters}_{s~c}$} \\
 & $\textsf{Huffman offset}_{s~c}$
 & reading residuals \\
 & $\textsf{codebook}_{s~c}$
@@ -264,9 +264,11 @@ That is, a single MLP frame may span 2 or more AOB packets.
 & reading residuals \\
 \hline
 \hyperref[mlp:readfilterparams]{$\textbf{filter parameters}_{s~c}$}
+& $\textsf{order}_{s~c}$
+& channel filtering \\
 & $\textsf{shift}_{s~c}$
 & channel filtering \\
-& $\textsf{coefficients}_{s~c~i}$
+& $\textsf{coefficient}_{s~c~i}$
 & channel filtering \\
 & $\textsf{state}_{s~c~i}$
 & channel filtering \\
@@ -481,12 +483,12 @@ means both substreams will be followed by 8 bit parity and CRC-8 values.
 \SetKwData{BLOCK}{block}
 \SetKwData{OUTPUT}{output}
 \SetKwData{LAST}{last block}
-\Repeat{$\text{\LAST}_s = 1$}{
+$\text{\OUTPUT}_s \leftarrow$ decode block to 1 or more channels of PCM data\;
+$\text{\LAST} \leftarrow$ \READ 1 unsigned bit\;
+\While{$\text{\LAST} = 0$}{
   $\text{\BLOCK}_s \leftarrow$ decode block to 1 or more channels of PCM data\;
-  \For{c = $\text{\MINCHANNEL}_s$ \emph{\KwTo}$\text{\MAXCHANNEL}_s$}{
-    $\text{\OUTPUT}_{s~c} \leftarrow \text{\BLOCK}_{s~c}$ appended to $\text{\OUTPUT}_{s~c}$\;
-  }
-  $\text{\LAST}_s \leftarrow$ \READ 1 unsigned bit\;
+  $\text{\OUTPUT}_{s} \leftarrow \text{\BLOCK}_{s}$ appended to $\text{\OUTPUT}_{s}$ on a channel-by-channel basis\;
+  $\text{\LAST} \leftarrow$ \READ 1 unsigned bit\;
 }
 \BlankLine
 \Return $\text{\OUTPUT}_s$\;
@@ -754,76 +756,38 @@ Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor
     \SetKwFunction{LEN}{len}
     \For(\tcc*[f]{channel parameters}){c = $\text{\MINCHANNEL}_s$ \emph{\KwTo}$(\text{\MAXCHANNEL}_s + 1)$}{
       \uIf{$((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-        \uIf(\tcc*[f]{FIR filter parameters}){$(\text{\FLAG}_{s~3} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-          $\text{\FIRPARAMS}_{s~c} \leftarrow $ read FIR filter parameters\;
-        }
-        \uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
-          $\text{\FIRPARAMS}_{s~c} \leftarrow \left\lbrace\begin{tabular}{l}
-          $\text{\FIRORDER}_{s~c} \leftarrow 0$ \\
-          $\text{\FIRSHIFT}_{s~c} \leftarrow 0$\\
-          $\text{\FIRCOEFF}_{s~c} \leftarrow \texttt{[]}$
-\end{tabular}\right.
-$\;
-        }
-        \Else{
-          $\text{\FIRPARAMS}_{s~c} \leftarrow$ from previous block's corresponding channel in substream\;
-        }
-        \BlankLine
-        \uIf(\tcc*[f]{IIR filter paramters}){$(\text{\FLAG}_{s~2} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-          $\text{\IIRPARAMS}_{s~c} \leftarrow$ read IIR filter parameters\;
-        }
-        \uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
-          $\text{\IIRPARAMS}_{s~c} \leftarrow \left\lbrace\begin{tabular}{l}
-          $\text{\IIRORDER}_{s~c} \leftarrow 0$ \\
-          $\text{\IIRSHIFT}_{s~c} \leftarrow 0$\\
-          $\text{\IIRCOEFF}_{s~c} \leftarrow \texttt{[]}$ \\
-          $\text{\IIRSTATE}_{s~c} \leftarrow \texttt{[]}$
-          \end{tabular}\right.
-$\;
-        }
-        \Else{
-          $\text{\IIRPARAMS}_{s~c} \leftarrow$ from previous block's corresponding channel in substream\;
-        }
-        \BlankLine
-        \uIf(\tcc*[f]{Huffman offset}){$(\text{\FLAG}_{s~1} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-          $\text{\HUFFMANOFFSET}_{s~c} \leftarrow$ \READ 15 signed bits\;
-        }
-        \uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
-          $\text{\HUFFMANOFFSET}_{s~c} \leftarrow 0$\;
-        }
-        \Else{
-          $\text{\HUFFMANOFFSET}_{s~c} \leftarrow$ from previous block's corresponding channel in substream\;
-        }
-        $\text{\CODEBOOK}_{s~c} \leftarrow$ \READ 2 unsigned bits\;
-        $\text{\HUFFMANLSBS}_{s~c} \leftarrow$ \READ 5 unsigned bits\;
-        \ASSERT $\text{\HUFFMANLSBS}_{s~c} \leq 24$\;
+        $\text{\CHANNELPARAMS}_{s~c} \leftarrow $ read channel parameters\;
       }
       \uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
-        $\text{\FIRORDER}_{s~c} \leftarrow \text{\IIRORDER}_{s~c} \leftarrow 0$\;
-        $\text{\FIRSHIFT}_{s~c} \leftarrow \text{\IIRSHIFT}_{s~c} \leftarrow 0$\;
-        $\text{\FIRCOEFF}_{s~c} \leftarrow \text{\IIRCOEFF}_{s~c} \leftarrow \texttt{[]}$\;
-        $\text{\IIRSTATE}_{s~c} \leftarrow \texttt{[]}$\;
-        $\text{\HUFFMANOFFSET}_{s~c} \leftarrow 0$\;
-        $\text{\CODEBOOK}_{s~c} \leftarrow 0$\;
-        $\text{\HUFFMANLSBS}_{s~c} \leftarrow 23$\;
+        $\text{\CHANNELPARAMS}_{s~c} \leftarrow \left\lbrace\begin{tabular}{ll}
+        $\text{\FIRPARAMS}_{s~c} $ & $ \leftarrow \left\lbrace\begin{tabular}{ll}
+        $\text{\FIRORDER}_{s~c}$ & $\leftarrow 0$ \\
+        $\text{\FIRSHIFT}_{s~c}$ & $\leftarrow 0$ \\
+        $\text{\FIRCOEFF}_{s~c}$ & $\leftarrow \texttt{[]}$ \\
+\end{tabular}\right.$ \\
+        $\text{\IIRPARAMS}_{s~c} $ & $ \leftarrow \left\lbrace\begin{tabular}{ll}
+        $\text{\IIRORDER}_{s~c}$ & $\leftarrow 0$ \\
+        $\text{\IIRSHIFT}_{s~c}$ & $\leftarrow 0$ \\
+        $\text{\IIRCOEFF}_{s~c}$ & $\leftarrow \texttt{[]}$ \\
+        $\text{\IIRSTATE}_{s~c}$ & $\leftarrow \texttt{[]}$ \\
+\end{tabular}\right.$ \\
+        $\text{\HUFFMANOFFSET}_{s~c} $ & $ \leftarrow 0$ \\
+        $\text{\CODEBOOK}_{s~c} $ & $ \leftarrow 0$ \\
+        $\text{\HUFFMANLSBS}_{s~c} $ & $ \leftarrow 23$ \\
+\end{tabular}\right.$\;
       }
-      \Else{$\left.\begin{tabular}{r}
-          $\text{\FIRPARAMS}_{s~c}$ \\
-          $\text{\IIRPARAMS}_{s~c}$ \\
-          $\text{\HUFFMANOFFSET}_{s~c}$ \\
-          $\text{\CODEBOOK}_{s~c}$ \\
-          $\text{\HUFFMANLSBS}_{s~c}$
-        \end{tabular}\right\rbrace \leftarrow $ from previous block's corresponding channel in substream\;
+      \Else{
+        $\text{\CHANNELPARAMS}_{s~c} \leftarrow $ from previous block's corresponding channel in substream\;
       }
     }
-    \Return $\DECODINGPARAMETERS\left\lbrace\begin{tabular}{l}
-    \FLAG \\
-    \BLOCKSIZE \\
-    \MATRIXCOUNT \\
-    \MATRIX \\
-    \OUTPUTSHIFT \\
-    \QUANTSTEP \\
-    \CHANNELPARAMS \\
+    \Return $\text{\DECODINGPARAMETERS}_s\left\lbrace\begin{tabular}{l}
+    $\text{\FLAG}_s$ \\
+    $\text{\BLOCKSIZE}_s$ \\
+    $\text{\MATRIXCOUNT}_s$ \\
+    $\text{\MATRIX}_s$ \\
+    $\text{\OUTPUTSHIFT}_s$ \\
+    $\text{\QUANTSTEP}_s$ \\
+    $\text{\CHANNELPARAMS}_s$ \\
     \end{tabular}\right.$\;
   \end{algorithm}
 }
@@ -833,30 +797,35 @@ $\;
 \subsubsection{Reading Matrix Parameters}
 \label{mlp:readmatrixparams}
 {\relsize{-1}
-  \ALGORITHM{MLP substream data, max matrix channel}{matrix count, matrix out channels, LSB bypass values, matrix coefficients}
+  \ALGORITHM{MLP substream data, max matrix channel}{matrix parameters}
+  \SetKwData{MATRIXPARAMETERS}{matrix parameters}
   \SetKwData{MAXMATRIXCHANNEL}{max matrix channel}
-  \SetKwData{MATRIXCOUNT}{matrix count}
-  \SetKwData{MATRIXOUTCH}{matrix out channel}
+  \SetKwData{MATRIXOUTCH}{out channel}
   \SetKwData{FRACTIONALBITS}{fractional bits}
   \SetKwData{LSBBYPASS}{LSB bypass}
+  \SetKwData{BYPASSEDLSB}{bypassed LSB}
   \SetKwData{MATRIXCOEFF}{matrix coefficient}
-  $\text{\MATRIXCOUNT} \leftarrow$ \READ 4 unsigned bits\;
-  \For{m = 0 \emph{\KwTo}$\text{\MATRIXCOUNT}$}{
-    $\text{\MATRIXOUTCH}_{m} \leftarrow$ \READ 4 unsigned bits\;
-    \ASSERT $\text{\MATRIXOUTCH}_{m} \leq \text{\MAXMATRIXCHANNEL}_s$\;
-    $\text{\FRACTIONALBITS}_{m} \leftarrow$ \READ 4 unsigned bits\;
-    \ASSERT $\text{\FRACTIONALBITS}_{m} \leq 14$\;
-    $\text{\LSBBYPASS}_{m} \leftarrow$ \READ 1 unsigned bit\;
-    \For{c = 0 \emph{\KwTo}$(\text{\MAXMATRIXCHANNEL}_s + 3)$}{
-      \eIf{$((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-        $v_{m~c} \leftarrow $ \READ $(\text{\FRACTIONALBITS}_{m} + 2)$ signed bits\;
-        $\text{\MATRIXCOEFF}_{m~c} \leftarrow v_{m~c} \times 2 ^ {14 - \text{\FRACTIONALBITS}_m}$\;
-      }{
-        $\text{\MATRIXCOEFF}_{m~c} \leftarrow 0$\;
-      }
+  $\text{\MATRIXOUTCH}_{s~m} \leftarrow$ \READ 4 unsigned bits\;
+  \ASSERT $\text{\MATRIXOUTCH}_{s~m} \leq \text{\MAXMATRIXCHANNEL}_s$\;
+  $\text{\FRACTIONALBITS} \leftarrow$ \READ 4 unsigned bits\;
+  \ASSERT $\text{\FRACTIONALBITS} \leq 14$\;
+  $\text{\LSBBYPASS}_{s~m} \leftarrow$ \READ 1 unsigned bit\;
+  \For{c = 0 \emph{\KwTo}$(\text{\MAXMATRIXCHANNEL}_s + 3)$}{
+    \eIf{$((\READ~\textnormal{1 unsigned bit}) = 1)$}{
+      $v_{c} \leftarrow $ \READ $(\text{\FRACTIONALBITS} + 2)$ signed bits\;
+      $\text{\MATRIXCOEFF}_{s~m~c} \leftarrow v_{c} \times 2 ^ {14 - \text{\FRACTIONALBITS}}$\;
+    }{
+      $\text{\MATRIXCOEFF}_{s~m~c} \leftarrow 0$\;
     }
   }
-  \Return $(\text{\MATRIXCOUNT}~,~\text{\MATRIXOUTCH}~,~\text{\LSBBYPASS}~,~\text{\MATRIXCOEFF})$\;
+  $\text{\BYPASSEDLSB}_{s~m} \leftarrow \texttt{[]}$\tcc*[r]{populated by residual block}
+  \BlankLine
+  \Return $\text{\MATRIXPARAMETERS}_{s~m}\left\lbrace\begin{tabular}{l}
+  $\text{\MATRIXOUTCH}_{s~m}$ \\
+  $\text{\LSBBYPASS}_{s~m}$ \\
+  $\text{\MATRIXCOEFF}_{s~m}$ \\
+  $\text{\BYPASSEDLSB}_{s~m}$ \\
+  \end{tabular}\right.$\;
   \EALGORITHM
 }
 
@@ -866,10 +835,129 @@ $\;
 
 \clearpage
 
-\subsubsection{Reading Filter Parameters}
-\label{mlp:readfilterparams}
+\subsubsection{Reading Channel Parameters}
 {\relsize{-1}
-  \ALGORITHM{MLP substream data}{order, shift, coefficients, state values}
+\ALGORITHM{MLP substream data, restart header present, decoding parameter flags}{channel parameters}
+\SetKw{AND}{and}
+\SetKwData{CHANNELPARAMS}{channel parameters}
+\SetKwData{HEADERPRESENT}{restart header present}
+\SetKwData{FLAG}{flag}
+\SetKwData{FIRPARAMS}{FIR filter parameters}
+\SetKwData{FIRORDER}{FIR order}
+\SetKwData{FIRSHIFT}{FIR shift}
+\SetKwData{FIRCOEFF}{FIR coeff}
+\SetKwData{IIRPARAMS}{IIR filter parameters}
+\SetKwData{IIRORDER}{IIR order}
+\SetKwData{IIRSHIFT}{IIR shift}
+\SetKwData{IIRCOEFF}{IIR coeff}
+\SetKwData{IIRSTATE}{IIR state}
+\SetKwData{CODEBOOK}{codebook}
+\SetKwData{HUFFMANOFFSET}{Huffman offset}
+\SetKwData{HUFFMANLSBS}{Huffman LSBs}
+\uIf(\tcc*[f]{FIR filter parameters}){$(\text{\FLAG}_{s~3} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
+  $\text{\FIRPARAMS}_{s~c} \leftarrow $ read FIR filter parameters\;
+}
+\uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
+  $\text{\FIRPARAMS}_{s~c} \leftarrow \left\lbrace\begin{tabular}{l}
+  $\text{\FIRORDER}_{s~c} \leftarrow 0$ \\
+  $\text{\FIRSHIFT}_{s~c} \leftarrow 0$\\
+  $\text{\FIRCOEFF}_{s~c} \leftarrow \texttt{[]}$
+  \end{tabular}\right.
+  $\;
+}
+\Else{
+  $\text{\FIRPARAMS}_{s~c} \leftarrow$ from previous block's corresponding channel in substream\;
+}
+\BlankLine
+\uIf(\tcc*[f]{IIR filter paramters}){$(\text{\FLAG}_{s~2} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
+  $\text{\IIRPARAMS}_{s~c} \leftarrow$ read IIR filter parameters\;
+}
+\uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
+  $\text{\IIRPARAMS}_{s~c} \leftarrow \left\lbrace\begin{tabular}{l}
+  $\text{\IIRORDER}_{s~c} \leftarrow 0$ \\
+  $\text{\IIRSHIFT}_{s~c} \leftarrow 0$\\
+  $\text{\IIRCOEFF}_{s~c} \leftarrow \texttt{[]}$ \\
+  $\text{\IIRSTATE}_{s~c} \leftarrow \texttt{[]}$
+  \end{tabular}\right.
+  $\;
+}
+\Else{
+  $\text{\IIRPARAMS}_{s~c} \leftarrow$ from previous block's corresponding channel in substream\;
+}
+\BlankLine
+\uIf(\tcc*[f]{Huffman offset}){$(\text{\FLAG}_{s~1} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
+  $\text{\HUFFMANOFFSET}_{s~c} \leftarrow$ \READ 15 signed bits\;
+}
+\uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
+  $\text{\HUFFMANOFFSET}_{s~c} \leftarrow 0$\;
+}
+\Else{
+  $\text{\HUFFMANOFFSET}_{s~c} \leftarrow$ from previous block's corresponding channel in substream\;
+}
+$\text{\CODEBOOK}_{s~c} \leftarrow$ \READ 2 unsigned bits\;
+$\text{\HUFFMANLSBS}_{s~c} \leftarrow$ \READ 5 unsigned bits\;
+\ASSERT $\text{\HUFFMANLSBS}_{s~c} \leq 24$\;
+\Return $\text{\CHANNELPARAMS}_{s~m}\left\lbrace\begin{tabular}{l}
+$\text{\FIRPARAMS}_{s~m}$ \\
+$\text{\IIRPARAMS}_{s~m}$ \\
+$\text{\HUFFMANOFFSET}_{s~m}$ \\
+$\text{\CODEBOOK}_{s~m}$ \\
+$\text{\HUFFMANLSBS}_{s~m}$ \\
+\end{tabular}\right.$\;
+\EALGORITHM
+}
+
+\clearpage
+
+\subsubsection{Reading FIR Filter Parameters}
+\label{mlp:readfirfilterparams}
+{\relsize{-1}
+  \ALGORITHM{MLP substream data}{FIR filter parameters}
+  \SetKwData{ORDER}{order}
+  \SetKwData{SHIFT}{shift}
+  \SetKwData{COEFFBITS}{coeff bits}
+  \SetKwData{COEFFSHIFT}{coeff shift}
+  \SetKwData{COEFF}{coefficient}
+  \SetKwData{STATEBITS}{state bits}
+  \SetKwData{STATESHIFT}{state shift}
+  \SetKwData{FIRPARAMS}{FIR filter parameters}
+  $\text{\ORDER}_{s~c} \leftarrow$ \READ 4 unsigned bits\;
+  \ASSERT $\text{\ORDER}_{s~c} \leq 8$\;
+  \eIf{$\text{\ORDER}_{s~c} > 0$}{
+    $\text{\SHIFT}_{s~c} \leftarrow$ \READ 4 unsigned bits\;
+    $\text{\COEFFBITS} \leftarrow$ \READ 5 unsigned bits\;
+    \ASSERT $1 < \text{\COEFFBITS} < 16$\;
+    $\text{\COEFFSHIFT} \leftarrow$ \READ 3 unsigned bits\;
+    \ASSERT $(\text{\COEFFBITS} + \text{\COEFFSHIFT}) \leq 16$\;
+    \For{i = 0 \emph{\KwTo}$\text{\ORDER}_{s~c}$}{
+      $v_{i} \leftarrow$ \READ $(\text{\COEFFBITS})$ signed bits\;
+      $\text{\COEFF}_{s~c~i} \leftarrow v_{i} \times 2 ^ {\text{\COEFFSHIFT}}$\;
+    }
+    \ASSERT $(\READ~\textnormal{1 unsigned bit}) = 0$\;
+  }{
+    $\text{\SHIFT}_{s~c} \leftarrow 0$\;
+    $\text{\COEFF}_{s~c} \leftarrow \texttt{[]}$\;
+  }
+  \Return
+  $\text{\FIRPARAMS}_{s~c}\left\lbrace\begin{tabular}{l}
+  $\text{\ORDER}_{s~c}$ \\
+  $\text{\SHIFT}_{s~c}$ \\
+  $\text{\COEFF}_{s~c}$
+  \end{tabular}\right.$\;
+  \EALGORITHM
+}
+
+\begin{figure}[h]
+  \includegraphics{figures/dvda/mlp_fir_filter_params.pdf}
+\end{figure}
+
+\clearpage
+
+\subsubsection{Reading IIR Filter Parameters}
+\label{mlp:readiirfilterparams}
+{\relsize{-1}
+  \ALGORITHM{MLP substream data}{IIR filter parameters}
+  \SetKw{KwDownTo}{downto}
   \SetKwData{ORDER}{order}
   \SetKwData{SHIFT}{shift}
   \SetKwData{COEFFBITS}{coeff bits}
@@ -878,39 +966,46 @@ $\;
   \SetKwData{STATEBITS}{state bits}
   \SetKwData{STATESHIFT}{state shift}
   \SetKwData{STATE}{state}
-  $\text{\ORDER} \leftarrow$ \READ 4 unsigned bits\;
-  \ASSERT $\text{\ORDER} \leq 4$\;
-  \eIf{$\text{\ORDER} > 0$}{
-    $\text{\SHIFT} \leftarrow$ \READ 4 unsigned bits\;
+  \SetKwData{IIRPARAMS}{IIR filter params}
+  $\text{\ORDER}_{s~c} \leftarrow$ \READ 4 unsigned bits\;
+  \ASSERT $\text{\ORDER}_{s~c} \leq 8$\;
+  \eIf{$\text{\ORDER}_{s~c} > 0$}{
+    $\text{\SHIFT}_{s~c} \leftarrow$ \READ 4 unsigned bits\;
     $\text{\COEFFBITS} \leftarrow$ \READ 5 unsigned bits\;
     \ASSERT $1 < \text{\COEFFBITS} < 16$\;
     $\text{\COEFFSHIFT} \leftarrow$ \READ 3 unsigned bits\;
     \ASSERT $(\text{\COEFFBITS} + \text{\COEFFSHIFT}) \leq 16$\;
-    \For{i = 0 \emph{\KwTo}$\text{\ORDER}$}{
+    \For{i = 0 \emph{\KwTo}$\text{\ORDER}_{s~c}$}{
       $v_{i} \leftarrow$ \READ $(\text{\COEFFBITS})$ signed bits\;
-      $\text{\COEFF}_{i} \leftarrow v_{i} \times 2 ^ {\text{\COEFFSHIFT}}$\;
+      $\text{\COEFF}_{s~c~i} \leftarrow v_{i} \times 2 ^ {\text{\COEFFSHIFT}}$\;
     }
     \eIf{$((\READ~\textnormal{1 unsigned bit}) = 1)$}{
       $\text{\STATEBITS} \leftarrow$ \READ 4 unsigned bits\;
       $\text{\STATESHIFT} \leftarrow$ \READ 4 unsigned bits\;
-      \For{i = 0 \emph{\KwTo}$\text{\ORDER}$}{
+      \For(\tcc*[f]{read state values in reverse order}){i = $\text{\ORDER}_{s~c}$ \emph{\KwDownTo}0}{
         $s_{i} \leftarrow$ \READ $(\text{\STATEBITS})$ signed bits\;
-        $\text{\STATE}_{\text{\ORDER} - i - 1} \leftarrow s_{i} \times 2 ^ {\text{\STATESHIFT}}$\;
+        $\text{\STATE}_{s~c~i} \leftarrow s_{i} \times 2 ^ {\text{\STATESHIFT}}$\;
       }
     }{
-      $\text{\STATE} \leftarrow \texttt{[]}$\;
+      $\text{\STATE}_{s~c} \leftarrow \texttt{[]}$\;
     }
   }{
-    $\text{\SHIFT} \leftarrow 0$\;
-    $\text{\COEFF} \leftarrow \texttt{[]}$\;
-    $\text{\STATE} \leftarrow \texttt{[]}$\;
+    $\text{\SHIFT}_{s~c} \leftarrow 0$\;
+    $\text{\COEFF}_{s~c} \leftarrow \texttt{[]}$\;
+    $\text{\STATE}_{s~c} \leftarrow \texttt{[]}$\;
   }
-  \Return $(\text{\ORDER}~,~\text{\SHIFT}~,~\text{\COEFF}~,~\text{\STATE})$\;
+  \Return
+  $\text{\IIRPARAMS}_{s~c}\left\lbrace\begin{tabular}{l}
+  $\text{\ORDER}_{s~c}$ \\
+  $\text{\SHIFT}_{s~c}$ \\
+  $\text{\COEFF}_{s~c}$ \\
+  $\text{\STATE}_{s~c}$
+  \end{tabular}\right.$\;
   \EALGORITHM
 }
 
 \begin{figure}[h]
-  \includegraphics{figures/dvda/mlp_filter_params.pdf}
+  \includegraphics{figures/dvda/mlp_iir_filter_params.pdf}
 \end{figure}
 
 \clearpage
@@ -1128,9 +1223,9 @@ $\text{signed Huffman offset}_c$ & $0 - 7 \times 2 ^ 2 - 2 ^ 3 = -36$ & $0 - 7 \
 
 \clearpage
 
-\subsection{Residual Filtering}
+\subsection{Channel Filtering}
 {\relsize{-1}
-\ALGORITHM{block size, signed residual values, channel's quant step size,\newline FIR order, FIR shift, FIR coefficients, FIR state,\newline IIR order, IIR shift, IIR coefficients, IIR state}{filtered residual values, new FIR state, new IIR state}
+\ALGORITHM{block size, signed residual values, channel's quant step size,\newline FIR filter parameters, IIR filter parameters}{filtered residual values, new FIR state, new IIR state}
 \SetKw{AND}{and}
 \SetKwData{BLOCKSIZE}{block size}
 \SetKwData{SHIFT}{shift}
@@ -1146,39 +1241,38 @@ $\text{signed Huffman offset}_c$ & $0 - 7 \times 2 ^ 2 - 2 ^ 3 = -36$ & $0 - 7 \
 \SetKwData{SUM}{sum}
 \SetKwData{SHIFTEDSUM}{shifted sum}
 \SetKwData{FILTERED}{filtered}
+\SetKwFunction{LEN}{len}
 \SetKwFunction{MASK}{mask}
 \SetKwData{QUANTSIZE}{quant step size}
-\ASSERT $(\text{\FIRORDER} + \text{\IIRORDER}) \leq 8$\;
-\uIf{$(\text{\FIRORDER} > 0)$ \AND $(\text{\IIRORDER} > 0)$}{
-  \ASSERT $\text{\FIRSHIFT} = \text{\IIRSHIFT}$\;
-  $\text{\SHIFT} \leftarrow \text{\FIRSHIFT}$\;
+\ASSERT $(\text{\FIRORDER}_{s~c} + \text{\IIRORDER}_{s~c}) \leq 8$\;
+\uIf{$(\text{\FIRORDER}_{s~c} > 0)$ \AND $(\text{\IIRORDER}_{s~c} > 0)$}{
+  \ASSERT $\text{\FIRSHIFT}_{s~c} = \text{\IIRSHIFT}_{s~c}$\;
+  $\text{\SHIFT} \leftarrow \text{\FIRSHIFT}_{s~c}$\;
 }
 \uElseIf{$\text{\FIRORDER} > 0$}{
-  $\text{\SHIFT} \leftarrow \text{\FIRSHIFT}$\;
+  $\text{\SHIFT} \leftarrow \text{\FIRSHIFT}_{s~c}$\;
 }
 \Else{
-  $\text{\SHIFT} \leftarrow \text{\IIRSHIFT}$\;
+  $\text{\SHIFT} \leftarrow \text{\IIRSHIFT}_{s~c}$\;
 }
 \For{i = 0 \emph{\KwTo}$\text{\BLOCKSIZE}_s$}{
   $\text{\SUM}_i \leftarrow 0$\;
-  \For(\tcc*[f]{calculate FIR sum}){j = 0 \emph{\KwTo}$\text{\FIRORDER}$}{
-    \eIf{$(i - j - 1) < 0$}{
-      $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\FIRCOEFF}_j \times \text{\FIRSTATE}_{\FIRORDER + (i - j - 1)}$\;
-    }{
-      $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\FIRCOEFF}_j \times \text{\FILTERED}_{i - j - 1}$\;
-    }
+  \For{j = 0 \emph{\KwTo}$\text{\FIRORDER}_{s~c}$}{
+    $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\FIRCOEFF}_{s~c~j} \times \text{\FIRSTATE}_{s~c~(\LEN(\text{\FIRSTATE}) - j - 1)}$\;
   }
-  \For(\tcc*[f]{calculate IIR sum}){k = 0 \emph{\KwTo}$\text{\IIRORDER}$}{
-    $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\IIRCOEFF}_k \times \text{\IIRSTATE}_{\IIRORDER + (i - k - 1)}$\;
+  \For{k = 0 \emph{\KwTo}$\text{\IIRORDER}_{s~c}$}{
+    $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\IIRCOEFF}_{s~c~k} \times \text{\IIRSTATE}_{s~c~(\LEN(\text{\IIRSTATE}) - k - 1)}$\;
   }
   \BlankLine
   $\text{\SHIFTEDSUM}_i \leftarrow \lfloor\text{\SUM}_i \div 2 ^ {\SHIFT}\rfloor$\;
   \BlankLine
-  $\text{\FILTERED}_i \leftarrow \MASK(\text{\SHIFTEDSUM}_i + \text{\RESIDUAL}_i~,~\text{\QUANTSIZE})$\;
+  $v_i \leftarrow \MASK(\text{\SHIFTEDSUM}_i + \text{\RESIDUAL}_{s~c~i}~,~\text{\QUANTSIZE}_{s~c})$\;
   \BlankLine
-  $\text{\IIRSTATE}_{i + \text{\IIRORDER}} \leftarrow \text{\FILTERED}_i - \text{\SHIFTEDSUM}_i$\;
+  $\text{\FILTERED}_{s~c~i} \leftarrow v_i$\;
+  $\text{\FIRSTATE}_{s~c~\LEN(\text{\FIRSTATE})} \leftarrow v_i$\;
+  $\text{\IIRSTATE}_{s~c~\LEN(\text{\IIRSTATE})} \leftarrow v_i - \text{\SHIFTEDSUM}_i$\;
 }
-\Return $(\text{\FILTERED}~,~\text{\FILTERED}_{[(\text{\BLOCKSIZE} - 8)\IDOTS\text{\BLOCKSIZE}]}~,~\text{\IIRSTATE}_{[(\text{\BLOCKSIZE} - 8)\IDOTS\text{\BLOCKSIZE}]})$\;
+\Return $(\text{\FILTERED}_{s~c}~,~\text{\FIRSTATE}_{s~c}~,~\text{\IIRSTATE}_{s~c})$\;
 \EALGORITHM
 }
 \vskip .25in
@@ -1190,13 +1284,18 @@ where \texttt{mask} is defined as:
 \lfloor x \div 2 ^ q \rfloor \times 2 ^ q & \text{ if } q > 0
 \end{cases}
 \end{equation*}
+\par
+\noindent
+Since the maximum FIR order and maximum IIR order are both 8,
+one needs to return only the last 8 values of FIR and IIR state.
 
 %%FIXME - add residual filtering example
 
 \clearpage
 
 \subsection{Rematrixing Channels}
-\ALGORITHM{block size, filtered residuals, noise shift, noise gen seed,\newline matrix count, max matrix channel, matrix out channels, matrix coefficients\newline quant step sizes, bypassed LSBs}{rematrixed channels, updated noise gen seed}
+{\relsize{-1}
+\ALGORITHM{block size, filtered residuals, noise shift, noise gen seed, matrix parameters, quant step sizes, bypassed LSBs}{rematrixed channels, updated noise gen seed}
 \SetKwData{BLOCKSIZE}{block size}
 \SetKwData{NOISE}{noise}
 \SetKwData{NOISESHIFT}{noise shift}
@@ -1213,27 +1312,28 @@ where \texttt{mask} is defined as:
 \SetKwData{BYPASSEDLSB}{bypassed LSB}
 \SetKwFunction{MASK}{mask}
 \SetKwFunction{CROP}{crop}
-\For(\tcc*[f]{generate noise channels}){i = 0 \emph{\KwTo}\BLOCKSIZE}{
-  $\text{\SHIFTED}_i \leftarrow \lfloor\text{\NOISEGENSEED} \div 2 ^ 7\rfloor \bmod{2 ^ {16}}$\;
-  $\text{\NOISE}_{0~i} \leftarrow \CROP(\lfloor\text{\NOISEGENSEED} \div 2 ^ {15}\rfloor) \times 2 ^ {\text{\NOISESHIFT}}$\;
-  $\text{\NOISE}_{1~i} \leftarrow \CROP(\text{\SHIFTED}_i) \times 2 ^ {\text{\NOISESHIFT}}$\;
-  $\text{\NOISEGENSEED} \leftarrow ((\text{\NOISEGENSEED} \times 2 ^ {16}) \bmod{2 ^ {32}}) \xor \text{\SHIFTED}_i \xor (\text{\SHIFTED}_i \times 2 ^ 5)$\;
+\For(\tcc*[f]{generate noise channels}){i = 0 \emph{\KwTo}$\text{\BLOCKSIZE}_s$}{
+  $\text{\SHIFTED}_i \leftarrow \lfloor\text{\NOISEGENSEED}_s \div 2 ^ 7\rfloor \bmod{2 ^ {16}}$\;
+  $\text{\NOISE}_{0~i} \leftarrow \CROP(\lfloor\text{\NOISEGENSEED}_s \div 2 ^ {15}\rfloor) \times 2 ^ {\text{\NOISESHIFT}_s}$\;
+  $\text{\NOISE}_{1~i} \leftarrow \CROP(\text{\SHIFTED}_i) \times 2 ^ {\text{\NOISESHIFT}_s}$\;
+  $\text{\NOISEGENSEED}_s \leftarrow ((\text{\NOISEGENSEED}_s \times 2 ^ {16}) \bmod{2 ^ {32}}) \xor \text{\SHIFTED}_i \xor (\text{\SHIFTED}_i \times 2 ^ 5)$\;
 }
 \BlankLine
-\For(\tcc*[f]{perform channel rematrixing}){m = 0 \emph{\KwTo}\MATRIXCOUNT}{
-  $o \leftarrow \text{\MATRIXOUTCHANNEL}_m$\;
-  \For{i = 0 \emph{\KwTo}\BLOCKSIZE}{
+\For(\tcc*[f]{perform channel rematrixing}){m = 0 \emph{\KwTo}$\text{\MATRIXCOUNT}_s$}{
+  $o \leftarrow \text{\MATRIXOUTCHANNEL}_{s~m}$\;
+  \For{i = 0 \emph{\KwTo}$\text{\BLOCKSIZE}_s$}{
     $\text{\SUM}_i \leftarrow 0$\;
-    \For{c = 0 \emph{\KwTo}$\MAXMATRIXCHANNEL + 1$}{
-      $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\FILTERED}_{c~i} \times \text{\MATRIXCOEFF}_{m~c}$\;
+    \For{c = 0 \emph{\KwTo}$\text{\MAXMATRIXCHANNEL}_s + 1$}{
+      $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\FILTERED}_{s~c~i} \times \text{\MATRIXCOEFF}_{s~m~c}$\;
     }
-    $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\NOISE}_{0~i} \times \text{\MATRIXCOEFF}_{m~(\MAXMATRIXCHANNEL + 1)}$\;
-    $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\NOISE}_{1~i} \times \text{\MATRIXCOEFF}_{m~(\MAXMATRIXCHANNEL + 2)}$\;
-    $\text{\REMATRIXED}_{o~i} \leftarrow \MASK(\lfloor\text{\SUM}_i \div 2 ^ {14}\rfloor~,~\text{\QUANTSTEPSIZE}_{o}) + \text{\BYPASSEDLSB}_{m~i}$\;
+    $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\NOISE}_{0~i} \times \text{\MATRIXCOEFF}_{s~m~(\MAXMATRIXCHANNEL + 1)}$\;
+    $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\NOISE}_{1~i} \times \text{\MATRIXCOEFF}_{s~m~(\MAXMATRIXCHANNEL + 2)}$\;
+    $\text{\FILTERED}_{s~o~i} \leftarrow \MASK(\lfloor\text{\SUM}_i \div 2 ^ {14}\rfloor~,~\text{\QUANTSTEPSIZE}_{s~o}) + \text{\BYPASSEDLSB}_{s~m~i}$\;
   }
 }
-\Return $(\REMATRIXED~,~\NOISEGENSEED)$\;
+\Return $(\text{\FILTERED}_{s}~,~\text{\NOISEGENSEED}_s)$\;
 \EALGORITHM
+}
 \vskip .25in
 \par
 \noindent
@@ -1245,9 +1345,36 @@ where \texttt{crop} is defined as:
     (x \bmod{2 ^ 7}) - 2 ^ 7 & \text{if } \lfloor (x \bmod{2 ^ 8}) \div 2 ^ 7\rfloor \neq 0
   \end{cases}
   \intertext{and \texttt{mask} is defined as:}
-  \texttt{mask}(x~,~q) =\begin{cases}x & \text{ if } q = 0 \\
+  \texttt{mask}(x~,~q) &=\begin{cases}x & \text{ if } q = 0 \\
   \lfloor x \div 2 ^ q \rfloor \times 2 ^ q & \text{ if } q > 0
   \end{cases}
 \end{align*}
 
+Because each channel may be rematrixed zero or more times,
+filtered channels are rematrixed in-place
+and the final result is output.
+
 %%FIXME - add rematrixing example
+
+\clearpage
+
+\subsection{Applying Output Shifts}
+
+{\relsize{-1}
+\ALGORITHM{1 or more channels of rematrixed sample data, output shifts}{1 or more channels of shifted sample data}
+\SetKwData{MAXMATRIXCHANNEL}{max matrix channel}
+\SetKwData{REMATRIXED}{rematrixed}
+\SetKwData{OUTPUTSHIFT}{output shift}
+\SetKwData{SHIFTED}{shifted}
+\For{c = 0 \emph{\KwTo}$(\text{\MAXMATRIXCHANNEL}_s + 1)$}{
+  \eIf{$\text{\OUTPUTSHIFT}_{s~c} > 0$}{
+    \For{i = 0 \emph{\KwTo}$\LEN(\text{\REMATRIXED}_{s~c})$}{
+      $\text{\SHIFTED}_{s~c~i} \leftarrow \text{\REMATRIXED}_{s~c~i} \times 2 ^ {\text{\OUTPUTSHIFT}_{s~c}}$\;
+    }
+  }{
+    $\text{\SHIFTED}_{s~c} \leftarrow \text{\REMATRIXED}_{s~c}$\;
+  }
+}
+\Return $\text{\SHIFTED}_{s}$\;
+\EALGORITHM
+}
