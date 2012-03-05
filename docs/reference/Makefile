@@ -213,7 +213,10 @@ figures/vorbis/ordered_entries.pdf \
 figures/vorbis/setup_packet.pdf
 
 BASICS = figures/diagram.pdf \
-figures/diagram2.pdf
+figures/diagram2.pdf \
+figures/big_endian.pdf \
+figures/little_endian.pdf \
+figures/unary1.pdf
 
 FIGURES = figures/binary.pdf figures/pcm.pdf figures/wav_stream.pdf \
 figures/wav_fmt.pdf figures/wav_fmtext.pdf figures/wav_data.pdf \
@@ -247,7 +250,8 @@ $(SHORTEN) \
 $(ALAC) \
 $(MLP) \
 $(DVDA) \
-$(AOBPCM)
+$(AOBPCM) \
+$(BASICS)
 
 
 CHAPTERS = basics.tex wav.tex flac.tex m4a.tex mp3.tex vorbis.tex \
@@ -277,40 +281,40 @@ figures/mp3_granule.pdf figures/mp3_main.pdf figures/mp3_scalefactors.pdf
 mp3_decode.pdf: mp3_decode.tex $(MP3_FIGURES)
 	python pdflatexbuild.py -halt-on-error $<
 
-flac-codec.tex: flac-codec.m4
+flac-codec.tex: flac-codec.m4 header.m4 footer.m4
 	m4 -D PAPERSIZE=letterpaper $< > $@
 
 flac-codec.pdf: flac-codec.tex flac.tex $(FLAC)
 	python pdflatexbuild.py -halt-on-error $<
 
-alac-codec.tex: alac-codec.m4
+alac-codec.tex: alac-codec.m4 header.m4 footer.m4
 	m4 -D PAPERSIZE=letterpaper $< > $@
 
 alac-codec.pdf: alac-codec.tex alac.tex $(ALAC)
 	python pdflatexbuild.py -halt-on-error $<
 
-wavpack-codec.tex: wavpack-codec.m4
+wavpack-codec.tex: wavpack-codec.m4 header.m4 footer.m4
 	m4 -D PAPERSIZE=letterpaper $< > $@
 
 wavpack-codec.pdf: wavpack-codec.tex wavpack.tex $(WAVPACK)
 	python pdflatexbuild.py -halt-on-error $<
 
-shorten-codec.tex: shorten-codec.m4
+shorten-codec.tex: shorten-codec.m4 header.m4 footer.m4
 	m4 -D PAPERSIZE=letterpaper $< > $@
 
 shorten-codec.pdf: shorten-codec.tex shorten.tex $(SHORTEN)
 	python pdflatexbuild.py -halt-on-error $<
 
-dvda-codec.tex: dvda-codec.m4
+dvda-codec.tex: dvda-codec.m4 header.m4 footer.m4
 	m4 -D PAPERSIZE=letterpaper $< > $@
 
 dvda-codec.pdf: dvda-codec.tex dvda2.tex $(DVDA)
 	python pdflatexbuild.py -halt-on-error $<
 
-audioformats-letter.tex: audioformats.m4
+audioformats-letter.tex: audioformats.m4 header.m4 footer.m4
 	m4 -D PAPERSIZE=letterpaper $< > $@
 
-audioformats-a4.tex: audioformats.m4
+audioformats-a4.tex: audioformats.m4 header.m4 footer.m4
 	m4 -D PAPERSIZE=a4paper $< > $@
 
 # binary.pdf: binary.fig
@@ -471,7 +475,7 @@ figures/flac/lpc-parse2.pdf: figures/flac/lpc-parse2.bpx
 figures/shorten/filetype.pdf: figures/shorten/filetype.bpx
 	./bitparse.py -w 140 -b 7 -i $< -o $@
 
-basics-info.tex: basics-info.m4
+basics-info.tex: basics-info.m4 header.m4 footer.m4
 	m4 -D PAPERSIZE=letterpaper $< > $@
 
 basics-info.pdf: basics-info.tex basics.tex $(BASICS)

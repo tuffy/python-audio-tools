@@ -34,6 +34,7 @@
 \definecolor{fuchsia}{rgb}{1.0,0.0,1.0}
 \definecolor{blue}{rgb}{0.0,0.0,1.0}
 \definecolor{green}{rgb}{0.0,1.0,0.0}
+\definecolor{darkgreen}{rgb}{0.0,0.75,0.0}
 \usepackage[vlined,lined,commentsnumbered]{algorithm2e}
 \usepackage{lscape}
 \newcommand{\xor}{\textbf{ xor }}

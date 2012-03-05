@@ -107,7 +107,7 @@ corresponds to:
 \begin{Verbatim}[xleftmargin=.25in]
 a[0] = x * y;
 \end{Verbatim}
-Multiple subscripts indicate multi-dimentional arrays:
+Multiple subscripts indicate multi-dimensional arrays:
 \par
 \noindent
 \begin{algorithm}[H]
@@ -124,7 +124,7 @@ b[0][1][2] = a[0] * z;
 \clearpage
 
 \noindent
-Variables are processed using familiar operators such as if/then/else:
+Variables are processed using familiar statements such as if/then/else:
 \par
 \noindent
 \begin{algorithm}[H]
@@ -163,8 +163,7 @@ implemented as:
   }
 \end{Verbatim}
 and for loops which are inclusive of the first element
-but \textit{not} inclusive of the last element.
-For example:
+but \textit{not} inclusive of the last element:
 \par
 \noindent
 \begin{algorithm}[H]
@@ -175,13 +174,13 @@ For example:
 \end{algorithm}
 \par
 \noindent
-corresponds to:
+which corresponds to:
 \begin{Verbatim}[xleftmargin=.25in]
   for (i = 0; i < 5; i++) {
     a[i] = i * 2;
   }
 \end{Verbatim}
-whose final result is \texttt{[0, 2, 4, 8]}
+whose final result is the same as $a \leftarrow \texttt{[0, 2, 4, 8]}$
 \par
 \noindent
 Downto loops are \textit{not} inclusive of the first element,
@@ -195,6 +194,8 @@ but are inclusive of the last:
     $b_i \leftarrow i \times 3$\;
   }
 \end{algorithm}
+\par
+\noindent
 corresponds to:
 \begin{Verbatim}[xleftmargin=.25in]
   for (i = 5 - 1; i >= 0; i--) {
@@ -203,7 +204,7 @@ corresponds to:
 \end{Verbatim}
 
 \clearpage
-
+\noindent
 Switch blocks do not imply automatic fallthrough:
 \par
 \noindent
@@ -238,338 +239,341 @@ default:
 }
 \end{Verbatim}
 
-%%FIXME - assertions
-%%FIXME - input
-%%FIXME - output
-%%FIXME - structures
+\subsection{Structures}
 
-%% \chapter{the Basics}
-%% \section{Hexadecimal}
-%% \paragraph
-%% In order to understand hexadecimal, it's important to re-familiarize
-%% oneself with decimal, which everyone reading this should be familiar with.
-%% In ordinary decimal numbers, there are a total of ten characters per digit:
-%% 0, 1, 2, 3, 4, 5, 6, 7, 8 and 9.
-%% Because there are ten, we'll call it base-10.
-%% So the number 675 is made up of the digits 6, 7 and 5
-%% and can be calculated in the following way:
-%% \begin{equation*}
-%% ( 6 \times 10 ^ 2 ) + ( 7 \times 10 ^ 1 ) + ( 5 \times 10 ^ 0 ) = 675
-%% \end{equation*}
-%% In hexadecimal, there are sixteen characters per digit:
-%% 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, A, B, C, D, E and F.
-%% A, B, C, D, E and F correspond to the decimal numbers
-%% 10, 11, 12, 13, 14 and 15, respectively.
-%% Because there are sixteen, we'll call it base-16.
-%% So the number 2A3 is made up of the digits 2, A and 3
-%% and can be calculated in the following way:
-%% \begin{equation*}
-%% (2 \times 16 ^ 2 ) + (10 \times 16 ^ 1 ) + (3 \times 16 ^ 0 ) = 675
-%% \end{equation*}
+In rare instances, multiple values are packed into a single field
+for easier representation, such as:
+\par
+\noindent
+\begin{algorithm}[H]
+\SetKwData{FIELD}{field}
+\DontPrintSemicolon
+  $\text{\FIELD} \leftarrow \left\lbrace\begin{tabular}{l}
+  $a$ \\
+  $b$ \\
+  $c$ \\
+  $d$ \\
+  $e$ \\
+  \end{tabular}\right.$\;
+\end{algorithm}
+\par
+\noindent
+which correponds to:
+\begin{Verbatim}[xleftmargin=.25in]
+struct field {
+  int a;
+  int b;
+  int c;
+  int d;
+  int e;
+} field = {a, b, c, d, e};
+\end{Verbatim}
 
-%% Why use hexadecimal?
-%% The reason brings us back to binary file formats, which are
-%% made up of bytes.
-%% Each byte is made up of 8 bits and can have a value from 0 to 255,
-%% in decimal.
-%% Representing a binary file in hexadecimal means a byte requires
-%% exactly two digits with values from 0 to FF.
-%% That saves us a lot of space versus trying to represent bytes
-%% in decimal.
+\clearpage
 
-%% Hexadecimal has another important property when dealing with
-%% binary data.
-%% Because each digit has 16 possible values, each hexadecimal
-%% digit represents exactly 4 bits ($16 = 2 ^ 4$).
-%% This makes it very easy to go back and forth between hexadecimal
-%% and binary.  For instance, let's take the byte 6A:
+\subsection{Bit Shifts}
 
-%% \parpic{\includegraphics{figures/binary.pdf}}
+Pseudocode is optimized to use regular mathematical operations
+with as few variables and steps of operation as possible
+while remaining understandable to the reader.
+However, this may not be the most efficient way to implement
+an algorithm in code.
+One common example is the use of powers of two for multiplication
+and division.
+Where one sees code such as:
+\begin{algorithm}[H]
+  \DontPrintSemicolon
+  $a \leftarrow b \times 2 ^ c$\;
+\end{algorithm}
+\par
+\noindent
+although one could implement it na\"ively as:
+\begin{Verbatim}[xleftmargin=.25in]
+a = (int)((double)b * pow(2.0, (double)c));
+\end{Verbatim}
+\par
+\noindent
+it's best to optimize that operation with a left shift:
+\begin{Verbatim}[xleftmargin=.25in]
+a = b << c;
+\end{Verbatim}
+\par
+\noindent
+Division is handled similarly where:
+\par
+\noindent
+\begin{algorithm}[H]
+  \DontPrintSemicolon
+  $a \leftarrow \lfloor b \div 2 ^ c \rfloor$\;
+\end{algorithm}
+\par
+\noindent
+is best implemented with a right shift:
+\begin{Verbatim}[xleftmargin=.25in]
+a = b >> c;
+\end{Verbatim}
+\par
+\noindent
+Many codecs make heavy use of these powers of two operations
+precisely because they can be implemented with
+efficient bit shift operations.
 
-%% \begin{tabular}{| c | c | c || c | c | c |}
-%% \hline
-%% Hex & Binary & Decimal & Hex & Binary & Decimal \\
-%% \hline
-%% 0 & 0 0 0 0 & 0 & 8 & 1 0 0 0 & 8 \\
-%% 1 & 0 0 0 1 & 1 & 9 & 1 0 0 1 & 9 \\
-%% 2 & 0 0 1 0 & 2 & A & 1 0 1 0 & 10 \\
-%% 3 & 0 0 1 1 & 3 & B & 1 0 1 1 & 11 \\
-%% 4 & 0 1 0 0 & 4 & C & 1 1 0 0 & 12 \\
-%% 5 & 0 1 0 1 & 5 & D & 1 1 0 1 & 13 \\
-%% 6 & 0 1 1 0 & 6 & E & 1 1 1 0 & 14 \\
-%% 7 & 0 1 1 1 & 7 & F & 1 1 1 1 & 15 \\
-%% \hline
-%% \end{tabular}
-%% \begin{flushleft}
-%% Going from binary to hexadecimal is a simple matter of reversing
-%% the process.
-%% \end{flushleft}
+\clearpage
 
-%% \section{Signed Integers}
-%% \label{signed_ints}
-%% Signed integers are typically stored as ``2's-complement'' values.
-%% To decode them, one needs to know the integer's size in bits, its
-%% topmost (most-significant) bit value and the value of its remaining bits.
+\section{Input}
 
-%% \begin{equation}
-%% \text{signed value} =
-%% \begin{cases}
-%% \text{remaining bits} & \text{if topmost bit} = 0 \\
-%% %%-(2 ^ \text{integer size} - \text{unsigned value} ) & \text{if topmost bit} = 1
-%% \text{remaining bits} - (2 ^ {\text{integer size} - 1}) & \text{if topmost bit} = 1
-%% \end{cases}
-%% \end{equation}
-%% For example, take an 8-bit integer whose bit values are \texttt{00000101}.
-%% Since the topmost bit is \texttt{0}, its value is simply \texttt{0000101},
-%% which is 5 in base-10 ($2 ^ 2 + 2 ^ 0 = 5$).
+Input from a given file typically operates on some
+combination of signed or unsigned bits, such as:
+\par
+\noindent
+\begin{algorithm}[H]
+  \DontPrintSemicolon
+  \SetKw{READ}{read}
+  $a \leftarrow$ \READ 2 unsigned bits\;
+  $b \leftarrow$ \READ 3 unsigned bits\;
+  $c \leftarrow$ \READ 5 unsigned bits\;
+  $d \leftarrow$ \READ 3 signed bits\;
+  $e \leftarrow$ \READ 19 signed bits\;
+\end{algorithm}
+\par
+\noindent
+How to read these bits depends on whether the stream is
+big-endian or little-endian.
 
-%% Next, let's take an integer whose bit values are \texttt{11111011}.
-%% Its topmost bit is \texttt{1} and its remaining bits are \texttt{1111011},
-%% which is 123 in base-10
-%% ($2 ^ 6 + 2 ^ 5 + 2 ^ 4 + 2 ^ 3 + 2 ^ 1 + 2 ^ 0 = 123$).
-%% Therefore:
-%% \begin{align*}
-%% \text{signed value} &= 123 - 2 ^ {8 - 1} \\
-%%  &= 123 - 128 \\
-%%  &= -5
-%% \end{align*}
+\subsection{Big Endian Input}
 
-%% Transforming a signed integer into its unsigned 2's-complement value
-%% is a simple matter of reversing the process.
-%% \begin{equation}
-%% \text{unsigned value} =
-%% \begin{cases}
-%% \text{signed value} & \text{if signed value} \geq 0 \\
-%% 2 ^ \text{integer size} - (-\text{signed value}) & \text{if signed value} < 0
-%% \end{cases}
-%% \end{equation}
+In a big-endian stream, the bits are consumed from
+most-significant to least-significant:
+\begin{figure}[h]
+  \includegraphics{figures/big_endian.pdf}
+\end{figure}
 
-%% For example, let's convert the value -20 to a signed, 8-bit integer:
-%% \begin{align*}
-%% \text{unsigned value} &= 2 ^ 8 - (- -20) \\
-%% &= 256 - 20 \\
-%% &= 236
-%% \end{align*}
-%% which is \texttt{11101100} in binary
-%% ($2 ^ 7 + 2 ^ 6 + 2 ^ 5 + 2 ^ 3 + 2 ^ 2 = 236$).
+\begin{table}[h]
+\begin{tabular}{r>{$}r<{$}r}
+  $a \leftarrow$ & \texttt{\color{blue}1} \times 2 ^ 1 + \texttt{\color{blue}0} \times 2 ^ 0 & = 2 \\
+  $b \leftarrow$ & \texttt{\color{darkgreen}1} \times 2 ^ 2 + \texttt{\color{darkgreen}1} \times 2 ^ 1 + \texttt{\color{darkgreen}0} \times 2 ^ 0 & = 6 \\
+  $c \leftarrow$ & \texttt{\color{fuchsia}0} \times 2 ^ 4 + \texttt{\color{fuchsia}0} \times 2 ^ 3 + \texttt{\color{fuchsia}1} \times 2 ^ 2 + \texttt{\color{fuchsia}1} \times 2 ^ 1 + \texttt{\color{fuchsia}1} \times 2 ^ 0 & = 7 \\
+\end{tabular}
+\end{table}
 
-%% \pagebreak
+Signed values are typically stored as 2s-complement
+which is parsed as follows:
+\par
+\noindent
+\ALGORITHM{$n$ number of bits to read in big-endian}{a signed value}
+\SetKwData{SIGN}{sign}
+\SetKwData{UNSIGNED}{unsigned}
+  $\SIGN \leftarrow $ \READ 1 unsigned bit\;
+  $\UNSIGNED \leftarrow $ \READ $(n - 1)$ unsigned bits\;
+  \eIf{$\SIGN = 0$}{
+    \Return \UNSIGNED\;
+  }{
+    \Return $\UNSIGNED - 2 ^ {n - 1}$\;
+  }
+\EALGORITHM
 
-%% \section{Endianness}
-%% You will need to know about endianness anytime a single value spans
-%% multiple bytes.
-%% As an example, let's take the first 16 bytes of a small RIFF WAVE file:
+\begin{table}[h]
+  \begin{tabular}{r|r||r|l|>{$}r<{$}l}
+    field & $n$ & \textsf{sign} & \textsf{unsigned} & \multicolumn{2}{r}{\text{signed value}} \\
+    \hline
+    $d$ & 3 & \texttt{\color{blue}1} & \texttt{\color{blue}0 1} & 1 - 2 ^ {3 - 1} &= -3 \\
+    $e$ & 19 & \texttt{\color{orange}1} & \texttt{\color{orange}0 1 0 0 1 1 1 0 1 1 1 1 0 0 0 0 0 1} & 80833 - 2 ^ {19 - 1} &= -181311 \\
+  \end{tabular}
+\end{table}
 
-%% \begin{Verbatim}[frame=single]
-%% 52 49 46 46 54 9b 12 00  57 41 56 45 66 6d 74 20
-%% \end{Verbatim}
-%% \noindent
-%% The first four bytes are the ASCII string `RIFF' (\texttt{0x52 0x49 0x46 0x46}).
-%% The next four bytes are a 32-bit unsigned integer which is a size value.
-%% Reading from left to right, that value would be \texttt{0x549B1200}.
-%% That's almost 1.5 gigabytes.
-%% Since this file is nowhere near that large, we're clearly not
-%% reading those bytes correctly.
+\clearpage
 
-%% The key is that RIFF WAVE files are `little endian'.
-%% In plain English, that means we have to read in those bytes
-%% from right to left.
-%% Thus, the value is actually \texttt{0x00129B54}.
-%% That's a little over 1 megabyte, which is closer to our expectations.
+\subsection{Little Endian Input}
+In a little-endian stream, the bits are consumed from least-significant
+to most-significant.
+Using the same bit counts and signedness as before, the same four bytes are
+read as follows:
+\begin{figure}[h]
+  \includegraphics{figures/little_endian.pdf}
+\end{figure}
+\begin{table}[h]
+  \begin{tabular}{r>{$}r<{$}r}
+    $a \leftarrow$ & \texttt{\color{blue}1} \times 2 ^ 0 + \texttt{\color{blue}0} \times 2 ^ 1 & = 1 \\
+    $b \leftarrow$ & \texttt{\color{darkgreen}0} \times 2 ^ 0 + \texttt{\color{darkgreen}0} \times 2 ^ 1 + \texttt{\color{darkgreen}1} \times 2 ^ 2 & = 4 \\
+    $c \leftarrow$ & \texttt{\color{fuchsia}1} \times 2 ^ 0 + \texttt{\color{fuchsia}0} \times 2 ^ 1 + \texttt{\color{fuchsia}1} \times 2 ^ 2 + \texttt{\color{fuchsia}1} \times 2 ^ 3 + \texttt{\color{fuchsia}0} \times 2 ^ 4 & = 13 \\
+  \end{tabular}
+\end{table}
+\par
+\noindent
+Signed bits are consumed using a different 2s-complement method:
+\par
+\noindent
+\ALGORITHM{$n$ number of bits to read in little-endian}{a signed value}
+\SetKwData{SIGN}{sign}
+\SetKwData{UNSIGNED}{unsigned}
+$\UNSIGNED \leftarrow $ \READ $(n - 1)$ unsigned bits\;
+$\SIGN \leftarrow $ \READ 1 unsigned bit\;
+\eIf{$\SIGN = 0$}{
+  \Return \UNSIGNED\;
+}{
+  \Return $\UNSIGNED - 2 ^ {n - 1}$\;
+}
+\EALGORITHM
 
-%% Remember that little endian reverses the bytes, not the hexadecimal
-%% digits.  Simply reversing the string to \texttt{0x0021B945} is not correct.
+\begin{table}[h]
+  \begin{tabular}{r|r||r|l|>{$}r<{$}l}
+    field & $n$ & \textsf{unsigned} & \textsf{sign} & \multicolumn{2}{r}{\text{signed value}} \\
+    \hline
+    $d$ & 3 & \texttt{\color{blue}1 1} & \texttt{\color{blue}0} & &= 3 \\
+    $e$ & 19 & \texttt{\color{orange}1 1 1 1 1 0 1 1 1 0 0 1 0 0 0 0 0 1} & \texttt{\color{orange}1} & 133599 - 2 ^ {19 - 1} &= -128545 \\
+  \end{tabular}
+\end{table}
 
-%% When converting a signed, little-endian value to an integer,
-%% the 2's-complement decoding comes \textit{after} one performs
-%% the endianness reversing.
-%% For example, given a signed 16-bit little-endian value of
-%% \texttt{0xFBFF}, one firsts reorders the bytes to \texttt{0xFFFB}
-%% before decoding it to a signed value ($32763 - 2 ^ {15} = -5$).
+\clearpage
 
-%% Conversely, when converting a signed integer to a little-endian value,
-%% the endian reversing comes \textit{after} one performs the
-%% 2's-complement encoding.
+\section{Output}
 
-%% This is covered in more depth in the bitstreams section
-%% on page \pageref{bitstreams}.
+As with input, output to a given file operates on some combination
+of signed or unsigned bits, such as:
+\par
+\noindent
+\begin{algorithm}[H]
+  \DontPrintSemicolon
+  \SetKw{WRITE}{write}
+  $a \rightarrow$ \WRITE 2 unsigned bits\;
+  $b \rightarrow$ \WRITE 3 unsigned bits\;
+  $c \rightarrow$ \WRITE 5 unsigned bits\;
+  $d \rightarrow$ \WRITE 3 signed bits\;
+  $e \rightarrow$ \WRITE 19 signed bits\;
+\end{algorithm}
 
-%% \section{Character Encodings}
+\subsection{Big Endian Output}
+As with input, these bits are inserted into each byte in the output file
+from most-significant to least-significant.
+\begin{table}[h]
+\begin{tabular}{r|r|r||r}
+field & value & $n$ & written as \\
+\hline
+$a$ & 2 & 2 & \texttt{\color{blue}1 0} \\
+$b$ & 6 & 3 & \texttt{\color{darkgreen}1 1 0} \\
+$c$ & 7 & 5 & \texttt{\color{fuchsia}0 0 1 1 1} \\
+\end{tabular}
+\end{table}
+\par
+\noindent
+Signed values are written as follows:
+\par
+\noindent
+\ALGORITHM{a signed value, $n$ number of bits to write in big-endian}{1 or more bits}
+\SetKwData{VALUE}{value}
+\eIf(\tcc*[f]{positive value}){$\VALUE \geq 0$}{
+  $0 \rightarrow$ \WRITE 1 unsigned bit\;
+  $\VALUE \rightarrow$ \WRITE $(n - 1)$ unsigned bits\;
+}(\tcc*[f]{negative value}){
+  $1 \rightarrow$ \WRITE 1 unsigned bit\;
+  $2 ^ {n - 1} + \VALUE \rightarrow$ \WRITE $(n - 1)$ unsigned bits\;
+}
+\EALGORITHM
+\par
+\noindent
+\begin{table}[h]
+  \begin{tabular}{r|r|r||r>{$}r<{$}l}
+    field & value & $n$ & sign & \multicolumn{2}{r}{\text{unsigned}} \\
+    \hline
+    $d$ & -3 & 3 & \texttt{\color{blue}1} & 2 ^ {3 - 1} - 3 & = {\color{blue}1} \\
+    $e$ & -181311 & 19 & \texttt{\color{orange}1} & 2 ^ {19 - 1} - 181311 & = {\color{orange}80833} \\
+  \end{tabular}
+\end{table}
+\begin{figure}[h]
+  \includegraphics{figures/big_endian.pdf}
+\end{figure}
 
-%% Many audio formats store metadata, which contains information about
-%% the song's name, artist, album and so forth.
-%% This information is stored as text, but it's important to know what
-%% sort of text in order to read it and display it properly.
+\subsection{Little Endian Output}
+These bits are inserted into each byte in the output file
+from least-significant to most-significant.
+\begin{table}[h]
+  \begin{tabular}{r|r|r||r}
+    field & value & $n$ & written as \\
+    \hline
+    $a$ & 1 & 2 & \texttt{\color{blue}1 0} \\
+    $b$ & 4 & 3 & \texttt{\color{darkgreen}0 0 1} \\
+    $c$ & 13 & 5 & \texttt{\color{fuchsia}1 0 1 1 0} \\
+  \end{tabular}
+\end{table}
+\par
+\noindent
+Signed values are written as follows:
+\par
+\noindent
+\ALGORITHM{a signed value, $n$ number of bits to write in little-endian}{1 or more bits}
+\SetKwData{VALUE}{value}
+\eIf(\tcc*[f]{positive value}){$\VALUE \geq 0$}{
+  $\VALUE \rightarrow$ \WRITE $(n - 1)$ unsigned bits\;
+  $0 \rightarrow$ \WRITE 1 unsigned bit\;
+}(\tcc*[f]{negative value}){
+  $2 ^ {n - 1} + \VALUE \rightarrow$ \WRITE $(n - 1)$ unsigned bits\;
+  $1 \rightarrow$ \WRITE 1 unsigned bit\;
+}
+\EALGORITHM
+\par
+\noindent
+\begin{table}[h]
+  \begin{tabular}{r|r|r||>{$}r<{$}lr}
+    field & value & $n$ & \multicolumn{2}{r}{\text{unsigned}} & sign \\
+    \hline
+    $d$ & 3 & 3 & & = {\color{blue}3} & \texttt{\color{blue}0} \\
+    $e$ & -128545 & 19 & 2 ^ {19 - 1} - 128545 & = {\color{orange}133599} & \texttt{\color{orange}1} \\
+  \end{tabular}
+\end{table}
 
-%% As an example, take the simple character \texttt{\'e}.
-%% In Latin-1 encoding, it is stored as a single byte \texttt{0xE9}.
-%% In UTF-8 encoding, it is stored as the bytes \texttt{0xC3A9}.
-%% In UTF-16BE encoding, it is stored as the bytes \texttt{0x00E9}.
+\begin{figure}[h]
+  \includegraphics{figures/little_endian.pdf}
+\end{figure}
 
-%% Although decoding and encoding text is a complex subject beyond
-%% the scope of this document, you must always be aware that
-%% metadata may not be 7-bit ASCII text and should handle
-%% it properly in whatever encoding is supported by the metadata
-%% formats.
-%% Look to your programming tools for libraries to assist in Unicode
-%% text handling.
+\clearpage
 
-%% \pagebreak
+\section{Unary}
 
-%% \section {PCM}
-%% \parpic[r]{\includegraphics{figures/pcm.pdf}}
+Lossless codecs often make use of variable length unary coding
+to store a non-negative value.
 
-%% Pulse-Code Modulation is a method for transforming an analog
-%% audio signal into a digital representation.
-%% It takes that signal, `samples' its intensity at
-%% discrete intervals and yields a stream of signed integer
-%% values.
-%% By replaying those values to a speaker at the same
-%% speed and intensity, a close approximation of the
-%% original signal is produced.
+\subsection{Reading Unary}
+\ALGORITHM{a stop bit of 0 or 1}{a non-negative value}
+\SetKwData{UNARY}{unary}
+\SetKwData{STOPBIT}{stop bit}
+$\UNARY \leftarrow 0$\;
+$b \leftarrow$ \READ 1 unsigned bit\;
+\While{$b \neq \STOPBIT$}{
+  $\UNARY \leftarrow \UNARY + 1$\;
+  $b \leftarrow$ \READ 1 unsigned bit\;
+}
+\Return \UNARY\;
+\EALGORITHM
+\par
+\noindent
+For example, processing:
+\par
+\noindent
+\begin{algorithm}[H]
+  \DontPrintSemicolon
+  \SetKw{UNARY}{read unary}
+  \For{$i \leftarrow 0$ \emph{\KwTo}5}{
+    $u_i \leftarrow$ \UNARY with stop bit 1\;
+  }
+\end{algorithm}
+\par
+\noindent
+over the big-endian stream:
+\begin{figure}[h]
+  \includegraphics{figures/unary1.pdf}
+\end{figure}
+\par
+\noindent
+results in $u = \texttt{[0, 1, 2, 3, 4]}$
 
-%% Let's take some example bytes from a CD-quality PCM stream:
-
-%% \begin{Verbatim}[frame=single]
-%% 1B 00 43 FF  1D 00 45 FF  1C 00 4E FF  1E 00 59 FF
-%% \end{Verbatim}
-
-%% CD-quality is 16-bit, 2 channel, 44100Hz.
-%% 16-bit means those bytes are split into 16-bit signed, little-endian samples.
-%% Therefore, our bytes are actually the integer samples:
-
-%% \begin{Verbatim}[frame=single]
-%% 27 -189 29 -187 28 -178 30 -167
-%% \end{Verbatim}
-
-%% The number of channels indicates how many speakers the signal
-%% supports.
-%% 2 channels means the samples are sent to 2 different speakers.
-%% PCM interleaves its samples, sending one sample to
-%% each channel simultaneously before moving on to the next set.
-%% In the case of 2 channels, the first sample is sent to the
-%% left speaker and the second is sent to the right speaker.
-%% So, our stream of data now looks like:
-
-%% \begin{figure}[h]
-%% \begin{tabular}{| r | l |}
-%% \hline
-%% left speaker & right speaker \\
-%% \hline
-%% \texttt{27} & \texttt{-189} \\
-%% \texttt{29} & \texttt{-187} \\
-%% \texttt{28} & \texttt{-178} \\
-%% \texttt{30} & \texttt{-167} \\
-%% \hline
-%% \end{tabular}
-%% \end{figure}
-
-%% \noindent
-%% 44100Hz means those pairs of samples are sent at the rate of
-%% 44100 per second.
-%% Thus, our set of 4 samples takes precisely 1/11025th of a second
-%% when replayed.
-
-%% A channel-independent block of samples is commonly referred to
-%% as a `frame'.
-%% In this example, we have a total of 4 PCM frames.
-%% However, the term `frame' appears a lot in digital audio.
-%% It is important not to confuse a PCM frame with a CD frame
-%% (a block of audio 1/75th of a second long), an MP3 frame,
-%% a FLAC frame or any other sort of frame.
-
-%% \clearpage
-
-%% \section{Bitstreams}
-%% \label{bitstreams}
-%% Many formats are broken up into pieces smaller than an individual byte.
-%% As an example, let's take a 32-bit structure of data broken up into 5
-%% fields as follows:
-%% \begin{figure}[h]
-%% \includegraphics{figures/bitstream_struct.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% Note that field A is 2 bits, B is 3 bits, C is 5 bits, D is 3 bits
-%% and E is 19 bits.
-%% \par
-%% Given the bytes \texttt{B1 ED 3B C1} in hexadecimal,
-%% how we place those bytes within our structure depends
-%% whether or not our stream is big-endian or little-endian.
-%% For big-endian, the breakdown is largely intuitive:
-%% \begin{figure}[h]
-%% \includegraphics{figures/bitstream_bigendian.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% \begin{tabular}{c r r r}
-%% field & base-2 & base-16 & base-10 \\
-%% \hline
-%% A & \texttt{10} & \texttt{2} & \texttt{2} \\
-%% B & \texttt{110} & \texttt{6} & \texttt{6} \\
-%% C & \texttt{0 0111} & \texttt{07} & \texttt{7} \\
-%% D & \texttt{101} & \texttt{5} & \texttt{5} \\
-%% E & \texttt{101 0011 1011 1100 0001} & \texttt{53BC1} & \texttt{342977} \\
-%% \end{tabular}
-%% \par
-%% \noindent
-%% However, for little-endian streams, the same bits are read quite differently:
-%% \begin{figure}[h]
-%% \includegraphics{figures/bitstream_littleendian.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% \begin{tabular}{c r r r}
-%% field & base-2 & base-16 & base-10 \\
-%% \hline
-%% A & \texttt{01} & \texttt{1} & \texttt{1} \\
-%% B & \texttt{100} & \texttt{4} & \texttt{4} \\
-%% C & \texttt{0 1101} & \texttt{0D} & \texttt{13} \\
-%% D & \texttt{011} & \texttt{3} & \texttt{3} \\
-%% E & \texttt{110 0000 1001 1101 1111} & \texttt{609DF} & \texttt{395743} \\
-%% \end{tabular}
-%% \clearpage
-%% This arrangement seems bizarre and counterintuitive when using
-%% the same hexadecimal-to-binary conversion we've been using
-%% thus far.
-%% However, if we \textit{reverse} our conversion process
-%% and place the least-significant bits on the left, as follows:
-%% \par
-%% \noindent
-%% \begin{tabular}{| c | c | c || c | c | c |}
-%% \hline
-%% Hex & Binary & Decimal & Hex & Binary & Decimal \\
-%% \hline
-%% 0 & 0 0 0 0 & 0 & 8 & 0 0 0 1 & 8 \\
-%% 1 & 1 0 0 0 & 1 & 9 & 1 0 0 1 & 9 \\
-%% 2 & 0 1 0 0 & 2 & A & 0 1 0 1 & 10 \\
-%% 3 & 1 1 0 0 & 3 & B & 1 1 0 1 & 11 \\
-%% 4 & 0 0 1 0 & 4 & C & 0 0 1 1 & 12 \\
-%% 5 & 1 0 1 0 & 5 & D & 1 0 1 1 & 13 \\
-%% 6 & 0 1 1 0 & 6 & E & 0 1 1 1 & 14 \\
-%% 7 & 1 1 1 0 & 7 & F & 1 1 1 1 & 15 \\
-%% \hline
-%% \end{tabular}
-%% \par
-%% \noindent
-%% The bytes \texttt{B1 ED 3B C1} are then laid out differently also
-%% and can now be read in a linear fashion:
-%% \begin{figure}[h]
-%% \includegraphics{figures/bitstream_littleendian_alt.pdf}
-%% \end{figure}
-%% \par
-%% \noindent
-%% As a further example of how this works, we'll convert the first
-%% four fields' binary digits to base-10:
-%% \begin{align*}
-%% \text{A} &= (1 \times 2^0) + (0 \times 2^1) = 1 \\
-%% \text{B} &= (0 \times 2^0) + (0 \times 2^1) + (1 \times 2^2) = 4 \\
-%% \text{C} &= (1 \times 2^0) + (0 \times 2^1) + (1 \times 2^2) + (1 \times 2^3) + (0 \times 2^4) = 13 \\
-%% \text{D} &= (1 \times 2^0) + (1 \times 2^1) + (0 \times 2^2) = 3
-%% \end{align*}
-%% \par
-%% \noindent
-%% Computing field E is left as an exercise for the reader.
-%% \par
-%% Naturally, these fields from the same bytes have the same values as before;
-%% only our way of visualizing them has changed.
+\subsection{Writing Unary}
+\ALGORITHM{a stop bit of 0 or 1, a non-negative value}{1 or more bits}
+\SetKwData{VALUE}{value}
+\SetKwData{STOPBIT}{stop bit}
+\eIf{$\STOPBIT = 0$}{
+  $2 ^ \text{\VALUE} - 1 \rightarrow$ \WRITE \VALUE unsigned bits\;
+}{
+  $0 \rightarrow$ \WRITE \VALUE unsigned bits\;
+}
+$\STOPBIT \rightarrow$ \WRITE 1 unsigned bit\;
+\EALGORITHM
