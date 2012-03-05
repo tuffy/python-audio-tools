@@ -617,7 +617,7 @@ combine into 6 channels of PCM output as follows:
 }
 \ASSERT $\text{\PASSES} \leq 16$\;
 \BlankLine
-\For(\tcc*[f]{populate in reverse order}){p = \PASSES \emph{\KwDownTo}0}{
+\For(\tcc*[f]{populate in reverse order}){$p \leftarrow \PASSES$ \emph{\KwDownTo}0}{
   $\text{\TERM}_p \leftarrow$ (\READ 5 unsigned bits) - 5\;
   \ASSERT $\text{\TERM}_p$ \IN \texttt{[-3, -2, -1, 1, 2, 3, 4, 5, 6, 7, 8, 17, 18]}
   \BlankLine
@@ -670,7 +670,7 @@ combine into 6 channels of PCM output as follows:
 }{
  \WEIGHTCOUNT $\leftarrow \text{\SUBBLOCKSIZE} \times 2 - 1$\;
 }
-\For{i = 0 \emph{\KwTo}\WEIGHTCOUNT}{
+\For{$i \leftarrow 0$ \emph{\KwTo}\WEIGHTCOUNT}{
   $\text{value}_i \leftarrow$ \READ 8 signed bits\;
   $\text{\WEIGHTVAL}_i \leftarrow\begin{cases}
 \text{value}_i \times 2 ^ 3 + \left\lfloor\frac{\text{value}_i \times 2 ^ 3 + 2 ^ 6}{2 ^ 7}\right\rfloor & \text{if }\text{value}_i > 0 \\
@@ -682,21 +682,21 @@ combine into 6 channels of PCM output as follows:
 \tcc{populate weight values by channel, in reverse order}
 \eIf(\tcc*[f]{two channels}){$\text{\MONO} = 0$ \AND $\text{\FALSESTEREO} = 0$}{
   \ASSERT $\lfloor\WEIGHTCOUNT \div 2\rfloor \leq \TERMCOUNT$\;
-  \For{i = 0 \emph{\KwTo}$\lfloor\WEIGHTCOUNT \div 2\rfloor$}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}$\lfloor\WEIGHTCOUNT \div 2\rfloor$}{
     $\text{\WEIGHT}_{(\TERMCOUNT - i - 1)~0} \leftarrow \text{\WEIGHTVAL}_{i \times 2}$\;
     $\text{\WEIGHT}_{(\TERMCOUNT - i - 1)~1} \leftarrow \text{\WEIGHTVAL}_{i \times 2 + 1}$\;
   }
-  \For{i = $\lfloor\WEIGHTCOUNT \div 2\rfloor$ \emph{\KwTo}\TERMCOUNT}{
+  \For{$i \leftarrow \lfloor\WEIGHTCOUNT \div 2\rfloor$ \emph{\KwTo}\TERMCOUNT}{
     $\text{\WEIGHT}_{(\TERMCOUNT - i - 1)~0} \leftarrow 0$\;
     $\text{\WEIGHT}_{(\TERMCOUNT - i - 1)~1} \leftarrow 0$\;
   }
   \Return a \WEIGHT value per pass, per channel\;
 }(\tcc*[f]{one channel}){
   \ASSERT $\WEIGHTCOUNT \leq \TERMCOUNT$\;
-  \For{i = 0 \emph{\KwTo}\WEIGHTCOUNT}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}\WEIGHTCOUNT}{
     $\text{\WEIGHT}_{(\TERMCOUNT - i - 1)~0} \leftarrow \text{\WEIGHTVAL}_{i}$\;
   }
-  \For{i = \WEIGHTCOUNT \emph{\KwTo}\TERMCOUNT}{
+  \For{$i \leftarrow \WEIGHTCOUNT$ \emph{\KwTo}\TERMCOUNT}{
     $\text{\WEIGHT}_{(\TERMCOUNT - i - 1)~0} \leftarrow 0$\;
   }
   \Return a \WEIGHT value per pass\;
@@ -759,7 +759,7 @@ $i$ & $\text{value}_i$ & \text{weight value}_i \\
 \SetKw{KwDownTo}{downto}
 \SetKw{AND}{and}
 \eIf(\tcc*[f]{2 channels}){$\text{\MONO} = 0$ \AND $\text{\FALSESTEREO} = 0$}{
-  \For{p = \TERMCOUNT \emph{\KwDownTo}0}{
+  \For{$p \leftarrow \TERMCOUNT$ \emph{\KwDownTo}0}{
     \uIf(\tcc*[f]{2 samples per channel}){$17 \leq \text{\TERM}_p \leq 18$}{
       \eIf{$\text{sub block bytes remaining} \geq 8$}{
         $\text{\SAMPLE}_{p~0~0} \leftarrow \text{read \EXP value}$\;
@@ -773,12 +773,12 @@ $i$ & $\text{value}_i$ & \text{weight value}_i \\
     }
     \uElseIf(\tcc*[f]{"term" samples per channel}){$1 \leq \text{\TERM}_p \leq 8$}{
       \eIf{$\text{sub block bytes remaining} \geq (\text{\TERM}_p \times 4)$}{
-        \For{s = 0 \emph{\KwTo}$\text{\TERM}_p$}{
+        \For{$s \leftarrow 0$ \emph{\KwTo}$\text{\TERM}_p$}{
           $\text{\SAMPLE}_{p~0~s} \leftarrow \text{read \EXP value}$\;
           $\text{\SAMPLE}_{p~1~s} \leftarrow \text{read \EXP value}$\;
         }
       }{
-        \For{s = 0 \emph{\KwTo}$\text{\TERM}_p$}{
+        \For{$s \leftarrow 0$ \emph{\KwTo}$\text{\TERM}_p$}{
           $\text{\SAMPLE}_{p~0~s} \leftarrow 0$\;
           $\text{\SAMPLE}_{p~1~s} \leftarrow 0$\;
         }
@@ -796,7 +796,7 @@ $i$ & $\text{value}_i$ & \text{weight value}_i \\
   }
   \Return $\text{\SAMPLE}$ lists per pass, per channel
 }(\tcc*[f]{1 channel}){
-  \For{p = \TERMCOUNT \emph{\KwDownTo}0}{
+  \For{$p \leftarrow \TERMCOUNT$ \emph{\KwDownTo}0}{
     \uIf(\tcc*[f]{2 samples per channel}){$17 \leq \text{\TERM}_p \leq 18$}{
       \eIf{$\text{sub block bytes remaining} \geq 4$}{
         $\text{\SAMPLE}_{p~0~0} \leftarrow \text{read \EXP value}$\;
@@ -807,11 +807,11 @@ $i$ & $\text{value}_i$ & \text{weight value}_i \\
     }
     \ElseIf(\tcc*[f]{"term" samples per channel}){$1 \leq \text{\TERM}_p \leq 8$}{
       \eIf{$\text{sub block bytes remaining} \geq (\text{\TERM}_p \times 2)$}{
-        \For{s = 0 \emph{\KwTo}$\text{\TERM}_p$}{
+        \For{$s \leftarrow 0$ \emph{\KwTo}$\text{\TERM}_p$}{
           $\text{\SAMPLE}_{p~0~s} \leftarrow \text{read \EXP value}$\;
         }
       }{
-        \For{s = 0 \emph{\KwTo}$\text{\TERM}_p$}{
+        \For{$s \leftarrow 0$ \emph{\KwTo}$\text{\TERM}_p$}{
           $\text{\SAMPLE}_{p~0~s} \leftarrow 0$\;
         }
       }
@@ -999,7 +999,7 @@ $i \leftarrow 0$\;
     \tcc{handle long run of 0 residuals}
     $\ZEROES \leftarrow$ read modified Elias gamma code\;
     \If{$\text{\ZEROES} > 0$}{
-      \For{j = 0 \emph{\KwTo}\ZEROES}{
+      \For{$j \leftarrow 0$ \emph{\KwTo}\ZEROES}{
         $\text{\RESIDUAL}_{(i \bmod \CHANNELS)~\lfloor i \div \CHANNELS \rfloor} \leftarrow $ 0\;
         $i \leftarrow i + 1$\;
       }
@@ -1720,7 +1720,7 @@ Resulting in channel 0 residuals:
 \SetKwData{RESIDUALS}{residuals}
 \eIf{$\text{channel count} = 1$}{
   $\text{\PASS}_{(-1)~0} \leftarrow \text{\RESIDUALS}_{0}$\;
-  \For{p = 0 \emph{\KwTo}\TERMCOUNT}{
+  \For{$p \leftarrow 0$ \emph{\KwTo}\TERMCOUNT}{
     decorrelate 1 channel $\text{\PASS}_{(p - 1)~0}$ to $\text{\PASS}_{p~0}$
     \newline
     using $\text{\TERM}_p$, $\text{\DELTA}_p$, $\text{\WEIGHT}_{p~0}$
@@ -1730,7 +1730,7 @@ Resulting in channel 0 residuals:
 }{
   $\text{\PASS}_{-1~0} \leftarrow \text{\RESIDUALS}_{0}$\;
   $\text{\PASS}_{-1~1} \leftarrow \text{\RESIDUALS}_{1}$\;
-  \For{p = 0 \emph{\KwTo}\TERMCOUNT}{
+  \For{$p \leftarrow 0$ \emph{\KwTo}\TERMCOUNT}{
     decorrelate 2 channel $\text{\PASS}_{(p - 1)~0}/\text{\PASS}_{(p - 1)~1}$ to $\text{\PASS}_{p~0}/\text{\PASS}_{p~1}$
     \newline
     using $\text{\TERM}_p$, $\text{\DELTA}_p$, $\text{\WEIGHT}_{p~0}$,
@@ -1795,7 +1795,7 @@ $\text{\WEIGHT}_0 \leftarrow$ decorrelation weight\;
 \uIf{$term = 18$}{
   $\text{\DECORRELATED}_0 \leftarrow \text{\DECORRSAMPLE}_1$\;
   $\text{\DECORRELATED}_1 \leftarrow \text{\DECORRSAMPLE}_0$\;
-  \For{i = 0 \emph{\KwTo}correlated samples length}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}correlated samples length}{
     $\text{\TEMP}_{i} \leftarrow \lfloor(3 \times \text{\DECORRELATED}_{i + 1} - \text{\DECORRELATED}_{i}) \div 2 \rfloor$\;
     $\text{\DECORRELATED}_{i + 2} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_i~,~\text{\TEMP}_{i}) + \text{\CORRELATED}_i$\;
     $\text{\WEIGHT}_{i + 1} \leftarrow \text{\WEIGHT}_i + \UPDATEWEIGHT(\text{\TEMP}_{i}~,~\text{\CORRELATED}_i~,~delta)$\;
@@ -1805,7 +1805,7 @@ $\text{\WEIGHT}_0 \leftarrow$ decorrelation weight\;
 \uElseIf{$term = 17$}{
   $\text{\DECORRELATED}_0 \leftarrow \text{\DECORRSAMPLE}_1$\;
   $\text{\DECORRELATED}_1 \leftarrow \text{\DECORRSAMPLE}_0$\;
-  \For{i = 0 \emph{\KwTo}correlated samples length}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}correlated samples length}{
     $\text{\TEMP}_{i} \leftarrow 2 \times \text{\DECORRELATED}_{i + 1} - \text{\DECORRELATED}_{i}$\;
     $\text{\DECORRELATED}_{i + 2} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_i~,~\text{\TEMP}_{i}) + \text{\CORRELATED}_i$\;
     $\text{\WEIGHT}_{i + 1} \leftarrow \text{\WEIGHT}_i + \UPDATEWEIGHT(\text{\TEMP}_{i}~,~\text{\CORRELATED}_i~,~delta)$\;
@@ -1813,10 +1813,10 @@ $\text{\WEIGHT}_0 \leftarrow$ decorrelation weight\;
   \Return \DECORRELATED samples starting from 2\;
 }
 \uElseIf{$1 \leq term \leq 8$}{
-  \For{i = 0 \emph{\KwTo}term}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}term}{
     $\text{\DECORRELATED}_i \leftarrow \text{\DECORRSAMPLE}_i$\;
   }
-  \For{i = 0 \emph{\KwTo}correlated samples length}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}correlated samples length}{
     $\text{\DECORRELATED}_{i + term} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_i~,~\text{\DECORRELATED}_{i}) + \text{\CORRELATED}_i$\;
     $\text{\WEIGHT}_{i + 1} \leftarrow \text{\WEIGHT}_i + \UPDATEWEIGHT(\text{\DECORRELATED}_{i}~,~\text{\CORRELATED}_i~,~delta)$\;
   }
@@ -1869,7 +1869,7 @@ delta & \text{ if } (source \textbf{ xor } result ) \geq 0 \\
   $\text{\DECORRELATED}_{0~0} \leftarrow \text{\DECORRSAMPLE}_{1~0}$\;
   $\text{\DECORRELATED}_{1~0} \leftarrow \text{\DECORRSAMPLE}_{0~0}$\;
   \uIf{$term = -1$}{
-    \For{i = 0 \emph{\KwTo}correlated samples length}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}correlated samples length}{
       $\text{\DECORRELATED}_{0~(i + 1)} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_{0~i}~,~\text{\DECORRELATED}_{1~i}) + \text{\CORRELATED}_{0~i}$\;
       $\text{\DECORRELATED}_{1~(i + 1)} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_{1~i}~,~\text{\DECORRELATED}_{0~(i + 1)}) + \text{\CORRELATED}_{1~i}$\;
       $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \text{\WEIGHT}_{0~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{1~i}~,~\text{\CORRELATED}_{0~i}~,~delta)$\;
@@ -1879,7 +1879,7 @@ delta & \text{ if } (source \textbf{ xor } result ) \geq 0 \\
     }
   }
   \uElseIf{$term = -2$}{
-    \For{i = 0 \emph{\KwTo}correlated samples length}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}correlated samples length}{
       $\text{\DECORRELATED}_{1~(i + 1)} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_{1~i}~,~\text{\DECORRELATED}_{0~i}) + \text{\CORRELATED}_{1~i}$\;
       $\text{\DECORRELATED}_{0~(i + 1)} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_{0~i}~,~\text{\DECORRELATED}_{1~(i + 1)}) + \text{\CORRELATED}_{0~i}$\;
       $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \text{\WEIGHT}_{1~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{0~i}~,~\text{\CORRELATED}_{1~i}~,~delta)$\;
@@ -1889,7 +1889,7 @@ delta & \text{ if } (source \textbf{ xor } result ) \geq 0 \\
     }
   }
   \ElseIf{$term = -3$}{
-    \For{i = 0 \emph{\KwTo}correlated samples length}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}correlated samples length}{
       $\text{\DECORRELATED}_{0~(i + 1)} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_{0~i}~,~\text{\DECORRELATED}_{1~i}) + \text{\CORRELATED}_{0~i}$\;
       $\text{\DECORRELATED}_{1~(i + 1)} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_{1~i}~,~\text{\DECORRELATED}_{0~i}) + \text{\CORRELATED}_{1~i}$\;
       $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \text{\WEIGHT}_{0~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{1~i}~,~\text{\CORRELATED}_{0~i}~,~delta)$\;
@@ -2313,7 +2313,7 @@ $\text{channel}_0$ decorrelation passes
 \SetKwData{SIDE}{side}
 \SetKwData{LEFT}{left}
 \SetKwData{RIGHT}{right}
-\For{i = 0 \emph{\KwTo}sample count}{
+\For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
   $\text{\RIGHT}_i \leftarrow \text{\SIDE}_i - \lfloor\text{\MID}_i \div 2\rfloor$\;
   $\text{\LEFT}_i \leftarrow \text{\MID}_i + \text{\RIGHT}_i$\;
 }
@@ -2370,7 +2370,7 @@ $i$ & $\text{mid}_i$ & $\text{side}_i$ & \text{right}_i & \text{left}_i \\
 \SetKwData{SCRC}{SCRC}
 \SetKwData{CHANNEL}{channel}
 $\text{\CRC}_{-1} \leftarrow \texttt{0xFFFFFFFF}$\;
-\For{i = 0 \emph{\KwTo}sample count}{
+\For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
   \eIf{$\text{\MONO} = 0$}{
     $\text{\LCRC}_i \leftarrow (3 \times \text{\CRC}_{i - 1}) + \text{\CHANNEL}_{0~i}$\tcc*[r]{calculate signed CRC of left channel}
     $\text{\SCRC}_i \leftarrow (3 \times \text{\LCRC}_{i - 1}) + \text{\CHANNEL}_{1~i}$\tcc*[r]{calculate signed CRC of right channel}
@@ -2462,19 +2462,19 @@ Resulting in a final CRC of \texttt{0x4139F356}
 \SetKwData{DUPLICATES}{duplicate bits}
 \SetKwData{SHIFTED}{shifted channel}
 \SetKwData{UNSHIFTED}{un-shifted channel}
-\For{c = 0 \emph{\KwTo}channel count}{
+\For{$c \leftarrow 0$ \emph{\KwTo}channel count}{
   \uIf{$\text{\ZEROES} > 0$}{
-    \For{i = 0 \emph{\KwTo}sample count}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
       $\text{\UNSHIFTED}_{c~i} \leftarrow \text{\SHIFTED}_{c~i} \times 2 ^ {\text{\ZEROES}}$\;
     }
   }
   \uElseIf{$\text{\ONES} > 0$}{
-    \For{i = 0 \emph{\KwTo}sample count}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
       $\text{\UNSHIFTED}_{c~i} \leftarrow \text{\SHIFTED}_{c~i} \times 2 ^ {\text{\ONES}} + (2 ^ {\text{\ONES}} - 1)$\;
     }
   }
   \uElseIf{$\text{\DUPLICATES} > 0$}{
-    \For{i = 0 \emph{\KwTo}sample count}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
       \eIf{$\text{\SHIFTED}_{c~i} \bmod 2 = 0$}{
         $\text{\UNSHIFTED}_{c~i} \leftarrow \text{\SHIFTED}_{c~i} \times 2 ^ {\text{\DUPLICATES}}$\;
       }{
@@ -2538,7 +2538,7 @@ correlation passes & 0, 1, 2, 5, 10 or 16 & 5 \\
 \SetKwData{CHANNELS}{channels}
 \SetKwData{CHANNEL}{channel}
 $(\text{\BLOCKSETCOUNT}~,~\text{\BLOCKSETCHANNELS}) \leftarrow$ determine block split\;
-\For{b = 0 \emph{\KwTo}\BLOCKSETCOUNT}{
+\For{$b \leftarrow 0$ \emph{\KwTo}\BLOCKSETCOUNT}{
   $\text{\PARAMS}_{0~b} \leftarrow$ determine initial correlation parameters and entropy variables from correlation passes and $\text{\BLOCKSETCHANNELS}_b$\;
 }
 \BlankLine
@@ -2548,7 +2548,7 @@ $s \leftarrow 0$\tcc*[r]{the number of block sets written}
   $\text{\CHANNELS} \leftarrow$ take up to \BLOCKSIZE PCM frames from the input\;
   update the stream's MD5 sum with that PCM data\;
   $c \leftarrow 0$\;
-  \For(\tcc*[f]{blocks in each set}){b = 0 \emph{\KwTo}\BLOCKSETCOUNT}{
+  \For(\tcc*[f]{blocks in each set}){$b \leftarrow 0$ \emph{\KwTo}\BLOCKSETCOUNT}{
     \lIf{$b = 0$}{$\text{\FIRST} = 1$}
     \lElse{$\text{\FIRST} = 0$}\;
     \lIf{$b = \text{\BLOCKSETCOUNT} - 1$}{$\text{\LAST} = 1$}
@@ -2809,7 +2809,7 @@ $\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $
 %%     \end{tabular}\;
 %%   }
 %%   \Other(\tcc*[f]{save them independently}){
-%%     \For{i = 0 \emph{\KwTo}channel count}{
+%%     \For{$i \leftarrow 0$ \emph{\KwTo}channel count}{
 %%       \lIf{$i = 0$}{$\text{\FIRST} = 1$}
 %%       \lElse{$\text{\FIRST} = 0$}\;
 %%       \lIf{$i = \text{channel count} - 1$}{$\text{\LAST} = 1$}
@@ -2857,7 +2857,7 @@ $\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $
   $\text{\MAGNITUDE} \leftarrow$ maximum magnitude of $\text{\CHANNEL}_0$\;
   $\text{\WASTEDBPS} \leftarrow$ wasted bps of $\text{\CHANNEL}_0$\;
   \eIf{$\text{\WASTEDBPS} > 0$}{
-    \For{i = 0 \emph{\KwTo}block size}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}block size}{
       $\text{\SHIFTED}_{0~i} \leftarrow \lfloor\text{\CHANNEL}_{0~i} \div 2 ^ \text{\WASTEDBPS}\rfloor$\;
     }
   }{
@@ -2870,7 +2870,7 @@ $\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $
   $\text{\MAGNITUDE} \leftarrow \MAX(\text{maximum magnitude of \CHANNEL}_0~,~\text{maximum magnitude of \CHANNEL}_1)$\;
   $\text{\WASTEDBPS} \leftarrow \MIN(\text{wasted bps of \CHANNEL}_0~,~\text{wasted bps of \CHANNEL}_1)$\;
   \eIf{$\text{\WASTEDBPS} > 0$}{
-    \For{i = 0 \emph{\KwTo}block size}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}block size}{
       $\text{\SHIFTED}_{0~i} \leftarrow \lfloor\text{\CHANNEL}_{0~i} \div 2 ^ \text{\WASTEDBPS}\rfloor$\;
       $\text{\SHIFTED}_{1~i} \leftarrow \lfloor\text{\CHANNEL}_{1~i} \div 2 ^ \text{\WASTEDBPS}\rfloor$\;
     }
@@ -2946,7 +2946,7 @@ $i \leftarrow 0$\;
 $i \leftarrow i + 2$\;
 \BlankLine
 write block header\;
-\For{j = 0 \emph{\KwTo}i}{
+\For{$j \leftarrow 0$ \emph{\KwTo}i}{
   write $\text{\SUBBLOCK}_j$\;
 }
 \Return block data, $\text{\WEIGHTS}'$, $\text{\SAMPLES}'$ and $\text{\ENTROPY}'$
@@ -2963,7 +2963,7 @@ write block header\;
 \SetKwFunction{MAX}{max}
 \SetKwFunction{BITS}{bits}
 $\text{\MAXMAGNITUDE} \leftarrow 0$\;
-\For{i = 0 \emph{\KwTo}sample count}{
+\For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
   $\text{\MAXMAGNITUDE} \leftarrow \MAX(\BITS(|\text{\SAMPLE}_i|)~,~\text{\MAXMAGNITUDE})$\;
 }
 \Return \MAXMAGNITUDE\;
@@ -3000,7 +3000,7 @@ for a maximum magnitude of 7.
 \SetKwFunction{MIN}{min}
 \SetKwFunction{WASTED}{wasted}
 $\text{\WASTEDBPS} \leftarrow \infty$\tcc*[r]{maximum unsigned integer}
-\For{i = 0 \emph{\KwTo}sample count}{
+\For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
   $\text{\WASTEDBPS} \leftarrow \MIN(\WASTED(\text{\SAMPLE}_i)~,~\text{\WASTEDBPS})$\;
 }
 \eIf(\tcc*[f]{all samples are 0}){$\WASTEDBPS = \infty$}{
@@ -3044,7 +3044,7 @@ for a wasted bps of 0 (which is typical).
 \SetKwData{SCRC}{SCRC}
 \SetKwData{CHANNEL}{channel}
 $\text{\CRC}_{-1} \leftarrow \texttt{0xFFFFFFFF}$\;
-\For{i = 0 \emph{\KwTo}sample count}{
+\For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
   \eIf{$\text{\MONO} = 0$}{
     $\text{\LCRC}_i \leftarrow (3 \times \text{\CRC}_{i - 1}) + \text{\CHANNEL}_{0~i}$\tcc*[r]{calculate signed CRC of left channel}
     $\text{\SCRC}_i \leftarrow (3 \times \text{\LCRC}_{i - 1}) + \text{\CHANNEL}_{1~i}$\tcc*[r]{calculate signed CRC of right channel}
@@ -3121,7 +3121,7 @@ Resulting in a final CRC of \texttt{0x4139F356}
 \SetKwData{RIGHT}{right}
 \SetKwData{MID}{mid}
 \SetKwData{SIDE}{side}
-\For{i = 0 \emph{\KwTo}sample count}{
+\For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
   $\text{\MID}_i \leftarrow \text{\LEFT}_i - \text{\RIGHT}_i$\;
   $\text{\SIDE}_i \leftarrow \lfloor(\text{\LEFT}_i + \text{\RIGHT}_i) \div 2\rfloor$\;
 }
@@ -3162,7 +3162,7 @@ $i$ & $\text{left}_i$ & $\text{right}_i$ & \text{mid}_i & \text{side}_i \\
 \SetKw{KwDownTo}{downto}
 \eIf{$\text{channel count} = 1$}{
   $\text{\PASS}_{-1~0} \leftarrow \text{\CHANNEL}_0$\;
-  \For(\tcc*[f]{perform passes in reverse order}){i = 0 \emph{\KwTo}\TERMCOUNT}{
+  \For(\tcc*[f]{perform passes in reverse order}){$i \leftarrow 0$ \emph{\KwTo}\TERMCOUNT}{
     $p \leftarrow \TERMCOUNT - i - 1$\;
     $(\text{\PASS}_{i~0}~,~\text{\WEIGHT}'_{p~0}~,~\text{\SAMPLES}'_{p~0}) \leftarrow $correlate $\text{\PASS}_{0~(i - 1)}$\newline
     using $\text{\TERM}_p$, $\text{\DELTA}_p$, $\text{\WEIGHT}_{p~0}$ and
@@ -3172,7 +3172,7 @@ $i$ & $\text{left}_i$ & $\text{right}_i$ & \text{mid}_i & \text{side}_i \\
 }{
   $\text{\PASS}_{-1~0} \leftarrow \text{\CHANNEL}_0$\;
   $\text{\PASS}_{-1~1} \leftarrow \text{\CHANNEL}_1$\;
-  \For(\tcc*[f]{perform passes in reverse order}){i = 0 \emph{\KwTo}\TERMCOUNT}{
+  \For(\tcc*[f]{perform passes in reverse order}){$i \leftarrow 0$ \emph{\KwTo}\TERMCOUNT}{
     $p \leftarrow \TERMCOUNT - i - 1$\;
     $(\text{\PASS}_{i~0}~/~\text{\PASS}_{i~1}~,~\text{\WEIGHT}'_{p~0}~,~\text{\WEIGHT}'_{p~1}~,~\text{\SAMPLES}'_{p~0}~,~\text{\SAMPLES}'_{p~1}) \leftarrow$ correlate $\text{\PASS}_{(i - 1)~0}~/~\text{\PASS}_{(i - 1)~1}$\newline
     using $\text{\TERM}_p$, $\text{\DELTA}_p$, $\text{\WEIGHT}_{p~0}$,  $\text{\WEIGHT}_{p~1}$, $\text{\SAMPLES}_{p~0}$ and $\text{\SAMPLES}_{p~1}$\;
@@ -3200,7 +3200,7 @@ $\text{\WEIGHT}_0 \leftarrow$ decorrelation weight\;
 \uIf{$term = 18$}{
   $\text{\DECORRELATED}_{-2} \leftarrow \text{\DECORRSAMPLE}_1$\;
   $\text{\DECORRELATED}_{-1} \leftarrow \text{\DECORRSAMPLE}_0$\;
-  \For{i = 0 \emph{\KwTo}uncorrelated samples length}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}uncorrelated samples length}{
     $\text{\TEMP}_{i} \leftarrow \lfloor(3 \times \text{\DECORRELATED}_{i - 1} - \text{\DECORRELATED}_{i - 2}) \div 2 \rfloor$\;
     $\text{\CORRELATED}_i \leftarrow \text{\DECORRELATED}_i - \APPLYWEIGHT(\text{\WEIGHT}_i~,~\text{\TEMP}_{i})$\;
     $\text{\WEIGHT}_{i + 1} \leftarrow \text{\WEIGHT}_i + \UPDATEWEIGHT(\text{\TEMP}_{i}~,~\text{\CORRELATED}_i~,~delta)$\;
@@ -3210,7 +3210,7 @@ $\text{\WEIGHT}_0 \leftarrow$ decorrelation weight\;
 \uElseIf{$term = 17$}{
   $\text{\DECORRELATED}_{-2} \leftarrow \text{\DECORRSAMPLE}_1$\;
   $\text{\DECORRELATED}_{-1} \leftarrow \text{\DECORRSAMPLE}_0$\;
-  \For{i = 0 \emph{\KwTo}uncorrelated samples length}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}uncorrelated samples length}{
     $\text{\TEMP}_{i} \leftarrow 2 \times \text{\DECORRELATED}_{i - 1} - \text{\DECORRELATED}_{i - 2}$\;
     $\text{\CORRELATED}_i \leftarrow  \text{\DECORRELATED}_i - \APPLYWEIGHT(\text{\WEIGHT}_i~,~\text{\TEMP}_{i})$\;
     $\text{\WEIGHT}_{i + 1} \leftarrow \text{\WEIGHT}_i + \UPDATEWEIGHT(\text{\TEMP}_{i}~,~\text{\CORRELATED}_i~,~delta)$\;
@@ -3218,10 +3218,10 @@ $\text{\WEIGHT}_0 \leftarrow$ decorrelation weight\;
   \Return \CORRELATED samples\;
 }
 \uElseIf{$1 \leq term \leq 8$}{
-  \For{i = 0 \emph{\KwTo}term}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}term}{
     $\text{\DECORRELATED}_{i - \text{term}} \leftarrow \text{\DECORRSAMPLE}_i$\;
   }
-  \For{i = 0 \emph{\KwTo}correlated samples length}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}correlated samples length}{
     $\text{\CORRELATED}_i \leftarrow  \text{\DECORRELATED}_i - \APPLYWEIGHT(\text{\WEIGHT}_i~,~\text{\DECORRELATED}_{i - \text{term}})$\;
     $\text{\WEIGHT}_{i + 1} \leftarrow \text{\WEIGHT}_i + \UPDATEWEIGHT(\text{\DECORRELATED}_{i - \text{term}}~,~\text{\CORRELATED}_i~,~delta)$\;
   }
@@ -3273,7 +3273,7 @@ delta & \text{ if } (source \textbf{ xor } result ) \geq 0 \\
   $\text{\DECORRELATED}_{0~-1} \leftarrow \text{\DECORRSAMPLE}_{1~0}$\;
   $\text{\DECORRELATED}_{1~-1} \leftarrow \text{\DECORRSAMPLE}_{0~0}$\;
   \uIf{$term = -1$}{
-    \For{i = 0 \emph{\KwTo}uncorrelated samples length}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}uncorrelated samples length}{
       $\text{\CORRELATED}_{0~i} \leftarrow  \text{\DECORRELATED}_{0~i} - \APPLYWEIGHT(\text{\WEIGHT}_{0~i}~,~\text{\DECORRELATED}_{1~(i - 1)})$\;
       $\text{\CORRELATED}_{1~i} \leftarrow \text{\DECORRELATED}_{1~i} - \APPLYWEIGHT(\text{\WEIGHT}_{1~i}~,~\text{\DECORRELATED}_{0~i})$\;
       $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \text{\WEIGHT}_{0~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{1~(i - 1)}~,~\text{\CORRELATED}_{0~i}~,~delta)$\;
@@ -3283,7 +3283,7 @@ delta & \text{ if } (source \textbf{ xor } result ) \geq 0 \\
     }
   }
   \uElseIf{$term = -2$}{
-    \For{i = 0 \emph{\KwTo}uncorrelated samples length}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}uncorrelated samples length}{
       $\text{\CORRELATED}_{0~i} \leftarrow \text{\DECORRELATED}_{0~i} - \APPLYWEIGHT(\text{\WEIGHT}_{0~i}~,~\text{\DECORRELATED}_{1~i})$\;
       $\text{\CORRELATED}_{1~i} \leftarrow \text{\DECORRELATED}_{1~i} - \APPLYWEIGHT(\text{\WEIGHT}_{1~i}~,~\text{\DECORRELATED}_{0~({i - 1})})$\;
       $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \text{\WEIGHT}_{0~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{1~i}~,~\text{\CORRELATED}_{0~i}~,~delta)$\;
@@ -3293,7 +3293,7 @@ delta & \text{ if } (source \textbf{ xor } result ) \geq 0 \\
     }
   }
   \ElseIf{$term = -3$}{
-    \For{i = 0 \emph{\KwTo}uncorrelated samples length}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}uncorrelated samples length}{
       $\text{\CORRELATED}_{0~i} \leftarrow \text{\DECORRELATED}_{0~i} - \APPLYWEIGHT(\text{\WEIGHT}_{0~i}~,~\text{\DECORRELATED}_{1~(i - 1)})$\;
       $\text{\CORRELATED}_{1~i} \leftarrow \text{\DECORRELATED}_{1~i} - \APPLYWEIGHT(\text{\WEIGHT}_{1~i}~,~\text{\DECORRELATED}_{0~(i - 1)})$\;
       $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \text{\WEIGHT}_{0~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{1~(i - 1)}~,~\text{\CORRELATED}_{0~i}~,~delta)$\;
@@ -3702,7 +3702,7 @@ $\text{channel}_0$ correlation passes
 \SetKwData{TERM}{term}
 \SetKwData{DELTA}{delta}
 \SetKwData{KwDownTo}{downto}
-\For(\tcc*[f]{populate in reverse order}){p = decorrelation pass count \emph{\KwDownTo}0}{
+\For(\tcc*[f]{populate in reverse order}){$p \leftarrow \text{decorrelation pass count}$ \emph{\KwDownTo}0}{
   $\text{\TERM}_p + 5 \rightarrow$ \WRITE 5 unsigned bits\;
   $\text{\DELTA}_p \rightarrow$ \WRITE 3 unsigned bits\;
 }
@@ -3726,7 +3726,7 @@ the decorrelation terms subframe is written as:
 \SetKwData{WEIGHT}{weight}
 \SetKwFunction{STOREWEIGHT}{store\_weight}
 \SetKwData{KwDownTo}{downto}
-\For(\tcc*[f]{populate in reverse order}){p = decorrelation pass count \emph{\KwDownTo}0}{
+\For(\tcc*[f]{populate in reverse order}){$p \leftarrow \text{decorrelation pass count}$ \emph{\KwDownTo}0}{
   $\texttt{\STOREWEIGHT}(\text{\WEIGHT}_{p~0}) \rightarrow$ \WRITE 8 signed bits\;
   \If{$\text{channel count} = 2$}{
     $\texttt{\STOREWEIGHT}(\text{\WEIGHT}_{p~1}) \rightarrow$ \WRITE 8 signed bits\;
@@ -3764,7 +3764,7 @@ the decorrelation weights subframe is written as:
 \SetKwFunction{WVLOG}{wv\_log2}
 \SetKw{KwDownTo}{downto}
 \eIf{$\text{channel count} = 2$}{
-  \For{p = decorrelation pass count \emph{\KwDownTo}0}{
+  \For{$p \leftarrow \text{decorrelation pass count}$ \emph{\KwDownTo}0}{
     \uIf{$17 \leq \text{\TERM}_p \leq 18$}{
       $\WVLOG(\text{\SAMPLE}_{p~0~0}) \rightarrow$ \WRITE 16 signed bits\;
       $\WVLOG(\text{\SAMPLE}_{p~0~1}) \rightarrow$ \WRITE 16 signed bits\;
@@ -3772,7 +3772,7 @@ the decorrelation weights subframe is written as:
       $\WVLOG(\text{\SAMPLE}_{p~1~1}) \rightarrow$ \WRITE 16 signed bits\;
     }
     \uElseIf{$1 \leq \text{\TERM}_p \leq 8$}{
-      \For{s = 0 \emph{\KwTo}$\text{\TERM}_p$}{
+      \For{$s \leftarrow 0$ \emph{\KwTo}$\text{\TERM}_p$}{
         $\WVLOG(\text{\SAMPLE}_{p~0~s}) \rightarrow$ \WRITE 16 signed bits\;
         $\WVLOG(\text{\SAMPLE}_{p~1~s}) \rightarrow$ \WRITE 16 signed bits\;
       }
@@ -3783,13 +3783,13 @@ the decorrelation weights subframe is written as:
     }
   }
 }{
-  \For{p = decorrelation pass count \emph{\KwDownTo}0}{
+  \For{$p \leftarrow \text{decorrelation pass count}$ \emph{\KwDownTo}0}{
     \uIf{$17 \leq \text{\TERM}_p \leq 18$}{
       $\WVLOG(\text{\SAMPLE}_{p~0~0}) \rightarrow$ \WRITE 16 signed bits\;
       $\WVLOG(\text{\SAMPLE}_{p~0~1}) \rightarrow$ \WRITE 16 signed bits\;
     }
     \ElseIf{$1 \leq \text{\TERM}_p \leq 8$}{
-      \For{s = 0 \emph{\KwTo}$\text{\TERM}_p$}{
+      \For{$s \leftarrow 0$ \emph{\KwTo}$\text{\TERM}_p$}{
         $\WVLOG(\text{\SAMPLE}_{p~0~s}) \rightarrow$ \WRITE 16 signed bits\;
       }
     }

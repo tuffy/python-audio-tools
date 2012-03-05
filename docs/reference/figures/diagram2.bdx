@@ -1,0 +1,24 @@
+<?xml version="1.0" ?>
+<diagram>
+  <row>
+    <col start="0" end="31" width=".333333" id="field">Field₀</col>
+    <col start="32" end="63" width=".333333">Field₁</col>
+    <col width=".333333" style="dashed">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col start="0" end="1" width=".20" id="field_s">a</col>
+    <col start="2" end="4" width=".20">b</col>
+    <col start="5" end="9" width=".20">c</col>
+    <col start="10" end="12" width=".20">d</col>
+    <col start="13" end="31" width=".20" id="field_e">e</col>
+  </row>
+  <line style="dotted">
+    <start id="field" corner="sw"/>
+    <end id="field_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="field" corner="se"/>
+    <end id="field_e" corner="ne"/>
+  </line>
+</diagram>

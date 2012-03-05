@@ -7,333 +7,569 @@
 %San Francisco, California, 94105, USA.
 
 \chapter{the Basics}
-\section{Hexadecimal}
-\paragraph
-In order to understand hexadecimal, it's important to re-familiarize
-oneself with decimal, which everyone reading this should be familiar with.
-In ordinary decimal numbers, there are a total of ten characters per digit:
-0, 1, 2, 3, 4, 5, 6, 7, 8 and 9.
-Because there are ten, we'll call it base-10.
-So the number 675 is made up of the digits 6, 7 and 5
-and can be calculated in the following way:
-\begin{equation*}
-( 6 \times 10 ^ 2 ) + ( 7 \times 10 ^ 1 ) + ( 5 \times 10 ^ 0 ) = 675
-\end{equation*}
-In hexadecimal, there are sixteen characters per digit:
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, A, B, C, D, E and F.
-A, B, C, D, E and F correspond to the decimal numbers
-10, 11, 12, 13, 14 and 15, respectively.
-Because there are sixteen, we'll call it base-16.
-So the number 2A3 is made up of the digits 2, A and 3
-and can be calculated in the following way:
-\begin{equation*}
-(2 \times 16 ^ 2 ) + (10 \times 16 ^ 1 ) + (3 \times 16 ^ 0 ) = 675
-\end{equation*}
 
-Why use hexadecimal?
-The reason brings us back to binary file formats, which are
-made up of bytes.
-Each byte is made up of 8 bits and can have a value from 0 to 255,
-in decimal.
-Representing a binary file in hexadecimal means a byte requires
-exactly two digits with values from 0 to FF.
-That saves us a lot of space versus trying to represent bytes
-in decimal.
+In order to best illustrate how different codecs operate,
+this document consists of format diagrams, pseudocode,
+and examples.
 
-Hexadecimal has another important property when dealing with
-binary data.
-Because each digit has 16 possible values, each hexadecimal
-digit represents exactly 4 bits ($16 = 2 ^ 4$).
-This makes it very easy to go back and forth between hexadecimal
-and binary.  For instance, let's take the byte 6A:
+\section{Format Diagrams}
 
-\parpic{\includegraphics{figures/binary.pdf}}
-
-\begin{tabular}{| c | c | c || c | c | c |}
-\hline
-Hex & Binary & Decimal & Hex & Binary & Decimal \\
-\hline
-0 & 0 0 0 0 & 0 & 8 & 1 0 0 0 & 8 \\
-1 & 0 0 0 1 & 1 & 9 & 1 0 0 1 & 9 \\
-2 & 0 0 1 0 & 2 & A & 1 0 1 0 & 10 \\
-3 & 0 0 1 1 & 3 & B & 1 0 1 1 & 11 \\
-4 & 0 1 0 0 & 4 & C & 1 1 0 0 & 12 \\
-5 & 0 1 0 1 & 5 & D & 1 1 0 1 & 13 \\
-6 & 0 1 1 0 & 6 & E & 1 1 1 0 & 14 \\
-7 & 0 1 1 1 & 7 & F & 1 1 1 1 & 15 \\
-\hline
-\end{tabular}
-\begin{flushleft}
-Going from binary to hexadecimal is a simple matter of reversing
-the process.
-\end{flushleft}
-
-\section{Signed Integers}
-\label{signed_ints}
-Signed integers are typically stored as ``2's-complement'' values.
-To decode them, one needs to know the integer's size in bits, its
-topmost (most-significant) bit value and the value of its remaining bits.
-
-\begin{equation}
-\text{signed value} =
-\begin{cases}
-\text{remaining bits} & \text{if topmost bit} = 0 \\
-%%-(2 ^ \text{integer size} - \text{unsigned value} ) & \text{if topmost bit} = 1
-\text{remaining bits} - (2 ^ {\text{integer size} - 1}) & \text{if topmost bit} = 1
-\end{cases}
-\end{equation}
-For example, take an 8-bit integer whose bit values are \texttt{00000101}.
-Since the topmost bit is \texttt{0}, its value is simply \texttt{0000101},
-which is 5 in base-10 ($2 ^ 2 + 2 ^ 0 = 5$).
-
-Next, let's take an integer whose bit values are \texttt{11111011}.
-Its topmost bit is \texttt{1} and its remaining bits are \texttt{1111011},
-which is 123 in base-10
-($2 ^ 6 + 2 ^ 5 + 2 ^ 4 + 2 ^ 3 + 2 ^ 1 + 2 ^ 0 = 123$).
-Therefore:
-\begin{align*}
-\text{signed value} &= 123 - 2 ^ {8 - 1} \\
- &= 123 - 128 \\
- &= -5
-\end{align*}
-
-Transforming a signed integer into its unsigned 2's-complement value
-is a simple matter of reversing the process.
-\begin{equation}
-\text{unsigned value} =
-\begin{cases}
-\text{signed value} & \text{if signed value} \geq 0 \\
-2 ^ \text{integer size} - (-\text{signed value}) & \text{if signed value} < 0
-\end{cases}
-\end{equation}
-
-For example, let's convert the value -20 to a signed, 8-bit integer:
-\begin{align*}
-\text{unsigned value} &= 2 ^ 8 - (- -20) \\
-&= 256 - 20 \\
-&= 236
-\end{align*}
-which is \texttt{11101100} in binary
-($2 ^ 7 + 2 ^ 6 + 2 ^ 5 + 2 ^ 3 + 2 ^ 2 = 236$).
-
-\pagebreak
-
-\section{Endianness}
-You will need to know about endianness anytime a single value spans
-multiple bytes.
-As an example, let's take the first 16 bytes of a small RIFF WAVE file:
-
-\begin{Verbatim}[frame=single]
-52 49 46 46 54 9b 12 00  57 41 56 45 66 6d 74 20
-\end{Verbatim}
-\noindent
-The first four bytes are the ASCII string `RIFF' (\texttt{0x52 0x49 0x46 0x46}).
-The next four bytes are a 32-bit unsigned integer which is a size value.
-Reading from left to right, that value would be \texttt{0x549B1200}.
-That's almost 1.5 gigabytes.
-Since this file is nowhere near that large, we're clearly not
-reading those bytes correctly.
-
-The key is that RIFF WAVE files are `little endian'.
-In plain English, that means we have to read in those bytes
-from right to left.
-Thus, the value is actually \texttt{0x00129B54}.
-That's a little over 1 megabyte, which is closer to our expectations.
-
-Remember that little endian reverses the bytes, not the hexadecimal
-digits.  Simply reversing the string to \texttt{0x0021B945} is not correct.
-
-When converting a signed, little-endian value to an integer,
-the 2's-complement decoding comes \textit{after} one performs
-the endianness reversing.
-For example, given a signed 16-bit little-endian value of
-\texttt{0xFBFF}, one firsts reorders the bytes to \texttt{0xFFFB}
-before decoding it to a signed value ($32763 - 2 ^ {15} = -5$).
-
-Conversely, when converting a signed integer to a little-endian value,
-the endian reversing comes \textit{after} one performs the
-2's-complement encoding.
-
-This is covered in more depth in the bitstreams section
-on page \pageref{bitstreams}.
-
-\section{Character Encodings}
-
-Many audio formats store metadata, which contains information about
-the song's name, artist, album and so forth.
-This information is stored as text, but it's important to know what
-sort of text in order to read it and display it properly.
-
-As an example, take the simple character \texttt{\'e}.
-In Latin-1 encoding, it is stored as a single byte \texttt{0xE9}.
-In UTF-8 encoding, it is stored as the bytes \texttt{0xC3A9}.
-In UTF-16BE encoding, it is stored as the bytes \texttt{0x00E9}.
-
-Although decoding and encoding text is a complex subject beyond
-the scope of this document, you must always be aware that
-metadata may not be 7-bit ASCII text and should handle
-it properly in whatever encoding is supported by the metadata
-formats.
-Look to your programming tools for libraries to assist in Unicode
-text handling.
-
-\pagebreak
-
-\section {PCM}
-\parpic[r]{\includegraphics{figures/pcm.pdf}}
-
-Pulse-Code Modulation is a method for transforming an analog
-audio signal into a digital representation.
-It takes that signal, `samples' its intensity at
-discrete intervals and yields a stream of signed integer
-values.
-By replaying those values to a speaker at the same
-speed and intensity, a close approximation of the
-original signal is produced.
-
-Let's take some example bytes from a CD-quality PCM stream:
-
-\begin{Verbatim}[frame=single]
-1B 00 43 FF  1D 00 45 FF  1C 00 4E FF  1E 00 59 FF
-\end{Verbatim}
-
-CD-quality is 16-bit, 2 channel, 44100Hz.
-16-bit means those bytes are split into 16-bit signed, little-endian samples.
-Therefore, our bytes are actually the integer samples:
-
-\begin{Verbatim}[frame=single]
-27 -189 29 -187 28 -178 30 -167
-\end{Verbatim}
-
-The number of channels indicates how many speakers the signal
-supports.
-2 channels means the samples are sent to 2 different speakers.
-PCM interleaves its samples, sending one sample to
-each channel simultaneously before moving on to the next set.
-In the case of 2 channels, the first sample is sent to the
-left speaker and the second is sent to the right speaker.
-So, our stream of data now looks like:
-
+Format diagrams provide an overview of the format, such as:
 \begin{figure}[h]
-\begin{tabular}{| r | l |}
-\hline
-left speaker & right speaker \\
-\hline
-\texttt{27} & \texttt{-189} \\
-\texttt{29} & \texttt{-187} \\
-\texttt{28} & \texttt{-178} \\
-\texttt{30} & \texttt{-167} \\
-\hline
-\end{tabular}
+  \includegraphics{figures/diagram.pdf}
 \end{figure}
-
+\par
 \noindent
-44100Hz means those pairs of samples are sent at the rate of
-44100 per second.
-Thus, our set of 4 samples takes precisely 1/11025th of a second
-when replayed.
-
-A channel-independent block of samples is commonly referred to
-as a `frame'.
-In this example, we have a total of 4 PCM frames.
-However, the term `frame' appears a lot in digital audio.
-It is important not to confuse a PCM frame with a CD frame
-(a block of audio 1/75th of a second long), an MP3 frame,
-a FLAC frame or any other sort of frame.
+Each box represents a field, and each field has a name.
+In this case, our names are a, b, c, d and e.
+Where possible, each field will have a starting bit
+in its lower-left corner and an ending bit in its lower-right.
+For example, a is comprised of bits 0 and 1, making it a 2-bit value.
+The b field uses bits 2 through 4, making it a 3-bit value, and so on.
+Variable-length fields such as C-strings may not have starting or ending
+bit values.
+Fields may also be nested or looped, such as:
+\begin{figure}[h]
+  \includegraphics{figures/diagram2.pdf}
+\end{figure}
+\par
+\noindent
+As a convention, compound fields are named with capital letters
+while individual fields use lowercase.
+\par
+For formats with little or no logic, such as ID3 metadata,
+a diagram may be all that's needed for illustration.
+However, for more complex codecs, the format diagram serves as a map
+which accompanies its pseudocode.
+For example, a file format may be composed of many frames, each frame
+consists of many subframes, and each subframe consists of many fields.
+By placing a diagram alongside the subframe decoding psuedocode,
+one can see where you are (a subframe),
+where you've been (the enclosing frame)
+and where you're going next (the subframe's fields).
 
 \clearpage
 
-\section{Bitstreams}
-\label{bitstreams}
-Many formats are broken up into pieces smaller than an individual byte.
-As an example, let's take a 32-bit structure of data broken up into 5
-fields as follows:
-\begin{figure}[h]
-\includegraphics{figures/bitstream_struct.pdf}
-\end{figure}
-\par
-\noindent
-Note that field A is 2 bits, B is 3 bits, C is 5 bits, D is 3 bits
-and E is 19 bits.
-\par
-Given the bytes \texttt{B1 ED 3B C1} in hexadecimal,
-how we place those bytes within our structure depends
-whether or not our stream is big-endian or little-endian.
-For big-endian, the breakdown is largely intuitive:
-\begin{figure}[h]
-\includegraphics{figures/bitstream_bigendian.pdf}
-\end{figure}
-\par
-\noindent
-\begin{tabular}{c r r r}
-field & base-2 & base-16 & base-10 \\
-\hline
-A & \texttt{10} & \texttt{2} & \texttt{2} \\
-B & \texttt{110} & \texttt{6} & \texttt{6} \\
-C & \texttt{0 0111} & \texttt{07} & \texttt{7} \\
-D & \texttt{101} & \texttt{5} & \texttt{5} \\
-E & \texttt{101 0011 1011 1100 0001} & \texttt{53BC1} & \texttt{342977} \\
-\end{tabular}
-\par
-\noindent
-However, for little-endian streams, the same bits are read quite differently:
-\begin{figure}[h]
-\includegraphics{figures/bitstream_littleendian.pdf}
-\end{figure}
-\par
-\noindent
-\begin{tabular}{c r r r}
-field & base-2 & base-16 & base-10 \\
-\hline
-A & \texttt{01} & \texttt{1} & \texttt{1} \\
-B & \texttt{100} & \texttt{4} & \texttt{4} \\
-C & \texttt{0 1101} & \texttt{0D} & \texttt{13} \\
-D & \texttt{011} & \texttt{3} & \texttt{3} \\
-E & \texttt{110 0000 1001 1101 1111} & \texttt{609DF} & \texttt{395743} \\
-\end{tabular}
-\clearpage
-This arrangement seems bizarre and counterintuitive when using
-the same hexadecimal-to-binary conversion we've been using
-thus far.
-However, if we \textit{reverse} our conversion process
-and place the least-significant bits on the left, as follows:
-\par
-\noindent
-\begin{tabular}{| c | c | c || c | c | c |}
-\hline
-Hex & Binary & Decimal & Hex & Binary & Decimal \\
-\hline
-0 & 0 0 0 0 & 0 & 8 & 0 0 0 1 & 8 \\
-1 & 1 0 0 0 & 1 & 9 & 1 0 0 1 & 9 \\
-2 & 0 1 0 0 & 2 & A & 0 1 0 1 & 10 \\
-3 & 1 1 0 0 & 3 & B & 1 1 0 1 & 11 \\
-4 & 0 0 1 0 & 4 & C & 0 0 1 1 & 12 \\
-5 & 1 0 1 0 & 5 & D & 1 0 1 1 & 13 \\
-6 & 0 1 1 0 & 6 & E & 0 1 1 1 & 14 \\
-7 & 1 1 1 0 & 7 & F & 1 1 1 1 & 15 \\
-\hline
-\end{tabular}
-\par
-\noindent
-The bytes \texttt{B1 ED 3B C1} are then laid out differently also
-and can now be read in a linear fashion:
-\begin{figure}[h]
-\includegraphics{figures/bitstream_littleendian_alt.pdf}
-\end{figure}
-\par
-\noindent
-As a further example of how this works, we'll convert the first
-four fields' binary digits to base-10:
-\begin{align*}
-\text{A} &= (1 \times 2^0) + (0 \times 2^1) = 1 \\
-\text{B} &= (0 \times 2^0) + (0 \times 2^1) + (1 \times 2^2) = 4 \\
-\text{C} &= (1 \times 2^0) + (0 \times 2^1) + (1 \times 2^2) + (1 \times 2^3) + (0 \times 2^4) = 13 \\
-\text{D} &= (1 \times 2^0) + (1 \times 2^1) + (0 \times 2^2) = 3
-\end{align*}
-\par
-\noindent
-Computing field E is left as an exercise for the reader.
-\par
-Naturally, these fields from the same bytes have the same values as before;
-only our way of visualizing them has changed.
+\section{Pseudocode}
 
+Pseudocode provides a language-agnostic way of illustrating the flow of logic
+required to decode or encode a file format.
+These blocks are prefixed by the input expected and the output produced.
+One or more operations are performed and something is returned.
+For example:
+\ALGORITHM{x and y values}{a multiplied value}
+\Return $x \times y$\;
+\EALGORITHM
+\par
+\noindent
+Any variables not passed into a pseudocode block are created
+using the assignment operator, such as:
+\par
+\noindent
+\begin{algorithm}[H]
+  \DontPrintSemicolon
+  $x \leftarrow 1$\;
+  $y \leftarrow 2$\;
+\end{algorithm}
+\par
+\noindent
+which creates the variables $x$ and $y$ and assigns them the values of 1 and 2.
+In C, this would be implemented as:
+\begin{Verbatim}[xleftmargin=.25in]
+int x = 1;
+int y = 2;
+\end{Verbatim}
+Comparisons are performed using the usual math operators
+$<$, $\leq$, $=$, $\geq$, $>$.  So:
+\par
+\noindent
+\begin{algorithm}[H]
+  \DontPrintSemicolon
+  $x = y$\;
+\end{algorithm}
+\par
+\noindent
+is implemented in C as:
+\begin{Verbatim}[xleftmargin=.25in]
+x == y
+\end{Verbatim}
+Variables with subscripts are arrays,
+which are also created through assignment:
+\par
+\noindent
+\begin{algorithm}[H]
+  \DontPrintSemicolon
+  $a_0 \leftarrow x \times y$\;
+\end{algorithm}
+\par
+\noindent
+corresponds to:
+\begin{Verbatim}[xleftmargin=.25in]
+a[0] = x * y;
+\end{Verbatim}
+Multiple subscripts indicate multi-dimentional arrays:
+\par
+\noindent
+\begin{algorithm}[H]
+  \DontPrintSemicolon
+  $b_{0~1~2} \leftarrow a_0 \times z$\;
+\end{algorithm}
+\par
+\noindent
+corresponds to:
+\begin{Verbatim}[xleftmargin=.25in]
+b[0][1][2] = a[0] * z;
+\end{Verbatim}
+
+\clearpage
+
+\noindent
+Variables are processed using familiar operators such as if/then/else:
+\par
+\noindent
+\begin{algorithm}[H]
+  \DontPrintSemicolon
+  \eIf{$x > y$}{
+    $z \leftarrow 1$\;
+  }{
+    $z \leftarrow 2$\;
+  }
+\end{algorithm}
+\par
+\noindent
+which correponds to:
+\begin{Verbatim}[xleftmargin=.25in]
+if (x > y) {
+  z = 1;
+} else {
+  z = 2;
+}
+\end{Verbatim}
+while loops:
+\par
+\noindent
+\begin{algorithm}[H]
+  \DontPrintSemicolon
+  \While{$x < y$}{
+    $x \leftarrow x \times 2$\;
+  }
+\end{algorithm}
+\par
+\noindent
+implemented as:
+\begin{Verbatim}[xleftmargin=.25in]
+  while (x < y) {
+    x = x * 2;
+  }
+\end{Verbatim}
+and for loops which are inclusive of the first element
+but \textit{not} inclusive of the last element.
+For example:
+\par
+\noindent
+\begin{algorithm}[H]
+  \DontPrintSemicolon
+  \For{$i \leftarrow 0$ \emph{\KwTo}5}{
+    $a_i \leftarrow i \times 2$\;
+  }
+\end{algorithm}
+\par
+\noindent
+corresponds to:
+\begin{Verbatim}[xleftmargin=.25in]
+  for (i = 0; i < 5; i++) {
+    a[i] = i * 2;
+  }
+\end{Verbatim}
+whose final result is \texttt{[0, 2, 4, 8]}
+\par
+\noindent
+Downto loops are \textit{not} inclusive of the first element,
+but are inclusive of the last:
+\par
+\noindent
+\begin{algorithm}[H]
+  \SetKw{KwDownTo}{downto}
+  \DontPrintSemicolon
+  \For{$i \leftarrow 5$ \emph{\KwDownTo}0}{
+    $b_i \leftarrow i \times 3$\;
+  }
+\end{algorithm}
+corresponds to:
+\begin{Verbatim}[xleftmargin=.25in]
+  for (i = 5 - 1; i >= 0; i--) {
+    b[i] = i * 3;
+  }
+\end{Verbatim}
+
+\clearpage
+
+Switch blocks do not imply automatic fallthrough:
+\par
+\noindent
+\begin{algorithm}[H]
+  \DontPrintSemicolon
+  \Switch{$a$}{
+    \uCase{0}{
+      $b \leftarrow 1$\;
+    }
+    \uCase{1}{
+      $b \leftarrow 2$\;
+    }
+    \Other{
+      $b \leftarrow 100$\;
+    }
+  }
+\end{algorithm}
+\par
+\noindent
+corresponds to:
+\begin{Verbatim}[xleftmargin=.25in]
+switch (a) {
+case 0:
+  b = 1;
+  break;
+case 1:
+  b = 2;
+  break;
+default:
+  b = 100;
+  break;
+}
+\end{Verbatim}
+
+%%FIXME - assertions
+%%FIXME - input
+%%FIXME - output
+%%FIXME - structures
+
+%% \chapter{the Basics}
+%% \section{Hexadecimal}
+%% \paragraph
+%% In order to understand hexadecimal, it's important to re-familiarize
+%% oneself with decimal, which everyone reading this should be familiar with.
+%% In ordinary decimal numbers, there are a total of ten characters per digit:
+%% 0, 1, 2, 3, 4, 5, 6, 7, 8 and 9.
+%% Because there are ten, we'll call it base-10.
+%% So the number 675 is made up of the digits 6, 7 and 5
+%% and can be calculated in the following way:
+%% \begin{equation*}
+%% ( 6 \times 10 ^ 2 ) + ( 7 \times 10 ^ 1 ) + ( 5 \times 10 ^ 0 ) = 675
+%% \end{equation*}
+%% In hexadecimal, there are sixteen characters per digit:
+%% 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, A, B, C, D, E and F.
+%% A, B, C, D, E and F correspond to the decimal numbers
+%% 10, 11, 12, 13, 14 and 15, respectively.
+%% Because there are sixteen, we'll call it base-16.
+%% So the number 2A3 is made up of the digits 2, A and 3
+%% and can be calculated in the following way:
+%% \begin{equation*}
+%% (2 \times 16 ^ 2 ) + (10 \times 16 ^ 1 ) + (3 \times 16 ^ 0 ) = 675
+%% \end{equation*}
+
+%% Why use hexadecimal?
+%% The reason brings us back to binary file formats, which are
+%% made up of bytes.
+%% Each byte is made up of 8 bits and can have a value from 0 to 255,
+%% in decimal.
+%% Representing a binary file in hexadecimal means a byte requires
+%% exactly two digits with values from 0 to FF.
+%% That saves us a lot of space versus trying to represent bytes
+%% in decimal.
+
+%% Hexadecimal has another important property when dealing with
+%% binary data.
+%% Because each digit has 16 possible values, each hexadecimal
+%% digit represents exactly 4 bits ($16 = 2 ^ 4$).
+%% This makes it very easy to go back and forth between hexadecimal
+%% and binary.  For instance, let's take the byte 6A:
+
+%% \parpic{\includegraphics{figures/binary.pdf}}
+
+%% \begin{tabular}{| c | c | c || c | c | c |}
+%% \hline
+%% Hex & Binary & Decimal & Hex & Binary & Decimal \\
+%% \hline
+%% 0 & 0 0 0 0 & 0 & 8 & 1 0 0 0 & 8 \\
+%% 1 & 0 0 0 1 & 1 & 9 & 1 0 0 1 & 9 \\
+%% 2 & 0 0 1 0 & 2 & A & 1 0 1 0 & 10 \\
+%% 3 & 0 0 1 1 & 3 & B & 1 0 1 1 & 11 \\
+%% 4 & 0 1 0 0 & 4 & C & 1 1 0 0 & 12 \\
+%% 5 & 0 1 0 1 & 5 & D & 1 1 0 1 & 13 \\
+%% 6 & 0 1 1 0 & 6 & E & 1 1 1 0 & 14 \\
+%% 7 & 0 1 1 1 & 7 & F & 1 1 1 1 & 15 \\
+%% \hline
+%% \end{tabular}
+%% \begin{flushleft}
+%% Going from binary to hexadecimal is a simple matter of reversing
+%% the process.
+%% \end{flushleft}
+
+%% \section{Signed Integers}
+%% \label{signed_ints}
+%% Signed integers are typically stored as ``2's-complement'' values.
+%% To decode them, one needs to know the integer's size in bits, its
+%% topmost (most-significant) bit value and the value of its remaining bits.
+
+%% \begin{equation}
+%% \text{signed value} =
+%% \begin{cases}
+%% \text{remaining bits} & \text{if topmost bit} = 0 \\
+%% %%-(2 ^ \text{integer size} - \text{unsigned value} ) & \text{if topmost bit} = 1
+%% \text{remaining bits} - (2 ^ {\text{integer size} - 1}) & \text{if topmost bit} = 1
+%% \end{cases}
+%% \end{equation}
+%% For example, take an 8-bit integer whose bit values are \texttt{00000101}.
+%% Since the topmost bit is \texttt{0}, its value is simply \texttt{0000101},
+%% which is 5 in base-10 ($2 ^ 2 + 2 ^ 0 = 5$).
+
+%% Next, let's take an integer whose bit values are \texttt{11111011}.
+%% Its topmost bit is \texttt{1} and its remaining bits are \texttt{1111011},
+%% which is 123 in base-10
+%% ($2 ^ 6 + 2 ^ 5 + 2 ^ 4 + 2 ^ 3 + 2 ^ 1 + 2 ^ 0 = 123$).
+%% Therefore:
+%% \begin{align*}
+%% \text{signed value} &= 123 - 2 ^ {8 - 1} \\
+%%  &= 123 - 128 \\
+%%  &= -5
+%% \end{align*}
+
+%% Transforming a signed integer into its unsigned 2's-complement value
+%% is a simple matter of reversing the process.
+%% \begin{equation}
+%% \text{unsigned value} =
+%% \begin{cases}
+%% \text{signed value} & \text{if signed value} \geq 0 \\
+%% 2 ^ \text{integer size} - (-\text{signed value}) & \text{if signed value} < 0
+%% \end{cases}
+%% \end{equation}
+
+%% For example, let's convert the value -20 to a signed, 8-bit integer:
+%% \begin{align*}
+%% \text{unsigned value} &= 2 ^ 8 - (- -20) \\
+%% &= 256 - 20 \\
+%% &= 236
+%% \end{align*}
+%% which is \texttt{11101100} in binary
+%% ($2 ^ 7 + 2 ^ 6 + 2 ^ 5 + 2 ^ 3 + 2 ^ 2 = 236$).
+
+%% \pagebreak
+
+%% \section{Endianness}
+%% You will need to know about endianness anytime a single value spans
+%% multiple bytes.
+%% As an example, let's take the first 16 bytes of a small RIFF WAVE file:
+
+%% \begin{Verbatim}[frame=single]
+%% 52 49 46 46 54 9b 12 00  57 41 56 45 66 6d 74 20
+%% \end{Verbatim}
+%% \noindent
+%% The first four bytes are the ASCII string `RIFF' (\texttt{0x52 0x49 0x46 0x46}).
+%% The next four bytes are a 32-bit unsigned integer which is a size value.
+%% Reading from left to right, that value would be \texttt{0x549B1200}.
+%% That's almost 1.5 gigabytes.
+%% Since this file is nowhere near that large, we're clearly not
+%% reading those bytes correctly.
+
+%% The key is that RIFF WAVE files are `little endian'.
+%% In plain English, that means we have to read in those bytes
+%% from right to left.
+%% Thus, the value is actually \texttt{0x00129B54}.
+%% That's a little over 1 megabyte, which is closer to our expectations.
+
+%% Remember that little endian reverses the bytes, not the hexadecimal
+%% digits.  Simply reversing the string to \texttt{0x0021B945} is not correct.
+
+%% When converting a signed, little-endian value to an integer,
+%% the 2's-complement decoding comes \textit{after} one performs
+%% the endianness reversing.
+%% For example, given a signed 16-bit little-endian value of
+%% \texttt{0xFBFF}, one firsts reorders the bytes to \texttt{0xFFFB}
+%% before decoding it to a signed value ($32763 - 2 ^ {15} = -5$).
+
+%% Conversely, when converting a signed integer to a little-endian value,
+%% the endian reversing comes \textit{after} one performs the
+%% 2's-complement encoding.
+
+%% This is covered in more depth in the bitstreams section
+%% on page \pageref{bitstreams}.
+
+%% \section{Character Encodings}
+
+%% Many audio formats store metadata, which contains information about
+%% the song's name, artist, album and so forth.
+%% This information is stored as text, but it's important to know what
+%% sort of text in order to read it and display it properly.
+
+%% As an example, take the simple character \texttt{\'e}.
+%% In Latin-1 encoding, it is stored as a single byte \texttt{0xE9}.
+%% In UTF-8 encoding, it is stored as the bytes \texttt{0xC3A9}.
+%% In UTF-16BE encoding, it is stored as the bytes \texttt{0x00E9}.
+
+%% Although decoding and encoding text is a complex subject beyond
+%% the scope of this document, you must always be aware that
+%% metadata may not be 7-bit ASCII text and should handle
+%% it properly in whatever encoding is supported by the metadata
+%% formats.
+%% Look to your programming tools for libraries to assist in Unicode
+%% text handling.
+
+%% \pagebreak
+
+%% \section {PCM}
+%% \parpic[r]{\includegraphics{figures/pcm.pdf}}
+
+%% Pulse-Code Modulation is a method for transforming an analog
+%% audio signal into a digital representation.
+%% It takes that signal, `samples' its intensity at
+%% discrete intervals and yields a stream of signed integer
+%% values.
+%% By replaying those values to a speaker at the same
+%% speed and intensity, a close approximation of the
+%% original signal is produced.
+
+%% Let's take some example bytes from a CD-quality PCM stream:
+
+%% \begin{Verbatim}[frame=single]
+%% 1B 00 43 FF  1D 00 45 FF  1C 00 4E FF  1E 00 59 FF
+%% \end{Verbatim}
+
+%% CD-quality is 16-bit, 2 channel, 44100Hz.
+%% 16-bit means those bytes are split into 16-bit signed, little-endian samples.
+%% Therefore, our bytes are actually the integer samples:
+
+%% \begin{Verbatim}[frame=single]
+%% 27 -189 29 -187 28 -178 30 -167
+%% \end{Verbatim}
+
+%% The number of channels indicates how many speakers the signal
+%% supports.
+%% 2 channels means the samples are sent to 2 different speakers.
+%% PCM interleaves its samples, sending one sample to
+%% each channel simultaneously before moving on to the next set.
+%% In the case of 2 channels, the first sample is sent to the
+%% left speaker and the second is sent to the right speaker.
+%% So, our stream of data now looks like:
+
+%% \begin{figure}[h]
+%% \begin{tabular}{| r | l |}
+%% \hline
+%% left speaker & right speaker \\
+%% \hline
+%% \texttt{27} & \texttt{-189} \\
+%% \texttt{29} & \texttt{-187} \\
+%% \texttt{28} & \texttt{-178} \\
+%% \texttt{30} & \texttt{-167} \\
+%% \hline
+%% \end{tabular}
+%% \end{figure}
+
+%% \noindent
+%% 44100Hz means those pairs of samples are sent at the rate of
+%% 44100 per second.
+%% Thus, our set of 4 samples takes precisely 1/11025th of a second
+%% when replayed.
+
+%% A channel-independent block of samples is commonly referred to
+%% as a `frame'.
+%% In this example, we have a total of 4 PCM frames.
+%% However, the term `frame' appears a lot in digital audio.
+%% It is important not to confuse a PCM frame with a CD frame
+%% (a block of audio 1/75th of a second long), an MP3 frame,
+%% a FLAC frame or any other sort of frame.
+
+%% \clearpage
+
+%% \section{Bitstreams}
+%% \label{bitstreams}
+%% Many formats are broken up into pieces smaller than an individual byte.
+%% As an example, let's take a 32-bit structure of data broken up into 5
+%% fields as follows:
+%% \begin{figure}[h]
+%% \includegraphics{figures/bitstream_struct.pdf}
+%% \end{figure}
+%% \par
+%% \noindent
+%% Note that field A is 2 bits, B is 3 bits, C is 5 bits, D is 3 bits
+%% and E is 19 bits.
+%% \par
+%% Given the bytes \texttt{B1 ED 3B C1} in hexadecimal,
+%% how we place those bytes within our structure depends
+%% whether or not our stream is big-endian or little-endian.
+%% For big-endian, the breakdown is largely intuitive:
+%% \begin{figure}[h]
+%% \includegraphics{figures/bitstream_bigendian.pdf}
+%% \end{figure}
+%% \par
+%% \noindent
+%% \begin{tabular}{c r r r}
+%% field & base-2 & base-16 & base-10 \\
+%% \hline
+%% A & \texttt{10} & \texttt{2} & \texttt{2} \\
+%% B & \texttt{110} & \texttt{6} & \texttt{6} \\
+%% C & \texttt{0 0111} & \texttt{07} & \texttt{7} \\
+%% D & \texttt{101} & \texttt{5} & \texttt{5} \\
+%% E & \texttt{101 0011 1011 1100 0001} & \texttt{53BC1} & \texttt{342977} \\
+%% \end{tabular}
+%% \par
+%% \noindent
+%% However, for little-endian streams, the same bits are read quite differently:
+%% \begin{figure}[h]
+%% \includegraphics{figures/bitstream_littleendian.pdf}
+%% \end{figure}
+%% \par
+%% \noindent
+%% \begin{tabular}{c r r r}
+%% field & base-2 & base-16 & base-10 \\
+%% \hline
+%% A & \texttt{01} & \texttt{1} & \texttt{1} \\
+%% B & \texttt{100} & \texttt{4} & \texttt{4} \\
+%% C & \texttt{0 1101} & \texttt{0D} & \texttt{13} \\
+%% D & \texttt{011} & \texttt{3} & \texttt{3} \\
+%% E & \texttt{110 0000 1001 1101 1111} & \texttt{609DF} & \texttt{395743} \\
+%% \end{tabular}
+%% \clearpage
+%% This arrangement seems bizarre and counterintuitive when using
+%% the same hexadecimal-to-binary conversion we've been using
+%% thus far.
+%% However, if we \textit{reverse} our conversion process
+%% and place the least-significant bits on the left, as follows:
+%% \par
+%% \noindent
+%% \begin{tabular}{| c | c | c || c | c | c |}
+%% \hline
+%% Hex & Binary & Decimal & Hex & Binary & Decimal \\
+%% \hline
+%% 0 & 0 0 0 0 & 0 & 8 & 0 0 0 1 & 8 \\
+%% 1 & 1 0 0 0 & 1 & 9 & 1 0 0 1 & 9 \\
+%% 2 & 0 1 0 0 & 2 & A & 0 1 0 1 & 10 \\
+%% 3 & 1 1 0 0 & 3 & B & 1 1 0 1 & 11 \\
+%% 4 & 0 0 1 0 & 4 & C & 0 0 1 1 & 12 \\
+%% 5 & 1 0 1 0 & 5 & D & 1 0 1 1 & 13 \\
+%% 6 & 0 1 1 0 & 6 & E & 0 1 1 1 & 14 \\
+%% 7 & 1 1 1 0 & 7 & F & 1 1 1 1 & 15 \\
+%% \hline
+%% \end{tabular}
+%% \par
+%% \noindent
+%% The bytes \texttt{B1 ED 3B C1} are then laid out differently also
+%% and can now be read in a linear fashion:
+%% \begin{figure}[h]
+%% \includegraphics{figures/bitstream_littleendian_alt.pdf}
+%% \end{figure}
+%% \par
+%% \noindent
+%% As a further example of how this works, we'll convert the first
+%% four fields' binary digits to base-10:
+%% \begin{align*}
+%% \text{A} &= (1 \times 2^0) + (0 \times 2^1) = 1 \\
+%% \text{B} &= (0 \times 2^0) + (0 \times 2^1) + (1 \times 2^2) = 4 \\
+%% \text{C} &= (1 \times 2^0) + (0 \times 2^1) + (1 \times 2^2) + (1 \times 2^3) + (0 \times 2^4) = 13 \\
+%% \text{D} &= (1 \times 2^0) + (1 \times 2^1) + (0 \times 2^2) = 3
+%% \end{align*}
+%% \par
+%% \noindent
+%% Computing field E is left as an exercise for the reader.
+%% \par
+%% Naturally, these fields from the same bytes have the same values as before;
+%% only our way of visualizing them has changed.

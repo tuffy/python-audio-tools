@@ -528,7 +528,7 @@ $type\_order \leftarrow$ \READ 6 unsigned bits\;
 \ALGORITHM{the frame's block size, the subframe's bits per sample and the FLAC file stream}{decoded signed PCM samples}
 \SetKwData{BPS}{bits per sample}
 constant $\leftarrow$ \READ (\BPS) signed bits\;
-\For{i = 0 \emph{\KwTo}block size}{
+\For{$i \leftarrow 0$ \emph{\KwTo}block size}{
   $sample_i \leftarrow $ constant\;
 }
 \Return samples\;
@@ -537,7 +537,7 @@ constant $\leftarrow$ \READ (\BPS) signed bits\;
 \subsubsection{Decoding VERBATIM Subframe}
 \ALGORITHM{the frame's block size, the subframe's bits per sample and the FLAC file stream}{decoded signed PCM samples}
 \SetKwData{BPS}{bits per sample}
-\For{i = 0 \emph{\KwTo}block size}{
+\For{$i \leftarrow 0$ \emph{\KwTo}block size}{
   $sample_i \leftarrow $ \READ (\BPS) signed bits\;
 }
 \Return samples\;
@@ -554,33 +554,33 @@ constant $\leftarrow$ \READ (\BPS) signed bits\;
 \SetKwData{ORDER}{order}
 \SetKwData{RESIDUALS}{residuals}
 \SetKwData{BLOCKSIZE}{block size}
-\For(\tcc*[f]{warm-up samples}){i = 0 \emph{\KwTo}\ORDER}{
+\For(\tcc*[f]{warm-up samples}){$i \leftarrow 0$ \emph{\KwTo}\ORDER}{
   $sample_i \leftarrow $ \READ (\BPS) signed bits\;
 }
 \RESIDUALS $\leftarrow$ read residual block with frame's \BLOCKSIZE and subframe's \ORDER\;
 \Switch{\ORDER}{
   \uCase{0} {
-    \For{i = 0 \emph{\KwTo}\BLOCKSIZE}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
       $sample_i \leftarrow residual_i$
     }
   }
   \uCase{1} {
-    \For{i = 1 \emph{\KwTo}\BLOCKSIZE}{
+    \For{$i \leftarrow 1$ \emph{\KwTo}\BLOCKSIZE}{
       $sample_i \leftarrow sample_{i - 1} + residual_{i - 1}$
     }
   }
   \uCase{2} {
-    \For{i = 2 \emph{\KwTo}\BLOCKSIZE}{
+    \For{$i \leftarrow 2$ \emph{\KwTo}\BLOCKSIZE}{
       $sample_i \leftarrow (2 \times sample_{i - 1}) - sample_{i - 2} + residual_{i - 2}$
     }
   }
   \uCase{3} {
-    \For{i = 3 \emph{\KwTo}\BLOCKSIZE}{
+    \For{$i \leftarrow 3$ \emph{\KwTo}\BLOCKSIZE}{
       $sample_i \leftarrow (3 \times sample_{i - 1}) - (3 \times sample_{i - 2}) + sample_{i - 3} + residual_{i - 3}$
     }
   }
   \Case{4} {
-    \For{i = 4 \emph{\KwTo}\BLOCKSIZE}{
+    \For{$i \leftarrow 4$ \emph{\KwTo}\BLOCKSIZE}{
       $sample_i \leftarrow (4 \times sample_{i - 1}) - (6 \times sample_{i - 2}) + (4 \times sample_{i - 3}) - sample_{i - 4} + residual_{i - 4}$
     }
   }
@@ -632,16 +632,16 @@ $i$ & $residual_{i - 1}$ & sample_i \\
 \SetKwData{RESIDUALS}{residuals}
 \SetKwData{BLOCKSIZE}{block size}
 \SetKwFunction{MAX}{max}
-\For(\tcc*[f]{warm-up samples}){i = 0 \emph{\KwTo}\ORDER}{
+\For(\tcc*[f]{warm-up samples}){$i \leftarrow 0$ \emph{\KwTo}\ORDER}{
   $sample_i \leftarrow $ \READ (\BPS) signed bits\;
 }
 QLP precision $\leftarrow$ (\READ 4 unsigned bits) + 1\;
 QLP shift needed $\leftarrow$ \MAX(\READ 5 signed bits, 0)\footnote{negative shifts are noops in the decoder}\;
-\For{i = 0 \emph{\KwTo}\ORDER}{
+\For{$i \leftarrow 0$ \emph{\KwTo}\ORDER}{
   $QLP~coefficient_i \leftarrow$ \READ (QLP precision) signed bits\;
 }
 \RESIDUALS $\leftarrow$ read residual block with frame's \BLOCKSIZE and subframe's \ORDER\;
-\For{i = \ORDER \emph{\KwTo}\BLOCKSIZE}{
+\For{$i \leftarrow \ORDER$ \emph{\KwTo}\BLOCKSIZE}{
   $sample_i \leftarrow \left\lfloor \frac{\overset{\ORDER - 1}{\underset{j = 0}{\sum}}
     QLP~coefficient_j \times sample_{i - j - 1} } {2 ^ \text{QLP shift needed}}\right\rfloor + residual_{i - \ORDER}$\;
 }
@@ -697,7 +697,7 @@ $\text{QLP coefficient}_2$ & $\leftarrow$ & -110 & & & \\
 \SetKwData{RESIDUALS}{residuals}
 coding method $\leftarrow$ \READ 2 unsigned bits\;
 partition order $\leftarrow$ \READ 4 unsigned bits\;
-\For{p = 0 \emph{\KwTo}$2 ^ {\text{partition order}}$}{
+\For{$p \leftarrow 0$ \emph{\KwTo}$2 ^ {\text{partition order}}$}{
   \eIf{p = 0}{
     $partition~residual~count \leftarrow \lfloor\text{block size} \div 2 ^ {partition~order}\rfloor - \text{\ORDER}$
   }{
@@ -716,7 +716,7 @@ partition order $\leftarrow$ \READ 4 unsigned bits\;
     Rice parameter $\leftarrow$ \READ 4 unsigned bits\;
     \If(\tcc*[f]{handle unencoded residuals}){Rice parameter = 15}{
       escape code $\leftarrow$ \READ 5 unsigned bits\;
-      \For{i = 0 \emph{\KwTo}partition residual count}{
+      \For{$i \leftarrow 0$ \emph{\KwTo}partition residual count}{
         $residual_i \leftarrow$ \READ (escape code) signed bits\;
       }
       \Return partition's residual list\;
@@ -726,7 +726,7 @@ partition order $\leftarrow$ \READ 4 unsigned bits\;
     Rice parameter $\leftarrow$ \READ 5 unsigned bits\;
     \If(\tcc*[f]{handle unencoded residuals}){Rice parameter = 31}{
       escape code $\leftarrow$ \READ 5 unsigned bits\;
-      \For{i = 0 \emph{\KwTo}partition residual count}{
+      \For{$i \leftarrow 0$ \emph{\KwTo}partition residual count}{
         $residual_i \leftarrow$ \READ (escape code) signed bits\;
       }
       \Return partition's residual list\;
@@ -736,7 +736,7 @@ partition order $\leftarrow$ \READ 4 unsigned bits\;
     undefined residual coding method error\;
   }
 
-  \For{i = 0 \emph{\KwTo}partition residual count} {
+  \For{$i \leftarrow 0$ \emph{\KwTo}partition residual count} {
     MSB $\leftarrow$ \UNARY with stop bit 1\;
     LSB $\leftarrow$ \READ (Rice parameter) unsigned bits\;
     unsigned $\leftarrow \text{MSB} \times 2 ^ \text{Rice parameter} + \text{LSB}$\;
@@ -898,14 +898,14 @@ the result will also always be 0, just as in the CRC-8.
 \ALGORITHM{the frame's block size and channel assignment, a set of decoded subframe samples\footnote{$subframe_{x~y}$ indicates the $y$th sample in subframe $x$}}{a single list of signed PCM frames}
 \uIf(\tcc*[f]{independent}){$0 \leq encoded~channels \leq 7$}{
  channel count $\leftarrow encoded~channels + 1$\;
-  \For{i = 0 \emph{\KwTo}block size}{
-    \For{j = 0 \emph{\KwTo}channel count}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}block size}{
+    \For{$j \leftarrow 0$ \emph{\KwTo}channel count}{
       $sample_{i \times channel~count + j} \leftarrow subframe_{j~i}$\;
     }
   }
 }
 \uElseIf(\tcc*[f]{left-difference}){$encoded~channels = 8$}{
-  \For{i = 0 \emph{\KwTo}block size}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}block size}{
     \begin{tabular}{ll}
       $sample_{i \times 2}$ & $\leftarrow subframe_{0~i}$ \\
       $sample_{i \times 2 + 1}$ & $\leftarrow subframe_{0~i} - subframe_{1~i}$ \\
@@ -913,7 +913,7 @@ the result will also always be 0, just as in the CRC-8.
   }
 }
 \uElseIf(\tcc*[f]{difference-right}){$encoded~channels = 9$}{
-  \For{i = 0 \emph{\KwTo}block size}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}block size}{
     \begin{tabular}{ll}
       $sample_{i \times 2}$ & $\leftarrow subframe_{0~i} + subframe_{1~i}$ \\
       $sample_{i \times 2 + 1}$ & $\leftarrow subframe_{1~i}$ \\
@@ -921,7 +921,7 @@ the result will also always be 0, just as in the CRC-8.
   }
 }
 \ElseIf(\tcc*[f]{mid-side}){$encoded~channels = 10$}{
-  \For{i = 0 \emph{\KwTo}block size}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}block size}{
     \begin{tabular}{ll}
       $sample_{i \times 2}$ & $\leftarrow \lfloor(((subframe_{0~i} \times 2) + (subframe_{1~i} \bmod 2)) + subframe_{1~i}) \div 2\rfloor$ \\
       $sample_{i \times 2 + 1}$ & $\leftarrow \lfloor(((subframe_{0~i} \times 2) + (subframe_{1~i} \bmod 2)) - subframe_{1~i}) \div 2\rfloor$ \\
@@ -936,8 +936,8 @@ the result will also always be 0, just as in the CRC-8.
 \subsection{Updating Stream MD5 Sum}
 
 \ALGORITHM{the frame's signed PCM samples\footnote{$sample_{x~y}$ indicates the $y$th sample in channel $x$}}{the stream's updated MD5 sum}
-\For{i = 0 \emph{\KwTo}block size}{
-  \For{j = 0 \emph{\KwTo}channel count}{
+\For{$i \leftarrow 0$ \emph{\KwTo}block size}{
+  \For{$j \leftarrow 0$ \emph{\KwTo}channel count}{
     bytes $\leftarrow sample_{j~i}$ as signed, little-endian bytes\;
     update stream's MD5 sum with bytes\;
   }
@@ -1078,8 +1078,8 @@ in order to populate them.
 
 \subsection{Updating Stream MD5 Sum}
 \ALGORITHM{the frame's signed PCM input samples\footnote{$sample_{x~y}$ indicates the $y$th sample in channel $x$}}{the stream's updated MD5 sum}
-\For{i = 0 \emph{\KwTo}block size}{
-  \For{j = 0 \emph{\KwTo}channel count}{
+\For{$i \leftarrow 0$ \emph{\KwTo}block size}{
+  \For{$j \leftarrow 0$ \emph{\KwTo}channel count}{
     bytes $\leftarrow sample_{j~i}$ as signed, little-endian bytes\;
     update stream's MD5 sum with bytes\;
   }
@@ -1528,7 +1528,7 @@ The smallest subframe is the one written to disk.
 \SetKwFunction{MIN}{min}
 \SetKwFunction{WASTED}{wasted}
 $\text{\WASTEDBPS} \leftarrow \infty$\tcc*[r]{maximum unsigned integer}
-\For{i = 0 \emph{\KwTo}sample count}{
+\For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
   $\text{\WASTEDBPS} \leftarrow \MIN(\WASTED(\text{\SAMPLE}_i)~,~\text{\WASTEDBPS})$\;
 }
 \eIf(\tcc*[f]{all samples are 0}){$\WASTEDBPS = \infty$}{
@@ -1573,14 +1573,14 @@ $0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{no wasted BPS}
 \subsection{Encoding a FIXED Subframe}
 \ALGORITHM{signed subframe samples, subframe's bits per sample, wasted BPS}{a FIXED subframe}
 \tcc{first decide which FIXED subframe order to use}
-\For(\tcc*[f]{order 0}){i = 0 \emph{\KwTo}sample count}{
+\For(\tcc*[f]{order 0}){$i \leftarrow 0$ \emph{\KwTo}sample count}{
 $residual_{0~i} \leftarrow sample_i$\;
 }
 $total~error_0 \leftarrow \overset{sample~count - 1}{\underset{i = 4}{\sum}}|residual_{0~i}|$\;
 \BlankLine
 \eIf{sample count $> 4$}{
-\For(\tcc*[f]{order 1-4}){order = 1 \emph{\KwTo}5}{
-  \For{i = 0 \emph{\KwTo}sample count - order}{
+\For(\tcc*[f]{order 1-4}){$order \leftarrow 1$ \emph{\KwTo}5}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}sample count - order}{
   $residual_{order~i} \leftarrow residual_{order - 1~i + 1} - residual_{order - 1~i}$\;
   }
   $total~error_{order} \leftarrow \overset{sample~count - order - 1}{\underset{i = 4 - order}{\sum}}|residual_{order~i}|$\;
@@ -1601,7 +1601,7 @@ $\text{subframe order} \rightarrow$ \WRITE 3 unsigned bits\;
 }{
   $0 \rightarrow$ \WRITE 1 unsigned bit\;
 }
-\For(\tcc*[f]{warm-up samples}){i = 0 \emph{\KwTo}subframe order}{
+\For(\tcc*[f]{warm-up samples}){$i \leftarrow 0$ \emph{\KwTo}subframe order}{
   $sample_i \rightarrow$ \WRITE (bits per sample) signed bits\;
 }
 write encoded residual block based on $residual_{order}$'s signed values\;
@@ -1662,10 +1662,10 @@ used when calculating the best FIXED subframe order.
 \tcc{calculate best partition order and Rice parameters for that order}
 \BPORDER $\leftarrow 0$\tcc*[r]{best partition order}
 \BSIZE $\leftarrow$ maximum integer\tcc*[r]{total size of best partition order}
-\For{\PORDER = minimum partition order \emph{\KwTo}(maximum partition order + 1)}{
+\For{$\PORDER \leftarrow \text{minimum partition order}$ \emph{\KwTo}(maximum partition order + 1)}{
   \If{block size equally divisible into $2^{\PORDER}$ partitions}{
     $\text{order size}_{\PORDER} \leftarrow 0$\tcc*[r]{the total size of a given partition order}
-    \For{p = 0 \emph{\KwTo}$2 ^ {\PORDER}$} {
+    \For{$p \leftarrow 0$ \emph{\KwTo}$2 ^ {\PORDER}$} {
       \eIf{p = 0}{
         $partition_{\PORDER~0} \leftarrow block~size \div 2 ^ {\PORDER} - subframe~order$ residuals
       }{
@@ -1693,7 +1693,7 @@ used when calculating the best FIXED subframe order.
 }
 $\text{coding method} \rightarrow$ \WRITE 2 unsigned bits\;
 $\BPORDER \rightarrow$ \WRITE 4 unsigned bits\;
-\For{p = 0 \emph{\KwTo}$2 ^ {\BPORDER}$} {
+\For{$p \leftarrow 0$ \emph{\KwTo}$2 ^ {\BPORDER}$} {
   \eIf{coding method = 0}{
     $\text{\RICE}_{(\BPORDER)~p} \rightarrow$ \WRITE 4 unsigned bits\;
   }{
@@ -1864,7 +1864,7 @@ down to only 67 bits - or about 40\% of their original size.
     \tcc{build a complete LPC subframe from each set of LP coefficients
     and return the parameters of the one which is smallest}
     best LPC subframe size $\leftarrow$ maximum integer\;
-    \For{\ORDER = 1 \emph{\KwTo}maximum LPC order + 1}{
+    \For{$\ORDER \leftarrow 1$ \emph{\KwTo}maximum LPC order + 1}{
       (\QLPCOEFFS, \QLPPRECISION, \QLPSHIFT) $\leftarrow$ quantize \LPCOEFFS at \ORDER\;
       \LPCDATA $\leftarrow$ build LPC subframe from \ORDER, \QLPCOEFFS, \QLPPRECISION, \QLPSHIFT\;
       \If{$\LEN(\LPCDATA) < \text{best LPC subframe size}$}{
@@ -1887,7 +1887,7 @@ down to only 67 bits - or about 40\% of their original size.
 \subsubsection{Windowing the Input Samples}
 \ALGORITHM{a list of signed input sample integers}{a list of signed windowed samples as floats}
 \SetKwFunction{TUKEY}{tukey}
-\For{i = 0 \emph{\KwTo}sample count}{
+\For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
   $windowed_i = sample_i \times \TUKEY(i)$\;
 }
 \Return windowed samples\;
@@ -1933,7 +1933,7 @@ $i$ & $sample_i$ & $tukey(i)$ & $windowed_i$ \\
 \subsubsection{Performing Autocorrelation}
 
 \ALGORITHM{a list of signed windowed samples, the maximum LPC order}{a list of signed autocorrelation values}
-\For{lag = 0 \emph{\KwTo}maximum LPC order + 1}{
+\For{$lag \leftarrow 0$ \emph{\KwTo}maximum LPC order + 1}{
   $\text{autocorrelation}_{\text{lag}} = \overset{\text{total samples} - \text{lag} - 1}{\underset{i = 0}{\sum}}\text{sample}_i \times \text{sample}_{i + \text{lag}}$\;
 }
 \EALGORITHM
@@ -2033,7 +2033,7 @@ $\kappa_0$ &$\leftarrow$ & $ \AUTOCORRELATION_1 \div \AUTOCORRELATION_0$ \\
 $\LPCOEFF_{0~0}$ &$\leftarrow$ & $ \kappa_0$ \\
 $\ERROR_0$ &$\leftarrow$ & $ \AUTOCORRELATION_0 \times (1 - {\kappa_0} ^ 2)$ \\
 \end{tabular}\;
-\For{i = 1 \emph{\KwTo}maximum LPC order}{
+\For{$i \leftarrow 1$ \emph{\KwTo}maximum LPC order}{
   \tcc{"zip" all of the previous row's LP coefficients
     \newline
     and the reversed autocorrelation values from 1 to i + 1
@@ -2042,7 +2042,7 @@ $\ERROR_0$ &$\leftarrow$ & $ \AUTOCORRELATION_0 \times (1 - {\kappa_0} ^ 2)$ \\
     \newline
     $q_i$ is $\AUTOCORRELATION_{i + 1}$ minus the sum of those mutiplied ($c$,$a$) pairs}
   $q_i \leftarrow \AUTOCORRELATION_{i + 1}$\;
-  \For{j = 0 \emph{\KwTo}i}{
+  \For{$j \leftarrow 0$ \emph{\KwTo}i}{
     $q_i \leftarrow q_i - (\LPCOEFF_{(i - 1)~j} \times \AUTOCORRELATION_{i - j})$\;
   }
   \BlankLine
@@ -2052,7 +2052,7 @@ $\ERROR_0$ &$\leftarrow$ & $ \AUTOCORRELATION_0 \times (1 - {\kappa_0} ^ 2)$ \\
     \newline
     into ($c$,$r$) pairs}
   $\kappa_i = q_i \div \ERROR_{i - 1}$\;
-  \For{j = 0 \emph{\KwTo}i}{
+  \For{$j \leftarrow 0$ \emph{\KwTo}i}{
     \tcc{then build a new coefficient list of $c - (\kappa_i * r)$ for each ($c$,$r$) pair}
     $\LPCOEFF_{i~j} \leftarrow \LPCOEFF_{(i - 1)~j} - (\kappa_i \times \LPCOEFF_{(i - 1)~(i - j - 1)})$\;
   }
@@ -2138,7 +2138,7 @@ and error values: \texttt{619.107, 521.530, 520.854}
 \ERRORSCALE $\leftarrow \frac{\log_e(2) ^ 2}{\text{block size} \times 2}$\;
 \BORDER $\leftarrow 0$\;
 \BSIZE $\leftarrow$ maximum floating point\;
-\For{i = 0 \emph{\KwTo}maximum LPC order}{
+\For{$i \leftarrow 0$ \emph{\KwTo}maximum LPC order}{
   $order \leftarrow i + 1$\;
   \uIf{$\text{error}_i > 0.0$}{
     $header~bits \leftarrow order \times (\text{bits per sample} + \text{QLP precision})$\;
@@ -2181,14 +2181,14 @@ QLP max $\leftarrow 2 ^ \text{QLP precision - 1} - 1$\;
 QLP min $\leftarrow -(2 ^ \text{QLP precision - 1})$\;
 $error \leftarrow 0.0$\;
 \eIf{$\text{QLP shift needed} \geq 0$}{
-  \For{i = 0 \emph{\KwTo}order}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}order}{
     $error \leftarrow error + \text{LP Coefficients}_{order - 1~i} \times 2 ^ \text{QLP shift needed}$\;
     $\text{QLP coefficient}_i \leftarrow \MIN(\MAX(\ROUND(error), \text{QLP min}), \text{QLP max})$\;
     $error \leftarrow error - \text{QLP coefficient}_i$\;
   }
   \Return (QLP coefficients, QLP shift needed)\;
 }(\tcc*[f]{negative shifts are not allowed, so shrink coefficients}){
-  \For{i = 0 \emph{\KwTo}order}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}order}{
     $error \leftarrow error + \text{LP Coefficients}_{order - 1~i} \div 2 ^ {-\text{QLP shift needed}}$\;
     $\text{QLP coefficient}_i \leftarrow \MIN(\MAX(\ROUND(error), \text{QLP min}), \text{QLP max})$\;
     $error \leftarrow error - \text{QLP coefficient}_i$\;
@@ -2241,16 +2241,16 @@ $(\text{subframe order} - 1) \rightarrow$ \WRITE 5 unsigned bits\;
 }{
   $0 \rightarrow$ \WRITE 1 unsigned bit\;
 }
-\For(\tcc*[f]{warm-up samples}){i = 0 \emph{\KwTo}subframe order}{
+\For(\tcc*[f]{warm-up samples}){$i \leftarrow 0$ \emph{\KwTo}subframe order}{
   $sample_i \rightarrow$ \WRITE (bits per sample) signed bits\;
 }
 $\text{QLP precision} - 1 \rightarrow$ \WRITE 4 unsigned bits\;
 $\text{QLP shift needed} \rightarrow$ \WRITE 5 signed bits\;
-\For(\tcc*[f]{QLP coefficients}){i = 0 \emph{\KwTo}subframe order}{
+\For(\tcc*[f]{QLP coefficients}){$i \leftarrow 0$ \emph{\KwTo}subframe order}{
   $\text{QLP coefficient}_i \rightarrow$ \WRITE (QLP precision) signed bits\;
 }
 \BlankLine
-\For(\tcc*[f]{calculate signed residuals}){i = 0 \emph{\KwTo}sample count - order}{
+\For(\tcc*[f]{calculate signed residuals}){$i \leftarrow 0$ \emph{\KwTo}sample count - order}{
   $residual_i \leftarrow sample_{i + order} - \left \lfloor \frac{\overset{order - 1}{\underset{j = 0}{\sum}} \text{QLP coefficient}_j \times sample_{i + order - j - 1} }{2 ^ \text{QLP shift needed}} \right \rfloor$
 }
 write encoded residual block based on signed residual values\;

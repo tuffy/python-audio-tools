@@ -154,7 +154,7 @@ where $values$ is a list and $count$ is the length of that list.
           $\text{\MEANS}_{c~[m - \text{\MEANCOUNT} \IDOTS m - 1]}$\newline and previous $\text{\SAMPLES}_c$\;
         }
         \Case(\tcc*[f]{ZERO}){8}{
-          \For{j = 0 \emph{\KwTo}\BLOCKLENGTH}{
+          \For{$j \leftarrow 0$ \emph{\KwTo}\BLOCKLENGTH}{
             $\text{\SAMPLES}_{c~j} \leftarrow 0$\;
           }
         }
@@ -261,7 +261,7 @@ they would be output to disk.
 \noindent
 \ALGORITHM{Shorten stream}{1 or more bytes of non-audio file data}
 $size \leftarrow$ read \texttt{unsigned}(5)\;
-\For{i = 0 \emph{\KwTo}size}{
+\For{$i \leftarrow 0$ \emph{\KwTo}size}{
   $\text{bytes}_i \leftarrow$ read \texttt{unsigned}(8)\;
 }
 \Return bytes\;
@@ -284,7 +284,7 @@ $size \leftarrow$ read \texttt{unsigned}(5)\;
 $\text{\OFFSET} \leftarrow \texttt{shnmean}(\text{\MEANS}_c~,~\text{mean count})$\;
 $\ENERGY \leftarrow$ read \texttt{unsigned}(3)\;
 \BlankLine
-\For{i = 0 \emph{\KwTo}\BLOCKLENGTH}{
+\For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKLENGTH}{
   $\text{\RESIDUAL}_i \leftarrow$ read \texttt{signed}(\ENERGY)\;
   $\text{\SAMPLES}_{c~i} \leftarrow \text{\RESIDUAL}_i + \OFFSET$\;
 }
@@ -301,7 +301,7 @@ $\ENERGY \leftarrow$ read \texttt{unsigned}(3)\;
 \SetKwData{SAMPLES}{samples}
 $\ENERGY \leftarrow$ read \texttt{unsigned}(3)\;
 \BlankLine
-\For{i = 0 \emph{\KwTo}\BLOCKLENGTH}{
+\For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKLENGTH}{
   $\text{\RESIDUAL}_i \leftarrow$ read \texttt{signed}(\ENERGY)\;
   $\text{\SAMPLES}_{c~i} \leftarrow \text{\SAMPLES}_{c~(i - 1)} + \text{\RESIDUAL}_i$\;
 }
@@ -323,7 +323,7 @@ or 0 if there are none
   \SetKwData{SAMPLES}{samples}
   $\ENERGY \leftarrow$ read \texttt{unsigned}(3)\;
   \BlankLine
-  \For{i = 0 \emph{\KwTo}\BLOCKLENGTH}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKLENGTH}{
     $\text{\RESIDUAL}_i \leftarrow$ read \texttt{signed}(\ENERGY)\;
     $\text{\SAMPLES}_{c~i} \leftarrow (2 \times \text{\SAMPLES}_{c~(i - 1)}) - \text{\SAMPLES}_{c~(i - 2)} + \text{\RESIDUAL}_i$\;
   }
@@ -345,7 +345,7 @@ or 0 if there are none
   \SetKwData{SAMPLES}{samples}
   $\ENERGY \leftarrow$ read \texttt{unsigned}(3)\;
   \BlankLine
-  \For{i = 0 \emph{\KwTo}\BLOCKLENGTH}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKLENGTH}{
     $\text{\RESIDUAL}_i \leftarrow$ read \texttt{signed}(\ENERGY)\;
     $\text{\SAMPLES}_{c~i} \leftarrow (3 \times (\text{\SAMPLES}_{c~(i - 1)} - \text{\SAMPLES}_{c~(i - 2)})) + \text{\SAMPLES}_{c~(i - 3)} + \text{\RESIDUAL}_i$\;
   }
@@ -553,13 +553,13 @@ this \texttt{DIFF} command.
 $\text{\OFFSET} \leftarrow \texttt{shnmean}(\text{\MEANS}_c~,~\text{mean count})$\;
 $\ENERGY \leftarrow$ read \texttt{unsigned}(3)\;
 $\LPCCOUNT \leftarrow$ read \texttt{unsigned}(2)\;
-\For{i = 0 \emph{\KwTo}\LPCCOUNT}{
+\For{$i \leftarrow 0$ \emph{\KwTo}\LPCCOUNT}{
   $\text{\COEFF}_i \leftarrow$ read \texttt{signed}(5)\;
 }
-\For{i = 0 \emph{\KwTo}\BLOCKLENGTH}{
+\For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKLENGTH}{
   $\text{\RESIDUAL}_i \leftarrow$ read \texttt{signed}(\ENERGY)\;
   $\text{sum} \leftarrow 2 ^ 5$\;
-  \For{j = 0 \emph{\KwTo}\LPCCOUNT}{
+  \For{$j \leftarrow 0$ \emph{\KwTo}\LPCCOUNT}{
     \eIf(\tcc*[f]{remove offset from warm-up samples}){$i - j - 1 < 0$}{
       $\text{sum} \leftarrow \text{sum} + \text{\COEFF}_j \times (\text{\SAMPLES}_{c~(i - j - 1)} - \OFFSET)$\;
     }{
@@ -568,7 +568,7 @@ $\LPCCOUNT \leftarrow$ read \texttt{unsigned}(2)\;
   }
   $\text{\UNOFFSET}_{i} \leftarrow \left\lfloor\frac{\text{sum}}{2 ^ 5}\right\rfloor + \text{\RESIDUAL}_i$\;
 }
-\For(\tcc*[f]{add offset to output samples}){i = 0 \emph{\KwTo}\BLOCKLENGTH}{
+\For(\tcc*[f]{add offset to output samples}){$i \leftarrow 0$ \emph{\KwTo}\BLOCKLENGTH}{
   $\text{\SAMPLES}_{c~i} \leftarrow \text{\UNOFFSET}_i + \OFFSET$
 }
 \Return $\text{\SAMPLES}_c$\;
@@ -709,7 +709,7 @@ In this example:
 \eIf{$\LEFTSHIFT = 0$}{
   \Return $\text{\SAMPLES}_c$\tcc*{no change}
 }{
-  \For{i = 0 \emph{\KwTo}\BLOCKLENGTH}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKLENGTH}{
     $\text{\UNSHIFTED}_{c~i} \leftarrow \text{\SAMPLES}_{c~i} \times 2 ^ {\LEFTSHIFT}$\;
   }
   \Return $\text{\UNSHIFTED}_{c}$\;
@@ -798,7 +798,7 @@ $\LSB \rightarrow$ \WRITE $c$ unsigned bits\;
           write \texttt{unsigned}(2~,~6)\tcc*[r]{BITSHIFT command}
           write \texttt{unsigned}(2~,~\LEFTSHIFT)\;
         }
-        \For{i = 0 \emph{\KwTo}\BLOCKSIZE}{
+        \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
           $\text{\SHIFTED}_i \leftarrow \text{\CHANNEL}_i \div 2 ^ {\text{\LEFTSHIFT}}$\;
         }
         $(\DIFF~,~\ENERGY~,~\RESIDUALS) \leftarrow$ compute best \texttt{DIFF}, energy and residuals for \SHIFTED\;
@@ -886,7 +886,7 @@ $\LSB \rightarrow$ \WRITE $c$ unsigned bits\;
   \SetKwFunction{MIN}{min}
   \SetKwFunction{WASTED}{wasted}
   $\text{\WASTEDBPS} \leftarrow \infty$\tcc*[r]{maximum unsigned integer}
-  \For{i = 0 \emph{\KwTo}sample count}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
     $\text{\WASTEDBPS} \leftarrow \MIN(\WASTED(\text{\SAMPLE}_i)~,~\text{\WASTEDBPS})$\;
   }
   \eIf(\tcc*[f]{all samples are 0}){$\WASTEDBPS = \infty$}{
@@ -916,17 +916,17 @@ $\LSB \rightarrow$ \WRITE $c$ unsigned bits\;
 \SetKwData{ENERGY}{energy}
 \SetKwData{SUM}{sum}
 \SetKwFunction{MIN}{min}
-\For{i = -2 \emph{\KwTo}\BLOCKSIZE}{
+\For{$i \leftarrow -2$ \emph{\KwTo}\BLOCKSIZE}{
   $\text{\DELTA}_{1~i} \leftarrow \text{\SAMPLE}_i - \text{\SAMPLE}_{(i - 1)}$\;
 }
-\For{i = -1 \emph{\KwTo}\BLOCKSIZE}{
+\For{$i \leftarrow -1$ \emph{\KwTo}\BLOCKSIZE}{
   $\text{\DELTA}_{2~i} \leftarrow \text{\DELTA}_{1~i} - \text{\DELTA}_{1~(i - 1)}$\;
 }
-\For{i = 0 \emph{\KwTo}\BLOCKSIZE}{
+\For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
   $\text{\DELTA}_{3~i} \leftarrow \text{\DELTA}_{2~i} - \text{\DELTA}_{2~(i - 1)}$\;
 }
 \BlankLine
-\For{d = 1 \emph{\KwTo}4}{
+\For{$d \leftarrow 1$ \emph{\KwTo}4}{
   $\text{\SUM}_d \leftarrow \overset{\BLOCKSIZE - 1}{\underset{i = 0}{\sum}}|\text{\DELTA}_{d~i}|$\;
 }
 \BlankLine

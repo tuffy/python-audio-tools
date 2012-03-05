@@ -173,8 +173,8 @@ $not~compressed \leftarrow$ \READ 1 unsigned bit\;
   sample count $\leftarrow$ \READ 32 unsigned bits\;
 }
 \eIf(\tcc*[f]{raw, uncompressed frame}){$not~compressed = 1$}{
-  \For{i = 0 \emph{\KwTo}sample count}{
-    \For{c = 0 \emph{\KwTo}channel count}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
+    \For{$c \leftarrow 0$ \emph{\KwTo}channel count}{
       \tcc{bits per sample taken from alac atom}
       $\text{channel}_{c~i} \leftarrow$ \READ (bits per sample) signed bits\;
     }
@@ -182,30 +182,30 @@ $not~compressed \leftarrow$ \READ 1 unsigned bit\;
 }(\tcc*[f]{compressed frame}){
   interlacing shift $\leftarrow$ \READ 8 unsigned bits\;
   interlacing leftweight $\leftarrow$ \READ 8 unsigned bits\;
-  \For{c = 0 \emph{\KwTo}channel count}{
+  \For{$c \leftarrow 0$ \emph{\KwTo}channel count}{
     $\text{subframe header}_c \leftarrow$ read subframe header\;
   }
   \If{$uncompressed~LSBs > 0$}{
-    \For{i = 0 \emph{\KwTo}sample count}{
-      \For{c = 0 \emph{\KwTo}channel count}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
+      \For{$c \leftarrow 0$ \emph{\KwTo}channel count}{
         $\text{LSBs}_{c~i} \leftarrow$ \READ ($uncompressed~LSBs \times 8$) unsigned bits\;
       }
     }
   }
-  \For{c = 0 \emph{\KwTo}channel count}{
+  \For{$c \leftarrow 0$ \emph{\KwTo}channel count}{
     $\text{residual block}_c \leftarrow$ read residual block where sample size is $\text{bits per sample} - (uncompressed~LSBs \times 8) + (\text{channel count} - 1)$\;
     decode $\text{subframe}_c$ from $\text{subframe header}_c$ and $\text{residual block}_c$\;
   }
   \eIf{$channel~count = 2$}{
     decorrelate $\text{subframe}_0$ and $\text{subframe}_1$ to $\text{channel}_0$ and $\text{channel}_1$ according to interlacing shift and interlacing leftweight\;
   }{
-    \For{c = 0 \emph{\KwTo}channel count}{
+    \For{$c \leftarrow 0$ \emph{\KwTo}channel count}{
       $\text{channel}_c \leftarrow \text{subframe}_c$\;
     }
   }
   \If{$uncompressed~LSBs > 0$}{
-    \For{c = 0 \emph{\KwTo}channel count}{
-      \For{i = 0 \emph{\KwTo}sample count}{
+    \For{$c \leftarrow 0$ \emph{\KwTo}channel count}{
+      \For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
         $\text{channel}_{c~i} \leftarrow (\text{channel}_{c~i} \times 2 ^ {uncompressed~LSBs \times 8}) + \text{LSB}_{c~i}$\;
       }
     }
@@ -224,7 +224,7 @@ $prediction~type \leftarrow$ \READ 4 unsigned bits\tcc*[r]{must be 0}
 QLP shift needed $\leftarrow$ \READ 4 unsigned bits\;
 Rice modifier $\leftarrow$ \READ 3 unsigned bits\tcc*[r]{unusued}
 $\text{coefficient count} \leftarrow$ \READ 5 unsigned bits\tcc*[r]{always 4 or 8}
-\For{i = 0 \emph{\KwTo}coefficient count}{
+\For{$i \leftarrow 0$ \emph{\KwTo}coefficient count}{
   $\text{QLP coefficient}_i \leftarrow$ \READ 16 signed bits\;
 }
 \Return QLP shift needed, QLP coefficients
@@ -291,7 +291,7 @@ $\text{coefficient}_{1~3}$ & $\leftarrow$ & \texttt{0xFEE5} &=& -283 \\
 \SetKwFunction{READRESIDUAL}{read residual}
 \HISTORY $\leftarrow$ initial history\;
 \SIGN $\leftarrow 0$\;
-\For{i = 0 \emph{\KwTo}sample count}{
+\For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
   $\kappa \leftarrow \MIN(\lfloor\log_2(\HISTORY \div 2 ^ 9 + 3)\rfloor~,~\text{maximum K})$\;
   $\text{unsigned}_i \leftarrow \READRESIDUAL(\kappa~,~\text{sample size}) + \SIGN$\;
   \SIGN $\leftarrow 0$\;
@@ -308,7 +308,7 @@ $\text{coefficient}_{1~3}$ & $\leftarrow$ & \texttt{0xFEE5} &=& -283 \\
       \tcc{generate run of 0 residuals if history gets too small}
       $\kappa \leftarrow \MIN(7 - \lfloor\log_2(\HISTORY)\rfloor + ((\HISTORY + 16) \div 64)~,~\text{maximum K})$\;
       \ZEROES $\leftarrow \READRESIDUAL(\kappa~,~16)$\;
-      \For{j = 0 \emph{\KwTo}\ZEROES}{
+      \For{$j \leftarrow 0$ \emph{\KwTo}\ZEROES}{
         $\text{residual}_{i + j + 1} \leftarrow 0$\;
       }
       $i \leftarrow i + j$\;
@@ -541,17 +541,17 @@ $i$ & \kappa & \text{MSB}_i & \text{LSB}_i & \text{unsigned}_i &
 \SetKw{BREAK}{break}
 \SetKwData{ORIGSIGN}{original sign}
 $\text{Sample}_0 \leftarrow \text{Residual}_0$\;
-\For{i = 1 \emph{\KwTo}$\text{coefficient count} + 1$}{
+\For{$i \leftarrow 1$ \emph{\KwTo}$\text{coefficient count} + 1$}{
   $\text{Sample}_i \leftarrow \text{Residual}_{i} + \text{Sample}_{i - 1}$\;
 }
 \BlankLine
-\For{i = $\text{coefficient count} + 1$ \emph{\KwTo}$\text{sample count}$}{
+\For{i $\leftarrow \text{coefficient count} + 1$ \emph{\KwTo}$\text{sample count}$}{
   $\text{Base Sample}_i \leftarrow \text{Sample}_{i - coeff.~count - 1}$\;
   $\text{QLP Sum}_i \leftarrow \overset{coeff.~count - 1}{\underset{j = 0}{\sum}} \text{QLP Coefficient}_j \times (\text{Sample}_{i - j - 1} - \text{Base Sample}_i)$\;
   $\text{Sample}_i \leftarrow \left\lfloor\frac{\text{QLP Sum}_i + 2 ^ \text{QLP shift needed - 1}}{2 ^ \text{QLP shift needed}}\right\rfloor + \text{Residual}_i + \text{Base Sample}_i$\;
   \BlankLine
   \uIf(\tcc*[f]{modify QLP coefficients}){$\text{Residual}_i > 0$}{
-    \For{j = 0 \emph{\KwTo}$\text{coefficient count}$}{
+    \For{$j \leftarrow 0$ \emph{\KwTo}$\text{coefficient count}$}{
       $diff \leftarrow \text{Base Sample}_i - \text{Samples}_{i - coeff.~count + j}$\;
       $sign \leftarrow \SIGN(diff)$\;
       $\text{QLP Coefficient}_{coeff.~count - j - 1} \leftarrow \text{QLP Coefficient}_{coeff.~count - j - 1} - sign$\;
@@ -562,7 +562,7 @@ $\text{Sample}_0 \leftarrow \text{Residual}_0$\;
     }
   }
   \ElseIf{$\text{Residual}_i < 0$}{
-    \For{j = 0 \emph{\KwTo}$\text{coefficient count}$}{
+    \For{$j \leftarrow 0$ \emph{\KwTo}$\text{coefficient count}$}{
       $diff \leftarrow \text{Base Sample}_i - \text{Samples}_{i - coeff.~count + j}$\;
       $sign \leftarrow \SIGN(diff)$\;
       $\text{QLP Coefficient}_{coeff.~count - j - 1} \leftarrow \text{QLP Coefficient}_{coeff.~count - j - 1} + sign$\;
@@ -650,7 +650,7 @@ and how the next sample's QLP Coefficient values are shifted.
 \subsection{Channel Decorrelation}
 \ALGORITHM{$\text{subframe samples}_0$, $\text{subframe samples}_1$, interlacing shift and interlacing leftweight from frame header}{left and right channels}
 \eIf{$\text{interlacing leftweight} > 0$}{
-  \For{i = 0 \emph{\KwTo}sample count}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
     $\text{Right}_i \leftarrow \text{Subframe}_{0~i} - \left\lfloor\frac{\text{Subframe}_{1~i} \times \text{interlacing leftweight}}{2 ^ \text{interlacing shift}}\right\rfloor$\;
     $\text{Left}_i \leftarrow \text{Subframe}_{1~i} + \text{Right}_i$
   }
@@ -1440,8 +1440,8 @@ $1 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{not compressed}
 \If{$\text{\PCMCOUNT} \neq \text{encoding parameter's \BLOCKSIZE}$}{
   $\PCMCOUNT \rightarrow$ \WRITE 32 unsigned bits\;
 }
-\For{i = 0 \emph{\KwTo}\PCMCOUNT}{
-  \For{c = 0 \emph{\KwTo}\CHANCOUNT}{
+\For{$i \leftarrow 0$ \emph{\KwTo}\PCMCOUNT}{
+  \For{$c \leftarrow 0$ \emph{\KwTo}\CHANCOUNT}{
     $\text{Channel}_{c~i} \rightarrow$ \WRITE (\BPS) signed bits\;
   }
 }
@@ -1462,8 +1462,8 @@ $1 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{not compressed}
   \HASLSBS $\leftarrow 0$\;
 }(\tcc*[f]{extract uncompressed LSBs}){
   \HASLSBS $\leftarrow (\text{\BPS} - 16) \div 8$\;
-  \For{i = 0 \emph{\KwTo}\PCMCOUNT}{
-    \For{c = 0 \emph{\KwTo}\CHANCOUNT}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}\PCMCOUNT}{
+    \For{$c \leftarrow 0$ \emph{\KwTo}\CHANCOUNT}{
       $\text{LSB}_{(i \times \CHANCOUNT) + c} \leftarrow \text{Channel}_{c~i} \bmod~2^{\text{\BPS} - 16}$\;
       $\text{Channel}_{c~i} \leftarrow \left\lfloor\text{Channel}_{c~i} \div 2^{\text{\BPS} - 16}\right\rfloor$\;
     }
@@ -1472,7 +1472,7 @@ $1 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{not compressed}
 \eIf{$\text{\CHANCOUNT} = 1$}{
   \Return non-interlaced frame for $\text{Channel}_0$\;
 }{
-  \For{l = \MINWEIGHT \emph{\KwTo}$\text{\MAXWEIGHT} + 1$}{
+  \For{l $\leftarrow \MINWEIGHT$ \emph{\KwTo}$\text{\MAXWEIGHT} + 1$}{
     $\text{Frame}_l \leftarrow$ interlaced frame for $\text{Channel}_0~,~\text{Channel}_1$ with leftweight $l$\;
   }
   \Return smallest $\text{Frame}_l$\;
@@ -1504,7 +1504,7 @@ $0 \rightarrow$ \WRITE 8 unsigned bits\tcc*[r]{interlacing leftweight}
 compute $\text{QLP coefficients}_0$ and $\text{Residual}_0$ for $\text{Channel}_0$ with \SAMPLESIZE\;
 write subframe header with $\text{QLP coefficients}_0$\;
 \If{$\text{uncompressed LSBs} > 0$}{
-  \For{i = 0 \emph{\KwTo}\PCMCOUNT}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}\PCMCOUNT}{
     $\text{LSB}_i \rightarrow$ \WRITE $(\text{uncompressed LSBs} \times 8)$ unsigned bits\;
   }
 }
@@ -1544,7 +1544,7 @@ compute $\text{QLP Coefficients}_1$ and $\text{Residual}_1$ for $\text{Correlate
 write subframe header with $\text{QLP Coefficients}_0$\;
 write subframe header with $\text{QLP Coefficients}_1$\;
 \If{$\text{uncompressed LSBs} > 0$}{
-  \For{i = 0 \emph{\KwTo}\PCMCOUNT}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}\PCMCOUNT}{
     $\text{LSB}_i \rightarrow$ \WRITE $(\text{uncompressed LSBs} \times 8)$ unsigned bits\;
   }
 }
@@ -1559,12 +1559,12 @@ write residual block $\text{Residual}_1$\;
 \ALGORITHM{2 channels of PCM data, interlacing shift, interlacing leftweight}{2 correlated channels of PCM data}
 \SetKwData{PCMCOUNT}{PCM frame count}
 \eIf{$\text{interlacing leftweight} > 0$}{
-  \For{i = 0 \emph{\KwTo}\PCMCOUNT}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}\PCMCOUNT}{
     $\text{Correlated}_{0~i} \leftarrow \text{Channel}_{1~i} + \left\lfloor\frac{(\text{Channel}_{0~i} - \text{Channel}_{1~i}) \times \text{interlacing leftweight}}{2 ^ \text{interlacing shift}}\right\rfloor$\;
     $\text{Correlated}_{1~i} \leftarrow \text{Channel}_{0~i} - \text{Channel}_{1~i}$\;
   }
 }{
-  \For{i = 0 \emph{\KwTo}\PCMCOUNT}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}\PCMCOUNT}{
     $\text{Correlated}_{0~i} \leftarrow \text{Channel}_{0~i}$\;
     $\text{Correlated}_{1~i} \leftarrow \text{Channel}_{1~i}$\;
   }
@@ -1628,7 +1628,7 @@ autocorrelate \WINDOWED to 9 floating point \AUTOCORRELATIONS\;
 {\relsize{-1}
 \ALGORITHM{a list of signed input sample integers}{a list of signed windowed samples as floats}
 \SetKwFunction{TUKEY}{tukey}
-\For{i = 0 \emph{\KwTo}sample count}{
+\For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
   $windowed_i = sample_i \times \TUKEY(i)$\;
 }
 \Return windowed samples\;
@@ -1676,7 +1676,7 @@ $i$ & $sample_i$ & & \texttt{tukey}($i$) & & $windowed_i$ \\
 
 \subsubsection{Autocorrelating Windowed Samples}
 \ALGORITHM{a list of signed windowed samples}{a list of signed autocorrelation values}
-\For{lag = 0 \emph{\KwTo}9}{
+\For{$lag \leftarrow 0$ \emph{\KwTo}9}{
   $\text{autocorrelation}_{\text{lag}} = \overset{\text{total samples} - \text{lag} - 1}{\underset{i = 0}{\sum}}\text{windowed}_i \times \text{windowed}_{i + \text{lag}}$\;
 }
 \EALGORITHM
@@ -1790,7 +1790,7 @@ $\kappa_0$ &$\leftarrow$ & $ \AUTOCORRELATION_1 \div \AUTOCORRELATION_0$ \\
 $\LPCOEFF_{0~0}$ &$\leftarrow$ & $ \kappa_0$ \\
 $\ERROR_0$ &$\leftarrow$ & $ \AUTOCORRELATION_0 \times (1 - {\kappa_0} ^ 2)$ \\
 \end{tabular}\;
-\For{i = 1 \emph{\KwTo}8}{
+\For{$i \leftarrow 1$ \emph{\KwTo}8}{
   \tcc{"zip" all of the previous row's LP coefficients
     \newline
     and the reversed autocorrelation values from 1 to i + 1
@@ -1799,7 +1799,7 @@ $\ERROR_0$ &$\leftarrow$ & $ \AUTOCORRELATION_0 \times (1 - {\kappa_0} ^ 2)$ \\
     \newline
     $q_i$ is $\AUTOCORRELATION_{i + 1}$ minus the sum of those mutiplied ($c$,$a$) pairs}
   $q_i \leftarrow \AUTOCORRELATION_{i + 1}$\;
-  \For{j = 0 \emph{\KwTo}i}{
+  \For{$j \leftarrow 0$ \emph{\KwTo}i}{
     $q_i \leftarrow q_i - (\LPCOEFF_{(i - 1)~j} \times \AUTOCORRELATION_{i - j})$\;
   }
   \BlankLine
@@ -1809,7 +1809,7 @@ $\ERROR_0$ &$\leftarrow$ & $ \AUTOCORRELATION_0 \times (1 - {\kappa_0} ^ 2)$ \\
     \newline
     into ($c$,$r$) pairs}
   $\kappa_i = q_i \div \ERROR_{i - 1}$\;
-  \For{j = 0 \emph{\KwTo}i}{
+  \For{$j \leftarrow 0$ \emph{\KwTo}i}{
     \tcc{then build a new coefficient list of $c - (\kappa_i * r)$ for each ($c$,$r$) pair}
     $\LPCOEFF_{i~j} \leftarrow \LPCOEFF_{(i - 1)~j} - (\kappa_i \times \LPCOEFF_{(i - 1)~(i - j - 1)})$\;
   }
@@ -1890,7 +1890,7 @@ k_3 & \multicolumn{4}{>{$}l<{$}|}{\texttt{-122.06} \div \texttt{388.31} = \textt
 QLP max $\leftarrow 2 ^ \text{15} - 1$\;
 QLP min $\leftarrow -(2 ^ \text{15})$\;
 $error \leftarrow 0.0$\;
-\For{i = 0 \emph{\KwTo}order}{
+\For{$i \leftarrow 0$ \emph{\KwTo}order}{
   $error \leftarrow error + \text{LP Coefficients}_{order - 1~i} \times 2 ^ 9$\;
   $\text{QLP coefficient}_i \leftarrow \MIN(\MAX(\ROUND(error), \text{QLP min}), \text{QLP max})$\;
   $error \leftarrow error - \text{QLP coefficient}_i$\;
@@ -1924,17 +1924,17 @@ error &\leftarrow \texttt{-161.35} - -161 = \texttt{-0.35} \\
 \SetKw{BREAK}{break}
 \SetKwData{ERROR}{Error}
 $\text{Residual}_0 \leftarrow \text{Sample}_0$\;
-\For{i = 1 \emph{\KwTo}coefficient count + 1}{
+\For{$i \leftarrow 1$ \emph{\KwTo}coefficient count + 1}{
   $\text{Residual}_i \leftarrow \text{Sample}_i - \text{Sample}_{i - 1}$
 }
-\For{i = coefficient count + 1 \emph{\KwTo}sample count}{
+\For{i $\leftarrow \text{coefficient count} + 1$ \emph{\KwTo}sample count}{
   $\text{Base Sample}_i \leftarrow \text{Sample}_{i - coeff.~count - 1}$\;
   $\text{QLP Sum}_i \leftarrow \overset{coeff.~count - 1}{\underset{j = 0}{\sum}} \text{QLP Coefficient}_j \times (\text{Sample}_{i - j - 1} - \text{Base Sample}_i)$\;
   $\text{\ERROR} \leftarrow \text{Sample}_i - \left(\left\lfloor\frac{\text{QLP Sum}_i + 2 ^ 8}{2 ^ 9}\right\rfloor + \text{Base Sample}_i\right)$\;
   $\text{Residual}_i \leftarrow \text{\ERROR}$\;
   \BlankLine
   \uIf(\tcc*[f]{modify QLP coefficients}){$\text{\ERROR} > 0$}{
-    \For{j = 0 \emph{\KwTo}$\text{coefficient count}$}{
+    \For{$j \leftarrow 0$ \emph{\KwTo}$\text{coefficient count}$}{
       $diff \leftarrow \text{Base Sample}_i - \text{Samples}_{i - coeff.~count + j}$\;
       $sign \leftarrow \SIGN(diff)$\;
       $\text{QLP Coefficient}_{coeff.~count - j - 1} \leftarrow \text{QLP Coefficient}_{coeff.~count - j - 1} - sign$\;
@@ -1945,7 +1945,7 @@ $\text{Residual}_0 \leftarrow \text{Sample}_0$\;
     }
   }
   \ElseIf{$\text{\ERROR} < 0$}{
-    \For{j = 0 \emph{\KwTo}$\text{coefficient count}$}{
+    \For{$j \leftarrow 0$ \emph{\KwTo}$\text{coefficient count}$}{
       $diff \leftarrow \text{Base Sample}_i - \text{Samples}_{i - coeff.~count + j}$\;
       $sign \leftarrow \SIGN(diff)$\;
       $\text{QLP Coefficient}_{coeff.~count - j - 1} \leftarrow \text{QLP Coefficient}_{coeff.~count - j - 1} + sign$\;

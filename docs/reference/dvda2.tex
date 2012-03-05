@@ -85,12 +85,12 @@ $\IDENTIFIER \leftarrow$ \READ 12 bytes\;
 $\TITLECOUNT \leftarrow$ \READ 16 unsigned bits\;
 \SKIP 16 bits\;
 $\LASTADDRESS \leftarrow$ \READ 32 unsigned bits\;
-\For{i = 0 \emph{\KwTo}\TITLECOUNT}{
+\For{$i \leftarrow 0$ \emph{\KwTo}\TITLECOUNT}{
   $\text{\TITLENUMBER}_i \leftarrow$ \READ 8 unsigned bits\;
   \SKIP 24 bits\;
   $\text{\TITLEOFFSET}_i \leftarrow$ \READ 32 unsigned bits\;
 }
-\For(\tcc*[f]{read title information}){i = 0 \emph{\KwTo}\TITLECOUNT}{
+\For(\tcc*[f]{read title information}){$i \leftarrow 0$ \emph{\KwTo}\TITLECOUNT}{
   \SEEK to file position $(\texttt{0x800} + \text{\TITLEOFFSET}_i)$\;
   \SKIP 16 bits\;
   $\text{\TRACKCOUNT}_i \leftarrow$ \READ 8 unsigned bits\;
@@ -99,7 +99,7 @@ $\LASTADDRESS \leftarrow$ \READ 32 unsigned bits\;
   \SKIP 32 bits\;
   $\text{\POINTERSOFFSET}_i \leftarrow$ \READ 16 unsigned bits\;
   \SKIP 16 bits\;
-  \For(\tcc*[f]{read track information}){j = 0 \emph{\KwTo}$\text{\TRACKCOUNT}_i$}{
+  \For(\tcc*[f]{read track information}){$j \leftarrow 0$ \emph{\KwTo}$\text{\TRACKCOUNT}_i$}{
     \SKIP 32 bits\;
     $\text{\TRACKINDEX}_{i~j} \leftarrow$ \READ 8 unsigned bits\;
     \SKIP 8 bits\;
@@ -108,7 +108,7 @@ $\LASTADDRESS \leftarrow$ \READ 32 unsigned bits\;
     \SKIP 48 bits\;
   }
   \SEEK to file position $(\texttt{0x800} + \text{\TITLEOFFSET}_i + \text{\POINTERSOFFSET}_i)$\;
-  \For(\tcc*[f]{read index information}){j = 0 \emph{\KwTo}$\text{\INDEXCOUNT}_i$}{
+  \For(\tcc*[f]{read index information}){$j \leftarrow 0$ \emph{\KwTo}$\text{\INDEXCOUNT}_i$}{
     $\text{\INDEXID}_{i~j} \leftarrow$ \READ 32 unsigned bits\;
     \ASSERT $\text{\INDEXID}_{i~j} = \texttt{0x01000000}$\;
     $\text{\FIRSTSECTOR}_{i~j} \leftarrow$ \READ 32 unsigned bits\;
@@ -296,7 +296,7 @@ That is, a single MLP frame may span 2 or more AOB packets.
 \SetKwData{DECODINGPARAMS}{decoding parameters}
 $\text{\SUBSTREAMCOUNT} \leftarrow$ read major sync\;
 \ASSERT $(\SUBSTREAMCOUNT = 1)$ \OR $(\SUBSTREAMCOUNT = 2)$\;
-\For{s = 0 \emph{\KwTo}\SUBSTREAMCOUNT}{
+\For{$s \leftarrow 0$ \emph{\KwTo}\SUBSTREAMCOUNT}{
   $(\text{\CHECKDATA}_s~,~\text{\SUBSTREAMEND}_s) \leftarrow$ read substream info\;
 }
 \eIf{$\text{\CHECKDATA}_0 = 1$}{
@@ -522,7 +522,7 @@ $\text{\LAST} \leftarrow$ \READ 1 unsigned bit\;
 \BlankLine
 $(\text{\BYPASSEDLSB}_{s}~,~\text{\RESIDUAL}_s) \leftarrow$ read residual data based on $\text{\DECODINGPARAMS}_s$\;
 \BlankLine
-\For{c = $\text{\MINCHANNEL}_s$ \emph{\KwTo}$\text{\MAXCHANNEL}_s$}{
+\For{$c \leftarrow \text{\MINCHANNEL}_s$ \emph{\KwTo}$\text{\MAXCHANNEL}_s$}{
   $\text{\FILTERED}_{s~c} \leftarrow$ filter $\text{\RESIDUAL}_s$ using $\text{\FILTERPARAMS}_{s~c}$\;
 }
 \BlankLine
@@ -565,7 +565,7 @@ $\text{\NOISEGENSEED} \leftarrow$ \READ 23 unsigned bits\;
 $\text{\CHECKDATAPRESENT} \leftarrow$ \READ 1 unsigned bit\;
 $\text{\LOSSLESSCHECK} \leftarrow$ \READ 8 unsigned bits\;
 \SKIP 16 bits\;
-\For{c = 0 \emph{\KwTo}$(\text{\MAXMATRIXCHANNEL} + 1)$}{
+\For{$c \leftarrow 0$ \emph{\KwTo}$(\text{\MAXMATRIXCHANNEL} + 1)$}{
   $\text{\CHANNELASSIGNMENT}_{c} \leftarrow$ \READ 6 unsigned bits\;
   \ASSERT $\text{\CHANNELASSIGNMENT}_{c} \leq \text{\MAXMATRIXCHANNEL}$\;
 }
@@ -648,7 +648,7 @@ Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor
 \SetKwData{FLAG}{flag}
 \uIf(\tcc*[f]{parameter presence flags}){$\text{\HEADERPRESENT}_s = 1$}{
   \uIf{$((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-    \For{f = 0 \emph{\KwTo}8}{
+    \For{$f \leftarrow 0$ \emph{\KwTo}8}{
       $\text{\FLAG}_{s~f} \leftarrow$ \READ 1 unsigned bit\;
     }
   }
@@ -657,7 +657,7 @@ Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor
   }
 }
 \uElseIf{$(\text{\FLAG}_{s~0} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-  \For{f = 0 \emph{\KwTo}8}{
+  \For{$f \leftarrow 0$ \emph{\KwTo}8}{
     $\text{\FLAG}_{s~f} \leftarrow$ \READ 1 unsigned bit\;
   }
 }
@@ -676,7 +676,7 @@ Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor
 }
 \uIf(\tcc*[f]{matrix parameters}){$(\text{\FLAG}_{s~6} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
   $\text{\MATRIXCOUNT}_{s} \leftarrow$ \READ 4 unsigned bits\;
-  \For{m = 0 \emph{\KwTo}$\text{\MATRIXCOUNT}_{s}$}{
+  \For{$m \leftarrow 0$ \emph{\KwTo}$\text{\MATRIXCOUNT}_{s}$}{
     $\text{\MATRIXPARAMS}_{s~c} \leftarrow$ read matrix parameters\;
   }
 }
@@ -688,12 +688,12 @@ Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor
   $\text{\MATRIXPARAMS}_{s} \leftarrow$ from previous block in substream\;
 }
 \uIf(\tcc*[f]{output shifts}){$(\text{\FLAG}_{s~5} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-  \For{c = 0 \emph{\KwTo}$(\text{\MAXMATRIXCHANNEL}_s + 1)$}{
+  \For{$c \leftarrow 0$ \emph{\KwTo}$(\text{\MAXMATRIXCHANNEL}_s + 1)$}{
     $\text{\OUTPUTSHIFT}_{s~c} \leftarrow$ \READ 4 signed bits\;
   }
 }
 \uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
-  \For{c = 0 \emph{\KwTo}$(\text{\MAXMATRIXCHANNEL}_s + 1)$}{
+  \For{$c \leftarrow 0$ \emph{\KwTo}$(\text{\MAXMATRIXCHANNEL}_s + 1)$}{
     $\text{\OUTPUTSHIFT}_{s~c} \leftarrow 0$\;
   }
 }
@@ -701,12 +701,12 @@ Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor
   $\text{\OUTPUTSHIFT}_{s} \leftarrow$ from previous block in substream\;
 }
 \uIf(\tcc*[f]{quant step sizes}){$(\text{\FLAG}_{s~4} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-  \For{c = $\text{\MINCHANNEL}_s$ \emph{\KwTo}$(\text{\MAXCHANNEL}_s + 1)$}{
+  \For{$c \leftarrow \text{\MINCHANNEL}_s$ \emph{\KwTo}$(\text{\MAXCHANNEL}_s + 1)$}{
     $\text{\QUANTSTEP}_{s~c} \leftarrow$ \READ 4 unsigned bits\;
   }
 }
 \uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
-  \For{c = $\text{\MINCHANNEL}_s$ \emph{\KwTo}$(\text{\MAXCHANNEL}_s + 1)$}{
+  \For{$c \leftarrow \text{\MINCHANNEL}_s$ \emph{\KwTo}$(\text{\MAXCHANNEL}_s + 1)$}{
     $\text{\QUANTSTEP}_{s~c} \leftarrow 0$\;
   }
 }
@@ -754,7 +754,7 @@ Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor
     \SetKwData{HUFFMANLSBS}{Huffman LSBs}
     \SetKwData{DECODINGPARAMETERS}{decoding parameters}
     \SetKwFunction{LEN}{len}
-    \For(\tcc*[f]{channel parameters}){c = $\text{\MINCHANNEL}_s$ \emph{\KwTo}$(\text{\MAXCHANNEL}_s + 1)$}{
+    \For(\tcc*[f]{channel parameters}){$c \leftarrow \text{\MINCHANNEL}_s$ \emph{\KwTo}$(\text{\MAXCHANNEL}_s + 1)$}{
       \uIf{$((\READ~\textnormal{1 unsigned bit}) = 1)$}{
         $\text{\CHANNELPARAMS}_{s~c} \leftarrow $ read channel parameters\;
       }
@@ -810,7 +810,7 @@ Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor
   $\text{\FRACTIONALBITS} \leftarrow$ \READ 4 unsigned bits\;
   \ASSERT $\text{\FRACTIONALBITS} \leq 14$\;
   $\text{\LSBBYPASS}_{s~m} \leftarrow$ \READ 1 unsigned bit\;
-  \For{c = 0 \emph{\KwTo}$(\text{\MAXMATRIXCHANNEL}_s + 3)$}{
+  \For{$c \leftarrow 0$ \emph{\KwTo}$(\text{\MAXMATRIXCHANNEL}_s + 3)$}{
     \eIf{$((\READ~\textnormal{1 unsigned bit}) = 1)$}{
       $v_{c} \leftarrow $ \READ $(\text{\FRACTIONALBITS} + 2)$ signed bits\;
       $\text{\MATRIXCOEFF}_{s~m~c} \leftarrow v_{c} \times 2 ^ {14 - \text{\FRACTIONALBITS}}$\;
@@ -929,7 +929,7 @@ $\text{\HUFFMANLSBS}_{s~m}$ \\
     \ASSERT $1 < \text{\COEFFBITS} < 16$\;
     $\text{\COEFFSHIFT} \leftarrow$ \READ 3 unsigned bits\;
     \ASSERT $(\text{\COEFFBITS} + \text{\COEFFSHIFT}) \leq 16$\;
-    \For{i = 0 \emph{\KwTo}$\text{\ORDER}_{s~c}$}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}$\text{\ORDER}_{s~c}$}{
       $v_{i} \leftarrow$ \READ $(\text{\COEFFBITS})$ signed bits\;
       $\text{\COEFF}_{s~c~i} \leftarrow v_{i} \times 2 ^ {\text{\COEFFSHIFT}}$\;
     }
@@ -975,14 +975,14 @@ $\text{\HUFFMANLSBS}_{s~m}$ \\
     \ASSERT $1 < \text{\COEFFBITS} < 16$\;
     $\text{\COEFFSHIFT} \leftarrow$ \READ 3 unsigned bits\;
     \ASSERT $(\text{\COEFFBITS} + \text{\COEFFSHIFT}) \leq 16$\;
-    \For{i = 0 \emph{\KwTo}$\text{\ORDER}_{s~c}$}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}$\text{\ORDER}_{s~c}$}{
       $v_{i} \leftarrow$ \READ $(\text{\COEFFBITS})$ signed bits\;
       $\text{\COEFF}_{s~c~i} \leftarrow v_{i} \times 2 ^ {\text{\COEFFSHIFT}}$\;
     }
     \eIf{$((\READ~\textnormal{1 unsigned bit}) = 1)$}{
       $\text{\STATEBITS} \leftarrow$ \READ 4 unsigned bits\;
       $\text{\STATESHIFT} \leftarrow$ \READ 4 unsigned bits\;
-      \For(\tcc*[f]{read state values in reverse order}){i = $\text{\ORDER}_{s~c}$ \emph{\KwDownTo}0}{
+      \For(\tcc*[f]{read state values in reverse order}){$i \leftarrow \text{\ORDER}_{s~c}$ \emph{\KwDownTo}0}{
         $s_{i} \leftarrow$ \READ $(\text{\STATEBITS})$ signed bits\;
         $\text{\STATE}_{s~c~i} \leftarrow s_{i} \times 2 ^ {\text{\STATESHIFT}}$\;
       }
@@ -1110,7 +1110,7 @@ our decoding parameters for a given substream are:
 \SetKwData{MSB}{MSB}
 \SetKwData{LSB}{LSB}
 \SetKwData{RESIDUAL}{residual}
-\For(\tcc*[f]{calculate signed Huffman offset}){c = $\text{\MINCHANNEL}_s$ \emph{\KwTo}$(\text{\MAXCHANNEL}_s + 1)$}{
+\For(\tcc*[f]{calculate signed Huffman offset}){$c \leftarrow \text{\MINCHANNEL}_s$ \emph{\KwTo}$(\text{\MAXCHANNEL}_s + 1)$}{
   $\text{\LSBBITS}_{s~c} \leftarrow \text{\HUFFMANLSBS}_{s~c} - \text{\QUANTSTEP}_{s~c}$\;
   \eIf{$\text{\CODEBOOK}_{s~c} > 0$}{
     $\text{\SIGNSHIFT}_{s~c} \leftarrow \text{\LSBBITS}_{s~c} + 2 - \text{\CODEBOOK}_{s~c}$\;
@@ -1129,15 +1129,15 @@ our decoding parameters for a given substream are:
   }
 }
 \BlankLine
-\For{i = 0 \emph{\KwTo}$\text{\BLOCKSIZE}_s$}{
-  \For(\tcc*[f]{read bypassed LSBs for each matrix}){m = 0 \emph{\KwTo}$\text{\MATRIXCOUNT}_s$}{
+\For{$i \leftarrow 0$ \emph{\KwTo}$\text{\BLOCKSIZE}_s$}{
+  \For(\tcc*[f]{read bypassed LSBs for each matrix}){$m \leftarrow 0$ \emph{\KwTo}$\text{\MATRIXCOUNT}_s$}{
     \eIf{$\text{\LSBBYPASS}_{s~m} = 1$}{
       $\text{\BYPASSEDLSB}_{s~m~i} \leftarrow$ \READ 1 unsigned bit\;
     }{
       $\text{\BYPASSEDLSB}_{s~m~i} \leftarrow 0$\;
     }
   }
-  \For(\tcc*[f]{read residuals for each channel}){c = $\text{\MINCHANNEL}_s$ \emph{\KwTo}$(\text{\MAXCHANNEL}_s + 1)$}{
+  \For(\tcc*[f]{read residuals for each channel}){$c \leftarrow \text{\MINCHANNEL}_s$ \emph{\KwTo}$(\text{\MAXCHANNEL}_s + 1)$}{
     \uIf{$\text{\CODEBOOK}_{s~c} = 0$}{
       $\text{\MSB}_{s~c~i} \leftarrow 0$\;
     }
@@ -1255,12 +1255,12 @@ $\text{signed Huffman offset}_c$ & $0 - 7 \times 2 ^ 2 - 2 ^ 3 = -36$ & $0 - 7 \
 \Else{
   $\text{\SHIFT} \leftarrow \text{\IIRSHIFT}_{s~c}$\;
 }
-\For{i = 0 \emph{\KwTo}$\text{\BLOCKSIZE}_s$}{
+\For{$i \leftarrow 0$ \emph{\KwTo}$\text{\BLOCKSIZE}_s$}{
   $\text{\SUM}_i \leftarrow 0$\;
-  \For{j = 0 \emph{\KwTo}$\text{\FIRORDER}_{s~c}$}{
+  \For{$j \leftarrow 0$ \emph{\KwTo}$\text{\FIRORDER}_{s~c}$}{
     $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\FIRCOEFF}_{s~c~j} \times \text{\FIRSTATE}_{s~c~(\LEN(\text{\FIRSTATE}) - j - 1)}$\;
   }
-  \For{k = 0 \emph{\KwTo}$\text{\IIRORDER}_{s~c}$}{
+  \For{$k \leftarrow 0$ \emph{\KwTo}$\text{\IIRORDER}_{s~c}$}{
     $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\IIRCOEFF}_{s~c~k} \times \text{\IIRSTATE}_{s~c~(\LEN(\text{\IIRSTATE}) - k - 1)}$\;
   }
   \BlankLine
@@ -1312,18 +1312,18 @@ one needs to return only the last 8 values of FIR and IIR state.
 \SetKwData{BYPASSEDLSB}{bypassed LSB}
 \SetKwFunction{MASK}{mask}
 \SetKwFunction{CROP}{crop}
-\For(\tcc*[f]{generate noise channels}){i = 0 \emph{\KwTo}$\text{\BLOCKSIZE}_s$}{
+\For(\tcc*[f]{generate noise channels}){$i \leftarrow 0$ \emph{\KwTo}$\text{\BLOCKSIZE}_s$}{
   $\text{\SHIFTED}_i \leftarrow \lfloor\text{\NOISEGENSEED}_s \div 2 ^ 7\rfloor \bmod{2 ^ {16}}$\;
   $\text{\NOISE}_{0~i} \leftarrow \CROP(\lfloor\text{\NOISEGENSEED}_s \div 2 ^ {15}\rfloor) \times 2 ^ {\text{\NOISESHIFT}_s}$\;
   $\text{\NOISE}_{1~i} \leftarrow \CROP(\text{\SHIFTED}_i) \times 2 ^ {\text{\NOISESHIFT}_s}$\;
   $\text{\NOISEGENSEED}_s \leftarrow ((\text{\NOISEGENSEED}_s \times 2 ^ {16}) \bmod{2 ^ {32}}) \xor \text{\SHIFTED}_i \xor (\text{\SHIFTED}_i \times 2 ^ 5)$\;
 }
 \BlankLine
-\For(\tcc*[f]{perform channel rematrixing}){m = 0 \emph{\KwTo}$\text{\MATRIXCOUNT}_s$}{
+\For(\tcc*[f]{perform channel rematrixing}){$m \leftarrow 0$ \emph{\KwTo}$\text{\MATRIXCOUNT}_s$}{
   $o \leftarrow \text{\MATRIXOUTCHANNEL}_{s~m}$\;
-  \For{i = 0 \emph{\KwTo}$\text{\BLOCKSIZE}_s$}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}$\text{\BLOCKSIZE}_s$}{
     $\text{\SUM}_i \leftarrow 0$\;
-    \For{c = 0 \emph{\KwTo}$\text{\MAXMATRIXCHANNEL}_s + 1$}{
+    \For{$c \leftarrow 0$ \emph{\KwTo}$\text{\MAXMATRIXCHANNEL}_s + 1$}{
       $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\FILTERED}_{s~c~i} \times \text{\MATRIXCOEFF}_{s~m~c}$\;
     }
     $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\NOISE}_{0~i} \times \text{\MATRIXCOEFF}_{s~m~(\MAXMATRIXCHANNEL + 1)}$\;
@@ -1366,9 +1366,9 @@ and the final result is output.
 \SetKwData{REMATRIXED}{rematrixed}
 \SetKwData{OUTPUTSHIFT}{output shift}
 \SetKwData{SHIFTED}{shifted}
-\For{c = 0 \emph{\KwTo}$(\text{\MAXMATRIXCHANNEL}_s + 1)$}{
+\For{$c \leftarrow 0$ \emph{\KwTo}$(\text{\MAXMATRIXCHANNEL}_s + 1)$}{
   \eIf{$\text{\OUTPUTSHIFT}_{s~c} > 0$}{
-    \For{i = 0 \emph{\KwTo}$\LEN(\text{\REMATRIXED}_{s~c})$}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}$\LEN(\text{\REMATRIXED}_{s~c})$}{
       $\text{\SHIFTED}_{s~c~i} \leftarrow \text{\REMATRIXED}_{s~c~i} \times 2 ^ {\text{\OUTPUTSHIFT}_{s~c}}$\;
     }
   }{

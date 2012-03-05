@@ -1,0 +1,10 @@
+<?xml version="1.0" ?>
+<diagram>
+  <row>
+    <col start="0" end="1" width=".20">a</col>
+    <col start="2" end="4" width=".20">b</col>
+    <col start="5" end="9" width=".20">c</col>
+    <col start="10" end="12" width=".20">d</col>
+    <col start="13" end="31" width=".20">e</col>
+  </row>
+</diagram>

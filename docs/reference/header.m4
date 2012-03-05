@@ -6,7 +6,7 @@
 %171 Second Street, Suite 300,
 %San Francisco, California, 94105, USA.
 
-\documentclass[letterpaper]{scrbook}
+\documentclass[PAPERSIZE]{scrbook}
 \setlength{\pdfpagewidth}{\paperwidth}
 \setlength{\pdfpageheight}{\paperheight}
 \setlength{\textwidth}{6in}
@@ -29,8 +29,11 @@
 \usepackage{units}
 \usepackage{color}
 \definecolor{gray}{rgb}{0.5,0.5,0.5}
-\definecolor{blue}{rgb}{0.0,0.0,1.0}
 \definecolor{red}{rgb}{1.0,0.0,0.0}
+\definecolor{orange}{rgb}{1.0,0.4,0.0}
+\definecolor{fuchsia}{rgb}{1.0,0.0,1.0}
+\definecolor{blue}{rgb}{0.0,0.0,1.0}
+\definecolor{green}{rgb}{0.0,1.0,0.0}
 \usepackage[vlined,lined,commentsnumbered]{algorithm2e}
 \usepackage{lscape}
 \newcommand{\xor}{\textbf{ xor }}
@@ -45,35 +48,29 @@
 \newcommand{\REFERENCE}[2]{\item #1 \\ \LINK{#2}}
 \newcommand{\VAR}[1]{``{#1}''}
 \newcommand{\ATOM}[1]{\texttt{#1}}
-\newcommand{\WARMUP}[0]{\text{Warm Up}}
+\newcommand{\IDOTS}{\mathrel{\ldotp\ldotp}}
 \newcommand{\ALGORITHM}[2]{\begin{algorithm}[H]
-\DontPrintSemicolon
-\SetKw{READ}{read}
-\SetKw{WRITE}{write}
-\SetKw{UNARY}{read unary}
-\SetKw{WUNARY}{write unary}
-\SetKw{SKIP}{skip}
-\SetKw{ASSERT}{assert}
-\SetKw{IN}{in}
-\KwIn{#1}
-\KwOut{#2}
-\BlankLine
+    \DontPrintSemicolon
+    \SetKw{READ}{read}
+    \SetKw{WRITE}{write}
+    \SetKw{UNARY}{read unary}
+    \SetKw{WUNARY}{write unary}
+    \SetKw{SKIP}{skip}
+    \SetKw{ASSERT}{assert}
+    \SetKw{IN}{in}
+    \KwIn{#1}
+    \KwOut{#2}
+    \BlankLine
 }
 \newcommand{\EALGORITHM}{\end{algorithm}}
 \long\def\symbolfootnote[#1]#2{\begingroup%
-\def\thefootnote{\fnsymbol{footnote}}\footnote[#1]{#2}\endgroup}
+  \def\thefootnote{\fnsymbol{footnote}}\footnote[#1]{#2}\endgroup}
 \long\def\symbolfootnotemark[#1]{\begingroup%
-\def\thefootnote{\fnsymbol{footnote}}\footnotemark[#1]\endgroup}
+  \def\thefootnote{\fnsymbol{footnote}}\footnotemark[#1]\endgroup}
 \long\def\symbolfootnotetext[#1]#2{\begingroup%
-\def\thefootnote{\fnsymbol{footnote}}\footnotetext[#1]{#2}\endgroup}
+  \def\thefootnote{\fnsymbol{footnote}}\footnotetext[#1]{#2}\endgroup}
 \title{Audio Formats Reference}
 \author{Brian Langenberger}
 \begin{document}
 \maketitle
 \tableofcontents
-\include{wavpack}
-\begin{appendices}
-\include{references}
-\include{license}
-\end{appendices}
-\end{document}
