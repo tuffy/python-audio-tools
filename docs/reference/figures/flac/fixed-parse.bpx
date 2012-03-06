@@ -1,7 +1,8 @@
 <?xml version="1.0" ?>
 <struct endianness="big">
   <field size="1" value="0">pad</field>
-  <field size="6" value="9">type and order</field>
+  <field size="3" value="1">type</field>
+  <field size="3" value="1">order</field>
   <field size="1" value="0">wasted</field>
   <field size="16" value="0x0025">warm-up sample₀</field>
   <field size="48"

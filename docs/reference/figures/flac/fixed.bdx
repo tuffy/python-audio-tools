@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
+    <col width=".333333" id="subframe">Subframe₀</col>
+    <col width=".333333">Subframe₁</col>
+    <col style="dashed" width=".333333">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col width=".1" start="0" end="0" id="subframe_s">pad</col>
+    <col width=".225" start="1" end="3">type (1)</col>
+    <col width=".225" start="4" end="6">order</col>
+    <col width=".2" start="7" end="7">has wasted BPS</col>
+    <col style="dashed" width=".25" id="subframe_e">wasted BPS (+1)</col>  </row>
+  <row>
     <col width=".283" start="0"
          end="subframe bps - 1">warm-up sample₀</col>
     <col width=".283" start="0"
@@ -12,4 +24,12 @@
   <row>
     <col>residual block</col>
   </row>
+  <line style="dotted">
+    <start id="subframe" corner="sw"/>
+    <end id="subframe_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="subframe" corner="se"/>
+    <end id="subframe_e" corner="ne"/>
+  </line>
 </diagram>

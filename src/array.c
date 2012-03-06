@@ -660,6 +660,10 @@ ARRAY_L_DE_TAIL(array_lf_de_tail, array_lf)
         if ((head == array) && (tail == array)) {       \
             /*do nothing*/                              \
             return;                                     \
+        } else if (head == tail) {                      \
+            /*copy all data to head*/                   \
+            head->_ = array->_;                         \
+            head->len = array->len;                     \
         } else {                                        \
             head->_ = array->_;                         \
             head->len = to_head;                        \

@@ -32,6 +32,7 @@ figures/id3v24/wxxx.pdf
 FLAC = \
 figures/flac/application.pdf \
 figures/flac/block_header.pdf \
+figures/flac/constant.pdf \
 figures/flac/cuesheet.pdf \
 figures/flac/fixed.pdf \
 figures/flac/fixed2.pdf \

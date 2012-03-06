@@ -8,17 +8,11 @@
   <spacer/>
   <row>
     <col width=".1" start="0" end="0" id="subframe_s">pad</col>
-    <col width=".60" start="1" end="6">subframe type (1) </col>
+    <col width=".60" start="1" end="6">subframe type (0) </col>
     <col width=".30" start="7" end="7" id="subframe_e">has wasted BPS (0)</col>
   </row>
   <row>
-    <col width=".283" start="0"
-         end="subframe bps - 1">uncompressed sample₀</col>
-    <col width=".283" start="0"
-         end="subframe bps - 1">uncompressed sample₁</col>
-    <col width=".283" start="0"
-         end="subframe bps - 1">uncompressed sample₂</col>
-    <col width=".15" style="dashed">...</col>
+    <col start="0" end="subframe bps - 1">constant</col>
   </row>
   <line style="dotted">
     <start id="subframe" corner="sw"/>
