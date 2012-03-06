@@ -136,14 +136,17 @@ ALAC = figures/alac/alac_atom.pdf \
 figures/alac/alac-atom-parse.pdf \
 figures/alac/atom.pdf \
 figures/alac/atoms.pdf \
+figures/alac/interlaced_frame.pdf \
 figures/alac/mdhd.pdf \
 figures/alac/mdhd-parse.pdf \
+figures/alac/noninterlaced_frame.pdf \
 figures/alac/residual-build.pdf \
 figures/alac/residual-parse.pdf \
 figures/alac/stream.pdf \
 figures/alac/subframe-build.pdf \
 figures/alac/subframe-parse.pdf \
-figures/alac/subframe_header.pdf
+figures/alac/subframe_header.pdf \
+figures/alac/uncompressed_frame.pdf
 
 MLP = figures/mlp/channel_parameters.pdf \
 figures/mlp/codebook1.pdf \

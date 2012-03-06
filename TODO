@@ -5288,7 +5288,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] shorten.tex
    - [X] wavpack.tex
 ** TODO Double-check codecs for consistency
-   - [ ] alac.tex
+   - [X] alac.tex
    - [ ] dvda2.tex
    - [ ] flac.tex
    - [ ] shorten.tex

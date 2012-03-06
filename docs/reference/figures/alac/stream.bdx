@@ -1,75 +1,53 @@
-<?xml version="1.0" ?><diagram>
+<?xml version="1.0" ?>
+<diagram>
   <row>
     <col end="31" id="mdat_len" start="0" width=".20">mdat length</col>
     <col end="63" start="32" width=".20">`mdat'</col>
-    <col id="frameset" start="64" width=".20"
-         >frame set₀</col>
+    <col id="frameset" start="64" width=".20">frame set₀</col>
     <col width=".20">frame set₁</col>
     <col id="mdat_end" style="dashed" width=".20">...</col>
   </row>
   <spacer height=".75"/>
   <row>
-    <col end="2" id="channels" start="0" width="0.183"
-         >channels₀ (+1)</col>
-    <col id="frame" width=".20"
-
-         >frame₀</col>
-    <col end="2" start="0" style="dashed" width="0.183"
-         >channels₁ (+1)</col>
-    <col style="dashed" width="0.20"
-         >frame₁</col>
-    <col end="2" start="0" width="0.183"
-         >channels₂ (7)</col>
-    <col id="pad" style="dashed" width=".05"
-         >pad</col>
+    <col end="2" id="channels" start="0" width="0.183">channels₀ (+1)</col>
+    <col id="frame" width=".20">frame₀</col>
+    <col end="2" start="0" style="dashed" width="0.183">channels₁ (+1)</col>
+    <col style="dashed" width="0.20">frame₁</col>
+    <col end="2" start="0" width="0.183">channels₂ (7)</col>
+    <col id="pad" style="dashed" width=".05">pad</col>
   </row>
   <spacer/>
   <row>
-    <col start="3" end="18" width=".25" id="frame_s"
-         >unused</col>
-    <col start="19" end="19" width=".25"
-         >has sample count</col>
-    <col start="20" end="21" width=".25"
-         >uncompressed LSBs</col>
-    <col start="22" end="22" width=".25" id="frame_e"
-         >not compressed</col>
+    <col start="3" end="18" width=".25" id="frame_s">unused</col>
+    <col start="19" end="19" width=".25">has sample count</col>
+    <col start="20" end="21" width=".25">uncompressed LSBs</col>
+    <col start="22" end="22" width=".25" id="frame_e">not compressed</col>
   </row>
   <row>
-    <col start="23" end="54" style="dashed" width=".40"
-         >sample count</col>
-    <col width=".6" id="frame_d"
-
-         >frame data</col>
+    <col start="23" end="54" style="dashed" width=".40">sample count</col>
+    <col width=".6" id="frame_d">frame data</col>
   </row>
   <spacer/>
   <row>
     <col style="blank" width=".25">not compressed = 1</col>
-    <col width=".25" id="frame_d_s"
-         >sample₀</col>
-    <col width=".25"
-         >sample₁</col>
-    <col width=".25" style="dashed" id="frame_d_e"
-         >...</col>
+    <col width=".25" id="frame_d_s">sample₀</col>
+    <col width=".25">sample₁</col>
+    <col width=".25" style="dashed" id="frame_d_e">...</col>
   </row>
   <spacer height=".5"/>
   <row>
-    <col style="blank" width=".25"
-         >not compressed = 0</col>
-    <col width=".375" start="0" end="7"
-         >interlacing shift</col>
-    <col width=".375" start="8" end="15"
-         >interlacing leftweight</col>
+    <col style="blank" width=".25">not compressed = 0</col>
+    <col width=".375" start="0" end="7">interlacing shift</col>
+    <col width=".375" start="8" end="15">interlacing leftweight</col>
   </row>
   <row>
     <col style="blank" width=".25"/>
     <col width=".375" >subframe header₀</col>
-    <col style="dashed" width=".375"
-         >subframe header₁</col>
+    <col style="dashed" width=".375">subframe header₁</col>
   </row>
   <row>
     <col style="blank" width=".25"/>
-    <col style="dashed" width=".75"
-         >uncompressed LSB samples</col>
+    <col style="dashed" width=".75">uncompressed LSB samples</col>
   </row>
   <row>
     <col style="blank" width=".25"/>
