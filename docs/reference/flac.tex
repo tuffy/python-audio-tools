@@ -1636,7 +1636,7 @@ Note how the CRC-8 is calculated from the preceding 5 header bytes:
   $\FIXED \leftarrow$ build FIXED subframe from \SAMPLE\;
   \BlankLine
   \eIf(\tcc*[f]{from encoding parameters}){maximum LPC order $ > 0$}{
-    $\LPCPARAMS \leftarrow$ compute best LPC coefficients from \SAMPLE\;
+    $\LPCPARAMS \leftarrow$ compute best LPC parameters from \SAMPLE\;
     $\LPC \leftarrow$ build LPC subframe from \LPCPARAMS\;
     \BlankLine
     \uIf{$\LEN(\VERBATIM) \leq \MIN(\LEN(\LPC)~,~\LEN(\FIXED))$}{
@@ -1821,147 +1821,141 @@ used when calculating the best FIXED subframe order.
 \ALGORITHM{a set of signed residual values, the subframe's block size and predictor order, minimum and maximum partition order from encoding parameters}{an encoded block of residuals}
 \SetKwData{ORDER}{predictor order}
 \SetKwData{BLOCKSIZE}{block size}
-\SetKwData{PORDER}{porder}
 \SetKwData{PAORDER}{partition order}
 \SetKwData{PSIZE}{partition size}
-\SetKwData{PARTITION}{partition}
-\SetKwData{RESIDUAL}{residual}
+\SetKwData{PSUM}{partition sum}
 \SetKwData{RICE}{Rice}
 \SetKwData{CODING}{coding method}
+\SetKwData{UNSIGNED}{unsigned}
+\SetKwData{PARTITION}{partition}
+\SetKwData{PLEN}{partition length}
+\SetKwData{MSB}{MSB}
+\SetKwData{LSB}{LSB}
 \SetKwFunction{SUM}{sum}
 \SetKwFunction{MAX}{max}
 \SetKw{BREAK}{break}
 \tcc{calculate best partition order and Rice parameters for that order}
-\For{$\PORDER \leftarrow \text{minimum partition order}$ \emph{\KwTo}(maximum partition order + 1)}{
-  \eIf{$(\BLOCKSIZE \bmod 2^{\PORDER}) = 0$}{
-    \For{$p \leftarrow 0$ \emph{\KwTo}$2 ^ {\PORDER}$}{
-      \eIf{$p = 0$}{
-        $\text{\PSIZE}_0 \leftarrow \BLOCKSIZE \div 2 ^ {\PORDER} - \ORDER$\;
-      }{
-        $\text{\PSIZE}_p \leftarrow \BLOCKSIZE \div 2 ^ {\PORDER}$\;
-      }
-      place next $\text{\PSIZE}_p$ \RESIDUAL values in $\text{\PARTITION}_{\PORDER~p}$\;
-      \BlankLine
-      $\text{\RICE}_{\PORDER~p} \leftarrow$ compute best Rice parameter for $\text{\PARTITION}_{\PORDER~p}$\;
-      \BlankLine
-      $\text{\PSIZE}_{\PORDER~p} \leftarrow$ estimate size of $\text{\PARTITION}_{\PORDER~p}$ encoded with $\text{\RICE}_{\PORDER~p}$\;
-    }
+\For{$o \leftarrow \text{minimum partition order}$ \emph{\KwTo}(maximum partition order + 1)}{
+  \eIf{$(\BLOCKSIZE \bmod 2^{o}) = 0$}{
+    $(\text{\RICE}_o~,~\text{\PARTITION}_o~,~\text{\PSIZE}_o) \leftarrow$ encode residual partition(s) with order $o$\;
   }{
     \BREAK\;
   }
 }
 \BlankLine
-choose \PAORDER such that $\SUM(\PSIZE_{(\PAORDER)})$ is smallest\;
+choose partition order $o$ such that $\PSIZE_{o}$ is smallest\;
 \BlankLine
-\tcc{write best residual partition(s) to residual block}
-\eIf{$\MAX(\text{\RICE}_{\PAORDER}) > 14$}{
+\eIf{$\MAX(\text{\RICE}_{o}) > 14$}{
   $\CODING \leftarrow 1$\;
 }{
   $\CODING \leftarrow 0$\;
 }
+\BlankLine
+\tcc{write 1 or more residual partitions to residual block}
 $\CODING \rightarrow$ \WRITE 2 unsigned bits\;
-$\PAORDER \rightarrow$ \WRITE 4 unsigned bits\;
-\For{$p \leftarrow 0$ \emph{\KwTo}$2 ^ {\PAORDER}$} {
+$o \rightarrow$ \WRITE 4 unsigned bits\;
+\For{$p \leftarrow 0$ \emph{\KwTo}$2 ^ {o}$} {
   \eIf{$\CODING = 0$}{
-    $\text{\RICE}_{(\PAORDER)~p} \rightarrow$ \WRITE 4 unsigned bits\;
+    $\text{\RICE}_{o~p} \rightarrow$ \WRITE 4 unsigned bits\;
   }{
-    $\text{\RICE}_{(\PAORDER)~p} \rightarrow$ \WRITE 5 unsigned bits\;
+    $\text{\RICE}_{o~p} \rightarrow$ \WRITE 5 unsigned bits\;
   }
-  encode residuals from $\text{\PARTITION}_{(\PAORDER)~p}$ with $\text{\RICE}_{(\PAORDER)~p}$\;
+  \BlankLine
+  \eIf{$p = 0$}{
+    $\text{\PLEN}_{o~0} \leftarrow \BLOCKSIZE \div 2 ^ {o} - \ORDER$\;
+  }{
+    $\text{\PLEN}_{o~p} \leftarrow \BLOCKSIZE \div 2 ^ {o}$\;
+  }
+  \BlankLine
+  \For(\tcc*[f]{write residual partition}){$i \leftarrow 0$ \emph{\KwTo}$\text{\PLEN}_{o~p}$}{
+    \eIf{$\text{\PARTITION}_{o~p~i} \geq 0$}{
+      $\text{\UNSIGNED}_i \leftarrow \text{\PARTITION}_{o~p~i} \times 2$\;
+    }{
+    $\text{\UNSIGNED}_i \leftarrow (-\text{\PARTITION}_{o~p~i} - 1) \times 2 + 1$\;
+    }
+    $\text{\MSB}_i \leftarrow \lfloor \text{\UNSIGNED}_i \div 2 ^ \text{\RICE} \rfloor$\;
+    $\text{\LSB}_i \leftarrow \text{\UNSIGNED}_i - (\text{\MSB}_i \times 2 ^ \text{\RICE})$\;
+    $\text{\MSB}_i \rightarrow$ \WUNARY with stop bit 1\;
+    $\text{\LSB}_i \rightarrow$ \WRITE $\text{\RICE}$ unsigned bits\;
+  }
 }
 \Return encoded residual block\;
+\EALGORITHM
+}
+
+\clearpage
+
+\subsubsection{Encoding Parititions}
+{\relsize{-1}
+\ALGORITHM{partition order $o$, predictor order, residual values, block size, maximum Rice parameter}{Rice parameter, residual partitions, total estimated size}
+\SetKwData{ORDER}{predictor order}
+\SetKwData{BLOCKSIZE}{block size}
+\SetKwData{PSIZE}{partition size}
+\SetKwData{PLEN}{plength}
+\SetKwData{PARTITION}{partition}
+\SetKwData{RESIDUAL}{residual}
+\SetKwData{PSUM}{partition sum}
+\SetKwData{RICE}{Rice}
+\SetKwData{MAXPARAMETER}{maximum Rice parameter}
+\SetKw{BREAK}{break}
+$\text{\PSIZE}_o \leftarrow 0$\;
+\BlankLine
+\For(\tcc*[f]{split residuals into partitions}){$p \leftarrow 0$ \emph{\KwTo}$2 ^ {o}$}{
+  \eIf{$p = 0$}{
+    $\text{\PLEN}_{o~0} \leftarrow \BLOCKSIZE \div 2 ^ {o} - \ORDER$\;
+  }{
+    $\text{\PLEN}_{o~p} \leftarrow \BLOCKSIZE \div 2 ^ {o}$\;
+  }
+  $\text{\PARTITION}_{o~p} \leftarrow$ get next $\text{\PLEN}_{o~p}$ values from \RESIDUAL\;
+  \BlankLine
+  $\text{\PSUM}_{o~p} \leftarrow \overset{\text{\PLEN}_{o~p} - 1}{\underset{i = 0}{\sum}} |\text{\PARTITION}_{o~p~i}|$\;
+  \BlankLine
+  $\text{\RICE}_{o~p} \leftarrow 0$\tcc*[r]{compute best Rice parameter for partition}
+  \While{$\text{\PLEN}_{o~p} \times 2 ^ {\text{\RICE}_{o~p}} < \text{\PSUM}_{o~p}$}{
+    \eIf{$\text{\RICE}_{o~p} < \MAXPARAMETER$}{
+      $\text{\RICE}_{o~p} \leftarrow \text{\RICE}_{o~p} + 1$\;
+    }{
+      \BREAK\;
+    }
+  }
+  \BlankLine
+  \eIf(\tcc*[f]{add estimated size of partition to total size}){$\text{\RICE}_{o~p} > 0$}{
+    $\text{\PSIZE}_o \leftarrow \text{\PSIZE}_o + 4 + ((1 + \text{\RICE}_{o~p}) \times \text{\PLEN}_{o~p}) + \left\lfloor\frac{\text{\PSUM}_{o~p}}{2 ^ {\text{\RICE}_{o~p} - 1}}\right\rfloor - \left\lfloor\frac{\text{\PLEN}_{o~p}}{2}\right\rfloor$\;
+  }{
+    $\text{\PSIZE}_o \leftarrow \text{\PSIZE}_o + 4 + \text{\PLEN}_{o~p} + (\text{\PSUM}_{o~p} \times 2) - \left\lfloor\frac{\text{\PLEN}_{o~p}}{2}\right\rfloor$\;
+  }
+}
+\BlankLine
+\Return $(\text{\RICE}_o~,~\text{\PARTITION}_o~,~\text{\PSIZE}_o)$\;
 \EALGORITHM
 }
 
 \begin{figure}[h]
 \includegraphics{figures/flac/residual.pdf}
 \end{figure}
-\clearpage
-
-\subsubsection{Computing Best Rice Parameter}
-{\relsize{-1}
-\ALGORITHM{a set of signed residual values, maximum Rice parameter from encoding options}{the Rice parameter as an unsigned integer}
-\SetKwData{PSIZE}{partition size}
-\SetKwData{RESIDUAL}{residual}
-\SetKwData{PARAMETER}{Rice parameter}
-\SetKwData{PSUM}{partition sum}
-\SetKwData{MAXPARAMETER}{maximum Rice parameter}
-\SetKwFunction{MIN}{min}
-$\PSUM \leftarrow \overset{\PSIZE - 1}{\underset{i = 0}{\sum}} |\text{\RESIDUAL}_i|$\;
-$\PARAMETER \leftarrow 0$\;
-\While{$\PSIZE \times 2 ^ \text{\PARAMETER} < \PSUM$}{
-  \eIf{\PARAMETER $<$ \MAXPARAMETER}{
-    $\PARAMETER \leftarrow \PARAMETER + 1$\;
-  }{
-    \Return \MAXPARAMETER\;
-  }
-}
-\Return \PARAMETER\;
-\EALGORITHM
-}
-
-\subsubsection{Estimating Residual Partition Size}
-{\relsize{-1}
-\ALGORITHM{a set of signed residual partition values, a Rice parameter as an unsigned integer}{the estimated size of the residual partition in bits}
-\SetKwData{PSIZE}{partition size}
-\SetKwData{RESIDUAL}{residual}
-\SetKwData{PARAMETER}{Rice parameter}
-\SetKwData{PSUM}{partition sum}
-\PSUM $\leftarrow \overset{\PSIZE - 1}{\underset{i = 0}{\sum}} |\text{\RESIDUAL}_i|$\;
-\eIf{\PARAMETER $> 0$}{
-\Return $4 + ((1 + \PARAMETER) \times \PSIZE) + \left\lfloor\frac{\PSUM}{2 ^ {\PARAMETER - 1}}\right\rfloor - \left\lfloor\frac{\PSIZE}{2}\right\rfloor$\;
-}{
-\Return $4 + ((1 + \PARAMETER) \times \PSIZE) + (\PSUM \times 2) - \left\lfloor\frac{\PSIZE}{2}\right\rfloor$\;
-}
-\EALGORITHM
-}
-
-\subsubsection{Encoding Residual Partition}
-\ALGORITHM{a set of signed residual values, the partition's Rice parameter}{an encoded residual partition}
-\SetKwData{PSIZE}{partition size}
-\SetKwData{RESIDUAL}{residual}
-\SetKwData{UNSIGNED}{unsigned}
-\SetKwData{RICE}{Rice parameter}
-\SetKwData{MSB}{MSB}
-\SetKwData{LSB}{LSB}
-\For{$i \leftarrow 0$ \emph{\KwTo}\PSIZE}{
-  \eIf{$\text{\RESIDUAL}_i \geq 0$}{
-    $\text{\UNSIGNED}_i \leftarrow \text{\RESIDUAL}_i \times 2$\;
-  }{
-    $\text{\UNSIGNED}_i \leftarrow ((-\text{\RESIDUAL}_i - 1) \times 2) + 1$\;
-  }
-  $\text{\MSB}_i \leftarrow \lfloor \text{\UNSIGNED}_i \div 2 ^ \text{\RICE} \rfloor$\;
-  $\text{\LSB}_i \leftarrow \text{\UNSIGNED}_i - (\text{MSB}_i \times 2 ^ \text{\RICE})$\;
-  $\text{MSB}_i \rightarrow$ \WUNARY with stop bit 1\;
-  $\text{LSB}_i \rightarrow$ \WRITE $\text{\RICE}$ unsigned bits\;
-}
-\Return encoded partition\;
-\EALGORITHM
-
-
 
 \clearpage
 
 \subsubsection{Residual Encoding Example}
 Given a block size of 10 and the residuals \texttt{2, 6, -2, 0, -1, -2, 3, -1, -3}:
 \begin{align*}
-\intertext{for $\text{partition order (porder)} = 0$:}
-partition_{0~0} &\leftarrow \texttt{[2, 6, -2, 0, -1, -2, 3, -1, -3]} \\
+\intertext{for $\text{partition order} = 0$:}
+\textsf{partition}_{0~0} &\leftarrow \texttt{[2, 6, -2, 0, -1, -2, 3, -1, -3]} \\
 \text{partition sum}_{0~0} &\leftarrow 2 + 6 + 2 + 0 + 1 + 2 + 3 + 1 + 3 = 20 \\
-Rice_{0~0} &\leftarrow 1~~(9 \times 2 ^ 0 < 20~,~9 \times 2 ^ 1 < 20~,~9 \times 2 ^ 2 > 20) \\
+\textsf{Rice}_{0~0} &\leftarrow 1~~(9 \times 2 ^ 0 < 20~,~9 \times 2 ^ 1 < 20~,~9 \times 2 ^ 2 > 20) \\
 \intertext{which is encoded to $encoded~residuals_{0~0}$:
 \newline
 \includegraphics{figures/flac/residual-example1.pdf}}
 \intertext{for partition order (porder) = 1:}
-partition_{1~0} &\leftarrow \texttt{[2, 6, -2, 0]} \\
+\textsf{partition}_{1~0} &\leftarrow \texttt{[2, 6, -2, 0]} \\
 \text{partition sum}_{1~0} &\leftarrow 2 + 6 + 2 + 0 = 10 \\
-Rice_{1~0} &\leftarrow 1~~(4 \times 2 ^ 0 < 10~,~4 \times 2 ^ 1 < 10~,~4 \times 2 ^ 2 > 10) \\
+\textsf{Rice}_{1~0} &\leftarrow 1~~(4 \times 2 ^ 0 < 10~,~4 \times 2 ^ 1 < 10~,~4 \times 2 ^ 2 > 10) \\
 \intertext{which is encoded to $encoded~residuals_{1~0}$:
 \newline
 \includegraphics{figures/flac/residual-example2.pdf}}
-partition_{1~1} &\leftarrow \texttt{[-1, -2, 3, -1, -3]} \\
+\textsf{partition}_{1~1} &\leftarrow \texttt{[-1, -2, 3, -1, -3]} \\
 \text{partition sum}_{1~1} &\leftarrow 1 + 2 + 3 + 1 + 3 = 10 \\
-Rice_{1~1} &\leftarrow 1~~(4 \times 2 ^ 0 < 10~,~4 \times 2 ^ 1 < 10~,~4 \times 2 ^ 2 > 10) \\
+\textsf{Rice}_{1~1} &\leftarrow 1~~(4 \times 2 ^ 0 < 10~,~4 \times 2 ^ 1 < 10~,~4 \times 2 ^ 2 > 10) \\
 \intertext{which is encoded to $encoded~residuals_{1~1}$:
 \newline
 \includegraphics{figures/flac/residual-example3.pdf}}
@@ -2003,57 +1997,61 @@ down to only 67 bits - or about 40\% of their original size.
 
 \clearpage
 
-\subsection{Computing LPC Coefficients}
+\subsection{Computing Best LPC Parameters}
 
 {\relsize{-1}
-\ALGORITHM{signed subframe samples}{LPC subframe order, QLP coefficients, QLP precision and QLP shift needed}
+\ALGORITHM{signed subframe samples, encoding parameters}{LPC parameters}
 \SetKwFunction{WINDOW}{window}
 \SetKwFunction{AUTOCORRELATE}{autocorrelate}
 \SetKwFunction{LEN}{len}
 \SetKw{AND}{and}
 \SetKw{NOT}{not}
-\SetKwData{WINDOWED}{windowed samples}
-\SetKwData{AUTOCORRELATIONS}{autocorrelation values}
+\SetKwData{SAMPLE}{sample}
+\SetKwData{WINDOWED}{windowed}
+\SetKwData{AUTOCORRELATIONS}{autocorrelation}
 \SetKwData{LPCOEFFS}{LP coefficients}
 \SetKwData{ERRORS}{error}
-\SetKwData{ORDER}{order}
+\SetKwData{ORDER}{predictor order}
 \SetKwData{QLPCOEFFS}{QLP coefficients}
 \SetKwData{QLPPRECISION}{QLP precision}
 \SetKwData{QLPSHIFT}{QLP shift needed}
 \SetKwData{BESTLPCPARAMS}{best LPC parameters}
+\SetKwData{LPCPARAMS}{LPC parameters}
 \SetKwData{LPCDATA}{LPC subframe data}
 \tcc{windowed sample count equals subframe sample count}
-\WINDOWED $\leftarrow$ \WINDOW(subframe samples)\;
+$\WINDOWED \leftarrow \WINDOW(\SAMPLE)$\;
 \BlankLine
 \tcc{autocorrelation value count equals the maximum LPC order + 1}
-\AUTOCORRELATIONS $\leftarrow$ \AUTOCORRELATE(\WINDOWED)\;
+$\AUTOCORRELATIONS \leftarrow \AUTOCORRELATE(\WINDOWED)$\;
 \BlankLine
 \eIf{$\LEN(\AUTOCORRELATIONS) > 1$ \AND \AUTOCORRELATIONS aren't all 0.0}{
-  (\LPCOEFFS, \ERRORS) $\leftarrow$ compute LP coefficients from \AUTOCORRELATIONS\;
+  $(\LPCOEFFS~,~\ERRORS)\leftarrow$ compute LP coefficients from \AUTOCORRELATIONS\;
   \BlankLine
   \eIf(\tcc*[f]{from encoding parameters}){\NOT exhaustive model search}{
     \tcc{estimate which set of LP coefficients is the smallest
       and return those}
-    \ORDER $\leftarrow$ estimate best order from \ERRORS, sample count and bits per sample\;
-    (\QLPCOEFFS, \QLPPRECISION, \QLPSHIFT) $\leftarrow$ quantize \LPCOEFFS at estimated best \ORDER\;
-    \Return (\ORDER, \QLPCOEFFS, \QLPPRECISION, \QLPSHIFT)\;
+    $o \leftarrow$ estimate best order from \ERRORS, sample count and bits per sample\;
+    $\text{\LPCPARAMS}_o \leftarrow$ quantize \LPCOEFFS at order $o$\;
+    \Return $\text{\LPCPARAMS}_o$\;
   }{
     \tcc{build a complete LPC subframe from each set of LP coefficients
     and return the parameters of the one which is smallest}
-    best LPC subframe size $\leftarrow$ maximum integer\;
-    \For{$\ORDER \leftarrow 1$ \emph{\KwTo}maximum LPC order + 1}{
-      (\QLPCOEFFS, \QLPPRECISION, \QLPSHIFT) $\leftarrow$ quantize \LPCOEFFS at \ORDER\;
-      \LPCDATA $\leftarrow$ build LPC subframe from \ORDER, \QLPCOEFFS, \QLPPRECISION, \QLPSHIFT\;
-      \If{$\LEN(\LPCDATA) < \text{best LPC subframe size}$}{
-        \BESTLPCPARAMS $\leftarrow$ (\ORDER, \QLPCOEFFS, \QLPPRECISION, \QLPSHIFT)\;
-        best LPC subframe size $\leftarrow \LEN(\LPCDATA)$\;
-      }
-      \Return \BESTLPCPARAMS\;
+    \For{$o \leftarrow 1$ \emph{\KwTo}maximum LPC order + 1}{
+      $\text{\LPCPARAMS}_o \leftarrow$ quantize \LPCOEFFS at order $o$\;
+      $\text{\LPCDATA}_o \leftarrow$ build LPC subframe from $\text{\LPCPARAMS}_o$\;
     }
+    choose predictor order $o$ whose $\text{\LPCDATA}_o$ block is smallest\;
+    \BlankLine
+    \Return $\text{\LPCPARAMS}_o$\;
   }
 }{
   \tcc{all samples are 0, so return very basic coefficients}
-  \Return (1, [0], 2, 0)\;
+  \Return $\text{\LPCPARAMS} \leftarrow \left\lbrace\begin{tabular}{rcl}
+  \ORDER & $\leftarrow$ & 0 \\
+  \QLPCOEFFS & $\leftarrow$ & \texttt{[0]} \\
+  \QLPPRECISION & $\leftarrow$ & 2 \\
+  \QLPSHIFT & $\leftarrow$ & 0 \\
+  \end{tabular}\right.$\;
 }
 \EALGORITHM
 }
@@ -2063,17 +2061,20 @@ down to only 67 bits - or about 40\% of their original size.
 
 \subsubsection{Windowing the Input Samples}
 \ALGORITHM{a list of signed input sample integers}{a list of signed windowed samples as floats}
+\SetKwData{BLOCKSIZE}{block size}
+\SetKwData{SAMPLE}{sample}
+\SetKwData{WINDOWED}{windowed}
 \SetKwFunction{TUKEY}{tukey}
-\For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
-  $windowed_i = sample_i \times \TUKEY(i)$\;
+\For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
+  $\text{\WINDOWED}_i = \text{\SAMPLE}_i \times \TUKEY(i)$\;
 }
-\Return windowed samples\;
+\Return \WINDOWED\;
 \EALGORITHM
 \par
 \noindent
 The \VAR{Tukey} function is defined as:
 \begin{equation*}
-tukey(n) =
+\texttt{tukey}(n) =
 \begin{cases}
 \frac{1}{2} \times \left[1 + cos\left(\pi \times \left(\frac{2 \times n}{\alpha \times (N - 1)} - 1 \right)\right)\right] & \text{ if } 0 \leq n \leq \frac{\alpha \times (N - 1)}{2} \\
 1 & \text{ if } \frac{\alpha \times (N - 1)}{2} \leq n \leq (N - 1) \times (1 - \frac{\alpha}{2}) \\
@@ -2090,7 +2091,7 @@ Where $N$ is the total number of samples and $\alpha$ is $\nicefrac{1}{2}$.
 \end{wrapfigure}
 \begin{table}[h]
 \begin{tabular}{r|r|r|r}
-$i$ & $sample_i$ & $tukey(i)$ & $windowed_i$ \\
+$i$ & $\textsf{sample}_i$ & $\texttt{tukey}(i)$ & $\textsf{windowed}_i$ \\
 \hline
 0 & 18 & 0 & 0.0 \\
 1 & 20 & .41 & 8.2 \\
@@ -2110,8 +2111,12 @@ $i$ & $sample_i$ & $tukey(i)$ & $windowed_i$ \\
 \subsubsection{Performing Autocorrelation}
 
 \ALGORITHM{a list of signed windowed samples, the maximum LPC order}{a list of signed autocorrelation values}
-\For{$lag \leftarrow 0$ \emph{\KwTo}maximum LPC order + 1}{
-  $\text{autocorrelation}_{\text{lag}} = \overset{\text{total samples} - \text{lag} - 1}{\underset{i = 0}{\sum}}\text{sample}_i \times \text{sample}_{i + \text{lag}}$\;
+\SetKwData{MAXLPCORDER}{max LPC order}
+\SetKwData{BLOCKSIZE}{block size}
+\SetKwData{WINDOWED}{windowed}
+\SetKwData{AUTOCORRELATED}{autocorrelated}
+\For{$l \leftarrow 0$ \emph{\KwTo}$(\text{\MAXLPCORDER} + 1)$}{
+  $\text{\AUTOCORRELATED}_{l} = \overset{\text{\BLOCKSIZE} - l - 1}{\underset{i = 0}{\sum}}\text{\WINDOWED}_i \times \text{\WINDOWED}_{i + l}$\;
 }
 \EALGORITHM
 For example, given the windowed samples:
@@ -2132,7 +2137,7 @@ and a maximum LPC order of 3:
       \texttt{9.4} & $\times$ & \texttt{9.4} & $=$ & \texttt{88.36} \\
       \texttt{0.0} & $\times$ & \texttt{0.0} & $=$ & \texttt{0.00} \\
       \hline
-      \multicolumn{3}{r}{$\text{autocorrelation}_0$} & $=$ & \texttt{3455.53} \\
+      \multicolumn{3}{r}{$\textsf{autocorrelated}_0$} & $=$ & \texttt{3455.53} \\
     \end{tabular}
   }
 }
@@ -2151,7 +2156,7 @@ and a maximum LPC order of 3:
       \texttt{23.3} & $\times$ & \texttt{9.4} & $=$ & \texttt{219.02} \\
       \texttt{9.4} & $\times$ & \texttt{0.0} & $=$ & \texttt{0.00} \\
       \hline
-      \multicolumn{3}{r}{$\text{autocorrelation}_1$} & $=$ & \texttt{3130.76} \\
+      \multicolumn{3}{r}{$\textsf{autocorrelated}_1$} & $=$ & \texttt{3130.76} \\
     \end{tabular}
   }
 }
@@ -2169,7 +2174,7 @@ and a maximum LPC order of 3:
       \texttt{21.0} & $\times$ & \texttt{9.4} & $=$ & \texttt{197.40} \\
       \texttt{23.3} & $\times$ & \texttt{0.0} & $=$ & \texttt{0.00} \\
       \hline
-      \multicolumn{3}{r}{$\text{autocorrelation}_2$} & $=$ & \texttt{2590.90} \\
+      \multicolumn{3}{r}{$\textsf{autocorrelated}_2$} & $=$ & \texttt{2590.90} \\
     \end{tabular}
   }
 }
@@ -2186,7 +2191,7 @@ and a maximum LPC order of 3:
       \texttt{23.0} & $\times$ & \texttt{9.4} & $=$ & \texttt{216.20} \\
       \texttt{21.0} & $\times$ & \texttt{0.0} & $=$ & \texttt{0.00} \\
       \hline
-      \multicolumn{3}{r}{$\text{autocorrelation}_3$} & $=$ & \texttt{2055.80} \\
+      \multicolumn{3}{r}{$\textsf{autocorrelated}_3$} & $=$ & \texttt{2055.80} \\
     \end{tabular}
   }
 }
@@ -2202,15 +2207,16 @@ the maximum LPC order + 1.
 \subsubsection{LP Coefficient Calculation}
 {\relsize{-1}
 \ALGORITHM{a list of autocorrelation floats, the maximum LPC order}{a list of LP coefficient lists, a list of error values}
+\SetKwData{MAXLPCORDER}{max LPC order}
 \SetKwData{LPCOEFF}{LP coefficient}
 \SetKwData{ERROR}{error}
-\SetKwData{AUTOCORRELATION}{autocorrelation}
+\SetKwData{AUTOCORRELATION}{autocorrelated}
 \begin{tabular}{rcl}
 $\kappa_0$ &$\leftarrow$ & $ \AUTOCORRELATION_1 \div \AUTOCORRELATION_0$ \\
 $\LPCOEFF_{0~0}$ &$\leftarrow$ & $ \kappa_0$ \\
 $\ERROR_0$ &$\leftarrow$ & $ \AUTOCORRELATION_0 \times (1 - {\kappa_0} ^ 2)$ \\
 \end{tabular}\;
-\For{$i \leftarrow 1$ \emph{\KwTo}maximum LPC order}{
+\For{$i \leftarrow 1$ \emph{\KwTo}\MAXLPCORDER}{
   \tcc{"zip" all of the previous row's LP coefficients
     \newline
     and the reversed autocorrelation values from 1 to i + 1
@@ -2233,11 +2239,11 @@ $\ERROR_0$ &$\leftarrow$ & $ \AUTOCORRELATION_0 \times (1 - {\kappa_0} ^ 2)$ \\
     \tcc{then build a new coefficient list of $c - (\kappa_i * r)$ for each ($c$,$r$) pair}
     $\LPCOEFF_{i~j} \leftarrow \LPCOEFF_{(i - 1)~j} - (\kappa_i \times \LPCOEFF_{(i - 1)~(i - j - 1)})$\;
   }
-  $\text{LP coefficient}_{i~i} \leftarrow \kappa_i$\tcc*[r]{and append $\kappa_i$ as the final coefficient in that list}
+  $\text{\LPCOEFF}_{i~i} \leftarrow \kappa_i$\tcc*[r]{and append $\kappa_i$ as the final coefficient in that list}
   \BlankLine
   $\ERROR_i \leftarrow \ERROR_{i - 1} \times (1 - {\kappa_i}^2)$\;
 }
-\Return list of LP coefficient lists, error value list\;
+\Return $(\LPCOEFF~,~\ERROR)$\;
 \EALGORITHM
 }
 \par
@@ -2245,22 +2251,22 @@ $\ERROR_0$ &$\leftarrow$ & $ \AUTOCORRELATION_0 \times (1 - {\kappa_0} ^ 2)$ \\
 Given a a maximum LPC order of 3 and 4 autocorrelation values:
 {\relsize{-1}
 \begin{align*}
-\kappa_0 &\leftarrow \text{autocorrelation}_1 \div \text{autocorrelation}_0 \\
-\text{LP coefficient}_{0~0} &\leftarrow \kappa_0 \\
-\text{error}_0 &\leftarrow \text{autocorrelation}_0 \times (1 - {\kappa_0} ^ 2) \\
+\kappa_0 &\leftarrow \textsf{autocorrelation}_1 \div \textsf{autocorrelation}_0 \\
+\textsf{LP coefficient}_{0~0} &\leftarrow \kappa_0 \\
+\textsf{error}_0 &\leftarrow \textsf{autocorrelation}_0 \times (1 - {\kappa_0} ^ 2) \\
 i &= 1 \\
-q_1 &\leftarrow \text{autocorrelation}_2 - (\text{LP coefficient}_{0~0} \times \text{autocorrelation}_{1}) \\
+q_1 &\leftarrow \textsf{autocorrelation}_2 - (\textsf{LP coefficient}_{0~0} \times \textsf{autocorrelation}_{1}) \\
 \kappa_1 &\leftarrow q_1 \div error_0 \\
-\text{LP coefficient}_{1~0} &\leftarrow \text{LP coefficient}_{0~0} - (\kappa_1 \times \text{LP coefficient}_{0~0}) \\
-\text{LP coefficient}_{1~1} &\leftarrow \kappa_1 \\
-\text{error}_1 &\leftarrow \text{error}_0 \times (1 - {\kappa_1} ^ 2) \\
+\textsf{LP coefficient}_{1~0} &\leftarrow \textsf{LP coefficient}_{0~0} - (\kappa_1 \times \textsf{LP coefficient}_{0~0}) \\
+\textsf{LP coefficient}_{1~1} &\leftarrow \kappa_1 \\
+\textsf{error}_1 &\leftarrow \textsf{error}_0 \times (1 - {\kappa_1} ^ 2) \\
 i &= 2 \\
-q_2 &\leftarrow \text{autocorrelation}_3 - (\text{LP coefficient}_{1~0} \times \text{autocorrelation}_{2} + \text{LP coefficient}_{1~1} \times \text{autocorrelation}_{1}) \\
-\kappa_2 &\leftarrow q_2 \div \text{error}_1 \\
-\text{LP coefficient}_{2~0} &\leftarrow \text{LP coefficient}_{1~0} - (\kappa_2 \times \text{LP coefficient}_{1~1}) \\
-\text{LP coefficient}_{2~1} &\leftarrow \text{LP coefficient}_{1~1} - (\kappa_2 \times \text{LP coefficient}_{1~0}) \\
-\text{LP coefficient}_{2~2} &\leftarrow \kappa_2 \\
-\text{error}_2 &\leftarrow \text{error}_1 \times (1 - {\kappa_2} ^ 2) \\
+q_2 &\leftarrow \textsf{autocorrelation}_3 - (\textsf{LP coefficient}_{1~0} \times \textsf{autocorrelation}_{2} + \textsf{LP coefficient}_{1~1} \times \textsf{autocorrelation}_{1}) \\
+\kappa_2 &\leftarrow q_2 \div \textsf{error}_1 \\
+\textsf{LP coefficient}_{2~0} &\leftarrow \textsf{LP coefficient}_{1~0} - (\kappa_2 \times \textsf{LP coefficient}_{1~1}) \\
+\textsf{LP coefficient}_{2~1} &\leftarrow \textsf{LP coefficient}_{1~1} - (\kappa_2 \times \textsf{LP coefficient}_{1~0}) \\
+\textsf{LP coefficient}_{2~2} &\leftarrow \kappa_2 \\
+\textsf{error}_2 &\leftarrow \textsf{error}_1 \times (1 - {\kappa_2} ^ 2) \\
 \end{align*}
 }
 
@@ -2269,21 +2275,21 @@ Performing this calculation with the autocorrelation values
 {\relsize{-1}
 \begin{align*}
 \kappa_0 &\leftarrow 3130.76 \div 3455.53 = 0.906 \\
-\text{LP coefficient}_{0~0} &\leftarrow 0.906 \\
-\text{error}_0 &\leftarrow 3455.53 \times (1 - {0.906} ^ 2) = 619.107 \\
+\textsf{LP coefficient}_{0~0} &\leftarrow 0.906 \\
+\textsf{error}_0 &\leftarrow 3455.53 \times (1 - {0.906} ^ 2) = 619.107 \\
 i &= 1 \\
 q_1 &\leftarrow 2590.90 - (0.906 \times 3130.76) = -245.569 \\
 \kappa_1 &\leftarrow -245.569 \div 619.107 = -0.397 \\
-\text{LP coefficient}_{1~0} &\leftarrow 0.906 - (-0.397 \times 0.906) = 1.266 \\
-\text{LP coefficient}_{1~1} &\leftarrow -0.397 \\
-\text{error}_1 &\leftarrow 619.107 \times (1 - {-0.397} ^ 2) = 521.530 \\
+\textsf{LP coefficient}_{1~0} &\leftarrow 0.906 - (-0.397 \times 0.906) = 1.266 \\
+\textsf{LP coefficient}_{1~1} &\leftarrow -0.397 \\
+\textsf{error}_1 &\leftarrow 619.107 \times (1 - {-0.397} ^ 2) = 521.530 \\
 i &= 2 \\
 q_2 &\leftarrow 2055.80 - (1.266 \times 2590.90 + -0.397 \times 3130.76) = 18.632 \\
 \kappa_2 &\leftarrow 18.632 \div 521.53 = 0.036 \\
-\text{LP coefficient}_{2~0} &\leftarrow 1.266 - (0.036 \times -0.397) = 1.28 \\
-\text{LP coefficient}_{2~1} &\leftarrow -0.397 - (0.036 \times 1.266) = -0.443 \\
-\text{LP coefficient}_{2~2} &\leftarrow 0.036 \\
-\text{error}_2 &\leftarrow 521.53 \times (1 - {0.036} ^ 2) = 520.854 \\
+\textsf{LP coefficient}_{2~0} &\leftarrow 1.266 - (0.036 \times -0.397) = 1.28 \\
+\textsf{LP coefficient}_{2~1} &\leftarrow -0.397 - (0.036 \times 1.266) = -0.443 \\
+\textsf{LP coefficient}_{2~2} &\leftarrow 0.036 \\
+\textsf{error}_2 &\leftarrow 521.53 \times (1 - {0.036} ^ 2) = 520.854 \\
 \end{align*}
 }
 \par
@@ -2291,7 +2297,7 @@ q_2 &\leftarrow 2055.80 - (1.266 \times 2590.90 + -0.397 \times 3130.76) = 18.63
 With the final result of:
 \begin{table}[h]
 \begin{tabular}{r|rrr}
-order & \multicolumn{3}{c}{LP coefficients} \\
+order & \multicolumn{3}{c}{\textsf{LP coefficients}} \\
 \hline
 1 & \texttt{0.906} \\
 2 & \texttt{1.266} & \texttt{-0.397} \\
@@ -2300,107 +2306,114 @@ order & \multicolumn{3}{c}{LP coefficients} \\
 \end{table}
 \par
 \noindent
-and error values: \texttt{619.107, 521.530, 520.854}
+and \textsf{error} values: \texttt{619.107, 521.530, 520.854}
 
 \clearpage
 
 \subsubsection{Estimating Best Order}
-{\relsize{-1}
-\ALGORITHM{floating point error values, block size, bits per sample, QLP precision and maximum LPC order from encoding parameters}{the best stimated order value to use}
-\SetKwData{BORDER}{best order}
+\ALGORITHM{floating point error values, block size, bits per sample,\newline QLP precision and maximum LPC order from encoding parameters}{the best stimated order value to use}
+\SetKwData{ORDER}{predictor order}
+\SetKwData{BLOCKSIZE}{block size}
+\SetKwData{MAXLPCORDER}{max LPC order}
+\SetKwData{HEADERBITS}{header bits}
 \SetKwData{BSIZE}{best subframe bits}
+\SetKwData{QLPPREC}{QLP precision}
+\SetKwData{BPS}{bits per sample}
+\SetKwData{BPR}{bits per residual}
 \SetKwData{ERROR}{error}
 \SetKwData{ERRORSCALE}{error scale}
+\SetKwData{SUBFRAMEBITS}{subframe bits}
 \SetKwFunction{MAX}{max}
-\ERRORSCALE $\leftarrow \frac{\log_e(2) ^ 2}{\text{block size} \times 2}$\;
-\BORDER $\leftarrow 0$\;
+\ERRORSCALE $\leftarrow \frac{\log_e(2) ^ 2}{\text{\BLOCKSIZE} \times 2}$\;
 \BSIZE $\leftarrow$ maximum floating point\;
-\For{$i \leftarrow 0$ \emph{\KwTo}maximum LPC order}{
-  $order \leftarrow i + 1$\;
-  \uIf{$\text{error}_i > 0.0$}{
-    $header~bits \leftarrow order \times (\text{bits per sample} + \text{QLP precision})$\;
-    $bits~per~residual \leftarrow \MAX\left(\frac{\log_e(error_i \times \text{\ERRORSCALE})}{\log_e(2) \times 2} , 0.0\right)$\;
-    $estimated~subframe~bits \leftarrow header~bits + bits~per~residual \times (\text{block size} - order)$\;
-    \BlankLine
-    \If{$estimated~subframe~bits < \text{\BSIZE}$}{
-      \BORDER $\leftarrow order$\;
-      \BSIZE $\leftarrow estimated~subframe~bits$\;
-    }
+\For{$i \leftarrow 0$ \emph{\KwTo}\MAXLPCORDER}{
+  $o \leftarrow i + 1$\tcc*[r]{current order}
+  \uIf{$\text{\ERROR}_i > 0.0$}{
+    $\text{\HEADERBITS}_o \leftarrow \ORDER \times (\text{\BPS} + \text{\QLPPREC})$\;
+    $\text{\BPR}_o \leftarrow \MAX\left(\frac{\log_e(\text{\ERROR}_i \times \text{\ERRORSCALE})}{\log_e(2) \times 2}~,~0.0\right)$\;
+    $\text{\SUBFRAMEBITS}_o \leftarrow \text{\HEADERBITS}_o + \text{\BPR}_o \times (\text{\BLOCKSIZE} - \text{\ORDER})$\;
   }
-  \ElseIf{$\text{error}_i = 0.0$}{
-    \Return $order$\;
+  \ElseIf{$\text{\ERROR}_i = 0.0$}{
+    \Return $o$\;
   }
 }
-\Return \BORDER\;
+\BlankLine
+\Return $o$ such as $\text{\SUBFRAMEBITS}_o$ is smallest\;
 \EALGORITHM
-}
 
 \clearpage
 
 \subsubsection{Quantizing LP Coefficients}
-{\relsize{-1}
-\ALGORITHM{LP coefficients, a positive order value, QLP precision from encoding parameters}{QLP coefficients as a list of integers, QLP shift needed as a non-negative integer}
+\ALGORITHM{LP coefficients, a positive order value,\newline QLP precision from encoding parameters}{QLP coefficients as a list of integers,\newline QLP shift needed as a non-negative integer}
+\SetKwData{LPCOEFF}{LP coefficient}
+\SetKwData{QLPSHIFT}{QLP shift}
+\SetKwData{QLPPREC}{QLP precision}
+\SetKwData{ORDER}{order}
+\SetKwData{QLPMAX}{QLP max}
+\SetKwData{QLPMIN}{QLP min}
+\SetKwData{ERROR}{error}
+\SetKwData{QLPCOEFF}{QLP coefficient}
 \SetKwFunction{MIN}{min}
 \SetKwFunction{MAX}{max}
 \SetKwFunction{ROUND}{round}
-$l \leftarrow $ maximum $|c|$ for $c$ in $\text{LP Coefficient}_{order - 1~0}$ to $\text{LP Coefficient}_{order - 1~order}$\;
-QLP shift needed $\leftarrow (\text{QLP precision} - 1) - (\lfloor \log_2(l) \rfloor - 1) - 1$\;
-\uIf(\tcc*[f]{ensure shift fits into signed 5 bit field}){QLP shift needed $> 2 ^ 4 - 1$}{
-  QLP shift needed $\leftarrow 2 ^ 4 - 1$\;
+$l \leftarrow $ maximum $|c|$ for $c$ in $\text{\LPCOEFF}_{(\ORDER - 1)~0}$ to $\text{\LPCOEFF}_{(\ORDER - 1)~\ORDER}$\;
+$\QLPSHIFT \leftarrow (\text{\QLPPREC} - 1) - (\lfloor \log_2(l) \rfloor - 1) - 1$\;
+\uIf(\tcc*[f]{must fit into signed 5 bit field}){$\QLPSHIFT > 2 ^ 4 - 1$}{
+  $\QLPSHIFT \leftarrow 2 ^ 4 - 1$\;
 }
-\ElseIf{QLP shift needed $< -(2 ^ 4)$}{
+\ElseIf{$\QLPSHIFT < -(2 ^ 4)$}{
   \Return error\tcc*[r]{too much shift required for coefficients}
 }
 
 \BlankLine
 \tcc{QLP min and max are the smallest and largest QLP coefficients that fit in a signed field that's "QLP precision" bits wide}
-QLP max $\leftarrow 2 ^ \text{QLP precision - 1} - 1$\;
-QLP min $\leftarrow -(2 ^ \text{QLP precision - 1})$\;
-$error \leftarrow 0.0$\;
-\eIf{$\text{QLP shift needed} \geq 0$}{
-  \For{$i \leftarrow 0$ \emph{\KwTo}order}{
-    $error \leftarrow error + \text{LP Coefficients}_{order - 1~i} \times 2 ^ \text{QLP shift needed}$\;
-    $\text{QLP coefficient}_i \leftarrow \MIN(\MAX(\ROUND(error), \text{QLP min}), \text{QLP max})$\;
-    $error \leftarrow error - \text{QLP coefficient}_i$\;
+$\QLPMAX \leftarrow 2 ^ {\text{\QLPPREC} - 1} - 1$\;
+$\QLPMIN \leftarrow -(2 ^ {\text{\QLPPREC} - 1})$\;
+$\ERROR \leftarrow 0.0$\;
+\eIf{$\text{\QLPSHIFT} \geq 0$}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}\ORDER}{
+    $\ERROR \leftarrow \ERROR + \text{\LPCOEFF}_{\ORDER - 1~i} \times 2 ^ \text{\QLPSHIFT}$\;
+    $\text{\QLPCOEFF}_i \leftarrow \MIN(\MAX(\ROUND(\ERROR)~,~\text{\QLPMIN})~,~\text{\QLPMAX})$\;
+    $\ERROR \leftarrow \ERROR - \text{\QLPCOEFF}_i$\;
   }
-  \Return (QLP coefficients, QLP shift needed)\;
+  \Return $(\QLPCOEFF~,~\QLPSHIFT)$\;
 }(\tcc*[f]{negative shifts are not allowed, so shrink coefficients}){
-  \For{$i \leftarrow 0$ \emph{\KwTo}order}{
-    $error \leftarrow error + \text{LP Coefficients}_{order - 1~i} \div 2 ^ {-\text{QLP shift needed}}$\;
-    $\text{QLP coefficient}_i \leftarrow \MIN(\MAX(\ROUND(error), \text{QLP min}), \text{QLP max})$\;
-    $error \leftarrow error - \text{QLP coefficient}_i$\;
+  \For{$i \leftarrow 0$ \emph{\KwTo}\ORDER}{
+    $\ERROR \leftarrow \ERROR + \text{\LPCOEFF}_{\ORDER - 1~i} \div 2 ^ {-\text{\QLPSHIFT}}$\;
+    $\text{\QLPCOEFF}_i \leftarrow \MIN(\MAX(\ROUND(\ERROR)~,~\text{\QLPMIN})~,~\text{\QLPMAX})$\;
+    $\ERROR \leftarrow \ERROR - \text{\QLPCOEFF}_i$\;
   }
-  \Return (QLP coefficients, 0)\;
+  \Return $(\QLPCOEFF~,~0)$\;
 }
 \EALGORITHM
-}
+
 \clearpage
 
-For example, given the $\texttt{LP coefficients}_3$ \texttt{1.280, -0.443, 0.036},
-an order of \texttt{3} and a QLP precision \texttt{12}:
+For example, given the $\textsf{LP coefficient}_3$ \texttt{[1.280, -0.443, 0.036]},
+an \textsf{order} of \texttt{3} and a \textsf{QLP precision} \texttt{12}:
 \begin{align*}
 l &\leftarrow 1.280 \\
-\text{QLP shift needed} &\leftarrow 12 - \lfloor \log_2(1.280) \rfloor - 2 = 10 \\
-\text{QLP max} &\leftarrow 2047 \\
-\text{QLP min} &\leftarrow -2048 \\
-error &\leftarrow 0.0 \\
+\textsf{QLP shift} &\leftarrow 12 - \lfloor \log_2(1.280) \rfloor - 2 = 10 \\
+\textsf{QLP max} &\leftarrow 2047 \\
+\textsf{QLP min} &\leftarrow -2048 \\
+\textsf{error} &\leftarrow 0.0 \\
 i &= 0 \\
-error &\leftarrow 0.0 + 1.280 \times 2 ^ {10} = 1310.72 \\
-\text{QLP coefficient}_0 &\leftarrow 1311 \\
-error &\leftarrow 1310.72 - 1311 = -0.28 \\
+\textsf{error} &\leftarrow 0.0 + 1.280 \times 2 ^ {10} = 1310.72 \\
+\textsf{QLP coefficient}_0 &\leftarrow 1311 \\
+\textsf{error} &\leftarrow 1310.72 - 1311 = -0.28 \\
 i &= 1 \\
-error &\leftarrow -0.28 + -0.443 \times 2 ^ {10} = -453.912 \\
-\text{QLP coefficient}_1 &\leftarrow -454 \\
-error &\leftarrow -453.912 - -454 = 0.088 \\
+\textsf{error} &\leftarrow -0.28 + -0.443 \times 2 ^ {10} = -453.912 \\
+\textsf{QLP coefficient}_1 &\leftarrow -454 \\
+\textsf{error} &\leftarrow -453.912 - -454 = 0.088 \\
 i &= 2 \\
-error &\leftarrow 0.088 + 0.036 \times 2 ^ {10} = 36.952 \\
-\text{QLP coefficient}_2 &\leftarrow 37 \\
-error &\leftarrow 36.952 - 37 = -0.048 \\
+\textsf{error} &\leftarrow 0.088 + 0.036 \times 2 ^ {10} = 36.952 \\
+\textsf{QLP coefficient}_2 &\leftarrow 37 \\
+\textsf{error} &\leftarrow 36.952 - 37 = -0.048 \\
 \end{align*}
 \par
 \noindent
 Resulting in the QLP coefficients \texttt{1311, -454, 37}
-and a QLP shift needed of \texttt{10}.
+and a QLP shift of \texttt{10}.
 These values, in addition to QLP precision,
 are inserted directly into a desired QLP subframe header
 and are also used to calculate its residuals.
@@ -2409,29 +2422,38 @@ and are also used to calculate its residuals.
 
 \subsection{Encoding an LPC Subframe}
 \ALGORITHM{signed subframe samples, subframe order, QLP coefficients, QLP precision, QLP shift needed, subframe's bits per sample, wasted BPS}{an LPC subframe}
+\SetKwData{ORDER}{predictor order}
+\SetKwData{BLOCKSIZE}{block size}
+\SetKwData{WASTEDBPS}{wasted BPS}
+\SetKwData{BPS}{bits per sample}
+\SetKwData{SAMPLE}{sample}
+\SetKwData{RESIDUAL}{residual}
+\SetKwData{QLPPREC}{QLP precision}
+\SetKwData{QLPSHIFT}{QLP shift}
+\SetKwData{QLPCOEFF}{QLP coefficient}
 $0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{pad}
 $1 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{subframe type}
-$(\text{subframe order} - 1) \rightarrow$ \WRITE 5 unsigned bits\;
-\eIf{$wasted~BPS > 0$}{
+$(\text{\ORDER} - 1) \rightarrow$ \WRITE 5 unsigned bits\;
+\eIf{$\WASTEDBPS > 0$}{
   $1 \rightarrow$ \WRITE 1 unsigned bit\;
-  $\text{wasted BPS} - 1 \rightarrow$ \WUNARY with stop bit 1\;
+  $\text{\WASTEDBPS} - 1 \rightarrow$ \WUNARY with stop bit 1\;
 }{
   $0 \rightarrow$ \WRITE 1 unsigned bit\;
 }
-\For(\tcc*[f]{warm-up samples}){$i \leftarrow 0$ \emph{\KwTo}subframe order}{
-  $sample_i \rightarrow$ \WRITE (bits per sample) signed bits\;
+\For(\tcc*[f]{warm-up samples}){$i \leftarrow 0$ \emph{\KwTo}\ORDER}{
+  $\text{\SAMPLE}_i \rightarrow$ \WRITE $(\BPS)$ signed bits\;
 }
-$\text{QLP precision} - 1 \rightarrow$ \WRITE 4 unsigned bits\;
-$\text{QLP shift needed} \rightarrow$ \WRITE 5 signed bits\;
-\For(\tcc*[f]{QLP coefficients}){$i \leftarrow 0$ \emph{\KwTo}subframe order}{
-  $\text{QLP coefficient}_i \rightarrow$ \WRITE (QLP precision) signed bits\;
+$\text{\QLPPREC} - 1 \rightarrow$ \WRITE 4 unsigned bits\;
+$\text{\QLPSHIFT} \rightarrow$ \WRITE 5 signed bits\;
+\For(\tcc*[f]{QLP coefficients}){$i \leftarrow 0$ \emph{\KwTo}\ORDER}{
+  $\text{\QLPCOEFF}_i \rightarrow$ \WRITE $(\QLPPREC)$ signed bits\;
 }
 \BlankLine
-\For(\tcc*[f]{calculate signed residuals}){$i \leftarrow 0$ \emph{\KwTo}sample count - order}{
-  $residual_i \leftarrow sample_{i + order} - \left \lfloor \frac{\overset{order - 1}{\underset{j = 0}{\sum}} \text{QLP coefficient}_j \times sample_{i + order - j - 1} }{2 ^ \text{QLP shift needed}} \right \rfloor$
+\For(\tcc*[f]{calculate signed residuals}){$i \leftarrow 0$ \emph{\KwTo}$\BLOCKSIZE - \ORDER$}{
+  $\text{\RESIDUAL}_i \leftarrow \text{\SAMPLE}_{i + \ORDER} - \left \lfloor \frac{\overset{\ORDER - 1}{\underset{j = 0}{\sum}} \text{\QLPCOEFF}_j \times \text{\SAMPLE}_{i + \ORDER - j - 1} }{2 ^ \text{\QLPSHIFT}} \right \rfloor$
 }
 write encoded residual block based on signed residual values\;
-\Return an LPC subframe\;
+\Return LPC subframe\;
 \EALGORITHM
 \begin{figure}[h]
 \includegraphics{figures/flac/lpc2.pdf}
@@ -2441,21 +2463,21 @@ write encoded residual block based on signed residual values\;
 
 \subsubsection{LPC Subframe Residuals Calculcation Example}
 \begin{tabular}{rl}
-samples : & \texttt{18, 20, 26, 24, 24, 23, 21, 24, 23, 20} \\
-order : & \texttt{3} \\
-QLP precision : &\texttt{12} \\
-QLP shift needed : & \texttt{10} \\
-QLP coefficients : & \texttt{1311, -454, 37} \\
+\textsf{samples} : & \texttt{18, 20, 26, 24, 24, 23, 21, 24, 23, 20} \\
+\textsf{order} : & \texttt{3} \\
+\textsf{QLP precision} : &\texttt{12} \\
+\textsf{QLP shift} : & \texttt{10} \\
+\text{QLP coefficients} : & \texttt{1311, -454, 37} \\
 \end{tabular}
 \newline
 \begin{align*}
-residual_0 &\leftarrow 24 - \left\lfloor\frac{1311 \times 26 + -454 \times 20 + 37 \times 18}{2 ^ {10}}\right\rfloor = 24 - \left\lfloor\frac{25672}{1024}\right\rfloor = 24 - 25 = -1 \\
-residual_1 &\leftarrow 24 - \left\lfloor\frac{1311 \times 24 + -454 \times 26 + 37 \times 20}{2 ^ {10}}\right\rfloor = 24 - \left\lfloor\frac{20400}{1024}\right\rfloor = 24 - 19 = 5 \\
-residual_2 &\leftarrow 23 - \left\lfloor\frac{1311 \times 24 + -454 \times 24 + 37 \times 26}{2 ^ {10}}\right\rfloor = 23 - \left\lfloor\frac{21530}{1024}\right\rfloor = 23 - 21 = 2 \\
-residual_3 &\leftarrow 21 - \left\lfloor\frac{1311 \times 23 + -454 \times 24 + 37 \times 24}{2 ^ {10}}\right\rfloor = 21 - \left\lfloor\frac{20145}{1024}\right\rfloor = 21 - 19 = 2 \\
-residual_4 &\leftarrow 24 - \left\lfloor\frac{1311 \times 21 + -454 \times 23 + 37 \times 24}{2 ^ {10}}\right\rfloor = 24 - \left\lfloor\frac{17977}{1024}\right\rfloor = 24 - 17 = 7 \\
-residual_5 &\leftarrow 23 - \left\lfloor\frac{1311 \times 24 + -454 \times 21 + 37 \times 23}{2 ^ {10}}\right\rfloor = 23 - \left\lfloor\frac{22781}{1024}\right\rfloor = 23 - 22 = 1 \\
-residual_6 &\leftarrow 20 - \left\lfloor\frac{1311 \times 23 + -454 \times 24 + 37 \times 21}{2 ^ {10}}\right\rfloor = 20 - \left\lfloor\frac{20034}{1024}\right\rfloor = 20 - 19 = 1
+\textsf{residual}_0 &\leftarrow 24 - \left\lfloor\frac{1311 \times 26 + -454 \times 20 + 37 \times 18}{2 ^ {10}}\right\rfloor = 24 - \left\lfloor\frac{25672}{1024}\right\rfloor = 24 - 25 = -1 \\
+\textsf{residual}_1 &\leftarrow 24 - \left\lfloor\frac{1311 \times 24 + -454 \times 26 + 37 \times 20}{2 ^ {10}}\right\rfloor = 24 - \left\lfloor\frac{20400}{1024}\right\rfloor = 24 - 19 = 5 \\
+\textsf{residual}_2 &\leftarrow 23 - \left\lfloor\frac{1311 \times 24 + -454 \times 24 + 37 \times 26}{2 ^ {10}}\right\rfloor = 23 - \left\lfloor\frac{21530}{1024}\right\rfloor = 23 - 21 = 2 \\
+\textsf{residual}_3 &\leftarrow 21 - \left\lfloor\frac{1311 \times 23 + -454 \times 24 + 37 \times 24}{2 ^ {10}}\right\rfloor = 21 - \left\lfloor\frac{20145}{1024}\right\rfloor = 21 - 19 = 2 \\
+\textsf{residual}_4 &\leftarrow 24 - \left\lfloor\frac{1311 \times 21 + -454 \times 23 + 37 \times 24}{2 ^ {10}}\right\rfloor = 24 - \left\lfloor\frac{17977}{1024}\right\rfloor = 24 - 17 = 7 \\
+\textsf{residual}_5 &\leftarrow 23 - \left\lfloor\frac{1311 \times 24 + -454 \times 21 + 37 \times 23}{2 ^ {10}}\right\rfloor = 23 - \left\lfloor\frac{22781}{1024}\right\rfloor = 23 - 22 = 1 \\
+\textsf{residual}_6 &\leftarrow 20 - \left\lfloor\frac{1311 \times 23 + -454 \times 24 + 37 \times 21}{2 ^ {10}}\right\rfloor = 20 - \left\lfloor\frac{20034}{1024}\right\rfloor = 20 - 19 = 1
 \end{align*}
 Leading to a final set of 7 residual values: \texttt{-1, 5, 2, 2, 7, 1, 1}.
 Encoding them to a residual block, our final LPC subframe is:
@@ -2469,7 +2491,7 @@ and any padding bits after the final subframe.
 Given a byte of input and the previous CRC-16 checksum,
 or 0 as an initial value, the current checksum can be calculated as follows:
 \begin{equation}
-\text{checksum}_i = \text{CRC16}(byte\xor(\text{checksum}_{i - 1} \gg 8 ))\xor(\text{checksum}_{i - 1} \ll 8)
+\text{checksum}_i = \texttt{CRC16}(byte\xor(\text{checksum}_{i - 1} \gg 8 ))\xor(\text{checksum}_{i - 1} \ll 8)
 \end{equation}
 \par
 \noindent

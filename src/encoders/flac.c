@@ -334,12 +334,11 @@ flacenc_init_encoder(struct flac_context* encoder)
     encoder->qlp_coefficients = array_i_new();
     encoder->lpc_residual = array_i_new();
 
-    encoder->best_partition_sizes = array_i_new();
     encoder->best_rice_parameters = array_i_new();
-    encoder->partition_sizes = array_i_new();
     encoder->rice_parameters = array_i_new();
     encoder->remaining_residuals = array_li_new();
-    encoder->residual_partition = array_li_new();
+    encoder->residual_partitions = array_lia_new();
+    encoder->best_residual_partitions = array_lia_new();
 }
 
 void
@@ -368,12 +367,11 @@ flacenc_free_encoder(struct flac_context* encoder)
     encoder->qlp_coefficients->del(encoder->qlp_coefficients);
     encoder->lpc_residual->del(encoder->lpc_residual);
 
-    encoder->best_partition_sizes->del(encoder->best_partition_sizes);
     encoder->best_rice_parameters->del(encoder->best_rice_parameters);
-    encoder->partition_sizes->del(encoder->partition_sizes);
     encoder->rice_parameters->del(encoder->rice_parameters);
     encoder->remaining_residuals->del(encoder->remaining_residuals);
-    encoder->residual_partition->del(encoder->residual_partition);
+    encoder->residual_partitions->del(encoder->residual_partitions);
+    encoder->best_residual_partitions->del(encoder->best_residual_partitions);
 }
 
 void
@@ -1343,185 +1341,180 @@ void
 flacenc_encode_residuals(BitstreamWriter* bs,
                          struct flac_context* encoder,
                          unsigned block_size,
-                         unsigned order,
+                         unsigned predictor_order,
                          const array_i* residuals)
 {
     unsigned coding_method;
     unsigned partition_order;
     unsigned best_partition_order = 0;
-    unsigned partition;
+    unsigned p;
 
     /*local links to the cached arrays*/
-    array_i* best_partition_sizes = encoder->best_partition_sizes;
-    array_i* best_rice_parameters = encoder->best_rice_parameters;
-    array_i* partition_sizes = encoder->partition_sizes;
+
+    uint64_t total_size;
     array_i* rice_parameters = encoder->rice_parameters;
+    array_lia* residual_partitions = encoder->residual_partitions;
+
+    uint64_t best_total_size = ULLONG_MAX;
+    array_i* best_rice_parameters = encoder->best_rice_parameters;
+    array_lia* best_residual_partitions = encoder->best_residual_partitions;
+
+
     array_li* remaining_residuals = encoder->remaining_residuals;
-    array_li* residual_partition = encoder->residual_partition;
 
-    uint64_t abs_partition_sum;
-    unsigned rice_parameter;
-    unsigned partition_size;
+    void (*write)(struct BitstreamWriter_s* bs,
+                  unsigned int count,
+                  unsigned int value) = bs->write;
 
-    best_partition_sizes->reset(best_partition_sizes);
+    void (*write_unary)(struct BitstreamWriter_s* bs,
+                        int stop_bit,
+                        unsigned int value) = bs->write_unary;
+
+    rice_parameters->reset(rice_parameters);
     best_rice_parameters->reset(best_rice_parameters);
-    best_partition_sizes->append(best_partition_sizes, INT_MAX);
 
     for (partition_order = 0;
          partition_order <= encoder->options.max_residual_partition_order;
          partition_order++) {
+        if ((block_size % (1 << partition_order)) == 0) {
+            residuals->link(residuals, remaining_residuals);
+            flacenc_encode_residual_partitions(
+                remaining_residuals,
+                block_size,
+                predictor_order,
+                partition_order,
+                encoder->options.max_rice_parameter,
 
-        if (block_size % (1 << partition_order))
+                rice_parameters,
+                residual_partitions,
+                &total_size);
+
+            if (total_size < best_total_size) {
+                best_partition_order = partition_order;
+
+                rice_parameters->swap(rice_parameters,
+                                      best_rice_parameters);
+
+                residual_partitions->swap(residual_partitions,
+                                          best_residual_partitions);
+
+                best_total_size = total_size;
+            }
+        } else {
             /*stop once block_size is no longer equally divisible by
               2 ^ partition_order*/
             break;
-
-        residuals->link(residuals, remaining_residuals);
-        partition_sizes->reset(partition_sizes);
-        rice_parameters->reset(rice_parameters);
-
-        for (partition = 0; partition < (1 << partition_order); partition++) {
-            if (partition == 0)
-                remaining_residuals->split(remaining_residuals,
-                                           (block_size /
-                                            (1 << partition_order)) - order,
-                                           residual_partition,
-                                           remaining_residuals);
-            else
-                remaining_residuals->split(remaining_residuals,
-                                           (block_size /
-                                            (1 << partition_order)),
-                                           residual_partition,
-                                           remaining_residuals);
-
-            abs_partition_sum = flacenc_abs_sum(residual_partition);
-            rice_parameter =
-                flacenc_best_rice_parameter(encoder,
-                                            abs_partition_sum,
-                                            residual_partition->len);
-            partition_size =
-                flacenc_estimate_partition_size(rice_parameter,
-                                                abs_partition_sum,
-                                                residual_partition->len);
-            rice_parameters->append(rice_parameters, rice_parameter);
-            partition_sizes->append(partition_sizes, partition_size);
-        }
-
-        if (partition_sizes->sum(partition_sizes) <
-            best_partition_sizes->sum(best_partition_sizes)) {
-            best_partition_order = partition_order;
-            partition_sizes->swap(partition_sizes,
-                                  best_partition_sizes);
-            rice_parameters->swap(rice_parameters,
-                                  best_rice_parameters);
         }
     }
 
     assert(remaining_residuals->len == 0);
-    assert(best_rice_parameters->len == best_partition_sizes->len);
+    assert(best_rice_parameters->len == best_residual_partitions->len);
 
     if (best_rice_parameters->max(best_rice_parameters) > 14)
         coding_method = 1;
     else
         coding_method = 0;
 
+    /* output best Rice parameters and residual partitions to disk */
+
     bs->write(bs, 2, coding_method);
     bs->write(bs, 4, best_partition_order);
 
-    residuals->link(residuals, remaining_residuals);
-    for (partition = 0; partition < (1 << best_partition_order); partition++) {
-        if (partition == 0)
-            remaining_residuals->split(remaining_residuals,
-                                       (block_size /
-                                        (1 << best_partition_order)) - order,
-                                       residual_partition,
-                                       remaining_residuals);
-        else
-            remaining_residuals->split(remaining_residuals,
-                                       (block_size /
-                                        (1 << best_partition_order)),
-                                       residual_partition,
-                                       remaining_residuals);
+    for (p = 0; p < best_residual_partitions->len; p++) {
+        unsigned rice_parameter = (unsigned)(best_rice_parameters->_[p]);
+        const int* partition_ = best_residual_partitions->_[p]->_;
+        const unsigned partition_len = best_residual_partitions->_[p]->len;
+        unsigned i;
 
         if (coding_method == 0)
-            bs->write(bs, 4, best_rice_parameters->_[partition]);
+            write(bs, 4, rice_parameter);
         else
-            bs->write(bs, 5, best_rice_parameters->_[partition]);
+            write(bs, 5, rice_parameter);
 
-        flacenc_encode_residual_partition(bs,
-                                          best_rice_parameters->_[partition],
-                                          residual_partition);
+        for (i = 0; i < partition_len; i++) {
+            register unsigned u;
+            register unsigned MSB;
+            register unsigned LSB;
+            if (partition_[i] >= 0) {
+                u = partition_[i] << 1;
+            } else {
+                u = ((-partition_[i] - 1) << 1) | 1;
+            }
+            MSB = u >> rice_parameter;
+            LSB = u - (MSB << rice_parameter);
+            write_unary(bs, 1, MSB);
+            write(bs, rice_parameter, LSB);
+        }
     }
 }
 
 void
-flacenc_encode_residual_partition(BitstreamWriter* bs,
-                                  unsigned rice_parameter,
-                                  const array_li* residual_partition)
+flacenc_encode_residual_partitions(array_li* residuals,
+                                   unsigned block_size,
+                                   unsigned predictor_order,
+                                   unsigned partition_order,
+                                   unsigned maximum_rice_parameter,
+
+                                   array_i* rice_parameters,
+                                   array_lia* partitions,
+                                   uint64_t* total_size)
 {
-    unsigned partition_size = residual_partition->len;
-    const int* residuals = residual_partition->_;
-    unsigned value;
-    unsigned msb;
-    unsigned lsb;
-    unsigned i;
+    unsigned p;
 
-    void (*write)(struct BitstreamWriter_s* bs, unsigned int count,
-                  unsigned int value);
+    *total_size = 0;
+    rice_parameters->reset(rice_parameters);
+    partitions->reset(partitions);
 
-    void (*write_unary)(struct BitstreamWriter_s* bs, int stop_bit,
-                        unsigned int value);
+    for (p = 0; p < (1 << partition_order); p++) {
+        array_li* partition = partitions->append(partitions);
+        unsigned plength;
+        uint64_t abs_partition_sum = 0;
+        unsigned i;
+        unsigned Rice;
 
-    write = bs->write;
-    write_unary = bs->write_unary;
+        if (p == 0) {
+            plength = (block_size >> partition_order) - predictor_order;
+        } else {
+            plength = block_size >> partition_order;
+        }
 
-    for (i = 0; i < partition_size; i++) {
-        if (residuals[i] >= 0)
-            value = residuals[i] << 1;
-        else
-            value = ((-residuals[i] - 1) << 1) | 1;
-        msb = value >> rice_parameter;
-        lsb = value - (msb << rice_parameter);
-        write_unary(bs, 1, msb);
-        write(bs, rice_parameter, lsb);
-    }
-}
+        residuals->split(residuals, plength, partition, residuals);
 
-unsigned
-flacenc_best_rice_parameter(const struct flac_context* encoder,
-                            uint64_t abs_partition_sum,
-                            unsigned partition_size)
-{
-    unsigned rice_parameter = 0;
+        for (i = 0; i < partition->len; i++) {
+            if (partition->_[i] >= 0)
+                abs_partition_sum += partition->_[i];
+            else
+                abs_partition_sum -= partition->_[i];
+        }
 
-    while ((partition_size * (1 << rice_parameter)) < abs_partition_sum)
-        if (rice_parameter < encoder->options.max_rice_parameter)
-            rice_parameter++;
-        else
-            break;
+        /*compute best Rice parameter for partition*/
+        Rice = 0;
+        while ((uint64_t)(plength << Rice) < abs_partition_sum) {
+            if (Rice < maximum_rice_parameter) {
+                Rice++;
+            } else {
+                break;
+            }
+        }
 
-    return rice_parameter;
-}
+        /*add estimated size of partition to total size*/
+        if (Rice > 0) {
+            *total_size += (4 + /*4 bit partition header*/
+                            /*residual MSBs minus sign bit*/
+                            (abs_partition_sum >> (Rice - 1)) +
+                            /*residual LSBs plus stop bit*/
+                            ((1 + Rice) * plength) -
+                            (plength / 2));
+        } else {
+            *total_size += (4 + /*4 bit partition header*/
+                            /*residual MSBs minus sign bit*/
+                            (abs_partition_sum << 1) +
+                            /*residual LSBs plus stop bit*/
+                            plength -
+                            (plength / 2));
+        }
 
-unsigned
-flacenc_estimate_partition_size(unsigned rice_parameter,
-                                uint64_t abs_partition_sum,
-                                unsigned partition_size)
-{
-    if (rice_parameter > 0) {
-        return (4 + /*4 bit partition header*/
-                /*residual MSBs minus sign bit*/
-                (unsigned)(abs_partition_sum >> (rice_parameter - 1)) +
-                /*residual LSBs plus stop bit*/
-                ((1 + rice_parameter) * partition_size) -
-                (partition_size / 2));
-    } else {
-        return (4 + /*4 bit partition header*/
-                /*residual MSBs minus sign bit*/
-                (unsigned)(abs_partition_sum << 1) +
-                /*residual LSBs plus stop bit*/
-                ((1 + rice_parameter) * partition_size) -
-                (partition_size / 2));
+        rice_parameters->append(rice_parameters, (int)Rice);
     }
 }
 

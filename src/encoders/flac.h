@@ -87,12 +87,11 @@ struct flac_context {
     array_i* qlp_coefficients;
     array_i* lpc_residual;
 
-    array_i* best_partition_sizes;
-    array_i* best_rice_parameters;
-    array_i* partition_sizes;
     array_i* rice_parameters;
+    array_i* best_rice_parameters;
+    array_lia* residual_partitions;
+    array_lia* best_residual_partitions;
     array_li* remaining_residuals;
-    array_li* residual_partition;
 };
 
 struct flac_frame_header {
@@ -298,29 +297,27 @@ void
 flacenc_encode_residuals(BitstreamWriter* bs,
                          struct flac_context* encoder,
                          unsigned block_size,
-                         unsigned order,
+                         unsigned predictor_order,
                          const array_i* residuals);
 
-/*encodes the given residual partition,
-  not including its 4-5 bit Rice parameter*/
+/*given a list of residuals along with block size
+  predictor_order (from the FIXED/LPC subframe)
+  partition_order (from encode_residuals)
+  and maximum_rice_parameter (from encoding options)
+
+  returns a list of rice_parameters and partitions
+  (these lists will be the same size)
+  and a total estimated size of the residual block in bits*/
 void
-flacenc_encode_residual_partition(BitstreamWriter* bs,
-                                  unsigned rice_parameter,
-                                  const array_li* residual_partition);
+flacenc_encode_residual_partitions(array_li* residuals,
+                                   unsigned block_size,
+                                   unsigned predictor_order,
+                                   unsigned partition_order,
+                                   unsigned maximum_rice_parameter,
 
-/*given the abs_sum of a residual partition,
-  returns the estimated best Rice parameter for that partition*/
-unsigned
-flacenc_best_rice_parameter(const struct flac_context* encoder,
-                            uint64_t abs_partition_sum,
-                            unsigned partition_size);
-
-/*given a Rice parameter and the abs_sum of a residual partition
-  along with its length, returns the estimated size of that partition*/
-unsigned
-flacenc_estimate_partition_size(unsigned rice_parameter,
-                                uint64_t abs_partition_sum,
-                                unsigned partition_size);
+                                   array_i* rice_parameters,
+                                   array_lia* partitions,
+                                   uint64_t* total_size);
 
 /*returns a true value if all samples are the same*/
 int

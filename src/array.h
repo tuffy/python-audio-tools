@@ -223,6 +223,10 @@ struct array_li_s {
     /*deletes the array and any allocated data it contains*/
     void (*del)(struct array_li_s *array);
 
+    /*deletes any data in the array and resets its contents
+      so that it can be linked to new data*/
+    void (*reset)(struct array_li_s *array);
+
     /*returns 1 if all items in array equal those in compare,
       returns 0 if not*/
     int (*equals)(const struct array_li_s *array,
@@ -282,6 +286,7 @@ typedef struct array_li_s array_li;
 struct array_li_s* array_li_new(void);
 
 void array_li_del(struct array_li_s *array);
+void array_li_reset(struct array_li_s *array);
 int array_li_equals(const struct array_li_s *array,
                     const struct array_li_s *compare);
 int array_li_min(const struct array_li_s *array);
@@ -465,6 +470,10 @@ struct array_lf_s {
     /*deletes the array and any allocated data it contains*/
     void (*del)(struct array_lf_s *array);
 
+    /*deletes any data in the array and resets its contents
+      so that it can be linked to new data*/
+    void (*reset)(struct array_lf_s *array);
+
     /*returns 1 if all items in array equal those in compare,
       returns 0 if not*/
     int (*equals)(const struct array_lf_s *array,
@@ -524,6 +533,7 @@ typedef struct array_lf_s array_lf;
 struct array_lf_s* array_lf_new(void);
 
 void array_lf_del(struct array_lf_s *array);
+void array_lf_reset(struct array_lf_s *array);
 int array_lf_equals(const struct array_lf_s *array,
                     const struct array_lf_s *compare);
 double array_lf_min(const struct array_lf_s *array);
@@ -630,6 +640,84 @@ void array_ia_print(const struct array_ia_s *array, FILE* output);
 
 
 /***************************************************************
+ *                 arrays of linked integer arrays             *
+ ***************************************************************/
+
+struct array_lia_s {
+    struct array_li_s **_;
+    unsigned len;
+    unsigned total_size;
+
+    /*deletes the array and any allocated data it contains*/
+    void (*del)(struct array_lia_s *array);
+
+    /*resizes the array to fit at least "minimum" number of items,
+      if necessary*/
+    void (*resize)(struct array_lia_s *array, unsigned minimum);
+
+    /*deletes any data in the array and resets its contents
+      so that it can be re-populated with new data*/
+    void (*reset)(struct array_lia_s *array);
+
+    /*returns a freshly appended array_li which can be linked to
+      this array should *not* be deleted once it is done being used*/
+    struct array_li_s* (*append)(struct array_lia_s *array);
+
+    /*appends all the items in "to_add" to this array*/
+    void (*extend)(struct array_lia_s *array, const struct array_lia_s *to_add);
+
+    /*returns 1 if all items in array equal those in compare,
+      returns 0 if not*/
+    int (*equals)(const struct array_lia_s *array,
+                  const struct array_lia_s *compare);
+
+    /*makes "copy" a duplicate of this array*/
+    void (*copy)(const struct array_lia_s *array, struct array_lia_s *copy);
+
+    /*swaps the contents of this array with another array*/
+    void (*swap)(struct array_lia_s *array, struct array_lia_s *swap);
+
+    /*splits the array into "head" and "tail" arrays
+      such that "head" contains a copy of up to "count" items
+      while "tail" contains the rest*/
+    void (*split)(const struct array_lia_s *array, unsigned count,
+                  struct array_lia_s *head, struct array_lia_s *tail);
+
+    /*splits each sub-array into "head" and "tail" arrays
+      such that each "head" contains a copy of up to "count" items
+      while each "tail" contains the rest*/
+    void (*cross_split)(const struct array_lia_s *array, unsigned count,
+                        struct array_lia_s *head, struct array_lia_s *tail);
+
+    /*reverses the items in the array*/
+    void (*reverse)(struct array_lia_s *array);
+
+    void (*print)(const struct array_lia_s *array, FILE* output);
+};
+
+typedef struct array_lia_s array_lia;
+
+struct array_lia_s* array_lia_new(void);
+
+void array_lia_del(struct array_lia_s *array);
+void array_lia_resize(struct array_lia_s *array, unsigned minimum);
+void array_lia_reset(struct array_lia_s *array);
+struct array_li_s* array_lia_append(struct array_lia_s *array);
+void array_lia_extend(struct array_lia_s *array,
+                      const struct array_lia_s *to_add);
+int array_lia_equals(const struct array_lia_s *array,
+                    const struct array_lia_s *compare);
+void array_lia_copy(const struct array_lia_s *array, struct array_lia_s *copy);
+void array_lia_swap(struct array_lia_s *array, struct array_lia_s *swap);
+void array_lia_reverse(struct array_lia_s *array);
+void array_lia_split(const struct array_lia_s *array, unsigned count,
+                    struct array_lia_s *head, struct array_lia_s *tail);
+void array_lia_cross_split(const struct array_lia_s *array, unsigned count,
+                          struct array_lia_s *head, struct array_lia_s *tail);
+void array_lia_print(const struct array_lia_s *array, FILE* output);
+
+
+/***************************************************************
  *                     arrays of float arrays                  *
  *             [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], ...]         *
  ***************************************************************/
@@ -711,6 +799,85 @@ void array_fa_cross_split(const struct array_fa_s *array, unsigned count,
                           struct array_fa_s *head, struct array_fa_s *tail);
 void array_fa_zip(const struct array_fa_s *array, struct array_fa_s *zipped);
 void array_fa_print(const struct array_fa_s *array, FILE* output);
+
+
+/***************************************************************
+ *              arrays of linked floating point arrays         *
+ ***************************************************************/
+
+struct array_lfa_s {
+    struct array_lf_s **_;
+    unsigned len;
+    unsigned total_size;
+
+    /*deletes the array and any allocated data it contains*/
+    void (*del)(struct array_lfa_s *array);
+
+    /*resizes the array to fit at least "minimum" number of items,
+      if necessary*/
+    void (*resize)(struct array_lfa_s *array, unsigned minimum);
+
+    /*deletes any data in the array and resets its contents
+      so that it can be re-populated with new data*/
+    void (*reset)(struct array_lfa_s *array);
+
+    /*returns a freshly appended array_li which can be linked to
+      this array should *not* be deleted once it is done being used*/
+    struct array_lf_s* (*append)(struct array_lfa_s *array);
+
+    /*appends all the items in "to_add" to this array*/
+    void (*extend)(struct array_lfa_s *array, const struct array_lfa_s *to_add);
+
+    /*returns 1 if all items in array equal those in compare,
+      returns 0 if not*/
+    int (*equals)(const struct array_lfa_s *array,
+                  const struct array_lfa_s *compare);
+
+    /*makes "copy" a duplicate of this array*/
+    void (*copy)(const struct array_lfa_s *array, struct array_lfa_s *copy);
+
+    /*swaps the contents of this array with another array*/
+    void (*swap)(struct array_lfa_s *array, struct array_lfa_s *swap);
+
+    /*splits the array into "head" and "tail" arrays
+      such that "head" contains a copy of up to "count" items
+      while "tail" contains the rest*/
+    void (*split)(const struct array_lfa_s *array, unsigned count,
+                  struct array_lfa_s *head, struct array_lfa_s *tail);
+
+    /*splits each sub-array into "head" and "tail" arrays
+      such that each "head" contains a copy of up to "count" items
+      while each "tail" contains the rest*/
+    void (*cross_split)(const struct array_lfa_s *array, unsigned count,
+                        struct array_lfa_s *head, struct array_lfa_s *tail);
+
+    /*reverses the items in the array*/
+    void (*reverse)(struct array_lfa_s *array);
+
+    void (*print)(const struct array_lfa_s *array, FILE* output);
+};
+
+typedef struct array_lfa_s array_lfa;
+
+struct array_lfa_s* array_lfa_new(void);
+
+void array_lfa_del(struct array_lfa_s *array);
+void array_lfa_resize(struct array_lfa_s *array, unsigned minimum);
+void array_lfa_reset(struct array_lfa_s *array);
+struct array_lf_s* array_lfa_append(struct array_lfa_s *array);
+void array_lfa_extend(struct array_lfa_s *array,
+                      const struct array_lfa_s *to_add);
+int array_lfa_equals(const struct array_lfa_s *array,
+                     const struct array_lfa_s *compare);
+void array_lfa_copy(const struct array_lfa_s *array, struct array_lfa_s *copy);
+void array_lfa_swap(struct array_lfa_s *array, struct array_lfa_s *swap);
+void array_lfa_reverse(struct array_lfa_s *array);
+void array_lfa_split(const struct array_lfa_s *array, unsigned count,
+                     struct array_lfa_s *head, struct array_lfa_s *tail);
+void array_lfa_cross_split(const struct array_lfa_s *array, unsigned count,
+                           struct array_lfa_s *head, struct array_lfa_s *tail);
+void array_lfa_print(const struct array_lfa_s *array, FILE* output);
+
 
 
 /***************************************************************

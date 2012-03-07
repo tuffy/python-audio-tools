@@ -98,10 +98,17 @@ ARRAY_RESIZE(array_i_resize, array_i, int)
 ARRAY_RESIZE(array_f_resize, array_f, double)
 ARRAY_RESIZE(array_o_resize, array_o, void*)
 
-void array_i_reset(array_i *array)
-{
-    array->len = 0;
-}
+#define ARRAY_RESET(FUNC_NAME, ARRAY_TYPE)      \
+    void                                        \
+    FUNC_NAME(ARRAY_TYPE *array)                \
+    {                                           \
+        array->len = 0;                         \
+    }
+ARRAY_RESET(array_i_reset, array_i)
+ARRAY_RESET(array_f_reset, array_f)
+ARRAY_RESET(array_li_reset, array_li)
+ARRAY_RESET(array_lf_reset, array_lf)
+
 
 #define ARRAY_APPEND(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE) \
     void                                                          \
@@ -323,6 +330,8 @@ ARRAY_SWAP(array_f_swap, array_f)
 ARRAY_SWAP(array_o_swap, array_o)
 ARRAY_SWAP(array_ia_swap, array_ia)
 ARRAY_SWAP(array_fa_swap, array_fa)
+ARRAY_SWAP(array_lia_swap, array_lia)
+ARRAY_SWAP(array_lfa_swap, array_lfa)
 ARRAY_SWAP(array_iaa_swap, array_iaa)
 ARRAY_SWAP(array_faa_swap, array_faa)
 
@@ -518,6 +527,8 @@ ARRAY_REVERSE(array_i_reverse, array_i, int)
 ARRAY_REVERSE(array_f_reverse, array_f, double)
 ARRAY_REVERSE(array_ia_reverse, array_ia, array_i*);
 ARRAY_REVERSE(array_fa_reverse, array_fa, array_f*);
+ARRAY_REVERSE(array_lia_reverse, array_lia, array_li*);
+ARRAY_REVERSE(array_lfa_reverse, array_lfa, array_lf*);
 ARRAY_REVERSE(array_iaa_reverse, array_iaa, array_ia*);
 ARRAY_REVERSE(array_faa_reverse, array_faa, array_fa*);
 
@@ -557,6 +568,7 @@ struct array_li_s* array_li_new(void)
     array->len = 0;
 
     array->del = array_li_del;
+    array->reset = array_li_reset;
     array->equals = array_li_equals;
     array->min = array_li_min;
     array->max = array_li_max;
@@ -597,6 +609,7 @@ ARRAY_L_DEL(array_lf_del, array_lf)
     }
 ARRAY_L_SWAP(array_li_swap, array_li)
 ARRAY_L_SWAP(array_lf_swap, array_lf)
+
 
 #define ARRAY_L_HEAD(FUNC_NAME, ARRAY_TYPE)                             \
     void                                                                \
@@ -681,10 +694,6 @@ array_f* array_f_new(void)
     return array_f_wrap(data, 0, 1);
 }
 
-void array_f_reset(array_f *array)
-{
-    array->len = 0;
-}
 
 array_f* array_f_wrap(double* data, unsigned size, unsigned total_size)
 {
@@ -815,6 +824,7 @@ struct array_lf_s* array_lf_new(void)
     array->len = 0;
 
     array->del = array_lf_del;
+    array->reset = array_lf_reset;
     array->equals = array_lf_equals;
     array->min = array_lf_min;
     array->max = array_lf_max;
@@ -864,6 +874,66 @@ array_ia_new(void)
     return a;
 }
 
+struct array_lia_s*
+array_lia_new(void)
+{
+    struct array_lia_s* a = malloc(sizeof(struct array_lia_s));
+    unsigned i;
+
+    a->_ = malloc(sizeof(struct array_li_s*) * 1);
+    a->len = 0;
+    a->total_size = 1;
+
+    for (i = 0; i < 1; i++) {
+        a->_[i] = array_li_new();
+    }
+
+    a->del = array_lia_del;
+    a->resize = array_lia_resize;
+    a->reset = array_lia_reset;
+    a->append = array_lia_append;
+    a->extend = array_lia_extend;
+    a->equals = array_lia_equals;
+    a->copy = array_lia_copy;
+    a->swap = array_lia_swap;
+    a->split = array_lia_split;
+    a->cross_split = array_lia_cross_split;
+    a->reverse = array_lia_reverse;
+    a->print = array_lia_print;
+
+    return a;
+}
+
+struct array_lfa_s*
+array_lfa_new(void)
+{
+    struct array_lfa_s* a = malloc(sizeof(struct array_lfa_s));
+    unsigned i;
+
+    a->_ = malloc(sizeof(struct array_lf_s*) * 1);
+    a->len = 0;
+    a->total_size = 1;
+
+    for (i = 0; i < 1; i++) {
+        a->_[i] = array_lf_new();
+    }
+
+    a->del = array_lfa_del;
+    a->resize = array_lfa_resize;
+    a->reset = array_lfa_reset;
+    a->append = array_lfa_append;
+    a->extend = array_lfa_extend;
+    a->equals = array_lfa_equals;
+    a->copy = array_lfa_copy;
+    a->swap = array_lfa_swap;
+    a->split = array_lfa_split;
+    a->cross_split = array_lfa_cross_split;
+    a->reverse = array_lfa_reverse;
+    a->print = array_lfa_print;
+
+    return a;
+}
+
 #define ARRAY_A_DEL(FUNC_NAME, ARRAY_TYPE)      \
     void                                        \
     FUNC_NAME(ARRAY_TYPE *array)                \
@@ -878,6 +948,8 @@ array_ia_new(void)
     }
 ARRAY_A_DEL(array_ia_del, array_ia)
 ARRAY_A_DEL(array_fa_del, array_fa)
+ARRAY_A_DEL(array_lia_del, array_lia)
+ARRAY_A_DEL(array_lfa_del, array_lfa)
 ARRAY_A_DEL(array_iaa_del, array_iaa)
 ARRAY_A_DEL(array_faa_del, array_faa)
 
@@ -895,6 +967,8 @@ ARRAY_A_DEL(array_faa_del, array_faa)
     }
 ARRAY_A_RESIZE(array_ia_resize, array_ia, array_i, array_i_new)
 ARRAY_A_RESIZE(array_fa_resize, array_fa, array_f, array_f_new)
+ARRAY_A_RESIZE(array_lia_resize, array_lia, array_li, array_li_new)
+ARRAY_A_RESIZE(array_lfa_resize, array_lfa, array_lf, array_lf_new)
 ARRAY_A_RESIZE(array_iaa_resize, array_iaa, array_ia, array_ia_new)
 ARRAY_A_RESIZE(array_faa_resize, array_faa, array_fa, array_fa_new)
 
@@ -909,8 +983,11 @@ ARRAY_A_RESIZE(array_faa_resize, array_faa, array_fa, array_fa_new)
     }
 ARRAY_A_RESET(array_ia_reset, array_ia)
 ARRAY_A_RESET(array_fa_reset, array_fa)
+ARRAY_A_RESET(array_lia_reset, array_lia)
+ARRAY_A_RESET(array_lfa_reset, array_lfa)
 ARRAY_A_RESET(array_iaa_reset, array_iaa)
 ARRAY_A_RESET(array_faa_reset, array_faa)
+
 
 /*note that this does *not* reset the appended sub-array
   prior to returning it
@@ -928,37 +1005,48 @@ ARRAY_A_RESET(array_faa_reset, array_faa)
     }
 ARRAY_A_APPEND(array_ia_append, array_ia, array_i)
 ARRAY_A_APPEND(array_fa_append, array_fa, array_f)
+ARRAY_A_APPEND(array_lia_append, array_lia, array_li)
+ARRAY_A_APPEND(array_lfa_append, array_lfa, array_lf)
 ARRAY_A_APPEND(array_iaa_append, array_iaa, array_ia)
 ARRAY_A_APPEND(array_faa_append, array_faa, array_fa)
 
-#define ARRAY_A_EXTEND(FUNC_NAME, ARRAY_TYPE)                       \
+#define ARRAY_A_EXTEND(FUNC_NAME, ARRAY_TYPE, TRANSFER)             \
     void                                                            \
     FUNC_NAME(ARRAY_TYPE *array, const ARRAY_TYPE *to_add)          \
     {                                                               \
         unsigned i;                                                 \
-        for (i = 0; i < to_add->len; i++) {                         \
-            to_add->_[i]->copy(to_add->_[i], array->append(array)); \
-        }                                                           \
+        unsigned len = to_add->len;                                     \
+        for (i = 0; i < len; i++) {                                     \
+            to_add->_[i]->TRANSFER(to_add->_[i], array->append(array)); \
+        }                                                               \
     }
-ARRAY_A_EXTEND(array_ia_extend, array_ia)
-ARRAY_A_EXTEND(array_fa_extend, array_fa)
-ARRAY_A_EXTEND(array_iaa_extend, array_iaa)
-ARRAY_A_EXTEND(array_faa_extend, array_faa)
+ARRAY_A_EXTEND(array_ia_extend, array_ia, copy)
+ARRAY_A_EXTEND(array_fa_extend, array_fa, copy)
+ARRAY_A_EXTEND(array_lia_extend, array_lia, link)
+ARRAY_A_EXTEND(array_lfa_extend, array_lfa, link)
+ARRAY_A_EXTEND(array_iaa_extend, array_iaa, copy)
+ARRAY_A_EXTEND(array_faa_extend, array_faa, copy)
 
-#define ARRAY_A_COPY(FUNC_NAME, ARRAY_TYPE)                     \
+
+#define ARRAY_A_COPY(FUNC_NAME, ARRAY_TYPE, TRANSFER)           \
     void                                                        \
     FUNC_NAME(const ARRAY_TYPE *array, ARRAY_TYPE *copy)        \
     {                                                           \
         unsigned i;                                             \
                                                                 \
-        copy->reset(copy);                                      \
-        for (i = 0; i < array->len; i++)                        \
-            array->_[i]->copy(array->_[i], copy->append(copy)); \
+        if (array != copy) {                                    \
+            copy->reset(copy);                                  \
+            for (i = 0; i < array->len; i++)                    \
+                array->_[i]->TRANSFER(array->_[i], copy->append(copy)); \
+        }                                                               \
     }
-ARRAY_A_COPY(array_ia_copy, array_ia)
-ARRAY_A_COPY(array_fa_copy, array_fa)
-ARRAY_A_COPY(array_iaa_copy, array_iaa)
-ARRAY_A_COPY(array_faa_copy, array_faa)
+ARRAY_A_COPY(array_ia_copy, array_ia, copy)
+ARRAY_A_COPY(array_fa_copy, array_fa, copy)
+ARRAY_A_COPY(array_lia_copy, array_lia, link)
+ARRAY_A_COPY(array_lfa_copy, array_lfa, link)
+ARRAY_A_COPY(array_iaa_copy, array_iaa, copy)
+ARRAY_A_COPY(array_faa_copy, array_faa, copy)
+
 
 #define ARRAY_A_EQUALS(FUNC_NAME, ARRAY_TYPE)                       \
     int                                                             \
@@ -978,6 +1066,8 @@ ARRAY_A_COPY(array_faa_copy, array_faa)
     }
 ARRAY_A_EQUALS(array_ia_equals, array_ia)
 ARRAY_A_EQUALS(array_fa_equals, array_fa)
+ARRAY_A_EQUALS(array_lia_equals, array_lia)
+ARRAY_A_EQUALS(array_lfa_equals, array_lfa)
 ARRAY_A_EQUALS(array_iaa_equals, array_iaa)
 ARRAY_A_EQUALS(array_faa_equals, array_faa)
 
@@ -1001,10 +1091,12 @@ ARRAY_A_EQUALS(array_faa_equals, array_faa)
     }
 ARRAY_A_PRINT(array_ia_print, array_ia)
 ARRAY_A_PRINT(array_fa_print, array_fa)
+ARRAY_A_PRINT(array_lia_print, array_lia)
+ARRAY_A_PRINT(array_lfa_print, array_lfa)
 ARRAY_A_PRINT(array_iaa_print, array_iaa)
 ARRAY_A_PRINT(array_faa_print, array_faa)
 
-#define ARRAY_A_SPLIT(FUNC_NAME, ARRAY_TYPE, NEW_FUNC)                  \
+#define ARRAY_A_SPLIT(FUNC_NAME, ARRAY_TYPE, NEW_FUNC, TRANSFER)        \
     void                                                                \
     FUNC_NAME(const ARRAY_TYPE *array, unsigned count,                  \
               ARRAY_TYPE *head, ARRAY_TYPE *tail)                       \
@@ -1045,16 +1137,18 @@ ARRAY_A_PRINT(array_faa_print, array_faa)
             head->reset(head);                                          \
             tail->reset(tail);                                          \
             for (i = 0; i < to_head; i++)                               \
-                array->_[i]->copy(array->_[i], head->append(head));     \
+                array->_[i]->TRANSFER(array->_[i], head->append(head)); \
                                                                         \
             for (; i < array->len; i++)                                 \
-                array->_[i]->copy(array->_[i], tail->append(tail));     \
+                array->_[i]->TRANSFER(array->_[i], tail->append(tail)); \
         }                                                               \
     }
-ARRAY_A_SPLIT(array_ia_split, array_ia, array_ia_new)
-ARRAY_A_SPLIT(array_fa_split, array_fa, array_fa_new)
-ARRAY_A_SPLIT(array_iaa_split, array_iaa, array_iaa_new)
-ARRAY_A_SPLIT(array_faa_split, array_faa, array_faa_new)
+ARRAY_A_SPLIT(array_ia_split, array_ia, array_ia_new, copy)
+ARRAY_A_SPLIT(array_fa_split, array_fa, array_fa_new, copy)
+ARRAY_A_SPLIT(array_lia_split, array_lia, array_lia_new, link)
+ARRAY_A_SPLIT(array_lfa_split, array_lfa, array_lfa_new, link)
+ARRAY_A_SPLIT(array_iaa_split, array_iaa, array_iaa_new, copy)
+ARRAY_A_SPLIT(array_faa_split, array_faa, array_faa_new, copy)
 
 
 #define ARRAY_A_CROSS_SPLIT(FUNC_NAME, ARRAY_TYPE)      \
@@ -1097,6 +1191,8 @@ ARRAY_A_SPLIT(array_faa_split, array_faa, array_faa_new)
     }
 ARRAY_A_CROSS_SPLIT(array_ia_cross_split, array_ia)
 ARRAY_A_CROSS_SPLIT(array_fa_cross_split, array_fa)
+ARRAY_A_CROSS_SPLIT(array_lia_cross_split, array_lia)
+ARRAY_A_CROSS_SPLIT(array_lfa_cross_split, array_lfa)
 
 
 #define ARRAY_A_ZIP(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE, NEW_FUNC)   \
@@ -1138,6 +1234,7 @@ ARRAY_A_CROSS_SPLIT(array_fa_cross_split, array_fa)
     }
 ARRAY_A_ZIP(array_ia_zip, array_ia, array_i, array_ia_new)
 ARRAY_A_ZIP(array_fa_zip, array_fa, array_f, array_fa_new)
+
 
 array_fa*
 array_fa_new(void)
