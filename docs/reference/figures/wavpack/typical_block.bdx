@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col width=".20">Block₀</col>
+    <col width=".20" id="block">Block₁</col>
+    <col width=".20">Block₂</col>
+    <col width=".20">Block₃</col>
+    <col width=".20" style="dashed"/>
+  </row>
+  <spacer/>
+  <row>
+    <col width=".25" start="0" end="255" id="block_header">Block Header</col>
+    <col width=".15" id="subblock_0">Sub Block₀</col>
+    <col width=".15">Sub Block₁</col>
+    <col width=".15">Sub Block₂</col>
+    <col width=".15">Sub Block₃</col>
+    <col width=".15" id="subblock_4">Sub Block₄</col>
+  </row>
+  <spacer height=".5"/>
+  <row>
+    <col width=".2" style="blank"/>
+    <col width=".3" id="subblocks_s">Sub Block Header</col>
+    <col width=".5" id="subblocks_e">Decorrelation Terms and Deltas</col>
+  </row>
+  <row>
+    <col width=".2" style="blank"/>
+    <col width=".3">Sub Block Header</col>
+    <col width=".5">Decorrelation Weights</col>
+  </row>
+  <row>
+    <col width=".2" style="blank"/>
+    <col width=".3">Sub Block Header</col>
+    <col width=".5">Decorrelation Samples</col>
+  </row>
+  <row>
+    <col width=".2" style="blank"/>
+    <col width=".3">Sub Block Header</col>
+    <col width=".5">Entropy Variables</col>
+  </row>
+  <row>
+    <col width=".2" style="blank"/>
+    <col width=".3">Sub Block Header</col>
+    <col width=".5">Bitstream</col>
+  </row>
+  <line style="dotted">
+    <start id="block" corner="sw"/>
+    <end id="block_header" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="block" corner="se"/>
+    <end id="subblock_4" corner="ne"/>
+  </line>
+  <line style="dotted">
+    <start id="subblock_0" corner="sw"/>
+    <end id="subblocks_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="subblock_0" corner="se"/>
+    <end id="subblocks_e" corner="ne"/>
+  </line>
+</diagram>

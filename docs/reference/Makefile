@@ -103,8 +103,11 @@ figures/wavpack/block_header2.pdf \
 figures/wavpack/block_header_parse.pdf \
 figures/wavpack/channel_info.pdf \
 figures/wavpack/decoding_params.pdf \
+figures/wavpack/decorr_samples.pdf \
 figures/wavpack/decorr_samples_encode.pdf \
 figures/wavpack/decorr_samples_parse.pdf \
+figures/wavpack/decorr_terms.pdf \
+figures/wavpack/decorr_weights.pdf \
 figures/wavpack/decorr_weights_parse.pdf \
 figures/wavpack/decorrelation0.pdf \
 figures/wavpack/decorrelation1.pdf \
@@ -112,10 +115,12 @@ figures/wavpack/decorrelation2.pdf \
 figures/wavpack/decorrelation3.pdf \
 figures/wavpack/decorrelation4.pdf \
 figures/wavpack/decorrelation5.pdf \
+figures/wavpack/entropy_vars.pdf \
 figures/wavpack/entropy_vars_parse.pdf \
 figures/wavpack/extended_integers.pdf \
 figures/wavpack/md5sum.pdf \
 figures/wavpack/pcm_sandwich.pdf \
+figures/wavpack/residuals.pdf \
 figures/wavpack/residuals_parse.pdf \
 figures/wavpack/residuals_parse2.pdf \
 figures/wavpack/stream.pdf \
@@ -123,6 +128,7 @@ figures/wavpack/subblock.pdf \
 figures/wavpack/subblock_header.pdf \
 figures/wavpack/subblock_parse.pdf \
 figures/wavpack/terms_parse.pdf \
+figures/wavpack/typical_block.pdf
 
 SHORTEN = figures/shorten/block1.pdf \
 figures/shorten/block2.pdf \

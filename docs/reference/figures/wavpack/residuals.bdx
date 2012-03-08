@@ -9,17 +9,17 @@
     <col width=".16" id="subblock">Sub Block₄</col>
   </row>
   <spacer/>
-  <row>
-    <col start="0" end="4" width=".28"
-         id="subblock_s">metadata function (6)</col>
-    <col start="5" end="5" width=".25">nondecoder data (1)</col>
-    <col start="6" end="6" width=".25">actual size 1 less (0)</col>
-    <col start="7" end="7" width=".22"
-         id="subblock_e">large block (0)</col>
+    <row>
+    <col start="0" end="4" width=".34" id="subblock_s">metadata function (10)</col>
+    <col start="5" end="5" width=".22">nondecoder (0)</col>
+    <col start="6" end="6" width=".22">actual size 1 less</col>
+    <col start="7" end="7" width=".22" id="subblock_e">large sub block</col>
   </row>
   <row>
-    <col start="8" end="15" width=".25">block size (16)</col>
-    <col width=".75" start="16" end="271">MD5 sum</col>
+    <col start="8" end="15/31">sub block size</col>
+  </row>
+  <row>
+    <col>residual data</col>
   </row>
   <line style="dotted">
     <start id="subblock" corner="sw"/>
