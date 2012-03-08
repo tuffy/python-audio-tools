@@ -5290,6 +5290,15 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Double-check codecs for consistency
    - [X] alac.tex
    - [ ] dvda2.tex
-   - [ ] flac.tex
+   - [X] flac.tex
+   - [ ] shorten.tex
+   - [ ] wavpack.tex
+** TODO Add hyperref linking
+   If one's browsing the PDF,
+   one should be able to click on operations directly
+   and go to a specific part of the doc.
+   - [X] alac.tex
+   - [ ] dvda2.tex
+   - [X] flac.tex
    - [ ] shorten.tex
    - [ ] wavpack.tex

@@ -182,13 +182,13 @@ The basic process for decoding a FLAC file is as follows:
 \SetKwData{MDSUM}{MD5 sum}
 $\HEADER \leftarrow$ \READ 4 bytes\;
 \ASSERT $\text{\HEADER} = \texttt{"fLaC"}$\;
-get \PCMCOUNT and \MDSUM from STREAMINFO metadata block\;
+\hyperref[flac:read_metadata]{get \PCMCOUNT and \MDSUM from STREAMINFO metadata block}\;
 skip remaining metadata blocks\;
 initialize stream MD5\;
 \While{$\PCMCOUNT > 0$}{
-  decode FLAC frame to 1 or more PCM frames\;
+  \hyperref[flac:decode_frame]{decode FLAC frame to 1 or more PCM frames}\;
   deduct FLAC frame's block size from $\PCMCOUNT$\;
-  update stream MD5 sum with decoded PCM frame data\;
+  \hyperref[flac:update_md5]{update stream MD5 sum with decoded PCM frame data}\;
   \Return decoded PCM frames\;
 }
 \ASSERT STREAMINFO \MDSUM = stream MD5 sum
@@ -205,6 +205,7 @@ However, this block is not needed for decoding.
 \clearpage
 
 \subsection{Reading Metadata Blocks}
+\label{flac:read_metadata}
 {\relsize{-1}
 \ALGORITHM{the FLAC file stream}{STREAMINFO values used for decoding}
 \SetKwData{LAST}{last}
@@ -283,17 +284,17 @@ For example, given the metadata bytes:
 \clearpage
 
 \subsection{Decoding a FLAC Frame}
-
+\label{flac:decode_frame}
 \ALGORITHM{STREAMINFO values and the FLAC file stream}{decoded PCM samples}
 \SetKwData{CHANNEL}{channel}
 \SetKwData{CHANNELCOUNT}{channel count}
-read frame header to determine channel count, assignment and bits-per-sample\;
+\hyperref[flac:read_frame_header]{read frame header to determine channel count, assignment and bits-per-sample}\;
 \ForEach{\CHANNEL \IN \CHANNELCOUNT}{
-  decode subframe to PCM samples based on its effective bits-per-sample\;
+  \hyperref[flac:decode_subframe]{decode subframe to PCM samples based on its effective bits-per-sample}\;
 }
 byte-align file stream\;
-verify frame's CRC-16 checksum\;
-recombine subframes based on the frame's channel assignment\;
+\hyperref[flac:verify_crc16]{verify frame's CRC-16 checksum}\;
+\hyperref[flac:recombine_subframes]{recombine subframes based on the frame's channel assignment}\;
 \Return samples\;
 \EALGORITHM
 \begin{figure}[h]
@@ -303,7 +304,7 @@ recombine subframes based on the frame's channel assignment\;
 \clearpage
 
 \subsection{Reading a FLAC Frame Header}
-
+\label{flac:read_frame_header}
 {\relsize{-1}
 \ALGORITHM{STREAMINFO values and the FLAC file stream}{stream information and subframe decoding parameters}
 \SetKwData{SYNCCODE}{sync code}
@@ -335,7 +336,7 @@ recombine subframes based on the frame's channel assignment\;
 \BPS & $\leftarrow$ & decode \ENCODEDBPS\; \\
 \CHANNELCOUNT & $\leftarrow$ & decode \ENCODEDCHANNELS\; \\
 \CRC & $\leftarrow$ & \READ 8 unsigned bits\; \\
-& & verify \CRC\; \\
+& & \hyperref[flac:verify_crc8]{verify \CRC}\; \\
 \end{tabular}\;
 \BlankLine
 \Return $\text{\FRAMEHEADER} \leftarrow \left\lbrace\begin{tabular}{l}
@@ -493,6 +494,7 @@ encoded & count & channel assignment \\
 \end{tabular}
 }
 \subsubsection{Calculating Frame Header CRC-8}
+\label{flac:verify_crc8}
 Given a header byte and previous CRC-8 checksum,
 or 0 as an initial value:
 \begin{equation*}
@@ -539,6 +541,7 @@ should always be 0.
 \clearpage
 
 \subsection{Decoding a FLAC Subframe}
+\label{flac:decode_subframe}
 {\relsize{-1}
 \ALGORITHM{the frame's block size and bits per sample, the subframe's channel assignment and the FLAC file stream}{decoded signed PCM samples}
 \SetKwData{TYPEORDER}{type/order}
@@ -567,18 +570,18 @@ $\TYPEORDER \leftarrow$ \READ 6 unsigned bits\;
   }
 }
 \uIf{$\TYPEORDER = 0$}{
-  \SAMPLE $\leftarrow$ decode CONSTANT subframe with \BLOCKSIZE, \EFFECTIVEBPS\;
+  \SAMPLE $\leftarrow$ \hyperref[flac:decode_constant]{decode CONSTANT subframe with \BLOCKSIZE, \EFFECTIVEBPS}\;
 }
 \uElseIf{$\TYPEORDER = 1$} {
-  \SAMPLE $\leftarrow$ decode VERBATIM subframe with \BLOCKSIZE, \EFFECTIVEBPS\;
+  \SAMPLE $\leftarrow$ \hyperref[flac:decode_verbatim]{decode VERBATIM subframe with \BLOCKSIZE, \EFFECTIVEBPS}\;
 }
 \uElseIf{$8 \leq \TYPEORDER \leq 12$} {
   $\ORDER \leftarrow \TYPEORDER - 8$\;
-  \SAMPLE $\leftarrow$ decode FIXED subframe with \BLOCKSIZE, \EFFECTIVEBPS, \ORDER\;
+  \SAMPLE $\leftarrow$ \hyperref[flac:decode_fixed]{decode FIXED subframe with \BLOCKSIZE, \EFFECTIVEBPS, \ORDER}\;
 }
 \uElseIf{$32 \leq \TYPEORDER \leq 63$} {
   $\ORDER \leftarrow \TYPEORDER - 31$\;
-  \SAMPLE $\leftarrow$ decode LPC subframe with \BLOCKSIZE, \EFFECTIVEBPS, \ORDER\;
+  \SAMPLE $\leftarrow$ \hyperref[flac:decode_lpc]{decode LPC subframe with \BLOCKSIZE, \EFFECTIVEBPS, \ORDER}\;
 }
 \Else {
   undefined subframe type error\;
@@ -598,6 +601,7 @@ $\TYPEORDER \leftarrow$ \READ 6 unsigned bits\;
 \clearpage
 
 \subsubsection{Decoding CONSTANT Subframe}
+\label{flac:decode_constant}
 \ALGORITHM{the frame's block size, the subframe's bits per sample}{decoded signed PCM samples}
 \SetKwData{CONSTANT}{constant}
 \SetKwData{BPS}{subframe's BPS}
@@ -614,6 +618,7 @@ $\CONSTANT \leftarrow$ \READ (\BPS) signed bits\;
 \end{figure}
 
 \subsubsection{Decoding VERBATIM Subframe}
+\label{flac:decode_verbatim}
 \ALGORITHM{the frame's block size, the subframe's bits per sample}{decoded signed PCM samples}
 \SetKwData{BPS}{bits per sample}
 \SetKwData{BLOCKSIZE}{block size}
@@ -630,6 +635,7 @@ $\CONSTANT \leftarrow$ \READ (\BPS) signed bits\;
 \clearpage
 
 \subsubsection{Decoding FIXED Subframe}
+\label{flac:decode_fixed}
 {\relsize{-1}
 \ALGORITHM{the frame's block size, the subframe's bits per sample and predictor order}{decoded signed PCM samples}
 \SetKwData{BLOCKSIZE}{block size}
@@ -641,7 +647,7 @@ $\CONSTANT \leftarrow$ \READ (\BPS) signed bits\;
   $\text{\SAMPLE}_i \leftarrow $ \READ (\BPS) signed bits\;
 }
 \BlankLine
-$\RESIDUAL \leftarrow$ read residual block with frame's \BLOCKSIZE and subframe's \ORDER\;
+$\RESIDUAL \leftarrow$ \hyperref[flac:decode_residual]{read residual block with frame's \BLOCKSIZE and subframe's \ORDER}\;
 \BlankLine
 \Switch{\ORDER}{
   \uCase{0} {
@@ -681,7 +687,7 @@ $\RESIDUAL \leftarrow$ read residual block with frame's \BLOCKSIZE and subframe'
 
 \subsubsection{FIXED Subframe Decoding Example}
 
-Given the subframe bytes of a 16 bits per sample stream\footnote{Decoding the residual block is explained on page \pageref{residual_decoding_example}}:
+Given the subframe bytes of a 16 bits per sample stream\footnote{Decoding the residual block is explained on page \pageref{flac:decode_residual}}:
 \begin{figure}[h]
 \includegraphics{figures/flac/fixed-parse.pdf}
 \end{figure}
@@ -712,6 +718,7 @@ $i$ & $\textsf{residual}_{i - 1}$ & \textsf{sample}_i \\
 \clearpage
 
 \subsubsection{Decoding LPC Subframe}
+\label{flac:decode_lpc}
 {\relsize{-1}
 \ALGORITHM{the frame's block size and predictor order, the subframe's bits per sample}{decoded signed PCM samples}
 \SetKwData{BLOCKSIZE}{block size}
@@ -732,7 +739,7 @@ $\QLPSHIFT \leftarrow \MAX(\text{\READ 5 signed bits}~,~0)$\footnote{negative sh
   $\text{\COEFF}_i \leftarrow$ \READ (\QLPPREC) signed bits\;
 }
 \BlankLine
-$\RESIDUAL \leftarrow$ read residual block with frame's \BLOCKSIZE and subframe's \ORDER\;
+$\RESIDUAL \leftarrow$ \hyperref[flac:decode_residual]{read residual block with frame's \BLOCKSIZE and subframe's \ORDER}\;
 \BlankLine
 \For{$i \leftarrow \ORDER$ \emph{\KwTo}\BLOCKSIZE}{
   $\text{\SAMPLE}_i \leftarrow \left\lfloor \frac{\overset{\ORDER - 1}{\underset{j = 0}{\sum}}
@@ -788,76 +795,62 @@ $\RESIDUAL \leftarrow$ read residual block with frame's \BLOCKSIZE and subframe'
 \clearpage
 
 \subsubsection{Decoding Residual Block}
-\label{residual_decoding_example}
+\label{flac:decode_residual}
 {\relsize{-1}
 \ALGORITHM{the frame's block size and predictor order}{decoded signed residual values}
 \SetKwData{CODING}{coding method}
 \SetKwData{PORDER}{partition order}
 \SetKwData{PCOUNT}{partition residual count}
 \SetKwData{ORDER}{predictor order}
-$\CODING \leftarrow$ \READ 2 unsigned bits\;
-$\PORDER \leftarrow$ \READ 4 unsigned bits\;
-\For{$p \leftarrow 0$ \emph{\KwTo}$2 ^ {\text{\PORDER}}$}{
-  \eIf{p = 0}{
-    $\PCOUNT \leftarrow \lfloor\text{block size} \div 2 ^ {\PORDER}\rfloor - \text{\ORDER}$
-  }{
-    $\PCOUNT \leftarrow \lfloor\text{block size} \div 2 ^ {\PORDER}\rfloor$
-  }
-  partition's residuals $\leftarrow$ decode partition of size \PCOUNT using \CODING\;
-  \BlankLine
-  append partition's residuals to block's residual list\;
-}
-\Return block's residual list\;
-\EALGORITHM
-}
-
-\subsubsection{Decoding Residual Partition}
-{\relsize{-1}
-\ALGORITHM{the residual block's coding method, the partition's residual count}{decoded signed residual values}
-\SetKwData{PCOUNT}{partition residual count}
-\SetKwData{CODING}{coding method}
-\SetKwData{PORDER}{partition order}
-\SetKwData{RICE}{Rice parameter}
-\SetKwData{ESCAPE}{escape code}
 \SetKwData{RESIDUAL}{residual}
+\SetKwData{RICE}{Rice}
+\SetKwData{ESCAPE}{escape code}
 \SetKwData{MSB}{MSB}
 \SetKwData{LSB}{LSB}
 \SetKwData{UNSIGNED}{unsigned}
-\uIf{$\text{\CODING} = 0$}{
-  $\RICE \leftarrow$ \READ 4 unsigned bits\;
-  \If(\tcc*[f]{handle unencoded residuals}){$\RICE = 15$}{
-    $\ESCAPE \leftarrow$ \READ 5 unsigned bits\;
-    \For{$i \leftarrow 0$ \emph{\KwTo}\PCOUNT}{
-      $\text{\RESIDUAL}_i \leftarrow$ \READ (escape code) signed bits\;
-    }
-    \Return \RESIDUAL\;
-  }
-}
-\uElseIf{$\text{\CODING} = 1$}{
-  $\RICE \leftarrow$ \READ 5 unsigned bits\;
-  \If(\tcc*[f]{handle unencoded residuals}){$\RICE = 31$}{
-    $\ESCAPE \leftarrow$ \READ 5 unsigned bits\;
-    \For{$i \leftarrow 0$ \emph{\KwTo}\PCOUNT}{
-      $\text{\RESIDUAL}_i \leftarrow$ \READ (escape code) signed bits\;
-    }
-    \Return \RESIDUAL\;
-  }
-}
-\Else{
-  undefined residual coding method error\;
-}
+\SetKw{AND}{and}
+\SetKw{OR}{or}
+$\CODING \leftarrow$ \READ 2 unsigned bits\;
+$\PORDER \leftarrow$ \READ 4 unsigned bits\;
+$i \leftarrow 0$\;
 \BlankLine
-\For{$i \leftarrow 0$ \emph{\KwTo}\PCOUNT} {
-  $\text{\MSB}_i \leftarrow$ \UNARY with stop bit 1\;
-  $\text{\LSB}_i \leftarrow$ \READ (Rice parameter) unsigned bits\;
-  $\text{\UNSIGNED}_i \leftarrow \text{MSB}_i \times 2 ^ \text{Rice parameter} + \text{LSB}_i$\;
-    \eIf{$(\text{\UNSIGNED}_i \bmod 2) = 0$}{
-      $\text{\RESIDUAL}_i \leftarrow \text{\UNSIGNED}_i \div 2$\;
-    }{
-      $\text{\RESIDUAL}_i \leftarrow -\lfloor \text{\UNSIGNED}_i \div 2 \rfloor - 1$\;
+\For(\tcc*[f]{read residual partitions}){$p \leftarrow 0$ \emph{\KwTo}$2 ^ {\text{\PORDER}}$}{
+  \uIf{$\text{\CODING} = 0$}{
+    $\text{\RICE}_p \leftarrow$ \READ 4 unsigned bits\;
+  }
+  \uElseIf{$\text{\CODING} = 1$}{
+    $\text{\RICE}_p \leftarrow$ \READ 5 unsigned bits\;
+  }
+  \Else{
+    undefined residual coding method error\;
+  }
+  \eIf{p = 0}{
+    $\text{\PCOUNT}_p \leftarrow \lfloor\text{block size} \div 2 ^ {\PORDER}\rfloor - \text{\ORDER}$
+  }{
+    $\text{\PCOUNT}_p \leftarrow \lfloor\text{block size} \div 2 ^ {\PORDER}\rfloor$
+  }
+  \eIf{$((\text{\CODING} = 0)~\text{\AND}~(\text{\RICE}_p = 15))$ \OR
+    $((\text{\CODING} = 1)~\text{\AND}~(\text{\RICE}_p = 31))$}{
+    $\text{\ESCAPE}_p \leftarrow$ \READ 5 unsigned bits\;
+    \For{$j \leftarrow 0$ \emph{\KwTo}$\text{\PCOUNT}_p$}{
+      $\text{\RESIDUAL}_i \leftarrow$ \READ $\text{\ESCAPE}_p$ signed bits\;
+      $i \leftarrow i + 1$\;
+    }
+  }{
+    \For{$j \leftarrow 0$ \emph{\KwTo}$\text{\PCOUNT}_p$} {
+      $\text{\MSB}_i \leftarrow$ \UNARY with stop bit 1\;
+      $\text{\LSB}_i \leftarrow$ \READ $\text{\RICE}_p$ unsigned bits\;
+      $\text{\UNSIGNED}_i \leftarrow \text{\MSB}_i \times 2 ^ {\text{\RICE}_p} + \text{\LSB}_i$\;
+      \eIf(\tcc*[f]{apply sign bit}){$(\text{\UNSIGNED}_i \bmod 2) = 0$}{
+        $\text{\RESIDUAL}_i \leftarrow \text{\UNSIGNED}_i \div 2$\;
+      }{
+        $\text{\RESIDUAL}_i \leftarrow -\lfloor \text{\UNSIGNED}_i \div 2 \rfloor - 1$\;
+      }
+      $i \leftarrow i + 1$\;
     }
   }
-  \Return \RESIDUAL\;
+}
+\Return \RESIDUAL\;
 \EALGORITHM
 }
 
@@ -934,7 +927,7 @@ for a final set of residuals: -2, 3, -1, -5, 1, -5, 4, -2, -3 and 1.
 \clearpage
 
 \subsection{Calculating Frame CRC-16}
-
+\label{flac:verify_crc16}
 CRC-16 is used to checksum the entire FLAC frame, including the header
 and any padding bits after the final subframe.
 Given a byte of input and the previous CRC-16 checksum,
@@ -1005,7 +998,7 @@ the result will also always be 0, just as in the CRC-8.
 \clearpage
 
 \subsection{Recombining Subframes}
-\label{flac_recombining_subframes}
+\label{flac:recombine_subframes}
 \ALGORITHM{the frame's block size and channel assignment, a set of decoded subframe samples\footnote{$\textsf{subframe}_{x~y}$ indicates the $y$th sample in subframe $x$}}{a list of signed PCM frames per channel}
 \SetKwData{ENCODEDCHANNELS}{encoded channels}
 \SetKwData{CHANNELCOUNT}{channel count}
@@ -1044,7 +1037,7 @@ the result will also always be 0, just as in the CRC-8.
 \clearpage
 
 \subsection{Updating Stream MD5 Sum}
-
+\label{flac:update_md5}
 \ALGORITHM{the frame's signed PCM samples\footnote{$channel_{c~i}$ indicates the $i$th sample in channel $c$}}{the stream's updated MD5 sum}
 \SetKwData{BLOCKSIZE}{block size}
 \SetKwData{CHANNELCOUNT}{channel count}
@@ -1133,13 +1126,13 @@ exhaustive model search & true or false & \\
 }{an encoded FLAC file}
 \SetKwData{BLOCKSIZE}{block size}
 $\texttt{"fLaC"} \rightarrow$ \WRITE 4 bytes\;
-write placeholder STREAMINFO metadata block\;
+\hyperref[flac:write_placeholder_blocks]{write placeholder STREAMINFO metadata block}\;
 write PADDING metadata block\;
 initialize stream's MD5 sum\;
 \While{PCM frames remain}{
   take \BLOCKSIZE PCM frames from the input\;
-  update the stream's MD5 sum with that PCM data\;
-  encode a FLAC frame from PCM frames using the given encoding parameters\;
+  \hyperref[flac:update_md5_w]{update the stream's MD5 sum with that PCM data}\;
+  \hyperref[flac:encode_frame]{encode a FLAC frame from PCM frames using the given encoding parameters}\;
   update STREAMINFO's values from the FLAC frame\;
 }
 return to the start of the file and rewrite the STREAMINFO metadata block\;
@@ -1154,6 +1147,7 @@ All of the fields in the FLAC stream are big-endian.
 \clearpage
 
 \subsection{Writing Placeholder Metadata Blocks}
+\label{flac:write_placeholder_blocks}
 \ALGORITHM{input stream's attributes, a default block size}{1 or more metadata blocks to the FLAC file stream}
 \SetKwData{BLOCKSIZE}{block size}
 \SetKwData{SAMPLERATE}{sample rate}
@@ -1195,6 +1189,7 @@ in order to populate them.
 \clearpage
 
 \subsection{Updating Stream MD5 Sum}
+\label{flac:update_md5_w}
 \ALGORITHM{the frame's signed PCM input samples\footnote{$channel_{c~i}$ indicates the $i$th sample in channel $c$}}{the stream's updated MD5 sum}
 \SetKwData{BLOCKSIZE}{block size}
 \SetKwData{CHANNELCOUNT}{channel count}
@@ -1254,6 +1249,7 @@ during FLAC decoding, but performed in the opposite order.
 \clearpage
 
 \subsection{Encoding a FLAC Frame}
+\label{flac:encode_frame}
 {\relsize{-1}
 \ALGORITHM{up to ``block size'' number of PCM frames, encoding parameters}{a single FLAC frame}
 \SetKw{AND}{and}
@@ -1278,11 +1274,11 @@ during FLAC decoding, but performed in the opposite order.
 \SetKwFunction{CALCMIDSIDE}{calculate mid-side}
 \eIf{$\CHANNELCOUNT = 2$ \AND (try mid-side \OR try adaptive mid-side)}{
   \begin{tabular}{rcl}
-    $(\AVERAGE~,~\DIFFERENCE)$ & $\leftarrow$ & \CALCMIDSIDE($channel_0~,~channel_1$) \\
-    \LEFTS & $\leftarrow$ & $\BUILDSUBFRAME(\text{\CHANNEL}_0~,~\BPS)$ \\
-    \RIGHTS & $\leftarrow$ & $\BUILDSUBFRAME(\text{\CHANNEL}_1~,~\BPS)$ \\
-    \AVGS & $\leftarrow$ & $\BUILDSUBFRAME(\text{\AVERAGE}~,~\BPS)$ \\
-    \DIFFS & $\leftarrow$ & $\BUILDSUBFRAME(\text{\DIFFERENCE}~,~\BPS + 1)$ \\
+    $(\AVERAGE~,~\DIFFERENCE)$ & $\leftarrow$ & \hyperref[flac:calc_midside]{calculuate mid-side of $\text{\CHANNEL}_0$ and $\text{\CHANNEL}_1$} \\
+    \LEFTS & $\leftarrow$ & \hyperref[flac:encode_subframe]{encode $\text{\CHANNEL}_0$ as subframe at $\BPS$} \\
+    \RIGHTS & $\leftarrow$ & \hyperref[flac:encode_subframe]{encode $\text{\CHANNEL}_1$ as subframe at $\BPS$} \\
+    \AVGS & $\leftarrow$ &  \hyperref[flac:encode_subframe]{encode $\text{\AVERAGE}$ as subframe at $\BPS$} \\
+    \DIFFS & $\leftarrow$ & \hyperref[flac:encode_subframe]{encode $\text{\DIFFERENCE}$ as subframe at $(\BPS + 1)$} \\
     \IBITS & $\leftarrow$ & $\LEN(\LEFTS) + \LEN(\RIGHTS)$ \\
     \LDBITS & $\leftarrow$ & $\LEN(\LEFTS) + \LEN(\DIFFS)$ \\
     \DRBITS & $\leftarrow$ & $\LEN(\DIFFS) + \LEN(\RIGHTS)$ \\
@@ -1291,50 +1287,51 @@ during FLAC decoding, but performed in the opposite order.
   \BlankLine
   \uIf{try mid-side}{
     \uIf{$\IBITS < \MIN(\LDBITS~,~\DRBITS~,~\ADBITS)$}{
-      write frame header with channel assignment \texttt{0x1}\;
+      \hyperref[flac:write_frame_header]{write frame header with channel assignment \texttt{0x1}}\;
       write \LEFTS\;
       write \RIGHTS\;
     }
     \uElseIf{$\LDBITS < \MIN(\DRBITS~,~\ADBITS)$}{
-      write frame header with channel assignment \texttt{0x8}\;
+      \hyperref[flac:write_frame_header]{write frame header with channel assignment \texttt{0x8}}\;
       write \LEFTS\;
       write \DIFFS\;
     }
     \uElseIf{$\DRBITS < \ADBITS$}{
-      write frame header with channel assignment \texttt{0x9}\;
+      \hyperref[flac:write_frame_header]{write frame header with channel assignment \texttt{0x9}}\;
       write \DIFFS\;
       write \RIGHTS\;
     }
     \Else{
-      write frame header with channel assignment \texttt{0xA}\;
+      \hyperref[flac:write_frame_header]{write frame header with channel assignment \texttt{0xA}}\;
       write \AVGS\;
       write \DIFFS\;
     }
   }\uElseIf{$\IBITS < \ADBITS$}{
-    write frame header with channel assignment \texttt{0x1}\;
+    \hyperref[flac:write_frame_header]{write frame header with channel assignment \texttt{0x1}}\;
     write \LEFTS\;
     write \RIGHTS\;
   }
   \Else{
-    write frame header with channel assignment \texttt{0xA}\;
+    \hyperref[flac:write_frame_header]{write frame header with channel assignment \texttt{0xA}}\;
     write \AVGS\;
     write \DIFFS\;
   }
 }(\tcc*[f]{store subframes independently}){
-  write frame header with channel assigment $\CHANNELCOUNT - 1$\;
+  \hyperref[flac:write_frame_header]{write frame header with channel assigment $\CHANNELCOUNT - 1$}\;
   \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELCOUNT}{
-    $\text{\SUBFRAME}_c \leftarrow \BUILDSUBFRAME(\text{\CHANNEL}_c~,~\BPS)$\;
+    $\text{\SUBFRAME}_c \leftarrow $ \hyperref[flac:encode_subframe]{encode $\text{\CHANNEL}_c$ as subframe at $\BPS$}\;
     write $\text{\SUBFRAME}_c$\;
   }
 }
 byte align the stream\;
-write frame's CRC-16 checksum\;
+\hyperref[flac:calculate_crc16]{write frame's CRC-16 checksum}\;
 \EALGORITHM
 }
 
 \clearpage
 
 \subsubsection{Calculating Mid-Side}
+\label{flac:calc_midside}
 \ALGORITHM{block size, 2 channels of PCM data}{2 channels stored as average / difference}
 \SetKwData{BLOCKSIZE}{block size}
 \SetKwData{CHANNEL}{channel}
@@ -1366,11 +1363,12 @@ For example, when recombined from left-difference\footnotemark:}
 \textsf{sample}_1 &\leftarrow \lfloor(((12 \times 2) + (-5 \bmod 2)) - -5) \div 2\rfloor =  \lfloor((24 + 1 + 5) \div 2\rfloor = 15
 \end{align*}
 \footnotetext{See the recombining subframes algorithms on page
-\pageref{flac_recombining_subframes}.}
+\pageref{flac:recombine_subframes}.}
 
 \clearpage
 
 \subsubsection{Writing Frame Header}
+\label{flac:write_frame_header}
 {\relsize{-1}
 \ALGORITHM{the frame's channel assignment, the input stream's parameters}{a FLAC frame header}
 \SetKwData{BLOCKSIZE}{block size}
@@ -1390,7 +1388,7 @@ $\ESAMPLERATE \rightarrow$ \WRITE 4 unsigned bits\;
 $\ASSIGNMENT \rightarrow$ \WRITE 4 unsigned bits\;
 $\EBPS \rightarrow$ \WRITE 3 unsigned bits\;
 $0 \rightarrow$ \WRITE 1 unsigned bit\;
-$\FRAMENUMBER \rightarrow$ \WRITE as UTF-8 encoded value\;
+$\FRAMENUMBER \rightarrow$ \WRITE \hyperref[flac:write_utf8]{as UTF-8 encoded value}\;
 \uIf{$\EBLOCKSIZE = 6$}{
   $(\BLOCKSIZE - 1) \rightarrow$ \WRITE 8 unsigned bits\;
 }
@@ -1406,6 +1404,7 @@ $\FRAMENUMBER \rightarrow$ \WRITE as UTF-8 encoded value\;
 \ElseIf{$\ESAMPLERATE = 14$}{
   $\SAMPLERATE \div 10 \rightarrow$ \WRITE 16 unsigned bits\;
 }
+$\CRC \leftarrow$ \hyperref[flac:calculate_crc8]{calculate frame header's CRC-8}\;
 $\CRC \rightarrow$ \WRITE 8 unsigned bits\;
 \EALGORITHM
 }
@@ -1486,6 +1485,7 @@ $\CRC \rightarrow$ \WRITE 8 unsigned bits\;
 \clearpage
 
 \subsubsection{Encoding UTF-8 Frame Number}
+\label{flac:write_utf8}
 {\relsize{-1}
 \ALGORITHM{value as unsigned integer}{1 or more UTF-8 bytes}
 \SetKwData{VALUE}{value}
@@ -1545,6 +1545,7 @@ For example, encoding the frame number 4228 in UTF-8:
 \clearpage
 
 \subsubsection{Calculating CRC-8}
+\label{flac:calculate_crc8}
 Given a header byte and previous CRC-8 checksum,
 or 0 as an initial value:
 \begin{equation*}
@@ -1608,6 +1609,7 @@ Note how the CRC-8 is calculated from the preceding 5 header bytes:
 \clearpage
 
 \subsection{Encoding a FLAC Subframe}
+\label{flac:encode_subframe}
 {\relsize{-1}
 \ALGORITHM{block size, signed subframe samples, subframe's bits per sample}{a FLAC subframe}
 \SetKwData{BLOCKSIZE}{block size}
@@ -1622,22 +1624,22 @@ Note how the CRC-8 is calculated from the preceding 5 header bytes:
 \SetKwFunction{LEN}{len}
 \SetKwFunction{MIN}{min}
 \eIf{all samples are the same}{
-  \Return \CONSTANT using $\text{\SAMPLE}_0$\;
+  \Return \hyperref[flac:encode_constant_subframe]{\CONSTANT using $\text{\SAMPLE}_0$}\;
 }{
-  $\WASTEDBPS \leftarrow$ calculate wasted bits per sample for $\text{\SAMPLE}$\;
+  $\WASTEDBPS \leftarrow$ \hyperref[flac:calculate_wasted_bps]{calculate wasted bits per sample for $\text{\SAMPLE}$}\;
   \If{$\WASTEDBPS > 0$}{
     \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
       $\text{\SAMPLE}_i \leftarrow \text{\SAMPLE}_i \div 2 ^ \text{\WASTEDBPS}$\;
     }
     $\BPS \leftarrow \BPS - \WASTEDBPS$\;
   }
-  $\VERBATIM \leftarrow$ build VERBATIM subframe from \SAMPLE\;
+  $\VERBATIM \leftarrow$ \hyperref[flac:encode_verbatim_subframe]{build VERBATIM subframe from \SAMPLE}\;
   \BlankLine
-  $\FIXED \leftarrow$ build FIXED subframe from \SAMPLE\;
+  $\FIXED \leftarrow$ \hyperref[flac:encode_fixed_subframe]{build FIXED subframe from \SAMPLE}\;
   \BlankLine
   \eIf(\tcc*[f]{from encoding parameters}){maximum LPC order $ > 0$}{
-    $\LPCPARAMS \leftarrow$ compute best LPC parameters from \SAMPLE\;
-    $\LPC \leftarrow$ build LPC subframe from \LPCPARAMS\;
+    $\LPCPARAMS \leftarrow$ \hyperref[flac:compute_lpc_params]{compute best LPC parameters from \SAMPLE}\;
+    $\LPC \leftarrow$ \hyperref[flac:encode_lpc_subframe]{build LPC subframe from \LPCPARAMS}\;
     \BlankLine
     \uIf{$\LEN(\VERBATIM) \leq \MIN(\LEN(\LPC)~,~\LEN(\FIXED))$}{
       \Return \VERBATIM\;
@@ -1660,6 +1662,7 @@ Note how the CRC-8 is calculated from the preceding 5 header bytes:
 }
 
 \subsubsection{Calculating Wasted Bits Per Sample}
+\label{flac:calculate_wasted_bps}
 {\relsize{-1}
   \ALGORITHM{a list of signed PCM samples}{an unsigned integer}
   \SetKwData{WASTEDBPS}{wasted bps}
@@ -1691,6 +1694,7 @@ Note how the CRC-8 is calculated from the preceding 5 header bytes:
 \clearpage
 
 \subsection{Encoding a CONSTANT Subframe}
+\label{flac:encode_constant_subframe}
 {\relsize{-1}
 \ALGORITHM{signed subframe sample, subframe's bits per sample}{a CONSTANT subframe}
 \SetKwData{SAMPLE}{sample}
@@ -1707,6 +1711,7 @@ $\text{\SAMPLE} \rightarrow$ \WRITE $\text{\BPS}$ signed bits\;
 \end{figure}
 
 \subsection{Encoding a VERBATIM Subframe}
+\label{flac:encode_verbatim_subframe}
 {\relsize{-1}
 \ALGORITHM{signed subframe samples, subframe's bits per sample}{a VERBATIM subframe}
 \SetKwData{BLOCKSIZE}{block size}
@@ -1728,6 +1733,7 @@ $0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{no wasted BPS}
 \clearpage
 
 \subsection{Encoding a FIXED Subframe}
+\label{flac:encode_fixed_subframe}
 {\relsize{-1}
 \ALGORITHM{signed subframe samples, subframe's bits per sample, wasted BPS}{a FIXED subframe}
 \SetKwData{BPS}{subframe's BPS}
@@ -1769,16 +1775,14 @@ $\text{\ORDER} \rightarrow$ \WRITE 3 unsigned bits\;
 \For(\tcc*[f]{warm-up samples}){$i \leftarrow 0$ \emph{\KwTo}\ORDER}{
   $\text{\SAMPLE}_i \rightarrow$ \WRITE $(\BPS)$ signed bits\;
 }
-write encoded residual block based on $\text{\RESIDUAL}_{\ORDER}$'s signed values\;
+\hyperref[flac:write_residual_block]{write encoded residual block based on $\text{\RESIDUAL}_{\ORDER}$'s signed values}\;
+\BlankLine
+\Return a FIXED subframe\;
 \EALGORITHM
 }
 \begin{figure}[h]
   \includegraphics{figures/flac/fixed.pdf}
 \end{figure}
-\par
-\noindent
-Building a residual block from signed residual values is explained
-on page \pageref{flac_residual_encoding}.
 
 \clearpage
 
@@ -1816,7 +1820,7 @@ used when calculating the best FIXED subframe order.
 \clearpage
 
 \subsection{Residual Encoding}
-\label{flac_residual_encoding}
+\label{flac:write_residual_block}
 {\relsize{-1}
 \ALGORITHM{a set of signed residual values, the subframe's block size and predictor order, minimum and maximum partition order from encoding parameters}{an encoded block of residuals}
 \SetKwData{ORDER}{predictor order}
@@ -1837,7 +1841,7 @@ used when calculating the best FIXED subframe order.
 \tcc{calculate best partition order and Rice parameters for that order}
 \For{$o \leftarrow \text{minimum partition order}$ \emph{\KwTo}(maximum partition order + 1)}{
   \eIf{$(\BLOCKSIZE \bmod 2^{o}) = 0$}{
-    $(\text{\RICE}_o~,~\text{\PARTITION}_o~,~\text{\PSIZE}_o) \leftarrow$ encode residual partition(s) with order $o$\;
+    $(\text{\RICE}_o~,~\text{\PARTITION}_o~,~\text{\PSIZE}_o) \leftarrow$ \hyperref[flac:write_residual_partition]{encode residual partition(s) with order $o$}\;
   }{
     \BREAK\;
   }
@@ -1886,6 +1890,7 @@ $o \rightarrow$ \WRITE 4 unsigned bits\;
 \clearpage
 
 \subsubsection{Encoding Parititions}
+\label{flac:write_residual_partition}
 {\relsize{-1}
 \ALGORITHM{partition order $o$, predictor order, residual values, block size, maximum Rice parameter}{Rice parameter, residual partitions, total estimated size}
 \SetKwData{ORDER}{predictor order}
@@ -1998,11 +2003,9 @@ down to only 67 bits - or about 40\% of their original size.
 \clearpage
 
 \subsection{Computing Best LPC Parameters}
-
+\label{flac:compute_lpc_params}
 {\relsize{-1}
 \ALGORITHM{signed subframe samples, encoding parameters}{LPC parameters}
-\SetKwFunction{WINDOW}{window}
-\SetKwFunction{AUTOCORRELATE}{autocorrelate}
 \SetKwFunction{LEN}{len}
 \SetKw{AND}{and}
 \SetKw{NOT}{not}
@@ -2019,26 +2022,26 @@ down to only 67 bits - or about 40\% of their original size.
 \SetKwData{LPCPARAMS}{LPC parameters}
 \SetKwData{LPCDATA}{LPC subframe data}
 \tcc{windowed sample count equals subframe sample count}
-$\WINDOWED \leftarrow \WINDOW(\SAMPLE)$\;
+$\WINDOWED \leftarrow$ \hyperref[flac:window]{window \SAMPLE}\;
 \BlankLine
 \tcc{autocorrelation value count equals the maximum LPC order + 1}
-$\AUTOCORRELATIONS \leftarrow \AUTOCORRELATE(\WINDOWED)$\;
+$\AUTOCORRELATIONS \leftarrow$ \hyperref[flac:autocorrelate]{autocorrelate \WINDOWED}\;
 \BlankLine
 \eIf{$\LEN(\AUTOCORRELATIONS) > 1$ \AND \AUTOCORRELATIONS aren't all 0.0}{
-  $(\LPCOEFFS~,~\ERRORS)\leftarrow$ compute LP coefficients from \AUTOCORRELATIONS\;
+  $(\LPCOEFFS~,~\ERRORS)\leftarrow$ \hyperref[flac:compute_lp_coeffs]{compute LP coefficients from \AUTOCORRELATIONS}\;
   \BlankLine
   \eIf(\tcc*[f]{from encoding parameters}){\NOT exhaustive model search}{
     \tcc{estimate which set of LP coefficients is the smallest
       and return those}
-    $o \leftarrow$ estimate best order from \ERRORS, sample count and bits per sample\;
-    $\text{\LPCPARAMS}_o \leftarrow$ quantize \LPCOEFFS at order $o$\;
+    $o \leftarrow$ \hyperref[flac:estimate_best_order]{estimate best order from \ERRORS, sample count and bits per sample}\;
+    $\text{\LPCPARAMS}_o \leftarrow$ \hyperref[flac:quantize_lp_coeffs]{quantize \LPCOEFFS at order $o$}\;
     \Return $\text{\LPCPARAMS}_o$\;
   }{
     \tcc{build a complete LPC subframe from each set of LP coefficients
     and return the parameters of the one which is smallest}
     \For{$o \leftarrow 1$ \emph{\KwTo}maximum LPC order + 1}{
-      $\text{\LPCPARAMS}_o \leftarrow$ quantize \LPCOEFFS at order $o$\;
-      $\text{\LPCDATA}_o \leftarrow$ build LPC subframe from $\text{\LPCPARAMS}_o$\;
+      $\text{\LPCPARAMS}_o \leftarrow$ \hyperref[flac:quantize_lp_coeffs]{quantize \LPCOEFFS at order $o$}\;
+      $\text{\LPCDATA}_o \leftarrow$ \hyperref[flac:encode_lpc_subframe]{build LPC subframe from $\text{\LPCPARAMS}_o$}\;
     }
     choose predictor order $o$ whose $\text{\LPCDATA}_o$ block is smallest\;
     \BlankLine
@@ -2060,6 +2063,7 @@ $\AUTOCORRELATIONS \leftarrow \AUTOCORRELATE(\WINDOWED)$\;
 
 
 \subsubsection{Windowing the Input Samples}
+\label{flac:window}
 \ALGORITHM{a list of signed input sample integers}{a list of signed windowed samples as floats}
 \SetKwData{BLOCKSIZE}{block size}
 \SetKwData{SAMPLE}{sample}
@@ -2109,7 +2113,7 @@ $i$ & $\textsf{sample}_i$ & $\texttt{tukey}(i)$ & $\textsf{windowed}_i$ \\
 \clearpage
 
 \subsubsection{Performing Autocorrelation}
-
+\label{flac:autocorrelate}
 \ALGORITHM{a list of signed windowed samples, the maximum LPC order}{a list of signed autocorrelation values}
 \SetKwData{MAXLPCORDER}{max LPC order}
 \SetKwData{BLOCKSIZE}{block size}
@@ -2205,6 +2209,7 @@ the maximum LPC order + 1.
 \clearpage
 
 \subsubsection{LP Coefficient Calculation}
+\label{flac:compute_lp_coeffs}
 {\relsize{-1}
 \ALGORITHM{a list of autocorrelation floats, the maximum LPC order}{a list of LP coefficient lists, a list of error values}
 \SetKwData{MAXLPCORDER}{max LPC order}
@@ -2311,6 +2316,7 @@ and \textsf{error} values: \texttt{619.107, 521.530, 520.854}
 \clearpage
 
 \subsubsection{Estimating Best Order}
+\label{flac:estimate_best_order}
 \ALGORITHM{floating point error values, block size, bits per sample,\newline QLP precision and maximum LPC order from encoding parameters}{the best stimated order value to use}
 \SetKwData{ORDER}{predictor order}
 \SetKwData{BLOCKSIZE}{block size}
@@ -2344,6 +2350,7 @@ and \textsf{error} values: \texttt{619.107, 521.530, 520.854}
 \clearpage
 
 \subsubsection{Quantizing LP Coefficients}
+\label{flac:quantize_lp_coeffs}
 \ALGORITHM{LP coefficients, a positive order value,\newline QLP precision from encoding parameters}{QLP coefficients as a list of integers,\newline QLP shift needed as a non-negative integer}
 \SetKwData{LPCOEFF}{LP coefficient}
 \SetKwData{QLPSHIFT}{QLP shift}
@@ -2421,6 +2428,7 @@ and are also used to calculate its residuals.
 \clearpage
 
 \subsection{Encoding an LPC Subframe}
+\label{flac:encode_lpc_subframe}
 \ALGORITHM{signed subframe samples, subframe order, QLP coefficients, QLP precision, QLP shift needed, subframe's bits per sample, wasted BPS}{an LPC subframe}
 \SetKwData{ORDER}{predictor order}
 \SetKwData{BLOCKSIZE}{block size}
@@ -2486,6 +2494,7 @@ Encoding them to a residual block, our final LPC subframe is:
 \end{figure}
 
 \subsection{Calculating Frame CRC-16}
+\label{flac:calculate_crc16}
 CRC-16 is used to checksum the entire FLAC frame, including the header
 and any padding bits after the final subframe.
 Given a byte of input and the previous CRC-16 checksum,

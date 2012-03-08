@@ -23,11 +23,11 @@ The basic process for decoding an ALAC file is as follows:
 \begin{wrapfigure}[6]{l}{4.5in}
 {\relsize{-1}
 \ALGORITHM{an ALAC encoded file}{PCM samples}
-read \texttt{alac} atom to obtain decoding parameters\;
-read \texttt{mdhd} atom to obtain $PCM~frame~count$\;
+\hyperref[alac:read_alac_atom]{read \texttt{alac} atom to obtain decoding parameters}\;
+\hyperref[alac:read_mdhd_atom]{read \texttt{mdhd} atom to obtain $PCM~frame~count$}\;
 seek to \texttt{mdat} atom's data\;
 \While{$PCM~frame~count > 0$}{
-  decode ALAC frameset to 1 or more PCM frames\;
+  \hyperref[alac:decode_frameset]{decode ALAC frameset to 1 or more PCM frames}\;
   deduct ALAC frameset's samples from stream's $PCM~frame~count$\;
   return decoded PCM frames\;
 }
@@ -50,7 +50,7 @@ which may contain one or more sub-atoms.
 \clearpage
 
 \subsection{Parsing the alac Atom}
-
+\label{alac:read_alac_atom}
 The \texttt{stsd} atom contains a single \texttt{alac} atom
 which contains an \texttt{alac} sub-atom of its own.
 \begin{figure}[h]
@@ -95,6 +95,7 @@ sample rate & $\leftarrow$ & \texttt{0000AC44} & = & 44100 Hz\\
 \clearpage
 
 \subsection{Parsing the mdhd atom}
+\label{alac:read_mdhd_atom}
 \begin{figure}[h]
 \includegraphics{figures/alac/mdhd.pdf}
 \end{figure}
@@ -141,6 +142,7 @@ meaning ``undetermined''.
 \clearpage
 
 \subsection{Decoding ALAC Frameset}
+\label{alac:decode_frameset}
 ALAC framesets contain multiple frames,
 each of which contains 1 or 2 subframes.
 \par
@@ -149,7 +151,7 @@ each of which contains 1 or 2 subframes.
 \SetKwData{CHANNELS}{channels}
 $\CHANNELS \leftarrow$ (\READ 3 unsigned bits) + 1\;
 \While{$\CHANNELS \neq 8$}{
-  decode ALAC frame to 1 or 2 \CHANNELS of PCM data\;
+  \hyperref[alac:decode_frame]{decode ALAC frame to 1 or 2 \CHANNELS of PCM data}\;
   $\CHANNELS \leftarrow$ (\READ 3 unsigned bits) + 1\;
 }
 byte-align file stream\;
@@ -162,6 +164,7 @@ byte-align file stream\;
 \clearpage
 
 \subsection{Decoding ALAC Frame}
+\label{alac:decode_frame}
 {\relsize{-1}
 \ALGORITHM{\texttt{mdat} atom data, channel count, decoding parameters from \texttt{alac} atom}{1 or 2 decoded channels of PCM data}
 \SetKwData{CHANNELCOUNT}{channel count}
@@ -196,7 +199,7 @@ $\NOTCOMPRESSED \leftarrow$ \READ 1 unsigned bit\;
   \INTERLACINGSHIFT $\leftarrow$ \READ 8 unsigned bits\;
   \INTERLACINGLEFTWEIGHT $\leftarrow$ \READ 8 unsigned bits\;
   \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELCOUNT}{
-    $\text{\SUBFRAMEHEADER}_c \leftarrow$ read subframe header\;
+    $\text{\SUBFRAMEHEADER}_c \leftarrow$ \hyperref[alac:read_subframe_header]{read subframe header}\;
   }
   \If{$\UNCOMPRESSEDLSBS > 0$}{
     \For{$i \leftarrow 0$ \emph{\KwTo}\SAMPLECOUNT}{
@@ -206,11 +209,11 @@ $\NOTCOMPRESSED \leftarrow$ \READ 1 unsigned bit\;
     }
   }
   \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELCOUNT}{
-    $\text{\RESIDUALS}_c \leftarrow$ read residual block where sample size is $\text{bits per sample} - (\UNCOMPRESSEDLSBS \times 8) + (\text{\CHANNELCOUNT} - 1)$\;
-    decode $\text{\SUBFRAME}_c$ from $\text{\SUBFRAMEHEADER}_c$ and $\text{\RESIDUALS}_c$\;
+    $\text{\RESIDUALS}_c \leftarrow$ \hyperref[alac:read_residual_block]{read residual block} where sample size is $\text{bits per sample} - (\UNCOMPRESSEDLSBS \times 8) + (\text{\CHANNELCOUNT} - 1)$\;
+    \hyperref[alac:decode_subframe]{decode $\text{\SUBFRAME}_c$ from $\text{\SUBFRAMEHEADER}_c$ and $\text{\RESIDUALS}_c$}\;
   }
   \eIf{$\CHANNELCOUNT = 2$}{
-    decorrelate $\text{\SUBFRAME}_0$ and $\text{\SUBFRAME}_1$ to $\text{\CHANNEL}_0$ and $\text{\CHANNEL}_1$\newline according to \INTERLACINGSHIFT and \INTERLACINGLEFTWEIGHT\;
+    \hyperref[alac:decorrelate_channels]{decorrelate $\text{\SUBFRAME}_0$ and $\text{\SUBFRAME}_1$ to $\text{\CHANNEL}_0$ and $\text{\CHANNEL}_1$}\newline according to \INTERLACINGSHIFT and \INTERLACINGLEFTWEIGHT\;
   }{
     \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELCOUNT}{
       $\text{\CHANNEL}_c \leftarrow \text{\SUBFRAME}_c$\;
@@ -231,6 +234,7 @@ $\NOTCOMPRESSED \leftarrow$ \READ 1 unsigned bit\;
 \clearpage
 
 \subsection{Reading Subframe Header}
+\label{alac:read_subframe_header}
 \ALGORITHM{\texttt{mdat} atom data}{subframe decoding parameters}
 \SetKw{OR}{or}
 \SetKwData{PREDICTIONTYPE}{prediction type}
@@ -301,6 +305,7 @@ $\textsf{coefficient}_{1~3}$ & $\leftarrow$ & \texttt{0xFEE5} &=& -283 \\
 \clearpage
 
 \subsection{Reading Residual Block}
+\label{alac:read_residual_block}
 \ALGORITHM{\texttt{mdat} atom data, initial history and maximum K from \texttt{alac} atom, sample count, sample size}{a decoded list of signed residuals}
 \SetKwData{SAMPLECOUNT}{sample count}
 \SetKwData{SIGN}{sign modifier}
@@ -558,6 +563,7 @@ $i$ & \kappa & \textsf{MSB}_i & \textsf{LSB}_i & \textsf{unsigned}_i &
 \clearpage
 
 \subsection{Decoding Subframe}
+\label{alac:decode_subframe}
 \ALGORITHM{sample count from frame header, QLP coefficients and QLP shift needed from subframe header, signed residuals from residual block}{a list of signed subframe samples}
 \SetKwData{RESIDUAL}{residual}
 \SetKwData{SAMPLE}{sample}
@@ -680,6 +686,7 @@ and how the next sample's \textsf{QLP coefficient} values are shifted.
 \clearpage
 
 \subsection{Channel Decorrelation}
+\label{alac:decorrelate_channels}
 \ALGORITHM{$\text{subframe samples}_0$, $\text{subframe samples}_1$, interlacing shift and interlacing leftweight from frame header}{left and right channels}
 \SetKwData{LEFTWEIGHT}{interlacing leftweight}
 \SetKwData{SAMPLECOUNT}{sample count}
@@ -1356,7 +1363,7 @@ $0 \rightarrow$ \WRITE 32 unsigned bits\tcc*[r]{placeholder length}
 $\texttt{"mdat"} \rightarrow$ \WRITE 4 bytes\;
 \While{PCM frames remain}{
   take \BLOCKSIZE PCM frames from the input\;
-  write PCM frames to frameset\;
+  \hyperref[alac:encode_frameset]{write PCM frames to frameset}\;
 }
 return to start of \texttt{mdat} atom and write actual length\;
 \EALGORITHM
@@ -1367,50 +1374,51 @@ return to start of \texttt{mdat} atom and write actual length\;
 \clearpage
 
 \subsection{Encoding Frameset}
+\label{alac:encode_frameset}
 {\relsize{-2}
 \ALGORITHM{1 or more channels of PCM frames}{1 or more ALAC frames as a frameset}
 \SetKwData{CHANCOUNT}{channel count}
 \SetKwData{FRAMEDATA}{frame channels}
 \Switch{\CHANCOUNT}{
   \uCase{1}{
-    encode mono as 1 channel frame\;
+    \hyperref[alac:encode_frame]{encode mono as 1 channel frame}\;
   }
   \uCase{2}{
-    encode left,right as 2 channel frame\;
+    \hyperref[alac:encode_frame]{encode left,right as 2 channel frame}\;
   }
   \uCase{3}{
-    encode center as 1 channel frame\;
-    encode left,right as 2 channel frame\;
+    \hyperref[alac:encode_frame]{encode center as 1 channel frame}\;
+    \hyperref[alac:encode_frame]{encode left,right as 2 channel frame}\;
   }
   \uCase{4}{
-    encode center as 1 channel frame\;
-    encode left,right as 2 channel frame\;
-    encode center surround as 1 channel frame\;
+    \hyperref[alac:encode_frame]{encode center as 1 channel frame}\;
+    \hyperref[alac:encode_frame]{encode left,right as 2 channel frame}\;
+    \hyperref[alac:encode_frame]{encode center surround as 1 channel frame}\;
   }
   \uCase{5}{
-    encode center as 1 channel frame\;
-    encode left,right as 2 channel frame\;
-    encode left surround,right surround as 2 channel frame\;
+    \hyperref[alac:encode_frame]{encode center as 1 channel frame}\;
+    \hyperref[alac:encode_frame]{encode left,right as 2 channel frame}\;
+    \hyperref[alac:encode_frame]{encode left surround,right surround as 2 channel frame}\;
   }
   \uCase{6}{
-    encode center as 1 channel frame\;
-    encode left,right as 2 channel frame\;
-    encode left surround,right surround as 2 channel frame\;
-    encode LFE as 1 channel frame\;
+    \hyperref[alac:encode_frame]{encode center as 1 channel frame}\;
+    \hyperref[alac:encode_frame]{encode left,right as 2 channel frame}\;
+    \hyperref[alac:encode_frame]{encode left surround,right surround as 2 channel frame}\;
+    \hyperref[alac:encode_frame]{encode LFE as 1 channel frame}\;
   }
   \uCase{7}{
-    encode center as 1 channel frame\;
-    encode left,right as 2 channel frame\;
-    encode left surround,right surround as 2 channel frame\;
-    encode center surround as 1 channel frame\;
-    encode LFE as 1 channel frame\;
+    \hyperref[alac:encode_frame]{encode center as 1 channel frame}\;
+    \hyperref[alac:encode_frame]{encode left,right as 2 channel frame}\;
+    \hyperref[alac:encode_frame]{encode left surround,right surround as 2 channel frame}\;
+    \hyperref[alac:encode_frame]{encode center surround as 1 channel frame}\;
+    \hyperref[alac:encode_frame]{encode LFE as 1 channel frame}\;
   }
   \Case{8}{
-    encode center as 1 channel frame\;
-    encode left center,right center as 2 channel frame\;
-    encode left,right as 2 channel frame\;
-    encode left surround,right surround as 1 channel frame\;
-    encode LFE as 1 channel frame\;
+    \hyperref[alac:encode_frame]{encode center as 1 channel frame}\;
+    \hyperref[alac:encode_frame]{encode left center,right center as 2 channel frame}\;
+    \hyperref[alac:encode_frame]{encode left,right as 2 channel frame}\;
+    \hyperref[alac:encode_frame]{encode left surround,right surround as 1 channel frame}\;
+    \hyperref[alac:encode_frame]{encode LFE as 1 channel frame}\;
   }
   $7 \rightarrow$ \WRITE 3 unsigned bits\;
   byte align output stream\;
@@ -1436,6 +1444,7 @@ channels & assignment \\
 \clearpage
 
 \subsection{Encoding Frame}
+\label{alac:encode_frame}
 {\relsize{-1}
 \ALGORITHM{1 or 2 channels of PCM data, encoding parameters}{a compressed or uncompressed ALAC frame}
 \SetKwData{PCMCOUNT}{PCM frame count}
@@ -1446,7 +1455,8 @@ channels & assignment \\
 \SetKwFunction{LEN}{len}
 $\CHANCOUNT - 1 \rightarrow$ \WRITE 3 unsigned bits\;
 \eIf{$\text{\PCMCOUNT} \geq 10$}{
-  \COMPRESSED $\leftarrow $ encode channels as compressed frame\;
+  $\UNCOMPRESSED \leftarrow$ \hyperref[alac:write_uncompressed_frame]{encode channel as uncompressed frame}\;
+  $\COMPRESSED \leftarrow$ \hyperref[alac:write_compressed_frame]{encode channels as compressed frame}\;
   \uIf{residual overflow occured}{
     \Return \UNCOMPRESSED\;
   }
@@ -1463,6 +1473,7 @@ $\CHANCOUNT - 1 \rightarrow$ \WRITE 3 unsigned bits\;
 }
 
 \subsection{Encoding Uncompressed Frame}
+\label{alac:write_uncompressed_frame}
 {\relsize{-1}
 \ALGORITHM{1 or 2 channels of PCM data, encoding parameters}{an uncompressed ALAC frame}
 \SetKwData{PCMCOUNT}{PCM frame count}
@@ -1497,6 +1508,7 @@ $1 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{not compressed}
 \clearpage
 
 \subsection{Encoding Compressed Frame}
+\label{alac:write_compressed_frame}
 {\relsize{-1}
 \ALGORITHM{1 or 2 channels of PCM data, encoding parameters}{a compressed ALAC frame, or a \textit{residual overflow} exception}
 \SetKwData{PCMCOUNT}{PCM frame count}
@@ -1520,10 +1532,10 @@ $1 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{not compressed}
   }
 }
 \eIf{$\text{\CHANCOUNT} = 1$}{
-  \Return non-interlaced frame for $\text{\CHANNEL}_0$\;
+  \Return \hyperref[alac:write_non_interlaced_frame]{non-interlaced frame for $\text{\CHANNEL}_0$}\;
 }{
   \For{l $\leftarrow \MINWEIGHT$ \emph{\KwTo}$\text{\MAXWEIGHT} + 1$}{
-    $\text{\FRAME}_l \leftarrow$ interlaced frame for $\text{\CHANNEL}_0~,~\text{\CHANNEL}_1$ with leftweight $l$\;
+    $\text{\FRAME}_l \leftarrow$ \hyperref[alac:write_interlaced_frame]{interlaced frame for $\text{\CHANNEL}_0~,~\text{\CHANNEL}_1$ with leftweight $l$}\;
   }
   \Return smallest $\text{\FRAME}_l$\;
 }
@@ -1533,6 +1545,7 @@ $1 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{not compressed}
 \clearpage
 
 \subsection{Encoding Non-Interlaced Frame}
+\label{alac:write_non_interlaced_frame}
 {\relsize{-1}
 \ALGORITHM{1 channel of PCM data, uncompressed LSBs, encoding parameters}{a compressed ALAC frame, or a \textit{residual overflow} exception}
 \SetKwData{PCMCOUNT}{PCM frame count}
@@ -1559,14 +1572,14 @@ $0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{is compressed}
 $0 \rightarrow$ \WRITE 8 unsigned bits\tcc*[r]{interlacing shift}
 $0 \rightarrow$ \WRITE 8 unsigned bits\tcc*[r]{interlacing leftweight}
 \SAMPLESIZE $\leftarrow \text{\BPS} - (\text{uncompressed LSBs} \times 8)$\;
-compute $\text{\QLPCOEFF}_0$ and $\text{\RESIDUAL}_0$ for $\text{\CHANNEL}_0$ with \SAMPLESIZE\;
-write subframe header with $\text{\QLPCOEFF}_0$\;
+\hyperref[alac:compute_qlp_coeffs]{compute $\text{\QLPCOEFF}_0$ and $\text{\RESIDUAL}_0$ for $\text{\CHANNEL}_0$ with \SAMPLESIZE}\;
+\hyperref[alac:write_subframe_header]{write subframe header with $\text{\QLPCOEFF}_0$}\;
 \If{$\text{\UNCOMPRESSEDLSB} > 0$}{
   \For{$i \leftarrow 0$ \emph{\KwTo}\PCMCOUNT}{
     $\text{\LSB}_i \rightarrow$ \WRITE $(\text{\UNCOMPRESSEDLSB} \times 8)$ unsigned bits\;
   }
 }
-write residual block $\text{\RESIDUAL}_0$\;
+\hyperref[alac:write_residuals]{write residual block $\text{\RESIDUAL}_0$}\;
 \BlankLine
 \Return non-interlaced ALAC frame\;
 \EALGORITHM
@@ -1579,6 +1592,7 @@ write residual block $\text{\RESIDUAL}_0$\;
 \clearpage
 
 \subsection{Encoding Interlaced Frame}
+\label{alac:write_interlaced_frame}
 {\relsize{-1}
 \ALGORITHM{2 channels of PCM data, interlacing shift, interlacing leftweight, uncompressed LSBs, encoding parameters}{a compressed ALAC frame, or a \textit{residual overflow} exception}
 \SetKwData{PCMCOUNT}{PCM frame count}
@@ -1607,13 +1621,13 @@ $0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{is compressed}
 $\text{\INTERLACINGSHIFT} \rightarrow$ \WRITE 8 unsigned bits\;
 $\text{\INTERLACINGLEFTWEIGHT} \rightarrow$ \WRITE 8 unsigned bits\;
 \BlankLine
-correlate $(\text{\CHANNEL}_0~,~\text{\CHANNEL}_1)$ to $(\text{\CORRELATED}_0~,~\text{\CORRELATED}_1)$\newline with \INTERLACINGSHIFT and \INTERLACINGLEFTWEIGHT\;
+\hyperref[alac:correlate_channels]{correlate $(\text{\CHANNEL}_0~,~\text{\CHANNEL}_1)$ to $(\text{\CORRELATED}_0~,~\text{\CORRELATED}_1)$}\newline with \INTERLACINGSHIFT and \INTERLACINGLEFTWEIGHT\;
 \BlankLine
 \SAMPLESIZE $\leftarrow \text{\BPS} - (\text{uncompressed LSBs} \times 8) + 1$\;
-compute $\text{\QLPCOEFF}_0$ and $\text{\RESIDUAL}_0$ for $\text{\CORRELATED}_0$ with \SAMPLESIZE\;
-compute $\text{\QLPCOEFF}_1$ and $\text{\RESIDUAL}_1$ for $\text{\CORRELATED}_1$ with \SAMPLESIZE\;
-write subframe header with $\text{\QLPCOEFF}_0$\;
-write subframe header with $\text{\QLPCOEFF}_1$\;
+\hyperref[alac:compute_qlp_coeffs]{compute $\text{\QLPCOEFF}_0$ and $\text{\RESIDUAL}_0$ for $\text{\CORRELATED}_0$ with \SAMPLESIZE}\;
+\hyperref[alac:compute_qlp_coeffs]{compute $\text{\QLPCOEFF}_1$ and $\text{\RESIDUAL}_1$ for $\text{\CORRELATED}_1$ with \SAMPLESIZE}\;
+\hyperref[alac:write_subframe_header]{write subframe header with $\text{\QLPCOEFF}_0$}\;
+\hyperref[alac:write_subframe_header]{write subframe header with $\text{\QLPCOEFF}_1$}\;
 \BlankLine
 \If{$\text{\UNCOMPRESSEDLSB} > 0$}{
   \For{$i \leftarrow 0$ \emph{\KwTo}\PCMCOUNT}{
@@ -1621,8 +1635,8 @@ write subframe header with $\text{\QLPCOEFF}_1$\;
   }
 }
 \BlankLine
-write residual block $\text{\RESIDUAL}_0$\;
-write residual block $\text{\RESIDUAL}_1$\;
+\hyperref[alac:write_residuals]{write residual block $\text{\RESIDUAL}_0$}\;
+\hyperref[alac:write_residuals]{write residual block $\text{\RESIDUAL}_1$}\;
 \BlankLine
 \Return interlaced ALAC frame\;
 \EALGORITHM
@@ -1635,6 +1649,7 @@ write residual block $\text{\RESIDUAL}_1$\;
 \clearpage
 
 \subsubsection{Correlating Channels}
+\label{alac:correlate_channels}
 {\relsize{-1}
 \ALGORITHM{2 channels of PCM data, interlacing shift, interlacing leftweight}{2 correlated channels of PCM data}
 \SetKwData{PCMCOUNT}{PCM frame count}
@@ -1676,40 +1691,43 @@ $i$ & $\textsf{channel}_{0~i}$ & $\textsf{channel}_{1~i}$ & \textsf{correlated}_
 \clearpage
 
 \subsection{Computing QLP Coefficients and Residual}
+\label{alac:compute_qlp_coeffs}
 {\relsize{-1}
 \ALGORITHM{a list of signed PCM samples, sample size, encoding parameters}{a list of 4 or 8 signed QLP coefficients, a block of residual data; or a \textit{residual overflow} exception}
 \SetKwData{SAMPLES}{subframe samples}
 \SetKwData{WINDOWED}{windowed}
-\SetKwData{AUTOCORRELATION}{autocorrelation}
+\SetKwData{AUTOCORRELATION}{autocorrelated}
 \SetKwData{LPCOEFF}{LP coefficient}
 \SetKwData{QLPCOEFF}{QLP coefficient}
 \SetKwData{SAMPLESIZE}{sample size}
 \SetKwData{RESIDUAL}{residual}
-window signed integer \SAMPLES to floating point \WINDOWED values\;
-autocorrelate \WINDOWED to 9 floating point \AUTOCORRELATION values\;
+\SetKwData{RESIDUALBLOCK}{residual block}
+$\WINDOWED \leftarrow$ \hyperref[alac:window]{window signed integer \SAMPLES}\;
+$\AUTOCORRELATION \leftarrow$ \hyperref[alac:autocorrelate]{autocorrelate \WINDOWED}\;
 \eIf{$\text{\AUTOCORRELATION}_0 \neq 0.0$}{
-  compute 8 lists of floating point \LPCOEFF from \AUTOCORRELATION\;
-  quantize $\text{\LPCOEFF}_3$ to a list of integer $\text{\QLPCOEFF}_3$ at order 4\;
-  quantize $\text{\LPCOEFF}_7$ to a list of integer $\text{\QLPCOEFF}_7$ at order 8\;
-  calculate $\text{\RESIDUAL}_3$ from $\text{\QLPCOEFF}_3$ and \SAMPLES\;
-  calculate $\text{\RESIDUAL}_7$ from $\text{\QLPCOEFF}_7$ and \SAMPLES\;
-  encode $\text{Residual Block}_3$ from $\text{\RESIDUAL}_3$ with \SAMPLESIZE and encoding parameters\;
-  encode $\text{Residual Block}_7$ from $\text{\RESIDUAL}_7$ with \SAMPLESIZE and encoding parameters\;
-  \eIf{$\LEN(\text{Residual Block}_3) < (\LEN(\text{Residual Block}_7) + 64~bits)$}{
-    \Return ($\text{\QLPCOEFF}_3~,~\text{Residual Block}_3$)\;
+  $\LPCOEFF \leftarrow$ \hyperref[alac:compute_lp_coeffs]{compute LP coefficients from \AUTOCORRELATION}\;
+  $\text{\QLPCOEFF}_3 \leftarrow$ \hyperref[alac:quantize_lp_coeffs]{quantize $\text{\LPCOEFF}_3$ at order 4}\;
+  $\text{\QLPCOEFF}_7 \leftarrow$ \hyperref[alac:quantize_lp_coeffs]{quantize $\text{\LPCOEFF}_7$ at order 8}\;
+  $\text{\RESIDUAL}_3 \leftarrow$ \hyperref[alac:calculate_residuals]{calculate residuals from $\text{\QLPCOEFF}_3$ and \SAMPLES}\;
+  $\text{\RESIDUAL}_7 \leftarrow$ \hyperref[alac:calculate_residuals]{calculate residuals from $\text{\QLPCOEFF}_7$ and \SAMPLES}\;
+  $\text{\RESIDUALBLOCK}_3 \leftarrow$ \hyperref[alac:write_residuals]{encode residual block from $\text{\RESIDUAL}_3$ with \SAMPLESIZE}\;
+  $\text{\RESIDUALBLOCK}_7 \leftarrow$ \hyperref[alac:write_residuals]{encode residual block from $\text{\RESIDUAL}_7$ with \SAMPLESIZE}\;
+  \eIf{$\LEN(\text{\RESIDUALBLOCK}_3) < (\LEN(\text{\RESIDUALBLOCK}_7) + 64~bits)$}{
+    \Return ($\text{\QLPCOEFF}_3~,~\text{\RESIDUALBLOCK}_3$)\;
   }{
-    \Return ($\text{\QLPCOEFF}_7~,~\text{Residual Block}_7$)\;
+    \Return ($\text{\QLPCOEFF}_7~,~\text{\RESIDUALBLOCK}_7$)\;
   }
 }(\tcc*[f]{all samples are 0}){
   \QLPCOEFF $\leftarrow$ \texttt{[0, 0, 0, 0]}\;
-  calculate $\text{\RESIDUAL}$ from \QLPCOEFF and \SAMPLES\;
-  encode $\text{Residual Block}$ from $\text{\RESIDUAL}$ with \SAMPLESIZE and encoding parameters\;
-  \Return ($\text{\QLPCOEFF}~,~\text{Residual Block}$)\;
+  $\text{\RESIDUAL} \leftarrow$ \hyperref[alac:calculate_residuals]{calculate residuals from $\text{\QLPCOEFF}$ and \SAMPLES}\;
+  $\text{\RESIDUALBLOCK} \leftarrow$ \hyperref[alac:write_residuals]{encode residual block from $\text{\RESIDUAL}$ with \SAMPLESIZE}\;
+  \Return ($\text{\QLPCOEFF}~,~\text{\RESIDUALBLOCK}$)\;
 }
 \EALGORITHM
 }
 
 \subsubsection{Windowing the Input Samples}
+\label{alac:window}
 {\relsize{-1}
 \ALGORITHM{a list of signed input sample integers}{a list of signed windowed samples as floats}
 \SetKwFunction{TUKEY}{tukey}
@@ -1739,7 +1757,7 @@ $N$ is the total number of input samples and $\alpha$ is $\nicefrac{1}{2}$.
 \noindent
 {\relsize{-2}
 \begin{tabular}{r|rcrcr}
-$i$ & $sample_i$ & & \texttt{tukey}($i$) & & $windowed_i$ \\
+$i$ & $\textsf{sample}_i$ & & \texttt{tukey}($i$) & & $\textsf{windowed}_i$ \\
 \hline
 0 & \texttt{0} & $\times$ & \texttt{0.00} & = & \texttt{0.00} \\
 1 & \texttt{16} & $\times$ & \texttt{0.19} & = & \texttt{3.01} \\
@@ -1763,10 +1781,11 @@ $i$ & $sample_i$ & & \texttt{tukey}($i$) & & $windowed_i$ \\
 \clearpage
 
 \subsubsection{Autocorrelating Windowed Samples}
+\label{alac:autocorrelate}
 {\relsize{-1}
 \ALGORITHM{a list of signed windowed samples}{a list of signed autocorrelation values}
 \SetKwData{LAG}{lag}
-\SetKwData{AUTOCORRELATION}{autocorrelation}
+\SetKwData{AUTOCORRELATION}{autocorrelated}
 \SetKwData{TOTALSAMPLES}{total samples}
 \SetKwData{WINDOWED}{windowed}
 \For{$\LAG \leftarrow 0$ \emph{\KwTo}9}{
@@ -1874,7 +1893,7 @@ $i$ & $sample_i$ & & \texttt{tukey}($i$) & & $windowed_i$ \\
 \clearpage
 
 \subsubsection{LP Coefficient Calculation}
-
+\label{alac:compute_lp_coeffs}
 {\relsize{-1}
 \ALGORITHM{a list of autocorrelation floats}{a list of LP coefficient lists}
 \SetKwData{LPCOEFF}{LP coefficient}
@@ -1976,7 +1995,7 @@ k_3 & \multicolumn{4}{>{$}l<{$}|}{\texttt{-122.06} \div \texttt{388.31} = \textt
 \end{landscape}
 
 \subsubsection{Quantizing LP Coefficients}
-
+\label{alac:quantize_lp_coeffs}
 \ALGORITHM{LP coefficients, an order value of 4 or 8}{QLP coefficients as a list of signed integers}
 \SetKwData{ORDER}{order}
 \SetKwFunction{MIN}{min}
@@ -2019,6 +2038,7 @@ e &\leftarrow \texttt{-161.35} - -161 = \texttt{-0.35} \\
 \clearpage
 
 \subsubsection{Computing Residual Values}
+\label{alac:calculate_residuals}
 \ALGORITHM{a list of signed PCM samples, a list of 4 or 8 QLP coefficients}{a list of signed residual values}
 \SetKwFunction{SIGN}{sign}
 \SetKw{BREAK}{break}
@@ -2154,6 +2174,7 @@ $i$ & $\textsf{sample}_i$ & $\textsf{base}_i$ & \textsf{QLP sum}_i & \textsf{res
 \clearpage
 
 \subsubsection{Encoding Residual Block}
+\label{alac:write_residuals}
 \ALGORITHM{a list of signed residual values, sample size; initial history, history multiplier, maximum K from encoding options}{a block of residual data, or a \textit{residual overflow} exception}
 \SetKwData{RESIDUAL}{residual}
 \SetKwData{UNSIGNED}{unsigned}
@@ -2353,6 +2374,7 @@ $i$ & $\textsf{residual}_i$ & \textsf{unsigned}_i & \kappa & \textsf{MSB}_i & \t
 \end{landscape}
 
 \subsection{Writing Subframe Header}
+\label{alac:write_subframe_header}
 \ALGORITHM{4 or 8 signed QLP coefficients}{a subframe header}
 \SetKwData{COEFFCOUNT}{coefficient count}
 \SetKwData{COEFF}{QLP coefficient}
