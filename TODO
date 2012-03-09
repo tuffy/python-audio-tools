@@ -5292,7 +5292,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] dvda2.tex
    - [X] flac.tex
    - [ ] shorten.tex
-   - [ ] wavpack.tex
+   - [X] wavpack.tex
 ** TODO Add hyperref linking
    If one's browsing the PDF,
    one should be able to click on operations directly
@@ -5301,4 +5301,4 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] dvda2.tex
    - [X] flac.tex
    - [ ] shorten.tex
-   - [ ] wavpack.tex
+   - [X] wavpack.tex

@@ -2598,7 +2598,7 @@ $s \leftarrow 0$\tcc*[r]{the number of block sets written}
   $\text{\BLOCKINDEX} \leftarrow \text{\BLOCKINDEX} + \text{PCM data's frame count}$\;
 }
 \BlankLine
-write final block containing optional Wave footer and MD5 sum sub blocks\;
+write final block containing optional \hyperref[wavpack:write_wave_header]{Wave footer} and \hyperref[wavpack:write_md5]{MD5 sum} sub blocks\;
 update Wave header's \texttt{data} chunk size, if generated from scratch\;
 update \VAR{total samples} field in all block headers with \BLOCKINDEX\;
 \EALGORITHM
@@ -2942,7 +2942,7 @@ $\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $
 \SetKw{OR}{or}
 $i \leftarrow 0$\;
 \If{first block in file}{
-  $\text{\SUBBLOCK}_i \leftarrow$ wave header\;
+  $\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_wave_header]{wave header}\;
   $i \leftarrow i + 1$\;
 }
 \If{$\text{decorrelation passes} > 0$}{
@@ -2952,21 +2952,21 @@ $i \leftarrow 0$\;
   $i \leftarrow i + 3$\;
 }
 \If{$\text{\WASTEDBPS} > 0$}{
-  $\text{\SUBBLOCK}_i \leftarrow$ extended integers\;
+  $\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_extended_integers]{extended integers}\;
   $i \leftarrow i + 1$\;
 }
 \If{$\text{total channel count} > 2$}{
-  $\text{\SUBBLOCK}_i \leftarrow$ channel info\;
+  $\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_channel_info]{channel info}\;
   $i \leftarrow i + 1$\;
 }
 \If{sample rate not defined in block header}{
-  $\text{\SUBBLOCK}_i \leftarrow$ sample rate\;
+  $\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_sample_rate]{sample rate}\;
   $i \leftarrow i + 1$\;
 }
 \eIf(\tcc*[f]{1 channel block}){$\text{channel count} = 1$ \OR $\text{\CHANNEL}_0 = \text{\CHANNEL}_1$}{
   $(\text{\CORRELATED}_0~,~\text{\WEIGHTS}'~,~\text{\SAMPLES}') \leftarrow$ \hyperref[wavpack:correlate_channels]{correlate $\text{\SHIFTED}_0$\newline
   with \TERMS, \DELTAS, \WEIGHTS and \SAMPLES from encoding parameters}\;
-  $\text{\SUBBLOCK}_i \leftarrow$ entropy variables sub block from \ENTROPY\;
+  $\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_entropy]{entropy variables sub block from \ENTROPY}\;
   $(\text{\BITSTREAM}~,~\text{\ENTROPY}') \leftarrow$ \hyperref[wavpack:write_bitstream]{calculate bitstream from $\text{\CORRELATED}_0$\newline
   and $\text{\ENTROPY}$ from encoding parameters}\;
   \BlankLine
@@ -2975,7 +2975,7 @@ $i \leftarrow 0$\;
   $(\text{\CORRELATED}_0/\text{\CORRELATED}_1~,~\text{\WEIGHTS}'~,~\text{\SAMPLES}') \leftarrow$ \hyperref[wavpack:correlate_channels]{correlate $\text{\MID}/\text{\SIDE}$\newline
   with \TERMS, \DELTAS, \WEIGHTS and \SAMPLES from encoding parameters}\;
   \BlankLine
-  $\text{\SUBBLOCK}_i \leftarrow$ entropy variables sub block from \ENTROPY\;
+  $\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_entropy]{entropy variables sub block from \ENTROPY}\;
   $(\text{\BITSTREAM}~,~\text{\ENTROPY}') \leftarrow$ \hyperref[wavpack:write_bitstream]{calculate bitstream from $\text{\CORRELATED}_0/\text{\CORRELATED}_0$\newline
   and $\text{\ENTROPY}$ from encoding parameters}\;
   $\text{\SUBBLOCK}_{i + 1} \leftarrow$ bitstream sub block from \BITSTREAM\;
@@ -3814,13 +3814,26 @@ $\text{channel}_0$ correlation passes
 }
 \Return decorrelation terms sub block data\;
 \EALGORITHM
+\begin{figure}[h]
+  \includegraphics{figures/wavpack/decorr_terms.pdf}
+\end{figure}
+
+\clearpage
+For example, given decorrelation terms and deltas:
+\begin{table}[h]
+\begin{tabular}{rrr}
+$p$ & $\textsf{term}_p$ & $\textsf{delta}_p$ \\
+\hline
+0 & 3 & 2 \\
+1 & 17 & 2 \\
+2 & 2 & 2 \\
+3 & 18 & 2 \\
+4 & 18 & 2 \\
+\end{tabular}
+\end{table}
 \par
 \noindent
-For example, given decorrelation terms \texttt{[3, 17, 2, 18, 18]}
-\newline
-and decorrelation deltas \texttt{[2, 2, 2, 2, 2]},
-\newline
-the decorrelation terms subframe is written as:
+the decorrelation terms sub block is written as:
 \begin{figure}[h]
 \includegraphics{figures/wavpack/terms_parse.pdf}
 \end{figure}
@@ -3852,10 +3865,26 @@ where \texttt{store\_weight} is defined as:
 \left\lfloor \frac{\texttt{max}(w, -1024) + 4}{2 ^ 3} \right\rfloor & \text{ if } w < 0 \\
 \end{cases}
 \end{equation*}
-For example, given the channel 0 weight values: \texttt{[16, 48, 32, 48, 48]}
-\newline
-and channel 1 weight values: \texttt{[24, 48, 32, 48, 48]}
-\newline
+\begin{figure}[h]
+  \includegraphics{figures/wavpack/decorr_weights.pdf}
+\end{figure}
+\clearpage
+For example, given the decorrelation weight values:
+\begin{table}[h]
+\begin{tabular}{rrrrr}
+$p$ & $\textsf{weight}_{p~0}$ & $\textsf{weight}_{p~1}$ &
+$\texttt{store\_weight}(\textsf{weight}_{p~0})$ &
+$\texttt{store\_weight}(\textsf{weight}_{p~1})$ \\
+\hline
+0 & 16 & 24 & 2 & 3 \\
+1 & 48 & 48 & 6 & 6 \\
+2 & 32 & 32 & 4 & 4 \\
+3 & 48 & 48 & 6 & 6 \\
+4 & 48 & 48 & 6 & 6 \\
+\end{tabular}
+\end{table}
+\par
+\noindent
 the decorrelation weights subframe is written as:
 \begin{figure}[h]
 \includegraphics{figures/wavpack/decorr_weights_parse.pdf}
@@ -3865,49 +3894,38 @@ the decorrelation weights subframe is written as:
 
 \subsection{Writing Decorrelation Samples}
 \label{wavpack:write_decorr_samples}
-{\relsize{-1}
 \ALGORITHM{a list of decorrelation sample values per pass, per channel}{decorrelation samples sub block data}
 \SetKwData{TERM}{term}
 \SetKwData{SAMPLE}{sample}
 \SetKwFunction{WVLOG}{wv\_log2}
 \SetKw{KwDownTo}{downto}
-\eIf{$\text{channel count} = 2$}{
-  \For{$p \leftarrow \text{decorrelation pass count}$ \emph{\KwDownTo}0}{
-    \uIf{$17 \leq \text{\TERM}_p \leq 18$}{
-      $\WVLOG(\text{\SAMPLE}_{p~0~0}) \rightarrow$ \WRITE 16 signed bits\;
-      $\WVLOG(\text{\SAMPLE}_{p~0~1}) \rightarrow$ \WRITE 16 signed bits\;
-      $\WVLOG(\text{\SAMPLE}_{p~1~0}) \rightarrow$ \WRITE 16 signed bits\;
-      $\WVLOG(\text{\SAMPLE}_{p~1~1}) \rightarrow$ \WRITE 16 signed bits\;
-    }
-    \uElseIf{$1 \leq \text{\TERM}_p \leq 8$}{
-      \For{$s \leftarrow 0$ \emph{\KwTo}$\text{\TERM}_p$}{
-        $\WVLOG(\text{\SAMPLE}_{p~0~s}) \rightarrow$ \WRITE 16 signed bits\;
-        $\WVLOG(\text{\SAMPLE}_{p~1~s}) \rightarrow$ \WRITE 16 signed bits\;
-      }
-    }
-    \ElseIf{$-3 \leq \text{\TERM}_p \leq -1$}{
-      $\WVLOG(\text{\SAMPLE}_{p~0~0}) \rightarrow$ \WRITE 16 signed bits\;
-      $\WVLOG(\text{\SAMPLE}_{p~1~0}) \rightarrow$ \WRITE 16 signed bits\;
+\For{$p \leftarrow \text{decorrelation pass count}$ \emph{\KwDownTo}0}{
+  \uIf{$17 \leq \text{\TERM}_p \leq 18$}{
+    \For{$c \leftarrow 0$ \emph{\KwTo}channel count}{
+      $\WVLOG(\text{\SAMPLE}_{p~c~0}) \rightarrow$ \WRITE 16 signed bits\;
+      $\WVLOG(\text{\SAMPLE}_{p~c~1}) \rightarrow$ \WRITE 16 signed bits\;
     }
   }
-}{
-  \For{$p \leftarrow \text{decorrelation pass count}$ \emph{\KwDownTo}0}{
-    \uIf{$17 \leq \text{\TERM}_p \leq 18$}{
-      $\WVLOG(\text{\SAMPLE}_{p~0~0}) \rightarrow$ \WRITE 16 signed bits\;
-      $\WVLOG(\text{\SAMPLE}_{p~0~1}) \rightarrow$ \WRITE 16 signed bits\;
-    }
-    \ElseIf{$1 \leq \text{\TERM}_p \leq 8$}{
-      \For{$s \leftarrow 0$ \emph{\KwTo}$\text{\TERM}_p$}{
-        $\WVLOG(\text{\SAMPLE}_{p~0~s}) \rightarrow$ \WRITE 16 signed bits\;
+  \uElseIf{$1 \leq \text{\TERM}_p \leq 8$}{
+    \For{$s \leftarrow 0$ \emph{\KwTo}$\text{\TERM}_p$}{
+      \For{$c \leftarrow 0$ \emph{\KwTo}channel count}{
+        $\WVLOG(\text{\SAMPLE}_{p~c~s}) \rightarrow$ \WRITE 16 signed bits\;
       }
     }
+  }
+  \ElseIf{$-3 \leq \text{\TERM}_p \leq -1$}{
+    $\WVLOG(\text{\SAMPLE}_{p~0~0}) \rightarrow$ \WRITE 16 signed bits\;
+    $\WVLOG(\text{\SAMPLE}_{p~1~0}) \rightarrow$ \WRITE 16 signed bits\;
   }
 }
+\Return decorrelation samples data\;
 \EALGORITHM
-}
+
+\begin{figure}[h]
+  \includegraphics{figures/wavpack/decorr_samples.pdf}
+\end{figure}
 
 \subsubsection{The wv\_log2 Function}
-{\relsize{-1}
 \ALGORITHM{a signed value}{a signed 16 bit value}
 \SetKwFunction{LOG}{wlog}
 $a \leftarrow |value| + \lfloor |value| \div 2 ^ 9\rfloor$\;
@@ -3927,7 +3945,6 @@ $c \leftarrow $\lIf{$a \neq 0$}{$\lfloor\log_2(a)\rfloor + 1$}
   }
 }
 \EALGORITHM
-}
 
 \clearpage
 
@@ -3966,11 +3983,11 @@ the following correlation samples:
 \begin{tabular}{rrrr}
 pass $p$ & $\text{term}_p$ & $\text{sample}_{p~0~s}$ & $\text{sample}_{p~1~s}$ \\
 \hline
-4 & 18 & \texttt{[84, 80]} & \texttt{[14, 3]} \\
-3 & 18 & \texttt{[79, 75]} & \texttt{[13, 2]} \\
-2 & 2 & \texttt{[73, 77]} & \texttt{[1, 12]} \\
-1 & 17 & \texttt{[72, 68]} & \texttt{[11, 1]} \\
 0 & 3 & \texttt{[62, 68, 71]} & \texttt{[0, 10, 18]} \\
+1 & 17 & \texttt{[72, 68]} & \texttt{[11, 1]} \\
+2 & 2 & \texttt{[73, 77]} & \texttt{[1, 12]} \\
+3 & 18 & \texttt{[79, 75]} & \texttt{[13, 2]} \\
+4 & 18 & \texttt{[84, 80]} & \texttt{[14, 3]} \\
 \end{tabular}
 \end{table}
 \par
@@ -3991,53 +4008,25 @@ and the entire sub block is written as:
 
 \clearpage
 
-\subsubsection{The wv\_exp2 Function}
-
-\ALGORITHM{a signed 16 bit value}{a signed value}
-\SetKwFunction{EXP}{wexp}
-\uIf{$-32768 \leq value < -2304$}{
-  \Return $-(\EXP(-value \bmod{256}) \times 2 ^ {\lfloor -value \div 2 ^ 8 \rfloor - 9})$\;
+\subsection{Writing Entropy Variables}
+\label{wavpack:write_entropy}
+\ALGORITHM{3 entropy variables per channel, channel count}{entropy variables sub block data}
+\SetKwData{ENTROPY}{entropy}
+\SetKwFunction{WVLOG}{wv\_log2}
+$\WVLOG(\text{\ENTROPY}_{0~0}) \rightarrow$ \WRITE 16 signed bits\;
+$\WVLOG(\text{\ENTROPY}_{0~1}) \rightarrow$ \WRITE 16 signed bits\;
+$\WVLOG(\text{\ENTROPY}_{0~2}) \rightarrow$ \WRITE 16 signed bits\;
+\If{$\text{channel count} = 2$}{
+  $\WVLOG(\text{\ENTROPY}_{1~0}) \rightarrow$ \WRITE 16 signed bits\;
+  $\WVLOG(\text{\ENTROPY}_{1~1}) \rightarrow$ \WRITE 16 signed bits\;
+  $\WVLOG(\text{\ENTROPY}_{1~2}) \rightarrow$ \WRITE 16 signed bits\;
 }
-\uElseIf{$-2304 \leq value < 0$}{
-  \Return $-\lfloor \EXP(-value \bmod{256}) \div 2 ^ {9 - \lfloor -value \div 2 ^ 8 \rfloor} \rfloor$\;
-}
-\uElseIf{$0 \leq value \leq 2304$}{
-  \Return $\lfloor \EXP(value \bmod{256}) \div 2 ^ {9 - \lfloor value \div 2 ^ 8 \rfloor} \rfloor$\;
-}
-\ElseIf{$2304 < value \leq 32767$}{
-  \Return $\EXP(value \bmod{256}) \times 2 ^ {\lfloor value \div 2 ^ 8 \rfloor - 9}$\;
-}
+\Return entropy variables sub block data\;
 \EALGORITHM
-\par
-\noindent
-where \texttt{wexp}(\textit{x}) is defined from the following table:
-\vskip .10in
-\par
-\noindent
-{\relsize{-3}\ttfamily
-\begin{tabular}{|r|r|r|r|r|r|r|r|r|r|r|r|r|r|r|r|r|}
-\hline
-& \texttt{0x?0} & \texttt{0x?1} & \texttt{0x?2} & \texttt{0x?3} & \texttt{0x?4} & \texttt{0x?5} & \texttt{0x?6} & \texttt{0x?7} & \texttt{0x?8} & \texttt{0x?9} & \texttt{0x?A} & \texttt{0x?B} & \texttt{0x?C} & \texttt{0x?D} & \texttt{0x?E} & \texttt{0x?F} \\
-\hline
-\texttt{0x0?} & 256 & 257 & 257 & 258 & 259 & 259 & 260 & 261 & 262 & 262 & 263 & 264 & 264 & 265 & 266 & 267 \\
-\texttt{0x1?} & 267 & 268 & 269 & 270 & 270 & 271 & 272 & 272 & 273 & 274 & 275 & 275 & 276 & 277 & 278 & 278 \\
-\texttt{0x2?} & 279 & 280 & 281 & 281 & 282 & 283 & 284 & 285 & 285 & 286 & 287 & 288 & 288 & 289 & 290 & 291 \\
-\texttt{0x3?} & 292 & 292 & 293 & 294 & 295 & 296 & 296 & 297 & 298 & 299 & 300 & 300 & 301 & 302 & 303 & 304 \\
-\texttt{0x4?} & 304 & 305 & 306 & 307 & 308 & 309 & 309 & 310 & 311 & 312 & 313 & 314 & 314 & 315 & 316 & 317 \\
-\texttt{0x5?} & 318 & 319 & 320 & 321 & 321 & 322 & 323 & 324 & 325 & 326 & 327 & 328 & 328 & 329 & 330 & 331 \\
-\texttt{0x6?} & 332 & 333 & 334 & 335 & 336 & 337 & 337 & 338 & 339 & 340 & 341 & 342 & 343 & 344 & 345 & 346 \\
-\texttt{0x7?} & 347 & 348 & 349 & 350 & 350 & 351 & 352 & 353 & 354 & 355 & 356 & 357 & 358 & 359 & 360 & 361 \\
-\texttt{0x8?} & 362 & 363 & 364 & 365 & 366 & 367 & 368 & 369 & 370 & 371 & 372 & 373 & 374 & 375 & 376 & 377 \\
-\texttt{0x9?} & 378 & 379 & 380 & 381 & 382 & 383 & 384 & 385 & 386 & 387 & 388 & 389 & 391 & 392 & 393 & 394 \\
-\texttt{0xA?} & 395 & 396 & 397 & 398 & 399 & 400 & 401 & 402 & 403 & 405 & 406 & 407 & 408 & 409 & 410 & 411 \\
-\texttt{0xB?} & 412 & 413 & 415 & 416 & 417 & 418 & 419 & 420 & 421 & 422 & 424 & 425 & 426 & 427 & 428 & 429 \\
-\texttt{0xC?} & 431 & 432 & 433 & 434 & 435 & 436 & 438 & 439 & 440 & 441 & 442 & 444 & 445 & 446 & 447 & 448 \\
-\texttt{0xD?} & 450 & 451 & 452 & 453 & 454 & 456 & 457 & 458 & 459 & 461 & 462 & 463 & 464 & 466 & 467 & 468 \\
-\texttt{0xE?} & 470 & 471 & 472 & 473 & 475 & 476 & 477 & 478 & 480 & 481 & 482 & 484 & 485 & 486 & 488 & 489 \\
-\texttt{0xF?} & 490 & 492 & 493 & 494 & 496 & 497 & 498 & 500 & 501 & 502 & 504 & 505 & 506 & 508 & 509 & 511 \\
-\hline
-\end{tabular}
-}
+
+\begin{figure}[h]
+  \includegraphics{figures/wavpack/entropy_vars.pdf}
+\end{figure}
 
 \clearpage
 
@@ -4075,30 +4064,30 @@ $i \leftarrow 0$\;
         $(u_{i - 1}~,~m_i~,~\text{\OFFSET}_i~,~\text{\ADD}_i~,~\text{\SIGN}_i) \leftarrow (u_{i - 2}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1})$\;
       }(\tcc*[f]{end block of zeroes}){
         $\text{\ZEROES}_i \leftarrow \text{\ZEROES}_{i - 1}$\;
-        $(m_i~,~\text{\OFFSET}_i~,~\text{\ADD}_i~,~\text{\SIGN}_i) \leftarrow \ENCODERESIDUAL(r_i~,~\text{\ENTROPY}_{(i \bmod \text{\CHANNELCOUNT})})$\;
+        $(m_i~,~\text{\OFFSET}_i~,~\text{\ADD}_i~,~\text{\SIGN}_i) \leftarrow \hyperref[wavpack:encode_residual]{\ENCODERESIDUAL(r_i~,~\text{\ENTROPY}_{(i \bmod \text{\CHANNELCOUNT})})}$\;
       }
     }(\tcc*[f]{start a new block of zeroes}){
       \eIf{$r_i = 0$}{
         $\text{\ZEROES}_i \leftarrow 1$\;
         $m_i \leftarrow \text{\OFFSET}_i \leftarrow \text{\ADD}_i \leftarrow \text{\SIGN}_i \leftarrow \text{\UNDEFINED}$\;
-        $u_{i - 1} \leftarrow \FLUSH(u_{i - 2}~,~\text{\ZEROES}_{i - 1}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1}~,~0)$\;
+        $u_{i - 1} \leftarrow \hyperref[wavpack:flush_residual]{\FLUSH(u_{i - 2}~,~\text{\ZEROES}_{i - 1}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1}~,~0)}$\;
         $\text{\ENTROPY}_{0~0} \leftarrow \text{\ENTROPY}_{0~1} \leftarrow \text{\ENTROPY}_{0~2} \leftarrow \text{\ENTROPY}_{1~0} \leftarrow \text{\ENTROPY}_{1~1} \leftarrow \text{\ENTROPY}_{1~2} \leftarrow 0$\;
       }(\tcc*[f]{false-alarm block of zeroes}){
         $\text{\ZEROES}_i \leftarrow 0$\;
-        $(m_i~,~\text{\OFFSET}_i~,~\text{\ADD}_i~,~\text{\SIGN}_i) \leftarrow \ENCODERESIDUAL(r_i~,~\text{\ENTROPY}_{(i \bmod \text{\CHANNELCOUNT})})$\;
-        $u_{i - 1} \leftarrow \FLUSH(u_{i - 2}~,~\text{\ZEROES}_{i - 1}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1}~,~m_i)$\;
+        $(m_i~,~\text{\OFFSET}_i~,~\text{\ADD}_i~,~\text{\SIGN}_i) \leftarrow \hyperref[wavpack:encode_residual]{\ENCODERESIDUAL(r_i~,~\text{\ENTROPY}_{(i \bmod \text{\CHANNELCOUNT})})}$\;
+        $u_{i - 1} \leftarrow \hyperref[wavpack:flush_residual]{\FLUSH(u_{i - 2}~,~\text{\ZEROES}_{i - 1}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1}~,~m_i)}$\;
       }
     }
   }(\tcc*[f]{encode regular residual}){
     $\text{\ZEROES}_i \leftarrow \text{\UNDEFINED}$\;
-    $(m_i~,~\text{\OFFSET}_i~,~\text{\ADD}_i~,~\text{\SIGN}_i) \leftarrow \ENCODERESIDUAL(r_i~,~\text{\ENTROPY}_{(i \bmod \text{\CHANNELCOUNT})})$\;
-    $u_{i - 1} \leftarrow \FLUSH(u_{i - 2}~,~\text{\ZEROES}_{i - 1}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1}~,~m_i)$\;
+    $(m_i~,~\text{\OFFSET}_i~,~\text{\ADD}_i~,~\text{\SIGN}_i) \leftarrow \hyperref[wavpack:encode_residual]{\ENCODERESIDUAL(r_i~,~\text{\ENTROPY}_{(i \bmod \text{\CHANNELCOUNT})})}$\;
+    $u_{i - 1} \leftarrow \hyperref[wavpack:flush_residual]{\FLUSH(u_{i - 2}~,~\text{\ZEROES}_{i - 1}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1}~,~m_i)}$\;
   }
   $i \leftarrow i + 1$\;
 }
 \BlankLine
 \tcc{flush final residual}
-$u_{i - 1} \leftarrow \FLUSH(u_{i - 2}~,~\text{\ZEROES}_{i - 1}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1}~,~0)$\;
+$u_{i - 1} \leftarrow \hyperref[wavpack:flush_residual]{\FLUSH(u_{i - 2}~,~\text{\ZEROES}_{i - 1}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1}~,~0)}$\;
 \BlankLine
 \Return encoded bitstream sub block\;
 \EALGORITHM
@@ -4125,8 +4114,9 @@ $u_{i - 1} \leftarrow \FLUSH(u_{i - 2}~,~\text{\ZEROES}_{i - 1}~,~m_{i - 1}~,~\t
 
 \clearpage
 
-{\relsize{-2}
-  \subsubsection{\texttt{encode\_residual} Function}
+\subsubsection{\texttt{encode\_residual} Function}
+\label{wavpack:encode_residual}
+{\relsize{-1}
   \ALGORITHM{signed residual value, entropy variables for channel}{$\text{m}_i$, $\text{offset}_i$, $\text{add}_i$, $\text{sign}_i$; updated entropy values}
   \SetKwData{RESIDUAL}{residual}
   \SetKwData{UNSIGNED}{unsigned}
@@ -4175,26 +4165,34 @@ $u_{i - 1} \leftarrow \FLUSH(u_{i - 2}~,~\text{\ZEROES}_{i - 1}~,~m_{i - 1}~,~\t
     $\text{\ENTROPY}_{c~1} \leftarrow \text{\ENTROPY}_{c~1} + \lfloor(\text{\ENTROPY}_{c~1} + 64) \div 64\rfloor \times 5$\;
     $\text{\ENTROPY}_{c~2} \leftarrow \text{\ENTROPY}_{c~2} + \lfloor(\text{\ENTROPY}_{c~2} + 32) \div 32\rfloor \times 5$\;
   }
-  \Return $\text{\MED}_i$, $\text{\OFFSET}_i$, $\text{\ADD}_i$, $\text{\SIGN}_i$; updated $\text{\ENTROPY}_c$ values\;
-  \EALGORITHM
-
-  \subsubsection{Writing Modified Elias Gamma Code}
-  \ALGORITHM{a non-negative integer value}{an encoded value}
-  \eIf{$v \leq 1$}{
-    $v \rightarrow$ \WUNARY with stop bit 0\;
-  }{
-    $t \leftarrow \lfloor\log_2(v)\rfloor + 1$\;
-    $t \rightarrow$ \WUNARY with stop bit 0\;
-    $v \bmod 2 ^ {t - 1} \rightarrow$ \WRITE $(t - 1)$ unsigned bits\;
-  }
-  \Return encoded value\;
+  \Return $\left\lbrace\begin{tabular}{l}
+  $\text{\MED}_i$ \\
+  $\text{\OFFSET}_i$ \\
+  $\text{\ADD}_i$ \\
+  $\text{\SIGN}_i$ \\
+  $\text{\ENTROPY}_c$ \\
+  \end{tabular}\right.$\;
   \EALGORITHM
 }
 
+\subsubsection{Writing Modified Elias Gamma Code}
+\label{wavpack:write_egc}
+\ALGORITHM{a non-negative integer value}{an encoded value}
+\eIf{$v \leq 1$}{
+  $v \rightarrow$ \WUNARY with stop bit 0\;
+}{
+  $t \leftarrow \lfloor\log_2(v)\rfloor + 1$\;
+  $t \rightarrow$ \WUNARY with stop bit 0\;
+  $v \bmod 2 ^ {t - 1} \rightarrow$ \WRITE $(t - 1)$ unsigned bits\;
+}
+\Return encoded value\;
+\EALGORITHM
+
 \clearpage
 
-{\relsize{-2}
-  \subsubsection{\texttt{flush} Function}
+\subsubsection{\texttt{flush} Function}
+\label{wavpack:flush_residual}
+{\relsize{-1}
   \ALGORITHM{$u_{i - 2}$, $\text{zeroes}_{i - 1}$, $m_{i - 1}$, $\text{offset}_{i - 1}$, $\text{add}_{i - 1}$, $\text{sign}_{i - 1}$, $m_i$}{$u_{i - 1}$}
   \SetKwData{UNDEFINED}{undefined}
   \SetKwData{ZEROES}{zeroes}
@@ -4206,7 +4204,7 @@ $u_{i - 1} \leftarrow \FLUSH(u_{i - 2}~,~\text{\ZEROES}_{i - 1}~,~m_{i - 1}~,~\t
   \SetKw{AND}{and}
   \SetKw{OR}{or}
   \If{$\text{\ZEROES}_{i - 1} \neq \text{\UNDEFINED}$}{
-    write $\text{\ZEROES}_{i - 1}$ in modified Elias gamma code\;
+    write $\text{\ZEROES}_{i - 1}$ \hyperref[wavpack:write_egc]{in modified Elias gamma code}\;
   }
   \eIf{$m_{i - 1} \neq \text{\UNDEFINED}$}{
     \tcc{calculate $\text{unary}_{i - 1}$ value for $m_{i - 1}$ based on $m_i$}
@@ -4245,7 +4243,7 @@ $u_{i - 1} \leftarrow \FLUSH(u_{i - 2}~,~\text{\ZEROES}_{i - 1}~,~m_{i - 1}~,~\t
         $u_{i - 1} \rightarrow$ \WUNARY with stop bit 0\;
       }{
         $16 \rightarrow$ \WUNARY with stop bit 0\;
-        $u_{i - 1} - 16 \rightarrow$ write in modified Elias gamma code\;
+        $u_{i - 1} - 16 \rightarrow$ \hyperref[wavpack:write_egc]{write in modified Elias gamma code}\;
       }
     }
     \If{$\text{\ADD}_{i - 1} > 0$}{
@@ -4268,6 +4266,9 @@ $u_{i - 1} \leftarrow \FLUSH(u_{i - 2}~,~\text{\ZEROES}_{i - 1}~,~m_{i - 1}~,~\t
   \Return $u_{i - 1}$\;
   \EALGORITHM
 }
+
+\clearpage
+
 
 \begin{landscape}
 
@@ -4616,6 +4617,50 @@ and $u_{25}$ can be calculated from $u_{24}$ and $m_{26}$.
   \caption{2nd residual encoding example}
 \end{figure}
 
+\begin{figure}[h]
+  \includegraphics{figures/wavpack/residuals.pdf}
+\end{figure}
+
+\clearpage
+
+\subsection{Writing RIFF WAVE Header and Footer}
+\label{wavpack:write_wave_header}
+\begin{figure}[h]
+  \includegraphics{figures/wavpack/pcm_sandwich.pdf}
+\end{figure}
+
+
+\subsection{Writing MD5 Sum}
+\label{wavpack:write_md5}
+MD5 sum is calculated as if the PCM data had been read from
+a wave file's \texttt{data} chunk.
+That is, the samples are converted to little-endian format
+and are signed if the stream's bits-per-sample is greater than 8.
+\begin{figure}[h]
+  \includegraphics{figures/wavpack/md5sum.pdf}
+\end{figure}
+
+\subsection{Writing Extended Integers}
+\label{wavpack:write_extended_integers}
+\begin{figure}[h]
+  \includegraphics{figures/wavpack/extended_integers.pdf}
+\end{figure}
+
+\clearpage
+
+\subsection{Writing Channel Info}
+\label{wavpack:write_channel_info}
+\begin{figure}[h]
+  \includegraphics{figures/wavpack/channel_info.pdf}
+\end{figure}
+
+
+\subsection{Writing Sample Rate}
+\label{wavpack:write_sample_rate}
+\begin{figure}[h]
+  \includegraphics{figures/wavpack/sample_rate.pdf}
+\end{figure}
+
 \clearpage
 
 \subsection{Writing Sub Block}
@@ -4726,9 +4771,3 @@ $0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{reserved}
 $CRC \rightarrow$ \WRITE 32 unsigned bits\;
 \EALGORITHM
 }
-
-%%FIXME - add entropy variables encoding
-%%FIXME - add wave header encoding
-%%FIXME - add extended integers encoding
-%%FIXME - add channel info encoding
-%%FIXME - add sample rate encoding

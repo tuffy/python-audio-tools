@@ -123,6 +123,7 @@ figures/wavpack/pcm_sandwich.pdf \
 figures/wavpack/residuals.pdf \
 figures/wavpack/residuals_parse.pdf \
 figures/wavpack/residuals_parse2.pdf \
+figures/wavpack/sample_rate.pdf \
 figures/wavpack/stream.pdf \
 figures/wavpack/subblock.pdf \
 figures/wavpack/subblock_header.pdf \
