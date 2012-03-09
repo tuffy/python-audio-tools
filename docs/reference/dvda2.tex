@@ -48,6 +48,8 @@ audio data for one or more tracks in a given titleset
 \par
 All are binary files containing one or more, 2048 byte sectors.
 
+\clearpage
+
 \section{AUDIO\_TS.IFO}
 Known as the ``Audio Manager'' or ``AMG'',
 this is primarily a container of pointers to
@@ -334,6 +336,8 @@ $\text{\SUBSTREAMCOUNT} \leftarrow$ \hyperref[mlp:readmajorsync]{read major sync
 This is a collection of information about the MLP stream
 which occurs occasionally at the start of MLP frames.
 Its values are consistent throughout the stream for any given track.
+\par
+\noindent
 {\relsize{-1}
 \ALGORITHM{MLP frame data}{substream count}
 \SetKw{AND}{and}

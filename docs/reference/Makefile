@@ -272,7 +272,7 @@ $(BASICS)
 CHAPTERS = basics.tex wav.tex flac.tex m4a.tex mp3.tex vorbis.tex \
 wavpack.tex ape.tex aiff.tex au.tex speex.tex oggflac.tex musepack.tex \
 freedb.tex musicbrainz.tex musicbrainz_mmd.tex replaygain.tex references.tex \
-license.tex introduction.tex shorten.tex alac.tex mlp.tex dvda.tex
+license.tex introduction.tex shorten.tex alac.tex dvda2.tex
 
 all: audioformats-letter.pdf audioformats-a4.pdf
 

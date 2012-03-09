@@ -26,6 +26,26 @@ try:
     AVAILABLE = True
 
 
+    class DownEdit(urwid.Edit):
+        def __init__(self, caption='', edit_text='', multiline=False,
+                     align='left', wrap='space', allow_tab=False,
+                     edit_pos=None, layout=None, key_map={}):
+            urwid.Edit.__init__(self, caption=caption,
+                                edit_text=edit_text,
+                                multiline=multiline,
+                                align=align,
+                                wrap=wrap,
+                                allow_tab=allow_tab,
+                                edit_pos=edit_pos,
+                                layout=layout)
+            self.__key_map__ = {"enter": "down",
+                                "tab": "down"}
+
+        def keypress(self, size, key):
+            return urwid.Edit.keypress(self, size,
+                                       self.__key_map__.get(key, key))
+
+
     class FocusFrame(urwid.Frame):
         """a special Frame widget which handles focus changes"""
 
@@ -70,7 +90,7 @@ try:
             self.metadata = metadata
 
             #setup contained editing widgets
-            self.track_name = urwid.Edit(edit_text=metadata.track_name)
+            self.track_name = DownEdit(edit_text=metadata.track_name)
             if (metadata.track_total != 0):
                 self.track_number = urwid.Text("%d of %d" %
                                                (metadata.track_number,
@@ -87,7 +107,7 @@ try:
                           "date",
                           "comment"]:
                 setattr(self, field,
-                        urwid.Edit(edit_text=getattr(metadata, field)))
+                        DownEdit(edit_text=getattr(metadata, field)))
 
             field_width = max([len(f) for (f, a) in Track.FIELDS]) + 2
 
@@ -162,7 +182,7 @@ try:
 
             #setup album name, which should be consistent between tracks
             album_name = set([t.metadata.album_name for t in tracks]).pop()
-            self.album_name = urwid.Edit(edit_text=album_name)
+            self.album_name = DownEdit(edit_text=album_name)
             update_name(self.album_name, album_name)
             urwid.connect_signal(self.album_name,
                                  'change',
@@ -199,8 +219,8 @@ try:
                           "date",
                           "comment"]:
                 setattr(self, field,
-                        urwid.Edit(edit_text=
-                                   audiotools.most_numerous(
+                        DownEdit(edit_text=
+                                 audiotools.most_numerous(
                             [getattr(t.metadata, field) for t in tracks],
                             empty_list=u"",
                             all_differ=u"various")))
