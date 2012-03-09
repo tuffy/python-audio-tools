@@ -58,9 +58,9 @@ struct wavpack_encoder_context {
     /*running MD5 sum of PCM data*/
     audiotools__MD5Context md5sum;
 
-    /*a linked list of offsets to all blocks in the file
+    /*list of offsets to all blocks in the file
       which we can seek to and repopulate once encoding is finished*/
-    struct block_offset* offsets;
+    array_o* offsets;
 
     /*RIFF WAVE header and footer data
       which may be populated from an external file*/
@@ -85,11 +85,6 @@ struct wavpack_encoder_context {
         BitstreamWriter* sub_block;
         BitstreamWriter* sub_blocks;
     } cache;
-};
-
-struct block_offset {
-    fpos_t offset;
-    struct block_offset* next;
 };
 
 /*initializes temporary space and encoding parameters
@@ -175,7 +170,7 @@ static void
 free_block_parameters(struct encoding_parameters* params);
 
 static void
-add_block_offset(FILE* file, struct block_offset** offsets);
+add_block_offset(FILE* file, array_o* offsets);
 
 static void
 write_block_header(BitstreamWriter* bs,

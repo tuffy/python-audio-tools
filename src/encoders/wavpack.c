@@ -35,8 +35,7 @@ encoders_encode_wavpack(PyObject *dummy,
     array_ia* block_frames;
     unsigned block;
     uint32_t block_index = 0;
-    struct block_offset* offset;
-    struct block_offset* next_offset;
+    unsigned i;
 
     unsigned block_size;
     int try_false_stereo = 0;
@@ -109,8 +108,7 @@ encoders_encode_wavpack(char *filename,
     array_ia* block_frames;
     unsigned block;
     uint32_t block_index = 0;
-    struct block_offset* offset;
-    struct block_offset* next_offset;
+    unsigned i;
 
     context.wave.header_data = NULL;
     context.wave.footer_data = NULL;
@@ -149,7 +147,7 @@ encoders_encode_wavpack(char *filename,
         /*split PCM frames into 1-2 channel blocks*/
         for (block = 0; block < context.blocks_per_set; block++) {
             /*add a fresh block offset based on current file position*/
-            add_block_offset(file, &(context.offsets));
+            add_block_offset(file, context.offsets);
 
             pcm_frames->split(pcm_frames,
                               context.parameters[block].channel_count,
@@ -172,7 +170,7 @@ encoders_encode_wavpack(char *filename,
     }
 
     /*add wave footer/MD5 sub-blocks to end of stream*/
-    add_block_offset(file, &(context.offsets));
+    add_block_offset(file, context.offsets);
     encode_footer_block(stream, &context, pcmreader);
 
     /*update generated wave header, if necessary*/
@@ -187,12 +185,11 @@ encoders_encode_wavpack(char *filename,
     }
 
     /*go back and set block header data as necessary*/
-    for (offset = context.offsets; offset != NULL; offset = next_offset) {
-        next_offset = offset->next;
-        fsetpos(file, &(offset->offset));
+    for (i = 0; i < context.offsets->len; i++) {
+        fpos_t* pos = (fpos_t*)(context.offsets->_[i]);
+        fsetpos(file, pos);
         fseek(file, 12, SEEK_CUR);
         stream->write(stream, 32, block_index);
-        free(offset);
     }
 
     /*close open file handles and deallocate temporary space*/
@@ -290,7 +287,7 @@ init_context(struct wavpack_encoder_context* context,
 
     block_channels->del(block_channels);
 
-    context->offsets = NULL;
+    context->offsets = array_o_new(NULL, free, NULL);
     context->wave.header_written = 0;
     audiotools__MD5Init(&(context->md5sum));
 }
@@ -310,6 +307,8 @@ free_context(struct wavpack_encoder_context* context)
         free_block_parameters(&(context->parameters[i]));
     }
     free(context->parameters);
+
+    context->offsets->del(context->offsets);
 }
 
 static void
@@ -506,12 +505,11 @@ free_block_parameters(struct encoding_parameters* params)
 }
 
 static void
-add_block_offset(FILE* file, struct block_offset** offsets)
+add_block_offset(FILE* file, array_o* offsets)
 {
-    struct block_offset* new_offset = malloc(sizeof(struct block_offset));
-    fgetpos(file, &(new_offset->offset));
-    new_offset->next = *offsets;
-    *offsets = new_offset;
+    fpos_t* pos = malloc(sizeof(fpos_t));
+    fgetpos(file, pos);
+    offsets->append(offsets, pos);
 }
 
 static void

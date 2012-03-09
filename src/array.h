@@ -1117,6 +1117,14 @@ typedef void* (*ARRAY_COPY_FUNC)(void* obj);
 typedef void (*ARRAY_FREE_FUNC)(void* obj);
 typedef void (*ARRAY_PRINT_FUNC)(void* obj, FILE* output);
 
+/*some placeholder functions for array_o objects*/
+void*
+array_o_dummy_copy(void* obj);
+void
+array_o_dummy_free(void* obj);
+void
+array_o_dummy_print(void* obj, FILE* output);
+
 /*copy, free and print functions may be NULL,
   indicating no copy, free or print operations are necessary for object*/
 struct array_o_s* array_o_new(void* (*copy)(void* obj),

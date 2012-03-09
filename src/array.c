@@ -121,7 +121,7 @@ ARRAY_RESET(array_lf_reset, array_lf)
     }
 ARRAY_APPEND(array_i_append, array_i, int)
 ARRAY_APPEND(array_f_append, array_f, double)
-ARRAY_APPEND(array_o_append, array_o, void*)
+
 
 #define ARRAY_VAPPEND(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE) \
     void                                                           \
@@ -140,7 +140,7 @@ ARRAY_APPEND(array_o_append, array_o, void*)
     }
 ARRAY_VAPPEND(array_i_vappend, array_i, int)
 ARRAY_VAPPEND(array_f_vappend, array_f, double)
-ARRAY_VAPPEND(array_o_vappend, array_o, void*)
+
 
 #define ARRAY_MAPPEND(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE) \
     void                                                                \
@@ -172,7 +172,7 @@ ARRAY_MAPPEND(array_f_mappend, array_f, double)
     }
 ARRAY_VSET(array_i_vset, array_i, int)
 ARRAY_VSET(array_f_vset, array_f, double)
-ARRAY_VSET(array_o_vset, array_o, void*)
+
 
 #define ARRAY_MSET(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE) \
     void                                                                \
@@ -1015,7 +1015,7 @@ ARRAY_A_APPEND(array_faa_append, array_faa, array_fa)
     FUNC_NAME(ARRAY_TYPE *array, const ARRAY_TYPE *to_add)          \
     {                                                               \
         unsigned i;                                                 \
-        unsigned len = to_add->len;                                     \
+        const unsigned len = to_add->len;                               \
         for (i = 0; i < len; i++) {                                     \
             to_add->_[i]->TRANSFER(to_add->_[i], array->append(array)); \
         }                                                               \
@@ -1267,7 +1267,8 @@ array_fa_new(void)
     return a;
 }
 
-struct array_iaa_s* array_iaa_new(void)
+struct array_iaa_s*
+array_iaa_new(void)
 {
     struct array_iaa_s* a = malloc(sizeof(struct array_iaa_s));
     unsigned i;
@@ -1295,7 +1296,8 @@ struct array_iaa_s* array_iaa_new(void)
     return a;
 }
 
-struct array_faa_s* array_faa_new(void)
+struct array_faa_s*
+array_faa_new(void)
 {
     struct array_faa_s* a = malloc(sizeof(struct array_faa_s));
     unsigned i;
@@ -1323,19 +1325,48 @@ struct array_faa_s* array_faa_new(void)
     return a;
 }
 
+void*
+array_o_dummy_copy(void* obj)
+{
+    return obj; /*does nothing*/
+}
 
-struct array_o_s* array_o_new(void* (*copy)(void* obj),
-                              void (*free)(void* obj),
-                              void (*print)(void* obj, FILE* output))
+void
+array_o_dummy_free(void* obj)
+{
+    return;     /*does nothing*/
+}
+
+void
+array_o_dummy_print(void* obj, FILE* output)
+{
+    fprintf(output, "<OBJECT>");
+}
+
+struct array_o_s*
+array_o_new(void* (*copy)(void* obj),
+            void (*free)(void* obj),
+            void (*print)(void* obj, FILE* output))
 {
     struct array_o_s* a = malloc(sizeof(struct array_o_s));
     a->len = 0;
     a->total_size = 1;
     a->_ = malloc(sizeof(void*) * a->total_size);
 
-    a->copy_obj = copy;
-    a->free_obj = free;
-    a->print_obj = print;
+    if (copy != NULL)
+        a->copy_obj = copy;
+    else
+        a->copy_obj = array_o_dummy_copy;
+
+    if (free != NULL)
+        a->free_obj = free;
+    else
+        a->free_obj = array_o_dummy_free;
+
+    if (print != NULL)
+        a->print_obj = print;
+    else
+        a->print_obj = array_o_dummy_print;
 
     a->del = array_o_del;
     a->resize = array_o_resize;
@@ -1359,190 +1390,181 @@ struct array_o_s* array_o_new(void* (*copy)(void* obj),
     return a;
 }
 
-void array_o_del(struct array_o_s *array)
+void
+array_o_del(struct array_o_s *array)
 {
-
-    if (array->free_obj != NULL) {
-        unsigned i;
-        for (i = 0; i < array->len; i++) {
-            array->free_obj(array->_[i]);
-        }
+    while (array->len) {
+        array->free_obj(array->_[--array->len]);
     }
     free(array->_);
     free(array);
 }
 
-void array_o_reset(struct array_o_s *array)
+void
+array_o_reset(struct array_o_s *array)
 {
-    if (array->free_obj != NULL) {
-        unsigned i;
-        for (i = 0; i < array->len; i++) {
-            array->free_obj(array->_[i]);
-        }
+    while (array->len) {
+        array->free_obj(array->_[--array->len]);
     }
-    array->len = 0;
 }
 
-void array_o_mappend(struct array_o_s *array, unsigned count, void* value)
+void
+array_o_append(struct array_o_s *array, void* value)
+{
+    if (array->len == array->total_size)
+        array->resize(array, array->total_size * 2);
+
+    array->_[array->len++] = array->copy_obj(value);
+}
+
+void array_o_vappend(struct array_o_s *array, unsigned count, ...)
+{
+    void* i;
+    va_list ap;
+
+    array->resize(array, array->len + count);
+    va_start(ap, count);
+    for (; count > 0; count--) {
+        i = va_arg(ap, void*);
+        array->_[array->len++] = array->copy_obj(i);
+    }
+    va_end(ap);
+}
+
+void
+array_o_mappend(struct array_o_s *array, unsigned count, void* value)
 {
     array->resize(array, array->len + count);
-    if (array->copy_obj != NULL) {
-        if (count > 0) {
-            array->_[array->len++] = value;
-            count--;
-        }
-        for (; count > 0; count--) {
-            array->_[array->len++] = array->copy_obj(value);
-        }
-    } else {
-        for (; count > 0; count--) {
-            array->_[array->len++] = value;
-        }
+    for (; count > 0; count--) {
+        array->_[array->len++] = array->copy_obj(value);
     }
 }
 
-void array_o_set(struct array_o_s *array, unsigned index, void* value)
+void
+array_o_set(struct array_o_s *array, unsigned index, void* value)
 {
     assert(index < array->len);
-    if (array->free_obj != NULL)
-        array->free_obj(array->_[index]);
-    array->_[index] = value;
+    array->free_obj(array->_[index]);
+    array->_[index] = array->copy_obj(value);
 }
 
-void array_o_mset(struct array_o_s *array, unsigned count, void* value)
+void array_o_vset(struct array_o_s *array, unsigned count, ...)
+{
+    void* i;
+    va_list ap;
+
+    array->reset(array);
+    array->resize(array, count);
+    va_start(ap, count);
+    for (; count > 0; count--) {
+        i = va_arg(ap, void*);
+        array->_[array->len++] = array->copy_obj(i);
+    }
+    va_end(ap);
+}
+
+void
+array_o_mset(struct array_o_s *array, unsigned count, void* value)
 {
     array->reset(array);
     array->resize(array, count);
-    if (array->copy_obj != NULL) {
-        if (count > 0) {
-            array->_[array->len++] = value;
-            count--;
-        }
-        for (; count > 0; count--) {
-            array->_[array->len++] = array->copy_obj(value);
-        }
-    } else {
-        for (; count > 0; count--) {
-            array->_[array->len++] = value;
-        }
+    for (; count > 0; count--) {
+        array->_[array->len++] = array->copy_obj(value);
     }
 }
 
-void array_o_extend(struct array_o_s *array, const struct array_o_s *to_add)
+void
+array_o_extend(struct array_o_s *array, const struct array_o_s *to_add)
 {
+    unsigned i;
+    const unsigned len = to_add->len;
+
     array->resize(array, array->len + to_add->len);
-    if (array->copy_obj != NULL) {
-        unsigned i;
-        for (i = 0; i < to_add->len; i++) {
-            array->_[array->len++] = array->copy_obj(to_add->_[0]);
-        }
-    } else {
-        memcpy(array->_ + array->len,
-               to_add->_,
-               sizeof(void*) * to_add->len);
-        array->len += to_add->len;
+
+    for (i = 0; i < len; i++) {
+        array->_[array->len++] = array->copy_obj(to_add->_[i]);
     }
 }
 
-void array_o_copy(const struct array_o_s *array, struct array_o_s *copy)
+void
+array_o_copy(const struct array_o_s *array, struct array_o_s *copy)
 {
     if (array != copy) {
+        unsigned i;
+
         copy->resize(copy, array->len);
-        if (array->copy_obj != NULL) {
-            unsigned i;
-            copy->reset(copy);
-            for (i = 0; i < array->len; i++) {
-                copy->_[copy->len++] = array->copy_obj(array->_[i]);
-            }
-        } else {
-            memcpy(copy->_, array->_,
-                   array->len * sizeof(void*));
-            copy->len = array->len;
+        copy->reset(copy);
+        for (i = 0; i < array->len; i++) {
+            copy->_[copy->len++] = array->copy_obj(array->_[i]);
         }
     }
 }
 
-void array_o_head(const struct array_o_s *array, unsigned count,
-                  struct array_o_s *head)
+void
+array_o_head(const struct array_o_s *array, unsigned count,
+             struct array_o_s *head)
 {
     unsigned to_copy = MIN(count, array->len);
 
     if (head != array) {
+        unsigned i;
         head->resize(head, to_copy);
-        if (array->copy_obj != NULL) {
-            unsigned i;
-            head->reset(head);
-            for (i = 0; i < to_copy; i++) {
-                head->_[head->len++] = array->copy_obj(array->_[i]);
-            }
-        } else {
-            memcpy(head->_, array->_,
-                   sizeof(void*) * to_copy);
-            head->len = to_copy;
+        head->reset(head);
+        for (i = 0; i < to_copy; i++) {
+            head->_[head->len++] = array->copy_obj(array->_[i]);
         }
     } else {
-        if (array->free_obj != NULL) {
-            while (head->len > to_copy) {
-                array->free_obj(head->_[--head->len]);
-            }
-        } else {
-            head->len = to_copy;
+        while (head->len > to_copy) {
+            array->free_obj(head->_[--head->len]);
         }
     }
 }
 
-void array_o_tail(const struct array_o_s *array, unsigned count,
-                  struct array_o_s *tail)
+void
+array_o_tail(const struct array_o_s *array, unsigned count,
+             struct array_o_s *tail)
 {
     unsigned to_copy = MIN(count, array->len);
 
     if (tail != array) {
+        unsigned i;
+
         tail->resize(tail, to_copy);
-        if (array->copy_obj != NULL) {
-            unsigned i;
-            tail->reset(tail);
-            for (i = array->len - to_copy; i < array->len; i++) {
-                tail->_[tail->len++] = array->copy_obj(array->_[i]);
-            }
-        } else {
-            memcpy(tail->_, array->_ + (array->len - to_copy),
-                   sizeof(void*) * to_copy);
-            tail->len = to_copy;
+        tail->reset(tail);
+        for (i = array->len - to_copy; i < array->len; i++) {
+            tail->_[tail->len++] = array->copy_obj(array->_[i]);
         }
     } else {
-        if (array->copy_obj != NULL) {
-            struct array_o_s* temp = array_o_new(array->copy_obj,
-                                                 array->free_obj,
-                                                 array->print_obj);
-            unsigned i;
-            temp->resize(temp, to_copy);
-            for (i = array->len - to_copy; i < array->len; i++) {
-                temp->_[temp->len++] = array->copy_obj(array->_[i]);
-            }
-            temp->swap(temp, tail);
-            temp->del(temp);
-        } else {
-            memmove(tail->_, array->_ + (array->len - to_copy),
-                    sizeof(void*) * to_copy);
-            tail->len = to_copy;
+        struct array_o_s* temp = array_o_new(array->copy_obj,
+                                             array->free_obj,
+                                             array->print_obj);
+        unsigned i;
+        temp->resize(temp, to_copy);
+        for (i = array->len - to_copy; i < array->len; i++) {
+            temp->_[temp->len++] = array->copy_obj(array->_[i]);
         }
+        temp->swap(temp, tail);
+        temp->del(temp);
     }
 }
 
-void array_o_de_head(const struct array_o_s *array, unsigned count,
-                     struct array_o_s *tail)
+void
+array_o_de_head(const struct array_o_s *array, unsigned count,
+                struct array_o_s *tail)
 {
     array->tail(array, array->len - MIN(count, array->len), tail);
 }
 
-void array_o_de_tail(const struct array_o_s *array, unsigned count,
-                     struct array_o_s *head)
+void
+array_o_de_tail(const struct array_o_s *array, unsigned count,
+                struct array_o_s *head)
 {
     array->head(array, array->len - MIN(count, array->len), head);
 }
 
-void array_o_split(const struct array_o_s *array, unsigned count,
-                   struct array_o_s *head, struct array_o_s *tail)
+void
+array_o_split(const struct array_o_s *array, unsigned count,
+              struct array_o_s *head, struct array_o_s *tail)
 {
     unsigned to_head = MIN(count, array->len);
     unsigned to_tail = array->len - to_head;
@@ -1562,29 +1584,19 @@ void array_o_split(const struct array_o_s *array, unsigned count,
     }
 }
 
-void array_o_print(const struct array_o_s *array, FILE* output)
+void
+array_o_print(const struct array_o_s *array, FILE* output)
 {
     unsigned i;
     putc('[', output);
-    if (array->print_obj != NULL) {
-        if (array->len == 1) {
-            array->print_obj(array->_[0], output);
-        } else if (array->len > 1) {
-            for (i = 0; i < array->len - 1; i++) {
-                array->print_obj(array->_[i], output);
-                fprintf(output, ", ");
-            }
+    if (array->len == 1) {
+        array->print_obj(array->_[0], output);
+    } else if (array->len > 1) {
+        for (i = 0; i < array->len - 1; i++) {
             array->print_obj(array->_[i], output);
+            fprintf(output, ", ");
         }
-    } else {
-        if (array->len == 1) {
-            fprintf(output, "<OBJECT>");
-        } else if (array->len > 1) {
-            for (i = 0; i < array->len - 1; i++) {
-                fprintf(output, "<OBJECT>, ");
-            }
-        }
-        fprintf(output, "<OBJECT>");
+        array->print_obj(array->_[i], output);
     }
     putc(']', output);
 }
