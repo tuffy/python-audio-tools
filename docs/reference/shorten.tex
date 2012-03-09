@@ -64,6 +64,8 @@ $\VERSION \leftarrow$ \READ 8 unsigned bits\;
   \SKIPBYTES & \leftarrow & read \texttt{long}()\; \\
 \end{tabular}\;
 \SKIP $(\SKIPBYTES)$ bytes\;
+\BlankLine
+\hyperref[shorten:process_commands]{process Shorten commands to PCM samples}\;
 \EALGORITHM
 }
 
@@ -97,7 +99,156 @@ file type & format & file type & format \\
 and \VAR{block length} is the number of PCM frames output
 from the next command, which is typically constant
 until the final set of commands in the stream.
+
+\clearpage
+
+\subsubsection{Header Decoding Example}
+
+\begin{figure}[h]
+  \includegraphics{figures/shorten/header_parse.pdf}
+\end{figure}
+In this example, \VAR{magic number} is \texttt{"ajkg"} and
+\VAR{version} is 2.
+Since \VAR{file type} is a \texttt{long}\footnote{which is defined as
+  \texttt{unsigned}(\texttt{unsigned}(2))}
+it breaks down as follows:
 \par
+\noindent
+\begin{wrapfigure}[3]{r}{140pt}
+  \includegraphics{figures/shorten/filetype.pdf}
+\end{wrapfigure}
+{\relsize{-1}
+  \begin{align*}
+    \textsf{MSB}_0 &\leftarrow 0
+    \text{ (number of \texttt{0} bits until next \texttt{1})} \\
+    \textsf{LSB}_0 &\leftarrow 3
+    \text{ (read 2 unsigned bits)} \\
+    \texttt{unsigned}(2) &\leftarrow 0 \times 2 ^ 2 + 3 = 3 \\
+    \textsf{MSB}_1 &\leftarrow 0
+    \text{ (number of \texttt{0} bits until next \texttt{1})} \\
+    \textsf{LSB}_1 &\leftarrow 5
+    \text{ (read 3 unsigned bits)} \\
+    \textsf{file type} &\leftarrow 0 \times 2 ^ 3 + 5 = 5 \\
+  \end{align*}
+}
+\par
+\noindent
+meaning our file consists of signed, 16-bit, little-endian data.
+The remainding fields are determined as follows:
+\begin{table}[h]
+  \begin{tabular}{r>{$}c<{$}rr>{$}r<{$}rr>{$}r<{$}}
+    & & $\textsf{MSB}_0$ & $\textsf{LSB}_0$ & $\texttt{unsigned}(2)$ &
+    $\textsf{MSB}_1$ & $\textsf{LSB}_1$ & \texttt{long} \text{ value} \\
+    \hline
+    \textsf{channels} & \leftarrow & {\color{red} 0} & {\color{orange} 2} &
+    {\color{red} 0} \times 2 ^ 2 + {\color{orange} 2} = {\color{fuchsia} 2} &
+    {\color{blue} 0} & {\color{green} 2} &
+    {\color{blue} 0} \times 2 ^ {\color{fuchsia} 2} + {\color{green} 2} =
+    \textbf{2} \\
+    \textsf{block length} & \leftarrow & {\color{red} 2} & {\color{orange} 1} &
+    {\color{red} 2} \times 2 ^ 2 + {\color{orange} 1} = {\color{fuchsia} 9} &
+    {\color{blue} 0} & {\color{green} 256} &
+    {\color{blue} 0} \times 2 ^ {\color{fuchsia} 9} + {\color{green} 256} =
+    \textbf{256} \\
+    \textsf{max LPC} & \leftarrow & {\color{red} 0} & {\color{orange} 0} &
+    {\color{red} 0} \times 2 ^ 2 + {\color{orange} 0} = {\color{fuchsia} 0} &
+    {\color{blue} 0} & {\color{green} 0} &
+    {\color{blue} 0} \times 2 ^ {\color{fuchsia} 0} + {\color{green} 0} =
+    \textbf{0} \\
+    \textsf{bytes to skip} & \leftarrow & {\color{red} 0} & {\color{orange} 0} &
+    {\color{red} 0} \times 2 ^ 2 + {\color{orange} 0} = {\color{fuchsia} 0} &
+    {\color{blue} 0} & {\color{green} 0} &
+    {\color{blue} 0} \times 2 ^ {\color{fuchsia} 0} + {\color{green} 0} =
+    \textbf{0} \\
+  \end{tabular}
+\end{table}
+
+
+\clearpage
+
+\subsection{Processing Shorten Commands}
+\label{shorten:process_commands}
+{\relsize{-1}
+  \begin{algorithm}[H]
+    \DontPrintSemicolon
+    \SetKw{OR}{or}
+    \SetKwData{CHANNELS}{channels}
+    \SetKwData{BLOCKLENGTH}{block length}
+    \SetKwData{COMMAND}{command}
+    \SetKwData{LEFTSHIFT}{left shift}
+    \SetKwData{SAMPLES}{samples}
+    \SetKwData{MEANCOUNT}{mean count}
+    \SetKwData{MEANS}{means}
+    \SetKwData{SHIFTED}{unshifted}
+    \tcc{setup initial variables}
+    $i \leftarrow 0$\;
+    $\LEFTSHIFT \leftarrow 0$\;
+    \BlankLine
+    \tcc{process commands}
+    \Repeat{$\COMMAND = 4$}{
+      $\COMMAND \leftarrow$ read \texttt{unsigned}(2)\;
+      \eIf(\tcc*[f]{audio data commands}){$(0 \leq \COMMAND \leq 3)$ \OR $(7 \leq \COMMAND \leq 8)$}{
+        $c \leftarrow i \bmod \CHANNELS$\tcc*{current channel}
+        $m \leftarrow \lfloor i \div \CHANNELS\rfloor$\;
+        \Switch{\COMMAND}{
+          \uCase(\tcc*[f]{DIFF0}){0}{
+            $\text{\SAMPLES}_c \leftarrow$ \hyperref[shorten:read_diff0]{read \texttt{DIFF0} with \BLOCKLENGTH,
+            and $\text{\MEANS}_{c~[m - \text{\MEANCOUNT} \IDOTS m - 1]}$}\;
+          }
+          \uCase(\tcc*[f]{DIFF1}){1}{
+            $\text{\SAMPLES}_c \leftarrow$ \hyperref[shorten:read_diff1]{read \texttt{DIFF1} with \BLOCKLENGTH and
+            previous $\text{\SAMPLES}_c$}\;
+          }
+          \uCase(\tcc*[f]{DIFF2}){2}{
+            $\text{\SAMPLES}_c \leftarrow$ \hyperref[shorten:read_diff2]{read \texttt{DIFF2} with \BLOCKLENGTH and
+            previous $\text{\SAMPLES}_c$}\;
+          }
+          \uCase(\tcc*[f]{DIFF3}){3}{
+            $\text{\SAMPLES}_c \leftarrow$ \hyperref[shorten:read_diff3]{read \texttt{DIFF3} with \BLOCKLENGTH and
+            previous $\text{\SAMPLES}_c$}\;
+          }
+          \uCase(\tcc*[f]{QLPC}){7}{
+            $\text{\SAMPLES}_c \leftarrow$ \hyperref[shorten:read_qlpc]{read \texttt{QLPC} with \BLOCKLENGTH,
+            $\text{\MEANS}_{c~[m - \text{\MEANCOUNT} \IDOTS m - 1]}$\newline and previous $\text{\SAMPLES}_c$}\;
+          }
+          \Case(\tcc*[f]{ZERO}){8}{
+            \For{$j \leftarrow 0$ \emph{\KwTo}\BLOCKLENGTH}{
+              $\text{\SAMPLES}_{c~j} \leftarrow 0$\;
+            }
+          }
+        }
+        $\text{\MEANS}_{c~m} \leftarrow \hyperref[shorten:shnmean]{\texttt{shnmean}(\text{\SAMPLES}_c~,~\BLOCKLENGTH)}$\;
+        \hyperref[shorten:wrap_samples]{wrap $\text{\SAMPLES}_c$ for next set of channels}\;
+        $\text{\SHIFTED}_c \leftarrow$ \hyperref[shorten:apply_leftshift]{apply \LEFTSHIFT to $\text{\SAMPLES}_c$}\;
+        $i \leftarrow i + 1$\;
+        \If{$i \bmod \CHANNELS = 0$}{
+          \Return \SHIFTED as a complete set of PCM frames\;
+        }
+      }(\tcc*[f]{non audio commands}){
+        \Switch{\COMMAND}{
+          \uCase(\tcc*[f]{QUIT}){4}{
+            \tcc{do nothing}
+          }
+          \uCase(\tcc*[f]{BLOCKSIZE}){5}{
+            $\BLOCKLENGTH \leftarrow$ read \texttt{long}()\;
+          }
+          \uCase(\tcc*[f]{BITSHIFT}){6}{
+            $\LEFTSHIFT \leftarrow$ read \texttt{unsigned}(2)\;
+          }
+          \uCase(\tcc*[f]{VERBATIM}){9}{
+            \hyperref[shorten:read_verbatim]{handle verbatim block of non-audio data}\;
+          }
+          \Other{unknown command}
+        }
+      }
+    }(\tcc*[f]{QUIT command})
+  \end{algorithm}
+}
+
+\clearpage
+
+\subsubsection{The \texttt{shnmean} Function}
+\label{shorten:shnmean}
 The \texttt{shnmean} function is defined as:
 \begin{equation*}
   \texttt{shnmean}(values~,~count) =
@@ -108,163 +259,21 @@ The \texttt{shnmean} function is defined as:
 \end{equation*}
 where $values$ is a list and $count$ is the length of that list.
 
-\clearpage
-
-{\relsize{-1}
-\begin{algorithm}[H]
-  \DontPrintSemicolon
-  \SetKw{OR}{or}
-  \SetKwData{CHANNELS}{channels}
-  \SetKwData{BLOCKLENGTH}{block length}
-  \SetKwData{COMMAND}{command}
-  \SetKwData{LEFTSHIFT}{left shift}
-  \SetKwData{SAMPLES}{samples}
-  \SetKwData{MEANCOUNT}{mean count}
-  \SetKwData{MEANS}{means}
-  \SetKwData{SHIFTED}{unshifted}
-  \tcc{setup initial variables}
-  $i \leftarrow 0$\;
-  $\LEFTSHIFT \leftarrow 0$\;
-  \BlankLine
-  \tcc{process commands}
-  \Repeat{$\COMMAND = 4$}{
-    $\COMMAND \leftarrow$ read \texttt{unsigned}(2)\;
-    \eIf(\tcc*[f]{audio data commands}){$(0 \leq \COMMAND \leq 3)$ \OR $(7 \leq \COMMAND \leq 8)$}{
-      $c \leftarrow i \bmod \CHANNELS$\tcc*{current channel}
-      $m \leftarrow \lfloor i \div \CHANNELS\rfloor$\;
-      \Switch{\COMMAND}{
-        \uCase(\tcc*[f]{DIFF0}){0}{
-          $\text{\SAMPLES}_c \leftarrow$ read \texttt{DIFF0} with \BLOCKLENGTH,
-          and $\text{\MEANS}_{c~[m - \text{\MEANCOUNT} \IDOTS m - 1]}$\;
-        }
-        \uCase(\tcc*[f]{DIFF1}){1}{
-          $\text{\SAMPLES}_c \leftarrow$ read \texttt{DIFF1} with \BLOCKLENGTH and
-          previous $\text{\SAMPLES}_c$\;
-        }
-        \uCase(\tcc*[f]{DIFF2}){2}{
-          $\text{\SAMPLES}_c \leftarrow$ read \texttt{DIFF2} with \BLOCKLENGTH and
-          previous $\text{\SAMPLES}_c$\;
-        }
-        \uCase(\tcc*[f]{DIFF3}){3}{
-          $\text{\SAMPLES}_c \leftarrow$ read \texttt{DIFF3} with \BLOCKLENGTH and
-          previous $\text{\SAMPLES}_c$\;
-        }
-        \uCase(\tcc*[f]{QLPC}){7}{
-          $\text{\SAMPLES}_c \leftarrow$ read \texttt{QLPC} with \BLOCKLENGTH,
-          $\text{\MEANS}_{c~[m - \text{\MEANCOUNT} \IDOTS m - 1]}$\newline and previous $\text{\SAMPLES}_c$\;
-        }
-        \Case(\tcc*[f]{ZERO}){8}{
-          \For{$j \leftarrow 0$ \emph{\KwTo}\BLOCKLENGTH}{
-            $\text{\SAMPLES}_{c~j} \leftarrow 0$\;
-          }
-        }
-      }
-      $\text{\MEANS}_{c~m} \leftarrow \texttt{shnmean}(\text{\SAMPLES}_c~,~\BLOCKLENGTH)$\;
-      wrap $\text{\SAMPLES}_c$ for next set of channels\;
-      $\text{\SHIFTED}_c \leftarrow$ apply \LEFTSHIFT to $\text{\SAMPLES}_c$\;
-      $i \leftarrow i + 1$\;
-      \If{$i \bmod \CHANNELS = 0$}{
-        \Return \SHIFTED as a complete set of PCM frames\;
-      }
-    }(\tcc*[f]{non audio commands}){
-      \Switch{\COMMAND}{
-        \uCase(\tcc*[f]{QUIT}){4}{
-          \tcc{do nothing}
-        }
-        \uCase(\tcc*[f]{BLOCKSIZE}){5}{
-          $\BLOCKLENGTH \leftarrow$ read \texttt{long}()\;
-        }
-        \uCase(\tcc*[f]{BITSHIFT}){6}{
-          $\LEFTSHIFT \leftarrow$ read \texttt{unsigned}(2)\;
-        }
-        \uCase(\tcc*[f]{VERBATIM}){9}{
-          handle verbatim block of non-audio data\;
-        }
-        \Other{unknown command}
-      }
-    }
-  }(\tcc*[f]{QUIT command})
-\end{algorithm}
-}
-
-\clearpage
-
-\subsection{Header Decoding Example}
-
-\begin{figure}[h]
-\includegraphics{figures/shorten/header_parse.pdf}
-\end{figure}
-In this example, \VAR{magic number} is \texttt{"ajkg"} and
-\VAR{version} is 2.
-Since \VAR{file type} is a \texttt{long}\footnote{which is defined as
-\texttt{unsigned}(\texttt{unsigned}(2))}
-it breaks down as follows:
-\par
-\noindent
-\begin{wrapfigure}[3]{r}{140pt}
-\includegraphics{figures/shorten/filetype.pdf}
-\end{wrapfigure}
-{\relsize{-1}
-\begin{align*}
-\text{MSB}_0 &\leftarrow 0
-\text{ (number of \texttt{0} bits until next \texttt{1})} \\
-\text{LSB}_0 &\leftarrow 3
-\text{ (read 2 unsigned bits)} \\
-\texttt{unsigned}(2) &\leftarrow 0 \times 2 ^ 2 + 3 = 3 \\
-\text{MSB}_1 &\leftarrow 0
-\text{ (number of \texttt{0} bits until next \texttt{1})} \\
-\text{LSB}_1 &\leftarrow 5
-\text{ (read 3 unsigned bits)} \\
-\text{file type} &\leftarrow 0 \times 2 ^ 3 + 5 = 5 \\
-\end{align*}
-}
-\par
-\noindent
-meaning our file consists of signed, 16-bit, little-endian data.
-The remainding fields are determined as follows:
-\begin{table}[h]
-  \begin{tabular}{r>{$}c<{$}rr>{$}r<{$}rr>{$}r<{$}}
-    & & $\text{MSB}_0$ & $\text{LSB}_0$ & $\texttt{unsigned}(2)$ &
-    $\text{MSB}_1$ & $\text{LSB}_1$ & \texttt{long} \text{ value} \\
-    \hline
-    channels & \leftarrow & {\color{red} 0} & {\color{orange} 2} &
-    {\color{red} 0} \times 2 ^ 2 + {\color{orange} 2} = {\color{fuchsia} 2} &
-    {\color{blue} 0} & {\color{green} 2} &
-    {\color{blue} 0} \times 2 ^ {\color{fuchsia} 2} + {\color{green} 2} =
-    \textbf{2} \\
-    block length & \leftarrow & {\color{red} 2} & {\color{orange} 1} &
-    {\color{red} 2} \times 2 ^ 2 + {\color{orange} 1} = {\color{fuchsia} 9} &
-    {\color{blue} 0} & {\color{green} 256} &
-    {\color{blue} 0} \times 2 ^ {\color{fuchsia} 9} + {\color{green} 256} =
-    \textbf{256} \\
-    max LPC & \leftarrow & {\color{red} 0} & {\color{orange} 0} &
-    {\color{red} 0} \times 2 ^ 2 + {\color{orange} 0} = {\color{fuchsia} 0} &
-    {\color{blue} 0} & {\color{green} 0} &
-    {\color{blue} 0} \times 2 ^ {\color{fuchsia} 0} + {\color{green} 0} =
-    \textbf{0} \\
-    bytes to skip & \leftarrow & {\color{red} 0} & {\color{orange} 0} &
-    {\color{red} 0} \times 2 ^ 2 + {\color{orange} 0} = {\color{fuchsia} 0} &
-    {\color{blue} 0} & {\color{green} 0} &
-    {\color{blue} 0} \times 2 ^ {\color{fuchsia} 0} + {\color{green} 0} =
-    \textbf{0} \\
-\end{tabular}
-\end{table}
-
-\clearpage
 
 \subsection{Handling Verbatim Data}
-
+\label{shorten:read_verbatim}
 These are non-audio blocks designed to hold Wave/AIFF headers or footers.
 They are expected to be in the Shorten file in the same order
 they would be output to disk.
 \par
 \noindent
 \ALGORITHM{Shorten stream}{1 or more bytes of non-audio file data}
+\SetKwData{BYTES}{bytes}
 $size \leftarrow$ read \texttt{unsigned}(5)\;
 \For{$i \leftarrow 0$ \emph{\KwTo}size}{
-  $\text{bytes}_i \leftarrow$ read \texttt{unsigned}(8)\;
+  $\text{\BYTES}_i \leftarrow$ read \texttt{unsigned}(8)\;
 }
-\Return bytes\;
+\Return \BYTES\;
 \EALGORITHM
 \begin{figure}[h]
 \includegraphics{figures/shorten/verbatim.pdf}
@@ -273,6 +282,7 @@ $size \leftarrow$ read \texttt{unsigned}(5)\;
 \clearpage
 
 \subsection{Reading \texttt{DIFF0}}
+\label{shorten:read_diff0}
 {\relsize{-1}
 \ALGORITHM{block length, previous \VAR{mean count} means for channel $c$}{decoded samples}
 \SetKwData{BLOCKLENGTH}{block length}
@@ -293,6 +303,7 @@ $\ENERGY \leftarrow$ read \texttt{unsigned}(3)\;
 }
 
 \subsection{Reading \texttt{DIFF1}}
+\label{shorten:read_diff1}
 {\relsize{-1}
 \ALGORITHM{block length, previously decoded samples}{decoded samples}
 \SetKwData{BLOCKLENGTH}{block length}
@@ -315,6 +326,7 @@ or 0 if there are none
 }
 
 \subsection{Reading \texttt{DIFF2}}
+\label{shorten:read_diff2}
 {\relsize{-1}
   \ALGORITHM{block length, previously decoded samples}{decoded samples}
   \SetKwData{BLOCKLENGTH}{block length}
@@ -337,6 +349,7 @@ or 0 if there are none
 }
 
 \subsection{Reading \texttt{DIFF3}}
+\label{shorten:read_diff3}
 {\relsize{-1}
   \ALGORITHM{block length, previously decoded samples}{decoded samples}
   \SetKwData{BLOCKLENGTH}{block length}
@@ -374,8 +387,8 @@ and the bytes:
   {\relsize{-1}
     \renewcommand{\arraystretch}{1.25}
     \begin{tabular}{rrr>{$}r<{$}>{$}r<{$}>{$}r<{$}}
-    $i$ & $\text{MSB}_i$ & $\text{LSB}_i$ &
-    \text{unsigned}_i & \text{residual}_i & \text{sample}_i \\
+    $i$ & $\textsf{MSB}_i$ & $\textsf{LSB}_i$ &
+    \textsf{unsigned}_i & \textsf{residual}_i & \textsf{sample}_i \\
     \hline
     -3 & & & & & 0 \\
     -2 & & & & & 0 \\
@@ -468,8 +481,8 @@ and the bytes:
   {\relsize{-1}
     \renewcommand{\arraystretch}{1.25}
     \begin{tabular}{rrr>{$}r<{$}>{$}r<{$}>{$}r<{$}}
-      $i$ & $\text{MSB}_i$ & $\text{LSB}_i$ &
-      \text{unsigned}_i & \text{residual}_i & \text{sample}_i \\
+      $i$ & $\textsf{MSB}_i$ & $\textsf{LSB}_i$ &
+      \textsf{unsigned}_i & \textsf{residual}_i & \textsf{sample}_i \\
       \hline
       -3 & & & & & 8 \\
       -2 & & & & & -8 \\
@@ -539,6 +552,7 @@ this \texttt{DIFF} command.
 \clearpage
 
 \subsection{Reading \texttt{QLPC}}
+\label{shorten:read_qlpc}
 {\relsize{-1}
 \ALGORITHM{block length, previous \VAR{mean count} means for channel $c$, previously decoded samples}{decoded samples}
 \SetKwData{BLOCKLENGTH}{block length}
@@ -601,17 +615,17 @@ Instead, files usually contain only \texttt{DIFF1}, \texttt{DIFF2},
 In this example:
 \begin{table}[h]
   \begin{tabular}{r>{$}c<{$}>{$}l<{$}}
-    offset & \leftarrow & 0 \\
-    $\text{LPC count}$ & \leftarrow & 1 \\
-    $\text{LPC coefficient}_0$ & \leftarrow & 29 \\
+    \textsf{offset} & \leftarrow & 0 \\
+    $\textsf{LPC count}$ & \leftarrow & 1 \\
+    $\textsf{LPC coefficient}_0$ & \leftarrow & 29 \\
   \end{tabular}
 \end{table}
 \begin{table}[h]
 {\relsize{-1}
   \renewcommand{\arraystretch}{1.25}
   \begin{tabular}{rr>{$}r<{$}>{$}r<{$}||>{$}r<{$}}
-    $i$ & $\text{residual}_i$ & \text{sum}_i & \text{unoffset}_i &
-    \text{sample}_{c~i} \\
+    $i$ & $\textsf{residual}_i$ & \textsf{sum}_i & \textsf{unoffset}_i &
+    \textsf{sample}_{c~i} \\
     \hline
     0 & -1 &
     2 ^ 5 + 29 \times (0 - 0) = 32 &
@@ -700,7 +714,23 @@ In this example:
 
 \clearpage
 
+\subsection{Wrapping Samples}
+\label{shorten:wrap_samples}
+
+For any given channel, in order to process \texttt{DIFF} or
+\texttt{QLPC} $\text{command}_i$,
+one requires a certain number of negative-indexed samples.
+As an example, to process a \texttt{DIFF3},
+$\textsf{sample}_{(-3)}$, $\textsf{sample}_{(-2)}$ and $\textsf{sample}_{(-1)}$
+are required.
+These samples are ``wrapped around'' from the end of $\text{command}_{(i - 1)}$
+on the same channel.
+This is what the \VAR{samples to wrap} field in the Shorten header is for.
+It indicates how many samples must be wrapped from one command
+to the next.
+
 \subsection{Applying Left Shift to Samples}
+\label{shorten:apply_leftshift}
 \ALGORITHM{a list of samples for a given channel $c$, a left shift value}{a list of unshifted samples}
 \SetKwData{LEFTSHIFT}{left shift}
 \SetKwData{SAMPLES}{samples}
@@ -768,11 +798,11 @@ $\LSB \rightarrow$ \WRITE $c$ unsigned bits\;
   \SetKwData{WASTEDBITS}{wasted BPS}
   \SetKwData{SHIFTED}{shifted}
   \SetKwData{DIFF}{diff}
-  \SetKwData{RESIDUALS}{residuals}
+  \SetKwData{RESIDUALS}{residual}
   \SetKwData{ENERGY}{energy}
   \SetKwData{SAMPLES}{samples}
   \SetKwData{CHANNEL}{channel}
-  write Shorten header with \BITSPERSAMPLE, \CHANNELS and \BLOCKSIZE\;
+  \hyperref[shorten:write_header]{write Shorten header with \BITSPERSAMPLE, \CHANNELS and \BLOCKSIZE}\;
   write \texttt{unsigned}(2~,~9)\tcc*[r]{VERBATIM command}
   write \texttt{unsigned}(5~,~header byte count)\;
   \ForEach{byte \IN header}{
@@ -790,9 +820,9 @@ $\LSB \rightarrow$ \WRITE $c$ unsigned bits\;
     \ForEach{\CHANNEL \IN \SAMPLES}{
       \eIf{$\text{all samples in \CHANNEL} = 0$}{
         write \texttt{unsigned}(2~,~8)\tcc*[r]{ZERO command}
-        wrap \CHANNEL for next set of channel data\;
+        \hyperref[shorten:wrap_samples]{wrap \CHANNEL for next set of channel data}\;
       }{
-        $\text{\WASTEDBITS} \leftarrow$ calculate wasted BPS for \CHANNEL\;
+        $\text{\WASTEDBITS} \leftarrow$ \hyperref[shorten:calculate_wasted_bps]{calculate wasted BPS for \CHANNEL}\;
         \If{$\text{\LEFTSHIFT} \neq \text{\WASTEDBITS}$}{
           $\text{\LEFTSHIFT} \leftarrow \text{\WASTEDBITS}$\;
           write \texttt{unsigned}(2~,~6)\tcc*[r]{BITSHIFT command}
@@ -801,13 +831,17 @@ $\LSB \rightarrow$ \WRITE $c$ unsigned bits\;
         \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
           $\text{\SHIFTED}_i \leftarrow \text{\CHANNEL}_i \div 2 ^ {\text{\LEFTSHIFT}}$\;
         }
-        $(\DIFF~,~\ENERGY~,~\RESIDUALS) \leftarrow$ compute best \texttt{DIFF}, energy and residuals for \SHIFTED\;
+        $\left.\begin{tabular}{r}
+          \DIFF \\
+          \ENERGY \\
+          \RESIDUALS \\
+        \end{tabular}\right\rbrace \leftarrow$ \hyperref[shorten:compute_best_diff]{compute best \texttt{DIFF}, energy and residual values for \SHIFTED}\;
         write \texttt{unsigned}(2~,~\DIFF)\tcc*[r]{DIFF command}
         write \texttt{unsigned}(3~,~\ENERGY)\;
         \ForEach{r \IN \RESIDUALS}{
           write \texttt{signed}(\ENERGY~,~r)\;
         }
-        wrap \SHIFTED for next set of channel data\;
+        \hyperref[shorten:wrap_samples]{wrap \SHIFTED for next set of channel data}\;
       }
     }
   }
@@ -835,6 +869,7 @@ $\LSB \rightarrow$ \WRITE $c$ unsigned bits\;
 \clearpage
 
 \subsection{Writing Shorten Header}
+\label{shorten:write_header}
 {\relsize{-1}
   \ALGORITHM{the input stream's bits-per-sample, sample signedness and endianness;\newline channel count and initial block size}{a Shorten header}
   \SetKwData{BITSPERSAMPLE}{bits per sample}
@@ -879,6 +914,7 @@ $\LSB \rightarrow$ \WRITE $c$ unsigned bits\;
 }
 
 \subsection{Calculating Wasted Bits per Sample}
+\label{shorten:calculate_wasted_bps}
 {\relsize{-1}
   \ALGORITHM{a list of signed PCM samples}{an unsigned integer}
   \SetKwData{WASTEDBPS}{wasted bps}
@@ -909,6 +945,7 @@ $\LSB \rightarrow$ \WRITE $c$ unsigned bits\;
 \clearpage
 
 \subsection{Computing Best \texttt{DIFF} Command, Energy and Residuals}
+\label{shorten:compute_best_diff}
 \ALGORITHM{a list of samples for a given channel and the channel's current block size}{a \texttt{DIFF} command, unsigned energy value and list of residuals}
 \SetKwData{BLOCKSIZE}{block size}
 \SetKwData{SAMPLE}{sample}
@@ -963,7 +1000,7 @@ and as returned residuals.
 \subsubsection{Computing Best \texttt{DIFF} Command Example}
 {\relsize{-1}
   \begin{tabular}{r|r|rrr}
-    $i$ & $\text{sample}_i$ & $\text{delta}_{1~i}$ & $\text{delta}_{2~i}$ & $\text{delta}_{3~i}$ \\
+    $i$ & $\textsf{sample}_i$ & $\textsf{delta}_{1~i}$ & $\textsf{delta}_{2~i}$ & $\textsf{delta}_{3~i}$ \\
     \hline
     \hline
     -3 & 0 & & & \\
@@ -987,16 +1024,16 @@ and as returned residuals.
     14 & -24 & -16 & 0 & 0 \\
     \hline
     \hline
-    \multicolumn{2}{r}{$\text{sum}_d$} & 152 & 48 & 42 \\
+    \multicolumn{2}{r}{$\textsf{sum}_d$} & 152 & 48 & 42 \\
   \end{tabular}
 \vskip 1em
 \par
 \noindent
-Since the $\text{sum}_3$ value of 42 is the smallest,
+Since the $\textsf{sum}_3$ value of 42 is the smallest,
 we'll use a \texttt{DIFF3} command.
 The loop for calculation the energy value is:
 \begin{align*}
-\text{(block size) } 15 \times 2 ^ 0 &< 42 \text{ ($\text{sum}_3$)} \\
+\text{(block size) } 15 \times 2 ^ 0 &< 42 \text{ ($\textsf{sum}_3$)} \\
 15 \times 2 ^ 1 &< 42 \\
 15 \times 2 ^ 2 &> 42 \\
 \end{align*}

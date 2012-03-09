@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col end="0" id="block_s" start="0" width=".20">params present</col>
+    <col id="params" style="dashed" width=".48">Restart Header / Decoding Parameters</col>
+    <col width=".24">Residual Data</col>
+    <col end="0" id="block_e" start="0" width=".08">last</col>
+  </row>
+</diagram>

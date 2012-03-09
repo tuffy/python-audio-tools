@@ -3452,6 +3452,40 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] encoders/wavpack.h
 ** DONE Remove old array.h
 ** DONE Replace array2.h with array.h in all source files
+* DONE Make second pass through updated documentation
+** DONE Update introduction
+*** DONE re-explain endianness
+*** DONE explain pseudocode with actual code examples
+** DONE Convert writes to a systax consistent with reads
+   var <- read 10 unsigned bits
+   var -> write 10 unsigned bits
+   - [X] alac.tex
+   - [X] flac.tex
+   - [X] shorten.tex
+   - [X] wavpack.tex
+** DONE Convert for loops to a consistent assignment syntax
+   for i <- 0 to x do
+      <code block>
+   - [X] alac.tex
+   - [X] dvda2.tex
+   - [X] flac.tex
+   - [X] shorten.tex
+   - [X] wavpack.tex
+** DONE Double-check codecs for consistency
+   - [X] alac.tex
+   - [X] dvda2.tex
+   - [X] flac.tex
+   - [X] shorten.tex
+   - [X] wavpack.tex
+** DONE Add hyperref linking
+   If one's browsing the PDF,
+   one should be able to click on operations directly
+   and go to a specific part of the doc.
+   - [X] alac.tex
+   - [X] dvda2.tex
+   - [X] flac.tex
+   - [X] shorten.tex
+   - [X] wavpack.tex
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -5268,37 +5302,3 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    needs to include more pseudocode, parsing diagrams and examples
 * TODO Tweak track labeling interactive mode for better usability
   make return key move to the next line
-* TODO Make second pass through updated documentation
-** DONE Update introduction
-*** DONE re-explain endianness
-*** DONE explain pseudocode with actual code examples
-** DONE Convert writes to a systax consistent with reads
-   var <- read 10 unsigned bits
-   var -> write 10 unsigned bits
-   - [X] alac.tex
-   - [X] flac.tex
-   - [X] shorten.tex
-   - [X] wavpack.tex
-** DONE Convert for loops to a consistent assignment syntax
-   for i <- 0 to x do
-      <code block>
-   - [X] alac.tex
-   - [X] dvda2.tex
-   - [X] flac.tex
-   - [X] shorten.tex
-   - [X] wavpack.tex
-** TODO Double-check codecs for consistency
-   - [X] alac.tex
-   - [ ] dvda2.tex
-   - [X] flac.tex
-   - [ ] shorten.tex
-   - [X] wavpack.tex
-** TODO Add hyperref linking
-   If one's browsing the PDF,
-   one should be able to click on operations directly
-   and go to a specific part of the doc.
-   - [X] alac.tex
-   - [ ] dvda2.tex
-   - [X] flac.tex
-   - [ ] shorten.tex
-   - [X] wavpack.tex

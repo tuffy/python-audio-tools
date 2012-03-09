@@ -17,25 +17,8 @@
   <row>
     <col end="15" start="0" width=".25">Substream Info₀</col>
     <col end="31" start="16" style="dashed" width=".25">Substream Info₁</col>
-    <col id="substream" width=".25">Substream Data₀</col>
+    <col width=".25">Substream Data₀</col>
     <col style="dashed" width=".25">Substream Data₁</col>
-  </row>
-  <spacer/>
-  <row>
-    <col id="blocks_s" width=".20">Block₀</col>
-    <col id="blocks_1" style="dashed" width=".20">Block₁</col>
-    <col style="dashed" width=".20">...</col>
-    <col style="dashed" width=".10">align</col>
-    <col end="7" start="0" style="dashed" width=".15">parity</col>
-    <col end="15" id="blocks_e" start="8" style="dashed" width=".15">CRC-8</col>
-  </row>
-  <spacer/>
-  <row>
-    <col end="0" id="block_s" start="0" width=".20">params present</col>
-    <col id="params" style="dashed"
-         width=".48">Restart Header / Decoding Parameters</col>
-    <col width=".24">Block Data</col>
-    <col end="0" id="block_e" start="0" width=".08">last</col>
   </row>
   <line style="dotted">
     <start corner="sw" id="frame"/>
@@ -44,21 +27,5 @@
   <line style="dotted">
     <start corner="se" id="frame"/>
     <end corner="ne" id="frame_e"/>
-  </line>
-  <line style="dotted">
-    <start corner="sw" id="substream"/>
-    <end corner="nw" id="blocks_s"/>
-  </line>
-  <line style="dotted">
-    <start corner="se" id="substream"/>
-    <end corner="ne" id="blocks_e"/>
-  </line>
-  <line style="dotted">
-    <start corner="sw" id="blocks_1"/>
-    <end corner="nw" id="block_s"/>
-  </line>
-  <line style="dotted">
-    <start corner="se" id="blocks_1"/>
-    <end corner="ne" id="block_e"/>
   </line>
 </diagram>

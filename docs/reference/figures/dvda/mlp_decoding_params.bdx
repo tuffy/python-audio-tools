@@ -1,8 +1,15 @@
 <?xml version="1.0" ?>
 <diagram>
   <row>
+    <col end="0" id="params_s" start="0" width=".20">header present</col>
+    <col style="dashed" width=".40" id="header">Restart Header</col>
+    <col id="decodingparams" width=".40">Decoding Parameters</col>
+  </row>
+  <spacer/>
+  <row>
     <col width=".15" style="blank">if flag₀ = 1</col>
-    <col width=".15" start="0" end="0">present</col>
+    <col width=".15" start="0" end="0"
+         id="decodingparams_s">present</col>
     <col width=".087" start="1" end="1" style="dashed">flag₀</col>
     <col width=".087" start="2" end="2" style="dashed">flag₁</col>
     <col width=".087" start="3" end="3" style="dashed">flag₂</col>
@@ -10,7 +17,8 @@
     <col width=".087" start="5" end="5" style="dashed">flag₄</col>
     <col width=".087" start="6" end="6" style="dashed">flag₅</col>
     <col width=".087" start="7" end="7" style="dashed">flag₆</col>
-    <col width=".087" start="8" end="8" style="dashed">flag₇</col>
+    <col width=".087" start="8" end="8" style="dashed"
+         id="decodingparams_e">flag₇</col>
   </row>
   <spacer height=".50"/>
   <row>
@@ -83,6 +91,14 @@
     <col width=".30" start="0" end="1" id="codebook">codebook</col>
     <col width=".60" start="2" end="6">Huffman LSBs</col>
   </row>
+  <line style="dotted">
+    <start id="decodingparams" corner="sw"/>
+    <end id="decodingparams_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="decodingparams" corner="se"/>
+    <end id="decodingparams_e" corner="ne"/>
+  </line>
   <line style="dotted">
     <start id="channelparams" corner="sw"/>
     <end id="channelparams_s" corner="nw"/>

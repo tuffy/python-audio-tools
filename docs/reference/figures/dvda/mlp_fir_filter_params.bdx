@@ -1,6 +1,14 @@
 <?xml version="1.0" ?>
 <diagram>
   <row>
+    <col width=".10" style="blank"/>
+    <col width=".15" style="blank">if flag₃ = 1</col>
+    <col width=".15" start="0" end="0">present</col>
+    <col width=".60" style="dashed"
+         id="filterparams">FIR Filter Parameters</col>
+  </row>
+  <spacer/>
+  <row>
     <col start="0" end="3" id="filter_params_s" width=".20">order</col>
   </row>
   <spacer height=".50"/>
@@ -22,4 +30,12 @@
     <col width=".20" style="blank"/>
     <col width=".20" start="0" end="0">has state (0)</col>
   </row>
+  <line style="dotted">
+    <start id="filterparams" corner="sw"/>
+    <end id="filter_params_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="filterparams" corner="se"/>
+    <end id="filter_params_e" corner="ne"/>
+  </line>
 </diagram>

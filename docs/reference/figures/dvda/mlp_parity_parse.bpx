@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<struct endianness="big">
+  <field size="8" value="0x95">substream byte₀</field>
+  <field size="8" value="0x00">substream byte₁</field>
+  <field size="8" value="0x20">substream byte₂</field>
+  <field size="8" value="0x00">substream byte₃</field>
+  <field size="8" value="0x1C">parity byte</field>
+  <field size="8" value="0xBC">CRC-8 byte</field>
+</struct>

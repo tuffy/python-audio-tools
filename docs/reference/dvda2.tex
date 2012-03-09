@@ -191,7 +191,7 @@ That is, a single MLP frame may span 2 or more AOB packets.
   \SKIP 4 bits\;
   $\TOTALSIZE \leftarrow (\text{\READ 12 unsigned bits}) \times 2$\;
   \SKIP 16 bits\;
-  decode next $(\TOTALSIZE - 4)$ bytes as MLP frame\;
+  \hyperref[mlp:framedecoding]{decode next $(\TOTALSIZE - 4)$ bytes as MLP frame}\;
 }
 \Return PCM frames\;
 \EALGORITHM
@@ -227,7 +227,7 @@ That is, a single MLP frame may span 2 or more AOB packets.
 & $\textsf{noise gen seed}_s$
 & channel rematrixing \\
 & $\textsf{channel assignment}_{s~c}$
-& ? \\
+& channel reassignment \\
 \hline
 \hyperref[mlp:readdecodingparams]{$\textbf{decoding parameters}_s$}
 & $\textsf{flag}_{s~i}$
@@ -263,7 +263,7 @@ That is, a single MLP frame may span 2 or more AOB packets.
 & $\textsf{Huffman LSBs}_{s~c}$
 & reading residuals \\
 \hline
-\hyperref[mlp:readfilterparams]{$\textbf{filter parameters}_{s~c}$}
+$\textbf{filter parameters}_{s~c}$
 & $\textsf{order}_{s~c}$
 & channel filtering \\
 & $\textsf{shift}_{s~c}$
@@ -294,34 +294,34 @@ That is, a single MLP frame may span 2 or more AOB packets.
 \SetKwData{CRC}{CRC-8}
 \SetKwData{RESTARTHEADER}{restart header}
 \SetKwData{DECODINGPARAMS}{decoding parameters}
-$\text{\SUBSTREAMCOUNT} \leftarrow$ read major sync\;
+$\text{\SUBSTREAMCOUNT} \leftarrow$ \hyperref[mlp:readmajorsync]{read major sync}\;
 \ASSERT $(\SUBSTREAMCOUNT = 1)$ \OR $(\SUBSTREAMCOUNT = 2)$\;
 \For{$s \leftarrow 0$ \emph{\KwTo}\SUBSTREAMCOUNT}{
-  $(\text{\CHECKDATA}_s~,~\text{\SUBSTREAMEND}_s) \leftarrow$ read substream info\;
+  $(\text{\CHECKDATA}_s~,~\text{\SUBSTREAMEND}_s) \leftarrow$ \hyperref[mlp:read_substream_info]{read substream info}\;
 }
 \eIf{$\text{\CHECKDATA}_0 = 1$}{
-  decode next $(\text{\SUBSTREAMEND}_0 - 2)$ bytes as $\text{\SUBSTREAM}_0$\;
+  $\text{\SUBSTREAM}_0 \leftarrow$ \hyperref[mlp:decode_substream]{decode next $(\text{\SUBSTREAMEND}_0 - 2)$ substream bytes}\;
   $\text{\PARITY}_0 \leftarrow$ \READ 8 unsigned bits\;
   $\text{\CRC}_0 \leftarrow$ \READ 8 unsigned bits\;
-  verify $\text{\PARITY}_0$, $\text{\CRC}_0$ of $\text{\SUBSTREAM}_0$\;
+  \hyperref[mlp:verify_parity]{verify $\text{\PARITY}_0$, $\text{\CRC}_0$ of $\text{\SUBSTREAM}_0$}\;
 }{
-  decode next $\text{\SUBSTREAMEND}_0$ bytes as $\text{\SUBSTREAM}_0$\;
+  $\text{\SUBSTREAM}_0 \leftarrow$ \hyperref[mlp:decode_substream]{decode next $\text{\SUBSTREAMEND}_0$ substream bytes}\;
 }
 \uIf{$\SUBSTREAMCOUNT = 1$}{
-  rematrix channels using $\text{\RESTARTHEADER}_0$ and $\text{\DECODINGPARAMS}_0$\;
-  apply output shifts using $\text{\DECODINGPARAMS}_0$\;
+  \hyperref[mlp:rematrixing]{rematrix channels using $\text{\RESTARTHEADER}_0$ and $\text{\DECODINGPARAMS}_0$}\;
+  \hyperref[mlp:output_shifts]{apply output shifts using $\text{\DECODINGPARAMS}_0$}\;
 }
 \ElseIf{$\SUBSTREAMCOUNT = 2$}{
   \eIf{$\text{\CHECKDATA}_1 = 1$}{
-    decode next $(\text{\SUBSTREAMEND}_1 - \text{\SUBSTREAMEND}_0 - 2)$ bytes as $\text{\SUBSTREAM}_1$\;
+    $\text{\SUBSTREAM}_1 \leftarrow$ \hyperref[mlp:decode_substream]{decode next $(\text{\SUBSTREAMEND}_1 - \text{\SUBSTREAMEND}_0 - 2)$ substream bytes}\;
     $\text{\PARITY}_1 \leftarrow$ \READ 8 unsigned bits\;
     $\text{\CRC}_1 \leftarrow$ \READ 8 unsigned bits\;
-    verify $\text{\PARITY}_1$, $\text{\CRC}_1$ of $\text{\SUBSTREAM}_1$\;
+    \hyperref[mlp:verify_parity]{verify $\text{\PARITY}_1$, $\text{\CRC}_1$ of $\text{\SUBSTREAM}_1$}\;
   }{
-    decode next $(\text{\SUBSTREAMEND}_1 - \text{\SUBSTREAMEND}_0)$ bytes as $\text{\SUBSTREAM}_1$\;
+    \hyperref[mlp:decode_substream]{decode next $(\text{\SUBSTREAMEND}_1 - \text{\SUBSTREAMEND}_0)$ bytes as $\text{\SUBSTREAM}_1$}\;
   }
-  rematrix channels using $\text{\RESTARTHEADER}_1$ and $\text{\DECODINGPARAMS}_1$\;
-  apply output shifts using $\text{\DECODINGPARAMS}_1$\;
+  \hyperref[mlp:rematrixing]{rematrix channels using $\text{\RESTARTHEADER}_1$ and $\text{\DECODINGPARAMS}_1$}\;
+  \hyperref[mlp:output_shifts]{apply output shifts using $\text{\DECODINGPARAMS}_1$}\;
 }
 \Return substream channels as PCM frames\;
 \EALGORITHM
@@ -428,6 +428,7 @@ $\STREAMTYPE \leftarrow$ \READ 8 unsigned bits\;
 \clearpage
 
 \subsubsection{Substream Info}
+\label{mlp:read_substream_info}
 {\relsize{-1}
 \ALGORITHM{MLP frame data}{checkdata present, substream end}
 \SetKwData{EXTRAWORD}{extra word present}
@@ -476,6 +477,7 @@ means both substreams will be followed by 8 bit parity and CRC-8 values.
 \clearpage
 
 \subsection{Decoding Substream}
+\label{mlp:decode_substream}
 {\relsize{-1}
 \ALGORITHM{1 or more blocks of MLP data}{1 or more channels of PCM data from multiple blocks}
 \SetKwData{MINCHANNEL}{min channel}
@@ -510,25 +512,29 @@ $\text{\LAST} \leftarrow$ \READ 1 unsigned bit\;
 \eIf(\tcc*[f]{decoding parameters present}){$((\READ~\textnormal{1 unsigned bit}) = 1)$}{
   $\text{\HEADERPRESENT} \leftarrow$ \READ 1 unsigned bit\;
   \eIf{$\text{\HEADERPRESENT} = 1$}{
-    $\text{\RESTARTHEADER}_s \leftarrow$ read restart header\;
+    $\text{\RESTARTHEADER}_s \leftarrow$ \hyperref[mlp:readrestartheader]{read restart header}\;
   }{
     $\text{\RESTARTHEADER}_s \leftarrow$ from previous block's restart header in substream\;
   }
-  $\text{\DECODINGPARAMS}_s \leftarrow$ read decoding parameters with $\text{\HEADERPRESENT}$\;
+  $\text{\DECODINGPARAMS}_s \leftarrow$ \hyperref[mlp:readdecodingparams]{read decoding parameters with $\text{\HEADERPRESENT}$}\;
 }{
   $\text{\RESTARTHEADER}_s \leftarrow$ from previous block's restart header in substream\;
   $\text{\DECODINGPARAMS}_s \leftarrow$ from previous block's decoding parameters in substream\;
 }
 \BlankLine
-$(\text{\BYPASSEDLSB}_{s}~,~\text{\RESIDUAL}_s) \leftarrow$ read residual data based on $\text{\DECODINGPARAMS}_s$\;
+$(\text{\BYPASSEDLSB}_{s}~,~\text{\RESIDUAL}_s) \leftarrow$ \hyperref[mlp:read_residuals]{read residual data based on $\text{\DECODINGPARAMS}_s$}\;
 \BlankLine
 \For{$c \leftarrow \text{\MINCHANNEL}_s$ \emph{\KwTo}$\text{\MAXCHANNEL}_s$}{
-  $\text{\FILTERED}_{s~c} \leftarrow$ filter $\text{\RESIDUAL}_s$ using $\text{\FILTERPARAMS}_{s~c}$\;
+  $\text{\FILTERED}_{s~c} \leftarrow$ \hyperref[mlp:channel_filtering]{filter $\text{\RESIDUAL}_s$ using $\text{\FILTERPARAMS}_{s~c}$}\;
 }
 \BlankLine
 \Return $\text{\FILTERED}_{s}$\;
 \EALGORITHM
 }
+
+\begin{figure}[h]
+  \includegraphics{figures/dvda/mlp_frame.pdf}
+\end{figure}
 
 \clearpage
 
@@ -615,20 +621,6 @@ $\RESTARTHEADER\left\lbrace\begin{tabular}{l}
 
 \clearpage
 
-\subsection{Decoding Parameters}
-
-%%FIXME - offer breakdown of what parameters are for
-
-Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor tellus. Donec pretium posuere tellus. Proin quam nisl, tincidunt et, mattis eget, convallis nec, purus. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Nulla posuere. Donec vitae dolor. Nullam tristique diam non turpis. Cras placerat accumsan nulla. Nullam rutrum. Nam vestibulum accumsan nisl.
-
-\clearpage
-
-\begin{figure}[h]
-  \includegraphics{figures/dvda/mlp_decoding_params.pdf}
-\end{figure}
-
-\clearpage
-
 \subsection{Reading Decoding Parameters}
 \label{mlp:readdecodingparams}
 {\relsize{-1}
@@ -677,7 +669,7 @@ Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor
 \uIf(\tcc*[f]{matrix parameters}){$(\text{\FLAG}_{s~6} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
   $\text{\MATRIXCOUNT}_{s} \leftarrow$ \READ 4 unsigned bits\;
   \For{$m \leftarrow 0$ \emph{\KwTo}$\text{\MATRIXCOUNT}_{s}$}{
-    $\text{\MATRIXPARAMS}_{s~c} \leftarrow$ read matrix parameters\;
+    $\text{\MATRIXPARAMS}_{s~c} \leftarrow$ \hyperref[mlp:readmatrixparams]{read matrix parameters}\;
   }
 }
 \uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
@@ -718,7 +710,6 @@ Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor
 
 \clearpage
 
-\label{mlp:readchannelparams}
 {\relsize{-1}
   \begin{algorithm}[H]
     \DontPrintSemicolon
@@ -756,7 +747,7 @@ Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor
     \SetKwFunction{LEN}{len}
     \For(\tcc*[f]{channel parameters}){$c \leftarrow \text{\MINCHANNEL}_s$ \emph{\KwTo}$(\text{\MAXCHANNEL}_s + 1)$}{
       \uIf{$((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-        $\text{\CHANNELPARAMS}_{s~c} \leftarrow $ read channel parameters\;
+        $\text{\CHANNELPARAMS}_{s~c} \leftarrow $ \hyperref[mlp:readchannelparams]{read channel parameters}\;
       }
       \uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
         $\text{\CHANNELPARAMS}_{s~c} \leftarrow \left\lbrace\begin{tabular}{ll}
@@ -791,6 +782,12 @@ Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor
     \end{tabular}\right.$\;
   \end{algorithm}
 }
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[height=3.5in,keepaspectratio]{figures/dvda/mlp_decoding_params.pdf}
+\end{figure}
+
 
 \clearpage
 
@@ -836,6 +833,7 @@ Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor
 \clearpage
 
 \subsubsection{Reading Channel Parameters}
+\label{mlp:readchannelparams}
 {\relsize{-1}
 \ALGORITHM{MLP substream data, restart header present, decoding parameter flags}{channel parameters}
 \SetKw{AND}{and}
@@ -855,7 +853,7 @@ Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor
 \SetKwData{HUFFMANOFFSET}{Huffman offset}
 \SetKwData{HUFFMANLSBS}{Huffman LSBs}
 \uIf(\tcc*[f]{FIR filter parameters}){$(\text{\FLAG}_{s~3} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-  $\text{\FIRPARAMS}_{s~c} \leftarrow $ read FIR filter parameters\;
+  $\text{\FIRPARAMS}_{s~c} \leftarrow $ \hyperref[mlp:readfirfilterparams]{read FIR filter parameters}\;
 }
 \uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
   $\text{\FIRPARAMS}_{s~c} \leftarrow \left\lbrace\begin{tabular}{l}
@@ -870,7 +868,7 @@ Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Donec hendrerit tempor
 }
 \BlankLine
 \uIf(\tcc*[f]{IIR filter paramters}){$(\text{\FLAG}_{s~2} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-  $\text{\IIRPARAMS}_{s~c} \leftarrow$ read IIR filter parameters\;
+  $\text{\IIRPARAMS}_{s~c} \leftarrow$ \hyperref[mlp:readiirfilterparams]{read IIR filter parameters}\;
 }
 \uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
   $\text{\IIRPARAMS}_{s~c} \leftarrow \left\lbrace\begin{tabular}{l}
@@ -906,6 +904,11 @@ $\text{\HUFFMANLSBS}_{s~m}$ \\
 \end{tabular}\right.$\;
 \EALGORITHM
 }
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[height=1.75in,keepaspectratio]{figures/dvda/mlp_channel_params.pdf}
+\end{figure}
 
 \clearpage
 
@@ -1005,7 +1008,8 @@ $\text{\HUFFMANLSBS}_{s~m}$ \\
 }
 
 \begin{figure}[h]
-  \includegraphics{figures/dvda/mlp_iir_filter_params.pdf}
+  \centering
+  \includegraphics[height=2.5in,keepaspectratio]{figures/dvda/mlp_iir_filter_params.pdf}
 \end{figure}
 
 \clearpage
@@ -1035,55 +1039,55 @@ our decoding parameters for a given substream are:
 {\relsize{-1}
   \begin{tabular}{rlrl}
     \hline
-    flags present & 0 \\
-    flags & \texttt{[1, 1, 1, 1, 1, 1, 1, 1]} \\
+    \textsf{flags present} & 0 \\
+    \textsf{flags} & \texttt{[1, 1, 1, 1, 1, 1, 1, 1]} \\
     \hline
-    block size present & 0 \\
-    block size & 8 PCM frames \\
+    \textsf{block size present} & 0 \\
+    \textsf{block size} & 8 PCM frames \\
     \hline
-    matrix parameters present & 1 \\
-    matrix count & 2 \\
-    $\text{matrix out channel}_0$ & 1 &
-    $\text{matrix out channel}_1$ & 0 \\
-    $\text{fractional bits}_0$ & 13 &
-    $\text{fractional bits}_1$ & 13 \\
-    $\text{LSB bypass}_0$ & 0 &
-    $\text{LSB bypass}_1$ & 0 \\
-    $\text{matrix coeff. present}_{0~0}$ & 0 &
-    $\text{matrix coeff. present}_{1~0}$ & 1 \\
-    $\text{matrix coeff.}_{0~0}$ & 0 &
-    $\text{matrix coeff.}_{1~0}$ & -2053 \\
-    $\text{matrix coeff. present}_{0~1}$ & 1 &
-    $\text{matrix coeff. present}_{1~1}$ & 0 \\
-    $\text{matrix coeff.}_{0~1}$ & -2053 &
-    $\text{matrix coeff.}_{1~1}$ & 0 \\
-    $\text{matrix coeff. present}_{0~2}$ & 1 &
-    $\text{matrix coeff. present}_{1~2}$ & 1 \\
-    $\text{matrix coeff.}_{0~2}$ & -32 &
-    $\text{matrix coeff.}_{1~2}$ & 32 \\
-    $\text{matrix coeff. present}_{0~3}$ & 1 &
-    $\text{matrix coeff. present}_{1~3}$ & 1 \\
-    $\text{matrix coeff.}_{0~3}$ & 32 &
-    $\text{matrix coeff.}_{1~3}$ & 32 \\
+    \textsf{matrix parameters present} & 1 \\
+    \textsf{matrix count} & 2 \\
+    $\textsf{matrix out channel}_0$ & 1 &
+    $\textsf{matrix out channel}_1$ & 0 \\
+    $\textsf{fractional bits}_0$ & 13 &
+    $\textsf{fractional bits}_1$ & 13 \\
+    $\textsf{LSB bypass}_0$ & 0 &
+    $\textsf{LSB bypass}_1$ & 0 \\
+    $\textsf{matrix coeff. present}_{0~0}$ & 0 &
+    $\textsf{matrix coeff. present}_{1~0}$ & 1 \\
+    $\textsf{matrix coeff.}_{0~0}$ & 0 &
+    $\textsf{matrix coeff.}_{1~0}$ & -2053 \\
+    $\textsf{matrix coeff. present}_{0~1}$ & 1 &
+    $\textsf{matrix coeff. present}_{1~1}$ & 0 \\
+    $\textsf{matrix coeff.}_{0~1}$ & -2053 &
+    $\textsf{matrix coeff.}_{1~1}$ & 0 \\
+    $\textsf{matrix coeff. present}_{0~2}$ & 1 &
+    $\textsf{matrix coeff. present}_{1~2}$ & 1 \\
+    $\textsf{matrix coeff.}_{0~2}$ & -32 &
+    $\textsf{matrix coeff.}_{1~2}$ & 32 \\
+    $\textsf{matrix coeff. present}_{0~3}$ & 1 &
+    $\textsf{matrix coeff. present}_{1~3}$ & 1 \\
+    $\textsf{matrix coeff.}_{0~3}$ & 32 &
+    $\textsf{matrix coeff.}_{1~3}$ & 32 \\
     \hline
-    output shift present & 1 \\
-    $\text{output shift}_0$ & 1 &
-    $\text{output shift}_1$ & 1 \\
+    \textsf{output shift present} & 1 \\
+    $\textsf{output shift}_0$ & 1 &
+    $\textsf{output shift}_1$ & 1 \\
     \hline
-    quantum step size present & 0 \\
+    \textsf{quantum step size present} & 0 \\
     \hline
-    $\text{channel parameters present}_0$ & 1 &
-    $\text{channel parameters present}_1$ & 1 \\
-    $\text{FIR parameters present}_0$ & 0 &
-    $\text{FIR parameters present}_1$ & 0 \\
-    $\text{IIR parameters present}_0$ & 0 &
-    $\text{IIR parameters present}_1$ & 0 \\
-    $\text{Huffman offset present}_0$ & 0 &
-    $\text{Huffman offset present}_1$ & 0 \\
-    $\text{codebook}_0$ & 0 &
-    $\text{codebook}_1$ & 0 \\
-    $\text{Huffman LSB}_0$ & 1 &
-    $\text{Huffman LSB}_1$ & 1 \\
+    $\textsf{channel parameters present}_0$ & 1 &
+    $\textsf{channel parameters present}_1$ & 1 \\
+    $\textsf{FIR parameters present}_0$ & 0 &
+    $\textsf{FIR parameters present}_1$ & 0 \\
+    $\textsf{IIR parameters present}_0$ & 0 &
+    $\textsf{IIR parameters present}_1$ & 0 \\
+    $\textsf{Huffman offset present}_0$ & 0 &
+    $\textsf{Huffman offset present}_1$ & 0 \\
+    $\textsf{codebook}_0$ & 0 &
+    $\textsf{codebook}_1$ & 0 \\
+    $\textsf{Huffman LSB}_0$ & 1 &
+    $\textsf{Huffman LSB}_1$ & 1 \\
     \hline
   \end{tabular}
 }
@@ -1091,7 +1095,8 @@ our decoding parameters for a given substream are:
 
 \clearpage
 
-\subsection{Reading Residuals Data}
+\subsection{Reading Residual Data}
+\label{mlp:read_residuals}
 {\relsize{-1}
 \ALGORITHM{block size, min channel, max channel, matrix count; LSB bypass for each matrix;\newline quant step size, Huffman LSB, codebook, Huffman offset for each channel}{bypassed LSBs for each matrix, residuals for each channel}
 \SetKwData{MINCHANNEL}{min channel}
@@ -1156,6 +1161,10 @@ our decoding parameters for a given substream are:
 \EALGORITHM
 }
 
+\begin{figure}[h]
+  \includegraphics{figures/dvda/mlp_residuals.pdf}
+\end{figure}
+
 \clearpage
 
 \begin{figure}[h]
@@ -1172,20 +1181,20 @@ our decoding parameters for a given substream are:
 
 \clearpage
 
-\subsubsection{Reading Block Data Example}
+\subsubsection{Reading Residuals Example}
 Given the channel parameters:
 \begin{table}[h]
 {\relsize{-1}
 \begin{tabular}{rrr}
 & channel 0 & channel 1 \\
 \hline
-$\text{Huffman offset}_c$ & 0 & 0 \\
-$\text{codebook}_c$ & 1 & 2 \\
-$\text{Huffman LSBs}_c$ & 2 & 2 \\
+$\textsf{Huffman offset}_c$ & 0 & 0 \\
+$\textsf{codebook}_c$ & 1 & 2 \\
+$\textsf{Huffman LSBs}_c$ & 2 & 2 \\
 \hline
-$\text{LSB bits}_c$ & 2 & 2 \\
-$\text{sign shift}_c$ & $3$ & $2$ \\
-$\text{signed Huffman offset}_c$ & $0 - 7 \times 2 ^ 2 - 2 ^ 3 = -36$ & $0 - 7 \times 2 ^ 2 - 2 ^ 2 = -32$ \\
+$\textsf{LSB bits}_c$ & 2 & 2 \\
+$\textsf{sign shift}_c$ & $3$ & $2$ \\
+$\textsf{signed Huffman offset}_c$ & $0 - 7 \times 2 ^ 2 - 2 ^ 3 = -36$ & $0 - 7 \times 2 ^ 2 - 2 ^ 2 = -32$ \\
 \end{tabular}
 }
 \end{table}
@@ -1224,6 +1233,7 @@ $\text{signed Huffman offset}_c$ & $0 - 7 \times 2 ^ 2 - 2 ^ 3 = -36$ & $0 - 7 \
 \clearpage
 
 \subsection{Channel Filtering}
+\label{mlp:channel_filtering}
 {\relsize{-1}
 \ALGORITHM{block size, signed residual values, channel's quant step size,\newline FIR filter parameters, IIR filter parameters}{filtered residual values, new FIR state, new IIR state}
 \SetKw{AND}{and}
@@ -1294,6 +1304,7 @@ one needs to return only the last 8 values of FIR and IIR state.
 \clearpage
 
 \subsection{Rematrixing Channels}
+\label{mlp:rematrixing}
 {\relsize{-1}
 \ALGORITHM{block size, filtered residuals, noise shift, noise gen seed, matrix parameters, quant step sizes, bypassed LSBs}{rematrixed channels, updated noise gen seed}
 \SetKwData{BLOCKSIZE}{block size}
@@ -1359,8 +1370,7 @@ and the final result is output.
 \clearpage
 
 \subsection{Applying Output Shifts}
-
-{\relsize{-1}
+\label{mlp:output_shifts}
 \ALGORITHM{1 or more channels of rematrixed sample data, output shifts}{1 or more channels of shifted sample data}
 \SetKwData{MAXMATRIXCHANNEL}{max matrix channel}
 \SetKwData{REMATRIXED}{rematrixed}
@@ -1377,4 +1387,82 @@ and the final result is output.
 }
 \Return $\text{\SHIFTED}_{s}$\;
 \EALGORITHM
+
+\clearpage
+
+\subsection{Verifying Parity}
+\label{mlp:verify_parity}
+If \VAR{checkdata present} is indicated in the \VAR{Restart Header},
+each substream is followed by a parity and CRC-8 byte.
+Calculating the parity value is a simple matter of performing
+\xor on all the substream's bytes including the parity byte itself.
+If successful, the result should be \texttt{0xA9}.
+\par
+For example, given the substream bytes:
+\begin{figure}[h]
+  \includegraphics{figures/dvda/mlp_parity_parse.pdf}
+\end{figure}
+\begin{align*}
+  \text{parity} &= \texttt{0x95} \xor \texttt{0x00} \xor \texttt{0x20} \xor \texttt{0x00} \xor \texttt{0x1C} = \texttt{0xA9}
+\end{align*}
+
+\begin{figure}[h]
+  \includegraphics{figures/dvda/mlp_frame.pdf}
+\end{figure}
+
+\clearpage
+
+\subsection{Verifying CRC-8}
+\ALGORITHM{substream bytes, total substream length}{CRC-8 byte to verify}
+\SetKwData{SUBSTREAMBYTE}{substream byte}
+\SetKwData{SUBSTREAMLEN}{substream length}
+\SetKwData{CRC}{CRC}
+\SetKwFunction{CRCFUNC}{crc8}
+\SetKw{XOR}{xor}
+$\text{\CRC}_{(-1)} \leftarrow \texttt{0x3C}$\;
+\For{$i \leftarrow 0$ \emph{\KwTo}$(\SUBSTREAMLEN - 3)$}{
+  $\text{\CRC}_i \leftarrow \CRCFUNC(\text{\SUBSTREAMBYTE}_i~\XOR~\text{\CRC}_{i - 1})$\;
 }
+\tcc{CRC-8 calculation skips the parity and CRC-8 bytes}
+\Return $\text{\SUBSTREAMBYTE}_{(\SUBSTREAMLEN - 2)}~\XOR~\text{\CRC}_{(\SUBSTREAMLEN - 3)}$\;
+\EALGORITHM
+\par
+\noindent
+\texttt{crc8} is taken from the following base-16 table:
+\begin{table}[h]
+  {\relsize{-1}\ttfamily
+    \begin{tabular}{|r||r|r|r|r|r|r|r|r|r|r|r|r|r|r|r|r|r|}
+      \hline
+      & ?0 & ?1 & ?2 & ?3 & ?4 & ?5 & ?6 & ?7 & ?8 & ?9 & ?A & ?B & ?C & ?D & ?E & ?F \\
+      \hline
+      0? & 00 & 63 & C6 & A5 & EF & 8C & 29 & 4A & BD & DE & 7B & 18 & 52 & 31 & 94 & F7 \\
+      1? & 19 & 7A & DF & BC & F6 & 95 & 30 & 53 & A4 & C7 & 62 & 01 & 4B & 28 & 8D & EE \\
+      2? & 32 & 51 & F4 & 97 & DD & BE & 1B & 78 & 8F & EC & 49 & 2A & 60 & 03 & A6 & C5 \\
+      3? & 2B & 48 & ED & 8E & C4 & A7 & 02 & 61 & 96 & F5 & 50 & 33 & 79 & 1A & BF & DC \\
+      4? & 64 & 07 & A2 & C1 & 8B & E8 & 4D & 2E & D9 & BA & 1F & 7C & 36 & 55 & F0 & 93 \\
+      5? & 7D & 1E & BB & D8 & 92 & F1 & 54 & 37 & C0 & A3 & 06 & 65 & 2F & 4C & E9 & 8A \\
+      6? & 56 & 35 & 90 & F3 & B9 & DA & 7F & 1C & EB & 88 & 2D & 4E & 04 & 67 & C2 & A1 \\
+      7? & 4F & 2C & 89 & EA & A0 & C3 & 66 & 05 & F2 & 91 & 34 & 57 & 1D & 7E & DB & B8 \\
+      8? & C8 & AB & 0E & 6D & 27 & 44 & E1 & 82 & 75 & 16 & B3 & D0 & 9A & F9 & 5C & 3F \\
+      9? & D1 & B2 & 17 & 74 & 3E & 5D & F8 & 9B & 6C & 0F & AA & C9 & 83 & E0 & 45 & 26 \\
+      A? & FA & 99 & 3C & 5F & 15 & 76 & D3 & B0 & 47 & 24 & 81 & E2 & A8 & CB & 6E & 0D \\
+      B? & E3 & 80 & 25 & 46 & 0C & 6F & CA & A9 & 5E & 3D & 98 & FB & B1 & D2 & 77 & 14 \\
+      C? & AC & CF & 6A & 09 & 43 & 20 & 85 & E6 & 11 & 72 & D7 & B4 & FE & 9D & 38 & 5B \\
+      D? & B5 & D6 & 73 & 10 & 5A & 39 & 9C & FF & 08 & 6B & CE & AD & E7 & 84 & 21 & 42 \\
+      E? & 9E & FD & 58 & 3B & 71 & 12 & B7 & D4 & 23 & 40 & E5 & 86 & CC & AF & 0A & 69 \\
+      F? & 87 & E4 & 41 & 22 & 68 & 0B & AE & CD & 3A & 59 & FC & 9F & D5 & B6 & 13 & 70 \\
+      \hline
+    \end{tabular}
+  }
+\end{table}
+
+Continuing the 6 byte substream example from the previous page,
+our CRC-8 calculation is as follows:
+\begin{align*}
+  \texttt{crc8}(\texttt{0x95} \xor \texttt{0x3C}) = \texttt{crc8}(\texttt{0xA9}) &= \texttt{0x24} \\
+  \texttt{crc8}(\texttt{0x00} \xor \texttt{0x24}) = \texttt{crc8}(\texttt{0x24}) &= \texttt{0xDD} \\
+  \texttt{crc8}(\texttt{0x20} \xor \texttt{0xDD}) = \texttt{crc8}(\texttt{0xFD}) &= \texttt{0xB6} \\
+  \texttt{0x00} \xor \texttt{0xB6} &= \texttt{0xB6}
+\end{align*}
+which matches the substream's CRC-8 value
+and indicates the substream data has been read correctly.

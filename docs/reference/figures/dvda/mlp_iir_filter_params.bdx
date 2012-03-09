@@ -1,6 +1,14 @@
 <?xml version="1.0" ?>
 <diagram>
   <row>
+    <col width=".10" style="blank"/>
+    <col width=".15" style="blank">if flag₂ = 1</col>
+    <col width=".15" start="0" end="0">present</col>
+    <col width=".60" style="dashed"
+         id="filterparams">IIR Filter Parameters</col>
+  </row>
+  <spacer/>
+  <row>
     <col start="0" end="3" id="filter_params_s" width=".20">order</col>
   </row>
   <spacer height=".50"/>
@@ -35,4 +43,12 @@
     <col width=".2" start="0" end="state bits - 1">state₁</col>
     <col width=".2" start="0" end="state bits - 1">state₀</col>
   </row>
+  <line style="dotted">
+    <start id="filterparams" corner="sw"/>
+    <end id="filter_params_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="filterparams" corner="se"/>
+    <end id="filter_params_e" corner="ne"/>
+  </line>
 </diagram>
