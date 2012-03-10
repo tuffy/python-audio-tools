@@ -1,5 +1,7 @@
 #include <Python.h>
+#ifdef HAS_UNPROT
 #include "cppm.h"
+#endif
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -22,8 +24,9 @@
 
 typedef struct {
     PyObject_HEAD
-
+#ifdef HAS_UNPROT
     struct cppm_decoder decoder;
+#endif
 } decoders_CPPMDecoder;
 
 /*the CPPMDecoder.__init__() method*/

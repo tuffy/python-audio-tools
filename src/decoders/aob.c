@@ -442,7 +442,9 @@ open_sector_reader(const char* audio_ts_path,
     unsigned i;
 
     reader->aobs = array_o_new(NULL, (ARRAY_FREE_FUNC)free_aob, NULL);
+#ifdef HAS_UNPROT
     reader->cppm_decoder = NULL;
+#endif
 
     for (i = 1; i <= 9; i++) {
         char aob[13];
@@ -494,6 +496,7 @@ open_sector_reader(const char* audio_ts_path,
         reader->current.sector = 0;
         reader->current.aob = reader->aobs->_[0];
 
+#ifdef HAS_UNPROT
         /*if cdrom device given, initialize CPPM decoder if possible*/
         if (cdrom_device != NULL) {
             char* dvdaudio_mkb = find_audio_ts_file(audio_ts_path,
@@ -524,6 +527,7 @@ open_sector_reader(const char* audio_ts_path,
                 }
             }
         }
+#endif
 
         return reader;
     } else {
@@ -537,9 +541,11 @@ open_sector_reader(const char* audio_ts_path,
 static void
 close_sector_reader(DVDA_Sector_Reader* reader)
 {
+#ifdef HAS_UNPROT
     if (reader->cppm_decoder != NULL) {
         free(reader->cppm_decoder);
     }
+#endif
     reader->aobs->del(reader->aobs);
     free(reader);
 }
@@ -557,11 +563,13 @@ read_sector(DVDA_Sector_Reader* reader,
         if (bytes_read == SECTOR_SIZE) {
             /*sector read successfully*/
 
+#ifdef HAS_UNPROT
             /*unprotect if necessary*/
             if (reader->cppm_decoder != NULL) {
                 cppm_decrypt(reader->cppm_decoder,
                              sector_data, 1, 1);
             }
+#endif
 
             /*then move on to next sector*/
 

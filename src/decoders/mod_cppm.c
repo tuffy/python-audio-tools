@@ -23,6 +23,7 @@ int
 CPPMDecoder_init(decoders_CPPMDecoder *self,
                  PyObject *args, PyObject *kwds)
 {
+#ifdef HAS_UNPROT
     char *mkb_file;
     char *dvda_device;
 
@@ -44,6 +45,7 @@ CPPMDecoder_init(decoders_CPPMDecoder *self,
     default: /*all okay*/
         break;
     }
+#endif
 
     return 0;
 }
@@ -65,6 +67,7 @@ CPPMDecoder_new(PyTypeObject *type,
     return (PyObject *)self;
 }
 
+#ifdef HAS_UNPROT
 static PyObject*
 CPPMDecoder_media_type(decoders_CPPMDecoder *self, void *closure) {
     return Py_BuildValue("i", self->decoder.media_type);
@@ -115,3 +118,29 @@ CPPMDecoder_decode(decoders_CPPMDecoder *self, PyObject *args) {
     free(output_buffer);
     return decoded;
 }
+
+#else
+
+static PyObject*
+CPPMDecoder_media_type(decoders_CPPMDecoder *self, void *closure) {
+    return Py_BuildValue("i", 0);
+}
+
+static PyObject*
+CPPMDecoder_media_key(decoders_CPPMDecoder *self, void *closure) {
+    return Py_BuildValue("K", 0);
+}
+
+static PyObject*
+CPPMDecoder_id_album_media(decoders_CPPMDecoder *self, void *closure) {
+    return Py_BuildValue("K", 0);
+}
+
+static PyObject*
+CPPMDecoder_decode(decoders_CPPMDecoder *self, PyObject *args) {
+    PyErr_SetString(PyExc_NotImplementedError,
+                    "unprotection not available on this systems");
+    return NULL;
+}
+
+#endif

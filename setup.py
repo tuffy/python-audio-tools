@@ -55,36 +55,37 @@ replaygainmodule = Extension('audiotools.replaygain',
                              sources=['src/replaygain.c'])
 
 decoders_defines = [("VERSION", VERSION)]
+decoders_sources = ['src/array.c',
+                    'src/pcmconv.c',
+                    'src/common/md5.c',
+                    'src/bitstream.c',
+                    'src/huffman.c',
+                    'src/decoders/flac.c',
+                    'src/decoders/oggflac.c',
+                    'src/common/flac_crc.c',
+                    'src/common/ogg_crc.c',
+                    'src/decoders/shn.c',
+                    'src/decoders/alac.c',
+                    'src/decoders/wavpack.c',
+                    'src/decoders/vorbis.c',
+                    'src/decoders/mlp.c',
+                    'src/decoders/aobpcm.c',
+                    'src/decoders/aob.c',
+                    'src/decoders/sine.c',
+                    'src/decoders/ogg.c',
+                    'src/decoders/mod_cppm.c',
+                    'src/decoders.c']
+
 if (sys.platform == 'linux2'):
     decoders_defines.extend([('DVD_STRUCT_IN_LINUX_CDROM_H', None),
-                           ('HAVE_LINUX_DVD_STRUCT', None)])
-elif (sys.platform == 'darwin'):
-    decoders_defines.extend([('DARWIN_DVD_IOCTL', None)])
+                             ('HAVE_LINUX_DVD_STRUCT', None),
+                             ('HAS_UNPROT', None)])
+    decoders_sources.extend(['src/decoders/cppm.c',
+                             'src/decoders/ioctl.c',
+                             'src/decoders/dvd_css.c'])
 
 decodersmodule = Extension('audiotools.decoders',
-                           sources=['src/array.c',
-                                    'src/pcmconv.c',
-                                    'src/common/md5.c',
-                                    'src/bitstream.c',
-                                    'src/huffman.c',
-                                    'src/decoders/flac.c',
-                                    'src/decoders/oggflac.c',
-                                    'src/common/flac_crc.c',
-                                    'src/common/ogg_crc.c',
-                                    'src/decoders/shn.c',
-                                    'src/decoders/alac.c',
-                                    'src/decoders/wavpack.c',
-                                    'src/decoders/vorbis.c',
-                                    'src/decoders/mlp.c',
-                                    'src/decoders/aobpcm.c',
-                                    'src/decoders/aob.c',
-                                    'src/decoders/sine.c',
-                                    'src/decoders/ogg.c',
-                                    'src/decoders/mod_cppm.c',
-                                    'src/decoders/cppm.c',
-                                    'src/decoders/ioctl.c',
-                                    'src/decoders/dvd_css.c',
-                                    'src/decoders.c'],
+                           sources=decoders_sources,
                            define_macros=decoders_defines)
 
 encodersmodule = Extension('audiotools.encoders',
