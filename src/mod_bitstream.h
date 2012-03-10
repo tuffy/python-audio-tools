@@ -672,7 +672,7 @@ PyMethodDef BitstreamRecorder_methods[] = {
      "returns the total number of bytes written thus far"},
     {"data", (PyCFunction)BitstreamRecorder_data, METH_NOARGS,
      "data() -> string\n"
-     "returns the written data is a string"},
+     "returns the written data as a string"},
     {"reset", (PyCFunction)BitstreamRecorder_reset, METH_NOARGS,
      "reset()\n"
      "removes all written data and resets the stream for new data"},

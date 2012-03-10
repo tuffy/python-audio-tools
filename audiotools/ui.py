@@ -38,8 +38,7 @@ try:
                                 allow_tab=allow_tab,
                                 edit_pos=edit_pos,
                                 layout=layout)
-            self.__key_map__ = {"enter": "down",
-                                "tab": "down"}
+            self.__key_map__ = {"enter": "down"}
 
         def keypress(self, size, key):
             return urwid.Edit.keypress(self, size,

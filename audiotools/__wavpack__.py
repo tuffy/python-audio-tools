@@ -511,7 +511,7 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
     def pcm_split(self):
         """Returns a pair of data strings before and after PCM data."""
 
-        head = ""
+        head = None
         tail = ""
 
         for (sub_block_id, nondecoder, data_size, data) in self.sub_blocks():
@@ -520,7 +520,67 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
             elif ((sub_block_id == 2) and nondecoder):
                 tail = data.read_bytes(data_size)
 
-        #FIXME - build dummy head if none found in file
+        #build dummy head if none found in file
+        if (head is None):
+            import audiotools.bitstream as bitstream
+
+            riff_head = bitstream.BitstreamRecorder(1)
+
+            avg_bytes_per_second = (self.sample_rate() *
+                                    self.channels() *
+                                    (self.bits_per_sample() / 8))
+            block_align = (self.channels() *
+                           (self.bits_per_sample() / 8))
+            total_size = 4 * 3   #"RIFF" + size + "WAVE"
+
+            total_size += 4 * 2  #"fmt " + size
+            if ((self.channels() <= 2) or
+                (self.bits_per_sample() <= 16)):
+                #classic fmt chunk
+                fmt = "16u 16u 32u 32u 16u 16u"
+            else:
+                #extended fmt chunk
+                fmt = "16u 16u 32u 32u 16u 16u 16u 16u 32u 16b"
+
+            total_size += bitstream.format_size(fmt) / 8
+
+            total_size += 4 * 2  #"data" + size
+            data_size = (self.total_frames() *
+                         self.channels() *
+                         (self.bits_per_sample() / 8))
+            total_size += data_size
+
+            total_size += len(tail)
+
+            riff_head.build("4b 32u 4b 4b 32u",
+                            ("RIFF", total_size - 8, "WAVE",
+                             "fmt ", bitstream.format_size(fmt) / 8))
+            if ((self.channels() <= 2) or
+                (self.bits_per_sample() <= 16)):
+                riff_head.build(fmt,
+                                (1, #compression code
+                                 self.channels(),
+                                 self.sample_rate(),
+                                 avg_bytes_per_second,
+                                 block_align,
+                                 self.bits_per_sample()))
+            else:
+                riff_head.build(fmt,
+                                (0xFFFE,  #compression code
+                                 self.channels(),
+                                 self.sample_rate(),
+                                 avg_bytes_per_second,
+                                 block_align,
+                                 self.bits_per_sample(),
+                                 22,      #CB size
+                                 self.bits_per_sample(),
+                                 self.channel_mask(),
+                                 "\x01\x00\x00\x00\x00\x00\x10\x00" +
+                                 "\x80\x00\x00\xaa\x00\x38\x9b\x71"))
+
+            riff_head.build("4b 32u", ("data", data_size))
+
+            head = riff_head.data()
 
         return (head, tail)
 
@@ -546,8 +606,6 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
                             data.skip_bytes(chunk_size)
         else:
             raise InvalidWavPack(_(u'FMT chunk not found in WavPack'))
-
-
 
     @classmethod
     def add_replay_gain(cls, filenames, progress=None):
