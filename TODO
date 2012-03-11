@@ -4448,6 +4448,14 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   It's time to update this function to work on PCM frames instead
   which is much more natural fit and makes many calculations much easier.
 * TODO Finish version 2.18
+** DONE Ensure audiotools works on FreeBSD
+   the unprotection module, in particular, needs additional testing
+** DONE Ensure excessive zero residuals don't overflow output buffers
+   Certain formats provide "escape code" blocks of zeroes.
+   Ensure these routines don't generate more zeroes than are allowed
+   (either accidentally or deliberately).
+*** DONE ALACDecoder
+*** DONE WavPackDecoder
 ** TODO handle AIFF offset/block size in SSND chunk
 ** TODO Shift lint to the AudioFile and MetaData subclasses
    Instead of having tracklint have to perform lots of built-in tests,
@@ -5219,12 +5227,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE Add tracklint check/fix for mis-aligned seektables
 *** TODO Add unit tests for seektable errors
 ** TODO Fix FLAC embedded cuesheets
-** TODO Ensure excessive zero residuals don't overflow output buffers
-   Certain formats provide "escape code" blocks of zeroes.
-   Ensure these routines don't generate more zeroes than are allowed
-   (either accidentally or deliberately).
-*** TODO ALACDecoder
-*** TODO WavPackDecoder
 ** TODO Integrate MusicBrainz/FreeDB lookup with cd2track/dvda2track
    The two step extraction process is a relic from when I'd do
    batch lookups via modem.
@@ -5301,8 +5303,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO ogg flac should work
 *** TODO wavpack should work
 *** TODO alac should fail with error?
-** TODO Ensure audiotools works on FreeBSD
-   the unprotection module, in particular, needs additional testing
 ** TODO Improve .wav performance
    don't read entire data chunk by default
 ** TODO Ensure files are PEP8-compliant
+** TODO Ensure Python API docs are updated if necessary
+** TODO Spellcheck reference docs

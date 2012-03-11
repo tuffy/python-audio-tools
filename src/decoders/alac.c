@@ -679,6 +679,12 @@ read_residuals(BitstreamReader *bs,
                 16);
             if (zero_block_size > 0) {
                 /*block of 0s found, so write them out*/
+
+                /*ensure block of zeroes doesn't exceed
+                  remaining residual count*/
+                zero_block_size = MIN(zero_block_size,
+                                      residual_count - i);
+
                 for (j = 0; j < zero_block_size; j++) {
                     a_append(residuals, 0);
                     i++;

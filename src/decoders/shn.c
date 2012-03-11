@@ -943,8 +943,8 @@ read_ieee_extended(BitstreamReader* bs)
     } else if (exponent == 0x7FFF) {
         return INT_MAX;
     } else {
-        const int f = (int)((long double)mantissa *
-                            powl(2.0, (long double )exponent - 16383 - 63));
+        const int f = (int)((double)mantissa *
+                            pow(2.0, (double)exponent - 16383 - 63));
         if (sign)
             return -f;
         else

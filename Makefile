@@ -1,4 +1,4 @@
-export PYTHON = python
+PYTHON = python
 
 all:
 	$(PYTHON) setup.py build

@@ -991,13 +991,19 @@ read_bitstream(const struct block_header* block_header,
     }
 
     if (!setjmp(*br_try(sub_block_data))) {
-        while (i < (channel_count * block_header->block_samples)) {
+        const unsigned total_samples =
+            channel_count * block_header->block_samples;
+
+        while (i < total_samples) {
             if ((u == UNDEFINED) &&
                 (entropies->_[0]->_[0] < 2) &&
                 (entropies->_[1]->_[0] < 2)) {
                 unsigned zeroes = read_egc(sub_block_data);
 
                 if (zeroes > 0) {
+                    /*ensure i doesn't exceed total samples*/
+                    zeroes = MIN(zeroes, total_samples - i);
+
                     for (j = 0; j < zeroes; j++) {
                         array_i* channel = residuals->_[i % channel_count];
                         channel->append(channel, 0);
@@ -1011,9 +1017,7 @@ read_bitstream(const struct block_header* block_header,
                     entropies->_[1]->_[2] = 0;
                 }
 
-
-
-                if (i < (channel_count * block_header->block_samples)) {
+                if (i < total_samples) {
                     const int residual =
                         read_residual(sub_block_data,
                                       &u,

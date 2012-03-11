@@ -1,3 +1,4 @@
+PYTHON = python
 MAN_PATH = /usr/share/man
 MAN_PAGES = \
 audiotools-config.1 \
@@ -48,11 +49,10 @@ trackverify.xml
 .SUFFIXES: .xml .1 .5
 
 .xml.1:
-	python manpagexml.py -i $< $(MAN_SOURCES) > $@
+	$(PYTHON) manpagexml.py -i $< $(MAN_SOURCES) > $@
 
 .xml.5:
-	python manpagexml.py -i $< $(MAN_SOURCES) > $@
-
+	$(PYTHON) manpagexml.py -i $< $(MAN_SOURCES) > $@
 
 TARGETS = audioformats-letter.pdf audioformats-a4.pdf \
 audiotools-letter.pdf audiotools-a4.pdf \
