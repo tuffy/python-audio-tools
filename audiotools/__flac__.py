@@ -246,7 +246,7 @@ class FlacMetaData(MetaData):
                     fixes_performed.append(
                         _(u"removing redundant SEEKTABLE block"))
                 else:
-                    cleaned_blocks.append(block)
+                    cleaned_blocks.append(block.clean(fixes_performed))
             elif (block.BLOCK_ID == Flac_CUESHEET.BLOCK_ID):
                 #remove redundant cuesheet, if necessary
                 if (block.BLOCK_ID in [b.BLOCK_ID for b in cleaned_blocks]):
@@ -767,6 +767,36 @@ class Flac_SEEKTABLE:
 
         return (format_size("64U64U16u") / 8) * len(self.seekpoints)
 
+    def clean(self, fixes_performed):
+        """removes any empty seek points
+        and ensures PCM frame offset and byte offset
+        are both incrementing"""
+
+        nonempty_points = [seekpoint for seekpoint in self.seekpoints
+                           if (seekpoint[2] != 0)]
+        if (len(nonempty_points) != len(self.seekpoints)):
+            fixes_performed.append(
+                _(u"removed empty seekpoints from seektable"))
+
+        reordered = False
+        if (len(nonempty_points) > 0):
+            reordered_points = [nonempty_points[0]]
+            for (frame_offset, byte_offset, frame_count) in nonempty_points[1:]:
+                if ((frame_offset > reordered_points[-1][0]) and
+                    (byte_offset > reordered_points[-1][1])):
+                    reordered_points.append((frame_offset,
+                                             byte_offset,
+                                             frame_count))
+                else:
+                    reordered = True
+        else:
+            reordered_points = nonempty_points
+
+        if (reordered):
+            fixes_performed.append(
+                _(u"reordered seektable to be in ascending order"))
+
+        return Flac_SEEKTABLE(reordered_points)
 
 class Flac_CUESHEET:
     BLOCK_ID = 5
