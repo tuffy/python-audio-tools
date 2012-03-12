@@ -10,7 +10,7 @@
 FLAC compresses PCM audio data losslessly using predictors and a
 residual.
 FLACs contain checksumming to verify their integrity, contain comment tags for
-metadata and are streamable.
+metadata and are stream-able.
 
 Except for the contents of the VORBIS\_COMMENT metadata block, everything in FLAC is big-endian.
 
@@ -734,7 +734,7 @@ $i$ & $\textsf{residual}_{i - 1}$ & \textsf{sample}_i \\
   $\text{\SAMPLE}_i \leftarrow $ \READ (\BPS) signed bits\;
 }
 $\QLPPREC \leftarrow$ (\READ 4 unsigned bits) + 1\;
-$\QLPSHIFT \leftarrow \MAX(\text{\READ 5 signed bits}~,~0)$\footnote{negative shifts are noops in the decoder}\;
+$\QLPSHIFT \leftarrow \MAX(\text{\READ 5 signed bits}~,~0)$\footnote{negative shifts are no-ops in the decoder}\;
 \For{$i \leftarrow 0$ \emph{\KwTo}\ORDER}{
   $\text{\COEFF}_i \leftarrow$ \READ (\QLPPREC) signed bits\;
 }
@@ -870,7 +870,7 @@ As an example, we'll decode 10 residual values from the following bytes:
 {\relsize{-1}
 \begin{tabular}{rcl|rcl}
 \textsf{coding method} & $\leftarrow$ & 0 \\
-\textsf{paritition order} & $\leftarrow$ & 0 \\
+\textsf{partition order} & $\leftarrow$ & 0 \\
 \textsf{Rice parameter} & $\leftarrow$ & 2 \\
 \hline
 $\textsf{MSB}_0$ & $\leftarrow$ & 0 &
@@ -1274,7 +1274,7 @@ during FLAC decoding, but performed in the opposite order.
 \SetKwFunction{CALCMIDSIDE}{calculate mid-side}
 \eIf{$\CHANNELCOUNT = 2$ \AND (try mid-side \OR try adaptive mid-side)}{
   \begin{tabular}{rcl}
-    $(\AVERAGE~,~\DIFFERENCE)$ & $\leftarrow$ & \hyperref[flac:calc_midside]{calculuate mid-side of $\text{\CHANNEL}_0$ and $\text{\CHANNEL}_1$} \\
+    $(\AVERAGE~,~\DIFFERENCE)$ & $\leftarrow$ & \hyperref[flac:calc_midside]{calculate mid-side of $\text{\CHANNEL}_0$ and $\text{\CHANNEL}_1$} \\
     \LEFTS & $\leftarrow$ & \hyperref[flac:encode_subframe]{encode $\text{\CHANNEL}_0$ as subframe at $\BPS$} \\
     \RIGHTS & $\leftarrow$ & \hyperref[flac:encode_subframe]{encode $\text{\CHANNEL}_1$ as subframe at $\BPS$} \\
     \AVGS & $\leftarrow$ &  \hyperref[flac:encode_subframe]{encode $\text{\AVERAGE}$ as subframe at $\BPS$} \\
@@ -1317,7 +1317,7 @@ during FLAC decoding, but performed in the opposite order.
     write \DIFFS\;
   }
 }(\tcc*[f]{store subframes independently}){
-  \hyperref[flac:write_frame_header]{write frame header with channel assigment $\CHANNELCOUNT - 1$}\;
+  \hyperref[flac:write_frame_header]{write frame header with channel assignment $\CHANNELCOUNT - 1$}\;
   \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELCOUNT}{
     $\text{\SUBFRAME}_c \leftarrow $ \hyperref[flac:encode_subframe]{encode $\text{\CHANNEL}_c$ as subframe at $\BPS$}\;
     write $\text{\SUBFRAME}_c$\;
@@ -1813,7 +1813,7 @@ Note how the total number of residuals equals the
 total number of samples minus the subframe's order,
 to account for the warm-up samples.
 Also note that if you remove the first $4 - \textsf{order}$ residuals
-and sum the absolute value of the remainding residuals,
+and sum the absolute value of the remaining residuals,
 the result is the \VAR{total error} value
 used when calculating the best FIXED subframe order.
 
@@ -1889,7 +1889,7 @@ $o \rightarrow$ \WRITE 4 unsigned bits\;
 
 \clearpage
 
-\subsubsection{Encoding Parititions}
+\subsubsection{Encoding Partitions}
 \label{flac:write_residual_partition}
 {\relsize{-1}
 \ALGORITHM{partition order $o$, predictor order, residual values, block size, maximum Rice parameter}{Rice parameter, residual partitions, total estimated size}
@@ -2228,7 +2228,7 @@ $\ERROR_0$ &$\leftarrow$ & $ \AUTOCORRELATION_0 \times (1 - {\kappa_0} ^ 2)$ \\
     \newline
     into ($c$,$a$) pairs
     \newline
-    $q_i$ is $\AUTOCORRELATION_{i + 1}$ minus the sum of those mutiplied ($c$,$a$) pairs}
+    $q_i$ is $\AUTOCORRELATION_{i + 1}$ minus the sum of those multiplied ($c$,$a$) pairs}
   $q_i \leftarrow \AUTOCORRELATION_{i + 1}$\;
   \For{$j \leftarrow 0$ \emph{\KwTo}i}{
     $q_i \leftarrow q_i - (\LPCOEFF_{(i - 1)~j} \times \AUTOCORRELATION_{i - j})$\;
@@ -2317,7 +2317,7 @@ and \textsf{error} values: \texttt{619.107, 521.530, 520.854}
 
 \subsubsection{Estimating Best Order}
 \label{flac:estimate_best_order}
-\ALGORITHM{floating point error values, block size, bits per sample,\newline QLP precision and maximum LPC order from encoding parameters}{the best stimated order value to use}
+\ALGORITHM{floating point error values, block size, bits per sample,\newline QLP precision and maximum LPC order from encoding parameters}{the best estimated order value to use}
 \SetKwData{ORDER}{predictor order}
 \SetKwData{BLOCKSIZE}{block size}
 \SetKwData{MAXLPCORDER}{max LPC order}
@@ -2469,7 +2469,7 @@ write encoded residual block based on signed residual values\;
 
 \clearpage
 
-\subsubsection{LPC Subframe Residuals Calculcation Example}
+\subsubsection{LPC Subframe Residuals Calculation Example}
 \begin{tabular}{rl}
 \textsf{samples} : & \texttt{18, 20, 26, 24, 24, 23, 21, 24, 23, 20} \\
 \textsf{order} : & \texttt{3} \\

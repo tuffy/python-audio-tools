@@ -10,7 +10,7 @@
 DVD-Audio is a format for delivering hi-fidelity, multichannel
 audio on DVD media.
 A DVD-Audio's \texttt{AUDIO\_TS} directory contains the
-relevent data needed for decoding, spread into a lot of files
+relevant data needed for decoding, spread into a lot of files
 whose names are more than a little cryptic at first glance.
 
 Unlike CD audio, which is simply a set of 1 to 99 identically-formatted
@@ -871,7 +871,7 @@ $\RESTARTHEADER\left\lbrace\begin{tabular}{l}
   $\text{\FIRPARAMS}_{s~c} \leftarrow$ from previous block's corresponding channel in substream\;
 }
 \BlankLine
-\uIf(\tcc*[f]{IIR filter paramters}){$(\text{\FLAG}_{s~2} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
+\uIf(\tcc*[f]{IIR filter parameters}){$(\text{\FLAG}_{s~2} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
   $\text{\IIRPARAMS}_{s~c} \leftarrow$ \hyperref[mlp:readiirfilterparams]{read IIR filter parameters}\;
 }
 \uElseIf{$\text{\HEADERPRESENT}_s = 1$}{

@@ -4458,6 +4458,27 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE WavPackDecoder
 ** DONE Cleaup documentation layout
    Add subdirectories for format figures.
+** DONE Spellcheck reference docs
+   - [X] introduction.tex
+   - [X] basics.tex
+   - [X] wav.tex
+   - [X] aiff.tex
+   - [X] au.tex
+   - [X] shorten.tex
+   - [X] flac.tex
+   - [X] wavpack.tex
+   - [X] ape.tex
+   - [X] mp3.tex
+   - [X] m4a.tex
+   - [X] alac.tex
+   - [X] vorbis.tex
+   - [X] oggflac.tex
+   - [X] speex.tex
+   - [X] musepack.tex
+   - [X] dvda2.tex
+   - [X] freedb.tex
+   - [X] musicbrainz.tex
+   - [X] replaygain.tex
 ** TODO handle AIFF offset/block size in SSND chunk
 ** TODO Shift lint to the AudioFile and MetaData subclasses
    Instead of having tracklint have to perform lots of built-in tests,
@@ -5156,4 +5177,3 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    don't read entire data chunk by default
 ** TODO Ensure files are PEP8-compliant
 ** TODO Ensure Python API docs are updated if necessary
-** TODO Spellcheck reference docs

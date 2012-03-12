@@ -245,7 +245,7 @@ $\NOTCOMPRESSED \leftarrow$ \READ 1 unsigned bit\;
 $\PREDICTIONTYPE \leftarrow$ \READ 4 unsigned bits\;
 \ASSERT $\PREDICTIONTYPE = 0$\;
 $\QLPSHIFTNEEDED \leftarrow$ \READ 4 unsigned bits\;
-$\RICEMODIFIER \leftarrow$ \READ 3 unsigned bits\tcc*[r]{unusued}
+$\RICEMODIFIER \leftarrow$ \READ 3 unsigned bits\tcc*[r]{unused}
 $\COEFFCOUNT \leftarrow$ \READ 5 unsigned bits\;
 \ASSERT $(\COEFFCOUNT = 4)$ \OR $(\COEFFCOUNT = 8)$\;
 \For{$i \leftarrow 0$ \emph{\KwTo}\COEFFCOUNT}{
@@ -267,7 +267,7 @@ our frame and subframe headers are:
 \textsf{channels} & $\leftarrow$ & \texttt{0} (+1) &=& 2 \\
 \textsf{has sample count} & $\leftarrow$ & \texttt{1} \\
 \textsf{uncompressed LSBs} & $\leftarrow$ & \texttt{0} \\
-\textsf{notcompressed} & $\leftarrow$ & \texttt{0} \\
+\textsf{not compressed} & $\leftarrow$ & \texttt{0} \\
 \textsf{sample count} & $\leftarrow$ & \texttt{0x19} &=& 25 \\
 \textsf{interlacing shift} & $\leftarrow$ & \texttt{2} \\
 \textsf{interlacing leftweight} & $\leftarrow$ & \texttt{2} \\
@@ -1457,7 +1457,7 @@ $\CHANCOUNT - 1 \rightarrow$ \WRITE 3 unsigned bits\;
 \eIf{$\text{\PCMCOUNT} \geq 10$}{
   $\UNCOMPRESSED \leftarrow$ \hyperref[alac:write_uncompressed_frame]{encode channel as uncompressed frame}\;
   $\COMPRESSED \leftarrow$ \hyperref[alac:write_compressed_frame]{encode channels as compressed frame}\;
-  \uIf{residual overflow occured}{
+  \uIf{residual overflow occurred}{
     \Return \UNCOMPRESSED\;
   }
   \uElseIf{$\LEN(\COMPRESSED) \geq \LEN(\UNCOMPRESSED)$}{
@@ -1558,7 +1558,7 @@ $1 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{not compressed}
 \SetKwData{CHANNEL}{channel}
 \SetKwData{UNCOMPRESSEDLSB}{uncompressed LSBs}
 \SetKwData{LSB}{LSB}
-$0 \rightarrow$ \WRITE 16 unsigned bits\tcc*[r]{unusued}
+$0 \rightarrow$ \WRITE 16 unsigned bits\tcc*[r]{unused}
 \eIf{$\text{\PCMCOUNT} \neq \text{encoding parameter's \BLOCKSIZE}$}{
   $1 \rightarrow$ \WRITE 1 unsigned bit\;
 }{
@@ -1607,7 +1607,7 @@ $0 \rightarrow$ \WRITE 8 unsigned bits\tcc*[r]{interlacing leftweight}
 \SetKwData{CORRELATED}{correlated}
 \SetKwData{QLPCOEFF}{QLP coefficient}
 \SetKwData{RESIDUAL}{residual}
-$0 \rightarrow$ \WRITE 16 unsigned bits\tcc*[r]{unusued}
+$0 \rightarrow$ \WRITE 16 unsigned bits\tcc*[r]{unused}
 \eIf{$\text{\PCMCOUNT} \neq \text{encoding parameter's \BLOCKSIZE}$}{
   $1 \rightarrow$ \WRITE 1 unsigned bit\;
 }{
@@ -1911,7 +1911,7 @@ $\ERROR_0$ &$\leftarrow$ & $ \AUTOCORRELATION_0 \times (1 - {\kappa_0} ^ 2)$ \\
     \newline
     into ($c$,$a$) pairs
     \newline
-    $q_i$ is $\AUTOCORRELATION_{i + 1}$ minus the sum of those mutiplied ($c$,$a$) pairs}
+    $q_i$ is $\AUTOCORRELATION_{i + 1}$ minus the sum of those multiplied ($c$,$a$) pairs}
   $q_i \leftarrow \AUTOCORRELATION_{i + 1}$\;
   \For{$j \leftarrow 0$ \emph{\KwTo}i}{
     $q_i \leftarrow q_i - (\LPCOEFF_{(i - 1)~j} \times \AUTOCORRELATION_{i - j})$\;
