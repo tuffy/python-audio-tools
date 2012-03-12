@@ -14,7 +14,7 @@ PCM data is in.
 Since RIFF WAVE originated on Intel processors, everything in it
 is little-endian.
 \section{the RIFF WAVE Stream}
-\includegraphics{figures/wav_stream.pdf}
+\includegraphics{figures/wav/stream.pdf}
 \par
 \noindent
 \VAR{Chunk Size} is the total size of the chunk, minus
@@ -23,7 +23,7 @@ is little-endian.
 Wave files with 2 channels or less, and 16 bits-per-sample or less,
 use a classic `fmt' chunk to indicate its PCM data format.
 This chunk is required to appear before the `data' chunk.
-\includegraphics{figures/wav_fmt.pdf}
+\includegraphics{figures/wav/fmt.pdf}
 \begin{align}
 \text{Average Bytes per Second} &= \frac{\text{Sample Rate}
   \times \text{Channel Count} \times \text{Bits per Sample}}{8} \\
@@ -34,7 +34,7 @@ Wave files with more than 2 channels or more than 16 bits-per-sample
 should use a WAVEFORMATEXTENSIBLE `fmt' chunk which contains
 additional fields for channel assignment.
 \begin{figure}[h]
-\includegraphics{figures/wav_fmtext.pdf}
+\includegraphics{figures/wav/fmtext.pdf}
 \end{figure}
 \par
 \noindent
@@ -43,7 +43,7 @@ are calculated the same as a classic fmt chunk.
 
 \section{the `data' Chunk}
 \begin{figure}[h]
-\includegraphics{figures/wav_data.pdf}
+\includegraphics{figures/wav/data.pdf}
 \end{figure}
 \par
 \noindent

@@ -60,7 +60,7 @@ an optional 16 bit CRC, 136 or 256 bits of side data
 and the remainder is main data.
 
 \begin{figure}[h]
-\includegraphics{figures/mp3_stream2.pdf}
+\includegraphics{figures/mp3/stream2.pdf}
 \end{figure}
 
 However, the main data block in a particular physical frame
@@ -77,7 +77,7 @@ without affecting the MP3's overall bitrate.
 
 \section{Header}
 \begin{figure}[h]
-\includegraphics{figures/mp3_frame_header.pdf}
+\includegraphics{figures/mp3/frame_header.pdf}
 \end{figure}
 
 \begin{wrapfigure}[20]{r}{2in}
@@ -152,10 +152,10 @@ The size and layout of the side data depends on whether the stream
 is 1 or 2 channels, which can be determined from the frame header.
 
 \begin{figure}[h]
-\includegraphics{figures/mp3_side_data_1ch.pdf}
+\includegraphics{figures/mp3/side_data_1ch.pdf}
 \caption{Side Data for 1 Channel}
 \vskip .25in
-\includegraphics{figures/mp3_side_data_2ch.pdf}
+\includegraphics{figures/mp3/side_data_2ch.pdf}
 \caption{Side Data for 2 Channels}
 \end{figure}
 \par
@@ -168,7 +168,7 @@ rather than read a new value from the main data.
 %% FIXME - Explain Granules
 
 \begin{figure}[h]
-\includegraphics{figures/mp3_granule.pdf}
+\includegraphics{figures/mp3/granule.pdf}
 \caption{Granule Info}
 \end{figure}
 \begin{description}
@@ -214,11 +214,11 @@ bits & $\text{length}_1$ & $\text{length}_2$ \\
 \section{Main Data}
 
 \begin{figure}[h]
-\includegraphics{figures/mp3_main.pdf}
+\includegraphics{figures/mp3/main_data.pdf}
 \end{figure}
 
 \begin{figure}[h]
-\includegraphics{figures/mp3_scalefactors.pdf}
+\includegraphics{figures/mp3/scalefactors.pdf}
 \end{figure}
 
 \clearpage

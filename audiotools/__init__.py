@@ -668,7 +668,7 @@ class VerboseMessenger:
         Takes a unicode string to be escaped
         and a list of ANSI SGR codes.
         Returns an ANSI-escaped unicode terminal string
-        with those codes activated followed by the unescapde code
+        with those codes activated followed by the unescaped code
         if the Messenger's stderr is to a tty terminal.
         Otherwise, the string is returned unmodified."""
 

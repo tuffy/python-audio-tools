@@ -1,5 +1,7 @@
 #FIXME - reorganize this big mess
 ID3v22 = \
+figures/id3v22/header.pdf \
+figures/id3v22/frame.bdx \
 figures/id3v22/com.pdf \
 figures/id3v22/geo.pdf \
 figures/id3v22/pic.pdf \
@@ -10,6 +12,8 @@ figures/id3v22/w__.pdf \
 figures/id3v22/wxx.pdf
 
 ID3v23 = \
+figures/id3v23/header.pdf \
+figures/id3v23/frame.pdf \
 figures/id3v23/apic.pdf \
 figures/id3v23/comm.pdf \
 figures/id3v23/geob.pdf \
@@ -20,6 +24,8 @@ figures/id3v23/w___.pdf \
 figures/id3v23/wxxx.pdf
 
 ID3v24 = \
+figures/id3v24/header.pdf \
+figures/id3v24/frame.pdf \
 figures/id3v24/apic.pdf \
 figures/id3v24/comm.pdf \
 figures/id3v24/geob.pdf \
@@ -69,10 +75,8 @@ figures/flac/utf8.pdf \
 figures/flac/verbatim.pdf \
 figures/flac/vorbiscomment.pdf \
 figures/flac/write_utf8.pdf \
-figures/oggflac_stream.pdf \
-figures/utf-8-1.pdf \
-figures/utf-8-2.pdf \
-figures/utf-8-3.pdf
+figures/oggflac_stream.pdf
+
 
 M4A = figures/m4a/quicktime.pdf \
 figures/m4a/atom.pdf \
@@ -233,46 +237,103 @@ figures/big_endian.pdf \
 figures/little_endian.pdf \
 figures/unary1.pdf
 
-FIGURES = figures/binary.pdf figures/pcm.pdf figures/wav_stream.pdf \
-figures/wav_fmt.pdf figures/wav_fmtext.pdf figures/wav_data.pdf \
-figures/aiff_stream.pdf figures/aiff_comm.pdf figures/aiff_ssnd.pdf \
+MP3 = figures/mp3/frame_header.pdf \
+figures/mp3/granule.pdf \
+figures/mp3/id3v1.pdf \
+figures/mp3/id3v11.pdf \
+figures/mp3/id3v2_stream.pdf \
+figures/mp3/main_data.pdf \
+figures/mp3/scalefactors.pdf \
+figures/mp3/side_data_1ch.pdf \
+figures/mp3/side_data_2ch.pdf \
+figures/mp3/stream.pdf \
+figures/mp3/stream2.pdf \
+figures/mp3/xing.pdf
+
+WAVE = \
+figures/wav/stream.pdf \
+figures/wav/fmt.pdf \
+figures/wav/fmtext.pdf \
+figures/wav/data.pdf
+
+AIFF = \
+figures/aiff/stream.pdf \
+figures/aiff/comm.pdf \
+figures/aiff/ssnd.pdf
+
+APE = \
+figures/ape/stream.pdf \
+figures/ape/descriptor.pdf \
+figures/ape/header.pdf \
+figures/ape/apev2_tag.pdf \
+figures/ape/apev2_tagheader.pdf \
+figures/ape/apev2_flags.pdf
+
+MUSEPACK = \
+figures/musepack/sv7_stream.pdf \
+figures/musepack/sv8_stream.pdf \
+figures/musepack/sv8_sh.pdf \
+figures/musepack/sv8_rg.pdf \
+figures/musepack/sv8_ei.pdf \
+figures/musepack/sv8_nut.pdf
+
+FREEDB = \
+figures/freedb/sequence.pdf \
+figures/freedb/discid.pdf \
+
+MUSICBRAINZ = \
+figures/musicbrainz/discid.pdf \
+figures/musicbrainz/xml.pdf \
+
+
+FIGURES = \
+$(BASICS) \
+$(WAVE) \
+$(AIFF) \
 figures/au_stream.pdf \
-figures/mp3_stream.pdf figures/mp3_xing.pdf \
-figures/mp3_id3v1.pdf figures/mp3_id3v11.pdf \
-figures/mp3_id3v2_stream.pdf \
-figures/mp3_id3v22_header.pdf figures/mp3_id3v22_frame.pdf \
-figures/mp3_id3v23_header.pdf figures/mp3_id3v23_frame.pdf \
-figures/mp3_id3v24_header.pdf figures/mp3_id3v24_frame.pdf \
-figures/mp3_id3v24_textframe.pdf figures/mp3_id3v24_apic.pdf \
-figures/ape_stream.pdf figures/ape_descriptor.pdf figures/ape_header.pdf \
-figures/apev2_tag.pdf figures/apev2_tagheader.pdf figures/apev2_flags.pdf \
-figures/speex_header.pdf \
-figures/musepack_sv7_stream.pdf figures/musepack_sv8_stream.pdf \
-figures/musepack_sv8_sh.pdf figures/musepack_sv8_rg.pdf \
-figures/musepack_sv8_ei.pdf figures/musepack_sv8_nut.pdf \
-figures/freedb_sequence.pdf figures/freedb_discid.pdf \
-figures/musicbrainz_discid.pdf figures/musicbrainz_xml.pdf \
-figures/bitstream_struct.pdf figures/bitstream_bigendian.pdf \
-figures/bitstream_littleendian.pdf figures/bitstream_littleendian_alt.pdf \
+$(SHORTEN) \
 $(FLAC) \
-$(M4A) \
+$(WAVPACK) \
+$(APE) \
+$(MP3) \
 $(ID3v22) \
 $(ID3v23) \
 $(ID3v24) \
-$(WAVPACK) \
-$(VORBIS) \
-$(SHORTEN) \
+$(M4A) \
 $(ALAC) \
-$(MLP) \
+$(VORBIS) \
+figures/speex_header.pdf \
+$(MUSEPACK) \
 $(DVDA) \
-$(AOBPCM) \
-$(BASICS)
+$(FREEDB) \
+$(MUSICBRAINZ)
 
 
-CHAPTERS = basics.tex wav.tex flac.tex m4a.tex mp3.tex vorbis.tex \
-wavpack.tex ape.tex aiff.tex au.tex speex.tex oggflac.tex musepack.tex \
-freedb.tex musicbrainz.tex musicbrainz_mmd.tex replaygain.tex references.tex \
-license.tex introduction.tex shorten.tex alac.tex dvda2.tex
+CHAPTERS = \
+introduction.tex \
+basics.tex \
+wav.tex \
+aiff.tex \
+au.tex \
+shorten.tex \
+flac.tex \
+wavpack.tex \
+ape.tex \
+mp3.tex \
+m4a.tex \
+alac.tex \
+vorbis.tex \
+oggflac.tex \
+speex.tex \
+musepack.tex \
+dvda2.tex \
+freedb.tex \
+musicbrainz.tex \
+musicbrainz_mmd.tex \
+replaygain.tex \
+references.tex \
+license.tex
+
 
 all: audioformats-letter.pdf audioformats-a4.pdf
 
@@ -289,11 +350,7 @@ audioformats-a4.pdf: audioformats-a4.tex $(CHAPTERS) $(FIGURES)
 	python pdflatexbuild.py -halt-on-error audioformats-a4.tex
 	python ../pdftag.py "--title=Audio Formats Reference" "--author=Brian Langenberger" $@
 
-MP3_FIGURES = figures/mp3_stream2.pdf figures/mp3_frame_header.pdf \
-figures/mp3_side_data_1ch.pdf figures/mp3_side_data_2ch.pdf \
-figures/mp3_granule.pdf figures/mp3_main.pdf figures/mp3_scalefactors.pdf
-
-mp3_decode.pdf: mp3_decode.tex $(MP3_FIGURES)
+mp3_decode.pdf: mp3_decode.tex $(MP3)
 	python pdflatexbuild.py -halt-on-error $<
 
 flac-codec.tex: flac-codec.m4 header.m4 footer.m4
@@ -332,9 +389,6 @@ audioformats-letter.tex: audioformats.m4 header.m4 footer.m4
 audioformats-a4.tex: audioformats.m4 header.m4 footer.m4
 	m4 -D PAPERSIZE=a4paper $< > $@
 
-# binary.pdf: binary.fig
-# 	fig2dev -L pdf binary.fig binary.pdf
-
 figures/pcm.pdf: figures/pcm.fig
 	fig2dev -Z 3 -L pdf $< $@
 
@@ -346,15 +400,6 @@ figures/flac/tukey.pdf: figures/flac/tukey.fig
 
 figures/flac/tukey.fig: figures/flac/tukey.plot
 	./figures/flac/tukey.plot > $@
-
-figures/utf-8-1.pdf: figures/utf-8-1.fig
-	fig2dev -Z 3 -L pdf $< $@
-
-figures/utf-8-2.pdf: figures/utf-8-2.fig
-	fig2dev -Z 4 -L pdf $< $@
-
-figures/utf-8-3.pdf: figures/utf-8-3.fig
-	fig2dev -Z 5 -L pdf $< $@
 
 figures/flac/lag0.pdf: figures/flac/lag0.fig
 	fig2dev -Z 3.5 -L pdf $< $@
@@ -368,10 +413,10 @@ figures/flac/lag2.pdf: figures/flac/lag2.fig
 figures/flac/lag3.pdf: figures/flac/lag3.fig
 	fig2dev -Z 3.5 -L pdf $< $@
 
-figures/freedb_sequence.pdf: figures/freedb_sequence.fig
+figures/freedb/sequence.pdf: figures/freedb/sequence.fig
 	fig2dev -Z 4 -L pdf $< $@
 
-figures/musicbrainz_xml.pdf: figures/musicbrainz_xml.fig
+figures/musicbrainz/xml.pdf: figures/musicbrainz/xml.fig
 	fig2dev -Z 4 -L pdf $< $@
 
 figures/m4a/atoms.pdf: figures/m4a/atoms.fig
