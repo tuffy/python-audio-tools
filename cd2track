@@ -360,7 +360,9 @@ if (__name__ == '__main__'):
 
     cdda.close()
 
-    if (options.add_replay_gain and AudioType.can_add_replay_gain()):
+    if (audiotools.ADD_REPLAYGAIN and
+        options.add_replay_gain and
+        AudioType.can_add_replay_gain()):
         rg_progress = audiotools.ReplayGainProgressDisplay(
             msg, AudioType.lossless_replay_gain())
         rg_progress.initial_message()

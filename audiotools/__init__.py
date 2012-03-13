@@ -136,6 +136,8 @@ MUSICBRAINZ_SERVER = config.get_default("MusicBrainz", "server",
                                         "musicbrainz.org")
 MUSICBRAINZ_PORT = config.getint_default("MusicBrainz", "port", 80)
 
+ADD_REPLAYGAIN = config.getboolean_default("ReplayGain", "add_by_default", True)
+
 THUMBNAIL_FORMAT = config.get_default("Thumbnail", "format", "jpeg")
 THUMBNAIL_SIZE = config.getint_default("Thumbnail", "size", 150)
 

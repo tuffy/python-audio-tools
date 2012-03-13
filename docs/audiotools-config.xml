@@ -110,6 +110,11 @@
       in ID3v2 tags.  If false, it will be stored as "1".
     </option>
   </options>
+  <options category="ReplayGain">
+    <option long="replay-gain" arg="yes/no">
+      whether to add ReplayGain metadata by default
+    </option>
+  </options>
   <options category="binaries">
     <option long="faac" arg="path"/>
     <option long="faad" arg="path"/>

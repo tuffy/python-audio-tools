@@ -188,7 +188,8 @@ if (__name__ == '__main__'):
 
                "id3_digit_padding": ("ID3", "pad"),
                "id3v2_version": ("ID3", "id3v2"),
-               "id3v1_version": ("ID3", "id3v1")}
+               "id3v1_version": ("ID3", "id3v1"),
+               "add_replaygain": ("ReplayGain", "add_by_default")}
 
     system = audiotools.OptionGroup(parser, _(u"System Options"))
 
@@ -307,7 +308,7 @@ if (__name__ == '__main__'):
         metavar='yes/no',
         choices=("yes", "no"),
         dest='use_musicbrainz')
-    
+
     musicbrainz.add_option(
         '--musicbrainz-server',
         action='store',
@@ -355,6 +356,19 @@ if (__name__ == '__main__'):
         help=_(u'whether or not to pad ID3v2 digit fields to 2 digits'))
 
     parser.add_option_group(id3)
+
+    replaygain = audiotools.OptionGroup(parser, _("ReplayGain Options"))
+
+    replaygain.add_option(
+        '--replay-gain',
+        action='store',
+        type='choice',
+        choices=('yes', 'no'),
+        dest='add_replaygain',
+        metavar='yes / no',
+        help=_(u"whether to add ReplayGain metadata by default"))
+
+    parser.add_option_group(replaygain)
 
     binaries = audiotools.OptionGroup(parser, _(u"Binaries Options"))
 
@@ -556,6 +570,13 @@ if (__name__ == '__main__'):
         msg.output_column(u" : ")
         msg.output_column(u"%d\u00D7%d" % (audiotools.THUMBNAIL_SIZE,
                                            audiotools.THUMBNAIL_SIZE))
+
+        msg.blank_row()
+
+        msg.new_row()
+        msg.output_column(_(u"Add ReplayGain by default"), True)
+        msg.output_column(u" : ")
+        msg.output_column({True:u"yes", False:u"no"}[audiotools.ADD_REPLAYGAIN])
 
         msg.blank_row()
         msg.output_rows()

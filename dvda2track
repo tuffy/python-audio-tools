@@ -337,6 +337,7 @@ if (__name__ == '__main__'):
     #determine whether to add ReplayGain by default
     if (options.add_replay_gain is None):
         options.add_replay_gain = (
+            audiotools.ADD_REPLAYGAIN and
             AudioType.lossless_replay_gain() and
             audiotools.applicable_replay_gain(
                 [DummyTrack(sample_rate=sample_rate,
