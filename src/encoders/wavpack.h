@@ -30,7 +30,8 @@
 
 typedef enum {OK, ERROR} status;
 
-typedef enum {WV_WAVE_HEADER       = 0x1,
+typedef enum {WV_DUMMY             = 0x0,
+              WV_WAVE_HEADER       = 0x1,
               WV_WAVE_FOOTER       = 0x2,
               WV_TERMS             = 0x2,
               WV_WEIGHTS           = 0x3,
@@ -317,6 +318,10 @@ wv_exp2(int value);
 
 static void
 wavpack_md5_update(void *data, unsigned char *buffer, unsigned long len);
+
+static void
+write_dummy_wave_header(BitstreamWriter* bs, const pcmreader* pcmreader,
+                        unsigned wave_footer_len);
 
 static void
 write_wave_header(BitstreamWriter* bs, const pcmreader* pcmreader,

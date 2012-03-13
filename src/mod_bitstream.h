@@ -123,7 +123,7 @@ static PyObject*
 BitstreamReader_call_callbacks(bitstream_BitstreamReader *self, PyObject *args);
 
 static PyObject*
-BitstreamReader_substream(bitstream_BitstreamReader *self, PyObject *args);
+BitstreamReader_substream_meth(bitstream_BitstreamReader *self, PyObject *args);
 
 static PyObject*
 BitstreamReader_substream_append(bitstream_BitstreamReader *self,
@@ -219,7 +219,7 @@ PyMethodDef BitstreamReader_methods[] = {
      METH_VARARGS,
      "call_callbacks(byte)\n"
      "calls the attached callbacks as if the byte had been read"},
-    {"substream", (PyCFunction)BitstreamReader_substream, METH_VARARGS,
+    {"substream", (PyCFunction)BitstreamReader_substream_meth, METH_VARARGS,
      "substream(bytes) -> BitstreamReader\n"
      "returns a sub-reader containing the given number of input bytes"},
     {"substream_append", (PyCFunction)BitstreamReader_substream_append,

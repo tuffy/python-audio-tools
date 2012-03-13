@@ -490,7 +490,7 @@ BitstreamReader_callback(uint8_t byte, PyObject *callback)
 }
 
 static PyObject*
-BitstreamReader_substream(bitstream_BitstreamReader *self, PyObject *args)
+BitstreamReader_substream_meth(bitstream_BitstreamReader *self, PyObject *args)
 {
     PyTypeObject *type = self->ob_type;
     unsigned int bytes;
@@ -518,8 +518,6 @@ BitstreamReader_substream(bitstream_BitstreamReader *self, PyObject *args)
         PyErr_SetString(PyExc_IOError, "I/O error creating substream");
         return NULL;
     }
-
-
 }
 
 static PyObject*

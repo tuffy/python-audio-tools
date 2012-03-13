@@ -4489,16 +4489,16 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] dvda2track
     - [X] track2track
     - [X] tracksplit
+** DONE Add progress to track2cd audio file conversion
+   - [X] CD quality, embedded cuesheet
+   - [X] non-CD quality, embedded cuesheet
+   - [X] CD quality, external cuesheet
+   - [X] non-CD quality, external cuesheet
+   - [X] CD quality, multiple files
+   - [X] non-CD quality, multiple files
 ** TODO Adjust album_number/track_number heuristics
    these should be last-resort fields that apply
    *only* if a track has no metadata of any kind
-** TODO Add progress to track2cd audio file conversion
-   - [X] CD quality, embedded cuesheet
-   - [ ] non-CD quality, embedded cuesheet
-   - [X] CD quality, external cuesheet
-   - [ ] non-CD quality, external cuesheet
-   - [X] CD quality, multiple files
-   - [X] non-CD quality, multiple files
 ** TODO Don't port cuesheets with AudioFile.set_metadata()
    This is mostly for WavPack since it embeds cuesheet data
    in the APEv2 tag.
@@ -5179,9 +5179,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO wave should fail with error
 *** TODO aiff should fail with error
 *** TODO au should fail with error?
-*** TODO flac should work
+*** DONE flac should work
 *** TODO ogg flac should work
-*** TODO wavpack should work
+*** DONE wavpack should work
 *** TODO alac should work
 *** TODO shorten should work
 ** TODO Ensure > 2GB files work correctly

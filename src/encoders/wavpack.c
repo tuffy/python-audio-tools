@@ -175,12 +175,26 @@ encoders_encode_wavpack(char *filename,
 
     /*update generated wave header, if necessary*/
     if (context.wave.header_data == NULL) {
-        fseek(file, 32 + 2, SEEK_SET);
-        if (context.wave.footer_data == NULL) {
-            write_wave_header(stream, pcmreader, block_index, 0);
-        } else {
-            write_wave_header(stream, pcmreader, block_index,
-                              context.wave.footer_len);
+        const uint64_t data_size = ((uint64_t)block_index *
+                                    pcmreader->channels *
+                                    (pcmreader->bits_per_sample / 8));
+        const uint64_t max_size = 4294967296llu;
+
+        if (data_size < max_size) {
+            BitstreamWriter* sub_block = context.cache.sub_block;
+            bw_reset_recorder(sub_block);
+
+            /*maximum data size large enough to fit into 32-bit size field
+              so go back and rewrite wave header properly*/
+            fseek(file, 32, SEEK_SET);
+            if (context.wave.footer_data == NULL) {
+                write_wave_header(sub_block, pcmreader, block_index, 0);
+            } else {
+                write_wave_header(sub_block, pcmreader, block_index,
+                                  context.wave.footer_len);
+            }
+
+            write_sub_block(stream, WV_WAVE_HEADER, 1, sub_block);
         }
     }
 
@@ -695,13 +709,14 @@ encode_block(BitstreamWriter* bs,
     if (!context->wave.header_written) {
         bw_reset_recorder(sub_block);
         if (context->wave.header_data == NULL) {
-            /*no external header, so generate artificial one*/
+            /*no external RIFF WAVE header,
+              so generate temporary one to be populated later*/
             if (context->wave.footer_data == NULL) {
-                write_wave_header(sub_block, pcmreader, 0,
-                                  0);
+                write_dummy_wave_header(sub_block, pcmreader,
+                                        0);
             } else {
-                write_wave_header(sub_block, pcmreader, 0,
-                                  context->wave.footer_len);
+                write_dummy_wave_header(sub_block, pcmreader,
+                                        context->wave.footer_len);
             }
         } else {
             /*external header given, so output as-is*/
@@ -709,7 +724,7 @@ encode_block(BitstreamWriter* bs,
                                    context->wave.header_data,
                                    context->wave.header_len);
         }
-        write_sub_block(sub_blocks, WV_WAVE_HEADER, 1, sub_block);
+        write_sub_block(sub_blocks, WV_DUMMY, 0, sub_block);
         context->wave.header_written = 1;
     }
 
@@ -1752,8 +1767,8 @@ encode_footer_block(BitstreamWriter* bs,
         sub_block->write_bytes(sub_block,
                                context->wave.footer_data,
                                context->wave.footer_len);
+        write_sub_block(sub_blocks, WV_WAVE_FOOTER, 1, sub_block);
     }
-    write_sub_block(sub_blocks, WV_WAVE_FOOTER, 1, sub_block);
 
     write_block_header(bs,
                        sub_blocks->bytes_written(sub_blocks),
@@ -1780,6 +1795,28 @@ wavpack_md5_update(void *data, unsigned char *buffer, unsigned long len)
     audiotools__MD5Update((audiotools__MD5Context*)data,
                           (const void*)buffer,
                           len);
+}
+
+static void
+write_dummy_wave_header(BitstreamWriter* bs, const pcmreader* pcmreader,
+                        unsigned wave_footer_len)
+{
+    char* fmt;
+    if ((pcmreader->channels <= 2) &&
+        (pcmreader->bits_per_sample <= 16)) {
+        /*classic fmt chunk*/
+        fmt = "16u 16u 32u 32u 16u 16u";
+    } else {
+        /*extended fmt chunk*/
+        fmt = "16u 16u 32u 32u 16u 16u 16u 16u 32u 16b";
+    }
+
+    /*"RIFF", <size>, "WAVE", "fmt ", <size>*/
+    bs->write(bs, bs_format_size("4b 32u 4b 4b 32u"), 0);
+
+    bs->write(bs, bs_format_size(fmt), 0); /*<fmt data>*/
+
+    bs->write(bs, bs_format_size("4b 32u"), 0); /*"data", size*/
 }
 
 static void
