@@ -2767,10 +2767,10 @@ class OggFlacAudio(FlacAudio):
                  (pcmreader.bits_per_sample > 16)) and
                 (channel_mask != 0)):
                 metadata = oggflac.get_metadata()
-                metadata.vorbis_comment[
+                metadata.get_block(Flac_VORBISCOMMENT.BLOCK_ID)[
                     u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
                     u"0x%.4X" % (channel_mask)]
-                oggflac.set_metadata(metadata)
+                oggflac.update_metadata(metadata)
             return oggflac
         else:
             raise EncodingError(u"error encoding file with flac")

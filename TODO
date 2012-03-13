@@ -4496,6 +4496,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] non-CD quality, external cuesheet
    - [X] CD quality, multiple files
    - [X] non-CD quality, multiple files
+** DONE Improve .wav performance
+   don't read entire data chunk by default
 ** TODO Adjust album_number/track_number heuristics
    these should be last-resort fields that apply
    *only* if a track has no metadata of any kind
@@ -5169,6 +5171,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] editxmcd
     - [X] track2xmcd
 *** TODO Update unit tests
+    - [ ] cd2track
+    - [X] dvda2track
+    - [ ] tracksplit
 *** TODO Deprecate xmcd-specific modules
     Since metadata lookup handles files internally,
     there's no need for metadata file handling classes/functions
@@ -5176,21 +5181,19 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** TODO Update documentation to indicate deprecation
 ** TODO Ensure overly-long files are handled correctly
    That is, anything larger than a .wav can typically handle
-*** TODO wave should fail with error
+*** DONE wave should fail with error
 *** TODO aiff should fail with error
 *** TODO au should fail with error?
 *** DONE flac should work
-*** TODO ogg flac should work
+*** DONE ogg flac should work
 *** DONE wavpack should work
-*** TODO alac should work
+*** DONE alac should work
 *** TODO shorten should work
 ** TODO Ensure > 2GB files work correctly
 *** TODO flac should work
 *** TODO ogg flac should work
 *** TODO wavpack should work
 *** TODO alac should fail with error?
-** TODO Improve .wav performance
-   don't read entire data chunk by default
 ** TODO Ensure individual unit tests pass
 *** TODO Lib
     - [ ] core

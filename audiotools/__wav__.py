@@ -265,7 +265,8 @@ class WaveAudio(WaveContainer):
                             wave_file.substream(chunk_size))
                     elif (chunk_id == 'data'):
                         self.__data_size__ = chunk_size
-                        wave_file.skip_bytes(chunk_size)
+                        #fmt chunk should occur before data
+                        break
                     else:
                         wave_file.skip_bytes(chunk_size)
 
@@ -424,12 +425,16 @@ class WaveAudio(WaveContainer):
                 raise EncodingError(err.error_message)
             f.flush()
 
-            #go back to the beginning the rewrite the header
-            f.seek(0, 0)
-            wave.build("4b 32u 4b", ("RIFF", total_size, "WAVE"))
-            wave.build("4b 32u", ('fmt ', format_size(fmt) / 8))
-            wave.build(fmt, fmt_fields)
-            wave.build("4b 32u", ('data', data_size))
+            if (total_size < (2 ** 32)):
+                #go back to the beginning the rewrite the header
+                f.seek(0, 0)
+                wave.build("4b 32u 4b", ("RIFF", total_size, "WAVE"))
+                wave.build("4b 32u", ('fmt ', format_size(fmt) / 8))
+                wave.build(fmt, fmt_fields)
+                wave.build("4b 32u", ('data', data_size))
+            else:
+                os.unlink(filename)
+                raise EncodingError("PCM data too large for wave file")
 
         finally:
             f.close()
