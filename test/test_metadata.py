@@ -323,7 +323,7 @@ class MetaDataTest(unittest.TestCase):
 
 class WavPackApeTagMetaData(MetaDataTest):
     def setUp(self):
-        self.metadata_class = audiotools.WavPackAPEv2
+        self.metadata_class = audiotools.ApeTag
         self.supported_fields = ["track_name",
                                  "track_number",
                                  "track_total",
@@ -348,7 +348,7 @@ class WavPackApeTagMetaData(MetaDataTest):
 
     @METADATA_WAVPACK
     def test_foreign_field(self):
-        metadata = audiotools.WavePackAPEv2(
+        metadata = audiotools.ApeTag(
         [audiotools.ApeTagItem(0, False, "Title", 'Track Name'),
          audiotools.ApeTagItem(0, False, "Album", 'Album Name'),
          audiotools.ApeTagItem(0, False, "Track", "1/3"),
@@ -627,7 +627,7 @@ class WavPackApeTagMetaData(MetaDataTest):
     @METADATA_WAVPACK
     def test_clean(self):
         #check trailing whitespace
-        metadata = audiotools.WavPackAPEv2(
+        metadata = audiotools.ApeTag(
             [audiotools.ApeTagItem.string('Title', u'Foo ')])
         self.assertEqual(metadata.track_name, u'Foo ')
         self.assertEqual(metadata['Title'].data, u'Foo '.encode('ascii'))
@@ -640,7 +640,7 @@ class WavPackApeTagMetaData(MetaDataTest):
         self.assertEqual(cleaned['Title'].data, u'Foo'.encode('ascii'))
 
         #check leading whitespace
-        metadata = audiotools.WavPackAPEv2(
+        metadata = audiotools.ApeTag(
             [audiotools.ApeTagItem.string('Title', u' Foo')])
         self.assertEqual(metadata.track_name, u' Foo')
         self.assertEqual(metadata['Title'].data, u' Foo'.encode('ascii'))
@@ -653,7 +653,7 @@ class WavPackApeTagMetaData(MetaDataTest):
         self.assertEqual(cleaned['Title'].data, u'Foo'.encode('ascii'))
 
         #check empty fields
-        metadata = audiotools.WavPackAPEv2(
+        metadata = audiotools.ApeTag(
             [audiotools.ApeTagItem.string('Title', u'')])
         self.assertEqual(metadata.track_name, u'')
         self.assertEqual(metadata['Title'].data, u''.encode('ascii'))
@@ -668,7 +668,7 @@ class WavPackApeTagMetaData(MetaDataTest):
                           'Title')
 
         #check leading zeroes
-        metadata = audiotools.WavPackAPEv2(
+        metadata = audiotools.ApeTag(
             [audiotools.ApeTagItem.string('Track', u'01')])
         self.assertEqual(metadata.track_number, 1)
         self.assertEqual(metadata.track_total, 0)
@@ -682,7 +682,7 @@ class WavPackApeTagMetaData(MetaDataTest):
         self.assertEqual(cleaned.track_total, 0)
         self.assertEqual(cleaned['Track'].data, u'1'.encode('ascii'))
 
-        metadata = audiotools.WavPackAPEv2(
+        metadata = audiotools.ApeTag(
             [audiotools.ApeTagItem.string('Track', u'01/2')])
         self.assertEqual(metadata.track_number, 1)
         self.assertEqual(metadata.track_total, 2)
@@ -696,7 +696,7 @@ class WavPackApeTagMetaData(MetaDataTest):
         self.assertEqual(cleaned.track_total, 2)
         self.assertEqual(cleaned['Track'].data, u'1/2'.encode('ascii'))
 
-        metadata = audiotools.WavPackAPEv2(
+        metadata = audiotools.ApeTag(
             [audiotools.ApeTagItem.string('Track', u'1/02')])
         self.assertEqual(metadata.track_number, 1)
         self.assertEqual(metadata.track_total, 2)
@@ -710,7 +710,7 @@ class WavPackApeTagMetaData(MetaDataTest):
         self.assertEqual(cleaned.track_total, 2)
         self.assertEqual(cleaned['Track'].data, u'1/2'.encode('ascii'))
 
-        metadata = audiotools.WavPackAPEv2(
+        metadata = audiotools.ApeTag(
             [audiotools.ApeTagItem.string('Track', u'01/02')])
         self.assertEqual(metadata.track_number, 1)
         self.assertEqual(metadata.track_total, 2)

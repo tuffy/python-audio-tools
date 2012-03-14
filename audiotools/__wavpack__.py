@@ -70,38 +70,6 @@ class __Counter__:
 #######################
 
 
-class WavPackAPEv2(ApeTag):
-    """A WavPack-specific APEv2 implementation with minor differences."""
-
-    def __init__(self, tags, tag_length=None, frame_count=0):
-        """Constructs an ApeTag from a list of ApeTagItem objects.
-
-        tag_length is an optional total length integer.
-        frame_count is an optional number of PCM frames
-        to be used by cuesheets."""
-
-        ApeTag.__init__(self, tags=tags, tag_length=tag_length)
-        self.frame_count = frame_count
-
-    @classmethod
-    def converted(cls, metadata):
-        """Converts a MetaData object to a WavPackAPEv2 object."""
-
-        if (metadata is None):
-            return None
-        elif (isinstance(metadata, WavPackAPEv2)):
-            return WavPackAPEv2([tag.copy() for tag in metadata.tags],
-                                metadata.tag_length,
-                                metadata.frame_count)
-        elif (isinstance(metadata, ApeTag)):
-            return WavPackAPEv2([tag.copy() for tag in metadata.tags],
-                                metadata.tag_length,
-                                0)
-        else:
-            return WavPackAPEv2(ApeTag.converted(metadata).tags)
-
-WavePackAPEv2 = WavPackAPEv2
-
 #######################
 #WavPack
 #######################
@@ -118,8 +86,6 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
                                               u"worst compression"),
                                 "veryhigh": _(u"slowest encode/decode, " +
                                               u"best compression")}
-
-    APE_TAG_CLASS = WavPackAPEv2
 
     BITS_PER_SAMPLE = (8, 16, 24, 32)
     SAMPLING_RATE = (6000,  8000,  9600,   11025,

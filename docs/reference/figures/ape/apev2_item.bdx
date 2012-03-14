@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col style="dashed" end="255" start="0" width=".20">Header</col>
+    <col width=".20" id="item">Item₀</col>
+    <col width=".20">Item₁</col>
+    <col style="dashed" width=".20">...</col>
+    <col end="255" start="0" width=".20">Footer</col>
+  </row>
+  <spacer/>
+  <row>
+    <col start="0" end="31" width=".20" id="item_s">value size</col>
+    <col start="32" end="63" width=".20" id="flags">item flags</col>
+    <col start="64" width=".20">item key</col>
+    <col start="0" end="7" width=".20">terminator (0)</col>
+    <col width=".20" id="item_e">item value</col>
+  </row>
+  <spacer/>
+  <row>
+    <col start="0" end="0" width=".333333" id="flags_s">read only</col>
+    <col start="1" end="2" width=".333333">item encoding</col>
+    <col start="3" end="28" width=".333333" id="flags_e">undefined</col>
+  </row>
+  <row>
+    <col start="29" end="29" width=".333333">is header</col>
+    <col start="30" end="30" width=".333333">contains no footer</col>
+    <col start="31" end="31" width=".333333">contains a header</col>
+  </row>
+  <line style="dotted">
+    <start id="item" corner="sw"/>
+    <end id="item_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="item" corner="se"/>
+    <end id="item_e" corner="ne"/>
+  </line>
+  <line style="dotted">
+    <start id="flags" corner="sw"/>
+    <end id="flags_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="flags" corner="se"/>
+    <end id="flags_e" corner="ne"/>
+  </line>
+</diagram>

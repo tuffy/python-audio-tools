@@ -265,6 +265,7 @@ APE = \
 figures/ape/stream.pdf \
 figures/ape/descriptor.pdf \
 figures/ape/header.pdf \
+figures/ape/apev2_item.pdf \
 figures/ape/apev2_tag.pdf \
 figures/ape/apev2_tagheader.pdf \
 figures/ape/apev2_flags.pdf

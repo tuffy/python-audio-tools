@@ -21,6 +21,7 @@
 from audiotools import (AudioFile, WaveAudio, InvalidFile, PCMReader,
                         transfer_data, subprocess, BIN, MetaData,
                         os, re, TempWaveReader, Image, cStringIO)
+
 import gettext
 
 gettext.install("audiotools", unicode=True)
@@ -37,44 +38,23 @@ def __number_pair__(current, total):
         return u"%d/%d" % (current, total)
 
 
+def limited_transfer_data(from_function, to_function,
+                          max_bytes):
+    BUFFER_SIZE = 0x100000
+    s = from_function(BUFFER_SIZE)
+    while ((len(s) > 0) and (max_bytes > 0)):
+        if (len(s) > max_bytes):
+            s = s[0:max_bytes]
+        to_function(s)
+        max_bytes -= len(s)
+        s = from_function(BUFFER_SIZE)
+
+
+
 #######################
 #MONKEY'S AUDIO
 #######################
 
-
-class ApeTagHeader:
-    FORMAT = "8b 32u 32u 32u [ 1u 2u 26p 1u 1u 1u ] 64p"
-
-    def __init__(self, preamble, version, tag_size, item_count, read_only,
-                 encoding, is_header, no_footer, has_header):
-        if (preamble != "APETAGEX"):
-            raise ValueError("invalid preamble")
-
-        self.version = version
-        self.tag_size = tag_size
-        self.item_count = item_count
-        self.read_only = read_only
-        self.encoding = encoding
-        self.is_header = is_header
-        self.no_footer = no_footer
-        self.has_header = has_header
-
-    def __repr__(self):
-        return "ApeTagHeader(%s)" % (
-            ",".join(["%s=%s" % (key, repr(getattr(self, key)))
-                      for key in ["version", "tag_size", "item_count",
-                                  "read_only", "encoding", "is_header",
-                                  "no_footer", "has_header"]]))
-
-    @classmethod
-    def parse(cls, reader):
-        return cls(*reader.parse(cls.FORMAT))
-
-    def build(self, writer):
-        writer.build(self.FORMAT,
-                     ("APETAGEX", self.version, self.tag_size,
-                      self.item_count, self.read_only, self.encoding,
-                      self.is_header, self.no_footer, self.has_header))
 
 class ApeTagItem:
     FORMAT = "32u [ 1u 2u 29p ]"
@@ -92,6 +72,9 @@ class ApeTagItem:
         self.read_only = read_only
         self.key = key
         self.data = data
+
+    def total_size(self):
+        return 4 + 4 + len(self.key) + 1 + len(self.data)
 
     def copy(self):
         return ApeTagItem(self.type,
@@ -149,7 +132,9 @@ class ApeTagItem:
         writer.build("%s %db 8u %db" % (self.FORMAT,
                                         len(self.key),
                                         len(self.data)),
-                     (len(self.data), self.read_only, self.type,
+                     (len(self.data),
+                      self.read_only,
+                      self.type,
                       self.key, 0, self.data))
 
     @classmethod
@@ -180,6 +165,8 @@ class ApeTagItem:
 class ApeTag(MetaData):
     """A complete APEv2 tag."""
 
+    HEADER_FORMAT = "8b 32u 32u 32u [ 1u 2u 26p 1u 1u 1u ] 64p"
+
     ITEM = ApeTagItem
 
     ATTRIBUTE_MAP = {'track_name': 'Title',
@@ -204,19 +191,30 @@ class ApeTag(MetaData):
 
     INTEGER_ITEMS = ('Track', 'Media')
 
-    def __init__(self, tags, tag_length=None):
-        """Constructs an ApeTag from a list of ApeTagItem objects.
-
-        tag_length is an optional total length integer."""
+    def __init__(self, tags, contains_header=True, contains_footer=True):
+        """Constructs an ApeTag from a list of ApeTagItem objects."""
 
         for tag in tags:
             if (not isinstance(tag, ApeTagItem)):
                 raise ValueError("%s is not ApeTag" % (repr(tag)))
-        self.__dict__["tags"] = tags
-        self.__dict__["tag_length"] = tag_length
+        self.__dict__["tags"] = list(tags)
+        self.__dict__["contains_header"] = contains_header
+        self.__dict__["contains_footer"] = contains_footer
 
     def __repr__(self):
-        return "ApeTag(%s, %s)" % (repr(self.tags), repr(self.tag_length))
+        return "ApeTag(%s, %s, %s)" % (repr(self.tags),
+                                       repr(self.contains_header),
+                                       repr(self.contains_footer))
+
+    def total_size(self):
+        size = 0
+        if (self.contains_header):
+            size += 32
+        for tag in self.tags:
+            size += tag.total_size()
+        if (self.contains_footer):
+            size += 32
+        return size
 
     def __eq__(self, metadata):
         if (isinstance(metadata, ApeTag)):
@@ -238,6 +236,13 @@ class ApeTag(MetaData):
 
     def keys(self):
         return [tag.key for tag in self.tags]
+
+    def __contains__(self, key):
+        for tag in self.tags:
+            if (tag.key == key):
+                return True
+        else:
+            return False
 
     def __getitem__(self, key):
         for tag in self.tags:
@@ -370,7 +375,8 @@ class ApeTag(MetaData):
             return None
         elif (isinstance(metadata, ApeTag)):
             return ApeTag([tag.copy() for tag in metadata.tags],
-                          metadata.tag_length)
+                          contains_header=metadata.contains_header,
+                          contains_footer=metadata.contains_footer)
         else:
             tags = cls([])
             for (field, key) in cls.ATTRIBUTE_MAP.items():
@@ -478,21 +484,28 @@ class ApeTag(MetaData):
         apefile.seek(-32, 2)
         reader = BitstreamReader(apefile, 1)
 
-        try:
-            footer = ApeTagHeader.parse(reader)
-        except ValueError:
+        (preamble,
+         version,
+         tag_size,
+         item_count,
+         read_only,
+         item_encoding,
+         is_header,
+         no_footer,
+         has_header) = reader.parse(cls.HEADER_FORMAT)
+
+        if ((preamble != "APETAGEX") or (version != 2000)):
             return None
 
-        apefile.seek(-(footer.tag_size), 2)
+        apefile.seek(-tag_size, 2)
 
         return cls([ApeTagItem.parse(reader)
-                    for i in xrange(footer.item_count)],
-                   tag_length=footer.tag_size + 32
-                   if footer.has_header else
-                   footer.tag_size)
+                    for i in xrange(item_count)],
+                   contains_header=has_header,
+                   contains_footer=True)
 
     def build(self, writer):
-        """Returns an APEv2 tag as a binary string."""
+        """Outputs an APEv2 tag to writer"""
 
         from .bitstream import BitstreamRecorder
 
@@ -501,30 +514,30 @@ class ApeTag(MetaData):
         for tag in self.tags:
             tag.build(tags)
 
-        header = ApeTagHeader(preamble="APETAGEX",
-                              version=2000,
-                              tag_size=tags.bytes() + 32,
-                              item_count=len(self.tags),
-                              read_only=0,
-                              encoding=0,
-                              is_header=1,
-                              no_footer=0,
-                              has_header=1)
+        if (self.contains_header):
+            writer.build(ApeTag.HEADER_FORMAT,
+                         ("APETAGEX",                #preamble
+                          2000,                      #version
+                          tags.bytes() + 32,         #tag size
+                          len(self.tags),            #item count
+                          0,                         #read only
+                          0,                         #encoding
+                          1,                         #is header
+                          not self.contains_footer,  #no footer
+                          self.contains_header))     #has header
 
-        footer = ApeTagHeader(preamble="APETAGEX",
-                              version=2000,
-                              tag_size=tags.bytes() + 32,
-                              item_count=len(self.tags),
-                              read_only=0,
-                              encoding=0,
-                              is_header=0,
-                              no_footer=0,
-                              has_header=1)
-
-
-        header.build(writer)
         tags.copy(writer)
-        footer.build(writer)
+        if (self.contains_footer):
+            writer.build(ApeTag.HEADER_FORMAT,
+                         ("APETAGEX",                #preamble
+                          2000,                      #version
+                          tags.bytes() + 32,         #tag size
+                          len(self.tags),            #item count
+                          0,                         #read only
+                          0,                         #encoding
+                          0,                         #is header
+                          not self.contains_footer,  #no footer
+                          self.contains_header))     #has header
 
     def clean(self, fixes_applied):
         tag_items = []
@@ -575,7 +588,9 @@ class ApeTag(MetaData):
             else:
                 tag_items.append(tag)
 
-        return self.__class__(tag_items)
+        return self.__class__(tag_items,
+                              self.contains_header,
+                              self.contains_footer)
 
 
 class ApeTaggedAudio:
@@ -584,8 +599,6 @@ class ApeTaggedAudio:
     This class presumes there will be a filename attribute which
     can be opened and checked for tags, or written if necessary."""
 
-    APE_TAG_CLASS = ApeTag
-
     def get_metadata(self):
         """Returns an ApeTag object, or None.
 
@@ -593,36 +606,70 @@ class ApeTaggedAudio:
 
         f = file(self.filename, 'rb')
         try:
-            return self.APE_TAG_CLASS.read(f)
+            return ApeTag.read(f)
         finally:
             f.close()
 
     def update_metadata(self, metadata):
         if (metadata is None):
             return
-        elif (not isinstance(metadata, self.APE_TAG_CLASS)):
+        elif (not isinstance(metadata, ApeTag)):
             raise ValueError(_(u"metadata not from audio file"))
 
-        from .bitstream import BitstreamWriter
+        from .bitstream import BitstreamReader,BitstreamWriter
 
-        f = file(self.filename, "rb")
+        f = file(self.filename, "r+b")
+        f.seek(-32, 2)
 
-        #FIXME - pull metadata length finding from ApeTag entirely
-        #we can't trust metadata's .tag_length
-        #because the same metadata object may have been used for an update
-        #which is perfectly legal, but invalidates the old length:
-        # >>> wv = audiotools.open("file.wv")
-        # >>> m = wv.get_metadata()
-        # >>> m.track_name = u"New Name"
-        # >>> wv.update_metadata(m)
-        # >>> m.track_name = u"Another New Name"
-        # >>> wv.update_metadata(m)
-        untagged_data = f.read()[0:-self.get_metadata().tag_length]
-        f.close()
-        f = file(self.filename, "wb")
-        f.write(untagged_data)
-        metadata.build(BitstreamWriter(f, 1))
-        f.close()
+        (preamble,
+         version,
+         tag_size,
+         item_count,
+         read_only,
+         item_encoding,
+         is_header,
+         no_footer,
+         has_header) = BitstreamReader(f, 1).parse(ApeTag.HEADER_FORMAT)
+
+        if ((preamble == 'APETAGEX') and (version == 2000)):
+            if (has_header):
+                old_tag_size = 32 + tag_size
+            else:
+                old_tag_size = tag_size
+
+            if (metadata.total_size() >= old_tag_size):
+                #metadata has grown
+                #so append it to existing file
+                f.seek(-old_tag_size, 2)
+                metadata.build(BitstreamWriter(f, 1))
+            else:
+                #metadata has shrunk
+                #so rewrite file with smaller metadata
+                import tempfile
+                from os.path import getsize
+                rewritten = tempfile.TemporaryFile()
+
+                #copy everything but the last "old_tag_size" bytes
+                #from existing file to rewritten file
+                f = open(self.filename, "rb")
+                limited_transfer_data(f.read, rewritten.write,
+                                      os.path.getsize(self.filename) -
+                                      old_tag_size)
+                f.close()
+
+                #append new tag to rewritten file
+                metadata.build(BitstreamWriter(rewritten, 1))
+
+                #finally, overwrite current file with rewritten file
+                rewritten.seek(0, 0)
+                f = open(self.filename, "wb")
+                transfer_data(rewritten.read, f.write)
+                f.close()
+                rewritten.close()
+        else:
+            #no existing metadata, so can't be from existing file
+            #set_metadata() should be used in this case
+            raise ValueError(_(u"metadata not from audio file"))
 
     def set_metadata(self, metadata):
         """Takes a MetaData object and sets this track's metadata.
@@ -635,7 +682,7 @@ class ApeTaggedAudio:
         from .bitstream import BitstreamWriter
 
         old_metadata = self.get_metadata()
-        new_metadata = self.APE_TAG_CLASS.converted(metadata)
+        new_metadata = ApeTag.converted(metadata)
 
         if (old_metadata is not None):
             #transfer ReplayGain tags from old metadata to new metadata
@@ -654,6 +701,12 @@ class ApeTaggedAudio:
                         #if neither has tag, ignore it
                         continue
 
+            #transfer Cuesheet from old metadata to new metadata
+            if ("Cuesheet" in old_metadata):
+                new_metadata["Cuesheet"] = old_metadata["Cuesheet"]
+            elif ("Cuesheet" in new_metadata):
+                del(new_metadata["Cuesheet"])
+
             self.update_metadata(new_metadata)
         else:
             #delete ReplayGain tags from new metadata
@@ -666,6 +719,10 @@ class ApeTaggedAudio:
                 except KeyError:
                     continue
 
+            #delete Cuesheet from new metadata
+            if ("Cuesheet" in new_metadata):
+                del(new_metadata["Cuesheet"])
+
             #no existing metadata, so simply append a fresh tag
             f = file(self.filename, "ab")
             new_metadata.build(BitstreamWriter(f, 1))
@@ -676,14 +733,49 @@ class ApeTaggedAudio:
 
         Raises IOError if unable to write the file."""
 
-        current_metadata = self.get_metadata()
-        if (current_metadata is not None):  # there's existing tags to delete
-            f = file(self.filename, "rb")
-            untagged_data = f.read()[0:-current_metadata.tag_length]
+        from .bitstream import BitstreamReader,BitstreamWriter
+
+        f = file(self.filename, "r+b")
+        f.seek(-32, 2)
+
+        (preamble,
+         version,
+         tag_size,
+         item_count,
+         read_only,
+         item_encoding,
+         is_header,
+         no_footer,
+         has_header) = BitstreamReader(f, 1).parse(ApeTag.HEADER_FORMAT)
+
+        if ((preamble == 'APETAGEX') and (version == 2000)):
+            #there's existing metadata to delete
+            #so rewrite file without trailing metadata tag
+            if (has_header):
+                old_tag_size = 32 + tag_size
+            else:
+                old_tag_size = tag_size
+
+            import tempfile
+            from os.path import getsize
+            rewritten = tempfile.TemporaryFile()
+
+            #copy everything but the last "old_tag_size" bytes
+            #from existing file to rewritten file
+            f = open(self.filename, "rb")
+            limited_transfer_data(f.read, rewritten.write,
+                                  os.path.getsize(self.filename) -
+                                  old_tag_size)
             f.close()
-            f = file(self.filename, "wb")
-            f.write(untagged_data)
+
+            #finally, overwrite current file with rewritten file
+            rewritten.seek(0, 0)
+            f = open(self.filename, "wb")
+            transfer_data(rewritten.read, f.write)
             f.close()
+            rewritten.close()
+
+
 
 
 class ApeAudio(ApeTaggedAudio, AudioFile):

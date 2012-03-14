@@ -1,21 +1,9 @@
 <?xml version="1.0" ?><diagram>
   <row>
-    <col end="255" start="0" width=".20">Header</col>
-    <col id="item" width=".20">Item₁</col>
-    <col width=".20">Item₂</col>
+    <col style="dashed" end="255" start="0" width=".20">Header</col>
+    <col width=".20">Item₀</col>
+    <col width=".20">Item₁</col>
     <col style="dashed" width=".20">...</col>
     <col end="255" start="0" width=".20">Footer</col>
   </row>
-  <row><blank/></row>
-  <row>
-    <col end="31" id="item_len" start="0" width=".5">Item Value Length</col>
-    <col end="63" id="item_flags" start="32" width=".5">Flags</col>
-  </row>
-  <row>
-    <col start="64" width=".3">Item Key</col>
-    <col end="7" start="0" width=".2">NULL (0x00)</col>
-    <col style="dashed" width=".5">Item Value</col>
-  </row>
-  <line style="dotted"><start corner="sw" id="item"/><end corner="nw" id="item_len"/></line>
-  <line style="dotted"><start corner="se" id="item"/><end corner="ne" id="item_flags"/></line>
 </diagram>

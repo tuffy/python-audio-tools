@@ -38,83 +38,98 @@ i.e. Monkey's Audio 3.99 = 3990
 }
 \section{the APEv2 Tag}
 \label{apev2}
-The APEv2 tag is a little-endian metadata tag appended to
-Monkey's Audio files, among others.
 \begin{figure}[h]
-\includegraphics{figures/ape/apev2_tag.pdf}
+  \includegraphics{figures/ape/apev2_tagheader.pdf}
 \end{figure}
-\par
-\noindent
-\VAR{Item Key} is an ASCII string from the range 0x20 to 0x7E.
-\VAR{Item Value} is typically a UTF-8 encoded string, but may
-also be binary depending on the Flags.
+All APEv2 tags have a footer, 32 bytes from the end of the file.
+Some may also have an identically-formatted header.
+\VAR{tag size} is the size of the entire tag,
+including the footer but \textit{not} including any header.
+\VAR{item count} is the total number of items in the tag.
 
-\begin{multicols}{2}
-{\relsize{-2}
-\begin{description}
-\item[Abstract] Abstract
-\item[Album] album name
-\item[Artist] performing artist
-\item[Bibliography] Bibliography/Discography
-\item[Catalog] catalog number
-\item[Comment] user comment
-\item[Composer] original composer
-\item[Conductor] conductor
-\item[Copyright] copyright holder
-\item[Debut album] debut album name
-\item[Dummy] place holder
-\item[EAN/UPC] EAN-13/UPC-A bar code identifier
-\item[File] file location
-\item[Genre] genre
-\item[Index] indexes for quick access
-\item[Introplay] characteristic part of piece for intro playing
-\item[ISBN] ISBN number with check digit
-\item[ISRC] International Standard Recording Number
-\item[Language] used Language(s) for music/spoken words
-\item[LC] Label Code
-\item[Media] source media
-\item[Publicationright] publication right holder
-\item[Publisher] record label or publisher
-\item[Record Date] record date
-\item[Record Location] record location
-\item[Related] location of related information
-\item[Subtitle] track subtitle
-\item[Title] track title
-\item[Track] track number
-\item[Year] release date
-\end{description}
-}
-\end{multicols}
-
-\pagebreak
-
-\subsection{the APEv2 Tag Header/Footer}
 \begin{figure}[h]
-\includegraphics{figures/ape/apev2_tagheader.pdf}
+  \includegraphics{figures/ape/apev2_item.pdf}
 \end{figure}
-\par
-\noindent
-The format of the APEv2 header and footer are identical
-except for the \VAR{Is Header} tag.
-\VAR{Version} is typically 2000 (stored little-endian).
-\VAR{Tag Size} is the size of the entire APEv2 tag, including the
-footer but excluding the header.
-\VAR{Item Count} is the number of individual tag items.
+\VAR{item encoding} is one of:
+\begin{table}[h]
+  \begin{tabular}{rl}
+    \texttt{0} & UTF-8 \\
+    \texttt{1} & Binary \\
+    \texttt{2} & External Link \\
+    \texttt{3} & Reserved \\
+  \end{tabular}
+\end{table}
 
-\subsection{the APEv2 Flags}
-\begin{figure}[h]
-\includegraphics{figures/ape/apev2_flags.pdf}
-\end{figure}
-\par
-\noindent
-This flags field is used by both the APEv2 header/footer and the
-individual tag items.
-The \VAR{Encoding} field indicates the encoding of its value:
+%% The APEv2 tag is a little-endian metadata tag appended to
+%% Monkey's Audio files, among others.
+%% \begin{figure}[h]
+%% \includegraphics{figures/ape/apev2_tag.pdf}
+%% \end{figure}
+%% \par
+%% \noindent
+%% \VAR{Item Key} is an ASCII string from the range 0x20 to 0x7E.
+%% \VAR{Item Value} is typically a UTF-8 encoded string, but may
+%% also be binary depending on the Flags.
 
-\begin{inparaenum}
-\item[\texttt{00} = ] UTF-8,
-\item[\texttt{01} = ] Binary,
-\item[\texttt{10} = ] External Link,
-\item[\texttt{11} = ] Reserved
-\end{inparaenum}
-.
+%% \begin{multicols}{2}
+%% {\relsize{-2}
+%% \begin{description}
+%% \item[Abstract] Abstract
+%% \item[Album] album name
+%% \item[Artist] performing artist
+%% \item[Bibliography] Bibliography/Discography
+%% \item[Catalog] catalog number
+%% \item[Comment] user comment
+%% \item[Composer] original composer
+%% \item[Conductor] conductor
+%% \item[Copyright] copyright holder
+%% \item[Debut album] debut album name
+%% \item[Dummy] place holder
+%% \item[EAN/UPC] EAN-13/UPC-A bar code identifier
+%% \item[File] file location
+%% \item[Genre] genre
+%% \item[Index] indexes for quick access
+%% \item[Introplay] characteristic part of piece for intro playing
+%% \item[ISBN] ISBN number with check digit
+%% \item[ISRC] International Standard Recording Number
+%% \item[Language] used Language(s) for music/spoken words
+%% \item[LC] Label Code
+%% \item[Media] source media
+%% \item[Publicationright] publication right holder
+%% \item[Publisher] record label or publisher
+%% \item[Record Date] record date
+%% \item[Record Location] record location
+%% \item[Related] location of related information
+%% \item[Subtitle] track subtitle
+%% \item[Title] track title
+%% \item[Track] track number
+%% \item[Year] release date
+%% \end{description}
+%% }
+%% \end{multicols}
+
+%% \pagebreak
+
+%% \subsection{the APEv2 Tag Header/Footer}
+
+%% \par
+%% \noindent
+%% The format of the APEv2 header and footer are identical
+%% except for the \VAR{Is Header} tag.
+%% \VAR{Version} is typically 2000 (stored little-endian).
+%% \VAR{Tag Size} is the size of the entire APEv2 tag, including the
+%% footer but excluding the header.
+%% \VAR{Item Count} is the number of individual tag items.
+
+%% \subsection{the APEv2 Flags}
+%% \begin{figure}[h]
+%% \includegraphics{figures/ape/apev2_flags.pdf}
+%% \end{figure}
+%% \par
+%% \noindent
+%% This flags field is used by both the APEv2 header/footer and the
+%% individual tag items.
+%% The \VAR{Encoding} field indicates the encoding of its value:
+
+
+%% .
