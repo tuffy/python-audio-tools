@@ -2609,6 +2609,18 @@ class MetaData:
                 if (len(field) > 0):
                     yield (attr, field)
 
+    def empty_fields(self):
+        """yields an (attr, value) tuple per MetaData field
+        which is blank"""
+
+        for (attr, field) in self.fields():
+            if (attr in self.INTEGER_FIELDS):
+                if (field == 0):
+                    yield (attr, field)
+            else:
+                if (len(field) == 0):
+                    yield (attr, field)
+
     def __unicode__(self):
         comment_pairs = []
 
@@ -3352,10 +3364,8 @@ class AudioFile:
         If neither yields a good result, returns 0."""
 
         metadata = self.get_metadata()
-        if ((metadata is not None) and (metadata.album_number > 0)):
+        if (metadata is not None):
             return metadata.album_number
-        elif ((metadata is not None) and (metadata.track_number > 0)):
-            return 0
         else:
             try:
                 long_track_number = int(re.findall(
@@ -3397,8 +3407,7 @@ class AudioFile:
                     track_number = 0
 
             #prefer an album_number from MetaData, if available
-            if ((track_metadata is not None) and
-                (track_metadata.album_number > 0)):
+            if (track_metadata is not None):
                 album_number = track_metadata.album_number
             else:
                 try:
@@ -3982,13 +3991,13 @@ class CDDA:
     def __init__(self, device_name, speed=None, perform_logging=True):
         """device_name is a string, speed is an optional int."""
 
-        import cdio
+        from audiotools.cdio import identify_cdrom,CDImage,CDDA,CD_IMAGE
 
-        self.cdrom_type = cdio.identify_cdrom(device_name)
-        if (self.cdrom_type & cdio.CD_IMAGE):
-            self.cdda = cdio.CDImage(device_name, self.cdrom_type)
+        self.cdrom_type = identify_cdrom(device_name)
+        if (self.cdrom_type & CD_IMAGE):
+            self.cdda = CDImage(device_name, self.cdrom_type)
         else:
-            self.cdda = cdio.CDDA(device_name)
+            self.cdda = CDDA(device_name)
             if (speed is not None):
                 self.cdda.set_speed(speed)
 
@@ -4006,9 +4015,9 @@ class CDDA:
             raise IndexError(key)
         else:
             #apply sample offset only to physical CD drives
-            import cdio
+            from audiotools.cdio import CD_IMAGE
 
-            if (self.cdrom_type & cdio.CD_IMAGE):
+            if (self.cdrom_type & CD_IMAGE):
                 sample_offset = 0
             else:
                 try:
@@ -4064,13 +4073,13 @@ class CDDA:
                 reader.length = reader.pcmreader.length
                 reader.offset = reader.pcmreader.offset
 
-            #if logging, wrap reader in AccurateRip checksummer
-            if (self.perform_logging):
-                reader = CDTrackReaderAccurateRipCRC(
-                    reader,
-                    int(key),
-                    self.total_tracks,
-                    end_sector - start_sector + 1)
+            # #if logging, wrap reader in AccurateRip checksummer
+            # if (self.perform_logging):
+            #     reader = CDTrackReaderAccurateRipCRC(
+            #         reader,
+            #         int(key),
+            #         self.total_tracks,
+            #         end_sector - start_sector + 1)
 
             return reader
 

@@ -722,6 +722,14 @@ MetaData Objects
    Note that text fields containing nothing but whitespace
    are treated as non-blank.
 
+.. method:: MetaData.empty_fields()
+
+   Yields an ``(attr, value)`` tuple per blank :class:`MetaData` field.
+   Blank fields are text fields with a length equal to 0,
+   or numerical fields with a value equal to 0.
+   Note that text fields containing nothing but whitespace
+   are treated as non-blank.
+
 .. classmethod:: MetaData.converted(metadata)
 
    Takes a :class:`MetaData`-compatible object (or ``None``)
@@ -1400,6 +1408,18 @@ CDDA Objects
 
    The position of the last sector on the CD.
 
+.. method:: CDDA.freedb_disc_id()
+
+   A :class:`freedb.DiscID` object from this CD's table-of-contents.
+
+.. method:: CDDA.musicbrainz_disc_id()
+
+   A :class:`musicbrainz.DiscID` object from this CD's table-of-contents.
+
+.. method:: CDDA.metadata_lookup([musicbrainz_server], [musicbrainz_port], [freedb_server], [freedb_port], [use_musicbrainz], [use_freedb])
+
+   Calls :func:`metadata_lookup` using this CD's table-of-contents.
+
 CD Lookups
 ^^^^^^^^^^
 
@@ -1528,10 +1548,6 @@ DVDATitle Objects
    ``type`` is ``0xA0`` if the title is a PCM stream,
    or ``0xA1`` if the title is an MLP stream.
 
-.. method:: DVDATitle.stream()
-
-   Returns an :class:`AOBStream` object of this title's data.
-
 .. method:: DVDATitle.to_pcm()
 
    Returns a :class:`PCMReader`-compatible object of this title's
@@ -1594,42 +1610,6 @@ DVDATrack Objects
 
    The last sector this track occupies.
 
-AOBStream Objects
-^^^^^^^^^^^^^^^^^
-
-.. class:: AOBStream(aob_files, first_sector, last_sector[, unprotector])
-
-   This is a stream of DVD-Audio AOB data.
-   It contains several convenience methods to make
-   unpacking that data easier.
-   ``aob_files`` is a list of complete AOB file path strings.
-   ``first_sector`` and ``last_sector`` are integers
-   indicating the stream's range of sectors.
-   ``unprotector`` is a function which takes a string
-   of binary sector data and returns an unprotected binary string.
-
-.. method:: AOBStream.sectors()
-
-   Iterates over a series of 2048 byte, binary strings of sector data
-   for the entire AOB stream.
-   If ``unprotector`` is present, those sectors are returned unprotected.
-
-.. method:: AOBStream.packets()
-
-   Iterates over a series of packets by wrapping around the sectors
-   iterator.
-   Each sector contains one or more packets.
-   Packets containing audio data (that is, those with a stream ID
-   of ``0xBD``) are returned while non-audio packets are discarded.
-
-.. method:: AOBStream.packet_payloads()
-
-   Iterates over a series of packet data by wrapping around the
-   packets iterator.
-   The payload is the packet with its ID, CRC and padding removed.
-   Concatenating all of a stream's payloads results
-   in a complete MLP or PCM stream suitable for passing to
-   a decoder.
 
 ExecQueue Objects
 -----------------

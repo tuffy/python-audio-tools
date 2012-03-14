@@ -91,6 +91,7 @@ static int
 CDDA_init(cdio_CDDAObject *self, PyObject *args, PyObject *kwds)
 {
     const char *drive = NULL;
+    self->pcm_module = NULL;
 
     if (!PyArg_ParseTuple(args, "s", &drive))
         return -1;
@@ -121,26 +122,27 @@ CDDA_init(cdio_CDDAObject *self, PyObject *args, PyObject *kwds)
 static PyObject*
 CDDA_total_tracks(cdio_CDDAObject* self)
 {
-    track_t total;
+    track_t total = cdio_cddap_tracks(self->cdrom_drive);
 
-    total = cdio_cddap_tracks(self->cdrom_drive);
-
-    return Py_BuildValue("H", total);
+    return Py_BuildValue("i", (int)total);
 }
 
 static PyObject*
 CDDA_track_offsets(cdio_CDDAObject* self, PyObject *args)
 {
-    track_t tracknum;
+    int tracknum;
+    lsn_t first_sector;
+    lsn_t last_sector;
 
-    if (!PyArg_ParseTuple(args, "H", &tracknum))
+    if (!PyArg_ParseTuple(args, "i", &tracknum))
         return NULL;
 
-    return Py_BuildValue("(i,i)",
-                         cdio_cddap_track_firstsector(self->cdrom_drive,
-                                                      tracknum),
-                         cdio_cddap_track_lastsector(self->cdrom_drive,
-                                                     tracknum));
+    first_sector = cdio_cddap_track_firstsector(self->cdrom_drive,
+                                                (track_t)tracknum);
+    last_sector = cdio_cddap_track_lastsector(self->cdrom_drive,
+                                              (track_t)tracknum);
+
+    return Py_BuildValue("(i,i)", (int)first_sector, (int)last_sector);
 }
 
 #define SECTOR_LENGTH 2352
@@ -249,14 +251,14 @@ CDDA_last_sector(cdio_CDDAObject* self, PyObject *args)
 static PyObject*
 CDDA_track_type(cdio_CDDAObject* self, PyObject *args)
 {
-    track_t tracknum;
+    int tracknum;
 
-    if (!PyArg_ParseTuple(args, "H", &tracknum))
+    if (!PyArg_ParseTuple(args, "i", &tracknum))
         return NULL;
 
     return Py_BuildValue("i",
                          cdio_get_track_format(self->cdrom_drive->p_cdio,
-                                               tracknum));
+                                               (track_t)tracknum));
 }
 
 static PyObject*
@@ -269,8 +271,8 @@ CDDA_seek(cdio_CDDAObject* self, PyObject *args)
         return NULL;
 
     new_location = cdio_paranoia_seek(self->paranoia,
-                                      location,
-                                      SEEK_SET);
+                                      (int32_t)location,
+                                      (int)SEEK_SET);
 
     return Py_BuildValue("i", new_location);
 }
@@ -328,6 +330,8 @@ static int
 CDImage_init(cdio_CDImage *self, PyObject *args, PyObject *kwds) {
     const char *image = NULL;
     int image_type;
+    self->pcm_module = NULL;
+    self->image = NULL;
 
     if (!PyArg_ParseTuple(args, "si", &image, &image_type))
         return -1;
@@ -372,19 +376,25 @@ CDImage_dealloc(cdio_CDImage* self) {
 
 static PyObject*
 CDImage_total_tracks(cdio_CDImage* self) {
-    return Py_BuildValue("H", cdio_get_last_track_num(self->image));
+    track_t last_track = cdio_get_last_track_num(self->image);
+
+    return Py_BuildValue("i", (int)last_track);
 }
 
 static PyObject*
 CDImage_track_offsets(cdio_CDImage* self, PyObject *args) {
-    track_t tracknum;
+    /* track_t tracknum; */
+    int tracknum;
+    lsn_t first_sector;
+    lsn_t last_sector;
 
-    if (!PyArg_ParseTuple(args, "H", &tracknum))
+    if (!PyArg_ParseTuple(args, "i", &tracknum))
         return NULL;
 
-    return Py_BuildValue("(i,i)",
-                         cdio_get_track_lsn(self->image, tracknum),
-                         cdio_get_track_last_lsn(self->image, tracknum));
+    first_sector = cdio_get_track_lsn(self->image, (track_t)tracknum);
+    last_sector = cdio_get_track_last_lsn(self->image, (track_t)tracknum);
+
+    return Py_BuildValue("(i,i)", (int)first_sector, (int)last_sector);
 }
 
 static PyObject*
@@ -461,13 +471,14 @@ CDImage_last_sector(cdio_CDImage* self, PyObject *args) {
 
 static PyObject*
 CDImage_track_type(cdio_CDImage* self, PyObject *args) {
-    track_t tracknum;
+    int tracknum;
 
-    if (!PyArg_ParseTuple(args, "H", &tracknum))
+    if (!PyArg_ParseTuple(args, "i", &tracknum))
         return NULL;
 
         return Py_BuildValue("i",
-                             cdio_get_track_format(self->image, tracknum));
+                             cdio_get_track_format(self->image,
+                                                   (track_t)tracknum));
 }
 
 static PyObject*

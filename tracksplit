@@ -277,6 +277,33 @@ if (__name__ == '__main__'):
         use_musicbrainz=options.use_musicbrainz,
         use_freedb=options.use_freedb)
 
+    #populate any empty Album-level metadata fields
+    #with those from original file
+    album_metadata = audiofile.get_metadata()
+    if (album_metadata is not None):
+        album_fields = dict([(attr, field) for (attr, field) in
+                             album_metadata.filled_fields()
+                             if (attr in set(["album_name",
+                                              "artist_name",
+                                              "performer_name",
+                                              "composer_name",
+                                              "conductor_name",
+                                              "media",
+                                              "catalog",
+                                              "copyright",
+                                              "publisher",
+                                              "year",
+                                              "date",
+                                              "album_number",
+                                              "album_total",
+                                              "comment"]))])
+
+        for c in metadata_choices:
+            for m in c:
+                for (attr, field) in m.empty_fields():
+                    if (attr in album_fields):
+                        setattr(m, attr, album_fields[attr])
+
     #update MetaData with command-line album-number/total, if given
     if (options.album_number != 0):
         for c in metadata_choices:

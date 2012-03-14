@@ -17,6 +17,17 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+
+##### DEPRECATION WARNING #####
+#This whole module will go away very soon.
+#
+#Use the audiotools.musicbrainz.perform_lookup() function
+#which takes a CD's table-of-contents
+#and performs the entire MusicBrainz lookup and parsing process
+#rather than use these functions and classes
+#to parse and edit those files directly.
+
+
 from audiotools import (MetaData, AlbumMetaData, AlbumMetaDataFile,
                         MetaDataFileException,
                         __most_numerous__, DummyAudioFile, sys)
@@ -26,6 +37,7 @@ import gettext
 gettext.install("audiotools", unicode=True)
 
 
+#DEPRECATED - this function will soon be removed
 def get_xml_nodes(parent, child_tag):
     """A helper routine for returning all children with the given XML tag."""
 
@@ -34,6 +46,7 @@ def get_xml_nodes(parent, child_tag):
                 (node.tagName == child_tag))]
 
 
+#DEPRECATED - this function will soon be removed
 def walk_xml_tree(parent, *child_tags):
     """A helper routine for walking through several children."""
 
@@ -50,6 +63,7 @@ def walk_xml_tree(parent, *child_tags):
             return None
 
 
+#DEPRECATED - this function will soon be removed
 def walk_xml_tree_build(dom, parent, *child_tags):
 
     if (len(child_tags) == 0):
@@ -67,6 +81,7 @@ def walk_xml_tree_build(dom, parent, *child_tags):
             return walk_xml_tree_build(dom, new_child, *remaining_tags)
 
 
+#DEPRECATED - this function will soon be removed
 def get_xml_text_node(parent, child_tag):
     """A helper routine for returning the first text child XML node."""
 
@@ -76,6 +91,7 @@ def get_xml_text_node(parent, child_tag):
         return u''
 
 
+#DEPRECATED - this function will soon be removed
 def reorder_xml_children(parent, child_order):
     """Given an XML element with childNodes, reorders them to child_order.
 
@@ -113,6 +129,7 @@ def reorder_xml_children(parent, child_order):
         parent.appendChild(child)
 
 
+#DEPRECATED - this class will soon be removed
 class MBDiscID:
     """A MusicBrainz disc ID."""
 
@@ -224,6 +241,7 @@ class MBDiscID:
                  for (i, length) in enumerate(self.tracks)]).to_string())
 
 
+#DEPRECATED - this class will soon be removed
 class MusicBrainz:
     """A class for performing queries on a MusicBrainz or compatible server."""
 
@@ -273,6 +291,7 @@ class MusicBrainz:
             return (0, None)
 
 
+#DEPRECATED - this class will soon be removed
 class MBXMLException(MetaDataFileException):
     """Raised if MusicBrainzReleaseXML.read() encounters an error."""
 
@@ -280,6 +299,7 @@ class MBXMLException(MetaDataFileException):
         return _(u"Invalid MusicBrainz XML file")
 
 
+#DEPRECATED - this class will soon be removed
 class MusicBrainzReleaseXML(AlbumMetaDataFile):
     """An XML file as returned by MusicBrainz."""
 
@@ -558,6 +578,8 @@ class MusicBrainzReleaseXML(AlbumMetaDataFile):
 #takes a Document containing multiple <release> tags
 #and a Messenger object to query for output
 #returns a modified Document containing only one <release>
+
+#DEPRECATED - this function will soon be removed
 def __select_match__(dom, messenger):
     messenger.info(_(u"Please Select the Closest Match:"))
     matches = dom.getElementsByTagName(u'release')
@@ -585,6 +607,7 @@ def __select_match__(dom, messenger):
 #takes a Document containing multiple <release> tags
 #and a default selection integer
 #returns a modified Document containing only one <release>
+#DEPRECATED - this function will soon be removed
 def __select_default_match__(dom, selection):
     for (i, release) in enumerate(dom.getElementsByTagName(u'release')):
         if (i != selection):
@@ -593,6 +616,7 @@ def __select_default_match__(dom, selection):
     return dom
 
 
+#DEPRECATED - this function will soon be removed
 def get_mbxml(disc_id, output, musicbrainz_server, musicbrainz_port,
               messenger, default_selection=None):
     """Runs through the entire MusicBrainz querying sequence.

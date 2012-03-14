@@ -18,6 +18,17 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
+##### DEPRECATION WARNING #####
+#This whole module will go away very soon.
+#
+#Use the audiotools.freedb.perform_lookup() function
+#which takes a CD's table-of-contents
+#and performs the entire FreeDB lookup and parsing process
+#rather than use these functions and classes
+#to parse and edit those files directly.
+
+
+
 from audiotools import (VERSION, cStringIO, sys, re, MetaData,
                         AlbumMetaData, AlbumMetaDataFile, __most_numerous__,
                         DummyAudioFile, MetaDataFileException)
@@ -30,7 +41,7 @@ gettext.install("audiotools", unicode=True)
 #XMCD
 #######################
 
-
+#DEPRECATED - this class will soon be removed
 class XMCDException(MetaDataFileException):
     """Raised if some error occurs parsing an XMCD file."""
 
@@ -38,6 +49,7 @@ class XMCDException(MetaDataFileException):
         return _(u"Invalid XMCD file")
 
 
+#DEPRECATED - this class will soon be removed
 class XMCD(AlbumMetaDataFile):
     LINE_LENGTH = 78
 
@@ -273,6 +285,7 @@ class XMCD(AlbumMetaDataFile):
 #FREEDB
 #######################
 
+#DEPRECATED - this class will soon be removed
 class DiscID:
     """An object representing a 32 bit FreeDB disc ID value."""
 
@@ -374,12 +387,14 @@ class DiscID:
              for (i, length) in enumerate(self.tracks)]).to_string())
 
 
+#DEPRECATED - this class will soon be removed
 class FreeDBException(Exception):
     """Raised if some problem occurs during FreeDB querying."""
 
     pass
 
 
+#DEPRECATED - this class will soon be removed
 class FreeDB:
     """A class for performing queries on a FreeDB or compatible server.
 
@@ -521,6 +536,7 @@ class FreeDB:
             print >> sys.stderr, (code, msg)
 
 
+#DEPRECATED - this class will soon be removed
 class FreeDBWeb(FreeDB):
     """A class for performing queries on a FreeDB or compatible server.
 
@@ -640,6 +656,8 @@ class FreeDBWeb(FreeDB):
 #item.  If the length is greater than one, present the user a list of
 #choices and force him/her to pick the closest match for the CD.
 #That data can then be sent to FreeDB.read_data()
+
+#DEPRECATED - this function will soon be removed
 def __select_match__(matches, messenger):
     if (len(matches) == 1):
         return matches[0]
@@ -665,6 +683,7 @@ def __select_match__(matches, messenger):
         return matches[selected - 1]
 
 
+#DEPRECATED - this function will soon be removed
 def __select_default_match__(matches, selection):
     if (len(matches) < 1):
         return None
@@ -675,6 +694,7 @@ def __select_default_match__(matches, selection):
             return matches[0]
 
 
+#DEPRECATED - this function will soon be removed
 def get_xmcd(disc_id, output, freedb_server, freedb_server_port,
              messenger, default_selection=None):
     """Runs through the entire FreeDB querying sequence.

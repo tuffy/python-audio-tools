@@ -149,13 +149,6 @@ class cd2track(UtilTest):
         audiotools.transfer_framelist_data(self.stream, f.write)
         f.close()
 
-        self.xmcd_file = tempfile.NamedTemporaryFile(suffix=".flac")
-
-        self.xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
-        self.xmcd_file.write('<?xml version="1.0" encoding="utf-8"?><metadata xmlns="http://musicbrainz.org/ns/mmd-1.0#" xmlns:ext="http://musicbrainz.org/ns/ext-1.0#"><release-list><release><title>Album 3</title><artist><name>Artist 3</name></artist><release-event-list><event catalog-number="" date="2011"/></release-event-list><track-list><track><title>Track 3-1</title><duration>5000</duration></track><track><title>Track 3-2</title><duration>6000</duration></track><track><title>Track 3-3</title><duration>7000</duration></track></track-list></release></release-list></metadata>')
-        self.xmcd_file.flush()
-        self.xmcd_metadata = audiotools.read_metadata_file(self.xmcd_file.name)
-
         self.output_dir = tempfile.mkdtemp()
         self.format = "%(track_number)2.2d.%(suffix)s"
 
@@ -186,7 +179,7 @@ class cd2track(UtilTest):
         os.rmdir(self.unwritable_dir)
 
     def populate_options(self, options):
-        populated = []
+        populated = ["--no-musicbrainz", "--no-freedb"]
         for option in options:
             if (option == '-t'):
                 populated.append(option)
@@ -200,9 +193,6 @@ class cd2track(UtilTest):
             elif (option == '--format'):
                 populated.append(option)
                 populated.append(self.format)
-            elif (option == '-x'):
-                populated.append(option)
-                populated.append(self.xmcd_file.name)
             elif (option == '--album-number'):
                 populated.append(option)
                 populated.append(str(8))
@@ -224,7 +214,7 @@ class cd2track(UtilTest):
     def test_options(self):
         messenger = audiotools.VerboseMessenger("cd2track")
 
-        all_options = ["-t", "-q", "-d", "--format", "-x",
+        all_options = ["-t", "-q", "-d", "--format",
                        "--album-number", "--album-total"]
         for count in xrange(1, len(all_options) + 1):
             for options in Combinations(all_options, count):
@@ -271,38 +261,24 @@ class cd2track(UtilTest):
                     base_metadata.album_total = 9
 
                 output_filenames = []
-                if ("-x" in options):
-                    for i in xrange(3):
-                        base_metadata.track_name = \
-                            self.xmcd_metadata.track_metadata(i + 1).track_name
-                        base_metadata.track_number = i + 1
-                        base_metadata.album_name = u"Album 3"
-                        base_metadata.artist_name = u"Artist 3"
-                        output_filenames.append(
-                            output_type.track_name(
-                                "",
-                                base_metadata,
-                                output_format))
-                else:
-                    for i in xrange(3):
-                        base_metadata.track_number = i + 1
-                        output_filenames.append(
-                            output_type.track_name(
-                                "",
-                                base_metadata,
-                                output_format))
+                for i in xrange(3):
+                    base_metadata.track_number = i + 1
+                    output_filenames.append(
+                        output_type.track_name(
+                            "",
+                            base_metadata,
+                            output_format))
 
                 #check that the output is being generated correctly
                 for (i, path) in enumerate(output_filenames):
-                    self.__check_info__(
-                        _(u"track %(track_number)2.2d: %(log)s") % \
-                            {"track_number": i + 1,
-                             "log": str(audiotools.CDTrackLog())})
                     self.__check_info__(
                         _(u"track %(track_number)2.2d -> %(filename)s") % \
                             {"track_number": i + 1,
                              "filename": messenger.filename(
                                 os.path.join(output_dir, path))})
+
+                #rip log is generated afterward as a table
+                #FIXME - check table of rip log?
 
                 #make sure no track data has been lost
                 output_tracks = [
@@ -320,20 +296,9 @@ class cd2track(UtilTest):
                 for i in xrange(len(output_tracks)):
                     metadata = output_tracks[i].get_metadata()
                     if (metadata is not None):
-                        if ("-x" in options):
-                            self.assertEqual(
-                                metadata.track_name,
-                                self.xmcd_metadata.track_metadata(i + 1).track_name)
-                            self.assertEqual(
-                                metadata.album_name,
-                                self.xmcd_metadata.track_metadata(i + 1).album_name)
-                            self.assertEqual(
-                                metadata.artist_name,
-                                self.xmcd_metadata.track_metadata(i + 1).artist_name)
-                        else:
-                            self.assertEqual(metadata.track_name, u"")
-                            self.assertEqual(metadata.album_name, u"")
-                            self.assertEqual(metadata.artist_name, u"")
+                        self.assertEqual(metadata.track_name, u"")
+                        self.assertEqual(metadata.album_name, u"")
+                        self.assertEqual(metadata.artist_name, u"")
 
                         self.assertEqual(metadata.track_number, i + 1)
                         self.assertEqual(metadata.track_total, 3)
@@ -349,7 +314,7 @@ class cd2track(UtilTest):
                             self.assertEqual(metadata.album_total, 0)
 
     def populate_bad_options(self, options):
-        populated = []
+        populated = ["--no-musicbrainz", "--no-freedb"]
 
         for option in sorted(options):
             if (option == '-t'):
@@ -364,9 +329,6 @@ class cd2track(UtilTest):
             elif (option == '--format'):
                 populated.append(option)
                 populated.append("%(foo)s.%(suffix)s")
-            elif (option == '-x'):
-                populated.append(option)
-                populated.append(os.devnull)
             elif (option == '--album-number'):
                 populated.append(option)
                 populated.append("foo")
@@ -382,7 +344,7 @@ class cd2track(UtilTest):
     def test_errors(self):
         filename = audiotools.Messenger("cd2track", None).filename
 
-        all_options = ["-t", "-q", "-d", "--format", "-x",
+        all_options = ["-t", "-q", "-d", "--format",
                        "--album-number", "--album-total"]
         for count in xrange(1, len(all_options) + 1):
             for options in Combinations(all_options, count):
@@ -428,11 +390,6 @@ class cd2track(UtilTest):
                         _(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") %
                         {"quality": "bar",
                          "type":audiotools.DEFAULT_TYPE})
-                    continue
-
-                if ("-x" in options):
-                    self.__check_error__(
-                        _(u"Invalid XMCD or MusicBrainz XML file"))
                     continue
 
                 if ("--format" in options):
@@ -3981,11 +3938,6 @@ class tracksplit(UtilTest):
 
         self.unsplit_file2 = tempfile.NamedTemporaryFile(suffix=".flac")
 
-        self.xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
-        self.xmcd_file.write('<?xml version="1.0" encoding="utf-8"?><metadata xmlns="http://musicbrainz.org/ns/mmd-1.0#" xmlns:ext="http://musicbrainz.org/ns/ext-1.0#"><release-list><release><title>Album 3</title><artist><name>Artist 3</name></artist><release-event-list><event catalog-number="" date="2011"/></release-event-list><track-list><track><title>Track 3-1</title><duration>5000</duration></track><track><title>Track 3-2</title><duration>6000</duration></track><track><title>Track 3-3</title><duration>7000</duration></track></track-list></release></release-list></metadata>')
-        self.xmcd_file.flush()
-        self.xmcd_metadata = audiotools.read_metadata_file(self.xmcd_file.name)
-
         self.stream = test_streams.Sine16_Stereo(793800, 44100,
                                                  8820.0, 0.70,
                                                  4410.0, 0.29, 1.0)
@@ -4005,7 +3957,6 @@ class tracksplit(UtilTest):
         self.unsplit_file2.close()
         self.cuesheet.close()
         self.cuesheet2.close()
-        self.xmcd_file.close()
 
         for f in os.listdir(self.output_dir):
             os.unlink(os.path.join(self.output_dir, f))
@@ -4026,7 +3977,7 @@ class tracksplit(UtilTest):
             os.unlink(os.path.join(self.cwd_dir, f))
 
     def populate_options(self, options):
-        populated = []
+        populated = ["--no-musicbrainz", "--no-freedb"]
         for option in sorted(options):
             if (option == '-t'):
                 populated.append(option)
@@ -4040,9 +3991,6 @@ class tracksplit(UtilTest):
             elif (option == '--format'):
                 populated.append(option)
                 populated.append(self.format)
-            elif (option == '-x'):
-                populated.append(option)
-                populated.append(self.xmcd_file.name)
             elif (option == '--cue'):
                 populated.append(option)
                 populated.append(self.cuesheet.name)
@@ -4055,7 +4003,7 @@ class tracksplit(UtilTest):
     def test_options_no_embedded_cue(self):
         messenger = audiotools.Messenger("trackcat", None)
 
-        all_options = ["--cue", "-t", "-q", "-d", "--format", "-x"]
+        all_options = ["--cue", "-t", "-q", "-d", "--format"]
 
         self.stream.reset()
         track = self.type.from_pcm(self.unsplit_file.name, self.stream)
@@ -4114,26 +4062,13 @@ class tracksplit(UtilTest):
 
                 output_filenames = []
 
-                if ("-x" in options):
-                    for i in xrange(3):
-                        base_metadata.track_name = \
-                            self.xmcd_metadata.track_metadata(i + 1).track_name
-                        base_metadata.track_number = i + 1
-                        base_metadata.album_name = u"Album 3"
-                        base_metadata.artist_name = u"Artist 3"
-                        output_filenames.append(
-                            output_type.track_name(
-                                "",
-                                base_metadata,
-                                output_format))
-                else:
-                    for i in xrange(3):
-                        base_metadata.track_number = i + 1
-                        output_filenames.append(
-                            output_type.track_name(
-                                "",
-                                base_metadata,
-                                output_format))
+                for i in xrange(3):
+                    base_metadata.track_number = i + 1
+                    output_filenames.append(
+                        output_type.track_name(
+                            file_path="",
+                            track_metadata=base_metadata,
+                            format=output_format))
 
                 #check that the output is being generated correctly
                 for path in output_filenames:
@@ -4160,20 +4095,9 @@ class tracksplit(UtilTest):
                 for i in xrange(len(output_tracks)):
                     metadata = output_tracks[i].get_metadata()
                     if (metadata is not None):
-                        if ("-x" in options):
-                            self.assertEqual(
-                                metadata.track_name,
-                                self.xmcd_metadata.track_metadata(i + 1).track_name)
-                            self.assertEqual(
-                                metadata.album_name,
-                                self.xmcd_metadata.track_metadata(i + 1).album_name)
-                            self.assertEqual(
-                                metadata.artist_name,
-                                self.xmcd_metadata.track_metadata(i + 1).artist_name)
-                        else:
-                            self.assertEqual(metadata.track_name, u"")
-                            self.assertEqual(metadata.album_name, u"Album 1")
-                            self.assertEqual(metadata.artist_name, u"Artist 1")
+                        self.assertEqual(metadata.track_name, u"")
+                        self.assertEqual(metadata.album_name, u"Album 1")
+                        self.assertEqual(metadata.artist_name, u"Artist 1")
 
                         self.assertEqual(metadata.track_number, i + 1)
                         self.assertEqual(metadata.track_total, 3)
@@ -4196,7 +4120,7 @@ class tracksplit(UtilTest):
     def test_options_embedded_cue(self):
         messenger = audiotools.Messenger("trackcat", None)
 
-        all_options = ["--cue", "-t", "-q", "-d", "--format", "-x"]
+        all_options = ["--cue", "-t", "-q", "-d", "--format"]
 
         self.stream.reset()
         track = self.type.from_pcm(self.unsplit_file.name, self.stream)
@@ -4248,26 +4172,13 @@ class tracksplit(UtilTest):
                     performer_name=u"Performer 1")
 
                 output_filenames = []
-                if ("-x" in options):
-                    for i in xrange(3):
-                        base_metadata.track_name = \
-                            self.xmcd_metadata.track_metadata(i + 1).track_name
-                        base_metadata.track_number = i + 1
-                        base_metadata.album_name = u"Album 3"
-                        base_metadata.artist_name = u"Artist 3"
-                        output_filenames.append(
-                            output_type.track_name(
-                                "",
-                                base_metadata,
-                                output_format))
-                else:
-                    for i in xrange(3):
-                        base_metadata.track_number = i + 1
-                        output_filenames.append(
-                            output_type.track_name(
-                                "",
-                                base_metadata,
-                                output_format))
+                for i in xrange(3):
+                    base_metadata.track_number = i + 1
+                    output_filenames.append(
+                        output_type.track_name(
+                            "",
+                            base_metadata,
+                            output_format))
 
                 #check that the output is being generated correctly
                 for path in output_filenames:
@@ -4294,20 +4205,9 @@ class tracksplit(UtilTest):
                 for i in xrange(len(output_tracks)):
                     metadata = output_tracks[i].get_metadata()
                     if (metadata is not None):
-                        if ("-x" in options):
-                            self.assertEqual(
-                                metadata.track_name,
-                                self.xmcd_metadata.track_metadata(i + 1).track_name)
-                            self.assertEqual(
-                                metadata.album_name,
-                                self.xmcd_metadata.track_metadata(i + 1).album_name)
-                            self.assertEqual(
-                                metadata.artist_name,
-                                self.xmcd_metadata.track_metadata(i + 1).artist_name)
-                        else:
-                            self.assertEqual(metadata.track_name, u"")
-                            self.assertEqual(metadata.album_name, u"Album 1")
-                            self.assertEqual(metadata.artist_name, u"Artist 1")
+                        self.assertEqual(metadata.track_name, u"")
+                        self.assertEqual(metadata.album_name, u"Album 1")
+                        self.assertEqual(metadata.artist_name, u"Artist 1")
 
                         self.assertEqual(metadata.track_number, i + 1)
                         self.assertEqual(metadata.track_total, 3)
@@ -4333,7 +4233,7 @@ class tracksplit(UtilTest):
                             self.assertEqual(metadata.ISRC, ISRC)
 
     def populate_bad_options(self, options):
-        populated = []
+        populated = ["--no-musicbrainz", "--no-freedb"]
 
         for option in sorted(options):
             if (option == '-t'):
@@ -4348,9 +4248,6 @@ class tracksplit(UtilTest):
             elif (option == '--format'):
                 populated.append(option)
                 populated.append("%(foo)s.%(suffix)s")
-            elif (option == '-x'):
-                populated.append(option)
-                populated.append(os.devnull)
             else:
                 populated.append(option)
 
@@ -4366,7 +4263,7 @@ class tracksplit(UtilTest):
         track2 = self.type.from_pcm(self.unsplit_file2.name,
                                     BLANK_PCM_Reader(5))
 
-        all_options = ["-t", "-q", "-d", "--format", "-x"]
+        all_options = ["-t", "-q", "-d", "--format"]
 
         for count in xrange(1, len(all_options) + 1):
             for options in Combinations(all_options, count):
@@ -4393,11 +4290,6 @@ class tracksplit(UtilTest):
                         _(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") %
                         {"quality": "bar",
                          "type":audiotools.DEFAULT_TYPE})
-                    continue
-
-                if ("-x" in options):
-                    self.__check_error__(
-                        _(u"Invalid XMCD or MusicBrainz XML file"))
                     continue
 
                 if ("--format" in options):
