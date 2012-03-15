@@ -2,15 +2,15 @@
 <diagram>
   <row>
     <col start="0" end="23" width=".5">`ULT' (0x554C54)</col>
-    <col start="24" end="47" width=".5">Size</col>
+    <col start="24" end="47" width=".5">size</col>
   </row>
   <row>
-    <col start="48" end="55" width=".20">Encoding</col>
-    <col start="56" end="79" width=".30">Language</col>
-    <col start="80" width=".35">Short Description</col>
+    <col start="48" end="55" width=".20">encoding</col>
+    <col start="56" end="79" width=".30">language</col>
+    <col start="80" width=".35">short description</col>
     <col start="0" end="7/15" width=".15">NULL</col>
   </row>
   <row>
-    <col>Lyrics Text</col>
+    <col>lyrics text</col>
   </row>
 </diagram>

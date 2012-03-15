@@ -4656,6 +4656,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] test_metadata.py
     - [X] test_streams.py
     - [X] test_utils.py
+** DONE Double-check reference docs one last time
+*** DONE Ensure pages break correctly in letter mode
+*** DONE Ensure pages break correctly in A4 mode
 ** TODO Fix FLAC seektable generation
    Ensure new seektables are aligned properly.
 *** DONE Ensure proper seektable written on from_pcm
@@ -5274,9 +5277,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO ogg flac should work
 *** TODO wavpack should work
 *** TODO alac should fail with error?
-** TODO Double-check reference docs one last time
-*** TODO Ensure pages break correctly in letter mode
-*** TODO Ensure pages break correctly in A4 mode
 ** TODO Ensure Python API docs are updated if necessary
 ** TODO Ensure individual unit tests pass
 *** TODO Lib

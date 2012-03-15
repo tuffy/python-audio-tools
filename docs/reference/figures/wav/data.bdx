@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="31" width=".5">Chunk ID (‘data’ 0x64617461)</col>
-    <col start="32" end="63" width=".5">Chunk Size</col>
+    <col start="0" end="31" width=".5">chunk ID (‘data’ 0x64617461)</col>
+    <col start="32" end="63" width=".5">chunk size</col>
   </row>
   <row>
-    <col start="64">PCM Data</col>
+    <col start="64">PCM data</col>
   </row>
 </diagram>

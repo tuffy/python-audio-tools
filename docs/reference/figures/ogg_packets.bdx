@@ -1,29 +1,29 @@
 <?xml version="1.0" ?><diagram>
   <row>
-    <col id="page1" width=".25">Ogg Page₁</col>
-    <col id="page2" width=".25">Ogg Page₂</col>
-    <col id="page3" width=".25">Ogg Page₃</col>
+    <col id="page1" width=".25">Ogg Page₀</col>
+    <col id="page2" width=".25">Ogg Page₁</col>
+    <col id="page3" width=".25">Ogg Page₂</col>
     <col style="dashed" width=".25">...</col>
   </row>
   <row><blank/></row>
   <row>
-    <col end="30 bytes" id="segment1" start="30 bytes" width=".125">Segment₁</col>
+    <col end="30 bytes" id="segment1" start="30 bytes" width=".125">Segment₀</col>
     <blank width=".0625"/>
-    <col end="255 bytes" id="segment2" start="255 bytes" width=".125">Segment₂</col>
-    <col end="255 bytes" id="segment3" start="255 bytes" width=".125">Segment₃</col>
-    <col end="255 bytes" id="segment4" start="255 bytes" width=".125">Segment₄</col>
-    <col end="255 bytes" id="segment5" start="255 bytes" width=".125">Segment₅</col>
+    <col end="255 bytes" id="segment2" start="255 bytes" width=".125">Segment₁</col>
+    <col end="255 bytes" id="segment3" start="255 bytes" width=".125">Segment₂</col>
+    <col end="255 bytes" id="segment4" start="255 bytes" width=".125">Segment₃</col>
+    <col end="255 bytes" id="segment5" start="255 bytes" width=".125">Segment₄</col>
     <blank width=".0625"/>
-    <col end="40 bytes" id="segment6" start="40 bytes" width=".125">Segment₆</col>
-    <col end="60 bytes" id="segment7" start="60 bytes" width=".125">Segment₇</col>
+    <col end="40 bytes" id="segment6" start="40 bytes" width=".125">Segment₅</col>
+    <col end="60 bytes" id="segment7" start="60 bytes" width=".125">Segment₆</col>
   </row>
   <row><blank/></row>
   <row>
-    <col end="30 bytes" id="packet1" start="30 bytes" width=".30">Packet₁</col>
+    <col end="30 bytes" id="packet1" start="30 bytes" width=".30">Packet₀</col>
     <blank width=".05"/>
-    <col end="1060 bytes" id="packet2" start="1060 bytes" width=".30">Packet₂</col>
+    <col end="1060 bytes" id="packet2" start="1060 bytes" width=".30">Packet₁</col>
     <blank width=".05"/>
-    <col end="60 bytes" id="packet3" start="60 bytes" width=".30">Packet₃</col>
+    <col end="60 bytes" id="packet3" start="60 bytes" width=".30">Packet₂</col>
   </row>
   <line style="dotted"><start corner="sw" id="page1"/><end corner="nw" id="segment1"/></line>
   <line style="dotted"><start corner="se" id="page1"/><end corner="ne" id="segment1"/></line>

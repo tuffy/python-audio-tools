@@ -1,14 +1,14 @@
 <?xml version="1.0" ?><diagram>
   <row>
-    <col end="143" id="seekpoint" name="seekpoint" start="0" width=".333333">Seekpoint₁</col>
-    <col end="287" start="144" width=".333333">Seekpoint₂</col>
+    <col end="143" id="seekpoint" name="seekpoint" start="0" width=".333333">Seekpoint₀</col>
+    <col end="287" start="144" width=".333333">Seekpoint₁</col>
     <col style="dashed" width=".333333">...</col>
   </row>
   <row><blank/></row>
   <row>
-    <col end="63" id="sample_number" start="0" width=".40">Sample Number in Target Frame</col>
-    <col end="127" start="64" width=".36">Byte Offset to Frame Header</col>
-    <col end="143" id="samples_in_frame" start="128" width=".24">Samples in Frame</col>
+    <col end="63" id="sample_number" start="0" width=".40">sample number in target frame</col>
+    <col end="127" start="64" width=".36">byte offset to frame header</col>
+    <col end="143" id="samples_in_frame" start="128" width=".24">samples in frame</col>
   </row>
   <line style="dotted"><start corner="sw" id="seekpoint"/><end corner="nw" id="sample_number"/></line>
   <line style="dotted"><start corner="se" id="seekpoint"/><end corner="ne" id="samples_in_frame"/></line>

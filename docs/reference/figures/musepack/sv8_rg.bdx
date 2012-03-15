@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="7" width=".25">Version (0x1)</col>
+    <col start="0" end="7" width=".25">version (0x1)</col>
   </row>
   <row>
-    <col start="8" end="23" width=".5">Title Gain</col>
-    <col start="24" end="39" width=".5">Title Peak</col>
+    <col start="8" end="23" width=".5">title gain</col>
+    <col start="24" end="39" width=".5">title peak</col>
   </row>
   <row>
-    <col start="40" end="55" width=".5">Album Gain</col>
-    <col start="56" end="71" width=".5">Album Peak</col>
+    <col start="40" end="55" width=".5">album gain</col>
+    <col start="56" end="71" width=".5">album peak</col>
   </row>
 </diagram>

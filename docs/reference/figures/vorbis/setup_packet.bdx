@@ -1,26 +1,26 @@
 <?xml version="1.0" ?>
 <diagram>
   <row>
-    <col start="0" end="7" width=".15">Type (0x05)</col>
-    <col start="8" end="55" width=".85">Header `vorbis' (0x766F72626973)</col>
+    <col start="0" end="7" width=".15">type (0x05)</col>
+    <col start="8" end="55" width=".85">header `vorbis' (0x766F72626973)</col>
   </row>
   <row>
-    <col>Codebooks</col>
+    <col>codebooks</col>
   </row>
   <row>
-    <col>Time Domain Transforms</col>
+    <col>time domain transforms</col>
   </row>
   <row>
-    <col>Floors</col>
+    <col>floors</col>
   </row>
   <row>
-    <col>Residues</col>
+    <col>residues</col>
   </row>
   <row>
-    <col>Mappings</col>
+    <col>mappings</col>
   </row>
   <row>
-    <col width=".75">Modes</col>
-    <col width=".25" start="0" end="0">Framing (1)</col>
+    <col width=".75">modes</col>
+    <col width=".25" start="0" end="0">framing (1)</col>
   </row>
 </diagram>

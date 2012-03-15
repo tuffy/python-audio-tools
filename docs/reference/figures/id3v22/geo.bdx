@@ -2,20 +2,20 @@
 <diagram>
   <row>
     <col start="0" end="23" width=".5">`GEO' (0x47454F)</col>
-    <col start="24" end="47" width=".5">Size</col>
+    <col start="24" end="47" width=".5">size</col>
   </row>
   <row>
-    <col start="48" end="55" width=".25">Text Encoding</col>
-    <col start="55" width=".6">MIME Type</col>
+    <col start="48" end="55" width=".25">text encoding</col>
+    <col start="55" width=".6">MIME type</col>
     <col start="0" end="7" width=".15">NULL</col>
   </row>
   <row>
-    <col width=".35">Filename</col>
+    <col width=".35">filename</col>
     <col start="0" end="7/15" width=".15">NULL</col>
-    <col width=".35">Description</col>
+    <col width=".35">description</col>
     <col start="0" end="7/15" width=".15">NULL</col>
   </row>
   <row>
-    <col>Binary Data</col>
+    <col>binary data</col>
   </row>
 </diagram>

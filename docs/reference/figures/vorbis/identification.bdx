@@ -1,24 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="7" width=".15">Type (0x01)</col>
-    <col start="8" end="55" width=".85">Header `vorbis' (0x766F72626973)</col>
+    <col start="0" end="7" width=".15">type (0x01)</col>
+    <col start="8" end="55" width=".85">header `vorbis' (0x766F72626973)</col>
   </row>
   <row>
-    <col start="56" end="87" width=".85">Vorbis version (0x00000000)</col>
-    <col start="88" end="95" width=".15">Channels</col>
+    <col start="56" end="87" width=".85">vorbis version (0x00000000)</col>
+    <col start="88" end="95" width=".15">channels</col>
   </row>
   <row>
-    <col start="96" end="127" width=".5">Sample Rate</col>
-    <col start="128" end="159" width=".5">Maximum Bitrate</col>
+    <col start="96" end="127" width=".5">sample rate</col>
+    <col start="128" end="159" width=".5">maximum bitrate</col>
   </row>
   <row>
-    <col start="160" end="191" width=".5">Nominal Bitrate</col>
-    <col start="192" end="223" width=".5">Minimum Bitrate</col>
+    <col start="160" end="191" width=".5">nominal bitrate</col>
+    <col start="192" end="223" width=".5">minimum bitrate</col>
   </row>
   <row>
-    <col start="224" end="227" width="0.375">Blocksize₀</col>
-    <col start="228" end="231" width="0.375">Blocksize₁</col>
-    <col start="232" end="232" width=".25">Framing (1)</col>
+    <col start="224" end="227" width="0.375">blocksize₀</col>
+    <col start="228" end="231" width="0.375">blocksize₁</col>
+    <col start="232" end="232" width=".25">framing (1)</col>
   </row>
 </diagram>

@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="31" width=".5">stsz Length</col>
+    <col start="0" end="31" width=".5">stsz length</col>
     <col start="32" end="63" width=".5">`stsz' (0x7374737A)</col>
   </row>
   <row>
-    <col start="64" end="71" width=".15">Version</col>
-    <col start="72" end="95" width=".25">Flags (0x000000)</col>
-    <col start="95" end="127" width=".25">Block Byte Size (0)</col>
-    <col start="128" end="159" width=".35">Number of Block Sizes</col>
+    <col start="64" end="71" width=".15">version</col>
+    <col start="72" end="95" width=".25">flags (0x000000)</col>
+    <col start="95" end="127" width=".25">block byte size (0)</col>
+    <col start="128" end="159" width=".35">number of block sizes</col>
   </row>
   <row>
-    <col start="160" end="191" width=".333333">Block Size₁</col>
-    <col start="192" end="223" width=".333333">Block Size₂</col>
+    <col start="160" end="191" width=".333333">block size₁</col>
+    <col start="192" end="223" width=".333333">block size₂</col>
     <col start="224" style="dashed" width=".333333">...</col>
   </row>
 </diagram>

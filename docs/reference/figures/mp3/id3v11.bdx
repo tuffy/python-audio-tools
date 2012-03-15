@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="23" width=".40">Header (`TAG' 0x544147)</col>
-    <col start="24" end="263" width=".20">Track Title</col>
-    <col start="264" end="503" width=".20">Artist Name</col>
-    <col start="504" end="743" width=".20">Album Name</col>
+    <col start="0" end="23" width=".40">header (`TAG' 0x544147)</col>
+    <col start="24" end="263" width=".20">track title</col>
+    <col start="264" end="503" width=".20">artist name</col>
+    <col start="504" end="743" width=".20">album name</col>
   </row>
   <row>
-    <col start="744" end="775" width=".20">Year</col>
-    <col start="776" end="999" width=".50">Comment</col>
+    <col start="744" end="775" width=".20">year</col>
+    <col start="776" end="999" width=".50">comment</col>
     <col start="1000" end="1007" width=".10">NULL</col>
-    <col start="1008" end="1015" width=".20">Track Number</col>
+    <col start="1008" end="1015" width=".20">track number</col>
   </row>
   <row>
-    <col start="1016" end="1023">Genre</col>
+    <col start="1016" end="1023">genre</col>
   </row>
 </diagram>

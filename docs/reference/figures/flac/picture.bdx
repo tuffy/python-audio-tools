@@ -1,25 +1,25 @@
 <?xml version="1.0" ?><diagram>
   <row>
-    <col end="31" start="0" width=".15">Picture Type</col>
+    <col end="31" start="0" width=".15">picture type</col>
     <col id="mime" start="32" width=".10">MIME</col>
-    <col id="desc" width=".15">Description</col>
-    <col end="31" start="0" width=".12">Width</col>
-    <col end="63" start="32" width=".12">Height</col>
-    <col end="95" start="64" width=".12">Depth</col>
-    <col end="127" start="96" width=".12">Count</col>
+    <col id="desc" width=".15">dDescription</col>
+    <col end="31" start="0" width=".12">width</col>
+    <col end="63" start="32" width=".12">height</col>
+    <col end="95" start="64" width=".12">depth</col>
+    <col end="127" start="96" width=".12">count</col>
     <col id="data" start="128" width=".12">Data</col>
   </row>
   <row><blank/></row>
   <row>
     <blank width=".025"/>
-    <col end="31" id="mime_l" start="0" width=".10">Length</col>
-    <col id="mime_s" start="32" width=".10">String</col>
+    <col end="31" id="mime_l" start="0" width=".10">length</col>
+    <col id="mime_s" start="32" width=".10">string</col>
     <blank width=".05"/>
-    <col end="31" id="desc_l" start="0" width=".10">Length</col>
-    <col id="desc_s" start="32" width=".10">String</col>
+    <col end="31" id="desc_l" start="0" width=".10">length</col>
+    <col id="desc_s" start="32" width=".10">string</col>
     <blank width=".325"/>
-    <col end="31" id="data_l" start="0" width=".10">Length</col>
-    <col id="data_s" start="32" width=".10">Data</col>
+    <col end="31" id="data_l" start="0" width=".10">length</col>
+    <col id="data_s" start="32" width=".10">data</col>
   </row>
   <line style="dotted"><start corner="sw" id="mime"/><end corner="nw" id="mime_l"/></line>
   <line style="dotted"><start corner="se" id="mime"/><end corner="ne" id="mime_s"/></line>

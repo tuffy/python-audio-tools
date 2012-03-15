@@ -6,16 +6,16 @@
   </row>
   <row><blank/></row>
   <row>
-    <col end="31" id="magic" start="0" width=".5">Magic Number (`.snd' 0x2e736e64)</col>
-    <col end="63" id="offset" start="32" width=".5">Data Offset</col>
+    <col end="31" id="magic" start="0" width=".5">magic number (`.snd' 0x2e736e64)</col>
+    <col end="63" id="offset" start="32" width=".5">data offset</col>
   </row>
   <row>
-    <col end="95" start="64" width=".5">Data Size</col>
-    <col end="127" start="96" width=".5">Encoding Format</col>
+    <col end="95" start="64" width=".5">data size</col>
+    <col end="127" start="96" width=".5">encoding format</col>
   </row>
   <row>
-    <col end="159" start="128" width=".5">Sample Rate</col>
-    <col end="191" start="160" width=".5">Channels</col>
+    <col end="159" start="128" width=".5">sample rate</col>
+    <col end="191" start="160" width=".5">channels</col>
   </row>
   <line style="dotted"><start corner="sw" id="header"/><end corner="nw" id="magic"/></line>
   <line style="dotted"><start corner="se" id="header"/><end corner="ne" id="offset"/></line>

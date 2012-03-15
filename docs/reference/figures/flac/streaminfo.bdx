@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="15" width=".5">Minimum Block Size (in samples)</col>
-    <col start="16" end="31" width=".5">Maximum Block Size (in samples)</col>
+    <col start="0" end="15" width=".5">minimum block size (in samples)</col>
+    <col start="16" end="31" width=".5">maximum block size (in samples)</col>
   </row>
   <row>
-    <col start="32" end="55" width=".5">Minimum Frame Size (in bytes)</col>
-    <col start="56" end="79" width=".5">Maximum Frame Size (in bytes)</col>
+    <col start="32" end="55" width=".5">minimum frame size (in bytes)</col>
+    <col start="56" end="79" width=".5">maximum frame size (in bytes)</col>
   </row>
   <row>
-    <col start="80" end="99" width=".60">Sample Rate</col>
-    <col start="100" end="102" width=".20">Channels</col>
-    <col start="103" end="107" width=".20">Bits per Sample</col>
+    <col start="80" end="99" width=".60">sample rate</col>
+    <col start="100" end="102" width=".20">channels</col>
+    <col start="103" end="107" width=".20">bits per sample</col>
   </row>
   <row>
-    <col start="108" end="143">Total Samples</col>
+    <col start="108" end="143">total samples</col>
   </row>
   <row>
-    <col start="144" end="271">MD5SUM of PCM Data</col>
+    <col start="144" end="271">MD5SUM of PCM data</col>
   </row>
 </diagram>

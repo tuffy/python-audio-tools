@@ -1,34 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="31" width=".5">tkhd Length</col>
+    <col start="0" end="31" width=".5">tkhd length</col>
     <col start="32" end="63" width=".5">`tkhd' (0x746B6864)</col>
   </row>
   <row>
-    <col start="64" end="71" width=".12">Version</col>
-    <col start="72" end="91" width=".16">Reserved (0)</col>
-    <col start="92" end="92" width=".18">Track in Poster</col>
-    <col start="93" end="93" width=".20">Track in Preview</col>
-    <col start="94" end="94" width=".17">Track in Movie</col>
-    <col start="95" end="95" width=".17">Track Enabled</col>
+    <col start="64" end="71" width=".12">version</col>
+    <col start="72" end="91" width=".16">reserved (0)</col>
+    <col start="92" end="92" width=".18">track in poster</col>
+    <col start="93" end="93" width=".20">track in preview</col>
+    <col start="94" end="94" width=".17">track in movie</col>
+    <col start="95" end="95" width=".17">track enabled</col>
   </row>
   <row>
-    <col start="96" end="127/159" width=".5">Created Mac UTC Date</col>
-    <col start="128/160" end="159/223" width=".5">Modified Mac UTC Date</col>
+    <col start="96" end="127/159" width=".5">created Mac UTC date</col>
+    <col start="128/160" end="159/223" width=".5">modified Mac UTC date</col>
   </row>
   <row>
-    <col start="160/224" end="191/255" width=".25">Track ID</col>
-    <col start="192/256" end="255/319" width=".75">Reserved (0)</col>
+    <col start="160/224" end="191/255" width=".25">track ID</col>
+    <col start="192/256" end="255/319" width=".75">reserved (0)</col>
   </row>
   <row>
-    <col start="256/320" end="287/383" width=".5">Duration</col>
-    <col start="288/384" end="319/415" width=".5">Reserved (0)</col>
+    <col start="256/320" end="287/383" width=".5">duration</col>
+    <col start="288/384" end="319/415" width=".5">reserved (0)</col>
   </row>
   <row>
-    <col start="320/415" end="335/431" width=".25">Video Layer</col>
-    <col start="336/432" end="351/447" width=".25">QuickTime Alt</col>
-    <col start="352/448" end="367/463" width=".25">Audio Volume</col>
-    <col start="368/464" end="383/479" width=".25">Reserved (0)</col>
+    <col start="320/415" end="335/431" width=".25">video layer</col>
+    <col start="336/432" end="351/447" width=".25">QuickTime alt</col>
+    <col start="352/448" end="367/463" width=".25">audio volume</col>
+    <col start="368/464" end="383/479" width=".25">reserved (0)</col>
   </row>
   <row>
     <col start="384/480" end="415/511" width=".25">VGM value A</col>
@@ -44,7 +44,7 @@
   </row>
   <row>
     <col start="640/736" end="671/767" width=".25">VGM value W</col>
-    <col start="672/768" end="703/799" width=".375">Video Width</col>
-    <col start="704/800" end="735/831" width=".375">Video Height</col>
+    <col start="672/768" end="703/799" width=".375">video width</col>
+    <col start="704/800" end="735/831" width=".375">video height</col>
   </row>
 </diagram>

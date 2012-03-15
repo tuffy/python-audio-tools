@@ -1,7 +1,7 @@
 #FIXME - reorganize this big mess
 ID3v22 = \
 figures/id3v22/header.pdf \
-figures/id3v22/frame.bdx \
+figures/id3v22/frame.pdf \
 figures/id3v22/com.pdf \
 figures/id3v22/geo.pdf \
 figures/id3v22/pic.pdf \
@@ -458,10 +458,10 @@ figures/m4a/ftyp.pdf: figures/m4a/ftyp.bdx
 figures/m4a/mvhd.pdf: figures/m4a/mvhd.bdx
 	./bitdiagram.py -w 270 -i $< -o $@
 
-figures/m4a_meta.pdf: figures/m4a_meta.bdx
+figures/m4a/meta.pdf: figures/m4a/meta.bdx
 	./bitdiagram.py -w 306 -i $< -o $@
 
-figures/m4a_data.pdf: figures/m4a_data.bdx
+figures/m4a/data.pdf: figures/m4a/data.bdx
 	./bitdiagram.py -w 306 -i $< -o $@
 
 figures/alac/atom.pdf: figures/m4a/atom.bdx

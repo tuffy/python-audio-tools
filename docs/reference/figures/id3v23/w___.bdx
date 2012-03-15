@@ -2,16 +2,16 @@
 <diagram>
   <row>
     <col start="0" end="31" width=".5">`W___' (0x57______)</col>
-    <col start="32" end="63" width=".5">Size</col>
+    <col start="32" end="63" width=".5">size</col>
   </row>
   <row>
-    <col start="64" end="64" width=".13">Tag Alter</col>
-    <col start="65" end="65" width=".13">File Alter</col>
-    <col start="66" end="66" width=".13">Read Only</col>
+    <col start="64" end="64" width=".13">tag alter</col>
+    <col start="65" end="65" width=".13">file alter</col>
+    <col start="66" end="66" width=".13">read only</col>
     <col start="67" end="71" width=".1">NULL</col>
-    <col start="72" end="72" width=".15">Compression</col>
-    <col start="73" end="73" width=".13">Encryption</col>
-    <col start="74" end="74" width=".13">Grouping</col>
+    <col start="72" end="72" width=".15">compression</col>
+    <col start="73" end="73" width=".13">encryption</col>
+    <col start="74" end="74" width=".13">grouping</col>
     <col start="75" end="79" width=".1">NULL</col>
   </row>
   <row>

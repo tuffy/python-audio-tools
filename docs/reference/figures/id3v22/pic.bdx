@@ -2,18 +2,18 @@
 <diagram>
   <row>
     <col start="0" end="23" width=".5">`PIC' (0x504943)</col>
-    <col start="24" end="47" width=".5">Size</col>
+    <col start="24" end="47" width=".5">size</col>
   </row>
   <row>
-    <col start="48" end="55" width=".25">Encoding</col>
-    <col start="56" end="79" width=".75">Image Format</col>
+    <col start="48" end="55" width=".25">encoding</col>
+    <col start="56" end="79" width=".75">image format</col>
   </row>
   <row>
-    <col start="80" end="87" width=".25">Picture Type</col>
-    <col start="88" width=".6" style="dashed">Description</col>
+    <col start="80" end="87" width=".25">picture type</col>
+    <col start="88" width=".6" style="dashed">description</col>
     <col width=".15" start="0" end="7/15">NULL</col>
   </row>
   <row>
-    <col style="dashed">Picture Data</col>
+    <col style="dashed">picture data</col>
   </row>
 </diagram>

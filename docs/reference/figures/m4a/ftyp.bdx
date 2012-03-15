@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="31" width=".50">ftyp Length</col>
+    <col start="0" end="31" width=".50">ftyp length</col>
     <col start="32" end="63" width=".50">`ftyp' (0x66747970)</col>
   </row>
   <row>
-    <col start="64" end="95" width=".50">Major Brand</col>
-    <col start="96" end="127" width=".50">Major Brand Version</col>
+    <col start="64" end="95" width=".50">major brand</col>
+    <col start="96" end="127" width=".50">major brand version</col>
   </row>
   <row>
-    <col start="128" end="159" width=".50" style="dashed">Compatible Brand₁</col>
+    <col start="128" end="159" width=".50" style="dashed">compatible brand₁</col>
     <col start="160" style="dashed" width=".50">...</col>
   </row>
 </diagram>

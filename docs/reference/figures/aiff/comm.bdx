@@ -1,19 +1,19 @@
 <?xml version="1.0" ?><diagram>
   <row>
-    <col end="31" start="0" width=".5">Chunk ID (`COMM' 0x434F4D4D)</col>
-    <col end="63" start="32" width=".5">Chunk Size (18)</col>
+    <col end="31" start="0" width=".5">chunk ID (`COMM' 0x434F4D4D)</col>
+    <col end="63" start="32" width=".5">chunk size (18)</col>
   </row>
   <row>
-    <col end="79" start="64" width=".125">Channels</col>
-    <col end="111" start="80" width=".30">Total Sample Frames</col>
-    <col end="127" start="112" width=".175">Sample Size</col>
-    <col end="207" id="sample_rate" start="128" width=".4">Sample Rate</col>
+    <col end="79" start="64" width=".125">channels</col>
+    <col end="111" start="80" width=".30">total sample frames</col>
+    <col end="127" start="112" width=".175">sample size</col>
+    <col end="207" id="sample_rate" start="128" width=".4">sample rate</col>
   </row>
   <row><blank/></row>
   <row>
-    <col end="0" id="sign" start="0" width=".10">Sign</col>
-    <col end="15" start="1" width=".20">Exponent</col>
-    <col end="79" id="mantissa" start="16" width=".70">Mantissa</col>
+    <col end="0" id="sign" start="0" width=".10">sign</col>
+    <col end="15" start="1" width=".20">exponent</col>
+    <col end="79" id="mantissa" start="16" width=".70">mantissa</col>
   </row>
   <line style="dotted"><start corner="sw" id="sample_rate"/><end corner="nw" id="sign"/></line>
   <line style="dotted"><start corner="se" id="sample_rate"/><end corner="ne" id="mantissa"/></line>

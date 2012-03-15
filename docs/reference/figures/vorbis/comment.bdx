@@ -1,25 +1,25 @@
 <?xml version="1.0" ?><diagram>
   <row>
-    <col end="7" start="0" width=".15">Type (0x03)</col>
-    <col end="55" start="8" width=".47">Header `vorbis' (0x766F72626973)</col>
-    <col id="data" start="56" width=".20">Comment Data</col>
-    <col end="0" start="0" width=".18">Framing (1)</col>
+    <col end="7" start="0" width=".15">type (0x03)</col>
+    <col end="55" start="8" width=".47">header `vorbis' (0x766F72626973)</col>
+    <col id="data" start="56" width=".20">comment data</col>
+    <col end="0" start="0" width=".18">framing (1)</col>
   </row>
   <row><blank/></row>
   <row>
-    <col id="vendorstring" width=".17">Vendor String</col>
-    <col end="31" start="0" width=".20">Total Comments</col>
-    <col width=".21">Comment String₁</col>
-    <col id="comment" width=".21">Comment String₂</col>
+    <col id="vendorstring" width=".17">vendor string</col>
+    <col end="31" start="0" width=".20">total comments</col>
+    <col width=".21">comment string₀</col>
+    <col id="comment" width=".21">comment string₁</col>
     <col id="comments" style="dashed" width=".21">...</col>
   </row>
   <row><blank/></row>
   <row>
-    <col end="31" id="v_len" start="0" width=".25">Vendor String Length</col>
-    <col id="v_str" start="32" width=".20">Vendor String</col>
+    <col end="31" id="v_len" start="0" width=".25">vendor string length</col>
+    <col id="v_str" start="32" width=".20">vendor string</col>
     <blank width=".05"/>
-    <col end="31" id="c_len" start="0" width=".30">Comment String Length</col>
-    <col id="c_str" start="0" width=".20">Comment String</col>
+    <col end="31" id="c_len" start="0" width=".30">comment string length</col>
+    <col id="c_str" start="0" width=".20">comment string</col>
   </row>
   <line style="dotted"><start corner="sw" id="vendorstring"/><end corner="nw" id="v_len"/></line>
   <line style="dotted"><start corner="se" id="vendorstring"/><end corner="ne" id="v_str"/></line>

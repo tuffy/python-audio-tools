@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="79" width=".20">Header</col>
+    <col start="0" end="79" width=".20">header</col>
+    <col width=".20">ID3v2 Frame₀</col>
     <col width=".20">ID3v2 Frame₁</col>
-    <col width=".20">ID3v2 Frame₂</col>
     <col width=".20" style="dashed">...</col>
-    <col width=".20" style="dashed">Padding</col>
+    <col width=".20" style="dashed">padding</col>
   </row>
 </diagram>

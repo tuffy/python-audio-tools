@@ -1,61 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="31" width=".5">Chunk ID (‘fmt ’ 0x666D7420)</col>
-    <col start="32" end="63" width=".5">Chunk Size (40)</col>
+    <col start="0" end="31" width=".5">chunk id (‘fmt ’ 0x666D7420)</col>
+    <col start="32" end="63" width=".5">chunk size (40)</col>
   </row>
   <row>
-    <col start="64" end="79" width=".5">Compression Code (0xFFFE)</col>
-    <col start="80" end="95" width=".5">Channel Count</col>
+    <col start="64" end="79" width=".5">compression code (0xfffe)</col>
+    <col start="80" end="95" width=".5">channel count</col>
   </row>
   <row>
-    <col start="96" end="127">Sample Rate</col>
+    <col start="96" end="127">sample rate</col>
   </row>
   <row>
-    <col start="128" end="159">Average Bytes per Second</col>
+    <col start="128" end="159">average bytes per second</col>
   </row>
   <row>
-    <col start="160" end="175" width=".5">Block Align</col>
-    <col start="176" end="191" width=".5">Bits per Sample</col>
+    <col start="160" end="175" width=".5">block align</col>
+    <col start="176" end="191" width=".5">bits per sample</col>
   </row>
   <row>
-    <col start="192" end="207" width=".5">CB Size (22)</col>
-    <col start="208" end="223" width=".5">Valid Bits per Sample</col>
+    <col start="192" end="207" width=".5">CB size (22)</col>
+    <col start="208" end="223" width=".5">valid bits per sample</col>
   </row>
   <!-- <row> -->
   <!--   <col start="224" end="255">Channel Mask</col> -->
   <!-- </row> -->
   <row>
-    <col start="224" end="224" width=".25">Front Right of Center</col>
-    <col start="225" end="225" width=".25">Front Left of Center</col>
-    <col start="226" end="226" width=".25">Rear Right</col>
-    <col start="227" end="227" width=".25">Rear Left</col>
+    <col start="224" end="224" width=".25">front right of center</col>
+    <col start="225" end="225" width=".25">front left of center</col>
+    <col start="226" end="226" width=".25">rear right</col>
+    <col start="227" end="227" width=".25">rear left</col>
   </row>
   <row>
-    <col start="228" end="228" width=".25">LFE</col>
-    <col start="229" end="229" width=".25">Front Center</col>
-    <col start="230" end="230" width=".25">Front Right</col>
-    <col start="231" end="231" width=".25">Front Left</col>
+    <col start="228" end="228" width=".25">lfe</col>
+    <col start="229" end="229" width=".25">front center</col>
+    <col start="230" end="230" width=".25">front right</col>
+    <col start="231" end="231" width=".25">front left</col>
   </row>
   <row>
-    <col start="232" end="232" width=".25">Top Back Left</col>
-    <col start="233" end="233" width=".25">Top Front Right</col>
-    <col start="234" end="234" width=".25">Top Front Center</col>
-    <col start="235" end="235" width=".25">Top Front Left</col>
+    <col start="232" end="232" width=".25">top back left</col>
+    <col start="233" end="233" width=".25">top front right</col>
+    <col start="234" end="234" width=".25">top front center</col>
+    <col start="235" end="235" width=".25">top front left</col>
   </row>
   <row>
-    <col start="236" end="236" width=".25">Top Center</col>
-    <col start="237" end="237" width=".25">Side Right</col>
-    <col start="238" end="238" width=".25">Side Left</col>
-    <col start="239" end="239" width=".25">Back Center</col>
+    <col start="236" end="236" width=".25">top center</col>
+    <col start="237" end="237" width=".25">side right</col>
+    <col start="238" end="238" width=".25">side left</col>
+    <col start="239" end="239" width=".25">back center</col>
   </row>
   <row>
-    <col start="240" end="245" width=".25">Undefined</col>
-    <col start="246" end="246" width=".25">Top Back Right</col>
-    <col start="247" end="247" width=".25">Top Back Center</col>
-    <col start="248" end="255" width=".25">Undefined</col>
+    <col start="240" end="245" width=".25">undefined</col>
+    <col start="246" end="246" width=".25">top back right</col>
+    <col start="247" end="247" width=".25">top back center</col>
+    <col start="248" end="255" width=".25">undefined</col>
   </row>
   <row>
-    <col start="256" end="383">Sub Format (0x0100000000001000800000aa00389b71)</col>
+    <col start="256" end="383">sub format (0x0100000000001000800000aa00389b71)</col>
   </row>
 </diagram>

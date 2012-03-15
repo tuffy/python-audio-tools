@@ -1,23 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="31" width=".5">stsc Length</col>
+    <col start="0" end="31" width=".5">stsc length</col>
     <col start="32" end="63" width=".5">`stsc' (0x73747363)</col>
   </row>
   <row>
-    <col start="64" end="71" width=".25">Version</col>
-    <col start="72" end="95" width=".25">Flags (0x000000)</col>
-    <col start="96" end="127" width=".5">Number of Blocks</col>
+    <col start="64" end="71" width=".25">version</col>
+    <col start="72" end="95" width=".25">flags (0x000000)</col>
+    <col start="96" end="127" width=".5">number of blocks</col>
   </row>
   <row>
-    <col start="128" end="159" width=".333333">First Chunk₁</col>
-    <col start="160" end="191" width=".333333">Samples per Chunk₁</col>
-    <col start="192" end="223" width=".333333">Sample Duration Index₁</col>
+    <col start="128" end="159" width=".333333">first chunk₁</col>
+    <col start="160" end="191" width=".333333">samples per chunk₁</col>
+    <col start="192" end="223" width=".333333">sample duration index₁</col>
   </row>
   <row>
-    <col start="224" end="255" width=".333333">First Chunk₂</col>
-    <col start="256" end="287" width=".333333">Samples per Chunk₂</col>
-    <col start="288" end="319" width=".333333">Sample Duration Index₂</col>
+    <col start="224" end="255" width=".333333">first chunk₂</col>
+    <col start="256" end="287" width=".333333">samples per chunk₂</col>
+    <col start="288" end="319" width=".333333">sample duration index₂</col>
   </row>
   <row>
     <col start="320" style="dashed">...</col>

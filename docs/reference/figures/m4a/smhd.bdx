@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="31" width=".5">smhd Length</col>
+    <col start="0" end="31" width=".5">smhd length</col>
     <col start="32" end="63" width=".5">`smhd' (0x736D6864)</col>
   </row>
   <row>
-    <col start="64" end="71" width=".25">Version</col>
-    <col start="72" end="95" width=".25">Flags (0x000000)</col>
-    <col start="96" end="111" width=".25">Audio Balance</col>
-    <col start="112" end="127" width=".25">Reserved (0x0000)</col>
+    <col start="64" end="71" width=".25">version</col>
+    <col start="72" end="95" width=".25">flags (0x000000)</col>
+    <col start="96" end="111" width=".25">audio balance</col>
+    <col start="112" end="127" width=".25">reserved (0x0000)</col>
   </row>
 </diagram>

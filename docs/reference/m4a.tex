@@ -37,6 +37,9 @@ There is no flag or field to tell a QuickTime parser which
 of its atoms are containers and which ones are not.
 If an atom is known to be a container, one can treat its Atom Data
 as a QuickTime stream and parse it in a recursive fashion.
+
+\clearpage
+
 \section{M4A Atoms}
 A typical M4A begins with an `ftyp' atom indicating its file type,
 followed by a `moov' atom containing a copious amount of file metadata,
@@ -60,7 +63,7 @@ If \VAR{Version} is 0, \VAR{Created Mac UTC Date}, \VAR{Modified Mac UTC Date} a
 \VAR{Duration} are 32-bit fields.  If it is 1, they are 64-bit fields.
 \end{figure}
 
-\pagebreak
+\clearpage
 
 \subsection{the tkhd Atom}
 \par
@@ -87,7 +90,7 @@ As with `mvhd', if \VAR{Version} is 0, \VAR{Created Mac UTC Date},
 \VAR{Modified Mac UTC Date} and \VAR{Track Length} are 32-bit fields.
 If it is 1, they are 64-bit fields.
 
-\pagebreak
+\clearpage
 
 \subsection{the hdlr Atom}
 
@@ -111,7 +114,7 @@ are integers.  The rest are ASCII strings.
 \includegraphics{figures/m4a/dref.pdf}
 \end{figure}
 
-\pagebreak
+\clearpage
 
 \subsection{the stsd Atom}
 
@@ -128,7 +131,7 @@ and bits-per-sample.  It can be found in the \ATOM{stsd} atom.
 \includegraphics{figures/m4a/mp4a.pdf}
 \end{figure}
 
-\pagebreak
+\clearpage
 
 \subsection{the stts Atom}
 
@@ -148,7 +151,7 @@ and bits-per-sample.  It can be found in the \ATOM{stsd} atom.
 \includegraphics{figures/m4a/stsz.pdf}
 \end{figure}
 
-\pagebreak
+\clearpage
 
 \subsection{the stco Atom}
 
@@ -212,7 +215,7 @@ Atom & Description & Atom & Description & Atom & Description \\
 }
 \end{table}
 
-\pagebreak
+\clearpage
 
 \subsubsection{the trkn Sub-Atom}
 \ATOM{trkn} is a binary sub-atom of \ATOM{meta} which contains
