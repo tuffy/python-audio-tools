@@ -58,7 +58,6 @@ if (audiotools.ui.AVAILABLE):
 
             return total
 
-
     class PathTrack(audiotools.ui.Track):
         FIELDS = [(u"Path", "path"),
                   (u"Track Name", "track_name"),
@@ -82,7 +81,6 @@ if (audiotools.ui.AVAILABLE):
             self.path = urwid.Text(
                 audiotools.VerboseMessenger("").filename(self.track.filename))
 
-
     class Tracktag(audiotools.ui.FocusFrame):
         (EDITING_LIST_ONLY,
          EDITING_LIST_W_FIELDS,
@@ -98,7 +96,6 @@ if (audiotools.ui.AVAILABLE):
         #| cursor on fields | N/A               | EDITING_FIELDS        |
         #| cursor on apply  | APPLY_LIST        | APPLY_LIST_W_FIELDS   |
         #|------------------+-------------------+-----------------------|
-
 
         def __init__(self, tracks):
             def by_album(a1, a2):

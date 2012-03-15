@@ -37,6 +37,7 @@ BITSHIFT_SIZE = 2
  FN_ZERO,
  FN_VERBATIM) = range(10)
 
+
 def encode_shn(filename, pcmreader, is_big_endian, signed_samples,
                header_data, footer_data="", block_size=256):
     """filename is a string to the output file's path
@@ -61,33 +62,33 @@ def encode_shn(filename, pcmreader, is_big_endian, signed_samples,
     #write header from PCMReader info and encoding options
     if (pcmreader.bits_per_sample == 8):
         if (signed_samples):
-            write_long(writer, 1) #signed, 8-bit
+            write_long(writer, 1)  # signed, 8-bit
             sign_adjustment = 0
         else:
-            write_long(writer, 2) #unsigned, 8-bit
+            write_long(writer, 2)  # unsigned, 8-bit
             sign_adjustment = 1 << (pcmreader.bits_per_sample - 1)
         #8-bit samples have no endianness
     elif (pcmreader.bits_per_sample == 16):
         if (signed_samples):
             if (is_big_endian):
-                write_long(writer, 3) #signed, 16-bit, big-endian
+                write_long(writer, 3)  # signed, 16-bit, big-endian
             else:
-                write_long(writer, 5) #signed, 16-bit, little-endian
+                write_long(writer, 5)  # signed, 16-bit, little-endian
             sign_adjustment = 0
         else:
             if (is_big_endian):
-                write_long(writer, 4) #unsigned, 16-bit, big-endian
+                write_long(writer, 4)  # unsigned, 16-bit, big-endian
             else:
-                write_long(writer, 6) #unsigned, 16-bit, little-endian
+                write_long(writer, 6)  # unsigned, 16-bit, little-endian
             sign_adjustment = 1 << (pcmreader.bits_per_sample - 1)
     else:
         raise ValueError("unsupported bits_per_sample")
 
     write_long(writer, pcmreader.channels)
     write_long(writer, block_size)
-    write_long(writer, 0)  #max LPC
-    write_long(writer, 0)  #mean count
-    write_long(writer, 0)  #bytes to skip
+    write_long(writer, 0)  # max LPC
+    write_long(writer, 0)  # mean count
+    write_long(writer, 0)  # bytes to skip
 
     #write header as a VERBATIM block
     write_unsigned(writer, COMMAND_SIZE, FN_VERBATIM)
@@ -148,7 +149,9 @@ def encode_shn(filename, pcmreader, is_big_endian, signed_samples,
 
                 #write DIFF command, energy size and residuals
                 write_unsigned(writer, COMMAND_SIZE,
-                               {1:FN_DIFF1, 2:FN_DIFF2, 3:FN_DIFF3}[diff])
+                               {1: FN_DIFF1,
+                                2: FN_DIFF2,
+                                3: FN_DIFF3}[diff])
                 write_unsigned(writer, ENERGY_SIZE, energy)
                 for residual in residuals:
                     write_signed(writer, energy, residual)
@@ -224,17 +227,17 @@ def best_diff(previous_samples, samples):
         full_samples = previous_samples[-3:] + samples
 
     #determine delta1 from the samples list
-    delta1 = [n - p for (p,n) in zip(full_samples, full_samples[1:])]
+    delta1 = [n - p for (p, n) in zip(full_samples, full_samples[1:])]
     abs_sum1 = sum(map(abs, delta1[2:]))
     assert(len(delta1) == len(samples) + 2)
 
     #determine delta2 from delta1
-    delta2 = [n - p for (p,n) in zip(delta1, delta1[1:])]
+    delta2 = [n - p for (p, n) in zip(delta1, delta1[1:])]
     abs_sum2 = sum(map(abs, delta2[1:]))
     assert(len(delta2) == len(samples) + 1)
 
     #determine delta3 from delta2
-    delta3 = [n - p for (p,n) in zip(delta2, delta2[1:])]
+    delta3 = [n - p for (p, n) in zip(delta2, delta2[1:])]
     abs_sum3 = sum(map(abs, delta3))
     assert(len(delta3) == len(samples))
 

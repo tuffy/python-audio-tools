@@ -347,7 +347,6 @@ if (__name__ == '__main__'):
 
     encoded = []
 
-
     pcmreader = title.to_pcm()
     for (i, pts_ticks) in enumerate([t.pts_length for t in title]):
         pcmreader.next_track(pts_ticks)

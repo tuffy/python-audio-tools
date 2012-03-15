@@ -2,8 +2,9 @@
 
 from audiotools import iter_last
 from audiotools.bitstream import BitstreamReader
-from audiotools.pcm import from_list,from_channels
+from audiotools.pcm import from_list, from_channels
 from operator import concat
+
 
 def log2(i):
     bits = -1
@@ -51,14 +52,14 @@ class ALACDecoder:
                 #and use the attributes in the "low" ALAC atom instead
                 "32p 4b 4P 32u 8p 8u 8u 8u 8u 8u 16p 32p 32p 32u")
 
-            self.channel_mask = {1:0x0004,
-                                 2:0x0003,
-                                 3:0x0007,
-                                 4:0x0107,
-                                 5:0x0037,
-                                 6:0x003F,
-                                 7:0x013F,
-                                 8:0x00FF}.get(self.channels, 0)
+            self.channel_mask = {1: 0x0004,
+                                 2: 0x0003,
+                                 3: 0x0007,
+                                 4: 0x0107,
+                                 5: 0x0037,
+                                 6: 0x003F,
+                                 7: 0x013F,
+                                 8: 0x00FF}.get(self.channels, 0)
 
             if ((alac1 != 'alac') or (alac2 != 'alac')):
                 raise ValueError("Invalid alac atom")
@@ -331,7 +332,7 @@ class ALACDecoder:
 
         for residual in residuals:
             base_sample = samples[-len(qlp_coefficients) - 1]
-            lpc_sum = sum([(s - base_sample) * c for (s,c) in
+            lpc_sum = sum([(s - base_sample) * c for (s, c) in
                            zip(samples[-len(qlp_coefficients):],
                                reversed(qlp_coefficients))])
             outval = (1 << (qlp_shift_needed - 1)) + lpc_sum
@@ -345,7 +346,7 @@ class ALACDecoder:
                 predictor_num = len(qlp_coefficients) - 1
 
                 while ((predictor_num >= 0) and residual > 0):
-                    val = buf[0] - buf[len(qlp_coefficients) - predictor_num];
+                    val = buf[0] - buf[len(qlp_coefficients) - predictor_num]
                     sign = sign_only(val)
 
                     qlp_coefficients[predictor_num] -= sign
@@ -361,7 +362,7 @@ class ALACDecoder:
                 predictor_num = len(qlp_coefficients) - 1
 
                 while ((predictor_num >= 0) and residual < 0):
-                    val = buf[0] - buf[len(qlp_coefficients) - predictor_num];
+                    val = buf[0] - buf[len(qlp_coefficients) - predictor_num]
                     sign = -sign_only(val)
 
                     qlp_coefficients[predictor_num] -= sign

@@ -24,17 +24,17 @@ from audiotools import BufferedPCMReader
 from hashlib import md5
 
 #sub block IDs
-WV_WAVE_HEADER       = 0x1
-WV_WAVE_FOOTER       = 0x2
-WV_TERMS             = 0x2
-WV_WEIGHTS           = 0x3
-WV_SAMPLES           = 0x4
-WV_ENTROPY           = 0x5
-WV_SAMPLE_RATE       = 0x7
-WV_INT32_INFO        = 0x9
-WV_BITSTREAM         = 0xA
-WV_CHANNEL_INFO      = 0xD
-WV_MD5               = 0x6
+WV_WAVE_HEADER = 0x1
+WV_WAVE_FOOTER = 0x2
+WV_TERMS = 0x2
+WV_WEIGHTS = 0x3
+WV_SAMPLES = 0x4
+WV_ENTROPY = 0x5
+WV_SAMPLE_RATE = 0x7
+WV_INT32_INFO = 0x9
+WV_BITSTREAM = 0xA
+WV_CHANNEL_INFO = 0xD
+WV_MD5 = 0x6
 
 
 class EncoderContext:
@@ -57,14 +57,14 @@ def write_wave_header(writer, pcmreader, total_frames, wave_footer_len):
     block_align = (pcmreader.channels *
                    (pcmreader.bits_per_sample / 8))
 
-    total_size = 4 * 3  #'RIFF' + size + 'WAVE'
+    total_size = 4 * 3   # 'RIFF' + size + 'WAVE'
 
-    total_size += 4 * 2 #'fmt ' + size
+    total_size += 4 * 2  # 'fmt ' + size
     if ((pcmreader.channels <= 2) and
         (pcmreader.bits_per_sample <= 16)):
         #classic fmt chunk
         fmt = "16u 16u 32u 32u 16u 16u"
-        fmt_fields = (1,   #compression code
+        fmt_fields = (1,   # compression code
                       pcmreader.channels,
                       pcmreader.sample_rate,
                       avg_bytes_per_second,
@@ -74,21 +74,21 @@ def write_wave_header(writer, pcmreader, total_frames, wave_footer_len):
     else:
         #extended fmt chunk
         fmt = "16u 16u 32u 32u 16u 16u" + "16u 16u 32u 16b"
-        fmt_fields = (0xFFFE,   #compression code
+        fmt_fields = (0xFFFE,   # compression code
                       pcmreader.channels,
                       pcmreader.sample_rate,
                       avg_bytes_per_second,
                       block_align,
                       pcmreader.bits_per_sample,
-                      22,       #CB size
+                      22,       # CB size
                       pcmreader.bits_per_sample,
                       pcmreader.channel_mask,
                       '\x01\x00\x00\x00\x00\x00\x10\x00' +
-                      '\x80\x00\x00\xaa\x00\x38\x9b\x71' #sub format
+                      '\x80\x00\x00\xaa\x00\x38\x9b\x71'  # sub format
                       )
     total_size += format_size(fmt) / 8
 
-    total_size += 4 * 2 #'data' + size
+    total_size += 4 * 2  # 'data' + size
     data_size = (total_frames *
                  pcmreader.channels *
                  (pcmreader.bits_per_sample / 8))
@@ -100,6 +100,7 @@ def write_wave_header(writer, pcmreader, total_frames, wave_footer_len):
                  (('RIFF', total_size - 8, 'WAVE',
                    'fmt ', format_size(fmt) / 8) + fmt_fields +
                   ('data', data_size)))
+
 
 class CorrelationParameters:
     """the parameters for a single correlation pass"""
@@ -592,7 +593,7 @@ def write_block(writer, context, channels, block_index,
         context.pcmreader.bits_per_sample,
         len(channels),
         (len(channels) == 2) and (false_stereo == 0),
-        len(set([-1,-2,-3]) &
+        len(set([-1, -2, -3]) &
             set([p.term for p in
                  parameters.correlation_parameters(false_stereo)])) > 0,
         wasted,
@@ -621,6 +622,7 @@ def bits(sample):
     return total
 
 INFINITY = 2 ** 32
+
 
 def wasted_bps(sample):
     if (sample == 0):
@@ -674,51 +676,52 @@ def write_block_header(writer,
                        sample_rate,
                        false_stereo,
                        CRC):
-    writer.write_bytes("wvpk")             #block ID
-    writer.write(32, sub_blocks_size + 24) #block size
-    writer.write(16, 0x0410)               #version
-    writer.write(8, 0)                     #track number
-    writer.write(8, 0)                     #index number
-    writer.write(32, 0xFFFFFFFF)           #total samples
+    writer.write_bytes("wvpk")              # block ID
+    writer.write(32, sub_blocks_size + 24)  # block size
+    writer.write(16, 0x0410)                # version
+    writer.write(8, 0)                      # track number
+    writer.write(8, 0)                      # index number
+    writer.write(32, 0xFFFFFFFF)            # total samples
     writer.write(32, block_index)
     writer.write(32, block_samples)
     writer.write(2, (bits_per_sample / 8) - 1)
     writer.write(1, 2 - channel_count)
-    writer.write(1, 0)                     #hybrid mode
+    writer.write(1, 0)                      # hybrid mode
     writer.write(1, joint_stereo)
     writer.write(1, cross_channel_decorrelation)
-    writer.write(1, 0)                     #hybrid noise shaping
-    writer.write(1, 0)                     #floating point data
-    if (wasted_bps > 0):                   #extended size integers
+    writer.write(1, 0)                      # hybrid noise shaping
+    writer.write(1, 0)                      # floating point data
+    if (wasted_bps > 0):                    # extended size integers
         writer.write(1, 1)
     else:
         writer.write(1, 0)
-    writer.write(1, 0)                     #hybrid controls bitrate
-    writer.write(1, 0)                     #hybrid noise balanced
+    writer.write(1, 0)                      # hybrid controls bitrate
+    writer.write(1, 0)                      # hybrid noise balanced
     writer.write(1, initial_block_in_sequence)
     writer.write(1, final_block_in_sequence)
-    writer.write(5, 0)                     #left shift data
+    writer.write(5, 0)                      # left shift data
     writer.write(5, maximum_magnitude)
-    writer.write(4, {6000:0,
-                     8000:1,
-                     9600:2,
-                     11025:3,
-                     12000:4,
-                     16000:5,
-                     22050:6,
-                     24000:7,
-                     32000:8,
-                     44100:9,
-                     48000:10,
-                     64000:11,
-                     88200:12,
-                     96000:13,
-                     192000:14}.get(sample_rate, 15))
-    writer.write(2, 0)                     #reserved
-    writer.write(1, 0)                     #use IIR
+    writer.write(4, {6000: 0,
+                     8000: 1,
+                     9600: 2,
+                     11025: 3,
+                     12000: 4,
+                     16000: 5,
+                     22050: 6,
+                     24000: 7,
+                     32000: 8,
+                     44100: 9,
+                     48000: 10,
+                     64000: 11,
+                     88200: 12,
+                     96000: 13,
+                     192000: 14}.get(sample_rate, 15))
+    writer.write(2, 0)                      # reserved
+    writer.write(1, 0)                      # use IIR
     writer.write(1, false_stereo)
-    writer.write(1, 0)                     #reserved
+    writer.write(1, 0)                      # reserved
     writer.write(32, CRC)
+
 
 def write_sub_block(writer, function, nondecoder_data, recorder):
     recorder.byte_align()
@@ -765,6 +768,7 @@ def write_correlation_weights(writer, correlation_weights):
         for weight in weights:
             writer.write(8, store_weight(weight))
 
+
 def store_weight(w):
     w = min(max(w, -1024), 1024)
 
@@ -774,6 +778,7 @@ def store_weight(w):
         return 0
     elif (w < 0):
         return (w + 4) / (2 ** 3)
+
 
 def restore_weight(v):
     if (v > 0):
@@ -1329,9 +1334,6 @@ def write_residual(writer, u, offset, add, sign):
     """given u_{i}, offset_{i}, add_{i} and sign_{i}
     writes residual data to the given BitstreamWriter
     u_{i} may be None, indicated an undefined unary value"""
-
-
-
 
 
 def write_extended_integers(writer,

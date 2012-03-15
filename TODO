@@ -4583,6 +4583,79 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     requires verbatim wave or aiff chunks
     which can't be created because
     the amount of PCM data is too large
+** DONE Fix FLAC embedded cuesheets
+** DONE Ensure files are PEP8-compliant
+*** DONE check user-level scripts
+    - [X] audiotools-config
+    - [X] cd2track
+    - [X] cdinfo
+    - [X] cdplay
+    - [X] coverdump
+    - [X] coverview
+    - [X] dvda2track
+    - [X] dvdainfo
+    - [X] record2track
+    - [X] track2cd
+    - [X] track2track
+    - [X] trackcat
+    - [X] trackcmp
+    - [X] trackinfo
+    - [X] tracklength
+    - [X] tracklint
+    - [X] trackplay
+    - [X] trackrename
+    - [X] tracksplit
+    - [X] tracktag
+    - [X] trackverify
+    - [X] setup.py
+*** DONE check audiotools module
+    - [X] __aiff__.py
+    - [X] __ape__.py
+    - [X] __au__.py
+    - [X] __dvda__.py
+    - [X] __flac__.py
+    - [X] __freedb__.py
+    - [X] __id3__.py
+    - [X] __id3v1__.py
+    - [X] __image__.py
+    - [X] __init__.py
+    - [X] __m4a__.py
+    - [X] __m4a_atoms__.py
+    - [X] __mp3__.py
+    - [X] __musepack__.py
+    - [X] __musicbrainz__.py
+    - [X] __ogg__.py
+    - [X] __shn__.py
+    - [X] __vorbis__.py
+    - [X] __vorbiscomment__.py
+    - [X] __wav__.py
+    - [X] __wavpack__.py
+    - [X] cue.py
+    - [X] delta.py
+    - [X] freedb.py
+    - [X] musicbrainz.py
+    - [X] player.py
+    - [X] toc.py
+    - [X] ui.py
+*** DONE check audiotools.py_decoders module
+    - [X] __init__.py
+    - [X] alac.py
+    - [X] flac.py
+    - [X] shn.py
+    - [X] wavpack.py
+*** DONE check audiotools.py_encoders module
+    - [X] __init__.py
+    - [X] alac.py
+    - [X] flac.py
+    - [X] shn.py
+    - [X] wavpack.py
+*** DONE check test
+    - [X] test.py
+    - [X] test_core.py
+    - [X] test_formats.py
+    - [X] test_metadata.py
+    - [X] test_streams.py
+    - [X] test_utils.py
 ** TODO Fix FLAC seektable generation
    Ensure new seektables are aligned properly.
 *** DONE Ensure proper seektable written on from_pcm
@@ -4834,17 +4907,17 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] OggFlacAudio
     - [X] VorbisAudio
     - [X] WavPackAudio
-*** TODO Update clean() method to use update_metadata()
+*** DONE Update clean() method to use update_metadata()
     for formats which implement clean() at all
-    - [ ] ALACAudio
-    - [ ] AiffAudio
+    - [X] ALACAudio
+    - [X] AiffAudio
     - [X] FlacAudio
-    - [ ] M4AAudio
-    - [ ] MP2Audio
-    - [ ] MP3Audio
-    - [ ] OggFlacAudio
-    - [ ] VorbisAudio
-    - [ ] WavPackAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OggFlacAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
 *** DONE Add update_metadata() to tracktag
     when not using -r/--replace option
 *** DONE Document new set_metadata() behavior
@@ -5196,7 +5269,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     and further closes should do nothing.
 **** DONE Add unit test to bitstream.c
 **** DONE Add unit test to Python side
-** TODO Fix FLAC embedded cuesheets
 ** TODO Ensure > 2GB files work correctly
 *** TODO flac should work
 *** TODO ogg flac should work
@@ -5271,68 +5343,4 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Ensure complete unit test passes
    this includes some compound tests
    which may not be covered by individual tests
-** TODO Ensure files are PEP8-compliant
-*** TODO check user-level scripts
-    - [ ] audiotools-config
-    - [ ] cd2track
-    - [ ] cdinfo
-    - [ ] cdplay
-    - [ ] coverdump
-    - [ ] coverview
-    - [ ] dvda2track
-    - [ ] dvdainfo
-    - [ ] record2track
-    - [ ] track2cd
-    - [ ] track2track
-    - [ ] trackcat
-    - [ ] trackcmp
-    - [ ] trackinfo
-    - [ ] tracklength
-    - [ ] tracklint
-    - [ ] trackplay
-    - [ ] trackrename
-    - [ ] tracksplit
-    - [ ] tracktag
-    - [ ] trackverify
-*** TODO check audiotools module
-    - [ ] __aiff__.py
-    - [ ] __ape__.py
-    - [ ] __au__.py
-    - [ ] __dvda__.py
-    - [ ] __flac__.py
-    - [ ] __freedb__.py
-    - [ ] __id3__.py
-    - [ ] __id3v1__.py
-    - [ ] __image__.py
-    - [ ] __init__.py
-    - [ ] __m4a__.py
-    - [ ] __m4a_atoms__.py
-    - [ ] __mp3__.py
-    - [ ] __musepack__.py
-    - [ ] __musicbrainz__.py
-    - [ ] __ogg__.py
-    - [ ] __shn__.py
-    - [ ] __vorbis__.py
-    - [ ] __vorbiscomment__.py
-    - [ ] __wav__.py
-    - [ ] __wavpack__.py
-    - [ ] cue.py
-    - [ ] delta.py
-    - [ ] freedb.py
-    - [ ] musicbrainz.py
-    - [ ] player.py
-    - [ ] toc.py
-    - [ ] ui.py
-*** TODO check audiotools.py_decoders module
-    - [ ] __init__.py
-    - [ ] alac.py
-    - [ ] flac.py
-    - [ ] shn.py
-    - [ ] wavpack.py
-*** TODO check audiotools.py_encoders module
-    - [ ] __init__.py
-    - [ ] alac.py
-    - [ ] decodetest.py
-    - [ ] flac.py
-    - [ ] shn.py
-    - [ ] wavpack.py
+** TODO Ensure MANIFEST.in is complete

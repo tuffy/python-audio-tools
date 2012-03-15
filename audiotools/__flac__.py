@@ -146,7 +146,8 @@ class FlacMetaData(MetaData):
     def __getattr__(self, key):
         if (key in self.FIELDS):
             try:
-                return getattr(self.get_block(Flac_VORBISCOMMENT.BLOCK_ID), key)
+                return getattr(self.get_block(Flac_VORBISCOMMENT.BLOCK_ID),
+                               key)
             except IndexError:
                 if (key in self.INTEGER_FIELDS):
                     return 0
@@ -262,7 +263,6 @@ class FlacMetaData(MetaData):
 
         return self.__class__(cleaned_blocks)
 
-
     def __repr__(self):
         return "FlacMetaData(%s)" % (self.block_list)
 
@@ -275,26 +275,26 @@ class FlacMetaData(MetaData):
         while (last != 1):
             (last, block_type, block_length) = reader.parse("1u7u24u")
 
-            if (block_type == 0):   #STREAMINFO
+            if (block_type == 0):    # STREAMINFO
                 block_list.append(
                     Flac_STREAMINFO.parse(reader.substream(block_length)))
-            elif (block_type == 1): #PADDING
+            elif (block_type == 1):  # PADDING
                 block_list.append(Flac_PADDING.parse(
                         reader.substream(block_length), block_length))
-            elif (block_type == 2): #APPLICATION
+            elif (block_type == 2):  # APPLICATION
                 block_list.append(Flac_APPLICATION.parse(
                         reader.substream(block_length), block_length))
-            elif (block_type == 3): #SEEKTABLE
+            elif (block_type == 3):  # SEEKTABLE
                 block_list.append(
                     Flac_SEEKTABLE.parse(reader.substream(block_length),
                                          block_length / 18))
-            elif (block_type == 4): #VORBIS_COMMENT
+            elif (block_type == 4):  # VORBIS_COMMENT
                 block_list.append(Flac_VORBISCOMMENT.parse(
                         reader.substream(block_length)))
-            elif (block_type == 5): #CUESHEET
+            elif (block_type == 5):  # CUESHEET
                 block_list.append(
                     Flac_CUESHEET.parse(reader.substream(block_length)))
-            elif (block_type == 6): #PICTURE
+            elif (block_type == 6):  # PICTURE
                 block_list.append(Flac_PICTURE.parse(
                         reader.substream(block_length)))
             elif ((block_type >= 7) and (block_type <= 126)):
@@ -318,8 +318,9 @@ class FlacMetaData(MetaData):
     def build(self, writer):
         from . import iter_last
 
-        for (last_block, block) in iter_last(iter([b for b in self.blocks()
-                                                   if (b.size() < (2 ** 24))])):
+        for (last_block,
+             block) in iter_last(iter([b for b in self.blocks()
+                                       if (b.size() < (2 ** 24))])):
             if (not last_block):
                 writer.build("1u7u24u", (0, block.BLOCK_ID, block.size()))
             else:
@@ -407,8 +408,8 @@ class Flac_STREAMINFO:
     @classmethod
     def parse(cls, reader):
         values = reader.parse("16u16u24u24u20u3u5u36U16b")
-        values[5] += 1  #channels
-        values[6] += 1  #bits-per-sample
+        values[5] += 1  # channels
+        values[6] += 1  # bits-per-sample
         return cls(*values)
 
     def build(self, writer):
@@ -543,7 +544,7 @@ class Flac_PICTURE(Image):
             # | Leaflet Page |               5 |          2 |
             # | Media        |               6 |          3 |
 
-            return {0:4, 3:0, 4:1, 5:2, 6:3}.get(self.picture_type, 4)
+            return {0: 4, 3: 0, 4: 1, 5: 2, 6: 3}.get(self.picture_type, 4)
         else:
             try:
                 return self.__dict__[key]
@@ -562,7 +563,7 @@ class Flac_PICTURE(Image):
             # | Leaflet Page |          2 |               5 |
             # | Media        |          3 |               6 |
 
-            self.picture_type = {4:0, 0:3, 1:4, 2:5, 3:6}.get(value, 0)
+            self.picture_type = {4: 0, 0: 3, 1: 4, 2: 5, 3: 6}.get(value, 0)
         else:
             self.__dict__[key] = value
 
@@ -634,7 +635,7 @@ class Flac_PICTURE(Image):
         """Converts an Image object to a FlacPictureComment."""
 
         return cls(
-            picture_type={4:0, 0:3, 1:4, 2:5, 3:6}.get(image.type, 0),
+            picture_type={4: 0, 0: 3, 1: 4, 2: 5, 3: 6}.get(image.type, 0),
             mime_type=image.mime_type,
             description=image.description,
             width=image.width,
@@ -781,7 +782,9 @@ class Flac_SEEKTABLE:
         reordered = False
         if (len(nonempty_points) > 0):
             reordered_points = [nonempty_points[0]]
-            for (frame_offset, byte_offset, frame_count) in nonempty_points[1:]:
+            for (frame_offset,
+                 byte_offset,
+                 frame_count) in nonempty_points[1:]:
                 if ((frame_offset > reordered_points[-1][0]) and
                     (byte_offset > reordered_points[-1][1])):
                     reordered_points.append((frame_offset,
@@ -797,6 +800,7 @@ class Flac_SEEKTABLE:
                 _(u"reordered seektable to be in ascending order"))
 
         return Flac_SEEKTABLE(reordered_points)
+
 
 class Flac_CUESHEET:
     BLOCK_ID = 5
@@ -887,31 +891,30 @@ class Flac_CUESHEET:
 
         ISRCs = sheet.ISRCs()
 
-        return cls(catalog_number=catalog_number,
-                   lead_in_samples=sample_rate * 2,
-                   is_cdda=1 if sample_rate == 44100 else 0,
-                   tracks=
-                   [Flac_CUESHEET_track(offset=indexes[0] * sample_rate / 75,
-                                        number=i + 1,
-                                        ISRC=ISRCs.get(i + 1, chr(0) * 12),
-                                        track_type=0,
-                                        pre_emphasis=0,
-                                        index_points=
-                                        [Flac_CUESHEET_index(
+        return cls(
+            catalog_number=catalog_number,
+            lead_in_samples=sample_rate * 2,
+            is_cdda=1 if sample_rate == 44100 else 0,
+            tracks=[Flac_CUESHEET_track(
+                    offset=indexes[0] * sample_rate / 75,
+                    number=i + 1,
+                    ISRC=ISRCs.get(i + 1, chr(0) * 12),
+                    track_type=0,
+                    pre_emphasis=0,
+                    index_points=[Flac_CUESHEET_index(
                             offset=(index - indexes[0]) * sample_rate / 75,
                             number=point_number + (1 if len(indexes) == 1
                                                    else 0))
-                                         for (point_number, index)
-                                         in enumerate(indexes)])
+                                  for (point_number, index)
+                                  in enumerate(indexes)])
                     for (i, indexes) in enumerate(sheet.indexes())] +
-                   #lead-out track
-                   [Flac_CUESHEET_track(offset=total_frames,
-                                        number=170,
-                                        ISRC=chr(0) * 12,
-                                        track_type=0,
-                                        pre_emphasis=0,
-                                        index_points=[])])
-
+            # lead-out track
+            [Flac_CUESHEET_track(offset=total_frames,
+                                 number=170,
+                                 ISRC=chr(0) * 12,
+                                 track_type=0,
+                                 pre_emphasis=0,
+                                 index_points=[])])
 
     def catalog(self):
         """Returns the cuesheet's catalog number as a plain string."""
@@ -960,7 +963,7 @@ class Flac_CUESHEET:
             return []
 
     def __unicode__(self):
-       return sheet_to_unicode(self, None)
+        return sheet_to_unicode(self, None)
 
 
 class Flac_CUESHEET_track:
@@ -1133,12 +1136,11 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         Takes a seekable file pointer rewound to the start of the file."""
 
-
         if (file.read(4) == 'fLaC'):
             #proper FLAC file with no junk at the beginning
             try:
                 block_ids = list(cls.__block_ids__(file))
-            except (ValueError,IOError):
+            except (ValueError, IOError):
                 return False
             if ((len(block_ids) == 0) or (0 not in block_ids)):
                 return False
@@ -1154,7 +1156,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                 if (file.read(4) == 'fLaC'):
                     try:
                         block_ids = list(cls.__block_ids__(file))
-                    except (ValueError,IOError):
+                    except (ValueError, IOError):
                         return False
                     if ((len(block_ids) == 0) or (0 not in block_ids)):
                         return False
@@ -1176,7 +1178,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                 int(self.get_metadata().get_block(
                         Flac_VORBISCOMMENT.BLOCK_ID)[
                         u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"][0], 16))
-        except (IndexError,KeyError,ValueError):
+        except (IndexError, KeyError, ValueError):
             #if there is no VORBIS_COMMENT block
             #or no WAVEFORMATEXTENSIBLE_CHANNEL_MASK in that block
             #or it's not an integer,
@@ -1357,7 +1359,8 @@ class FlacAudio(WaveContainer, AiffContainer):
 
                 #update WAVEFORMATEXTENSIBLE_CHANNEL_MASK
                 #from our current VORBIS_COMMENT block, if any
-                if (((self.channels() > 2) or (self.bits_per_sample() > 16)) and
+                if (((self.channels() > 2) or
+                     (self.bits_per_sample() > 16)) and
                     (u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK" in
                      old_vorbiscomment.keys())):
                     new_vorbiscomment[u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = \
@@ -1600,7 +1603,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
             metadata.add_block(flac.seektable(
                     [(byte_offset - metadata_length,
-                      pcm_frames) for byte_offset,pcm_frames in offsets],
+                      pcm_frames) for byte_offset, pcm_frames in offsets],
                     seekpoint_interval))
 
             #if channels or bps is too high,
@@ -1629,7 +1632,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             metadata_length = (self.__stream_offset__ +
                                4 + self.metadata_length())
             offsets = [(byte_offset - metadata_length,
-                        pcm_frames) for byte_offset,pcm_frames in
+                        pcm_frames) for byte_offset, pcm_frames in
                        self.to_pcm().offsets()]
 
         if (seekpoint_interval is None):
@@ -1742,7 +1745,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
             metadata = flac.get_metadata()
 
-            from .bitstream import BitstreamReader,BitstreamRecorder
+            from .bitstream import BitstreamReader, BitstreamRecorder
 
             wav = BitstreamReader(file(wave_filename, 'rb'), 1)
             chunk = BitstreamRecorder(1)
@@ -2291,7 +2294,6 @@ class OggFlacMetaData(FlacMetaData):
                        [Flac_PICTURE.converted(image)
                         for image in metadata.images()])
 
-
     def __repr__(self):
         return ("OggFlacMetaData(%s)" % (repr(self.block_list)))
 
@@ -2330,30 +2332,30 @@ class OggFlacMetaData(FlacMetaData):
          md5sum) = streaminfo_packet.parse(
             "8u 4b 8u 8u 16u 4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b")
 
-        block_list =[Flac_STREAMINFO(minimum_block_size=minimum_block_size,
-                                     maximum_block_size=maximum_block_size,
-                                     minimum_frame_size=minimum_frame_size,
-                                     maximum_frame_size=maximum_frame_size,
-                                     sample_rate=sample_rate,
-                                     channels=channels + 1,
-                                     bits_per_sample=bits_per_sample + 1,
-                                     total_samples=total_samples,
-                                     md5sum=md5sum)]
+        block_list = [Flac_STREAMINFO(minimum_block_size=minimum_block_size,
+                                      maximum_block_size=maximum_block_size,
+                                      minimum_frame_size=minimum_frame_size,
+                                      maximum_frame_size=maximum_frame_size,
+                                      sample_rate=sample_rate,
+                                      channels=channels + 1,
+                                      bits_per_sample=bits_per_sample + 1,
+                                      total_samples=total_samples,
+                                      md5sum=md5sum)]
 
         for (i, packet) in zip(range(header_packets), packets):
             packet.set_endianness(0)
             (block_type, length) = packet.parse("1p 7u 24u")
-            if (block_type == 1):   #PADDING
+            if (block_type == 1):    # PADDING
                 block_list.append(Flac_PADDING.parse(packet, length))
-            if (block_type == 2):   #APPLICATION
+            if (block_type == 2):    # APPLICATION
                 block_list.append(Flac_APPLICATION.parse(packet, length))
-            elif (block_type == 3): #SEEKTABLE
+            elif (block_type == 3):  # SEEKTABLE
                 block_list.append(Flac_SEEKTABLE.parse(packet, length / 18))
-            elif (block_type == 4): #VORBIS_COMMENT
+            elif (block_type == 4):  # VORBIS_COMMENT
                 block_list.append(Flac_VORBISCOMMENT.parse(packet))
-            elif (block_type == 5): #CUESHEET
+            elif (block_type == 5):  # CUESHEET
                 block_list.append(Flac_CUESHEET.parse(packet))
-            elif (block_type == 6): #PICTURE
+            elif (block_type == 6):  # PICTURE
                 block_list.append(Flac_PICTURE.parse(packet))
             elif ((block_type >= 7) and (block_type <= 126)):
                 raise ValueError(_(u"reserved metadata block type %d") %
@@ -2368,7 +2370,7 @@ class OggFlacMetaData(FlacMetaData):
 
         from .bitstream import BitstreamRecorder
         from .bitstream import format_size
-        from . import iter_first,iter_last
+        from . import iter_first, iter_last
 
         packet = BitstreamRecorder(0)
 
@@ -2528,7 +2530,7 @@ class OggFlacAudio(FlacAudio):
         from .bitstream import BitstreamRecorder
         from .bitstream import BitstreamAccumulator
         from .bitstream import BitstreamReader
-        from . import OggStreamReader,OggStreamWriter
+        from . import OggStreamReader, OggStreamWriter
 
         new_file = tempfile.TemporaryFile()
         try:

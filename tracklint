@@ -46,6 +46,7 @@ def checksum(path):
     finally:
         f.close()
 
+
 def display_messages(messenger, track, messages):
     for message in messages:
         messenger.info(_(u"* %(filename)s: %(message)s") % \
@@ -62,6 +63,7 @@ def audiofiles(paths, messenger):
     for d in directories:
         for f in audiotools.open_directory(d, messenger=messenger):
             yield f
+
 
 def update_without_backup(track, messenger):
     fixes = []
@@ -173,7 +175,7 @@ if (__name__ == '__main__'):
                         msg.error(_(u"Unable to write \"%s\"") % \
                                       (msg.filename(track.filename)))
                         sys.exit(1)
-                    except ValueError,err:
+                    except ValueError, err:
                         msg.error(unicode(err))
                         sys.exit(1)
             finally:
@@ -189,7 +191,7 @@ if (__name__ == '__main__'):
                     msg.error(_(u"Unable to write \"%s\"") % \
                                   (msg.filename(track.filename)))
                     sys.exit(1)
-                except ValueError,err:
+                except ValueError, err:
                     msg.error(unicode(err))
                     sys.exit(1)
     elif (options.undo):

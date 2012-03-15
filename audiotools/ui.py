@@ -25,7 +25,6 @@ try:
     import urwid
     AVAILABLE = True
 
-
     class DownEdit(urwid.Edit):
         def __init__(self, caption='', edit_text='', multiline=False,
                      align='left', wrap='space', allow_tab=False,
@@ -43,7 +42,6 @@ try:
         def keypress(self, size, key):
             return urwid.Edit.keypress(self, size,
                                        self.__key_map__.get(key, key))
-
 
     class FocusFrame(urwid.Frame):
         """a special Frame widget which handles focus changes"""
@@ -67,7 +65,6 @@ try:
                     self.focus_callback(self, part, self.focus_callback_arg)
                 else:
                     self.focus_callback(self, part)
-
 
     class Track(urwid.LineBox):
         FIELDS = [(u"Track Name", "track_name"),
@@ -145,7 +142,6 @@ try:
                 date=self.date.get_edit_text(),
                 comment=self.comment.get_edit_text())
 
-
     class Album(urwid.LineBox):
         FIELDS = [(u"Album Name", "album_name"),
                   (u"Album Number", "album_number"),
@@ -218,8 +214,7 @@ try:
                           "date",
                           "comment"]:
                 setattr(self, field,
-                        DownEdit(edit_text=
-                                 audiotools.most_numerous(
+                        DownEdit(edit_text=audiotools.most_numerous(
                             [getattr(t.metadata, field) for t in tracks],
                             empty_list=u"",
                             all_differ=u"various")))
@@ -228,7 +223,6 @@ try:
                 for track in self.tracks:
                     if (getattr(track, attr).edit_text == widget.edit_text):
                         getattr(track, attr).set_edit_text(new_value)
-
 
             #link fields common to both albums and tracks
             for attr in Album.LINKED_FIELDS:
@@ -286,7 +280,6 @@ try:
 
                 yield metadata
 
-
     class AlbumList(urwid.Pile):
         def __init__(self, albums, select_item):
             """takes a list of Album objects
@@ -294,7 +287,7 @@ try:
             and returns a tree-like widget for editing an album or tracks"""
 
             self.albums = albums
-            self.radios = []      #all our radio button-like checkboxes
+            self.radios = []      # all our radio button-like checkboxes
             rows = []
 
             def unselect_others(checkbox, state_change):
@@ -348,14 +341,14 @@ try:
 
                     #setup track row
                     rows.append(
-                        urwid.Columns([
-                                ("fixed", len(prefix), urwid.Text(prefix)),
-                                ("fixed", 4, checkbox),
-                                ("fixed", track_digits + 1,
-                                 urwid.Text(u"%%%d.d " % (track_digits) % \
-                                                (track.metadata.track_number))),
-                                ("fixed", 2, urwid.Text(u": ")),
-                                ("weight", 1, track.track_name)]))
+                        urwid.Columns(
+                            [("fixed", len(prefix), urwid.Text(prefix)),
+                             ("fixed", 4, checkbox),
+                             ("fixed", track_digits + 1,
+                              urwid.Text(u"%%%d.d " % (track_digits) % \
+                                             (track.metadata.track_number))),
+                             ("fixed", 2, urwid.Text(u": ")),
+                             ("weight", 1, track.track_name)]))
 
             urwid.Pile.__init__(self, rows)
 
@@ -369,7 +362,6 @@ try:
 
             for album in self.albums:
                 yield album.get_metadata()
-
 
     def get_focus(widget):
         #something to smooth out the differences between Urwid versions
@@ -505,7 +497,8 @@ try:
             self.work_area.set_focus('header')
             self.set_state_message(self.get_state())
 
-        def select_album_or_track(self, checkbox, state_change, user_data=None):
+        def select_album_or_track(self, checkbox, state_change,
+                                  user_data=None):
             if ((state_change == True) and (user_data is not None)):
                 #select item
                 self.work_area.set_footer(
@@ -638,6 +631,7 @@ try:
 except ImportError:
     AVAILABLE = False
 
+
 def select_metadata(metadata_choices, msg):
     """queries the user for the best matching metadata to use"""
 
@@ -656,6 +650,7 @@ def select_metadata(metadata_choices, msg):
                 choice = None
 
         return metadata_choices[choice]
+
 
 def not_available_message(msg):
     msg.error(u"urwid is required for interactive mode")

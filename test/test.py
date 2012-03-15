@@ -33,8 +33,10 @@ import subprocess
 parser = ConfigParser.SafeConfigParser()
 parser.read("test.cfg")
 
+
 def do_nothing(self):
     pass
+
 
 #add a bunch of decorator metafunctions like LIB_CORE
 #which can be wrapped around individual tests as needed
@@ -46,6 +48,7 @@ for section in parser.sections():
         else:
             vars()["%s_%s" % (section.upper(),
                               option.upper())] = lambda function: do_nothing
+
 
 class BLANK_PCM_Reader:
     def __init__(self, length,
@@ -84,6 +87,7 @@ class BLANK_PCM_Reader:
     def reset(self):
         self.total_frames = self.original_frames
 
+
 class RANDOM_PCM_Reader(BLANK_PCM_Reader):
     def read(self, bytes):
         if (self.total_frames > 0):
@@ -104,6 +108,7 @@ class RANDOM_PCM_Reader(BLANK_PCM_Reader):
             return audiotools.pcm.FrameList(
                 "", self.channels, self.bits_per_sample, True, True)
 
+
 class EXACT_BLANK_PCM_Reader(BLANK_PCM_Reader):
     def __init__(self, pcm_frames,
                  sample_rate=44100, channels=2, bits_per_sample=16,
@@ -121,6 +126,7 @@ class EXACT_BLANK_PCM_Reader(BLANK_PCM_Reader):
 
         self.single_pcm_frame = audiotools.pcm.from_list(
             [1] * channels, channels, bits_per_sample, True)
+
 
 class EXACT_SILENCE_PCM_Reader(BLANK_PCM_Reader):
     def __init__(self, pcm_frames,
@@ -140,6 +146,7 @@ class EXACT_SILENCE_PCM_Reader(BLANK_PCM_Reader):
         self.single_pcm_frame = audiotools.pcm.from_list(
             [0] * channels, channels, bits_per_sample, True)
 
+
 class EXACT_RANDOM_PCM_Reader(RANDOM_PCM_Reader):
     def __init__(self, pcm_frames,
                  sample_rate=44100, channels=2, bits_per_sample=16,
@@ -157,6 +164,7 @@ class EXACT_RANDOM_PCM_Reader(RANDOM_PCM_Reader):
 
         self.single_pcm_frame = audiotools.pcm.from_list(
             [1] * channels, channels, bits_per_sample, True)
+
 
 class MD5_Reader:
     def __init__(self, pcmreader):
@@ -256,6 +264,7 @@ class MiniFrameReader:
                                             self.channels,
                                             self.bits_per_sample,
                                             True, True)
+
     def close(self):
         self.pcm_frames = []
 

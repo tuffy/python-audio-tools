@@ -21,6 +21,7 @@ from audiotools.bitstream import BitstreamReader
 from audiotools.pcm import from_list
 from hashlib import md5
 
+
 class FlacDecoder:
     CHANNEL_COUNT = [1, 2, 3, 4, 5, 6, 7, 8, 2, 2, 2,
                      None, None, None, None, None]
@@ -128,7 +129,6 @@ class FlacDecoder:
                 #otherwise, use the frame's bits-per-sample value
                 channel_data.append(self.read_subframe(block_size,
                                                        bits_per_sample))
-
 
         #one all the subframes have been decoded,
         #reconstruct them depending on the channel assignment
@@ -421,10 +421,10 @@ class FlacDecoder:
         partition_residuals = []
 
         for i in xrange(residual_count):
-            msb = self.reader.unary(1)             #most-significant bits
-            lsb = self.reader.read(rice_parameter) #least-significant bits
-            value = (msb << rice_parameter) | lsb  #combined into a value
-            if (value & 1):   #whose least-significant bit is the sign value
+            msb = self.reader.unary(1)              # most-significant bits
+            lsb = self.reader.read(rice_parameter)  # least-significant bits
+            value = (msb << rice_parameter) | lsb   # combined into a value
+            if (value & 1):   # whose least-significant bit is the sign value
                 partition_residuals.append(-(value >> 1) - 1)
             else:
                 partition_residuals.append(value >> 1)

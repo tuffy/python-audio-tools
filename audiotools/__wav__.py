@@ -252,7 +252,8 @@ class WaveAudio(WaveContainer):
                     (chunk_id, chunk_size) = wave_file.parse("4b 32u")
                     self.__chunk_ids__.append(chunk_id)
 
-                    if (not frozenset(chunk_id).issubset(self.PRINTABLE_ASCII)):
+                    if (not frozenset(chunk_id).issubset(
+                            self.PRINTABLE_ASCII)):
                         raise InvalidWave(_(u"Invalid RIFF WAVE chunk ID"))
                     else:
                         total_size -= 8
@@ -333,7 +334,7 @@ class WaveAudio(WaveContainer):
         at the given filename with the specified compression level
         and returns a new WaveAudio object."""
 
-        from .bitstream import BitstreamWriter,format_size
+        from .bitstream import BitstreamWriter, format_size
 
         try:
             f = file(filename, "wb")
@@ -356,7 +357,7 @@ class WaveAudio(WaveContainer):
             if ((pcmreader.channels <= 2) and
                 (pcmreader.bits_per_sample <= 16)):
                 fmt = "16u 16u 32u 32u 16u 16u"
-                fmt_fields = (1,   #compression code
+                fmt_fields = (1,   # compression code
                               pcmreader.channels,
                               pcmreader.sample_rate,
                               avg_bytes_per_second,
@@ -364,17 +365,17 @@ class WaveAudio(WaveContainer):
                               pcmreader.bits_per_sample)
             else:
                 fmt = "16u 16u 32u 32u 16u 16u" + "16u 16u 32u 16b"
-                fmt_fields = (0xFFFE,   #compression code
+                fmt_fields = (0xFFFE,   # compression code
                               pcmreader.channels,
                               pcmreader.sample_rate,
                               avg_bytes_per_second,
                               block_align,
                               pcmreader.bits_per_sample,
-                              22,       #CB size
+                              22,       # CB size
                               pcmreader.bits_per_sample,
                               pcmreader.channel_mask,
                               '\x01\x00\x00\x00\x00\x00\x10\x00' +
-                              '\x80\x00\x00\xaa\x00\x38\x9b\x71' #sub format
+                              '\x80\x00\x00\xaa\x00\x38\x9b\x71'  # sub format
                               )
 
             #write out the basic headers first
@@ -814,7 +815,8 @@ class WaveAudio(WaveContainer):
 
                 while (total_size > 0):
                     (chunk_id, chunk_size) = wave_file.parse("4b 32u")
-                    if (not frozenset(chunk_id).issubset(self.PRINTABLE_ASCII)):
+                    if (not frozenset(chunk_id).issubset(
+                            self.PRINTABLE_ASCII)):
                         raise InvalidWave(_(u"Invalid RIFF WAVE chunk ID"))
                     else:
                         total_size -= 8
@@ -823,12 +825,15 @@ class WaveAudio(WaveContainer):
                         if (not fmt_found):
                             fmt_found = True
                         else:
-                            raise InvalidWave(_(u"Multiple fmt chunks found"))
+                            raise InvalidWave(
+                                _(u"Multiple fmt chunks found"))
                     elif (chunk_id == "data"):
                         if (not fmt_found):
-                            raise InvalidWave(_(u"Data chunk found before fmt"))
+                            raise InvalidWave(
+                                _(u"Data chunk found before fmt"))
                         elif (data_found):
-                            raise InvalidWave(_(u"Multiple data chunks found"))
+                            raise InvalidWave(
+                                _(u"Multiple data chunks found"))
                         else:
                             data_found = True
 

@@ -40,8 +40,10 @@ from test import (parser,
                   TEST_COVER1, TEST_COVER2, TEST_COVER3,
                   HUGE_BMP)
 
+
 def do_nothing(self):
     pass
+
 
 #add a bunch of decorator metafunctions like LIB_CORE
 #which can be wrapped around individual tests as needed
@@ -91,7 +93,8 @@ class ERROR_PCM_Reader(audiotools.PCMReader):
                 raise self.error
             else:
                 return audiotools.pcm.from_frames(
-                    [self.frame for i in xrange(self.frame.frame_count(bytes))])
+                    [self.frame for i in
+                     xrange(self.frame.frame_count(bytes))])
 
     def close(self):
         pass
@@ -323,7 +326,7 @@ class AudioFileTest(unittest.TestCase):
                                  (self.audio_class.NAME,
                                   audio_class.NAME))
                     self.assert_(len(set([r[1] for r in log.results])) == 1)
-                    for x,y in zip(log.results[1:], log.results):
+                    for x, y in zip(log.results[1:], log.results):
                         self.assert_((x[0] - y[0]) >= 0)
 
                     if (track.lossless() and track2.lossless()):
@@ -457,10 +460,12 @@ class AudioFileTest(unittest.TestCase):
                 self.assert_(len(track_name) > 0)
                 self.assertEqual(
                     track_name,
-                    (format_template % {u"field": u"foo"} % {u"foo": value}).encode(audiotools.FS_ENCODING))
+                    (format_template % {u"field": u"foo"} % \
+                         {u"foo": value}).encode(audiotools.FS_ENCODING))
 
         #then, check integer fields
-        format_template = u"Fo\u00f3 %(album_number)d %(track_number)2.2d %(album_track_number)s"
+        format_template = (u"Fo\u00f3 %(album_number)d " +
+                           u"%(track_number)2.2d %(album_track_number)s")
 
         #first, check integers pulled from track metadata
         for (track_number, album_number, album_track_number) in [
@@ -475,53 +480,65 @@ class AudioFileTest(unittest.TestCase):
             (25, 36, u"3625")]:
             for basepath in ["track",
                              "/foo/bar/track",
-                             (u"/f\u00f3o/bar/tr\u00e1ck").encode(audiotools.FS_ENCODING)]:
+                             (u"/f\u00f3o/bar/tr\u00e1ck").encode(
+                    audiotools.FS_ENCODING)]:
                 metadata = audiotools.MetaData(track_number=track_number,
                                                album_number=album_number)
                 self.assertEqual(self.audio_class.track_name(
                         file_path=basepath,
                         track_metadata=metadata,
                         format=format_template.encode('utf-8')),
-                                 (format_template % {u"album_number": album_number,
-                                                     u"track_number": track_number,
-                                                     u"album_track_number": album_track_number}).encode('utf-8'))
+                                 (format_template % {
+                            u"album_number": album_number,
+                            u"track_number": track_number,
+                            u"album_track_number": album_track_number}
+                                  ).encode('utf-8'))
 
         #then, check integers pulled from the track filename
         for metadata in [None, audiotools.MetaData()]:
             for basepath in ["track",
                              "/foo/bar/track",
-                             (u"/f\u00f3o/bar/tr\u00e1ck").encode(audiotools.FS_ENCODING)]:
+                             (u"/f\u00f3o/bar/tr\u00e1ck").encode(
+                    audiotools.FS_ENCODING)]:
                 self.assertEqual(self.audio_class.track_name(
                         file_path=basepath + "01",
                         track_metadata=metadata,
                         format=format_template.encode('utf-8')),
-                                 (format_template % {u"album_number": 0,
-                                                     u"track_number": 1,
-                                                     u"album_track_number": u"01"}).encode('utf-8'))
+                                 (format_template %
+                                  {u"album_number": 0,
+                                   u"track_number": 1,
+                                   u"album_track_number": u"01"}
+                                  ).encode('utf-8'))
 
                 self.assertEqual(self.audio_class.track_name(
                         file_path=basepath + "track23",
                         track_metadata=metadata,
                         format=format_template.encode('utf-8')),
-                                 (format_template % {u"album_number": 0,
-                                                     u"track_number": 23,
-                                                     u"album_track_number": u"23"}).encode('utf-8'))
+                                 (format_template %
+                                  {u"album_number": 0,
+                                   u"track_number": 23,
+                                   u"album_track_number": u"23"}
+                                  ).encode('utf-8'))
 
                 self.assertEqual(self.audio_class.track_name(
                         file_path=basepath + "track123",
                         track_metadata=metadata,
                         format=format_template.encode('utf-8')),
-                                 (format_template % {u"album_number": 1,
-                                                     u"track_number": 23,
-                                                     u"album_track_number": u"123"}).encode('utf-8'))
+                                 (format_template %
+                                  {u"album_number": 1,
+                                   u"track_number": 23,
+                                   u"album_track_number": u"123"}
+                                  ).encode('utf-8'))
 
                 self.assertEqual(self.audio_class.track_name(
                         file_path=basepath + "4567",
                         track_metadata=metadata,
                         format=format_template.encode('utf-8')),
-                                 (format_template % {u"album_number": 45,
-                                                     u"track_number": 67,
-                                                     u"album_track_number": u"4567"}).encode('utf-8'))
+                                 (format_template %
+                                  {u"album_number": 45,
+                                   u"track_number": 67,
+                                   u"album_track_number": u"4567"}
+                                  ).encode('utf-8'))
 
         #then, ensure metadata takes precedence over filename for integers
         for (track_number, album_number,
@@ -533,16 +550,19 @@ class AudioFileTest(unittest.TestCase):
                                                (25, 36, u"3625", "4714")]:
             for basepath in ["track",
                              "/foo/bar/track",
-                             (u"/f\u00f3o/bar/tr\u00e1ck").encode(audiotools.FS_ENCODING)]:
+                             (u"/f\u00f3o/bar/tr\u00e1ck").encode(
+                    audiotools.FS_ENCODING)]:
                 metadata = audiotools.MetaData(track_number=track_number,
                                                album_number=album_number)
                 self.assertEqual(self.audio_class.track_name(
                         file_path=basepath + incorrect,
                         track_metadata=metadata,
                         format=format_template.encode('utf-8')),
-                                 (format_template % {u"album_number": album_number,
-                                                     u"track_number": track_number,
-                                                     u"album_track_number": album_track_number}).encode('utf-8'))
+                                 (format_template %
+                                  {u"album_number": album_number,
+                                   u"track_number": track_number,
+                                   u"album_track_number": album_track_number}
+                                  ).encode('utf-8'))
 
         #also, check track_total/album_total from metadata
         format_template = u"Fo\u00f3 %(track_total)d %(album_total)d"
@@ -554,32 +574,40 @@ class AudioFileTest(unittest.TestCase):
                         file_path=basepath + incorrect,
                         track_metadata=metadata,
                         format=format_template.encode('utf-8')),
-                                 (format_template % {u"track_total": track_total,
-                                                     u"album_total": album_total}).encode('utf-8'))
+                                 (format_template %
+                                  {u"track_total": track_total,
+                                   u"album_total": album_total}
+                                  ).encode('utf-8'))
 
         #ensure %(basename)s is set properly
         format_template = u"Fo\u00f3 %(basename)s"
         for (path, base) in [("track", "track"),
                             ("/foo/bar/track", "track"),
-                            ((u"/f\u00f3o/bar/tr\u00e1ck").encode(audiotools.FS_ENCODING), u"tr\u00e1ck")]:
+                            ((u"/f\u00f3o/bar/tr\u00e1ck").encode(
+                    audiotools.FS_ENCODING), u"tr\u00e1ck")]:
             for metadata in [None, audiotools.MetaData()]:
                 self.assertEqual(self.audio_class.track_name(
                         file_path=path,
                         track_metadata=metadata,
                         format=format_template.encode('utf-8')),
-                                 (format_template % {u"basename": base}).encode('utf-8'))
+                                 (format_template %
+                                  {u"basename": base}).encode('utf-8'))
 
         #finally, ensure %(suffix)s is set properly
         format_template = u"Fo\u00f3 %(suffix)s"
         for path in ["track",
                      "/foo/bar/track",
-                     (u"/f\u00f3o/bar/tr\u00e1ck").encode(audiotools.FS_ENCODING)]:
+                     (u"/f\u00f3o/bar/tr\u00e1ck").encode(
+                audiotools.FS_ENCODING)]:
             for metadata in [None, audiotools.MetaData()]:
                 self.assertEqual(self.audio_class.track_name(
                         file_path=path,
                         track_metadata=metadata,
                         format=format_template.encode('utf-8')),
-                                 (format_template % {u"suffix": self.audio_class.SUFFIX.decode('ascii')}).encode('utf-8'))
+                                 (format_template %
+                                  {u"suffix":
+                                       self.audio_class.SUFFIX.decode(
+                                'ascii')}).encode('utf-8'))
 
     @FORMAT_AUDIOFILE
     def test_replay_gain(self):
@@ -597,9 +625,12 @@ class AudioFileTest(unittest.TestCase):
                                                      441.0, 0.50,
                                                      441.0, 0.49, 0.5)
 
-            track_file1 = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
-            track_file2 = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
-            track_file3 = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+            track_file1 = tempfile.NamedTemporaryFile(
+                suffix="." + self.audio_class.SUFFIX)
+            track_file2 = tempfile.NamedTemporaryFile(
+                suffix="." + self.audio_class.SUFFIX)
+            track_file3 = tempfile.NamedTemporaryFile(
+                suffix="." + self.audio_class.SUFFIX)
             try:
                 track1 = self.audio_class.from_pcm(track_file1.name,
                                                    track_data1)
@@ -780,7 +811,7 @@ class LosslessFileTest(AudioFileTest):
                           "back_left",
                           "back_right"]]:
                 cm = audiotools.ChannelMask.from_fields(**dict(
-                        [(f,True) for f in mask]))
+                        [(f, True) for f in mask]))
                 track = self.audio_class.from_pcm(temp.name, BLANK_PCM_Reader(
                         1, channels=len(cm), channel_mask=int(cm)))
                 self.assertEqual(track.channels(), len(cm))
@@ -990,9 +1021,10 @@ class LosslessFileTest(AudioFileTest):
                                                                counter.update)
                             self.assertEqual(
                                 int(counter), 5,
-                                "mismatch encoding %s at quality %s (%s != %s)" % \
-                                    (audio_class.NAME, compression,
-                                     counter, 5))
+                                ("mismatch encoding %s " +
+                                 "at quality %s (%s != %s)") % \
+                                     (audio_class.NAME, compression,
+                                      counter, 5))
 
                         #check some obvious failures
                         self.assertRaises(audiotools.EncodingError,
@@ -1440,7 +1472,7 @@ class TestForeignWaveChunks:
                         (self.audio_class.NAME,
                          new_class.NAME))
                     self.assert_(len(set([r[1] for r in log.results])) == 1)
-                    for x,y in zip(log.results[1:], log.results):
+                    for x, y in zip(log.results[1:], log.results):
                         self.assert_((x[0] - y[0]) >= 0)
 
                     #if the format is a WAVE container, convert it back
@@ -1624,7 +1656,7 @@ class TestForeignAiffChunks:
                         (self.audio_class.NAME,
                          new_class.NAME))
                     self.assert_(len(set([r[1] for r in log.results])) == 1)
-                    for x,y in zip(log.results[1:], log.results):
+                    for x, y in zip(log.results[1:], log.results):
                         self.assert_((x[0] - y[0]) >= 0)
 
                     #if the format is an AIFF container, convert it back
@@ -1650,7 +1682,7 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
 
     @FORMAT_AIFF
     def test_ieee_extended(self):
-        from audiotools.bitstream import BitstreamReader,BitstreamRecorder
+        from audiotools.bitstream import BitstreamReader, BitstreamRecorder
 
         for i in xrange(0, 192000 + 1):
             w = BitstreamRecorder(0)
@@ -1737,6 +1769,7 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
         finally:
             temp.close()
 
+
 class ALACFileTest(LosslessFileTest):
     def setUp(self):
         self.audio_class = audiotools.ALACAudio
@@ -1796,7 +1829,7 @@ class ALACFileTest(LosslessFileTest):
                          ["front_left",
                           "front_right"]]:
                 cm = audiotools.ChannelMask.from_fields(**dict(
-                        [(f,True) for f in mask]))
+                        [(f, True) for f in mask]))
                 track = self.audio_class.from_pcm(temp.name, BLANK_PCM_Reader(
                         1, channels=len(cm), channel_mask=int(cm)))
                 self.assertEqual(track.channels(), len(cm))
@@ -1839,7 +1872,7 @@ class ALACFileTest(LosslessFileTest):
                           "back_right",
                           "low_frequency"]]:
                 cm = audiotools.ChannelMask.from_fields(**dict(
-                        [(f,True) for f in mask]))
+                        [(f, True) for f in mask]))
                 track = self.audio_class.from_pcm(temp.name, BLANK_PCM_Reader(
                         1, channels=len(cm), channel_mask=int(cm)))
                 self.assertEqual(track.channels(), len(cm))
@@ -2276,7 +2309,7 @@ class AUFileTest(LosslessFileTest):
                          ["front_left",
                           "front_right"]]:
                 cm = audiotools.ChannelMask.from_fields(**dict(
-                        [(f,True) for f in mask]))
+                        [(f, True) for f in mask]))
                 track = self.audio_class.from_pcm(temp.name, BLANK_PCM_Reader(
                         1, channels=len(cm), channel_mask=int(cm)))
                 self.assertEqual(track.channels(), len(cm))
@@ -2304,7 +2337,7 @@ class AUFileTest(LosslessFileTest):
                           "back_left",
                           "back_right"]]:
                 cm = audiotools.ChannelMask.from_fields(**dict(
-                        [(f,True) for f in mask]))
+                        [(f, True) for f in mask]))
                 track = self.audio_class.from_pcm(temp.name, BLANK_PCM_Reader(
                         1, channels=len(cm), channel_mask=int(cm)))
                 self.assertEqual(track.channels(), len(cm))
@@ -2445,7 +2478,6 @@ class FlacFileTest(TestForeignAiffChunks,
         self.assertRaises(ValueError, self.decoder, "/dev/null", -1)
 
         self.assertRaises(ValueError, self.decoder, "/dev/null", 0x3, -1)
-
 
     @FORMAT_FLAC
     def test_metadata2(self):
@@ -3521,7 +3553,6 @@ class MP3FileTest(LossyFileTest):
                 self.assertRaises(audiotools.InvalidFile,
                                   bad_mpx_file.verify)
 
-
             #then try swapping some of the header bits
             for (field, value) in [("sample_rate", 48000),
                                    ("channel", 3)]:
@@ -3829,7 +3860,6 @@ class ShortenFileTest(TestForeignWaveChunks,
             temp.flush()
             shn_file = audiotools.open(temp.name)
             self.assertEqual(shn_file.verify(), True)
-
 
             for i in xrange(0, len(shn_data.rstrip(chr(0)))):
                 f = open(temp.name, "wb")
@@ -4858,6 +4888,7 @@ class WavPackFileTest(TestForeignWaveChunks,
                                          joint_stereo=joint_stereo,
                                          decorrelation_passes=1,
                                          wasted_bits=False)
+
     @FORMAT_WAVPACK
     def test_sines(self):
         for opts in self.encode_opts:

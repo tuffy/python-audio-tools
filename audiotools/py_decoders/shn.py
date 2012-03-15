@@ -18,9 +18,10 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools.bitstream import BitstreamReader
-from audiotools.pcm import from_list,from_channels
-from audiotools import parse_fmt,parse_comm
+from audiotools.pcm import from_list, from_channels
+from audiotools import parse_fmt, parse_comm
 import cStringIO
+
 
 def shnmean(values):
     return ((len(values) / 2) + sum(values)) / len(values)
@@ -46,7 +47,8 @@ class SHNDecoder:
             raise ValueError("unsupported Shorten file type")
 
         self.wrapped_samples = [[0] * 3 for c in xrange(self.channels)]
-        self.means = [[0] * self.number_of_means for c in xrange(self.channels)]
+        self.means = [[0] * self.number_of_means
+                      for c in xrange(self.channels)]
         self.left_shift = 0
         self.stream_finished = False
 
@@ -90,7 +92,7 @@ class SHNDecoder:
                     else:
                         #no fmt chunk, so use default metadata
                         pass
-            except (IOError,ValueError):
+            except (IOError, ValueError):
                 pass
 
             try:
@@ -185,23 +187,23 @@ class SHNDecoder:
             if ((0 <= command) and (command <= 3) or
                 (7 <= command) and (command <= 8)):
                 #audio data commands
-                if (command == 0):   #DIFF0
+                if (command == 0):    # DIFF0
                     samples.append(self.read_diff0(self.block_length,
                                                    self.means[c]))
-                elif (command == 1): #DIFF1
+                elif (command == 1):  # DIFF1
                     samples.append(self.read_diff1(self.block_length,
                                                    self.wrapped_samples[c]))
-                elif (command == 2): #DIFF2
+                elif (command == 2):  # DIFF2
                     samples.append(self.read_diff2(self.block_length,
                                                    self.wrapped_samples[c]))
-                elif (command == 3): #DIFF3
+                elif (command == 3):  # DIFF3
                     samples.append(self.read_diff3(self.block_length,
                                                    self.wrapped_samples[c]))
-                elif (command == 7): #QLPC
+                elif (command == 7):  # QLPC
                     samples.append(self.read_qlpc(self.block_length,
                                                   self.means[c],
                                                   self.wrapped_samples[c]))
-                elif (command == 8): #ZERO
+                elif (command == 8):  # ZERO
                     samples.append([0] * self.block_length)
 
                 #update means for channel
@@ -213,7 +215,8 @@ class SHNDecoder:
 
                 #apply left shift to samples
                 if (self.left_shift > 0):
-                    unshifted.append([s << self.left_shift for s in samples[c]])
+                    unshifted.append([s << self.left_shift
+                                      for s in samples[c]])
                 else:
                     unshifted.append(samples[c])
 
@@ -226,17 +229,17 @@ class SHNDecoder:
                                           for channel in unshifted])
             else:
                 #non audio commands
-                if (command == 4): #QUIT
+                if (command == 4):  # QUIT
                     self.stream_finished = True
-                    return from_channels([from_list([], 1,
-                                                    self.bits_per_sample,
-                                                    self.signed_samples)
-                                          for channel in xrange(self.channels)])
-                elif (command == 5): #BLOCKSIZE
+                    return from_channels(
+                        [from_list([], 1, self.bits_per_sample,
+                                   self.signed_samples)
+                         for channel in xrange(self.channels)])
+                elif (command == 5):  # BLOCKSIZE
                     self.block_length = self.long()
-                elif (command == 6): #BITSHIFT
+                elif (command == 6):  # BITSHIFT
                     self.left_shift = self.unsigned(2)
-                elif (command == 9): #VERBATIM
+                elif (command == 9):  # VERBATIM
                     #skip this command during reading
                     size = self.unsigned(5)
                     for i in xrange(size):

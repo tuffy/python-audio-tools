@@ -45,6 +45,7 @@ gettext.install("audiotools", unicode=True)
 class InvalidM4A(InvalidFile):
     pass
 
+
 def get_m4a_atom(reader, *atoms):
     """given a BitstreamReader and atom name strings
     returns a (size, substream) of the final atom data
@@ -64,6 +65,7 @@ def get_m4a_atom(reader, *atoms):
                 reader = reader.substream(length - 8)
         except IOError:
             raise KeyError(next_atom)
+
 
 def get_m4a_atom_offset(reader, *atoms):
     """given a BitstreamReader and atom name strings
@@ -89,6 +91,7 @@ def get_m4a_atom_offset(reader, *atoms):
         except IOError:
             raise KeyError(next_atom)
 
+
 class M4ATaggedAudio:
     def __init__(self, filename):
         self.filename = filename
@@ -105,28 +108,28 @@ class M4ATaggedAudio:
                 return None
 
             return M4A_META_Atom.parse("meta", meta_size, meta_reader,
-                                       {"hdlr":M4A_HDLR_Atom,
-                                        "ilst":M4A_Tree_Atom,
-                                        "free":M4A_FREE_Atom,
-                                        "\xa9alb":M4A_ILST_Leaf_Atom,
-                                        "\xa9ART":M4A_ILST_Leaf_Atom,
-                                        'aART':M4A_ILST_Leaf_Atom,
-                                        "\xa9cmt":M4A_ILST_Leaf_Atom,
-                                        "covr":M4A_ILST_Leaf_Atom,
-                                        "cpil":M4A_ILST_Leaf_Atom,
-                                        "cprt":M4A_ILST_Leaf_Atom,
-                                        "\xa9day":M4A_ILST_Leaf_Atom,
-                                        "disk":M4A_ILST_Leaf_Atom,
-                                        "gnre":M4A_ILST_Leaf_Atom,
-                                        "----":M4A_ILST_Leaf_Atom,
-                                        "pgap":M4A_ILST_Leaf_Atom,
-                                        "rtng":M4A_ILST_Leaf_Atom,
-                                        "tmpo":M4A_ILST_Leaf_Atom,
-                                        "\xa9grp":M4A_ILST_Leaf_Atom,
-                                        "\xa9nam":M4A_ILST_Leaf_Atom,
-                                        "\xa9too":M4A_ILST_Leaf_Atom,
-                                        "trkn":M4A_ILST_Leaf_Atom,
-                                        "\xa9wrt":M4A_ILST_Leaf_Atom})
+                                       {"hdlr": M4A_HDLR_Atom,
+                                        "ilst": M4A_Tree_Atom,
+                                        "free": M4A_FREE_Atom,
+                                        "\xa9alb": M4A_ILST_Leaf_Atom,
+                                        "\xa9ART": M4A_ILST_Leaf_Atom,
+                                        'aART': M4A_ILST_Leaf_Atom,
+                                        "\xa9cmt": M4A_ILST_Leaf_Atom,
+                                        "covr": M4A_ILST_Leaf_Atom,
+                                        "cpil": M4A_ILST_Leaf_Atom,
+                                        "cprt": M4A_ILST_Leaf_Atom,
+                                        "\xa9day": M4A_ILST_Leaf_Atom,
+                                        "disk": M4A_ILST_Leaf_Atom,
+                                        "gnre": M4A_ILST_Leaf_Atom,
+                                        "----": M4A_ILST_Leaf_Atom,
+                                        "pgap": M4A_ILST_Leaf_Atom,
+                                        "rtng": M4A_ILST_Leaf_Atom,
+                                        "tmpo": M4A_ILST_Leaf_Atom,
+                                        "\xa9grp": M4A_ILST_Leaf_Atom,
+                                        "\xa9nam": M4A_ILST_Leaf_Atom,
+                                        "\xa9too": M4A_ILST_Leaf_Atom,
+                                        "trkn": M4A_ILST_Leaf_Atom,
+                                        "\xa9wrt": M4A_ILST_Leaf_Atom})
         finally:
             reader.close()
 
@@ -175,13 +178,13 @@ class M4ATaggedAudio:
                 None,
                 os.path.getsize(self.filename),
                 BitstreamReader(file(self.filename, "rb"), 0),
-                {"moov":M4A_Tree_Atom,
-                 "trak":M4A_Tree_Atom,
-                 "mdia":M4A_Tree_Atom,
-                 "minf":M4A_Tree_Atom,
-                 "stbl":M4A_Tree_Atom,
-                 "stco":M4A_STCO_Atom,
-                 "udta":M4A_Tree_Atom})
+                {"moov": M4A_Tree_Atom,
+                 "trak": M4A_Tree_Atom,
+                 "mdia": M4A_Tree_Atom,
+                 "minf": M4A_Tree_Atom,
+                 "stbl": M4A_Tree_Atom,
+                 "stco": M4A_STCO_Atom,
+                 "udta": M4A_Tree_Atom})
 
             #find initial mdat offset
             initial_mdat_offset = m4a_tree.child_offset("mdat")
@@ -252,7 +255,7 @@ class M4ATaggedAudio:
         self.set_metadata(MetaData())
 
 
-class M4AAudio_faac(M4ATaggedAudio,AudioFile):
+class M4AAudio_faac(M4ATaggedAudio, AudioFile):
     """An M4A audio file using faac/faad binaries for I/O."""
 
     SUFFIX = "m4a"
@@ -743,7 +746,7 @@ class InvalidALAC(InvalidFile):
     pass
 
 
-class ALACAudio(M4ATaggedAudio,AudioFile):
+class ALACAudio(M4ATaggedAudio, AudioFile):
     """An Apple Lossless audio file."""
 
     SUFFIX = "m4a"
@@ -877,42 +880,42 @@ class ALACAudio(M4ATaggedAudio,AudioFile):
     def channel_mask(self):
         """Returns a ChannelMask object of this track's channel layout."""
 
-        return {1:ChannelMask.from_fields(front_center=True),
-                2:ChannelMask.from_fields(front_left=True,
-                                          front_right=True),
-                3:ChannelMask.from_fields(front_center=True,
-                                          front_left=True,
-                                          front_right=True),
-                4:ChannelMask.from_fields(front_center=True,
-                                          front_left=True,
-                                          front_right=True,
-                                          back_center=True),
-                5:ChannelMask.from_fields(front_center=True,
-                                          front_left=True,
-                                          front_right=True,
-                                          back_left=True,
-                                          back_right=True),
-                6:ChannelMask.from_fields(front_center=True,
-                                          front_left=True,
-                                          front_right=True,
-                                          back_left=True,
-                                          back_right=True,
-                                          low_frequency=True),
-                7:ChannelMask.from_fields(front_center=True,
-                                          front_left=True,
-                                          front_right=True,
-                                          back_left=True,
-                                          back_right=True,
-                                          back_center=True,
-                                          low_frequency=True),
-                8:ChannelMask.from_fields(front_center=True,
-                                          front_left_of_center=True,
-                                          front_right_of_center=True,
-                                          front_left=True,
-                                          front_right=True,
-                                          back_left=True,
-                                          back_right=True,
-                                          low_frequency=True)}.get(
+        return {1: ChannelMask.from_fields(front_center=True),
+                2: ChannelMask.from_fields(front_left=True,
+                                           front_right=True),
+                3: ChannelMask.from_fields(front_center=True,
+                                           front_left=True,
+                                           front_right=True),
+                4: ChannelMask.from_fields(front_center=True,
+                                           front_left=True,
+                                           front_right=True,
+                                           back_center=True),
+                5: ChannelMask.from_fields(front_center=True,
+                                           front_left=True,
+                                           front_right=True,
+                                           back_left=True,
+                                           back_right=True),
+                6: ChannelMask.from_fields(front_center=True,
+                                           front_left=True,
+                                           front_right=True,
+                                           back_left=True,
+                                           back_right=True,
+                                           low_frequency=True),
+                7: ChannelMask.from_fields(front_center=True,
+                                           front_left=True,
+                                           front_right=True,
+                                           back_left=True,
+                                           back_right=True,
+                                           back_center=True,
+                                           low_frequency=True),
+                8: ChannelMask.from_fields(front_center=True,
+                                           front_left_of_center=True,
+                                           front_right_of_center=True,
+                                           front_left=True,
+                                           front_right=True,
+                                           back_left=True,
+                                           back_right=True,
+                                           low_frequency=True)}.get(
             self.channels(), ChannelMask(0))
 
     def cd_frames(self):
@@ -962,15 +965,15 @@ class ALACAudio(M4ATaggedAudio,AudioFile):
             raise UnsupportedChannelCount(filename, pcmreader.channels)
 
         if (int(pcmreader.channel_mask) not in
-            (0x0001,   #1ch - mono
-             0x0004,   #1ch - mono
-             0x0003,   #2ch - left, right
-             0x0007,   #3ch - center, left, right
-             0x0107,   #4ch - center, left, right, back center
-             0x0037,   #5ch - center, left, right, back left, back right
-             0x003F,   #6ch - C, L, R, back left, back right, LFE
-             0x013F,   #7ch - C, L, R, bL, bR, back center, LFE
-             0x00FF)): #8ch - C, cL, cR, L, R, bL, bR, LFE
+            (0x0001,    # 1ch - mono
+             0x0004,    # 1ch - mono
+             0x0003,    # 2ch - left, right
+             0x0007,    # 3ch - center, left, right
+             0x0107,    # 4ch - center, left, right, back center
+             0x0037,    # 5ch - center, left, right, back left, back right
+             0x003F,    # 6ch - C, L, R, back left, back right, LFE
+             0x013F,    # 7ch - C, L, R, bL, bR, back center, LFE
+             0x00FF)):  # 8ch - C, cL, cR, L, R, bL, bR, LFE
             raise UnsupportedChannelMask(filename,
                                          int(pcmreader.channel_mask))
 
@@ -1222,7 +1225,7 @@ class ALACAudio(M4ATaggedAudio,AudioFile):
                     bits_per_sample=pcmreader.bits_per_sample,
                     qt_compression_id=0,
                     audio_packet_size=0,
-                    sample_rate=0xAC440000, #regardless of actual sample rate
+                    sample_rate=0xAC440000,  # regardless of actual sample rate
                     sub_alac=M4A_SUB_ALAC_Atom(
                         max_samples_per_frame=max(frame_sample_sizes),
                         bits_per_sample=pcmreader.bits_per_sample,

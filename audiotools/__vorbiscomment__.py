@@ -22,23 +22,23 @@ from audiotools import MetaData, VERSION, re
 
 
 class VorbisComment(MetaData):
-    ATTRIBUTE_MAP = {'track_name':u'TITLE',
-                     'track_number':u'TRACKNUMBER',
-                     'track_total':u'TRACKTOTAL',
-                     'album_name':u'ALBUM',
-                     'artist_name':u'ARTIST',
-                     'performer_name':u'PERFORMER',
-                     'composer_name':u'COMPOSER',
-                     'conductor_name':u'CONDUCTOR',
-                     'media':u'SOURCE MEDIUM',
-                     'ISRC':u'ISRC',
-                     'catalog':u'CATALOG',
-                     'copyright':u'COPYRIGHT',
-                     'publisher':u'PUBLISHER',
-                     'year':u'DATE',
-                     'album_number':u'DISCNUMBER',
-                     'album_total':u'DISCTOTAL',
-                     'comment':u'COMMENT'}
+    ATTRIBUTE_MAP = {'track_name': u'TITLE',
+                     'track_number': u'TRACKNUMBER',
+                     'track_total': u'TRACKTOTAL',
+                     'album_name': u'ALBUM',
+                     'artist_name': u'ARTIST',
+                     'performer_name': u'PERFORMER',
+                     'composer_name': u'COMPOSER',
+                     'conductor_name': u'CONDUCTOR',
+                     'media': u'SOURCE MEDIUM',
+                     'ISRC': u'ISRC',
+                     'catalog': u'CATALOG',
+                     'copyright': u'COPYRIGHT',
+                     'publisher': u'PUBLISHER',
+                     'year': u'DATE',
+                     'album_number': u'DISCNUMBER',
+                     'album_total': u'DISCTOTAL',
+                     'comment': u'COMMENT'}
 
     ALIASES = {}
 
@@ -49,10 +49,10 @@ class VorbisComment(MetaData):
 
     SLASHED_FIELD = re.compile(r'(\d+)\s*/\s*(\d+)')
 
-    SLASHED_FIELDS = {'track_number':(u'TRACKNUMBER', 0),
-                      'track_total':(u'TRACKNUMBER', 1),
-                      'album_number':(u'DISCNUMBER', 0),
-                      'album_total':(u'DISCNUMBER', 1)}
+    SLASHED_FIELDS = {'track_number': (u'TRACKNUMBER', 0),
+                      'track_total': (u'TRACKNUMBER', 1),
+                      'album_number': (u'DISCNUMBER', 0),
+                      'album_total': (u'DISCNUMBER', 1)}
 
     def __init__(self, comment_strings, vendor_string):
         """comment_strings is a list of unicode strings
@@ -146,7 +146,6 @@ class VorbisComment(MetaData):
         return linesep.decode('ascii').join(
             [u"Vorbis Comment:  %s" % (self.vendor_string)] +
             comment_strings)
-
 
     def __getattr__(self, attr):
         #returns the first matching key for the given attribute
@@ -330,7 +329,6 @@ class VorbisComment(MetaData):
 
             return cls(comment_strings, u"Python Audio Tools %s" % (VERSION))
 
-
     @classmethod
     def supports_images(cls):
         """returns False"""
@@ -370,19 +368,21 @@ class VorbisComment(MetaData):
                     if (len(value.strip()) == 0):
                         fixes_performed.append(
                             _(u"removed empty field %(field)s") %
-                            {"field":key})
+                            {"field": key})
                     else:
                         fix1 = value.rstrip()
                         if (fix1 != value):
                             fixes_performed.append(
-                              _(u"removed trailing whitespace from %(field)s") %
-                              {"field":key})
+                              _(u"removed trailing whitespace " +
+                                u"from %(field)s") %
+                              {"field": key})
 
                         fix2 = fix1.lstrip()
                         if (fix2 != fix1):
                             fixes_performed.append(
-                              _(u"removed leading whitespace from %(field)s") %
-                              {"field":key})
+                              _(u"removed leading whitespace " +
+                                "from %(field)s") %
+                              {"field": key})
 
                         #integer fields also strip leading zeroes
                         if ((attr in self.SLASHED_FIELDS) and
@@ -392,14 +392,15 @@ class VorbisComment(MetaData):
                                                int(match.group(2)))
                             if (fix3 != fix2):
                                 fixes_performed.append(
-                                    _(u"removed whitespace/zeroes from %(field)s") %
-                                    {"field":key})
+                                    _(u"removed whitespace/zeroes " +
+                                      u"from %(field)s") %
+                                    {"field": key})
                         elif (attr in self.INTEGER_FIELDS):
                             fix3 = fix2.lstrip(u"0")
                             if (fix3 != fix2):
                                 fixes_performed.append(
                                  _(u"removed leading zeroes from %(field)s") %
-                                 {"field":key})
+                                 {"field": key})
                         else:
                             fix3 = fix2
 

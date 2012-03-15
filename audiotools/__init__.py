@@ -136,7 +136,8 @@ MUSICBRAINZ_SERVER = config.get_default("MusicBrainz", "server",
                                         "musicbrainz.org")
 MUSICBRAINZ_PORT = config.getint_default("MusicBrainz", "port", 80)
 
-ADD_REPLAYGAIN = config.getboolean_default("ReplayGain", "add_by_default", True)
+ADD_REPLAYGAIN = config.getboolean_default("ReplayGain", "add_by_default",
+                                           True)
 
 THUMBNAIL_FORMAT = config.get_default("Thumbnail", "format", "jpeg")
 THUMBNAIL_SIZE = config.getint_default("Thumbnail", "size", 150)
@@ -3602,6 +3603,7 @@ class AudioFile:
                 new_track.set_metadata(metadata.clean(fixes_performed))
             return new_track
 
+
 class WaveContainer(AudioFile):
     """An audio type which supports storing foreign RIFF chunks.
 
@@ -3908,6 +3910,7 @@ def at_a_time(total, per):
         yield per
     yield total % per
 
+
 def iter_first(iterator):
     """yields a (is_last, item) per item in the iterator
 
@@ -3929,6 +3932,7 @@ def iter_first(iterator):
             yield (False, iterator.next())
         except StopIteration:
             return
+
 
 def iter_last(iterator):
     """yields a (is_last, item) per item in the iterator
@@ -3991,7 +3995,7 @@ class CDDA:
     def __init__(self, device_name, speed=None, perform_logging=True):
         """device_name is a string, speed is an optional int."""
 
-        from audiotools.cdio import identify_cdrom,CDImage,CDDA,CD_IMAGE
+        from audiotools.cdio import identify_cdrom, CDImage, CDDA, CD_IMAGE
 
         self.cdrom_type = identify_cdrom(device_name)
         if (self.cdrom_type & CD_IMAGE):
@@ -4454,6 +4458,7 @@ from __freedb__ import *
 from __musicbrainz__ import *
 from __accuraterip__ import *
 
+
 def read_metadata_file(filename):
     """Returns an AlbumMetaDataFile-compatible file from a filename string.
 
@@ -4529,7 +4534,7 @@ def metadata_lookup(first_track_number, last_track_number,
                     offsets=offsets,
                     musicbrainz_server=musicbrainz_server,
                     musicbrainz_port=musicbrainz_port))
-        except (HTTPError,ExpatError):
+        except (HTTPError, ExpatError):
             pass
 
     if (use_freedb):
@@ -4542,7 +4547,7 @@ def metadata_lookup(first_track_number, last_track_number,
                     track_count=track_count,
                     freedb_server=freedb_server,
                     freedb_port=freedb_port))
-        except (HTTPError,ValueError),err:
+        except (HTTPError, ValueError), err:
             pass
 
     if (len(matches) == 0):
@@ -4903,9 +4908,9 @@ class ExecProgressQueue:
                 while (True):
                     (rlist,
                      wlist,
-                     xlist) = select.select([job.output for job
-                                             in self.running_job_pool.values()],
-                                            [], [])
+                     xlist) = select.select(
+                        [job.output for job
+                         in self.running_job_pool.values()], [], [])
                     for reader in rlist:
                         (command, args) = cPickle.load(reader)
                         getattr(self, command)(*args)
@@ -4963,6 +4968,7 @@ class __JobProgress__:
                      self.output)
         self.output.flush()
 
+
 class __UnthreadedJobProgress__:
     def __init__(self, job_id, progress_display):
         self.job_id = job_id
@@ -4970,6 +4976,7 @@ class __UnthreadedJobProgress__:
 
     def progress(self, current, total):
         self.progress_display.update_row(self.job_id, current, total)
+
 
 #***ApeAudio temporarily removed***
 #Without a legal alternative to mac-port, I shall have to re-implement

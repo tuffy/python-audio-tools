@@ -20,7 +20,7 @@
 import imghdr
 import cStringIO
 import gettext
-from .bitstream import BitstreamReader,format_size
+from .bitstream import BitstreamReader, format_size
 
 gettext.install("audiotools", unicode=True)
 
@@ -137,12 +137,11 @@ class __JPEG__(ImageMetrics):
                     raise InvalidJPEG(_(u"Invalid JPEG segment marker"))
                 segment_type = reader.read(8)
 
-
         for (segment_type, segment_data) in segments(BitstreamReader(file, 0)):
             if (segment_type in (0xC0, 0xC1, 0xC2, 0xC3,
                                  0xC5, 0XC5, 0xC6, 0xC7,
                                  0xC9, 0xCA, 0xCB, 0xCD,
-                                 0xCE, 0xCF)):  #start of frame
+                                 0xCE, 0xCF)):  # start of frame
                 (data_precision,
                  image_height,
                  image_width,
@@ -175,7 +174,9 @@ class __PNG__(ImageMetrics):
                 raise InvalidPNG(_(u'Invalid PNG'))
             (chunk_length, chunk_type) = reader.parse("32u 4b")
             while (chunk_type != 'IEND'):
-                yield (chunk_type, chunk_length, reader.substream(chunk_length))
+                yield (chunk_type,
+                       chunk_length,
+                       reader.substream(chunk_length))
                 chunk_crc = reader.read(32)
                 (chunk_length, chunk_type) = reader.parse("32u 4b")
 
@@ -336,13 +337,13 @@ class __TIFF__(ImageMetrics):
                     (tag_code,
                      tag_datatype,
                      tag_value_count) = sub_reader.parse("16u 16u 32u")
-                    if (tag_datatype == 1):   #BYTE type
+                    if (tag_datatype == 1):    # BYTE type
                         tag_struct = "8u" * tag_value_count
-                    elif (tag_datatype == 3): #SHORT type
+                    elif (tag_datatype == 3):  # SHORT type
                         tag_struct = "16u" * tag_value_count
-                    elif (tag_datatype == 4): #LONG type
+                    elif (tag_datatype == 4):  # LONG type
                         tag_struct = "32u" * tag_value_count
-                    else:                     #all other types
+                    else:                      # all other types
                         tag_struct = "4b"
                     if (format_size(tag_struct) <= 32):
                         yield (tag_code, sub_reader.parse(tag_struct))
@@ -352,7 +353,6 @@ class __TIFF__(ImageMetrics):
                         file.seek(offset, 0)
                         yield (tag_code,
                                BitstreamReader(file, order).parse(tag_struct))
-
 
                 if (next_ifd != 0):
                     file.seek(next_ifd, 0)

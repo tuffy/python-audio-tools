@@ -36,6 +36,7 @@ from test import (parser, Variable_Reader, BLANK_PCM_Reader,
                   MiniFrameReader, Combinations,
                   TEST_COVER1, TEST_COVER2, TEST_COVER3, HUGE_BMP)
 
+
 def do_nothing(self):
     pass
 
@@ -98,7 +99,6 @@ class BufferedPCMReader(unittest.TestCase):
                     self.assertEqual(reader2.bits_per_sample, bits_per_sample)
                     self.assertEqual(reader2.channel_mask, channel_mask)
 
-
         #finally, ensure that random-sized reads also work okay
         total_frames = 4096 * 1000
         reader = audiotools.BufferedPCMReader(
@@ -158,7 +158,6 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
         self.assertRaises(TypeError, CDDA, None)
         self.assertRaises(TypeError, CDImage)
         self.assertRaises(ValueError, CDImage, "", -1)
-
 
     @LIB_CORE
     def test_cdda(self):
@@ -571,6 +570,7 @@ class PCMReaderWindow(unittest.TestCase):
                              [[0] * 5 + range(0, 20) + [0] * 5,
                               [0] * 5 + range(20, 0, -1) + [0] * 5])
 
+
 class Test_ReplayGain(unittest.TestCase):
     @LIB_CORE
     def test_replaygain(self):
@@ -668,7 +668,6 @@ class Test_group_tracks(unittest.TestCase):
                 album_number=1,
                 track_number=1))
 
-
     @LIB_CORE
     def tearDown(self):
         for track in self.track_files:
@@ -677,8 +676,8 @@ class Test_group_tracks(unittest.TestCase):
     @LIB_CORE
     def test_grouping(self):
         groupings = list(audiotools.group_tracks(self.tracks))
-        groupings.sort(lambda x,y: cmp(x[0].get_metadata().album_name,
-                                       y[0].get_metadata().album_name))
+        groupings.sort(lambda x, y: cmp(x[0].get_metadata().album_name,
+                                        y[0].get_metadata().album_name))
         self.assertEqual(groupings[0], [self.tracks[0], self.tracks[2]])
         self.assertEqual(groupings[1], [self.tracks[1]])
         self.assertEqual(groupings[2], [self.tracks[3]])
@@ -859,6 +858,7 @@ class Test_pcm_frame_cmp(unittest.TestCase):
                 audiotools.PCMCat(iter([BLANK_PCM_Reader(1),
                                         RANDOM_PCM_Reader(1)]))), 44100)
 
+
 class Test_pcm_split(unittest.TestCase):
     @LIB_CORE
     def test_pcm_split(self):
@@ -872,6 +872,7 @@ class Test_pcm_split(unittest.TestCase):
             counter = FrameCounter(2, 16, 44100)
             audiotools.transfer_framelist_data(sub_pcm, counter.update)
             self.assertEqual(sub_frames, int(counter) * 44100)
+
 
 class Test_str_width(unittest.TestCase):
     @LIB_CORE
@@ -1166,7 +1167,7 @@ class TestFrameList(unittest.TestCase):
         self.assertEqual(signed_ints,
                          list(audiotools.pcm.FrameList(
                     struct.pack("<%db" % (len(signed_ints)), *signed_ints),
-                    1,8,0,1)))
+                    1, 8, 0, 1)))
 
     @LIB_CORE
     def test_8bit_roundtrip_str(self):
@@ -1281,7 +1282,6 @@ class TestFrameList(unittest.TestCase):
             self.assertEqual([i - (1 << 23) for i in unsigned_values],
                              list(audiotools.pcm.FrameList(
                         rec.data(), 1, 24, True, False)))
-
 
             rec = BitstreamRecorder(1)
             rec.build("24u" * len(unsigned_values), unsigned_values)
@@ -1520,7 +1520,6 @@ class TestFloatFrameList(unittest.TestCase):
                           audiotools.pcm.FrameList,
                           chr(0) * 3, 2, 16, 1, 1)
 
-
         #check channels <= 0
         self.assertRaises(ValueError,
                           audiotools.pcm.FrameList,
@@ -1530,13 +1529,11 @@ class TestFloatFrameList(unittest.TestCase):
                           audiotools.pcm.FrameList,
                           chr(0) * 4, -1, 16, 1, 1)
 
-
         #check bps != 8,16,24
-        for bps in [0,7,9,15,17,23,25,64]:
+        for bps in [0, 7, 9, 15, 17, 23, 25, 64]:
             self.assertRaises(ValueError,
                               audiotools.pcm.FrameList,
                               chr(0) * 4, 2, bps, 1, 1)
-
 
 
 class __SimpleChunkReader__:
@@ -1557,6 +1554,7 @@ class __SimpleChunkReader__:
     def close(self):
         pass
 
+
 class ByteCounter:
     def __init__(self):
         self.bytes = 0
@@ -1569,6 +1567,7 @@ class ByteCounter:
 
     def callback(self, i):
         self.bytes += 1
+
 
 class Bitstream(unittest.TestCase):
     def __test_big_endian_reader__(self, reader, table):
@@ -2010,7 +2009,6 @@ class Bitstream(unittest.TestCase):
         reader.pop_callback()
         reader.unmark()
 
-
     @LIB_BITSTREAM
     def test_init_error(self):
         from audiotools.bitstream import BitstreamAccumulator
@@ -2027,7 +2025,7 @@ class Bitstream(unittest.TestCase):
 
     @LIB_BITSTREAM
     def test_simple_reader(self):
-        from audiotools.bitstream import BitstreamReader,HuffmanTree
+        from audiotools.bitstream import BitstreamReader, HuffmanTree
 
         temp = tempfile.TemporaryFile()
         try:
@@ -2359,7 +2357,6 @@ class Bitstream(unittest.TestCase):
 
     def __validate_edge_accumulator_be__(self, writer, temp_file):
         self.assertEqual(writer.bits(), 48 * 8)
-
 
     def __get_edge_writer_le__(self):
         from audiotools.bitstream import BitstreamWriter
@@ -2795,6 +2792,7 @@ class Bitstream(unittest.TestCase):
                                           chr(0xED),
                                           chr(0x3B) +
                                           chr(0xC1)])
+
         def new_temp5():
             return __SimpleChunkReader__([chr(0xB1),
                                           chr(0xED),
@@ -3161,7 +3159,7 @@ class Bitstream(unittest.TestCase):
 
     @LIB_BITSTREAM
     def test_reader_close(self):
-        from audiotools.bitstream import BitstreamReader,HuffmanTree
+        from audiotools.bitstream import BitstreamReader, HuffmanTree
 
         def test_reader(reader):
             self.assertRaises(IOError, reader.read, 1)
@@ -3309,6 +3307,7 @@ class Bitstream(unittest.TestCase):
         writer.set_endianness(0)
         test_writer(writer)
         del(writer)
+
 
 class TestReplayGain(unittest.TestCase):
     @LIB_CORE
@@ -3479,7 +3478,6 @@ class TestReplayGain(unittest.TestCase):
 
             track6 = test_format.from_pcm(temp_files[5].name,
                                           BLANK_PCM_Reader(6, 44100, 2, 16))
-
 
             #inconsistent sample rates aren't applicable
             self.assertEqual(audiotools.applicable_replay_gain([track1,
@@ -4189,7 +4187,6 @@ FILE "cue.wav" WAVE
         self.assertEqual(xmcd.get_track(2),
                          (u"Track 3", u"", u"Extra 3"))
 
-
         lines = xmcd_file_lines[:]
         del(lines[0])
         self.assertRaises(audiotools.XMCDException,
@@ -4344,7 +4341,6 @@ FILE "cue.wav" WAVE
                                              album_name=u"Album Name",
                                              track_total=3,
                                              year=u"2010"))
-
 
 
 class TestMusicBrainzXML(unittest.TestCase):
@@ -4930,7 +4926,6 @@ FILE "cue.wav" WAVE
         finally:
             cue_file.close()
 
-
     @LIB_CORE
     def test_missing_fields(self):
         def remove_node(parent, *to_remove):
@@ -5267,7 +5262,6 @@ FILE "cue.wav" WAVE
         self.assertEqual(xml.get_track(2),
                          (u"", u"", u""))
 
-
     @LIB_CORE
     def test_metadata(self):
         xml = audiotools.MusicBrainzReleaseXML.from_string(
@@ -5278,6 +5272,7 @@ FILE "cue.wav" WAVE
                                              album_name=u"Album Name",
                                              track_total=3,
                                              year=u"2010"))
+
 
 class testcuesheet(unittest.TestCase):
     @LIB_CORE
@@ -5673,7 +5668,6 @@ class PCM_Reader_Multiplexer:
     def close(self):
         for reader in self.buffers:
             reader.close()
-
 
 
 class TestMultiChannel(unittest.TestCase):
@@ -6193,12 +6187,14 @@ class TestMultiChannel(unittest.TestCase):
                                                    channels,
                                                    False)
 
+
 class __callback__:
     def __init__(self):
         self.called = False
 
     def call(self):
         self.called = True
+
 
 class Test_Player(unittest.TestCase):
     @LIB_PLAYER
@@ -6249,6 +6245,7 @@ class Test_Player(unittest.TestCase):
         player.play()
         time.sleep(6)
         self.assertEqual(callback.called, True)
+
 
 class Test_CDPlayer(unittest.TestCase):
     @LIB_PLAYER

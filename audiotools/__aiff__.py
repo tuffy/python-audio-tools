@@ -28,6 +28,7 @@ import gettext
 
 gettext.install("audiotools", unicode=True)
 
+
 def parse_ieee_extended(bitstream):
     (signed, exponent, mantissa) = bitstream.parse("1u 15u 64U")
     if ((exponent == 0) and (mantissa == 0)):
@@ -37,6 +38,7 @@ def parse_ieee_extended(bitstream):
     else:
         f = mantissa * (2.0 ** (exponent - 16383 - 63))
         return f if not signed else -f
+
 
 def build_ieee_extended(bitstream, value):
     from math import frexp
@@ -154,6 +156,7 @@ class AiffReader(PCMReader):
 
     def read_error(self, bytes):
         raise IOError()
+
 
 class InvalidAIFF(InvalidFile):
     """Raised if some problem occurs parsing AIFF chunks."""

@@ -130,7 +130,6 @@ class DVDAudio:
             if (f.read(12) != 'DVDAUDIO-ATS'):
                 raise InvalidDVDA(_(u"invalid ATS_%2.2d_0.IFO") % (titleset))
 
-
             #seek to the second sector and read the title count
             #and list of title table offset values
             f.seek(DVDAudio.SECTOR_SIZE, os.SEEK_SET)
@@ -326,7 +325,7 @@ class DVDATitle:
             (pad1_size,) = aob_reader.parse("16p 8u")
             aob_reader.skip_bytes(pad1_size)
             (stream_id, crc) = aob_reader.parse("8u 8u 8p")
-            if (stream_id == 0xA0):  #PCM
+            if (stream_id == 0xA0):  # PCM
                 #read a PCM reader
                 (pad2_size,
                  first_audio_frame,
@@ -338,8 +337,8 @@ class DVDATitle:
                  padding3,
                  channel_assignment) = aob_reader.parse(
                     "8u 16u 8u 4u 4u 4u 4u 8u 8u")
-            else:                    #MLP
-                aob_reader.skip_bytes(aob_reader.read(8)) #skip pad2
+            else:                    # MLP
+                aob_reader.skip_bytes(aob_reader.read(8))  # skip pad2
                 #read a total frame size + MLP major sync header
                 (total_frame_size,
                  sync_words,
@@ -387,10 +386,10 @@ class DVDATitle:
     def to_pcm(self):
         from audiotools.decoders import DVDA_Title
 
-        args = {"audio_ts":self.dvdaudio.audio_ts_path,
-                "titleset":1,
-                "start_sector":self.tracks[0].first_sector,
-                "end_sector":self.tracks[-1].last_sector}
+        args = {"audio_ts": self.dvdaudio.audio_ts_path,
+                "titleset": 1,
+                "start_sector": self.tracks[0].first_sector,
+                "end_sector": self.tracks[-1].last_sector}
         if (self.dvdaudio.cdrom_device is not None):
             args["cdrom"] = self.dvdaudio.cdrom_device
         return DVDA_Title(**args)

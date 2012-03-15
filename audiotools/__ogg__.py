@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+
 def read_ogg_packets(reader):
     from .bitstream import Substream
 
@@ -121,6 +122,7 @@ class OggChecksum:
 
     def __int__(self):
         return self.checksum
+
 
 class OggStreamReader:
     def __init__(self, reader):

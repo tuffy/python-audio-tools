@@ -28,7 +28,6 @@
 #to parse and edit those files directly.
 
 
-
 from audiotools import (VERSION, cStringIO, sys, re, MetaData,
                         AlbumMetaData, AlbumMetaDataFile, __most_numerous__,
                         DummyAudioFile, MetaDataFileException)
@@ -40,6 +39,7 @@ gettext.install("audiotools", unicode=True)
 #######################
 #XMCD
 #######################
+
 
 #DEPRECATED - this class will soon be removed
 class XMCDException(MetaDataFileException):

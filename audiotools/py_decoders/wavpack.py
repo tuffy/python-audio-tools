@@ -18,15 +18,17 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools.bitstream import BitstreamReader
-from audiotools.pcm import from_channels,from_list
+from audiotools.pcm import from_channels, from_list
 from math import log
 from hashlib import md5
+
 
 def sub_blocks(reader, sub_blocks_size):
     while (sub_blocks_size > 0):
         sub_block = Sub_Block.read(reader)
         yield sub_block
         sub_blocks_size -= sub_block.total_size()
+
 
 class WavPackDecoder:
     def __init__(self, filename):
@@ -99,7 +101,8 @@ class WavPackDecoder:
                     try:
                         header = Block_Header.read(self.reader)
                         sub_blocks_size = header.block_size - 24
-                        sub_blocks_data = self.reader.substream(sub_blocks_size)
+                        sub_blocks_data = \
+                            self.reader.substream(sub_blocks_size)
                         for sub_block in sub_blocks(sub_blocks_data,
                                                     sub_blocks_size):
                             if ((sub_block.metadata_function == 6) and
@@ -117,7 +120,7 @@ class WavPackDecoder:
 
         channels = []
 
-        while (True):  #in place of a do-while loop
+        while (True):  # in place of a do-while loop
             try:
                 block_header = Block_Header.read(self.reader)
             except (ValueError, IOError):
@@ -320,7 +323,8 @@ def read_block(block_header, sub_blocks_size, sub_blocks_data):
                     sub_block_size, sub_block_data)
                 decorrelation_samples_read = True
             if (metadata_function == 5):
-                entropies = read_entropy_variables(block_header, sub_block_data)
+                entropies = read_entropy_variables(block_header,
+                                                   sub_block_data)
                 entropies_read = True
             if (metadata_function == 9):
                 (zero_bits,
@@ -571,6 +575,7 @@ def read_decorrelation_samples(block_header, decorrelation_terms,
         samples.reverse()
         return samples
 
+
 def read_entropy_variables(block_header, sub_block_data):
     entropies = ([], [])
     for i in xrange(3):
@@ -769,6 +774,7 @@ EXP2 = [0x100, 0x101, 0x101, 0x102, 0x103, 0x103, 0x104, 0x105,
         0x1ea, 0x1ec, 0x1ed, 0x1ee, 0x1f0, 0x1f1, 0x1f2, 0x1f4,
         0x1f5, 0x1f6, 0x1f8, 0x1f9, 0x1fa, 0x1fc, 0x1fd, 0x1ff]
 
+
 def read_exp2(reader):
     value = reader.read_signed(16)
     if ((-32768 <= value) and (value < -2304)):
@@ -795,11 +801,11 @@ def decorrelate_channels(residuals,
                              decorrelation_deltas,
                              decorrelation_weights,
                              decorrelation_samples):
-             latest_pass = decorrelation_pass_2ch(latest_pass,
-                                                  term,
-                                                  delta,
-                                                  weights,
-                                                  samples)
+            latest_pass = decorrelation_pass_2ch(latest_pass,
+                                                 term,
+                                                 delta,
+                                                 weights,
+                                                 samples)
         return latest_pass
     else:
         latest_pass = residuals[0][:]
@@ -810,11 +816,11 @@ def decorrelate_channels(residuals,
                              decorrelation_deltas,
                              decorrelation_weights,
                              decorrelation_samples):
-             latest_pass = decorrelation_pass_1ch(latest_pass,
-                                                  term,
-                                                  delta,
-                                                  weight[0],
-                                                  samples[0])
+            latest_pass = decorrelation_pass_1ch(latest_pass,
+                                                 term,
+                                                 delta,
+                                                 weight[0],
+                                                 samples[0])
         return (latest_pass, )
 
 
@@ -930,8 +936,10 @@ def decorrelation_pass_2ch(correlated,
     else:
         raise ValueError("unsupported term")
 
+
 def apply_weight(weight, sample):
     return ((weight * sample) + 512) >> 10
+
 
 def update_weight(source, result, delta):
     if ((source == 0) or (result == 0)):
@@ -940,6 +948,7 @@ def update_weight(source, result, delta):
         return delta
     else:
         return -delta
+
 
 def calculate_crc(samples):
     crc = 0xFFFFFFFF

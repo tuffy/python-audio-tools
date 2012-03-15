@@ -14,7 +14,7 @@ from audiotools.decoders import Sine_Mono, Sine_Stereo, Sine_Simple
 
 class FrameListReader:
     def __init__(self, samples, sample_rate, channels, bits_per_sample,
-                 channel_mask = None):
+                 channel_mask=None):
         import audiotools.pcm
 
         self.framelist = audiotools.pcm.from_list(samples,
@@ -327,8 +327,8 @@ class Simple_Sine:
              self.sample_rate,
              self.channel_mask,
              self.bits_per_sample,
-             repr([(m, c) for m,c in zip(self.channel_max_values,
-                                         self.channel_counts)]))
+             repr([(m, c) for m, c in zip(self.channel_max_values,
+                                          self.channel_counts)]))
 
 
 class WastedBPS16:

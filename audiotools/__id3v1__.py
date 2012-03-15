@@ -74,18 +74,14 @@ class ID3v1Comment(MetaData):
             comment = chr(separator) + reader.read_bytes(1)
         genre = reader.read(8)
 
-        return cls(track_name=
-                   track_name.rstrip(chr(0)).decode('ascii', 'replace'),
-                   artist_name=
-                   artist_name.rstrip(chr(0)).decode('ascii', 'replace'),
-                   album_name=
-                   album_name.rstrip(chr(0)).decode('ascii', 'replace'),
-                   year=
-                   year.rstrip(chr(0)).decode('ascii', 'replace'),
-                   comment=
-                   comment.rstrip(chr(0)).decode('ascii', 'replace'),
-                   track_number=track_number,
-                   genre=genre)
+        return cls(
+            track_name=track_name.rstrip(chr(0)).decode('ascii', 'replace'),
+            artist_name=artist_name.rstrip(chr(0)).decode('ascii', 'replace'),
+            album_name=album_name.rstrip(chr(0)).decode('ascii', 'replace'),
+            year=year.rstrip(chr(0)).decode('ascii', 'replace'),
+            comment=comment.rstrip(chr(0)).decode('ascii', 'replace'),
+            track_number=track_number,
+            genre=genre)
 
     def build(self, mp3_file):
         """given an MP3 file positioned at the file's end, generate a tag"""
@@ -155,12 +151,12 @@ class ID3v1Comment(MetaData):
             if (fix1 != getattr(self, attr)):
                 fixes_performed.append(
                     _(u"removed trailing whitespace from %(field)s") %
-                    {"field":name})
+                    {"field": name})
             fix2 = fix1.lstrip()
             if (fix2 != fix1):
                 fixes_performed.append(
                     _(u"removed leading whitespace from %(field)s") %
-                    {"field":name})
+                    {"field": name})
             fields[attr] = fix2
 
         for attr in ["track_number", "genre"]:

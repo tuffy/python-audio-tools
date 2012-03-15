@@ -241,8 +241,8 @@ if (__name__ == '__main__'):
                 channels=2,
                 channel_mask=0x3,
                 bits_per_sample=16)
-            output_frames = (input_frames * 44100 / audiofiles[0].sample_rate())
-
+            output_frames = (input_frames * 44100 /
+                             audiofiles[0].sample_rate())
 
         progress = audiotools.SingleProgressDisplay(
             msg, _(u"Converting audio files"))

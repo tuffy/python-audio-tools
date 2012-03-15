@@ -19,6 +19,7 @@
 
 import audiotools
 
+
 class DiscID:
     def __init__(self, offsets, total_length, track_count):
         """offsets is a list of track offsets, in CD frames
@@ -44,6 +45,7 @@ class DiscID:
             (sum(map(int, "".join([str(o / 75) for o in self.offsets]))) % 255,
              (self.total_length / 75) & 0xFFFF,
              self.track_count & 0xFF)
+
 
 def perform_lookup(offsets, total_length, track_count,
                    freedb_server, freedb_port):
@@ -77,17 +79,17 @@ def perform_lookup(offsets, total_length, track_count,
     #and get a list of category/disc id/title results
     #if any matches are found
     m = urlopen("http://%s:%d/~cddb/cddb.cgi" % (freedb_server, freedb_port),
-                urlencode({"hello":"user %s %s %s" % \
+                urlencode({"hello": "user %s %s %s" % \
                                (getfqdn(),
                                 "audiotools",
                                 audiotools.VERSION),
-                           "proto":str(6),
-                           "cmd":("cddb query %(disc_id)s %(track_count)d " +
-                                  "%(offsets)s %(seconds)d") %
-                           {"disc_id":disc_id,
-                            "track_count":track_count,
-                            "offsets":" ".join(map(str, offsets)),
-                            "seconds":total_length / 75}}))
+                           "proto": str(6),
+                           "cmd": ("cddb query %(disc_id)s %(track_count)d " +
+                                   "%(offsets)s %(seconds)d") %
+                           {"disc_id": disc_id,
+                            "track_count": track_count,
+                            "offsets": " ".join(map(str, offsets)),
+                            "seconds": total_length / 75}}))
 
     response = RESPONSE.match(m.readline())
     if (response is None):
@@ -129,18 +131,18 @@ def perform_lookup(offsets, total_length, track_count,
     if (len(matches) > 0):
         #for each result, query FreeDB for XMCD file data
         for (category, disc_id, title) in matches:
-            sleep(1) #add a slight delay to keep the server happy
+            sleep(1)  # add a slight delay to keep the server happy
             m = urlopen("http://%s:%d/~cddb/cddb.cgi" % (freedb_server,
                                                          freedb_port),
-                        urlencode({"hello":"user %s %s %s" % \
+                        urlencode({"hello": "user %s %s %s" % \
                                        (getfqdn(),
                                         "audiotools",
                                         audiotools.VERSION),
-                                   "proto":str(6),
-                                   "cmd":("cddb read %(category)s " +
-                                          "%(disc_id)s") %
-                                   {"category":category,
-                                    "disc_id":disc_id}}))
+                                   "proto": str(6),
+                                   "cmd": ("cddb read %(category)s " +
+                                           "%(disc_id)s") %
+                                   {"category": category,
+                                    "disc_id": disc_id}}))
             response = RESPONSE.match(m.readline())
             if (response is None):
                 raise ValueError("invalid response from server")
@@ -187,7 +189,7 @@ def xmcd_metadata(freedb_file):
         track_total = 0
 
     for (tracknum, ttitle) in sorted(ttitles,
-                                     lambda x,y: cmp(x[0], y[0])):
+                                     lambda x, y: cmp(x[0], y[0])):
         if (" / " in ttitle):
             (track_artist,
              track_name) = ttitle.split(" / ", 1)
@@ -196,9 +198,9 @@ def xmcd_metadata(freedb_file):
             track_name = ttitle
 
         yield audiotools.MetaData(
-            track_name=track_name.decode('utf-8','replace'),
+            track_name=track_name.decode('utf-8', 'replace'),
             track_number=tracknum + 1,
             track_total=track_total,
-            album_name=album_name.decode('utf-8','replace'),
-            artist_name=track_artist.decode('utf-8','replace'),
-            year=year.decode('utf-8','replace'))
+            album_name=album_name.decode('utf-8', 'replace'),
+            artist_name=track_artist.decode('utf-8', 'replace'),
+            year=year.decode('utf-8', 'replace'))

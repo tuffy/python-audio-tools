@@ -66,10 +66,10 @@ class MP3Audio(AudioFile):
     BINARIES = ("lame",)
     REPLAYGAIN_BINARIES = ("mp3gain", )
 
-    SAMPLE_RATE = ((11025, 12000, 8000, None),  #MPEG-2.5
-                   (None, None, None, None),    #reserved
-                   (22050, 24000, 16000, None), #MPEG-2
-                   (44100, 48000, 32000, None)) #MPEG-1
+    SAMPLE_RATE = ((11025, 12000, 8000, None),   # MPEG-2.5
+                   (None, None, None, None),     # reserved
+                   (22050, 24000, 16000, None),  # MPEG-2
+                   (44100, 48000, 32000, None))  # MPEG-1
 
     BIT_RATE = (
         #MPEG-2.5
@@ -201,7 +201,7 @@ class MP3Audio(AudioFile):
                          pad) = reader.parse("11u 2u 2u 1p 4u 2u 1u 9p")
                 except IOError:
                     pass
-                except ValueError,err:
+                except ValueError, err:
                     raise InvalidMP3(unicode(err))
         finally:
             mp3file.close()
@@ -645,11 +645,10 @@ class MP3Audio(AudioFile):
         bit_rate = self.BIT_RATE[mpeg_id][layer][bit_rate]
         if (bit_rate is None):
             raise ValueError(_(u"Invalid bit rate"))
-        if (layer == 3): #layer I
+        if (layer == 3):  # layer I
             return (((12 * bit_rate) / sample_rate) + pad) * 4
-        else:            #layer II/III
+        else:             # layer II/III
             return ((144 * bit_rate) / sample_rate) + pad
-
 
     def total_frames(self):
         """Returns the total PCM frames of the track as an integer."""

@@ -19,6 +19,7 @@
 
 import audiotools
 
+
 class DiscID:
     def __init__(self, first_track_number, last_track_number,
                  lead_out_offset, offsets):
@@ -54,10 +55,11 @@ class DiscID:
                            self.offsets +
                            [0] * (99 - len(self.offsets))
                            ]))).digest(),
-            "._").replace("=","-")
+            "._").replace("=", "-")
 
     def __unicode__(self):
         return str(self).decode('ascii')
+
 
 def perform_lookup(first_track_number, last_track_number,
                    lead_out_offset, offsets,
@@ -89,7 +91,7 @@ def perform_lookup(first_track_number, last_track_number,
                 (musicbrainz_server,
                  musicbrainz_port,
                  disc_id,
-                 urlencode({"inc":"artists labels recordings"})))
+                 urlencode({"inc": "artists labels recordings"})))
 
     xml = xml.dom.minidom.parse(m)
 
@@ -103,6 +105,7 @@ def perform_lookup(first_track_number, last_track_number,
         #no releases found, so return nothing
         return
 
+
 def get_node(parent, *nodes):
     if (len(nodes) == 0):
         return parent
@@ -113,15 +116,18 @@ def get_node(parent, *nodes):
         else:
             raise KeyError(nodes[0])
 
+
 def get_nodes(parent, node):
     return [child for child in parent.childNodes
             if (hasattr(child, "tagName") and (child.tagName == node))]
+
 
 def text(node):
     if (node.firstChild is not None):
         return node.firstChild.data
     else:
         return u""
+
 
 def artist(artist_credit):
     """given an <artist-credit> DOM element,
@@ -140,6 +146,7 @@ def artist(artist_credit):
         if (name_credit.hasAttribute(u"joinphrase")):
             artists.append(name_credit.getAttribute(u"joinphrase"))
     return u"".join(artists)
+
 
 def parse_release(release, disc_id):
     """given a <release> Element node and DiscID object
@@ -228,7 +235,7 @@ def parse_release(release, disc_id):
         album_total = album_number = 0
 
     #<medium> must contain <track-list>
-    tracks = get_nodes(get_node(medium, u"track-list"), u"track");
+    tracks = get_nodes(get_node(medium, u"track-list"), u"track")
     track_total = len(tracks)
     #and <track-list> contains 0 or more <track>s
     for (i, track) in enumerate(tracks):
@@ -259,7 +266,8 @@ def parse_release(release, disc_id):
             #<recording> may contain <artist-credit>
             if (track_artist is None):
                 try:
-                    track_artist = artist(get_node(recording, u"artist-credit"))
+                    track_artist = artist(get_node(recording,
+                                                   u"artist-credit"))
                 except KeyError:
                     track_artist = album_artist
         except KeyError:

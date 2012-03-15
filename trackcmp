@@ -164,7 +164,8 @@ if (__name__ == '__main__'):
                              "file2": msg.filename(audiofiles[1].filename)})
                     msg.info(msg.ansi(
                             _(u"differ at PCM frame %(frame_number)d") %
-                            {"frame_number": frame_mismatch + 1}, [msg.FG_RED]))
+                            {"frame_number": frame_mismatch + 1},
+                            [msg.FG_RED]))
                     sys.exit(1)
             except (IOError, ValueError, audiotools.DecodingError), err:
                 msg.error(unicode(err))
@@ -253,8 +254,8 @@ if (__name__ == '__main__'):
 
         #try to compare the smaller files against the largest file
 
-        audiofiles.sort(lambda t1,t2: cmp(t1.total_frames(),
-                                          t2.total_frames()))
+        audiofiles.sort(lambda t1, t2: cmp(t1.total_frames(),
+                                           t2.total_frames()))
 
         if (sum([t.total_frames() for t in audiofiles[0:-1]]) !=
             audiofiles[-1].total_frames()):
@@ -271,8 +272,8 @@ if (__name__ == '__main__'):
         cd_data = audiotools.BufferedPCMReader(cd_image.to_pcm())
         for track in tracks:
             progress.add_row(0, u"%(file1)s <> %(file2)s" %
-                             {"file1":msg.filename(cd_image.filename),
-                              "file2":msg.filename(track.filename)})
+                             {"file1": msg.filename(cd_image.filename),
+                              "file2": msg.filename(track.filename)})
             mismatch = audiotools.pcm_frame_cmp(
                 audiotools.to_pcm_progress(track, progress.update),
                 audiotools.LimitedPCMReader(cd_data, track.total_frames()))

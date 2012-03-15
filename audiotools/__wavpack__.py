@@ -37,6 +37,7 @@ gettext.install("audiotools", unicode=True)
 class InvalidWavPack(InvalidFile):
     pass
 
+
 def __riff_chunk_ids__(data_size, data):
     data_size = __Counter__(data_size)
     data.add_callback(data_size.callback)
@@ -53,6 +54,7 @@ def __riff_chunk_ids__(data_size, data):
         yield chunk_id
         if (chunk_id != 'data'):
             data.skip_bytes(chunk_size)
+
 
 class __Counter__:
     def __init__(self, value):
@@ -241,7 +243,6 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
                            block_size * 2,
                            frame_data.substream(block_size * 2))
 
-
     def __read_info__(self):
         from .bitstream import BitstreamReader
 
@@ -278,7 +279,7 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
                     (self.__samplerate__,) = self.fmt_chunk(reader).parse(
                         "32p 32u")
 
-            self.__bitspersample__ = [8,16,24,32][bits_per_sample]
+            self.__bitspersample__ = [8, 16, 24, 32][bits_per_sample]
             self.__total_frames__ = total_samples
 
             if (initial_block and final_block):
@@ -312,21 +313,21 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
                         #with very old .wav files,
                         #but shouldn't happen in practice
                         self.__channel_mask__ = {
-                            1:ChannelMask.from_fields(
+                            1: ChannelMask.from_fields(
                                 front_center=True),
-                            2:ChannelMask.from_fields(
+                            2: ChannelMask.from_fields(
                                 front_left=True, front_right=True),
-                            3:ChannelMask.from_fields(
+                            3: ChannelMask.from_fields(
                                 front_left=True, front_right=True,
                                 front_center=True),
-                            4:ChannelMask.from_fields(
+                            4: ChannelMask.from_fields(
                                 front_left=True, front_right=True,
                                 back_left=True, back_right=True),
-                            5:ChannelMask.from_fields(
+                            5: ChannelMask.from_fields(
                                 front_left=True, front_right=True,
                                 back_left=True, back_right=True,
                                 front_center=True),
-                            6:ChannelMask.from_fields(
+                            6: ChannelMask.from_fields(
                                 front_left=True, front_right=True,
                                 back_left=True, back_right=True,
                                 front_center=True, low_frequency=True)
@@ -497,20 +498,20 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
                                     (self.bits_per_sample() / 8))
             block_align = (self.channels() *
                            (self.bits_per_sample() / 8))
-            total_size = 4 * 3   #"RIFF" + size + "WAVE"
+            total_size = 4 * 3   # "RIFF" + size + "WAVE"
 
-            total_size += 4 * 2  #"fmt " + size
+            total_size += 4 * 2  # "fmt " + size
             if ((self.channels() <= 2) or
                 (self.bits_per_sample() <= 16)):
-                #classic fmt chunk
+                # classic fmt chunk
                 fmt = "16u 16u 32u 32u 16u 16u"
             else:
-                #extended fmt chunk
+                # extended fmt chunk
                 fmt = "16u 16u 32u 32u 16u 16u 16u 16u 32u 16b"
 
             total_size += bitstream.format_size(fmt) / 8
 
-            total_size += 4 * 2  #"data" + size
+            total_size += 4 * 2  # "data" + size
             data_size = (self.total_frames() *
                          self.channels() *
                          (self.bits_per_sample() / 8))
@@ -524,7 +525,7 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
             if ((self.channels() <= 2) or
                 (self.bits_per_sample() <= 16)):
                 riff_head.build(fmt,
-                                (1, #compression code
+                                (1,  # compression code
                                  self.channels(),
                                  self.sample_rate(),
                                  avg_bytes_per_second,
@@ -532,13 +533,13 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
                                  self.bits_per_sample()))
             else:
                 riff_head.build(fmt,
-                                (0xFFFE,  #compression code
+                                (0xFFFE,  # compression code
                                  self.channels(),
                                  self.sample_rate(),
                                  avg_bytes_per_second,
                                  block_align,
                                  self.bits_per_sample(),
-                                 22,      #CB size
+                                 22,      # CB size
                                  self.bits_per_sample(),
                                  self.channel_mask(),
                                  "\x01\x00\x00\x00\x00\x00\x10\x00" +

@@ -436,8 +436,8 @@ if (__name__ == '__main__'):
         msg.new_row()
         msg.output_column(u"Use MusicBrainz service", True)
         msg.output_column(u" : ")
-        msg.output_column({True:u"yes",
-                           False:u"no"}[audiotools.MUSICBRAINZ_SERVICE])
+        msg.output_column({True: u"yes",
+                           False: u"no"}[audiotools.MUSICBRAINZ_SERVICE])
 
         msg.new_row()
         msg.output_column(_(u"Default MusicBrainz server"), True)
@@ -453,8 +453,8 @@ if (__name__ == '__main__'):
         msg.new_row()
         msg.output_column(u"Use FreeDB service", True)
         msg.output_column(u" : ")
-        msg.output_column({True:u"yes",
-                           False:u"no"}[audiotools.FREEDB_SERVICE])
+        msg.output_column({True: u"yes",
+                           False: u"no"}[audiotools.FREEDB_SERVICE])
 
         msg.new_row()
         msg.output_column(_(u"Default FreeDB server"), True)
@@ -576,7 +576,8 @@ if (__name__ == '__main__'):
         msg.new_row()
         msg.output_column(_(u"Add ReplayGain by default"), True)
         msg.output_column(u" : ")
-        msg.output_column({True:u"yes", False:u"no"}[audiotools.ADD_REPLAYGAIN])
+        msg.output_column({True: u"yes",
+                           False: u"no"}[audiotools.ADD_REPLAYGAIN])
 
         msg.blank_row()
         msg.output_rows()

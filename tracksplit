@@ -344,7 +344,8 @@ if (__name__ == '__main__'):
         if ((len(metadata.ISRC) == 0) and
             (metadata.track_number in cuesheet_ISRCs.keys())):
             metadata.ISRC = \
-                cuesheet_ISRCs[metadata.track_number].decode('ascii', 'replace')
+                cuesheet_ISRCs[metadata.track_number].decode('ascii',
+                                                             'replace')
 
     #perform actual track splitting and tagging
     encoded_files = []

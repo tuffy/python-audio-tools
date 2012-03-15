@@ -204,10 +204,9 @@ class VorbisAudio(AudioFile):
              first_page,
              last_page) in OggStreamReader(
             BitstreamReader(file(self.filename, "rb"), 1)).pages():
-             if (granule_position >= 0):
-                 pcm_samples = granule_position
+            if (granule_position >= 0):
+                pcm_samples = granule_position
         return pcm_samples
-
 
     def sample_rate(self):
         """Returns the rate of the track's audio as an integer number of Hz."""
@@ -453,11 +452,12 @@ class VorbisAudio(AudioFile):
         if ((packet_type != 3) or (packet_header != 'vorbis')):
             return None
         else:
-            vendor_string = comment.read_bytes(comment.read(32)).decode('utf-8')
+            vendor_string = \
+                comment.read_bytes(comment.read(32)).decode('utf-8')
             comment_strings = [
                 comment.read_bytes(comment.read(32)).decode('utf-8')
                 for i in xrange(comment.read(32))]
-            if (comment.read(1) == 1):  #framing bit
+            if (comment.read(1) == 1):   # framing bit
                 return VorbisComment(comment_strings, vendor_string)
             else:
                 return None
@@ -530,7 +530,7 @@ class VorbisAudio(AudioFile):
                     vorbis_metadata['REPLAYGAIN_TRACK_PEAK'][0],
                     vorbis_metadata['REPLAYGAIN_ALBUM_GAIN'][0][0:-len(" dB")],
                     vorbis_metadata['REPLAYGAIN_ALBUM_PEAK'][0])
-            except (IndexError,ValueError):
+            except (IndexError, ValueError):
                 return None
         else:
             return None

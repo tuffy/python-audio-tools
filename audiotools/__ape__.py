@@ -50,7 +50,6 @@ def limited_transfer_data(from_function, to_function,
         s = from_function(BUFFER_SIZE)
 
 
-
 #######################
 #MONKEY'S AUDIO
 #######################
@@ -90,19 +89,19 @@ class ApeTagItem:
              repr(self.data))
 
     def raw_info_pair(self):
-        if (self.type == 0):   #text
+        if (self.type == 0):    # text
             if (self.read_only):
                 return (self.key.decode('ascii'),
                         u"(read only) %s" % (self.data.decode('utf-8')))
             else:
                 return (self.key.decode('ascii'), self.data.decode('utf-8'))
-        elif (self.type == 1): #binary
+        elif (self.type == 1):  # binary
             return (self.key.decode('ascii'),
                     u"(binary) %d bytes" % (len(self.data)))
-        elif (self.type == 2): #external
+        elif (self.type == 2):  # external
             return (self.key.decode('ascii'),
                     u"(external) %d bytes" % (len(self.data)))
-        else:                  #reserved
+        else:                   # reserved
             return (self.key.decode('ascii'),
                     u"(reserved) %d bytes" % (len(self.data)))
 
@@ -516,28 +515,28 @@ class ApeTag(MetaData):
 
         if (self.contains_header):
             writer.build(ApeTag.HEADER_FORMAT,
-                         ("APETAGEX",                #preamble
-                          2000,                      #version
-                          tags.bytes() + 32,         #tag size
-                          len(self.tags),            #item count
-                          0,                         #read only
-                          0,                         #encoding
-                          1,                         #is header
-                          not self.contains_footer,  #no footer
-                          self.contains_header))     #has header
+                         ("APETAGEX",                # preamble
+                          2000,                      # version
+                          tags.bytes() + 32,         # tag size
+                          len(self.tags),            # item count
+                          0,                         # read only
+                          0,                         # encoding
+                          1,                         # is header
+                          not self.contains_footer,  # no footer
+                          self.contains_header))     # has header
 
         tags.copy(writer)
         if (self.contains_footer):
             writer.build(ApeTag.HEADER_FORMAT,
-                         ("APETAGEX",                #preamble
-                          2000,                      #version
-                          tags.bytes() + 32,         #tag size
-                          len(self.tags),            #item count
-                          0,                         #read only
-                          0,                         #encoding
-                          0,                         #is header
-                          not self.contains_footer,  #no footer
-                          self.contains_header))     #has header
+                         ("APETAGEX",                # preamble
+                          2000,                      # version
+                          tags.bytes() + 32,         # tag size
+                          len(self.tags),            # item count
+                          0,                         # read only
+                          0,                         # encoding
+                          0,                         # is header
+                          not self.contains_footer,  # no footer
+                          self.contains_header))     # has header
 
     def clean(self, fixes_applied):
         tag_items = []
@@ -550,14 +549,14 @@ class ApeTag(MetaData):
                 if (fix1 != text):
                     fixes_applied.append(
                         _(u"removed trailing whitespace from %(field)s") %
-                        {"field":tag.key.decode('ascii')})
+                        {"field": tag.key.decode('ascii')})
 
                 #check leading whitespace
                 fix2 = fix1.lstrip()
                 if (fix2 != fix1):
                     fixes_applied.append(
                         _(u"removed leading whitespace from %(field)s") %
-                        {"field":tag.key.decode('ascii')})
+                        {"field": tag.key.decode('ascii')})
 
                 if (tag.key in self.INTEGER_ITEMS):
                     try:
@@ -575,7 +574,7 @@ class ApeTag(MetaData):
                     if (fix3 != fix2):
                         fixes_applied.append(
                             _(u"removed leading zeroes from %(field)s") %
-                            {"field":tag.key.decode('ascii')})
+                            {"field": tag.key.decode('ascii')})
                 else:
                     fix3 = fix2
 
@@ -584,7 +583,7 @@ class ApeTag(MetaData):
                 else:
                     fixes_applied.append(
                         _("removed empty field %(field)s") %
-                        {"field":tag.key.decode('ascii')})
+                        {"field": tag.key.decode('ascii')})
             else:
                 tag_items.append(tag)
 
@@ -616,7 +615,7 @@ class ApeTaggedAudio:
         elif (not isinstance(metadata, ApeTag)):
             raise ValueError(_(u"metadata not from audio file"))
 
-        from .bitstream import BitstreamReader,BitstreamWriter
+        from .bitstream import BitstreamReader, BitstreamWriter
 
         f = file(self.filename, "r+b")
         f.seek(-32, 2)
@@ -733,7 +732,7 @@ class ApeTaggedAudio:
 
         Raises IOError if unable to write the file."""
 
-        from .bitstream import BitstreamReader,BitstreamWriter
+        from .bitstream import BitstreamReader, BitstreamWriter
 
         f = file(self.filename, "r+b")
         f.seek(-32, 2)
@@ -774,8 +773,6 @@ class ApeTaggedAudio:
             transfer_data(rewritten.read, f.write)
             f.close()
             rewritten.close()
-
-
 
 
 class ApeAudio(ApeTaggedAudio, AudioFile):

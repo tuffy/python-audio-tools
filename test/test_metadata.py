@@ -25,6 +25,7 @@ from test import (parser, BLANK_PCM_Reader, Combinations,
                   TEST_COVER1, TEST_COVER2, TEST_COVER3, TEST_COVER4,
                   HUGE_BMP)
 
+
 def do_nothing(self):
     pass
 
@@ -38,6 +39,7 @@ for section in parser.sections():
         else:
             vars()["%s_%s" % (section.upper(),
                               option.upper())] = lambda function: do_nothing
+
 
 class MetaDataTest(unittest.TestCase):
     def setUp(self):
@@ -732,7 +734,8 @@ class WavPackApeTagMetaData(MetaDataTest):
         import test_streams
 
         for input_class in [audiotools.WavPackAudio]:
-            temp1 = tempfile.NamedTemporaryFile(suffix="." + input_class.SUFFIX)
+            temp1 = tempfile.NamedTemporaryFile(
+                suffix="." + input_class.SUFFIX)
             try:
                 track1 = input_class.from_pcm(
                     temp1.name,
@@ -1042,9 +1045,12 @@ class ID3v22MetaData(MetaDataTest):
                            'album_number',
                            'album_total')
 
-        attribs1 = {}  # a dict of attribute -> value pairs ("track_name":u"foo")
-        attribs2 = {}  # a dict of ID3v2 -> value pairs     ("TT2":u"foo")
-        for (i, (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
+        attribs1 = {}  # a dict of attribute -> value pairs
+                       # ("track_name":u"foo")
+        attribs2 = {}  # a dict of ID3v2 -> value pairs
+                       # ("TT2":u"foo")
+        for (i,
+             (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
             if (attribute not in INTEGER_ATTRIBS):
                 attribs1[attribute] = attribs2[key] = u"value %d" % (i)
         attribs1["track_number"] = 2
@@ -1063,19 +1069,24 @@ class ID3v22MetaData(MetaDataTest):
             self.assertEqual(unicode(id3[key][0]), value)
 
         #ensure the keys for integer items match up
-        self.assertEqual(id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[0]][0].number(),
-                         attribs1["track_number"])
-        self.assertEqual(id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[0]][0].total(),
-                         attribs1["track_total"])
-        self.assertEqual(id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[1]][0].number(),
-                         attribs1["album_number"])
-        self.assertEqual(id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[1]][0].total(),
-                         attribs1["album_total"])
+        self.assertEqual(
+            id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[0]][0].number(),
+            attribs1["track_number"])
+        self.assertEqual(
+            id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[0]][0].total(),
+            attribs1["track_total"])
+        self.assertEqual(
+            id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[1]][0].number(),
+            attribs1["album_number"])
+        self.assertEqual(
+            id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[1]][0].total(),
+            attribs1["album_total"])
 
         #ensure that changing attributes changes the underlying frame
         #>>> id3.track_name = u"bar"
         #>>> id3['TT2'][0] == u"bar"
-        for (i, (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
+        for (i,
+             (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
             if (key not in id3_class.TEXT_FRAME.NUMERICAL_IDS):
                 setattr(id3, attribute, u"new value %d" % (i))
                 self.assertEqual(unicode(id3[key][0]), u"new value %d" % (i))
@@ -1085,21 +1096,25 @@ class ID3v22MetaData(MetaDataTest):
         #>>> id3['TRK'][0] == u"2"
         id3.track_number = 3
         id3.track_total = 0
-        self.assertEqual(unicode(id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[0]][0]),
-                         u"3")
+        self.assertEqual(
+            unicode(id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[0]][0]),
+            u"3")
 
         id3.track_total = 8
-        self.assertEqual(unicode(id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[0]][0]),
-                         u"3/8")
+        self.assertEqual(
+            unicode(id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[0]][0]),
+            u"3/8")
 
         id3.album_number = 2
         id3.album_total = 0
-        self.assertEqual(unicode(id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[1]][0]),
-                         u"2")
+        self.assertEqual(
+            unicode(id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[1]][0]),
+            u"2")
 
         id3.album_total = 4
-        self.assertEqual(unicode(id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[1]][0]),
-                         u"2/4")
+        self.assertEqual(
+            unicode(id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[1]][0]),
+            u"2/4")
 
         #reset and re-check everything for the next round
         id3 = id3_class.converted(audiotools.MetaData(**attribs1))
@@ -1117,7 +1132,8 @@ class ID3v22MetaData(MetaDataTest):
         #ensure that changing the underlying frames changes attributes
         #>>> id3['TT2'] = [ID3v22_T__Frame('TT2, u"bar")]
         #>>> id3.track_name == u"bar"
-        for (i, (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
+        for (i,
+             (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
             if (attribute not in INTEGER_ATTRIBS):
                 id3[key] = [id3_class.TEXT_FRAME(key, 0, "new value %d" % (i))]
                 self.assertEqual(getattr(id3, attribute),
@@ -1144,7 +1160,8 @@ class ID3v22MetaData(MetaDataTest):
         #frames also changes attributes
         #>>> id3['TT2'] = [id3_class.TEXT_FRAME.from_unicode('TT2',u"foo")]
         #>>> id3.track_name = u"foo"
-        for (i, (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
+        for (i,
+             (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
             if (attribute not in INTEGER_ATTRIBS):
                 id3[key] = [id3_class.TEXT_FRAME.converted(key, unicode(i))]
                 self.assertEqual(getattr(id3, attribute), unicode(i))
@@ -1177,7 +1194,6 @@ class ID3v22MetaData(MetaDataTest):
                 u"5/7")]
         self.assertEqual(id3.album_number, 5)
         self.assertEqual(id3.album_total, 7)
-
 
     @METADATA_ID3V2
     def test_clean(self):
@@ -1254,7 +1270,6 @@ class ID3v22MetaData(MetaDataTest):
             self.assertEqual(cleaned.track_total, 2)
             self.assertEqual(cleaned["TRK"][0].data, "01/02")
 
-
             #don't pad ID3v2 tags with 0
             audiotools.config.set_default("ID3", "pad", "off")
             self.assertEqual(audiotools.config.getboolean("ID3", "pad"),
@@ -1317,6 +1332,7 @@ class ID3v22MetaData(MetaDataTest):
             self.assertEqual(cleaned["TRK"][0].data, "1/2")
         finally:
             audiotools.config.set_default("ID3", "pad", id3_pad)
+
 
 class ID3v23MetaData(ID3v22MetaData):
     def setUp(self):
@@ -1440,7 +1456,6 @@ class ID3v23MetaData(ID3v22MetaData):
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
             self.assertEqual(cleaned["TRCK"][0].data, "01/02")
-
 
             #don't pad ID3v2 tags with 0
             audiotools.config.set_default("ID3", "pad", "off")
@@ -1607,7 +1622,6 @@ class ID3v24MetaData(ID3v22MetaData):
             self.assertEqual(cleaned.track_total, 2)
             self.assertEqual(cleaned["TRCK"][0].data, "01/02")
 
-
             #don't pad ID3v2 tags with 0
             audiotools.config.set_default("ID3", "pad", "off")
             self.assertEqual(audiotools.config.getboolean("ID3", "pad"),
@@ -1670,6 +1684,7 @@ class ID3v24MetaData(ID3v22MetaData):
             self.assertEqual(cleaned["TRCK"][0].data, "1/2")
         finally:
             audiotools.config.set_default("ID3", "pad", id3_pad)
+
 
 class ID3CommentPairMetaData(MetaDataTest):
     def setUp(self):
@@ -1923,15 +1938,17 @@ class FlacMetaData(MetaDataTest):
                     [u"TRACKNUMBER=01"], u"")])
         self.assertEqual(
             metadata.get_block(
-                audiotools.Flac_VORBISCOMMENT.BLOCK_ID)["TRACKNUMBER"],[u"01"])
+                audiotools.Flac_VORBISCOMMENT.BLOCK_ID)["TRACKNUMBER"],
+            [u"01"])
         results = []
         cleaned = metadata.clean(results)
         self.assertEqual(
             cleaned.get_block(
-                audiotools.Flac_VORBISCOMMENT.BLOCK_ID)["TRACKNUMBER"],[u"1"])
+                audiotools.Flac_VORBISCOMMENT.BLOCK_ID)["TRACKNUMBER"],
+            [u"1"])
         self.assertEqual(results,
                          [_(u"removed leading zeroes from %(field)s") %
-                          {"field":u"TRACKNUMBER"}])
+                          {"field": u"TRACKNUMBER"}])
 
         #check empty fields
         metadata = audiotools.FlacMetaData([
@@ -1948,7 +1965,7 @@ class FlacMetaData(MetaDataTest):
 
         self.assertEqual(results,
                          [_(u"removed empty field %(field)s") %
-                          {"field":u"TITLE"}])
+                          {"field": u"TITLE"}])
 
         #check mis-tagged images
         metadata = audiotools.FlacMetaData(
@@ -1978,7 +1995,6 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
         self.assertEqual(image.height, 10)
         self.assertEqual(image.color_depth, 8)
         self.assertEqual(image.color_count, 1)
-
 
         #check that cleanup doesn't disturb other metadata blocks
         #FIXME
@@ -2583,7 +2599,6 @@ class M4AMetaDataTest(MetaDataTest):
         #numerical fields can't have whitespace
         #and images aren't stored with metadata
         #so there's no need to check those
-
 
 
 class VorbisCommentTest(MetaDataTest):

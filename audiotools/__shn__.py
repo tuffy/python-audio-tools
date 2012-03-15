@@ -122,7 +122,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
                             else:
                                 wave.read_bytes(chunk_size)
                                 total_size -= chunk_size
-            except (IOError,ValueError):
+            except (IOError, ValueError):
                 pass
 
             try:
@@ -243,12 +243,11 @@ class ShortenAudio(WaveContainer, AiffContainer):
 
         Raises EncodingError if some error occurs during decoding."""
 
-
         from . import decoders
 
         try:
             (head, tail) = decoders.SHNDecoder(self.filename).pcm_split()
-        except IOError,err:
+        except IOError, err:
             raise EncodingError(str(err))
 
         if ((head[0:4] == 'RIFF') and (head[8:12] == 'WAVE')):
@@ -499,7 +498,6 @@ class ShortenAudio(WaveContainer, AiffContainer):
                 return False
         except IOError:
             return False
-
 
     def has_foreign_aiff_chunks(self):
         """Returns True if the audio file contains non-audio AIFF chunks.

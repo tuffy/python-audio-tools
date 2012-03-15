@@ -27,7 +27,7 @@ def is_latin_1(unicode_string):
     """returns True if the given unicode string is a subset of latin-1"""
 
     return frozenset(unicode_string).issubset(
-        frozenset(map(unichr, range(32, 127) + range(160,256))))
+        frozenset(map(unichr, range(32, 127) + range(160, 256))))
 
 
 class UCS2Codec(codecs.Codec):
@@ -77,6 +77,7 @@ def __reg_ucs2__(name):
 
 codecs.register(__reg_ucs2__)
 
+
 def decode_syncsafe32(reader):
     from operator import or_
     return reduce(or_,
@@ -84,21 +85,23 @@ def decode_syncsafe32(reader):
                    for (i, size) in
                    enumerate(reader.parse("1p 7u 1p 7u 1p 7u 1p 7u"))])
 
+
 def encode_syncsafe32(writer, value):
     writer.build("1p 7u 1p 7u 1p 7u 1p 7u",
                  [(value >> (7 * i)) & 0x7F for i in [3, 2, 1, 0]])
 
+
 class C_string:
-    TERMINATOR = {'ascii':chr(0),
-                  'latin_1':chr(0),
-                  'latin-1':chr(0),
-                  'ucs2':chr(0) * 2,
-                  'utf_16':chr(0) * 2,
-                  'utf-16':chr(0) * 2,
-                  'utf_16be':chr(0) * 2,
-                  'utf-16be':chr(0) * 2,
-                  'utf_8':chr(0),
-                  'utf-8':chr(0)}
+    TERMINATOR = {'ascii': chr(0),
+                  'latin_1': chr(0),
+                  'latin-1': chr(0),
+                  'ucs2': chr(0) * 2,
+                  'utf_16': chr(0) * 2,
+                  'utf-16': chr(0) * 2,
+                  'utf_16be': chr(0) * 2,
+                  'utf-16be': chr(0) * 2,
+                  'utf_8': chr(0),
+                  'utf-8': chr(0)}
 
     def __init__(self, encoding, unicode_string):
         """encoding is a string such as 'utf-8', 'latin-1', etc."""
@@ -145,7 +148,8 @@ class C_string:
         """writes our C_string data to the given BitstreamWriter
         with the appropriate terminator"""
 
-        writer.write_bytes(self.unicode_string.encode(self.encoding, 'replace'))
+        writer.write_bytes(self.unicode_string.encode(self.encoding,
+                                                      'replace'))
         writer.write_bytes(self.TERMINATOR[self.encoding])
 
     def size(self):
@@ -165,6 +169,7 @@ def __attrib_equals__(attributes, o1, o2):
                        for attrib in attributes])
     except AttributeError:
         return False
+
 
 #takes a pair of integers for the current and total values
 #returns a unicode string of their combined pair
@@ -354,7 +359,7 @@ class ID3v22_T__Frame:
     def raw_info(self):
         return u"%s = (%s) %s" % \
             (self.id.decode('ascii'),
-             {0:u"Latin-1", 1:u"UCS-2"}[self.encoding],
+             {0: u"Latin-1", 1: u"UCS-2"}[self.encoding],
              unicode(self))
 
     def __eq__(self, frame):
@@ -362,7 +367,7 @@ class ID3v22_T__Frame:
 
     def __unicode__(self):
         return self.data.decode(
-            {0:'latin-1', 1:'ucs2'}[self.encoding],
+            {0: 'latin-1', 1: 'ucs2'}[self.encoding],
             'replace').split(unichr(0), 1)[0]
 
     def number(self):
@@ -429,7 +434,8 @@ class ID3v22_T__Frame:
         #check for an empty tag
         if (len(value.strip()) == 0):
             fixes_performed.append(
-                u"removed empty field %(field)s" % {"field":field})
+                u"removed empty field %(field)s" %
+                {"field": field})
             return None
 
         #check trailing whitespace
@@ -437,14 +443,14 @@ class ID3v22_T__Frame:
         if (fix1 != value):
             fixes_performed.append(
                 u"removed trailing whitespace from %(field)s" %
-                {"field":field})
+                {"field": field})
 
         #check leading whitespace
         fix2 = fix1.lstrip()
         if (fix2 != fix1):
             fixes_performed.append(
                 u"removed leading whitespace from %(field)s" %
-                {"field":field})
+                {"field": field})
 
         #check leading zeroes for a numerical tag
         if (self.id in self.NUMERICAL_IDS):
@@ -453,11 +459,11 @@ class ID3v22_T__Frame:
                 if (config.getboolean_default("ID3", "pad", False)):
                     fixes_performed.append(
                         u"added leading zeroes to %(field)s" %
-                        {"field":field})
+                        {"field": field})
                 else:
                     fixes_performed.append(
                         u"removed leading zeroes from %(field)s" %
-                        {"field":field})
+                        {"field": field})
         else:
             fix3 = fix2
 
@@ -484,7 +490,7 @@ class ID3v22_TXX_Frame:
     def raw_info(self):
         return u"%s = (%s, \"%s\") %s" % \
             (self.id,
-             {0:u"Latin-1", 1:u"UCS-2"}[self.encoding],
+             {0: u"Latin-1", 1: u"UCS-2"}[self.encoding],
              self.description,
              unicode(self))
 
@@ -493,7 +499,7 @@ class ID3v22_TXX_Frame:
 
     def __unicode__(self):
         return self.data.decode(
-            {0:'latin-1', 1:'ucs2'}[self.encoding],
+            {0: 'latin-1', 1: 'ucs2'}[self.encoding],
             'replace').split(unichr(0), 1)[0]
 
     @classmethod
@@ -502,7 +508,7 @@ class ID3v22_TXX_Frame:
         of the remaining frame data, returns a parsed text frame"""
 
         encoding = reader.read(8)
-        description = C_string.parse({0:"latin-1", 1:"ucs2"}[encoding],
+        description = C_string.parse({0: "latin-1", 1: "ucs2"}[encoding],
                                      reader)
         data = reader.read_bytes(frame_size - 1 - description.size())
 
@@ -527,7 +533,8 @@ class ID3v22_TXX_Frame:
         #check for an empty tag
         if (len(value.strip()) == 0):
             fixes_performed.append(
-                u"removed empty field %(field)s" % {"field":field})
+                u"removed empty field %(field)s" %
+                {"field": field})
             return None
 
         #check trailing whitespace
@@ -535,14 +542,14 @@ class ID3v22_TXX_Frame:
         if (fix1 != value):
             fixes_performed.append(
                 u"removed trailing whitespace from %(field)s" %
-                {"field":field})
+                {"field": field})
 
         #check leading whitespace
         fix2 = fix1.lstrip()
         if (fix2 != fix1):
             fixes_performed.append(
                 u"removed leading whitespace from %(field)s" %
-                {"field":field})
+                {"field": field})
 
         return self.__class__(self.encoding, self.description, fix2)
 
@@ -600,7 +607,7 @@ class ID3v22_WXX_Frame:
     def raw_info(self):
         return u"%s = (%s, \"%s\") %s" % \
             (self.id,
-             {0:u"Latin-1", 1:u"UCS-2"}[self.encoding],
+             {0: u"Latin-1", 1: u"UCS-2"}[self.encoding],
              self.description,
              self.data.decode('ascii', 'replace'))
 
@@ -613,7 +620,7 @@ class ID3v22_WXX_Frame:
         of the remaining frame data, returns a parsed text frame"""
 
         encoding = reader.read(8)
-        description = C_string.parse({0:"latin-1", 1:"ucs2"}[encoding],
+        description = C_string.parse({0: "latin-1", 1: "ucs2"}[encoding],
                                      reader)
         data = reader.read_bytes(frame_size - 1 - description.size())
 
@@ -661,17 +668,17 @@ class ID3v22_COM_Frame:
 
     def raw_info(self):
         return u"COM = (%s, %s, \"%s\") %s" % \
-            ({0:u'Latin-1', 1:'UCS-2'}[self.encoding],
+            ({0: u'Latin-1', 1: 'UCS-2'}[self.encoding],
              self.language.decode('ascii', 'replace'),
              self.short_description,
-             self.data.decode({0:'latin-1', 1:'ucs2'}[self.encoding]))
+             self.data.decode({0: 'latin-1', 1: 'ucs2'}[self.encoding]))
 
     def __eq__(self):
         return __attrib_equals__(["encoding", "language",
                                   "short_description", "data"], self, frame)
 
     def __unicode__(self):
-        return self.data.decode({0:'latin-1', 1:'ucs2'}[self.encoding],
+        return self.data.decode({0: 'latin-1', 1: 'ucs2'}[self.encoding],
                                 'replace')
 
     @classmethod
@@ -680,7 +687,7 @@ class ID3v22_COM_Frame:
         of the remaining frame data, returns a parsed ID3v22_COM_Frame"""
 
         (encoding, language) = reader.parse("8u 3b")
-        short_description = C_string.parse({0:'latin-1', 1:'ucs2'}[encoding],
+        short_description = C_string.parse({0: 'latin-1', 1: 'ucs2'}[encoding],
                                            reader)
         data = reader.read_bytes(frame_size - (4 + short_description.size()))
 
@@ -709,14 +716,15 @@ class ID3v22_COM_Frame:
         fix text will be appended to fixes_performed, if necessary"""
 
         field = self.id.decode('ascii')
-        text_encoding = {0:'latin-1', 1:'ucs2'}
+        text_encoding = {0: 'latin-1', 1: 'ucs2'}
 
         value = self.data.decode(text_encoding[self.encoding], 'replace')
 
         #check for an empty tag
         if (len(value.strip()) == 0):
             fixes_performed.append(
-                u"removed empty field %(field)s" % {"field":field})
+                u"removed empty field %(field)s" %
+                {"field": field})
             return None
 
         #check trailing whitespace
@@ -724,14 +732,14 @@ class ID3v22_COM_Frame:
         if (fix1 != value):
             fixes_performed.append(
                 u"removed trailing whitespace from %(field)s" %
-                {"field":field})
+                {"field": field})
 
         #check leading whitespace
         fix2 = fix1.lstrip()
         if (fix2 != fix1):
             fixes_performed.append(
                 u"removed leading whitespace from %(field)s" %
-                {"field":field})
+                {"field": field})
 
         #stripping whitespace shouldn't alter text/description encoding
 
@@ -818,11 +826,11 @@ class ID3v22_PIC_Frame(Image):
 
     def __getattr__(self, attr):
         if (attr == 'type'):
-            return {3:0,                    #front cover
-                    4:1,                    #back cover
-                    5:2,                    #leaflet page
-                    6:3                     #media
-                    }.get(self.pic_type, 4) #other
+            return {3: 0,                    # front cover
+                    4: 1,                    # back cover
+                    5: 2,                    # leaflet page
+                    6: 3                     # media
+                    }.get(self.pic_type, 4)  # other
         elif (attr == 'description'):
             return unicode(self.pic_description)
         else:
@@ -830,11 +838,11 @@ class ID3v22_PIC_Frame(Image):
 
     def __setattr__(self, attr, value):
         if (attr == 'type'):
-            self.__dict__["pic_type"] = {0:3,            #front cover
-                                         1:4,            #back cover
-                                         2:5,            #leaflet page
-                                         3:6,            #media
-                                         }.get(value, 0) #other
+            self.__dict__["pic_type"] = {0: 3,            # front cover
+                                         1: 4,            # back cover
+                                         2: 5,            # leaflet page
+                                         3: 6,            # media
+                                         }.get(value, 0)  # other
         elif (attr == 'description'):
             if (is_latin_1(value)):
                 self.__dict__["pic_description"] = C_string('latin-1', value)
@@ -846,7 +854,8 @@ class ID3v22_PIC_Frame(Image):
     @classmethod
     def parse(cls, frame_id, frame_size, reader):
         (encoding, image_format, picture_type) = reader.parse("8u 3b 8u")
-        description = C_string.parse({0:'latin-1', 1:'ucs2'}[encoding], reader)
+        description = C_string.parse({0: 'latin-1',
+                                      1: 'ucs2'}[encoding], reader)
         data = reader.read_bytes(frame_size - (5 + description.size()))
         return cls(image_format,
                    picture_type,
@@ -854,8 +863,8 @@ class ID3v22_PIC_Frame(Image):
                    data)
 
     def build(self, writer):
-        writer.build("8u 3b 8u", ({'latin-1':0,
-                                   'ucs2':1}[self.pic_description.encoding],
+        writer.build("8u 3b 8u", ({'latin-1': 0,
+                                   'ucs2': 1}[self.pic_description.encoding],
                                   self.pic_format,
                                   self.pic_type))
         self.pic_description.build(writer)
@@ -878,11 +887,11 @@ class ID3v22_PIC_Frame(Image):
                                  u"image/gif": u"GIF",
                                  u"image/tiff": u"TIF"}.get(image.mime_type,
                                                             'UNK'),
-                   picture_type={0:3,                   #front cover
-                                 1:4,                   #back cover
-                                 2:5,                   #leaflet page
-                                 3:6,                   #media
-                                 }.get(image.type, 0),  #other
+                   picture_type={0: 3,                   # front cover
+                                 1: 4,                   # back cover
+                                 2: 5,                   # leaflet page
+                                 3: 6,                   # media
+                                 }.get(image.type, 0),   # other
                    description=description,
                    data=image.data)
 
@@ -1335,11 +1344,11 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
 
     def __getattr__(self, attr):
         if (attr == 'type'):
-            return {3:0,                    #front cover
-                    4:1,                    #back cover
-                    5:2,                    #leaflet page
-                    6:3                     #media
-                    }.get(self.pic_type, 4) #other
+            return {3: 0,                    # front cover
+                    4: 1,                    # back cover
+                    5: 2,                    # leaflet page
+                    6: 3                     # media
+                    }.get(self.pic_type, 4)  # other
         elif (attr == 'description'):
             return unicode(self.pic_description)
         elif (attr == 'mime_type'):
@@ -1349,11 +1358,11 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
 
     def __setattr__(self, attr, value):
         if (attr == 'type'):
-            self.__dict__["pic_type"] = {0:3,            #front cover
-                                         1:4,            #back cover
-                                         2:5,            #leaflet page
-                                         3:6,            #media
-                                         }.get(value, 0) #other
+            self.__dict__["pic_type"] = {0: 3,            # front cover
+                                         1: 4,            # back cover
+                                         2: 5,            # leaflet page
+                                         3: 6,            # media
+                                         }.get(value, 0)  # other
         elif (attr == 'description'):
             if (is_latin_1(value)):
                 self.__dict__["pic_description"] = C_string('latin-1', value)
@@ -1369,7 +1378,8 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
         encoding = reader.read(8)
         mime_type = C_string.parse('ascii', reader)
         picture_type = reader.read(8)
-        description = C_string.parse({0:'latin-1', 1:'ucs2'}[encoding], reader)
+        description = C_string.parse({0: 'latin-1',
+                                      1: 'ucs2'}[encoding], reader)
         data = reader.read_bytes(frame_size - (1 +
                                                mime_type.size() +
                                                1 +
@@ -1378,7 +1388,8 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
         return cls(mime_type, picture_type, description, data)
 
     def build(self, writer):
-        writer.write(8, {'latin-1':0, 'ucs2':1}[self.pic_description.encoding])
+        writer.write(8, {'latin-1': 0,
+                         'ucs2': 1}[self.pic_description.encoding])
         self.pic_mime_type.build(writer)
         writer.write(8, self.pic_type)
         self.pic_description.build(writer)
@@ -1399,11 +1410,11 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
             description = C_string('ucs2', image.description)
 
         return cls(mime_type=C_string('ascii', image.mime_type),
-                   picture_type={0:3,                   #front cover
-                                 1:4,                   #back cover
-                                 2:5,                   #leaflet page
-                                 3:6,                   #media
-                                 }.get(image.type, 0),  #other
+                   picture_type={0: 3,                   # front cover
+                                 1: 4,                   # back cover
+                                 2: 5,                   # leaflet page
+                                 3: 6,                   # media
+                                 }.get(image.type, 0),   # other
                    description=description,
                    data=image.data)
 
@@ -1446,10 +1457,10 @@ class ID3v23_COMM_Frame(ID3v22_COM_Frame):
 
     def raw_info(self):
         return u"COMM = (%s, %s, \"%s\") %s" % \
-            ({0:u'Latin-1', 1:'UCS-2'}[self.encoding],
+            ({0: u'Latin-1', 1: 'UCS-2'}[self.encoding],
              self.language.decode('ascii', 'replace'),
              self.short_description,
-             self.data.decode({0:'latin-1', 1:'ucs2'}[self.encoding]))
+             self.data.decode({0: 'latin-1', 1: 'ucs2'}[self.encoding]))
 
 
 class ID3v23Comment(ID3v22Comment):
@@ -1543,7 +1554,8 @@ class ID3v23Comment(ID3v22Comment):
 
         writer.build("3b 8u 8u 8u", ("ID3", 0x03, 0x00, 0x00))
         encode_syncsafe32(writer,
-                          reduce(add, [10 + frame.size() for frame in self], 0))
+                          reduce(add,
+                                 [10 + frame.size() for frame in self], 0))
 
         for frame in self:
             writer.build("4b 32u 16u", (frame.id, frame.size(), 0))
@@ -1555,8 +1567,6 @@ class ID3v23Comment(ID3v22Comment):
         from operator import add
 
         return reduce(add, [10 + frame.size() for frame in self], 10)
-
-
 
 
 ############################################################
@@ -1584,17 +1594,17 @@ class ID3v24_T___Frame(ID3v23_T___Frame):
 
     def __unicode__(self):
         return self.data.decode(
-            {0:u"latin-1",
-             1:u"utf-16",
-             2:u"utf-16BE",
-             3:u"utf-8"}[self.encoding], 'replace').split(unichr(0), 1)[0]
+            {0: u"latin-1",
+             1: u"utf-16",
+             2: u"utf-16BE",
+             3: u"utf-8"}[self.encoding], 'replace').split(unichr(0), 1)[0]
 
     def raw_info(self):
         return u"%s = (%s) %s" % (self.id.decode('ascii'),
-                                  {0:u"Latin-1",
-                                   1:u"UTF-16",
-                                   2:u"UTF-16BE",
-                                   3:u"UTF-8"}[self.encoding],
+                                  {0: u"Latin-1",
+                                   1: u"UTF-16",
+                                   2: u"UTF-16BE",
+                                   3: u"UTF-8"}[self.encoding],
                                   unicode(self))
 
     @classmethod
@@ -1615,19 +1625,19 @@ class ID3v24_TXXX_Frame(ID3v23_TXXX_Frame):
     def raw_info(self):
         return u"%s = (%s, \"%s\") %s" % \
             (self.id,
-             {0:u"Latin-1",
-              1:u"UTF-16",
-              2:u"UTF-16BE",
-              3:u"UTF-8"}[self.encoding],
+             {0: u"Latin-1",
+              1: u"UTF-16",
+              2: u"UTF-16BE",
+              3: u"UTF-8"}[self.encoding],
              self.description,
              unicode(self))
 
     def __unicode__(self):
         return self.data.decode(
-            {0:u"latin-1",
-             1:u"utf-16",
-             2:u"utf-16BE",
-             3:u"utf-8"}[self.encoding], 'replace').split(unichr(0), 1)[0]
+            {0: u"latin-1",
+             1: u"utf-16",
+             2: u"utf-16BE",
+             3: u"utf-8"}[self.encoding], 'replace').split(unichr(0), 1)[0]
 
     @classmethod
     def parse(cls, frame_id, frame_size, reader):
@@ -1635,10 +1645,10 @@ class ID3v24_TXXX_Frame(ID3v23_TXXX_Frame):
         of the remaining frame data, returns a parsed text frame"""
 
         encoding = reader.read(8)
-        description = C_string.parse({0:"latin-1",
-                                      1:"utf-16",
-                                      2:"utf-16be",
-                                      3:"utf-8"}[encoding],
+        description = C_string.parse({0: "latin-1",
+                                      1: "utf-16",
+                                      2: "utf-16be",
+                                      3: "utf-8"}[encoding],
                                      reader)
         data = reader.read_bytes(frame_size - 1 - description.size())
 
@@ -1653,11 +1663,11 @@ class ID3v24_APIC_Frame(ID3v23_APIC_Frame):
 
     def __setattr__(self, attr, value):
         if (attr == 'type'):
-            self.__dict__["pic_type"] = {0:3,            #front cover
-                                         1:4,            #back cover
-                                         2:5,            #leaflet page
-                                         3:6,            #media
-                                         }.get(value, 0) #other
+            self.__dict__["pic_type"] = {0: 3,            # front cover
+                                         1: 4,            # back cover
+                                         2: 5,            # leaflet page
+                                         3: 6,            # media
+                                         }.get(value, 0)  # other
         elif (attr == 'description'):
             if (is_latin_1(value)):
                 self.__dict__["pic_description"] = C_string('latin-1', value)
@@ -1673,10 +1683,10 @@ class ID3v24_APIC_Frame(ID3v23_APIC_Frame):
         encoding = reader.read(8)
         mime_type = C_string.parse('ascii', reader)
         picture_type = reader.read(8)
-        description = C_string.parse({0:'latin-1',
-                                      1:'utf-16',
-                                      2:'utf-16be',
-                                      3:'utf-8'}[encoding], reader)
+        description = C_string.parse({0: 'latin-1',
+                                      1: 'utf-16',
+                                      2: 'utf-16be',
+                                      3: 'utf-8'}[encoding], reader)
         data = reader.read_bytes(frame_size - (1 +
                                                mime_type.size() +
                                                1 +
@@ -1685,10 +1695,10 @@ class ID3v24_APIC_Frame(ID3v23_APIC_Frame):
         return cls(mime_type, picture_type, description, data)
 
     def build(self, writer):
-        writer.write(8, {'latin-1':0,
-                         'utf-16':1,
-                         'utf-16be':2,
-                         'utf-8':3}[self.pic_description.encoding])
+        writer.write(8, {'latin-1': 0,
+                         'utf-16': 1,
+                         'utf-16be': 2,
+                         'utf-8': 3}[self.pic_description.encoding])
         self.pic_mime_type.build(writer)
         writer.write(8, self.pic_type)
         self.pic_description.build(writer)
@@ -1702,11 +1712,11 @@ class ID3v24_APIC_Frame(ID3v23_APIC_Frame):
             description = C_string('utf-8', image.description)
 
         return cls(mime_type=C_string('ascii', image.mime_type),
-                   picture_type={0:3,                   #front cover
-                                 1:4,                   #back cover
-                                 2:5,                   #leaflet page
-                                 3:6,                   #media
-                                 }.get(image.type, 0),  #other
+                   picture_type={0: 3,                   # front cover
+                                 1: 4,                   # back cover
+                                 2: 5,                   # leaflet page
+                                 3: 6,                   # media
+                                 }.get(image.type, 0),   # other
                    description=description,
                    data=image.data)
 
@@ -1741,10 +1751,10 @@ class ID3v24_WXXX_Frame(ID3v23_WXXX_Frame):
     def raw_info(self):
         return u"%s = (%s, \"%s\") %s" % \
             (self.id,
-             {0:u'Latin-1',
-              1:'UTF-16',
-              2:'UTF-16BE',
-              3:'UTF-8'}[self.encoding],
+             {0: u'Latin-1',
+              1: u'UTF-16',
+              2: u'UTF-16BE',
+              3: u'UTF-8'}[self.encoding],
              self.description,
              self.data.decode('ascii', 'replace'))
 
@@ -1754,10 +1764,10 @@ class ID3v24_WXXX_Frame(ID3v23_WXXX_Frame):
         of the remaining frame data, returns a parsed text frame"""
 
         encoding = reader.read(8)
-        description = C_string.parse({0:'latin-1',
-                                      1:'utf-16',
-                                      2:'utf-16be',
-                                      3:'utf-8'}[encoding],
+        description = C_string.parse({0: 'latin-1',
+                                      1: 'utf-16',
+                                      2: 'utf-16be',
+                                      3: 'utf-8'}[encoding],
                                      reader)
         data = reader.read_bytes(frame_size - 1 - description.size())
 
@@ -1771,23 +1781,23 @@ class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
              repr(self.short_description), repr(self.data))
 
     def __unicode__(self):
-        return self.data.decode({0:'latin-1',
-                                 1:'utf-16',
-                                 2:'utf-16be',
-                                 3:'utf-8'}[self.encoding], 'replace')
+        return self.data.decode({0: 'latin-1',
+                                 1: 'utf-16',
+                                 2: 'utf-16be',
+                                 3: 'utf-8'}[self.encoding], 'replace')
 
     def raw_info(self):
         return u"COMM = (%s, %s, \"%s\") %s" % \
-            ({0:u'Latin-1',
-              1:'UTF-16',
-              2:'UTF-16BE',
-              3:'UTF-8'}[self.encoding],
+            ({0: u'Latin-1',
+              1: u'UTF-16',
+              2: u'UTF-16BE',
+              3: u'UTF-8'}[self.encoding],
              self.language.decode('ascii', 'replace'),
              self.short_description,
-             self.data.decode({0:'latin-1',
-                               1:'utf-16',
-                               2:'utf-16be',
-                               3:'utf-8'}[self.encoding]))
+             self.data.decode({0: 'latin-1',
+                               1: 'utf-16',
+                               2: 'utf-16be',
+                               3: 'utf-8'}[self.encoding]))
 
     @classmethod
     def parse(cls, frame_id, frame_size, reader):
@@ -1795,10 +1805,10 @@ class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
         of the remaining frame data, returns a parsed ID3v22_COM_Frame"""
 
         (encoding, language) = reader.parse("8u 3b")
-        short_description = C_string.parse({0:'latin-1',
-                                            1:'utf-16',
-                                            2:'utf-16be',
-                                            3:'utf-8'}[encoding],
+        short_description = C_string.parse({0: 'latin-1',
+                                            1: 'utf-16',
+                                            2: 'utf-16be',
+                                            3: 'utf-8'}[encoding],
                                            reader)
         data = reader.read_bytes(frame_size - (4 + short_description.size()))
 
@@ -1819,17 +1829,18 @@ class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
         fix text will be appended to fixes_performed, if necessary"""
 
         field = self.id.decode('ascii')
-        text_encoding = {0:'latin-1',
-                         1:'utf-16',
-                         2:'utf-16be',
-                         3:'utf-8'}
+        text_encoding = {0: 'latin-1',
+                         1: 'utf-16',
+                         2: 'utf-16be',
+                         3: 'utf-8'}
 
         value = self.data.decode(text_encoding[self.encoding], 'replace')
 
         #check for an empty tag
         if (len(value.strip()) == 0):
             fixes_performed.append(
-                u"removed empty field %(field)s" % {"field":field})
+                u"removed empty field %(field)s" %
+                {"field": field})
             return None
 
         #check trailing whitespace
@@ -1837,14 +1848,14 @@ class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
         if (fix1 != value):
             fixes_performed.append(
                 u"removed trailing whitespace from %(field)s" %
-                {"field":field})
+                {"field": field})
 
         #check leading whitespace
         fix2 = fix1.lstrip()
         if (fix2 != fix1):
             fixes_performed.append(
                 u"removed leading whitespace from %(field)s" %
-                {"field":field})
+                {"field": field})
 
         #stripping whitespace shouldn't alter text/description encoding
 
@@ -1929,7 +1940,8 @@ class ID3v24Comment(ID3v23Comment):
 
         writer.build("3b 8u 8u 8u", ("ID3", 0x04, 0x00, 0x00))
         encode_syncsafe32(writer,
-                          reduce(add, [10 + frame.size() for frame in self], 0))
+                          reduce(add, [10 + frame.size() for frame in self],
+                                 0))
 
         for frame in self:
             writer.write_bytes(frame.id)
@@ -1943,7 +1955,6 @@ class ID3v24Comment(ID3v23Comment):
         from operator import add
 
         return reduce(add, [10 + frame.size() for frame in self], 10)
-
 
 
 ID3v2Comment = ID3v22Comment

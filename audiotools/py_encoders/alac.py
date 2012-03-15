@@ -22,6 +22,7 @@ from audiotools.bitstream import BitstreamRecorder
 from audiotools.bitstream import BitstreamAccumulator
 from audiotools import BufferedPCMReader
 
+
 class Encoding_Options:
     def __init__(self, block_size,
                  initial_history, history_multiplier, maximum_K,
@@ -187,14 +188,14 @@ def encode_frame(writer, pcmreader, options, channels):
 
 
 def encode_uncompressed_frame(writer, pcmreader, options, channels):
-    writer.write(16, 0)                           #unusued
-    if (len(channels[0]) == options.block_size):  #has block size
+    writer.write(16, 0)                           # unusued
+    if (len(channels[0]) == options.block_size):  # has block size
         writer.write(1, 0)
     else:
         writer.write(1, 1)
-    writer.write(2, 0)                            #no uncompressed LSBs
-    writer.write(1, 1)                            #not compressed
-    if (len(channels[0]) != options.block_size):  #block size
+    writer.write(2, 0)                            # no uncompressed LSBs
+    writer.write(1, 1)                            # not compressed
+    if (len(channels[0]) != options.block_size):  # block size
         writer.write(32, len(channels[0]))
 
     #write out uncompressed samples
@@ -258,17 +259,17 @@ def encode_non_interlaced_frame(writer, pcmreader, options,
                                 uncompressed_LSBs, LSBs, channels):
     assert(len(channels) == 1)
 
-    writer.write(16, 0)                           #unused
-    if (len(channels[0]) != options.block_size):  #has block size
+    writer.write(16, 0)                           # unused
+    if (len(channels[0]) != options.block_size):  # has block size
         writer.write(1, 1)
     else:
         writer.write(1, 0)
-    writer.write(2, uncompressed_LSBs)            #uncompressed LSBs
-    writer.write(1, 0)                            #is compressed
-    if (len(channels[0]) != options.block_size):  #block size
+    writer.write(2, uncompressed_LSBs)            # uncompressed LSBs
+    writer.write(1, 0)                            # is compressed
+    if (len(channels[0]) != options.block_size):  # block size
         writer.write(32, len(channels[0]))
-    writer.write(8, 0)                            #interlacing shift
-    writer.write(8, 0)                            #interlacing leftweight
+    writer.write(8, 0)                            # interlacing shift
+    writer.write(8, 0)                            # interlacing leftweight
 
     sample_size = pcmreader.bits_per_sample - (uncompressed_LSBs * 8)
 
@@ -289,14 +290,14 @@ def encode_interlaced_frame(writer, pcmreader, options,
                             channels):
     assert(len(channels) == 2)
 
-    writer.write(16, 0)                           #unused
-    if (len(channels[0]) != options.block_size):  #has block size
+    writer.write(16, 0)                           # unused
+    if (len(channels[0]) != options.block_size):  # has block size
         writer.write(1, 1)
     else:
         writer.write(1, 0)
-    writer.write(2, uncompressed_LSBs)            #uncompressed LSBs
-    writer.write(1, 0)                            #is compressed
-    if (len(channels[0]) != options.block_size):  #block size
+    writer.write(2, uncompressed_LSBs)            # uncompressed LSBs
+    writer.write(1, 0)                            # is compressed
+    if (len(channels[0]) != options.block_size):  # block size
         writer.write(32, len(channels[0]))
     writer.write(8, interlacing_shift)
     writer.write(8, interlacing_leftweight)
@@ -347,12 +348,12 @@ def correlate_channels(channel0, channel1,
 
 
 def calculate_lpc_coefficients(pcmreader, options, sample_size, channel):
-    windowed = [s * t for s,t in zip(channel,
-                                     tukey_window(len(channel), 0.5))]
+    windowed = [s * t for s, t in zip(channel,
+                                      tukey_window(len(channel), 0.5))]
 
-    autocorrelated = [sum([s1 * s2 for s1,s2 in zip(windowed,
-                                                    windowed[lag:])])
-                        for lag in xrange(0,9)]
+    autocorrelated = [sum([s1 * s2 for s1, s2 in zip(windowed,
+                                                     windowed[lag:])])
+                        for lag in xrange(0, 9)]
 
     assert(len(autocorrelated) == 9)
 
@@ -386,7 +387,7 @@ def calculate_lpc_coefficients(pcmreader, options, sample_size, channel):
 
 
 def tukey_window(sample_count, alpha):
-    from math import cos,pi
+    from math import cos, pi
 
     window1 = (alpha * (sample_count - 1)) / 2
     window2 = (sample_count - 1) * (1 - (alpha / 2))
@@ -414,11 +415,11 @@ def compute_lp_coefficients(autocorrelation):
 
     for i in xrange(1, maximum_lpc_order):
         ki = (autocorrelation[i + 1] -
-              sum([x * y for (x,y) in
+              sum([x * y for (x, y) in
                    zip(lp_coefficients[i - 1],
                        reversed(autocorrelation[1:i + 1]))])) / error[i - 1]
 
-        lp_coefficients.append([c1 - (ki * c2) for (c1,c2) in
+        lp_coefficients.append([c1 - (ki * c2) for (c1, c2) in
                                 zip(lp_coefficients[i - 1],
                                    reversed(lp_coefficients[i - 1]))] + [ki])
 
@@ -433,7 +434,7 @@ def quantize_coefficients(lp_coefficients, order):
     error = 0.0
     qlp_coeffs = []
 
-    for (i,lp_coeff) in enumerate(lp_coefficients[order - 1]):
+    for (i, lp_coeff) in enumerate(lp_coefficients[order - 1]):
         error += (lp_coeff * 2 ** 9)
         qlp_coeffs.append(min(max(int(round(error)), qlp_min), qlp_max))
         error -= qlp_coeffs[-1]
@@ -459,7 +460,7 @@ def compute_residuals(qlp_coefficients, channel):
     for i in xrange(len(qlp_coefficients) + 1, len(channel)):
         base_sample = channel[i - len(qlp_coefficients) - 1]
 
-        lpc_sum = sum([(c * (s - base_sample)) for (c,s) in
+        lpc_sum = sum([(c * (s - base_sample)) for (c, s) in
                        zip(qlp_coefficients,
                            reversed(channel[i - len(qlp_coefficients):i]))])
 
@@ -502,9 +503,9 @@ def encode_residuals(writer, options, sample_size, residuals):
     i = 0
     while (i < len(residuals)):
         if (residuals[i] >= 0):
-            unsigned = residuals[i] * 2;
+            unsigned = residuals[i] * 2
         else:
-            unsigned = (-residuals[i] * 2) - 1;
+            unsigned = (-residuals[i] * 2) - 1
 
         if (unsigned >= 2 ** sample_size):
             raise ResidualOverflow()
@@ -552,9 +553,9 @@ def encode_residual(writer, unsigned, k, sample_size):
 
 
 def write_subframe_header(writer, QLP_coefficients):
-    writer.write(4, 0)                     #prediction type
+    writer.write(4, 0)                      # prediction type
     writer.write(4, QLP_SHIFT_NEEDED)
-    writer.write(3, 4)                     #Rice modifier
-    writer.write(5, len(QLP_coefficients)) #coeff count
+    writer.write(3, 4)                      # Rice modifier
+    writer.write(5, len(QLP_coefficients))  # coeff count
     for coeff in QLP_coefficients:
         writer.write_signed(16, coeff)
