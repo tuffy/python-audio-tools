@@ -541,15 +541,20 @@ class AiffAudio(AiffContainer):
                 raise EncodingError(err.error_message)
             f.flush()
 
-            #go back to the beginning and rewrite the header
-            f.seek(0, 0)
-            aiff.build("4b 32u 4b", ("FORM", total_size, "AIFF"))
-            aiff.build("4b 32u", ("COMM", 0x12))
-            aiff.build("16u 32u 16u", (pcmreader.channels,
-                                       total_pcm_frames,
-                                       pcmreader.bits_per_sample))
-            build_ieee_extended(aiff, pcmreader.sample_rate)
-            aiff.build("4b 32u", ("SSND", data_size))
+            if (total_size < (2 ** 32)):
+                #go back to the beginning and rewrite the header
+                f.seek(0, 0)
+                aiff.build("4b 32u 4b", ("FORM", total_size, "AIFF"))
+                aiff.build("4b 32u", ("COMM", 0x12))
+                aiff.build("16u 32u 16u", (pcmreader.channels,
+                                           total_pcm_frames,
+                                           pcmreader.bits_per_sample))
+                build_ieee_extended(aiff, pcmreader.sample_rate)
+                aiff.build("4b 32u", ("SSND", data_size))
+            else:
+                os.unlink(filename)
+                raise EncodingError("PCM data too large for aiff file")
+
         finally:
             f.close()
 

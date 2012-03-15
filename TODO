@@ -4570,6 +4570,19 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] FlacAudio
    - [X] OggFlacAudio
    - [X] WavPackAudio
+** DONE Ensure overly-long files are handled correctly
+   That is, anything larger than a .wav can typically handle
+*** DONE wave should fail with error
+*** DONE aiff should fail with error
+*** DONE au should fail with error
+*** DONE flac should work
+*** DONE ogg flac should work
+*** DONE wavpack should work
+*** DONE alac should work
+*** DONE shorten shouldn't begin
+    requires verbatim wave or aiff chunks
+    which can't be created because
+    the amount of PCM data is too large
 ** TODO Fix FLAC seektable generation
    Ensure new seektables are aligned properly.
 *** DONE Ensure proper seektable written on from_pcm
@@ -5184,16 +5197,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE Add unit test to bitstream.c
 **** DONE Add unit test to Python side
 ** TODO Fix FLAC embedded cuesheets
-** TODO Ensure overly-long files are handled correctly
-   That is, anything larger than a .wav can typically handle
-*** DONE wave should fail with error
-*** TODO aiff should fail with error
-*** TODO au should fail with error?
-*** DONE flac should work
-*** DONE ogg flac should work
-*** DONE wavpack should work
-*** DONE alac should work
-*** TODO shorten should work
 ** TODO Ensure > 2GB files work correctly
 *** TODO flac should work
 *** TODO ogg flac should work

@@ -22,7 +22,7 @@ from audiotools import (AudioFile, InvalidFile, PCMReader,
                         transfer_data, InvalidFormat,
                         __capped_stream_reader__, BUFFER_SIZE,
                         FILENAME_FORMAT, EncodingError, DecodingError,
-                        ChannelMask)
+                        ChannelMask, os)
 import audiotools.pcm
 import gettext
 
@@ -227,11 +227,15 @@ class AuAudio(AudioFile):
                 cls.__unlink__(filename)
                 raise err
 
-            #rewind and write a complete header
-            f.seek(0, 0)
-            au.build("4b 32u 32u 32u 32u 32u",
-                     (".snd", 24, data_size, encoding_format,
-                      pcmreader.sample_rate, pcmreader.channels))
+            if (data_size < 2 ** 32):
+                #rewind and write a complete header
+                f.seek(0, 0)
+                au.build("4b 32u 32u 32u 32u 32u",
+                         (".snd", 24, data_size, encoding_format,
+                          pcmreader.sample_rate, pcmreader.channels))
+            else:
+                os.unlink(filename)
+                raise EncodingError("PCM data too large for Sun AU file")
         finally:
             f.close()
 
