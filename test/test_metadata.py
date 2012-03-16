@@ -1996,6 +1996,58 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
         self.assertEqual(image.color_depth, 8)
         self.assertEqual(image.color_count, 1)
 
+        #check seektable with empty seekpoints
+        metadata = audiotools.FlacMetaData(
+            [audiotools.Flac_SEEKTABLE([(0, 10, 10),
+                                        (10, 20, 0),
+                                        (10, 20, 0),
+                                        (10, 20, 0),
+                                        (10, 20, 20)])])
+        results = []
+        cleaned = metadata.clean(results)
+        self.assertEqual(results,
+                         [_(u"removed empty seekpoints from seektable")])
+        self.assertEqual(
+            cleaned.get_block(audiotools.Flac_SEEKTABLE.BLOCK_ID),
+            audiotools.Flac_SEEKTABLE([(0, 10, 10),
+                                       (10, 20, 20)]))
+
+        #check seektable with duplicate seekpoints
+        metadata = audiotools.FlacMetaData(
+            [audiotools.Flac_SEEKTABLE([(0, 0, 10),
+                                        (2, 20, 10),
+                                        (2, 20, 10),
+                                        (2, 20, 10),
+                                        (4, 40, 10)])])
+        results = []
+        cleaned = metadata.clean(results)
+        self.assertEqual(results,
+                         [_(u"reordered seektable to be in ascending order")])
+        self.assertEqual(
+            cleaned.get_block(audiotools.Flac_SEEKTABLE.BLOCK_ID),
+            audiotools.Flac_SEEKTABLE([(0, 0, 10),
+                                       (2, 20, 10),
+                                       (4, 40, 10)]))
+
+        #check seektable with mis-ordered seekpoints
+        metadata = audiotools.FlacMetaData(
+            [audiotools.Flac_SEEKTABLE([(0, 0, 10),
+                                        (6, 60, 10),
+                                        (4, 40, 10),
+                                        (2, 20, 10),
+                                        (8, 80, 10)])])
+        results = []
+        cleaned = metadata.clean(results)
+        self.assertEqual(results,
+                         [_(u"reordered seektable to be in ascending order")])
+        self.assertEqual(
+            cleaned.get_block(audiotools.Flac_SEEKTABLE.BLOCK_ID),
+            audiotools.Flac_SEEKTABLE([(0, 0, 10),
+                                       (2, 20, 10),
+                                       (4, 40, 10),
+                                       (6, 60, 10),
+                                       (8, 80, 10)]))
+
         #check that cleanup doesn't disturb other metadata blocks
         #FIXME
         metadata = audiotools.FlacMetaData([

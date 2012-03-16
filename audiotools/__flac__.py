@@ -362,19 +362,21 @@ class Flac_STREAMINFO:
                                self.total_samples,
                                self.md5sum)
 
-    def __eq__(self, metadata):
-        from operator import and_
-
-        return reduce(and_, [getattr(self, attr) == getattr(metadata, attr)
-                             for attr in ["minimum_block_size",
-                                          "maximum_block_size",
-                                          "minimum_frame_size",
-                                          "maximum_frame_size",
-                                          "sample_rate",
-                                          "channels",
-                                          "bits_per_sample",
-                                          "total_samples",
-                                          "md5sum"]])
+    def __eq__(self, block):
+        for attr in ["minimum_block_size",
+                     "maximum_block_size",
+                     "minimum_frame_size",
+                     "maximum_frame_size",
+                     "sample_rate",
+                     "channels",
+                     "bits_per_sample",
+                     "total_samples",
+                     "md5sum"]:
+            if ((not hasattr(block, attr)) or
+                (getattr(self, attr) != getattr(block, attr))):
+                return False
+        else:
+            return True
 
     def __repr__(self):
         return ("Flac_STREAMINFO(%s)" %
@@ -702,6 +704,14 @@ class Flac_APPLICATION:
         self.application_id = application_id
         self.data = data
 
+    def __eq__(self, block):
+        for attr in ["application_id", "data"]:
+            if ((not hasattr(block, attr)) or
+                (getattr(self, attr) != getattr(block, attr))):
+                return False
+        else:
+            return True
+
     def copy(self):
         return Flac_APPLICATION(self.application_id,
                                 self.data)
@@ -738,6 +748,12 @@ class Flac_SEEKTABLE:
         """seekpoints is a list of
         (PCM frame offset, byte offset, PCM frame count) tuples"""
         self.seekpoints = seekpoints
+
+    def __eq__(self, block):
+        if (hasattr(block, "seekpoints")):
+            return self.seekpoints == block.seekpoints
+        else:
+            return False
 
     def copy(self):
         return Flac_SEEKTABLE(self.seekpoints[:])
@@ -779,27 +795,14 @@ class Flac_SEEKTABLE:
             fixes_performed.append(
                 _(u"removed empty seekpoints from seektable"))
 
-        reordered = False
-        if (len(nonempty_points) > 0):
-            reordered_points = [nonempty_points[0]]
-            for (frame_offset,
-                 byte_offset,
-                 frame_count) in nonempty_points[1:]:
-                if ((frame_offset > reordered_points[-1][0]) and
-                    (byte_offset > reordered_points[-1][1])):
-                    reordered_points.append((frame_offset,
-                                             byte_offset,
-                                             frame_count))
-                else:
-                    reordered = True
-        else:
-            reordered_points = nonempty_points
+        ascending_order = list(set(nonempty_points))
+        ascending_order.sort()
 
-        if (reordered):
+        if (ascending_order != nonempty_points):
             fixes_performed.append(
                 _(u"reordered seektable to be in ascending order"))
 
-        return Flac_SEEKTABLE(reordered_points)
+        return Flac_SEEKTABLE(ascending_order)
 
 
 class Flac_CUESHEET:
@@ -818,15 +821,15 @@ class Flac_CUESHEET:
                              [track.copy() for track in self.tracks])
 
     def __eq__(self, cuesheet):
-        from operator import and_
-        try:
-            return reduce(and_, [getattr(self, attr) == getattr(cuesheet, attr)
-                                 for attr in ["catalog_number",
-                                              "lead_in_samples",
-                                              "is_cdda",
-                                              "tracks"]])
-        except AttributeError:
-            return False
+        for attr in ["catalog_number",
+                     "lead_in_samples",
+                     "is_cdda",
+                     "tracks"]:
+            if ((not hasattr(block, attr)) or
+                (getattr(self, attr) != getattr(block, attr))):
+                return False
+        else:
+            return True
 
     def __repr__(self):
         return ("Flac_CUESHEET(%s)" %
@@ -1004,17 +1007,17 @@ class Flac_CUESHEET_track:
                 (self.number, self.offset)
 
     def __eq__(self, track):
-        from operator import and_
-        try:
-            return reduce(and_, [getattr(self, attr) == getattr(track, attr)
-                                 for attr in ["offset",
-                                              "number",
-                                              "ISRC",
-                                              "track_type",
-                                              "pre_emphasis",
-                                              "index_points"]])
-        except AttributeError:
-            return False
+        for attr in ["offset",
+                     "number",
+                     "ISRC",
+                     "track_type",
+                     "pre_emphasis",
+                     "index_points"]:
+            if ((not hasattr(block, attr)) or
+                (getattr(self, attr) != getattr(block, attr))):
+                return False
+        else:
+            return True
 
     @classmethod
     def parse(cls, reader):

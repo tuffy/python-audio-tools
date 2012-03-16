@@ -4659,7 +4659,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Double-check reference docs one last time
 *** DONE Ensure pages break correctly in letter mode
 *** DONE Ensure pages break correctly in A4 mode
-** TODO Fix FLAC seektable generation
+** DONE Fix FLAC seektable generation
    Ensure new seektables are aligned properly.
 *** DONE Ensure proper seektable written on from_pcm
 *** DONE Add .offsets() method to FlacDecoder
@@ -4667,7 +4667,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     and returns a list of absolute file offsets of all frames.
 *** DONE Add method to generate Flac_SEEKTABLE from offset list
 *** DONE Add tracklint check/fix for mis-aligned seektables
-*** TODO Add unit tests for seektable errors
+*** DONE Add unit tests for seektable errors
+    - [X] empty seekpoints
+    - [X] mis-ordered seekpoints
+    - [X] bad seekpoint destinations
+** TODO handle AIFF offset/block size in SSND chunk
 ** TODO Remove Construct module
    Convert all usage of Construct to BitstreamReader/BitstreamWriter.
    Since this is unlikely to be updated for Python 3,
@@ -4806,7 +4810,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] test_blocksizes
 **** DONE WavpackFileTest
      - [X] test_blocksizes
-** TODO handle AIFF offset/block size in SSND chunk
 ** TODO Shift lint to the AudioFile and MetaData subclasses
    Instead of having tracklint have to perform lots of built-in tests,
    it would be better to have clean() functions added to the classes

@@ -3381,6 +3381,26 @@ class FlacFileTest(TestForeignAiffChunks,
             finally:
                 temp.close()
 
+        #check bad seekpoint destinations
+        track = audiotools.open("flac-seektable.flac")
+        fixes = []
+        self.assertEqual(track.clean(fixes), None)
+        self.assertEqual(fixes, [_(u"fixed invalid SEEKTABLE")])
+        temp = tempfile.NamedTemporaryFile(suffix=".flac")
+        try:
+            fixes = []
+            track.clean(fixes, temp.name)
+            self.assertEqual(
+                fixes,
+                [_(u"fixed invalid SEEKTABLE")])
+            new_track = audiotools.open(temp.name)
+            fixes = []
+            new_track.clean(fixes, None)
+            self.assertEqual(fixes, [])
+        finally:
+            temp.close()
+
+
     @FORMAT_FLAC
     def test_nonmd5(self):
         flac = audiotools.open("flac-nonmd5.flac")
