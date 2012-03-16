@@ -28,7 +28,7 @@ from audiotools import (AudioFile, MetaData, InvalidFile, PCMReader,
                         Messenger, BufferedPCMReader, calculate_replay_gain,
                         ChannelMask, PCMReaderError, __default_quality__,
                         WaveContainer, AiffContainer, to_pcm_progress,
-                        image_metrics)
+                        image_metrics, RIFF_Chunk, PCMReaderProgress)
 from __vorbiscomment__ import *
 from __id3__ import skip_id3v2_comment
 
@@ -1673,14 +1673,9 @@ class FlacAudio(WaveContainer, AiffContainer):
             self.get_metadata().get_blocks(Flac_APPLICATION.BLOCK_ID)]
 
     def riff_wave_chunks(self, progress=None):
-        """Generate a set of (chunk_id, chunk_size, chunk_data) string tuples
+        """yields a set of RIFF_Chunk or RIFF_File_Chunk objects"""
 
-        Note that chunk_size is also a string
-        These are for use by WaveAudio.from_chunks
-        and are taken from "riff" APPLICATION blocks
-        or generated from our PCM data."""
-
-        from struct import pack
+        from struct import unpack
 
         for application_block in [
             block.data for block in
@@ -1691,27 +1686,20 @@ class FlacAudio(WaveContainer, AiffContainer):
                                                   application_block[4:8],
                                                   application_block[8:])
             if (chunk_id == 'RIFF'):
+                #skip 12 byte RIFF<size>WAVE header
                 continue
             elif (chunk_id == 'data'):
-                #FIXME - this is a lot more inefficient than it should be
-                data = cStringIO.StringIO()
-                pcm = to_pcm_progress(self, progress)
-                if (pcm.bits_per_sample > 8):
-                    transfer_framelist_data(pcm, data.write, True, False)
+                if (progress is not None):
+                    yield FLAC_Data_Chunk(
+                        self.__total_frames__,
+                        PCMReaderProgress(self.to_pcm(),
+                                          self.__total_frames__,
+                                          progress))
                 else:
-                    transfer_framelist_data(pcm, data.write, False, False)
-                pcm.close()
-                if (len(data.getvalue()) % 2):
-                    yield (chunk_id,
-                           pack("<I", len(data.getvalue())),
-                           data.getvalue() + chr(0))
-                else:
-                    yield (chunk_id,
-                           pack("<I", len(data.getvalue())),
-                           data.getvalue())
-                data.close()
+                    yield FLAC_Data_Chunk(self.__total_frames__, self.to_pcm())
             else:
-                yield (chunk_id, chunk_size, chunk_data)
+                chunk_size = unpack("<I", chunk_size)[0]
+                yield RIFF_Chunk(chunk_id, chunk_size, chunk_data[0:chunk_size])
 
     def to_wave(self, wave_filename, progress=None):
         """Writes the contents of this file to the given .wav filename string.
@@ -2278,6 +2266,51 @@ class FlacAudio(WaveContainer, AiffContainer):
                 return output_track
             finally:
                 input_f.close()
+
+
+class FLAC_Data_Chunk:
+    def __init__(self, total_frames, pcmreader):
+        self.id = "data"
+        self.__total_frames__ = total_frames
+        self.__pcmreader__ = pcmreader
+
+    def __repr__(self):
+        return "FLAC_Data_Chunk()"
+
+    def size(self):
+        """returns size of chunk in bytes
+        not including any spacer byte for odd-sized chunks"""
+
+        return (self.__total_frames__ *
+                self.__pcmreader__.channels *
+                (self.__pcmreader__.bits_per_sample / 8))
+
+    def verify(self):
+        return True
+
+    def write(self, f):
+        """writes the entire chunk to the given output file object
+        returns size of entire chunk (including header and spacer)
+        in bytes"""
+
+        from struct import pack
+
+        f.write(self.id)
+        f.write(pack("<I", self.size()))
+        bytes_written = 8
+        signed = (self.__pcmreader__.bits_per_sample > 8)
+        s = self.__pcmreader__.read(0x10000)
+        while (len(s) > 0):
+            b = s.to_bytes(False, signed)
+            f.write(b)
+            bytes_written += len(b)
+            s = self.__pcmreader__.read(0x10000)
+
+        if (bytes_written % 2):
+            f.write(chr(0))
+            bytes_written += 1
+
+        return bytes_written
 
 
 #######################

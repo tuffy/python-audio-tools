@@ -4364,15 +4364,6 @@ class WaveFileTest(TestForeignWaveChunks,
                                       audiotools.WaveAudio,
                                       temp.name)
 
-                #then, check that a truncated data chunk raises an exception
-                #at init-time
-                for i in xrange(fmt_size + 8, len(wav_data) - 1):
-                    temp.seek(0, 0)
-                    temp.write(wav_data[0:i])
-                    temp.flush()
-                    self.assertRaises(audiotools.InvalidFile,
-                                      audiotools.WaveAudio,
-                                      temp.name)
             finally:
                 temp.close()
 
@@ -4380,7 +4371,7 @@ class WaveFileTest(TestForeignWaveChunks,
         from struct import pack
 
         chunks = list(audiotools.open("wav-2ch.wav").chunks()) + \
-            [("fooz", pack("<I", 10), chr(0) * 10)]
+            [audiotools.RIFF_Chunk("fooz", 10, chr(0) * 10)]
         temp = tempfile.NamedTemporaryFile(suffix=".wav")
         try:
             audiotools.WaveAudio.wave_from_chunks(temp.name,
@@ -4393,10 +4384,91 @@ class WaveFileTest(TestForeignWaveChunks,
             temp.write("".join(wav_data))
             temp.flush()
             self.assertRaises(audiotools.InvalidFile,
-                              audiotools.open,
-                              temp.name)
+                              audiotools.open(temp.name).verify)
         finally:
             temp.close()
+
+        FMT = audiotools.RIFF_Chunk(
+            "fmt ",
+            16,
+            '\x01\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00')
+
+        DATA = audiotools.RIFF_Chunk(
+            "data",
+            26,
+            '\x00\x00\x01\x00\x02\x00\x03\x00\x02\x00\x01\x00\x00\x00\xff\xff\xfe\xff\xfd\xff\xfe\xff\xff\xff\x00\x00')
+
+        #test multiple fmt chunks
+        temp = tempfile.NamedTemporaryFile(suffix=".wav")
+        try:
+            for chunks in [[FMT, FMT, DATA],
+                           [FMT, DATA, FMT]]:
+                audiotools.WaveAudio.wave_from_chunks(temp.name, chunks)
+                self.assertRaises(
+                    audiotools.InvalidFile,
+                    audiotools.open(temp.name).verify)
+        finally:
+            temp.close()
+
+        #test multiple data chunks
+        temp = tempfile.NamedTemporaryFile(suffix=".wav")
+        try:
+            audiotools.WaveAudio.wave_from_chunks(temp.name, [FMT, DATA, DATA])
+            self.assertRaises(
+                audiotools.InvalidFile,
+                audiotools.open(temp.name).verify)
+        finally:
+            temp.close()
+
+        #test data chunk before fmt chunk
+        temp = tempfile.NamedTemporaryFile(suffix=".wav")
+        try:
+            audiotools.WaveAudio.wave_from_chunks(temp.name, [DATA, FMT])
+            self.assertRaises(
+                audiotools.InvalidFile,
+                audiotools.open(temp.name).verify)
+        finally:
+            temp.close()
+
+    @FORMAT_WAVE
+    def test_clean(self):
+        FMT = audiotools.RIFF_Chunk(
+            "fmt ",
+            16,
+            '\x01\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00')
+
+        DATA = audiotools.RIFF_Chunk(
+            "data",
+            26,
+            '\x00\x00\x01\x00\x02\x00\x03\x00\x02\x00\x01\x00\x00\x00\xff\xff\xfe\xff\xfd\xff\xfe\xff\xff\xff\x00\x00')
+
+        #test multiple fmt chunks
+        #test multiple data chunks
+        #test data chunk before fmt chunk
+        temp = tempfile.NamedTemporaryFile(suffix=".wav")
+        fixed = tempfile.NamedTemporaryFile(suffix=".wav")
+        try:
+            for chunks in [[FMT, FMT, DATA],
+                           [FMT, DATA, FMT],
+                           [FMT, DATA, DATA],
+                           [DATA, FMT],
+                           [DATA, FMT, FMT]]:
+                audiotools.WaveAudio.wave_from_chunks(temp.name, chunks)
+                fixes = []
+                wave = audiotools.open(temp.name).clean(fixes, fixed.name)
+                chunks = list(wave.chunks())
+                self.assertEquals([c.id for c in chunks],
+                                  [c.id for c in [FMT, DATA]])
+                self.assertEquals([c.__size__ for c in chunks],
+                                  [c.__size__ for c in [FMT, DATA]])
+                self.assertEquals([c.__data__ for c in chunks],
+                                  [c.__data__ for c in [FMT, DATA]])
+        finally:
+            temp.close()
+            fixed.close()
+
+        #test converting 24bps file to WAVEFORMATEXTENSIBLE
+        #FIXME
 
 
 class WavPackFileTest(TestForeignWaveChunks,

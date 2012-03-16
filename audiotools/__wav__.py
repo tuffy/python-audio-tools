@@ -26,6 +26,7 @@ from audiotools import (AudioFile, InvalidFile, ChannelMask, PCMReader,
                         EncodingError, DecodingError, UnsupportedChannelMask,
                         WaveContainer, to_pcm_progress)
 import os.path
+import struct
 import gettext
 from . import pcm
 
@@ -34,6 +35,103 @@ gettext.install("audiotools", unicode=True)
 #######################
 #RIFF WAVE
 #######################
+
+
+class RIFF_Chunk:
+    """a raw chunk of RIFF WAVE data"""
+
+    def __init__(self, chunk_id, chunk_size, chunk_data):
+        """chunk_id should be a binary string of ASCII
+        chunk_data should be a binary string of chunk data"""
+
+        #FIXME - check chunk_id's validity
+
+        self.id = chunk_id
+        self.__size__ = chunk_size
+        self.__data__ = chunk_data
+
+    def __repr__(self):
+        return "RIFF_Chunk(%s)" % (repr(self.id))
+
+    def size(self):
+        """returns size of chunk in bytes
+        not including any spacer byte for odd-sized chunks"""
+
+        return self.__size__
+
+    def verify(self):
+        return self.__size__ == len(self.__data__)
+
+    def write(self, f):
+        """writes the entire chunk to the given output file object
+        returns size of entire chunk (including header and spacer)
+        in bytes"""
+
+        f.write(self.id)
+        f.write(struct.pack("<I", self.__size__))
+        f.write(self.__data__)
+        if (self.__size__ % 2):
+            f.write(chr(0))
+            return 8 + self.__size__ + 1
+        else:
+            return 8 + self.__size__
+
+
+class RIFF_File_Chunk:
+    """a raw chunk of RIFF WAVE data taken from an existing file"""
+
+    def __init__(self, chunk_id, chunk_size, wav_file, chunk_data_offset):
+        """chunk_id should be a binary string of ASCII
+        chunk_size is the size of the chunk in bytes
+        (not counting any spacer byte)
+        wav_file is the file this chunk belongs to
+        chunk_data_offset is the offset to the chunk's data bytes
+        (not including the 8 byte header)"""
+
+        self.id = chunk_id
+        self.__size__ = chunk_size
+        self.__wav_file__ = wav_file
+        self.__offset__ = chunk_data_offset
+
+    def __repr__(self):
+        return "RIFF_File_Chunk(%s)" % (repr(self.id))
+
+    def size(self):
+        """returns size of chunk in bytes
+        not including any spacer byte for odd-sized chunks"""
+
+        return self.__size__
+
+    def verify(self):
+        self.__wav_file__.seek(self.__offset__)
+        to_read = self.__size__
+        while (to_read > 0):
+            s = self.__wav_file__.read(min(0x100000, to_read))
+            if (len(s) == 0):
+                return False
+            else:
+                to_read -= len(s)
+        return True
+
+    def write(self, f):
+        """writes the entire chunk to the given output file object
+        returns size of entire chunk (including header and spacer)
+        in bytes"""
+
+        f.write(self.id)
+        f.write(struct.pack("<I", self.__size__))
+        self.__wav_file__.seek(self.__offset__)
+        to_write = self.__size__
+        while (to_write > 0):
+            s = self.__wav_file__.read(min(0x100000, to_write))
+            f.write(s)
+            to_write -= len(s)
+
+        if (self.__size__ % 2):
+            f.write(chr(0))
+            return 8 + self.__size__ + 1
+        else:
+            return 8 + self.__size__
 
 
 def parse_fmt(fmt):
@@ -229,7 +327,7 @@ class WaveAudio(WaveContainer):
         self.__data_size__ = 0
         self.__channel_mask__ = ChannelMask(0)
 
-        self.__chunk_ids__ = []
+        fmt_read = data_read = False
 
         from .bitstream import BitstreamReader
 
@@ -248,9 +346,9 @@ class WaveAudio(WaveContainer):
                 else:
                     total_size -= 4
 
-                while (total_size > 0):
+                while ((total_size > 0) and
+                       ((not fmt_read) or (not data_read))):
                     (chunk_id, chunk_size) = wave_file.parse("4b 32u")
-                    self.__chunk_ids__.append(chunk_id)
 
                     if (not frozenset(chunk_id).issubset(
                             self.PRINTABLE_ASCII)):
@@ -264,10 +362,12 @@ class WaveAudio(WaveContainer):
                          self.__bits_per_sample__,
                          self.__channel_mask__) = parse_fmt(
                             wave_file.substream(chunk_size))
+                        fmt_read = True
                     elif (chunk_id == 'data'):
                         self.__data_size__ = chunk_size
-                        #fmt chunk should occur before data
-                        break
+                        data_read = True
+                        if (not fmt_read):
+                            wave_file.skip_bytes(chunk_size)
                     else:
                         wave_file.skip_bytes(chunk_size)
 
@@ -305,7 +405,7 @@ class WaveAudio(WaveContainer):
         conversion should be routed through .wav conversion
         to avoid losing those chunks."""
 
-        return set(['fmt ', 'data']) != set(self.__chunk_ids__)
+        return set(['fmt ', 'data']) != set([c.id for c in self.chunks()])
 
     def channel_mask(self):
         """Returns a ChannelMask object of this track's channel layout."""
@@ -645,79 +745,80 @@ class WaveAudio(WaveContainer):
         return AudioFile.track_name(file_path, track_metadata, format,
                                     suffix=cls.SUFFIX)
 
-    def chunk_ids(self):
-        """Returns a list of RIFF WAVE chunk ID strings."""
-
-        return self.__chunk_ids__[:]
-
     def chunks(self):
-        """yields (chunk_id, chunk_size, chunk_data) tuples
+        """yields a set of RIFF_Chunk or RIFF_File_Chunk objects"""
 
-        all fields are binary strings"""
-
-        from .bitstream import BitstreamReader
-        from struct import pack
-
-        wave_file = BitstreamReader(file(self.filename, 'rb'), 1)
+        wave_file = file(self.filename, "rb")
         try:
-            (riff, total_size, wave) = wave_file.parse("4b 32u 4b")
-            if (riff != 'RIFF'):
-                raise InvalidWave(_(u"Not a RIFF WAVE file"))
-            elif (wave != 'WAVE'):
+            (riff,
+             total_size,
+             wave) = struct.unpack("<4sI4s", wave_file.read(12))
+        except struct.error:
+            raise InvalidWave(_(u"Invalid RIFF WAVE file"))
+
+        if (riff != 'RIFF'):
+            raise InvalidWave(_(u"Not a RIFF WAVE file"))
+        elif (wave != 'WAVE'):
+            raise InvalidWave(_(u"Invalid RIFF WAVE file"))
+        else:
+            total_size -= 4
+
+        while (total_size > 0):
+            #read the chunk header and ensure its validity
+            try:
+                (chunk_id,
+                 chunk_size) = struct.unpack("<4sI", wave_file.read(8))
+            except struct.error:
                 raise InvalidWave(_(u"Invalid RIFF WAVE file"))
+            if (not frozenset(chunk_id).issubset(self.PRINTABLE_ASCII)):
+                raise InvalidWave(_(u"Invalid RIFF WAVE chunk ID"))
             else:
-                total_size -= 4
+                total_size -= 8
 
-            while (total_size > 0):
-                #read the chunk header and ensure its validity
-                (chunk_id, chunk_size) = wave_file.parse("4b 32u")
-                if (not frozenset(chunk_id).issubset(self.PRINTABLE_ASCII)):
-                    raise InvalidWave(_(u"Invalid RIFF WAVE chunk ID"))
-                else:
-                    total_size -= 8
+            #yield RIFF_Chunk or RIFF_File_Chunk depending on chunk size
+            if (chunk_size >= 0x100000):
+                #if chunk is too large, yield a File_Chunk
+                yield RIFF_File_Chunk(chunk_id, chunk_size,
+                                      wave_file, wave_file.tell())
+                wave_file.seek(chunk_size, 1)
+            else:
+                #otherwise, yield a raw data Chunk
+                yield RIFF_Chunk(chunk_id, chunk_size,
+                                 wave_file.read(chunk_size))
 
-                #yield the (chunk_id, chunk_size, chunk_data) strings
-                if (chunk_size % 2):
-                    yield (chunk_id,
-                           pack("<I", chunk_size),
-                           wave_file.read_bytes(chunk_size + 1))
-                    total_size -= (chunk_size + 1)
-                else:
-                    yield (chunk_id,
-                           pack("<I", chunk_size),
-                           wave_file.read_bytes(chunk_size))
-                    total_size -= chunk_size
+            if (chunk_size % 2):
+                if (len(wave_file.read(1)) < 1):
+                    raise InvalidWave(_(u"Invalid RIFF WAVE chunk"))
+                total_size -= (chunk_size + 1)
+            else:
+                total_size -= chunk_size
 
-        finally:
-            wave_file.close()
+        #note that we *do not* close wave_file here
+        #because RIFF_File_Chunk objects may need it
+        #let the garbage collector handle it instead
 
     @classmethod
     def wave_from_chunks(cls, filename, chunk_iter):
         """Builds a new RIFF WAVE file from a chunk data iterator.
 
         filename is the path to the wave file to build.
-        chunk_iter should yield (chunk_id, chunk_size, chunk_data) tuples.
+        chunk_iter should yield RIFF_Chunk-compatible objects.
         """
 
-        from .bitstream import BitstreamWriter
-
-        wave = file(filename, 'wb')
-        wave_file = BitstreamWriter(wave, 1)
+        wave_file = file(filename, 'wb')
         try:
             total_size = 4
 
             #write an unfinished header with a placeholder size
-            wave_file.build("4b 32u 4b", ("RIFF", total_size, "WAVE"))
+            wave_file.write(struct.pack("<4sI4s", "RIFF", total_size, "WAVE"))
 
             #write the individual chunks
-            for (chunk_id, chunk_size, chunk_data) in chunk_iter:
-                wave_file.build("4b 4b %db" % (len(chunk_data)),
-                                (chunk_id, chunk_size, chunk_data))
-                total_size += (8 + len(chunk_data))
+            for chunk in chunk_iter:
+                total_size += chunk.write(wave_file)
 
             #once the chunks are done, go back and re-write the header
-            wave.seek(4, 0)
-            wave_file.write(32, total_size)
+            wave_file.seek(0, 0)
+            wave_file.write(struct.pack("<4sI4s", "RIFF", total_size, "WAVE"))
         finally:
             wave_file.close()
 
@@ -791,8 +892,6 @@ class WaveAudio(WaveContainer):
         Raises an InvalidFile with an error message if there is
         some problem with the file."""
 
-        from .bitstream import BitstreamReader
-
         #RIFF WAVE chunk verification is likely to be so fast
         #that individual calls to progress() are
         #a waste of time.
@@ -802,51 +901,68 @@ class WaveAudio(WaveContainer):
         fmt_found = False
         data_found = False
 
-        try:
-            wave_file = BitstreamReader(open(self.filename, 'rb'), 1)
-            try:
-                (riff, total_size, wave) = wave_file.parse("4b 32u 4b")
-                if (riff != 'RIFF'):
-                    raise InvalidWave(_(u"Not a RIFF WAVE file"))
-                elif (wave != 'WAVE'):
-                    raise InvalidWave(_(u"Invalid RIFF WAVE file"))
+        for chunk in self.chunks():
+            if (chunk.id == "fmt "):
+                if (not fmt_found):
+                    fmt_found = True
                 else:
-                    total_size -= 4
+                    raise InvalidWave(_(u"multiple fmt chunks found"))
 
-                while (total_size > 0):
-                    (chunk_id, chunk_size) = wave_file.parse("4b 32u")
-                    if (not frozenset(chunk_id).issubset(
-                            self.PRINTABLE_ASCII)):
-                        raise InvalidWave(_(u"Invalid RIFF WAVE chunk ID"))
-                    else:
-                        total_size -= 8
+            elif (chunk.id == "data"):
+                if (not fmt_found):
+                    raise InvalidWave(_(u"data chunk found before fmt"))
+                elif (data_found):
+                    raise InvalidWave(_(u"multiple data chunks found"))
+                else:
+                    data_found = True
 
-                    if (chunk_id == "fmt "):
-                        if (not fmt_found):
-                            fmt_found = True
-                        else:
-                            raise InvalidWave(
-                                _(u"Multiple fmt chunks found"))
-                    elif (chunk_id == "data"):
-                        if (not fmt_found):
-                            raise InvalidWave(
-                                _(u"Data chunk found before fmt"))
-                        elif (data_found):
-                            raise InvalidWave(
-                                _(u"Multiple data chunks found"))
-                        else:
-                            data_found = True
+            if (not chunk.verify()):
+                raise InvalidWave(_(u"truncated %s chunk found") %
+                                  (chunk.id.decode('ascii')))
 
-                    wave_file.skip_bytes(chunk_size)
-                    total_size -= chunk_size
+        if (progress is not None):
+            progress(1, 1)
 
-                    if (chunk_size % 2):
-                        wave_file.skip(8)
-                        total_size -= 1
+        return True
 
-                if (progress is not None):
-                    progress(1, 1)
-            finally:
-                wave_file.close()
-        except IOError:
-            raise InvalidWave(_(u"I/O error reading file"))
+    def clean(self, fixes_performed, output_filename=None):
+        """Cleans the file of known data and metadata problems.
+
+        fixes_performed is a list-like object which is appended
+        with Unicode strings of fixed problems
+
+        output_filename is an optional filename of the fixed file
+        if present, a new AudioFile is returned
+        otherwise, only a dry-run is performed and no new file is written
+
+        Raises IOError if unable to write the file or its metadata
+        Raises ValueError if the file has errors of some sort
+        """
+
+        chunk_queue = []
+        pending_data = None
+
+        for chunk in self.chunks():
+            if (chunk.id == "fmt "):
+                if ("fmt " in [c.id for c in chunk_queue]):
+                    fixes_performed.append(
+                        _(u"multiple fmt chunks found"))
+                else:
+                    chunk_queue.append(chunk)
+                    if (pending_data is not None):
+                        chunk_queue.append(pending_data)
+                        pending_data = None
+            elif (chunk.id == "data"):
+                if ("fmt " not in [c.id for c in chunk_queue]):
+                    fixes_performed.append(_(u"data chunk found before fmt"))
+                    pending_data = chunk
+                elif ("data" in [c.id for c in chunk_queue]):
+                    fixes_performed.append(_(u"multiple data chunks found"))
+                else:
+                    chunk_queue.append(chunk)
+            else:
+                chunk_queue.append(chunk)
+
+        if (output_filename is not None):
+            WaveAudio.wave_from_chunks(output_filename, chunk_queue)
+            return WaveAudio(output_filename)

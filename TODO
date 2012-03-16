@@ -4836,10 +4836,31 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE AudioFile
 **** TODO AiffAudio
      - [ ] Reorder streams in which the COMM chunk doesn't come before data
+     - [ ] remove duplicate COMM chunks
+     - [ ] remove duplicate SSND chunks
+***** TODO add unit test for verify()
+      - [ ] multiple COMM chunks found
+      - [ ] multiple SSND chunks found
+      - [ ] SSND chunk before COMM chunk
+***** TODO add unit test for clean()
+      - [ ] multiple COMM chunks found
+      - [ ] multiple SSND chunks found
+      - [ ] SSND chunk before COMM chunk
 **** DONE FlacAudio
 **** TODO WaveAudio
-     - [ ] Reorder streams in which the fmt chunk doesn't come before data
-     - [ ] Fix 24bps or multichannel streams to be WAVEFORMATEXTENSIBLE
+     - [X] reorder streams in which the fmt chunk doesn't come before data
+     - [X] remove duplicate fmt chunks
+     - [X] remove duplicate data chunks
+     - [ ] fix 24bps or multichannel streams to be WAVEFORMATEXTENSIBLE
+***** DONE add unit test for verify()
+      - [X] multiple fmt chunks found
+      - [X] multiple data chunks found
+      - [X] data chunk before fmt chunk
+***** TODO add unit test for clean()
+      - [X] multiple fmt chunks found
+      - [X] multiple data chunks found
+      - [X] data chunk before fmt chunk
+      - [ ] fix 24bps or multichannel streams to be WAVEFORMATEXTENSIBLE
 *** DONE Document MetaData clean() method
 *** DONE Document AudioFile clean() method
 *** DONE Add more comprehensive unit tests for clean() methods
