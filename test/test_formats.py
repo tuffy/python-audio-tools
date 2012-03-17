@@ -1769,6 +1769,70 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
         finally:
             temp.close()
 
+        COMM = audiotools.AIFF_Chunk(
+            "COMM",
+            18,
+            '\x00\x01\x00\x00\x00\r\x00\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00')
+        SSND = audiotools.AIFF_Chunk(
+            "SSND",
+            34,
+            '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x02\x00\x03\x00\x02\x00\x01\x00\x00\xff\xff\xff\xfe\xff\xfd\xff\xfe\xff\xff\x00\x00')
+
+        #test multiple COMM chunks found
+        #test multiple SSND chunks found
+        #test SSND chunk before COMM chunk
+        #test no SSND chunk
+        #test no COMM chunk
+        for chunks in [[COMM, COMM, SSND],
+                       [COMM, SSND, SSND],
+                       [SSND, COMM],
+                       [SSND],
+                       [COMM]]:
+            temp = tempfile.NamedTemporaryFile(suffix=".aiff")
+            try:
+                audiotools.AiffAudio.aiff_from_chunks(temp.name, chunks)
+                self.assertRaises(
+                    audiotools.InvalidFile,
+                    audiotools.open(temp.name).verify)
+            finally:
+                temp.close()
+
+    @FORMAT_AIFF
+    def test_clean(self):
+        COMM = audiotools.AIFF_Chunk(
+            "COMM",
+            18,
+            '\x00\x01\x00\x00\x00\r\x00\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00')
+        SSND = audiotools.AIFF_Chunk(
+            "SSND",
+            34,
+            '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x02\x00\x03\x00\x02\x00\x01\x00\x00\xff\xff\xff\xfe\xff\xfd\xff\xfe\xff\xff\x00\x00')
+
+        #test multiple COMM chunks
+        #test multiple SSND chunks
+        #test data chunk before fmt chunk
+        temp = tempfile.NamedTemporaryFile(suffix=".aiff")
+        fixed = tempfile.NamedTemporaryFile(suffix=".aiff")
+        try:
+            for chunks in [[COMM, COMM, SSND],
+                           [COMM, SSND, COMM],
+                           [COMM, SSND, SSND],
+                           [SSND, COMM],
+                           [SSND, COMM, COMM]]:
+                audiotools.AiffAudio.aiff_from_chunks(temp.name, chunks)
+                fixes = []
+                aiff = audiotools.open(temp.name).clean(fixes, fixed.name)
+                chunks = list(aiff.chunks())
+                self.assertEquals([c.id for c in chunks],
+                                  [c.id for c in [COMM, SSND]])
+                self.assertEquals([c.__size__ for c in chunks],
+                                  [c.__size__ for c in [COMM, SSND]])
+                self.assertEquals([c.__data__ for c in chunks],
+                                  [c.__data__ for c in [COMM, SSND]])
+        finally:
+            temp.close()
+            fixed.close()
+
 
 class ALACFileTest(LosslessFileTest):
     def setUp(self):
@@ -4424,6 +4488,26 @@ class WaveFileTest(TestForeignWaveChunks,
         temp = tempfile.NamedTemporaryFile(suffix=".wav")
         try:
             audiotools.WaveAudio.wave_from_chunks(temp.name, [DATA, FMT])
+            self.assertRaises(
+                audiotools.InvalidFile,
+                audiotools.open(temp.name).verify)
+        finally:
+            temp.close()
+
+        #test no fmt chunk
+        temp = tempfile.NamedTemporaryFile(suffix=".wav")
+        try:
+            audiotools.WaveAudio.wave_from_chunks(temp.name, [DATA])
+            self.assertRaises(
+                audiotools.InvalidFile,
+                audiotools.open(temp.name).verify)
+        finally:
+            temp.close()
+
+        #test no data chunk
+        temp = tempfile.NamedTemporaryFile(suffix=".wav")
+        try:
+            audiotools.WaveAudio.wave_from_chunks(temp.name, [FMT])
             self.assertRaises(
                 audiotools.InvalidFile,
                 audiotools.open(temp.name).verify)

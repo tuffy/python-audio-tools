@@ -4671,6 +4671,59 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] empty seekpoints
     - [X] mis-ordered seekpoints
     - [X] bad seekpoint destinations
+** DONE Shift lint to the AudioFile and MetaData subclasses
+   Instead of having tracklint have to perform lots of built-in tests,
+   it would be better to have clean() functions added to the classes
+   themselves.
+   For MetaData, it could return a new object with fixed fields.
+   For AudioFile, it could function like convert() and build a new file
+   with fixes applied.
+*** DONE Add clean() method to MetaData and subclasses
+**** DONE MetaData
+**** DONE ApeTag
+**** DONE WavPackAPEv2
+**** DONE FlacMetaData
+**** DONE ID3v22Comment
+**** DONE ID3v23Comment
+**** DONE ID3v24Comment
+**** DONE ID3v1Comment
+**** DONE ID3CommentPair
+**** DONE M4AMetaData
+**** DONE VorbisComment
+***** DONE FlacVorbisComment
+***** DONE UnframedVorbisComment
+*** DONE Add clean() method to AudioFile and subclasses
+    I expect a lot of these will do nothing in the short term.
+**** DONE AudioFile
+**** DONE AiffAudio
+     - [X] Reorder streams in which the COMM chunk doesn't come before data
+     - [X] remove duplicate COMM chunks
+     - [X] remove duplicate SSND chunks
+***** DONE add unit test for verify()
+      - [X] multiple COMM chunks found
+      - [X] multiple SSND chunks found
+      - [X] SSND chunk before COMM chunk
+***** DONE add unit test for clean()
+      - [X] multiple COMM chunks found
+      - [X] multiple SSND chunks found
+      - [X] SSND chunk before COMM chunk
+**** DONE FlacAudio
+**** DONE WaveAudio
+     - [X] reorder streams in which the fmt chunk doesn't come before data
+     - [X] remove duplicate fmt chunks
+     - [X] remove duplicate data chunks
+***** DONE add unit test for verify()
+      - [X] multiple fmt chunks found
+      - [X] multiple data chunks found
+      - [X] data chunk before fmt chunk
+***** DONE add unit test for clean()
+      - [X] multiple fmt chunks found
+      - [X] multiple data chunks found
+      - [X] data chunk before fmt chunk
+*** DONE Document MetaData clean() method
+*** DONE Document AudioFile clean() method
+*** DONE Add more comprehensive unit tests for clean() methods
+*** DONE Convert tracklint to use clean() methods
 ** TODO handle AIFF offset/block size in SSND chunk
 ** TODO Remove Construct module
    Convert all usage of Construct to BitstreamReader/BitstreamWriter.
@@ -4810,61 +4863,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] test_blocksizes
 **** DONE WavpackFileTest
      - [X] test_blocksizes
-** TODO Shift lint to the AudioFile and MetaData subclasses
-   Instead of having tracklint have to perform lots of built-in tests,
-   it would be better to have clean() functions added to the classes
-   themselves.
-   For MetaData, it could return a new object with fixed fields.
-   For AudioFile, it could function like convert() and build a new file
-   with fixes applied.
-*** DONE Add clean() method to MetaData and subclasses
-**** DONE MetaData
-**** DONE ApeTag
-**** DONE WavPackAPEv2
-**** DONE FlacMetaData
-**** DONE ID3v22Comment
-**** DONE ID3v23Comment
-**** DONE ID3v24Comment
-**** DONE ID3v1Comment
-**** DONE ID3CommentPair
-**** DONE M4AMetaData
-**** DONE VorbisComment
-***** DONE FlacVorbisComment
-***** DONE UnframedVorbisComment
-*** TODO Add clean() method to AudioFile and subclasses
-    I expect a lot of these will do nothing in the short term.
-**** DONE AudioFile
-**** TODO AiffAudio
-     - [ ] Reorder streams in which the COMM chunk doesn't come before data
-     - [ ] remove duplicate COMM chunks
-     - [ ] remove duplicate SSND chunks
-***** TODO add unit test for verify()
-      - [ ] multiple COMM chunks found
-      - [ ] multiple SSND chunks found
-      - [ ] SSND chunk before COMM chunk
-***** TODO add unit test for clean()
-      - [ ] multiple COMM chunks found
-      - [ ] multiple SSND chunks found
-      - [ ] SSND chunk before COMM chunk
-**** DONE FlacAudio
-**** TODO WaveAudio
-     - [X] reorder streams in which the fmt chunk doesn't come before data
-     - [X] remove duplicate fmt chunks
-     - [X] remove duplicate data chunks
-     - [ ] fix 24bps or multichannel streams to be WAVEFORMATEXTENSIBLE
-***** DONE add unit test for verify()
-      - [X] multiple fmt chunks found
-      - [X] multiple data chunks found
-      - [X] data chunk before fmt chunk
-***** TODO add unit test for clean()
-      - [X] multiple fmt chunks found
-      - [X] multiple data chunks found
-      - [X] data chunk before fmt chunk
-      - [ ] fix 24bps or multichannel streams to be WAVEFORMATEXTENSIBLE
-*** DONE Document MetaData clean() method
-*** DONE Document AudioFile clean() method
-*** DONE Add more comprehensive unit tests for clean() methods
-*** DONE Convert tracklint to use clean() methods
 ** TODO Add update_metadata() method to AudioFile
    Consider how AudioFile.set_metadata() handles six different cases:
 

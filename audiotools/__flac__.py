@@ -28,7 +28,8 @@ from audiotools import (AudioFile, MetaData, InvalidFile, PCMReader,
                         Messenger, BufferedPCMReader, calculate_replay_gain,
                         ChannelMask, PCMReaderError, __default_quality__,
                         WaveContainer, AiffContainer, to_pcm_progress,
-                        image_metrics, RIFF_Chunk, PCMReaderProgress)
+                        image_metrics, RIFF_Chunk, AIFF_Chunk,
+                        PCMReaderProgress)
 from __vorbiscomment__ import *
 from __id3__ import skip_id3v2_comment
 
@@ -1861,13 +1862,9 @@ class FlacAudio(WaveContainer, AiffContainer):
             AiffAudio.from_pcm(aiff_filename, to_pcm_progress(self, progress))
 
     def aiff_chunks(self, progress=None):
-        """Generate a set of (chunk_id, chunk_size, chunk_data) tuples
+        """yields a set of AIFF_Chunk or AIFF_File_Chunk objects"""
 
-        These are for use by AiffAudio.from_chunks
-        and are taken from "aiff" APPLICATION blocks
-        or generated from our PCM data."""
-
-        from struct import pack
+        from struct import unpack
 
         for application_block in [
             block.data for block in
@@ -1877,25 +1874,20 @@ class FlacAudio(WaveContainer, AiffContainer):
                                                   application_block[4:8],
                                                   application_block[8:])
             if (chunk_id == 'FORM'):
+                #skip 12 byte FORM<size>AIFF header
                 continue
             elif (chunk_id == 'SSND'):
-                #FIXME - this is a lot more inefficient than it should be
-                data = cStringIO.StringIO()
-                data.write(chunk_data)
-                pcm = to_pcm_progress(self, progress)
-                transfer_framelist_data(pcm, data.write, True, True)
-                pcm.close()
-                if (len(data.getvalue()) % 2):
-                    yield (chunk_id,
-                           pack(">I", len(data.getvalue())),
-                           data.getvalue() + chr(0))
+                if (progress is not None):
+                    yield FLAC_SSND_Chunk(
+                        self.__total_frames__,
+                        PCMReaderProgress(self.to_pcm(),
+                                          self.__total_frames__,
+                                          progress))
                 else:
-                    yield (chunk_id,
-                           pack(">I", len(data.getvalue())),
-                           data.getvalue())
-                data.close()
+                    yield FLAC_SSND_Chunk(self.__total_frames__, self.to_pcm())
             else:
-                yield (chunk_id, chunk_size, chunk_data)
+                chunk_size = unpack(">I", chunk_size)[0]
+                yield AIFF_Chunk(chunk_id, chunk_size, chunk_data[0:chunk_size])
 
     def convert(self, target_path, target_class, compression=None,
                 progress=None):
@@ -2302,6 +2294,49 @@ class FLAC_Data_Chunk:
         s = self.__pcmreader__.read(0x10000)
         while (len(s) > 0):
             b = s.to_bytes(False, signed)
+            f.write(b)
+            bytes_written += len(b)
+            s = self.__pcmreader__.read(0x10000)
+
+        if (bytes_written % 2):
+            f.write(chr(0))
+            bytes_written += 1
+
+        return bytes_written
+
+
+class FLAC_SSND_Chunk(FLAC_Data_Chunk):
+    def __init__(self, total_frames, pcmreader):
+        self.id = "SSND"
+        self.__total_frames__ = total_frames
+        self.__pcmreader__ = pcmreader
+
+    def __repr__(self):
+        return "FLAC_SSND_Chunk()"
+
+    def size(self):
+        """returns size of chunk in bytes
+        not including any spacer byte for odd-sized chunks"""
+
+        return 8 + (self.__total_frames__ *
+                    self.__pcmreader__.channels *
+                    (self.__pcmreader__.bits_per_sample / 8))
+
+    def write(self, f):
+        """writes the entire chunk to the given output file object
+        returns size of entire chunk (including header and spacer)
+        in bytes"""
+
+        from struct import pack
+
+        f.write(self.id)
+        f.write(pack(">I", self.size()))
+        bytes_written = 8
+        f.write(pack(">II", 0, 0))
+        bytes_written += 8
+        s = self.__pcmreader__.read(0x10000)
+        while (len(s) > 0):
+            b = s.to_bytes(True, True)
             f.write(b)
             bytes_written += len(b)
             s = self.__pcmreader__.read(0x10000)

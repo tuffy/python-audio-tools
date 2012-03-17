@@ -24,7 +24,8 @@ from audiotools import (AudioFile, InvalidFile, ChannelMask, PCMReader,
                         __capped_stream_reader__, FILENAME_FORMAT,
                         BIN, open_files, os, subprocess, cStringIO,
                         EncodingError, DecodingError, UnsupportedChannelMask,
-                        WaveContainer, to_pcm_progress)
+                        WaveContainer, to_pcm_progress,
+                        LimitedFileReader)
 import os.path
 import struct
 import gettext
@@ -58,6 +59,11 @@ class RIFF_Chunk:
         not including any spacer byte for odd-sized chunks"""
 
         return self.__size__
+
+    def data(self):
+        """returns chunk data as file-like object"""
+
+        return cStringIO.StringIO(self.__data__)
 
     def verify(self):
         return self.__size__ == len(self.__data__)
@@ -101,6 +107,12 @@ class RIFF_File_Chunk:
         not including any spacer byte for odd-sized chunks"""
 
         return self.__size__
+
+    def data(self):
+        """returns chunk data as file-like object"""
+
+        self.__wav_file__.seek(self.__offset__)
+        return LimitedFileReader(self.__wav_file__, self.size())
 
     def verify(self):
         self.__wav_file__.seek(self.__offset__)
@@ -320,67 +332,34 @@ class WaveAudio(WaveContainer):
 
         AudioFile.__init__(self, filename)
 
-        self.__wavtype__ = 0
         self.__channels__ = 0
         self.__sample_rate__ = 0
         self.__bits_per_sample__ = 0
         self.__data_size__ = 0
         self.__channel_mask__ = ChannelMask(0)
 
-        fmt_read = data_read = False
-
         from .bitstream import BitstreamReader
 
-        try:
-            wave_file = BitstreamReader(open(filename, 'rb'), 1)
-        except IOError, msg:
-            raise InvalidWave(str(msg))
+        fmt_read = data_read = False
 
-        try:
-            try:
-                (riff, total_size, wave) = wave_file.parse("4b 32u 4b")
-                if (riff != 'RIFF'):
-                    raise InvalidWave(_(u"Not a RIFF WAVE file"))
-                elif (wave != 'WAVE'):
-                    raise InvalidWave(_(u"Invalid RIFF WAVE file"))
-                else:
-                    total_size -= 4
-
-                while ((total_size > 0) and
-                       ((not fmt_read) or (not data_read))):
-                    (chunk_id, chunk_size) = wave_file.parse("4b 32u")
-
-                    if (not frozenset(chunk_id).issubset(
-                            self.PRINTABLE_ASCII)):
-                        raise InvalidWave(_(u"Invalid RIFF WAVE chunk ID"))
-                    else:
-                        total_size -= 8
-
-                    if (chunk_id == 'fmt '):
-                        (self.__channels__,
-                         self.__sample_rate__,
-                         self.__bits_per_sample__,
-                         self.__channel_mask__) = parse_fmt(
-                            wave_file.substream(chunk_size))
-                        fmt_read = True
-                    elif (chunk_id == 'data'):
-                        self.__data_size__ = chunk_size
-                        data_read = True
-                        if (not fmt_read):
-                            wave_file.skip_bytes(chunk_size)
-                    else:
-                        wave_file.skip_bytes(chunk_size)
-
-                    total_size -= chunk_size
-
-                    #round up chunk sizes to 16 bits
-                    if (chunk_size % 2):
-                        wave_file.skip(8)
-                        total_size -= 1
-            except IOError, msg:
-                raise InvalidWave(str(msg))
-        finally:
-            wave_file.close()
+        for chunk in self.chunks():
+            if (chunk.id == "fmt "):
+                try:
+                    (self.__channels__,
+                     self.__sample_rate__,
+                     self.__bits_per_sample__,
+                     self.__channel_mask__) = parse_fmt(
+                        BitstreamReader(chunk.data(), 1))
+                    fmt_read = True
+                    if (fmt_read and data_read):
+                        break
+                except IOError:
+                    continue
+            elif (chunk.id == "data"):
+                self.__data_size__ = chunk.size()
+                data_read = True
+                if (fmt_read and data_read):
+                    break
 
     @classmethod
     def is_type(cls, file):
@@ -778,8 +757,10 @@ class WaveAudio(WaveContainer):
             #yield RIFF_Chunk or RIFF_File_Chunk depending on chunk size
             if (chunk_size >= 0x100000):
                 #if chunk is too large, yield a File_Chunk
-                yield RIFF_File_Chunk(chunk_id, chunk_size,
-                                      wave_file, wave_file.tell())
+                yield RIFF_File_Chunk(chunk_id,
+                                      chunk_size,
+                                      file(self.filename, "rb"),
+                                      wave_file.tell())
                 wave_file.seek(chunk_size, 1)
             else:
                 #otherwise, yield a raw data Chunk
@@ -792,10 +773,6 @@ class WaveAudio(WaveContainer):
                 total_size -= (chunk_size + 1)
             else:
                 total_size -= chunk_size
-
-        #note that we *do not* close wave_file here
-        #because RIFF_File_Chunk objects may need it
-        #let the garbage collector handle it instead
 
     @classmethod
     def wave_from_chunks(cls, filename, chunk_iter):
@@ -919,6 +896,11 @@ class WaveAudio(WaveContainer):
             if (not chunk.verify()):
                 raise InvalidWave(_(u"truncated %s chunk found") %
                                   (chunk.id.decode('ascii')))
+
+        if (not fmt_found):
+            raise InvalidWave(_(u"fmt chunk not found"))
+        if (not data_found):
+            raise InvalidWave(_(u"data chunk not found"))
 
         if (progress is not None):
             progress(1, 1)

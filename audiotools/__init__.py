@@ -1886,6 +1886,28 @@ class BufferedPCMReader:
                 self.reader_finished = True
 
 
+class LimitedFileReader:
+    def __init__(self, file, total_bytes):
+        self.__file__ = file
+        self.__total_bytes__ = total_bytes
+
+    def read(self, x):
+        if (self.__total_bytes__ > 0):
+            s = self.__file__.read(x)
+            if (len(s) <= self.__total_bytes__):
+                self.__total_bytes__ -= len(s)
+                return s
+            else:
+                s = s[0:self.__total_bytes__]
+                self.__total_bytes__ = 0
+                return s
+        else:
+            return ""
+
+    def close(self):
+        self.__file__.close()
+
+
 class LimitedPCMReader:
     def __init__(self, buffered_pcmreader, total_pcm_frames):
         """buffered_pcmreader should be a BufferedPCMReader
