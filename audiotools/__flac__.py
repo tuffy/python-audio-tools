@@ -76,11 +76,11 @@ class FlacMetaData(MetaData):
                            Flac_APPLICATION.BLOCK_ID,
                            Flac_PADDING.BLOCK_ID]
 
-        blocks_to_skip = set(PREFERRED_ORDER[0:PREFERRED_ORDER.index(
-                    block.BLOCK_ID)])
+        stop_blocks = set(
+            PREFERRED_ORDER[PREFERRED_ORDER.index(block.BLOCK_ID) + 1:])
 
         for (index, old_block) in enumerate(self.block_list):
-            if (old_block.BLOCK_ID not in blocks_to_skip):
+            if (old_block.BLOCK_ID in stop_blocks):
                 self.block_list.insert(index, block)
                 break
         else:
@@ -1729,60 +1729,41 @@ class FlacAudio(WaveContainer, AiffContainer):
             (compression not in cls.COMPRESSION_MODES)):
             compression = __default_quality__(cls.NAME)
 
-        if (WaveAudio(wave_filename).has_foreign_riff_chunks()):
-            flac = cls.from_pcm(filename,
-                                to_pcm_progress(WaveAudio(wave_filename),
-                                                progress),
-                                compression=compression)
+        wave = WaveAudio(wave_filename)
+
+        flac = cls.from_pcm(filename,
+                            to_pcm_progress(wave, progress),
+                            compression=compression)
+
+        if (wave.has_foreign_riff_chunks()):
+            from struct import pack
 
             metadata = flac.get_metadata()
 
-            from .bitstream import BitstreamReader, BitstreamRecorder
+            #add block containing RIFF WAVE header
+            metadata.add_block(Flac_APPLICATION(
+                    application_id="riff",
+                    data=pack("<4sI4s",
+                              "RIFF",
+                              4 + sum([c.total_size() for c in wave.chunks()]),
+                              "WAVE")))
 
-            wav = BitstreamReader(file(wave_filename, 'rb'), 1)
-            chunk = BitstreamRecorder(1)
-            try:
-                (riff, total_size, wave) = wav.parse("4b 32u 4b")
-                chunk.build("4b 32u 4b", (riff, total_size, wave))
-
-                metadata.add_block(Flac_APPLICATION(
-                        application_id="riff",
-                        data=chunk.data()))
-
-                total_size -= 4
-                while (total_size > 0):
-                    chunk.reset()
-                    (chunk_id, chunk_size) = wav.parse("4b 32u")
-                    chunk.build("4b 32u", (chunk_id, chunk_size))
-                    total_size -= 8
-                    if (chunk_id != 'data'):
-                        chunk.write_bytes(wav.read_bytes(chunk_size))
-                        total_size -= chunk_size
-                        if (chunk_size % 2):
-                            chunk.write_bytes(wav.read_bytes(1))
-                            total_size -= 1
-                    else:
-                        wav.skip_bytes(chunk_size)
-                        total_size -= chunk_size
-                        if (chunk_size % 2):
-                            wav.skip_bytes(1)
-                            total_size -= 1
-
-                    metadata.add_block(
-                        Flac_APPLICATION(
+            #add remaining chunks as APPLICATION blocks
+            for chunk in wave.chunks():
+                if (chunk.id == "data"):
+                    metadata.add_block(Flac_APPLICATION(
                             application_id="riff",
-                            data=chunk.data()))
+                            data=pack("<4sI", "data", chunk.size())))
+                else:
+                    chunk_data = cStringIO.StringIO()
+                    chunk.write(chunk_data)
+                    metadata.add_block(Flac_APPLICATION(
+                            application_id="riff",
+                            data=chunk_data.getvalue()))
 
-                flac.update_metadata(metadata)
+            flac.update_metadata(metadata)
 
-                return flac
-            finally:
-                wav.close()
-        else:
-            return cls.from_pcm(filename,
-                                to_pcm_progress(WaveAudio(wave_filename),
-                                                progress),
-                                compression=compression)
+        return flac
 
     def has_foreign_aiff_chunks(self):
         """Returns True if the audio file contains non-audio AIFF chunks."""
@@ -1807,52 +1788,41 @@ class FlacAudio(WaveContainer, AiffContainer):
             (compression not in cls.COMPRESSION_MODES)):
             compression = __default_quality__(cls.NAME)
 
+        aiff = AiffAudio(aiff_filename)
+
+        flac = cls.from_pcm(filename,
+                            to_pcm_progress(aiff, progress),
+                            compression=compression)
+
         if (AiffAudio(aiff_filename).has_foreign_aiff_chunks()):
-            flac = cls.from_pcm(filename,
-                                to_pcm_progress(AiffAudio(aiff_filename),
-                                                progress),
-                                compression=compression)
+            from struct import pack
 
             metadata = flac.get_metadata()
 
-            aiff = file(aiff_filename, 'rb')
-            try:
-                aiff_header = aiff.read(12)
+            #add block containing FORM AIFF header
+            metadata.add_block(Flac_APPLICATION(
+                    application_id="aiff",
+                    data=pack(">4sI4s",
+                              "FORM",
+                              4 + sum([c.total_size() for c in aiff.chunks()]),
+                              "AIFF")))
 
-                metadata.add_block(
-                    Flac_APPLICATION(application_id="aiff",
-                                     data=aiff_header))
+            #add remaining chunks as APPLICATION blocks
+            for chunk in aiff.chunks():
+                if (chunk.id == "SSND"):
+                    metadata.add_block(Flac_APPLICATION(
+                            application_id="aiff",
+                            data=pack(">4sIII", "SSND", chunk.size(), 0, 0)))
+                else:
+                    chunk_data = cStringIO.StringIO()
+                    chunk.write(chunk_data)
+                    metadata.add_block(Flac_APPLICATION(
+                            application_id="aiff",
+                            data=chunk_data.getvalue()))
 
-                total_size = AiffAudio.AIFF_HEADER.parse(
-                    aiff_header).aiff_size - 4
-                while (total_size > 0):
-                    chunk_header = AiffAudio.CHUNK_HEADER.parse(aiff.read(8))
-                    if (chunk_header.chunk_id != 'SSND'):
-                        metadata.add_block(
-                            Flac_APPLICATION(
-                                application_id="aiff",
-                                data=AiffAudio.CHUNK_HEADER.build(
-                                    chunk_header) +
-                                aiff.read(chunk_header.chunk_length)))
-                    else:
-                        metadata.add_block(
-                                Flac_APPLICATION(
-                                    application_id="aiff",
-                                    data=AiffAudio.CHUNK_HEADER.build(
-                                        chunk_header) + aiff.read(8)))
-                        aiff.seek(chunk_header.chunk_length - 8, 1)
-                    total_size -= (chunk_header.chunk_length + 8)
+            flac.update_metadata(metadata)
 
-                flac.update_metadata(metadata)
-
-                return flac
-            finally:
-                aiff.close()
-        else:
-            return cls.from_pcm(filename,
-                                to_pcm_progress(AiffAudio(aiff_filename),
-                                                progress),
-                                compression=compression)
+        return flac
 
     def to_aiff(self, aiff_filename, progress=None):
         if (self.has_foreign_aiff_chunks()):

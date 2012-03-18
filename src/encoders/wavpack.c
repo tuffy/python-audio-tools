@@ -718,13 +718,15 @@ encode_block(BitstreamWriter* bs,
                 write_dummy_wave_header(sub_block, pcmreader,
                                         context->wave.footer_len);
             }
+            write_sub_block(sub_blocks, WV_DUMMY, 0, sub_block);
         } else {
             /*external header given, so output as-is*/
             sub_block->write_bytes(sub_block,
                                    context->wave.header_data,
                                    context->wave.header_len);
+            write_sub_block(sub_blocks, WV_WAVE_HEADER, 1, sub_block);
         }
-        write_sub_block(sub_blocks, WV_DUMMY, 0, sub_block);
+
         context->wave.header_written = 1;
     }
 

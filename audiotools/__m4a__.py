@@ -24,7 +24,7 @@ from audiotools import (AudioFile, InvalidFile, PCMReader, PCMConverter,
                         Image, image_metrics, InvalidImage,
                         ignore_sigint, InvalidFormat,
                         open, open_files, EncodingError, DecodingError,
-                        WaveAudio, TempWaveReader,
+                        WaveAudio, WaveReader,
                         ChannelMask, UnsupportedBitsPerSample,
                         UnsupportedChannelMask,
                         UnsupportedChannelCount,
@@ -560,10 +560,10 @@ class M4AAudio_nero(M4AAudio_faac):
     """An M4A audio file using neroAacEnc/neroAacDec binaries for I/O."""
 
     DEFAULT_COMPRESSION = "0.5"
-    COMPRESSION_MODES = ("0.0", "0.1", "0.2", "0.3", "0.4", "0.5",
+    COMPRESSION_MODES = ("0.4", "0.5",
                          "0.6", "0.7", "0.8", "0.9", "1.0")
-    COMPRESSION_DESCRIPTIONS = {"0.0": _(u"lowest quality, " +
-                                         u"corresponds to neroAacEnc -q 0"),
+    COMPRESSION_DESCRIPTIONS = {"0.4": _(u"lowest quality, " +
+                                         u"corresponds to neroAacEnc -q 0.4"),
                                 "1.0": _(u"highest quality, " +
                                          u"corresponds to neroAacEnc -q 1")}
     BINARIES = ("neroAacDec", "neroAacEnc")
@@ -611,8 +611,11 @@ class M4AAudio_nero(M4AAudio_faac):
         f = tempfile.NamedTemporaryFile(suffix=".wav")
         try:
             self.to_wave(f.name)
-            f.seek(0, 0)
-            return TempWaveReader(f)
+            return WaveReader(wave_file=file(f.name, "rb"),
+                              sample_rate=self.sample_rate(),
+                              channels=self.channels(),
+                              channel_mask=int(self.channel_mask()),
+                              bits_per_sample=self.bits_per_sample())
         except EncodingError, err:
             return PCMReaderError(error_message=err.error_message,
                                   sample_rate=self.sample_rate(),
@@ -973,7 +976,8 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
              0x0037,    # 5ch - center, left, right, back left, back right
              0x003F,    # 6ch - C, L, R, back left, back right, LFE
              0x013F,    # 7ch - C, L, R, bL, bR, back center, LFE
-             0x00FF)):  # 8ch - C, cL, cR, L, R, bL, bR, LFE
+             0x00FF,    # 8ch - C, cL, cR, L, R, bL, bR, LFE
+             0x0000)):  # undefined
             raise UnsupportedChannelMask(filename,
                                          int(pcmreader.channel_mask))
 

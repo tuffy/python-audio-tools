@@ -3417,10 +3417,12 @@ class AudioFile:
         if (suffix is None):
             suffix = cls.SUFFIX
         try:
-            #prefer a track number from MetaData, if available
-            if ((track_metadata is not None) and
-                (track_metadata.track_number > 0)):
+            #prefer track_number and album_number from MetaData, if available
+            if (track_metadata is not None):
                 track_number = track_metadata.track_number
+                album_number = track_metadata.album_number
+                track_total = track_metadata.track_total
+                album_total = track_metadata.album_total
             else:
                 try:
                     track_number = int(re.findall(
@@ -3429,10 +3431,6 @@ class AudioFile:
                 except IndexError:
                     track_number = 0
 
-            #prefer an album_number from MetaData, if available
-            if (track_metadata is not None):
-                album_number = track_metadata.album_number
-            else:
                 try:
                     album_number = int(re.findall(
                             r'\d{2,4}',
@@ -3440,10 +3438,6 @@ class AudioFile:
                 except IndexError:
                     album_number = 0
 
-            if (track_metadata is not None):
-                track_total = track_metadata.track_total
-                album_total = track_metadata.album_total
-            else:
                 track_total = 0
                 album_total = 0
 

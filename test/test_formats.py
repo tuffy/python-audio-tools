@@ -408,12 +408,14 @@ class AudioFileTest(unittest.TestCase):
             track = self.audio_class.from_pcm(
                 os.path.join(temp_dir, "202 - abcde" + self.suffix),
                 BLANK_PCM_Reader(1))
-            self.assertEqual(track.album_number(), 2)
+            if (track.get_metadata() is None):
+                self.assertEqual(track.album_number(), 2)
 
             track = self.audio_class.from_pcm(
                 os.path.join(temp_dir, "303 45 - abcde" + self.suffix),
                 BLANK_PCM_Reader(1))
-            self.assertEqual(track.album_number(), 3)
+            if (track.get_metadata() is None):
+                self.assertEqual(track.album_number(), 3)
 
             track.set_metadata(audiotools.MetaData(album_number=2))
             metadata = track.get_metadata()
@@ -500,44 +502,81 @@ class AudioFileTest(unittest.TestCase):
                              "/foo/bar/track",
                              (u"/f\u00f3o/bar/tr\u00e1ck").encode(
                     audiotools.FS_ENCODING)]:
+
+                if (metadata is None):
+                    album_number = 0
+                    track_number = 1
+                    album_track_number = u"01"
+                else:
+                    album_number = 0
+                    track_number = 0
+                    album_track_number = u"00"
+
                 self.assertEqual(self.audio_class.track_name(
                         file_path=basepath + "01",
                         track_metadata=metadata,
                         format=format_template.encode('utf-8')),
                                  (format_template %
-                                  {u"album_number": 0,
-                                   u"track_number": 1,
-                                   u"album_track_number": u"01"}
+                                  {u"album_number": album_number,
+                                   u"track_number": track_number,
+                                   u"album_track_number": album_track_number}
                                   ).encode('utf-8'))
+
+                if (metadata is None):
+                    album_number = 0
+                    track_number = 23
+                    album_track_number = u"23"
+                else:
+                    album_number = 0
+                    track_number = 0
+                    album_track_number = u"00"
 
                 self.assertEqual(self.audio_class.track_name(
                         file_path=basepath + "track23",
                         track_metadata=metadata,
                         format=format_template.encode('utf-8')),
                                  (format_template %
-                                  {u"album_number": 0,
-                                   u"track_number": 23,
-                                   u"album_track_number": u"23"}
+                                  {u"album_number": album_number,
+                                   u"track_number": track_number,
+                                   u"album_track_number": album_track_number}
                                   ).encode('utf-8'))
+
+                if (metadata is None):
+                    album_number = 1
+                    track_number = 23
+                    album_track_number = u"123"
+                else:
+                    album_number = 0
+                    track_number = 0
+                    album_track_number = u"00"
 
                 self.assertEqual(self.audio_class.track_name(
                         file_path=basepath + "track123",
                         track_metadata=metadata,
                         format=format_template.encode('utf-8')),
                                  (format_template %
-                                  {u"album_number": 1,
-                                   u"track_number": 23,
-                                   u"album_track_number": u"123"}
+                                  {u"album_number": album_number,
+                                   u"track_number": track_number,
+                                   u"album_track_number": album_track_number}
                                   ).encode('utf-8'))
+
+                if (metadata is None):
+                    album_number = 45
+                    track_number = 67
+                    album_track_number = u"4567"
+                else:
+                    album_number = 0
+                    track_number = 0
+                    album_track_number = u"00"
 
                 self.assertEqual(self.audio_class.track_name(
                         file_path=basepath + "4567",
                         track_metadata=metadata,
                         format=format_template.encode('utf-8')),
                                  (format_template %
-                                  {u"album_number": 45,
-                                   u"track_number": 67,
-                                   u"album_track_number": u"4567"}
+                                  {u"album_number": album_number,
+                                   u"track_number": track_number,
+                                   u"album_track_number": album_track_number}
                                   ).encode('utf-8'))
 
         #then, ensure metadata takes precedence over filename for integers
@@ -646,6 +685,10 @@ class AudioFileTest(unittest.TestCase):
                 self.audio_class.add_replay_gain([track_file1.name,
                                                   track_file2.name,
                                                   track_file3.name])
+
+                self.assert_(track1.replay_gain() is not None)
+                self.assert_(track2.replay_gain() is not None)
+                self.assert_(track3.replay_gain() is not None)
 
                 gains = audiotools.replaygain.ReplayGain(44100)
 
@@ -815,10 +858,11 @@ class LosslessFileTest(AudioFileTest):
                 track = self.audio_class.from_pcm(temp.name, BLANK_PCM_Reader(
                         1, channels=len(cm), channel_mask=int(cm)))
                 self.assertEqual(track.channels(), len(cm))
-                self.assertEqual(track.channel_mask(), cm)
-                track = audiotools.open(temp.name)
-                self.assertEqual(track.channels(), len(cm))
-                self.assertEqual(track.channel_mask(), cm)
+                if (int(track.channel_mask()) != 0):
+                    self.assertEqual(track.channel_mask(), cm)
+                    track = audiotools.open(temp.name)
+                    self.assertEqual(track.channels(), len(cm))
+                    self.assertEqual(track.channel_mask(), cm)
         finally:
             temp.close()
 
@@ -962,7 +1006,7 @@ class LosslessFileTest(AudioFileTest):
         try:
             track = self.audio_class.from_pcm(
                 temp.name,
-                test_streams.Sine16_Stereo(220500, 44100,
+                test_streams.Sine16_Stereo(441000, 44100,
                                            8820.0, 0.70, 4410.0, 0.29, 1.0))
             for audio_class in audiotools.AVAILABLE_TYPES:
                 temp2 = tempfile.NamedTemporaryFile(
@@ -987,12 +1031,12 @@ class LosslessFileTest(AudioFileTest):
                         audiotools.transfer_framelist_data(pcm,
                                                            counter.update)
                         self.assertEqual(
-                            int(counter), 5,
+                            int(counter), 10,
                             "mismatch encoding %s (%s/%d != %s)" % \
                                 (audio_class.NAME,
                                  counter,
                                  int(counter),
-                                 5))
+                                 10))
 
                     self.assertRaises(audiotools.EncodingError,
                                       track.convert,
@@ -1020,11 +1064,11 @@ class LosslessFileTest(AudioFileTest):
                             audiotools.transfer_framelist_data(track2.to_pcm(),
                                                                counter.update)
                             self.assertEqual(
-                                int(counter), 5,
+                                int(counter), 10,
                                 ("mismatch encoding %s " +
                                  "at quality %s (%s != %s)") % \
                                      (audio_class.NAME, compression,
-                                      counter, 5))
+                                      counter, 10))
 
                         #check some obvious failures
                         self.assertRaises(audiotools.EncodingError,
@@ -1330,12 +1374,30 @@ class TestForeignWaveChunks:
             #build a WAVE with some oddball chunks
             audiotools.WaveAudio.wave_from_chunks(
                 tempwav1.name,
-                [('fmt ', '\x01\x00\x02\x00D\xac\x00\x00\x10\xb1\x02\x00\x04\x00\x10\x00'),
-                 ('fooz', 'testtext'),
-                 ('barz', 'somemoretesttext'),
-                 ('bazz', chr(0) * 1024),
-                 ('data', 'BZh91AY&SY\xdc\xd5\xc2\x8d\x06\xba\xa7\xc0\x00`\x00 \x000\x80MF\xa9$\x84\x9a\xa4\x92\x12qw$S\x85\t\r\xcd\\(\xd0'.decode('bz2')),
-                 ('spam', 'anotherchunk')])
+                [audiotools.RIFF_Chunk(
+                        'fmt ',
+                        16,
+                        '\x01\x00\x02\x00D\xac\x00\x00\x10\xb1\x02\x00\x04\x00\x10\x00'),
+                 audiotools.RIFF_Chunk(
+                        'fooz',
+                        8,
+                        'testtext'),
+                 audiotools.RIFF_Chunk(
+                        'barz',
+                        16,
+                        'somemoretesttext'),
+                 audiotools.RIFF_Chunk(
+                        'bazz',
+                        1024,
+                        chr(0) * 1024),
+                 audiotools.RIFF_Chunk(
+                        'data',
+                        882000,
+                        'BZh91AY&SY\xdc\xd5\xc2\x8d\x06\xba\xa7\xc0\x00`\x00 \x000\x80MF\xa9$\x84\x9a\xa4\x92\x12qw$S\x85\t\r\xcd\\(\xd0'.decode('bz2')),
+                 audiotools.RIFF_Chunk(
+                        'spam',
+                        12,
+                        'anotherchunk')])
 
             wave = audiotools.open(tempwav1.name)
             wave.verify()
@@ -1380,14 +1442,25 @@ class TestForeignWaveChunks:
         output_wave = tempfile.NamedTemporaryFile(suffix=".wav")
         try:
             #build a WAVE with some random oddball chunks
-            base_chunks = [('fmt ', '\x01\x00\x02\x00D\xac\x00\x00\x10\xb1\x02\x00\x04\x00\x10\x00'),
-                           ('data', 'BZh91AY&SY\xdc\xd5\xc2\x8d\x06\xba\xa7\xc0\x00`\x00 \x000\x80MF\xa9$\x84\x9a\xa4\x92\x12qw$S\x85\t\r\xcd\\(\xd0'.decode('bz2'))]
+            base_chunks = [
+                audiotools.RIFF_Chunk(
+                    'fmt ',
+                    16,
+                    '\x01\x00\x02\x00D\xac\x00\x00\x10\xb1\x02\x00\x04\x00\x10\x00'),
+                audiotools.RIFF_Chunk(
+                    'data',
+                    882000,
+                    'BZh91AY&SY\xdc\xd5\xc2\x8d\x06\xba\xa7\xc0\x00`\x00 \x000\x80MF\xa9$\x84\x9a\xa4\x92\x12qw$S\x85\t\r\xcd\\(\xd0'.decode('bz2'))]
+
             for i in xrange(random.choice(range(1, 10))):
+                chunk_size = random.choice(range(1, 1024)) * 2
                 base_chunks.insert(
                     random.choice(range(0, len(base_chunks) + 1)),
-                    ("".join([random.choice(chunk_name_chars)
-                              for i in xrange(4)]),
-                     os.urandom(random.choice(range(1, 1024)) * 2)))
+                    audiotools.RIFF_Chunk(
+                        "".join([random.choice(chunk_name_chars)
+                                 for i in xrange(4)]),
+                        chunk_size,
+                        os.urandom(chunk_size)))
 
             audiotools.WaveAudio.wave_from_chunks(input_wave.name, base_chunks)
             wave = audiotools.open(input_wave.name)
@@ -1414,7 +1487,8 @@ class TestForeignWaveChunks:
                     #and ensure the result is byte-for-byte identical
                     self.assertEqual(filecmp.cmp(input_wave.name,
                                                  output_wave.name,
-                                                 False), True)
+                                                 False), True,
+                                     "format %s lost RIFF chunks" % (new_class))
                 finally:
                     track2_file.close()
         finally:
@@ -1438,14 +1512,25 @@ class TestForeignWaveChunks:
 
         try:
             #build a WAVE with some random oddball chunks
-            base_chunks = [('fmt ', '\x01\x00\x02\x00D\xac\x00\x00\x10\xb1\x02\x00\x04\x00\x10\x00'),
-                           ('data', 'BZh91AY&SY\xdc\xd5\xc2\x8d\x06\xba\xa7\xc0\x00`\x00 \x000\x80MF\xa9$\x84\x9a\xa4\x92\x12qw$S\x85\t\r\xcd\\(\xd0'.decode('bz2'))]
+            base_chunks = [
+                audiotools.RIFF_Chunk(
+                    'fmt ',
+                    16,
+                    '\x01\x00\x02\x00D\xac\x00\x00\x10\xb1\x02\x00\x04\x00\x10\x00'),
+                audiotools.RIFF_Chunk(
+                    'data',
+                    882000,
+                    'BZh91AY&SY\xdc\xd5\xc2\x8d\x06\xba\xa7\xc0\x00`\x00 \x000\x80MF\xa9$\x84\x9a\xa4\x92\x12qw$S\x85\t\r\xcd\\(\xd0'.decode('bz2'))]
+
             for i in xrange(random.choice(range(1, 10))):
+                chunk_size = random.choice(range(1, 1024)) * 2
                 base_chunks.insert(
                     random.choice(range(0, len(base_chunks) + 1)),
-                    ("".join([random.choice(chunk_name_chars)
-                              for i in xrange(4)]),
-                     os.urandom(random.choice(range(1, 1024)) * 2)))
+                    audiotools.RIFF_Chunk(
+                        "".join([random.choice(chunk_name_chars)
+                                 for i in xrange(4)]),
+                        chunk_size,
+                        os.urandom(chunk_size)))
 
             audiotools.WaveAudio.wave_from_chunks(input_wave.name, base_chunks)
             wave = audiotools.open(input_wave.name)
@@ -1504,12 +1589,30 @@ class TestForeignAiffChunks:
             #build an AIFF with some oddball chunks
             audiotools.AiffAudio.aiff_from_chunks(
                 tempaiff1.name,
-                [('COMM', '\x00\x02\x00\x00\xacD\x00\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00'),
-                 ('fooz', 'testtext'),
-                 ('barz', 'somemoretesttext'),
-                 ('bazz', chr(0) * 1024),
-                 ('SSND', 'BZh91AY&SY&2\xd0\xeb\x00\x01Y\xc0\x04\xc0\x00\x00\x80\x00\x08 \x000\xcc\x05)\xa6\xa2\x93`\x94\x9e.\xe4\x8ap\xa1 Le\xa1\xd6'.decode('bz2')),
-                 ('spam', 'anotherchunk')])
+                [audiotools.AIFF_Chunk(
+                        'COMM',
+                        18,
+                        '\x00\x02\x00\x00\xacD\x00\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00'),
+                 audiotools.AIFF_Chunk(
+                        'fooz',
+                        8,
+                        'testtext'),
+                 audiotools.AIFF_Chunk(
+                        'barz',
+                        16,
+                        'somemoretesttext'),
+                 audiotools.AIFF_Chunk(
+                        'bazz',
+                        1024,
+                        chr(0) * 1024),
+                 audiotools.AIFF_Chunk(
+                        'SSND',
+                        176408,
+                        'BZh91AY&SY&2\xd0\xeb\x00\x01Y\xc0\x04\xc0\x00\x00\x80\x00\x08 \x000\xcc\x05)\xa6\xa2\x93`\x94\x9e.\xe4\x8ap\xa1 Le\xa1\xd6'.decode('bz2')),
+                 audiotools.AIFF_Chunk(
+                        'spam',
+                        12,
+                        'anotherchunk')])
 
             aiff = audiotools.open(tempaiff1.name)
             aiff.verify()
@@ -1536,7 +1639,7 @@ class TestForeignAiffChunks:
 
             track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
             track = audiotools.open(track.filename)
-            chunk_ids = set([chunk[0] for chunk in
+            chunk_ids = set([chunk.id for chunk in
                              track.convert(tempaiff2.name,
                                            audiotools.AiffAudio).chunks()])
             self.assert_(chunk_ids.issuperset(set(['COMM',
@@ -1565,14 +1668,24 @@ class TestForeignAiffChunks:
         output_aiff = tempfile.NamedTemporaryFile(suffix=".aiff")
         try:
             #build an AIFF with some random oddball chunks
-            base_chunks = [('COMM', '\x00\x02\x00\x00\xacD\x00\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00'),
-                           ('SSND', 'BZh91AY&SY&2\xd0\xeb\x00\x01Y\xc0\x04\xc0\x00\x00\x80\x00\x08 \x000\xcc\x05)\xa6\xa2\x93`\x94\x9e.\xe4\x8ap\xa1 Le\xa1\xd6'.decode('bz2'))]
+            base_chunks = [
+                audiotools.AIFF_Chunk(
+                    'COMM',
+                    18,
+                    '\x00\x02\x00\x00\xacD\x00\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00'),
+                audiotools.AIFF_Chunk(
+                    'SSND',
+                    176408,
+                    'BZh91AY&SY&2\xd0\xeb\x00\x01Y\xc0\x04\xc0\x00\x00\x80\x00\x08 \x000\xcc\x05)\xa6\xa2\x93`\x94\x9e.\xe4\x8ap\xa1 Le\xa1\xd6'.decode('bz2'))]
             for i in xrange(random.choice(range(1, 10))):
+                block_size = random.choice(range(1, 1024)) * 2
                 base_chunks.insert(
                     random.choice(range(0, len(base_chunks) + 1)),
-                    ("".join([random.choice(chunk_name_chars)
-                              for i in xrange(4)]),
-                     os.urandom(random.choice(range(1, 1024)) * 2)))
+                    audiotools.AIFF_Chunk(
+                        "".join([random.choice(chunk_name_chars)
+                                 for i in xrange(4)]),
+                        block_size,
+                        os.urandom(block_size)))
 
             audiotools.AiffAudio.aiff_from_chunks(input_aiff.name, base_chunks)
             aiff = audiotools.open(input_aiff.name)
@@ -1622,14 +1735,24 @@ class TestForeignAiffChunks:
         output_aiff = tempfile.NamedTemporaryFile(suffix=".aiff")
         try:
             #build an AIFF with some random oddball chunks
-            base_chunks = [('COMM', '\x00\x02\x00\x00\xacD\x00\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00'),
-                           ('SSND', 'BZh91AY&SY&2\xd0\xeb\x00\x01Y\xc0\x04\xc0\x00\x00\x80\x00\x08 \x000\xcc\x05)\xa6\xa2\x93`\x94\x9e.\xe4\x8ap\xa1 Le\xa1\xd6'.decode('bz2'))]
+            base_chunks = [
+                audiotools.AIFF_Chunk(
+                    "COMM",
+                    18,
+                    '\x00\x02\x00\x00\xacD\x00\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00'),
+                audiotools.AIFF_Chunk(
+                    "SSND",
+                    176408,
+                    'BZh91AY&SY&2\xd0\xeb\x00\x01Y\xc0\x04\xc0\x00\x00\x80\x00\x08 \x000\xcc\x05)\xa6\xa2\x93`\x94\x9e.\xe4\x8ap\xa1 Le\xa1\xd6'.decode('bz2'))]
             for i in xrange(random.choice(range(1, 10))):
+                chunk_size = random.choice(range(1, 1024)) * 2
                 base_chunks.insert(
                     random.choice(range(0, len(base_chunks) + 1)),
-                    ("".join([random.choice(chunk_name_chars)
-                              for i in xrange(4)]),
-                     os.urandom(random.choice(range(1, 1024)) * 2)))
+                    audiotools.AIFF_Chunk(
+                        "".join([random.choice(chunk_name_chars)
+                                 for i in xrange(4)]),
+                        chunk_size,
+                        os.urandom(chunk_size)))
 
             audiotools.AiffAudio.aiff_from_chunks(input_aiff.name, base_chunks)
             aiff = audiotools.open(input_aiff.name)
@@ -4553,7 +4676,6 @@ class WaveFileTest(TestForeignWaveChunks,
 
         #test converting 24bps file to WAVEFORMATEXTENSIBLE
         #FIXME
-
 
 class WavPackFileTest(TestForeignWaveChunks,
                       LosslessFileTest):

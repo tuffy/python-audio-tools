@@ -88,6 +88,15 @@ class AIFF_Chunk:
 
         return self.__size__
 
+    def total_size(self):
+        """returns the total size of the chunk
+        including the 8 byte ID/size and any padding byte"""
+
+        if (self.__size__ % 2):
+            return 8 + self.__size__ + 1
+        else:
+            return 8 + self.__size__
+
     def data(self):
         """returns chunk data as file-like object"""
 
@@ -106,12 +115,10 @@ class AIFF_Chunk:
         f.write(self.__data__)
         if (self.__size__ % 2):
             f.write(chr(0))
-            return 8 + self.__size__ + 1
-        else:
-            return 8 + self.__size__
+        return self.total_size()
 
 
-class AIFF_File_Chunk:
+class AIFF_File_Chunk(AIFF_Chunk):
     """a raw chunk of AIFF data taken from an existing file"""
 
     def __init__(self, chunk_id, chunk_size, aiff_file, chunk_data_offset):
@@ -129,12 +136,6 @@ class AIFF_File_Chunk:
 
     def __repr__(self):
         return "AIFF_File_Chunk(%s)" % (repr(self.id))
-
-    def size(self):
-        """returns size of chunk in bytes
-        not including any spacer byte for odd-sized chunks"""
-
-        return self.__size__
 
     def data(self):
         """returns chunk data as file-like object"""
@@ -169,9 +170,7 @@ class AIFF_File_Chunk:
 
         if (self.__size__ % 2):
             f.write(chr(0))
-            return 8 + self.__size__ + 1
-        else:
-            return 8 + self.__size__
+        return self.total_size()
 
 
 def parse_comm(comm):
@@ -295,18 +294,21 @@ class AiffAudio(AiffContainer):
 
         from .bitstream import BitstreamReader
 
-        for chunk in self.chunks():
-            if (chunk.id == "COMM"):
-                try:
-                    (self.__channels__,
-                     self.__total_sample_frames__,
-                     self.__bits_per_sample__,
-                     self.__sample_rate__,
-                     self.__channel_mask__) = parse_comm(
-                        BitstreamReader(chunk.data(), 0))
-                    break
-                except IOError:
-                    continue
+        try:
+            for chunk in self.chunks():
+                if (chunk.id == "COMM"):
+                    try:
+                        (self.__channels__,
+                         self.__total_sample_frames__,
+                         self.__bits_per_sample__,
+                         self.__sample_rate__,
+                         self.__channel_mask__) = parse_comm(
+                            BitstreamReader(chunk.data(), 0))
+                        break
+                    except IOError:
+                        continue
+        except IOError:
+            raise InvalidAIFF("I/O error reading wave")
 
     def bits_per_sample(self):
         """Returns an integer number of bits-per-sample this track contains."""

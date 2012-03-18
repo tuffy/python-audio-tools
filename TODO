@@ -5315,8 +5315,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [ ] verify
     - [ ] player
 *** TODO Format
-    - [ ] audiofile
-    - [ ] lossless
+    - [X] audiofile
+    - [X] lossless
     - [ ] lossy
     - [ ] aiff
     - [ ] alac

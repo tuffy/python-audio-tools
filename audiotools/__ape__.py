@@ -666,9 +666,10 @@ class ApeTaggedAudio:
                 f.close()
                 rewritten.close()
         else:
-            #no existing metadata, so can't be from existing file
-            #set_metadata() should be used in this case
-            raise ValueError(_(u"metadata not from audio file"))
+            #no existing metadata, so simply append a fresh tag
+            f = file(self.filename, "ab")
+            metadata.build(BitstreamWriter(f, 1))
+            f.close()
 
     def set_metadata(self, metadata):
         """Takes a MetaData object and sets this track's metadata.

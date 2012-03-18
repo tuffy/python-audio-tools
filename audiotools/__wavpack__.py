@@ -68,11 +68,6 @@ class __Counter__:
 
 
 #######################
-#WavPack APEv2
-#######################
-
-
-#######################
 #WavPack
 #######################
 
@@ -593,7 +588,8 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
                  album_peak) in calculate_replay_gain(tracks, progress):
                 metadata = track.get_metadata()
                 if (metadata is None):
-                    metadata = WavPackAPEv2([])
+                    metadata = ApeTag([])
+
                 metadata["replaygain_track_gain"] = ApeTagItem.string(
                     "replaygain_track_gain",
                     u"%+1.2f dB" % (track_gain))
@@ -606,6 +602,7 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
                 metadata["replaygain_album_peak"] = ApeTagItem.string(
                     "replaygain_album_peak",
                     u"%1.6f" % (album_peak))
+
                 track.update_metadata(metadata)
 
     @classmethod
