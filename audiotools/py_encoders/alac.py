@@ -365,8 +365,10 @@ def calculate_lpc_coefficients(pcmreader, options, sample_size, channel):
         qlp_coefficients4 = quantize_coefficients(lp_coefficients, 4)
         qlp_coefficients8 = quantize_coefficients(lp_coefficients, 8)
 
-        residuals4 = compute_residuals(qlp_coefficients4[:], channel)
-        residuals8 = compute_residuals(qlp_coefficients8[:], channel)
+        residuals4 = compute_residuals(sample_size,
+                                       qlp_coefficients4[:], channel)
+        residuals8 = compute_residuals(sample_size,
+                                       qlp_coefficients8[:], channel)
 
         residual_block4 = BitstreamRecorder(0)
         residual_block8 = BitstreamRecorder(0)
@@ -380,7 +382,8 @@ def calculate_lpc_coefficients(pcmreader, options, sample_size, channel):
             return (qlp_coefficients8, residual_block8)
     else:
         qlp_coefficients = [0, 0, 0, 0]
-        residuals = compute_residuals(qlp_coefficients[:], channel)
+        residuals = compute_residuals(sample_size,
+                                      qlp_coefficients[:], channel)
         residual_block = BitstreamRecorder(0)
         encode_residuals(residual_block, options, sample_size, residuals)
         return (qlp_coefficients, residual_block)
@@ -442,50 +445,71 @@ def quantize_coefficients(lp_coefficients, order):
     return qlp_coeffs
 
 
-def compute_residuals(qlp_coefficients, channel):
-    def SIGN(x):
-        if (x > 0):
-            return 1
-        elif (x == 0):
-            return 0
-        else:
-            return -1
+def sign_only(x):
+    if (x > 0):
+        return 1
+    elif (x == 0):
+        return 0
+    else:
+        return -1
 
+
+def truncate_bits(value, bits):
+    #truncate value to the given number of bits
+    truncated = value & ((1 << bits) - 1)
+
+    #apply newly created sign bit
+    if (truncated & (1 << (bits - 1))):
+        return truncated - (1 << bits)
+    else:
+        return truncated
+
+
+def compute_residuals(sample_size, qlp_coefficients, channel):
     channel = list(channel)
 
+    #first sample always copied verbatim
     residuals = [channel[0]]
-    for i in xrange(1, len(qlp_coefficients) + 1):
-        residuals.append(channel[i] - channel[i - 1])
 
-    for i in xrange(len(qlp_coefficients) + 1, len(channel)):
-        base_sample = channel[i - len(qlp_coefficients) - 1]
+    if (len(qlp_coefficients) < 31):
+        for i in xrange(1, len(qlp_coefficients) + 1):
+            residuals.append(truncate_bits(channel[i] - channel[i - 1],
+                                           sample_size))
 
-        lpc_sum = sum([(c * (s - base_sample)) for (c, s) in
-                       zip(qlp_coefficients,
-                           reversed(channel[i - len(qlp_coefficients):i]))])
+        for i in xrange(len(qlp_coefficients) + 1, len(channel)):
+            base_sample = channel[i - len(qlp_coefficients) - 1]
 
-        residual = (channel[i] -
-                    (((lpc_sum + (1 << (QLP_SHIFT_NEEDED - 1))) >>
-                      QLP_SHIFT_NEEDED) + base_sample))
+            lpc_sum = sum([(c * (s - base_sample)) for (c, s) in
+                           zip(qlp_coefficients,
+                               reversed(channel[i - len(qlp_coefficients):i]))])
 
-        residuals.append(residual)
+            residual = truncate_bits(
+                channel[i] -
+                base_sample -
+                ((lpc_sum + (1 << (QLP_SHIFT_NEEDED - 1))) >> QLP_SHIFT_NEEDED),
+                sample_size)
 
-        if (residual > 0):
-            for j in xrange(len(qlp_coefficients)):
-                diff = base_sample - channel[i - len(qlp_coefficients) + j]
-                sign = SIGN(diff)
-                qlp_coefficients[len(qlp_coefficients) - j - 1] -= sign
-                residual -= ((diff * sign) >> QLP_SHIFT_NEEDED) * (j + 1)
-                if (residual <= 0):
-                    break
-        elif (residual < 0):
-            for j in xrange(len(qlp_coefficients)):
-                diff = base_sample - channel[i - len(qlp_coefficients) + j]
-                sign = SIGN(diff)
-                qlp_coefficients[len(qlp_coefficients) - j - 1] += sign
-                residual -= ((diff * -sign) >> QLP_SHIFT_NEEDED) * (j + 1)
-                if (residual >= 0):
-                    break
+            residuals.append(residual)
+
+            if (residual > 0):
+                for j in xrange(len(qlp_coefficients)):
+                    diff = base_sample - channel[i - len(qlp_coefficients) + j]
+                    sign = sign_only(diff)
+                    qlp_coefficients[len(qlp_coefficients) - j - 1] -= sign
+                    residual -= ((diff * sign) >> QLP_SHIFT_NEEDED) * (j + 1)
+                    if (residual <= 0):
+                        break
+            elif (residual < 0):
+                for j in xrange(len(qlp_coefficients)):
+                    diff = base_sample - channel[i - len(qlp_coefficients) + j]
+                    sign = sign_only(diff)
+                    qlp_coefficients[len(qlp_coefficients) - j - 1] += sign
+                    residual -= ((diff * -sign) >> QLP_SHIFT_NEEDED) * (j + 1)
+                    if (residual >= 0):
+                        break
+    else:
+        for sample in channel[1:]:
+            samples.append(truncate_bits(sample - samples[-1], sample_size))
 
     return residuals
 

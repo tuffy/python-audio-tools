@@ -169,37 +169,47 @@ byte-align file stream\;
 \ALGORITHM{\texttt{mdat} atom data, channel count, decoding parameters from \texttt{alac} atom}{1 or 2 decoded channels of PCM data}
 \SetKwData{CHANNELCOUNT}{channel count}
 \SetKwData{SAMPLECOUNT}{sample count}
+\SetKwData{SAMPLESPERFRAME}{samples per frame}
+\SetKwData{BPS}{bits per sample}
+\SetKwData{SAMPLESIZE}{sample size}
 \SetKwData{HASSAMPLECOUNT}{has sample count}
 \SetKwData{UNCOMPRESSEDLSBS}{uncompressed LSBs}
 \SetKwData{NOTCOMPRESSED}{not compressed}
 \SetKwData{INTERLACINGSHIFT}{interlacing shift}
 \SetKwData{INTERLACINGLEFTWEIGHT}{interlacing leftweight}
 \SetKwData{SUBFRAMEHEADER}{subframe header}
+\SetKwData{QLPSHIFTNEEDED}{QLP shift needed}
+\SetKwData{COEFF}{QLP coefficient}
+\SetKwData{INITHISTORY}{initial history}
+\SetKwData{MAXIMUMK}{maximum K}
 \SetKwData{RESIDUALS}{residual block}
 \SetKwData{LSB}{LSB}
 \SetKwData{SUBFRAME}{subframe}
 \SetKwData{CHANNEL}{channel}
+\SetKw{AND}{and}
 \SKIP 16 bits\;
 $\HASSAMPLECOUNT \leftarrow$ \READ 1 unsigned bit\;
 $\UNCOMPRESSEDLSBS \leftarrow$ \READ 2 unsigned bits\;
 $\NOTCOMPRESSED \leftarrow$ \READ 1 unsigned bit\;
-\eIf{$\HASSAMPLECOUNT = 0$}{
-  \SAMPLECOUNT $\leftarrow$ samples per frame from \texttt{alac} atom\;
-}{
-  \SAMPLECOUNT $\leftarrow$ \READ 32 unsigned bits\;
+\uIf{$\HASSAMPLECOUNT = 0$}{
+  \SAMPLECOUNT $\leftarrow$ \SAMPLESPERFRAME from \texttt{alac} atom\;
 }
+\lElse{\SAMPLECOUNT $\leftarrow$ \READ 32 unsigned bits\;}
 \eIf(\tcc*[f]{raw, uncompressed frame}){$\NOTCOMPRESSED = 1$}{
   \For{$i \leftarrow 0$ \emph{\KwTo}\SAMPLECOUNT}{
     \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELCOUNT}{
-      \tcc{bits per sample taken from alac atom}
-      $\text{\CHANNEL}_{c~i} \leftarrow$ \READ (bits per sample) signed bits\;
+      $\text{\CHANNEL}_{c~i} \leftarrow$ \READ (\BPS) signed bits\;
     }
   }
 }(\tcc*[f]{compressed frame}){
+  $\SAMPLESIZE \leftarrow \BPS - (\UNCOMPRESSEDLSBS \times 8) + (\text{\CHANNELCOUNT} - 1)$\;
   \INTERLACINGSHIFT $\leftarrow$ \READ 8 unsigned bits\;
   \INTERLACINGLEFTWEIGHT $\leftarrow$ \READ 8 unsigned bits\;
   \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELCOUNT}{
-    $\text{\SUBFRAMEHEADER}_c \leftarrow$ \hyperref[alac:read_subframe_header]{read subframe header}\;
+    $\left.\begin{tabular}{r}
+      $\text{\QLPSHIFTNEEDED}_c$ \\
+      $\text{\COEFF}_c$ \\
+\end{tabular}\right\rbrace \leftarrow$ \hyperref[alac:read_subframe_header]{read subframe header}\;
   }
   \If{$\UNCOMPRESSEDLSBS > 0$}{
     \For{$i \leftarrow 0$ \emph{\KwTo}\SAMPLECOUNT}{
@@ -209,17 +219,28 @@ $\NOTCOMPRESSED \leftarrow$ \READ 1 unsigned bit\;
     }
   }
   \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELCOUNT}{
-    $\text{\RESIDUALS}_c \leftarrow$ \hyperref[alac:read_residual_block]{read residual block} where sample size is $\text{bits per sample} - (\UNCOMPRESSEDLSBS \times 8) + (\text{\CHANNELCOUNT} - 1)$\;
-    \hyperref[alac:decode_subframe]{decode $\text{\SUBFRAME}_c$ from $\text{\SUBFRAMEHEADER}_c$ and $\text{\RESIDUALS}_c$}\;
+    $\text{\RESIDUALS}_c \leftarrow$ \hyperref[alac:read_residual_block]{read residual block} using $\left\lbrace\begin{tabular}{ll}
+    \INITHISTORY & from \texttt{alac} atom \\
+    \MAXIMUMK & from \texttt{alac} atom \\
+    \SAMPLESIZE \\
+    \SAMPLECOUNT \\
+\end{tabular}\right.$\;
+    $\text{\SUBFRAME}_c \leftarrow$ \hyperref[alac:decode_subframe]{decode subframe using} $\left\lbrace\begin{tabular}{l}
+    $\text{\QLPSHIFTNEEDED}_c$ \\
+    $\text{\COEFF}_c$ \\
+    $\text{\RESIDUALS}_c$ \\
+    \SAMPLESIZE \\
+    \SAMPLECOUNT \\
+\end{tabular}\right.$\;
   }
-  \eIf{$\CHANNELCOUNT = 2$}{
+  \uIf{$(\CHANNELCOUNT = 2)$ \AND $(\INTERLACINGLEFTWEIGHT > 0)$}{
     \hyperref[alac:decorrelate_channels]{decorrelate $\text{\SUBFRAME}_0$ and $\text{\SUBFRAME}_1$ to $\text{\CHANNEL}_0$ and $\text{\CHANNEL}_1$}\newline according to \INTERLACINGSHIFT and \INTERLACINGLEFTWEIGHT\;
-  }{
-    \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELCOUNT}{
+  }
+  \lElse{\For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELCOUNT}{
       $\text{\CHANNEL}_c \leftarrow \text{\SUBFRAME}_c$\;
     }
   }
-  \If{$\UNCOMPRESSEDLSBS > 0$}{
+  \If(\tcc*[f]{prepend any LSBs to each sample}){$\UNCOMPRESSEDLSBS > 0$}{
     \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELCOUNT}{
       \For{$i \leftarrow 0$ \emph{\KwTo}\SAMPLECOUNT}{
         $\text{\CHANNEL}_{c~i} \leftarrow (\text{\CHANNEL}_{c~i} \times 2 ^ {\UNCOMPRESSEDLSBS \times 8}) + \text{\LSB}_{c~i}$\;
@@ -235,7 +256,8 @@ $\NOTCOMPRESSED \leftarrow$ \READ 1 unsigned bit\;
 
 \subsection{Reading Subframe Header}
 \label{alac:read_subframe_header}
-\ALGORITHM{\texttt{mdat} atom data}{subframe decoding parameters}
+{\relsize{-1}
+\ALGORITHM{\texttt{mdat} atom data}{QLP shift needed, QLP coefficient list}
 \SetKw{OR}{or}
 \SetKwData{PREDICTIONTYPE}{prediction type}
 \SetKwData{QLPSHIFTNEEDED}{QLP shift needed}
@@ -251,8 +273,12 @@ $\COEFFCOUNT \leftarrow$ \READ 5 unsigned bits\;
 \For{$i \leftarrow 0$ \emph{\KwTo}\COEFFCOUNT}{
   $\text{\COEFF}_i \leftarrow$ \READ 16 signed bits\;
 }
-\Return $(\QLPSHIFTNEEDED~,~\COEFF)$\;
+\Return $\left\lbrace\begin{tabular}{l}
+$\text{\QLPSHIFTNEEDED}$ \\
+$\text{\COEFF}$ \\
+\end{tabular}\right.$\;
 \EALGORITHM
+}
 \begin{figure}[h]
 \includegraphics{figures/alac/subframe_header.pdf}
 \end{figure}
@@ -308,6 +334,8 @@ $\textsf{coefficient}_{1~3}$ & $\leftarrow$ & \texttt{0xFEE5} &=& -283 \\
 \label{alac:read_residual_block}
 \ALGORITHM{\texttt{mdat} atom data, initial history and maximum K from \texttt{alac} atom, sample count, sample size}{a decoded list of signed residuals}
 \SetKwData{SAMPLECOUNT}{sample count}
+\SetKwData{INITHISTORY}{initial history}
+\SetKwData{MAXIMUMK}{maximum K}
 \SetKwData{SIGN}{sign modifier}
 \SetKwData{HISTORY}{history}
 \SetKwData{HISTORYMULT}{history multiplier}
@@ -316,10 +344,10 @@ $\textsf{coefficient}_{1~3}$ & $\leftarrow$ & \texttt{0xFEE5} &=& -283 \\
 \SetKwFunction{MIN}{min}
 \SetKwFunction{READRESIDUAL}{read residual}
 \SetKwData{RESIDUAL}{residual}
-\HISTORY $\leftarrow$ initial history\;
+$\HISTORY \leftarrow \INITHISTORY$\;
 \SIGN $\leftarrow 0$\;
 \For{$i \leftarrow 0$ \emph{\KwTo}\SAMPLECOUNT}{
-  $\kappa \leftarrow \MIN(\lfloor\log_2(\HISTORY \div 2 ^ 9 + 3)\rfloor~,~\text{maximum K})$\;
+  $\kappa \leftarrow \MIN(\lfloor\log_2(\HISTORY \div 2 ^ 9 + 3)\rfloor~,~\MAXIMUMK)$\;
   $u_i \leftarrow \READRESIDUAL(\kappa~,~\text{sample size}) + \SIGN$\;
   \SIGN $\leftarrow 0$\;
   \BlankLine
@@ -333,7 +361,7 @@ $\textsf{coefficient}_{1~3}$ & $\leftarrow$ & \texttt{0xFEE5} &=& -283 \\
     \HISTORY $\leftarrow \HISTORY + (u_i \times \HISTORYMULT) - \left\lfloor\frac{\HISTORY \times \HISTORYMULT}{2 ^ 9}\right\rfloor$\;
     \If{$\HISTORY < 128$ \AND $(i + 1) < \SAMPLECOUNT$}{
       \tcc{generate run of 0 residuals if history gets too small}
-      $\kappa \leftarrow \MIN(7 - \lfloor\log_2(\HISTORY)\rfloor + ((\HISTORY + 16) \div 64)~,~\text{maximum K})$\;
+      $\kappa \leftarrow \MIN(7 - \lfloor\log_2(\HISTORY)\rfloor + ((\HISTORY + 16) \div 64)~,~\MAXIMUMK)$\;
       \ZEROES $\leftarrow \READRESIDUAL(\kappa~,~16)$\;
       \For{$j \leftarrow 0$ \emph{\KwTo}\ZEROES}{
         $\text{\RESIDUAL}_{i + j + 1} \leftarrow 0$\;
@@ -564,56 +592,86 @@ $i$ & \kappa & \textsf{MSB}_i & \textsf{LSB}_i & \textsf{unsigned}_i &
 
 \subsection{Decoding Subframe}
 \label{alac:decode_subframe}
-\ALGORITHM{sample count from frame header, QLP coefficients and QLP shift needed from subframe header, signed residuals from residual block}{a list of signed subframe samples}
+{\relsize{-1}
+\ALGORITHM{sample count, sample size, QLP coefficients, QLP shift needed, signed residuals}{a list of signed subframe samples}
 \SetKwData{RESIDUAL}{residual}
 \SetKwData{SAMPLE}{sample}
+\SetKwData{SAMPLESIZE}{sample size}
 \SetKwData{COEFFCOUNT}{coefficient count}
 \SetKwData{SAMPLECOUNT}{sample count}
 \SetKwData{BASE}{base sample}
 \SetKwData{QLPSUM}{QLP sum}
 \SetKwData{QLPCOEFF}{QLP coefficient}
 \SetKwData{QLPSHIFT}{QLP shift needed}
-\SetKwFunction{SIGN}{sign}
 \SetKwData{DIFF}{diff}
 \SetKwData{SSIGN}{sign}
 \SetKw{BREAK}{break}
 \SetKwData{ORIGSIGN}{original sign}
-$\text{\SAMPLE}_0 \leftarrow \text{\RESIDUAL}_0$\;
-\For{$i \leftarrow 1$ \emph{\KwTo}$\text{\COEFFCOUNT} + 1$}{
-  $\text{\SAMPLE}_i \leftarrow \text{\RESIDUAL}_{i} + \text{\SAMPLE}_{i - 1}$\;
-}
-\BlankLine
-\For{i $\leftarrow \text{\COEFFCOUNT} + 1$ \emph{\KwTo}$\text{\SAMPLECOUNT}$}{
-  $\text{\BASE}_i \leftarrow \text{\SAMPLE}_{i - \COEFFCOUNT - 1}$\;
-  $\text{\QLPSUM}_i \leftarrow \overset{\COEFFCOUNT - 1}{\underset{j = 0}{\sum}} \text{\QLPCOEFF}_j \times (\text{\SAMPLE}_{i - j - 1} - \text{\BASE}_i)$\;
-  $\text{\SAMPLE}_i \leftarrow \left\lfloor\frac{\text{\QLPSUM}_i + 2 ^ \text{\QLPSHIFT - 1}}{2 ^ \text{\QLPSHIFT}}\right\rfloor + \text{\RESIDUAL}_i + \text{\BASE}_i$\;
+\SetKwFunction{TRUNCATE}{truncate}
+\SetKwFunction{SIGN}{sign}
+$\text{\SAMPLE}_0 \leftarrow \text{\RESIDUAL}_0$\tcc*[r]{first sample always copied verbatim}
+\eIf{$\COEFFCOUNT < 31$}{
+  \For{$i \leftarrow 1$ \emph{\KwTo}$\text{\COEFFCOUNT} + 1$}{
+    $\text{\SAMPLE}_i \leftarrow \TRUNCATE(\text{\RESIDUAL}_{i} + \text{\SAMPLE}_{i - 1}~,~\SAMPLESIZE)$\;
+  }
   \BlankLine
-  \uIf(\tcc*[f]{modify QLP coefficients}){$\text{\RESIDUAL}_i > 0$}{
-    \For{$j \leftarrow 0$ \emph{\KwTo}$\text{\COEFFCOUNT}$}{
-      $\DIFF \leftarrow \text{\BASE}_i - \text{Samples}_{i - \COEFFCOUNT + j}$\;
-      $\SSIGN \leftarrow \SIGN(\DIFF)$\;
-      $\text{\QLPCOEFF}_{\COEFFCOUNT - j - 1} \leftarrow \text{\QLPCOEFF}_{\COEFFCOUNT - j - 1} - \SSIGN$\;
-      $\text{\RESIDUAL}_i \leftarrow \text{\RESIDUAL}_i - \left\lfloor\frac{\DIFF \times \SSIGN}{2 ^ \text{\QLPSHIFT}}\right\rfloor \times (j + 1)$\;
-      \If{$\text{\RESIDUAL}_i \leq 0$}{
-        \BREAK\;
+  \For{i $\leftarrow \text{\COEFFCOUNT} + 1$ \emph{\KwTo}$\text{\SAMPLECOUNT}$}{
+    $\text{\BASE}_i \leftarrow \text{\SAMPLE}_{i - \COEFFCOUNT - 1}$\;
+    $\text{\QLPSUM}_i \leftarrow \overset{\COEFFCOUNT - 1}{\underset{j = 0}{\sum}} \text{\QLPCOEFF}_j \times (\text{\SAMPLE}_{i - j - 1} - \text{\BASE}_i)$\;
+    $\text{\SAMPLE}_i \leftarrow \TRUNCATE\left(\left\lfloor\frac{\text{\QLPSUM}_i + 2 ^ \text{\QLPSHIFT - 1}}{2 ^ \text{\QLPSHIFT}}\right\rfloor + \text{\RESIDUAL}_i + \text{\BASE}_i~,~\SAMPLESIZE\right)$\;
+    \BlankLine
+    \uIf(\tcc*[f]{modify QLP coefficients}){$\text{\RESIDUAL}_i > 0$}{
+      \For{$j \leftarrow 0$ \emph{\KwTo}$\text{\COEFFCOUNT}$}{
+        $\DIFF \leftarrow \text{\BASE}_i - \text{\SAMPLE}_{i - \COEFFCOUNT + j}$\;
+        $\SSIGN \leftarrow \SIGN(\DIFF)$\;
+        $\text{\QLPCOEFF}_{\COEFFCOUNT - j - 1} \leftarrow \text{\QLPCOEFF}_{\COEFFCOUNT - j - 1} - \SSIGN$\;
+        $\text{\RESIDUAL}_i \leftarrow \text{\RESIDUAL}_i - \left\lfloor\frac{\DIFF \times \SSIGN}{2 ^ \text{\QLPSHIFT}}\right\rfloor \times (j + 1)$\;
+        \If{$\text{\RESIDUAL}_i \leq 0$}{
+          \BREAK\;
+        }
+      }
+    }
+    \ElseIf{$\text{\RESIDUAL}_i < 0$}{
+      \For{$j \leftarrow 0$ \emph{\KwTo}$\text{\COEFFCOUNT}$}{
+        $\DIFF \leftarrow \text{\BASE}_i - \text{\SAMPLE}_{i - \COEFFCOUNT + j}$\;
+        $\SSIGN \leftarrow \SIGN(\DIFF)$\;
+        $\text{\QLPCOEFF}_{\COEFFCOUNT - j - 1} \leftarrow \text{\QLPCOEFF}_{\COEFFCOUNT - j - 1} + \SSIGN$\;
+        $\text{\RESIDUAL}_i \leftarrow \text{\RESIDUAL}_i - \left\lfloor\frac{\DIFF \times -\SSIGN}{2 ^ \text{\QLPSHIFT}}\right\rfloor \times (j + 1)$\;
+        \If{$\text{\RESIDUAL}_i \geq 0$}{
+          \BREAK\;
+        }
       }
     }
   }
-  \ElseIf{$\text{\RESIDUAL}_i < 0$}{
-    \For{$j \leftarrow 0$ \emph{\KwTo}$\text{\COEFFCOUNT}$}{
-      $\DIFF \leftarrow \text{\BASE}_i - \text{Samples}_{i - \COEFFCOUNT + j}$\;
-      $\SSIGN \leftarrow \SIGN(\DIFF)$\;
-      $\text{\QLPCOEFF}_{\COEFFCOUNT - j - 1} \leftarrow \text{\QLPCOEFF}_{\COEFFCOUNT - j - 1} + \SSIGN$\;
-      $\text{\RESIDUAL}_i \leftarrow \text{\RESIDUAL}_i - \left\lfloor\frac{\DIFF \times -\SSIGN}{2 ^ \text{\QLPSHIFT}}\right\rfloor \times (j + 1)$\;
-      \If{$\text{\RESIDUAL}_i \geq 0$}{
-        \BREAK\;
-      }
-    }
+}{
+  \For{$i \leftarrow 1$ \emph{\KwTo}\SAMPLECOUNT}{
+    $\text{\SAMPLE}_i \leftarrow \TRUNCATE(\text{\RESIDUAL}_i + \text{\SAMPLE}_{i - 1}~,~\SAMPLESIZE)$\;
   }
 }
 \Return \SAMPLE\;
 \EALGORITHM
-where the \texttt{sign} function is defined as:
+}
+
+\subsubsection{The \texttt{truncate} Function}
+{\relsize{-1}
+ \ALGORITHM{a signed sample, the maximum size of the sample in bits}{a truncated signed sample}
+ \SetKw{BAND}{bitwise and}
+ \SetKwData{SAMPLE}{sample}
+  \SetKwData{BITS}{bits}
+  \SetKwData{TRUNCATED}{truncated}
+  $\TRUNCATED \leftarrow \SAMPLE~\BAND~(2 ^ {\BITS} - 1)$\;
+  \eIf(\tcc*[f]{apply sign bit}){$(\TRUNCATED~\BAND~2 ^ {\BITS - 1}) \neq 0$}{
+    \Return $\TRUNCATED - 2 ^ {\BITS}$\;
+  }{
+    \Return \TRUNCATED\;
+  }
+  \EALGORITHM
+}
+
+\clearpage
+
+\subsubsection{The \texttt{sign} Function}
+{\relsize{-1}
 \begin{equation*}
 \texttt{sign}(x) =
 \begin{cases}
@@ -622,8 +680,7 @@ where the \texttt{sign} function is defined as:
 \texttt{-1} & \text{if } x < 0
 \end{cases}
 \end{equation*}
-
-\clearpage
+}
 
 \subsubsection{Decoding Subframe Example}
 Given the residuals
@@ -693,14 +750,9 @@ and how the next sample's \textsf{QLP coefficient} values are shifted.
 \SetKwData{SUBFRAME}{subframe}
 \SetKwData{LEFT}{left}
 \SetKwData{RIGHT}{right}
-\eIf{$\text{\LEFTWEIGHT} > 0$}{
-  \For{$i \leftarrow 0$ \emph{\KwTo}\SAMPLECOUNT}{
-    $\text{\RIGHT}_i \leftarrow \text{\SUBFRAME}_{0~i} - \left\lfloor\frac{\text{\SUBFRAME}_{1~i} \times \text{\LEFTWEIGHT}}{2 ^ \text{interlacing shift}}\right\rfloor$\;
-    $\text{\LEFT}_i \leftarrow \text{\SUBFRAME}_{1~i} + \text{\RIGHT}_i$
-  }
-}{
-  $\LEFT \leftarrow \text{\SUBFRAME}_0$\;
-  $\RIGHT \leftarrow \text{\SUBFRAME}_1$\;
+\For{$i \leftarrow 0$ \emph{\KwTo}\SAMPLECOUNT}{
+  $\text{\RIGHT}_i \leftarrow \text{\SUBFRAME}_{0~i} - \left\lfloor\frac{\text{\SUBFRAME}_{1~i} \times \text{\LEFTWEIGHT}}{2 ^ \text{interlacing shift}}\right\rfloor$\;
+  $\text{\LEFT}_i \leftarrow \text{\SUBFRAME}_{1~i} + \text{\RIGHT}_i$
 }
 \Return $(\LEFT~,~\RIGHT)$\;
 \EALGORITHM
@@ -2037,11 +2089,13 @@ e &\leftarrow \texttt{-161.35} - -161 = \texttt{-0.35} \\
 
 \clearpage
 
-\subsubsection{Computing Residual Values}
+\subsection{Computing Residual Values}
 \label{alac:calculate_residuals}
-\ALGORITHM{a list of signed PCM samples, a list of 4 or 8 QLP coefficients}{a list of signed residual values}
+{\relsize{-1}
+\ALGORITHM{a list of signed PCM samples, 4 or 8 QLP coefficients, sample size}{a list of signed residual values}
 \SetKwFunction{SIGN}{sign}
 \SetKw{BREAK}{break}
+\SetKwData{SAMPLESIZE}{sample size}
 \SetKwData{SAMPLECOUNT}{sample count}
 \SetKwData{COEFFCOUNT}{coefficient count}
 \SetKwData{COEFF}{QLP coefficient}
@@ -2052,42 +2106,68 @@ e &\leftarrow \texttt{-161.35} - -161 = \texttt{-0.35} \\
 \SetKwData{QLPSUM}{QLP sum}
 \SetKwData{DIFF}{diff}
 \SetKwData{SSIGN}{sign}
-$\text{\RESIDUAL}_0 \leftarrow \text{\SAMPLE}_0$\;
-\For{$i \leftarrow 1$ \emph{\KwTo}$\COEFFCOUNT + 1$}{
-  $\text{\RESIDUAL}_i \leftarrow \text{\SAMPLE}_i - \text{\SAMPLE}_{i - 1}$
-}
-\For{i $\leftarrow \text{\COEFFCOUNT} + 1$ \emph{\KwTo}\SAMPLECOUNT}{
-  $\text{\BASESAMPLE}_i \leftarrow \text{\SAMPLE}_{i - \COEFFCOUNT - 1}$\;
-  $\text{\QLPSUM}_i \leftarrow \overset{\COEFFCOUNT - 1}{\underset{j = 0}{\sum}} \text{\COEFF}_j \times (\text{\SAMPLE}_{i - j - 1} - \text{\BASESAMPLE}_i)$\;
-  $\text{\ERROR} \leftarrow \text{\SAMPLE}_i - \left(\left\lfloor\frac{\text{\QLPSUM}_i + 2 ^ 8}{2 ^ 9}\right\rfloor + \text{\BASESAMPLE}_i\right)$\;
-  $\text{\RESIDUAL}_i \leftarrow \text{\ERROR}$\;
-  \BlankLine
-  \uIf(\tcc*[f]{modify QLP coefficients}){$\text{\ERROR} > 0$}{
-    \For{$j \leftarrow 0$ \emph{\KwTo}$\text{\COEFFCOUNT}$}{
-      $\DIFF \leftarrow \text{\BASESAMPLE}_i - \text{\SAMPLE}_{i - \COEFFCOUNT + j}$\;
-      $\SSIGN \leftarrow \SIGN(\DIFF)$\;
-      $\text{\COEFF}_{\COEFFCOUNT - j - 1} \leftarrow \text{\COEFF}_{\COEFFCOUNT - j - 1} - \SSIGN$\;
-      $\text{\ERROR} \leftarrow \text{\ERROR} - \left\lfloor\frac{\DIFF \times \SSIGN}{2 ^ 9}\right\rfloor \times (j + 1)$\;
-      \If{$\text{\ERROR} \leq 0$}{
-        \BREAK\;
+\SetKwFunction{TRUNCATE}{truncate}
+$\text{\RESIDUAL}_0 \leftarrow \text{\SAMPLE}_0$\tcc*[r]{first sample always copied verbatim}
+\eIf{$\COEFFCOUNT < 31$}{
+  \For{$i \leftarrow 1$ \emph{\KwTo}$\COEFFCOUNT + 1$}{
+    $\text{\RESIDUAL}_i \leftarrow \TRUNCATE(\text{\SAMPLE}_i - \text{\SAMPLE}_{i - 1}~,~\SAMPLESIZE)$\;
+  }
+  \For{i $\leftarrow \text{\COEFFCOUNT} + 1$ \emph{\KwTo}\SAMPLECOUNT}{
+    $\text{\BASESAMPLE}_i \leftarrow \text{\SAMPLE}_{i - \COEFFCOUNT - 1}$\;
+    $\text{\QLPSUM}_i \leftarrow \overset{\COEFFCOUNT - 1}{\underset{j = 0}{\sum}} \text{\COEFF}_j \times (\text{\SAMPLE}_{i - j - 1} - \text{\BASESAMPLE}_i)$\;
+    $\text{\ERROR} \leftarrow \TRUNCATE\left(\text{\SAMPLE}_i - \text{\BASESAMPLE}_i - \left\lfloor\frac{\text{\QLPSUM}_i + 2 ^ 8}{2 ^ 9}\right\rfloor~,~\SAMPLESIZE \right)$\;
+    $\text{\RESIDUAL}_i \leftarrow \text{\ERROR}$\;
+    \BlankLine
+    \uIf(\tcc*[f]{modify QLP coefficients}){$\text{\ERROR} > 0$}{
+      \For{$j \leftarrow 0$ \emph{\KwTo}$\text{\COEFFCOUNT}$}{
+        $\DIFF \leftarrow \text{\BASESAMPLE}_i - \text{\SAMPLE}_{i - \COEFFCOUNT + j}$\;
+        $\SSIGN \leftarrow \SIGN(\DIFF)$\;
+        $\text{\COEFF}_{\COEFFCOUNT - j - 1} \leftarrow \text{\COEFF}_{\COEFFCOUNT - j - 1} - \SSIGN$\;
+        $\text{\ERROR} \leftarrow \text{\ERROR} - \left\lfloor\frac{\DIFF \times \SSIGN}{2 ^ 9}\right\rfloor \times (j + 1)$\;
+        \If{$\text{\ERROR} \leq 0$}{
+          \BREAK\;
+        }
+      }
+    }
+    \ElseIf{$\text{\ERROR} < 0$}{
+      \For{$j \leftarrow 0$ \emph{\KwTo}$\text{\COEFFCOUNT}$}{
+        $\DIFF \leftarrow \text{\BASESAMPLE}_i - \text{\SAMPLE}_{i - \COEFFCOUNT + j}$\;
+        $\SSIGN \leftarrow \SIGN(\DIFF)$\;
+        $\text{\COEFF}_{\COEFFCOUNT - j - 1} \leftarrow \text{\COEFF}_{\COEFFCOUNT - j - 1} + \SSIGN$\;
+        $\text{\ERROR} \leftarrow \text{\ERROR} - \left\lfloor\frac{\DIFF \times -\SSIGN}{2 ^ 9}\right\rfloor \times (j + 1)$\;
+        \If{$\text{\ERROR} \geq 0$}{
+          \BREAK\;
+        }
       }
     }
   }
-  \ElseIf{$\text{\ERROR} < 0$}{
-    \For{$j \leftarrow 0$ \emph{\KwTo}$\text{\COEFFCOUNT}$}{
-      $\DIFF \leftarrow \text{\BASESAMPLE}_i - \text{\SAMPLE}_{i - \COEFFCOUNT + j}$\;
-      $\SSIGN \leftarrow \SIGN(\DIFF)$\;
-      $\text{\COEFF}_{\COEFFCOUNT - j - 1} \leftarrow \text{\COEFF}_{\COEFFCOUNT - j - 1} + \SSIGN$\;
-      $\text{\ERROR} \leftarrow \text{\ERROR} - \left\lfloor\frac{\DIFF \times -\SSIGN}{2 ^ 9}\right\rfloor \times (j + 1)$\;
-      \If{$\text{\ERROR} \geq 0$}{
-        \BREAK\;
-      }
-    }
+}{
+  \For{$i \leftarrow 1$ \emph{\KwTo}\SAMPLECOUNT}{
+    $\text{\RESIDUAL}_i \leftarrow \TRUNCATE(\text{\SAMPLE}_i - \text{\SAMPLE}_{i - 1}~,~\SAMPLESIZE)$\;
   }
 }
 \Return \RESIDUAL\;
 \EALGORITHM
-where the \texttt{sign} function is defined as:
+}
+\subsubsection{The \texttt{truncate} Function}
+{\relsize{-1}
+  \ALGORITHM{a signed sample, the maximum size of the sample in bits}{a truncated signed sample}
+  \SetKw{BAND}{bitwise and}
+  \SetKwData{SAMPLE}{sample}
+  \SetKwData{BITS}{bits}
+  \SetKwData{TRUNCATED}{truncated}
+  $\TRUNCATED \leftarrow \SAMPLE~\BAND~(2 ^ {\BITS} - 1)$\;
+  \eIf(\tcc*[f]{apply sign bit}){$(\TRUNCATED~\BAND~2 ^ {\BITS - 1}) \neq 0$}{
+    \Return $\TRUNCATED - 2 ^ {\BITS}$\;
+  }{
+    \Return \TRUNCATED\;
+  }
+  \EALGORITHM
+}
+
+\clearpage
+
+{\relsize{-1}
 \begin{equation*}
 \texttt{sign}(x) =
 \begin{cases}
@@ -2096,8 +2176,7 @@ where the \texttt{sign} function is defined as:
 \texttt{-1} & \text{if } x < 0
 \end{cases}
 \end{equation*}
-
-\clearpage
+}
 
 \subsubsection{Computing Residuals Example}
 {\relsize{-2}
@@ -2173,7 +2252,7 @@ $i$ & $\textsf{sample}_i$ & $\textsf{base}_i$ & \textsf{QLP sum}_i & \textsf{res
 
 \clearpage
 
-\subsubsection{Encoding Residual Block}
+\subsection{Encoding Residual Block}
 \label{alac:write_residuals}
 \ALGORITHM{a list of signed residual values, sample size; initial history, history multiplier, maximum K from encoding options}{a block of residual data, or a \textit{residual overflow} exception}
 \SetKwData{RESIDUAL}{residual}

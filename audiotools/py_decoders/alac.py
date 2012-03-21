@@ -23,6 +23,17 @@ def sign_only(value):
         return -1
 
 
+def truncate_bits(value, bits):
+    #truncate value to the given number of bits
+    truncated = value & ((1 << bits) - 1)
+
+    #apply newly created sign bit
+    if (truncated & (1 << (bits - 1))):
+        return truncated - (1 << bits)
+    else:
+        return truncated
+
+
 class ALACDecoder:
     def __init__(self, filename):
         self.reader = BitstreamReader(open(filename, "rb"), 0)
@@ -212,18 +223,20 @@ class ALACDecoder:
             else:
                 uncompressed_lsbs = []
 
+            sample_size = (self.bits_per_sample -
+                           (uncompressed_lsb_size * 8) +
+                           channel_count - 1)
+
             #and residual blocks
-            residual_blocks = [self.read_residuals(
-                    self.bits_per_sample -
-                    (uncompressed_lsb_size * 8) +
-                    channel_count - 1,
-                    sample_count)
+            residual_blocks = [self.read_residuals(sample_size,
+                                                   sample_count)
                                for i in xrange(channel_count)]
 
             #calculate subframe samples based on
             #subframe header's QLP coefficients and QLP shift-needed
             decoded_subframes = [self.decode_subframe(header[0],
                                                       header[1],
+                                                      sample_size,
                                                       residuals)
                                  for (header, residuals) in
                                  zip(subframe_headers,
@@ -325,53 +338,73 @@ class ALACDecoder:
                 self.reader.unread(0)
                 return msb * ((1 << k) - 1)
 
-    def decode_subframe(self, qlp_shift_needed, qlp_coefficients, residuals):
+    def decode_subframe(self, qlp_shift_needed, qlp_coefficients,
+                        sample_size, residuals):
+        #first sample is always copied verbatim
         samples = [residuals.pop(0)]
-        for i in xrange(len(qlp_coefficients)):
-            samples.append(samples[-1] + residuals.pop(0))
 
-        for residual in residuals:
-            base_sample = samples[-len(qlp_coefficients) - 1]
-            lpc_sum = sum([(s - base_sample) * c for (s, c) in
-                           zip(samples[-len(qlp_coefficients):],
-                               reversed(qlp_coefficients))])
-            outval = (1 << (qlp_shift_needed - 1)) + lpc_sum
-            outval >>= qlp_shift_needed
-            samples.append(outval + residual + base_sample)
+        if (len(qlp_coefficients) < 31):
+            #the next "coefficient count" samples
+            #are applied as differences to the previous
+            for i in xrange(len(qlp_coefficients)):
+                samples.append(truncate_bits(samples[-1] + residuals.pop(0),
+                                             sample_size))
 
-            buf = samples[-len(qlp_coefficients) - 2:-1]
+            #remaining samples are processed much like LPC
+            for residual in residuals:
+                base_sample = samples[-len(qlp_coefficients) - 1]
+                lpc_sum = sum([(s - base_sample) * c for (s, c) in
+                               zip(samples[-len(qlp_coefficients):],
+                                   reversed(qlp_coefficients))])
+                outval = (1 << (qlp_shift_needed - 1)) + lpc_sum
+                outval >>= qlp_shift_needed
+                samples.append(truncate_bits(outval + residual + base_sample,
+                                             sample_size))
 
-            #error value then adjusts the coefficients table
-            if (residual > 0):
-                predictor_num = len(qlp_coefficients) - 1
+                buf = samples[-len(qlp_coefficients) - 2:-1]
 
-                while ((predictor_num >= 0) and residual > 0):
-                    val = buf[0] - buf[len(qlp_coefficients) - predictor_num]
-                    sign = sign_only(val)
+                #error value then adjusts the coefficients table
+                if (residual > 0):
+                    predictor_num = len(qlp_coefficients) - 1
 
-                    qlp_coefficients[predictor_num] -= sign
+                    while ((predictor_num >= 0) and residual > 0):
+                        val = (buf[0] -
+                               buf[len(qlp_coefficients) - predictor_num])
 
-                    val *= sign
+                        sign = sign_only(val)
 
-                    residual -= ((val >> qlp_shift_needed) *
-                                 (len(qlp_coefficients) - predictor_num))
-                    predictor_num -= 1
+                        qlp_coefficients[predictor_num] -= sign
 
-            elif (residual < 0):
-                #the same as above, but we break if residual goes positive
-                predictor_num = len(qlp_coefficients) - 1
+                        val *= sign
 
-                while ((predictor_num >= 0) and residual < 0):
-                    val = buf[0] - buf[len(qlp_coefficients) - predictor_num]
-                    sign = -sign_only(val)
+                        residual -= ((val >> qlp_shift_needed) *
+                                     (len(qlp_coefficients) - predictor_num))
 
-                    qlp_coefficients[predictor_num] -= sign
+                        predictor_num -= 1
 
-                    val *= sign
+                elif (residual < 0):
+                    #the same as above, but we break if residual goes positive
+                    predictor_num = len(qlp_coefficients) - 1
 
-                    residual -= ((val >> qlp_shift_needed) *
-                                 (len(qlp_coefficients) - predictor_num))
-                    predictor_num -= 1
+                    while ((predictor_num >= 0) and residual < 0):
+                        val = (buf[0] -
+                               buf[len(qlp_coefficients) - predictor_num])
+
+                        sign = -sign_only(val)
+
+                        qlp_coefficients[predictor_num] -= sign
+
+                        val *= sign
+
+                        residual -= ((val >> qlp_shift_needed) *
+                                     (len(qlp_coefficients) - predictor_num))
+
+                        predictor_num -= 1
+        else:
+            #residuals are encoded as simple difference values
+            for residual in residuals:
+                samples.append(truncate_bits(samples[-1] + residual,
+                                             sample_size))
 
         return samples
 

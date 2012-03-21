@@ -142,6 +142,7 @@ read_residual(BitstreamReader *bs,
   to the given samples*/
 static void
 decode_subframe(array_i* samples,
+                unsigned sample_size,
                 array_i* residuals,
                 array_i* qlp_coeff,
                 uint8_t qlp_shift_needed);

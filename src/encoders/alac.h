@@ -177,6 +177,7 @@ write_subframe_header(BitstreamWriter *bs,
 
 static void
 calculate_residuals(const array_i* samples,
+                    unsigned sample_size,
                     const array_i* qlp_coefficients,
                     array_i* residuals);
 

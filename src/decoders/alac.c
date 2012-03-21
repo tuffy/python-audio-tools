@@ -476,6 +476,7 @@ read_frame(decoders_ALACDecoder *self,
         unsigned interlacing_leftweight;
         unsigned channel;
         unsigned i;
+        unsigned sample_size;
         array_i* LSBs = NULL;
         array_i* residuals = self->residuals;
         array_ia* frame_channels = self->frame_channels;
@@ -502,6 +503,10 @@ read_frame(decoders_ALACDecoder *self,
                              mdat->read(mdat, uncompressed_LSBs * 8));
         }
 
+        sample_size = (self->bits_per_sample -
+                       (uncompressed_LSBs * 8) +
+                       (channel_count - 1));
+
         /*read a residual block per channel
           and calculate the subframe's samples*/
         for (channel = 0; channel < channel_count; channel++) {
@@ -509,15 +514,14 @@ read_frame(decoders_ALACDecoder *self,
             read_residuals(mdat,
                            residuals,
                            sample_count,
-                           self->bits_per_sample -
-                           (uncompressed_LSBs * 8) +
-                           (channel_count - 1),
+                           sample_size,
                            self->initial_history,
                            self->history_multiplier,
                            self->maximum_k);
 
             decode_subframe(
                 frame_channels->append(frame_channels),
+                sample_size,
                 residuals,
                 self->subframe_headers[channel].qlp_coeff,
                 self->subframe_headers[channel].qlp_shift_needed);
@@ -747,84 +751,107 @@ SIGN_ONLY(int value)
         return 0;
 }
 
+static inline int
+TRUNCATE_BITS(int value, unsigned bits)
+{
+    /*truncate value to bits*/
+    const int truncated = value & ((1 << bits) - 1);
+
+    /*apply sign bit*/
+    if (truncated & (1 << (bits - 1))) {
+        return truncated - (1 << bits);
+    } else {
+        return truncated;
+    }
+}
+
 static void
 decode_subframe(array_i* samples,
+                unsigned sample_size,
                 array_i* residuals,
                 array_i* qlp_coeff,
                 uint8_t qlp_shift_needed)
 {
     int* residuals_data = residuals->_;
-    int base_sample;
-    int residual;
-    int64_t lpc_sum;
-    int output_value;
-    int diff;
-    int sign;
     int i = 0;
-    int j;
 
     samples->reset(samples);
+    samples->resize(samples, MAX(qlp_coeff->len, residuals->len));
 
     /*first sample always copied verbatim*/
-    samples->append(samples, residuals_data[i++]);
+    a_append(samples, residuals_data[i++]);
 
-    /*grab a number of warm-up samples equal to coefficients' length*/
-    for (j = 0; j < qlp_coeff->len; j++) {
-        /*these are adjustments to the previous sample
-          rather than copied verbatim*/
-        samples->append(samples, residuals_data[i] + samples->_[i - 1]);
-        i++;
-    }
+    if (qlp_coeff->len < 31) { /*typical decoding case*/
+        int j;
 
-    /*then calculate a new sample per remaining residual*/
-    for (; i < residuals->len; i++) {
-        residual = residuals_data[i];
-        lpc_sum = 1 << (qlp_shift_needed - 1);
-
-        /*Note that base_sample gets stripped from previously encoded samples
-          then re-added prior to adding the next sample.
-          It's a watermark sample, of sorts.*/
-        base_sample = samples->_[i - (qlp_coeff->len + 1)];
-
+        /*grab a number of warm-up samples equal to coefficients' length*/
         for (j = 0; j < qlp_coeff->len; j++) {
-            lpc_sum += ((int64_t)qlp_coeff->_[j] *
-                        (int64_t)(samples->_[i - j - 1] - base_sample));
+            /*these are adjustments to the previous sample
+              rather than copied verbatim*/
+            a_append(samples,
+                     TRUNCATE_BITS(residuals_data[i] + samples->_[i - 1],
+                                   sample_size));
+            i++;
         }
 
-        /*sample = ((sum + 2 ^ (quant - 1)) / (2 ^ quant)) +
-          residual + base_sample*/
-        lpc_sum >>= qlp_shift_needed;
-        lpc_sum += base_sample;
-        output_value = (int)(residual + lpc_sum);
-        samples->append(samples, output_value);
+        /*then calculate a new sample per remaining residual*/
+        for (; i < residuals->len; i++) {
+            const int base_sample = samples->_[i - (qlp_coeff->len + 1)];
+            int residual = residuals_data[i];
+            int64_t lpc_sum = 1 << (qlp_shift_needed - 1);
 
-        /*At this point, except for base_sample, everything looks a lot like
-          a FLAC LPC subframe.
-          We're not done yet, though.
-          ALAC's adaptive algorithm then adjusts the QLP coefficients
-          up or down 1 step based on previously decoded samples
-          and the residual*/
+            /*base_sample gets stripped from previously encoded samples
+              then re-added prior to adding the next sample*/
 
-        if (residual > 0) {
             for (j = 0; j < qlp_coeff->len; j++) {
-                diff = base_sample - samples->_[i - qlp_coeff->len + j];
-                sign = SIGN_ONLY(diff);
-                qlp_coeff->_[qlp_coeff->len - j - 1] -= sign;
-                residual -= (((diff * sign) >> qlp_shift_needed) *
-                             (j + 1));
-                if (residual <= 0)
-                    break;
+                lpc_sum += ((int64_t)qlp_coeff->_[j] *
+                            (int64_t)(samples->_[i - j - 1] - base_sample));
             }
-        } else if (residual < 0) {
-            for (j = 0; j < qlp_coeff->len; j++) {
-                diff = base_sample - samples->_[i - qlp_coeff->len + j];
-                sign = SIGN_ONLY(diff);
-                qlp_coeff->_[qlp_coeff->len - j - 1] += sign;
-                residual -= (((diff * -sign) >> qlp_shift_needed) *
-                             (j + 1));
-                if (residual >= 0)
-                    break;
+
+            /*sample = ((sum + 2 ^ (quant - 1)) / (2 ^ quant)) +
+              residual + base_sample*/
+            lpc_sum >>= qlp_shift_needed;
+            lpc_sum += base_sample;
+            a_append(samples,
+                     TRUNCATE_BITS((int)(residual + lpc_sum), sample_size));
+
+            /*At this point, except for base_sample,
+              everything looks a lot like a FLAC LPC subframe.
+              We're not done yet, though.
+              ALAC's adaptive algorithm then adjusts the QLP coefficients
+              up or down 1 step based on previously decoded samples
+              and the residual*/
+
+            if (residual > 0) {
+                for (j = 0; j < qlp_coeff->len; j++) {
+                    const int diff = (base_sample -
+                                      samples->_[i - qlp_coeff->len + j]);
+                    const int sign = SIGN_ONLY(diff);
+                    qlp_coeff->_[qlp_coeff->len - j - 1] -= sign;
+                    residual -= (((diff * sign) >> qlp_shift_needed) *
+                                 (j + 1));
+                    if (residual <= 0)
+                        break;
+                }
+            } else if (residual < 0) {
+                for (j = 0; j < qlp_coeff->len; j++) {
+                    const int diff = (base_sample -
+                                      samples->_[i - qlp_coeff->len + j]);
+                    const int sign = SIGN_ONLY(diff);
+                    qlp_coeff->_[qlp_coeff->len - j - 1] += sign;
+                    residual -= (((diff * -sign) >> qlp_shift_needed) *
+                                 (j + 1));
+                    if (residual >= 0)
+                        break;
+                }
             }
+        }
+    } else {
+        for (; i < residuals->len; i++) {
+            a_append(samples,
+                     TRUNCATE_BITS(residuals_data[i] + samples->_[i - 1],
+                                   sample_size));
+            i++;
         }
     }
 }

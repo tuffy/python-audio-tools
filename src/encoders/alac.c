@@ -759,10 +759,12 @@ compute_coefficients(struct alac_context* encoder,
         quantize_coefficients(lp_coefficients, 8, qlp_coefficients8);
 
         /*calculate residuals for QLP coefficients at order 4*/
-        calculate_residuals(samples, qlp_coefficients4, residual_values4);
+        calculate_residuals(samples, sample_size,
+                            qlp_coefficients4, residual_values4);
 
         /*calculate residuals for QLP coefficients at order 8*/
-        calculate_residuals(samples, qlp_coefficients8, residual_values8);
+        calculate_residuals(samples, sample_size,
+                            qlp_coefficients8, residual_values8);
 
         /*encode residual block for QLP coefficients at order 4*/
         bw_reset_recorder(residual_block4);
@@ -792,7 +794,8 @@ compute_coefficients(struct alac_context* encoder,
         qlp_coefficients->reset(qlp_coefficients);
         qlp_coefficients->mappend(qlp_coefficients, 4, 0);
 
-        calculate_residuals(samples, qlp_coefficients, residual_values4);
+        calculate_residuals(samples, sample_size,
+                            qlp_coefficients, residual_values4);
 
         encode_residuals(encoder, sample_size,
                          residual_values4, residual);
@@ -939,7 +942,7 @@ quantize_coefficients(const array_fa* lp_coefficients,
 }
 
 static inline int
-SIGN(int value)
+SIGN_ONLY(int value)
 {
     if (value > 0)
         return 1;
@@ -949,19 +952,29 @@ SIGN(int value)
         return 0;
 }
 
+static inline int
+TRUNCATE_BITS(int value, unsigned bits)
+{
+    /*truncate value to bits*/
+    const int truncated = value & ((1 << bits) - 1);
+
+    /*apply sign bit*/
+    if (truncated & (1 << (bits - 1))) {
+        return truncated - (1 << bits);
+    } else {
+        return truncated;
+    }
+}
+
 static void
 calculate_residuals(const array_i* samples,
-                         const array_i* qlp_coefficients,
-                         array_i* residuals)
+                    unsigned sample_size,
+                    const array_i* qlp_coefficients,
+                    array_i* residuals)
 {
-    unsigned i;
-    unsigned j;
-    int base_sample;
-    int64_t lpc_sum;
-    int error;
-    int diff;
-    int sign;
-    /*no exceptions occur here either, so temporary value is safe*/
+    unsigned i = 0;
+
+    /*no exceptions occur here either, so temporary array is safe*/
     array_i* coefficients = array_i_new();
     const unsigned coeff_count = qlp_coefficients->len;
 
@@ -969,45 +982,60 @@ calculate_residuals(const array_i* samples,
     residuals->reset(residuals);
     residuals->resize(residuals, samples->len);
 
-    /*warm-up residuals*/
-    a_append(residuals, samples->_[0]);
-    for (i = 1; i < (coeff_count + 1); i++)
-        a_append(residuals, samples->_[i] - samples->_[i - 1]);
+    /*first sample always copied verbatim*/
+    a_append(residuals, samples->_[i++]);
 
-    for (i = (coeff_count + 1); i < samples->len; i++) {
-        base_sample = samples->_[i - coeff_count - 1];
+    if (coeff_count < 31) {
+        unsigned j;
 
-        lpc_sum = 1 << 8;
+        for (; i < (coeff_count + 1); i++)
+            a_append(residuals,
+                     TRUNCATE_BITS(samples->_[i] - samples->_[i - 1],
+                                   sample_size));
 
-        for (j = 0; j < coeff_count; j++) {
-            lpc_sum += ((int64_t)coefficients->_[j] *
-                        (int64_t)(samples->_[i - j - 1] - base_sample));
+        for (; i < samples->len; i++) {
+            const int base_sample = samples->_[i - coeff_count - 1];
+            int64_t lpc_sum = 1 << 8;
+            int error;
+
+            for (j = 0; j < coeff_count; j++) {
+                lpc_sum += ((int64_t)coefficients->_[j] *
+                            (int64_t)(samples->_[i - j - 1] - base_sample));
+            }
+
+            lpc_sum >>= 9;
+
+            error = TRUNCATE_BITS(samples->_[i] - base_sample - (int)lpc_sum,
+                                  sample_size);
+            a_append(residuals, error);
+
+            if (error > 0) {
+                for (j = 0; j < coeff_count; j++) {
+                    const int diff = (base_sample -
+                                      samples->_[i - coeff_count + j]);
+                    const int sign = SIGN_ONLY(diff);
+                    coefficients->_[coeff_count - j - 1] -= sign;
+                    error -= ((diff * sign) >> 9) * (j + 1);
+                    if (error <= 0)
+                        break;
+                }
+            } else if (error < 0) {
+                for (j = 0; j < coeff_count; j++) {
+                    const int diff = (base_sample -
+                                      samples->_[i - coeff_count + j]);
+                    const int sign = SIGN_ONLY(diff);
+                    coefficients->_[coeff_count - j - 1] += sign;
+                    error -= ((diff * -sign) >> 9) * (j + 1);
+                    if (error >= 0)
+                        break;
+                }
+            }
         }
-
-        lpc_sum >>= 9;
-        lpc_sum += base_sample;
-
-        error = (samples->_[i] - (int)lpc_sum);
-        a_append(residuals, error);
-
-        if (error > 0) {
-            for (j = 0; j < coeff_count; j++) {
-                diff = base_sample - samples->_[i - coeff_count + j];
-                sign = SIGN(diff);
-                coefficients->_[coeff_count - j - 1] -= sign;
-                error -= ((diff * sign) >> 9) * (j + 1);
-                if (error <= 0)
-                    break;
-            }
-        } else if (error < 0) {
-            for (j = 0; j < coeff_count; j++) {
-                diff = base_sample - samples->_[i - coeff_count + j];
-                sign = SIGN(diff);
-                coefficients->_[coeff_count - j - 1] += sign;
-                error -= ((diff * -sign) >> 9) * (j + 1);
-                if (error >= 0)
-                    break;
-            }
+    } else {
+        for (; i < samples->len; i++) {
+            a_append(residuals,
+                     TRUNCATE_BITS(samples->_[i] - samples->_[i - 1],
+                                   sample_size));
         }
     }
 

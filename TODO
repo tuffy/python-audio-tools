@@ -5365,4 +5365,5 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Ensure complete unit test passes
    this includes some compound tests
    which may not be covered by individual tests
+** TODO Eliminate all compiler warnings
 ** TODO Ensure MANIFEST.in is complete
