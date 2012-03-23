@@ -884,6 +884,15 @@ class AiffAudio(AiffContainer):
             else:
                 chunk_queue.append(chunk)
 
+        old_metadata = self.get_metadata()
+        if (old_metadata is not None):
+            fixed_metadata = old_metadata.clean(fixes_performed)
+        else:
+            fixed_metadata = old_metadata
+
         if (output_filename is not None):
             AiffAudio.aiff_from_chunks(output_filename, chunk_queue)
-            return AiffAudio(output_filename)
+            fixed_aiff = AiffAudio(output_filename)
+            if (fixed_metadata is not None):
+                fixed_aiff.update_metadata(fixed_metadata)
+            return fixed_aiff

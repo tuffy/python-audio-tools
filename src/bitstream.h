@@ -331,6 +331,26 @@ br_open(FILE *f, bs_endianness endianness);
 BitstreamReader*
 br_substream_new(bs_endianness endianness);
 
+/*int read(void* user_data, struct bs_buffer* buffer)
+  where "buffer" is where read output will be placed
+  using buf_putc, buf_extend, etc.
+
+  note that "buffer" may already be holding data
+  (especially if a mark is in place)
+  so new data read to the buffer should be appended
+  rather than replacing what's already there
+
+  returns 0 on a successful read, 1 on a read error
+  "size" will be set to 0 once EOF is reached
+
+
+  void close(void* user_data)
+  called when the stream is closed
+
+
+  void free(void* user_data)
+  called when the stream is deallocated
+*/
 BitstreamReader*
 br_open_external(void* user_data,
                  bs_endianness endianness,
@@ -889,6 +909,27 @@ typedef struct BitstreamWriter_s {
 BitstreamWriter*
 bw_open(FILE *f, bs_endianness endianness);
 
+/*int write(void* user_data, const struct bs_buffer* buffer)
+  where "buffer" is the data to be written
+  whose maximum size is indicated at ext_open_w init time
+
+  returns 0 on a successful write, 1 on a write error
+
+  void flush(void* user_data)
+  flushes any pending data
+
+  note that high-level flushing will
+  perform ext_write() followed by ext_flush()
+  so the latter can be a no-op if necessary
+
+
+  void close(void* user_data)
+  closes the stream for further writing
+
+
+  void free(void* user_data)
+  deallocates anything in user_data, if necessary
+*/
 BitstreamWriter*
 bw_open_external(void* user_data,
                  bs_endianness endianness,
@@ -1231,7 +1272,7 @@ struct bs_buffer*
 buf_new(void);
 
 /*returns a pointer to the new position in the buffer
-  where one can begin appending new data
+  where one can begin appending up to "data_size" bytes of new data
 
   update stream->buffer_size upon successfully populating the buffer
 
@@ -1248,7 +1289,7 @@ uint8_t*
 buf_extend(struct bs_buffer *stream, uint32_t data_size);
 
 /*makes target's data a duplicate of source's data
-  target should have no marks in progress
+  target will have no marks in progress
   since they would no longer be valid*/
 void
 buf_copy(const struct bs_buffer *source, struct bs_buffer *target);
@@ -1259,7 +1300,7 @@ buf_append(const struct bs_buffer *source, struct bs_buffer* target);
 
 /*clears out the buffer for possible reuse
 
-  resets the position, size and resets any marks in progress*/
+  resets the position, size and any marks in progress*/
 void
 buf_reset(struct bs_buffer *stream);
 
@@ -1306,11 +1347,11 @@ buf_close(struct bs_buffer *stream);
 */
 struct br_external_input*
 ext_open(void* user_data,
-         int (*read)(void* user_data,
-                     struct bs_buffer* buffer),
+         int (*read)(void* user_data, struct bs_buffer* buffer),
          void (*close)(void* user_data),
          void (*free)(void* user_data));
 
+/*casts for inserting functions with non-void pointers into ext_open*/
 typedef int (*EXT_READ)(void* user_data, struct bs_buffer* buffer);
 typedef void (*EXT_CLOSE)(void* user_data);
 typedef void (*EXT_FREE)(void* user_data);
@@ -1338,7 +1379,7 @@ ext_free(struct br_external_input* stream);
   where "buffer" is the data to be written
   whose maximum size is indicated at ext_open_w init time
 
-  returns 0 on a successful write, 0 on a write error
+  returns 0 on a successful write, 1 on a write error
 
   void flush(void* user_data)
   flushes any pending data
@@ -1356,11 +1397,14 @@ ext_free(struct br_external_input* stream);
   deallocates anything in user_data, if necessary
 */
 
+/*casts for inserting functions with non-void pointers into ext_open_w*/
+typedef int (*EXT_WRITE)(void* user_data, const struct bs_buffer* buffer);
+typedef void (*EXT_FLUSH)(void* user_data);
+
 struct bw_external_output*
 ext_open_w(void* user_data,
            uint32_t buffer_size,
-           int (*write)(void* user_data,
-                        const struct bs_buffer* buffer),
+           int (*write)(void* user_data, const struct bs_buffer* buffer),
            void (*flush)(void* user_data),
            void (*close)(void* user_data),
            void (*free)(void* user_data));

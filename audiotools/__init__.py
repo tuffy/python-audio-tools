@@ -2714,11 +2714,12 @@ class MetaData:
         raise NotImplementedError()
 
     def __eq__(self, metadata):
-        if (metadata is not None):
-            return set([(getattr(self, attr) == getattr(metadata, attr))
-                        for attr in MetaData.FIELDS]) == set([True])
+        for attr in MetaData.FIELDS:
+            if ((not hasattr(metadata, attr)) or
+                (getattr(self, attr) != getattr(metadata, attr))):
+                return False
         else:
-            return False
+            return True
 
     def __ne__(self, metadata):
         return not self.__eq__(metadata)

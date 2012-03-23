@@ -976,6 +976,7 @@ class track2track(UtilTest):
                     ('--replay-gain' not in options)):
                     self.assert_(track2.replay_gain() is None)
                 elif (("-o" not in options) and
+                      audiotools.ADD_REPLAYGAIN and
                       ('--no-replay-gain' not in options) and
                       (output_class.can_add_replay_gain())):
                     if (output_class.lossless_replay_gain()):
@@ -1957,14 +1958,14 @@ class tracklint(UtilTest):
         for audio_class in [audiotools.OggFlacAudio,
                             audiotools.VorbisAudio]:
             bad_vorbiscomment = audiotools.VorbisComment(
-                {"TITLE": [u"Track Name  "],
-                 "TRACKNUMBER": [u"02"],
-                 "DISCNUMBER": [u"003"],
-                 "ARTIST": [u"  Some Artist"],
-                 "PERFORMER": [u"Some Artist"],
-                 "CATALOG": [u""],
-                 "YEAR": [u"  "],
-                 "COMMENT": [u"  Some Comment  "]})
+                [u"TITLE=Track Name  ",
+                 u"TRACKNUMBER=02",
+                 u"DISCNUMBER=003",
+                 u"ARTIST=  Some Artist",
+                 u"CATALOG=",
+                 u"YEAR=  ",
+                 u"COMMENT=  Some Comment  "],
+                u"Vendor String")
 
             fixed = audiotools.MetaData(
                 track_name=u"Track Name",
@@ -1984,7 +1985,8 @@ class tracklint(UtilTest):
                 track.set_metadata(bad_vorbiscomment)
                 metadata = track.get_metadata()
                 if (isinstance(metadata, audiotools.FlacMetaData)):
-                    metadata = metadata.vorbis_comment
+                    metadata = metadata.get_block(
+                        audiotools.Flac_VORBISCOMMENT.BLOCK_ID)
                 self.assertEqual(metadata, bad_vorbiscomment)
                 for (key, value) in metadata.items():
                     self.assertEqual(value, bad_vorbiscomment[key])
@@ -2010,7 +2012,8 @@ class tracklint(UtilTest):
 
                 metadata = track.get_metadata()
                 if (isinstance(metadata, audiotools.FlacMetaData)):
-                    metadata = metadata.vorbis_comment
+                    metadata = metadata.get_block(
+                        audiotools.Flac_VORBISCOMMENT.BLOCK_ID)
                 self.assertEqual(metadata, bad_vorbiscomment)
                 self.assertNotEqual(metadata, fixed)
                 for (key, value) in metadata.items():
@@ -2034,9 +2037,6 @@ class tracklint(UtilTest):
             self.assertEqual(tempflac.read(3), "ID3")
             tempflac.seek(-0x80, 2)
             self.assertEqual(tempflac.read(3), "TAG")
-
-            self.assertEqual(self.__run_app__(["trackinfo", tempflac.name]), 0)
-            self.__check_error__(_(u"ID3v2 tag found at start of FLAC file.  Please remove with tracklint(1)"))
 
             #ensure that FLACs tagged with ID3v2/ID3v1 comments are scrubbed
             self.assertEqual(self.__run_app__(
@@ -2064,9 +2064,6 @@ class tracklint(UtilTest):
             tempflac.seek(0, 0)
             self.assertEqual(tempflac.read(4), 'fLaC')
             self.assertNotEqual(ord(tempflac.read(1)) & 0x07, 0)
-
-            self.assertEqual(self.__run_app__(["trackinfo", tempflac.name]), 0)
-            self.__check_error__(_(u"STREAMINFO not first metadata block.  Please fix with tracklint(1)"))
 
             #ensure that FLACs with improper metadata ordering are reordered
             self.assertEqual(self.__run_app__(
@@ -2179,7 +2176,6 @@ class tracklint(UtilTest):
                 [audiotools.ApeTagItem(0, False, "Title", "Track Name  "),
                  audiotools.ApeTagItem(0, False, "Track", "02"),
                  audiotools.ApeTagItem(0, False, "Artist", "  Some Artist"),
-                 audiotools.ApeTagItem(0, False, "Performer", "Some Artist"),
                  audiotools.ApeTagItem(0, False, "Catalog", ""),
                  audiotools.ApeTagItem(0, False, "Year", "  "),
                  audiotools.ApeTagItem(0, False, "Comment", "  Some Comment  ")])
@@ -2252,7 +2248,7 @@ class tracklint(UtilTest):
                 tempmp,
                 BLANK_PCM_Reader(10))
 
-            track.set_metadata(bad_id3v2)
+            track.update_metadata(bad_id3v2)
             metadata = track.get_metadata()
             self.assertEqual(metadata, bad_id3v2)
             for (key, value) in metadata.items():
@@ -2326,21 +2322,19 @@ class tracklint(UtilTest):
     def test_id3v22(self):
         self.__id3_text__(
             audiotools.ID3v22Comment(
-                [audiotools.ID3v22TextFrame.from_unicode(
+                [audiotools.ID3v22_T__Frame.converted(
                         "TT2", u"Track Name  "),
-                 audiotools.ID3v22TextFrame.from_unicode(
+                 audiotools.ID3v22_T__Frame.converted(
                         "TRK", u"02"),
-                 audiotools.ID3v22TextFrame.from_unicode(
+                 audiotools.ID3v22_T__Frame.converted(
                         "TPA", u"003"),
-                 audiotools.ID3v22TextFrame.from_unicode(
+                 audiotools.ID3v22_T__Frame.converted(
                         "TP1", u"  Some Artist\u0000"),
-                 audiotools.ID3v22TextFrame.from_unicode(
-                        "TP2", u"Some Artist"),
-                 audiotools.ID3v22TextFrame.from_unicode(
+                 audiotools.ID3v22_T__Frame.converted(
                         "TRC", u""),
-                 audiotools.ID3v22TextFrame.from_unicode(
+                 audiotools.ID3v22_T__Frame.converted(
                         "TYE", u""),
-                 audiotools.ID3v22TextFrame.from_unicode(
+                 audiotools.ID3v22_COM_Frame.converted(
                         "COM", u"  Some Comment  ")]))
 
         #ID3v2.2 doesn't store most image fields internally
@@ -2350,21 +2344,19 @@ class tracklint(UtilTest):
     def test_id3v23(self):
         self.__id3_text__(
             audiotools.ID3v23Comment(
-                [audiotools.ID3v23TextFrame.from_unicode(
+                [audiotools.ID3v23_T___Frame.converted(
                         "TIT2", u"Track Name  "),
-                 audiotools.ID3v23TextFrame.from_unicode(
+                 audiotools.ID3v23_T___Frame.converted(
                         "TRCK", u"02"),
-                 audiotools.ID3v23TextFrame.from_unicode(
+                 audiotools.ID3v23_T___Frame.converted(
                         "TPOS", u"003"),
-                 audiotools.ID3v23TextFrame.from_unicode(
+                 audiotools.ID3v23_T___Frame.converted(
                         "TPE1", u"  Some Artist\u0000"),
-                 audiotools.ID3v23TextFrame.from_unicode(
-                        "TPE2", u"Some Artist"),
-                 audiotools.ID3v23TextFrame.from_unicode(
+                 audiotools.ID3v23_T___Frame.converted(
                         "TYER", u""),
-                 audiotools.ID3v23TextFrame.from_unicode(
+                 audiotools.ID3v23_T___Frame.converted(
                         "TCOP", u""),
-                 audiotools.ID3v23TextFrame.from_unicode(
+                 audiotools.ID3v23_COMM_Frame.converted(
                         "COMM", u"  Some Comment  ")]))
 
         good_image = audiotools.Image.new(TEST_COVER1, u"Description", 0)
@@ -2379,28 +2371,26 @@ class tracklint(UtilTest):
         bad_image.mime_type = u'img/jpg'
 
         self.__id3_images__(audiotools.ID3v23Comment,
-                                 bad_image,
-                                 good_image)
+                            bad_image,
+                            good_image)
 
     @UTIL_TRACKLINT
     def test_id3v24(self):
         self.__id3_text__(
             audiotools.ID3v24Comment(
-                [audiotools.ID3v24TextFrame.from_unicode(
+                [audiotools.ID3v24_T___Frame.converted(
                         "TIT2", u"Track Name  "),
-                 audiotools.ID3v24TextFrame.from_unicode(
+                 audiotools.ID3v24_T___Frame.converted(
                         "TRCK", u"02"),
-                 audiotools.ID3v24TextFrame.from_unicode(
+                 audiotools.ID3v24_T___Frame.converted(
                         "TPOS", u"003"),
-                 audiotools.ID3v24TextFrame.from_unicode(
+                 audiotools.ID3v24_T___Frame.converted(
                         "TPE1", u"  Some Artist\u0000"),
-                 audiotools.ID3v24TextFrame.from_unicode(
-                        "TPE2", u"Some Artist"),
-                 audiotools.ID3v24TextFrame.from_unicode(
+                 audiotools.ID3v24_T___Frame.converted(
                         "TYER", u""),
-                 audiotools.ID3v24TextFrame.from_unicode(
+                 audiotools.ID3v24_T___Frame.converted(
                         "TCOP", u""),
-                 audiotools.ID3v24TextFrame.from_unicode(
+                 audiotools.ID3v24_COMM_Frame.converted(
                         "COMM", u"  Some Comment  ")]))
 
         good_image = audiotools.Image.new(TEST_COVER1, u"Description", 0)
@@ -2415,8 +2405,8 @@ class tracklint(UtilTest):
         bad_image.mime_type = u'img/jpg'
 
         self.__id3_images__(audiotools.ID3v24Comment,
-                                 bad_image,
-                                 good_image)
+                            bad_image,
+                            good_image)
 
     @UTIL_TRACKLINT
     def test_mp3(self):
@@ -2441,24 +2431,14 @@ class tracklint(UtilTest):
                 self.assertEqual(self.__run_app__(
                         ["tracklint", "--fix", "--db", undo_db,
                          track.filename]), 1)
-                self.__check_info__(_(u"* %(filename)s: %(message)s") % \
-                           {"filename": self.filename(track.filename),
-                            "message": _(u"Stripped whitespace from track_name field")})
-                self.__check_info__(_(u"* %(filename)s: %(message)s") % \
-                           {"filename": self.filename(track.filename),
-                            "message": _(u"Stripped whitespace from track_name field")})
+
                 self.__check_error__(_(u"Unable to write \"%s\"") % \
                                          (self.filename(track.filename)))
 
                 #no undo DB, unwritable file
                 self.assertEqual(self.__run_app__(
                         ["tracklint", "--fix", track.filename]), 1)
-                self.__check_info__(_(u"* %(filename)s: %(message)s") % \
-                           {"filename": self.filename(track.filename),
-                            "message": _(u"Stripped whitespace from track_name field")})
-                self.__check_info__(_(u"* %(filename)s: %(message)s") % \
-                           {"filename": self.filename(track.filename),
-                            "message": _(u"Stripped whitespace from track_name field")})
+
                 self.__check_error__(_(u"Unable to write \"%s\"") % \
                                          (self.filename(track.filename)))
         finally:
@@ -2471,21 +2451,53 @@ class tracklint(UtilTest):
 
     @UTIL_TRACKLINT
     def test_m4a(self):
-        bad_m4a = audiotools.M4AMetaData([])
-        bad_m4a['\xa9nam'] = audiotools.M4AMetaData.text_atom(
-            '\xa9nam', u"Track Name  ")
-        bad_m4a['\xa9ART'] = audiotools.M4AMetaData.text_atom(
-            '\xa9ART', u"  Some Artist")
-        bad_m4a['aART'] = audiotools.M4AMetaData.text_atom(
-            'aART', u"Some Artist")
-        bad_m4a['cprt'] = audiotools.M4AMetaData.text_atom(
-            'cprt', u"")
-        bad_m4a['\xa9day'] = audiotools.M4AMetaData.text_atom(
-            '\xa9day', u"  ")
-        bad_m4a['\xa9cmt'] = audiotools.M4AMetaData.text_atom(
-            '\xa9cmt', u"  Some Comment  ")
-        bad_m4a['trkn'] = audiotools.M4AMetaData.trkn_atom(2, 0)
-        bad_m4a['disk'] = audiotools.M4AMetaData.disk_atom(3, 0)
+        from audiotools import M4A_Tree_Atom
+        from audiotools import M4A_META_Atom
+        from audiotools import M4A_HDLR_Atom
+        from audiotools import M4A_ILST_Leaf_Atom
+        from audiotools import M4A_ILST_Unicode_Data_Atom
+        from audiotools import M4A_ILST_TRKN_Data_Atom
+        from audiotools import M4A_ILST_DISK_Data_Atom
+        from audiotools import M4A_FREE_Atom
+
+        bad_m4a = M4A_META_Atom(
+            0, 0,
+            [M4A_HDLR_Atom(0, 0, '\x00\x00\x00\x00',
+                           'mdir', 'appl', 0, 0, '', 0),
+             M4A_Tree_Atom(
+                    'ilst',
+                    [M4A_ILST_Leaf_Atom(
+                            '\xa9nam',
+                            [M4A_ILST_Unicode_Data_Atom(
+                                    0, 1,
+                                    'Track Name  ')]),
+                     M4A_ILST_Leaf_Atom(
+                            '\xa9ART',
+                            [M4A_ILST_Unicode_Data_Atom(
+                                    0, 1,
+                                    '  Some Artist')]),
+                     M4A_ILST_Leaf_Atom(
+                            'cprt',
+                            [M4A_ILST_Unicode_Data_Atom(
+                                    0, 1,
+                                    '')]),
+                     M4A_ILST_Leaf_Atom(
+                            '\xa9day',
+                            [M4A_ILST_Unicode_Data_Atom(
+                                    0, 1,
+                                    '  ')]),
+                     M4A_ILST_Leaf_Atom(
+                            '\xa9cmt',
+                            [M4A_ILST_Unicode_Data_Atom(
+                                    0, 1,
+                                    '  Some Comment  ')]),
+                     M4A_ILST_Leaf_Atom(
+                            'trkn',
+                            [M4A_ILST_TRKN_Data_Atom(2, 0)]),
+                     M4A_ILST_Leaf_Atom(
+                            'disk',
+                            [M4A_ILST_DISK_Data_Atom(3, 0)])]),
+             M4A_FREE_Atom(1024)])
 
         fixed = audiotools.MetaData(
             track_name=u"Track Name",
@@ -2506,11 +2518,11 @@ class tracklint(UtilTest):
                     tempmp,
                     BLANK_PCM_Reader(10))
 
-                track.set_metadata(bad_m4a)
+                track.update_metadata(bad_m4a)
                 metadata = track.get_metadata()
                 self.assertEqual(metadata, bad_m4a)
-                for (key, value) in metadata.items():
-                    self.assertEqual(value, bad_m4a[key])
+                for leaf in metadata.ilst_atom():
+                    self.assertEqual(leaf, bad_m4a.ilst_atom()[leaf.name])
 
                 original_checksum = md5()
                 f = open(track.filename, 'rb')
@@ -2534,8 +2546,8 @@ class tracklint(UtilTest):
                 metadata = track.get_metadata()
                 self.assertEqual(metadata, bad_m4a)
                 self.assertNotEqual(metadata, fixed)
-                for (key, value) in metadata.items():
-                    self.assertEqual(value, bad_m4a[key])
+                for leaf in metadata.ilst_atom():
+                    self.assertEqual(leaf, bad_m4a.ilst_atom()[leaf.name])
             finally:
                 for f in os.listdir(tempdir):
                     os.unlink(os.path.join(tempdir, f))
@@ -2734,39 +2746,11 @@ class tracklint(UtilTest):
                     self.assertEqual(self.__run_app__(
                             ["tracklint", "--fix", "--db", undo_db,
                              track.filename]), 1)
-                    self.__check_info__(
-                        _(u"* %(filename)s: %(message)s") %
-                        {"filename": self.filename(track.filename),
-                         "message": _(u"Stripped whitespace from track_name field")})
-                    #MP3 and MP2 have track name stripped twice
-                    #because of the ID3 comment pair
-                    if ((audio_class == audiotools.MP3Audio) or
-                        (audio_class == audiotools.MP2Audio)):
-                        self.__check_info__(
-                            _(u"* %(filename)s: %(message)s") %
-                            {"filename": self.filename(track.filename),
-                             "message": _(u"Stripped whitespace from track_name field")})
+
                     self.__check_error__(_(u"Unable to write \"%s\"") %
                                          (self.filename(track.filename)))
 
-                    #no undo DB, unwritable file
-                    self.assertEqual(self.__run_app__(
-                            ["tracklint", "--fix", track.filename]), 1)
-                    self.__check_info__(
-                        _(u"* %(filename)s: %(message)s") %
-                        {"filename": self.filename(track.filename),
-                         "message": _(u"Stripped whitespace from track_name field")})
 
-                    #MP3 and MP2 have track name stripped twice
-                    #because of the ID3 comment pair
-                    if ((audio_class == audiotools.MP3Audio) or
-                        (audio_class == audiotools.MP2Audio)):
-                        self.__check_info__(
-                            _(u"* %(filename)s: %(message)s") %
-                            {"filename": self.filename(track.filename),
-                             "message": _(u"Stripped whitespace from track_name field")})
-                    self.__check_error__(_(u"Unable to write \"%s\"") %
-                                         (self.filename(track.filename)))
             finally:
                 os.chmod(track_file.name, track_file_stat)
                 track_file.close()
@@ -3729,11 +3713,6 @@ class trackrename(UtilTest):
 
         self.input_dir = tempfile.mkdtemp()
 
-        self.xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
-        self.xmcd_file.write('<?xml version="1.0" encoding="utf-8"?><metadata xmlns="http://musicbrainz.org/ns/mmd-1.0#" xmlns:ext="http://musicbrainz.org/ns/ext-1.0#"><release-list><release><title>Album 3</title><artist><name>Artist 3</name></artist><release-event-list><event catalog-number="" date="2011"/></release-event-list><track-list><track><title>Track 3-1</title><duration>5000</duration></track><track><title>Track 3-2</title><duration>6000</duration></track><track><title>Track 3-3</title><duration>7000</duration></track></track-list></release></release-list></metadata>')
-        self.xmcd_file.flush()
-        self.xmcd_metadata = audiotools.read_metadata_file(self.xmcd_file.name)
-
         self.track_names = ["02 - name." + self.type.SUFFIX,
                             "name." + self.type.SUFFIX,
                             "02 - name." + self.type.SUFFIX,
@@ -3751,8 +3730,6 @@ class trackrename(UtilTest):
 
     @UTIL_TRACKRENAME
     def tearDown(self):
-        self.xmcd_file.close()
-
         for f in os.listdir(self.input_dir):
             os.unlink(os.path.join(self.input_dir, f))
         os.rmdir(self.input_dir)
@@ -3764,10 +3741,7 @@ class trackrename(UtilTest):
     def populate_options(self, options):
         populated = []
         for option in options:
-            if (option == '-x'):
-                populated.append(option)
-                populated.append(self.xmcd_file.name)
-            elif (option == '--format'):
+            if (option == '--format'):
                 populated.append(option)
                 populated.append(self.format)
             else:
@@ -3778,7 +3752,7 @@ class trackrename(UtilTest):
     def test_options(self):
         messenger = audiotools.Messenger("trackrename", None)
 
-        all_options = ["-x", "--format"]
+        all_options = ["--format"]
         for count in xrange(0, len(all_options) + 1):
             for (name, metadata) in zip(self.track_names, self.track_metadata):
                 for options in Combinations(all_options, count):
@@ -3791,6 +3765,8 @@ class trackrename(UtilTest):
                     if (metadata is not None):
                         track.set_metadata(metadata)
 
+                    original_metadata = track.get_metadata()
+
                     track_data = open(track.filename, 'rb').read()
 
                     self.assertEqual(
@@ -3802,20 +3778,13 @@ class trackrename(UtilTest):
                     else:
                         output_format = None
 
-                    #check that the output is being generated correctly
-                    if ("-x" in options):
-                        if (metadata is not None):
-                            base_metadata = \
-                                self.xmcd_metadata.track_metadata(
-                                metadata.track_number)
-                        elif (name.startswith("02")):
-                            base_metadata = self.xmcd_metadata.track_metadata(2)
-                        else:
-                            base_metadata = None
-                    elif (metadata is not None):
+                    if (metadata is not None):
                         base_metadata = metadata
                     else:
-                        if (name.startswith("02")):
+                        #track number via filename applies
+                        #only if the file has no other metadata
+                        if (name.startswith("02") and
+                            (original_metadata is None)):
                             base_metadata = audiotools.MetaData(
                                 track_number=2)
                         else:
@@ -3853,9 +3822,6 @@ class trackrename(UtilTest):
             self.assertEqual(self.__run_app__(["trackrename"]), 1)
             self.__check_error__(_(u"You must specify at least 1 supported audio file"))
 
-            self.assertEqual(self.__run_app__(
-                    ["trackrename", "-x", "/dev/null", track.filename]), 1)
-            self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
 
             self.assertEqual(self.__run_app__(
                     ["trackrename", "--format=%(foo)s", track.filename]), 1)

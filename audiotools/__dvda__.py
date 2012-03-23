@@ -101,7 +101,7 @@ class DVDAudio:
                 "12b 32u 12P 32u 16u 4P 16u 16u 8u 4P 8u 32u 10P 8u 8u 40b")
 
             if (identifier != 'DVDAUDIO-AMG'):
-                raise InvalidDVDA(_(u"invalid AUDIO_TS.IFO file"))
+                raise InvalidDVDA(_(u"invalid AUDIO_TS.IFO"))
 
             for titleset in xrange(1, audio_titlesets + 1):
                 #ensure there are IFO files and AOBs

@@ -2169,7 +2169,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                 finally:
                     output_f.close()
 
-                output_track = FlacAudio(output_filename)
+                output_track = self.__class__(output_filename)
 
                 metadata = self.get_metadata()
 

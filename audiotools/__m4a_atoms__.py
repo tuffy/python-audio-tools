@@ -88,6 +88,14 @@ class M4A_Tree_Atom:
         return "M4A_Tree_Atom(%s, %s)" % \
             (repr(self.name), repr(self.leaf_atoms))
 
+    def __eq__(self, atom):
+        for attr in ["name", "leaf_atoms"]:
+            if ((not hasattr(atom, attr)) or
+                (getattr(self, attr) != getattr(atom, attr))):
+                return False
+        else:
+            return True
+
     def __iter__(self):
         for leaf in self.leaf_atoms:
             yield leaf
@@ -186,6 +194,15 @@ class M4A_Leaf_Atom:
     def __repr__(self):
         return "M4A_Leaf_Atom(%s, %s)" % \
             (repr(self.name), repr(self.data))
+
+    def __eq__(self, atom):
+        for attr in ["name", "data"]:
+            if ((not hasattr(atom, attr)) or
+                (getattr(self, attr) != getattr(atom, attr))):
+                return False
+        else:
+            return True
+
 
     def __unicode__(self):
         #FIXME
@@ -1314,6 +1331,14 @@ class M4A_ILST_Unicode_Data_Atom(M4A_Leaf_Atom):
         return "M4A_ILST_Unicode_Data_Atom(%s, %s, %s)" % \
             (repr(self.type), repr(self.flags), repr(self.data))
 
+    def __eq__(self, atom):
+        for attr in ["type", "flags", "data"]:
+            if ((not hasattr(atom, attr)) or
+                (getattr(self, attr) != getattr(atom, attr))):
+                return False
+        else:
+            return True
+
     def raw_info(self):
         return self.data.decode('utf-8')
 
@@ -1346,6 +1371,14 @@ class M4A_ILST_TRKN_Data_Atom(M4A_Leaf_Atom):
     def __repr__(self):
         return "M4A_ILST_TRKN_Data_Atom(%d, %d)" % \
             (self.track_number, self.track_total)
+
+    def __eq__(self, atom):
+        for attr in ["track_number", "track_total"]:
+            if ((not hasattr(atom, attr)) or
+                (getattr(self, attr) != getattr(atom, attr))):
+                return False
+        else:
+            return True
 
     def __unicode__(self):
         if (self.track_total > 0):
@@ -1387,6 +1420,14 @@ class M4A_ILST_DISK_Data_Atom(M4A_Leaf_Atom):
     def __repr__(self):
         return "M4A_ILST_DISK_Data_Atom(%d, %d)" % \
             (self.disk_number, self.disk_total)
+
+    def __eq__(self, atom):
+        for attr in ["disk_number", "disk_total"]:
+            if ((not hasattr(atom, attr)) or
+                (getattr(self, attr) != getattr(atom, attr))):
+                return False
+        else:
+            return True
 
     def __unicode__(self):
         if (self.disk_total > 0):

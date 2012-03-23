@@ -172,6 +172,9 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
 
     @LIB_CORE
     def test_cdda_positive_offset(self):
+        #offset values don't apply to CD images
+        #so this test doesn't do much
+
         audiotools.config.set_default("System",
                                       "cdrom_read_offset",
                                       str(10))
@@ -184,7 +187,7 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
         self.reader.reset()
         audiotools.transfer_framelist_data(
             audiotools.PCMReaderWindow(self.reader,
-                                       10,
+                                       0,
                                        69470436),
             reader_checksum.update)
         self.assertEqual(reader_checksum.hexdigest(),
@@ -192,6 +195,9 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
 
     @LIB_CORE
     def test_cdda_negative_offset(self):
+        #offset values don't apply to CD images
+        #so this test doesn't do much
+
         audiotools.config.set_default("System",
                                       "cdrom_read_offset",
                                       str(-10))
@@ -204,7 +210,7 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
         self.reader.reset()
         audiotools.transfer_framelist_data(
             audiotools.PCMReaderWindow(self.reader,
-                                       -10,
+                                       0,
                                        69470436),
             reader_checksum.update)
         self.assertEqual(reader_checksum.hexdigest(),
@@ -3508,6 +3514,7 @@ class TestReplayGain(unittest.TestCase):
                 f.close()
 
 
+#DEPRECATED - this test will be removed along with XMCD support
 class TestXMCD(unittest.TestCase):
     XMCD_FILES = [(
 """eJyFk0tv20YQgO8B8h+m8MHJReXyTQFEm0pyYcAvSELTHCmKigRLYiHSanUTSdt1agd9BGnsOo3R
@@ -3760,8 +3767,8 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
                     #check that the original XMCD values match the track ones
                     # self.assertEqual(xmcd.length, xmcd2.length)
                     # self.assertEqual(xmcd.offsets, xmcd2.offsets)
-                    self.assertEqual(xmcd.fields['DISCID'],
-                                     xmcd2.fields['DISCID'])
+                    self.assertEqual(xmcd.fields['DISCID'].upper(),
+                                     xmcd2.fields['DISCID'].upper())
                     if (len([pair for pair in xmcd.fields.items()
                              if (pair[0].startswith('TTITLE') and
                                  (u" / " in pair[1]))]) > 0):

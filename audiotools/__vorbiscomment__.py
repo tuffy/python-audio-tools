@@ -288,8 +288,7 @@ class VorbisComment(MetaData):
 
     def __eq__(self, metadata):
         if (isinstance(metadata, self.__class__)):
-            return ((self.comment_strings == metadata.comment_strings) and
-                    (self.vendor_string == metadata.vendor_string))
+            return self.comment_strings == metadata.comment_strings
         else:
             return MetaData.__eq__(self, metadata)
 

@@ -122,6 +122,9 @@ class C_string:
     def __len__(self):
         return len(self.unicode_string)
 
+    def __cmp__(self, c_string):
+        return cmp(self.unicode_string, c_string.unicode_string)
+
     @classmethod
     def parse(cls, encoding, reader):
         """returns a C_string with the given encoding string
@@ -160,15 +163,13 @@ class C_string:
 
 
 def __attrib_equals__(attributes, o1, o2):
-    import operator
-
-    try:
-        return reduce(operator.and_,
-                      [(hasattr(o2, attrib) and
-                        (getattr(o1, attrib) == getattr(o2, attrib)))
-                       for attrib in attributes])
-    except AttributeError:
-        return False
+    for attrib in attributes:
+        if ((not hasattr(o1, attrib)) or
+            (not hasattr(o2, attrib)) or
+            (getattr(o1, attrib) != getattr(o2, attrib))):
+            return False
+    else:
+        return True
 
 
 #takes a pair of integers for the current and total values
@@ -570,7 +571,7 @@ class ID3v22_W__Frame:
         return u"%s = %s" % (self.id.decode('ascii'),
                              self.data.decode('ascii', 'replace'))
 
-    def __eq__(self):
+    def __eq__(self, frame):
         return __attrib_equals__(["id", "data"], self, frame)
 
     @classmethod
@@ -673,9 +674,11 @@ class ID3v22_COM_Frame:
              self.short_description,
              self.data.decode({0: 'latin-1', 1: 'ucs2'}[self.encoding]))
 
-    def __eq__(self):
-        return __attrib_equals__(["encoding", "language",
-                                  "short_description", "data"], self, frame)
+    def __eq__(self, frame):
+        return __attrib_equals__(["encoding",
+                                  "language",
+                                  "short_description",
+                                  "data"], self, frame)
 
     def __unicode__(self):
         return self.data.decode({0: 'latin-1', 1: 'ucs2'}[self.encoding],
@@ -1419,20 +1422,23 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
                    data=image.data)
 
     def clean(self, fixes_performed):
-        """returns a cleaned ID3v23_PIC_Frame,
+        """returns a cleaned ID3v23_APIC_Frame,
         or None if the frame should be removed entirely
         any fixes are appended to fixes_applied as unicode string"""
 
-        #all the fields are derived from the image data
-        #so there's no need to test for a mismatch
-
-        #not sure if it's worth testing for bugs in the description
-        #or format fields
-
-        return ID3v23_APIC_Frame(self.pic_mime_type,
-                                 self.pic_type,
-                                 self.pic_description,
-                                 self.data)
+        actual_mime_type = Image.new(self.data, u"", 0).mime_type
+        if (unicode(self.pic_mime_type) != actual_mime_type):
+            fixes_performed.append(u"fixed embedded image's MIME type")
+            return ID3v23_APIC_Frame(C_string('ascii',
+                                              actual_mime_type.encode('ascii')),
+                                     self.pic_type,
+                                     self.pic_description,
+                                     self.data)
+        else:
+            return ID3v23_APIC_Frame(self.pic_mime_type,
+                                     self.pic_type,
+                                     self.pic_description,
+                                     self.data)
 
 
 class ID3v23_COMM_Frame(ID3v22_COM_Frame):
@@ -1721,20 +1727,23 @@ class ID3v24_APIC_Frame(ID3v23_APIC_Frame):
                    data=image.data)
 
     def clean(self, fixes_performed):
-        """returns a cleaned ID3v23_PIC_Frame,
+        """returns a cleaned ID3v24_APIC_Frame,
         or None if the frame should be removed entirely
         any fixes are appended to fixes_applied as unicode string"""
 
-        #all the fields are derived from the image data
-        #so there's no need to test for a mismatch
-
-        #not sure if it's worth testing for bugs in the description
-        #or format fields
-
-        return ID3v24_APIC_Frame(self.pic_mime_type,
-                                 self.pic_type,
-                                 self.pic_description,
-                                 self.data)
+        actual_mime_type = Image.new(self.data, u"", 0).mime_type
+        if (unicode(self.pic_mime_type) != actual_mime_type):
+            fixes_performed.append(u"fixed embedded image's MIME type")
+            return ID3v24_APIC_Frame(C_string('ascii',
+                                              actual_mime_type.encode('ascii')),
+                                     self.pic_type,
+                                     self.pic_description,
+                                     self.data)
+        else:
+            return ID3v24_APIC_Frame(self.pic_mime_type,
+                                     self.pic_type,
+                                     self.pic_description,
+                                     self.data)
 
 
 class ID3v24_W___Frame(ID3v23_W___Frame):
