@@ -23,7 +23,9 @@ from audiotools import (AudioFile, InvalidFile, ChannelMask, PCMReader,
                         transfer_framelist_data,
                         __capped_stream_reader__, FILENAME_FORMAT,
                         BIN, open_files, os, subprocess, cStringIO,
-                        EncodingError, DecodingError, UnsupportedChannelMask,
+                        EncodingError, DecodingError,
+                        UnsupportedChannelMask,
+                        UnsupportedChannelCount,
                         WaveContainer, to_pcm_progress,
                         LimitedFileReader)
 import os.path
@@ -415,6 +417,9 @@ class WaveAudio(WaveContainer):
         at the given filename with the specified compression level
         and returns a new WaveAudio object."""
 
+        if (pcmreader.channels > 18):
+            raise UnsupportedChannelCount(filename, pcmreader.channels)
+
         from .bitstream import BitstreamWriter, format_size
 
         try:
@@ -445,6 +450,16 @@ class WaveAudio(WaveContainer):
                               block_align,
                               pcmreader.bits_per_sample)
             else:
+                if (pcmreader.channel_mask != 0):
+                    channel_mask = pcmreader.channel_mask
+                else:
+                    channel_mask = {1:0x4,
+                                    2:0x3,
+                                    3:0x7,
+                                    4:0x33,
+                                    5:0x37,
+                                    6:0x3F}.get(pcmreader.channels, 0)
+
                 fmt = "16u 16u 32u 32u 16u 16u" + "16u 16u 32u 16b"
                 fmt_fields = (0xFFFE,   # compression code
                               pcmreader.channels,
@@ -454,7 +469,7 @@ class WaveAudio(WaveContainer):
                               pcmreader.bits_per_sample,
                               22,       # CB size
                               pcmreader.bits_per_sample,
-                              pcmreader.channel_mask,
+                              channel_mask,
                               '\x01\x00\x00\x00\x00\x00\x10\x00' +
                               '\x80\x00\x00\xaa\x00\x38\x9b\x71'  # sub format
                               )

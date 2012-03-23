@@ -1820,7 +1820,7 @@ class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
             return cls(0, "eng", C_string("latin-1", u""),
                        unicode_string.encode('latin-1'))
         else:
-            return cls(1, "eng", C_string("utf-8", u""),
+            return cls(3, "eng", C_string("utf-8", u""),
                        unicode_string.encode('utf-8'))
 
     def clean(self, fixes_performed):

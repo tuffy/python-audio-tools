@@ -3650,13 +3650,11 @@ class M4AFileTest(LossyFileTest):
                 temp.name,
                 BLANK_PCM_Reader(1))
             metadata = track.get_metadata()
-            encoder = unicode(metadata[chr(0xA9) + 'too'][0])
-            track.set_metadata(audiotools.MetaData(
-                    track_name=u"Foo"))
+            encoder = unicode(metadata['ilst']['\xa9too'])
+            track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
             metadata = track.get_metadata()
             self.assertEqual(metadata.track_name, u"Foo")
-            self.assertEqual(unicode(metadata[chr(0xA9) + 'too'][0]),
-                             encoder)
+            self.assertEqual(unicode(metadata['ilst']['\xa9too']), encoder)
         finally:
             temp.close()
 
@@ -3724,60 +3722,61 @@ class MP3FileTest(LossyFileTest):
         # finally:
         #     temp.close()
 
-        #test verify() on invalid files
-        temp = tempfile.NamedTemporaryFile(
-            suffix=self.suffix)
-        mpeg_data = cStringIO.StringIO()
-        frame_header = audiotools.MPEG_Frame_Header("header")
-        try:
-            mpx_file = audiotools.open("sine" + self.suffix)
-            self.assertEqual(mpx_file.verify(), True)
+        # #test verify() on invalid files
+        # temp = tempfile.NamedTemporaryFile(
+        #     suffix=self.suffix)
+        # mpeg_data = cStringIO.StringIO()
+        # frame_header = audiotools.MPEG_Frame_Header("header")
+        # try:
+        #     mpx_file = audiotools.open("sine" + self.suffix)
+        #     self.assertEqual(mpx_file.verify(), True)
 
-            for (header, data) in mpx_file.mpeg_frames():
-                mpeg_data.write(frame_header.build(header))
-                mpeg_data.write(data)
-            mpeg_data = mpeg_data.getvalue()
+        #     for (header, data) in mpx_file.mpeg_frames():
+        #         mpeg_data.write(frame_header.build(header))
+        #         mpeg_data.write(data)
+        #     mpeg_data = mpeg_data.getvalue()
 
-            temp.seek(0, 0)
-            temp.write(mpeg_data)
-            temp.flush()
+        #     temp.seek(0, 0)
+        #     temp.write(mpeg_data)
+        #     temp.flush()
 
-            #first, try truncating the file underfoot
-            bad_mpx_file = audiotools.open(temp.name)
-            for i in xrange(len(mpeg_data)):
-                try:
-                    if ((mpeg_data[i] == chr(0xFF)) and
-                        (ord(mpeg_data[i + 1]) & 0xE0)):
-                        #skip sizes that may be the end of a frame
-                        continue
-                except IndexError:
-                    continue
+        #     #first, try truncating the file underfoot
+        #     bad_mpx_file = audiotools.open(temp.name)
+        #     for i in xrange(len(mpeg_data)):
+        #         try:
+        #             if ((mpeg_data[i] == chr(0xFF)) and
+        #                 (ord(mpeg_data[i + 1]) & 0xE0)):
+        #                 #skip sizes that may be the end of a frame
+        #                 continue
+        #         except IndexError:
+        #             continue
 
-                f = open(temp.name, "wb")
-                f.write(mpeg_data[0:i])
-                f.close()
-                self.assertEqual(os.path.getsize(temp.name), i)
-                self.assertRaises(audiotools.InvalidFile,
-                                  bad_mpx_file.verify)
+        #         f = open(temp.name, "wb")
+        #         f.write(mpeg_data[0:i])
+        #         f.close()
+        #         self.assertEqual(os.path.getsize(temp.name), i)
+        #         self.assertRaises(audiotools.InvalidFile,
+        #                           bad_mpx_file.verify)
 
-            #then try swapping some of the header bits
-            for (field, value) in [("sample_rate", 48000),
-                                   ("channel", 3)]:
-                temp.seek(0, 0)
-                for (i, (header, data)) in enumerate(mpx_file.mpeg_frames()):
-                    if (i == 1):
-                        setattr(header, field, value)
-                        temp.write(frame_header.build(header))
-                        temp.write(data)
-                    else:
-                        temp.write(frame_header.build(header))
-                        temp.write(data)
-                temp.flush()
-                new_file = audiotools.open(temp.name)
-                self.assertRaises(audiotools.InvalidFile,
-                                  new_file.verify)
-        finally:
-            temp.close()
+        #     #then try swapping some of the header bits
+        #     for (field, value) in [("sample_rate", 48000),
+        #                            ("channel", 3)]:
+        #         temp.seek(0, 0)
+        #         for (i, (header, data)) in enumerate(mpx_file.mpeg_frames()):
+        #             if (i == 1):
+        #                 setattr(header, field, value)
+        #                 temp.write(frame_header.build(header))
+        #                 temp.write(data)
+        #             else:
+        #                 temp.write(frame_header.build(header))
+        #                 temp.write(data)
+        #         temp.flush()
+        #         new_file = audiotools.open(temp.name)
+        #         self.assertRaises(audiotools.InvalidFile,
+        #                           new_file.verify)
+        # finally:
+        #     temp.close()
+        pass
 
     @FORMAT_MP3
     def test_id3_ladder(self):
@@ -3800,8 +3799,7 @@ class MP3FileTest(LossyFileTest):
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
                 self.assertEqual(isinstance(metadata, new_class), True)
-                self.assertEqual(metadata.__comment_name__(),
-                                 new_class([]).__comment_name__())
+                self.assertEqual(metadata.__class__, new_class([]).__class__)
                 self.assertEqual(metadata, dummy_metadata)
         finally:
             temp_file.close()
@@ -3847,7 +3845,8 @@ class MP3FileTest(LossyFileTest):
                 self.assertEqual(id3, metadata)
 
                 metadata.add_image(
-                    audiotools.ID3v24Comment.PictureFrame.converted(
+                    audiotools.ID3v24Comment.IMAGE_FRAME.converted(
+                        audiotools.ID3v24Comment.IMAGE_FRAME_ID,
                         audiotools.Image.new(TEST_COVER1,
                                              test_string,
                                              0)))
@@ -3879,7 +3878,8 @@ class MP3FileTest(LossyFileTest):
                     self.assertEqual(id3.track_name, test_string_out)
 
                     #ensure that image comment fields round-trip correctly
-                    metadata.add_image(id3_class.PictureFrame.converted(
+                    metadata.add_image(id3_class.IMAGE_FRAME.converted(
+                            id3_class.IMAGE_FRAME_ID,
                             audiotools.Image.new(TEST_COVER1,
                                                  test_string,
                                                  0)))
@@ -5243,25 +5243,3 @@ class SineStreamTest(unittest.TestCase):
                           16, -1, 44100, 100, 100)
         self.assertRaises(ValueError, Sine_Simple,
                           16, 4000, -1, 100, 100)
-
-
-class DVDAFormatsTest(unittest.TestCase):
-    @FORMAT_DVDA
-    def test_init(self):
-        from audiotools.decoders import AOBPCMDecoder
-        from audiotools.decoders import MLPDecoder
-
-        #ensure that failed inits don't make Python explode
-
-        self.assertRaises(ValueError,
-                          AOBPCMDecoder, None, -1, 2, 0x3, 16)
-        self.assertRaises(ValueError,
-                          AOBPCMDecoder, None, 44100, -1, 0x3, 16)
-        self.assertRaises(ValueError,
-                          AOBPCMDecoder, None, 44100, 2, -1, 16)
-        self.assertRaises(ValueError,
-                          AOBPCMDecoder, None, 44100, 2, 0x3, -1)
-
-        self.assertRaises(TypeError, MLPDecoder)
-
-        self.assertRaises(TypeError, MLPDecoder, None)

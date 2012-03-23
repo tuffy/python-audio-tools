@@ -675,10 +675,10 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
 
         metadata = self.get_metadata()
         if (metadata is None):
-            metadata = WavPackAPEv2.converted(MetaData())
+            metadata = ApeTag.converted(MetaData())
 
-        metadata['Cuesheet'] = WavPackAPEv2.ITEM.string('Cuesheet',
-                                                        cue.Cuesheet.file(
+        metadata['Cuesheet'] = ApeTag.ITEM.string('Cuesheet',
+                                                  cue.Cuesheet.file(
                 cuesheet,
                 os.path.basename(self.filename)).decode('ascii', 'replace'))
         self.update_metadata(metadata)

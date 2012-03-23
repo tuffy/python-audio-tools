@@ -5314,32 +5314,32 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [ ] tocfile
     - [ ] verify
     - [ ] player
-*** TODO Format
+*** DONE Format
     - [X] audiofile
     - [X] lossless
-    - [ ] lossy
-    - [ ] aiff
-    - [ ] alac
-    - [ ] au
-    - [ ] dvda
-    - [ ] flac
-    - [ ] m4a
-    - [ ] mp2
-    - [ ] mp3
-    - [ ] oggflac
-    - [ ] shorten
-    - [ ] sines
-    - [ ] vorbis
-    - [ ] wave
-    - [ ] wavpack
-*** TODO Metadata
-    - [ ] metadata
-    - [ ] flac
-    - [ ] wavpack
-    - [ ] id3v1
-    - [ ] id3v2
-    - [ ] vorbis
-    - [ ] m4a
+    - [X] lossy
+    - [X] aiff
+    - [X] alac
+    - [X] au
+    - [X] dvda
+    - [X] flac
+    - [X] m4a
+    - [X] mp2
+    - [X] mp3
+    - [X] oggflac
+    - [X] shorten
+    - [X] sines
+    - [X] vorbis
+    - [X] wave
+    - [X] wavpack
+*** DONE Metadata
+    - [X] metadata
+    - [X] flac
+    - [X] wavpack
+    - [X] id3v1
+    - [X] id3v2
+    - [X] vorbis
+    - [X] m4a
 *** TODO Util
     - [ ] audiotools_config
     - [X] cd2track

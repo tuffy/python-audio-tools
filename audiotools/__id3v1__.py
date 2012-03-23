@@ -65,7 +65,7 @@ class ID3v1Comment(MetaData):
          year,
          comment) = reader.parse("3b 30b 30b 30b 4b 28b")
         if (tag != 'TAG'):
-            raise ValueError(_(u"invalid ID3v1 tag"))
+            raise ValueError(u"invalid ID3v1 tag")
         separator = reader.read(8)
         if (separator == 0):
             track_number = reader.read(8)
@@ -150,12 +150,12 @@ class ID3v1Comment(MetaData):
             fix1 = getattr(self, attr).rstrip()
             if (fix1 != getattr(self, attr)):
                 fixes_performed.append(
-                    _(u"removed trailing whitespace from %(field)s") %
+                    u"removed trailing whitespace from %(field)s" %
                     {"field": name})
             fix2 = fix1.lstrip()
             if (fix2 != fix1):
                 fixes_performed.append(
-                    _(u"removed leading whitespace from %(field)s") %
+                    u"removed leading whitespace from %(field)s" %
                     {"field": name})
             fields[attr] = fix2
 

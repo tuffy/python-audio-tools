@@ -5643,10 +5643,16 @@ class testflaccuesheet(testcuesheet):
                     EXACT_BLANK_PCM_Reader(191795016),
                     "1")
                 metadata = tempflac.get_metadata()
-                metadata.cuesheet = test_sheet
-                tempflac.set_metadata(metadata)
+                metadata.replace_blocks(
+                    audiotools.Flac_CUESHEET.BLOCK_ID,
+                    [audiotools.Flac_CUESHEET.converted(
+                            test_sheet,
+                            191795016)])
+                tempflac.update_metadata(metadata)
 
-                sheet = audiotools.open(tempflacfile.name).get_metadata().cuesheet
+                sheet = audiotools.open(
+                    tempflacfile.name).get_metadata().get_block(
+                    audiotools.Flac_CUESHEET.BLOCK_ID)
             finally:
                 tempflacfile.close()
             yield sheet
@@ -5727,9 +5733,10 @@ class TestMultiChannel(unittest.TestCase):
                 pcm.close()
             else:
                 self.assertNotEqual(int(temp_track.channel_mask()), 0,
-                                    "mask = %s for format %s" %
+                                    "mask = %s for format %s at %d channels" %
                                     (temp_track.channel_mask(),
-                                     audio_class))
+                                     audio_class,
+                                     channels))
                 pcm = temp_track.to_pcm()
                 self.assertEqual(int(pcm.channel_mask),
                                  int(temp_track.channel_mask()))
@@ -5905,15 +5912,6 @@ class TestMultiChannel(unittest.TestCase):
                                      front_center=True, back_center=True)]:
                 self.__test_mask_blank__(audio_class, mask)
 
-        for mask in [from_fields(front_center=True),
-                     from_fields(front_left=True, front_right=True),
-                     from_fields(front_left=True, front_right=True,
-                                 back_left=True, back_right=True),
-                     from_fields(front_left=True, side_left=True,
-                                 front_center=True, front_right=True,
-                                 side_right=True, back_center=True)]:
-            self.__test_mask_blank__(audiotools.AiffAudio, mask)
-
     @LIB_CORE
     def test_channel_mask_conversion(self):
         from_fields = audiotools.ChannelMask.from_fields
@@ -5986,18 +5984,6 @@ class TestMultiChannel(unittest.TestCase):
                     self.__test_pcm_conversion__(source_audio_class,
                                                  target_audio_class,
                                                  mask)
-
-        for target_audio_class in self.wav_channel_masks:
-            for mask in [from_fields(front_center=True),
-                         from_fields(front_left=True, front_right=True),
-                         from_fields(front_left=True, front_right=True,
-                                     back_left=True, back_right=True),
-                         from_fields(front_left=True, side_left=True,
-                                     front_center=True, front_right=True,
-                                     side_right=True, back_center=True)]:
-                self.__test_pcm_conversion__(audiotools.AiffAudio,
-                                             target_audio_class,
-                                             mask)
 
     @LIB_CORE
     def test_channel_assignment(self):
@@ -6084,14 +6070,14 @@ class TestMultiChannel(unittest.TestCase):
 
     @LIB_CORE
     def test_unsupported_channel_mask_from_pcm(self):
-        for channels in xrange(1, 19):
+        for channels in xrange(1, 6 + 1):
             self.__test_undefined_mask_blank__(audiotools.WaveAudio,
                                                channels,
                                                False)
-            self.__test_error_mask_blank__(audiotools.WaveAudio,
-                                           19, audiotools.ChannelMask(0))
-            self.__test_error_mask_blank__(audiotools.WaveAudio,
-                                           20, audiotools.ChannelMask(0))
+        self.__test_error_channel_count__(audiotools.WaveAudio,
+                                          19, audiotools.ChannelMask(0))
+        self.__test_error_channel_count__(audiotools.WaveAudio,
+                                          20, audiotools.ChannelMask(0))
 
         for channels in xrange(1, 3):
             self.__test_undefined_mask_blank__(audiotools.WavPackAudio,
@@ -6102,11 +6088,11 @@ class TestMultiChannel(unittest.TestCase):
                                                channels,
                                                True)
 
-        for channels in xrange(1, 3):
+        for channels in xrange(1, 9):
             self.__test_undefined_mask_blank__(audiotools.ALACAudio,
                                                channels,
                                                False)
-        for channels in xrange(3, 21):
+        for channels in xrange(9, 21):
             self.__test_undefined_mask_blank__(audiotools.ALACAudio,
                                                channels,
                                                True)
@@ -6162,12 +6148,12 @@ class TestMultiChannel(unittest.TestCase):
                                                channels,
                                                True)
 
-        for channels in [1, 2, 3, 4, 6]:
+        for channels in [1, 2]:
             self.__test_undefined_mask_blank__(audiotools.AiffAudio,
                                                channels,
                                                False)
 
-        for channels in [5, 7, 8, 9, 10]:
+        for channels in [3, 4, 5, 6, 7, 8, 9, 10]:
             self.__test_undefined_mask_blank__(audiotools.AiffAudio,
                                                channels,
                                                True)

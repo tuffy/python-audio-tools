@@ -826,8 +826,8 @@ class Flac_CUESHEET:
                      "lead_in_samples",
                      "is_cdda",
                      "tracks"]:
-            if ((not hasattr(block, attr)) or
-                (getattr(self, attr) != getattr(block, attr))):
+            if ((not hasattr(cuesheet, attr)) or
+                (getattr(self, attr) != getattr(cuesheet, attr))):
                 return False
         else:
             return True

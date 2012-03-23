@@ -964,9 +964,6 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
         if (pcmreader.bits_per_sample not in (16, 24)):
             raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
 
-        if (pcmreader.channels > 8):
-            raise UnsupportedChannelCount(filename, pcmreader.channels)
-
         if (int(pcmreader.channel_mask) not in
             (0x0001,    # 1ch - mono
              0x0004,    # 1ch - mono
