@@ -4724,6 +4724,71 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE Document AudioFile clean() method
 *** DONE Add more comprehensive unit tests for clean() methods
 *** DONE Convert tracklint to use clean() methods
+** DONE Ensure individual unit tests pass
+*** DONE Lib
+    - [X] core
+    - [X] cuesheet
+    - [X] freedb
+    - [X] image
+    - [X] musicbrainz
+    - [X] pcm
+    - [X] bitstream
+    - [X] replaygain
+    - [X] resample
+    - [X] tocfile
+    - [X] verify
+    - [X] player
+*** DONE Format
+    - [X] audiofile
+    - [X] lossless
+    - [X] lossy
+    - [X] aiff
+    - [X] alac
+    - [X] au
+    - [X] dvda
+    - [X] flac
+    - [X] m4a
+    - [X] mp2
+    - [X] mp3
+    - [X] oggflac
+    - [X] shorten
+    - [X] sines
+    - [X] vorbis
+    - [X] wave
+    - [X] wavpack
+*** DONE Metadata
+    - [X] metadata
+    - [X] flac
+    - [X] wavpack
+    - [X] id3v1
+    - [X] id3v2
+    - [X] vorbis
+    - [X] m4a
+*** DONE Util
+    - [X] audiotools_config
+    - [X] cd2track
+    - [X] cdinfo
+    - [X] cdplay
+    - [X] coverdump
+    - [X] coverview
+    - [X] dvda2track
+    - [X] dvdainfo
+    - [X] record2track
+    - [X] track2cd
+    - [X] track2track
+    - [X] trackcat
+    - [X] trackcmp
+    - [X] trackinfo
+    - [X] tracklength
+    - [X] tracklint
+    - [X] trackplay
+    - [X] trackrename
+    - [X] tracksplit
+    - [X] tracktag
+    - [X] trackverify
+** DONE Ensure complete unit test passes
+   this includes some compound tests
+   which may not be covered by individual tests
 ** TODO handle AIFF offset/block size in SSND chunk
 ** TODO Remove Construct module
    Convert all usage of Construct to BitstreamReader/BitstreamWriter.
@@ -5300,71 +5365,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE wavpack should work
 *** TODO alac should fail with error?
 ** TODO Ensure Python API docs are updated if necessary
-** TODO Ensure individual unit tests pass
-*** DONE Lib
-    - [X] core
-    - [X] cuesheet
-    - [X] freedb
-    - [X] image
-    - [X] musicbrainz
-    - [X] pcm
-    - [X] bitstream
-    - [X] replaygain
-    - [X] resample
-    - [X] tocfile
-    - [X] verify
-    - [X] player
-*** DONE Format
-    - [X] audiofile
-    - [X] lossless
-    - [X] lossy
-    - [X] aiff
-    - [X] alac
-    - [X] au
-    - [X] dvda
-    - [X] flac
-    - [X] m4a
-    - [X] mp2
-    - [X] mp3
-    - [X] oggflac
-    - [X] shorten
-    - [X] sines
-    - [X] vorbis
-    - [X] wave
-    - [X] wavpack
-*** DONE Metadata
-    - [X] metadata
-    - [X] flac
-    - [X] wavpack
-    - [X] id3v1
-    - [X] id3v2
-    - [X] vorbis
-    - [X] m4a
-*** TODO Util
-    - [X] audiotools_config
-    - [X] cd2track
-    - [X] cdinfo
-    - [X] cdplay
-    - [X] coverdump
-    - [X] coverview
-    - [X] dvda2track
-    - [X] dvdainfo
-    - [X] record2track
-    - [X] track2cd
-    - [X] track2track
-    - [X] trackcat
-    - [X] trackcmp
-    - [X] trackinfo
-    - [X] tracklength
-    - [X] tracklint
-    - [X] trackplay
-    - [X] trackrename
-    - [X] tracksplit
-    - [ ] tracktag
-    - [X] trackverify
-** TODO Ensure complete unit test passes
-   this includes some compound tests
-   which may not be covered by individual tests
 ** TODO Eliminate all compiler warnings
 ** TODO Ensure MANIFEST.in is complete
 * TODO Update .convert() method to use fewer temporary files

@@ -2068,17 +2068,6 @@ class ALACFileTest(LosslessFileTest):
                 self.assertEqual(track.channels(), len(cm))
                 self.assertEqual(track.channel_mask(), cm)
 
-            #ensure invalid channel counts raise an exception
-            self.assertRaises(audiotools.UnsupportedChannelCount,
-                              self.audio_class.from_pcm,
-                              temp.name,
-                              BLANK_PCM_Reader(1, channels=9, channel_mask=0))
-
-            self.assertRaises(audiotools.UnsupportedChannelCount,
-                              self.audio_class.from_pcm,
-                              temp.name,
-                              BLANK_PCM_Reader(1, channels=10, channel_mask=0))
-
             #ensure valid channel counts with invalid channel masks
             #raise an exception
             self.assertRaises(audiotools.UnsupportedChannelMask,

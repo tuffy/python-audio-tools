@@ -747,7 +747,9 @@ if (__name__ == '__main__'):
             track_modified = True
 
         #check if there's been any modifications made
-        if (track_modified):
+        if (track_modified or
+            (import_cuesheet is not None) or
+            options.replace):
             try:
                 #either set or update metadata
                 #depending on whether we're performing a full replacement

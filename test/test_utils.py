@@ -981,10 +981,10 @@ class track2track(UtilTest):
                       (output_class.can_add_replay_gain())):
                     if (output_class.lossless_replay_gain()):
                         self.__check_info__(
-                            _(u"Adding ReplayGain metadata.  This may take some time."))
+                            _(u"ReplayGain added"))
                     else:
                         self.__check_info__(
-                            _(u"Applying ReplayGain.  This may take some time."))
+                            _(u"ReplayGain applied"))
                     self.assert_(track2.replay_gain() is not None)
 
     @UTIL_TRACK2TRACK
@@ -2787,10 +2787,6 @@ class tracktag(UtilTest):
 
         self.track_file = tempfile.NamedTemporaryFile()
 
-        self.xmcd = tempfile.NamedTemporaryFile(suffix=".xmcd")
-        self.xmcd.write('<?xml version="1.0" encoding="utf-8"?><metadata xmlns="http://musicbrainz.org/ns/mmd-1.0#" xmlns:ext="http://musicbrainz.org/ns/ext-1.0#"><release-list><release><title>Album 2</title><artist><name></name></artist><release-event-list><event catalog-number="" date=""/></release-event-list><track-list><track><title>Name 2</title><duration>6912</duration><artist><name>Artist 2</name></artist></track></track-list></release></release-list></metadata>')
-        self.xmcd.flush()
-
         self.cuesheet = tempfile.NamedTemporaryFile(suffix=".cue")
         self.cuesheet.write('FILE "CDImage.wav" WAVE\r\n  TRACK 01 AUDIO\r\n    ISRC JPPI00652340\r\n    INDEX 01 00:00:00\r\n  TRACK 02 AUDIO\r\n    ISRC JPPI00652349\r\n    INDEX 00 03:40:72\r\n    INDEX 01 03:42:27\r\n  TRACK 03 AUDIO\r\n    ISRC JPPI00652341\r\n    INDEX 00 07:22:45\r\n    INDEX 01 07:24:37\r\n')
         self.cuesheet.flush()
@@ -2825,7 +2821,6 @@ class tracktag(UtilTest):
     @UTIL_TRACKTAG
     def tearDown(self):
         self.track_file.close()
-        self.xmcd.close()
         self.cuesheet.close()
         self.comment_file.close()
         self.front_cover.close()
@@ -2835,10 +2830,7 @@ class tracktag(UtilTest):
         populated = []
 
         for option in sorted(options):
-            if (option == '-x'):
-                populated.append(option)
-                populated.append(self.xmcd.name)
-            elif (option == '--cue'):
+            if (option == '--cue'):
                 populated.append(option)
                 populated.append(self.cuesheet.name)
             elif (option == '--name'):
@@ -2899,7 +2891,7 @@ class tracktag(UtilTest):
         #Since most of those options are straight text,
         #we'll restrict the tests to the more interesting ones
         #which is still over 8000 different option combinations.
-        most_options = ['-r', '-x', '--cue',
+        most_options = ['-r', '--cue',
                         '--name', '--number', '--track-total',
                         '--album-number', '--comment', '--comment-file',
                         '--remove-images', '--front-cover', '--back-cover',
@@ -2923,8 +2915,6 @@ class tracktag(UtilTest):
 
                 if ("--name" in options):
                     self.assertEqual(metadata.track_name, u"Name 3")
-                elif (("-x" in options) and ("--number" not in options)):
-                    self.assertEqual(metadata.track_name, u"Name 2")
                 elif ("-r" in options):
                     self.assertEqual(metadata.track_name, u"")
                 else:
@@ -2932,8 +2922,6 @@ class tracktag(UtilTest):
 
                 if ("--artist" in options):
                     self.assertEqual(metadata.artist_name, u"Artist 3")
-                elif (("-x" in options) and ("--number" not in options)):
-                    self.assertEqual(metadata.artist_name, u"Artist 2")
                 elif ("-r" in options):
                     self.assertEqual(metadata.artist_name, u"")
                 else:
@@ -2941,8 +2929,6 @@ class tracktag(UtilTest):
 
                 if ("--album" in options):
                     self.assertEqual(metadata.album_name, u"Album 3")
-                elif (("-x" in options) and ("--number" not in options)):
-                    self.assertEqual(metadata.album_name, u"Album 2")
                 elif ("-r" in options):
                     self.assertEqual(metadata.album_name, u"")
                 else:
@@ -2950,8 +2936,6 @@ class tracktag(UtilTest):
 
                 if ("--number" in options):
                     self.assertEqual(metadata.track_number, 5)
-                elif ("-x" in options):
-                    self.assertEqual(metadata.track_number, 1)
                 elif ("-r" in options):
                     self.assertEqual(metadata.track_number, 0)
                 else:
@@ -2959,8 +2943,6 @@ class tracktag(UtilTest):
 
                 if ("--track-total" in options):
                     self.assertEqual(metadata.track_total, 6)
-                elif (("-x" in options) and ("--number" not in options)):
-                    self.assertEqual(metadata.track_total, 1)
                 elif ("-r" in options):
                     self.assertEqual(metadata.track_total, 0)
                 else:
@@ -3019,15 +3001,15 @@ class tracktag(UtilTest):
                         if ("-T" in options):
                             self.assertEqual(
                                 metadata.front_covers(),
-                                [self.thumbnailed_front_cover_image,
-                                 self.image])
+                                [self.image,
+                                 self.thumbnailed_front_cover_image])
                             self.assertEqual(
                                 metadata.back_covers(),
                                 [self.thumbnailed_back_cover_image])
                         else:
                             self.assertEqual(metadata.front_covers(),
-                                             [self.front_cover_image,
-                                              self.image])
+                                             [self.image,
+                                              self.front_cover_image])
                             self.assertEqual(metadata.back_covers(),
                                              [self.back_cover_image])
                         self.assertEqual(len(metadata.images()), 3)
@@ -3048,12 +3030,12 @@ class tracktag(UtilTest):
                         if ("-T" in options):
                             self.assertEqual(
                                 metadata.images(),
-                                [self.thumbnailed_front_cover_image,
-                                 self.image])
+                                [self.image,
+                                 self.thumbnailed_front_cover_image])
                         else:
                             self.assertEqual(metadata.images(),
-                                             [self.front_cover_image,
-                                              self.image])
+                                             [self.image,
+                                              self.front_cover_image])
                         self.assertEqual(len(metadata.images()), 2)
                 elif ("--back-cover" in options):
                     #adding back cover
@@ -3108,12 +3090,12 @@ class tracktag(UtilTest):
                                           track.filename]), 0)
                     if (audio_class.lossless_replay_gain()):
                         self.__check_info__(
-                            _(u"Adding ReplayGain metadata.  This may take some time."))
+                            _(u"ReplayGain added"))
                         track2 = audiotools.open(track_file.name)
                         self.assert_(track2.replay_gain() is not None)
                     else:
                         self.__check_info__(
-                            _(u"Applying ReplayGain.  This may take some time."))
+                            _(u"ReplayGain applied"))
                 finally:
                     track_file.close()
 
@@ -3132,21 +3114,12 @@ class tracktag_errors(UtilTest):
             temp_track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
 
             self.assertEqual(self.__run_app__(
-                ["tracktag", "-x", "/dev/null", temp_track.filename]), 1)
-            self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
-
-            self.assertEqual(self.__run_app__(
                     ["tracktag", "--front-cover=/dev/null/foo.jpg",
                      temp_track.filename]), 1)
             self.__check_error__(
                 _(u"%(filename)s: %(message)s") % \
                     {"filename": self.filename(temp_track.filename),
                      "message": _(u"Unable to open file")})
-
-            self.assertEqual(self.__run_app__(
-                    ["tracktag", "--xmcd=/dev/null/foo.xmcd",
-                     self.filename(temp_track.filename)]), 1)
-            self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
 
             self.assertEqual(self.__run_app__(
                     ["tracktag", "--comment-file=/dev/null/foo.txt",
@@ -3451,137 +3424,6 @@ class tracktag_misc(UtilTest):
             elif (field == 'album_total'):
                 options.append('--remove-album-total')
         return options
-
-    @UTIL_TRACKTAG
-    def test_xmcd(self):
-        LENGTH = 1134
-        OFFSETS = [150, 18740, 40778, 44676, 63267]
-        TRACK_LENGTHS = [y - x for x, y in zip(OFFSETS + [LENGTH * 75],
-                                              (OFFSETS + [LENGTH * 75])[1:])]
-        data = {"DTITLE": "Artist / Album",
-                "TTITLE0": u"track one",
-                "TTITLE1": u"track two",
-                "TTITLE2": u"track three",
-                "TTITLE3": u"track four",
-                "TTITLE4": u"track five",
-                "EXTT0": u"",
-                "EXTT1": u"",
-                "EXTT2": u"",
-                "EXTT3": u"",
-                "EXTT4": u""}
-
-        #construct our XMCD file
-        xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
-        xmcd_file.write(audiotools.XMCD(data, [u"# xmcd"]).to_string())
-        xmcd_file.flush()
-
-        #construct a batch of temporary tracks
-        temp_tracks = [tempfile.NamedTemporaryFile(suffix=".flac")
-                       for i in xrange(len(OFFSETS))]
-        try:
-            tracks = [audiotools.FlacAudio.from_pcm(
-                    track.name,
-                    EXACT_BLANK_PCM_Reader(length * 44100 / 75))
-                      for (track, length) in zip(temp_tracks, TRACK_LENGTHS)]
-            for (i, track) in enumerate(tracks):
-                track.set_metadata(audiotools.MetaData(track_number=i + 1))
-
-            #tag them with tracktag
-            subprocess.call(["tracktag", "-x", xmcd_file.name] + \
-                            [track.filename for track in tracks])
-
-            #ensure the metadata values are correct
-            for (track, name, i) in zip(tracks, [u"track one",
-                                                 u"track two",
-                                                 u"track three",
-                                                 u"track four",
-                                                 u"track five"],
-                                      range(len(tracks))):
-                metadata = track.get_metadata()
-                self.assertEqual(metadata.track_name, name)
-                self.assertEqual(metadata.track_number, i + 1)
-                self.assertEqual(metadata.album_name, u"Album")
-                self.assertEqual(metadata.artist_name, u"Artist")
-        finally:
-            xmcd_file.close()
-            for track in temp_tracks:
-                track.close()
-
-        #construct a fresh XMCD file
-        xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
-        xmcd_file.write(audiotools.XMCD(data, [u"# xmcd"]).to_string())
-        xmcd_file.flush()
-
-        #construct a batch of temporary tracks with a file missing
-        temp_tracks = [tempfile.NamedTemporaryFile(suffix=".flac")
-                       for i in xrange(len(OFFSETS))]
-        try:
-            tracks = [audiotools.FlacAudio.from_pcm(
-                    track.name,
-                    EXACT_BLANK_PCM_Reader(length * 44100 / 75))
-                      for (track, length) in zip(temp_tracks, TRACK_LENGTHS)]
-            for (i, track) in enumerate(tracks):
-                track.set_metadata(audiotools.MetaData(track_number=i + 1))
-
-            del(tracks[2])
-
-            #tag them with tracktag
-            subprocess.call(["tracktag", "-x", xmcd_file.name] + \
-                            [track.filename for track in tracks])
-
-            #ensure the metadata values are correct
-            for (track, name, i) in zip(tracks, [u"track one",
-                                                 u"track two",
-                                                 u"track four",
-                                                 u"track five"],
-                                      [0, 1, 3, 4]):
-                metadata = track.get_metadata()
-                self.assertEqual(metadata.track_name, name)
-                self.assertEqual(metadata.track_number, i + 1)
-                self.assertEqual(metadata.album_name, u"Album")
-                self.assertEqual(metadata.artist_name, u"Artist")
-        finally:
-            xmcd_file.close()
-            for track in temp_tracks:
-                track.close()
-
-        #construct a fresh XMCD file with a track missing
-        del(data["TTITLE2"])
-        xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
-        xmcd_file.write(audiotools.XMCD(data, [u"# xmcd"]).to_string())
-        xmcd_file.flush()
-
-        #construct a batch of temporary tracks
-        temp_tracks = [tempfile.NamedTemporaryFile(suffix=".flac")
-                       for i in xrange(len(OFFSETS))]
-        try:
-            tracks = [audiotools.FlacAudio.from_pcm(
-                    track.name,
-                    EXACT_BLANK_PCM_Reader(length * 44100 / 75))
-                      for (track, length) in zip(temp_tracks, TRACK_LENGTHS)]
-            for (i, track) in enumerate(tracks):
-                track.set_metadata(audiotools.MetaData(track_number=i + 1))
-
-            #tag them with tracktag
-            subprocess.call(["tracktag", "-x", xmcd_file.name] + \
-                            [track.filename for track in tracks])
-
-            #ensure the metadata values are correct
-            for (track, name, i) in zip(tracks, [u"track one",
-                                                 u"track two",
-                                                 u"",
-                                                 u"track four",
-                                                 u"track five"],
-                                      range(len(tracks))):
-                metadata = track.get_metadata()
-                self.assertEqual(metadata.track_name, name)
-                self.assertEqual(metadata.track_number, i + 1)
-                self.assertEqual(metadata.album_name, u"Album")
-                self.assertEqual(metadata.artist_name, u"Artist")
-        finally:
-            xmcd_file.close()
-            for track in temp_tracks:
-                track.close()
 
     @UTIL_TRACKTAG
     def test_cuesheet1(self):

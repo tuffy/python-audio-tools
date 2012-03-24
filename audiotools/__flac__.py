@@ -1669,9 +1669,12 @@ class FlacAudio(WaveContainer, AiffContainer):
         conversion should be routed through .wav conversion
         to avoid losing those chunks."""
 
-        return 'riff' in [
-            block.application_id for block in
-            self.get_metadata().get_blocks(Flac_APPLICATION.BLOCK_ID)]
+        try:
+            return 'riff' in [
+                block.application_id for block in
+                self.get_metadata().get_blocks(Flac_APPLICATION.BLOCK_ID)]
+        except IOError:
+            return False
 
     def riff_wave_chunks(self, progress=None):
         """yields a set of RIFF_Chunk or RIFF_File_Chunk objects"""
