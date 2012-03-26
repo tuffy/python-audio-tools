@@ -36,10 +36,10 @@ codeword_free_tree(struct vorbis_codeword* tree);
 static unsigned int
 codeword_total_leaf_nodes(struct vorbis_codeword* tree);
 
-static struct huffman_frequency*
-codeword_tree_to_frequencies(struct vorbis_codeword* tree);
+/* static struct huffman_frequency* */
+/* codeword_tree_to_frequencies(struct vorbis_codeword* tree); */
 
-static void
-codeword_tree_to_frequencies_(struct vorbis_codeword* tree,
-                              struct huffman_frequency* frequencies,
-                              int* index);
+/* static void */
+/* codeword_tree_to_frequencies_(struct vorbis_codeword* tree, */
+/*                               struct huffman_frequency* frequencies, */
+/*                               int* index); */

@@ -125,35 +125,35 @@ codeword_add_length(struct vorbis_codeword* tree,
     }
 }
 
-static struct huffman_frequency*
-codeword_tree_to_frequencies(struct vorbis_codeword* tree) {
-    struct huffman_frequency* frequencies =
-        malloc(sizeof(struct huffman_frequency) *
-               (codeword_total_leaf_nodes(tree) + 1));
-    int index = 0;
+/* static struct huffman_frequency* */
+/* codeword_tree_to_frequencies(struct vorbis_codeword* tree) { */
+/*     struct huffman_frequency* frequencies = */
+/*         malloc(sizeof(struct huffman_frequency) * */
+/*                (codeword_total_leaf_nodes(tree) + 1)); */
+/*     int index = 0; */
 
-    codeword_tree_to_frequencies_(tree, frequencies, &index);
-    frequencies[index].length = 0;
-    return frequencies;
-}
+/*     codeword_tree_to_frequencies_(tree, frequencies, &index); */
+/*     frequencies[index].length = 0; */
+/*     return frequencies; */
+/* } */
 
-static void
-codeword_tree_to_frequencies_(struct vorbis_codeword* tree,
-                              struct huffman_frequency* frequencies,
-                              int* index) {
-    if (tree == NULL) {
-        return;
-    } else if (tree->is_leaf) {
-        frequencies[*index].value = tree->value;
-        frequencies[*index].bits = tree->bits;
-        frequencies[*index].length = tree->length;
-        *index += 1;
-    } else {
-        codeword_tree_to_frequencies_(tree->bit_0,
-                                      frequencies,
-                                      index);
-        codeword_tree_to_frequencies_(tree->bit_1,
-                                      frequencies,
-                                      index);
-    }
-}
+/* static void */
+/* codeword_tree_to_frequencies_(struct vorbis_codeword* tree, */
+/*                               struct huffman_frequency* frequencies, */
+/*                               int* index) { */
+/*     if (tree == NULL) { */
+/*         return; */
+/*     } else if (tree->is_leaf) { */
+/*         frequencies[*index].value = tree->value; */
+/*         frequencies[*index].bits = tree->bits; */
+/*         frequencies[*index].length = tree->length; */
+/*         *index += 1; */
+/*     } else { */
+/*         codeword_tree_to_frequencies_(tree->bit_0, */
+/*                                       frequencies, */
+/*                                       index); */
+/*         codeword_tree_to_frequencies_(tree->bit_1, */
+/*                                       frequencies, */
+/*                                       index); */
+/*     } */
+/* } */

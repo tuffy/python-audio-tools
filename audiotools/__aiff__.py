@@ -457,7 +457,7 @@ class AiffAudio(AiffContainer):
         if (metadata is None):
             return
         elif (not isinstance(metadata, ID3v22Comment)):
-            raise _(u"metadata not from audio file")
+            raise ValueError(_(u"metadata not from audio file"))
 
         def chunk_filter(chunks, id3_chunk_data):
             for chunk in chunks:

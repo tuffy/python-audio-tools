@@ -349,6 +349,78 @@ class WavPackApeTagMetaData(MetaDataTest):
         return self.metadata_class.converted(audiotools.MetaData())
 
     @METADATA_WAVPACK
+    def test_update(self):
+        import os
+
+        for audio_class in self.supported_formats:
+            temp_file = tempfile.NamedTemporaryFile(
+                suffix="." + audio_class.SUFFIX)
+            track = audio_class.from_pcm(temp_file.name, BLANK_PCM_Reader(10))
+            temp_file_stat = os.stat(temp_file.name)[0]
+            try:
+                #update_metadata on file's internal metadata round-trips okay
+                track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, u"Foo")
+                metadata.track_name = u"Bar"
+                track.update_metadata(metadata)
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, u"Bar")
+
+                #update_metadata on unwritable file generates IOError
+                metadata = track.get_metadata()
+                os.chmod(temp_file.name, 0)
+                self.assertRaises(IOError,
+                                  track.update_metadata,
+                                  metadata)
+                os.chmod(temp_file.name, temp_file_stat)
+
+                #update_metadata with foreign MetaData generates ValueError
+                self.assertRaises(ValueError,
+                                  track.update_metadata,
+                                  audiotools.MetaData(track_name=u"Foo"))
+
+                #update_metadata with None makes no changes
+                track.update_metadata(None)
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, u"Bar")
+
+                #replaygain strings not updated with set_metadata()
+                #but can be updated with update_metadata()
+                self.assertRaises(KeyError,
+                                  track.get_metadata().__getitem__,
+                                  "replaygain_track_gain")
+                metadata["replaygain_track_gain"] = \
+                    audiotools.ApeTagItem.string(
+                    "replaygain_track_gain", u"???")
+                track.set_metadata(metadata)
+                self.assertRaises(KeyError,
+                                  track.get_metadata().__getitem__,
+                                  "replaygain_track_gain")
+                track.update_metadata(metadata)
+                self.assertEqual(track.get_metadata()["replaygain_track_gain"],
+                                 audiotools.ApeTagItem.string(
+                        "replaygain_track_gain", u"???"))
+
+                #cuesheet not updated with set_metadata()
+                #but can be updated with update_metadata()
+                metadata["Cuesheet"] = \
+                    audiotools.ApeTagItem.string(
+                    "Cuesheet", u"???")
+                track.set_metadata(metadata)
+                self.assertRaises(KeyError,
+                                  track.get_metadata().__getitem__,
+                                  "Cuesheet")
+                track.update_metadata(metadata)
+                self.assertEqual(track.get_metadata()["Cuesheet"],
+                                 audiotools.ApeTagItem.string(
+                        "Cuesheet", u"???"))
+
+            finally:
+                temp_file.close()
+
+
+    @METADATA_WAVPACK
     def test_foreign_field(self):
         metadata = audiotools.ApeTag(
         [audiotools.ApeTagItem(0, False, "Title", 'Track Name'),
@@ -815,6 +887,45 @@ class ID3v1MetaData(MetaDataTest):
                                    genre=0)
 
     @METADATA_ID3V1
+    def test_update(self):
+        import os
+
+        for audio_class in self.supported_formats:
+            temp_file = tempfile.NamedTemporaryFile(
+                suffix="." + audio_class.SUFFIX)
+            track = audio_class.from_pcm(temp_file.name, BLANK_PCM_Reader(10))
+            temp_file_stat = os.stat(temp_file.name)[0]
+            try:
+                #update_metadata on file's internal metadata round-trips okay
+                track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, u"Foo")
+                metadata.track_name = u"Bar"
+                track.update_metadata(metadata)
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, u"Bar")
+
+                #update_metadata on unwritable file generates IOError
+                metadata = track.get_metadata()
+                os.chmod(temp_file.name, 0)
+                self.assertRaises(IOError,
+                                  track.update_metadata,
+                                  metadata)
+                os.chmod(temp_file.name, temp_file_stat)
+
+                #update_metadata with foreign MetaData generates ValueError
+                self.assertRaises(ValueError,
+                                  track.update_metadata,
+                                  audiotools.MetaData(track_name=u"Foo"))
+
+                #update_metadata with None makes no changes
+                track.update_metadata(None)
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, u"Bar")
+            finally:
+                temp_file.close()
+
+    @METADATA_ID3V1
     def test_supports_images(self):
         self.assertEqual(self.metadata_class.supports_images(), False)
 
@@ -1013,6 +1124,45 @@ class ID3v22MetaData(MetaDataTest):
 
     def empty_metadata(self):
         return self.metadata_class([])
+
+    @METADATA_ID3V2
+    def test_update(self):
+        import os
+
+        for audio_class in self.supported_formats:
+            temp_file = tempfile.NamedTemporaryFile(
+                suffix="." + audio_class.SUFFIX)
+            track = audio_class.from_pcm(temp_file.name, BLANK_PCM_Reader(10))
+            temp_file_stat = os.stat(temp_file.name)[0]
+            try:
+                #update_metadata on file's internal metadata round-trips okay
+                track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, u"Foo")
+                metadata.track_name = u"Bar"
+                track.update_metadata(metadata)
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, u"Bar")
+
+                #update_metadata on unwritable file generates IOError
+                metadata = track.get_metadata()
+                os.chmod(temp_file.name, 0)
+                self.assertRaises(IOError,
+                                  track.update_metadata,
+                                  metadata)
+                os.chmod(temp_file.name, temp_file_stat)
+
+                #update_metadata with foreign MetaData generates ValueError
+                self.assertRaises(ValueError,
+                                  track.update_metadata,
+                                  audiotools.MetaData(track_name=u"Foo"))
+
+                #update_metadata with None makes no changes
+                track.update_metadata(None)
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, u"Bar")
+            finally:
+                temp_file.close()
 
     @METADATA_ID3V2
     def test_foreign_field(self):
@@ -1744,6 +1894,221 @@ class FlacMetaData(MetaDataTest):
         return self.metadata_class.converted(audiotools.MetaData())
 
     @METADATA_FLAC
+    def test_update(self):
+        import os
+
+        for audio_class in self.supported_formats:
+            temp_file = tempfile.NamedTemporaryFile(
+                suffix="." + audio_class.SUFFIX)
+            track = audio_class.from_pcm(temp_file.name, BLANK_PCM_Reader(10))
+            temp_file_stat = os.stat(temp_file.name)[0]
+            try:
+                #update_metadata on file's internal metadata round-trips okay
+                track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, u"Foo")
+                metadata.track_name = u"Bar"
+                track.update_metadata(metadata)
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, u"Bar")
+
+                #update_metadata on unwritable file generates IOError
+                metadata = track.get_metadata()
+                os.chmod(temp_file.name, 0)
+                self.assertRaises(IOError,
+                                  track.update_metadata,
+                                  metadata)
+                os.chmod(temp_file.name, temp_file_stat)
+
+                #update_metadata with foreign MetaData generates ValueError
+                self.assertRaises(ValueError,
+                                  track.update_metadata,
+                                  audiotools.MetaData(track_name=u"Foo"))
+
+                #update_metadata with None makes no changes
+                track.update_metadata(None)
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, u"Bar")
+
+                #streaminfo not updated with set_metadata()
+                #but can be updated with update_metadata()
+                old_streaminfo = metadata.get_block(
+                    audiotools.Flac_STREAMINFO.BLOCK_ID)
+                new_streaminfo = audiotools.Flac_STREAMINFO(
+                    minimum_block_size=old_streaminfo.minimum_block_size,
+                    maximum_block_size=old_streaminfo.maximum_block_size,
+                    minimum_frame_size=0,
+                    maximum_frame_size=old_streaminfo.maximum_frame_size,
+                    sample_rate=old_streaminfo.sample_rate,
+                    channels=old_streaminfo.channels,
+                    bits_per_sample=old_streaminfo.bits_per_sample,
+                    total_samples=old_streaminfo.total_samples,
+                    md5sum=old_streaminfo.md5sum)
+                metadata.replace_blocks(
+                    audiotools.Flac_STREAMINFO.BLOCK_ID, [new_streaminfo])
+                track.set_metadata(metadata)
+                self.assertEqual(track.get_metadata().get_block(
+                        audiotools.Flac_STREAMINFO.BLOCK_ID),
+                                 old_streaminfo)
+                track.update_metadata(metadata)
+                self.assertEqual(track.get_metadata().get_block(
+                        audiotools.Flac_STREAMINFO.BLOCK_ID),
+                                 new_streaminfo)
+
+                #vendor_string not updated with set_metadata()
+                #but can be updated with update_metadata()
+                old_vorbiscomment = metadata.get_block(
+                    audiotools.Flac_VORBISCOMMENT.BLOCK_ID)
+                new_vorbiscomment = audiotools.Flac_VORBISCOMMENT(
+                    comment_strings=old_vorbiscomment.comment_strings[:],
+                    vendor_string=u"Vendor String")
+                metadata.replace_blocks(
+                    audiotools.Flac_VORBISCOMMENT.BLOCK_ID, [new_vorbiscomment])
+                track.set_metadata(metadata)
+                self.assertEqual(track.get_metadata().get_block(
+                        audiotools.Flac_VORBISCOMMENT.BLOCK_ID
+                        ).vendor_string,
+                                 old_vorbiscomment.vendor_string)
+                track.update_metadata(metadata)
+                self.assertEqual(track.get_metadata().get_block(
+                        audiotools.Flac_VORBISCOMMENT.BLOCK_ID
+                        ).vendor_string,
+                                 new_vorbiscomment.vendor_string)
+
+                #REPLAYGAIN_* tags not updated with set_metadata()
+                #but can be updated with update_metadata()
+                old_vorbiscomment = metadata.get_block(
+                    audiotools.Flac_VORBISCOMMENT.BLOCK_ID)
+                new_vorbiscomment = audiotools.Flac_VORBISCOMMENT(
+                    comment_strings=old_vorbiscomment.comment_strings +
+                    [u"REPLAYGAIN_REFERENCE_LOUDNESS=89.0 dB"],
+                    vendor_string=old_vorbiscomment.vendor_string)
+                self.assertEqual(
+                    new_vorbiscomment[u"REPLAYGAIN_REFERENCE_LOUDNESS"],
+                    [u"89.0 dB"])
+                metadata.replace_blocks(
+                    audiotools.Flac_VORBISCOMMENT.BLOCK_ID, [new_vorbiscomment])
+                track.set_metadata(metadata)
+                self.assertRaises(
+                    KeyError,
+                    track.get_metadata().get_block(
+                        audiotools.Flac_VORBISCOMMENT.BLOCK_ID
+                        ).__getitem__,
+                    u"REPLAYGAIN_REFERENCE_LOUDNESS")
+                track.update_metadata(metadata)
+                self.assertEqual(
+                    track.get_metadata().get_block(
+                        audiotools.Flac_VORBISCOMMENT.BLOCK_ID
+                        )[u"REPLAYGAIN_REFERENCE_LOUDNESS"],
+                    [u"89.0 dB"])
+
+                #WAVEFORMATEXTENSIBLE_CHANNEL_MASK
+                #not updated with set_metadata()
+                #but can be updated with update_metadata()
+                old_vorbiscomment = metadata.get_block(
+                    audiotools.Flac_VORBISCOMMENT.BLOCK_ID)
+                new_vorbiscomment = audiotools.Flac_VORBISCOMMENT(
+                    comment_strings=old_vorbiscomment.comment_strings +
+                    [u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK=0x0003"],
+                    vendor_string=old_vorbiscomment.vendor_string)
+                self.assertEqual(
+                    new_vorbiscomment[u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"],
+                    [u"0x0003"])
+                metadata.replace_blocks(
+                    audiotools.Flac_VORBISCOMMENT.BLOCK_ID, [new_vorbiscomment])
+                track.set_metadata(metadata)
+                self.assertRaises(
+                    KeyError,
+                    track.get_metadata().get_block(
+                        audiotools.Flac_VORBISCOMMENT.BLOCK_ID
+                        ).__getitem__,
+                    u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK")
+                track.update_metadata(metadata)
+                self.assertEqual(
+                    track.get_metadata().get_block(
+                        audiotools.Flac_VORBISCOMMENT.BLOCK_ID
+                        )[u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"],
+                    [u"0x0003"])
+
+                #cuesheet not updated with set_metadata()
+                #but can be updated with update_metadata()
+                new_cuesheet = audiotools.Flac_CUESHEET(
+                    catalog_number=chr(0) * 128,
+                    lead_in_samples=0,
+                    is_cdda=1,
+                    tracks=[audiotools.Flac_CUESHEET_track(
+                            offset=0,
+                            number=0,
+                            ISRC=" " * 12,
+                            track_type=0,
+                            pre_emphasis=0,
+                            index_points=[audiotools.Flac_CUESHEET_index(0,
+                                                                         0)])])
+                metadata = track.get_metadata()
+                self.assertRaises(IndexError,
+                                  metadata.get_block,
+                                  audiotools.Flac_CUESHEET.BLOCK_ID)
+                metadata.add_block(new_cuesheet)
+                track.set_metadata(metadata)
+                self.assertRaises(IndexError,
+                                  track.get_metadata().get_block,
+                                  audiotools.Flac_CUESHEET.BLOCK_ID)
+                track.update_metadata(metadata)
+                self.assertEqual(
+                    track.get_metadata().get_block(
+                        audiotools.Flac_CUESHEET.BLOCK_ID),
+                    new_cuesheet)
+
+                if (audio_class is not audiotools.OggFlacAudio):
+                    #seektable not updated with set_metadata()
+                    #but can be updated with update_metadata()
+
+                    #Ogg FLAC doesn't really support seektables as such
+
+                    metadata = track.get_metadata()
+
+                    old_seektable = metadata.get_block(
+                        audiotools.Flac_SEEKTABLE.BLOCK_ID)
+
+                    new_seektable = audiotools.Flac_SEEKTABLE(
+                        seekpoints=[(1, 1, 4096)] +
+                        old_seektable.seekpoints[1:])
+                    metadata.replace_blocks(
+                        audiotools.Flac_SEEKTABLE.BLOCK_ID,
+                        [new_seektable])
+                    track.set_metadata(metadata)
+                    self.assertEqual(
+                        track.get_metadata().get_block(
+                            audiotools.Flac_SEEKTABLE.BLOCK_ID),
+                        old_seektable)
+                    track.update_metadata(metadata)
+                    self.assertEqual(
+                        track.get_metadata().get_block(
+                            audiotools.Flac_SEEKTABLE.BLOCK_ID),
+                        new_seektable)
+
+                #application blocks not updated with set_metadata()
+                #but can be updated with update_metadata()
+                application = audiotools.Flac_APPLICATION(
+                    application_id="fooz",
+                    data="kelp")
+                metadata = track.get_metadata()
+                self.assertRaises(IndexError,
+                                  metadata.get_block,
+                                  audiotools.Flac_APPLICATION.BLOCK_ID)
+                metadata.add_block(application)
+                track.set_metadata(metadata)
+                self.assertRaises(IndexError,
+                                  track.get_metadata().get_block,
+                                  audiotools.Flac_APPLICATION.BLOCK_ID)
+                track.update_metadata(metadata)
+                self.assertEqual(track.get_metadata().get_block(
+                        audiotools.Flac_APPLICATION.BLOCK_ID),
+                                 application)
+            finally:
+                temp_file.close()
+
+    @METADATA_FLAC
     def test_foreign_field(self):
         metadata = audiotools.FlacMetaData([
                 audiotools.Flac_VORBISCOMMENT(
@@ -2334,6 +2699,73 @@ class M4AMetaDataTest(MetaDataTest):
         return self.metadata_class.converted(audiotools.MetaData())
 
     @METADATA_M4A
+    def test_update(self):
+        import os
+
+        for audio_class in self.supported_formats:
+            temp_file = tempfile.NamedTemporaryFile(
+                suffix="." + audio_class.SUFFIX)
+            track = audio_class.from_pcm(temp_file.name, BLANK_PCM_Reader(10))
+            temp_file_stat = os.stat(temp_file.name)[0]
+            try:
+                #update_metadata on file's internal metadata round-trips okay
+                track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, u"Foo")
+                metadata.track_name = u"Bar"
+                track.update_metadata(metadata)
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, u"Bar")
+
+                #update_metadata on unwritable file generates IOError
+                metadata = track.get_metadata()
+                os.chmod(temp_file.name, 0)
+                self.assertRaises(IOError,
+                                  track.update_metadata,
+                                  metadata)
+                os.chmod(temp_file.name, temp_file_stat)
+
+                #update_metadata with foreign MetaData generates ValueError
+                self.assertRaises(ValueError,
+                                  track.update_metadata,
+                                  audiotools.MetaData(track_name=u"Foo"))
+
+                #update_metadata with None makes no changes
+                track.update_metadata(None)
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, u"Bar")
+
+                #set_metadata can't alter the '\xa9too' field
+                metadata = track.get_metadata()
+                old_ilst = metadata.ilst_atom()["\xa9too"]
+                new_ilst = audiotools.M4A_ILST_Leaf_Atom(
+                    '\xa9too',
+                    [audiotools.M4A_ILST_Unicode_Data_Atom(
+                            0, 1, "Fooz")])
+                metadata.ilst_atom().replace_child(new_ilst)
+                self.assertEqual(metadata.ilst_atom()["\xa9too"],
+                                 new_ilst)
+                track.set_metadata(metadata)
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.ilst_atom()["\xa9too"], old_ilst)
+
+                #update_metadata can alter the '\xa9too' field
+                metadata = track.get_metadata()
+                old_ilst = metadata.ilst_atom()["\xa9too"]
+                new_ilst = audiotools.M4A_ILST_Leaf_Atom(
+                    '\xa9too',
+                    [audiotools.M4A_ILST_Unicode_Data_Atom(
+                            0, 1, "Fooz")])
+                metadata.ilst_atom().replace_child(new_ilst)
+                self.assertEqual(metadata.ilst_atom()["\xa9too"],
+                                 new_ilst)
+                track.update_metadata(metadata)
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.ilst_atom()["\xa9too"], new_ilst)
+            finally:
+                temp_file.close()
+
+    @METADATA_M4A
     def test_foreign_field(self):
         from audiotools import M4A_META_Atom
         from audiotools import M4A_HDLR_Atom
@@ -2677,6 +3109,75 @@ class VorbisCommentTest(MetaDataTest):
 
     def empty_metadata(self):
         return self.metadata_class.converted(audiotools.MetaData())
+
+    @METADATA_VORBIS
+    def test_update(self):
+        import os
+
+        for audio_class in self.supported_formats:
+            temp_file = tempfile.NamedTemporaryFile(
+                suffix="." + audio_class.SUFFIX)
+            track = audio_class.from_pcm(temp_file.name, BLANK_PCM_Reader(10))
+            temp_file_stat = os.stat(temp_file.name)[0]
+            try:
+                #update_metadata on file's internal metadata round-trips okay
+                track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, u"Foo")
+                metadata.track_name = u"Bar"
+                track.update_metadata(metadata)
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, u"Bar")
+
+                #update_metadata on unwritable file generates IOError
+                metadata = track.get_metadata()
+                os.chmod(temp_file.name, 0)
+                self.assertRaises(IOError,
+                                  track.update_metadata,
+                                  metadata)
+                os.chmod(temp_file.name, temp_file_stat)
+
+                #update_metadata with foreign MetaData generates ValueError
+                self.assertRaises(ValueError,
+                                  track.update_metadata,
+                                  audiotools.MetaData(track_name=u"Foo"))
+
+                #update_metadata with None makes no changes
+                track.update_metadata(None)
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, u"Bar")
+
+                #vendor_string not updated with set_metadata()
+                #but can be updated with update_metadata()
+                old_metadata = track.get_metadata()
+                new_metadata = audiotools.VorbisComment(
+                    comment_strings=old_metadata.comment_strings[:],
+                    vendor_string=u"Vendor String")
+                track.set_metadata(new_metadata)
+                self.assertEqual(track.get_metadata().vendor_string,
+                                 old_metadata.vendor_string)
+                track.update_metadata(new_metadata)
+                self.assertEqual(track.get_metadata().vendor_string,
+                                 new_metadata.vendor_string)
+
+                #REPLAYGAIN_* tags not updated with set_metadata()
+                #but can be updated with update_metadata()
+                old_metadata = track.get_metadata()
+                new_metadata = audiotools.VorbisComment(
+                    comment_strings=old_metadata.comment_strings +
+                    [u"REPLAYGAIN_REFERENCE_LOUDNESS=89.0 dB"],
+                    vendor_string=old_metadata.vendor_string)
+                track.set_metadata(new_metadata)
+                self.assertRaises(
+                    KeyError,
+                    track.get_metadata().__getitem__,
+                    u"REPLAYGAIN_REFERENCE_LOUDNESS")
+                track.update_metadata(new_metadata)
+                self.assertEqual(
+                    track.get_metadata()[u"REPLAYGAIN_REFERENCE_LOUDNESS"],
+                    [u"89.0 dB"])
+            finally:
+                temp_file.close()
 
     @METADATA_VORBIS
     def test_foreign_field(self):

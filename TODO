@@ -4789,260 +4789,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Ensure complete unit test passes
    this includes some compound tests
    which may not be covered by individual tests
-** TODO handle AIFF offset/block size in SSND chunk
-** TODO Remove Construct module
-   Convert all usage of Construct to BitstreamReader/BitstreamWriter.
-   Since this is unlikely to be updated for Python 3,
-   removing it should smooth that inevitable transition.
-*** DONE __accuraterip__.py
-*** DONE __aiff__.py
-    - [X] chunks
-    - [X] get_metadata
-    - [X] set_metadata
-    - [X] delete_metadata
-    - [X] to_pcm
-    - [X] from_pcm
-    - [X] pcm_split
-    - [X] aiff_from_chunks
-**** DONE AiffReader
-     - [X] __init__
-     - [X] read
-*** DONE __ape__.py
-*** DONE __au__.py
-*** DONE cue.py
-*** DONE __dvda__.py
-**** DONE DVDAudio
-     - [X] __titlesets__
-     - [X] __titles__
-**** DONE DVDATitle
-     - [X] __parse_info__
-*** DONE __flac__.py
-*** DONE __freedb__.py
-*** DONE __id3__.py
-*** DONE __id3v1__.py
-*** TODO __image__.py
-    - [X] __JPEG__
-    - [X] __PNG__
-    - [X] __GIF__
-    - [X] __BMP__
-    - [X] __TIFF__
-**** TODO check these against PIL's output
-**** TODO check against truncated images
-*** DONE __init__.py
-*** DONE __m4a__.py
-**** DONE M4ATaggedAudio
-     - [X] get_metadata
-     - [X] set_metadata
-     - [X] delete_metadata
-**** DONE M4A_META_Atom
-     - [X] __init__
-     - [X] __repr__
-     - [X] parse
-     - [X] __getattr__
-     - [X] __setattr__
-     - [X] __delattr__
-     - [X] images
-     - [X] add_image
-     - [X] delete_image
-     - [X] converted
-     - [X] __comment_name__
-     - [X] supports_images
-     - [X] __by_pair__
-     - [X] __comment_pairs__
-     - [X] clean
-**** DONE M4AAudio_faac
-     - [X] __init__
-     - [X] is_type
-**** DONE ALACAudio
-     - [X] __init__
-     - [X] is_type
-     - [X] to_pcm
-     - [X] from_pcm
-     - [X] __ftyp_atom__
-     - [X] __moov_atom__
-     - [X] __free_atom__
-*** DONE __m4a_atoms__.py
-    Re-implement atom parsing/building without Construct
-**** DONE ftyp
-**** DONE moov
-***** DONE mvhd
-***** DONE trak
-****** DONE tkhd
-****** DONE mdia
-******* DONE mdhd
-******* DONE hdlr
-******* DONE minf
-******** DONE smhd
-******** DONE dinf
-********* DONE dref
-******** DONE stbl
-********* DONE stsd
-********** DONE alac
-********* DONE stts
-********* DONE stsc
-********* DONE stsz
-********* DONE stco
-***** DONE udta
-****** DONE meta
-**** DONE free
-**** DONE Rename __m4a_atoms2__.py to __m4a_atoms__.py
-*** DONE __mp3__.py
-**** DONE MP3
-     - [X] __init__
-     - [X] is_type
-     - [X] __find_next_mp3_frame__
-     - [X] __find_mp3_start__
-     - [X] __find_last_mp3_frame__
-     - [X] verify
-**** DONE MP2
-     - [X] is_type
-*** DONE __musepack__.py
-*** DONE __musicbrainz__.py
-*** DONE __ogg__.py
-*** DONE player.py
-*** DONE __shn__.py
-*** DONE toc.py
-*** DONE __vorbis__.py
-**** DONE VorbisAudio
-     - [X] __read_metadata__
-     - [X] total_frames
-     - [X] get_metadata
-     - [X] set_metadata
-**** DONE Remove cruft
-     - [X] OggStreamReader
-     - [X] OggStreamWriter
-*** DONE __vorbiscomment__.py
-*** DONE __wav__.py
-*** DONE __wavpack__.py
-*** DONE test/test_core.py
-**** DONE TestFrameList
-     - [X] test_8bit_roundtrip
-     - [X] test_16bit_roundtrip
-     - [X] test_24bit_roundtrip
-*** DONE test/test_formats.py
-**** DONE ALACFileTest
-     - [X] test_blocksizes
-**** DONE FlacFileTest
-     - [X] test_blocksizes
-**** DONE ShortenFileTest
-     - [X] test_blocksizes
-**** DONE WavpackFileTest
-     - [X] test_blocksizes
-** TODO Add update_metadata() method to AudioFile
-   Consider how AudioFile.set_metadata() handles six different cases:
-
-   Case 1: adjusting a file's own textual metadata (tracktag)
-   >>> m = flac1.get_metadata()
-   >>> m.track_name = u"Fixed Name"
-   >>> flac1.set_metadata(m)
-
-   Case 2: transferring metadata from the same audio type (track2track)
-   >>> flac1.set_metadata(flac2.get_metadata())
-
-   Case 3: transferring metadata from a different audio type (track2track)
-   >>> flac1.set_metadata(mp3.get_metadata())
-
-   Case 4: adjusting a file's own low-level metadata (tracklint)
-   >>> m = flac1.get_metadata()
-   >>> m.streaminfo.md5sum = fixed_md5sum
-   >>> flac1.set_metadata(m)
-
-   Case 5: building new metadata from scratch (cd2track)
-   >>> flac1 = FlacAudio.from_pcm(pcm_reader)
-   >>> flac1.set_metadata(MetaData(track_name=u"New Name", ...))
-
-   Case 6: transferring adjusted metadata from the same audio type
-   >>> m = flac2.get_metadata()
-   >>> m.track_name = u"Adjusted Name"
-   >>> flac1.set_metadata(m)
-
-   What happens to stuff like the STREAMINFO block
-   which contains track length, md5sum, etc.
-   and is part of FLAC's metadata?
-
-   If set_metadata() works naively and doesn't override any values,
-   case 2 breaks since flac1 suddenly has flac2's track length.
-
-   If set_metadata() overrides new metadata with stuff from the current file,
-   case 4 breaks since the fixed_md5sum gets overridden.
-
-   Counting on set_metadata() being smart enough to know what you mean
-   is a losing proposition for FLAC, M4A and other metadata formats
-   with embedded non-textual (side) metadata.
-
-   One solution is to add a low-level AudioFile.update_metadata() method
-   which takes only the AudioFile's required metadata type
-   and leaves side data as-is.  So case 1 becomes:
-
-   >>> m = flac1.get_metadata()
-   >>> m.track_name = u"Fixed Name"
-   >>> flac1.update_metadata(m)
-
-   and case 4 becomes:
-
-   >>> m = flac1.get_metadata()
-   >>> m.streaminfo.md5sum = fixed_md5sum
-   >>> flac1.update_metadata(m)
-
-   while the other cases remain unchanged.
-*** DONE Add update_metadata() method to AudioFile and subclasses
-    for formats which take metadata at all
-    - [X] ALACAudio
-    - [X] AiffAudio
-    - [X] AudioFile
-    - [X] FlacAudio
-    - [X] M4AAudio
-    - [X] MP2Audio
-    - [X] MP3Audio
-    - [X] OggFlacAudio
-    - [X] VorbisAudio
-    - [X] WavPackAudio
-*** DONE Update clean() method to use update_metadata()
-    for formats which implement clean() at all
-    - [X] ALACAudio
-    - [X] AiffAudio
-    - [X] FlacAudio
-    - [X] M4AAudio
-    - [X] MP2Audio
-    - [X] MP3Audio
-    - [X] OggFlacAudio
-    - [X] VorbisAudio
-    - [X] WavPackAudio
-*** DONE Add update_metadata() to tracktag
-    when not using -r/--replace option
-*** DONE Document new set_metadata() behavior
-*** DONE Document update_metadata() method
-*** TODO Add unit tests for update_metadata()
-    - [ ] ALACAudio
-    - [ ] AiffAudio
-    - [X] FlacAudio
-    - [ ] M4AAudio
-    - [ ] MP2Audio
-    - [ ] MP3Audio
-    - [ ] OggFlacAudio
-    - [ ] VorbisAudio
-    - [ ] WavPackAudio
-** TODO Make internal functions static
-   Encoders and decoders come with lots of helper functions.
-   These should be defined statically whenever possible
-   to avoid colliding with one another.
-   As a side effect, these function names can now be shortened.
-   (not applicable to FLAC and Ogg FLAC, which share a lot of functions)
-*** TODO decoders
-    - [X] src/decoders/alac.c
-    - [ ] src/decoders/aobpcm.c
-    - [ ] src/decoders/mlp.c
-    - [ ] src/decoders/ogg.c
-    - [ ] src/decoders/shn.c
-    - [ ] src/decoders/sine.c
-    - [ ] src/decoders/vorbis.c
-    - [X] src/decoders/wavpack.c
-*** TODO encoders
-    - [X] src/encoders/alac.c
-    - [ ] src/encoders/flac.c
-    - [ ] src/encoders/shn.c
-    - [X] src/encoders/wavpack.c
-** TODO Cleanup bitstream module
+** DONE Eliminate all compiler warnings
+** DONE Cleanup bitstream module
    This is at the heart of a lot of things so it should be properly cleaned up.
 *** DONE Merge bitstream_r and bitstream_w source files
 *** DONE Make BitstreamReader and BitstreamWriter more symmetric
@@ -5072,7 +4820,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE Store filled placeholders in a stack for reuse
 **** DONE Clean out allocated placeholders as close() time
 ***** DONE Trigger warnings if not all placeholders are used at close()
-*** TODO Add C-based unit tests
+*** DONE Add C-based unit tests
     This should be something I can compile into a standalone file
     and run with no external dependencies.
     The idea is to build something valgrind-able to ensure
@@ -5132,13 +4880,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
       - [X] read_huffman_code
       - [X] read_bytes
 **** DONE Substream BitstreamReader
-**** TODO BitstreamWriter
-***** TODO big-endian
-***** TODO little-endian
-***** TODO callbacks
-***** TODO placeholders
-**** TODO BitstreamRecorder
-**** TODO BitstreamAccumulator
+**** DONE BitstreamWriter
+***** DONE big-endian
+***** DONE little-endian
+***** DONE callbacks
+**** DONE BitstreamRecorder
+**** DONE BitstreamAccumulator
 *** DONE Shift BitstreamReader/BitstreamWriters to audiotools.bitstream
 *** DONE Add documentation for audiotools.bitstream
 **** DONE BitstreamReader
@@ -5359,14 +5106,270 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     and further closes should do nothing.
 **** DONE Add unit test to bitstream.c
 **** DONE Add unit test to Python side
+** DONE Add update_metadata() method to AudioFile
+   Consider how AudioFile.set_metadata() handles six different cases:
+
+   Case 1: adjusting a file's own textual metadata (tracktag)
+   >>> m = flac1.get_metadata()
+   >>> m.track_name = u"Fixed Name"
+   >>> flac1.set_metadata(m)
+
+   Case 2: transferring metadata from the same audio type (track2track)
+   >>> flac1.set_metadata(flac2.get_metadata())
+
+   Case 3: transferring metadata from a different audio type (track2track)
+   >>> flac1.set_metadata(mp3.get_metadata())
+
+   Case 4: adjusting a file's own low-level metadata (tracklint)
+   >>> m = flac1.get_metadata()
+   >>> m.streaminfo.md5sum = fixed_md5sum
+   >>> flac1.set_metadata(m)
+
+   Case 5: building new metadata from scratch (cd2track)
+   >>> flac1 = FlacAudio.from_pcm(pcm_reader)
+   >>> flac1.set_metadata(MetaData(track_name=u"New Name", ...))
+
+   Case 6: transferring adjusted metadata from the same audio type
+   >>> m = flac2.get_metadata()
+   >>> m.track_name = u"Adjusted Name"
+   >>> flac1.set_metadata(m)
+
+   What happens to stuff like the STREAMINFO block
+   which contains track length, md5sum, etc.
+   and is part of FLAC's metadata?
+
+   If set_metadata() works naively and doesn't override any values,
+   case 2 breaks since flac1 suddenly has flac2's track length.
+
+   If set_metadata() overrides new metadata with stuff from the current file,
+   case 4 breaks since the fixed_md5sum gets overridden.
+
+   Counting on set_metadata() being smart enough to know what you mean
+   is a losing proposition for FLAC, M4A and other metadata formats
+   with embedded non-textual (side) metadata.
+
+   One solution is to add a low-level AudioFile.update_metadata() method
+   which takes only the AudioFile's required metadata type
+   and leaves side data as-is.  So case 1 becomes:
+
+   >>> m = flac1.get_metadata()
+   >>> m.track_name = u"Fixed Name"
+   >>> flac1.update_metadata(m)
+
+   and case 4 becomes:
+
+   >>> m = flac1.get_metadata()
+   >>> m.streaminfo.md5sum = fixed_md5sum
+   >>> flac1.update_metadata(m)
+
+   while the other cases remain unchanged.
+*** DONE Add update_metadata() method to AudioFile and subclasses
+    for formats which take metadata at all
+    - [X] ALACAudio
+    - [X] AiffAudio
+    - [X] AudioFile
+    - [X] FlacAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OggFlacAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
+*** DONE Update clean() method to use update_metadata()
+    for formats which implement clean() at all
+    - [X] ALACAudio
+    - [X] AiffAudio
+    - [X] FlacAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OggFlacAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
+*** DONE Add update_metadata() to tracktag
+    when not using -r/--replace option
+*** DONE Document new set_metadata() behavior
+*** DONE Document update_metadata() method
+*** DONE Add unit tests for update_metadata()
+    - [X] ALACAudio
+    - [X] AiffAudio
+    - [X] FlacAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OggFlacAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
+** TODO handle AIFF offset/block size in SSND chunk
+** TODO Remove Construct module
+   Convert all usage of Construct to BitstreamReader/BitstreamWriter.
+   Since this is unlikely to be updated for Python 3,
+   removing it should smooth that inevitable transition.
+*** DONE __accuraterip__.py
+*** DONE __aiff__.py
+    - [X] chunks
+    - [X] get_metadata
+    - [X] set_metadata
+    - [X] delete_metadata
+    - [X] to_pcm
+    - [X] from_pcm
+    - [X] pcm_split
+    - [X] aiff_from_chunks
+**** DONE AiffReader
+     - [X] __init__
+     - [X] read
+*** DONE __ape__.py
+*** DONE __au__.py
+*** DONE cue.py
+*** DONE __dvda__.py
+**** DONE DVDAudio
+     - [X] __titlesets__
+     - [X] __titles__
+**** DONE DVDATitle
+     - [X] __parse_info__
+*** DONE __flac__.py
+*** DONE __freedb__.py
+*** DONE __id3__.py
+*** DONE __id3v1__.py
+*** TODO __image__.py
+    - [X] __JPEG__
+    - [X] __PNG__
+    - [X] __GIF__
+    - [X] __BMP__
+    - [X] __TIFF__
+**** TODO check these against PIL's output
+**** TODO check against truncated images
+*** DONE __init__.py
+*** DONE __m4a__.py
+**** DONE M4ATaggedAudio
+     - [X] get_metadata
+     - [X] set_metadata
+     - [X] delete_metadata
+**** DONE M4A_META_Atom
+     - [X] __init__
+     - [X] __repr__
+     - [X] parse
+     - [X] __getattr__
+     - [X] __setattr__
+     - [X] __delattr__
+     - [X] images
+     - [X] add_image
+     - [X] delete_image
+     - [X] converted
+     - [X] __comment_name__
+     - [X] supports_images
+     - [X] __by_pair__
+     - [X] __comment_pairs__
+     - [X] clean
+**** DONE M4AAudio_faac
+     - [X] __init__
+     - [X] is_type
+**** DONE ALACAudio
+     - [X] __init__
+     - [X] is_type
+     - [X] to_pcm
+     - [X] from_pcm
+     - [X] __ftyp_atom__
+     - [X] __moov_atom__
+     - [X] __free_atom__
+*** DONE __m4a_atoms__.py
+    Re-implement atom parsing/building without Construct
+**** DONE ftyp
+**** DONE moov
+***** DONE mvhd
+***** DONE trak
+****** DONE tkhd
+****** DONE mdia
+******* DONE mdhd
+******* DONE hdlr
+******* DONE minf
+******** DONE smhd
+******** DONE dinf
+********* DONE dref
+******** DONE stbl
+********* DONE stsd
+********** DONE alac
+********* DONE stts
+********* DONE stsc
+********* DONE stsz
+********* DONE stco
+***** DONE udta
+****** DONE meta
+**** DONE free
+**** DONE Rename __m4a_atoms2__.py to __m4a_atoms__.py
+*** DONE __mp3__.py
+**** DONE MP3
+     - [X] __init__
+     - [X] is_type
+     - [X] __find_next_mp3_frame__
+     - [X] __find_mp3_start__
+     - [X] __find_last_mp3_frame__
+     - [X] verify
+**** DONE MP2
+     - [X] is_type
+*** DONE __musepack__.py
+*** DONE __musicbrainz__.py
+*** DONE __ogg__.py
+*** DONE player.py
+*** DONE __shn__.py
+*** DONE toc.py
+*** DONE __vorbis__.py
+**** DONE VorbisAudio
+     - [X] __read_metadata__
+     - [X] total_frames
+     - [X] get_metadata
+     - [X] set_metadata
+**** DONE Remove cruft
+     - [X] OggStreamReader
+     - [X] OggStreamWriter
+*** DONE __vorbiscomment__.py
+*** DONE __wav__.py
+*** DONE __wavpack__.py
+*** DONE test/test_core.py
+**** DONE TestFrameList
+     - [X] test_8bit_roundtrip
+     - [X] test_16bit_roundtrip
+     - [X] test_24bit_roundtrip
+*** DONE test/test_formats.py
+**** DONE ALACFileTest
+     - [X] test_blocksizes
+**** DONE FlacFileTest
+     - [X] test_blocksizes
+**** DONE ShortenFileTest
+     - [X] test_blocksizes
+**** DONE WavpackFileTest
+     - [X] test_blocksizes
+** TODO Make internal functions static
+   Encoders and decoders come with lots of helper functions.
+   These should be defined statically whenever possible
+   to avoid colliding with one another.
+   As a side effect, these function names can now be shortened.
+   (not applicable to FLAC and Ogg FLAC, which share a lot of functions)
+*** TODO decoders
+    - [X] src/decoders/alac.c
+    - [ ] src/decoders/aobpcm.c
+    - [ ] src/decoders/mlp.c
+    - [ ] src/decoders/ogg.c
+    - [ ] src/decoders/shn.c
+    - [ ] src/decoders/sine.c
+    - [ ] src/decoders/vorbis.c
+    - [X] src/decoders/wavpack.c
+*** TODO encoders
+    - [X] src/encoders/alac.c
+    - [ ] src/encoders/flac.c
+    - [ ] src/encoders/shn.c
+    - [X] src/encoders/wavpack.c
 ** TODO Ensure > 2GB files work correctly
 *** DONE flac should work
 *** TODO ogg flac should work
 *** DONE wavpack should work
 *** TODO alac should fail with error?
 ** TODO Ensure Python API docs are updated if necessary
-** TODO Eliminate all compiler warnings
 ** TODO Ensure MANIFEST.in is complete
+** TODO Reduce load from progress updating routines
+   only send update to parent when the overall output percentage
+   changes enough to update the display
+   which should cut down on a lot of otherwise ignored child->parent I/O
 * TODO Update .convert() method to use fewer temporary files
   .wav and .aiff containers with embedded chunks
   currently route data through actual .wav/.aiff files

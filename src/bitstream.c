@@ -3360,6 +3360,7 @@ byte_counter(uint8_t byte, void *total_bytes)
 
 #include <unistd.h>
 #include <signal.h>
+#include <sys/stat.h>
 #include "huffman.h"
 
 char temp_filename[] = "bitstream.XXXXXX";
@@ -3449,6 +3450,10 @@ void
 writer_perform_write_unary_1(BitstreamWriter* writer,
                              bs_endianness endianness);
 
+void
+writer_perform_write_bytes(BitstreamWriter* writer,
+                           bs_endianness endianness);
+
 typedef void (*write_check)(BitstreamWriter*, bs_endianness);
 
 
@@ -3467,6 +3472,29 @@ int ext_fwrite(void* user_data,
 
 void ext_fflush(void* user_data);
 
+
+typedef struct {
+    unsigned bits;
+    unsigned value;
+    unsigned resulting_bytes;
+    unsigned resulting_value;
+} align_check;
+
+void check_alignment_f(const align_check* check,
+                       bs_endianness endianness);
+
+void check_alignment_r(const align_check* check,
+                       bs_endianness endianness);
+
+void check_alignment_a(const align_check* check,
+                       bs_endianness endianness);
+
+void check_alignment_e(const align_check* check,
+                       bs_endianness endianness);
+
+void func_add_one(uint8_t byte, int* value);
+void func_add_two(uint8_t byte, int* value);
+void func_mult_three(uint8_t byte, int* value);
 
 int main(int argc, char* argv[]) {
     int fd;
@@ -4390,8 +4418,46 @@ test_writer(bs_endianness endianness) {
                             writer_perform_write_64,
                             writer_perform_write_signed_64,
                             writer_perform_write_unary_0,
-                            writer_perform_write_unary_1};
-    int total_checks = 5;
+                            writer_perform_write_unary_1,
+                            writer_perform_write_bytes};
+    int total_checks = 6;
+
+    align_check achecks_be[] = {{0, 0, 0, 0},
+                                {1, 1, 1, 0x80},
+                                {2, 1, 1, 0x40},
+                                {3, 1, 1, 0x20},
+                                {4, 1, 1, 0x10},
+                                {5, 1, 1, 0x08},
+                                {6, 1, 1, 0x04},
+                                {7, 1, 1, 0x02},
+                                {8, 1, 1, 0x01},
+                                {9, 1, 2, 0x0080},
+                                {10, 1, 2, 0x0040},
+                                {11, 1, 2, 0x0020},
+                                {12, 1, 2, 0x0010},
+                                {13, 1, 2, 0x0008},
+                                {14, 1, 2, 0x0004},
+                                {15, 1, 2, 0x0002},
+                                {16, 1, 2, 0x0001}};
+    align_check achecks_le[] = {{0, 0, 0, 0},
+                                {1, 0x01, 1, 0x01},
+                                {2, 0x02, 1, 0x02},
+                                {3, 0x04, 1, 0x04},
+                                {4, 0x08, 1, 0x08},
+                                {5, 0x10, 1, 0x10},
+                                {6, 0x20, 1, 0x20},
+                                {7, 0x40, 1, 0x40},
+                                {8, 0x80, 1, 0x80},
+                                {9, 0x0100, 2, 0x0100},
+                                {10, 0x0200, 2, 0x0200},
+                                {11, 0x0400, 2, 0x0400},
+                                {12, 0x0800, 2, 0x0800},
+                                {13, 0x1000, 2, 0x1000},
+                                {14, 0x2000, 2, 0x2000},
+                                {15, 0x4000, 2, 0x4000},
+                                {16, 0x8000, 2, 0x8000}};
+    int total_achecks = 17;
+    unsigned sums[3];
 
     /*perform file-based checks*/
     for (i = 0; i < total_checks; i++) {
@@ -4528,16 +4594,112 @@ test_writer(bs_endianness endianness) {
     /*FIXME*/
 
     /*check a file-based byte-align*/
-    /*FIXME*/
+    for (i = 0; i < total_achecks; i++) {
+        if (endianness == BS_BIG_ENDIAN) {
+            check_alignment_f(&(achecks_be[i]), endianness);
+        } else if (endianness == BS_LITTLE_ENDIAN) {
+            check_alignment_f(&(achecks_le[i]), endianness);
+        }
+    }
 
     /*check a recoder-based byte-align*/
-    /*FIXME*/
+    for (i = 0; i < total_achecks; i++) {
+        if (endianness == BS_BIG_ENDIAN) {
+            check_alignment_r(&(achecks_be[i]), endianness);
+        } else if (endianness == BS_LITTLE_ENDIAN) {
+            check_alignment_r(&(achecks_le[i]), endianness);
+        }
+    }
 
     /*check an accumulator-based byte-align*/
-    /*FIXME*/
+    for (i = 0; i < total_achecks; i++) {
+        if (endianness == BS_BIG_ENDIAN) {
+            check_alignment_a(&(achecks_be[i]), endianness);
+        } else if (endianness == BS_LITTLE_ENDIAN) {
+            check_alignment_a(&(achecks_le[i]), endianness);
+        }
+    }
 
-    /*check partial dump*/
-    /*FIXME*/
+    /*check an external function-based byte-align*/
+    for (i = 0; i < total_achecks; i++) {
+        if (endianness == BS_BIG_ENDIAN) {
+            check_alignment_e(&(achecks_be[i]), endianness);
+        } else if (endianness == BS_LITTLE_ENDIAN) {
+            check_alignment_e(&(achecks_le[i]), endianness);
+        }
+    }
+
+    /*check file-based callback functions*/
+    for (i = 0; i < total_checks; i++) {
+        sums[0] = sums[1] = 0;
+        sums[2] = 1;
+        output_file = fopen(temp_filename, "wb");
+        writer = bw_open(output_file, endianness);
+        bw_add_callback(writer, (bs_callback_func)func_add_one, &(sums[0]));
+        bw_add_callback(writer, (bs_callback_func)func_add_two, &(sums[1]));
+        bw_add_callback(writer, (bs_callback_func)func_mult_three, &(sums[2]));
+        checks[i](writer, endianness);
+        writer->close(writer);
+        assert(sums[0] == 4);
+        assert(sums[1] == 8);
+        assert(sums[2] == 81);
+    }
+
+    /*check recorder-based callback functions*/
+    for (i = 0; i < total_checks; i++) {
+        sums[0] = sums[1] = 0;
+        sums[2] = 1;
+        writer = bw_open_recorder(endianness);
+        bw_add_callback(writer, (bs_callback_func)func_add_one, &(sums[0]));
+        bw_add_callback(writer, (bs_callback_func)func_add_two, &(sums[1]));
+        bw_add_callback(writer, (bs_callback_func)func_mult_three, &(sums[2]));
+        checks[i](writer, endianness);
+        writer->close(writer);
+        assert(sums[0] == 4);
+        assert(sums[1] == 8);
+        assert(sums[2] == 81);
+    }
+
+    /*check accumulator-based callback functions*/
+    for (i = 0; i < total_checks; i++) {
+        sums[0] = sums[1] = 0;
+        sums[2] = 1;
+        writer = bw_open_accumulator(endianness);
+        bw_add_callback(writer, (bs_callback_func)func_add_one, &(sums[0]));
+        bw_add_callback(writer, (bs_callback_func)func_add_two, &(sums[1]));
+        bw_add_callback(writer, (bs_callback_func)func_mult_three, &(sums[2]));
+        checks[i](writer, endianness);
+        writer->close(writer);
+
+        /*this is correct
+          for speed reasons, accumulators don't call any callback functions
+          so the final values remain unchanged*/
+        assert(sums[0] == 0);
+        assert(sums[1] == 0);
+        assert(sums[2] == 1);
+    }
+
+    /*check an external function callback functions*/
+    for (i = 0; i < total_checks; i++) {
+        sums[0] = sums[1] = 0;
+        sums[2] = 1;
+        output_file = fopen(temp_filename, "wb");
+        writer = bw_open_external(output_file,
+                                  endianness,
+                                  2,
+                                  ext_fwrite,
+                                  ext_fflush,
+                                  ext_fclose,
+                                  ext_ffree);
+        bw_add_callback(writer, (bs_callback_func)func_add_one, &(sums[0]));
+        bw_add_callback(writer, (bs_callback_func)func_add_two, &(sums[1]));
+        bw_add_callback(writer, (bs_callback_func)func_mult_three, &(sums[2]));
+        checks[i](writer, endianness);
+        writer->close(writer);
+        assert(sums[0] == 4);
+        assert(sums[1] == 8);
+        assert(sums[2] == 81);
+    }
 
     /*check that recorder->recorder->file works*/
     for (i = 0; i < total_checks; i++) {
@@ -4820,6 +4982,13 @@ writer_perform_write_unary_1(BitstreamWriter* writer,
 }
 
 void
+writer_perform_write_bytes(BitstreamWriter* writer,
+                           bs_endianness endianness)
+{
+    writer->write_bytes(writer, (uint8_t*)"\xB1\xED\x3D\xC1", 4);
+}
+
+void
 check_output_file(void) {
     FILE* output_file;
     uint8_t data[255];
@@ -4830,6 +4999,92 @@ check_output_file(void) {
     assert(memcmp(data, expected_data, 4) == 0);
 
     fclose(output_file);
+}
+
+void check_alignment_f(const align_check* check,
+                       bs_endianness endianness)
+{
+    FILE* f = fopen(temp_filename, "wb");
+    BitstreamWriter* bw = bw_open(f, endianness);
+    BitstreamReader* br;
+    struct stat s;
+
+    bw->write(bw, check->bits, check->value);
+    bw->byte_align(bw);
+    bw->close(bw);
+
+    assert(stat(temp_filename, &s) == 0);
+    assert(s.st_size == check->resulting_bytes);
+
+    f = fopen(temp_filename, "rb");
+    br = br_open(f, endianness);
+    assert(br->read(br, check->resulting_bytes * 8) == check->resulting_value);
+    br->close(br);
+}
+
+void check_alignment_r(const align_check* check,
+                       bs_endianness endianness)
+{
+    FILE* f = fopen(temp_filename, "wb");
+    BitstreamWriter* rec = bw_open_recorder(endianness);
+    BitstreamWriter* bw = bw_open(f, endianness);
+    BitstreamReader* br;
+    struct stat s;
+
+    rec->write(rec, check->bits, check->value);
+    rec->byte_align(rec);
+    bw_rec_copy(bw, rec);
+    rec->close(rec);
+    bw->close(bw);
+
+    assert(stat(temp_filename, &s) == 0);
+    assert(s.st_size == check->resulting_bytes);
+
+    f = fopen(temp_filename, "rb");
+    br = br_open(f, endianness);
+    assert(br->read(br, check->resulting_bytes * 8) == check->resulting_value);
+    br->close(br);
+}
+
+void check_alignment_a(const align_check* check,
+                       bs_endianness endianness)
+{
+    BitstreamWriter* bw = bw_open_accumulator(endianness);
+
+    bw->write(bw, check->bits, check->value);
+    bw->byte_align(bw);
+
+    assert(bw->bits_written(bw) == (check->resulting_bytes * 8));
+    assert(bw->bytes_written(bw) == check->resulting_bytes);
+
+    bw->close(bw);
+}
+
+void check_alignment_e(const align_check* check,
+                       bs_endianness endianness)
+{
+    FILE* f = fopen(temp_filename, "wb");
+    BitstreamWriter* bw = bw_open_external(f,
+                                           endianness,
+                                           4096,
+                                           ext_fwrite,
+                                           ext_fflush,
+                                           ext_fclose,
+                                           ext_ffree);
+    BitstreamReader* br;
+    struct stat s;
+
+    bw->write(bw, check->bits, check->value);
+    bw->byte_align(bw);
+    bw->close(bw);
+
+    assert(stat(temp_filename, &s) == 0);
+    assert(s.st_size == check->resulting_bytes);
+
+    f = fopen(temp_filename, "rb");
+    br = br_open(f, endianness);
+    assert(br->read(br, check->resulting_bytes * 8) == check->resulting_value);
+    br->close(br);
 }
 
 void test_edge_cases(void) {
@@ -5309,6 +5564,21 @@ int ext_fwrite(void* user_data,
 void ext_fflush(void* user_data)
 {
     fflush((FILE*)user_data);
+}
+
+void func_add_one(uint8_t byte, int* value)
+{
+    *value += 1;
+}
+
+void func_add_two(uint8_t byte, int* value)
+{
+    *value += 2;
+}
+
+void func_mult_three(uint8_t byte, int* value)
+{
+    *value *= 3;
 }
 
 

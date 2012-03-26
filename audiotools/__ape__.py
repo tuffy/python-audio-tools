@@ -62,7 +62,7 @@ class ApeTagItem:
         """Fields are as follows:
 
         item_type is 0 = UTF-8, 1 = binary, 2 = external, 3 = reserved.
-        read_only is True if the item is read only.
+        read_only is 1 if the item is read only.
         key is an ASCII string.
         data is a binary string of the data itself.
         """
@@ -71,6 +71,14 @@ class ApeTagItem:
         self.read_only = read_only
         self.key = key
         self.data = data
+
+    def __eq__(self, item):
+        for attr in ["type", "read_only", "key", "data"]:
+            if ((not hasattr(item, attr)) or
+                (getattr(self, attr) != getattr(item, attr))):
+                return False
+        else:
+            return True
 
     def total_size(self):
         return 4 + 4 + len(self.key) + 1 + len(self.data)
@@ -142,7 +150,7 @@ class ApeTagItem:
 
         key is an ASCII string, data is a binary string."""
 
-        return cls(1, False, key, data)
+        return cls(1, 0, key, data)
 
     @classmethod
     def external(cls, key, data):
@@ -150,15 +158,15 @@ class ApeTagItem:
 
         key is an ASCII string, data is a binary string."""
 
-        return cls(2, False, key, data)
+        return cls(2, 0, key, data)
 
     @classmethod
     def string(cls, key, data):
         """Returns an ApeTagItem of text data.
 
-        key is an ASCII string, data is a UTF-8 binary string."""
+        key is an ASCII string, data is a unicode string."""
 
-        return cls(0, False, key, data.encode('utf-8', 'replace'))
+        return cls(0, 0, key, data.encode('utf-8', 'replace'))
 
 
 class ApeTag(MetaData):

@@ -137,11 +137,14 @@ class M4ATaggedAudio:
         from .bitstream import BitstreamWriter
         from .bitstream import BitstreamReader
 
+        if (metadata is None):
+            return
+
         if (not isinstance(metadata, M4A_META_Atom)):
             raise ValueError(_(u"metadata not from audio file"))
 
         if (old_metadata is None):
-            #this may still be None, and that's okay
+            #get_metadata() result may still be None, and that's okay
             old_metadata = self.get_metadata()
 
         #M4A streams often have *two* "free" atoms we can attempt to resize

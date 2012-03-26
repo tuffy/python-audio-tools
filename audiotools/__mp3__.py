@@ -458,7 +458,7 @@ class MP3Audio(AudioFile):
         elif (not (isinstance(metadata, ID3v2Comment) or
                    isinstance(metadata, ID3CommentPair) or
                    isinstance(metadata, ID3v1Comment))):
-            raise _(u"metadata not from audio file")
+            raise ValueError(_(u"metadata not from audio file"))
 
         #get the original MP3 data
         f = file(self.filename, "rb")

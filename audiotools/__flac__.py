@@ -1014,8 +1014,8 @@ class Flac_CUESHEET_track:
                      "track_type",
                      "pre_emphasis",
                      "index_points"]:
-            if ((not hasattr(block, attr)) or
-                (getattr(self, attr) != getattr(block, attr))):
+            if ((not hasattr(track, attr)) or
+                (getattr(self, attr) != getattr(track, attr))):
                 return False
         else:
             return True
@@ -1245,6 +1245,9 @@ class FlacAudio(WaveContainer, AiffContainer):
         from .bitstream import BitstreamReader
         from operator import add
 
+        if (metadata is None):
+            return
+
         if (not isinstance(metadata, FlacMetaData)):
             raise ValueError(_(u"metadata not from audio file"))
 
@@ -1369,6 +1372,9 @@ class FlacAudio(WaveContainer, AiffContainer):
                      old_vorbiscomment.keys())):
                     new_vorbiscomment[u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = \
                         old_vorbiscomment[u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"]
+                elif (u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK" in
+                      new_vorbiscomment.keys()):
+                    new_vorbiscomment[u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = []
 
                 old_metadata.replace_blocks(Flac_VORBISCOMMENT.BLOCK_ID,
                                             [new_vorbiscomment])
@@ -2554,6 +2560,9 @@ class OggFlacAudio(FlacAudio):
 
         Raises IOError if unable to write the file.
         """
+
+        if (metadata is None):
+            return None
 
         if (not isinstance(metadata, OggFlacMetaData)):
             raise ValueError(_(u"metadata not from audio file"))

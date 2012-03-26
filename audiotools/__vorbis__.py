@@ -340,6 +340,9 @@ class VorbisAudio(AudioFile):
         Raises IOError if unable to write the file.
         """
 
+        if (metadata is None):
+            return
+
         if (not isinstance(metadata, VorbisComment)):
             raise ValueError(_(u"metadata not from audio file"))
 
