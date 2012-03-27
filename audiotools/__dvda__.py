@@ -23,19 +23,19 @@ from .bitstream import BitstreamReader
 
 
 class DVDAudio:
-    """An object representing an entire DVD-Audio disc.
+    """an object representing an entire DVD-Audio disc
 
-    A DVDAudio object contains one or more DVDATitle objects
-    (accessible via the .titlesets attribute).
-    Typically, only the first DVDTitle is interesting.
-    Each DVDATitle then contains one or more DVDATrack objects.
+    a DVDAudio object contains one or more DVDATitle objects
+    (accessible via the .titlesets attribute)
+    typically, only the first DVDTitle is interesting
+    each DVDATitle then contains one or more DVDATrack objects
     """
 
     SECTOR_SIZE = 2048
     PTS_PER_SECOND = 90000
 
     def __init__(self, audio_ts_path, cdrom_device=None):
-        """A DVD-A which contains PCMReader-compatible track objects."""
+        """a DVD-A which contains PCMReader-compatible track objects"""
 
         self.audio_ts_path = audio_ts_path
         self.cdrom_device = cdrom_device
@@ -227,9 +227,9 @@ class InvalidDVDA(Exception):
 
 
 class DVDATitle:
-    """An object representing a DVD-Audio title.
+    """an object representing a DVD-Audio title
 
-    Contains one or more DVDATrack objects
+    contains one or more DVDATrack objects
     which may are accessible via __getitem__
     """
 
@@ -249,7 +249,7 @@ class DVDATitle:
         self.stream_id = 0
 
     def __parse_info__(self):
-        """generates a cache of sample_rate, bits-per-sample, etc."""
+        """generates a cache of sample_rate, bits-per-sample, etc"""
 
         if (len(self.tracks) == 0):
             return
@@ -384,6 +384,11 @@ class DVDATitle:
                 self.stream_id)
 
     def to_pcm(self):
+        """returns a PCMReader-compatible object of Title data
+        this PCMReader requires the use of its next_track() method
+        which indicates the total number of PTS ticks to read
+        from the next track in the title"""
+
         from audiotools.decoders import DVDA_Title
 
         args = {"audio_ts": self.dvdaudio.audio_ts_path,
@@ -395,7 +400,7 @@ class DVDATitle:
         return DVDA_Title(**args)
 
     def total_frames(self):
-        """Returns the title's total PCM frames as an integer."""
+        """returns the title's total PCM frames as an integer"""
 
         import decimal
 
@@ -443,7 +448,7 @@ class DVDATitle:
 
 
 class DVDATrack:
-    """An object representing an individual DVD-Audio track."""
+    """an object representing an individual DVD-Audio track"""
 
     SAMPLE_RATE = [48000, 96000, 192000, 0, 0, 0, 0, 0,
                    44100, 88200, 176400, 0, 0, 0, 0, 0]
@@ -478,9 +483,9 @@ class DVDATrack:
                                      "last_sector"]]))
 
     def total_frames(self):
-        """Returns the track's total PCM frames as an integer.
+        """returns the track's total PCM frames as an integer
 
-        This is based on its PTS ticks and the title's sample rate."""
+        this is based on its PTS ticks and the title's sample rate"""
 
         import decimal
 
@@ -494,7 +499,7 @@ class DVDATrack:
         """iterates (aob_file, start_sector, end_sector)
 
         for each AOB file necessary to extract the track's data
-        in the order in which they should be read."""
+        in the order in which they should be read"""
 
         track_sectors = Rangeset(self.first_sector,
                                  self.last_sector + 1)
@@ -511,7 +516,7 @@ class DVDATrack:
 
 
 class Rangeset:
-    """An optimized combination of range() and set()"""
+    """an optimized combination of range() and set()"""
 
     #The purpose of this class is for finding the subset of
     #two Rangesets, such as with:

@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-"""The TOC file handling module."""
+"""the TOC file handling module"""
 
 import re
 from audiotools import SheetException, parse_timestamp, build_timestamp
@@ -31,15 +31,15 @@ gettext.install("audiotools", unicode=True)
 
 
 class TOCException(SheetException):
-    """Raised by TOC file parsing errors."""
+    """raised by TOC file parsing errors"""
 
     pass
 
 
 def parse(lines):
-    """Returns a TOCFile object from an iterator of lines.
+    """returns a TOCFile object from an iterator of lines
 
-    Raises TOCException if some problem occurs parsing the file."""
+    raises TOCException if some problem occurs parsing the file"""
 
     TRACKLINE = re.compile(r'TRACK AUDIO')
 
@@ -93,7 +93,7 @@ def parse(lines):
 
 
 class TOCFile:
-    """An object representing a TOC file."""
+    """an object representing a TOC file"""
 
     def __init__(self):
         self.lines = []
@@ -104,9 +104,9 @@ class TOCFile:
                                                 repr(self.tracks))
 
     def catalog(self):
-        """Returns the cuesheet's CATALOG number as a plain string, or None.
+        """returns the cuesheet's CATALOG number as a plain string, or None
 
-        If present, this value is typically a CD's UPC code."""
+        if present, this value is typically a CD's UPC code"""
 
         for line in self.lines:
             if (line.startswith('CATALOG')):
@@ -119,7 +119,7 @@ class TOCFile:
             return None
 
     def indexes(self):
-        """Yields a set of index lists, one for each track in the file."""
+        """yields a set of index lists, one for each track in the file"""
 
         for track in sorted(self.tracks.values()):
             if (track.start != 0):
@@ -128,9 +128,9 @@ class TOCFile:
                 yield (track.indexes[0],)
 
     def pcm_lengths(self, total_length):
-        """Yields a list of PCM lengths for all audio tracks within the file.
+        """yields a list of PCM lengths for all audio tracks within the file
 
-        total_length is the length of the entire file in PCM frames."""
+        total_length is the length of the entire file in PCM frames"""
 
         previous = None
 
@@ -146,19 +146,19 @@ class TOCFile:
         yield total_length
 
     def ISRCs(self):
-        """Returns a track_number->ISRC dict of all non-empty tracks."""
+        """returns a track_number->ISRC dict of all non-empty tracks"""
 
         return dict([(track.number, track.ISRC()) for track in
                      self.tracks.values() if track.ISRC() is not None])
 
     @classmethod
     def file(cls, sheet, filename):
-        """Constructs a new TOC file string from a compatible object.
+        """constructs a new TOC file string from a compatible object
 
-        sheet must have catalog(), indexes() and ISRCs() methods.
-        filename is a string to the filename the TOC file is created for.
-        Although we don't care whether the filename points to a real file,
-        other tools sometimes do.
+        sheet must have catalog(), indexes() and ISRCs() methods
+        filename is a string to the filename the TOC file is created for
+        although we don't care whether the filename points to a real file,
+        other tools sometimes do
         """
 
         import cStringIO
@@ -202,7 +202,7 @@ class TOCFile:
 
 
 class Track:
-    """A track inside a TOCFile object."""
+    """a track inside a TOCFile object"""
 
     def __init__(self, number):
         self.number = number
@@ -219,7 +219,7 @@ class Track:
              repr(self.indexes), repr(self.start))
 
     def ISRC(self):
-        """Returns the track's ISRC value, or None."""
+        """returns the track's ISRC value, or None"""
 
         for line in self.lines:
             if (line.startswith('ISRC')):
@@ -231,9 +231,9 @@ class Track:
 
 
 def read_tocfile(filename):
-    """Returns a TOCFile from a TOC filename on disk.
+    """returns a TOCFile from a TOC filename on disk
 
-    Raises TOCException if some error occurs reading or parsing the file.
+    raises TOCException if some error occurs reading or parsing the file
     """
 
     try:

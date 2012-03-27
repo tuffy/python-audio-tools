@@ -73,7 +73,7 @@ class __Counter__:
 
 
 class WavPackAudio(ApeTaggedAudio, WaveContainer):
-    """A WavPack audio file."""
+    """a WavPack audio file"""
 
     SUFFIX = "wv"
     NAME = SUFFIX
@@ -117,7 +117,7 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
                                 "decorrelation_passes": 16}}
 
     def __init__(self, filename):
-        """filename is a plain string."""
+        """filename is a plain string"""
 
         self.filename = filename
         self.__samplerate__ = 0
@@ -132,26 +132,26 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
 
     @classmethod
     def is_type(cls, file):
-        """Returns True if the given file object describes this format.
+        """returns True if the given file object describes this format
 
-        Takes a seekable file pointer rewound to the start of the file."""
+        takes a seekable file pointer rewound to the start of the file"""
 
         return file.read(4) == 'wvpk'
 
     def lossless(self):
-        """Returns True."""
+        """returns True"""
 
         return True
 
     def channel_mask(self):
-        """Returns a ChannelMask object of this track's channel layout."""
+        """returns a ChannelMask object of this track's channel layout"""
 
         return self.__channel_mask__
 
     def get_metadata(self):
-        """Returns a MetaData object, or None.
+        """returns a MetaData object, or None
 
-        Raises IOError if unable to read the file."""
+        raises IOError if unable to read the file"""
 
         metadata = ApeTaggedAudio.get_metadata(self)
         if (metadata is not None):
@@ -159,12 +159,12 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
         return metadata
 
     def has_foreign_riff_chunks(self):
-        """Returns True if the audio file contains non-audio RIFF chunks.
+        """returns True if the audio file contains non-audio RIFF chunks
 
-        During transcoding, if the source audio file has foreign RIFF chunks
+        during transcoding, if the source audio file has foreign RIFF chunks
         and the target audio format supports foreign RIFF chunks,
         conversion should be routed through .wav conversion
-        to avoid losing those chunks."""
+        to avoid losing those chunks"""
 
         for (sub_header, nondecoder, data_size, data) in self.sub_blocks():
             if ((sub_header == 1) and nondecoder):
@@ -339,34 +339,34 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
             reader.close()
 
     def bits_per_sample(self):
-        """Returns an integer number of bits-per-sample this track contains."""
+        """returns an integer number of bits-per-sample this track contains"""
 
         return self.__bitspersample__
 
     def channels(self):
-        """Returns an integer number of channels this track contains."""
+        """returns an integer number of channels this track contains"""
 
         return self.__channels__
 
     def total_frames(self):
-        """Returns the total PCM frames of the track as an integer."""
+        """returns the total PCM frames of the track as an integer"""
 
         return self.__total_frames__
 
     def sample_rate(self):
-        """Returns the rate of the track's audio as an integer number of Hz."""
+        """returns the rate of the track's audio as an integer number of Hz"""
 
         return self.__samplerate__
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
-        """Encodes a new file from PCM data.
+        """encodes a new file from PCM data
 
-        Takes a filename string, PCMReader object
-        and optional compression level string.
-        Encodes a new audio file from pcmreader's data
+        takes a filename string, PCMReader object
+        and optional compression level string
+        encodes a new audio file from pcmreader's data
         at the given filename with the specified compression level
-        and returns a new WavPackAudio object."""
+        and returns a new WavPackAudio object"""
 
         from . import encoders
 
@@ -388,9 +388,9 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
             raise err
 
     def to_wave(self, wave_filename, progress=None):
-        """Writes the contents of this file to the given .wav filename string.
+        """writes the contents of this file to the given .wav filename string
 
-        Raises EncodingError if some error occurs during decoding."""
+        raises EncodingError if some error occurs during decoding"""
 
         from . import decoders
 
@@ -420,7 +420,7 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
             raise EncodingError(str(msg))
 
     def to_pcm(self):
-        """Returns a PCMReader object containing the track's PCM data."""
+        """returns a PCMReader object containing the track's PCM data"""
 
         from . import decoders
 
@@ -436,14 +436,14 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None,
                   progress=None):
-        """Encodes a new AudioFile from an existing .wav file.
+        """encodes a new AudioFile from an existing .wav file
 
-        Takes a filename string, wave_filename string
+        takes a filename string, wave_filename string
         of an existing WaveAudio file
-        and an optional compression level string.
-        Encodes a new audio file from the wave's data
+        and an optional compression level string
+        encodes a new audio file from the wave's data
         at the given filename with the specified compression level
-        and returns a new WavPackAudio object."""
+        and returns a new WavPackAudio object"""
 
         from . import encoders
 
@@ -471,7 +471,7 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
             raise err
 
     def pcm_split(self):
-        """Returns a pair of data strings before and after PCM data."""
+        """returns a pair of data strings before and after PCM data"""
 
         head = None
         tail = ""
@@ -547,7 +547,7 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
         return (head, tail)
 
     def fmt_chunk(self, reader=None):
-        """Returns the 'fmt' chunk as a BitstreamReader"""
+        """returns the 'fmt' chunk as a BitstreamReader"""
 
         for (block_id,
              nondecoder,
@@ -571,10 +571,10 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
 
     @classmethod
     def add_replay_gain(cls, filenames, progress=None):
-        """Adds ReplayGain values to a list of filename strings.
+        """adds ReplayGain values to a list of filename strings
 
-        All the filenames must be of this AudioFile type.
-        Raises ValueError if some problem occurs during ReplayGain application.
+        all the filenames must be of this AudioFile type
+        raises ValueError if some problem occurs during ReplayGain application
         """
 
         tracks = [track for track in open_files(filenames) if
@@ -607,20 +607,20 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
 
     @classmethod
     def can_add_replay_gain(cls):
-        """Returns True."""
+        """returns True"""
 
         return True
 
     @classmethod
     def lossless_replay_gain(cls):
-        """Returns True."""
+        """returns True"""
 
         return True
 
     def replay_gain(self):
-        """Returns a ReplayGain object of our ReplayGain values.
+        """returns a ReplayGain object of our ReplayGain values
 
-        Returns None if we have no values."""
+        returns None if we have no values"""
 
         metadata = self.get_metadata()
         if (metadata is None):
@@ -641,9 +641,9 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
             return None
 
     def get_cuesheet(self):
-        """Returns the embedded Cuesheet-compatible object, or None.
+        """returns the embedded Cuesheet-compatible object, or None
 
-        Raises IOError if a problem occurs when reading the file."""
+        raises IOError if a problem occurs when reading the file"""
 
         import cue
 
@@ -662,10 +662,10 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
             return None
 
     def set_cuesheet(self, cuesheet):
-        """Imports cuesheet data from a Cuesheet-compatible object.
+        """imports cuesheet data from a Cuesheet-compatible object
 
-        This are objects with catalog(), ISRCs(), indexes(), and pcm_lengths()
-        methods.  Raises IOError if an error occurs setting the cuesheet."""
+        this are objects with catalog(), ISRCs(), indexes(), and pcm_lengths()
+        methods.  Raises IOError if an error occurs setting the cuesheet"""
 
         import os.path
         import cue

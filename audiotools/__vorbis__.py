@@ -35,11 +35,11 @@ class InvalidVorbis(InvalidFile):
 
 
 def verify_ogg_stream(stream):
-    """Verifies an Ogg stream file object.
+    """verifies an Ogg stream file object
 
-    This file must be rewound to the start of a page.
-    Returns True if the file is valid.
-    Raises IOError or ValueError if there is some problem with the file.
+    this file must be rewound to the start of a page
+    returns True if the file is valid
+    raises IOError or ValueError if there is some problem with the file
     """
 
     from . import verify
@@ -52,7 +52,7 @@ def verify_ogg_stream(stream):
 #######################
 
 class VorbisAudio(AudioFile):
-    """An Ogg Vorbis file."""
+    """an Ogg Vorbis file"""
 
     SUFFIX = "ogg"
     NAME = SUFFIX
@@ -66,7 +66,7 @@ class VorbisAudio(AudioFile):
     REPLAYGAIN_BINARIES = ("vorbisgain", )
 
     def __init__(self, filename):
-        """filename is a plain string."""
+        """filename is a plain string"""
 
         AudioFile.__init__(self, filename)
         self.__sample_rate__ = 0
@@ -78,9 +78,9 @@ class VorbisAudio(AudioFile):
 
     @classmethod
     def is_type(cls, file):
-        """Returns True if the given file object describes this format.
+        """returns True if the given file object describes this format
 
-        Takes a seekable file pointer rewound to the start of the file."""
+        takes a seekable file pointer rewound to the start of the file"""
 
         header = file.read(0x23)
 
@@ -134,22 +134,22 @@ class VorbisAudio(AudioFile):
             f.close()
 
     def lossless(self):
-        """Returns False."""
+        """returns False"""
 
         return False
 
     def bits_per_sample(self):
-        """Returns an integer number of bits-per-sample this track contains."""
+        """returns an integer number of bits-per-sample this track contains"""
 
         return 16
 
     def channels(self):
-        """Returns an integer number of channels this track contains."""
+        """returns an integer number of channels this track contains"""
 
         return self.__channels__
 
     def channel_mask(self):
-        """Returns a ChannelMask object of this track's channel layout."""
+        """returns a ChannelMask object of this track's channel layout"""
 
         if (self.channels() == 1):
             return ChannelMask.from_fields(
@@ -192,7 +192,7 @@ class VorbisAudio(AudioFile):
             return ChannelMask(0)
 
     def total_frames(self):
-        """Returns the total PCM frames of the track as an integer."""
+        """returns the total PCM frames of the track as an integer"""
 
         from .bitstream import BitstreamReader
         from . import OggStreamReader
@@ -209,12 +209,12 @@ class VorbisAudio(AudioFile):
         return pcm_samples
 
     def sample_rate(self):
-        """Returns the rate of the track's audio as an integer number of Hz."""
+        """returns the rate of the track's audio as an integer number of Hz"""
 
         return self.__sample_rate__
 
     def to_pcm(self):
-        """Returns a PCMReader object containing the track's PCM data."""
+        """returns a PCMReader object containing the track's PCM data"""
 
         sub = subprocess.Popen([BIN['oggdec'], '-Q',
                                 '-b', str(16),
@@ -248,7 +248,7 @@ class VorbisAudio(AudioFile):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
-        """Returns a PCMReader object containing the track's PCM data."""
+        """returns a PCMReader object containing the track's PCM data"""
 
         if ((compression is None) or
             (compression not in cls.COMPRESSION_MODES)):
@@ -333,11 +333,11 @@ class VorbisAudio(AudioFile):
             raise EncodingError(u"unable to encode file with oggenc")
 
     def update_metadata(self, metadata):
-        """Takes this track's current MetaData object
+        """takes this track's current MetaData object
         as returned by get_metadata() and sets this track's metadata
-        with any fields updated in that object.
+        with any fields updated in that object
 
-        Raises IOError if unable to write the file.
+        raises IOError if unable to write the file
         """
 
         if (metadata is None):
@@ -412,10 +412,10 @@ class VorbisAudio(AudioFile):
             updated_ogg.write_page(*page)
 
     def set_metadata(self, metadata):
-        """Takes a MetaData object and sets this track's metadata.
+        """takes a MetaData object and sets this track's metadata
 
-        This metadata includes track name, album name, and so on.
-        Raises IOError if unable to write the file."""
+        this metadata includes track name, album name, and so on
+        raises IOError if unable to write the file"""
 
         if (metadata is not None):
             metadata = VorbisComment.converted(metadata)
@@ -438,9 +438,9 @@ class VorbisAudio(AudioFile):
             self.update_metadata(metadata)
 
     def get_metadata(self):
-        """Returns a MetaData object, or None.
+        """returns a MetaData object, or None
 
-        Raises IOError if unable to read the file."""
+        raises IOError if unable to read the file"""
 
         from .bitstream import BitstreamReader
         from . import read_ogg_packets
@@ -466,10 +466,10 @@ class VorbisAudio(AudioFile):
                 return None
 
     def delete_metadata(self):
-        """Deletes the track's MetaData.
+        """deletes the track's MetaData
 
-        This removes or unsets tags as necessary in order to remove all data.
-        Raises IOError if unable to write the file."""
+        this removes or unsets tags as necessary in order to remove all data
+        raises IOError if unable to write the file"""
 
         #the vorbis comment packet is required,
         #so simply zero out its contents
@@ -477,10 +477,10 @@ class VorbisAudio(AudioFile):
 
     @classmethod
     def add_replay_gain(cls, filenames, progress=None):
-        """Adds ReplayGain values to a list of filename strings.
+        """adds ReplayGain values to a list of filename strings
 
-        All the filenames must be of this AudioFile type.
-        Raises ValueError if some problem occurs during ReplayGain application.
+        all the filenames must be of this AudioFile type
+        raises ValueError if some problem occurs during ReplayGain application
         """
 
         track_names = [track.filename for track in
@@ -506,20 +506,20 @@ class VorbisAudio(AudioFile):
 
     @classmethod
     def can_add_replay_gain(cls):
-        """Returns True if we have the necessary binaries to add ReplayGain."""
+        """returns True if we have the necessary binaries to add ReplayGain"""
 
         return BIN.can_execute(BIN['vorbisgain'])
 
     @classmethod
     def lossless_replay_gain(cls):
-        """Returns True."""
+        """returns True"""
 
         return True
 
     def replay_gain(self):
-        """Returns a ReplayGain object of our ReplayGain values.
+        """returns a ReplayGain object of our ReplayGain values
 
-        Returns None if we have no values."""
+        returns None if we have no values"""
 
         vorbis_metadata = self.get_metadata()
 
@@ -539,11 +539,11 @@ class VorbisAudio(AudioFile):
             return None
 
     def verify(self, progress=None):
-        """Verifies the current file for correctness.
+        """verifies the current file for correctness
 
-        Returns True if the file is okay.
-        Raises an InvalidFile with an error message if there is
-        some problem with the file."""
+        returns True if the file is okay
+        raises an InvalidFile with an error message if there is
+        some problem with the file"""
 
         #Ogg stream verification is likely to be so fast
         #that individual calls to progress() are
@@ -568,7 +568,7 @@ class VorbisAudio(AudioFile):
 
 
 class VorbisChannelMask(ChannelMask):
-    """The Vorbis-specific channel mapping."""
+    """the Vorbis-specific channel mapping"""
 
     def __repr__(self):
         return "VorbisChannelMask(%s)" % \
@@ -577,10 +577,10 @@ class VorbisChannelMask(ChannelMask):
                       if (getattr(self, field))])
 
     def channels(self):
-        """Returns a list of speaker strings this mask contains.
+        """returns a list of speaker strings this mask contains
 
-        Returned in the order in which they should appear
-        in the PCM stream.
+        returned in the order in which they should appear
+        in the PCM stream
         """
 
         count = len(self)

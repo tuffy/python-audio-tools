@@ -39,13 +39,13 @@ class InvalidAU(InvalidFile):
 
 
 class AuReader(PCMReader):
-    """A subclass of PCMReader for reading Sun AU file contents."""
+    """a subclass of PCMReader for reading Sun AU file contents"""
 
     def __init__(self, au_file, data_size,
                  sample_rate, channels, channel_mask, bits_per_sample):
-        """au_file is a file, data_size is an integer byte count.
+        """au_file is a file, data_size is an integer byte count
 
-        sample_rate, channels, channel_mask and bits_per_sample are ints.
+        sample_rate, channels, channel_mask and bits_per_sample are ints
         """
 
         PCMReader.__init__(self,
@@ -57,7 +57,7 @@ class AuReader(PCMReader):
         self.data_size = data_size
 
     def read(self, bytes):
-        """Try to read a pcm.FrameList of size "bytes"."""
+        """try to read a pcm.FrameList of size 'bytes'"""
 
         #align bytes downward if an odd number is read in
         bytes -= (bytes % (self.channels * self.bits_per_sample / 8))
@@ -79,7 +79,7 @@ class AuReader(PCMReader):
 
 
 class AuAudio(AudioFile):
-    """A Sun AU audio file."""
+    """a Sun AU audio file"""
 
     SUFFIX = "au"
     NAME = SUFFIX
@@ -111,29 +111,29 @@ class AuAudio(AudioFile):
 
     @classmethod
     def is_type(cls, file):
-        """Returns True if the given file object describes this format.
+        """returns True if the given file object describes this format
 
-        Takes a seekable file pointer rewound to the start of the file."""
+        takes a seekable file pointer rewound to the start of the file"""
 
         return file.read(4) == ".snd"
 
     def lossless(self):
-        """Returns True."""
+        """returns True"""
 
         return True
 
     def bits_per_sample(self):
-        """Returns an integer number of bits-per-sample this track contains."""
+        """returns an integer number of bits-per-sample this track contains"""
 
         return self.__bits_per_sample__
 
     def channels(self):
-        """Returns an integer number of channels this track contains."""
+        """returns an integer number of channels this track contains"""
 
         return self.__channels__
 
     def channel_mask(self):
-        """Returns a ChannelMask object of this track's channel layout."""
+        """returns a ChannelMask object of this track's channel layout"""
 
         if (self.channels() <= 2):
             return ChannelMask.from_channels(self.channels())
@@ -141,19 +141,19 @@ class AuAudio(AudioFile):
             return ChannelMask(0)
 
     def sample_rate(self):
-        """Returns the rate of the track's audio as an integer number of Hz."""
+        """returns the rate of the track's audio as an integer number of Hz"""
 
         return self.__sample_rate__
 
     def total_frames(self):
-        """Returns the total PCM frames of the track as an integer."""
+        """returns the total PCM frames of the track as an integer"""
 
         return (self.__data_size__ /
                 (self.__bits_per_sample__ / 8) /
                 self.__channels__)
 
     def to_pcm(self):
-        """Returns a PCMReader object containing the track's PCM data."""
+        """returns a PCMReader object containing the track's PCM data"""
 
         f = file(self.filename, 'rb')
         f.seek(self.__data_offset__, 0)
@@ -166,10 +166,10 @@ class AuAudio(AudioFile):
                         bits_per_sample=self.bits_per_sample())
 
     def pcm_split(self):
-        """Returns a pair of data strings before and after PCM data.
+        """returns a pair of data strings before and after PCM data
 
-        The first contains all data before the PCM content of the data chunk.
-        The second containing all data after the data chunk."""
+        the first contains all data before the PCM content of the data chunk
+        the second containing all data after the data chunk"""
 
         import struct
 
@@ -181,13 +181,13 @@ class AuAudio(AudioFile):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
-        """Encodes a new file from PCM data.
+        """encodes a new file from PCM data
 
-        Takes a filename string, PCMReader object
-        and optional compression level string.
-        Encodes a new audio file from pcmreader's data
+        takes a filename string, PCMReader object
+        and optional compression level string
+        encodes a new audio file from pcmreader's data
         at the given filename with the specified compression level
-        and returns a new AuAudio object."""
+        and returns a new AuAudio object"""
 
         from .bitstream import BitstreamWriter
 
@@ -247,16 +247,16 @@ class AuAudio(AudioFile):
     @classmethod
     def track_name(cls, file_path, track_metadata=None, format=None,
                    suffix=None):
-        """Constructs a new filename string.
+        """constructs a new filename string
 
-        Given a plain string to an existing path,
+        given a plain string to an existing path,
         a MetaData-compatible object (or None),
         a UTF-8-encoded Python format string
         and an ASCII-encoded suffix string (such as "mp3")
         returns a plain string of a new filename with format's
-        fields filled-in and encoded as FS_ENCODING.
-        Raises UnsupportedTracknameField if the format string
-        contains invalid template fields."""
+        fields filled-in and encoded as FS_ENCODING
+        raises UnsupportedTracknameField if the format string
+        contains invalid template fields"""
 
         if (format is None):
             format = "track%(track_number)2.2d.au"

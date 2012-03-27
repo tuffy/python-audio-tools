@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-"""The core Python Audio Tools module."""
+"""the core Python Audio Tools module"""
 
 import sys
 
@@ -44,10 +44,10 @@ gettext.install("audiotools", unicode=True)
 
 
 class RawConfigParser(ConfigParser.RawConfigParser):
-    """Extends RawConfigParser to provide additional methods."""
+    """extends RawConfigParser to provide additional methods"""
 
     def get_default(self, section, option, default):
-        """Returns a default if option is not found in section."""
+        """returns a default if option is not found in section"""
 
         try:
             return self.get(section, option)
@@ -57,7 +57,7 @@ class RawConfigParser(ConfigParser.RawConfigParser):
             return default
 
     def getboolean_default(self, section, option, default):
-        """Returns a default if option is not found in section."""
+        """returns a default if option is not found in section"""
 
         try:
             return self.getboolean(section, option)
@@ -74,7 +74,7 @@ class RawConfigParser(ConfigParser.RawConfigParser):
             self.set(section, option, value)
 
     def getint_default(self, section, option, default):
-        """Returns a default int if option is not found in section."""
+        """returns a default int if option is not found in section"""
 
         try:
             return self.getint(section, option)
@@ -84,7 +84,7 @@ class RawConfigParser(ConfigParser.RawConfigParser):
             return default
 
     def getboolean_default(self, section, option, default):
-        """Returns a default boolean if option is not found in section"""
+        """returns a default boolean if option is not found in section"""
 
         try:
             return self.getboolean(section, option)
@@ -188,9 +188,9 @@ BIG_ENDIAN = sys.byteorder == 'big'
 
 
 def get_umask():
-    """Returns the current file creation umask as an integer.
+    """returns the current file creation umask as an integer
 
-    This is XORed with creation bits integers when used with
+    this is XORed with creation bits integers when used with
     os.open to create new files.  For example:
 
     >>> fd = os.open(filename, os.WRONLY | os.O_CREAT, 0666 ^ get_umask())
@@ -207,10 +207,10 @@ def get_umask():
 
 
 class OptionParser(optparse.OptionParser):
-    """Extends OptionParser to use IO_ENCODING as text encoding.
+    """extends OptionParser to use IO_ENCODING as text encoding
 
-    This ensures the encoding remains consistent if --help
-    output is piped to a pager vs. sent to a tty.
+    this ensures the encoding remains consistent if --help
+    output is piped to a pager vs. sent to a tty
     """
 
     def _get_encoding(self, file):
@@ -220,7 +220,7 @@ OptionGroup = optparse.OptionGroup
 
 
 def Messenger(executable, options):
-    """Returns a Messenger object based on set verbosity level in options."""
+    """returns a Messenger object based on set verbosity level in options"""
 
     if (not hasattr(options, "verbosity")):
         return VerboseMessenger(executable)
@@ -240,10 +240,10 @@ __CHAR_WIDTHS__ = {"Na": 1,
 
 
 def str_width(s):
-    """Returns the width of unicode string s, in characters.
+    """returns the width of unicode string s, in characters
 
-    This accounts for multi-code Unicode characters
-    as well as embedded ANSI sequences.
+    this accounts for multi-code Unicode characters
+    as well as embedded ANSI sequences
     """
 
     return sum(
@@ -252,10 +252,10 @@ def str_width(s):
 
 
 class display_unicode:
-    """A class for abstracting unicode string truncation.
+    """a class for abstracting unicode string truncation
 
-    This is necessary because not all Unicode characters are
-    the same length when displayed onscreen.
+    this is necessary because not all Unicode characters are
+    the same length when displayed onscreen
     """
 
     def __init__(self, unicode_string):
@@ -281,7 +281,7 @@ class display_unicode:
     def head(self, display_characters):
         """returns a display_unicode object truncated to the given length
 
-        Characters at the end of the string are removed as needed."""
+        characters at the end of the string are removed as needed"""
 
         output_chars = []
         for (char, width) in zip(self.__string__, self.__char_widths__):
@@ -295,7 +295,7 @@ class display_unicode:
     def tail(self, display_characters):
         """returns a display_unicode object truncated to the given length
 
-        Characters at the beginning of the string are removed as needed."""
+        characters at the beginning of the string are removed as needed"""
 
         output_chars = []
         for (char, width) in zip(reversed(self.__string__),
@@ -312,8 +312,8 @@ class display_unicode:
     def split(self, display_characters):
         """returns a tuple of display_unicode objects
 
-        The first is up to 'display_characters' in length.
-        The second contains the remainder of the string.
+        the first is up to 'display_characters' in length
+        the second contains the remainder of the string
         """
 
         head_chars = []
@@ -383,11 +383,11 @@ class __DividerRow__:
 
 
 class VerboseMessenger:
-    """This class is for displaying formatted output in a consistent way.
+    """this class is for displaying formatted output in a consistent way
 
-    It performs proper unicode string encoding based on IO_ENCODING,
+    it performs proper unicode string encoding based on IO_ENCODING,
     but can also display tabular data and ANSI-escaped data
-    with less effort.
+    with less effort
     """
 
     #a set of ANSI SGR codes
@@ -418,40 +418,40 @@ class VerboseMessenger:
     BG_WHITE = 47
 
     def __init__(self, executable):
-        """executable is a plain string of what script is being run.
+        """executable is a plain string of what script is being run
 
-        This is typically for use by the usage() method."""
+        this is typically for use by the usage() method"""
 
         self.executable = executable
         self.output_msg_rows = []  # a list of __MessengerRow__ objects
 
     def output(self, s):
-        """Displays an output message unicode string to stdout.
+        """displays an output message unicode string to stdout
 
-        This appends a newline to that message."""
+        this appends a newline to that message"""
 
         sys.stdout.write(s.encode(IO_ENCODING, 'replace'))
         sys.stdout.write(os.linesep)
 
     def partial_output(self, s):
-        """Displays a partial output message unicode string to stdout.
+        """displays a partial output message unicode string to stdout
 
-        This flushes output so that message is displayed"""
+        this flushes output so that message is displayed"""
 
         sys.stdout.write(s.encode(IO_ENCODING, 'replace'))
         sys.stdout.flush()
 
     def new_row(self):
-        """Sets up a new tabbed row for outputting aligned text.
+        """sets up a new tabbed row for outputting aligned text
 
-        This must be called prior to calling output_column()."""
+        this must be called prior to calling output_column()"""
 
         self.output_msg_rows.append(__MessengerRow__())
 
     def blank_row(self):
-        """Generates a completely blank row of aligned text.
+        """generates a completely blank row of aligned text
 
-        This cannot be the first row of aligned text."""
+        this cannot be the first row of aligned text"""
 
         if (len(self.output_msg_rows) == 0):
             raise ValueError("first output row cannot be blank")
@@ -461,10 +461,10 @@ class VerboseMessenger:
                 self.output_column(u"")
 
     def divider_row(self, dividers):
-        """Adds a row of unicode divider characters.
+        """adds a row of unicode divider characters
 
-        There should be one character in dividers per output column.
-        For example:
+        there should be one character in dividers per output column
+        for example:
         >>> m = VerboseMessenger("audiotools")
         >>> m.new_row()
         >>> m.output_column(u'Foo')
@@ -472,7 +472,7 @@ class VerboseMessenger:
         >>> m.output_column(u'Bar')
         >>> m.divider_row([u'-',u' ',u'-'])
         >>> m.output_rows()
-        Foo Bar
+        foo Bar
         --- ---
 
         """
@@ -480,7 +480,7 @@ class VerboseMessenger:
         self.output_msg_rows.append(__DividerRow__(dividers))
 
     def output_column(self, string, right_aligned=False):
-        """Adds a column of aligned unicode data."""
+        """adds a column of aligned unicode data"""
 
         if (len(self.output_msg_rows) > 0):
             self.output_msg_rows[-1].add_string(string, right_aligned)
@@ -489,11 +489,11 @@ class VerboseMessenger:
                 "you must perform \"new_row\" before adding columns")
 
     def output_rows(self):
-        """Outputs all of our accumulated output rows as aligned output.
+        """outputs all of our accumulated output rows as aligned output
 
-        This operates by calling our output() method.
-        Therefore, subclasses that have overridden output() to noops
-        (silent messengers) will also have silent output_rows() methods.
+        this operates by calling our output() method
+        therefore, subclasses that have overridden output() to noops
+        (silent messengers) will also have silent output_rows() methods
         """
 
         lengths = [row.lengths() for row in self.output_msg_rows]
@@ -514,19 +514,19 @@ class VerboseMessenger:
         self.output_msg_rows = []
 
     def info(self, s):
-        """Displays an informative message unicode string to stderr.
+        """displays an informative message unicode string to stderr
 
-        This appends a newline to that message."""
+        this appends a newline to that message"""
 
         sys.stderr.write(s.encode(IO_ENCODING, 'replace'))
         sys.stderr.write(os.linesep)
 
     def info_rows(self):
-        """Outputs all of our accumulated output rows as aligned info.
+        """outputs all of our accumulated output rows as aligned info
 
-        This operates by calling our info() method.
-        Therefore, subclasses that have overridden info() to noops
-        (silent messengers) will also have silent info_rows() methods.
+        this operates by calling our info() method
+        therefore, subclasses that have overridden info() to noops
+        (silent messengers) will also have silent info_rows() methods
         """
 
         lengths = [row.lengths() for row in self.output_msg_rows]
@@ -547,9 +547,9 @@ class VerboseMessenger:
         self.output_msg_rows = []
 
     def partial_info(self, s):
-        """Displays a partial informative message unicode string to stdout.
+        """displays a partial informative message unicode string to stdout
 
-        This flushes output so that message is displayed"""
+        this flushes output so that message is displayed"""
 
         sys.stderr.write(s.encode(IO_ENCODING, 'replace'))
         sys.stderr.flush()
@@ -564,18 +564,18 @@ class VerboseMessenger:
     #and tty output is purely incidental
 
     def error(self, s):
-        """Displays an error message unicode string to stderr.
+        """displays an error message unicode string to stderr
 
-        This appends a newline to that message."""
+        this appends a newline to that message"""
 
         sys.stderr.write("*** Error: ")
         sys.stderr.write(s.encode(IO_ENCODING, 'replace'))
         sys.stderr.write(os.linesep)
 
     def os_error(self, oserror):
-        """Displays an properly formatted OSError exception to stderr.
+        """displays an properly formatted OSError exception to stderr
 
-        This appends a newline to that message."""
+        this appends a newline to that message"""
 
         self.error(u"[Errno %d] %s: '%s'" % \
                        (oserror.errno,
@@ -583,18 +583,18 @@ class VerboseMessenger:
                         self.filename(oserror.filename)))
 
     def warning(self, s):
-        """Displays a warning message unicode string to stderr.
+        """displays a warning message unicode string to stderr
 
-        This appends a newline to that message."""
+        this appends a newline to that message"""
 
         sys.stderr.write("*** Warning: ")
         sys.stderr.write(s.encode(IO_ENCODING, 'replace'))
         sys.stderr.write(os.linesep)
 
     def usage(self, s):
-        """Displays the program's usage unicode string to stderr.
+        """displays the program's usage unicode string to stderr
 
-        This appends a newline to that message."""
+        this appends a newline to that message"""
 
         sys.stderr.write("*** Usage: ")
         sys.stderr.write(self.executable.decode('ascii'))
@@ -603,23 +603,23 @@ class VerboseMessenger:
         sys.stderr.write(os.linesep)
 
     def filename(self, s):
-        """Decodes a filename string to unicode.
+        """decodes a filename string to unicode
 
-        This uses the system's encoding to perform translation."""
+        this uses the system's encoding to perform translation"""
 
         return s.decode(FS_ENCODING, 'replace')
 
     def ansi(self, s, codes):
-        """Generates an ANSI code as a unicode string.
+        """generates an ANSI code as a unicode string
 
-        Takes a unicode string to be escaped
-        and a list of ANSI SGR codes.
-        Returns an ANSI-escaped unicode terminal string
+        takes a unicode string to be escaped
+        and a list of ANSI SGR codes
+        returns an ANSI-escaped unicode terminal string
         with those codes activated followed by the unescaped code
-        if the Messenger's stdout is to a tty terminal.
-        Otherwise, the string is returned unmodified.
+        if the Messenger's stdout is to a tty terminal
+        otherwise, the string is returned unmodified
 
-        For example:
+        for example:
         >>> VerboseMessenger("audiotools").ansi(u"foo",
         ...                                     [VerboseMessenger.BOLD])
         u'\\x1b[1mfoo\\x1b[0m'
@@ -632,10 +632,10 @@ class VerboseMessenger:
             return s
 
     def ansi_clearline(self):
-        """Generates a set of clear line ANSI escape codes to stdout.
+        """generates a set of clear line ANSI escape codes to stdout
 
-        This works only if stdout is a tty.  Otherwise, it does nothing.
-        For example:
+        this works only if stdout is a tty.  Otherwise, it does nothing
+        for example:
         >>> msg = VerboseMessenger("audiotools")
         >>> msg.partial_output(u"working")
         >>> time.sleep(1)
@@ -652,28 +652,28 @@ class VerboseMessenger:
             sys.stdout.flush()
 
     def ansi_uplines(self, lines):
-        """Moves the cursor up by the given number of lines."""
+        """moves the cursor up by the given number of lines"""
 
         if (sys.stdout.isatty()):
             sys.stdout.write(u"\u001B[%dA" % (lines))
             sys.stdout.flush()
 
     def ansi_cleardown(self):
-        """Clears the remainder of the screen from the cursor downward."""
+        """clears the remainder of the screen from the cursor downward"""
 
         if (sys.stdout.isatty()):
             sys.stdout.write(u"\u001B[0J")
             sys.stdout.flush()
 
     def ansi_err(self, s, codes):
-        """Generates an ANSI code as a unicode string.
+        """generates an ANSI code as a unicode string
 
-        Takes a unicode string to be escaped
-        and a list of ANSI SGR codes.
-        Returns an ANSI-escaped unicode terminal string
+        takes a unicode string to be escaped
+        and a list of ANSI SGR codes
+        returns an ANSI-escaped unicode terminal string
         with those codes activated followed by the unescaped code
-        if the Messenger's stderr is to a tty terminal.
-        Otherwise, the string is returned unmodified."""
+        if the Messenger's stderr is to a tty terminal
+        otherwise, the string is returned unmodified"""
 
         if (sys.stderr.isatty()):
             return u"\u001B[%sm%s\u001B[0m" % \
@@ -694,51 +694,51 @@ class VerboseMessenger:
 
 class SilentMessenger(VerboseMessenger):
     def output(self, s):
-        """Performs no output, resulting in silence."""
+        """performs no output, resulting in silence"""
 
         pass
 
     def partial_output(self, s):
-        """Performs no output, resulting in silence."""
+        """performs no output, resulting in silence"""
 
         pass
 
     def warning(self, s):
-        """Performs no output, resulting in silence."""
+        """performs no output, resulting in silence"""
 
         pass
 
     def info(self, s):
-        """Performs no output, resulting in silence."""
+        """performs no output, resulting in silence"""
 
         pass
 
     def partial_info(self, s):
-        """Performs no output, resulting in silence."""
+        """performs no output, resulting in silence"""
 
         pass
 
     def ansi_clearline(self):
-        """Performs no output, resulting in silence."""
+        """performs no output, resulting in silence"""
 
         pass
 
     def ansi_uplines(self, lines):
-        """Performs no output, resulting in silence."""
+        """performs no output, resulting in silence"""
 
         pass
 
     def ansi_cleardown(self):
-        """Performs no output, resulting in silence."""
+        """performs no output, resulting in silence"""
 
         pass
 
 
 class ProgressDisplay:
-    """A class for displaying incremental progress updates to the screen."""
+    """a class for displaying incremental progress updates to the screen"""
 
     def __init__(self, messenger):
-        """Takes a Messenger object for displaying output."""
+        """takes a Messenger object for displaying output"""
 
         import time
 
@@ -762,7 +762,7 @@ class ProgressDisplay:
             self.clear = self.clear_nontty
 
     def add_row_tty(self, row_id, output_line):
-        """Adds a row of output to be displayed with progress indicated.
+        """adds a row of output to be displayed with progress indicated
 
         row_id should be a unique identifier
         output_line should be a unicode string"""
@@ -774,7 +774,7 @@ class ProgressDisplay:
             self.progress_rows.append(new_row)
 
     def add_row_nontty(self, row_id, output_line):
-        """Adds a row of output to be displayed with progress indicated.
+        """adds a row of output to be displayed with progress indicated
 
         row_id should be a unique identifier
         output_line should be a unicode string"""
@@ -782,7 +782,7 @@ class ProgressDisplay:
         pass
 
     def delete_row_tty(self, row_id):
-        """Removes the row with the given ID."""
+        """removes the row with the given ID"""
 
         row_index = None
         for (i, row) in enumerate(self.progress_rows):
@@ -794,12 +794,12 @@ class ProgressDisplay:
             self.progress_rows[row_index] = None
 
     def delete_row_nontty(self, row_id):
-        """Removes the row with the given ID."""
+        """removes the row with the given ID"""
 
         pass
 
     def update_row_tty(self, row_id, current, total):
-        """Updates the given row with a new current and total status."""
+        """updates the given row with a new current and total status"""
 
         for row in self.progress_rows:
             if ((row is not None) and (row.id == row_id)):
@@ -807,16 +807,16 @@ class ProgressDisplay:
         self.refresh()
 
     def update_row_nontty(self, row_id, current, total):
-        """Updates the given row with a new current and total status."""
+        """updates the given row with a new current and total status"""
 
         pass
 
     def refresh_tty(self):
-        """Refreshes the display of all status rows.
+        """refreshes the display of all status rows
 
-        This deletes and redraws output as necessary,
+        this deletes and redraws output as necessary,
         depending on whether output has changed since
-        previously displayed."""
+        previously displayed"""
 
         now = self.time()
         if ((now - self.last_output_time) < .25):
@@ -834,16 +834,16 @@ class ProgressDisplay:
             self.last_output_time = now
 
     def refresh_nontty(self):
-        """Refreshes the display of all status rows.
+        """refreshes the display of all status rows
 
-        This deletes and redraws output as necessary,
+        this deletes and redraws output as necessary,
         depending on whether output has changed since
-        previously displayed."""
+        previously displayed"""
 
         pass
 
     def clear_tty(self):
-        """Clears all previously displayed output."""
+        """clears all previously displayed output"""
 
         if (len(self.previous_output) > 0):
             self.messenger.ansi_clearline()
@@ -853,31 +853,31 @@ class ProgressDisplay:
             self.last_output_time = 0.0
 
     def clear_nontty(self):
-        """Clears all previously displayed output."""
+        """clears all previously displayed output"""
 
         pass
 
 
 class SingleProgressDisplay(ProgressDisplay):
-    """A specialized ProgressDisplay for handling a single line of output."""
+    """a specialized ProgressDisplay for handling a single line of output"""
 
     def __init__(self, messenger, progress_text):
-        """Takes a Messenger class and unicode string for output."""
+        """takes a Messenger class and unicode string for output"""
 
         ProgressDisplay.__init__(self, messenger)
         self.add_row(0, progress_text)
 
     def update(self, current, total):
-        """Updates the output line with new current and total values."""
+        """updates the output line with new current and total values"""
 
         self.update_row(0, current, total)
 
 
 class ReplayGainProgressDisplay(ProgressDisplay):
-    """A specialized ProgressDisplay for handling ReplayGain application."""
+    """a specialized ProgressDisplay for handling ReplayGain application"""
 
     def __init__(self, messenger, lossless_replay_gain):
-        """Takes a Messenger and whether ReplayGain is lossless or not."""
+        """takes a Messenger and whether ReplayGain is lossless or not"""
 
         ProgressDisplay.__init__(self, messenger)
         self.lossless_replay_gain = lossless_replay_gain
@@ -897,12 +897,12 @@ class ReplayGainProgressDisplay(ProgressDisplay):
             self.final_message = self.final_message_nontty
 
     def initial_message_tty(self):
-        """Displays a message that ReplayGain application has started."""
+        """displays a message that ReplayGain application has started"""
 
         pass
 
     def initial_message_nontty(self):
-        """Displays a message that ReplayGain application has started."""
+        """displays a message that ReplayGain application has started"""
 
         if (self.lossless_replay_gain):
             self.messenger.info(
@@ -912,18 +912,18 @@ class ReplayGainProgressDisplay(ProgressDisplay):
                 _(u"Applying ReplayGain.  This may take some time."))
 
     def update_tty(self, current, total):
-        """Updates the current status of ReplayGain application."""
+        """updates the current status of ReplayGain application"""
 
         self.replaygain_row.update(current, total)
         self.refresh()
 
     def update_nontty(self, current, total):
-        """Updates the current status of ReplayGain application."""
+        """updates the current status of ReplayGain application"""
 
         pass
 
     def final_message_tty(self):
-        """Displays a message that ReplayGain application is complete."""
+        """displays a message that ReplayGain application is complete"""
 
         self.clear()
         if (self.lossless_replay_gain):
@@ -932,13 +932,13 @@ class ReplayGainProgressDisplay(ProgressDisplay):
             self.messenger.info(_(u"ReplayGain applied"))
 
     def final_message_nontty(self):
-        """Displays a message that ReplayGain application is complete."""
+        """displays a message that ReplayGain application is complete"""
 
         pass
 
 
 class ProgressRow:
-    """A class for displaying a single row of progress output."""
+    """a class for displaying a single row of progress output"""
 
     def __init__(self, row_id, output_line):
         """row_id is a unique identifier.  output_line is a unicode string"""
@@ -992,27 +992,27 @@ class ProgressRow:
 
 
 class UnsupportedFile(Exception):
-    """Raised by open() if the file can be opened but not identified."""
+    """raised by open() if the file can be opened but not identified"""
 
     pass
 
 
 class InvalidFile(Exception):
-    """Raised during initialization if the file is invalid in some way."""
+    """raised during initialization if the file is invalid in some way"""
 
     pass
 
 
 class InvalidFormat(Exception):
-    """Raised if an audio file cannot be created correctly from from_pcm()
-    due to having a PCM format unsupported by the output format."""
+    """raised if an audio file cannot be created correctly from from_pcm()
+    due to having a PCM format unsupported by the output format"""
 
     pass
 
 
 class EncodingError(IOError):
-    """Raised if an audio file cannot be created correctly from from_pcm()
-    due to an error by the encoder."""
+    """raised if an audio file cannot be created correctly from from_pcm()
+    due to an error by the encoder"""
 
     def __init__(self, error_message):
         IOError.__init__(self)
@@ -1032,7 +1032,7 @@ class EncodingError(IOError):
 
 
 class UnsupportedChannelMask(EncodingError):
-    """Raised if the encoder does not support the file's channel mask."""
+    """raised if the encoder does not support the file's channel mask"""
 
     def __init__(self, filename, mask):
         EncodingError.__init__(
@@ -1044,7 +1044,7 @@ class UnsupportedChannelMask(EncodingError):
 
 
 class UnsupportedChannelCount(EncodingError):
-    """Raised if the encoder does not support the file's channel count."""
+    """raised if the encoder does not support the file's channel count"""
 
     def __init__(self, filename, count):
         EncodingError.__init__(
@@ -1056,7 +1056,7 @@ class UnsupportedChannelCount(EncodingError):
 
 
 class UnsupportedBitsPerSample(EncodingError):
-    """Raised if the encoder does not support the file's bits-per-sample."""
+    """raised if the encoder does not support the file's bits-per-sample"""
 
     def __init__(self, filename, bits_per_sample):
         EncodingError.__init__(
@@ -1068,10 +1068,10 @@ class UnsupportedBitsPerSample(EncodingError):
 
 
 class DecodingError(IOError):
-    """Raised if the decoder exits with an error.
+    """raised if the decoder exits with an error
 
-    Typically, a from_pcm() method will catch this error
-    and raise EncodingError."""
+    typically, a from_pcm() method will catch this error
+    and raise EncodingError"""
 
     def __init__(self, error_message):
         IOError.__init__(self)
@@ -1079,14 +1079,14 @@ class DecodingError(IOError):
 
 
 def open(filename):
-    """Returns an AudioFile located at the given filename path.
+    """returns an AudioFile located at the given filename path
 
-    This works solely by examining the file's contents
-    after opening it.
-    Raises UnsupportedFile if it's not a file we support based on its headers.
-    Raises InvalidFile if the file appears to be something we support,
-    but has errors of some sort.
-    Raises IOError if some problem occurs attempting to open the file.
+    this works solely by examining the file's contents
+    after opening it
+    raises UnsupportedFile if it's not a file we support based on its headers
+    raises InvalidFile if the file appears to be something we support,
+    but has errors of some sort
+    raises IOError if some problem occurs attempting to open the file
     """
 
     available_types = frozenset(TYPE_MAP.values())
@@ -1108,11 +1108,11 @@ def open(filename):
 #returns a list of AudioFile objects, sorted by track_number()
 #any unsupported files are filtered out
 def open_files(filename_list, sorted=True, messenger=None):
-    """Returns a list of AudioFile objects from a list of filenames.
+    """returns a list of AudioFile objects from a list of filenames
 
-    Files are sorted by album number then track number, by default.
-    Unsupported files are filtered out.
-    Error messages are sent to messenger, if given.
+    files are sorted by album number then track number, by default
+    unsupported files are filtered out
+    error messages are sent to messenger, if given
     """
 
     toreturn = []
@@ -1141,12 +1141,12 @@ def open_files(filename_list, sorted=True, messenger=None):
 #optionally sorted by directory name and track_number()
 #any unsupported files are filtered out
 def open_directory(directory, sorted=True, messenger=None):
-    """Yields an AudioFile via a recursive search of directory.
+    """yields an AudioFile via a recursive search of directory
 
-    Files are sorted by album number/track number by default,
-    on a per-directory basis.
-    Any unsupported files are filtered out.
-    Error messages are sent to messenger, if given.
+    files are sorted by album number/track number by default,
+    on a per-directory basis
+    any unsupported files are filtered out
+    error messages are sent to messenger, if given
     """
 
     for (basedir, subdirs, filenames) in os.walk(directory):
@@ -1179,7 +1179,7 @@ def group_tracks(tracks):
 
 
 class UnknownAudioType(Exception):
-    """Raised if filename_to_type finds no possibilities.."""
+    """raised if filename_to_type finds no possibilities"""
 
     def __init__(self, suffix):
         self.suffix = suffix
@@ -1189,7 +1189,7 @@ class UnknownAudioType(Exception):
 
 
 class AmbiguousAudioType(UnknownAudioType):
-    """Raised if filename_to_type finds more than one possibility."""
+    """raised if filename_to_type finds more than one possibility"""
 
     def __init__(self, suffix, type_list):
         self.suffix = suffix
@@ -1203,14 +1203,14 @@ class AmbiguousAudioType(UnknownAudioType):
 
 
 def filename_to_type(path):
-    """Given a path to a file, return its audio type based on suffix.
+    """given a path to a file, return its audio type based on suffix
 
-    For example:
+    for example:
     >>> filename_to_type("/foo/file.flac")
     <class audiotools.__flac__.FlacAudio at 0x7fc8456d55f0>
 
-    Raises an UnknownAudioType exception if the type is unknown.
-    Raise AmbiguousAudioType exception if the type is ambiguous.
+    raises an UnknownAudioType exception if the type is unknown
+    raise AmbiguousAudioType exception if the type is ambiguous
     """
 
     (path, ext) = os.path.splitext(path)
@@ -1231,18 +1231,18 @@ def filename_to_type(path):
 
 
 class ChannelMask:
-    """An integer-like class that abstracts a PCMReader's channel assignments
+    """an integer-like class that abstracts a PCMReader's channel assignments
 
-    All channels in a FrameList will be in RIFF WAVE order
-    as a sensible convention.
-    But which channel corresponds to which speaker is decided by this mask.
-    For example, a 4 channel PCMReader with the channel mask 0x33
+    all channels in a FrameList will be in RIFF WAVE order
+    as a sensible convention
+    but which channel corresponds to which speaker is decided by this mask
+    for example, a 4 channel PCMReader with the channel mask 0x33
     corresponds to the bits 00110011
     reading those bits from right to left (least significant first)
     the "front_left", "front_right", "back_left", "back_right"
-    speakers are set.
+    speakers are set
 
-    Therefore, the PCMReader's 4 channel FrameLists are laid out as follows:
+    therefore, the PCMReader's 4 channel FrameLists are laid out as follows:
 
     channel 0 -> front_left
     channel 1 -> front_right
@@ -1250,18 +1250,18 @@ class ChannelMask:
     channel 3 -> back_right
 
     since the "front_center" and "low_frequency" bits are not set,
-    those channels are skipped in the returned FrameLists.
+    those channels are skipped in the returned FrameLists
 
-    Many formats store their channels internally in a different order.
-    Their PCMReaders will be expected to reorder channels
-    and set a ChannelMask matching this convention.
-    And, their from_pcm() functions will be expected to reverse the process.
+    many formats store their channels internally in a different order
+    their PCMReaders will be expected to reorder channels
+    and set a ChannelMask matching this convention
+    and, their from_pcm() functions will be expected to reverse the process
 
-    A ChannelMask of 0 is "undefined",
-    which means that channels aren't assigned to *any* speaker.
-    This is an ugly last resort for handling formats
-    where multi-channel assignments aren't properly defined.
-    In this case, a from_pcm() method is free to assign the undefined channels
+    a ChannelMask of 0 is "undefined",
+    which means that channels aren't assigned to *any* speaker
+    this is an ugly last resort for handling formats
+    where multi-channel assignments aren't properly defined
+    in this case, a from_pcm() method is free to assign the undefined channels
     any way it likes, and is under no obligation to keep them undefined
     when passing back out to to_pcm()
     """
@@ -1307,7 +1307,7 @@ class ChannelMask:
                     0x20000: _(u"top back right")}
 
     def __init__(self, mask):
-        """mask should be an integer channel mask value."""
+        """mask should be an integer channel mask value"""
 
         mask = int(mask)
 
@@ -1345,20 +1345,20 @@ class ChannelMask:
                     if getattr(self, field)])
 
     def defined(self):
-        """Returns True if this ChannelMask is defined."""
+        """returns True if this ChannelMask is defined"""
 
         return int(self) != 0
 
     def undefined(self):
-        """Returns True if this ChannelMask is undefined."""
+        """returns True if this ChannelMask is undefined"""
 
         return int(self) == 0
 
     def channels(self):
-        """Returns a list of speaker strings this mask contains.
+        """returns a list of speaker strings this mask contains
 
-        Returned in the order in which they should appear
-        in the PCM stream.
+        returned in the order in which they should appear
+        in the PCM stream
         """
 
         c = []
@@ -1370,21 +1370,21 @@ class ChannelMask:
         return c
 
     def index(self, channel_name):
-        """Returns the index of the given channel name within this mask.
+        """returns the index of the given channel name within this mask
 
-        For example, given the mask 0xB (fL, fR, LFE, but no fC)
-        index("low_frequency") will return 2.
-        If the channel is not in this mask, raises ValueError."""
+        for example, given the mask 0xB (fL, fR, LFE, but no fC)
+        index("low_frequency") will return 2
+        if the channel is not in this mask, raises ValueError"""
 
         return self.channels().index(channel_name)
 
     @classmethod
     def from_fields(cls, **fields):
-        """Given a set of channel arguments, returns a new ChannelMask.
+        """given a set of channel arguments, returns a new ChannelMask
 
-        For example:
+        for example:
         >>> ChannelMask.from_fields(front_left=True,front_right=True)
-        ChannelMask(front_right=True,front_left=True)
+        channelMask(front_right=True,front_left=True)
         """
 
         mask = cls(0)
@@ -1399,10 +1399,10 @@ class ChannelMask:
 
     @classmethod
     def from_channels(cls, channel_count):
-        """Given a channel count, returns a new ChannelMask.
+        """given a channel count, returns a new ChannelMask
 
-        This is only valid for channel counts 1 and 2.
-        All other values trigger a ValueError."""
+        this is only valid for channel counts 1 and 2
+        all other values trigger a ValueError"""
 
         if (channel_count == 2):
             return cls(0x3)
@@ -1413,12 +1413,12 @@ class ChannelMask:
 
 
 class PCMReader:
-    """A class that wraps around a file object and generates pcm.FrameLists"""
+    """a class that wraps around a file object and generates pcm.FrameLists"""
 
     def __init__(self, file,
                  sample_rate, channels, channel_mask, bits_per_sample,
                  process=None, signed=True, big_endian=False):
-        """Fields are as follows:
+        """fields are as follows:
 
         file            - a file-like object with read() and close() methods
         sample_rate     - an integer number of Hz
@@ -1429,10 +1429,10 @@ class PCMReader:
         signed          - True if the file's samples are signed integers
         big_endian      - True if the file's samples are stored big-endian
 
-        The process, signed and big_endian arguments are optional.
-        PCMReader-compatible objects need only expose the
+        the process, signed and big_endian arguments are optional
+        pCMReader-compatible objects need only expose the
         sample_rate, channels, channel_mask and bits_per_sample fields
-        along with the read() and close() methods.
+        along with the read() and close() methods
         """
 
         self.file = file
@@ -1445,16 +1445,16 @@ class PCMReader:
         self.big_endian = big_endian
 
     def read(self, bytes):
-        """Try to read a pcm.FrameList of size "bytes".
+        """try to read a pcm.FrameList of size "bytes"
 
-        This is *not* guaranteed to read exactly that number of bytes.
-        It may return less (at the end of the stream, especially).
-        It may return more.
-        However, it must always return a non-empty FrameList until the
-        end of the PCM stream is reached.
+        this is *not* guaranteed to read exactly that number of bytes
+        it may return less (at the end of the stream, especially)
+        it may return more
+        however, it must always return a non-empty FrameList until the
+        end of the PCM stream is reached
 
-        May raise IOError if unable to read the input file,
-        or ValueError if the input file has some sort of error.
+        may raise IOError if unable to read the input file,
+        or ValueError if the input file has some sort of error
         """
 
         bytes -= (bytes % (self.channels * self.bits_per_sample / 8))
@@ -1466,11 +1466,11 @@ class PCMReader:
                              self.signed)
 
     def close(self):
-        """Closes the stream for reading.
+        """closes the stream for reading
 
-        Any subprocess is waited for also so for proper cleanup.
-        May return DecodingError if a helper subprocess exits
-        with an error status."""
+        any subprocess is waited for also so for proper cleanup
+        may return DecodingError if a helper subprocess exits
+        with an error status"""
 
         self.file.close()
 
@@ -1480,12 +1480,12 @@ class PCMReader:
 
 
 class PCMReaderError(PCMReader):
-    """A dummy PCMReader which automatically raises DecodingError.
+    """a dummy PCMReader which automatically raises DecodingError
 
-    This is to be returned by an AudioFile's to_pcm() method
-    if some error occurs when initializing a decoder.
-    An encoder's from_pcm() method will then catch the DecodingError
-    at close()-time and propogate an EncodingError."""
+    this is to be returned by an AudioFile's to_pcm() method
+    if some error occurs when initializing a decoder
+    an encoder's from_pcm() method will then catch the DecodingError
+    at close()-time and propogate an EncodingError"""
 
     def __init__(self, error_message,
                  sample_rate, channels, channel_mask, bits_per_sample):
@@ -1494,7 +1494,7 @@ class PCMReaderError(PCMReader):
         self.error_message = error_message
 
     def read(self, bytes):
-        """Always returns an empty framelist."""
+        """always returns an empty framelist"""
 
         return pcm.from_list([],
                              self.channels,
@@ -1502,13 +1502,13 @@ class PCMReaderError(PCMReader):
                              True)
 
     def close(self):
-        """Always raises DecodingError."""
+        """always raises DecodingError"""
 
         raise DecodingError(self.error_message)
 
 
 def analyze_frames(pcmreader):
-    """Iterates over a PCMReader's analyze_frame() results."""
+    """iterates over a PCMReader's analyze_frame() results"""
 
     frame = pcmreader.analyze_frame()
     while (frame is not None):
@@ -1549,12 +1549,12 @@ class PCMReaderProgress:
 
 
 class ReorderedPCMReader:
-    """A PCMReader wrapper which reorders its output channels."""
+    """a PCMReader wrapper which reorders its output channels"""
 
     def __init__(self, pcmreader, channel_order):
-        """Initialized with a PCMReader and list of channel number integers.
+        """initialized with a PCMReader and list of channel number integers
 
-        For example, to swap the channels of a stereo stream:
+        for example, to swap the channels of a stereo stream:
         >>> ReorderedPCMReader(reader,[1,0])
         """
 
@@ -1566,7 +1566,7 @@ class ReorderedPCMReader:
         self.channel_order = channel_order
 
     def read(self, bytes):
-        """Try to read a pcm.FrameList of size "bytes"."""
+        """try to read a pcm.FrameList of size 'bytes'"""
 
         framelist = self.pcmreader.read(bytes)
 
@@ -1574,15 +1574,15 @@ class ReorderedPCMReader:
                                   for channel in self.channel_order])
 
     def close(self):
-        """Closes the stream."""
+        """closes the stream"""
 
         self.pcmreader.close()
 
 
 def transfer_data(from_function, to_function):
-    """Sends BUFFER_SIZE strings from from_function to to_function.
+    """sends BUFFER_SIZE strings from from_function to to_function
 
-    This continues until an empty string is returned from from_function."""
+    this continues until an empty string is returned from from_function"""
 
     try:
         s = from_function(BUFFER_SIZE)
@@ -1597,11 +1597,11 @@ def transfer_data(from_function, to_function):
 
 def transfer_framelist_data(pcmreader, to_function,
                             signed=True, big_endian=False):
-    """Sends pcm.FrameLists from pcmreader to to_function.
+    """sends pcm.FrameLists from pcmreader to to_function
 
-    FrameLists are converted to strings using the signed and big_endian
+    frameLists are converted to strings using the signed and big_endian
     arguments.  This continues until an empty FrameLists is returned
-    from pcmreader.
+    from pcmreader
     """
 
     f = pcmreader.read(BUFFER_SIZE)
@@ -1612,13 +1612,13 @@ def transfer_framelist_data(pcmreader, to_function,
 
 def threaded_transfer_framelist_data(pcmreader, to_function,
                                      signed=True, big_endian=False):
-    """Sends pcm.FrameLists from pcmreader to to_function via threads.
+    """sends pcm.FrameLists from pcmreader to to_function via threads
 
-    FrameLists are converted to strings using the signed and big_endian
+    frameLists are converted to strings using the signed and big_endian
     arguments.  This continues until an empty FrameLists is returned
     from pcmreader.  It operates by splitting reading and writing
     into threads in the hopes that an intermittant reader
-    will not disrupt the writer.
+    will not disrupt the writer
     """
 
     import threading
@@ -1664,9 +1664,9 @@ class __capped_stream_reader__:
 
 
 def pcm_cmp(pcmreader1, pcmreader2):
-    """Returns True if the PCM data in pcmreader1 equals pcmreader2.
+    """returns True if the PCM data in pcmreader1 equals pcmreader2
 
-    The readers must be closed separately.
+    the readers must be closed separately
     """
 
     if ((pcmreader1.sample_rate != pcmreader2.sample_rate) or
@@ -1693,11 +1693,11 @@ def pcm_cmp(pcmreader1, pcmreader2):
 
 
 def stripped_pcm_cmp(pcmreader1, pcmreader2):
-    """Returns True if the stripped PCM data of pcmreader1 equals pcmreader2.
+    """returns True if the stripped PCM data of pcmreader1 equals pcmreader2
 
-    This operates by reading each PCM streams entirely to memory,
+    this operates by reading each PCM streams entirely to memory,
     performing strip() on their output and comparing checksums
-    (which permits us to store just one big blob of memory at a time).
+    (which permits us to store just one big blob of memory at a time)
     """
 
     if ((pcmreader1.sample_rate != pcmreader2.sample_rate) or
@@ -1724,11 +1724,11 @@ def stripped_pcm_cmp(pcmreader1, pcmreader2):
 
 
 def pcm_frame_cmp(pcmreader1, pcmreader2):
-    """Returns the PCM Frame number of the first mismatch.
+    """returns the PCM Frame number of the first mismatch
 
-    If the two streams match completely, returns None.
-    May raise IOError or ValueError if problems occur
-    when reading PCM streams."""
+    if the two streams match completely, returns None
+    may raise IOError or ValueError if problems occur
+    when reading PCM streams"""
 
     if ((pcmreader1.sample_rate != pcmreader2.sample_rate) or
         (pcmreader1.channels != pcmreader2.channels) or
@@ -1763,15 +1763,15 @@ def pcm_frame_cmp(pcmreader1, pcmreader2):
 
 
 class PCMCat(PCMReader):
-    """A PCMReader for concatenating several PCMReaders."""
+    """a PCMReader for concatenating several PCMReaders"""
 
     def __init__(self, pcmreaders):
-        """pcmreaders is an iterator of PCMReader objects.
+        """pcmreaders is an iterator of PCMReader objects
 
-        Note that this currently does no error checking
+        note that this currently does no error checking
         to ensure reads have the same sample_rate, channels,
         bits_per_sample or channel mask!
-        One must perform that check prior to building a PCMCat.
+        one must perform that check prior to building a PCMCat
         """
 
         self.reader_queue = pcmreaders
@@ -1787,7 +1787,7 @@ class PCMCat(PCMReader):
         self.bits_per_sample = self.first.bits_per_sample
 
     def read(self, bytes):
-        """Try to read a pcm.FrameList of size "bytes"."""
+        """try to read a pcm.FrameList of size 'bytes'"""
 
         try:
             s = self.first.read(bytes)
@@ -1804,7 +1804,7 @@ class PCMCat(PCMReader):
                                  True)
 
     def close(self):
-        """Closes the stream for reading."""
+        """closes the stream for reading"""
 
         pass
 
@@ -1841,10 +1841,10 @@ class __buffer__:
 
 
 class BufferedPCMReader:
-    """A PCMReader which reads exact counts of bytes."""
+    """a PCMReader which reads exact counts of bytes"""
 
     def __init__(self, pcmreader):
-        """pcmreader is a regular PCMReader object."""
+        """pcmreader is a regular PCMReader object"""
 
         self.pcmreader = pcmreader
         self.sample_rate = pcmreader.sample_rate
@@ -1855,19 +1855,19 @@ class BufferedPCMReader:
         self.reader_finished = False
 
     def close(self):
-        """Closes the sub-pcmreader and frees our internal buffer."""
+        """closes the sub-pcmreader and frees our internal buffer"""
 
         del(self.buffer)
         self.pcmreader.close()
 
     def read(self, bytes):
-        """Reads as close to "bytes" number of bytes without going over.
+        """reads as close to 'bytes' number of bytes without going over
 
-        This uses an internal buffer to ensure reading the proper
-        number of bytes on each call.
+        this uses an internal buffer to ensure reading the proper
+        number of bytes on each call
         """
 
-        #fill our buffer to at least "bytes", possibly more
+        #fill our buffer to at least 'bytes', possibly more
         self.__fill__(bytes)
         output_framelist = self.buffer.framelist()
         (output, remainder) = output_framelist.split(
@@ -1875,7 +1875,7 @@ class BufferedPCMReader:
         self.buffer.buffer = [remainder]
         return output
 
-    #try to fill our internal buffer to at least "bytes"
+    #try to fill our internal buffer to at least 'bytes'
     def __fill__(self, bytes):
         while ((len(self.buffer) < bytes) and
                (not self.reader_finished)):
@@ -1939,11 +1939,11 @@ class LimitedPCMReader:
 
 
 def pcm_split(reader, pcm_lengths):
-    """Yields a PCMReader object from reader for each pcm_length (in frames).
+    """yields a PCMReader object from reader for each pcm_length (in frames)
 
-    Each sub-reader is pcm_length PCM frames long with the same
+    each sub-reader is pcm_length PCM frames long with the same
     channels, bits_per_sample, sample_rate and channel_mask
-    as the full stream.  reader is closed upon completion.
+    as the full stream.  reader is closed upon completion
     """
 
     import tempfile
@@ -2210,12 +2210,12 @@ def __add_dither__(frame_list):
 
 
 class PCMConverter:
-    """A PCMReader wrapper for converting attributes.
+    """a PCMReader wrapper for converting attributes
 
-    For example, this can be used to alter sample_rate, bits_per_sample,
+    for example, this can be used to alter sample_rate, bits_per_sample,
     channel_mask, channel count, or any combination of those
     attributes.  It resamples, downsamples, etc. to achieve the proper
-    output.
+    output
     """
 
     def __init__(self, pcmreader,
@@ -2223,7 +2223,7 @@ class PCMConverter:
                  channels,
                  channel_mask,
                  bits_per_sample):
-        """Takes a PCMReader input and the attributes of the new stream."""
+        """takes a PCMReader input and the attributes of the new stream"""
 
         self.sample_rate = sample_rate
         self.channels = channels
@@ -2275,7 +2275,7 @@ class PCMConverter:
                         self.bits_per_sample))
 
     def read(self, bytes):
-        """Try to read a pcm.FrameList of size "bytes"."""
+        """try to read a pcm.FrameList of size 'bytes'"""
 
         frame_list = self.reader.read(bytes)
 
@@ -2285,24 +2285,24 @@ class PCMConverter:
         return frame_list
 
     def close(self):
-        """Closes the stream for reading."""
+        """closes the stream for reading"""
 
         self.reader.close()
 
 
 class ReplayGainReader:
-    """A PCMReader which applies ReplayGain on its output."""
+    """a PCMReader which applies ReplayGain on its output"""
 
     def __init__(self, pcmreader, replaygain, peak):
-        """Fields are:
+        """fields are:
 
         pcmreader  - a PCMReader object
         replaygain - a floating point dB value
         peak       - the maximum absolute value PCM sample, as a float
 
-        The latter two are typically stored with the file,
+        the latter two are typically stored with the file,
         split into album gain and track gain pairs
-        which the user can apply based on preference.
+        which the user can apply based on preference
         """
 
         self.reader = pcmreader
@@ -2323,7 +2323,7 @@ class ReplayGainReader:
             self.multiplier = 1.0 / self.peak
 
     def read(self, bytes):
-        """Try to read a pcm.FrameList of size "bytes"."""
+        """try to read a pcm.FrameList of size 'bytes'"""
 
         multiplier = self.multiplier
         samples = self.reader.read(bytes)
@@ -2343,16 +2343,16 @@ class ReplayGainReader:
             True)
 
     def close(self):
-        """Closes the stream for reading."""
+        """closes the stream for reading"""
 
         self.reader.close()
 
 
 def applicable_replay_gain(tracks):
-    """Returns True if ReplayGain can be applied to a list of AudioFiles.
+    """returns True if ReplayGain can be applied to a list of AudioFiles
 
-    This checks their sample rate and channel count to determine
-    applicability."""
+    this checks their sample rate and channel count to determine
+    applicability"""
 
     sample_rates = set([track.sample_rate() for track in tracks])
     if ((len(sample_rates) > 1) or
@@ -2372,10 +2372,10 @@ def applicable_replay_gain(tracks):
 
 
 def calculate_replay_gain(tracks, progress=None):
-    """Yields (track, track_gain, track_peak, album_gain, album_peak)
-    for each AudioFile in the list of tracks.
+    """yields (track, track_gain, track_peak, album_gain, album_peak)
+    for each AudioFile in the list of tracks
 
-    Raises ValueError if a problem occurs during calculation."""
+    raises ValueError if a problem occurs during calculation"""
 
     from . import replaygain as replaygain
 
@@ -2406,14 +2406,14 @@ def calculate_replay_gain(tracks, progress=None):
 
 
 class InterruptableReader(PCMReader):
-    """A PCMReader meant for audio recording.
+    """a PCMReader meant for audio recording
 
-    It runs read() in a separate thread and stops recording
-    when SIGINT is caught.
+    it runs read() in a separate thread and stops recording
+    when SIGINT is caught
     """
 
     def __init__(self, pcmreader, verbose=True):
-        """Takes PCMReader object and verbosity flag."""
+        """takes PCMReader object and verbosity flag"""
 
         #FIXME - update this for Messenger support
 
@@ -2439,7 +2439,7 @@ class InterruptableReader(PCMReader):
         self.verbose = verbose
 
     def stop(self, *args):
-        """The SIGINT signal handler which stops recording."""
+        """the SIGINT signal handler which stops recording"""
 
         import signal
 
@@ -2450,7 +2450,7 @@ class InterruptableReader(PCMReader):
             print "Stopping..."
 
     def send_data(self):
-        """The thread for outputting PCM data from reader."""
+        """the thread for outputting PCM data from reader"""
 
         #try to use a half second long buffer
         BUFFER_SIZE = self.sample_rate * (self.bits_per_sample / 8) * \
@@ -2464,18 +2464,18 @@ class InterruptableReader(PCMReader):
         self.data_queue.put("")
 
     def read(self, length):
-        """Try to read a pcm.FrameList of size "bytes"."""
+        """try to read a pcm.FrameList of size 'bytes'"""
 
         return self.data_queue.get()
 
 
 def ignore_sigint():
-    """Sets the SIGINT signal to SIG_IGN.
+    """sets the SIGINT signal to SIG_IGN
 
-    Some encoder executables require this in order for
-    InterruptableReader to work correctly since we
+    some encoder executables require this in order for
+    interruptableReader to work correctly since we
     want to catch SIGINT ourselves in that case and perform
-    a proper shutdown."""
+    a proper shutdown"""
 
     import signal
 
@@ -2483,9 +2483,9 @@ def ignore_sigint():
 
 
 def make_dirs(destination_path):
-    """Ensures all directories leading to destination_path are created.
+    """ensures all directories leading to destination_path are created
 
-    Raises OSError if a problem occurs during directory creation.
+    raises OSError if a problem occurs during directory creation
     """
 
     dirname = os.path.dirname(destination_path)
@@ -2499,17 +2499,17 @@ def make_dirs(destination_path):
 
 
 class MetaData:
-    """The base class for storing textual AudioFile metadata.
+    """the base class for storing textual AudioFile metadata
 
-    This includes things like track name, track number, album name
-    and so forth.  It also includes embedded images, if present.
+    this includes things like track name, track number, album name
+    and so forth.  It also includes embedded images, if present
 
-    Fields are stored with the same name they are initialized with.
-    Except for images, they can all be manipulated directly
-    (images have dedicated set/get/delete methods instead).
-    Subclasses are expected to override getattr/setattr
+    fields are stored with the same name they are initialized with
+    except for images, they can all be manipulated directly
+    (images have dedicated set/get/delete methods instead)
+    subclasses are expected to override getattr/setattr
     so that updating attributes will adjust the low-level attributes
-    accordingly.
+    accordingly
     """
 
     FIELDS = ("track_name", "track_number", "track_total",
@@ -2542,7 +2542,7 @@ class MetaData:
                  album_total=0,
                  comment=u"",
                  images=None):
-        """Fields are as follows:
+        """fields are as follows:
 
         track_name     - the name of this individual track
         track_number   - the number of this track
@@ -2564,9 +2564,9 @@ class MetaData:
         comment        - the track's comment string
         images         - a list of Image objects
 
-        track_number, track_total, album_number and album_total are ints.
-        images is an optional list of Image objects.
-        The rest are unicode strings.
+        track_number, track_total, album_number and album_total are ints
+        images is an optional list of Image objects
+        the rest are unicode strings
         """
 
         #we're avoiding self.foo = foo because
@@ -2726,13 +2726,13 @@ class MetaData:
 
     @classmethod
     def converted(cls, metadata):
-        """Converts metadata from another class to this one, if necessary.
+        """converts metadata from another class to this one, if necessary
 
-        Takes a MetaData-compatible object (or None)
+        takes a MetaData-compatible object (or None)
         and returns a new MetaData subclass with the data fields converted
-        or None if metadata is None or conversion isn't possible.
-        For instance, VorbisComment.converted() returns a VorbisComment
-        class.  This way, AudioFiles can offload metadata conversions.
+        or None if metadata is None or conversion isn't possible
+        for instance, VorbisComment.converted() returns a VorbisComment
+        class.  This way, AudioFiles can offload metadata conversions
         """
 
         if (metadata is not None):
@@ -2745,49 +2745,49 @@ class MetaData:
 
     @classmethod
     def supports_images(cls):
-        """Returns True if this MetaData class supports embedded images."""
+        """returns True if this MetaData class supports embedded images"""
 
         return True
 
     def images(self):
-        """Returns a list of embedded Image objects."""
+        """returns a list of embedded Image objects"""
 
         #must return a copy of our internal array
         #otherwise this will likely not act as expected when deleting
         return self.__images__[:]
 
     def front_covers(self):
-        """Returns a subset of images() which are front covers."""
+        """returns a subset of images() which are front covers"""
 
         return [i for i in self.images() if i.type == 0]
 
     def back_covers(self):
-        """Returns a subset of images() which are back covers."""
+        """returns a subset of images() which are back covers"""
 
         return [i for i in self.images() if i.type == 1]
 
     def leaflet_pages(self):
-        """Returns a subset of images() which are leaflet pages."""
+        """returns a subset of images() which are leaflet pages"""
 
         return [i for i in self.images() if i.type == 2]
 
     def media_images(self):
-        """Returns a subset of images() which are media images."""
+        """returns a subset of images() which are media images"""
 
         return [i for i in self.images() if i.type == 3]
 
     def other_images(self):
-        """Returns a subset of images() which are other images."""
+        """returns a subset of images() which are other images"""
 
         return [i for i in self.images() if i.type == 4]
 
     def add_image(self, image):
-        """Embeds an Image object in this metadata.
+        """embeds an Image object in this metadata
 
-        Implementations of this method should also affect
+        implementations of this method should also affect
         the underlying metadata value
         (e.g. adding a new Image to FlacMetaData should add another
-        METADATA_BLOCK_PICTURE block to the metadata).
+        mETADATA_BLOCK_PICTURE block to the metadata)
         """
 
         if (self.supports_images()):
@@ -2796,12 +2796,12 @@ class MetaData:
             raise ValueError(_(u"This MetaData type does not support images"))
 
     def delete_image(self, image):
-        """Deletes an Image object from this metadata.
+        """deletes an Image object from this metadata
 
-        Implementations of this method should also affect
+        implementations of this method should also affect
         the underlying metadata value
         (e.g. removing an existing Image from FlacMetaData should
-        remove that same METADATA_BLOCK_PICTURE block from the metadata).
+        remove that same METADATA_BLOCK_PICTURE block from the metadata)
         """
 
         if (self.supports_images()):
@@ -2810,10 +2810,10 @@ class MetaData:
             raise ValueError(_(u"This MetaData type does not support images"))
 
     def clean(self, fixes_performed):
-        """Returns a new MetaData object that's been cleaned of problems.
+        """returns a new MetaData object that's been cleaned of problems
 
-        Any fixes performed are appended to fixes_performed as Unicode.
-        Fixes to apply to metadata include:
+        any fixes performed are appended to fixes_performed as Unicode
+        fixes to apply to metadata include:
         * Remove leading or trailing whitespace from text fields
         * Remove empty fields
         * Remove leading zeroes from numerical fields
@@ -2825,23 +2825,23 @@ class MetaData:
 
 
 class AlbumMetaData(dict):
-    """A container for several MetaData objects.
+    """a container for several MetaData objects
 
-    They can be retrieved by track number."""
+    they can be retrieved by track number"""
 
     def __init__(self, metadata_iter):
-        """metadata_iter is an iterator of MetaData objects."""
+        """metadata_iter is an iterator of MetaData objects"""
 
         dict.__init__(self,
                       dict([(m.track_number, m) for m in metadata_iter]))
 
     def metadata(self):
-        """Returns a single MetaData object of all consistent fields.
+        """returns a single MetaData object of all consistent fields
 
-        For example, if album_name is the same in all MetaData objects,
-        the returned object will have that album_name value.
-        If track_name differs, the returned object will not
-        have a track_name field.
+        for example, if album_name is the same in all MetaData objects,
+        the returned object will have that album_name value
+        if track_name differs, the returned object will not
+        have a track_name field
         """
 
         return MetaData(**dict([(field, list(items)[0])
@@ -2854,24 +2854,24 @@ class AlbumMetaData(dict):
 
 
 class MetaDataFileException(Exception):
-    """A superclass of XMCDException and MBXMLException.
+    """a superclass of XMCDException and MBXMLException
 
-    This allows one to handle any sort of metadata file exception
-    consistently."""
+    this allows one to handle any sort of metadata file exception
+    consistently"""
 
     def __unicode__(self):
         return _(u"Invalid XMCD or MusicBrainz XML file")
 
 
 class AlbumMetaDataFile:
-    """A base class for MetaData containing files.
+    """a base class for MetaData containing files
 
-    This includes FreeDB's XMCD files
-    and MusicBrainz's XML files."""
+    this includes FreeDB's XMCD files
+    and MusicBrainz's XML files"""
 
     def __init__(self, album_name, artist_name, year, catalog,
                  extra, track_metadata):
-        """track_metadata is a list of tuples.  The rest are unicode."""
+        """track_metadata is a list of tuples.  The rest are unicode"""
 
         self.album_name = album_name
         self.artist_name = artist_name
@@ -2884,50 +2884,50 @@ class AlbumMetaDataFile:
         return len(self.track_metadata)
 
     def to_string(self):
-        """Returns this object as a plain string of data."""
+        """returns this object as a plain string of data"""
 
         raise NotImplementedError()
 
     @classmethod
     def from_string(cls, string):
-        """Given a plain string, returns an object of this class.
+        """given a plain string, returns an object of this class
 
-        Raises MetaDataFileException if a parsing error occurs."""
+        raises MetaDataFileException if a parsing error occurs"""
 
         raise NotImplementedError()
 
     def get_track(self, index):
-        """Given a track index (from 0), returns (name, artist, extra).
+        """given a track index (from 0), returns (name, artist, extra)
 
-        name, artist and extra are unicode strings.
-        Raises IndexError if out-of-bounds."""
+        name, artist and extra are unicode strings
+        raises IndexError if out-of-bounds"""
 
         return self.track_metadata[i]
 
     def set_track(self, index, name, artist, extra):
-        """Sets the track at the given index (from 0) to the given values.
+        """sets the track at the given index (from 0) to the given values
 
-        Raises IndexError if out-of-bounds."""
+        raises IndexError if out-of-bounds"""
 
         self.track_metadata[i] = (name, artist, extra)
 
     @classmethod
     def from_tracks(cls, tracks):
-        """Given a list of AudioFile objects, returns an AlbumMetaDataFile.
+        """given a list of AudioFile objects, returns an AlbumMetaDataFile
 
-        All files are presumed to be from the same album."""
+        all files are presumed to be from the same album"""
 
         raise NotImplementedError()
 
     @classmethod
     def from_cuesheet(cls, cuesheet, total_frames, sample_rate, metadata=None):
-        """Returns an AlbumMetaDataFile from a cuesheet.
+        """returns an AlbumMetaDataFile from a cuesheet
 
-        This must also include a total_frames and sample_rate integer.
-        This works by generating a set of empty tracks and calling
+        this must also include a total_frames and sample_rate integer
+        this works by generating a set of empty tracks and calling
         the from_tracks() method to build a MetaData file with
-        the proper placeholders.
-        metadata, if present, is applied to all tracks."""
+        the proper placeholders
+        metadata, if present, is applied to all tracks"""
 
         if (metadata is None):
             metadata = MetaData()
@@ -2939,9 +2939,9 @@ class AlbumMetaDataFile:
                     cuesheet.pcm_lengths(total_frames))])
 
     def track_metadata(self, track_number):
-        """Given a track_number (from 1), returns a MetaData object.
+        """given a track_number (from 1), returns a MetaData object
 
-        Raises IndexError if out-of-bounds or None if track_number is 0."""
+        raises IndexError if out-of-bounds or None if track_number is 0"""
 
         if (track_number == 0):
             return None
@@ -2968,18 +2968,18 @@ class AlbumMetaDataFile:
             return default
 
     def track_metadatas(self):
-        """Iterates over all the MetaData objects in this file."""
+        """iterates over all the MetaData objects in this file"""
 
         for i in xrange(len(self)):
             yield self.track_metadata(i + 1)
 
     def metadata(self):
-        """Returns a single MetaData object of all consistent fields.
+        """returns a single MetaData object of all consistent fields
 
-        For example, if album_name is the same in all MetaData objects,
-        the returned object will have that album_name value.
-        If track_name differs, the returned object will not
-        have a track_name field.
+        for example, if album_name is the same in all MetaData objects,
+        the returned object will have that album_name value
+        if track_name differs, the returned object will not
+        have a track_name field
         """
 
         return MetaData(**dict([(field, list(items)[0])
@@ -2996,11 +2996,11 @@ class AlbumMetaDataFile:
 
 
 class Image:
-    """An image data container."""
+    """an image data container"""
 
     def __init__(self, data, mime_type, width, height,
                  color_depth, color_count, description, type):
-        """Fields are as follows:
+        """fields are as follows:
 
         data        - plain string of the actual binary image data
         mime_type   - unicode string of the image's MIME type
@@ -3027,9 +3027,9 @@ class Image:
         self.type = type
 
     def suffix(self):
-        """Returns the image's recommended suffix as a plain string.
+        """returns the image's recommended suffix as a plain string
 
-        For example, an image with mime_type "image/jpeg" return "jpg".
+        for example, an image with mime_type "image/jpeg" return "jpg"
         """
 
         return {"image/jpeg": "jpg",
@@ -3040,9 +3040,9 @@ class Image:
                 "image/tiff": "tiff"}.get(self.mime_type, "bin")
 
     def type_string(self):
-        """Returns the image's type as a human readable plain string.
+        """returns the image's type as a human readable plain string
 
-        For example, an image of type 0 returns "Front Cover".
+        for example, an image of type 0 returns "Front Cover"
         """
 
         return {0: "Front Cover",
@@ -3065,15 +3065,15 @@ class Image:
 
     @classmethod
     def new(cls, image_data, description, type):
-        """Builds a new Image object from raw data.
+        """builds a new Image object from raw data
 
-        image_data is a plain string of binary image data.
-        description is a unicode string.
-        type as an image type integer.
+        image_data is a plain string of binary image data
+        description is a unicode string
+        type as an image type integer
 
-        The width, height, color_depth and color_count fields
-        are determined by parsing the binary image data.
-        Raises InvalidImage if some error occurs during parsing.
+        the width, height, color_depth and color_count fields
+        are determined by parsing the binary image data
+        raises InvalidImage if some error occurs during parsing
         """
 
         img = image_metrics(image_data)
@@ -3088,10 +3088,10 @@ class Image:
                      type=type)
 
     def thumbnail(self, width, height, format):
-        """Returns a new Image object with the given attributes.
+        """returns a new Image object with the given attributes
 
-        width and height are integers.
-        format is a string such as "JPEG".
+        width and height are integers
+        format is a string such as "JPEG"
         """
 
         return Image.new(thumbnail_image(self.data, width, height, format),
@@ -3118,17 +3118,17 @@ class Image:
 
 
 class ReplayGain:
-    """A container for ReplayGain data."""
+    """a container for ReplayGain data"""
 
     def __init__(self, track_gain, track_peak, album_gain, album_peak):
-        """Values are:
+        """values are:
 
         track_gain - a dB float value
         track_peak - the highest absolute value PCM sample, as a float
         album_gain - a dB float value
         album_peak - the highest absolute value PCM sample, as a float
 
-        They are also attributes.
+        they are also attributes
         """
 
         self.track_gain = float(track_gain)
@@ -3159,8 +3159,8 @@ class ReplayGain:
 #######################
 
 class UnsupportedTracknameField(Exception):
-    """Raised by AudioFile.track_name()
-    if its format string contains unknown fields."""
+    """raised by AudioFile.track_name()
+    if its format string contains unknown fields"""
 
     def __init__(self, field):
         self.field = field
@@ -3180,10 +3180,10 @@ class UnsupportedTracknameField(Exception):
 
 
 class AudioFile:
-    """An abstract class representing audio files on disk.
+    """an abstract class representing audio files on disk
 
-    This class should be extended to handle different audio
-    file formats."""
+    this class should be extended to handle different audio
+    file formats"""
 
     SUFFIX = ""
     NAME = ""
@@ -3194,32 +3194,32 @@ class AudioFile:
     REPLAYGAIN_BINARIES = tuple()
 
     def __init__(self, filename):
-        """filename is a plain string.
+        """filename is a plain string
 
-        Raises InvalidFile or subclass if the file is invalid in some way."""
+        raises InvalidFile or subclass if the file is invalid in some way"""
 
         self.filename = filename
 
     @classmethod
     def is_type(cls, file):
-        """Returns True if the given file object describes this format.
+        """returns True if the given file object describes this format
 
-        Takes a seekable file pointer rewound to the start of the file."""
+        takes a seekable file pointer rewound to the start of the file"""
 
         return False
 
     def bits_per_sample(self):
-        """Returns an integer number of bits-per-sample this track contains."""
+        """returns an integer number of bits-per-sample this track contains"""
 
         raise NotImplementedError()
 
     def channels(self):
-        """Returns an integer number of channels this track contains."""
+        """returns an integer number of channels this track contains"""
 
         raise NotImplementedError()
 
     def channel_mask(self):
-        """Returns a ChannelMask object of this track's channel layout."""
+        """returns a ChannelMask object of this track's channel layout"""
 
         #WARNING - This only returns valid masks for 1 and 2 channel audio
         #anything over 2 channels raises a ValueError
@@ -3229,16 +3229,16 @@ class AudioFile:
         return ChannelMask.from_channels(self.channels())
 
     def lossless(self):
-        """Returns True if this track's data is stored losslessly."""
+        """returns True if this track's data is stored losslessly"""
 
         raise NotImplementedError()
 
     def update_metadata(self, metadata):
-        """Takes this track's current MetaData object
+        """takes this track's current MetaData object
         as returned by get_metadata() and sets this track's metadata
-        with any fields updated in that object.
+        with any fields updated in that object
 
-        Raises IOError if unable to write the file.
+        raises IOError if unable to write the file
         """
 
         #this is a sort of low-level implementation
@@ -3251,10 +3251,10 @@ class AudioFile:
             raise ValueError(_(u"metadata not from audio file"))
 
     def set_metadata(self, metadata):
-        """Takes a MetaData object and sets this track's metadata.
+        """takes a MetaData object and sets this track's metadata
 
-        This metadata includes track name, album name, and so on.
-        Raises IOError if unable to write the file."""
+        this metadata includes track name, album name, and so on
+        raises IOError if unable to write the file"""
 
         #this is a higher-level implementation
         #which assumes metadata is from a different audio file
@@ -3264,29 +3264,29 @@ class AudioFile:
         pass
 
     def get_metadata(self):
-        """Returns a MetaData object, or None.
+        """returns a MetaData object, or None
 
-        Raises IOError if unable to read the file."""
+        raises IOError if unable to read the file"""
 
         return None
 
     def delete_metadata(self):
-        """Deletes the track's MetaData.
+        """deletes the track's MetaData
 
-        This removes or unsets tags as necessary in order to remove all data.
-        Raises IOError if unable to write the file."""
+        this removes or unsets tags as necessary in order to remove all data
+        raises IOError if unable to write the file"""
 
         pass
 
     def total_frames(self):
-        """Returns the total PCM frames of the track as an integer."""
+        """returns the total PCM frames of the track as an integer"""
 
         raise NotImplementedError()
 
     def cd_frames(self):
-        """Returns the total length of the track in CD frames.
+        """returns the total length of the track in CD frames
 
-        Each CD frame is 1/75th of a second."""
+        each CD frame is 1/75th of a second"""
 
         try:
             return (self.total_frames() * 75) / self.sample_rate()
@@ -3294,7 +3294,7 @@ class AudioFile:
             return 0
 
     def seconds_length(self):
-        """Returns the length of the track as a Decimal number of seconds."""
+        """returns the length of the track as a Decimal number of seconds"""
 
         import decimal
 
@@ -3305,53 +3305,53 @@ class AudioFile:
             return decimal.Decimal(0)
 
     def sample_rate(self):
-        """Returns the rate of the track's audio as an integer number of Hz."""
+        """returns the rate of the track's audio as an integer number of Hz"""
 
         raise NotImplementedError()
 
     def to_pcm(self):
-        """Returns a PCMReader object containing the track's PCM data.
+        """returns a PCMReader object containing the track's PCM data
 
-        If an error occurs initializing a decoder, this should
-        return a PCMReaderError with an appropriate error message."""
+        if an error occurs initializing a decoder, this should
+        return a PCMReaderError with an appropriate error message"""
 
         raise NotImplementedError()
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
-        """Encodes a new file from PCM data.
+        """encodes a new file from PCM data
 
-        Takes a filename string, PCMReader object
-        and optional compression level string.
-        Encodes a new audio file from pcmreader's data
+        takes a filename string, PCMReader object
+        and optional compression level string
+        encodes a new audio file from pcmreader's data
         at the given filename with the specified compression level
-        and returns a new AudioFile-compatible object.
+        and returns a new AudioFile-compatible object
 
-        For example, to encode the FlacAudio file "file.flac" from "file.wav"
+        for example, to encode the FlacAudio file "file.flac" from "file.wav"
         at compression level "5":
 
         >>> flac = FlacAudio.from_pcm("file.flac",
         ...                           WaveAudio("file.wav").to_pcm(),
         ...                           "5")
 
-        May raise EncodingError if some problem occurs when
+        may raise EncodingError if some problem occurs when
         encoding the input file.  This includes an error
         in the input stream, a problem writing the output file,
         or even an EncodingError subclass such as
         "UnsupportedBitsPerSample" if the input stream
-        is formatted in a way this class is unable to support.
+        is formatted in a way this class is unable to support
         """
 
         raise NotImplementedError()
 
     def convert(self, target_path, target_class, compression=None,
                 progress=None):
-        """Encodes a new AudioFile from existing AudioFile.
+        """encodes a new AudioFile from existing AudioFile
 
-        Take a filename string, target class and optional compression string.
-        Encodes a new AudioFile in the target class and returns
-        the resulting object.
-        May raise EncodingError if some problem occurs during encoding."""
+        take a filename string, target class and optional compression string
+        encodes a new AudioFile in the target class and returns
+        the resulting object
+        may raise EncodingError if some problem occurs during encoding"""
 
         return target_class.from_pcm(target_path,
                                      to_pcm_progress(self, progress),
@@ -3365,10 +3365,10 @@ class AudioFile:
             pass
 
     def track_number(self):
-        """Returns this track's number as an integer.
+        """returns this track's number as an integer
 
-        This first checks MetaData and then makes a guess from the filename.
-        If neither yields a good result, returns 0."""
+        this first checks MetaData and then makes a guess from the filename
+        if neither yields a good result, returns 0"""
 
         metadata = self.get_metadata()
         if ((metadata is not None) and (metadata.track_number > 0)):
@@ -3382,10 +3382,10 @@ class AudioFile:
                 return 0
 
     def album_number(self):
-        """Returns this track's album number as an integer.
+        """returns this track's album number as an integer
 
-        This first checks MetaData and then makes a guess from the filename.
-        If neither yields a good result, returns 0."""
+        this first checks MetaData and then makes a guess from the filename
+        if neither yields a good result, returns 0"""
 
         metadata = self.get_metadata()
         if (metadata is not None):
@@ -3402,16 +3402,16 @@ class AudioFile:
     @classmethod
     def track_name(cls, file_path, track_metadata=None, format=None,
                    suffix=None):
-        """Constructs a new filename string.
+        """constructs a new filename string
 
-        Given a plain string to an existing path,
+        given a plain string to an existing path,
         a MetaData-compatible object (or None),
         a UTF-8-encoded Python format string
         and an ASCII-encoded suffix string (such as "mp3")
         returns a plain string of a new filename with format's
-        fields filled-in and encoded as FS_ENCODING.
-        Raises UnsupportedTracknameField if the format string
-        contains invalid template fields."""
+        fields filled-in and encoded as FS_ENCODING
+        raises UnsupportedTracknameField if the format string
+        contains invalid template fields"""
 
         if (format is None):
             format = FILENAME_FORMAT
@@ -3481,10 +3481,10 @@ class AudioFile:
 
     @classmethod
     def add_replay_gain(cls, filenames, progress=None):
-        """Adds ReplayGain values to a list of filename strings.
+        """adds ReplayGain values to a list of filename strings
 
-        All the filenames must be of this AudioFile type.
-        Raises ValueError if some problem occurs during ReplayGain application.
+        all the filenames must be of this AudioFile type
+        raises ValueError if some problem occurs during ReplayGain application
         """
 
         track_names = [track.filename for track in
@@ -3493,40 +3493,40 @@ class AudioFile:
 
     @classmethod
     def can_add_replay_gain(cls):
-        """Returns True if we have the necessary binaries to add ReplayGain."""
+        """returns True if we have the necessary binaries to add ReplayGain"""
 
         return False
 
     @classmethod
     def lossless_replay_gain(cls):
-        """Returns True of applying ReplayGain is a lossless process.
+        """returns True of applying ReplayGain is a lossless process
 
-        For example, if it is applied by adding metadata tags
-        rather than altering the file's data itself."""
+        for example, if it is applied by adding metadata tags
+        rather than altering the file's data itself"""
 
         return True
 
     def replay_gain(self):
-        """Returns a ReplayGain object of our ReplayGain values.
+        """returns a ReplayGain object of our ReplayGain values
 
-        Returns None if we have no values.
-        Note that if applying ReplayGain is a lossy process,
-        this will typically also return None."""
+        returns None if we have no values
+        note that if applying ReplayGain is a lossy process,
+        this will typically also return None"""
 
         return None
 
     def set_cuesheet(self, cuesheet):
-        """Imports cuesheet data from a Cuesheet-compatible object.
+        """imports cuesheet data from a Cuesheet-compatible object
 
-        This are objects with catalog(), ISRCs(), indexes(), and pcm_lengths()
-        methods.  Raises IOError if an error occurs setting the cuesheet."""
+        this are objects with catalog(), ISRCs(), indexes(), and pcm_lengths()
+        methods.  Raises IOError if an error occurs setting the cuesheet"""
 
         pass
 
     def get_cuesheet(self):
-        """Returns the embedded Cuesheet-compatible object, or None.
+        """returns the embedded Cuesheet-compatible object, or None
 
-        Raises IOError if a problem occurs when reading the file."""
+        raises IOError if a problem occurs when reading the file"""
 
         return None
 
@@ -3546,11 +3546,11 @@ class AudioFile:
         return not self.__eq__(audiofile)
 
     def verify(self, progress=None):
-        """Verifies the current file for correctness.
+        """verifies the current file for correctness
 
-        Returns True if the file is okay.
-        Raises an InvalidFile with an error message if there is
-        some problem with the file."""
+        returns True if the file is okay
+        raises an InvalidFile with an error message if there is
+        some problem with the file"""
 
         total_frames = self.total_frames()
         decoder = self.to_pcm()
@@ -3577,16 +3577,16 @@ class AudioFile:
 
     @classmethod
     def has_binaries(cls, system_binaries):
-        """Returns True if all the required binaries can be found.
+        """returns True if all the required binaries can be found
 
-        Checks the __system_binaries__ class for which path to check."""
+        checks the __system_binaries__ class for which path to check"""
 
         return set([True] + \
                    [system_binaries.can_execute(system_binaries[command])
                     for command in cls.BINARIES]) == set([True])
 
     def clean(self, fixes_performed, output_filename=None):
-        """Cleans the file of known data and metadata problems.
+        """cleans the file of known data and metadata problems
 
         fixes_performed is a list-like object which is appended
         with Unicode strings of fixed problems
@@ -3595,8 +3595,8 @@ class AudioFile:
         if present, a new AudioFile is returned
         otherwise, only a dry-run is performed and no new file is written
 
-        Raises IOError if unable to write the file or its metadata
-        Raises ValueError if the file has errors of some sort
+        raises IOError if unable to write the file or its metadata
+        raises ValueError if the file has errors of some sort
         """
 
         if (output_filename is None):
@@ -3622,17 +3622,17 @@ class AudioFile:
 
 
 class WaveContainer(AudioFile):
-    """An audio type which supports storing foreign RIFF chunks.
+    """an audio type which supports storing foreign RIFF chunks
 
-    These chunks must be preserved during a round-trip:
+    these chunks must be preserved during a round-trip:
 
     >>> WaveContainer("file", "input.wav").to_wave("output.wav")
     """
 
     def to_wave(self, wave_filename, progress=None):
-        """Writes the contents of this file to the given .wav filename string.
+        """writes the contents of this file to the given .wav filename string
 
-        Raises EncodingError if some error occurs during decoding."""
+        raises EncodingError if some error occurs during decoding"""
 
         pcmreader = to_pcm_progress(self, progress)
         WaveAudio.from_pcm(wave_filename, pcmreader)
@@ -3641,16 +3641,16 @@ class WaveContainer(AudioFile):
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None,
                   progress=None):
-        """Encodes a new AudioFile from an existing .wav file.
+        """encodes a new AudioFile from an existing .wav file
 
-        Takes a filename string, wave_filename string
+        takes a filename string, wave_filename string
         of an existing WaveAudio file
-        and an optional compression level string.
-        Encodes a new audio file from the wave's data
+        and an optional compression level string
+        encodes a new audio file from the wave's data
         at the given filename with the specified compression level
-        and returns a new AudioFile compatible object.
+        and returns a new AudioFile compatible object
 
-        For example, to encode FlacAudio file "flac.flac" from "file.wav"
+        for example, to encode FlacAudio file "flac.flac" from "file.wav"
         at compression level "5":
 
         >>> flac = FlacAudio.from_wave("file.flac","file.wav","5")
@@ -3662,23 +3662,23 @@ class WaveContainer(AudioFile):
                             compression)
 
     def has_foreign_riff_chunks(self):
-        """Returns True if the audio file contains non-audio RIFF chunks.
+        """returns True if the audio file contains non-audio RIFF chunks
 
-        During transcoding, if the source audio file has foreign RIFF chunks
+        during transcoding, if the source audio file has foreign RIFF chunks
         and the target audio format supports foreign RIFF chunks,
         conversion should be routed through .wav conversion
-        to avoid losing those chunks."""
+        to avoid losing those chunks"""
 
         return False
 
     def convert(self, target_path, target_class, compression=None,
                 progress=None):
-        """Encodes a new AudioFile from existing AudioFile.
+        """encodes a new AudioFile from existing AudioFile
 
-        Take a filename string, target class and optional compression string.
-        Encodes a new AudioFile in the target class and returns
-        the resulting object.
-        May raise EncodingError if some problem occurs during encoding."""
+        take a filename string, target class and optional compression string
+        encodes a new AudioFile in the target class and returns
+        the resulting object
+        may raise EncodingError if some problem occurs during encoding"""
 
         import tempfile
 
@@ -3705,17 +3705,17 @@ class WaveContainer(AudioFile):
 
 
 class AiffContainer(AudioFile):
-    """An audio type which supports storing foreign AIFF chunks.
+    """an audio type which supports storing foreign AIFF chunks
 
-    These chunks must be preserved during a round-trip:
+    these chunks must be preserved during a round-trip:
 
     >>> AiffContainer("file", "input.aiff").to_aiff("output.aiff")
     """
 
     def to_aiff(self, aiff_filename, progress=None):
-        """Writes the contents of this file to the given .aiff filename string.
+        """writes the contents of this file to the given .aiff filename string
 
-        Raises EncodingError if some error occurs during decoding."""
+        raises EncodingError if some error occurs during decoding"""
 
         pcmreader = to_pcm_progress(self, progress)
         AiffAudio.from_pcm(aiff_filename, pcmreader)
@@ -3724,16 +3724,16 @@ class AiffContainer(AudioFile):
     @classmethod
     def from_aiff(cls, filename, aiff_filename, compression=None,
                   progress=None):
-        """Encodes a new AudioFile from an existing .aiff file.
+        """encodes a new AudioFile from an existing .aiff file
 
-        Takes a filename string, aiff_filename string
+        takes a filename string, aiff_filename string
         of an existing AiffAudio file
-        and an optional compression level string.
-        Encodes a new audio file from the wave's data
+        and an optional compression level string
+        encodes a new audio file from the wave's data
         at the given filename with the specified compression level
-        and returns a new AudioFile compatible object.
+        and returns a new AudioFile compatible object
 
-        For example, to encode FlacAudio file "flac.flac" from "file.aiff"
+        for example, to encode FlacAudio file "flac.flac" from "file.aiff"
         at compression level "5":
 
         >>> flac = FlacAudio.from_wave("file.flac","file.aiff","5")
@@ -3744,23 +3744,23 @@ class AiffContainer(AudioFile):
                             compression)
 
     def has_foreign_aiff_chunks(self):
-        """Returns True if the audio file contains non-audio AIFF chunks.
+        """returns True if the audio file contains non-audio AIFF chunks
 
-        During transcoding, if the source audio file has foreign AIFF chunks
+        during transcoding, if the source audio file has foreign AIFF chunks
         and the target audio format supports foreign AIFF chunks,
         conversion should be routed through .aiff conversion
-        to avoid losing those chunks."""
+        to avoid losing those chunks"""
 
         return False
 
     def convert(self, target_path, target_class, compression=None,
                 progress=None):
-        """Encodes a new AudioFile from existing AudioFile.
+        """encodes a new AudioFile from existing AudioFile
 
-        Take a filename string, target class and optional compression string.
-        Encodes a new AudioFile in the target class and returns
-        the resulting object.
-        May raise EncodingError if some problem occurs during encoding."""
+        take a filename string, target class and optional compression string
+        encodes a new AudioFile in the target class and returns
+        the resulting object
+        may raise EncodingError if some problem occurs during encoding"""
 
         if (target_class == AiffAudio):
             self.to_aiff(target_path)
@@ -3782,10 +3782,10 @@ class AiffContainer(AudioFile):
 
 
 class DummyAudioFile(AudioFile):
-    """A placeholder AudioFile object with external data."""
+    """a placeholder AudioFile object with external data"""
 
     def __init__(self, length, metadata, track_number=0):
-        """Fields are as follows:
+        """fields are as follows:
 
         length       - the dummy track's length, in CD frames
         metadata     - a MetaData object
@@ -3799,29 +3799,29 @@ class DummyAudioFile(AudioFile):
         AudioFile.__init__(self, "")
 
     def get_metadata(self):
-        """Returns a MetaData object, or None."""
+        """returns a MetaData object, or None"""
 
         return self.__metadata__
 
     def cd_frames(self):
-        """Returns the total length of the track in CD frames.
+        """returns the total length of the track in CD frames
 
-        Each CD frame is 1/75th of a second."""
+        each CD frame is 1/75th of a second"""
 
         return self.__length__
 
     def track_number(self):
-        """Returns this track's number as an integer."""
+        """returns this track's number as an integer"""
 
         return self.__track_number__
 
     def sample_rate(self):
-        """Returns 44100."""
+        """returns 44100"""
 
         return 44100
 
     def total_frames(self):
-        """Returns the total PCM frames of the track as an integer."""
+        """returns the total PCM frames of the track as an integer"""
 
         return (self.cd_frames() * self.sample_rate()) / 75
 
@@ -3833,15 +3833,15 @@ class DummyAudioFile(AudioFile):
 
 
 class SheetException(ValueError):
-    """A parent exception for CueException and TOCException."""
+    """a parent exception for CueException and TOCException"""
 
     pass
 
 
 def read_sheet(filename):
-    """Returns a TOCFile or Cuesheet object from filename.
+    """returns a TOCFile or Cuesheet object from filename
 
-    May raise a SheetException if the file cannot be parsed correctly."""
+    may raise a SheetException if the file cannot be parsed correctly"""
 
     import toc
     import cue
@@ -3854,13 +3854,13 @@ def read_sheet(filename):
 
 
 def parse_timestamp(s):
-    """Parses a timestamp string into an integer.
+    """parses a timestamp string into an integer
 
-    This presumes the stamp is stored: "hours:minutes:frames"
-    where each CD frame is 1/75th of a second.
-    Or, if the stamp is a plain integer, it is returned directly.
-    This does no error checking.  Presumably a regex will ensure
-    the stamp is formatted correctly before parsing it to an int.
+    this presumes the stamp is stored: "hours:minutes:frames"
+    where each CD frame is 1/75th of a second
+    or, if the stamp is a plain integer, it is returned directly
+    this does no error checking.  Presumably a regex will ensure
+    the stamp is formatted correctly before parsing it to an int
     """
 
     if (":" in s):
@@ -3871,18 +3871,18 @@ def parse_timestamp(s):
 
 
 def build_timestamp(i):
-    """Returns a timestamp string from an integer number of CD frames.
+    """returns a timestamp string from an integer number of CD frames
 
-    Each CD frame is 1/75th of a second.
+    each CD frame is 1/75th of a second
     """
 
     return "%2.2d:%2.2d:%2.2d" % ((i / 75) / 60, (i / 75) % 60, i % 75)
 
 
 def sheet_to_unicode(sheet, total_frames):
-    """Returns formatted unicode from a cuesheet object and total PCM frames.
+    """returns formatted unicode from a cuesheet object and total PCM frames
 
-    Its output is pretty-printed for eventual display by trackinfo.
+    its output is pretty-printed for eventual display by trackinfo
     """
 
     #FIXME? - This (and pcm_lengths() in general) assumes all cuesheets
@@ -3916,9 +3916,9 @@ def sheet_to_unicode(sheet, total_frames):
 
 
 def at_a_time(total, per):
-    """Yields "per" integers from "total" until exhausted.
+    """yields "per" integers from "total" until exhausted
 
-    For example:
+    for example:
     >>> list(at_a_time(10, 3))
     [3, 3, 3, 1]
     """
@@ -4007,10 +4007,10 @@ from __dvda__ import *
 #there's simply no way to accomplish that cleanly
 
 class CDDA:
-    """A CDDA device which contains CDTrackReader objects."""
+    """a CDDA device which contains CDTrackReader objects"""
 
     def __init__(self, device_name, speed=None, perform_logging=True):
-        """device_name is a string, speed is an optional int."""
+        """device_name is a string, speed is an optional int"""
 
         from audiotools.cdio import identify_cdrom, CDImage, CDDA, CD_IMAGE
 
@@ -4109,23 +4109,23 @@ class CDDA:
             yield self[i]
 
     def length(self):
-        """Returns the length of the CD in CD frames."""
+        """returns the length of the CD in CD frames"""
 
         #lead-in should always be 150
         return self.last_sector() + 150 + 1
 
     def close(self):
-        """Closes the CDDA device."""
+        """closes the CDDA device"""
 
         pass
 
     def first_sector(self):
-        """Returns the first sector's location, in CD frames."""
+        """returns the first sector's location, in CD frames"""
 
         return self.cdda.first_sector()
 
     def last_sector(self):
-        """Returns the last sector's location, in CD frames."""
+        """returns the last sector's location, in CD frames"""
 
         return self.cdda.last_sector()
 
@@ -4175,16 +4175,16 @@ class CDDA:
 
 
 class PCMReaderWindow:
-    """A class for cropping a PCMReader to a specific window of frames"""
+    """a class for cropping a PCMReader to a specific window of frames"""
 
     def __init__(self, pcmreader, initial_offset, pcm_frames):
         """initial_offset is how many frames to crop, and may be negative
         pcm_frames is the total length of the window
 
-        If the window is outside the PCMReader's data
+        if the window is outside the PCMReader's data
         (that is, initial_offset is negative, or
         pcm_frames is longer than the total stream)
-        those samples are padded with 0s."""
+        those samples are padded with 0s"""
 
         self.pcmreader = pcmreader
         self.sample_rate = pcmreader.sample_rate
@@ -4269,7 +4269,7 @@ class PCMReaderWindow:
 
 
 class CDTrackLog(dict):
-    """A container for CD reading log information, implemented as a dict."""
+    """a container for CD reading log information, implemented as a dict"""
 
     #PARANOIA_CB_READ           Read off adjust ???
     #PARANOIA_CB_VERIFY         Verifying jitter
@@ -4301,10 +4301,10 @@ class CDTrackLog(dict):
 
 
 class CDTrackReader(PCMReader):
-    """A PCMReader-compatible object which reads from CDDA."""
+    """a PCMReader-compatible object which reads from CDDA"""
 
     def __init__(self, cdda, track_number, perform_logging=True):
-        """cdda is a cdio.CDDA object.  track_number is offset from 1."""
+        """cdda is a cdio.CDDA object.  track_number is offset from 1"""
 
         PCMReader.__init__(
             self, None,
@@ -4326,19 +4326,19 @@ class CDTrackReader(PCMReader):
         self.rip_log = CDTrackLog()
 
     def offset(self):
-        """Returns this track's CD offset, in CD frames."""
+        """returns this track's CD offset, in CD frames"""
 
         return self.start + 150
 
     def length(self):
-        """Returns this track's length, in CD frames."""
+        """returns this track's length, in CD frames"""
 
         return self.end - self.start + 1
 
     def log(self, i, v):
-        """Adds a log entry to the track's rip_log.
+        """adds a log entry to the track's rip_log
 
-        This is meant to be called from CD reading callbacks."""
+        this is meant to be called from CD reading callbacks"""
 
         if v in self.rip_log:
             self.rip_log[v] += 1
@@ -4364,17 +4364,17 @@ class CDTrackReader(PCMReader):
             return pcm.from_list([], 2, 16, True)
 
     def read(self, bytes):
-        """Try to read a pcm.FrameList of size "bytes".
+        """try to read a pcm.FrameList of size 'bytes'
 
-        For CD reading, this will be a sector-aligned number."""
+        for CD reading, this will be a sector-aligned number"""
 
         #returns a sector-aligned number of bytes
         #(divisible by 2352 bytes, basically)
-        #or at least 1 sector's worth, if "bytes" is too small
+        #or at least 1 sector's worth, if 'bytes' is too small
         return self.__read_sectors__(max(bytes / 2352, 1))
 
     def close(self):
-        """Closes the CD track for reading."""
+        """closes the CD track for reading"""
 
         self.position = self.start
         self.cursor_placed = False
@@ -4477,10 +4477,10 @@ from __accuraterip__ import *
 
 
 def read_metadata_file(filename):
-    """Returns an AlbumMetaDataFile-compatible file from a filename string.
+    """returns an AlbumMetaDataFile-compatible file from a filename string
 
-    Raises a MetaDataFileException exception if an error occurs
-    during reading.
+    raises a MetaDataFileException exception if an error occurs
+    during reading
     """
 
     try:
@@ -4582,14 +4582,14 @@ def metadata_lookup(first_track_number, last_track_number,
 
 
 class ExecQueue:
-    """A class for running multiple jobs in parallel."""
+    """a class for running multiple jobs in parallel"""
 
     def __init__(self):
         self.todo = []
         self.return_values = set([])
 
     def execute(self, function, args, kwargs=None):
-        """Queues the given function with argument list and kwargs dict."""
+        """queues the given function with argument list and kwargs dict"""
 
         self.todo.append((function, args, kwargs))
 
@@ -4605,13 +4605,13 @@ class ExecQueue:
             sys.exit(0)
 
     def run(self, max_processes=1):
-        """Performs the queued functions in separate subprocesses.
+        """performs the queued functions in separate subprocesses
 
-        This runs "max_processes" number of functions at a time.
-        It works by spawning a new child process for each function,
-        executing it and spawning a new child as each one exits.
-        Therefore, any side effects beyond altering files on
-        disk do not propogate back to the parent."""
+        this runs "max_processes" number of functions at a time
+        it works by spawning a new child process for each function,
+        executing it and spawning a new child as each one exits
+        therefore, any side effects beyond altering files on
+        disk do not propogate back to the parent"""
 
         max_processes = max(max_processes, 1)
 
@@ -4649,7 +4649,7 @@ class ExecQueue:
 
 
 class ExecQueue2:
-    """A class for running multiple jobs and accumulating results."""
+    """a class for running multiple jobs and accumulating results"""
 
     def __init__(self):
         self.todo = []
@@ -4693,12 +4693,12 @@ class ExecQueue2:
     def __await_jobs__(self):
         """yields a reader file object per finished job
 
-        If the child job exited properly, that reader will have
+        if the child job exited properly, that reader will have
         the pickled contents of the completed Python function
         and it can be used to find the child's PID to be waited for
-        via the process pool.
-        In addition, the returned values of finished child processes
-        are added to our "return_values" attribute."""
+        via the process pool
+        in addition, the returned values of finished child processes
+        are added to our "return_values" attribute"""
 
         import select
 
@@ -4717,7 +4717,7 @@ class ExecQueue2:
     def run(self, max_processes=1):
         """execute all queued functions
 
-        Yields the result of each executed function as they complete."""
+        yields the result of each executed function as they complete"""
 
         max_processes = max(max_processes, 1)
 
@@ -4747,10 +4747,10 @@ class ProgressJobQueueComplete(Exception):
 
 
 class ExecProgressQueue:
-    """A class for running multiple jobs in parallel with progress updates."""
+    """a class for running multiple jobs in parallel with progress updates"""
 
     def __init__(self, progress_display, total_progress_message=None):
-        """Takes a ProgressDisplay object."""
+        """takes a ProgressDisplay object"""
 
         self.progress_display = progress_display
         self.queued_jobs = []
@@ -4765,7 +4765,7 @@ class ExecProgressQueue:
                 progress_text=None,
                 completion_output=None,
                 *args, **kwargs):
-        """Queues the given function and arguments to be run in parallel.
+        """queues the given function and arguments to be run in parallel
 
         progress_text should be a unicode string to be displayed while running
 
@@ -4785,7 +4785,7 @@ class ExecProgressQueue:
         self.total_queued_jobs += 1
 
     def execute_next_job(self):
-        """Executes the next queued job."""
+        """executes the next queued job"""
 
         #pull job off queue
         (job_id,
@@ -4808,7 +4808,7 @@ class ExecProgressQueue:
             kwargs)
 
     def execute_next_job_nothreads(self):
-        """Executes the next queued job without spawning a subprocess."""
+        """executes the next queued job without spawning a subprocess"""
 
         #pull job off queue
         (job_id,
@@ -4848,7 +4848,7 @@ class ExecProgressQueue:
                     unicode(completion_output))
 
     def completed(self, job_id, result):
-        """Handles the completion of the given job and its result."""
+        """handles the completion of the given job and its result"""
 
         #add result to results
         self.results[job_id] = result
@@ -4885,7 +4885,7 @@ class ExecProgressQueue:
             raise ProgressJobQueueComplete()
 
     def exception(self, job_id, exception):
-        """Handles an exception caused by the given job."""
+        """handles an exception caused by the given job"""
 
         #clean up job that raised exception
         self.running_job_pool[job_id].join()
@@ -4899,12 +4899,12 @@ class ExecProgressQueue:
         raise exception
 
     def progress(self, job_id, current, total):
-        """Updates the progress display of the given job."""
+        """updates the progress display of the given job"""
 
         self.progress_display.update_row(job_id, current, total)
 
     def run(self, max_processes=1):
-        """Runs all the queued jobs in parallel."""
+        """runs all the queued jobs in parallel"""
 
         import select
 

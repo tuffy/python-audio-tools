@@ -32,13 +32,13 @@ import cStringIO
 
 
 class UndoDB:
-    """A class for performing undo operations on files.
+    """a class for performing undo operations on files
 
-    This stores an undo/redo patch for transforming a file
-    back to its original value, or forward again to its modified form."""
+    this stores an undo/redo patch for transforming a file
+    back to its original value, or forward again to its modified form"""
 
     def __init__(self, filename):
-        """filename is the location on disk for this undo database."""
+        """filename is the location on disk for this undo database"""
 
         self.db = sqlite3.connect(filename)
         self.cursor = self.db.cursor()
@@ -57,18 +57,18 @@ class UndoDB:
 )""")
 
     def close(self):
-        """Closes any open database handles."""
+        """closes any open database handles"""
 
         self.cursor.close()
         self.db.close()
 
     @classmethod
     def build_patch(cls, s1, s2):
-        """Given two strings, returns a transformation patch.
+        """given two strings, returns a transformation patch
 
-        This function presumes the two strings will be largely
+        this function presumes the two strings will be largely
         equal and similar in length.  It operates by performing an
-        XOR operation across both and BZ2 compressing the result."""
+        xOR operation across both and BZ2 compressing the result"""
 
         if (len(s1) < len(s2)):
             s1 += (chr(0) * (len(s2) - len(s1)))
@@ -81,11 +81,11 @@ class UndoDB:
 
     @classmethod
     def apply_patch(cls, s, patch, new_length):
-        """Given a string, patch and new length, restores string.
+        """given a string, patch and new length, restores string
 
-        patch is the same BZ2 compressed output from build_patch().
+        patch is the same BZ2 compressed output from build_patch()
         new_length is the size of the string originally,
-        which must be stored externally from the patch itself."""
+        which must be stored externally from the patch itself"""
 
         if (len(s) > new_length):
             s = s[0:new_length]
@@ -141,9 +141,9 @@ source_file, patch WHERE ((source_checksum = ?) AND
             return None
 
     def add(self, old_file, new_file):
-        """Adds an undo entry for transforming new_file to old_file.
+        """adds an undo entry for transforming new_file to old_file
 
-        Both are filename strings."""
+        both are filename strings"""
 
         old_f = open(old_file, 'rb')
         new_f = open(new_file, 'rb')
@@ -154,10 +154,10 @@ source_file, patch WHERE ((source_checksum = ?) AND
             new_f.close()
 
     def undo(self, new_file):
-        """Updates new_file to its original state,
-        if present in the undo database.
+        """updates new_file to its original state,
+        if present in the undo database
 
-        Returns True if undo performed, False if not."""
+        returns True if undo performed, False if not"""
 
         new_f = open(new_file, 'rb')
         try:
@@ -174,25 +174,25 @@ source_file, patch WHERE ((source_checksum = ?) AND
 
 
 class OldUndoDB:
-    """A class for performing legacy undo operations on files.
+    """a class for performing legacy undo operations on files
 
-    This implementation is based on xdelta and requires it to be
-    installed to function.
+    this implementation is based on xdelta and requires it to be
+    installed to function
     """
 
     def __init__(self, filename):
-        """filename is the location on disk for this undo database."""
+        """filename is the location on disk for this undo database"""
 
         self.db = anydbm.open(filename, 'c')
 
     def close(self):
-        """Closes any open database handles."""
+        """closes any open database handles"""
 
         self.db.close()
 
     @classmethod
     def checksum(cls, filename):
-        """Returns the SHA1 checksum of the filename's contents."""
+        """returns the SHA1 checksum of the filename's contents"""
 
         f = open(filename, "rb")
         c = sha1("")
@@ -203,9 +203,9 @@ class OldUndoDB:
             f.close()
 
     def add(self, old_file, new_file):
-        """Adds an undo entry for transforming new_file to old_file.
+        """adds an undo entry for transforming new_file to old_file
 
-        Both are filename strings."""
+        both are filename strings"""
 
         #perform xdelta between old and new track to temporary file
         delta_f = tempfile.NamedTemporaryFile(suffix=".delta")
@@ -227,8 +227,8 @@ class OldUndoDB:
             delta_f.close()
 
     def undo(self, new_file):
-        """Updates new_file to its original state,
-        if present in the undo database."""
+        """updates new_file to its original state,
+        if present in the undo database"""
 
         undo_checksum = OldUndoDB.checksum(new_file)
         if (undo_checksum in self.db.keys()):
@@ -262,10 +262,10 @@ class OldUndoDB:
 
 
 def open_db(filename):
-    """Given a filename string, returns UndoDB or OldUndoDB.
+    """given a filename string, returns UndoDB or OldUndoDB
 
-    If the file doesn't exist, this uses UndoDB by default.
-    Otherwise, detect OldUndoDB if xdelta is installed."""
+    if the file doesn't exist, this uses UndoDB by default
+    otherwise, detect OldUndoDB if xdelta is installed"""
 
     if (BIN.can_execute(BIN["xdelta"])):
         db = whichdb.whichdb(filename)

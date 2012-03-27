@@ -39,7 +39,7 @@ gettext.install("audiotools", unicode=True)
 
 #DEPRECATED - this function will soon be removed
 def get_xml_nodes(parent, child_tag):
-    """A helper routine for returning all children with the given XML tag."""
+    """a helper routine for returning all children with the given XML tag"""
 
     return [node for node in parent.childNodes
             if (hasattr(node, "tagName") and
@@ -48,7 +48,7 @@ def get_xml_nodes(parent, child_tag):
 
 #DEPRECATED - this function will soon be removed
 def walk_xml_tree(parent, *child_tags):
-    """A helper routine for walking through several children."""
+    """a helper routine for walking through several children"""
 
     if (len(child_tags) == 0):
         return parent
@@ -83,7 +83,7 @@ def walk_xml_tree_build(dom, parent, *child_tags):
 
 #DEPRECATED - this function will soon be removed
 def get_xml_text_node(parent, child_tag):
-    """A helper routine for returning the first text child XML node."""
+    """a helper routine for returning the first text child XML node"""
 
     try:
         return get_xml_nodes(parent, child_tag)[0].childNodes[0].data.strip()
@@ -93,9 +93,9 @@ def get_xml_text_node(parent, child_tag):
 
 #DEPRECATED - this function will soon be removed
 def reorder_xml_children(parent, child_order):
-    """Given an XML element with childNodes, reorders them to child_order.
+    """given an XML element with childNodes, reorders them to child_order
 
-    child_order should be a list of unicode tag strings.
+    child_order should be a list of unicode tag strings
     """
 
     if (parent.childNodes is None):
@@ -131,12 +131,12 @@ def reorder_xml_children(parent, child_order):
 
 #DEPRECATED - this class will soon be removed
 class MBDiscID:
-    """A MusicBrainz disc ID."""
+    """a MusicBrainz disc ID"""
 
     def __init__(self, tracks=[], offsets=None, length=None, lead_in=150,
                  first_track_number=None, last_track_number=None,
                  lead_out_track_offset=None):
-        """Fields are as follows:
+        """fields are as follows:
 
         tracks  - a list of track lengths in CD frames
         offsets -  a list of track offsets in CD frames
@@ -144,10 +144,10 @@ class MBDiscID:
         lead_in - the location of the first track on the CD, in frames
 
         first_track_number, last_track_number and lead_out_track_offset
-        are integer values.
+        are integer values
 
-        All fields are optional.
-        One will presumably fill them with data later in that event.
+        all fields are optional
+        one will presumably fill them with data later in that event
         """
 
         self.tracks = tracks
@@ -160,9 +160,9 @@ class MBDiscID:
 
     @classmethod
     def from_cdda(cls, cdda):
-        """Given a CDDA object, returns a populated MBDiscID
+        """given a CDDA object, returns a populated MBDiscID
 
-        May raise ValueError if there are no audio tracks on the CD."""
+        may raise ValueError if there are no audio tracks on the CD"""
 
         tracks = list(cdda)
         if (len(tracks) < 1):
@@ -176,7 +176,7 @@ class MBDiscID:
             lead_out_track_offset=cdda.last_sector() + 150 + 1)
 
     def offsets(self):
-        """Returns a list of calculated offset integers, from track lengths."""
+        """returns a list of calculated offset integers, from track lengths"""
 
         if (self.__offsets__ is None):
             offsets = [self.__lead_in__]
@@ -234,7 +234,7 @@ class MBDiscID:
                         digest.digest().encode('base64').rstrip('\n')])
 
     def toxml(self, output):
-        """Writes an XML file to the output file object."""
+        """writes an XML file to the output file object"""
 
         output.write(MusicBrainzReleaseXML.from_tracks(
                 [DummyAudioFile(length, None, i + 1)
@@ -243,7 +243,7 @@ class MBDiscID:
 
 #DEPRECATED - this class will soon be removed
 class MusicBrainz:
-    """A class for performing queries on a MusicBrainz or compatible server."""
+    """a class for performing queries on a MusicBrainz or compatible server"""
 
     def __init__(self, server, port, messenger):
         self.server = server
@@ -252,23 +252,23 @@ class MusicBrainz:
         self.messenger = messenger
 
     def connect(self):
-        """Performs the initial connection."""
+        """performs the initial connection"""
 
         import httplib
 
         self.connection = httplib.HTTPConnection(self.server, self.port)
 
     def close(self):
-        """Closes an open connection."""
+        """closes an open connection"""
 
         if (self.connection is not None):
             self.connection.close()
 
     def read_data(self, disc_id, output):
-        """Returns a (matches,dom) tuple from a MBDiscID object.
+        """returns a (matches,dom) tuple from a MBDiscID object
 
         matches is an integer
-        and dom is a minidom Document object or None."""
+        and dom is a minidom Document object or None"""
 
         from xml.dom.minidom import parseString
         from xml.parsers.expat import ExpatError
@@ -293,7 +293,7 @@ class MusicBrainz:
 
 #DEPRECATED - this class will soon be removed
 class MBXMLException(MetaDataFileException):
-    """Raised if MusicBrainzReleaseXML.read() encounters an error."""
+    """raised if MusicBrainzReleaseXML.read() encounters an error"""
 
     def __unicode__(self):
         return _(u"Invalid MusicBrainz XML file")
@@ -301,7 +301,7 @@ class MBXMLException(MetaDataFileException):
 
 #DEPRECATED - this class will soon be removed
 class MusicBrainzReleaseXML(AlbumMetaDataFile):
-    """An XML file as returned by MusicBrainz."""
+    """an XML file as returned by MusicBrainz"""
 
     TAG_ORDER = {u"release": [u"title",
                               u"text-representation",
@@ -471,10 +471,10 @@ class MusicBrainzReleaseXML(AlbumMetaDataFile):
 
     @classmethod
     def from_tracks(cls, tracks):
-        """Returns a MusicBrainzReleaseXML from a list of AudioFile objects.
+        """returns a MusicBrainzReleaseXML from a list of AudioFile objects
 
-        These objects are presumably from the same album.
-        If not, these heuristics may generate something unexpected.
+        these objects are presumably from the same album
+        if not, these heuristics may generate something unexpected
         """
 
         from xml.dom.minidom import parseString
@@ -619,9 +619,9 @@ def __select_default_match__(dom, selection):
 #DEPRECATED - this function will soon be removed
 def get_mbxml(disc_id, output, musicbrainz_server, musicbrainz_port,
               messenger, default_selection=None):
-    """Runs through the entire MusicBrainz querying sequence.
+    """runs through the entire MusicBrainz querying sequence
 
-    Fields are as follows:
+    fields are as follows:
     disc_id            - an MBDiscID object
     output             - an open file object for writing
     musicbrainz_server - a server name string

@@ -43,7 +43,7 @@ gettext.install("audiotools", unicode=True)
 
 #DEPRECATED - this class will soon be removed
 class XMCDException(MetaDataFileException):
-    """Raised if some error occurs parsing an XMCD file."""
+    """raised if some error occurs parsing an XMCD file"""
 
     def __unicode__(self):
         return _(u"Invalid XMCD file")
@@ -54,9 +54,9 @@ class XMCD(AlbumMetaDataFile):
     LINE_LENGTH = 78
 
     def __init__(self, fields, comments):
-        """fields a dict of key->values.  comment is a list of comments.
+        """fields a dict of key->values.  comment is a list of comments
 
-        keys are plain strings.  values and comments are unicode."""
+        keys are plain strings.  values and comments are unicode"""
 
         self.fields = fields
         self.comments = comments
@@ -287,18 +287,18 @@ class XMCD(AlbumMetaDataFile):
 
 #DEPRECATED - this class will soon be removed
 class DiscID:
-    """An object representing a 32 bit FreeDB disc ID value."""
+    """an object representing a 32 bit FreeDB disc ID value"""
 
     def __init__(self, tracks=[], offsets=None, length=None, lead_in=150):
-        """Fields are as follows:
+        """fields are as follows:
 
         tracks  - a list of track lengths in CD frames
         offsets - a list of track offsets in CD frames
         length  - the length of the entire disc in CD frames
         lead_in - the location of the first track on the CD, in frames
 
-        These fields are all optional.
-        One will presumably fill them with data later in that event.
+        these fields are all optional
+        one will presumably fill them with data later in that event
         """
 
         self.tracks = tracks
@@ -308,9 +308,9 @@ class DiscID:
 
     @classmethod
     def from_cdda(cls, cdda):
-        """Given a CDDA object, returns a populated DiscID.
+        """given a CDDA object, returns a populated DiscID
 
-        May raise ValueError if there are no audio tracks on the CD."""
+        may raise ValueError if there are no audio tracks on the CD"""
 
         tracks = list(cdda)
         if (len(tracks) < 1):
@@ -322,12 +322,12 @@ class DiscID:
                    lead_in=tracks[0].offset())
 
     def add(self, track):
-        """Adds a new track length, in CD frames."""
+        """adds a new track length, in CD frames"""
 
         self.tracks.append(track)
 
     def offsets(self):
-        """Returns a list of calculated offset integers, from track lengths."""
+        """returns a list of calculated offset integers, from track lengths"""
 
         if (self.__offsets__ is None):
             offsets = [self.__lead_in__]
@@ -340,7 +340,7 @@ class DiscID:
             return self.__offsets__
 
     def length(self):
-        """Returns the total length of the disc, in seconds."""
+        """returns the total length of the disc, in seconds"""
 
         if (self.__length__ is None):
             return sum(self.tracks)
@@ -348,9 +348,9 @@ class DiscID:
             return self.__length__
 
     def idsuffix(self):
-        """Returns a FreeDB disc ID suffix string.
+        """returns a FreeDB disc ID suffix string
 
-        This is for making server queries."""
+        this is for making server queries"""
 
         return str(len(self.tracks)) + " " + \
                " ".join([str(offset) for offset in self.offsets()]) + \
@@ -373,14 +373,14 @@ class DiscID:
                           (track_count & 0xFF))
 
     def freedb_id(self):
-        """Returns the entire FreeDB disc ID, including suffix."""
+        """returns the entire FreeDB disc ID, including suffix"""
 
         return str(self) + " " + self.idsuffix()
 
     def toxmcd(self, output):
-        """Writes a newly created XMCD file to output.
+        """writes a newly created XMCD file to output
 
-        Its values are populated from this DiscID's fields."""
+        its values are populated from this DiscID's fields"""
 
         output.write(XMCD.from_tracks(
             [DummyAudioFile(length, None, i + 1)
@@ -389,23 +389,23 @@ class DiscID:
 
 #DEPRECATED - this class will soon be removed
 class FreeDBException(Exception):
-    """Raised if some problem occurs during FreeDB querying."""
+    """raised if some problem occurs during FreeDB querying"""
 
     pass
 
 
 #DEPRECATED - this class will soon be removed
 class FreeDB:
-    """A class for performing queries on a FreeDB or compatible server.
+    """a class for performing queries on a FreeDB or compatible server
 
-    This operates using the original FreeDB client-server protocol."""
+    this operates using the original FreeDB client-server protocol"""
 
     LINE = re.compile(r'\d\d\d\s.+')
 
     def __init__(self, server, port, messenger):
-        """server is a string, port is an int, messenger is a Messenger.
+        """server is a string, port is an int, messenger is a Messenger
 
-        Queries are sent to the server, and output to the messenger."""
+        queries are sent to the server, and output to the messenger"""
 
         self.server = server
         self.port = port
@@ -415,7 +415,7 @@ class FreeDB:
         self.messenger = messenger
 
     def connect(self):
-        """Performs the initial connection."""
+        """performs the initial connection"""
 
         import socket
 
@@ -460,7 +460,7 @@ class FreeDB:
             raise FreeDBException(err[1])
 
     def close(self):
-        """Closes an open connection."""
+        """closes an open connection"""
 
         self.messenger.info(_(u"Closing connection"))
 
@@ -472,7 +472,7 @@ class FreeDB:
         self.socket.close()
 
     def write(self, line):
-        """Writes a single command line to the server."""
+        """writes a single command line to the server"""
 
         if (self.socket is not None):
             self.w.write(line)
@@ -480,7 +480,7 @@ class FreeDB:
             self.w.flush()
 
     def read(self):
-        """Reads a result line from the server."""
+        """reads a result line from the server"""
 
         line = self.r.readline()
         if (FreeDB.LINE.match(line)):
@@ -489,10 +489,10 @@ class FreeDB:
             return (None, line.rstrip("\r\n"))
 
     def query(self, disc_id):
-        """Given a DiscID, performs an album query and returns matches.
+        """given a DiscID, performs an album query and returns matches
 
-        Each match is a (category, id) pair, which the user may
-        need to decide between."""
+        each match is a (category, id) pair, which the user may
+        need to decide between"""
 
         matches = []
 
@@ -519,10 +519,10 @@ class FreeDB:
         return map(lambda m: m.split(" ", 2), matches)
 
     def read_data(self, category, id, output):
-        """Reads the FreeDB entry matching category and id to output.
+        """reads the FreeDB entry matching category and id to output
 
-        category and id are raw strings, as returned by query().
-        output is an open file object.
+        category and id are raw strings, as returned by query()
+        output is an open file object
         """
 
         self.write("cddb read " + category + " " + id)
@@ -538,14 +538,14 @@ class FreeDB:
 
 #DEPRECATED - this class will soon be removed
 class FreeDBWeb(FreeDB):
-    """A class for performing queries on a FreeDB or compatible server.
+    """a class for performing queries on a FreeDB or compatible server
 
-    This operates using the FreeDB web-based protocol."""
+    this operates using the FreeDB web-based protocol"""
 
     def __init__(self, server, port, messenger):
-        """server is a string, port is an int, messenger is a Messenger.
+        """server is a string, port is an int, messenger is a Messenger
 
-        Queries are sent to the server, and output to the messenger."""
+        queries are sent to the server, and output to the messenger"""
 
         self.server = server
         self.port = port
@@ -553,7 +553,7 @@ class FreeDBWeb(FreeDB):
         self.messenger = messenger
 
     def connect(self):
-        """Performs the initial connection."""
+        """performs the initial connection"""
 
         import httplib
 
@@ -561,13 +561,13 @@ class FreeDBWeb(FreeDB):
                                                  timeout=10)
 
     def close(self):
-        """Closes an open connection."""
+        """closes an open connection"""
 
         if (self.connection is not None):
             self.connection.close()
 
     def write(self, line):
-        """Writes a single command line to the server."""
+        """writes a single command line to the server"""
 
         import urllib
         import socket
@@ -590,7 +590,7 @@ class FreeDBWeb(FreeDB):
             raise FreeDBException(str(msg))
 
     def read(self):
-        """Reads a result line from the server."""
+        """reads a result line from the server"""
 
         response = self.connection.getresponse()
         return response.read()
@@ -602,10 +602,10 @@ class FreeDBWeb(FreeDB):
             return (None, line.rstrip("\r\n"))
 
     def query(self, disc_id):
-        """Given a DiscID, performs an album query and returns matches.
+        """given a DiscID, performs an album query and returns matches
 
-        Each match is a (category, id) pair, which the user may
-        need to decide between."""
+        each match is a (category, id) pair, which the user may
+        need to decide between"""
 
         matches = []
 
@@ -633,10 +633,10 @@ class FreeDBWeb(FreeDB):
         return map(lambda m: m.split(" ", 2), matches)
 
     def read_data(self, category, id, output):
-        """Reads the FreeDB entry matching category and id to output.
+        """reads the FreeDB entry matching category and id to output
 
-        category and id are raw strings, as returned by query().
-        output is an open file object.
+        category and id are raw strings, as returned by query()
+        output is an open file object
         """
 
         self.write("cddb read " + category + " " + id)
@@ -697,9 +697,9 @@ def __select_default_match__(matches, selection):
 #DEPRECATED - this function will soon be removed
 def get_xmcd(disc_id, output, freedb_server, freedb_server_port,
              messenger, default_selection=None):
-    """Runs through the entire FreeDB querying sequence.
+    """runs through the entire FreeDB querying sequence
 
-    Fields are as follows:
+    fields are as follows:
     disc_id           - a DiscID object
     output            - an open file object for writing
     freedb_server     - a server name string

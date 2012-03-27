@@ -50,6 +50,14 @@ from audiotools import MetaData, Image, image_metrics
 
 
 def parse_sub_atoms(data_size, reader, parsers):
+    """data size is the length of the parent atom's data
+    reader is a BitstreamReader
+    parsers is a dict of leaf_name->parser()
+    where parser is defined as:
+    parser(leaf_name, leaf_data_size, BitstreamReader, parsers)
+    as a sort of recursive parsing handler
+    """
+
     leaf_atoms = []
 
     while (data_size > 0):
@@ -104,6 +112,9 @@ class M4A_Tree_Atom:
         return self.get_child(atom_name)
 
     def get_child(self, atom_name):
+        """returns the first instance of the given child atom
+        raises KeyError if the child is not found"""
+
         for leaf in self:
             if (leaf.name == atom_name):
                 return leaf
@@ -111,6 +122,9 @@ class M4A_Tree_Atom:
             raise KeyError(atom_name)
 
     def has_child(self, atom_name):
+        """returns True if the given atom name
+        is an immediate child of this atom"""
+
         for leaf in self:
             if (leaf.name == atom_name):
                 return True
@@ -118,9 +132,13 @@ class M4A_Tree_Atom:
             return False
 
     def add_child(self, atom_obj):
+        """adds the given child atom to this container"""
+
         self.leaf_atoms.append(atom_obj)
 
     def remove_child(self, atom_name):
+        """removes the first instance of the given atom from this container"""
+
         new_leaf_atoms = []
         data_deleted = False
         for leaf_atom in self:
@@ -132,6 +150,9 @@ class M4A_Tree_Atom:
         self.leaf_atoms = new_leaf_atoms
 
     def replace_child(self, atom_obj):
+        """replaces the first instance of the given atom's name
+        with the given atom"""
+
         new_leaf_atoms = []
         data_replaced = False
         for leaf_atom in self:
@@ -144,6 +165,11 @@ class M4A_Tree_Atom:
         self.leaf_atoms = new_leaf_atoms
 
     def child_offset(self, *child_path):
+        """given a path to the given child atom
+        returns its offset within this parent
+
+        raises KeyError if the child cannot be found"""
+
         offset = 0
         next_child = child_path[0]
         for leaf_atom in self:
@@ -1206,7 +1232,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
 
     @classmethod
     def supports_images(self):
-        """Returns True."""
+        """returns True"""
 
         return True
 

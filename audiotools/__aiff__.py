@@ -31,6 +31,9 @@ gettext.install("audiotools", unicode=True)
 
 
 def parse_ieee_extended(bitstream):
+    """returns a parsed 80-bit IEEE extended value from BitstreamReader
+    this is used to handle AIFF's sample rate field"""
+
     (signed, exponent, mantissa) = bitstream.parse("1u 15u 64U")
     if ((exponent == 0) and (mantissa == 0)):
         return 0
@@ -42,6 +45,9 @@ def parse_ieee_extended(bitstream):
 
 
 def build_ieee_extended(bitstream, value):
+    """writes an 80-bit IEEE extended value to BitstreamWriter
+    this is used to handle AIFF's sample rate field"""
+
     from math import frexp
 
     if (value < 0):
@@ -103,6 +109,8 @@ class AIFF_Chunk:
         return cStringIO.StringIO(self.__data__)
 
     def verify(self):
+        """returns True if chunk size matches chunk's data"""
+
         return self.__size__ == len(self.__data__)
 
     def write(self, f):
@@ -144,6 +152,8 @@ class AIFF_File_Chunk(AIFF_Chunk):
         return LimitedFileReader(self.__wav_file__, self.size())
 
     def verify(self):
+        """returns True if chunk size matches chunk's data"""
+
         self.__aiff_file__.seek(self.__offset__)
         to_read = self.__size__
         while (to_read > 0):
@@ -195,14 +205,14 @@ def parse_comm(comm):
 
 
 class AiffReader(PCMReader):
-    """A subclass of PCMReader for reading AIFF file contents."""
+    """a subclass of PCMReader for reading AIFF file contents"""
 
     def __init__(self, aiff_file,
                  sample_rate, channels, channel_mask, bits_per_sample,
                  total_frames, process=None):
         """aiff_file should be a file-like object of aiff data
 
-        sample_rate, channels, channel_mask and bits_per_sample are ints."""
+        sample_rate, channels, channel_mask and bits_per_sample are ints"""
 
         self.file = aiff_file
         self.sample_rate = sample_rate
@@ -239,7 +249,7 @@ class AiffReader(PCMReader):
             self.read = self.read_error
 
     def read(self, bytes):
-        """Try to read a pcm.FrameList of size "bytes"."""
+        """try to read a pcm.FrameList of size 'bytes'"""
 
         #convert bytes to a number of PCM frames
         frames_read = min(max(bytes / self.bytes_per_frame, 1),
@@ -264,17 +274,19 @@ class AiffReader(PCMReader):
                                  True, True)
 
     def read_error(self, bytes):
+        """try to read a pcm.FrameList of size 'bytes'"""
+
         raise IOError()
 
 
 class InvalidAIFF(InvalidFile):
-    """Raised if some problem occurs parsing AIFF chunks."""
+    """raised if some problem occurs parsing AIFF chunks"""
 
     pass
 
 
 class AiffAudio(AiffContainer):
-    """An AIFF audio file."""
+    """an AIFF audio file"""
 
     SUFFIX = "aiff"
     NAME = SUFFIX
@@ -282,7 +294,7 @@ class AiffAudio(AiffContainer):
     PRINTABLE_ASCII = frozenset([chr(i) for i in xrange(0x20, 0x7E + 1)])
 
     def __init__(self, filename):
-        """filename is a plain string."""
+        """filename is a plain string"""
 
         self.filename = filename
 
@@ -311,40 +323,40 @@ class AiffAudio(AiffContainer):
             raise InvalidAIFF("I/O error reading wave")
 
     def bits_per_sample(self):
-        """Returns an integer number of bits-per-sample this track contains."""
+        """returns an integer number of bits-per-sample this track contains"""
 
         return self.__bits_per_sample__
 
     def channels(self):
-        """Returns an integer number of channels this track contains."""
+        """returns an integer number of channels this track contains"""
 
         return self.__channels__
 
     def channel_mask(self):
-        """Returns a ChannelMask object of this track's channel layout."""
+        """returns a ChannelMask object of this track's channel layout"""
 
         return self.__channel_mask__
 
     def lossless(self):
-        """Returns True."""
+        """returns True"""
 
         return True
 
     def total_frames(self):
-        """Returns the total PCM frames of the track as an integer."""
+        """returns the total PCM frames of the track as an integer"""
 
         return self.__total_sample_frames__
 
     def sample_rate(self):
-        """Returns the rate of the track's audio as an integer number of Hz."""
+        """returns the rate of the track's audio as an integer number of Hz"""
 
         return self.__sample_rate__
 
     @classmethod
     def is_type(cls, file):
-        """Returns True if the given file object describes this format.
+        """returns True if the given file object describes this format
 
-        Takes a seekable file pointer rewound to the start of the file."""
+        takes a seekable file pointer rewound to the start of the file"""
 
         header = file.read(12)
 
@@ -352,9 +364,7 @@ class AiffAudio(AiffContainer):
                 (header[8:12] == 'AIFF'))
 
     def chunks(self):
-        """yields a (chunk_id, chunk_size, chunk_data) tuples
-
-        all fields are binary strings"""
+        """yields a AIFF_Chunk compatible objects for each chunk in file"""
 
         aiff_file = file(self.filename, 'rb')
         try:
@@ -407,10 +417,10 @@ class AiffAudio(AiffContainer):
 
     @classmethod
     def aiff_from_chunks(cls, filename, chunk_iter):
-        """Builds a new AIFF file from a chunk data iterator.
+        """builds a new AIFF file from a chunk data iterator
 
-        filename is the path to the AIFF file to build.
-        chunk_iter should yield AIFF_Chunk-compatible objects.
+        filename is the path to the AIFF file to build
+        chunk_iter should yield AIFF_Chunk-compatible objects
         """
 
         aiff_file = file(filename, 'wb')
@@ -431,9 +441,9 @@ class AiffAudio(AiffContainer):
             aiff_file.close()
 
     def get_metadata(self):
-        """Returns a MetaData object, or None.
+        """returns a MetaData object, or None
 
-        Raises IOError if unable to read the file."""
+        raises IOError if unable to read the file"""
 
         from .bitstream import BitstreamReader
 
@@ -444,11 +454,11 @@ class AiffAudio(AiffContainer):
             return None
 
     def update_metadata(self, metadata):
-        """Takes this track's current MetaData object
+        """takes this track's current MetaData object
         as returned by get_metadata() and sets this track's metadata
-        with any fields updated in that object.
+        with any fields updated in that object
 
-        Raises IOError if unable to write the file.
+        raises IOError if unable to write the file
         """
 
         import tempfile
@@ -488,10 +498,10 @@ class AiffAudio(AiffContainer):
         new_file.close()
 
     def set_metadata(self, metadata):
-        """Takes a MetaData object and sets this track's metadata.
+        """takes a MetaData object and sets this track's metadata
 
-        This metadata includes track name, album name, and so on.
-        Raises IOError if unable to write the file."""
+        this metadata includes track name, album name, and so on
+        raises IOError if unable to write the file"""
 
         if (metadata is None):
             return
@@ -532,10 +542,10 @@ class AiffAudio(AiffContainer):
             new_file.close()
 
     def delete_metadata(self):
-        """Deletes the track's MetaData.
+        """deletes the track's MetaData
 
-        This removes or unsets tags as necessary in order to remove all data.
-        Raises IOError if unable to write the file."""
+        this removes or unsets tags as necessary in order to remove all data
+        raises IOError if unable to write the file"""
 
         def chunk_filter(chunks):
             for chunk in chunks:
@@ -557,7 +567,7 @@ class AiffAudio(AiffContainer):
         new_file.close()
 
     def to_pcm(self):
-        """Returns a PCMReader object containing the track's PCM data."""
+        """returns a PCMReader object containing the track's PCM data"""
 
         return AiffReader(file(self.filename, 'rb'),
                           sample_rate=self.sample_rate(),
@@ -568,13 +578,13 @@ class AiffAudio(AiffContainer):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
-        """Encodes a new file from PCM data.
+        """encodes a new file from PCM data
 
-        Takes a filename string, PCMReader object
-        and optional compression level string.
-        Encodes a new audio file from pcmreader's data
+        takes a filename string, PCMReader object
+        and optional compression level string
+        encodes a new audio file from pcmreader's data
         at the given filename with the specified compression level
-        and returns a new AiffAudio object."""
+        and returns a new AiffAudio object"""
 
         from .bitstream import BitstreamWriter
 
@@ -662,9 +672,9 @@ class AiffAudio(AiffContainer):
         return AiffAudio(filename)
 
     def to_aiff(self, aiff_filename, progress=None):
-        """Writes the contents of this file to the given .aiff filename string.
+        """writes the contents of this file to the given .aiff filename string
 
-        Raises EncodingError if some error occurs during decoding."""
+        raises EncodingError if some error occurs during decoding"""
 
         try:
             self.verify()
@@ -685,6 +695,15 @@ class AiffAudio(AiffContainer):
     @classmethod
     def from_aiff(cls, filename, aiff_filename, compression=None,
                   progress=None):
+        """encodes a new AiffAudio from an existing .aiff file
+
+        takes a filename string, aiff_filename string
+        of an existing AiffAudio file
+        and an optional compression level string
+        encodes a new audio file from the wave's data
+        at the given filename with the specified compression level
+        and returns a new AudioFile compatible object"""
+
         try:
             cls(aiff_filename).verify()
         except InvalidAIFF, err:
@@ -717,12 +736,12 @@ class AiffAudio(AiffContainer):
 
     def convert(self, target_path, target_class, compression=None,
                 progress=None):
-        """Encodes a new AudioFile from existing AudioFile.
+        """encodes a new AiffAudio from existing AudioFile
 
-        Take a filename string, target class and optional compression string.
-        Encodes a new AudioFile in the target class and returns
-        the resulting object.
-        May raise EncodingError if some problem occurs during encoding."""
+        take a filename string, target class and optional compression string
+        encodes a new AudioFile in the target class and returns
+        the resulting object
+        may raise EncodingError if some problem occurs during encoding"""
 
         if (hasattr(target_class, "from_aiff")):
             return target_class.from_aiff(target_path,
@@ -735,11 +754,11 @@ class AiffAudio(AiffContainer):
                                          compression)
 
     def pcm_split(self):
-        """Returns a pair of data strings before and after PCM data.
+        """returns a pair of data strings before and after PCM data
 
-        The first contains all data before the PCM content of the data chunk.
-        The second containing all data after the data chunk.
-        For example:
+        the first contains all data before the PCM content of the data chunk
+        the second containing all data after the data chunk
+        for example:
 
         >>> a = audiotools.open("input.aiff")
         >>> (head, tail) = a.pcm_split()
@@ -749,7 +768,7 @@ class AiffAudio(AiffContainer):
         >>> f.write(tail)
         >>> f.close()
 
-        should result in "output.aiff" being identical to "input.aiff".
+        should result in "output.aiff" being identical to "input.aiff"
         """
 
         from .bitstream import BitstreamReader
@@ -801,14 +820,16 @@ class AiffAudio(AiffContainer):
             aiff_file.close()
 
     def has_foreign_aiff_chunks(self):
+        """returns True if the audio file contains non-audio AIFF chunks"""
+
         return (set(['COMM', 'SSND']) != set([c.id for c in self.chunks()]))
 
     def verify(self, progress=None):
-        """Verifies the current file for correctness.
+        """verifies the current file for correctness
 
-        Returns True if the file is okay.
-        Raises an InvalidFile with an error message if there is
-        some problem with the file."""
+        returns True if the file is okay
+        raises an InvalidFile with an error message if there is
+        some problem with the file"""
 
         #AIFF chunk verification is likely to be so fast
         #that individual calls to progress() are
@@ -847,7 +868,7 @@ class AiffAudio(AiffContainer):
         return True
 
     def clean(self, fixes_performed, output_filename=None):
-        """Cleans the file of known data and metadata problems.
+        """cleans the file of known data and metadata problems
 
         fixes_performed is a list-like object which is appended
         with Unicode strings of fixed problems
@@ -856,8 +877,8 @@ class AiffAudio(AiffContainer):
         if present, a new AudioFile is returned
         otherwise, only a dry-run is performed and no new file is written
 
-        Raises IOError if unable to write the file or its metadata
-        Raises ValueError if the file has errors of some sort
+        raises IOError if unable to write the file or its metadata
+        raises ValueError if the file has errors of some sort
         """
 
         chunk_queue = []

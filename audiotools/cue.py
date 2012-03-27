@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-"""The cuesheet handling module."""
+"""the cuesheet handling module"""
 
 import re
 from audiotools import SheetException, parse_timestamp, build_timestamp
@@ -44,17 +44,17 @@ TIMESTAMP = 0x20
 
 
 class CueException(SheetException):
-    """Raised by cuesheet parsing errors."""
+    """raised by cuesheet parsing errors"""
 
     pass
 
 
 def tokens(cuedata):
-    """Yields (text, token, line) tuples from cuedata stream.
+    """yields (text, token, line) tuples from cuedata stream
 
-    text is a plain string.
-    token is an integer such as TAG or NUMBER.
-    line is a line number integer."""
+    text is a plain string
+    token is an integer such as TAG or NUMBER
+    line is a line number integer"""
 
     full_length = len(cuedata)
     cuedata = cuedata.lstrip('efbbbf'.decode('hex'))
@@ -106,14 +106,14 @@ def tokens(cuedata):
 
 
 def get_value(tokens, accept, error):
-    """Retrieves a specific token from the stream of tokens.
+    """retrieves a specific token from the stream of tokens
 
     tokens - the token iterator
     accept - an "or"ed list of all the tokens we'll accept
     error - the string to prepend to the error message
 
-    Returns the gotten value which matches one of the accepted tokens
-    or raises ValueError if the token matches none of them.
+    returns the gotten value which matches one of the accepted tokens
+    or raises ValueError if the token matches none of them
     """
 
     (token, element, line_number) = tokens.next()
@@ -126,9 +126,9 @@ def get_value(tokens, accept, error):
 
 
 def parse(tokens):
-    """Returns a Cuesheet object from the token iterator stream.
+    """returns a Cuesheet object from the token iterator stream
 
-    Raises CueException if a parsing error occurs.
+    raises CueException if a parsing error occurs
     """
 
     def skip_to_eol(tokens):
@@ -252,7 +252,7 @@ def __attrib_str__(attrib):
 
 
 class Cuesheet:
-    """An object representing a cuesheet file."""
+    """an object representing a cuesheet file"""
 
     def __init__(self):
         self.attribs = {}
@@ -269,9 +269,9 @@ class Cuesheet:
                             sorted(self.tracks.values())])
 
     def catalog(self):
-        """Returns the cuesheet's CATALOG number as a plain string, or None.
+        """returns the cuesheet's CATALOG number as a plain string, or None
 
-        If present, this value is typically a CD's UPC code."""
+        if present, this value is typically a CD's UPC code"""
 
         if ('CATALOG' in self.attribs):
             return str(self.attribs['CATALOG'])
@@ -279,7 +279,7 @@ class Cuesheet:
             return None
 
     def single_file_type(self):
-        """Returns True if this cuesheet is formatted for a single file."""
+        """returns True if this cuesheet is formatted for a single file"""
 
         previous = -1
         for t in self.indexes():
@@ -292,7 +292,7 @@ class Cuesheet:
             return True
 
     def indexes(self):
-        """Yields a set of index lists, one for each track in the file."""
+        """yields a set of index lists, one for each track in the file"""
 
         for key in sorted(self.tracks.keys()):
             yield tuple(
@@ -300,9 +300,9 @@ class Cuesheet:
                  for k in sorted(self.tracks[key].indexes.keys())])
 
     def pcm_lengths(self, total_length):
-        """Yields a list of PCM lengths for all audio tracks within the file.
+        """yields a list of PCM lengths for all audio tracks within the file
 
-        total_length is the length of the entire file in PCM frames."""
+        total_length is the length of the entire file in PCM frames"""
 
         previous = None
 
@@ -320,19 +320,19 @@ class Cuesheet:
         yield total_length
 
     def ISRCs(self):
-        """Returns a track_number->ISRC dict of all non-empty tracks."""
+        """returns a track_number->ISRC dict of all non-empty tracks"""
 
         return dict([(track.number, track.ISRC()) for track in
                      self.tracks.values() if track.ISRC() is not None])
 
     @classmethod
     def file(cls, sheet, filename):
-        """Constructs a new cuesheet string from a compatible object.
+        """constructs a new cuesheet string from a compatible object
 
-        sheet must have catalog(), indexes() and ISRCs() methods.
-        filename is a string to the filename the cuesheet is created for.
-        Although we don't care whether the filename points to a real file,
-        other tools sometimes do.
+        sheet must have catalog(), indexes() and ISRCs() methods
+        filename is a string to the filename the cuesheet is created for
+        although we don't care whether the filename points to a real file,
+        other tools sometimes do
         """
 
         import cStringIO
@@ -363,10 +363,10 @@ class Cuesheet:
 
 
 class Track:
-    """A track inside a Cuesheet object."""
+    """a track inside a Cuesheet object"""
 
     def __init__(self, number, type):
-        """number is the track's number on disc, type is a string."""
+        """number is the track's number on disc, type is a string"""
 
         self.number = number
         self.type = type
@@ -390,7 +390,7 @@ class Track:
                          for (k, v) in sorted(self.indexes.items())])
 
     def ISRC(self):
-        """Returns the track's ISRC value, or None."""
+        """returns the track's ISRC value, or None"""
 
         if ('ISRC' in self.attribs.keys()):
             return str(self.attribs['ISRC'])
@@ -399,9 +399,9 @@ class Track:
 
 
 def read_cuesheet(filename):
-    """Returns a Cuesheet from a cuesheet filename on disk.
+    """returns a Cuesheet from a cuesheet filename on disk
 
-    Raises CueException if some error occurs reading or parsing the file.
+    raises CueException if some error occurs reading or parsing the file
     """
 
     try:

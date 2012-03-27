@@ -31,14 +31,14 @@ def is_latin_1(unicode_string):
 
 
 class UCS2Codec(codecs.Codec):
-    """A special unicode codec for UCS-2.
+    """a special unicode codec for UCS-2
 
-    This is a subset of UTF-16 with no support for surrogate pairs,
-    limiting it to U+0000-U+FFFF."""
+    this is a subset of UTF-16 with no support for surrogate pairs,
+    limiting it to U+0000-U+FFFF"""
 
     @classmethod
     def fix_char(cls, c):
-        """A filter which changes overly large c values to "unknown"."""
+        """a filter which changes overly large c values to 'unknown'"""
 
         if (ord(c) <= 0xFFFF):
             return c
@@ -46,13 +46,13 @@ class UCS2Codec(codecs.Codec):
             return u"\ufffd"
 
     def encode(self, input, errors='strict'):
-        """Encodes unicode input to plain UCS-2 strings."""
+        """encodes unicode input to plain UCS-2 strings"""
 
         return codecs.utf_16_encode(u"".join(map(self.fix_char, input)),
                                     errors)
 
     def decode(self, input, errors='strict'):
-        """Decodes plain UCS-2 strings to unicode."""
+        """decodes plain UCS-2 strings to unicode"""
 
         (chars, size) = codecs.utf_16_decode(input, errors, True)
         return (u"".join(map(self.fix_char, chars)), size)
@@ -79,6 +79,8 @@ codecs.register(__reg_ucs2__)
 
 
 def decode_syncsafe32(reader):
+    """returns a syncsafe32 integer from a BitstreamReader"""
+
     from operator import or_
     return reduce(or_,
                   [size << (7 * (3 - i))
@@ -87,6 +89,8 @@ def decode_syncsafe32(reader):
 
 
 def encode_syncsafe32(writer, value):
+    """writes a syncsafe32 integer to a BitstreamWriter"""
+
     writer.build("1p 7u 1p 7u 1p 7u 1p 7u",
                  [(value >> (7 * i)) & 0x7F for i in [3, 2, 1, 0]])
 
@@ -104,7 +108,7 @@ class C_string:
                   'utf-8': chr(0)}
 
     def __init__(self, encoding, unicode_string):
-        """encoding is a string such as 'utf-8', 'latin-1', etc."""
+        """encoding is a string such as 'utf-8', 'latin-1', etc"""
 
         self.encoding = encoding
         self.unicode_string = unicode_string
@@ -190,10 +194,10 @@ def __number_pair__(current, total):
 
 
 def read_id3v2_comment(filename):
-    """Given a filename, returns an ID3v22Comment or a subclass.
+    """given a filename, returns an ID3v22Comment or a subclass
 
-    For example, if the file is ID3v2.3 tagged,
-    this returns an ID3v23Comment.
+    for example, if the file is ID3v2.3 tagged,
+    this returns an ID3v23Comment
     """
 
     from .bitstream import BitstreamReader
@@ -221,10 +225,10 @@ def read_id3v2_comment(filename):
 
 
 def skip_id3v2_comment(file):
-    """Seeks past an ID3v2 comment if found in the file stream.
-    Returns the number of bytes skipped.
+    """seeks past an ID3v2 comment if found in the file stream
+    returns the number of bytes skipped
 
-    The stream must be seekable, obviously."""
+    the stream must be seekable, obviously"""
 
     from .bitstream import BitstreamReader
 
@@ -309,14 +313,14 @@ class ID3v22_Frame:
         return cls(frame_id, reader.read_bytes(frame_size))
 
     def build(self, writer):
-        """writes the frame's data to the BitstreamWriter
-        not including its 6 byte header"""
+        """writes this frame to the given BitstreamWriter
+        not including its frame header"""
 
         writer.write_bytes(self.data)
 
     def size(self):
-        """returns the frame's total size
-        not including its 6 byte header"""
+        """returns the size of this frame in bytes
+        not including the frame header"""
 
         return len(self.data)
 
@@ -338,7 +342,7 @@ class ID3v22_T__Frame:
     NUMERICAL_IDS = ('TRK', 'TPA')
 
     def __init__(self, frame_id, encoding, data):
-        """Fields are as follows:
+        """fields are as follows:
         | frame_id | 3 byte frame ID string  |
         | encoding | 1 byte encoding int     |
         | data     | text data as raw string |
@@ -358,6 +362,8 @@ class ID3v22_T__Frame:
             (repr(self.id), repr(self.encoding), repr(self.data))
 
     def raw_info(self):
+        """returns a human-readable version of this frame as unicode"""
+
         return u"%s = (%s) %s" % \
             (self.id.decode('ascii'),
              {0: u"Latin-1", 1: u"UCS-2"}[self.encoding],
@@ -489,6 +495,8 @@ class ID3v22_TXX_Frame:
             (repr(self.encoding), repr(self.description), repr(self.data))
 
     def raw_info(self):
+        """returns a human-readable version of this frame as unicode"""
+
         return u"%s = (%s, \"%s\") %s" % \
             (self.id,
              {0: u"Latin-1", 1: u"UCS-2"}[self.encoding],
@@ -516,11 +524,17 @@ class ID3v22_TXX_Frame:
         return cls(encoding, description, data)
 
     def build(self, writer):
+        """writes this frame to the given BitstreamWriter
+        not including its frame header"""
+
         writer.write(8, self.encoding)
         self.description.build(writer)
         writer.write_bytes(self.data)
 
     def size(self):
+        """returns the size of this frame in bytes
+        not including the frame header"""
+
         return 1 + self.description.size() + len(self.data)
 
     def clean(self, fixes_performed):
@@ -568,6 +582,8 @@ class ID3v22_W__Frame:
             (repr(self.frame_id), repr(self.data))
 
     def raw_info(self):
+        """returns a human-readable version of this frame as unicode"""
+
         return u"%s = %s" % (self.id.decode('ascii'),
                              self.data.decode('ascii', 'replace'))
 
@@ -579,12 +595,22 @@ class ID3v22_W__Frame:
         return cls(frame_id, reader.read_bytes(frame_size))
 
     def build(self, writer):
+        """writes this frame to the given BitstreamWriter
+        not including its frame header"""
+
         writer.write_bytes(self.data)
 
     def size(self):
+        """returns the size of this frame in bytes
+        not including the frame header"""
+
         return len(self.data)
 
     def clean(self, fixes_applied):
+        """returns a cleaned frame,
+        or None if the frame should be removed entirely
+        any fixes are appended to fixes_applied as unicode string"""
+
         return self.__class__(self.frame_id, self.data)
 
 
@@ -606,6 +632,8 @@ class ID3v22_WXX_Frame:
             (repr(self.encoding), repr(self.description), repr(self.data))
 
     def raw_info(self):
+        """returns a human-readable version of this frame as unicode"""
+
         return u"%s = (%s, \"%s\") %s" % \
             (self.id,
              {0: u"Latin-1", 1: u"UCS-2"}[self.encoding],
@@ -628,14 +656,24 @@ class ID3v22_WXX_Frame:
         return cls(encoding, description, data)
 
     def build(self, writer):
+        """writes this frame to the given BitstreamWriter
+        not including its frame header"""
+
         writer.write(8, self.encoding)
         self.description.build(writer)
         writer.write_bytes(self.data)
 
     def size(self):
+        """returns the size of this frame in bytes
+        not including the frame header"""
+
         return 1 + self.description.size() + len(self.data)
 
     def clean(self, fixes_performed):
+        """returns a cleaned frame,
+        or None if the frame should be removed entirely
+        any fixes are appended to fixes_applied as unicode string"""
+
         return self.__class__(self.encoding,
                               self.description,
                               self.data)
@@ -643,7 +681,7 @@ class ID3v22_WXX_Frame:
 
 class ID3v22_COM_Frame:
     def __init__(self, encoding, language, short_description, data):
-        """Fields are as follows:
+        """fields are as follows:
         | encoding          | 1 byte int of the comment's text encoding |
         | language          | 3 byte string of the comment's language   |
         | short_description | C_string of a short description           |
@@ -668,6 +706,8 @@ class ID3v22_COM_Frame:
              repr(self.short_description), repr(self.data))
 
     def raw_info(self):
+        """returns a human-readable version of this frame as unicode"""
+
         return u"COM = (%s, %s, \"%s\") %s" % \
             ({0: u'Latin-1', 1: 'UCS-2'}[self.encoding],
              self.language.decode('ascii', 'replace'),
@@ -697,11 +737,17 @@ class ID3v22_COM_Frame:
         return cls(encoding, language, short_description, data)
 
     def build(self, writer):
+        """writes this frame to the given BitstreamWriter
+        not including its frame header"""
+
         writer.build("8u 3b", (self.encoding, self.language))
         self.short_description.build(writer)
         writer.write_bytes(self.data)
 
     def size(self):
+        """returns the size of this frame in bytes
+        not including the frame header"""
+
         return 4 + self.short_description.size() + len(self.data)
 
     @classmethod
@@ -754,7 +800,7 @@ class ID3v22_COM_Frame:
 
 class ID3v22_PIC_Frame(Image):
     def __init__(self, image_format, picture_type, description, data):
-        """Fields are as follows:
+        """fields are as follows:
         | image_format | a 3 byte image format, such as 'JPG'        |
         | picture_type | a 1 byte field indicating front cover, etc. |
         | description  | a description of the image as a C_string    |
@@ -796,6 +842,8 @@ class ID3v22_PIC_Frame(Image):
              repr(self.pic_description))
 
     def raw_info(self):
+        """returns a human-readable version of this frame as unicode"""
+
         return u"PIC = (%s, %d\u00D7%d, %s, \"%s\") %d bytes" % \
             (self.type_string(),
              self.width,
@@ -866,6 +914,9 @@ class ID3v22_PIC_Frame(Image):
                    data)
 
     def build(self, writer):
+        """writes this frame to the given BitstreamWriter
+        not including its frame header"""
+
         writer.build("8u 3b 8u", ({'latin-1': 0,
                                    'ucs2': 1}[self.pic_description.encoding],
                                   self.pic_format,
@@ -874,6 +925,9 @@ class ID3v22_PIC_Frame(Image):
         writer.write_bytes(self.data)
 
     def size(self):
+        """returns the size of this frame in bytes
+        not including the frame header"""
+
         return (5 + self.pic_description.size() + len(self.data))
 
     @classmethod
@@ -958,6 +1012,8 @@ class ID3v22Comment(MetaData):
         return iter(self.frames)
 
     def raw_info(self):
+        """returns a human-readable version of this frame as unicode"""
+
         from os import linesep
 
         return linesep.decode('ascii').join(
@@ -1195,7 +1251,7 @@ class ID3v22Comment(MetaData):
 
     @classmethod
     def converted(cls, metadata):
-        """Converts a MetaData object to an ID3v2*Comment object."""
+        """converts a MetaData object to an ID3v2*Comment object"""
 
         if (metadata is None):
             return None
@@ -1237,7 +1293,7 @@ class ID3v22Comment(MetaData):
         return cls(frames)
 
     def clean(self, fixes_performed):
-        """Returns a new MetaData object that's been cleaned of problems."""
+        """returns a new MetaData object that's been cleaned of problems"""
 
         return self.__class__([filtered_frame for filtered_frame in
                                [frame.clean(fixes_performed) for frame in self]
@@ -1296,7 +1352,7 @@ class ID3v23_WXXX_Frame(ID3v22_WXX_Frame):
 
 class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
     def __init__(self, mime_type, picture_type, description, data):
-        """Fields are as follows:
+        """fields are as follows:
         | mime_type    | a C_string of the image's MIME type         |
         | picture_type | a 1 byte field indicating front cover, etc. |
         | description  | a description of the image as a C_string    |
@@ -1337,6 +1393,8 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
              repr(self.pic_description))
 
     def raw_info(self):
+        """returns a human-readable version of this frame as unicode"""
+
         return u"APIC = (%s, %d\u00D7%d, %s, \"%s\") %d bytes" % \
             (self.type_string(),
              self.width,
@@ -1378,6 +1436,8 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
 
     @classmethod
     def parse(cls, frame_id, frame_size, reader):
+        """parses this frame from the given BitstreamReader"""
+
         encoding = reader.read(8)
         mime_type = C_string.parse('ascii', reader)
         picture_type = reader.read(8)
@@ -1391,6 +1451,9 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
         return cls(mime_type, picture_type, description, data)
 
     def build(self, writer):
+        """writes this frame to the given BitstreamWriter
+        not including its frame header"""
+
         writer.write(8, {'latin-1': 0,
                          'ucs2': 1}[self.pic_description.encoding])
         self.pic_mime_type.build(writer)
@@ -1399,6 +1462,9 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
         writer.write_bytes(self.data)
 
     def size(self):
+        """returns the size of this frame in bytes
+        not including the frame header"""
+
         return (1 +
                 self.pic_mime_type.size() +
                 1 +
@@ -1443,7 +1509,7 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
 
 class ID3v23_COMM_Frame(ID3v22_COM_Frame):
     def __init__(self, encoding, language, short_description, data):
-        """Fields are as follows:
+        """fields are as follows:
         | encoding          | 1 byte int of the comment's text encoding |
         | language          | 3 byte string of the comment's language   |
         | short_description | C_string of a short description           |
@@ -1462,6 +1528,8 @@ class ID3v23_COMM_Frame(ID3v22_COM_Frame):
              repr(self.short_description), repr(self.data))
 
     def raw_info(self):
+        """returns a human-readable version of this frame as unicode"""
+
         return u"COMM = (%s, %s, \"%s\") %s" % \
             ({0: u'Latin-1', 1: 'UCS-2'}[self.encoding],
              self.language.decode('ascii', 'replace'),
@@ -1606,6 +1674,8 @@ class ID3v24_T___Frame(ID3v23_T___Frame):
              3: u"utf-8"}[self.encoding], 'replace').split(unichr(0), 1)[0]
 
     def raw_info(self):
+        """returns a human-readable version of this frame as unicode"""
+
         return u"%s = (%s) %s" % (self.id.decode('ascii'),
                                   {0: u"Latin-1",
                                    1: u"UTF-16",
@@ -1629,6 +1699,8 @@ class ID3v24_TXXX_Frame(ID3v23_TXXX_Frame):
             (repr(self.encoding), repr(self.description), repr(self.data))
 
     def raw_info(self):
+        """returns a human-readable version of this frame as unicode"""
+
         return u"%s = (%s, \"%s\") %s" % \
             (self.id,
              {0: u"Latin-1",
@@ -1686,6 +1758,8 @@ class ID3v24_APIC_Frame(ID3v23_APIC_Frame):
 
     @classmethod
     def parse(cls, frame_id, frame_size, reader):
+        """parses this frame from the given BitstreamReader"""
+
         encoding = reader.read(8)
         mime_type = C_string.parse('ascii', reader)
         picture_type = reader.read(8)
@@ -1701,6 +1775,9 @@ class ID3v24_APIC_Frame(ID3v23_APIC_Frame):
         return cls(mime_type, picture_type, description, data)
 
     def build(self, writer):
+        """writes this frame to the given BitstreamWriter
+        not including its frame header"""
+
         writer.write(8, {'latin-1': 0,
                          'utf-16': 1,
                          'utf-16be': 2,
@@ -1758,6 +1835,8 @@ class ID3v24_WXXX_Frame(ID3v23_WXXX_Frame):
             (repr(self.encoding), repr(self.description), repr(self.data))
 
     def raw_info(self):
+        """returns a human-readable version of this frame as unicode"""
+
         return u"%s = (%s, \"%s\") %s" % \
             (self.id,
              {0: u'Latin-1',
@@ -1796,6 +1875,8 @@ class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
                                  3: 'utf-8'}[self.encoding], 'replace')
 
     def raw_info(self):
+        """returns a human-readable version of this frame as unicode"""
+
         return u"COMM = (%s, %s, \"%s\") %s" % \
             ({0: u'Latin-1',
               1: u'UTF-16',
@@ -1972,14 +2053,14 @@ from __id3v1__ import *
 
 
 class ID3CommentPair(MetaData):
-    """A pair of ID3v2/ID3v1 comments.
+    """a pair of ID3v2/ID3v1 comments
 
-    These can be manipulated as a set."""
+    these can be manipulated as a set"""
 
     def __init__(self, id3v2_comment, id3v1_comment):
-        """id3v2 and id3v1 are ID3v2Comment and ID3v1Comment objects or None.
+        """id3v2 and id3v1 are ID3v2Comment and ID3v1Comment objects or None
 
-        Values in ID3v2 take precendence over ID3v1, if present."""
+        values in ID3v2 take precendence over ID3v1, if present"""
 
         self.__dict__['id3v2'] = id3v2_comment
         self.__dict__['id3v1'] = id3v1_comment
@@ -2029,7 +2110,7 @@ class ID3CommentPair(MetaData):
     def converted(cls, metadata,
                   id3v2_class=ID3v23Comment,
                   id3v1_class=ID3v1Comment):
-        """Takes a MetaData object and returns an ID3CommentPair object."""
+        """takes a MetaData object and returns an ID3CommentPair object"""
 
         if (metadata is None):
             return None
@@ -2046,6 +2127,9 @@ class ID3CommentPair(MetaData):
                 id3v1_class.converted(metadata))
 
     def raw_info(self):
+        """returns a human-readable version of this metadata pair
+        as a unicode string"""
+
         if ((self.id3v2 is not None) and (self.id3v1 is not None)):
             #both comments present
             return (self.id3v2.raw_info() +
@@ -2062,7 +2146,7 @@ class ID3CommentPair(MetaData):
 
     #ImageMetaData passthroughs
     def images(self):
-        """Returns a list of embedded Image objects."""
+        """returns a list of embedded Image objects"""
 
         if (self.id3v2 is not None):
             return self.id3v2.images()
@@ -2070,20 +2154,20 @@ class ID3CommentPair(MetaData):
             return []
 
     def add_image(self, image):
-        """Embeds an Image object in this metadata."""
+        """embeds an Image object in this metadata"""
 
         if (self.id3v2 is not None):
             self.id3v2.add_image(image)
 
     def delete_image(self, image):
-        """Deletes an Image object from this metadata."""
+        """deletes an Image object from this metadata"""
 
         if (self.id3v2 is not None):
             self.id3v2.delete_image(image)
 
     @classmethod
     def supports_images(cls):
-        """Returns True."""
+        """returns True"""
 
         return True
 

@@ -21,10 +21,12 @@ from audiotools import MetaData
 
 
 class ID3v1Comment(MetaData):
-    """A complete ID3v1 tag."""
+    """a complete ID3v1 tag"""
 
     def __init__(self, track_name, artist_name, album_name,
                  year, comment, track_number, genre):
+        """all fields except track_number are binary strings"""
+
         #pre-emptively cut down overlong fields
         MetaData.__init__(self,
                           track_name=track_name[0:30],
@@ -36,6 +38,9 @@ class ID3v1Comment(MetaData):
         self.__dict__['genre'] = genre
 
     def raw_info(self):
+        """returns a human-readable version of this metadata
+        as a unicode string"""
+
         from os import linesep
 
         return linesep.decode('ascii').join(
@@ -108,13 +113,13 @@ class ID3v1Comment(MetaData):
 
     @classmethod
     def supports_images(cls):
-        """Returns False."""
+        """returns False"""
 
         return False
 
     @classmethod
     def converted(cls, metadata):
-        """Converts a MetaData object to an ID3v1Comment object."""
+        """converts a MetaData object to an ID3v1Comment object"""
 
         if (metadata is None):
             return None
@@ -136,11 +141,13 @@ class ID3v1Comment(MetaData):
                                 genre=0)
 
     def images(self):
-        """Returns an empty list of Image objects."""
+        """returns an empty list of Image objects"""
 
         return []
 
     def clean(self, fixes_performed):
+        """returns a new ID3v1Comment object that's been cleaned of problems"""
+
         fields = {}
         for (attr, name) in [("track_name", u"title"),
                              ("artist_name", u"artist"),

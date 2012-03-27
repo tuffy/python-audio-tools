@@ -117,7 +117,7 @@ class AccurateRipEntry:
 
     @classmethod
     def parse_string(cls, string):
-        """Given a string, returns an AccurateRipEntry object."""
+        """given a string, returns an AccurateRipEntry object"""
 
         entries = cls.ACCURATERIP_DB_ENTRY.parse(string)
 
@@ -138,8 +138,8 @@ class AccurateRipEntry:
 
     @classmethod
     def from_disc_id(cls, disc_id):
-        """Given an AccurateRipDiscID, returns an AccurateRipEntry
-        or None if the given disc ID has no matches in the database."""
+        """given an AccurateRipDiscID, returns an AccurateRipEntry
+        or None if the given disc ID has no matches in the database"""
 
         import urllib
 

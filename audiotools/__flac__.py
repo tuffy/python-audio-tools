@@ -48,18 +48,20 @@ class InvalidFLAC(InvalidFile):
 
 
 class FlacMetaDataBlockTooLarge(Exception):
-    """Raised if one attempts to build a FlacMetaDataBlock too large."""
+    """raised if one attempts to build a FlacMetaDataBlock too large"""
 
     pass
 
 
 class FlacMetaData(MetaData):
-    """A class for managing a native FLAC's metadata."""
+    """a class for managing a native FLAC's metadata"""
 
     def __init__(self, blocks):
         self.__dict__["block_list"] = list(blocks)
 
     def has_block(self, block_id):
+        """returns True if the given block ID is present"""
+
         return block_id in [b.BLOCK_ID for b in self.block_list]
 
     def add_block(self, block):
@@ -175,7 +177,7 @@ class FlacMetaData(MetaData):
 
     @classmethod
     def converted(cls, metadata):
-        """Takes a MetaData object and returns a FlacMetaData object."""
+        """takes a MetaData object and returns a FlacMetaData object"""
 
         if (metadata is None):
             return None
@@ -188,32 +190,32 @@ class FlacMetaData(MetaData):
                        [Flac_PADDING(4096)])
 
     def add_image(self, image):
-        """Embeds an Image object in this metadata."""
+        """embeds an Image object in this metadata"""
 
         self.add_block(Flac_PICTURE.converted(image))
 
     def delete_image(self, image):
-        """Deletes an Image object from this metadata."""
+        """deletes an image object from this metadata"""
 
         self.block_list = [b for b in self.block_list
                            if not ((b.BLOCK_ID == Flac_PICTURE.BLOCK_ID) and
                                    (b == image))]
 
     def images(self):
-        """Returns a list of embedded Image objects."""
+        """returns a list of embedded Image objects"""
 
         return self.get_blocks(Flac_PICTURE.BLOCK_ID)
 
     @classmethod
     def supports_images(cls):
-        """Returns True."""
+        """returns True"""
 
         return True
 
     def clean(self, fixes_performed):
-        """Returns a new FlacMetaData object that's been cleaned of problems.
+        """returns a new FlacMetaData object that's been cleaned of problems
 
-        Any fixes performed are appended to fixes_performed as Unicode."""
+        any fixes performed are appended to fixes_performed as unicode"""
 
         cleaned_blocks = []
 
@@ -269,6 +271,9 @@ class FlacMetaData(MetaData):
 
     @classmethod
     def parse(cls, reader):
+        """returns a FlacMetaData object from the given BitstreamReader
+        which has already parsed the 4-byte 'fLaC' file ID"""
+
         block_list = []
 
         last = 0
@@ -307,16 +312,23 @@ class FlacMetaData(MetaData):
         return cls(block_list)
 
     def raw_info(self):
+        """returns human-readable metadata as a unicode string"""
+
         from os import linesep
 
         return linesep.decode('ascii').join(
             ["FLAC Tags:"] + [block.raw_info() for block in self.blocks()])
 
     def blocks(self):
+        """yields FlacMetaData's individual metadata blocks"""
+
         for block in self.block_list:
             yield block
 
     def build(self, writer):
+        """writes the FlacMetaData to the given BitstreamWriter
+        not including the 4-byte 'fLaC' file ID"""
+
         from . import iter_last
 
         for (last_block,
@@ -330,6 +342,10 @@ class FlacMetaData(MetaData):
             block.build(writer)
 
     def size(self):
+        """returns the size of all metadata blocks
+        including the block headers
+        but not including the 4-byte 'fLaC' file ID"""
+
         from operator import add
 
         return reduce(add, [4 + b.size() for b in self.block_list], 0)
@@ -342,6 +358,9 @@ class Flac_STREAMINFO:
                  minimum_frame_size, maximum_frame_size,
                  sample_rate, channels, bits_per_sample,
                  total_samples, md5sum):
+        """all values are non-negative integers except for md5sum
+        which is a 16-byte binary string"""
+
         self.minimum_block_size = minimum_block_size
         self.maximum_block_size = maximum_block_size
         self.minimum_frame_size = minimum_frame_size
@@ -353,6 +372,8 @@ class Flac_STREAMINFO:
         self.md5sum = md5sum
 
     def copy(self):
+        """returns a duplicate of this metadata block"""
+
         return Flac_STREAMINFO(self.minimum_block_size,
                                self.maximum_block_size,
                                self.minimum_frame_size,
@@ -393,6 +414,9 @@ class Flac_STREAMINFO:
                                       "md5sum"]]))
 
     def raw_info(self):
+        """returns a human-readable version of this metadata block
+        as unicode"""
+
         from os import linesep
 
         return linesep.decode('ascii').join(
@@ -410,12 +434,16 @@ class Flac_STREAMINFO:
 
     @classmethod
     def parse(cls, reader):
+        """returns this metadata block from a BitstreamReader"""
+
         values = reader.parse("16u16u24u24u20u3u5u36U16b")
         values[5] += 1  # channels
         values[6] += 1  # bits-per-sample
         return cls(*values)
 
     def build(self, writer):
+        """writes this metadata block to a BitstreamWriter"""
+
         writer.build("16u16u24u24u20u3u5u36U16b",
                      (self.minimum_block_size,
                       self.maximum_block_size,
@@ -428,6 +456,9 @@ class Flac_STREAMINFO:
                       self.md5sum))
 
     def size(self):
+        """the size of this metadata block
+        not including the 4-byte block header"""
+
         return 34
 
 
@@ -435,6 +466,8 @@ class Flac_VORBISCOMMENT(VorbisComment):
     BLOCK_ID = 4
 
     def copy(self):
+        """returns a duplicate of this metadata block"""
+
         return Flac_VORBISCOMMENT(self.comment_strings[:],
                                   self.vendor_string)
 
@@ -443,6 +476,9 @@ class Flac_VORBISCOMMENT(VorbisComment):
             (repr(self.comment_strings), repr(self.vendor_string))
 
     def raw_info(self):
+        """returns a human-readable version of this metadata block
+        as unicode"""
+
         from os import linesep
         from . import display_unicode
 
@@ -472,7 +508,7 @@ class Flac_VORBISCOMMENT(VorbisComment):
 
     @classmethod
     def converted(cls, metadata):
-        """Converts a MetaData object to a VorbisComment object."""
+        """converts a MetaData object to a VorbisComment object"""
 
         if ((metadata is None) or (isinstance(metadata, Flac_VORBISCOMMENT))):
             return metadata
@@ -485,12 +521,16 @@ class Flac_VORBISCOMMENT(VorbisComment):
 
     @classmethod
     def parse(cls, reader):
+        """returns this metadata block from a BitstreamReader"""
+
         reader.set_endianness(1)
         vendor_string = reader.read_bytes(reader.read(32)).decode('utf-8')
         return cls([reader.read_bytes(reader.read(32)).decode('utf-8')
                     for i in xrange(reader.read(32))], vendor_string)
 
     def build(self, writer):
+        """writes this metadata block to a BitstreamWriter"""
+
         writer.set_endianness(1)
         vendor_string = self.vendor_string.encode('utf-8')
         writer.build("32u%db" % (len(vendor_string)),
@@ -503,6 +543,9 @@ class Flac_VORBISCOMMENT(VorbisComment):
         writer.set_endianness(0)
 
     def size(self):
+        """the size of this metadata block
+        not including the 4-byte block header"""
+
         from operator import add
 
         return (4 + len(self.vendor_string.encode('utf-8')) +
@@ -526,6 +569,8 @@ class Flac_PICTURE(Image):
         self.__dict__["picture_type"] = picture_type
 
     def copy(self):
+        """returns a duplicate of this metadata block"""
+
         return Flac_PICTURE(self.picture_type,
                             self.mime_type,
                             self.description,
@@ -582,6 +627,9 @@ class Flac_PICTURE(Image):
                                       "color_count"]]))
 
     def raw_info(self):
+        """returns a human-readable version of this metadata block
+        as unicode"""
+
         from os import linesep
 
         return linesep.decode('ascii').join(
@@ -597,6 +645,8 @@ class Flac_PICTURE(Image):
 
     @classmethod
     def parse(cls, reader):
+        """returns this metadata block from a BitstreamReader"""
+
         return cls(
             picture_type=reader.read(32),
             mime_type=reader.read_bytes(reader.read(32)).decode('ascii'),
@@ -608,6 +658,8 @@ class Flac_PICTURE(Image):
             data=reader.read_bytes(reader.read(32)))
 
     def build(self, writer):
+        """writes this metadata block to a BitstreamWriter"""
+
         writer.build("32u [ 32u%db ] [32u%db ] 32u 32u 32u 32u [ 32u%db ]" %
                      (len(self.mime_type.encode('ascii')),
                       len(self.description.encode('utf-8')),
@@ -625,6 +677,9 @@ class Flac_PICTURE(Image):
                       self.data))
 
     def size(self):
+        """the size of this metadata block
+        not including the 4-byte block header"""
+
         from .bitstream import format_size
 
         return format_size(
@@ -635,7 +690,7 @@ class Flac_PICTURE(Image):
 
     @classmethod
     def converted(cls, image):
-        """Converts an Image object to a FlacPictureComment."""
+        """converts an Image object to a FlacPictureComment"""
 
         return cls(
             picture_type={4: 0, 0: 3, 1: 4, 2: 5, 3: 6}.get(image.type, 0),
@@ -648,9 +703,9 @@ class Flac_PICTURE(Image):
             data=image.data)
 
     def type_string(self):
-        """Returns the image's type as a human readable plain string.
+        """returns the image's type as a human readable plain string
 
-        For example, an image of type 0 returns "Front Cover".
+        for example, an image of type 0 returns "Front Cover"
         """
 
         return {0: "Other",
@@ -714,6 +769,8 @@ class Flac_APPLICATION:
             return True
 
     def copy(self):
+        """returns a duplicate of this metadata block"""
+
         return Flac_APPLICATION(self.application_id,
                                 self.data)
 
@@ -722,6 +779,9 @@ class Flac_APPLICATION:
                                              repr(self.data))
 
     def raw_info(self):
+        """returns a human-readable version of this metadata block
+        as unicode"""
+
         from os import linesep
 
         return u"  APPLICATION:%s    %s (%d bytes)" % \
@@ -731,14 +791,21 @@ class Flac_APPLICATION:
 
     @classmethod
     def parse(cls, reader, block_length):
+        """returns this metadata block from a BitstreamReader"""
+
         return cls(application_id=reader.read_bytes(4),
                    data=reader.read_bytes(block_length - 4))
 
     def build(self, writer):
+        """writes this metadata block to a BitstreamWriter"""
+
         writer.write_bytes(self.application_id)
         writer.write_bytes(self.data)
 
     def size(self):
+        """the size of this metadata block
+        not including the 4-byte block header"""
+
         return len(self.application_id) + len(self.data)
 
 
@@ -757,12 +824,17 @@ class Flac_SEEKTABLE:
             return False
 
     def copy(self):
+        """returns a duplicate of this metadata block"""
+
         return Flac_SEEKTABLE(self.seekpoints[:])
 
     def __repr__(self):
         return "Flac_SEEKTABLE(%s)" % (repr(self.seekpoints))
 
     def raw_info(self):
+        """returns a human-readable version of this metadata block
+        as unicode"""
+
         from os import linesep
 
         return linesep.decode('ascii').join(
@@ -773,14 +845,21 @@ class Flac_SEEKTABLE:
 
     @classmethod
     def parse(cls, reader, total_seekpoints):
+        """returns this metadata block from a BitstreamReader"""
+
         return cls([tuple(reader.parse("64U64U16u"))
                     for i in xrange(total_seekpoints)])
 
     def build(self, writer):
+        """writes this metadata block to a BitstreamWriter"""
+
         for seekpoint in self.seekpoints:
             writer.build("64U64U16u", seekpoint)
 
     def size(self):
+        """the size of this metadata block
+        not including the 4-byte block header"""
+
         from .bitstream import format_size
 
         return (format_size("64U64U16u") / 8) * len(self.seekpoints)
@@ -816,6 +895,8 @@ class Flac_CUESHEET:
         self.tracks = tracks
 
     def copy(self):
+        """returns a duplicate of this metadata block"""
+
         return Flac_CUESHEET(self.catalog_number,
                              self.lead_in_samples,
                              self.is_cdda,
@@ -841,6 +922,9 @@ class Flac_CUESHEET:
                                       "tracks"]]))
 
     def raw_info(self):
+        """returns a human-readable version of this metadata block
+        as unicode"""
+
         from os import linesep
 
         return linesep.decode('ascii').join(
@@ -854,6 +938,8 @@ class Flac_CUESHEET:
 
     @classmethod
     def parse(cls, reader):
+        """returns this metadata block from a BitstreamReader"""
+
         (catalog_number,
          lead_in_samples,
          is_cdda,
@@ -865,6 +951,8 @@ class Flac_CUESHEET:
                     for i in xrange(track_count)])
 
     def build(self, writer):
+        """writes this metadata block to a BitstreamWriter"""
+
         writer.build("128b64U1u2071p8u",
                      (self.catalog_number,
                       self.lead_in_samples,
@@ -874,6 +962,9 @@ class Flac_CUESHEET:
             track.build(writer)
 
     def size(self):
+        """the size of this metadata block
+        not including the 4-byte block header"""
+
         from .bitstream import BitstreamAccumulator
 
         a = BitstreamAccumulator(0)
@@ -882,9 +973,9 @@ class Flac_CUESHEET:
 
     @classmethod
     def converted(cls, sheet, total_frames, sample_rate=44100):
-        """Converts a cuesheet compatible object to Flac_CUESHEET objects.
+        """converts a cuesheet compatible object to Flac_CUESHEET objects
 
-        A total_frames integer (in PCM frames) is also required.
+        a total_frames integer (in PCM frames) is also required
         """
 
         if (sheet.catalog() is None):
@@ -921,7 +1012,7 @@ class Flac_CUESHEET:
                                  index_points=[])])
 
     def catalog(self):
-        """Returns the cuesheet's catalog number as a plain string."""
+        """returns the cuesheet's catalog number as a plain string"""
 
         catalog_number = self.catalog_number.rstrip(chr(0))
 
@@ -931,7 +1022,7 @@ class Flac_CUESHEET:
             return None
 
     def ISRCs(self):
-        """Returns a dict of ISRC values as plain strings."""
+        """returns a dict of ISRC values as plain strings"""
 
         return dict([(track.number, track.ISRC) for track in
                      self.tracks
@@ -939,7 +1030,7 @@ class Flac_CUESHEET:
                          (len(track.ISRC.strip(chr(0))) > 0))])
 
     def indexes(self, sample_rate=44100):
-        """Returns a list of (start, end) integer tuples."""
+        """returns a list of (start, end) integer tuples"""
 
         return [tuple([(index.offset + track.offset) * 75 / sample_rate
                        for index in
@@ -950,10 +1041,10 @@ class Flac_CUESHEET:
                 if (track.number != 170)]
 
     def pcm_lengths(self, total_length):
-        """Returns a list of PCM lengths for all cuesheet audio tracks.
+        """returns a list of PCM lengths for all cuesheet audio tracks
 
-        Note that the total length variable is only for compatibility.
-        It is not necessary for FlacCueSheets.
+        note that the total length variable is only for compatibility
+        it is not necessary for FlacCueSheets
         """
 
         if (len(self.tracks) > 0):
@@ -981,6 +1072,8 @@ class Flac_CUESHEET_track:
         self.index_points = index_points
 
     def copy(self):
+        """returns a duplicate of this metadata block"""
+
         return Flac_CUESHEET_track(self.offset,
                                    self.number,
                                    self.ISRC,
@@ -1000,6 +1093,8 @@ class Flac_CUESHEET_track:
                                       "index_points"]]))
 
     def raw_info(self):
+        """returns a human-readable version of this track as unicode"""
+
         if (len(self.ISRC.strip(chr(0))) > 0):
             return u"%9.d %13.d  %s" % \
                 (self.number, self.offset, self.ISRC)
@@ -1022,6 +1117,8 @@ class Flac_CUESHEET_track:
 
     @classmethod
     def parse(cls, reader):
+        """returns this cuesheet track from a BitstreamReader"""
+
         (offset,
          number,
          ISRC,
@@ -1033,6 +1130,8 @@ class Flac_CUESHEET_track:
                     for i in xrange(index_points)])
 
     def build(self, writer):
+        """writes this cuesheet track to a BitstreamWriter"""
+
         writer.build("64U8u12b1u1u110p8u",
                      (self.offset,
                       self.number,
@@ -1050,6 +1149,8 @@ class Flac_CUESHEET_index:
         self.number = number
 
     def copy(self):
+        """returns a duplicate of this metadata block"""
+
         return Flac_CUESHEET_index(self.offset, self.number)
 
     def __repr__(self):
@@ -1065,11 +1166,15 @@ class Flac_CUESHEET_index:
 
     @classmethod
     def parse(cls, reader):
+        """returns this cuesheet index from a BitstreamReader"""
+
         (offset, number) = reader.parse("64U8u24p")
 
         return cls(offset, number)
 
     def build(self, writer):
+        """writes this cuesheet index to a BitstreamWriter"""
+
         writer.build("64U8u24p", (self.offset, self.number))
 
 
@@ -1080,12 +1185,17 @@ class Flac_PADDING:
         self.length = length
 
     def copy(self):
+        """returns a duplicate of this metadata block"""
+
         return Flac_PADDING(self.length)
 
     def __repr__(self):
         return "Flac_PADDING(%d)" % (self.length)
 
     def raw_info(self):
+        """returns a human-readable version of this metadata block
+        as unicode"""
+
         from os import linesep
 
         return linesep.decode('ascii').join(
@@ -1094,18 +1204,25 @@ class Flac_PADDING:
 
     @classmethod
     def parse(cls, reader, block_length):
+        """returns this metadata block from a BitstreamReader"""
+
         reader.skip_bytes(block_length)
         return cls(length=block_length)
 
     def build(self, writer):
+        """writes this metadata block to a BitstreamWriter"""
+
         writer.write_bytes(chr(0) * self.length)
 
     def size(self):
+        """the size of this metadata block
+        not including the 4-byte block header"""
+
         return self.length
 
 
 class FlacAudio(WaveContainer, AiffContainer):
-    """A Free Lossless Audio Codec file."""
+    """a Free Lossless Audio Codec file"""
 
     SUFFIX = "flac"
     NAME = SUFFIX
@@ -1119,7 +1236,7 @@ class FlacAudio(WaveContainer, AiffContainer):
     METADATA_CLASS = FlacMetaData
 
     def __init__(self, filename):
-        """filename is a plain string."""
+        """filename is a plain string"""
 
         AudioFile.__init__(self, filename)
         self.__samplerate__ = 0
@@ -1136,9 +1253,9 @@ class FlacAudio(WaveContainer, AiffContainer):
 
     @classmethod
     def is_type(cls, file):
-        """Returns True if the given file object describes this format.
+        """returns True if the given file object describes this format
 
-        Takes a seekable file pointer rewound to the start of the file."""
+        takes a seekable file pointer rewound to the start of the file"""
 
         if (file.read(4) == 'fLaC'):
             #proper FLAC file with no junk at the beginning
@@ -1172,7 +1289,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                 return False
 
     def channel_mask(self):
-        """Returns a ChannelMask object of this track's channel layout."""
+        """returns a ChannelMask object of this track's channel layout"""
 
         if (self.channels() <= 2):
             return ChannelMask.from_channels(self.channels())
@@ -1207,14 +1324,14 @@ class FlacAudio(WaveContainer, AiffContainer):
                 return ChannelMask(0)
 
     def lossless(self):
-        """Returns True."""
+        """returns True"""
 
         return True
 
     def get_metadata(self):
-        """Returns a MetaData object.
+        """returns a MetaData object
 
-        Raises IOError if unable to read the file."""
+        raises IOError if unable to read the file"""
 
         #FlacAudio *always* returns a FlacMetaData object
         #even if the blocks aren't present
@@ -1233,11 +1350,11 @@ class FlacAudio(WaveContainer, AiffContainer):
             f.close()
 
     def update_metadata(self, metadata):
-        """Takes this track's current MetaData object
+        """takes this track's current MetaData object
         as returned by get_metadata() and sets this track's metadata
-        with any fields updated in that object.
+        with any fields updated in that object
 
-        Raises IOError if unable to write the file.
+        raises IOError if unable to write the file
         """
 
         from .bitstream import BitstreamWriter
@@ -1325,10 +1442,10 @@ class FlacAudio(WaveContainer, AiffContainer):
             stream.close()
 
     def set_metadata(self, metadata):
-        """Takes a MetaData object and sets this track's metadata.
+        """takes a MetaData object and sets this track's metadata
 
-        This metadata includes track name, album name, and so on.
-        Raises IOError if unable to write the file."""
+        this metadata includes track name, album name, and so on
+        raises IOError if unable to write the file"""
 
         new_metadata = self.METADATA_CLASS.converted(metadata)
 
@@ -1411,9 +1528,9 @@ class FlacAudio(WaveContainer, AiffContainer):
         self.update_metadata(old_metadata)
 
     def metadata_length(self):
-        """Returns the length of all FLAC metadata blocks as an integer.
+        """returns the length of all FLAC metadata blocks as an integer
 
-        not including the 4 byte "fLaC" file header."""
+        not including the 4 byte "fLaC" file header"""
 
         from .bitstream import BitstreamReader
 
@@ -1439,10 +1556,10 @@ class FlacAudio(WaveContainer, AiffContainer):
             f.close()
 
     def delete_metadata(self):
-        """Deletes the track's MetaData.
+        """deletes the track's MetaData
 
-        This removes or unsets tags as necessary in order to remove all data.
-        Raises IOError if unable to write the file."""
+        this removes or unsets tags as necessary in order to remove all data
+        raises IOError if unable to write the file"""
 
         self.set_metadata(MetaData())
 
@@ -1466,10 +1583,10 @@ class FlacAudio(WaveContainer, AiffContainer):
             reader.skip_bytes(length)
 
     def set_cuesheet(self, cuesheet):
-        """Imports cuesheet data from a Cuesheet-compatible object.
+        """imports cuesheet data from a Cuesheet-compatible object
 
-        This are objects with catalog(), ISRCs(), indexes(), and pcm_lengths()
-        methods.  Raises IOError if an error occurs setting the cuesheet."""
+        this are objects with catalog(), ISRCs(), indexes(), and pcm_lengths()
+        methods.  Raises IOError if an error occurs setting the cuesheet"""
 
         if (cuesheet is not None):
             metadata = self.get_metadata()
@@ -1478,9 +1595,9 @@ class FlacAudio(WaveContainer, AiffContainer):
             self.update_metadata(metadata)
 
     def get_cuesheet(self):
-        """Returns the embedded Cuesheet-compatible object, or None.
+        """returns the embedded Cuesheet-compatible object, or None
 
-        Raises IOError if a problem occurs when reading the file."""
+        raises IOError if a problem occurs when reading the file"""
 
         try:
             return self.get_metadata().get_block(Flac_CUESHEET.BLOCK_ID)
@@ -1488,7 +1605,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             return None
 
     def to_pcm(self):
-        """Returns a PCMReader object containing the track's PCM data."""
+        """returns a PCMReader object containing the track's PCM data"""
 
         from . import decoders
 
@@ -1508,13 +1625,13 @@ class FlacAudio(WaveContainer, AiffContainer):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
-        """Encodes a new file from PCM data.
+        """encodes a new file from PCM data
 
-        Takes a filename string, PCMReader object
-        and optional compression level string.
-        Encodes a new audio file from pcmreader's data
+        takes a filename string, PCMReader object
+        and optional compression level string
+        encodes a new audio file from pcmreader's data
         at the given filename with the specified compression level
-        and returns a new FlacAudio object."""
+        and returns a new FlacAudio object"""
 
         from . import encoders
 
@@ -1636,6 +1753,9 @@ class FlacAudio(WaveContainer, AiffContainer):
             raise err
 
     def seektable(self, offsets=None, seekpoint_interval=None):
+        """returns a new Flac_SEEKTABLE object
+        created from parsing the FLAC file itself"""
+
         from bisect import bisect_right
 
         if (offsets is None):
@@ -1668,12 +1788,12 @@ class FlacAudio(WaveContainer, AiffContainer):
         return Flac_SEEKTABLE(seekpoints)
 
     def has_foreign_riff_chunks(self):
-        """Returns True if the audio file contains non-audio RIFF chunks.
+        """returns True if the audio file contains non-audio RIFF chunks
 
-        During transcoding, if the source audio file has foreign RIFF chunks
+        during transcoding, if the source audio file has foreign RIFF chunks
         and the target audio format supports foreign RIFF chunks,
         conversion should be routed through .wav conversion
-        to avoid losing those chunks."""
+        to avoid losing those chunks"""
 
         try:
             return 'riff' in [
@@ -1712,9 +1832,9 @@ class FlacAudio(WaveContainer, AiffContainer):
                 yield RIFF_Chunk(chunk_id, chunk_size, chunk_data[0:chunk_size])
 
     def to_wave(self, wave_filename, progress=None):
-        """Writes the contents of this file to the given .wav filename string.
+        """writes the contents of this file to the given .wav filename string
 
-        Raises EncodingError if some error occurs during decoding."""
+        raises EncodingError if some error occurs during decoding"""
 
         if (self.has_foreign_riff_chunks()):
             WaveAudio.wave_from_chunks(wave_filename,
@@ -1725,14 +1845,14 @@ class FlacAudio(WaveContainer, AiffContainer):
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None,
                   progress=None):
-        """Encodes a new AudioFile from an existing .wav file.
+        """encodes a new AudioFile from an existing .wav file
 
-        Takes a filename string, wave_filename string
+        takes a filename string, wave_filename string
         of an existing WaveAudio file
-        and an optional compression level string.
-        Encodes a new audio file from the wave's data
+        and an optional compression level string
+        encodes a new audio file from the wave's data
         at the given filename with the specified compression level
-        and returns a new FlacAudio object."""
+        and returns a new FlacAudio object"""
 
         if ((compression is None) or
             (compression not in cls.COMPRESSION_MODES)):
@@ -1775,7 +1895,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         return flac
 
     def has_foreign_aiff_chunks(self):
-        """Returns True if the audio file contains non-audio AIFF chunks."""
+        """returns True if the audio file contains non-audio AIFF chunks"""
 
         return 'aiff' in [
             block.application_id for block in
@@ -1784,14 +1904,14 @@ class FlacAudio(WaveContainer, AiffContainer):
     @classmethod
     def from_aiff(cls, filename, aiff_filename, compression=None,
                   progress=None):
-        """Encodes a new AudioFile from an existing .aiff file.
+        """encodes a new AudioFile from an existing .aiff file
 
-        Takes a filename string, aiff_filename string
+        takes a filename string, aiff_filename string
         of an existing AiffAudio file
-        and an optional compression level string.
-        Encodes a new audio file from the wave's data
+        and an optional compression level string
+        encodes a new audio file from the wave's data
         at the given filename with the specified compression level
-        and returns a new FlacAudio object."""
+        and returns a new FlacAudio object"""
 
         if ((compression is None) or
             (compression not in cls.COMPRESSION_MODES)):
@@ -1834,6 +1954,10 @@ class FlacAudio(WaveContainer, AiffContainer):
         return flac
 
     def to_aiff(self, aiff_filename, progress=None):
+        """writes the contents of this file to the given .aiff filename string
+
+        raises EncodingError if some error occurs during decoding"""
+
         if (self.has_foreign_aiff_chunks()):
             AiffAudio.aiff_from_chunks(aiff_filename,
                                        self.aiff_chunks(progress))
@@ -1870,12 +1994,12 @@ class FlacAudio(WaveContainer, AiffContainer):
 
     def convert(self, target_path, target_class, compression=None,
                 progress=None):
-        """Encodes a new AudioFile from existing AudioFile.
+        """encodes a new AudioFile from existing AudioFile
 
-        Take a filename string, target class and optional compression string.
-        Encodes a new AudioFile in the target class and returns
-        the resulting object.
-        May raise EncodingError if some problem occurs during encoding."""
+        take a filename string, target class and optional compression string
+        encodes a new AudioFile in the target class and returns
+        the resulting object
+        may raise EncodingError if some problem occurs during encoding"""
 
         #If a FLAC has embedded RIFF *and* embedded AIFF chunks,
         #RIFF takes precedence if the target format supports both.
@@ -1919,22 +2043,22 @@ class FlacAudio(WaveContainer, AiffContainer):
                                          compression)
 
     def bits_per_sample(self):
-        """Returns an integer number of bits-per-sample this track contains."""
+        """returns an integer number of bits-per-sample this track contains"""
 
         return self.__bitspersample__
 
     def channels(self):
-        """Returns an integer number of channels this track contains."""
+        """returns an integer number of channels this track contains"""
 
         return self.__channels__
 
     def total_frames(self):
-        """Returns the total PCM frames of the track as an integer."""
+        """returns the total PCM frames of the track as an integer"""
 
         return self.__total_frames__
 
     def sample_rate(self):
-        """Returns the rate of the track's audio as an integer number of Hz."""
+        """returns the rate of the track's audio as an integer number of Hz"""
 
         return self.__samplerate__
 
@@ -1973,10 +2097,10 @@ class FlacAudio(WaveContainer, AiffContainer):
 
     @classmethod
     def add_replay_gain(cls, filenames, progress=None):
-        """Adds ReplayGain values to a list of filename strings.
+        """adds ReplayGain values to a list of filename strings
 
-        All the filenames must be of this AudioFile type.
-        Raises ValueError if some problem occurs during ReplayGain application.
+        all the filenames must be of this AudioFile type
+        raises ValueError if some problem occurs during ReplayGain application
         """
 
         tracks = [track for track in open_files(filenames) if
@@ -2009,20 +2133,20 @@ class FlacAudio(WaveContainer, AiffContainer):
 
     @classmethod
     def can_add_replay_gain(cls):
-        """Returns True."""
+        """returns True"""
 
         return True
 
     @classmethod
     def lossless_replay_gain(cls):
-        """Returns True."""
+        """returns True"""
 
         return True
 
     def replay_gain(self):
-        """Returns a ReplayGain object of our ReplayGain values.
+        """returns a ReplayGain object of our ReplayGain values
 
-        Returns None if we have no values."""
+        returns None if we have no values"""
 
         try:
             vorbis_metadata = self.get_metadata().get_block(
@@ -2066,7 +2190,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             return False
 
     def clean(self, fixes_performed, output_filename=None):
-        """Cleans the file of known data and metadata problems.
+        """cleans the file of known data and metadata problems
 
         fixes_performed is a list-like object which is appended
         with Unicode strings of fixed problems
@@ -2075,7 +2199,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         if present, a new AudioFile is returned
         otherwise, only a dry-run is performed and no new file is written
 
-        Raises IOError if unable to write the file or its metadata
+        raises IOError if unable to write the file or its metadata
         """
 
         def seektable_valid(seektable, metadata_offset, input_file):
@@ -2257,6 +2381,8 @@ class FLAC_Data_Chunk:
                 (self.__pcmreader__.bits_per_sample / 8))
 
     def verify(self):
+        "returns True"
+
         return True
 
     def write(self, f):
@@ -2335,6 +2461,8 @@ class FLAC_SSND_Chunk(FLAC_Data_Chunk):
 class OggFlacMetaData(FlacMetaData):
     @classmethod
     def converted(cls, metadata):
+        """takes a MetaData object and returns an OggFlacMetaData object"""
+
         if (metadata is None):
             return None
         elif (isinstance(metadata, FlacMetaData)):
@@ -2349,6 +2477,8 @@ class OggFlacMetaData(FlacMetaData):
 
     @classmethod
     def parse(cls, reader):
+        """returns an OggFlacMetaData object from the given BitstreamReader"""
+
         from . import read_ogg_packets
 
         streaminfo = None
@@ -2481,7 +2611,7 @@ class __Counter__:
 
 
 class OggFlacAudio(FlacAudio):
-    """A Free Lossless Audio Codec file inside an Ogg container."""
+    """a Free Lossless Audio Codec file inside an Ogg container"""
 
     SUFFIX = "oga"
     NAME = SUFFIX
@@ -2496,7 +2626,7 @@ class OggFlacAudio(FlacAudio):
     METADATA_CLASS = OggFlacMetaData
 
     def __init__(self, filename):
-        """filename is a plain string."""
+        """filename is a plain string"""
 
         AudioFile.__init__(self, filename)
         self.__samplerate__ = 0
@@ -2511,9 +2641,9 @@ class OggFlacAudio(FlacAudio):
 
     @classmethod
     def is_type(cls, file):
-        """Returns True if the given file object describes this format.
+        """returns True if the given file object describes this format
 
-        Takes a seekable file pointer rewound to the start of the file."""
+        takes a seekable file pointer rewound to the start of the file"""
 
         header = file.read(0x23)
 
@@ -2521,29 +2651,29 @@ class OggFlacAudio(FlacAudio):
                 header[0x1C:0x21] == '\x7FFLAC')
 
     def bits_per_sample(self):
-        """Returns an integer number of bits-per-sample this track contains."""
+        """returns an integer number of bits-per-sample this track contains"""
 
         return self.__bitspersample__
 
     def channels(self):
-        """Returns an integer number of channels this track contains."""
+        """returns an integer number of channels this track contains"""
 
         return self.__channels__
 
     def total_frames(self):
-        """Returns the total PCM frames of the track as an integer."""
+        """returns the total PCM frames of the track as an integer"""
 
         return self.__total_frames__
 
     def sample_rate(self):
-        """Returns the rate of the track's audio as an integer number of Hz."""
+        """returns the rate of the track's audio as an integer number of Hz"""
 
         return self.__samplerate__
 
     def get_metadata(self):
-        """Returns a MetaData object, or None.
+        """returns a MetaData object, or None
 
-        Raises IOError if unable to read the file."""
+        raises IOError if unable to read the file"""
 
         f = open(self.filename, "rb")
         try:
@@ -2554,11 +2684,11 @@ class OggFlacAudio(FlacAudio):
             f.close()
 
     def update_metadata(self, metadata):
-        """Takes this track's current MetaData object
+        """takes this track's current MetaData object
         as returned by get_metadata() and sets this track's metadata
-        with any fields updated in that object.
+        with any fields updated in that object
 
-        Raises IOError if unable to write the file.
+        raises IOError if unable to write the file
         """
 
         if (metadata is None):
@@ -2629,9 +2759,9 @@ class OggFlacAudio(FlacAudio):
             new_file.close()
 
     def metadata_length(self):
-        """Returns the length of all Ogg FLAC metadata blocks as an integer.
+        """returns the length of all Ogg FLAC metadata blocks as an integer
 
-        This includes all Ogg page headers."""
+        this includes all Ogg page headers"""
 
         from .bitstream import BitstreamReader
 
@@ -2707,7 +2837,7 @@ class OggFlacAudio(FlacAudio):
             f.close()
 
     def to_pcm(self):
-        """Returns a PCMReader object containing the track's PCM data."""
+        """returns a PCMReader object containing the track's PCM data"""
 
         from . import decoders
 
@@ -2726,13 +2856,13 @@ class OggFlacAudio(FlacAudio):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
-        """Encodes a new file from PCM data.
+        """encodes a new file from PCM data
 
-        Takes a filename string, PCMReader object
-        and optional compression level string.
-        Encodes a new audio file from pcmreader's data
+        takes a filename string, PCMReader object
+        and optional compression level string
+        encodes a new audio file from pcmreader's data
         at the given filename with the specified compression level
-        and returns a new OggFlacAudio object."""
+        and returns a new OggFlacAudio object"""
 
         SUBSTREAM_SAMPLE_RATES = frozenset([
                 8000,  16000, 22050, 24000, 32000,
@@ -2831,20 +2961,20 @@ class OggFlacAudio(FlacAudio):
             raise EncodingError(u"error encoding file with flac")
 
     def sub_pcm_tracks(self):
-        """Yields a PCMReader object per cuesheet track.
+        """yields a PCMReader object per cuesheet track
 
-        This currently does nothing since the FLAC reference
-        decoder has limited support for Ogg FLAC.
+        this currently does nothing since the FLAC reference
+        decoder has limited support for Ogg FLAC
         """
 
         return iter([])
 
     def verify(self, progress=None):
-        """Verifies the current file for correctness.
+        """verifies the current file for correctness
 
-        Returns True if the file is okay.
-        Raises an InvalidFile with an error message if there is
-        some problem with the file."""
+        returns True if the file is okay
+        raises an InvalidFile with an error message if there is
+        some problem with the file"""
 
         from audiotools import verify_ogg_stream
 

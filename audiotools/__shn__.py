@@ -33,13 +33,13 @@ class InvalidShorten(InvalidFile):
 
 
 class ShortenAudio(WaveContainer, AiffContainer):
-    """A Shorten audio file."""
+    """a Shorten audio file"""
 
     SUFFIX = "shn"
     NAME = SUFFIX
 
     def __init__(self, filename):
-        """filename is a plain string."""
+        """filename is a plain string"""
 
         from audiotools.bitstream import BitstreamReader
 
@@ -159,44 +159,44 @@ class ShortenAudio(WaveContainer, AiffContainer):
 
     @classmethod
     def is_type(cls, file):
-        """Returns True if the given file object describes this format.
+        """returns True if the given file object describes this format
 
-        Takes a seekable file pointer rewound to the start of the file."""
+        takes a seekable file pointer rewound to the start of the file"""
 
         return (file.read(4) == 'ajkg') and (ord(file.read(1)) == 2)
 
     def bits_per_sample(self):
-        """Returns an integer number of bits-per-sample this track contains."""
+        """returns an integer number of bits-per-sample this track contains"""
 
         return self.__bits_per_sample__
 
     def channels(self):
-        """Returns an integer number of channels this track contains."""
+        """returns an integer number of channels this track contains"""
 
         return self.__channels__
 
     def channel_mask(self):
-        """Returns a ChannelMask object of this track's channel layout."""
+        """returns a ChannelMask object of this track's channel layout"""
 
         return self.__channel_mask__
 
     def lossless(self):
-        """Returns True."""
+        """returns True"""
 
         return True
 
     def total_frames(self):
-        """Returns the total PCM frames of the track as an integer."""
+        """returns the total PCM frames of the track as an integer"""
 
         return self.__total_frames__
 
     def sample_rate(self):
-        """Returns the rate of the track's audio as an integer number of Hz."""
+        """returns the rate of the track's audio as an integer number of Hz"""
 
         return self.__sample_rate__
 
     def to_pcm(self):
-        """Returns a PCMReader object containing the track's PCM data."""
+        """returns a PCMReader object containing the track's PCM data"""
 
         try:
             from . import decoders
@@ -215,13 +215,13 @@ class ShortenAudio(WaveContainer, AiffContainer):
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None,
                  block_size=256):
-        """Encodes a new file from PCM data.
+        """encodes a new file from PCM data
 
-        Takes a filename string, PCMReader object
-        and optional compression level string.
-        Encodes a new audio file from pcmreader's data
+        takes a filename string, PCMReader object
+        and optional compression level string
+        encodes a new audio file from pcmreader's data
         at the given filename with the specified compression level
-        and returns a new ShortenAudio object."""
+        and returns a new ShortenAudio object"""
 
         if (pcmreader.bits_per_sample not in (8, 16)):
             raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
@@ -239,9 +239,9 @@ class ShortenAudio(WaveContainer, AiffContainer):
                 f.close_called = True
 
     def to_wave(self, wave_filename, progress=None):
-        """Writes the contents of this file to the given .wav filename string.
+        """writes the contents of this file to the given .wav filename string
 
-        Raises EncodingError if some error occurs during decoding."""
+        raises EncodingError if some error occurs during decoding"""
 
         from . import decoders
 
@@ -277,9 +277,9 @@ class ShortenAudio(WaveContainer, AiffContainer):
             WaveAudio.from_pcm(wave_filename, to_pcm_progress(self, progress))
 
     def to_aiff(self, aiff_filename, progress=None):
-        """Writes the contents of this file to the given .aiff filename string.
+        """writes the contents of this file to the given .aiff filename string
 
-        Raises EncodingError if some error occurs during decoding."""
+        raises EncodingError if some error occurs during decoding"""
 
         from . import decoders
 
@@ -317,14 +317,14 @@ class ShortenAudio(WaveContainer, AiffContainer):
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None,
                   block_size=256, progress=None):
-        """Encodes a new AudioFile from an existing .wav file.
+        """encodes a new AudioFile from an existing .wav file
 
-        Takes a filename string, wave_filename string
+        takes a filename string, wave_filename string
         of an existing WaveAudio file
-        and an optional compression level string.
-        Encodes a new audio file from the wave's data
+        and an optional compression level string
+        encodes a new audio file from the wave's data
         at the given filename with the specified compression level
-        and returns a new ShortenAudio object."""
+        and returns a new ShortenAudio object"""
 
         wave = WaveAudio(wave_filename)
 
@@ -363,14 +363,14 @@ class ShortenAudio(WaveContainer, AiffContainer):
     @classmethod
     def from_aiff(cls, filename, aiff_filename, compression=None,
                   block_size=256, progress=None):
-        """Encodes a new AudioFile from an existing .aiff file.
+        """encodes a new AudioFile from an existing .aiff file
 
-        Takes a filename string, aiff_filename string
+        takes a filename string, aiff_filename string
         of an existing WaveAudio file
-        and an optional compression level string.
-        Encodes a new audio file from the aiff's data
+        and an optional compression level string
+        encodes a new audio file from the aiff's data
         at the given filename with the specified compression level
-        and returns a new ShortenAudio object."""
+        and returns a new ShortenAudio object"""
 
         aiff = AiffAudio(aiff_filename)
 
@@ -408,14 +408,14 @@ class ShortenAudio(WaveContainer, AiffContainer):
 
     def convert(self, target_path, target_class, compression=None,
                 progress=None):
-        """Encodes a new AudioFile from existing AudioFile.
+        """encodes a new AudioFile from existing AudioFile
 
-        Take a filename string, target class and optional compression string.
-        Encodes a new AudioFile in the target class and returns
-        the resulting object.
-        Metadata is not copied during conversion, but embedded
-        RIFF chunks are (if any).
-        May raise EncodingError if some problem occurs during encoding."""
+        take a filename string, target class and optional compression string
+        encodes a new AudioFile in the target class and returns
+        the resulting object
+        metadata is not copied during conversion, but embedded
+        RIFF chunks are (if any)
+        may raise EncodingError if some problem occurs during encoding"""
 
         #Note that a Shorten file cannot contain
         #both RIFF chunks and AIFF chunks at the same time.
@@ -458,12 +458,12 @@ class ShortenAudio(WaveContainer, AiffContainer):
                                          compression)
 
     def has_foreign_riff_chunks(self):
-        """Returns True if the audio file contains non-audio RIFF chunks.
+        """returns True if the audio file contains non-audio RIFF chunks
 
-        During transcoding, if the source audio file has foreign RIFF chunks
+        during transcoding, if the source audio file has foreign RIFF chunks
         and the target audio format supports foreign RIFF chunks,
         conversion should be routed through .wav conversion
-        to avoid losing those chunks."""
+        to avoid losing those chunks"""
 
         from . import decoders
         from . import bitstream
@@ -500,12 +500,12 @@ class ShortenAudio(WaveContainer, AiffContainer):
             return False
 
     def has_foreign_aiff_chunks(self):
-        """Returns True if the audio file contains non-audio AIFF chunks.
+        """returns True if the audio file contains non-audio AIFF chunks
 
-        During transcoding, if the source audio file has foreign AIFF chunks
+        during transcoding, if the source audio file has foreign AIFF chunks
         and the target audio format supports foreign AIFF chunks,
         conversion should be routed through .aiff conversion
-        to avoid losing those chunks."""
+        to avoid losing those chunks"""
 
         from . import decoders
         from . import bitstream

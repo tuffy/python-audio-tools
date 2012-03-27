@@ -5365,6 +5365,45 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE wavpack should work
 *** TODO alac should fail with error?
 ** TODO Ensure Python API docs are updated if necessary
+   - [ ] audiotools.rst
+   - [ ] audiotools_bitstream.rst
+   - [ ] audiotools_cdio.rst
+   - [ ] audiotools_cue.rst
+   - [ ] audiotools_pcm.rst
+   - [ ] audiotools_player.rst
+   - [ ] audiotools_replaygain.rst
+   - [ ] audiotools_resample.rst
+   - [ ] audiotools_toc.rst
+   - [ ] index.rst
+   - [ ] metadata.rst
+** TODO Ensure all Python modules have up-to-date docstrings
+   - [X] __aiff__.py
+   - [X] __ape__.py
+   - [X] __au__.py
+   - [X] __dvda__.py
+   - [X] __flac__.py
+   - [X] __id3__.py
+   - [X] __id3v1__.py
+   - [X] __image__.py
+   - [X] __init__.py
+   - [X] __m4a__.py
+   - [ ] __m4a_atoms__.py
+   - [ ] __mp3__.py
+   - [ ] __musepack__.py
+   - [ ] __musicbrainz__.py
+   - [ ] __ogg__.py
+   - [ ] __shn__.py
+   - [ ] __vorbis__.py
+   - [ ] __vorbiscomment__.py
+   - [ ] __wav__.py
+   - [ ] __wavpack__.py
+   - [ ] cue.py
+   - [ ] delta.py
+   - [ ] freedb.py
+   - [ ] musicbrainz.py
+   - [ ] player.py
+   - [ ] toc.py
+   - [ ] ui.py
 ** TODO Ensure MANIFEST.in is complete
 ** TODO Reduce load from progress updating routines
    only send update to parent when the overall output percentage

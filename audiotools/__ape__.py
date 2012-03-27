@@ -40,6 +40,9 @@ def __number_pair__(current, total):
 
 def limited_transfer_data(from_function, to_function,
                           max_bytes):
+    """transfers up to max_bytes from from_function to to_function
+    or as many bytes as from_function generates as strings"""
+
     BUFFER_SIZE = 0x100000
     s = from_function(BUFFER_SIZE)
     while ((len(s) > 0) and (max_bytes > 0)):
@@ -56,15 +59,17 @@ def limited_transfer_data(from_function, to_function,
 
 
 class ApeTagItem:
+    """a single item in the ApeTag, typically a unicode value"""
+
     FORMAT = "32u [ 1u 2u 29p ]"
 
     def __init__(self, item_type, read_only, key, data):
-        """Fields are as follows:
+        """fields are as follows:
 
-        item_type is 0 = UTF-8, 1 = binary, 2 = external, 3 = reserved.
-        read_only is 1 if the item is read only.
-        key is an ASCII string.
-        data is a binary string of the data itself.
+        item_type is 0 = UTF-8, 1 = binary, 2 = external, 3 = reserved
+        read_only is 1 if the item is read only
+        key is an ASCII string
+        data is a binary string of the data itself
         """
 
         self.type = item_type
@@ -81,9 +86,13 @@ class ApeTagItem:
             return True
 
     def total_size(self):
+        """returns total size of item in bytes"""
+
         return 4 + 4 + len(self.key) + 1 + len(self.data)
 
     def copy(self):
+        """returns a duplicate ApeTagItem"""
+
         return ApeTagItem(self.type,
                           self.read_only,
                           self.key,
@@ -97,6 +106,8 @@ class ApeTagItem:
              repr(self.data))
 
     def raw_info_pair(self):
+        """returns a human-readable key/value pair of item data"""
+
         if (self.type == 0):    # text
             if (self.read_only):
                 return (self.key.decode('ascii'),
@@ -121,6 +132,8 @@ class ApeTagItem:
 
     @classmethod
     def parse(cls, reader):
+        """returns an ApeTagItem parsed from the given BitstreamReader"""
+
         (item_value_length,
          read_only,
          encoding) = reader.parse(cls.FORMAT)
@@ -136,6 +149,8 @@ class ApeTagItem:
         return cls(encoding, read_only, "".join(key), value)
 
     def build(self, writer):
+        """writes the ApeTagItem values to the given BitstreamWriter"""
+
         writer.build("%s %db 8u %db" % (self.FORMAT,
                                         len(self.key),
                                         len(self.data)),
@@ -146,31 +161,31 @@ class ApeTagItem:
 
     @classmethod
     def binary(cls, key, data):
-        """Returns an ApeTagItem of binary data.
+        """returns an ApeTagItem of binary data
 
-        key is an ASCII string, data is a binary string."""
+        key is an ASCII string, data is a binary string"""
 
         return cls(1, 0, key, data)
 
     @classmethod
     def external(cls, key, data):
-        """Returns an ApeTagItem of external data.
+        """returns an ApeTagItem of external data
 
-        key is an ASCII string, data is a binary string."""
+        key is an ASCII string, data is a binary string"""
 
         return cls(2, 0, key, data)
 
     @classmethod
     def string(cls, key, data):
-        """Returns an ApeTagItem of text data.
+        """returns an ApeTagItem of text data
 
-        key is an ASCII string, data is a unicode string."""
+        key is an ASCII string, data is a unicode string"""
 
         return cls(0, 0, key, data.encode('utf-8', 'replace'))
 
 
 class ApeTag(MetaData):
-    """A complete APEv2 tag."""
+    """a complete APEv2 tag"""
 
     HEADER_FORMAT = "8b 32u 32u 32u [ 1u 2u 26p 1u 1u 1u ] 64p"
 
@@ -199,7 +214,7 @@ class ApeTag(MetaData):
     INTEGER_ITEMS = ('Track', 'Media')
 
     def __init__(self, tags, contains_header=True, contains_footer=True):
-        """Constructs an ApeTag from a list of ApeTagItem objects."""
+        """constructs an ApeTag from a list of ApeTagItem objects"""
 
         for tag in tags:
             if (not isinstance(tag, ApeTagItem)):
@@ -214,6 +229,8 @@ class ApeTag(MetaData):
                                        repr(self.contains_footer))
 
     def total_size(self):
+        """returns the minimum size of the total ApeTag, in bytes"""
+
         size = 0
         if (self.contains_header):
             size += 32
@@ -376,7 +393,7 @@ class ApeTag(MetaData):
 
     @classmethod
     def converted(cls, metadata):
-        """Converts a MetaData object to an ApeTag object."""
+        """converts a MetaData object to an ApeTag object"""
 
         if (metadata is None):
             return None
@@ -410,6 +427,8 @@ class ApeTag(MetaData):
             return tags
 
     def raw_info(self):
+        """returns the ApeTag as a human-readable unicode string"""
+
         from os import linesep
         from . import display_unicode
 
@@ -428,7 +447,7 @@ class ApeTag(MetaData):
 
     @classmethod
     def supports_images(cls):
-        """Returns True."""
+        """returns True"""
 
         return True
 
@@ -445,7 +464,7 @@ class ApeTag(MetaData):
                          type)
 
     def add_image(self, image):
-        """Embeds an Image object in this metadata."""
+        """embeds an Image object in this metadata"""
 
         if (image.type == 0):
             self['Cover Art (front)'] = self.ITEM.binary(
@@ -461,7 +480,7 @@ class ApeTag(MetaData):
                 image.data)
 
     def delete_image(self, image):
-        """Deletes an Image object from this metadata."""
+        """deletes an Image object from this metadata"""
 
         if ((image.type == 0) and 'Cover Art (front)' in self.keys()):
             del(self['Cover Art (front)'])
@@ -469,7 +488,7 @@ class ApeTag(MetaData):
             del(self['Cover Art (back)'])
 
     def images(self):
-        """Returns a list of embedded Image objects."""
+        """returns a list of embedded Image objects"""
 
         #APEv2 supports only one value per key
         #so a single front and back cover are all that is possible
@@ -482,9 +501,9 @@ class ApeTag(MetaData):
 
     @classmethod
     def read(cls, apefile):
-        """Returns an ApeTag object from an APEv2 tagged file object.
+        """returns an ApeTag object from an APEv2 tagged file object
 
-        May return None if the file object has no tag."""
+        may return None if the file object has no tag"""
 
         from .bitstream import BitstreamReader
 
@@ -512,7 +531,7 @@ class ApeTag(MetaData):
                    contains_footer=True)
 
     def build(self, writer):
-        """Outputs an APEv2 tag to writer"""
+        """outputs an APEv2 tag to writer"""
 
         from .bitstream import BitstreamRecorder
 
@@ -601,15 +620,15 @@ class ApeTag(MetaData):
 
 
 class ApeTaggedAudio:
-    """A class for handling audio formats with APEv2 tags.
+    """a class for handling audio formats with APEv2 tags
 
-    This class presumes there will be a filename attribute which
-    can be opened and checked for tags, or written if necessary."""
+    this class presumes there will be a filename attribute which
+    can be opened and checked for tags, or written if necessary"""
 
     def get_metadata(self):
-        """Returns an ApeTag object, or None.
+        """returns an ApeTag object, or None
 
-        Raises IOError if unable to read the file."""
+        raises IOError if unable to read the file"""
 
         f = file(self.filename, 'rb')
         try:
@@ -618,6 +637,13 @@ class ApeTaggedAudio:
             f.close()
 
     def update_metadata(self, metadata):
+        """takes this track's current MetaData object
+        as returned by get_metadata() and sets this track's metadata
+        with any fields updated in that object
+
+        raises IOError if unable to write the file
+        """
+
         if (metadata is None):
             return
         elif (not isinstance(metadata, ApeTag)):
@@ -680,9 +706,9 @@ class ApeTaggedAudio:
             f.close()
 
     def set_metadata(self, metadata):
-        """Takes a MetaData object and sets this track's metadata.
+        """takes a MetaData object and sets this track's metadata
 
-        Raises IOError if unable to write the file."""
+        raises IOError if unable to write the file"""
 
         if (metadata is None):
             return
@@ -737,9 +763,9 @@ class ApeTaggedAudio:
             f.close()
 
     def delete_metadata(self):
-        """Deletes the track's MetaData.
+        """deletes the track's MetaData
 
-        Raises IOError if unable to write the file."""
+        raises IOError if unable to write the file"""
 
         from .bitstream import BitstreamReader, BitstreamWriter
 
@@ -785,7 +811,7 @@ class ApeTaggedAudio:
 
 
 class ApeAudio(ApeTaggedAudio, AudioFile):
-    """A Monkey's Audio file."""
+    """a Monkey's Audio file"""
 
     SUFFIX = "ape"
     NAME = SUFFIX
@@ -831,7 +857,7 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
     #                             Con.ULInt32('final_frame_blocks'))
 
     def __init__(self, filename):
-        """filename is a plain string."""
+        """filename is a plain string"""
 
         AudioFile.__init__(self, filename)
 
@@ -842,25 +868,25 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
 
     @classmethod
     def is_type(cls, file):
-        """Returns True if the given file object describes this format.
+        """returns True if the given file object describes this format
 
-        Takes a seekable file pointer rewound to the start of the file."""
+        takes a seekable file pointer rewound to the start of the file"""
 
         return file.read(4) == "MAC "
 
     def lossless(self):
-        """Returns True."""
+        """returns True"""
 
         return True
 
     @classmethod
     def supports_foreign_riff_chunks(cls):
-        """Returns True."""
+        """returns True"""
 
         return True
 
     def has_foreign_riff_chunks(self):
-        """Returns True."""
+        """returns True"""
 
         #FIXME - this isn't strictly true
         #I'll need a way to detect foreign chunks in APE's stream
@@ -869,22 +895,22 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
         return True
 
     def bits_per_sample(self):
-        """Returns an integer number of bits-per-sample this track contains."""
+        """returns an integer number of bits-per-sample this track contains"""
 
         return self.__bitspersample__
 
     def channels(self):
-        """Returns an integer number of channels this track contains."""
+        """returns an integer number of channels this track contains"""
 
         return self.__channels__
 
     def total_frames(self):
-        """Returns the total PCM frames of the track as an integer."""
+        """returns the total PCM frames of the track as an integer"""
 
         return self.__totalsamples__
 
     def sample_rate(self):
-        """Returns the rate of the track's audio as an integer number of Hz."""
+        """returns the rate of the track's audio as an integer number of Hz"""
 
         return self.__samplespersec__
 
@@ -937,9 +963,9 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
             f.close()
 
     def to_wave(self, wave_filename):
-        """Writes the contents of this file to the given .wav filename string.
+        """writes the contents of this file to the given .wav filename string
 
-        Raises EncodingError if some error occurs during decoding."""
+        raises EncodingError if some error occurs during decoding"""
 
         if (self.filename.endswith(".ape")):
             devnull = file(os.devnull, "wb")
@@ -971,14 +997,14 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
 
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
-        """Encodes a new AudioFile from an existing .wav file.
+        """encodes a new AudioFile from an existing .wav file
 
-        Takes a filename string, wave_filename string
+        takes a filename string, wave_filename string
         of an existing WaveAudio file
-        and an optional compression level string.
-        Encodes a new audio file from the wave's data
+        and an optional compression level string
+        encodes a new audio file from the wave's data
         at the given filename with the specified compression level
-        and returns a new ApeAudio object."""
+        and returns a new ApeAudio object"""
 
         if (str(compression) not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION

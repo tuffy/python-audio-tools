@@ -294,7 +294,7 @@ class VorbisComment(MetaData):
 
     @classmethod
     def converted(cls, metadata):
-        """Converts metadata from another class to VorbisComment"""
+        """converts metadata from another class to VorbisComment"""
 
         if (metadata is None):
             return None
@@ -342,12 +342,12 @@ class VorbisComment(MetaData):
         return False
 
     def images(self):
-        """Returns a list of embedded Image objects."""
+        """returns a list of embedded Image objects"""
 
         return []
 
     def clean(self, fixes_performed):
-        """Returns a new MetaData object that's been cleaned of problems."""
+        """returns a new MetaData object that's been cleaned of problems"""
 
         reverse_attr_map = {}
         for (attr, key) in self.ATTRIBUTE_MAP.items():

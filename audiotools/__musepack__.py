@@ -33,7 +33,7 @@ gettext.install("audiotools", unicode=True)
 
 
 class NutValue(Con.Adapter):
-    """A construct for Musepack Nut-encoded integer fields."""
+    """a construct for Musepack Nut-encoded integer fields"""
 
     def __init__(self, name):
         Con.Adapter.__init__(
@@ -60,19 +60,19 @@ class NutValue(Con.Adapter):
 
 
 class Musepack8StreamReader:
-    """An object for parsing Musepack SV8 streams."""
+    """an object for parsing Musepack SV8 streams"""
 
     NUT_HEADER = Con.Struct('nut_header',
                             Con.String('key', 2),
                             NutValue('length'))
 
     def __init__(self, stream):
-        """Initialized with a file object."""
+        """initialized with a file object"""
 
         self.stream = stream
 
     def packets(self):
-        """Yields a set of (key, data) tuples."""
+        """yields a set of (key, data) tuples"""
 
         import string
 
@@ -93,7 +93,7 @@ class Musepack8StreamReader:
 
 
 class MusepackAudio(ApeTaggedAudio, AudioFile):
-    """A Musepack audio file."""
+    """a Musepack audio file"""
 
     SUFFIX = "mpc"
     NAME = SUFFIX
@@ -150,7 +150,7 @@ class MusepackAudio(ApeTaggedAudio, AudioFile):
                                  Con.Byte('encoder_version'))
 
     def __init__(self, filename):
-        """filename is a plain string."""
+        """filename is a plain string"""
 
         AudioFile.__init__(self, filename)
         f = file(filename, 'rb')
@@ -194,13 +194,13 @@ class MusepackAudio(ApeTaggedAudio, AudioFile):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
-        """Encodes a new file from PCM data.
+        """encodes a new file from PCM data
 
-        Takes a filename string, PCMReader object
-        and optional compression level string.
-        Encodes a new audio file from pcmreader's data
+        takes a filename string, PCMReader object
+        and optional compression level string
+        encodes a new audio file from pcmreader's data
         at the given filename with the specified compression level
-        and returns a new MusepackAudio object."""
+        and returns a new MusepackAudio object"""
 
         import tempfile
         import bisect
@@ -294,9 +294,9 @@ class MusepackAudio(ApeTaggedAudio, AudioFile):
 
     @classmethod
     def is_type(cls, file):
-        """Returns True if the given file object describes this format.
+        """returns True if the given file object describes this format
 
-        Takes a seekable file pointer rewound to the start of the file."""
+        takes a seekable file pointer rewound to the start of the file"""
 
         header = file.read(4)
 
@@ -307,26 +307,26 @@ class MusepackAudio(ApeTaggedAudio, AudioFile):
         return (header == 'MP+\x07') or (header == 'MPCK')
 
     def sample_rate(self):
-        """Returns the rate of the track's audio as an integer number of Hz."""
+        """returns the rate of the track's audio as an integer number of Hz"""
 
         return self.__sample_rate__
 
     def total_frames(self):
-        """Returns the total PCM frames of the track as an integer."""
+        """returns the total PCM frames of the track as an integer"""
 
         return self.__total_frames__
 
     def channels(self):
-        """Returns an integer number of channels this track contains."""
+        """returns an integer number of channels this track contains"""
 
         return self.__channels__
 
     def bits_per_sample(self):
-        """Returns an integer number of bits-per-sample this track contains."""
+        """returns an integer number of bits-per-sample this track contains"""
 
         return 16
 
     def lossless(self):
-        """Returns False."""
+        """returns False"""
 
         return False

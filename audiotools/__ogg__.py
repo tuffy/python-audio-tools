@@ -144,10 +144,10 @@ class OggStreamReader:
         self.reader.add_callback(self.checksum.update)
 
     def read_page(self):
-        """Returns a tuple of (granule_position, segments,
+        """returns a tuple of (granule_position, segments,
                                continuation, first_page, last_page)
 
-        Raises ValueError if the page checksum is invalid"""
+        raises ValueError if the page checksum is invalid"""
 
         self.checksum.reset()
 

@@ -213,15 +213,15 @@ def parse_fmt(fmt):
 
 
 class WaveReader(PCMReader):
-    """A subclass of PCMReader for reading wave file contents."""
+    """a subclass of PCMReader for reading wave file contents"""
 
     def __init__(self, wave_file,
                  sample_rate, channels, channel_mask, bits_per_sample,
                  process=None):
-        """wave_file should be a file-like stream of wave data.
+        """wave_file should be a file-like stream of wave data
 
-        sample_rate, channels, channel_mask and bits_per_sample are ints.
-        If present, process is waited for when close() is called.
+        sample_rate, channels, channel_mask and bits_per_sample are ints
+        if present, process is waited for when close() is called
         """
 
         self.file = wave_file
@@ -259,7 +259,7 @@ class WaveReader(PCMReader):
             raise InvalidWave(_(u"data chunk not found"))
 
     def read(self, bytes):
-        """Try to read a pcm.FrameList of size "bytes"."""
+        """try to read a pcm.FrameList of size "bytes""""
 
         #align bytes downward if an odd number is read in
         bytes -= (bytes % (self.channels * self.bits_per_sample / 8))
@@ -280,9 +280,9 @@ class WaveReader(PCMReader):
             raise IOError("data chunk ends prematurely")
 
     def close(self):
-        """Closes the stream for reading.
+        """closes the stream for reading
 
-        Any subprocess is waited for also so for proper cleanup."""
+        any subprocess is waited for also so for proper cleanup"""
 
         self.wave.close()
         if (self.process is not None):
@@ -291,12 +291,12 @@ class WaveReader(PCMReader):
 
 
 class TempWaveReader(WaveReader):
-    """A subclass of WaveReader for reading wave data from temporary files."""
+    """a subclass of WaveReader for reading wave data from temporary files"""
 
     def __init__(self, tempfile):
-        """tempfile should be a NamedTemporaryFile.
+        """tempfile should be a NamedTemporaryFile
 
-        Its contents are used to populate the rest of the fields."""
+        its contents are used to populate the rest of the fields"""
 
         wave = WaveAudio(tempfile.name)
         WaveReader.__init__(self,
@@ -308,20 +308,20 @@ class TempWaveReader(WaveReader):
         self.tempfile = tempfile
 
     def close(self):
-        """Closes the input stream and temporary file."""
+        """closes the input stream and temporary file"""
 
         WaveReader.close(self)
         self.tempfile.close()
 
 
 class InvalidWave(InvalidFile):
-    """Raises during initialization time if a wave file is invalid."""
+    """raises during initialization time if a wave file is invalid"""
 
     pass
 
 
 class WaveAudio(WaveContainer):
-    """A waveform audio file."""
+    """a waveform audio file"""
 
     SUFFIX = "wav"
     NAME = SUFFIX
@@ -329,7 +329,7 @@ class WaveAudio(WaveContainer):
     PRINTABLE_ASCII = frozenset([chr(i) for i in xrange(0x20, 0x7E + 1)])
 
     def __init__(self, filename):
-        """filename is a plain string."""
+        """filename is a plain string"""
 
         AudioFile.__init__(self, filename)
 
@@ -367,37 +367,37 @@ class WaveAudio(WaveContainer):
 
     @classmethod
     def is_type(cls, file):
-        """Returns True if the given file object describes this format.
+        """returns True if the given file object describes this format
 
-        Takes a seekable file pointer rewound to the start of the file."""
+        takes a seekable file pointer rewound to the start of the file"""
 
         header = file.read(12)
         return ((header[0:4] == 'RIFF') and
                 (header[8:12] == 'WAVE'))
 
     def lossless(self):
-        """Returns True."""
+        """returns True"""
 
         return True
 
     def has_foreign_riff_chunks(self):
-        """Returns True if the audio file contains non-audio RIFF chunks.
+        """returns True if the audio file contains non-audio RIFF chunks
 
-        During transcoding, if the source audio file has foreign RIFF chunks
+        during transcoding, if the source audio file has foreign RIFF chunks
         and the target audio format supports foreign RIFF chunks,
         conversion should be routed through .wav conversion
-        to avoid losing those chunks."""
+        to avoid losing those chunks"""
 
         return set(['fmt ', 'data']) != set([c.id for c in self.chunks()])
 
     def channel_mask(self):
-        """Returns a ChannelMask object of this track's channel layout."""
+        """returns a ChannelMask object of this track's channel layout"""
 
         return self.__channel_mask__
 
     #Returns the PCMReader object for this WAV's data
     def to_pcm(self):
-        """Returns a PCMReader object containing the track's PCM data."""
+        """returns a PCMReader object containing the track's PCM data"""
 
         return WaveReader(file(self.filename, 'rb'),
                           sample_rate=self.sample_rate(),
@@ -409,13 +409,13 @@ class WaveAudio(WaveContainer):
     #builds a WAV from that data and returns a new WaveAudio object
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
-        """Encodes a new file from PCM data.
+        """encodes a new file from PCM data
 
-        Takes a filename string, PCMReader object
-        and optional compression level string.
-        Encodes a new audio file from pcmreader's data
+        takes a filename string, PCMReader object
+        and optional compression level string
+        encodes a new audio file from pcmreader's data
         at the given filename with the specified compression level
-        and returns a new WaveAudio object."""
+        and returns a new WaveAudio object"""
 
         if (pcmreader.channels > 18):
             raise UnsupportedChannelCount(filename, pcmreader.channels)
@@ -539,9 +539,9 @@ class WaveAudio(WaveContainer):
         return WaveAudio(filename)
 
     def to_wave(self, wave_filename, progress=None):
-        """Writes the contents of this file to the given .wav filename string.
+        """writes the contents of this file to the given .wav filename string
 
-        Raises EncodingError if some error occurs during decoding."""
+        raises EncodingError if some error occurs during decoding"""
 
         try:
             self.verify()
@@ -562,14 +562,14 @@ class WaveAudio(WaveContainer):
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None,
                   progress=None):
-        """Encodes a new AudioFile from an existing .wav file.
+        """encodes a new AudioFile from an existing .wav file
 
-        Takes a filename string, wave_filename string
+        takes a filename string, wave_filename string
         of an existing WaveAudio file
-        and an optional compression level string.
-        Encodes a new audio file from the wave's data
+        and an optional compression level string
+        encodes a new audio file from the wave's data
         at the given filename with the specified compression level
-        and returns a new WaveAudio object."""
+        and returns a new WaveAudio object"""
 
         try:
             cls(wave_filename).verify()
@@ -603,12 +603,12 @@ class WaveAudio(WaveContainer):
 
     def convert(self, target_path, target_class, compression=None,
                 progress=None):
-        """Encodes a new AudioFile from existing AudioFile.
+        """encodes a new AudioFile from existing AudioFile
 
-        Take a filename string, target class and optional compression string.
-        Encodes a new AudioFile in the target class and returns
-        the resulting object.
-        May raise EncodingError if some problem occurs during encoding."""
+        take a filename string, target class and optional compression string
+        encodes a new AudioFile in the target class and returns
+        the resulting object
+        may raise EncodingError if some problem occurs during encoding"""
 
         if (hasattr(target_class, "from_wave")):
             return target_class.from_wave(target_path,
@@ -621,44 +621,44 @@ class WaveAudio(WaveContainer):
                                          compression)
 
     def total_frames(self):
-        """Returns the total PCM frames of the track as an integer."""
+        """returns the total PCM frames of the track as an integer"""
 
         return self.__data_size__ / (self.__bits_per_sample__ / 8) / \
                self.__channels__
 
     def sample_rate(self):
-        """Returns the rate of the track's audio as an integer number of Hz."""
+        """returns the rate of the track's audio as an integer number of Hz"""
 
         return self.__sample_rate__
 
     def channels(self):
-        """Returns an integer number of channels this track contains."""
+        """returns an integer number of channels this track contains"""
 
         return self.__channels__
 
     def bits_per_sample(self):
-        """Returns an integer number of bits-per-sample this track contains."""
+        """returns an integer number of bits-per-sample this track contains"""
 
         return self.__bits_per_sample__
 
     @classmethod
     def can_add_replay_gain(cls):
-        """Returns True if we have the necessary binaries to add ReplayGain."""
+        """returns True if we have the necessary binaries to add ReplayGain"""
 
         return True
 
     @classmethod
     def lossless_replay_gain(cls):
-        """Returns False."""
+        """returns False"""
 
         return False
 
     @classmethod
     def add_replay_gain(cls, filenames, progress=None):
-        """Adds ReplayGain values to a list of filename strings.
+        """adds ReplayGain values to a list of filename strings
 
-        All the filenames must be of this AudioFile type.
-        Raises ValueError if some problem occurs during ReplayGain application.
+        all the filenames must be of this AudioFile type
+        raises ValueError if some problem occurs during ReplayGain application
         """
 
         from audiotools.replaygain import ReplayGain, ReplayGainReader
@@ -725,16 +725,16 @@ class WaveAudio(WaveContainer):
 
     @classmethod
     def track_name(cls, file_path, track_metadata=None, format=None):
-        """Constructs a new filename string.
+        """constructs a new filename string
 
-        Given a plain string to an existing path,
+        given a plain string to an existing path,
         a MetaData-compatible object (or None),
         a UTF-8-encoded Python format string
         and an ASCII-encoded suffix string (such as "mp3")
         returns a plain string of a new filename with format's
-        fields filled-in and encoded as FS_ENCODING.
-        Raises UnsupportedTracknameField if the format string
-        contains invalid template fields."""
+        fields filled-in and encoded as FS_ENCODING
+        raises UnsupportedTracknameField if the format string
+        contains invalid template fields"""
 
         if (format is None):
             format = "track%(track_number)2.2d.wav"
@@ -793,10 +793,10 @@ class WaveAudio(WaveContainer):
 
     @classmethod
     def wave_from_chunks(cls, filename, chunk_iter):
-        """Builds a new RIFF WAVE file from a chunk data iterator.
+        """builds a new RIFF WAVE file from a chunk data iterator
 
-        filename is the path to the wave file to build.
-        chunk_iter should yield RIFF_Chunk-compatible objects.
+        filename is the path to the wave file to build
+        chunk_iter should yield RIFF_Chunk-compatible objects
         """
 
         wave_file = file(filename, 'wb')
@@ -817,11 +817,11 @@ class WaveAudio(WaveContainer):
             wave_file.close()
 
     def pcm_split(self):
-        """Returns a pair of data strings before and after PCM data.
+        """returns a pair of data strings before and after PCM data
 
-        The first contains all data before the PCM content of the data chunk.
-        The second containing all data after the data chunk.
-        For example:
+        the first contains all data before the PCM content of the data chunk
+        the second containing all data after the data chunk
+        for example:
 
         >>> w = audiotools.open("input.wav")
         >>> (head, tail) = w.pcm_split()
@@ -831,7 +831,7 @@ class WaveAudio(WaveContainer):
         >>> f.write(tail)
         >>> f.close()
 
-        should result in "output.wav" being identical to "input.wav".
+        should result in "output.wav" being identical to "input.wav"
         """
 
         from .bitstream import BitstreamReader
@@ -880,11 +880,11 @@ class WaveAudio(WaveContainer):
             wave_file.close()
 
     def verify(self, progress=None):
-        """Verifies the current file for correctness.
+        """verifies the current file for correctness
 
-        Returns True if the file is okay.
-        Raises an InvalidFile with an error message if there is
-        some problem with the file."""
+        returns True if the file is okay
+        raises an InvalidFile with an error message if there is
+        some problem with the file"""
 
         #RIFF WAVE chunk verification is likely to be so fast
         #that individual calls to progress() are
@@ -925,7 +925,7 @@ class WaveAudio(WaveContainer):
         return True
 
     def clean(self, fixes_performed, output_filename=None):
-        """Cleans the file of known data and metadata problems.
+        """cleans the file of known data and metadata problems
 
         fixes_performed is a list-like object which is appended
         with Unicode strings of fixed problems
@@ -934,8 +934,8 @@ class WaveAudio(WaveContainer):
         if present, a new AudioFile is returned
         otherwise, only a dry-run is performed and no new file is written
 
-        Raises IOError if unable to write the file or its metadata
-        Raises ValueError if the file has errors of some sort
+        raises IOError if unable to write the file or its metadata
+        raises ValueError if the file has errors of some sort
         """
 
         chunk_queue = []
