@@ -173,18 +173,15 @@ def __default_quality__(audio_type):
     except KeyError:
         return ""
 
-try:
-    import cpucount
-    MAX_CPUS = cpucount.cpucount()
-except ImportError:
-    MAX_CPUS = 1
 
 if (config.has_option("System", "maximum_jobs")):
     MAX_JOBS = config.getint_default("System", "maximum_jobs", 1)
 else:
-    MAX_JOBS = MAX_CPUS
-
-BIG_ENDIAN = sys.byteorder == 'big'
+    try:
+        import multiprocessing
+        MAX_JOBS = multiprocessing.cpucount()
+    except ImportError:
+        MAX_JOBS = 1
 
 
 def get_umask():
@@ -1505,16 +1502,6 @@ class PCMReaderError(PCMReader):
         """always raises DecodingError"""
 
         raise DecodingError(self.error_message)
-
-
-def analyze_frames(pcmreader):
-    """iterates over a PCMReader's analyze_frame() results"""
-
-    frame = pcmreader.analyze_frame()
-    while (frame is not None):
-        yield frame
-        frame = pcmreader.analyze_frame()
-    pcmreader.close()
 
 
 def to_pcm_progress(audiofile, progress):

@@ -166,7 +166,8 @@ out of a larger binary file stream.
 
 .. warning::
 
-   Placing a mark when reading from a Python-based file object requires the
+   Placing a mark when reading from a file-like object
+   (as opposed to an actual file object) requires the
    :class:`BitstreamReader` to store all the data between the marked
    position and the current position,
    since there's no guarantee such an object has a working seek method.

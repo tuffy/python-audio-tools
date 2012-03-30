@@ -40,11 +40,31 @@ classes and functions upon which all of the other modules depend.
    WavPackAudio  WavPack
    ============= ==================================
 
+.. data:: DEFAULT_TYPE
+
+   The default type to use as a plain string, such as ``'wav'`` or ``'flac'``.
+
+.. data:: DEFAULT_QUALITY
+
+   A dict of type name strings -> quality value strings
+   indicating the default compression quality value for the given type
+   name suitable for :meth:`AudioFile.from_pcm` and :meth:`AudioFile.convert`
+   method calls.
+
+.. data:: DEFAULT_CDROM
+
+   The default CD-ROM device to use for CD audio and DVD-Audio
+   extraction as a plain string.
+
 .. data:: TYPE_MAP
 
-   A dictionary of type_name strings -> :class:`AudioFile`
+   A dictionary of type name strings -> :class:`AudioFile`
    values containing only types which have all required binaries
    installed.
+
+.. data:: FILENAME_FORMAT
+
+   The default format string to use for newly created files.
 
 .. data:: BIN
 
@@ -62,6 +82,27 @@ classes and functions upon which all of the other modules depend.
 
    >>> BIN.can_execute(BIN["flac"])
    True
+
+.. data:: IO_ENCODING
+
+   The defined encoding to use for output to the screen as a plain
+   string.
+   This is typically ``'utf-8'``.
+
+.. data:: FS_ENCODING
+
+   The defined encoding to use for filenames read and written to disk
+   as a plain string.
+   This is typically ``'utf-8'``.
+
+.. data:: MAX_JOBS
+
+   The maximum number of simultaneous jobs to run at once by default
+   as an integer.
+   This may be defined from the user's config file.
+   Otherwise, if Python's ``multiprocessing`` module is available,
+   this is set to the user's CPU count.
+   If neither is available, this is set to 1.
 
 .. function:: open(filename)
 
@@ -447,8 +488,8 @@ AudioFile Objects
 
    Returns this audio file's album number as a non-negative integer.
    This method first checks the file's metadata values.
-   If unable to find one, it then tries to determine an album number
-   from the track's filename.
+   If unable to find metadata,
+   it then tries to determine an album number from the track's filename.
    If that method is also unsuccessful, it returns 0.
 
 .. classmethod:: AudioFile.track_name(file_path[, track_metadata[, format[, suffix]]])
@@ -834,6 +875,9 @@ AlbumMetaData Objects
 
 AlbumMetaDataFile Objects
 -------------------------
+
+.. deprecated:: 2.18
+   Use :func:`metadata_lookup` instead.
 
 .. class:: AlbumMetaDataFile(album_name, artist_name, year, catalog, extra, track_metadata)
 
@@ -1551,7 +1595,17 @@ DVDATitle Objects
 .. method:: DVDATitle.to_pcm()
 
    Returns a :class:`PCMReader`-compatible object of this title's
-   entire data stream.
+   entire data stream, which must be split into tracks
+   using its ``next_track()`` method to indicate the length of
+   the next track in the title.
+
+   >>> dvda = DVDAudio("/dev/cdrom")
+   >>> title = dvda[0][0]  # get the first title from the first titleset
+   >>> pcm = title.to_pcm()
+   >>> for track in title:
+   ...    pcm.next_track(track.pts_length)
+   ...    extracted = AudioFile.from_pcm(path, pcm)
+
 
 DVDATrack Objects
 ^^^^^^^^^^^^^^^^^

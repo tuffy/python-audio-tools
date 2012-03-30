@@ -8,13 +8,12 @@ able to view and modify the low-level implementation also.
 ApeTag
 ------
 
-.. class:: ApeTag(tags[, tag_length])
+.. class:: ApeTag(tags[, contains_header][, contains_footer])
 
    This is an APEv2_ tag used by the WavPack, Monkey's Audio
    and Musepack formats, among others.
    During initialization, it takes a list of :class:`ApeTagItem` objects
-   and an optional length integer (typically set only by
-   :func:`get_metadata` methods which already know the tag's total length).
+   and optional ``contains_header``, ``contains_footer`` booleans.
    It can then be manipulated like a regular Python dict
    with keys as strings and values as :class:`ApeTagItem` objects.
    Note that this is also a :class:`audiotools.MetaData` subclass
@@ -76,9 +75,15 @@ ApeTag
    Takes an open file object and returns an :class:`ApeTag` object
    of that file's APEv2 data, or ``None`` if the tag cannot be found.
 
-.. method:: ApeTag.build()
+.. method:: ApeTag.build(writer)
 
-   Returns this tag's complete APEv2 data as a string.
+   Given a :class:`audiotools.bitstream.BitstreamWriter`
+   object positioned at the end of the file,
+   this writes the ApeTag to that stream.
+
+.. method:: ApeTag.total_size()
+
+   Returns the minimum size of the entire APEv2 tag, in bytes.
 
 .. class:: ApeTagItem(item_type, read_only, key, data)
 
@@ -124,190 +129,480 @@ FLAC
 .. class:: FlacMetaData(blocks)
 
    This is a FLAC_ tag which is prepended to FLAC and Ogg FLAC files.
-   It is initialized with a list of :class:`FlacMetaDataBlock`
-   objects which it stores internally in one of several fields.
+   It is initialized with a list of FLAC metadata block
+   objects which it stores internally as a list.
    It also supports all :class:`audiotools.MetaData` methods.
 
    For example:
 
-   >>> tag = FlacMetaData([FlacMetaDataBlock(
-   ...                     type=4,
-   ...                     data=FlacVorbisComment({u'TITLE':[u'Track Title']}).build())])
+   >>> tag = FlacMetaData([Flac_VORBISCOMMENT(
+   ...                     [u'TITLE=Track Title'], u'Vendor String')])
    >>> tag.track_name
    u'Track Title'
-   >>> tag.vorbis_comment[u'TITLE']
-   [u'Track Title']
-   >>> tag.vorbis_comment = a.FlacVorbisComment({u'TITLE':[u'New Track Title']})
+   >>> tag.get_block(Flac_VORBISCOMMENT.BLOCK_ID)
+   Flac_VORBISCOMMENT([u'TITLE=Track Title'], u'Vendor String')
+   >>> tag.replace_blocks(Flac_VORBISCOMMENT.BLOCK_ID,
+   ...                    [Flac_VORBISCOMMENT([u'TITLE=New Track Title'], u'Vendor String')])
    >>> tag.track_name
    u'New Track Title'
 
-   Its fields are as follows:
+.. method:: FlacMetaData.has_block(block_id)
 
-.. data:: FlacMetaData.streaminfo
+   Returns ``True`` if the given block ID integer is present
+   in this metadata's list of blocks.
 
-   A :class:`FlacMetaDataBlock` object containing raw ``STREAMINFO`` data.
-   Since FLAC's :func:`set_metadata` method will override this attribute
-   as necessary, one will rarely need to parse it or set it.
+.. method:: FlacMetaData.add_block(block)
 
-.. data:: FlacMetaData.vorbis_comment
+   Adds the given block to this metadata's list of blocks.
+   Blocks are added such that STREAMINFO will always be first.
 
-   A :class:`FlacVorbisComment` object containing text data
-   such as track name and artist name.
-   If the FLAC file doesn't have a ``VORBISCOMMENT`` block,
-   :class:`FlacMetaData` will set an empty one at initialization time
-   which will then be written out by a call to :func:`set_metadata`.
+.. method:: FlacMetaData.get_block(block_id)
 
-.. data:: FlacMetaData.cuesheet
+   Returns the first instance of the given block ID.
+   May raise :exc:`IndexError` if the block ID is not present.
 
-   A :class:`FlacCueSheet` object containing ``CUESHEET`` data, or ``None``.
+.. method:: FlacMetaData.get_blocks(block_id)
 
-.. data:: FlacMetaData.image_blocks
+   Returns all instances of the given block ID as a list,
+   which may be empty if no matching blocks are present.
 
-   A list of :class:`FlacPictureComment` objects, each representing
-   a ``PICTURE`` block.
-   The list may be empty.
+.. method:: FlacMetaData.replace_blocks(block_id, blocks)
 
-.. data:: FlacMetaData.extra_blocks
+   Replaces all instances of the given block ID
+   with those taken from the list of blocks.
+   If insufficient blocks are found to replace,
+   this uses :meth:`FlacMetaData.add_block` to populate the remainder.
+   If additional blocks are found, they are removed.
 
-   A list of raw :class:`FlacMetaDataBlock` objects containing
-   any unknown or unsupported FLAC metadata blocks.
-   Note that padding is not stored here.
-   ``PADDING`` blocks are discarded at initialization time
-   and then re-created as needed by calls to :func:`set_metadata`.
+.. method:: FlacMetaData.blocks()
 
-.. method:: FlacMetaData.metadata_blocks()
+   Yields a set of all blocks this metadata contains.
 
-   Returns an iterator over all the current blocks as
-   :class:`FlacMetaDataBlock`-compatible objects and without
-   any padding block at the end.
+.. classmethod:: FlacMetaData.parse(reader)
 
-.. method:: FlacMetaData.build([padding_size])
+   Given a :class:`audiotools.bitstream.BitstreamReader`
+   positioned past the FLAC file's ``"fLaC"`` file header,
+   returns a parsed :class:`FlacMetaData` object.
+   May raise :exc:`IOError` or :exc:`ValueError` if
+   some error occurs parsing the metadata.
 
-   Returns a string of this :class:`FlacMetaData` object's contents.
+.. method:: FlacMetaData.raw_info()
 
-.. class:: FlacMetaDataBlock(type, data)
+   Returns this metadata as a human-readable unicode string.
 
-   This is a simple container for FLAC metadata block data.
-   ``type`` is one of the following block type integers:
+.. method:: FlacMetaData.size()
 
-   = ==================
-   0 ``STREAMINFO``
-   1 ``PADDING``
-   2 ``APPLICATION``
-   3 ``SEEKTABLE``
-   4 ``VORBIS_COMMENT``
-   5 ``CUESHEET``
-   6 ``PICTURE``
-   = ==================
+   Returns the size of all metadata blocks
+   including the 32-bit block headers
+   but not including the file's 4-byte ``"fLaC"`` ID.
 
-   ``data`` is a string.
+STREAMINFO
+^^^^^^^^^^
 
-.. method:: FlacMetaDataBlock.build_block([last])
+.. class:: Flac_STREAMINFO(minimum_block_size, maximum_block_size, minimum_frame_size, maximum_frame_size, sample_rate, channels, bits_per_sample, total_samples, md5sum)
 
-   Returns the entire metadata block as a string, including the header.
-   Set ``last`` to 1 to indicate this is the final metadata block in the stream.
+   All values are non-negative integers except for ``md5sum``,
+   which is a 16-byte binary string.
+   All are stored in this metadata block as-is.
 
-.. class:: FlacVorbisComment(vorbis_data[, vendor_string])
+.. data:: Flac_STREAMINFO.BLOCK_ID
 
-   This is a subclass of :class:`VorbisComment` modified to be
-   FLAC-compatible.
-   It utilizes the same initialization information and field mappings.
+   This metadata's block ID as a non-negative integer.
 
-.. method:: FlacVorbisComment.build_block([last])
+.. method:: Flac_STREAMINFO.copy()
 
-   Returns the entire metadata block as a string, including the header.
-   Set ``last`` to 1 to indicate this is the final metadata block in the stream.
-.. class:: FlacPictureComment(type, mime_type, description, width, height, color_depth, color_count, data)
+   Returns a copy of this metadata block.
 
-   This is a subclass of :class:`audiotools.Image` with additional
-   methods to make it FLAC-compatible.
+.. method:: Flac_STREAMINFO.raw_info()
 
-.. method:: FlacPictureComment.build()
+   Returns this metadata block as a human-readable unicode string.
 
-   Returns this picture data as a block data string, without the metadata
-   block headers.
-   Raises :exc:`FlacMetaDataBlockTooLarge` if the size of its
-   picture data exceeds 16777216 bytes.
+.. classmethod:: Flac_STREAMINFO.parse(reader)
 
-.. method:: FlacPictureComment.build_block([last])
+   Given a :class:`audiotools.bitstream.BitstreamReader`, returns a parsed :class:`Flac_STREAMINFO` object.
+   This presumes its 32-bit metadata header has already been read.
 
-   Returns the entire metadata block as a string, including the header.
-   Set ``last`` to 1 to indicate this is the final metadata block in the stream.
+.. method:: Flac_STREAMINFO.build(writer)
 
-.. class:: FlacCueSheet(container[, sample_rate])
+   Writes this metadata block to the given :class:`audiotools.bitstream.BitstreamWriter`,
+   not including its 32-bit metadata header.
 
-   This is a :class:`audiotools.cue.Cuesheet`-compatible object
-   with :func:`catalog`, :func:`ISRCs`, :func:`indexes` and
-   :func:`pcm_lengths` methods, in addition to those needed to make it
-   FLAC metadata block compatible.
-   Its ``container`` argument is an :class:`audiotools.Con.Container` object
-   which is returned by calling :func:`FlacCueSheet.CUESHEET.parse`
-   on a raw input data string.
+.. method:: Flac_STREAMINFO.size()
 
-.. method:: FlacCueSheet.build_block([last])
+   Returns the size of the metadata block,
+   not including its 32-bit metadata header.
 
-   Returns the entire metadata block as a string, including the header.
-   Set ``last`` to 1 to indicate this is the final metadata block in the stream.
+PADDING
+^^^^^^^
 
-.. classmethod:: FlacCueSheet.converted(sheet, total_frames[, sample_rate])
+.. class:: Flac_PADDING(length)
 
-   Takes another :class:`audiotools.cue.Cuesheet`-compatible object
-   and returns a new :class:`FlacCueSheet` object.
+   Length is the length of the padding, in bytes.
 
+.. data:: Flac_PADDING.BLOCK_ID
 
+   This metadata's block ID as a non-negative integer.
+
+.. method:: Flac_PADDING.copy()
+
+   Returns a copy of this metadata block.
+
+.. method:: Flac_PADDING.raw_info()
+
+   Returns this metadata block as a human-readable unicode string.
+
+.. classmethod:: Flac_PADDING.parse(reader)
+
+   Given a :class:`audiotools.bitstream.BitstreamReader`, returns a parsed :class:`Flac_PADDING` object.
+   This presumes its 32-bit metadata header has already been read.
+
+.. method:: Flac_PADDING.build(writer)
+
+   Writes this metadata block to the given :class:`audiotools.bitstream.BitstreamWriter`,
+   not including its 32-bit metadata header.
+
+.. method:: Flac_PADDING.size()
+
+   Returns the size of the metadata block,
+   not including its 32-bit metadata header.
+
+APPLICATION
+^^^^^^^^^^^
+
+.. class:: Flac_APPLICATION(application_id, data)
+
+   ``application_id`` is a 4-byte binary string.
+   ``data`` is a binary string.
+
+.. data:: Flac_APPLICATION.BLOCK_ID
+
+   This metadata's block ID as a non-negative integer.
+
+.. method:: Flac_APPLICATION.copy()
+
+   Returns a copy of this metadata block.
+
+.. method:: Flac_APPLICATION.raw_info()
+
+   Returns this metadata block as a human-readable unicode string.
+
+.. classmethod:: Flac_APPLICATION.parse(reader)
+
+   Given a :class:`audiotools.bitstream.BitstreamReader`, returns a parsed :class:`Flac_APPLICATION` object.
+   This presumes its 32-bit metadata header has already been read.
+
+.. method:: Flac_APPLICATION.build(writer)
+
+   Writes this metadata block to the given :class:`audiotools.bitstream.BitstreamWriter`,
+   not including its 32-bit metadata header.
+
+.. method:: Flac_APPLICATION.size()
+
+   Returns the size of the metadata block,
+   not including its 32-bit metadata header.
+
+SEEKTABLE
+^^^^^^^^^
+
+.. class:: Flac_SEEKTABLE(seekpoints)
+
+   ``seekpoints`` is a list of
+   ``(PCM frame offset, byte offset, PCM frame count)`` tuples
+   for each seek point in the seektable.
+
+.. data:: Flac_SEEKTABLE.BLOCK_ID
+
+   This metadata's block ID as a non-negative integer.
+
+.. method:: Flac_SEEKTABLE.copy()
+
+   Returns a copy of this metadata block.
+
+.. method:: Flac_SEEKTABLE.raw_info()
+
+   Returns this metadata block as a human-readable unicode string.
+
+.. classmethod:: Flac_SEEKTABLE.parse(reader)
+
+   Given a :class:`audiotools.bitstream.BitstreamReader`, returns a parsed :class:`Flac_SEEKTABLE` object.
+   This presumes its 32-bit metadata header has already been read.
+
+.. method:: Flac_SEEKTABLE.build(writer)
+
+   Writes this metadata block to the given :class:`audiotools.bitstream.BitstreamWriter`,
+   not including its 32-bit metadata header.
+
+.. method:: Flac_SEEKTABLE.size()
+
+   Returns the size of the metadata block,
+   not including its 32-bit metadata header.
+
+.. method:: Flac_SEEKTABLE.clean(fixes_performed)
+
+   Returns a fixed FLAC seektable with empty seek points removed
+   and ``byte offset`` / ``PCM frame count`` values reordered
+   to be incrementing.
+   Any fixes performed are appended to the ``fixes_performed``
+   list as unicode strings.
+
+VORBISCOMMENT
+^^^^^^^^^^^^^
+
+.. class:: Flac_VORBISCOMMENT(comment_strings, vendor_string)
+
+   ``comment_strings`` is a list of unicode strings
+   and ``vendor_string`` is a unicode string.
+
+   >>> Flac_VORBISCOMMENT([u"TITLE=Foo", u"ARTIST=Bar"], u"Python Audio Tools")
+
+.. data:: Flac_VORBISCOMMENT.BLOCK_ID
+
+   This metadata's block ID as a non-negative integer.
+
+.. method:: Flac_VORBISCOMMENT.copy()
+
+   Returns a copy of this metadata block.
+
+.. method:: Flac_VORBISCOMMENT.raw_info()
+
+   Returns this metadata block as a human-readable unicode string.
+
+.. classmethod:: Flac_VORBISCOMMENT.parse(reader)
+
+   Given a :class:`audiotools.bitstream.BitstreamReader`, returns a parsed :class:`Flac_VORBISCOMMENT` object.
+   This presumes its 32-bit metadata header has already been read.
+
+.. method:: Flac_VORBISCOMMENT.build(writer)
+
+   Writes this metadata block to the given :class:`audiotools.bitstream.BitstreamWriter`,
+   not including its 32-bit metadata header.
+
+.. method:: Flac_VORBISCOMMENT.size()
+
+   Returns the size of the metadata block,
+   not including its 32-bit metadata header.
+
+.. classmethod:: Flac_VORBISCOMMENT.converted(metadata)
+
+   Given a :class:`audiotools.MetaData`-compatible object,
+   returns a :class:`Flac_VORBISCOMMENT` object.
+
+CUESHEET
+^^^^^^^^
+
+.. class:: Flac_CUESHEET(catalog_number, lead_in_samples, is_cdda, tracks)
+
+   ``catalog_number`` is a 128 byte binary string.
+   ``lead_in_samples`` is a non-negative integer.
+   ``is_cdda`` is 1 if the cuesheet is from an audio CD, 0 if not.
+   ``tracks`` is a list of :class:`Flac_CUESHEET_track` objects.
+
+.. data:: Flac_CUESHEET.BLOCK_ID
+
+   This metadata's block ID as a non-negative integer.
+
+.. method:: Flac_CUESHEET.copy()
+
+   Returns a copy of this metadata block.
+
+.. method:: Flac_CUESHEET.raw_info()
+
+   Returns this metadata block as a human-readable unicode string.
+
+.. classmethod:: Flac_CUESHEET.parse(reader)
+
+   Given a :class:`audiotools.bitstream.BitstreamReader`, returns a parsed :class:`Flac_CUESHEET` object.
+   This presumes its 32-bit metadata header has already been read.
+
+.. method:: Flac_CUESHEET.build(writer)
+
+   Writes this metadata block to the given :class:`audiotools.bitstream.BitstreamWriter`,
+   not including its 32-bit metadata header.
+
+.. method:: Flac_CUESHEET.size()
+
+   Returns the size of the metadata block,
+   not including its 32-bit metadata header.
+
+.. classmethod:: Flac_CUESHEET.converted(cuesheet, total_frames[, sample rate])
+
+   Given a cuesheet-compatible object,
+   total length of the file in PCM frames and an optional sample rate,
+   returns a new :class:`Flac_CUESHEET` object.
+
+.. method:: Flac_CUESHEET.catalog()
+
+   Returns the cuesheet's catalog number as a 128 byte binary string.
+
+.. method:: Flac_CUESHEET.ISRCs()
+
+   Returns a dict of track number integers -> ISRC binary strings.
+   Any tracks without ISRC values will not be present in the dict.
+
+.. method:: Flac_CUESHEET.indexes([sample_rate])
+
+   Returns a list of ``(start, end)`` integer tuples
+   indicating all the index points in the cuesheet.
+
+.. method:: Flac_CUESHEET.pcm_lengths(total_length)
+
+   Given a total length of the file in PCM frames,
+   returns a list of PCM frame lengths for each track in the cuesheet.
+
+.. class:: Flac_CUESHEET_track(offset, number, ISRC, track_type, pre_emphasis, index_points)
+
+   ``offset`` is the track's offset.
+   ``number`` number is the track's number on the CD, typically starting from 1.
+   ``ISRC`` is the track's ISRC number as a binary string.
+   ``track_type`` is 0 for audio, 1 for non-audio.
+   ``pre_emphasis`` is 0 for tracks with no pre-emphasis, 1 for tracks with pre-emphasis.
+   ``index_points`` is a list of :class:`Flac_CUESHEET_index` objects.
+
+.. method:: Flac_CUESHEET_track.copy()
+
+   Returns a copy of this cuesheet track.
+
+.. method:: Flac_CUESHEET_track.raw_info()
+
+   Returns this cuesheet track as a human-readable unicode string.
+
+.. classmethod:: Flac_CUESHEET_track.parse(reader)
+
+   Given a :class:`audiotools.bitstream.BitstreamReader`,
+   returns a parsed :class:`Flac_CUESHEET_track` object.
+
+.. method:: Flac_CUESHEET_track.build(writer)
+
+   Writes this cuesheet track to the given :class:`audiotools.bitstream.BitstreamWriter`.
+
+.. class:: Flac_CUESHEET_index(offset, number)
+
+   ``offset`` is the index point's offset.
+   ``number`` is the index point's number in the set.
+
+.. method:: Flac_CUESHEET_index.copy()
+
+   Returns a copy of this cuesheet index.
+
+.. classmethod:: Flac_CUESHEET_index.parse(reader)
+
+   Given a :class:`audiotools.bitstream.BitstreamReader`,
+   returns a parsed :class:`Flac_CUESHEET_index` object.
+
+.. method:: Flac_CUESHEET_index.build(writer)
+
+   Writes this index point to the given :class:`audiotools.bitstream.BitstreamWriter`.
+
+PICTURE
+^^^^^^^
+
+.. class:: Flac_PICTURE(picture_type, mime_type, description, width, height, color_depth, color_count, data)
+
+   ``picture_type`` is one of the following:
+
+   == ===================================
+   0  Other
+   1  32x32 pixels 'file icon' (PNG only)
+   2  Other file icon
+   3  Cover (front)
+   4  Cover (back)
+   5  Leaflet page
+   6  Media (e.g. label side of CD)
+   7  Lead artist/lead performer/soloist
+   8  Artist/performer
+   9  Conductor
+   10 Band/Orchestra
+   11 Composer
+   12 Lyricist/text writer
+   13 Recording Location
+   14 During recording
+   15 During performance
+   16 Movie/video screen capture
+   17 A bright coloured fish
+   18 Illustration
+   19 Band/artist logotype
+   20 Publisher/Studio logotype
+   == ===================================
+
+   ``mime_type`` and ``description`` are unicode strings.
+   ``width`` and ``height`` are integer number of pixels.
+   ``color_depth`` is an integer number of bits per pixel.
+   ``color_count`` is an integer number of colors for images
+   with indexed colors, or 0 for formats such as JPEG with no indexed colors.
+   ``data`` is a binary string of raw image data.
+
+   This is a subclass of :class:`audiotools.Image`
+   which shares all the same methods and attributes.
+
+.. data:: Flac_IMAGE.BLOCK_ID
+
+   This metadata's block ID as a non-negative integer.
+
+.. method:: Flac_IMAGE.copy()
+
+   Returns a copy of this metadata block.
+
+.. method:: Flac_IMAGE.raw_info()
+
+   Returns this metadata block as a human-readable unicode string.
+
+.. classmethod:: Flac_IMAGE.parse(reader)
+
+   Given a :class:`audiotools.bitstream.BitstreamReader`,
+   returns a parsed :class:`Flac_IMAGE` object.
+   This presumes its 32-bit metadata header has already been read.
+
+.. method:: Flac_IMAGE.build(writer)
+
+   Writes this metadata block to the given :class:`audiotools.bitstream.BitstreamWriter`,
+   not including its 32-bit metadata header.
+
+.. method:: Flac_IMAGE.size()
+
+   Returns the size of the metadata block,
+   not including its 32-bit metadata header.
+
+.. method:: Flac_IMAGE.converted(image)
+
+   Given an :class:`Flac_IMAGE`-compatible object,
+   returns a new :class:`Flac_IMAGE` block.
+
+.. method:: Flac_IMAGE.clean(fixes_performed)
+
+   Returns a new :class:`Flac_IMAGE` block with
+   metadata fields cleaned up according to the metrics
+   of the contained raw image data.
+   Any fixes are appended to the ``fixes_performed`` list
+   as unicode strings.
 
 ID3v1
 -----
 
-.. class:: ID3v1Comment(metadata)
+.. class:: ID3v1Comment(track_name, artist_name, album_name, year, comment, track_number, genre)
 
-   This is an ID3v1_ tag which is often appended to MP3 files.
-   During initialization, it takes a tuple of 6 values -
-   in the same order as returned by :func:`ID3v1Comment.read_id3v1_comment`.
-   It can then be manipulated like a regular Python list,
-   in addition to the regular :class:`audiotools.MetaData` methods.
-   However, since ID3v1 is a nearly complete subset
-   of :class:`audiotools.MetaData`
-   (the genre integer is the only field not represented),
-   there's little need to reference its items by index directly.
+   All fields except track_number and genre are binary strings.
 
-   For example:
-
-   >>> tag = ID3v1Comment((u'Track Title',u'',u'',u'',u'',1))
+   >>> tag = ID3v1Comment(u'Track Title',u'',u'',u'',u'',1, 0)
    >>> tag.track_name
    u'Track Title'
-   >>> tag[0] = u'New Track Name'
+   >>> tag.track_name = u'New Track Name'
    >>> tag.track_name
    u'New Track Name'
 
-   Fields are mapped between :class:`ID3v1Comment` and
-   :class:`audiotools.MetaData` as follows:
+.. method:: ID3v1Comment.raw_info()
 
-   ===== ================
-   Index Metadata
-   ----- ----------------
-   0     ``track_name``
-   1     ``artist_name``
-   2     ``album_name``
-   3     ``year``
-   4     ``comment``
-   5     ``track_number``
-   ===== ================
+   Returns this metadata as a human-readable unicode string.
 
-.. method:: ID3v1Comment.build_tag()
+.. classmethod:: ID3v1Comment.parse(mp3_file)
 
-   Returns this tag as a string.
+   Given a seekable file object of an MP3 file,
+   returns an :class:`ID3v1Comment` object.
+   Raises :exc:`ValueError` if the comment is invalid.
 
-.. classmethod:: ID3v1Comment.build_id3v1(song_title, artist, album, year, comment, track_number)
+.. method:: ID3v1Comment.build(mp3_file)
 
-   A convenience method which takes several unicode strings
-   (except for ``track_number``, an integer) and returns
-   a complete ID3v1 tag as a string.
-
-.. classmethod:: ID3v1Comment.read_id3v1_comment(filename)
-
-   Takes an MP3 filename string and returns a tuple of that file's
-   ID3v1 tag data, or tag data with empty fields if no ID3v1 tag is found.
+   Given a file object positioned at the end of an MP3 file,
+   appends this ID3v1 comment to that file.
 
 ID3v2.2
 -------
@@ -315,20 +610,20 @@ ID3v2.2
 .. class:: ID3v22Comment(frames)
 
    This is an ID3v2.2_ tag, one of the three ID3v2 variants used by MP3 files.
-   During initialization, it takes a list of :class:`ID3v22Frame`-compatible
+   During initialization, it takes a list of :class:`ID3v22_Frame`-compatible
    objects.
    It can then be manipulated like a regular Python dict with keys
-   as 3 character frame identifiers and values as lists of :class:`ID3v22Frame`
+   as 3 character frame identifiers and values as lists of :class:`ID3v22_Frame`
    objects - since each frame identifier may occur multiple times.
 
    For example:
 
-   >>> tag = ID3v22Comment([ID3v22TextFrame('TT2',0,u'Track Title')])
+   >>> tag = ID3v22Comment([ID3v22_T__Frame('TT2', 0, u'Track Title')])
    >>> tag.track_name
    u'Track Title'
    >>> tag['TT2']
-   [<audiotools.__id3__.ID3v22TextFrame instance at 0x1004c17a0>]
-   >>> tag['TT2'] = [ID3v22TextFrame('TT2',0,u'New Track Title')]
+   [<audiotools.__id3__.ID3v22_T__Frame instance at 0x1004c17a0>]
+   >>> tag['TT2'] = [ID3v22_T__Frame('TT2', 0, u'New Track Title')]
    >>> tag.track_name
    u'New Track Title'
 
@@ -338,45 +633,73 @@ ID3v2.2
    ========== ================================ ========================
    Identifier MetaData                         Object
    ---------- -------------------------------- ------------------------
-   ``TT2``    ``track_name``                   :class:`ID3v22TextFrame`
-   ``TRK``    ``track_number``/``track_total`` :class:`ID3v22TextFrame`
-   ``TPA``    ``album_number``/``album_total`` :class:`ID3v22TextFrame`
-   ``TAL``    ``album_name``                   :class:`ID3v22TextFrame`
-   ``TP1``    ``artist_name``                  :class:`ID3v22TextFrame`
-   ``TP2``    ``performer_name``               :class:`ID3v22TextFrame`
-   ``TP3``    ``conductor_name``               :class:`ID3v22TextFrame`
-   ``TCM``    ``composer_name``                :class:`ID3v22TextFrame`
-   ``TMT``    ``media``                        :class:`ID3v22TextFrame`
-   ``TRC``    ``ISRC``                         :class:`ID3v22TextFrame`
-   ``TCR``    ``copyright``                    :class:`ID3v22TextFrame`
-   ``TPB``    ``publisher``                    :class:`ID3v22TextFrame`
-   ``TYE``    ``year``                         :class:`ID3v22TextFrame`
-   ``TRD``    ``date``                         :class:`ID3v22TextFrame`
-   ``COM``    ``comment``                      :class:`ID3v22ComFrame`
-   ``PIC``    ``images()``                     :class:`ID3v22PicFrame`
+   ``TT2``    ``track_name``                   :class:`ID3v22_T__Frame`
+   ``TRK``    ``track_number``/``track_total`` :class:`ID3v22_T__Frame`
+   ``TPA``    ``album_number``/``album_total`` :class:`ID3v22_T__Frame`
+   ``TAL``    ``album_name``                   :class:`ID3v22_T__Frame`
+   ``TP1``    ``artist_name``                  :class:`ID3v22_T__Frame`
+   ``TP2``    ``performer_name``               :class:`ID3v22_T__Frame`
+   ``TP3``    ``conductor_name``               :class:`ID3v22_T__Frame`
+   ``TCM``    ``composer_name``                :class:`ID3v22_T__Frame`
+   ``TMT``    ``media``                        :class:`ID3v22_T__Frame`
+   ``TRC``    ``ISRC``                         :class:`ID3v22_T__Frame`
+   ``TCR``    ``copyright``                    :class:`ID3v22_T__Frame`
+   ``TPB``    ``publisher``                    :class:`ID3v22_T__Frame`
+   ``TYE``    ``year``                         :class:`ID3v22_T__Frame`
+   ``TRD``    ``date``                         :class:`ID3v22_T__Frame`
+   ``COM``    ``comment``                      :class:`ID3v22_COM_Frame`
+   ``PIC``    ``images()``                     :class:`ID3v22_PIC_Frame`
    ========== ================================ ========================
 
-.. class:: ID3v22Frame(frame_id, data)
+ID3v22_Frame
+^^^^^^^^^^^^
+
+.. class:: ID3v22_Frame(frame_id, data)
 
    This is the base class for the various ID3v2.2 frames.
    ``frame_id`` is a 3 character string and ``data`` is
    the frame's contents as a string.
 
-.. method:: ID3v22Frame.build()
+.. method:: ID3v22Frame.copy()
 
-   Returns the frame's contents as a string of binary data.
+   Returns a new copy of this frame.
 
-.. classmethod:: ID3v22Frame.parse(container)
+.. method:: ID3v22Frame.raw_info()
 
-   Given a :class:`audiotools.Con.Container` object with data
-   parsed from ``audiotools.ID3v22Frame.FRAME``,
-   returns an :class:`ID3v22Frame` or one of its subclasses,
-   depending on the frame identifier.
+   Returns this frame as a human-readable unicode string.
 
-.. class:: ID3v22TextFrame(frame_id, encoding, string)
+.. classmethod:: ID3v22Frame.parse(frame_id, frame_size, reader)
 
-   This is a container for textual data.
-   ``frame_id`` is a 3 character string, ``string`` is a unicode string
+   Given a 3 byte frame ID, frame size and
+   :class:`audiotools.bitstream.BitstreamReader`
+   (positioned past the 6 byte frame header)
+   returns a parsed :class:`ID3v22Frame` object.
+
+.. method:: ID3v22Frame.build(writer)
+
+   Writes frame to the given
+   :class:`audiotools.bitstream.BitstreamWriter`,
+   not including its 6 byte frame header.
+
+.. method:: ID3v22Frame.size()
+
+   Returns the frame's size, not including its 6 byte frame header.
+
+.. method:: ID3v22Frame.clean(fixes_performed)
+
+   Returns a new :class:`ID3v22Frame` object that's been cleaned
+   of any problems.
+   Any fixes performed are appended to ``fixes_performed``
+   as unicode strings.
+
+ID3v22 Text Frames
+^^^^^^^^^^^^^^^^^^
+
+.. class:: ID3v22_T__Frame(frame_id, encoding, data)
+
+   This :class:`ID3v22_Frame`-compatible object is a container
+   for textual data.
+   ``frame_id`` is a 3 character string, ``data`` is a binary string
    and ``encoding`` is one of the following integers representing a
    text encoding:
 
@@ -385,34 +708,57 @@ ID3v2.2
    1 UCS-2_
    = ========
 
-.. method:: ID3v22TextFrame.__int__()
+.. method:: ID3v22_T__Frame.number()
 
-   Returns the first integer portion of the frame data as an int.
+   Returns the first integer portion of the frame data as an int
+   if the frame is container for numerical data such as
+   ``TRK`` or ``TPA``.
 
-.. method:: ID3v22TextFrame.total()
+.. method:: ID3v22_T__Frame.total()
 
-   Returns the integer portion of the frame data after the first slash
-   as an int.
+   Returns the second integer portion of the frame data as an int
+   if the frame is a numerical container and has a "total" field.
    For example:
 
-   >>> tag['TRK'] = [ID3v22TextFrame('TRK',0,u'1/2')]
-   >>> tag['TRK']
-   [<audiotools.__id3__.ID3v22TextFrame instance at 0x1004c6830>]
-   >>> int(tag['TRK'][0])
+   >>> f = ID3v22_T__Frame('TRK', 0, u'1/2')
+   >>> f.number()
    1
-   >>> tag['TRK'][0].total()
+   >>> f.total()
    2
 
-.. classmethod:: ID3v22TextFrame.from_unicode(frame_id, s)
+.. classmethod:: ID3v22_T__Frame.converted(frame_id, unicode_string)
 
-   A convenience method for building :class:`ID3v22TextFrame` objects
-   from a frame identifier and unicode string.
-   Note that if ``frame_id`` is ``"COM"``, this will build an
-   :class:`ID3v22ComFrame` object instead.
+   Given a 3 byte frame ID and unicode string,
+   returns a new :class:`ID3v22_T__Frame` object.
 
-.. class:: ID3v22ComFrame(encoding, language, short_description, content)
+.. class:: ID3v22_TXX_Frame(encoding, description, data)
 
-   This frame is for holding a potentially large block of comment data.
+   This subclass of :class:`ID3v22_T__Frame` contains
+   an additional ``description`` binary string field
+   to hold user-defined textual data.
+
+ID3v22 Web Frames
+^^^^^^^^^^^^^^^^^
+
+.. class:: ID3v22_W__Frame(frame_id, url)
+
+   This :class:`ID3v22_Frame`-compatible object is a container
+   for web links.
+   ``frame_id`` is a 3 character string, ``url`` is a binary string.
+
+.. class:: ID3v22_WXX_Frame(encoding, description, url)
+
+   This subclass of :class:`ID3v22_W__Frame` contains
+   an additional ``description`` binary string field
+   to hold user-defined web link data.
+
+ID3v22_COM_Frame
+^^^^^^^^^^^^^^^^
+
+.. class:: ID3v22_COM_Frame(encoding, language, short_description, data)
+
+   This :class:`ID3v22_Frame`-compatible object is for holding
+   a potentially large block of comment data.
    ``encoding`` is the same as in text frames:
 
    = ========
@@ -421,30 +767,32 @@ ID3v2.2
    = ========
 
    ``language`` is a 3 character string, such as ``"eng"`` for English.
-   ``short_description`` and ``content`` are unicode strings.
+   ``short_description`` is a :class:`C_string` object.
+   ``data`` is a binary string.
 
-.. classmethod:: ID3v22ComFrame.from_unicode(s)
+.. classmethod:: ID3v22_COM_Frame.converted(frame_id, unicode_string)
 
-   A convenience method for building :class:`ID3v22ComFrame` objects
-   from a unicode string.
+   Given a 3 byte ``"COM"`` frame ID and unicode string,
+   returns a new :class:`ID3v22_COM_Frame` object.
 
-.. class:: ID3v22PicFrame(data, format, description, pic_type)
+ID3v22_PIC_Frame
+^^^^^^^^^^^^^^^^
+
+.. class:: ID3v22_PIC_Frame(image_format, picture_type, description, data)
 
    This is a subclass of :class:`audiotools.Image`, in addition
-   to being an ID3v2.2 frame.
-   ``data`` is a string of binary image data.
-   ``format`` is a 3 character unicode string identifying the image type:
+   to being a :class:`ID3v22_Frame`-compatible object.
+   ``image_format`` is one of the following:
 
    ========== ======
-   ``u"PNG"`` PNG
-   ``u"JPG"`` JPEG
-   ``u"BMP"`` Bitmap
-   ``u"GIF"`` GIF
-   ``u"TIF"`` TIFF
+   ``"PNG"``  PNG
+   ``"JPG"``  JPEG
+   ``"BMP"``  Bitmap
+   ``"GIF"``  GIF
+   ``"TIF"``  TIFF
    ========== ======
 
-   ``description`` is a unicode string.
-   ``pic_type`` is an integer representing one of the following:
+   ``picture_type`` is an integer representing one of the following:
 
    == ======================================
    0  Other
@@ -470,14 +818,17 @@ ID3v2.2
    20 Publisher / Studio logotype
    == ======================================
 
-.. method:: ID3v22PicFrame.type_string()
+   ``description`` is a :class:`C_String`.
+   ``data`` is a string of binary image data.
 
-   Returns the ``pic_type`` as a plain string.
+.. method:: ID3v22_PIC_Frame.type_string()
 
-.. classmethod:: ID3v22PicFrame.converted(image)
+   Returns the ``picture_type`` as a plain string.
+
+.. classmethod:: ID3v22_PIC_Frame.converted(frame_id, image)
 
    Given an :class:`audiotools.Image` object,
-   returns a new :class:`ID3v22PicFrame` object.
+   returns a new :class:`ID3v22_PIC_Frame` object.
 
 ID3v2.3
 -------

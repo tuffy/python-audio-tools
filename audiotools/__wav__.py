@@ -259,7 +259,7 @@ class WaveReader(PCMReader):
             raise InvalidWave(_(u"data chunk not found"))
 
     def read(self, bytes):
-        """try to read a pcm.FrameList of size "bytes""""
+        """try to read a pcm.FrameList of size 'bytes'"""
 
         #align bytes downward if an odd number is read in
         bytes -= (bytes % (self.channels * self.bits_per_sample / 8))

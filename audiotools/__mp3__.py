@@ -20,7 +20,7 @@
 
 from audiotools import (AudioFile, InvalidFile, PCMReader, PCMConverter,
                         transfer_data, transfer_framelist_data,
-                        subprocess, BIN, BIG_ENDIAN, ApeTag, ReplayGain,
+                        subprocess, BIN, ApeTag, ReplayGain,
                         ignore_sigint, open_files, EncodingError,
                         DecodingError, PCMReaderError, ChannelMask,
                         __default_quality__, config)
@@ -234,6 +234,8 @@ class MP3Audio(AudioFile):
 
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
+
+        BIG_ENDIAN = sys.byteorder == 'big'
 
         #if mpg123 is available, use that for decoding
         if (BIN.can_execute(BIN["mpg123"])):

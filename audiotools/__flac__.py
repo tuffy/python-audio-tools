@@ -508,7 +508,7 @@ class Flac_VORBISCOMMENT(VorbisComment):
 
     @classmethod
     def converted(cls, metadata):
-        """converts a MetaData object to a VorbisComment object"""
+        """converts a MetaData object to a Flac_VORBISCOMMENT object"""
 
         if ((metadata is None) or (isinstance(metadata, Flac_VORBISCOMMENT))):
             return metadata
