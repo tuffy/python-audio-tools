@@ -5349,6 +5349,18 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] audiotools_resample.rst
    - [ ] audiotools_toc.rst
    - [ ] index.rst
+   - [X] metadata.rst
+** TODO Spellcheck Python API docs
+   - [ ] audiotools.rst
+   - [ ] audiotools_bitstream.rst
+   - [ ] audiotools_cdio.rst
+   - [ ] audiotools_cue.rst
+   - [ ] audiotools_pcm.rst
+   - [ ] audiotools_player.rst
+   - [ ] audiotools_replaygain.rst
+   - [ ] audiotools_resample.rst
+   - [ ] audiotools_toc.rst
+   - [ ] index.rst
    - [ ] metadata.rst
 ** TODO Ensure all Python modules have up-to-date docstrings
    - [X] __aiff__.py
