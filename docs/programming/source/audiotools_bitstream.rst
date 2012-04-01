@@ -321,7 +321,7 @@ into a larger binary file stream.
 
    >>> w.build("3u 4s 36U", [1, -2, 3L])
 
-   is equivilent to:
+   is equivalent to:
 
    >>> w.write(3,1)
    >>> w.write_signed(4, -2)
@@ -443,7 +443,7 @@ bits or bytes, for possible output into a :class:`BitstreamWriter`.
 
    >>> w.build("3u 4s 36U", [1, -2, 3L])
 
-   is equivilent to:
+   is equivalent to:
 
    >>> w.write(3,1)
    >>> w.write_signed(4, -2)
@@ -610,7 +610,7 @@ The actual writes themselves are not recorded.
 
    >>> w.build("3u 4s 36U", [1, -2, 3L])
 
-   is equivilent to:
+   is equivalent to:
 
    >>> w.write(3,1)
    >>> w.write_signed(4, -2)

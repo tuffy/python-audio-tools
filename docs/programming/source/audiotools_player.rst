@@ -12,7 +12,7 @@ AudioOutput classes for playing AudioFiles.
    A tuple of :class:`AudioOutput`-compatible classes of available
    output types.
    As with ``AVAILABLE_TYPES``, these are classes that are available
-   to audiotools, not necessarily availble to the user.
+   to audiotools, not necessarily available to the user.
 
 ================= =================
 Class             Output System

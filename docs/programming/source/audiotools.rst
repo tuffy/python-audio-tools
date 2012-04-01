@@ -1272,7 +1272,7 @@ LimitedPCMReader Objects
 
 .. note::
 
-   :class:`PCMReaderWindow` is designed primarly for handling
+   :class:`PCMReaderWindow` is designed primarily for handling
    sample offset values in a :class:`CDTrackReader`,
    or for skipping a potentially large number of samples
    in a stream.
@@ -1473,7 +1473,7 @@ CD Lookups
    ``first_track_number`` and ``last_track_number`` are positive ints.
    ``offsets`` is a list of track offsets, in CD frames.
    ``lead_out_offset`` is the offset of the "lead-out" track, in CD frames.
-   ``total_length`` is the total length of th disc, in CD frames.
+   ``total_length`` is the total length of the disc, in CD frames.
 
    Returns a ``metadata[c][t]`` list of lists
    where ``c`` is a possible choice and ``t`` is the :class:`MetaData`
@@ -2021,7 +2021,7 @@ Messenger Objects
 .. method:: Messenger.ansi_cleardown(self)
 
    Clears all the output below the current line.
-   This is typically used in conjuction with :meth:`Messenger.ansi_uplines`.
+   This is typically used in conjunction with :meth:`Messenger.ansi_uplines`.
 
    >>> msg = Messenger("audiotools", None)
    >>> msg.output(u"line 1")

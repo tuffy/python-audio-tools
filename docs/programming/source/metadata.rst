@@ -518,7 +518,7 @@ PICTURE
    14 During recording
    15 During performance
    16 Movie/video screen capture
-   17 A bright coloured fish
+   17 A bright colored fish
    18 Illustration
    19 Band/artist logotype
    20 Publisher/Studio logotype

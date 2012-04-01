@@ -69,4 +69,3 @@ Cuesheet Objects
    Returns a new :class:`Cuesheet` object.
    This is used to convert other sort of Cuesheet-like objects
    into actual Cuesheets.
-

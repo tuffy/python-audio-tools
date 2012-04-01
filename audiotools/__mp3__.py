@@ -23,7 +23,7 @@ from audiotools import (AudioFile, InvalidFile, PCMReader, PCMConverter,
                         subprocess, BIN, ApeTag, ReplayGain,
                         ignore_sigint, open_files, EncodingError,
                         DecodingError, PCMReaderError, ChannelMask,
-                        __default_quality__, config)
+                        __default_quality__, config, sys)
 from __id3__ import *
 import gettext
 
