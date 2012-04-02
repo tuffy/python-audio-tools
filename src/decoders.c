@@ -25,7 +25,7 @@ extern PyTypeObject decoders_OggFlacDecoderType;
 extern PyTypeObject decoders_SHNDecoderType;
 extern PyTypeObject decoders_ALACDecoderType;
 extern PyTypeObject decoders_WavPackDecoderType;
-extern PyTypeObject decoders_VorbisDecoderType;
+/* extern PyTypeObject decoders_VorbisDecoderType; */
 extern PyTypeObject decoders_DVDA_Title_Type;
 extern PyTypeObject decoders_Sine_Mono_Type;
 extern PyTypeObject decoders_Sine_Stereo_Type;
@@ -57,9 +57,9 @@ initdecoders(void)
     if (PyType_Ready(&decoders_WavPackDecoderType) < 0)
         return;
 
-    decoders_VorbisDecoderType.tp_new = PyType_GenericNew;
-    if (PyType_Ready(&decoders_VorbisDecoderType) < 0)
-        return;
+    /* decoders_VorbisDecoderType.tp_new = PyType_GenericNew; */
+    /* if (PyType_Ready(&decoders_VorbisDecoderType) < 0) */
+    /*     return; */
 
     decoders_CPPMDecoderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_CPPMDecoderType) < 0)
@@ -104,9 +104,9 @@ initdecoders(void)
     PyModule_AddObject(m, "WavPackDecoder",
                        (PyObject *)&decoders_WavPackDecoderType);
 
-    Py_INCREF(&decoders_VorbisDecoderType);
-    PyModule_AddObject(m, "VorbisDecoder",
-                       (PyObject *)&decoders_VorbisDecoderType);
+    /* Py_INCREF(&decoders_VorbisDecoderType); */
+    /* PyModule_AddObject(m, "VorbisDecoder", */
+    /*                    (PyObject *)&decoders_VorbisDecoderType); */
 
     Py_INCREF(&decoders_CPPMDecoderType);
     PyModule_AddObject(m, "CPPMDecoder",

@@ -32,6 +32,3 @@ struct ogg_header {
 
 status
 verifymodule_read_ogg_header(BitstreamReader *bs, struct ogg_header *header);
-
-void
-verifymodule_print_ogg_header(struct ogg_header *header);

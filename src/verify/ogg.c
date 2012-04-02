@@ -51,8 +51,6 @@ verifymodule_ogg(PyObject *dummy, PyObject *args) {
         do {
             checksum = 0;
             if (verifymodule_read_ogg_header(bitstream, &header) == OK) {
-                /* verifymodule_print_ogg_header(&header); */
-
                 if (data_buffer_size < header.segment_length_total) {
                     data_buffer = realloc(data_buffer,
                                           header.segment_length_total);
@@ -159,16 +157,4 @@ verifymodule_read_ogg_header(BitstreamReader *bs, struct ogg_header *header) {
     }
 
     return OK;
-}
-
-void
-verifymodule_print_ogg_header(struct ogg_header *header) {
-    printf("magic number         : 0x%X\n", header->magic_number);
-    printf("version              : 0x%X\n", header->version);
-    printf("type                 : 0x%X\n", header->type);
-    printf("granule position     : 0x%llX\n", header->granule_position);
-    printf("bitstream serial #   : 0x%X\n", header->bitstream_serial_number);
-    printf("page sequence number : 0x%X\n", header->page_sequence_number);
-    printf("checksum             : 0x%8.8X\n", header->checksum);
-    printf("page segment count   : 0x%X\n", header->page_segment_count);
 }

@@ -106,9 +106,6 @@ next_read_huffman_state(struct br_huffman_table* state,
                         struct huffman_node* tree,
                         bs_endianness endianness);
 
-static void
-print_huffman_tree(struct huffman_node* node, int indent);
-
 /*converts the byte bank to a regular integer*/
 static int
 bank_to_int(struct byte_bank bank);
@@ -235,22 +232,6 @@ free_huffman_tree(struct huffman_node* node) {
         free_huffman_tree(node->v.tree.bit_0);
         free_huffman_tree(node->v.tree.bit_1);
         free(node);
-    }
-}
-
-void print_huffman_tree(struct huffman_node* node, int indent) {
-    int i;
-    for (i = 0; i < indent; i++) {
-        printf(" ");
-    }
-    switch (node->type) {
-    case NODE_LEAF:
-        printf("leaf : %d\n", node->v.leaf);
-        break;
-    case NODE_TREE:
-        printf("node (%u)\n", node->v.tree.id);
-        print_huffman_tree(node->v.tree.bit_0, indent + 2);
-        print_huffman_tree(node->v.tree.bit_1, indent + 2);
     }
 }
 
