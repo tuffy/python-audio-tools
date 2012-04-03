@@ -40,9 +40,10 @@
 #define RMS_WINDOW_TIME     0.050       /* Time slice size [s] */
 #define STEPS_per_dB      100.          /* Table entries per dB */
 #define MAX_dB            120.          /* Table entries for 0...MAX_dB (normal max. values are 70...80 dB) */
+#define STEPS_per_dB_times_MAX_dB 12000
 
-#define MAX_ORDER    (BUTTER_ORDER > YULE_ORDER ? BUTTER_ORDER : YULE_ORDER)
-#define MAX_SAMPLES_PER_WINDOW  (size_t) (MAX_SAMP_FREQ * RMS_WINDOW_TIME)      /* max. Samples per Time slice */
+#define MAX_ORDER 10 /* MAX(BUTTER_ORDER , YULE_ORDER) */
+#define MAX_SAMPLES_PER_WINDOW 9600  /* MAX_SAMP_FREQ * RMS_WINDOW_TIME */
 #define PINK_REF                64.82 /* calibration value */
 
 typedef enum {GAIN_ANALYSIS_ERROR, GAIN_ANALYSIS_OK} gain_calc_status;
@@ -68,8 +69,8 @@ typedef struct {
     double          rsum;
     int             freqindex;
     int             first;
-    uint32_t  A [(size_t)(STEPS_per_dB * MAX_dB)];
-    uint32_t  B [(size_t)(STEPS_per_dB * MAX_dB)];
+    uint32_t  A [STEPS_per_dB_times_MAX_dB];
+    uint32_t  B [STEPS_per_dB_times_MAX_dB];
 
     double title_peak;
     double album_peak;

@@ -5223,6 +5223,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] audiotools_toc.rst
    - [X] index.rst
    - [X] metadata.rst
+** DONE Eliminate all compiler warnings
+   - [X] check Ubuntu
+   - [X] check Fedora
+   - [X] check Mac OS X
 ** TODO Remove Construct module
    Convert all usage of Construct to BitstreamReader/BitstreamWriter.
    Since this is unlikely to be updated for Python 3,
@@ -5389,11 +5393,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] player.py
    - [ ] toc.py
    - [ ] ui.py
-** TODO Eliminate all compiler warnings
-   - [X] check Ubuntu
+** TODO Ensure MANIFEST.in is complete
+** TODO Run final batch of unit tests on different platforms
+   - [ ] check Ubuntu
    - [ ] check Fedora
    - [ ] check Mac OS X
-** TODO Ensure MANIFEST.in is complete
 * TODO Make internal functions static
   Encoders and decoders come with lots of helper functions.
   These should be defined statically whenever possible
