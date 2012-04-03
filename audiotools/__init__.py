@@ -737,13 +737,9 @@ class ProgressDisplay:
     def __init__(self, messenger):
         """takes a Messenger object for displaying output"""
 
-        import time
-
         self.messenger = messenger
-        self.previous_output = []
         self.progress_rows = []
-        self.last_output_time = 0.0
-        self.time = time.time
+        self.previous_output = []
 
         if (sys.stdout.isatty()):
             self.add_row = self.add_row_tty
@@ -801,7 +797,6 @@ class ProgressDisplay:
         for row in self.progress_rows:
             if ((row is not None) and (row.id == row_id)):
                 row.update(current, total)
-        self.refresh()
 
     def update_row_nontty(self, row_id, current, total):
         """updates the given row with a new current and total status"""
@@ -815,20 +810,13 @@ class ProgressDisplay:
         depending on whether output has changed since
         previously displayed"""
 
-        now = self.time()
-        if ((now - self.last_output_time) < .25):
-            return
-
         screen_width = self.messenger.terminal_size(sys.stdout)[1]
         new_output = [progress_row.unicode(screen_width)
                       for progress_row in self.progress_rows
                       if progress_row is not None]
-        if (new_output != self.previous_output):
-            self.clear()
-            for output in new_output:
-                self.messenger.output(output)
-            self.previous_output = new_output
-            self.last_output_time = now
+        for output in new_output:
+            self.messenger.output(output)
+        self.previous_output = new_output
 
     def refresh_nontty(self):
         """refreshes the display of all status rows
@@ -847,7 +835,6 @@ class ProgressDisplay:
             self.messenger.ansi_uplines(len(self.previous_output))
             self.messenger.ansi_cleardown()
             self.previous_output = []
-            self.last_output_time = 0.0
 
     def clear_nontty(self):
         """clears all previously displayed output"""
@@ -4736,17 +4723,14 @@ class ProgressJobQueueComplete(Exception):
 class ExecProgressQueue:
     """a class for running multiple jobs in parallel with progress updates"""
 
-    def __init__(self, progress_display, total_progress_message=None):
+    def __init__(self, progress_display):
         """takes a ProgressDisplay object"""
 
         self.progress_display = progress_display
         self.queued_jobs = []
-        self.total_queued_jobs = 0
         self.max_job_id = 0
         self.running_job_pool = {}
         self.results = {}
-        self.cached_exception = None
-        self.total_progress_message = total_progress_message
 
     def execute(self, function,
                 progress_text=None,
@@ -4769,7 +4753,6 @@ class ExecProgressQueue:
                                  args,
                                  kwargs))
         self.max_job_id += 1
-        self.total_queued_jobs += 1
 
     def execute_next_job(self):
         """executes the next queued job"""
@@ -4785,201 +4768,185 @@ class ExecProgressQueue:
         #add job to progress display
         if (progress_text is not None):
             self.progress_display.add_row(job_id, progress_text)
+            self.progress_display.update_row(job_id, 0, 1)
 
         #spawn subprocess and add it to pool
-        self.running_job_pool[job_id] = __ExecProgressQueueJob__.spawn(
-            job_id,
-            completion_output,
-            function,
-            args,
-            kwargs)
+        self.running_job_pool[job_id] = \
+            __ProgressQueueJob__.spawn(function,
+                                       args,
+                                       kwargs,
+                                       completion_output)
 
-    def execute_next_job_nothreads(self):
-        """executes the next queued job without spawning a subprocess"""
+    def remove_job(self, job_id, job):
+        """job_id is taken from the job_pool dict
+        job is a __ProgressQueueJob__ object"""
 
-        #pull job off queue
-        (job_id,
-         progress_text,
-         completion_output,
-         function,
-         args,
-         kwargs) = self.queued_jobs.pop(0)
-
-        #add job to progress display
-        if (progress_text is not None):
-            self.progress_display.add_row(job_id, progress_text)
-
-        #execute job
-        result = function(*args,
-                           progress=__UnthreadedJobProgress__(
-                job_id, self.progress_display).progress, **kwargs)
-
-        #add result to results
-        self.results[job_id] = result
-
-        #remove job from progress display, if present
-        self.progress_display.delete_row(job_id)
-        self.progress_display.update_row(-1,
-                                         len(self.results),
-                                         self.total_queued_jobs)
-        self.progress_display.clear()
-
-        #display output text, if any
-        if (completion_output is not None):
-            if (callable(completion_output)):
-                output = completion_output(result)
-                if (output is not None):
-                    self.progress_display.messenger.info(unicode(output))
-            else:
-                self.progress_display.messenger.info(
-                    unicode(completion_output))
-
-    def completed(self, job_id, result):
-        """handles the completion of the given job and its result"""
-
-        #add result to results
-        self.results[job_id] = result
-
-        #clean up job from pool
-        self.running_job_pool[job_id].join()
-
-        #remove job from progress display, if present
-        self.progress_display.delete_row(job_id)
-        self.progress_display.update_row(-1,
-                                         len(self.results),
-                                         self.total_queued_jobs)
-        self.progress_display.clear()
-
-        #display output text, if any
-        completion_output = self.running_job_pool[job_id].completion_output
-        if (completion_output is not None):
-            if (callable(completion_output)):
-                output = completion_output(result)
-                if (output is not None):
-                    self.progress_display.messenger.info(unicode(output))
-            else:
-                self.progress_display.messenger.info(
-                    unicode(completion_output))
+        #add job's results to results dict
+        self.results[job_id] = job.result
 
         #remove job from pool
         del(self.running_job_pool[job_id])
 
-        if (len(self.queued_jobs) > 0):
-            #if there are jobs in the queue, run another one
-            self.execute_next_job()
-        elif (len(self.running_job_pool) == 0):
-            #otherwise, raise ProgressJobQueueComplete to signal completion
-            raise ProgressJobQueueComplete()
+        #remove job from progress display
+        self.progress_display.delete_row(job_id)
 
-    def exception(self, job_id, exception):
-        """handles an exception caused by the given job"""
-
-        #clean up job that raised exception
-        self.running_job_pool[job_id].join()
-        del(self.running_job_pool[job_id])
-
-        #clean out job queue
-        while (len(self.queued_jobs) > 0):
-            self.queued_jobs.pop(0)
-
-        #and raise exception which will bubble-up through run()
-        raise exception
-
-    def progress(self, job_id, current, total):
-        """updates the progress display of the given job"""
-
-        self.progress_display.update_row(job_id, current, total)
+        #display job's output message
+        completion_output = job.completion_output
+        if (completion_output is not None):
+            if (callable(completion_output)):
+                output = completion_output(job.result)
+                if (output is not None):
+                    self.progress_display.messenger.info(unicode(output))
+            else:
+                self.progress_display.messenger.info(
+                    unicode(completion_output))
 
     def run(self, max_processes=1):
         """runs all the queued jobs in parallel"""
 
-        import select
-
         if (len(self.queued_jobs) == 0):
             return
 
-        if ((max_processes == 1) or (len(self.queued_jobs) == 1)):
-            while (len(self.queued_jobs) > 0):
-                self.execute_next_job_nothreads()
-        else:
-            for i in xrange(min(max_processes, len(self.queued_jobs))):
-                self.execute_next_job()
+        import time
 
-            if (self.total_progress_message is not None):
-                self.progress_display.add_row(-1, self.total_progress_message)
+        #populate job pool with up to "max_processes" number of jobs
+        for i in xrange(min(max_processes, len(self.queued_jobs))):
+            self.execute_next_job()
 
-            try:
-                while (True):
-                    (rlist,
-                     wlist,
-                     xlist) = select.select(
-                        [job.output for job
-                         in self.running_job_pool.values()], [], [])
-                    for reader in rlist:
-                        (command, args) = cPickle.load(reader)
-                        getattr(self, command)(*args)
-            except ProgressJobQueueComplete:
-                if (self.cached_exception is not None):
-                    raise self.cached_exception
+        #while the pool still contains running jobs
+        while (len(self.running_job_pool) > 0):
+            #clear out old display
+            self.progress_display.clear()
+
+            #poll job pool for completed jobs
+            for (job_id, job) in self.running_job_pool.items():
+                if (job.is_completed()):
+                    #display any output message
+                    self.remove_job(job_id, job)
+
+                    #and add new jobs from the queue as necessary
+                    if (len(self.queued_jobs) > 0):
+                        self.execute_next_job()
                 else:
-                    return
+                    #update job's progress row with current progress
+                    (current, total) = job.progress()
+                    self.progress_display.update_row(job_id, current, total)
 
+            #display new set of progress rows
+            self.progress_display.refresh()
 
-class __ExecProgressQueueJob__:
-    def __init__(self, pid, output, completion_output):
-        self.pid = pid
-        self.output = output
+            #wait some amount of time before polling job pool again
+            time.sleep(0.25)
+
+class __ProgressQueueJob__:
+    def __init__(self, pid, to_child, from_child, result, completion_output):
+        """pid is the child process's PID
+        to_child is a file object pipe for polling the child's progress
+        from_child is a file object pipe for receiving the child's progress
+        result is a file object pipe for receiving the child's final result
+        completion_output is a unicode string or function
+        to execute upon the job's completion"""
+
+        self.__pid__ = pid
+        self.__to_child__ = to_child
+        self.__from_child__ = from_child
+        self.__result__ = result
+        self.__last_progress__ = 0
+        self.__last_total__ = 1
+
         self.completion_output = completion_output
-
-    def join(self):
-        self.output.close()
-        return os.waitpid(self.pid, 0)
+        self.result = None
 
     @classmethod
-    def spawn(cls, job_id, completion_output, function, args, kwargs):
-        (read_end, write_end) = os.pipe()
+    def spawn(cls, function, args, kwargs, completion_output):
+        """given an callable function args tuple and kwargs dict
+        forks a child process with several pipes for polling progress
+        and returns a __ProgressQueueJob__ object
+        which can be polled for progress, waited for, or
+        have return values extracted from"""
+
+        (r1, w1) = os.pipe()  # for sending messages from parent->child
+        (r2, w2) = os.pipe()  # for sending messages from child->parent
+        (r3, w3) = os.pipe()  # for sending final result from child->parent
         pid = os.fork()
         if (pid > 0):
-            os.close(write_end)
-            return cls(pid, os.fdopen(read_end, 'rb'), completion_output)
+            #parent
+            os.close(r1)
+            os.close(w2)
+            os.close(w3)
+            to_child = os.fdopen(w1, "wb")
+            from_child = os.fdopen(r2, "rb")
+            child_result = os.fdopen(r3, "rb")
+
+            return cls(pid, to_child, from_child, child_result,
+                       completion_output)
         else:
-            os.close(read_end)
-            output = os.fdopen(write_end, 'wb')
+            #child
+            os.close(w1)
+            os.close(r2)
+            os.close(r3)
+
             try:
-                try:
-                    result = function(
-                        *args,
-                        progress=__JobProgress__(job_id, output).progress,
-                        **kwargs)
-                    cPickle.dump(("completed", [job_id, result]),
-                                 output,
-                                 cPickle.HIGHEST_PROTOCOL)
-                except Exception, e:
-                    cPickle.dump(("exception", [job_id, e]),
-                                 output,
-                                 cPickle.HIGHEST_PROTOCOL)
-            finally:
-                sys.exit(0)
+                result = function(
+                    *args,
+                    progress=__PollingProgress__(os.fdopen(r1, "rb"),
+                                                 os.fdopen(w2, "wb")).progress,
+                    **kwargs)
+            except:
+                result = None
+
+            result_pipe = os.fdopen(w3, "wb")
+            cPickle.dump(result, result_pipe)
+            result_pipe.flush()
+            result_pipe.close()
+            sys.exit(0)
+
+    def is_completed(self):
+        """returns True if the job is completed
+        in that instance, self.result will be populated
+        with the function's return value
+        and the child process will be disposed of"""
+
+        if (os.waitpid(self.__pid__, os.WNOHANG) != (0, 0)):
+            try:
+                self.result = cPickle.load(self.__result__)
+            except EOFError:
+                self.result = None
+            return True
+        else:
+            return False
+
+    def progress(self):
+        """polls child process for job's current progress
+        and returns a (progress, total) pair of integers"""
+
+        cPickle.dump(None, self.__to_child__)
+        self.__to_child__.flush()
+        try:
+            (self.__last_progress__,
+             self.__last_total__) = cPickle.load(self.__from_child__)
+        except EOFError:
+            pass
+
+        return (self.__last_progress__, self.__last_total__)
 
 
-class __JobProgress__:
-    def __init__(self, job_id, output):
-        self.job_id = job_id
-        self.output = output
+class __PollingProgress__:
+    def __init__(self, from_parent, to_parent):
+        self.from_parent = from_parent
+        self.to_parent = to_parent
 
     def progress(self, current, total):
-        cPickle.dump(("progress", [self.job_id, current, total]),
-                     self.output)
-        self.output.flush()
+        import select
 
+        (readable,
+         writable,
+         exceptional) = select.select([self.from_parent], [], [], 0)
+        for reader in readable:
+            cPickle.load(reader)
+            cPickle.dump((current, total), self.to_parent)
+            self.to_parent.flush()
 
-class __UnthreadedJobProgress__:
-    def __init__(self, job_id, progress_display):
-        self.job_id = job_id
-        self.progress_display = progress_display
-
-    def progress(self, current, total):
-        self.progress_display.update_row(self.job_id, current, total)
 
 
 #***ApeAudio temporarily removed***
