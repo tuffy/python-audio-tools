@@ -4839,20 +4839,16 @@ class ExecProgressQueue:
             time.sleep(0.25)
 
 class __ProgressQueueJob__:
-    def __init__(self, pid, to_child, from_child, result, completion_output):
+    def __init__(self, pid, progress, result, completion_output):
         """pid is the child process's PID
-        to_child is a file object pipe for polling the child's progress
-        from_child is a file object pipe for receiving the child's progress
+        progress is anonymous memory-mapped data of the child's progress
         result is a file object pipe for receiving the child's final result
         completion_output is a unicode string or function
         to execute upon the job's completion"""
 
         self.__pid__ = pid
-        self.__to_child__ = to_child
-        self.__from_child__ = from_child
+        self.__progress__ = progress
         self.__result__ = result
-        self.__last_progress__ = 0
-        self.__last_total__ = 1
 
         self.completion_output = completion_output
         self.result = None
@@ -4865,32 +4861,26 @@ class __ProgressQueueJob__:
         which can be polled for progress, waited for, or
         have return values extracted from"""
 
-        (r1, w1) = os.pipe()  # for sending messages from parent->child
-        (r2, w2) = os.pipe()  # for sending messages from child->parent
+        import mmap
+        import struct
+
+        progress = mmap.mmap(-1, 16)  # 2, 64-bit fields of progress data
         (r3, w3) = os.pipe()  # for sending final result from child->parent
         pid = os.fork()
         if (pid > 0):
             #parent
-            os.close(r1)
-            os.close(w2)
             os.close(w3)
-            to_child = os.fdopen(w1, "wb")
-            from_child = os.fdopen(r2, "rb")
             child_result = os.fdopen(r3, "rb")
 
-            return cls(pid, to_child, from_child, child_result,
-                       completion_output)
+            return cls(pid, progress, child_result, completion_output)
         else:
             #child
-            os.close(w1)
-            os.close(r2)
             os.close(r3)
 
             try:
                 result = function(
                     *args,
-                    progress=__PollingProgress__(os.fdopen(r1, "rb"),
-                                                 os.fdopen(w2, "wb")).progress,
+                    progress=__PollingProgress__(progress).progress,
                     **kwargs)
             except:
                 result = None
@@ -4899,6 +4889,7 @@ class __ProgressQueueJob__:
             cPickle.dump(result, result_pipe)
             result_pipe.flush()
             result_pipe.close()
+            progress.close()
             sys.exit(0)
 
     def is_completed(self):
@@ -4912,6 +4903,7 @@ class __ProgressQueueJob__:
                 self.result = cPickle.load(self.__result__)
             except EOFError:
                 self.result = None
+            self.__progress__.close()
             return True
         else:
             return False
@@ -4920,33 +4912,23 @@ class __ProgressQueueJob__:
         """polls child process for job's current progress
         and returns a (progress, total) pair of integers"""
 
-        cPickle.dump(None, self.__to_child__)
-        self.__to_child__.flush()
-        try:
-            (self.__last_progress__,
-             self.__last_total__) = cPickle.load(self.__from_child__)
-        except EOFError:
-            pass
+        import struct
 
-        return (self.__last_progress__, self.__last_total__)
+        self.__progress__.seek(0, 0)
+        (current, total) = struct.unpack(">QQ", self.__progress__.read(16))
+
+        return (current, total)
 
 
 class __PollingProgress__:
-    def __init__(self, from_parent, to_parent):
-        self.from_parent = from_parent
-        self.to_parent = to_parent
+    def __init__(self, memory):
+        self.memory = memory
 
     def progress(self, current, total):
-        import select
+        import struct
 
-        (readable,
-         writable,
-         exceptional) = select.select([self.from_parent], [], [], 0)
-        for reader in readable:
-            cPickle.load(reader)
-            cPickle.dump((current, total), self.to_parent)
-            self.to_parent.flush()
-
+        self.memory.seek(0, 0)
+        self.memory.write(struct.pack(">QQ", current, total))
 
 
 #***ApeAudio temporarily removed***
