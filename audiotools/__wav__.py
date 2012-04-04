@@ -77,6 +77,8 @@ class RIFF_Chunk:
         return cStringIO.StringIO(self.__data__)
 
     def verify(self):
+        """returns True if the chunk is sized properly"""
+
         return self.__size__ == len(self.__data__)
 
     def write(self, f):
@@ -118,6 +120,8 @@ class RIFF_File_Chunk(RIFF_Chunk):
         return LimitedFileReader(self.__wav_file__, self.size())
 
     def verify(self):
+        """returns True if the chunk is sized properly"""
+
         self.__wav_file__.seek(self.__offset__)
         to_read = self.__size__
         while (to_read > 0):

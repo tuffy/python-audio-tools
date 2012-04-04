@@ -107,6 +107,10 @@ def perform_lookup(first_track_number, last_track_number,
 
 
 def get_node(parent, *nodes):
+    """given a minidom tree element and a list of node unicode strings
+    indicating a path, returns the node at the end of that path
+    or raises KeyError if any node in the path cannot be found"""
+
     if (len(nodes) == 0):
         return parent
     else:
@@ -118,11 +122,17 @@ def get_node(parent, *nodes):
 
 
 def get_nodes(parent, node):
+    """given a minidom tree element and a tag name unicode string,
+    returns all the child nodes with that name"""
+
     return [child for child in parent.childNodes
             if (hasattr(child, "tagName") and (child.tagName == node))]
 
 
 def text(node):
+    """given a minidom leaf node element,
+    returns its data as a unicode string"""
+
     if (node.firstChild is not None):
         return node.firstChild.data
     else:

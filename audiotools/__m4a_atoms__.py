@@ -90,6 +90,9 @@ class M4A_Tree_Atom:
         self.leaf_atoms = leaf_atoms
 
     def copy(self):
+        """returns a newly copied instance of this atom
+        and new instances of any sub-atoms it contains"""
+
         return M4A_Tree_Atom(self.name, [leaf.copy() for leaf in self])
 
     def __repr__(self):
@@ -186,23 +189,25 @@ class M4A_Tree_Atom:
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
+        """given a 4 byte name, data_size int, BitstreamReader
+        and dict of {"atom":handler} sub-parsers,
+        returns an atom of this class"""
+
         return cls(name, parse_sub_atoms(data_size, reader, parsers))
 
     def build(self, writer):
-        from .bitstream import BitstreamAccumulator
+        """writes the atom to the given BitstreamWriter
+        not including its 64-bit size / name header"""
 
-        leaf_size = BitstreamAccumulator(0)
         for sub_atom in self:
-            leaf_size.reset()
-            sub_atom.build(leaf_size)
-            writer.build("32u 4b", (leaf_size.bytes() + 8, sub_atom.name))
+            writer.build("32u 4b", (sub_atom.size() + 8, sub_atom.name))
             sub_atom.build(writer)
 
     def size(self):
-        total_size = 0
-        for sub_atom in self:
-            total_size += (8 + sub_atom.size())
-        return total_size
+        """returns the atom's size
+        not including its 64-bit size / name header"""
+
+        return sum([8 + sub_atom.size() for sub_atom in self])
 
 
 class M4A_Leaf_Atom:
@@ -215,6 +220,9 @@ class M4A_Leaf_Atom:
         self.data = data
 
     def copy(self):
+        """returns a newly copied instance of this atom
+        and new instances of any sub-atoms it contains"""
+
         return M4A_Leaf_Atom(self.name, self.data)
 
     def __repr__(self):
@@ -231,10 +239,12 @@ class M4A_Leaf_Atom:
 
 
     def __unicode__(self):
-        #FIXME
+        #FIXME - should make this more informative, if possible
         return self.data.encode('hex')[0:40].decode('ascii')
 
     def raw_info(self):
+        """returns a line of human-readable information about the atom"""
+
         if (len(self.data) > 20):
             return u"%s : %s\u2026" % \
                 (self.name.decode('ascii', 'replace'),
@@ -246,12 +256,22 @@ class M4A_Leaf_Atom:
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
+        """given a 4 byte name, data_size int, BitstreamReader
+        and dict of {"atom":handler} sub-parsers,
+        returns an atom of this class"""
+
         return cls(name, reader.read_bytes(data_size))
 
     def build(self, writer):
+        """writes the atom to the given BitstreamWriter
+        not including its 64-bit size / name header"""
+
         writer.write_bytes(self.data)
 
     def size(self):
+        """returns the atom's size
+        not including its 64-bit size / name header"""
+
         return len(self.data)
 
 
@@ -270,6 +290,10 @@ class M4A_FTYP_Atom(M4A_Leaf_Atom):
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
+        """given a 4 byte name, data_size int, BitstreamReader
+        and dict of {"atom":handler} sub-parsers,
+        returns an atom of this class"""
+
         assert(name == 'ftyp')
         return cls(reader.read_bytes(4),
                    reader.read(32),
@@ -277,12 +301,18 @@ class M4A_FTYP_Atom(M4A_Leaf_Atom):
                     for i in xrange((data_size - 8) / 4)])
 
     def build(self, writer):
+        """writes the atom to the given BitstreamWriter
+        not including its 64-bit size / name header"""
+
         writer.build("4b 32u %s" % ("4b" * len(self.compatible_brands)),
                      [self.major_brand,
                       self.major_brand_version] +
                      self.compatible_brands)
 
     def size(self):
+        """returns the atom's size
+        not including its 64-bit size / name header"""
+
         return 4 + 4 + (4 * len(self.compatible_brands))
 
 
@@ -309,6 +339,10 @@ class M4A_MVHD_Atom(M4A_Leaf_Atom):
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
+        """given a 4 byte name, data_size int, BitstreamReader
+        and dict of {"atom":handler} sub-parsers,
+        returns an atom of this class"""
+
         assert(name == 'mvhd')
         (version, flags) = reader.parse("8u 24u")
 
@@ -358,6 +392,9 @@ class M4A_MVHD_Atom(M4A_Leaf_Atom):
                           self.next_track_id])))
 
     def build(self, writer):
+        """writes the atom to the given BitstreamWriter
+        not including its 64-bit size / name header"""
+
         writer.build("8u 24u", (self.version, self.flags))
 
         if (self.version == 0):
@@ -378,6 +415,9 @@ class M4A_MVHD_Atom(M4A_Leaf_Atom):
                       self.next_track_id))
 
     def size(self):
+        """returns the atom's size
+        not including its 64-bit size / name header"""
+
         if (self.version == 0):
             return 100
         else:
@@ -420,6 +460,10 @@ class M4A_TKHD_Atom(M4A_Leaf_Atom):
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
+        """given a 4 byte name, data_size int, BitstreamReader
+        and dict of {"atom":handler} sub-parsers,
+        returns an atom of this class"""
+
         (version,
          track_in_poster,
          track_in_preview,
@@ -458,6 +502,9 @@ class M4A_TKHD_Atom(M4A_Leaf_Atom):
                    video_height=video_height)
 
     def build(self, writer):
+        """writes the atom to the given BitstreamWriter
+        not including its 64-bit size / name header"""
+
         writer.build("8u 20p 1u 1u 1u 1u",
                      (self.version, self.track_in_poster,
                       self.track_in_preview, self.track_in_movie,
@@ -474,6 +521,9 @@ class M4A_TKHD_Atom(M4A_Leaf_Atom):
         writer.build("32u 32u", (self.video_width, self.video_height))
 
     def size(self):
+        """returns the atom's size
+        not including its 64-bit size / name header"""
+
         if (self.version == 0):
             return 84
         else:
@@ -502,6 +552,10 @@ class M4A_MDHD_Atom(M4A_Leaf_Atom):
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
+        """given a 4 byte name, data_size int, BitstreamReader
+        and dict of {"atom":handler} sub-parsers,
+        returns an atom of this class"""
+
         assert(name == 'mdhd')
         (version, flags) = reader.parse("8u 24u")
         if (version == 0):
@@ -525,6 +579,9 @@ class M4A_MDHD_Atom(M4A_Leaf_Atom):
                    quality=quality)
 
     def build(self, writer):
+        """writes the atom to the given BitstreamWriter
+        not including its 64-bit size / name header"""
+
         writer.build("8u 24u", (self.version, self.flags))
         if (self.version == 0):
             atom_format = "32u 32u 32u 32u"
@@ -537,6 +594,9 @@ class M4A_MDHD_Atom(M4A_Leaf_Atom):
         writer.write(16, self.quality)
 
     def size(self):
+        """returns the atom's size
+        not including its 64-bit size / name header"""
+
         if (self.version == 0):
             return 24
         else:
@@ -558,13 +618,23 @@ class M4A_SMHD_Atom(M4A_Leaf_Atom):
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
+        """given a 4 byte name, data_size int, BitstreamReader
+        and dict of {"atom":handler} sub-parsers,
+        returns an atom of this class"""
+
         return cls(*reader.parse("8u 24u 16u 16p"))
 
     def build(self, writer):
+        """writes the atom to the given BitstreamWriter
+        not including its 64-bit size / name header"""
+
         writer.build("8u 24u 16u 16p",
                      (self.version, self.flags, self.audio_balance))
 
     def size(self):
+        """returns the atom's size
+        not including its 64-bit size / name header"""
+
         return 8
 
 
@@ -583,6 +653,10 @@ class M4A_DREF_Atom(M4A_Leaf_Atom):
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
+        """given a 4 byte name, data_size int, BitstreamReader
+        and dict of {"atom":handler} sub-parsers,
+        returns an atom of this class"""
+
         (version, flags, reference_count) = reader.parse("8u 24u 32u")
         references = []
         for i in xrange(reference_count):
@@ -593,25 +667,24 @@ class M4A_DREF_Atom(M4A_Leaf_Atom):
         return cls(version, flags, references)
 
     def build(self, writer):
-        from .bitstream import BitstreamAccumulator
+        """writes the atom to the given BitstreamWriter
+        not including its 64-bit size / name header"""
 
         writer.build("8u 24u 32u", (self.version,
                                     self.flags,
                                     len(self.references)))
 
-        leaf_size = BitstreamAccumulator(0)
         for reference_atom in self.references:
-            leaf_size.reset()
-            reference_atom.build(leaf_size)
-            writer.build("32u 4b", (leaf_size.bytes() + 8,
+            writer.build("32u 4b", (reference_atom.size() + 8,
                                     reference_atom.name))
             reference_atom.build(writer)
 
     def size(self):
-        total_size = 8
-        for reference_atom in self.references:
-            total_size += (8 + reference_atom.size())
-        return total_size
+        """returns the atom's size
+        not including its 64-bit size / name header"""
+
+        return 8 + sum([reference_atom.size() + 8
+                        for reference_atom in self.references])
 
 
 class M4A_STSD_Atom(M4A_Leaf_Atom):
@@ -627,6 +700,10 @@ class M4A_STSD_Atom(M4A_Leaf_Atom):
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
+        """given a 4 byte name, data_size int, BitstreamReader
+        and dict of {"atom":handler} sub-parsers,
+        returns an atom of this class"""
+
         (version, flags, description_count) = reader.parse("8u 24u 32u")
         descriptions = []
         for i in xrange(description_count):
@@ -642,25 +719,24 @@ class M4A_STSD_Atom(M4A_Leaf_Atom):
                    descriptions=descriptions)
 
     def build(self, writer):
-        from .bitstream import BitstreamAccumulator
+        """writes the atom to the given BitstreamWriter
+        not including its 64-bit size / name header"""
 
         writer.build("8u 24u 32u", (self.version,
                                     self.flags,
                                     len(self.descriptions)))
 
-        leaf_size = BitstreamAccumulator(0)
         for description_atom in self.descriptions:
-            leaf_size.reset()
-            description_atom.build(leaf_size)
-            writer.build("32u 4b", (leaf_size.bytes() + 8,
+            writer.build("32u 4b", (description_atom.size() + 8,
                                     description_atom.name))
             description_atom.build(writer)
 
     def size(self):
-        total_size = 8
-        for description_atom in self.descriptions:
-            total_size += (8 + description_atom.size())
-        return total_size
+        """returns the atom's size
+        not including its 64-bit size / name header"""
+
+        return 8 + sum([8 + description_atom.size()
+                        for description_atom in self.descriptions])
 
 
 class M4A_STTS_Atom(M4A_Leaf_Atom):
@@ -676,6 +752,10 @@ class M4A_STTS_Atom(M4A_Leaf_Atom):
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
+        """given a 4 byte name, data_size int, BitstreamReader
+        and dict of {"atom":handler} sub-parsers,
+        returns an atom of this class"""
+
         (version, flags) = reader.parse("8u 24u")
         return cls(version=version,
                    flags=flags,
@@ -683,11 +763,17 @@ class M4A_STTS_Atom(M4A_Leaf_Atom):
                           for i in xrange(reader.read(32))])
 
     def build(self, writer):
+        """writes the atom to the given BitstreamWriter
+        not including its 64-bit size / name header"""
+
         writer.build("8u 24u 32u", (self.version, self.flags, len(self.times)))
         for time in self.times:
             writer.build("32u 32u", time)
 
     def size(self):
+        """returns the atom's size
+        not including its 64-bit size / name header"""
+
         return 8 + (8 * len(self.times))
 
 
@@ -704,6 +790,10 @@ class M4A_STSC_Atom(M4A_Leaf_Atom):
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
+        """given a 4 byte name, data_size int, BitstreamReader
+        and dict of {"atom":handler} sub-parsers,
+        returns an atom of this class"""
+
         (version, flags) = reader.parse("8u 24u")
         return cls(version=version,
                    flags=flags,
@@ -711,12 +801,18 @@ class M4A_STSC_Atom(M4A_Leaf_Atom):
                            for i in xrange(reader.read(32))])
 
     def build(self, writer):
+        """writes the atom to the given BitstreamWriter
+        not including its 64-bit size / name header"""
+
         writer.build("8u 24u 32u",
                      (self.version, self.flags, len(self.blocks)))
         for block in self.blocks:
             writer.build("32u 32u 32u", block)
 
     def size(self):
+        """returns the atom's size
+        not including its 64-bit size / name header"""
+
         return 8 + (12 * len(self.blocks))
 
 
@@ -735,6 +831,10 @@ class M4A_STSZ_Atom(M4A_Leaf_Atom):
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
+        """given a 4 byte name, data_size int, BitstreamReader
+        and dict of {"atom":handler} sub-parsers,
+        returns an atom of this class"""
+
         (version, flags, byte_size) = reader.parse("8u 24u 32u")
         return cls(version=version,
                    flags=flags,
@@ -743,6 +843,9 @@ class M4A_STSZ_Atom(M4A_Leaf_Atom):
                                 xrange(reader.read(32))])
 
     def build(self, writer):
+        """writes the atom to the given BitstreamWriter
+        not including its 64-bit size / name header"""
+
         writer.build("8u 24u 32u 32u", (self.version,
                                         self.flags,
                                         self.byte_size,
@@ -751,6 +854,9 @@ class M4A_STSZ_Atom(M4A_Leaf_Atom):
             writer.write(32, size)
 
     def size(self):
+        """returns the atom's size
+        not including its 64-bit size / name header"""
+
         return 12 + (4 * len(self.block_sizes))
 
 
@@ -767,18 +873,28 @@ class M4A_STCO_Atom(M4A_Leaf_Atom):
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
+        """given a 4 byte name, data_size int, BitstreamReader
+        and dict of {"atom":handler} sub-parsers,
+        returns an atom of this class"""
+
         assert(name == "stco")
         (version, flags, offset_count) = reader.parse("8u 24u 32u")
         return cls(version, flags,
                    [reader.read(32) for i in xrange(offset_count)])
 
     def build(self, writer):
+        """writes the atom to the given BitstreamWriter
+        not including its 64-bit size / name header"""
+
         writer.build("8u 24u 32u", (self.version, self.flags,
                                     len(self.offsets)))
         for offset in self.offsets:
             writer.write(32, offset)
 
     def size(self):
+        """returns the atom's size
+        not including its 64-bit size / name header"""
+
         return 8 + (4 * len(self.offsets))
 
 
@@ -813,6 +929,10 @@ class M4A_ALAC_Atom(M4A_Leaf_Atom):
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
+        """given a 4 byte name, data_size int, BitstreamReader
+        and dict of {"atom":handler} sub-parsers,
+        returns an atom of this class"""
+
         (reference_index,
          qt_version,
          qt_revision_level,
@@ -840,6 +960,9 @@ class M4A_ALAC_Atom(M4A_Leaf_Atom):
                    sub_alac=sub_alac)
 
     def build(self, writer):
+        """writes the atom to the given BitstreamWriter
+        not including its 64-bit size / name header"""
+
         writer.build("6P 16u 16u 16u 4b 16u 16u 16u 16u 32u",
                      (self.reference_index,
                       self.qt_version,
@@ -855,6 +978,9 @@ class M4A_ALAC_Atom(M4A_Leaf_Atom):
         self.sub_alac.build(writer)
 
     def size(self):
+        """returns the atom's size
+        not including its 64-bit size / name header"""
+
         return 28 + 8 + self.sub_alac.size()
 
 
@@ -890,10 +1016,17 @@ class M4A_SUB_ALAC_Atom(M4A_Leaf_Atom):
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
+        """given a 4 byte name, data_size int, BitstreamReader
+        and dict of {"atom":handler} sub-parsers,
+        returns an atom of this class"""
+
         return cls(*reader.parse(
                 "4P 32u 8p 8u 8u 8u 8u 8u 16u 32u 32u 32u"))
 
     def build(self, writer):
+        """writes the atom to the given BitstreamWriter
+        not including its 64-bit size / name header"""
+
         writer.build("4P 32u 8p 8u 8u 8u 8u 8u 16u 32u 32u 32u",
                      (self.max_samples_per_frame,
                       self.bits_per_sample,
@@ -907,6 +1040,9 @@ class M4A_SUB_ALAC_Atom(M4A_Leaf_Atom):
                       self.sample_rate))
 
     def size(self):
+        """returns the atom's size
+        not including its 64-bit size / name header"""
+
         return 28
 
 
@@ -935,6 +1071,8 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
             (repr(self.version), repr(self.flags), repr(self.leaf_atoms))
 
     def has_ilst_atom(self):
+        """returns True if this atom contains an ILST sub-atom"""
+
         for a in self.leaf_atoms:
             if (a.name == 'ilst'):
                 return True
@@ -942,6 +1080,8 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
             return False
 
     def ilst_atom(self):
+        """returns the first ILST sub-atom, or None"""
+
         for a in self.leaf_atoms:
             if (a.name == 'ilst'):
                 return a
@@ -949,7 +1089,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
             return None
 
     def add_ilst_atom(self):
-        #place new ilst atom after the first hdlr atom, if any
+        """place new ILST atom after the first HDLR atom, if any"""
 
         for (index, atom) in enumerate(self.leaf_atoms):
             if (atom.name == 'hdlr'):
@@ -959,6 +1099,14 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
             self.leaf_atoms.append(M4A_Tree_Atom('ilst', []))
 
     def raw_info(self):
+        """returns a Unicode string of low-level MetaData information
+
+        whereas __unicode__ is meant to contain complete information
+        at a very high level
+        raw_info() should be more developer-specific and with
+        very little adjustment or reordering to the data itself
+        """
+
         from os import linesep
         from . import display_unicode
 
@@ -981,8 +1129,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
     def parse(cls, name, data_size, reader, parsers):
         """given a 4 byte name, data_size int, BitstreamReader
         and dict of {"atom":handler} sub-parsers,
-        returns an M4A_META_Atom
-        """
+        returns an atom of this class"""
 
         assert(name == "meta")
         (version, flags) = reader.parse("8u 24u")
@@ -990,21 +1137,19 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                    parse_sub_atoms(data_size - 4, reader, parsers))
 
     def build(self, writer):
-        from .bitstream import BitstreamAccumulator
+        """writes the atom to the given BitstreamWriter
+        not including its 64-bit size / name header"""
 
-        leaf_size = BitstreamAccumulator(0)
         writer.build("8u 24u", (self.version, self.flags))
         for sub_atom in self:
-            leaf_size.reset()
-            sub_atom.build(leaf_size)
-            writer.build("32u 4b", (leaf_size.bytes() + 8, sub_atom.name))
+            writer.build("32u 4b", (sub_atom.size() + 8, sub_atom.name))
             sub_atom.build(writer)
 
     def size(self):
-        total_size = 4
-        for sub_atom in self:
-            total_size += (8 + sub_atom.size())
-        return total_size
+        """returns the atom's size
+        not including its 64-bit size / name header"""
+
+        return 4 + sum([8 + sub_atom.size() for sub_atom in self])
 
     def __getattr__(self, key):
         if (key in self.UNICODE_ATTRIB_TO_ILST):
@@ -1152,6 +1297,8 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                     raise AttributeError(key)
 
     def images(self):
+        """returns a list of embedded Image objects"""
+
         if (self.has_ilst_atom()):
             return [atom['data'] for atom in self.ilst_atom()
                     if ((atom.name == 'covr') and (atom.has_child('data')))]
@@ -1159,6 +1306,8 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
             return []
 
     def add_image(self, image):
+        """embeds an Image object in this metadata"""
+
         if (not self.has_ilst_atom()):
             self.add_ilst_atom()
 
@@ -1173,6 +1322,8 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                 [M4A_ILST_COVR_Data_Atom.converted(image)])]
 
     def delete_image(self, image):
+        """deletes an Image object from this metadata"""
+
         if (self.has_ilst_atom()):
             ilst_atom = self.ilst_atom()
 
@@ -1184,6 +1335,11 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
 
     @classmethod
     def converted(cls, metadata):
+        """converts metadata from another class to this one, if necessary
+
+        takes a MetaData-compatible object (or None)
+        and returns a new MetaData subclass with the data fields converted"""
+
         if (metadata is None):
             return None
         elif (isinstance(metadata, cls)):
@@ -1236,7 +1392,11 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
 
         return True
 
-    def clean(self, fixes_applied):
+    def clean(self, fixes_performed):
+        """returns a new MetaData object that's been cleaned of problems
+
+        any fixes performed are appended to fixes_performed as Unicode"""
+
         def cleaned_atom(atom):
             #numerical fields are stored in bytes,
             #so no leading zeroes are possible
@@ -1248,12 +1408,12 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                 text = atom['data'].data.decode('utf-8')
                 fix1 = text.rstrip()
                 if (fix1 != text):
-                    fixes_applied.append(
+                    fixes_performed.append(
                         _(u"removed trailing whitespace from %(field)s") %
                         {"field": atom.name.lstrip('\xa9').decode('ascii')})
                 fix2 = fix1.lstrip()
                 if (fix2 != fix1):
-                    fixes_applied.append(
+                    fixes_performed.append(
                         _(u"removed leading whitespace from %(field)s") %
                         {"field": atom.name.lstrip('\xa9').decode('ascii')})
                 if (len(fix2) > 0):
@@ -1262,7 +1422,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                         [M4A_ILST_Unicode_Data_Atom(0, 1,
                                                     fix2.encode('utf-8'))])
                 else:
-                    fixes_applied.append(
+                    fixes_performed.append(
                         _(u"removed empty field %(field)s") %
                         {"field": atom.name.lstrip('\xa9').decode('ascii')})
                     return None
@@ -1287,6 +1447,9 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
 
 class M4A_ILST_Leaf_Atom(M4A_Tree_Atom):
     def copy(self):
+        """returns a newly copied instance of this atom
+        and new instances of any sub-atoms it contains"""
+
         return M4A_ILST_Leaf_Atom(self.name, [leaf.copy() for leaf in self])
 
     def __repr__(self):
@@ -1295,6 +1458,10 @@ class M4A_ILST_Leaf_Atom(M4A_Tree_Atom):
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
+        """given a 4 byte name, data_size int, BitstreamReader
+        and dict of {"atom":handler} sub-parsers,
+        returns an atom of this class"""
+
         return cls(name,
                    parse_sub_atoms(
                 data_size, reader,
@@ -1321,6 +1488,8 @@ class M4A_ILST_Leaf_Atom(M4A_Tree_Atom):
             return u""
 
     def raw_info_lines(self):
+        """yields lines of human-readable information about the atom"""
+
         for leaf_atom in self.leaf_atoms:
             name = self.name.replace("\xa9", " ").decode('ascii')
             if (hasattr(leaf_atom, "raw_info")):
@@ -1336,6 +1505,10 @@ class M4A_ILST_Leaf_Atom(M4A_Tree_Atom):
             return 0
 
     def total(self):
+        """returns the track/album total field
+        of this atom's "data" sub atom, if any
+        otherwise returns 0"""
+
         try:
             return filter(lambda f: f.name == 'data',
                           self.leaf_atoms)[0].total()
@@ -1351,6 +1524,9 @@ class M4A_ILST_Unicode_Data_Atom(M4A_Leaf_Atom):
         self.data = data
 
     def copy(self):
+        """returns a newly copied instance of this atom
+        and new instances of any sub-atoms it contains"""
+
         return M4A_ILST_Unicode_Data_Atom(self.type, self.flags, self.data)
 
     def __repr__(self):
@@ -1366,19 +1542,31 @@ class M4A_ILST_Unicode_Data_Atom(M4A_Leaf_Atom):
             return True
 
     def raw_info(self):
+        """returns a line of human-readable information about the atom"""
+
         return self.data.decode('utf-8')
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
+        """given a 4 byte name, data_size int, BitstreamReader
+        and dict of {"atom":handler} sub-parsers,
+        returns an atom of this class"""
+
         assert(name == "data")
         (type, flags) = reader.parse("8u 24u 32p")
         return cls(type, flags, reader.read_bytes(data_size - 8))
 
     def build(self, writer):
+        """writes the atom to the given BitstreamWriter
+        not including its 64-bit size / name header"""
+
         writer.build("8u 24u 32p %db" % (len(self.data)),
                      (self.type, self.flags, self.data))
 
     def size(self):
+        """returns the atom's size
+        not including its 64-bit size / name header"""
+
         return 8 + len(self.data)
 
     def __unicode__(self):
@@ -1392,6 +1580,9 @@ class M4A_ILST_TRKN_Data_Atom(M4A_Leaf_Atom):
         self.track_total = track_total
 
     def copy(self):
+        """returns a newly copied instance of this atom
+        and new instances of any sub-atoms it contains"""
+
         return M4A_ILST_TRKN_Data_Atom(self.track_number, self.track_total)
 
     def __repr__(self):
@@ -1413,24 +1604,38 @@ class M4A_ILST_TRKN_Data_Atom(M4A_Leaf_Atom):
             return unicode(self.track_number)
 
     def raw_info(self):
+        """returns a line of human-readable information about the atom"""
+
         return u"%d/%d" % (self.track_number, self.track_total)
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
+        """given a 4 byte name, data_size int, BitstreamReader
+        and dict of {"atom":handler} sub-parsers,
+        returns an atom of this class"""
+
         assert(name == "data")
         return cls(*reader.parse("64p 16p 16u 16u 16p"))
 
     def build(self, writer):
+        """writes the atom to the given BitstreamWriter
+        not including its 64-bit size / name header"""
+
         writer.build("64p 16p 16u 16u 16p",
                      (self.track_number, self.track_total))
 
     def size(self):
+        """returns the atom's size
+        not including its 64-bit size / name header"""
+
         return 16
 
     def __int__(self):
         return self.track_number
 
     def total(self):
+        """returns this atom's track_total field"""
+
         return self.track_total
 
 
@@ -1441,6 +1646,9 @@ class M4A_ILST_DISK_Data_Atom(M4A_Leaf_Atom):
         self.disk_total = disk_total
 
     def copy(self):
+        """returns a newly copied instance of this atom
+        and new instances of any sub-atoms it contains"""
+
         return M4A_ILST_DISK_Data_Atom(self.disk_number, self.disk_total)
 
     def __repr__(self):
@@ -1462,24 +1670,38 @@ class M4A_ILST_DISK_Data_Atom(M4A_Leaf_Atom):
             return unicode(self.disk_number)
 
     def raw_info(self):
+        """returns a line of human-readable information about the atom"""
+
         return u"%d/%d" % (self.disk_number, self.disk_total)
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
+        """given a 4 byte name, data_size int, BitstreamReader
+        and dict of {"atom":handler} sub-parsers,
+        returns an atom of this class"""
+
         assert(name == "data")
         return cls(*reader.parse("64p 16p 16u 16u"))
 
     def build(self, writer):
+        """writes the atom to the given BitstreamWriter
+        not including its 64-bit size / name header"""
+
         writer.build("64p 16p 16u 16u",
                      (self.disk_number, self.disk_total))
 
     def size(self):
+        """returns the atom's size
+        not including its 64-bit size / name header"""
+
         return 14
 
     def __int__(self):
         return self.disk_number
 
     def total(self):
+        """returns this atom's disk_total field"""
+
         return self.disk_total
 
 
@@ -1501,6 +1723,9 @@ class M4A_ILST_COVR_Data_Atom(Image, M4A_Leaf_Atom):
                        type=0)
 
     def copy(self):
+        """returns a newly copied instance of this atom
+        and new instances of any sub-atoms it contains"""
+
         return M4A_ILST_COVR_Data_Atom(self.version, self.flags, self.data)
 
     def __repr__(self):
@@ -1508,6 +1733,8 @@ class M4A_ILST_COVR_Data_Atom(Image, M4A_Leaf_Atom):
             (self.version, self.flags)
 
     def raw_info(self):
+        """returns a line of human-readable information about the atom"""
+
         if (len(self.data) > 20):
             return (u"(%d bytes) " % (len(self.data)) +
                     u"".join([u"%2.2X" % (ord(b)) for b in self.data[0:20]]) +
@@ -1518,19 +1745,32 @@ class M4A_ILST_COVR_Data_Atom(Image, M4A_Leaf_Atom):
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
+        """given a 4 byte name, data_size int, BitstreamReader
+        and dict of {"atom":handler} sub-parsers,
+        returns an atom of this class"""
+
         assert(name == "data")
         (version, flags) = reader.parse("8u 24u 32p")
         return cls(version, flags, reader.read_bytes(data_size - 8))
 
     def build(self, writer):
+        """writes the atom to the given BitstreamWriter
+        not including its 64-bit size / name header"""
+
         writer.build("8u 24u 32p %db" % (len(self.data)),
                      (self.version, self.flags, self.data))
 
     def size(self):
+        """returns the atom's size
+        not including its 64-bit size / name header"""
+
         return 8 + len(self.data)
 
     @classmethod
     def converted(cls, image):
+        """given an Image-compatible object,
+        returns a new M4A_ILST_COVR_Data_Atom object"""
+
         return cls(0, 0, image.data)
 
 
@@ -1550,6 +1790,9 @@ class M4A_HDLR_Atom(M4A_Leaf_Atom):
         self.padding_size = padding_size
 
     def copy(self):
+        """returns a newly copied instance of this atom
+        and new instances of any sub-atoms it contains"""
+
         return M4A_HDLR_Atom(self.version,
                              self.flags,
                              self.qt_type,
@@ -1569,6 +1812,10 @@ class M4A_HDLR_Atom(M4A_Leaf_Atom):
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
+        """given a 4 byte name, data_size int, BitstreamReader
+        and dict of {"atom":handler} sub-parsers,
+        returns an atom of this class"""
+
         assert(name == 'hdlr')
         (version,
          flags,
@@ -1585,6 +1832,9 @@ class M4A_HDLR_Atom(M4A_Leaf_Atom):
                    data_size - len(component_name) - 25)
 
     def build(self, writer):
+        """writes the atom to the given BitstreamWriter
+        not including its 64-bit size / name header"""
+
         writer.build("8u 24u 4b 4b 4b 32u 32u 8u %db %dP" % \
                          (len(self.component_name),
                           self.padding_size),
@@ -1599,6 +1849,9 @@ class M4A_HDLR_Atom(M4A_Leaf_Atom):
                       self.component_name))
 
     def size(self):
+        """returns the atom's size
+        not including its 64-bit size / name header"""
+
         return 25 + len(self.component_name) + self.padding_size
 
 
@@ -1608,6 +1861,9 @@ class M4A_FREE_Atom(M4A_Leaf_Atom):
         self.bytes = bytes
 
     def copy(self):
+        """returns a newly copied instance of this atom
+        and new instances of any sub-atoms it contains"""
+
         return M4A_FREE_Atom(self.bytes)
 
     def __repr__(self):
@@ -1615,12 +1871,22 @@ class M4A_FREE_Atom(M4A_Leaf_Atom):
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
+        """given a 4 byte name, data_size int, BitstreamReader
+        and dict of {"atom":handler} sub-parsers,
+        returns an atom of this class"""
+
         assert(name == "free")
         reader.skip_bytes(data_size)
         return cls(data_size)
 
     def build(self, writer):
+        """writes the atom to the given BitstreamWriter
+        not including its 64-bit size / name header"""
+
         writer.write_bytes(chr(0) * self.bytes)
 
     def size(self):
+        """returns the atom's size
+        not including its 64-bit size / name header"""
+
         return self.bytes

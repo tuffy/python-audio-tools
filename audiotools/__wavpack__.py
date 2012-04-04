@@ -183,30 +183,30 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
         reader is a BitstreamReader which can be parsed
         """
 
+        def blocks_iter(reader):
+            try:
+                while (True):
+                    (wvpk, block_size) = reader.parse("4b 32u 192p")
+                    if (wvpk == 'wvpk'):
+                        yield (block_size - 24,
+                               reader.substream(block_size - 24))
+                    else:
+                        return
+            except IOError:
+                return
+
         if (reader is None):
             from .bitstream import BitstreamReader
 
             reader = BitstreamReader(file(self.filename), 1)
             try:
-                for block in self.__blocks__(reader):
+                for block in blocks_iter(reader):
                     yield block
             finally:
                 reader.close()
         else:
-            for block in self.__blocks__(reader):
+            for block in blocks_iter(reader):
                 yield block
-
-    def __blocks__(self, reader):
-        try:
-            while (True):
-                (wvpk, block_size) = reader.parse("4b 32u 192p")
-                if (wvpk == 'wvpk'):
-                    yield (block_size - 24,
-                           reader.substream(block_size - 24))
-                else:
-                    return
-        except IOError:
-            return
 
     def sub_blocks(self, reader=None):
         """yields (function, nondecoder, data_size, data) tuples
@@ -216,27 +216,33 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
         data is a BitstreamReader which can be parsed
         """
 
-        for (frame_size, frame_data) in self.blocks(reader):
-            frame_size = __Counter__(frame_size)
-            frame_data.add_callback(frame_size.callback)
-            while (int(frame_size) > 0):
+        for (block_size, block_data) in self.blocks(reader):
+            while (block_size > 0):
                 (metadata_function,
                  nondecoder_data,
                  actual_size_1_less,
-                 large_block) = frame_data.parse("5u 1u 1u 1u")
+                 large_block) = block_data.parse("5u 1u 1u 1u")
 
-                block_size = frame_data.read(24 if large_block else 8)
+                if (large_block):
+                    sub_block_size = block_data.read(24)
+                    block_size -= 4
+                else:
+                    sub_block_size = block_data.read(8)
+                    block_size -= 2
+
                 if (actual_size_1_less):
                     yield (metadata_function,
                            nondecoder_data,
-                           block_size * 2 - 1,
-                           frame_data.substream(block_size * 2 - 1))
-                    frame_data.skip(8)
+                           sub_block_size * 2 - 1,
+                           block_data.substream(sub_block_size * 2 - 1))
+                    block_data.skip(8)
                 else:
                     yield (metadata_function,
                            nondecoder_data,
-                           block_size * 2,
-                           frame_data.substream(block_size * 2))
+                           sub_block_size * 2,
+                           block_data.substream(sub_block_size * 2))
+
+                block_size -= sub_block_size * 2
 
     def __read_info__(self):
         from .bitstream import BitstreamReader

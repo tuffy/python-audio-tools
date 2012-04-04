@@ -1,7 +1,28 @@
 #!/usr/bin/python
 
+#Audio Tools, a module and set of tools for manipulating audio data
+#Copyright (C) 2007-2012  Brian Langenberger
+
+#This program is free software; you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation; either version 2 of the License, or
+#(at your option) any later version.
+
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with this program; if not, write to the Free Software
+#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
 
 def read_ogg_packets(reader):
+    """given a BitstreamReader
+    yields BitstreamReader substream objects
+    for each packet within the Ogg stream"""
+
     from .bitstream import Substream
 
     header_type = 0
@@ -24,6 +45,10 @@ def read_ogg_packets(reader):
 
 
 def read_ogg_packets_data(reader):
+    """given a BitstreamReader
+    yields binary strings
+    for each packet within the Ogg stream"""
+
     header_type = 0
     packet = []
 
@@ -44,6 +69,9 @@ def read_ogg_packets_data(reader):
 
 
 class OggChecksum:
+    """calculates the checksum of Ogg pages
+    the final checksum may be determined by int(ogg_checksum_instance)"""
+
     CRC_LOOKUP = (0x00000000, 0x04c11db7, 0x09823b6e, 0x0d4326d9,
                   0x130476dc, 0x17c56b6b, 0x1a864db2, 0x1e475005,
                   0x2608edb8, 0x22c9f00f, 0x2f8ad6d6, 0x2b4bcb61,
@@ -113,9 +141,13 @@ class OggChecksum:
         self.checksum = 0
 
     def reset(self):
+        """clears the accumulated checksum so the object may be reused"""
+
         self.checksum = 0
 
     def update(self, byte):
+        """given a byte integer, updates the running checksum"""
+
         self.checksum = (((self.checksum << 8) ^
                           self.CRC_LOOKUP[((self.checksum >> 24) & 0xFF) ^
                                           byte]) & 0xFFFFFFFF)
@@ -126,6 +158,8 @@ class OggChecksum:
 
 class OggStreamReader:
     def __init__(self, reader):
+        """reader is a BitstreamReader object"""
+
         self.reader = reader
 
         #try to grab a few useful bits of info
@@ -144,8 +178,11 @@ class OggStreamReader:
         self.reader.add_callback(self.checksum.update)
 
     def read_page(self):
-        """returns a tuple of (granule_position, segments,
-                               continuation, first_page, last_page)
+        """returns a tuple of (granule_position,
+                               segments,
+                               continuation,
+                               first_page,
+                               last_page)
 
         raises ValueError if the page checksum is invalid"""
 
@@ -184,6 +221,15 @@ class OggStreamReader:
                     continuation, first_page, last_page)
 
     def pages(self):
+        """yields a tuple of (granule_position,
+                              segments,
+                              continuation,
+                              first_page,
+                              last_page)
+
+        for each page in the stream
+        raises ValueError if a page checksum is invalid"""
+
         while (True):
             page = self.read_page()
             yield page
@@ -193,7 +239,7 @@ class OggStreamReader:
 
 class OggStreamWriter:
     def __init__(self, writer, serial_number):
-        """writer is a BitstreamWriter-compatible object
+        """writer is a BitstreamWriter
 
         serial_number is a signed integer"""
 

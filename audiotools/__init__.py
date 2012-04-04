@@ -2761,7 +2761,7 @@ class MetaData:
         implementations of this method should also affect
         the underlying metadata value
         (e.g. adding a new Image to FlacMetaData should add another
-        mETADATA_BLOCK_PICTURE block to the metadata)
+        METADATA_BLOCK_PICTURE block to the metadata)
         """
 
         if (self.supports_images()):

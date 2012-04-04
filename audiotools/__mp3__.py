@@ -698,6 +698,12 @@ class MP3Audio(AudioFile):
             progress(1, 1)
 
     def verify(self, progress=None):
+        """verifies the current file for correctness
+
+        returns True if the file is okay
+        raises an InvalidFile with an error message if there is
+        some problem with the file"""
+
         from . import verify
         try:
             f = open(self.filename, 'rb')

@@ -5246,6 +5246,32 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 
    So although the current system is clunky and inefficient
    at least it works.
+** DONE Ensure all Python modules have up-to-date docstrings
+   - [X] __aiff__.py
+   - [X] __ape__.py
+   - [X] __au__.py
+   - [X] __dvda__.py
+   - [X] __flac__.py
+   - [X] __id3__.py
+   - [X] __id3v1__.py
+   - [X] __image__.py
+   - [X] __init__.py
+   - [X] __m4a__.py
+   - [X] __m4a_atoms__.py
+   - [X] __mp3__.py
+   - [X] __ogg__.py
+   - [X] __shn__.py
+   - [X] __vorbis__.py
+   - [X] __vorbiscomment__.py
+   - [X] __wav__.py
+   - [X] __wavpack__.py
+   - [X] cue.py
+   - [X] delta.py
+   - [X] freedb.py
+   - [X] musicbrainz.py
+   - [X] player.py
+   - [X] toc.py
+   - [X] ui.py
 ** TODO Remove Construct module
    Convert all usage of Construct to BitstreamReader/BitstreamWriter.
    Since this is unlikely to be updated for Python 3,
@@ -5384,34 +5410,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] test_blocksizes
 **** DONE WavpackFileTest
      - [X] test_blocksizes
-** TODO Ensure all Python modules have up-to-date docstrings
-   - [X] __aiff__.py
-   - [X] __ape__.py
-   - [X] __au__.py
-   - [X] __dvda__.py
-   - [X] __flac__.py
-   - [X] __id3__.py
-   - [X] __id3v1__.py
-   - [X] __image__.py
-   - [X] __init__.py
-   - [X] __m4a__.py
-   - [ ] __m4a_atoms__.py
-   - [ ] __mp3__.py
-   - [ ] __musepack__.py
-   - [ ] __musicbrainz__.py
-   - [ ] __ogg__.py
-   - [ ] __shn__.py
-   - [ ] __vorbis__.py
-   - [ ] __vorbiscomment__.py
-   - [ ] __wav__.py
-   - [ ] __wavpack__.py
-   - [ ] cue.py
-   - [ ] delta.py
-   - [ ] freedb.py
-   - [ ] musicbrainz.py
-   - [ ] player.py
-   - [ ] toc.py
-   - [ ] ui.py
 ** TODO Ensure MANIFEST.in is complete
 ** TODO Run final batch of unit tests on different platforms
    - [ ] check Ubuntu

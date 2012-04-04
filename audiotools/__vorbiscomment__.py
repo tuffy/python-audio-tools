@@ -120,6 +120,14 @@ class VorbisComment(MetaData):
             (repr(self.comment_strings), repr(self.vendor_string))
 
     def raw_info(self):
+        """returns a Unicode string of low-level MetaData information
+
+        whereas __unicode__ is meant to contain complete information
+        at a very high level
+        raw_info() should be more developer-specific and with
+        very little adjustment or reordering to the data itself
+        """
+
         from os import linesep
         from . import display_unicode
 

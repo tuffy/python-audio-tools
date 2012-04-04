@@ -26,6 +26,10 @@ try:
     AVAILABLE = True
 
     class DownEdit(urwid.Edit):
+        """a subclass of urwid.Edit which performs a down-arrow keypress
+        when the enter key is pressed,
+        typically for moving to the next element in a form"""
+
         def __init__(self, caption='', edit_text='', multiline=False,
                      align='left', wrap='space', allow_tab=False,
                      edit_pos=None, layout=None, key_map={}):
@@ -44,7 +48,7 @@ try:
                                        self.__key_map__.get(key, key))
 
     class FocusFrame(urwid.Frame):
-        """a special Frame widget which handles focus changes"""
+        """a special Frame widget which performs callbacks on focus changes"""
 
         def __init__(self, body, header=None, footer=None, focus_part='body'):
             urwid.Frame.__init__(self, body, header, footer, focus_part)
@@ -653,6 +657,9 @@ def select_metadata(metadata_choices, msg):
 
 
 def not_available_message(msg):
+    """prints a message about lack of Urwid availability
+    to a Messenger object"""
+
     msg.error(u"urwid is required for interactive mode")
     msg.output(u"Please download and install urwid " +
                u"from http://excess.org/urwid/")
