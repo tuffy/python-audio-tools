@@ -5411,6 +5411,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE WavpackFileTest
      - [X] test_blocksizes
 ** TODO Ensure MANIFEST.in is complete
+** TODO Update apptest.sh
+   It's not much of a test, but it's good to keep it around
+   as a last-resort check of things people normally run.
 ** TODO Run final batch of unit tests on different platforms
    - [ ] check Ubuntu
    - [ ] check Fedora

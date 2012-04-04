@@ -4797,7 +4797,7 @@ class ExecProgressQueue:
             completion_output = job.completion_output
             if (completion_output is not None):
                 if (callable(completion_output)):
-                    output = completion_output(job.result)
+                    output = completion_output(value)
                     if (output is not None):
                         self.progress_display.messenger.info(unicode(output))
                 else:
