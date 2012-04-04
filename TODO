@@ -5227,6 +5227,25 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] check Ubuntu
    - [X] check Fedora
    - [X] check Mac OS X
+** DONE Reduce load from progress updating routines
+   Send fewer progress updates from child to parent
+   when performing progress-based tasks.
+
+   This is harder than it sounds.
+
+   In an ideal world, I'd have the parent poll its children
+   on a regular basis and update the progress bars
+   and/or start more children.
+
+   In practice, this doesn't work with subprocesses and shared memory
+   because shared memory accumulators don't free themselves correctly
+   when working with more than one child process.
+
+   It works even less well with threading because subprocess.Popen
+   isn't thread-safe and will certainly deadlock if called often enough.
+
+   So although the current system is clunky and inefficient
+   at least it works.
 ** TODO Remove Construct module
    Convert all usage of Construct to BitstreamReader/BitstreamWriter.
    Since this is unlikely to be updated for Python 3,
@@ -5419,25 +5438,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] src/encoders/shn.c
    - [X] src/encoders/wavpack.c
 * TODO handle AIFF offset/block size in SSND chunk
-* TODO Reduce load from progress updating routines
-  Send fewer progress updates from child to parent
-  when performing progress-based tasks.
-
-  This is harder than it sounds.
-
-  In an ideal world, I'd have the parent poll its children
-  on a regular basis and update the progress bars
-  and/or start more children.
-
-  In practice, this doesn't work with subprocesses and shared memory
-  because shared memory accumulators don't free themselves correctly
-  when working with more than one child process.
-
-  It works even less well with threading because subprocess.Popen
-  isn't thread-safe and will certainly deadlock if called often enough.
-
-  So although the current system is clunky and inefficient
-  at least it works.
 * TODO Update .convert() method to use fewer temporary files
   .wav and .aiff containers with embedded chunks
   currently route data through actual .wav/.aiff files

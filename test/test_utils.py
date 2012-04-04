@@ -752,11 +752,6 @@ class track2track(UtilTest):
         self.output_dir = tempfile.mkdtemp()
         self.output_file = tempfile.NamedTemporaryFile(
             suffix="." + self.output_format.SUFFIX)
-        self.xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
-        self.xmcd_file.write('<?xml version="1.0" encoding="utf-8"?><metadata xmlns="http://musicbrainz.org/ns/mmd-1.0#" xmlns:ext="http://musicbrainz.org/ns/ext-1.0#"><release-list><release><title>Test Album</title><artist><name></name></artist><release-event-list><event catalog-number="" date=""/></release-event-list><track-list><track><title>Test Track</title><duration>6912</duration><artist><name>Test Artist</name></artist></track></track-list></release></release-list></metadata>')
-        self.xmcd_file.flush()
-
-        self.xmcd_metadata = audiotools.read_metadata_file(self.xmcd_file.name)
 
         self.format = "%(track_number)2.2d - %(track_name)s.%(suffix)s"
         self.type = self.output_format.NAME
@@ -800,7 +795,6 @@ class track2track(UtilTest):
         os.rmdir(self.cwd_dir)
 
         self.output_file.close()
-        self.xmcd_file.close()
 
         os.chmod(self.unwritable_dir, 0700)
         os.rmdir(self.unwritable_dir)
@@ -834,9 +828,6 @@ class track2track(UtilTest):
             elif (option == '-o'):
                 populated.append(option)
                 populated.append(self.output_file.name)
-            elif (option == '-x'):
-                populated.append(option)
-                populated.append(self.xmcd_file.name)
             else:
                 populated.append(option)
 
@@ -926,10 +917,7 @@ class track2track(UtilTest):
                 else:
                     output_format = audiotools.FILENAME_FORMAT
 
-                if ('-x' in options):
-                    metadata = self.xmcd_metadata[1]
-                else:
-                    metadata = self.track1.get_metadata()
+                metadata = self.track1.get_metadata()
 
                 if ("-o" in options):
                     output_path = self.output_file.name

@@ -4731,6 +4731,7 @@ class ExecProgressQueue:
         self.max_job_id = 0
         self.running_job_pool = {}
         self.results = {}
+        self.exception = None
 
     def execute(self, function,
                 progress_text=None,
@@ -4782,24 +4783,39 @@ class ExecProgressQueue:
         job is a __ProgressQueueJob__ object"""
 
         #add job's results to results dict
-        self.results[job_id] = job.result
+        (success, value) = job.result
+        if (success):
+            self.results[job_id] = value
 
-        #remove job from pool
-        del(self.running_job_pool[job_id])
+            #remove job from pool
+            del(self.running_job_pool[job_id])
 
-        #remove job from progress display
-        self.progress_display.delete_row(job_id)
+            #remove job from progress display
+            self.progress_display.delete_row(job_id)
 
-        #display job's output message
-        completion_output = job.completion_output
-        if (completion_output is not None):
-            if (callable(completion_output)):
-                output = completion_output(job.result)
-                if (output is not None):
-                    self.progress_display.messenger.info(unicode(output))
-            else:
-                self.progress_display.messenger.info(
-                    unicode(completion_output))
+            #display job's output message
+            completion_output = job.completion_output
+            if (completion_output is not None):
+                if (callable(completion_output)):
+                    output = completion_output(job.result)
+                    if (output is not None):
+                        self.progress_display.messenger.info(unicode(output))
+                else:
+                    self.progress_display.messenger.info(
+                        unicode(completion_output))
+        else:
+            #job raised an exception
+            if (self.exception is None):
+                #remove all other jobs from queue and set exception
+                #as long as another job hasn't already
+                self.queued_jobs = []
+                self.exception = value
+
+            #remove job from pool
+            del(self.running_job_pool[job_id])
+
+            #remove job from progress display
+            self.progress_display.delete_row(job_id)
 
     def run(self, max_processes=1):
         """runs all the queued jobs in parallel"""
@@ -4838,6 +4854,9 @@ class ExecProgressQueue:
             #wait some amount of time before polling job pool again
             time.sleep(0.25)
 
+        if (self.exception is not None):
+            raise self.exception
+
 class __ProgressQueueJob__:
     def __init__(self, pid, progress, result, completion_output):
         """pid is the child process's PID
@@ -4851,6 +4870,10 @@ class __ProgressQueueJob__:
         self.__result__ = result
 
         self.completion_output = completion_output
+
+        # (True, value) indicates function succeeded and returned "value"
+        # (False, exc) indicates function raised exception "exc"
+        # None indicates the function hasn't yet completed
         self.result = None
 
     @classmethod
@@ -4878,12 +4901,12 @@ class __ProgressQueueJob__:
             os.close(r3)
 
             try:
-                result = function(
-                    *args,
-                    progress=__PollingProgress__(progress).progress,
-                    **kwargs)
-            except:
-                result = None
+                result = (True, function(*args,
+                                         progress=
+                                         __PollingProgress__(progress).progress,
+                                         **kwargs))
+            except Exception, exception:
+                result = (False, exception)
 
             result_pipe = os.fdopen(w3, "wb")
             cPickle.dump(result, result_pipe)
@@ -4902,7 +4925,10 @@ class __ProgressQueueJob__:
             try:
                 self.result = cPickle.load(self.__result__)
             except EOFError:
-                self.result = None
+                #child died without returning a value
+                #or raising any exception
+                #which is unusual
+                self.result = (True, None)
             self.__progress__.close()
             return True
         else:
