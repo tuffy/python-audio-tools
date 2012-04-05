@@ -250,7 +250,7 @@ typedef struct BitstreamReader_s {
     (*set_endianness)(struct BitstreamReader_s* bs,
                       bs_endianness endianness);
 
-    /*closes the current input substream
+    /*closes the BistreamReader's internal stream
 
      * for FILE objects, performs fclose
      * for substreams, does nothing
@@ -259,7 +259,7 @@ typedef struct BitstreamReader_s {
      once the substream is closed,
      the reader's methods are updated to generate errors if called again*/
     void
-    (*close_substream)(struct BitstreamReader_s* bs);
+    (*close_internal_stream)(struct BitstreamReader_s* bs);
 
     /*for substreams, deallocates buffer
       for Python readers, decrefs Python object
@@ -272,7 +272,7 @@ typedef struct BitstreamReader_s {
     void
     (*free)(struct BitstreamReader_s* bs);
 
-    /*calls close_substream(), followed by free()*/
+    /*calls close_internal_stream(), followed by free()*/
     void
     (*close)(struct BitstreamReader_s* bs);
 
@@ -554,18 +554,22 @@ void
 br_set_endianness_c(BitstreamReader *bs, bs_endianness endianness);
 
 
-/*bs->close_substream(bs)  methods*/
+/*converts all read methods to ones that generate I/O errors
+  in the event someone tries to read from a stream
+  after it's been closed*/
 void
 br_close_methods(BitstreamReader* bs);
 
+
+/*bs->close_internal_stream(bs)  methods*/
 void
-br_close_substream_f(BitstreamReader* bs);
+br_close_internal_stream_f(BitstreamReader* bs);
 void
-br_close_substream_s(BitstreamReader* bs);
+br_close_internal_stream_s(BitstreamReader* bs);
 void
-br_close_substream_e(BitstreamReader* bs);
+br_close_internal_stream_e(BitstreamReader* bs);
 void
-br_close_substream_c(BitstreamReader* bs);
+br_close_internal_stream_c(BitstreamReader* bs);
 
 
 /*bs->free(bs)  methods*/
@@ -853,16 +857,16 @@ typedef struct BitstreamWriter_s {
     void
     (*flush)(struct BitstreamWriter_s* bs);
 
-    /*flushes and closes the current output substream
+    /*flushes and closes the BitstreamWriter's internal stream
 
      * for FILE objects, performs fclose
      * for recorders, does nothing
-     * for Python writers, flushes output and calls substream's .close() method
+     * for Python writers, flushes output and calls object's .close() method
 
-     once the substream is closed,
+     once the internal stream is closed,
      the writer's I/O methods are updated to generate errors if called again*/
     void
-    (*close_substream)(struct BitstreamWriter_s* bs);
+    (*close_internal_stream)(struct BitstreamWriter_s* bs);
 
     /*for recorders, deallocates buffer
       for Python writers, flushes output if necessary and decrefs Python object
@@ -873,7 +877,7 @@ typedef struct BitstreamWriter_s {
     void
     (*free)(struct BitstreamWriter_s* bs);
 
-    /*calls close_substream(), followed by free()*/
+    /*calls close_internal_stream(), followed by free()*/
     void
     (*close)(struct BitstreamWriter_s* bs);
 
@@ -1089,18 +1093,20 @@ void
 bw_flush_e(BitstreamWriter* bs);
 
 
-/*bs->close_substream(bs)  methods*/
+
 void
 bw_close_methods(BitstreamWriter* bs);
 
+
+/*bs->close_internal_stream(bs)  methods*/
 void
-bw_close_substream_f(BitstreamWriter* bs);
+bw_close_internal_stream_f(BitstreamWriter* bs);
 void
-bw_close_substream_r_a(BitstreamWriter* bs);
+bw_close_internal_stream_r_a(BitstreamWriter* bs);
 void
-bw_close_substream_e(BitstreamWriter* bs);
+bw_close_internal_stream_e(BitstreamWriter* bs);
 void
-bw_close_substream_c(BitstreamWriter* bs);
+bw_close_internal_stream_c(BitstreamWriter* bs);
 
 
 /*bs->free(bs)  methods*/

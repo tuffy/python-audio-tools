@@ -947,10 +947,10 @@ void
 BitstreamWriter_callback(uint8_t byte, PyObject *callback);
 
 void
-br_close_substream_python_file(BitstreamReader* bs);
+br_close_internal_stream_python_file(BitstreamReader* bs);
 
 void
-bw_close_substream_python_file(BitstreamWriter* bs);
+bw_close_internal_stream_python_file(BitstreamWriter* bs);
 
 int br_read_python(void* user_data,
                    struct bs_buffer* buffer);

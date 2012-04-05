@@ -101,7 +101,7 @@ br_open(FILE *f, bs_endianness endianness)
     bs->read_bytes = br_read_bytes_f;
     bs->parse = br_parse;
     bs->substream_append = br_substream_append_f;
-    bs->close_substream = br_close_substream_f;
+    bs->close_internal_stream = br_close_internal_stream_f;
     bs->free = br_free_f;
     bs->close = br_close;
     bs->mark = br_mark_f;
@@ -158,7 +158,7 @@ br_substream_new(bs_endianness endianness)
     bs->read_bytes = br_read_bytes_s;
     bs->parse = br_parse;
     bs->substream_append = br_substream_append_s;
-    bs->close_substream = br_close_substream_s;
+    bs->close_internal_stream = br_close_internal_stream_s;
     bs->free = br_free_s;
     bs->close = br_close;
     bs->mark = br_mark_s;
@@ -215,7 +215,7 @@ br_open_buffer(struct bs_buffer* buffer, bs_endianness endianness)
     bs->read_bytes = br_read_bytes_s;
     bs->parse = br_parse;
     bs->substream_append = br_substream_append_s;
-    bs->close_substream = br_close_substream_s;
+    bs->close_internal_stream = br_close_internal_stream_s;
     bs->free = br_free_f;
     bs->close = br_close;
     bs->mark = br_mark_s;
@@ -276,7 +276,7 @@ br_open_external(void* user_data,
     bs->byte_align = br_byte_align;
     bs->read_bytes = br_read_bytes_e;
     bs->parse = br_parse;
-    bs->close_substream = br_close_substream_e;
+    bs->close_internal_stream = br_close_internal_stream_e;
     bs->free = br_free_e;
     bs->close = br_close;
     bs->mark = br_mark_e;
@@ -1321,7 +1321,7 @@ br_close_methods(BitstreamReader* bs)
     bs->read_huffman_code = br_read_huffman_code_c;
     bs->read_bytes = br_read_bytes_c;
     bs->set_endianness = br_set_endianness_c;
-    bs->close_substream = br_close_substream_c;
+    bs->close_internal_stream = br_close_internal_stream_c;
     bs->mark = br_mark_c;
     bs->rewind = br_rewind_c;
     bs->unmark = br_unmark_c;
@@ -1329,7 +1329,7 @@ br_close_methods(BitstreamReader* bs)
 }
 
 void
-br_close_substream_f(BitstreamReader* bs)
+br_close_internal_stream_f(BitstreamReader* bs)
 {
     /*perform fclose on FILE object*/
     fclose(bs->input.file);
@@ -1339,14 +1339,14 @@ br_close_substream_f(BitstreamReader* bs)
 }
 
 void
-br_close_substream_s(BitstreamReader* bs)
+br_close_internal_stream_s(BitstreamReader* bs)
 {
     /*swap read methods with closed methods*/
     br_close_methods(bs);
 }
 
 void
-br_close_substream_e(BitstreamReader* bs)
+br_close_internal_stream_e(BitstreamReader* bs)
 {
     /*perform close operation on file-like object*/
     ext_close(bs->input.external);
@@ -1357,7 +1357,7 @@ br_close_substream_e(BitstreamReader* bs)
 
 
 void
-br_close_substream_c(BitstreamReader* bs)
+br_close_internal_stream_c(BitstreamReader* bs)
 {
     return;
 }
@@ -1443,7 +1443,7 @@ br_free_e(BitstreamReader* bs)
 void
 br_close(BitstreamReader* bs)
 {
-    bs->close_substream(bs);
+    bs->close_internal_stream(bs);
     bs->free(bs);
 }
 
@@ -1879,7 +1879,7 @@ bw_open(FILE *f, bs_endianness endianness)
     bs->bits_written = bw_bits_written_f_p_c;
     bs->bytes_written = bw_bytes_written;
     bs->flush = bw_flush_f;
-    bs->close_substream = bw_close_substream_f;
+    bs->close_internal_stream = bw_close_internal_stream_f;
     bs->free = bw_free_f_a;
     bs->close = bw_close;
 
@@ -1933,7 +1933,7 @@ bw_open_external(void* user_data,
     bs->bits_written = bw_bits_written_f_p_c;
     bs->bytes_written = bw_bytes_written;
     bs->flush = bw_flush_e;
-    bs->close_substream = bw_close_substream_e;
+    bs->close_internal_stream = bw_close_internal_stream_e;
     bs->free = bw_free_e;
     bs->close = bw_close;
 
@@ -1980,7 +1980,7 @@ bw_open_recorder(bs_endianness endianness)
     bs->bits_written = bw_bits_written_r;
     bs->bytes_written = bw_bytes_written;
     bs->flush = bw_flush_r_a_c;
-    bs->close_substream = bw_close_substream_r_a;
+    bs->close_internal_stream = bw_close_internal_stream_r_a;
     bs->free = bw_free_r;
     bs->close = bw_close;
 
@@ -2014,7 +2014,7 @@ bw_open_accumulator(bs_endianness endianness)
     bs->bits_written = bw_bits_written_a;
     bs->bytes_written = bw_bytes_written;
     bs->flush = bw_flush_r_a_c;
-    bs->close_substream = bw_close_substream_r_a;
+    bs->close_internal_stream = bw_close_internal_stream_r_a;
     bs->free = bw_free_f_a;
     bs->close = bw_close;
 
@@ -2602,11 +2602,11 @@ bw_close_methods(BitstreamWriter* bs)
     bs->flush = bw_flush_r_a_c;
     bs->byte_align = bw_byte_align_c;
     bs->set_endianness = bw_set_endianness_c;
-    bs->close_substream = bw_close_substream_c;
+    bs->close_internal_stream = bw_close_internal_stream_c;
 }
 
 void
-bw_close_substream_f(BitstreamWriter* bs)
+bw_close_internal_stream_f(BitstreamWriter* bs)
 {
     /*perform fclose on FILE object
       which automatically flushes its output*/
@@ -2617,13 +2617,13 @@ bw_close_substream_f(BitstreamWriter* bs)
 }
 
 void
-bw_close_substream_r_a(BitstreamWriter* bs)
+bw_close_internal_stream_r_a(BitstreamWriter* bs)
 {
     bw_close_methods(bs);
 }
 
 void
-bw_close_substream_e(BitstreamWriter* bs)
+bw_close_internal_stream_e(BitstreamWriter* bs)
 {
     /*flush pending data*/
     bw_flush_e(bs);
@@ -2637,7 +2637,7 @@ bw_close_substream_e(BitstreamWriter* bs)
 
 
 void
-bw_close_substream_c(BitstreamWriter* bs)
+bw_close_internal_stream_c(BitstreamWriter* bs)
 {
     return;
 }
@@ -2710,7 +2710,7 @@ bw_free_e(BitstreamWriter* bs)
 void
 bw_close(BitstreamWriter* bs)
 {
-    bs->close_substream(bs);
+    bs->close_internal_stream(bs);
     bs->free(bs);
 }
 
@@ -4048,7 +4048,7 @@ test_close_errors(BitstreamReader* reader,
     uint8_t bytes[10];
     struct BitstreamReader_s* subreader;
 
-    reader->close_substream(reader);
+    reader->close_internal_stream(reader);
 
     /*ensure all read methods on a closed file
       either call br_abort or do nothing*/
@@ -4745,7 +4745,7 @@ test_writer(bs_endianness endianness) {
 void
 test_writer_close_errors(BitstreamWriter* writer)
 {
-    writer->close_substream(writer);
+    writer->close_internal_stream(writer);
 
     if (!setjmp(*bw_try(writer))) {
         writer->write(writer, 2, 1);

@@ -394,7 +394,7 @@ BitstreamReader_set_endianness(bitstream_BitstreamReader *self,
 static PyObject*
 BitstreamReader_close(bitstream_BitstreamReader *self, PyObject *args)
 {
-    self->bitstream->close_substream(self->bitstream);
+    self->bitstream->close_internal_stream(self->bitstream);
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -695,13 +695,14 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
                                   self->little_endian ?
                                   BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
 
-        /*swap the regular FILE-based close_substream method
+        /*swap the regular FILE-based close_internal_stream method
           with a specialized one that does *not* perform fclose
           on the FILE pointer itself
 
           it is important that we leave that task
           to the file object itself*/
-        self->bitstream->close_substream = br_close_substream_python_file;
+        self->bitstream->close_internal_stream =
+            br_close_internal_stream_python_file;
     } else {
         self->bitstream = br_open_external(self->file_obj,
                                            self->little_endian ?
@@ -715,7 +716,7 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
 }
 
 void
-br_close_substream_python_file(BitstreamReader* bs)
+br_close_internal_stream_python_file(BitstreamReader* bs)
 {
     /*swap read methods with closed methods*/
     br_close_methods(bs);
@@ -927,13 +928,13 @@ BitstreamWriter_init(bitstream_BitstreamWriter *self, PyObject *args)
                                   little_endian ?
                                   BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
 
-        /*swap the regular FILE-based close_substream method
+        /*swap the regular FILE-based close_internal_stream method
           with a specialized one that does *not* perform fclose
           on the FILE pointer itself
 
           it is important that we leave that task
           to the file object itself*/
-        self->bitstream->close_substream = bw_close_substream_python_file;
+        self->bitstream->close_internal_stream = bw_close_internal_stream_python_file;
     } else {
         self->bitstream = bw_open_external(self->file_obj,
                                            little_endian ?
@@ -949,7 +950,7 @@ BitstreamWriter_init(bitstream_BitstreamWriter *self, PyObject *args)
 }
 
 void
-bw_close_substream_python_file(BitstreamWriter* bs)
+bw_close_internal_stream_python_file(BitstreamWriter* bs)
 {
     /*flush pending output to FILE object*/
     fflush(bs->output.file);
@@ -1241,7 +1242,7 @@ BitstreamWriter_call_callbacks(bitstream_BitstreamWriter *self,
 static PyObject*
 BitstreamWriter_close(bitstream_BitstreamWriter *self, PyObject *args)
 {
-    self->bitstream->close_substream(self->bitstream);
+    self->bitstream->close_internal_stream(self->bitstream);
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -1664,7 +1665,7 @@ static PyObject*
 BitstreamRecorder_close(bitstream_BitstreamRecorder *self,
                         PyObject *args)
 {
-    self->bitstream->close_substream(self->bitstream);
+    self->bitstream->close_internal_stream(self->bitstream);
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -1865,7 +1866,7 @@ static PyObject*
 BitstreamAccumulator_close(bitstream_BitstreamAccumulator *self,
                            PyObject *args)
 {
-    self->bitstream->close_substream(self->bitstream);
+    self->bitstream->close_internal_stream(self->bitstream);
     Py_INCREF(Py_None);
     return Py_None;
 }
