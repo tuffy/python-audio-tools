@@ -1367,6 +1367,12 @@ typedef void (*EXT_FREE)(void* user_data);
 int
 ext_getc(struct br_external_input* stream);
 
+/*analagous to fread, except that all elements are 1 byte
+  returns the total number of bytes read to the given "bytes" buffer*/
+unsigned
+ext_read(uint8_t* bytes, unsigned byte_count,
+         struct br_external_input* stream);
+
 void
 ext_close(struct br_external_input* stream);
 

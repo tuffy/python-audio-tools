@@ -1669,7 +1669,7 @@ br_substream_append_e(struct BitstreamReader_s *stream,
 {
     uint8_t* extended_buffer;
     struct bs_callback *callback;
-    int byte;
+    unsigned bytes_read;
     uint32_t i;
 
     /*byte align the input stream*/
@@ -1678,19 +1678,14 @@ br_substream_append_e(struct BitstreamReader_s *stream,
     /*extend the output stream's current buffer to fit additional bytes*/
     extended_buffer = buf_extend(substream->input.substream, bytes);
 
-    /*read input stream to extended buffer
-
-      (it would be faster to incorperate py_getc's
-      Python buffer handling in this routine
-      instead of reading one byte at a time,
-      but I'd like to separate those parts out beforehand*/
-    for (i = 0; i < bytes; i++) {
-        byte = ext_getc(stream->input.external);
-        if (byte != EOF)
-            extended_buffer[i] = byte;
-        else
-            /*abort if EOF encountered during read*/
-            br_abort(stream);
+    /*read input stream to extended buffer*/
+    if ((bytes_read = ext_read(extended_buffer,
+                               (unsigned)bytes,
+                               stream->input.external)) != (unsigned)bytes) {
+        br_abort(stream);
+    } else {
+        /*advance the substream with additional data*/
+        substream->input.substream->buffer_size += bytes;
     }
 
     /*perform callbacks on bytes in extended buffer*/
@@ -1700,9 +1695,6 @@ br_substream_append_e(struct BitstreamReader_s *stream,
         for (i = 0; i < bytes; i++)
             callback->callback(extended_buffer[i], callback->data);
     }
-
-    /*complete buffer extension*/
-    substream->input.substream->buffer_size += bytes;
 }
 
 void
@@ -3136,6 +3128,58 @@ ext_getc(struct br_external_input* stream)
             /*read unsuccessful, so return EOF*/
             return EOF;
         }
+    }
+}
+
+unsigned
+ext_read(uint8_t* bytes, unsigned byte_count,
+         struct br_external_input* stream)
+{
+    struct bs_buffer* buffer = stream->buffer;
+
+    /*if there's enough bytes in the buffer*/
+    if ((buffer->buffer_position + byte_count) < buffer->buffer_size) {
+        /*simply copy them directly to "bytes"*/
+        memcpy(bytes,
+               buffer->buffer + buffer->buffer_position,
+               byte_count);
+
+        /*increment the buffer position*/
+        buffer->buffer_position += byte_count;
+
+        /*and return the amount read*/
+        return byte_count;
+    } else {
+        uint32_t to_copy;
+
+        /*otherwise, populate the buffer with read() calls*/
+        while ((buffer->buffer_position + byte_count) > buffer->buffer_size) {
+            const uint32_t old_size = buffer->buffer_size;
+            if (!stream->read(stream->user_data, buffer)) {
+                if (buffer->buffer_size == old_size) {
+                    /*unless the data runs out*/
+                    break;
+                } else {
+                    continue;
+                }
+            } else {
+                /*or there is a read error*/
+                break;
+            }
+        }
+
+        /*then copy as much of the buffer as possible to "bytes"*/
+        to_copy = MIN(BUF_REMAINING_BYTES(buffer), byte_count);
+
+        memcpy(bytes,
+               buffer->buffer + buffer->buffer_position,
+               to_copy);
+
+        /*increment the buffer position*/
+        buffer->buffer_position += to_copy;
+
+        /*and return the amount actually read*/
+        return to_copy;
     }
 }
 
