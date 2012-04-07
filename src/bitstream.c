@@ -3155,8 +3155,10 @@ ext_read(uint8_t* bytes, unsigned byte_count,
         /*otherwise, populate the buffer with read() calls*/
         while ((buffer->buffer_position + byte_count) > buffer->buffer_size) {
             const uint32_t old_size = buffer->buffer_size;
+            const uint32_t old_position = buffer->buffer_position;
             if (!stream->read(stream->user_data, buffer)) {
-                if (buffer->buffer_size == old_size) {
+                if ((buffer->buffer_size == old_size) &&
+                    (buffer->buffer_position == old_position)) {
                     /*unless the data runs out*/
                     break;
                 } else {
