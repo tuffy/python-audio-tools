@@ -266,9 +266,9 @@ class WaveReader(PCMReader):
         """try to read a pcm.FrameList of size 'bytes'"""
 
         #align bytes downward if an odd number is read in
-        bytes -= (bytes % (self.channels * self.bits_per_sample / 8))
-        bytes = max(bytes, self.channels * self.bits_per_sample / 8)
-        pcm_data = self.wave.read(bytes)
+        bytes_per_frame = self.channels * (self.bits_per_sample / 8)
+        requested_frames = max(1, bytes / bytes_per_frame)
+        pcm_data = self.wave.read(requested_frames * bytes_per_frame)
         if ((len(pcm_data) == 0) and (self.data_chunk_length > 0)):
             raise IOError("data chunk ends prematurely")
         else:

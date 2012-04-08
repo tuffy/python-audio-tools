@@ -180,7 +180,7 @@ else:
     try:
         import multiprocessing
         MAX_JOBS = multiprocessing.cpucount()
-    except ImportError:
+    except (ImportError,AttributeError):
         MAX_JOBS = 1
 
 

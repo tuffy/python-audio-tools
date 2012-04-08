@@ -415,8 +415,7 @@ class cd2track(UtilTest):
                         output_type.track_name(
                             "",
                             audiotools.MetaData(track_number=1,
-                                                track_total=3),
-                            audiotools.FILENAME_FORMAT))
+                                                track_total=3)))
                     self.__check_error__(
                         _(u"Unable to write \"%s\"") % \
                             (output_path))
@@ -725,14 +724,14 @@ class track2track(UtilTest):
         #and should support embedded metadata
         for self.input_format in [audiotools.ALACAudio,
                                   audiotools.AiffAudio]:
-            if (self.input_format != audiotools.DEFAULT_TYPE):
+            if (self.input_format is not audiotools.DEFAULT_TYPE):
                 break
 
         #output format shouldn't be the user's default, the input format
         #and should support embedded images and ReplayGain tags
         for self.output_format in [audiotools.FlacAudio,
                                    audiotools.WavPackAudio]:
-            if (self.input_format != audiotools.DEFAULT_TYPE):
+            if (self.input_format is not audiotools.DEFAULT_TYPE):
                 break
 
         self.input_dir = tempfile.mkdtemp()
@@ -896,6 +895,8 @@ class track2track(UtilTest):
                 if ('-t' in options):
                     output_class = audiotools.TYPE_MAP[
                         options[options.index('-t') + 1]]
+                elif ("-o" in options):
+                    output_class = self.output_format
                 else:
                     output_class = audiotools.TYPE_MAP[
                         audiotools.DEFAULT_TYPE]
@@ -915,7 +916,7 @@ class track2track(UtilTest):
                 if ('--format' in options):
                     output_format = options[options.index('--format') + 1]
                 else:
-                    output_format = audiotools.FILENAME_FORMAT
+                    output_format = None
 
                 metadata = self.track1.get_metadata()
 
@@ -944,7 +945,10 @@ class track2track(UtilTest):
 
                 track2 = audiotools.open(output_path)
                 self.assertEqual(track2.NAME, output_class.NAME)
-                if (self.track1.lossless() and track2.lossless()):
+                if (self.track1.lossless() and
+                    track2.lossless() and not
+                    (output_class.can_add_replay_gain() and
+                     "--replay-gain" in options)):
                     self.assert_(
                         audiotools.pcm_frame_cmp(self.track1.to_pcm(),
                                                  track2.to_pcm()) is None)
@@ -960,20 +964,18 @@ class track2track(UtilTest):
                         self.assertEqual(image.width, self.cover.width)
                         self.assertEqual(image.height, self.cover.height)
 
-                if (('--no-replay-gain' in options) and
-                    ('--replay-gain' not in options)):
-                    self.assert_(track2.replay_gain() is None)
-                elif (("-o" not in options) and
-                      audiotools.ADD_REPLAYGAIN and
-                      ('--no-replay-gain' not in options) and
-                      (output_class.can_add_replay_gain())):
+                if (output_class.can_add_replay_gain()):
                     if (output_class.lossless_replay_gain()):
-                        self.__check_info__(
-                            _(u"ReplayGain added"))
+                        if (("-o" not in options) and
+                            audiotools.ADD_REPLAYGAIN and
+                            ("--no-replay-gain" not in options)):
+                            self.__check_info__(
+                                _(u"ReplayGain added"))
+                            self.assert_(track2.replay_gain() is not None)
                     else:
-                        self.__check_info__(
-                            _(u"ReplayGain applied"))
-                    self.assert_(track2.replay_gain() is not None)
+                        if ("--replay-gain" in options):
+                            self.__check_info__(
+                                _(u"ReplayGain applied"))
 
     @UTIL_TRACK2TRACK
     def test_errors(self):
@@ -995,6 +997,11 @@ class track2track(UtilTest):
                         self.__run_app__(["track2track"] + options),
                         2)
                     continue
+                elif ("-o" in options):
+                    output_class = self.output_format
+                else:
+                    output_class = audiotools.TYPE_MAP[
+                        audiotools.DEFAULT_TYPE]
 
                 self.assertEqual(
                     self.__run_app__(["track2track"] + options),
@@ -1016,17 +1023,12 @@ class track2track(UtilTest):
                     self.__check_error__(
                         _(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") %
                         {"quality": "bar",
-                         "type": self.output_format.NAME})
+                         "type": output_class.NAME})
                     continue
 
                 if ("-j" in options):
                     self.__check_error__(
                         _(u"You must run at least 1 process at a time"))
-                    continue
-
-                if ("-x" in options):
-                    self.__check_error__(
-                        _(u"Invalid XMCD or MusicBrainz XML file"))
                     continue
 
                 if ("-o" in options):
@@ -1050,10 +1052,10 @@ class track2track(UtilTest):
                 if ("-d" in options):
                     output_path = os.path.join(
                         self.unwritable_dir,
-                        self.output_format.track_name(
+                        output_class.track_name(
                             "",
                             self.track1.get_metadata(),
-                            audiotools.FILENAME_FORMAT))
+                            None))
                     self.__check_error__(
                         _(u"[Errno 13] Permission denied: '%s'") % \
                             (output_path))
@@ -4093,8 +4095,7 @@ class tracksplit(UtilTest):
                         output_type.track_name(
                             "",
                             audiotools.MetaData(track_number=1,
-                                                track_total=3),
-                            audiotools.FILENAME_FORMAT))
+                                                track_total=3)))
                     self.__check_error__(
                         _(u"[Errno 13] Permission denied: \'%s\'") % \
                             (output_path))

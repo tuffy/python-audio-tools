@@ -63,7 +63,7 @@ class MP3Audio(AudioFile):
                                              u"--preset extreme"),
                                 "insane": _(u"corresponds to lame's " +
                                             u"--preset insane")}
-    BINARIES = ("lame",)
+    BINARIES = ("lame", "mpg123")
     REPLAYGAIN_BINARIES = ("mp3gain", )
 
     SAMPLE_RATE = ((11025, 12000, 8000, None),   # MPEG-2.5
@@ -237,66 +237,18 @@ class MP3Audio(AudioFile):
 
         BIG_ENDIAN = sys.byteorder == 'big'
 
-        #if mpg123 is available, use that for decoding
-        if (BIN.can_execute(BIN["mpg123"])):
-            sub = subprocess.Popen([BIN["mpg123"], "-qs", self.filename],
-                                   stdout=subprocess.PIPE,
-                                   stderr=file(os.devnull, "a"))
-            return PCMReader(sub.stdout,
-                             sample_rate=self.sample_rate(),
-                             channels=self.channels(),
-                             bits_per_sample=16,
-                             channel_mask=int(ChannelMask.from_channels(
-                        self.channels())),
-                             process=sub,
-                             big_endian=BIG_ENDIAN)
-        else:
-            #if not, use LAME for decoding
-            if (self.filename.endswith("." + self.SUFFIX)):
-                if (BIG_ENDIAN):
-                    endian = ['-x']
-                else:
-                    endian = []
+        sub = subprocess.Popen([BIN["mpg123"], "-qs", self.filename],
+                               stdout=subprocess.PIPE,
+                               stderr=file(os.devnull, "a"))
 
-                sub = subprocess.Popen([BIN['lame']] + endian + \
-                                           ["--decode", "-t", "--quiet",
-                                            self.filename, "-"],
-                                       stdout=subprocess.PIPE)
-                return PCMReader(
-                    sub.stdout,
-                    sample_rate=self.sample_rate(),
-                    channels=self.channels(),
-                    bits_per_sample=16,
-                    channel_mask=int(self.channel_mask()),
-                    process=sub)
-            else:
-                import tempfile
-                from audiotools import TempWaveReader
-                #copy our file to one that ends with .mp3
-                tempmp3 = tempfile.NamedTemporaryFile(suffix='.' + self.SUFFIX)
-                f = open(self.filename, 'rb')
-                transfer_data(f.read, tempmp3.write)
-                f.close()
-                tempmp3.flush()
-
-                #decode the mp3 file to a WAVE file
-                wave = tempfile.NamedTemporaryFile(suffix='.wav')
-                returnval = subprocess.call([BIN['lame'], "--decode",
-                                             "--quiet",
-                                             tempmp3.name, wave.name])
-                tempmp3.close()
-
-                if (returnval == 0):
-                    #return WAVE file as a stream
-                    wave.seek(0, 0)
-                    return TempWaveReader(wave)
-                else:
-                    return PCMReaderError(
-                        error_message=u"lame exited with error",
-                        sample_rate=self.sample_rate(),
-                        channels=self.channels(),
-                        channel_mask=int(self.channel_mask()),
-                        bits_per_sample=16)
+        return PCMReader(sub.stdout,
+                         sample_rate=self.sample_rate(),
+                         channels=self.channels(),
+                         bits_per_sample=16,
+                         channel_mask=int(ChannelMask.from_channels(
+                    self.channels())),
+                         process=sub,
+                         big_endian=BIG_ENDIAN)
 
     @classmethod
     def __help_output__(cls):
