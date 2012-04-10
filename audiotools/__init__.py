@@ -927,14 +927,14 @@ class ProgressRow:
     def __init__(self, row_id, output_line):
         """row_id is a unique identifier.  output_line is a unicode string"""
 
+        from time import time
+
         self.id = row_id
         self.output_line = display_unicode(output_line)
         self.current = 0
         self.total = 0
+        self.start_time = time()
 
-        self.cached_split_point = -1
-        self.cached_width = -1
-        self.cached_unicode = u""
         self.ansi = VerboseMessenger("").ansi
 
     def update(self, current, total):
@@ -946,24 +946,30 @@ class ProgressRow:
     def unicode(self, width):
         """returns a unicode string formatted to the given width"""
 
+        from time import time
+
         try:
+            time_spent = time() - self.start_time
+
             split_point = (width * self.current) / self.total
+            estimated_total_time = (time_spent * self.total) / self.current
+            estimated_time_remaining = int(round(estimated_total_time -
+                                                 time_spent))
+            time_remaining = u" %2.1d:%2.2d" % (estimated_time_remaining / 60,
+                                                estimated_time_remaining % 60)
         except ZeroDivisionError:
             split_point = 0
+            time_remaining = u" --:--"
 
-        if ((width == self.cached_width) and
-            (split_point == self.cached_split_point)):
-            return self.cached_unicode
-        else:
-            self.cached_width = width
-            self.cached_split_point = split_point
+        output_line_width = width - len(time_remaining)
 
-        if (len(self.output_line) < width):
+        if (len(self.output_line) < output_line_width):
             output_line = self.output_line
         else:
-            output_line = self.output_line.tail(width)
+            output_line = self.output_line.tail(output_line_width)
 
-        output_line += u" " * (width - len(output_line))
+        output_line += (u" " * (output_line_width - len(output_line)) +
+                        time_remaining)
 
         (head, tail) = output_line.split(split_point)
         output_line = (self.ansi(unicode(head),
@@ -971,7 +977,6 @@ class ProgressRow:
                                   VerboseMessenger.BG_BLUE]) +
                        unicode(tail))
 
-        self.cached_unicode = output_line
         return output_line
 
 
