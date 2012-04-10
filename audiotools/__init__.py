@@ -851,11 +851,20 @@ class SingleProgressDisplay(ProgressDisplay):
         ProgressDisplay.__init__(self, messenger)
         self.add_row(0, progress_text)
 
+        from time import time
+
+        self.time = time
+        self.last_updated = 0
+
     def update(self, current, total):
         """updates the output line with new current and total values"""
 
-        self.update_row(0, current, total)
-
+        now = self.time()
+        if ((now - self.last_updated) > 0.25):
+            self.clear()
+            self.update_row(0, current, total)
+            self.refresh()
+            self.last_updated = now
 
 class ReplayGainProgressDisplay(ProgressDisplay):
     """a specialized ProgressDisplay for handling ReplayGain application"""
