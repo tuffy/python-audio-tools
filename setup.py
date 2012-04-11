@@ -21,23 +21,11 @@ VERSION = '2.18beta1'
 
 import sys
 
-if (sys.version_info < (2, 5, 0, 'final', 0)):
-    print >> sys.stderr, "*** Python 2.5.0 or better required"
+if (sys.version_info < (2, 6, 0, 'final', 0)):
+    print >> sys.stderr, "*** Python 2.6.0 or better required"
     sys.exit(1)
 
 from distutils.core import setup, Extension
-import subprocess
-import re
-
-
-def pkg_config(package, option):
-    sub = subprocess.Popen(["pkg-config", option, package],
-                           stdout=subprocess.PIPE)
-    spaces = re.compile('\s+', re.DOTALL)
-    args = spaces.split(sub.stdout.read().strip())
-    sub.stdout.close()
-    sub.wait()
-    return args
 
 
 cdiomodule = Extension('audiotools.cdio',
@@ -134,5 +122,5 @@ setup(name='Python Audio Tools',
                "tracktag", "audiotools-config",
                "trackcat", "tracksplit",
                "tracklint", "trackverify",
-               "coverdump", "coverview", "record2track",
+               "coverdump", "coverview",
                "dvdainfo", "dvda2track"])

@@ -21,8 +21,8 @@
 
 import sys
 
-if (sys.version_info < (2, 5, 0, 'final', 0)):
-    print >> sys.stderr, "*** Python 2.5.0 or better required"
+if (sys.version_info < (2, 6, 0, 'final', 0)):
+    print >> sys.stderr, "*** Python 2.6.0 or better required"
     sys.exit(1)
 
 
@@ -2401,70 +2401,6 @@ def calculate_replay_gain(tracks, progress=None):
     (album_gain, album_peak) = rg.album_gain()
     for (track, track_gain, track_peak) in gains:
         yield (track, track_gain, track_peak, album_gain, album_peak)
-
-
-class InterruptableReader(PCMReader):
-    """a PCMReader meant for audio recording
-
-    it runs read() in a separate thread and stops recording
-    when SIGINT is caught
-    """
-
-    def __init__(self, pcmreader, verbose=True):
-        """takes PCMReader object and verbosity flag"""
-
-        #FIXME - update this for Messenger support
-
-        import threading
-        import Queue
-        import signal
-
-        PCMReader.__init__(self, pcmreader,
-                           sample_rate=pcmreader.sample_rate,
-                           channels=pcmreader.channels,
-                           channel_mask=pcmreader.channel_mask,
-                           bits_per_sample=pcmreader.bits_per_sample)
-
-        self.stop_reading = False
-        self.data_queue = Queue.Queue()
-
-        self.old_sigint = signal.signal(signal.SIGINT, self.stop)
-
-        thread = threading.Thread(target=self.send_data)
-        thread.setDaemon(True)
-        thread.start()
-
-        self.verbose = verbose
-
-    def stop(self, *args):
-        """the SIGINT signal handler which stops recording"""
-
-        import signal
-
-        self.stop_reading = True
-        signal.signal(signal.SIGINT, self.old_sigint)
-
-        if (self.verbose):
-            print "Stopping..."
-
-    def send_data(self):
-        """the thread for outputting PCM data from reader"""
-
-        #try to use a half second long buffer
-        BUFFER_SIZE = self.sample_rate * (self.bits_per_sample / 8) * \
-                      self.channels / 2
-
-        s = self.file.read(BUFFER_SIZE)
-        while ((len(s) > 0) and (not self.stop_reading)):
-            self.data_queue.put(s)
-            s = self.file.read(BUFFER_SIZE)
-
-        self.data_queue.put("")
-
-    def read(self, length):
-        """try to read a pcm.FrameList of size 'bytes'"""
-
-        return self.data_queue.get()
 
 
 def ignore_sigint():
