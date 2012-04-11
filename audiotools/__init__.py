@@ -873,6 +873,12 @@ class ReplayGainProgressDisplay(ProgressDisplay):
         """takes a Messenger and whether ReplayGain is lossless or not"""
 
         ProgressDisplay.__init__(self, messenger)
+
+        from time import time
+
+        self.time = time
+        self.last_updated = 0
+
         self.lossless_replay_gain = lossless_replay_gain
         if (lossless_replay_gain):
             self.add_row(0, _(u"Adding ReplayGain"))
@@ -907,8 +913,12 @@ class ReplayGainProgressDisplay(ProgressDisplay):
     def update_tty(self, current, total):
         """updates the current status of ReplayGain application"""
 
-        self.replaygain_row.update(current, total)
-        self.refresh()
+        now = self.time()
+        if ((now - self.last_updated) > 0.25):
+            self.clear()
+            self.replaygain_row.update(current, total)
+            self.refresh()
+            self.last_updated = now
 
     def update_nontty(self, current, total):
         """updates the current status of ReplayGain application"""
