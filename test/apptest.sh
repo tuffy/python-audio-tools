@@ -1,18 +1,15 @@
 #!/bin/sh
 
-echo "Getting XMCD info from CD"
-cd2xmcd -x testdisc1.xmcd
-
 echo "Extracting CD"
 mkdir -v testdisc1
-cd2track -t wav -d testdisc1
+cd2track -t flac -D -d testdisc1
 
 echo "Transcoding CD"
 mkdir -v testdisc2
-track2track -t flac -q 1 testdisc1/*.wav -d testdisc2 -x testdisc1.xmcd
+track2track -t wv testdisc1/*.flac -d testdisc2
 
 echo "Getting info"
-trackinfo testdisc2/*.flac
+trackinfo testdisc2/*.wv
 
 echo "Comparing CD to original"
 trackcmp testdisc1 testdisc2
@@ -22,8 +19,8 @@ tracklength testdisc1
 tracklength testdisc2
 
 echo "Converting disc data to single file"
-trackcat testdisc1/*.wav -t flac -q 1 -o testdisc1.flac
-trackcat testdisc2/*.flac -t flac -q 1 -o testdisc2.flac
+trackcat testdisc1/*.flac -t flac -q 1 -o testdisc1.flac
+trackcat testdisc2/*.wv -t flac -q 1 -o testdisc2.flac
 
 echo "Comparing single files"
 trackcmp testdisc1.flac testdisc2.flac
@@ -40,27 +37,15 @@ echo "Comparing split tracks to original files"
 trackcmp testdisc3 testdisc1
 rm -fv testdisc1.flac testdisc2.flac
 
-echo "Removing transcoded CD and trying again"
-rm -rfv testdisc2
-mkdir -v testdisc2
-track2track -t flac -q 1 testdisc1/*.wav -d testdisc2
-trackrename -x testdisc1.xmcd testdisc2/*.flac
-trackcmp testdisc1 testdisc2
-
-echo "Grabbing metadata from transcoded CD and comparing"
-track2xmcd -x testdisc2.xmcd testdisc2/*.flac
-diff -q testdisc1.xmcd testdisc2.xmcd
-
 echo "Adding album cover"
-tracktag --front-cover=testcover.png testdisc2/*01*.flac
+tracktag --front-cover=testcover.png testdisc2/*01*.wv
 
 echo "Checking album cover"
 mkdir -v "covers"
-coverdump -d covers testdisc2/*01*.flac
+coverdump -d covers testdisc2/*01*.wv
 cmp testcover.png covers/front_cover.png
 
 echo "Removing test data"
-rm -fv testdisc1.xmcd testdisc2.xmcd
 rm -rfv testdisc1 testdisc2 testdisc3
 rm -rfv covers
 rm -fv test.cue test.toc

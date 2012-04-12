@@ -512,7 +512,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
 
         try:
             (head, tail) = decoders.SHNDecoder(self.filename).pcm_split()
-            header = bitstream.BitstreamReader(cStringIO.StringIO(head), 1)
+            header = bitstream.BitstreamReader(cStringIO.StringIO(head), 0)
             (FORM, SIZE, AIFF) = header.parse("4b 32u 4b")
             if ((FORM != 'FORM') or (AIFF != 'AIFF')):
                 return False

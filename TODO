@@ -2,7 +2,7 @@ This file is formatted for Emacs' org-mode (see http://www.orgmode.org)
 To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 * Previous Issues
 ** DONE Fix WAVE/MP3 formats to support MP3 audio in a WAVE container
-^   Instead of WaveAudio generating a nasty "compression not supported" error,
+   Instead of WaveAudio generating a nasty "compression not supported" error,
    its is_type() classmethod should return False.
    And, MP3Audio's is_type() classmethod should check for MP3 compressed
    RIFF WAVE containers.
@@ -5211,11 +5211,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] toc.py
    - [X] ui.py
 ** DONE Ensure MANIFEST.in is complete
-** TODO Update apptest.sh
+** DONE Update apptest.sh
    It's not much of a test, but it's good to keep it around
    as a last-resort check of things people normally run.
-** TODO Run final batch of unit tests on different platforms
-   - [ ] check Ubuntu
+** DONE Run final batch of unit tests on different platforms
+   - [X] check Ubuntu
    - [X] check Fedora
    - [X] check Mac OS X
 * TODO Finish version 2.19
