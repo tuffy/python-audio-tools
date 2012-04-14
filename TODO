@@ -3513,6 +3513,837 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE encoding
 *** DONE DVD-A
 **** DONE decoding
+* DONE Finish version 2.18
+** DONE Ensure audiotools works on FreeBSD
+   the unprotection module, in particular, needs additional testing
+** DONE Ensure excessive zero residuals don't overflow output buffers
+   Certain formats provide "escape code" blocks of zeroes.
+   Ensure these routines don't generate more zeroes than are allowed
+   (either accidentally or deliberately).
+*** DONE ALACDecoder
+*** DONE WavPackDecoder
+** DONE Cleaup documentation layout
+   Add subdirectories for format figures.
+** DONE Spellcheck reference docs
+   - [X] introduction.tex
+   - [X] basics.tex
+   - [X] wav.tex
+   - [X] aiff.tex
+   - [X] au.tex
+   - [X] shorten.tex
+   - [X] flac.tex
+   - [X] wavpack.tex
+   - [X] ape.tex
+   - [X] mp3.tex
+   - [X] m4a.tex
+   - [X] alac.tex
+   - [X] vorbis.tex
+   - [X] oggflac.tex
+   - [X] speex.tex
+   - [X] musepack.tex
+   - [X] dvda2.tex
+   - [X] freedb.tex
+   - [X] musicbrainz.tex
+   - [X] replaygain.tex
+** DONE Make ReplayGain a configurable option
+   Even tag-based ReplayGain should be something
+   users can turn on or off globally via audiotools-config
+*** DONE add audiotools-config option
+**** DONE document in audiotools-config man page
+*** DONE update tools to use option
+    - [X] cdtrack
+    - [X] dvda2track
+    - [X] track2track
+    - [X] tracksplit
+** DONE Add progress to track2cd audio file conversion
+   - [X] CD quality, embedded cuesheet
+   - [X] non-CD quality, embedded cuesheet
+   - [X] CD quality, external cuesheet
+   - [X] non-CD quality, external cuesheet
+   - [X] CD quality, multiple files
+   - [X] non-CD quality, multiple files
+** DONE Improve .wav performance
+   don't read entire data chunk by default
+** DONE Integrate MusicBrainz/FreeDB lookup with cd2track/dvda2track
+   The two step extraction process is a relic from when I'd do
+   batch lookups via modem.
+   Combining metadata querying with extraction lets me perform more
+   powerful lookups than are possible by using XMCD/XML file intermediaries.
+
+   However, CD lookups may be still be wrong.
+   Therefore, it's essential to have a simple, interactive
+   track metadata editor so that this data is very easy to populate.
+*** DONE Add multi-track interactive editing mode to tracktag
+**** DONE Update man page
+*** DONE Build unified metadata selection widget for interactive modes
+    This is something that can be run while a disc is being extracted
+    or a track is being split which will drop the user back
+    into a progress indicator once completed and then
+    tag/rename the resulting tracks.
+*** DONE Add MusicBrainz/FreeDB lookup options to audiotools-config
+    It should be possible to decide whether to query either or both
+    as a config option.
+*** DONE Query MusicBrainz for album_number/album_total info
+    Given a particular disc ID, there must be some way to pull
+    the disc's album_number/album_total off MusicBrainz's servers
+    if it's one of a series of discs.
+*** DONE Add pre-extraction metadata lookup to tracksplit
+**** DONE Update man page
+*** DONE Add pre-extraction metadata lookup to cd2track
+**** DONE Update man page with new options
+*** DONE Add pre-extraction metadata lookup to dvda2track
+**** DONE Update man page with new options
+*** DONE Update cdinfo to use new ID calculation routines
+    Ensure they handle the FreeDB test disc properly.
+*** DONE Add pre-play metadata lookup to cdplay
+**** DONE Update man page
+*** DONE Add album-number/album-total options to tracksplit
+    Allow these values to be populated at split-time
+    if none can be found in metadata services
+**** DONE Update man page
+*** DONE Update album-number/album-total options in cd2track
+*** DONE Remove xmcd-specific options
+    Automatic CD lookup should be folded into utilites as needed.
+    - [X] cd2track
+    - [X] cdplay
+    - [X] dvda2track
+    - [X] track2track
+    - [X] trackrename
+    - [X] tracksplit
+    - [X] tracktag
+*** DONE Remove xmcd-specific tools
+    - [X] cd2xmcd
+    - [X] dvda2xmcd
+    - [X] editxmcd
+    - [X] track2xmcd
+*** DONE Update unit tests
+    - [X] cd2track
+    - [X] dvda2track
+    - [X] tracksplit
+*** DONE Deprecate xmcd-specific modules
+    Since metadata lookup handles files internally,
+    there's no need for metadata file handling classes/functions
+    at the Python level.
+**** DONE Update documentation to indicate deprecation
+** DONE Adjust album_number/track_number heuristics
+   these should be last-resort fields that apply
+   *only* if a track has no metadata of any kind
+** DONE Don't port cuesheets with AudioFile.set_metadata()
+   This is mostly for WavPack since it embeds cuesheet data
+   in the APEv2 tag.
+   - [X] FlacAudio
+   - [X] OggFlacAudio
+   - [X] WavPackAudio
+** DONE Ensure overly-long files are handled correctly
+   That is, anything larger than a .wav can typically handle
+*** DONE wave should fail with error
+*** DONE aiff should fail with error
+*** DONE au should fail with error
+*** DONE flac should work
+*** DONE ogg flac should work
+*** DONE wavpack should work
+*** DONE alac should work
+*** DONE shorten shouldn't begin
+    requires verbatim wave or aiff chunks
+    which can't be created because
+    the amount of PCM data is too large
+** DONE Fix FLAC embedded cuesheets
+** DONE Ensure files are PEP8-compliant
+*** DONE check user-level scripts
+    - [X] audiotools-config
+    - [X] cd2track
+    - [X] cdinfo
+    - [X] cdplay
+    - [X] coverdump
+    - [X] coverview
+    - [X] dvda2track
+    - [X] dvdainfo
+    - [X] record2track
+    - [X] track2cd
+    - [X] track2track
+    - [X] trackcat
+    - [X] trackcmp
+    - [X] trackinfo
+    - [X] tracklength
+    - [X] tracklint
+    - [X] trackplay
+    - [X] trackrename
+    - [X] tracksplit
+    - [X] tracktag
+    - [X] trackverify
+    - [X] setup.py
+*** DONE check audiotools module
+    - [X] __aiff__.py
+    - [X] __ape__.py
+    - [X] __au__.py
+    - [X] __dvda__.py
+    - [X] __flac__.py
+    - [X] __freedb__.py
+    - [X] __id3__.py
+    - [X] __id3v1__.py
+    - [X] __image__.py
+    - [X] __init__.py
+    - [X] __m4a__.py
+    - [X] __m4a_atoms__.py
+    - [X] __mp3__.py
+    - [X] __musepack__.py
+    - [X] __musicbrainz__.py
+    - [X] __ogg__.py
+    - [X] __shn__.py
+    - [X] __vorbis__.py
+    - [X] __vorbiscomment__.py
+    - [X] __wav__.py
+    - [X] __wavpack__.py
+    - [X] cue.py
+    - [X] delta.py
+    - [X] freedb.py
+    - [X] musicbrainz.py
+    - [X] player.py
+    - [X] toc.py
+    - [X] ui.py
+*** DONE check audiotools.py_decoders module
+    - [X] __init__.py
+    - [X] alac.py
+    - [X] flac.py
+    - [X] shn.py
+    - [X] wavpack.py
+*** DONE check audiotools.py_encoders module
+    - [X] __init__.py
+    - [X] alac.py
+    - [X] flac.py
+    - [X] shn.py
+    - [X] wavpack.py
+*** DONE check test
+    - [X] test.py
+    - [X] test_core.py
+    - [X] test_formats.py
+    - [X] test_metadata.py
+    - [X] test_streams.py
+    - [X] test_utils.py
+** DONE Double-check reference docs one last time
+*** DONE Ensure pages break correctly in letter mode
+*** DONE Ensure pages break correctly in A4 mode
+** DONE Fix FLAC seektable generation
+   Ensure new seektables are aligned properly.
+*** DONE Ensure proper seektable written on from_pcm
+*** DONE Add .offsets() method to FlacDecoder
+    Instead of decoding the file, this walks through it
+    and returns a list of absolute file offsets of all frames.
+*** DONE Add method to generate Flac_SEEKTABLE from offset list
+*** DONE Add tracklint check/fix for mis-aligned seektables
+*** DONE Add unit tests for seektable errors
+    - [X] empty seekpoints
+    - [X] mis-ordered seekpoints
+    - [X] bad seekpoint destinations
+** DONE Shift lint to the AudioFile and MetaData subclasses
+   Instead of having tracklint have to perform lots of built-in tests,
+   it would be better to have clean() functions added to the classes
+   themselves.
+   For MetaData, it could return a new object with fixed fields.
+   For AudioFile, it could function like convert() and build a new file
+   with fixes applied.
+*** DONE Add clean() method to MetaData and subclasses
+**** DONE MetaData
+**** DONE ApeTag
+**** DONE WavPackAPEv2
+**** DONE FlacMetaData
+**** DONE ID3v22Comment
+**** DONE ID3v23Comment
+**** DONE ID3v24Comment
+**** DONE ID3v1Comment
+**** DONE ID3CommentPair
+**** DONE M4AMetaData
+**** DONE VorbisComment
+***** DONE FlacVorbisComment
+***** DONE UnframedVorbisComment
+*** DONE Add clean() method to AudioFile and subclasses
+    I expect a lot of these will do nothing in the short term.
+**** DONE AudioFile
+**** DONE AiffAudio
+     - [X] Reorder streams in which the COMM chunk doesn't come before data
+     - [X] remove duplicate COMM chunks
+     - [X] remove duplicate SSND chunks
+***** DONE add unit test for verify()
+      - [X] multiple COMM chunks found
+      - [X] multiple SSND chunks found
+      - [X] SSND chunk before COMM chunk
+***** DONE add unit test for clean()
+      - [X] multiple COMM chunks found
+      - [X] multiple SSND chunks found
+      - [X] SSND chunk before COMM chunk
+**** DONE FlacAudio
+**** DONE WaveAudio
+     - [X] reorder streams in which the fmt chunk doesn't come before data
+     - [X] remove duplicate fmt chunks
+     - [X] remove duplicate data chunks
+***** DONE add unit test for verify()
+      - [X] multiple fmt chunks found
+      - [X] multiple data chunks found
+      - [X] data chunk before fmt chunk
+***** DONE add unit test for clean()
+      - [X] multiple fmt chunks found
+      - [X] multiple data chunks found
+      - [X] data chunk before fmt chunk
+*** DONE Document MetaData clean() method
+*** DONE Document AudioFile clean() method
+*** DONE Add more comprehensive unit tests for clean() methods
+*** DONE Convert tracklint to use clean() methods
+** DONE Ensure individual unit tests pass
+*** DONE Lib
+    - [X] core
+    - [X] cuesheet
+    - [X] freedb
+    - [X] image
+    - [X] musicbrainz
+    - [X] pcm
+    - [X] bitstream
+    - [X] replaygain
+    - [X] resample
+    - [X] tocfile
+    - [X] verify
+    - [X] player
+*** DONE Format
+    - [X] audiofile
+    - [X] lossless
+    - [X] lossy
+    - [X] aiff
+    - [X] alac
+    - [X] au
+    - [X] dvda
+    - [X] flac
+    - [X] m4a
+    - [X] mp2
+    - [X] mp3
+    - [X] oggflac
+    - [X] shorten
+    - [X] sines
+    - [X] vorbis
+    - [X] wave
+    - [X] wavpack
+*** DONE Metadata
+    - [X] metadata
+    - [X] flac
+    - [X] wavpack
+    - [X] id3v1
+    - [X] id3v2
+    - [X] vorbis
+    - [X] m4a
+*** DONE Util
+    - [X] audiotools_config
+    - [X] cd2track
+    - [X] cdinfo
+    - [X] cdplay
+    - [X] coverdump
+    - [X] coverview
+    - [X] dvda2track
+    - [X] dvdainfo
+    - [X] record2track
+    - [X] track2cd
+    - [X] track2track
+    - [X] trackcat
+    - [X] trackcmp
+    - [X] trackinfo
+    - [X] tracklength
+    - [X] tracklint
+    - [X] trackplay
+    - [X] trackrename
+    - [X] tracksplit
+    - [X] tracktag
+    - [X] trackverify
+** DONE Ensure complete unit test passes
+   this includes some compound tests
+   which may not be covered by individual tests
+** DONE Cleanup bitstream module
+   This is at the heart of a lot of things so it should be properly cleaned up.
+*** DONE Merge bitstream_r and bitstream_w source files
+*** DONE Make BitstreamReader and BitstreamWriter more symmetric
+*** DONE Add placeholders to BitstreamWriter
+    These allow one to put temporary values in the stream
+    which can be automatically filled-in later on.
+**** DONE Add write_placeholder method to BitstreamWriter
+**** DONE Add fill_placeholder method to BitstreamWriter
+**** DONE Add write_64_placeholder method to BitstreamWriter
+**** DONE Add fill_64_placeholder method to BitstreamWriter
+**** DONE Implement bw_write_placeholder_f
+**** DONE Implement bw_write_64_placeholder_f
+**** DONE Implement bw_fill_placeholder_f
+**** DONE Implement bw_fill_64_placeholder_f
+**** DONE Implement bw_write_placeholder_r
+**** DONE Implement bw_write_64_placeholder_r
+**** DONE Implement bw_fill_placeholder_r
+**** DONE Implement bw_fill_64_placeholder_r
+**** DONE Implement bw_write_placeholder_a
+     Should manage the placeholder stack, but only keep track of bits sent
+**** DONE Implement bw_write_64_placeholder_a
+     Should manage the placeholder stack, but only keep track of bits sent
+**** DONE Implement bw_fill_placeholder_a
+     Should manage the placeholder stack, but not do anything else
+**** DONE Implement bw_fill_64_placeholder_a
+     Should manage the placeholder stack, but not do anything else
+**** DONE Store filled placeholders in a stack for reuse
+**** DONE Clean out allocated placeholders as close() time
+***** DONE Trigger warnings if not all placeholders are used at close()
+*** DONE Add C-based unit tests
+    This should be something I can compile into a standalone file
+    and run with no external dependencies.
+    The idea is to build something valgrind-able to ensure
+    there's no memory errors.
+**** DONE BitstreamReader
+***** DONE big-endian
+      - [X] read
+      - [X] read_signed
+      - [X] read_64
+      - [X] skip
+      - [X] skip_bytes
+      - [X] unread
+      - [X] read_unary
+      - [X] read_limited_unary
+      - [X] read_huffman_code
+      - [X] byte_align
+      - [X] read_bytes
+      - [X] set_endianness
+      - [X] mark
+      - [X] unmark
+      - [X] rewind
+***** DONE little-endian
+      - [X] read
+      - [X] read_signed
+      - [X] read_64
+      - [X] skip
+      - [X] skip_bytes
+      - [X] unread
+      - [X] read_unary
+      - [X] read_limited_unary
+      - [X] read_huffman_code
+      - [X] byte_align
+      - [X] read_bytes
+      - [X] set_endianness
+      - [X] mark
+      - [X] unmark
+      - [X] rewind
+***** DONE br_try/etry
+      - [X] read
+      - [X] read_signed
+      - [X] read_64
+      - [X] skip
+      - [X] skip_bytes
+      - [X] read_unary
+      - [X] read_limited_unary
+      - [X] read_huffman_code
+      - [X] read_bytes
+      - [X] substream_append
+***** DONE Callbacks
+      - [X] read
+      - [X] read_signed
+      - [X] read_64
+      - [X] skip
+      - [X] skip_bytes
+      - [X] read_unary
+      - [X] read_limited_unary
+      - [X] read_huffman_code
+      - [X] read_bytes
+**** DONE Substream BitstreamReader
+**** DONE BitstreamWriter
+***** DONE big-endian
+***** DONE little-endian
+***** DONE callbacks
+**** DONE BitstreamRecorder
+**** DONE BitstreamAccumulator
+*** DONE Shift BitstreamReader/BitstreamWriters to audiotools.bitstream
+*** DONE Add documentation for audiotools.bitstream
+**** DONE BitstreamReader
+     - [X] add_callback
+     - [X] byte_align
+     - [X] call_callbacks
+     - [X] close
+     - [X] limited_unary
+     - [X] mark
+     - [X] parse
+     - [X] pop_callback
+     - [X] read
+     - [X] read64
+     - [X] read_bytes
+     - [X] read_huffman_code
+     - [X] read_signed
+     - [X] read_signed64
+     - [X] rewind
+     - [X] set_endianness
+     - [X] skip
+     - [X] skip_bytes
+     - [X] substream
+     - [X] substream_append
+     - [X] unary
+     - [X] unmark
+     - [X] unread
+**** DONE BitstreamWriter
+     - [X] add_callback
+     - [X] build
+     - [X] byte_align
+     - [X] call_callbacks
+     - [X] close
+     - [X] flush
+     - [X] pop_callback
+     - [X] set_endianness
+     - [X] unary
+     - [X] write
+     - [X] write64
+     - [X] write_bytes
+     - [X] write_signed
+     - [X] write_signed64
+**** DONE BitstreamRecorder
+     - [X] add_callback
+     - [X] bits
+     - [X] build
+     - [X] byte_align
+     - [X] bytes
+     - [X] call_callbacks
+     - [X] close
+     - [X] copy
+     - [X] data
+     - [X] flush
+     - [X] pop_callback
+     - [X] reset
+     - [X] set_endianness
+     - [X] split
+     - [X] swap
+     - [X] unary
+     - [X] write
+     - [X] write64
+     - [X] write_bytes
+     - [X] write_signed
+     - [X] write_signed64
+**** DONE BitstreamAccumulator
+     - [X] bits
+     - [X] build
+     - [X] byte_align
+     - [X] bytes
+     - [X] close
+     - [X] reset
+     - [X] set_endianness
+     - [X] unary
+     - [X] write
+     - [X] write64
+     - [X] write_bytes
+     - [X] write_signed
+     - [X] write_signed64
+**** DONE HuffmanTree
+**** DONE Substream
+**** DONE format_size
+*** DONE Handle bitstream closing more consistently
+    The basic handle cycle is:
+
+    h = open_handle(substream); /*allocates space for handle*/
+    h->method(h);               /*performs reads/writes on handle*/
+    ...
+    h->close(h);                /*closes substream and deallocates handle*/
+
+    But we also need two additional methods
+    for working with the handle and its substream seperately.
+
+    | method            | substream      | handle      |
+    |-------------------+----------------+-------------|
+    | close()           | flushed/closed | deallocated |
+    | close_substream() | flushed/closed | nothing     |
+    | free()            | nothing        | deallocated |
+    |-------------------+----------------+-------------|
+
+    This is especially important for the Python wrappers
+    in which closing and dealloacting will come from different routines.
+**** DONE Add functions to bitstream core
+***** DONE BitstreamReader
+      - [X] br_close_substream_f
+      - [X] br_close_substream_s
+      - [X] br_close_substream_p
+      - [X] br_close_methods
+      - [X] br_free_f
+      - [X] br_free_s
+      - [X] br_free_p
+      - [X] br_close
+      - [X] br_read_bits_c
+      - [X] br_read_bits64_c
+      - [X] br_skip_bits_c
+      - [X] br_unread_c
+      - [X] br_read_unary_c
+      - [X] br_read_limited_unary_c
+      - [X] br_read_huffman_code_c
+      - [X] br_read_bytes_c
+      - [X] br_set_endianness_c
+      - [X] br_close_substream_c
+      - [X] br_mark_c
+      - [X] br_rewind_c
+      - [X] br_unmark_c
+      - [X] br_substream_append_c
+***** DONE BitstreamWriter
+      - [X] bw_close_substream_f
+      - [X] bw_close_substream_r
+      - [X] bw_close_substream_p
+      - [X] bw_close_substream_a
+      - [X] bw_close_methods
+      - [X] bw_free_f_a
+      - [X] bw_free_r
+      - [X] bw_free_p
+      - [X] bw_close
+      - [X] bw_write_bits_c
+      - [X] bw_write_bits64_c
+      - [X] bw_write_bytes_c
+      - [X] bw_write_signed_bits_c
+      - [X] bw_write_signed_bits64_c
+      - [X] bw_write_unary_c
+      - [X] bw_set_endianness_c
+      - [X] bw_close_substream_c
+      - [X] bw_byte_align_c
+***** DONE Ensure bw_rec_split detects closed stream(s) properly
+      Call bw_abort if one attempts to split from or to a closed stream.
+***** DONE Ensure bw_dump_bytes detects closed stream properly
+      Call bw_abort if one attempts to dump bytes to a closed stream.
+***** DONE Ensure bw_rec_copy detects closed stream properly
+      Call bw_abort if one attempts to copy records to a closed stream.
+**** DONE Update mod_bitstream.c to use new hooks properly
+***** DONE Add bw_try/bw_etry wrappers around write methods
+      - [X] BitstreamWriter_write
+      - [X] BitstreamWriter_write_signed
+      - [X] BitstreamWriter_write64
+      - [X] BitstreamWriter_write_signed64
+      - [X] BitstreamWriter_unary
+      - [X] BitstreamWriter_byte_align
+      - [X] BitstreamWriter_write_bytes
+      - [X] BitstreamWriter_flush
+      - [X] BitstreamRecorder_write
+      - [X] BitstreamRecorder_write_signed
+      - [X] BitstreamRecorder_write64
+      - [X] BitstreamRecorder_write_signed64
+      - [X] BitstreamRecorder_unary
+      - [X] BitstreamRecorder_byte_align
+      - [X] BitstreamRecorder_write_bytes
+      - [X] BitstreamRecorder_copy
+      - [X] BitstreamRecorder_split
+      - [X] bitstream_build
+      - [X] BitstreamAccumulator_write
+      - [X] BitstreamAccumulator_write_signed
+      - [X] BitstreamAccumulator_write64
+      - [X] BitstreamAccumulator_write_signed64
+      - [X] BitstreamAccumulator_unary
+      - [X] BitstreamAccumulator_byte_align
+      - [X] BitstreamAccumulator_write_bytes
+***** DONE Ensure close() method calls bs->close_substream()
+      - [X] BitstreamWriter
+      - [X] BitstreamRecorder
+      - [X] BitstreamAccumulator
+***** DONE Ensure dealloc method calls bs->free()
+      - [X] BitstreamWriter
+      - [X] BitstreamRecorder
+      - [X] BitstreamAccumulator
+***** DONE Don't fclose() file objects from underneath Python file objects
+      Although we may convert a Python file object to a FILE struct,
+      we must not fclose that struct out from underneath its parent.
+****** DONE BitstreamReader_close
+       - [X] call .close() method on Python file object
+       - [X] set read methods to raise errors
+       - [X] return result of .close() method
+****** DONE BitstreamWriter_close
+       - [X] flush pending output
+       - [X] call .close() method on Python file object
+       - [X] set write methods to raise errors
+       - [X] return result of .close() method
+****** DONE BitstreamRecorder_close
+****** DONE BitstreamAccumulator_close
+**** DONE Double-check existing C modules for proper free/close usage
+     - [X] bitstream.c
+     - [X] decoders/alac.c
+     - [X] decoders/flac.c
+     - [X] decoders/mlp.c
+     - [X] decoders/ogg.c
+     - [X] decoders/shn.c
+     - [X] decoders/wavpack.c
+     - [X] encoders/alac.c
+     - [X] encoders/flac.c
+     - [X] encoders/flac_lpc.c
+     - [X] encoders/shn.c
+     - [X] encoders/wavpack.c
+     - [X] mod_bitstream.c
+     - [X] verify/mpeg.c
+     - [X] verify/ogg.c
+*** DONE Ensure that reading/writing closed streams always fails
+    Once a stream's been closed,
+    the bitstream should set I/O functions to error generators
+    and further closes should do nothing.
+**** DONE Add unit test to bitstream.c
+**** DONE Add unit test to Python side
+** DONE Add update_metadata() method to AudioFile
+   Consider how AudioFile.set_metadata() handles six different cases:
+
+   Case 1: adjusting a file's own textual metadata (tracktag)
+   >>> m = flac1.get_metadata()
+   >>> m.track_name = u"Fixed Name"
+   >>> flac1.set_metadata(m)
+
+   Case 2: transferring metadata from the same audio type (track2track)
+   >>> flac1.set_metadata(flac2.get_metadata())
+
+   Case 3: transferring metadata from a different audio type (track2track)
+   >>> flac1.set_metadata(mp3.get_metadata())
+
+   Case 4: adjusting a file's own low-level metadata (tracklint)
+   >>> m = flac1.get_metadata()
+   >>> m.streaminfo.md5sum = fixed_md5sum
+   >>> flac1.set_metadata(m)
+
+   Case 5: building new metadata from scratch (cd2track)
+   >>> flac1 = FlacAudio.from_pcm(pcm_reader)
+   >>> flac1.set_metadata(MetaData(track_name=u"New Name", ...))
+
+   Case 6: transferring adjusted metadata from the same audio type
+   >>> m = flac2.get_metadata()
+   >>> m.track_name = u"Adjusted Name"
+   >>> flac1.set_metadata(m)
+
+   What happens to stuff like the STREAMINFO block
+   which contains track length, md5sum, etc.
+   and is part of FLAC's metadata?
+
+   If set_metadata() works naively and doesn't override any values,
+   case 2 breaks since flac1 suddenly has flac2's track length.
+
+   If set_metadata() overrides new metadata with stuff from the current file,
+   case 4 breaks since the fixed_md5sum gets overridden.
+
+   Counting on set_metadata() being smart enough to know what you mean
+   is a losing proposition for FLAC, M4A and other metadata formats
+   with embedded non-textual (side) metadata.
+
+   One solution is to add a low-level AudioFile.update_metadata() method
+   which takes only the AudioFile's required metadata type
+   and leaves side data as-is.  So case 1 becomes:
+
+   >>> m = flac1.get_metadata()
+   >>> m.track_name = u"Fixed Name"
+   >>> flac1.update_metadata(m)
+
+   and case 4 becomes:
+
+   >>> m = flac1.get_metadata()
+   >>> m.streaminfo.md5sum = fixed_md5sum
+   >>> flac1.update_metadata(m)
+
+   while the other cases remain unchanged.
+*** DONE Add update_metadata() method to AudioFile and subclasses
+    for formats which take metadata at all
+    - [X] ALACAudio
+    - [X] AiffAudio
+    - [X] AudioFile
+    - [X] FlacAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OggFlacAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
+*** DONE Update clean() method to use update_metadata()
+    for formats which implement clean() at all
+    - [X] ALACAudio
+    - [X] AiffAudio
+    - [X] FlacAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OggFlacAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
+*** DONE Add update_metadata() to tracktag
+    when not using -r/--replace option
+*** DONE Document new set_metadata() behavior
+*** DONE Document update_metadata() method
+*** DONE Add unit tests for update_metadata()
+    - [X] ALACAudio
+    - [X] AiffAudio
+    - [X] FlacAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OggFlacAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
+** DONE Ensure Python API docs are updated if necessary
+   - [X] audiotools.rst
+   - [X] audiotools_bitstream.rst
+   - [X] audiotools_cdio.rst
+   - [X] audiotools_cue.rst
+   - [X] audiotools_pcm.rst
+   - [X] audiotools_player.rst
+   - [X] audiotools_replaygain.rst
+   - [X] audiotools_resample.rst
+   - [X] audiotools_toc.rst
+   - [X] index.rst
+   - [X] metadata.rst
+** DONE Spellcheck Python API docs
+   - [X] audiotools.rst
+   - [X] audiotools_bitstream.rst
+   - [X] audiotools_cdio.rst
+   - [X] audiotools_cue.rst
+   - [X] audiotools_pcm.rst
+   - [X] audiotools_player.rst
+   - [X] audiotools_replaygain.rst
+   - [X] audiotools_resample.rst
+   - [X] audiotools_toc.rst
+   - [X] index.rst
+   - [X] metadata.rst
+** DONE Eliminate all compiler warnings
+   - [X] check Ubuntu
+   - [X] check Fedora
+   - [X] check Mac OS X
+** DONE Reduce load from progress updating routines
+   Send fewer progress updates from child to parent
+   when performing progress-based tasks.
+
+   This is harder than it sounds.
+
+   In an ideal world, I'd have the parent poll its children
+   on a regular basis and update the progress bars
+   and/or start more children.
+
+   In practice, this doesn't work with subprocesses and shared memory
+   because shared memory accumulators don't free themselves correctly
+   when working with more than one child process.
+
+   It works even less well with threading because subprocess.Popen
+   isn't thread-safe and will certainly deadlock if called often enough.
+
+   So although the current system is clunky and inefficient
+   at least it works.
+** DONE Ensure all Python modules have up-to-date docstrings
+   - [X] __aiff__.py
+   - [X] __ape__.py
+   - [X] __au__.py
+   - [X] __dvda__.py
+   - [X] __flac__.py
+   - [X] __id3__.py
+   - [X] __id3v1__.py
+   - [X] __image__.py
+   - [X] __init__.py
+   - [X] __m4a__.py
+   - [X] __m4a_atoms__.py
+   - [X] __mp3__.py
+   - [X] __ogg__.py
+   - [X] __shn__.py
+   - [X] __vorbis__.py
+   - [X] __vorbiscomment__.py
+   - [X] __wav__.py
+   - [X] __wavpack__.py
+   - [X] cue.py
+   - [X] delta.py
+   - [X] freedb.py
+   - [X] musicbrainz.py
+   - [X] player.py
+   - [X] toc.py
+   - [X] ui.py
+** DONE Ensure MANIFEST.in is complete
+** DONE Update apptest.sh
+   It's not much of a test, but it's good to keep it around
+   as a last-resort check of things people normally run.
+** DONE Run final batch of unit tests on different platforms
+   - [X] check Ubuntu
+   - [X] check Fedora
+   - [X] check Mac OS X
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -4387,837 +5218,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] src/encoders/shn.c
    - [X] src/encoders/wavpack.c
 * TODO handle AIFF offset/block size in SSND chunk
-* TODO Finish version 2.18
-** DONE Ensure audiotools works on FreeBSD
-   the unprotection module, in particular, needs additional testing
-** DONE Ensure excessive zero residuals don't overflow output buffers
-   Certain formats provide "escape code" blocks of zeroes.
-   Ensure these routines don't generate more zeroes than are allowed
-   (either accidentally or deliberately).
-*** DONE ALACDecoder
-*** DONE WavPackDecoder
-** DONE Cleaup documentation layout
-   Add subdirectories for format figures.
-** DONE Spellcheck reference docs
-   - [X] introduction.tex
-   - [X] basics.tex
-   - [X] wav.tex
-   - [X] aiff.tex
-   - [X] au.tex
-   - [X] shorten.tex
-   - [X] flac.tex
-   - [X] wavpack.tex
-   - [X] ape.tex
-   - [X] mp3.tex
-   - [X] m4a.tex
-   - [X] alac.tex
-   - [X] vorbis.tex
-   - [X] oggflac.tex
-   - [X] speex.tex
-   - [X] musepack.tex
-   - [X] dvda2.tex
-   - [X] freedb.tex
-   - [X] musicbrainz.tex
-   - [X] replaygain.tex
-** DONE Make ReplayGain a configurable option
-   Even tag-based ReplayGain should be something
-   users can turn on or off globally via audiotools-config
-*** DONE add audiotools-config option
-**** DONE document in audiotools-config man page
-*** DONE update tools to use option
-    - [X] cdtrack
-    - [X] dvda2track
-    - [X] track2track
-    - [X] tracksplit
-** DONE Add progress to track2cd audio file conversion
-   - [X] CD quality, embedded cuesheet
-   - [X] non-CD quality, embedded cuesheet
-   - [X] CD quality, external cuesheet
-   - [X] non-CD quality, external cuesheet
-   - [X] CD quality, multiple files
-   - [X] non-CD quality, multiple files
-** DONE Improve .wav performance
-   don't read entire data chunk by default
-** DONE Integrate MusicBrainz/FreeDB lookup with cd2track/dvda2track
-   The two step extraction process is a relic from when I'd do
-   batch lookups via modem.
-   Combining metadata querying with extraction lets me perform more
-   powerful lookups than are possible by using XMCD/XML file intermediaries.
-
-   However, CD lookups may be still be wrong.
-   Therefore, it's essential to have a simple, interactive
-   track metadata editor so that this data is very easy to populate.
-*** DONE Add multi-track interactive editing mode to tracktag
-**** DONE Update man page
-*** DONE Build unified metadata selection widget for interactive modes
-    This is something that can be run while a disc is being extracted
-    or a track is being split which will drop the user back
-    into a progress indicator once completed and then
-    tag/rename the resulting tracks.
-*** DONE Add MusicBrainz/FreeDB lookup options to audiotools-config
-    It should be possible to decide whether to query either or both
-    as a config option.
-*** DONE Query MusicBrainz for album_number/album_total info
-    Given a particular disc ID, there must be some way to pull
-    the disc's album_number/album_total off MusicBrainz's servers
-    if it's one of a series of discs.
-*** DONE Add pre-extraction metadata lookup to tracksplit
-**** DONE Update man page
-*** DONE Add pre-extraction metadata lookup to cd2track
-**** DONE Update man page with new options
-*** DONE Add pre-extraction metadata lookup to dvda2track
-**** DONE Update man page with new options
-*** DONE Update cdinfo to use new ID calculation routines
-    Ensure they handle the FreeDB test disc properly.
-*** DONE Add pre-play metadata lookup to cdplay
-**** DONE Update man page
-*** DONE Add album-number/album-total options to tracksplit
-    Allow these values to be populated at split-time
-    if none can be found in metadata services
-**** DONE Update man page
-*** DONE Update album-number/album-total options in cd2track
-*** DONE Remove xmcd-specific options
-    Automatic CD lookup should be folded into utilites as needed.
-    - [X] cd2track
-    - [X] cdplay
-    - [X] dvda2track
-    - [X] track2track
-    - [X] trackrename
-    - [X] tracksplit
-    - [X] tracktag
-*** DONE Remove xmcd-specific tools
-    - [X] cd2xmcd
-    - [X] dvda2xmcd
-    - [X] editxmcd
-    - [X] track2xmcd
-*** DONE Update unit tests
-    - [X] cd2track
-    - [X] dvda2track
-    - [X] tracksplit
-*** DONE Deprecate xmcd-specific modules
-    Since metadata lookup handles files internally,
-    there's no need for metadata file handling classes/functions
-    at the Python level.
-**** DONE Update documentation to indicate deprecation
-** DONE Adjust album_number/track_number heuristics
-   these should be last-resort fields that apply
-   *only* if a track has no metadata of any kind
-** DONE Don't port cuesheets with AudioFile.set_metadata()
-   This is mostly for WavPack since it embeds cuesheet data
-   in the APEv2 tag.
-   - [X] FlacAudio
-   - [X] OggFlacAudio
-   - [X] WavPackAudio
-** DONE Ensure overly-long files are handled correctly
-   That is, anything larger than a .wav can typically handle
-*** DONE wave should fail with error
-*** DONE aiff should fail with error
-*** DONE au should fail with error
-*** DONE flac should work
-*** DONE ogg flac should work
-*** DONE wavpack should work
-*** DONE alac should work
-*** DONE shorten shouldn't begin
-    requires verbatim wave or aiff chunks
-    which can't be created because
-    the amount of PCM data is too large
-** DONE Fix FLAC embedded cuesheets
-** DONE Ensure files are PEP8-compliant
-*** DONE check user-level scripts
-    - [X] audiotools-config
-    - [X] cd2track
-    - [X] cdinfo
-    - [X] cdplay
-    - [X] coverdump
-    - [X] coverview
-    - [X] dvda2track
-    - [X] dvdainfo
-    - [X] record2track
-    - [X] track2cd
-    - [X] track2track
-    - [X] trackcat
-    - [X] trackcmp
-    - [X] trackinfo
-    - [X] tracklength
-    - [X] tracklint
-    - [X] trackplay
-    - [X] trackrename
-    - [X] tracksplit
-    - [X] tracktag
-    - [X] trackverify
-    - [X] setup.py
-*** DONE check audiotools module
-    - [X] __aiff__.py
-    - [X] __ape__.py
-    - [X] __au__.py
-    - [X] __dvda__.py
-    - [X] __flac__.py
-    - [X] __freedb__.py
-    - [X] __id3__.py
-    - [X] __id3v1__.py
-    - [X] __image__.py
-    - [X] __init__.py
-    - [X] __m4a__.py
-    - [X] __m4a_atoms__.py
-    - [X] __mp3__.py
-    - [X] __musepack__.py
-    - [X] __musicbrainz__.py
-    - [X] __ogg__.py
-    - [X] __shn__.py
-    - [X] __vorbis__.py
-    - [X] __vorbiscomment__.py
-    - [X] __wav__.py
-    - [X] __wavpack__.py
-    - [X] cue.py
-    - [X] delta.py
-    - [X] freedb.py
-    - [X] musicbrainz.py
-    - [X] player.py
-    - [X] toc.py
-    - [X] ui.py
-*** DONE check audiotools.py_decoders module
-    - [X] __init__.py
-    - [X] alac.py
-    - [X] flac.py
-    - [X] shn.py
-    - [X] wavpack.py
-*** DONE check audiotools.py_encoders module
-    - [X] __init__.py
-    - [X] alac.py
-    - [X] flac.py
-    - [X] shn.py
-    - [X] wavpack.py
-*** DONE check test
-    - [X] test.py
-    - [X] test_core.py
-    - [X] test_formats.py
-    - [X] test_metadata.py
-    - [X] test_streams.py
-    - [X] test_utils.py
-** DONE Double-check reference docs one last time
-*** DONE Ensure pages break correctly in letter mode
-*** DONE Ensure pages break correctly in A4 mode
-** DONE Fix FLAC seektable generation
-   Ensure new seektables are aligned properly.
-*** DONE Ensure proper seektable written on from_pcm
-*** DONE Add .offsets() method to FlacDecoder
-    Instead of decoding the file, this walks through it
-    and returns a list of absolute file offsets of all frames.
-*** DONE Add method to generate Flac_SEEKTABLE from offset list
-*** DONE Add tracklint check/fix for mis-aligned seektables
-*** DONE Add unit tests for seektable errors
-    - [X] empty seekpoints
-    - [X] mis-ordered seekpoints
-    - [X] bad seekpoint destinations
-** DONE Shift lint to the AudioFile and MetaData subclasses
-   Instead of having tracklint have to perform lots of built-in tests,
-   it would be better to have clean() functions added to the classes
-   themselves.
-   For MetaData, it could return a new object with fixed fields.
-   For AudioFile, it could function like convert() and build a new file
-   with fixes applied.
-*** DONE Add clean() method to MetaData and subclasses
-**** DONE MetaData
-**** DONE ApeTag
-**** DONE WavPackAPEv2
-**** DONE FlacMetaData
-**** DONE ID3v22Comment
-**** DONE ID3v23Comment
-**** DONE ID3v24Comment
-**** DONE ID3v1Comment
-**** DONE ID3CommentPair
-**** DONE M4AMetaData
-**** DONE VorbisComment
-***** DONE FlacVorbisComment
-***** DONE UnframedVorbisComment
-*** DONE Add clean() method to AudioFile and subclasses
-    I expect a lot of these will do nothing in the short term.
-**** DONE AudioFile
-**** DONE AiffAudio
-     - [X] Reorder streams in which the COMM chunk doesn't come before data
-     - [X] remove duplicate COMM chunks
-     - [X] remove duplicate SSND chunks
-***** DONE add unit test for verify()
-      - [X] multiple COMM chunks found
-      - [X] multiple SSND chunks found
-      - [X] SSND chunk before COMM chunk
-***** DONE add unit test for clean()
-      - [X] multiple COMM chunks found
-      - [X] multiple SSND chunks found
-      - [X] SSND chunk before COMM chunk
-**** DONE FlacAudio
-**** DONE WaveAudio
-     - [X] reorder streams in which the fmt chunk doesn't come before data
-     - [X] remove duplicate fmt chunks
-     - [X] remove duplicate data chunks
-***** DONE add unit test for verify()
-      - [X] multiple fmt chunks found
-      - [X] multiple data chunks found
-      - [X] data chunk before fmt chunk
-***** DONE add unit test for clean()
-      - [X] multiple fmt chunks found
-      - [X] multiple data chunks found
-      - [X] data chunk before fmt chunk
-*** DONE Document MetaData clean() method
-*** DONE Document AudioFile clean() method
-*** DONE Add more comprehensive unit tests for clean() methods
-*** DONE Convert tracklint to use clean() methods
-** DONE Ensure individual unit tests pass
-*** DONE Lib
-    - [X] core
-    - [X] cuesheet
-    - [X] freedb
-    - [X] image
-    - [X] musicbrainz
-    - [X] pcm
-    - [X] bitstream
-    - [X] replaygain
-    - [X] resample
-    - [X] tocfile
-    - [X] verify
-    - [X] player
-*** DONE Format
-    - [X] audiofile
-    - [X] lossless
-    - [X] lossy
-    - [X] aiff
-    - [X] alac
-    - [X] au
-    - [X] dvda
-    - [X] flac
-    - [X] m4a
-    - [X] mp2
-    - [X] mp3
-    - [X] oggflac
-    - [X] shorten
-    - [X] sines
-    - [X] vorbis
-    - [X] wave
-    - [X] wavpack
-*** DONE Metadata
-    - [X] metadata
-    - [X] flac
-    - [X] wavpack
-    - [X] id3v1
-    - [X] id3v2
-    - [X] vorbis
-    - [X] m4a
-*** DONE Util
-    - [X] audiotools_config
-    - [X] cd2track
-    - [X] cdinfo
-    - [X] cdplay
-    - [X] coverdump
-    - [X] coverview
-    - [X] dvda2track
-    - [X] dvdainfo
-    - [X] record2track
-    - [X] track2cd
-    - [X] track2track
-    - [X] trackcat
-    - [X] trackcmp
-    - [X] trackinfo
-    - [X] tracklength
-    - [X] tracklint
-    - [X] trackplay
-    - [X] trackrename
-    - [X] tracksplit
-    - [X] tracktag
-    - [X] trackverify
-** DONE Ensure complete unit test passes
-   this includes some compound tests
-   which may not be covered by individual tests
-** DONE Cleanup bitstream module
-   This is at the heart of a lot of things so it should be properly cleaned up.
-*** DONE Merge bitstream_r and bitstream_w source files
-*** DONE Make BitstreamReader and BitstreamWriter more symmetric
-*** DONE Add placeholders to BitstreamWriter
-    These allow one to put temporary values in the stream
-    which can be automatically filled-in later on.
-**** DONE Add write_placeholder method to BitstreamWriter
-**** DONE Add fill_placeholder method to BitstreamWriter
-**** DONE Add write_64_placeholder method to BitstreamWriter
-**** DONE Add fill_64_placeholder method to BitstreamWriter
-**** DONE Implement bw_write_placeholder_f
-**** DONE Implement bw_write_64_placeholder_f
-**** DONE Implement bw_fill_placeholder_f
-**** DONE Implement bw_fill_64_placeholder_f
-**** DONE Implement bw_write_placeholder_r
-**** DONE Implement bw_write_64_placeholder_r
-**** DONE Implement bw_fill_placeholder_r
-**** DONE Implement bw_fill_64_placeholder_r
-**** DONE Implement bw_write_placeholder_a
-     Should manage the placeholder stack, but only keep track of bits sent
-**** DONE Implement bw_write_64_placeholder_a
-     Should manage the placeholder stack, but only keep track of bits sent
-**** DONE Implement bw_fill_placeholder_a
-     Should manage the placeholder stack, but not do anything else
-**** DONE Implement bw_fill_64_placeholder_a
-     Should manage the placeholder stack, but not do anything else
-**** DONE Store filled placeholders in a stack for reuse
-**** DONE Clean out allocated placeholders as close() time
-***** DONE Trigger warnings if not all placeholders are used at close()
-*** DONE Add C-based unit tests
-    This should be something I can compile into a standalone file
-    and run with no external dependencies.
-    The idea is to build something valgrind-able to ensure
-    there's no memory errors.
-**** DONE BitstreamReader
-***** DONE big-endian
-      - [X] read
-      - [X] read_signed
-      - [X] read_64
-      - [X] skip
-      - [X] skip_bytes
-      - [X] unread
-      - [X] read_unary
-      - [X] read_limited_unary
-      - [X] read_huffman_code
-      - [X] byte_align
-      - [X] read_bytes
-      - [X] set_endianness
-      - [X] mark
-      - [X] unmark
-      - [X] rewind
-***** DONE little-endian
-      - [X] read
-      - [X] read_signed
-      - [X] read_64
-      - [X] skip
-      - [X] skip_bytes
-      - [X] unread
-      - [X] read_unary
-      - [X] read_limited_unary
-      - [X] read_huffman_code
-      - [X] byte_align
-      - [X] read_bytes
-      - [X] set_endianness
-      - [X] mark
-      - [X] unmark
-      - [X] rewind
-***** DONE br_try/etry
-      - [X] read
-      - [X] read_signed
-      - [X] read_64
-      - [X] skip
-      - [X] skip_bytes
-      - [X] read_unary
-      - [X] read_limited_unary
-      - [X] read_huffman_code
-      - [X] read_bytes
-      - [X] substream_append
-***** DONE Callbacks
-      - [X] read
-      - [X] read_signed
-      - [X] read_64
-      - [X] skip
-      - [X] skip_bytes
-      - [X] read_unary
-      - [X] read_limited_unary
-      - [X] read_huffman_code
-      - [X] read_bytes
-**** DONE Substream BitstreamReader
-**** DONE BitstreamWriter
-***** DONE big-endian
-***** DONE little-endian
-***** DONE callbacks
-**** DONE BitstreamRecorder
-**** DONE BitstreamAccumulator
-*** DONE Shift BitstreamReader/BitstreamWriters to audiotools.bitstream
-*** DONE Add documentation for audiotools.bitstream
-**** DONE BitstreamReader
-     - [X] add_callback
-     - [X] byte_align
-     - [X] call_callbacks
-     - [X] close
-     - [X] limited_unary
-     - [X] mark
-     - [X] parse
-     - [X] pop_callback
-     - [X] read
-     - [X] read64
-     - [X] read_bytes
-     - [X] read_huffman_code
-     - [X] read_signed
-     - [X] read_signed64
-     - [X] rewind
-     - [X] set_endianness
-     - [X] skip
-     - [X] skip_bytes
-     - [X] substream
-     - [X] substream_append
-     - [X] unary
-     - [X] unmark
-     - [X] unread
-**** DONE BitstreamWriter
-     - [X] add_callback
-     - [X] build
-     - [X] byte_align
-     - [X] call_callbacks
-     - [X] close
-     - [X] flush
-     - [X] pop_callback
-     - [X] set_endianness
-     - [X] unary
-     - [X] write
-     - [X] write64
-     - [X] write_bytes
-     - [X] write_signed
-     - [X] write_signed64
-**** DONE BitstreamRecorder
-     - [X] add_callback
-     - [X] bits
-     - [X] build
-     - [X] byte_align
-     - [X] bytes
-     - [X] call_callbacks
-     - [X] close
-     - [X] copy
-     - [X] data
-     - [X] flush
-     - [X] pop_callback
-     - [X] reset
-     - [X] set_endianness
-     - [X] split
-     - [X] swap
-     - [X] unary
-     - [X] write
-     - [X] write64
-     - [X] write_bytes
-     - [X] write_signed
-     - [X] write_signed64
-**** DONE BitstreamAccumulator
-     - [X] bits
-     - [X] build
-     - [X] byte_align
-     - [X] bytes
-     - [X] close
-     - [X] reset
-     - [X] set_endianness
-     - [X] unary
-     - [X] write
-     - [X] write64
-     - [X] write_bytes
-     - [X] write_signed
-     - [X] write_signed64
-**** DONE HuffmanTree
-**** DONE Substream
-**** DONE format_size
-*** DONE Handle bitstream closing more consistently
-    The basic handle cycle is:
-
-    h = open_handle(substream); /*allocates space for handle*/
-    h->method(h);               /*performs reads/writes on handle*/
-    ...
-    h->close(h);                /*closes substream and deallocates handle*/
-
-    But we also need two additional methods
-    for working with the handle and its substream seperately.
-
-    | method            | substream      | handle      |
-    |-------------------+----------------+-------------|
-    | close()           | flushed/closed | deallocated |
-    | close_substream() | flushed/closed | nothing     |
-    | free()            | nothing        | deallocated |
-    |-------------------+----------------+-------------|
-
-    This is especially important for the Python wrappers
-    in which closing and dealloacting will come from different routines.
-**** DONE Add functions to bitstream core
-***** DONE BitstreamReader
-      - [X] br_close_substream_f
-      - [X] br_close_substream_s
-      - [X] br_close_substream_p
-      - [X] br_close_methods
-      - [X] br_free_f
-      - [X] br_free_s
-      - [X] br_free_p
-      - [X] br_close
-      - [X] br_read_bits_c
-      - [X] br_read_bits64_c
-      - [X] br_skip_bits_c
-      - [X] br_unread_c
-      - [X] br_read_unary_c
-      - [X] br_read_limited_unary_c
-      - [X] br_read_huffman_code_c
-      - [X] br_read_bytes_c
-      - [X] br_set_endianness_c
-      - [X] br_close_substream_c
-      - [X] br_mark_c
-      - [X] br_rewind_c
-      - [X] br_unmark_c
-      - [X] br_substream_append_c
-***** DONE BitstreamWriter
-      - [X] bw_close_substream_f
-      - [X] bw_close_substream_r
-      - [X] bw_close_substream_p
-      - [X] bw_close_substream_a
-      - [X] bw_close_methods
-      - [X] bw_free_f_a
-      - [X] bw_free_r
-      - [X] bw_free_p
-      - [X] bw_close
-      - [X] bw_write_bits_c
-      - [X] bw_write_bits64_c
-      - [X] bw_write_bytes_c
-      - [X] bw_write_signed_bits_c
-      - [X] bw_write_signed_bits64_c
-      - [X] bw_write_unary_c
-      - [X] bw_set_endianness_c
-      - [X] bw_close_substream_c
-      - [X] bw_byte_align_c
-***** DONE Ensure bw_rec_split detects closed stream(s) properly
-      Call bw_abort if one attempts to split from or to a closed stream.
-***** DONE Ensure bw_dump_bytes detects closed stream properly
-      Call bw_abort if one attempts to dump bytes to a closed stream.
-***** DONE Ensure bw_rec_copy detects closed stream properly
-      Call bw_abort if one attempts to copy records to a closed stream.
-**** DONE Update mod_bitstream.c to use new hooks properly
-***** DONE Add bw_try/bw_etry wrappers around write methods
-      - [X] BitstreamWriter_write
-      - [X] BitstreamWriter_write_signed
-      - [X] BitstreamWriter_write64
-      - [X] BitstreamWriter_write_signed64
-      - [X] BitstreamWriter_unary
-      - [X] BitstreamWriter_byte_align
-      - [X] BitstreamWriter_write_bytes
-      - [X] BitstreamWriter_flush
-      - [X] BitstreamRecorder_write
-      - [X] BitstreamRecorder_write_signed
-      - [X] BitstreamRecorder_write64
-      - [X] BitstreamRecorder_write_signed64
-      - [X] BitstreamRecorder_unary
-      - [X] BitstreamRecorder_byte_align
-      - [X] BitstreamRecorder_write_bytes
-      - [X] BitstreamRecorder_copy
-      - [X] BitstreamRecorder_split
-      - [X] bitstream_build
-      - [X] BitstreamAccumulator_write
-      - [X] BitstreamAccumulator_write_signed
-      - [X] BitstreamAccumulator_write64
-      - [X] BitstreamAccumulator_write_signed64
-      - [X] BitstreamAccumulator_unary
-      - [X] BitstreamAccumulator_byte_align
-      - [X] BitstreamAccumulator_write_bytes
-***** DONE Ensure close() method calls bs->close_substream()
-      - [X] BitstreamWriter
-      - [X] BitstreamRecorder
-      - [X] BitstreamAccumulator
-***** DONE Ensure dealloc method calls bs->free()
-      - [X] BitstreamWriter
-      - [X] BitstreamRecorder
-      - [X] BitstreamAccumulator
-***** DONE Don't fclose() file objects from underneath Python file objects
-      Although we may convert a Python file object to a FILE struct,
-      we must not fclose that struct out from underneath its parent.
-****** DONE BitstreamReader_close
-       - [X] call .close() method on Python file object
-       - [X] set read methods to raise errors
-       - [X] return result of .close() method
-****** DONE BitstreamWriter_close
-       - [X] flush pending output
-       - [X] call .close() method on Python file object
-       - [X] set write methods to raise errors
-       - [X] return result of .close() method
-****** DONE BitstreamRecorder_close
-****** DONE BitstreamAccumulator_close
-**** DONE Double-check existing C modules for proper free/close usage
-     - [X] bitstream.c
-     - [X] decoders/alac.c
-     - [X] decoders/flac.c
-     - [X] decoders/mlp.c
-     - [X] decoders/ogg.c
-     - [X] decoders/shn.c
-     - [X] decoders/wavpack.c
-     - [X] encoders/alac.c
-     - [X] encoders/flac.c
-     - [X] encoders/flac_lpc.c
-     - [X] encoders/shn.c
-     - [X] encoders/wavpack.c
-     - [X] mod_bitstream.c
-     - [X] verify/mpeg.c
-     - [X] verify/ogg.c
-*** DONE Ensure that reading/writing closed streams always fails
-    Once a stream's been closed,
-    the bitstream should set I/O functions to error generators
-    and further closes should do nothing.
-**** DONE Add unit test to bitstream.c
-**** DONE Add unit test to Python side
-** DONE Add update_metadata() method to AudioFile
-   Consider how AudioFile.set_metadata() handles six different cases:
-
-   Case 1: adjusting a file's own textual metadata (tracktag)
-   >>> m = flac1.get_metadata()
-   >>> m.track_name = u"Fixed Name"
-   >>> flac1.set_metadata(m)
-
-   Case 2: transferring metadata from the same audio type (track2track)
-   >>> flac1.set_metadata(flac2.get_metadata())
-
-   Case 3: transferring metadata from a different audio type (track2track)
-   >>> flac1.set_metadata(mp3.get_metadata())
-
-   Case 4: adjusting a file's own low-level metadata (tracklint)
-   >>> m = flac1.get_metadata()
-   >>> m.streaminfo.md5sum = fixed_md5sum
-   >>> flac1.set_metadata(m)
-
-   Case 5: building new metadata from scratch (cd2track)
-   >>> flac1 = FlacAudio.from_pcm(pcm_reader)
-   >>> flac1.set_metadata(MetaData(track_name=u"New Name", ...))
-
-   Case 6: transferring adjusted metadata from the same audio type
-   >>> m = flac2.get_metadata()
-   >>> m.track_name = u"Adjusted Name"
-   >>> flac1.set_metadata(m)
-
-   What happens to stuff like the STREAMINFO block
-   which contains track length, md5sum, etc.
-   and is part of FLAC's metadata?
-
-   If set_metadata() works naively and doesn't override any values,
-   case 2 breaks since flac1 suddenly has flac2's track length.
-
-   If set_metadata() overrides new metadata with stuff from the current file,
-   case 4 breaks since the fixed_md5sum gets overridden.
-
-   Counting on set_metadata() being smart enough to know what you mean
-   is a losing proposition for FLAC, M4A and other metadata formats
-   with embedded non-textual (side) metadata.
-
-   One solution is to add a low-level AudioFile.update_metadata() method
-   which takes only the AudioFile's required metadata type
-   and leaves side data as-is.  So case 1 becomes:
-
-   >>> m = flac1.get_metadata()
-   >>> m.track_name = u"Fixed Name"
-   >>> flac1.update_metadata(m)
-
-   and case 4 becomes:
-
-   >>> m = flac1.get_metadata()
-   >>> m.streaminfo.md5sum = fixed_md5sum
-   >>> flac1.update_metadata(m)
-
-   while the other cases remain unchanged.
-*** DONE Add update_metadata() method to AudioFile and subclasses
-    for formats which take metadata at all
-    - [X] ALACAudio
-    - [X] AiffAudio
-    - [X] AudioFile
-    - [X] FlacAudio
-    - [X] M4AAudio
-    - [X] MP2Audio
-    - [X] MP3Audio
-    - [X] OggFlacAudio
-    - [X] VorbisAudio
-    - [X] WavPackAudio
-*** DONE Update clean() method to use update_metadata()
-    for formats which implement clean() at all
-    - [X] ALACAudio
-    - [X] AiffAudio
-    - [X] FlacAudio
-    - [X] M4AAudio
-    - [X] MP2Audio
-    - [X] MP3Audio
-    - [X] OggFlacAudio
-    - [X] VorbisAudio
-    - [X] WavPackAudio
-*** DONE Add update_metadata() to tracktag
-    when not using -r/--replace option
-*** DONE Document new set_metadata() behavior
-*** DONE Document update_metadata() method
-*** DONE Add unit tests for update_metadata()
-    - [X] ALACAudio
-    - [X] AiffAudio
-    - [X] FlacAudio
-    - [X] M4AAudio
-    - [X] MP2Audio
-    - [X] MP3Audio
-    - [X] OggFlacAudio
-    - [X] VorbisAudio
-    - [X] WavPackAudio
-** DONE Ensure Python API docs are updated if necessary
-   - [X] audiotools.rst
-   - [X] audiotools_bitstream.rst
-   - [X] audiotools_cdio.rst
-   - [X] audiotools_cue.rst
-   - [X] audiotools_pcm.rst
-   - [X] audiotools_player.rst
-   - [X] audiotools_replaygain.rst
-   - [X] audiotools_resample.rst
-   - [X] audiotools_toc.rst
-   - [X] index.rst
-   - [X] metadata.rst
-** DONE Spellcheck Python API docs
-   - [X] audiotools.rst
-   - [X] audiotools_bitstream.rst
-   - [X] audiotools_cdio.rst
-   - [X] audiotools_cue.rst
-   - [X] audiotools_pcm.rst
-   - [X] audiotools_player.rst
-   - [X] audiotools_replaygain.rst
-   - [X] audiotools_resample.rst
-   - [X] audiotools_toc.rst
-   - [X] index.rst
-   - [X] metadata.rst
-** DONE Eliminate all compiler warnings
-   - [X] check Ubuntu
-   - [X] check Fedora
-   - [X] check Mac OS X
-** DONE Reduce load from progress updating routines
-   Send fewer progress updates from child to parent
-   when performing progress-based tasks.
-
-   This is harder than it sounds.
-
-   In an ideal world, I'd have the parent poll its children
-   on a regular basis and update the progress bars
-   and/or start more children.
-
-   In practice, this doesn't work with subprocesses and shared memory
-   because shared memory accumulators don't free themselves correctly
-   when working with more than one child process.
-
-   It works even less well with threading because subprocess.Popen
-   isn't thread-safe and will certainly deadlock if called often enough.
-
-   So although the current system is clunky and inefficient
-   at least it works.
-** DONE Ensure all Python modules have up-to-date docstrings
-   - [X] __aiff__.py
-   - [X] __ape__.py
-   - [X] __au__.py
-   - [X] __dvda__.py
-   - [X] __flac__.py
-   - [X] __id3__.py
-   - [X] __id3v1__.py
-   - [X] __image__.py
-   - [X] __init__.py
-   - [X] __m4a__.py
-   - [X] __m4a_atoms__.py
-   - [X] __mp3__.py
-   - [X] __ogg__.py
-   - [X] __shn__.py
-   - [X] __vorbis__.py
-   - [X] __vorbiscomment__.py
-   - [X] __wav__.py
-   - [X] __wavpack__.py
-   - [X] cue.py
-   - [X] delta.py
-   - [X] freedb.py
-   - [X] musicbrainz.py
-   - [X] player.py
-   - [X] toc.py
-   - [X] ui.py
-** DONE Ensure MANIFEST.in is complete
-** DONE Update apptest.sh
-   It's not much of a test, but it's good to keep it around
-   as a last-resort check of things people normally run.
-** DONE Run final batch of unit tests on different platforms
-   - [X] check Ubuntu
-   - [X] check Fedora
-   - [X] check Mac OS X
 * TODO Finish version 2.19
 ** TODO Assimilate MP3 support
    This is probably one of the most used codecs

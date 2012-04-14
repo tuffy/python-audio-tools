@@ -142,7 +142,7 @@ ADD_REPLAYGAIN = config.getboolean_default("ReplayGain", "add_by_default",
 THUMBNAIL_FORMAT = config.get_default("Thumbnail", "format", "jpeg")
 THUMBNAIL_SIZE = config.getint_default("Thumbnail", "size", 150)
 
-VERSION = "2.18beta1"
+VERSION = "2.18"
 
 FILENAME_FORMAT = config.get_default(
     "Filenames", "format",
