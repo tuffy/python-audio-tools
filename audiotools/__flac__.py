@@ -20,7 +20,7 @@
 
 from audiotools import (AudioFile, MetaData, InvalidFile, PCMReader,
                         transfer_data, transfer_framelist_data,
-                        subprocess, BIN, BUFFER_SIZE, cStringIO,
+                        subprocess, BIN, FRAMELIST_SIZE, cStringIO,
                         os, open_files, Image, sys, WaveAudio, AiffAudio,
                         ReplayGain, ignore_sigint, sheet_to_unicode,
                         EncodingError, UnsupportedChannelMask, DecodingError,
@@ -2180,10 +2180,10 @@ class FlacAudio(WaveContainer, AiffContainer):
 
             p = audiofile.to_pcm()
             m = md5()
-            s = p.read(BUFFER_SIZE)
+            s = p.read(FRAMELIST_SIZE)
             while (len(s) > 0):
                 m.update(s.to_bytes(False, True))
-                s = p.read(BUFFER_SIZE)
+                s = p.read(FRAMELIST_SIZE)
             p.close()
             return m.digest() == self.__md5__
         else:
@@ -2396,12 +2396,12 @@ class FLAC_Data_Chunk:
         f.write(pack("<I", self.size()))
         bytes_written = 8
         signed = (self.__pcmreader__.bits_per_sample > 8)
-        s = self.__pcmreader__.read(0x10000)
+        s = self.__pcmreader__.read(FRAMELIST_SIZE)
         while (len(s) > 0):
             b = s.to_bytes(False, signed)
             f.write(b)
             bytes_written += len(b)
-            s = self.__pcmreader__.read(0x10000)
+            s = self.__pcmreader__.read(FRAMELIST_SIZE)
 
         if (bytes_written % 2):
             f.write(chr(0))
@@ -2439,12 +2439,12 @@ class FLAC_SSND_Chunk(FLAC_Data_Chunk):
         bytes_written = 8
         f.write(pack(">II", 0, 0))
         bytes_written += 8
-        s = self.__pcmreader__.read(0x10000)
+        s = self.__pcmreader__.read(FRAMELIST_SIZE)
         while (len(s) > 0):
             b = s.to_bytes(True, True)
             f.write(b)
             bytes_written += len(b)
-            s = self.__pcmreader__.read(0x10000)
+            s = self.__pcmreader__.read(FRAMELIST_SIZE)
 
         if (bytes_written % 2):
             f.write(chr(0))

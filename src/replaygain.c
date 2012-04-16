@@ -901,7 +901,7 @@ ReplayGainReader_channel_mask(replaygain_ReplayGainReader *self,
 
 static PyObject*
 ReplayGainReader_read(replaygain_ReplayGainReader* self, PyObject *args) {
-    PyObject* bytes;
+    PyObject* pcm_frames;
 
     PyObject* framelist_obj;
     PyObject* framelist_type_obj;
@@ -919,12 +919,12 @@ ReplayGainReader_read(replaygain_ReplayGainReader* self, PyObject *args) {
     unsigned i;
     double multiplier = self->multiplier;
 
-    if (!PyArg_ParseTuple(args, "O", &bytes))
+    if (!PyArg_ParseTuple(args, "O", &pcm_frames))
         return NULL;
 
     if ((framelist_obj = PyObject_CallMethod(self->pcmreader,
                                              "read",
-                                             "O", bytes)) == NULL)
+                                             "O", pcm_frames)) == NULL)
         return NULL;
 
     /*ensure framelist_obj is a FrameList*/

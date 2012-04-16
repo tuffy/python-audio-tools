@@ -69,12 +69,11 @@ class BLANK_PCM_Reader:
         self.single_pcm_frame = audiotools.pcm.from_list(
             [1] * channels, channels, bits_per_sample, True)
 
-    def read(self, bytes):
+    def read(self, pcm_frames):
         if (self.total_frames > 0):
             frame = audiotools.pcm.from_frames(
                 [self.single_pcm_frame] *
-                min(self.single_pcm_frame.frame_count(bytes) / self.channels,
-                    self.total_frames))
+                min(pcm_frames, self.total_frames))
             self.total_frames -= frame.frames
             return frame
         else:
@@ -89,11 +88,9 @@ class BLANK_PCM_Reader:
 
 
 class RANDOM_PCM_Reader(BLANK_PCM_Reader):
-    def read(self, bytes):
+    def read(self, pcm_frames):
         if (self.total_frames > 0):
-            frames_to_read = min(
-                self.single_pcm_frame.frame_count(bytes) / self.channels,
-                self.total_frames)
+            frames_to_read = min(pcm_frames, self.total_frames)
             frame = audiotools.pcm.FrameList(
                 os.urandom(frames_to_read *
                            (self.bits_per_sample / 8) *
@@ -185,8 +182,8 @@ class MD5_Reader:
                                         self.channels,
                                         self.bits_per_sample)
 
-    def read(self, bytes):
-        framelist = self.pcmreader.read(bytes)
+    def read(self, pcm_frames):
+        framelist = self.pcmreader.read(pcm_frames)
         self.md5.update(framelist.to_bytes(False, True))
         return framelist
 
@@ -211,7 +208,7 @@ class Variable_Reader:
         self.range = range(self.channels * (self.bits_per_sample / 8),
                            4096)
 
-    def read(self, bytes):
+    def read(self, pcm_frames):
         return self.pcmreader.read(random.choice(self.range))
 
     def close(self):
@@ -235,9 +232,9 @@ class Join_Reader:
         self.bits_per_sample = pcm_readers[0].bits_per_sample
         self.readers = map(audiotools.BufferedPCMReader, pcm_readers)
 
-    def read(self, bytes):
+    def read(self, pcm_frames):
         return audiotools.pcm.from_channels(
-            [r.read(bytes) for r in self.readers])
+            [r.read(pcm_frames) for r in self.readers])
 
     def close(self):
         for r in self.readers:
@@ -253,7 +250,7 @@ class MiniFrameReader:
         self.bits_per_sample = bits_per_sample
         self.pcm_frames = zip(*channel_data)
 
-    def read(self, bytes):
+    def read(self, pcm_frames):
         try:
             return audiotools.pcm.from_list(self.pcm_frames.pop(0),
                                             self.channels,

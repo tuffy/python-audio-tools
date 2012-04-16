@@ -126,9 +126,7 @@ def encode_flac(filename, pcmreader,
 
     #walk through PCM reader's FrameLists
     frame_number = 0
-    frame = pcmreader.read(block_size *
-                           (pcmreader.bits_per_sample / 8) *
-                           pcmreader.channels)
+    frame = pcmreader.read(block_size)
 
     flac_frame = BitstreamRecorder(0)
 
@@ -144,9 +142,7 @@ def encode_flac(filename, pcmreader,
         flac_frame.copy(writer)
 
         frame_number += 1
-        frame = pcmreader.read(block_size *
-                               (pcmreader.bits_per_sample / 8) *
-                               pcmreader.channels)
+        frame = pcmreader.read(block_size)
 
     #return to beginning of file and rewrite STREAMINFO block
     output_file.seek(8, 0)

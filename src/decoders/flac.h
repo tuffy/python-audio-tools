@@ -145,7 +145,7 @@ PyGetSetDef FlacDecoder_getseters[] = {
 PyMethodDef FlacDecoder_methods[] = {
     {"read", (PyCFunction)FlacDecoder_read,
      METH_VARARGS,
-     "Reads the given number of bytes from the FLAC file, if possible"},
+     "Reads the given number of PCM frames from the FLAC file, if possible"},
     {"offsets", (PyCFunction)FlacDecoder_offsets,
      METH_NOARGS, "Returns a list of (offset, PCM frame count) values"},
     {"close", (PyCFunction)FlacDecoder_close,

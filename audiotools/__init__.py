@@ -100,7 +100,7 @@ config.read([os.path.join("/etc", "audiotools.cfg"),
              os.path.expanduser('~/.audiotools.cfg')])
 
 BUFFER_SIZE = 0x100000
-
+FRAMELIST_SIZE = 0x100000 / 4
 
 class __system_binaries__:
     def __init__(self, config):
@@ -142,7 +142,7 @@ ADD_REPLAYGAIN = config.getboolean_default("ReplayGain", "add_by_default",
 THUMBNAIL_FORMAT = config.get_default("Thumbnail", "format", "jpeg")
 THUMBNAIL_SIZE = config.getint_default("Thumbnail", "size", 150)
 
-VERSION = "2.18"
+VERSION = "2.19alpha1"
 
 FILENAME_FORMAT = config.get_default(
     "Filenames", "format",
@@ -1452,10 +1452,10 @@ class PCMReader:
         self.signed = signed
         self.big_endian = big_endian
 
-    def read(self, bytes):
-        """try to read a pcm.FrameList of size "bytes"
+    def read(self, pcm_frames):
+        """try to read the given number of PCM frames from the stream
 
-        this is *not* guaranteed to read exactly that number of bytes
+        this is *not* guaranteed to read exactly that number of frames
         it may return less (at the end of the stream, especially)
         it may return more
         however, it must always return a non-empty FrameList until the
@@ -1465,13 +1465,13 @@ class PCMReader:
         or ValueError if the input file has some sort of error
         """
 
-        bytes -= (bytes % (self.channels * self.bits_per_sample / 8))
-        return pcm.FrameList(self.file.read(max(
-                    bytes, self.channels * self.bits_per_sample / 8)),
-                             self.channels,
-                             self.bits_per_sample,
-                             self.big_endian,
-                             self.signed)
+        return pcm.FrameList(
+            self.file.read(max(pcm_frames, 1) *
+                           self.channels * (self.bits_per_sample / 8)),
+            self.channels,
+            self.bits_per_sample,
+            self.big_endian,
+            self.signed)
 
     def close(self):
         """closes the stream for reading
@@ -1501,7 +1501,7 @@ class PCMReaderError(PCMReader):
                            bits_per_sample)
         self.error_message = error_message
 
-    def read(self, bytes):
+    def read(self, pcm_frames):
         """always returns an empty framelist"""
 
         return pcm.from_list([],
@@ -1536,8 +1536,8 @@ class PCMReaderProgress:
         self.total_frames = total_frames
         self.progress = progress
 
-    def read(self, bytes):
-        frame = self.__read__(bytes)
+    def read(self, pcm_frames):
+        frame = self.__read__(pcm_frames)
         self.current_frames += frame.frames
         self.progress(self.current_frames, self.total_frames)
         return frame
@@ -1563,10 +1563,10 @@ class ReorderedPCMReader:
         self.bits_per_sample = pcmreader.bits_per_sample
         self.channel_order = channel_order
 
-    def read(self, bytes):
-        """try to read a pcm.FrameList of size 'bytes'"""
+    def read(self, pcm_frames):
+        """try to read a pcm.FrameList with the given number of frames"""
 
-        framelist = self.pcmreader.read(bytes)
+        framelist = self.pcmreader.read(pcm_frames)
 
         return pcm.from_channels([framelist.channel(channel)
                                   for channel in self.channel_order])
@@ -1602,10 +1602,10 @@ def transfer_framelist_data(pcmreader, to_function,
     from pcmreader
     """
 
-    f = pcmreader.read(BUFFER_SIZE)
+    f = pcmreader.read(FRAMELIST_SIZE)
     while (len(f) > 0):
         to_function(f.to_bytes(big_endian, signed))
-        f = pcmreader.read(BUFFER_SIZE)
+        f = pcmreader.read(FRAMELIST_SIZE)
 
 
 def threaded_transfer_framelist_data(pcmreader, to_function,
@@ -1624,10 +1624,10 @@ def threaded_transfer_framelist_data(pcmreader, to_function,
 
     def send_data(pcmreader, queue):
         try:
-            s = pcmreader.read(BUFFER_SIZE)
+            s = pcmreader.read(FRAMELIST_SIZE)
             while (len(s) > 0):
                 queue.put(s)
-                s = pcmreader.read(BUFFER_SIZE)
+                s = pcmreader.read(FRAMELIST_SIZE)
             queue.put(None)
         except (IOError, ValueError):
             queue.put(None)
@@ -1675,8 +1675,8 @@ def pcm_cmp(pcmreader1, pcmreader2):
     reader1 = BufferedPCMReader(pcmreader1)
     reader2 = BufferedPCMReader(pcmreader2)
 
-    s1 = reader1.read(BUFFER_SIZE)
-    s2 = reader2.read(BUFFER_SIZE)
+    s1 = reader1.read(FRAMELIST_SIZE)
+    s2 = reader2.read(FRAMELIST_SIZE)
 
     while ((len(s1) > 0) and (len(s2) > 0)):
         if (s1 != s2):
@@ -1684,8 +1684,8 @@ def pcm_cmp(pcmreader1, pcmreader2):
             transfer_data(reader2.read, lambda x: x)
             return False
         else:
-            s1 = reader1.read(BUFFER_SIZE)
-            s2 = reader2.read(BUFFER_SIZE)
+            s1 = reader1.read(FRAMELIST_SIZE)
+            s2 = reader2.read(FRAMELIST_SIZE)
 
     return True
 
@@ -1742,8 +1742,8 @@ def pcm_frame_cmp(pcmreader1, pcmreader2):
     reader1 = BufferedPCMReader(pcmreader1)
     reader2 = BufferedPCMReader(pcmreader2)
 
-    framelist1 = reader1.read(BUFFER_SIZE)
-    framelist2 = reader2.read(BUFFER_SIZE)
+    framelist1 = reader1.read(FRAMELIST_SIZE)
+    framelist2 = reader2.read(FRAMELIST_SIZE)
 
     while ((len(framelist1) > 0) and (len(framelist2) > 0)):
         if (framelist1 != framelist2):
@@ -1754,8 +1754,8 @@ def pcm_frame_cmp(pcmreader1, pcmreader2):
                 return frame_number + i
         else:
             frame_number += framelist1.frames
-            framelist1 = reader1.read(BUFFER_SIZE)
-            framelist2 = reader2.read(BUFFER_SIZE)
+            framelist1 = reader1.read(FRAMELIST_SIZE)
+            framelist2 = reader2.read(FRAMELIST_SIZE)
 
     return None
 
@@ -1784,17 +1784,17 @@ class PCMCat(PCMReader):
         self.channel_mask = self.first.channel_mask
         self.bits_per_sample = self.first.bits_per_sample
 
-    def read(self, bytes):
-        """try to read a pcm.FrameList of size 'bytes'"""
+    def read(self, pcm_frames):
+        """try to read a pcm.FrameList with the given number of frames"""
 
         try:
-            s = self.first.read(bytes)
+            s = self.first.read(pcm_frames)
             if (len(s) > 0):
                 return s
             else:
                 self.first.close()
                 self.first = self.reader_queue.next()
-                return self.read(bytes)
+                return self.read(pcm_frames)
         except StopIteration:
             return pcm.from_list([],
                                  self.channels,
@@ -1814,14 +1814,10 @@ class __buffer__:
         else:
             self.buffer = framelists
         self.end_frame = pcm.from_list([], channels, bits_per_sample, True)
-        self.bytes_per_sample = bits_per_sample / 8
 
-    #returns the length of the entire buffer in bytes
+    #returns the length of the entire buffer in PCM frames
     def __len__(self):
-        if (len(self.buffer) > 0):
-            return sum(map(len, self.buffer)) * self.bytes_per_sample
-        else:
-            return 0
+        return sum([f.frames for f in self.buffer])
 
     def framelist(self):
         import operator
@@ -1839,7 +1835,7 @@ class __buffer__:
 
 
 class BufferedPCMReader:
-    """a PCMReader which reads exact counts of bytes"""
+    """a PCMReader which reads exact counts of PCM frames"""
 
     def __init__(self, pcmreader):
         """pcmreader is a regular PCMReader object"""
@@ -1858,26 +1854,26 @@ class BufferedPCMReader:
         del(self.buffer)
         self.pcmreader.close()
 
-    def read(self, bytes):
-        """reads as close to 'bytes' number of bytes without going over
+    def read(self, pcm_frames):
+        """reads the given number of PCM frames
 
-        this uses an internal buffer to ensure reading the proper
-        number of bytes on each call
+        this may return fewer than the given number
+        at the end of a stream
+        but will never return more than requested
         """
 
-        #fill our buffer to at least 'bytes', possibly more
-        self.__fill__(bytes)
+        #fill our buffer to at least "pcm_frames", possibly more
+        self.__fill__(pcm_frames)
         output_framelist = self.buffer.framelist()
-        (output, remainder) = output_framelist.split(
-            output_framelist.frame_count(bytes))
+        (output, remainder) = output_framelist.split(pcm_frames)
         self.buffer.buffer = [remainder]
         return output
 
-    #try to fill our internal buffer to at least 'bytes'
-    def __fill__(self, bytes):
-        while ((len(self.buffer) < bytes) and
+    #try to fill our internal buffer to at least "pcm_frames"
+    def __fill__(self, pcm_frames):
+        while ((len(self.buffer) < pcm_frames) and
                (not self.reader_finished)):
-            s = self.pcmreader.read(BUFFER_SIZE)
+            s = self.pcmreader.read(FRAMELIST_SIZE)
             if (len(s) > 0):
                 self.buffer.push(s)
             else:
@@ -1919,13 +1915,10 @@ class LimitedPCMReader:
         self.channels = self.pcmreader.channels
         self.channel_mask = self.pcmreader.channel_mask
         self.bits_per_sample = self.pcmreader.bits_per_sample
-        self.bytes_per_frame = self.channels * (self.bits_per_sample / 8)
 
-    def read(self, bytes):
+    def read(self, pcm_frames):
         if (self.total_pcm_frames > 0):
-            frame = self.pcmreader.read(
-                min(bytes,
-                    self.total_pcm_frames * self.bytes_per_frame))
+            frame = self.pcmreader.read(min(pcm_frames, self.total_pcm_frames))
             self.total_pcm_frames -= frame.frames
             return frame
         else:
@@ -1954,18 +1947,17 @@ def pcm_split(reader, pcm_lengths):
 
     full_data = BufferedPCMReader(reader)
 
-    for byte_length in [i * reader.channels * reader.bits_per_sample / 8
-                        for i in pcm_lengths]:
-        if (byte_length > (BUFFER_SIZE * 10)):
+    for pcm_length in pcm_lengths:
+        if (pcm_length > (FRAMELIST_SIZE * 10)):
             #if the sub-file length is somewhat large, use a temporary file
             sub_file = tempfile.TemporaryFile()
-            for size in chunk_sizes(byte_length, BUFFER_SIZE):
+            for size in chunk_sizes(pcm_length, FRAMELIST_SIZE):
                 sub_file.write(full_data.read(size).to_bytes(False, True))
             sub_file.seek(0, 0)
         else:
             #if the sub-file length is very small, use StringIO
             sub_file = cStringIO.StringIO(
-                full_data.read(byte_length).to_bytes(False, True))
+                full_data.read(pcm_length).to_bytes(False, True))
 
         yield PCMReader(sub_file,
                         reader.sample_rate,
@@ -2272,10 +2264,10 @@ class PCMConverter:
                     __convert_bits_per_sample__(
                         self.bits_per_sample))
 
-    def read(self, bytes):
-        """try to read a pcm.FrameList of size 'bytes'"""
+    def read(self, pcm_frames):
+        """try to read a pcm.FrameList with the given number of PCM frames"""
 
-        frame_list = self.reader.read(bytes)
+        frame_list = self.reader.read(pcm_frames)
 
         for converter in self.conversions:
             frame_list = converter.convert(frame_list)
@@ -2320,11 +2312,11 @@ class ReplayGainReader:
         if ((self.multiplier * self.peak) > 1.0):
             self.multiplier = 1.0 / self.peak
 
-    def read(self, bytes):
-        """try to read a pcm.FrameList of size 'bytes'"""
+    def read(self, pcm_frames):
+        """try to read a pcm.FrameList with the given number of PCM frames"""
 
         multiplier = self.multiplier
-        samples = self.reader.read(bytes)
+        samples = self.reader.read(pcm_frames)
 
         if (self.bits_per_sample >= 16):
             random_bytes = map(ord, os.urandom((len(samples) / 8) + 1))
@@ -2388,13 +2380,13 @@ def calculate_replay_gain(tracks, progress=None):
     gains = []
     for track in tracks:
         pcm = track.to_pcm()
-        frame = pcm.read(BUFFER_SIZE)
+        frame = pcm.read(FRAMELIST_SIZE)
         while (len(frame) > 0):
             rg.update(frame)
             processed_frames += frame.frames
             if (progress is not None):
                 progress(processed_frames, total_frames)
-            frame = pcm.read(BUFFER_SIZE)
+            frame = pcm.read(FRAMELIST_SIZE)
         pcm.close()
         (track_gain, track_peak) = rg.title_gain()
         gains.append((track, track_gain, track_peak))
@@ -3490,12 +3482,12 @@ class AudioFile:
         decoder = self.to_pcm()
         pcm_frame_count = 0
         try:
-            framelist = decoder.read(BUFFER_SIZE)
+            framelist = decoder.read(FRAMELIST_SIZE)
             while (len(framelist) > 0):
                 pcm_frame_count += framelist.frames
                 if (progress is not None):
                     progress(pcm_frame_count, total_frames)
-                framelist = decoder.read(BUFFER_SIZE)
+                framelist = decoder.read(FRAMELIST_SIZE)
         except (IOError, ValueError), err:
             raise InvalidFile(str(err))
 
@@ -4129,13 +4121,13 @@ class PCMReaderWindow:
         self.initial_offset = initial_offset
         self.pcm_frames = pcm_frames
 
-    def read(self, bytes):
+    def read(self, pcm_frames):
         if (self.pcm_frames > 0):
             if (self.initial_offset == 0):
                 #once the initial offset is accounted for,
                 #read a framelist from the pcmreader
 
-                framelist = self.pcmreader.read(bytes)
+                framelist = self.pcmreader.read(pcm_frames)
                 if (framelist.frames <= self.pcm_frames):
                     if (framelist.frames > 0):
                         #return framelist if it has data
@@ -4163,10 +4155,10 @@ class PCMReaderWindow:
                 #remove frames if initial offset is positive
 
                 #if initial_offset is large, read as many framelists as needed
-                framelist = self.pcmreader.read(bytes)
+                framelist = self.pcmreader.read(pcm_frames)
                 while (self.initial_offset > framelist.frames):
                     self.initial_offset -= framelist.frames
-                    framelist = self.pcmreader.read(bytes)
+                    framelist = self.pcmreader.read(pcm_frames)
 
                 (removed, framelist) = framelist.split(self.initial_offset)
                 self.initial_offset -= removed.frames
@@ -4181,7 +4173,7 @@ class PCMReaderWindow:
                 else:
                     #if the entire framelist is cropped,
                     #return another one entirely
-                    return self.read(bytes)
+                    return self.read(pcm_frames)
             elif (self.initial_offset < 0):
                 #pad framelist with 0s if initial offset is negative
                 framelist = pcm.from_list([0] *
@@ -4297,15 +4289,15 @@ class CDTrackReader(PCMReader):
         else:
             return pcm.from_list([], 2, 16, True)
 
-    def read(self, bytes):
-        """try to read a pcm.FrameList of size 'bytes'
+    def read(self, pcm_frames):
+        """try to read a pcm.FrameList with the given number of PCM frames
 
         for CD reading, this will be a sector-aligned number"""
 
-        #returns a sector-aligned number of bytes
-        #(divisible by 2352 bytes, basically)
-        #or at least 1 sector's worth, if 'bytes' is too small
-        return self.__read_sectors__(max(bytes / 2352, 1))
+        #returns a sector-aligned number of PCM frames
+        #(divisible by 588 frames, basically)
+        #or at least 1 sector's worth, if "pcm_frames" is too small
+        return self.__read_sectors__(max(pcm_frames / 588, 1))
 
     def close(self):
         """closes the CD track for reading"""
@@ -4350,8 +4342,8 @@ class CDTrackReaderAccurateRipCRC:
     def log(self):
         return self.cdtrackreader.log()
 
-    def read(self, bytes):
-        frame = self.cdtrackreader.read(bytes)
+    def read(self, pcm_frames):
+        frame = self.cdtrackreader.read(pcm_frames)
         crc_frame = frame
 
         if (self.prefix_0s > 0):

@@ -20,7 +20,7 @@
 
 from audiotools import (AudioFile, InvalidFile, PCMReader,
                         transfer_data, InvalidFormat,
-                        __capped_stream_reader__, BUFFER_SIZE,
+                        __capped_stream_reader__, FRAMELIST_SIZE,
                         FILENAME_FORMAT, EncodingError, DecodingError,
                         ChannelMask, os)
 import audiotools.pcm
@@ -55,14 +55,13 @@ class AuReader(PCMReader):
                            channel_mask=channel_mask,
                            bits_per_sample=bits_per_sample)
         self.data_size = data_size
+        self.bytes_per_frame = self.channels * self.bits_per_sample / 8
 
-    def read(self, bytes):
-        """try to read a pcm.FrameList of size 'bytes'"""
+    def read(self, pcm_frames):
+        """try to read a pcm.FrameList with the given number of PCM frames"""
 
         #align bytes downward if an odd number is read in
-        bytes -= (bytes % (self.channels * self.bits_per_sample / 8))
-        bytes = max(bytes, self.channels * self.bits_per_sample / 8)
-        pcm_data = self.file.read(bytes)
+        pcm_data = self.file.read(max(pcm_frames, 1) * self.bytes_per_frame)
         if ((len(pcm_data) == 0) and (self.data_size > 0)):
             raise IOError("data ends prematurely")
         else:
@@ -212,12 +211,12 @@ class AuAudio(AudioFile):
 
             #write our big-endian PCM data
             try:
-                framelist = pcmreader.read(BUFFER_SIZE)
+                framelist = pcmreader.read(FRAMELIST_SIZE)
                 while (len(framelist) > 0):
                     bytes = framelist.to_bytes(True, True)
                     f.write(bytes)
                     data_size += len(bytes)
-                    framelist = pcmreader.read(BUFFER_SIZE)
+                    framelist = pcmreader.read(FRAMELIST_SIZE)
             except (IOError, ValueError), err:
                 cls.__unlink__(filename)
                 raise EncodingError(str(err))

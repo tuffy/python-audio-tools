@@ -82,7 +82,7 @@ class FlacDecoder:
         else:
             yield (block_id, block_size, self.reader.substream(block_size))
 
-    def read(self, bytes):
+    def read(self, pcm_frames):
         #if the stream is exhausted,
         #verify its MD5 sum and return an empty pcm.FrameList object
         if (self.total_frames < 1):

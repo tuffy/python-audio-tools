@@ -20,7 +20,7 @@
 from audiotools import (AudioFile, InvalidFile, PCMReader,
                         __capped_stream_reader__, PCMReaderError,
                         transfer_data, DecodingError, EncodingError,
-                        ID3v22Comment, BUFFER_SIZE, ChannelMask,
+                        ID3v22Comment, FRAMELIST_SIZE, ChannelMask,
                         ReorderedPCMReader, pcm,
                         cStringIO, os, AiffContainer, to_pcm_progress,
                         LimitedFileReader)
@@ -248,12 +248,11 @@ class AiffReader(PCMReader):
         except IOError:
             self.read = self.read_error
 
-    def read(self, bytes):
-        """try to read a pcm.FrameList of size 'bytes'"""
+    def read(self, pcm_frames):
+        """try to read a pcm.FrameList with the given number of PCM frames"""
 
-        #convert bytes to a number of PCM frames
-        frames_read = min(max(bytes / self.bytes_per_frame, 1),
-                          self.remaining_frames)
+        #try to read at least one PCM frame
+        frames_read = min(max(pcm_frames, 1), self.remaining_frames)
 
         if (frames_read > 0):
             pcm_data = self.file.read(frames_read * self.bytes_per_frame)
@@ -273,8 +272,8 @@ class AiffReader(PCMReader):
                                  self.bits_per_sample,
                                  True, True)
 
-    def read_error(self, bytes):
-        """try to read a pcm.FrameList of size 'bytes'"""
+    def read_error(self, pcm_frames):
+        """try to read a pcm.FrameList with the given number of PCM frames"""
 
         raise IOError()
 
@@ -622,7 +621,7 @@ class AiffAudio(AiffContainer):
 
             #dump pcmreader's FrameLists into the file as big-endian
             try:
-                framelist = pcmreader.read(BUFFER_SIZE)
+                framelist = pcmreader.read(FRAMELIST_SIZE)
                 while (len(framelist) > 0):
                     bytes = framelist.to_bytes(True, True)
                     f.write(bytes)
@@ -631,7 +630,7 @@ class AiffAudio(AiffContainer):
                     data_size += len(bytes)
                     total_pcm_frames += framelist.frames
 
-                    framelist = pcmreader.read(BUFFER_SIZE)
+                    framelist = pcmreader.read(FRAMELIST_SIZE)
             except (IOError, ValueError), err:
                 cls.__unlink__(filename)
                 raise EncodingError(str(err))

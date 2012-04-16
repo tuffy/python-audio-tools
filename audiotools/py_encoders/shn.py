@@ -98,9 +98,7 @@ def encode_shn(filename, pcmreader, is_big_endian, signed_samples,
 
     #split PCMReader into block_size chunks
     #and continue until the number of PCM frames is 0
-    frame = pcmreader.read(block_size *
-                           (pcmreader.bits_per_sample / 8) *
-                           pcmreader.channels)
+    frame = pcmreader.read(block_size)
     while (len(frame) > 0):
         #if the chunk isn't block_size frames long,
         #issue a command to change it
@@ -160,9 +158,7 @@ def encode_shn(filename, pcmreader, is_big_endian, signed_samples,
                 wrapped_channels[c] = shifted
 
         #and get another set of channels to encode
-        frame = pcmreader.read(block_size *
-                               (pcmreader.bits_per_sample / 8) *
-                               pcmreader.channels)
+        frame = pcmreader.read(block_size)
 
     #once all PCM data has been sent
     #if there's any footer data, write it as another VERBATIM block

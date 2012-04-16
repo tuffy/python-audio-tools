@@ -153,9 +153,9 @@ classes and functions upon which all of the other modules depend.
    ``from_function`` with an integer argument (presumably a string)
    until that object's length is 0.
 
-   >>> infile = open("input.txt","r")
-   >>> outfile = open("output.txt","w")
-   >>> transfer_data(infile.read,outfile.write)
+   >>> infile = open("input.txt", "r")
+   >>> outfile = open("output.txt", "w")
+   >>> transfer_data(infile.read, outfile.write)
    >>> infile.close()
    >>> outfile.close()
 
@@ -1115,10 +1115,11 @@ PCMReader Objects
 
    The number of bits-per-sample in this audio stream as a positive integer.
 
-.. method:: PCMReader.read(bytes)
+.. method:: PCMReader.read(pcm_frames)
 
-   Try to read a :class:`pcm.FrameList` object of size ``bytes``, if possible.
-   This method is *not* guaranteed to read that amount of bytes.
+   Try to read a :class:`pcm.FrameList` object with the given
+   number of PCM frames, if possible.
+   This method is *not* guaranteed to read that amount of frames.
    It may return less, particularly at the end of an audio stream.
    It may even return FrameLists larger than requested.
    However, it must always return a non-empty FrameList until the
@@ -1200,7 +1201,7 @@ BufferedPCMReader Objects
    This class wraps around an existing :class:`PCMReader` object.
    Its calls to :meth:`read` are guaranteed to return
    :class:`pcm.FrameList` objects as close to the requested amount
-   of bytes as possible without going over by buffering data
+   of PCM frames as possible without going over by buffering data
    internally.
 
    The reason such behavior is not required is that we often

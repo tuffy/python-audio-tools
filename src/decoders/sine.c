@@ -20,6 +20,13 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+#ifndef MIN
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
+#endif
+#ifndef MAX
+#define MAX(x, y) ((x) > (y) ? (x) : (y))
+#endif
+
 int
 Sine_Mono_init(decoders_Sine_Mono* self, PyObject *args, PyObject *kwds) {
     double f1;
@@ -89,7 +96,7 @@ Sine_Mono_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
 
 static PyObject*
 Sine_Mono_read(decoders_Sine_Mono* self, PyObject* args) {
-    int byte_count;
+    int requested_frames;
     int frames_to_read;
     int bytes_per_frame = self->bits_per_sample / 8;
     int i;
@@ -97,13 +104,10 @@ Sine_Mono_read(decoders_Sine_Mono* self, PyObject* args) {
     int ia;
     array_i* buffer1;
 
-    if (!PyArg_ParseTuple(args, "i", &byte_count))
+    if (!PyArg_ParseTuple(args, "i", &requested_frames))
         return NULL;
 
-    byte_count -= (byte_count % bytes_per_frame);
-    frames_to_read = byte_count ? byte_count / bytes_per_frame : 1;
-    if (frames_to_read > self->remaining_pcm_frames)
-        frames_to_read = self->remaining_pcm_frames;
+    frames_to_read = MIN(MAX(requested_frames, 1), self->remaining_pcm_frames);
 
     self->buffer->reset(self->buffer);
     buffer1 = self->buffer->append(self->buffer);
@@ -233,7 +237,7 @@ Sine_Stereo_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
 
 static PyObject*
 Sine_Stereo_read(decoders_Sine_Stereo* self, PyObject* args) {
-    int byte_count;
+    int requested_frames;
     int frames_to_read;
     int bytes_per_frame = 2 * (self->bits_per_sample / 8);
     int i;
@@ -242,13 +246,10 @@ Sine_Stereo_read(decoders_Sine_Stereo* self, PyObject* args) {
     array_i* buffer1;
     array_i* buffer2;
 
-    if (!PyArg_ParseTuple(args, "i", &byte_count))
+    if (!PyArg_ParseTuple(args, "i", &requested_frames))
         return NULL;
 
-    byte_count -= (byte_count % bytes_per_frame);
-    frames_to_read = byte_count ? byte_count / bytes_per_frame : 1;
-    if (frames_to_read > self->remaining_pcm_frames)
-        frames_to_read = self->remaining_pcm_frames;
+    frames_to_read = MIN(MAX(requested_frames, 1), self->remaining_pcm_frames);
 
     self->buffer->reset(self->buffer);
     buffer1 = self->buffer->append(self->buffer);
@@ -374,7 +375,7 @@ Sine_Simple_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
 
 static PyObject*
 Sine_Simple_read(decoders_Sine_Simple* self, PyObject* args) {
-    int byte_count;
+    int requested_frames;
     int frames_to_read;
     int bytes_per_frame = self->bits_per_sample / 8;
     int i;
@@ -382,16 +383,13 @@ Sine_Simple_read(decoders_Sine_Simple* self, PyObject* args) {
     double d;
     int ia;
 
-    if (!PyArg_ParseTuple(args, "i", &byte_count))
+    if (!PyArg_ParseTuple(args, "i", &requested_frames))
         return NULL;
 
     self->buffer->reset(self->buffer);
     buffer = self->buffer->append(self->buffer);
 
-    byte_count -= (byte_count % bytes_per_frame);
-    frames_to_read = byte_count ? byte_count / bytes_per_frame : 1;
-    if (frames_to_read > self->remaining_pcm_frames)
-        frames_to_read = self->remaining_pcm_frames;
+    frames_to_read = MIN(MAX(requested_frames, 1), self->remaining_pcm_frames);
 
     for (i = 0; i < frames_to_read; i++) {
         d = (double)(self->max_value) *

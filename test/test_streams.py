@@ -29,9 +29,8 @@ class FrameListReader:
             self.channel_mask = channel_mask
         self.bits_per_sample = bits_per_sample
 
-    def read(self, bytes):
-        (framelist, self.framelist) = self.framelist.split(
-            self.framelist.frame_count(bytes))
+    def read(self, pcm_frames):
+        (framelist, self.framelist) = self.framelist.split(pcm_frames)
         return framelist
 
     def close(self):
@@ -57,8 +56,8 @@ class MD5Reader:
                                         self.channels,
                                         self.bits_per_sample)
 
-    def read(self, bytes):
-        framelist = self.pcmreader.read(bytes)
+    def read(self, pcm_frames):
+        framelist = self.pcmreader.read(pcm_frames)
         self.md5.update(framelist.to_bytes(False, True))
         return framelist
 
@@ -121,8 +120,8 @@ class Sine8_Mono(Sine_Mono):
         self.a2 = a2
         self.md5 = md5()
 
-    def read(self, bytes):
-        framelist = Sine_Mono.read(self, bytes)
+    def read(self, pcm_frames):
+        framelist = Sine_Mono.read(self, pcm_frames)
         self.md5.update(framelist.to_bytes(False, True))
         return framelist
 
@@ -159,8 +158,8 @@ class Sine8_Stereo(Sine_Stereo):
         self.fmult = fmult
         self.md5 = md5()
 
-    def read(self, bytes):
-        framelist = Sine_Stereo.read(self, bytes)
+    def read(self, pcm_frames):
+        framelist = Sine_Stereo.read(self, pcm_frames)
         self.md5.update(framelist.to_bytes(False, True))
         return framelist
 
@@ -300,9 +299,9 @@ class Simple_Sine:
                                                       self.channel_counts)]
         self.md5 = md5()
 
-    def read(self, bytes):
+    def read(self, pcm_frames):
         framelist = audiotools.pcm.from_channels(
-            [stream.read(bytes / self.channels) for stream in self.streams])
+            [stream.read(pcm_frames) for stream in self.streams])
         self.md5.update(framelist.to_bytes(False, True))
         return framelist
 
@@ -345,10 +344,9 @@ class WastedBPS16:
         self.sample_frame = audiotools.pcm.FrameList("", 2, 16, False, False)
         self.md5 = md5()
 
-    def read(self, bytes):
+    def read(self, pcm_frames):
         wave = []
-        for i in xrange(min(self.sample_frame.frame_count(bytes),
-                            self.pcm_frames)):
+        for i in xrange(min(pcm_frames, self.pcm_frames)):
             wave.append((self.i % 2000) << 2)
             wave.append((self.i % 1000) << 3)
             self.i += 1

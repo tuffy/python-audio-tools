@@ -337,9 +337,7 @@ def encode_wavpack(filename, pcmreader, block_size,
     block_index = 0
 
     #walk through PCM reader's FrameLists
-    frame = pcmreader.read(block_size *
-                           (pcmreader.bits_per_sample / 8) *
-                           pcmreader.channels)
+    frame = pcmreader.read(block_size)
     while (len(frame) > 0):
         context.total_frames += frame.frames
         context.md5sum.update(
@@ -363,9 +361,7 @@ def encode_wavpack(filename, pcmreader, block_size,
             c += parameters.channel_count
 
         block_index += frame.frames
-        frame = pcmreader.read(block_size *
-                               (pcmreader.bits_per_sample / 8) *
-                               pcmreader.channels)
+        frame = pcmreader.read(block_size)
 
     #write MD5 sum and optional Wave footer in final block
     sub_blocks = BitstreamRecorder(1)

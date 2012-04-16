@@ -228,9 +228,7 @@ int pcmreader_read(struct pcmreader_s* reader,
       where "bytes" is set to the proper PCM frame count*/
     if (((framelist_obj =
           PyObject_CallMethod(reader->pcmreader_obj, "read", "i",
-                              pcm_frames *
-                              reader->channels *
-                              reader->bytes_per_sample))) == NULL) {
+                              (int)pcm_frames))) == NULL) {
         /*ensure result isn't an exception*/
         return 1;
     }

@@ -83,17 +83,13 @@ def encode_mdat(file, pcmreader,
     mdat.write_bytes("mdat")
 
     #read FrameList objects until stream is empty
-    frame = pcmreader.read(block_size *
-                           pcmreader.channels *
-                           (pcmreader.bits_per_sample / 8))
+    frame = pcmreader.read(block_size)
     while (len(frame) > 0):
         frame_sample_sizes.append(frame.frames)
         frame_file_offsets.append(int(mdat_length))
         encode_frameset(mdat, pcmreader, options, frame)
         frame_byte_sizes.append(int(mdat_length) - frame_file_offsets[-1])
-        frame = pcmreader.read(block_size *
-                               pcmreader.channels *
-                               (pcmreader.bits_per_sample / 8))
+        frame = pcmreader.read(block_size)
 
     #finally, return to start of mdat and write actual length
     mdat.byte_align()

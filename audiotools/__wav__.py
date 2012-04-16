@@ -19,7 +19,7 @@
 
 
 from audiotools import (AudioFile, InvalidFile, ChannelMask, PCMReader,
-                        BUFFER_SIZE, transfer_data,
+                        FRAMELIST_SIZE, transfer_data,
                         transfer_framelist_data,
                         __capped_stream_reader__, FILENAME_FORMAT,
                         BIN, open_files, os, subprocess, cStringIO,
@@ -262,12 +262,12 @@ class WaveReader(PCMReader):
         except IOError:
             raise InvalidWave(_(u"data chunk not found"))
 
-    def read(self, bytes):
-        """try to read a pcm.FrameList of size 'bytes'"""
+    def read(self, pcm_frames):
+        """try to read a pcm.FrameList with the given number of PCM frames"""
 
         #align bytes downward if an odd number is read in
         bytes_per_frame = self.channels * (self.bits_per_sample / 8)
-        requested_frames = max(1, bytes / bytes_per_frame)
+        requested_frames = max(1, pcm_frames)
         pcm_data = self.wave.read(requested_frames * bytes_per_frame)
         if ((len(pcm_data) == 0) and (self.data_chunk_length > 0)):
             raise IOError("data chunk ends prematurely")
@@ -494,7 +494,7 @@ class WaveAudio(WaveContainer):
 
             #dump pcmreader's FrameLists into the file as little-endian
             try:
-                framelist = pcmreader.read(BUFFER_SIZE)
+                framelist = pcmreader.read(FRAMELIST_SIZE)
                 while (len(framelist) > 0):
                     if (framelist.bits_per_sample > 8):
                         bytes = framelist.to_bytes(False, True)
@@ -505,7 +505,7 @@ class WaveAudio(WaveContainer):
                     total_size += len(bytes)
                     data_size += len(bytes)
 
-                    framelist = pcmreader.read(BUFFER_SIZE)
+                    framelist = pcmreader.read(FRAMELIST_SIZE)
             except (IOError, ValueError), err:
                 cls.__unlink__(filename)
                 raise EncodingError(str(err))
@@ -684,13 +684,13 @@ class WaveAudio(WaveContainer):
             pcm = original_wave.to_pcm()
             try:
                 try:
-                    frame = pcm.read(BUFFER_SIZE)
+                    frame = pcm.read(FRAMELIST_SIZE)
                     while (len(frame) > 0):
                         processed_frames += frame.frames
                         if (progress is not None):
                             progress(processed_frames, total_frames)
                         rg.update(frame)
-                        frame = pcm.read(BUFFER_SIZE)
+                        frame = pcm.read(FRAMELIST_SIZE)
                     track_gains.append(rg.title_gain())
                 except ValueError:
                     track_gains.append((None, None))
@@ -709,7 +709,7 @@ class WaveAudio(WaveContainer):
                 temp_wav_file.write(header)
                 replaygain_pcm = ReplayGainReader(original_wave.to_pcm(),
                                                   gain, peak)
-                frame = replaygain_pcm.read(BUFFER_SIZE)
+                frame = replaygain_pcm.read(FRAMELIST_SIZE)
                 while (len(frame) > 0):
                     processed_frames += frame.frames
                     if (progress is not None):
@@ -717,7 +717,7 @@ class WaveAudio(WaveContainer):
                     temp_wav_file.write(frame.to_bytes(
                             False,
                             original_wave.bits_per_sample() > 8))
-                    frame = replaygain_pcm.read(BUFFER_SIZE)
+                    frame = replaygain_pcm.read(FRAMELIST_SIZE)
 
                 temp_wav_file.write(footer)
                 temp_wav_file.seek(0, 0)

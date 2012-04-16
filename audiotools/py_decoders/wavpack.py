@@ -93,7 +93,7 @@ class WavPackDecoder:
         self.md5_checked = False
         self.md5sum = md5()
 
-    def read(self, bytes):
+    def read(self, pcm_frames):
         if (self.pcm_finished):
             if (not self.md5_checked):
                 self.reader.mark()

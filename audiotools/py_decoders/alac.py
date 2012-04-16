@@ -115,7 +115,7 @@ class ALACDecoder:
             except IOError:
                 raise KeyError(next_atom)
 
-    def read(self, bytes):
+    def read(self, pcm_frames):
         #if the stream is exhausted, return an empty pcm.FrameList object
         if (self.total_pcm_frames == 0):
             return from_list([], self.channels, self.bits_per_sample, True)

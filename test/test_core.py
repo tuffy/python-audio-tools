@@ -56,11 +56,11 @@ for section in parser.sections():
 class BufferedPCMReader(unittest.TestCase):
     @LIB_CORE
     def test_pcm(self):
-        def frame_lengths(reader, bytes):
-            frame = reader.read(bytes)
+        def frame_lengths(reader, pcm_frames):
+            frame = reader.read(pcm_frames)
             while (len(frame) > 0):
                 yield frame.frames
-                frame = reader.read(bytes)
+                frame = reader.read(pcm_frames)
             else:
                 reader.close()
 
@@ -73,7 +73,7 @@ class BufferedPCMReader(unittest.TestCase):
         reader = audiotools.BufferedPCMReader(
             Variable_Reader(EXACT_BLANK_PCM_Reader(4096 * 100)))
         #(make sure to account for bps/channels in frame_lengths())
-        self.assertEqual(set(frame_lengths(reader, 4096 * 4)), set([4096]))
+        self.assertEqual(set(frame_lengths(reader, 4096)), set([4096]))
 
         #check that sample_rate, bits_per_sample, channel_mask and channels
         #pass-through properly
@@ -105,7 +105,7 @@ class BufferedPCMReader(unittest.TestCase):
             Variable_Reader(EXACT_BLANK_PCM_Reader(total_frames)))
         while (total_frames > 0):
             frames = min(total_frames, random.choice(range(1, 1000)))
-            frame = reader.read(frames * 4)
+            frame = reader.read(frames)
             self.assertEqual(frame.frames, frames)
             total_frames -= frame.frames
 
@@ -5674,9 +5674,9 @@ class PCM_Reader_Multiplexer:
         self.channel_mask = channel_mask
         self.bits_per_sample = pcm_readers[0].bits_per_sample
 
-    def read(self, bytes):
+    def read(self, pcm_frames):
         return audiotools.pcm.from_channels(
-            [reader.read(bytes) for reader in self.buffers])
+            [reader.read(pcm_frames) for reader in self.buffers])
 
     def close(self):
         for reader in self.buffers:
@@ -5841,11 +5841,11 @@ class TestMultiChannel(unittest.TestCase):
                                        channel_mask))
 
             pcm = temp_track.to_pcm()
-            frame = pcm.read(audiotools.BUFFER_SIZE)
+            frame = pcm.read(audiotools.FRAMELIST_SIZE)
             while (len(frame) > 0):
                 for c in xrange(frame.channels):
                     gain_calcs[c].update(frame.channel(c))
-                frame = pcm.read(audiotools.BUFFER_SIZE)
+                frame = pcm.read(audiotools.FRAMELIST_SIZE)
             pcm.close()
 
             self.assertEqual(set([True]),

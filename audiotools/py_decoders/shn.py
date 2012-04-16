@@ -172,7 +172,7 @@ class SHNDecoder:
 
         return (file_type, channels, block_length, max_LPC, number_of_means)
 
-    def read(self, bytes):
+    def read(self, pcm_frames):
         if (self.stream_finished):
             return from_channels([from_list([], 1,
                                             self.bits_per_sample,

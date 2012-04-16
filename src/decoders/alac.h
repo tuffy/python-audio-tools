@@ -170,7 +170,7 @@ PyGetSetDef ALACDecoder_getseters[] = {
 PyMethodDef ALACDecoder_methods[] = {
     {"read", (PyCFunction)ALACDecoder_read,
      METH_VARARGS,
-     "Reads the given number of bytes from the ALAC file, if possible"},
+     "Reads the given number of PCM frames from the ALAC file, if possible"},
     {"close", (PyCFunction)ALACDecoder_close,
      METH_NOARGS, "Closes the ALAC decoder stream"},
     {NULL}
