@@ -17,8 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import (MetaData, re, os, cStringIO,
-                        Image, InvalidImage, config)
+from . import (MetaData, Image, InvalidImage)
 import codecs
 import gettext
 
@@ -181,6 +180,8 @@ def __attrib_equals__(attributes, o1, o2):
 #for example, __number_pair__(2,3) returns u"2/3"
 #whereas      __number_pair__(4,0) returns u"4"
 def __number_pair__(current, total):
+    from . import config
+
     if (config.getboolean_default("ID3", "pad", False)):
         if (total == 0):
             return u"%2.2d" % (current)
@@ -381,6 +382,8 @@ class ID3v22_T__Frame:
         """if the frame is numerical, returns the track/album_number portion
         raises TypeError if not"""
 
+        import re
+
         if (self.id in self.NUMERICAL_IDS):
             try:
                 return int(re.findall(r'\d+', unicode(self))[0])
@@ -392,6 +395,8 @@ class ID3v22_T__Frame:
     def total(self):
         """if the frame is numerical, returns the track/album_total portion
         raises TypeError if not"""
+
+        import re
 
         if (self.id in self.NUMERICAL_IDS):
             try:
@@ -463,6 +468,8 @@ class ID3v22_T__Frame:
         if (self.id in self.NUMERICAL_IDS):
             fix3 = __number_pair__(self.number(), self.total())
             if (fix3 != fix2):
+                from . import config
+
                 if (config.getboolean_default("ID3", "pad", False)):
                     fixes_performed.append(
                         u"added leading zeroes to %(field)s" %
@@ -2132,8 +2139,10 @@ class ID3CommentPair(MetaData):
 
         if ((self.id3v2 is not None) and (self.id3v1 is not None)):
             #both comments present
+            from os import linesep
+
             return (self.id3v2.raw_info() +
-                    os.linesep.decode('ascii') * 2 +
+                    linesep.decode('ascii') * 2 +
                     self.id3v1.raw_info())
         elif (self.id3v2 is not None):
             #only ID3v2

@@ -18,9 +18,9 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import imghdr
-import cStringIO
 import gettext
 from .bitstream import BitstreamReader, format_size
+from . import InvalidImage
 
 gettext.install("audiotools", unicode=True)
 
@@ -40,6 +40,8 @@ def image_metrics(file_data):
 
     raises InvalidImage if there is an error parsing the file
     or its type is unknown"""
+
+    import cStringIO
 
     header = imghdr.what(None, file_data)
 
@@ -98,15 +100,6 @@ class ImageMetrics:
                 repr(self.color_count),
                 repr(self.mime_type))
 
-
-class InvalidImage(Exception):
-    """raised if an image cannot be parsed correctly"""
-
-    def __init__(self, err):
-        self.err = unicode(err)
-
-    def __unicode__(self):
-        return self.err
 
 
 class InvalidJPEG(InvalidImage):

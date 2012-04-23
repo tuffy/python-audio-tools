@@ -18,13 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import (AudioFile, InvalidFile, PCMReader, PCMConverter,
-                        transfer_data, transfer_framelist_data,
-                        subprocess, BIN, ApeTag, ReplayGain,
-                        ignore_sigint, open_files, EncodingError,
-                        DecodingError, PCMReaderError, ChannelMask,
-                        __default_quality__, config, sys)
-from __id3__ import *
+from audiotools import (AudioFile, InvalidFile)
 import gettext
 
 gettext.install("audiotools", unicode=True)
@@ -126,6 +120,7 @@ class MP3Audio(AudioFile):
         AudioFile.__init__(self, filename)
 
         from .bitstream import BitstreamReader
+        import cStringIO
 
         try:
             mp3file = open(filename, "rb")
@@ -213,6 +208,7 @@ class MP3Audio(AudioFile):
         takes a seekable file pointer rewound to the start of the file"""
 
         from .bitstream import BitstreamReader
+        from .id3 import skip_id3v2_comment
 
         try:
             skip_id3v2_comment(file)
@@ -235,6 +231,13 @@ class MP3Audio(AudioFile):
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
+        from . import PCMReader
+        from . import BIN
+        from . import ChannelMask
+        import subprocess
+        import sys
+        import os
+
         BIG_ENDIAN = sys.byteorder == 'big'
 
         sub = subprocess.Popen([BIN["mpg123"], "-qs", self.filename],
@@ -251,25 +254,6 @@ class MP3Audio(AudioFile):
                          big_endian=BIG_ENDIAN)
 
     @classmethod
-    def __help_output__(cls):
-        import cStringIO
-        help_data = cStringIO.StringIO()
-        sub = subprocess.Popen([BIN['lame'], '--help'],
-                               stdout=subprocess.PIPE)
-        transfer_data(sub.stdout.read, help_data.write)
-        sub.wait()
-        return help_data.getvalue()
-
-    @classmethod
-    def __lame_version__(cls):
-        try:
-            version = re.findall(r'version \d+\.\d+',
-                                 cls.__help_output__())[0]
-            return tuple(map(int, version[len('version '):].split(".")))
-        except IndexError:
-            return (0, 0)
-
-    @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
         """encodes a new file from PCM data
 
@@ -279,8 +263,17 @@ class MP3Audio(AudioFile):
         at the given filename with the specified compression level
         and returns a new MP3Audio object"""
 
+        from . import transfer_framelist_data
+        from . import BIN
+        from . import ignore_sigint
+        from . import EncodingError
+        from . import DecodingError
+        from . import ChannelMask
+        from . import __default_quality__
         import decimal
         import bisect
+        import subprocess
+        import os
 
         if ((compression is None) or
             (compression not in cls.COMPRESSION_MODES)):
@@ -288,6 +281,8 @@ class MP3Audio(AudioFile):
 
         if ((pcmreader.channels > 2) or
             (pcmreader.sample_rate not in (32000, 48000, 44100))):
+            from . import PCMConverter
+
             pcmreader = PCMConverter(
                 pcmreader,
                 sample_rate=[32000, 32000, 44100, 48000][bisect.bisect(
@@ -301,14 +296,6 @@ class MP3Audio(AudioFile):
             mode = "j"
         else:
             mode = "m"
-
-        #FIXME - not sure if all LAME versions support "--little-endian"
-        # #LAME 3.98 (and up, presumably) handle the byteswap correctly
-        # #LAME 3.97 always uses -x
-        # if (BIG_ENDIAN or (cls.__lame_version__() < (3,98))):
-        #     endian = ['-x']
-        # else:
-        #     endian = []
 
         devnull = file(os.devnull, 'ab')
 
@@ -377,6 +364,10 @@ class MP3Audio(AudioFile):
 
         raises IOError if unable to read the file"""
 
+        from .id3 import ID3CommentPair
+        from .id3 import read_id3v2_comment
+        from .id3v1 import ID3v1Comment
+
         f = file(self.filename, "rb")
         try:
             if (f.read(3) != "ID3"):      # no ID3v2 tag, try ID3v1
@@ -406,6 +397,10 @@ class MP3Audio(AudioFile):
 
         raises IOError if unable to write the file
         """
+
+        from .id3 import ID3v2Comment
+        from .id3 import ID3CommentPair
+        from .id3v1 import ID3v1Comment
 
         if (metadata is None):
             return
@@ -446,12 +441,21 @@ class MP3Audio(AudioFile):
         this metadata includes track name, album name, and so on
         raises IOError if unable to write the file"""
 
+        from .id3 import ID3v2Comment
+        from .id3 import ID3v22Comment
+        from .id3 import ID3v23Comment
+        from .id3 import ID3v24Comment
+        from .id3 import ID3CommentPair
+        from .id3v1 import ID3v1Comment
+
         if (metadata is None):
             return
 
         if (not (isinstance(metadata, ID3v2Comment) or
                  isinstance(metadata, ID3CommentPair) or
                  isinstance(metadata, ID3v1Comment))):
+            from . import config
+
             DEFAULT_ID3V2 = "id3v2.3"
             DEFAULT_ID3V1 = "id3v1.1"
 
@@ -504,6 +508,8 @@ class MP3Audio(AudioFile):
     #places mp3file at the position of the next MP3 frame's start
     @classmethod
     def __find_next_mp3_frame__(cls, mp3file):
+        from .id3 import skip_id3v2_comment
+
         #if we're starting at an ID3v2 header, skip it to save a bunch of time
         bytes_skipped = skip_id3v2_comment(mp3file)
 
@@ -543,6 +549,8 @@ class MP3Audio(AudioFile):
     @classmethod
     def __find_mp3_start__(cls, mp3file):
         """places mp3file at the position of the MP3 file's start"""
+
+        from .id3 import skip_id3v2_comment
 
         #if we're starting at an ID3v2 header, skip it to save a bunch of time
         skip_id3v2_comment(mp3file)
@@ -613,6 +621,8 @@ class MP3Audio(AudioFile):
     def can_add_replay_gain(cls):
         """returns True if we have the necessary binaries to add ReplayGain"""
 
+        from . import BIN
+
         return BIN.can_execute(BIN['mp3gain'])
 
     @classmethod
@@ -628,6 +638,11 @@ class MP3Audio(AudioFile):
         all the filenames must be of this AudioFile type
         raises ValueError if some problem occurs during ReplayGain application
         """
+
+        from . import BIN
+        from . import open_files
+        import subprocess
+        import os
 
         track_names = [track.filename for track in
                        open_files(filenames) if
@@ -702,7 +717,7 @@ class MP2Audio(MP3Audio):
                                         224, 256, 320, 384)))
     COMPRESSION_DESCRIPTIONS = {"64": _(u"total bitrate of 64kbps"),
                                 "384": _(u"total bitrate of 384kbps")}
-    BINARIES = ("lame", "twolame")
+    BINARIES = ("mpg123", "twolame")
 
     @classmethod
     def is_type(cls, file):
@@ -711,6 +726,7 @@ class MP2Audio(MP3Audio):
         takes a seekable file pointer rewound to the start of the file"""
 
         from .bitstream import BitstreamReader
+        from .id3 import skip_id3v2_comment
 
         try:
             skip_id3v2_comment(file)
@@ -735,8 +751,16 @@ class MP2Audio(MP3Audio):
         at the given filename with the specified compression level
         and returns a new MP2Audio object"""
 
+        from . import transfer_framelist_data
+        from . import BIN
+        from . import ignore_sigint
+        from . import EncodingError
+        from . import DecodingError
+        from . import __default_quality__
         import decimal
         import bisect
+        import subprocess
+        import os
 
         if ((compression is None) or
             (compression not in cls.COMPRESSION_MODES)):
@@ -745,6 +769,8 @@ class MP2Audio(MP3Audio):
         if ((pcmreader.channels > 2) or
             (pcmreader.sample_rate not in (32000, 48000, 44100)) or
             (pcmreader.bits_per_sample != 16)):
+            from . import PCMConverter
+
             pcmreader = PCMConverter(
                 pcmreader,
                 sample_rate=[32000, 32000, 44100, 48000][bisect.bisect(

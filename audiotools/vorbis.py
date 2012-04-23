@@ -17,14 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import (AudioFile, InvalidFile, PCMReader,
-                        ReorderedPCMReader, transfer_data,
-                        transfer_framelist_data, subprocess, BIN,
-                        cStringIO, open_files, os, ReplayGain,
-                        ignore_sigint, EncodingError, DecodingError,
-                        ChannelMask, UnsupportedChannelMask,
-                        __default_quality__)
-from __vorbiscomment__ import *
+from audiotools import (AudioFile, InvalidFile, ChannelMask)
 import gettext
 
 gettext.install("audiotools", unicode=True)
@@ -195,7 +188,7 @@ class VorbisAudio(AudioFile):
         """returns the total PCM frames of the track as an integer"""
 
         from .bitstream import BitstreamReader
-        from . import OggStreamReader
+        from .ogg import OggStreamReader
 
         pcm_samples = 0
         for (granule_position,
@@ -215,6 +208,11 @@ class VorbisAudio(AudioFile):
 
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
+
+        from . import PCMReader
+        from . import BIN
+        import subprocess
+        import os
 
         sub = subprocess.Popen([BIN['oggdec'], '-Q',
                                 '-b', str(16),
@@ -237,6 +235,8 @@ class VorbisAudio(AudioFile):
             return pcmreader
         elif (self.channels() <= 8):
             #these mappings transform Vorbis order into ChannelMask order
+            from . import ReorderedPCMReader
+
             standard_channel_mask = self.channel_mask()
             vorbis_channel_mask = VorbisChannelMask(self.channel_mask())
             return ReorderedPCMReader(
@@ -249,6 +249,16 @@ class VorbisAudio(AudioFile):
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
         """returns a PCMReader object containing the track's PCM data"""
+
+        from . import transfer_framelist_data
+        from . import BIN
+        from . import ignore_sigint
+        from . import EncodingError
+        from . import DecodingError
+        from . import UnsupportedChannelMask
+        from . import __default_quality__
+        import subprocess
+        import os
 
         if ((compression is None) or
             (compression not in cls.COMPRESSION_MODES)):
@@ -299,6 +309,8 @@ class VorbisAudio(AudioFile):
                                              int(pcmreader.channel_mask))
 
             try:
+                from . import ReorderedPCMReader
+
                 transfer_framelist_data(ReorderedPCMReader(
                         pcmreader,
                         [standard_channel_mask.channels().index(channel)
@@ -340,19 +352,20 @@ class VorbisAudio(AudioFile):
         raises IOError if unable to write the file
         """
 
+        from .bitstream import BitstreamReader
+        from .bitstream import BitstreamRecorder
+        from .bitstream import BitstreamWriter
+        from .ogg import OggStreamWriter
+        from .ogg import OggStreamReader
+        from .ogg import read_ogg_packets_data
+        from . import iter_first
+        from .vorbiscomment import VorbisComment
+
         if (metadata is None):
             return
 
         if (not isinstance(metadata, VorbisComment)):
             raise ValueError(_(u"metadata not from audio file"))
-
-        from .bitstream import BitstreamReader
-        from .bitstream import BitstreamRecorder
-        from .bitstream import BitstreamWriter
-        from . import OggStreamWriter
-        from . import OggStreamReader
-        from . import read_ogg_packets_data
-        from . import iter_first
 
         original_reader = BitstreamReader(open(self.filename, "rb"), 1)
         original_ogg = OggStreamReader(original_reader)
@@ -417,6 +430,8 @@ class VorbisAudio(AudioFile):
         this metadata includes track name, album name, and so on
         raises IOError if unable to write the file"""
 
+        from .vorbiscomment import VorbisComment
+
         if (metadata is not None):
             metadata = VorbisComment.converted(metadata)
 
@@ -443,7 +458,8 @@ class VorbisAudio(AudioFile):
         raises IOError if unable to read the file"""
 
         from .bitstream import BitstreamReader
-        from . import read_ogg_packets
+        from .ogg import read_ogg_packets
+        from .vorbiscomment import VorbisComment
 
         packets = read_ogg_packets(
             BitstreamReader(open(self.filename, "rb"), 1))
@@ -471,6 +487,8 @@ class VorbisAudio(AudioFile):
         this removes or unsets tags as necessary in order to remove all data
         raises IOError if unable to write the file"""
 
+        from . import MetaData
+
         #the vorbis comment packet is required,
         #so simply zero out its contents
         self.set_metadata(MetaData())
@@ -482,6 +500,11 @@ class VorbisAudio(AudioFile):
         all the filenames must be of this AudioFile type
         raises ValueError if some problem occurs during ReplayGain application
         """
+
+        from . import BIN
+        from . import open_files
+        import subprocess
+        import os
 
         track_names = [track.filename for track in
                        open_files(filenames) if
@@ -508,6 +531,8 @@ class VorbisAudio(AudioFile):
     def can_add_replay_gain(cls):
         """returns True if we have the necessary binaries to add ReplayGain"""
 
+        from . import BIN
+
         return BIN.can_execute(BIN['vorbisgain'])
 
     @classmethod
@@ -520,6 +545,8 @@ class VorbisAudio(AudioFile):
         """returns a ReplayGain object of our ReplayGain values
 
         returns None if we have no values"""
+
+        from . import ReplayGain
 
         vorbis_metadata = self.get_metadata()
 

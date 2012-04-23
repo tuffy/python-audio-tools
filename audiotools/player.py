@@ -18,16 +18,6 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-import os
-import sys
-import cPickle
-import select
-import audiotools
-import time
-import Queue
-import threading
-
-
 (RG_NO_REPLAYGAIN, RG_TRACK_GAIN, RG_ALBUM_GAIN) = range(3)
 
 
@@ -45,6 +35,9 @@ class Player:
         indicating how the player should apply ReplayGain
         next_track_callback is a function with no arguments
         which is called by the player when the current track is finished"""
+
+        import Queue
+        import threading
 
         self.command_queue = Queue.Queue()
         self.worker = PlayerThread(audio_output,
@@ -146,7 +139,7 @@ class PlayerThread:
         if (self.track is not None):
             if (self.state == PLAYER_STOPPED):
                 if (self.replay_gain == RG_TRACK_GAIN):
-                    from audiotools.replaygain import ReplayGainReader
+                    from .replaygain import ReplayGainReader
                     replay_gain = self.track.replay_gain()
 
                     if (replay_gain is not None):
@@ -157,7 +150,7 @@ class PlayerThread:
                     else:
                         pcmreader = self.track.to_pcm()
                 elif (self.replay_gain == RG_ALBUM_GAIN):
-                    from audiotools.replaygain import ReplayGainReader
+                    from .replaygain import ReplayGainReader
                     replay_gain = self.track.replay_gain()
 
                     if (replay_gain is not None):
@@ -205,6 +198,8 @@ class PlayerThread:
         self.state = PLAYER_STOPPED
 
     def run(self, next_track_callback=lambda: None):
+        import Queue
+
         while (True):
             if ((self.state == PLAYER_STOPPED) or
                 (self.state == PLAYER_PAUSED)):
@@ -248,6 +243,9 @@ class CDPlayer:
         audio_output is an AudioOutput subclass
         next_track_callback is a function with no arguments
         which is called by the player when the current track is finished"""
+
+        import Queue
+        import threading
 
         self.command_queue = Queue.Queue()
         self.worker = CDPlayerThread(cdda,
@@ -367,6 +365,8 @@ class CDPlayerThread:
         self.state = PLAYER_STOPPED
 
     def run(self, next_track_callback=lambda: None):
+        import Queue
+
         while (True):
             if ((self.state == PLAYER_STOPPED) or
                 (self.state == PLAYER_PAUSED)):
@@ -411,6 +411,9 @@ class ThreadedPCMConverter:
         converter is a function which takes a FrameList
         and returns an object suitable for the current AudioOutput object
         upon conclusion, the PCMReader is automatically closed"""
+
+        import Queue
+        import threading
 
         self.decoded_data = Queue.Queue()
         self.stop_decoding = threading.Event()
@@ -550,6 +553,8 @@ class NULLAudioOutput(AudioOutput):
     def play(self, data):
         """plays a chunk of converted data"""
 
+        import time
+
         time.sleep(float(data) / self.sample_rate)
 
     def close(self):
@@ -613,9 +618,9 @@ class OSSAudioOutput(AudioOutput):
         elif (self.bits_per_sample == 16):
             return lambda f: f.to_bytes(False, True)
         elif (self.bits_per_sample == 24):
-            import audiotools.pcm
+            from .pcm import from_list
 
-            return lambda f: audiotools.pcm.from_list(
+            return lambda f: from_list(
                 [i >> 8 for i in list(f)],
                 self.channels, 16, True).to_bytes(False, True)
         else:
@@ -656,6 +661,7 @@ class PulseAudioOutput(AudioOutput):
 
         if (not self.initialized):
             import subprocess
+            from . import BIN
 
             self.sample_rate = sample_rate
             self.channels = channels
@@ -672,7 +678,7 @@ class PulseAudioOutput(AudioOutput):
                 raise ValueError("Unsupported bits-per-sample")
 
             self.pacat = subprocess.Popen(
-                [audiotools.BIN["pacat"],
+                [BIN["pacat"],
                  "-n", "Python Audio Tools",
                  "--rate", str(sample_rate),
                  "--format", format,
@@ -719,8 +725,9 @@ class PulseAudioOutput(AudioOutput):
     @classmethod
     def server_alive(cls):
         import subprocess
+        from . import BIN
 
-        dev = subprocess.Popen([audiotools.BIN["pactl"], "stat"],
+        dev = subprocess.Popen([BIN["pactl"], "stat"],
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
         dev.stdout.read()
@@ -731,8 +738,10 @@ class PulseAudioOutput(AudioOutput):
     def available(cls):
         """returns True if PulseAudio is available and running on the system"""
 
-        return (audiotools.BIN.can_execute(audiotools.BIN["pacat"]) and
-                audiotools.BIN.can_execute(audiotools.BIN["pactl"]) and
+        from . import BIN
+
+        return (BIN.can_execute(BIN["pacat"]) and
+                BIN.can_execute(BIN["pactl"]) and
                 cls.server_alive())
 
 

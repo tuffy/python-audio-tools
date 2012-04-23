@@ -18,20 +18,10 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import (AudioFile, InvalidFile, ChannelMask, PCMReader,
-                        FRAMELIST_SIZE, transfer_data,
-                        transfer_framelist_data,
-                        __capped_stream_reader__, FILENAME_FORMAT,
-                        BIN, open_files, os, subprocess, cStringIO,
-                        EncodingError, DecodingError,
-                        UnsupportedChannelMask,
-                        UnsupportedChannelCount,
-                        WaveContainer, to_pcm_progress,
-                        LimitedFileReader)
-import os.path
+from . import (AudioFile, InvalidFile, PCMReader, WaveContainer)
+from .pcm import FrameList
 import struct
 import gettext
-from . import pcm
 
 gettext.install("audiotools", unicode=True)
 
@@ -73,6 +63,8 @@ class RIFF_Chunk:
 
     def data(self):
         """returns chunk data as file-like object"""
+
+        import cStringIO
 
         return cStringIO.StringIO(self.__data__)
 
@@ -117,6 +109,9 @@ class RIFF_File_Chunk(RIFF_Chunk):
         """returns chunk data as file-like object"""
 
         self.__wav_file__.seek(self.__offset__)
+
+        from . import LimitedFileReader
+
         return LimitedFileReader(self.__wav_file__, self.size())
 
     def verify(self):
@@ -157,6 +152,8 @@ def parse_fmt(fmt):
     where channel_mask is a ChannelMask object and the rest are ints
     may raise ValueError if the fmt chunk is invalid
     or IOError if an error occurs parsing the chunk"""
+
+    from . import ChannelMask
 
     (compression,
      channels,
@@ -236,6 +233,7 @@ class WaveReader(PCMReader):
 
         self.process = process
 
+        from . import __capped_stream_reader__
         from .bitstream import BitstreamReader
 
         #build a capped reader for the data chunk
@@ -275,11 +273,11 @@ class WaveReader(PCMReader):
             self.data_chunk_length -= len(pcm_data)
 
         try:
-            return pcm.FrameList(pcm_data,
-                                 self.channels,
-                                 self.bits_per_sample,
-                                 False,
-                                 self.bits_per_sample != 8)
+            return FrameList(pcm_data,
+                             self.channels,
+                             self.bits_per_sample,
+                             False,
+                             self.bits_per_sample != 8)
         except ValueError:
             raise IOError("data chunk ends prematurely")
 
@@ -291,6 +289,8 @@ class WaveReader(PCMReader):
         self.wave.close()
         if (self.process is not None):
             if (self.process.wait() != 0):
+                from . import DecodingError
+
                 raise DecodingError()
 
 
@@ -334,6 +334,8 @@ class WaveAudio(WaveContainer):
 
     def __init__(self, filename):
         """filename is a plain string"""
+
+        from . import ChannelMask
 
         AudioFile.__init__(self, filename)
 
@@ -421,9 +423,9 @@ class WaveAudio(WaveContainer):
         at the given filename with the specified compression level
         and returns a new WaveAudio object"""
 
-        if (pcmreader.channels > 18):
-            raise UnsupportedChannelCount(filename, pcmreader.channels)
-
+        from . import FRAMELIST_SIZE
+        from . import EncodingError
+        from . import DecodingError
         from .bitstream import BitstreamWriter, format_size
 
         try:
@@ -534,6 +536,8 @@ class WaveAudio(WaveContainer):
                 wave.build(fmt, fmt_fields)
                 wave.build("4b 32u", ('data', data_size))
             else:
+                import os
+
                 os.unlink(filename)
                 raise EncodingError("PCM data too large for wave file")
 
@@ -546,6 +550,9 @@ class WaveAudio(WaveContainer):
         """writes the contents of this file to the given .wav filename string
 
         raises EncodingError if some error occurs during decoding"""
+
+        from . import transfer_data
+        from . import EncodingError
 
         try:
             self.verify()
@@ -575,6 +582,9 @@ class WaveAudio(WaveContainer):
         at the given filename with the specified compression level
         and returns a new WaveAudio object"""
 
+        from os.path import getsize
+        from . import EncodingError
+
         try:
             cls(wave_filename).verify()
         except InvalidWave, err:
@@ -586,7 +596,7 @@ class WaveAudio(WaveContainer):
         except IOError, err:
             raise EncodingError(str(err))
         try:
-            total_bytes = os.path.getsize(wave_filename)
+            total_bytes = getsize(wave_filename)
             current_bytes = 0
             s = input.read(4096)
             while (len(s) > 0):
@@ -620,6 +630,8 @@ class WaveAudio(WaveContainer):
                                           compression=compression,
                                           progress=progress)
         else:
+            from . import to_pcm_progress
+
             return target_class.from_pcm(target_path,
                                          to_pcm_progress(self, progress),
                                          compression)
@@ -665,7 +677,10 @@ class WaveAudio(WaveContainer):
         raises ValueError if some problem occurs during ReplayGain application
         """
 
-        from audiotools.replaygain import ReplayGain, ReplayGainReader
+        from . import FRAMELIST_SIZE
+        from . import transfer_data
+        from . import open_files
+        from .replaygain import ReplayGain, ReplayGainReader
         import tempfile
 
         wave_files = [track for track in open_files(filenames) if

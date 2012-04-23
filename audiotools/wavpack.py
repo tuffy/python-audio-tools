@@ -18,17 +18,8 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import (AudioFile, InvalidFile, subprocess, BIN,
-                        open_files, os, ReplayGain, ignore_sigint,
-                        transfer_data, transfer_framelist_data,
-                        BufferedPCMReader, Image, MetaData, sheet_to_unicode,
-                        calculate_replay_gain, ApeTagItem,
-                        EncodingError, DecodingError, PCMReaderError,
-                        PCMReader, ChannelMask,
-                        InvalidWave, __default_quality__,
-                        WaveContainer, to_pcm_progress)
-from __wav__ import WaveAudio
-from __ape__ import ApeTaggedAudio, ApeTag, __number_pair__
+from . import WaveContainer, InvalidFile
+from .ape import ApeTaggedAudio
 import gettext
 
 gettext.install("audiotools", unicode=True)
@@ -246,6 +237,7 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
 
     def __read_info__(self):
         from .bitstream import BitstreamReader
+        from . import ChannelMask
 
         reader = BitstreamReader(file(self.filename, "rb"), 1)
         reader.mark()
@@ -374,16 +366,19 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
         at the given filename with the specified compression level
         and returns a new WavPackAudio object"""
 
-        from . import encoders
+        from .encoders import encode_wavpack
+        from . import BufferedPCMReader
+        from . import EncodingError
+        from . import __default_quality__
 
         if ((compression is None) or
             (compression not in cls.COMPRESSION_MODES)):
             compression = __default_quality__(cls.NAME)
 
         try:
-            encoders.encode_wavpack(filename,
-                                    BufferedPCMReader(pcmreader),
-                                    **cls.__options__[compression])
+            encode_wavpack(filename,
+                           BufferedPCMReader(pcmreader),
+                           **cls.__options__[compression])
 
             return cls(filename)
         except (ValueError, IOError), msg:
@@ -399,6 +394,7 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
         raises EncodingError if some error occurs during decoding"""
 
         from . import decoders
+        from . import EncodingError
 
         try:
             f = open(wave_filename, 'wb')
@@ -429,6 +425,7 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
         """returns a PCMReader object containing the track's PCM data"""
 
         from . import decoders
+        from . import PCMReaderError
 
         try:
             return decoders.WavPackDecoder(self.filename)
@@ -451,7 +448,11 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
         at the given filename with the specified compression level
         and returns a new WavPackAudio object"""
 
-        from . import encoders
+        from .encoders import encode_wavpack
+        from . import EncodingError
+        from . import __default_quality__
+        from . import to_pcm_progress
+        from .wav import WaveAudio
 
         if ((compression is None) or
             (compression not in cls.COMPRESSION_MODES)):
@@ -462,11 +463,11 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
         (head, tail) = wave.pcm_split()
 
         try:
-            encoders.encode_wavpack(filename,
-                                    to_pcm_progress(wave, progress),
-                                    wave_header=head,
-                                    wave_footer=tail,
-                                    **cls.__options__[compression])
+            encode_wavpack(filename,
+                           to_pcm_progress(wave, progress),
+                           wave_header=head,
+                           wave_footer=tail,
+                           **cls.__options__[compression])
 
             return cls(filename)
         except (ValueError, IOError), msg:
@@ -583,6 +584,11 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
         raises ValueError if some problem occurs during ReplayGain application
         """
 
+        from . import open_files
+        from . import calculate_replay_gain
+        from .ape import ApeTagItem
+        from .ape import ApeTag
+
         tracks = [track for track in open_files(filenames) if
                   isinstance(track, cls)]
 
@@ -627,6 +633,8 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
         """returns a ReplayGain object of our ReplayGain values
 
         returns None if we have no values"""
+
+        from . import ReplayGain
 
         metadata = self.get_metadata()
         if (metadata is None):
@@ -675,6 +683,8 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
 
         import os.path
         import cue
+        from . import MetaData
+        from .ape import ApeTag
 
         if (cuesheet is None):
             return

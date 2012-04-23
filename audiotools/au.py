@@ -18,12 +18,9 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import (AudioFile, InvalidFile, PCMReader,
-                        transfer_data, InvalidFormat,
-                        __capped_stream_reader__, FRAMELIST_SIZE,
-                        FILENAME_FORMAT, EncodingError, DecodingError,
-                        ChannelMask, os)
-import audiotools.pcm
+from . import (AudioFile, InvalidFile, PCMReader)
+from .pcm import FrameList
+
 import gettext
 
 gettext.install("audiotools", unicode=True)
@@ -68,11 +65,11 @@ class AuReader(PCMReader):
             self.data_size -= len(pcm_data)
 
         try:
-            return audiotools.pcm.FrameList(pcm_data,
-                                            self.channels,
-                                            self.bits_per_sample,
-                                            True,
-                                            True)
+            return FrameList(pcm_data,
+                             self.channels,
+                             self.bits_per_sample,
+                             True,
+                             True)
         except ValueError:
             raise IOError("data ends prematurely")
 
@@ -132,6 +129,8 @@ class AuAudio(AudioFile):
         return self.__channels__
 
     def channel_mask(self):
+        from . import ChannelMask
+
         """returns a ChannelMask object of this track's channel layout"""
 
         if (self.channels() <= 2):
@@ -189,6 +188,10 @@ class AuAudio(AudioFile):
         and returns a new AuAudio object"""
 
         from .bitstream import BitstreamWriter
+        from . import FRAMELIST_SIZE
+        from . import EncodingError
+        from . import DecodingError
+        from . import InvalidFormat
 
         if (pcmreader.bits_per_sample not in (8, 16, 24)):
             raise InvalidFormat(
@@ -231,6 +234,8 @@ class AuAudio(AudioFile):
                          (".snd", 24, data_size, encoding_format,
                           pcmreader.sample_rate, pcmreader.channels))
             else:
+                import os
+
                 os.unlink(filename)
                 raise EncodingError("PCM data too large for Sun AU file")
         finally:

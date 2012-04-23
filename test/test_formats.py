@@ -1805,17 +1805,20 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
     @FORMAT_AIFF
     def test_ieee_extended(self):
         from audiotools.bitstream import BitstreamReader, BitstreamRecorder
+        import audiotools.aiff
 
         for i in xrange(0, 192000 + 1):
             w = BitstreamRecorder(0)
-            audiotools.build_ieee_extended(w, float(i))
+            audiotools.aiff.build_ieee_extended(w, float(i))
             s = cStringIO.StringIO(w.data())
             self.assertEqual(w.data(), s.getvalue())
-            self.assertEqual(i, audiotools.parse_ieee_extended(
+            self.assertEqual(i, audiotools.aiff.parse_ieee_extended(
                     BitstreamReader(s, 0)))
 
     @FORMAT_AIFF
     def test_verify(self):
+        import audiotools.aiff
+
         #test truncated file
         for aiff_file in ["aiff-8bit.aiff",
                           "aiff-1ch.aiff",
@@ -1891,11 +1894,11 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
         finally:
             temp.close()
 
-        COMM = audiotools.AIFF_Chunk(
+        COMM = audiotools.aiff.AIFF_Chunk(
             "COMM",
             18,
             '\x00\x01\x00\x00\x00\r\x00\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00')
-        SSND = audiotools.AIFF_Chunk(
+        SSND = audiotools.aiff.AIFF_Chunk(
             "SSND",
             34,
             '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x02\x00\x03\x00\x02\x00\x01\x00\x00\xff\xff\xff\xfe\xff\xfd\xff\xfe\xff\xff\x00\x00')
@@ -1921,11 +1924,13 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
 
     @FORMAT_AIFF
     def test_clean(self):
-        COMM = audiotools.AIFF_Chunk(
+        import audiotools.aiff
+
+        COMM = audiotools.aiff.AIFF_Chunk(
             "COMM",
             18,
             '\x00\x01\x00\x00\x00\r\x00\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00')
-        SSND = audiotools.AIFF_Chunk(
+        SSND = audiotools.aiff.AIFF_Chunk(
             "SSND",
             34,
             '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x02\x00\x03\x00\x02\x00\x01\x00\x00\xff\xff\xff\xfe\xff\xfd\xff\xfe\xff\xff\x00\x00')
@@ -1969,7 +1974,7 @@ class ALACFileTest(LosslessFileTest):
     @FORMAT_ALAC
     def test_init(self):
         #check missing file
-        self.assertRaises(audiotools.InvalidALAC,
+        self.assertRaises(audiotools.m4a.InvalidALAC,
                           audiotools.ALACAudio,
                           "/dev/null/foo")
 
@@ -1979,7 +1984,7 @@ class ALACFileTest(LosslessFileTest):
             for c in "invalidstringxxx":
                 invalid_file.write(c)
                 invalid_file.flush()
-                self.assertRaises(audiotools.InvalidALAC,
+                self.assertRaises(audiotools.m4a.InvalidALAC,
                                   audiotools.ALACAudio,
                                   invalid_file.name)
         finally:
@@ -2628,7 +2633,7 @@ class FlacFileTest(TestForeignAiffChunks,
     @FORMAT_FLAC
     def test_init(self):
         #check missing file
-        self.assertRaises(audiotools.InvalidFLAC,
+        self.assertRaises(audiotools.flac.InvalidFLAC,
                           audiotools.FlacAudio,
                           "/dev/null/foo")
 
@@ -2638,7 +2643,7 @@ class FlacFileTest(TestForeignAiffChunks,
             for c in "invalidstringxxx":
                 invalid_file.write(c)
                 invalid_file.flush()
-                self.assertRaises(audiotools.InvalidFLAC,
+                self.assertRaises(audiotools.flac.InvalidFLAC,
                                   audiotools.FlacAudio,
                                   invalid_file.name)
         finally:
@@ -2746,17 +2751,17 @@ class FlacFileTest(TestForeignAiffChunks,
             self.assert_(metadata is not None)
             self.assertEqual(metadata.track_name, u"Testing")
             self.assert_(
-                metadata.get_block(audiotools.Flac_VORBISCOMMENT.BLOCK_ID)
+                metadata.get_block(audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID)
                 is not None)
             vorbis_comment = metadata.get_blocks(
-                audiotools.Flac_VORBISCOMMENT.BLOCK_ID)
+                audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID)
             proper_vendor_string = vorbis_comment[0].vendor_string
             vorbis_comment[0].vendor_string = u"Different String"
-            metadata.replace_blocks(audiotools.Flac_VORBISCOMMENT.BLOCK_ID,
+            metadata.replace_blocks(audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID,
                                     vorbis_comment)
             track.set_metadata(metadata)
             vendor_string = track.get_metadata().get_block(
-                audiotools.Flac_VORBISCOMMENT.BLOCK_ID).vendor_string
+                audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID).vendor_string
             self.assertEqual(vendor_string, proper_vendor_string)
 
             #FIXME - ensure that channel mask isn't modified
@@ -2775,7 +2780,7 @@ class FlacFileTest(TestForeignAiffChunks,
 
             #attempt to adjust its metadata with bogus side data fields
             metadata = flac_file.get_metadata()
-            streaminfo = metadata.get_block(audiotools.Flac_STREAMINFO.BLOCK_ID)
+            streaminfo = metadata.get_block(audiotools.flac.Flac_STREAMINFO.BLOCK_ID)
 
             minimum_block_size = streaminfo.minimum_block_size
             maximum_block_size = streaminfo.maximum_block_size
@@ -2797,13 +2802,13 @@ class FlacFileTest(TestForeignAiffChunks,
             streaminfo.total_samples = 96000
             streaminfo.md5sum = chr(1) * 16
 
-            metadata.replace_blocks(audiotools.Flac_STREAMINFO.BLOCK_ID,
+            metadata.replace_blocks(audiotools.flac.Flac_STREAMINFO.BLOCK_ID,
                                     [streaminfo])
 
             #ensure that set_metadata() restores fields to original values
             flac_file.set_metadata(metadata)
             metadata = flac_file.get_metadata()
-            streaminfo = metadata.get_block(audiotools.Flac_STREAMINFO.BLOCK_ID)
+            streaminfo = metadata.get_block(audiotools.flac.Flac_STREAMINFO.BLOCK_ID)
 
             self.assertEqual(minimum_block_size,
                              streaminfo.minimum_block_size)
@@ -2826,7 +2831,7 @@ class FlacFileTest(TestForeignAiffChunks,
 
             #adjust its metadata with new bogus side data files
             metadata = flac_file.get_metadata()
-            streaminfo = metadata.get_block(audiotools.Flac_STREAMINFO.BLOCK_ID)
+            streaminfo = metadata.get_block(audiotools.flac.Flac_STREAMINFO.BLOCK_ID)
             streaminfo.minimum_block_size = 1
             streaminfo.maximum_block_size = 10
             streaminfo.minimum_frame_size = 2
@@ -2837,13 +2842,13 @@ class FlacFileTest(TestForeignAiffChunks,
             streaminfo.total_samples = 96000
             streaminfo.md5sum = chr(1) * 16
 
-            metadata.replace_blocks(audiotools.Flac_STREAMINFO.BLOCK_ID,
+            metadata.replace_blocks(audiotools.flac.Flac_STREAMINFO.BLOCK_ID,
                                     [streaminfo])
 
             #ensure that update_metadata() uses the bogus side data
             flac_file.update_metadata(metadata)
             metadata = flac_file.get_metadata()
-            streaminfo = metadata.get_block(audiotools.Flac_STREAMINFO.BLOCK_ID)
+            streaminfo = metadata.get_block(audiotools.flac.Flac_STREAMINFO.BLOCK_ID)
             self.assertEqual(streaminfo.minimum_block_size, 1)
             self.assertEqual(streaminfo.maximum_block_size, 10)
             self.assertEqual(streaminfo.minimum_frame_size, 2)
@@ -2856,7 +2861,8 @@ class FlacFileTest(TestForeignAiffChunks,
         finally:
             temp.close()
 
-    @FORMAT_FLAC
+    # @FORMAT_FLAC
+    @LIB_CUSTOM
     def test_verify(self):
         self.assertEqual(audiotools.open("flac-allframes.flac").__md5__,
                          'f53f86876dcd7783225c93ba8a938c7d'.decode('hex'))
@@ -3446,7 +3452,8 @@ class FlacFileTest(TestForeignAiffChunks,
 
     #as is metadata handling
 
-    @FORMAT_FLAC
+    # @FORMAT_FLAC
+    @LIB_CUSTOM
     def test_clean(self):
         #metadata is tested separately
 
@@ -3508,7 +3515,7 @@ class FlacFileTest(TestForeignAiffChunks,
         track = audiotools.open("flac-nonmd5.flac")
         fixes = []
         self.assertEqual(track.get_metadata().get_block(
-                audiotools.Flac_STREAMINFO.BLOCK_ID).md5sum, chr(0) * 16)
+                audiotools.flac.Flac_STREAMINFO.BLOCK_ID).md5sum, chr(0) * 16)
         self.assertEqual(track.clean(fixes), None)
         self.assertEqual(fixes, [_(u"populated empty MD5SUM")])
         temp = tempfile.NamedTemporaryFile(suffix=".flac")
@@ -3518,7 +3525,7 @@ class FlacFileTest(TestForeignAiffChunks,
             self.assertEqual(fixes, [_(u"populated empty MD5SUM")])
             track2 = audiotools.open(temp.name)
             self.assertEqual(track2.get_metadata().get_block(
-                    audiotools.Flac_STREAMINFO.BLOCK_ID).md5sum,
+                    audiotools.flac.Flac_STREAMINFO.BLOCK_ID).md5sum,
                              '\xd2\xb1 \x19\x90\x19\xb69' +
                              '\xd5\xa7\xe2\xb3F>\x9c\x97')
             self.assertEqual(audiotools.pcm_frame_cmp(
@@ -3550,7 +3557,7 @@ class FlacFileTest(TestForeignAiffChunks,
                 metadata = new_track.get_metadata()
 
                 self.assertEqual(
-                    metadata.get_block(audiotools.Flac_VORBISCOMMENT.BLOCK_ID)[
+                    metadata.get_block(audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID)[
                         u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"][0],
                     u"0x%.4X" % (mask))
             finally:
@@ -3965,7 +3972,7 @@ class OggFlacFileTest(OggVerify,
     @FORMAT_OGGFLAC
     def test_init(self):
         #check missing file
-        self.assertRaises(audiotools.InvalidFLAC,
+        self.assertRaises(audiotools.flac.InvalidFLAC,
                           audiotools.OggFlacAudio,
                           "/dev/null/foo")
 
@@ -3975,7 +3982,7 @@ class OggFlacFileTest(OggVerify,
             for c in "invalidstringxxx":
                 invalid_file.write(c)
                 invalid_file.flush()
-                self.assertRaises(audiotools.InvalidFLAC,
+                self.assertRaises(audiotools.flac.InvalidFLAC,
                                   audiotools.OggFlacAudio,
                                   invalid_file.name)
         finally:
@@ -4008,7 +4015,7 @@ class ShortenFileTest(TestForeignWaveChunks,
     @FORMAT_SHORTEN
     def test_init(self):
         #check missing file
-        self.assertRaises(audiotools.InvalidShorten,
+        self.assertRaises(audiotools.shn.InvalidShorten,
                           audiotools.ShortenAudio,
                           "/dev/null/foo")
 
@@ -4018,7 +4025,7 @@ class ShortenFileTest(TestForeignWaveChunks,
             for c in "invalidstringxxx":
                 invalid_file.write(c)
                 invalid_file.flush()
-                self.assertRaises(audiotools.InvalidShorten,
+                self.assertRaises(audiotools.shn.InvalidShorten,
                                   audiotools.ShortenAudio,
                                   invalid_file.name)
         finally:
@@ -4546,7 +4553,7 @@ class WaveFileTest(TestForeignWaveChunks,
         from struct import pack
 
         chunks = list(audiotools.open("wav-2ch.wav").chunks()) + \
-            [audiotools.RIFF_Chunk("fooz", 10, chr(0) * 10)]
+            [audiotools.wav.RIFF_Chunk("fooz", 10, chr(0) * 10)]
         temp = tempfile.NamedTemporaryFile(suffix=".wav")
         try:
             audiotools.WaveAudio.wave_from_chunks(temp.name,
@@ -4563,12 +4570,12 @@ class WaveFileTest(TestForeignWaveChunks,
         finally:
             temp.close()
 
-        FMT = audiotools.RIFF_Chunk(
+        FMT = audiotools.wav.RIFF_Chunk(
             "fmt ",
             16,
             '\x01\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00')
 
-        DATA = audiotools.RIFF_Chunk(
+        DATA = audiotools.wav.RIFF_Chunk(
             "data",
             26,
             '\x00\x00\x01\x00\x02\x00\x03\x00\x02\x00\x01\x00\x00\x00\xff\xff\xfe\xff\xfd\xff\xfe\xff\xff\xff\x00\x00')
@@ -4627,12 +4634,12 @@ class WaveFileTest(TestForeignWaveChunks,
 
     @FORMAT_WAVE
     def test_clean(self):
-        FMT = audiotools.RIFF_Chunk(
+        FMT = audiotools.wav.RIFF_Chunk(
             "fmt ",
             16,
             '\x01\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00')
 
-        DATA = audiotools.RIFF_Chunk(
+        DATA = audiotools.wav.RIFF_Chunk(
             "data",
             26,
             '\x00\x00\x01\x00\x02\x00\x03\x00\x02\x00\x01\x00\x00\x00\xff\xff\xfe\xff\xfd\xff\xfe\xff\xff\xff\x00\x00')
@@ -4715,7 +4722,7 @@ class WavPackFileTest(TestForeignWaveChunks,
     @FORMAT_WAVPACK
     def test_init(self):
         #check missing file
-        self.assertRaises(audiotools.InvalidWavPack,
+        self.assertRaises(audiotools.wavpack.InvalidWavPack,
                           audiotools.WavPackAudio,
                           "/dev/null/foo")
 
@@ -4725,7 +4732,7 @@ class WavPackFileTest(TestForeignWaveChunks,
             for c in "invalidstringxxx":
                 invalid_file.write(c)
                 invalid_file.flush()
-                self.assertRaises(audiotools.InvalidWavPack,
+                self.assertRaises(audiotools.wavpack.InvalidWavPack,
                                   audiotools.WavPackAudio,
                                   invalid_file.name)
         finally:

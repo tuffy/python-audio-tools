@@ -17,13 +17,8 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import (AudioFile, InvalidFile, PCMReader,
-                        __capped_stream_reader__, PCMReaderError,
-                        transfer_data, DecodingError, EncodingError,
-                        ID3v22Comment, FRAMELIST_SIZE, ChannelMask,
-                        ReorderedPCMReader, pcm,
-                        cStringIO, os, AiffContainer, to_pcm_progress,
-                        LimitedFileReader)
+from audiotools import (InvalidFile, PCMReader, AiffContainer)
+from .pcm import FrameList
 import struct
 import gettext
 
@@ -106,6 +101,8 @@ class AIFF_Chunk:
     def data(self):
         """returns chunk data as file-like object"""
 
+        import cStringIO
+
         return cStringIO.StringIO(self.__data__)
 
     def verify(self):
@@ -148,6 +145,8 @@ class AIFF_File_Chunk(AIFF_Chunk):
     def data(self):
         """returns chunk data as file-like object"""
 
+        from . import LimitedFileReader
+
         self.__wav_file__.seek(self.__offset__)
         return LimitedFileReader(self.__wav_file__, self.size())
 
@@ -189,6 +188,8 @@ def parse_comm(comm):
              sample_rate, channel_mask)
     where channel_mask is a ChannelMask object and the rest are ints
     may raise IOError if an error occurs reading the chunk"""
+
+    from . import ChannelMask
 
     (channels,
      total_sample_frames,
@@ -259,18 +260,18 @@ class AiffReader(PCMReader):
             if (len(pcm_data) < frames_read * self.bytes_per_frame):
                 raise IOError("ssnd chunk ends prematurely")
             else:
-                framelist = pcm.FrameList(pcm_data,
-                                          self.channels,
-                                          self.bits_per_sample,
-                                          True, True)
+                framelist = FrameList(pcm_data,
+                                      self.channels,
+                                      self.bits_per_sample,
+                                      True, True)
                 self.remaining_frames -= framelist.frames
                 return framelist
 
         else:
-            return pcm.FrameList("",
-                                 self.channels,
-                                 self.bits_per_sample,
-                                 True, True)
+            return FrameList("",
+                             self.channels,
+                             self.bits_per_sample,
+                             True, True)
 
     def read_error(self, pcm_frames):
         """try to read a pcm.FrameList with the given number of PCM frames"""
@@ -294,6 +295,8 @@ class AiffAudio(AiffContainer):
 
     def __init__(self, filename):
         """filename is a plain string"""
+
+        from . import ChannelMask
 
         self.filename = filename
 
@@ -445,6 +448,7 @@ class AiffAudio(AiffContainer):
         raises IOError if unable to read the file"""
 
         from .bitstream import BitstreamReader
+        from .id3 import ID3v22Comment
 
         for chunk in self.chunks():
             if (chunk.id == 'ID3 '):
@@ -461,6 +465,8 @@ class AiffAudio(AiffContainer):
         """
 
         import tempfile
+        from . import transfer_data
+        from .id3 import ID3v22Comment
         from .bitstream import BitstreamRecorder
 
         if (metadata is None):
@@ -502,6 +508,8 @@ class AiffAudio(AiffContainer):
         this metadata includes track name, album name, and so on
         raises IOError if unable to write the file"""
 
+        from .id3 import ID3v22Comment
+
         if (metadata is None):
             return
         elif (self.get_metadata() is not None):
@@ -512,6 +520,7 @@ class AiffAudio(AiffContainer):
 
             import tempfile
             from .bitstream import BitstreamRecorder
+            from . import transfer_data
 
             def chunk_filter(chunks, id3_chunk_data):
                 for chunk in chunks:
@@ -554,6 +563,7 @@ class AiffAudio(AiffContainer):
                     yield chunk
 
         import tempfile
+        from . import transfer_data
 
         new_aiff = tempfile.NamedTemporaryFile(suffix=self.SUFFIX)
         self.__class__.aiff_from_chunks(new_aiff.name,
@@ -586,6 +596,9 @@ class AiffAudio(AiffContainer):
         and returns a new AiffAudio object"""
 
         from .bitstream import BitstreamWriter
+        from . import EncodingError
+        from . import DecodingError
+        from . import FRAMELIST_SIZE
 
         try:
             f = open(filename, 'wb')
@@ -662,6 +675,8 @@ class AiffAudio(AiffContainer):
                 build_ieee_extended(aiff, pcmreader.sample_rate)
                 aiff.build("4b 32u", ("SSND", data_size))
             else:
+                import os
+
                 os.unlink(filename)
                 raise EncodingError("PCM data too large for aiff file")
 
@@ -674,6 +689,9 @@ class AiffAudio(AiffContainer):
         """writes the contents of this file to the given .aiff filename string
 
         raises EncodingError if some error occurs during decoding"""
+
+        from . import transfer_data
+        from . import EncodingError
 
         try:
             self.verify()
@@ -702,6 +720,9 @@ class AiffAudio(AiffContainer):
         encodes a new audio file from the wave's data
         at the given filename with the specified compression level
         and returns a new AudioFile compatible object"""
+
+        import os.path
+        from . import EncodingError
 
         try:
             cls(aiff_filename).verify()
@@ -741,6 +762,8 @@ class AiffAudio(AiffContainer):
         encodes a new AudioFile in the target class and returns
         the resulting object
         may raise EncodingError if some problem occurs during encoding"""
+
+        from . import to_pcm_progress
 
         if (hasattr(target_class, "from_aiff")):
             return target_class.from_aiff(target_path,

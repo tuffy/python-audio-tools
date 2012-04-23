@@ -19,8 +19,7 @@
 
 """the cuesheet handling module"""
 
-import re
-from audiotools import SheetException, parse_timestamp, build_timestamp
+from audiotools import SheetException
 import gettext
 
 gettext.install("audiotools", unicode=True)
@@ -55,6 +54,8 @@ def tokens(cuedata):
     text is a plain string
     token is an integer such as TAG or NUMBER
     line is a line number integer"""
+
+    import re
 
     full_length = len(cuedata)
     cuedata = cuedata.lstrip('efbbbf'.decode('hex'))
@@ -243,6 +244,8 @@ def parse(tokens):
 
 
 def __attrib_str__(attrib):
+    import re
+
     if (isinstance(attrib, tuple)):
         return " ".join([__attrib_str__(a) for a in attrib])
     elif (re.match(r'^[A-Z]+$', attrib) is not None):
@@ -336,6 +339,7 @@ class Cuesheet:
         """
 
         import cStringIO
+        from . import build_timestamp
 
         catalog = sheet.catalog()        # a catalog string, or None
         indexes = list(sheet.indexes())  # a list of index tuples

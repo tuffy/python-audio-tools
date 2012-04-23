@@ -17,8 +17,6 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-import audiotools
-
 
 class DiscID:
     def __init__(self, first_track_number, last_track_number,
@@ -296,19 +294,21 @@ def parse_release(release, disc_id):
             track_number = i + 1
 
         #yield complete MetaData object
-        yield audiotools.MetaData(track_name=track_name,
-                                  track_number=track_number,
-                                  track_total=track_total,
-                                  album_name=album_name,
-                                  artist_name=track_artist,
-                                  performer_name=u"",
-                                  composer_name=u"",
-                                  conductor_name=u"",
-                                  ISRC=u"",
-                                  catalog=catalog,
-                                  copyright=u"",
-                                  publisher=publisher,
-                                  year=year,
-                                  album_number=album_number,
-                                  album_total=album_total,
-                                  comment=u"")
+        from . import MetaData
+
+        yield MetaData(track_name=track_name,
+                       track_number=track_number,
+                       track_total=track_total,
+                       album_name=album_name,
+                       artist_name=track_artist,
+                       performer_name=u"",
+                       composer_name=u"",
+                       conductor_name=u"",
+                       ISRC=u"",
+                       catalog=catalog,
+                       copyright=u"",
+                       publisher=publisher,
+                       year=year,
+                       album_number=album_number,
+                       album_total=album_total,
+                       comment=u"")

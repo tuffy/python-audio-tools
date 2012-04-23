@@ -18,7 +18,8 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import MetaData, VERSION, re
+from . import MetaData
+import re
 
 
 class VorbisComment(MetaData):
@@ -303,6 +304,8 @@ class VorbisComment(MetaData):
     @classmethod
     def converted(cls, metadata):
         """converts metadata from another class to VorbisComment"""
+
+        from . import VERSION
 
         if (metadata is None):
             return None

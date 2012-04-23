@@ -17,8 +17,6 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-import audiotools
-
 
 class DiscID:
     def __init__(self, offsets, total_length, track_count):
@@ -68,6 +66,7 @@ def perform_lookup(offsets, total_length, track_count,
     from urllib import urlencode
     from itertools import izip
     from time import sleep
+    from . import VERSION
 
     RESPONSE = re.compile(r'(\d{3}) (.+?)[\r\n]+')
     QUERY_RESULT = re.compile(r'(\S+) ([0-9a-fA-F]{8}) (.+)')
@@ -82,7 +81,7 @@ def perform_lookup(offsets, total_length, track_count,
                 urlencode({"hello": "user %s %s %s" % \
                                (getfqdn(),
                                 "audiotools",
-                                audiotools.VERSION),
+                                VERSION),
                            "proto": str(6),
                            "cmd": ("cddb query %(disc_id)s %(track_count)d " +
                                    "%(offsets)s %(seconds)d") %
@@ -131,13 +130,15 @@ def perform_lookup(offsets, total_length, track_count,
     if (len(matches) > 0):
         #for each result, query FreeDB for XMCD file data
         for (category, disc_id, title) in matches:
+            from . import VERSION
+
             sleep(1)  # add a slight delay to keep the server happy
             m = urlopen("http://%s:%d/~cddb/cddb.cgi" % (freedb_server,
                                                          freedb_port),
                         urlencode({"hello": "user %s %s %s" % \
                                        (getfqdn(),
                                         "audiotools",
-                                        audiotools.VERSION),
+                                        VERSION),
                                    "proto": str(6),
                                    "cmd": ("cddb read %(category)s " +
                                            "%(disc_id)s") %
@@ -197,7 +198,9 @@ def xmcd_metadata(freedb_file):
             track_artist = album_artist
             track_name = ttitle
 
-        yield audiotools.MetaData(
+        from . import MetaData
+
+        yield MetaData(
             track_name=track_name.decode('utf-8', 'replace'),
             track_number=tracknum + 1,
             track_total=track_total,

@@ -18,10 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import (AudioFile, WaveAudio, InvalidFile, PCMReader,
-                        transfer_data, subprocess, BIN, MetaData,
-                        os, re, TempWaveReader, Image, cStringIO)
-
+from . import (AudioFile, MetaData)
 import gettext
 
 gettext.install("audiotools", unicode=True)
@@ -327,6 +324,8 @@ class ApeTag(MetaData):
             self.__dict__[key] = value
 
     def __getattr__(self, key):
+        import re
+
         if (key == 'track_number'):
             try:
                 return int(re.findall('\d+',
@@ -452,6 +451,9 @@ class ApeTag(MetaData):
         return True
 
     def __parse_image__(self, key, type):
+        from . import Image
+        import cStringIO
+
         data = cStringIO.StringIO(self[key].data)
         description = []
         c = data.read(1)
@@ -566,6 +568,8 @@ class ApeTag(MetaData):
                           self.contains_header))     # has header
 
     def clean(self, fixes_applied):
+        import re
+
         tag_items = []
         for tag in self.tags:
             if (tag.type == 0):
@@ -650,6 +654,7 @@ class ApeTaggedAudio:
             raise ValueError(_(u"metadata not from audio file"))
 
         from .bitstream import BitstreamReader, BitstreamWriter
+        from . import transfer_data
 
         f = file(self.filename, "r+b")
         f.seek(-32, 2)
@@ -686,7 +691,7 @@ class ApeTaggedAudio:
                 #from existing file to rewritten file
                 f = open(self.filename, "rb")
                 limited_transfer_data(f.read, rewritten.write,
-                                      os.path.getsize(self.filename) -
+                                      getsize(self.filename) -
                                       old_tag_size)
                 f.close()
 
@@ -768,6 +773,7 @@ class ApeTaggedAudio:
         raises IOError if unable to write the file"""
 
         from .bitstream import BitstreamReader, BitstreamWriter
+        from . import transfer_data
 
         f = file(self.filename, "r+b")
         f.seek(-32, 2)
@@ -798,7 +804,7 @@ class ApeTaggedAudio:
             #from existing file to rewritten file
             f = open(self.filename, "rb")
             limited_transfer_data(f.read, rewritten.write,
-                                  os.path.getsize(self.filename) -
+                                  getsize(self.filename) -
                                   old_tag_size)
             f.close()
 
@@ -967,6 +973,11 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
 
         raises EncodingError if some error occurs during decoding"""
 
+        from . import BIN
+        from . import transfer_data
+        import subprocess
+        import os
+
         if (self.filename.endswith(".ape")):
             devnull = file(os.devnull, "wb")
             sub = subprocess.Popen([BIN['mac'],
@@ -1005,6 +1016,10 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
         encodes a new audio file from the wave's data
         at the given filename with the specified compression level
         and returns a new ApeAudio object"""
+
+        from . import BIN
+        import subprocess
+        import os
 
         if (str(compression) not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION

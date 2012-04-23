@@ -18,20 +18,10 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import (AudioFile, MetaData, InvalidFile, PCMReader,
-                        transfer_data, transfer_framelist_data,
-                        subprocess, BIN, FRAMELIST_SIZE, cStringIO,
-                        os, open_files, Image, sys, WaveAudio, AiffAudio,
-                        ReplayGain, ignore_sigint, sheet_to_unicode,
-                        EncodingError, UnsupportedChannelMask, DecodingError,
-                        UnsupportedChannelCount,
-                        Messenger, BufferedPCMReader, calculate_replay_gain,
-                        ChannelMask, PCMReaderError, __default_quality__,
-                        WaveContainer, AiffContainer, to_pcm_progress,
-                        image_metrics, RIFF_Chunk, AIFF_Chunk,
-                        PCMReaderProgress)
-from __vorbiscomment__ import *
-from __id3__ import skip_id3v2_comment
+from . import (AudioFile, MetaData, InvalidFile, Image,
+               WaveContainer, AiffContainer)
+from .vorbiscomment import VorbisComment
+from .id3 import skip_id3v2_comment
 
 import gettext
 
@@ -732,6 +722,8 @@ class Flac_PICTURE(Image):
                                                        "Other")
 
     def clean(self, fixes_performed):
+        from .image import image_metrics
+
         img = image_metrics(self.data)
 
         if ((self.mime_type != img.mime_type) or
@@ -1058,6 +1050,8 @@ class Flac_CUESHEET:
             return []
 
     def __unicode__(self):
+        from . import sheet_to_unicode
+
         return sheet_to_unicode(self, None)
 
 
@@ -1291,6 +1285,8 @@ class FlacAudio(WaveContainer, AiffContainer):
     def channel_mask(self):
         """returns a ChannelMask object of this track's channel layout"""
 
+        from . import ChannelMask
+
         if (self.channels() <= 2):
             return ChannelMask.from_channels(self.channels())
 
@@ -1412,6 +1408,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             #rewrite entire file to fit new metadata
 
             import tempfile
+            from . import transfer_data
 
             stream = file(self.filename, 'rb')
             stream.seek(self.__stream_offset__, 0)
@@ -1608,6 +1605,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         """returns a PCMReader object containing the track's PCM data"""
 
         from . import decoders
+        from . import PCMReaderError
 
         try:
             return decoders.FlacDecoder(self.filename,
@@ -1633,7 +1631,11 @@ class FlacAudio(WaveContainer, AiffContainer):
         at the given filename with the specified compression level
         and returns a new FlacAudio object"""
 
-        from . import encoders
+        from .encoders import encode_flac
+        from . import EncodingError
+        from . import UnsupportedChannelCount
+        from . import BufferedPCMReader
+        from . import __default_quality__
 
         if ((compression is None) or
             (compression not in cls.COMPRESSION_MODES)):
@@ -1711,13 +1713,15 @@ class FlacAudio(WaveContainer, AiffContainer):
              0x0607,    # 5ch - L, R, C, side left, side right
              0x003F,    # 6ch - L, R, C, LFE, back left, back right
              0x060F)):  # 6ch - L, R, C, LFE, side left, side right
+            from . import UnsupportedChannelMask
+
             raise UnsupportedChannelMask(filename,
                                          int(pcmreader.channel_mask))
         else:
             channel_mask = int(pcmreader.channel_mask)
 
         try:
-            offsets = encoders.encode_flac(
+            offsets = encode_flac(
                 filename,
                 pcmreader=BufferedPCMReader(pcmreader),
                 **encoding_options)
@@ -1806,6 +1810,8 @@ class FlacAudio(WaveContainer, AiffContainer):
         """yields a set of RIFF_Chunk or RIFF_File_Chunk objects"""
 
         from struct import unpack
+        from .wave import RIFF_Chunk
+        from . import PCMReaderProgress
 
         for application_block in [
             block.data for block in
@@ -1836,6 +1842,9 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         raises EncodingError if some error occurs during decoding"""
 
+        from . import to_pcm_progress
+        from . import WaveAudio
+
         if (self.has_foreign_riff_chunks()):
             WaveAudio.wave_from_chunks(wave_filename,
                                        self.riff_wave_chunks(progress))
@@ -1853,6 +1862,11 @@ class FlacAudio(WaveContainer, AiffContainer):
         encodes a new audio file from the wave's data
         at the given filename with the specified compression level
         and returns a new FlacAudio object"""
+
+        import cStringIO
+        from . import WaveAudio
+        from . import __default_quality__
+        from . import to_pcm_progress
 
         if ((compression is None) or
             (compression not in cls.COMPRESSION_MODES)):
@@ -1913,6 +1927,11 @@ class FlacAudio(WaveContainer, AiffContainer):
         at the given filename with the specified compression level
         and returns a new FlacAudio object"""
 
+        import cStringIO
+        from . import AiffAudio
+        from . import __default_quality__
+        from . import to_pcm_progress
+
         if ((compression is None) or
             (compression not in cls.COMPRESSION_MODES)):
             compression = __default_quality__(cls.NAME)
@@ -1958,6 +1977,9 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         raises EncodingError if some error occurs during decoding"""
 
+        from . import AiffAudio
+        from . import to_pcm_progress
+
         if (self.has_foreign_aiff_chunks()):
             AiffAudio.aiff_from_chunks(aiff_filename,
                                        self.aiff_chunks(progress))
@@ -1968,6 +1990,8 @@ class FlacAudio(WaveContainer, AiffContainer):
         """yields a set of AIFF_Chunk or AIFF_File_Chunk objects"""
 
         from struct import unpack
+        from .aiff import AIFF_Chunk
+        from . import PCMReaderProgress
 
         for application_block in [
             block.data for block in
@@ -2006,6 +2030,9 @@ class FlacAudio(WaveContainer, AiffContainer):
         #It's hard to envision a scenario in which that would happen.
 
         import tempfile
+        from . import WaveAudio
+        from . import AiffAudio
+        from . import to_pcm_progress
 
         if (target_class == WaveAudio):
             self.to_wave(target_path, progress=progress)
@@ -2103,6 +2130,9 @@ class FlacAudio(WaveContainer, AiffContainer):
         raises ValueError if some problem occurs during ReplayGain application
         """
 
+        from . import open_files
+        from . import calculate_replay_gain
+
         tracks = [track for track in open_files(filenames) if
                   isinstance(track, cls)]
 
@@ -2148,6 +2178,8 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         returns None if we have no values"""
 
+        from . import ReplayGain
+
         try:
             vorbis_metadata = self.get_metadata().get_block(
                 Flac_VORBISCOMMENT.BLOCK_ID)
@@ -2173,6 +2205,8 @@ class FlacAudio(WaveContainer, AiffContainer):
         if (isinstance(audiofile, FlacAudio)):
             return self.__md5__ == audiofile.__md5__
         elif (isinstance(audiofile, AudioFile)):
+            from . import FRAMELIST_SIZE
+
             try:
                 from hashlib import md5
             except ImportError:
@@ -2201,6 +2235,9 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         raises IOError if unable to write the file or its metadata
         """
+
+        import os.path
+        from . import VERSION
 
         def seektable_valid(seektable, metadata_offset, input_file):
             from .bitstream import BitstreamReader
@@ -2309,6 +2346,8 @@ class FlacAudio(WaveContainer, AiffContainer):
                 #fix empty MD5SUM
                 if (self.__md5__ == chr(0) * 16):
                     from hashlib import md5
+                    from . import transfer_framelist_data
+
                     md5sum = md5()
                     transfer_framelist_data(
                         self.to_pcm(),
@@ -2391,6 +2430,7 @@ class FLAC_Data_Chunk:
         in bytes"""
 
         from struct import pack
+        from . import FRAMELIST_SIZE
 
         f.write(self.id)
         f.write(pack("<I", self.size()))
@@ -2433,6 +2473,7 @@ class FLAC_SSND_Chunk(FLAC_Data_Chunk):
         in bytes"""
 
         from struct import pack
+        from . import FRAMELIST_SIZE
 
         f.write(self.id)
         f.write(pack(">I", self.size()))
@@ -2479,7 +2520,7 @@ class OggFlacMetaData(FlacMetaData):
     def parse(cls, reader):
         """returns an OggFlacMetaData object from the given BitstreamReader"""
 
-        from . import read_ogg_packets
+        from .ogg import read_ogg_packets
 
         streaminfo = None
         applications = []
@@ -2713,7 +2754,8 @@ class OggFlacAudio(FlacAudio):
         from .bitstream import BitstreamRecorder
         from .bitstream import BitstreamAccumulator
         from .bitstream import BitstreamReader
-        from . import OggStreamReader, OggStreamWriter
+        from .ogg import OggStreamReader, OggStreamWriter
+        from . import transfer_data
 
         new_file = tempfile.TemporaryFile()
         try:
@@ -2840,6 +2882,7 @@ class OggFlacAudio(FlacAudio):
         """returns a PCMReader object containing the track's PCM data"""
 
         from . import decoders
+        from . import PCMReaderError
 
         try:
             return decoders.OggFlacDecoder(self.filename,
@@ -2863,6 +2906,16 @@ class OggFlacAudio(FlacAudio):
         encodes a new audio file from pcmreader's data
         at the given filename with the specified compression level
         and returns a new OggFlacAudio object"""
+
+        from . import BIN
+        from . import transfer_framelist_data
+        from . import ignore_sigint
+        from . import EncodingError
+        from . import DecodingError
+        from . import UnsupportedChannelCount
+        from . import __default_quality__
+        import subprocess
+        import os
 
         SUBSTREAM_SAMPLE_RATES = frozenset([
                 8000,  16000, 22050, 24000, 32000,
@@ -2904,6 +2957,8 @@ class OggFlacAudio(FlacAudio):
              0x0607,    # 5ch - L, R, C, side left, side right
              0x003F,    # 6ch - L, R, C, LFE, back left, back right
              0x060F)):  # 6ch - L, R, C, LFE, side left, side right
+            from . import UnsupportedChannelMask
+
             raise UnsupportedChannelMask(filename,
                                          int(pcmreader.channel_mask))
         else:

@@ -131,8 +131,10 @@ try:
         def get_metadata(self):
             """returns a populated MetaData object"""
 
+            from . import MetaData
+
             #anything not present is populated by Album widget
-            return audiotools.MetaData(
+            return MetaData(
                 track_name=self.track_name.get_edit_text(),
                 track_number=self.metadata.track_number,
                 track_total=self.metadata.track_total,
@@ -173,6 +175,8 @@ try:
             """takes a list of Track objects and constructs an Album widget
             for modifying album-specific metadata
             (which may propagate to tracks)"""
+
+            from . import most_numerous
 
             self.tracks = tracks
 
@@ -218,7 +222,7 @@ try:
                           "date",
                           "comment"]:
                 setattr(self, field,
-                        DownEdit(edit_text=audiotools.most_numerous(
+                        DownEdit(edit_text=most_numerous(
                             [getattr(t.metadata, field) for t in tracks],
                             empty_list=u"",
                             all_differ=u"various")))
@@ -290,6 +294,8 @@ try:
             and a select_item() callback for when an album or track is selected
             and returns a tree-like widget for editing an album or tracks"""
 
+            from . import iter_last
+
             self.albums = albums
             self.radios = []      # all our radio button-like checkboxes
             rows = []
@@ -329,7 +335,7 @@ try:
                                     for t in album.tracks])
 
                 #setup track rows
-                for (last, track) in audiotools.iter_last(iter(album.tracks)):
+                for (last, track) in iter_last(iter(album.tracks)):
                     #the checkbox for selecting a track
                     checkbox = urwid.CheckBox(u"",
                                               on_state_change=select_item,
@@ -406,8 +412,8 @@ try:
             self.metadata_choices = metadata_choices
 
             #a list of AlbumList objects, one for each possible choice
-            self.album_lists = [audiotools.ui.AlbumList(
-                    [audiotools.ui.Album(map(audiotools.ui.Track,
+            self.album_lists = [AlbumList(
+                    [Album(map(Track,
                                              metadata_choice))],
                     self.select_album_or_track)
                                 for metadata_choice in metadata_choices]
@@ -456,14 +462,14 @@ try:
             if (len(metadata_choices) == 1):
                 #automatically shift to selected choice
                 #if only one available
-                self.work_area = audiotools.ui.FocusFrame(
+                self.work_area = FocusFrame(
                     header=self.back_apply,
                     body=urwid.Filler(self.album_lists[0], valign='top'),
                     footer=self.collapsed,
                     focus_part="header")
             else:
                 #otherwise, offer a choice of albums to select
-                self.work_area = audiotools.ui.FocusFrame(
+                self.work_area = FocusFrame(
                     header=self.select_header,
                     body=self.select_album,
                     footer=self.collapsed,
@@ -585,9 +591,11 @@ try:
             """keys is a [(key, action), ...] list
             where 'key' and 'action' are both strings"""
 
+            from . import iter_last
+
             if (len(keys) > 0):
                 text = []
-                for (last, (key, action)) in audiotools.iter_last(iter(keys)):
+                for (last, (key, action)) in iter_last(iter(keys)):
                     text.append(('key', key))
                     text.append(u" - " + action)
                     if (not last):

@@ -17,13 +17,8 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import (AudioFile, ChannelMask, PCMReader,
-                        transfer_framelist_data, WaveAudio,
-                        AiffAudio, cStringIO, EncodingError,
-                        UnsupportedBitsPerSample, InvalidFile,
-                        PCMReaderError,
-                        WaveContainer, AiffContainer, to_pcm_progress,
-                        parse_fmt, parse_comm)
+from audiotools import (AudioFile, ChannelMask, InvalidFile,
+                        WaveContainer, AiffContainer)
 
 import os.path
 
@@ -41,7 +36,9 @@ class ShortenAudio(WaveContainer, AiffContainer):
     def __init__(self, filename):
         """filename is a plain string"""
 
-        from audiotools.bitstream import BitstreamReader
+        from .bitstream import BitstreamReader
+        from . import ChannelMask
+        import cStringIO
 
         AudioFile.__init__(self, filename)
         try:
@@ -105,6 +102,8 @@ class ShortenAudio(WaveContainer, AiffContainer):
                         (chunk_id, chunk_size) = wave.parse("4b 32u")
                         total_size -= 8
                         if (chunk_id == 'fmt '):
+                            from .wav import parse_fmt
+
                             (channels,
                              self.__sample_rate__,
                              bits_per_sample,
@@ -135,6 +134,8 @@ class ShortenAudio(WaveContainer, AiffContainer):
                         (chunk_id, chunk_size) = aiff.parse("4b 32u")
                         total_size -= 8
                         if (chunk_id == 'COMM'):
+                            from .aiff import parse_comm
+
                             (channels,
                              total_sample_frames,
                              bits_per_sample,
@@ -198,10 +199,11 @@ class ShortenAudio(WaveContainer, AiffContainer):
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
-        try:
-            from . import decoders
+        from .decoders import SHNDecoder
+        from . import PCMReaderError
 
-            return decoders.SHNDecoder(self.filename)
+        try:
+            return SHNDecoder(self.filename)
         except (IOError, ValueError), msg:
             #these may not be accurate if the Shorten file is broken
             #but if it is broken, there'll be no way to
@@ -223,9 +225,12 @@ class ShortenAudio(WaveContainer, AiffContainer):
         at the given filename with the specified compression level
         and returns a new ShortenAudio object"""
 
+        from . import UnsupportedBitsPerSample
+
         if (pcmreader.bits_per_sample not in (8, 16)):
             raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
 
+        from . import WaveAudio
         import tempfile
 
         f = tempfile.NamedTemporaryFile(suffix=".wav")
@@ -244,6 +249,9 @@ class ShortenAudio(WaveContainer, AiffContainer):
         raises EncodingError if some error occurs during decoding"""
 
         from . import decoders
+        from . import WaveAudio
+        from . import EncodingError
+        from . import to_pcm_progress
 
         try:
             (head, tail) = decoders.SHNDecoder(self.filename).pcm_split()
@@ -282,6 +290,9 @@ class ShortenAudio(WaveContainer, AiffContainer):
         raises EncodingError if some error occurs during decoding"""
 
         from . import decoders
+        from . import AiffAudio
+        from . import EncodingError
+        from . import to_pcm_progress
 
         try:
             (head, tail) = decoders.SHNDecoder(self.filename).pcm_split()
@@ -326,6 +337,10 @@ class ShortenAudio(WaveContainer, AiffContainer):
         at the given filename with the specified compression level
         and returns a new ShortenAudio object"""
 
+        from . import WaveAudio
+        from . import UnsupportedBitsPerSample
+        from . import to_pcm_progress
+
         wave = WaveAudio(wave_filename)
 
         if (wave.bits_per_sample() not in (8, 16)):
@@ -366,11 +381,17 @@ class ShortenAudio(WaveContainer, AiffContainer):
         """encodes a new AudioFile from an existing .aiff file
 
         takes a filename string, aiff_filename string
-        of an existing WaveAudio file
+        of an existing AiffAudio file
         and an optional compression level string
         encodes a new audio file from the aiff's data
         at the given filename with the specified compression level
         and returns a new ShortenAudio object"""
+
+        from . import AiffAudio
+        from . import EncodingError
+        from . import UnsupportedBitsPerSample
+        from .encoders import encode_shn
+        from . import to_pcm_progress
 
         aiff = AiffAudio(aiff_filename)
 
@@ -378,8 +399,6 @@ class ShortenAudio(WaveContainer, AiffContainer):
             raise UnsupportedBitsPerSample(filename, aiff.bits_per_sample())
 
         (head, tail) = aiff.pcm_split()
-
-        from .encoders import encode_shn
 
         try:
             if (len(tail) == 0):
@@ -421,6 +440,9 @@ class ShortenAudio(WaveContainer, AiffContainer):
         #both RIFF chunks and AIFF chunks at the same time.
 
         import tempfile
+        from . import WaveAudio
+        from . import AiffAudio
+        from . import to_pcm_progress
 
         if (target_class == WaveAudio):
             self.to_wave(target_path, progress=progress)
@@ -467,6 +489,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
 
         from . import decoders
         from . import bitstream
+        import cStringIO
 
         try:
             (head, tail) = decoders.SHNDecoder(self.filename).pcm_split()
@@ -509,6 +532,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
 
         from . import decoders
         from . import bitstream
+        import cStringIO
 
         try:
             (head, tail) = decoders.SHNDecoder(self.filename).pcm_split()

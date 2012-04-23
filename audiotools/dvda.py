@@ -18,10 +18,6 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import re, os, pcm, cStringIO, struct
-from .bitstream import BitstreamReader
-
-
 class DVDAudio:
     """an object representing an entire DVD-Audio disc
 
@@ -36,6 +32,10 @@ class DVDAudio:
 
     def __init__(self, audio_ts_path, cdrom_device=None):
         """a DVD-A which contains PCMReader-compatible track objects"""
+
+        import re
+        import os
+        import os.path
 
         self.audio_ts_path = audio_ts_path
         self.cdrom_device = cdrom_device
@@ -81,6 +81,8 @@ class DVDAudio:
     def __titlesets__(self):
         """return valid audio titleset integers from AUDIO_TS.IFO"""
 
+        from .bitstream import BitstreamReader
+
         try:
             f = open(self.files['AUDIO_TS.IFO'], 'rb')
         except (KeyError, IOError):
@@ -118,6 +120,9 @@ class DVDAudio:
         """returns a list of DVDATitle objects for the given titleset"""
 
         #this requires bouncing all over the ATS_XX_0.IFO file
+
+        import os
+        from .bitstream import BitstreamReader
 
         try:
             f = open(self.files['ATS_%2.2d_0.IFO' % (titleset)], 'rb')
@@ -250,6 +255,10 @@ class DVDATitle:
 
     def __parse_info__(self):
         """generates a cache of sample_rate, bits-per-sample, etc"""
+
+        import re
+        import os.path
+        from .bitstream import BitstreamReader
 
         if (len(self.tracks) == 0):
             return

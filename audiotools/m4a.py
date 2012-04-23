@@ -18,20 +18,8 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import (AudioFile, InvalidFile, PCMReader, PCMConverter,
-                        transfer_data, transfer_framelist_data,
-                        subprocess, BIN, cStringIO, MetaData, os,
-                        Image, image_metrics, InvalidImage,
-                        ignore_sigint, InvalidFormat,
-                        open, open_files, EncodingError, DecodingError,
-                        WaveAudio, WaveReader,
-                        ChannelMask, UnsupportedBitsPerSample,
-                        UnsupportedChannelMask,
-                        UnsupportedChannelCount,
-                        BufferedPCMReader, to_pcm_progress,
-                        at_a_time, VERSION, PCMReaderError,
-                        __default_quality__, iter_last)
-from __m4a_atoms__ import *
+from audiotools import (AudioFile, InvalidFile, BIN, Image)
+from .m4a_atoms import *
 import gettext
 
 gettext.install("audiotools", unicode=True)
@@ -53,6 +41,8 @@ def get_m4a_atom(reader, *atoms):
     after traversing the parent atoms
     """
 
+    from . import iter_last
+
     for (last, next_atom) in iter_last(iter(atoms)):
         try:
             (length, stream_atom) = reader.parse("32u 4b")
@@ -72,6 +62,8 @@ def get_m4a_atom_offset(reader, *atoms):
     returns a (size, offset) of the final atom data
     (including its 64-bit size/name header)
     after traversing the parent atoms"""
+
+    from . import iter_last
 
     offset = 0
 
@@ -149,6 +141,7 @@ class M4ATaggedAudio:
 
         from .bitstream import BitstreamWriter
         from .bitstream import BitstreamReader
+        import os.path
 
         if (metadata is None):
             return
@@ -273,6 +266,8 @@ class M4ATaggedAudio:
         this removes or unsets tags as necessary in order to remove all data
         raises IOError if unable to write the file"""
 
+        from . import MetaData
+
         self.set_metadata(MetaData())
 
 
@@ -341,6 +336,8 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
 
     def channel_mask(self):
         """returns a ChannelMask object of this track's channel layout"""
+
+        from . import ChannelMask
 
         #M4A seems to use the same channel assignment
         #as old-style RIFF WAVE/FLAC
@@ -439,6 +436,10 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
+        from . import PCMReader
+        import subprocess
+        import os
+
         devnull = file(os.devnull, "ab")
 
         sub = subprocess.Popen([BIN['faad'], "-f", str(2), "-w",
@@ -462,6 +463,17 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
         encodes a new audio file from pcmreader's data
         at the given filename with the specified compression level
         and returns a new M4AAudio object"""
+
+        from . import PCMConverter
+        from . import transfer_data
+        from . import transfer_framelist_data
+        from . import ignore_sigint
+        from . import EncodingError
+        from . import DecodingError
+        from . import ChannelMask
+        from . import __default_quality__
+        import subprocess
+        import os
 
         if ((compression is None) or
             (compression not in cls.COMPRESSION_MODES)):
@@ -555,6 +567,10 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
         raises ValueError if some problem occurs during ReplayGain application
         """
 
+        import subprocess
+        import os
+        from . import open_files
+
         track_names = [track.filename for track in
                        open_files(filenames) if
                        isinstance(track, cls)]
@@ -599,11 +615,17 @@ class M4AAudio_nero(M4AAudio_faac):
         at the given filename with the specified compression level
         and returns a new M4AAudio object"""
 
+        import tempfile
+        import os
+        import os.path
+        from . import PCMConverter
+        from . import WaveAudio
+        from . import __default_quality__
+
         if ((compression is None) or
             (compression not in cls.COMPRESSION_MODES)):
             compression = __default_quality__(cls.NAME)
 
-        import tempfile
         tempwavefile = tempfile.NamedTemporaryFile(suffix=".wav")
         try:
             if (pcmreader.sample_rate > 96000):
@@ -629,6 +651,10 @@ class M4AAudio_nero(M4AAudio_faac):
 
     def to_pcm(self):
         import tempfile
+        from . import EncodingError
+        from . import PCMReaderError
+        from .wave import WaveReader
+
         f = tempfile.NamedTemporaryFile(suffix=".wav")
         try:
             self.to_wave(f.name)
@@ -648,6 +674,10 @@ class M4AAudio_nero(M4AAudio_faac):
         """writes the contents of this file to the given .wav filename string
 
         raises EncodingError if some error occurs during decoding"""
+
+        import subprocess
+        import os
+        from . import EncodingError
 
         devnull = file(os.devnull, "w")
         try:
@@ -673,6 +703,12 @@ class M4AAudio_nero(M4AAudio_faac):
         at the given filename with the specified compression level
         and returns a new M4AAudio object"""
 
+        from . import PCMConverter
+        from . import EncodingError
+        from . import WaveAudio
+        from . import to_pcm_progress
+        from . import __default_quality__
+
         if ((compression is None) or
             (compression not in cls.COMPRESSION_MODES)):
             compression = __default_quality__(cls.NAME)
@@ -686,6 +722,8 @@ class M4AAudio_nero(M4AAudio_faac):
         if (wave.sample_rate > 96000):
             #convert through PCMConverter if sample rate is too high
             import tempfile
+            import os.path
+
             tempwavefile = tempfile.NamedTemporaryFile(suffix=".wav")
             try:
                 tempwave = WaveAudio.from_pcm(
@@ -707,6 +745,10 @@ class M4AAudio_nero(M4AAudio_faac):
 
     @classmethod
     def __from_wave__(cls, filename, wave_filename, compression):
+        import subprocess
+        import os
+        from . import EncodingError
+
         devnull = file(os.devnull, "w")
         try:
             sub = subprocess.Popen([BIN["neroAacEnc"],
@@ -910,6 +952,8 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
     def channel_mask(self):
         """returns a ChannelMask object of this track's channel layout"""
 
+        from . import ChannelMask
+
         return {1: ChannelMask.from_fields(front_center=True),
                 2: ChannelMask.from_fields(front_left=True,
                                            front_right=True),
@@ -966,10 +1010,11 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
-        import audiotools.decoders
+        from .decoders import ALACDecoder
+        from . import PCMReaderError
 
         try:
-            return audiotools.decoders.ALACDecoder(self.filename)
+            return ALACDecoder(self.filename)
         except (IOError, ValueError), msg:
             return PCMReaderError(error_message=str(msg),
                                   sample_rate=self.sample_rate(),
@@ -989,6 +1034,8 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
         and returns a new ALACAudio object"""
 
         if (pcmreader.bits_per_sample not in (16, 24)):
+            from . import UnsupportedBitsPerSample
+
             raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
 
         if (int(pcmreader.channel_mask) not in
@@ -1002,11 +1049,17 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
              0x013F,    # 7ch - C, L, R, bL, bR, back center, LFE
              0x00FF,    # 8ch - C, cL, cR, L, R, bL, bR, LFE
              0x0000)):  # undefined
+            from . import UnsupportedChannelMask
+
             raise UnsupportedChannelMask(filename,
                                          int(pcmreader.channel_mask))
 
-        from . import encoders
+        from .encoders import encode_alac
         from .bitstream import BitstreamWriter
+        from . import transfer_data
+        from . import EncodingError
+        from . import BufferedPCMReader
+        from . import at_a_time
         import time
         import tempfile
 
@@ -1019,7 +1072,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
             (frame_sample_sizes,
              frame_byte_sizes,
              frame_file_offsets,
-             mdat_size) = encoders.encode_alac(
+             mdat_size) = encode_alac(
                 file=mdat_file,
                 pcmreader=BufferedPCMReader(pcmreader),
                 block_size=block_size,
@@ -1301,6 +1354,8 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
 
     @classmethod
     def __meta_atom__(cls):
+        from . import VERSION
+
         return M4A_META_Atom(
             version=0,
             flags=0,

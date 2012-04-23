@@ -27,18 +27,12 @@ if (sys.version_info < (2, 6, 0, 'final', 0)):
 
 
 from . import pcm as pcm
-import subprocess
 import re
-import cStringIO
 import os
 import os.path
 import ConfigParser
 import optparse
-import struct
-from itertools import izip
 import gettext
-import unicodedata
-import cPickle
 
 gettext.install("audiotools", unicode=True)
 
@@ -243,6 +237,8 @@ def str_width(s):
     as well as embedded ANSI sequences
     """
 
+    import unicodedata
+
     return sum(
         [__CHAR_WIDTHS__.get(unicodedata.east_asian_width(char), 1) for char in
          unicodedata.normalize('NFC', __ANSI_SEQUENCE__.sub(u"", s))])
@@ -256,6 +252,8 @@ class display_unicode:
     """
 
     def __init__(self, unicode_string):
+        import unicodedata
+
         self.__string__ = unicodedata.normalize(
             'NFC',
             __ANSI_SEQUENCE__.sub(u"", unicode(unicode_string)))
@@ -1048,7 +1046,7 @@ class UnsupportedChannelMask(EncodingError):
             _(u"Unable to write \"%(target_filename)s\"" +
               u" with channel assignment \"%(assignment)s\"") %
             {"target_filename": VerboseMessenger(None).filename(filename),
-             "assignment": audiotools.ChannelMask(mask)})
+             "assignment": ChannelMask(mask)})
 
 
 class UnsupportedChannelCount(EncodingError):
@@ -1703,6 +1701,7 @@ def stripped_pcm_cmp(pcmreader1, pcmreader2):
         (pcmreader1.bits_per_sample != pcmreader2.bits_per_sample)):
         return False
 
+    import cStringIO
     try:
         from hashlib import sha1 as sha
     except ImportError:
@@ -1937,6 +1936,7 @@ def pcm_split(reader, pcm_lengths):
     as the full stream.  reader is closed upon completion
     """
 
+    import cStringIO
     import tempfile
 
     def chunk_sizes(total_size, chunk_size):
@@ -2000,6 +2000,8 @@ class __stereo_to_mono__:
         pass
 
     def convert(self, frame_list):
+        from itertools import izip
+
         return pcm.from_list(
             [(l + r) / 2 for l, r in izip(frame_list.channel(0),
                                           frame_list.channel(1))],
@@ -2070,6 +2072,8 @@ class __downmixer__:
         self.has_empty_channels = (-1 in self.channels_to_keep)
 
     def convert(self, frame_list):
+        from itertools import izip
+
         REAR_GAIN = 0.6
         CENTER_GAIN = 0.7
 
@@ -2185,6 +2189,8 @@ class __convert_bits_per_sample__:
 
 
 def __add_dither__(frame_list):
+    from itertools import izip
+
     if (frame_list.bits_per_sample >= 16):
         random_bytes = map(ord, os.urandom((len(frame_list) / 8) + 1))
         white_noise = [(random_bytes[i / 8] & (1 << (i % 8))) >> (i % 8)
@@ -2314,6 +2320,8 @@ class ReplayGainReader:
 
     def read(self, pcm_frames):
         """try to read a pcm.FrameList with the given number of PCM frames"""
+
+        from itertools import izip
 
         multiplier = self.multiplier
         samples = self.reader.read(pcm_frames)
@@ -3002,6 +3010,8 @@ class Image:
         raises InvalidImage if some error occurs during parsing
         """
 
+        from .image import image_metrics
+
         img = image_metrics(image_data)
 
         return Image(data=image_data,
@@ -3037,6 +3047,17 @@ class Image:
 
     def __ne__(self, image):
         return not self.__eq__(image)
+
+
+class InvalidImage(Exception):
+    """raised if an image cannot be parsed correctly"""
+
+    def __init__(self, err):
+        self.err = unicode(err)
+
+    def __unicode__(self):
+        return self.err
+
 
 #######################
 #ReplayGain Metadata
@@ -3901,27 +3922,6 @@ def iter_last(iterator):
             return
 
 
-from __image__ import *
-
-from __wav__ import *
-
-from __au__ import *
-from __ogg__ import *
-from __vorbiscomment__ import *
-from __id3__ import *
-from __aiff__ import *
-from __flac__ import *
-
-from __ape__ import *
-from __mp3__ import *
-from __vorbis__ import *
-from __m4a__ import *
-from __wavpack__ import *
-from __shn__ import *
-
-from __dvda__ import *
-
-
 #######################
 #CD data
 #######################
@@ -4397,10 +4397,6 @@ def most_numerous(item_list, empty_list="", all_differ=""):
 
 __most_numerous__ = most_numerous
 
-from __freedb__ import *
-from __musicbrainz__ import *
-from __accuraterip__ import *
-
 
 def read_metadata_file(filename):
     """returns an AlbumMetaDataFile-compatible file from a filename string
@@ -4503,6 +4499,15 @@ def metadata_lookup(first_track_number, last_track_number,
 
 
 #######################
+#DVD-Audio Discs
+#######################
+
+
+from .dvda import DVDAudio
+from .dvda import InvalidDVDA
+
+
+#######################
 #Multiple Jobs Handling
 #######################
 
@@ -4594,6 +4599,8 @@ class ExecQueue2:
         returns a (pid, reader) tuple where pid is an int of the child job
         and reader is a file object containing its piped data"""
 
+        import cPickle
+
         (pipe_read, pipe_write) = os.pipe()
         pid = os.fork()
         if (pid > 0):  # parent
@@ -4627,6 +4634,7 @@ class ExecQueue2:
         are added to our "return_values" attribute"""
 
         import select
+        import cPickle
 
         (readable,
          writeable,
@@ -4838,6 +4846,7 @@ class __ProgressQueueJob__:
 
         import mmap
         import struct
+        import cPickle
 
         progress = mmap.mmap(-1, 16)  # 2, 64-bit fields of progress data
         (r3, w3) = os.pipe()  # for sending final result from child->parent
@@ -4872,6 +4881,8 @@ class __ProgressQueueJob__:
         in that instance, self.result will be populated
         with the function's return value
         and the child process will be disposed of"""
+
+        import cPickle
 
         if (os.waitpid(self.__pid__, os.WNOHANG) != (0, 0)):
             try:
@@ -4908,11 +4919,28 @@ class __PollingProgress__:
         self.memory.seek(0, 0)
         self.memory.write(struct.pack(">QQ", current, total))
 
+from .au import AuAudio
+from .wav import WaveAudio
+from .aiff import AiffAudio
+from .flac import FlacAudio
+from .flac import OggFlacAudio
+from .wavpack import WavPackAudio
+from .shn import ShortenAudio
+from .mp3 import MP3Audio
+from .mp3 import MP2Audio
+from .vorbis import VorbisAudio
+from .m4a import M4AAudio
+from .m4a import ALACAudio
 
-#***ApeAudio temporarily removed***
-#Without a legal alternative to mac-port, I shall have to re-implement
-#Monkey's Audio with my own code in order to make it available again.
-#Yet another reason to avoid that unpleasant file format...
+from .ape import ApeTag
+from .flac import FlacMetaData
+from .id3 import ID3CommentPair
+from .id3v1 import ID3v1Comment
+from .id3 import ID3v22Comment
+from .id3 import ID3v23Comment
+from .id3 import ID3v24Comment
+from .m4a_atoms import M4A_META_Atom
+from .vorbiscomment import VorbisComment
 
 AVAILABLE_TYPES = (FlacAudio,
                    OggFlacAudio,

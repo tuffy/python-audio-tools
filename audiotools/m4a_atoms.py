@@ -17,7 +17,8 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import MetaData, Image, image_metrics
+from . import MetaData, Image
+from .image import image_metrics
 
 #M4A atoms are typically laid on in the file as follows:
 # ftyp

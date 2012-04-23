@@ -19,8 +19,7 @@
 
 """the TOC file handling module"""
 
-import re
-from audiotools import SheetException, parse_timestamp, build_timestamp
+from . import SheetException
 import gettext
 
 gettext.install("audiotools", unicode=True)
@@ -40,6 +39,9 @@ def parse(lines):
     """returns a TOCFile object from an iterator of lines
 
     raises TOCException if some problem occurs parsing the file"""
+
+    import re
+    from . import parse_timestamp
 
     TRACKLINE = re.compile(r'TRACK AUDIO')
 
@@ -108,6 +110,8 @@ class TOCFile:
 
         if present, this value is typically a CD's UPC code"""
 
+        import re
+
         for line in self.lines:
             if (line.startswith('CATALOG')):
                 result = re.search(r'"(.+)"', line)
@@ -162,6 +166,7 @@ class TOCFile:
         """
 
         import cStringIO
+        from . import build_timestamp
 
         catalog = sheet.catalog()        # a catalog string, or None
         indexes = list(sheet.indexes())  # a list of index tuples
@@ -220,6 +225,8 @@ class Track:
 
     def ISRC(self):
         """returns the track's ISRC value, or None"""
+
+        import re
 
         for line in self.lines:
             if (line.startswith('ISRC')):
