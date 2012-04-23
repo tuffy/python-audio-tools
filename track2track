@@ -50,10 +50,15 @@ def convert(progress, source_audiofile, destination_filename,
                         audiotools.THUMBNAIL_FORMAT))
 
         destination_audiofile.set_metadata(metadata)
-    else:
+    elif ((source_audiofile.track_number() != 0) or
+          (source_audiofile.album_number() != 0)):
         destination_audiofile.set_metadata(audiotools.MetaData(
                 track_number=source_audiofile.track_number(),
                 album_number=source_audiofile.album_number()))
+    else:
+        #don't set any metadata
+        pass
+
 
     existing_cuesheet = source_audiofile.get_cuesheet()
     if (existing_cuesheet is not None):

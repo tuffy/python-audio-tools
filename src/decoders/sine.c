@@ -98,7 +98,6 @@ static PyObject*
 Sine_Mono_read(decoders_Sine_Mono* self, PyObject* args) {
     int requested_frames;
     int frames_to_read;
-    int bytes_per_frame = self->bits_per_sample / 8;
     int i;
     double d;
     int ia;
@@ -239,7 +238,6 @@ static PyObject*
 Sine_Stereo_read(decoders_Sine_Stereo* self, PyObject* args) {
     int requested_frames;
     int frames_to_read;
-    int bytes_per_frame = 2 * (self->bits_per_sample / 8);
     int i;
     double d;
     int ia;
@@ -377,7 +375,6 @@ static PyObject*
 Sine_Simple_read(decoders_Sine_Simple* self, PyObject* args) {
     int requested_frames;
     int frames_to_read;
-    int bytes_per_frame = self->bits_per_sample / 8;
     int i;
     array_i* buffer;
     double d;
