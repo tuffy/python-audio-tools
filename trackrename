@@ -48,7 +48,14 @@ if (__name__ == '__main__'):
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("trackrename", options)
 
-    audiofiles = audiotools.open_files(args, messenger=msg)
+    try:
+        audiofiles = audiotools.open_files(args,
+                                           messenger=msg,
+                                           no_duplicates=True)
+    except audiotools.DuplicateFile, err:
+        msg.error(u"File \"%s\" included more than once" %
+                  (msg.filename(err.filename)))
+        sys.exit(1)
 
     if (len(audiofiles) < 1):
         msg.error(_(u"You must specify at least 1 supported audio file"))

@@ -46,11 +46,17 @@ def cmp_files(progress, audiofile1, audiofile2):
     a negative value if some error occurs."""
 
     try:
-        return (audiofile1.filename,
-                audiofile2.filename,
-                audiotools.pcm_frame_cmp(audiotools.to_pcm_progress(audiofile1,
-                                                                    progress),
-                                         audiofile2.to_pcm()))
+        if (os.path.samefile(audiofile1.filename, audiofile2.filename)):
+            return (audiofile1.filename,
+                    audiofile2.filename,
+                    None)
+        else:
+            return (audiofile1.filename,
+                    audiofile2.filename,
+                    audiotools.pcm_frame_cmp(
+                    audiotools.to_pcm_progress(audiofile1,
+                                               progress),
+                    audiofile2.to_pcm()))
     except (IOError, ValueError, audiotools.DecodingError):
         return (audiofile1.filename,
                 audiofile2.filename,
@@ -153,20 +159,24 @@ if (__name__ == '__main__'):
                 msg.error(_(u"Both files to be compared must be audio files"))
                 sys.exit(1)
             try:
-                frame_mismatch = check_function(audiofiles[0].to_pcm(),
-                                                audiofiles[1].to_pcm())
-                if (frame_mismatch is None):
+                if (os.path.samefile(audiofiles[0].filename,
+                                     audiofiles[1].filename)):
                     pass
                 else:
-                    msg.partial_info(
-                        _(u"%(file1)s <> %(file2)s : ") % \
-                            {"file1": msg.filename(audiofiles[0].filename),
-                             "file2": msg.filename(audiofiles[1].filename)})
-                    msg.info(msg.ansi(
-                            _(u"differ at PCM frame %(frame_number)d") %
-                            {"frame_number": frame_mismatch + 1},
-                            [msg.FG_RED]))
-                    sys.exit(1)
+                    frame_mismatch = check_function(audiofiles[0].to_pcm(),
+                                                    audiofiles[1].to_pcm())
+                    if (frame_mismatch is None):
+                        pass
+                    else:
+                        msg.partial_info(
+                            _(u"%(file1)s <> %(file2)s : ") % \
+                                {"file1": msg.filename(audiofiles[0].filename),
+                                 "file2": msg.filename(audiofiles[1].filename)})
+                        msg.info(msg.ansi(
+                                _(u"differ at PCM frame %(frame_number)d") %
+                                {"frame_number": frame_mismatch + 1},
+                                [msg.FG_RED]))
+                        sys.exit(1)
             except (IOError, ValueError, audiotools.DecodingError), err:
                 msg.error(unicode(err))
                 sys.exit(1)

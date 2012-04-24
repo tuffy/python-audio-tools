@@ -108,7 +108,10 @@ if (__name__ == '__main__'):
     else:
         max_processes = options.max_processes
 
-    audiofiles = audiotools.open_files(args, sorted=False, messenger=msg)
+    audiofiles = audiotools.open_files(args,
+                                       sorted=False,
+                                       messenger=msg,
+                                       warn_duplicates=True)
 
     if (len(audiofiles) < 1):
         msg.error(_(u"You must specify at least 1 supported audio file"))

@@ -222,7 +222,15 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     #grab the list of AudioFile objects we are converting from
-    audiofiles = audiotools.open_files(args, messenger=msg)
+    try:
+        audiofiles = audiotools.open_files(args,
+                                           messenger=msg,
+                                           no_duplicates=True)
+    except audiotools.DuplicateFile, err:
+        msg.error(u"File \"%s\" included more than once" %
+                  (msg.filename(err.filename)))
+        sys.exit(1)
+
     if (len(audiofiles) < 1):
         msg.error(_(u"You must specify at least 1 supported audio file"))
         sys.exit(1)
@@ -297,17 +305,25 @@ if (__name__ == '__main__'):
                 sys.exit(1)
 
             #queue up conversion job
-            queue.execute(function=convert,
-                          progress_text=msg.filename(filename),
-                          completion_output=u"%s -> %s" % \
-                              (msg.filename(audiofile.filename),
-                               msg.filename(filename)),
-                          source_audiofile=audiofile,
-                          destination_filename=filename,
-                          destination_class=AudioType,
-                          compression=quality,
-                          metadata=track_metadata,
-                          thumbnail_images=options.thumbnail)
+            if ((not os.path.isfile(filename)) or
+                (not os.path.samefile(audiofile.filename,
+                                      filename))):
+                queue.execute(function=convert,
+                              progress_text=msg.filename(filename),
+                              completion_output=u"%s -> %s" % \
+                                  (msg.filename(audiofile.filename),
+                                   msg.filename(filename)),
+                              source_audiofile=audiofile,
+                              destination_filename=filename,
+                              destination_class=AudioType,
+                              compression=quality,
+                              metadata=track_metadata,
+                              thumbnail_images=options.thumbnail)
+            else:
+                msg.error(u"\"%s\" and \"%s\" are the same file" %
+                          (audiofile.filename,
+                           filename))
+                sys.exit(1)
 
         #perform all queued conversion jobs
         try:
@@ -363,6 +379,13 @@ if (__name__ == '__main__'):
         #encoding only a single file
         audiofile = audiofiles[0]
         track_metadata = audiofile.get_metadata()
+
+        if (os.path.isfile(options.output) and
+            os.path.samefile(audiofile.filename, options.output)):
+            msg.error(u"\"%s\" and \"%s\" are the same file" %
+                      (audiofile.filename,
+                       options.output))
+            sys.exit(1)
 
         queue = audiotools.ExecProgressQueue(
             audiotools.ProgressDisplay(

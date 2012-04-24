@@ -579,7 +579,14 @@ if (__name__ == '__main__'):
     msg = audiotools.Messenger("tracktag", options)
 
     #open our set of input files for tagging
-    audiofiles = audiotools.open_files(args, messenger=msg)
+    try:
+        audiofiles = audiotools.open_files(args,
+                                           messenger=msg,
+                                           no_duplicates=True)
+    except audiotools.DuplicateFile, err:
+        msg.error(u"File \"%s\" included more than once" %
+                  (msg.filename(err.filename)))
+        sys.exit(1)
 
     #and the --cue file
     isrcs = {}

@@ -3031,7 +3031,7 @@ class OggFlacAudio(FlacAudio):
         raises an InvalidFile with an error message if there is
         some problem with the file"""
 
-        from audiotools import verify_ogg_stream
+        from .verify import ogg as verify_ogg_stream
 
         #Ogg stream verification is likely to be so fast
         #that individual calls to progress() are

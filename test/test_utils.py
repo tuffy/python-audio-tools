@@ -1082,6 +1082,37 @@ class track2track(UtilTest):
         self.__check_error__(
             _(u"You may specify only 1 input file for use with -o"))
 
+        #check duplicate input file
+        self.assertEqual(self.__run_app__(["track2track",
+                                           self.track1.filename,
+                                           self.track1.filename,
+                                           self.track2.filename]), 1)
+        self.__check_error__(
+            u"File \"%s\" included more than once" %
+            (filename(self.track1.filename)))
+
+        #check identical input and output file
+        self.assertEqual(
+            self.__run_app__(["track2track",
+                              self.track1.filename,
+                              "-t", self.input_format.NAME,
+                              "-d", self.input_dir,
+                              "--format=%(track_number)2.2d.%(suffix)s"]), 1)
+        self.__check_error__(
+            u"\"%s\" and \"%s\" are the same file" %
+            (filename(self.track1.filename),
+             filename(self.track1.filename)))
+
+        #check identical input and output file with -o
+        self.assertEqual(self.__run_app__(["track2track",
+                                           "-t", self.input_format.NAME,
+                                           "-o", self.track1.filename,
+                                           self.track1.filename]), 1)
+        self.__check_error__(
+            u"\"%s\" and \"%s\" are the same file" %
+            (filename(self.track1.filename),
+             filename(self.track1.filename)))
+
         #check conversion from supported to unsupported channel count
         unsupported_count_file = tempfile.NamedTemporaryFile(
             suffix=".flac")
@@ -1476,6 +1507,27 @@ class trackcat(UtilTest):
                               self.track3.filename]), 1)
         self.__check_error__(_(u"Missing tag at line 1"))
 
+        self.assertEqual(
+            self.__run_app__(["trackcat",
+                              "-o", self.suffix_outfile.name,
+                              self.track1.filename,
+                              self.track1.filename]), 0)
+        self.__check_warning__(
+            u"File \"%s\" included more than once" %
+            (audiotools.Messenger("trackcat", None).filename(
+                    self.track1.filename)))
+
+        self.assertEqual(
+            self.__run_app__(["trackcat",
+                              "-o", self.track1.filename,
+                              self.track1.filename,
+                              self.track2.filename,
+                              self.track3.filename]), 1)
+        self.__check_error__(
+            u"\"%s\" cannot be used as both input and output file" %
+            (audiotools.Messenger("trackcat", None).filename(
+                    self.track1.filename)))
+
         #then, check the option combinations
         #along with a few different output files and types
         all_options = ["-t", "-q", "--cue", "-o"]
@@ -1659,6 +1711,12 @@ class trackcmp(UtilTest):
                               self.match_file1.name, self.match_file2.name]),
             0)
 
+        #check matching file against itself
+        self.assertEqual(
+            self.__run_app__(["trackcmp", "-V", "normal",
+                              self.match_file1.name, self.match_file1.name]),
+            0)
+
         #check matching file against mismatching file
         self.assertEqual(
             self.__run_app__(["trackcmp", "-V", "normal",
@@ -1725,6 +1783,22 @@ class trackcmp(UtilTest):
                                      "%2.2d.%s" % (i, self.type.SUFFIX))),
                     "path2": msg.filename(
                         os.path.join(self.match_dir2,
+                                     "%2.2d.%s" % (i, self.type.SUFFIX))),
+                    "result": _(u"OK")})
+
+        #check matching directory against itself
+        self.assertEqual(
+            self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
+                              self.match_dir1, self.match_dir1]),
+            0)
+        for i in xrange(1, 4):
+            self.__check_info__(
+                _(u"%(path1)s <> %(path2)s : %(result)s") % {
+                    "path1": msg.filename(
+                        os.path.join(self.match_dir1,
+                                     "%2.2d.%s" % (i, self.type.SUFFIX))),
+                    "path2": msg.filename(
+                        os.path.join(self.match_dir1,
                                      "%2.2d.%s" % (i, self.type.SUFFIX))),
                     "result": _(u"OK")})
 
@@ -2887,6 +2961,15 @@ class tracktag(UtilTest):
                         '--remove-images', '--front-cover', '--back-cover',
                         '-T']
 
+        #ensure tagging the same file twice triggers an error
+        self.assertEqual(self.__run_app__(
+                ["tracktag", "--name=Test",
+                 self.track_file.name, self.track_file.name]), 1)
+        self.__check_error__(
+            u"File \"%s\" included more than once" %
+            (audiotools.Messenger("tracktag", None).filename(
+                    self.track_file.name)))
+
         for count in xrange(1, len(most_options) + 1):
             for options in Combinations(most_options, count):
                 f = open(self.track_file.name, 'wb')
@@ -3639,6 +3722,23 @@ class trackrename(UtilTest):
                     #check that the file is identical
                     self.assertEqual(track_data,
                                      open(destination_filename, 'rb').read())
+
+    @UTIL_TRACKRENAME
+    def test_duplicate(self):
+        name = "02 - name." + self.type.SUFFIX
+
+        track = self.type.from_pcm(
+            os.path.join(self.input_dir, name),
+            BLANK_PCM_Reader(1))
+
+        self.assertEqual(self.__run_app__(["trackrename", "-V", "normal",
+                                           "--format", self.format,
+                                           track.filename, track.filename]), 1)
+
+        self.__check_error__(
+            u"File \"%s\" included more than once" %
+            (audiotools.Messenger("trackrename",
+                                  None).filename(track.filename)))
 
     @UTIL_TRACKRENAME
     def test_errors(self):

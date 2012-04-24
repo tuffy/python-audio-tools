@@ -27,7 +27,7 @@ import anydbm
 import subprocess
 import tempfile
 import whichdb
-from audiotools import BIN, transfer_data
+from . import BIN, transfer_data
 import cStringIO
 
 

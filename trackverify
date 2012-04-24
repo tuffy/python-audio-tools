@@ -65,28 +65,35 @@ def open_file(filename):
         f.close()
 
 
-def get_tracks(args, accept_list):
+def get_tracks(args, queued_files, accept_list=None):
     if (accept_list is not None):
         accept_list = set(accept_list)
 
     for path in args:
         if (os.path.isfile(path)):
             try:
-                track = open_file(path)
-                if not ((accept_list is not None) and
-                        (track.NAME not in accept_list)):
-                    yield track
-            except (audiotools.UnsupportedFile, IOError):
+                file_id = audiotools.read_file_id(path)
+                if (file_id not in queued_files):
+                    queued_files.add(file_id)
+                    track = open_file(path)
+                    if not ((accept_list is not None) and
+                            (track.NAME not in accept_list)):
+                        yield track
+            except (audiotools.UnsupportedFile, IOError, OSError):
                 continue
         elif (os.path.isdir(path)):
             for (d, ds, fs) in os.walk(path):
                 for f in fs:
+                    file_path = os.path.join(d, f)
                     try:
-                        track = open_file(os.path.join(d, f))
-                        if not ((accept_list is not None) and
-                                (track.NAME not in accept_list)):
-                            yield track
-                    except (audiotools.UnsupportedFile, IOError):
+                        file_id = audiotools.read_file_id(file_path)
+                        if (file_id not in queued_files):
+                            queued_files.add(file_id)
+                            track = open_file(file_path)
+                            if not ((accept_list is not None) and
+                                    (track.NAME not in accept_list)):
+                                yield track
+                    except (audiotools.UnsupportedFile, IOError, OSError):
                         continue
 
 
@@ -154,14 +161,10 @@ if (__name__ == '__main__'):
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("trackverify", options)
 
+    queued_files = set([])
     results = Results(msg)
     queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
-    for track in get_tracks(args, options.accept_list):
-        # if (i == 0):
-        #     pass
-        # elif ((i % 100) == 0):
-        #     msg.ansi_clearline()
-        #     msg.partial_output(_(u"Finding tracks (%d)") % (i))
+    for track in get_tracks(args, queued_files, options.accept_list):
         queue.execute(function=verify,
                       progress_text=msg.filename(track.filename),
                       completion_output=results.display,

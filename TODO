@@ -5396,17 +5396,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] tracktag
      - [X] trackverify
 *** DONE Update reference documentation
-** TODO Update .convert() method to use fewer temporary files
-   .wav and .aiff containers with embedded chunks
-   currently route data through actual .wav/.aiff files
-   in order to pass those chunks to another format.
-   It would be better to avoid creating an intermediate
-   file whenever possible.
-** TODO Ensure progress display doesn't overload terminal with rows
-   As more cores become commonplace, it's important not to
-   overload the screen with too many progress rows
-   in case the number of simultaneous jobs
-   exceeds the number of terminal rows.
 ** TODO Remove the big pile of imports from various modules
    Only import the stuff we need, when we need it.
 *** DONE __init__.py
@@ -5429,7 +5418,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE wav.py
 *** DONE wavpack.py
 *** DONE cue.py
-*** TODO delta.py
+*** DONE delta.py
 *** DONE freedb.py
 *** DONE musicbrainz.py
 *** DONE player.py
@@ -5496,6 +5485,49 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] tracksplit
      - [X] tracktag
      - [X] trackverify
+** TODO Ensure progress display doesn't overload terminal with rows
+   As more cores become commonplace, it's important not to
+   overload the screen with too many progress rows
+   in case the number of simultaneous jobs
+   exceeds the number of terminal rows.
+** TODO Update .convert() method to use fewer temporary files
+   .wav and .aiff containers with embedded chunks
+   currently route data through actual .wav/.aiff files
+   in order to pass those chunks to another format.
+   It would be better to avoid creating an intermediate
+   file whenever possible.
+** TODO Sanity check tool inputs/outputs
+*** DONE Ensure input files are included only once
+    - [X] track2cd - generate warning
+    - [X] track2track - generate error
+    - [X] trackcat - generate warning
+    - [X] trackcmp - short-circuit same file comparison
+    - [X] tracklength - generate warning
+    - [X] tracklint - generate error
+    - [X] trackrename - generate error
+    - [X] tracktag - generate error
+    - [X] trackverify - skip duplicates
+**** DONE Unit test new behavior
+    - [X] track2cd
+    - [X] track2track
+    - [X] trackcat
+    - [X] trackcmp
+    - [X] tracklint
+    - [X] trackrename
+    - [X] tracktag
+    - [X] trackverify
+*** TODO Ensure input file(s) are different from output file(s)
+    Overwriting files is okay by default (in the Unix tradition)
+    but input and output as same file is not and should generate error.
+    - [ ] coverdump
+    - [X] track2track
+    - [X] trackcat
+    - [ ] tracksplit
+**** TODO Unit test new behavior
+     - [ ] coverdump
+     - [X] track2track
+     - [X] trackcat
+     - [ ] tracksplit
 ** TODO Add internal Ogg FLAC encoder
    This shouldn't be too hard since native FLAC encoding is already in place,
    as is Ogg stream encoding.

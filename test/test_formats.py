@@ -2861,8 +2861,7 @@ class FlacFileTest(TestForeignAiffChunks,
         finally:
             temp.close()
 
-    # @FORMAT_FLAC
-    @LIB_CUSTOM
+    @FORMAT_FLAC
     def test_verify(self):
         self.assertEqual(audiotools.open("flac-allframes.flac").__md5__,
                          'f53f86876dcd7783225c93ba8a938c7d'.decode('hex'))
@@ -3452,8 +3451,7 @@ class FlacFileTest(TestForeignAiffChunks,
 
     #as is metadata handling
 
-    # @FORMAT_FLAC
-    @LIB_CUSTOM
+    @FORMAT_FLAC
     def test_clean(self):
         #metadata is tested separately
 

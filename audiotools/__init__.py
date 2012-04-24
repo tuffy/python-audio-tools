@@ -1110,31 +1110,75 @@ def open(filename):
         f.close()
 
 
+class DuplicateFile(Exception):
+    def __init__(self, filename):
+        self.filename = filename
+
+
+def read_file_id(filename):
+    """given a path to a filename, returns its unique file ID tuple
+    may raise OSError if the file cannot be found or read"""
+
+    stat = os.stat(filename)
+    return (stat.st_dev, stat.st_ino)
+
+
 #takes a list of filenames
 #returns a list of AudioFile objects, sorted by track_number()
 #any unsupported files are filtered out
-def open_files(filename_list, sorted=True, messenger=None):
+def open_files(filename_list, sorted=True, messenger=None,
+               no_duplicates=False, warn_duplicates=False,
+               opened_files=None):
     """returns a list of AudioFile objects from a list of filenames
 
-    files are sorted by album number then track number, by default
-    unsupported files are filtered out
-    error messages are sent to messenger, if given
+    if "sorted" is True, files are sorted by album number then track number
+
+    if "messenger" is given, warnings and errors when opening files
+    are sent to the given Messenger-compatible object
+
+    if "no_duplicates" is True, including the same file twice
+    raises a DuplicateFile whose filename value is the first duplicate filename
+
+    if "warn_duplicates" is True, including the same file twice
+    results in a warning message to the messenger object, if given
+
+    "opened_files" is a set object containing previously opened
+    file ID tuples and which newly opened file ID tuples are added to
     """
 
+    if (opened_files is None):
+        opened_files = set([])
     toreturn = []
-    if (messenger is None):
-        messenger = Messenger("audiotools", None)
 
     for filename in filename_list:
         try:
+            file_id = read_file_id(filename)
+            if (file_id in opened_files):
+                if (no_duplicates):
+                    raise DuplicateFile(filename)
+                elif (warn_duplicates and (messenger is not None)):
+                    messenger.warning(
+                        u"File \"%s\" included more than once" %
+                          (messenger.filename(filename)))
+            else:
+                opened_files.add(file_id)
+
             toreturn.append(open(filename))
         except UnsupportedFile:
             pass
+        except OSError, err:
+            if (messenger is not None):
+                messenger.warning(
+                    _(u"Unable to open \"%s\"" %
+                      (messenger.filename(filename))))
         except IOError, err:
-            messenger.warning(
-                _(u"Unable to open \"%s\"" % (messenger.filename(filename))))
+            if (messenger is not None):
+                messenger.warning(
+                    _(u"Unable to open \"%s\"" %
+                      (messenger.filename(filename))))
         except InvalidFile, err:
-            messenger.error(unicode(err))
+            if (messenger is not None):
+                messenger.error(unicode(err))
 
     if (sorted):
         toreturn.sort(lambda x, y: cmp((x.album_number(), x.track_number()),

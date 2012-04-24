@@ -54,15 +54,33 @@ def display_messages(messenger, track, messages):
                             "message": message})
 
 
-def audiofiles(paths, messenger):
+def audiofiles(paths, processed_tracks, messenger):
     directories = [p for p in paths if os.path.isdir(p)]
     files = [p for p in paths if os.path.isfile(p)]
 
-    for f in audiotools.open_files(files, messenger=messenger):
-        yield f
-    for d in directories:
-        for f in audiotools.open_directory(d, messenger=messenger):
-            yield f
+    for p in paths:
+        if (os.path.isfile(p)):
+            try:
+                file_id = audiotools.read_file_id(p)
+                if (file_id not in processed_tracks):
+                    processed_tracks.add(file_id)
+                    yield audiotools.open(p)
+            except audiotools.UnsupportedFile:
+                pass
+            except OSError, err:
+                messenger.warning(
+                    u"Unable to open \"%s\"" % (messenger.filename(p)))
+            except IOError, err:
+                messenger.warning(
+                    u"Unable to open \"%s\"" % (messenger.filename(p)))
+            except audiotools.InvalidFile, err:
+                messenger.error(unicode(err))
+        elif (os.path.isdir(p)):
+            for (d, ds, fs) in os.walk(p):
+                for t in audiofiles([os.path.join(d, f) for f in fs],
+                                    processed_tracks,
+                                    messenger):
+                    yield t
 
 
 def update_without_backup(track, messenger):
@@ -151,6 +169,7 @@ if (__name__ == '__main__'):
                       help=_(u'the verbosity level to execute at'))
 
     (options, args) = parser.parse_args()
+    processed_tracks = set([])
     msg = audiotools.Messenger("tracklint", options)
 
     if (options.undo and (options.db is None)):
@@ -168,7 +187,7 @@ if (__name__ == '__main__'):
                           (msg.filename(options.db)))
                 sys.exit(1)
             try:
-                for track in audiofiles(args, messenger=msg):
+                for track in audiofiles(args, processed_tracks, messenger=msg):
                     try:
                         update_and_backup(track, undo_db, msg)
                     except IOError:
@@ -184,7 +203,7 @@ if (__name__ == '__main__'):
             #if we're fixing tracks and have no undo DB,
             #simply overwrite the track and track metadata directly
             #if changes have been made
-            for track in audiofiles(args, messenger=msg):
+            for track in audiofiles(args, processed_tracks, messenger=msg):
                 try:
                     update_without_backup(track, msg)
                 except IOError:
@@ -201,7 +220,7 @@ if (__name__ == '__main__'):
             msg.error(_(u"Unable to open \"%s\"") % (msg.filename(options.db)))
             sys.exit(1)
         try:
-            for track in audiofiles(args, messenger=msg):
+            for track in audiofiles(args, processed_tracks, messenger=msg):
                 try:
                     undo_from_backup(track, undo_db, msg)
                 except IOError:
@@ -211,7 +230,7 @@ if (__name__ == '__main__'):
         finally:
             undo_db.close()
     else:  # a dry-run of the fixing procedure, with no changes made
-        for track in audiofiles(args, messenger=msg):
+        for track in audiofiles(args, processed_tracks, messenger=msg):
             fixes = []
             track.clean(fixes)
             display_messages(msg, track, fixes)
