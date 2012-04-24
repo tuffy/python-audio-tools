@@ -1810,7 +1810,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         """yields a set of RIFF_Chunk or RIFF_File_Chunk objects"""
 
         from struct import unpack
-        from .wave import RIFF_Chunk
+        from .wav import RIFF_Chunk
         from . import PCMReaderProgress
 
         for application_block in [

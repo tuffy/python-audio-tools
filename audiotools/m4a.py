@@ -653,7 +653,7 @@ class M4AAudio_nero(M4AAudio_faac):
         import tempfile
         from . import EncodingError
         from . import PCMReaderError
-        from .wave import WaveReader
+        from .wav import WaveReader
 
         f = tempfile.NamedTemporaryFile(suffix=".wav")
         try:

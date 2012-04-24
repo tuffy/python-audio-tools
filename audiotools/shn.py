@@ -340,6 +340,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
         from . import WaveAudio
         from . import UnsupportedBitsPerSample
         from . import to_pcm_progress
+        from . import EncodingError
 
         wave = WaveAudio(wave_filename)
 

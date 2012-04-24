@@ -3030,6 +3030,8 @@ class Image:
         format is a string such as "JPEG"
         """
 
+        from .image import thumbnail_image
+
         return Image.new(thumbnail_image(self.data, width, height, format),
                          self.description, self.type)
 
@@ -3057,6 +3059,9 @@ class InvalidImage(Exception):
 
     def __unicode__(self):
         return self.err
+
+from .image import can_thumbnail
+from .image import thumbnail_formats
 
 
 #######################

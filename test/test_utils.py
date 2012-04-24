@@ -1976,7 +1976,7 @@ class tracklint(UtilTest):
                 metadata = track.get_metadata()
                 if (isinstance(metadata, audiotools.FlacMetaData)):
                     metadata = metadata.get_block(
-                        audiotools.Flac_VORBISCOMMENT.BLOCK_ID)
+                        audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID)
                 self.assertEqual(metadata, bad_vorbiscomment)
                 for (key, value) in metadata.items():
                     self.assertEqual(value, bad_vorbiscomment[key])
@@ -2003,7 +2003,7 @@ class tracklint(UtilTest):
                 metadata = track.get_metadata()
                 if (isinstance(metadata, audiotools.FlacMetaData)):
                     metadata = metadata.get_block(
-                        audiotools.Flac_VORBISCOMMENT.BLOCK_ID)
+                        audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID)
                 self.assertEqual(metadata, bad_vorbiscomment)
                 self.assertNotEqual(metadata, fixed)
                 for (key, value) in metadata.items():
@@ -2163,12 +2163,12 @@ class tracklint(UtilTest):
     def test_apev2(self):
         for audio_class in [audiotools.WavPackAudio]:
             bad_apev2 = audiotools.ApeTag(
-                [audiotools.ApeTagItem(0, False, "Title", "Track Name  "),
-                 audiotools.ApeTagItem(0, False, "Track", "02"),
-                 audiotools.ApeTagItem(0, False, "Artist", "  Some Artist"),
-                 audiotools.ApeTagItem(0, False, "Catalog", ""),
-                 audiotools.ApeTagItem(0, False, "Year", "  "),
-                 audiotools.ApeTagItem(0, False, "Comment", "  Some Comment  ")])
+                [audiotools.ape.ApeTagItem(0, False, "Title", "Track Name  "),
+                 audiotools.ape.ApeTagItem(0, False, "Track", "02"),
+                 audiotools.ape.ApeTagItem(0, False, "Artist", "  Some Artist"),
+                 audiotools.ape.ApeTagItem(0, False, "Catalog", ""),
+                 audiotools.ape.ApeTagItem(0, False, "Year", "  "),
+                 audiotools.ape.ApeTagItem(0, False, "Comment", "  Some Comment  ")])
 
             fixed = audiotools.MetaData(
                 track_name=u"Track Name",
@@ -2312,19 +2312,19 @@ class tracklint(UtilTest):
     def test_id3v22(self):
         self.__id3_text__(
             audiotools.ID3v22Comment(
-                [audiotools.ID3v22_T__Frame.converted(
+                [audiotools.id3.ID3v22_T__Frame.converted(
                         "TT2", u"Track Name  "),
-                 audiotools.ID3v22_T__Frame.converted(
+                 audiotools.id3.ID3v22_T__Frame.converted(
                         "TRK", u"02"),
-                 audiotools.ID3v22_T__Frame.converted(
+                 audiotools.id3.ID3v22_T__Frame.converted(
                         "TPA", u"003"),
-                 audiotools.ID3v22_T__Frame.converted(
+                 audiotools.id3.ID3v22_T__Frame.converted(
                         "TP1", u"  Some Artist\u0000"),
-                 audiotools.ID3v22_T__Frame.converted(
+                 audiotools.id3.ID3v22_T__Frame.converted(
                         "TRC", u""),
-                 audiotools.ID3v22_T__Frame.converted(
+                 audiotools.id3.ID3v22_T__Frame.converted(
                         "TYE", u""),
-                 audiotools.ID3v22_COM_Frame.converted(
+                 audiotools.id3.ID3v22_COM_Frame.converted(
                         "COM", u"  Some Comment  ")]))
 
         #ID3v2.2 doesn't store most image fields internally
@@ -2334,19 +2334,19 @@ class tracklint(UtilTest):
     def test_id3v23(self):
         self.__id3_text__(
             audiotools.ID3v23Comment(
-                [audiotools.ID3v23_T___Frame.converted(
+                [audiotools.id3.ID3v23_T___Frame.converted(
                         "TIT2", u"Track Name  "),
-                 audiotools.ID3v23_T___Frame.converted(
+                 audiotools.id3.ID3v23_T___Frame.converted(
                         "TRCK", u"02"),
-                 audiotools.ID3v23_T___Frame.converted(
+                 audiotools.id3.ID3v23_T___Frame.converted(
                         "TPOS", u"003"),
-                 audiotools.ID3v23_T___Frame.converted(
+                 audiotools.id3.ID3v23_T___Frame.converted(
                         "TPE1", u"  Some Artist\u0000"),
-                 audiotools.ID3v23_T___Frame.converted(
+                 audiotools.id3.ID3v23_T___Frame.converted(
                         "TYER", u""),
-                 audiotools.ID3v23_T___Frame.converted(
+                 audiotools.id3.ID3v23_T___Frame.converted(
                         "TCOP", u""),
-                 audiotools.ID3v23_COMM_Frame.converted(
+                 audiotools.id3.ID3v23_COMM_Frame.converted(
                         "COMM", u"  Some Comment  ")]))
 
         good_image = audiotools.Image.new(TEST_COVER1, u"Description", 0)
@@ -2368,19 +2368,19 @@ class tracklint(UtilTest):
     def test_id3v24(self):
         self.__id3_text__(
             audiotools.ID3v24Comment(
-                [audiotools.ID3v24_T___Frame.converted(
+                [audiotools.id3.ID3v24_T___Frame.converted(
                         "TIT2", u"Track Name  "),
-                 audiotools.ID3v24_T___Frame.converted(
+                 audiotools.id3.ID3v24_T___Frame.converted(
                         "TRCK", u"02"),
-                 audiotools.ID3v24_T___Frame.converted(
+                 audiotools.id3.ID3v24_T___Frame.converted(
                         "TPOS", u"003"),
-                 audiotools.ID3v24_T___Frame.converted(
+                 audiotools.id3.ID3v24_T___Frame.converted(
                         "TPE1", u"  Some Artist\u0000"),
-                 audiotools.ID3v24_T___Frame.converted(
+                 audiotools.id3.ID3v24_T___Frame.converted(
                         "TYER", u""),
-                 audiotools.ID3v24_T___Frame.converted(
+                 audiotools.id3.ID3v24_T___Frame.converted(
                         "TCOP", u""),
-                 audiotools.ID3v24_COMM_Frame.converted(
+                 audiotools.id3.ID3v24_COMM_Frame.converted(
                         "COMM", u"  Some Comment  ")]))
 
         good_image = audiotools.Image.new(TEST_COVER1, u"Description", 0)
@@ -2441,14 +2441,14 @@ class tracklint(UtilTest):
 
     @UTIL_TRACKLINT
     def test_m4a(self):
-        from audiotools import M4A_Tree_Atom
-        from audiotools import M4A_META_Atom
-        from audiotools import M4A_HDLR_Atom
-        from audiotools import M4A_ILST_Leaf_Atom
-        from audiotools import M4A_ILST_Unicode_Data_Atom
-        from audiotools import M4A_ILST_TRKN_Data_Atom
-        from audiotools import M4A_ILST_DISK_Data_Atom
-        from audiotools import M4A_FREE_Atom
+        from audiotools.m4a import M4A_Tree_Atom
+        from audiotools.m4a import M4A_META_Atom
+        from audiotools.m4a import M4A_HDLR_Atom
+        from audiotools.m4a import M4A_ILST_Leaf_Atom
+        from audiotools.m4a import M4A_ILST_Unicode_Data_Atom
+        from audiotools.m4a import M4A_ILST_TRKN_Data_Atom
+        from audiotools.m4a import M4A_ILST_DISK_Data_Atom
+        from audiotools.m4a import M4A_FREE_Atom
 
         bad_m4a = M4A_META_Atom(
             0, 0,

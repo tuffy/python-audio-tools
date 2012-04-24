@@ -1373,27 +1373,27 @@ class TestForeignWaveChunks:
             #build a WAVE with some oddball chunks
             audiotools.WaveAudio.wave_from_chunks(
                 tempwav1.name,
-                [audiotools.RIFF_Chunk(
+                [audiotools.wav.RIFF_Chunk(
                         'fmt ',
                         16,
                         '\x01\x00\x02\x00D\xac\x00\x00\x10\xb1\x02\x00\x04\x00\x10\x00'),
-                 audiotools.RIFF_Chunk(
+                 audiotools.wav.RIFF_Chunk(
                         'fooz',
                         8,
                         'testtext'),
-                 audiotools.RIFF_Chunk(
+                 audiotools.wav.RIFF_Chunk(
                         'barz',
                         16,
                         'somemoretesttext'),
-                 audiotools.RIFF_Chunk(
+                 audiotools.wav.RIFF_Chunk(
                         'bazz',
                         1024,
                         chr(0) * 1024),
-                 audiotools.RIFF_Chunk(
+                 audiotools.wav.RIFF_Chunk(
                         'data',
                         882000,
                         'BZh91AY&SY\xdc\xd5\xc2\x8d\x06\xba\xa7\xc0\x00`\x00 \x000\x80MF\xa9$\x84\x9a\xa4\x92\x12qw$S\x85\t\r\xcd\\(\xd0'.decode('bz2')),
-                 audiotools.RIFF_Chunk(
+                 audiotools.wav.RIFF_Chunk(
                         'spam',
                         12,
                         'anotherchunk')])
@@ -1442,11 +1442,11 @@ class TestForeignWaveChunks:
         try:
             #build a WAVE with some random oddball chunks
             base_chunks = [
-                audiotools.RIFF_Chunk(
+                audiotools.wav.RIFF_Chunk(
                     'fmt ',
                     16,
                     '\x01\x00\x02\x00D\xac\x00\x00\x10\xb1\x02\x00\x04\x00\x10\x00'),
-                audiotools.RIFF_Chunk(
+                audiotools.wav.RIFF_Chunk(
                     'data',
                     882000,
                     'BZh91AY&SY\xdc\xd5\xc2\x8d\x06\xba\xa7\xc0\x00`\x00 \x000\x80MF\xa9$\x84\x9a\xa4\x92\x12qw$S\x85\t\r\xcd\\(\xd0'.decode('bz2'))]
@@ -1455,7 +1455,7 @@ class TestForeignWaveChunks:
                 chunk_size = random.choice(range(1, 1024)) * 2
                 base_chunks.insert(
                     random.choice(range(0, len(base_chunks) + 1)),
-                    audiotools.RIFF_Chunk(
+                    audiotools.wav.RIFF_Chunk(
                         "".join([random.choice(chunk_name_chars)
                                  for i in xrange(4)]),
                         chunk_size,
@@ -1512,11 +1512,11 @@ class TestForeignWaveChunks:
         try:
             #build a WAVE with some random oddball chunks
             base_chunks = [
-                audiotools.RIFF_Chunk(
+                audiotools.wav.RIFF_Chunk(
                     'fmt ',
                     16,
                     '\x01\x00\x02\x00D\xac\x00\x00\x10\xb1\x02\x00\x04\x00\x10\x00'),
-                audiotools.RIFF_Chunk(
+                audiotools.wav.RIFF_Chunk(
                     'data',
                     882000,
                     'BZh91AY&SY\xdc\xd5\xc2\x8d\x06\xba\xa7\xc0\x00`\x00 \x000\x80MF\xa9$\x84\x9a\xa4\x92\x12qw$S\x85\t\r\xcd\\(\xd0'.decode('bz2'))]
@@ -1525,7 +1525,7 @@ class TestForeignWaveChunks:
                 chunk_size = random.choice(range(1, 1024)) * 2
                 base_chunks.insert(
                     random.choice(range(0, len(base_chunks) + 1)),
-                    audiotools.RIFF_Chunk(
+                    audiotools.wav.RIFF_Chunk(
                         "".join([random.choice(chunk_name_chars)
                                  for i in xrange(4)]),
                         chunk_size,
@@ -1588,27 +1588,27 @@ class TestForeignAiffChunks:
             #build an AIFF with some oddball chunks
             audiotools.AiffAudio.aiff_from_chunks(
                 tempaiff1.name,
-                [audiotools.AIFF_Chunk(
+                [audiotools.aiff.AIFF_Chunk(
                         'COMM',
                         18,
                         '\x00\x02\x00\x00\xacD\x00\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00'),
-                 audiotools.AIFF_Chunk(
+                 audiotools.aiff.AIFF_Chunk(
                         'fooz',
                         8,
                         'testtext'),
-                 audiotools.AIFF_Chunk(
+                 audiotools.aiff.AIFF_Chunk(
                         'barz',
                         16,
                         'somemoretesttext'),
-                 audiotools.AIFF_Chunk(
+                 audiotools.aiff.AIFF_Chunk(
                         'bazz',
                         1024,
                         chr(0) * 1024),
-                 audiotools.AIFF_Chunk(
+                 audiotools.aiff.AIFF_Chunk(
                         'SSND',
                         176408,
                         'BZh91AY&SY&2\xd0\xeb\x00\x01Y\xc0\x04\xc0\x00\x00\x80\x00\x08 \x000\xcc\x05)\xa6\xa2\x93`\x94\x9e.\xe4\x8ap\xa1 Le\xa1\xd6'.decode('bz2')),
-                 audiotools.AIFF_Chunk(
+                 audiotools.aiff.AIFF_Chunk(
                         'spam',
                         12,
                         'anotherchunk')])
@@ -1668,11 +1668,11 @@ class TestForeignAiffChunks:
         try:
             #build an AIFF with some random oddball chunks
             base_chunks = [
-                audiotools.AIFF_Chunk(
+                audiotools.aiff.AIFF_Chunk(
                     'COMM',
                     18,
                     '\x00\x02\x00\x00\xacD\x00\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00'),
-                audiotools.AIFF_Chunk(
+                audiotools.aiff.AIFF_Chunk(
                     'SSND',
                     176408,
                     'BZh91AY&SY&2\xd0\xeb\x00\x01Y\xc0\x04\xc0\x00\x00\x80\x00\x08 \x000\xcc\x05)\xa6\xa2\x93`\x94\x9e.\xe4\x8ap\xa1 Le\xa1\xd6'.decode('bz2'))]
@@ -1680,7 +1680,7 @@ class TestForeignAiffChunks:
                 block_size = random.choice(range(1, 1024)) * 2
                 base_chunks.insert(
                     random.choice(range(0, len(base_chunks) + 1)),
-                    audiotools.AIFF_Chunk(
+                    audiotools.aiff.AIFF_Chunk(
                         "".join([random.choice(chunk_name_chars)
                                  for i in xrange(4)]),
                         block_size,
@@ -1735,11 +1735,11 @@ class TestForeignAiffChunks:
         try:
             #build an AIFF with some random oddball chunks
             base_chunks = [
-                audiotools.AIFF_Chunk(
+                audiotools.aiff.AIFF_Chunk(
                     "COMM",
                     18,
                     '\x00\x02\x00\x00\xacD\x00\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00'),
-                audiotools.AIFF_Chunk(
+                audiotools.aiff.AIFF_Chunk(
                     "SSND",
                     176408,
                     'BZh91AY&SY&2\xd0\xeb\x00\x01Y\xc0\x04\xc0\x00\x00\x80\x00\x08 \x000\xcc\x05)\xa6\xa2\x93`\x94\x9e.\xe4\x8ap\xa1 Le\xa1\xd6'.decode('bz2'))]
@@ -1747,7 +1747,7 @@ class TestForeignAiffChunks:
                 chunk_size = random.choice(range(1, 1024)) * 2
                 base_chunks.insert(
                     random.choice(range(0, len(base_chunks) + 1)),
-                    audiotools.AIFF_Chunk(
+                    audiotools.aiff.AIFF_Chunk(
                         "".join([random.choice(chunk_name_chars)
                                  for i in xrange(4)]),
                         chunk_size,
@@ -3624,7 +3624,7 @@ class M4AFileTest(LossyFileTest):
             for channels in [1, 2, 3, 4, 5, 6]:
                 track = self.audio_class.from_pcm(temp.name, BLANK_PCM_Reader(
                         1, channels=channels, channel_mask=0))
-            if (self.audio_class is audiotools.M4AAudio_faac):
+            if (self.audio_class is audiotools.m4a.M4AAudio_faac):
                 self.assertEqual(track.channels(), 2)
                 track = audiotools.open(temp.name)
                 self.assertEqual(track.channels(), 2)
