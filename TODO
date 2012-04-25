@@ -5485,18 +5485,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] tracksplit
      - [X] tracktag
      - [X] trackverify
-** TODO Ensure progress display doesn't overload terminal with rows
-   As more cores become commonplace, it's important not to
-   overload the screen with too many progress rows
-   in case the number of simultaneous jobs
-   exceeds the number of terminal rows.
-** TODO Update .convert() method to use fewer temporary files
-   .wav and .aiff containers with embedded chunks
-   currently route data through actual .wav/.aiff files
-   in order to pass those chunks to another format.
-   It would be better to avoid creating an intermediate
-   file whenever possible.
-** TODO Sanity check tool inputs/outputs
+** DONE Sanity check tool inputs/outputs
 *** DONE Ensure input files are included only once
     - [X] track2cd - generate warning
     - [X] track2track - generate error
@@ -5516,18 +5505,29 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] trackrename
     - [X] tracktag
     - [X] trackverify
-*** TODO Ensure input file(s) are different from output file(s)
+*** DONE Ensure input file(s) are different from output file(s)
     Overwriting files is okay by default (in the Unix tradition)
     but input and output as same file is not and should generate error.
-    - [ ] coverdump
+    - [X] coverdump
     - [X] track2track
     - [X] trackcat
-    - [ ] tracksplit
-**** TODO Unit test new behavior
-     - [ ] coverdump
+    - [X] tracksplit
+**** DONE Unit test new behavior
+     - [X] coverdump
      - [X] track2track
      - [X] trackcat
-     - [ ] tracksplit
+     - [X] tracksplit
+** TODO Ensure progress display doesn't overload terminal with rows
+   As more cores become commonplace, it's important not to
+   overload the screen with too many progress rows
+   in case the number of simultaneous jobs
+   exceeds the number of terminal rows.
+** TODO Update .convert() method to use fewer temporary files
+   .wav and .aiff containers with embedded chunks
+   currently route data through actual .wav/.aiff files
+   in order to pass those chunks to another format.
+   It would be better to avoid creating an intermediate
+   file whenever possible.
 ** TODO Add internal Ogg FLAC encoder
    This shouldn't be too hard since native FLAC encoding is already in place,
    as is Ogg stream encoding.

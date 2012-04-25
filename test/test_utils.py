@@ -644,6 +644,21 @@ class coverdump(UtilTest):
         finally:
             os.chmod(self.cwd_dir, old_mode)
 
+        #check input file same as output file
+        track = audiotools.FlacAudio.from_pcm(
+            os.path.join(self.output_dir, "front_cover.jpg"),
+            BLANK_PCM_Reader(1))
+        metadata = track.get_metadata()
+        metadata.add_image(audiotools.Image.new(TEST_COVER1, u"", 0))
+        track.update_metadata(metadata)
+
+        self.assertEqual(self.__run_app__(
+                ["coverdump", "-V", "normal",
+                 "-d", self.output_dir, track.filename]), 1)
+        self.__check_error__(
+            u"\"%s\" cannot be both input and output file" %
+            (audiotools.Messenger("coverdump", None).filename(track.filename)))
+
 
 class dvdainfo(UtilTest):
     @UTIL_DVDAINFO
@@ -1524,7 +1539,7 @@ class trackcat(UtilTest):
                               self.track2.filename,
                               self.track3.filename]), 1)
         self.__check_error__(
-            u"\"%s\" cannot be used as both input and output file" %
+            u"\"%s\" cannot be both input and output file" %
             (audiotools.Messenger("trackcat", None).filename(
                     self.track1.filename)))
 
@@ -4141,6 +4156,18 @@ class tracksplit(UtilTest):
     @UTIL_TRACKSPLIT
     def test_errors(self):
         filename = audiotools.Messenger("tracksplit", None).filename
+
+        #ensure that unsplitting file to itself generates an error
+        track = self.type.from_pcm(self.unsplit_file.name,
+                                   BLANK_PCM_Reader(18))
+        self.assertEqual(
+            self.__run_app__(
+                ["tracksplit", self.unsplit_file.name,
+                 "--cue", self.cuesheet.name,
+                 "-d", os.path.dirname(self.unsplit_file.name),
+                 "--format", os.path.basename(self.unsplit_file.name)]), 1)
+        self.__check_error__(u"\"%s\" cannot be both input and output file" %
+                             (filename(self.unsplit_file.name)))
 
         track1 = self.type.from_pcm(self.unsplit_file.name,
                                     BLANK_PCM_Reader(18))

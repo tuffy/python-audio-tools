@@ -71,10 +71,14 @@ if (__name__ == '__main__'):
 
     metadata = audiofile.get_metadata()
     if (metadata is not None):
+        #divide images by type (front cover, leaflet page, etc.)
         image_types = {}
         for image in metadata.images():
             image_types.setdefault(image.type, []).append(image)
 
+
+        #build a set of files to be extracted
+        output_images = []
         for (type, images) in image_types.items():
             if (len(images) != 1):
                 FILE_TEMPLATE = \
@@ -84,25 +88,45 @@ if (__name__ == '__main__'):
                     "%(prefix)s%(filename)s.%(suffix)s"
 
             for (i, image) in enumerate(images):
-                output_filename = os.path.join(
-                    options.dir,
-                    FILE_TEMPLATE % {"prefix": options.prefix,
-                                     "filename": FILENAME_TYPES[image.type],
-                                     "filenum": i + 1,
-                                     "suffix": image.suffix()})
-                try:
-                    audiotools.make_dirs(output_filename)
-                    f = open(output_filename, "wb")
-                    f.write(image.data)
-                    f.close()
-                    msg.info(
-                        _(u"%(source)s -> %(destination)s") %
-                        {"source": msg.filename(audiofile.filename),
-                         "destination": msg.filename(output_filename)})
-                except IOError, e:
-                    msg.error(_(u"Unable to write \"%s\"") %
-                                  msg.filename(output_filename))
-                    sys.exit(1)
-                except OSError, e:
-                    msg.os_error(e)
-                    sys.exit(1)
+                output_images.append(
+                    (image,
+                     os.path.join(options.dir,
+                                  FILE_TEMPLATE % {
+                                "prefix": options.prefix,
+                                "filename": FILENAME_TYPES[image.type],
+                                "filenum": i + 1,
+                                "suffix": image.suffix()})))
+
+        #ensure our input file isn't the same
+        #as any of the proposed files to extract
+        #(this sounds crazy,
+        # but there's no technical reason one's audio file
+        # can't be named "front_cover.jpg"
+        # even if it's not a JPEG
+        # so we have to be sure it's not going to be overwritten)
+        if (audiotools.read_file_id(audiofile.filename) in
+            [audiotools.read_file_id(output_filename)
+             for (image, output_filename) in output_images
+             if os.path.isfile(output_filename)]):
+            msg.error(u"\"%s\" cannot be both input and output file" %
+                      (msg.filename(audiofile.filename)))
+            sys.exit(1)
+
+        #finally, write actual image data to disk if possible
+        for (image, output_filename) in output_images:
+            try:
+                audiotools.make_dirs(output_filename)
+                f = open(output_filename, "wb")
+                f.write(image.data)
+                f.close()
+                msg.info(
+                    _(u"%(source)s -> %(destination)s") %
+                    {"source": msg.filename(audiofile.filename),
+                     "destination": msg.filename(output_filename)})
+            except IOError, e:
+                msg.error(_(u"Unable to write \"%s\"") %
+                              msg.filename(output_filename))
+                sys.exit(1)
+            except OSError, e:
+                msg.os_error(e)
+                sys.exit(1)

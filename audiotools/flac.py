@@ -3048,7 +3048,7 @@ class OggFlacAudio(FlacAudio):
                 result = verify_ogg_stream(f)
                 if (progress is not None):
                     progress(1, 1)
-                return result
+                return result is None
             except (IOError, ValueError), err:
                 raise InvalidFLAC(str(err))
         finally:

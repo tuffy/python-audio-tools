@@ -347,22 +347,39 @@ if (__name__ == '__main__'):
                 cuesheet_ISRCs[metadata.track_number].decode('ascii',
                                                              'replace')
 
+    #a list of (track_number, pcm_frames, output_filename) tuples
+    #for each track to be split
+    try:
+        output = [(i + 1,
+                   pcm_frames,
+                   os.path.join(base_directory,
+                                AudioType.track_name(
+                        file_path=audiofile.filename,
+                        track_metadata=track_metadatas.get(i + 1, None),
+                        format=options.format)))
+                  for (i, pcm_frames) in enumerate(
+                cuesheet.pcm_lengths(audiofile.total_frames()))]
+    except audiotools.UnsupportedTracknameField, err:
+        err.error_msg(msg)
+        sys.exit(1)
+
+    #ensure input file is not one of the output filenames
+    if (audiotools.read_file_id(audiofile.filename) in
+        [audiotools.read_file_id(output_filename)
+         for (i, p, output_filename) in output
+         if os.path.isfile(output_filename)]):
+        msg.error(u"\"%s\" cannot be both input and output file" %
+                  (msg.filename(audiofile.filename)))
+        sys.exit(1)
+
+
     #perform actual track splitting and tagging
-    encoded_files = []
+    encoded_tracks = []
     total_pcm = audiotools.BufferedPCMReader(audiofile.to_pcm())
 
     try:
-        for (i, pcm_frames) in enumerate(
-            cuesheet.pcm_lengths(audiofile.total_frames())):
-            track_number = i + 1
+        for (track_number, pcm_frames, filename) in output:
             track_metadata = track_metadatas.get(track_number, None)
-
-            filename = os.path.join(
-                base_directory,
-                AudioType.track_name(
-                    file_path=audiofile.filename,
-                    track_metadata=track_metadata,
-                    format=options.format))
 
             audiotools.make_dirs(filename)
 
@@ -370,7 +387,7 @@ if (__name__ == '__main__'):
                 msg, msg.filename(filename))
 
             #FIXME - catch from_pcm errors here
-            encoded_files.append(
+            encoded_tracks.append(
                 AudioType.from_pcm(
                     filename,
                     audiotools.PCMReaderProgress(
@@ -378,15 +395,11 @@ if (__name__ == '__main__'):
                         pcm_frames,
                         progress.update),
                     options.quality))
-            encoded_files[-1].set_metadata(track_metadata)
+            encoded_tracks[-1].set_metadata(track_metadata)
             progress.clear()
             msg.info(u"%s -> %s" %
                      (msg.filename(audiofile.filename),
                       msg.filename(filename)))
-
-    except audiotools.UnsupportedTracknameField, err:
-        err.error_msg(msg)
-        sys.exit(1)
     except audiotools.EncodingError, err:
         msg.error(unicode(err))
         sys.exit(1)
@@ -398,7 +411,7 @@ if (__name__ == '__main__'):
         rg_progress.initial_message()
         try:
             #separate encoded files by album_name and album_number
-            for album in audiotools.group_tracks(encoded_files):
+            for album in audiotools.group_tracks(encoded_tracks):
                 #add ReplayGain to groups of files
                 #belonging to the same album
 

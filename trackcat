@@ -125,7 +125,7 @@ if (__name__ == '__main__'):
 
     if (os.path.isfile(options.filename) and
         audiotools.read_file_id(options.filename) in opened_files):
-        msg.error(u"\"%s\" cannot be used as both input and output file" %
+        msg.error(u"\"%s\" cannot be both input and output file" %
                   (msg.filename(options.filename)))
         sys.exit(1)
 
