@@ -276,7 +276,7 @@ if (__name__ == '__main__'):
         #the default encoding method, without an output file
 
         base_directory = options.dir
-
+        output_filenames = set([])
         queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
 
         for audiofile in audiofiles:
@@ -287,27 +287,23 @@ if (__name__ == '__main__'):
 
             try:
                 filename = os.path.join(
-                    base_directory,
-                    AudioType.track_name(file_path=audiofile.filename,
-                                         track_metadata=track_metadata,
-                                         format=options.format))
+                        base_directory,
+                        AudioType.track_name(file_path=audiofile.filename,
+                                             track_metadata=track_metadata,
+                                             format=options.format))
+                if (filename in output_filenames):
+                    msg.error(u"output file \"%s\" occurs more than once" %
+                              (filename))
+                    sys.exit(1)
+                else:
+                    output_filenames.add(filename)
             except audiotools.UnsupportedTracknameField, err:
                 err.error_msg(msg)
                 sys.exit(1)
 
-            #try to create subdirectories in advance
-            #so as to bail out as early as possible
-            try:
-                audiotools.make_dirs(filename)
-            except OSError:
-                msg.error(_(u"Unable to write \"%s\"") % \
-                              (filename))
-                sys.exit(1)
-
             #queue up conversion job
             if ((not os.path.isfile(filename)) or
-                (not os.path.samefile(audiofile.filename,
-                                      filename))):
+                (not os.path.samefile(audiofile.filename, filename))):
                 queue.execute(function=convert,
                               progress_text=msg.filename(filename),
                               completion_output=u"%s -> %s" % \
@@ -323,6 +319,16 @@ if (__name__ == '__main__'):
                 msg.error(u"\"%s\" and \"%s\" are the same file" %
                           (audiofile.filename,
                            filename))
+                sys.exit(1)
+
+        #try to create subdirectories in advance
+        #so as to bail out as early as possible
+        for filename in output_filenames:
+            try:
+                audiotools.make_dirs(filename)
+            except OSError:
+                msg.error(_(u"Unable to write \"%s\"") % \
+                              (filename))
                 sys.exit(1)
 
         #perform all queued conversion jobs

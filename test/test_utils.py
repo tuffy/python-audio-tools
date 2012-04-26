@@ -1128,6 +1128,15 @@ class track2track(UtilTest):
             (filename(self.track1.filename),
              filename(self.track1.filename)))
 
+        #check duplicate output files
+        self.assertEqual(self.__run_app__(["track2track",
+                                           "--format", "foo",
+                                           self.track1.filename,
+                                           self.track2.filename]), 1)
+        self.__check_error__(
+            u"output file \"%s\" occurs more than once" % (
+                filename(os.path.join(".", "foo"))))
+
         #check conversion from supported to unsupported channel count
         unsupported_count_file = tempfile.NamedTemporaryFile(
             suffix=".flac")
@@ -3740,20 +3749,37 @@ class trackrename(UtilTest):
 
     @UTIL_TRACKRENAME
     def test_duplicate(self):
-        name = "02 - name." + self.type.SUFFIX
+        name1 = "01 - name." + self.type.SUFFIX
+        name2 = "02 - name." + self.type.SUFFIX
 
-        track = self.type.from_pcm(
-            os.path.join(self.input_dir, name),
+        track1 = self.type.from_pcm(
+            os.path.join(self.input_dir, name1),
             BLANK_PCM_Reader(1))
+        track1.set_metadata(audiotools.MetaData(track_number=1))
 
-        self.assertEqual(self.__run_app__(["trackrename", "-V", "normal",
-                                           "--format", self.format,
-                                           track.filename, track.filename]), 1)
+        track2 = self.type.from_pcm(
+            os.path.join(self.input_dir, name2),
+            BLANK_PCM_Reader(1))
+        track2.set_metadata(audiotools.MetaData(track_number=2))
+
+        self.assertEqual(
+            self.__run_app__(["trackrename", "-V", "normal",
+                              "--format", self.format,
+                              track1.filename, track1.filename]), 1)
 
         self.__check_error__(
             u"File \"%s\" included more than once" %
             (audiotools.Messenger("trackrename",
-                                  None).filename(track.filename)))
+                                  None).filename(track1.filename)))
+
+        self.assertEqual(
+            self.__run_app__(["trackrename", "-V", "normal",
+                              "--format", "foo",
+                              track1.filename, track2.filename]), 1)
+
+        self.__check_error__(
+            u"Output file \"%s\" occurs more than once" %
+            (os.path.join(os.path.dirname(track1.filename), "foo")))
 
     @UTIL_TRACKRENAME
     def test_errors(self):
@@ -3791,14 +3817,9 @@ class trackrename(UtilTest):
                          '--format=%(album_name)s/%(track_number)2.2d - %(track_name)s.%(suffix)s',
                          track.filename]), 1)
 
-                self.__check_error__(_(u"Unable to write \"%s\"") % \
+                self.__check_error__(_(u"[Errno 13] Permission denied: \'%s\'") % \
                                          self.filename(
-                        os.path.join(
-                            "Album",
-                            "%(track_number)2.2d - %(track_name)s.%(suffix)s" % \
-                                {"track_number": 1,
-                                 "track_name": "Name",
-                                 "suffix": self.type.SUFFIX})))
+                        os.path.join(os.path.dirname(track.filename), "Album")))
 
                 self.assertEqual(self.__run_app__(
                         ["trackrename",
@@ -3838,6 +3859,10 @@ class tracksplit(UtilTest):
         self.cuesheet2.write('FILE "CDImage.wav" WAVE\r\n  TRACK 01 AUDIO\r\n    ISRC ABCD00000001\r\n    INDEX 01 00:00:00\r\n  TRACK 02 AUDIO\r\n    ISRC ABCD00000002\r\n    INDEX 00 00:03:00\r\n    INDEX 01 00:05:00\r\n  TRACK 03 AUDIO\r\n    ISRC ABCD00000003\r\n    INDEX 00 00:9:00\r\n    INDEX 01 00:11:00\r\n')
         self.cuesheet2.flush()
 
+        self.cuesheet3 = tempfile.NamedTemporaryFile(suffix=".cue")
+        self.cuesheet3.write('FILE "CDImage.wav" WAVE\r\n  TRACK 01 AUDIO\r\n    ISRC JPPI00652340\r\n    INDEX 01 00:00:00\r\n')
+        self.cuesheet3.flush()
+
         self.unsplit_file2 = tempfile.NamedTemporaryFile(suffix=".flac")
 
         self.stream = test_streams.Sine16_Stereo(793800, 44100,
@@ -3859,6 +3884,7 @@ class tracksplit(UtilTest):
         self.unsplit_file2.close()
         self.cuesheet.close()
         self.cuesheet2.close()
+        self.cuesheet3.close()
 
         for f in os.listdir(self.output_dir):
             os.unlink(os.path.join(self.output_dir, f))
@@ -3924,7 +3950,8 @@ class tracksplit(UtilTest):
                 if (("-q" in options) and
                     ("1" not in output_type.COMPRESSION_MODES)):
                     self.assertEqual(
-                        self.__run_app__(["tracksplit", "-V", "normal"] +
+                        self.__run_app__(["tracksplit", "-V", "normal",
+                                          "--no-freedb", "--no-musicbrainz"] +
                                          options + [track.filename]), 1)
                     self.__check_error__(
                         _(u"\"%(quality)s\" is not a supported " +
@@ -3935,14 +3962,16 @@ class tracksplit(UtilTest):
 
                 if ("--cue" not in options):
                     self.assertEqual(
-                        self.__run_app__(["tracksplit", "-V", "normal"] +
+                        self.__run_app__(["tracksplit", "-V", "normal",
+                                          "--no-freedb", "--no-musicbrainz"] +
                                          options + [track.filename]), 1)
                     self.__check_error__(
                         _(u"You must specify a cuesheet to split audio file"))
                     continue
 
                 self.assertEqual(
-                    self.__run_app__(["tracksplit", "-V", "normal"] +
+                    self.__run_app__(["tracksplit", "-V", "normal",
+                                      "--no-freedb", "--no-musicbrainz"] +
                                      options + [track.filename]), 0)
                 if ("--format" in options):
                     output_format = self.format
@@ -4041,7 +4070,8 @@ class tracksplit(UtilTest):
                 if (("-q" in options) and
                     ("1" not in output_type.COMPRESSION_MODES)):
                     self.assertEqual(
-                        self.__run_app__(["tracksplit", "-V", "normal"] +
+                        self.__run_app__(["tracksplit", "-V", "normal",
+                                          "--no-freedb", "--no-musicbrainz"] +
                                          options + [track.filename]), 1)
                     self.__check_error__(
                         _(u"\"%(quality)s\" is not a supported " +
@@ -4051,7 +4081,8 @@ class tracksplit(UtilTest):
                     continue
 
                 self.assertEqual(
-                    self.__run_app__(["tracksplit", "-V", "normal"] +
+                    self.__run_app__(["tracksplit", "-V", "normal",
+                                      "--no-freedb", "--no-musicbrainz"] +
                                      options + [track.filename]), 0)
                 if ("--format" in options):
                     output_format = self.format
@@ -4163,11 +4194,25 @@ class tracksplit(UtilTest):
         self.assertEqual(
             self.__run_app__(
                 ["tracksplit", self.unsplit_file.name,
-                 "--cue", self.cuesheet.name,
+                 "--no-freedb", "--no-musicbrainz",
+                 "--cue", self.cuesheet3.name,
                  "-d", os.path.dirname(self.unsplit_file.name),
                  "--format", os.path.basename(self.unsplit_file.name)]), 1)
         self.__check_error__(u"\"%s\" cannot be both input and output file" %
                              (filename(self.unsplit_file.name)))
+
+        #ensure that unsplitting file to identical names generates an error
+        self.assertEqual(
+            self.__run_app__(
+                ["tracksplit", self.unsplit_file.name,
+                 "--no-freedb", "--no-musicbrainz",
+                 "--cue", self.cuesheet.name,
+                 "-d", os.path.dirname(self.unsplit_file.name),
+                 "--format", "foo"]), 1)
+        self.__check_error__(
+            u"Output file \"%s\" occurs more than once" %
+            (filename(os.path.join(os.path.dirname(self.unsplit_file.name),
+                                   "foo"))))
 
         track1 = self.type.from_pcm(self.unsplit_file.name,
                                     BLANK_PCM_Reader(18))

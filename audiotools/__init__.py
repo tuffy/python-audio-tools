@@ -808,10 +808,11 @@ class ProgressDisplay:
         depending on whether output has changed since
         previously displayed"""
 
-        screen_width = self.messenger.terminal_size(sys.stdout)[1]
+        (screen_height,
+         screen_width) = self.messenger.terminal_size(sys.stdout)
         new_output = [progress_row.unicode(screen_width)
                       for progress_row in self.progress_rows
-                      if progress_row is not None]
+                      if progress_row is not None][0:screen_height - 1]
         for output in new_output:
             self.messenger.output(output)
         self.previous_output = new_output

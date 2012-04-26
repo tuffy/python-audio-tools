@@ -347,18 +347,31 @@ if (__name__ == '__main__'):
                 cuesheet_ISRCs[metadata.track_number].decode('ascii',
                                                              'replace')
 
-    #a list of (track_number, pcm_frames, output_filename) tuples
-    #for each track to be split
+    output = []
+
+    output_filenames = set([])
+
+    #determine PCM frames and output filename for each track to be split
     try:
-        output = [(i + 1,
-                   pcm_frames,
-                   os.path.join(base_directory,
-                                AudioType.track_name(
-                        file_path=audiofile.filename,
-                        track_metadata=track_metadatas.get(i + 1, None),
-                        format=options.format)))
-                  for (i, pcm_frames) in enumerate(
-                cuesheet.pcm_lengths(audiofile.total_frames()))]
+        for (i, pcm_frames) in enumerate(
+            cuesheet.pcm_lengths(audiofile.total_frames())):
+            track_number = i + 1
+            output_filename = os.path.join(base_directory,
+                                           AudioType.track_name(
+                    file_path=audiofile.filename,
+                    track_metadata=track_metadatas.get(i + 1, None),
+                    format=options.format))
+
+            if (output_filename not in output_filenames):
+                output_filenames.add(output_filename)
+                output.append((track_number,
+                               pcm_frames,
+                               output_filename))
+            else:
+                msg.error(u"Output file \"%s\" occurs more than once" %
+                          (msg.filename(output_filename)))
+                sys.exit(1)
+
     except audiotools.UnsupportedTracknameField, err:
         err.error_msg(msg)
         sys.exit(1)

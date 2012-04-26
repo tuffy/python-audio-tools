@@ -21,7 +21,7 @@
 import sys
 import audiotools
 import os.path
-import subprocess
+import shutil
 import gettext
 
 gettext.install("audiotools", unicode=True)
@@ -61,33 +61,47 @@ if (__name__ == '__main__'):
         msg.error(_(u"You must specify at least 1 supported audio file"))
         sys.exit(1)
 
+    #get a set of files to be renamed
+    #and generate an error if a duplicate occurs
+    to_rename = []  #a (old_name, new_name) tuple
     try:
+        renamed_paths = set([])
         for track in audiofiles:
-            track_metadata = track.get_metadata()
-
-            new_name = track.track_name(file_path=track.filename,
-                                        track_metadata=track_metadata,
-                                        format=options.format)
-
-            (path, filename) = os.path.split(track.filename)
-            if (filename != new_name):
-                try:
-                    audiotools.make_dirs(os.path.join(path, new_name))
-                except OSError:
-                    msg.error(_(u"Unable to write \"%s\"") % \
-                                      (new_name))
-                    sys.exit(1)
-
-                if (subprocess.call([audiotools.BIN['mv'], '-i',
-                                     track.filename,
-                                     os.path.join(path, new_name)]) == 0):
-                    if (options.verbosity != 'quiet'):
-                        msg.info(
-                            u"%s -> %s" %
-                            (msg.filename(track.filename),
-                             msg.filename(os.path.join(path, new_name))))
-                else:
-                    sys.exit(1)
+            original_path = track.filename
+            new_path = os.path.join(
+                os.path.dirname(track.filename),
+                track.track_name(file_path=track.filename,
+                                 track_metadata=track.get_metadata(),
+                                 format=options.format))
+            if (new_path not in renamed_paths):
+                renamed_paths.add(new_path)
+                if (new_path != original_path):
+                    to_rename.append((original_path, new_path))
+            else:
+                msg.error(u"Output file \"%s\" occurs more than once" %
+                          (msg.filename(new_path)))
+                sys.exit(1)
     except audiotools.UnsupportedTracknameField, err:
         err.error_msg(msg)
         sys.exit(1)
+
+    #create subdirectories for renamed files
+    for (original_path, new_path) in to_rename:
+        try:
+            audiotools.make_dirs(new_path)
+        except OSError, err:
+            msg.os_error(err)
+            sys.exit(1)
+
+    #perform the actual renaming itself
+    for (original_path, new_path) in to_rename:
+        try:
+            shutil.move(original_path, new_path)
+            msg.info(
+                u"%s -> %s" %
+                (msg.filename(original_path), msg.filename(new_path)))
+        except IOError, err:
+            msg.error(
+                u"unable to rename \"%s\" to \"%s\"" %
+                (original_path, new_path))
+            sys.exit(1)

@@ -5517,7 +5517,20 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] track2track
      - [X] trackcat
      - [X] tracksplit
-** TODO Ensure progress display doesn't overload terminal with rows
+*** TODO Ensure same file isn't written twice by the same utility
+    This would typically be the result of a misused "--format" argument.
+    - [ ] cd2track
+    - [ ] dvda2track
+    - [X] track2track
+    - [X] trackrename
+    - [X] tracksplit
+**** TODO unit test new behavior
+     - [ ] cd2track
+     - [ ] dvda2track
+     - [X] track2track
+     - [X] trackrename
+     - [X] tracksplit
+** DONE Ensure progress display doesn't overload terminal with rows
    As more cores become commonplace, it's important not to
    overload the screen with too many progress rows
    in case the number of simultaneous jobs
@@ -5528,6 +5541,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    in order to pass those chunks to another format.
    It would be better to avoid creating an intermediate
    file whenever possible.
+** TODO Improve metadata tagging widget
+   I'm not convinced the current opened/closed bottom window
+   is the ideal design for editing extended album/track metadata.
+   Something more similar to a spreadsheet would be ideal
+   but that's complicated by the serious lack of space
+   in terminal windows.
 ** TODO Add internal Ogg FLAC encoder
    This shouldn't be too hard since native FLAC encoding is already in place,
    as is Ogg stream encoding.
