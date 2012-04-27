@@ -225,14 +225,17 @@ if (__name__ == '__main__'):
     if (len(args) != 1):
         msg.error(_(u"You must specify exactly 1 supported audio file"))
         sys.exit(1)
+    else:
+        input_filename = audiotools.Filename(args[0])
+        input_filenames = set([input_filename])
 
     try:
-        audiofile = audiotools.open(args[0])
+        audiofile = audiotools.open(str(input_filename))
     except audiotools.UnsupportedFile:
         msg.error(_(u"You must specify exactly 1 supported audio file"))
         sys.exit(1)
     except IOError:
-        msg.error(_(u"Unable to open \"%s\"") % (msg.filename(args[0])))
+        msg.error(_(u"Unable to open \"%s\"") % (input_filename,))
         sys.exit(1)
 
     if (options.add_replay_gain is None):
@@ -240,10 +243,6 @@ if (__name__ == '__main__'):
             audiotools.ADD_REPLAYGAIN and
             AudioType.lossless_replay_gain() and
             audiotools.applicable_replay_gain([audiofile]))
-
-    if ((options.cuesheet is None) and (not has_embedded_cuesheet(audiofile))):
-        msg.error(_(u"You must specify a cuesheet to split audio file"))
-        sys.exit(1)
 
     base_directory = options.dir
     encoded_filenames = []
@@ -253,11 +252,16 @@ if (__name__ == '__main__'):
         #(this overrides an embedded cuesheet)
         try:
             cuesheet = audiotools.read_sheet(options.cuesheet)
+            input_filenames.add(audiotools.Filename(options.cuesheet))
         except audiotools.SheetException, err:
             msg.error(unicode(err))
             sys.exit(1)
     else:
-        cuesheet = audiofile.get_cuesheet()
+        if (has_embedded_cuesheet(audiofile)):
+            cuesheet = audiofile.get_cuesheet()
+        else:
+            msg.error(_(u"You must specify a cuesheet to split audio file"))
+            sys.exit(1)
 
     if (list(cuesheet.pcm_lengths(audiofile.total_frames()))[-1] <= 0):
         msg.error(_(u"Cuesheet too long for track being split"))
@@ -348,7 +352,6 @@ if (__name__ == '__main__'):
                                                              'replace')
 
     output = []
-
     output_filenames = set([])
 
     #determine PCM frames and output filename for each track to be split
@@ -356,53 +359,48 @@ if (__name__ == '__main__'):
         for (i, pcm_frames) in enumerate(
             cuesheet.pcm_lengths(audiofile.total_frames())):
             track_number = i + 1
-            output_filename = os.path.join(base_directory,
-                                           AudioType.track_name(
-                    file_path=audiofile.filename,
-                    track_metadata=track_metadatas.get(i + 1, None),
-                    format=options.format))
+            output_filename = audiotools.Filename(
+                os.path.join(base_directory,
+                             AudioType.track_name(
+                        file_path=audiofile.filename,
+                        track_metadata=track_metadatas.get(i + 1, None),
+                        format=options.format)))
 
-            if (output_filename not in output_filenames):
+            if (output_filename in input_filenames):
+                msg.error(u"\"%s\" cannot be both input and output file" %
+                          (output_filename,))
+                sys.exit(1)
+            elif (output_filename in output_filenames):
+                msg.error(u"Output file \"%s\" occurs more than once" %
+                          (output_filename,))
+                sys.exit(1)
+            else:
                 output_filenames.add(output_filename)
                 output.append((track_number,
                                pcm_frames,
                                output_filename))
-            else:
-                msg.error(u"Output file \"%s\" occurs more than once" %
-                          (msg.filename(output_filename)))
-                sys.exit(1)
 
     except audiotools.UnsupportedTracknameField, err:
         err.error_msg(msg)
         sys.exit(1)
-
-    #ensure input file is not one of the output filenames
-    if (audiotools.read_file_id(audiofile.filename) in
-        [audiotools.read_file_id(output_filename)
-         for (i, p, output_filename) in output
-         if os.path.isfile(output_filename)]):
-        msg.error(u"\"%s\" cannot be both input and output file" %
-                  (msg.filename(audiofile.filename)))
-        sys.exit(1)
-
 
     #perform actual track splitting and tagging
     encoded_tracks = []
     total_pcm = audiotools.BufferedPCMReader(audiofile.to_pcm())
 
     try:
-        for (track_number, pcm_frames, filename) in output:
+        for (track_number, pcm_frames, output_filename) in output:
             track_metadata = track_metadatas.get(track_number, None)
 
-            audiotools.make_dirs(filename)
+            audiotools.make_dirs(str(output_filename))
 
             progress = audiotools.SingleProgressDisplay(
-                msg, msg.filename(filename))
+                msg, unicode(output_filename))
 
             #FIXME - catch from_pcm errors here
             encoded_tracks.append(
                 AudioType.from_pcm(
-                    filename,
+                    str(output_filename),
                     audiotools.PCMReaderProgress(
                         audiotools.LimitedPCMReader(total_pcm, pcm_frames),
                         pcm_frames,
@@ -410,9 +408,7 @@ if (__name__ == '__main__'):
                     options.quality))
             encoded_tracks[-1].set_metadata(track_metadata)
             progress.clear()
-            msg.info(u"%s -> %s" %
-                     (msg.filename(audiofile.filename),
-                      msg.filename(filename)))
+            msg.info(u"%s -> %s" % (input_filename, output_filename))
     except audiotools.EncodingError, err:
         msg.error(unicode(err))
         sys.exit(1)

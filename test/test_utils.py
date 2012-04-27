@@ -217,8 +217,6 @@ class cd2track(UtilTest):
 
     @UTIL_CD2TRACK
     def test_options(self):
-        messenger = audiotools.VerboseMessenger("cd2track")
-
         all_options = ["-t", "-q", "-d", "--format",
                        "--album-number", "--album-total"]
         for count in xrange(1, len(all_options) + 1):
@@ -279,7 +277,7 @@ class cd2track(UtilTest):
                     self.__check_info__(
                         _(u"track %(track_number)2.2d -> %(filename)s") % \
                             {"track_number": i + 1,
-                             "filename": messenger.filename(
+                             "filename": audiotools.Filename(
                                 os.path.join(output_dir, path))})
 
                 #rip log is generated afterward as a table
@@ -347,7 +345,11 @@ class cd2track(UtilTest):
 
     @UTIL_CD2TRACK
     def test_errors(self):
-        filename = audiotools.Messenger("cd2track", None).filename
+        self.assertEqual(
+            self.__run_app__(["cd2track", "-c", self.cue_file,
+                              "--format=foo"]), 1)
+        self.__check_error__(u"Output file \"%s\" occurs more than once" %
+                             (audiotools.Filename("foo"),))
 
         all_options = ["-t", "-q", "-d", "--format",
                        "--album-number", "--album-total"]
@@ -417,8 +419,8 @@ class cd2track(UtilTest):
                             audiotools.MetaData(track_number=1,
                                                 track_total=3)))
                     self.__check_error__(
-                        _(u"Unable to write \"%s\"") % \
-                            (output_path))
+                        _(u"Unable to write \"%s\"") %
+                        (audiotools.Filename(output_path),))
                     continue
 
 
@@ -508,8 +510,6 @@ class coverdump(UtilTest):
 
     @UTIL_COVERDUMP
     def test_options(self):
-        msg = audiotools.VerboseMessenger("coverdump")
-
         all_options = ["-d", "-p"]
         for count in xrange(len(all_options) + 1):
             for options in Combinations(all_options, count):
@@ -549,8 +549,8 @@ class coverdump(UtilTest):
 
                     self.__check_info__(
                         _(u"%(source)s -> %(destination)s") %
-                        {"source": msg.filename(self.track1.filename),
-                         "destination": msg.filename(output_path)})
+                        {"source": audiotools.Filename(self.track1.filename),
+                         "destination": audiotools.Filename(output_path)})
                     output_image = audiotools.Image.new(
                         open(output_path, "rb").read(),
                         u"",
@@ -590,8 +590,8 @@ class coverdump(UtilTest):
 
                     self.__check_info__(
                         _(u"%(source)s -> %(destination)s") %
-                        {"source": msg.filename(self.track2.filename),
-                         "destination": msg.filename(output_path)})
+                        {"source": audiotools.Filename(self.track2.filename),
+                         "destination": audiotools.Filename(output_path)})
                     output_image = audiotools.Image.new(
                         open(output_path, "rb").read(),
                         u"",
@@ -600,8 +600,6 @@ class coverdump(UtilTest):
 
     @UTIL_COVERDUMP
     def test_errors(self):
-        msg = audiotools.VerboseMessenger("coverdump")
-
         #check no input files
         self.assertEqual(self.__run_app__(
                 ["coverdump", "-V", "normal"]), 1)
@@ -625,9 +623,9 @@ class coverdump(UtilTest):
                     ["coverdump", "-V", "normal", "-d", self.output_dir,
                      self.track1.filename]), 1)
             self.__check_error__(
-                _(u"Unable to write \"%s\"") % (msg.filename(
-                        os.path.join(self.output_dir,
-                                     "front_cover01.png"))))
+                _(u"Unable to write \"%s\"") %
+                (audiotools.Filename(os.path.join(self.output_dir,
+                                                  "front_cover01.png")),))
         finally:
             os.chmod(self.output_dir, old_mode)
 
@@ -639,7 +637,8 @@ class coverdump(UtilTest):
                     ["coverdump", "-V", "normal",
                      self.track1.filename]), 1)
             self.__check_error__(
-                _(u"[Errno 13] Permission denied: '.'"))
+                _(u"Unable to write \"%s\"") %
+                (audiotools.Filename("front_cover01.png"),))
 
         finally:
             os.chmod(self.cwd_dir, old_mode)
@@ -657,7 +656,7 @@ class coverdump(UtilTest):
                  "-d", self.output_dir, track.filename]), 1)
         self.__check_error__(
             u"\"%s\" cannot be both input and output file" %
-            (audiotools.Messenger("coverdump", None).filename(track.filename)))
+            (audiotools.Filename(track.filename),))
 
 
 class dvdainfo(UtilTest):
@@ -954,9 +953,9 @@ class track2track(UtilTest):
                     self.__check_info__(
                         _(u"%(source)s -> %(destination)s") %
                         {"source":
-                             messenger.filename(self.track1.filename),
+                             audiotools.Filename(self.track1.filename),
                          "destination":
-                             messenger.filename(output_path)})
+                             audiotools.Filename(output_path)})
 
                 track2 = audiotools.open(output_path)
                 self.assertEqual(track2.NAME, output_class.NAME)
@@ -994,9 +993,6 @@ class track2track(UtilTest):
 
     @UTIL_TRACK2TRACK
     def test_errors(self):
-        messenger = audiotools.Messenger("track2track", None)
-        filename = messenger.filename
-
         all_options = ["-t", "-q", "-d", "--format", "-o", "-j",
                        "-T", "--replay-gain", "--no-replay-gain"]
         for count in xrange(0, len(all_options) + 1):
@@ -1104,7 +1100,7 @@ class track2track(UtilTest):
                                            self.track2.filename]), 1)
         self.__check_error__(
             u"File \"%s\" included more than once" %
-            (filename(self.track1.filename)))
+            (audiotools.Filename(self.track1.filename),))
 
         #check identical input and output file
         self.assertEqual(
@@ -1114,9 +1110,8 @@ class track2track(UtilTest):
                               "-d", self.input_dir,
                               "--format=%(track_number)2.2d.%(suffix)s"]), 1)
         self.__check_error__(
-            u"\"%s\" and \"%s\" are the same file" %
-            (filename(self.track1.filename),
-             filename(self.track1.filename)))
+            u"output file \"%s\" same as input file" %
+            (audiotools.Filename(self.track1.filename),))
 
         #check identical input and output file with -o
         self.assertEqual(self.__run_app__(["track2track",
@@ -1124,9 +1119,8 @@ class track2track(UtilTest):
                                            "-o", self.track1.filename,
                                            self.track1.filename]), 1)
         self.__check_error__(
-            u"\"%s\" and \"%s\" are the same file" %
-            (filename(self.track1.filename),
-             filename(self.track1.filename)))
+            u"output file \"%s\" same as input file" %
+            (audiotools.Filename(self.track1.filename),))
 
         #check duplicate output files
         self.assertEqual(self.__run_app__(["track2track",
@@ -1135,7 +1129,7 @@ class track2track(UtilTest):
                                            self.track2.filename]), 1)
         self.__check_error__(
             u"output file \"%s\" occurs more than once" % (
-                filename(os.path.join(".", "foo"))))
+                audiotools.Filename(os.path.join(".", "foo")),))
 
         #check conversion from supported to unsupported channel count
         unsupported_count_file = tempfile.NamedTemporaryFile(
@@ -1153,8 +1147,8 @@ class track2track(UtilTest):
             self.__check_error__(
                 _(u"Unable to write \"%(target_filename)s\"" +
                   u" with %(channels)d channel input") %
-                {"target_filename": filename(os.path.join(self.output_dir,
-                                                          "00 - .flac")),
+                {"target_filename": audiotools.Filename(
+                        os.path.join(self.output_dir, "00 - .flac")),
                  "channels": 10})
 
             self.assertEqual(self.__run_app__(["track2track",
@@ -1164,7 +1158,8 @@ class track2track(UtilTest):
             self.__check_error__(
                 _(u"Unable to write \"%(target_filename)s\"" +
                   u" with %(channels)d channel input") %
-                {"target_filename": filename(unsupported_count_file.name),
+                {"target_filename": audiotools.Filename(
+                        unsupported_count_file.name),
                  "channels": 10})
         finally:
             unsupported_count_file.close()
@@ -1185,8 +1180,8 @@ class track2track(UtilTest):
             self.__check_error__(
                 _(u"Unable to write \"%(target_filename)s\"" +
                   u" with channel assignment \"%(assignment)s\"") %
-                {"target_filename": filename(os.path.join(self.output_dir,
-                                                          "00 - .flac")),
+                {"target_filename": audiotools.Filename(
+                        os.path.join(self.output_dir, "00 - .flac")),
                  "assignment": audiotools.ChannelMask(0x3F000)})
 
             self.assertEqual(self.__run_app__(["track2track",
@@ -1196,7 +1191,8 @@ class track2track(UtilTest):
             self.__check_error__(
                 _(u"Unable to write \"%(target_filename)s\"" +
                   u" with channel assignment \"%(assignment)s\"") %
-                {"target_filename": filename(unsupported_mask_file.name),
+                {"target_filename": audiotools.Filename(
+                        unsupported_mask_file.name),
                  "assignment": audiotools.ChannelMask(0x3F000)})
         finally:
             unsupported_mask_file.close()
@@ -1217,8 +1213,8 @@ class track2track(UtilTest):
             self.__check_error__(
                 _(u"Unable to write \"%(target_filename)s\"" +
                   u" with %(bps)d bits per sample") %
-                {"target_filename": filename(os.path.join(self.output_dir,
-                                                          "00 - .shn")),
+                {"target_filename": audiotools.Filename(
+                        os.path.join(self.output_dir, "00 - .shn")),
                  "bps": 24})
 
             self.assertEqual(self.__run_app__(["track2track",
@@ -1228,7 +1224,8 @@ class track2track(UtilTest):
             self.__check_error__(
                 _(u"Unable to write \"%(target_filename)s\"" +
                   u" with %(bps)d bits per sample") %
-                {"target_filename": filename(unsupported_bps_file.name),
+                {"target_filename": audiotools.Filename(
+                        unsupported_bps_file.name),
                  "bps": 24})
         finally:
             unsupported_bps_file.close()
@@ -1480,8 +1477,6 @@ class trackcat(UtilTest):
 
     @UTIL_TRACKCAT
     def test_options(self):
-        messenger = audiotools.Messenger("trackcat", None)
-
         #first, check the error conditions
         self.assertEqual(
             self.__run_app__(["trackcat", "-o", "fail.flac"]), 1)
@@ -1538,8 +1533,7 @@ class trackcat(UtilTest):
                               self.track1.filename]), 0)
         self.__check_warning__(
             u"File \"%s\" included more than once" %
-            (audiotools.Messenger("trackcat", None).filename(
-                    self.track1.filename)))
+            (audiotools.Filename(self.track1.filename),))
 
         self.assertEqual(
             self.__run_app__(["trackcat",
@@ -1549,8 +1543,7 @@ class trackcat(UtilTest):
                               self.track3.filename]), 1)
         self.__check_error__(
             u"\"%s\" cannot be both input and output file" %
-            (audiotools.Messenger("trackcat", None).filename(
-                    self.track1.filename)))
+            (audiotools.Filename(self.track1.filename),))
 
         #then, check the option combinations
         #along with a few different output files and types
@@ -1608,7 +1601,7 @@ class trackcat(UtilTest):
                                      1)
                     self.__check_error__(
                         _(u"%(filename)s: [Errno 20] Not a directory: '%(filename)s'") %
-                        {"filename": messenger.filename(outfile)})
+                        {"filename": audiotools.Filename(outfile)})
                     continue
 
                 #check that no PCM data is lost
@@ -1727,8 +1720,6 @@ class trackcmp(UtilTest):
 
     @UTIL_TRACKCMP
     def test_combinations(self):
-        msg = audiotools.VerboseMessenger("trackcmp")
-
         #check matching file against maching file
         self.assertEqual(
             self.__run_app__(["trackcmp", "-V", "normal",
@@ -1748,8 +1739,8 @@ class trackcmp(UtilTest):
             1)
         self.__check_info__(
             _(u"%(path1)s <> %(path2)s : %(result)s") % {
-                "path1": msg.filename(self.match_file1.name),
-                "path2": msg.filename(self.mismatch_file.name),
+                "path1": audiotools.Filename(self.match_file1.name),
+                "path2": audiotools.Filename(self.mismatch_file.name),
                 "result": _(u"differ at PCM frame %(frame_number)d") %
                 {"frame_number": 1}})
         #(ANSI output won't be generated because stdout isn't a TTY)
@@ -1761,8 +1752,8 @@ class trackcmp(UtilTest):
             1)
         self.__check_error__(
             _(u"%(path1)s <> %(path2)s : %(result)s") % {
-                "path1": msg.filename(self.match_file1.name),
-                "path2": msg.filename("/dev/null/foo"),
+                "path1": audiotools.Filename(self.match_file1.name),
+                "path2": audiotools.Filename("/dev/null/foo"),
                 "result": _(u"must be either files or directories")})
 
         #check matching file against broken file
@@ -1779,8 +1770,8 @@ class trackcmp(UtilTest):
             1)
         self.__check_error__(
             _(u"%(path1)s <> %(path2)s : %(result)s") % {
-                "path1": msg.filename(self.match_file1.name),
-                "path2": msg.filename(self.match_dir1),
+                "path1": audiotools.Filename(self.match_file1.name),
+                "path2": audiotools.Filename(self.match_dir1),
                 "result": _(u"must be either files or directories")})
 
         #check directory against file
@@ -1790,8 +1781,8 @@ class trackcmp(UtilTest):
             1)
         self.__check_error__(
             _(u"%(path1)s <> %(path2)s : %(result)s") % {
-                "path1": msg.filename(self.match_dir1),
-                "path2": msg.filename(self.match_file1.name),
+                "path1": audiotools.Filename(self.match_dir1),
+                "path2": audiotools.Filename(self.match_file1.name),
                 "result": _(u"must be either files or directories")})
 
         #check matching directory against matching directory
@@ -1802,10 +1793,10 @@ class trackcmp(UtilTest):
         for i in xrange(1, 4):
             self.__check_info__(
                 _(u"%(path1)s <> %(path2)s : %(result)s") % {
-                    "path1": msg.filename(
+                    "path1": audiotools.Filename(
                         os.path.join(self.match_dir1,
                                      "%2.2d.%s" % (i, self.type.SUFFIX))),
-                    "path2": msg.filename(
+                    "path2": audiotools.Filename(
                         os.path.join(self.match_dir2,
                                      "%2.2d.%s" % (i, self.type.SUFFIX))),
                     "result": _(u"OK")})
@@ -1818,10 +1809,10 @@ class trackcmp(UtilTest):
         for i in xrange(1, 4):
             self.__check_info__(
                 _(u"%(path1)s <> %(path2)s : %(result)s") % {
-                    "path1": msg.filename(
+                    "path1": audiotools.Filename(
                         os.path.join(self.match_dir1,
                                      "%2.2d.%s" % (i, self.type.SUFFIX))),
-                    "path2": msg.filename(
+                    "path2": audiotools.Filename(
                         os.path.join(self.match_dir1,
                                      "%2.2d.%s" % (i, self.type.SUFFIX))),
                     "result": _(u"OK")})
@@ -1834,10 +1825,10 @@ class trackcmp(UtilTest):
         for i in xrange(1, 4):
             self.__check_info__(
                 _(u"%(path1)s <> %(path2)s : %(result)s") % {
-                    "path1": msg.filename(
+                    "path1": audiotools.Filename(
                         os.path.join(self.match_dir1,
                                      "%2.2d.%s" % (i, self.type.SUFFIX))),
-                    "path2": msg.filename(
+                    "path2": audiotools.Filename(
                         os.path.join(self.mismatch_dir1,
                                      "%2.2d.%s" % (i, self.type.SUFFIX))),
                     "result": _(u"differ at PCM frame %(frame_number)d" %
@@ -1856,10 +1847,10 @@ class trackcmp(UtilTest):
         for i in xrange(1, 2):
             self.__check_info__(
                 _(u"%(path1)s <> %(path2)s : %(result)s") % {
-                    "path1": msg.filename(
+                    "path1": audiotools.Filename(
                         os.path.join(self.match_dir1,
                                      "%2.2d.%s" % (i, self.type.SUFFIX))),
-                    "path2": msg.filename(
+                    "path2": audiotools.Filename(
                         os.path.join(self.mismatch_dir2,
                                      "%2.2d.%s" % (i, self.type.SUFFIX))),
                     "result": _(u"OK")})
@@ -1877,10 +1868,10 @@ class trackcmp(UtilTest):
         for i in xrange(1, 3):
             self.__check_info__(
                 _(u"%(path1)s <> %(path2)s : %(result)s") % {
-                    "path1": msg.filename(
+                    "path1": audiotools.Filename(
                         os.path.join(self.match_dir1,
                                      "%2.2d.%s" % (i, self.type.SUFFIX))),
-                    "path2": msg.filename(
+                    "path2": audiotools.Filename(
                         os.path.join(self.mismatch_dir3,
                                      "%2.2d.%s" % (i, self.type.SUFFIX))),
                     "result": _(u"OK")})
@@ -1933,10 +1924,6 @@ class trackinfo(UtilTest):
         for track in self.metadata_tracks:
             for count in xrange(1, len(all_options) + 1):
                 for options in Combinations(all_options, count):
-                    # print track.filename,repr(options)
-                    # if (self.__run_app__(["trackinfo"] + options + [track.filename]) != 0):
-                    #     print self.stderr.getvalue()
-                    #     self.assert_(False)
                     self.assertEqual(
                         self.__run_app__(
                             ["trackinfo"] + options + [track.filename]), 0)
@@ -2520,15 +2507,15 @@ class tracklint(UtilTest):
                         ["tracklint", "--fix", "--db", undo_db,
                          track.filename]), 1)
 
-                self.__check_error__(_(u"Unable to write \"%s\"") % \
-                                         (self.filename(track.filename)))
+                self.__check_error__(_(u"Unable to write \"%s\"") %
+                                     (audiotools.Filename(track.filename),))
 
                 #no undo DB, unwritable file
                 self.assertEqual(self.__run_app__(
                         ["tracklint", "--fix", track.filename]), 1)
 
-                self.__check_error__(_(u"Unable to write \"%s\"") % \
-                                         (self.filename(track.filename)))
+                self.__check_error__(_(u"Unable to write \"%s\"") %
+                                     (audiotools.Filename(track.filename),))
         finally:
             os.chmod(track_file.name, track_file_stat)
             track_file.close()
@@ -2745,34 +2732,39 @@ class tracklint(UtilTest):
                 #general-purpose errors
                 self.assertEqual(self.__run_app__(
                         ["tracklint", "--undo", track.filename]), 1)
-                self.__check_error__(_(u"Cannot perform undo without undo db"))
+                self.__check_error__(
+                    _(u"Cannot perform undo without undo db"))
 
                 self.assertEqual(self.__run_app__(
                         ["tracklint", "--fix", "--db", "/dev/null/foo.db",
                          track.filename]), 1)
-                self.__check_error__(_(u"Unable to open \"%s\"") % \
-                                         (self.filename("/dev/null/foo.db")))
+                self.__check_error__(
+                    _(u"Unable to open \"%s\"") %
+                    (audiotools.Filename("/dev/null/foo.db"),))
 
                 self.assertEqual(self.__run_app__(
                         ["tracklint", "--undo", "--db", "/dev/null/foo.db",
                          track.filename]), 1)
-                self.__check_error__(_(u"Unable to open \"%s\"") % \
-                                         (self.filename("/dev/null/foo.db")))
+                self.__check_error__(
+                    _(u"Unable to open \"%s\"") %
+                    (audiotools.Filename("/dev/null/foo.db"),))
 
                 if (track.get_metadata() is not None):
                     #unwritable undo DB, writable file
                     self.assertEqual(self.__run_app__(
                             ["tracklint", "--fix", "--db", "/dev/null/undo.db",
                              track.filename]), 1)
-                    self.__check_error__(_(u"Unable to open \"%s\"") %
-                                         (self.filename("/dev/null/undo.db")))
+                    self.__check_error__(
+                        _(u"Unable to open \"%s\"") %
+                        (audiotools.Filename("/dev/null/undo.db"),))
 
                     self.assertEqual(self.__run_app__(
                             ["tracklint", "--undo", "--db",
                              "/dev/null/undo.db",
                              track.filename]), 1)
-                    self.__check_error__(_(u"Unable to open \"%s\"") %
-                                         (self.filename("/dev/null/undo.db")))
+                    self.__check_error__(
+                        _(u"Unable to open \"%s\"") %
+                        (audiotools.Filename("/dev/null/undo.db"),))
 
                     #unwritable undo DB, unwritable file
                     os.chmod(track.filename, track_file_stat & 0x7555)
@@ -2780,15 +2772,17 @@ class tracklint(UtilTest):
                     self.assertEqual(self.__run_app__(
                             ["tracklint", "--fix", "--db", "/dev/null/undo.db",
                              track.filename]), 1)
-                    self.__check_error__(_(u"Unable to open \"%s\"") %
-                                         (self.filename("/dev/null/undo.db")))
+                    self.__check_error__(
+                        _(u"Unable to open \"%s\"") %
+                        (audiotools.Filename("/dev/null/undo.db"),))
 
                     self.assertEqual(self.__run_app__(
                             ["tracklint", "--undo", "--db",
                              "/dev/null/undo.db",
                              track.filename]), 1)
-                    self.__check_error__(_(u"Unable to open \"%s\"") %
-                                         (self.filename("/dev/null/undo.db")))
+                    self.__check_error__(
+                        _(u"Unable to open \"%s\"") %
+                        (audiotools.Filename("/dev/null/undo.db"),))
 
                     #restore from DB to unwritable file
                     os.chmod(track.filename, track_file_stat)
@@ -2799,8 +2793,9 @@ class tracklint(UtilTest):
                     self.assertEqual(self.__run_app__(
                             ["tracklint", "--undo", "--db", undo_db,
                              track.filename]), 1)
-                    self.__check_error__(_(u"Unable to write \"%s\"") %
-                                         (self.filename(track.filename)))
+                    self.__check_error__(
+                        _(u"Unable to write \"%s\"") %
+                        (audiotools.Filename(track.filename),))
 
             finally:
                 os.chmod(track_file.name, track_file_stat)
@@ -2835,8 +2830,9 @@ class tracklint(UtilTest):
                             ["tracklint", "--fix", "--db", undo_db,
                              track.filename]), 1)
 
-                    self.__check_error__(_(u"Unable to write \"%s\"") %
-                                         (self.filename(track.filename)))
+                    self.__check_error__(
+                        _(u"Unable to write \"%s\"") %
+                        (audiotools.Filename(track.filename),))
 
 
             finally:
@@ -2991,8 +2987,7 @@ class tracktag(UtilTest):
                  self.track_file.name, self.track_file.name]), 1)
         self.__check_error__(
             u"File \"%s\" included more than once" %
-            (audiotools.Messenger("tracktag", None).filename(
-                    self.track_file.name)))
+            (audiotools.Filename(self.track_file.name),))
 
         for count in xrange(1, len(most_options) + 1):
             for options in Combinations(most_options, count):
@@ -3215,14 +3210,14 @@ class tracktag_errors(UtilTest):
                      temp_track.filename]), 1)
             self.__check_error__(
                 _(u"%(filename)s: %(message)s") % \
-                    {"filename": self.filename(temp_track.filename),
+                    {"filename": audiotools.Filename(temp_track.filename),
                      "message": _(u"Unable to open file")})
 
             self.assertEqual(self.__run_app__(
                     ["tracktag", "--comment-file=/dev/null/foo.txt",
-                     self.filename(temp_track.filename)]), 1)
-            self.__check_error__(_(u"Unable to open comment file \"%s\"") % \
-                                     (self.filename("/dev/null/foo.txt")))
+                     temp_track.filename]), 1)
+            self.__check_error__(_(u"Unable to open comment file \"%s\"") %
+                                 (audiotools.Filename("/dev/null/foo.txt"),))
 
             temp_comment.write(
                 os.urandom(1024) + ((u"\uFFFD".encode('utf-8')) * 103))
@@ -3232,15 +3227,15 @@ class tracktag_errors(UtilTest):
                     ["tracktag", "--comment-file=%s" % (temp_comment.name),
                      temp_track.filename]), 1)
             self.__check_error__(
-                _(u"Comment file \"%s\" does not appear to be UTF-8 text") % \
-                    (temp_comment.name))
+                _(u"Comment file \"%s\" does not appear to be UTF-8 text") %
+                (audiotools.Filename(temp_comment.name),))
 
             os.chmod(temp_track_file.name, temp_track_stat & 07555)
             self.assertEqual(self.__run_app__(
                     ["tracktag", "--name=Foo",
-                     self.filename(temp_track.filename)]), 1)
-            self.__check_error__(_(u"Unable to modify \"%s\"") % \
-                                     (self.filename(temp_track.filename)))
+                     temp_track.filename]), 1)
+            self.__check_error__(_(u"Unable to modify \"%s\"") %
+                                 (audiotools.Filename(temp_track.filename),))
         finally:
             os.chmod(temp_track_file.name, temp_track_stat)
             temp_track_file.close()
@@ -3689,8 +3684,6 @@ class trackrename(UtilTest):
 
     @UTIL_TRACKRENAME
     def test_options(self):
-        messenger = audiotools.Messenger("trackrename", None)
-
         all_options = ["--format"]
         for count in xrange(0, len(all_options) + 1):
             for (name, metadata) in zip(self.track_names, self.track_metadata):
@@ -3739,9 +3732,9 @@ class trackrename(UtilTest):
                     self.__check_info__(
                         _(u"%(source)s -> %(destination)s") %
                         {"source":
-                             messenger.filename(track.filename),
+                            audiotools.Filename(track.filename),
                          "destination":
-                             messenger.filename(destination_filename)})
+                             audiotools.Filename(destination_filename)})
 
                     #check that the file is identical
                     self.assertEqual(track_data,
@@ -3769,8 +3762,7 @@ class trackrename(UtilTest):
 
         self.__check_error__(
             u"File \"%s\" included more than once" %
-            (audiotools.Messenger("trackrename",
-                                  None).filename(track1.filename)))
+            (audiotools.Filename(track1.filename),))
 
         self.assertEqual(
             self.__run_app__(["trackrename", "-V", "normal",
@@ -3779,7 +3771,9 @@ class trackrename(UtilTest):
 
         self.__check_error__(
             u"Output file \"%s\" occurs more than once" %
-            (os.path.join(os.path.dirname(track1.filename), "foo")))
+            (audiotools.Filename(
+                    os.path.join(
+                        os.path.dirname(track1.filename), "foo")),))
 
     @UTIL_TRACKRENAME
     def test_errors(self):
@@ -3793,14 +3787,15 @@ class trackrename(UtilTest):
                                                album_name=u"Album"))
         try:
             self.assertEqual(self.__run_app__(["trackrename"]), 1)
-            self.__check_error__(_(u"You must specify at least 1 supported audio file"))
+            self.__check_error__(
+                _(u"You must specify at least 1 supported audio file"))
 
 
             self.assertEqual(self.__run_app__(
                     ["trackrename", "--format=%(foo)s", track.filename]), 1)
 
-            self.__check_error__(_(u"Unknown field \"%s\" in file format") % \
-                                     ("foo"))
+            self.__check_error__(
+                _(u"Unknown field \"%s\" in file format") % ("foo"))
             self.__check_info__(_(u"Supported fields are:"))
             for field in sorted(audiotools.MetaData.FIELDS + \
                                     ("album_track_number", "suffix")):
@@ -3817,9 +3812,11 @@ class trackrename(UtilTest):
                          '--format=%(album_name)s/%(track_number)2.2d - %(track_name)s.%(suffix)s',
                          track.filename]), 1)
 
-                self.__check_error__(_(u"[Errno 13] Permission denied: \'%s\'") % \
-                                         self.filename(
-                        os.path.join(os.path.dirname(track.filename), "Album")))
+                self.__check_error__(
+                    _(u"[Errno 13] Permission denied: \'%s\'") % \
+                        (audiotools.Filename(
+                                os.path.join(
+                                os.path.dirname(track.filename), "Album")),))
 
                 self.assertEqual(self.__run_app__(
                         ["trackrename",
@@ -3929,8 +3926,6 @@ class tracksplit(UtilTest):
 
     @UTIL_TRACKSPLIT
     def test_options_no_embedded_cue(self):
-        messenger = audiotools.Messenger("trackcat", None)
-
         all_options = ["--cue", "-t", "-q", "-d", "--format"]
 
         self.stream.reset()
@@ -4006,9 +4001,9 @@ class tracksplit(UtilTest):
                     self.__check_info__(
                         _(u"%(source)s -> %(destination)s") % \
                        {"source":
-                            messenger.filename(track.filename),
+                            audiotools.Filename(track.filename),
                         "destination":
-                            messenger.filename(
+                            audiotools.Filename(
                                 os.path.join(output_dir, path))})
 
                 #make sure no track data has been lost
@@ -4047,8 +4042,6 @@ class tracksplit(UtilTest):
 
     @UTIL_TRACKSPLIT
     def test_options_embedded_cue(self):
-        messenger = audiotools.Messenger("trackcat", None)
-
         all_options = ["--cue", "-t", "-q", "-d", "--format"]
 
         self.stream.reset()
@@ -4080,6 +4073,11 @@ class tracksplit(UtilTest):
                          "type": output_type.NAME})
                     continue
 
+                # if (self.__run_app__(["tracksplit", "-V", "normal",
+                #                       "--no-freedb", "--no-musicbrainz"] +
+                #                      options + [track.filename]) != 0):
+                #     print self.stderr.getvalue()
+                #     self.assert_(False)
                 self.assertEqual(
                     self.__run_app__(["tracksplit", "-V", "normal",
                                       "--no-freedb", "--no-musicbrainz"] +
@@ -4116,9 +4114,9 @@ class tracksplit(UtilTest):
                     self.__check_info__(
                         _(u"%(source)s -> %(destination)s") % \
                        {"source":
-                            messenger.filename(track.filename),
+                            audiotools.Filename(track.filename),
                         "destination":
-                            messenger.filename(
+                            audiotools.Filename(
                                 os.path.join(output_dir, path))})
 
                 #make sure no track data has been lost
@@ -4186,8 +4184,6 @@ class tracksplit(UtilTest):
 
     @UTIL_TRACKSPLIT
     def test_errors(self):
-        filename = audiotools.Messenger("tracksplit", None).filename
-
         #ensure that unsplitting file to itself generates an error
         track = self.type.from_pcm(self.unsplit_file.name,
                                    BLANK_PCM_Reader(18))
@@ -4199,7 +4195,7 @@ class tracksplit(UtilTest):
                  "-d", os.path.dirname(self.unsplit_file.name),
                  "--format", os.path.basename(self.unsplit_file.name)]), 1)
         self.__check_error__(u"\"%s\" cannot be both input and output file" %
-                             (filename(self.unsplit_file.name)))
+                             (audiotools.Filename(self.unsplit_file.name),))
 
         #ensure that unsplitting file to identical names generates an error
         self.assertEqual(
@@ -4211,8 +4207,9 @@ class tracksplit(UtilTest):
                  "--format", "foo"]), 1)
         self.__check_error__(
             u"Output file \"%s\" occurs more than once" %
-            (filename(os.path.join(os.path.dirname(self.unsplit_file.name),
-                                   "foo"))))
+            (audiotools.Filename(
+                    os.path.join(os.path.dirname(self.unsplit_file.name),
+                                 "foo")),))
 
         track1 = self.type.from_pcm(self.unsplit_file.name,
                                     BLANK_PCM_Reader(18))
@@ -4276,19 +4273,22 @@ class tracksplit(UtilTest):
         self.assertEqual(self.__run_app__(
                 ["tracksplit", "-t", "flac", "-d", self.output_dir]), 1)
 
-        self.__check_error__(_(u"You must specify exactly 1 supported audio file"))
+        self.__check_error__(
+            _(u"You must specify exactly 1 supported audio file"))
 
         self.assertEqual(self.__run_app__(
                 ["tracksplit", "-t", "flac", "-d", self.output_dir,
                  self.unsplit_file.name, self.unsplit_file2.name]), 1)
 
-        self.__check_error__(_(u"You must specify exactly 1 supported audio file"))
+        self.__check_error__(
+            _(u"You must specify exactly 1 supported audio file"))
 
         self.assertEqual(self.__run_app__(
                 ["tracksplit", "-t", "flac", "-d", self.output_dir,
                  self.unsplit_file.name]), 1)
 
-        self.__check_error__(_(u"You must specify a cuesheet to split audio file"))
+        self.__check_error__(
+            _(u"You must specify a cuesheet to split audio file"))
 
         self.assertEqual(self.__run_app__(
                 ["tracksplit", "-t", "flac", "-d", self.output_dir,

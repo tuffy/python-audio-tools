@@ -117,16 +117,19 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     #grab the list of AudioFile objects we are converting from
+    output_filename = audiotools.Filename(options.filename)
     opened_files = set([])
+    if (options.cuesheet is not None):
+        opened_files.add(audiotools.Filename(options.cuesheet))
     audiofiles = audiotools.open_files(args,
                                        messenger=msg,
                                        warn_duplicates=True,
                                        opened_files=opened_files)
 
-    if (os.path.isfile(options.filename) and
-        audiotools.read_file_id(options.filename) in opened_files):
+    #perform some option sanity checking
+    if (output_filename in opened_files):
         msg.error(u"\"%s\" cannot be both input and output file" %
-                  (msg.filename(options.filename)))
+                  (output_filename,))
         sys.exit(1)
 
     if (len(audiofiles) < 1):
@@ -186,11 +189,11 @@ if (__name__ == '__main__'):
         metadata = None
 
     progress = audiotools.SingleProgressDisplay(
-        msg, msg.filename(options.filename))
+        msg, unicode(output_filename))
 
     try:
         encoded = AudioType.from_pcm(
-            options.filename,
+            str(output_filename),
             audiotools.PCMReaderProgress(
                 audiotools.PCMCat(iter([af.to_pcm() for af in audiofiles])),
                 sum([af.total_frames() for af in audiofiles]),
@@ -210,7 +213,7 @@ if (__name__ == '__main__'):
 
     except audiotools.EncodingError, err:
         msg.error(_(u"%(filename)s: %(error)s") %
-                      {"filename": msg.filename(options.filename),
+                      {"filename": output_filename,
                        "error": err})
         sys.exit(1)
     except audiotools.InvalidFormat, err:

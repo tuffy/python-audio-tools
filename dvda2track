@@ -345,15 +345,13 @@ if (__name__ == '__main__'):
                             channel_mask=channel_mask,
                             bits_per_sample=bits_per_sample)]))
 
-    encoded = []
-
-    pcmreader = title.to_pcm()
+    #determine tracks to extract from title
+    output_filenames = set([])
+    to_extract = []
     for (i, pts_ticks) in enumerate([t.pts_length for t in title]):
-        pcmreader.next_track(pts_ticks)
-        pcm_frames = pcmreader.pcm_frames
-
         title_track_number = i + 1
         logical_track_number = i + options.track_start
+
         if (options.track_total is None):
             track_total = len(title)
         else:
@@ -377,19 +375,51 @@ if (__name__ == '__main__'):
                     if (options.album_total != 0):
                         metadata.album_total = options.album_total
 
-                filename = os.path.join(
-                    base_directory,
-                    AudioType.track_name(file_path=basename,
-                                         track_metadata=metadata,
-                                         format=options.format))
+                output_filename = audiotools.Filename(
+                    os.path.join(
+                        base_directory,
+                        AudioType.track_name(file_path=basename,
+                                             track_metadata=metadata,
+                                             format=options.format)))
+                if (output_filename in output_filenames):
+                    msg.error(u"Output file \"%s\" occurs more than once" %
+                              (output_filename,))
+                    sys.exit(1)
+                else:
+                    output_filenames.add(output_filename)
+            except audiotools.UnsupportedTracknameField, err:
+                err.error_msg(msg)
+                sys.exit(1)
+            except audiotools.InvalidFormat, err:
+                msg.error(unicode(err))
+                sys.exit(1)
+            except KeyError:
+                continue
 
-                audiotools.make_dirs(filename)
+            to_extract.append((pts_ticks,
+                               (title_track_number, output_filename, metadata)))
+        else:
+            to_extract.append((pts_ticks,
+                               None))
+
+    #perform actual track extraction
+    encoded = []
+    pcmreader = title.to_pcm()
+    for (pts_ticks, extract_data) in to_extract:
+        pcmreader.next_track(pts_ticks)
+        pcm_frames = pcmreader.pcm_frames
+
+        if (extract_data is not None):
+            (title_track_number, output_filename, metadata) = extract_data
+
+            try:
+                audiotools.make_dirs(str(output_filename))
 
                 progress = audiotools.SingleProgressDisplay(
-                    msg, msg.filename(filename))
+                    msg, unicode(output_filename))
 
                 track = AudioType.from_pcm(
-                    filename,
+                    str(output_filename),
                     audiotools.PCMReaderProgress(pcmreader,
                                                  pcm_frames,
                                                  progress.update),
@@ -402,24 +432,17 @@ if (__name__ == '__main__'):
 
                 msg.info(
                     _(u"title %(title_number)d - " +
-                      u"track %(track_number)2.2d -> %(filename)s") % \
-                        {"title_number": options.title,
-                         "track_number": title_track_number,
-                         "filename": msg.filename(track.filename)})
-            except audiotools.UnsupportedTracknameField, err:
-                err.error_msg(msg)
-                sys.exit(1)
-            except KeyError:
-                continue
+                      u"track %(track_number)2.2d -> %(filename)s") %
+                    {"title_number": options.title,
+                     "track_number": title_track_number,
+                     "filename": output_filename})
+
             except OSError, err:
                 msg.os_error(err)
                 sys.exit(1)
-            except audiotools.InvalidFormat, err:
-                msg.error(unicode(err))
-                sys.exit(1)
             except audiotools.EncodingError, err:
-                msg.error(_(u"Unable to write \"%s\"") % \
-                              (msg.filename(filename)))
+                msg.error(_(u"Unable to write \"%s\"") %
+                          (output_filename,))
                 sys.exit(1)
         else:
             audiotools.transfer_framelist_data(pcmreader, lambda f: f)

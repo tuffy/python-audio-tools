@@ -59,9 +59,11 @@ if (__name__ == '__main__'):
     if (len(args) != 1):
         msg.error(_(u"You must specify exactly 1 supported audio file"))
         sys.exit(1)
+    else:
+        input_filename = audiotools.Filename(args[0])
 
     try:
-        audiofile = audiotools.open(args[0])
+        audiofile = audiotools.open(str(input_filename))
     except audiotools.UnsupportedFile:
         msg.error(_(u"%s file format not supported") % msg.filename(args[0]))
         sys.exit(1)
@@ -77,7 +79,7 @@ if (__name__ == '__main__'):
             image_types.setdefault(image.type, []).append(image)
 
 
-        #build a set of files to be extracted
+        #build a set of (Image, Filename) tuples to be extracted
         output_images = []
         for (type, images) in image_types.items():
             if (len(images) != 1):
@@ -90,12 +92,13 @@ if (__name__ == '__main__'):
             for (i, image) in enumerate(images):
                 output_images.append(
                     (image,
-                     os.path.join(options.dir,
-                                  FILE_TEMPLATE % {
-                                "prefix": options.prefix,
-                                "filename": FILENAME_TYPES[image.type],
-                                "filenum": i + 1,
-                                "suffix": image.suffix()})))
+                     audiotools.Filename(
+                            os.path.join(options.dir,
+                                         FILE_TEMPLATE % {
+                                    "prefix": options.prefix,
+                                    "filename": FILENAME_TYPES[image.type],
+                                    "filenum": i + 1,
+                                    "suffix": image.suffix()}))))
 
         #ensure our input file isn't the same
         #as any of the proposed files to extract
@@ -104,28 +107,26 @@ if (__name__ == '__main__'):
         # can't be named "front_cover.jpg"
         # even if it's not a JPEG
         # so we have to be sure it's not going to be overwritten)
-        if (audiotools.read_file_id(audiofile.filename) in
-            [audiotools.read_file_id(output_filename)
-             for (image, output_filename) in output_images
-             if os.path.isfile(output_filename)]):
+        if (input_filename in
+            [output_filename for (image, output_filename) in output_images]):
             msg.error(u"\"%s\" cannot be both input and output file" %
-                      (msg.filename(audiofile.filename)))
+                      (input_filename,))
             sys.exit(1)
 
         #finally, write actual image data to disk if possible
         for (image, output_filename) in output_images:
             try:
-                audiotools.make_dirs(output_filename)
-                f = open(output_filename, "wb")
+                audiotools.make_dirs(str(output_filename))
+                f = open(str(output_filename), "wb")
                 f.write(image.data)
                 f.close()
                 msg.info(
                     _(u"%(source)s -> %(destination)s") %
-                    {"source": msg.filename(audiofile.filename),
-                     "destination": msg.filename(output_filename)})
+                    {"source": input_filename,
+                     "destination": output_filename})
             except IOError, e:
                 msg.error(_(u"Unable to write \"%s\"") %
-                              msg.filename(output_filename))
+                          (output_filename,))
                 sys.exit(1)
             except OSError, e:
                 msg.os_error(e)

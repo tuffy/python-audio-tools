@@ -54,31 +54,27 @@ def display_messages(messenger, track, messages):
                             "message": message})
 
 
-def audiofiles(paths, processed_tracks, messenger):
+def audiofiles(paths, processed_filenames, messenger):
     directories = [p for p in paths if os.path.isdir(p)]
     files = [p for p in paths if os.path.isfile(p)]
 
     for p in paths:
         if (os.path.isfile(p)):
+            filename = audiotools.Filename(p)
             try:
-                file_id = audiotools.read_file_id(p)
-                if (file_id not in processed_tracks):
-                    processed_tracks.add(file_id)
-                    yield audiotools.open(p)
+                if (filename not in processed_filenames):
+                    processed_filenames.add(filename)
+                    yield audiotools.open(str(filename))
             except audiotools.UnsupportedFile:
                 pass
-            except OSError, err:
-                messenger.warning(
-                    u"Unable to open \"%s\"" % (messenger.filename(p)))
             except IOError, err:
-                messenger.warning(
-                    u"Unable to open \"%s\"" % (messenger.filename(p)))
+                messenger.warning(u"Unable to open \"%s\"" % (filename,))
             except audiotools.InvalidFile, err:
                 messenger.error(unicode(err))
         elif (os.path.isdir(p)):
             for (d, ds, fs) in os.walk(p):
                 for t in audiofiles([os.path.join(d, f) for f in fs],
-                                    processed_tracks,
+                                    processed_filenames,
                                     messenger):
                     yield t
 
@@ -169,7 +165,7 @@ if (__name__ == '__main__'):
                       help=_(u'the verbosity level to execute at'))
 
     (options, args) = parser.parse_args()
-    processed_tracks = set([])
+    processed_filenames = set([])
     msg = audiotools.Messenger("tracklint", options)
 
     if (options.undo and (options.db is None)):
@@ -184,15 +180,15 @@ if (__name__ == '__main__'):
                 undo_db = audiotools.delta.open_db(options.db)
             except:
                 msg.error(_(u"Unable to open \"%s\"") %
-                          (msg.filename(options.db)))
+                          (audiotools.Filename(options.db),))
                 sys.exit(1)
             try:
-                for track in audiofiles(args, processed_tracks, messenger=msg):
+                for track in audiofiles(args, processed_filenames, messenger=msg):
                     try:
                         update_and_backup(track, undo_db, msg)
                     except IOError:
-                        msg.error(_(u"Unable to write \"%s\"") % \
-                                      (msg.filename(track.filename)))
+                        msg.error(_(u"Unable to write \"%s\"") %
+                                  (audiotools.Filename(track.filename),))
                         sys.exit(1)
                     except ValueError, err:
                         msg.error(unicode(err))
@@ -203,12 +199,12 @@ if (__name__ == '__main__'):
             #if we're fixing tracks and have no undo DB,
             #simply overwrite the track and track metadata directly
             #if changes have been made
-            for track in audiofiles(args, processed_tracks, messenger=msg):
+            for track in audiofiles(args, processed_filenames, messenger=msg):
                 try:
                     update_without_backup(track, msg)
                 except IOError:
-                    msg.error(_(u"Unable to write \"%s\"") % \
-                                  (msg.filename(track.filename)))
+                    msg.error(_(u"Unable to write \"%s\"") %
+                              (audiotools.Filename(track.filename),))
                     sys.exit(1)
                 except ValueError, err:
                     msg.error(unicode(err))
@@ -217,20 +213,21 @@ if (__name__ == '__main__'):
         try:
             undo_db = audiotools.delta.open_db(options.db)
         except:
-            msg.error(_(u"Unable to open \"%s\"") % (msg.filename(options.db)))
+            msg.error(_(u"Unable to open \"%s\"") %
+                      (audiotools.Filename(options.db),))
             sys.exit(1)
         try:
-            for track in audiofiles(args, processed_tracks, messenger=msg):
+            for track in audiofiles(args, processed_filenames, messenger=msg):
                 try:
                     undo_from_backup(track, undo_db, msg)
                 except IOError:
-                    msg.error(_(u"Unable to write \"%s\"") % \
-                                  (msg.filename(track.filename)))
+                    msg.error(_(u"Unable to write \"%s\"") %
+                              (audiotools.Filename(track.filename),))
                     sys.exit(1)
         finally:
             undo_db.close()
     else:  # a dry-run of the fixing procedure, with no changes made
-        for track in audiofiles(args, processed_tracks, messenger=msg):
+        for track in audiofiles(args, processed_filenames, messenger=msg):
             fixes = []
             track.clean(fixes)
             display_messages(msg, track, fixes)

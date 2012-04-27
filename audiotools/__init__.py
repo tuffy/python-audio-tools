@@ -1113,15 +1113,70 @@ def open(filename):
 
 class DuplicateFile(Exception):
     def __init__(self, filename):
+        """filename is a Filename object"""
+
         self.filename = filename
 
 
-def read_file_id(filename):
-    """given a path to a filename, returns its unique file ID tuple
-    may raise OSError if the file cannot be found or read"""
+class Filename(tuple):
+    def __new__(cls, filename):
+        """filename is a string of the file on disk"""
 
-    stat = os.stat(filename)
-    return (stat.st_dev, stat.st_ino)
+        if (isinstance(filename, cls)):
+            return tuple.__new__(cls, [filename[0], filename[1], filename[2]])
+        else:
+            try:
+                stat = os.stat(filename)
+                return tuple.__new__(cls, [os.path.normpath(filename),
+                                           stat.st_dev,
+                                           stat.st_ino])
+            except OSError:
+                return tuple.__new__(cls, [os.path.normpath(filename),
+                                           None,
+                                           None])
+
+    def __repr__(self):
+        return "Filename(%s, %s, %s)" % \
+            (repr(self[0]), repr(self[1]), repr(self[2]))
+
+    def __eq__(self, filename):
+        try:
+            filename_len = len(filename)
+        except TypeError:
+            return False
+
+        if (filename_len == 3):
+            #maybe Filename class also
+            if ((self[1] == filename[1]) and (self[2] == filename[2])):
+                #device and inode fields are identical
+                if ((self[1] != None) and (self[2] != None)):
+                    #device and inode fields are numbers
+                    #so files both exist on disk and are the same
+                    return True
+                else:
+                    #device or inode field is missing
+                    #so files don't exist on disk
+                    #and are identical only if filenames match
+                    return self[0] == filename[0]
+            else:
+                return False
+        else:
+            return False
+
+    def __ne__(self, filename):
+        return not self == filename
+
+    def __hash__(self):
+        if ((self[1] is not None) and (self[2] is not None)):
+            return hash((None, self[1], self[2]))
+        else:
+            return hash((self[0], self[1], self[2]))
+
+    def __str__(self):
+        return self[0]
+
+    def __unicode__(self):
+        return self[0].decode(FS_ENCODING, "replace")
 
 
 #takes a list of filenames
@@ -1130,7 +1185,8 @@ def read_file_id(filename):
 def open_files(filename_list, sorted=True, messenger=None,
                no_duplicates=False, warn_duplicates=False,
                opened_files=None):
-    """returns a list of AudioFile objects from a list of filenames
+    """returns a list of AudioFile objects
+    from a list of filename strings or Filename objects
 
     if "sorted" is True, files are sorted by album number then track number
 
@@ -1138,45 +1194,39 @@ def open_files(filename_list, sorted=True, messenger=None,
     are sent to the given Messenger-compatible object
 
     if "no_duplicates" is True, including the same file twice
-    raises a DuplicateFile whose filename value is the first duplicate filename
+    raises a DuplicateFile whose filename value
+    is the first duplicate filename as a Filename object
 
     if "warn_duplicates" is True, including the same file twice
     results in a warning message to the messenger object, if given
 
     "opened_files" is a set object containing previously opened
-    file ID tuples and which newly opened file ID tuples are added to
+    Filename objects and which newly opened Filename objects are added to
     """
 
     if (opened_files is None):
         opened_files = set([])
+
     toreturn = []
 
-    for filename in filename_list:
+    for filename in map(Filename, filename_list):
         try:
-            file_id = read_file_id(filename)
-            if (file_id in opened_files):
+            if (filename in opened_files):
                 if (no_duplicates):
                     raise DuplicateFile(filename)
                 elif (warn_duplicates and (messenger is not None)):
                     messenger.warning(
-                        u"File \"%s\" included more than once" %
-                          (messenger.filename(filename)))
+                        u"File \"%s\" included more than once" % (filename,))
             else:
-                opened_files.add(file_id)
+                opened_files.add(filename)
 
-            toreturn.append(open(filename))
+            toreturn.append(open(str(filename)))
         except UnsupportedFile:
             pass
-        except OSError, err:
-            if (messenger is not None):
-                messenger.warning(
-                    _(u"Unable to open \"%s\"" %
-                      (messenger.filename(filename))))
         except IOError, err:
             if (messenger is not None):
                 messenger.warning(
-                    _(u"Unable to open \"%s\"" %
-                      (messenger.filename(filename))))
+                    _(u"Unable to open \"%s\"" % (filename,)))
         except InvalidFile, err:
             if (messenger is not None):
                 messenger.error(unicode(err))

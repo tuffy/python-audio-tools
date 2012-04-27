@@ -278,88 +278,87 @@ if (__name__ == '__main__'):
                 dict([(m.track_number, m) for m in
                       audiotools.ui.select_metadata(metadata_choices, msg)])
 
+    #determine tracks to be ripped, their output filename and metadata
     if (len(args) == 0):
-        to_rip = [track for track in cdda]
+        tracks_to_rip = set(range(1, len(cdda) + 1))
     else:
-        to_rip = []
+        tracks_to_rip = set([])
         for arg in args:
             try:
-                to_rip.append(cdda[int(arg)])
-            except IndexError:
-                continue
+                tracks_to_rip.add(int(arg))
             except ValueError:
                 continue
-        to_rip.sort(lambda x, y: cmp(x.track_number, y.track_number))
 
-    encoded = []
-    rip_log = {}
-    for cd_track in to_rip:
-        basename = "track%2d%2.2d" % (options.album_number,
-                                      cd_track.track_number)
-
-        try:
-            metadata = track_metadatas.get(cd_track.track_number, None)
-
-            filename = os.path.join(
-                base_directory,
-                AudioType.track_name(file_path=basename,
-                                     track_metadata=metadata,
-                                     format=options.format))
-
+    output_filenames = set([])
+    to_rip = []
+    for cd_track in cdda:
+        if (cd_track.track_number in tracks_to_rip):
+            basename = "track%2d%2.2d" % (options.album_number,
+                                          cd_track.track_number)
             try:
-                audiotools.make_dirs(filename)
-            except OSError, err:
-                msg.os_error(err)
+                metadata = track_metadatas.get(cd_track.track_number, None)
+
+                output_filename = audiotools.Filename(
+                    os.path.join(
+                        base_directory,
+                        AudioType.track_name(file_path=basename,
+                                             track_metadata=metadata,
+                                             format=options.format)))
+
+                if (output_filename not in output_filenames):
+                    output_filenames.add(output_filename)
+                    to_rip.append((cd_track, output_filename, metadata))
+                else:
+                    msg.error(u"Output file \"%s\" occurs more than once" %
+                          (output_filename,))
+                    sys.exit(1)
+
+            except audiotools.UnsupportedTracknameField, err:
+                err.error_msg(msg)
+                sys.exit(1)
+            except audiotools.InvalidFormat, err:
+                msg.error(unicode(err))
                 sys.exit(1)
 
-            progress = audiotools.SingleProgressDisplay(
-                msg, msg.filename(filename))
+    #perform actual ripping of tracks from CDDA
+    encoded = []
+    rip_log = {}
+    for (cd_track, output_filename, metadata) in to_rip:
+        try:
+            audiotools.make_dirs(str(output_filename))
+        except OSError, err:
+            msg.os_error(err)
+            sys.exit(1)
 
+        progress = audiotools.SingleProgressDisplay(
+            msg, unicode(output_filename))
+
+        try:
             track = AudioType.from_pcm(
-                filename,
+                str(output_filename),
                 audiotools.PCMReaderProgress(
                     cd_track,
                     cd_track.length() * (44100 / 75),
                     progress.update),
                 quality)
-
-            track.set_metadata(metadata)
-            progress.clear()
-
-            encoded.append(track)
-
-            rip_log[cd_track.track_number] = cd_track.rip_log
-            # if (options.accuraterip):
-            #     if (db_entry is not None):
-            #         for entry in db_entry[cd_track.track_number - 1]:
-            #             if (entry.crc == int(cd_track.accuraterip_crc)):
-            #                 rip_log[cd_track.track_number]["accuraterip"] = \
-            #                     _(u"confidence %d") % (entry.confidence)
-            #                 break
-            #         else:
-            #             rip_log[cd_track.track_number]["accuraterip"] = \
-            #                 _(u"unverified")
-            #     else:
-            #         rip_log[cd_track.track_number]["accuraterip"] = \
-            #             _(u"unknown")
-
-            msg.info(_(u"track %(track_number)2.2d -> %(filename)s") % \
-                         {"track_number": cd_track.track_number,
-                          "filename": msg.filename(track.filename)})
-        except audiotools.UnsupportedTracknameField, err:
-            err.error_msg(msg)
-            sys.exit(1)
-        except KeyError:
-            continue
-        except audiotools.InvalidFormat, err:
-            msg.error(unicode(err))
-            sys.exit(1)
         except audiotools.EncodingError, err:
-            msg.error(_(u"Unable to write \"%s\"") % (msg.filename(filename)))
+            msg.error(_(u"Unable to write \"%s\"") % (output_filename,))
             sys.exit(1)
+
+        track.set_metadata(metadata)
+        progress.clear()
+
+        encoded.append(track)
+
+        rip_log[cd_track.track_number] = cd_track.rip_log
+
+        msg.info(_(u"track %(track_number)2.2d -> %(filename)s") % \
+                     {"track_number": cd_track.track_number,
+                      "filename": output_filename})
 
     cdda.close()
 
+    #add ReplayGain to ripped tracks, if necessary
     if (audiotools.ADD_REPLAYGAIN and
         options.add_replay_gain and
         AudioType.can_add_replay_gain()):
@@ -382,9 +381,7 @@ if (__name__ == '__main__'):
     headers = [u"track", u"rderr", u"skip", u"atom",
                u"edge", u"drop", u"dup", u"drift"]
     keys = ["rderr", "skip", "atom", "edge", "drop", "dup", "drift"]
-    # if (options.accuraterip):
-    #     headers.append(u"   AccurateRip")
-    #     keys.append("accuraterip")
+
     dividers = []
     for header in headers:
         msg.output_column(header, True)

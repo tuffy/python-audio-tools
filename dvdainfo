@@ -118,8 +118,9 @@ if (__name__ == '__main__'):
                     msg.output_column(u" ")
                     msg.output_column(u"")
                 msg.output_column(u"   ")
-                msg.output_column(msg.filename(os.path.basename(aob_file)),
-                                  True)
+                msg.output_column(
+                    unicode(audiotools.Filename(os.path.basename(aob_file))),
+                    True)
                 msg.output_column(u" ")
                 msg.output_column(unicode(start_sector), True)
                 msg.output_column(u" ")

@@ -54,7 +54,7 @@ if (__name__ == '__main__'):
                                            no_duplicates=True)
     except audiotools.DuplicateFile, err:
         msg.error(u"File \"%s\" included more than once" %
-                  (msg.filename(err.filename)))
+                  (err.filename,))
         sys.exit(1)
 
     if (len(audiofiles) < 1):
@@ -63,45 +63,45 @@ if (__name__ == '__main__'):
 
     #get a set of files to be renamed
     #and generate an error if a duplicate occurs
+    renamed_filenames = set([audiotools.Filename(t.filename) for t in
+                             audiofiles])
     to_rename = []  #a (old_name, new_name) tuple
     try:
-        renamed_paths = set([])
         for track in audiofiles:
-            original_path = track.filename
-            new_path = os.path.join(
-                os.path.dirname(track.filename),
-                track.track_name(file_path=track.filename,
-                                 track_metadata=track.get_metadata(),
-                                 format=options.format))
-            if (new_path not in renamed_paths):
-                renamed_paths.add(new_path)
-                if (new_path != original_path):
-                    to_rename.append((original_path, new_path))
-            else:
-                msg.error(u"Output file \"%s\" occurs more than once" %
-                          (msg.filename(new_path)))
-                sys.exit(1)
+            original_filename = audiotools.Filename(track.filename)
+            new_filename = audiotools.Filename(
+                os.path.join(
+                    os.path.dirname(track.filename),
+                    track.track_name(file_path=track.filename,
+                                     track_metadata=track.get_metadata(),
+                                     format=options.format)))
+            if (new_filename != original_filename):
+                if (new_filename not in renamed_filenames):
+                    renamed_filenames.add(new_filename)
+                    to_rename.append((original_filename, new_filename))
+                else:
+                    msg.error(u"Output file \"%s\" occurs more than once" %
+                              (new_filename,))
+                    sys.exit(1)
     except audiotools.UnsupportedTracknameField, err:
         err.error_msg(msg)
         sys.exit(1)
 
     #create subdirectories for renamed files
-    for (original_path, new_path) in to_rename:
+    for (original_filename, new_filename) in to_rename:
         try:
-            audiotools.make_dirs(new_path)
+            audiotools.make_dirs(str(new_filename))
         except OSError, err:
             msg.os_error(err)
             sys.exit(1)
 
     #perform the actual renaming itself
-    for (original_path, new_path) in to_rename:
+    for (original_filename, new_filename) in to_rename:
         try:
-            shutil.move(original_path, new_path)
+            shutil.move(str(original_filename), str(new_filename))
             msg.info(
-                u"%s -> %s" %
-                (msg.filename(original_path), msg.filename(new_path)))
+                u"%s -> %s" % (original_filename, new_filename))
         except IOError, err:
-            msg.error(
-                u"unable to rename \"%s\" to \"%s\"" %
-                (original_path, new_path))
+            msg.error(u"unable to rename \"%s\" to \"%s\"" %
+                      (original_filename, new_filename))
             sys.exit(1)

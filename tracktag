@@ -79,7 +79,7 @@ if (audiotools.ui.AVAILABLE):
             self.track = track
 
             self.path = urwid.Text(
-                audiotools.VerboseMessenger("").filename(self.track.filename))
+                unicode(audiotools.Filename(self.track.filename)))
 
     class Tracktag(audiotools.ui.FocusFrame):
         (EDITING_LIST_ONLY,
@@ -389,13 +389,13 @@ def read_comment(filename, messenger):
         if (((data.count(u"\uFFFD") * 100) / len(data)) >= 10):
             messenger.error(
                 _(u"Comment file \"%s\" does not appear to be UTF-8 text") %
-                (messenger.filename(filename)))
+                (audiotools.Filename(filename),))
             sys.exit(1)
         else:
             return data
     except IOError:
-        messenger.error(_(u"Unable to open comment file \"%s\"") % \
-                            (messenger.filename(filename)))
+        messenger.error(_(u"Unable to open comment file \"%s\"") %
+                        (audiotools.Filename(filename),))
         sys.exit(1)
 
 
@@ -585,7 +585,7 @@ if (__name__ == '__main__'):
                                            no_duplicates=True)
     except audiotools.DuplicateFile, err:
         msg.error(u"File \"%s\" included more than once" %
-                  (msg.filename(err.filename)))
+                  (err.filename,))
         sys.exit(1)
 
     #and the --cue file
@@ -685,7 +685,7 @@ if (__name__ == '__main__'):
                         track_modified = True
         except audiotools.InvalidImage, err:
             msg.error(_(u"%(filename)s: %(message)s") % \
-                          {"filename": msg.filename(file.filename),
+                          {"filename": audiotools.Filename(file.filename),
                            "message": unicode(err)})
             sys.exit(1)
 
@@ -766,8 +766,8 @@ if (__name__ == '__main__'):
                 if (import_cuesheet is not None):
                     file.set_cuesheet(import_cuesheet)
             except IOError:
-                msg.error(_(u"Unable to modify \"%s\"") % \
-                              msg.filename(file.filename))
+                msg.error(_(u"Unable to modify \"%s\"") %
+                          (audiotools.Filename(file.filename),))
                 sys.exit(1)
 
     #add/apply replay_gain to tracks if indicated
@@ -823,10 +823,7 @@ if (__name__ == '__main__'):
     #run interactive mode if indicated
     if (options.interactive):
         if (not urwid_present):
-            msg.error(_(u"urwid is required for interactive mode"))
-            msg.output(_(u"Please download and install urwid " +
-                         u"from http://excess.org/urwid/"))
-            msg.output(_(u"or your system's package manager."))
+            audiotools.ui.not_available_message(msg)
             sys.exit(1)
 
         tracktag = Tracktag(audiofiles)

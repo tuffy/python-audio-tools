@@ -73,15 +73,16 @@ class Results:
         self.failures += 1
         if (album_number == 0):
             self.msg.info(_(u"%(path)s : %(result)s") % {
-                    "path": os.path.join(directory,
-                                         "track %2.2d" % (track_number)),
+                    "path":audiotools.Filename(
+                        os.path.join(directory,
+                                     "track %2.2d" % (track_number))),
                     "result": self.msg.ansi(_(u"missing"), [self.msg.FG_RED])})
         else:
             self.msg.info(_(u"%(path)s : %(result)s") % {
-                    "path": os.path.join(
-                        directory,
-                        u"album %d track %2.2d" % (album_number,
-                                                   track_number)),
+                    "path":audiotools.Filename(
+                        os.path.join(directory,
+                                     "album %d track %2.2d" % (album_number,
+                                                               track_number))),
                     "result": self.msg.ansi(_(u"missing"), [self.msg.FG_RED])})
         sys.stdout.flush()
 
@@ -91,27 +92,27 @@ class Results:
         if (mismatch is None):
             self.successes += 1
 
-            return _(u"%(path1)s <> %(path2)s : %(result)s") % {
-                "path1": self.msg.filename(path1),
-                "path2": self.msg.filename(path2),
+            return u"%(path1)s <> %(path2)s : %(result)s" % {
+                "path1": audiotools.Filename(path1),
+                "path2": audiotools.Filename(path2),
                 "result": self.msg.ansi(
                     _(u"OK"),
                     [self.msg.FG_GREEN])}
         elif (mismatch >= 0):
             self.failures += 1
 
-            return _(u"%(path1)s <> %(path2)s : %(result)s") % {
-                "path1": self.msg.filename(path1),
-                "path2": self.msg.filename(path2),
+            return u"%(path1)s <> %(path2)s : %(result)s" % {
+                "path1": audiotools.Filename(path1),
+                "path2": audiotools.Filename(path2),
                 "result": self.msg.ansi(
                     _(u"differ at PCM frame %d") % (mismatch + 1),
                     [self.msg.FG_RED])}
         else:
             self.failures += 1
 
-            return _(u"%(path1)s <> %(path2)s : %(result)s") % {
-                "path1": self.msg.filename(path1),
-                "path2": self.msg.filename(path2),
+            return u"%(path1)s <> %(path2)s : %(result)s" % {
+                "path1": audiotools.Filename(path1),
+                "path2": audiotools.Filename(path2),
                 "result": self.msg.ansi(
                     _(u"error"),
                     [self.msg.FG_RED])}
@@ -152,6 +153,8 @@ if (__name__ == '__main__'):
 
     if (len(args) == 2):
         if (os.path.isfile(args[0]) and os.path.isfile(args[1])):
+            #comparing two files
+
             audiofiles = audiotools.open_files(args,
                                                messenger=msg,
                                                sorted=False)
@@ -159,19 +162,26 @@ if (__name__ == '__main__'):
                 msg.error(_(u"Both files to be compared must be audio files"))
                 sys.exit(1)
             try:
-                if (os.path.samefile(audiofiles[0].filename,
-                                     audiofiles[1].filename)):
+                (audiofile_1,
+                 audiofile_2) = audiofiles
+                filename_1 = audiotools.Filename(args[0])
+                filename_2 = audiotools.Filename(args[1])
+
+                if (filename_1 == filename_2):
+                    #both files are the same so they must be identical
                     pass
                 else:
-                    frame_mismatch = check_function(audiofiles[0].to_pcm(),
-                                                    audiofiles[1].to_pcm())
+                    frame_mismatch = check_function(audiofile_1.to_pcm(),
+                                                    audiofile_2.to_pcm())
                     if (frame_mismatch is None):
+                        #all PCM frames the same
+                        #so files are identical
                         pass
                     else:
                         msg.partial_info(
                             _(u"%(file1)s <> %(file2)s : ") % \
-                                {"file1": msg.filename(audiofiles[0].filename),
-                                 "file2": msg.filename(audiofiles[1].filename)})
+                                {"file1": filename_1,
+                                 "file2": filename_2})
                         msg.info(msg.ansi(
                                 _(u"differ at PCM frame %(frame_number)d") %
                                 {"frame_number": frame_mismatch + 1},
@@ -182,6 +192,7 @@ if (__name__ == '__main__'):
                 sys.exit(1)
 
         elif (os.path.isdir(args[0]) and os.path.isdir(args[1])):
+            #comparing two directories
             results = Results(msg)
 
             files1 = audiotools.open_files(
@@ -216,11 +227,13 @@ if (__name__ == '__main__'):
                 list(files1_tracknumbers & files2_tracknumbers)):
                 queue.execute(
                     function=cmp_files,
-                    progress_text=u"%s <> %s" % \
-                        (msg.filename(files1_map[(album_number,
-                                                  track_number)].filename),
-                         msg.filename(files2_map[(album_number,
-                                                  track_number)].filename)),
+                    progress_text=(u"%s <> %s" %
+                                   (audiotools.Filename(
+                                files1_map[(album_number,
+                                            track_number)].filename),
+                                    audiotools.Filename(
+                                files2_map[(album_number,
+                                            track_number)].filename))),
                     completion_output=results.cmp_result,
                     audiofile1=files1_map[(album_number, track_number)],
                     audiofile2=files2_map[(album_number, track_number)])
@@ -249,20 +262,20 @@ if (__name__ == '__main__'):
             if (results.failures > 0):
                 sys.exit(1)
         else:
+            #comparison mismatch
             msg.error(_(u"%(file1)s <> %(file2)s : %(result)s") %
-                      {"file1": msg.filename(args[0]),
-                       "file2": msg.filename(args[1]),
+                      {"file1": audiotools.Filename(args[0]),
+                       "file2": audiotools.Filename(args[1]),
                        "result": msg.ansi(
                         _(u"must be either files or directories"),
                         [msg.FG_RED])})
             sys.exit(1)
     elif (len(args) > 2):
+        #possibly comparing disk image against tracks
         progress = audiotools.SingleProgressDisplay(msg, u"")
         progress.delete_row(0)
 
         audiofiles = audiotools.open_files(args, messenger=msg, sorted=False)
-
-        #try to compare the smaller files against the largest file
 
         audiofiles.sort(lambda t1, t2: cmp(t1.total_frames(),
                                            t2.total_frames()))
@@ -282,8 +295,8 @@ if (__name__ == '__main__'):
         cd_data = audiotools.BufferedPCMReader(cd_image.to_pcm())
         for track in tracks:
             progress.add_row(0, u"%(file1)s <> %(file2)s" %
-                             {"file1": msg.filename(cd_image.filename),
-                              "file2": msg.filename(track.filename)})
+                             {"file1": audiotools.Filename(cd_image.filename),
+                              "file2": audiotools.Filename(track.filename)})
             mismatch = audiotools.pcm_frame_cmp(
                 audiotools.to_pcm_progress(track, progress.update),
                 audiotools.LimitedPCMReader(cd_data, track.total_frames()))
@@ -291,15 +304,15 @@ if (__name__ == '__main__'):
             progress.clear()
             if (mismatch is None):
                 msg.output(_(u"%(path1)s <> %(path2)s : %(result)s") % {
-                        "path1": msg.filename(cd_image.filename),
-                        "path2": msg.filename(track.filename),
+                        "path1": audiotools.Filename(cd_image.filename),
+                        "path2": audiotools.Filename(track.filename),
                         "result": msg.ansi(
                             _(u"OK"),
                             [msg.FG_GREEN])})
             else:
                 msg.output(_(u"%(path1)s <> %(path2)s : %(result)s") % {
-                        "path1": msg.filename(cd_image.filename),
-                        "path2": msg.filename(track.filename),
+                        "path1": audiotools.Filename(cd_image.filename),
+                        "path2": audiotools.Filename(track.filename),
                         "result": msg.ansi(
                             _(u"differ at PCM frame %d") % (mismatch + 1),
                             [msg.FG_RED])})

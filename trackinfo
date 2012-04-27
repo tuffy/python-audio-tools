@@ -56,12 +56,12 @@ if (__name__ == '__main__'):
                     _(u"%(bitrate)4.4s kbps: %(filename)s") %
                     {'bitrate': ((os.path.getsize(file.filename) * 8) /
                                  2 ** 10) / length,
-                     'filename': msg.filename(file.filename)})
+                     'filename': audiotools.Filename(file.filename)})
             except ZeroDivisionError:
                 msg.output(
                     _(u"%(bitrate)4.4s kbps: %(filename)s") %
                     {'bitrate': 0,
-                     'filename': msg.filename(file.filename)})
+                     'filename': audiotools.Filename(file.filename)})
         elif (options.show_percentage):
             try:
                 msg.output(
@@ -71,11 +71,11 @@ if (__name__ == '__main__'):
                            os.path.getsize(file.filename) * 100) /
                                    (file.total_frames() * file.channels() *
                                     (file.bits_per_sample() / 8)))),
-                     'filename': msg.filename(file.filename)})
+                     'filename': audiotools.Filename(file.filename)})
             except ZeroDivisionError:
                 msg.output(_(u"%(percentage)3.3s%%: %(filename)s") % \
                                {'percentage': "0",
-                                'filenam': msg.filename(file.filename)})
+                                'filenam': audiotools.Filename(file.filename)})
         else:
             msg.output(
                 _(u"%(minutes)2.2d:%(seconds)2.2d " +
@@ -85,7 +85,7 @@ if (__name__ == '__main__'):
                  "channels": file.channels(),
                  "rate": file.sample_rate(),
                  "bits": file.bits_per_sample(),
-                 "filename": msg.filename(file.filename)})
+                 "filename": audiotools.Filename(file.filename)})
         if (not options.no_metadata):
             metadata = file.get_metadata()
             if (not options.low_level):

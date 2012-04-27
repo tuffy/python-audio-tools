@@ -39,9 +39,9 @@ class Counter:
 
 
 class FailedAudioFile:
-    def __init__(self, class_name, path, err):
+    def __init__(self, class_name, filename, err):
         self.NAME = class_name
-        self.filename = path
+        self.filename = filename
         self.err = err
 
     def verify(self):
@@ -49,6 +49,9 @@ class FailedAudioFile:
 
 
 def open_file(filename):
+    #this is much like audiotools.open
+    #except that file init errors fail differently
+
     f = open(filename, "rb")
     try:
         for audioclass in audiotools.TYPE_MAP.values():
@@ -72,37 +75,28 @@ def get_tracks(args, queued_files, accept_list=None):
     for path in args:
         if (os.path.isfile(path)):
             try:
-                file_id = audiotools.read_file_id(path)
-                if (file_id not in queued_files):
-                    queued_files.add(file_id)
-                    track = open_file(path)
-                    if not ((accept_list is not None) and
-                            (track.NAME not in accept_list)):
+                filename = audiotools.Filename(path)
+                if (filename not in queued_files):
+                    queued_files.add(filename)
+                    track = open_file(str(filename))
+                    if ((accept_list is None) or (track.NAME in accept_list)):
                         yield track
             except (audiotools.UnsupportedFile, IOError, OSError):
                 continue
         elif (os.path.isdir(path)):
             for (d, ds, fs) in os.walk(path):
-                for f in fs:
-                    file_path = os.path.join(d, f)
-                    try:
-                        file_id = audiotools.read_file_id(file_path)
-                        if (file_id not in queued_files):
-                            queued_files.add(file_id)
-                            track = open_file(file_path)
-                            if not ((accept_list is not None) and
-                                    (track.NAME not in accept_list)):
-                                yield track
-                    except (audiotools.UnsupportedFile, IOError, OSError):
-                        continue
+                for track in get_tracks([os.path.join(d, f) for f in fs],
+                                        queued_files,
+                                        accept_list=accept_list):
+                    yield track
 
 
 def verify(progress, track):
     try:
         track.verify(progress)
-        return (track.filename, track.NAME, None)
+        return (audiotools.Filename(track.filename), track.NAME, None)
     except audiotools.InvalidFile, err:
-        return (track.filename, track.NAME, unicode(err))
+        return (audiotools.Filename(track.filename), track.NAME, unicode(err))
 
 
 class Results:
@@ -112,16 +106,16 @@ class Results:
         self.summary_failure = {}
 
     def display(self, result):
-        (path, track_type, error) = result
+        (filename, track_type, error) = result
         if (error is None):
             self.summary_success.setdefault(track_type, Counter()).increment()
             return _(u"%(path)s : %(result)s") % {
-                "path": self.msg.filename(path),
+                "path": filename,
                 "result": self.msg.ansi(_(u"OK"), [self.msg.FG_GREEN])}
         else:
             self.summary_failure.setdefault(track_type, Counter()).increment()
             return _(u"%(path)s : %(result)s") % {
-                "path": self.msg.filename(path),
+                "path": filename,
                 "result": self.msg.ansi(error, [self.msg.FG_RED])}
 
 
@@ -161,12 +155,13 @@ if (__name__ == '__main__'):
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("trackverify", options)
 
-    queued_files = set([])
+    queued_files = set([])  # a set of Filename objects already encountered
     results = Results(msg)
     queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
     for track in get_tracks(args, queued_files, options.accept_list):
         queue.execute(function=verify,
-                      progress_text=msg.filename(track.filename),
+                      progress_text=
+                      unicode(audiotools.Filename(track.filename)),
                       completion_output=results.display,
                       track=track)
     msg.ansi_clearline()

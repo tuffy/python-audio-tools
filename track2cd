@@ -331,10 +331,11 @@ if (__name__ == '__main__'):
                 f = tempfile.mkstemp(suffix='.wav')
                 temp_pool.append(f)
                 wave_files.append(f[1])
-                queue.execute(function=convert_to_wave,
-                              progress_text=msg.filename(audiofile.filename),
-                              audiofile=audiofile,
-                              wave_filename=f[1])
+                queue.execute(
+                    function=convert_to_wave,
+                    progress_text=audiotools.Filename(audiofile.filename),
+                    audiofile=audiofile,
+                    wave_filename=f[1])
 
         queue.run(max_processes)
 
