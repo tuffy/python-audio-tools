@@ -65,10 +65,12 @@ if (__name__ == '__main__'):
     try:
         audiofile = audiotools.open(str(input_filename))
     except audiotools.UnsupportedFile:
-        msg.error(_(u"%s file format not supported") % msg.filename(args[0]))
+        msg.error(_(u"%s file format not supported") %
+                  (audiotools.Filename(args[0]),))
         sys.exit(1)
     except IOError:
-        msg.error(_(u"Unable to open \"%s\"") % (msg.filename(args[0])))
+        msg.error(_(u"Unable to open \"%s\"") %
+                  (audiotools.Filename(args[0]),))
         sys.exit(1)
 
     metadata = audiofile.get_metadata()

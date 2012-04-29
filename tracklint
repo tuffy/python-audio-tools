@@ -50,7 +50,7 @@ def checksum(path):
 def display_messages(messenger, track, messages):
     for message in messages:
         messenger.info(_(u"* %(filename)s: %(message)s") % \
-                           {"filename": messenger.filename(track.filename),
+                           {"filename": audiotools.Filename(track.filename),
                             "message": message})
 
 
@@ -129,8 +129,8 @@ def update_and_backup(track, undo_db, messenger):
 
 def undo_from_backup(track, undo_db, messenger):
     if (undo_db.undo(track.filename)):
-        messenger.info(_(u"Restored: %s") % \
-                           (messenger.filename(track.filename)))
+        messenger.info(_(u"Restored: %s") %
+                       (audiotools.Filename(track.filename),))
 
 
 if (__name__ == '__main__'):

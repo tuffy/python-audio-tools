@@ -112,16 +112,29 @@ classes and functions upon which all of the other modules depend.
    not supported.
    Raises :exc:`IOError` if the file cannot be opened at all.
 
-.. function:: open_files(filenames[, sorted[, messenger]])
+.. function:: open_files(filenames[, sorted][, messenger][, no_duplicates][, warn_duplicates][, opened_files])
 
    Given a list of filename strings, returns a list of
-   :class:`AudioFile`-compatible objects which can be successfully opened.
+   :class:`AudioFile`-compatible objects which are successfully opened.
    By default, they are returned sorted by album number and track number.
+
    If ``sorted`` is ``False``, they are returned in the same order
    as they appear in the filenames list.
+
    If ``messenger`` is given, use that :class:`Messenger` object
    to for warnings if files cannot be opened.
    Otherwise, such warnings are sent to stdout.
+
+   If ``no_duplicates`` is ``True``, attempting to open
+   the same file twice raises a :exc:`DuplicateFile` exception.
+
+   If ``no_duplicates`` is ``False`` and ``warn_duplicates`` is ``True``,
+   attempting to open the same file twice results in a
+   warning to ``messeger``, if present.
+
+   ``opened_files``, if present, is a set of previously opened
+   :class:`Filename` objects for the purpose of detecting duplicates.
+   Any opened files are added to that set.
 
 .. function:: open_directory(directory[, sorted[, messenger]])
 
@@ -238,6 +251,46 @@ classes and functions upon which all of the other modules depend.
 
    If ``progress`` is ``None``, the audiofile's PCM stream
    is returned as-is.
+
+Filename Objects
+----------------
+
+.. class:: Filename(filename)
+
+   :class:`Filename` is a file which may or may not exist on disk.
+   ``filename`` is a raw string of the actual filename.
+   Filename objects are immutable and hashable,
+   which means they can be used as dictionary keys
+   or placed in sets.
+
+   The purpose of Filename objects is for easier
+   conversion of raw string filename paths to unicode,
+   and to make it easier to detect filenames
+   which point to the same file on disk.
+
+   The former case is used by utilities to display
+   output about file operations in progress.
+   The latter case is for utilities
+   which need to avoid overwriting input files
+   with output files.
+
+.. function:: Filename.__str__()
+
+   Returns the raw string of the actual filename after
+   being normalized.
+
+.. function:: Filename.__unicode__()
+
+   Returns a unicode string of the filename after being decoded
+   through :attr:`FS_ENCODING`.
+
+.. function:: Filename.__eq__(filename)
+
+   Filename objects which exist on disk hash and compare equally
+   if their device ID and inode number values match
+   (the ``st_dev`` and ``st_ino`` fields according to stat(2)).
+   Filename objects which don't exist on disk hash and compare
+   equally if their filename string matches.
 
 AudioFile Objects
 -----------------
@@ -1884,10 +1937,6 @@ Messenger Objects
 
    >>> m.usage(u"<arg1> <arg2> <arg3>")
    *** Usage: audiotools <arg1> <arg2> <arg3>
-
-.. method:: Messenger.filename(string)
-
-   Takes a raw filename string and converts it to a Unicode string.
 
 .. method:: Messenger.new_row()
 

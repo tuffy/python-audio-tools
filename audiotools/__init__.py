@@ -575,7 +575,7 @@ class VerboseMessenger:
         self.error(u"[Errno %d] %s: '%s'" % \
                        (oserror.errno,
                         oserror.strerror.decode('utf-8', 'replace'),
-                        self.filename(oserror.filename)))
+                        Filename(oserror.filename)))
 
     def warning(self, s):
         """displays a warning message unicode string to stderr
@@ -596,13 +596,6 @@ class VerboseMessenger:
         sys.stderr.write(" ")
         sys.stderr.write(s.encode(IO_ENCODING, 'replace'))
         sys.stderr.write(os.linesep)
-
-    def filename(self, s):
-        """decodes a filename string to unicode
-
-        this uses the system's encoding to perform translation"""
-
-        return s.decode(FS_ENCODING, 'replace')
 
     def ansi(self, s, codes):
         """generates an ANSI code as a unicode string
@@ -1046,7 +1039,7 @@ class UnsupportedChannelMask(EncodingError):
             self,
             _(u"Unable to write \"%(target_filename)s\"" +
               u" with channel assignment \"%(assignment)s\"") %
-            {"target_filename": VerboseMessenger(None).filename(filename),
+            {"target_filename": Filename(filename),
              "assignment": ChannelMask(mask)})
 
 
@@ -1058,7 +1051,7 @@ class UnsupportedChannelCount(EncodingError):
             self,
             _(u"Unable to write \"%(target_filename)s\"" +
               u" with %(channels)d channel input") %
-            {"target_filename": VerboseMessenger(None).filename(filename),
+            {"target_filename": Filename(filename),
              "channels": count})
 
 
@@ -1070,7 +1063,7 @@ class UnsupportedBitsPerSample(EncodingError):
             self,
             _(u"Unable to write \"%(target_filename)s\"" +
               u" with %(bps)d bits per sample") %
-            {"target_filename": VerboseMessenger(None).filename(filename),
+            {"target_filename": Filename(filename),
              "bps": bits_per_sample})
 
 
@@ -1135,30 +1128,26 @@ class Filename(tuple):
                                            None,
                                            None])
 
+    def disk_file(self):
+        return (self[1] is not None) and (self[2] is not None)
+
     def __repr__(self):
         return "Filename(%s, %s, %s)" % \
             (repr(self[0]), repr(self[1]), repr(self[2]))
 
     def __eq__(self, filename):
-        try:
-            filename_len = len(filename)
-        except TypeError:
-            return False
-
-        if (filename_len == 3):
-            #maybe Filename class also
-            if ((self[1] == filename[1]) and (self[2] == filename[2])):
-                #device and inode fields are identical
-                if ((self[1] != None) and (self[2] != None)):
-                    #device and inode fields are numbers
-                    #so files both exist on disk and are the same
-                    return True
-                else:
-                    #device or inode field is missing
-                    #so files don't exist on disk
-                    #and are identical only if filenames match
-                    return self[0] == filename[0]
+        if (isinstance(filename, Filename)):
+            if (self.disk_file() and filename.disk_file()):
+                #both exist on disk,
+                #so they compare equally if st_dev and st_ino match
+                return (self[1] == filename[1]) and (self[2] == filename[2])
+            elif ((not self.disk_file()) and (not filename.disk_file())):
+                #neither exist on disk,
+                #so they compare equally if their paths match
+                return self[0] == filename[0]
             else:
+                #one or the other exists on disk
+                #but not both, so they never match
                 return False
         else:
             return False
@@ -1167,7 +1156,7 @@ class Filename(tuple):
         return not self == filename
 
     def __hash__(self):
-        if ((self[1] is not None) and (self[2] is not None)):
+        if (self.disk_file()):
             return hash((None, self[1], self[2]))
         else:
             return hash((self[0], self[1], self[2]))

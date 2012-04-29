@@ -242,6 +242,54 @@ class ChannelMask(unittest.TestCase):
                 self.assertEqual(mask, mask2)
 
 
+class Filename(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+        self.temp_file1 = os.path.join(self.temp_dir, "file1")
+        self.temp_file2 = os.path.join(self.temp_dir, "file2")
+        f = open(self.temp_file1, "w")
+        f.write("hello world")
+        f.close()
+        os.link(self.temp_file1, self.temp_file2)
+
+    def tearDown(self):
+        os.unlink(self.temp_file1)
+        os.unlink(self.temp_file2)
+        os.rmdir(self.temp_dir)
+
+    @LIB_CORE
+    def test_filename(self):
+        file1 = audiotools.Filename(self.temp_file1)
+        file2 = audiotools.Filename(self.temp_file2)
+        file3 = audiotools.Filename(os.path.join(self.temp_dir, "file3"))
+        file4 = audiotools.Filename(os.path.join(self.temp_dir, "./file3"))
+        file5 = audiotools.Filename(os.path.join(self.temp_dir, "file4"))
+
+        self.assert_(file1.disk_file())
+        self.assert_(file2.disk_file())
+        self.assertNotEqual(str(file1), str(file2))
+        self.assertNotEqual(unicode(file1), unicode(file2))
+        self.assertEqual(file1, file2)
+        self.assertEqual(hash(file1), hash(file2))
+
+        self.assert_(not file3.disk_file())
+        self.assertNotEqual(str(file1), str(file3))
+        self.assertNotEqual(unicode(file1), unicode(file3))
+        self.assertNotEqual(file1, file3)
+        self.assertNotEqual(hash(file1), hash(file3))
+
+        self.assert_(not file4.disk_file())
+        self.assertEqual(str(file3), str(file4))
+        self.assertEqual(unicode(file3), unicode(file4))
+        self.assertEqual(file3, file4)
+        self.assertEqual(hash(file3), hash(file4))
+
+        self.assert_(not file5.disk_file())
+        self.assertNotEqual(str(file3), str(file5))
+        self.assertNotEqual(unicode(file3), unicode(file5))
+        self.assertNotEqual(file3, file5)
+        self.assertNotEqual(hash(file3), hash(file5))
+
 class ImageJPEG(unittest.TestCase):
     @LIB_CORE
     def setUp(self):

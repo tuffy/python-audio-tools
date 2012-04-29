@@ -5485,7 +5485,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] tracksplit
      - [X] tracktag
      - [X] trackverify
-** TODO Integrate Filename object into utilities
+** DONE Integrate Filename object into utilities
    This object should replace the Messenger.filename classmethod.
    It automatically performs filename -> unicode conversion
    and, when files are on disk, compares for equality by device/inode.
@@ -5506,11 +5506,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE tracksplit
 **** DONE tracktag
 **** DONE trackverify
-*** TODO Add documentation for Filename
-*** TODO Add unit tests for Filename
-*** TODO Remove Messenger.filename classmethod
-**** TODO remove mention in documentation
-*** TODO Ensure all unit tests pass
+*** DONE Add documentation for Filename
+*** DONE Add unit tests for Filename
+*** DONE Remove Messenger.filename classmethod
+**** DONE remove mention in documentation
+*** DONE Ensure all unit tests pass
 ** DONE Sanity check tool inputs/outputs
 *** DONE Ensure input files are included only once
     - [X] track2cd - generate warning
