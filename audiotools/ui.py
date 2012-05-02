@@ -47,6 +47,19 @@ try:
             return urwid.Edit.keypress(self, size,
                                        self.__key_map__.get(key, key))
 
+    class DownIntEdit(urwid.IntEdit):
+        """a subclass of urwid.IntEdit which performs a down-arrow keypress
+        when the enter key is pressed,
+        typically for moving to the next element in a form"""
+
+        def __init__(self, caption='', default=None):
+            urwid.IntEdit.__init__(self, caption=caption, default=default)
+            self.__key_map__ = {"enter": "down"}
+
+        def keypress(self, size, key):
+            return urwid.Edit.keypress(self, size,
+                                       self.__key_map__.get(key, key))
+
     class FocusFrame(urwid.Frame):
         """a special Frame widget which performs callbacks on focus changes"""
 
@@ -414,7 +427,7 @@ try:
             #a list of AlbumList objects, one for each possible choice
             self.album_lists = [AlbumList(
                     [Album(map(Track,
-                                             metadata_choice))],
+                               metadata_choice))],
                     self.select_album_or_track)
                                 for metadata_choice in metadata_choices]
 
@@ -639,6 +652,367 @@ try:
             to be called once Urwid's main loop has completed"""
 
             return self.selected_album_list.albums[0].get_metadata()
+
+    class MetaDataEditor(urwid.Frame):
+        def __init__(self, tracks, on_text_change=None):
+            """tracks is a list of (id, label, MetaData) tuples
+            in the order they are to be displayed
+            where id is some hashable ID value
+            label is a unicode string
+            and MetaData is an audiotools.MetaData-compatible object or None"""
+
+            #a list of track IDs in the order they appear
+            self.track_ids = []
+
+            #a list of (track_id, label) tuples in the order they should appear
+            track_labels = []
+
+            #the order metadata fields should appear
+            field_labels = [("track_name", u"Track Name"),
+                            ("artist_name", u"Artist Name"),
+                            ("album_name", u"Album Name"),
+                            ("track_number", u"Track Number"),
+                            ("track_total", u"Track Total"),
+                            ("album_number", u"Album Number"),
+                            ("album_total", u"Album Total"),
+                            ("performer_name", u"Performer Name"),
+                            ("composer_name", u"Composer Name"),
+                            ("conductor_name", u"Conductor Name"),
+                            ("catalog", u"Catalog Number"),
+                            ("ISRC", u"ISRC"),
+                            ("publisher", u"Publisher"),
+                            ("media", u"Media"),
+                            ("year", u"Release Year"),
+                            ("date", u"Recording Date"),
+                            ("copyright", u"Copyright"),
+                            ("comment", u"Comment")]
+
+            #a dict of track_id->TrackMetaData values
+            self.metadata_edits = {}
+
+            #determine the base metadata all others should be linked against
+            base_metadata = {}
+            for (track_id, track_label, metadata) in tracks:
+                if (metadata is None):
+                    metadata = audiotools.MetaData()
+                self.track_ids.append(track_id)
+                for (attr, value) in metadata.fields():
+                        base_metadata.setdefault(attr, set([])).add(value)
+
+            base_metadata = BaseMetaData(
+                metadata=audiotools.MetaData(
+                    **dict([(field, list(values)[0])
+                            for (field, values) in base_metadata.items()
+                            if (len(values) == 1)])),
+                on_change=on_text_change)
+
+            #populate the track_labels and metadata_edits lookup tables
+            for (track_id, track_label, metadata) in tracks:
+                if (metadata is None):
+                    metadata = audiotools.MetaData()
+                if (track_id not in self.metadata_edits):
+                    track_labels.append((track_id, track_label))
+                    self.metadata_edits[track_id] = TrackMetaData(
+                        metadata=metadata,
+                        base_metadata=base_metadata,
+                        on_change=on_text_change)
+
+                else:
+                    #no_duplicates via open_files should filter this case
+                    raise ValueError("same track ID cannot appear twice")
+
+            swivel_radios = []
+
+            track_radios_order = []
+            track_radios = {}
+
+            field_radios_order = []
+            field_radios = {}
+
+            #generate radio buttons for track labels
+            for (track_id, track_label) in track_labels:
+                radio = OrderedRadioButton(ordered_group=track_radios_order,
+                                           group=swivel_radios,
+                                           label=('label', track_label),
+                                           state=False,
+                                           on_state_change=self.activate_swivel,
+                                           user_data=Swivel(
+                        left_top_widget=urwid.Text(('label', 'fields')),
+                        left_alignment='fixed',
+                        left_width=4 + 14,
+                        left_radios=field_radios,
+                        left_ids=[field_id for (field_id, label)
+                                  in field_labels],
+                        right_top_widget=urwid.Text(('label', track_label)),
+                        right_alignment='weight',
+                        right_width=1,
+                        right_widgets=[getattr(self.metadata_edits[track_id],
+                                               field_id)
+                                       for (field_id, label) in field_labels]))
+                radio._label.set_wrap_mode(urwid.CLIP)
+                track_radios[track_id] = radio
+
+            #generate radio buttons for metadata labels
+            for (field_id, field_label) in field_labels:
+                radio = OrderedRadioButton(ordered_group=field_radios_order,
+                                           group=swivel_radios,
+                                           label=('label', field_label),
+                                           state=False,
+                                           on_state_change=self.activate_swivel,
+                                           user_data=Swivel(
+                        left_top_widget=urwid.Text(('label', 'filenames')),
+                        left_alignment='weight',
+                        left_width=1,
+                        left_radios=track_radios,
+                        left_ids=[track_id for (track_id, track)
+                                  in track_labels],
+                        right_top_widget=urwid.Text(('label', field_label)),
+                        right_alignment='weight',
+                        right_width=2,
+                        right_widgets=[getattr(self.metadata_edits[track_id],
+                                               field_id)
+                                       for (track_id, track) in track_labels]))
+                radio._label.set_align_mode('right')
+                field_radios[field_id] = radio
+
+            self.edit_box = urwid.Pile([])
+
+            urwid.Frame.__init__(
+                self,
+                header=urwid.Columns(
+                    [("fixed", 1, urwid.Text(u"")),
+                     ("weight", 1, urwid.Text(u""))]),
+                body=urwid.Filler(self.edit_box, valign='top'))
+
+            if (len(self.metadata_edits) != 1):
+                #if more than one track, select track_name radio button
+                field_radios["track_name"].set_state(True)
+            else:
+                #if only one track, select that track's radio button
+                track_radios[track_labels[0][0]].set_state(True)
+
+        def activate_swivel(self, radio_button, selected, swivel):
+            if (selected):
+                self.selected_radio = radio_button
+                while (len(self.edit_box.widget_list)):
+                    del(self.edit_box.widget_list[-1])
+                for (left_widget, right_widget) in swivel.rows():
+                    self.edit_box.widget_list.append(
+                        urwid.Columns([
+                                (swivel.left_alignment,
+                                 swivel.left_width,
+                                 left_widget),
+                                (swivel.right_alignment,
+                                 swivel.right_width,
+                                 right_widget)]))
+                self.edit_box.set_focus(0)
+                self.set_header(
+                    urwid.Pile([urwid.Columns(
+                                [(swivel.left_alignment,
+                                  swivel.left_width,
+                                  swivel.left_top_widget),
+                                 (swivel.right_alignment,
+                                  swivel.right_width,
+                                  LinkedWidgetHeader(
+                                            swivel.right_top_widget))]),
+                                urwid.Columns(
+                                [(swivel.left_alignment,
+                                  swivel.left_width,
+                                  urwid.Divider(u"\u2500")),
+                                 (swivel.right_alignment,
+                                  swivel.right_width,
+                                  LinkedWidgetDivider())])]))
+            else:
+                pass
+
+        def select_previous_item(self):
+            previous_radio = self.selected_radio.previous_radio_button()
+            if (previous_radio is not None):
+                previous_radio.set_state(True)
+
+        def select_next_item(self):
+            next_radio = self.selected_radio.next_radio_button()
+            if (next_radio is not None):
+                next_radio.set_state(True)
+
+        def metadata(self):
+            """yields a (track_id, MetaData) tuple
+            per edited metadata track"""
+
+            for track_id in self.track_ids:
+                yield (track_id,
+                       self.metadata_edits[track_id].edited_metadata())
+
+
+    class OrderedRadioButton(urwid.RadioButton):
+        def __init__(self, ordered_group, group, label,
+                     state='first True', on_state_change=None, user_data=None):
+            urwid.RadioButton.__init__(self,
+                                       group,
+                                       label,
+                                       state,
+                                       on_state_change,
+                                       user_data)
+            ordered_group.append(self)
+            self.ordered_group = ordered_group
+
+        def previous_radio_button(self):
+            for (current_radio,
+                 previous_radio) in zip(self.ordered_group,
+                                        [None] + self.ordered_group):
+                if (current_radio is self):
+                    return previous_radio
+            else:
+                return None
+
+        def next_radio_button(self):
+            for (current_radio,
+                 next_radio) in zip(self.ordered_group,
+                                    self.ordered_group[1:] + [None]):
+                if (current_radio is self):
+                    return next_radio
+            else:
+                return None
+
+
+    class LinkedWidgetHeader(urwid.Columns):
+        def __init__(self, widget):
+            urwid.Columns.__init__(self,
+                                   [("fixed", 3, urwid.Text(u" \u2502 ")),
+                                    ("weight", 1, widget),
+                                    ("fixed", 4, urwid.Text(u""))])
+
+
+    class LinkedWidgetDivider(urwid.Columns):
+        def __init__(self):
+            urwid.Columns.__init__(
+                self,
+                [("fixed", 3, urwid.Text(u"\u2500\u2534\u2500")),
+                 ("weight", 1, urwid.Divider(u"\u2500")),
+                 ("fixed", 4, urwid.Text(u"\u2500" * 4))])
+
+
+    class LinkedWidgets(urwid.Columns):
+        def __init__(self, checkbox_group, linked_widget, unlinked_widget):
+            """linked_widget is shown when the linking checkbox is checked
+            otherwise unlinked_widget is shown"""
+
+            self.linked_widget = linked_widget
+            self.unlinked_widget = unlinked_widget
+            self.checkbox_group = checkbox_group
+
+            if (linked_widget.get_text() != unlinked_widget.get_text()):
+                self.checkbox = urwid.CheckBox(u"",
+                                               on_state_change=self.swap_link)
+                self.checkbox_group.append(self.checkbox)
+                urwid.Columns.__init__(
+                    self,
+                    [("fixed", 3, urwid.Text(u" : ")),
+                     ("weight", 1, unlinked_widget),
+                     ("fixed", 4, self.checkbox)])
+            else:
+                self.checkbox = urwid.CheckBox(u"",
+                                               state=True,
+                                               on_state_change=self.swap_link)
+                self.checkbox_group.append(self.checkbox)
+                urwid.Columns.__init__(
+                    self,
+                    [("fixed", 3, urwid.Text(u" : ")),
+                     ("weight", 1, linked_widget),
+                     ("fixed", 4, self.checkbox)])
+
+        def swap_link(self, checkbox, linked):
+            if (linked):
+                #if nothing else linked in this checkbox group,
+                #set linked text to whatever the last unlinked text as
+                if (set([cb.get_state() for cb in self.checkbox_group
+                         if (cb is not checkbox)]) == set([False])):
+                    self.linked_widget.set_edit_text(
+                        self.unlinked_widget.get_edit_text())
+                self.widget_list[1] = self.linked_widget
+                self.set_focus(2)
+            else:
+                #set unlinked text to whatever the last linked text was
+                self.unlinked_widget.set_edit_text(
+                    self.linked_widget.get_edit_text())
+                self.widget_list[1] = self.unlinked_widget
+                self.set_focus(2)
+
+        def value(self):
+            if (self.checkbox.get_state()):
+                widget = self.linked_widget
+            else:
+                widget = self.unlinked_widget
+
+            if (hasattr(widget, "value") and callable(widget.value)):
+                return widget.value()
+            elif (hasattr(widget, "get_edit_text") and
+                  callable(widget.get_edit_text)):
+                return widget.get_edit_text()
+            else:
+                return None
+
+    class BaseMetaData:
+        def __init__(self, metadata, on_change=None):
+            self.checkbox_groups = {}
+            for field in metadata.FIELDS:
+                if (field not in metadata.INTEGER_FIELDS):
+                    widget = DownEdit(edit_text=getattr(metadata, field))
+                else:
+                    widget = DownIntEdit(default=getattr(metadata, field))
+
+                if (on_change is not None):
+                    urwid.connect_signal(widget, 'change', on_change)
+                setattr(self, field, widget)
+                self.checkbox_groups[field] = []
+
+
+    class TrackMetaData:
+        def __init__(self, metadata, base_metadata, on_change=None):
+            for field in metadata.FIELDS:
+                if (field not in metadata.INTEGER_FIELDS):
+                    widget = DownEdit(edit_text=getattr(metadata, field))
+                else:
+                    widget = DownIntEdit(default=getattr(metadata, field))
+
+                if (on_change is not None):
+                    urwid.connect_signal(widget, 'change', on_change)
+                setattr(self, field,
+                        LinkedWidgets(
+                        base_metadata.checkbox_groups[field],
+                        getattr(base_metadata, field), widget))
+
+        def edited_metadata(self):
+            return audiotools.MetaData(**dict(
+                    [(attr, getattr(self, attr).value())
+                     for attr in audiotools.MetaData.FIELDS]))
+
+
+    class Swivel:
+        def __init__(self, left_top_widget,
+                     left_alignment,
+                     left_width,
+                     left_radios,
+                     left_ids,
+                     right_top_widget,
+                     right_alignment,
+                     right_width,
+                     right_widgets):
+            assert(len(left_ids) == len(right_widgets))
+            self.left_top_widget = left_top_widget
+            self.left_alignment = left_alignment
+            self.left_width = left_width
+            self.left_radios = left_radios
+            self.left_ids = left_ids
+            self.right_top_widget = right_top_widget
+            self.right_alignment = right_alignment
+            self.right_width = right_width
+            self.right_widgets = right_widgets
+
+        def rows(self):
+            for (left_id,
+                 right_widget) in zip(self.left_ids, self.right_widgets):
+                yield (self.left_radios[left_id], right_widget)
 
 except ImportError:
     AVAILABLE = False

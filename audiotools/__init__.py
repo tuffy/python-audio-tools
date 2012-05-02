@@ -1115,21 +1115,22 @@ class Filename(tuple):
     def __new__(cls, filename):
         """filename is a string of the file on disk"""
 
-        if (isinstance(filename, cls)):
-            return tuple.__new__(cls, [filename[0], filename[1], filename[2]])
-        else:
-            try:
-                stat = os.stat(filename)
-                return tuple.__new__(cls, [os.path.normpath(filename),
-                                           stat.st_dev,
-                                           stat.st_ino])
-            except OSError:
-                return tuple.__new__(cls, [os.path.normpath(filename),
-                                           None,
-                                           None])
+        filename = str(filename)
+        try:
+            stat = os.stat(filename)
+            return tuple.__new__(cls, [os.path.normpath(filename),
+                                       stat.st_dev,
+                                       stat.st_ino])
+        except OSError:
+            return tuple.__new__(cls, [os.path.normpath(filename),
+                                       None,
+                                       None])
 
     def disk_file(self):
         return (self[1] is not None) and (self[2] is not None)
+
+    def basename(self):
+        return Filename(os.path.basename(self[0]))
 
     def __repr__(self):
         return "Filename(%s, %s, %s)" % \
