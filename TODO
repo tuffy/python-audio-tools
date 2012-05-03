@@ -5560,18 +5560,18 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    overload the screen with too many progress rows
    in case the number of simultaneous jobs
    exceeds the number of terminal rows.
+** DONE Improve metadata tagging widget
+   I'm not convinced the current opened/closed bottom window
+   is the ideal design for editing extended album/track metadata.
+   Something more similar to a spreadsheet would be ideal
+   but that's complicated by the serious lack of space
+   in terminal windows.
 ** TODO Update .convert() method to use fewer temporary files
    .wav and .aiff containers with embedded chunks
    currently route data through actual .wav/.aiff files
    in order to pass those chunks to another format.
    It would be better to avoid creating an intermediate
    file whenever possible.
-** TODO Improve metadata tagging widget
-   I'm not convinced the current opened/closed bottom window
-   is the ideal design for editing extended album/track metadata.
-   Something more similar to a spreadsheet would be ideal
-   but that's complicated by the serious lack of space
-   in terminal windows.
 ** TODO Add internal Ogg FLAC encoder
    This shouldn't be too hard since native FLAC encoding is already in place,
    as is Ogg stream encoding.

@@ -32,6 +32,8 @@ if (audiotools.ui.AVAILABLE):
 
     class Tracktag(urwid.Pile):
         def __init__(self, tracks):
+            self.status = urwid.Text(u"")
+
             #a dict of track_id -> (AudioFile, MetaData) values
             self.edited_tracks = {}
             track_data = []
@@ -44,12 +46,11 @@ if (audiotools.ui.AVAILABLE):
                                    metadata))
 
             self.metadata = audiotools.ui.MetaDataEditor(track_data,
-                                                         self.changed)
+                                                         self.changed,
+                                                         self.swiveled)
 
             self.save_button = urwid.Button("Apply", on_press=self.save)
             cancel = urwid.Button("Quit", on_press=self.exit)
-
-            self.status = urwid.Text(u"")
 
             urwid.Pile.__init__(
                 self,
@@ -65,9 +66,9 @@ if (audiotools.ui.AVAILABLE):
         def unhandled_input(self, i):
             if (i == 'esc'):
                 raise urwid.ExitMainLoop()
-            elif (i == 'page up'):
+            elif (i == 'ctrl left'):
                 self.metadata.select_previous_item()
-            elif (i == 'page down'):
+            elif (i == 'ctrl right'):
                 self.metadata.select_next_item()
 
         def save(self, button, arg=None):
@@ -83,7 +84,17 @@ if (audiotools.ui.AVAILABLE):
                             original_value = getattr(original_metadata, attr)
                             updated_value = getattr(updated_metadata, attr)
                             if (original_value != updated_value):
-                                setattr(original_metadata, attr, updated_value)
+                                if ((attr in
+                                     audiotools.MetaData.INTEGER_FIELDS) and
+                                    (updated_value == 0)):
+                                    delattr(original_metadata, attr)
+                                elif ((attr not in
+                                       audiotools.MetaData.INTEGER_FIELDS) and
+                                      (len(updated_value) == 0)):
+                                    delattr(original_metadata, attr)
+                                else:
+                                    setattr(original_metadata, attr,
+                                            updated_value)
 
                         #FIXME - check for errors here
                         track.update_metadata(original_metadata)
@@ -104,6 +115,23 @@ if (audiotools.ui.AVAILABLE):
             self.save_button.set_label(('modified', u"Apply"))
             self.status.set_text(u"")
             self.modified = True
+
+        def swiveled(self, radio_button, selected, swivel):
+            if (selected):
+                keys = []
+                if (radio_button.previous_radio_button() is not None):
+                    keys.extend([('key', u"Ctrl Left"),
+                                 u" - previous %s" % (swivel.swivel_type)])
+                if (radio_button.next_radio_button() is not None):
+                    if (len(keys) > 0):
+                        keys.append(u"   ")
+                    keys.extend([('key', u"Ctrl Right"),
+                                 u" - next %s" % (swivel.swivel_type)])
+
+                if (len(keys) > 0):
+                    self.status.set_text(keys)
+                else:
+                    self.status.set_text(u"")
 
 else:
     urwid_present = False
@@ -586,6 +614,7 @@ if (__name__ == '__main__'):
         tracktag = Tracktag(audiofiles)
         loop = urwid.MainLoop(tracktag,
                               [('label', 'default,bold', 'default'),
+                               ('key', 'white', 'dark blue'),
                                ('modified', 'default,bold', 'default', '')],
                               unhandled_input=tracktag.unhandled_input)
         tracktag.draw_screen = loop.draw_screen

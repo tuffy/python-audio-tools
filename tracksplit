@@ -325,12 +325,16 @@ if (__name__ == '__main__'):
         metadata_widget = audiotools.ui.MetaDataFiller(metadata_choices)
         loop = audiotools.ui.urwid.MainLoop(
             metadata_widget,
-            [('key', 'white', 'dark blue')],
+            [('key', 'white', 'dark blue'),
+             ('label', 'default,bold', 'default')],
             unhandled_input=metadata_widget.handle_text)
         loop.run()
 
-        track_metadatas = dict([(m.track_number, m) for m in
-                                metadata_widget.populated_metadata()])
+        if (not metadata_widget.canceled):
+            track_metadatas = dict([(m.track_number, m) for m in
+                                    metadata_widget.populated_metadata()])
+        else:
+            sys.exit(0)
     else:
         if ((len(metadata_choices) == 1) or options.use_default):
             #use default choice
