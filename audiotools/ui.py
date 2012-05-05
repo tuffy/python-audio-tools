@@ -184,12 +184,12 @@ try:
             if (selected):
                 keys = []
                 if (radio_button.previous_radio_button() is not None):
-                    keys.extend([('key', u"Ctrl Left"),
+                    keys.extend([('key', u"F1"),
                                  u" - previous %s" % (swivel.swivel_type)])
                 if (radio_button.next_radio_button() is not None):
                     if (len(keys) > 0):
                         keys.append(u"   ")
-                    keys.extend([('key', u"Ctrl Right"),
+                    keys.extend([('key', u"F2"),
                                  u" - next %s" % (swivel.swivel_type)])
 
                 if (len(keys) > 0):
@@ -201,9 +201,9 @@ try:
             if (i == 'esc'):
                 self.canceled = True
                 raise urwid.ExitMainLoop()
-            elif (i == 'ctrl left'):
+            elif (i == 'f1'):
                 self.selected_match.select_previous_item()
-            elif (i == 'ctrl right'):
+            elif (i == 'f2'):
                 self.selected_match.select_next_item()
 
         def finish(self, button, apply_changes):
@@ -315,7 +315,8 @@ try:
                     left_width=4 + 14,
                     left_radios=field_radios,
                     left_ids=[field_id for (field_id, label) in field_labels],
-                    right_top_widget=urwid.Text(('label', track_label)),
+                    right_top_widget=urwid.Text(('label', track_label),
+                                                wrap=urwid.CLIP),
                     right_alignment='weight',
                     right_width=1,
                     right_widgets=[getattr(self.metadata_edits[track_id],

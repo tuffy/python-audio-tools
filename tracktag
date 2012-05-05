@@ -66,9 +66,9 @@ if (audiotools.ui.AVAILABLE):
         def unhandled_input(self, i):
             if (i == 'esc'):
                 raise urwid.ExitMainLoop()
-            elif (i == 'ctrl left'):
+            elif (i == 'f1'):
                 self.metadata.select_previous_item()
-            elif (i == 'ctrl right'):
+            elif (i == 'f2'):
                 self.metadata.select_next_item()
 
         def save(self, button, arg=None):
@@ -120,12 +120,12 @@ if (audiotools.ui.AVAILABLE):
             if (selected):
                 keys = []
                 if (radio_button.previous_radio_button() is not None):
-                    keys.extend([('key', u"Ctrl Left"),
+                    keys.extend([('key', u"F1"),
                                  u" - previous %s" % (swivel.swivel_type)])
                 if (radio_button.next_radio_button() is not None):
                     if (len(keys) > 0):
                         keys.append(u"   ")
-                    keys.extend([('key', u"Ctrl Right"),
+                    keys.extend([('key', u"F2"),
                                  u" - next %s" % (swivel.swivel_type)])
 
                 if (len(keys) > 0):
