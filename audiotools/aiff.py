@@ -821,13 +821,16 @@ class AiffAudio(AiffContainer):
                     current_block.build("4b 32u", (chunk_id, chunk_size))
                     total_size -= 8
 
-                #round up chunk size to 16 bits
-                if (chunk_size % 2):
-                    chunk_size += 1
-
-                #and transfer the full content of non-data chunks
+                #and transfer the full content of non-audio chunks
                 if (chunk_id != "SSND"):
-                    current_block.write_bytes(aiff_file.read_bytes(chunk_size))
+                    if (chunk_size % 2):
+                        current_block.write_bytes(
+                            aiff_file.read_bytes(chunk_size + 1))
+                        total_size -= (chunk_size + 1)
+                    else:
+                        current_block.write_bytes(
+                            aiff_file.read_bytes(chunk_size))
+                        total_size -= chunk_size
                 else:
                     #transfer alignment as part of SSND's chunk header
                     align = aiff_file.parse("32u 32u")
@@ -835,7 +838,11 @@ class AiffAudio(AiffContainer):
                     aiff_file.skip_bytes(chunk_size - 8)
                     current_block = tail
 
-                total_size -= chunk_size
+                    if (chunk_size % 2):
+                        current_block.write_bytes(aiff_file.read_bytes(1))
+                        total_size -= (chunk_size + 1)
+                    else:
+                        total_size -= chunk_size
 
             return (head.data(), tail.data())
         finally:

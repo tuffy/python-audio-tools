@@ -881,18 +881,26 @@ class WaveAudio(WaveContainer):
                     current_block.build("4b 32u", (chunk_id, chunk_size))
                     total_size -= 8
 
-                #round up chunk size to 16 bits
-                if (chunk_size % 2):
-                    chunk_size += 1
-
-                #and transfer the full content of non-data chunks
+                #and transfer the full content of non-audio chunks
                 if (chunk_id != "data"):
-                    current_block.write_bytes(wave_file.read_bytes(chunk_size))
+                    if (chunk_size % 2):
+                        current_block.write_bytes(
+                            wave_file.read_bytes(chunk_size + 1))
+                        total_size -= (chunk_size + 1)
+                    else:
+                        current_block.write_bytes(
+                            wave_file.read_bytes(chunk_size))
+                        total_size -= chunk_size
                 else:
                     wave_file.skip_bytes(chunk_size)
                     current_block = tail
 
-                total_size -= chunk_size
+                    if (chunk_size % 2):
+                        current_block.write_bytes(wave_file.read_bytes(1))
+                        total_size -= (chunk_size + 1)
+                    else:
+                        total_size -= chunk_size
+
 
             return (head.data(), tail.data())
         finally:

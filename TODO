@@ -5566,6 +5566,21 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    Something more similar to a spreadsheet would be ideal
    but that's complicated by the serious lack of space
    in terminal windows.
+** TODO Add internal MP3 codec
+   This is likely the codec people are most interested in
+   and so it should be folded in so it can be used
+   without any external dependencies.
+*** TODO Add C-based MP3 decoder
+*** TODO Add MP3 decoding reference documentation
+*** TODO Add C-based MP3 encoder
+    Unlike lossless codecs where output can be verified automatically,
+    lossy codecs offer no similar guarantees.
+    So like libsamplerate, it would be better to import
+    a known correct implementation like LAME
+    than to reimplement the wheel.
+*** TODO Add MP3 encoding reference documentation
+    A rundown of how LAME operates, in the hope of demystifying
+    the format.
 ** TODO Update .convert() method to use fewer temporary files
    .wav and .aiff containers with embedded chunks
    currently route data through actual .wav/.aiff files

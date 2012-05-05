@@ -113,7 +113,7 @@ try:
 
             self.metadata_choices = metadata_choices
 
-            self.status = urwid.Text(u"Status Text Here")
+            self.status = urwid.Text(u"")
 
             #setup radio button for each possible match
             matches = []
@@ -486,7 +486,8 @@ try:
 
 
     class LinkedWidgets(urwid.Columns):
-        def __init__(self, checkbox_group, linked_widget, unlinked_widget):
+        def __init__(self, checkbox_group, linked_widget, unlinked_widget,
+                     initially_linked):
             """linked_widget is shown when the linking checkbox is checked
             otherwise unlinked_widget is shown"""
 
@@ -494,25 +495,17 @@ try:
             self.unlinked_widget = unlinked_widget
             self.checkbox_group = checkbox_group
 
-            if (linked_widget.get_text() != unlinked_widget.get_text()):
-                self.checkbox = urwid.CheckBox(u"",
-                                               on_state_change=self.swap_link)
-                self.checkbox_group.append(self.checkbox)
-                urwid.Columns.__init__(
-                    self,
-                    [("fixed", 3, urwid.Text(u" : ")),
-                     ("weight", 1, unlinked_widget),
-                     ("fixed", 4, self.checkbox)])
-            else:
-                self.checkbox = urwid.CheckBox(u"",
-                                               state=True,
-                                               on_state_change=self.swap_link)
-                self.checkbox_group.append(self.checkbox)
-                urwid.Columns.__init__(
-                    self,
-                    [("fixed", 3, urwid.Text(u" : ")),
-                     ("weight", 1, linked_widget),
-                     ("fixed", 4, self.checkbox)])
+            self.checkbox = urwid.CheckBox(u"",
+                                           state=initially_linked,
+                                           on_state_change=self.swap_link)
+            self.checkbox_group.append(self.checkbox)
+
+            urwid.Columns.__init__(
+                self,
+                [("fixed", 3, urwid.Text(u" : ")),
+                 ("weight", 1,
+                  linked_widget if initially_linked else unlinked_widget),
+                 ("fixed", 4, self.checkbox)])
 
         def swap_link(self, checkbox, linked):
             if (linked):
@@ -547,6 +540,10 @@ try:
 
     class BaseMetaData:
         def __init__(self, metadata, on_change=None):
+            """metadata is a MetaData object
+            on_change is a callback for when the text field is modified"""
+
+            self.metadata = metadata
             self.checkbox_groups = {}
             for field in metadata.FIELDS:
                 if (field not in metadata.INTEGER_FIELDS):
@@ -561,7 +558,13 @@ try:
 
 
     class TrackMetaData:
+        NEVER_LINK = frozenset(["track_name", "track_number", "ISRC"])
+
         def __init__(self, metadata, base_metadata, on_change=None):
+            """metadata is a MetaData object
+            base_metadata is a BaseMetaData object to link against
+            on_change is a callback for when the text field is modified"""
+
             for field in metadata.FIELDS:
                 if (field not in metadata.INTEGER_FIELDS):
                     widget = DownEdit(edit_text=getattr(metadata, field))
@@ -570,10 +573,16 @@ try:
 
                 if (on_change is not None):
                     urwid.connect_signal(widget, 'change', on_change)
-                setattr(self, field,
-                        LinkedWidgets(
-                        base_metadata.checkbox_groups[field],
-                        getattr(base_metadata, field), widget))
+
+                linked_widget = LinkedWidgets(
+                    checkbox_group=base_metadata.checkbox_groups[field],
+                    linked_widget=getattr(base_metadata, field),
+                    unlinked_widget=widget,
+                    initially_linked=((field not in self.NEVER_LINK) and
+                                      (getattr(metadata, field) ==
+                                       getattr(base_metadata.metadata, field))))
+
+                setattr(self, field, linked_widget)
 
         def edited_metadata(self):
             return audiotools.MetaData(**dict(
