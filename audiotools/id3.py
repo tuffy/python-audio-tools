@@ -21,6 +21,8 @@ from . import (MetaData, Image, InvalidImage)
 import codecs
 import gettext
 
+from id3v1 import ID3v1Comment
+
 
 def is_latin_1(unicode_string):
     """returns True if the given unicode string is a subset of latin-1"""
@@ -2055,8 +2057,6 @@ class ID3v24Comment(ID3v23Comment):
 
 
 ID3v2Comment = ID3v22Comment
-
-from __id3v1__ import *
 
 
 class ID3CommentPair(MetaData):
