@@ -649,7 +649,7 @@ class AudioFileTest(unittest.TestCase):
 
     @FORMAT_AUDIOFILE
     def test_replay_gain(self):
-        if (self.audio_class.can_add_replay_gain() and
+        if (self.audio_class.supports_replay_gain() and
             self.audio_class.lossless_replay_gain()):
             track_data1 = test_streams.Sine16_Stereo(44100, 44100,
                                                      441.0, 0.50,

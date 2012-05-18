@@ -961,7 +961,7 @@ class track2track(UtilTest):
                 self.assertEqual(track2.NAME, output_class.NAME)
                 if (self.track1.lossless() and
                     track2.lossless() and not
-                    (output_class.can_add_replay_gain() and
+                    (output_class.supports_replay_gain() and
                      "--replay-gain" in options)):
                     self.assert_(
                         audiotools.pcm_frame_cmp(self.track1.to_pcm(),
@@ -978,7 +978,7 @@ class track2track(UtilTest):
                         self.assertEqual(image.width, self.cover.width)
                         self.assertEqual(image.height, self.cover.height)
 
-                if (output_class.can_add_replay_gain()):
+                if (output_class.supports_replay_gain()):
                     if (output_class.lossless_replay_gain()):
                         if (("-o" not in options) and
                             audiotools.ADD_REPLAYGAIN and
@@ -3170,7 +3170,7 @@ class tracktag(UtilTest):
     @UTIL_TRACKTAG
     def test_replaygain(self):
         for audio_class in audiotools.AVAILABLE_TYPES:
-            if (audio_class.can_add_replay_gain()):
+            if (audio_class.supports_replay_gain()):
                 track_file = tempfile.NamedTemporaryFile(
                     suffix="." + audio_class.SUFFIX)
                 try:

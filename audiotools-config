@@ -135,7 +135,7 @@ class FormatSummary:
                 else:
                     code = [messenger.FG_RED]
                 replaygain.append(messenger.ansi(binaries[binary], code))
-        elif (audiofile.can_add_replay_gain()):
+        elif (audiofile.supports_replay_gain()):
             replaygain.append(messenger.ansi("YES", [messenger.FG_GREEN]))
         else:
             replaygain.append("N/A")

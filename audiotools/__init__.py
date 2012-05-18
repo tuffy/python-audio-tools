@@ -1660,6 +1660,35 @@ class ReorderedPCMReader:
         self.pcmreader.close()
 
 
+class ResampledPCMReader:
+    """a PCMReader wrapper which changes the sample rate"""
+
+    def __init__(self, pcmreader, new_sample_rate):
+        self.pcmreader = pcmreader
+        self.sample_rate = new_sample_rate
+        self.channels = pcmreader.channels
+        self.channel_mask = pcmreader.channel_mask
+        self.bits_per_sample = pcmreader.bits_per_sample
+
+        from . import resample
+        self.resampler = resample.Resampler(
+            self.channels,
+            float(new_sample_rate) / float(pcmreader.sample_rate),
+            0)
+        self.unresampled = pcm.FloatFrameList([], self.channels)
+
+    def read(self, pcm_frames):
+        framelist = self.pcmreader.read(pcm_frames)
+        (output, self.unresampled) = self.resampler.process(
+            self.unresampled + framelist.to_float(),
+            (len(framelist) == 0) and (len(self.unresampled) == 0))
+
+        return output.to_int(self.bits_per_sample)
+
+    def close(self):
+        self.pcmreader.close()
+
+
 def transfer_data(from_function, to_function):
     """sends BUFFER_SIZE strings from from_function to to_function
 
@@ -2431,6 +2460,24 @@ class ReplayGainReader:
         self.reader.close()
 
 
+def resampled_frame_count(initial_frame_count,
+                          initial_sample_rate,
+                          new_sample_rate):
+    """given an initial PCM frame count, initial sample rate
+    and new sample rate, returns the new PCM frame count
+    once the stream has been resampled"""
+
+    if (initial_sample_rate == new_sample_rate):
+        return initial_frame_count
+    else:
+        from decimal import Decimal,ROUND_DOWN
+        new_frame_count = ((Decimal(initial_frame_count) *
+                            Decimal(new_sample_rate)) /
+                           Decimal(initial_sample_rate))
+        return int(new_frame_count.quantize(
+                Decimal("1."), rounding=ROUND_DOWN))
+
+
 def applicable_replay_gain(tracks):
     """returns True if ReplayGain can be applied to a list of AudioFiles
 
@@ -2460,30 +2507,59 @@ def calculate_replay_gain(tracks, progress=None):
 
     raises ValueError if a problem occurs during calculation"""
 
-    from . import replaygain as replaygain
+    if (len(tracks) == 0):
+        return
 
-    sample_rate = set([track.sample_rate() for track in tracks])
-    if (len(sample_rate) != 1):
-        raise ValueError(("at least one track is required " +
-                          "and all must have the same sample rate"))
-    total_frames = sum([track.total_frames() for track in tracks])
+    from . import replaygain as replaygain
+    from bisect import bisect
+
+    SUPPORTED_RATES = [8000,  11025,  12000,  16000,  18900,  22050, 24000,
+                       32000, 37800,  44100,  48000,  56000,  64000, 88200,
+                       96000, 112000, 128000, 144000, 176400, 192000]
+
+    target_rate = ([SUPPORTED_RATES[0]] + SUPPORTED_RATES)[
+        bisect(SUPPORTED_RATES, most_numerous([track.sample_rate()
+                                               for track in tracks]))]
+
+    total_frames = sum([resampled_frame_count(track.total_frames(),
+                                              track.sample_rate(),
+                                              target_rate)
+                        for track in tracks])
     processed_frames = 0
 
-    rg = replaygain.ReplayGain(list(sample_rate)[0])
+    rg = replaygain.ReplayGain(target_rate)
+
     gains = []
+
     for track in tracks:
         pcm = track.to_pcm()
+
+        if (pcm.channels > 2):
+            #add a wrapper to cull any channels above 2
+            pcm = ReorderedPCMReader(pcm, [0, 1])
+        if (pcm.sample_rate != target_rate):
+            #add a wrapper to resample any nonstandard rates
+            pcm = ResampledPCMReader(pcm, target_rate)
+
+        #finally, perform the gain calculation on the PCMReader
         frame = pcm.read(FRAMELIST_SIZE)
         while (len(frame) > 0):
             rg.update(frame)
-            processed_frames += frame.frames
             if (progress is not None):
+                processed_frames += frame.frames
                 progress(processed_frames, total_frames)
             frame = pcm.read(FRAMELIST_SIZE)
+
         pcm.close()
+
+        #accumulate the title gain
         (track_gain, track_peak) = rg.title_gain()
         gains.append((track, track_gain, track_peak))
+
+    #once everything is calculate, get the album gain
     (album_gain, album_peak) = rg.album_gain()
+
+    #yield a set of accumulated track and album gains
     for (track, track_gain, track_peak) in gains:
         yield (track, track_gain, track_peak, album_gain, album_peak)
 
@@ -3125,7 +3201,8 @@ class Image:
             for attr in ["data", "mime_type", "width", "height",
                          "color_depth", "color_count", "description",
                          "type"]:
-                if (getattr(self, attr) != getattr(image, attr)):
+                if ((not hasattr(image, attr)) or
+                    (getattr(self, attr) != getattr(image, attr))):
                     return False
             else:
                 return True
@@ -3517,20 +3594,25 @@ class AudioFile:
             raise UnsupportedTracknameField(unicode(error.args[0]))
 
     @classmethod
+    def supports_replay_gain(cls):
+        """returns True if this class supports ReplayGain"""
+
+        return False
+
+    @classmethod
     def add_replay_gain(cls, filenames, progress=None):
         """adds ReplayGain values to a list of filename strings
 
-        all the filenames must be of this AudioFile type
         raises ValueError if some problem occurs during ReplayGain application
         """
 
-        track_names = [track.filename for track in
-                       open_files(filenames) if
-                       isinstance(track, cls)]
+        return
 
     @classmethod
-    def can_add_replay_gain(cls):
-        """returns True if we have the necessary binaries to add ReplayGain"""
+    def can_add_replay_gain(cls, audiofiles):
+        """given a list of audiofiles,
+        returns True if this class can add ReplayGain to those files
+        returns False if not"""
 
         return False
 
@@ -3541,7 +3623,7 @@ class AudioFile:
         for example, if it is applied by adding metadata tags
         rather than altering the file's data itself"""
 
-        return True
+        return False
 
     def replay_gain(self):
         """returns a ReplayGain object of our ReplayGain values

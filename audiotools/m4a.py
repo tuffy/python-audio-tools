@@ -548,7 +548,13 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
             raise EncodingError(u"unable to write file with faac")
 
     @classmethod
-    def can_add_replay_gain(cls):
+    def supports_replay_gain(cls):
+        """returns True if this class supports ReplayGain"""
+
+        return False
+
+    @classmethod
+    def can_add_replay_gain(cls, audiofiles):
         """returns False"""
 
         return False

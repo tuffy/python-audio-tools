@@ -216,13 +216,6 @@ classes and functions upon which all of the other modules depend.
    each limited to the given lengths.
    The original pcmreader is closed upon the iterator's completion.
 
-.. function:: applicable_replay_gain(audiofiles)
-
-   Takes a list of :class:`AudioFile`-compatible objects.
-   Returns ``True`` if ReplayGain can be applied to those files
-   based on their sample rate, number of channels, and so forth.
-   Returns ``False`` if not.
-
 .. function:: calculate_replay_gain(audiofiles)
 
    Takes a list of :class:`AudioFile`-compatible objects.
@@ -594,11 +587,9 @@ AudioFile Objects
    that is called as needed during ReplayGain application to indicate
    progress - identical to the argument used by :meth:`convert`.
 
-.. classmethod:: AudioFile.can_add_replay_gain()
+.. classmethod:: AudioFile.supports_replay_gain()
 
-   Returns ``True`` if this audio class supports ReplayGain
-   and we have the necessary binaries to apply it.
-   Returns ``False`` if not.
+   Returns ``True`` if this class supports ReplayGain metadata.
 
 .. classmethod:: AudioFile.lossless_replay_gain()
 
@@ -606,6 +597,12 @@ AudioFile Objects
    lossless process - such as by adding a metadata tag of some sort.
    Returns ``False`` if applying metadata modifies the audio file
    data itself.
+
+.. classmethod:: AudioFile.can_add_replay_gain(audiofiles)
+
+   Given a list of :class:`AudioFile` objects,
+   returns ``True`` if this class can run :meth:`AudioFile.add_replay_gain`
+   on those objects, ``False`` if not.
 
 .. method:: AudioFile.replay_gain()
 

@@ -618,12 +618,24 @@ class MP3Audio(AudioFile):
         return self.__pcm_frames__
 
     @classmethod
-    def can_add_replay_gain(cls):
-        """returns True if we have the necessary binaries to add ReplayGain"""
+    def can_add_replay_gain(cls, audiofiles):
+        """given a list of audiofiles,
+        returns True if this class can add ReplayGain to those files
+        returns False if not"""
 
-        from . import BIN
+        for audiofile in audiofiles:
+            if (not isinstance(audiofile, VorbisAudio)):
+                return False
+        else:
+            from . import BIN
 
-        return BIN.can_execute(BIN['mp3gain'])
+            return BIN.can_execute(BIN['mp3gain'])
+
+    @classmethod
+    def supports_replay_gain(cls):
+        """returns True if this class supports ReplayGain"""
+
+        return True
 
     @classmethod
     def lossless_replay_gain(cls):

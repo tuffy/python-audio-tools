@@ -365,7 +365,7 @@ if (__name__ == '__main__'):
     #add ReplayGain to ripped tracks, if necessary
     if (audiotools.ADD_REPLAYGAIN and
         options.add_replay_gain and
-        AudioType.can_add_replay_gain()):
+        AudioType.can_add_replay_gain(encoded)):
         rg_progress = audiotools.ReplayGainProgressDisplay(
             msg, AudioType.lossless_replay_gain())
         rg_progress.initial_message()

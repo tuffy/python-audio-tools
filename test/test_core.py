@@ -3364,7 +3364,7 @@ class Bitstream(unittest.TestCase):
 
 
 class TestReplayGain(unittest.TestCase):
-    @LIB_CORE
+    @LIB_REPLAYGAIN
     def test_basics(self):
         import audiotools.replaygain
         import audiotools.pcm
@@ -3386,8 +3386,7 @@ class TestReplayGain(unittest.TestCase):
         self.assertRaises(ValueError, rg.album_gain)
 
         #check for no tracks
-        gain = audiotools.calculate_replay_gain([])
-        self.assertRaises(ValueError, list, gain)
+        assert(len(list(audiotools.calculate_replay_gain([]))) == 0)
 
         #check for lots of invalid combinations for calculate_replay_gain
         track_file1 = tempfile.NamedTemporaryFile(suffix=".wav")
@@ -3398,46 +3397,11 @@ class TestReplayGain(unittest.TestCase):
                                                    BLANK_PCM_Reader(2))
             track2 = audiotools.WaveAudio.from_pcm(track_file2.name,
                                                    BLANK_PCM_Reader(3))
-            track3 = audiotools.WaveAudio.from_pcm(
-                track_file3.name,
-                BLANK_PCM_Reader(2, sample_rate=48000))
+            track3 = audiotools.WaveAudio.from_pcm(track_file3.name,
+                                                   BLANK_PCM_Reader(2))
 
-            gain = audiotools.calculate_replay_gain([track1, track2, track3])
-            self.assertRaises(ValueError, list, gain)
-
-            track3 = audiotools.WaveAudio.from_pcm(
-                track_file3.name,
-                BLANK_PCM_Reader(
-                    2,
-                    channels=4,
-                    channel_mask=audiotools.ChannelMask.from_fields(
-                        front_left=True,
-                        front_right=True,
-                        back_left=True,
-                        back_right=True)))
-
-            gain = audiotools.calculate_replay_gain([track1, track2, track3])
-            self.assertRaises(ValueError, list, gain)
-
-            track3 = audiotools.WaveAudio.from_pcm(
-                track_file3.name,
-                BLANK_PCM_Reader(
-                    2,
-                    sample_rate=48000,
-                    channels=3,
-                    channel_mask=audiotools.ChannelMask.from_fields(
-                        front_left=True,
-                        front_right=True,
-                        front_center=True)))
-
-            gain = audiotools.calculate_replay_gain([track1, track2, track3])
-            self.assertRaises(ValueError, list, gain)
-
-            track3 = audiotools.WaveAudio.from_pcm(
-                track_file3.name,
-                BLANK_PCM_Reader(2))
-
-            gain = list(audiotools.calculate_replay_gain([track1, track2, track3]))
+            gain = list(audiotools.calculate_replay_gain(
+                    [track1, track2, track3]))
             self.assertEqual(len(gain), 3)
             self.assert_(gain[0][0] is track1)
             self.assert_(gain[1][0] is track2)
@@ -3447,7 +3411,7 @@ class TestReplayGain(unittest.TestCase):
             track_file2.close()
             track_file3.close()
 
-    @LIB_CORE
+    @LIB_REPLAYGAIN
     def test_valid_rates(self):
         import audiotools.replaygain
 
@@ -3465,7 +3429,7 @@ class TestReplayGain(unittest.TestCase):
             self.assert_(gain < -4.0)
             self.assert_(peak > .90)
 
-    @LIB_CORE
+    @LIB_REPLAYGAIN
     def test_reader(self):
         import audiotools.replaygain
 
@@ -3504,62 +3468,6 @@ class TestReplayGain(unittest.TestCase):
         finally:
             dummy1.close()
             dummy2.close()
-
-    @LIB_CORE
-    def test_applicable(self):
-        #build a bunch of test tracks
-        test_format = audiotools.WaveAudio
-
-        temp_files = [tempfile.NamedTemporaryFile(
-                suffix="." + test_format.SUFFIX)
-                      for i in xrange(6)]
-
-        try:
-            track1 = test_format.from_pcm(temp_files[0].name,
-                                          BLANK_PCM_Reader(1, 44100, 2, 16))
-
-            track2 = test_format.from_pcm(temp_files[1].name,
-                                          BLANK_PCM_Reader(2, 44100, 2, 16))
-
-            track3 = test_format.from_pcm(temp_files[2].name,
-                                          BLANK_PCM_Reader(3, 48000, 2, 16))
-
-            track4 = test_format.from_pcm(temp_files[3].name,
-                                          BLANK_PCM_Reader(4, 44100, 1, 16))
-
-            track5 = test_format.from_pcm(temp_files[4].name,
-                                          BLANK_PCM_Reader(5, 44100, 2, 24))
-
-            track6 = test_format.from_pcm(temp_files[5].name,
-                                          BLANK_PCM_Reader(6, 44100, 2, 16))
-
-            #inconsistent sample rates aren't applicable
-            self.assertEqual(audiotools.applicable_replay_gain([track1,
-                                                                track2,
-                                                                track3]),
-                             False)
-
-            #inconsistent channel counts aren't applicable
-            self.assertEqual(audiotools.applicable_replay_gain([track1,
-                                                                track2,
-                                                                track4]),
-                             False)
-
-            #inconsistent bit-per-sample *are* applicable
-            self.assertEqual(audiotools.applicable_replay_gain([track1,
-                                                                track2,
-                                                                track5]),
-                             True)
-
-            #consistent everything is applicable
-            self.assertEqual(audiotools.applicable_replay_gain([track1,
-                                                                track2,
-                                                                track6]),
-                             True)
-
-        finally:
-            for f in temp_files:
-                f.close()
 
 
 # #DEPRECATED - this test will be removed along with XMCD support

@@ -249,8 +249,7 @@ if (__name__ == '__main__'):
     if (options.add_replay_gain is None):
         options.add_replay_gain = (
             audiotools.ADD_REPLAYGAIN and
-            AudioType.lossless_replay_gain() and
-            audiotools.applicable_replay_gain(audiofiles))
+            AudioType.lossless_replay_gain())
 
     if (options.thumbnail):
         if (not audiotools.can_thumbnail()):
@@ -336,45 +335,38 @@ if (__name__ == '__main__'):
             msg.error(unicode(err))
             sys.exit(1)
 
+        output_files = audiotools.open_files(queue.results.values())
+
         #add ReplayGain to converted files, if necessary
-        if (options.add_replay_gain and AudioType.can_add_replay_gain()):
+        if (options.add_replay_gain and
+            AudioType.can_add_replay_gain(output_files)):
+            #separate encoded files by album_name and album_number
+            for album in audiotools.group_tracks(output_files):
+                #add ReplayGain to groups of files
+                #belonging to the same album
+
+                album_number = set([a.album_number() for a in album]).pop()
+
+                progress_text = \
+                    (u"%s ReplayGain%s" %
+                     ((u"Adding" if AudioType.lossless_replay_gain() else
+                       u"Applying"),
+                      (u"" if album_number == 0 else
+                       (u" to album %d" % (album_number)))))
+
+                completion_output = \
+                    (u"ReplayGain %s%s" %
+                     ((u"added" if AudioType.lossless_replay_gain() else
+                       u"applied"),
+                      (u"" if album_number == 0 else
+                       (u" to album %d" % (album_number)))))
+
+                queue.execute(AudioType.add_replay_gain,
+                              progress_text,
+                              completion_output,
+                              [a.filename for a in album])
+
             try:
-                #separate encoded files by album_name and album_number
-                for album in audiotools.group_tracks(
-                    audiotools.open_files(queue.results.values())):
-                    #add ReplayGain to groups of files
-                    #belonging to the same album
-
-                    album_number = set([a.album_number() for a in album]).pop()
-
-                    if (album_number == 0):
-                        if (AudioType.lossless_replay_gain()):
-                            progress_text = _(u"Adding ReplayGain")
-                            completion_output = _(u"ReplayGain added")
-                        else:
-                            progress_text = _(u"Applying ReplayGain")
-                            completion_output = _(u"ReplayGain applied")
-                    else:
-                        if (AudioType.lossless_replay_gain()):
-                            progress_text = (
-                                _(u"Adding ReplayGain to album %d") %
-                                (album_number))
-                            completion_output = (
-                                _(u"ReplayGain added to album %d") %
-                                (album_number))
-                        else:
-                            progress_text = (
-                                _(u"Applying ReplayGain to album %d") %
-                                (album_number))
-                            completion_output = (
-                                _(u"ReplayGain applied to album %d") %
-                                (album_number))
-
-                    queue.execute(AudioType.add_replay_gain,
-                                  progress_text,
-                                  completion_output,
-                                  [a.filename for a in album])
-
                 queue.run(max_processes)
             except ValueError, err:
                 msg.error(unicode(err))

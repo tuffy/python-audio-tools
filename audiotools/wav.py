@@ -658,8 +658,20 @@ class WaveAudio(WaveContainer):
         return self.__bits_per_sample__
 
     @classmethod
-    def can_add_replay_gain(cls):
-        """returns True if we have the necessary binaries to add ReplayGain"""
+    def can_add_replay_gain(cls, audiofiles):
+        """given a list of audiofiles,
+        returns True if this class can add ReplayGain to those files
+        returns False if not"""
+
+        for audiofile in audiofiles:
+            if (not isinstance(audiofile, WaveAudio)):
+                return False
+        else:
+            return True
+
+    @classmethod
+    def supports_replay_gain(cls):
+        """returns True if this class supports ReplayGain"""
 
         return True
 
@@ -677,64 +689,37 @@ class WaveAudio(WaveContainer):
         raises ValueError if some problem occurs during ReplayGain application
         """
 
-        from . import FRAMELIST_SIZE
         from . import transfer_data
+        from . import transfer_framelist_data
         from . import open_files
-        from .replaygain import ReplayGain, ReplayGainReader
+        from . import calculate_replay_gain
+        from .replaygain import ReplayGainReader
         import tempfile
 
         wave_files = [track for track in open_files(filenames) if
                       isinstance(track, cls)]
 
-        track_gains = []
-        total_frames = sum([track.total_frames() for track in wave_files]) * 2
-        processed_frames = 0
-
-        #first, calculate the Gain and Peak values from our files
-        for original_wave in wave_files:
-            try:
-                rg = ReplayGain(original_wave.sample_rate())
-            except ValueError:
-                track_gains.append((None, None))
-            pcm = original_wave.to_pcm()
-            try:
-                try:
-                    frame = pcm.read(FRAMELIST_SIZE)
-                    while (len(frame) > 0):
-                        processed_frames += frame.frames
-                        if (progress is not None):
-                            progress(processed_frames, total_frames)
-                        rg.update(frame)
-                        frame = pcm.read(FRAMELIST_SIZE)
-                    track_gains.append(rg.title_gain())
-                except ValueError:
-                    track_gains.append((None, None))
-            finally:
-                pcm.close()
-
         #then, apply those Gain and Peak values to our files
         #rewriting the originals in the process
-        for (original_wave, (gain, peak)) in zip(wave_files, track_gains):
-            if (gain is None):
-                continue
-
+        for (original_wave,
+             track_gain,
+             track_peak,
+             album_gain,
+             album_peak) in calculate_replay_gain(wave_files, progress):
             temp_wav_file = tempfile.NamedTemporaryFile(suffix=".wav")
             try:
                 (header, footer) = original_wave.pcm_split()
                 temp_wav_file.write(header)
                 replaygain_pcm = ReplayGainReader(original_wave.to_pcm(),
-                                                  gain, peak)
-                frame = replaygain_pcm.read(FRAMELIST_SIZE)
-                while (len(frame) > 0):
-                    processed_frames += frame.frames
-                    if (progress is not None):
-                        progress(processed_frames, total_frames)
-                    temp_wav_file.write(frame.to_bytes(
-                            False,
-                            original_wave.bits_per_sample() > 8))
-                    frame = replaygain_pcm.read(FRAMELIST_SIZE)
-
+                                                  track_gain, track_peak)
+                transfer_framelist_data(
+                    replaygain_pcm,
+                    temp_wav_file.write,
+                    signed=original_wave.bits_per_sample() > 8,
+                    big_endian=False)
                 temp_wav_file.write(footer)
+                replaygain_pcm.close()
+
                 temp_wav_file.seek(0, 0)
                 new_wave = open(original_wave.filename, 'wb')
                 transfer_data(temp_wav_file.read, new_wave.write)

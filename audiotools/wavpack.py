@@ -577,6 +577,18 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
             raise InvalidWavPack(_(u'FMT chunk not found in WavPack'))
 
     @classmethod
+    def can_add_replay_gain(cls, audiofiles):
+        """given a list of audiofiles,
+        returns True if this class can add ReplayGain to those files
+        returns False if not"""
+
+        for audiofile in audiofiles:
+            if (not isinstance(audiofile, WavPackAudio)):
+                return False
+        else:
+            return True
+
+    @classmethod
     def add_replay_gain(cls, filenames, progress=None):
         """adds ReplayGain values to a list of filename strings
 
@@ -618,8 +630,8 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
                 track.update_metadata(metadata)
 
     @classmethod
-    def can_add_replay_gain(cls):
-        """returns True"""
+    def supports_replay_gain(cls):
+        """returns True if this class supports ReplayGain"""
 
         return True
 

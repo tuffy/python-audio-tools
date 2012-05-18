@@ -5566,6 +5566,77 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    Something more similar to a spreadsheet would be ideal
    but that's complicated by the serious lack of space
    in terminal windows.
+** TODO Fix ReplayGain to work on files with different sample rates
+   This should handle a wider array of cases than it does now.
+*** DONE Update can_add_replay_gain classmethod
+    It should take a list of tracks and return True
+    if ReplayGain can be added to them, False if not
+    which takes the place of applicable_replay_gain
+    - [X] AudioFile.can_add_replay_gain
+    - [X] FlacAudio.can_add_replay_gain
+    - [X] M4AAudio_faac.can_add_replay_gain
+    - [X] MP3Audio.can_add_replay_gain
+    - [X] VorbisAudio.can_add_replay_gain
+    - [X] WaveAudio.can_add_replay_gain
+    - [X] WavPackAudio.can_add_replay_gain
+**** DONE update reference documentation
+**** DONE update unit tests
+     - [X] test_formats.py  AudioFileTest.test_replay_gain
+     - [X] test_utils.py    track2track.test_options
+     - [X] test_utils.py    tracktag.test_options
+*** DONE Add supports_replay_gain() classmethod
+    Returns True if the class supports ReplayGain of any kind.
+    - [X] AudioFile
+    - [X] FlacAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OggFlacAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
+    - [X] WaveAudio
+**** DONE Add documentation
+*** DONE Remove audiotools.applicable_replay_gain function
+    this functionality is shifted to can_add_replay_gain
+**** DONE remove from utilities
+     - [X] dvda2track
+     - [X] track2track
+     - [X] tracksplit
+**** DONE update reference documentation
+**** DONE update unit tests
+*** DONE Update calculate_replay_gain function
+**** DONE tracks with unsupported sample rates should be resampled
+     according to the nearest supported sample rate available
+**** DONE tracks with different sample rates should be resampled
+     according to the most common sample rate available
+**** DONE tracks with more than two channels should be culled
+     remove any channels above the first two during calculation
+**** DONE update unit tests
+     - [X] test_core.py  TestReplayGain.test_basics
+*** DONE Update add_replay_gain classmethods as needed
+    - [X] AudioFile.add_replay_gain
+    - [X] FlacAudio.add_replay_gain
+    - [X] M4AAudio_faac.add_replay_gain
+    - [X] MP3Audio.add_replay_gain
+    - [X] VorbisAudio.add_replay_gain
+    - [X] WaveAudio.add_replay_gain
+    - [X] WavPackAudio.add_replay_gain
+*** DONE Update utilities to use new ReplayGain application procedure
+    Given a list of tracks for a given album,
+    if all are the same format and can_add_replay_gain returns True,
+    queue a call to add_replay_gain on those tracks.
+**** DONE audiotools-config
+**** DONE cd2track
+**** DONE dvda2track
+**** DONE track2track
+**** DONE tracksplit
+**** DONE tracktag
+** TODO Update C-based ReplayGainReader
+   Use a lot of the new C-based facilities to make it simpler.
+** TODO Display X/Y progress during operations
+   When a track is finished transcoding, for instance, output:
+   [ 2 / 15 ] input.wav -> output.mp3
+   or something similar.
 ** TODO Add internal MP3 codec
    This is likely the codec people are most interested in
    and so it should be folded in so it can be used
