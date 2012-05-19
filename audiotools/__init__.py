@@ -4864,6 +4864,7 @@ class ExecProgressQueue:
         self.running_job_pool = {}
         self.results = {}
         self.exception = None
+        self.completed_job_number = 0
 
     def execute(self, function,
                 progress_text=None,
@@ -4914,6 +4915,14 @@ class ExecProgressQueue:
         """job_id is taken from the job_pool dict
         job is a __ProgressQueueJob__ object"""
 
+        def output_progress(u, current, total):
+            if (total > 1):
+                return u"[%%%d.d/%%d]  %%s" % (len(str(total))) % (current,
+                                                                   total,
+                                                                   u)
+            else:
+                return u
+
         #add job's results to results dict
         (success, value) = job.result
         if (success):
@@ -4925,16 +4934,24 @@ class ExecProgressQueue:
             #remove job from progress display
             self.progress_display.delete_row(job_id)
 
+            #increment finished job number for X/Y display
+            self.completed_job_number += 1
+
             #display job's output message
             completion_output = job.completion_output
             if (completion_output is not None):
                 if (callable(completion_output)):
                     output = completion_output(value)
                     if (output is not None):
-                        self.progress_display.messenger.info(unicode(output))
+                        self.progress_display.messenger.info(
+                            output_progress(unicode(output),
+                                            self.completed_job_number,
+                                            self.max_job_id))
                 else:
                     self.progress_display.messenger.info(
-                        unicode(completion_output))
+                        output_progress(unicode(completion_output),
+                                        self.completed_job_number,
+                                        self.max_job_id))
         else:
             #job raised an exception
             if (self.exception is None):
@@ -4986,8 +5003,12 @@ class ExecProgressQueue:
             #wait some amount of time before polling job pool again
             time.sleep(0.25)
 
+        self.max_job_id = 0
+        self.completed_job_number = 0
+
         if (self.exception is not None):
             raise self.exception
+
 
 class __ProgressQueueJob__:
     def __init__(self, pid, progress, result, completion_output):

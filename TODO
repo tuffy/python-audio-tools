@@ -5566,7 +5566,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    Something more similar to a spreadsheet would be ideal
    but that's complicated by the serious lack of space
    in terminal windows.
-** TODO Fix ReplayGain to work on files with different sample rates
+** DONE Fix ReplayGain to work on files with different sample rates
    This should handle a wider array of cases than it does now.
 *** DONE Update can_add_replay_gain classmethod
     It should take a list of tracks and return True
@@ -5637,6 +5637,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    When a track is finished transcoding, for instance, output:
    [ 2 / 15 ] input.wav -> output.mp3
    or something similar.
+*** TODO Update unit tests
+    - [ ] track2cd
+    - [ ] track2track
+    - [ ] trackcmp
+    - [ ] tracktag
+    - [ ] trackverify
 ** TODO Add internal MP3 codec
    This is likely the codec people are most interested in
    and so it should be folded in so it can be used
