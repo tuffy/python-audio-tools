@@ -275,7 +275,7 @@ class cd2track(UtilTest):
                 #check that the output is being generated correctly
                 for (i, path) in enumerate(output_filenames):
                     self.__check_info__(
-                        _(u"track %(track_number)2.2d -> %(filename)s") % \
+                        _(u"track %(track_number)2.2d -> %(filename)s") %
                             {"track_number": i + 1,
                              "filename": audiotools.Filename(
                                 os.path.join(output_dir, path))})
@@ -1792,7 +1792,10 @@ class trackcmp(UtilTest):
             0)
         for i in xrange(1, 4):
             self.__check_info__(
-                _(u"%(path1)s <> %(path2)s : %(result)s") % {
+                _(u"[%(track_number)d/%(track_total)d]  " +
+                  u"%(path1)s <> %(path2)s : %(result)s") % {
+                    "track_number":i,
+                    "track_total":3,
                     "path1": audiotools.Filename(
                         os.path.join(self.match_dir1,
                                      "%2.2d.%s" % (i, self.type.SUFFIX))),
@@ -1808,7 +1811,10 @@ class trackcmp(UtilTest):
             0)
         for i in xrange(1, 4):
             self.__check_info__(
-                _(u"%(path1)s <> %(path2)s : %(result)s") % {
+                _(u"[%(track_number)d/%(track_total)d]  " +
+                  u"%(path1)s <> %(path2)s : %(result)s") % {
+                    "track_number":i,
+                    "track_total":3,
                     "path1": audiotools.Filename(
                         os.path.join(self.match_dir1,
                                      "%2.2d.%s" % (i, self.type.SUFFIX))),
@@ -1824,7 +1830,10 @@ class trackcmp(UtilTest):
             1)
         for i in xrange(1, 4):
             self.__check_info__(
-                _(u"%(path1)s <> %(path2)s : %(result)s") % {
+                _(u"[%(track_number)d/%(track_total)d]  " +
+                  u"%(path1)s <> %(path2)s : %(result)s") % {
+                    "track_number":i,
+                    "track_total":3,
                     "path1": audiotools.Filename(
                         os.path.join(self.match_dir1,
                                      "%2.2d.%s" % (i, self.type.SUFFIX))),
@@ -1844,9 +1853,12 @@ class trackcmp(UtilTest):
                 "path": os.path.join(self.mismatch_dir2,
                                      "track %2.2d" % (3)),
                 "result": _(u"missing")})
-        for i in xrange(1, 2):
+        for i in xrange(1, 3):
             self.__check_info__(
-                _(u"%(path1)s <> %(path2)s : %(result)s") % {
+                _(u"[%(track_number)d/%(track_total)d]  " +
+                  u"%(path1)s <> %(path2)s : %(result)s") % {
+                    "track_number":i,
+                    "track_total":2,
                     "path1": audiotools.Filename(
                         os.path.join(self.match_dir1,
                                      "%2.2d.%s" % (i, self.type.SUFFIX))),
@@ -1865,9 +1877,12 @@ class trackcmp(UtilTest):
                 "path": os.path.join(self.match_dir1,
                                     "track %2.2d" % (4)),
                 "result": _(u"missing")})
-        for i in xrange(1, 3):
+        for i in xrange(1, 4):
             self.__check_info__(
-                _(u"%(path1)s <> %(path2)s : %(result)s") % {
+                _(u"[%(track_number)d/%(track_total)d]  " +
+                  u"%(path1)s <> %(path2)s : %(result)s") % {
+                    "track_number":i,
+                    "track_total":3,
                     "path1": audiotools.Filename(
                         os.path.join(self.match_dir1,
                                      "%2.2d.%s" % (i, self.type.SUFFIX))),
@@ -3997,7 +4012,7 @@ class tracksplit(UtilTest):
                             format=output_format))
 
                 #check that the output is being generated correctly
-                for path in output_filenames:
+                for (i, path) in enumerate(output_filenames):
                     self.__check_info__(
                         _(u"%(source)s -> %(destination)s") % \
                        {"source":
@@ -4110,7 +4125,7 @@ class tracksplit(UtilTest):
                             output_format))
 
                 #check that the output is being generated correctly
-                for path in output_filenames:
+                for (i, path) in enumerate(output_filenames):
                     self.__check_info__(
                         _(u"%(source)s -> %(destination)s") % \
                        {"source":

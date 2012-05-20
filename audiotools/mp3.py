@@ -624,7 +624,7 @@ class MP3Audio(AudioFile):
         returns False if not"""
 
         for audiofile in audiofiles:
-            if (not isinstance(audiofile, VorbisAudio)):
+            if (not isinstance(audiofile, MP3Audio)):
                 return False
         else:
             from . import BIN
