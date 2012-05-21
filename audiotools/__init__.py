@@ -4852,6 +4852,17 @@ class ProgressJobQueueComplete(Exception):
     pass
 
 
+def output_progress(u, current, total):
+    """given a unicode string and current/total integers,
+    returns a u'[<current>/<total>]  <string>  unicode string
+    indicating the current progress"""
+
+    if (total > 1):
+        return u"[%%%d.d/%%d]  %%s" % (len(str(total))) % (current, total, u)
+    else:
+        return u
+
+
 class ExecProgressQueue:
     """a class for running multiple jobs in parallel with progress updates"""
 
@@ -4914,14 +4925,6 @@ class ExecProgressQueue:
     def remove_job(self, job_id, job):
         """job_id is taken from the job_pool dict
         job is a __ProgressQueueJob__ object"""
-
-        def output_progress(u, current, total):
-            if (total > 1):
-                return u"[%%%d.d/%%d]  %%s" % (len(str(total))) % (current,
-                                                                   total,
-                                                                   u)
-            else:
-                return u
 
         #add job's results to results dict
         (success, value) = job.result

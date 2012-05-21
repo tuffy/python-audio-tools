@@ -29,26 +29,6 @@ from itertools import izip
 gettext.install("audiotools", unicode=True)
 
 
-class DummyTrack:
-    def __init__(self, sample_rate, channels, channel_mask, bits_per_sample):
-        self.__sample_rate__ = sample_rate
-        self.__channels__ = channels
-        self.__channel_mask__ = channel_mask
-        self.__bits_per_sample__ = bits_per_sample
-
-    def sample_rate(self):
-        return self.__sample_rate__
-
-    def channels(self):
-        return self.__channels__
-
-    def channel_mask(self):
-        return self.__channel_mask__
-
-    def bits_per_sample(self):
-        return self.__bits_per_sample__
-
-
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
         usage=_(u"%prog [options] [track #] [track #] ..."),
@@ -404,7 +384,7 @@ if (__name__ == '__main__'):
     #perform actual track extraction
     encoded = []
     pcmreader = title.to_pcm()
-    for (pts_ticks, extract_data) in to_extract:
+    for (i, (pts_ticks, extract_data)) in enumerate(to_extract):
         pcmreader.next_track(pts_ticks)
         pcm_frames = pcmreader.pcm_frames
 
@@ -429,12 +409,13 @@ if (__name__ == '__main__'):
 
                 progress.clear()
 
-                msg.info(
-                    _(u"title %(title_number)d - " +
-                      u"track %(track_number)2.2d -> %(filename)s") %
-                    {"title_number": options.title,
-                     "track_number": title_track_number,
-                     "filename": output_filename})
+                msg.info(audiotools.output_progress(
+                        (u"title %(title_number)d - " +
+                         u"track %(track_number)2.2d -> %(filename)s") %
+                        {"title_number": options.title,
+                         "track_number": title_track_number,
+                         "filename": output_filename},
+                        i + 1, len(to_extract)))
 
             except OSError, err:
                 msg.os_error(err)

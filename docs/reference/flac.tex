@@ -556,18 +556,13 @@ should always be 0.
 $\TYPEORDER \leftarrow$ \READ 6 unsigned bits\;
 \eIf(\tcc*[f]{account for wasted bits}){$((\READ~\textnormal{1 unsigned bit}) = 1)$}{
   $\WASTEDBPS \leftarrow$ (\UNARY with stop bit 1) + 1\;
-  \eIf{subframe's channel assignment is \DIFFERENCE or \SIDE}{
-    $\EFFECTIVEBPS \leftarrow \text{frame header's bits per sample} - \WASTEDBPS + 1$\;
-  }{
-    $\EFFECTIVEBPS \leftarrow \text{frame header's bits per sample} - \WASTEDBPS$\;
-  }
 }{
   $\WASTEDBPS \leftarrow 0$\;
-  \eIf{subframe's channel assignment is \DIFFERENCE or \SIDE}{
-    $\EFFECTIVEBPS \leftarrow \text{frame header's bits per sample} + 1$\;
-  }{
-    $\EFFECTIVEBPS \leftarrow \text{frame header's bits per sample}$\;
-  }
+}
+\eIf{subframe's channel assignment is \DIFFERENCE or \SIDE}{
+  $\EFFECTIVEBPS \leftarrow \text{frame header's bits per sample} - \WASTEDBPS + 1$\;
+}{
+  $\EFFECTIVEBPS \leftarrow \text{frame header's bits per sample} - \WASTEDBPS$\;
 }
 \uIf{$\TYPEORDER = 0$}{
   \SAMPLE $\leftarrow$ \hyperref[flac:decode_constant]{decode CONSTANT subframe with \BLOCKSIZE, \EFFECTIVEBPS}\;
@@ -720,7 +715,7 @@ $i$ & $\textsf{residual}_{i - 1}$ & \textsf{sample}_i \\
 \subsubsection{Decoding LPC Subframe}
 \label{flac:decode_lpc}
 {\relsize{-1}
-\ALGORITHM{the frame's block size and predictor order, the subframe's bits per sample}{decoded signed PCM samples}
+\ALGORITHM{the frame's block size, the subframe's bits per sample and predictor order}{decoded signed PCM samples}
 \SetKwData{BLOCKSIZE}{block size}
 \SetKwData{BPS}{subframe's BPS}
 \SetKwData{ORDER}{order}
@@ -798,6 +793,7 @@ $\RESIDUAL \leftarrow$ \hyperref[flac:decode_residual]{read residual block with 
 \label{flac:decode_residual}
 {\relsize{-1}
 \ALGORITHM{the frame's block size and predictor order}{decoded signed residual values}
+\SetKwData{BLOCKSIZE}{block size}
 \SetKwData{CODING}{coding method}
 \SetKwData{PORDER}{partition order}
 \SetKwData{PCOUNT}{partition residual count}
@@ -825,9 +821,9 @@ $i \leftarrow 0$\;
     undefined residual coding method error\;
   }
   \eIf{p = 0}{
-    $\text{\PCOUNT}_p \leftarrow \lfloor\text{block size} \div 2 ^ {\PORDER}\rfloor - \text{\ORDER}$
+    $\text{\PCOUNT}_p \leftarrow \lfloor\text{\BLOCKSIZE} \div 2 ^ {\PORDER}\rfloor - \text{\ORDER}$
   }{
-    $\text{\PCOUNT}_p \leftarrow \lfloor\text{block size} \div 2 ^ {\PORDER}\rfloor$
+    $\text{\PCOUNT}_p \leftarrow \lfloor\text{\BLOCKSIZE} \div 2 ^ {\PORDER}\rfloor$
   }
   \eIf{$((\text{\CODING} = 0)~\text{\AND}~(\text{\RICE}_p = 15))$ \OR
     $((\text{\CODING} = 1)~\text{\AND}~(\text{\RICE}_p = 31))$}{
@@ -1702,7 +1698,7 @@ Note how the CRC-8 is calculated from the preceding 5 header bytes:
 $0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{pad}
 $0 \rightarrow$ \WRITE 6 unsigned bits\tcc*[r]{subframe type}
 $0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{no wasted BPS}
-$\text{\SAMPLE} \rightarrow$ \WRITE $\text{\BPS}$ signed bits\;
+$\text{\SAMPLE} \rightarrow$ \WRITE $(\BPS)$ signed bits\;
 \Return a CONSTANT subframe\;
 \EALGORITHM
 }
@@ -1768,7 +1764,7 @@ $1 \rightarrow$ \WRITE 3 unsigned bits\tcc*[r]{subframe type}
 $\text{\ORDER} \rightarrow$ \WRITE 3 unsigned bits\;
 \eIf{$\WASTEDBPS > 0$}{
   $1 \rightarrow$ \WRITE 1 unsigned bit\;
-  $\text{\WASTEDBPS} - 1 \rightarrow$ \WUNARY with stop bit 1\;
+  $(\text{\WASTEDBPS} - 1) \rightarrow$ \WUNARY with stop bit 1\;
 }{
   $0 \rightarrow$ \WRITE 1 unsigned bit\;
 }
@@ -2237,7 +2233,6 @@ $\ERROR_0$ &$\leftarrow$ & $ \AUTOCORRELATION_0 \times (1 - {\kappa_0} ^ 2)$ \\
   \tcc{"zip" all of the previous row's LP coefficients
     \newline
     and the previous row's LP coefficients reversed
-    \newline
     into ($c$,$r$) pairs}
   $\kappa_i = q_i \div \ERROR_{i - 1}$\;
   \For{$j \leftarrow 0$ \emph{\KwTo}i}{
@@ -2253,8 +2248,8 @@ $\ERROR_0$ &$\leftarrow$ & $ \AUTOCORRELATION_0 \times (1 - {\kappa_0} ^ 2)$ \\
 }
 \par
 \noindent
-Given a a maximum LPC order of 3 and 4 autocorrelation values:
 {\relsize{-1}
+Given a maximum LPC order of 3 and 4 autocorrelation values:
 \begin{align*}
 \kappa_0 &\leftarrow \textsf{autocorrelation}_1 \div \textsf{autocorrelation}_0 \\
 \textsf{LP coefficient}_{0~0} &\leftarrow \kappa_0 \\
@@ -2446,14 +2441,14 @@ $1 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{subframe type}
 $(\text{\ORDER} - 1) \rightarrow$ \WRITE 5 unsigned bits\;
 \eIf{$\WASTEDBPS > 0$}{
   $1 \rightarrow$ \WRITE 1 unsigned bit\;
-  $\text{\WASTEDBPS} - 1 \rightarrow$ \WUNARY with stop bit 1\;
+  $(\text{\WASTEDBPS} - 1) \rightarrow$ \WUNARY with stop bit 1\;
 }{
   $0 \rightarrow$ \WRITE 1 unsigned bit\;
 }
 \For(\tcc*[f]{warm-up samples}){$i \leftarrow 0$ \emph{\KwTo}\ORDER}{
   $\text{\SAMPLE}_i \rightarrow$ \WRITE $(\BPS)$ signed bits\;
 }
-$\text{\QLPPREC} - 1 \rightarrow$ \WRITE 4 unsigned bits\;
+$(\text{\QLPPREC} - 1) \rightarrow$ \WRITE 4 unsigned bits\;
 $\text{\QLPSHIFT} \rightarrow$ \WRITE 5 signed bits\;
 \For(\tcc*[f]{QLP coefficients}){$i \leftarrow 0$ \emph{\KwTo}\ORDER}{
   $\text{\QLPCOEFF}_i \rightarrow$ \WRITE $(\QLPPREC)$ signed bits\;

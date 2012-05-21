@@ -388,7 +388,7 @@ if (__name__ == '__main__'):
                             audiofiles[0].total_frames()))[-1] > 0)):
                 import_cuesheet = cuesheet
             else:
-                #otherwise, treat the cuesheet is a source of ISRC data
+                #otherwise, treat the cuesheet as a source of ISRC data
                 isrcs = dict([(k, v.decode('ascii', 'replace'))
                               for (k, v) in
                               cuesheet.ISRCs().items()])

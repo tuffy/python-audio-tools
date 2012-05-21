@@ -327,7 +327,7 @@ if (__name__ == '__main__'):
     #perform actual ripping of tracks from CDDA
     encoded = []
     rip_log = {}
-    for (cd_track, output_filename, metadata) in to_rip:
+    for (i, (cd_track, output_filename, metadata)) in enumerate(to_rip):
         try:
             audiotools.make_dirs(str(output_filename))
         except OSError, err:
@@ -356,9 +356,10 @@ if (__name__ == '__main__'):
 
         rip_log[cd_track.track_number] = cd_track.rip_log
 
-        msg.info(_(u"track %(track_number)2.2d -> %(filename)s") % \
-                     {"track_number": cd_track.track_number,
-                      "filename": output_filename})
+        msg.info(audiotools.output_progress(
+                u"track %(track_number)2.2d -> %(filename)s" %
+                {"track_number": cd_track.track_number,
+                 "filename": output_filename}, i + 1, len(to_rip)))
 
     cdda.close()
 

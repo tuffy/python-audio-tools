@@ -5218,6 +5218,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] src/encoders/shn.c
    - [X] src/encoders/wavpack.c
 * TODO handle AIFF offset/block size in SSND chunk
+* TODO Restore Monkey's Audio support
+  This needs to be assimilated with a native decoder/encoder.
+  I've seen these out in the wild, but only rarely.
 * TODO Finish version 2.19
 ** TODO Assimilate MP3 support
    This is probably one of the most used codecs
@@ -5631,18 +5634,35 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE track2track
 **** DONE tracksplit
 **** DONE tracktag
-** TODO Update C-based ReplayGainReader
-   Use a lot of the new C-based facilities to make it simpler.
-** TODO Display X/Y progress during operations
+** DONE Display X/Y progress during operations
    When a track is finished transcoding, for instance, output:
    [ 2 / 15 ] input.wav -> output.mp3
    or something similar.
-*** DONE Update unit tests
-    - [X] track2cd
+*** DONE Update utilities
+    - [X] cd2track
+    - [X] dvda2track
     - [X] track2track
     - [X] trackcmp
+    - [X] trackrename
+    - [X] tracksplit
     - [X] tracktag
     - [X] trackverify
+*** DONE Update unit tests
+    - [X] cd2track
+    - [X] dvda2track
+    - [X] track2track
+    - [X] trackcmp
+    - [X] trackrename
+    - [X] tracksplit
+    - [X] tracktag
+    - [X] trackverify
+** TODO Remove Python Imaging Library requirement
+   This is only used for thumbnailing
+   and for TKinter-based image display.
+   Since a Python3 version doesn't seem to be pending,
+   it would be better to remove the requirement.
+** TODO Update C-based ReplayGainReader
+   Use a lot of the new C-based facilities to make it simpler.
 ** TODO Add internal MP3 codec
    This is likely the codec people are most interested in
    and so it should be folded in so it can be used
@@ -5677,9 +5697,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE py_decoders/SHNDecoder
 *** DONE py_decoders/ALACDecoder
 *** DONE py_decoders/WavPackDecoder
-** TODO Restore Monkey's Audio support
-   This needs to be assimilated with a native decoder/encoder.
-   I've seen these out in the wild, but only rarely.
 ** TODO Deprecate little-used / poorly-tested bits
    Although there's a risk of annoying people by taking out
    stuff they might be using, some utilities and formats

@@ -392,7 +392,9 @@ if (__name__ == '__main__'):
     total_pcm = audiotools.BufferedPCMReader(audiofile.to_pcm())
 
     try:
-        for (track_number, pcm_frames, output_filename) in output:
+        for (i, (track_number,
+                 pcm_frames,
+                 output_filename)) in enumerate(output):
             track_metadata = track_metadatas.get(track_number, None)
 
             audiotools.make_dirs(str(output_filename))
@@ -411,7 +413,10 @@ if (__name__ == '__main__'):
                     options.quality))
             encoded_tracks[-1].set_metadata(track_metadata)
             progress.clear()
-            msg.info(u"%s -> %s" % (input_filename, output_filename))
+            msg.info(
+                audiotools.output_progress(
+                    u"%s -> %s" % (input_filename, output_filename),
+                    i + 1, len(output)))
     except audiotools.EncodingError, err:
         msg.error(unicode(err))
         sys.exit(1)

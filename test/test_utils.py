@@ -275,10 +275,12 @@ class cd2track(UtilTest):
                 #check that the output is being generated correctly
                 for (i, path) in enumerate(output_filenames):
                     self.__check_info__(
-                        _(u"track %(track_number)2.2d -> %(filename)s") %
+                        audiotools.output_progress(
+                            u"track %(track_number)2.2d -> %(filename)s" %
                             {"track_number": i + 1,
                              "filename": audiotools.Filename(
-                                os.path.join(output_dir, path))})
+                                os.path.join(output_dir, path))},
+                            i + 1, len(output_filenames)))
 
                 #rip log is generated afterward as a table
                 #FIXME - check table of rip log?
@@ -1792,17 +1794,16 @@ class trackcmp(UtilTest):
             0)
         for i in xrange(1, 4):
             self.__check_info__(
-                _(u"[%(track_number)d/%(track_total)d]  " +
-                  u"%(path1)s <> %(path2)s : %(result)s") % {
-                    "track_number":i,
-                    "track_total":3,
-                    "path1": audiotools.Filename(
-                        os.path.join(self.match_dir1,
-                                     "%2.2d.%s" % (i, self.type.SUFFIX))),
-                    "path2": audiotools.Filename(
-                        os.path.join(self.match_dir2,
-                                     "%2.2d.%s" % (i, self.type.SUFFIX))),
-                    "result": _(u"OK")})
+                audiotools.output_progress(
+                    u"%(path1)s <> %(path2)s : %(result)s" %
+                    {"path1": audiotools.Filename(
+                            os.path.join(self.match_dir1,
+                                         "%2.2d.%s" % (i, self.type.SUFFIX))),
+                     "path2": audiotools.Filename(
+                            os.path.join(self.match_dir2,
+                                         "%2.2d.%s" % (i, self.type.SUFFIX))),
+                     "result": _(u"OK")},
+                    i, 3))
 
         #check matching directory against itself
         self.assertEqual(
@@ -1811,17 +1812,16 @@ class trackcmp(UtilTest):
             0)
         for i in xrange(1, 4):
             self.__check_info__(
-                _(u"[%(track_number)d/%(track_total)d]  " +
-                  u"%(path1)s <> %(path2)s : %(result)s") % {
-                    "track_number":i,
-                    "track_total":3,
-                    "path1": audiotools.Filename(
-                        os.path.join(self.match_dir1,
-                                     "%2.2d.%s" % (i, self.type.SUFFIX))),
-                    "path2": audiotools.Filename(
-                        os.path.join(self.match_dir1,
-                                     "%2.2d.%s" % (i, self.type.SUFFIX))),
-                    "result": _(u"OK")})
+                audiotools.output_progress(
+                    u"%(path1)s <> %(path2)s : %(result)s" %
+                    {"path1": audiotools.Filename(
+                            os.path.join(self.match_dir1,
+                                         "%2.2d.%s" % (i, self.type.SUFFIX))),
+                     "path2": audiotools.Filename(
+                            os.path.join(self.match_dir1,
+                                         "%2.2d.%s" % (i, self.type.SUFFIX))),
+                     "result": _(u"OK")},
+                    i, 3))
 
         #check matching directory against mismatching directory
         self.assertEqual(
@@ -1830,18 +1830,17 @@ class trackcmp(UtilTest):
             1)
         for i in xrange(1, 4):
             self.__check_info__(
-                _(u"[%(track_number)d/%(track_total)d]  " +
-                  u"%(path1)s <> %(path2)s : %(result)s") % {
-                    "track_number":i,
-                    "track_total":3,
-                    "path1": audiotools.Filename(
-                        os.path.join(self.match_dir1,
-                                     "%2.2d.%s" % (i, self.type.SUFFIX))),
-                    "path2": audiotools.Filename(
-                        os.path.join(self.mismatch_dir1,
-                                     "%2.2d.%s" % (i, self.type.SUFFIX))),
-                    "result": _(u"differ at PCM frame %(frame_number)d" %
-                                {"frame_number": 1})})
+                audiotools.output_progress(
+                    u"%(path1)s <> %(path2)s : %(result)s" %
+                    {"path1": audiotools.Filename(
+                            os.path.join(self.match_dir1,
+                                         "%2.2d.%s" % (i, self.type.SUFFIX))),
+                     "path2": audiotools.Filename(
+                            os.path.join(self.mismatch_dir1,
+                                         "%2.2d.%s" % (i, self.type.SUFFIX))),
+                     "result": _(u"differ at PCM frame %(frame_number)d" %
+                                 {"frame_number": 1})},
+                    i, 3))
 
         #check matching directory against directory missing file
         self.assertEqual(
@@ -1853,19 +1852,19 @@ class trackcmp(UtilTest):
                 "path": os.path.join(self.mismatch_dir2,
                                      "track %2.2d" % (3)),
                 "result": _(u"missing")})
+
         for i in xrange(1, 3):
             self.__check_info__(
-                _(u"[%(track_number)d/%(track_total)d]  " +
-                  u"%(path1)s <> %(path2)s : %(result)s") % {
-                    "track_number":i,
-                    "track_total":2,
-                    "path1": audiotools.Filename(
-                        os.path.join(self.match_dir1,
-                                     "%2.2d.%s" % (i, self.type.SUFFIX))),
-                    "path2": audiotools.Filename(
-                        os.path.join(self.mismatch_dir2,
-                                     "%2.2d.%s" % (i, self.type.SUFFIX))),
-                    "result": _(u"OK")})
+                audiotools.output_progress(
+                    u"%(path1)s <> %(path2)s : %(result)s" %
+                    {"path1": audiotools.Filename(
+                            os.path.join(self.match_dir1,
+                                         "%2.2d.%s" % (i, self.type.SUFFIX))),
+                     "path2": audiotools.Filename(
+                            os.path.join(self.mismatch_dir2,
+                                         "%2.2d.%s" % (i, self.type.SUFFIX))),
+                     "result": _(u"OK")},
+                    i, 2))
 
         #check matching directory against directory with extra file
         self.assertEqual(
@@ -1879,17 +1878,16 @@ class trackcmp(UtilTest):
                 "result": _(u"missing")})
         for i in xrange(1, 4):
             self.__check_info__(
-                _(u"[%(track_number)d/%(track_total)d]  " +
-                  u"%(path1)s <> %(path2)s : %(result)s") % {
-                    "track_number":i,
-                    "track_total":3,
-                    "path1": audiotools.Filename(
-                        os.path.join(self.match_dir1,
-                                     "%2.2d.%s" % (i, self.type.SUFFIX))),
-                    "path2": audiotools.Filename(
-                        os.path.join(self.mismatch_dir3,
-                                     "%2.2d.%s" % (i, self.type.SUFFIX))),
-                    "result": _(u"OK")})
+                audiotools.output_progress(
+                    u"%(path1)s <> %(path2)s : %(result)s" %
+                    {"path1": audiotools.Filename(
+                            os.path.join(self.match_dir1,
+                                         "%2.2d.%s" % (i, self.type.SUFFIX))),
+                     "path2": audiotools.Filename(
+                            os.path.join(self.mismatch_dir3,
+                                         "%2.2d.%s" % (i, self.type.SUFFIX))),
+                     "result": _(u"OK")},
+                    i, 3))
 
 
 class trackinfo(UtilTest):
@@ -4014,12 +4012,14 @@ class tracksplit(UtilTest):
                 #check that the output is being generated correctly
                 for (i, path) in enumerate(output_filenames):
                     self.__check_info__(
-                        _(u"%(source)s -> %(destination)s") % \
-                       {"source":
-                            audiotools.Filename(track.filename),
-                        "destination":
-                            audiotools.Filename(
-                                os.path.join(output_dir, path))})
+                        audiotools.output_progress(
+                            u"%(source)s -> %(destination)s" %
+                            {"source":
+                                 audiotools.Filename(track.filename),
+                             "destination":
+                                 audiotools.Filename(
+                                    os.path.join(output_dir, path))},
+                            i + 1, len(output_filenames)))
 
                 #make sure no track data has been lost
                 output_tracks = [
@@ -4127,12 +4127,15 @@ class tracksplit(UtilTest):
                 #check that the output is being generated correctly
                 for (i, path) in enumerate(output_filenames):
                     self.__check_info__(
-                        _(u"%(source)s -> %(destination)s") % \
-                       {"source":
-                            audiotools.Filename(track.filename),
-                        "destination":
-                            audiotools.Filename(
-                                os.path.join(output_dir, path))})
+                        audiotools.output_progress(
+                            u"%(source)s -> %(destination)s" %
+                            {"source":
+                                 audiotools.Filename(track.filename),
+                             "destination":
+                                 audiotools.Filename(
+                                    os.path.join(output_dir, path))},
+                            i + 1, len(output_filenames)))
+
 
                 #make sure no track data has been lost
                 output_tracks = [

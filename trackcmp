@@ -293,8 +293,9 @@ if (__name__ == '__main__'):
                                        t2.track_number()))
 
         cd_data = audiotools.BufferedPCMReader(cd_image.to_pcm())
-        for track in tracks:
-            progress.add_row(0, u"%(file1)s <> %(file2)s" %
+        for (i, track) in enumerate(tracks):
+            progress.add_row(0,
+                             u"%(file1)s <> %(file2)s" %
                              {"file1": audiotools.Filename(cd_image.filename),
                               "file2": audiotools.Filename(track.filename)})
             mismatch = audiotools.pcm_frame_cmp(
@@ -303,19 +304,25 @@ if (__name__ == '__main__'):
             progress.delete_row(0)
             progress.clear()
             if (mismatch is None):
-                msg.output(_(u"%(path1)s <> %(path2)s : %(result)s") % {
-                        "path1": audiotools.Filename(cd_image.filename),
-                        "path2": audiotools.Filename(track.filename),
-                        "result": msg.ansi(
-                            _(u"OK"),
-                            [msg.FG_GREEN])})
+                msg.output(
+                    audiotools.output_progress(
+                        u"%(path1)s <> %(path2)s : %(result)s" % {
+                            "path1": audiotools.Filename(cd_image.filename),
+                            "path2": audiotools.Filename(track.filename),
+                            "result": msg.ansi(
+                                _(u"OK"),
+                                [msg.FG_GREEN])},
+                        i + 1, len(tracks)))
             else:
-                msg.output(_(u"%(path1)s <> %(path2)s : %(result)s") % {
-                        "path1": audiotools.Filename(cd_image.filename),
-                        "path2": audiotools.Filename(track.filename),
-                        "result": msg.ansi(
-                            _(u"differ at PCM frame %d") % (mismatch + 1),
-                            [msg.FG_RED])})
+                msg.output(
+                    audiotools.output_progress(
+                        u"%(path1)s <> %(path2)s : %(result)s" % {
+                            "path1": audiotools.Filename(cd_image.filename),
+                            "path2": audiotools.Filename(track.filename),
+                            "result": msg.ansi(
+                                _(u"differ at PCM frame %d") % (mismatch + 1),
+                                [msg.FG_RED])},
+                        i + 1, len(tracks)))
                 sys.exit(1)
     else:
         msg.usage(u"<track 1> <track 2>")

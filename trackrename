@@ -96,11 +96,13 @@ if (__name__ == '__main__'):
             sys.exit(1)
 
     #perform the actual renaming itself
-    for (original_filename, new_filename) in to_rename:
+    for (i, (original_filename, new_filename)) in enumerate(to_rename):
         try:
             shutil.move(str(original_filename), str(new_filename))
             msg.info(
-                u"%s -> %s" % (original_filename, new_filename))
+                audiotools.output_progress(
+                    u"%s -> %s" % (original_filename, new_filename),
+                    i + 1, len(to_rename)))
         except IOError, err:
             msg.error(u"unable to rename \"%s\" to \"%s\"" %
                       (original_filename, new_filename))

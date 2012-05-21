@@ -59,7 +59,6 @@ def convert(progress, source_audiofile, destination_filename,
         #don't set any metadata
         pass
 
-
     existing_cuesheet = source_audiofile.get_cuesheet()
     if (existing_cuesheet is not None):
         destination_audiofile.set_cuesheet(existing_cuesheet)
