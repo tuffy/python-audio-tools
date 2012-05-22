@@ -84,7 +84,6 @@ typedef struct {
     struct flac_STREAMINFO streaminfo;
     uint64_t remaining_samples;
 
-    uint32_t crc16;
     audiotools__MD5Context md5;
     int stream_finalized;
 

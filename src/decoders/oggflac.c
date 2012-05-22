@@ -102,7 +102,7 @@ OggFlacDecoder_init(decoders_OggFlacDecoder *self,
     audiotools__MD5Init(&(self->md5));
 
     /*add callback for CRC16 calculation*/
-    br_add_callback(self->packet, flac_crc16, &(self->crc16));
+    br_add_callback(self->packet, (bs_callback_func)flac_crc16, &(self->crc16));
 
     /*setup a framelist generator function*/
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)

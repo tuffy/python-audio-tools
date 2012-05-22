@@ -79,9 +79,6 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     audiotools__MD5Init(&(self->md5));
     self->stream_finalized = 0;
 
-    /*add callback for CRC16 calculation*/
-    br_add_callback(self->bitstream, flac_crc16, &(self->crc16));
-
     /*setup a framelist generator function*/
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
@@ -208,6 +205,7 @@ FlacDecoder_channel_mask(decoders_FlacDecoder *self, void *closure)
 PyObject*
 FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
 {
+    uint32_t crc16 = 0;
     int channel;
     struct flac_frame_header frame_header;
     PyObject* framelist;
@@ -238,16 +236,20 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
     }
 
     thread_state = PyEval_SaveThread();
-    self->crc16 = 0;
 
     if (!setjmp(*br_try(self->bitstream))) {
+        /*add callback for CRC16 calculation*/
+        br_add_callback(self->bitstream, (bs_callback_func)flac_crc16, &crc16);
+
         /*read frame header*/
         if ((error = flacdec_read_frame_header(self->bitstream,
                                                &(self->streaminfo),
                                                &frame_header)) != OK) {
+            br_pop_callback(self->bitstream, NULL);
             PyEval_RestoreThread(thread_state);
             PyErr_SetString(PyExc_ValueError, FlacDecoder_strerror(error));
-            goto error;
+            br_etry(self->bitstream);
+            return NULL;
         }
 
         /*read 1 subframe per channel*/
@@ -262,9 +264,11 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
                      flacdec_subframe_bits_per_sample(&frame_header,
                                                       channel),
                      self->subframe_data->append(self->subframe_data))) != OK) {
+                br_pop_callback(self->bitstream, NULL);
                 PyEval_RestoreThread(thread_state);
                 PyErr_SetString(PyExc_ValueError, FlacDecoder_strerror(error));
-                goto error;
+                br_etry(self->bitstream);
+                return NULL;
             }
 
         /*handle difference channels, if any*/
@@ -275,19 +279,23 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
         /*check CRC-16*/
         self->bitstream->byte_align(self->bitstream);
         self->bitstream->read(self->bitstream, 16);
-        if (self->crc16 != 0) {
+        br_pop_callback(self->bitstream, NULL);
+        if (crc16 != 0) {
             PyEval_RestoreThread(thread_state);
             PyErr_SetString(PyExc_ValueError, "invalid checksum in frame");
-            goto error;
+            br_etry(self->bitstream);
+            return NULL;
         }
 
         /*decrement remaining samples*/
         self->remaining_samples -= frame_header.block_size;
     } else {
         /*handle I/O error during read*/
+        br_pop_callback(self->bitstream, NULL);
         PyEval_RestoreThread(thread_state);
         PyErr_SetString(PyExc_IOError, "EOF reading frame");
-        goto error;
+        br_etry(self->bitstream);
+        return NULL;
     }
 
     br_etry(self->bitstream);
@@ -309,10 +317,6 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
     } else {
         return NULL;
     }
-
- error:
-    br_etry(self->bitstream);
-    return NULL;
 }
 
 static PyObject*
@@ -404,7 +408,7 @@ flacdec_read_frame_header(BitstreamReader *bitstream,
     uint32_t sample_rate_bits;
     uint32_t crc8 = 0;
 
-    br_add_callback(bitstream, flac_crc8, &crc8);
+    br_add_callback(bitstream, (bs_callback_func)flac_crc8, &crc8);
 
     /*read and verify sync code*/
     if (bitstream->read(bitstream, 14) != 0x3FFE) {

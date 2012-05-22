@@ -4,7 +4,7 @@
   assigns a new checksum to that value*/
 
 void
-flac_crc8(uint8_t byte, void *checksum);
+flac_crc8(uint8_t byte, unsigned *checksum);
 
 void
-flac_crc16(uint8_t byte, void *checksum);
+flac_crc16(uint8_t byte, unsigned *checksum);

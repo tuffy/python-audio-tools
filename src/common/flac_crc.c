@@ -1,7 +1,7 @@
 #include "flac_crc.h"
 
 void
-flac_crc8(uint8_t byte, void *checksum)
+flac_crc8(uint8_t byte, unsigned *checksum)
 {
     const static uint32_t sumtable[0x100] =
         {0x00, 0x07, 0x0E, 0x09, 0x1C, 0x1B, 0x12, 0x15,
@@ -37,11 +37,11 @@ flac_crc8(uint8_t byte, void *checksum)
          0xDE, 0xD9, 0xD0, 0xD7, 0xC2, 0xC5, 0xCC, 0xCB,
          0xE6, 0xE1, 0xE8, 0xEF, 0xFA, 0xFD, 0xF4, 0xF3};
 
-    *((int*)checksum) = sumtable[*((int*)checksum) ^ byte];
+    *checksum = sumtable[*checksum ^ byte];
 }
 
 void
-flac_crc16(uint8_t byte, void *checksum)
+flac_crc16(uint8_t byte, unsigned *checksum)
 {
     const static uint32_t sumtable[0x100] =
         {0x0000, 0x8005, 0x800f, 0x000a, 0x801b, 0x001e, 0x0014, 0x8011,
@@ -76,8 +76,6 @@ flac_crc16(uint8_t byte, void *checksum)
          0x0270, 0x8275, 0x827f, 0x027a, 0x826b, 0x026e, 0x0264, 0x8261,
          0x0220, 0x8225, 0x822f, 0x022a, 0x823b, 0x023e, 0x0234, 0x8231,
          0x8213, 0x0216, 0x021c, 0x8219, 0x0208, 0x820d, 0x8207, 0x0202};
-    uint32_t old_checksum = *((int*)checksum);
 
-    *((int*)checksum) = (sumtable[(old_checksum >> 8) ^ byte] ^
-                         (old_checksum << 8)) & 0xFFFF;
+    *checksum = (sumtable[(*checksum >> 8) ^ byte] ^ (*checksum << 8)) & 0xFFFF;
 }
