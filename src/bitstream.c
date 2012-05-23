@@ -1597,6 +1597,8 @@ br_substream_append_f(struct BitstreamReader_s *stream,
     struct bs_callback *callback;
     uint32_t i;
 
+    assert(substream->type == BR_SUBSTREAM);
+
     /*byte align the input stream*/
     stream->state = 0;
 
@@ -1747,7 +1749,7 @@ br_pop_callback(BitstreamReader *bs, struct bs_callback *callback)
         c_node->next = bs->callbacks_used;
         bs->callbacks_used = c_node;
     } else {
-        fprintf(stderr, "warning: no callbacks available to pop\n");
+        fprintf(stderr, "Warning: no callbacks available to pop\n");
     }
 }
 
@@ -3110,7 +3112,7 @@ ext_getc(struct br_external_input* stream)
 
         if (!buffer->mark_in_progress) {
             /*if the stream has no mark,
-              reset the buffer prior to reading new data*/
+              reset the empty buffer prior to reading new data*/
 
             buffer->buffer_size = 0;
             buffer->buffer_position = 0;

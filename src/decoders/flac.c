@@ -886,7 +886,7 @@ flacdec_read_residual(BitstreamReader* bitstream,
 
 void
 flacdec_decorrelate_channels(uint8_t channel_assignment,
-                             array_ia* subframes,
+                             const array_ia* subframes,
                              array_i* framelist) {
     int* framelist_data;
     unsigned i,j;

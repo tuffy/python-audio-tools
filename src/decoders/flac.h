@@ -181,12 +181,15 @@ flac_status
 flacdec_read_subframe_header(BitstreamReader *bitstream,
                              struct flac_subframe_header *subframe_header);
 
+/*returns a subframe's effective bits per sample
+  based on the frame header and whether the subframe
+  is the side channel in left-side/side-right/mid-side encoding*/
 unsigned int
 flacdec_subframe_bits_per_sample(struct flac_frame_header *frame_header,
                                  unsigned int channel_number);
 
-/*reads a FLAC subframe from "bitstream"
-  with "block_size" and "bits_per_sample" (determined from the frame header)
+/*reads a FLAC subframe from bitstream
+  with block_size and effective bits_per_sample
   and places the result in "samples"
 
   "qlp_coeffs" and "residuals" are temporary buffers
@@ -243,7 +246,7 @@ flacdec_read_residual(BitstreamReader* bitstream,
 
 void
 flacdec_decorrelate_channels(uint8_t channel_assignment,
-                             array_ia* subframes,
+                             const array_ia* subframes,
                              array_i* framelist);
 
 const char*

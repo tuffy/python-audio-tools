@@ -254,15 +254,18 @@ typedef struct BitstreamReader_s {
 
      * for FILE objects, performs fclose
      * for substreams, does nothing
-     * for Python readers, calls its .close() method
+     * for external input, calls its .close() method
 
      once the substream is closed,
      the reader's methods are updated to generate errors if called again*/
     void
     (*close_internal_stream)(struct BitstreamReader_s* bs);
 
-    /*for substreams, deallocates buffer
-      for Python readers, decrefs Python object
+    /*frees the BitstreamReader's allocated data
+
+      for FILE objects, does nothing
+      for substreams, deallocates buffer
+      for external input, calls its .free() method
 
       deallocates any callbacks/used callbacks
       deallocates any exceptions/used exceptions
@@ -288,12 +291,20 @@ typedef struct BitstreamReader_s {
     void
     (*rewind)(struct BitstreamReader_s* bs);
 
-    /*pops the previous mark from the mark stack*/
+    /*pops the previous mark from the mark stack
+
+      unmarking does not affect the stream's current position*/
     void
     (*unmark)(struct BitstreamReader_s* bs);
 
     /*this appends the given length of bytes from the current stream
-      to the given substream*/
+      to the given substream
+
+      the input stream must be byte-aligned
+      but the substream need not be byte-aligned
+
+      br_abort() is called if insufficient bytes
+      are available on the input stream*/
     void
     (*substream_append)(struct BitstreamReader_s* bs,
                         struct BitstreamReader_s* substream,
@@ -1273,7 +1284,8 @@ bw_swap_records(BitstreamWriter* a, BitstreamWriter* b);
 
 
 /*returns a new bs_buffer struct which can be appended to and read from
-  it must be closed later*/
+
+  it must be closed with buf_close() when no longer needed*/
 struct bs_buffer*
 buf_new(void);
 
@@ -1284,7 +1296,7 @@ buf_new(void);
 
   For example:
 
-  new_data = buf_extend(buffer, 10);
+  uint8_t* new_data = buf_extend(buffer, 10);
   if (fread(new_data, sizeof(uint8_t), 10, input_file) == 10)
       buffer->buffer_size += 10;
   else
@@ -1329,7 +1341,9 @@ buf_close(struct bs_buffer *stream);
 
 /*takes a user_data pointer and three functions
   and returns a FILE-like struct which can be read on a byte-by-byte basis
-  that will call C functions to fetch additional data as needed
+  via the ext_getc function
+  that will call the "read" function to fetch additional data as needed
+
 
   int read(void* user_data, struct bs_buffer* buffer)
   where "buffer" is where read output will be placed
@@ -1341,7 +1355,6 @@ buf_close(struct bs_buffer *stream);
   rather than replacing what's already there
 
   returns 0 on a successful read, 1 on a read error
-  "size" will be set to 0 once EOF is reached
 
 
   void close(void* user_data)
