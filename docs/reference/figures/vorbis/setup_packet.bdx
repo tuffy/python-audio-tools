@@ -1,8 +1,18 @@
 <?xml version="1.0" ?>
 <diagram>
   <row>
-    <col start="0" end="7" width=".15">type (0x05)</col>
-    <col start="8" end="55" width=".85">header `vorbis' (0x766F72626973)</col>
+    <col width=".15">Packet₀</col>
+    <col width=".20">Packet₁</col>
+    <col width=".35" id="packet2">Packet₂</col>
+    <col width=".12">Packet₃</col>
+    <col width=".18" style="dashed">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col start="0" end="7" width=".15"
+         id="setup_start">type (5)</col>
+    <col start="8" end="55" width=".85"
+         id="setup_end">header (`vorbis')</col>
   </row>
   <row>
     <col>codebooks</col>
@@ -23,4 +33,12 @@
     <col width=".75">modes</col>
     <col width=".25" start="0" end="0">framing (1)</col>
   </row>
+    <line style="dotted">
+    <start id="packet2" corner="sw"/>
+    <end id="setup_start" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="packet2" corner="se"/>
+    <end id="setup_end" corner="ne"/>
+  </line>
 </diagram>

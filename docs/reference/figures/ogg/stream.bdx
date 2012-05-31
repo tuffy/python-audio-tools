@@ -1,0 +1,45 @@
+<?xml version="1.0" ?><diagram>
+  <row>
+    <col id="oggpage" width=".25">Ogg Page₀</col>
+    <col width=".25">Ogg Page₁</col>
+    <col width=".25">Ogg Page₂</col>
+    <col style="dashed" width=".25">...</col>
+  </row>
+  <row><blank/></row>
+  <row>
+    <col end="31" id="magic" start="0">magic number `OggS'</col>
+  </row>
+  <row>
+    <col end="39" start="32" width=".333333">version (0)</col>
+    <col end="47" start="40" width=".333333">header type</col>
+    <col end="111" start="48" width=".333333">granule position</col>
+  </row>
+  <row>
+    <col end="143" start="112" width=".50">bitstream serial number</col>
+    <col end="175" start="144" width=".50">page sequence number</col>
+  </row>
+  <row>
+    <col end="207" start="176" width=".50">checksum</col>
+    <col end="215" start="208" width=".50">page segment count</col>
+  </row>
+  <row>
+    <col start="216" end="223" width=".25">segment length₀</col>
+    <col start="224" end="231" width=".25">segment length₁</col>
+    <col start="232" end="239" width=".25">segment length₂</col>
+    <col width=".25" style="dashed" >...</col>
+  </row>
+  <row>
+    <col width=".25"
+         start="segment length₀ bytes"
+         end="segment length₀ bytes">segment₀</col>
+    <col width=".25"
+         start="segment length₁ bytes"
+         end="segment length₁ bytes">segment₁</col>
+    <col width=".25"
+         start="segment length₂ bytes"
+         end="segment length₂ bytes">segment₂</col>
+    <col width=".25" style="dashed" >...</col>
+  </row>
+  <line style="dotted"><start corner="sw" id="oggpage"/><end corner="nw" id="magic"/></line>
+  <line style="dotted"><start corner="se" id="oggpage"/><end corner="ne" id="magic"/></line>
+</diagram>

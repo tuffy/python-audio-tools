@@ -1,0 +1,34 @@
+<?xml version="1.0" ?>
+<diagram>
+  <row>
+    <col width=".20" id="page0">Ogg Page₀</col>
+    <col width=".20" id="page1">Ogg Page₁</col>
+    <col width=".20" id="page2">Ogg Page₂</col>
+    <col width=".20" id="page3">Ogg Page₃</col>
+    <col width=".20" style="dashed">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col width=".15" id="packet0">Packet₀</col>
+    <col width=".20" id="packet1">Packet₁</col>
+    <col width=".35" id="packet2">Packet₂</col>
+    <col width=".12" id="packet3">Packet₃</col>
+    <col width=".18" style="dashed">...</col>
+  </row>
+  <line style="dotted">
+    <start id="page0" corner="sw"/>
+    <end id="packet0" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="page0" corner="se"/>
+    <end id="packet0" corner="ne"/>
+  </line>
+  <line style="dotted">
+    <start id="page1" corner="se"/>
+    <end id="packet1" corner="ne"/>
+  </line>
+  <line style="dotted">
+    <start id="page3" corner="se"/>
+    <end id="packet2" corner="ne"/>
+  </line>
+</diagram>

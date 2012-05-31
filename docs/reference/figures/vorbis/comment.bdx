@@ -1,30 +1,49 @@
-<?xml version="1.0" ?><diagram>
-  <row>
-    <col end="7" start="0" width=".15">type (0x03)</col>
-    <col end="55" start="8" width=".47">header `vorbis' (0x766F72626973)</col>
-    <col id="data" start="56" width=".20">comment data</col>
-    <col end="0" start="0" width=".18">framing (1)</col>
+<?xml version="1.0" ?>
+<diagram>
+    <row>
+    <col width=".15">Packet₀</col>
+    <col width=".20" id="packet1">Packet₁</col>
+    <col width=".35">Packet₂</col>
+    <col width=".12">Packet₃</col>
+    <col width=".18" style="dashed">...</col>
   </row>
-  <row><blank/></row>
+  <spacer/>
   <row>
-    <col id="vendorstring" width=".17">vendor string</col>
-    <col end="31" start="0" width=".20">total comments</col>
-    <col width=".21">comment string₀</col>
-    <col id="comment" width=".21">comment string₁</col>
-    <col id="comments" style="dashed" width=".21">...</col>
+    <col start="0" end="7" width=".15"
+         id="comment_start">type (3)</col>
+    <col start="8" end="55" width=".85"
+         id="comment_end">header (`vorbis')</col>
   </row>
-  <row><blank/></row>
   <row>
-    <col end="31" id="v_len" start="0" width=".25">vendor string length</col>
-    <col id="v_str" start="32" width=".20">vendor string</col>
-    <blank width=".05"/>
-    <col end="31" id="c_len" start="0" width=".30">comment string length</col>
-    <col id="c_str" start="0" width=".20">comment string</col>
+    <col start="56" end="87" width=".35">vendor string length</col>
+    <col width=".65"
+         start="(vendor string length) bytes"
+         end="(vendor string length) bytes">vendor string</col>
   </row>
-  <line style="dotted"><start corner="sw" id="vendorstring"/><end corner="nw" id="v_len"/></line>
-  <line style="dotted"><start corner="se" id="vendorstring"/><end corner="ne" id="v_str"/></line>
-  <line style="dotted"><start corner="sw" id="comment"/><end corner="nw" id="c_len"/></line>
-  <line style="dotted"><start corner="se" id="comment"/><end corner="ne" id="c_str"/></line>
-  <line style="dotted"><start corner="sw" id="data"/><end corner="nw" id="vendorstring"/></line>
-  <line style="dotted"><start corner="se" id="data"/><end corner="ne" id="comments"/></line>
+  <row>
+    <col start="0" end="31">comment string count</col>
+  </row>
+  <row>
+    <col start="0" end="31" width=".35">comment string length₀</col>
+    <col width=".65"
+         start="(comment string length₀) bytes"
+         end="(comment string length₀) bytes">comment string₀</col>
+  </row>
+  <row>
+    <col start="0" end="31" width=".35">comment string length₁</col>
+    <col width=".65"
+         start="(comment string length₁) bytes"
+         end="(comment string length₁) bytes">comment string₁</col>
+  </row>
+  <row>
+    <col style="dashed">...</col>
+  </row>
+  <line style="dotted">
+    <start id="packet1" corner="sw"/>
+    <end id="comment_start" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="packet1" corner="se"/>
+    <end id="comment_end" corner="ne"/>
+  </line>
 </diagram>

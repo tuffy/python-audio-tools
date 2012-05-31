@@ -244,8 +244,10 @@ figures/aobpcm/24bps_4ch.pdf \
 figures/aobpcm/24bps_5ch.pdf \
 figures/aobpcm/24bps_6ch.pdf
 
-VORBIS = figures/ogg_packets.pdf \
-figures/ogg_stream.pdf \
+OGG = figures/ogg/packets.pdf \
+figures/ogg/stream.pdf
+
+VORBIS = figures/vorbis/stream.pdf \
 figures/vorbis/codebooks.pdf \
 figures/vorbis/comment.pdf \
 figures/vorbis/float32.pdf \
@@ -426,6 +428,17 @@ mp3-codec.tex: mp3-codec.m4 header.m4 footer.m4
 	m4 -D PAPERSIZE=letterpaper $< > $@
 
 mp3-codec.pdf: mp3-codec.tex mp3.tex $(MP3) $(ID3v22) $(ID3v23) $(ID3v24)
+
+ogg-codec.tex: ogg-codec.m4 header.m4 footer.m4
+	m4 -D PAPERSIZE=lettepaper $< > $@
+
+ogg-codec.pdf: ogg-codec.tex ogg.tex $(OGG)
+	python pdflatexbuild.py -halt-on-error $<
+
+vorbis-codec.tex: vorbis-codec.m4 header.m4 footer.m4
+	m4 -D PAPERSIZE=letterpaper $< > $@
+
+vorbis-codec.pdf: vorbis-codec.tex vorbis.tex $(VORBIS)
 	python pdflatexbuild.py -halt-on-error $<
 
 audioformats-letter.tex: audioformats.m4 header.m4 footer.m4

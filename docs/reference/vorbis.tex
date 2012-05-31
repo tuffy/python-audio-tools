@@ -8,161 +8,133 @@
 
 \chapter{Ogg Vorbis}
 \label{vorbis}
-Ogg Vorbis is Vorbis audio in an Ogg container.
-Ogg containers are a series of Ogg pages, each containing
-one or more segments of data.
+Ogg Vorbis is a set of Vorbis audio packets
+in an \hyperref[ogg]{Ogg container}.
 All of the fields within Ogg Vorbis are little-endian.
-\section{Ogg File Stream}
+
 \begin{figure}[h]
-\includegraphics{figures/ogg_stream.pdf}
+\includegraphics{figures/vorbis/stream.pdf}
 \end{figure}
-\parpic[r]{
-\begin{tabular}{|c|l|}
-\hline
-bits & Header Type \\
-\hline
-\texttt{001} & Continuation \\
-\texttt{010} & Beginning of Stream \\
-\texttt{100} & End of Stream \\
-\hline
-\end{tabular}
-}
-\VAR{Granule position} is a time marker.
-In the case of Ogg Vorbis, it is the sample count.
-
-\VAR{Bitstream Serial Number} is an identifier for the given
-bitstream which is unique within the Ogg file.
-For instance, an Ogg file might contain both video and
-audio pages, interleaved.
-The Ogg pages for the audio will have a different
-serial number from those of the video so that the decoder
-knows where to send the data of each.
-
-\VAR{Page Sequence Number} is an integer counter which starts from 0
-and increments 1 for each Ogg page.
-Multiple bitstreams will have separate sequence numbers.
-
-\VAR{Checksum} is a 32-bit checksum of the entire Ogg page.
-
-The \VAR{Page Segments} value indicates how many segments are in
-this Ogg page.
-Each segment will have an 8-bit length.
-If that length is 255, it indicates the next segment is
-part of the current one and should be concatenated with it when
-creating packets from the segments.
-In this way, packets larger than 255 bytes can be stored in
-an Ogg page.
-If the final segment in the Ogg page has a length of 255 bytes,
-the packet it is a part of continues into the next Ogg page.
-
-\clearpage
-
-\subsection{Ogg Packets}
-\begin{figure}[h]
-\includegraphics{figures/ogg_packets.pdf}
-\end{figure}
-\par
-\noindent
-This is an example Ogg stream to illustrate a few key points about
-the format.
-Note that Ogg pages may have one or more segments,
-and packets are composed of one of more segments,
-yet the boundaries between packets are segments
-that are less than 255 bytes long.
-Which segment belongs to which Ogg page is not important
-for building packets.
-
-\section{Vorbis Headers}
-
-The first three packets in a valid Ogg Vorbis file must be
-\VAR{Identification}, \VAR{Comment} and \VAR{Setup}, in that order.
-Each header packet is prefixed by a 7 byte common header.
 
 \clearpage
 
 \subsection{the Identification Packet}
-The first packet within a Vorbis stream is the Identification packet.
+The first packet within a Vorbis stream is the \VAR{Identification} packet.
 This contains the sample rate and number of channels.
 Vorbis does not have a bits-per-sample field, as samples
 are stored internally as floating point values and are
 converted into a certain number of bits in the decoding process.
 To find the total samples, use the \VAR{Granule Position} value
 in the stream's final Ogg page.
+\par
+\noindent
+{\relsize{-1}
+\ALGORITHM{the first Ogg packet}{Vorbis identification information}
+\SetKwData{CHANNELS}{channels}
+\SetKwData{SAMPLERATE}{sample rate}
+\SetKwData{BITRATEMAX}{bitrate maximum}
+\SetKwData{BITRATENOM}{bitrate nominal}
+\SetKwData{BITRATEMIN}{bitrate minimum}
+\SetKwData{BLOCKSIZE}{block size}
+\ASSERT $(\text{\READ 8 unsigned bits}) = 1$\tcc*[r]{packet type}
+\ASSERT $(\text{\READ 6 bytes}) = \texttt{"vorbis"}$\;
+\BlankLine
+\ASSERT $(\text{\READ 32 unsigned bits}) = 0$\tcc*[r]{Vorbis version}
+$\CHANNELS \leftarrow$ \READ 8 unsigned bits\;
+\ASSERT $\CHANNELS > 0$\;
+$\SAMPLERATE \leftarrow$ \READ 32 unsigned bits\;
+\ASSERT $\SAMPLERATE > 0$\;
+$\BITRATEMAX \leftarrow$ \READ 32 signed bits\;
+$\BITRATENOM \leftarrow$ \READ 32 signed bits\;
+$\BITRATEMIN \leftarrow$ \READ 32 signed bits\;
+$\text{\BLOCKSIZE}_0 \leftarrow 2 ^ {(\text{\READ 4 unsigned bits)}}$\;
+\ASSERT $\text{\BLOCKSIZE}_0$ \IN \texttt{[64, 128, 256, 512, 1024, 2048, 4096, 8192]}\;
+$\text{\BLOCKSIZE}_1 \leftarrow 2 ^ {(\text{\READ 4 unsigned bits})}$\;
+\ASSERT $\text{\BLOCKSIZE}_1$ \IN \texttt{[64, 128, 256, 512, 1024, 2048, 4096, 8192]}\;
+\ASSERT $\text{\BLOCKSIZE}_0 \leq \text{\BLOCKSIZE}_1$\;
+\ASSERT $\text{(\READ 1 unsigned bit)} = 1$\tcc*[r]{framing bit}
+\BlankLine
+\Return $\left\lbrace\begin{tabular}{l}
+\CHANNELS \\
+\SAMPLERATE \\
+\BITRATEMAX \\
+\BITRATENOM \\
+\BITRATEMIN \\
+\BLOCKSIZE \\
+\end{tabular}\right.$\;
+\EALGORITHM
+}
 \begin{figure}[h]
 \includegraphics{figures/vorbis/identification.pdf}
 \end{figure}
-\par
-\noindent
-\VAR{Channels} and \VAR{Sample Rate} must be greater than 0.
-The two, 4-bit \VAR{Blocksize} fields are stored as a power of 2.
-For example:
-\begin{align*}
-\text{Blocksize}_0 &= 2 ^ {\text{Field}_0} \\
-\text{Blocksize}_1 &= 2 ^ {\text{Field}_1}
-\end{align*}
-where $\text{Blocksize}_i$ must be 64, 128, 256, 512, 1024, 2048, 4096 or 8192
-and
-\linebreak
-$\text{Blocksize}_0 \leq \text{Blocksize}_1$
 
 \clearpage
 
 \subsection{the Comment Packet}
 \label{vorbiscomment}
 The second packet within a Vorbis stream is the Comment packet.
+\par
+\noindent
+{\relsize{-1}
+\ALGORITHM{the second Ogg packet}{Vorbis comment information}
+\SetKwData{VENLENGTH}{vendor string length}
+\SetKwData{VENSTRING}{vendor string}
+\SetKwData{COMCOUNT}{commment string count}
+\SetKwData{LEN}{comment string length}
+\SetKwData{COMMENT}{comment string}
+\ASSERT $(\text{\READ 8 unsigned bits}) = 3$\tcc*[r]{packet type}
+\ASSERT $(\text{\READ 6 bytes}) = \texttt{"vorbis"}$\;
+\BlankLine
+$\VENLENGTH \leftarrow$ \READ 32 unsigned bits\;
+$\VENSTRING \leftarrow$ \READ (\VENLENGTH) bytes as UTF-8 string\;
+$\COMCOUNT \leftarrow$ \READ 32 unsigned bits\;
+\For{$i \leftarrow 0$ \emph{\KwTo}\COMCOUNT}{
+  $\text{\LEN}_i \leftarrow$ \READ 32 unsigned bits\;
+  $\text{\COMMENT}_i \leftarrow$ \READ ($\text{\LEN}_i$) bytes as UTF-8 string\;
+}
+\ASSERT $\text{(\READ 1 unsigned bit)} = 1$\tcc*[r]{framing bit}
+\BlankLine
+\Return $\left\lbrace\begin{tabular}{l}
+\VENSTRING \\
+\COMMENT \\
+\end{tabular}\right.$\;
+\EALGORITHM
+}
 
 \begin{figure}[h]
 \includegraphics{figures/vorbis/comment.pdf}
 \end{figure}
-
-The \VAR{Vendor String} and \VAR{Comment Strings} are all UTF-8 encoded.
-Keys are not case-sensitive and may occur multiple times,
-indicating multiple values for the same field.
-For instance, a track with multiple artists may have
-more than one \texttt{ARTIST}.
-
-\begin{multicols}{2}
-{\relsize{-2}
-\begin{description}
-\item[ALBUM] album name
-\item[ARTIST] artist name, band name, composer, author, etc.
-\item[CATALOGNUMBER*] CD spine number
-\item[COMPOSER*] the work's author
-\item[CONDUCTOR*] performing ensemble's leader
-\item[COPYRIGHT] copyright attribution
-\item[DATE] recording date
-\item[DESCRIPTION] a short description
-\item[DISCNUMBER*] disc number for multi-volume work
-\item[ENGINEER*] the recording masterer
-\item[ENSEMBLE*] performing group
-\item[GENRE] a short music genre label
-\item[GUEST ARTIST*] collaborating artist
-\item[ISRC] ISRC number for the track
-\item[LICENSE] license information
-\item[LOCATION] recording location
-\item[OPUS*] number of the work
-\item[ORGANIZATION] record label
-\item[PART*] track's movement title
-\item[PERFORMER] performer name, orchestra, actor, etc.
-\item[PRODUCER*] person responsible for the project
-\item[PRODUCTNUMBER*] UPC, EAN, or JAN code
-\item[PUBLISHER*] album's publisher
-\item[RELEASE DATE*] date the album was published
-\item[REMIXER*] person who created the remix
-\item[SOURCE ARTIST*] artist of the work being performed
-\item[SOURCE MEDIUM*] CD, radio, cassette, vinyl LP, etc.
-\item[SOURCE WORK*] a soundtrack's original work
-\item[SPARS*] DDD, ADD, AAD, etc.
-\item[SUBTITLE*] for multiple track names in a single file
-\item[TITLE] track name
-\item[TRACKNUMBER] track number
-\item[VERSION] track version
-\end{description}
-}
-\end{multicols}
 \par
 \noindent
-Fields marked with * are proposed extension fields and not part of the official Vorbis comment specification.
+Comment strings are \texttt{"KEY=value"} pairs
+where \texttt{KEY} is an ASCII value in the range \texttt{0x20}
+through \texttt{0x7D}, excluding \texttt{0x3D},
+is case-insensitive and may occur in multiple comment strings.
+\texttt{value} is a UTF-8 value.
+\begin{table}[h]
+{\relsize{-1}
+  \begin{tabular}{rlrl}
+    \texttt{ALBUM} & album name &
+    \texttt{ARTIST} & artist name \\
+    \texttt{CATALOG} & CD spine number &
+    \texttt{COMPOSER} & the work's author \\
+    \texttt{COMMENT} & a short comment &
+    \texttt{CONDUCTOR} & performing ensemble's leader \\
+    \texttt{COPYRIGHT} & copyright attribution &
+    \texttt{DATE} & recording date \\
+    \texttt{DISCNUMBER} & disc number for multi-volume work &
+    \texttt{DISCTOTAL} & disc total for multi-volume work \\
+    \texttt{GENRE} & a short music genre label &
+    \texttt{ISRC} & ISRC number for the track \\
+    \texttt{PERFORMER} & performer name, orchestra, actor, etc. &
+    \texttt{PUBLISHER} & album's publisher \\
+    \texttt{SOURCE MEDIUM} & CD, radio, cassette, vinyl LP, etc. &
+    \texttt{TITLE} & track name \\
+    \texttt{TRACKNUMBER} & track number &
+    \texttt{TRACKTOTAL} & total number of tracks \\
+  \end{tabular}
+}
+\end{table}
 
 \clearpage
 
