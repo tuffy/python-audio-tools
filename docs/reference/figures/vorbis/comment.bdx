@@ -36,7 +36,8 @@
          end="(comment string length₁) bytes">comment string₁</col>
   </row>
   <row>
-    <col style="dashed">...</col>
+    <col style="dashed" width=".80">...</col>
+    <col start="0" end="0" width=".20">framing</col>
   </row>
   <line style="dotted">
     <start id="packet1" corner="sw"/>

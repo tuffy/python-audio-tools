@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<bytestruct>
+  <field label="type">03</field>
+  <field>766f72626973</field>
+  <field label="vendor string length">1d000000</field>
+  <field label="vendor string">586970682e4f7267206c6962566f726269732049203230303930373039</field>
+  <field label="comment count">02000000</field>
+  <field label="length₀">0b000000</field>
+  <field label="string₀">7469746c653d5469746c65</field>
+  <field label="length₁">0d000000</field>
+  <field label="string₁">6172746973743d417274697374</field>
+  <field label="framing">01</field>
+</bytestruct>

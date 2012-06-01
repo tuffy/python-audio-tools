@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<struct endianness="little">
+  <field size="8" value="1">packet type</field>
+  <bytes value="766f72626973">"vorbis"</bytes>
+  <field size="32" value="0">version</field>
+  <field size="8" value="2">channels</field>
+  <field size="32" value="44100">sample rate</field>
+  <field size="32" value="0">maximum bitrate</field>
+  <field size="32" value="112000">nominal bitrate</field>
+  <field size="32" value="0">minimum bitrate</field>
+  <field size="4" value="8">block size₀</field>
+  <field size="4" value="11">block size₁</field>
+  <field size="1" value="1">framing</field>
+</struct>

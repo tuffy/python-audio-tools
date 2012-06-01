@@ -12,6 +12,7 @@ include(header.m4)
 \include{mp3}
 \include{m4a}
 \include{alac}
+\include{ogg}
 \include{vorbis}
 \include{oggflac}
 \include{speex}

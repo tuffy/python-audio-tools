@@ -40,7 +40,7 @@ VorbisDecoder_init(decoders_VorbisDecoder *self, PyObject *args, PyObject *kwds)
 
     /*read identification packet*/
     if ((ogg_result = oggreader_next_packet(self->ogg_stream,
-                                        self->packet)) == OGG_OK) {
+                                            self->packet)) == OGG_OK) {
         if ((vorbis_result =
              vorbis_read_identification_packet(self->packet,
                                                &(self->identification))) !=
@@ -56,7 +56,7 @@ VorbisDecoder_init(decoders_VorbisDecoder *self, PyObject *args, PyObject *kwds)
 
     /*skip comments packet, but ensure it's positioned properly*/
     if ((ogg_result = oggreader_next_packet(self->ogg_stream,
-                                        self->packet)) == OGG_OK) {
+                                            self->packet)) == OGG_OK) {
         if (vorbis_read_common_header(self->packet) != 3) {
             PyErr_SetString(PyExc_ValueError,
                             "comment not second Ogg packet");
@@ -69,7 +69,7 @@ VorbisDecoder_init(decoders_VorbisDecoder *self, PyObject *args, PyObject *kwds)
 
     /*read setup header*/
     if ((ogg_result = oggreader_next_packet(self->ogg_stream,
-                                        self->packet)) == OGG_OK) {
+                                            self->packet)) == OGG_OK) {
         if ((vorbis_result = vorbis_read_setup_packet(self->packet)) !=
             VORBIS_OK) {
             PyErr_SetString(vorbis_exception(vorbis_result),
@@ -227,8 +227,8 @@ ilog(int x) {
 
 int
 vorbis_read_common_header(BitstreamReader *packet) {
-    uint8_t vorbis[] = {0x76, 0x6F, 0x72, 0x62, 0x69, 0x73};
-    int packet_type = packet->read(packet, 8);
+    const uint8_t vorbis[] = {0x76, 0x6F, 0x72, 0x62, 0x69, 0x73};
+    const int packet_type = packet->read(packet, 8);
     int i;
 
     for (i = 0; i < 6; i++) {
@@ -240,63 +240,62 @@ vorbis_read_common_header(BitstreamReader *packet) {
 }
 
 vorbis_status
-vorbis_read_identification_packet(
-                        BitstreamReader *packet,
-                        struct vorbis_identification_header *identification) {
+vorbis_read_identification_packet(BitstreamReader *packet,
+                                  struct vorbis_identification_header *id) {
     if (!setjmp(*br_try(packet))) {
         if (vorbis_read_common_header(packet) != 1) {
             br_etry(packet);
             return VORBIS_ID_HEADER_NOT_1ST;
         }
 
-        identification->vorbis_version = packet->read(packet, 32);
-        if (identification->vorbis_version != 0) {
+        id->vorbis_version = packet->read(packet, 32);
+        if (id->vorbis_version != 0) {
             br_etry(packet);
             return VORBIS_UNSUPPORTED_VERSION;
         }
 
-        identification->channel_count = packet->read(packet, 8);
-        if (identification->channel_count < 1) {
+        id->channel_count = packet->read(packet, 8);
+        if (id->channel_count < 1) {
             br_etry(packet);
             return VORBIS_INVALID_CHANNEL_COUNT;
         }
 
-        identification->sample_rate = packet->read(packet, 32);
-        if (identification->sample_rate < 1) {
+        id->sample_rate = packet->read(packet, 32);
+        if (id->sample_rate < 1) {
             br_etry(packet);
             return VORBIS_INVALID_SAMPLE_RATE;
         }
 
-        identification->bitrate_maximum = packet->read(packet, 32);
-        identification->bitrate_nominal = packet->read(packet, 32);
-        identification->bitrate_minimum = packet->read(packet, 32);
-        identification->blocksize_0 = 1 << packet->read(packet, 4);
-        if ((identification->blocksize_0 != 64) &&
-            (identification->blocksize_0 != 128) &&
-            (identification->blocksize_0 != 256) &&
-            (identification->blocksize_0 != 512) &&
-            (identification->blocksize_0 != 1024) &&
-            (identification->blocksize_0 != 2048) &&
-            (identification->blocksize_0 != 4096) &&
-            (identification->blocksize_0 != 8192)) {
+        id->bitrate_maximum = packet->read(packet, 32);
+        id->bitrate_nominal = packet->read(packet, 32);
+        id->bitrate_minimum = packet->read(packet, 32);
+        id->blocksize_0 = 1 << packet->read(packet, 4);
+        if ((id->blocksize_0 != 64) &&
+            (id->blocksize_0 != 128) &&
+            (id->blocksize_0 != 256) &&
+            (id->blocksize_0 != 512) &&
+            (id->blocksize_0 != 1024) &&
+            (id->blocksize_0 != 2048) &&
+            (id->blocksize_0 != 4096) &&
+            (id->blocksize_0 != 8192)) {
             br_etry(packet);
             return VORBIS_INVALID_BLOCK_SIZE_0;
         }
 
-        identification->blocksize_1 = 1 << packet->read(packet, 4);
-        if ((identification->blocksize_1 != 64) &&
-            (identification->blocksize_1 != 128) &&
-            (identification->blocksize_1 != 256) &&
-            (identification->blocksize_1 != 512) &&
-            (identification->blocksize_1 != 1024) &&
-            (identification->blocksize_1 != 2048) &&
-            (identification->blocksize_1 != 4096) &&
-            (identification->blocksize_1 != 8192)) {
+        id->blocksize_1 = 1 << packet->read(packet, 4);
+        if ((id->blocksize_1 != 64) &&
+            (id->blocksize_1 != 128) &&
+            (id->blocksize_1 != 256) &&
+            (id->blocksize_1 != 512) &&
+            (id->blocksize_1 != 1024) &&
+            (id->blocksize_1 != 2048) &&
+            (id->blocksize_1 != 4096) &&
+            (id->blocksize_1 != 8192)) {
             br_etry(packet);
             return VORBIS_INVALID_BLOCK_SIZE_1;
         }
 
-        if (identification->blocksize_0 > identification->blocksize_1) {
+        if (id->blocksize_0 > id->blocksize_1) {
             br_etry(packet);
             return VORBIS_INVALID_BLOCK_SIZE_1;
         }

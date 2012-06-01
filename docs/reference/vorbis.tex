@@ -15,6 +15,12 @@ All of the fields within Ogg Vorbis are little-endian.
 \begin{figure}[h]
 \includegraphics{figures/vorbis/stream.pdf}
 \end{figure}
+\par
+\noindent
+The first Ogg page contains the identification packet.
+The second Ogg packet contains the comment.
+The third Ogg packet contains the setup.
+Subsequent Ogg packets contain audio.
 
 \clearpage
 
@@ -67,6 +73,29 @@ $\text{\BLOCKSIZE}_1 \leftarrow 2 ^ {(\text{\READ 4 unsigned bits})}$\;
 \begin{figure}[h]
 \includegraphics{figures/vorbis/identification.pdf}
 \end{figure}
+
+\clearpage
+
+\subsubsection{Identification Packet Example}
+
+\begin{figure}[h]
+  \includegraphics{figures/vorbis/identification_example.pdf}
+\end{figure}
+{\relsize{-1}
+\begin{tabular}{rl}
+packet type : & \texttt{1} \\
+vorbis : & \texttt{"vorbis"} \\
+version : & \texttt{0} \\
+channels : & \texttt{2} \\
+sample rate : & \texttt{44100} Hz \\
+maximum bitrate : & \texttt{0} \\
+nominal bitrate : & \texttt{112000} \\
+minimum bitrate : & \texttt{0} \\
+$\text{block size}_0$ : & $2 ^ \texttt{8} = 256$ \\
+$\text{block size}_1$ : & $2 ^ \texttt{11} = 2048$ \\
+framing : & 1 \\
+\end{tabular}
+}
 
 \clearpage
 
@@ -138,174 +167,543 @@ is case-insensitive and may occur in multiple comment strings.
 
 \clearpage
 
-\subsection{the Setup Packet}
-
-The third packet in the Vorbis stream is the Setup packet.
+\subsubsection{Comment Packet Example}
 
 \begin{figure}[h]
-\includegraphics{figures/vorbis/setup_packet.pdf}
+  \includegraphics{figures/vorbis/comment-example.pdf}
 \end{figure}
+\begin{table}[h]
+\begin{tabular}{rl}
+  vendor string : & \texttt{"Xiph.Org libVorbis I 20090709"} \\
+  comment string count : & \texttt{2} \\
+  $\text{comment string}_0$ : & \texttt{"title=Title"} \\
+  $\text{comment string}_1$ : & \texttt{"artist=Artist"} \\
+\end{tabular}
+\end{table}
 
-It contains six sections of data required for decoding.
+%% \subsection{the Setup Packet}
 
-\clearpage
+%% The third packet in the Vorbis stream is the Setup packet.
+%% \par
+%% \noindent
+%% {\relsize{-1}
+%% \ALGORITHM{the third Ogg packet}{Vorbis decoding information}
+%% \SetKwData{CBCOUNT}{codebook count}
+%% \SetKwData{CB}{codebook}
+%% \SetKwData{VTCOUNT}{time count}
+%% \SetKwData{FLCOUNT}{floor count}
+%% \SetKwData{FLTYPE}{floor type}
+%% \SetKwData{FLOOR}{floor}
+%% \SetKwData{RESCOUNT}{residue count}
+%% \SetKwData{RESTYPE}{residue type}
+%% \SetKwData{RESIDUE}{residue}
+%% \SetKwData{CHANNELS}{audio channels}
+%% \SetKwData{MAPCOUNT}{mapping count}
+%% \SetKwData{MAPCONF}{mapping configuration}
+%% \SetKwData{MODECOUNT}{mode count}
+%% \SetKwData{MODECONF}{mode configuration}
+%% \SetKwFunction{ILOG}{ilog}
+%% \ASSERT $(\text{\READ 8 unsigned bits}) = 5$\tcc*[r]{packet type}
+%% \ASSERT $(\text{\READ 6 bytes}) = \texttt{"vorbis"}$\;
+%% \BlankLine
+%% $\CBCOUNT \leftarrow \text{(\READ 8 unsigned bits)} + 1$\tcc*[r]{codebooks}
+%% \For{$i \leftarrow 0$ \emph{\KwTo}\CBCOUNT}{
+%%   $\text{\CB}_i \leftarrow$ \hyperref[vorbis:codebooks]{read codebook}\;
+%% }
+%% \BlankLine
+%% $\VTCOUNT \leftarrow \text{(\READ 6 unsigned bits)} + 1$\tcc*[r]{time domain transforms}
+%% \For{$i \leftarrow 0$ \emph{\KwTo}\VTCOUNT}{
+%%   \ASSERT $(\text{\READ 16 unsigned bits}) = 0$\;
+%% }
+%% \BlankLine
+%% $\FLCOUNT \leftarrow \text{(\READ 6 unsigned bits) + 1}$\tcc*[r]{floors}
+%% \For{$i \leftarrow 0$ \emph{\KwTo}\FLCOUNT}{
+%%   $\text{\FLTYPE}_i \leftarrow$ \READ 16 unsigned bits\;
+%%   \uIf{$0 \leq \text{\FLTYPE}_i \leq 1$}{
+%%     $\text{\FLOOR}_i \leftarrow$ \hyperref[vorbis:floors]{read floor of type $\text{\FLTYPE}_i$}\;
+%%   }
+%%   \lElse{
+%%     unsupported floor type error\;
+%%   }
+%% }
+%% \BlankLine
+%% $\RESCOUNT \leftarrow \text{(\READ 6 unsigned bits) + 1}$\tcc*[r]{residues}
+%% \For{$i \leftarrow 0$ \emph{\KwTo}\RESCOUNT}{
+%%   $\text{\RESTYPE}_i \leftarrow$ \READ 16 unsigned bits\;
+%%   \uIf{$0 \leq \text{\RESTYPE}_i \leq 2$}{
+%%     $\text{\RESIDUE}_i \leftarrow$ read residue of type $\text{\RESTYPE}_i$\;
+%%   }
+%%   \lElse{
+%%     unsupported residue type error\;
+%%   }
+%% }
+%% $\MAPCOUNT \leftarrow \text{(\READ 6 unsigned bits) + 1}$\tcc*[r]{mappings}
+%% \For{$i \leftarrow 0$ \emph{\KwTo}\MAPCOUNT}{
+%%   $\text{\MAPCONF}_i \leftarrow$ \hyperref[vorbis:mappings]{read mapping}\;
+%% }
+%% \BlankLine
+%% $\MODECOUNT \leftarrow (\text{\READ 6 unsigned bits}) + 1$\tcc*[r]{modes}
+%% \For{$i \leftarrow 0$ \emph{\KwTo}\MODECOUNT}{
+%%   $\MODECONF \leftarrow$ \hyperref[vorbis:mode]{read mode}\;
+%% }
+%% \BlankLine
+%% \ASSERT $(\text{\READ 1 unsigned bit}) = 1$\tcc*[r]{framing bit}
+%% \BlankLine
+%% \Return $\left\lbrace\begin{tabular}{l}
+%% \CBCOUNT \\
+%% \CB \\
+%% \VTCOUNT \\
+%% \FLCOUNT \\
+%% \FLTYPE \\
+%% \FLOOR \\
+%% \RESCOUNT \\
+%% \RESTYPE \\
+%% \RESIDUE \\
+%% \MAPCOUNT \\
+%% \MAPCONF \\
+%% \MODECOUNT \\
+%% \MODECONF \\
+%% \end{tabular}\right.$\;
+%% \EALGORITHM
+%% }
 
-\subsubsection{Codebooks}
+%% \clearpage
 
-The \VAR{Codebooks} section of the setup packet stores
-the Huffman lookup trees.
+%% \begin{figure}[h]
+%%   \includegraphics{figures/vorbis/setup_packet.pdf}
+%% \end{figure}
 
-\begin{figure}[h]
-\includegraphics{figures/vorbis/codebooks.pdf}
-\end{figure}
-\par
-\noindent
-This section contains two optional sets of data,
-a list of Huffman table entry lengths
-and the lookup table values each entry length may resolve to.
-\VAR{Total Entries} indicates the total number of entry lengths present.
-These lengths may be stored in one of three ways:
-unordered without sparse entries, unordered with sparse entries
-and ordered.
+%% \clearpage
 
-Unordered without sparse entries is the simplest method;
-each entry length is stored as a 5 bit value, plus one.
-Unordered with sparse entries is almost as simple;
-each 5 bit length is prefixed by a single bit indicating
-whether it is present or not.
+%% \subsubsection{Codebooks}
+%% \label{vorbis:codebooks}
+%% {\relsize{-1}
+%% \ALGORITHM{Vorbis setup packet data}{Vorbis codebook information}
+%% \SetKwData{CBDIMENSIONS}{codebook dimensions}
+%% \SetKwData{CBENTRIES}{codebook entries}
+%% \SetKwData{ORDERED}{ordered}
+%% \SetKwData{SPARSE}{sparse}
+%% \SetKwData{LENGTH}{codeword length}
+%% \SetKwData{CENTRY}{current entry}
+%% \SetKwData{CLENGTH}{current length}
+%% \SetKwData{NUMBER}{number}
+%% \SetKwData{CBLOOKUPTYPE}{codebook lookup type}
+%% \SetKwData{CBMINVALUE}{codecook minimum value}
+%% \SetKwData{CBDELTAVALUE}{codebook delta value}
+%% \SetKwData{CBVALUEBITS}{codebook value bits}
+%% \SetKwData{CBSEQUENCEP}{codebook sequence p}
+%% \SetKwData{CBLOOKUPVAL}{codebook lookup values}
+%% \SetKwData{CBMULT}{codebook multiplicands}
+%% \SetKwFunction{ILOG}{ilog}
+%% \SetKwFunction{FLOAT}{float32\_unpack}
+%% \SetKwFunction{LOOKUPVALS}{lookup1\_values}
+%% \ASSERT $\text{(\READ 24 unsigned bits) = \texttt{0x564342}}$\tcc*[r]{sync pattern}
+%% $\CBDIMENSIONS \leftarrow$ \READ 16 unsigned bits\;
+%% $\CBENTRIES \leftarrow$ \READ 24 unsigned bits\;
+%% $\ORDERED \leftarrow$ \READ 1 unsigned bit\;
+%% \eIf{$\ORDERED = 0$}{
+%%   $\SPARSE \leftarrow$ \READ 1 unsigned bit\;
+%%   \For{$i \leftarrow 0$ \emph{\KwTo}\CBENTRIES}{
+%%     \eIf{$\SPARSE = 1$}{
+%%       \eIf{$(\textnormal{\READ 1 unsigned bit}) = 1$}{
+%%         $\text{\LENGTH}_i \leftarrow (\text{\READ 5 unsigned bits}) + 1$\;
+%%       }{
+%%         $\text{\LENGTH}_i \leftarrow$ marked as unused\;
+%%       }
+%%     }{
+%%       $\text{\LENGTH}_i \leftarrow (\text{\READ 5 unsigned bits}) + 1$\;
+%%     }
+%%   }
+%% }{
+%%   $\CENTRY \leftarrow 0$\;
+%%   $\CLENGTH \leftarrow (\text{\READ 5 unsigned bits}) + 1$\;
+%%   \Repeat{$\CENTRY = \CBENTRIES$}{
+%%     $\NUMBER \leftarrow$ \READ $\ILOG(\CBENTRIES - \CENTRY)$ unsigned bits\;
+%%     \ASSERT $(\CENTRY + \NUMBER) \leq \CBENTRIES$\;
+%%     \For{$i \leftarrow 0$ \emph{\KwTo}\NUMBER}{
+%%       $\text{\LENGTH}_{\CENTRY} \leftarrow \CLENGTH$\;
+%%       $\CENTRY \leftarrow \CENTRY + 1$\;
+%%     }
+%%     $\CLENGTH \leftarrow \CLENGTH + 1$\;
+%%   }
+%% }
+%% \BlankLine
+%% $\CBLOOKUPTYPE \leftarrow$ \READ 4 unsigned bits\;
+%% \uIf{$1 \leq \CBLOOKUPTYPE \leq 2$}{
+%%   $\CBMINVALUE \leftarrow \FLOAT(\text{\READ 32 unsigned bits})$\;
+%%   $\CBDELTAVALUE \leftarrow \FLOAT(\text{\READ 32 unsigned bits})$\;
+%%   $\CBVALUEBITS \leftarrow (\text{\READ 4 unsigned bits}) + 1$\;
+%%   $\CBSEQUENCEP \leftarrow$ \READ 1 unsigned bit\;
+%%   \eIf{$\CBLOOKUPTYPE = 1$}{
+%%     $\CBLOOKUPVAL \leftarrow \LOOKUPVALS(\CBENTRIES~,~\CBDIMENSIONS)$\;
+%%   }{
+%%     $\CBLOOKUPVAL \leftarrow \CBENTRIES \times \CBDIMENSIONS$\;
+%%   }
+%%   \For{$i \leftarrow 0$ \emph{\KwTo}\CBLOOKUPVAL}{
+%%     $\text{\CBMULT}_i \leftarrow$ \READ $(\CBVALUEBITS)$ unsigned bits\;
+%%   }
+%% }
+%% \ElseIf{$\CBLOOKUPTYPE > 2$}{
+%%   invalid lookup type error\;
+%% }
+%% \EALGORITHM
+%% }
 
-Ordered entries are more complicated.
-The initial length is stored as a 5 bit value, plus one.
-The number of entries with that length are stored as a series of
-\VAR{Length Count} values in the bitstream, whose sizes
-are determined by the number of remaining entries.
-\begin{align*}
-\text{Length Count}_i \text{ Size} &= \lfloor\log_2 (\text{Remaining Entries}_i)\rfloor + 1
-\intertext{For example, given a \VAR{Total Entries} value of 8 and an
-\VAR{Initial Length} value of 2:}
-\text{Length Count}_0 \text{ Size} &= \lfloor\log_2 8\rfloor + 1 = 4 \text{ bits}
-\end{align*}
-which means we read a 4 bit value to determine how many
-\VAR{Entry Length} values are 2 bits long.
-Therefore, if $\text{Length Count}_0$ is read from the bitstream as 2,
-our \VAR{Entry Length} values are:
-\begin{align*}
-\text{Entry Length}_0 &= 2 \\
-\text{Entry Length}_1 &= 2
-\end{align*}
-and the next set of lengths are 3 bits long.
-Since we still have remaining entries, we read another \VAR{Length Count}
-value of the length:
-\begin{equation*}
-\text{Length Count}_1 \text{ Size} = \lfloor\log_2 6\rfloor + 1 = 3 \text{ bits}
-\end{equation*}
-Thus, if $\text{Length Count}_1$ is also a value of 2 from the bitstream,
-our \VAR{Entry Length} values are:
-\begin{align*}
-\text{Entry Length}_2 &= 3 \\
-\text{Entry Length}_3 &= 3
-\end{align*}
-and the next set of lengths are 4 bits long.
-We then read one more \VAR{Length Count} value:
-\begin{equation*}
-\text{Length Count}_2 \text{ Size} = \lfloor\log_2 4\rfloor + 1 = 3 \text{ bits}
-\end{equation*}
-Finally, if $\text{Length Count}_2$ is 4 from the bitstream,
-our \VAR{Entry Length} values are:
-\begin{align*}
-\text{Entry Length}_4 &= 4 \\
-\text{Entry Length}_5 &= 4 \\
-\text{Entry Length}_6 &= 4 \\
-\text{Entry Length}_7 &= 4
-\end{align*}
-At this point, we've assigned lengths to all the values
-indicated by \VAR{Total Entries}, so the process is complete.
+%% \clearpage
 
-\clearpage
+%% {\relsize{-1}
+%% \begin{algorithm}[H]
+%%   \SetKwData{CBLOOKUPTYPE}{codebook lookup type}
+%%   \SetKwData{LAST}{last}
+%%   \SetKwData{IDIVISOR}{index divisor}
+%%   \SetKwData{MULTOFFSET}{multiplicant offset}
+%%   \SetKwData{CBDIMENSIONS}{codebook dimensions}
+%%   \SetKwData{LOOKUPOFFSET}{lookup offset} %???
+%%   \SetKwData{CBLOOKUPVAL}{codebook lookup values}
+%%   \SetKwData{VECTOR}{vector element}
+%%   \SetKwData{CBMULT}{codebook multiplicands}
+%%   \SetKwData{CBDELTAVALUE}{codebook delta value}
+%%   \SetKwData{CBMINVALUE}{codecook minimum value}
+%%   \SetKwData{CBSEQUENCEP}{codebook sequence p}
+%%   \DontPrintSemicolon
+%%   \uIf{$\CBLOOKUPTYPE = 1$}{
+%%     $\LAST = 0$\;
+%%     $\IDIVISOR \leftarrow 1$\;
+%%     \For{$i \leftarrow 0$ \emph{\KwTo}\CBDIMENSIONS}{
+%%       $\MULTOFFSET \leftarrow \lfloor\LOOKUPOFFSET \div \IDIVISOR \rfloor \bmod \CBLOOKUPVAL$\;
+%%       $\text{\VECTOR}_{i} \leftarrow \text{\CBMULT}_{\MULTOFFSET} \times \CBDELTAVALUE + \CBMINVALUE + \LAST$\;
+%%       \If{$\CBSEQUENCEP = 1$}{
+%%         $\LAST \leftarrow \text{\VECTOR}_i$\;
+%%       }
+%%       $\IDIVISOR \leftarrow \IDIVISOR \times \CBLOOKUPVAL$\;
+%%     }
+%%   }
+%%   \ElseIf{$\CBLOOKUPTYPE = 2$}{
+%%     $\LAST = 0$\;
+%%     $\MULTOFFSET \leftarrow \LOOKUPOFFSET \times \CBDIMENSIONS$\;
+%%     \For{$i \leftarrow 0$ \emph{\KwTo}\CBDIMENSIONS}{
+%%       $\text{\VECTOR}_i \leftarrow \text{\CBMULT}_{\MULTOFFSET} \times \CBDELTAVALUE + \CBMINVALUE + \LAST$\;
+%%       \If{$\CBSEQUENCEP = 1$}{
+%%         $\LAST \leftarrow \text{\VECTOR}_i$\;
+%%       }
+%%       $\MULTOFFSET \leftarrow \MULTOFFSET + 1$\;
+%%     }
+%%   }
+%%   \Return \VECTOR\;
+%% \end{algorithm}
+%% }
 
-\subsubsection{Transforming Entry Lengths to Huffman Tree}
+%% \clearpage
 
-Once a set of entry length values is parsed from the stream,
-transforming them into a Huffman decision tree
-is performed by taking our entry lengths from
-$\text{Entry Length}_0$ to $\text{Entry Length}_{total - 1}$
-and placing them in the tree recursively such that the 0 bit
-branches are populated first.
-For example, given the parsed entry length values:
-\begin{align*}
-\text{Entry Length}_0 &= 2 & \text{Entry Length}_1 &= 4 & \text{Entry Length}_2 &= 4 & \text{Entry Length}_3 &= 4 \\
-\text{Entry Length}_4 &= 4 & \text{Entry Length}_5 &= 2 & \text{Entry Length}_6 &= 3 & \text{Entry Length}_7 &= 3
-\end{align*}
-\par
-\noindent
-We first place $\text{Entry Length}_0$ into the Huffman tree as a 2 bit value.
-Since the zero bits are filled first when adding a node 2 bits deep,
-it initially looks like:
+%% \subsubsection{Floors}
+%% \label{vorbis:floors}
 
-\begin{figure}[h]
-\includegraphics{figures/vorbis/huffman_example1.pdf}
-\caption{$\text{Entry Length}_0$ placed with 2 bits}
-\end{figure}
-\par
-\noindent
-We then place $\text{Entry Length}_1$ into the Huffman tree as a 4 bit value.
-Since the \texttt{0 0} branch is already populated by $\text{Entry Length}_0$,
-we switch to the empty \texttt{0 1} branch as follows:
-\begin{figure}[h]
-\includegraphics{figures/vorbis/huffman_example2.pdf}
-\caption{$\text{Entry Length}_1$ placed with 4 bits}
-\end{figure}
-\par
-\noindent
-The 4 bit $\text{Entry Length}_2$, $\text{Entry Length}_3$ and $\text{Entry Length}_4$
-values are placed similarly along the \texttt{0 1} branch:
-\begin{figure}[h]
-\includegraphics{figures/vorbis/huffman_example3.pdf}
-\caption{$\text{Entry Length}_2$, $\text{Entry Length}_3$ and $\text{Entry Length}_4$ placed with 4 bits}
-\end{figure}
-\par
-\noindent
-Finally, the remaining three entries are populated along the \texttt{1} branch:
-\begin{figure}[h]
-\includegraphics{figures/vorbis/huffman_example4.pdf}
-\caption{$\text{Entry Length}_5$, $\text{Entry Length}_6$ and $\text{Entry Length}_7$ are placed}
-\end{figure}
+%% {\relsize{-1}
+%% \ALGORITHM{Vorbis setup packet data, floor type, maximum codebook number}{Vorbis floor information}
+%% \SetKwData{FLTYPE}{floor type}
+%% \SetKwData{ZORDER}{floor 0 order}
+%% \SetKwData{ZRATE}{floor 0 rate}
+%% \SetKwData{ZBARKMAPSIZE}{floor 0 bark map size}
+%% \SetKwData{ZAMPBITS}{floor 0 amplitude bits}
+%% \SetKwData{ZAMPOFFSET}{floor 0 amplitude offset}
+%% \SetKwData{ZNUMBOOKS}{floor 0 number of books}
+%% \SetKwData{ZBOOKLIST}{floor 0 book list}
+%% \SetKwData{MAXCODEBOOK}{maximum codebook number}
+%% \SetKwData{OPARTITIONS}{floor 1 partitions}
+%% \SetKwData{OPCLASSLIST}{floor 1 partition class list}
+%% \SetKwData{OCLASSLIST}{floor 1 class subclasses}
+%% \SetKwData{ODIMENSIONS}{floor 1 class dimensions}
+%% \SetKwData{OMASTERBOOKS}{floor 1 class master books}
+%% \SetKwData{OSUBCLASSBOOKS}{floor 1 subclass books}
+%% \SetKwData{OMULT}{floor 1 multiplier}
+%% \SetKwData{OXLIST}{floor 1 X list}
+%% \SetKwData{OVALUES}{floor 1 values}
+%% \SetKwData{MAXCLASS}{maximum class}
+%% \SetKwData{RANGEBITS}{range bits}
+%% \SetKwData{CURCLASSNUM}{current class number}
+%% \eIf{$\FLTYPE = 0$}{
+%%   \begin{tabular}{rcl}
+%%     \ZORDER & $\leftarrow$ & \READ 8 unsigned bits \\
+%%     \ZRATE & $\leftarrow$ & \READ 8 unsigned bits \\
+%%     \ZBARKMAPSIZE & $\leftarrow$ & \READ 16 unsigned bits \\
+%%     \ZAMPBITS & $\leftarrow$ & \READ 6 unsigned bits \\
+%%     \ZAMPOFFSET & $\leftarrow$ & \READ 8 unsigned bits \\
+%%     \ZNUMBOOKS & $\leftarrow$ & $\text{(\READ 4 unsigned bits)} + 1$ \\
+%%   \end{tabular}\;
+%%   \For{$i \leftarrow 0$ \emph{\KwTo}\ZNUMBOOKS}{
+%%     $\text{\ZBOOKLIST}_i \leftarrow$ \READ 8 unsigned bits\;
+%%     \ASSERT $\text{\ZBOOKLIST}_i \leq \MAXCODEBOOK$\;
+%%   }
+%% }{
+%%   $\OPARTITIONS \leftarrow$ \READ 5 unsigned bits\;
+%%   \For{$i \leftarrow 0$ \emph{\KwTo}\OPARTITIONS}{
+%%     $\text{\OPCLASSLIST}_i \leftarrow$ \READ 4 unsigned bits\;
+%%   }
+%%   $\MAXCLASS \leftarrow$ maximum value in $\text{\OPCLASSLIST}$, or 0 if $\OPARTITIONS = 0$\;
+%%   \For{$i \leftarrow 0$ \emph{\KwTo}\MAXCLASS}{
+%%     $\text{\ODIMENSIONS}_i \leftarrow (\text{\READ 3 unsigned bits}) + 1$\;
+%%     $\text{\OCLASSLIST}_i \leftarrow$ \READ 2 unsigned bits\;
+%%     \If{$\text{\OCLASSLIST}_i \neq 0$}{
+%%       $\text{\OMASTERBOOKS}_i \leftarrow$ \READ 8 unsigned bits\;
+%%     }
+%%     \For{$j \leftarrow 0$ \emph{\KwTo}$2 ^ {\text{\OCLASSLIST}_i} - 1$}{
+%%       $\text{\OSUBCLASSBOOKS}_{i~j} \leftarrow (\text{\READ 8 unsigned bits} - 1)$\;
+%%     }
+%%   }
+%%   $\OMULT \leftarrow (\text{\READ 2 unsigned bits}) + 1$\;
+%%   $\RANGEBITS \leftarrow$ \READ 4 unsigned bits\;
+%%   $\text{\OXLIST}_0 \leftarrow 0$\;
+%%   $\text{\OXLIST}_1 \leftarrow 2 ^ {\RANGEBITS}$\;
+%%   $\OVALUES \leftarrow 2$\;
+%%   \For{$i \leftarrow 0$ \emph{\KwTo}\OPARTITIONS}{
+%%     $\CURCLASSNUM \leftarrow \text{\OPCLASSLIST}_i$\;
+%%     \For{$j \leftarrow 0$ \emph{\KwTo}$\text{\ODIMENSIONS}_{\CURCLASSNUM}$}{
+%%       $\text{\OXLIST}_{\OVALUES} \leftarrow$ \READ $(\RANGEBITS)$ unsigned bits\;
+%%       $\OVALUES \leftarrow \OVALUES + 1$\;
+%%     }
+%%   }
+%% }
+%% \EALGORITHM
+%% }
 
-\subsubsection{The Lookup Table}
+%% \clearpage
 
-The lookup table is only present if \VAR{Lookup Type} is 1 or 2.
-A \VAR{Lookup Type} of 0 indicates no lookup table, while anything
-greater than 2 is an error.
+%% \subsubsection{Mappings}
+%% \label{vorbis:mappings}
+%% {\relsize{-1}
+%% \ALGORITHM{Vorbis setup packet data}{Vorbis mapping information}
+%% \SetKwData{CHANNELS}{audio channels}
+%% \SetKwData{SUBMAPS}{mapping submaps}
+%% \SetKwData{MAPCOUPSTEPS}{mapping coupling steps}
+%% \SetKwData{MAPMAG}{mapping magnitude}
+%% \SetKwData{MAPANGLE}{mapping angle}
+%% \SetKwData{MAPMUX}{mapping mux}
+%% \SetKwData{MAPSUBFLOOR}{mapping submap floor}
+%% \SetKwData{MAPSUBRES}{mapping submap residue}
+%% \ASSERT $(\text{\READ 16 unsigned bits}) = 0$\tcc*[r]{mapping type}
+%% \eIf{$(\textnormal{\READ 1 unsigned bit}) = 1$}{
+%%   $\text{\SUBMAPS} \leftarrow \text{(\READ 4 unsigned bits) + 1}$\;
+%% }{
+%%   $\text{\SUBMAPS} \leftarrow 1$\;
+%% }
+%% \eIf{$(\textnormal{\READ 1 unsigned bit}) = 1$}{
+%%   $\text{\MAPCOUPSTEPS} \leftarrow (\text{\READ 8 unsigned bits}) + 1$\;
+%%   \For{$j \leftarrow 0$ \emph{\KwTo}$\text{\MAPCOUPSTEPS}_i$}{
+%%     $\text{\MAPMAG}_{j} \leftarrow$ \READ $\ILOG(\CHANNELS - 1)$ unsigned bits\;
+%%     $\text{\MAPANGLE}_{j} \leftarrow$ \READ $\ILOG(\CHANNELS - 1)$ unsigned bits\;
+%%     %%FIXME - add assertion here
+%%   }
+%% }{
+%%   $\text{\MAPCOUPSTEPS} \leftarrow 0$\;
+%% }
+%% \ASSERT $(\text{\READ 2 unsigned bits}) = 0$\tcc*[r]{reserved}
+%% \If{$\text{\SUBMAPS}  > 1$}{
+%%   \For{$j \leftarrow 0$ \emph{\KwTo}\CHANNELS}{
+%%     $\text{\MAPMUX}_{j} \leftarrow$ \READ 4 unsigned bits\;
+%%     \ASSERT $\text{\MAPMUX}_{j} < \text{\SUBMAPS}_i$\;
+%%   }
+%% }
+%% \For{$j \leftarrow 0$ \emph{\KwTo}$\text{\SUBMAPS}$}{
+%%   \SKIP 8 bits\tcc*[r]{unused time configuration placeholder}
+%%   $\text{\MAPSUBFLOOR}_{j} \leftarrow$ \READ 8 unsigned bits\;
+%%   \ASSERT $\text{\MAPSUBFLOOR}_{j} \leq \text{highest number floor configurated for bitstream}$\;
+%%   $\text{\MAPSUBRES}_{j} \leftarrow$ \READ 8 unsigned bits\;
+%%   \ASSERT $\text{\MAPSUBRES}_{j} \leq \text{highest number residue configured for bitstream}$\;
+%% }
+%% \Return $\left\lbrace\begin{tabular}{l}
+%% \SUBMAPS \\
+%% \MAPCOUPSTEPS \\
+%% \MAPMAG \\
+%% \MAPANGLE \\
+%% \MAPMUX \\
+%% \MAPSUBFLOOR \\
+%% \MAPSUBRES \\
+%% \end{tabular}\right.$\;
+%% \EALGORITHM
+%% }
 
-\VAR{Minimum Value} and \VAR{Delta Value} are 32-bit floating point values
-which can be parsed in the following way:
-\begin{figure}[h]
-\includegraphics{figures/vorbis/float32.pdf}
-\end{figure}
-\begin{equation*}
-\text{Float} =
-\begin{cases}
-\text{Mantissa} \times 2 ^ {\text{Exponent} - 788} & \text{ if Sign = 0} \\
--\text{Mantissa} \times 2 ^ {\text{Exponent} - 788} & \text{ if Sign = 1}
-\end{cases}
-\end{equation*}
-\par
-\VAR{Value Bits} indicates the size of each value in bits, plus one.
-\VAR{Sequence P} is a 1 bit flag.
-The total number of multiplicand values depends on whether \VAR{Lookup Type}
-is 1 or 2.
-\begin{align*}
-\intertext{if \VAR{Lookup Type} = 1:}
-\text{Multiplicand Count} &= \text{max}(\text{Int}) ^ \text{Dimensions} \text{ where } \text{Int} ^ \text{Dimensions} \leq \text{Total Entries}
-\intertext{if \VAR{Lookup Type} = 2:}
-\text{Multiplicand Count} &= \text{Dimensions} \times \text{Total Entries}
-\end{align*}
-\par
-The \VAR{Multiplicand} values themselves are a list of unsigned integers,
-each \VAR{Value Bits} (+ 1) bits large.
+%% \clearpage
 
+%% \subsubsection{Modes}
+%% \label{vorbis:mode}
+%% {\relsize{-1}
+%% \ALGORITHM{Vorbis setup packet data}{Vorbis modes information}
+%% \SetKwData{MODEBLOCKFLAG}{mode block flag}
+%% \SetKwData{MODEWINDOWTYPE}{mode window type}
+%% \SetKwData{MODETRANSFORMTYPE}{mode transform type}
+%% \SetKwData{MODEMAPPING}{mode mapping}
+%% $\text{\MODEBLOCKFLAG} \leftarrow$ \READ 1 unsigned bit\;
+%% $\text{\MODEWINDOWTYPE} \leftarrow$ \READ 16 unsigned bits\;
+%% \ASSERT $\text{\MODEWINDOWTYPE} = 0$\;
+%% $\text{\MODETRANSFORMTYPE} \leftarrow$ \READ 16 unsigned bits\;
+%% \ASSERT $\text{\MODETRANSFORMTYPE} = 0$\;
+%% $\text{\MODEMAPPING} \leftarrow$ \READ 8 unsigned bits\;
+%% \ASSERT $\text{\MODEMAPPING} \leq \text{highest number mapping in use}$\;
+%% \Return $\left\lbrace\begin{tabular}{l}
+%% \MODEBLOCKFLAG \\
+%% \MODEWINDOWTYPE \\
+%% \MODETRANSFORMTYPE \\
+%% \MODEMAPPING \\
+%% \end{tabular}\right.$\;
+%% \EALGORITHM
+%% }
 
-\clearpage
+%% \clearpage
+
+%% \subsubsection{Codebooks}
+
+%% The \VAR{Codebooks} section of the setup packet stores
+%% the Huffman lookup trees.
+
+%% \begin{figure}[h]
+%% \includegraphics{figures/vorbis/codebooks.pdf}
+%% \end{figure}
+%% \par
+%% \noindent
+%% This section contains two optional sets of data,
+%% a list of Huffman table entry lengths
+%% and the lookup table values each entry length may resolve to.
+%% \VAR{Total Entries} indicates the total number of entry lengths present.
+%% These lengths may be stored in one of three ways:
+%% unordered without sparse entries, unordered with sparse entries
+%% and ordered.
+
+%% Unordered without sparse entries is the simplest method;
+%% each entry length is stored as a 5 bit value, plus one.
+%% Unordered with sparse entries is almost as simple;
+%% each 5 bit length is prefixed by a single bit indicating
+%% whether it is present or not.
+
+%% Ordered entries are more complicated.
+%% The initial length is stored as a 5 bit value, plus one.
+%% The number of entries with that length are stored as a series of
+%% \VAR{Length Count} values in the bitstream, whose sizes
+%% are determined by the number of remaining entries.
+%% \begin{align*}
+%% \text{Length Count}_i \text{ Size} &= \lfloor\log_2 (\text{Remaining Entries}_i)\rfloor + 1
+%% \intertext{For example, given a \VAR{Total Entries} value of 8 and an
+%% \VAR{Initial Length} value of 2:}
+%% \text{Length Count}_0 \text{ Size} &= \lfloor\log_2 8\rfloor + 1 = 4 \text{ bits}
+%% \end{align*}
+%% which means we read a 4 bit value to determine how many
+%% \VAR{Entry Length} values are 2 bits long.
+%% Therefore, if $\text{Length Count}_0$ is read from the bitstream as 2,
+%% our \VAR{Entry Length} values are:
+%% \begin{align*}
+%% \text{Entry Length}_0 &= 2 \\
+%% \text{Entry Length}_1 &= 2
+%% \end{align*}
+%% and the next set of lengths are 3 bits long.
+%% Since we still have remaining entries, we read another \VAR{Length Count}
+%% value of the length:
+%% \begin{equation*}
+%% \text{Length Count}_1 \text{ Size} = \lfloor\log_2 6\rfloor + 1 = 3 \text{ bits}
+%% \end{equation*}
+%% Thus, if $\text{Length Count}_1$ is also a value of 2 from the bitstream,
+%% our \VAR{Entry Length} values are:
+%% \begin{align*}
+%% \text{Entry Length}_2 &= 3 \\
+%% \text{Entry Length}_3 &= 3
+%% \end{align*}
+%% and the next set of lengths are 4 bits long.
+%% We then read one more \VAR{Length Count} value:
+%% \begin{equation*}
+%% \text{Length Count}_2 \text{ Size} = \lfloor\log_2 4\rfloor + 1 = 3 \text{ bits}
+%% \end{equation*}
+%% Finally, if $\text{Length Count}_2$ is 4 from the bitstream,
+%% our \VAR{Entry Length} values are:
+%% \begin{align*}
+%% \text{Entry Length}_4 &= 4 \\
+%% \text{Entry Length}_5 &= 4 \\
+%% \text{Entry Length}_6 &= 4 \\
+%% \text{Entry Length}_7 &= 4
+%% \end{align*}
+%% At this point, we've assigned lengths to all the values
+%% indicated by \VAR{Total Entries}, so the process is complete.
+
+%% \clearpage
+
+%% \subsubsection{Transforming Entry Lengths to Huffman Tree}
+
+%% Once a set of entry length values is parsed from the stream,
+%% transforming them into a Huffman decision tree
+%% is performed by taking our entry lengths from
+%% $\text{Entry Length}_0$ to $\text{Entry Length}_{total - 1}$
+%% and placing them in the tree recursively such that the 0 bit
+%% branches are populated first.
+%% For example, given the parsed entry length values:
+%% \begin{align*}
+%% \text{Entry Length}_0 &= 2 & \text{Entry Length}_1 &= 4 & \text{Entry Length}_2 &= 4 & \text{Entry Length}_3 &= 4 \\
+%% \text{Entry Length}_4 &= 4 & \text{Entry Length}_5 &= 2 & \text{Entry Length}_6 &= 3 & \text{Entry Length}_7 &= 3
+%% \end{align*}
+%% \par
+%% \noindent
+%% We first place $\text{Entry Length}_0$ into the Huffman tree as a 2 bit value.
+%% Since the zero bits are filled first when adding a node 2 bits deep,
+%% it initially looks like:
+
+%% \begin{figure}[h]
+%% \includegraphics{figures/vorbis/huffman_example1.pdf}
+%% \caption{$\text{Entry Length}_0$ placed with 2 bits}
+%% \end{figure}
+%% \par
+%% \noindent
+%% We then place $\text{Entry Length}_1$ into the Huffman tree as a 4 bit value.
+%% Since the \texttt{0 0} branch is already populated by $\text{Entry Length}_0$,
+%% we switch to the empty \texttt{0 1} branch as follows:
+%% \begin{figure}[h]
+%% \includegraphics{figures/vorbis/huffman_example2.pdf}
+%% \caption{$\text{Entry Length}_1$ placed with 4 bits}
+%% \end{figure}
+%% \par
+%% \noindent
+%% The 4 bit $\text{Entry Length}_2$, $\text{Entry Length}_3$ and $\text{Entry Length}_4$
+%% values are placed similarly along the \texttt{0 1} branch:
+%% \begin{figure}[h]
+%% \includegraphics{figures/vorbis/huffman_example3.pdf}
+%% \caption{$\text{Entry Length}_2$, $\text{Entry Length}_3$ and $\text{Entry Length}_4$ placed with 4 bits}
+%% \end{figure}
+%% \par
+%% \noindent
+%% Finally, the remaining three entries are populated along the \texttt{1} branch:
+%% \begin{figure}[h]
+%% \includegraphics{figures/vorbis/huffman_example4.pdf}
+%% \caption{$\text{Entry Length}_5$, $\text{Entry Length}_6$ and $\text{Entry Length}_7$ are placed}
+%% \end{figure}
+
+%% \subsubsection{The Lookup Table}
+
+%% The lookup table is only present if \VAR{Lookup Type} is 1 or 2.
+%% A \VAR{Lookup Type} of 0 indicates no lookup table, while anything
+%% greater than 2 is an error.
+
+%% \VAR{Minimum Value} and \VAR{Delta Value} are 32-bit floating point values
+%% which can be parsed in the following way:
+%% \begin{figure}[h]
+%% \includegraphics{figures/vorbis/float32.pdf}
+%% \end{figure}
+%% \begin{equation*}
+%% \text{Float} =
+%% \begin{cases}
+%% \text{Mantissa} \times 2 ^ {\text{Exponent} - 788} & \text{ if Sign = 0} \\
+%% -\text{Mantissa} \times 2 ^ {\text{Exponent} - 788} & \text{ if Sign = 1}
+%% \end{cases}
+%% \end{equation*}
+%% \par
+%% \VAR{Value Bits} indicates the size of each value in bits, plus one.
+%% \VAR{Sequence P} is a 1 bit flag.
+%% The total number of multiplicand values depends on whether \VAR{Lookup Type}
+%% is 1 or 2.
+%% \begin{align*}
+%% \intertext{if \VAR{Lookup Type} = 1:}
+%% \text{Multiplicand Count} &= \text{max}(\text{Int}) ^ \text{Dimensions} \text{ where } \text{Int} ^ \text{Dimensions} \leq \text{Total Entries}
+%% \intertext{if \VAR{Lookup Type} = 2:}
+%% \text{Multiplicand Count} &= \text{Dimensions} \times \text{Total Entries}
+%% \end{align*}
+%% \par
+%% The \VAR{Multiplicand} values themselves are a list of unsigned integers,
+%% each \VAR{Value Bits} (+ 1) bits large.
+
 
 \section{Channel Assignment}
 \begin{table}[h]

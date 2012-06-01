@@ -180,9 +180,8 @@ vorbis_read_common_header(BitstreamReader *packet);
 /*reads packet data (including the common header) into "identification"
   performs EOF checking in case the packet is too small*/
 vorbis_status
-vorbis_read_identification_packet(
-                        BitstreamReader *packet,
-                        struct vorbis_identification_header *identification);
+vorbis_read_identification_packet(BitstreamReader *packet,
+                                  struct vorbis_identification_header *id);
 
 /*reads setup information (including the common header)
   performs EOF checking in case the packet is too small*/

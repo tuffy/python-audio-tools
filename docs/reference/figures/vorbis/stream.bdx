@@ -9,11 +9,12 @@
   </row>
   <spacer/>
   <row>
-    <col width=".15" id="packet0">Packet₀</col>
-    <col width=".20" id="packet1">Packet₁</col>
-    <col width=".35" id="packet2">Packet₂</col>
-    <col width=".12" id="packet3">Packet₃</col>
-    <col width=".18" style="dashed">...</col>
+    <col width=".20" id="packet0">Identification</col>
+    <col width=".15" id="packet1">Comment</col>
+    <col width=".20" id="packet2">Setup</col>
+    <col width=".15" id="packet3">Audio₀</col>
+    <col width=".15">Audio₁</col>
+    <col width=".15" style="dashed">...</col>
   </row>
   <line style="dotted">
     <start id="page0" corner="sw"/>

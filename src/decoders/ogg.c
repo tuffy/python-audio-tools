@@ -112,9 +112,6 @@ oggreader_next_segment(OggReader *reader,
 
         /*validate page checksum*/
         if (reader->current_header.checksum != reader->checksum) {
-            fprintf(stderr, "0x%4.4X 0x%4.4X\n",
-                    reader->current_header.checksum,
-                    reader->checksum);
             return OGG_CHECKSUM_MISMATCH;
         }
 

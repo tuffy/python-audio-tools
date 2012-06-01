@@ -250,12 +250,14 @@ figures/ogg/stream.pdf
 VORBIS = figures/vorbis/stream.pdf \
 figures/vorbis/codebooks.pdf \
 figures/vorbis/comment.pdf \
+figures/vorbis/comment-example.pdf \
 figures/vorbis/float32.pdf \
 figures/vorbis/huffman_example1.pdf \
 figures/vorbis/huffman_example2.pdf \
 figures/vorbis/huffman_example3.pdf \
 figures/vorbis/huffman_example4.pdf \
 figures/vorbis/identification.pdf \
+figures/vorbis/identification_example.pdf \
 figures/vorbis/ordered_entries.pdf \
 figures/vorbis/setup_packet.pdf
 
