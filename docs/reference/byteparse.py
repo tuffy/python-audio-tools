@@ -435,6 +435,10 @@ if (__name__ == "__main__"):
         '-s', '--space', dest='space',
         type='int', default=30,
         help='space between hex and ASCII sections, in PostScript points')
+    parser.add_option('--no-ascii',
+                      dest='ascii',
+                      action='store_false',
+                      default=True)
     parser.add_option('-t','--type',dest='type',
                       choices=("pdf",),
                       help="type of output file",
@@ -447,15 +451,23 @@ if (__name__ == "__main__"):
 
     populate_tables(options.input, hex_table, ascii_table)
 
-    diagram_width = ((hex_table.size() * HEX_WIDTH) +
-                     options.space +
-                     (ascii_table.size() * ASCII_WIDTH))
+    if (options.ascii):
+        diagram_width = ((hex_table.size() * HEX_WIDTH) +
+                         options.space +
+                         (ascii_table.size() * ASCII_WIDTH))
+    else:
+        diagram_width = (hex_table.size() * HEX_WIDTH)
+
     x_offset = (options.width - diagram_width) / 2
 
     hex_table.set_w_offset(x_offset)
-    ascii_table.set_w_offset(x_offset + hex_table.pt_width() + options.space)
     hex_table.set_s_offset(0)
-    ascii_table.set_s_offset(0)
+
+    if (options.ascii):
+        ascii_table.set_w_offset(x_offset +
+                                 hex_table.pt_width() +
+                                 options.space)
+        ascii_table.set_s_offset(0)
 
     if (options.type == 'pdf'):
         registerFont(TTFont("DejaVu", "DejaVuSans.ttf"))
@@ -463,7 +475,8 @@ if (__name__ == "__main__"):
         pdf.setPageSize((options.width,
                          hex_table.pt_height()))
         hex_table.to_pdf(pdf)
-        ascii_table.to_pdf(pdf)
+        if (options.ascii):
+            ascii_table.to_pdf(pdf)
         pdf.showPage()
         pdf.save()
     else:

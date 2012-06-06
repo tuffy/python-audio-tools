@@ -1,21 +1,7 @@
 <?xml version="1.0" ?><diagram>
   <row>
     <col end="31" start="0" width=".20">header (‘fLaC’)</col>
-    <col id="metadata" start="32" width=".133333">Metadata₀</col>
-    <col width=".133333">Metadata₁</col>
-    <col style="dashed" width=".133333">...</col>
-    <col width=".133333">Frame₀</col>
-    <col width=".133333">Frame₁</col>
-    <col style="dashed" width=".133333">...</col>
+    <col width=".30">Metadata Blocks</col>
+    <col width=".50">Frames</col>
   </row>
-  <row><blank/></row>
-  <row>
-    <blank width=".05"/>
-    <col end="0" id="last" start="0" width=".10">last</col>
-    <col end="7" start="1" width=".18">block type</col>
-    <col end="31" start="8" width=".18">block length</col>
-    <col id="data" start="32" style="dashed" width=".40">block data</col>
-  </row>
-  <line style="dotted"><start corner="sw" id="metadata"/><end corner="nw" id="last"/></line>
-  <line style="dotted"><start corner="se" id="metadata"/><end corner="ne" id="data"/></line>
 </diagram>

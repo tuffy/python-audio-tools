@@ -2,8 +2,8 @@
 <diagram>
   <row>
     <col width=".125">Block₀</col>
-    <col width=".125">Block₁</col>
-    <col width=".125" id="block">Block₂</col>
+    <col width=".125" id="block">Block₁</col>
+    <col width=".125">Block₂</col>
     <col width=".125">Block₃</col>
     <col width=".125">Block₄</col>
     <col width=".125">Block₅</col>
@@ -13,12 +13,11 @@
   <spacer/>
   <row>
     <col start="0" end="0" width=".20" id="block_h_s">last block</col>
-    <col start="1" end="7" width=".30">block type (2)</col>
+    <col start="1" end="7" width=".30">block type (1)</col>
     <col start="8" end="31" width=".50" id="block_h_e">block size</col>
   </row>
   <row>
-    <col start="0" end="31" width=".25">application ID</col>
-    <col start="32" width=".75">application data</col>
+    <col>NULL bytes</col>
   </row>
   <line style="dotted">
     <start id="block" corner="sw"/>

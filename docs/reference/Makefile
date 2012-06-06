@@ -40,6 +40,7 @@ figures/flac/application.pdf \
 figures/flac/block_header.pdf \
 figures/flac/constant.pdf \
 figures/flac/cuesheet.pdf \
+figures/flac/cuesheet-example.pdf \
 figures/flac/fixed.pdf \
 figures/flac/fixed2.pdf \
 figures/flac/fixed-parse.pdf \
@@ -55,7 +56,10 @@ figures/flac/lpc2.pdf \
 figures/flac/lpc-parse.pdf \
 figures/flac/lpc-parse2.pdf \
 figures/flac/metadata.pdf \
+figures/flac/metadata-blocks.pdf \
+figures/flac/padding.pdf \
 figures/flac/picture.pdf \
+figures/flac/picture-example.pdf \
 figures/flac/read_utf8.pdf \
 figures/flac/residual.pdf \
 figures/flac/residual-example1.pdf \
@@ -65,15 +69,18 @@ figures/flac/residual-example4.pdf \
 figures/flac/residual-example5.pdf \
 figures/flac/residual-parse.pdf \
 figures/flac/seektable.pdf \
+figures/flac/seektable-example.pdf \
 figures/flac/stream.pdf \
 figures/flac/stream2.pdf \
 figures/flac/stream3.pdf \
 figures/flac/streaminfo.pdf \
+figures/flac/streaminfo-example.pdf \
 figures/flac/subframes.pdf \
 figures/flac/tukey.pdf \
 figures/flac/utf8.pdf \
 figures/flac/verbatim.pdf \
 figures/flac/vorbiscomment.pdf \
+figures/flac/vorbiscomment-example.pdf \
 figures/flac/write_utf8.pdf \
 figures/oggflac_stream.pdf
 
@@ -441,13 +448,16 @@ figures/bitstream_littleendian_alt.pdf: figures/bitstream_littleendian_alt.fig
 figures/vorbis/ordered_entries.pdf: figures/vorbis/ordered_entries.dot
 	dot -Tpdf $< -o $@
 
-.SUFFIXES: .pdf .bdx .bpx .dot
+.SUFFIXES: .pdf .bdx .bpx .bypx .dot
 
 .bdx.pdf:
 	./bitdiagram.py -i $< -o $@
 
 .bpx.pdf:
 	./bitparse.py -i $< -o $@
+
+.bypx.pdf:
+	./byteparse.py -i $< -o $@
 
 .dot.pdf:
 	dot -Tpdf $< -o $@
@@ -541,3 +551,6 @@ basics-info.tex: basics-info.m4 header.m4 footer.m4
 
 basics-info.pdf: basics-info.tex basics.tex $(BASICS)
 	python pdflatexbuild.py -halt-on-error $<
+
+figures/flac/cuesheet-example.pdf: figures/flac/cuesheet-example.bypx
+	./byteparse.py --no-ascii --digits-per-row 20 -i $< -o $@

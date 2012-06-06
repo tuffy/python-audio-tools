@@ -14,51 +14,94 @@ metadata and are stream-able.
 
 Except for the contents of the VORBIS\_COMMENT metadata block, everything in FLAC is big-endian.
 
-\section{the FLAC File Stream}
+%% \begin{figure}[h]
+%%   \includegraphics{figures/flac/stream.pdf}
+%% \end{figure}
+
+\section{Metadata Blocks}
 \begin{figure}[h]
-\includegraphics{figures/flac/stream.pdf}
+  \includegraphics{figures/flac/metadata-blocks.pdf}
 \end{figure}
 \par
 \noindent
-\VAR{Last} is 0 when there are no additional metadata blocks and 1 when
-it is the final block before the the audio frames.
-\VAR{Block Length} is the size of the metadata block data to follow,
-not including the header.
-\begin{figure}[h]
-\begin{tabular}{| r | l |}
-\hline
-Block Type & Block \\
-\hline
-\texttt{0} & STREAMINFO \\
-\texttt{1} & PADDING \\
-\texttt{2} & APPLICATION \\
-\texttt{3} & SEEKTABLE \\
-\texttt{4} & VORBIS\_COMMENT \\
-\texttt{5} & CUESHEET \\
-\texttt{6} & PICTURE \\
-\texttt{7-126} & reserved \\
-\texttt{127} & invalid \\
-\hline
+\VAR{last block} of \texttt{1} indicates the block is the last one
+in the set of metadata blocks.
+\VAR{block size} indicates the size of the metadata block data,
+not including its 32 bit header.
+\VAR{block type} is one of the following:
+\begin{table}[h]
+\begin{tabular}{r | l}
+  block type & block \\
+  \hline
+  \texttt{0} & STREAMINFO \\
+  \texttt{1} & PADDING \\
+  \texttt{2} & APPLICATION \\
+  \texttt{3} & SEEKTABLE \\
+  \texttt{4} & VORBIS\_COMMENT \\
+  \texttt{5} & CUESHEET \\
+  \texttt{6} & PICTURE \\
+  \texttt{7-126} & reserved \\
+  \texttt{127} & invalid \\
 \end{tabular}
-\end{figure}
+\end{table}
 
-\pagebreak
-
-\section{FLAC Metadata Blocks}
+\clearpage
 
 \subsection{STREAMINFO}
 \begin{figure}[h]
 \includegraphics{figures/flac/streaminfo.pdf}
 \end{figure}
+\par
+\noindent
+STREAMINFO must always be the first metadata block and always
+has a block size of 34 bytes.
+\VAR{minimum block size} and \VAR{maximum block size}
+indicate the length of the largest and smallest
+frame in the stream, in PCM frames.
+For streams with a fixed block size (which are the most common),
+these numbers will be the same.
+\VAR{minimum frame size} and \VAR{maximum frame size}
+indicate the size of the largest and smallest frame in the stream,
+in bytes.
+\VAR{sample rate}, \VAR{channels} and \VAR{bits per sample}
+indicate the stream's characteristics.
+Finally, \VAR{MD5 sum} is a hash of the stream's raw decoded data
+when its PCM sample integers are decoded to signed, little-endian bytes.
+
+\clearpage
+
+\subsubsection{STREAMINFO example}
+\begin{figure}[h]
+  \includegraphics{figures/flac/streaminfo-example.pdf}
+\end{figure}
+\begin{tabular}{rrl}
+last block & \texttt{0} & not last block in set of blocks \\
+block type & \texttt{0} & STREAMINFO \\
+block size & \texttt{34} & bytes \\
+minimum block size & \texttt{4096} & PCM frames \\
+maximum block size & \texttt{4096} & PCM frames \\
+minimum frame size & \texttt{1542} & bytes \\
+maximum frame size & \texttt{8546} & bytes \\
+sample rate & \texttt{44100} & Hz \\
+channels & \texttt{1} & $+ 1 = 2$ \\
+bits per sample & \texttt{15} & $+ 1 = 16$ \\
+total PCM frames & \texttt{304844} & \\
+MD5 sum & \multicolumn{2}{l}{\texttt{FAF2692FFDEC2D5B300176B462887D92}} \\
+\end{tabular}
+
+\clearpage
 
 \subsection{PADDING}
-
+\begin{figure}[h]
+  \includegraphics{figures/flac/padding.pdf}
+\end{figure}
+\par
+\noindent
 PADDING is simply a block full of NULL (\texttt{0x00}) bytes.
 Its purpose is to provide extra metadata space within the FLAC file.
 By having a padding block, other metadata blocks can be grown or
 shrunk without having to rewrite the entire FLAC file by removing or
 adding space to the padding.
-
 
 \subsection{APPLICATION}
 \begin{figure}[h]
@@ -67,14 +110,57 @@ adding space to the padding.
 \noindent
 APPLICATION is a general-purpose metadata block used by a variety of
 different programs.
-Its contents are defined by the ASCII Application ID value.
+Its contents are defined by the 4 byte ASCII Application ID value.
+\begin{table}[h]
+{\relsize{-1}
+\begin{tabular}{rl}
+\texttt{Fica} & CUE Splitter \\
+\texttt{Ftol} & flac-tools \\
+\texttt{aiff} & FLAC AIFF chunk storage \\
+\texttt{imag} & flac-image application for storing arbitrary files in APPLICATION metadata blocks \\
+\texttt{riff} & FLAC RIFF chunk storage \\
+\texttt{xmcd} & xmcd \\
+\end{tabular}
+}
+\caption{some defined application IDs}
+\end{table}
+
+\clearpage
 
 \subsection{SEEKTABLE}
 \begin{figure}[h]
 \includegraphics{figures/flac/seektable.pdf}
 \end{figure}
+\par
+\noindent
+There are $\textsf{block size} \div 18$ seek points in the SEEKTABLE block.
+Each seek point indicates a position in the FLAC stream.
+\VAR{sample number} indicates the seek point's sample number, in PCM frames.
+\VAR{byte offset} indicates the seek point's
+byte position in the stream starting from the beginning
+of the first FLAC frame (\textit{not} the beginning of the FLAC file itself).
+\VAR{samples} indicates the number of PCM frames
+in the seek point's FLAC frame.
+\subsubsection{SEEKTABLE example}
+\begin{figure}[h]
+  \includegraphics{figures/flac/seektable-example.pdf}
+\end{figure}
+\begin{table}[h]
+{\relsize{-1}
+\begin{tabular}{r|rrr}
+$i$ & $\text{sample number}_i$ & $\text{byte offset}_i$ & $\text{samples}_i$ \\
+\hline
+0 & 0 & 0 & 4096 \\
+1 & 438272 & 436207 & 4096 \\
+2 & 880640 & 879604 & 4096 \\
+3 & 1318912 & 1318778 & 4096 \\
+4 & 1761280 & 1763423 & 4096 \\
+5 & 2203648 & 2205395 & 4096 \\
+\end{tabular}
+}
+\end{table}
 
-\pagebreak
+\clearpage
 
 \subsection{VORBIS\_COMMENT}
 \begin{figure}[h]
@@ -82,70 +168,79 @@ Its contents are defined by the ASCII Application ID value.
 \end{figure}
 \par
 \noindent
-The length fields are all little-endian.
-The Vendor String and Comment Strings are all UTF-8 encoded.
-Keys are not case-sensitive and may occur multiple times,
-indicating multiple values for the same field.
-For instance, a track with multiple artists may have
-more than one \texttt{ARTIST}.
+The blue fields are all stored little-endian.
+Comment strings are \texttt{"KEY=value"} pairs
+where \texttt{KEY} is an ASCII value in the range \texttt{0x20}
+through \texttt{0x7D}, excluding \texttt{0x3D},
+is case-insensitive and may occur in multiple comment strings.
+\texttt{value} is a UTF-8 value.
+\begin{table}[h]
+  {\relsize{-1}
+    \begin{tabular}{rlrl}
+      \texttt{ALBUM} & album name &
+      \texttt{ARTIST} & artist name \\
+      \texttt{CATALOG} & CD spine number &
+      \texttt{COMPOSER} & the work's author \\
+      \texttt{COMMENT} & a short comment &
+      \texttt{CONDUCTOR} & performing ensemble's leader \\
+      \texttt{COPYRIGHT} & copyright attribution &
+      \texttt{DATE} & recording date \\
+      \texttt{DISCNUMBER} & disc number for multi-volume work &
+      \texttt{DISCTOTAL} & disc total for multi-volume work \\
+      \texttt{GENRE} & a short music genre label &
+      \texttt{ISRC} & ISRC number for the track \\
+      \texttt{PERFORMER} & performer name, orchestra, actor, etc. &
+      \texttt{PUBLISHER} & album's publisher \\
+      \texttt{SOURCE MEDIUM} & CD, radio, cassette, vinyl LP, etc. &
+      \texttt{TITLE} & track name \\
+      \texttt{TRACKNUMBER} & track number &
+      \texttt{TRACKTOTAL} & total number of tracks \\
+    \end{tabular}
+  }
+\end{table}
 
-\begin{multicols}{2}
-{\relsize{-2}
-\begin{description}
-\item[ALBUM] album name
-\item[ARTIST] artist name, band name, composer, author, etc.
-\item[CATALOGNUMBER*] CD spine number
-\item[COMPOSER*] the work's author
-\item[CONDUCTOR*] performing ensemble's leader
-\item[COPYRIGHT] copyright attribution
-\item[DATE] recording date
-\item[DESCRIPTION] a short description
-\item[DISCNUMBER*] disc number for multi-volume work
-\item[ENGINEER*] the recording masterer
-\item[ENSEMBLE*] performing group
-\item[GENRE] a short music genre label
-\item[GUEST ARTIST*] collaborating artist
-\item[ISRC] ISRC number for the track
-\item[LICENSE] license information
-\item[LOCATION] recording location
-\item[OPUS*] number of the work
-\item[ORGANIZATION] record label
-\item[PART*] track's movement title
-\item[PERFORMER] performer name, orchestra, actor, etc.
-\item[PRODUCER*] person responsible for the project
-\item[PRODUCTNUMBER*] UPC, EAN, or JAN code
-\item[PUBLISHER*] album's publisher
-\item[RELEASE DATE*] date the album was published
-\item[REMIXER*] person who created the remix
-\item[SOURCE ARTIST*] artist of the work being performed
-\item[SOURCE MEDIUM*] CD, radio, cassette, vinyl LP, etc.
-\item[SOURCE WORK*] a soundtrack's original work
-\item[SPARS*] DDD, ADD, AAD, etc.
-\item[SUBTITLE*] for multiple track names in a single file
-\item[TITLE] track name
-\item[TRACKNUMBER] track number
-\item[VERSION] track version
-\end{description}
+\clearpage
+
+\subsubsection{VORBIS\_COMMENT Example}
+\begin{figure}[h]
+  \includegraphics{figures/flac/vorbiscomment-example.pdf}
+\end{figure}
+\begin{table}[h]
+{\relsize{-1}
+\begin{tabular}{rl}
+  vendor string : & \texttt{reference libFLAC 1.2.1 20070917} \\
+  $\text{comment}_0$ : & \texttt{ALBUM=album} \\
+  $\text{comment}_1$ : & \texttt{TRACKNUMBER=1} \\
+  $\text{comment}_2$ : & \texttt{TITLE=track name} \\
+  $\text{comment}_3$ : & \texttt{ARTIST=artist name} \\
+\end{tabular}
 }
-\end{multicols}
-\par
-\noindent
-Fields marked with * are proposed extension fields and not part of the official Vorbis comment specification.
+\end{table}
 
-\pagebreak
+\clearpage
 
 \subsection{CUESHEET}
 \begin{figure}[h]
 \includegraphics{figures/flac/cuesheet.pdf}
 \end{figure}
 
+%% \clearpage
+
+%% \subsubsection{CUESHEET Example}
+
+%% \begin{figure}[h]
+%%   \includegraphics{figures/flac/cuesheet-example.pdf}
+%% \end{figure}
+
+\clearpage
+
 \subsection{PICTURE}
 \begin{figure}[h]
 \includegraphics{figures/flac/picture.pdf}
 \end{figure}
-\begin{tabular}{|r|l|}
-\hline
-Picture Type & Type \\
+{\relsize{-1}
+\begin{tabular}{r|l}
+picture type & type \\
 \hline
 0 & Other \\
 1 & 32x32 pixels `file icon' (PNG only) \\
@@ -168,8 +263,29 @@ Picture Type & Type \\
 18 & Illustration \\
 19 & Band / Artist logotype \\
 20 & Publisher / Studio logotype \\
-\hline
 \end{tabular}
+}
+\clearpage
+
+\subsubsection{PICTURE Example}
+\begin{figure}[h]
+  \includegraphics{figures/flac/picture-example.pdf}
+\end{figure}
+\begin{table}[h]
+{\relsize{-1}
+  \begin{tabular}{rl}
+    MIME type : & \texttt{"image/png"} \\
+    description : & \texttt{""} (empty string) \\
+    width : & \texttt{11} pixels \\
+    height : & \texttt{12} pixels \\
+    color depth : & \texttt{8} bits per channel \\
+    color count : & \texttt{0} (not an indexed color image) \\
+    data length : & \texttt{125} bytes \\
+  \end{tabular}
+}
+\end{table}
+
+\clearpage
 
 \section{FLAC Decoding}
 

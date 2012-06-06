@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<bytestruct>
+  <field label="block header">04000072</field>
+  <field label="vendor length">20000000</field>
+  <field label="vendor string">7265666572656e6365206c6962464c414320312e322e31203230303730393137</field>
+  <field label="count">04000000</field>
+  <field label="length₀">0b000000</field>
+  <field label="comment₀">414c42554d3d616c62756d</field>
+  <field label="length₁">0d000000</field>
+  <field label="comment₁">545241434b4e554d4245523d31</field>
+  <field label="length₂">10000000</field>
+  <field label="comment₂">5449544c453d747261636b206e616d65</field>
+  <field label="length₃">12000000</field>
+  <field label="comment₃">4152544953543d617274697374206e616d65</field>
+</bytestruct>

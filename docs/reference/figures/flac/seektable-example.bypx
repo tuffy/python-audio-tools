@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<bytestruct>
+  <field label="block header">0300006C</field>
+  <field label="sample number₀">0000000000000000</field>
+  <field label="byte offset₀">0000000000000000</field>
+  <field label="samples₀">1000</field>
+  <field label="sample number₁">000000000006b000</field>
+  <field label="byte offset₁">000000000006a7ef</field>
+  <field label="samples₁">1000</field>
+  <field label="sample number₂">00000000000d7000</field>
+  <field label="byte offset₂">00000000000d6bf4</field>
+  <field label="samples₂">1000</field>
+  <field label="sample number₃">0000000000142000</field>
+  <field label="byte offset₃">0000000000141f7a</field>
+  <field label="samples₃">1000</field>
+  <field label="sample number₄">00000000001ae000</field>
+  <field label="byte offset₄">00000000001ae85f</field>
+  <field>1000</field>
+  <field label="sample number₅">000000000021a000</field>
+  <field label="byte offset₅">000000000021a6d3</field>
+  <field label="samples₅">1000</field>
+</bytestruct>

@@ -1,30 +1,53 @@
-<?xml version="1.0" ?><diagram>
+<?xml version="1.0" ?>
+<diagram>
   <row>
-    <col end="31" start="0" width=".15">picture type</col>
-    <col id="mime" start="32" width=".10">MIME</col>
-    <col id="desc" width=".15">dDescription</col>
-    <col end="31" start="0" width=".12">width</col>
-    <col end="63" start="32" width=".12">height</col>
-    <col end="95" start="64" width=".12">depth</col>
-    <col end="127" start="96" width=".12">count</col>
-    <col id="data" start="128" width=".12">Data</col>
+    <col width=".125">Block₀</col>
+    <col width=".125">Block₁</col>
+    <col width=".125">Block₂</col>
+    <col width=".125">Block₃</col>
+    <col width=".125">Block₄</col>
+    <col width=".125">Block₅</col>
+    <col width=".125" id="block">Block₆</col>
+    <col width=".125" style="dashed">...</col>
   </row>
-  <row><blank/></row>
+  <spacer/>
   <row>
-    <blank width=".025"/>
-    <col end="31" id="mime_l" start="0" width=".10">length</col>
-    <col id="mime_s" start="32" width=".10">string</col>
-    <blank width=".05"/>
-    <col end="31" id="desc_l" start="0" width=".10">length</col>
-    <col id="desc_s" start="32" width=".10">string</col>
-    <blank width=".325"/>
-    <col end="31" id="data_l" start="0" width=".10">length</col>
-    <col id="data_s" start="32" width=".10">data</col>
+    <col start="0" end="0" width=".20" id="block_h_s">last block</col>
+    <col start="1" end="7" width=".30">block type (6)</col>
+    <col start="8" end="31" width=".50" id="block_h_e">block size</col>
   </row>
-  <line style="dotted"><start corner="sw" id="mime"/><end corner="nw" id="mime_l"/></line>
-  <line style="dotted"><start corner="se" id="mime"/><end corner="ne" id="mime_s"/></line>
-  <line style="dotted"><start corner="sw" id="desc"/><end corner="nw" id="desc_l"/></line>
-  <line style="dotted"><start corner="se" id="desc"/><end corner="ne" id="desc_s"/></line>
-  <line style="dotted"><start corner="sw" id="data"/><end corner="nw" id="data_l"/></line>
-  <line style="dotted"><start corner="se" id="data"/><end corner="ne" id="data_s"/></line>
+  <row>
+    <col end="31" start="0">picture type</col>
+  </row>
+  <row>
+    <col start="32" end="63" width=".25">MIME type length</col>
+    <col width=".75"
+         start="(MIME type length) bytes"
+         end="(MIME type length) bytes">MIME type</col>
+  </row>
+  <row>
+    <col width=".25" start="0" end="31">description length</col>
+    <col width=".75"
+         start="(description length) bytes"
+         end="(description length) bytes">description</col>
+  </row>
+  <row>
+    <col width=".25" start="0" end="31">width</col>
+    <col width=".25" start="32" end="63">height</col>
+    <col width=".25" start="64" end="95">color depth</col>
+    <col width=".25" start="96" end="127">color count</col>
+  </row>
+  <row>
+    <col width=".25" start="128" end="159">data length</col>
+    <col width=".75"
+         start="(data length) bytes" end="(data length) bytes">image data</col>
+  </row>
+  <line style="dotted">
+    <start id="block" corner="sw"/>
+    <end id="block_h_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="block" corner="se"/>
+    <end id="block_h_e" corner="ne"/>
+  </line>
 </diagram>

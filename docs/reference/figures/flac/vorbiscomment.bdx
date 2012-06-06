@@ -1,21 +1,58 @@
-<?xml version="1.0" ?><diagram>
+<?xml version="1.0" ?>
+<diagram>
   <row>
-    <col id="vendorstring" width=".17">Vendor String</col>
-    <col end="31" start="0" width=".20">total comments</col>
-    <col width=".21">Comment String₀</col>
-    <col id="comment" width=".21">Comment String₁</col>
-    <col style="dashed" width=".21">...</col>
+    <col width=".125">Block₀</col>
+    <col width=".125">Block₁</col>
+    <col width=".125">Block₂</col>
+    <col width=".125">Block₃</col>
+    <col width=".125" id="block">Block₄</col>
+    <col width=".125">Block₅</col>
+    <col width=".125">Block₆</col>
+    <col width=".125" style="dashed">...</col>
   </row>
-  <row><blank/></row>
+  <spacer/>
   <row>
-    <col end="31" id="v_len" start="0" width=".25">vendor string length</col>
-    <col id="v_str" start="32" width=".20">vendor string</col>
-    <blank width=".05"/>
-    <col end="31" id="c_len" start="0" width=".30">comment string length</col>
-    <col id="c_str" start="0" width=".20">comment string</col>
+    <col start="0" end="0" width=".20" id="block_h_s">last block</col>
+    <col start="1" end="7" width=".30">block type (4)</col>
+    <col start="8" end="31" width=".50" id="block_h_e">block size</col>
   </row>
-  <line style="dotted"><start corner="sw" id="vendorstring"/><end corner="nw" id="v_len"/></line>
-  <line style="dotted"><start corner="se" id="vendorstring"/><end corner="ne" id="v_str"/></line>
-  <line style="dotted"><start corner="sw" id="comment"/><end corner="nw" id="c_len"/></line>
-  <line style="dotted"><start corner="se" id="comment"/><end corner="ne" id="c_str"/></line>
+  <row>
+    <col start="0" end="31" width=".35"
+         background-color="#0000FF30">vendor string length</col>
+    <col width=".65"
+         start="(vendor string length) bytes"
+         end="(vendor string length) bytes"
+         background-color="#0000FF30">vendor string</col>
+  </row>
+  <row>
+    <col start="0" end="31"
+         background-color="#0000FF30">comment string count</col>
+  </row>
+  <row>
+    <col start="0" end="31" width=".35"
+         background-color="#0000FF30">comment string length₀</col>
+    <col width=".65"
+         start="(comment string length₀) bytes"
+         end="(comment string length₀) bytes"
+         background-color="#0000FF30">comment string₀</col>
+  </row>
+  <row>
+    <col start="0" end="31" width=".35"
+         background-color="#0000FF30">comment string length₁</col>
+    <col width=".65"
+         start="(comment string length₁) bytes"
+         end="(comment string length₁) bytes"
+         background-color="#0000FF30">comment string₁</col>
+  </row>
+  <row>
+    <col background-color="#0000FF30">...</col>
+  </row>
+  <line style="dotted">
+    <start id="block" corner="sw"/>
+    <end id="block_h_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="block" corner="se"/>
+    <end id="block_h_e" corner="ne"/>
+  </line>
 </diagram>
