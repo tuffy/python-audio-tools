@@ -123,8 +123,8 @@ All of the fields within a Xing header are big-endian.
 
 \section{ID3v1 Tags}
 ID3v1 tags are very simple metadata tags appended to an MP3 file.
-All of the fields are fixed length and the text encoding is
-undefined.
+All of the fields are fixed length, padded with NULLs if necessary,
+and the text encoding is undefined.
 There are two versions of ID3v1 tags.
 ID3v1.1 has a track number field as a 1 byte value
 at the end of the comment field.
@@ -146,6 +146,24 @@ track number.
 
 \clearpage
 
+\subsection{ID3v1.1 Tag Example}
+\begin{figure}[h]
+  \includegraphics{figures/mp3/id3v11-example.pdf}
+\end{figure}
+\begin{table}[h]
+  \begin{tabular}{rl}
+    track title : & \texttt{some track name} \\
+    artist name : & \texttt{artist's name} \\
+    album name : & \texttt{album title} \\
+    year : & \texttt{2012} \\
+    comment : & \texttt{a lengthy comment field} \\
+    track number : & \texttt{1} \\
+    genre : & \texttt{0} \\
+  \end{tabular}
+\end{table}
+
+\clearpage
+
 \section{ID3v2 Tags}
 
 The ID3v2 tag was invented to address the deficiencies in the original
@@ -157,10 +175,46 @@ All of its fields are big-endian.
 \begin{figure}[h]
 \includegraphics{figures/mp3/id3v2_stream.pdf}
 \end{figure}
+\par
+\noindent
+\VAR{major version} is 2 for ID3v2.2, 3 for ID3v2.3 and 4 for ID3v2.4.
+\VAR{minor version} is always 0.
+The four \VAR{size} fields are recombined as follows:
+\begin{equation*}
+  \text{ID3 Frames size} = (\text{size}_3 \times 2 ^ {21}) + (\text{size}_2 \times 2 ^ {14}) + (\text{size}_1 \times 2 ^ 7) + \text{size}_0
+\end{equation*}
+Splitting the field with 0 bits ensures that no size value
+will appear to be an MP3 frame sync.
 
-\subsection{ID3v2.2}
+\clearpage
 
-\subsubsection{ID3v2.2 Header}
+\subsection{ID3v2 Header Example}
+\begin{figure}[h]
+  \includegraphics{figures/mp3/id3v2_stream-example.pdf}
+\end{figure}
+\begin{table}[h]
+  \begin{tabular}{rl}
+    ID : & \texttt{"ID3"} \\
+    major version : & \texttt{3} \\
+    minor version : & \texttt{0} \\
+    flags : & \texttt{0} \\
+    $\text{size}_3$ : & \texttt{0} \\
+    $\text{size}_2$ : & \texttt{0} \\
+    $\text{size}_1$ : & \texttt{1} \\
+    $\text{size}_0$ : & \texttt{21} \\
+    ID3 Frames size : & $(0 \times 2 ^ {21}) + (0 \times 2 ^ {14}) + (1 \times 2 ^ 7) + 21 = 149$ bytes \\
+  \end{tabular}
+\end{table}
+\par
+\noindent
+Which indicates this is an ID3v2.3 tag with 149 bytes of ID3v2.3 frames.
+Since there is no `total number of frames' field,
+we must use the size field to determine when to stop reading
+additional ID3 frames.
+
+\clearpage
+
+\subsection{ID3v2.2 Header}
 
 \begin{figure}[h]
 \includegraphics{figures/id3v22/header.pdf}
@@ -173,42 +227,61 @@ That is, no possible size value will result in a false
 MP3 frame sync (11 bits set in a row).
 This size field is the length of the entire tag, not including the header.
 
+\subsection{ID3v2.2 Frames}
+\begin{figure}[h]
+\includegraphics{figures/id3v22/frames.pdf}
+\end{figure}
+\par
+\noindent
+\VAR{frame ID} is a 3 byte ASCII string.
+\VAR{frame size} is the length of the frame data,
+not including its 6 byte header.
+
+\clearpage
+
 \subsubsection{COM Frame}
 \begin{figure}[h]
 \includegraphics{figures/id3v22/com.pdf}
 \end{figure}
-This frame is a lengthy string of comment text.
-\VAR{Encoding} is 0 for Latin-1, 1 for UCS-2.
-\VAR{Language} is a 3 byte ASCII string.
-\VAR{Short Content Description} is a NULL-terminated string
+\par
+\noindent
+This frame supports a lengthy string of comment text.
+\VAR{encoding} is 0 for Latin-1, 1 for UCS-2,
+indicating the text encoding of the \VAR{short description}
+and \VAR{comment text} fields.
+\VAR{language} is a 3 byte ASCII string.
+\VAR{short description} is a NULL-terminated string
 containing a short description of the comment.
 Note that for UCS-2 comments, the NULL terminator is 2 bytes.
 The remainder of the frame is the comment text itself.
 
-\clearpage
-
-\subsubsection{GEO Frame}
+\subsubsection{COM Frame Example}
 \begin{figure}[h]
-\includegraphics{figures/id3v22/geo.pdf}
+  \includegraphics{figures/id3v22/com-example.pdf}
 \end{figure}
-This frame contains an embedded file.
-\VAR{MIME Type} and \VAR{Filename} are encoded as NULL-terminated
-Latin-1 strings.
-\VAR{Description} is encoded as a Latin-1 or UCS-2 NULL-terminated
-string, depending on if \VAR{Encoding} is 0 or 1, respectively.
-The remainder of the frame is the file's binary data.
+\begin{table}[h]
+  \begin{tabular}{rl}
+    encoding : & \texttt{0} (Latin-1) \\
+    language : & \texttt{"eng"} \\
+    short description : & \texttt{""} (empty string) \\
+    comment text : & \texttt{"comment text"} \\
+  \end{tabular}
+\end{table}
+
+\clearpage
 
 \subsubsection{PIC Frame}
 \begin{figure}[h]
 \includegraphics{figures/id3v22/pic.pdf}
 \end{figure}
+\par
+\noindent
 This frame contains an embedded image file.
-\VAR{Image Format} is a 3 byte string indicating the format of the image,
+\VAR{image format} is a 3 byte string indicating the format of the image,
 typically `JPG' for JPEG images or 'PNG' for PNG images.
-\VAR{Description} is a Latin-1 or UCS-2 encoded NULL-terminated string,
-depending on if \VAR{Encoding} is 0 or 1, respectively.
-\VAR{Picture Type is one of the following:}
-
+\VAR{description} is a Latin-1 or UCS-2 encoded NULL-terminated string,
+depending on if \VAR{encoding} is 0 or 1, respectively.
+\VAR{picture type} is one of the following:
 \begin{table}[h]
 {\relsize{-1}
 \begin{tabular}{|r|l||r|l|}
@@ -234,17 +307,34 @@ value & type & value & type \\
 
 \clearpage
 
+\subsubsection{PIC Frame Example}
+\begin{figure}[h]
+  \includegraphics{figures/id3v22/pic-example.pdf}
+\end{figure}
+\begin{table}[h]
+  \begin{tabular}{rl}
+    encoding : & \texttt{0} (Latin-1) \\
+    image format : & \texttt{"PNG"} \\
+    image type : & \texttt{3} (front cover) \\
+    description : & \texttt{"Description"} \\
+\end{tabular}
+\end{table}
+
+\clearpage
+
 \subsubsection{Text Frames}
 \begin{figure}[h]
 \includegraphics{figures/id3v22/t__.pdf}
 \end{figure}
-These frames are for textual information.
-\VAR{Encoding} is 0 for Latin-1 encoding, 1 for UCS-2 encoding.
-\begin{table}[h]
-{\relsize{-2}
-\begin{tabular}{|r|l|}
-\hline
-Frame ID & Meaning \\
+\par
+\noindent
+Frames whose ID starts with `T' are for textual information.
+\VAR{encoding} is 0 for Latin-1 encoding, 1 for UCS-2 encoding.
+\par
+\noindent
+{\relsize{-1}
+\begin{tabular}{r|l}
+frame ID & meaning \\
 \hline
 \texttt{TAL} & album / movie / show title \\
 \texttt{TBP} & BPM (beats per minute) \\
@@ -281,68 +371,102 @@ Frame ID & Meaning \\
 \texttt{TT3} & subtitle / description refinement \\
 \texttt{TXT} & lyricist / text writer \\
 \texttt{TYE} & year \\
-\hline
 \end{tabular}
 }
-\end{table}
-\par
+
+\clearpage
+
 The \texttt{TRK} and \texttt{TPA} numeric fields may be extended
 with the ``/'' character, indicating the field's total number.
 For example, a \texttt{TRK} of ``3/5'' means the track is number
 3 out of a total of 5.
 
-\clearpage
-
+\subsubsection{User-Defined Text Frame}
 \begin{figure}[h]
 \includegraphics{figures/id3v22/txx.pdf}
 \end{figure}
+\par
+\noindent
 This frame is for user-defined text information.
-\VAR{Description} is a NULL-terminated string indicating
+\VAR{description} is a NULL-terminated string indicating
 what the frame is for.
-\VAR{Encoding} is 0 for Latin-1 encoding, 1 for UCS-2 encoding.
+\VAR{encoding} is 0 for Latin-1 encoding, 1 for UCS-2 encoding.
 
-\subsubsection{ULT Frame}
+\subsubsection{Text Frame Example}
 \begin{figure}[h]
-\includegraphics{figures/id3v22/ult.pdf}
+  \includegraphics{figures/id3v22/t__-example.pdf}
 \end{figure}
-This frame is for unsynchronized (non-karaoke) lyrics text,
-similar to a comment frame.
-\VAR{Encoding} is 0 for Latin-1, 1 for UCS-2.
-\VAR{Language} is a 3 byte ASCII string.
-\VAR{Short Description} is a NULL-terminated string
-containing a short description of the lyrics.
-Note that for UCS-2 lyrics, the NULL terminator is 2 bytes.
-The remainder of the frame is the lyrics text itself.
+\begin{table}[h]
+\begin{tabular}{rl}
+frame ID : & \texttt{"TT2"} (title / song name / content description) \\
+encoding : & \texttt{0} (Latin-1) \\
+text : & \texttt{"some track name"}
+\end{tabular}
+\end{table}
 
 \clearpage
 
 \subsubsection{URL Frames}
 \begin{figure}[h]
-\includegraphics{figures/id3v22/w__.pdf}
+  \includegraphics{figures/id3v22/w__.pdf}
 \end{figure}
-These frames are for URL links to external resources.
+\par
+\noindent
+Frames whose ID begins with `W' contain URL links to external resources.
 \par
 \begin{table}[h]
-\begin{tabular}{|r|l|}
-\hline
-Frame ID & Meaning \\
-\hline
-\texttt{WAF} & official audio file webpage \\
-\texttt{WAR} & official artist / performer webpage \\
-\texttt{WAS} & official audio source webpage \\
-\texttt{WCM} & commercial information \\
-\texttt{WCP} & copyright / legal information \\
-\texttt{WPB} & publishers official webpage \\
-\hline
-\end{tabular}
+  \begin{tabular}{|r|l|}
+    \hline
+    Frame ID & Meaning \\
+    \hline
+    \texttt{WAF} & official audio file webpage \\
+    \texttt{WAR} & official artist / performer webpage \\
+    \texttt{WAS} & official audio source webpage \\
+    \texttt{WCM} & commercial information \\
+    \texttt{WCP} & copyright / legal information \\
+    \texttt{WPB} & publishers official webpage \\
+    \hline
+  \end{tabular}
 \end{table}
 \begin{figure}[h]
-\includegraphics{figures/id3v22/wxx.pdf}
+  \includegraphics{figures/id3v22/wxx.pdf}
 \end{figure}
+\par
+\noindent
 This is a frame for user-defined links to external resources.
-\VAR{Description} is a NULL-terminated string indicating
+\VAR{description} is a NULL-terminated string indicating
 what the frame is for.
-\VAR{Encoding} is 0 for Latin-1 encoding, 1 for UCS-2 encoding.
+\VAR{encoding} is 0 for Latin-1 encoding, 1 for UCS-2 encoding.
+
+\clearpage
+
+\subsubsection{ULT Frame}
+\begin{figure}[h]
+\includegraphics{figures/id3v22/ult.pdf}
+\end{figure}
+\par
+\noindent
+This frame is for unsynchronized (non-karaoke) lyrics text,
+similar to a comment frame.
+\VAR{encoding} is 0 for Latin-1, 1 for UCS-2.
+\VAR{language} is a 3 byte ASCII string.
+\VAR{short description} is a NULL-terminated string
+containing a short description of the lyrics.
+Note that for UCS-2 lyrics, the NULL terminator is 2 bytes.
+The remainder of the frame is the lyrics text itself.
+
+\subsubsection{GEO Frame}
+\begin{figure}[h]
+  \includegraphics{figures/id3v22/geo.pdf}
+\end{figure}
+\par
+\noindent
+This frame contains an embedded file (i.e. a ``general encapsulated object'').
+\VAR{MIME Type} and \VAR{filename} are encoded as NULL-terminated
+Latin-1 strings.
+\VAR{description} is encoded as a Latin-1 or UCS-2 NULL-terminated
+string, depending on if \VAR{encoding} is 0 or 1, respectively.
+The remainder of the frame is the file's binary data.
 
 \clearpage
 

@@ -853,7 +853,8 @@ def xml_to_chunks(xml_filename):
 
         if (part.nodeName == u'field'):
             bits.append(Bits(
-                    name=part.childNodes[0].data.strip(),
+                    name=(part.childNodes[0].data.strip()
+                          if len(part.childNodes) else u""),
                     bits=bits_converter(part.getAttribute(u"size"),
                                         part.getAttribute(u"value")),
                     init=init_converter(part),
@@ -862,7 +863,8 @@ def xml_to_chunks(xml_filename):
                     background_color=background_color))
         elif (part.nodeName == u'text'):
             bits.append(Text(
-                    name=part.childNodes[0].data.strip(),
+                    name=(part.childNodes[0].data.strip()
+                          if len(part.childNodes) else u""),
                     bit_count=int_converter(part.getAttribute(u"size")),
                     e_border=get_border(part, u"border_e"),
                     w_border=get_border(part, u"border_w"),
@@ -870,7 +872,8 @@ def xml_to_chunks(xml_filename):
         elif (part.nodeName == u'bytes'):
             try:
                 bits.append(Bytes(
-                        name=part.childNodes[0].data.strip(),
+                        name=(part.childNodes[0].data.strip()
+                              if len(part.childNodes) else u""),
                         bytes_list=byte_converter(part.getAttribute(u"value")),
                         e_border=get_border(part, u"border_e"),
                         w_border=get_border(part, u"border_w"),

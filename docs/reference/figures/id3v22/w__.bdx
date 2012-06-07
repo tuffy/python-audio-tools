@@ -1,10 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="23" width=".5">`W__' (0x57____)</col>
-    <col start="24" end="47" width=".5">size</col>
+    <col width=".111">Frame₀</col>
+    <col width=".111">Frame₁</col>
+    <col width=".111">Frame₂</col>
+    <col width=".111">Frame₃</col>
+    <col width=".111" id="frame">Frame₄</col>
+    <col width=".111">Frame₅</col>
+    <col width=".111">Frame₆</col>
+    <col width=".111">Frame₇</col>
+    <col width=".111" style="dashed">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col start="0" end="23" width=".5" id="frame_s">frame ID (`W__')</col>
+    <col start="24" end="47" width=".5" id="frame_e">frame size</col>
   </row>
   <row>
     <col>URL</col>
   </row>
+  <line style="dotted">
+    <start id="frame" corner="sw"/>
+    <end id="frame_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="frame" corner="se"/>
+    <end id="frame_e" corner="ne"/>
+  </line>
 </diagram>

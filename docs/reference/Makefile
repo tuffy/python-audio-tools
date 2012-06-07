@@ -2,10 +2,14 @@
 ID3v22 = \
 figures/id3v22/header.pdf \
 figures/id3v22/frame.pdf \
+figures/id3v22/frames.pdf \
 figures/id3v22/com.pdf \
+figures/id3v22/com-example.pdf \
 figures/id3v22/geo.pdf \
 figures/id3v22/pic.pdf \
+figures/id3v22/pic-example.pdf \
 figures/id3v22/t__.pdf \
+figures/id3v22/t__-example.pdf \
 figures/id3v22/txx.pdf \
 figures/id3v22/ult.pdf \
 figures/id3v22/w__.pdf \
@@ -248,7 +252,9 @@ MP3 = figures/mp3/frame_header.pdf \
 figures/mp3/granule.pdf \
 figures/mp3/id3v1.pdf \
 figures/mp3/id3v11.pdf \
+figures/mp3/id3v11-example.pdf \
 figures/mp3/id3v2_stream.pdf \
+figures/mp3/id3v2_stream-example.pdf \
 figures/mp3/main_data.pdf \
 figures/mp3/scalefactors.pdf \
 figures/mp3/side_data_1ch.pdf \
@@ -389,6 +395,12 @@ dvda-codec.tex: dvda-codec.m4 header.m4 footer.m4
 	m4 -D PAPERSIZE=letterpaper $< > $@
 
 dvda-codec.pdf: dvda-codec.tex dvda2.tex $(DVDA)
+	python pdflatexbuild.py -halt-on-error $<
+
+mp3-codec.tex: mp3-codec.m4 header.m4 footer.m4
+	m4 -D PAPERSIZE=letterpaper $< > $@
+
+mp3-codec.pdf: mp3-codec.tex mp3.tex $(MP3) $(ID3v22) $(ID3v23) $(ID3v24)
 	python pdflatexbuild.py -halt-on-error $<
 
 audioformats-letter.tex: audioformats.m4 header.m4 footer.m4

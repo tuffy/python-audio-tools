@@ -1,10 +1,10 @@
 <?xml version="1.0" ?><diagram>
   <row>
     <col style="dashed" width=".20">ID3v2 Metadata</col>
-    <col id="frame" width=".20">MPEG Frame₁</col>
-    <col width=".20">MPEG Frame₂</col>
+    <col id="frame" width=".20">MPEG Frame₀</col>
+    <col width=".20">MPEG Frame₁</col>
     <col style="dashed" width=".20">...</col>
-    <col style="dashed" width=".20">ID3v1 Metadata</col>
+    <col style="dashed" width=".20" start="0" end="1023">ID3v1 Metadata</col>
   </row>
   <row><blank/></row>
   <row>

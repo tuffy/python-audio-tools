@@ -1,10 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="79" width=".20">header</col>
-    <col width=".20">ID3v2 Frame₀</col>
-    <col width=".20">ID3v2 Frame₁</col>
-    <col width=".20" style="dashed">...</col>
-    <col width=".20" style="dashed">padding</col>
+    <col start="0" end="79" id="header" width=".40">Header</col>
+    <col start="80" width=".60">ID3 Frames</col>
   </row>
+  <spacer/>
+  <row>
+    <col start="0" end="23" width=".40" id="header_s">ID (`ID3')</col>
+    <col start="24" end="31" width=".30">major version</col>
+    <col start="32" end="39" width=".30" id="header_e">minor version</col>
+  </row>
+  <row>
+    <col start="40" end="47">version-specific flags</col>
+  </row>
+  <row>
+    <col start="48" end="48" width=".08">0</col>
+    <col start="49" end="55" width=".17">size₃</col>
+    <col start="56" end="56" width=".08">0</col>
+    <col start="57" end="63" width=".17">size₂</col>
+    <col start="64" end="64" width=".08">0</col>
+    <col start="65" end="71" width=".17">size₁</col>
+    <col start="72" end="72" width=".08">0</col>
+    <col start="73" end="79" width=".17">size₀</col>
+  </row>
+  <line style="dotted">
+    <start id="header" corner="sw"/>
+    <end id="header_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="header" corner="se"/>
+    <end id="header_e" corner="ne"/>
+  </line>
 </diagram>

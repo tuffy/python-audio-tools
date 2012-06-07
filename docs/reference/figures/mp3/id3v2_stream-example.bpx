@@ -1,0 +1,15 @@
+<?xml version="1.0" ?>
+<struct endianness="big">
+  <field size="24" value="0x494433">ID</field>
+  <field size="8" value="3">major version</field>
+  <field size="8" value="0">minor version</field>
+  <field size="8" value="0">flags</field>
+  <field size="1" value="0"/>
+  <field size="7" value="0">size₃</field>
+  <field size="1" value="0"/>
+  <field size="7" value="0">size₂</field>
+  <field size="1" value="0"/>
+  <field size="7" value="1">size₁</field>
+  <field size="1" value="0"/>
+  <field size="7" value="21">size₀</field>
+</struct>

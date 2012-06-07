@@ -1556,29 +1556,41 @@ void
 br_unmark_f(BitstreamReader* bs)
 {
     struct br_mark* mark = bs->marks;
-    bs->marks = mark->next;
-    mark->next = bs->marks_used;
-    bs->marks_used = mark;
+    if (mark != NULL) {
+        bs->marks = mark->next;
+        mark->next = bs->marks_used;
+        bs->marks_used = mark;
+    } else {
+        fprintf(stderr, "No marks on stack to remove!\n");
+    }
 }
 
 void
 br_unmark_s(BitstreamReader* bs)
 {
     struct br_mark* mark = bs->marks;
-    bs->marks = mark->next;
-    mark->next = bs->marks_used;
-    bs->marks_used = mark;
-    bs->input.substream->mark_in_progress = (bs->marks != NULL);
+    if (mark != NULL) {
+        bs->marks = mark->next;
+        mark->next = bs->marks_used;
+        bs->marks_used = mark;
+        bs->input.substream->mark_in_progress = (bs->marks != NULL);
+    } else {
+        fprintf(stderr, "No marks on stack to remove!\n");
+    }
 }
 
 void
 br_unmark_e(BitstreamReader* bs)
 {
     struct br_mark* mark = bs->marks;
-    bs->marks = mark->next;
-    mark->next = bs->marks_used;
-    bs->marks_used = mark;
-    bs->input.external->buffer->mark_in_progress = (bs->marks != NULL);
+    if (mark != NULL) {
+        bs->marks = mark->next;
+        mark->next = bs->marks_used;
+        bs->marks_used = mark;
+        bs->input.external->buffer->mark_in_progress = (bs->marks != NULL);
+    } else {
+        fprintf(stderr, "No marks on stack to remove!\n");
+    }
 }
 
 void
