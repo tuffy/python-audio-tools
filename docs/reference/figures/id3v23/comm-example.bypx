@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<bytestruct>
+  <field label="frame ID">434f4d4d</field>
+  <field label="frame size">00000011</field>
+  <field label="flags">0000</field>
+  <field label="enc.">00</field>
+  <field label="language">656e67</field>
+  <field label="NULL">00</field>
+  <field label="comment text">436f6d6d656e742054657874</field>
+</bytestruct>

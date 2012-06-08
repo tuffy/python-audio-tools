@@ -1,8 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="31" width=".5">`COMM' (0x434F4D4D)</col>
-    <col start="32" end="63" width=".5">size</col>
+    <col width=".111">Frame₀</col>
+    <col width=".111" id="frame">Frame₁</col>
+    <col width=".111">Frame₂</col>
+    <col width=".111">Frame₃</col>
+    <col width=".111">Frame₄</col>
+    <col width=".111">Frame₅</col>
+    <col width=".111">Frame₆</col>
+    <col width=".111">Frame₇</col>
+    <col width=".111" style="dashed" id="frames_e">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col start="0" end="31" width=".5" id="frame_s">frame ID (`COMM')</col>
+    <col start="32" end="63" width=".5" id="frame_e">frame size</col>
   </row>
   <row>
     <col start="64" end="64" width=".13">tag alter</col>
@@ -23,4 +35,12 @@
   <row>
     <col>comment text</col>
   </row>
+  <line style="dotted">
+    <start id="frame" corner="sw"/>
+    <end id="frame_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="frame" corner="se"/>
+    <end id="frame_e" corner="ne"/>
+  </line>
 </diagram>

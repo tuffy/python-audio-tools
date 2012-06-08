@@ -182,7 +182,10 @@ class HexChunk:
                                    unicode(s))
 
         #draw label, if any
-        if (self.label is not None):
+        if ((self.label is not None) and
+            (pdf.stringWidth(unicode(self.label),
+                             "DejaVu",
+                             LABEL_FONT_SIZE) <= (self.pt_width() * 2))):
             pdf.setFont("DejaVu", LABEL_FONT_SIZE)
             pdf.drawCentredString(self.nw[0] + (self.pt_width() / 2),
                                   self.se[1] + LABEL_S_OFFSET,

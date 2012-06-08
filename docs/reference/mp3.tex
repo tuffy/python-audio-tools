@@ -221,11 +221,7 @@ additional ID3 frames.
 \end{figure}
 \par
 \noindent
-The single Size field is split by NULL (0x00) bytes in order to make
-it `sync-safe'.
-That is, no possible size value will result in a false
-MP3 frame sync (11 bits set in a row).
-This size field is the length of the entire tag, not including the header.
+The \VAR{unsync} and \VAR{compression} flags are normally unused.
 
 \subsection{ID3v2.2 Frames}
 \begin{figure}[h]
@@ -455,6 +451,8 @@ containing a short description of the lyrics.
 Note that for UCS-2 lyrics, the NULL terminator is 2 bytes.
 The remainder of the frame is the lyrics text itself.
 
+\clearpage
+
 \subsubsection{GEO Frame}
 \begin{figure}[h]
   \includegraphics{figures/id3v22/geo.pdf}
@@ -477,20 +475,36 @@ The remainder of the frame is the file's binary data.
 \end{figure}
 \par
 \noindent
-The single Size field is split by NULL (0x00) bytes in order to make
-it `sync-safe'.
-This size field is the length of the entire tag, not including the header.
+The \VAR{unsync}, \VAR{extended}, \VAR{experimental} and \VAR{footer}
+flags are normally unused.
+
+\subsection{ID3v2.3 Frames}
+\begin{figure}[h]
+  \includegraphics{figures/id3v23/frames.pdf}
+\end{figure}
+\par
+\noindent
+\VAR{frame ID} is a 4 byte ASCII string.
+\VAR{frame size} is the length of the frame data,
+not including its 10 byte header.
+The \VAR{tag alter}, \VAR{file alter}, \VAR{read only},
+\VAR{compression}, \VAR{encryption} and \VAR{grouping} flags
+are normally unused.
+
+\clearpage
 
 \subsubsection{APIC Frame}
 \begin{figure}[h]
 \includegraphics{figures/id3v23/apic.pdf}
 \end{figure}
+\par
+\noindent
 This frame contains an embedded image file.
-\VAR{MIME Type} is a NULL-terminated MIME type such as ``image/jpeg''
+\VAR{MIME type} is a NULL-terminated MIME type such as ``image/jpeg''
 or ``image/png''.
-\VAR{Description} is a Latin-1 or UCS-2 encoded NULL-terminated string,
-depending on if \VAR{Encoding} is 0 or 1, respectively.
-\VAR{Picture Type} is one of the following:
+\VAR{description} is a Latin-1 or UCS-2 encoded NULL-terminated string,
+depending on if \VAR{encoding} is 0 or 1, respectively.
+\VAR{picture Type} is one of the following:
 \begin{table}[h]
 {\relsize{-1}
 \begin{tabular}{|r|l||r|l|}
@@ -516,110 +530,153 @@ value & type & value & type \\
 
 \clearpage
 
+\subsubsection{APIC Frame Example}
+\begin{figure}[h]
+  \includegraphics{figures/id3v23/apic-example.pdf}
+\end{figure}
+\begin{table}[h]
+\begin{tabular}{rl}
+text encoding : & \texttt{0} (Latin-1) \\
+MIME type : & \texttt{"image/png"} \\
+picture type : & \texttt{3} (front cover) \\
+description : & \texttt{"Description"} \\
+\end{tabular}
+\end{table}
+
+\clearpage
+
 \subsubsection{COMM Frame}
 \begin{figure}[h]
 \includegraphics{figures/id3v23/comm.pdf}
 \end{figure}
-This frame is a lengthy string of comment text.
-\VAR{Encoding} is 0 for Latin-1, 1 for UCS-2.
-\VAR{Language} is a 3 byte ASCII string.
-\VAR{Description} is a NULL-terminated string
+\par
+\noindent
+This frame supports a lengthy string of comment text.
+\VAR{encoding} is 0 for Latin-1, 1 for UCS-2.
+\VAR{language} is a 3 byte ASCII string.
+\VAR{description} is a NULL-terminated string
 containing a short description of the comment.
 Note that for UCS-2 comments, the NULL terminator is 2 bytes.
 The remainder of the frame is the comment text itself.
 
-\subsubsection{GEOB Frame}
+\subsubsection{COMM Frame Example}
 \begin{figure}[h]
-\includegraphics{figures/id3v23/geob.pdf}
+  \includegraphics{figures/id3v23/comm-example.pdf}
 \end{figure}
-This frame contains an embedded file.
-\VAR{MIME Type} is a NULL-terminated Latin-1 string.
-\VAR{Filename} and \VAR{Content Description} are NULL-terminated
-Latin-1 or UCS-2 encoded strings, if \VAR{Encoding} is 0 or 1,
-respectively.
-\VAR{Encapsulated Object} is binary file data.
+\begin{table}[h]
+\begin{tabular}{rl}
+encoding : & \texttt{0} (Latin-1) \\
+language : & \texttt{"eng"} \\
+description : & \texttt{""} (empty string) \\
+comment text : & \texttt{"Comment Text"} \\
+\end{tabular}
+\end{table}
 
 \clearpage
 
 \subsubsection{Text Frames}
 \begin{figure}[h]
-\includegraphics{figures/id3v23/t___.pdf}
+  \includegraphics{figures/id3v23/t___.pdf}
 \end{figure}
-\VAR{Encoding} is 0 for Latin-1 encoding, 1 for UCS-2 encoding.
+\par
+\noindent
+Frames beginning with `T' are text frames.
+\VAR{encoding} is 0 for Latin-1 encoding, 1 for UCS-2 encoding.
 \begin{table}[h]
-{\relsize{-2}
-\begin{tabular}{|c|l||c|l|}
-\hline
-ID & Meaning & ID & Meaning \\
-\hline
-\texttt{TALB} & album name &
-\texttt{TBPM} & beats-per-minute \\
-\texttt{TCOM} & composer &
-\texttt{TCON} & content type \\
-\texttt{TCOP} & copyright message &
-\texttt{TDAT} & date \\
-\texttt{TDLY} & playlist delay &
-\texttt{TENC} & encoded by \\
-\texttt{TEXT} & lyricist / text writer &
-\texttt{TFLT} & file type \\
-\texttt{TIME} & time &
-\texttt{TIT1} & content group description \\
-\texttt{TIT2} & title / songname / content description &
-\texttt{TIT3} & subtitle / description refinement \\
-\texttt{TKEY} & initial key &
-\texttt{TLAN} & language(s) \\
-\texttt{TLEN} & length &
-\texttt{TMED} & media type \\
-\texttt{TOAL} & original album / movie / show title &
-\texttt{TOFN} & original filename \\
-\texttt{TOLY} & original lyricist(s) / text writer(s) &
-\texttt{TOPE} & original artist(s) / performer(s) \\
-\texttt{TORY} & original release year &
-\texttt{TOWN} & file owner / licensee \\
-\texttt{TPE1} & lead performer(s) / soloist(s) &
-\texttt{TPE2} & band / orchestra / accompaniment \\
-\texttt{TPE3} & conductor / performer refinement &
-\texttt{TPE4} & interpreted, remixed, or otherwise modified by \\
-\texttt{TPOS} & part of a set &
-\texttt{TPUB} & publisher \\
-\texttt{TRCK} & track number / position in set &
-\texttt{TRDA} & recording dates \\
-\texttt{TRSN} & internet radio station name &
-\texttt{TRSO} & internet radio station owner \\
-\texttt{TSIZ} & size &
-\texttt{TSRC} & ISRC (International Standard Recording Code) \\
-\texttt{TSSE} & software / hardware and encoding settings &
-\texttt{TYER} & year \\
-\hline
-\end{tabular}
-}
+  {\relsize{-2}
+    \begin{tabular}{|c|l||c|l|}
+      \hline
+      ID & Meaning & ID & Meaning \\
+      \hline
+      \texttt{TALB} & album name &
+      \texttt{TBPM} & beats-per-minute \\
+      \texttt{TCOM} & composer &
+      \texttt{TCON} & content type \\
+      \texttt{TCOP} & copyright message &
+      \texttt{TDAT} & date \\
+      \texttt{TDLY} & playlist delay &
+      \texttt{TENC} & encoded by \\
+      \texttt{TEXT} & lyricist / text writer &
+      \texttt{TFLT} & file type \\
+      \texttt{TIME} & time &
+      \texttt{TIT1} & content group description \\
+      \texttt{TIT2} & title / songname / content description &
+      \texttt{TIT3} & subtitle / description refinement \\
+      \texttt{TKEY} & initial key &
+      \texttt{TLAN} & language(s) \\
+      \texttt{TLEN} & length &
+      \texttt{TMED} & media type \\
+      \texttt{TOAL} & original album / movie / show title &
+      \texttt{TOFN} & original filename \\
+      \texttt{TOLY} & original lyricist(s) / text writer(s) &
+      \texttt{TOPE} & original artist(s) / performer(s) \\
+      \texttt{TORY} & original release year &
+      \texttt{TOWN} & file owner / licensee \\
+      \texttt{TPE1} & lead performer(s) / soloist(s) &
+      \texttt{TPE2} & band / orchestra / accompaniment \\
+      \texttt{TPE3} & conductor / performer refinement &
+      \texttt{TPE4} & interpreted, remixed, or otherwise modified by \\
+      \texttt{TPOS} & part of a set &
+      \texttt{TPUB} & publisher \\
+      \texttt{TRCK} & track number / position in set &
+      \texttt{TRDA} & recording dates \\
+      \texttt{TRSN} & internet radio station name &
+      \texttt{TRSO} & internet radio station owner \\
+      \texttt{TSIZ} & size &
+      \texttt{TSRC} & ISRC (International Standard Recording Code) \\
+      \texttt{TSSE} & software / hardware and encoding settings &
+      \texttt{TYER} & year \\
+      \hline
+    \end{tabular}
+  }
 \end{table}
 
+\subsubsection{Text Frame Example}
 \begin{figure}[h]
-\includegraphics{figures/id3v23/txxx.pdf}
+  \includegraphics{figures/id3v23/t___-example.pdf}
 \end{figure}
-This frame is for user-defined text information.
-\VAR{Description} is a NULL-terminated string indicating
-what the frame is for.
-\VAR{Encoding} is 0 for Latin-1 encoding, 1 for UCS-2 encoding.
+\par
+\noindent
+\begin{tabular}{rl}
+frame type : & \texttt{"TIT2"} (title / song name / content description) \\
+encoding : & \texttt{0} (Latin-1) \\
+text : & \texttt{"Track Name"} \\
+\end{tabular}
 
 \clearpage
 
-\subsubsection{USLT Frame}
-This frame is for unsynchronized (non-karaoke) lyrics text,
-similar to a comment frame.
-\VAR{Encoding} is 0 for Latin-1, 1 for UCS-2.
-\VAR{Language} is a 3 byte ASCII string.
-\VAR{Description} is a NULL-terminated string
-containing a short description of the lyrics.
-Note that for UCS-2 comments, the NULL terminator is 2 bytes.
-The remainder of the frame is the lyrics text itself.
+\subsubsection{User-Defined Text Frame}
+
+\begin{figure}[h]
+  \includegraphics{figures/id3v23/txxx.pdf}
+\end{figure}
+\par
+\noindent
+This frame is for user-defined text information.
+\VAR{description} is a NULL-terminated string indicating
+what the frame is for.
+\VAR{encoding} is 0 for Latin-1 encoding, 1 for UCS-2 encoding.
+
+\subsubsection{GEOB Frame}
+\begin{figure}[h]
+\includegraphics{figures/id3v23/geob.pdf}
+\end{figure}
+This frame contains an embedded file (i.e. a ``general encapsulated object'').
+\VAR{MIME type} is a NULL-terminated Latin-1 string.
+\VAR{filename} and \VAR{content description} are NULL-terminated
+Latin-1 or UCS-2 encoded strings, if \VAR{encoding} is 0 or 1,
+respectively.
+\VAR{encapsulated object} is binary file data.
+
+\clearpage
 
 \subsubsection{URL Frames}
 \begin{figure}[h]
 \includegraphics{figures/id3v23/w___.pdf}
 \end{figure}
-These frames are for URL links to external resources.
+\par
+\noindent
+Frames beginning with `W' are URL links to external resources.
 \par
 \begin{table}[h]
 \begin{tabular}{|c|l|}
@@ -637,13 +694,35 @@ ID & Meaning \\
 \hline
 \end{tabular}
 \end{table}
+
+\subsubsection{User-Defined URL Frame}
+
 \begin{figure}[h]
 \includegraphics{figures/id3v23/wxxx.pdf}
 \end{figure}
+\par
+\noindent
 This is a frame for user-defined links to external resources.
-\VAR{Description} is a NULL-terminated string indicating
+\VAR{description} is a NULL-terminated string indicating
 what the frame is for.
-\VAR{Encoding} is 0 for Latin-1 encoding, 1 for UCS-2 encoding.
+\VAR{encoding} is 0 for Latin-1 encoding, 1 for UCS-2 encoding.
+
+\clearpage
+
+\subsubsection{USLT Frame}
+\begin{figure}[h]
+  \includegraphics{figures/id3v23/uslt.pdf}
+\end{figure}
+\par
+\noindent
+This frame is for unsynchronized (non-karaoke) lyrics text,
+similar to a comment frame.
+\VAR{encoding} is 0 for Latin-1, 1 for UCS-2.
+\VAR{language} is a 3 byte ASCII string.
+\VAR{description} is a NULL-terminated string
+containing a short description of the lyrics.
+Note that for UCS-2 comments, the NULL terminator is 2 bytes.
+The remainder of the frame is the lyrics text itself.
 
 \clearpage
 
@@ -831,7 +910,9 @@ in the same encoding as \VAR{Description}.
 \begin{figure}[h]
 \includegraphics{figures/id3v24/w___.pdf}
 \end{figure}
-These frames are for URL links to external resources.
+\par
+\noindent
+Frames with IDs beginning with `W' are URL links to external resources.
 \par
 \begin{table}[h]
 \begin{tabular}{|c|l|}
@@ -850,11 +931,15 @@ ID & Meaning \\
 \end{tabular}
 \end{table}
 
+\subsubsection{User-Defined URL Frame}
+
 \begin{figure}[h]
 \includegraphics{figures/id3v24/wxxx.pdf}
 \end{figure}
+\par
+\noindent
 This is a frame for user-defined links to external resources.
-\VAR{Description} is a NULL-terminated string indicating
+\VAR{description} is a NULL-terminated string indicating
 what the frame is for.
-\VAR{Encoding} is 0 for Latin-1 encoding, 1 for UTF-16 encoding,
+\VAR{encoding} is 0 for Latin-1 encoding, 1 for UTF-16 encoding,
 2 for UTF-16BE encoding and 3 for UTF-8 encoding.

@@ -18,10 +18,14 @@ figures/id3v22/wxx.pdf
 ID3v23 = \
 figures/id3v23/header.pdf \
 figures/id3v23/frame.pdf \
+figures/id3v23/frames.pdf \
 figures/id3v23/apic.pdf \
+figures/id3v23/apic-example.pdf \
 figures/id3v23/comm.pdf \
+figures/id3v23/comm-example.pdf \
 figures/id3v23/geob.pdf \
 figures/id3v23/t___.pdf \
+figures/id3v23/t___-example.pdf \
 figures/id3v23/txxx.pdf \
 figures/id3v23/uslt.pdf \
 figures/id3v23/w___.pdf \

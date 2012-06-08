@@ -5656,6 +5656,15 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] tracksplit
     - [X] tracktag
     - [X] trackverify
+** TODO Update metadata documentation with examples
+*** DONE FLAC
+*** TODO MP3
+    - [X] ID3v1/ID3v1.1
+    - [X] ID3v2.2
+    - [X] ID3v2.3
+    - [ ] ID3v2.4
+*** TODO APEv2
+*** TODO M4A
 ** TODO Remove Python Imaging Library requirement
    This is only used for thumbnailing
    and for TKinter-based image display.

@@ -160,10 +160,13 @@ class Chunk:
                                     unicode(superscript))
 
         #draw centered name, if any
-        if (self.name is not None):
+        if ((self.name is not None) and
+            (pdf.stringWidth(unicode(self.name),
+                             "DejaVu",
+                             6) <= (self.pt_width() * 2))):
             pdf.setFont("DejaVu", 6)
             pdf.drawCentredString(self.nw[0] + (self.pt_width() / 2),
-                                   self.se[1] + 2,
+                                  self.se[1] + 2,
                                   unicode(self.name))
 
         pdf.setStrokeColorRGB(0.0, 0.0, 0.0, 1.0)
