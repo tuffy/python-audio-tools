@@ -468,8 +468,7 @@ The remainder of the frame is the file's binary data.
 
 \clearpage
 
-\subsection{ID3v2.3}
-\subsubsection{ID3v2.3 Header}
+\subsection{ID3v2.3 Header}
 \begin{figure}[h]
 \includegraphics{figures/id3v23/header.pdf}
 \end{figure}
@@ -726,29 +725,40 @@ The remainder of the frame is the lyrics text itself.
 
 \clearpage
 
-\subsection{ID3v2.4}
-\subsubsection{ID3v2.4 Header}
+\subsection{ID3v2.4 Header}
 \begin{figure}[h]
 \includegraphics{figures/id3v24/header.pdf}
 \end{figure}
+
+\subsection{ID3v2.4 Frames}
+\begin{figure}[h]
+  \includegraphics{figures/id3v24/frames.pdf}
+\end{figure}
+\par
+\noindent
+The ID3v2.4 frame size field also also ``sync safe'', like the ID3v2 headers.
+It also contains \VAR{tag alter}, \VAR{file alter}, \VAR{read only},
+\VAR{grouping}, \VAR{compression}, \VAR{encryption}, \VAR{unsync}
+and \VAR{data length} flags which are typically usused.
+
+\clearpage
 
 \subsubsection{APIC Frame}
 \begin{figure}[h]
 \includegraphics{figures/id3v24/apic.pdf}
 \end{figure}
+\par
+\noindent
 This frame contains an embedded image file.
-\VAR{MIME Type} is a NULL-terminated MIME type such as ``image/jpeg''
+\VAR{MIME type} is a NULL-terminated MIME type such as ``image/jpeg''
 or ``image/png''.
-\VAR{Description} is a NULL-terminated string
-in one of the following encodings:
-\begin{inparaenum}
-\item[\itshape 0\upshape)] Latin-1
-\item[\itshape 1\upshape)] UTF-16
-\item[\itshape 2\upshape)] UTF-16BE
-\item[\itshape 3\upshape)] UTF-8
-\end{inparaenum}
-, depending on \VAR{Encoding}.
-\VAR{Picture Type} is one of the following:
+\VAR{encoding} determines the encoding of the NULL-terminated
+\VAR{description} field.
+Valid encodings are \texttt{0} for Latin-1,
+\texttt{1} for UTF-16,
+\texttt{2} for UTF-16BE
+and \texttt{3} for UTF-8.
+\VAR{picture type} is one of the following:
 \begin{table}[h]
 {\relsize{-1}
 \begin{tabular}{|r|l||r|l|}
@@ -774,135 +784,155 @@ value & type & value & type \\
 
 \clearpage
 
+\subsubsection{APIC Frame Example}
+\begin{figure}[h]
+\includegraphics{figures/id3v24/apic-example.pdf}
+\end{figure}
+\begin{table}[h]
+\begin{tabular}{rl}
+encoding : & \texttt{0} (Latin-1) \\
+MIME type : & \texttt{"image/png"} \\
+picture type : & \texttt{3} (front cover) \\
+description : & \texttt{"Description"} \\
+\end{tabular}
+\end{table}
+\par
+\noindent
+As with all ID3v2.4 frames, the \VAR{frame size} field contains
+embedded 0 bits as follows:
+\begin{figure}[h]
+\includegraphics{figures/id3v24/size.pdf}
+\end{figure}
+\par
+\noindent
+which indicates the frame's data size is:
+\begin{equation*}
+(0 \times 2 ^ {21}) + (0 \times 2 ^ {14}) + (1 \times 2 ^ {7}) + 55 = 183 \text{ bytes}
+\end{equation*}
+
+\clearpage
+
 \subsubsection{COMM Frame}
 \begin{figure}[h]
 \includegraphics{figures/id3v24/comm.pdf}
 \end{figure}
-This frame is a lengthy string of comment text.
-\VAR{Language} is a 3 byte ASCII string.
-\VAR{Description} is a NULL-terminated string
-in one of the following encodings:
-\begin{inparaenum}
-\item[\itshape 0\upshape)] Latin-1
-\item[\itshape 1\upshape)] UTF-16
-\item[\itshape 2\upshape)] UTF-16BE
-\item[\itshape 3\upshape)] UTF-8
-\end{inparaenum}
-, depending on \VAR{Encoding}.
-The remainder of the frame is the comment text itself,
-in the same encoding as \VAR{Description}.
+\par
+\noindent
+This frame supports a lengthy string of comment text.
+\VAR{encoding} determines the encoding of the NULL-terminated
+\VAR{description} field and \VAR{comment text} field.
+Valid encodings are \texttt{0} for Latin-1,
+\texttt{1} for UTF-16,
+\texttt{2} for UTF-16BE
+and \texttt{3} for UTF-8.
+\VAR{language} is a 3 byte ASCII string.
 
-\subsubsection{GEOB Frame}
+\subsubsection{COMM Frame Example}
 \begin{figure}[h]
-\includegraphics{figures/id3v24/geob.pdf}
+\includegraphics{figures/id3v24/comm-example.pdf}
 \end{figure}
-This frame contains an embedded file.
-\VAR{MIME Type} is a NULL-terminated Latin-1 string.
-\VAR{Filename} and \VAR{Content Description} are NULL-terminated
-strings in one of the following encodings:
-\begin{inparaenum}
-\item[\itshape 0\upshape)] Latin-1
-\item[\itshape 1\upshape)] UTF-16
-\item[\itshape 2\upshape)] UTF-16BE
-\item[\itshape 3\upshape)] UTF-8
-\end{inparaenum}
-, depending on \VAR{Encoding}.
-\VAR{Encapsulated Object} is binary file data.
+\begin{table}[h]
+\begin{tabular}{rl}
+encoding : & \texttt{0} (Latin-1) \\
+language : & \texttt{"eng"} \\
+description : & \texttt{""} (empty string) \\
+comment text : & \texttt{"Comment Text"} \\
+\end{tabular}
+\end{table}
 
 \clearpage
 
 \subsubsection{Text Frames}
 \begin{figure}[h]
-\includegraphics{figures/id3v24/t___.pdf}
+  \includegraphics{figures/id3v24/t___.pdf}
 \end{figure}
-\VAR{Encoding} is 0 for Latin-1 encoding, 1 for UTF-16 encoding,
+\par
+\noindent
+Frames beginning with `T' are text frames.
+\VAR{encoding} is 0 for Latin-1 encoding, 1 for UTF-16 encoding,
 2 for UTF-16BE encoding and 3 for UTF-8 encoding.
 \begin{table}[h]
-{\relsize{-2}
-\begin{tabular}{|c|l||c|l|}
-\hline
-ID & Meaning & ID & Meaning \\
-\hline
-\texttt{TALB} & album name &
-\texttt{TBPM} & beats-per-minute \\
-\texttt{TCOM} & composer &
-\texttt{TCON} & content type \\
-\texttt{TCOP} & copyright message &
-\texttt{TDAT} & date \\
-\texttt{TDEN} & encoding time &
-\texttt{TDLY} & playlist delay \\
-\texttt{TDOR} & original release time &
-\texttt{TDRC} & recording time \\
-\texttt{TDRL} & release time &
-\texttt{TDTG} & tagging time \\
-\texttt{TENC} & encoded by &
-\texttt{TEXT} & lyricist / text writer \\
-\texttt{TFLT} & file type &
-\texttt{TIPL} & involved people list \\
-\texttt{TIT1} & content group description &
-\texttt{TIT2} & title / songname / content description \\
-\texttt{TIT3} & subtitle / description refinement &
-\texttt{TKEY} & initial key \\
-\texttt{TLAN} & language(s) &
-\texttt{TLEN} & length \\
-\texttt{TMCL} & musician credits list &
-\texttt{TMED} & media type \\
-\texttt{TMOO} & mood &
-\texttt{TOAL} & original album / movie / show title \\
-\texttt{TOFN} & original filename &
-\texttt{TOLY} & original lyricist(s) / text writer(s) \\
-\texttt{TOPE} & original artist(s) / performer(s) &
-\texttt{TOWN} & file owner / licensee \\
-\texttt{TPE1} & lead performer(s) / soloist(s) &
-\texttt{TPE2} & band / orchestra / accompaniment \\
-\texttt{TPE3} & conductor / performer refinement &
-\texttt{TPE4} & interpreted, remixed, or otherwise modified by \\
-\texttt{TPOS} & part of a set &
-\texttt{TPRO} & produced notice \\
-\texttt{TPUB} & publisher &
-\texttt{TRCK} & track number / position in set \\
-\texttt{TRSN} & internet radio station name &
-\texttt{TRSO} & internet radio station owner \\
-\texttt{TSOA} & album sort order &
-\texttt{TSOP} & performer sort order \\
-\texttt{TSOT} & title sort order &
-\texttt{TSRC} & ISRC (International Standard Recording Code) \\
-\texttt{TSSE} & software / hardware and encoding settings &
-\texttt{TSST} & set subtitle \\
-\hline
-\end{tabular}
-}
+  {\relsize{-2}
+    \begin{tabular}{|c|l||c|l|}
+      \hline
+      ID & Meaning & ID & Meaning \\
+      \hline
+      \texttt{TALB} & album name &
+      \texttt{TBPM} & beats-per-minute \\
+      \texttt{TCOM} & composer &
+      \texttt{TCON} & content type \\
+      \texttt{TCOP} & copyright message &
+      \texttt{TDAT} & date \\
+      \texttt{TDEN} & encoding time &
+      \texttt{TDLY} & playlist delay \\
+      \texttt{TDOR} & original release time &
+      \texttt{TDRC} & recording time \\
+      \texttt{TDRL} & release time &
+      \texttt{TDTG} & tagging time \\
+      \texttt{TENC} & encoded by &
+      \texttt{TEXT} & lyricist / text writer \\
+      \texttt{TFLT} & file type &
+      \texttt{TIPL} & involved people list \\
+      \texttt{TIT1} & content group description &
+      \texttt{TIT2} & title / songname / content description \\
+      \texttt{TIT3} & subtitle / description refinement &
+      \texttt{TKEY} & initial key \\
+      \texttt{TLAN} & language(s) &
+      \texttt{TLEN} & length \\
+      \texttt{TMCL} & musician credits list &
+      \texttt{TMED} & media type \\
+      \texttt{TMOO} & mood &
+      \texttt{TOAL} & original album / movie / show title \\
+      \texttt{TOFN} & original filename &
+      \texttt{TOLY} & original lyricist(s) / text writer(s) \\
+      \texttt{TOPE} & original artist(s) / performer(s) &
+      \texttt{TOWN} & file owner / licensee \\
+      \texttt{TPE1} & lead performer(s) / soloist(s) &
+      \texttt{TPE2} & band / orchestra / accompaniment \\
+      \texttt{TPE3} & conductor / performer refinement &
+      \texttt{TPE4} & interpreted, remixed, or otherwise modified by \\
+      \texttt{TPOS} & part of a set &
+      \texttt{TPRO} & produced notice \\
+      \texttt{TPUB} & publisher &
+      \texttt{TRCK} & track number / position in set \\
+      \texttt{TRSN} & internet radio station name &
+      \texttt{TRSO} & internet radio station owner \\
+      \texttt{TSOA} & album sort order &
+      \texttt{TSOP} & performer sort order \\
+      \texttt{TSOT} & title sort order &
+      \texttt{TSRC} & ISRC (International Standard Recording Code) \\
+      \texttt{TSSE} & software / hardware and encoding settings &
+      \texttt{TSST} & set subtitle \\
+      \hline
+    \end{tabular}
+  }
 \end{table}
 
 \clearpage
 
+\subsubsection{Text Frame Example}
 \begin{figure}[h]
-\includegraphics{figures/id3v24/txxx.pdf}
+  \includegraphics{figures/id3v24/t___-example.pdf}
 \end{figure}
-This frame is for user-defined text information.
-\VAR{Description} is a NULL-terminated string indicating
-what the frame is for.
-\VAR{Encoding} is 0 for Latin-1 encoding, 1 for UTF-16 encoding,
-2 for UTF-16BE encoding and 3 for UTF-8 encoding.
+\begin{table}[h]
+\begin{tabular}{rl}
+frame ID : & \texttt{"TIT2"} (title / song name / content description) \\
+encoding : & \texttt{0} (Latin-1) \\
+text: & \texttt{"Track Name"} \\
+\end{tabular}
+\end{table}
 
-\subsubsection{USLT Frame}
+\subsubsection{User-Defined Text Frame}
 \begin{figure}[h]
-\includegraphics{figures/id3v24/uslt.pdf}
+  \includegraphics{figures/id3v24/txxx.pdf}
 \end{figure}
-This frame is for unsynchronized (non-karaoke) lyrics text,
-similar to a comment frame.
-\VAR{Language} is a 3 byte ASCII string.
-\VAR{Description} is a NULL-terminated string
-in one of the following encodings:
-\begin{inparaenum}
-\item[\itshape 0\upshape)] Latin-1
-\item[\itshape 1\upshape)] UTF-16
-\item[\itshape 2\upshape)] UTF-16BE
-\item[\itshape 3\upshape)] UTF-8
-\end{inparaenum}
-, depending on \VAR{Encoding}.
-The remainder of the frame is the lyrics text itself,
-in the same encoding as \VAR{Description}.
+\par
+\noindent
+This frame is for user-defined text information.
+\VAR{encoding} is 0 for Latin-1 encoding, 1 for UTF-16 encoding,
+2 for UTF-16BE encoding and 3 for UTF-8 encoding.
+\VAR{description} is a NULL-terminated string indicating
+what the frame is for.
 
 \clearpage
 
@@ -931,6 +961,8 @@ ID & Meaning \\
 \end{tabular}
 \end{table}
 
+\clearpage
+
 \subsubsection{User-Defined URL Frame}
 
 \begin{figure}[h]
@@ -939,7 +971,37 @@ ID & Meaning \\
 \par
 \noindent
 This is a frame for user-defined links to external resources.
-\VAR{description} is a NULL-terminated string indicating
-what the frame is for.
 \VAR{encoding} is 0 for Latin-1 encoding, 1 for UTF-16 encoding,
 2 for UTF-16BE encoding and 3 for UTF-8 encoding.
+\VAR{description} is a NULL-terminated string indicating
+what the frame is for.
+
+\clearpage
+
+\subsubsection{GEOB Frame}
+\begin{figure}[h]
+  \includegraphics{figures/id3v24/geob.pdf}
+\end{figure}
+\par
+\noindent
+This frame contains an embedded file (i.e. a ``general encapsulated object'').
+\VAR{MIME type} is a NULL-terminated Latin-1 string.
+\VAR{filename} and \VAR{content description} are NULL-terminated
+strings encoded as Latin-1, UTF-16, UTF-16BE or UTF-8,
+depending on the \VAR{encoding field}.
+\VAR{encapsulated object} is binary file data.
+
+\clearpage
+
+\subsubsection{USLT Frame}
+\begin{figure}[h]
+  \includegraphics{figures/id3v24/uslt.pdf}
+\end{figure}
+\par
+\noindent
+This frame is for unsynchronized (non-karaoke) lyrics text,
+similar to a comment frame.
+\VAR{language} is a 3 byte ASCII string.
+\VAR{description} and \VAR{lyrics text} are a NULL-terminated strings
+encoded as Latin-1, UTF-16, UTF-16BE or UTF-8,
+depending on the \VAR{encoding field}.

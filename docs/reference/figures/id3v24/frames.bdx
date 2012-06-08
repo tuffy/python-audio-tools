@@ -1,19 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col width=".111">Frame₀</col>
+    <col start="0" end="79" width=".40">Header</col>
+    <col start="80" width=".60" id="frames">ID3v2.4 Frames</col>
+  </row>
+  <spacer/>
+  <row>
+    <col width=".111" id="frames_s">Frame₀</col>
     <col width=".111">Frame₁</col>
     <col width=".111">Frame₂</col>
     <col width=".111">Frame₃</col>
     <col width=".111">Frame₄</col>
     <col width=".111">Frame₅</col>
     <col width=".111">Frame₆</col>
-    <col width=".111" id="frame">Frame₇</col>
-    <col width=".111" style="dashed">...</col>
+    <col width=".111">Frame₇</col>
+    <col width=".111" style="dashed" id="frames_e">...</col>
   </row>
   <spacer/>
   <row>
-    <col width=".46" start="0" end="31" id="frame_s">frame ID (`USLT')</col>
+    <col width=".46" start="0" end="31" id="frame_s">frame ID</col>
     <col start="32" end="32" width=".035">0</col>
     <col start="33" end="39" width=".10">size₃</col>
     <col start="40" end="40" width=".035">0</col>
@@ -40,20 +45,22 @@
     <col start="79" end="79" width=".155">data length</col>
   </row>
   <row>
-    <col start="80" end="87" width=".25">encoding</col>
-    <col start="88" end="111" width=".25">language</col>
-    <col start="112" width=".35">description</col>
-    <col start="0" end="7/15" width=".15">NULL</col>
-  </row>
-  <row>
-    <col>lyrics text</col>
+    <col>Frame Data</col>
   </row>
   <line style="dotted">
-    <start id="frame" corner="sw"/>
+    <start id="frames" corner="sw"/>
+    <end id="frames_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="frames" corner="se"/>
+    <end id="frames_e" corner="ne"/>
+  </line>
+  <line style="dotted">
+    <start id="frames_s" corner="sw"/>
     <end id="frame_s" corner="nw"/>
   </line>
   <line style="dotted">
-    <start id="frame" corner="se"/>
+    <start id="frames_s" corner="se"/>
     <end id="frame_e" corner="ne"/>
   </line>
 </diagram>

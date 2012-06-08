@@ -1,0 +1,11 @@
+<?xml version="1.0" ?>
+<struct endianness="big">
+  <field size="1" value="0">NULL</field>
+  <field size="7" value="0">size₃</field>
+  <field size="1" value="0">NULL</field>
+  <field size="7" value="0">size₂</field>
+  <field size="1" value="0">NULL</field>
+  <field size="7" value="1">size₁</field>
+  <field size="1" value="0">NULL</field>
+  <field size="7" value="0x37">size₀</field>
+</struct>

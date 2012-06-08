@@ -1,20 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="31" width=".5">`W___' (0x57______)</col>
-    <col start="32" end="63" width=".5">size</col>
+    <col width=".111">Frame₀</col>
+    <col width=".111">Frame₁</col>
+    <col width=".111">Frame₂</col>
+    <col width=".111">Frame₃</col>
+    <col width=".111" id="frame">Frame₄</col>
+    <col width=".111">Frame₅</col>
+    <col width=".111">Frame₆</col>
+    <col width=".111">Frame₇</col>
+    <col width=".111" style="dashed">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col width=".46" start="0" end="31" id="frame_s">frame ID (`W___')</col>
+    <col start="32" end="32" width=".035">0</col>
+    <col start="33" end="39" width=".10">size₃</col>
+    <col start="40" end="40" width=".035">0</col>
+    <col start="41" end="47" width=".10">size₂</col>
+    <col start="48" end="48" width=".035">0</col>
+    <col start="49" end="55" width=".10">size₁</col>
+    <col start="56" end="56" width=".035">0</col>
+    <col start="57" end="63" width=".10" id="frame_e">size₀</col>
   </row>
   <row>
-    <col start="64" end="64" width=".125">0x00</col>
+    <col start="64" end="64" width=".125">NULL</col>
     <col start="65" end="65" width=".125">tag alter</col>
     <col start="66" end="66" width=".125">file alter</col>
     <col start="67" end="67" width=".125">read only</col>
-    <col start="68" end="71" width=".5">0x00</col>
+    <col start="68" end="71" width=".5">NULL</col>
   </row>
   <row>
-    <col start="72" end="72" width=".120">0x00</col>
+    <col start="72" end="72" width=".120">NULL</col>
     <col start="73" end="73" width=".125">grouping</col>
-    <col start="74" end="75" width=".145">0x00</col>
+    <col start="74" end="75" width=".145">NULL</col>
     <col start="76" end="76" width=".155">compression</col>
     <col start="77" end="77" width=".150">encryption</col>
     <col start="78" end="78" width=".150">unsync</col>
@@ -23,4 +42,12 @@
   <row>
     <col start="80">URL</col>
   </row>
+  <line style="dotted">
+    <start id="frame" corner="sw"/>
+    <end id="frame_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="frame" corner="se"/>
+    <end id="frame_e" corner="ne"/>
+  </line>
 </diagram>

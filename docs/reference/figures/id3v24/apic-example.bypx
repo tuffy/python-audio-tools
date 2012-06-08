@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<bytestruct>
+  <field label="frame ID">41504943</field>
+  <field label="frame size">00000137</field>
+  <field label="flags">0000</field>
+  <field label="enc.">00</field>
+  <field label="MIME type">696d6167652f706e67</field>
+  <field label="NULL">00</field>
+  <field label="type">03</field>
+  <field label="description">4465736372697074696f6e</field>
+  <field label="NULL">00</field>
+  <field label="picture data">89504e470d0a1a0a0000000d494844520000000a0000000c010300000061a5bee30000000467414d410000b18f0bfc610500000003504c5445ffffffa7c41bc8000000097048597300000b1300000b1301009a9c180000000774494d4507db071b0e0d06d746bcb00000000874455874436f6d6d656e7400f6cc96bf0000000b4944415408d76360200c00002400012e1e71a00000000049454e44ae426082</field>
+</bytestruct>
