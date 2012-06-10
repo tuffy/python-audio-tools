@@ -1,9 +1,0 @@
-<?xml version="1.0" ?><diagram>
-  <row>
-    <col style="dashed" end="255" start="0" width=".20">Header</col>
-    <col width=".20">Item₀</col>
-    <col width=".20">Item₁</col>
-    <col style="dashed" width=".20">...</col>
-    <col end="255" start="0" width=".20">Footer</col>
-  </row>
-</diagram>

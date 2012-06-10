@@ -14,7 +14,7 @@ except ImportError:
     sys.exit(1)
 
 #this size of an individual bit cell, in points
-BIT_WIDTH = 20
+# BIT_WIDTH = 0
 BIT_HEIGHT = 30
 
 (BORDER_NONE, BORDER_LINE, BORDER_DOTTED) = range(3)
@@ -89,6 +89,8 @@ class Chunk:
         self.ne = self.nw = self.se = self.sw = (0, 0)
 
     def set_w_offset(self, x):
+        global BIT_WIDTH
+
         self.nw = (x, self.nw[1])
         self.sw = (x, self.sw[1])
         self.ne = (x + (self.size() * BIT_WIDTH), self.ne[1])
@@ -725,6 +727,8 @@ def chunks_to_rows(chunks_iter, bits_per_row, x_offset=0):
             x_position = x_offset
             remaining_bits = bits_per_row
         else:
+            global BIT_WIDTH
+
             #populate the chunk's east/west positions
             chunk.set_w_offset(x_position)
 
@@ -898,13 +902,19 @@ if (__name__ == '__main__'):
                       type='int', default=16)
     parser.add_option('-w','--width',dest='width',
                       type='int', default=6 * 72,
-                      help='digram width, in PostScript points')
+                      help='diagram width, in PostScript points')
     parser.add_option('-t','--type',dest='type',
                       choices=("pdf", "svg"),
                       help="type of output file",
                       default="pdf")
+    parser.add_option('--bit-width', dest='bit_width',
+                      type='int', default=20,
+                      help='width of each bit value')
 
     (options,args) = parser.parse_args()
+
+    global BIT_WIDTH
+    BIT_WIDTH = options.bit_width
 
     x_offset = (options.width - (options.bits_per_row * BIT_WIDTH)) / 2
 

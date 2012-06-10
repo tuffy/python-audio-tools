@@ -287,10 +287,18 @@ APE = \
 figures/ape/stream.pdf \
 figures/ape/descriptor.pdf \
 figures/ape/header.pdf \
-figures/ape/apev2_item.pdf \
-figures/ape/apev2_tag.pdf \
-figures/ape/apev2_tagheader.pdf \
-figures/ape/apev2_flags.pdf
+
+APEV2 = \
+figures/apev2/footer-example.pdf \
+figures/apev2/footer-flags.pdf \
+figures/apev2/full-example.pdf \
+figures/apev2/header.pdf \
+figures/apev2/header-flags.pdf \
+figures/apev2/item.pdf \
+figures/apev2/item-example1.pdf \
+figures/apev2/item-example2.pdf \
+figures/apev2/item-example3.pdf \
+figures/apev2/tag.pdf
 
 MUSEPACK = \
 figures/musepack/sv7_stream.pdf \
@@ -317,6 +325,7 @@ figures/au_stream.pdf \
 $(SHORTEN) \
 $(FLAC) \
 $(WAVPACK) \
+$(APEV2) \
 $(APE) \
 $(MP3) \
 $(ID3v22) \
@@ -341,6 +350,7 @@ au.tex \
 shorten.tex \
 flac.tex \
 wavpack.tex \
+apev2.tex \
 ape.tex \
 mp3.tex \
 m4a.tex \
@@ -575,3 +585,9 @@ basics-info.pdf: basics-info.tex basics.tex $(BASICS)
 
 figures/flac/cuesheet-example.pdf: figures/flac/cuesheet-example.bypx
 	./byteparse.py --no-ascii --digits-per-row 20 -i $< -o $@
+
+figures/apev2/header-flags.pdf: figures/apev2/header-flags.bpx
+	./bitparse.py --bit-width=50 --bits-per-row=8 -i $< -o $@
+
+figures/apev2/footer-flags.pdf: figures/apev2/footer-flags.bpx
+	./bitparse.py --bit-width=50 --bits-per-row=8 -i $< -o $@

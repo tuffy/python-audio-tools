@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<bytestruct>
+  <field label="preamble">4150455441474558</field>
+  <field label="version">d0070000</field>
+  <field label="tag size">63000000</field>
+  <field label="item count">03000000</field>
+  <field label="flags" background-color="#0000FF30">0000000a</field>
+  <field label="reserved">0000000000000000</field>
+  <field label="tag items">04000000000000005965617200323031320b0000000000000041727469737400417274697374204e616d650a000000000000005469746c6500547261636b204e616d65</field>
+  <field label="preamble">4150455441474558</field>
+  <field label="version">d0070000</field>
+  <field label="tag size">63000000</field>
+  <field label="item count">03000000</field>
+  <field label="flags" background-color="#00FF0030">00000080</field>
+  <field label="reserved">0000000000000000</field>
+</bytestruct>

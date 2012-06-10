@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col style="dashed" end="255" start="0" width=".20" id="header">Header</col>
+    <col width=".20">Item₀</col>
+    <col width=".20">Item₁</col>
+    <col style="dashed" width=".20">...</col>
+    <col style="dashed" end="255" start="0" width=".20" id="footer">Footer</col>
+  </row>
+</diagram>

@@ -7,6 +7,7 @@ include(header.m4)
 \include{shorten}
 \include{flac}
 \include{wavpack}
+\include{apev2}
 \include{ape}
 \include{mp3}
 \include{m4a}
