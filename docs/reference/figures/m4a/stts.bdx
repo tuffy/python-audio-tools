@@ -10,14 +10,22 @@
     <col start="96" end="127" width=".5">number of times</col>
   </row>
   <row>
-    <col start="128" end="159" width=".5">frame count₁</col>
-    <col start="160" end="191" width=".5">duration₁</col>
+    <col width=".25" id="time" start="128" end="191">Time₀</col>
+    <col width=".25" start="192" end="255">Time₁</col>
+    <col width=".25" start="256" end="319">Time₂</col>
+    <col width=".25" style="dashed">...</col>
   </row>
+  <spacer/>
   <row>
-    <col start="192" end="223" width=".5">frame count₂</col>
-    <col start="224" end="255" width=".5">duration₂</col>
+    <col start="128" end="159" width=".5" id="time_s">frame count</col>
+    <col start="160" end="191" width=".5" id="time_e">duration</col>
   </row>
-  <row>
-    <col start="256" style="dashed">...</col>
-  </row>
+  <line style="dotted">
+    <start id="time" corner="sw"/>
+    <end id="time_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="time" corner="se"/>
+    <end id="time_e" corner="ne"/>
+  </line>
 </diagram>

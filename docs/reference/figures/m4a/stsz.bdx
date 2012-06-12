@@ -11,8 +11,8 @@
     <col start="128" end="159" width=".35">number of block sizes</col>
   </row>
   <row>
-    <col start="160" end="191" width=".333333">block size₁</col>
-    <col start="192" end="223" width=".333333">block size₂</col>
+    <col start="160" end="191" width=".333333">block size₀</col>
+    <col start="192" end="223" width=".333333">block size₁</col>
     <col start="224" style="dashed" width=".333333">...</col>
   </row>
 </diagram>

@@ -145,13 +145,13 @@ and bits-per-sample.  It can be found in the \ATOM{stsd} atom.
 \includegraphics{figures/m4a/stsc.pdf}
 \end{figure}
 
+\clearpage
+
 \subsection{the stsz Atom}
 
 \begin{figure}[h]
 \includegraphics{figures/m4a/stsz.pdf}
 \end{figure}
-
-\clearpage
 
 \subsection{the stco Atom}
 
@@ -167,6 +167,8 @@ the \ATOM{mdat} atom may move and these absolute offsets will change.
 In that instance, they \textbf{must}
 be re-adjusted in the \ATOM{stco} atom or the file may become unplayable.
 
+\clearpage
+
 \subsection{the meta Atom}
 \label{m4a_meta}
 \begin{figure}[h]
@@ -174,19 +176,14 @@ be re-adjusted in the \ATOM{stco} atom or the file may become unplayable.
 \includegraphics{figures/m4a/meta_atoms.pdf}
 }
 \includegraphics{figures/m4a/meta.pdf}
-The atoms within the \ATOM{ilst} container are all containers themselves,
-each with a \ATOM{data} atom of its own.
-Notice that many of \ATOM{ilst}'s sub-atoms begin with the
-non-ASCII 0xA9 byte.
-
-\includegraphics{figures/m4a/data.pdf}
-\par
-\noindent
-Text data atoms have a \VAR{Type} of 1.
-Binary data atoms typically have a \VAR{Type} of 0.
+Text data atoms have a \VAR{type} of 1,
+which indicates that \VAR{data} is UTF-8 encoded text.
+Binary data atoms typically have a \VAR{type} of 0.
 \end{figure}
+
+\clearpage
+
 \begin{table}[h]
-{\relsize{-1}
 \begin{tabular}{|r|l||r|l||r|l|}
 \hline
 Atom & Description & Atom & Description & Atom & Description \\
@@ -212,10 +209,7 @@ Atom & Description & Atom & Description & Atom & Description \\
 \hline
 \end{tabular}
 \caption{Known \ATOM{ilst} sub-atoms}
-}
 \end{table}
-
-\clearpage
 
 \subsubsection{the trkn Sub-Atom}
 \ATOM{trkn} is a binary sub-atom of \ATOM{meta} which contains
@@ -232,3 +226,50 @@ two discs, the sub-atom will contain that information.
 \begin{figure}[h]
 \includegraphics{figures/m4a/disk.pdf}
 \end{figure}
+
+\clearpage
+
+\subsubsection{meta Atom Example}
+\begin{figure}[h]
+\includegraphics[height=6in]{figures/m4a/meta-example.pdf}
+\end{figure}
+
+\clearpage
+
+\subsubsection{nam Atom Example}
+\includegraphics{figures/m4a/nam-example.pdf}
+\par
+\noindent
+\begin{tabular}{rl}
+  type : & \texttt{1} (text) \\
+  data : & \texttt{"Track Name"} (UTF-8 encoded text) \\
+\end{tabular}
+
+\subsubsection{alb Atom Example}
+\includegraphics{figures/m4a/alb-example.pdf}
+\par
+\noindent
+\begin{tabular}{rl}
+  type : & \texttt{1} (text) \\
+  data : & \texttt{"Album Name"} (UTF-8 encoded text) \\
+\end{tabular}
+
+\subsubsection{trkn Atom Example}
+\includegraphics{figures/m4a/trkn-example.pdf}
+\par
+\noindent
+\begin{tabular}{rl}
+  type : & \texttt{0} (binary) \\
+  track number : & \texttt{1} \\
+  total tracks : & \texttt{2} \\
+\end{tabular}
+
+\subsubsection{disk Atom Example}
+\includegraphics{figures/m4a/disk-example.pdf}
+\par
+\noindent
+\begin{tabular}{rl}
+  type : & \texttt{0} (binary) \\
+  disk number : & \texttt{3} \\
+  total disks : & \texttt{4} \\
+\end{tabular}

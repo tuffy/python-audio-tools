@@ -5656,7 +5656,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] tracksplit
     - [X] tracktag
     - [X] trackverify
-** TODO Update metadata documentation with examples
+** DONE Update metadata documentation with examples
 *** DONE FLAC
 *** DONE MP3
     - [X] ID3v1/ID3v1.1
@@ -5664,7 +5664,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] ID3v2.3
     - [X] ID3v2.4
 *** DONE APEv2
-*** TODO M4A
+*** DONE M4A
 ** TODO Remove Python Imaging Library requirement
    This is only used for thumbnailing
    and for TKinter-based image display.

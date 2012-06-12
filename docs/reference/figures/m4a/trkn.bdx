@@ -1,20 +1,21 @@
 <?xml version="1.0" ?><diagram>
   <row>
     <col end="31" start="0" width=".25">trkn length</col>
-    <col end="63" start="32" width=".25">`trkn' (0x74726B6E)</col>
-    <col id="data" start="64" style="dashed" width=".25">data</col>
+    <col end="63" start="32" width=".25">`trkn'</col>
+    <col id="data" start="64" style="dashed" width=".50">data</col>
   </row>
   <row><blank/></row>
   <row>
     <col end="31" id="data_len" start="0" width=".25">data length</col>
-    <col end="63" start="32" width=".25">`data' (0x64617461)</col>
-    <col end="127" id="data_flags" start="64" width=".5">flags (0x00000000)</col>
+    <col end="63" start="32" width=".25">`data'</col>
+    <col start="64" end="95" width=".25">type (0)</col>
+    <col start="96" end="127" width=".25" id="data_flags">reserved (0)</col>
   </row>
   <row>
-    <col end="143" start="128" width=".25">NULL (0x0000)</col>
+    <col end="143" start="128" width=".25">NULL</col>
     <col end="159" start="144" width=".25">track number</col>
     <col end="175" start="160" width=".25">total tracks</col>
-    <col end="191" start="176" width=".25">NULL (0x0000)</col>
+    <col end="191" start="176" width=".25">NULL</col>
   </row>
   <line style="dotted"><start corner="sw" id="data"/><end corner="nw" id="data_len"/></line>
   <line style="dotted"><start corner="se" id="data"/><end corner="ne" id="data_flags"/></line>

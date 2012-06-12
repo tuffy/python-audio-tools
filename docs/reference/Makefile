@@ -99,19 +99,23 @@ figures/oggflac_stream.pdf
 
 
 M4A = figures/m4a/quicktime.pdf \
+figures/m4a/alb-example.pdf \
 figures/m4a/atom.pdf \
 figures/m4a/atom2.pdf \
 figures/m4a/atoms.pdf \
 figures/m4a/data.pdf \
 figures/m4a/disk.pdf \
+figures/m4a/disk-example.pdf \
 figures/m4a/dref.pdf \
 figures/m4a/ftyp.pdf \
 figures/m4a/hdlr.pdf \
 figures/m4a/mdhd.pdf \
 figures/m4a/meta.pdf \
 figures/m4a/meta_atoms.pdf \
+figures/m4a/meta-example.pdf \
 figures/m4a/mp4a.pdf \
 figures/m4a/mvhd.pdf \
+figures/m4a/nam-example.pdf \
 figures/m4a/smhd.pdf \
 figures/m4a/stco.pdf \
 figures/m4a/stsc.pdf \
@@ -119,7 +123,9 @@ figures/m4a/stsd.pdf \
 figures/m4a/stsz.pdf \
 figures/m4a/stts.pdf \
 figures/m4a/tkhd.pdf \
-figures/m4a/trkn.pdf
+figures/m4a/trkn.pdf \
+figures/m4a/trkn-example.pdf
+
 
 WAVPACK = figures/wavpack/block_channels.pdf \
 figures/wavpack/block_header.pdf \

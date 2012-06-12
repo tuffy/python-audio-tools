@@ -10,16 +10,25 @@
     <col start="96" end="127" width=".5">number of blocks</col>
   </row>
   <row>
-    <col start="128" end="159" width=".333333">first chunk₁</col>
-    <col start="160" end="191" width=".333333">samples per chunk₁</col>
-    <col start="192" end="223" width=".333333">sample duration index₁</col>
+    <col start="128" end="223" id="block" width=".25">Block₀</col>
+    <col start="224" end="319" width=".25">Block₁</col>
+    <col start="320" end="415" width=".25">Block₂</col>
+    <col style="dashed" width=".25">...</col>
   </row>
+  <spacer/>
   <row>
-    <col start="224" end="255" width=".333333">first chunk₂</col>
-    <col start="256" end="287" width=".333333">samples per chunk₂</col>
-    <col start="288" end="319" width=".333333">sample duration index₂</col>
+    <col start="128" end="159" width=".333333"
+         id="block_s">first chunk</col>
+    <col start="160" end="191" width=".333333">samples per chunk</col>
+    <col start="192" end="223" width=".333333"
+         id="block_e">sample duration index</col>
   </row>
-  <row>
-    <col start="320" style="dashed">...</col>
-  </row>
+  <line style="dotted">
+    <start id="block" corner="sw"/>
+    <end id="block_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="block" corner="se"/>
+    <end id="block_e" corner="ne"/>
+  </line>
 </diagram>

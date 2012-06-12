@@ -10,8 +10,8 @@
     <col start="96" end="127" width=".5">number of references</col>
   </row>
   <row>
-    <col start="128" width=".333333" style="dashed">reference atom₁</col>
-    <col width=".333333" style="dashed">reference atom₂</col>
+    <col start="128" width=".333333" style="dashed">reference atom₀</col>
+    <col width=".333333" style="dashed">reference atom₁</col>
     <col width=".333333" style="dashed">...</col>
   </row>
 </diagram>

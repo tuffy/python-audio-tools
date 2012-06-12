@@ -55,7 +55,7 @@
     <end id="subblocks_s" corner="nw"/>
   </line>
   <line style="dotted">
-    <start id="subblock_0" corner="se"/>
+    <start id="subblock_4" corner="se"/>
     <end id="subblocks_e" corner="ne"/>
   </line>
 </diagram>

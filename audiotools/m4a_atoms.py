@@ -146,7 +146,7 @@ class M4A_Tree_Atom:
         new_leaf_atoms = []
         data_deleted = False
         for leaf_atom in self:
-            if ((leaf_atom.name == atom_obj.name) and (not data_deleted)):
+            if ((leaf_atom.name == atom_name) and (not data_deleted)):
                 data_deleted = True
             else:
                 new_leaf_atoms.append(leaf_atom)

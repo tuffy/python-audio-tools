@@ -10,8 +10,8 @@
     <col start="96" end="127" width=".5">number of descriptions</col>
   </row>
   <row>
-    <col start="128" width=".333333" style="dashed">description atom₁</col>
-    <col width=".333333" style="dashed">description atom₂</col>
+    <col start="128" width=".333333" style="dashed">description atom₀</col>
+    <col width=".333333" style="dashed">description atom₁</col>
     <col width=".333333" style="dashed">...</col>
   </row>
 </diagram>

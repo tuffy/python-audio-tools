@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<bytestruct>
+  <field label="trkn size" background-color="#00FF0020">00000020</field>
+  <field background-color="#00FF0020">74726b6e</field>
+  <field label="data size" background-color="#00FF0020">00000018</field>
+  <field background-color="#00FF0020">64617461</field>
+  <field label="type" background-color="#00FF0020">00000000</field>
+  <field label="reserved" background-color="#00FF0020">00000000</field>
+  <field label="NULL" background-color="#00FF0020">0000</field>
+  <field label="number" background-color="#00FF0020">0001</field>
+  <field label="total" background-color="#00FF0020">0002</field>
+  <field label="NULL" background-color="#00FF0020">0000</field>
+</bytestruct>
