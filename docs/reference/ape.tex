@@ -13,26 +13,81 @@ IFF chunks and reproduces the original WAVE file in its entirety rather
 than storing only the data it contains.
 All of its fields are little-endian.
 
-\section{the Monkey's Audio File Stream}
+\section{File Stream}
 \begin{figure}[h]
 \includegraphics{figures/ape/stream.pdf}
 \end{figure}
 
-\section{the Monkey's Audio Descriptor}
+\clearpage
+
+\section{Descriptor}
 \begin{figure}[h]
 \includegraphics{figures/ape/descriptor.pdf}
 \end{figure}
 \par
 \noindent
-\VAR{Version} is the encoding software's version times 1000.
-i.e. Monkey's Audio 3.99 = 3990
+\VAR{ID} is always \texttt{"MAC "} (note the trailing space).
+\VAR{version} is the encoding software's version times 1000
+(e.g. Monkey's Audio 3.99 = 3990).
+The 6 length fields are the lengths of the entire
+\VAR{Descriptor}, \VAR{Header}, \VAR{Seektable},
+\VAR{Wave Header}, \VAR{Frames} and \VAR{Wave Footer} blocks,
+in bytes.
+%%FIXME - figure out what MD5 sum is the hash of
 
-\section{the Monkey's Audio header}
+\subsection{Descriptor Example}
+\begin{figure}[h]
+\includegraphics{figures/ape/descriptor-example.pdf}
+\end{figure}
+\begin{table}[h]
+\begin{tabular}{rl}
+ID : & \texttt{"MAC "} \\
+version : & \texttt{3990} (3.990) \\
+descriptor length : & \texttt{52} (bytes)\\
+header length : & \texttt{24} (bytes)\\
+seektable length : & \texttt{4} (bytes) \\
+wave header length : & \texttt{44} (bytes) \\
+frames length : & \texttt{44} (bytes) \\
+wave footer length : & \texttt{0} \\
+MD5 sum : & \texttt{"41486031F2B6EBAA6F513E46C46396E6"}
+\end{tabular}
+\end{table}
+
+\clearpage
+
+\section{Header}
 \begin{figure}[h]
 \includegraphics{figures/ape/header.pdf}
 \end{figure}
-{\relsize{-2}
-\begin{equation}
-\text{Length in Seconds} = \frac{((\text{Total Frames} - 1) \times \text{Blocks Per Frame}) + \text{Final Frame Blocks}}{\text{Sample Rate}}
-\end{equation}
-}
+\par
+\noindent
+\VAR{compression level} indicates the level the file was compressed at.
+%%FIXME - figure out format flags
+\VAR{blocks per frame} is the number of PCM frames per APE frame,
+not including the final frame.
+\VAR{final frame blocks} is the number of PCM frames
+in the final APE frame.
+\VAR{total frames} is the total number of APE frames.
+\VAR{bits per sample}, \VAR{channels} and \VAR{sample rate}
+are stream parameters.
+\subsection{Header Example}
+\begin{figure}[h]
+\includegraphics{figures/ape/header-example.pdf}
+\end{figure}
+\begin{table}[h]
+\begin{tabular}{rl}
+compression level : & \texttt{2000} \\
+format flags : & \texttt{0} \\
+blocks per frame : & \texttt{73728} \\
+final frame blocks : & \texttt{25} \\
+total frames : & \texttt{1} \\
+bits per sample : & \texttt{16} \\
+channels : & \texttt{1} \\
+sample rate : & \texttt{44100} \\
+\end{tabular}
+\end{table}
+%% {\relsize{-2}
+%% \begin{equation}
+%% \text{Length in Seconds} = \frac{((\text{Total Frames} - 1) \times \text{Blocks Per Frame}) + \text{Final Frame Blocks}}{\text{Sample Rate}}
+%% \end{equation}
+%% }

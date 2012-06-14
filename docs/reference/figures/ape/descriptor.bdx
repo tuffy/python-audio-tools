@@ -1,21 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="31" width=".5">ID (`MAC' 0x4D414320)</col>
-    <col start="32" end="63" width=".5">Version</col>
+    <col start="0" end="415" width=".125" id="descriptor">Descriptor</col>
+    <col start="416" end="607" width=".125">Header</col>
+    <col width=".125" style="dashed">Seektable</col>
+    <col width=".20" style="dashed">Wave Header</col>
+    <col width=".10">Frames</col>
+    <col width=".20" style="dashed">Wave Footer</col>
+    <col width=".125" style="dashed">APEv2 Tag</col>
+  </row>
+  <spacer/>
+  <row>
+    <col start="0" end="31" width=".5" id="descriptor_s">ID (`MAC ')</col>
+    <col start="32" end="63" width=".5" id="descriptor_e">version (× 1000)</col>
   </row>
   <row>
-    <col start="64" end="95" width=".333333">Descriptor Bytes</col>
-    <col start="96" end="127" width=".333333">Header Bytes</col>
-    <col start="128" end="159" width=".333333">Seektable Bytes</col>
+    <col start="64" end="95" width=".333333">descriptor length (52)</col>
+    <col start="96" end="127" width=".333333">header length (24)</col>
+    <col start="128" end="159" width=".333333">seektable length</col>
   </row>
   <row>
-    <col start="160" end="191" width=".333333">Header Data Bytes</col>
-    <col start="192" end="223" width=".333333">Frame Data Bytes</col>
-    <col start="224" end="255" width=".333333">Frame Data Bytes (High)</col>
+    <col start="160" end="191" width=".333333">wave header length</col>
+    <col start="192" end="255" width=".333333">frames length</col>
+    <col start="256" end="287" width=".333333">wave footer length</col>
   </row>
   <row>
-    <col start="256" end="287" width=".333333">Terminating Data Bytes</col>
-    <col start="288" end="415" width=".666666">MD5 Sum</col>
+    <col start="288" end="415">MD5 Sum</col>
   </row>
+  <line style="dotted">
+    <start id="descriptor" corner="sw"/>
+    <end id="descriptor_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="descriptor" corner="se"/>
+    <end id="descriptor_e" corner="ne"/>
+  </line>
 </diagram>

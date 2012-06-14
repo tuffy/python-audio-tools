@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<bytestruct>
+  <field label="ID">4d414320</field>
+  <field label="version">960f0000</field>
+  <field label="descriptor length">34000000</field>
+  <field label="header length">18000000</field>
+  <field label="seektable length">04000000</field>
+  <field label="wave header length">2c000000</field>
+  <field label="frames length">2c00000000000000</field>
+  <field label="wave footer length">00000000</field>
+  <field label="MD5 sum">41486031f2b6ebaa6f513e46c46396e6</field>
+</bytestruct>

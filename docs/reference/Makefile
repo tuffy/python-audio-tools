@@ -296,7 +296,9 @@ figures/aiff/ssnd.pdf
 APE = \
 figures/ape/stream.pdf \
 figures/ape/descriptor.pdf \
+figures/ape/descriptor-example.pdf \
 figures/ape/header.pdf \
+figures/ape/header-example.pdf
 
 APEV2 = \
 figures/apev2/footer-example.pdf \
@@ -441,6 +443,12 @@ vorbis-codec.tex: vorbis-codec.m4 header.m4 footer.m4
 	m4 -D PAPERSIZE=letterpaper $< > $@
 
 vorbis-codec.pdf: vorbis-codec.tex vorbis.tex $(VORBIS)
+	python pdflatexbuild.py -halt-on-error $<
+
+ape-codec.tex: ape-codec.m4 header.m4 footer.m4
+	m4 -D PAPERSIZE=letterpaper $< > $@
+
+ape-codec.pdf: ape-codec.tex ape.tex $(APE)
 	python pdflatexbuild.py -halt-on-error $<
 
 audioformats-letter.tex: audioformats.m4 header.m4 footer.m4
