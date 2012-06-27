@@ -54,7 +54,7 @@ for section in parser.sections():
 
 
 class BufferedPCMReader(unittest.TestCase):
-    @LIB_CORE
+    @LIB_PCM
     def test_pcm(self):
         def frame_lengths(reader, pcm_frames):
             frame = reader.read(pcm_frames)

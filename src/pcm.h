@@ -117,6 +117,15 @@ PyObject*
 FrameList_concat(pcm_FrameList *a, PyObject *bb);
 
 PyObject*
+FrameList_repeat(pcm_FrameList *a, Py_ssize_t i);
+
+PyObject*
+FrameList_inplace_concat(pcm_FrameList *a, PyObject *bb);
+
+PyObject*
+FrameList_inplace_repeat(pcm_FrameList *a, Py_ssize_t i);
+
+PyObject*
 FrameList_from_list(PyObject *dummy, PyObject *args);
 
 PyObject*
@@ -189,6 +198,15 @@ FloatFrameList_split(pcm_FloatFrameList *self, PyObject *args);
 
 PyObject*
 FloatFrameList_concat(pcm_FloatFrameList *a, PyObject *bb);
+
+PyObject*
+FloatFrameList_repeat(pcm_FloatFrameList *a, Py_ssize_t i);
+
+PyObject*
+FloatFrameList_inplace_concat(pcm_FloatFrameList *a, PyObject *bb);
+
+PyObject*
+FloatFrameList_inplace_repeat(pcm_FloatFrameList *a, Py_ssize_t i);
 
 PyObject*
 FloatFrameList_from_frames(PyObject *dummy, PyObject *args);

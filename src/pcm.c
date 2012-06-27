@@ -96,14 +96,14 @@ PyMethodDef FrameList_methods[] = {
 static PySequenceMethods pcm_FrameListType_as_sequence = {
     (lenfunc)FrameList_len,          /* sq_length */
     (binaryfunc)FrameList_concat,    /* sq_concat */
-    (ssizeargfunc)NULL,              /* sq_repeat */
+    (ssizeargfunc)FrameList_repeat,  /* sq_repeat */
     (ssizeargfunc)FrameList_GetItem, /* sq_item */
     (ssizessizeargfunc)NULL,         /* sq_slice */
     (ssizeobjargproc)NULL,           /* sq_ass_item */
     (ssizessizeobjargproc)NULL,      /* sq_ass_slice */
     (objobjproc)NULL,                /* sq_contains */
-    (binaryfunc)NULL,               /* sq_inplace_concat */
-    (ssizeargfunc)NULL,             /* sq_inplace_repeat */
+    (binaryfunc)FrameList_inplace_concat,   /* sq_inplace_concat */
+    (ssizeargfunc)FrameList_inplace_repeat, /* sq_inplace_repeat */
 };
 
 PyTypeObject pcm_FrameListType = {
@@ -529,6 +529,86 @@ FrameList_concat(pcm_FrameList *a, PyObject *bb)
 }
 
 PyObject*
+FrameList_repeat(pcm_FrameList *a, Py_ssize_t i)
+{
+    pcm_FrameList *repeat = FrameList_create();
+    Py_ssize_t j;
+
+    repeat->frames = (unsigned int)(a->frames * i);
+    repeat->channels = a->channels;
+    repeat->bits_per_sample = a->bits_per_sample;
+    repeat->samples_length = (unsigned int)(a->samples_length * i);
+    repeat->samples = malloc(sizeof(int) * repeat->samples_length);
+
+    for (j = 0; j < i; j++) {
+        memcpy(repeat->samples + (j * a->samples_length),
+               a->samples,
+               a->samples_length * sizeof(int));
+    }
+
+    return (PyObject*)repeat;
+}
+
+PyObject*
+FrameList_inplace_concat(pcm_FrameList *a, PyObject *bb)
+{
+    pcm_FrameList *b;
+    const unsigned int old_samples_length = a->samples_length;
+
+    if (!FrameList_CheckExact(bb)) {
+        PyErr_SetString(PyExc_TypeError,
+                        "can only concatenate FrameList with other FrameLists"
+            );
+        return NULL;
+    } else {
+        b = (pcm_FrameList*)bb;
+    }
+
+    if (a->channels != b->channels) {
+        PyErr_SetString(PyExc_ValueError,
+                        "both FrameLists must have the same number of channels"
+            );
+        return NULL;
+    }
+    if (a->bits_per_sample != b->bits_per_sample) {
+        PyErr_SetString(PyExc_ValueError,
+                        "both FrameLists must have the same number "
+                        "of bits per sample");
+        return NULL;
+    }
+
+    a->frames += b->frames;
+    a->samples_length += b->samples_length;
+    a->samples = realloc(a->samples, a->samples_length * sizeof(int));
+    memcpy(a->samples + old_samples_length,
+           b->samples,
+           b->samples_length * sizeof(int));
+
+    Py_INCREF(a);
+    return (PyObject*)a;
+}
+
+PyObject*
+FrameList_inplace_repeat(pcm_FrameList *a, Py_ssize_t i)
+{
+    const unsigned int original_length = a->samples_length;
+    Py_ssize_t j;
+
+    a->frames = (unsigned int)(a->frames * i);
+    a->samples_length = (unsigned int)(a->samples_length * i);
+    a->samples = realloc(a->samples, a->samples_length * sizeof(int));
+
+    for (j = 1; j < i; j++) {
+        memcpy(a->samples + (j * original_length),
+               a->samples,
+               original_length * sizeof(int));
+    }
+
+    Py_INCREF(a);
+    return (PyObject*)a;
+}
+
+PyObject*
 FrameList_to_float(pcm_FrameList *self, PyObject *args)
 {
     unsigned i;
@@ -856,14 +936,14 @@ PyMethodDef FloatFrameList_methods[] = {
 static PySequenceMethods pcm_FloatFrameListType_as_sequence = {
     (lenfunc)FloatFrameList_len,          /* sq_length */
     (binaryfunc)FloatFrameList_concat,    /* sq_concat */
-    (ssizeargfunc)NULL,                   /* sq_repeat */
+    (ssizeargfunc)FloatFrameList_repeat,  /* sq_repeat */
     (ssizeargfunc)FloatFrameList_GetItem, /* sq_item */
     (ssizessizeargfunc)NULL,              /* sq_slice */
     (ssizeobjargproc)NULL,                /* sq_ass_item */
     (ssizessizeobjargproc)NULL,           /* sq_ass_slice */
     (objobjproc)NULL,                     /* sq_contains */
-    (binaryfunc)NULL,                     /* sq_inplace_concat */
-    (ssizeargfunc)NULL,                   /* sq_inplace_repeat */
+    (binaryfunc)FloatFrameList_inplace_concat,   /* sq_inplace_concat */
+    (ssizeargfunc)FloatFrameList_inplace_repeat, /* sq_inplace_repeat */
 };
 
 PyTypeObject pcm_FloatFrameListType = {
@@ -1208,6 +1288,80 @@ FloatFrameList_concat(pcm_FloatFrameList *a, PyObject *bb)
  error:
     Py_XDECREF(concat);
     return NULL;
+}
+
+
+PyObject*
+FloatFrameList_repeat(pcm_FloatFrameList *a, Py_ssize_t i)
+{
+    pcm_FloatFrameList *repeat = FloatFrameList_create();
+    Py_ssize_t j;
+
+    repeat->frames = (unsigned int)(a->frames * i);
+    repeat->channels = a->channels;
+    repeat->samples_length = (unsigned int)(a->samples_length * i);
+    repeat->samples = malloc(sizeof(double) * repeat->samples_length);
+
+    for (j = 0; j < i; j++) {
+        memcpy(repeat->samples + (j * a->samples_length),
+               a->samples,
+               a->samples_length * sizeof(double));
+    }
+
+    return (PyObject*)repeat;
+}
+
+PyObject*
+FloatFrameList_inplace_concat(pcm_FloatFrameList *a, PyObject *bb)
+{
+    pcm_FloatFrameList *b;
+    const unsigned int old_samples_length = a->samples_length;
+
+    if (!FloatFrameList_CheckExact(bb)) {
+        PyErr_SetString(PyExc_TypeError,
+                        "can only concatenate FloatFrameList "
+                        "with other FloatFrameLists");
+        return NULL;
+    } else {
+        b = (pcm_FloatFrameList*)bb;
+    }
+
+    if (a->channels != b->channels) {
+        PyErr_SetString(PyExc_ValueError,
+                        "both FloatFrameLists must have the same "
+                        "number of channels");
+        return NULL;
+    }
+
+    a->frames += b->frames;
+    a->samples_length += b->samples_length;
+    a->samples = realloc(a->samples, a->samples_length * sizeof(double));
+    memcpy(a->samples + old_samples_length,
+           b->samples,
+           b->samples_length * sizeof(double));
+
+    Py_INCREF(a);
+    return (PyObject*)a;
+}
+
+PyObject*
+FloatFrameList_inplace_repeat(pcm_FloatFrameList *a, Py_ssize_t i)
+{
+    const unsigned int original_length = a->samples_length;
+    Py_ssize_t j;
+
+    a->frames = (unsigned int)(a->frames * i);
+    a->samples_length = (unsigned int)(a->samples_length * i);
+    a->samples = realloc(a->samples, a->samples_length * sizeof(double));
+
+    for (j = 1; j < i; j++) {
+        memcpy(a->samples + (j * original_length),
+               a->samples,
+               original_length * sizeof(double));
+    }
+
+    Py_INCREF(a);
+    return (PyObject*)a;
 }
 
 PyObject*

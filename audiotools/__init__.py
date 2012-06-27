@@ -1127,9 +1127,13 @@ class Filename(tuple):
                                        None])
 
     def disk_file(self):
+        """returns True if the file exists on disk"""
+
         return (self[1] is not None) and (self[2] is not None)
 
     def basename(self):
+        """returns the basename (no directory) of this file"""
+
         return Filename(os.path.basename(self[0]))
 
     def __repr__(self):
@@ -1920,33 +1924,6 @@ class PCMCat(PCMReader):
         pass
 
 
-class __buffer__:
-    def __init__(self, channels, bits_per_sample, framelists=None):
-        if (framelists is None):
-            self.buffer = []
-        else:
-            self.buffer = framelists
-        self.end_frame = pcm.from_list([], channels, bits_per_sample, True)
-
-    #returns the length of the entire buffer in PCM frames
-    def __len__(self):
-        return sum([f.frames for f in self.buffer])
-
-    def framelist(self):
-        import operator
-
-        return reduce(operator.concat, self.buffer, self.end_frame)
-
-    def push(self, s):
-        self.buffer.append(s)
-
-    def pop(self):
-        return self.buffer.pop(0)
-
-    def unpop(self, s):
-        self.buffer.insert(0, s)
-
-
 class BufferedPCMReader:
     """a PCMReader which reads exact counts of PCM frames"""
 
@@ -1958,8 +1935,10 @@ class BufferedPCMReader:
         self.channels = pcmreader.channels
         self.channel_mask = pcmreader.channel_mask
         self.bits_per_sample = pcmreader.bits_per_sample
-        self.buffer = __buffer__(self.channels, self.bits_per_sample)
-        self.reader_finished = False
+        self.buffer = pcm.from_list([],
+                                    self.channels,
+                                    self.bits_per_sample,
+                                    True)
 
     def close(self):
         """closes the sub-pcmreader and frees our internal buffer"""
@@ -1976,21 +1955,17 @@ class BufferedPCMReader:
         """
 
         #fill our buffer to at least "pcm_frames", possibly more
-        self.__fill__(pcm_frames)
-        output_framelist = self.buffer.framelist()
-        (output, remainder) = output_framelist.split(pcm_frames)
-        self.buffer.buffer = [remainder]
-        return output
-
-    #try to fill our internal buffer to at least "pcm_frames"
-    def __fill__(self, pcm_frames):
-        while ((len(self.buffer) < pcm_frames) and
-               (not self.reader_finished)):
-            s = self.pcmreader.read(FRAMELIST_SIZE)
-            if (len(s) > 0):
-                self.buffer.push(s)
+        while (self.buffer.frames < pcm_frames):
+            frame = self.pcmreader.read(FRAMELIST_SIZE)
+            if (len(frame)):
+                self.buffer += frame
             else:
-                self.reader_finished = True
+                break
+
+        #chop off the preceding number of PCM frames and return them
+        (output, self.buffer) = self.buffer.split(pcm_frames)
+
+        return output
 
 
 class LimitedFileReader:
