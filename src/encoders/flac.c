@@ -47,7 +47,6 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
     FILE *output_file;
     BitstreamWriter* output_stream;
     struct flac_context encoder;
-    PyObject *pcmreader_obj;
     pcmreader* pcmreader;
     char version_string[0xFF];
     static char *kwlist[] = {"filename",
@@ -86,10 +85,11 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
     /*extract a filename, PCMReader-compatible object and encoding options:
       blocksize int*/
     if (!PyArg_ParseTupleAndKeywords(
-            args, keywds, "sOIIII|iiiiiii",
+            args, keywds, "sO&IIII|iiiiiii",
             kwlist,
             &filename,
-            &pcmreader_obj,
+            pcmreader_converter,
+            &pcmreader,
             &(encoder.options.block_size),
             &(encoder.options.max_lpc_order),
             &(encoder.options.min_residual_partition_order),
@@ -109,12 +109,6 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
     /*open the given filename for writing*/
     if ((output_file = fopen(filename, "wb")) == NULL) {
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
-        return NULL;
-    }
-
-    /*transform the Python PCMReader-compatible object to a pcm_reader struct*/
-    if ((pcmreader = open_pcmreader(pcmreader_obj)) == NULL) {
-        fclose(output_file);
         return NULL;
     }
 

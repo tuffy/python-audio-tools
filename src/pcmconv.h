@@ -76,8 +76,16 @@ struct pcmreader_s;
   or returns NULL with an exception set
   if an error occurs during the wrapping procedure
 
-  the object should be deallocated with  reader->del(reader)  when finished*/
-struct pcmreader_s* open_pcmreader(PyObject* pcmreader);
+  the object should be deallocated with  reader->del(reader)  when finished
+
+  Python object is INCREFed by this function
+  and DECREFed by del() once no longer in use*/
+struct pcmreader_s*
+open_pcmreader(PyObject* pcmreader);
+
+/*for use with the PyArg_ParseTuple function*/
+int
+pcmreader_converter(PyObject* obj, void** pcmreader);
 
 typedef struct pcmreader_s {
     PyObject* pcmreader_obj;

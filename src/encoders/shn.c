@@ -34,7 +34,6 @@ encoders_encode_shn(PyObject *dummy,
     char *filename;
     FILE *output_file;
     BitstreamWriter* writer;
-    PyObject *pcmreader_obj;
     pcmreader* pcmreader;
     int is_big_endian = 0;
     int signed_samples = 0;
@@ -55,10 +54,11 @@ encoders_encode_shn(PyObject *dummy,
     unsigned i;
 
     /*fetch arguments*/
-    if (!PyArg_ParseTupleAndKeywords(args, keywds, "sOiis#|s#I",
+    if (!PyArg_ParseTupleAndKeywords(args, keywds, "sO&iis#|s#I",
                                      kwlist,
                                      &filename,
-                                     &pcmreader_obj,
+                                     pcmreader_converter,
+                                     &pcmreader,
                                      &is_big_endian,
                                      &signed_samples,
                                      &header_data,
@@ -68,11 +68,6 @@ encoders_encode_shn(PyObject *dummy,
                                      &footer_size,
                                      &block_size))
         return NULL;
-
-    /*convert PCMReader object*/
-    if ((pcmreader = open_pcmreader(pcmreader_obj)) == NULL) {
-        return NULL;
-    }
 
     /*ensure PCMReader is compatible with Shorten*/
     if ((pcmreader->bits_per_sample != 8) &&

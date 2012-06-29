@@ -904,7 +904,17 @@ FrameList_from_channels(PyObject *dummy, PyObject *args)
     return NULL;
 }
 
-
+int
+FrameList_converter(PyObject* obj, void** framelist)
+{
+    if (PyObject_TypeCheck(obj, &pcm_FrameListType)) {
+        *framelist = obj;
+        return 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "not a FrameList object");
+        return 0;
+    }
+}
 
 /***********************
   FloatFrameList Object
@@ -1523,6 +1533,17 @@ FloatFrameList_from_channels(PyObject *dummy, PyObject *args)
     return NULL;
 }
 
+int
+FloatFrameList_converter(PyObject* obj, void** floatframelist)
+{
+    if (PyObject_TypeCheck(obj, &pcm_FloatFrameListType)) {
+        *floatframelist = obj;
+        return 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "not a FloatFrameList object");
+        return 0;
+    }
+}
 
 PyMODINIT_FUNC
 initpcm(void)

@@ -134,6 +134,10 @@ FrameList_from_frames(PyObject *dummy, PyObject *args);
 PyObject*
 FrameList_from_channels(PyObject *dummy, PyObject *args);
 
+/*for use with the PyArg_ParseTuple function*/
+int
+FrameList_converter(PyObject* obj, void** framelist);
+
 
 /***********************
   FloatFrameList Object
@@ -213,6 +217,10 @@ FloatFrameList_from_frames(PyObject *dummy, PyObject *args);
 
 PyObject*
 FloatFrameList_from_channels(PyObject *dummy, PyObject *args);
+
+/*for use with the PyArg_ParseTuple function*/
+int
+FloatFrameList_converter(PyObject* obj, void** floatframelist);
 
 #endif
 

@@ -44,7 +44,6 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
     PyObject *file_obj;
     FILE *output_file;
     BitstreamWriter *output = NULL;
-    PyObject *pcmreader_obj;
     pcmreader* pcmreader;
     struct alac_context encoder;
     array_ia* channels = array_ia_new();
@@ -59,10 +58,11 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
 
     /*extract a file object, PCMReader-compatible object and encoding options*/
     if (!PyArg_ParseTupleAndKeywords(
-                    args, keywds, "OOiiii|ii",
+                    args, keywds, "OO&iiii|ii",
                     kwlist,
                     &file_obj,
-                    &pcmreader_obj,
+                    pcmreader_converter,
+                    &pcmreader,
                     &(encoder.options.block_size),
                     &(encoder.options.initial_history),
                     &(encoder.options.history_multiplier),
@@ -70,11 +70,6 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
                     &(encoder.options.minimum_interlacing_leftweight),
                     &(encoder.options.maximum_interlacing_leftweight)))
         return NULL;
-
-    /*transform the Python PCMReader-compatible object to a pcm_reader struct*/
-    if ((pcmreader = open_pcmreader(pcmreader_obj)) == NULL) {
-        return NULL;
-    }
 
     encoder.bits_per_sample = pcmreader->bits_per_sample;
 

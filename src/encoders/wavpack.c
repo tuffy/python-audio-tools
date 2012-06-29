@@ -28,7 +28,6 @@ encoders_encode_wavpack(PyObject *dummy,
     char *filename;
     FILE *file;
     BitstreamWriter *stream;
-    PyObject *pcmreader_obj;
     pcmreader *pcmreader;
     struct wavpack_encoder_context context;
     array_ia* pcm_frames;
@@ -62,10 +61,11 @@ encoders_encode_wavpack(PyObject *dummy,
 
     if (!PyArg_ParseTupleAndKeywords(args,
                                      keywds,
-                                     "sOI|iiiIs#s#",
+                                     "sO&I|iiiIs#s#",
                                      kwlist,
                                      &filename,
-                                     &pcmreader_obj,
+                                     pcmreader_converter,
+                                     &pcmreader,
                                      &block_size,
 
                                      &try_false_stereo,
@@ -86,11 +86,6 @@ encoders_encode_wavpack(PyObject *dummy,
         stream = bw_open(file, BS_LITTLE_ENDIAN);
     }
 
-    /*transform the Python PCMReader-compatible object to a pcm_reader struct*/
-    if ((pcmreader = open_pcmreader(pcmreader_obj)) == NULL) {
-        fclose(file);
-        return NULL;
-    }
 #else
 void
 encoders_encode_wavpack(char *filename,

@@ -130,7 +130,8 @@ empty_FrameList(PyObject* audiotools_pcm,
     }
 }
 
-struct pcmreader_s* open_pcmreader(PyObject* pcmreader_obj)
+struct pcmreader_s*
+open_pcmreader(PyObject* pcmreader_obj)
 {
     struct pcmreader_s* pcmreader = malloc(sizeof(struct pcmreader_s));
     PyObject* attr;
@@ -209,6 +210,18 @@ struct pcmreader_s* open_pcmreader(PyObject* pcmreader_obj)
     return NULL;
 }
 
+int
+pcmreader_converter(PyObject* obj, void** pcm_reader)
+{
+    pcmreader* pcmreader_s = open_pcmreader(obj);
+    if (pcmreader_s != NULL) {
+        *pcm_reader = pcmreader_s;
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
 int pcmreader_read(struct pcmreader_s* reader,
                     unsigned pcm_frames,
                     array_ia* channels)
@@ -224,8 +237,8 @@ int pcmreader_read(struct pcmreader_s* reader,
     unsigned char* string;
     Py_ssize_t string_length;
 
-    /*make a call to "pcmreader.read(bytes)"
-      where "bytes" is set to the proper PCM frame count*/
+    /*make a call to "pcmreader.read(pcm_frames)"
+      where "pcm_frames" is set to the proper PCM frame count*/
     if (((framelist_obj =
           PyObject_CallMethod(reader->pcmreader_obj, "read", "i",
                               (int)pcm_frames))) == NULL) {
