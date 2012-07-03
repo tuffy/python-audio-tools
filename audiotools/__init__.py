@@ -2593,24 +2593,24 @@ class MetaData:
                       "album_number", "album_total")
 
     def __init__(self,
-                 track_name=u"",
-                 track_number=0,
-                 track_total=0,
-                 album_name=u"",
-                 artist_name=u"",
-                 performer_name=u"",
-                 composer_name=u"",
-                 conductor_name=u"",
-                 media=u"",
-                 ISRC=u"",
-                 catalog=u"",
-                 copyright=u"",
-                 publisher=u"",
-                 year=u"",
-                 date=u"",
-                 album_number=0,
-                 album_total=0,
-                 comment=u"",
+                 track_name=None,
+                 track_number=None,
+                 track_total=None,
+                 album_name=None,
+                 artist_name=None,
+                 performer_name=None,
+                 composer_name=None,
+                 conductor_name=None,
+                 media=None,
+                 ISRC=None,
+                 catalog=None,
+                 copyright=None,
+                 publisher=None,
+                 year=None,
+                 date=None,
+                 album_number=None,
+                 album_total=None,
+                 comment=None,
                  images=None):
         """fields are as follows:
 
@@ -2674,10 +2674,7 @@ class MetaData:
 
     def __delattr__(self, field):
         if (field in self.FIELDS):
-            if (field in self.INTEGER_FIELDS):
-                self.__dict__[field] = 0
-            else:
-                self.__dict__[field] = u""
+            self.__dict__[field] = None
         else:
             try:
                 del(self.__dict__[field])
@@ -2695,24 +2692,16 @@ class MetaData:
         which is not blank"""
 
         for (attr, field) in self.fields():
-            if (attr in self.INTEGER_FIELDS):
-                if (field > 0):
-                    yield (attr, field)
-            else:
-                if (len(field) > 0):
-                    yield (attr, field)
+            if (field is not None):
+                yield (attr, field)
 
     def empty_fields(self):
         """yields an (attr, value) tuple per MetaData field
         which is blank"""
 
         for (attr, field) in self.fields():
-            if (attr in self.INTEGER_FIELDS):
-                if (field == 0):
-                    yield (attr, field)
-            else:
-                if (len(field) == 0):
-                    yield (attr, field)
+            if (field is None):
+                yield (attr, field)
 
     def __unicode__(self):
         comment_pairs = []
@@ -2724,26 +2713,32 @@ class MetaData:
              "catalog"],
             [u"Title", u"Artist", u"Performer", u"Composer",
              u"Conductor", u"Album", u"Catalog"]):
-            if (len(getattr(self, attr)) > 0):
+            if (getattr(self, attr) is not None):
                 comment_pairs.append((display_unicode(name),
                                       getattr(self, attr)))
 
         #handle the numerical fields
-        if (self.track_total != 0):
-            comment_pairs.append((display_unicode("Track #"),
-                                  u"%d/%d" % (self.track_number,
-                                              self.track_total)))
-        elif (self.track_number != 0):
-            comment_pairs.append((display_unicode("Track #"),
-                                  u"%d" % (self.track_number)))
+        if (self.track_total is not None):
+            comment_pairs.append(
+                (display_unicode("Track #"),
+                 u"%d/%d" % ((self.track_number if
+                              (self.track_number is not None) else 0),
+                             self.track_total)))
+        elif (self.track_number is not None):
+            comment_pairs.append(
+                (display_unicode("Track #"),
+                 u"%d" % (self.track_number,)))
 
-        if (self.album_total != 0):
-            comment_pairs.append((display_unicode("Album #"),
-                                  u"%d/%d" % (self.album_number,
-                                              self.album_total)))
-        elif (self.album_number != 0):
-            comment_pairs.append((display_unicode("Album #"),
-                                  u"%d" % (self.album_number)))
+        if (self.album_total is not None):
+            comment_pairs.append(
+                (display_unicode("Album #"),
+                 u"%d/%d" % ((self.album_number if
+                              (self.album_number is not None) else 0),
+                             self.album_total)))
+        elif (self.album_number is not None):
+            comment_pairs.append(
+                (display_unicode("Album #"),
+                 u"%d" % (self.album_number,)))
 
         #handle the last batch of text fields
         for (attr, name) in zip(
@@ -2751,7 +2746,7 @@ class MetaData:
              "comment"],
             [u"ISRC", u"Publisher", u"Media", u"Year", u"Date",
              u"Copyright", u"Comment"]):
-            if (len(getattr(self, attr)) > 0):
+            if (getattr(self, attr) is not None):
                 comment_pairs.append((display_unicode(name),
                                       getattr(self, attr)))
 
