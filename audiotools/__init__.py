@@ -2571,26 +2571,45 @@ def make_dirs(destination_path):
 class MetaData:
     """the base class for storing textual AudioFile metadata
 
-    this includes things like track name, track number, album name
-    and so forth.  It also includes embedded images, if present
+    Fields may be None, indicating they're not present
+    in the underlying metadata implementation.
 
-    fields are stored with the same name they are initialized with
-    except for images, they can all be manipulated directly
-    (images have dedicated set/get/delete methods instead)
-    subclasses are expected to override getattr/setattr
-    so that updating attributes will adjust the low-level attributes
-    accordingly
+    Changing a field to a new value will update the underlying metadata
+    (e.g. vorbiscomment.track_name = u"Foo"
+    will set a Vorbis comment's "TITLE" field to "Foo")
+
+    Updating the underlying metadata will change the metadata's fields
+    (e.g. setting a Vorbis comment's "TITLE" field to "bar"
+    will update vorbiscomment.title_name to u"bar")
+
+    Deleting a field or setting it to None
+    will remove it from the underlying metadata
+    (e.g. del(vorbiscomment.track_name) will delete the "TITLE" field)
     """
 
-    FIELDS = ("track_name", "track_number", "track_total",
-              "album_name", "artist_name",
-              "performer_name", "composer_name", "conductor_name",
-              "media", "ISRC", "catalog", "copyright",
-              "publisher", "year", "date", "album_number", "album_total",
+    FIELDS = ("track_name",
+              "track_number",
+              "track_total",
+              "album_name",
+              "artist_name",
+              "performer_name",
+              "composer_name",
+              "conductor_name",
+              "media",
+              "ISRC",
+              "catalog",
+              "copyright",
+              "publisher",
+              "year",
+              "date",
+              "album_number",
+              "album_total",
               "comment")
 
-    INTEGER_FIELDS = ("track_number", "track_total",
-                      "album_number", "album_total")
+    INTEGER_FIELDS = ("track_number",
+                      "track_total",
+                      "album_number",
+                      "album_total")
 
     def __init__(self,
                  track_name=None,
@@ -2612,32 +2631,30 @@ class MetaData:
                  album_total=None,
                  comment=None,
                  images=None):
-        """fields are as follows:
-
-        track_name     - the name of this individual track
-        track_number   - the number of this track
-        track_total    - the total number of tracks
-        album_name     - the name of this track's album
-        artist_name    - the song's original creator/composer
-        performer_name - the song's performing artist
-        composer_name  - the song's composer name
-        conductor_name - the song's conductor's name
-        media          - the album's media type (CD,tape,etc.)
-        ISRC           - the song's ISRC
-        catalog        - the album's catalog number
-        copyright      - the song's copyright information
-        publisher      - the album's publisher
-        year           - the album's release year
-        date           - the original recording date
-        album_number   - the disc's volume number, if any
-        album_total    - the total number of discs, if any
-        comment        - the track's comment string
-        images         - a list of Image objects
-
-        track_number, track_total, album_number and album_total are ints
-        images is an optional list of Image objects
-        the rest are unicode strings
         """
+| field          | type    | meaning                              |
+|----------------+---------+--------------------------------------|
+| track_name     | unicode | the name of this individual track    |
+| track_number   | integer | the number of this track             |
+| track_total    | integer | the total number of tracks           |
+| album_name     | unicode | the name of this track's album       |
+| artist_name    | unicode | the song's original creator/composer |
+| performer_name | unicode | the song's performing artist         |
+| composer_name  | unicode | the song's composer name             |
+| conductor_name | unicode | the song's conductor's name          |
+| media          | unicode | the album's media type               |
+| ISRC           | unicode | the song's ISRC                      |
+| catalog        | unicode | the album's catalog number           |
+| copyright      | unicode | the song's copyright information     |
+| publisher      | unicode | the album's publisher                |
+| year           | unicode | the album's release year             |
+| date           | unicode | the original recording date          |
+| album_number   | integer | the disc's volume number             |
+| album_total    | integer | the total number of discs            |
+| comment        | unicode | the track's comment string           |
+| images         | list    | list of Image objects                |
+|----------------+---------+--------------------------------------|
+"""
 
         #we're avoiding self.foo = foo because
         #__setattr__ might need to be redefined

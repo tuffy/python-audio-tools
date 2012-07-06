@@ -5166,33 +5166,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   Cython for handling lots of low-level file processing.
   It would add a dependency, but has the potential to make
   chunks of the code faster and smaller.
-* TODO Fix --number=0 argument to tracktag
-  I'd like to make track_number=0 a valid value
-  and have track_number=None indicate a missing field.
-  The problem is maintaining consistency between
-  metadata formats that store track numbers as text (like ID3v2)
-  and those that store track numbers as integers (like M4A).
-  - [X] MetaData
-  - [ ] ApeTag
-  - [ ] FlacMetaData
-  - [ ] ID3CommentPair
-  - [ ] ID3v1Comment
-  - [ ] ID3v22Comment
-  - [ ] ID3v23Comment
-  - [ ] ID3v24Comment
-  - [ ] M4A_META_Atom
-  - [ ] VorbisComment
-** TODO Update unit tests
-   - [ ] MetaData
-   - [ ] ApeTag
-   - [ ] FlacMetaData
-   - [ ] ID3CommentPair
-   - [ ] ID3v1Comment
-   - [ ] ID3v22Comment
-   - [ ] ID3v23Comment
-   - [ ] ID3v24Comment
-   - [ ] M4A_META_Atom
-   - [ ] VorbisComment
 * TODO Split off tracktag's functionality
 ** TODO Move the image options into a specialized tool (covertag?)
    Its interactive mode should use PyGTK/Tkinter
@@ -5686,6 +5659,32 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] ID3v2.4
 *** DONE APEv2
 *** DONE M4A
+** TODO Fix --number=0 argument to tracktag
+   I'd like to make track_number=0 a valid value
+   and have track_number=None indicate a missing field.
+   The problem is maintaining consistency between
+   metadata formats that store track numbers as text (like ID3v2)
+   and those that store track numbers as integers (like M4A).
+   - [X] MetaData
+   - [ ] ApeTag
+   - [X] FlacMetaData
+   - [ ] ID3CommentPair
+   - [ ] ID3v1Comment
+   - [ ] ID3v22Comment
+   - [ ] ID3v23Comment
+   - [ ] ID3v24Comment
+   - [ ] M4A_META_Atom
+   - [X] VorbisComment
+*** TODO Update utilities
+*** TODO Update documentation
+*** TODO Update unit tests
+    - [ ] flac
+    - [ ] id3v1
+    - [ ] id3v2
+    - [ ] m4a
+    - [ ] metadata
+    - [X] vorbis
+    - [ ] wavpack
 ** TODO Remove Python Imaging Library requirement
    This is only used for thumbnailing
    and for TKinter-based image display.

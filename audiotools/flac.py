@@ -126,7 +126,7 @@ class FlacMetaData(MetaData):
             try:
                 vorbis_comment = self.get_block(Flac_VORBISCOMMENT.BLOCK_ID)
             except IndexError:
-                #add VORBISCOMMENT block if necessary
+                #add VORBIS comment block if necessary
                 vorbis_comment = Flac_VORBISCOMMENT(
                     [], u"Python Audio Tools %s" % (VERSION))
 
@@ -142,10 +142,8 @@ class FlacMetaData(MetaData):
                 return getattr(self.get_block(Flac_VORBISCOMMENT.BLOCK_ID),
                                key)
             except IndexError:
-                if (key in self.INTEGER_FIELDS):
-                    return 0
-                else:
-                    return u""
+                #no VORBIS comment block, so all values are None
+                return None
         else:
             try:
                 return self.__dict__[key]
@@ -157,7 +155,7 @@ class FlacMetaData(MetaData):
             try:
                 delattr(self.get_block(Flac_VORBISCOMMENT.BLOCK_ID), key)
             except IndexError:
-                #no VORBIS comment block
+                #no VORBIS comment block, so nothing to delete
                 pass
         else:
             try:
