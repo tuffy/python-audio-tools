@@ -878,13 +878,7 @@ class ID3v1MetaData(MetaDataTest):
                                   audiotools.MP2Audio]
 
     def empty_metadata(self):
-        return self.metadata_class(track_name=u"",
-                                   artist_name=u"",
-                                   album_name=u"",
-                                   year=u"",
-                                   comment=u"",
-                                   track_number=0,
-                                   genre=0)
+        return self.metadata_class()
 
     @METADATA_ID3V1
     def test_update(self):
@@ -897,7 +891,9 @@ class ID3v1MetaData(MetaDataTest):
             temp_file_stat = os.stat(temp_file.name)[0]
             try:
                 #update_metadata on file's internal metadata round-trips okay
-                track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
+                metadata = self.empty_metadata()
+                metadata.track_name = u"Foo"
+                track.set_metadata(metadata)
                 metadata = track.get_metadata()
                 self.assertEqual(metadata.track_name, u"Foo")
                 metadata.track_name = u"Bar"
@@ -974,12 +970,12 @@ class ID3v1MetaData(MetaDataTest):
                         setattr(metadata, field, u"")
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
-                        self.assertEqual(getattr(metadata, field), u"")
+                        self.assertEqual(getattr(metadata, field), None)
                     else:
                         setattr(metadata, field, 0)
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
-                        self.assertEqual(getattr(metadata, field), 0)
+                        self.assertEqual(getattr(metadata, field), None)
 
                 #re-set the fields with random values
                 for field in self.supported_fields:
@@ -1006,10 +1002,7 @@ class ID3v1MetaData(MetaDataTest):
                     delattr(metadata, field)
                     track.set_metadata(metadata)
                     metadata = track.get_metadata()
-                    if (field not in audiotools.MetaData.INTEGER_FIELDS):
-                        self.assertEqual(getattr(metadata, field), u"")
-                    else:
-                        self.assertEqual(getattr(metadata, field), 0)
+                    self.assertEqual(getattr(metadata, field), None)
 
             finally:
                 temp_file.close()
@@ -1048,13 +1041,7 @@ class ID3v1MetaData(MetaDataTest):
     def test_clean(self):
         #check trailing whitespace
         metadata = audiotools.ID3v1Comment(
-            track_name=u"Title ",
-            artist_name=u"",
-            album_name=u"",
-            year=u"",
-            comment=u"",
-            track_number=1,
-            genre=0)
+            track_name="Title " + chr(0) * 24)
         results = []
         cleaned = metadata.clean(results)
         self.assertEqual(results,
@@ -1062,23 +1049,11 @@ class ID3v1MetaData(MetaDataTest):
         self.assertEqual(
             cleaned,
             audiotools.ID3v1Comment(
-                track_name=u"Title",
-                artist_name=u"",
-                album_name=u"",
-                year=u"",
-                comment=u"",
-                track_number=1,
-                genre=0))
+                track_name="Title" + chr(0) * 25))
 
         #check leading whitespace
         metadata = audiotools.ID3v1Comment(
-                track_name=u" Title",
-                artist_name=u"",
-                album_name=u"",
-                year=u"",
-                comment=u"",
-                track_number=1,
-                genre=0)
+                track_name=" Title" + chr(0) * 24)
         results = []
         cleaned = metadata.clean(results)
         self.assertEqual(results,
@@ -1086,13 +1061,7 @@ class ID3v1MetaData(MetaDataTest):
         self.assertEqual(
             cleaned,
             audiotools.ID3v1Comment(
-                    track_name=u"Title",
-                    artist_name=u"",
-                    album_name=u"",
-                    year=u"",
-                    comment=u"",
-                    track_number=1,
-                    genre=0))
+                    track_name="Title" + chr(0) * 25))
 
         #ID3v1 has no empty fields, image data or leading zeroes
         #so those can be safely ignored

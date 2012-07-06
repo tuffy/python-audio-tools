@@ -5669,7 +5669,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] ApeTag
    - [X] FlacMetaData
    - [ ] ID3CommentPair
-   - [ ] ID3v1Comment
+   - [X] ID3v1Comment
    - [ ] ID3v22Comment
    - [ ] ID3v23Comment
    - [ ] ID3v24Comment
@@ -5679,7 +5679,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO Update documentation
 *** TODO Update unit tests
     - [X] flac
-    - [ ] id3v1
+    - [X] id3v1
     - [ ] id3v2
     - [ ] m4a
     - [ ] metadata
