@@ -5666,7 +5666,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    metadata formats that store track numbers as text (like ID3v2)
    and those that store track numbers as integers (like M4A).
    - [X] MetaData
-   - [ ] ApeTag
+   - [X] ApeTag
    - [X] FlacMetaData
    - [X] ID3CommentPair
    - [X] ID3v1Comment
@@ -5684,7 +5684,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [ ] m4a
     - [ ] metadata
     - [X] vorbis
-    - [ ] wavpack
+    - [X] wavpack
 ** TODO Remove Python Imaging Library requirement
    This is only used for thumbnailing
    and for TKinter-based image display.

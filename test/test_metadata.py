@@ -508,6 +508,10 @@ class WavPackApeTagMetaData(MetaDataTest):
                 del(metadata.track_total)
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
+                self.assertEqual(unicode(metadata['Track']), u'0')
+                del(metadata.track_number)
+                track.set_metadata(metadata)
+                metadata = track.get_metadata()
                 self.assertRaises(KeyError,
                                   metadata.__getitem__,
                                   'Track')
@@ -529,6 +533,10 @@ class WavPackApeTagMetaData(MetaDataTest):
                 del(metadata.album_total)
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
+                self.assertEqual(unicode(metadata['Media']), u'0')
+                del(metadata.album_number)
+                track.set_metadata(metadata)
+                metadata = track.get_metadata()
                 self.assertRaises(KeyError,
                                   metadata.__getitem__,
                                   'Media')
@@ -542,7 +550,7 @@ class WavPackApeTagMetaData(MetaDataTest):
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
                 self.assertEqual(metadata.track_number, 1)
-                self.assertEqual(metadata.track_total, 0)
+                self.assertEqual(metadata.track_total, None)
                 metadata['Track'] = audiotools.ape.ApeTagItem.string(
                         'Track', u"1/2")
                 track.set_metadata(metadata)
@@ -558,8 +566,8 @@ class WavPackApeTagMetaData(MetaDataTest):
                 del(metadata['Track'])
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
-                self.assertEqual(metadata.track_number, 0)
-                self.assertEqual(metadata.track_total, 0)
+                self.assertEqual(metadata.track_number, None)
+                self.assertEqual(metadata.track_total, None)
 
                 track.delete_metadata()
                 metadata = self.empty_metadata()
@@ -568,7 +576,7 @@ class WavPackApeTagMetaData(MetaDataTest):
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
                 self.assertEqual(metadata.album_number, 3)
-                self.assertEqual(metadata.album_total, 0)
+                self.assertEqual(metadata.album_total, None)
                 metadata['Media'] = audiotools.ape.ApeTagItem.string(
                         'Media', u"3/4")
                 track.set_metadata(metadata)
@@ -584,9 +592,8 @@ class WavPackApeTagMetaData(MetaDataTest):
                 del(metadata['Media'])
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
-                self.assertEqual(metadata.album_number, 0)
-                self.assertEqual(metadata.album_total, 0)
-
+                self.assertEqual(metadata.album_number, None)
+                self.assertEqual(metadata.album_total, None)
             finally:
                 temp_file.close()
 
@@ -625,10 +632,8 @@ class WavPackApeTagMetaData(MetaDataTest):
             if (field in self.supported_fields):
                 self.assertEqual(getattr(metadata_orig, field),
                                  getattr(metadata_new, field))
-            elif (field in audiotools.MetaData.INTEGER_FIELDS):
-                self.assertEqual(getattr(metadata_new, field), 0)
             else:
-                self.assertEqual(getattr(metadata_new, field), u"")
+                self.assertEqual(getattr(metadata_new, field), None)
 
         #ensure images match, if supported
         self.assertEqual(metadata_new.images(), [image1, image2])
@@ -736,7 +741,7 @@ class WavPackApeTagMetaData(MetaDataTest):
         self.assertEqual(fixes,
                          [_(u"removed empty field %(field)s") %
                           {"field":'Title'.decode('ascii')}])
-        self.assertEqual(cleaned.track_name, u'')
+        self.assertEqual(cleaned.track_name, None)
         self.assertRaises(KeyError,
                           cleaned.__getitem__,
                           'Title')
@@ -745,7 +750,7 @@ class WavPackApeTagMetaData(MetaDataTest):
         metadata = audiotools.ApeTag(
             [audiotools.ape.ApeTagItem.string('Track', u'01')])
         self.assertEqual(metadata.track_number, 1)
-        self.assertEqual(metadata.track_total, 0)
+        self.assertEqual(metadata.track_total, None)
         self.assertEqual(metadata['Track'].data, u'01'.encode('ascii'))
         fixes = []
         cleaned = metadata.clean(fixes)
@@ -753,7 +758,7 @@ class WavPackApeTagMetaData(MetaDataTest):
                          [_(u"removed leading zeroes from %(field)s") %
                           {"field":'Track'.decode('ascii')}])
         self.assertEqual(cleaned.track_number, 1)
-        self.assertEqual(cleaned.track_total, 0)
+        self.assertEqual(cleaned.track_total, None)
         self.assertEqual(cleaned['Track'].data, u'1'.encode('ascii'))
 
         metadata = audiotools.ApeTag(

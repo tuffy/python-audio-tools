@@ -24,15 +24,26 @@ import gettext
 gettext.install("audiotools", unicode=True)
 
 
-#takes a pair of integers for the current and total values
+#takes a pair of integers (or None) for the current and total values
 #returns a unicode string of their combined pair
 #for example, __number_pair__(2,3) returns u"2/3"
 #whereas      __number_pair__(4,0) returns u"4"
 def __number_pair__(current, total):
-    if (total == 0):
-        return u"%d" % (current)
+    def empty(i):
+        return (i is None) or (i == 0)
+
+    unslashed_format = u"%d"
+    slashed_format = u"%d/%d"
+
+    if (empty(current) and empty(total)):
+        return unslashed_format % (0,)
+    elif ((not empty(current)) and empty(total)):
+        return unslashed_format % (current,)
+    elif (empty(current) and (not empty(total))):
+        return slashed_format % (0, total)
     else:
-        return u"%d/%d" % (current, total)
+        #neither current or total are empty
+        return slashed_format % (current, total)
 
 
 def limited_transfer_data(from_function, to_function,
@@ -301,94 +312,128 @@ class ApeTag(MetaData):
         else:
             raise KeyError(key)
 
-    #if an attribute is updated (e.g. self.track_name)
-    #make sure to update the corresponding dict pair
-    def __setattr__(self, key, value):
-        if (key in self.ATTRIBUTE_MAP):
-            if (key == 'track_number'):
-                self['Track'] = self.ITEM.string(
-                    'Track', __number_pair__(value, self.track_total))
-            elif (key == 'track_total'):
-                self['Track'] = self.ITEM.string(
-                    'Track', __number_pair__(self.track_number, value))
-            elif (key == 'album_number'):
-                self['Media'] = self.ITEM.string(
-                    'Media', __number_pair__(value, self.album_total))
-            elif (key == 'album_total'):
-                self['Media'] = self.ITEM.string(
-                    'Media', __number_pair__(self.album_number, value))
-            else:
-                self[self.ATTRIBUTE_MAP[key]] = self.ITEM.string(
-                    self.ATTRIBUTE_MAP[key], value)
-        else:
-            self.__dict__[key] = value
-
-    def __getattr__(self, key):
+    def __getattr__(self, attr):
         import re
 
-        if (key == 'track_number'):
+        if (attr == 'track_number'):
             try:
-                return int(re.findall('\d+',
-                                      unicode(self.get("Track", u"0")))[0])
-            except IndexError:
-                return 0
-        elif (key == 'track_total'):
+                track = re.search(r'\d+', unicode(self["Track"]))
+                if (track is not None):
+                    return int(track.group(0))
+                else:
+                    #"Track" isn't an integer
+                    return None
+            except KeyError:
+                #no "Track" in list of items
+                return None
+        elif (attr == 'track_total'):
             try:
-                return int(re.findall('\d+/(\d+)',
-                                      unicode(self.get("Track", u"0")))[0])
-            except IndexError:
-                return 0
-        elif (key == 'album_number'):
+                track = re.search(r'\d+/(\d+)', unicode(self["Track"]))
+                if (track is not None):
+                    return int(track.group(1))
+                else:
+                    #no slashed integer field in "Track"
+                    return None
+            except KeyError:
+                #no "Track" in list of items
+                return None
+        elif (attr == 'album_number'):
             try:
-                return int(re.findall('\d+',
-                                      unicode(self.get("Media", u"0")))[0])
-            except IndexError:
-                return 0
-        elif (key == 'album_total'):
+                media = re.search(r'\d+', unicode(self["Media"]))
+                if (media is not None):
+                    return int(media.group(0))
+                else:
+                    #"Media" isn't an integer
+                    return None
+            except KeyError:
+                #no "Media" in list of items
+                return None
+        elif (attr == 'album_total'):
             try:
-                return int(re.findall('\d+/(\d+)',
-                                      unicode(self.get("Media", u"0")))[0])
-            except IndexError:
-                return 0
-        elif (key in self.ATTRIBUTE_MAP):
-            return unicode(self.get(self.ATTRIBUTE_MAP[key], u''))
-        elif (key in MetaData.FIELDS):
-            return u''
+                media = re.search(r'\d+/(\d+)', unicode(self["Media"]))
+                if (media is not None):
+                    return int(media.group(1))
+                else:
+                    #no slashed integer field in "Media"
+                    return None
+            except KeyError:
+                #no "Media" in list of items
+                return None
+        elif (attr in self.ATTRIBUTE_MAP):
+            try:
+                return unicode(self[self.ATTRIBUTE_MAP[attr]])
+            except KeyError:
+                return None
+        elif (attr in MetaData.FIELDS):
+            return None
         else:
             try:
-                return self.__dict__[key]
-            except KeyError:
-                raise AttributeError(key)
+                return self.__dict__[attr]
+            except AttrError:
+                raise AttributeError(attr)
 
-    def __delattr__(self, key):
-        if (key == 'track_number'):
-            setattr(self, 'track_number', 0)
-            if ((self.track_number == 0) and (self.track_total == 0)):
+    #if an attribute is updated (e.g. self.track_name)
+    #make sure to update the corresponding dict pair
+    def __setattr__(self, attr, value):
+        if (attr in self.ATTRIBUTE_MAP):
+            if (value is not None):
+                if (attr == 'track_number'):
+                    self['Track'] = self.ITEM.string(
+                        'Track', __number_pair__(value, self.track_total))
+                elif (attr == 'track_total'):
+                    self['Track'] = self.ITEM.string(
+                        'Track', __number_pair__(self.track_number, value))
+                elif (attr == 'album_number'):
+                    self['Media'] = self.ITEM.string(
+                        'Media', __number_pair__(value, self.album_total))
+                elif (attr == 'album_total'):
+                    self['Media'] = self.ITEM.string(
+                        'Media', __number_pair__(self.album_number, value))
+                else:
+                    self[self.ATTRIBUTE_MAP[attr]] = self.ITEM.string(
+                        self.ATTRIBUTE_MAP[attr], value)
+            else:
+                delattr(self, attr)
+        else:
+            self.__dict__[attr] = value
+
+    def __delattr__(self, attr):
+        if (attr == 'track_number'):
+            if (self.track_total is not None):
+                self['Track'] = self.ITEM.string(
+                    'Track', __number_pair__(None, self.track_total))
+            else:
                 del(self['Track'])
-        elif (key == 'track_total'):
-            setattr(self, 'track_total', 0)
-            if ((self.track_number == 0) and (self.track_total == 0)):
+        elif (attr == 'track_total'):
+            if (self.track_number is not None):
+                self['Track'] = self.ITEM.string(
+                    'Track', __number_pair__(self.track_number, None))
+            else:
                 del(self['Track'])
-        elif (key == 'album_number'):
-            setattr(self, 'album_number', 0)
-            if ((self.album_number == 0) and (self.album_total == 0)):
+        elif (attr == 'album_number'):
+            if (self.album_total is not None):
+                self['Media'] = self.ITEM.string(
+                    'Media', __number_pair__(None, self.album_total))
+            else:
                 del(self['Media'])
-        elif (key == 'album_total'):
-            setattr(self, 'album_total', 0)
-            if ((self.album_number == 0) and (self.album_total == 0)):
+        elif (attr == 'album_total'):
+            if (self.album_number is not None):
+                self['Media'] = self.ITEM.string(
+                    'Media', __number_pair__(self.album_number, None))
+            else:
                 del(self['Media'])
-        elif (key in self.ATTRIBUTE_MAP):
+        elif (attr in self.ATTRIBUTE_MAP):
             try:
-                del(self[self.ATTRIBUTE_MAP[key]])
+                del(self[self.ATTRIBUTE_MAP[attr]])
             except ValueError:
                 pass
-        elif (key in MetaData.FIELDS):
+        elif (attr in MetaData.FIELDS):
             pass
         else:
             try:
-                del(self.__dict__[key])
-            except KeyError:
-                raise AttributeError(key)
+                del(self.__dict__[attr])
+            except AttrError:
+                raise AttributeError(attr)
 
     @classmethod
     def converted(cls, metadata):
