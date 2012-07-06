@@ -5678,7 +5678,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO Update utilities
 *** TODO Update documentation
 *** TODO Update unit tests
-    - [ ] flac
+    - [X] flac
     - [ ] id3v1
     - [ ] id3v2
     - [ ] m4a

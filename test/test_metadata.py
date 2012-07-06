@@ -2677,6 +2677,669 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
             finally:
                 temp1.close()
 
+    @METADATA_FLAC
+    def test_getattr(self):
+        #track_number grabs the first available integer
+        self.assertEqual(
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"TRACKNUMBER=10"],
+                        u"vendor")]).track_number,
+            10)
+
+        self.assertEqual(
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"TRACKNUMBER=10",
+                         u"TRACKNUMBER=5"],
+                        u"vendor")]).track_number,
+            10)
+
+        self.assertEqual(
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"TRACKNUMBER=foo 10 bar"],
+                        u"vendor")]).track_number,
+            10)
+
+        self.assertEqual(
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"TRACKNUMBER=foo",
+                         u"TRACKNUMBER=10"],
+                        u"vendor")]).track_number,
+            10)
+
+        self.assertEqual(
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"TRACKNUMBER=foo",
+                         u"TRACKNUMBER=foo 10 bar"],
+                        u"vendor")]).track_number,
+            10)
+
+        #track_number is case-insensitive
+        self.assertEqual(
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"tRaCkNuMbEr=10"],
+                        u"vendor")]).track_number,
+            10)
+
+        #album_number grabs the first available integer
+        self.assertEqual(
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"DISCNUMBER=20"],
+                        u"vendor")]).album_number,
+            20)
+
+        self.assertEqual(
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"DISCNUMBER=20",
+                         u"DISCNUMBER=5"],
+                        u"vendor")]).album_number,
+            20)
+
+        self.assertEqual(
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"DISCNUMBER=foo 20 bar"],
+                        u"vendor")]).album_number,
+            20)
+
+        self.assertEqual(
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"DISCNUMBER=foo",
+                         u"DISCNUMBER=20"],
+                        u"vendor")]).album_number,
+            20)
+
+        self.assertEqual(
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"DISCNUMBER=foo",
+                         u"DISCNUMBER=foo 20 bar"],
+                        u"vendor")]).album_number,
+            20)
+
+        #album_number is case-insensitive
+        self.assertEqual(
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"dIsCnUmBeR=20"],
+                        u"vendor")]).album_number,
+            20)
+
+        #track_total grabs the first available TRACKTOTAL integer
+        #before falling back on slashed fields
+        self.assertEqual(
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"TRACKTOTAL=15"],
+                        u"vendor")]).track_total,
+            15)
+
+        self.assertEqual(
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"TRACKNUMBER=5/10"],
+                        u"vendor")]).track_total,
+            10)
+
+        self.assertEqual(
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"TRACKNUMBER=5/10",
+                         u"TRACKTOTAL=15"],
+                        u"vendor")]).track_total,
+            15)
+
+        self.assertEqual(
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"TRACKTOTAL=15",
+                         u"TRACKNUMBER=5/10"],
+                        u"vendor")]).track_total,
+            15)
+
+        #track_total is case-insensitive
+        self.assertEqual(
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"tracktotal=15"],
+                        u"vendor")]).track_total,
+            15)
+
+        #track_total supports aliases
+        self.assertEqual(
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"TOTALTRACKS=15"],
+                        u"vendor")]).track_total,
+            15)
+
+        #album_total grabs the first available DISCTOTAL integer
+        #before falling back on slashed fields
+        self.assertEqual(
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"DISCTOTAL=25"],
+                        u"vendor")]).album_total,
+            25)
+
+        self.assertEqual(
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"DISCNUMBER=10/30"],
+                        u"vendor")]).album_total,
+            30)
+
+        self.assertEqual(
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"DISCNUMBER=10/30",
+                         u"DISCTOTAL=25"],
+                        u"vendor")]).album_total,
+            25)
+
+        self.assertEqual(
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"DISCTOTAL=25",
+                         u"DISCNUMBER=10/30"],
+                        u"vendor")]).album_total,
+            25)
+
+        #album_total is case-insensitive
+        self.assertEqual(
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"disctotal=25"],
+                        u"vendor")]).album_total,
+            25)
+
+        #album_total supports aliases
+        self.assertEqual(
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"TOTALDISCS=25"],
+                        u"vendor")]).album_total,
+            25)
+
+        #other fields grab the first available item
+        self.assertEqual(
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"TITLE=first",
+                         u"TITLE=last"],
+                        u"vendor")]).track_name,
+            u"first")
+
+    @METADATA_FLAC
+    def test_setattr(self):
+        #track_number adds new field if necessary
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [], u"vendor")])
+        self.assertEqual(metadata.track_number, None)
+        metadata.track_number = 11
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"TRACKNUMBER=11"])
+        self.assertEqual(metadata.track_number, 11)
+
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"TRACKNUMBER=blah"],
+                    u"vendor")])
+        self.assertEqual(metadata.track_number, None)
+        metadata.track_number = 11
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"TRACKNUMBER=blah",
+                          u"TRACKNUMBER=11"])
+        self.assertEqual(metadata.track_number, 11)
+
+        #track_number updates the first integer field
+        #and leaves other junk in that field alone
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"TRACKNUMBER=10/12"], u"vendor")])
+        self.assertEqual(metadata.track_number, 10)
+        metadata.track_number = 11
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"TRACKNUMBER=11/12"])
+        self.assertEqual(metadata.track_number, 11)
+
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"TRACKNUMBER=foo 10 bar"],
+                                            u"vendor")])
+        self.assertEqual(metadata.track_number, 10)
+        metadata.track_number = 11
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"TRACKNUMBER=foo 11 bar"])
+        self.assertEqual(metadata.track_number, 11)
+
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"TRACKNUMBER=foo 10 bar",
+                     u"TRACKNUMBER=blah"],
+                    u"vendor")])
+        self.assertEqual(metadata.track_number, 10)
+        metadata.track_number = 11
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"TRACKNUMBER=foo 11 bar",
+                          u"TRACKNUMBER=blah"])
+        self.assertEqual(metadata.track_number, 11)
+
+        #album_number adds new field if necessary
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [], u"vendor")])
+        self.assertEqual(metadata.album_number, None)
+        metadata.album_number = 3
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"DISCNUMBER=3"])
+        self.assertEqual(metadata.album_number, 3)
+
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"DISCNUMBER=blah"],
+                    u"vendor")])
+        self.assertEqual(metadata.album_number, None)
+        metadata.album_number = 3
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"DISCNUMBER=blah",
+                          u"DISCNUMBER=3"])
+        self.assertEqual(metadata.album_number, 3)
+
+        #album_number updates the first integer field
+        #and leaves other junk in that field alone
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"DISCNUMBER=2/4"], u"vendor")])
+        self.assertEqual(metadata.album_number, 2)
+        metadata.album_number = 3
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"DISCNUMBER=3/4"])
+        self.assertEqual(metadata.album_number, 3)
+
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"DISCNUMBER=foo 2 bar"],
+                    u"vendor")])
+        self.assertEqual(metadata.album_number, 2)
+        metadata.album_number = 3
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"DISCNUMBER=foo 3 bar"])
+        self.assertEqual(metadata.album_number, 3)
+
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"DISCNUMBER=foo 2 bar",
+                     u"DISCNUMBER=blah"],
+                    u"vendor")])
+        self.assertEqual(metadata.album_number, 2)
+        metadata.album_number = 3
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"DISCNUMBER=foo 3 bar",
+                          u"DISCNUMBER=blah"])
+        self.assertEqual(metadata.album_number, 3)
+
+        #track_total adds new TRACKTOTAL field if necessary
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [], u"vendor")])
+        self.assertEqual(metadata.track_total, None)
+        metadata.track_total = 12
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"TRACKTOTAL=12"])
+        self.assertEqual(metadata.track_total, 12)
+
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"TRACKTOTAL=blah"],
+                    u"vendor")])
+        self.assertEqual(metadata.track_total, None)
+        metadata.track_total = 12
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"TRACKTOTAL=blah",
+                          u"TRACKTOTAL=12"])
+        self.assertEqual(metadata.track_total, 12)
+
+        #track_total updates first integer TRACKTOTAL field first if possible
+        #including aliases
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"TRACKTOTAL=blah",
+                     u"TRACKTOTAL=2"], u"vendor")])
+        self.assertEqual(metadata.track_total, 2)
+        metadata.track_total = 3
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"TRACKTOTAL=blah",
+                          u"TRACKTOTAL=3"])
+        self.assertEqual(metadata.track_total, 3)
+
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"TOTALTRACKS=blah",
+                     u"TOTALTRACKS=2"], u"vendor")])
+        self.assertEqual(metadata.track_total, 2)
+        metadata.track_total = 3
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"TOTALTRACKS=blah",
+                          u"TOTALTRACKS=3"])
+        self.assertEqual(metadata.track_total, 3)
+
+        #track_total updates slashed TRACKNUMBER field if necessary
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"TRACKNUMBER=1/4",
+                     u"TRACKTOTAL=2"], u"vendor")])
+        self.assertEqual(metadata.track_total, 2)
+        metadata.track_total = 3
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"TRACKNUMBER=1/4",
+                          u"TRACKTOTAL=3"])
+        self.assertEqual(metadata.track_total, 3)
+
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"TRACKNUMBER=1/4"], u"vendor")])
+        self.assertEqual(metadata.track_total, 4)
+        metadata.track_total = 3
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"TRACKNUMBER=1/3"])
+        self.assertEqual(metadata.track_total, 3)
+
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"TRACKNUMBER= foo / 4 bar"],
+                    u"vendor")])
+        self.assertEqual(metadata.track_total, 4)
+        metadata.track_total = 3
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"TRACKNUMBER= foo / 3 bar"])
+        self.assertEqual(metadata.track_total, 3)
+
+        #album_total adds new DISCTOTAL field if necessary
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [], u"vendor")])
+        self.assertEqual(metadata.album_total, None)
+        metadata.album_total = 4
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"DISCTOTAL=4"])
+        self.assertEqual(metadata.album_total, 4)
+
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"DISCTOTAL=blah"],
+                    u"vendor")])
+        self.assertEqual(metadata.album_total, None)
+        metadata.album_total = 4
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"DISCTOTAL=blah",
+                          u"DISCTOTAL=4"])
+        self.assertEqual(metadata.album_total, 4)
+
+        #album_total updates DISCTOTAL field first if possible
+        #including aliases
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"DISCTOTAL=blah",
+                     u"DISCTOTAL=3"], u"vendor")])
+        self.assertEqual(metadata.album_total, 3)
+        metadata.album_total = 4
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"DISCTOTAL=blah",
+                          u"DISCTOTAL=4"])
+        self.assertEqual(metadata.album_total, 4)
+
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"TOTALDISCS=blah",
+                     u"TOTALDISCS=3"], u"vendor")])
+        self.assertEqual(metadata.album_total, 3)
+        metadata.album_total = 4
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"TOTALDISCS=blah",
+                          u"TOTALDISCS=4"])
+        self.assertEqual(metadata.album_total, 4)
+
+        #album_total updates slashed DISCNUMBER field if necessary
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"DISCNUMBER=2/3",
+                     u"DISCTOTAL=5"], u"vendor")])
+        self.assertEqual(metadata.album_total, 5)
+        metadata.album_total = 6
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"DISCNUMBER=2/3",
+                          u"DISCTOTAL=6"])
+        self.assertEqual(metadata.album_total, 6)
+
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"DISCNUMBER=2/3"], u"vendor")])
+        self.assertEqual(metadata.album_total, 3)
+        metadata.album_total = 6
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"DISCNUMBER=2/6"])
+        self.assertEqual(metadata.album_total, 6)
+
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"DISCNUMBER= foo / 3 bar"],
+                    u"vendor")])
+        self.assertEqual(metadata.album_total, 3)
+        metadata.album_total = 6
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"DISCNUMBER= foo / 6 bar"])
+        self.assertEqual(metadata.album_total, 6)
+
+        #other fields update the first match
+        #while leaving the rest alone
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"TITLE=foo",
+                     u"TITLE=bar",
+                     u"FOO=baz"],
+                    u"vendor")])
+        metadata.track_name = u"blah"
+        self.assertEqual(metadata.track_name, u"blah")
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"TITLE=blah",
+                          u"TITLE=bar",
+                          u"FOO=baz"])
+
+        #setting field to an empty string is okay
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [], u"vendor")])
+        metadata.track_name = u""
+        self.assertEqual(metadata.track_name, u"")
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"TITLE="])
+
+    @METADATA_FLAC
+    def test_delattr(self):
+        #deleting field removes all instances of it
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"TITLE=track name"],
+                    u"vendor")])
+        del(metadata.track_name)
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [])
+
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"TITLE=track name",
+                     u"ALBUM=album name"],
+                    u"vendor")])
+        del(metadata.track_name)
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"ALBUM=album name"])
+
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"TITLE=track name",
+                     u"TITLE=track name 2",
+                     u"ALBUM=album name",
+                     u"TITLE=track name 3"],
+                    u"vendor")])
+        del(metadata.track_name)
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"ALBUM=album name"])
+
+        #setting field to None is the same as deleting field
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"TITLE=track name"],
+                    u"vendor")])
+        metadata.track_name = None
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [])
+
+        #deleting track_number removes TRACKNUMBER field
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"TRACKNUMBER=1"],
+                    u"vendor")])
+        del(metadata.track_number)
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [])
+
+        #deleting slashed TRACKNUMBER converts it to fresh TRACKTOTAL field
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"TRACKNUMBER=1/3"],
+                    u"vendor")])
+        del(metadata.track_number)
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"TRACKTOTAL=3"])
+
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"TRACKNUMBER=1/3",
+                     u"TRACKTOTAL=4"],
+                    u"vendor")])
+        self.assertEqual(metadata.track_total, 4)
+        del(metadata.track_number)
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"TRACKTOTAL=4",
+                          u"TRACKTOTAL=3"])
+        self.assertEqual(metadata.track_total, 4)
+
+        #deleting track_total removes TRACKTOTAL/TOTALTRACKS fields
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"TRACKTOTAL=3",
+                     u"TOTALTRACKS=4"],
+                    u"vendor")])
+        del(metadata.track_total)
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [])
+        self.assertEqual(metadata.track_total, None)
+
+        #deleting track_total also removes slashed side of TRACKNUMBER fields
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"TRACKNUMBER=1/3"],
+                    u"vendor")])
+        del(metadata.track_total)
+        self.assertEqual(metadata.track_total, None)
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"TRACKNUMBER=1"])
+
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"TRACKNUMBER=1 / foo 3 baz"],
+                    u"vendor")])
+        del(metadata.track_total)
+        self.assertEqual(metadata.track_total, None)
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"TRACKNUMBER=1"])
+
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"TRACKNUMBER= foo 1 bar / blah 4 baz"], u"vendor")])
+        del(metadata.track_total)
+        self.assertEqual(metadata.track_total, None)
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"TRACKNUMBER= foo 1 bar"])
+
+        #deleting album_number removes DISCNUMBER field
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"DISCNUMBER=2"],
+                    u"vendor")])
+        del(metadata.album_number)
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [])
+
+        #deleting slashed DISCNUMBER converts it to fresh DISCTOTAL field
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"DISCNUMBER=2/4"],
+                    u"vendor")])
+        del(metadata.album_number)
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"DISCTOTAL=4"])
+
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"DISCNUMBER=2/4",
+                     u"DISCTOTAL=5"],
+                    u"vendor")])
+        self.assertEqual(metadata.album_total, 5)
+        del(metadata.album_number)
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"DISCTOTAL=5",
+                          u"DISCTOTAL=4"])
+        self.assertEqual(metadata.album_total, 5)
+
+        #deleting album_total removes DISCTOTAL/TOTALDISCS fields
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"DISCTOTAL=4",
+                     u"TOTALDISCS=5"],
+                    u"vendor")])
+        del(metadata.album_total)
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [])
+        self.assertEqual(metadata.album_total, None)
+
+        #deleting album_total also removes slashed side of DISCNUMBER fields
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"DISCNUMBER=2/4"],
+                    u"vendor")])
+        del(metadata.album_total)
+        self.assertEqual(metadata.album_total, None)
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"DISCNUMBER=2"])
+
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"DISCNUMBER=2 / foo 4 baz"],
+                    u"vendor")])
+        del(metadata.album_total)
+        self.assertEqual(metadata.album_total, None)
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"DISCNUMBER=2"])
+
+        metadata = audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT(
+                    [u"DISCNUMBER= foo 2 bar / blah 4 baz"], u"vendor")])
+        del(metadata.album_total)
+        self.assertEqual(metadata.album_total, None)
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"DISCNUMBER= foo 2 bar"])
+
 
 class M4AMetaDataTest(MetaDataTest):
     def setUp(self):
