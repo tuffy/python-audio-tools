@@ -3634,10 +3634,8 @@ class M4AMetaDataTest(MetaDataTest):
             if (field in self.supported_fields):
                 self.assertEqual(getattr(metadata_orig, field),
                                  getattr(metadata_new, field))
-            elif (field in audiotools.MetaData.INTEGER_FIELDS):
-                self.assertEqual(getattr(metadata_new, field), 0)
             else:
-                self.assertEqual(getattr(metadata_new, field), u"")
+                self.assertEqual(getattr(metadata_new, field), None)
 
         #ensure images match, if supported
         if (self.metadata_class.supports_images()):
@@ -3715,11 +3713,12 @@ class M4AMetaDataTest(MetaDataTest):
         self.assertRaises(KeyError,
                           cleaned['ilst'].__getitem__,
                           '\xa9nam')
-        self.assertEqual(cleaned.track_name, u'')
+        self.assertEqual(cleaned.track_name, None)
 
         #numerical fields can't have whitespace
         #and images aren't stored with metadata
         #so there's no need to check those
+
 
 
 class VorbisCommentTest(MetaDataTest):
