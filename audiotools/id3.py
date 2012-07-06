@@ -177,23 +177,32 @@ def __attrib_equals__(attributes, o1, o2):
         return True
 
 
-#takes a pair of integers for the current and total values
+#takes a pair of integers (or None) for the current and total values
 #returns a unicode string of their combined pair
 #for example, __number_pair__(2,3) returns u"2/3"
 #whereas      __number_pair__(4,0) returns u"4"
 def __number_pair__(current, total):
     from . import config
 
+    def empty(i):
+        return (i is None) or (i == 0)
+
     if (config.getboolean_default("ID3", "pad", False)):
-        if (total == 0):
-            return u"%2.2d" % (current)
-        else:
-            return u"%2.2d/%2.2d" % (current, total)
+        unslashed_format = u"%2.2d"
+        slashed_format = u"%2.2d/%2.2d"
     else:
-        if (total == 0):
-            return u"%d" % (current)
-        else:
-            return u"%d/%d" % (current, total)
+        unslashed_format = u"%d"
+        slashed_format = u"%d/%d"
+
+    if (empty(current) and empty(total)):
+        return unslashed_format % (0,)
+    elif ((not empty(current)) and empty(total)):
+        return unslashed_format % (current,)
+    elif (empty(current) and (not empty(total))):
+        return slashed_format % (0, total)
+    else:
+        #neither current or total are empty
+        return slashed_format % (current, total)
 
 
 def read_id3v2_comment(filename):
@@ -390,7 +399,7 @@ class ID3v22_T__Frame:
             try:
                 return int(re.findall(r'\d+', unicode(self))[0])
             except IndexError:
-                return 0
+                return None
         else:
             raise TypeError()
 
@@ -404,7 +413,7 @@ class ID3v22_T__Frame:
             try:
                 return int(re.findall(r'\d+/(\d+)', unicode(self))[0])
             except IndexError:
-                return 0
+                return None
         else:
             raise TypeError()
 
@@ -1158,36 +1167,40 @@ class ID3v22Comment(MetaData):
                 else:
                     return unicode(frame)
             except KeyError:
-                if (attr in self.INTEGER_FIELDS):
-                    return 0
-                else:
-                    return u""
+                return None
         elif (attr in self.FIELDS):
-            return u""
+            return None
         else:
             raise AttributeError(attr)
 
     def __setattr__(self, attr, value):
         if (attr in self.ATTRIBUTE_MAP):
-            frame_id = self.ATTRIBUTE_MAP[attr]
-            if (attr == 'track_number'):
-                self[frame_id] = [self.TEXT_FRAME.converted(
-                        frame_id, __number_pair__(value, self.track_total))]
-            elif (attr == 'track_total'):
-                self[frame_id] = [self.TEXT_FRAME.converted(
-                        frame_id, __number_pair__(self.track_number, value))]
-            elif (attr == 'album_number'):
-                self[frame_id] = [self.TEXT_FRAME.converted(
-                        frame_id, __number_pair__(value, self.album_total))]
-            elif (attr == 'album_total'):
-                self[frame_id] = [self.TEXT_FRAME.converted(
-                        frame_id, __number_pair__(self.album_number, value))]
-            elif (attr == 'comment'):
-                self[frame_id] = [self.COMMENT_FRAME.converted(
-                        frame_id, value)]
+            if (value is not None):
+                frame_id = self.ATTRIBUTE_MAP[attr]
+                if (attr == 'track_number'):
+                    self[frame_id] = [self.TEXT_FRAME.converted(
+                            frame_id,
+                            __number_pair__(value, self.track_total))]
+                elif (attr == 'track_total'):
+                    self[frame_id] = [self.TEXT_FRAME.converted(
+                            frame_id,
+                            __number_pair__(self.track_number, value))]
+                elif (attr == 'album_number'):
+                    self[frame_id] = [self.TEXT_FRAME.converted(
+                            frame_id,
+                            __number_pair__(value, self.album_total))]
+                elif (attr == 'album_total'):
+                    self[frame_id] = [self.TEXT_FRAME.converted(
+                            frame_id,
+                            __number_pair__(self.album_number, value))]
+                elif (attr == 'comment'):
+                    self[frame_id] = [self.COMMENT_FRAME.converted(
+                            frame_id, value)]
+                else:
+                    self[frame_id] = [
+                        self.TEXT_FRAME.converted(frame_id, unicode(value))]
             else:
-                self[frame_id] = [
-                    self.TEXT_FRAME.converted(frame_id, unicode(value))]
+                delattr(self, attr)
         elif (attr in MetaData.FIELDS):
             pass
         else:
@@ -1272,21 +1285,21 @@ class ID3v22Comment(MetaData):
         for (attr, key) in cls.ATTRIBUTE_MAP.items():
             value = getattr(metadata, attr)
             if ((attr not in cls.INTEGER_FIELDS) and
-                (len(value) > 0)):
+                (value is not None)):
                 if (attr == 'comment'):
                     frames.append(cls.COMMENT_FRAME.converted(key, value))
                 else:
                     frames.append(cls.TEXT_FRAME.converted(key, value))
 
-        if ((metadata.track_number != 0) or
-            (metadata.track_total != 0)):
+        if ((metadata.track_number is not None) or
+            (metadata.track_total is not None)):
             frames.append(cls.TEXT_FRAME.converted(
                     cls.ATTRIBUTE_MAP["track_number"],
                     __number_pair__(metadata.track_number,
                                     metadata.track_total)))
 
-        if ((metadata.album_number != 0) or
-            (metadata.album_total != 0)):
+        if ((metadata.album_number is not None) or
+            (metadata.album_total is not None)):
             frames.append(cls.TEXT_FRAME.converted(
                     cls.ATTRIBUTE_MAP["album_number"],
                     __number_pair__(metadata.album_number,
@@ -2080,19 +2093,11 @@ class ID3CommentPair(MetaData):
             raise ValueError("ID3v2 and ID3v1 cannot both be blank")
 
     def __getattr__(self, key):
-        if (key in self.INTEGER_FIELDS):
+        if (key in self.FIELDS):
             if ((self.id3v2 is not None) and
-                (getattr(self.id3v2, key) != 0)):
-                    return getattr(self.id3v2, key)
-            if (self.id3v1 is not None):
-                return getattr(self.id3v1, key)
-            else:
-                raise ValueError("ID3v2 and ID3v1 cannot both be blank")
-        elif (key in self.FIELDS):
-            if ((self.id3v2 is not None) and
-                (getattr(self.id3v2, key) != u'')):
-                    return getattr(self.id3v2, key)
-            if (self.id3v1 is not None):
+                (getattr(self.id3v2, key) is not None)):
+                return getattr(self.id3v2, key)
+            elif (self.id3v1 is not None):
                 return getattr(self.id3v1, key)
             else:
                 raise ValueError("ID3v2 and ID3v1 cannot both be blank")
