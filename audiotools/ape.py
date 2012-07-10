@@ -405,7 +405,8 @@ class ApeTag(MetaData):
             else:
                 del(self['Track'])
         elif (attr == 'track_total'):
-            if (self.track_number is not None):
+            if ((self.track_number is not None) and
+                (self.track_number != 0)):
                 self['Track'] = self.ITEM.string(
                     'Track', __number_pair__(self.track_number, None))
             else:
@@ -417,7 +418,8 @@ class ApeTag(MetaData):
             else:
                 del(self['Media'])
         elif (attr == 'album_total'):
-            if (self.album_number is not None):
+            if ((self.album_number is not None) and
+                (self.album_number != 0)):
                 self['Media'] = self.ITEM.string(
                     'Media', __number_pair__(self.album_number, None))
             else:

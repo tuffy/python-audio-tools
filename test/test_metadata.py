@@ -1219,7 +1219,7 @@ class ID3v22MetaData(MetaDataTest):
         #>>> id3.track_number = 2
         #>>> id3['TRK'][0] == u"2"
         id3.track_number = 3
-        id3.track_total = 0
+        id3.track_total = None
         self.assertEqual(
             unicode(id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[0]][0]),
             u"3")
@@ -1230,7 +1230,7 @@ class ID3v22MetaData(MetaDataTest):
             u"3/8")
 
         id3.album_number = 2
-        id3.album_total = 0
+        id3.album_total = None
         self.assertEqual(
             unicode(id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[1]][0]),
             u"2")

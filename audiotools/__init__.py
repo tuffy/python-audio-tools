@@ -3469,10 +3469,10 @@ class AudioFile:
         """returns this track's number as an integer
 
         this first checks MetaData and then makes a guess from the filename
-        if neither yields a good result, returns 0"""
+        if neither yields a good result, returns None"""
 
         metadata = self.get_metadata()
-        if ((metadata is not None) and (metadata.track_number > 0)):
+        if (metadata is not None):
             return metadata.track_number
         else:
             try:
@@ -3480,7 +3480,7 @@ class AudioFile:
                         r'\d{2,3}',
                         os.path.basename(self.filename))[0]) % 100
             except IndexError:
-                return 0
+                return None
 
     def album_number(self):
         """returns this track's album number as an integer
@@ -3498,7 +3498,7 @@ class AudioFile:
                         os.path.basename(self.filename))[0])
                 return long_track_number / 100
             except IndexError:
-                return 0
+                return None
 
     @classmethod
     def track_name(cls, file_path, track_metadata=None, format=None,
@@ -3521,10 +3521,18 @@ class AudioFile:
         try:
             #prefer track_number and album_number from MetaData, if available
             if (track_metadata is not None):
-                track_number = track_metadata.track_number
-                album_number = track_metadata.album_number
-                track_total = track_metadata.track_total
-                album_total = track_metadata.album_total
+                track_number = (track_metadata.track_number
+                                if track_metadata.track_number is not None
+                                else 0)
+                album_number = (track_metadata.album_number
+                                if track_metadata.album_number is not None
+                                else 0)
+                track_total = (track_metadata.track_total
+                               if track_metadata.track_total is not None
+                               else 0)
+                album_total = (track_metadata.album_total
+                               if track_metadata.album_total is not None
+                               else 0)
             else:
                 try:
                     track_number = int(re.findall(
@@ -3563,9 +3571,14 @@ class AudioFile:
                 for field in track_metadata.FIELDS:
                     if ((field != "suffix") and
                         (field not in MetaData.INTEGER_FIELDS)):
-                        format_dict[field.decode('ascii')] = getattr(
-                            track_metadata,
-                            field).replace(u'/', u'-').replace(unichr(0), u' ')
+                        if (getattr(track_metadata, field) is not None):
+                            format_dict[field.decode('ascii')] = getattr(
+                                track_metadata,
+                                field).replace(u'/',
+                                               u'-').replace(unichr(0),
+                                                             u' ')
+                        else:
+                            format_dict[field.decode('ascii')] = u""
             else:
                 for field in MetaData.FIELDS:
                     if (field not in MetaData.INTEGER_FIELDS):

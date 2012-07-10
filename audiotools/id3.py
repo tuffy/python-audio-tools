@@ -184,9 +184,6 @@ def __attrib_equals__(attributes, o1, o2):
 def __number_pair__(current, total):
     from . import config
 
-    def empty(i):
-        return i is None
-
     if (config.getboolean_default("ID3", "pad", False)):
         unslashed_format = u"%2.2d"
         slashed_format = u"%2.2d/%2.2d"
@@ -194,15 +191,16 @@ def __number_pair__(current, total):
         unslashed_format = u"%d"
         slashed_format = u"%d/%d"
 
-    if (empty(current) and empty(total)):
-        return unslashed_format % (0,)
-    elif ((not empty(current)) and empty(total)):
-        return unslashed_format % (current,)
-    elif (empty(current) and (not empty(total))):
-        return slashed_format % (0, total)
-    else:
-        #neither current or total are empty
-        return slashed_format % (current, total)
+    if (current is None):
+        if (total is None):
+            return unslashed_format % (0,)
+        else:
+            return slashed_format % (0, total)
+    else: #current is not None
+        if (total is None):
+            return unslashed_format % (current,)
+        else:
+            return slashed_format % (current, total)
 
 
 def read_id3v2_comment(filename):
@@ -1228,7 +1226,8 @@ class ID3v22Comment(MetaData):
                             continue
                     elif ((attr == 'track_total') or (attr == 'album_total')):
                         #handle the *_total numerical fields
-                        if (frame.number() is not None):
+                        if ((frame.number() is not None) and
+                            (frame.number() != 0)):
                             #if *_total is deleted, but *_number is present
                             #build a new frame with only the *_number field
                             updated_frames.append(

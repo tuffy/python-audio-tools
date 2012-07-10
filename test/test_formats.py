@@ -240,6 +240,7 @@ class AudioFileTest(unittest.TestCase):
             nonblank_metadata = audiotools.MetaData(
                 track_name=u"Track Name",
                 track_number=1,
+                track_total=2,
                 album_name=u"Album Name")
             track.set_metadata(nonblank_metadata)
             self.assertEqual(track.get_metadata(), nonblank_metadata)
@@ -248,9 +249,7 @@ class AudioFileTest(unittest.TestCase):
             if (metadata is not None):
                 self.assertEqual(
                     metadata,
-                    audiotools.MetaData(track_name=u"",
-                                        track_number=0,
-                                        album_name=u""))
+                    audiotools.MetaData())
 
             track.set_metadata(nonblank_metadata)
             self.assertEqual(track.get_metadata(), nonblank_metadata)
@@ -312,7 +311,14 @@ class AudioFileTest(unittest.TestCase):
         try:
             track = self.audio_class.from_pcm(temp.name,
                                               BLANK_PCM_Reader(10))
+            if (track.lossless()):
+                self.assert_(audiotools.pcm_frame_cmp(
+                        track.to_pcm(),
+                        BLANK_PCM_Reader(10)) is None)
             for audio_class in audiotools.AVAILABLE_TYPES:
+                print "converting %s to %s" % (self.audio_class.NAME,
+                                               audio_class.NAME)
+
                 outfile = tempfile.NamedTemporaryFile(
                     suffix="." + audio_class.SUFFIX)
                 log = Log()
@@ -330,7 +336,10 @@ class AudioFileTest(unittest.TestCase):
 
                     if (track.lossless() and track2.lossless()):
                         self.assert_(audiotools.pcm_frame_cmp(
-                                track.to_pcm(), track2.to_pcm()) is None)
+                                track.to_pcm(), track2.to_pcm()) is None,
+                                     "PCM mismatch converting %s to %s" % (
+                                self.audio_class.NAME,
+                                audio_class.NAME))
                 finally:
                     outfile.close()
         finally:
@@ -346,22 +355,33 @@ class AudioFileTest(unittest.TestCase):
             track = self.audio_class.from_pcm(
                 os.path.join(temp_dir, "abcde" + self.suffix),
                 BLANK_PCM_Reader(1))
-            self.assertEqual(track.track_number(), 0)
+            if (track.get_metadata() is None):
+                self.assertEqual(track.track_number(), None)
 
-            track = self.audio_class.from_pcm(
-                os.path.join(temp_dir, "01 - abcde" + self.suffix),
-                BLANK_PCM_Reader(1))
-            self.assertEqual(track.track_number(), 1)
+                track = self.audio_class.from_pcm(
+                    os.path.join(temp_dir, "01 - abcde" + self.suffix),
+                    BLANK_PCM_Reader(1))
+                self.assertEqual(track.track_number(), 1)
 
-            track = self.audio_class.from_pcm(
-                os.path.join(temp_dir, "202 - abcde" + self.suffix),
-                BLANK_PCM_Reader(1))
-            self.assertEqual(track.track_number(), 2)
+                track = self.audio_class.from_pcm(
+                    os.path.join(temp_dir, "202 - abcde" + self.suffix),
+                    BLANK_PCM_Reader(1))
+                self.assertEqual(track.track_number(), 2)
 
-            track = self.audio_class.from_pcm(
-                os.path.join(temp_dir, "303 45 - abcde" + self.suffix),
-                BLANK_PCM_Reader(1))
-            self.assertEqual(track.track_number(), 3)
+                track = self.audio_class.from_pcm(
+                    os.path.join(temp_dir, "303 45 - abcde" + self.suffix),
+                    BLANK_PCM_Reader(1))
+                self.assertEqual(track.track_number(), 3)
+            else:
+                self.audio_class.from_pcm(
+                    os.path.join(temp_dir, "01 - abcde" + self.suffix),
+                    BLANK_PCM_Reader(1))
+                self.audio_class.from_pcm(
+                    os.path.join(temp_dir, "202 - abcde" + self.suffix),
+                    BLANK_PCM_Reader(1))
+                self.audio_class.from_pcm(
+                    os.path.join(temp_dir, "303 45 - abcde" + self.suffix),
+                    BLANK_PCM_Reader(1))
 
             track.set_metadata(audiotools.MetaData(track_number=2))
             metadata = track.get_metadata()
@@ -397,24 +417,35 @@ class AudioFileTest(unittest.TestCase):
             track = self.audio_class.from_pcm(
                 os.path.join(temp_dir, "abcde" + self.suffix),
                 BLANK_PCM_Reader(1))
-            self.assertEqual(track.album_number(), 0)
-
-            track = self.audio_class.from_pcm(
-                os.path.join(temp_dir, "01 - abcde" + self.suffix),
-                BLANK_PCM_Reader(1))
-            self.assertEqual(track.album_number(), 0)
-
-            track = self.audio_class.from_pcm(
-                os.path.join(temp_dir, "202 - abcde" + self.suffix),
-                BLANK_PCM_Reader(1))
             if (track.get_metadata() is None):
-                self.assertEqual(track.album_number(), 2)
+                self.assertEqual(track.album_number(), None)
 
-            track = self.audio_class.from_pcm(
-                os.path.join(temp_dir, "303 45 - abcde" + self.suffix),
-                BLANK_PCM_Reader(1))
-            if (track.get_metadata() is None):
-                self.assertEqual(track.album_number(), 3)
+                track = self.audio_class.from_pcm(
+                    os.path.join(temp_dir, "01 - abcde" + self.suffix),
+                    BLANK_PCM_Reader(1))
+                self.assertEqual(track.album_number(), None)
+
+                track = self.audio_class.from_pcm(
+                    os.path.join(temp_dir, "202 - abcde" + self.suffix),
+                    BLANK_PCM_Reader(1))
+                if (track.get_metadata() is None):
+                    self.assertEqual(track.album_number(), 2)
+
+                track = self.audio_class.from_pcm(
+                    os.path.join(temp_dir, "303 45 - abcde" + self.suffix),
+                    BLANK_PCM_Reader(1))
+                if (track.get_metadata() is None):
+                    self.assertEqual(track.album_number(), 3)
+            else:
+                self.audio_class.from_pcm(
+                    os.path.join(temp_dir, "01 - abcde" + self.suffix),
+                    BLANK_PCM_Reader(1))
+                self.audio_class.from_pcm(
+                    os.path.join(temp_dir, "202 - abcde" + self.suffix),
+                    BLANK_PCM_Reader(1))
+                self.audio_class.from_pcm(
+                    os.path.join(temp_dir, "303 45 - abcde" + self.suffix),
+                    BLANK_PCM_Reader(1))
 
             track.set_metadata(audiotools.MetaData(album_number=2))
             metadata = track.get_metadata()

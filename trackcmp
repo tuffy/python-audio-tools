@@ -71,18 +71,22 @@ class Results:
 
     def missing(self, directory, track_number, album_number):
         self.failures += 1
-        if (album_number == 0):
+        if (album_number is None):
             self.msg.info(_(u"%(path)s : %(result)s") % {
                     "path":audiotools.Filename(
                         os.path.join(directory,
-                                     "track %2.2d" % (track_number))),
+                                     "track %2.2d" % (
+                                track_number
+                                if track_number is not None else 0))),
                     "result": self.msg.ansi(_(u"missing"), [self.msg.FG_RED])})
         else:
             self.msg.info(_(u"%(path)s : %(result)s") % {
                     "path":audiotools.Filename(
                         os.path.join(directory,
-                                     "album %d track %2.2d" % (album_number,
-                                                               track_number))),
+                                     "album %d track %2.2d" % (
+                                album_number,
+                                track_number
+                                if track_number is not None else 0))),
                     "result": self.msg.ansi(_(u"missing"), [self.msg.FG_RED])})
         sys.stdout.flush()
 

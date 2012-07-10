@@ -82,14 +82,17 @@ class UtilTest(unittest.TestCase):
 
     def __run_checks__(self):
         for (stream, expected_output) in self.line_checks:
-            self.assertEqual(
-                unicodedata.normalize(
-                    'NFC',
-                    getattr(self,
-                            stream).readline().decode(audiotools.IO_ENCODING)),
-                unicodedata.normalize(
-                    'NFC',
-                    expected_output) + unicode(os.linesep))
+            stream_line = unicodedata.normalize(
+                'NFC',
+                getattr(self,
+                        stream).readline().decode(audiotools.IO_ENCODING))
+            expected_line = unicodedata.normalize(
+                'NFC',
+                expected_output) + unicode(os.linesep)
+            self.assertEqual(stream_line, expected_line,
+                             "%s(%s) != %s" % (
+                    repr(stream_line),
+                    repr(expected_line)))
         self.line_checks = []
 
     def __clear_checks__(self):
@@ -301,9 +304,9 @@ class cd2track(UtilTest):
                 for i in xrange(len(output_tracks)):
                     metadata = output_tracks[i].get_metadata()
                     if (metadata is not None):
-                        self.assertEqual(metadata.track_name, u"")
-                        self.assertEqual(metadata.album_name, u"")
-                        self.assertEqual(metadata.artist_name, u"")
+                        self.assertEqual(metadata.track_name, None)
+                        self.assertEqual(metadata.album_name, None)
+                        self.assertEqual(metadata.artist_name, None)
 
                         self.assertEqual(metadata.track_number, i + 1)
                         self.assertEqual(metadata.track_total, 3)
@@ -311,12 +314,12 @@ class cd2track(UtilTest):
                         if ("--album-number" in options):
                             self.assertEqual(metadata.album_number, 8)
                         else:
-                            self.assertEqual(metadata.album_number, 0)
+                            self.assertEqual(metadata.album_number, None)
 
                         if ("--album-total" in options):
                             self.assertEqual(metadata.album_total, 9)
                         else:
-                            self.assertEqual(metadata.album_total, 0)
+                            self.assertEqual(metadata.album_total, None)
 
     def populate_bad_options(self, options):
         populated = ["--no-musicbrainz", "--no-freedb"]
@@ -1622,10 +1625,10 @@ class trackcat(UtilTest):
                 #check that metadata is merged properly
                 metadata = new_track.get_metadata()
                 if (metadata is not None):
-                    self.assertEqual(metadata.track_name, u"")
+                    self.assertEqual(metadata.track_name, None)
                     self.assertEqual(metadata.album_name, u"Album")
                     self.assertEqual(metadata.artist_name, u"Artist")
-                    self.assertEqual(metadata.track_number, 0)
+                    self.assertEqual(metadata.track_number, None)
                     self.assertEqual(metadata.track_total, 3)
 
                 #check that the cuesheet is embedded properly
@@ -2590,7 +2593,9 @@ class tracklint(UtilTest):
         fixed = audiotools.MetaData(
             track_name=u"Track Name",
             track_number=2,
+            track_total=0,
             album_number=3,
+            album_total=0,
             artist_name=u"Some Artist",
             comment=u"Some Comment")
 
@@ -2653,7 +2658,8 @@ class tracklint(UtilTest):
                                              BLANK_PCM_Reader(5))
                 metadata = audiotools.MetaData(
                     track_name="Track Name",
-                    track_number=1)
+                    track_number=1,
+                    track_total=2)
                 track.set_metadata(metadata)
                 if (track.get_metadata() is not None):
                     orig_stat = os.stat(track.filename)
@@ -2695,7 +2701,8 @@ class tracklint(UtilTest):
                                              BLANK_PCM_Reader(5))
                 metadata = audiotools.MetaData(
                     track_name="Track Name",
-                    track_number=1)
+                    track_number=1,
+                    track_total=2)
                 track.set_metadata(metadata)
                 if (track.get_metadata() is not None):
                     orig_stat = os.stat(track.filename)
@@ -2740,7 +2747,8 @@ class tracklint(UtilTest):
                                              BLANK_PCM_Reader(5))
                 track.set_metadata(audiotools.MetaData(
                         track_name=u"Track Name ",
-                        track_number=1))
+                        track_number=1,
+                        track_total=2))
 
                 #general-purpose errors
                 self.assertEqual(self.__run_app__(
@@ -3342,6 +3350,455 @@ class NoMetaData(Exception):
 class tracktag_misc(UtilTest):
     @UTIL_TRACKTAG
     def test_text_options(self):
+        def number_fields_values(fields, metadata_class):
+            values = set([])
+            if ((metadata_class is audiotools.ID3v22Comment) or
+                (metadata_class is audiotools.ID3v23Comment) or
+                (metadata_class is audiotools.ID3v24Comment) or
+                (metadata_class is audiotools.ID3CommentPair) or
+                (metadata_class is audiotools.ApeTag)):
+                return {frozenset([]):
+                            [("track_number",None),
+                             ("track_total",None),
+                             ("album_number",None),
+                             ("album_total",None)],
+                        frozenset(["track_number"]):
+                            [("track_number",1),
+                             ("track_total",None),
+                             ("album_number",None),
+                             ("album_total",None)],
+                        frozenset(["track_total"]):
+                            [("track_number",0),
+                             ("track_total",2),
+                             ("album_number",None),
+                             ("album_total",None)],
+                        frozenset(["album_number"]):
+                            [("track_number",None),
+                             ("track_total",None),
+                             ("album_number",3),
+                             ("album_total",None)],
+                        frozenset(["album_total"]):
+                            [("track_number",None),
+                             ("track_total",None),
+                             ("album_number",0),
+                             ("album_total",4)],
+
+                        frozenset(["track_number",
+                                   "track_total"]):
+                            [("track_number",1),
+                             ("track_total",2),
+                             ("album_number",None),
+                             ("album_total",None)],
+                        frozenset(["track_number",
+                                   "album_number"]):
+                            [("track_number",1),
+                             ("track_total",None),
+                             ("album_number",3),
+                             ("album_total",None)],
+                        frozenset(["track_number",
+                                   "album_total"]):
+                            [("track_number",1),
+                             ("track_total",None),
+                             ("album_number",0),
+                             ("album_total",4)],
+                        frozenset(["track_total",
+                                   "album_number"]):
+                            [("track_number",0),
+                             ("track_total",2),
+                             ("album_number",3),
+                             ("album_total",None)],
+                        frozenset(["track_total",
+                                   "album_total"]):
+                            [("track_number",0),
+                             ("track_total",2),
+                             ("album_number",0),
+                             ("album_total",4)],
+                        frozenset(["album_number",
+                                   "album_total"]):
+                            [("track_number",None),
+                             ("track_total",None),
+                             ("album_number",3),
+                             ("album_total",4)],
+
+                        frozenset(["track_number",
+                                   "track_total",
+                                   "album_number"]):
+                            [("track_number",1),
+                             ("track_total",2),
+                             ("album_number",3),
+                             ("album_total",None)],
+                        frozenset(["track_number",
+                                   "track_total",
+                                   "album_total"]):
+                            [("track_number",1),
+                             ("track_total",2),
+                             ("album_number",0),
+                             ("album_total",4)],
+                        frozenset(["track_number",
+                                   "album_number",
+                                   "album_total"]):
+                            [("track_number",1),
+                             ("track_total",None),
+                             ("album_number",3),
+                             ("album_total",4)],
+                        frozenset(["track_total",
+                                   "album_number",
+                                   "album_total"]):
+                            [("track_number",0),
+                             ("track_total",2),
+                             ("album_number",3),
+                             ("album_total",4)],
+
+                        frozenset(["track_number",
+                                   "track_total",
+                                   "album_number",
+                                   "album_total"]):
+                            [("track_number",1),
+                             ("track_total",2),
+                             ("album_number",3),
+                             ("album_total",4)]
+                        }[frozenset(fields)]
+            elif (metadata_class is audiotools.M4A_META_Atom):
+                return {frozenset([]):
+                            [("track_number",None),
+                             ("track_total",None),
+                             ("album_number",None),
+                             ("album_total",None)],
+                        frozenset(["track_number"]):
+                            [("track_number",1),
+                             ("track_total",0),
+                             ("album_number",None),
+                             ("album_total",None)],
+                        frozenset(["track_total"]):
+                            [("track_number",0),
+                             ("track_total",2),
+                             ("album_number",None),
+                             ("album_total",None)],
+                        frozenset(["album_number"]):
+                            [("track_number",None),
+                             ("track_total",None),
+                             ("album_number",3),
+                             ("album_total",0)],
+                        frozenset(["album_total"]):
+                            [("track_number",None),
+                             ("track_total",None),
+                             ("album_number",0),
+                             ("album_total",4)],
+
+                        frozenset(["track_number",
+                                   "track_total"]):
+                            [("track_number",1),
+                             ("track_total",2),
+                             ("album_number",None),
+                             ("album_total",None)],
+                        frozenset(["track_number",
+                                   "album_number"]):
+                            [("track_number",1),
+                             ("track_total",0),
+                             ("album_number",3),
+                             ("album_total",0)],
+                        frozenset(["track_number",
+                                   "album_total"]):
+                            [("track_number",1),
+                             ("track_total",0),
+                             ("album_number",0),
+                             ("album_total",4)],
+                        frozenset(["track_total",
+                                   "album_number"]):
+                            [("track_number",0),
+                             ("track_total",2),
+                             ("album_number",3),
+                             ("album_total",0)],
+                        frozenset(["track_total",
+                                   "album_total"]):
+                            [("track_number",0),
+                             ("track_total",2),
+                             ("album_number",0),
+                             ("album_total",4)],
+                        frozenset(["album_number",
+                                   "album_total"]):
+                            [("track_number",None),
+                             ("track_total",None),
+                             ("album_number",3),
+                             ("album_total",4)],
+
+                        frozenset(["track_number",
+                                   "track_total",
+                                   "album_number"]):
+                            [("track_number",1),
+                             ("track_total",2),
+                             ("album_number",3),
+                             ("album_total",0)],
+                        frozenset(["track_number",
+                                   "track_total",
+                                   "album_total"]):
+                            [("track_number",1),
+                             ("track_total",2),
+                             ("album_number",0),
+                             ("album_total",4)],
+                        frozenset(["track_number",
+                                   "album_number",
+                                   "album_total"]):
+                            [("track_number",1),
+                             ("track_total",0),
+                             ("album_number",3),
+                             ("album_total",4)],
+                        frozenset(["track_total",
+                                   "album_number",
+                                   "album_total"]):
+                            [("track_number",0),
+                             ("track_total",2),
+                             ("album_number",3),
+                             ("album_total",4)],
+
+                        frozenset(["track_number",
+                                   "track_total",
+                                   "album_number",
+                                   "album_total"]):
+                            [("track_number",1),
+                             ("track_total",2),
+                             ("album_number",3),
+                             ("album_total",4)]
+                        }[frozenset(fields)]
+            else:
+                for field in audiotools.MetaData.INTEGER_FIELDS:
+                    if (field in fields):
+                        values.add(
+                            (field,
+                             audiotools.MetaData.INTEGER_FIELDS.index(
+                                    field) + 1))
+                    else:
+                        values.add((field, None))
+            return values
+
+        def deleted_number_fields_values(fields, metadata_class):
+            values = set([])
+
+            if ((metadata_class is audiotools.ID3v22Comment) or
+                (metadata_class is audiotools.ID3v23Comment) or
+                (metadata_class is audiotools.ID3v24Comment) or
+                (metadata_class is audiotools.ID3CommentPair) or
+                (metadata_class is audiotools.ApeTag)):
+                return {frozenset([]):
+                            [("track_number",1),
+                             ("track_total",2),
+                             ("album_number",3),
+                             ("album_total",4)],
+                        frozenset(["track_number"]):
+                            [("track_number",0),
+                             ("track_total",2),
+                             ("album_number",3),
+                             ("album_total",4)],
+                        frozenset(["track_total"]):
+                            [("track_number",1),
+                             ("track_total",None),
+                             ("album_number",3),
+                             ("album_total",4)],
+                        frozenset(["album_number"]):
+                            [("track_number",1),
+                             ("track_total",2),
+                             ("album_number",0),
+                             ("album_total",4)],
+                        frozenset(["album_total"]):
+                            [("track_number",1),
+                             ("track_total",2),
+                             ("album_number",3),
+                             ("album_total",None)],
+
+                        frozenset(["track_number",
+                                   "track_total"]):
+                            [("track_number",None),
+                             ("track_total",None),
+                             ("album_number",3),
+                             ("album_total",4)],
+                        frozenset(["track_number",
+                                   "album_number"]):
+                            [("track_number",0),
+                             ("track_total",2),
+                             ("album_number",0),
+                             ("album_total",4)],
+                        frozenset(["track_number",
+                                   "album_total"]):
+                            [("track_number",0),
+                             ("track_total",2),
+                             ("album_number",3),
+                             ("album_total",None)],
+                        frozenset(["track_total",
+                                   "album_number"]):
+                            [("track_number",1),
+                             ("track_total",None),
+                             ("album_number",0),
+                             ("album_total",4)],
+                        frozenset(["track_total",
+                                   "album_total"]):
+                            [("track_number",1),
+                             ("track_total",None),
+                             ("album_number",3),
+                             ("album_total",None)],
+                        frozenset(["album_number",
+                                   "album_total"]):
+                            [("track_number",1),
+                             ("track_total",2),
+                             ("album_number",None),
+                             ("album_total",None)],
+
+                        frozenset(["track_number",
+                                   "track_total",
+                                   "album_number"]):
+                            [("track_number",None),
+                             ("track_total",None),
+                             ("album_number",0),
+                             ("album_total",4)],
+                        frozenset(["track_number",
+                                   "track_total",
+                                   "album_total"]):
+                            [("track_number",None),
+                             ("track_total",None),
+                             ("album_number",3),
+                             ("album_total",None)],
+                        frozenset(["track_number",
+                                   "album_number",
+                                   "album_total"]):
+                            [("track_number",0),
+                             ("track_total",2),
+                             ("album_number",None),
+                             ("album_total",None)],
+                        frozenset(["track_total",
+                                   "album_number",
+                                   "album_total"]):
+                            [("track_number",1),
+                             ("track_total",None),
+                             ("album_number",None),
+                             ("album_total",None)],
+
+                        frozenset(["track_number",
+                                   "track_total",
+                                   "album_number",
+                                   "album_total"]):
+                            [("track_number",None),
+                             ("track_total",None),
+                             ("album_number",None),
+                             ("album_total",None)]
+                        }[frozenset(fields)]
+            elif (metadata_class is audiotools.M4A_META_Atom):
+                return {frozenset([]):
+                            [("track_number",1),
+                             ("track_total",2),
+                             ("album_number",3),
+                             ("album_total",4)],
+                        frozenset(["track_number"]):
+                            [("track_number",0),
+                             ("track_total",2),
+                             ("album_number",3),
+                             ("album_total",4)],
+                        frozenset(["track_total"]):
+                            [("track_number",1),
+                             ("track_total",0),
+                             ("album_number",3),
+                             ("album_total",4)],
+                        frozenset(["album_number"]):
+                            [("track_number",1),
+                             ("track_total",2),
+                             ("album_number",0),
+                             ("album_total",4)],
+                        frozenset(["album_total"]):
+                            [("track_number",1),
+                             ("track_total",2),
+                             ("album_number",3),
+                             ("album_total",0)],
+
+                        frozenset(["track_number",
+                                   "track_total"]):
+                            [("track_number",None),
+                             ("track_total",None),
+                             ("album_number",3),
+                             ("album_total",4)],
+                        frozenset(["track_number",
+                                   "album_number"]):
+                            [("track_number",0),
+                             ("track_total",2),
+                             ("album_number",0),
+                             ("album_total",4)],
+                        frozenset(["track_number",
+                                   "album_total"]):
+                            [("track_number",0),
+                             ("track_total",2),
+                             ("album_number",3),
+                             ("album_total",0)],
+                        frozenset(["track_total",
+                                   "album_number"]):
+                            [("track_number",1),
+                             ("track_total",0),
+                             ("album_number",0),
+                             ("album_total",4)],
+                        frozenset(["track_total",
+                                   "album_total"]):
+                            [("track_number",1),
+                             ("track_total",0),
+                             ("album_number",3),
+                             ("album_total",0)],
+                        frozenset(["album_number",
+                                   "album_total"]):
+                            [("track_number",1),
+                             ("track_total",2),
+                             ("album_number",None),
+                             ("album_total",None)],
+
+                        frozenset(["track_number",
+                                   "track_total",
+                                   "album_number"]):
+                            [("track_number",None),
+                             ("track_total",None),
+                             ("album_number",0),
+                             ("album_total",4)],
+                        frozenset(["track_number",
+                                   "track_total",
+                                   "album_total"]):
+                            [("track_number",None),
+                             ("track_total",None),
+                             ("album_number",3),
+                             ("album_total",0)],
+                        frozenset(["track_number",
+                                   "album_number",
+                                   "album_total"]):
+                            [("track_number",0),
+                             ("track_total",2),
+                             ("album_number",None),
+                             ("album_total",None)],
+                        frozenset(["track_total",
+                                   "album_number",
+                                   "album_total"]):
+                            [("track_number",1),
+                             ("track_total",0),
+                             ("album_number",None),
+                             ("album_total",None)],
+
+                        frozenset(["track_number",
+                                   "track_total",
+                                   "album_number",
+                                   "album_total"]):
+                            [("track_number",None),
+                             ("track_total",None),
+                             ("album_number",None),
+                             ("album_total",None)]
+                        }[frozenset(fields)]
+            else:
+                for field in audiotools.MetaData.INTEGER_FIELDS:
+                    if (field not in fields):
+                        values.add(
+                            (field,
+                             audiotools.MetaData.INTEGER_FIELDS.index(
+                                    field) + 1))
+                    else:
+                        values.add((field, None))
+            return values
+
+        def metadata_fields_values(metadata):
+            values = set([])
+            for field in audiotools.MetaData.INTEGER_FIELDS:
+                values.add((field, getattr(metadata, field)))
+            return values
+
         for audio_type in audiotools.AVAILABLE_TYPES:
             temp_file = tempfile.NamedTemporaryFile(
                 suffix="." + audio_type.SUFFIX)
@@ -3400,7 +3857,7 @@ class tracktag_misc(UtilTest):
                     metadata = new_track.get_metadata()
                     if (metadata is None):
                         break
-                    elif (len(getattr(metadata, field_name)) > 0):
+                    elif (getattr(metadata, field_name) is not None):
                         self.assertEqual(getattr(metadata, field_name),
                                          u'foo')
 
@@ -3413,39 +3870,9 @@ class tracktag_misc(UtilTest):
 
                         self.assertEqual(
                             getattr(metadata, field_name),
-                            u'',
+                            None,
                             "remove option failed for %s field %s" %
                             (audio_type.NAME, remove_field))
-
-                def number_fields_values(fields):
-                    values = set([])
-                    for field in audiotools.MetaData.INTEGER_FIELDS:
-                        if (field in fields):
-                            values.add(
-                                (field,
-                                 audiotools.MetaData.INTEGER_FIELDS.index(
-                                        field) + 1))
-                        else:
-                            values.add((field, 0))
-                    return values
-
-                def deleted_number_fields_values(fields):
-                    values = set([])
-                    for field in audiotools.MetaData.INTEGER_FIELDS:
-                        if (field not in fields):
-                            values.add(
-                                (field,
-                                 audiotools.MetaData.INTEGER_FIELDS.index(
-                                        field) + 1))
-                        else:
-                            values.add((field, 0))
-                    return values
-
-                def metadata_fields_values(metadata):
-                    values = set([])
-                    for field in audiotools.MetaData.INTEGER_FIELDS:
-                        values.add((field, getattr(metadata, field)))
-                    return values
 
                 number_fields = ['track_number',
                                  'track_total',
@@ -3467,7 +3894,13 @@ class tracktag_misc(UtilTest):
 
                             self.assert_(
                                 metadata_fields_values(metadata).issubset(
-                                    number_fields_values(fields)))
+                                    number_fields_values(
+                                        fields, metadata.__class__)),
+                                "%s not subset of %s for fields %s" % (
+                                    metadata_fields_values(metadata),
+                                    number_fields_values(
+                                        fields, metadata.__class__),
+                                    repr(fields)))
 
                     #make sure the number fields get removed properly, also
                     number_metadata = audiotools.MetaData(track_number=1,
@@ -3487,11 +3920,15 @@ class tracktag_misc(UtilTest):
                                 track.filename).get_metadata()
                             self.assert_(
                                 metadata_fields_values(metadata).issubset(
-                                    deleted_number_fields_values(fields)),
-                                "%s not subset of %s for options %s type %s" %
+                                    deleted_number_fields_values(
+                                        fields, metadata.__class__)),
+                                "%s not subset of %s for options %s, fields %s, type %s" %
                                 (metadata_fields_values(metadata),
-                                 deleted_number_fields_values(fields),
-                                 self.populate_delete_number_fields(fields),
+                                 deleted_number_fields_values(
+                                        fields, metadata.__class__),
+                                 self.populate_delete_number_fields(
+                                        fields),
+                                 fields,
                                  audio_type.NAME))
 
                 except NoMetaData:
@@ -4036,7 +4473,7 @@ class tracksplit(UtilTest):
                 for i in xrange(len(output_tracks)):
                     metadata = output_tracks[i].get_metadata()
                     if (metadata is not None):
-                        self.assertEqual(metadata.track_name, u"")
+                        self.assertEqual(metadata.track_name, None)
                         self.assertEqual(metadata.album_name, u"Album 1")
                         self.assertEqual(metadata.artist_name, u"Artist 1")
 
@@ -4088,11 +4525,6 @@ class tracksplit(UtilTest):
                          "type": output_type.NAME})
                     continue
 
-                # if (self.__run_app__(["tracksplit", "-V", "normal",
-                #                       "--no-freedb", "--no-musicbrainz"] +
-                #                      options + [track.filename]) != 0):
-                #     print self.stderr.getvalue()
-                #     self.assert_(False)
                 self.assertEqual(
                     self.__run_app__(["tracksplit", "-V", "normal",
                                       "--no-freedb", "--no-musicbrainz"] +
@@ -4152,7 +4584,7 @@ class tracksplit(UtilTest):
                 for i in xrange(len(output_tracks)):
                     metadata = output_tracks[i].get_metadata()
                     if (metadata is not None):
-                        self.assertEqual(metadata.track_name, u"")
+                        self.assertEqual(metadata.track_name, None)
                         self.assertEqual(metadata.album_name, u"Album 1")
                         self.assertEqual(metadata.artist_name, u"Artist 1")
 
