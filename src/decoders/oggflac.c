@@ -60,6 +60,7 @@ OggFlacDecoder_init(decoders_OggFlacDecoder *self,
     self->framelist_data = array_i_new();
     self->audiotools_pcm = NULL;
     self->packet = br_substream_new(BS_BIG_ENDIAN);
+    self->stream_finalized = 0;
 
     if (!PyArg_ParseTuple(args, "si", &filename, &(self->channel_mask)))
         return -1;
@@ -141,6 +142,13 @@ OggFlacDecoder_read(decoders_OggFlacDecoder *self, PyObject *args) {
     PyThreadState *thread_state;
 
     self->subframe_data->reset(self->subframe_data);
+
+    /*if all samples have been read, return an empty FrameList*/
+    if (self->stream_finalized) {
+        return empty_FrameList(self->audiotools_pcm,
+                               self->streaminfo.channels,
+                               self->streaminfo.bits_per_sample);
+    }
 
     thread_state = PyEval_SaveThread();
     ogg_status = oggreader_next_packet(self->ogg_stream, self->packet);
@@ -230,6 +238,7 @@ OggFlacDecoder_read(decoders_OggFlacDecoder *self, PyObject *args) {
           then return an empty FrameList if it matches correctly*/
 
         if (OggFlacDecoder_verify_okay(self)) {
+            self->stream_finalized = 1;
             return empty_FrameList(self->audiotools_pcm,
                                    self->streaminfo.channels,
                                    self->streaminfo.bits_per_sample);

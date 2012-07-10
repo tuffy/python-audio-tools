@@ -37,6 +37,7 @@ typedef struct {
 
     uint32_t crc16;
     audiotools__MD5Context md5;
+    int stream_finalized;
 
     /*temporary buffers we don't want to reallocate each time*/
     array_ia* subframe_data;

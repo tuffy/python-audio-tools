@@ -234,9 +234,7 @@ class AuAudio(AudioFile):
                          (".snd", 24, data_size, encoding_format,
                           pcmreader.sample_rate, pcmreader.channels))
             else:
-                import os
-
-                os.unlink(filename)
+                cls.__unlink__(filename)
                 raise EncodingError("PCM data too large for Sun AU file")
         finally:
             f.close()
@@ -244,6 +242,7 @@ class AuAudio(AudioFile):
         try:
             pcmreader.close()
         except DecodingError, err:
+            cls.__unlink__(filename)
             raise EncodingError(err.error_message)
 
         return AuAudio(filename)
