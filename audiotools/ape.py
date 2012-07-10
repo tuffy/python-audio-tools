@@ -30,7 +30,7 @@ gettext.install("audiotools", unicode=True)
 #whereas      __number_pair__(4,0) returns u"4"
 def __number_pair__(current, total):
     def empty(i):
-        return (i is None) or (i == 0)
+        return i is None
 
     unslashed_format = u"%d"
     slashed_format = u"%d/%d"
@@ -448,19 +448,19 @@ class ApeTag(MetaData):
         else:
             tags = cls([])
             for (field, key) in cls.ATTRIBUTE_MAP.items():
-                if (field not in cls.INTEGER_FIELDS):
-                    field = unicode(getattr(metadata, field))
-                    if (len(field) > 0):
-                        tags[key] = cls.ITEM.string(key, field)
+                if ((field not in cls.INTEGER_FIELDS) and
+                    (getattr(metadata, field) is not None)):
+                    tags[key] = \
+                        cls.ITEM.string(key, unicode(getattr(metadata, field)))
 
-            if ((metadata.track_number != 0) or
-                (metadata.track_total != 0)):
+            if ((metadata.track_number is not None) or
+                (metadata.track_total is not None)):
                 tags["Track"] = cls.ITEM.string(
                     "Track", __number_pair__(metadata.track_number,
                                              metadata.track_total))
 
-            if ((metadata.album_number != 0) or
-                (metadata.album_total != 0)):
+            if ((metadata.album_number is not None) or
+                (metadata.album_total is not None)):
                 tags["Media"] = cls.ITEM.string(
                     "Media", __number_pair__(metadata.album_number,
                                              metadata.album_total))

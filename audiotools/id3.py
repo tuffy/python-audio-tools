@@ -185,7 +185,7 @@ def __number_pair__(current, total):
     from . import config
 
     def empty(i):
-        return (i is None) or (i == 0)
+        return i is None
 
     if (config.getboolean_default("ID3", "pad", False)):
         unslashed_format = u"%2.2d"
@@ -1214,7 +1214,7 @@ class ID3v22Comment(MetaData):
                 if (frame.id == delete_frame_id):
                     if ((attr == 'track_number') or (attr == 'album_number')):
                         #handle the *_number numerical fields
-                        if (frame.total() != 0):
+                        if (frame.total() is not None):
                             #if *_number is deleted, but *_total is present
                             #build new frame with only the *_total field
                             updated_frames.append(
@@ -1228,14 +1228,14 @@ class ID3v22Comment(MetaData):
                             continue
                     elif ((attr == 'track_total') or (attr == 'album_total')):
                         #handle the *_total numerical fields
-                        if (frame.number() != 0):
+                        if (frame.number() is not None):
                             #if *_total is deleted, but *_number is present
                             #build a new frame with only the *_number field
                             updated_frames.append(
                                 self.TEXT_FRAME(
                                     frame.id,
                                     frame.encoding,
-                                    __number_pair__(frame.number(), 0)))
+                                    __number_pair__(frame.number(), None)))
                         else:
                             #if both *_number and *_total are deleted,
                             #delete frame entirely

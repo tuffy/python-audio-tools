@@ -130,6 +130,7 @@ class MetaDataTest(unittest.TestCase):
                 #check that blanking out the fields works
                 for field in self.supported_fields:
                     metadata = self.empty_metadata()
+                    self.assertEqual(getattr(metadata, field), None)
                     if (field not in audiotools.MetaData.INTEGER_FIELDS):
                         setattr(metadata, field, u"")
                         track.set_metadata(metadata)
@@ -164,10 +165,11 @@ class MetaDataTest(unittest.TestCase):
                     delattr(metadata, field)
                     track.set_metadata(metadata)
                     metadata = track.get_metadata()
-                    if (field not in audiotools.MetaData.INTEGER_FIELDS):
-                        self.assertEqual(getattr(metadata, field), u"")
-                    else:
-                        self.assertEqual(getattr(metadata, field), 0)
+                    self.assertEqual(getattr(metadata, field), None,
+                                     "%s != %s for field %s" % (
+                            repr(getattr(metadata, field)),
+                            None,
+                            field))
 
             finally:
                 temp_file.close()
@@ -222,10 +224,8 @@ class MetaDataTest(unittest.TestCase):
             if (field in self.supported_fields):
                 self.assertEqual(getattr(metadata_orig, field),
                                  getattr(metadata_new, field))
-            elif (field in audiotools.MetaData.INTEGER_FIELDS):
-                self.assertEqual(getattr(metadata_new, field), 0)
             else:
-                self.assertEqual(getattr(metadata_new, field), u"")
+                self.assertEqual(getattr(metadata_new, field), None)
 
         #ensure images match, if supported
         if (self.metadata_class.supports_images()):
