@@ -350,14 +350,14 @@ if (__name__ == '__main__'):
                     (u"%s ReplayGain%s" %
                      ((u"Adding" if AudioType.lossless_replay_gain() else
                        u"Applying"),
-                      (u"" if album_number == 0 else
+                      (u"" if album_number is None else
                        (u" to album %d" % (album_number)))))
 
                 completion_output = \
                     (u"ReplayGain %s%s" %
                      ((u"added" if AudioType.lossless_replay_gain() else
                        u"applied"),
-                      (u"" if album_number == 0 else
+                      (u"" if album_number is None else
                        (u" to album %d" % (album_number)))))
 
                 queue.execute(AudioType.add_replay_gain,

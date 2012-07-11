@@ -316,9 +316,6 @@ class AudioFileTest(unittest.TestCase):
                         track.to_pcm(),
                         BLANK_PCM_Reader(10)) is None)
             for audio_class in audiotools.AVAILABLE_TYPES:
-                print "converting %s to %s" % (self.audio_class.NAME,
-                                               audio_class.NAME)
-
                 outfile = tempfile.NamedTemporaryFile(
                     suffix="." + audio_class.SUFFIX)
                 log = Log()

@@ -90,7 +90,7 @@ class UtilTest(unittest.TestCase):
                 'NFC',
                 expected_output) + unicode(os.linesep)
             self.assertEqual(stream_line, expected_line,
-                             "%s(%s) != %s" % (
+                             "%s != %s" % (
                     repr(stream_line),
                     repr(expected_line)))
         self.line_checks = []
@@ -3029,49 +3029,49 @@ class tracktag(UtilTest):
                 if ("--name" in options):
                     self.assertEqual(metadata.track_name, u"Name 3")
                 elif ("-r" in options):
-                    self.assertEqual(metadata.track_name, u"")
+                    self.assertEqual(metadata.track_name, None)
                 else:
                     self.assertEqual(metadata.track_name, u"Name 1")
 
                 if ("--artist" in options):
                     self.assertEqual(metadata.artist_name, u"Artist 3")
                 elif ("-r" in options):
-                    self.assertEqual(metadata.artist_name, u"")
+                    self.assertEqual(metadata.artist_name, None)
                 else:
                     self.assertEqual(metadata.artist_name, u"Artist 1")
 
                 if ("--album" in options):
                     self.assertEqual(metadata.album_name, u"Album 3")
                 elif ("-r" in options):
-                    self.assertEqual(metadata.album_name, u"")
+                    self.assertEqual(metadata.album_name, None)
                 else:
                     self.assertEqual(metadata.album_name, u"Album 1")
 
                 if ("--number" in options):
                     self.assertEqual(metadata.track_number, 5)
                 elif ("-r" in options):
-                    self.assertEqual(metadata.track_number, 0)
+                    self.assertEqual(metadata.track_number, None)
                 else:
                     self.assertEqual(metadata.track_number, 1)
 
                 if ("--track-total" in options):
                     self.assertEqual(metadata.track_total, 6)
                 elif ("-r" in options):
-                    self.assertEqual(metadata.track_total, 0)
+                    self.assertEqual(metadata.track_total, None)
                 else:
                     self.assertEqual(metadata.track_total, 2)
 
                 if ("--album-number" in options):
                     self.assertEqual(metadata.album_number, 7)
                 elif ("-r" in options):
-                    self.assertEqual(metadata.album_number, 0)
+                    self.assertEqual(metadata.album_number, None)
                 else:
                     self.assertEqual(metadata.album_number, 3)
 
                 if ("--album-total" in options):
                     self.assertEqual(metadata.album_total, 8)
                 elif ("-r" in options):
-                    self.assertEqual(metadata.album_total, 0)
+                    self.assertEqual(metadata.album_total, None)
                 else:
                     self.assertEqual(metadata.album_total, 4)
 
@@ -3080,14 +3080,14 @@ class tracktag(UtilTest):
                 elif ("--comment" in options):
                     self.assertEqual(metadata.comment, u"Comment 3")
                 elif ("-r" in options):
-                    self.assertEqual(metadata.comment, u"")
+                    self.assertEqual(metadata.comment, None)
                 else:
                     self.assertEqual(metadata.comment, u"Comment 1")
 
                 if (("--cue" in options) and ("--number" not in options)):
                     self.assertEqual(metadata.ISRC, u"JPPI00652340")
                 elif ("-r" in options):
-                    self.assertEqual(metadata.ISRC, u"")
+                    self.assertEqual(metadata.ISRC, None)
                 else:
                     self.assertEqual(metadata.ISRC, u"ABCD00000000")
 
