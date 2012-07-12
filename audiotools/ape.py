@@ -697,9 +697,15 @@ class ApeTag(MetaData):
     def clean(self, fixes_applied):
         import re
 
+        used_tags = set([])
         tag_items = []
         for tag in self.tags:
-            if (tag.type == 0):
+            if (tag.key.upper() in used_tags):
+                fixes_applied.append(
+                    _(u"removed duplicate tag %(field)s") %
+                    {"field":tag.key.decode('ascii')})
+            elif (tag.type == 0):
+                used_tags.add(tag.key.upper())
                 text = unicode(tag)
 
                 #check trailing whitespace
@@ -717,21 +723,42 @@ class ApeTag(MetaData):
                         {"field": tag.key.decode('ascii')})
 
                 if (tag.key in self.INTEGER_ITEMS):
-                    try:
-                        current = int(re.findall('\d+', fix2)[0])
-                    except IndexError:
-                        current = 0
-                    try:
-                        total = int(re.findall('\d+/(\d+)', fix2)[0])
-                    except IndexError:
-                        total = 0
-                    if (total != 0):
-                        fix3 = u"%d/%d" % (current, total)
+                    if (u"/" in fix2):
+                        #item is a slashed field of some sort
+                        (current, total) = fix2.split(u"/", 1)
+                        current_int = re.search(r'\d+', current)
+                        total_int = re.search(r'\d+', total)
+                        if ((current_int is None) and
+                            (total_int is None)):
+                            #neither side contains an integer value
+                            #so ignore it altogether
+                            fix3 = fix2
+                        elif ((current_int is not None) and
+                              (total_int is None)):
+                            fix3 = u"%d" % (int(current_int.group(0)))
+                        elif ((current_int is None) and
+                              (total_int is not None)):
+                            fix3 = u"%d/%d" % (0, int(total_int.group(0)))
+                        else:
+                            #both sides contain an int
+                            fix3 = u"%d/%d" % (int(current_int.group(0)),
+                                               int(total_int.group(0)))
                     else:
-                        fix3 = unicode(current)
+                        #item contains no slash
+                        current_int = re.search(r'\d+', fix2)
+                        if (current_int is not None):
+                            #item contains an integer
+                            fix3 = unicode(int(current_int.group(0)))
+                        else:
+                            #item contains no integer value so ignore it
+                            #(although 'Track' should only contain
+                            # integers, 'Media' may contain strings
+                            # so it may be best to simply ignore that case)
+                            fix3 = fix2
+
                     if (fix3 != fix2):
                         fixes_applied.append(
-                            _(u"removed leading zeroes from %(field)s") %
+                            _(u"fixed formatting for %(field)s") %
                             {"field": tag.key.decode('ascii')})
                 else:
                     fix3 = fix2
@@ -743,6 +770,7 @@ class ApeTag(MetaData):
                         _("removed empty field %(field)s") %
                         {"field": tag.key.decode('ascii')})
             else:
+                used_tags.add(tag.key.upper())
                 tag_items.append(tag)
 
         return self.__class__(tag_items,

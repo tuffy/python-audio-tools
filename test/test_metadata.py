@@ -1265,9 +1265,14 @@ class WavPackApeTagMetaData(MetaDataTest):
 
     @METADATA_WAVPACK
     def test_clean(self):
+        from audiotools.ape import ApeTag,ApeTagItem
+
+        #although the spec says APEv2 tags should be sorted
+        #ascending by size, I don't think anybody does this in practice
+
         #check trailing whitespace
-        metadata = audiotools.ApeTag(
-            [audiotools.ape.ApeTagItem.string('Title', u'Foo ')])
+        metadata = ApeTag(
+            [ApeTagItem.string('Title', u'Foo ')])
         self.assertEqual(metadata.track_name, u'Foo ')
         self.assertEqual(metadata['Title'].data, u'Foo '.encode('ascii'))
         fixes = []
@@ -1279,8 +1284,8 @@ class WavPackApeTagMetaData(MetaDataTest):
         self.assertEqual(cleaned['Title'].data, u'Foo'.encode('ascii'))
 
         #check leading whitespace
-        metadata = audiotools.ApeTag(
-            [audiotools.ape.ApeTagItem.string('Title', u' Foo')])
+        metadata = ApeTag(
+            [ApeTagItem.string('Title', u' Foo')])
         self.assertEqual(metadata.track_name, u' Foo')
         self.assertEqual(metadata['Title'].data, u' Foo'.encode('ascii'))
         fixes = []
@@ -1292,8 +1297,8 @@ class WavPackApeTagMetaData(MetaDataTest):
         self.assertEqual(cleaned['Title'].data, u'Foo'.encode('ascii'))
 
         #check empty fields
-        metadata = audiotools.ApeTag(
-            [audiotools.ape.ApeTagItem.string('Title', u'')])
+        metadata = ApeTag(
+            [ApeTagItem.string('Title', u'')])
         self.assertEqual(metadata.track_name, u'')
         self.assertEqual(metadata['Title'].data, u''.encode('ascii'))
         fixes = []
@@ -1306,62 +1311,157 @@ class WavPackApeTagMetaData(MetaDataTest):
                           cleaned.__getitem__,
                           'Title')
 
+        #check duplicate fields
+        metadata = ApeTag(
+            [ApeTagItem.string('Title', u'Track Name 1'),
+             ApeTagItem.string('Title', u'Track Name 2')])
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"removed duplicate tag %(field)s") %
+                          {"field":'Title'.decode('ascii')}])
+        self.assertEqual(cleaned.tags,
+                         [ApeTagItem.string('Title', u'Track Name 1')])
+
+        #check fields that differ only by case
+        metadata = ApeTag(
+            [ApeTagItem.string('title', u'Track Name 1'),
+             ApeTagItem.string('Title', u'Track Name 2')])
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"removed duplicate tag %(field)s") %
+                          {"field":'Title'.decode('ascii')}])
+        self.assertEqual(cleaned.tags,
+                         [ApeTagItem.string('title', u'Track Name 1')])
+
         #check leading zeroes
-        metadata = audiotools.ApeTag(
-            [audiotools.ape.ApeTagItem.string('Track', u'01')])
+        metadata = ApeTag(
+            [ApeTagItem.string('Track', u'01')])
         self.assertEqual(metadata.track_number, 1)
         self.assertEqual(metadata.track_total, None)
         self.assertEqual(metadata['Track'].data, u'01'.encode('ascii'))
         fixes = []
         cleaned = metadata.clean(fixes)
         self.assertEqual(fixes,
-                         [_(u"removed leading zeroes from %(field)s") %
+                         [_(u"fixed formatting for %(field)s") %
                           {"field":'Track'.decode('ascii')}])
         self.assertEqual(cleaned.track_number, 1)
         self.assertEqual(cleaned.track_total, None)
         self.assertEqual(cleaned['Track'].data, u'1'.encode('ascii'))
 
-        metadata = audiotools.ApeTag(
-            [audiotools.ape.ApeTagItem.string('Track', u'01/2')])
+        metadata = ApeTag(
+            [ApeTagItem.string('Track', u'01/2')])
         self.assertEqual(metadata.track_number, 1)
         self.assertEqual(metadata.track_total, 2)
         self.assertEqual(metadata['Track'].data, u'01/2'.encode('ascii'))
         fixes = []
         cleaned = metadata.clean(fixes)
         self.assertEqual(fixes,
-                         [_(u"removed leading zeroes from %(field)s") %
+                         [_(u"fixed formatting for %(field)s") %
                           {"field":'Track'.decode('ascii')}])
         self.assertEqual(cleaned.track_number, 1)
         self.assertEqual(cleaned.track_total, 2)
         self.assertEqual(cleaned['Track'].data, u'1/2'.encode('ascii'))
 
-        metadata = audiotools.ApeTag(
-            [audiotools.ape.ApeTagItem.string('Track', u'1/02')])
+        metadata = ApeTag(
+            [ApeTagItem.string('Track', u'1/02')])
         self.assertEqual(metadata.track_number, 1)
         self.assertEqual(metadata.track_total, 2)
         self.assertEqual(metadata['Track'].data, u'1/02'.encode('ascii'))
         fixes = []
         cleaned = metadata.clean(fixes)
         self.assertEqual(fixes,
-                         [_(u"removed leading zeroes from %(field)s") %
+                         [_(u"fixed formatting for %(field)s") %
                           {"field":'Track'.decode('ascii')}])
         self.assertEqual(cleaned.track_number, 1)
         self.assertEqual(cleaned.track_total, 2)
         self.assertEqual(cleaned['Track'].data, u'1/2'.encode('ascii'))
 
-        metadata = audiotools.ApeTag(
-            [audiotools.ape.ApeTagItem.string('Track', u'01/02')])
+        metadata = ApeTag(
+            [ApeTagItem.string('Track', u'01/02')])
         self.assertEqual(metadata.track_number, 1)
         self.assertEqual(metadata.track_total, 2)
         self.assertEqual(metadata['Track'].data, u'01/02'.encode('ascii'))
         fixes = []
         cleaned = metadata.clean(fixes)
         self.assertEqual(fixes,
-                         [_(u"removed leading zeroes from %(field)s") %
+                         [_(u"fixed formatting for %(field)s") %
                           {"field":'Track'.decode('ascii')}])
         self.assertEqual(cleaned.track_number, 1)
         self.assertEqual(cleaned.track_total, 2)
         self.assertEqual(cleaned['Track'].data, u'1/2'.encode('ascii'))
+
+        #check junk in slashed fields
+        metadata = ApeTag(
+            [ApeTagItem.string('Track', u'1/foo')])
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"fixed formatting for %(field)s") %
+                          {"field":'Track'.decode('ascii')}])
+        self.assertEqual(cleaned.tags,
+                         [ApeTagItem.string('Track', u'1')])
+
+        metadata = ApeTag(
+            [ApeTagItem.string('Track', u'foo/2')])
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"fixed formatting for %(field)s") %
+                          {"field":'Track'.decode('ascii')}])
+        self.assertEqual(cleaned.tags,
+                         [ApeTagItem.string('Track', u'0/2')])
+
+        metadata = ApeTag(
+            [ApeTagItem.string('Track', u'1/ baz 2 blah')])
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"fixed formatting for %(field)s") %
+                          {"field":'Track'.decode('ascii')}])
+        self.assertEqual(cleaned.tags,
+                         [ApeTagItem.string('Track', u'1/2')])
+
+        metadata = ApeTag(
+            [ApeTagItem.string('Track', u'foo 1 bar /2')])
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"fixed formatting for %(field)s") %
+                          {"field":'Track'.decode('ascii')}])
+        self.assertEqual(cleaned.tags,
+                         [ApeTagItem.string('Track', u'1/2')])
+
+        metadata = ApeTag(
+            [ApeTagItem.string('Track', u'foo 1 bar / baz 2 blah')])
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"fixed formatting for %(field)s") %
+                          {"field":'Track'.decode('ascii')}])
+        self.assertEqual(cleaned.tags,
+                         [ApeTagItem.string('Track', u'1/2')])
+
+        metadata = ApeTag(
+            [ApeTagItem.string('Track', u'1/2/3')])
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"fixed formatting for %(field)s") %
+                          {"field":'Track'.decode('ascii')}])
+        self.assertEqual(cleaned.tags,
+                         [ApeTagItem.string('Track', u'1/2')])
+
+        metadata = ApeTag(
+            [ApeTagItem.string('Track', u'1 / 2 / 3')])
+        fixes = []
+        cleaned = metadata.clean(fixes)
+        self.assertEqual(fixes,
+                         [_(u"fixed formatting for %(field)s") %
+                          {"field":'Track'.decode('ascii')}])
+        self.assertEqual(cleaned.tags,
+                         [ApeTagItem.string('Track', u'1/2')])
 
         #images don't store metadata,
         #so no need to check their fields
