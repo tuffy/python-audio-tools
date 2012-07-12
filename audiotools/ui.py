@@ -30,17 +30,8 @@ try:
         when the enter key is pressed,
         typically for moving to the next element in a form"""
 
-        def __init__(self, caption='', edit_text='', multiline=False,
-                     align='left', wrap='space', allow_tab=False,
-                     edit_pos=None, layout=None, key_map={}):
-            urwid.Edit.__init__(self, caption=caption,
-                                edit_text=edit_text,
-                                multiline=multiline,
-                                align=align,
-                                wrap=wrap,
-                                allow_tab=allow_tab,
-                                edit_pos=edit_pos,
-                                layout=layout)
+        def __init__(self, *args, **kwargs):
+            urwid.Edit.__init__(self, *args, **kwargs)
             self.__key_map__ = {"enter": "down"}
 
         def keypress(self, size, key):
@@ -52,8 +43,8 @@ try:
         when the enter key is pressed,
         typically for moving to the next element in a form"""
 
-        def __init__(self, caption='', default=None):
-            urwid.IntEdit.__init__(self, caption=caption, default=default)
+        def __init__(self, *args, **kwargs):
+            urwid.IntEdit.__init__(self, *args, **kwargs)
             self.__key_map__ = {"enter": "down"}
 
         def keypress(self, size, key):
@@ -63,8 +54,8 @@ try:
     class FocusFrame(urwid.Frame):
         """a special Frame widget which performs callbacks on focus changes"""
 
-        def __init__(self, body, header=None, footer=None, focus_part='body'):
-            urwid.Frame.__init__(self, body, header, footer, focus_part)
+        def __init__(self, *args, **kwargs):
+            urwid.Frame.__init__(self, *args, **kwargs)
             self.focus_callback = None
             self.focus_callback_arg = None
 
@@ -548,9 +539,13 @@ try:
             self.checkbox_groups = {}
             for field in metadata.FIELDS:
                 if (field not in metadata.INTEGER_FIELDS):
-                    widget = DownEdit(edit_text=getattr(metadata, field))
+                    value = getattr(metadata, field)
+                    widget = DownEdit(edit_text=value if value is not None
+                                      else u"")
                 else:
-                    widget = DownIntEdit(default=getattr(metadata, field))
+                    value = getattr(metadata, field)
+                    widget = DownIntEdit(default=value if value is not None
+                                         else 0)
 
                 if (on_change is not None):
                     urwid.connect_signal(widget, 'change', on_change)
@@ -568,9 +563,13 @@ try:
 
             for field in metadata.FIELDS:
                 if (field not in metadata.INTEGER_FIELDS):
-                    widget = DownEdit(edit_text=getattr(metadata, field))
+                    value = getattr(metadata, field)
+                    widget = DownEdit(edit_text=value if value is not None
+                                      else u"")
                 else:
-                    widget = DownIntEdit(default=getattr(metadata, field))
+                    value = getattr(metadata, field)
+                    widget = DownIntEdit(default=value if value is not None
+                                         else 0)
 
                 if (on_change is not None):
                     urwid.connect_signal(widget, 'change', on_change)

@@ -717,7 +717,7 @@ This is accomplished by implementing three additional methods.
 MetaData Objects
 ----------------
 
-.. class:: MetaData([track_name[, track_number[, track_total[, album_name[, artist_name[, performer_name[, composer_name[, conductor_name[, media[, ISRC[, catalog[, copyright[, publisher[, year[, data[, album_number[, album_total[, comment[, images]]]]]]]]]]]]]]]]]]])
+.. class:: MetaData([track_name][, track_number][, track_total][, album_name][, artist_name][, performer_name][, composer_name][, conductor_name][, media][, ISRC][, catalog][, copyright][, publisher][, year][, data][, album_number][, album_total][, comment][, images])
 
    The :class:`MetaData` class represents an :class:`AudioFile`'s
    non-technical metadata.
@@ -734,6 +734,43 @@ MetaData Objects
 
    The ``images`` argument, if given, should be an iterable collection
    of :class:`Image`-compatible objects.
+
+   MetaData attributes may be ``None``,
+   which indicates the low-level implementation has
+   no corresponding entry.
+   For instance, ID3v2.3 tags use the ``"TALB"`` frame
+   to indicate the track's album name.
+   If that frame is present, an :class:`audiotools.ID3v23Comment`
+   MetaData object will have an ``album_name`` field containing
+   a Unicode string of its value.
+   If that frame is not present in the ID3v2.3 tag,
+   its ``album_name`` field will be ``None``.
+
+   For example, to access a track's album name field:
+
+   >>> metadata = track.get_metadata()
+   >>> metadata.album_name
+   u"Album Name"
+
+   To change a track's album name field:
+
+   >>> metadata = track.get_metadata()
+   >>> metadata.album_name = u"Updated Album Name"
+   >>> track.update_metadata(metadata)  # because metadata comes from track's get_metadata() method, one can use update_metadata()
+
+   To delete a track's album name field:
+
+   >>> metadata = track.get_metadata()
+   >>> del(metadata.album_name)
+   >>> track.update_metadata(metadata)
+
+   Or to replace a track's entire set of metadata:
+
+   >>> metadata = MetaData(track_name=u"Track Name",
+   ...                     album_name=u"Updated Album Name",
+   ...                     track_number=1,
+   ...                     track_total=3)
+   >>> track.set_metadata(metadata)  # because metadata is built from scratch, one must use set_metadata()
 
 .. data:: MetaData.track_name
 
@@ -808,18 +845,12 @@ MetaData Objects
 .. method:: MetaData.filled_fields()
 
    Yields an ``(attr, value)`` tuple per non-blank :class:`MetaData` field.
-   Non-blank fields are text fields with a length greater than 0,
-   or numerical fields with a value greater than 0.
-   Note that text fields containing nothing but whitespace
-   are treated as non-blank.
+   Non-blank fields are those with a value other than ``None``.
 
 .. method:: MetaData.empty_fields()
 
    Yields an ``(attr, value)`` tuple per blank :class:`MetaData` field.
-   Blank fields are text fields with a length equal to 0,
-   or numerical fields with a value equal to 0.
-   Note that text fields containing nothing but whitespace
-   are treated as non-blank.
+   Blank fields are those with a value of ``None``.
 
 .. classmethod:: MetaData.converted(metadata)
 

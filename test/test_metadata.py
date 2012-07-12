@@ -349,6 +349,571 @@ class WavPackApeTagMetaData(MetaDataTest):
         return self.metadata_class.converted(audiotools.MetaData())
 
     @METADATA_WAVPACK
+    def test_getitem(self):
+        from audiotools.ape import ApeTag,ApeTagItem
+
+        #getitem with no matches raises KeyError
+        self.assertRaises(KeyError, ApeTag([]).__getitem__, "Title")
+
+        #getitem with one match returns that item
+        self.assertEqual(ApeTag([ApeTagItem(0, 0, "Foo", "Bar")])["Foo"],
+                          ApeTagItem(0, 0, "Foo", "Bar"))
+
+        #getitem with multiple matches returns the first match
+        #(this is not a valid ApeTag and should be cleaned)
+        self.assertEqual(ApeTag([ApeTagItem(0, 0, "Foo", "Bar"),
+                                 ApeTagItem(0, 0, "Foo", "Baz")])["Foo"],
+                          ApeTagItem(0, 0, "Foo", "Bar"))
+
+        #tag items *are* case-sensitive according to the specification
+        self.assertRaises(KeyError,
+                          ApeTag([ApeTagItem(0, 0, "Foo", "Bar")]).__getitem__,
+                          "foo")
+
+    @METADATA_WAVPACK
+    def test_setitem(self):
+        from audiotools.ape import ApeTag,ApeTagItem
+
+        #setitem adds new key if necessary
+        metadata = ApeTag([])
+        metadata["Foo"] = ApeTagItem(0, 0, "Foo", "Bar")
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Foo", "Bar")])
+
+        #setitem replaces matching key with new value
+        metadata = ApeTag([ApeTagItem(0, 0, "Foo", "Bar")])
+        metadata["Foo"] = ApeTagItem(0, 0, "Foo", "Baz")
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Foo", "Baz")])
+
+        #setitem leaves other items alone
+        #when adding or replacing tags
+        metadata = ApeTag([ApeTagItem(0, 0, "Kelp", "Spam")])
+        metadata["Foo"] = ApeTagItem(0, 0, "Foo", "Bar")
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Kelp", "Spam"),
+                          ApeTagItem(0, 0, "Foo", "Bar")])
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Foo", "Bar"),
+                           ApeTagItem(0, 0, "Kelp", "Spam")])
+        metadata["Foo"] = ApeTagItem(0, 0, "Foo", "Baz")
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Foo", "Baz"),
+                          ApeTagItem(0, 0, "Kelp", "Spam")])
+
+        #setitem is case-sensitive
+        metadata = ApeTag([ApeTagItem(0, 0, "foo", "Spam")])
+        metadata["Foo"] = ApeTagItem(0, 0, "Foo", "Bar")
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "foo", "Spam"),
+                          ApeTagItem(0, 0, "Foo", "Bar")])
+
+    @METADATA_WAVPACK
+    def test_getattr(self):
+        from audiotools.ape import ApeTag,ApeTagItem
+
+        #track_number grabs the first available integer from "Track"
+        self.assertEqual(ApeTag([]).track_number, None)
+
+        self.assertEqual(
+            ApeTag([ApeTagItem(0, 0, "Track", "2")]).track_number,
+            2)
+
+        self.assertEqual(
+            ApeTag([ApeTagItem(0, 0, "Track", "2/3")]).track_number,
+            2)
+
+        self.assertEqual(
+            ApeTag([ApeTagItem(0, 0, "Track", "foo 2 bar")]).track_number,
+            2)
+
+        #album_number grabs the first available from "Media"
+        self.assertEqual(ApeTag([]).album_number, None)
+
+        self.assertEqual(
+            ApeTag([ApeTagItem(0, 0, "Media", "4")]).album_number,
+            4)
+
+        self.assertEqual(
+            ApeTag([ApeTagItem(0, 0, "Media", "4/5")]).album_number,
+            4)
+
+        self.assertEqual(
+            ApeTag([ApeTagItem(0, 0, "Media", "foo 4 bar")]).album_number,
+            4)
+
+        #track_total grabs the second number in a slashed field, if any
+        self.assertEqual(ApeTag([]).track_total, None)
+
+        self.assertEqual(
+            ApeTag([ApeTagItem(0, 0, "Track", "2")]).track_total,
+            None)
+
+        self.assertEqual(
+            ApeTag([ApeTagItem(0, 0, "Track", "2/3")]).track_total,
+            3)
+
+        self.assertEqual(
+            ApeTag([ApeTagItem(0, 0,
+                               "Track", "foo 2 bar / baz 3 blah")]).track_total,
+            3)
+
+        #album_total grabs the second number in a slashed field, if any
+        self.assertEqual(ApeTag([]).album_total, None)
+
+        self.assertEqual(
+            ApeTag([ApeTagItem(0, 0, "Media", "4")]).album_total,
+            None)
+
+        self.assertEqual(
+            ApeTag([ApeTagItem(0, 0, "Media", "4/5")]).album_total,
+            5)
+
+        self.assertEqual(
+            ApeTag([ApeTagItem(0, 0,
+                               "Media", "foo 4 bar / baz 5 blah")]).album_total,
+            5)
+
+        #other fields grab the first available item
+        #(though proper APEv2 tags should only contain one)
+        self.assertEqual(ApeTag([]).track_name,
+                         None)
+
+        self.assertEqual(ApeTag([ApeTagItem(0, 0, "Title", "foo")]).track_name,
+                         u"foo")
+
+        self.assertEqual(ApeTag([ApeTagItem(0, 0, "Title", "foo"),
+                                 ApeTagItem(0, 0, "Title", "bar")]).track_name,
+                         u"foo")
+
+    @METADATA_WAVPACK
+    def test_setattr(self):
+        from audiotools.ape import ApeTag,ApeTagItem
+
+        #track_number adds new field if necessary
+        metadata = ApeTag([])
+        metadata.track_number = 2
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Track", "2")])
+        self.assertEqual(metadata.track_number, 2)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Foo", "Bar")])
+        metadata.track_number = 2
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Foo", "Bar"),
+                          ApeTagItem(0, 0, "Track", "2")])
+        self.assertEqual(metadata.track_number, 2)
+
+        #track_number updates the first integer field
+        #and leaves other junk in that field alone
+        metadata = ApeTag([ApeTagItem(0, 0, "Track", "1")])
+        metadata.track_number = 2
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Track", "2")])
+        self.assertEqual(metadata.track_number, 2)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Track", "1/3")])
+        metadata.track_number = 2
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Track", "2/3")])
+        self.assertEqual(metadata.track_number, 2)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Track", "foo 1 bar")])
+        metadata.track_number = 2
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Track", "foo 2 bar")])
+        self.assertEqual(metadata.track_number, 2)
+
+        #album_number adds new field if necessary
+        metadata = ApeTag([])
+        metadata.album_number = 4
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Media", "4")])
+        self.assertEqual(metadata.album_number, 4)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Foo", "Bar")])
+        metadata.album_number = 4
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Foo", "Bar"),
+                          ApeTagItem(0, 0, "Media", "4")])
+        self.assertEqual(metadata.album_number, 4)
+
+        #album_number updates the first integer field
+        #and leaves other junk in that field alone
+        metadata = ApeTag([ApeTagItem(0, 0, "Media", "3")])
+        metadata.album_number = 4
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Media", "4")])
+        self.assertEqual(metadata.album_number, 4)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Media", "3/5")])
+        metadata.album_number = 4
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Media", "4/5")])
+        self.assertEqual(metadata.album_number, 4)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Media", "foo 3 bar")])
+        metadata.album_number = 4
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Media", "foo 4 bar")])
+        self.assertEqual(metadata.album_number, 4)
+
+        #track_total adds a new field if necessary
+        metadata = ApeTag([])
+        metadata.track_total = 3
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Track", "0/3")])
+        self.assertEqual(metadata.track_total, 3)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Foo", "Bar")])
+        metadata.track_total = 3
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Foo", "Bar"),
+                          ApeTagItem(0, 0, "Track", "0/3")])
+        self.assertEqual(metadata.track_total, 3)
+
+        #track_total adds a slashed side of the integer field
+        #and leaves other junk in that field alone
+        metadata = ApeTag([ApeTagItem(0, 0, "Track", "1")])
+        metadata.track_total = 3
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Track", "1/3")])
+        self.assertEqual(metadata.track_total, 3)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Track", "1  ")])
+        metadata.track_total = 3
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Track", "1  /3")])
+        self.assertEqual(metadata.track_total, 3)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Track", "1/2")])
+        metadata.track_total = 3
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Track", "1/3")])
+        self.assertEqual(metadata.track_total, 3)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Track", "1 / baz 2 blah")])
+        metadata.track_total = 3
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Track", "1 / baz 3 blah")])
+        self.assertEqual(metadata.track_total, 3)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Track", "foo 1 bar / baz 2 blah")])
+        metadata.track_total = 3
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Track", "foo 1 bar / baz 3 blah")])
+        self.assertEqual(metadata.track_total, 3)
+
+        metadata = ApeTag([
+                ApeTagItem(0, 0, "Track", "1 / 2 / 4")])
+        metadata.track_total = 3
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Track", "1 / 3 / 4")])
+        self.assertEqual(metadata.track_total, 3)
+
+        #album_total adds a new field if necessary
+        metadata = ApeTag([])
+        metadata.album_total = 5
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Media", "0/5")])
+        self.assertEqual(metadata.album_total, 5)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Foo", "Bar")])
+        metadata.album_total = 5
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Foo", "Bar"),
+                          ApeTagItem(0, 0, "Media", "0/5")])
+        self.assertEqual(metadata.album_total, 5)
+
+        #album_total adds a slashed side of the integer field
+        #and leaves other junk in that field alone
+        metadata = ApeTag([ApeTagItem(0, 0, "Media", "3")])
+        metadata.album_total = 5
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Media", "3/5")])
+        self.assertEqual(metadata.album_total, 5)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Media", "3  ")])
+        metadata.album_total = 5
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Media", "3  /5")])
+        self.assertEqual(metadata.album_total, 5)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Media", "3/4")])
+        metadata.album_total = 5
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Media", "3/5")])
+        self.assertEqual(metadata.album_total, 5)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Media", "1 / baz 2 blah")])
+        metadata.album_total = 5
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Media", "1 / baz 5 blah")])
+        self.assertEqual(metadata.album_total, 5)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Media", "foo 1 bar / baz 2 blah")])
+        metadata.album_total = 5
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Media", "foo 1 bar / baz 5 blah")])
+        self.assertEqual(metadata.album_total, 5)
+
+        metadata = ApeTag([
+                ApeTagItem(0, 0, "Media", "3 / 4 / 6")])
+        metadata.album_total = 5
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Media", "3 / 5 / 6")])
+        self.assertEqual(metadata.album_total, 5)
+
+        #other fields add a new item if necessary
+        #while leaving the rest alone
+        metadata = ApeTag([])
+        metadata.track_name = u"Track Name"
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Title", "Track Name")])
+        self.assertEqual(metadata.track_name, u"Track Name")
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Foo", "Bar")])
+        metadata.track_name = u"Track Name"
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Foo", "Bar"),
+                          ApeTagItem(0, 0, "Title", "Track Name")])
+        self.assertEqual(metadata.track_name, u"Track Name")
+
+        #other fields update the first match
+        #while leaving the rest alone
+        metadata = ApeTag([ApeTagItem(0, 0, "Title", "Blah")])
+        metadata.track_name = u"Track Name"
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Title", "Track Name")])
+        self.assertEqual(metadata.track_name, u"Track Name")
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Title", "Blah"),
+                           ApeTagItem(0, 0, "Title", "Spam")])
+        metadata.track_name = u"Track Name"
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Title", "Track Name"),
+                          ApeTagItem(0, 0, "Title", "Spam")])
+        self.assertEqual(metadata.track_name, u"Track Name")
+
+        #setting field to an empty string is okay
+        metadata = ApeTag([])
+        metadata.track_name = u""
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Title", "")])
+        self.assertEqual(metadata.track_name, u"")
+
+    @METADATA_WAVPACK
+    def test_delattr(self):
+        from audiotools.ape import ApeTag,ApeTagItem
+
+        #deleting field removes all instances of it
+        metadata = ApeTag([])
+        del(metadata.track_name)
+        self.assertEqual(metadata.tags, [])
+        self.assertEqual(metadata.track_name, None)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Title", "Track Name")])
+        del(metadata.track_name)
+        self.assertEqual(metadata.tags, [])
+        self.assertEqual(metadata.track_name, None)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Title", "Track Name"),
+                           ApeTagItem(0, 0, "Title", "Track Name 2")])
+        del(metadata.track_name)
+        self.assertEqual(metadata.tags, [])
+        self.assertEqual(metadata.track_name, None)
+
+        #setting field to None is the same as deleting field
+        metadata = ApeTag([])
+        metadata.track_name = None
+        self.assertEqual(metadata.tags, [])
+        self.assertEqual(metadata.track_name, None)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Title", "Track Name")])
+        metadata.track_name = None
+        self.assertEqual(metadata.tags, [])
+        self.assertEqual(metadata.track_name, None)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Title", "Track Name"),
+                           ApeTagItem(0, 0, "Title", "Track Name 2")])
+        metadata.track_name = None
+        self.assertEqual(metadata.tags, [])
+        self.assertEqual(metadata.track_name, None)
+
+        #deleting track_number without track_total removes "Track" field
+        metadata = ApeTag([ApeTagItem(0, 0, "Track", "1")])
+        del(metadata.track_number)
+        self.assertEqual(metadata.tags, [])
+        self.assertEqual(metadata.track_number, None)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Track", "1")])
+        metadata.track_number = None
+        self.assertEqual(metadata.tags, [])
+        self.assertEqual(metadata.track_number, None)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Track", "foo 1 bar")])
+        metadata.track_number = None
+        self.assertEqual(metadata.tags, [])
+        self.assertEqual(metadata.track_number, None)
+
+        #deleting nonexistent field is okay
+        metadata = ApeTag([])
+        for field in metadata.FIELDS:
+            delattr(metadata, field)
+            self.assertEqual(getattr(metadata, field), None)
+
+        #deleting track_number with track_total converts track_number to 0
+        metadata = ApeTag([ApeTagItem(0, 0, "Track", "1/2")])
+        del(metadata.track_number)
+        self.assertEqual(metadata.tags, [ApeTagItem(0, 0, "Track", "0/2")])
+        self.assertEqual(metadata.track_number, 0)
+        self.assertEqual(metadata.track_total, 2)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Track", "1/2")])
+        metadata.track_number = None
+        self.assertEqual(metadata.tags, [ApeTagItem(0, 0, "Track", "0/2")])
+        self.assertEqual(metadata.track_number, 0)
+        self.assertEqual(metadata.track_total, 2)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Track", "foo 1 bar / baz 2 blah")])
+        metadata.track_number = None
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Track", "foo 0 bar / baz 2 blah")])
+        self.assertEqual(metadata.track_number, 0)
+        self.assertEqual(metadata.track_total, 2)
+
+        #deleting track_total without track_number removes "Track" field
+        metadata = ApeTag([ApeTagItem(0, 0, "Track", "0/2")])
+        del(metadata.track_total)
+        self.assertEqual(metadata.tags, [])
+        self.assertEqual(metadata.track_number, None)
+        self.assertEqual(metadata.track_total, None)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Track", "0/2")])
+        metadata.track_total = None
+        self.assertEqual(metadata.tags, [])
+        self.assertEqual(metadata.track_number, None)
+        self.assertEqual(metadata.track_total, None)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Track", "foo 0 bar / baz 2 blah")])
+        metadata.track_total = None
+        self.assertEqual(metadata.tags, [])
+        self.assertEqual(metadata.track_number, None)
+        self.assertEqual(metadata.track_total, None)
+
+        #deleting track_total with track_number removes slashed field
+        metadata = ApeTag([ApeTagItem(0, 0, "Track", "1/2")])
+        del(metadata.track_total)
+        self.assertEqual(metadata.tags, [ApeTagItem(0, 0, "Track", "1")])
+        self.assertEqual(metadata.track_number, 1)
+        self.assertEqual(metadata.track_total, None)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Track", "1/2/3")])
+        del(metadata.track_total)
+        self.assertEqual(metadata.tags, [ApeTagItem(0, 0, "Track", "1")])
+        self.assertEqual(metadata.track_number, 1)
+        self.assertEqual(metadata.track_total, None)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Track", "foo 1 bar / baz 2 blah")])
+        del(metadata.track_total)
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Track", "foo 1 bar")])
+        self.assertEqual(metadata.track_number, 1)
+        self.assertEqual(metadata.track_total, None)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Track", "foo 1 bar / baz 2 blah")])
+        metadata.track_total = None
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Track", "foo 1 bar")])
+        self.assertEqual(metadata.track_number, 1)
+        self.assertEqual(metadata.track_total, None)
+
+        #deleting album_number without album_total removes "Media" field
+        metadata = ApeTag([ApeTagItem(0, 0, "Media", "0/4")])
+        del(metadata.album_total)
+        self.assertEqual(metadata.tags, [])
+        self.assertEqual(metadata.album_number, None)
+        self.assertEqual(metadata.album_total, None)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Media", "0/4")])
+        metadata.album_total = None
+        self.assertEqual(metadata.tags, [])
+        self.assertEqual(metadata.album_number, None)
+        self.assertEqual(metadata.album_total, None)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Media", "foo 0 bar / baz 4 blah")])
+        metadata.album_total = None
+        self.assertEqual(metadata.tags, [])
+        self.assertEqual(metadata.album_number, None)
+        self.assertEqual(metadata.album_total, None)
+
+        #deleting album_number with album_total converts album_number to 0
+        metadata = ApeTag([ApeTagItem(0, 0, "Media", "3/4")])
+        del(metadata.album_number)
+        self.assertEqual(metadata.tags, [ApeTagItem(0, 0, "Media", "0/4")])
+        self.assertEqual(metadata.album_number, 0)
+        self.assertEqual(metadata.album_total, 4)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Media", "3/4")])
+        metadata.album_number = None
+        self.assertEqual(metadata.tags, [ApeTagItem(0, 0, "Media", "0/4")])
+        self.assertEqual(metadata.album_number, 0)
+        self.assertEqual(metadata.album_total, 4)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Media", "foo 3 bar / baz 4 blah")])
+        metadata.album_number = None
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Media", "foo 0 bar / baz 4 blah")])
+        self.assertEqual(metadata.album_number, 0)
+        self.assertEqual(metadata.album_total, 4)
+
+        #deleting album_total without album_number removes "Media" field
+        metadata = ApeTag([ApeTagItem(0, 0, "Media", "0/4")])
+        del(metadata.album_total)
+        self.assertEqual(metadata.tags, [])
+        self.assertEqual(metadata.album_number, None)
+        self.assertEqual(metadata.album_total, None)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Media", "0/4")])
+        metadata.album_total = None
+        self.assertEqual(metadata.tags, [])
+        self.assertEqual(metadata.album_number, None)
+        self.assertEqual(metadata.album_total, None)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Media", "foo 0 bar / baz 4 blah")])
+        metadata.album_total = None
+        self.assertEqual(metadata.tags, [])
+        self.assertEqual(metadata.album_number, None)
+        self.assertEqual(metadata.album_total, None)
+
+        #deleting album_total with album_number removes slashed field
+        metadata = ApeTag([ApeTagItem(0, 0, "Media", "1/2")])
+        del(metadata.album_total)
+        self.assertEqual(metadata.tags, [ApeTagItem(0, 0, "Media", "1")])
+        self.assertEqual(metadata.album_number, 1)
+        self.assertEqual(metadata.album_total, None)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Media", "1/2/3")])
+        del(metadata.album_total)
+        self.assertEqual(metadata.tags, [ApeTagItem(0, 0, "Media", "1")])
+        self.assertEqual(metadata.album_number, 1)
+        self.assertEqual(metadata.album_total, None)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Media", "foo 1 bar / baz 2 blah")])
+        del(metadata.album_total)
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Media", "foo 1 bar")])
+        self.assertEqual(metadata.album_number, 1)
+        self.assertEqual(metadata.album_total, None)
+
+        metadata = ApeTag([ApeTagItem(0, 0, "Media", "foo 1 bar / baz 2 blah")])
+        metadata.album_total = None
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Media", "foo 1 bar")])
+        self.assertEqual(metadata.album_number, 1)
+        self.assertEqual(metadata.album_total, None)
+
+    @METADATA_WAVPACK
     def test_update(self):
         import os
 
@@ -500,6 +1065,9 @@ class WavPackApeTagMetaData(MetaDataTest):
                 metadata.track_total = 2
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
+                if (unicode(metadata['Track']) != u'1/2'):
+                    print repr(metadata)
+                    self.assert_(False)
                 self.assertEqual(unicode(metadata['Track']), u'1/2')
                 del(metadata.track_total)
                 track.set_metadata(metadata)
@@ -3132,6 +3700,15 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
 
     @METADATA_FLAC
     def test_delattr(self):
+        #deleting nonexistent field is okay
+        for field in audiotools.MetaData.FIELDS:
+            metadata = audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [],
+                        u"vendor")])
+            delattr(metadata, field)
+            self.assertEqual(getattr(metadata, field), None)
+
         #deleting field removes all instances of it
         metadata = audiotools.FlacMetaData([
                 audiotools.flac.Flac_VORBISCOMMENT(
@@ -3140,6 +3717,7 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
         del(metadata.track_name)
         self.assertEqual(metadata.get_block(4).comment_strings,
                          [])
+        self.assertEqual(metadata.track_name, None)
 
         metadata = audiotools.FlacMetaData([
                 audiotools.flac.Flac_VORBISCOMMENT(
@@ -3149,6 +3727,7 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
         del(metadata.track_name)
         self.assertEqual(metadata.get_block(4).comment_strings,
                          [u"ALBUM=album name"])
+        self.assertEqual(metadata.track_name, None)
 
         metadata = audiotools.FlacMetaData([
                 audiotools.flac.Flac_VORBISCOMMENT(
@@ -3160,6 +3739,7 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
         del(metadata.track_name)
         self.assertEqual(metadata.get_block(4).comment_strings,
                          [u"ALBUM=album name"])
+        self.assertEqual(metadata.track_name, None)
 
         #setting field to None is the same as deleting field
         metadata = audiotools.FlacMetaData([
@@ -3169,6 +3749,7 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
         metadata.track_name = None
         self.assertEqual(metadata.get_block(4).comment_strings,
                          [])
+        self.assertEqual(metadata.track_name, None)
 
         #deleting track_number removes TRACKNUMBER field
         metadata = audiotools.FlacMetaData([
@@ -3178,6 +3759,7 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
         del(metadata.track_number)
         self.assertEqual(metadata.get_block(4).comment_strings,
                          [])
+        self.assertEqual(metadata.track_name, None)
 
         #deleting slashed TRACKNUMBER converts it to fresh TRACKTOTAL field
         metadata = audiotools.FlacMetaData([
@@ -3187,6 +3769,7 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
         del(metadata.track_number)
         self.assertEqual(metadata.get_block(4).comment_strings,
                          [u"TRACKTOTAL=3"])
+        self.assertEqual(metadata.track_number, None)
 
         metadata = audiotools.FlacMetaData([
                 audiotools.flac.Flac_VORBISCOMMENT(
@@ -3199,6 +3782,7 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
                          [u"TRACKTOTAL=4",
                           u"TRACKTOTAL=3"])
         self.assertEqual(metadata.track_total, 4)
+        self.assertEqual(metadata.track_number, None)
 
         #deleting track_total removes TRACKTOTAL/TOTALTRACKS fields
         metadata = audiotools.FlacMetaData([
@@ -4424,12 +5008,27 @@ class VorbisCommentTest(MetaDataTest):
 
     @METADATA_VORBIS
     def test_delattr(self):
+        #deleting nonexistent field is okay
+        for field in audiotools.MetaData.FIELDS:
+            metadata = audiotools.VorbisComment([],
+                                                u"vendor")
+            delattr(metadata, field)
+            self.assertEqual(getattr(metadata, field), None)
+
         #deleting field removes all instances of it
+        metadata = audiotools.VorbisComment([],
+                                            u"vendor")
+        del(metadata.track_name)
+        self.assertEqual(metadata.comment_strings,
+                         [])
+        self.assertEqual(metadata.track_name, None)
+
         metadata = audiotools.VorbisComment([u"TITLE=track name"],
                                             u"vendor")
         del(metadata.track_name)
         self.assertEqual(metadata.comment_strings,
                          [])
+        self.assertEqual(metadata.track_name, None)
 
         metadata = audiotools.VorbisComment([u"TITLE=track name",
                                              u"ALBUM=album name"],
@@ -4437,6 +5036,7 @@ class VorbisCommentTest(MetaDataTest):
         del(metadata.track_name)
         self.assertEqual(metadata.comment_strings,
                          [u"ALBUM=album name"])
+        self.assertEqual(metadata.track_name, None)
 
         metadata = audiotools.VorbisComment([u"TITLE=track name",
                                              u"TITLE=track name 2",
@@ -4446,6 +5046,7 @@ class VorbisCommentTest(MetaDataTest):
         del(metadata.track_name)
         self.assertEqual(metadata.comment_strings,
                          [u"ALBUM=album name"])
+        self.assertEqual(metadata.track_name, None)
 
         #setting field to None is the same as deleting field
         metadata = audiotools.VorbisComment([u"TITLE=track name"],
@@ -4453,6 +5054,14 @@ class VorbisCommentTest(MetaDataTest):
         metadata.track_name = None
         self.assertEqual(metadata.comment_strings,
                          [])
+        self.assertEqual(metadata.track_name, None)
+
+        metadata = audiotools.VorbisComment([u"TITLE=track name"],
+                                            u"vendor")
+        metadata.track_name = None
+        self.assertEqual(metadata.comment_strings,
+                         [])
+        self.assertEqual(metadata.track_name, None)
 
         #deleting track_number removes TRACKNUMBER field
         metadata = audiotools.VorbisComment([u"TRACKNUMBER=1"],
@@ -4460,6 +5069,7 @@ class VorbisCommentTest(MetaDataTest):
         del(metadata.track_number)
         self.assertEqual(metadata.comment_strings,
                          [])
+        self.assertEqual(metadata.track_number, None)
 
         #deleting slashed TRACKNUMBER converts it to fresh TRACKTOTAL field
         metadata = audiotools.VorbisComment([u"TRACKNUMBER=1/3"],
@@ -4467,6 +5077,7 @@ class VorbisCommentTest(MetaDataTest):
         del(metadata.track_number)
         self.assertEqual(metadata.comment_strings,
                          [u"TRACKTOTAL=3"])
+        self.assertEqual(metadata.track_number, None)
 
         metadata = audiotools.VorbisComment([u"TRACKNUMBER=1/3",
                                              u"TRACKTOTAL=4"],
@@ -4477,6 +5088,7 @@ class VorbisCommentTest(MetaDataTest):
                          [u"TRACKTOTAL=4",
                           u"TRACKTOTAL=3"])
         self.assertEqual(metadata.track_total, 4)
+        self.assertEqual(metadata.track_number, None)
 
         #deleting track_total removes TRACKTOTAL/TOTALTRACKS fields
         metadata = audiotools.VorbisComment([u"TRACKTOTAL=3",

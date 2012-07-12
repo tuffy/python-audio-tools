@@ -25,7 +25,7 @@ ApeTag
    >>> tag.track_name
    u'Track Title'
    >>> tag['Title']
-   ApeTagItem(0,False,'Title','Track Title')
+   ApeTagItem(0, False, 'Title', 'Track Title')
    >>> tag['Title'] = ApeTagItem(0, False, 'Title', u'New Title'.encode('utf-8'))
    >>> tag.track_name
    u'New Title'
@@ -62,8 +62,7 @@ ApeTag
    >>> tag = ApeTag([ApeTagItem(0, False, 'Track', u'1'.encode('utf-8'))])
    >>> tag.track_number
    1
-   >>> tag.track_total
-   0
+   >>> tag.track_total  # None
    >>> tag = ApeTag([ApeTagItem(0, False, 'Track', u'2/3'.encode('utf-8'))])
    >>> tag.track_number
    2
@@ -353,6 +352,8 @@ VORBISCOMMENT
    ``comment_strings`` is a list of unicode strings
    and ``vendor_string`` is a unicode string.
 
+   See :class:`VorbisComment` on how to map strings to attributes.
+
    >>> Flac_VORBISCOMMENT([u"TITLE=Foo", u"ARTIST=Bar"], u"Python Audio Tools")
 
 .. data:: Flac_VORBISCOMMENT.BLOCK_ID
@@ -578,16 +579,33 @@ PICTURE
 ID3v1
 -----
 
-.. class:: ID3v1Comment(track_name, artist_name, album_name, year, comment, track_number, genre)
+.. class:: ID3v1Comment([track_name][, artist_name][, album_name][, year][, comment][, track_number][, genre])
 
-   All fields except track_number and genre are binary strings.
+   All fields are binary strings with a fixed length:
 
-   >>> tag = ID3v1Comment(u'Track Title', u'', u'', u'', u'', 1, 0)
+   ============= ======
+   field         length
+   ------------- ------
+   track_name        30
+   artist_name       30
+   album_name        30
+   year               4
+   comment           28
+   track_number       1
+   genre              1
+   ============= ======
+
+   >>> tag = ID3v1Comment(track_name='Track Title' + chr(0) * 19,  # note the NULL byte padding
+   ...                    track_number=chr(1))
    >>> tag.track_name
    u'Track Title'
    >>> tag.track_name = u'New Track Name'
    >>> tag.track_name
    u'New Track Name'
+
+   Undefined fields are filled with NULL bytes.
+   Attempting to initialize a field with an incorrect size
+   will raise a :exc:`ValueError`.
 
 .. method:: ID3v1Comment.raw_info()
 
