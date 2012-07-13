@@ -175,10 +175,10 @@ def xmcd_metadata(freedb_file):
     if (" / " in dtitle):
         (album_artist, album_name) = dtitle.split(" / ", 1)
     else:
-        album_artist = ""
+        album_artist = None
         album_name = dtitle
 
-    year = freedb_file.get("DYEAR", "")
+    year = freedb_file.get("DYEAR", None)
 
     ttitles = [(int(m.group(1)), value) for (m, value) in
                [(TTITLE.match(key), value) for (key, value) in
@@ -205,5 +205,7 @@ def xmcd_metadata(freedb_file):
             track_number=tracknum + 1,
             track_total=track_total,
             album_name=album_name.decode('utf-8', 'replace'),
-            artist_name=track_artist.decode('utf-8', 'replace'),
-            year=year.decode('utf-8', 'replace'))
+            artist_name=(track_artist.decode('utf-8', 'replace')
+                         if track_artist is not None else None),
+            year=(year.decode('utf-8', 'replace') if
+                  year is not None else None))

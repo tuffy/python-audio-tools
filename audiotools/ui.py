@@ -109,7 +109,9 @@ try:
             #setup radio button for each possible match
             matches = []
             radios = [urwid.RadioButton(matches,
-                                        choice[0].album_name,
+                                        (choice[0].album_name
+                                         if (choice[0].album_name is not None)
+                                         else u""),
                                         on_state_change=self.select_match,
                                         user_data=i)
                       for (i, choice) in enumerate(metadata_choices)]
@@ -585,9 +587,17 @@ try:
                 setattr(self, field, linked_widget)
 
         def edited_metadata(self):
+            """returns a MetaData object of the track's
+            current value based on its widgets"""
+
             return audiotools.MetaData(**dict(
-                    [(attr, getattr(self, attr).value())
-                     for attr in audiotools.MetaData.FIELDS]))
+                    [(attr, value) for (attr, value) in
+                     [(attr, getattr(self, attr).value())
+                      for attr in audiotools.MetaData.FIELDS]
+                     if ((len(value) > 0) if
+                         (attr not in audiotools.MetaData.INTEGER_FIELDS) else
+                         (value > 0))]))
+
 
 
     class Swivel:

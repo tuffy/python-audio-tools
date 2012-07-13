@@ -84,17 +84,11 @@ if (audiotools.ui.AVAILABLE):
                             original_value = getattr(original_metadata, attr)
                             updated_value = getattr(updated_metadata, attr)
                             if (original_value != updated_value):
-                                if ((attr in
-                                     audiotools.MetaData.INTEGER_FIELDS) and
-                                    (updated_value == 0)):
-                                    delattr(original_metadata, attr)
-                                elif ((attr not in
-                                       audiotools.MetaData.INTEGER_FIELDS) and
-                                      (len(updated_value) == 0)):
-                                    delattr(original_metadata, attr)
-                                else:
-                                    setattr(original_metadata, attr,
-                                            updated_value)
+                                #if updated_value is None,
+                                #this will work like delattr
+                                setattr(original_metadata,
+                                        attr,
+                                        updated_value)
 
                         #FIXME - check for errors here
                         track.update_metadata(original_metadata)

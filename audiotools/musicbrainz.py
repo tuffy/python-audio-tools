@@ -165,13 +165,13 @@ def parse_release(release, disc_id):
     try:
         album_name = text(get_node(release, u"title"))
     except KeyError:
-        album_name = u""
+        album_name = None
 
     #<release> may contain <artist-credit>
     try:
         album_artist = artist(get_node(release, u"artist-credit"))
     except KeyError:
-        album_artist = u""
+        album_artist = None
 
     #<release> may contain <label-info-list>
     try:
@@ -182,29 +182,29 @@ def parse_release(release, disc_id):
             try:
                 catalog = text(get_node(label_info, u"catalog-number"))
             except KeyError:
-                catalog = u""
+                catalog = None
             #<label-info> may contain <label>
             #and <label> may contain <name>
             try:
                 publisher = text(get_node(label_info, u"label", u"name"))
             except KeyError:
-                publisher = u""
+                publisher = None
 
             #we'll use the first result found
             break
         else:
             #<label-info-list> with no <label-info> tags
-            catalog = u""
-            publisher = u""
+            catalog = None
+            publisher = None
     except KeyError:
-        catalog = u""
-        publisher = u""
+        catalog = None
+        publisher = None
 
     #<release> may contain <date>
     try:
         year = text(get_node(release, u"date"))[0:4]
     except:
-        year = u""
+        year = None
 
     #find exact disc in <medium-list> tag
     #depending on disc_id value
@@ -238,9 +238,9 @@ def parse_release(release, disc_id):
         try:
             album_number = int(text(get_node(medium, u"position")))
         except KeyError:
-            album_number = 0
+            album_number = None
     else:
-        album_total = album_number = 0
+        album_total = album_number = None
 
     #<medium> must contain <track-list>
     tracks = get_nodes(get_node(medium, u"track-list"), u"track")
@@ -269,7 +269,7 @@ def parse_release(release, disc_id):
                 try:
                     track_name = text(get_node(recording, u"title"))
                 except KeyError:
-                    track_name = u""
+                    track_name = None
 
             #<recording> may contain <artist-credit>
             if (track_artist is None):
@@ -280,9 +280,6 @@ def parse_release(release, disc_id):
                     track_artist = album_artist
         except KeyError:
             #no <recording> in <track>
-
-            if (track_name is None):
-                track_name = u""
 
             if (track_artist is None):
                 track_artist = album_artist
@@ -301,14 +298,14 @@ def parse_release(release, disc_id):
                        track_total=track_total,
                        album_name=album_name,
                        artist_name=track_artist,
-                       performer_name=u"",
-                       composer_name=u"",
-                       conductor_name=u"",
-                       ISRC=u"",
+                       performer_name=None,
+                       composer_name=None,
+                       conductor_name=None,
+                       ISRC=None,
                        catalog=catalog,
-                       copyright=u"",
+                       copyright=None,
                        publisher=publisher,
                        year=year,
                        album_number=album_number,
                        album_total=album_total,
-                       comment=u"")
+                       comment=None)

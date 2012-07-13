@@ -244,6 +244,8 @@ if (__name__ == '__main__'):
         use_musicbrainz=options.use_musicbrainz,
         use_freedb=options.use_freedb)
 
+    print repr(metadata_choices)
+
     #update MetaData with command-line album-number/total, if given
     if (options.album_number != 0):
         for c in metadata_choices:
