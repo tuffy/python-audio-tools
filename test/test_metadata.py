@@ -611,6 +611,13 @@ class WavPackApeTagMetaData(MetaDataTest):
                          [ApeTagItem(0, 0, "Track", "1 / 3 / 4")])
         self.assertEqual(metadata.track_total, 3)
 
+        metadata = ApeTag([
+                ApeTagItem(0, 0, "Track", "foo / 2")])
+        metadata.track_total = 3
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Track", "foo / 3")])
+        self.assertEqual(metadata.track_total, 3)
+
         #album_total adds a new field if necessary
         metadata = ApeTag([])
         metadata.album_total = 5
@@ -664,6 +671,13 @@ class WavPackApeTagMetaData(MetaDataTest):
                          [ApeTagItem(0, 0, "Media", "3 / 5 / 6")])
         self.assertEqual(metadata.album_total, 5)
 
+        metadata = ApeTag([
+                ApeTagItem(0, 0, "Media", "foo / 4")])
+        metadata.album_total = 5
+        self.assertEqual(metadata.tags,
+                         [ApeTagItem(0, 0, "Media", "foo / 5")])
+        self.assertEqual(metadata.album_total, 5)
+
         #other fields add a new item if necessary
         #while leaving the rest alone
         metadata = ApeTag([])
@@ -705,6 +719,12 @@ class WavPackApeTagMetaData(MetaDataTest):
     @METADATA_WAVPACK
     def test_delattr(self):
         from audiotools.ape import ApeTag,ApeTagItem
+
+        #deleting nonexistent field is okay
+        for field in audiotools.MetaData.FIELDS:
+            metadata = ApeTag([])
+            delattr(metadata, field)
+            self.assertEqual(getattr(metadata, field), None)
 
         #deleting field removes all instances of it
         metadata = ApeTag([])
@@ -755,12 +775,6 @@ class WavPackApeTagMetaData(MetaDataTest):
         metadata.track_number = None
         self.assertEqual(metadata.tags, [])
         self.assertEqual(metadata.track_number, None)
-
-        #deleting nonexistent field is okay
-        metadata = ApeTag([])
-        for field in metadata.FIELDS:
-            delattr(metadata, field)
-            self.assertEqual(getattr(metadata, field), None)
 
         #deleting track_number with track_total converts track_number to 0
         metadata = ApeTag([ApeTagItem(0, 0, "Track", "1/2")])
@@ -1759,6 +1773,16 @@ class ID3v22MetaData(MetaDataTest):
     def empty_metadata(self):
         return self.metadata_class([])
 
+    def text_tag(self, attribute, unicode_text):
+        return self.metadata_class.TEXT_FRAME.converted(
+            self.metadata_class.ATTRIBUTE_MAP[attribute],
+            unicode_text)
+
+    def unknown_tag(self, binary_string):
+        from audiotools.id3 import ID3v22_Frame
+
+        return ID3v22_Frame("XXX", binary_string)
+
     @METADATA_ID3V2
     def test_update(self):
         import os
@@ -1980,6 +2004,641 @@ class ID3v22MetaData(MetaDataTest):
         self.assertEqual(id3.album_total, 7)
 
     @METADATA_ID3V2
+    def test_getitem(self):
+        field = self.metadata_class.ATTRIBUTE_MAP["track_name"]
+
+        #getitem with no matches raises KeyError
+        metadata = self.metadata_class([])
+        self.assertRaises(KeyError,
+                          metadata.__getitem__,
+                          field)
+
+        metadata = self.metadata_class([self.unknown_tag("FOO")])
+        self.assertRaises(KeyError,
+                          metadata.__getitem__,
+                          field)
+
+        #getitem with one match returns that item
+        metadata = self.metadata_class([self.text_tag("track_name",
+                                                      u"Track Name")])
+        self.assertEqual(metadata[field],
+                         [self.text_tag("track_name",
+                                        u"Track Name")])
+
+        metadata = self.metadata_class([self.text_tag("track_name",
+                                                      u"Track Name"),
+                                        self.unknown_tag("FOO")])
+        self.assertEqual(metadata[field],
+                         [self.text_tag("track_name",
+                                        u"Track Name")])
+
+        #getitem with multiple matches returns all items, in order
+        metadata = self.metadata_class([self.text_tag("track_name", u"1"),
+                                        self.text_tag("track_name", u"2"),
+                                        self.text_tag("track_name", u"3")])
+        self.assertEqual(metadata[field],
+                         [self.text_tag("track_name", u"1"),
+                          self.text_tag("track_name", u"2"),
+                          self.text_tag("track_name", u"3"),])
+
+        metadata = self.metadata_class([self.text_tag("track_name", u"1"),
+                                        self.unknown_tag("FOO"),
+                                        self.text_tag("track_name", u"2"),
+                                        self.unknown_tag("BAR"),
+                                        self.text_tag("track_name", u"3")])
+        self.assertEqual(metadata[field],
+                         [self.text_tag("track_name", u"1"),
+                          self.text_tag("track_name", u"2"),
+                          self.text_tag("track_name", u"3"),])
+
+    @METADATA_ID3V2
+    def test_setitem(self):
+        field = self.metadata_class.ATTRIBUTE_MAP["track_name"]
+
+        #setitem replaces all keys with new values
+        # - zero new values
+        metadata = self.metadata_class([])
+        metadata[field] = []
+        self.assertEqual(metadata.track_name, None)
+        self.assertEqual(metadata.frames, [])
+
+        metadata = self.metadata_class([self.text_tag("track_name", u"X")])
+        metadata[field] = []
+        self.assertEqual(metadata.track_name, None)
+        self.assertEqual(metadata.frames, [])
+
+        metadata = self.metadata_class([self.text_tag("track_name", u"X"),
+                                        self.text_tag("track_name", u"Y")])
+        metadata[field] = []
+        self.assertEqual(metadata.track_name, None)
+        self.assertEqual(metadata.frames, [])
+
+        # - one new value
+        metadata = self.metadata_class([])
+        metadata[field] = [self.text_tag("track_name", u"A")]
+        self.assertEqual(metadata.track_name, u"A")
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_name", u"A")])
+
+        metadata = self.metadata_class([self.text_tag("track_name", u"X")])
+        metadata[field] = [self.text_tag("track_name", u"A")]
+        self.assertEqual(metadata.track_name, u"A")
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_name", u"A")])
+
+        metadata = self.metadata_class([self.text_tag("track_name", u"X"),
+                                        self.text_tag("track_name", u"Y")])
+        metadata[field] = [self.text_tag("track_name", u"A")]
+        self.assertEqual(metadata.track_name, u"A")
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_name", u"A")])
+
+        # - two new values
+        metadata = self.metadata_class([])
+        metadata[field] = [self.text_tag("track_name", u"A"),
+                           self.text_tag("track_name", u"B"),]
+        self.assertEqual(metadata.track_name, u"A")
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_name", u"A"),
+                          self.text_tag("track_name", u"B")])
+
+        metadata = self.metadata_class([self.text_tag("track_name", u"X")])
+        metadata[field] = [self.text_tag("track_name", u"A"),
+                           self.text_tag("track_name", u"B"),]
+        self.assertEqual(metadata.track_name, u"A")
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_name", u"A"),
+                          self.text_tag("track_name", u"B")])
+
+        metadata = self.metadata_class([self.text_tag("track_name", u"X"),
+                                        self.text_tag("track_name", u"Y")])
+        metadata[field] = [self.text_tag("track_name", u"A"),
+                           self.text_tag("track_name", u"B"),]
+        self.assertEqual(metadata.track_name, u"A")
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_name", u"A"),
+                          self.text_tag("track_name", u"B")])
+
+        #setitem leaves other items alone
+        metadata = self.metadata_class([self.unknown_tag("FOO")])
+        metadata[field] = []
+        self.assertEqual(metadata.track_name, None)
+        self.assertEqual(metadata.frames, [self.unknown_tag("FOO")])
+
+        metadata = self.metadata_class([self.unknown_tag("FOO"),
+                                        self.text_tag("track_name", u"X")])
+        metadata[field] = [self.text_tag("track_name", u"A")]
+        self.assertEqual(metadata.track_name, u"A")
+        self.assertEqual(metadata.frames,
+                         [self.unknown_tag("FOO"),
+                          self.text_tag("track_name", u"A")])
+
+
+        metadata = self.metadata_class([self.text_tag("track_name", u"X"),
+                                        self.unknown_tag("FOO"),
+                                        self.text_tag("track_name", u"Y")])
+        metadata[field] = [self.text_tag("track_name", u"A"),
+                           self.text_tag("track_name", u"B"),]
+        self.assertEqual(metadata.track_name, u"A")
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_name", u"A"),
+                          self.unknown_tag("FOO"),
+                          self.text_tag("track_name", u"B")])
+
+    @METADATA_ID3V2
+    def test_getattr(self):
+        #track_number grabs the first available integer, if any
+        metadata = self.metadata_class([])
+        self.assertEqual(metadata.track_number, None)
+
+        metadata = self.metadata_class([
+                self.text_tag("track_number", u"1")])
+        self.assertEqual(metadata.track_number, 1)
+
+        metadata = self.metadata_class([
+                self.text_tag("track_number", u"foo")])
+        self.assertEqual(metadata.track_number, None)
+
+        metadata = self.metadata_class([
+                self.text_tag("track_number", u"1/2")])
+        self.assertEqual(metadata.track_number, 1)
+
+        metadata = self.metadata_class([
+                self.text_tag("track_number", u"foo 1 bar")])
+        self.assertEqual(metadata.track_number, 1)
+
+        #album_number grabs the first available integer, if any
+        metadata = self.metadata_class([])
+        self.assertEqual(metadata.album_number, None)
+
+        metadata = self.metadata_class([
+                self.text_tag("album_number", u"2")])
+        self.assertEqual(metadata.album_number, 2)
+
+        metadata = self.metadata_class([
+                self.text_tag("album_number", u"foo")])
+        self.assertEqual(metadata.album_number, None)
+
+        metadata = self.metadata_class([
+                self.text_tag("album_number", u"2/4")])
+        self.assertEqual(metadata.album_number, 2)
+
+        metadata = self.metadata_class([
+                self.text_tag("album_number", u"foo 2 bar")])
+        self.assertEqual(metadata.album_number, 2)
+
+        #track_total grabs the first slashed field integer, if any
+        metadata = self.metadata_class([])
+        self.assertEqual(metadata.track_total, None)
+
+        metadata = self.metadata_class([
+                self.text_tag("track_number", u"1")])
+        self.assertEqual(metadata.track_total, None)
+
+        metadata = self.metadata_class([
+                self.text_tag("track_number", u"foo")])
+        self.assertEqual(metadata.track_total, None)
+
+        metadata = self.metadata_class([
+                self.text_tag("track_number", u"1/2")])
+        self.assertEqual(metadata.track_total, 2)
+
+        metadata = self.metadata_class([
+                self.text_tag("track_number", u"foo 1 bar / baz 2 blah")])
+        self.assertEqual(metadata.track_total, 2)
+
+        #album_total grabs the first slashed field integer, if any
+        metadata = self.metadata_class([])
+        self.assertEqual(metadata.album_total, None)
+
+        metadata = self.metadata_class([
+                self.text_tag("album_number", u"2")])
+        self.assertEqual(metadata.album_total, None)
+
+        metadata = self.metadata_class([
+                self.text_tag("album_number", u"foo")])
+        self.assertEqual(metadata.album_total, None)
+
+        metadata = self.metadata_class([
+                self.text_tag("album_number", u"2/4")])
+        self.assertEqual(metadata.album_total, 4)
+
+        metadata = self.metadata_class([
+                self.text_tag("album_number", u"foo 2 bar / baz 4 blah")])
+        self.assertEqual(metadata.album_total, 4)
+
+        #other fields grab the first available item, if any
+        metadata = self.metadata_class([])
+        self.assertEqual(metadata.track_name, None)
+
+        metadata = self.metadata_class([self.text_tag("track_name", u"1")])
+        self.assertEqual(metadata.track_name, u"1")
+
+        metadata = self.metadata_class([self.text_tag("track_name", u"1"),
+                                        self.text_tag("track_name", u"2")])
+        self.assertEqual(metadata.track_name, u"1")
+
+    @METADATA_ID3V2
+    def test_setattr(self):
+        #track_number adds new field if necessary
+        metadata = self.metadata_class([])
+        metadata.track_number = 1
+        self.assertEqual(metadata.track_number, 1)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_number", u"1")])
+
+        #track_number updates the first integer field
+        #and leaves other junk in that field alone
+        metadata = self.metadata_class([
+                self.text_tag("track_number", u"6")])
+        metadata.track_number = 1
+        self.assertEqual(metadata.track_number, 1)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_number", u"1")])
+
+        metadata = self.metadata_class([
+                self.text_tag("track_number", u"6"),
+                self.text_tag("track_number", u"10")])
+        metadata.track_number = 1
+        self.assertEqual(metadata.track_number, 1)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_number", u"1"),
+                          self.text_tag("track_number", u"10")])
+
+        metadata = self.metadata_class([
+                self.text_tag("track_number", u"6/2")])
+        metadata.track_number = 1
+        self.assertEqual(metadata.track_number, 1)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_number", u"1/2")])
+
+        metadata = self.metadata_class([
+                self.text_tag("track_number", u"foo 6 bar")])
+        metadata.track_number = 1
+        self.assertEqual(metadata.track_number, 1)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_number", u"foo 1 bar")])
+
+        metadata = self.metadata_class([
+                self.text_tag("track_number", u"foo 6 bar / blah 7 baz")])
+        metadata.track_number = 1
+        self.assertEqual(metadata.track_number, 1)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_number",
+                                        u"foo 1 bar / blah 7 baz")])
+
+        #album_number adds new field if necessary
+        metadata = self.metadata_class([])
+        metadata.album_number = 3
+        self.assertEqual(metadata.album_number, 3)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("album_number", u"3")])
+
+        #album_number updates the first integer field
+        #and leaves other junk in that field alone
+        metadata = self.metadata_class([
+                self.text_tag("album_number", u"7")])
+        metadata.album_number = 3
+        self.assertEqual(metadata.album_number, 3)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("album_number", u"3")])
+
+        metadata = self.metadata_class([
+                self.text_tag("album_number", u"7"),
+                self.text_tag("album_number", u"10")])
+        metadata.album_number = 3
+        self.assertEqual(metadata.album_number, 3)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("album_number", u"3"),
+                          self.text_tag("album_number", u"10")])
+
+        metadata = self.metadata_class([
+                self.text_tag("album_number", u"7/4")])
+        metadata.album_number = 3
+        self.assertEqual(metadata.album_number, 3)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("album_number", u"3/4")])
+
+        metadata = self.metadata_class([
+                self.text_tag("album_number", u"foo 7 bar")])
+        metadata.album_number = 3
+        self.assertEqual(metadata.album_number, 3)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("album_number", u"foo 3 bar")])
+
+        metadata = self.metadata_class([
+                self.text_tag("album_number", u"foo 7 bar / blah 8 baz")])
+        metadata.album_number = 3
+        self.assertEqual(metadata.album_number, 3)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("album_number",
+                                        u"foo 3 bar / blah 8 baz")])
+
+        #track_total adds new field if necessary
+        metadata = self.metadata_class([])
+        metadata.track_total = 2
+        self.assertEqual(metadata.track_total, 2)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_number", u"0/2")])
+
+        #track_total updates the second integer field
+        #and leaves other junk in that field alone
+        metadata = self.metadata_class([
+                self.text_tag("track_number", u"6")])
+        metadata.track_total = 2
+        self.assertEqual(metadata.track_total, 2)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_number", u"6/2")])
+
+        metadata = self.metadata_class([
+                self.text_tag("track_number", u"6"),
+                self.text_tag("track_number", u"10")])
+        metadata.track_total = 2
+        self.assertEqual(metadata.track_total, 2)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_number", u"6/2"),
+                          self.text_tag("track_number", u"10")])
+
+        metadata = self.metadata_class([
+                self.text_tag("track_number", u"6/7")])
+        metadata.track_total = 2
+        self.assertEqual(metadata.track_total, 2)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_number", u"6/2")])
+
+        metadata = self.metadata_class([
+                self.text_tag("track_number", u"foo 6 bar / blah 7 baz")])
+        metadata.track_total = 2
+        self.assertEqual(metadata.track_total, 2)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_number",
+                                        u"foo 6 bar / blah 2 baz")])
+
+        #album_total adds new field if necessary
+        metadata = self.metadata_class([])
+        metadata.album_total = 4
+        self.assertEqual(metadata.album_total, 4)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("album_number", u"0/4")])
+
+        #album_total updates the second integer field
+        #and leaves other junk in that field alone
+        metadata = self.metadata_class([
+                self.text_tag("album_number", u"9")])
+        metadata.album_total = 4
+        self.assertEqual(metadata.album_total, 4)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("album_total", u"9/4")])
+
+        metadata = self.metadata_class([
+                self.text_tag("album_number", u"9"),
+                self.text_tag("album_number", u"10")])
+        metadata.album_total = 4
+        self.assertEqual(metadata.album_total, 4)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("album_number", u"9/4"),
+                          self.text_tag("album_number", u"10")])
+
+        metadata = self.metadata_class([
+                self.text_tag("album_number", u"9/10")])
+        metadata.album_total = 4
+        self.assertEqual(metadata.album_total, 4)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("album_number", u"9/4")])
+
+        metadata = self.metadata_class([
+                self.text_tag("album_total", u"foo 9 bar / blah 10 baz")])
+        metadata.album_total = 4
+        self.assertEqual(metadata.album_total, 4)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("album_number",
+                                        u"foo 9 bar / blah 4 baz")])
+
+        #other fields update the first match
+        #while leaving the rest alone
+        metadata = self.metadata_class([])
+        metadata.track_name = u"A"
+        self.assertEqual(metadata.track_name, u"A")
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_name", u"A")])
+
+        metadata = self.metadata_class([self.text_tag("track_name", u"X")])
+        metadata.track_name = u"A"
+        self.assertEqual(metadata.track_name, u"A")
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_name", u"A")])
+
+        metadata = self.metadata_class([self.text_tag("track_name", u"X"),
+                                        self.text_tag("track_name", u"Y")])
+        metadata.track_name = u"A"
+        self.assertEqual(metadata.track_name, u"A")
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_name", u"A"),
+                          self.text_tag("track_name", u"Y")])
+
+        #setting field to an empty string is okay
+        metadata = self.metadata_class([])
+        metadata.track_name = u""
+        self.assertEqual(metadata.track_name, u"")
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_name", u"")])
+
+    @METADATA_ID3V2
+    def test_delattr(self):
+        #deleting nonexistent field is okay
+        for field in audiotools.MetaData.FIELDS:
+            metadata = self.metadata_class([])
+            delattr(metadata, field)
+            self.assertEqual(getattr(metadata, field), None)
+
+        #deleting field removes all instances of it
+        metadata = self.metadata_class([self.text_tag("track_name", u"A")])
+        del(metadata.track_name)
+        self.assertEqual(metadata.track_name, None)
+        self.assertEqual(metadata.frames, [])
+
+        metadata = self.metadata_class([self.text_tag("track_name", u"A"),
+                                        self.text_tag("track_name", u"B")])
+        del(metadata.track_name)
+        self.assertEqual(metadata.track_name, None)
+        self.assertEqual(metadata.frames, [])
+
+        #setting field to None is the same as deleting field
+        for field in audiotools.MetaData.FIELDS:
+            metadata = self.metadata_class([])
+            setattr(metadata, field, None)
+            self.assertEqual(getattr(metadata, field), None)
+
+        metadata = self.metadata_class([self.text_tag("track_name", u"A")])
+        metadata.track_name = None
+        self.assertEqual(metadata.track_name, None)
+        self.assertEqual(metadata.frames, [])
+
+        metadata = self.metadata_class([self.text_tag("track_name", u"A"),
+                                        self.text_tag("track_name", u"B")])
+        metadata.track_name = None
+        self.assertEqual(metadata.track_name, None)
+        self.assertEqual(metadata.frames, [])
+
+        #deleting track_number without track_total removes field
+        metadata = self.metadata_class([self.text_tag("track_number", u"1")])
+        del(metadata.track_number)
+        self.assertEqual(metadata.track_number, None)
+        self.assertEqual(metadata.frames, [])
+
+        metadata = self.metadata_class([self.text_tag("track_number", u"1"),
+                                        self.text_tag("track_number", u"2")])
+        del(metadata.track_number)
+        self.assertEqual(metadata.track_number, None)
+        self.assertEqual(metadata.frames, [])
+
+        metadata = self.metadata_class([self.text_tag("track_number",
+                                                      u"foo 1 bar")])
+        del(metadata.track_number)
+        self.assertEqual(metadata.track_number, None)
+        self.assertEqual(metadata.frames, [])
+
+        #deleting track_number with track_total converts track_number to 0
+        metadata = self.metadata_class([self.text_tag("track_number", u"1/2")])
+        del(metadata.track_number)
+        self.assertEqual(metadata.track_number, 0)
+        self.assertEqual(metadata.track_total, 2)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_number", u"0/2")])
+
+        metadata = self.metadata_class([self.text_tag(
+                    "track_number", u"foo 1 bar / blah 2 baz")])
+        del(metadata.track_number)
+        self.assertEqual(metadata.track_number, 0)
+        self.assertEqual(metadata.track_total, 2)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_number",
+                                        u"foo 0 bar / blah 2 baz")])
+
+        #deleting track_total without track_number removes field
+        metadata = self.metadata_class([self.text_tag(
+                    "track_number", u"0/1")])
+        del(metadata.track_total)
+        self.assertEqual(metadata.track_total, None)
+        self.assertEqual(metadata.frames, [])
+
+        metadata = self.metadata_class([self.text_tag(
+                    "track_number", u"foo 0 bar / 1")])
+        del(metadata.track_total)
+        self.assertEqual(metadata.track_total, None)
+        self.assertEqual(metadata.frames, [])
+
+        metadata = self.metadata_class([self.text_tag(
+                    "track_number", u"foo / 1")])
+        del(metadata.track_total)
+        self.assertEqual(metadata.track_total, None)
+        self.assertEqual(metadata.frames, [])
+
+        #deleting track_total with track_number removes slashed field
+        metadata = self.metadata_class([self.text_tag(
+                    "track_number", u"1/2")])
+        del(metadata.track_total)
+        self.assertEqual(metadata.track_number, 1)
+        self.assertEqual(metadata.track_total, None)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_number", u"1")])
+
+        metadata = self.metadata_class([self.text_tag(
+                    "track_number", u"1 / 2")])
+        del(metadata.track_total)
+        self.assertEqual(metadata.track_number, 1)
+        self.assertEqual(metadata.track_total, None)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_number", u"1")])
+
+        metadata = self.metadata_class([self.text_tag(
+                    "track_number", u"foo 1 bar / baz 2 blah")])
+        del(metadata.track_total)
+        self.assertEqual(metadata.track_number, 1)
+        self.assertEqual(metadata.track_total, None)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("track_number", u"foo 1 bar")])
+
+        #deleting album_number without album_total removes field
+        metadata = self.metadata_class([self.text_tag("album_number", u"3")])
+        del(metadata.album_number)
+        self.assertEqual(metadata.album_number, None)
+        self.assertEqual(metadata.frames, [])
+
+        metadata = self.metadata_class([self.text_tag("album_number", u"3"),
+                                        self.text_tag("album_number", u"4")])
+        del(metadata.album_number)
+        self.assertEqual(metadata.album_number, None)
+        self.assertEqual(metadata.frames, [])
+
+        metadata = self.metadata_class([self.text_tag("album_number",
+                                                      u"foo 3 bar")])
+        del(metadata.album_number)
+        self.assertEqual(metadata.album_number, None)
+        self.assertEqual(metadata.frames, [])
+
+        #deleting album_number with album_total converts album_number to 0
+        metadata = self.metadata_class([self.text_tag("album_number", u"3/4")])
+        del(metadata.album_number)
+        self.assertEqual(metadata.album_number, 0)
+        self.assertEqual(metadata.album_total, 4)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("album_number", u"0/4")])
+
+        metadata = self.metadata_class([self.text_tag(
+                    "album_number", u"foo 3 bar / blah 4 baz")])
+        del(metadata.album_number)
+        self.assertEqual(metadata.album_number, 0)
+        self.assertEqual(metadata.album_total, 4)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("album_number",
+                                        u"foo 0 bar / blah 4 baz")])
+
+        #deleting album_total without album_number removes field
+        metadata = self.metadata_class([self.text_tag(
+                    "album_number", u"0/1")])
+        del(metadata.album_total)
+        self.assertEqual(metadata.album_total, None)
+        self.assertEqual(metadata.frames, [])
+
+        metadata = self.metadata_class([self.text_tag(
+                    "album_number", u"foo 0 bar / 1")])
+        del(metadata.album_total)
+        self.assertEqual(metadata.album_total, None)
+        self.assertEqual(metadata.frames, [])
+
+        metadata = self.metadata_class([self.text_tag(
+                    "album_number", u"foo / 1")])
+        del(metadata.album_total)
+        self.assertEqual(metadata.album_total, None)
+        self.assertEqual(metadata.frames, [])
+
+        #deleting album_total with album_number removes slashed field
+        metadata = self.metadata_class([self.text_tag(
+                    "album_number", u"3/4")])
+        del(metadata.album_total)
+        self.assertEqual(metadata.album_number, 3)
+        self.assertEqual(metadata.album_total, None)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("album_number", u"3")])
+
+        metadata = self.metadata_class([self.text_tag(
+                    "album_number", u"3 / 4")])
+        del(metadata.album_total)
+        self.assertEqual(metadata.album_number, 3)
+        self.assertEqual(metadata.album_total, None)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("album_number", u"3")])
+
+        metadata = self.metadata_class([self.text_tag(
+                    "album_number", u"foo 3 bar / baz 4 blah")])
+        del(metadata.album_total)
+        self.assertEqual(metadata.album_number, 3)
+        self.assertEqual(metadata.album_total, None)
+        self.assertEqual(metadata.frames,
+                         [self.text_tag("album_number", u"foo 3 bar")])
+
+    @METADATA_ID3V2
     def test_clean(self):
         #check trailing whitespace
         metadata = audiotools.ID3v22Comment(
@@ -2140,6 +2799,11 @@ class ID3v23MetaData(ID3v22MetaData):
                                  "comment"]
         self.supported_formats = [audiotools.MP3Audio,
                                   audiotools.MP2Audio]
+
+    def unknown_tag(self, binary_string):
+        from audiotools.id3 import ID3v23_Frame
+
+        return ID3v23_Frame("XXXX", binary_string)
 
     @METADATA_ID3V2
     def test_foreign_field(self):
@@ -2307,7 +2971,7 @@ class ID3v23MetaData(ID3v22MetaData):
 
 class ID3v24MetaData(ID3v22MetaData):
     def setUp(self):
-        self.metadata_class = audiotools.ID3v23Comment
+        self.metadata_class = audiotools.ID3v24Comment
         self.supported_fields = ["track_name",
                                  "track_number",
                                  "track_total",
@@ -2327,6 +2991,11 @@ class ID3v24MetaData(ID3v22MetaData):
                                  "comment"]
         self.supported_formats = [audiotools.MP3Audio,
                                   audiotools.MP2Audio]
+
+    def unknown_tag(self, binary_string):
+        from audiotools.id3 import ID3v24_Frame
+
+        return ID3v24_Frame("XXXX", binary_string)
 
     def empty_metadata(self):
         return self.metadata_class([])
@@ -4806,6 +5475,11 @@ class VorbisCommentTest(MetaDataTest):
             10)
 
         self.assertEqual(
+            audiotools.VorbisComment([u"TRACKTOTAL=foo/10"],
+                                     u"vendor").track_total,
+            10)
+
+        self.assertEqual(
             audiotools.VorbisComment([u"TRACKNUMBER=5/10",
                                       u"TRACKTOTAL=15"],
                                      u"vendor").track_total,
@@ -4838,6 +5512,11 @@ class VorbisCommentTest(MetaDataTest):
 
         self.assertEqual(
             audiotools.VorbisComment([u"DISCNUMBER=10/30"],
+                                     u"vendor").album_total,
+            30)
+
+        self.assertEqual(
+            audiotools.VorbisComment([u"DISCNUMBER=foo/30"],
                                      u"vendor").album_total,
             30)
 

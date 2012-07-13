@@ -455,7 +455,8 @@ class ApeTag(MetaData):
                 pass
         elif (attr == 'track_total'):
             try:
-                track_number = re.search(r'\d+', self["Track"].data)
+                track_number = re.search(r'\d+',
+                                         self["Track"].data.split("/")[0])
                 #if track number is nonzero
                 if ((track_number is not None) and
                     (int(track_number.group(0)) != 0)):
@@ -488,7 +489,8 @@ class ApeTag(MetaData):
                 pass
         elif (attr == 'album_total'):
             try:
-                album_number = re.search(r'\d+', self["Media"].data)
+                album_number = re.search(r'\d+',
+                                         self["Media"].data.split("/")[0])
                 #if album number is nonzero
                 if ((album_number is not None) and
                     (int(album_number.group(0)) != 0)):

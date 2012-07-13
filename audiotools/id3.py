@@ -394,9 +394,10 @@ class ID3v22_T__Frame:
         import re
 
         if (self.id in self.NUMERICAL_IDS):
-            try:
-                return int(re.findall(r'\d+', unicode(self))[0])
-            except IndexError:
+            int_value = re.search(r'\d+', unicode(self))
+            if (int_value is not None):
+                return int(int_value.group(0))
+            else:
                 return None
         else:
             raise TypeError()
@@ -408,9 +409,10 @@ class ID3v22_T__Frame:
         import re
 
         if (self.id in self.NUMERICAL_IDS):
-            try:
-                return int(re.findall(r'\d+/(\d+)', unicode(self))[0])
-            except IndexError:
+            int_value = re.search(r'/\D*?(\d+)', unicode(self))
+            if (int_value is not None):
+                return int(int_value.group(1))
+            else:
                 return None
         else:
             raise TypeError()
@@ -1174,29 +1176,82 @@ class ID3v22Comment(MetaData):
     def __setattr__(self, attr, value):
         if (attr in self.ATTRIBUTE_MAP):
             if (value is not None):
+                import re
+
                 frame_id = self.ATTRIBUTE_MAP[attr]
                 if (attr == 'track_number'):
-                    self[frame_id] = [self.TEXT_FRAME.converted(
+                    try:
+                        new_frame = self.TEXT_FRAME.converted(
                             frame_id,
-                            __number_pair__(value, self.track_total))]
+                            re.sub(r'\d+',
+                                   unicode(int(value)),
+                                   unicode(self[frame_id][0]),
+                                   1))
+                    except KeyError:
+                        new_frame = self.TEXT_FRAME.converted(
+                            frame_id,
+                            __number_pair__(value, self.track_total))
                 elif (attr == 'track_total'):
-                    self[frame_id] = [self.TEXT_FRAME.converted(
+                    try:
+                        if (re.search(r'/\D*\d+',
+                                      unicode(self[frame_id][0])) is not None):
+                            new_frame = self.TEXT_FRAME.converted(
+                                frame_id,
+                                re.sub(r'(/\D*)(\d+)',
+                                       u"\\g<1>" + unicode(int(value)),
+                                       unicode(self[frame_id][0]),
+                                       1))
+                        else:
+                            new_frame = self.TEXT_FRAME.converted(
+                                frame_id,
+                                u"%s/%d" % (unicode(self[frame_id][0]),
+                                            int(value)))
+                    except KeyError:
+                        new_frame = self.TEXT_FRAME.converted(
                             frame_id,
-                            __number_pair__(self.track_number, value))]
+                            __number_pair__(self.track_number, value))
                 elif (attr == 'album_number'):
-                    self[frame_id] = [self.TEXT_FRAME.converted(
+                    try:
+                        new_frame = self.TEXT_FRAME.converted(
                             frame_id,
-                            __number_pair__(value, self.album_total))]
+                            re.sub(r'\d+',
+                                   unicode(int(value)),
+                                   unicode(self[frame_id][0]),
+                                   1))
+                    except KeyError:
+                        new_frame = self.TEXT_FRAME.converted(
+                            frame_id,
+                            __number_pair__(value, self.album_total))
                 elif (attr == 'album_total'):
-                    self[frame_id] = [self.TEXT_FRAME.converted(
+                    try:
+                        if (re.search(r'/\D*\d+',
+                                      unicode(self[frame_id][0])) is not None):
+                            new_frame = self.TEXT_FRAME.converted(
+                                frame_id,
+                                re.sub(r'(/\D*)(\d+)',
+                                       u"\\g<1>" + unicode(int(value)),
+                                       unicode(self[frame_id][0]),
+                                       1))
+                        else:
+                            new_frame = self.TEXT_FRAME.converted(
+                                frame_id,
+                                u"%s/%d" % (unicode(self[frame_id][0]),
+                                            int(value)))
+                    except KeyError:
+                        new_frame = self.TEXT_FRAME.converted(
                             frame_id,
-                            __number_pair__(self.album_number, value))]
+                            __number_pair__(self.album_number, value))
                 elif (attr == 'comment'):
-                    self[frame_id] = [self.COMMENT_FRAME.converted(
-                            frame_id, value)]
+                    new_frame = self.COMMENT_FRAME.converted(
+                        frame_id, value)
                 else:
-                    self[frame_id] = [
-                        self.TEXT_FRAME.converted(frame_id, unicode(value))]
+                    new_frame = self.TEXT_FRAME.converted(
+                        frame_id, unicode(value))
+
+                try:
+                    self[frame_id] = [new_frame] + self[frame_id][1:]
+                except KeyError:
+                    self[frame_id] = [new_frame]
             else:
                 delattr(self, attr)
         elif (attr in MetaData.FIELDS):
@@ -1210,35 +1265,52 @@ class ID3v22Comment(MetaData):
             delete_frame_id = self.ATTRIBUTE_MAP[attr]
             for frame in self:
                 if (frame.id == delete_frame_id):
-                    if ((attr == 'track_number') or (attr == 'album_number')):
-                        #handle the *_number numerical fields
-                        if (frame.total() is not None):
-                            #if *_number is deleted, but *_total is present
-                            #build new frame with only the *_total field
+                    if ((attr == 'track_number') or
+                        (attr == 'album_number')):
+                        import re
+
+                        #if *_number field contains a slashed total
+                        if (re.search(r'\d+.*?/.*?\d+',
+                                      unicode(frame)) is not None):
+                            #replace unslashed portion with 0
                             updated_frames.append(
-                                self.TEXT_FRAME(
+                                self.TEXT_FRAME.converted(
                                     frame.id,
-                                    frame.encoding,
-                                    __number_pair__(0, frame.total())))
+                                    re.sub(r'\d+',
+                                           unicode(int(0)),
+                                           unicode(frame),
+                                           1)))
                         else:
-                            #if both *_number and *_total are deleted,
-                            #delete frame entirely
+                            #otherwise, remove *_number field
                             continue
-                    elif ((attr == 'track_total') or (attr == 'album_total')):
-                        #handle the *_total numerical fields
-                        if ((frame.number() is not None) and
-                            (frame.number() != 0)):
-                            #if *_total is deleted, but *_number is present
-                            #build a new frame with only the *_number field
+                    elif ((attr == 'track_total') or
+                          (attr == 'album_total')):
+                        import re
+
+                        #if *_number is nonzero
+                        _number = re.search(r'\d+',
+                                            unicode(frame).split(u"/")[0])
+                        if ((_number is not None) and
+                            (int(_number.group(0)) != 0)):
+                            #if field contains a slashed total
+                            #remove slashed total from field
                             updated_frames.append(
-                                self.TEXT_FRAME(
+                                self.TEXT_FRAME.converted(
                                     frame.id,
-                                    frame.encoding,
-                                    __number_pair__(frame.number(), None)))
+                                    re.sub(r'\s*/\D*\d+.*',
+                                           u"",
+                                           unicode(frame),
+                                           1)))
                         else:
-                            #if both *_number and *_total are deleted,
-                            #delete frame entirely
-                            continue
+                            #if field contains a slashed total
+                            #remove field entirely
+                            if (re.search(r'/.*?\d+',
+                                          unicode(frame)) is not None):
+                                continue
+                            else:
+                                #no number or total,
+                                #so pass frame through unchanged
+                                updated_frames.append(frame)
                     else:
                         #handle the textual fields
                         #which are simply deleted outright
