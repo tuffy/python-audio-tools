@@ -5678,13 +5678,13 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO Update utilities
 *** TODO Update documentation
 *** TODO Update unit tests
-**** TODO Add getitem/setitem/getattr/setattr/delattr tests to metadata
+**** DONE Add getitem/setitem/getattr/setattr/delattr tests to metadata
      - [X] flac
      - [X] wavpack
-     - [ ] id3v1
-     - [ ] id3v2
+     - [X] id3v1
+     - [X] id3v2
      - [X] vorbis
-     - [ ] m4a
+     - [X] m4a
 ** TODO Remove Python Imaging Library requirement
    This is only used for thumbnailing
    and for TKinter-based image display.
