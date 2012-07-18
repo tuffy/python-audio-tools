@@ -122,10 +122,11 @@ try:
                      replay_gain=audiotools.player.RG_NO_REPLAYGAIN):
             def track_name(track):
                 metadata = track.get_metadata()
-                if (metadata is not None):
+                if ((metadata is not None) and
+                    (metadata.track_name is not None)):
                     return metadata.track_name
                 else:
-                    return track.filename
+                    return unicode(audiotools.Filename(track.filename))
 
             self.track_list = track_list
             self.audio_output = audio_output

@@ -318,6 +318,15 @@ if (__name__ == '__main__'):
             for m in c:
                 m.album_total = options.album_total
 
+    #pull ISRC metadata from the cuesheet, if any
+    cuesheet_ISRCs = cuesheet.ISRCs()
+    for track_metadatas in metadata_choices:
+        for metadata in track_metadatas:
+            if ((metadata.ISRC is None) and
+                (metadata.track_number in cuesheet_ISRCs.keys())):
+                metadata.ISRC = cuesheet_ISRCs[metadata.track_number].decode(
+                    'ascii', 'replace')
+
     #decide which metadata to use to tag split tracks
     if (options.interactive):
         #pick choice using interactive widget
@@ -344,15 +353,6 @@ if (__name__ == '__main__'):
             track_metadatas = \
                 dict([(m.track_number, m) for m in
                       audiotools.ui.select_metadata(metadata_choices, msg)])
-
-    #pull ISRC metadata from the cuesheet, if any
-    cuesheet_ISRCs = cuesheet.ISRCs()
-    for metadata in track_metadatas.values():
-        if ((metadata.ISRC is None) and
-            (metadata.track_number in cuesheet_ISRCs.keys())):
-            metadata.ISRC = \
-                cuesheet_ISRCs[metadata.track_number].decode('ascii',
-                                                             'replace')
 
     output = []
     output_filenames = set([])

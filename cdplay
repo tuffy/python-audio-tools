@@ -191,10 +191,12 @@ try:
             controls.set_focus(1)
 
             def track_label(label, track_number):
-                if (len(label) > 0):
+                if (label is not None):
                     return label
+                elif (track_number is not None):
+                    return u"track %2.2d" % (track_number)
                 else:
-                    return "track %2.2d" % (track_number)
+                    return u"track"
 
             track_list = urwid.ListBox([
                     MappedRadioButton(
@@ -241,9 +243,12 @@ try:
                  track_name,
                  artist_name,
                  album_name) = user_data
-                self.track_name.set_text(track_name)
-                self.album_name.set_text(album_name)
-                self.artist_name.set_text(artist_name)
+                self.track_name.set_text(track_name
+                                         if track_name is not None else u"")
+                self.album_name.set_text(album_name
+                                         if album_name is not None else u"")
+                self.artist_name.set_text(artist_name
+                                          if artist_name is not None else u"")
                 self.tracknum.set_text(u"%d / %d" % \
                                            (track.track_number,
                                             len(self.cdda)))
