@@ -19,7 +19,6 @@
 
 from . import (MetaData, Image, InvalidImage)
 import codecs
-import gettext
 
 from id3v1 import ID3v1Comment
 

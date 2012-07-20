@@ -19,9 +19,6 @@
 
 
 from . import (AudioFile, MetaData)
-import gettext
-
-gettext.install("audiotools", unicode=True)
 
 
 #takes a pair of integers (or None) for the current and total values
@@ -698,13 +695,18 @@ class ApeTag(MetaData):
 
     def clean(self, fixes_applied):
         import re
+        from .text import (CLEAN_REMOVE_DUPLICATE_TAG,
+                           CLEAN_REMOVE_TRAILING_WHITESPACE,
+                           CLEAN_REMOVE_LEADING_WHITESPACE,
+                           CLEAN_FIX_TAG_FORMATTING,
+                           CLEAN_REMOVE_EMPTY_TAG)
 
         used_tags = set([])
         tag_items = []
         for tag in self.tags:
             if (tag.key.upper() in used_tags):
                 fixes_applied.append(
-                    _(u"removed duplicate tag %(field)s") %
+                    CLEAN_REMOVE_DUPLICATE_TAG %
                     {"field":tag.key.decode('ascii')})
             elif (tag.type == 0):
                 used_tags.add(tag.key.upper())
@@ -714,14 +716,14 @@ class ApeTag(MetaData):
                 fix1 = text.rstrip()
                 if (fix1 != text):
                     fixes_applied.append(
-                        _(u"removed trailing whitespace from %(field)s") %
+                        CLEAN_REMOVE_TRAILING_WHITESPACE %
                         {"field": tag.key.decode('ascii')})
 
                 #check leading whitespace
                 fix2 = fix1.lstrip()
                 if (fix2 != fix1):
                     fixes_applied.append(
-                        _(u"removed leading whitespace from %(field)s") %
+                        CLEAN_REMOVE_LEADING_WHITESPACE %
                         {"field": tag.key.decode('ascii')})
 
                 if (tag.key in self.INTEGER_ITEMS):
@@ -760,7 +762,7 @@ class ApeTag(MetaData):
 
                     if (fix3 != fix2):
                         fixes_applied.append(
-                            _(u"fixed formatting for %(field)s") %
+                            CLEAN_FIX_TAG_FORMATTING %
                             {"field": tag.key.decode('ascii')})
                 else:
                     fix3 = fix2
@@ -769,7 +771,7 @@ class ApeTag(MetaData):
                     tag_items.append(ApeTagItem.string(tag.key, fix3))
                 else:
                     fixes_applied.append(
-                        _("removed empty field %(field)s") %
+                        CLEAN_REMOVE_EMPTY_TAG %
                         {"field": tag.key.decode('ascii')})
             else:
                 used_tags.add(tag.key.upper())
@@ -808,7 +810,8 @@ class ApeTaggedAudio:
         if (metadata is None):
             return
         elif (not isinstance(metadata, ApeTag)):
-            raise ValueError(_(u"metadata not from audio file"))
+            from .text import ERR_FOREIGN_METADATA
+            raise ValueError(ERR_FOREIGN_METADATA)
 
         from .bitstream import BitstreamReader, BitstreamWriter
         from . import transfer_data
@@ -1084,7 +1087,8 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
             file_head = cls.FILE_HEAD.parse_stream(f)
 
             if (file_head.id != 'MAC '):
-                raise InvalidFile(_(u"Invalid Monkey's Audio header"))
+                from .text import ERR_APE_INVALID_HEADER
+                raise InvalidFile(ERR_APE_INVALID_HEADER)
 
             if (file_head.version >= 3980):  # the latest APE file type
                 descriptor = cls.APE_DESCRIPTOR.parse_stream(f)

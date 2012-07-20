@@ -32,9 +32,6 @@ import os
 import os.path
 import ConfigParser
 import optparse
-import gettext
-
-gettext.install("audiotools", unicode=True)
 
 
 class RawConfigParser(ConfigParser.RawConfigParser):
@@ -867,15 +864,17 @@ class ReplayGainProgressDisplay(ProgressDisplay):
         ProgressDisplay.__init__(self, messenger)
 
         from time import time
+        from .text import (RG_ADDING_REPLAYGAIN,
+                           RG_APPLYING_REPLAYGAIN)
 
         self.time = time
         self.last_updated = 0
 
         self.lossless_replay_gain = lossless_replay_gain
         if (lossless_replay_gain):
-            self.add_row(0, _(u"Adding ReplayGain"))
+            self.add_row(0, RG_ADDING_REPLAYGAIN)
         else:
-            self.add_row(0, _(u"Applying ReplayGain"))
+            self.add_row(0, RG_APPLYING_REPLAYGAIN)
 
         if (sys.stdout.isatty()):
             self.initial_message = self.initial_message_tty
@@ -895,12 +894,13 @@ class ReplayGainProgressDisplay(ProgressDisplay):
     def initial_message_nontty(self):
         """displays a message that ReplayGain application has started"""
 
+        from .text import (RG_ADDING_REPLAYGAIN_WAIT,
+                           RG_APPLYING_REPLAYGAIN_WAIT)
+
         if (self.lossless_replay_gain):
-            self.messenger.info(
-                _(u"Adding ReplayGain metadata.  This may take some time."))
+            self.messenger.info(RG_ADDING_REPLAYGAIN_WAIT)
         else:
-            self.messenger.info(
-                _(u"Applying ReplayGain.  This may take some time."))
+            self.messenger.info(RG_APPLYING_REPLAYGAIN_WAIT)
 
     def update_tty(self, current, total):
         """updates the current status of ReplayGain application"""
@@ -920,11 +920,14 @@ class ReplayGainProgressDisplay(ProgressDisplay):
     def final_message_tty(self):
         """displays a message that ReplayGain application is complete"""
 
+        from .text import (RG_REPLAYGAIN_ADDED,
+                           RG_REPLAYGAIN_APPLIED)
+
         self.clear()
         if (self.lossless_replay_gain):
-            self.messenger.info(_(u"ReplayGain added"))
+            self.messenger.info(RG_REPLAYGAIN_ADDED)
         else:
-            self.messenger.info(_(u"ReplayGain applied"))
+            self.messenger.info(RG_REPLAYGAIN_APPLIED)
 
     def final_message_nontty(self):
         """displays a message that ReplayGain application is complete"""
@@ -1035,10 +1038,11 @@ class UnsupportedChannelMask(EncodingError):
     """raised if the encoder does not support the file's channel mask"""
 
     def __init__(self, filename, mask):
+        from .text import ERR_UNSUPPORTED_CHANNEL_MASK
+
         EncodingError.__init__(
             self,
-            _(u"Unable to write \"%(target_filename)s\"" +
-              u" with channel assignment \"%(assignment)s\"") %
+            ERR_UNSUPPORTED_CHANNEL_MASK %
             {"target_filename": Filename(filename),
              "assignment": ChannelMask(mask)})
 
@@ -1047,10 +1051,11 @@ class UnsupportedChannelCount(EncodingError):
     """raised if the encoder does not support the file's channel count"""
 
     def __init__(self, filename, count):
+        from .text import ERR_UNSUPPORTED_CHANNEL_COUNT
+
         EncodingError.__init__(
             self,
-            _(u"Unable to write \"%(target_filename)s\"" +
-              u" with %(channels)d channel input") %
+            ERR_UNSUPPORTED_CHANNEL_COUNT %
             {"target_filename": Filename(filename),
              "channels": count})
 
@@ -1059,10 +1064,11 @@ class UnsupportedBitsPerSample(EncodingError):
     """raised if the encoder does not support the file's bits-per-sample"""
 
     def __init__(self, filename, bits_per_sample):
+        from .text import ERR_UNSUPPORTED_BITS_PER_SAMPLE
+
         EncodingError.__init__(
             self,
-            _(u"Unable to write \"%(target_filename)s\"" +
-              u" with %(bps)d bits per sample") %
+            ERR_UNSUPPORTED_BITS_PER_SAMPLE %
             {"target_filename": Filename(filename),
              "bps": bits_per_sample})
 
@@ -1198,6 +1204,9 @@ def open_files(filename_list, sorted=True, messenger=None,
     Filename objects and which newly opened Filename objects are added to
     """
 
+    from .text import (ERR_DUPLICATE_FILE,
+                       ERR_OPEN_IOERROR)
+
     if (opened_files is None):
         opened_files = set([])
 
@@ -1209,8 +1218,7 @@ def open_files(filename_list, sorted=True, messenger=None,
                 if (no_duplicates):
                     raise DuplicateFile(filename)
                 elif (warn_duplicates and (messenger is not None)):
-                    messenger.warning(
-                        u"File \"%s\" included more than once" % (filename,))
+                    messenger.warning(ERR_DUPLICATE_FILE % (filename,))
             else:
                 opened_files.add(filename)
 
@@ -1219,8 +1227,7 @@ def open_files(filename_list, sorted=True, messenger=None,
             pass
         except IOError, err:
             if (messenger is not None):
-                messenger.warning(
-                    _(u"Unable to open \"%s\"" % (filename,)))
+                messenger.warning(ERR_OPEN_IOERROR % (filename,))
         except InvalidFile, err:
             if (messenger is not None):
                 messenger.error(unicode(err))
@@ -1280,7 +1287,9 @@ class UnknownAudioType(Exception):
         self.suffix = suffix
 
     def error_msg(self, messenger):
-        messenger.error(_(u"Unsupported audio type \"%s\"") % (self.suffix))
+        from .text import ERR_UNSUPPORTED_AUDIO_TYPE
+
+        messenger.error(ERR_UNSUPPORTED_AUDIO_TYPE % (self.suffix,))
 
 
 class AmbiguousAudioType(UnknownAudioType):
@@ -1291,10 +1300,13 @@ class AmbiguousAudioType(UnknownAudioType):
         self.type_list = type_list
 
     def error_msg(self, messenger):
-        messenger.error(_(u"Ambiguious suffix type \"%s\"") % (self.suffix))
-        messenger.info((_(u"Please use the -t option to specify %s") %
-                        (u" or ".join([u"\"%s\"" % (t.NAME.decode('ascii'))
-                                       for t in self.type_list]))))
+        from .text import (ERR_AMBIGUOUS_AUDIO_TYPE,
+                           LAB_USE_T_OPTION)
+
+        messenger.error(ERR_AMBIGUOUS_AUDIO_TYPE % (self.suffix,))
+        messenger.info(LAB_USE_T_OPTION %
+                       (u" or ".join([u"\"%s\"" % (t.NAME.decode('ascii'))
+                                      for t in self.type_list])))
 
 
 def filename_to_type(path):
@@ -1382,24 +1394,43 @@ class ChannelMask:
 
     MASK_TO_SPEAKER = dict(map(reversed, map(list, SPEAKER_TO_MASK.items())))
 
-    MASK_TO_NAME = {0x1: _(u"front left"),
-                    0x2: _(u"front right"),
-                    0x4: _(u"front center"),
-                    0x8: _(u"low frequency"),
-                    0x10: _(u"back left"),
-                    0x20: _(u"back right"),
-                    0x40: _(u"front right of center"),
-                    0x80: _(u"front left of center"),
-                    0x100: _(u"back center"),
-                    0x200: _(u"side left"),
-                    0x400: _(u"side right"),
-                    0x800: _(u"top center"),
-                    0x1000: _(u"top front left"),
-                    0x2000: _(u"top front center"),
-                    0x4000: _(u"top front right"),
-                    0x8000: _(u"top back left"),
-                    0x10000: _(u"top back center"),
-                    0x20000: _(u"top back right")}
+    from .text import (MASK_FRONT_LEFT,
+                       MASK_FRONT_RIGHT,
+                       MASK_FRONT_CENTER,
+                       MASK_LFE,
+                       MASK_BACK_LEFT,
+                       MASK_BACK_RIGHT,
+                       MASK_FRONT_RIGHT_OF_CENTER,
+                       MASK_FRONT_LEFT_OF_CENTER,
+                       MASK_BACK_CENTER,
+                       MASK_SIDE_LEFT,
+                       MASK_SIDE_RIGHT,
+                       MASK_TOP_CENTER,
+                       MASK_TOP_FRONT_LEFT,
+                       MASK_TOP_FRONT_CENTER,
+                       MASK_TOP_FRONT_RIGHT,
+                       MASK_TOP_BACK_LEFT,
+                       MASK_TOP_BACK_CENTER,
+                       MASK_TOP_BACK_RIGHT)
+
+    MASK_TO_NAME = {0x1: MASK_FRONT_LEFT,
+                    0x2: MASK_FRONT_RIGHT,
+                    0x4: MASK_FRONT_CENTER,
+                    0x8: MASK_LFE,
+                    0x10: MASK_BACK_LEFT,
+                    0x20: MASK_BACK_RIGHT,
+                    0x40: MASK_FRONT_RIGHT_OF_CENTER,
+                    0x80: MASK_FRONT_LEFT_OF_CENTER,
+                    0x100: MASK_BACK_CENTER,
+                    0x200: MASK_SIDE_LEFT,
+                    0x400: MASK_SIDE_RIGHT,
+                    0x800: MASK_TOP_CENTER,
+                    0x1000: MASK_TOP_FRONT_LEFT,
+                    0x2000: MASK_TOP_FRONT_CENTER,
+                    0x4000: MASK_TOP_FRONT_RIGHT,
+                    0x8000: MASK_TOP_BACK_LEFT,
+                    0x10000: MASK_TOP_BACK_CENTER,
+                    0x20000: MASK_TOP_BACK_RIGHT}
 
     def __init__(self, mask):
         """mask should be an integer channel mask value"""
@@ -1894,7 +1925,8 @@ class PCMCat(PCMReader):
         try:
             self.first = self.reader_queue.next()
         except StopIteration:
-            raise ValueError(_(u"You must have at least 1 PCMReader"))
+            from .text import ERR_NO_PCMREADERS
+            raise ValueError(ERR_NO_PCMREADERS)
 
         self.sample_rate = self.first.sample_rate
         self.channels = self.first.channels
@@ -2815,8 +2847,10 @@ class MetaData:
                                       getattr(self, attr)))
 
         #append image data, if necessary
+        from .text import LAB_PICTURE
+
         for image in self.images():
-            comment_pairs.append((display_unicode(_(u"Picture")),
+            comment_pairs.append((display_unicode(LAB_PICTURE),
                                   unicode(image)))
 
         #right-align the comment key values
@@ -2922,7 +2956,8 @@ class MetaData:
         if (self.supports_images()):
             self.__images__.append(image)
         else:
-            raise ValueError(_(u"This MetaData type does not support images"))
+            from .text import ERR_PICTURES_UNSUPPORTED
+            raise ValueError(ERR_PICTURES_UNSUPPORTED)
 
     def delete_image(self, image):
         """deletes an Image object from this metadata
@@ -2936,7 +2971,8 @@ class MetaData:
         if (self.supports_images()):
             self.__images__.pop(self.__images__.index(image))
         else:
-            raise ValueError(_(u"This MetaData type does not support images"))
+            from .text import ERR_PICTURES_UNSUPPORTED
+            raise ValueError(ERR_PICTURES_UNSUPPORTED)
 
     def clean(self, fixes_performed):
         """returns a new MetaData object that's been cleaned of problems
@@ -2981,143 +3017,6 @@ class AlbumMetaData(dict):
                                  for field in MetaData.FIELDS]
                                 if (len(items) == 1)]))
 
-
-class MetaDataFileException(Exception):
-    """a superclass of XMCDException and MBXMLException
-
-    this allows one to handle any sort of metadata file exception
-    consistently"""
-
-    def __unicode__(self):
-        return _(u"Invalid XMCD or MusicBrainz XML file")
-
-
-class AlbumMetaDataFile:
-    """a base class for MetaData containing files
-
-    this includes FreeDB's XMCD files
-    and MusicBrainz's XML files"""
-
-    def __init__(self, album_name, artist_name, year, catalog,
-                 extra, track_metadata):
-        """track_metadata is a list of tuples.  The rest are unicode"""
-
-        self.album_name = album_name
-        self.artist_name = artist_name
-        self.year = year
-        self.catalog = catalog
-        self.extra = extra
-        self.track_metadata = track_metadata
-
-    def __len__(self):
-        return len(self.track_metadata)
-
-    def to_string(self):
-        """returns this object as a plain string of data"""
-
-        raise NotImplementedError()
-
-    @classmethod
-    def from_string(cls, string):
-        """given a plain string, returns an object of this class
-
-        raises MetaDataFileException if a parsing error occurs"""
-
-        raise NotImplementedError()
-
-    def get_track(self, index):
-        """given a track index (from 0), returns (name, artist, extra)
-
-        name, artist and extra are unicode strings
-        raises IndexError if out-of-bounds"""
-
-        return self.track_metadata[i]
-
-    def set_track(self, index, name, artist, extra):
-        """sets the track at the given index (from 0) to the given values
-
-        raises IndexError if out-of-bounds"""
-
-        self.track_metadata[i] = (name, artist, extra)
-
-    @classmethod
-    def from_tracks(cls, tracks):
-        """given a list of AudioFile objects, returns an AlbumMetaDataFile
-
-        all files are presumed to be from the same album"""
-
-        raise NotImplementedError()
-
-    @classmethod
-    def from_cuesheet(cls, cuesheet, total_frames, sample_rate, metadata=None):
-        """returns an AlbumMetaDataFile from a cuesheet
-
-        this must also include a total_frames and sample_rate integer
-        this works by generating a set of empty tracks and calling
-        the from_tracks() method to build a MetaData file with
-        the proper placeholders
-        metadata, if present, is applied to all tracks"""
-
-        if (metadata is None):
-            metadata = MetaData()
-
-        return cls.from_tracks([DummyAudioFile(
-                    length=(pcm_frames * 75) / sample_rate,
-                    metadata=metadata,
-                    track_number=i + 1) for (i, pcm_frames) in enumerate(
-                    cuesheet.pcm_lengths(total_frames))])
-
-    def track_metadata(self, track_number):
-        """given a track_number (from 1), returns a MetaData object
-
-        raises IndexError if out-of-bounds or None if track_number is 0"""
-
-        if (track_number == 0):
-            return None
-
-        (track_name,
-         track_artist,
-         track_extra) = self.get_track(track_number - 1)
-
-        if (len(track_artist) == 0):
-            track_artist = self.artist_name
-
-        return MetaData(track_name=track_name,
-                        track_number=track_number,
-                        track_total=len(self),
-                        album_name=self.album_name,
-                        artist_name=track_artist,
-                        catalog=self.catalog,
-                        year=self.year)
-
-    def get(self, track_index, default):
-        try:
-            return self.track_metadata(track_index)
-        except IndexError:
-            return default
-
-    def track_metadatas(self):
-        """iterates over all the MetaData objects in this file"""
-
-        for i in xrange(len(self)):
-            yield self.track_metadata(i + 1)
-
-    def metadata(self):
-        """returns a single MetaData object of all consistent fields
-
-        for example, if album_name is the same in all MetaData objects,
-        the returned object will have that album_name value
-        if track_name differs, the returned object will not
-        have a track_name field
-        """
-
-        return MetaData(**dict([(field, list(items)[0])
-                                for (field, items) in
-                                [(field,
-                                  set([getattr(track, field) for track
-                                       in self.track_metadatas()]))
-                                 for field in MetaData.FIELDS]
-                                if (len(items) == 1)]))
 
 #######################
 #Image MetaData
@@ -3314,9 +3213,11 @@ class UnsupportedTracknameField(Exception):
         self.field = field
 
     def error_msg(self, messenger):
-        messenger.error(_(u"Unknown field \"%s\" in file format") % \
-                            (self.field))
-        messenger.info(_(u"Supported fields are:"))
+        from .text import (ERR_UNKNOWN_FIELD,
+                           LAB_SUPPORTED_FIELDS)
+
+        messenger.error(ERR_UNKNOWN_FIELD % (self.field,))
+        messenger.info(LAB_SUPPORTED_FIELDS)
         for field in sorted(MetaData.FIELDS + \
                             ("album_track_number", "suffix")):
             if (field == 'track_number'):
@@ -3396,7 +3297,7 @@ class AudioFile:
         if (metadata is not None):
             raise NotImplementedError()
         else:
-            raise ValueError(_(u"metadata not from audio file"))
+            raise ValueError(ERR_FOREIGN_METADATA)
 
     def set_metadata(self, metadata):
         """takes a MetaData object and sets this track's metadata
@@ -4616,33 +4517,6 @@ def most_numerous(item_list, empty_list="", all_differ=""):
 
 __most_numerous__ = most_numerous
 
-
-def read_metadata_file(filename):
-    """returns an AlbumMetaDataFile-compatible file from a filename string
-
-    raises a MetaDataFileException exception if an error occurs
-    during reading
-    """
-
-    try:
-        data = file(filename, 'rb').read()
-    except IOError, msg:
-        raise MetaDataFileException(str(msg))
-
-    #try XMCD first
-    try:
-        return XMCD.from_string(data)
-    except XMCDException:
-        pass
-
-    #then try MusicBrainz
-    try:
-        return MusicBrainzReleaseXML.from_string(data)
-    except MBXMLException:
-        pass
-
-    #otherwise, throw exception
-    raise MetaDataFileException(filename)
 
 #######################
 #CD MetaData Lookup

@@ -86,7 +86,8 @@ class DVDAudio:
         try:
             f = open(self.files['AUDIO_TS.IFO'], 'rb')
         except (KeyError, IOError):
-            raise InvalidDVDA(_(u"unable to open AUDIO_TS.IFO"))
+            from .text import ERR_DVDA_IOERROR_AUDIO_TS
+            raise InvalidDVDA(ERR_DVDA_IOERROR_AUDIO_TS)
         try:
             (identifier,
              AMG_start_sector,
@@ -103,7 +104,8 @@ class DVDAudio:
                 "12b 32u 12P 32u 16u 4P 16u 16u 8u 4P 8u 32u 10P 8u 8u 40b")
 
             if (identifier != 'DVDAUDIO-AMG'):
-                raise InvalidDVDA(_(u"invalid AUDIO_TS.IFO"))
+                from .text import ERR_DVDA_INVALID_AUDIO_TS
+                raise InvalidDVDA(ERR_DVDA_INVALID_AUDIO_TS)
 
             for titleset in xrange(1, audio_titlesets + 1):
                 #ensure there are IFO files and AOBs
@@ -127,13 +129,14 @@ class DVDAudio:
         try:
             f = open(self.files['ATS_%2.2d_0.IFO' % (titleset)], 'rb')
         except (KeyError, IOError):
-            raise InvalidDVDA(
-                _(u"unable to open ATS_%2.2d_0.IFO") % (titleset))
+            from .text import ERR_DVDA_IOERROR_ATS
+            raise InvalidDVDA(ERR_DVDA_IOERROR_ATS % (titleset))
         try:
             #ensure the file's identifier is correct
             #which is all we care about from the first sector
             if (f.read(12) != 'DVDAUDIO-ATS'):
-                raise InvalidDVDA(_(u"invalid ATS_%2.2d_0.IFO") % (titleset))
+                from .text import ERR_DVDA_INVALID_ATS
+                raise InvalidDVDA(ERR_DVDA_INVALID_ATS % (titleset))
 
             #seek to the second sector and read the title count
             #and list of title table offset values
@@ -170,7 +173,8 @@ class DVDAudio:
                 if ((len(sector_pointers) > 1) and
                     (set([p[0] for p in sector_pointers[1:]]) !=
                      set([0x01000000]))):
-                    raise InvalidDVDA(_(u"invalid sector pointer"))
+                    from .text import ERR_DVDA_INVALID_SECTOR_POINTER
+                    raise InvalidDVDA(ERR_DVDA_INVALID_SECTOR_POINTER)
                 else:
                     sector_pointers = [None] + sector_pointers
 
@@ -282,7 +286,8 @@ class DVDATitle:
             else:
                 break
         else:
-            raise ValueError(_(u"unable to find track sector in AOB files"))
+            from .text import ERR_DVDA_NO_TRACK_SECTOR
+            raise ValueError(ERR_DVDA_NO_TRACK_SECTOR)
 
         #open that AOB file and seek to that track's first sector
         aob_file = open(aob_path, 'rb')
@@ -308,10 +313,12 @@ class DVDATitle:
                 "32u 2u 3u 1u 15u 1u 15u 1u 9u 1u 22u 2u 5p 3u")
             aob_reader.skip_bytes(stuffing_length)
             if (sync_bytes != 0x1BA):
-                raise InvalidDVDA(_(u"invalid AOB sync bytes"))
+                from .text import ERR_DVDA_INVALID_AOB_SYNC
+                raise InvalidDVDA(ERR_DVDA_INVALID_AOB_SYNC)
             if ((marker1 != 1) or (marker2 != 1) or (marker3 != 1) or
                 (marker4 != 1) or (marker5 != 1) or (marker6 != 3)):
-                raise InvalidDVDA(_(u"invalid AOB marker bits"))
+                from .text import ERR_DVDA_INVALID_AOB_MARKER
+                raise InvalidDVDA(ERR_DVDA_INVALID_AOB_MARKER)
             packet_pts = ((current_pts_high << 30) |
                           (current_pts_mid << 15) |
                           current_pts_low)
@@ -321,14 +328,16 @@ class DVDATitle:
              stream_id,
              packet_length) = aob_reader.parse("24u 8u 16u")
             if (start_code != 1):
-                raise InvalidDVDA(_(u"invalid AOB packet start code"))
+                from .text import ERR_DVDA_INVALID_AOB_START
+                raise InvalidDVDA(ERR_DVDA_INVALID_AOB_START)
             while (stream_id != 0xBD):
                 aob_reader.skip_bytes(packet_length)
                 (start_code,
                  stream_id,
                  packet_length) = aob_reader.parse("24u 8u 16u")
                 if (start_code != 1):
-                    raise InvalidDVDA(_(u"invalid AOB packet start code"))
+                    from .text import ERR_DVDA_INVALID_AOB_START
+                    raise InvalidDVDA(ERR_DVDA_INVALID_AOB_START)
 
             #parse the PCM/MLP header in the packet data
             (pad1_size,) = aob_reader.parse("16p 8u")

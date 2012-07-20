@@ -21,10 +21,6 @@
 from . import (AudioFile, InvalidFile, PCMReader)
 from .pcm import FrameList
 
-import gettext
-
-gettext.install("audiotools", unicode=True)
-
 
 class InvalidAU(InvalidFile):
     pass
@@ -84,6 +80,8 @@ class AuAudio(AudioFile):
         AudioFile.__init__(self, filename)
 
         from .bitstream import BitstreamReader
+        from .text import (ERR_AU_INVALID_HEADER,
+                           ERR_AU_UNSUPPORTED_FORMAT)
 
         try:
             f = file(filename, 'rb')
@@ -99,11 +97,11 @@ class AuAudio(AudioFile):
             raise InvalidAU(str(msg))
 
         if (magic_number != '.snd'):
-            raise InvalidAU(_(u"Invalid Sun AU header"))
+            raise InvalidAU(ERR_AU_INVALID_HEADER)
         try:
             self.__bits_per_sample__ = {2: 8, 3: 16, 4: 24}[encoding_format]
         except KeyError:
-            raise InvalidAU(_(u"Unsupported encoding format"))
+            raise InvalidAU(ERR_AU_UNSUPPORTED_FORMAT)
 
     @classmethod
     def is_type(cls, file):
@@ -194,9 +192,12 @@ class AuAudio(AudioFile):
         from . import InvalidFormat
 
         if (pcmreader.bits_per_sample not in (8, 16, 24)):
+            from . import Filename
+            from .text import ERR_UNSUPPORTED_BITS_PER_SAMPLE
             raise InvalidFormat(
-                _(u"Unsupported bits per sample %s") % (
-                    pcmreader.bits_per_sample))
+                ERR_UNSUPPORTED_BITS_PER_SAMPLE %
+                {"target_filename":Filename(filename),
+                 "bps":pcmreader.bits_per_sample})
 
         data_size = 0
         encoding_format = {8: 2, 16: 3, 24: 4}[pcmreader.bits_per_sample]

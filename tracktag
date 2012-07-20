@@ -24,6 +24,8 @@ import audiotools.ui
 import os.path
 import gettext
 
+from audiotools.text import (ERR_DUPLICATE_FILE,)
+
 gettext.install("audiotools", unicode=True)
 
 if (audiotools.ui.AVAILABLE):
@@ -390,8 +392,7 @@ if (__name__ == '__main__'):
                                            messenger=msg,
                                            no_duplicates=True)
     except audiotools.DuplicateFile, err:
-        msg.error(u"File \"%s\" included more than once" %
-                  (err.filename,))
+        msg.error(ERR_DUPLICATE_FILE % (err.filename,))
         sys.exit(1)
 
     #and the --cue file

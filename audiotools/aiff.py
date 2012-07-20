@@ -20,10 +20,6 @@
 from audiotools import (InvalidFile, PCMReader, AiffContainer)
 from .pcm import FrameList
 import struct
-import gettext
-
-gettext.install("audiotools", unicode=True)
-
 
 def parse_ieee_extended(bitstream):
     """returns a parsed 80-bit IEEE extended value from BitstreamReader
@@ -226,15 +222,17 @@ class AiffReader(PCMReader):
         self.process = process
 
         from .bitstream import BitstreamReader
+        from .text import (ERR_AIFF_NOT_AIFF,
+                           ERR_AIFF_INVALID_AIFF)
 
         #build a capped reader for the ssnd chunk
         aiff_reader = BitstreamReader(aiff_file, 0)
         try:
             (form, aiff) = aiff_reader.parse("4b 32p 4b")
             if (form != 'FORM'):
-                raise InvalidAIFF(_(u"Not an AIFF file"))
+                raise InvalidAIFF(ERR_AIFF_NOT_AIFF)
             elif (aiff != 'AIFF'):
-                raise InvalidAIFF(_(u"Invalid AIFF file"))
+                raise InvalidAIFF(ERR_AIFF_INVALID_AIFF)
 
             while (True):
                 (chunk_id, chunk_size) = aiff_reader.parse("4b 32u")
@@ -368,18 +366,23 @@ class AiffAudio(AiffContainer):
     def chunks(self):
         """yields a AIFF_Chunk compatible objects for each chunk in file"""
 
+        from .text import (ERR_AIFF_NOT_AIFF,
+                           ERR_AIFF_INVALID_AIFF,
+                           ERR_AIFF_INVALID_CHUNK_ID,
+                           ERR_AIFF_INVALID_CHUNK)
+
         aiff_file = file(self.filename, 'rb')
         try:
             (form,
              total_size,
              aiff) = struct.unpack(">4sI4s", aiff_file.read(12))
         except struct.error:
-            raise InvalidAIFF(_(u"Invalid AIFF file"))
+            raise InvalidAIFF(ERR_AIFF_INVALID_AIFF)
 
         if (form != 'FORM'):
-            raise InvalidAIFF(_(u"Not an AIFF file"))
+            raise InvalidAIFF(ERR_AIFF_NOT_AIFF)
         elif (aiff != 'AIFF'):
-            raise InvalidAIFF(_(u"Invalid AIFF file"))
+            raise InvalidAIFF(ERR_AIFF_INVALID_AIFF)
         else:
             total_size -= 4
 
@@ -390,10 +393,10 @@ class AiffAudio(AiffContainer):
                 (chunk_id,
                  chunk_size) = struct.unpack(">4sI", data)
             except struct.error:
-                raise InvalidAIFF(_(u"Invalid AIFF file"))
+                raise InvalidAIFF(ERR_AIFF_INVALID_AIFF)
 
             if (not frozenset(chunk_id).issubset(self.PRINTABLE_ASCII)):
-                raise InvalidAIFF(_(u"Invalid AIFF chunk ID"))
+                raise InvalidAIFF(ERR_AIFF_INVALID_CHUNK_ID)
             else:
                 total_size -= 8
 
@@ -412,7 +415,7 @@ class AiffAudio(AiffContainer):
 
             if (chunk_size % 2):
                 if (len(aiff_file.read(1)) < 1):
-                    raise InvalidAIFF(_(u"Invalid AIFF chunk"))
+                    raise InvalidAIFF(ERR_AIFF_INVALID_CHUNK)
                 total_size -= (chunk_size + 1)
             else:
                 total_size -= chunk_size
@@ -468,11 +471,12 @@ class AiffAudio(AiffContainer):
         from . import transfer_data
         from .id3 import ID3v22Comment
         from .bitstream import BitstreamRecorder
+        from .text import ERR_FOREIGN_METADATA
 
         if (metadata is None):
             return
         elif (not isinstance(metadata, ID3v22Comment)):
-            raise ValueError(_(u"metadata not from audio file"))
+            raise ValueError(ERR_FOREIGN_METADATA)
 
         def chunk_filter(chunks, id3_chunk_data):
             for chunk in chunks:
@@ -795,6 +799,9 @@ class AiffAudio(AiffContainer):
 
         from .bitstream import BitstreamReader
         from .bitstream import BitstreamRecorder
+        from .text import (ERR_AIFF_NOT_AIFF,
+                           ERR_AIFF_INVALID_AIFF,
+                           ERR_AIFF_INVALID_CHUNK_ID)
 
         head = BitstreamRecorder(0)
         tail = BitstreamRecorder(0)
@@ -805,9 +812,9 @@ class AiffAudio(AiffContainer):
             #transfer the 12-byte "RIFFsizeWAVE" header to head
             (form, size, aiff) = aiff_file.parse("4b 32u 4b")
             if (form != 'FORM'):
-                raise InvalidAIFF(_(u"Not an AIFF file"))
+                raise InvalidAIFF(ERR_AIFF_NOT_AIFF)
             elif (aiff != 'AIFF'):
-                raise InvalidAIFF(_(u"Invalid AIFF file"))
+                raise InvalidAIFF(ERR_AIFF_INVALID_AIFF)
             else:
                 current_block.build("4b 32u 4b", (form, size, aiff))
                 total_size = size - 4
@@ -816,7 +823,7 @@ class AiffAudio(AiffContainer):
                 #transfer each chunk header
                 (chunk_id, chunk_size) = aiff_file.parse("4b 32u")
                 if (not frozenset(chunk_id).issubset(self.PRINTABLE_ASCII)):
-                    raise InvalidAIFF(_(u"Invalid AIFF chunk ID"))
+                    raise InvalidAIFF(ERR_AIFF_INVALID_CHUNK_ID)
                 else:
                     current_block.build("4b 32u", (chunk_id, chunk_size))
                     total_size -= 8
@@ -860,6 +867,13 @@ class AiffAudio(AiffContainer):
         raises an InvalidFile with an error message if there is
         some problem with the file"""
 
+        from .text import (ERR_AIFF_MULTIPLE_COMM_CHUNKS,
+                           ERR_AIFF_PREMATURE_SSND_CHUNK,
+                           ERR_AIFF_MULTIPLE_SSND_CHUNKS,
+                           ERR_AIFF_TRUNCATED_CHUNK,
+                           ERR_AIFF_NO_COMM_CHUNK,
+                           ERR_AIFF_NO_SSND_CHUNK)
+
         #AIFF chunk verification is likely to be so fast
         #that individual calls to progress() are
         #a waste of time.
@@ -872,24 +886,24 @@ class AiffAudio(AiffContainer):
                 if (not COMM_found):
                     COMM_found = True
                 else:
-                    raise InvalidAIFF(_(u"multiple COMM chunks found"))
+                    raise InvalidAIFF(ERR_AIFF_MULTIPLE_COMM_CHUNKS)
 
             elif (chunk.id == "SSND"):
                 if (not COMM_found):
-                    raise InvalidAIFF(_(u"SSND chunk found before fmt"))
+                    raise InvalidAIFF(ERR_AIFF_PREMATURE_SSND_CHUNK)
                 elif (SSND_found):
-                    raise InvalidAIFF(_(u"multiple SSND chunks found"))
+                    raise InvalidAIFF(ERR_AIFF_MULTIPLE_SSND_CHUNKS)
                 else:
                     SSND_found = True
 
             if (not chunk.verify()):
-                raise InvalidAIFF(_(u"truncated %s chunk found") %
-                                  (chunk.id.decode('ascii')))
+                raise InvalidAIFF(ERR_AIFF_TRUNCATED_CHUNK %
+                                  (chunk.id.decode('ascii'),))
 
         if (not COMM_found):
-            raise InvalidAIFF(_(u"COMM chunk not found"))
+            raise InvalidAIFF(ERR_AIFF_NO_COMM_CHUNK)
         if (not SSND_found):
-            raise InvalidAIFF(_(u"SSND chunk not found"))
+            raise InvalidAIFF(ERR_AIFF_NO_SSND_CHUNK)
 
         if (progress is not None):
             progress(1, 1)
@@ -910,6 +924,10 @@ class AiffAudio(AiffContainer):
         raises ValueError if the file has errors of some sort
         """
 
+        from .text import (CLEAN_AIFF_MULTIPLE_COMM_CHUNKS,
+                           CLEAN_AIFF_REORDERED_SSND_CHUNK,
+                           CLEAN_AIFF_MULTIPLE_SSND_CHUNKS)
+
         chunk_queue = []
         pending_data = None
 
@@ -917,7 +935,7 @@ class AiffAudio(AiffContainer):
             if (chunk.id == "COMM"):
                 if ("COMM" in [c.id for c in chunk_queue]):
                     fixes_performed.append(
-                        _(u"multiple COMM chunks found"))
+                        CLEAN_AIFF_MULTIPLE_COMM_CHUNKS)
                 else:
                     chunk_queue.append(chunk)
                     if (pending_data is not None):
@@ -925,10 +943,10 @@ class AiffAudio(AiffContainer):
                         pending_data = None
             elif (chunk.id == "SSND"):
                 if ("COMM" not in [c.id for c in chunk_queue]):
-                    fixes_performed.append(_(u"SSND chunk found before fmt"))
+                    fixes_performed.append(CLEAN_AIFF_REORDERED_SSND_CHUNK)
                     pending_data = chunk
                 elif ("SSND" in [c.id for c in chunk_queue]):
-                    fixes_performed.append(_(u"multiple SSND chunks found"))
+                    fixes_performed.append(CLEAN_AIFF_MULTIPLE_SSND_CHUNKS)
                 else:
                     chunk_queue.append(chunk)
             else:

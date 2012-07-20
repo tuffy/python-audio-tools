@@ -23,10 +23,6 @@ from . import (AudioFile, MetaData, InvalidFile, Image,
 from .vorbiscomment import VorbisComment
 from .id3 import skip_id3v2_comment
 
-import gettext
-
-gettext.install("audiotools", unicode=True)
-
 
 #######################
 #FLAC
@@ -205,6 +201,13 @@ class FlacMetaData(MetaData):
 
         any fixes performed are appended to fixes_performed as unicode"""
 
+        from .text import (CLEAN_FLAC_REORDERED_STREAMINFO,
+                           CLEAN_FLAC_MULITPLE_STREAMINFO,
+                           CLEAN_FLAC_MULTIPLE_VORBISCOMMENT,
+                           CLEAN_FLAC_MULTIPLE_SEEKTABLE,
+                           CLEAN_FLAC_MULTIPLE_CUESHEET,
+                           CLEAN_FLAC_UNDEFINED_BLOCK)
+
         cleaned_blocks = []
 
         for block in self.block_list:
@@ -214,16 +217,16 @@ class FlacMetaData(MetaData):
                     cleaned_blocks.append(block)
                 elif (cleaned_blocks[0].BLOCK_ID != block.BLOCK_ID):
                     fixes_performed.append(
-                        _(u"moved STREAMINFO to first block"))
+                        CLEAN_FLAC_REORDERED_STREAMINFO)
                     cleaned_blocks.insert(0, block)
                 else:
                     fixes_performed.append(
-                        _(u"removing redundant STREAMINFO block"))
+                        CLEAN_FLAC_MULITPLE_STREAMINFO)
             elif (block.BLOCK_ID == Flac_VORBISCOMMENT.BLOCK_ID):
                 if (block.BLOCK_ID in [b.BLOCK_ID for b in cleaned_blocks]):
                     #remove redundant VORBIS_COMMENT blocks
                     fixes_performed.append(
-                        _(u"removing redundant VORBIS_COMMENT block"))
+                        CLEAN_FLAC_MULTIPLE_VORBISCOMMENT)
                 else:
                     #recursively clean up the text fields in FlacVorbisComment
                     cleaned_blocks.append(block.clean(fixes_performed))
@@ -236,21 +239,21 @@ class FlacMetaData(MetaData):
                 #remove redundant seektable, if necessary
                 if (block.BLOCK_ID in [b.BLOCK_ID for b in cleaned_blocks]):
                     fixes_performed.append(
-                        _(u"removing redundant SEEKTABLE block"))
+                        CLEAN_FLAC_MULTIPLE_SEEKTABLE)
                 else:
                     cleaned_blocks.append(block.clean(fixes_performed))
             elif (block.BLOCK_ID == Flac_CUESHEET.BLOCK_ID):
                 #remove redundant cuesheet, if necessary
                 if (block.BLOCK_ID in [b.BLOCK_ID for b in cleaned_blocks]):
                     fixes_performed.append(
-                        _(u"removing redundant CUESHEET block"))
+                        CLEAN_FLAC_MULTIPLE_CUESHEET)
                 else:
                     cleaned_blocks.append(block)
             elif (block.BLOCK_ID == Flac_PADDING.BLOCK_ID):
                 cleaned_blocks.append(block)
             else:
                 #remove undefined blocks
-                fixes_performed.append(_(u"removing undefined block"))
+                fixes_performed.append(CLEAN_FLAC_UNDEFINED_BLOCK)
 
         return self.__class__(cleaned_blocks)
 
@@ -292,10 +295,11 @@ class FlacMetaData(MetaData):
                 block_list.append(Flac_PICTURE.parse(
                         reader.substream(block_length)))
             elif ((block_type >= 7) and (block_type <= 126)):
-                raise ValueError(_(u"reserved metadata block type %d") %
-                                 (block_type))
+                from .text import ERR_FLAC_RESERVED_BLOCK
+                raise ValueError(ERR_FLAC_RESERVED_BLOCK % (block_type))
             else:
-                raise ValueError(_(u"invalid metadata block type"))
+                from .text import ERR_FLAC_INVALID_BLOCK
+                raise ValueError(ERR_FLAC_INVALID_BLOCK)
 
         return cls(block_list)
 
@@ -729,7 +733,8 @@ class Flac_PICTURE(Image):
             (self.height != img.height) or
             (self.color_depth != img.bits_per_pixel) or
             (self.color_count != img.color_count)):
-            fixes_performed.append(_(u"fixed embedded image metadata fields"))
+            from .text import CLEAN_FIX_IMAGE_FIELDS
+            fixes_performed.append(CLEAN_FIX_IMAGE_FIELDS)
             return self.__class__.converted(Image(
                     type=self.type,
                     mime_type=img.mime_type,
@@ -862,15 +867,15 @@ class Flac_SEEKTABLE:
         nonempty_points = [seekpoint for seekpoint in self.seekpoints
                            if (seekpoint[2] != 0)]
         if (len(nonempty_points) != len(self.seekpoints)):
-            fixes_performed.append(
-                _(u"removed empty seekpoints from seektable"))
+            from .text import CLEAN_FLAC_REMOVE_SEEKPOINTS
+            fixes_performed.append(CLEAN_FLAC_REMOVE_SEEKPOINTS)
 
         ascending_order = list(set(nonempty_points))
         ascending_order.sort()
 
         if (ascending_order != nonempty_points):
-            fixes_performed.append(
-                _(u"reordered seektable to be in ascending order"))
+            from .text import CLEAN_FLAC_REORDER_SEEKPOINTS
+            fixes_performed.append(CLEAN_FLAC_REORDER_SEEKPOINTS)
 
         return Flac_SEEKTABLE(ascending_order)
 
@@ -1216,14 +1221,15 @@ class Flac_PADDING:
 class FlacAudio(WaveContainer, AiffContainer):
     """a Free Lossless Audio Codec file"""
 
+    from .text import (COMP_FLAC_0,
+                       COMP_FLAC_8)
+
     SUFFIX = "flac"
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "8"
     COMPRESSION_MODES = tuple(map(str, range(0, 9)))
-    COMPRESSION_DESCRIPTIONS = {"0": _(u"least amount of compresson, " +
-                                       u"fastest compression speed"),
-                                "8": _(u"most amount of compression, " +
-                                       u"slowest compression speed")}
+    COMPRESSION_DESCRIPTIONS = {"0": COMP_FLAC_0,
+                                "8": COMP_FLAC_8}
 
     METADATA_CLASS = FlacMetaData
 
@@ -1335,7 +1341,8 @@ class FlacAudio(WaveContainer, AiffContainer):
         try:
             f.seek(self.__stream_offset__, 0)
             if (f.read(4) != 'fLaC'):
-                raise InvalidFLAC(_(u'Invalid FLAC file'))
+                from .text import ERR_FLAC_INVALID_FILE
+                raise InvalidFLAC(ERR_FLAC_INVALID_FILE)
 
             from .bitstream import BitstreamReader
 
@@ -1360,7 +1367,8 @@ class FlacAudio(WaveContainer, AiffContainer):
             return
 
         if (not isinstance(metadata, FlacMetaData)):
-            raise ValueError(_(u"metadata not from audio file"))
+            from .text import ERR_FOREIGN_METADATA
+            raise ValueError(ERR_FOREIGN_METADATA)
 
         has_padding = len(metadata.get_blocks(Flac_PADDING.BLOCK_ID)) > 0
 
@@ -1412,7 +1420,8 @@ class FlacAudio(WaveContainer, AiffContainer):
             stream.seek(self.__stream_offset__, 0)
 
             if (stream.read(4) != 'fLaC'):
-                raise InvalidFLAC(_(u'Invalid FLAC file'))
+                from .text import ERR_FLAC_INVALID_FILE
+                raise InvalidFLAC(ERR_FLAC_INVALID_FILE)
 
             #skip the existing metadata blocks
             stop = 0
@@ -1536,7 +1545,8 @@ class FlacAudio(WaveContainer, AiffContainer):
             reader = BitstreamReader(f, 0)
 
             if (reader.read_bytes(4) != 'fLaC'):
-                raise InvalidFLAC(_(u'Invalid FLAC file'))
+                from .text import ERR_FLAC_INVALID_FILE
+                raise InvalidFLAC(ERR_FLAC_INVALID_FILE)
 
             stop = 0
             while (stop == 0):
@@ -1574,7 +1584,8 @@ class FlacAudio(WaveContainer, AiffContainer):
             if (block_id in valid_block_ids):
                 yield block_id
             else:
-                raise ValueError(_(u"invalid FLAC block ID"))
+                from .text import ERR_FLAC_INVALID_BLOCK
+                raise ValueError(ERR_FLAC_INVALID_BLOCK)
             reader.skip_bytes(length)
 
     def set_cuesheet(self, cuesheet):
@@ -2103,7 +2114,8 @@ class FlacAudio(WaveContainer, AiffContainer):
             while (stop == 0):
                 (stop, header_type, length) = reader.parse("1u 7u 24u")
                 if (header_type not in valid_header_types):
-                    raise InvalidFLAC(_("invalid header type"))
+                    from .text import ERR_FLAC_INVALID_BLOCK
+                    raise InvalidFLAC(ERR_FLAC_INVALID_BLOCK)
                 elif (header_type == 0):
                     (self.__samplerate__,
                      self.__channels__,
@@ -2279,29 +2291,31 @@ class FlacAudio(WaveContainer, AiffContainer):
                 #remove ID3 tags from before and after FLAC stream
                 stream_offset = skip_id3v2_comment(input_f)
                 if (stream_offset > 0):
-                    fixes_performed.append(_(u"removed ID3v2 tag"))
+                    from .text import CLEAN_FLAC_REMOVE_ID3V2
+                    fixes_performed.append(CLEAN_FLAC_REMOVE_ID3V2)
                 input_f.seek(-128, 2)
                 if (input_f.read(3) == 'TAG'):
-                    fixes_performed.append(_(u"removed ID3v1 tag"))
+                    from .text import CLEAN_FLAC_REMOVE_ID3V1
+                    fixes_performed.append(CLEAN_FLAC_REMOVE_ID3V1)
 
                 #fix empty MD5SUM
                 if (self.__md5__ == chr(0) * 16):
-                    fixes_performed.append(_(u"populated empty MD5SUM"))
+                    from .text import CLEAN_FLAC_POPULATE_MD5
+                    fixes_performed.append(CLEAN_FLAC_POPULATE_MD5)
 
                 #FLAC should always have metadata
                 metadata = self.get_metadata()
 
                 #fix missing WAVEFORMATEXTENSIBLE_CHANNEL_MASK
                 if ((self.channels() > 2) or (self.bits_per_sample() > 16)):
+                    from .text import CLEAN_FLAC_ADD_CHANNELMASK
                     try:
                         if (u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK" not in
                             metadata.get_block(
                                 Flac_VORBISCOMMENT.BLOCK_ID).keys()):
-                            fixes_performed.append(
-                                _(u"added WAVEFORMATEXTENSIBLE_CHANNEL_MASK"))
+                            fixes_performed.append(CLEAN_FLAC_ADD_CHANNELMASK)
                     except IndexError:
-                        fixes_performed.append(
-                            _(u"added WAVEFORMATEXTENSIBLE_CHANNEL_MASK"))
+                        fixes_performed.append(CLEAN_FLAC_ADD_CHANNELMASK)
 
                 #fix an invalid SEEKTABLE, if present
                 try:
@@ -2309,8 +2323,8 @@ class FlacAudio(WaveContainer, AiffContainer):
                             metadata.get_block(Flac_SEEKTABLE.BLOCK_ID),
                             stream_offset + 4 + self.metadata_length(),
                             input_f)):
-                        fixes_performed.append(
-                            _(u"fixed invalid SEEKTABLE"))
+                        from .text import CLEAN_FLAC_FIX_SEEKTABLE
+                        fixes_performed.append(CLEAN_FLAC_FIX_SEEKTABLE)
                 except IndexError:
                     pass
 
@@ -2329,12 +2343,14 @@ class FlacAudio(WaveContainer, AiffContainer):
 
                 stream_offset = skip_id3v2_comment(input_f)
                 if (stream_offset > 0):
-                    fixes_performed.append(_(u"removed ID3v2 tag"))
+                    from .text import CLEAN_FLAC_REMOVE_ID3V2
+                    fixes_performed.append(CLEAN_FLAC_REMOVE_ID3V2)
                     stream_size -= stream_offset
 
                 input_f.seek(-128, 2)
                 if (input_f.read(3) == 'TAG'):
-                    fixes_performed.append(_(u"removed ID3v1 tag"))
+                    from .text import CLEAN_FLAC_REMOVE_ID3V1
+                    fixes_performed.append(CLEAN_FLAC_REMOVE_ID3V1)
                     stream_size -= 128
 
                 output_f = open(output_filename, "wb")
@@ -2366,7 +2382,8 @@ class FlacAudio(WaveContainer, AiffContainer):
                         big_endian=False)
                     metadata.get_block(
                         Flac_STREAMINFO.BLOCK_ID).md5sum = md5sum.digest()
-                    fixes_performed.append(_(u"populated empty MD5SUM"))
+                    from .text import CLEAN_FLAC_POPULATE_MD5
+                    fixes_performed.append(CLEAN_FLAC_POPULATE_MD5)
 
                 #fix missing WAVEFORMATEXTENSIBLE_CHANNEL_MASK
                 if ((self.channels() > 2) or (self.bits_per_sample() > 16)):
@@ -2379,8 +2396,8 @@ class FlacAudio(WaveContainer, AiffContainer):
 
                     if (u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK" not in
                         vorbis_comment.keys()):
-                        fixes_performed.append(
-                            _(u"added WAVEFORMATEXTENSIBLE_CHANNEL_MASK"))
+                        from .text import CLEAN_FLAC_ADD_CHANNELMASK
+                        fixes_performed.append(CLEAN_FLAC_ADD_CHANNELMASK)
                         vorbis_comment[
                             u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = \
                             [u"0x%.4X" % (self.channel_mask())]
@@ -2394,8 +2411,8 @@ class FlacAudio(WaveContainer, AiffContainer):
                             metadata.get_block(Flac_SEEKTABLE.BLOCK_ID),
                             stream_offset + 4 + self.metadata_length(),
                             input_f)):
-                        fixes_performed.append(
-                            _(u"fixed invalid SEEKTABLE"))
+                        from .text import CLEAN_FLAC_FIX_SEEKTABLE
+                        fixes_performed.append(CLEAN_FLAC_FIX_SEEKTABLE)
 
                         metadata.replace_blocks(Flac_SEEKTABLE.BLOCK_ID,
                                                 [self.seektable()])
@@ -2589,10 +2606,11 @@ class OggFlacMetaData(FlacMetaData):
             elif (block_type == 6):  # PICTURE
                 block_list.append(Flac_PICTURE.parse(packet))
             elif ((block_type >= 7) and (block_type <= 126)):
-                raise ValueError(_(u"reserved metadata block type %d") %
-                                 (block_type))
+                from .text import ERR_FLAC_RESERVED_BLOCK
+                raise ValueError(ERR_FLAC_RESERVED_BLOCK % (block_type))
             elif (block_type == 127):
-                raise ValueError(_(u"invalid metadata block type"))
+                from .text import ERR_FLAC_INVALID_BLOCK
+                raise ValueError(ERR_FLAC_INVALID_BLOCK)
 
         return cls(block_list)
 
@@ -2664,14 +2682,14 @@ class __Counter__:
 class OggFlacAudio(FlacAudio):
     """a Free Lossless Audio Codec file inside an Ogg container"""
 
+    from .text import (COMP_FLAC_0, COMP_FLAC_8)
+
     SUFFIX = "oga"
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "8"
     COMPRESSION_MODES = tuple(map(str, range(0, 9)))
-    COMPRESSION_DESCRIPTIONS = {"0": _(u"least amount of compresson, " +
-                                       u"fastest compression speed"),
-                                "8": _(u"most amount of compression, " +
-                                       u"slowest compression speed")}
+    COMPRESSION_DESCRIPTIONS = {"0": COMP_FLAC_0,
+                                "8": COMP_FLAC_8}
     BINARIES = ("flac",)
 
     METADATA_CLASS = OggFlacMetaData
@@ -2746,7 +2764,8 @@ class OggFlacAudio(FlacAudio):
             return None
 
         if (not isinstance(metadata, OggFlacMetaData)):
-            raise ValueError(_(u"metadata not from audio file"))
+            from .text import ERR_FOREIGN_METADATA
+            raise ValueError(ERR_FOREIGN_METADATA)
 
         #always overwrite Ogg FLAC with fresh metadata
         #
@@ -2845,9 +2864,11 @@ class OggFlacAudio(FlacAudio):
              segment_count) = ogg_reader.parse("4b 8u 8u 64S 32u 32u 32u 8u")
 
             if (magic_number != 'OggS'):
-                raise InvalidFLAC(_(u"invalid Ogg magic number"))
+                from .text import ERR_OGG_INVALID_MAGIC_NUMBER
+                raise InvalidFLAC(ERR_OGG_INVALID_MAGIC_NUMBER)
             if (version != 0):
-                raise InvalidFLAC(_(u"invalid Ogg version"))
+                from .text import ERR_OGG_INVALID_VERSION
+                raise InvalidFLAC(ERR_OGG_INVALID_VERSION)
 
             segment_length = ogg_reader.read(8)
 
@@ -2873,15 +2894,20 @@ class OggFlacAudio(FlacAudio):
                 "8u 4b 8u 8u 16u 4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b")
 
             if (packet_byte != 0x7F):
-                raise InvalidFLAC(_(u"invalid packet byte"))
+                from .text import ERR_OGGFLAC_INVALID_PACKET_BYTE
+                raise InvalidFLAC(ERR_OGGFLAC_INVALID_PACKET_BYTE)
             if (ogg_signature != 'FLAC'):
-                raise InvalidFLAC(_(u"invalid Ogg signature"))
+                from .text import ERR_OGGFLAC_INVALID_OGG_SIGNATURE
+                raise InvalidFLAC(ERR_OGGFLAC_INVALID_OGG_SIGNATURE)
             if (major_version != 1):
-                raise InvalidFLAC(_(u"invalid major version"))
+                from .text import ERR_OGGFLAC_INVALID_MAJOR_VERSION
+                raise InvalidFLAC(ERR_OGGFLAC_INVALID_MAJOR_VERSION)
             if (minor_version != 0):
-                raise InvalidFLAC(_(u"invalid minor version"))
+                from .text import ERR_OGGFLAC_INVALID_MINOR_VERSION
+                raise InvalidFLAC(ERR_OGGFLAC_INVALID_MINOR_VERSION)
             if (flac_signature != 'fLaC'):
-                raise InvalidFLAC(_(u"invalid FLAC signature"))
+                from .text import ERR_OGGFLAC_VALID_FLAC_SIGNATURE
+                raise InvalidFLAC(ERR_OGGFLAC_VALID_FLAC_SIGNATURE)
 
             self.__channels__ += 1
             self.__bitspersample__ += 1

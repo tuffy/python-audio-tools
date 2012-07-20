@@ -5685,6 +5685,90 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] id3v2
      - [X] vorbis
      - [X] m4a
+** TODO Replace gettext with string constants
+   Transforming _(u"some text") to SOME_TEXT
+   where SOME_TEXT is a predefined unicode string
+   in an audiotools sub-module.
+   This makes text more consistent *and* easier to modify.
+*** TODO Update utilities
+    - [ ] audiotools-config
+    - [ ] cd2track
+    - [ ] cdinfo
+    - [ ] cdplay
+    - [ ] coverdump
+    - [ ] coverview
+    - [ ] dvda2track
+    - [ ] dvdainfo
+    - [ ] track2cd
+    - [ ] track2track
+    - [ ] trackcat
+    - [ ] trackcmp
+    - [ ] trackinfo
+    - [ ] tracklength
+    - [ ] tracklint
+    - [ ] trackplay
+    - [ ] trackrename
+    - [ ] tracksplit
+    - [ ] tracktag
+    - [ ] trackverify
+*** TODO Update modules
+    - [X] __init__.py
+    - [X] aiff.py
+    - [X] ape.py
+    - [X] au.py
+    - [X] cue.py
+    - [X] dvda.py
+    - [X] flac.py
+    - [ ] image.py
+    - [ ] m4a.py
+    - [ ] m4a_atoms.py
+    - [ ] mp3.py
+    - [ ] ogg.py
+    - [ ] toc.py
+    - [ ] vorbis.py
+    - [ ] vorbiscomment.py
+    - [ ] wav.py
+    - [ ] wavpack.py
+*** TODO Update unit tests
+    - [ ] test_formats.py
+    - [ ] test_metadata.py
+    - [ ] test_utils.py
+*** TODO Remove gettext
+    - [ ] audiotools-config
+    - [ ] cd2track
+    - [ ] cdinfo
+    - [ ] cdplay
+    - [ ] coverdump
+    - [ ] coverview
+    - [ ] dvda2track
+    - [ ] dvdainfo
+    - [ ] track2cd
+    - [ ] track2track
+    - [ ] trackcat
+    - [ ] trackcmp
+    - [ ] trackinfo
+    - [ ] tracklength
+    - [ ] tracklint
+    - [ ] trackplay
+    - [ ] trackrename
+    - [ ] tracksplit
+    - [ ] tracktag
+    - [ ] trackverify
+    - [X] audiotools/__init__.py
+    - [X] audiotools/aiff.py
+    - [X] audiotools/ape.py
+    - [X] audiotools/au.py
+    - [X] audiotools/cue.py
+    - [X] audiotools/flac.py
+    - [X] audiotools/id3.py
+    - [ ] audiotools/image.py
+    - [ ] audiotools/m4a.py
+    - [ ] audiotools/mp3.py
+    - [ ] audiotools/toc.py
+    - [ ] audiotools/vorbis.py
+    - [ ] audiotools/wav.py
+    - [ ] audiotools/wavpack.py
+*** TODO Ensure unit tests pass
 ** TODO Remove Python Imaging Library requirement
    This is only used for thumbnailing
    and for TKinter-based image display.
