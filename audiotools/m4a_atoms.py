@@ -87,7 +87,8 @@ class M4A_Tree_Atom:
         try:
             iter(leaf_atoms)
         except TypeError:
-            raise TypeError(_(u"leaf atoms must be a list"))
+            from .text import ERR_M4A_INVALID_LEAF_ATOMS
+            raise TypeError(ERR_M4A_INVALID_LEAF_ATOMS)
         self.leaf_atoms = leaf_atoms
 
     def copy(self):
@@ -1425,13 +1426,15 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                 text = atom['data'].data.decode('utf-8')
                 fix1 = text.rstrip()
                 if (fix1 != text):
+                    from .text import CLEAN_REMOVE_TRAILING_WHITESPACE
                     fixes_performed.append(
-                        _(u"removed trailing whitespace from %(field)s") %
+                        CLEAN_REMOVE_TRAILING_WHITESPACE %
                         {"field": atom.name.lstrip('\xa9').decode('ascii')})
                 fix2 = fix1.lstrip()
                 if (fix2 != fix1):
+                    from .text import CLEAN_REMOVE_LEADING_WHITESPACE
                     fixes_performed.append(
-                        _(u"removed leading whitespace from %(field)s") %
+                        CLEAN_REMOVE_LEADING_WHITESPACE %
                         {"field": atom.name.lstrip('\xa9').decode('ascii')})
                 if (len(fix2) > 0):
                     return M4A_ILST_Leaf_Atom(
@@ -1439,8 +1442,9 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                         [M4A_ILST_Unicode_Data_Atom(0, 1,
                                                     fix2.encode('utf-8'))])
                 else:
+                    from .text import CLEAN_REMOVE_EMPTY_TAG
                     fixes_performed.append(
-                        _(u"removed empty field %(field)s") %
+                        CLEAN_REMOVE_EMPTY_TAG %
                         {"field": atom.name.lstrip('\xa9').decode('ascii')})
                     return None
             else:

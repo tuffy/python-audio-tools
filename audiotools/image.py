@@ -18,11 +18,8 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import imghdr
-import gettext
 from .bitstream import BitstreamReader, format_size
 from . import InvalidImage
-
-gettext.install("audiotools", unicode=True)
 
 
 def __jpeg__(h, f):
@@ -58,7 +55,8 @@ def image_metrics(file_data):
         elif (header == 'tiff'):
             return __TIFF__.parse(file)
         else:
-            raise InvalidImage(_(u'Unknown image type'))
+            from .text import ERR_IMAGE_UNKNOWN_TYPE
+            raise InvalidImage(ERR_IMAGE_UNKNOWN_TYPE)
     finally:
         file.close()
 
@@ -117,7 +115,8 @@ class __JPEG__(ImageMetrics):
     def parse(cls, file):
         def segments(reader):
             if (reader.read(8) != 0xFF):
-                raise InvalidJPEG(_(u"Invalid JPEG segment marker"))
+                from .text import ERR_IMAGE_INVALID_JPEG_MARKER
+                raise InvalidJPEG(ERR_IMAGE_INVALID_JPEG_MARKER)
             segment_type = reader.read(8)
 
             while (segment_type != 0xDA):
@@ -127,7 +126,8 @@ class __JPEG__(ImageMetrics):
                     yield (segment_type, None)
 
                 if (reader.read(8) != 0xFF):
-                    raise InvalidJPEG(_(u"Invalid JPEG segment marker"))
+                    from .text import ERR_IMAGE_INVALID_JPEG_MARKER
+                    raise InvalidJPEG(ERR_IMAGE_INVALID_JPEG_MARKER)
                 segment_type = reader.read(8)
 
         for (segment_type, segment_data) in segments(BitstreamReader(file, 0)):
@@ -164,7 +164,8 @@ class __PNG__(ImageMetrics):
     def parse(cls, file):
         def chunks(reader):
             if (reader.read_bytes(8) != '\x89\x50\x4E\x47\x0D\x0A\x1A\x0A'):
-                raise InvalidPNG(_(u'Invalid PNG'))
+                from .text import ERR_IMAGE_INVALID_PNG
+                raise InvalidPNG(ERR_IMAGE_INVALID_PNG)
             (chunk_length, chunk_type) = reader.parse("32u 4b")
             while (chunk_type != 'IEND'):
                 yield (chunk_type,
@@ -185,7 +186,8 @@ class __PNG__(ImageMetrics):
                 plte_length = chunk_length
 
         if (ihdr is None):
-            raise InvalidPNG(_(u"Invalid PNG"))
+            from .text import ERR_IMAGE_INVALID_PNG
+            raise InvalidPNG(ERR_IMAGE_INVALID_PNG)
 
         (width,
          height,
@@ -207,7 +209,8 @@ class __PNG__(ImageMetrics):
                        color_count=0)
         elif (color_type == 3):  # palette
             if ((plte_length % 3) != 0):
-                raise InvalidPNG(_(u'Invalid PLTE chunk length'))
+                from .text import ERR_IMAGE_INVALID_PLTE
+                raise InvalidPNG(ERR_IMAGE_INVALID_PLTE)
             else:
                 return cls(width=width,
                            height=height,
@@ -259,7 +262,8 @@ class __BMP__(ImageMetrics):
             "2b 32u 16p 16p 32u " +
             "32u 32u 32u 16u 16u 32u 32u 32u 32u 32u 32u")
         if (magic_number != 'BM'):
-            raise InvalidBMP(_(u'Invalid BMP'))
+            from .text import ERR_IMAGE_INVALID_BMP
+            raise InvalidBMP(ERR_IMAGE_INVALID_BMP)
         else:
             return cls(width=width,
                        height=height,
@@ -358,10 +362,12 @@ class __TIFF__(ImageMetrics):
         elif (byte_order == 'MM'):
             order = 0
         else:
-            raise InvalidTIFF(_(u"Invalid TIFF"))
+            from .text import ERR_IMAGE_INVALID_TIFF
+            raise InvalidTIFF(ERR_IMAGE_INVALID_TIFF)
         reader = BitstreamReader(file, order)
         if (reader.read(16) != 42):
-            raise InvalidTIFF(_(u"Invalid TIFF"))
+            from .text import ERR_IMAGE_INVALID_TIFF
+            raise InvalidTIFF(ERR_IMAGE_INVALID_TIFF)
 
         initial_ifd = reader.read(32)
         file.seek(initial_ifd, 0)

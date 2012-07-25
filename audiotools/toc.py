@@ -20,9 +20,6 @@
 """the TOC file handling module"""
 
 from . import SheetException
-import gettext
-
-gettext.install("audiotools", unicode=True)
 
 ###################
 #TOC Parsing
@@ -48,7 +45,8 @@ def parse(lines):
     lines = list(lines)
 
     if ('CD_DA' not in [line.strip() for line in lines]):
-        raise TOCException(_(u"No CD_DA TOC header found"))
+        from .text import ERR_TOC_NO_HEADER
+        raise TOCException(ERR_TOC_NO_HEADER)
 
     lines = iter(lines)
 

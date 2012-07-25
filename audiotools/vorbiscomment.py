@@ -458,22 +458,23 @@ class VorbisComment(MetaData):
                     attr = reverse_attr_map[key.upper()]
                     #handle all text fields by stripping whitespace
                     if (len(value.strip()) == 0):
+                        from .text import CLEAN_REMOVE_EMPTY_TAG
                         fixes_performed.append(
-                            _(u"removed empty field %(field)s") %
+                            CLEAN_REMOVE_EMPTY_TAG %
                             {"field": key})
                     else:
                         fix1 = value.rstrip()
                         if (fix1 != value):
+                            from .text import CLEAN_REMOVE_TRAILING_WHITESPACE
                             fixes_performed.append(
-                              _(u"removed trailing whitespace " +
-                                u"from %(field)s") %
+                              CLEAN_REMOVE_TRAILING_WHITESPACE %
                               {"field": key})
 
                         fix2 = fix1.lstrip()
                         if (fix2 != fix1):
+                            from .text import CLEAN_REMOVE_LEADING_WHITESPACE
                             fixes_performed.append(
-                              _(u"removed leading whitespace " +
-                                "from %(field)s") %
+                              CLEAN_REMOVE_LEADING_WHITESPACE %
                               {"field": key})
 
                         #integer fields also strip leading zeroes
@@ -488,25 +489,28 @@ class VorbisComment(MetaData):
                                     match.group(2).lstrip(u"0"))
 
                                 if (fix3 != fix2):
+                                    from .text import (
+                                        CLEAN_REMOVE_LEADING_WHITESPACE_ZEROES)
                                     fixes_performed.append(
-                                        _(u"removed whitespace/zeroes " +
-                                          u"from %(field)s") %
+                                        CLEAN_REMOVE_LEADING_WHITESPACE_ZEROES %
                                         {"field": key})
                             else:
                                 #fix zeroes only
                                 fix3 = fix2.lstrip(u"0")
 
                                 if (fix3 != fix2):
+                                    from .text import (
+                                        CLEAN_REMOVE_LEADING_ZEROES)
                                     fixes_performed.append(
-                                        _(u"removed leading zeroes " +
-                                          u"from %(field)s") %
+                                        CLEAN_REMOVE_LEADING_ZEROES %
                                         {"field": key})
                         elif ((attr == "track_total") or
                               (attr == "album_total")):
                             fix3 = fix2.lstrip(u"0")
                             if (fix3 != fix2):
+                                from .text import CLEAN_REMOVE_LEADING_ZEROES
                                 fixes_performed.append(
-                                 _(u"removed leading zeroes from %(field)s") %
+                                 CLEAN_REMOVE_LEADING_ZEROES %
                                  {"field": key})
                         else:
                             fix3 = fix2

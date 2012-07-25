@@ -19,9 +19,6 @@
 
 
 from audiotools import (AudioFile, InvalidFile)
-import gettext
-
-gettext.install("audiotools", unicode=True)
 
 
 #######################
@@ -38,6 +35,13 @@ class InvalidMP3(InvalidFile):
 class MP3Audio(AudioFile):
     """an MP3 audio file"""
 
+    from .text import (COMP_LAME_0,
+                       COMP_LAME_6,
+                       COMP_LAME_MEDIUM,
+                       COMP_LAME_STANDARD,
+                       COMP_LAME_EXTREME,
+                       COMP_LAME_INSANE)
+
     SUFFIX = "mp3"
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "2"
@@ -45,18 +49,12 @@ class MP3Audio(AudioFile):
     #9 is worse quality/higher compression
     COMPRESSION_MODES = ("0", "1", "2", "3", "4", "5", "6",
                          "medium", "standard", "extreme", "insane")
-    COMPRESSION_DESCRIPTIONS = {"0": _(u"high quality, larger files, " +
-                                       u"corresponds to lame's -V0"),
-                                "6": _(u"lower quality, smaller files, " +
-                                       u"corresponds to lame's -V6"),
-                                "medium": _(u"corresponds to lame's " +
-                                            u"--preset medium"),
-                                "standard": _(u"corresponds to lame's " +
-                                              u"--preset standard"),
-                                "extreme": _(u"corresponds to lame's " +
-                                             u"--preset extreme"),
-                                "insane": _(u"corresponds to lame's " +
-                                            u"--preset insane")}
+    COMPRESSION_DESCRIPTIONS = {"0": COMP_LAME_0,
+                                "6": COMP_LAME_6,
+                                "medium": COMP_LAME_MEDIUM,
+                                "standard": COMP_LAME_STANDARD,
+                                "extreme": COMP_LAME_EXTREME,
+                                "insane": COMP_LAME_INSANE}
     BINARIES = ("lame", "mpg123")
     REPLAYGAIN_BINARIES = ("mp3gain", )
 
@@ -131,7 +129,8 @@ class MP3Audio(AudioFile):
             try:
                 header_bytes = MP3Audio.__find_next_mp3_frame__(mp3file)
             except IOError:
-                raise InvalidMP3(_(u"MP3 frame not found"))
+                from .text import ERR_MP3_FRAME_NOT_FOUND
+                raise InvalidMP3(ERR_MP3_FRAME_NOT_FOUND)
 
             (frame_sync,
              mpeg_id,
@@ -144,7 +143,8 @@ class MP3Audio(AudioFile):
 
             self.__samplerate__ = self.SAMPLE_RATE[mpeg_id][sample_rate]
             if (self.__samplerate__ is None):
-                raise InvalidMP3(_(u"Invalid sample rate"))
+                from .text import ERR_MP3_INVALID_SAMPLE_RATE
+                raise InvalidMP3(ERR_MP3_INVALID_SAMPLE_RATE)
             if (channels in (0, 1, 2)):
                 self.__channels__ = 2
             else:
@@ -407,7 +407,8 @@ class MP3Audio(AudioFile):
         elif (not (isinstance(metadata, ID3v2Comment) or
                    isinstance(metadata, ID3CommentPair) or
                    isinstance(metadata, ID3v1Comment))):
-            raise ValueError(_(u"metadata not from audio file"))
+            from .text import ERR_FOREIGN_METADATA
+            raise ValueError(ERR_FOREIGN_METADATA)
 
         #get the original MP3 data
         f = file(self.filename, "rb")
@@ -603,10 +604,12 @@ class MP3Audio(AudioFile):
 
         sample_rate = self.SAMPLE_RATE[mpeg_id][sample_rate]
         if (sample_rate is None):
-            raise ValueError(_(u"Invalid sample rate"))
+            from .text import ERR_MP3_INVALID_SAMPLE_RATE
+            raise ValueError(ERR_MP3_INVALID_SAMPLE_RATE)
         bit_rate = self.BIT_RATE[mpeg_id][layer][bit_rate]
         if (bit_rate is None):
-            raise ValueError(_(u"Invalid bit rate"))
+            from .text import ERR_MP3_INVALID_BIT_RATE
+            raise ValueError(ERR_MP3_INVALID_BIT_RATE)
         if (layer == 3):  # layer I
             return (((12 * bit_rate) / sample_rate) + pad) * 4
         else:             # layer II/III
@@ -722,13 +725,16 @@ class MP3Audio(AudioFile):
 class MP2Audio(MP3Audio):
     """an MP2 audio file"""
 
+    from .text import (COMP_TWOLAME_64,
+                       COMP_TWOLAME_384)
+
     SUFFIX = "mp2"
     NAME = SUFFIX
     DEFAULT_COMPRESSION = str(192)
     COMPRESSION_MODES = tuple(map(str, (64,  96,  112, 128, 160, 192,
                                         224, 256, 320, 384)))
-    COMPRESSION_DESCRIPTIONS = {"64": _(u"total bitrate of 64kbps"),
-                                "384": _(u"total bitrate of 384kbps")}
+    COMPRESSION_DESCRIPTIONS = {"64": COMP_TWOLAME_64,
+                                "384": COMP_TWOLAME_384}
     BINARIES = ("mpg123", "twolame")
 
     @classmethod

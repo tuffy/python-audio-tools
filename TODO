@@ -5719,20 +5719,17 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] cue.py
     - [X] dvda.py
     - [X] flac.py
-    - [ ] image.py
-    - [ ] m4a.py
-    - [ ] m4a_atoms.py
-    - [ ] mp3.py
-    - [ ] ogg.py
-    - [ ] toc.py
-    - [ ] vorbis.py
-    - [ ] vorbiscomment.py
-    - [ ] wav.py
-    - [ ] wavpack.py
-*** TODO Update unit tests
-    - [ ] test_formats.py
-    - [ ] test_metadata.py
-    - [ ] test_utils.py
+    - [X] image.py
+    - [X] m4a.py
+    - [X] m4a_atoms.py
+    - [X] mp3.py
+    - [X] ogg.py
+    - [X] toc.py
+    - [ ] ui.py
+    - [X] vorbis.py
+    - [X] vorbiscomment.py
+    - [X] wav.py
+    - [X] wavpack.py
 *** TODO Remove gettext
     - [ ] audiotools-config
     - [ ] cd2track
@@ -5761,13 +5758,17 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] audiotools/cue.py
     - [X] audiotools/flac.py
     - [X] audiotools/id3.py
-    - [ ] audiotools/image.py
-    - [ ] audiotools/m4a.py
-    - [ ] audiotools/mp3.py
-    - [ ] audiotools/toc.py
-    - [ ] audiotools/vorbis.py
-    - [ ] audiotools/wav.py
-    - [ ] audiotools/wavpack.py
+    - [X] audiotools/image.py
+    - [X] audiotools/m4a.py
+    - [X] audiotools/mp3.py
+    - [X] audiotools/toc.py
+    - [X] audiotools/vorbis.py
+    - [X] audiotools/wav.py
+    - [X] audiotools/wavpack.py
+*** TODO Update unit tests
+    - [ ] test_formats.py
+    - [ ] test_metadata.py
+    - [ ] test_utils.py
 *** TODO Ensure unit tests pass
 ** TODO Remove Python Imaging Library requirement
    This is only used for thumbnailing

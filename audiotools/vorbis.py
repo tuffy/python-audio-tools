@@ -18,9 +18,6 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools import (AudioFile, InvalidFile, ChannelMask)
-import gettext
-
-gettext.install("audiotools", unicode=True)
 
 
 class InvalidVorbis(InvalidFile):
@@ -47,14 +44,15 @@ def verify_ogg_stream(stream):
 class VorbisAudio(AudioFile):
     """an Ogg Vorbis file"""
 
+    from .text import (COMP_VORBIS_0,
+                       COMP_VORBIS_10)
+
     SUFFIX = "ogg"
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "3"
     COMPRESSION_MODES = tuple([str(i) for i in range(0, 11)])
-    COMPRESSION_DESCRIPTIONS = {"0": _(u"very low quality, " +
-                                       u"corresponds to oggenc -q 0"),
-                                "10": _(u"very high quality, " +
-                                        u"corresponds to oggenc -q 10")}
+    COMPRESSION_DESCRIPTIONS = {"0": COMP_VORBIS_0,
+                                "10": COMP_VORBIS_10}
     BINARIES = ("oggenc", "oggdec")
     REPLAYGAIN_BINARIES = ("vorbisgain", )
 
@@ -96,9 +94,11 @@ class VorbisAudio(AudioFile):
              segment_count) = ogg_reader.parse("4b 8u 8u 64S 32u 32u 32u 8u")
 
             if (magic_number != 'OggS'):
-                raise InvalidFLAC(_(u"invalid Ogg magic number"))
+                from .text import ERR_OGG_INVALID_MAGIC_NUMBER
+                raise InvalidFLAC(ERR_OGG_INVALID_MAGIC_NUMBER)
             if (version != 0):
-                raise InvalidFLAC(_(u"invalid Ogg version"))
+                from .text import ERR_OGG_INVALID_VERSION
+                raise InvalidFLAC(ERR_OGG_INVALID_VERSION)
 
             segment_length = ogg_reader.read(8)
 
@@ -116,13 +116,17 @@ class VorbisAudio(AudioFile):
                 "8u 6b 32u 8u 32u 32u 32u 32u 4u 4u 1u")
 
             if (vorbis_type != 1):
-                raise InvalidVorbis(_(u"invalid Vorbis type"))
+                from .text import ERR_VORBIS_INVALID_TYPE
+                raise InvalidVorbis(ERR_VORBIS_INVALID_TYPE)
             if (header != 'vorbis'):
-                raise InvalidVorbis(_(u"invalid Vorbis header"))
+                from .text import ERR_VORBIS_INVALID_HEADER
+                raise InvalidVorbis(ERR_VORBIS_INVALID_HEADER)
             if (version != 0):
-                raise InvalidVorbis(_(u"invalid Vorbis version"))
+                from .text import ERR_VORBIS_INVALID_VERSION
+                raise InvalidVorbis(ERR_VORBIS_INVALID_VERSION)
             if (framing != 1):
-                raise InvalidVorbis(_(u"invalid framing bit"))
+                from .text import ERR_VORBIS_INVALID_FRAMING_BIT
+                raise InvalidVorbis(ERR_VORBIS_INVALID_FRAMING_BIT)
         finally:
             f.close()
 
@@ -365,7 +369,8 @@ class VorbisAudio(AudioFile):
             return
 
         if (not isinstance(metadata, VorbisComment)):
-            raise ValueError(_(u"metadata not from audio file"))
+            from .text import ERR_FOREIGN_METADATA
+            raise ValueError(ERR_FOREIGN_METADATA)
 
         original_reader = BitstreamReader(open(self.filename, "rb"), 1)
         original_ogg = OggStreamReader(original_reader)

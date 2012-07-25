@@ -21,9 +21,6 @@
 from . import (AudioFile, InvalidFile, PCMReader, WaveContainer)
 from .pcm import FrameList
 import struct
-import gettext
-
-gettext.install("audiotools", unicode=True)
 
 #######################
 #RIFF WAVE
@@ -241,9 +238,11 @@ class WaveReader(PCMReader):
         try:
             (riff, wave) = wave_reader.parse("4b 32p 4b")
             if (riff != 'RIFF'):
-                raise InvalidWave(_(u"Not a RIFF WAVE file"))
+                from .text import ERR_WAV_NOT_WAVE
+                raise InvalidWave(ERR_WAV_NOT_WAVE)
             elif (wave != 'WAVE'):
-                raise InvalidWave(_(u"Invalid RIFF WAVE file"))
+                from .text import ERR_WAV_INVALID_WAVE
+                raise InvalidWave(ERR_WAV_INVALID_WAVE)
 
             while (True):
                 (chunk_id, chunk_size) = wave_reader.parse("4b 32u")
@@ -258,7 +257,8 @@ class WaveReader(PCMReader):
                         wave_reader.skip(8)
 
         except IOError:
-            raise InvalidWave(_(u"data chunk not found"))
+            from .text import ERR_WAV_NO_DATA_CHUNK
+            raise InvalidWave(ERR_WAV_NO_DATA_CHUNK)
 
     def read(self, pcm_frames):
         """try to read a pcm.FrameList with the given number of PCM frames"""
@@ -754,12 +754,15 @@ class WaveAudio(WaveContainer):
              total_size,
              wave) = struct.unpack("<4sI4s", wave_file.read(12))
         except struct.error:
-            raise InvalidWave(_(u"Invalid RIFF WAVE file"))
+            from .text import ERR_WAV_INVALID_WAVE
+            raise InvalidWave(ERR_WAV_INVALID_WAVE)
 
         if (riff != 'RIFF'):
-            raise InvalidWave(_(u"Not a RIFF WAVE file"))
+            from .text import ERR_WAV_NOT_WAVE
+            raise InvalidWave(ERR_WAV_NOT_WAVE)
         elif (wave != 'WAVE'):
-            raise InvalidWave(_(u"Invalid RIFF WAVE file"))
+            from .text import ERR_WAV_INVALID_WAVE
+            raise InvalidWave(ERR_WAV_INVALID_WAVE)
         else:
             total_size -= 4
 
@@ -769,9 +772,11 @@ class WaveAudio(WaveContainer):
                 (chunk_id,
                  chunk_size) = struct.unpack("<4sI", wave_file.read(8))
             except struct.error:
-                raise InvalidWave(_(u"Invalid RIFF WAVE file"))
+                from .text import ERR_WAV_INVALID_WAVE
+                raise InvalidWave(ERR_WAV_INVALID_WAVE)
             if (not frozenset(chunk_id).issubset(self.PRINTABLE_ASCII)):
-                raise InvalidWave(_(u"Invalid RIFF WAVE chunk ID"))
+                from .text import ERR_WAV_INVALID_CHUNK
+                raise InvalidWave(ERR_WAV_INVALID_CHUNK)
             else:
                 total_size -= 8
 
@@ -790,7 +795,8 @@ class WaveAudio(WaveContainer):
 
             if (chunk_size % 2):
                 if (len(wave_file.read(1)) < 1):
-                    raise InvalidWave(_(u"Invalid RIFF WAVE chunk"))
+                    from .text import ERR_WAV_INVALID_CHUNK
+                    raise InvalidWave(ERR_WAV_INVALID_CHUNK)
                 total_size -= (chunk_size + 1)
             else:
                 total_size -= chunk_size
@@ -850,9 +856,11 @@ class WaveAudio(WaveContainer):
             #transfer the 12-byte "RIFFsizeWAVE" header to head
             (riff, size, wave) = wave_file.parse("4b 32u 4b")
             if (riff != 'RIFF'):
-                raise InvalidWave(_(u"Not a RIFF WAVE file"))
+                from .text import ERR_WAV_NOT_WAVE
+                raise InvalidWave(ERR_WAV_NOT_WAVE)
             elif (wave != 'WAVE'):
-                raise InvalidWave(_(u"Invalid RIFF WAVE file"))
+                from .text import ERR_WAV_INVALID_WAVE
+                raise InvalidWave(ERR_WAV_INVALID_WAVE)
             else:
                 current_block.build("4b 32u 4b", (riff, size, wave))
                 total_size = size - 4
@@ -861,7 +869,8 @@ class WaveAudio(WaveContainer):
                 #transfer each chunk header
                 (chunk_id, chunk_size) = wave_file.parse("4b 32u")
                 if (not frozenset(chunk_id).issubset(self.PRINTABLE_ASCII)):
-                    raise InvalidWave(_(u"Invalid RIFF WAVE chunk ID"))
+                    from .text import ERR_WAV_INVALID_CHUNK
+                    raise InvalidWave(ERR_WAV_INVALID_CHUNK)
                 else:
                     current_block.build("4b 32u", (chunk_id, chunk_size))
                     total_size -= 8
@@ -912,24 +921,30 @@ class WaveAudio(WaveContainer):
                 if (not fmt_found):
                     fmt_found = True
                 else:
-                    raise InvalidWave(_(u"multiple fmt chunks found"))
+                    from .text import ERR_WAV_MULTIPLE_FMT
+                    raise InvalidWave(ERR_WAV_MULTIPLE_FMT)
 
             elif (chunk.id == "data"):
                 if (not fmt_found):
-                    raise InvalidWave(_(u"data chunk found before fmt"))
+                    from .text import ERR_WAV_PREMATURE_DATA
+                    raise InvalidWave(ERR_WAV_PREMATURE_DATA)
                 elif (data_found):
-                    raise InvalidWave(_(u"multiple data chunks found"))
+                    from .text import ERR_WAV_MULTIPLE_DATA
+                    raise InvalidWave(ERR_WAV_MULTIPLE_DATA)
                 else:
                     data_found = True
 
             if (not chunk.verify()):
-                raise InvalidWave(_(u"truncated %s chunk found") %
+                from .text import ERR_WAV_TRUNCATED_CHUNK
+                raise InvalidWave(ERR_WAV_TRUNCATED_CHUNK %
                                   (chunk.id.decode('ascii')))
 
         if (not fmt_found):
-            raise InvalidWave(_(u"fmt chunk not found"))
+            from .text import ERR_WAV_NO_FMT_CHUNK
+            raise InvalidWave(ERR_WAV_NO_FMT_CHUNK)
         if (not data_found):
-            raise InvalidWave(_(u"data chunk not found"))
+            from .text import ERR_WAV_NO_DATA_CHUNK
+            raise InvalidWave(ERR_WAV_NO_DATA_CHUNK)
 
         if (progress is not None):
             progress(1, 1)
@@ -956,8 +971,8 @@ class WaveAudio(WaveContainer):
         for chunk in self.chunks():
             if (chunk.id == "fmt "):
                 if ("fmt " in [c.id for c in chunk_queue]):
-                    fixes_performed.append(
-                        _(u"multiple fmt chunks found"))
+                    from .text import CLEAN_WAV_MULTIPLE_FMT_CHUNKS
+                    fixes_performed.append(CLEAN_WAV_MULTIPLE_FMT_CHUNKS)
                 else:
                     chunk_queue.append(chunk)
                     if (pending_data is not None):
@@ -965,10 +980,12 @@ class WaveAudio(WaveContainer):
                         pending_data = None
             elif (chunk.id == "data"):
                 if ("fmt " not in [c.id for c in chunk_queue]):
-                    fixes_performed.append(_(u"data chunk found before fmt"))
+                    from .text import CLEAN_WAV_REORDERED_DATA_CHUNK
+                    fixes_performed.append(CLEAN_WAV_REORDERED_DATA_CHUNK)
                     pending_data = chunk
                 elif ("data" in [c.id for c in chunk_queue]):
-                    fixes_performed.append(_(u"multiple data chunks found"))
+                    from .text import CLEAN_WAV_MULTIPLE_DATA_CHUNKS
+                    fixes_performed.append(CLEAN_WAV_MULTIPLE_DATA_CHUNKS)
                 else:
                     chunk_queue.append(chunk)
             else:

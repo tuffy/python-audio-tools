@@ -168,9 +168,11 @@ class OggStreamReader:
          version,
          self.serial_number) = self.reader.parse("4b 8u 8p 64p 32u")
         if (magic_number != "OggS"):
-            raise ValueError(_(u"invalid Ogg serial number"))
+            from .text import ERR_OGG_INVALID_MAGIC_NUMBER
+            raise ValueError(ERR_OGG_INVALID_MAGIC_NUMBER)
         elif (version != 0):
-            raise ValueError(_(u"invalid Ogg version"))
+            from .text import ERR_OGG_INVALID_VERSION
+            raise ValueError(ERR_OGG_INVALID_VERSION)
 
         self.reader.rewind()
         self.reader.unmark()
@@ -215,7 +217,8 @@ class OggStreamReader:
 
         #verify calculated checksum against found checksum
         if (int(self.checksum) != checksum):
-            raise ValueError(_(u"Ogg page checksum mismatch"))
+            from .text import ERR_OGG_CHECKSUM_MISMATCH
+            raise ValueError(ERR_OGG_CHECKSUM_MISMATCH)
         else:
             return (granule_position, segments,
                     continuation, first_page, last_page)

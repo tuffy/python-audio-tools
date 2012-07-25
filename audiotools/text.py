@@ -54,6 +54,47 @@ COMP_FLAC_0 = \
 COMP_FLAC_8 = \
     u"most amount of compression, slowest compression speed"
 
+COMP_NERO_LOW = \
+    u"lowest quality, corresponds to neroAacEnc -q 0.4"
+
+COMP_NERO_HIGH = \
+    u"highest quality, corresponds to neroAacEnc -q 1"
+
+COMP_LAME_0 = \
+    u"high quality, larger files, corresponds to lame's -V0"
+
+COMP_LAME_6 = \
+    u"lower quality, smaller files, corresponds to lame's -V6"
+
+COMP_LAME_MEDIUM = \
+    u"corresponds to lame's --preset medium"
+
+COMP_LAME_STANDARD = \
+    u"corresponds to lame's --preset standard"
+
+COMP_LAME_EXTREME = \
+    u"corresponds to lame's --preset extreme"
+
+COMP_LAME_INSANE = \
+    u"corresponds to lame's --preset insane"
+
+COMP_TWOLAME_64 = \
+    u"total bitrate of 64kbps"
+
+COMP_TWOLAME_384 = \
+    u"total bitrate of 384kbps"
+
+COMP_VORBIS_0 = \
+    u"very low quality, corresponds to oggenc -q 0"
+
+COMP_VORBIS_10 = \
+    u"very high quality, corresponds to oggenc -q 10"
+
+COMP_WAVPACK_VERYFAST = \
+    u"fastest encode/decode, worst compression"
+
+COMP_WAVPACK_VERYHIGH = \
+    u"slowest encode/decode, best compression"
 
 #Errors
 ERR_UNSUPPORTED_CHANNEL_MASK = \
@@ -221,6 +262,9 @@ ERR_OGG_INVALID_MAGIC_NUMBER = \
 ERR_OGG_INVALID_VERSION = \
     u"invalid Ogg version"
 
+ERR_OGG_CHECKSUM_MISMATCH = \
+    u"Ogg page checksum mismatch"
+
 ERR_OGGFLAC_INVALID_PACKET_BYTE = \
     u"invalid packet byte"
 
@@ -236,6 +280,117 @@ ERR_OGGFLAC_INVALID_MINOR_VERSION = \
 ERR_OGGFLAC_VALID_FLAC_SIGNATURE = \
     u"invalid FLAC signature"
 
+ERR_IMAGE_UNKNOWN_TYPE = \
+    u"unknown image type"
+
+ERR_IMAGE_INVALID_JPEG_MARKER = \
+    u"Invalid JPEG segment marker"
+
+ERR_IMAGE_INVALID_PNG = \
+    u"Invalid PNG"
+
+ERR_IMAGE_INVALID_PLTE = \
+    u"Invalid PLTE chunk length"
+
+ERR_IMAGE_INVALID_BMP = \
+    u"Invalid BMP"
+
+ERR_IMAGE_INVALID_TIFF = \
+    u"Invalid TIFF"
+
+ERR_M4A_IOERROR = \
+    u"I/O error opening M4A file"
+
+ERR_M4A_MISSING_MDIA = \
+    u"Required mdia atom not found"
+
+ERR_M4A_MISSING_STSD = \
+    u"Required stsd atom not found"
+
+ERR_M4A_INVALID_MP4A = \
+    u"Invalid mp4a atom"
+
+ERR_M4A_MISSING_MDHD = \
+    u"Required mdhd atom not found"
+
+ERR_M4A_UNSUPPORTED_MDHD = \
+    u"Unsupported mdhd version"
+
+ERR_M4A_INVALID_MDHD = \
+    u"Invalid mdhd atom"
+
+ERR_M4A_INVALID_LEAF_ATOMS = \
+    u"leaf atoms must be a list"
+
+ERR_ALAC_IOERROR = \
+    u"I/O error opening ALAC file"
+
+ERR_ALAC_INVALID_ALAC = \
+    u"Invalid alac atom"
+
+ERR_MP3_FRAME_NOT_FOUND = \
+    u"MP3 frame not found"
+
+ERR_MP3_INVALID_SAMPLE_RATE = \
+    u"Invalid sample rate"
+
+ERR_MP3_INVALID_BIT_RATE = \
+    u"Invalid bit rate"
+
+ERR_TOC_NO_HEADER = \
+    u"No CD_DA TOC header found"
+
+ERR_VORBIS_INVALID_TYPE = \
+    u"invalid Vorbis type"
+
+ERR_VORBIS_INVALID_HEADER = \
+    u"invalid Vorbis header"
+
+ERR_VORBIS_INVALID_VERSION = \
+    u"invalid Vorbis version"
+
+ERR_VORBIS_INVALID_FRAMING_BIT = \
+    u"invalid framing bit"
+
+ERR_WAV_NOT_WAVE = \
+    u"Not a RIFF WAVE file"
+
+ERR_WAV_INVALID_WAVE = \
+    u"Invalid RIFF WAVE file"
+
+ERR_WAV_NO_DATA_CHUNK = \
+    u"data chunk not found"
+
+ERR_WAV_INVALID_CHUNK = \
+    u"Invalid RIFF WAVE chunk ID"
+
+ERR_WAV_MULTIPLE_FMT = \
+    u"multiple fmt chunks found"
+
+ERR_WAV_PREMATURE_DATA = \
+    u"data chunk found before fmt"
+
+ERR_WAV_MULTIPLE_DATA = \
+    u"multiple data chunks found"
+
+ERR_WAV_TRUNCATED_CHUNK = \
+    u"truncated %s chunk found"
+
+ERR_WAV_NO_FMT_CHUNK = \
+    u"fmt chunk not found"
+
+ERR_WAVPACK_INVALID_HEADER = \
+    u"WavPack header ID invalid"
+
+ERR_WAVPACK_UNSUPPORTED_FMT = \
+    u"unsupported FMT compression"
+
+ERR_WAVPACK_INVALID_FMT = \
+    u"invalid FMT chunk"
+
+ERR_WAVPACK_NO_FMT = \
+    u"FMT chunk not found in WavPack"
+
 #Cleaning messages
 
 CLEAN_REMOVE_DUPLICATE_TAG = \
@@ -246,6 +401,12 @@ CLEAN_REMOVE_TRAILING_WHITESPACE = \
 
 CLEAN_REMOVE_LEADING_WHITESPACE = \
     u"removed leading whitespace from %(field)s"
+
+CLEAN_REMOVE_LEADING_WHITESPACE_ZEROES = \
+    u"removed leading whitespace/zeroes from %(field)s"
+
+CLEAN_REMOVE_LEADING_ZEROES = \
+    u"removed leading zeroes from %(field)s"
 
 CLEAN_REMOVE_EMPTY_TAG = \
     u"removed empty field %(field)s"
@@ -303,6 +464,15 @@ CLEAN_FLAC_ADD_CHANNELMASK = \
 
 CLEAN_FLAC_FIX_SEEKTABLE = \
     u"fixed invalid SEEKTABLE"
+
+CLEAN_WAV_MULTIPLE_FMT_CHUNKS = \
+    u"removed duplicate fmt chunk"
+
+CLEAN_WAV_REORDERED_DATA_CHUNK = \
+    u"moved data chunk after fmt chunk"
+
+CLEAN_WAV_MULTIPLE_DATA_CHUNKS = \
+    u"removed multiple data chunk"
 
 #Channel names
 MASK_FRONT_LEFT = \

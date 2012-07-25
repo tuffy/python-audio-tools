@@ -20,9 +20,6 @@
 
 from . import WaveContainer, InvalidFile
 from .ape import ApeTaggedAudio
-import gettext
-
-gettext.install("audiotools", unicode=True)
 
 
 class InvalidWavPack(InvalidFile):
@@ -66,14 +63,15 @@ class __Counter__:
 class WavPackAudio(ApeTaggedAudio, WaveContainer):
     """a WavPack audio file"""
 
+    from .text import (COMP_WAVPACK_VERYFAST,
+                       COMP_WAVPACK_VERYHIGH)
+
     SUFFIX = "wv"
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "standard"
     COMPRESSION_MODES = ("veryfast", "fast", "standard", "high", "veryhigh")
-    COMPRESSION_DESCRIPTIONS = {"veryfast": _(u"fastest encode/decode, " +
-                                              u"worst compression"),
-                                "veryhigh": _(u"slowest encode/decode, " +
-                                              u"best compression")}
+    COMPRESSION_DESCRIPTIONS = {"veryfast": COMP_WAVPACK_VERYFAST,
+                                "veryhigh": COMP_WAVPACK_VERYHIGH}
 
     BITS_PER_SAMPLE = (8, 16, 24, 32)
     SAMPLING_RATE = (6000,  8000,  9600,   11025,
@@ -252,7 +250,8 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
                 "4b 64p 32u 64p 2u 1u 8p 1u 1u 5p 5p 4u 37p")
 
             if (block_id != 'wvpk'):
-                raise InvalidWavPack(_(u'WavPack header ID invalid'))
+                from .text import ERR_WAVPACK_INVALID_HEADER
+                raise InvalidWavPack(ERR_WAVPACK_INVALID_HEADER)
 
             if (sample_rate != 0xF):
                 self.__samplerate__ = WavPackAudio.SAMPLING_RATE[sample_rate]
@@ -330,7 +329,8 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
                         mask = fmt.read(32)
                         self.__channel_mask__ = ChannelMask(mask)
                     else:
-                        raise InvalidWavPack(_(u"unsupported FMT compression"))
+                        from .text import ERR_WAVPACK_UNSUPPORTED_FMT
+                        raise InvalidWavPack(ERR_WAVPACK_UNSUPPORTED_FMT)
 
         finally:
             reader.unmark()
@@ -563,18 +563,21 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
             if ((block_id == 1) and nondecoder):
                 (riff, wave) = data.parse("4b 32p 4b")
                 if ((riff != 'RIFF') or (wave != 'WAVE')):
-                    raise InvalidWavPack(_(u'invalid FMT chunk'))
+                    from .text import ERR_WAVPACK_INVALID_FMT
+                    raise InvalidWavPack(ERR_WAVPACK_INVALID_FMT)
                 else:
                     while (True):
                         (chunk_id, chunk_size) = data.parse("4b 32u")
                         if (chunk_id == 'fmt '):
                             return data.substream(chunk_size)
                         elif (chunk_id == 'data'):
-                            raise InvalidWavPack(_(u'invalid FMT chunk'))
+                            from .text import ERR_WAVPACK_INVALID_FMT
+                            raise InvalidWavPack(ERR_WAVPACK_INVALID_FMT)
                         else:
                             data.skip_bytes(chunk_size)
         else:
-            raise InvalidWavPack(_(u'FMT chunk not found in WavPack'))
+            from .text import ERR_WAVPACK_NO_FMT
+            raise InvalidWavPack(ERR_WAVPACK_NO_FMT)
 
     @classmethod
     def can_add_replay_gain(cls, audiofiles):

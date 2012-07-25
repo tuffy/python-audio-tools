@@ -20,10 +20,6 @@
 
 from audiotools import (AudioFile, InvalidFile, BIN, Image)
 from .m4a_atoms import *
-import gettext
-
-gettext.install("audiotools", unicode=True)
-
 
 #######################
 #M4A File
@@ -147,7 +143,8 @@ class M4ATaggedAudio:
             return
 
         if (not isinstance(metadata, M4A_META_Atom)):
-            raise ValueError(_(u"metadata not from audio file"))
+            from .text import ERR_FOREIGN_METADATA
+            raise ValueError(ERR_FOREIGN_METADATA)
 
         if (old_metadata is None):
             #get_metadata() result may still be None, and that's okay
@@ -293,15 +290,18 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
             mdia = get_m4a_atom(BitstreamReader(file(filename, 'rb'), 0),
                                 "moov", "trak", "mdia")[1]
         except IOError:
-            raise InvalidM4A(_(u"I/O error opening M4A file"))
+            from .text import ERR_M4A_IOERROR
+            raise InvalidM4A(ERR_M4A_IOERROR)
         except KeyError:
-            raise InvalidM4A(_(u"Required mdia atom not found"))
+            from .text import ERR_M4A_MISSING_MDIA
+            raise InvalidM4A(ERR_M4A_MISSING_MDIA)
         mdia.mark()
         try:
             try:
                 stsd = get_m4a_atom(mdia, "minf", "stbl", "stsd")[1]
             except KeyError:
-                raise InvalidM4A(_(u"Required stsd atom not found"))
+                from .text import ERR_M4A_MISSING_STSD
+                raise InvalidM4A(ERR_M4A_MISSING_STSD)
 
             #then, fetch the mp4a atom for bps, channels and sample rate
             try:
@@ -311,14 +311,16 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
                  self.__bits_per_sample__) = stsd.parse(
                     "32p 4b 48p 16p 16p 16p 4P 16u 16u 16p 16p 32p")
             except IOError:
-                raise InvalidM4A(_(u"Invalid mp4a atom"))
+                from .text import ERR_M4A_INVALID_MP4A
+                raise InvalidM4A(ERR_M4A_INVALID_MP4A)
 
             #finally, fetch the mdhd atom for total track length
             mdia.rewind()
             try:
                 mdhd = get_m4a_atom(mdia, "mdhd")[1]
             except KeyError:
-                raise InvalidM4A(_(u"Required mdhd atom not found"))
+                from .text import ERR_M4A_MISSING_MDHD
+                raise InvalidM4A(ERR_M4A_MISSING_MDHD)
             try:
                 (version, ) = mdhd.parse("8u 24p")
                 if (version == 0):
@@ -328,9 +330,11 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
                     (self.__sample_rate__,
                      self.__length__,) = mdhd.parse("64p 64p 32u 64U 2P 16p")
                 else:
-                    raise InvalidM4A(_(u"Unsupported mdhd version"))
+                    from .text import ERR_M4A_UNSUPPORTED_MDHD
+                    raise InvalidM4A(ERR_M4A_UNSUPPORTED_MDHD)
             except IOError:
-                raise InvalidM4A(_(u"Invalid mdhd atom"))
+                from .text import ERR_M4A_INVALID_MDHD
+                raise InvalidM4A(ERR_M4A_INVALID_MDHD)
         finally:
             mdia.unmark()
 
@@ -602,13 +606,13 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
 class M4AAudio_nero(M4AAudio_faac):
     """an M4A audio file using neroAacEnc/neroAacDec binaries for I/O"""
 
+    from .text import (COMP_NERO_LOW, COMP_NERO_HIGH)
+
     DEFAULT_COMPRESSION = "0.5"
     COMPRESSION_MODES = ("0.4", "0.5",
                          "0.6", "0.7", "0.8", "0.9", "1.0")
-    COMPRESSION_DESCRIPTIONS = {"0.4": _(u"lowest quality, " +
-                                         u"corresponds to neroAacEnc -q 0.4"),
-                                "1.0": _(u"highest quality, " +
-                                         u"corresponds to neroAacEnc -q 1")}
+    COMPRESSION_DESCRIPTIONS = {"0.4": COMP_NERO_LOW,
+                                "1.0": COMP_NERO_HIGH}
     BINARIES = ("neroAacDec", "neroAacEnc")
 
     @classmethod
@@ -845,15 +849,18 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
             mdia = get_m4a_atom(BitstreamReader(file(filename, 'rb'), 0),
                                 "moov", "trak", "mdia")[1]
         except IOError:
-            raise InvalidALAC(_(u"I/O error opening ALAC file"))
+            from .text import ERR_ALAC_IOERROR
+            raise InvalidALAC(ERR_ALAC_IOERROR)
         except KeyError:
-            raise InvalidALAC(_(u"Required mdia atom not found"))
+            from .text import ERR_M4A_MISSING_MDIA
+            raise InvalidALAC(ERR_M4A_MISSING_MDIA)
         mdia.mark()
         try:
             try:
                 stsd = get_m4a_atom(mdia, "minf", "stbl", "stsd")[1]
             except KeyError:
-                raise InvalidALAC(_(u"Required stsd atom not found"))
+                from .text import ERR_M4A_MISSING_STSD
+                raise InvalidALAC(ERR_M4A_MISSING_STSD)
 
             #then, fetch the alac atom for bps, channels and sample rate
             try:
@@ -875,18 +882,21 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                     #and use the attributes in the "low" ALAC atom instead
                     "32p 4b 4P 32u 8p 8u 8u 8u 8u 8u 16p 32p 32p 32u")
             except IOError:
-                raise InvalidALAC(_(u"Invalid alac atom"))
+                from .text import ERR_ALAC_INVALID_ALAC
+                raise InvalidALAC(ERR_ALAC_INVALID_ALAC)
 
             if ((alac1 != 'alac') or (alac2 != 'alac')):
+                from .text import ERR_ALAC_INVALID_ALAC
                 mdia.unmark()
-                raise InvalidALAC(_(u"Invalid alac atom"))
+                raise InvalidALAC(ERR_ALAC_INVALID_ALAC)
 
             #finally, fetch the mdhd atom for total track length
             mdia.rewind()
             try:
                 mdhd = get_m4a_atom(mdia, "mdhd")[1]
             except KeyError:
-                raise InvalidALAC(_(u"Required mdhd atom not found"))
+                from .text import ERR_M4A_MISSING_MDHD
+                raise InvalidALAC(ERR_M4A_MISSING_MDHD)
             try:
                 (version, ) = mdhd.parse("8u 24p")
                 if (version == 0):
@@ -894,9 +904,11 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                 elif (version == 1):
                     (self.__length__,) = mdhd.parse("64p 64p 32p 64U 2P 16p")
                 else:
-                    raise InvalidALAC(_(u"Unsupported mdhd version"))
+                    from .text import ERR_M4A_UNSUPPORTED_MDHD
+                    raise InvalidALAC(ERR_M4A_UNSUPPORTED_MDHD)
             except IOError:
-                raise InvalidALAC(_(u"Invalid mdhd atom"))
+                from .text import ERR_M4A_INVALID_MDHD
+                raise InvalidALAC(ERR_M4A_INVALID_MDHD)
         finally:
             mdia.unmark()
 
