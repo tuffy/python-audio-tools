@@ -234,24 +234,8 @@ try:
             track_labels = []
 
             #the order metadata fields should appear
-            field_labels = [("track_name", u"Track Name"),
-                            ("artist_name", u"Artist Name"),
-                            ("album_name", u"Album Name"),
-                            ("track_number", u"Track Number"),
-                            ("track_total", u"Track Total"),
-                            ("album_number", u"Album Number"),
-                            ("album_total", u"Album Total"),
-                            ("performer_name", u"Performer Name"),
-                            ("composer_name", u"Composer Name"),
-                            ("conductor_name", u"Conductor Name"),
-                            ("catalog", u"Catalog Number"),
-                            ("ISRC", u"ISRC"),
-                            ("publisher", u"Publisher"),
-                            ("media", u"Media"),
-                            ("year", u"Release Year"),
-                            ("date", u"Recording Date"),
-                            ("copyright", u"Copyright"),
-                            ("comment", u"Comment")]
+            field_labels = [(attr, audiotools.MetaData.FIELD_NAMES[attr])
+                            for attr in audiotools.MetaData.FIELD_ORDER]
 
             #a dict of track_id->TrackMetaData values
             self.metadata_edits = {}

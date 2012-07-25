@@ -2611,6 +2611,48 @@ class MetaData:
                       "album_number",
                       "album_total")
 
+    #this is the order fields should be presented to the user
+    #to ensure consistency across utilities
+    FIELD_ORDER = ("track_name",
+                   "artist_name",
+                   "album_name",
+                   "track_number",
+                   "track_total",
+                   "album_number",
+                   "album_total",
+                   "performer_name",
+                   "composer_name",
+                   "conductor_name",
+                   "catalog",
+                   "ISRC",
+                   "publisher",
+                   "media",
+                   "year",
+                   "date",
+                   "copyright",
+                   "comment")
+
+    #this is the name fields should use when presented to the user
+    #also to ensure constency across utilities
+    FIELD_NAMES = {"track_name":u"Track Name",
+                   "track_number":u"Track Number",
+                   "track_total":u"Track Total",
+                   "album_name":u"Album Name",
+                   "artist_name":u"Artist Name",
+                   "performer_name":u"Performer Name",
+                   "composer_name":u"Composer Name",
+                   "conductor_name":u"Conductor Name",
+                   "media":u"Media",
+                   "ISRC":u"ISRC",
+                   "catalog":u"Catalog Number",
+                   "copyright":u"Copyright",
+                   "publisher":u"Publisher",
+                   "year":u"Release Year",
+                   "date":u"Recording Date",
+                   "album_number":u"Album Number",
+                   "album_total":u"Album Total",
+                   "comment":u"Comment"}
+
     def __init__(self,
                  track_name=None,
                  track_number=None,
@@ -2723,48 +2765,53 @@ class MetaData:
     def __unicode__(self):
         comment_pairs = []
 
-        #handle the first batch of text fields
-        for (attr, name) in zip(
-            ["track_name", "artist_name", "performer_name",
-             "composer_name", "conductor_name", "album_name",
-             "catalog"],
-            [u"Title", u"Artist", u"Performer", u"Composer",
-             u"Conductor", u"Album", u"Catalog"]):
-            if (getattr(self, attr) is not None):
-                comment_pairs.append((display_unicode(name),
-                                      getattr(self, attr)))
-
-        #handle the numerical fields
-        if (self.track_total is not None):
-            comment_pairs.append(
-                (display_unicode("Track #"),
-                 u"%d/%d" % ((self.track_number if
-                              (self.track_number is not None) else 0),
-                             self.track_total)))
-        elif (self.track_number is not None):
-            comment_pairs.append(
-                (display_unicode("Track #"),
-                 u"%d" % (self.track_number,)))
-
-        if (self.album_total is not None):
-            comment_pairs.append(
-                (display_unicode("Album #"),
-                 u"%d/%d" % ((self.album_number if
-                              (self.album_number is not None) else 0),
-                             self.album_total)))
-        elif (self.album_number is not None):
-            comment_pairs.append(
-                (display_unicode("Album #"),
-                 u"%d" % (self.album_number,)))
-
-        #handle the last batch of text fields
-        for (attr, name) in zip(
-            ["ISRC", "publisher", "media", "year", "date", "copyright",
-             "comment"],
-            [u"ISRC", u"Publisher", u"Media", u"Year", u"Date",
-             u"Copyright", u"Comment"]):
-            if (getattr(self, attr) is not None):
-                comment_pairs.append((display_unicode(name),
+        for attr in self.FIELD_ORDER:
+            if (attr == "track_number"):
+                #combine track number/track total into single field
+                track_number = self.track_number
+                track_total = self.track_total
+                if ((track_number is None) and (track_total is None)):
+                    #nothing to display
+                    pass
+                elif ((track_number is not None) and (track_total is None)):
+                    comment_pairs.append(
+                        (display_unicode(self.FIELD_NAMES[attr]),
+                         unicode(track_number)))
+                elif ((track_number is None) and (track_total is not None)):
+                    comment_pairs.append(
+                        (display_unicode(self.FIELD_NAMES[attr]),
+                         u"?/%d" % (track_total,)))
+                else:
+                    #neither track_number or track_total is None
+                    comment_pairs.append(
+                        (display_unicode(self.FIELD_NAMES[attr]),
+                         u"%d/%d" % (track_number, track_total)))
+            elif (attr == "track_total"):
+                pass
+            elif (attr == "album_number"):
+                #combine album number/album total into single field
+                album_number = self.album_number
+                album_total = self.album_total
+                if ((album_number is None) and (album_total is None)):
+                    #nothing to display
+                    pass
+                elif ((album_number is not None) and (album_total is None)):
+                    comment_pairs.append(
+                        (display_unicode(self.FIELD_NAMES[attr]),
+                         unicode(album_number)))
+                elif ((album_number is None) and (album_total is not None)):
+                    comment_pairs.append(
+                        (display_unicode(self.FIELD_NAMES[attr]),
+                         u"?/%d" % (album_total,)))
+                else:
+                    #neither album_number or album_total is None
+                    comment_pairs.append(
+                        (display_unicode(self.FIELD_NAMES[attr]),
+                         u"%d/%d" % (album_number, album_total)))
+            elif (attr == "album_total"):
+                pass
+            elif (getattr(self, attr) is not None):
+                comment_pairs.append((display_unicode(self.FIELD_NAMES[attr]),
                                       getattr(self, attr)))
 
         #append image data, if necessary
