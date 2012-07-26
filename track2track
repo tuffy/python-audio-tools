@@ -18,17 +18,46 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-import audiotools
 import sys
 import os
 import os.path
 import select
-import gettext
 import cPickle
+import audiotools
+from audiotools.text import (USAGE_TRACK2TRACK,
+                             OPT_CAT_CONVERSION,
+                             OPT_OUTPUT_TRACK2TRACK,
+                             OPT_JOINT,
+                             OPT_TYPE,
+                             OPT_DIR,
+                             OPT_QUALITY,
+                             OPT_FORMAT,
+                             OPT_VERBOSE,
+                             OPT_CAT_METADATA,
+                             OPT_THUMBNAIL,
+                             OPT_REPLAY_GAIN,
+                             OPT_NO_REPLAY_GAIN,
+                             LAB_ENCODE,
+                             LAB_AVAILABLE_COMPRESSION_TYPES,
+                             ERR_NO_COMPRESSION_MODES,
+                             ERR_UNSUPPORTED_COMPRESSION_MODE,
+                             ERR_FILES_REQUIRED,
+                             ERR_INVALID_JOINT,
+                             ERR_DUPLICATE_FILE,
+                             ERR_OUTPUT_IS_INPUT,
+                             ERR_DUPLICATE_FILE,
+                             ERR_ENCODING_ERROR,
+                             ERR_TRACK2TRACK_O_AND_D,
+                             ERR_TRACK2TRACK_O_AND_D_SUGGESTION,
+                             ERR_TRACK2TRACK_O_AND_FORMAT,
+                             ERR_TRACK2TRACK_O_AND_MULTIPLE,
+                             ERR_NO_THUMBNAILS,
+                             ERR_THUMBNAIL_SUGGESTION1,
+                             ERR_THUMBNAIL_SUGGESTION2,
+                             ERR_THUMBNAIL_SUGGESTION3,
+                             ERR_INVALID_THUMBNAIL_FORMAT,
+                             ERR_AVAILABLE_THUMBNAIL_FORMATS)
 
-from audiotools.text import (ERR_DUPLICATE_FILE,)
-
-gettext.install("audiotools", unicode=True)
 
 MAX_CPUS = audiotools.MAX_JOBS
 
@@ -70,24 +99,24 @@ def convert(progress, source_audiofile, destination_filename,
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        usage=_(u'%prog [options] <track 1> [track 2] ...'),
+        usage=USAGE_TRACK2TRACK,
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    conversion = audiotools.OptionGroup(parser, _(u"Conversion Options"))
+    conversion = audiotools.OptionGroup(parser, OPT_CAT_CONVERSION)
 
     conversion.add_option(
         '-t', '--type',
         action='store',
         dest='type',
         choices=audiotools.TYPE_MAP.keys(),
-        help=_(u'the type of audio track to convert to'))
+        help=OPT_TYPE)
 
     conversion.add_option(
         '-q', '--quality',
         action='store',
         type='string',
         dest='quality',
-        help=_(u'the quality to store audio tracks at'))
+        help=OPT_QUALITY)
 
     conversion.add_option(
         '-d', '--dir',
@@ -95,7 +124,7 @@ if (__name__ == '__main__'):
         type='string',
         dest='dir',
         default='.',
-        help=_(u'the directory to store converted audio tracks'))
+        help=OPT_DIR)
 
     conversion.add_option(
         '--format',
@@ -103,13 +132,13 @@ if (__name__ == '__main__'):
         type='string',
         default=None,
         dest='format',
-        help=_(u'the format string for new filenames'))
+        help=OPT_FORMAT)
 
     conversion.add_option(
         '-o', '--output',
         action='store',
         dest='output',
-        help=_(u'output filename to use, overriding default and -d'))
+        help=OPT_OUTPUT_TRACK2TRACK)
 
     conversion.add_option(
         '-j', '--joint',
@@ -117,19 +146,18 @@ if (__name__ == '__main__'):
         type='int',
         default=MAX_CPUS,
         dest='max_processes',
-        help=_(u'the maximum number of processes to run at a time'))
+        help=OPT_JOINT)
 
     parser.add_option_group(conversion)
 
-    metadata = audiotools.OptionGroup(parser, _(u"Metadata Options"))
+    metadata = audiotools.OptionGroup(parser, OPT_CAT_METADATA)
 
     metadata.add_option(
         '-T', '--thumbnail',
         action='store_true',
         default=False,
         dest='thumbnail',
-        help=_(u'convert embedded images to smaller thumbnails ' +
-               u'during conversion'))
+        help=OPT_THUMBNAIL)
 
     #if adding ReplayGain is a lossless process
     #(i.e. added as tags rather than modifying track data)
@@ -140,13 +168,13 @@ if (__name__ == '__main__'):
         '--replay-gain',
         action='store_true',
         dest='add_replay_gain',
-        help=_(u'add ReplayGain metadata to newly created tracks'))
+        help=OPT_REPLAY_GAIN)
 
     metadata.add_option(
         '--no-replay-gain',
         action='store_false',
         dest='add_replay_gain',
-        help=_(u'do not add ReplayGain metadata to newly created tracks'))
+        help=OPT_NO_REPLAY_GAIN)
 
     parser.add_option_group(metadata)
 
@@ -156,7 +184,7 @@ if (__name__ == '__main__'):
         dest='verbosity',
         choices=audiotools.VERBOSITY_LEVELS,
         default=audiotools.DEFAULT_VERBOSITY,
-        help=_(u'the verbosity level to execute at'))
+        help=OPT_VERBOSE)
 
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("track2track", options)
@@ -165,12 +193,12 @@ if (__name__ == '__main__'):
     #complain about it right away
     if (options.output is not None):
         if (options.dir != "."):
-            msg.error(_(u"-o and -d options are not compatible"))
-            msg.info(_(u"Please specify either -o or -d but not both"))
+            msg.error(ERR_TRACK2TRACK_O_AND_D)
+            msg.info(ERR_TRACK2TRACK_O_AND_D_SUGGESTION)
             sys.exit(1)
 
         if (options.format is not None):
-            msg.warning(_(u"--format has no effect when used with -o"))
+            msg.warning(ERR_TRACK2TRACK_O_AND_FORMAT)
 
     #get the AudioFile class we are converted to
     if (options.output is None):
@@ -191,8 +219,8 @@ if (__name__ == '__main__'):
     #ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
         if (len(AudioType.COMPRESSION_MODES) > 1):
-            msg.info(_(u"Available compression types for %s:") % \
-                           (AudioType.NAME))
+            msg.info(LAB_AVAILABLE_COMPRESSION_TYPES %
+                     (AudioType.NAME))
             for mode in AudioType.COMPRESSION_MODES:
                 msg.new_row()
                 if (mode == audiotools.__default_quality__(AudioType.NAME)):
@@ -209,17 +237,14 @@ if (__name__ == '__main__'):
                     AudioType.COMPRESSION_DESCRIPTIONS.get(mode, u""))
             msg.info_rows()
         else:
-            msg.error(_(u"Audio type %s has no compression modes") % \
-                            (AudioType.NAME))
+            msg.error(ERR_NO_COMPRESSION_MODES % (AudioType.NAME))
         sys.exit(0)
     elif (options.quality is None):
         options.quality = audiotools.__default_quality__(AudioType.NAME)
     elif (options.quality not in AudioType.COMPRESSION_MODES):
-        msg.error(
-            _(u"\"%(quality)s\" is not a supported " +
-              u"compression mode for type \"%(type)s\"") %
-            {"quality": options.quality,
-             "type": AudioType.NAME})
+        msg.error(ERR_UNSUPPORTED_COMPRESSION_MODE %
+                  {"quality": options.quality,
+                   "type": AudioType.NAME})
         sys.exit(1)
 
     #grab the list of AudioFile objects we are converting from
@@ -234,16 +259,16 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     if (len(audiofiles) < 1):
-        msg.error(_(u"You must specify at least 1 supported audio file"))
+        msg.error(ERR_FILES_REQUIRED)
         sys.exit(1)
 
     if (options.max_processes < 1):
-        msg.error(_(u'You must run at least 1 process at a time'))
+        msg.error(ERR_INVALID_JOINT)
         sys.exit(1)
 
     if ((options.output is not None) and
         (len(audiofiles) != 1)):
-        msg.error(_(u'You may specify only 1 input file for use with -o'))
+        msg.error(ERR_TRACK2TRACK_O_AND_MULTIPLE)
         sys.exit(1)
 
     #determine whether to add ReplayGain by default
@@ -254,19 +279,17 @@ if (__name__ == '__main__'):
 
     if (options.thumbnail):
         if (not audiotools.can_thumbnail()):
-            msg.error(_(u"Unable to generate thumbnails"))
-            msg.info(
-                _(u"Please install the Python Imaging Library"))
-            msg.info(
-                _(u"available at http://www.pythonware.com/products/pil/"))
-            msg.info(_(u"to enable image resizing"))
+            msg.error(ERR_NO_THUMBNAILS)
+            msg.info(ERR_THUMBNAIL_SUGGESTION1)
+            msg.info(ERR_THUMBNAIL_SUGGESTION2)
+            msg.info(ERR_THUMBNAIL_SUGGESTION3)
             sys.exit(1)
 
         if (audiotools.THUMBNAIL_FORMAT.upper() not in
             audiotools.thumbnail_formats()):
-            msg.error(_(u"Unsupported thumbnail format \"%s\"") %
+            msg.error(ERR_INVALID_THUMBNAIL_FORMAT %
                       (audiotools.THUMBNAIL_FORMAT))
-            msg.info(_(u"Available formats are: %s") %
+            msg.info(ERR_AVAILABLE_THUMBNAIL_FORMATS %
                      (", ".join(audiotools.thumbnail_formats())))
             sys.exit(1)
 
@@ -294,11 +317,11 @@ if (__name__ == '__main__'):
                                              format=options.format)))
 
                 if (output_filename in input_filenames):
-                    msg.error(u"output file \"%s\" same as input file" %
+                    msg.error(ERR_OUTPUT_IS_INPUT %
                               (output_filename,))
                     sys.exit(1)
                 if (output_filename in output_filenames):
-                    msg.error(u"output file \"%s\" occurs more than once" %
+                    msg.error(ERR_DUPLICATE_FILE %
                               (output_filename,))
                     sys.exit(1)
                 else:
@@ -310,9 +333,9 @@ if (__name__ == '__main__'):
             #queue up conversion job
             queue.execute(function=convert,
                           progress_text=unicode(output_filename),
-                          completion_output=u"%s -> %s" % \
-                              (audiotools.Filename(audiofile.filename),
-                               output_filename),
+                          completion_output=LAB_ENCODE % \
+                              {"source":audiotools.Filename(audiofile.filename),
+                               "destination":output_filename},
                           source_audiofile=audiofile,
                           destination_filename=str(output_filename),
                           destination_class=AudioType,
@@ -326,7 +349,7 @@ if (__name__ == '__main__'):
             try:
                 audiotools.make_dirs(str(filename))
             except OSError:
-                msg.error(_(u"Unable to write \"%s\"") % (filename,))
+                msg.error(ERR_ENCODING_ERROR % (filename,))
                 sys.exit(1)
 
         #perform all queued conversion jobs
@@ -348,24 +371,21 @@ if (__name__ == '__main__'):
 
                 album_number = set([a.album_number() for a in album]).pop()
 
-                progress_text = \
+                #FIXME - should pull ReplayGain text
+                #from elsewhere
+                queue.execute(
+                    AudioType.add_replay_gain,
                     (u"%s ReplayGain%s" %
                      ((u"Adding" if AudioType.lossless_replay_gain() else
                        u"Applying"),
                       (u"" if album_number is None else
-                       (u" to album %d" % (album_number)))))
-
-                completion_output = \
+                       (u" to album %d" % (album_number))))),
                     (u"ReplayGain %s%s" %
                      ((u"added" if AudioType.lossless_replay_gain() else
                        u"applied"),
                       (u"" if album_number is None else
-                       (u" to album %d" % (album_number)))))
-
-                queue.execute(AudioType.add_replay_gain,
-                              progress_text,
-                              completion_output,
-                              [a.filename for a in album])
+                       (u" to album %d" % (album_number))))),
+                    [a.filename for a in album])
 
             try:
                 queue.run(max_processes)
@@ -380,7 +400,7 @@ if (__name__ == '__main__'):
         track_metadata = audiofile.get_metadata()
 
         if (input_filename == output_filename):
-            msg.error(u"output file \"%s\" same as input file" %
+            msg.error(ERR_OUTPUT_IS_INPUT %
                       (output_filename,))
             sys.exit(1)
 

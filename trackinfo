@@ -20,13 +20,27 @@
 
 import os.path
 import audiotools
-import gettext
-
-gettext.install("audiotools", unicode=True)
+from audiotools.text import (USAGE_TRACKINFO,
+                             LAB_TRACKINFO_BITRATE,
+                             LAB_TRACKINFO_PERCENTAGE,
+                             LAB_TRACKINFO_ATTRIBS,
+                             LAB_TRACKINFO_REPLAYGAIN,
+                             LAB_TRACKINFO_TRACK_GAIN,
+                             LAB_TRACKINFO_TRACK_PEAK,
+                             LAB_TRACKINFO_ALBUM_GAIN,
+                             LAB_TRACKINFO_ALBUM_PEAK,
+                             LAB_TRACKINFO_CUESHEET,
+                             LAB_TRACKINFO_CUESHEET_TRACK,
+                             LAB_TRACKINFO_CUESHEET_LENGTH,
+                             LAB_TRACKINFO_CUESHEET_ISRC,
+                             LAB_TRACK_LENGTH,
+                             LAB_TRACKINFO_CHANNELS,
+                             LAB_TRACKINFO_CHANNEL,
+                             LAB_TRACKINFO_UNDEFINED)
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        usage=_(u"%prog [options] <track 1> [track 2] ..."),
+        usage=USAGE_TRACKINFO,
         version="Python Audio Tools %s" % (audiotools.VERSION))
     parser.add_option("-n", "--no-metadata",
                       action="store_true", dest="no_metadata",
@@ -53,19 +67,19 @@ if (__name__ == '__main__'):
         if (options.show_bitrate):
             try:
                 msg.output(
-                    _(u"%(bitrate)4.4s kbps: %(filename)s") %
+                    LAB_TRACKINFO_BITRATE %
                     {'bitrate': ((os.path.getsize(file.filename) * 8) /
                                  2 ** 10) / length,
                      'filename': audiotools.Filename(file.filename)})
             except ZeroDivisionError:
                 msg.output(
-                    _(u"%(bitrate)4.4s kbps: %(filename)s") %
+                    LAB_TRACKINFO_BITRATE %
                     {'bitrate': 0,
                      'filename': audiotools.Filename(file.filename)})
         elif (options.show_percentage):
             try:
                 msg.output(
-                    _(u"%(percentage)3.3s%%: %(filename)s") %
+                    LAB_TRACKINFO_PERCENTAGE %
                     {'percentage':
                          int(round(float(
                            os.path.getsize(file.filename) * 100) /
@@ -73,13 +87,12 @@ if (__name__ == '__main__'):
                                     (file.bits_per_sample() / 8)))),
                      'filename': audiotools.Filename(file.filename)})
             except ZeroDivisionError:
-                msg.output(_(u"%(percentage)3.3s%%: %(filename)s") % \
-                               {'percentage': "0",
-                                'filenam': audiotools.Filename(file.filename)})
+                msg.output(LAB_TRACKINFO_PERCENTAGE %
+                           {'percentage': "0",
+                            'filenam': audiotools.Filename(file.filename)})
         else:
             msg.output(
-                _(u"%(minutes)2.2d:%(seconds)2.2d " +
-                  u"%(channels)dch %(rate)dHz %(bits)d-bit: %(filename)s") %
+                LAB_TRACKINFO_ATTRIBS %
                 {"minutes": length / 60,
                  "seconds": length % 60,
                  "channels": file.channels(),
@@ -94,32 +107,32 @@ if (__name__ == '__main__'):
                     msg.output(u"")
                 replay_gain = file.replay_gain()
                 if (replay_gain is not None):
-                    msg.output(_(u"ReplayGain:"))
+                    msg.output(LAB_TRACKINFO_REPLAYGAIN)
                     msg.new_row()
-                    msg.output_column(_(u"Track Gain : "), True)
+                    msg.output_column(LAB_TRACKINFO_TRACK_GAIN, True)
                     msg.output_column(unicode(replay_gain.track_gain) + u" dB")
                     msg.new_row()
-                    msg.output_column(_(u"Track Peak : "), True)
+                    msg.output_column(LAB_TRACKINFO_TRACK_PEAK, True)
                     msg.output_column(u"%f" % (replay_gain.track_peak))
                     msg.new_row()
-                    msg.output_column(_(u"Album Gain : "), True)
+                    msg.output_column(LAB_TRACKINFO_ALBUM_GAIN, True)
                     msg.output_column(unicode(replay_gain.album_gain) + u" dB")
                     msg.new_row()
-                    msg.output_column(_(u"Album Peak : "), True)
+                    msg.output_column(LAB_TRACKINFO_ALBUM_PEAK, True)
                     msg.output_column(u"%f" % (replay_gain.album_peak))
                     msg.output_rows()
                     msg.output(u"")
                 cuesheet = file.get_cuesheet()
                 if (cuesheet is not None):
                     ISRCs = cuesheet.ISRCs()
-                    msg.output(_(u"Cuesheet:"))
+                    msg.output(LAB_TRACKINFO_CUESHEET)
                     msg.new_row()
                     msg.output_column(u"  ")
-                    msg.output_column(_(u"track"), True)
+                    msg.output_column(LAB_TRACKINFO_CUESHEET_TRACK, True)
                     msg.output_column(u"  ")
-                    msg.output_column(_(u"length"), True)
+                    msg.output_column(LAB_TRACKINFO_CUESHEET_LENGTH, True)
                     msg.output_column(u"  ")
-                    msg.output_column(_(u"ISRC"))
+                    msg.output_column(LAB_TRACKINFO_CUESHEET_ISRC)
                     for (i, pcm_length) in enumerate(
                         cuesheet.pcm_lengths(file.total_frames())):
                         ISRC = ISRCs.get(i + 1, None)
@@ -128,10 +141,10 @@ if (__name__ == '__main__'):
                         msg.output_column(unicode(i + 1), True)
                         msg.output_column(u"")
                         msg.output_column(
-                            u"%d:%2.2d" % (pcm_length /
-                                           file.sample_rate() / 60,
-                                           pcm_length /
-                                           file.sample_rate() % 60),
+                            LAB_TRACK_LENGTH % (pcm_length /
+                                                file.sample_rate() / 60,
+                                                pcm_length /
+                                                file.sample_rate() % 60),
                             True)
                         msg.output_column(u"")
                         if (ISRC is not None):
@@ -145,34 +158,20 @@ if (__name__ == '__main__'):
                     msg.output(metadata.raw_info())
                     msg.output(u"")
         if (options.channel_assignment):
-            msg.output(_("Assigned Channels:"))
-            channel_names = {
-                "front_left": _(u"Front Left"),
-                "front_right": _(u"Front Right"),
-                "front_center": _(u"Front Center"),
-                "low_frequency": _(u"Low Frequency"),
-                "back_left": _(u"Back Left"),
-                "back_right": _(u"Back Right"),
-                "front_left_of_center": _(u"Front Left of Center"),
-                "front_right_of_center": _(u"Front Right of Center"),
-                "back_center": _(u"Back Center"),
-                "side_left": _(u"Side Left"),
-                "side_right": _(u"Side Right"),
-                "top_center": _(u"Top Center"),
-                "top_front_left": _(u"Top Front Left"),
-                "top_front_center": _(u"Top Front Center"),
-                "top_front_right": _(u"Top Front Right"),
-                "top_back_left": _(u"Top Back Left"),
-                "top_back_center": _(u"Top Back Center"),
-                "top_back_right": _(u"Top Back Right")}
+            msg.output(LAB_TRACKINFO_CHANNELS)
+
+            channel_names = dict(
+                [(attr, audiotools.ChannelMask.MASK_TO_NAME[mask])
+                 for (attr,mask) in
+                 audiotools.ChannelMask.SPEAKER_TO_MASK.items()])
 
             if (file.channel_mask().defined()):
                 for (i, channel) in enumerate(file.channel_mask().channels()):
-                    msg.output(
-                        _(u"channel %(channel_number)d - %(channel_name)s") %
-                        {"channel_number": i + 1,
-                         "channel_name": channel_names[channel]})
+                    msg.output(LAB_TRACKINFO_CHANNEL %
+                               {"channel_number":i + 1,
+                                "channel_name":channel_names[channel]})
             else:
                 for i in xrange(file.channels()):
-                    msg.output(_(u"channel %(channel_number)d - undefined") %
-                               {"channel_number": i + 1})
+                    msg.output(LAB_TRACKINFO_CHANNEL %
+                               {"channel_number":i + 1,
+                                "channel_name":LAB_TRACKINFO_UNDEFINED})

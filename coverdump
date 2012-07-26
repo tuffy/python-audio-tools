@@ -18,19 +18,26 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-import audiotools
 import sys
 import os
 import os.path
-import gettext
-
-gettext.install("audiotools", unicode=True)
+import audiotools
+from audiotools.text import (USAGE_COVERDUMP,
+                             OPT_VERBOSE,
+                             OPT_DIR_IMAGES,
+                             OPT_PREFIX,
+                             ERR_1_FILE_REQUIRED,
+                             ERR_OPEN_IOERROR,
+                             ERR_OUTPUT_IS_INPUT,
+                             ERR_ENCODING_ERROR,
+                             LAB_ENCODE,
+                             )
 
 FILENAME_TYPES = ("front_cover", "back_cover", "leaflet", "media", "other")
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        usage=_(u'%prog [-d directory] <track>'),
+        usage=USAGE_COVERDUMP,
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option('-V', '--verbose',
@@ -38,26 +45,26 @@ if (__name__ == '__main__'):
                       dest='verbosity',
                       choices=audiotools.VERBOSITY_LEVELS,
                       default=audiotools.DEFAULT_VERBOSITY,
-                      help=_(u'the verbosity level to execute at'))
+                      help=OPT_VERBOSE)
 
     parser.add_option('-d', '--dir',
                       action='store',
                       type='string',
                       dest='dir',
                       default='.',
-                      help=_(u'the directory to store extracted images'))
+                      help=OPT_DIR_IMAGES)
 
     parser.add_option('-p', '--prefix',
                       action='store',
                       dest='prefix',
                       default="",
-                      help=_(u'add a prefix to the output image'))
+                      help=OPT_PREFIX)
 
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("coverdump", options)
 
     if (len(args) != 1):
-        msg.error(_(u"You must specify exactly 1 supported audio file"))
+        msg.error(ERR_1_FILE_REQUIRED)
         sys.exit(1)
     else:
         input_filename = audiotools.Filename(args[0])
@@ -65,12 +72,10 @@ if (__name__ == '__main__'):
     try:
         audiofile = audiotools.open(str(input_filename))
     except audiotools.UnsupportedFile:
-        msg.error(_(u"%s file format not supported") %
-                  (audiotools.Filename(args[0]),))
+        msg.error(ERR_1_FILE_REQUIRED)
         sys.exit(1)
     except IOError:
-        msg.error(_(u"Unable to open \"%s\"") %
-                  (audiotools.Filename(args[0]),))
+        msg.error(ERR_OPEN_IOERROR % (audiotools.Filename(args[0]),))
         sys.exit(1)
 
     metadata = audiofile.get_metadata()
@@ -79,7 +84,6 @@ if (__name__ == '__main__'):
         image_types = {}
         for image in metadata.images():
             image_types.setdefault(image.type, []).append(image)
-
 
         #build a set of (Image, Filename) tuples to be extracted
         output_images = []
@@ -111,8 +115,7 @@ if (__name__ == '__main__'):
         # so we have to be sure it's not going to be overwritten)
         if (input_filename in
             [output_filename for (image, output_filename) in output_images]):
-            msg.error(u"\"%s\" cannot be both input and output file" %
-                      (input_filename,))
+            msg.error(ERR_OUTPUT_IS_INPUT % (input_filename,))
             sys.exit(1)
 
         #finally, write actual image data to disk if possible
@@ -122,13 +125,11 @@ if (__name__ == '__main__'):
                 f = open(str(output_filename), "wb")
                 f.write(image.data)
                 f.close()
-                msg.info(
-                    _(u"%(source)s -> %(destination)s") %
-                    {"source": input_filename,
-                     "destination": output_filename})
+                msg.info(LAB_ENCODE %
+                         {"source": input_filename,
+                          "destination": output_filename})
             except IOError, e:
-                msg.error(_(u"Unable to write \"%s\"") %
-                          (output_filename,))
+                msg.error(ERR_ENCODING_ERROR % (output_filename,))
                 sys.exit(1)
             except OSError, e:
                 msg.os_error(e)

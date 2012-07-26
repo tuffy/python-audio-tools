@@ -17,15 +17,25 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-import audiotools
 import sys
 import os
 import os.path
 import cStringIO
-import gettext
-
-gettext.install("audiotools", unicode=True)
-
+import audiotools
+from audiotools.text import (USAGE_COVERVIEW,
+                             LAB_COVERVIEW_ABOUT,
+                             LAB_CHOOSE_FILE,
+                             LAB_AUDIOTOOLS_URL,
+                             ERR_UNSUPPORTED_FILE,
+                             ERR_INVALID_FILE,
+                             ERR_OPEN_IOERROR,
+                             LAB_BYTE_SIZE,
+                             LAB_DIMENSIONS,
+                             LAB_BITS_PER_PIXEL,
+                             LAB_CLOSE,
+                             OPT_NO_GTK,
+                             OPT_NO_TKINTER,
+                             ERR_NO_GUI)
 
 #returns the dimensions of image_surface scaled to match the
 #display surface size, but without changing its aspect ratio
@@ -191,19 +201,18 @@ try:
             table.attach(self.statusbar, 0, 2, 5, 6, yoptions=0)
 
             self.file_dialog = gtk.FileChooserDialog(
-                title="Choose an audio file",
+                title=LAB_CHOOSE_FILE,
                 action=gtk.FILE_CHOOSER_ACTION_OPEN,
                 buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
                          gtk.STOCK_OPEN, gtk.RESPONSE_OK))
 
             self.about_dialog = gtk.AboutDialog()
 
-            self.about_dialog.set_program_name("coverview")
+            self.about_dialog.set_program_name(u"coverview")
             self.about_dialog.set_version(audiotools.VERSION)
-            self.about_dialog.set_copyright("(c) Brian Langenberger")
-            self.about_dialog.set_comments(
-                "A viewer for displaying images embedded in audio files.")
-            self.about_dialog.set_website("http://audiotools.sourceforge.net")
+            self.about_dialog.set_copyright(u"(c) Brian Langenberger")
+            self.about_dialog.set_comments(LAB_COVERVIEW_ABOUT)
+            self.about_dialog.set_website(LAB_AUDIOTOOLS_URL)
 
             self.window.add(table)
             self.window.set_default_size(800, 600)
@@ -223,21 +232,21 @@ try:
                 except audiotools.UnsupportedFile:
                     error = gtk.MessageDialog(
                         type=gtk.MESSAGE_ERROR,
-                        message_format="Unsupported File '%s'" % (filename),
+                        message_format=ERR_UNSUPPORTED_FILE % (filename),
                         buttons=gtk.BUTTONS_OK)
                     error.run()
                     error.destroy()
                 except audiotools.InvalidFile:
                     error = gtk.MessageDialog(
                         type=gtk.MESSAGE_ERROR,
-                        message_format="Invalid File '%s'" % (filename),
+                        message_format=ERR_INVALID_FILE % (filename),
                         buttons=gtk.BUTTONS_OK)
                     error.run()
                     error.destroy()
                 except IOError:
                     error = gtk.MessageDialog(
                         type=gtk.MESSAGE_ERROR,
-                        message_format="I/O Error Reading '%s'" % (filename),
+                        message_format=ERR_OPEN_IOERROR % (filename),
                         buttons=gtk.BUTTONS_OK)
                     error.run()
                     error.destroy()
@@ -289,12 +298,16 @@ try:
             first_image = None
             for image in images:
                 tree_iter = self.list.append()
-                self.list.set(tree_iter, 0, image.type_string())
-                self.list.set(tree_iter, 1, get_pixbuf(image.data))
-                self.list.set(tree_iter, 2, u"%d bytes" % (len(image.data)))
-                self.list.set(tree_iter, 3, u"%d \u00D7 %d" % (image.width,
-                                                               image.height))
-                self.list.set(tree_iter, 4, u"%d bits" % (image.color_depth))
+                self.list.set(tree_iter, 0,
+                              image.type_string())
+                self.list.set(tree_iter, 1,
+                              get_pixbuf(image.data))
+                self.list.set(tree_iter, 2,
+                              LAB_BYTE_SIZE % (len(image.data)))
+                self.list.set(tree_iter, 3,
+                              LAB_DIMENSIONS % (image.width, image.height))
+                self.list.set(tree_iter, 4,
+                              LAB_BITS_PER_PIXEL % (image.color_depth))
                 self.list.set(tree_iter, 5, image.mime_type.decode('ascii'))
 
                 if (first_image is None):
@@ -387,10 +400,10 @@ Consult "man python" for further details.
             else:
                 at_image = image.audiotools
             self.path.config(text=image.path)
-            self.size_bits.config(text=u"%d bytes" % (len(at_image.data)))
-            self.size_pixels.config(text=u"%d \u00D7 %d" % (at_image.width,
-                                                            at_image.height))
-            self.bits.config(text="%d bits" % (at_image.color_depth))
+            self.size_bits.config(text=LAB_BYTE_SIZE % (len(at_image.data)))
+            self.size_pixels.config(text=LAB_DIMENSIONS % (at_image.width,
+                                                           at_image.height))
+            self.bits.config(text=LAB_BITS_PER_PIXEL % (at_image.color_depth))
             self.type.config(text=at_image.mime_type)
 
         def clear_image_data(self):
@@ -406,17 +419,18 @@ Consult "man python" for further details.
 
             Label(self, text="coverview",
                   font=("Helvetica", 48)).pack(side=TOP)
-
             Label(self,
-                  text=("A viewer for displaying images" +
-                        "embedded in audio files.")).pack(side=TOP)
+                  text="Python Audio Tools %s" % \
+                      (audiotools.VERSION)).pack(side=TOP)
             Label(self,
-                  text="Part of Python Audio Tools").pack(side=TOP)
-            Label(self,
-                  text="Copyright 2008-2012 by Brian Langenberger",
+                  text="(c) by Brian Langenberger",
                   font=("Helvetica", 10)).pack(side=TOP)
+            Label(self,
+                  text=LAB_COVERVIEW_ABOUT).pack(side=TOP)
+            Label(self,
+                  text=LAB_AUDIOTOOLS_URL).pack(side=TOP)
 
-            close = Button(self, text="Close")
+            close = Button(self, text=LAB_CLOSE)
             close.bind(sequence="<ButtonRelease-1>", func=self.close)
             close.pack(side=BOTTOM)
 
@@ -480,18 +494,18 @@ Consult "man python" for further details.
         def open(self, *args):
             new_file = tkFileDialog.askopenfilename(
                 parent=self.master,
-                title="select an audio file")
+                title=LAB_CHOOSE_FILE)
 
             if (len(new_file) > 0):
                 try:
                     self.set_metadata(new_file,
                                       audiotools.open(new_file).get_metadata())
                 except audiotools.UnsupportedFile:
-                    self.show_error("Unsupported File '%s'" % (new_file))
+                    self.show_error(ERR_UNSUPPORTED_FILE % (new_file))
                 except audiotools.InvalidFile:
-                    self.show_error("Invalid File '%s'" % (new_file))
+                    self.show_error(ERR_INVALID_FILE % (new_file))
                 except IOError, err:
-                    self.show_error("I/O Error Reading '%s'" % (new_file))
+                    self.show_error(ERR_OPEN_IOERROR % (new_file))
 
         def quit(self, *args):
             self.master.quit()
@@ -590,7 +604,7 @@ except ImportError:
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        usage=_(u'%prog [OPTIONS] [track]'),
+        usage=USAGE_COVERVIEW,
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     if (GTK_AVAILABLE):
@@ -598,14 +612,14 @@ if (__name__ == '__main__'):
                           dest="no_gtk",
                           action='store_true',
                           default=False,
-                          help=_(u"don't use PyGTK for GUI"))
+                          help=OPT_NO_GTK)
 
     if (TKINTER_AVAILABLE):
         parser.add_option('--no-tkinter',
                           dest="no_tkinter",
                           action='store_true',
                           default=False,
-                          help=_(u"don't use Tkinter for GUI"))
+                          help=OPT_NO_TKINTER)
 
     (options, args) = parser.parse_args()
     messenger = audiotools.Messenger("coverview", None)
@@ -618,13 +632,15 @@ if (__name__ == '__main__'):
             try:
                 main_gtk(audiotools.open(args[0]))
             except audiotools.UnsupportedFile:
-                messenger.error(_(u"Specified file is unsupported"))
+                messenger.error(ERR_UNSUPPORTED_FILE %
+                                (audiotools.Filename(args[0]),))
                 sys.exit(1)
             except audiotools.InvalidFile:
-                messenger.error(_(u"Specified file is invalid"))
+                messenger.error(ERR_INVALID_FILE %
+                                (audiotools.Filename(args[0]),))
                 sys.exit(1)
             except IOError:
-                messenger.error(_(u"Unable to open \"%s\"") %
+                messenger.error(ERR_OPEN_IOERROR %
                                 (audiotools.Filename(args[0]),))
                 sys.exit(1)
         else:
@@ -634,17 +650,19 @@ if (__name__ == '__main__'):
             try:
                 main_tkinter(audiotools.open(args[0]))
             except audiotools.UnsupportedFile:
-                messenger.error(_(u"Specified file is unsupported"))
+                messenger.error(ERR_UNSUPPORTED_FILE %
+                                (audiotools.Filename(args[0]),))
                 sys.exit(1)
             except audiotools.InvalidFile:
-                messenger.error(_(u"Specified file is invalid"))
+                messenger.error(ERR_INVALID_FILE %
+                                (audiotools.Filename(args[0]),))
                 sys.exit(1)
             except IOError:
-                messenger.error(_(u"Unable to open \"%s\"") %
+                messenger.error(ERR_OPEN_IOERROR %
                                 (audiotools.Filename(args[0]),))
                 sys.exit(1)
         else:
             main_tkinter(None)
     else:
-        messenger.error(_("Neither PyGTK nor Tkinter is available"))
+        messenger.error(ERR_NO_GUI)
         sys.exit(1)

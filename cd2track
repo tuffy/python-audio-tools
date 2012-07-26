@@ -22,13 +22,37 @@ import sys
 import os
 import audiotools
 import audiotools.ui
-import gettext
+from audiotools.text import (USAGE_CD2TRACK,
+                             OPT_VERBOSE,
+                             OPT_CAT_EXTRACTION,
+                             OPT_CAT_CD_LOOKUP,
+                             OPT_CAT_METADATA,
+                             OPT_TYPE,
+                             OPT_QUALITY,
+                             OPT_DIR,
+                             OPT_FORMAT,
+                             OPT_NO_MUSICBRAINZ,
+                             OPT_NO_FREEDB,
+                             OPT_INTERACTIVE_METADATA,
+                             OPT_DEFAULT,
+                             OPT_ALBUM_NUMBER,
+                             OPT_ALBUM_TOTAL,
+                             OPT_REPLAY_GAIN,
+                             OPT_NO_REPLAY_GAIN,
+                             LAB_AVAILABLE_COMPRESSION_TYPES,
+                             ERR_NO_COMPRESSION_MODES,
+                             ERR_UNSUPPORTED_COMPRESSION_MODE,
+                             ERR_INVALID_CDDA,
+                             ERR_NO_CDDA,
+                             ERR_DUPLICATE_OUTPUT_FILE,
+                             ERR_ENCODING_ERROR,
+                             LAB_CD2TRACK_PROGRESS,
+                             LAB_CD2TRACK_LOG)
 
-gettext.install("audiotools", unicode=True)
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        usage=_(u"%prog [options] [track #] [track #] ..."),
+        usage=USAGE_CD2TRACK,
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option(
@@ -37,7 +61,7 @@ if (__name__ == '__main__'):
         dest='verbosity',
         choices=audiotools.VERBOSITY_LEVELS,
         default=audiotools.DEFAULT_VERBOSITY,
-        help=_(u'the verbosity level to execute at'))
+        help=OPT_VERBOSE)
 
     parser.add_option(
         '-c', '--cdrom', action='store',
@@ -48,14 +72,7 @@ if (__name__ == '__main__'):
         '-s', '--speed', action='store',
         type='int', dest='speed')
 
-    # parser.add_option(
-    #     '--accuraterip',
-    #     action='store_true',
-    #     default=False,
-    #     dest='accuraterip',
-    #     help=_(u'attempt to fetch AccurateRip information'))
-
-    conversion = audiotools.OptionGroup(parser, _(u"Extraction Options"))
+    conversion = audiotools.OptionGroup(parser, OPT_CAT_EXTRACTION)
 
     conversion.add_option(
         '-t', '--type',
@@ -63,19 +80,19 @@ if (__name__ == '__main__'):
         dest='type',
         choices=audiotools.TYPE_MAP.keys(),
         default=audiotools.DEFAULT_TYPE,
-        help=_(u'the type of audio track to create'))
+        help=OPT_TYPE)
 
     conversion.add_option(
         '-q', '--quality',
         action='store',
         type='string',
         dest='quality',
-        help=_(u'the quality to store audio tracks at'))
+        help=OPT_QUALITY)
 
     conversion.add_option(
         "-d", "--dir", action='store', default='.',
         dest='dir',
-        help=_(u"the directory to store extracted audio tracks"))
+        help=OPT_DIR)
 
     conversion.add_option(
         '--format',
@@ -83,11 +100,11 @@ if (__name__ == '__main__'):
         type='string',
         default=None,
         dest='format',
-        help=_(u'the format string for new filenames'))
+        help=OPT_FORMAT)
 
     parser.add_option_group(conversion)
 
-    lookup = audiotools.OptionGroup(parser, _(u"CD Lookup Options"))
+    lookup = audiotools.OptionGroup(parser, OPT_CAT_CD_LOOKUP)
 
     lookup.add_option(
         '--musicbrainz-server', action='store',
@@ -103,7 +120,7 @@ if (__name__ == '__main__'):
         '--no-musicbrainz', action='store_false',
         dest='use_musicbrainz',
         default=audiotools.MUSICBRAINZ_SERVICE,
-        help='do not query MusicBrainz for metadata')
+        help=OPT_NO_MUSICBRAINZ)
 
     lookup.add_option(
         '--freedb-server', action='store',
@@ -119,24 +136,23 @@ if (__name__ == '__main__'):
         '--no-freedb', action='store_false',
         dest='use_freedb',
         default=audiotools.FREEDB_SERVICE,
-        help='do not query FreeDB for metadata')
+        help=OPT_NO_FREEDB)
 
     lookup.add_option(
         '-I', '--interactive',
         action='store_true',
         default=False,
         dest='interactive',
-        help=_(u'edit metadata in interactive mode'))
+        help=OPT_INTERACTIVE_METADATA)
 
     lookup.add_option(
         '-D', '--default',
         dest='use_default', action='store_true', default=False,
-        help=_(u'when multiple choices are available, ' +
-               u'select the first one automatically'))
+        help=OPT_DEFAULT)
 
     parser.add_option_group(lookup)
 
-    metadata = audiotools.OptionGroup(parser, _(u"Metadata Options"))
+    metadata = audiotools.OptionGroup(parser, OPT_CAT_METADATA)
 
     metadata.add_option(
         '--album-number',
@@ -144,8 +160,7 @@ if (__name__ == '__main__'):
         action='store',
         type='int',
         default=0,
-        help=_(u'the album number of this CD, ' +
-               u'if it is one of a series of albums'))
+        help=OPT_ALBUM_NUMBER)
 
     metadata.add_option(
         '--album-total',
@@ -153,8 +168,7 @@ if (__name__ == '__main__'):
         action='store',
         type='int',
         default=0,
-        help=_(u'the total albums of this CD\'s set, ' +
-               u'if it is one of a series of albums'))
+        help=OPT_ALBUM_TOTAL)
 
     #if adding ReplayGain is a lossless process
     #(i.e. added as tags rather than modifying track data)
@@ -165,13 +179,13 @@ if (__name__ == '__main__'):
         '--replay-gain',
         action='store_true',
         dest='add_replay_gain',
-        help=_(u'add ReplayGain metadata to newly created tracks'))
+        help=OPT_REPLAY_GAIN)
 
     metadata.add_option(
         '--no-replay-gain',
         action='store_false',
         dest='add_replay_gain',
-        help=_(u'do not add ReplayGain metadata in newly created tracks'))
+        help=OPT_NO_REPLAY_GAIN)
 
     parser.add_option_group(metadata)
 
@@ -192,8 +206,7 @@ if (__name__ == '__main__'):
     #ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
         if (len(AudioType.COMPRESSION_MODES) > 1):
-            msg.info(_(u"Available compression types for %s:") % \
-                         (AudioType.NAME))
+            msg.info(LAB_AVAILABLE_COMPRESSION_TYPES % (AudioType.NAME))
             for mode in AudioType.COMPRESSION_MODES:
                 msg.new_row()
                 if (mode == audiotools.__default_quality__(AudioType.NAME)):
@@ -210,16 +223,14 @@ if (__name__ == '__main__'):
                     AudioType.COMPRESSION_DESCRIPTIONS.get(mode, u""))
             msg.info_rows()
         else:
-            msg.error(_(u"Audio type %s has no compression modes") % \
-                          (AudioType.NAME))
+            msg.error(ERR_NO_COMPRESSION_MODES % (AudioType.NAME))
         sys.exit(0)
     elif (options.quality is None):
         options.quality = audiotools.__default_quality__(AudioType.NAME)
     elif (options.quality not in AudioType.COMPRESSION_MODES):
-        msg.error(_(u"\"%(quality)s\" is not a supported " +
-                    u"compression mode for type \"%(type)s\"") % \
-                        {"quality": options.quality,
-                         "type": AudioType.NAME})
+        msg.error(ERR_UNSUPPORTED_COMPRESSION_MODE %
+                  {"quality": options.quality,
+                   "type": AudioType.NAME})
         sys.exit(1)
 
     quality = options.quality
@@ -228,11 +239,11 @@ if (__name__ == '__main__'):
     try:
         cdda = audiotools.CDDA(options.cdrom, options.speed)
     except IOError, err:
-        msg.error(unicode(err) + _(u". Is that an audio cd ?"))
+        msg.error(unicode(err) + ERR_INVALID_CDDA)
         sys.exit(-1)
 
     if (len(cdda) == 0):
-        msg.error(_(u"No CD in drive"))
+        msg.error(ERR_NO_CDDA)
         sys.exit(1)
 
     #use CDDA object to query metadata services for metadata choices
@@ -313,8 +324,8 @@ if (__name__ == '__main__'):
                     output_filenames.add(output_filename)
                     to_rip.append((cd_track, output_filename, metadata))
                 else:
-                    msg.error(u"Output file \"%s\" occurs more than once" %
-                          (output_filename,))
+                    msg.error(ERR_DUPLICATE_OUTPUT_FILE %
+                              (output_filename,))
                     sys.exit(1)
 
             except audiotools.UnsupportedTracknameField, err:
@@ -346,7 +357,7 @@ if (__name__ == '__main__'):
                     progress.update),
                 quality)
         except audiotools.EncodingError, err:
-            msg.error(_(u"Unable to write \"%s\"") % (output_filename,))
+            msg.error(ERR_ENCODING_ERROR % (output_filename,))
             sys.exit(1)
 
         track.set_metadata(metadata)
@@ -357,7 +368,7 @@ if (__name__ == '__main__'):
         rip_log[cd_track.track_number] = cd_track.rip_log
 
         msg.info(audiotools.output_progress(
-                u"track %(track_number)2.2d -> %(filename)s" %
+                LAB_CD2TRACK_PROGRESS %
                 {"track_number": cd_track.track_number,
                  "filename": output_filename}, i + 1, len(to_rip)))
 
@@ -381,7 +392,7 @@ if (__name__ == '__main__'):
         rg_progress.final_message()
 
     #display ripping log
-    msg.output(_("Rip log : "))
+    msg.output(LAB_CD2TRACK_LOG)
     msg.new_row()
     headers = [u"track", u"rderr", u"skip", u"atom",
                u"edge", u"drop", u"dup", u"drift"]

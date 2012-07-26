@@ -18,37 +18,49 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-import audiotools
 import sys
 import os
 import os.path
-import subprocess
-import gettext
-
-gettext.install("audiotools", unicode=True)
+import audiotools
+from audiotools.text import (USAGE_TRACKCAT,
+                             OPT_CAT_ENCODING,
+                             OPT_TYPE,
+                             OPT_QUALITY,
+                             OPT_OUTPUT_TRACKCAT,
+                             OPT_VERBOSE,
+                             OPT_CUESHEET_TRACKCAT,
+                             ERR_NO_OUTPUT_FILE,
+                             LAB_AVAILABLE_COMPRESSION_TYPES,
+                             ERR_NO_COMPRESSION_MODES,
+                             ERR_UNSUPPORTED_COMPRESSION_MODE,
+                             ERR_OUTPUT_IS_INPUT,
+                             ERR_FILES_REQUIRED,
+                             ERR_SAMPLE_RATE_MISMATCH,
+                             ERR_CHANNEL_COUNT_MISMATCH,
+                             ERR_CHANNEL_MASK_MISMATCH)
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        usage=_(u'%prog [options] [-o output] <track 1> [track 2] ...'),
+        usage=USAGE_TRACKCAT,
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    conversion = audiotools.OptionGroup(parser, _(u"Encoding Options"))
+    conversion = audiotools.OptionGroup(parser, OPT_CAT_ENCODING)
 
     conversion.add_option('-t', '--type',
                           action='store',
                           dest='type',
                           choices=audiotools.TYPE_MAP.keys(),
-                          help=_(u'the type of audio value to convert to'))
+                          help=OPT_TYPE)
 
     conversion.add_option('-q', '--quality',
                           action='store',
                           type='string',
                           dest='quality',
-                          help=_(u'the quality to store audio values at'))
+                          help=OPT_QUALITY)
 
     conversion.add_option('-o', '--output', dest='filename',
                           metavar='FILE',
-                          help=_(u'the output file'))
+                          help=OPT_OUTPUT_TRACKCAT)
 
     parser.add_option_group(conversion)
 
@@ -57,20 +69,20 @@ if (__name__ == '__main__'):
                       type='string',
                       dest='cuesheet',
                       metavar='FILENAME',
-                      help=_(u'a cuesheet to embed in the output file'))
+                      help=OPT_CUESHEET_TRACKCAT)
 
     parser.add_option('-V', '--verbose',
                       action='store',
                       dest='verbosity',
                       choices=audiotools.VERBOSITY_LEVELS,
                       default=audiotools.DEFAULT_VERBOSITY,
-                      help=_(u'the verbosity level to execute at'))
+                      help=OPT_VERBOSE)
 
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("trackcat", options)
 
     if (options.filename is None):
-        msg.error(_(u'You must specify an output file'))
+        msg.error(ERR_NO_OUTPUT_FILE)
         sys.exit(1)
 
     #get the AudioFile class we are converted to
@@ -86,8 +98,8 @@ if (__name__ == '__main__'):
     #ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
         if (len(AudioType.COMPRESSION_MODES) > 1):
-            msg.info(_(u"Available compression types for %s:") % \
-                         (AudioType.NAME))
+            msg.info(LAB_AVAILABLE_COMPRESSION_TYPES %
+                     (AudioType.NAME))
             for mode in AudioType.COMPRESSION_MODES:
                 msg.new_row()
                 if (mode == audiotools.__default_quality__(AudioType.NAME)):
@@ -104,14 +116,12 @@ if (__name__ == '__main__'):
                     AudioType.COMPRESSION_DESCRIPTIONS.get(mode, u""))
             msg.info_rows()
         else:
-            msg.error(_(u"Audio type %s has no compression modes") % \
-                          (AudioType.NAME))
+            msg.error(ERR_NO_COMPRESSION_MODES % (AudioType.NAME))
         sys.exit(0)
     elif (options.quality is None):
         options.quality = audiotools.__default_quality__(AudioType.NAME)
     elif (options.quality not in AudioType.COMPRESSION_MODES):
-        msg.error(_(u"\"%(quality)s\" is not a supported " +
-                    u"compression mode for type \"%(type)s\"") %
+        msg.error(ERR_UNSUPPORTED_COMPRESSION_MODE %
                   {"quality": options.quality,
                    "type": AudioType.NAME})
         sys.exit(1)
@@ -128,28 +138,27 @@ if (__name__ == '__main__'):
 
     #perform some option sanity checking
     if (output_filename in opened_files):
-        msg.error(u"\"%s\" cannot be both input and output file" %
-                  (output_filename,))
+        msg.error(ERR_OUTPUT_IS_INPUT % (output_filename,))
         sys.exit(1)
 
     if (len(audiofiles) < 1):
-        msg.error(_(u"You must specify at least 1 supported audio file"))
+        msg.error(ERR_FILES_REQUIRED)
         sys.exit(1)
 
     if (len(set([f.sample_rate() for f in audiofiles])) != 1):
-        msg.error(_(u"All audio files must have the same sample rate"))
+        msg.error(ERR_SAMPLE_RATE_MISMATCH)
         sys.exit(1)
 
     if (len(set([f.channels() for f in audiofiles])) != 1):
-        msg.error(_(u"All audio files must have the same channel count"))
+        msg.error(ERR_CHANNEL_COUNT_MISMATCH)
         sys.exit(1)
 
     if (len(set([int(f.channel_mask()) for f in audiofiles])) != 1):
-        msg.error(_(u"All audio files must have the same channel assignment"))
+        msg.error(ERR_CHANNEL_MASK_MISMATCH)
         sys.exit(1)
 
     if (len(set([f.bits_per_sample() for f in audiofiles])) != 1):
-        msg.error(_(u"All audio files must have the same bits per sample"))
+        msg.error(ERR_BPS_MISMATCH)
         sys.exit(1)
 
     #if embedding a cuesheet, try to read it before doing any work
@@ -212,9 +221,7 @@ if (__name__ == '__main__'):
                 encoded.set_cuesheet(cuesheet)
 
     except audiotools.EncodingError, err:
-        msg.error(_(u"%(filename)s: %(error)s") %
-                      {"filename": output_filename,
-                       "error": err})
+        msg.error(ERR_ENCODING_ERROR % (output_filename,))
         sys.exit(1)
     except audiotools.InvalidFormat, err:
         msg.error(unicode(err))

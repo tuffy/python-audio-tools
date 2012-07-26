@@ -19,28 +19,38 @@
 
 
 import sys
-import audiotools
-import gettext
 import os.path
-
-gettext.install("audiotools", unicode=True)
+import audiotools
+from audiotools.text import (USAGE_DVDAINFO,
+                             OPT_AUDIO_TS,
+                             ERR_NO_AUDIO_TS,
+                             LAB_DVDA_TITLE,
+                             LAB_DVDA_TRACKS,
+                             LAB_DVDA_TITLE_INFO,
+                             LAB_DVDAINFO_TITLE,
+                             LAB_DVDAINFO_TRACK,
+                             LAB_DVDAINFO_LENGTH,
+                             LAB_DVDAINFO_FILENAME,
+                             LAB_DVDAINFO_STARTSECTOR,
+                             LAB_DVDAINFO_ENDSECTOR,
+                             LAB_DVDAINFO_TICKS,
+                             LAB_TRACK_LENGTH)
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        usage=_(u"%prog [options]"),
+        usage=USAGE_DVDAINFO,
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option('-A', '--audio-ts', action='store', default=None,
                       type='string', dest='audio_ts', metavar='DIR',
-                      help='location of AUDIO_TS directory')
+                      help=OPT_AUDIO_TS)
 
     (options, args) = parser.parse_args()
 
     msg = audiotools.Messenger("dvdainfo", options)
 
     if (options.audio_ts is None):
-        msg.error(
-            _(u"You must specify the DVD-Audio's AUDIO_TS directory with -A"))
+        msg.error(ERR_NO_AUDIO_TS)
         sys.exit(1)
 
     try:
@@ -61,12 +71,10 @@ if (__name__ == '__main__'):
          stream_type) = title.info()
 
         msg.new_row()
-        msg.output_column(_(u"Title %d") % (title_num + 1), True)
-        msg.output_column(_(u" (%d tracks)" % (len(title.tracks))), True)
-        msg.output_column(_(u" : "))
-        msg.output_column(_(u"%(minutes)2.2d:%(seconds)2.2d " +
-                            u"%(channels)dch %(rate)dHz %(bits)d-bit " +
-                            u"%(type)s") %
+        msg.output_column(LAB_DVDA_TITLE % (title_num + 1), True)
+        msg.output_column(LAB_DVDA_TRACKS % (len(title.tracks)), True)
+        msg.output_column(u" : ")
+        msg.output_column(LAB_DVDA_TITLE_INFO %
                           {"minutes": title.pts_length / 90000 / 60,
                            "seconds": title.pts_length / 90000 % 60,
                            "channels": channels,
@@ -79,19 +87,19 @@ if (__name__ == '__main__'):
     msg.output_rows()
 
     msg.new_row()
-    msg.output_column(_(u"Title"))
+    msg.output_column(LAB_DVDAINFO_TITLE)
     msg.output_column(u" ")
-    msg.output_column(_(u"Track"))
+    msg.output_column(LAB_DVDAINFO_TRACK)
     msg.output_column(u" ")
-    msg.output_column(_(u"Length"))
+    msg.output_column(LAB_DVDAINFO_LENGTH)
     msg.output_column(u"   ")
-    msg.output_column(_(u"Filename"))
+    msg.output_column(LAB_DVDAINFO_FILENAME)
     msg.output_column(u" ")
-    msg.output_column(_(u"Start Sector"))
+    msg.output_column(LAB_DVDAINFO_STARTSECTOR)
     msg.output_column(u" ")
-    msg.output_column(_(u"End Sector"))
+    msg.output_column(LAB_DVDAINFO_ENDSECTOR)
     msg.output_column(u" ")
-    msg.output_column(_(u"PTS Ticks"))
+    msg.output_column(LAB_DVDAINFO_TICKS)
 
     msg.divider_row([u"-", u" ", u"-", u" ", u"-", u" ", u"-",
                      u" ", u"-", u" ", u"-", u" ", u"-"])
@@ -107,9 +115,9 @@ if (__name__ == '__main__'):
                     msg.output_column(u" ")
                     msg.output_column(unicode(track_num + 1), True)
                     msg.output_column(u" ")
-                    msg.output_column(u"%d:%2.2d" % \
-                                          (track.pts_length / 90000 / 60,
-                                           track.pts_length / 90000 % 60),
+                    msg.output_column(LAB_TRACK_LENGTH %
+                                      (track.pts_length / 90000 / 60,
+                                       track.pts_length / 90000 % 60),
                                       True)
                 else:
                     msg.output_column(u"")

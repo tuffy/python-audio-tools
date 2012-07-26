@@ -20,18 +20,43 @@
 
 import sys
 import os
-import audiotools
-import audiotools.ui
-import gettext
 import tempfile
 from itertools import izip
-
-gettext.install("audiotools", unicode=True)
+import audiotools
+import audiotools.ui
+from audiotools.text import (USAGE_DVDA2TRACK,
+                             OPT_VERBOSE,
+                             OPT_AUDIO_TS,
+                             OPT_DVDA_TITLE,
+                             OPT_CAT_EXTRACTION,
+                             OPT_TYPE,
+                             OPT_QUALITY,
+                             OPT_FORMAT,
+                             OPT_DIR,
+                             OPT_INTERACTIVE_METADATA,
+                             OPT_CAT_METADATA,
+                             OPT_CAT_DVDA_LOOKUP,
+                             OPT_NO_MUSICBRAINZ,
+                             OPT_NO_FREEDB,
+                             OPT_NO_REPLAY_GAIN,
+                             OPT_DEFAULT,
+                             OPT_ALBUM_NUMBER,
+                             OPT_ALBUM_TOTAL,
+                             OPT_REPLAY_GAIN,
+                             LAB_AVAILABLE_COMPRESSION_TYPES,
+                             ERR_UNSUPPORTED_COMPRESSION_MODE,
+                             ERR_DUPLICATE_OUTPUT_FILE,
+                             ERR_ENCODING_ERROR,
+                             OPT_TRACK_START,
+                             OPT_TRACK_TOTAL,
+                             ERR_NO_AUDIO_TS,
+                             LAB_ENCODE,
+                             LAB_DVDA_TRACK)
 
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        usage=_(u"%prog [options] [track #] [track #] ..."),
+        usage=USAGE_DVDA2TRACK,
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option(
@@ -40,7 +65,7 @@ if (__name__ == '__main__'):
         dest='verbosity',
         choices=audiotools.VERBOSITY_LEVELS,
         default=audiotools.DEFAULT_VERBOSITY,
-        help=_(u'the verbosity level to execute at'))
+        help=OPT_VERBOSE)
 
     parser.add_option(
         '-c', '--cdrom', action='store',
@@ -49,13 +74,13 @@ if (__name__ == '__main__'):
 
     parser.add_option('-A', '--audio-ts', action='store', default=None,
                       type='string', dest='audio_ts', metavar='DIR',
-                      help='location of AUDIO_TS directory')
+                      help=OPT_AUDIO_TS)
 
     parser.add_option('--title', action='store', default=1,
                       type='int', dest='title',
-                      help='DVD-Audio title number to extract tracks from')
+                      help=OPT_DVDA_TITLE)
 
-    conversion = audiotools.OptionGroup(parser, _(u"Extraction Options"))
+    conversion = audiotools.OptionGroup(parser, OPT_CAT_EXTRACTION)
 
     conversion.add_option(
         '-t', '--type',
@@ -63,14 +88,14 @@ if (__name__ == '__main__'):
         dest='type',
         choices=audiotools.TYPE_MAP.keys(),
         default=audiotools.DEFAULT_TYPE,
-        help=_(u'the type of audio track to create'))
+        help=OPT_TYPE)
 
     conversion.add_option(
         '-q', '--quality',
         action='store',
         type='string',
         dest='quality',
-        help=_(u'the quality to store audio tracks at'))
+        help=OPT_QUALITY)
 
     conversion.add_option(
         '-d', '--dir',
@@ -78,7 +103,7 @@ if (__name__ == '__main__'):
         type='string',
         dest='dir',
         default='.',
-        help=_(u"the directory to store extracted audio tracks"))
+        help=OPT_DIR)
 
     conversion.add_option(
         '--format',
@@ -86,11 +111,11 @@ if (__name__ == '__main__'):
         type='string',
         default=None,
         dest='format',
-        help=_(u'the format string for new filenames'))
+        help=OPT_FORMAT)
 
     parser.add_option_group(conversion)
 
-    lookup = audiotools.OptionGroup(parser, _(u"CD Lookup Options"))
+    lookup = audiotools.OptionGroup(parser, OPT_CAT_DVDA_LOOKUP)
 
     lookup.add_option(
         '--musicbrainz-server', action='store',
@@ -106,7 +131,7 @@ if (__name__ == '__main__'):
         '--no-musicbrainz', action='store_false',
         dest='use_musicbrainz',
         default=audiotools.MUSICBRAINZ_SERVICE,
-        help='do not query MusicBrainz for metadata')
+        help=OPT_NO_MUSICBRAINZ)
 
     lookup.add_option(
         '--freedb-server', action='store',
@@ -122,24 +147,23 @@ if (__name__ == '__main__'):
         '--no-freedb', action='store_false',
         dest='use_freedb',
         default=audiotools.FREEDB_SERVICE,
-        help='do not query FreeDB for metadata')
+        help=OPT_NO_FREEDB)
 
     lookup.add_option(
         '-I', '--interactive',
         action='store_true',
         default=False,
         dest='interactive',
-        help=_(u'edit metadata in interactive mode'))
+        help=OPT_INTERACTIVE_METADATA)
 
     lookup.add_option(
         '-D', '--default',
         dest='use_default', action='store_true', default=False,
-        help=_(u'when multiple choices are available, ' +
-               u'select the first one automatically'))
+        help=OPT_DEFAULT)
 
     parser.add_option_group(lookup)
 
-    metadata = audiotools.OptionGroup(parser, _(u"Metadata Options"))
+    metadata = audiotools.OptionGroup(parser, OPT_CAT_METADATA)
 
     metadata.add_option(
         '--track-start',
@@ -147,7 +171,7 @@ if (__name__ == '__main__'):
         type='int',
         dest='track_start',
         default=1,
-        help=_(u'the starting track number of the title being extracted'))
+        help=OPT_TRACK_START)
 
     metadata.add_option(
         '--track-total',
@@ -155,8 +179,7 @@ if (__name__ == '__main__'):
         type='int',
         dest='track_total',
         default=None,
-        help=_(u'the total number of tracks, ' +
-               u'if the extracted title is only a subset'))
+        help=OPT_TRACK_TOTAL)
 
     metadata.add_option(
         '--album-number',
@@ -164,8 +187,7 @@ if (__name__ == '__main__'):
         action='store',
         type='int',
         default=0,
-        help=_(u'the album number of this disc, ' +
-               u'if it is one of a series of albums'))
+        help=OPT_ALBUM_NUMBER)
 
     metadata.add_option(
         '--album-total',
@@ -173,8 +195,7 @@ if (__name__ == '__main__'):
         action='store',
         type='int',
         default=0,
-        help=_(u'the total albums of this disc\'s set, ' +
-               u'if it is one of a series of albums'))
+        help=OPT_ALBUM_TOTAL)
 
     #if adding ReplayGain is a lossless process
     #(i.e. added as tags rather than modifying track data)
@@ -185,13 +206,13 @@ if (__name__ == '__main__'):
         '--replay-gain',
         action='store_true',
         dest='add_replay_gain',
-        help=_(u'add ReplayGain metadata to newly created tracks'))
+        help=OPT_REPLAY_GAIN)
 
     metadata.add_option(
         '--no-replay-gain',
         action='store_false',
         dest='add_replay_gain',
-        help=_(u'do not add ReplayGain metadata in newly created tracks'))
+        help=OPT_NO_REPLAY_GAIN)
 
     parser.add_option_group(metadata)
 
@@ -209,8 +230,8 @@ if (__name__ == '__main__'):
     #ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
         if (len(AudioType.COMPRESSION_MODES) > 1):
-            msg.info(_(u"Available compression types for %s:") % \
-                         (AudioType.NAME))
+            msg.info(LAB_AVAILABLE_COMPRESSION_TYPES %
+                     (AudioType.NAME))
             for mode in AudioType.COMPRESSION_MODES:
                 msg.new_row()
                 if (mode == audiotools.__default_quality__(AudioType.NAME)):
@@ -227,24 +248,21 @@ if (__name__ == '__main__'):
                     AudioType.COMPRESSION_DESCRIPTIONS.get(mode, u""))
             msg.output_rows()
         else:
-            msg.error(_(u"Audio type %s has no compression modes") % \
-                          (AudioType.NAME))
+            msg.error(ERR_NO_COMPRESSION_MODES % (AudioType.NAME))
         sys.exit(0)
     elif (options.quality is None):
         options.quality = audiotools.__default_quality__(AudioType.NAME)
     elif (options.quality not in AudioType.COMPRESSION_MODES):
-        msg.error(_(u"\"%(quality)s\" is not a supported " +
-                    u"compression mode for type \"%(type)s\"") % \
-                        {"quality": options.quality,
-                         "type": AudioType.NAME})
+        msg.error(ERR_UNSUPPORTED_COMPRESSION_MODE %
+                  {"quality": options.quality,
+                   "type": AudioType.NAME})
         sys.exit(1)
 
     quality = options.quality
     base_directory = options.dir
 
     if (options.audio_ts is None):
-        msg.error(
-            _(u"You must specify the DVD-Audio's AUDIO_TS directory with -A"))
+        msg.error(ERR_NO_AUDIO_TS)
         sys.exit(1)
 
     #get main DVDAudio object
@@ -259,7 +277,7 @@ if (__name__ == '__main__'):
 
     #get selected DVDATitle from DVDAudio object
     if (options.title < 1):
-        msg.error(_(u"title number must be greater than 0"))
+        msg.error(ERR_INVALID_TITLE_NUMBER)
         sys.exit(1)
     title = dvda[0][options.title - 1]
 
@@ -349,9 +367,9 @@ if (__name__ == '__main__'):
                     metadata.track_number = logical_track_number
                     if (options.track_total is not None):
                         metadata.track_total = options.track_total
-                    if (options.album_number != 0):
+                    if (options.album_number is not None):
                         metadata.album_number = options.album_number
-                    if (options.album_total != 0):
+                    if (options.album_total is not None):
                         metadata.album_total = options.album_total
 
                 output_filename = audiotools.Filename(
@@ -361,7 +379,7 @@ if (__name__ == '__main__'):
                                              track_metadata=metadata,
                                              format=options.format)))
                 if (output_filename in output_filenames):
-                    msg.error(u"Output file \"%s\" occurs more than once" %
+                    msg.error(ERR_DUPLICATE_OUTPUT_FILE %
                               (output_filename,))
                     sys.exit(1)
                 else:
@@ -410,19 +428,19 @@ if (__name__ == '__main__'):
                 progress.clear()
 
                 msg.info(audiotools.output_progress(
-                        (u"title %(title_number)d - " +
-                         u"track %(track_number)2.2d -> %(filename)s") %
-                        {"title_number": options.title,
-                         "track_number": title_track_number,
-                         "filename": output_filename},
-                        i + 1, len(to_extract)))
+                        LAB_ENCODE % {
+                            "source":LAB_DVDA_TRACK %
+                            {"title_number": options.title,
+                             "track_number": title_track_number},
+                            "destination":output_filename},
+                        i + 1,
+                        len(to_extract)))
 
             except OSError, err:
                 msg.os_error(err)
                 sys.exit(1)
             except audiotools.EncodingError, err:
-                msg.error(_(u"Unable to write \"%s\"") %
-                          (output_filename,))
+                msg.error(ERR_ENCODING_ERROR % (output_filename,))
                 sys.exit(1)
         else:
             audiotools.transfer_framelist_data(pcmreader, lambda f: f)
