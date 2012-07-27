@@ -5765,10 +5765,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] audiotools/vorbis.py
     - [X] audiotools/wav.py
     - [X] audiotools/wavpack.py
-*** TODO Update unit tests
-    - [ ] test_formats.py
-    - [ ] test_metadata.py
-    - [ ] test_utils.py
+*** DONE Update unit tests
+    - [X] test_formats.py
+    - [X] test_metadata.py
+    - [X] test_utils.py
 *** TODO Reduce big import chunks
     Convert "from audiotools.text import (CONSTANT, ...)"
     to "import audiotools.text as t" and "t.CONSTANT"

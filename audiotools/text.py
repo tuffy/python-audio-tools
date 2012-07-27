@@ -306,6 +306,9 @@ LAB_T_OPTIONS = \
 LAB_AVAILABLE_COMPRESSION_TYPES = \
     u"Available compression types for %s:"
 
+LAB_SUPPORTED_FIELDS = \
+    u"Supported fields are:"
+
 LAB_CD2TRACK_PROGRESS = \
     u"track %(track_number)2.2d -> %(filename)s"
 
@@ -1238,6 +1241,9 @@ CLEAN_REMOVE_LEADING_WHITESPACE_ZEROES = \
 
 CLEAN_REMOVE_LEADING_ZEROES = \
     u"removed leading zeroes from %(field)s"
+
+CLEAN_ADD_LEADING_ZEROES = \
+    u"added leading zeroes to %(field)"
 
 CLEAN_REMOVE_EMPTY_TAG = \
     u"removed empty field %(field)s"

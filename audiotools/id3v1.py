@@ -259,6 +259,9 @@ class ID3v1Comment(MetaData):
     def clean(self, fixes_performed):
         """returns a new ID3v1Comment object that's been cleaned of problems"""
 
+        from .text import (CLEAN_REMOVE_TRAILING_WHITESPACE,
+                           CLEAN_REMOVE_LEADING_WHITESPACE)
+
         fields = {}
         for (init_attr,
              attr,
@@ -272,14 +275,12 @@ class ID3v1Comment(MetaData):
 
             fix1 = initial_value.rstrip()
             if (fix1 != initial_value):
-                fixes_performed.append(
-                    u"removed trailing whitespace from %(field)s" %
-                    {"field": name})
+                fixes_performed.append(CLEAN_REMOVE_TRAILING_WHITESPACE %
+                                       {"field": name})
             fix2 = fix1.lstrip()
             if (fix2 != fix1):
-                fixes_performed.append(
-                    u"removed leading whitespace from %(field)s" %
-                    {"field": name})
+                fixes_performed.append(CLEAN_REMOVE_LEADING_WHITESPACE %
+                                       {"field": name})
 
             #restore trailing NULL bytes
             fields[init_attr] = fix2 + chr(0) * (self.FIELD_LENGTHS[init_attr] -

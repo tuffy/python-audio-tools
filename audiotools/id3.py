@@ -450,29 +450,32 @@ class ID3v22_T__Frame:
         or None if the frame should be removed entirely
         any fixes are appended to fixes_applied as unicode string"""
 
+        from .text import (CLEAN_REMOVE_EMPTY_TAG,
+                           CLEAN_REMOVE_TRAILING_WHITESPACE,
+                           CLEAN_REMOVE_LEADING_WHITESPACE,
+                           CLEAN_REMOVE_LEADING_ZEROES,
+                           CLEAN_ADD_LEADING_ZEROES)
+
         field = self.id.decode('ascii')
         value = unicode(self)
 
         #check for an empty tag
         if (len(value.strip()) == 0):
-            fixes_performed.append(
-                u"removed empty field %(field)s" %
-                {"field": field})
+            fixes_performed.append(CLEAN_REMOVE_EMPTY_TAG %
+                                   {"field": field})
             return None
 
         #check trailing whitespace
         fix1 = value.rstrip()
         if (fix1 != value):
-            fixes_performed.append(
-                u"removed trailing whitespace from %(field)s" %
-                {"field": field})
+            fixes_performed.append(CLEAN_REMOVE_TRAILING_WHITESPACE %
+                                   {"field": field})
 
         #check leading whitespace
         fix2 = fix1.lstrip()
         if (fix2 != fix1):
-            fixes_performed.append(
-                u"removed leading whitespace from %(field)s" %
-                {"field": field})
+            fixes_performed.append(CLEAN_REMOVE_LEADING_WHITESPACE %
+                                   {"field": field})
 
         #check leading zeroes for a numerical tag
         if (self.id in self.NUMERICAL_IDS):
@@ -481,13 +484,11 @@ class ID3v22_T__Frame:
                 from . import config
 
                 if (config.getboolean_default("ID3", "pad", False)):
-                    fixes_performed.append(
-                        u"added leading zeroes to %(field)s" %
-                        {"field": field})
+                    fixes_performed.append(CLEAN_ADD_LEADING_ZEROES %
+                                           {"field": field})
                 else:
-                    fixes_performed.append(
-                        u"removed leading zeroes from %(field)s" %
-                        {"field": field})
+                    fixes_performed.append(CLEAN_REMOVE_LEADING_ZEROES %
+                                           {"field": field})
         else:
             fix3 = fix2
 
@@ -559,29 +560,30 @@ class ID3v22_TXX_Frame:
         or None if the frame should be removed entirely
         any fixes are appended to fixes_applied as unicode string"""
 
+        from audiotools.text import (CLEAN_REMOVE_EMPTY_TAG,
+                                     CLEAN_REMOVE_TRAILING_WHITESPACE,
+                                     CLEAN_REMOVE_LEADING_WHITESPACE)
+
         field = self.id.decode('ascii')
         value = unicode(self)
 
         #check for an empty tag
         if (len(value.strip()) == 0):
-            fixes_performed.append(
-                u"removed empty field %(field)s" %
-                {"field": field})
+            fixes_performed.append(CLEAN_REMOVE_EMPTY_TAG %
+                                   {"field": field})
             return None
 
         #check trailing whitespace
         fix1 = value.rstrip()
         if (fix1 != value):
-            fixes_performed.append(
-                u"removed trailing whitespace from %(field)s" %
-                {"field": field})
+            fixes_performed.append(CLEAN_REMOVE_TRAILING_WHITESPACE %
+                                   {"field": field})
 
         #check leading whitespace
         fix2 = fix1.lstrip()
         if (fix2 != fix1):
-            fixes_performed.append(
-                u"removed leading whitespace from %(field)s" %
-                {"field": field})
+            fixes_performed.append(CLEAN_REMOVE_LEADING_WHITESPACE %
+                                   {"field": field})
 
         return self.__class__(self.encoding, self.description, fix2)
 
@@ -781,6 +783,10 @@ class ID3v22_COM_Frame:
         or None if the frame should be omitted
         fix text will be appended to fixes_performed, if necessary"""
 
+        from audiotools.text import (CLEAN_REMOVE_EMPTY_TAG,
+                                     CLEAN_REMOVE_TRAILING_WHITESPACE,
+                                     CLEAN_REMOVE_LEADING_WHITESPACE)
+
         field = self.id.decode('ascii')
         text_encoding = {0: 'latin-1', 1: 'ucs2'}
 
@@ -788,24 +794,21 @@ class ID3v22_COM_Frame:
 
         #check for an empty tag
         if (len(value.strip()) == 0):
-            fixes_performed.append(
-                u"removed empty field %(field)s" %
-                {"field": field})
+            fixes_performed.append(CLEAN_REMOVE_EMPTY_TAG %
+                                   {"field": field})
             return None
 
         #check trailing whitespace
         fix1 = value.rstrip()
         if (fix1 != value):
-            fixes_performed.append(
-                u"removed trailing whitespace from %(field)s" %
-                {"field": field})
+            fixes_performed.append(CLEAN_REMOVE_TRAILING_WHITESPACE %
+                                   {"field": field})
 
         #check leading whitespace
         fix2 = fix1.lstrip()
         if (fix2 != fix1):
-            fixes_performed.append(
-                u"removed leading whitespace from %(field)s" %
-                {"field": field})
+            fixes_performed.append(CLEAN_REMOVE_LEADING_WHITESPACE %
+                                   {"field": field})
 
         #stripping whitespace shouldn't alter text/description encoding
 
@@ -1584,9 +1587,12 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
         or None if the frame should be removed entirely
         any fixes are appended to fixes_applied as unicode string"""
 
+
+
         actual_mime_type = Image.new(self.data, u"", 0).mime_type
         if (unicode(self.pic_mime_type) != actual_mime_type):
-            fixes_performed.append(u"fixed embedded image's MIME type")
+            from audiotools.text import (CLEAN_FIX_IMAGE_FIELDS)
+            fixes_performed.append(CLEAN_FIX_IMAGE_FIELDS)
             return ID3v23_APIC_Frame(C_string('ascii',
                                               actual_mime_type.encode('ascii')),
                                      self.pic_type,
@@ -1902,7 +1908,8 @@ class ID3v24_APIC_Frame(ID3v23_APIC_Frame):
 
         actual_mime_type = Image.new(self.data, u"", 0).mime_type
         if (unicode(self.pic_mime_type) != actual_mime_type):
-            fixes_performed.append(u"fixed embedded image's MIME type")
+            from audiotools.text import (CLEAN_FIX_IMAGE_FIELDS)
+            fixes_performed.append(CLEAN_FIX_IMAGE_FIELDS)
             return ID3v24_APIC_Frame(C_string('ascii',
                                               actual_mime_type.encode('ascii')),
                                      self.pic_type,
@@ -2010,6 +2017,10 @@ class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
         or None if the frame should be omitted
         fix text will be appended to fixes_performed, if necessary"""
 
+        from .text import (CLEAN_REMOVE_EMPTY_TAG,
+                           CLEAN_REMOVE_TRAILING_WHITESPACE,
+                           CLEAN_REMOVE_LEADING_WHITESPACE)
+
         field = self.id.decode('ascii')
         text_encoding = {0: 'latin-1',
                          1: 'utf-16',
@@ -2020,24 +2031,21 @@ class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
 
         #check for an empty tag
         if (len(value.strip()) == 0):
-            fixes_performed.append(
-                u"removed empty field %(field)s" %
-                {"field": field})
+            fixes_performed.append(CLEAN_REMOVE_EMPTY_TAG %
+                                   {"field": field})
             return None
 
         #check trailing whitespace
         fix1 = value.rstrip()
         if (fix1 != value):
-            fixes_performed.append(
-                u"removed trailing whitespace from %(field)s" %
-                {"field": field})
+            fixes_performed.append(CLEAN_REMOVE_TRAILING_WHITESPACE %
+                                   {"field": field})
 
         #check leading whitespace
         fix2 = fix1.lstrip()
         if (fix2 != fix1):
-            fixes_performed.append(
-                u"removed leading whitespace from %(field)s" %
-                {"field": field})
+            fixes_performed.append(CLEAN_REMOVE_LEADING_WHITESPACE %
+                                   {"field": field})
 
         #stripping whitespace shouldn't alter text/description encoding
 
